@@ -41,7 +41,6 @@ typedef int (*ha_message_handler_t)(struct virtio_ha_msg *msg);
 
 static struct virtio_ha_device_list hs;
 static pthread_mutex_t prio_chnl_mutex = PTHREAD_MUTEX_INITIALIZER;
-static bool monitor_started;
 static struct prio_chnl_vf_cache vf_cache;
 static struct virtio_ha_event_handler msg_hdlr;
 static struct virtio_ha_msg *msg;
@@ -143,9 +142,11 @@ ha_server_app_remove_prio_chnl(__attribute__((__unused__)) struct virtio_ha_msg 
 	}
 	pthread_mutex_unlock(&prio_chnl_mutex);
 
-	pthread_cancel(hs.prio_thread);
-	pthread_join(hs.prio_thread, NULL);
-	monitor_started = false;
+	if (hs.prio_thread != 0) {
+		pthread_cancel(hs.prio_thread);
+		pthread_join(hs.prio_thread, NULL);
+		hs.prio_thread = 0;
+	}
 
 	HA_APP_LOG(INFO, "Removed priority channel");
 
@@ -1017,7 +1018,7 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 	hs.global_cfd = -1;
 	/* No need to take prio_chnl_mutex in this case */
 	hs.prio_chnl_fd = -1;
-	monitor_started = false;
+	hs.prio_thread = 0;
 
 	hdl.sock = sock;
 	hdl.cb = add_connection;
@@ -1046,10 +1047,11 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 					hs.prio_chnl_fd = -1;
 				}
 				pthread_mutex_unlock(&prio_chnl_mutex);
-				if (monitor_started) {
+				if (hs.prio_thread != 0) {
 					/* vdpa service quits before recovery finishes */
 					pthread_cancel(hs.prio_thread);
 					pthread_join(hs.prio_thread, NULL);
+					hs.prio_thread = 0;
 				}
 				pthread_create(&hs.prio_thread, NULL, monitor_vhostfd_thread, NULL);
 			} else { /* EPOLLIN */
