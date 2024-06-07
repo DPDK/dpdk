@@ -322,7 +322,7 @@
       },
       "minimum": 1
     },
-    "executions": {
+    "test_runs": {
       "type": "array",
       "items": {
         "type": "object",
@@ -366,7 +366,7 @@
                 "$ref": "#/definitions/node_name"
               },
               "vdevs": {
-                "description": "Optional list of names of vdevs to be used in execution",
+                "description": "Optional list of names of vdevs to be used in the test run",
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -395,7 +395,7 @@
     }
   },
   "required": [
-    "executions",
+    "test_runs",
     "nodes"
   ],
   "additionalProperties": false

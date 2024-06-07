@@ -52,7 +52,7 @@ class TestPmdBufferScatter(TestSuite):
         """Set up the test suite.
 
         Setup:
-            Verify that we have at least 2 port links in the current execution
+            Verify that we have at least 2 port links in the current test run
             and increase the MTU of both ports on the traffic generator to 9000
             to support larger packet sizes.
         """

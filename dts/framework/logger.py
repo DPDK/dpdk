@@ -29,15 +29,11 @@ class DtsStage(StrEnum):
     """The DTS execution stage."""
 
     #:
-    pre_execution = auto()
+    pre_run = auto()
     #:
-    execution_setup = auto()
-    #:
-    execution_teardown = auto()
+    test_run_setup = auto()
     #:
     build_target_setup = auto()
-    #:
-    build_target_teardown = auto()
     #:
     test_suite_setup = auto()
     #:
@@ -45,7 +41,11 @@ class DtsStage(StrEnum):
     #:
     test_suite_teardown = auto()
     #:
-    post_execution = auto()
+    build_target_teardown = auto()
+    #:
+    test_run_teardown = auto()
+    #:
+    post_run = auto()
 
 
 class DTSLogger(logging.Logger):
@@ -59,7 +59,7 @@ class DTSLogger(logging.Logger):
     a new stage switch occurs. This is useful mainly for logging per test suite.
     """
 
-    _stage: ClassVar[DtsStage] = DtsStage.pre_execution
+    _stage: ClassVar[DtsStage] = DtsStage.pre_run
     _extra_file_handlers: list[FileHandler] = []
 
     def __init__(self, *args, **kwargs):

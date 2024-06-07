@@ -19,8 +19,8 @@ from typing import Any, Callable, Type, Union
 from framework.config import (
     OS,
     BuildTargetConfiguration,
-    ExecutionConfiguration,
     NodeConfiguration,
+    TestRunConfiguration,
 )
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
@@ -65,7 +65,7 @@ class Node(ABC):
     ports: list[Port]
     _logger: DTSLogger
     _other_sessions: list[OSSession]
-    _execution_config: ExecutionConfiguration
+    _test_run_config: TestRunConfiguration
     virtual_devices: list[VirtualDevice]
 
     def __init__(self, node_config: NodeConfiguration):
@@ -103,40 +103,40 @@ class Node(ABC):
         for port in self.ports:
             self.configure_port_state(port)
 
-    def set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
-        """Execution setup steps.
+    def set_up_test_run(self, test_run_config: TestRunConfiguration) -> None:
+        """Test run setup steps.
 
-        Configure hugepages and call :meth:`_set_up_execution` where
+        Configure hugepages and call :meth:`_set_up_test_run` where
         the rest of the configuration steps (if any) are implemented.
 
         Args:
-            execution_config: The execution test run configuration according to which
+            test_run_config: A test run configuration according to which
                 the setup steps will be taken.
         """
         self._setup_hugepages()
-        self._set_up_execution(execution_config)
-        self._execution_config = execution_config
-        for vdev in execution_config.vdevs:
+        self._set_up_test_run(test_run_config)
+        self._test_run_config = test_run_config
+        for vdev in test_run_config.vdevs:
             self.virtual_devices.append(VirtualDevice(vdev))
 
-    def _set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
-        """Optional additional execution setup steps for subclasses.
+    def _set_up_test_run(self, test_run_config: TestRunConfiguration) -> None:
+        """Optional additional test run setup steps for subclasses.
 
-        Subclasses should override this if they need to add additional execution setup steps.
+        Subclasses should override this if they need to add additional test run setup steps.
         """
 
-    def tear_down_execution(self) -> None:
-        """Execution teardown steps.
+    def tear_down_test_run(self) -> None:
+        """Test run teardown steps.
 
-        There are currently no common execution teardown steps common to all DTS node types.
+        There are currently no common test run teardown steps common to all DTS node types.
         """
         self.virtual_devices = []
-        self._tear_down_execution()
+        self._tear_down_test_run()
 
-    def _tear_down_execution(self) -> None:
-        """Optional additional execution teardown steps for subclasses.
+    def _tear_down_test_run(self) -> None:
+        """Optional additional test run teardown steps for subclasses.
 
-        Subclasses should override this if they need to add additional execution teardown steps.
+        Subclasses should override this if they need to add additional test run teardown steps.
         """
 
     def set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:

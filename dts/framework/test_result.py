@@ -7,7 +7,7 @@ r"""Record and process DTS results.
 The results are recorded in a hierarchical manner:
 
     * :class:`DTSResult` contains
-    * :class:`ExecutionResult` contains
+    * :class:`TestRunResult` contains
     * :class:`BuildTargetResult` contains
     * :class:`TestSuiteResult` contains
     * :class:`TestCaseResult`
@@ -37,8 +37,8 @@ from .config import (
     BuildTargetInfo,
     Compiler,
     CPUType,
-    ExecutionConfiguration,
     NodeInfo,
+    TestRunConfiguration,
     TestSuiteConfig,
 )
 from .exception import DTSError, ErrorSeverity
@@ -137,8 +137,8 @@ class BaseResult(object):
 
     Stores the results of the setup and teardown portions of the corresponding stage.
     The hierarchical nature of DTS results is captured recursively in an internal list.
-    A stage is each level in this particular hierarchy (pre-execution or the top-most level,
-    execution, build target, test suite and test case.)
+    A stage is each level in this particular hierarchy (pre-run or the top-most level,
+    test run, build target, test suite and test case.)
 
     Attributes:
         setup_result: The result of the setup of the particular stage.
@@ -222,7 +222,7 @@ class BaseResult(object):
 class DTSResult(BaseResult):
     """Stores environment information and test results from a DTS run.
 
-        * Execution level information, such as testbed and the test suite list,
+        * Test run level information, such as testbed and the test suite list,
         * Build target level information, such as compiler, target OS and cpu,
         * Test suite and test case results,
         * All errors that are caught and recorded during DTS execution.
@@ -230,7 +230,7 @@ class DTSResult(BaseResult):
     The information is stored hierarchically. This is the first level of the hierarchy
     and as such is where the data form the whole hierarchy is collated or processed.
 
-    The internal list stores the results of all executions.
+    The internal list stores the results of all test runs.
 
     Attributes:
         dpdk_version: The DPDK version to record.
@@ -257,21 +257,21 @@ class DTSResult(BaseResult):
         self._stats_result = None
         self._stats_filename = os.path.join(SETTINGS.output_dir, "statistics.txt")
 
-    def add_execution(self, execution: ExecutionConfiguration) -> "ExecutionResult":
-        """Add and return the child result (execution).
+    def add_test_run(self, test_run_config: TestRunConfiguration) -> "TestRunResult":
+        """Add and return the child result (test run).
 
         Args:
-            execution: The execution's test run configuration.
+            test_run_config: A test run configuration.
 
         Returns:
-            The execution's result.
+            The test run's result.
         """
-        result = ExecutionResult(execution)
+        result = TestRunResult(test_run_config)
         self.child_results.append(result)
         return result
 
     def add_error(self, error: Exception) -> None:
-        """Record an error that occurred outside any execution.
+        """Record an error that occurred outside any test run.
 
         Args:
             error: The exception to record.
@@ -314,10 +314,10 @@ class DTSResult(BaseResult):
         return int(self._return_code)
 
 
-class ExecutionResult(BaseResult):
-    """The execution specific result.
+class TestRunResult(BaseResult):
+    """The test run specific result.
 
-    The internal list stores the results of all build targets in a given execution.
+    The internal list stores the results of all build targets in a given test run.
 
     Attributes:
         sut_os_name: The operating system of the SUT node.
@@ -328,45 +328,47 @@ class ExecutionResult(BaseResult):
     sut_os_name: str
     sut_os_version: str
     sut_kernel_version: str
-    _config: ExecutionConfiguration
+    _config: TestRunConfiguration
     _parent_result: DTSResult
     _test_suites_with_cases: list[TestSuiteWithCases]
 
-    def __init__(self, execution: ExecutionConfiguration):
-        """Extend the constructor with the execution's config and DTSResult.
+    def __init__(self, test_run_config: TestRunConfiguration):
+        """Extend the constructor with the test run's config and DTSResult.
 
         Args:
-            execution: The execution's test run configuration.
+            test_run_config: A test run configuration.
         """
-        super(ExecutionResult, self).__init__()
-        self._config = execution
+        super(TestRunResult, self).__init__()
+        self._config = test_run_config
         self._test_suites_with_cases = []
 
-    def add_build_target(self, build_target: BuildTargetConfiguration) -> "BuildTargetResult":
+    def add_build_target(
+        self, build_target_config: BuildTargetConfiguration
+    ) -> "BuildTargetResult":
         """Add and return the child result (build target).
 
         Args:
-            build_target: The build target's test run configuration.
+            build_target_config: The build target's test run configuration.
 
         Returns:
             The build target's result.
         """
         result = BuildTargetResult(
             self._test_suites_with_cases,
-            build_target,
+            build_target_config,
         )
         self.child_results.append(result)
         return result
 
     @property
     def test_suites_with_cases(self) -> list[TestSuiteWithCases]:
-        """The test suites with test cases to be executed in this execution.
+        """The test suites with test cases to be executed in this test run.
 
         The test suites can only be assigned once.
 
         Returns:
             The list of test suites with test cases. If an error occurs between
-            the initialization of :class:`ExecutionResult` and assigning test cases to the instance,
+            the initialization of :class:`TestRunResult` and assigning test cases to the instance,
             return an empty list, representing that we don't know what to execute.
         """
         return self._test_suites_with_cases
@@ -375,7 +377,7 @@ class ExecutionResult(BaseResult):
     def test_suites_with_cases(self, test_suites_with_cases: list[TestSuiteWithCases]) -> None:
         if self._test_suites_with_cases:
             raise ValueError(
-                "Attempted to assign test suites to an execution result "
+                "Attempted to assign test suites to a test run result "
                 "which already has test suites."
             )
         self._test_suites_with_cases = test_suites_with_cases
@@ -422,19 +424,19 @@ class BuildTargetResult(BaseResult):
     def __init__(
         self,
         test_suites_with_cases: list[TestSuiteWithCases],
-        build_target: BuildTargetConfiguration,
+        build_target_config: BuildTargetConfiguration,
     ):
-        """Extend the constructor with the build target's config and ExecutionResult.
+        """Extend the constructor with the build target's config and test suites with cases.
 
         Args:
             test_suites_with_cases: The test suites with test cases to be run in this build target.
-            build_target: The build target's test run configuration.
+            build_target_config: The build target's test run configuration.
         """
         super(BuildTargetResult, self).__init__()
-        self.arch = build_target.arch
-        self.os = build_target.os
-        self.cpu = build_target.cpu
-        self.compiler = build_target.compiler
+        self.arch = build_target_config.arch
+        self.os = build_target_config.os
+        self.cpu = build_target_config.cpu
+        self.compiler = build_target_config.compiler
         self.compiler_version = None
         self.dpdk_version = None
         self._test_suites_with_cases = test_suites_with_cases

@@ -203,7 +203,7 @@ and then run the tests with the newly built binaries.
 Configuring DTS
 ~~~~~~~~~~~~~~~
 
-DTS configuration is split into nodes and executions and build targets within executions,
+DTS configuration is split into nodes and test runs and build targets within test runs,
 and follows a defined schema as described in `Configuration Schema`_.
 By default, DTS will try to use the ``dts/conf.yaml`` :ref:`config file <configuration_schema_example>`,
 which is a template that illustrates what can be configured in DTS.
@@ -517,12 +517,12 @@ _`Test target`
 Properties
 ~~~~~~~~~~
 
-The configuration requires listing all the execution environments and nodes
+The configuration requires listing all the test run environments and nodes
 involved in the testing. These can be defined with the following mappings:
 
-``executions``
+``test runs``
    `sequence <https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range>`_ listing
-   the execution environments. Each entry is described as per the following
+   the test run environments. Each entry is described as per the following
    `mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`_:
 
    +----------------------------+-------------------------------------------------------------------+
@@ -617,4 +617,4 @@ And they both have two network ports which are physically connected to each othe
 
 .. literalinclude:: ../../../dts/conf.yaml
    :language: yaml
-   :start-at: executions:
+   :start-at: test_runs:

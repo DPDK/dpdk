@@ -2,8 +2,8 @@
 # Copyright 2022-2023 The DPDK contributors
 # Copyright 2023 Arm Limited
 
-executions:
-  # define one execution environment
+test_runs:
+  # define one test run environment
   - build_targets:
       - arch: x86_64
         os: linux
@@ -20,9 +20,9 @@ executions:
     # The machine running the DPDK test executable
     system_under_test_node:
       node_name: "SUT 1"
-      vdevs: # optional; if removed, vdevs won't be used in the execution
+      vdevs: # optional; if removed, vdevs won't be used in the test run
         - "crypto_openssl"
-    # Traffic generator node to use for this execution environment
+    # Traffic generator node to use for this test run
     traffic_generator_node: "TG 1"
 nodes:
   # Define a system under test node, having two network ports physically

@@ -7,12 +7,12 @@
 
 The module is responsible for running DTS in a series of stages:
 
-    #. Execution stage,
+    #. Test run stage,
     #. Build target stage,
     #. Test suite stage,
     #. Test case stage.
 
-The execution and build target stages set up the environment before running test suites.
+The test run and build target stages set up the environment before running test suites.
 The test suite stage sets up steps common to all test cases
 and the test case stage runs test cases individually.
 """
@@ -29,7 +29,7 @@ from typing import Iterable, Sequence
 from .config import (
     BuildTargetConfiguration,
     Configuration,
-    ExecutionConfiguration,
+    TestRunConfiguration,
     TestSuiteConfig,
     load_config,
 )
@@ -44,9 +44,9 @@ from .settings import SETTINGS
 from .test_result import (
     BuildTargetResult,
     DTSResult,
-    ExecutionResult,
     Result,
     TestCaseResult,
+    TestRunResult,
     TestSuiteResult,
     TestSuiteWithCases,
 )
@@ -70,7 +70,7 @@ class DTSRunner:
         An error occurs in a build target setup. The current build target is aborted,
         all test suites and their test cases are marked as blocked and the run continues
         with the next build target. If the errored build target was the last one in the
-        given execution, the next execution begins.
+        given test run, the next test run begins.
     """
 
     _configuration: Configuration
@@ -95,24 +95,24 @@ class DTSRunner:
         self._perf_test_case_regex = r"test_perf_"
 
     def run(self) -> None:
-        """Run all build targets in all executions from the test run configuration.
+        """Run all build targets in all test runs from the test run configuration.
 
-        Before running test suites, executions and build targets are first set up.
-        The executions and build targets defined in the test run configuration are iterated over.
-        The executions define which tests to run and where to run them and build targets define
+        Before running test suites, test runs and build targets are first set up.
+        The test runs and build targets defined in the test run configuration are iterated over.
+        The test runs define which tests to run and where to run them and build targets define
         the DPDK build setup.
 
-        The tests suites are set up for each execution/build target tuple and each discovered
+        The tests suites are set up for each test run/build target tuple and each discovered
         test case within the test suite is set up, executed and torn down. After all test cases
         have been executed, the test suite is torn down and the next build target will be tested.
 
         In order to properly mark test suites and test cases as blocked in case of a failure,
         we need to have discovered which test suites and test cases to run before any failures
-        happen. The discovery happens at the earliest point at the start of each execution.
+        happen. The discovery happens at the earliest point at the start of each test run.
 
         All the nested steps look like this:
 
-            #. Execution setup
+            #. Test run setup
 
                 #. Build target setup
 
@@ -126,7 +126,7 @@ class DTSRunner:
 
                 #. Build target teardown
 
-            #. Execution teardown
+            #. Test run teardown
 
         The test cases are filtered according to the specification in the test run configuration and
         the :option:`--test-suite` command line argument or
@@ -139,33 +139,37 @@ class DTSRunner:
             self._check_dts_python_version()
             self._result.update_setup(Result.PASS)
 
-            # for all Execution sections
-            for execution in self._configuration.executions:
-                self._logger.set_stage(DtsStage.execution_setup)
+            # for all test run sections
+            for test_run_config in self._configuration.test_runs:
+                self._logger.set_stage(DtsStage.test_run_setup)
                 self._logger.info(
-                    f"Running execution with SUT '{execution.system_under_test_node.name}'."
+                    f"Running test run with SUT '{test_run_config.system_under_test_node.name}'."
                 )
-                execution_result = self._result.add_execution(execution)
+                test_run_result = self._result.add_test_run(test_run_config)
                 # we don't want to modify the original config, so create a copy
-                execution_test_suites = list(
-                    SETTINGS.test_suites if SETTINGS.test_suites else execution.test_suites
+                test_run_test_suites = list(
+                    SETTINGS.test_suites if SETTINGS.test_suites else test_run_config.test_suites
                 )
-                if not execution.skip_smoke_tests:
-                    execution_test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
+                if not test_run_config.skip_smoke_tests:
+                    test_run_test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
                 try:
                     test_suites_with_cases = self._get_test_suites_with_cases(
-                        execution_test_suites, execution.func, execution.perf
+                        test_run_test_suites, test_run_config.func, test_run_config.perf
                     )
-                    execution_result.test_suites_with_cases = test_suites_with_cases
+                    test_run_result.test_suites_with_cases = test_suites_with_cases
                 except Exception as e:
                     self._logger.exception(
-                        f"Invalid test suite configuration found: " f"{execution_test_suites}."
+                        f"Invalid test suite configuration found: " f"{test_run_test_suites}."
                     )
-                    execution_result.update_setup(Result.FAIL, e)
+                    test_run_result.update_setup(Result.FAIL, e)
 
                 else:
-                    self._connect_nodes_and_run_execution(
-                        sut_nodes, tg_nodes, execution, execution_result, test_suites_with_cases
+                    self._connect_nodes_and_run_test_run(
+                        sut_nodes,
+                        tg_nodes,
+                        test_run_config,
+                        test_run_result,
+                        test_suites_with_cases,
                     )
 
         except Exception as e:
@@ -175,7 +179,7 @@ class DTSRunner:
 
         finally:
             try:
-                self._logger.set_stage(DtsStage.post_execution)
+                self._logger.set_stage(DtsStage.post_run)
                 for node in (sut_nodes | tg_nodes).values():
                     node.close()
                 self._result.update_teardown(Result.PASS)
@@ -354,17 +358,17 @@ class DTSRunner:
 
         return func_test_cases, perf_test_cases
 
-    def _connect_nodes_and_run_execution(
+    def _connect_nodes_and_run_test_run(
         self,
         sut_nodes: dict[str, SutNode],
         tg_nodes: dict[str, TGNode],
-        execution: ExecutionConfiguration,
-        execution_result: ExecutionResult,
+        test_run_config: TestRunConfiguration,
+        test_run_result: TestRunResult,
         test_suites_with_cases: Iterable[TestSuiteWithCases],
     ) -> None:
-        """Connect nodes, then continue to run the given execution.
+        """Connect nodes, then continue to run the given test run.
 
-        Connect the :class:`SutNode` and the :class:`TGNode` of this `execution`.
+        Connect the :class:`SutNode` and the :class:`TGNode` of this `test_run_config`.
         If either has already been connected, it's going to be in either `sut_nodes` or `tg_nodes`,
         respectively.
         If not, connect and add the node to the respective `sut_nodes` or `tg_nodes` :class:`dict`.
@@ -372,104 +376,110 @@ class DTSRunner:
         Args:
             sut_nodes: A dictionary storing connected/to be connected SUT nodes.
             tg_nodes: A dictionary storing connected/to be connected TG nodes.
-            execution: An execution's test run configuration.
-            execution_result: The execution's result.
+            test_run_config: A test run configuration.
+            test_run_result: The test run's result.
             test_suites_with_cases: The test suites with test cases to run.
         """
-        sut_node = sut_nodes.get(execution.system_under_test_node.name)
-        tg_node = tg_nodes.get(execution.traffic_generator_node.name)
+        sut_node = sut_nodes.get(test_run_config.system_under_test_node.name)
+        tg_node = tg_nodes.get(test_run_config.traffic_generator_node.name)
 
         try:
             if not sut_node:
-                sut_node = SutNode(execution.system_under_test_node)
+                sut_node = SutNode(test_run_config.system_under_test_node)
                 sut_nodes[sut_node.name] = sut_node
             if not tg_node:
-                tg_node = TGNode(execution.traffic_generator_node)
+                tg_node = TGNode(test_run_config.traffic_generator_node)
                 tg_nodes[tg_node.name] = tg_node
         except Exception as e:
-            failed_node = execution.system_under_test_node.name
+            failed_node = test_run_config.system_under_test_node.name
             if sut_node:
-                failed_node = execution.traffic_generator_node.name
+                failed_node = test_run_config.traffic_generator_node.name
             self._logger.exception(f"The Creation of node {failed_node} failed.")
-            execution_result.update_setup(Result.FAIL, e)
+            test_run_result.update_setup(Result.FAIL, e)
 
         else:
-            self._run_execution(
-                sut_node, tg_node, execution, execution_result, test_suites_with_cases
+            self._run_test_run(
+                sut_node, tg_node, test_run_config, test_run_result, test_suites_with_cases
             )
 
-    def _run_execution(
+    def _run_test_run(
         self,
         sut_node: SutNode,
         tg_node: TGNode,
-        execution: ExecutionConfiguration,
-        execution_result: ExecutionResult,
+        test_run_config: TestRunConfiguration,
+        test_run_result: TestRunResult,
         test_suites_with_cases: Iterable[TestSuiteWithCases],
     ) -> None:
-        """Run the given execution.
+        """Run the given test run.
 
-        This involves running the execution setup as well as running all build targets
-        in the given execution. After that, execution teardown is run.
+        This involves running the test run setup as well as running all build targets
+        in the given test run. After that, the test run teardown is run.
 
         Args:
-            sut_node: The execution's SUT node.
-            tg_node: The execution's TG node.
-            execution: An execution's test run configuration.
-            execution_result: The execution's result.
+            sut_node: The test run's SUT node.
+            tg_node: The test run's TG node.
+            test_run_config: A test run configuration.
+            test_run_result: The test run's result.
             test_suites_with_cases: The test suites with test cases to run.
         """
-        self._logger.info(f"Running execution with SUT '{execution.system_under_test_node.name}'.")
-        execution_result.add_sut_info(sut_node.node_info)
+        self._logger.info(
+            f"Running test run with SUT '{test_run_config.system_under_test_node.name}'."
+        )
+        test_run_result.add_sut_info(sut_node.node_info)
         try:
-            sut_node.set_up_execution(execution)
-            execution_result.update_setup(Result.PASS)
+            sut_node.set_up_test_run(test_run_config)
+            test_run_result.update_setup(Result.PASS)
         except Exception as e:
-            self._logger.exception("Execution setup failed.")
-            execution_result.update_setup(Result.FAIL, e)
+            self._logger.exception("Test run setup failed.")
+            test_run_result.update_setup(Result.FAIL, e)
 
         else:
-            for build_target in execution.build_targets:
-                build_target_result = execution_result.add_build_target(build_target)
+            for build_target_config in test_run_config.build_targets:
+                build_target_result = test_run_result.add_build_target(build_target_config)
                 self._run_build_target(
-                    sut_node, tg_node, build_target, build_target_result, test_suites_with_cases
+                    sut_node,
+                    tg_node,
+                    build_target_config,
+                    build_target_result,
+                    test_suites_with_cases,
                 )
 
         finally:
             try:
-                self._logger.set_stage(DtsStage.execution_teardown)
-                sut_node.tear_down_execution()
-                execution_result.update_teardown(Result.PASS)
+                self._logger.set_stage(DtsStage.test_run_teardown)
+                sut_node.tear_down_test_run()
+                test_run_result.update_teardown(Result.PASS)
             except Exception as e:
-                self._logger.exception("Execution teardown failed.")
-                execution_result.update_teardown(Result.FAIL, e)
+                self._logger.exception("Test run teardown failed.")
+                test_run_result.update_teardown(Result.FAIL, e)
 
     def _run_build_target(
         self,
         sut_node: SutNode,
         tg_node: TGNode,
-        build_target: BuildTargetConfiguration,
+        build_target_config: BuildTargetConfiguration,
         build_target_result: BuildTargetResult,
         test_suites_with_cases: Iterable[TestSuiteWithCases],
     ) -> None:
         """Run the given build target.
 
         This involves running the build target setup as well as running all test suites
-        of the build target's execution.
+        of the build target's test run.
         After that, build target teardown is run.
 
         Args:
-            sut_node: The execution's sut node.
-            tg_node: The execution's tg node.
-            build_target: A build target's test run configuration.
+            sut_node: The test run's sut node.
+            tg_node: The test run's tg node.
+            build_target_config: A build target's test run configuration.
             build_target_result: The build target level result object associated
                 with the current build target.
             test_suites_with_cases: The test suites with test cases to run.
         """
         self._logger.set_stage(DtsStage.build_target_setup)
-        self._logger.info(f"Running build target '{build_target.name}'.")
+        self._logger.info(f"Running build target '{build_target_config.name}'.")
 
         try:
-            sut_node.set_up_build_target(build_target)
+            sut_node.set_up_build_target(build_target_config)
             self._result.dpdk_version = sut_node.dpdk_version
             build_target_result.add_build_target_info(sut_node.get_build_target_info())
             build_target_result.update_setup(Result.PASS)
@@ -505,8 +515,8 @@ class DTSRunner:
         in the current build target won't be executed.
 
         Args:
-            sut_node: The execution's SUT node.
-            tg_node: The execution's TG node.
+            sut_node: The test run's SUT node.
+            tg_node: The test run's TG node.
             build_target_result: The build target level result object associated
                 with the current build target.
             test_suites_with_cases: The test suites with test cases to run.
@@ -545,8 +555,8 @@ class DTSRunner:
         Record the setup and the teardown and handle failures.
 
         Args:
-            sut_node: The execution's SUT node.
-            tg_node: The execution's TG node.
+            sut_node: The test run's SUT node.
+            tg_node: The test run's TG node.
             test_suite_result: The test suite level result object associated
                 with the current test suite.
             test_suite_with_cases: The test suite with test cases to run.
