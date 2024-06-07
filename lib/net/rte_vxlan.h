@@ -41,7 +41,10 @@ struct rte_vxlan_hdr {
 			uint8_t    flags;    /**< Should be 8 (I flag). */
 			uint8_t    rsvd0[3]; /**< Reserved. */
 			uint8_t    vni[3];   /**< VXLAN identifier. */
-			uint8_t    rsvd1;    /**< Reserved. */
+			union {
+				uint8_t    rsvd1;        /**< Reserved. */
+				uint8_t    last_rsvd;    /**< Reserved. */
+			};
 		};
 	};
 } __rte_packed;
