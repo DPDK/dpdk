@@ -58,7 +58,8 @@ iocpt_op_info_get(struct rte_cryptodev *cdev, struct rte_cryptodev_info *info)
 	info->max_nb_queue_pairs = dev->max_qps;
 	info->feature_flags = dev->features;
 	info->capabilities = iocpt_get_caps(info->feature_flags);
-	info->sym.max_nb_sessions = dev->max_sessions;
+	/* Reserve one session for watchdog */
+	info->sym.max_nb_sessions = dev->max_sessions - 1;
 	info->driver_id = dev->driver_id;
 	info->min_mbuf_headroom_req = 0;
 	info->min_mbuf_tailroom_req = 0;
@@ -380,10 +381,70 @@ iocpt_enqueue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		count++;
 	}
 
-	if (likely(count > 0))
+	if (likely(count > 0)) {
 		iocpt_q_flush(&cptq->q);
 
+		/* Restart timer if ops are being enqueued */
+		cptq->last_wdog_cycles = rte_get_timer_cycles();
+	}
+
 	return count;
+}
+
+static void
+iocpt_enqueue_wdog(struct iocpt_crypto_q *cptq)
+{
+	struct iocpt_queue *q = &cptq->q;
+	struct iocpt_crypto_desc *desc, *desc_base = q->base;
+	struct iocpt_crypto_sg_desc *sg_desc, *sg_desc_base = q->sg_base;
+	struct iocpt_crypto_sg_elem *src;
+	struct rte_crypto_op *wdog_op;
+	rte_iova_t iv_addr, pld_addr, tag_addr;
+	uint8_t nsge_src = 0;
+	uint16_t avail;
+
+	avail = iocpt_q_space_avail(&cptq->q);
+	if (avail < 1)
+		goto out_flush;
+
+	wdog_op = rte_zmalloc_socket("iocpt", sizeof(*wdog_op),
+				RTE_CACHE_LINE_SIZE, rte_socket_id());
+	if (wdog_op == NULL)
+		goto out_flush;
+
+	wdog_op->type = IOCPT_Q_WDOG_OP_TYPE;
+	wdog_op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+
+	desc = &desc_base[q->head_idx];
+	sg_desc = &sg_desc_base[q->head_idx];
+	src = sg_desc->src_elems;
+
+	/* Fill the first SGE with the IV / Nonce */
+	iv_addr = rte_mem_virt2iova(cptq->wdog_iv);
+	iocpt_fill_sge(src, nsge_src++, iv_addr, IOCPT_Q_WDOG_IV_LEN);
+
+	/* Fill the second SGE with the payload segment */
+	pld_addr = rte_mem_virt2iova(cptq->wdog_pld);
+	iocpt_fill_sge(src, nsge_src++, pld_addr, IOCPT_Q_WDOG_PLD_LEN);
+
+	/* AEAD AES-GCM: digest == authentication tag */
+	tag_addr = rte_mem_virt2iova(cptq->wdog_tag);
+	iocpt_fill_sge(src, nsge_src++, tag_addr, IOCPT_Q_WDOG_TAG_LEN);
+
+	desc->opcode = IOCPT_DESC_OPCODE_GCM_AEAD_ENCRYPT;
+	desc->flags = 0;
+	desc->num_src_dst_sgs = iocpt_encode_nsge_src_dst(nsge_src, 0);
+	desc->session_tag = rte_cpu_to_le_32(IOCPT_Q_WDOG_SESS_IDX);
+
+	q->info[q->head_idx] = wdog_op;
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+	IOCPT_PRINT(DEBUG, "Queue %u wdog enq %p",
+		q->index, wdog_op);
+	cptq->enqueued_wdogs++;
+
+out_flush:
+	iocpt_q_flush(q);
 }
 
 static uint16_t
@@ -395,6 +456,7 @@ iocpt_dequeue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct rte_crypto_op *op;
 	struct iocpt_crypto_comp *cq_desc_base = cq->base;
 	volatile struct iocpt_crypto_comp *cq_desc;
+	uint64_t then, now, hz, delta;
 	uint16_t count = 0;
 
 	cq_desc = &cq_desc_base[cq->tail_idx];
@@ -442,12 +504,43 @@ iocpt_dequeue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		    op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
 			break;
 
+		/* Handle watchdog operations */
+		if (unlikely(op->type == IOCPT_Q_WDOG_OP_TYPE)) {
+			IOCPT_PRINT(DEBUG, "Queue %u wdog deq %p st %d",
+				q->index, op, op->status);
+			q->info[q->tail_idx] = NULL;
+			q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
+			cptq->dequeued_wdogs++;
+			rte_free(op);
+			continue;
+		}
+
 		ops[count] = op;
 		q->info[q->tail_idx] = NULL;
 
 		q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
 		count++;
 	}
+
+	if (!count) {
+		/*
+		 * Ring the doorbell again if no work was dequeued and work
+		 * is still pending after the deadline.
+		 */
+		if (q->head_idx != q->tail_idx) {
+			then = cptq->last_wdog_cycles;
+			now = rte_get_timer_cycles();
+			hz = rte_get_timer_hz();
+			delta = (now - then) * 1000;
+
+			if (delta >= hz * IONIC_Q_WDOG_MS) {
+				iocpt_enqueue_wdog(cptq);
+				cptq->last_wdog_cycles = now;
+			}
+		}
+	} else
+		/* Restart timer if the queue is making progress */
+		cptq->last_wdog_cycles = rte_get_timer_cycles();
 
 	return count;
 }

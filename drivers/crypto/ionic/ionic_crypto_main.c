@@ -172,6 +172,22 @@ iocpt_session_write(struct iocpt_session_priv *priv,
 	return 0;
 }
 
+static int
+iocpt_session_wdog(struct iocpt_dev *dev)
+{
+	struct iocpt_session_priv priv = {
+		.dev = dev,
+		.index = IOCPT_Q_WDOG_SESS_IDX,
+		.type = IOCPT_SESS_AEAD_AES_GCM,
+		.key_len = IOCPT_Q_WDOG_KEY_LEN,
+	};
+
+	/* Reserve session 0 for queue watchdog */
+	rte_bitmap_clear(dev->sess_bm, IOCPT_Q_WDOG_SESS_IDX);
+
+	return iocpt_session_write(&priv, IOCPT_SESS_INIT);
+}
+
 int
 iocpt_session_init(struct iocpt_session_priv *priv)
 {
@@ -491,6 +507,9 @@ iocpt_cryptoq_deinit(struct iocpt_crypto_q *cptq)
 		IOCPT_PRINT(DEBUG, "Deinit queue %u returned %d after %u ms",
 			cptq->q.index, err, sleep_cnt * 100);
 
+	IOCPT_PRINT(DEBUG, "Queue %u watchdog: enq %"PRIu64" deq %"PRIu64,
+		cptq->q.index, cptq->enqueued_wdogs, cptq->dequeued_wdogs);
+
 	cptq->flags &= ~IOCPT_Q_F_INITED;
 }
 
@@ -659,9 +678,21 @@ iocpt_init(struct iocpt_dev *dev)
 	if (err != 0)
 		return err;
 
+	/* Write the queue watchdog key */
+	err = iocpt_session_wdog(dev);
+	if (err != 0) {
+		IOCPT_PRINT(ERR, "Cannot setup watchdog session");
+		goto err_out_adminq_deinit;
+	}
+
 	dev->state |= IOCPT_DEV_F_INITED;
 
 	return 0;
+
+err_out_adminq_deinit:
+	iocpt_adminq_deinit(dev);
+
+	return err;
 }
 
 void

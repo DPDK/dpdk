@@ -89,6 +89,14 @@ struct iocpt_dev_bars {
 	uint32_t num_bars;
 };
 
+/* Queue watchdog */
+#define IOCPT_Q_WDOG_SESS_IDX		0
+#define IOCPT_Q_WDOG_KEY_LEN		16
+#define IOCPT_Q_WDOG_IV_LEN		12
+#define IOCPT_Q_WDOG_PLD_LEN		4
+#define IOCPT_Q_WDOG_TAG_LEN		16
+#define IOCPT_Q_WDOG_OP_TYPE		RTE_CRYPTO_OP_TYPE_UNDEFINED
+
 struct iocpt_qtype_info {
 	uint8_t	 version;
 	uint8_t	 supported;
@@ -162,7 +170,15 @@ struct iocpt_crypto_q {
 	IOCPT_COMMON_FIELDS;
 
 	/* cacheline2 */
+	uint64_t last_wdog_cycles;
 	uint16_t flags;
+
+	/* cacheline3 */
+	uint64_t enqueued_wdogs;
+	uint64_t dequeued_wdogs;
+	uint8_t wdog_iv[IOCPT_Q_WDOG_IV_LEN];
+	uint8_t wdog_pld[IOCPT_Q_WDOG_PLD_LEN];
+	uint8_t wdog_tag[IOCPT_Q_WDOG_TAG_LEN];
 };
 
 #define IOCPT_S_F_INITED	BIT(0)
