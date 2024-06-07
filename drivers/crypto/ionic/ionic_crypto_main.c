@@ -30,6 +30,15 @@ iocpt_cq_init(struct iocpt_cq *cq, uint16_t num_descs)
 }
 
 static void
+iocpt_cq_reset(struct iocpt_cq *cq)
+{
+	cq->tail_idx = 0;
+	cq->done_color = 1;
+
+	memset(cq->base, 0, sizeof(struct iocpt_nop_comp) * cq->num_descs);
+}
+
+static void
 iocpt_cq_map(struct iocpt_cq *cq, void *base, rte_iova_t base_pa)
 {
 	cq->base = base;
@@ -87,6 +96,13 @@ iocpt_q_init(struct iocpt_queue *q, uint8_t type, uint32_t index,
 	}
 
 	return 0;
+}
+
+static void
+iocpt_q_reset(struct iocpt_queue *q)
+{
+	q->head_idx = 0;
+	q->tail_idx = 0;
 }
 
 static void
@@ -348,10 +364,152 @@ err_free_q:
 	return err;
 }
 
+int
+iocpt_cryptoq_alloc(struct iocpt_dev *dev, uint32_t socket_id, uint32_t index,
+		uint16_t num_descs)
+{
+	struct iocpt_crypto_q *cptq;
+	uint16_t flags = 0;
+	int err;
+
+	/* CryptoQ always supports scatter-gather */
+	flags |= IOCPT_Q_F_SG;
+
+	IOCPT_PRINT(DEBUG, "cptq %u num_descs %u num_segs %u",
+		index, num_descs, 1);
+
+	err = iocpt_commonq_alloc(dev,
+		IOCPT_QTYPE_CRYPTOQ,
+		sizeof(struct iocpt_crypto_q),
+		socket_id,
+		index,
+		"crypto",
+		flags,
+		num_descs,
+		1,
+		sizeof(struct iocpt_crypto_desc),
+		sizeof(struct iocpt_crypto_comp),
+		sizeof(struct iocpt_crypto_sg_desc),
+		(struct iocpt_common_q **)&cptq);
+	if (err != 0)
+		return err;
+
+	cptq->flags = flags;
+
+	dev->cryptoqs[index] = cptq;
+
+	return 0;
+}
+
 struct ionic_doorbell *
 iocpt_db_map(struct iocpt_dev *dev, struct iocpt_queue *q)
 {
 	return dev->db_pages + q->hw_type;
+}
+
+static int
+iocpt_cryptoq_init(struct iocpt_crypto_q *cptq)
+{
+	struct iocpt_queue *q = &cptq->q;
+	struct iocpt_dev *dev = cptq->dev;
+	struct iocpt_cq *cq = &cptq->cq;
+	struct iocpt_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.q_init = {
+			.opcode = IOCPT_CMD_Q_INIT,
+			.type = IOCPT_QTYPE_CRYPTOQ,
+			.ver = dev->qtype_info[IOCPT_QTYPE_CRYPTOQ].version,
+			.index = rte_cpu_to_le_32(q->index),
+			.flags = rte_cpu_to_le_16(IOCPT_QINIT_F_ENA |
+						IOCPT_QINIT_F_SG),
+			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
+			.ring_size = rte_log2_u32(q->num_descs),
+			.ring_base = rte_cpu_to_le_64(q->base_pa),
+			.cq_ring_base = rte_cpu_to_le_64(cq->base_pa),
+			.sg_ring_base = rte_cpu_to_le_64(q->sg_base_pa),
+		},
+	};
+	int err;
+
+	IOCPT_PRINT(DEBUG, "cptq_init.index %d", q->index);
+	IOCPT_PRINT(DEBUG, "cptq_init.ring_base %#jx", q->base_pa);
+	IOCPT_PRINT(DEBUG, "cptq_init.ring_size %d",
+		ctx.cmd.q_init.ring_size);
+	IOCPT_PRINT(DEBUG, "cptq_init.ver %u", ctx.cmd.q_init.ver);
+
+	iocpt_q_reset(q);
+	iocpt_cq_reset(cq);
+
+	err = iocpt_adminq_post_wait(dev, &ctx);
+	if (err != 0)
+		return err;
+
+	q->hw_type = ctx.comp.q_init.hw_type;
+	q->hw_index = rte_le_to_cpu_32(ctx.comp.q_init.hw_index);
+	q->db = iocpt_db_map(dev, q);
+
+	IOCPT_PRINT(DEBUG, "cptq->hw_type %d", q->hw_type);
+	IOCPT_PRINT(DEBUG, "cptq->hw_index %d", q->hw_index);
+	IOCPT_PRINT(DEBUG, "cptq->db %p", q->db);
+
+	cptq->flags |= IOCPT_Q_F_INITED;
+
+	return 0;
+}
+
+static void
+iocpt_cryptoq_deinit(struct iocpt_crypto_q *cptq)
+{
+	struct iocpt_dev *dev = cptq->dev;
+	struct iocpt_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.q_control = {
+			.opcode = IOCPT_CMD_Q_CONTROL,
+			.type = IOCPT_QTYPE_CRYPTOQ,
+			.index = rte_cpu_to_le_32(cptq->q.index),
+			.oper = IOCPT_Q_DISABLE,
+		},
+	};
+	unsigned long sleep_usec = 100UL * 1000;
+	uint32_t sleep_cnt, sleep_max = IOCPT_CRYPTOQ_WAIT;
+	int err;
+
+	for (sleep_cnt = 0; sleep_cnt < sleep_max; sleep_cnt++) {
+		ctx.pending_work = true;
+
+		err = iocpt_adminq_post_wait(dev, &ctx);
+		if (err != -EAGAIN)
+			break;
+
+		rte_delay_us_block(sleep_usec);
+	}
+
+	if (err != 0)
+		IOCPT_PRINT(ERR, "Deinit queue %u returned %d after %u ms",
+			cptq->q.index, err, sleep_cnt * 100);
+	else
+		IOCPT_PRINT(DEBUG, "Deinit queue %u returned %d after %u ms",
+			cptq->q.index, err, sleep_cnt * 100);
+
+	cptq->flags &= ~IOCPT_Q_F_INITED;
+}
+
+void
+iocpt_cryptoq_free(struct iocpt_crypto_q *cptq)
+{
+	if (cptq == NULL)
+		return;
+
+	if (cptq->base_z != NULL) {
+		rte_memzone_free(cptq->base_z);
+		cptq->base_z = NULL;
+		cptq->base = NULL;
+		cptq->base_pa = 0;
+	}
+
+	iocpt_q_free(&cptq->q);
+
+	rte_free(cptq);
 }
 
 static int
@@ -421,6 +579,14 @@ iocpt_alloc_objs(struct iocpt_dev *dev)
 
 	IOCPT_PRINT(DEBUG, "Crypto: %s", dev->name);
 
+	dev->cryptoqs = rte_calloc_socket("iocpt",
+				dev->max_qps, sizeof(*dev->cryptoqs),
+				RTE_CACHE_LINE_SIZE, dev->socket_id);
+	if (dev->cryptoqs == NULL) {
+		IOCPT_PRINT(ERR, "Cannot allocate tx queues array");
+		return -ENOMEM;
+	}
+
 	rte_spinlock_init(&dev->adminq_lock);
 	rte_spinlock_init(&dev->adminq_service_lock);
 
@@ -428,7 +594,7 @@ iocpt_alloc_objs(struct iocpt_dev *dev)
 	if (err != 0) {
 		IOCPT_PRINT(ERR, "Cannot allocate admin queue");
 		err = -ENOMEM;
-		goto err_out;
+		goto err_free_cryptoqs;
 	}
 
 	dev->info_sz = RTE_ALIGN(sizeof(*dev->info), rte_mem_page_size());
@@ -473,7 +639,9 @@ err_free_dmazone:
 err_free_adminq:
 	iocpt_adminq_free(dev->adminq);
 	dev->adminq = NULL;
-err_out:
+err_free_cryptoqs:
+	rte_free(dev->cryptoqs);
+	dev->cryptoqs = NULL;
 	return err;
 }
 
@@ -502,6 +670,43 @@ iocpt_configure(struct iocpt_dev *dev)
 	RTE_SET_USED(dev);
 }
 
+int
+iocpt_start(struct iocpt_dev *dev)
+{
+	uint32_t i;
+	int err;
+
+	IOCPT_PRINT(DEBUG, "Starting %u queues",
+		dev->crypto_dev->data->nb_queue_pairs);
+
+	for (i = 0; i < dev->crypto_dev->data->nb_queue_pairs; i++) {
+		err = iocpt_cryptoq_init(dev->cryptoqs[i]);
+		if (err != 0)
+			return err;
+	}
+
+	dev->state |= IOCPT_DEV_F_UP;
+
+	return 0;
+}
+
+void
+iocpt_stop(struct iocpt_dev *dev)
+{
+	uint32_t i;
+
+	IOCPT_PRINT_CALL();
+
+	dev->state &= ~IOCPT_DEV_F_UP;
+
+	for (i = 0; i < dev->crypto_dev->data->nb_queue_pairs; i++) {
+		struct iocpt_crypto_q *cptq = dev->cryptoqs[i];
+
+		if (cptq->flags & IOCPT_Q_F_INITED)
+			(void)iocpt_cryptoq_deinit(cptq);
+	}
+}
+
 void
 iocpt_deinit(struct iocpt_dev *dev)
 {
@@ -518,7 +723,15 @@ iocpt_deinit(struct iocpt_dev *dev)
 static void
 iocpt_free_objs(struct iocpt_dev *dev)
 {
+	void **queue_pairs = dev->crypto_dev->data->queue_pairs;
+	uint32_t i;
+
 	IOCPT_PRINT_CALL();
+
+	for (i = 0; i < dev->crypto_dev->data->nb_queue_pairs; i++) {
+		iocpt_cryptoq_free(queue_pairs[i]);
+		queue_pairs[i] = NULL;
+	}
 
 	if (dev->sess_bm != NULL) {
 		rte_bitmap_free(dev->sess_bm);
@@ -529,6 +742,11 @@ iocpt_free_objs(struct iocpt_dev *dev)
 	if (dev->adminq != NULL) {
 		iocpt_adminq_free(dev->adminq);
 		dev->adminq = NULL;
+	}
+
+	if (dev->cryptoqs != NULL) {
+		rte_free(dev->cryptoqs);
+		dev->cryptoqs = NULL;
 	}
 
 	if (dev->info != NULL) {

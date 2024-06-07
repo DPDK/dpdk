@@ -27,6 +27,8 @@
 #define IOCPT_MIN_RING_DESC		16
 #define IOCPT_ADMINQ_LENGTH		16	/* must be a power of two */
 
+#define IOCPT_CRYPTOQ_WAIT		10	/* 1s */
+
 extern int iocpt_logtype;
 #define RTE_LOGTYPE_IOCPT iocpt_logtype
 
@@ -155,6 +157,14 @@ struct iocpt_admin_q {
 	uint16_t flags;
 };
 
+struct iocpt_crypto_q {
+	/* cacheline0, cacheline1 */
+	IOCPT_COMMON_FIELDS;
+
+	/* cacheline2 */
+	uint16_t flags;
+};
+
 #define IOCPT_S_F_INITED	BIT(0)
 
 struct iocpt_session_priv {
@@ -212,6 +222,7 @@ struct iocpt_dev {
 	rte_spinlock_t adminq_service_lock;
 
 	struct iocpt_admin_q *adminq;
+	struct iocpt_crypto_q **cryptoqs;
 
 	struct rte_bitmap  *sess_bm;	/* SET bit indicates index is free */
 
@@ -259,6 +270,8 @@ int iocpt_remove(struct rte_device *rte_dev);
 
 void iocpt_configure(struct iocpt_dev *dev);
 int iocpt_assign_ops(struct rte_cryptodev *cdev);
+int iocpt_start(struct iocpt_dev *dev);
+void iocpt_stop(struct iocpt_dev *dev);
 void iocpt_deinit(struct iocpt_dev *dev);
 
 int iocpt_dev_identify(struct iocpt_dev *dev);
@@ -267,6 +280,10 @@ int iocpt_dev_adminq_init(struct iocpt_dev *dev);
 void iocpt_dev_reset(struct iocpt_dev *dev);
 
 int iocpt_adminq_post_wait(struct iocpt_dev *dev, struct iocpt_admin_ctx *ctx);
+
+int iocpt_cryptoq_alloc(struct iocpt_dev *dev, uint32_t socket_id,
+	uint32_t index, uint16_t ndescs);
+void iocpt_cryptoq_free(struct iocpt_crypto_q *cptq);
 
 int iocpt_session_init(struct iocpt_session_priv *priv);
 int iocpt_session_update(struct iocpt_session_priv *priv);

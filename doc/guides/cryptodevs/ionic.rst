@@ -30,8 +30,21 @@ Limitations
 
 - Host-side access via PCI is not yet supported
 - Multiprocess applications are not yet supported
+- Sessionless APIs are not yet supported
 
 Runtime Configuration
 ---------------------
 
 None
+
+Features
+--------
+
+The ionic crypto PMD has support for:
+
+Symmetric Crypto Algorithms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+AEAD algorithms:
+
+* ``RTE_CRYPTO_AEAD_AES_GCM``
