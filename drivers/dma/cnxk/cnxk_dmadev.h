@@ -37,16 +37,11 @@
 #define CNXK_DPI_MAX_CMD_SZ		    CNXK_DPI_CMD_LEN(CNXK_DPI_MAX_POINTER,		\
 							     CNXK_DPI_MAX_POINTER)
 #define CNXK_DPI_CHUNKS_FROM_DESC(cz, desc) (((desc) / (((cz) / 8) / CNXK_DPI_MAX_CMD_SZ)) + 1)
-
+#define CNXK_DPI_COMPL_OFFSET		    ROC_CACHE_LINE_SZ
 /* Set Completion data to 0xFF when request submitted,
  * upon successful request completion engine reset to completion status
  */
 #define CNXK_DPI_REQ_CDATA 0xFF
-
-/* Set Completion data to 0xDEADBEEF when request submitted for SSO.
- * This helps differentiate if the dequeue is called after cnxk enueue.
- */
-#define CNXK_DPI_REQ_SSO_CDATA    0xDEADBEEF
 
 union cnxk_dpi_instr_cmd {
 	uint64_t u;
@@ -91,24 +86,11 @@ union cnxk_dpi_instr_cmd {
 	} cn10k;
 };
 
-struct cnxk_dpi_compl_s {
-	uint64_t cdata;
-	void *op;
-	uint16_t dev_id;
-	uint16_t vchan;
-	uint32_t wqecs;
-};
-
 struct cnxk_dpi_cdesc_data_s {
-	struct cnxk_dpi_compl_s **compl_ptr;
 	uint16_t max_cnt;
 	uint16_t head;
 	uint16_t tail;
-};
-
-struct cnxk_dma_adapter_info {
-	bool enabled;               /* Set if vchan queue is added to dma adapter. */
-	struct rte_mempool *req_mp; /* DMA inflight request mempool. */
+	uint8_t *compl_ptr;
 };
 
 struct cnxk_dpi_conf {
@@ -119,7 +101,7 @@ struct cnxk_dpi_conf {
 	uint16_t desc_idx;
 	struct rte_dma_stats stats;
 	uint64_t completed_offset;
-	struct cnxk_dma_adapter_info adapter_info;
+	bool adapter_enabled;
 };
 
 struct cnxk_dpi_vf_s {

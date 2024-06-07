@@ -739,31 +739,6 @@ cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev,
 	return 0;
 }
 
-static int
-dma_adapter_vchan_setup(const int16_t dma_dev_id, struct cnxk_dpi_conf *vchan,
-			uint16_t vchan_id)
-{
-	char name[RTE_MEMPOOL_NAMESIZE];
-	uint32_t cache_size, nb_req;
-	unsigned int req_size;
-
-	snprintf(name, RTE_MEMPOOL_NAMESIZE, "cnxk_dma_req_%u:%u", dma_dev_id, vchan_id);
-	req_size = sizeof(struct cnxk_dpi_compl_s);
-
-	nb_req = vchan->c_desc.max_cnt;
-	cache_size = 16;
-	nb_req += (cache_size * rte_lcore_count());
-
-	vchan->adapter_info.req_mp = rte_mempool_create(name, nb_req, req_size, cache_size, 0,
-							NULL, NULL, NULL, NULL, rte_socket_id(), 0);
-	if (vchan->adapter_info.req_mp == NULL)
-		return -ENOMEM;
-
-	vchan->adapter_info.enabled = true;
-
-	return 0;
-}
-
 int
 cnxk_dma_adapter_vchan_add(const struct rte_eventdev *event_dev,
 			   const int16_t dma_dev_id, uint16_t vchan_id)
@@ -772,7 +747,6 @@ cnxk_dma_adapter_vchan_add(const struct rte_eventdev *event_dev,
 	uint32_t adptr_xae_cnt = 0;
 	struct cnxk_dpi_vf_s *dpivf;
 	struct cnxk_dpi_conf *vchan;
-	int ret;
 
 	dpivf = rte_dma_fp_objs[dma_dev_id].dev_private;
 	if ((int16_t)vchan_id == -1) {
@@ -780,19 +754,13 @@ cnxk_dma_adapter_vchan_add(const struct rte_eventdev *event_dev,
 
 		for (vchan_id = 0; vchan_id < dpivf->num_vchans; vchan_id++) {
 			vchan = &dpivf->conf[vchan_id];
-			ret = dma_adapter_vchan_setup(dma_dev_id, vchan, vchan_id);
-			if (ret) {
-				cnxk_dma_adapter_vchan_del(dma_dev_id, -1);
-				return ret;
-			}
-			adptr_xae_cnt += vchan->adapter_info.req_mp->size;
+			vchan->adapter_enabled = true;
+			adptr_xae_cnt += vchan->c_desc.max_cnt;
 		}
 	} else {
 		vchan = &dpivf->conf[vchan_id];
-		ret = dma_adapter_vchan_setup(dma_dev_id, vchan, vchan_id);
-		if (ret)
-			return ret;
-		adptr_xae_cnt = vchan->adapter_info.req_mp->size;
+		vchan->adapter_enabled = true;
+		adptr_xae_cnt = vchan->c_desc.max_cnt;
 	}
 
 	/* Update dma adapter XAE count */
@@ -805,8 +773,7 @@ cnxk_dma_adapter_vchan_add(const struct rte_eventdev *event_dev,
 static int
 dma_adapter_vchan_free(struct cnxk_dpi_conf *vchan)
 {
-	rte_mempool_free(vchan->adapter_info.req_mp);
-	vchan->adapter_info.enabled = false;
+	vchan->adapter_enabled = false;
 
 	return 0;
 }
@@ -823,12 +790,12 @@ cnxk_dma_adapter_vchan_del(const int16_t dma_dev_id, uint16_t vchan_id)
 
 		for (vchan_id = 0; vchan_id < dpivf->num_vchans; vchan_id++) {
 			vchan = &dpivf->conf[vchan_id];
-			if (vchan->adapter_info.enabled)
+			if (vchan->adapter_enabled)
 				dma_adapter_vchan_free(vchan);
 		}
 	} else {
 		vchan = &dpivf->conf[vchan_id];
-		if (vchan->adapter_info.enabled)
+		if (vchan->adapter_enabled)
 			dma_adapter_vchan_free(vchan);
 	}
 
