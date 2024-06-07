@@ -34,6 +34,8 @@ extern int iocpt_logtype;
 
 #define IOCPT_PRINT_CALL() IOCPT_PRINT(DEBUG, " >>")
 
+const struct rte_cryptodev_capabilities *iocpt_get_caps(uint64_t flags);
+
 static inline void iocpt_struct_size_checks(void)
 {
 	RTE_BUILD_BUG_ON(sizeof(struct ionic_doorbell) != 8);
@@ -227,6 +229,7 @@ int iocpt_probe(void *bus_dev, struct rte_device *rte_dev,
 int iocpt_remove(struct rte_device *rte_dev);
 
 void iocpt_configure(struct iocpt_dev *dev);
+int iocpt_assign_ops(struct rte_cryptodev *cdev);
 void iocpt_deinit(struct iocpt_dev *dev);
 
 int iocpt_dev_identify(struct iocpt_dev *dev);

@@ -505,8 +505,16 @@ iocpt_probe(void *bus_dev, struct rte_device *rte_dev,
 		goto err_free_objs;
 	}
 
+	err = iocpt_assign_ops(cdev);
+	if (err != 0) {
+		IOCPT_PRINT(ERR, "Failed to configure opts");
+		goto err_deinit_dev;
+	}
+
 	return 0;
 
+err_deinit_dev:
+	iocpt_deinit(dev);
 err_free_objs:
 	iocpt_free_objs(dev);
 err_destroy_crypto_dev:

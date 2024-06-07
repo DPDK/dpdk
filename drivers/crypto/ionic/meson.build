@@ -5,8 +5,10 @@ deps += ['bus_vdev']
 deps += ['common_ionic']
 
 sources = files(
+        'ionic_crypto_caps.c',
         'ionic_crypto_cmds.c',
         'ionic_crypto_main.c',
+        'ionic_crypto_ops.c',
         'ionic_crypto_vdev.c',
 )
 
