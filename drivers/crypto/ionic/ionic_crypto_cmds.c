@@ -17,6 +17,55 @@ static const uint8_t iocpt_qtype_vers[IOCPT_QTYPE_MAX] = {
 };
 
 static const char *
+iocpt_error_to_str(enum iocpt_status_code code)
+{
+	switch (code) {
+	case IOCPT_RC_SUCCESS:
+		return "IOCPT_RC_SUCCESS";
+	case IOCPT_RC_EVERSION:
+		return "IOCPT_RC_EVERSION";
+	case IOCPT_RC_EOPCODE:
+		return "IOCPT_RC_EOPCODE";
+	case IOCPT_RC_EIO:
+		return "IOCPT_RC_EIO";
+	case IOCPT_RC_EPERM:
+		return "IOCPT_RC_EPERM";
+	case IOCPT_RC_EQID:
+		return "IOCPT_RC_EQID";
+	case IOCPT_RC_EQTYPE:
+		return "IOCPT_RC_EQTYPE";
+	case IOCPT_RC_ENOENT:
+		return "IOCPT_RC_ENOENT";
+	case IOCPT_RC_EINTR:
+		return "IOCPT_RC_EINTR";
+	case IOCPT_RC_EAGAIN:
+		return "IOCPT_RC_EAGAIN";
+	case IOCPT_RC_ENOMEM:
+		return "IOCPT_RC_ENOMEM";
+	case IOCPT_RC_EFAULT:
+		return "IOCPT_RC_EFAULT";
+	case IOCPT_RC_EBUSY:
+		return "IOCPT_RC_EBUSY";
+	case IOCPT_RC_EEXIST:
+		return "IOCPT_RC_EEXIST";
+	case IOCPT_RC_EINVAL:
+		return "IOCPT_RC_EINVAL";
+	case IOCPT_RC_ENOSPC:
+		return "IOCPT_RC_ENOSPC";
+	case IOCPT_RC_ERANGE:
+		return "IOCPT_RC_ERANGE";
+	case IOCPT_RC_BAD_ADDR:
+		return "IOCPT_RC_BAD_ADDR";
+	case IOCPT_RC_DEV_CMD:
+		return "IOCPT_RC_DEV_CMD";
+	case IOCPT_RC_ERROR:
+		return "IOCPT_RC_ERROR";
+	default:
+		return "IOCPT_RC_UNKNOWN";
+	}
+}
+
+static const char *
 iocpt_opcode_to_str(enum iocpt_cmd_opcode opcode)
 {
 	switch (opcode) {
@@ -97,6 +146,17 @@ iocpt_dev_cmd_wait(struct iocpt_dev *dev, unsigned long max_wait)
 	return -ETIMEDOUT;
 }
 
+static void
+iocpt_dev_cmd_comp(struct iocpt_dev *dev, void *mem)
+{
+	union iocpt_dev_cmd_comp *comp = mem;
+	uint32_t comp_size = RTE_DIM(comp->words);
+	uint32_t i;
+
+	for (i = 0; i < comp_size; i++)
+		comp->words[i] = ioread32(&dev->dev_cmd->comp.words[i]);
+}
+
 static int
 iocpt_dev_cmd_wait_check(struct iocpt_dev *dev, unsigned long max_wait)
 {
@@ -171,6 +231,29 @@ iocpt_dev_cmd_queue_identify(struct iocpt_dev *dev,
 		.q_identify.type = qtype,
 		.q_identify.ver = qver,
 	};
+
+	iocpt_dev_cmd_go(dev, &cmd);
+}
+
+static void
+iocpt_dev_cmd_adminq_init(struct iocpt_dev *dev)
+{
+	struct iocpt_queue *q = &dev->adminq->q;
+	struct iocpt_cq *cq = &dev->adminq->cq;
+
+	union iocpt_dev_cmd cmd = {
+		.q_init.opcode = IOCPT_CMD_Q_INIT,
+		.q_init.type = q->type,
+		.q_init.ver = dev->qtype_info[q->type].version,
+		.q_init.index = rte_cpu_to_le_32(q->index),
+		.q_init.flags = rte_cpu_to_le_16(IOCPT_QINIT_F_ENA),
+		.q_init.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
+		.q_init.ring_size = rte_log2_u32(q->num_descs),
+		.q_init.ring_base = rte_cpu_to_le_64(q->base_pa),
+		.q_init.cq_ring_base = rte_cpu_to_le_64(cq->base_pa),
+	};
+
+	IOCPT_PRINT(DEBUG, "adminq.q_init.ver %u", cmd.q_init.ver);
 
 	iocpt_dev_cmd_go(dev, &cmd);
 }
@@ -345,4 +428,223 @@ iocpt_dev_reset(struct iocpt_dev *dev)
 
 	iocpt_dev_cmd_reset(dev);
 	(void)iocpt_dev_cmd_wait_check(dev, IONIC_DEVCMD_TIMEOUT);
+}
+
+int
+iocpt_dev_adminq_init(struct iocpt_dev *dev)
+{
+	struct iocpt_queue *q = &dev->adminq->q;
+	struct iocpt_q_init_comp comp;
+	uint32_t retries = 5;
+	int err;
+
+retry_adminq_init:
+	iocpt_dev_cmd_adminq_init(dev);
+
+	err = iocpt_dev_cmd_wait_check(dev, IONIC_DEVCMD_TIMEOUT);
+	if (err == -EAGAIN && retries > 0) {
+		retries--;
+		rte_delay_us_block(IONIC_DEVCMD_RETRY_WAIT_US);
+		goto retry_adminq_init;
+	}
+	if (err != 0)
+		return err;
+
+	iocpt_dev_cmd_comp(dev, &comp);
+
+	q->hw_type = comp.hw_type;
+	q->hw_index = rte_le_to_cpu_32(comp.hw_index);
+	q->db = iocpt_db_map(dev, q);
+
+	IOCPT_PRINT(DEBUG, "adminq->hw_type %d", q->hw_type);
+	IOCPT_PRINT(DEBUG, "adminq->hw_index %d", q->hw_index);
+	IOCPT_PRINT(DEBUG, "adminq->db %p", q->db);
+
+	dev->adminq->flags |= IOCPT_Q_F_INITED;
+
+	return 0;
+}
+
+/* Admin_cmd interface */
+
+static bool
+iocpt_adminq_service(struct iocpt_cq *cq, uint16_t cq_desc_index,
+		void *cb_arg __rte_unused)
+{
+	struct iocpt_admin_comp *cq_desc_base = cq->base;
+	struct iocpt_admin_comp *cq_desc = &cq_desc_base[cq_desc_index];
+	struct iocpt_admin_q *adminq =
+		container_of(cq, struct iocpt_admin_q, cq);
+	struct iocpt_queue *q = &adminq->q;
+	struct iocpt_admin_ctx *ctx;
+	uint16_t curr_q_tail_idx;
+	uint16_t stop_index;
+	void **info;
+
+	if (!iocpt_color_match(cq_desc->color, cq->done_color))
+		return false;
+
+	stop_index = rte_le_to_cpu_16(cq_desc->comp_index);
+
+	do {
+		info = IOCPT_INFO_PTR(q, q->tail_idx);
+
+		ctx = info[0];
+		if (ctx != NULL) {
+			memcpy(&ctx->comp, cq_desc, sizeof(*cq_desc));
+			ctx->pending_work = false; /* done */
+		}
+
+		curr_q_tail_idx = q->tail_idx;
+		q->tail_idx = Q_NEXT_TO_SRVC(q, 1);
+	} while (curr_q_tail_idx != stop_index);
+
+	return true;
+}
+
+/** iocpt_adminq_post - Post an admin command.
+ * @dev:		Handle to dev.
+ * @cmd_ctx:		Api admin command context.
+ *
+ * Return: zero or negative error status.
+ */
+static int
+iocpt_adminq_post(struct iocpt_dev *dev, struct iocpt_admin_ctx *ctx)
+{
+	struct iocpt_queue *q = &dev->adminq->q;
+	struct iocpt_admin_cmd *q_desc_base = q->base;
+	struct iocpt_admin_cmd *q_desc;
+	void **info;
+	int err = 0;
+
+	rte_spinlock_lock(&dev->adminq_lock);
+
+	if (iocpt_q_space_avail(q) < 1) {
+		err = -ENOSPC;
+		goto err_out;
+	}
+
+	q_desc = &q_desc_base[q->head_idx];
+
+	memcpy(q_desc, &ctx->cmd, sizeof(ctx->cmd));
+
+	info = IOCPT_INFO_PTR(q, q->head_idx);
+	info[0] = ctx;
+
+	q->head_idx = Q_NEXT_TO_POST(q, 1);
+
+	/* Ring doorbell */
+	iocpt_q_flush(q);
+
+err_out:
+	rte_spinlock_unlock(&dev->adminq_lock);
+
+	return err;
+}
+
+static int
+iocpt_adminq_wait_for_completion(struct iocpt_dev *dev,
+		struct iocpt_admin_ctx *ctx, unsigned long max_wait)
+{
+	struct iocpt_queue *q = &dev->adminq->q;
+	unsigned long step_usec = IONIC_DEVCMD_CHECK_PERIOD_US;
+	unsigned long step_deadline;
+	unsigned long max_wait_usec = max_wait * 1000000L;
+	unsigned long elapsed_usec = 0;
+	int budget = 8;
+	uint16_t idx;
+	void **info;
+
+	step_deadline = IONIC_ADMINQ_WDOG_MS * 1000 / step_usec;
+
+	while (ctx->pending_work && elapsed_usec < max_wait_usec) {
+		/*
+		 * Locking here as adminq is served inline and could be
+		 * called from multiple places
+		 */
+		rte_spinlock_lock(&dev->adminq_service_lock);
+
+		iocpt_cq_service(&dev->adminq->cq, budget,
+			iocpt_adminq_service, NULL);
+
+		/*
+		 * Ring the doorbell again if work is pending after step_usec.
+		 */
+		if (ctx->pending_work && !step_deadline) {
+			step_deadline = IONIC_ADMINQ_WDOG_MS *
+				1000 / step_usec;
+
+			rte_spinlock_lock(&dev->adminq_lock);
+			idx = Q_NEXT_TO_POST(q, -1);
+			info = IOCPT_INFO_PTR(q, idx);
+			if (info[0] == ctx)
+				iocpt_q_flush(q);
+			rte_spinlock_unlock(&dev->adminq_lock);
+		}
+
+		rte_spinlock_unlock(&dev->adminq_service_lock);
+
+		rte_delay_us_block(step_usec);
+		elapsed_usec += step_usec;
+		step_deadline--;
+	}
+
+	return (!ctx->pending_work);
+}
+
+static int
+iocpt_adminq_check_err(struct iocpt_admin_ctx *ctx, bool timeout)
+{
+	const char *name;
+	const char *status;
+
+	name = iocpt_opcode_to_str(ctx->cmd.cmd.opcode);
+
+	if (ctx->comp.comp.status == IOCPT_RC_EAGAIN) {
+		IOCPT_PRINT(DEBUG, "%s (%d) returned EAGAIN (%d)",
+			name, ctx->cmd.cmd.opcode,
+			ctx->comp.comp.status);
+		return -EAGAIN;
+	}
+	if (ctx->comp.comp.status != 0 || timeout) {
+		status = iocpt_error_to_str(ctx->comp.comp.status);
+		IOCPT_PRINT(ERR, "%s (%d) failed: %s (%d)",
+			name,
+			ctx->cmd.cmd.opcode,
+			timeout ? "TIMEOUT" : status,
+			timeout ? -1 : ctx->comp.comp.status);
+		return -EIO;
+	}
+
+	if (ctx->cmd.cmd.opcode != IOCPT_CMD_SESS_CONTROL) {
+		IOCPT_PRINT(DEBUG, "%s (%d) succeeded",
+			name, ctx->cmd.cmd.opcode);
+	}
+
+	return 0;
+}
+
+int
+iocpt_adminq_post_wait(struct iocpt_dev *dev, struct iocpt_admin_ctx *ctx)
+{
+	bool done;
+	int err;
+
+	if (ctx->cmd.cmd.opcode != IOCPT_CMD_SESS_CONTROL) {
+		IOCPT_PRINT(DEBUG, "Sending %s (%d) via the admin queue",
+			iocpt_opcode_to_str(ctx->cmd.cmd.opcode),
+			ctx->cmd.cmd.opcode);
+	}
+
+	err = iocpt_adminq_post(dev, ctx);
+	if (err != 0) {
+		IOCPT_PRINT(ERR, "Failure posting %d to the admin queue (%d)",
+			ctx->cmd.cmd.opcode, err);
+		return err;
+	}
+
+	done = iocpt_adminq_wait_for_completion(dev, ctx,
+		IONIC_DEVCMD_TIMEOUT);
+
+	return iocpt_adminq_check_err(ctx, !done /* timed out */);
 }
