@@ -144,7 +144,7 @@ on which it enqueues events towards the DMA adapter using ``rte_event_enqueue_bu
    uint32_t cap;
    int ret;
 
-   /* Fill in event info and update event_ptr with rte_dma_op */
+   /* Fill in event info and update event_ptr with rte_event_dma_adapter_op */
    memset(&ev, 0, sizeof(ev));
    .
    .

@@ -146,6 +146,9 @@ ABI Changes
 
 * No ABI change that would break compatibility with 23.11.
 
+* eventdev/dma: Reorganize the experimental fastpath structure ``rte_event_dma_adapter_op``
+  to optimize the memory layout and improve performance.
+
 
 Known Issues
 ------------

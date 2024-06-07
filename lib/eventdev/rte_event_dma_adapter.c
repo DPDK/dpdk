@@ -236,9 +236,9 @@ edma_circular_buffer_flush_to_dma_dev(struct event_dma_adapter *adapter,
 				      uint16_t vchan, uint16_t *nb_ops_flushed)
 {
 	struct rte_event_dma_adapter_op *op;
-	struct dma_vchan_info *tq;
 	uint16_t *head = &bufp->head;
 	uint16_t *tail = &bufp->tail;
+	struct dma_vchan_info *tq;
 	uint16_t n;
 	uint16_t i;
 	int ret;
@@ -257,11 +257,13 @@ edma_circular_buffer_flush_to_dma_dev(struct event_dma_adapter *adapter,
 	for (i = 0; i < n; i++)	{
 		op = bufp->op_buffer[*head];
 		if (op->nb_src == 1 && op->nb_dst == 1)
-			ret = rte_dma_copy(dma_dev_id, vchan, op->src_seg->addr, op->dst_seg->addr,
-					   op->src_seg->length, op->flags);
+			ret = rte_dma_copy(dma_dev_id, vchan, op->src_dst_seg[0].addr,
+					   op->src_dst_seg[1].addr, op->src_dst_seg[0].length,
+					   op->flags);
 		else
-			ret = rte_dma_copy_sg(dma_dev_id, vchan, op->src_seg, op->dst_seg,
-					      op->nb_src, op->nb_dst, op->flags);
+			ret = rte_dma_copy_sg(dma_dev_id, vchan, &op->src_dst_seg[0],
+					      &op->src_dst_seg[op->nb_src], op->nb_src, op->nb_dst,
+					      op->flags);
 		if (ret < 0)
 			break;
 
@@ -511,8 +513,7 @@ edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, uns
 		if (dma_op == NULL)
 			continue;
 
-		/* Expected to have response info appended to dma_op. */
-
+		dma_op->impl_opaque[0] = ev[i].event;
 		dma_dev_id = dma_op->dma_dev_id;
 		vchan = dma_op->vchan;
 		vchan_qinfo = &adapter->dma_devs[dma_dev_id].vchanq[vchan];
@@ -647,7 +648,6 @@ edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_a
 	uint8_t event_port_id = adapter->event_port_id;
 	uint8_t event_dev_id = adapter->eventdev_id;
 	struct rte_event events[DMA_BATCH_SIZE];
-	struct rte_event *response_info;
 	uint16_t nb_enqueued, nb_ev;
 	uint8_t retry;
 	uint8_t i;
@@ -659,16 +659,7 @@ edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_a
 	for (i = 0; i < num; i++) {
 		struct rte_event *ev = &events[nb_ev++];
 
-		/* Expected to have response info appended to dma_op. */
-		response_info = (struct rte_event *)((uint8_t *)ops[i] +
-							  sizeof(struct rte_event_dma_adapter_op));
-		if (unlikely(response_info == NULL)) {
-			if (ops[i] != NULL && ops[i]->op_mp != NULL)
-				rte_mempool_put(ops[i]->op_mp, ops[i]);
-			continue;
-		}
-
-		rte_memcpy(ev, response_info, sizeof(struct rte_event));
+		ev->event = ops[i]->impl_opaque[0];
 		ev->event_ptr = ops[i];
 		ev->event_type = RTE_EVENT_TYPE_DMADEV;
 		if (adapter->implicit_release_disabled)

@@ -490,8 +490,8 @@ cn10k_dma_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 		hdr[1] = ((uint64_t)comp_ptr);
 		hdr[2] = cnxk_dma_adapter_format_event(rsp_info->event);
 
-		src = &op->src_seg[0];
-		dst = &op->dst_seg[0];
+		src = &op->src_dst_seg[0];
+		dst = &op->src_dst_seg[op->nb_src];
 
 		if (CNXK_TAG_IS_HEAD(work->gw_rdata) ||
 		    ((CNXK_TT_FROM_TAG(work->gw_rdata) == SSO_TT_ORDERED) &&
@@ -566,12 +566,12 @@ cn9k_dma_adapter_dual_enqueue(void *ws, struct rte_event ev[], uint16_t nb_event
 		 * For all other cases, src pointers are first pointers.
 		 */
 		if (((dpi_conf->cmd.u >> 48) & DPI_HDR_XTYPE_MASK) == DPI_XTYPE_INBOUND) {
-			fptr = &op->dst_seg[0];
-			lptr = &op->src_seg[0];
+			fptr = &op->src_dst_seg[nb_src];
+			lptr = &op->src_dst_seg[0];
 			RTE_SWAP(nb_src, nb_dst);
 		} else {
-			fptr = &op->src_seg[0];
-			lptr = &op->dst_seg[0];
+			fptr = &op->src_dst_seg[0];
+			lptr = &op->src_dst_seg[nb_src];
 		}
 
 		hdr[0] = ((uint64_t)nb_dst << 54) | (uint64_t)nb_src << 48;
@@ -647,12 +647,12 @@ cn9k_dma_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_events)
 		 * For all other cases, src pointers are first pointers.
 		 */
 		if (((dpi_conf->cmd.u >> 48) & DPI_HDR_XTYPE_MASK) == DPI_XTYPE_INBOUND) {
-			fptr = &op->dst_seg[0];
-			lptr = &op->src_seg[0];
+			fptr = &op->src_dst_seg[nb_src];
+			lptr = &op->src_dst_seg[0];
 			RTE_SWAP(nb_src, nb_dst);
 		} else {
-			fptr = &op->src_seg[0];
-			lptr = &op->dst_seg[0];
+			fptr = &op->src_dst_seg[0];
+			lptr = &op->src_dst_seg[nb_src];
 		}
 
 		hdr[0] = ((uint64_t)nb_dst << 54) | (uint64_t)nb_src << 48;

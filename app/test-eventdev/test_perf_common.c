@@ -1503,7 +1503,6 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 		prod = 0;
 		for (; port < perf_nb_event_ports(opt); port++) {
 			struct prod_data *p = &t->prod[port];
-			struct rte_event *response_info;
 			uint32_t flow_id;
 
 			p->dev_id = opt->dev_id;
@@ -1523,25 +1522,16 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 			for (flow_id = 0; flow_id < t->nb_flows; flow_id++) {
 				rte_mempool_get(t->da_op_pool, (void **)&op);
 
-				op->src_seg = rte_malloc(NULL, sizeof(struct rte_dma_sge), 0);
-				op->dst_seg = rte_malloc(NULL, sizeof(struct rte_dma_sge), 0);
-
-				op->src_seg->addr = rte_pktmbuf_iova(rte_pktmbuf_alloc(pool));
-				op->dst_seg->addr = rte_pktmbuf_iova(rte_pktmbuf_alloc(pool));
-				op->src_seg->length = 1024;
-				op->dst_seg->length = 1024;
+				op->src_dst_seg[0].addr = rte_pktmbuf_iova(rte_pktmbuf_alloc(pool));
+				op->src_dst_seg[1].addr = rte_pktmbuf_iova(rte_pktmbuf_alloc(pool));
+				op->src_dst_seg[0].length = 1024;
+				op->src_dst_seg[1].length = 1024;
 				op->nb_src = 1;
 				op->nb_dst = 1;
 				op->flags = RTE_DMA_OP_FLAG_SUBMIT;
 				op->op_mp = t->da_op_pool;
 				op->dma_dev_id = dma_dev_id;
 				op->vchan = vchan_id;
-
-				response_info = (struct rte_event *)((uint8_t *)op +
-						 sizeof(struct rte_event_dma_adapter_op));
-				response_info->queue_id = p->queue_id;
-				response_info->sched_type = RTE_SCHED_TYPE_ATOMIC;
-				response_info->flow_id = flow_id;
 
 				p->da.dma_op[flow_id] = op;
 			}
@@ -2036,7 +2026,7 @@ perf_dmadev_setup(struct evt_test *test, struct evt_options *opt)
 		return -ENODEV;
 	}
 
-	elt_size = sizeof(struct rte_event_dma_adapter_op) + sizeof(struct rte_event);
+	elt_size = sizeof(struct rte_event_dma_adapter_op) + (sizeof(struct rte_dma_sge) * 2);
 	t->da_op_pool = rte_mempool_create("dma_op_pool", opt->pool_sz, elt_size, 256,
 					   0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
 	if (t->da_op_pool == NULL) {
@@ -2085,10 +2075,8 @@ perf_dmadev_destroy(struct evt_test *test, struct evt_options *opt)
 		for (flow_id = 0; flow_id < t->nb_flows; flow_id++) {
 			op = p->da.dma_op[flow_id];
 
-			rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)op->src_seg->addr);
-			rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)op->dst_seg->addr);
-			rte_free(op->src_seg);
-			rte_free(op->dst_seg);
+			rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)op->src_dst_seg[0].addr);
+			rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)op->src_dst_seg[1].addr);
 			rte_mempool_put(op->op_mp, op);
 		}
 

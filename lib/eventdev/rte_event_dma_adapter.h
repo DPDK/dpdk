@@ -157,24 +157,46 @@ extern "C" {
  * instance.
  */
 struct rte_event_dma_adapter_op {
-	struct rte_dma_sge *src_seg;
-	/**< Source segments. */
-	struct rte_dma_sge *dst_seg;
-	/**< Destination segments. */
-	uint16_t nb_src;
-	/**< Number of source segments. */
-	uint16_t nb_dst;
-	/**< Number of destination segments. */
 	uint64_t flags;
 	/**< Flags related to the operation.
 	 * @see RTE_DMA_OP_FLAG_*
 	 */
-	int16_t dma_dev_id;
-	/**< DMA device ID to be used */
-	uint16_t vchan;
-	/**< DMA vchan ID to be used */
 	struct rte_mempool *op_mp;
 	/**< Mempool from which op is allocated. */
+	enum rte_dma_status_code status;
+	/**< Status code for this operation. */
+	uint32_t rsvd;
+	/**< Reserved for future use. */
+	uint64_t impl_opaque[2];
+	/**< Implementation-specific opaque data.
+	 * An dma device implementation use this field to hold
+	 * implementation specific values to share between dequeue and enqueue
+	 * operations.
+	 * The application should not modify this field.
+	 */
+	uint64_t user_meta;
+	/**<  Memory to store user specific metadata.
+	 * The dma device implementation should not modify this area.
+	 */
+	uint64_t event_meta;
+	/**< Event metadata that defines event attributes when used in OP_NEW mode.
+	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_NEW
+	 * @see struct rte_event::event
+	 */
+	int16_t dma_dev_id;
+	/**< DMA device ID to be used with OP_FORWARD mode.
+	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_FORWARD
+	 */
+	uint16_t vchan;
+	/**< DMA vchan ID to be used with OP_FORWARD mode
+	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_FORWARD
+	 */
+	uint16_t nb_src;
+	/**< Number of source segments. */
+	uint16_t nb_dst;
+	/**< Number of destination segments. */
+	struct rte_dma_sge src_dst_seg[0];
+	/**< Source and destination segments. */
 };
 
 /**
