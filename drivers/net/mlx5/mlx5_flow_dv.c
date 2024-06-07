@@ -1439,6 +1439,8 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_VXLAN_VNI:
 	case RTE_FLOW_FIELD_GENEVE_VNI:
 		return 24;
+	case RTE_FLOW_FIELD_VXLAN_LAST_RSVD:
+		return 8;
 	case RTE_FLOW_FIELD_GTP_TEID:
 	case RTE_FLOW_FIELD_MPLS:
 	case RTE_FLOW_FIELD_TAG:
@@ -2035,6 +2037,16 @@ mlx5_flow_field_id_to_modify_info
 					MLX5_MODI_TUNNEL_HDR_DW_1};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_32(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_VXLAN_LAST_RSVD:
+		MLX5_ASSERT(data->offset + width <= 8);
+		/* Last_rsvd is on bits 7-0 of TUNNEL_HDR_DW_1. */
+		off_be = 8 - (data->offset + width);
+		info[idx] = (struct field_modify_info){1, 0, MLX5_MODI_TUNNEL_HDR_DW_1};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
 			info[idx].offset = off_be;
 		break;

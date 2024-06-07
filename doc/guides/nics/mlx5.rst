@@ -637,6 +637,12 @@ Limitations
   - Modify field action using ``RTE_FLOW_FIELD_RANDOM`` is not supported.
   - Modification of the 802.1Q tag is not supported.
   - Modification of VXLAN network or GENEVE network ID is supported only for HW steering.
+  - Modification of the VXLAN header is supported with below limitations:
+
+    - Only for HW steering (``dv_flow_en=2``).
+    - Support VNI and the last reserved byte modifications for traffic
+      with default UDP destination port: 4789 for VXLAN and VXLAN-GBP, 4790 for VXLAN-GPE.
+
   - Modification of GENEVE network ID is not supported when configured
     ``FLEX_PARSER_PROFILE_ENABLE`` supports Geneve TLV options.
     See :ref:`mlx5_firmware_config` for more flex parser information.

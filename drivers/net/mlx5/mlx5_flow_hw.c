@@ -1363,6 +1363,10 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 			value = *(const uint8_t *)item.spec;
 			value = rte_cpu_to_be_32(value << 8);
 			item.spec = &value;
+		} else if (conf->dst.field == RTE_FLOW_FIELD_VXLAN_LAST_RSVD) {
+			value = *(const uint8_t *)item.spec << 24;
+			value = rte_cpu_to_be_32(value);
+			item.spec = &value;
 		}
 	} else {
 		type = conf->operation == RTE_FLOW_MODIFY_SET ?
@@ -5494,6 +5498,7 @@ flow_hw_validate_modify_field_level(const struct rte_flow_field_data *data,
 	case RTE_FLOW_FIELD_ESP_SPI:
 	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
 	case RTE_FLOW_FIELD_VXLAN_VNI:
+	case RTE_FLOW_FIELD_VXLAN_LAST_RSVD:
 	case RTE_FLOW_FIELD_GENEVE_VNI:
 	case RTE_FLOW_FIELD_GENEVE_OPT_TYPE:
 	case RTE_FLOW_FIELD_GENEVE_OPT_CLASS:
