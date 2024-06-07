@@ -114,6 +114,10 @@ New Features
 
   * Added SSE/NEON vector datapath.
 
+* **Added AMD Pensando ionic crypto driver.**
+
+  Added a new crypto driver for AMD Pensando hardware accelerators.
+
 * **Updated Marvell CNXK DMA driver.**
 
   * Updated DMA driver internal pool to use higher chunk size,

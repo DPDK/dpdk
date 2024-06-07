@@ -20,6 +20,7 @@ Crypto Device Drivers
     cnxk
     dpaa2_sec
     dpaa_sec
+    ionic
     kasumi
     octeontx
     openssl

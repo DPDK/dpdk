@@ -1076,6 +1076,13 @@ F: drivers/crypto/ccp/
 F: doc/guides/cryptodevs/ccp.rst
 F: doc/guides/cryptodevs/features/ccp.ini
 
+AMD Pensando ionic crypto
+M: Andrew Boyer <andrew.boyer@amd.com>
+F: drivers/crypto/ionic/
+F: drivers/common/ionic/
+F: doc/guides/cryptodevs/ionic.rst
+F: doc/guides/cryptodevs/features/ionic.ini
+
 ARMv8 Crypto
 M: Ruifeng Wang <ruifeng.wang@arm.com>
 F: drivers/crypto/armv8/
