@@ -12724,23 +12724,28 @@ flow_hw_translate_actions(struct rte_eth_dev *dev,
 	enum mlx5_hw_action_flag_type flag_type;
 	bool actions_end = false;
 	uint64_t action_flags = 0; /* to be used when needed */
+	int ret;
 	uint32_t actions_n = 0;
 	uint32_t mark_id;
 	uint32_t jump_group;
+	uint32_t src_group = 0;
 	bool is_mark;
 	struct mlx5_flow_template_table_cfg tbl_cfg;
 	enum mlx5_flow_fate_type fate_type = MLX5_FLOW_FATE_NONE;
 
 	RTE_SET_USED(action_flags);
+	/* The group in the attribute translation was done in advance. */
+	ret = __translate_group(dev, attr, external, attr->group, &src_group, error);
+	if (ret)
+		return ret;
 	if (attr->transfer)
 		type = MLX5DR_TABLE_TYPE_FDB;
 	else if (attr->egress)
 		type = MLX5DR_TABLE_TYPE_NIC_TX;
 	else
 		type = MLX5DR_TABLE_TYPE_NIC_RX;
-	/* The group in the attribute translation was done in advance. */
-	flag_type = (attr->group == 0) ? MLX5_HW_ACTION_FLAG_ROOT :
-					 MLX5_HW_ACTION_FLAG_NONE_ROOT;
+	flag_type = (src_group == 0) ? MLX5_HW_ACTION_FLAG_ROOT :
+				       MLX5_HW_ACTION_FLAG_NONE_ROOT;
 	for (; !actions_end; actions++) {
 		switch (actions->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
@@ -12791,6 +12796,17 @@ flow_hw_translate_actions(struct rte_eth_dev *dev,
 			}
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			fate_type = MLX5_FLOW_FATE_QUEUE;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
+			if (src_group == 0) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+						   "Send to kernel action on the root table is"
+						   " not supported in HWS mode now.");
+				goto clean_up;
+			}
+			hw_acts->rule_acts[actions_n++].action = priv->hw_send_to_kernel[type];
+			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			/*
