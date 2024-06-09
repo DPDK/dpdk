@@ -1536,7 +1536,6 @@ struct mlx5_dev_ctx_shared {
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *dr_drop_action; /* Pointer to DR drop action, any domain. */
 	void *pop_vlan_action; /* Pointer to DR pop VLAN action. */
-	void *hw_dummy_last; /* Pointer to the DR dummy end action, any domain. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_send_to_kernel_action send_to_kernel_action[MLX5DR_TABLE_TYPE_MAX];
 #endif
@@ -1817,6 +1816,14 @@ struct mlx5_hw_ctrl_flow {
 	struct mlx5_hw_ctrl_flow_info info;
 };
 
+/* HW Steering port configuration passed to rte_flow_configure(). */
+struct mlx5_flow_hw_attr {
+	struct rte_flow_port_attr port_attr;
+	uint16_t nb_queue;
+	struct rte_flow_queue_attr *queue_attr;
+	bool nt_mode;
+};
+
 /*
  * Flow rule structure for flow engine mode control, focus on group 0.
  * Apply to all supported domains.
@@ -1837,12 +1844,6 @@ struct rte_pmd_mlx5_flow_engine_mode_info {
 	uint32_t mode_flag;
 	/* The list is maintained in insertion order. */
 	LIST_HEAD(hot_up_info, mlx5_dv_flow_info) hot_upgrade;
-};
-/* HW Steering port configuration passed to rte_flow_configure(). */
-struct mlx5_flow_hw_attr {
-	struct rte_flow_port_attr port_attr;
-	uint16_t nb_queue;
-	struct rte_flow_queue_attr *queue_attr;
 };
 
 struct mlx5_flow_hw_ctrl_rx;
@@ -2335,7 +2336,7 @@ int mlx5_flow_validate(struct rte_eth_dev *dev,
 		       const struct rte_flow_item items[],
 		       const struct rte_flow_action actions[],
 		       struct rte_flow_error *error);
-uint32_t
+uintptr_t
 mlx5_flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		      const struct rte_flow_attr *attr,
 		      const struct rte_flow_item items[],
@@ -2343,7 +2344,7 @@ mlx5_flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		      bool external, struct rte_flow_error *error);
 void
 mlx5_flow_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
-		       uint32_t flow_idx);
+		       uintptr_t flow_idx);
 struct rte_flow *mlx5_flow_create(struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attr,
 				  const struct rte_flow_item items[],

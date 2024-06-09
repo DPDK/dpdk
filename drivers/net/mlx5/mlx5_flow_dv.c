@@ -11913,12 +11913,14 @@ flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
 	struct mlx5_flow_dv_matcher *ref = ctx->data;
 	struct mlx5_flow_dv_matcher *resource;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	const struct rte_flow_item *items;
+#endif
 	struct mlx5dv_flow_matcher_attr dv_attr = {
 		.type = IBV_FLOW_ATTR_NORMAL,
 		.match_mask = (void *)&ref->mask,
 	};
-	struct mlx5_flow_tbl_data_entry *tbl = container_of(ref->tbl,
-							    typeof(*tbl), tbl);
+	struct mlx5_flow_tbl_data_entry *tbl;
 	int ret;
 
 	resource = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*resource), 0,
@@ -11929,9 +11931,9 @@ flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 				   "cannot create matcher");
 		return NULL;
 	}
-	/*Consider memcpy(resource, ref, sizeof(*resource));*/
 	*resource = *ref;
 	if (sh->config.dv_flow_en != 2) {
+		tbl = container_of(ref->tbl, typeof(*tbl), tbl);
 		dv_attr.match_criteria_enable =
 			flow_dv_matcher_enable(resource->mask.buf);
 		__flow_dv_adjust_buf_size(&ref->mask.size,
@@ -11949,6 +11951,16 @@ flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 					"cannot create matcher");
 			return NULL;
 		}
+	} else {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		items = *((const struct rte_flow_item **)(ctx->data2));
+		resource->matcher_object = mlx5dr_bwc_matcher_create
+				(resource->group->tbl, resource->priority, items);
+		if (!(resource->matcher_object))
+			return NULL;
+#else
+		return NULL;
+#endif
 	}
 	return &resource->entry;
 }

@@ -1320,6 +1320,8 @@ struct rte_flow_nt2hws {
 	struct mlx5dr_bwc_rule *nt_rule;
 	/** The matcher for non template api. */
 	struct mlx5_flow_dv_matcher *matcher;
+	/**< Auxiliary data stored per flow. */
+	struct rte_flow_hw_aux *flow_aux;
 } __rte_packed;
 
 /** HWS flow struct. */
@@ -1354,12 +1356,14 @@ struct rte_flow_hw {
 		struct mlx5_hrxq *hrxq;
 	};
 
+	/** Equals true if it is non template rule. */
+	bool nt_rule;
 	/**
 	 * Padding for alignment to 56 bytes.
 	 * Since mlx5dr rule is 72 bytes, whole flow is contained within 128 B (2 cache lines).
 	 * This space is reserved for future additions to flow struct.
 	 */
-	uint8_t padding[10];
+	uint8_t padding[9];
 	/** HWS layer data struct. */
 	uint8_t rule[];
 } __rte_packed;
@@ -2204,7 +2208,7 @@ int
 flow_hw_init(struct rte_eth_dev *dev,
 	     struct rte_flow_error *error);
 
-typedef uint32_t (*mlx5_flow_list_create_t)(struct rte_eth_dev *dev,
+typedef uintptr_t (*mlx5_flow_list_create_t)(struct rte_eth_dev *dev,
 					enum mlx5_flow_type type,
 					const struct rte_flow_attr *attr,
 					const struct rte_flow_item items[],
@@ -2213,7 +2217,7 @@ typedef uint32_t (*mlx5_flow_list_create_t)(struct rte_eth_dev *dev,
 					struct rte_flow_error *error);
 typedef void (*mlx5_flow_list_destroy_t)(struct rte_eth_dev *dev,
 					enum mlx5_flow_type type,
-					uint32_t flow_idx);
+					uintptr_t flow_idx);
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    const struct rte_flow_item items[],
@@ -3476,13 +3480,13 @@ int mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 			   enum rte_flow_field_id field, int inherit,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error);
-uint32_t flow_legacy_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+uintptr_t flow_legacy_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 				const struct rte_flow_attr *attr,
 				const struct rte_flow_item items[],
 				const struct rte_flow_action actions[],
 				bool external, struct rte_flow_error *error);
 void flow_legacy_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
-				uint32_t flow_idx);
+				uintptr_t flow_idx);
 
 static __rte_always_inline int
 flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)
