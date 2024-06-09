@@ -546,8 +546,7 @@ flow_hw_jump_release(struct rte_eth_dev *dev, struct mlx5_hw_jump_action *jump)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_group *grp;
 
-	grp = container_of
-		(jump, struct mlx5_flow_group, jump);
+	grp = container_of(jump, struct mlx5_flow_group, jump);
 	mlx5_hlist_unregister(priv->sh->flow_tbls, &grp->entry);
 }
 
@@ -647,17 +646,9 @@ flow_hw_template_destroy_mhdr_action(struct mlx5_hw_modify_header_action *mhdr)
  *   Pointer to the template HW steering DR actions.
  */
 static void
-__flow_hw_action_template_destroy(struct rte_eth_dev *dev,
-				 struct mlx5_hw_actions *acts)
+__flow_hw_actions_release(struct rte_eth_dev *dev, struct mlx5_hw_actions *acts)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_action_construct_data *data;
-
-	while (!LIST_EMPTY(&acts->act_list)) {
-		data = LIST_FIRST(&acts->act_list);
-		LIST_REMOVE(data, next);
-		mlx5_ipool_free(priv->acts_ipool, data->idx);
-	}
 
 	if (acts->mark)
 		if (!(rte_atomic_fetch_sub_explicit(&priv->hws_mark_refcnt, 1,
@@ -700,6 +691,32 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 		mlx5_ipool_free(priv->hws_mpool->idx_pool, acts->mtr_id);
 		acts->mtr_id = 0;
 	}
+}
+
+/**
+ * Destroy DR actions created by action template.
+ *
+ * For DR actions created during table creation's action translate.
+ * Need to destroy the DR action when destroying the table.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ */
+static void
+__flow_hw_action_template_destroy(struct rte_eth_dev *dev, struct mlx5_hw_actions *acts)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_action_construct_data *data;
+
+	while (!LIST_EMPTY(&acts->act_list)) {
+		data = LIST_FIRST(&acts->act_list);
+		LIST_REMOVE(data, next);
+		mlx5_ipool_free(priv->acts_ipool, data->idx);
+	}
+
+	__flow_hw_actions_release(dev, acts);
 }
 
 /**
@@ -12693,14 +12710,114 @@ static int flow_hw_prepare(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int flow_hw_translate_actions(struct rte_eth_dev *dev __rte_unused,
-					const struct rte_flow_attr *attr __rte_unused,
-					const struct rte_flow_action actions[] __rte_unused,
-					struct rte_flow_hw *flow __rte_unused,
-					struct rte_flow_error *error __rte_unused)
+static int
+flow_hw_translate_actions(struct rte_eth_dev *dev,
+			  const struct rte_flow_attr *attr,
+			  const struct rte_flow_action actions[],
+			  struct rte_flow_hw *flow,
+			  struct mlx5_hw_actions *hw_acts,
+			  bool external,
+			  struct rte_flow_error *error)
 {
-	/* TODO implement */
+	struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5dr_table_type type;
+	enum mlx5_hw_action_flag_type flag_type;
+	bool actions_end = false;
+	uint64_t action_flags = 0; /* to be used when needed */
+	uint32_t actions_n = 0;
+	uint32_t mark_id;
+	uint32_t jump_group;
+	bool is_mark;
+	struct mlx5_flow_template_table_cfg tbl_cfg;
+	enum mlx5_flow_fate_type fate_type = MLX5_FLOW_FATE_NONE;
+
+	RTE_SET_USED(action_flags);
+	if (attr->transfer)
+		type = MLX5DR_TABLE_TYPE_FDB;
+	else if (attr->egress)
+		type = MLX5DR_TABLE_TYPE_NIC_TX;
+	else
+		type = MLX5DR_TABLE_TYPE_NIC_RX;
+	/* The group in the attribute translation was done in advance. */
+	flag_type = (attr->group == 0) ? MLX5_HW_ACTION_FLAG_ROOT :
+					 MLX5_HW_ACTION_FLAG_NONE_ROOT;
+	for (; !actions_end; actions++) {
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			hw_acts->rule_acts[actions_n++].action = priv->hw_drop[flag_type];
+			fate_type = MLX5_FLOW_FATE_DROP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			is_mark = actions->type == RTE_FLOW_ACTION_TYPE_MARK;
+			mark_id = is_mark ?
+				  ((const struct rte_flow_action_mark *)(actions->conf))->id :
+				  MLX5_FLOW_MARK_DEFAULT;
+			hw_acts->rule_acts[actions_n].tag.value = mlx5_flow_mark_set(mark_id);
+			hw_acts->rule_acts[actions_n].action = priv->hw_tag[flag_type];
+			actions_n++;
+			action_flags |= is_mark ? MLX5_FLOW_ACTION_MARK : MLX5_FLOW_ACTION_FLAG;
+			hw_acts->mark = true;
+			rte_atomic_fetch_add_explicit(&priv->hws_mark_refcnt, 1,
+						      rte_memory_order_relaxed);
+			flow_hw_rxq_flag_set(dev, true);
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			jump_group = ((const struct rte_flow_action_jump *)actions->conf)->group;
+			tbl_cfg.attr.flow_attr = *attr;
+			tbl_cfg.external = external;
+			/* The flow_hw_jump_action_register() can be refactored. */
+			hw_acts->jump = flow_hw_jump_action_register(dev, &tbl_cfg,
+								     jump_group, error);
+			if (hw_acts->jump == NULL)
+				goto clean_up;
+			hw_acts->rule_acts[actions_n++].action =
+				(flag_type == MLX5_HW_ACTION_FLAG_NONE_ROOT) ?
+				hw_acts->jump->hws_action : hw_acts->jump->root_action;
+			action_flags |= MLX5_FLOW_ACTION_JUMP;
+			fate_type = MLX5_FLOW_FATE_JUMP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			/* Right now, only Rx supports the TIR, validation is needed. */
+			hw_acts->tir = flow_hw_tir_action_register(dev,
+						mlx5_hw_act_flag[flag_type][type], actions);
+			if (hw_acts->tir == NULL) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+						   "Failed to translate queue.");
+				goto clean_up;
+			}
+			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			fate_type = MLX5_FLOW_FATE_QUEUE;
+			break;
+		case RTE_FLOW_ACTION_TYPE_END:
+			/*
+			 * Using NULL action right now, maybe a new API can be used
+			 * to create a dummy action with type MLX5DR_ACTION_TYP_LAST.
+			 */
+			hw_acts->rule_acts[actions_n++].action = priv->sh->hw_dummy_last;
+			actions_end = true;
+			break;
+		default:
+			break;
+		}
+	}
+	if (fate_type == MLX5_FLOW_FATE_QUEUE) {
+		hw_acts->rule_acts[actions_n++].action = hw_acts->tir->action;
+		flow->hrxq = hw_acts->tir;
+	} else {
+		if (fate_type == MLX5_FLOW_FATE_JUMP)
+			flow->jump = hw_acts->jump;
+	}
+	/* Total actions number should be validated before. */
+	MLX5_ASSERT(actions_n <= MLX5_HW_MAX_ACTS);
 	return 0;
+clean_up:
+	/* Make sure that there is no garbage in the actions. */
+	__flow_hw_actions_release(dev, hw_acts);
+	return -rte_errno;
 }
 
 static int flow_hw_register_matcher(struct rte_eth_dev *dev,
@@ -12881,7 +12998,8 @@ static int flow_hw_create_flow(struct rte_eth_dev *dev,
 	if (ret)
 		goto error;
 
-	ret = flow_hw_translate_actions(dev, attr, actions, *flow, error);
+	/* Note: the actions should be saved in the sub-flow rule itself for reference. */
+	ret = flow_hw_translate_actions(dev, attr, actions, *flow, &hw_act, external, error);
 	if (ret)
 		goto error;
 
