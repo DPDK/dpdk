@@ -11224,6 +11224,17 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		if (ret)
 			goto err;
 	}
+	/*
+	 * All domains will use the same dummy action, only used in the backward
+	 * compatible API. Initialize it for only once. No order dependency.
+	 */
+	if (!priv->sh->hw_dummy_last) {
+		priv->sh->hw_dummy_last = mlx5dr_action_create_last(priv->dr_ctx,
+								    MLX5DR_ACTION_FLAG_HWS_RX);
+		if (!priv->sh->hw_dummy_last)
+			/* Do not overwrite the rte_errno. */
+			goto err;
+	}
 	if (!priv->shared_host)
 		flow_hw_create_send_to_kernel_actions(priv);
 	if (port_attr->nb_conn_tracks || (host_priv && host_priv->hws_ctpool)) {
@@ -11301,6 +11312,10 @@ err:
 	if (priv->ct_mng) {
 		flow_hw_ct_mng_destroy(dev, priv->ct_mng);
 		priv->ct_mng = NULL;
+	}
+	if (priv->sh->hw_dummy_last) {
+		mlx5dr_action_destroy(priv->sh->hw_dummy_last);
+		priv->sh->hw_dummy_last = NULL;
 	}
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
@@ -11427,6 +11442,10 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_destroy_nat64_actions(priv);
 	flow_hw_destroy_vlan(dev);
+	if (priv->sh->hw_dummy_last) {
+		mlx5dr_action_destroy(priv->sh->hw_dummy_last);
+		priv->sh->hw_dummy_last = NULL;
+	}
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
 	if (priv->acts_ipool) {
