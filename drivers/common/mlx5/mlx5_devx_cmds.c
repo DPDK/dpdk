@@ -1170,6 +1170,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_TIR) &&
 			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_FT) &&
 			(rc & MLX5_CROSS_VHCA_ALLOWED_OBJS_RTC);
+		if (attr->ct_offload)
+			attr->log_max_conn_track_offload = MLX5_GET(cmd_hca_cap_2, hcattr,
+				log_max_conn_track_offload);
 	}
 	if (attr->log_min_stride_wqe_sz == 0)
 		attr->log_min_stride_wqe_sz = MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
