@@ -69,7 +69,7 @@ static rte_spinlock_t mlx5_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 static struct mlx5_local_data mlx5_local_data;
 
 /* rte flow indexed pool configuration. */
-static struct mlx5_indexed_pool_config icfg[] = {
+static const struct mlx5_indexed_pool_config default_icfg[] = {
 	{
 		.size = sizeof(struct rte_flow),
 		.trunk_size = 64,
@@ -1080,7 +1080,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	struct mlx5_port_info vport_info = { .query_flags = 0 };
 	int nl_rdma;
 	int i;
+	struct mlx5_indexed_pool_config icfg[RTE_DIM(default_icfg)];
 
+	memcpy(icfg, default_icfg, sizeof(icfg));
 	/* Determine if this port representor is supposed to be spawned. */
 	if (switch_info->representor && dpdk_dev->devargs &&
 	    !mlx5_representor_match(spawn, eth_da))
@@ -1560,6 +1562,10 @@ err_secondary:
 		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
 		if (sh->config.reclaim_mode)
 			icfg[i].per_core_cache = 0;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		if (priv->sh->config.dv_flow_en == 2)
+			icfg[i].size = sizeof(struct rte_flow_hw) + sizeof(struct rte_flow_nt2hws);
+#endif
 		priv->flows[i] = mlx5_ipool_create(&icfg[i]);
 		if (!priv->flows[i])
 			goto error;

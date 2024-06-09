@@ -625,8 +625,12 @@ struct mlx5_flow_dv_match_params {
 /* Matcher structure. */
 struct mlx5_flow_dv_matcher {
 	struct mlx5_list_entry entry; /**< Pointer to the next element. */
-	struct mlx5_flow_tbl_resource *tbl;
-	/**< Pointer to the table(group) the matcher associated with. */
+	union {
+		struct mlx5_flow_tbl_resource *tbl;
+		/**< Pointer to the table(group) the matcher associated with for DV flow. */
+		struct mlx5_flow_group *group;
+		/* Group of this matcher for HWS non template flow. */
+	};
 	void *matcher_object; /**< Pointer to DV matcher */
 	uint16_t crc; /**< CRC of key. */
 	uint16_t priority; /**< Priority of matcher. */
@@ -1308,10 +1312,24 @@ enum {
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 
+#define MLX5_DR_RULE_SIZE 72
+
+/** HWS non template flow data. */
+struct rte_flow_nt2hws {
+	/** BWC rule pointer. */
+	struct mlx5dr_bwc_rule *nt_rule;
+	/** The matcher for non template api. */
+	struct mlx5_flow_dv_matcher *matcher;
+} __rte_packed;
+
 /** HWS flow struct. */
 struct rte_flow_hw {
-	/** The table flow allcated from. */
-	struct rte_flow_template_table *table;
+	union {
+		/** The table flow allcated from. */
+		struct rte_flow_template_table *table;
+		/** Data needed for non template flows. */
+		struct rte_flow_nt2hws *nt2hws;
+	};
 	/** Application's private data passed to enqueued flow operation. */
 	void *user_data;
 	/** Flow index from indexed pool. */
@@ -1596,6 +1614,8 @@ struct mlx5_flow_group {
 	enum mlx5dr_table_type type; /* Table type. */
 	uint32_t group_id; /* Group id. */
 	uint32_t idx; /* Group memory index. */
+	/* List of all matchers created for this group in non template api */
+	struct mlx5_list *matchers;
 };
 
 
@@ -2180,7 +2200,20 @@ void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);
 int flow_hw_create_vport_action(struct rte_eth_dev *dev);
 void flow_hw_destroy_vport_action(struct rte_eth_dev *dev);
+int
+flow_hw_init(struct rte_eth_dev *dev,
+	     struct rte_flow_error *error);
 
+typedef uint32_t (*mlx5_flow_list_create_t)(struct rte_eth_dev *dev,
+					enum mlx5_flow_type type,
+					const struct rte_flow_attr *attr,
+					const struct rte_flow_item items[],
+					const struct rte_flow_action actions[],
+					bool external,
+					struct rte_flow_error *error);
+typedef void (*mlx5_flow_list_destroy_t)(struct rte_eth_dev *dev,
+					enum mlx5_flow_type type,
+					uint32_t flow_idx);
 typedef int (*mlx5_flow_validate_t)(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    const struct rte_flow_item items[],
@@ -2544,6 +2577,8 @@ typedef int (*table_resize_complete_t)(struct rte_eth_dev *dev,
 				       struct rte_flow_error *error);
 
 struct mlx5_flow_driver_ops {
+	mlx5_flow_list_create_t list_create;
+	mlx5_flow_list_destroy_t list_destroy;
 	mlx5_flow_validate_t validate;
 	mlx5_flow_prepare_t prepare;
 	mlx5_flow_translate_t translate;
@@ -3230,11 +3265,14 @@ struct mlx5_list_entry *flow_dv_encap_decap_clone_cb(void *tool_ctx,
 void flow_dv_encap_decap_clone_free_cb(void *tool_ctx,
 				       struct mlx5_list_entry *entry);
 
-int flow_dv_matcher_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+int flow_matcher_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
 			     void *ctx);
-struct mlx5_list_entry *flow_dv_matcher_create_cb(void *tool_ctx, void *ctx);
-void flow_dv_matcher_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
-
+struct mlx5_list_entry *flow_matcher_create_cb(void *tool_ctx, void *ctx);
+void flow_matcher_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+struct mlx5_list_entry *flow_matcher_clone_cb(void *tool_ctx __rte_unused,
+			 struct mlx5_list_entry *entry, void *cb_ctx);
+void flow_matcher_clone_free_cb(void *tool_ctx __rte_unused,
+			     struct mlx5_list_entry *entry);
 int flow_dv_port_id_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
 			     void *cb_ctx);
 struct mlx5_list_entry *flow_dv_port_id_create_cb(void *tool_ctx, void *cb_ctx);
@@ -3280,6 +3318,10 @@ void flow_dv_action_rss_l34_hash_adjust(uint64_t rss_types,
 					uint64_t *hash_field);
 uint32_t flow_dv_action_rss_hrxq_lookup(struct rte_eth_dev *dev, uint32_t idx,
 					const uint64_t hash_fields);
+int flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
+		     const struct rte_flow_item items[],
+		     const struct rte_flow_action actions[],
+		     bool external, int hairpin, struct rte_flow_error *error);
 
 struct mlx5_list_entry *flow_hw_grp_create_cb(void *tool_ctx, void *cb_ctx);
 void flow_hw_grp_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
@@ -3385,6 +3427,13 @@ int flow_dv_translate_items_hws(const struct rte_flow_item *items,
 				uint8_t *match_criteria,
 				struct rte_flow_error *error);
 
+int __flow_dv_translate_items_hws(const struct rte_flow_item *items,
+				struct mlx5_flow_attr *attr, void *key,
+				uint32_t key_type, uint64_t *item_flags,
+				uint8_t *match_criteria,
+				bool nt_flow,
+				struct rte_flow_error *error);
+
 int mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
 				  uint16_t *proxy_port_id,
 				  struct rte_flow_error *error);
@@ -3427,6 +3476,13 @@ int mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 			   enum rte_flow_field_id field, int inherit,
 			   const struct rte_flow_attr *attr,
 			   struct rte_flow_error *error);
+uint32_t flow_legacy_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+				const struct rte_flow_attr *attr,
+				const struct rte_flow_item items[],
+				const struct rte_flow_action actions[],
+				bool external, struct rte_flow_error *error);
+void flow_legacy_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+				uint32_t flow_idx);
 
 static __rte_always_inline int
 flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)

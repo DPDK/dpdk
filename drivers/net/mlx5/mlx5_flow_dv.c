@@ -7683,7 +7683,7 @@ const struct rte_flow_item_tcp nic_tcp_mask = {
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
@@ -8127,6 +8127,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								error);
 			if (ret < 0)
 				return ret;
+			last_item = MLX5_FLOW_LAYER_ASO_CT;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_TUNNEL:
 			/* tunnel offload item was processed before
@@ -8265,6 +8266,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_META:
+			if (priv->sh->config.dv_flow_en == 2)
+				return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
 			ret = flow_dv_validate_action_set_meta(dev, actions,
 							       action_flags,
 							       attr, error);
@@ -8622,6 +8628,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += MLX5_ACT_NUM_SET_TAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER:
+			if (priv->sh->config.dv_flow_en == 2)
+				return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  actions,
+						  "action not supported");
 			ret = mlx5_flow_validate_action_meter(dev,
 							      action_flags,
 							      item_flags,
@@ -10464,6 +10475,8 @@ flow_dv_match_meta_reg(void *key, enum modify_reg reg_type,
 		MLX5_ADDR_OF(fte_match_param, key, misc_parameters_2);
 	uint32_t temp;
 
+	if (!key)
+		return;
 	data &= mask;
 	switch (reg_type) {
 	case REG_A:
@@ -11575,8 +11588,8 @@ __flow_dv_adjust_buf_size(size_t *size, uint8_t match_criteria)
 	}
 }
 
-static struct mlx5_list_entry *
-flow_dv_matcher_clone_cb(void *tool_ctx __rte_unused,
+struct mlx5_list_entry *
+flow_matcher_clone_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -11598,8 +11611,8 @@ flow_dv_matcher_clone_cb(void *tool_ctx __rte_unused,
 	return &resource->entry;
 }
 
-static void
-flow_dv_matcher_clone_free_cb(void *tool_ctx __rte_unused,
+void
+flow_matcher_clone_free_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry)
 {
 	mlx5_free(entry);
@@ -11672,11 +11685,11 @@ flow_dv_tbl_create_cb(void *tool_ctx, void *cb_ctx)
 	      key.is_fdb ? "FDB" : "NIC", key.is_egress ? "egress" : "ingress",
 	      key.level, key.id);
 	tbl_data->matchers = mlx5_list_create(matcher_name, sh, true,
-					      flow_dv_matcher_create_cb,
-					      flow_dv_matcher_match_cb,
-					      flow_dv_matcher_remove_cb,
-					      flow_dv_matcher_clone_cb,
-					      flow_dv_matcher_clone_free_cb);
+					      flow_matcher_create_cb,
+					      flow_matcher_match_cb,
+					      flow_matcher_remove_cb,
+					      flow_matcher_clone_cb,
+					      flow_matcher_clone_free_cb);
 	if (!tbl_data->matchers) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -11879,7 +11892,7 @@ flow_dv_tbl_resource_release(struct mlx5_dev_ctx_shared *sh,
 }
 
 int
-flow_dv_matcher_match_cb(void *tool_ctx __rte_unused,
+flow_matcher_match_cb(void *tool_ctx __rte_unused,
 			 struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -11894,7 +11907,7 @@ flow_dv_matcher_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_matcher_create_cb(void *tool_ctx, void *cb_ctx)
+flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -11916,23 +11929,26 @@ flow_dv_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 				   "cannot create matcher");
 		return NULL;
 	}
+	/*Consider memcpy(resource, ref, sizeof(*resource));*/
 	*resource = *ref;
-	dv_attr.match_criteria_enable =
-		flow_dv_matcher_enable(resource->mask.buf);
-	__flow_dv_adjust_buf_size(&ref->mask.size,
-				  dv_attr.match_criteria_enable);
-	dv_attr.priority = ref->priority;
-	if (tbl->is_egress)
-		dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
-	ret = mlx5_flow_os_create_flow_matcher(sh->cdev->ctx, &dv_attr,
-					       tbl->tbl.obj,
-					       &resource->matcher_object);
-	if (ret) {
-		mlx5_free(resource);
-		rte_flow_error_set(ctx->error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "cannot create matcher");
-		return NULL;
+	if (sh->config.dv_flow_en != 2) {
+		dv_attr.match_criteria_enable =
+			flow_dv_matcher_enable(resource->mask.buf);
+		__flow_dv_adjust_buf_size(&ref->mask.size,
+					dv_attr.match_criteria_enable);
+		dv_attr.priority = ref->priority;
+		if (tbl->is_egress)
+			dv_attr.flags |= IBV_FLOW_ATTR_FLAGS_EGRESS;
+		ret = mlx5_flow_os_create_flow_matcher(sh->cdev->ctx, &dv_attr,
+						tbl->tbl.obj,
+						&resource->matcher_object);
+		if (ret) {
+			mlx5_free(resource);
+			rte_flow_error_set(ctx->error, ENOMEM,
+					RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					"cannot create matcher");
+			return NULL;
+		}
 	}
 	return &resource->entry;
 }
@@ -14353,6 +14369,60 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 }
 
 /**
+ * Fill the flow matcher with DV spec for items supported in non template mode.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] wks
+ *   Pointer to the matcher workspace.
+ * @param[in] key
+ *   Pointer to the flow matcher key.
+ * @param[in] key_type
+ *   Key type.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_dv_translate_items_nta(struct rte_eth_dev *dev,
+			const struct rte_flow_item *items,
+			struct mlx5_dv_matcher_workspace *wks,
+			void *key, uint32_t key_type,
+			struct rte_flow_error *error)
+{
+	int item_type;
+	int ret = 0;
+	int tunnel;
+	/* Dummy structure to enable the key calculation for flex item. */
+	struct mlx5_flow_dv_match_params flex_item_key;
+
+	tunnel = !!(wks->item_flags & MLX5_FLOW_LAYER_TUNNEL);
+	item_type = items->type;
+	switch (item_type) {
+	case RTE_FLOW_ITEM_TYPE_CONNTRACK:
+		flow_dv_translate_item_aso_ct(dev, key, NULL, items);
+		wks->last_item = MLX5_FLOW_LAYER_ASO_CT;
+		break;
+	/* TODO: remove once flex item translation is added to flow_dv_translate_items. */
+	case RTE_FLOW_ITEM_TYPE_FLEX:
+		mlx5_flex_flow_translate_item(dev, key, flex_item_key.buf, items, tunnel != 0);
+		wks->last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX : MLX5_FLOW_ITEM_OUTER_FLEX;
+		break;
+	default:
+		ret = flow_dv_translate_items(dev, items, wks, key, key_type,  error);
+		if (ret)
+			return ret;
+		break;
+	}
+	wks->item_flags |= wks->last_item;
+	return 0;
+}
+
+/**
  * Fill the HW steering flow with DV spec.
  *
  * @param[in] items
@@ -14365,6 +14435,8 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
  *   Key type.
  * @param[in, out] item_flags
  *   Pointer to the flow item flags.
+ * @param[in, out] nt_flow
+ *   Non template flow.
  * @param[out] error
  *   Pointer to the error structure.
  *
@@ -14372,10 +14444,11 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_translate_items_hws(const struct rte_flow_item *items,
+__flow_dv_translate_items_hws(const struct rte_flow_item *items,
 			    struct mlx5_flow_attr *attr, void *key,
 			    uint32_t key_type, uint64_t *item_flags,
 			    uint8_t *match_criteria,
+			    bool nt_flow,
 			    struct rte_flow_error *error)
 {
 	struct mlx5_flow_workspace *flow_wks = mlx5_flow_push_thread_workspace();
@@ -14405,10 +14478,18 @@ flow_dv_translate_items_hws(const struct rte_flow_item *items,
 						 NULL, "item not supported");
 			goto exit;
 		}
-		ret = flow_dv_translate_items(&rte_eth_devices[attr->port_id],
-			items, &wks, key, key_type,  NULL);
-		if (ret)
-			goto exit;
+		/* Non template flow. */
+		if (nt_flow) {
+			ret = flow_dv_translate_items_nta(&rte_eth_devices[attr->port_id],
+							  items, &wks, key, key_type,  NULL);
+			if (ret)
+				goto exit;
+		} else {
+			ret = flow_dv_translate_items(&rte_eth_devices[attr->port_id],
+						      items, &wks, key, key_type,  NULL);
+			if (ret)
+				goto exit;
+		}
 	}
 	if (wks.item_flags & MLX5_FLOW_ITEM_INTEGRITY) {
 		flow_dv_translate_item_integrity_post(key,
@@ -14455,6 +14536,37 @@ flow_dv_translate_items_hws(const struct rte_flow_item *items,
 exit:
 	mlx5_flow_pop_thread_workspace();
 	return ret;
+}
+
+/**
+ * Fill the HW steering flow with DV spec.
+ * This function assumes given flow is created from template API.
+ *
+ * @param[in] items
+ *   Pointer to the list of items.
+ * @param[in] attr
+ *   Pointer to the flow attributes.
+ * @param[in] key
+ *   Pointer to the flow matcher key.
+ * @param[in] key_type
+ *   Key type.
+ * @param[in, out] item_flags
+ *   Pointer to the flow item flags.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+flow_dv_translate_items_hws(const struct rte_flow_item *items,
+			    struct mlx5_flow_attr *attr, void *key,
+			    uint32_t key_type, uint64_t *item_flags,
+			    uint8_t *match_criteria,
+			    struct rte_flow_error *error)
+{
+	return __flow_dv_translate_items_hws(items, attr, key, key_type, item_flags, match_criteria,
+					     false, error);
 }
 
 /**
@@ -14513,6 +14625,7 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			flow_dv_translate_item_aso_ct(dev, match_mask,
 						      match_value, items);
+			wks.last_item = MLX5_FLOW_LAYER_ASO_CT;
 			break;
 		case RTE_FLOW_ITEM_TYPE_FLEX:
 			flow_dv_translate_item_flex(dev, match_mask,
@@ -15809,14 +15922,21 @@ error:
 }
 
 void
-flow_dv_matcher_remove_cb(void *tool_ctx __rte_unused,
+flow_matcher_remove_cb(void *tool_ctx __rte_unused,
 			  struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_matcher *resource = container_of(entry,
 							     typeof(*resource),
 							     entry);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 
-	claim_zero(mlx5_flow_os_destroy_flow_matcher(resource->matcher_object));
+	if (sh->config.dv_flow_en == 2)
+		claim_zero(mlx5dr_bwc_matcher_destroy((struct mlx5dr_bwc_matcher *)
+								resource->matcher_object));
+	else
+#endif
+		claim_zero(mlx5_flow_os_destroy_flow_matcher(resource->matcher_object));
 	mlx5_free(resource);
 }
 
@@ -20225,6 +20345,8 @@ flow_dv_discover_priorities(struct rte_eth_dev *dev,
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_dv_drv_ops = {
+	.list_create = flow_legacy_list_create,
+	.list_destroy = flow_legacy_list_destroy,
 	.validate = flow_dv_validate,
 	.prepare = flow_dv_prepare,
 	.translate = flow_dv_translate,

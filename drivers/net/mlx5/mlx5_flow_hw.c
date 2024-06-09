@@ -271,6 +271,9 @@ get_mlx5dr_table_type(const struct rte_flow_attr *attr)
 	return type;
 }
 
+/* Non template default queue size used for inner ctrl queue. */
+#define MLX5_NT_DEFAULT_QUEUE_SIZE 32
+
 struct mlx5_mirror_clone {
 	enum rte_flow_action_type type;
 	void *action_ctx;
@@ -2153,12 +2156,12 @@ err1:
  *   0 on success, a negative errno otherwise and rte_errno is set.
  */
 static int
-__flow_hw_actions_translate(struct rte_eth_dev *dev,
-			    const struct mlx5_flow_template_table_cfg *cfg,
-			    struct mlx5_hw_actions *acts,
-			    struct rte_flow_actions_template *at,
-			    struct mlx5_tbl_multi_pattern_ctx *mp_ctx,
-			    struct rte_flow_error *error)
+__flow_hw_translate_actions_template(struct rte_eth_dev *dev,
+				     const struct mlx5_flow_template_table_cfg *cfg,
+				     struct mlx5_hw_actions *acts,
+				     struct rte_flow_actions_template *at,
+				     struct mlx5_tbl_multi_pattern_ctx *mp_ctx,
+				     struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
@@ -4877,6 +4880,53 @@ flow_hw_table_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static inline int
+__translate_group(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *flow_attr,
+			bool external,
+			uint32_t group,
+			uint32_t *table_group,
+			struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_sh_config *config = &priv->sh->config;
+
+	if (config->dv_esw_en &&
+	    priv->fdb_def_rule &&
+	    external &&
+	    flow_attr->transfer) {
+		if (group > MLX5_HW_MAX_TRANSFER_GROUP)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+						  NULL,
+						  "group index not supported");
+		*table_group = group + 1;
+	} else if (config->dv_esw_en &&
+		   (config->repr_matching || config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) &&
+		   external &&
+		   flow_attr->egress) {
+		/*
+		 * On E-Switch setups, default egress flow rules are inserted to allow
+		 * representor matching and/or preserving metadata across steering domains.
+		 * These flow rules are inserted in group 0 and this group is reserved by PMD
+		 * for these purposes.
+		 *
+		 * As a result, if representor matching or extended metadata mode is enabled,
+		 * group provided by the user must be incremented to avoid inserting flow rules
+		 * in group 0.
+		 */
+		if (group > MLX5_HW_MAX_EGRESS_GROUP)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+						  NULL,
+						  "group index not supported");
+		*table_group = group + 1;
+	} else {
+		*table_group = group;
+	}
+	return 0;
+}
+
 /**
  * Translates group index specified by the user in @p attr to internal
  * group index.
@@ -4905,44 +4955,9 @@ flow_hw_translate_group(struct rte_eth_dev *dev,
 			uint32_t *table_group,
 			struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_sh_config *config = &priv->sh->config;
 	const struct rte_flow_attr *flow_attr = &cfg->attr.flow_attr;
 
-	if (config->dv_esw_en &&
-	    priv->fdb_def_rule &&
-	    cfg->external &&
-	    flow_attr->transfer) {
-		if (group > MLX5_HW_MAX_TRANSFER_GROUP)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-						  NULL,
-						  "group index not supported");
-		*table_group = group + 1;
-	} else if (config->dv_esw_en &&
-		   (config->repr_matching || config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) &&
-		   cfg->external &&
-		   flow_attr->egress) {
-		/*
-		 * On E-Switch setups, default egress flow rules are inserted to allow
-		 * representor matching and/or preserving metadata across steering domains.
-		 * These flow rules are inserted in group 0 and this group is reserved by PMD
-		 * for these purposes.
-		 *
-		 * As a result, if representor matching or extended metadata mode is enabled,
-		 * group provided by the user must be incremented to avoid inserting flow rules
-		 * in group 0.
-		 */
-		if (group > MLX5_HW_MAX_EGRESS_GROUP)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-						  NULL,
-						  "group index not supported");
-		*table_group = group + 1;
-	} else {
-		*table_group = group;
-	}
-	return 0;
+	return __translate_group(dev, flow_attr, cfg->external, group, table_group, error);
 }
 
 /**
@@ -7406,7 +7421,7 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	unsigned int act_num;
 	unsigned int i;
 	struct rte_flow_actions_template *at = NULL;
-	uint16_t pos = UINT16_MAX;
+	uint16_t pos;
 	uint64_t action_flags = 0;
 	struct rte_flow_action tmp_action[MLX5_HW_MAX_ACTS];
 	struct rte_flow_action tmp_mask[MLX5_HW_MAX_ACTS];
@@ -8617,6 +8632,9 @@ flow_hw_grp_create_cb(void *tool_ctx, void *cb_ctx)
 	struct mlx5dr_table *tbl = NULL;
 	struct mlx5dr_action *jump;
 	uint32_t idx = 0;
+	MKSTR(matcher_name, "%s_%s_%u_%u_matcher_list",
+	      attr->transfer ? "FDB" : "NIC", attr->egress ? "egress" : "ingress",
+	      attr->group, idx);
 
 	grp_data = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_HW_GRP], &idx);
 	if (!grp_data) {
@@ -8654,6 +8672,13 @@ flow_hw_grp_create_cb(void *tool_ctx, void *cb_ctx)
 			goto error;
 		grp_data->jump.root_action = jump;
 	}
+
+	grp_data->matchers = mlx5_list_create(matcher_name, sh, true,
+					      flow_matcher_create_cb,
+					      flow_matcher_match_cb,
+					      flow_matcher_remove_cb,
+					      flow_matcher_clone_cb,
+					      flow_matcher_clone_free_cb);
 	grp_data->dev = dev;
 	grp_data->idx = idx;
 	grp_data->group_id = attr->group;
@@ -8697,6 +8722,7 @@ flow_hw_grp_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 	if (grp_data->jump.root_action)
 		mlx5dr_action_destroy(grp_data->jump.root_action);
 	mlx5dr_table_destroy(grp_data->tbl);
+	mlx5_list_destroy(grp_data->matchers);
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_HW_GRP], grp_data->idx);
 }
 
@@ -10972,6 +10998,10 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	int ret = 0;
 	uint32_t action_flags;
 
+	if (mlx5dr_rule_get_handle_size() != MLX5_DR_RULE_SIZE) {
+		rte_errno = EINVAL;
+		goto err;
+	}
 	if (flow_hw_validate_attributes(port_attr, nb_queue, queue_attr, error))
 		return -rte_errno;
 	/*
@@ -11116,6 +11146,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		rte_atomic_fetch_add_explicit(&host_priv->shared_refcnt, 1,
 				rte_memory_order_relaxed);
 	}
+	/* Set backward compatibale mode to support non template RTE FLOW API.*/
+	dr_ctx_attr.bwc = true;
 	dr_ctx = mlx5dr_context_open(priv->sh->cdev->ctx, &dr_ctx_attr);
 	/* rte_errno has been updated by HWS layer. */
 	if (!dr_ctx)
@@ -12578,6 +12610,392 @@ flow_hw_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 			dev->data->port_id);
 	return flow_hw_get_q_aged_flows(dev, 0, contexts, nb_contexts, error);
 }
+/**
+ * Initialization function for non template API which calls
+ * flow_hw_configure with default values.
+ * Configure non queues cause 1 queue is configured by default for inner usage.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[out] error
+ *   Pointer to the error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+flow_hw_init(struct rte_eth_dev *dev,
+	     struct rte_flow_error *error)
+{
+	const struct rte_flow_port_attr port_attr = {0};
+	struct rte_flow_queue_attr queue_attr = {.size = MLX5_NT_DEFAULT_QUEUE_SIZE};
+	const struct rte_flow_queue_attr *attr_list = &queue_attr;
+
+	/**
+	 * If user uses template and non template API:
+	 * User will call flow_hw_configure and non template
+	 * API will use the allocated actions.
+	 * Init function will not call flow_hw_configure.
+	 *
+	 * If user uses only non template API's:
+	 * Init function will call flow_hw_configure.
+	 * It will not allocate memory for actions.
+	 * When needed allocation, it will handle same as for SWS today,
+	 * meaning using bulk allocations and resize as needed.
+	 */
+	/* Configure hws with default values. */
+	DRV_LOG(DEBUG, "Apply default configuration, zero number of queues, inner control queue size is %u",
+		MLX5_NT_DEFAULT_QUEUE_SIZE);
+	return flow_hw_configure(dev, &port_attr, 0, &attr_list, error);
+}
+
+static int flow_hw_prepare(struct rte_eth_dev *dev,
+			   const struct rte_flow_action actions[] __rte_unused,
+			   enum mlx5_flow_type type,
+			   struct rte_flow_hw **flow,
+			   struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t idx = 0;
+
+	 /*
+	  * Notice pool idx size = (sizeof(struct rte_flow_hw)
+	  * + sizeof(struct rte_flow_nt2hws)) for HWS mode.
+	  */
+	*flow = mlx5_ipool_zmalloc(priv->flows[type], &idx);
+	if (!(*flow))
+		return rte_flow_error_set(error, ENOMEM,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"cannot allocate flow memory");
+	/* Allocating 2 structures in one pool slot, updating nt2hw pointer.*/
+	(*flow)->nt2hws = (struct rte_flow_nt2hws *)
+				((uintptr_t)(*flow) + sizeof(struct rte_flow_hw));
+	(*flow)->idx = idx;
+	return 0;
+}
+
+static int flow_hw_translate_actions(struct rte_eth_dev *dev __rte_unused,
+					const struct rte_flow_attr *attr __rte_unused,
+					const struct rte_flow_action actions[] __rte_unused,
+					struct rte_flow_hw *flow __rte_unused,
+					struct rte_flow_error *error __rte_unused)
+{
+	/* TODO implement */
+	return 0;
+}
+
+static int flow_hw_register_matcher(struct rte_eth_dev *dev,
+				    const struct rte_flow_attr *attr,
+				    const struct rte_flow_item items[],
+				    bool external,
+				    struct rte_flow_hw *flow,
+				    struct mlx5_flow_dv_matcher *matcher,
+				    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_error sub_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.cause = NULL,
+		.message = NULL,
+	};
+	struct rte_flow_attr flow_attr = *attr;
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = &sub_error,
+		.data = &flow_attr,
+	};
+	struct mlx5_flow_cb_ctx matcher_ctx = {
+		.error = &sub_error,
+		.data = matcher,
+	};
+	struct mlx5_list_entry *group_entry;
+	struct mlx5_list_entry *matcher_entry;
+	struct mlx5_flow_dv_matcher *resource;
+	struct mlx5_list *matchers_list;
+	struct mlx5_flow_group *flow_group;
+	uint32_t group = 0;
+	int ret;
+
+
+	matcher->crc = rte_raw_cksum((const void *)matcher->mask.buf,
+				    matcher->mask.size);
+	matcher->priority = attr->priority;
+	ret = __translate_group(dev, attr, external, attr->group, &group, error);
+	if (ret)
+		return ret;
+
+	/* Register the flow group. */
+	group_entry = mlx5_hlist_register(priv->sh->groups, group, &ctx);
+	if (!group_entry)
+		goto error;
+	flow_group = container_of(group_entry, struct mlx5_flow_group, entry);
+
+	matchers_list = flow_group->matchers;
+	matcher->group = flow_group;
+	matcher_entry = mlx5_list_register(matchers_list, &matcher_ctx);
+	if (!matcher_entry)
+		goto error;
+	resource = container_of(matcher_entry, typeof(*resource), entry);
+	if (!resource)
+		goto error;
+	flow->nt2hws->matcher = resource;
+
+	/* If matcher was not found and reused in list, create matcher object. */
+	if (!resource->matcher_object) {
+		resource->matcher_object = (void *)mlx5dr_bwc_matcher_create
+			(flow_group->tbl, matcher->priority, items);
+	}
+	/* If matcher create failed */
+	if (!(resource->matcher_object))
+		goto error;
+	return 0;
+
+error:
+	if (error) {
+		if (sub_error.type != RTE_FLOW_ERROR_TYPE_NONE)
+			rte_memcpy(error, &sub_error, sizeof(sub_error));
+		return rte_flow_error_set(error, ENOMEM,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL, "fail to register matcher");
+	} else {
+		return -ENOMEM;
+	}
+}
+
+static int flow_hw_apply(const struct rte_flow_item items[],
+			 struct mlx5dr_rule_action rule_actions[],
+			 struct rte_flow_hw *flow,
+			 struct rte_flow_error *error)
+{
+	struct mlx5dr_bwc_rule *rule = NULL;
+
+	rule = mlx5dr_bwc_rule_create((struct mlx5dr_bwc_matcher *)
+		flow->nt2hws->matcher->matcher_object,
+		items, rule_actions);
+	flow->nt2hws->nt_rule = rule;
+	if (!rule) {
+		if (error)
+			return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL, "fail to create rte flow");
+		else
+			return -EINVAL;
+	}
+	return 0;
+}
+
+#ifdef HAVE_MLX5_HWS_SUPPORT
+/**
+ * Create a flow.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] type
+ *   Flow type.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[out] flow
+ *   Flow pointer
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno set.
+ */
+static int flow_hw_create_flow(struct rte_eth_dev *dev,
+			       enum mlx5_flow_type type,
+			       const struct rte_flow_attr *attr,
+			       const struct rte_flow_item items[],
+			       const struct rte_flow_action actions[],
+			       bool external,
+			       struct rte_flow_hw **flow,
+			       struct rte_flow_error *error)
+{
+	int ret;
+	struct mlx5_hw_actions hw_act;
+	struct mlx5_flow_dv_matcher matcher = {
+		.mask = {
+			.size = sizeof(matcher.mask.buf),
+		},
+	};
+	uint32_t tbl_type;
+
+	struct mlx5_flow_attr flow_attr = {
+		.port_id = dev->data->port_id,
+		.group = attr->group,
+		.priority = attr->priority,
+		.rss_level = 0,
+		.act_flags = 0,
+		.tbl_type = 0,
+		};
+
+	memset(&hw_act, 0, sizeof(hw_act));
+	if (attr->transfer)
+		tbl_type = MLX5DR_TABLE_TYPE_FDB;
+	else if (attr->egress)
+		tbl_type = MLX5DR_TABLE_TYPE_NIC_TX;
+	else
+		tbl_type = MLX5DR_TABLE_TYPE_NIC_RX;
+	flow_attr.tbl_type = tbl_type;
+
+	/* Allocate needed memory. */
+	ret = flow_hw_prepare(dev, actions, type, flow, error);
+	if (ret)
+		goto error;
+
+	/* TODO TBD flow_hw_handle_tunnel_offload(). */
+
+	(*flow)->nt2hws->matcher = &matcher;
+	ret = __flow_dv_translate_items_hws(items, &flow_attr, &matcher.mask.buf,
+					MLX5_SET_MATCHER_HS_M, 0,
+					NULL, true, error);
+	if (ret)
+		goto error;
+
+	ret = flow_hw_register_matcher(dev, attr, items, external, *flow, &matcher, error);
+	if (ret)
+		goto error;
+
+	ret = flow_hw_translate_actions(dev, attr, actions, *flow, error);
+	if (ret)
+		goto error;
+
+	/*
+	 * If the flow is external (from application) OR device is started,
+	 * OR mreg discover, then apply immediately.
+	 */
+	if (external || dev->data->dev_started ||
+	    (attr->group == MLX5_FLOW_MREG_CP_TABLE_GROUP &&
+	     attr->priority == MLX5_FLOW_LOWEST_PRIO_INDICATOR)) {
+		ret = flow_hw_apply(items, hw_act.rule_acts, *flow, error);
+		if (ret)
+			goto error;
+	}
+	return 0;
+
+error:
+	if (error)
+		return rte_flow_error_set(error, EINVAL,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL, "fail to create rte flow");
+	else
+		return -EINVAL;
+}
+#endif
+
+static void
+flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
+{
+	int ret;
+
+	if (!flow || !flow->nt2hws)
+		return;
+
+	if (flow->nt2hws->nt_rule) {
+		ret = mlx5dr_bwc_rule_destroy(flow->nt2hws->nt_rule);
+		if (likely(!ret))
+			DRV_LOG(ERR, "bwc rule destroy failed");
+	}
+
+	/* Notice this function does not handle shared/static actions. */
+	hw_cmpl_flow_update_or_destroy(dev, flow, 0, NULL);
+
+	/**
+	 * TODO: TBD - Release tunnel related memory allocations(mlx5_flow_tunnel_free)
+	 * – needed only if supporting tunnel offloads, notice update RX queue flags in SWS.
+	 */
+
+	 /**
+	  * Notice matcher destroy will take place when matcher's list is destroyed
+	  * , same as for DV.
+	  */
+}
+
+#ifdef HAVE_MLX5_HWS_SUPPORT
+/**
+ * Destroy a flow.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] type
+ *   Flow type.
+ * @param[in] flow_idx
+ *   Index of flow to destroy.
+ */
+static void flow_hw_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+				 uint32_t flow_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	/* Get flow via idx */
+	struct rte_flow_hw *flow = mlx5_ipool_get(priv->flows[type], flow_idx);
+
+	DRV_LOG(DEBUG, "Non template flow index %u destroy", flow_idx);
+	if (!flow)
+		return;
+	flow_hw_destroy(dev, flow);
+	/* Release flow memory by idx */
+	mlx5_ipool_free(priv->flows[type], flow_idx);
+}
+#endif
+
+/**
+ * Create a flow.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device.
+ * @param[in] type
+ *   Flow type.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ * @param[in] external
+ *   This flow rule is created by request external to PMD.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *
+ * @return
+ *   A flow index on success, 0 otherwise and rte_errno is set.
+ */
+static uint32_t flow_hw_list_create(struct rte_eth_dev *dev,
+				    enum mlx5_flow_type type,
+				    const struct rte_flow_attr *attr,
+				    const struct rte_flow_item items[],
+				    const struct rte_flow_action actions[],
+				    bool external,
+				    struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_flow_hw *flow = NULL;
+
+	/*
+	 * TODO: add a call to flow_hw_validate function once it exist.
+	 * and update mlx5_flow_hw_drv_ops accordingly.
+	 */
+
+	/* TODO: Handle split/expand to num_flows. */
+
+	DRV_LOG(DEBUG, "Non template flow creation");
+	/* Create single flow. */
+	ret = flow_hw_create_flow(dev, type, attr, items, actions, external, &flow, error);
+	if (ret)
+		goto free;
+	if (flow)
+		return flow->idx;
+
+free:
+	if (flow)
+		flow_hw_list_destroy(dev, type, flow->idx);
+	return 0;
+}
 
 static void
 mlx5_mirror_destroy_clone(struct rte_eth_dev *dev,
@@ -13570,6 +13988,9 @@ flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
+	.list_create = flow_hw_list_create,
+	.list_destroy = flow_hw_list_destroy,
+	.validate = flow_dv_validate,
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
 	.pattern_validate = flow_hw_pattern_validate,

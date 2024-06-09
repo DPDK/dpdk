@@ -2186,6 +2186,8 @@ flow_verbs_sync_domain(struct rte_eth_dev *dev, uint32_t domains,
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_verbs_drv_ops = {
+	.list_create = flow_legacy_list_create,
+	.list_destroy = flow_legacy_list_destroy,
 	.validate = flow_verbs_validate,
 	.prepare = flow_verbs_prepare,
 	.translate = flow_verbs_translate,
