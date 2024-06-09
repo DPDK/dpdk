@@ -705,6 +705,26 @@ mlx5_flow_meter_param_fill(struct mlx5_flow_meter_profile *fmp,
 }
 
 /**
+ * Callback to get MTR maximum objects number.
+ *
+ * @param[in] priv
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   Max number of meters.
+ */
+uint32_t
+mlx5_flow_mtr_max_get(struct mlx5_priv *priv)
+{
+	struct mlx5_hca_qos_attr *qattr = &priv->sh->cdev->config.hca_attr.qos;
+
+	/* Max number of meters. */
+	return ((priv->sh->meter_aso_en) ?
+	1 << (qattr->log_max_num_meter_aso + 1) :
+	qattr->log_max_flow_meter);
+}
+
+/**
  * Callback to get MTR capabilities.
  *
  * @param[in] dev
@@ -730,14 +750,11 @@ mlx5_flow_mtr_cap_get(struct rte_eth_dev *dev,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "Meter is not supported");
 	memset(cap, 0, sizeof(*cap));
+	cap->n_max = mlx5_flow_mtr_max_get(priv);
 	if (priv->sh->meter_aso_en) {
-		/* 2 meters per one ASO cache line. */
-		cap->n_max = 1 << (qattr->log_max_num_meter_aso + 1);
 		cap->srtcm_rfc2697_packet_mode_supported = 1;
 		cap->trtcm_rfc2698_packet_mode_supported = 1;
 		cap->trtcm_rfc4115_packet_mode_supported = 1;
-	} else {
-		cap->n_max = 1 << qattr->log_max_flow_meter;
 	}
 	cap->srtcm_rfc2697_byte_mode_supported = 1;
 	cap->trtcm_rfc2698_byte_mode_supported = 1;

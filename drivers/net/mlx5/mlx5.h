@@ -812,12 +812,18 @@ struct mlx5_dev_shared_port {
 /* Only yellow color valid. */
 #define MLX5_MTR_POLICY_MODE_OY 3
 
+/* Max number of meters. */
+#define MLX5_MTR_MAX(priv) (mlx5_flow_mtr_max_get(priv))
 /* Max number of meters allocated in non template mode. */
-#define MLX5_MTR_NT_MAX (1 << 23)
-/* Max number of connection tracking allocated in non template mode */
-#define MLX5_CT_NT_MAX (1 << 23)
-/* Max number of counters allocated in non template mode */
-#define MLX5_CNT_MAX (1 << 23)
+#define MLX5_MTR_NT_MAX(priv) (MLX5_MTR_MAX(priv) >> 1)
+/* Max number of connection tracking. */
+#define MLX5_CT_MAX(priv) (1 << (priv)->sh->cdev->config.hca_attr.log_max_conn_track_offload)
+/* Max number of connection tracking allocated in non template mode. */
+#define MLX5_CT_NT_MAX(priv) (MLX5_CT_MAX(priv) >> 1)
+/* Max number of counters. */
+#define MLX5_CNT_MAX(priv) ((priv)->sh->hws_max_nb_counters)
+/* Max number of counters allocated in non template mode. */
+#define MLX5_CNT_NT_MAX(priv) (MLX5_CNT_MAX(priv) >> 1)
 
 enum mlx5_meter_domain {
 	MLX5_MTR_DOMAIN_INGRESS,
@@ -2457,6 +2463,7 @@ mlx5_flow_meter_hierarchy_get_final_policy(struct rte_eth_dev *dev,
 int mlx5_flow_meter_flush(struct rte_eth_dev *dev,
 			  struct rte_mtr_error *error);
 void mlx5_flow_meter_rxq_flush(struct rte_eth_dev *dev);
+uint32_t mlx5_flow_mtr_max_get(struct mlx5_priv *priv);
 
 /* mlx5_os.c */
 

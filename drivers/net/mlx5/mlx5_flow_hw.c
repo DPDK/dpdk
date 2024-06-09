@@ -13113,6 +13113,7 @@ static int flow_hw_ensure_action_pools_allocated(struct rte_eth_dev *dev,
 	bool actions_end = false;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
+	uint obj_num;
 
 	for (; !actions_end; actions++) {
 		switch ((int)actions->type) {
@@ -13121,7 +13122,8 @@ static int flow_hw_ensure_action_pools_allocated(struct rte_eth_dev *dev,
 			if (!priv->hws_age_req) {
 				/* If no counters were previously allocated. */
 				if (!priv->hws_cpool) {
-					ret = mlx5_hws_cnt_pool_create(dev, MLX5_CNT_MAX,
+					obj_num = MLX5_CNT_NT_MAX(priv);
+					ret = mlx5_hws_cnt_pool_create(dev, obj_num,
 						priv->nb_queue, NULL);
 					if (ret)
 						goto err;
@@ -13139,7 +13141,8 @@ static int flow_hw_ensure_action_pools_allocated(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			/* If no counters were previously allocated. */
 			if (!priv->hws_cpool) {
-				ret = mlx5_hws_cnt_pool_create(dev, MLX5_CNT_MAX,
+				obj_num = MLX5_CNT_NT_MAX(priv);
+				ret = mlx5_hws_cnt_pool_create(dev, obj_num,
 					priv->nb_queue, NULL);
 				if (ret)
 					goto err;
@@ -13148,7 +13151,8 @@ static int flow_hw_ensure_action_pools_allocated(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			/* If no CT were previously allocated. */
 			if (!priv->hws_ctpool) {
-				ret = mlx5_flow_ct_init(dev, MLX5_CT_NT_MAX, priv->nb_queue);
+				obj_num = MLX5_CT_NT_MAX(priv);
+				ret = mlx5_flow_ct_init(dev, obj_num, priv->nb_queue);
 				if (ret)
 					goto err;
 			}
@@ -13156,7 +13160,8 @@ static int flow_hw_ensure_action_pools_allocated(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_METER_MARK:
 			/* If no meters were previously allocated. */
 			if (!priv->hws_mpool) {
-				ret = mlx5_flow_meter_init(dev, MLX5_MTR_NT_MAX, 0, 0,
+				obj_num = MLX5_MTR_NT_MAX(priv);
+				ret = mlx5_flow_meter_init(dev, obj_num, 0, 0,
 								priv->nb_queue);
 				if (ret)
 					goto err;
