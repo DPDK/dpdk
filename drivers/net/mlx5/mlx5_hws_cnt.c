@@ -443,7 +443,7 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 			(uint32_t)cnt_num, SOCKET_ID_ANY,
 			RING_F_MP_HTS_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
 	if (cntp->wait_reset_list == NULL) {
-		DRV_LOG(ERR, "failed to create free list ring");
+		DRV_LOG(ERR, "failed to create wait reset list ring");
 		goto error;
 	}
 	snprintf(mz_name, sizeof(mz_name), "%s_U_RING", pcfg->name);
@@ -631,16 +631,17 @@ mlx5_hws_cnt_pool_action_create(struct mlx5_priv *priv,
 	return ret;
 }
 
-struct mlx5_hws_cnt_pool *
+int
 mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
-		const struct rte_flow_port_attr *pattr, uint16_t nb_queue)
+		uint32_t nb_counters, uint16_t nb_queue,
+		struct mlx5_hws_cnt_pool *chost)
 {
 	struct mlx5_hws_cnt_pool *cpool = NULL;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hws_cache_param cparam = {0};
 	struct mlx5_hws_cnt_pool_cfg pcfg = {0};
 	char *mp_name;
-	int ret = 0;
+	int ret = -1;
 	size_t sz;
 
 	mp_name = mlx5_malloc(MLX5_MEM_ZERO, RTE_MEMZONE_NAMESIZE, 0, SOCKET_ID_ANY);
@@ -648,13 +649,9 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 		goto error;
 	snprintf(mp_name, RTE_MEMZONE_NAMESIZE, "MLX5_HWS_CNT_P_%x", dev->data->port_id);
 	pcfg.name = mp_name;
-	pcfg.request_num = pattr->nb_counters;
+	pcfg.request_num = nb_counters;
 	pcfg.alloc_factor = HWS_CNT_ALLOC_FACTOR_DEFAULT;
-	if (pattr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
-		struct mlx5_priv *host_priv =
-				priv->shared_host->data->dev_private;
-		struct mlx5_hws_cnt_pool *chost = host_priv->hws_cpool;
-
+	if (chost) {
 		pcfg.host_cpool = chost;
 		cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam);
 		if (cpool == NULL)
@@ -662,13 +659,13 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 		ret = mlx5_hws_cnt_pool_action_create(priv, cpool);
 		if (ret != 0)
 			goto error;
-		return cpool;
+		goto success;
 	}
 	/* init cnt service if not. */
 	if (priv->sh->cnt_svc == NULL) {
 		ret = mlx5_hws_cnt_svc_init(priv->sh);
-		if (ret != 0)
-			return NULL;
+		if (ret)
+			return ret;
 	}
 	cparam.fetch_sz = HWS_CNT_CACHE_FETCH_DEFAULT;
 	cparam.preload_sz = HWS_CNT_CACHE_PRELOAD_DEFAULT;
@@ -701,10 +698,13 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	rte_spinlock_lock(&priv->sh->cpool_lock);
 	LIST_INSERT_HEAD(&priv->sh->hws_cpool_list, cpool, next);
 	rte_spinlock_unlock(&priv->sh->cpool_lock);
-	return cpool;
+success:
+	priv->hws_cpool = cpool;
+	return 0;
 error:
 	mlx5_hws_cnt_pool_destroy(priv->sh, cpool);
-	return NULL;
+	priv->hws_cpool = NULL;
+	return ret;
 }
 
 void
@@ -1217,8 +1217,9 @@ mlx5_hws_age_info_destroy(struct mlx5_priv *priv)
  */
 int
 mlx5_hws_age_pool_init(struct rte_eth_dev *dev,
-		       const struct rte_flow_port_attr *attr,
-		       uint16_t nb_queues)
+		       uint32_t nb_aging_objects,
+		       uint16_t nb_queues,
+		       bool strict_queue)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_age_info *age_info = GET_PORT_AGE_INFO(priv);
@@ -1233,28 +1234,20 @@ mlx5_hws_age_pool_init(struct rte_eth_dev *dev,
 		.free = mlx5_free,
 		.type = "mlx5_hws_age_pool",
 	};
-	bool strict_queue = false;
 	uint32_t nb_alloc_cnts;
 	uint32_t rsize;
 	uint32_t nb_ages_updated;
 	int ret;
 
-	strict_queue = !!(attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE);
 	MLX5_ASSERT(priv->hws_cpool);
-	if (attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
-		DRV_LOG(ERR, "Aging sn not supported "
-			     "in cross vHCA sharing mode");
-		rte_errno = ENOTSUP;
-		return -ENOTSUP;
-	}
 	nb_alloc_cnts = mlx5_hws_cnt_pool_get_size(priv->hws_cpool);
 	if (strict_queue) {
 		rsize = mlx5_hws_aged_out_q_ring_size_get(nb_alloc_cnts,
 							  nb_queues);
-		nb_ages_updated = rsize * nb_queues + attr->nb_aging_objects;
+		nb_ages_updated = rsize * nb_queues + nb_aging_objects;
 	} else {
 		rsize = mlx5_hws_aged_out_ring_size_get(nb_alloc_cnts);
-		nb_ages_updated = rsize + attr->nb_aging_objects;
+		nb_ages_updated = rsize + nb_aging_objects;
 	}
 	ret = mlx5_hws_age_info_init(dev, nb_queues, strict_queue, rsize);
 	if (ret < 0)

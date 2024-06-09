@@ -302,6 +302,11 @@ static void
 flow_hw_construct_quota(struct mlx5_priv *priv,
 			struct mlx5dr_rule_action *rule_act, uint32_t qid);
 
+static int
+mlx5_flow_ct_init(struct rte_eth_dev *dev,
+		  uint32_t nb_conn_tracks,
+		  uint16_t nb_queue);
+
 static __rte_always_inline uint32_t flow_hw_tx_tag_regc_mask(struct rte_eth_dev *dev);
 static __rte_always_inline uint32_t flow_hw_tx_tag_regc_value(struct rte_eth_dev *dev);
 
@@ -1627,7 +1632,7 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	}
 	if (meter_mark->profile == NULL)
 		return NULL;
-	aso_mtr = mlx5_ipool_malloc(priv->hws_mpool->idx_pool, &mtr_id);
+	aso_mtr = mlx5_ipool_malloc(pool->idx_pool, &mtr_id);
 	if (!aso_mtr)
 		return NULL;
 	/* Fill the flow meter parameters. */
@@ -2447,8 +2452,10 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			recom_type = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
-			flow_hw_translate_group(dev, cfg, attr->group,
+			ret = flow_hw_translate_group(dev, cfg, attr->group,
 						&target_grp, error);
+			if (ret)
+				return ret;
 			if (target_grp == 0) {
 				__flow_hw_action_template_destroy(dev, acts);
 				return rte_flow_error_set(error, ENOTSUP,
@@ -2495,8 +2502,10 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
-			flow_hw_translate_group(dev, cfg, attr->group,
+			ret = flow_hw_translate_group(dev, cfg, attr->group,
 						&target_grp, error);
+			if (ret)
+				return ret;
 			if (target_grp == 0) {
 				__flow_hw_action_template_destroy(dev, acts);
 				return rte_flow_error_set(error, ENOTSUP,
@@ -2511,8 +2520,10 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				goto err;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			flow_hw_translate_group(dev, cfg, attr->group,
+			ret = flow_hw_translate_group(dev, cfg, attr->group,
 						&target_grp, error);
+			if (ret)
+				return ret;
 			if (target_grp == 0) {
 				__flow_hw_action_template_destroy(dev, acts);
 				return rte_flow_error_set(error, ENOTSUP,
@@ -10290,12 +10301,12 @@ flow_hw_ct_pool_destroy(struct rte_eth_dev *dev,
 
 static struct mlx5_aso_ct_pool *
 flow_hw_ct_pool_create(struct rte_eth_dev *dev,
-		       const struct rte_flow_port_attr *port_attr)
+		       uint32_t nb_conn_tracks)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pool *pool;
 	struct mlx5_devx_obj *obj;
-	uint32_t nb_cts = rte_align32pow2(port_attr->nb_conn_tracks);
+	uint32_t nb_cts = rte_align32pow2(nb_conn_tracks);
 	uint32_t log_obj_size = rte_log2_u32(nb_cts);
 	struct mlx5_indexed_pool_config cfg = {
 		.size = sizeof(struct mlx5_aso_ct_action),
@@ -10347,7 +10358,7 @@ flow_hw_ct_pool_create(struct rte_eth_dev *dev,
 		pool->devx_obj = host_priv->hws_ctpool->devx_obj;
 		pool->cts = host_priv->hws_ctpool->cts;
 		MLX5_ASSERT(pool->cts);
-		MLX5_ASSERT(!port_attr->nb_conn_tracks);
+		MLX5_ASSERT(!nb_conn_tracks);
 	}
 	reg_id = mlx5_flow_get_reg_id(dev, MLX5_ASO_CONNTRACK, 0, NULL);
 	flags |= MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
@@ -10365,6 +10376,46 @@ flow_hw_ct_pool_create(struct rte_eth_dev *dev,
 err:
 	flow_hw_ct_pool_destroy(dev, pool);
 	return NULL;
+}
+
+static int
+mlx5_flow_ct_init(struct rte_eth_dev *dev,
+		  uint32_t nb_conn_tracks,
+		  uint16_t nb_queue)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t mem_size;
+	int ret = -ENOMEM;
+
+	if (!priv->shared_host) {
+		mem_size = sizeof(struct mlx5_aso_sq) * nb_queue +
+				sizeof(*priv->ct_mng);
+		priv->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
+						RTE_CACHE_LINE_SIZE,
+						SOCKET_ID_ANY);
+		if (!priv->ct_mng)
+			goto err;
+		ret = mlx5_aso_ct_queue_init(priv->sh, priv->ct_mng,
+						nb_queue);
+		if (ret)
+			goto err;
+	}
+	priv->hws_ctpool = flow_hw_ct_pool_create(dev, nb_conn_tracks);
+	if (!priv->hws_ctpool)
+		goto err;
+	priv->sh->ct_aso_en = 1;
+	return 0;
+
+err:
+	if (priv->hws_ctpool) {
+		flow_hw_ct_pool_destroy(dev, priv->hws_ctpool);
+		priv->hws_ctpool = NULL;
+	}
+	if (priv->ct_mng) {
+		flow_hw_ct_mng_destroy(dev, priv->ct_mng);
+		priv->ct_mng = NULL;
+	}
+	return ret;
 }
 
 static void
@@ -11014,6 +11065,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	bool is_proxy = !!(priv->sh->config.dv_esw_en && priv->master);
 	int ret = 0;
 	uint32_t action_flags;
+	bool strict_queue = false;
 
 	if (mlx5dr_rule_get_handle_size() != MLX5_DR_RULE_SIZE) {
 		rte_errno = EINVAL;
@@ -11255,25 +11307,13 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	if (!priv->shared_host)
 		flow_hw_create_send_to_kernel_actions(priv);
 	if (port_attr->nb_conn_tracks || (host_priv && host_priv->hws_ctpool)) {
-		if (!priv->shared_host) {
-			mem_size = sizeof(struct mlx5_aso_sq) * nb_q_updated +
-				sizeof(*priv->ct_mng);
-			priv->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
-						RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
-			if (!priv->ct_mng)
-				goto err;
-			if (mlx5_aso_ct_queue_init(priv->sh, priv->ct_mng, nb_q_updated))
-				goto err;
-		}
-		priv->hws_ctpool = flow_hw_ct_pool_create(dev, port_attr);
-		if (!priv->hws_ctpool)
+		if (mlx5_flow_ct_init(dev, port_attr->nb_conn_tracks, nb_q_updated))
 			goto err;
-		priv->sh->ct_aso_en = 1;
 	}
 	if (port_attr->nb_counters || (host_priv && host_priv->hws_cpool)) {
-		priv->hws_cpool = mlx5_hws_cnt_pool_create(dev, port_attr,
-							   nb_queue);
-		if (priv->hws_cpool == NULL)
+		if (mlx5_hws_cnt_pool_create(dev, port_attr->nb_counters,
+						nb_queue,
+						(host_priv ? host_priv->hws_cpool : NULL)))
 			goto err;
 	}
 	if (port_attr->nb_aging_objects) {
@@ -11290,12 +11330,17 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			rte_errno = EINVAL;
 			goto err;
 		}
-		ret = mlx5_hws_age_pool_init(dev, port_attr, nb_queue);
-		if (ret < 0) {
-			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					   NULL, "Failed to init age pool.");
+		if (port_attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
+			DRV_LOG(ERR, "Aging is not supported "
+				"in cross vHCA sharing mode");
+			ret = -ENOTSUP;
 			goto err;
 		}
+		strict_queue = !!(port_attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE);
+		ret = mlx5_hws_age_pool_init(dev, port_attr->nb_aging_objects,
+						nb_queue, strict_queue);
+		if (ret < 0)
+			goto err;
 	}
 	ret = flow_hw_create_vlan(dev);
 	if (ret) {
@@ -12914,6 +12959,76 @@ error:
 	}
 }
 
+static int flow_hw_allocate_actions(struct rte_eth_dev *dev,
+					const struct rte_flow_action actions[],
+					struct rte_flow_error *error)
+{
+	bool actions_end = false;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int ret;
+
+	for (; !actions_end; actions++) {
+		switch ((int)actions->type) {
+		case RTE_FLOW_ACTION_TYPE_AGE:
+			/* If no age objects were previously allocated. */
+			if (!priv->hws_age_req) {
+				/* If no counters were previously allocated. */
+				if (!priv->hws_cpool) {
+					ret = mlx5_hws_cnt_pool_create(dev, MLX5_CNT_MAX,
+								priv->nb_queue, NULL);
+					if (ret)
+						goto err;
+				}
+				if (priv->hws_cpool) {
+					/* Allocate same number of counters. */
+					ret = mlx5_hws_age_pool_init(dev,
+								priv->hws_cpool->cfg.request_num,
+								priv->nb_queue, false);
+					if (ret)
+						goto err;
+				}
+			}
+		break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+			/* If no counters were previously allocated. */
+			if (!priv->hws_cpool) {
+				ret = mlx5_hws_cnt_pool_create(dev, MLX5_CNT_MAX,
+							priv->nb_queue, NULL);
+				if (ret)
+					goto err;
+			}
+		break;
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+			/* If no CT were previously allocated. */
+			if (!priv->hws_ctpool) {
+				ret = mlx5_flow_ct_init(dev, MLX5_CT_NT_MAX, priv->nb_queue);
+				if (ret)
+					goto err;
+			}
+		break;
+		case RTE_FLOW_ACTION_TYPE_METER_MARK:
+			/* If no meters were previously allocated. */
+			if (!priv->hws_mpool) {
+				ret = mlx5_flow_meter_init(dev, MLX5_MTR_NT_MAX, 0, 0,
+								priv->nb_queue);
+				if (ret)
+					goto err;
+			}
+		break;
+		case RTE_FLOW_ACTION_TYPE_END:
+			actions_end = true;
+		break;
+		default:
+			break;
+		}
+	}
+	return 0;
+err:
+	return rte_flow_error_set(error, ret,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						NULL, "fail to allocate actions");
+}
+
 static int flow_hw_apply(const struct rte_flow_item items[],
 			 struct mlx5dr_rule_action rule_actions[],
 			 struct rte_flow_hw *flow,
@@ -13013,6 +13128,14 @@ static int flow_hw_create_flow(struct rte_eth_dev *dev,
 	ret = flow_hw_register_matcher(dev, attr, items, external, *flow, &matcher, error);
 	if (ret)
 		goto error;
+
+	/*
+	 * ASO allocation – iterating on actions list to allocate missing resources.
+	 * In the future when validate function in hws will be added,
+	 * The output actions bit mask instead of
+	 * looping on the actions array twice.
+	 */
+	ret = flow_hw_allocate_actions(dev, actions, error);
 
 	/* Note: the actions should be saved in the sub-flow rule itself for reference. */
 	ret = flow_hw_translate_actions(dev, attr, actions, *flow, &hw_act, external, error);

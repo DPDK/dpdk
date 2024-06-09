@@ -812,6 +812,13 @@ struct mlx5_dev_shared_port {
 /* Only yellow color valid. */
 #define MLX5_MTR_POLICY_MODE_OY 3
 
+/* Max number of meters allocated in non template mode. */
+#define MLX5_MTR_NT_MAX (1 << 23)
+/* Max number of connection tracking allocated in non template mode */
+#define MLX5_CT_NT_MAX (1 << 23)
+/* Max number of counters allocated in non template mode */
+#define MLX5_CNT_MAX (1 << 23)
+
 enum mlx5_meter_domain {
 	MLX5_MTR_DOMAIN_INGRESS,
 	MLX5_MTR_DOMAIN_EGRESS,

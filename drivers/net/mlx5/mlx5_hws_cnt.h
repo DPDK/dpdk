@@ -712,9 +712,10 @@ mlx5_hws_cnt_service_thread_create(struct mlx5_dev_ctx_shared *sh);
 void
 mlx5_hws_cnt_service_thread_destroy(struct mlx5_dev_ctx_shared *sh);
 
-struct mlx5_hws_cnt_pool *
+int
 mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
-		const struct rte_flow_port_attr *pattr, uint16_t nb_queue);
+		uint32_t nb_counters, uint16_t nb_queue,
+		struct mlx5_hws_cnt_pool *chost);
 
 void
 mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
@@ -744,8 +745,9 @@ mlx5_hws_age_context_get(struct mlx5_priv *priv, uint32_t idx);
 
 int
 mlx5_hws_age_pool_init(struct rte_eth_dev *dev,
-		       const struct rte_flow_port_attr *attr,
-		       uint16_t nb_queues);
+		       uint32_t nb_aging_objects,
+		       uint16_t nb_queues,
+		       bool strict_queue);
 
 void
 mlx5_hws_age_pool_destroy(struct mlx5_priv *priv);
