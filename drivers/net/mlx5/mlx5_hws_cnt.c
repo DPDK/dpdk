@@ -717,7 +717,9 @@ mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 	 * Maybe blocked for at most 200ms here.
 	 */
 	rte_spinlock_lock(&sh->cpool_lock);
-	LIST_REMOVE(cpool, next);
+	/* Try to remove cpool before it was added to list caused segfault. */
+	if (!LIST_EMPTY(&sh->hws_cpool_list) && cpool->next.le_prev)
+		LIST_REMOVE(cpool, next);
 	rte_spinlock_unlock(&sh->cpool_lock);
 	if (--sh->cnt_svc->refcnt == 0)
 		mlx5_hws_cnt_svc_deinit(sh);
