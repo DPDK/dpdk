@@ -671,6 +671,10 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	struct mlx5_list_entry entry;
 	void *action; /**< Modify header action object. */
 	uint32_t idx;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	void *mh_dr_pattern; /**< Modify header DR pattern(HWS only). */
+#endif
+	uint64_t flags; /**< Flags for RDMA API(HWS only). */
 	/* Key area for hash list matching: */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */
 	uint8_t actions_num; /**< Number of modification actions. */
@@ -1322,7 +1326,11 @@ struct rte_flow_nt2hws {
 	struct mlx5_flow_dv_matcher *matcher;
 	/**< Auxiliary data stored per flow. */
 	struct rte_flow_hw_aux *flow_aux;
-} __rte_packed;
+	/** Modify header pointer. */
+	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
+	/** Encap/decap index. */
+	uint32_t rix_encap_decap;
+};
 
 /** HWS flow struct. */
 struct rte_flow_hw {
@@ -3238,14 +3246,14 @@ struct mlx5_list_entry *flow_dv_tag_clone_cb(void *tool_ctx,
 					     void *cb_ctx);
 void flow_dv_tag_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry);
 
-int flow_dv_modify_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+int flow_modify_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
 			    void *cb_ctx);
-struct mlx5_list_entry *flow_dv_modify_create_cb(void *tool_ctx, void *ctx);
-void flow_dv_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
-struct mlx5_list_entry *flow_dv_modify_clone_cb(void *tool_ctx,
+struct mlx5_list_entry *flow_modify_create_cb(void *tool_ctx, void *ctx);
+void flow_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+struct mlx5_list_entry *flow_modify_clone_cb(void *tool_ctx,
 						struct mlx5_list_entry *oentry,
 						void *ctx);
-void flow_dv_modify_clone_free_cb(void *tool_ctx,
+void flow_modify_clone_free_cb(void *tool_ctx,
 				  struct mlx5_list_entry *entry);
 
 struct mlx5_list_entry *flow_dv_mreg_create_cb(void *tool_ctx, void *ctx);
@@ -3257,18 +3265,30 @@ struct mlx5_list_entry *flow_dv_mreg_clone_cb(void *tool_ctx,
 					      void *ctx);
 void flow_dv_mreg_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry);
 
-int flow_dv_encap_decap_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
+int flow_encap_decap_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
 				 void *cb_ctx);
-struct mlx5_list_entry *flow_dv_encap_decap_create_cb(void *tool_ctx,
+struct mlx5_list_entry *flow_encap_decap_create_cb(void *tool_ctx,
 						      void *cb_ctx);
-void flow_dv_encap_decap_remove_cb(void *tool_ctx,
+void flow_encap_decap_remove_cb(void *tool_ctx,
 				   struct mlx5_list_entry *entry);
-struct mlx5_list_entry *flow_dv_encap_decap_clone_cb(void *tool_ctx,
+struct mlx5_list_entry *flow_encap_decap_clone_cb(void *tool_ctx,
 						  struct mlx5_list_entry *entry,
 						  void *cb_ctx);
-void flow_dv_encap_decap_clone_free_cb(void *tool_ctx,
+void flow_encap_decap_clone_free_cb(void *tool_ctx,
 				       struct mlx5_list_entry *entry);
-
+int __flow_encap_decap_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_encap_decap_resource *resource,
+			 bool is_root,
+			 struct mlx5_flow_dv_encap_decap_resource **encap_decap,
+			 struct rte_flow_error *error);
+int __flow_modify_hdr_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_modify_hdr_resource *resource,
+			 struct mlx5_flow_dv_modify_hdr_resource **modify,
+			 struct rte_flow_error *error);
+int flow_encap_decap_resource_release(struct rte_eth_dev *dev,
+				     uint32_t encap_decap_idx);
 int flow_matcher_match_cb(void *tool_ctx, struct mlx5_list_entry *entry,
 			     void *ctx);
 struct mlx5_list_entry *flow_matcher_create_cb(void *tool_ctx, void *ctx);

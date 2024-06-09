@@ -98,10 +98,6 @@ union flow_dv_attr {
 };
 
 static int
-flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
-				     uint32_t encap_decap_idx);
-
-static int
 flow_dv_port_id_action_resource_release(struct rte_eth_dev *dev,
 					uint32_t port_id);
 static void
@@ -4299,7 +4295,7 @@ flow_dv_validate_item_aggr_affinity(struct rte_eth_dev *dev,
 }
 
 int
-flow_dv_encap_decap_match_cb(void *tool_ctx __rte_unused,
+flow_encap_decap_match_cb(void *tool_ctx __rte_unused,
 			     struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -4320,7 +4316,7 @@ flow_dv_encap_decap_match_cb(void *tool_ctx __rte_unused,
 }
 
 struct mlx5_list_entry *
-flow_dv_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
+flow_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -4328,14 +4324,11 @@ flow_dv_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 	struct mlx5_flow_dv_encap_decap_resource *ctx_resource = ctx->data;
 	struct mlx5_flow_dv_encap_decap_resource *resource;
 	uint32_t idx;
-	int ret;
+	int ret = 0;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct mlx5dr_action_reformat_header hdr;
+#endif
 
-	if (ctx_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
-		domain = sh->fdb_domain;
-	else if (ctx_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_RX)
-		domain = sh->rx_domain;
-	else
-		domain = sh->tx_domain;
 	/* Register new encap/decap resource. */
 	resource = mlx5_ipool_zmalloc(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], &idx);
 	if (!resource) {
@@ -4345,10 +4338,29 @@ flow_dv_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 		return NULL;
 	}
 	*resource = *ctx_resource;
-	resource->idx = idx;
-	ret = mlx5_flow_os_create_flow_action_packet_reformat(sh->cdev->ctx,
-							      domain, resource,
-							     &resource->action);
+	if (sh->config.dv_flow_en == 2) {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		hdr.sz = ctx_resource->size;
+		hdr.data = ctx_resource->buf;
+		resource->action = mlx5dr_action_create_reformat
+		(ctx->data2, (enum mlx5dr_action_type)ctx_resource->reformat_type, 1,
+			&hdr, 1, ctx_resource->flags);
+		if (!resource->action)
+			ret = -1;
+#else
+		ret = -1;
+#endif
+	} else {
+		if (ctx_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
+			domain = sh->fdb_domain;
+		else if (ctx_resource->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_RX)
+			domain = sh->rx_domain;
+		else
+			domain = sh->tx_domain;
+		ret = mlx5_flow_os_create_flow_action_packet_reformat(sh->cdev->ctx,
+			domain, resource,
+		&resource->action);
+	}
 	if (ret) {
 		mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], idx);
 		rte_flow_error_set(ctx->error, ENOMEM,
@@ -4356,12 +4368,12 @@ flow_dv_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 				   NULL, "cannot create action");
 		return NULL;
 	}
-
+	resource->idx = idx;
 	return &resource->entry;
 }
 
 struct mlx5_list_entry *
-flow_dv_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+flow_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 			     void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
@@ -4383,7 +4395,7 @@ flow_dv_encap_decap_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 }
 
 void
-flow_dv_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+flow_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *res =
@@ -4392,26 +4404,11 @@ flow_dv_encap_decap_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], res->idx);
 }
 
-/**
- * Find existing encap/decap resource or create and register a new one.
- *
- * @param[in, out] dev
- *   Pointer to rte_eth_dev structure.
- * @param[in, out] resource
- *   Pointer to encap/decap resource.
- * @parm[in, out] dev_flow
- *   Pointer to the dev_flow.
- * @param[out] error
- *   pointer to error structure.
- *
- * @return
- *   0 on success otherwise -errno and errno is set.
- */
-static int
-flow_dv_encap_decap_resource_register
-			(struct rte_eth_dev *dev,
+int
+__flow_encap_decap_resource_register(struct rte_eth_dev *dev,
 			 struct mlx5_flow_dv_encap_decap_resource *resource,
-			 struct mlx5_flow *dev_flow,
+			 bool is_root,
+			 struct mlx5_flow_dv_encap_decap_resource **encap_decap,
 			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -4434,13 +4431,14 @@ flow_dv_encap_decap_resource_register
 		{
 			.ft_type = resource->ft_type,
 			.refmt_type = resource->reformat_type,
-			.is_root = !!dev_flow->dv.group,
+			.is_root = is_root,
 			.reserve = 0,
 		}
 	};
 	struct mlx5_flow_cb_ctx ctx = {
 		.error = error,
 		.data = resource,
+		.data2 = priv->dr_ctx,
 	};
 	struct mlx5_hlist *encaps_decaps;
 	uint64_t key64;
@@ -4449,15 +4447,14 @@ flow_dv_encap_decap_resource_register
 				"encaps_decaps",
 				MLX5_FLOW_ENCAP_DECAP_HTABLE_SZ,
 				true, true, sh,
-				flow_dv_encap_decap_create_cb,
-				flow_dv_encap_decap_match_cb,
-				flow_dv_encap_decap_remove_cb,
-				flow_dv_encap_decap_clone_cb,
-				flow_dv_encap_decap_clone_free_cb,
+				flow_encap_decap_create_cb,
+				flow_encap_decap_match_cb,
+				flow_encap_decap_remove_cb,
+				flow_encap_decap_clone_cb,
+				flow_encap_decap_clone_free_cb,
 				error);
 	if (unlikely(!encaps_decaps))
 		return -rte_errno;
-	resource->flags = dev_flow->dv.group ? 0 : 1;
 	key64 =  __rte_raw_cksum(&encap_decap_key.v32,
 				 sizeof(encap_decap_key.v32), 0);
 	if (resource->reformat_type !=
@@ -4467,9 +4464,40 @@ flow_dv_encap_decap_resource_register
 	entry = mlx5_hlist_register(encaps_decaps, key64, &ctx);
 	if (!entry)
 		return -rte_errno;
-	resource = container_of(entry, typeof(*resource), entry);
-	dev_flow->dv.encap_decap = resource;
-	dev_flow->handle->dvh.rix_encap_decap = resource->idx;
+	*encap_decap = container_of(entry, typeof(*resource), entry);
+	return 0;
+}
+
+/**
+ * Find existing encap/decap resource or create and register a new one.
+ *
+ * @param[in, out] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] resource
+ *   Pointer to encap/decap resource.
+ * @param[in, out] dev_flow
+ *   Pointer to the dev_flow.
+ * @param[out] error
+ *   pointer to error structure.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_encap_decap_resource_register
+			(struct rte_eth_dev *dev,
+			 struct mlx5_flow_dv_encap_decap_resource *resource,
+			 struct mlx5_flow *dev_flow,
+			 struct rte_flow_error *error)
+{
+	int ret;
+
+	resource->flags = dev_flow->dv.group ? 0 : 1;
+	ret = __flow_encap_decap_resource_register(dev, resource, !!dev_flow->dv.group,
+		&dev_flow->dv.encap_decap, error);
+	if (ret)
+		return ret;
+	dev_flow->handle->dvh.rix_encap_decap = dev_flow->dv.encap_decap->idx;
 	return 0;
 }
 
@@ -6149,7 +6177,7 @@ flow_dv_validate_action_modify_ipv6_dscp(const uint64_t action_flags,
 }
 
 int
-flow_dv_modify_match_cb(void *tool_ctx __rte_unused,
+flow_modify_match_cb(void *tool_ctx __rte_unused,
 			struct mlx5_list_entry *entry, void *cb_ctx)
 {
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -6205,7 +6233,7 @@ flow_dv_modify_ipool_get(struct mlx5_dev_ctx_shared *sh, uint8_t index)
 }
 
 struct mlx5_list_entry *
-flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
+flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_cb_ctx *ctx = cb_ctx;
@@ -6214,11 +6242,13 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 	struct mlx5_flow_dv_modify_hdr_resource *ref = ctx->data;
 	struct mlx5_indexed_pool *ipool = flow_dv_modify_ipool_get(sh,
 							  ref->actions_num - 1);
-	int ret;
+	int ret = 0;
 	uint32_t data_len = ref->actions_num * sizeof(ref->actions[0]);
 	uint32_t key_len = sizeof(*ref) - offsetof(typeof(*ref), ft_type);
 	uint32_t idx;
+	struct mlx5_tbl_multi_pattern_ctx *mpctx;
 
+	typeof(mpctx->mh) *mh_dr_pattern = ref->mh_dr_pattern;
 	if (unlikely(!ipool)) {
 		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -6232,18 +6262,30 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 				   "cannot allocate resource memory");
 		return NULL;
 	}
-	rte_memcpy(RTE_PTR_ADD(entry, offsetof(typeof(*entry), ft_type)),
-		   RTE_PTR_ADD(ref, offsetof(typeof(*ref), ft_type)),
-		   key_len + data_len);
-	if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
-		ns = sh->fdb_domain;
-	else if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
-		ns = sh->tx_domain;
-	else
-		ns = sh->rx_domain;
-	ret = mlx5_flow_os_create_flow_action_modify_header
-					(sh->cdev->ctx, ns, entry,
-					 data_len, &entry->action);
+	rte_memcpy(&entry->ft_type,
+			RTE_PTR_ADD(ref, offsetof(typeof(*ref), ft_type)),
+			key_len + data_len);
+	if (sh->config.dv_flow_en == 2) {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		entry->action = mlx5dr_action_create_modify_header(ctx->data2,
+			mh_dr_pattern->elements_num,
+			mh_dr_pattern->pattern, 0, ref->flags);
+		if (!entry->action)
+			ret = -1;
+#else
+		ret = -1;
+#endif
+	} else {
+		if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_FDB)
+			ns = sh->fdb_domain;
+		else if (entry->ft_type == MLX5DV_FLOW_TABLE_TYPE_NIC_TX)
+			ns = sh->tx_domain;
+		else
+			ns = sh->rx_domain;
+		ret = mlx5_flow_os_create_flow_action_modify_header
+						(sh->cdev->ctx, ns, entry,
+						data_len, &entry->action);
+	}
 	if (ret) {
 		mlx5_ipool_free(sh->mdh_ipools[ref->actions_num - 1], idx);
 		rte_flow_error_set(ctx->error, ENOMEM,
@@ -6256,7 +6298,7 @@ flow_dv_modify_create_cb(void *tool_ctx, void *cb_ctx)
 }
 
 struct mlx5_list_entry *
-flow_dv_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
+flow_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 			void *cb_ctx)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
@@ -6280,7 +6322,7 @@ flow_dv_modify_clone_cb(void *tool_ctx, struct mlx5_list_entry *oentry,
 }
 
 void
-flow_dv_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+flow_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_modify_hdr_resource *res =
@@ -6548,6 +6590,51 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 	return 0;
 }
 
+int
+__flow_modify_hdr_resource_register(struct rte_eth_dev *dev,
+			struct mlx5_flow_dv_modify_hdr_resource *resource,
+			struct mlx5_flow_dv_modify_hdr_resource **modify,
+			struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	uint32_t key_len = sizeof(*resource) -
+			   offsetof(typeof(*resource), ft_type) +
+			   resource->actions_num * sizeof(resource->actions[0]);
+	struct mlx5_list_entry *entry;
+	struct mlx5_flow_cb_ctx ctx = {
+		.error = error,
+		.data = resource,
+		.data2 = priv->dr_ctx,
+	};
+	struct mlx5_hlist *modify_cmds;
+	uint64_t key64;
+
+	modify_cmds = flow_dv_hlist_prepare(sh, &sh->modify_cmds,
+				"hdr_modify",
+				MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
+				true, false, sh,
+				flow_modify_create_cb,
+				flow_modify_match_cb,
+				flow_modify_remove_cb,
+				flow_modify_clone_cb,
+				flow_modify_clone_free_cb,
+				error);
+	if (unlikely(!modify_cmds))
+		return -rte_errno;
+	if (resource->actions_num > flow_dv_modify_hdr_action_max(dev,
+								resource->root))
+		return rte_flow_error_set(error, EOVERFLOW,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "too many modify header items");
+	key64 = __rte_raw_cksum(&resource->ft_type, key_len, 0);
+	entry = mlx5_hlist_register(modify_cmds, key64, &ctx);
+	if (!entry)
+		return -rte_errno;
+	*modify = container_of(entry, typeof(*resource), entry);
+	return 0;
+}
+
 /**
  * Find existing modify-header resource or create and register a new one.
  *
@@ -6555,7 +6642,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
  *   Pointer to rte_eth_dev structure.
  * @param[in, out] resource
  *   Pointer to modify-header resource.
- * @parm[in, out] dev_flow
+ * @param[in, out] dev_flow
  *   Pointer to the dev_flow.
  * @param[out] error
  *   pointer to error structure.
@@ -6570,44 +6657,9 @@ flow_dv_modify_hdr_resource_register
 			 struct mlx5_flow *dev_flow,
 			 struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	uint32_t key_len = sizeof(*resource) -
-			   offsetof(typeof(*resource), ft_type) +
-			   resource->actions_num * sizeof(resource->actions[0]);
-	struct mlx5_list_entry *entry;
-	struct mlx5_flow_cb_ctx ctx = {
-		.error = error,
-		.data = resource,
-	};
-	struct mlx5_hlist *modify_cmds;
-	uint64_t key64;
-
-	modify_cmds = flow_dv_hlist_prepare(sh, &sh->modify_cmds,
-				"hdr_modify",
-				MLX5_FLOW_HDR_MODIFY_HTABLE_SZ,
-				true, false, sh,
-				flow_dv_modify_create_cb,
-				flow_dv_modify_match_cb,
-				flow_dv_modify_remove_cb,
-				flow_dv_modify_clone_cb,
-				flow_dv_modify_clone_free_cb,
-				error);
-	if (unlikely(!modify_cmds))
-		return -rte_errno;
 	resource->root = !dev_flow->dv.group;
-	if (resource->actions_num > flow_dv_modify_hdr_action_max(dev,
-								resource->root))
-		return rte_flow_error_set(error, EOVERFLOW,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "too many modify header items");
-	key64 = __rte_raw_cksum(&resource->ft_type, key_len, 0);
-	entry = mlx5_hlist_register(modify_cmds, key64, &ctx);
-	if (!entry)
-		return -rte_errno;
-	resource = container_of(entry, typeof(*resource), entry);
-	dev_flow->handle->dvh.modify_hdr = resource;
-	return 0;
+	return __flow_modify_hdr_resource_register(dev, resource,
+		&dev_flow->handle->dvh.modify_hdr, error);
 }
 
 /**
@@ -12519,7 +12571,7 @@ flow_dv_sample_sub_actions_release(struct rte_eth_dev *dev,
 		act_res->rix_hrxq = 0;
 	}
 	if (act_res->rix_encap_decap) {
-		flow_dv_encap_decap_resource_release(dev,
+		flow_encap_decap_resource_release(dev,
 						     act_res->rix_encap_decap);
 		act_res->rix_encap_decap = 0;
 	}
@@ -15979,13 +16031,18 @@ flow_dv_matcher_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+flow_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 	struct mlx5_flow_dv_encap_decap_resource *res =
 				       container_of(entry, typeof(*res), entry);
 
-	claim_zero(mlx5_flow_os_destroy_flow_action(res->action));
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (sh->config.dv_flow_en == 2)
+		claim_zero(mlx5dr_action_destroy(res->action));
+	else
+#endif
+		claim_zero(mlx5_flow_os_destroy_flow_action(res->action));
 	mlx5_ipool_free(sh->ipool[MLX5_IPOOL_DECAP_ENCAP], res->idx);
 }
 
@@ -16000,8 +16057,8 @@ flow_dv_encap_decap_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  * @return
  *   1 while a reference on it exists, 0 when freed.
  */
-static int
-flow_dv_encap_decap_resource_release(struct rte_eth_dev *dev,
+int
+flow_encap_decap_resource_release(struct rte_eth_dev *dev,
 				     uint32_t encap_decap_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -16041,13 +16098,18 @@ flow_dv_jump_tbl_resource_release(struct rte_eth_dev *dev,
 }
 
 void
-flow_dv_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
+flow_modify_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry)
 {
 	struct mlx5_flow_dv_modify_hdr_resource *res =
 		container_of(entry, typeof(*res), entry);
 	struct mlx5_dev_ctx_shared *sh = tool_ctx;
 
-	claim_zero(mlx5_flow_os_destroy_flow_action(res->action));
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (sh->config.dv_flow_en == 2)
+		claim_zero(mlx5dr_action_destroy(res->action));
+	else
+#endif
+		claim_zero(mlx5_flow_os_destroy_flow_action(res->action));
 	mlx5_ipool_free(sh->mdh_ipools[res->actions_num - 1], res->idx);
 }
 
@@ -16416,7 +16478,7 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		if (dev_handle->dvh.rix_dest_array)
 			flow_dv_dest_array_resource_release(dev, dev_handle);
 		if (dev_handle->dvh.rix_encap_decap)
-			flow_dv_encap_decap_resource_release(dev,
+			flow_encap_decap_resource_release(dev,
 				dev_handle->dvh.rix_encap_decap);
 		if (dev_handle->dvh.modify_hdr)
 			flow_dv_modify_hdr_resource_release(dev, dev_handle);
