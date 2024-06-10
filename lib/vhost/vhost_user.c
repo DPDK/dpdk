@@ -2318,9 +2318,8 @@ vhost_user_get_protocol_features(struct virtio_net **pdev,
 			int main_fd __rte_unused)
 {
 	struct virtio_net *dev = *pdev;
-	uint64_t features, protocol_features;
+	uint64_t protocol_features;
 
-	rte_vhost_driver_get_features(dev->ifname, &features);
 	rte_vhost_driver_get_protocol_features(dev->ifname, &protocol_features);
 
 	ctx->msg.payload.u64 = protocol_features;
