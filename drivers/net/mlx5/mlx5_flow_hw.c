@@ -511,6 +511,184 @@ flow_hw_hashfields_set(struct mlx5_flow_rss_desc *rss_desc,
 }
 
 /**
+ * Generate the matching pattern item flags.
+ *
+ * @param[in] items
+ *   Pointer to the list of items.
+ *
+ * @return
+ *   Matching item flags. RSS hash field function
+ *   silently ignores the flags which are unsupported.
+ */
+static uint64_t
+flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
+{
+	uint64_t item_flags = 0;
+	uint64_t last_item = 0;
+
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
+		int item_type = items->type;
+
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV4;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV6 :
+					     MLX5_FLOW_LAYER_OUTER_L3_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_TCP :
+					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L4_UDP :
+					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT:
+			last_item = tunnel ? MLX5_FLOW_ITEM_INNER_IPV6_ROUTING_EXT :
+					     MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GRE:
+			last_item = MLX5_FLOW_LAYER_GRE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			last_item = MLX5_FLOW_LAYER_GRE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			last_item = MLX5_FLOW_LAYER_VXLAN;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			last_item = MLX5_FLOW_LAYER_GENEVE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_MPLS:
+			last_item = MLX5_FLOW_LAYER_MPLS;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTP:
+			last_item = MLX5_FLOW_LAYER_GTP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_COMPARE:
+			last_item = MLX5_FLOW_ITEM_COMPARE;
+			break;
+		default:
+			break;
+		}
+		item_flags |= last_item;
+	}
+	return item_flags;
+}
+
+static uint64_t
+flow_hw_action_flags_get(const struct rte_flow_action actions[],
+			 struct rte_flow_error *error)
+{
+	uint64_t action_flags = 0;
+	const struct rte_flow_action *action;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; action++) {
+		int type = (int)action->type;
+		switch (type) {
+		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			switch (MLX5_INDIRECT_ACTION_TYPE_GET(action->conf)) {
+			case MLX5_INDIRECT_ACTION_TYPE_RSS:
+				goto rss;
+			case MLX5_INDIRECT_ACTION_TYPE_AGE:
+				goto age;
+			case MLX5_INDIRECT_ACTION_TYPE_COUNT:
+				goto count;
+			case MLX5_INDIRECT_ACTION_TYPE_CT:
+				goto ct;
+			case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
+				goto meter;
+			default:
+				goto error;
+			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			action_flags |= MLX5_FLOW_ACTION_DROP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			action_flags |= MLX5_FLOW_ACTION_MARK;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
+			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
+			break;
+		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
+			action_flags |= MLX5_FLOW_ACTION_OF_POP_VLAN;
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			action_flags |= MLX5_FLOW_ACTION_JUMP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+rss:
+			action_flags |= MLX5_FLOW_ACTION_RSS;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+			action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
+			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			action_flags |= MLX5_FLOW_ACTION_MODIFY_FIELD;
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+			break;
+		case RTE_FLOW_ACTION_TYPE_AGE:
+age:
+			action_flags |= MLX5_FLOW_ACTION_AGE;
+			break;
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+count:
+			action_flags |= MLX5_FLOW_ACTION_COUNT;
+			break;
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+ct:
+			action_flags |= MLX5_FLOW_ACTION_CT;
+			break;
+		case RTE_FLOW_ACTION_TYPE_METER_MARK:
+meter:
+			action_flags |= MLX5_FLOW_ACTION_METER;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
+			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VOID:
+		case RTE_FLOW_ACTION_TYPE_END:
+			break;
+		default:
+			goto error;
+		}
+	}
+	return action_flags;
+error:
+	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+			   action, "invalid flow action");
+	return 0;
+}
+
+/**
  * Register destination table DR jump action.
  *
  * @param[in] dev
@@ -12940,7 +13118,7 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 			  struct rte_flow_hw *flow,
 			  struct mlx5_flow_hw_action_params *ap,
 			  struct mlx5_hw_actions *hw_acts,
-			  uint64_t item_flags,
+			  uint64_t item_flags, uint64_t action_flags,
 			  bool external,
 			  struct rte_flow_error *error)
 {
@@ -12949,7 +13127,6 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	enum mlx5dr_table_type table_type;
 	struct rte_flow_template_table *table = NULL;
 	struct mlx5_flow_group grp;
-	uint64_t action_flags = 0;
 	struct rte_flow_actions_template *at = NULL;
 	struct rte_flow_actions_template_attr template_attr = {
 		.egress = attr->egress,
@@ -13224,14 +13401,13 @@ static int flow_hw_apply(const struct rte_flow_item items[],
  * @return
  *   0 on success, negative errno value otherwise and rte_errno set.
  */
-static int flow_hw_create_flow(struct rte_eth_dev *dev,
-			       enum mlx5_flow_type type,
-			       const struct rte_flow_attr *attr,
-			       const struct rte_flow_item items[],
-			       const struct rte_flow_action actions[],
-			       bool external,
-			       struct rte_flow_hw **flow,
-			       struct rte_flow_error *error)
+static int
+flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+		    const struct rte_flow_attr *attr,
+		    const struct rte_flow_item items[],
+		    const struct rte_flow_action actions[],
+		    uint64_t item_flags, uint64_t action_flags, bool external,
+		    struct rte_flow_hw **flow, struct rte_flow_error *error)
 {
 	int ret;
 	struct mlx5_hw_actions hw_act;
@@ -13248,11 +13424,9 @@ static int flow_hw_create_flow(struct rte_eth_dev *dev,
 		.group = attr->group,
 		.priority = attr->priority,
 		.rss_level = 0,
-		.act_flags = 0,
+		.act_flags = action_flags,
 		.tbl_type = 0,
 		};
-
-	uint64_t item_flags = 0;
 
 	memset(&hw_act, 0, sizeof(hw_act));
 	if (attr->transfer)
@@ -13294,7 +13468,7 @@ static int flow_hw_create_flow(struct rte_eth_dev *dev,
 
 	/* Note: the actions should be saved in the sub-flow rule itself for reference. */
 	ret = flow_hw_translate_flow_actions(dev, attr, actions, *flow, &ap, &hw_act,
-					item_flags, external, error);
+					item_flags, action_flags, external, error);
 	if (ret)
 		goto error;
 
@@ -13427,6 +13601,8 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct rte_flow_hw *flow = NULL;
+	uint64_t item_flags = flow_hw_matching_item_flags_get(items);
+	uint64_t action_flags = flow_hw_action_flags_get(actions, error);
 
 	/*
 	 * TODO: add a call to flow_hw_validate function once it exist.
@@ -13436,7 +13612,9 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	/* TODO: Handle split/expand to num_flows. */
 
 	/* Create single flow. */
-	ret = flow_hw_create_flow(dev, type, attr, items, actions, external, &flow, error);
+	ret = flow_hw_create_flow(dev, type, attr, items, actions,
+				  item_flags, action_flags,
+				  external, &flow, error);
 	if (ret)
 		goto free;
 	if (flow)
