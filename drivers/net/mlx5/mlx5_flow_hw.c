@@ -13339,79 +13339,67 @@ error:
 					NULL, "fail to register matcher");
 }
 
-static int flow_hw_ensure_action_pools_allocated(struct rte_eth_dev *dev,
-					const struct rte_flow_action actions[],
-					struct rte_flow_error *error)
+static int
+flow_hw_allocate_actions(struct rte_eth_dev *dev,
+			 uint64_t action_flags,
+			 struct rte_flow_error *error)
 {
-	bool actions_end = false;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 	uint obj_num;
 
-	for (; !actions_end; actions++) {
-		switch ((int)actions->type) {
-		case RTE_FLOW_ACTION_TYPE_AGE:
-			/* If no age objects were previously allocated. */
-			if (!priv->hws_age_req) {
-				/* If no counters were previously allocated. */
-				if (!priv->hws_cpool) {
-					obj_num = MLX5_CNT_NT_MAX(priv);
-					ret = mlx5_hws_cnt_pool_create(dev, obj_num,
-						priv->nb_queue, NULL);
-					if (ret)
-						goto err;
-				}
-				if (priv->hws_cpool) {
-					/* Allocate same number of counters. */
-					ret = mlx5_hws_age_pool_init(dev,
-								priv->hws_cpool->cfg.request_num,
-								priv->nb_queue, false);
-					if (ret)
-						goto err;
-				}
-			}
-		break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
+	if (action_flags & MLX5_FLOW_ACTION_AGE) {
+		/* If no age objects were previously allocated. */
+		if (!priv->hws_age_req) {
 			/* If no counters were previously allocated. */
 			if (!priv->hws_cpool) {
 				obj_num = MLX5_CNT_NT_MAX(priv);
 				ret = mlx5_hws_cnt_pool_create(dev, obj_num,
-					priv->nb_queue, NULL);
+							       priv->nb_queue, NULL);
 				if (ret)
 					goto err;
 			}
-		break;
-		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			/* If no CT were previously allocated. */
-			if (!priv->hws_ctpool) {
-				obj_num = MLX5_CT_NT_MAX(priv);
-				ret = mlx5_flow_ct_init(dev, obj_num, priv->nb_queue);
-				if (ret)
-					goto err;
-			}
-		break;
-		case RTE_FLOW_ACTION_TYPE_METER_MARK:
-			/* If no meters were previously allocated. */
-			if (!priv->hws_mpool) {
-				obj_num = MLX5_MTR_NT_MAX(priv);
-				ret = mlx5_flow_meter_init(dev, obj_num, 0, 0,
-								priv->nb_queue);
-				if (ret)
-					goto err;
-			}
-		break;
-		case RTE_FLOW_ACTION_TYPE_END:
-			actions_end = true;
-		break;
-		default:
-			break;
+			/* Allocate same number of counters. */
+			ret = mlx5_hws_age_pool_init(dev, priv->hws_cpool->cfg.request_num,
+						     priv->nb_queue, false);
+			if (ret)
+				goto err;
+		}
+	}
+	if (action_flags & MLX5_FLOW_ACTION_COUNT) {
+		/* If no counters were previously allocated. */
+		if (!priv->hws_cpool) {
+			obj_num = MLX5_CNT_NT_MAX(priv);
+			ret = mlx5_hws_cnt_pool_create(dev, obj_num,
+						       priv->nb_queue, NULL);
+			if (ret)
+				goto err;
+		}
+	}
+	if (action_flags & MLX5_FLOW_ACTION_CT) {
+		/* If no CT were previously allocated. */
+		if (!priv->hws_ctpool) {
+			obj_num = MLX5_CT_NT_MAX(priv);
+			ret = mlx5_flow_ct_init(dev, obj_num, priv->nb_queue);
+			if (ret)
+				goto err;
+		}
+	}
+	if (action_flags & MLX5_FLOW_ACTION_METER) {
+		/* If no meters were previously allocated. */
+		if (!priv->hws_mpool) {
+			obj_num = MLX5_MTR_NT_MAX(priv);
+			ret = mlx5_flow_meter_init(dev, obj_num, 0, 0,
+						   priv->nb_queue);
+			if (ret)
+				goto err;
 		}
 	}
 	return 0;
 err:
 	return rte_flow_error_set(error, ret,
-						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						NULL, "fail to allocate actions");
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "fail to allocate actions");
 }
 
 static int flow_hw_apply(const struct rte_flow_item items[],
@@ -13518,7 +13506,7 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	 * The output actions bit mask instead of
 	 * looping on the actions array twice.
 	 */
-	ret = flow_hw_ensure_action_pools_allocated(dev, actions, error);
+	ret = flow_hw_allocate_actions(dev, action_flags, error);
 	if (ret)
 		goto error;
 
