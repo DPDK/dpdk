@@ -489,6 +489,9 @@ enum mlx5_feature_name {
 	 RTE_ETH_RSS_NONFRAG_IPV4_TCP | RTE_ETH_RSS_NONFRAG_IPV4_UDP | \
 	 RTE_ETH_RSS_NONFRAG_IPV4_OTHER)
 
+/* Valid L4 RSS types */
+#define MLX5_L4_RSS_TYPES (RTE_ETH_RSS_L4_SRC_ONLY | RTE_ETH_RSS_L4_DST_ONLY)
+
 /* IBV hash source bits  for IPV4. */
 #define MLX5_IPV4_IBV_RX_HASH (IBV_RX_HASH_SRC_IPV4 | IBV_RX_HASH_DST_IPV4)
 
@@ -1318,6 +1321,8 @@ enum {
 
 #define MLX5_DR_RULE_SIZE 72
 
+SLIST_HEAD(mlx5_nta_rss_flow_head, rte_flow_hw);
+
 /** HWS non template flow data. */
 struct rte_flow_nt2hws {
 	/** BWC rule pointer. */
@@ -1330,7 +1335,10 @@ struct rte_flow_nt2hws {
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
 	/** Encap/decap index. */
 	uint32_t rix_encap_decap;
-};
+	uint8_t chaned_flow;
+	/** Chain NTA flows. */
+	SLIST_ENTRY(rte_flow_hw) next;
+} __rte_packed;
 
 /** HWS flow struct. */
 struct rte_flow_hw {
@@ -3574,7 +3582,6 @@ flow_hw_get_ipv6_route_ext_mod_id_from_ctx(void *dr_ctx, uint8_t idx)
 #endif
 	return 0;
 }
-
 void
 mlx5_indirect_list_handles_release(struct rte_eth_dev *dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
@@ -3587,6 +3594,31 @@ mlx5_destroy_legacy_indirect(struct rte_eth_dev *dev,
 void
 mlx5_hw_decap_encap_destroy(struct rte_eth_dev *dev,
 			    struct mlx5_indirect_list *reformat);
+int
+flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+		    const struct rte_flow_attr *attr,
+		    const struct rte_flow_item items[],
+		    const struct rte_flow_action actions[],
+		    uint64_t item_flags, uint64_t action_flags, bool external,
+		    struct rte_flow_hw **flow, struct rte_flow_error *error);
+void
+flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow);
+void
+flow_hw_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+		     uintptr_t flow_idx);
+const struct rte_flow_action_rss *
+flow_nta_locate_rss(struct rte_eth_dev *dev,
+		    const struct rte_flow_action actions[],
+		    struct rte_flow_error *error);
+struct rte_flow_hw *
+flow_nta_handle_rss(struct rte_eth_dev *dev,
+		    const struct rte_flow_attr *attr,
+		    const struct rte_flow_item items[],
+		    const struct rte_flow_action actions[],
+		    const struct rte_flow_action_rss *rss_conf,
+		    uint64_t item_flags, uint64_t action_flags,
+		    bool external, enum mlx5_flow_type flow_type,
+		    struct rte_flow_error *error);
 
 extern const struct rte_flow_action_raw_decap empty_decap;
 extern const struct rte_flow_item_ipv6 nic_ipv6_mask;

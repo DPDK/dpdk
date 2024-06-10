@@ -42,6 +42,7 @@ sources = files(
         'mlx5_vlan.c',
         'mlx5_utils.c',
         'mlx5_devx.c',
+        'mlx5_nta_rss.c',
 )
 
 if is_linux

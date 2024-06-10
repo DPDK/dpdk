@@ -507,7 +507,7 @@ flow_hw_hashfields_set(struct mlx5_flow_rss_desc *rss_desc,
 		fields |= IBV_RX_HASH_IPSEC_SPI;
 	if (rss_inner)
 		fields |= IBV_RX_HASH_INNER;
-	*hash_fields = fields;
+	*hash_fields |= fields;
 }
 
 /**
@@ -770,9 +770,7 @@ flow_hw_jump_release(struct rte_eth_dev *dev, struct mlx5_hw_jump_action *jump)
 static inline struct mlx5_hrxq*
 flow_hw_tir_action_register(struct rte_eth_dev *dev,
 			    uint32_t hws_flags,
-			    const struct rte_flow_action *action,
-			    uint64_t item_flags,
-			    bool is_template)
+			    const struct rte_flow_action *action)
 {
 	struct mlx5_flow_rss_desc rss_desc = {
 		.hws_flags = hws_flags,
@@ -795,10 +793,7 @@ flow_hw_tir_action_register(struct rte_eth_dev *dev,
 		rss_desc.key_len = MLX5_RSS_HASH_KEY_LEN;
 		rss_desc.types = !rss->types ? RTE_ETH_RSS_IP : rss->types;
 		rss_desc.symmetric_hash_function = MLX5_RSS_IS_SYMM(rss->func);
-		if (is_template)
-			flow_hw_hashfields_set(&rss_desc, &rss_desc.hash_fields);
-		else
-			flow_dv_hashfields_set(item_flags, &rss_desc, &rss_desc.hash_fields);
+		flow_hw_hashfields_set(&rss_desc, &rss_desc.hash_fields);
 		flow_dv_action_rss_l34_hash_adjust(rss->types,
 						   &rss_desc.hash_fields);
 		if (rss->level > 1) {
@@ -2545,9 +2540,8 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 			    ((const struct rte_flow_action_queue *)
 			     masks->conf)->index) {
 				acts->tir = flow_hw_tir_action_register
-				(dev,
-				 mlx5_hw_act_flag[!!attr->group][type],
-				 actions, 0, true);
+				(dev, mlx5_hw_act_flag[!!attr->group][type],
+				 actions);
 				if (!acts->tir)
 					goto err;
 				acts->rule_acts[dr_pos].action =
@@ -2561,9 +2555,8 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			if (actions->conf && masks->conf) {
 				acts->tir = flow_hw_tir_action_register
-				(dev,
-				 mlx5_hw_act_flag[!!attr->group][type],
-				 actions, 0, true);
+				(dev, mlx5_hw_act_flag[!!attr->group][type],
+				 actions);
 				if (!acts->tir)
 					goto err;
 				acts->rule_acts[dr_pos].action =
@@ -3453,11 +3446,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			hrxq = flow_hw_tir_action_register(dev,
-					ft_flag,
-					action,
-					item_flags,
-					!flow->nt_rule);
+			hrxq = flow_hw_tir_action_register(dev, ft_flag, action);
 			if (!hrxq)
 				goto error;
 			rule_acts[act_data->action_dst].action = hrxq->action;
@@ -13401,7 +13390,7 @@ static int flow_hw_apply(const struct rte_flow_item items[],
  * @return
  *   0 on success, negative errno value otherwise and rte_errno set.
  */
-static int
+int
 flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		    const struct rte_flow_attr *attr,
 		    const struct rte_flow_item items[],
@@ -13500,7 +13489,7 @@ error:
 }
 #endif
 
-static void
+void
 flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
 {
 	int ret;
@@ -13555,18 +13544,23 @@ flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
  * @param[in] flow_addr
  *   Address of flow to destroy.
  */
-static void flow_hw_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
-				 uintptr_t flow_addr)
+void
+flow_hw_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
+		     uintptr_t flow_addr)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	/* Get flow via idx */
 	struct rte_flow_hw *flow = (struct rte_flow_hw *)flow_addr;
+	struct mlx5_nta_rss_flow_head head = { .slh_first = flow };
 
-	if (!flow)
+	if (flow->nt2hws->chaned_flow)
 		return;
-	flow_hw_destroy(dev, flow);
-	/* Release flow memory by idx */
-	mlx5_ipool_free(priv->flows[type], flow->idx);
+	while (!SLIST_EMPTY(&head)) {
+		flow = SLIST_FIRST(&head);
+		SLIST_REMOVE_HEAD(&head, nt2hws->next);
+		flow_hw_destroy(dev, flow);
+		/* Release flow memory by idx */
+		mlx5_ipool_free(priv->flows[type], flow->idx);
+	}
 }
 #endif
 
@@ -13609,6 +13603,18 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	 * and update mlx5_flow_hw_drv_ops accordingly.
 	 */
 
+	if (action_flags & MLX5_FLOW_ACTION_RSS) {
+		const struct rte_flow_action_rss
+			*rss_conf = flow_nta_locate_rss(dev, actions, error);
+		flow = flow_nta_handle_rss(dev, attr, items, actions, rss_conf,
+					   item_flags, action_flags, external,
+					   type, error);
+		if (flow)
+			return (uintptr_t)flow;
+		if (error->type != RTE_FLOW_ERROR_TYPE_NONE)
+			return 0;
+		/* Fall Through to non-expanded RSS flow */
+	}
 	/* TODO: Handle split/expand to num_flows. */
 
 	/* Create single flow. */
@@ -13768,7 +13774,7 @@ mirror_format_tir(struct rte_eth_dev *dev,
 
 	table_type = get_mlx5dr_table_type(&table_cfg->attr.flow_attr);
 	hws_flags = mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_NONE_ROOT][table_type];
-	tir_ctx = flow_hw_tir_action_register(dev, hws_flags, action, 0, true);
+	tir_ctx = flow_hw_tir_action_register(dev, hws_flags, action);
 	if (!tir_ctx)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION,

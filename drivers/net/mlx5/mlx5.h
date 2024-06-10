@@ -1204,6 +1204,10 @@ struct mlx5_flow_tbl_resource {
 #define MLX5_MAX_TABLES_EXTERNAL MLX5_FLOW_TABLE_LEVEL_POLICY
 #define MLX5_FLOW_TABLE_HWS_POLICY (MLX5_MAX_TABLES - 10)
 #define MLX5_MAX_TABLES_FDB UINT16_MAX
+#define MLX5_FLOW_TABLE_PTYPE_RSS_NUM 1024
+#define MLX5_FLOW_TABLE_PTYPE_RSS_LAST (MLX5_MAX_TABLES - 11)
+#define MLX5_FLOW_TABLE_PTYPE_RSS_BASE \
+(1 + MLX5_FLOW_TABLE_PTYPE_RSS_LAST - MLX5_FLOW_TABLE_PTYPE_RSS_NUM)
 #define MLX5_FLOW_TABLE_FACTOR 10
 
 /* ID generation structure. */
@@ -2040,7 +2044,7 @@ struct mlx5_priv {
 	 * Todo: consider to add *_MAX macro.
 	 */
 	struct mlx5dr_action *action_nat64[MLX5DR_TABLE_TYPE_MAX][2];
-
+	struct mlx5_indexed_pool *ptype_rss_groups;
 #endif
 	struct rte_eth_dev *shared_host; /* Host device for HW steering. */
 	RTE_ATOMIC(uint16_t) shared_refcnt; /* HW steering host reference counter. */

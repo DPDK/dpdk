@@ -2365,6 +2365,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		claim_zero(mlx5_geneve_tlv_options_destroy(priv->tlv_options, sh->phdev));
 		priv->tlv_options = NULL;
 	}
+	if (priv->ptype_rss_groups) {
+		mlx5_ipool_destroy(priv->ptype_rss_groups);
+		priv->ptype_rss_groups = NULL;
+	}
 #endif
 	if (priv->rxq_privs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */

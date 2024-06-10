@@ -391,6 +391,8 @@ mlx5dr_definer_ptype_l4_set(struct mlx5dr_definer_fc *fc,
 		l4_type = STE_UDP;
 	else if (packet_type == (inner ? RTE_PTYPE_INNER_L4_ICMP : RTE_PTYPE_L4_ICMP))
 		l4_type = STE_ICMP;
+	else if (packet_type == RTE_PTYPE_TUNNEL_ESP)
+		l4_type = STE_ESP;
 
 	DR_SET(tag, l4_type, fc->byte_off, fc->bit_off, fc->bit_mask);
 }
