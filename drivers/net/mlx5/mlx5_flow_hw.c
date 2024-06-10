@@ -222,6 +222,11 @@ mlx5_hw_ctx_validate(const struct rte_eth_dev *dev, struct rte_flow_error *error
 	return true;
 }
 
+static int
+flow_hw_allocate_actions(struct rte_eth_dev *dev,
+			 uint64_t action_flags,
+			 struct rte_flow_error *error);
+
 static __rte_always_inline int
 mlx5_multi_pattern_reformat_to_index(enum mlx5dr_action_type type)
 {
@@ -12029,25 +12034,31 @@ flow_hw_action_handle_validate(struct rte_eth_dev *dev, uint32_t queue,
 	RTE_SET_USED(user_data);
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_AGE:
-		if (!priv->hws_age_req)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  NULL,
-						  "aging pool not initialized");
+		if (!priv->hws_age_req) {
+			if (flow_hw_allocate_actions(dev, MLX5_FLOW_ACTION_AGE,
+						     error))
+				return rte_flow_error_set
+					(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL, "aging pool not initialized");
+		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
-		if (!priv->hws_cpool)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  NULL,
-						  "counters pool not initialized");
+		if (!priv->hws_cpool) {
+			if (flow_hw_allocate_actions(dev, MLX5_FLOW_ACTION_COUNT,
+						     error))
+				return rte_flow_error_set
+					(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL, "counters pool not initialized");
+		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-		if (priv->hws_ctpool == NULL)
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  NULL,
-						  "CT pool not initialized");
+		if (priv->hws_ctpool == NULL) {
+			if (flow_hw_allocate_actions(dev, MLX5_FLOW_ACTION_CT,
+						     error))
+				return rte_flow_error_set
+					(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					 NULL, "CT pool not initialized");
+		}
 		return mlx5_validate_action_ct(dev, action->conf, error);
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
 		return flow_hw_validate_action_meter_mark(dev, action, true, error);
