@@ -13282,6 +13282,28 @@ end:
 	return ret;
 }
 
+static int
+flow_hw_unregister_matcher(struct rte_eth_dev *dev,
+			   struct mlx5_flow_dv_matcher *matcher)
+{
+	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (matcher->matcher_object) {
+		ret = mlx5_hlist_unregister(priv->sh->groups, &matcher->group->entry);
+		if (ret)
+			goto error;
+		if (matcher->group) {
+			ret = mlx5_list_unregister(matcher->group->matchers, &matcher->entry);
+			if (ret)
+				goto error;
+		}
+	}
+	return 0;
+error:
+	return -EINVAL;
+}
+
 static int flow_hw_register_matcher(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    const struct rte_flow_item items[],
@@ -13308,24 +13330,23 @@ static int flow_hw_register_matcher(struct rte_eth_dev *dev,
 		.data = matcher,
 		.data2 = items_ptr,
 	};
-	struct mlx5_list_entry *group_entry;
-	struct mlx5_list_entry *matcher_entry;
+	struct mlx5_list_entry *group_entry = NULL;
+	struct mlx5_list_entry *matcher_entry = NULL;
 	struct mlx5_flow_dv_matcher *resource;
 	struct mlx5_list *matchers_list;
 	struct mlx5_flow_group *flow_group;
-	uint32_t group = 0;
 	int ret;
 
 
 	matcher->crc = rte_raw_cksum((const void *)matcher->mask.buf,
 				    matcher->mask.size);
 	matcher->priority = attr->priority;
-	ret = __translate_group(dev, attr, external, attr->group, &group, error);
+	ret = __translate_group(dev, attr, external, attr->group, &flow_attr.group, error);
 	if (ret)
 		return ret;
 
 	/* Register the flow group. */
-	group_entry = mlx5_hlist_register(priv->sh->groups, group, &ctx);
+	group_entry = mlx5_hlist_register(priv->sh->groups, flow_attr.group, &ctx);
 	if (!group_entry)
 		goto error;
 	flow_group = container_of(group_entry, struct mlx5_flow_group, entry);
@@ -13336,15 +13357,16 @@ static int flow_hw_register_matcher(struct rte_eth_dev *dev,
 	if (!matcher_entry)
 		goto error;
 	resource = container_of(matcher_entry, typeof(*resource), entry);
-	if (!resource)
-		goto error;
 	flow->nt2hws->matcher = resource;
 	return 0;
 
 error:
-	if (error)
+	if (group_entry)
+		mlx5_hlist_unregister(priv->sh->groups, group_entry);
+	if (error) {
 		if (sub_error.type != RTE_FLOW_ERROR_TYPE_NONE)
 			rte_memcpy(error, &sub_error, sizeof(sub_error));
+	}
 	return rte_flow_error_set(error, ENOMEM,
 					RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					NULL, "fail to register matcher");
@@ -13551,6 +13573,12 @@ error:
 		mlx5_free(hw_act.push_remove);
 	if (hw_act.mhdr)
 		mlx5_free(hw_act.mhdr);
+	if (ret) {
+		/* release after actual error */
+		if ((*flow)->nt2hws && (*flow)->nt2hws->matcher)
+			flow_hw_unregister_matcher(dev,
+						   (*flow)->nt2hws->matcher);
+	}
 	return ret;
 }
 #endif
@@ -13597,6 +13625,8 @@ flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
 		if (ret)
 			DRV_LOG(ERR, "failed to release modify action.");
 	}
+	if (flow->nt2hws->matcher)
+		flow_hw_unregister_matcher(dev, flow->nt2hws->matcher);
 }
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
