@@ -347,18 +347,16 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def setup_hugepages(
-        self, hugepage_count: int, hugepage_size: int, force_first_numa: bool
-    ) -> None:
+    def setup_hugepages(self, number_of: int, hugepage_size: int, force_first_numa: bool) -> None:
         """Configure hugepages on the node.
 
         Get the node's Hugepage Size, configure the specified count of hugepages
         if needed and mount the hugepages if needed.
 
         Args:
-            hugepage_count: Configure this many hugepages.
+            number_of: Configure this many hugepages.
             hugepage_size: Configure hugepages of this size.
-            force_first_numa:  If :data:`True`, configure hugepages just on the first numa node.
+            force_first_numa:  If :data:`True`, configure just on the first numa node.
         """
 
     @abstractmethod

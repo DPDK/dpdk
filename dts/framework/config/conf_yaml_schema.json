@@ -150,9 +150,9 @@
       "type": "object",
       "description": "Optional hugepage configuration. If not specified, hugepages won't be configured and DTS will use system configuration.",
       "properties": {
-        "amount": {
+        "number_of": {
           "type": "integer",
-          "description": "The amount of hugepages to configure. Hugepage size will be the system default."
+          "description": "The number of hugepages to configure. Hugepage size will be the system default."
         },
         "force_first_numa": {
           "type": "boolean",
@@ -161,7 +161,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "amount"
+        "number_of"
       ]
     },
     "mac_address": {

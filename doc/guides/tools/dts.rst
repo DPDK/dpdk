@@ -469,7 +469,7 @@ _`hugepages_2mb`
    *mapping* – hugepages_2mb described as:
 
    ==================== ================================================================
-   ``amount``           *integer* – The amount of 2MB hugepages to configure.
+   ``number_of``        *integer* – The number of 2MB hugepages to configure.
 
                         Hugepage size will be the system default.
    ``force_first_numa`` (*optional*, defaults to ``false``) – If ``true``, it forces the

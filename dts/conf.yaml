@@ -36,7 +36,7 @@ nodes:
     use_first_core: false # tells DPDK to use any physical core
     memory_channels: 4 # tells DPDK to use 4 memory channels
     hugepages_2mb: # optional; if removed, will use system hugepage configuration
-        amount: 256
+        number_of: 256
         force_first_numa: false
     ports:
       # sets up the physical link between "SUT 1"@000:00:08.0 and "TG 1"@0000:00:08.0
@@ -72,7 +72,7 @@ nodes:
         peer_node: "SUT 1"
         peer_pci: "0000:00:08.1"
     hugepages_2mb: # optional; if removed, will use system hugepage configuration
-        amount: 256
+        number_of: 256
         force_first_numa: false
     traffic_generator:
         type: SCAPY

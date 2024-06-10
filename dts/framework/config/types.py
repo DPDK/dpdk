@@ -37,7 +37,7 @@ class HugepageConfigurationDict(TypedDict):
     """Allowed keys and values."""
 
     #:
-    amount: int
+    number_of: int
     #:
     force_first_numa: bool
 
