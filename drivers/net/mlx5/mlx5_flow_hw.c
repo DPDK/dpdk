@@ -13100,6 +13100,91 @@ flow_hw_encap_decap_resource_register
 	return 0;
 }
 
+static enum rte_flow_action_type
+flow_nta_get_indirect_action_type(const struct rte_flow_action *action)
+{
+	switch (MLX5_INDIRECT_ACTION_TYPE_GET(action->conf)) {
+	case MLX5_INDIRECT_ACTION_TYPE_RSS:
+		return RTE_FLOW_ACTION_TYPE_RSS;
+	case MLX5_INDIRECT_ACTION_TYPE_AGE:
+		return RTE_FLOW_ACTION_TYPE_AGE;
+	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
+		return RTE_FLOW_ACTION_TYPE_COUNT;
+	case MLX5_INDIRECT_ACTION_TYPE_CT:
+		return RTE_FLOW_ACTION_TYPE_CONNTRACK;
+	default:
+		break;
+	}
+	return RTE_FLOW_ACTION_TYPE_END;
+}
+
+static void
+flow_nta_set_mh_mask_conf(const struct rte_flow_action_modify_field *action_conf,
+			  struct rte_flow_action_modify_field *mask_conf)
+{
+	memset(mask_conf, 0xff, sizeof(*mask_conf));
+	mask_conf->operation = action_conf->operation;
+	mask_conf->dst.field = action_conf->dst.field;
+	mask_conf->src.field = action_conf->src.field;
+}
+
+union actions_conf {
+	struct rte_flow_action_modify_field modify_field;
+	struct rte_flow_action_raw_encap raw_encap;
+	struct rte_flow_action_vxlan_encap vxlan_encap;
+	struct rte_flow_action_nvgre_encap nvgre_encap;
+};
+
+static int
+flow_nta_build_template_mask(const struct rte_flow_action actions[],
+			     struct rte_flow_action masks[MLX5_HW_MAX_ACTS],
+			     union actions_conf mask_conf[MLX5_HW_MAX_ACTS])
+{
+	int i;
+
+	for (i = 0; i == 0 || actions[i - 1].type != RTE_FLOW_ACTION_TYPE_END; i++) {
+		const struct rte_flow_action *action = &actions[i];
+		struct rte_flow_action *mask = &masks[i];
+		union actions_conf *conf = &mask_conf[i];
+
+		mask->type = action->type;
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			mask->type = flow_nta_get_indirect_action_type(action);
+			if (!mask->type)
+				return -EINVAL;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			flow_nta_set_mh_mask_conf(action->conf, (void *)conf);
+			mask->conf = conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			/* This mask will set this action as shared. */
+			memset(conf, 0xff, sizeof(struct rte_flow_action_raw_encap));
+			mask->conf = conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+			/* This mask will set this action as shared. */
+			conf->vxlan_encap.definition =
+				((const struct rte_flow_action_vxlan_encap *)
+					action->conf)->definition;
+			mask->conf = conf;
+			break;
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+			/* This mask will set this action as shared. */
+			conf->nvgre_encap.definition =
+				((const struct rte_flow_action_nvgre_encap *)
+					action->conf)->definition;
+			mask->conf = conf;
+			break;
+		default:
+			break;
+		}
+	}
+	return 0;
+#undef NTA_CHECK_CONF_BUF_SIZE
+}
+
 static int
 flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 			  const struct rte_flow_attr *attr,
@@ -13123,30 +13208,12 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 		.transfer = attr->transfer,
 	};
 	struct rte_flow_action masks[MLX5_HW_MAX_ACTS];
-	struct rte_flow_action_raw_encap encap_conf;
-	struct rte_flow_action_modify_field mh_conf[MLX5_HW_MAX_ACTS];
+	union actions_conf mask_conf[MLX5_HW_MAX_ACTS];
 
-	memset(&masks, 0, sizeof(masks));
-	int i = -1;
-	do {
-		i++;
-		masks[i].type = actions[i].type;
-		if (masks[i].type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
-			memset(&encap_conf, 0x00, sizeof(encap_conf));
-			encap_conf.size = ((const struct rte_flow_action_raw_encap *)
-				(actions[i].conf))->size;
-			masks[i].conf = &encap_conf;
-		}
-		if (masks[i].type == RTE_FLOW_ACTION_TYPE_MODIFY_FIELD) {
-			const struct rte_flow_action_modify_field *conf = actions[i].conf;
-			memset(&mh_conf, 0xff, sizeof(mh_conf[i]));
-			mh_conf[i].operation = conf->operation;
-			mh_conf[i].dst.field = conf->dst.field;
-			mh_conf[i].src.field = conf->src.field;
-			masks[i].conf = &mh_conf[i];
-		}
-	} while (masks[i].type != RTE_FLOW_ACTION_TYPE_END);
 	RTE_SET_USED(action_flags);
+	memset(masks, 0, sizeof(masks));
+	memset(mask_conf, 0, sizeof(mask_conf));
+	flow_nta_build_template_mask(actions, masks, mask_conf);
 	/* The group in the attribute translation was done in advance. */
 	ret = __translate_group(dev, attr, external, attr->group, &src_group, error);
 	if (ret)
