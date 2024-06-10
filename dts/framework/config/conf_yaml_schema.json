@@ -146,7 +146,7 @@
         "compiler"
       ]
     },
-    "hugepages": {
+    "hugepages_2mb": {
       "type": "object",
       "description": "Optional hugepage configuration. If not specified, hugepages won't be configured and DTS will use system configuration.",
       "properties": {
@@ -253,8 +253,8 @@
             "type": "integer",
             "description": "How many memory channels to use. Optional, defaults to 1."
           },
-          "hugepages": {
-            "$ref": "#/definitions/hugepages"
+          "hugepages_2mb": {
+            "$ref": "#/definitions/hugepages_2mb"
           },
           "ports": {
             "type": "array",

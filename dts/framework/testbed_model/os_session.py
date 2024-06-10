@@ -64,6 +64,7 @@ class OSSession(ABC):
     _logger: DTSLogger
     remote_session: RemoteSession
     interactive_session: InteractiveRemoteSession
+    hugepage_size: int
 
     def __init__(
         self,
@@ -80,6 +81,7 @@ class OSSession(ABC):
             name: The name of the session.
             logger: The logger instance this session will use.
         """
+        self.hugepage_size = 2048
         self._config = node_config
         self.name = name
         self._logger = logger
@@ -345,7 +347,9 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def setup_hugepages(self, hugepage_count: int, force_first_numa: bool) -> None:
+    def setup_hugepages(
+        self, hugepage_count: int, hugepage_size: int, force_first_numa: bool
+    ) -> None:
         """Configure hugepages on the node.
 
         Get the node's Hugepage Size, configure the specified count of hugepages
@@ -353,6 +357,7 @@ class OSSession(ABC):
 
         Args:
             hugepage_count: Configure this many hugepages.
+            hugepage_size: Configure hugepages of this size.
             force_first_numa:  If :data:`True`, configure hugepages just on the first numa node.
         """
 

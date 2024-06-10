@@ -132,6 +132,11 @@ There are two areas that need to be set up on a System Under Test:
      You may specify the optional hugepage configuration in the DTS config file.
      If you do, DTS will take care of configuring hugepages,
      overwriting your current SUT hugepage configuration.
+     Configuration of hugepages via DTS allows only for allocation of 2MB hugepages,
+     as doing so prevents accidental/over allocation of hugepage sizes
+     not recommended during runtime due to contiguous memory space requirements.
+     Thus, if you require hugepage sizes not equal to 2MB,
+     then this configuration must be done outside of the DTS framework.
 
    * System under test configuration
 
@@ -460,11 +465,11 @@ _`Build target`
                         **Example**: ``ccache``
    ==================== =================================================================
 
-_`hugepages`
-   *mapping* – hugepages described as:
+_`hugepages_2mb`
+   *mapping* – hugepages_2mb described as:
 
    ==================== ================================================================
-   ``amount``           *integer* – The amount of hugepages to configure.
+   ``amount``           *integer* – The amount of 2MB hugepages to configure.
 
                         Hugepage size will be the system default.
    ``force_first_numa`` (*optional*, defaults to ``false``) – If ``true``, it forces the
@@ -577,7 +582,7 @@ involved in the testing. These can be defined with the following mappings:
    |                       |                                                                                       |
    |                       | The number of the memory channels to use.                                             |
    +-----------------------+---------------------------------------------------------------------------------------+
-   | ``hugepages``         | (*optional*) See `hugepages`_. If unset, hugepages won't be configured                |
+   | ``hugepages_2mb``     | (*optional*) See `hugepages_2mb`_. If unset, 2MB hugepages won't be configured        |
    |                       |                                                                                       |
    |                       | in favour of the system configuration.                                                |
    +-----------------------+---------------------------------------------------------------------------------------+

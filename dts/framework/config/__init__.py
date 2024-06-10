@@ -256,8 +256,8 @@ class NodeConfiguration:
             Either an SUT or TG configuration instance.
         """
         hugepage_config = None
-        if "hugepages" in d:
-            hugepage_config_dict = d["hugepages"]
+        if "hugepages_2mb" in d:
+            hugepage_config_dict = d["hugepages_2mb"]
             if "force_first_numa" not in hugepage_config_dict:
                 hugepage_config_dict["force_first_numa"] = False
             hugepage_config = HugepageConfiguration(**hugepage_config_dict)

@@ -46,7 +46,7 @@ class NodeConfigDict(TypedDict):
     """Allowed keys and values."""
 
     #:
-    hugepages: HugepageConfigurationDict
+    hugepages_2mb: HugepageConfigurationDict
     #:
     name: str
     #:

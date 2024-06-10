@@ -266,7 +266,9 @@ class Node(ABC):
         """
         if self.config.hugepages:
             self.main_session.setup_hugepages(
-                self.config.hugepages.amount, self.config.hugepages.force_first_numa
+                self.config.hugepages.amount,
+                self.main_session.hugepage_size,
+                self.config.hugepages.force_first_numa,
             )
 
     def configure_port_state(self, port: Port, enable: bool = True) -> None:

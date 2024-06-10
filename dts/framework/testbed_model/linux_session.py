@@ -15,7 +15,7 @@ from typing import TypedDict, Union
 
 from typing_extensions import NotRequired
 
-from framework.exception import RemoteCommandExecutionError
+from framework.exception import ConfigurationError, RemoteCommandExecutionError
 from framework.utils import expand_range
 
 from .cpu import LogicalCore
@@ -84,14 +84,20 @@ class LinuxSession(PosixSession):
         """Overrides :meth:`~.os_session.OSSession.get_dpdk_file_prefix`."""
         return dpdk_prefix
 
-    def setup_hugepages(self, hugepage_count: int, force_first_numa: bool) -> None:
+    def setup_hugepages(
+        self, hugepage_count: int, hugepage_size: int, force_first_numa: bool
+    ) -> None:
         """Overrides :meth:`~.os_session.OSSession.setup_hugepages`."""
         self._logger.info("Getting Hugepage information.")
-        hugepage_size = self._get_hugepage_size()
-        hugepages_total = self._get_hugepages_total()
+        hugepages_total = self._get_hugepages_total(hugepage_size)
+        if (
+            f"hugepages-{hugepage_size}kB"
+            not in self.send_command("ls /sys/kernel/mm/hugepages").stdout
+        ):
+            raise ConfigurationError("hugepage size not supported by operating system")
         self._numa_nodes = self._get_numa_nodes()
 
-        if force_first_numa or hugepages_total != hugepage_count:
+        if force_first_numa or hugepages_total < hugepage_count:
             # when forcing numa, we need to clear existing hugepages regardless
             # of size, so they can be moved to the first numa node
             self._configure_huge_pages(hugepage_count, hugepage_size, force_first_numa)
@@ -99,13 +105,9 @@ class LinuxSession(PosixSession):
             self._logger.info("Hugepages already configured.")
         self._mount_huge_pages()
 
-    def _get_hugepage_size(self) -> int:
-        hugepage_size = self.send_command("awk '/Hugepagesize/ {print $2}' /proc/meminfo").stdout
-        return int(hugepage_size)
-
-    def _get_hugepages_total(self) -> int:
+    def _get_hugepages_total(self, hugepage_size: int) -> int:
         hugepages_total = self.send_command(
-            "awk '/HugePages_Total/ { print $2 }' /proc/meminfo"
+            f"cat /sys/kernel/mm/hugepages/hugepages-{hugepage_size}kB/nr_hugepages"
         ).stdout
         return int(hugepages_total)
 
