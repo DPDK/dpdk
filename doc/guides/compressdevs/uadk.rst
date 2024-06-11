@@ -77,3 +77,22 @@ Test steps
       cd build
       ninja
       sudo ninja install
+
+#. Prepare hugepages for DPDK (see also :doc:`../tools/hugepages`)
+
+   .. code-block:: console
+
+      echo 1024 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
+      echo 1024 > /sys/devices/system/node/node1/hugepages/hugepages-2048kB/nr_hugepages
+      echo 1024 > /sys/devices/system/node/node2/hugepages/hugepages-2048kB/nr_hugepages
+      echo 1024 > /sys/devices/system/node/node3/hugepages/hugepages-2048kB/nr_hugepages
+      mkdir -p /mnt/huge_2mb
+      mount -t hugetlbfs none /mnt/huge_2mb -o pagesize=2MB
+
+#. Run test app
+
+   .. code-block:: console
+
+	sudo dpdk-test --vdev=compress_uadk
+	RTE>>compressdev_autotest
+	RTE>>quit

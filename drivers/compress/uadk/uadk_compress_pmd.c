@@ -291,6 +291,90 @@ static struct rte_compressdev_ops uadk_compress_pmd_ops = {
 		.private_xform_free	= uadk_compress_pmd_xform_free,
 };
 
+static uint16_t
+uadk_compress_pmd_enqueue_burst_sync(void *queue_pair,
+				     struct rte_comp_op **ops, uint16_t nb_ops)
+{
+	struct uadk_compress_qp *qp = queue_pair;
+	struct uadk_compress_xform *xform;
+	struct rte_comp_op *op;
+	uint16_t enqd = 0;
+	int i, ret = 0;
+
+	for (i = 0; i < nb_ops; i++) {
+		op = ops[i];
+
+		if (op->op_type == RTE_COMP_OP_STATEFUL) {
+			op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+		} else {
+			/* process stateless ops */
+			xform = op->private_xform;
+			if (xform) {
+				struct wd_comp_req req = {0};
+				uint16_t dst_len = rte_pktmbuf_data_len(op->m_dst);
+
+				req.src = rte_pktmbuf_mtod(op->m_src, uint8_t *);
+				req.src_len = op->src.length;
+				req.dst = rte_pktmbuf_mtod(op->m_dst, uint8_t *);
+				req.dst_len = dst_len;
+				req.op_type = (enum wd_comp_op_type)xform->type;
+				req.cb = NULL;
+				req.data_fmt = WD_FLAT_BUF;
+				do {
+					ret = wd_do_comp_sync(xform->handle, &req);
+				} while (ret == -WD_EBUSY);
+
+				op->consumed += req.src_len;
+
+				if (req.dst_len <= dst_len) {
+					op->produced += req.dst_len;
+					op->status = RTE_COMP_OP_STATUS_SUCCESS;
+				} else  {
+					op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+				}
+
+				if (ret) {
+					op->status = RTE_COMP_OP_STATUS_ERROR;
+					break;
+				}
+			} else {
+				op->status = RTE_COMP_OP_STATUS_INVALID_ARGS;
+			}
+		}
+
+		/* Whatever is out of op, put it into completion queue with
+		 * its status
+		 */
+		if (!ret)
+			ret = rte_ring_enqueue(qp->processed_pkts, (void *)op);
+
+		if (unlikely(ret)) {
+			/* increment count if failed to enqueue op */
+			qp->qp_stats.enqueue_err_count++;
+		} else {
+			qp->qp_stats.enqueued_count++;
+			enqd++;
+		}
+	}
+
+	return enqd;
+}
+
+static uint16_t
+uadk_compress_pmd_dequeue_burst_sync(void *queue_pair,
+				     struct rte_comp_op **ops,
+				     uint16_t nb_ops)
+{
+	struct uadk_compress_qp *qp = queue_pair;
+	unsigned int nb_dequeued = 0;
+
+	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
+			(void **)ops, nb_ops, NULL);
+	qp->qp_stats.dequeued_count += nb_dequeued;
+
+	return nb_dequeued;
+}
+
 static int
 uadk_compress_probe(struct rte_vdev_device *vdev)
 {
@@ -318,8 +402,8 @@ uadk_compress_probe(struct rte_vdev_device *vdev)
 	}
 
 	compressdev->dev_ops = &uadk_compress_pmd_ops;
-	compressdev->dequeue_burst = NULL;
-	compressdev->enqueue_burst = NULL;
+	compressdev->dequeue_burst = uadk_compress_pmd_dequeue_burst_sync;
+	compressdev->enqueue_burst = uadk_compress_pmd_enqueue_burst_sync;
 	compressdev->feature_flags = RTE_COMPDEV_FF_HW_ACCELERATED;
 
 	return 0;
