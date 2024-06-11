@@ -1257,8 +1257,11 @@ rte_mempool_dump(FILE *f, struct rte_mempool *mp)
 	ops = rte_mempool_get_ops(mp->ops_index);
 	fprintf(f, "  ops_name: <%s>\n", (ops != NULL) ? ops->name : "NA");
 
-	STAILQ_FOREACH(memhdr, &mp->mem_list, next)
+	STAILQ_FOREACH(memhdr, &mp->mem_list, next) {
+		fprintf(f, "  memory chunk at %p, addr=%p, iova=0x%" PRIx64 ", len=%zu\n",
+				memhdr, memhdr->addr, memhdr->iova, memhdr->len);
 		mem_len += memhdr->len;
+	}
 	if (mem_len != 0) {
 		fprintf(f, "  avg bytes/object=%#Lf\n",
 			(long double)mem_len / mp->size);
