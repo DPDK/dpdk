@@ -225,7 +225,6 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 			close(vq->kickfd);
 			vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 		}
-		fdset_pipe_notify(&vduse.fdset);
 		vhost_enable_guest_notification(dev, vq, 1);
 		VHOST_CONFIG_LOG(dev->ifname, INFO, "Ctrl queue event handler installed");
 	}
@@ -238,10 +237,8 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 	struct vduse_vq_eventfd vq_efd;
 	int ret;
 
-	if (vq == dev->cvq && vq->kickfd >= 0) {
+	if (vq == dev->cvq && vq->kickfd >= 0)
 		fdset_del(&vduse.fdset, vq->kickfd);
-		fdset_pipe_notify(&vduse.fdset);
-	}
 
 	vq_efd.index = index;
 	vq_efd.fd = VDUSE_EVENTFD_DEASSIGN;
@@ -432,20 +429,11 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 			return -1;
 		}
 
-		/**
-		 * create a pipe which will be waited by poll and notified to
-		 * rebuild the wait list of poll.
-		 */
-		if (fdset_pipe_init(&vduse.fdset) < 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to create pipe for vduse fdset");
-			return -1;
-		}
-
 		ret = rte_thread_create_internal_control(&fdset_tid, "vduse-evt",
 				fdset_event_dispatch, &vduse.fdset);
 		if (ret != 0) {
 			VHOST_CONFIG_LOG(path, ERR, "failed to create vduse fdset handling thread");
-			fdset_pipe_uninit(&vduse.fdset);
+			fdset_uninit(&vduse.fdset);
 			return -1;
 		}
 
@@ -573,7 +561,6 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 				dev->vduse_dev_fd);
 		goto out_dev_destroy;
 	}
-	fdset_pipe_notify(&vduse.fdset);
 
 	free(dev_config);
 
@@ -616,7 +603,6 @@ vduse_device_destroy(const char *path)
 	vduse_device_stop(dev);
 
 	fdset_del(&vduse.fdset, dev->vduse_dev_fd);
-	fdset_pipe_notify_sync(&vduse.fdset);
 
 	if (dev->vduse_dev_fd >= 0) {
 		close(dev->vduse_dev_fd);

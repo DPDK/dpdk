@@ -279,7 +279,6 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next);
 	pthread_mutex_unlock(&vsocket->conn_mutex);
 
-	fdset_pipe_notify(&vhost_user.fdset);
 	return;
 
 err_cleanup:
@@ -1190,20 +1189,11 @@ rte_vhost_driver_start(const char *path)
 			return -1;
 		}
 
-		/**
-		 * create a pipe which will be waited by poll and notified to
-		 * rebuild the wait list of poll.
-		 */
-		if (fdset_pipe_init(&vhost_user.fdset) < 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to create pipe for vhost fdset");
-			return -1;
-		}
-
 		int ret = rte_thread_create_internal_control(&fdset_tid,
 				"vhost-evt", fdset_event_dispatch, &vhost_user.fdset);
 		if (ret != 0) {
 			VHOST_CONFIG_LOG(path, ERR, "failed to create fdset handling thread");
-			fdset_pipe_uninit(&vhost_user.fdset);
+			fdset_uninit(&vhost_user.fdset);
 			return -1;
 		}
 	}

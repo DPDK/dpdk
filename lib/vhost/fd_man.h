@@ -42,6 +42,7 @@ struct fdset {
 	bool sync;
 };
 
+void fdset_uninit(struct fdset *pfdset);
 
 int fdset_init(struct fdset *pfdset);
 
@@ -52,12 +53,5 @@ void *fdset_del(struct fdset *pfdset, int fd);
 int fdset_try_del(struct fdset *pfdset, int fd);
 
 uint32_t fdset_event_dispatch(void *arg);
-
-int fdset_pipe_init(struct fdset *fdset);
-
-void fdset_pipe_uninit(struct fdset *fdset);
-
-void fdset_pipe_notify(struct fdset *fdset);
-void fdset_pipe_notify_sync(struct fdset *fdset);
 
 #endif
