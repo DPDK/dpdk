@@ -6,7 +6,7 @@
 #define _FD_MAN_H_
 #include <pthread.h>
 #include <poll.h>
-#include <stdbool.h>
+#include <sys/queue.h>
 
 struct fdset;
 
@@ -19,8 +19,7 @@ struct fdset *fdset_init(const char *name);
 int fdset_add(struct fdset *pfdset, int fd,
 	fd_cb rcb, fd_cb wcb, void *dat);
 
-void *fdset_del(struct fdset *pfdset, int fd);
-
+void fdset_del(struct fdset *pfdset, int fd);
 int fdset_try_del(struct fdset *pfdset, int fd);
 
 #endif
