@@ -1386,6 +1386,51 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *),
 	rte_mcfg_mempool_read_unlock();
 }
 
+int rte_mempool_get_mem_range(const struct rte_mempool *mp,
+		struct rte_mempool_mem_range_info *mem_range)
+{
+	void *address_low = (void *)UINTPTR_MAX;
+	void *address_high = 0;
+	size_t address_diff = 0;
+	size_t total_size = 0;
+	struct rte_mempool_memhdr *hdr;
+
+	if (mp == NULL || mem_range == NULL)
+		return -EINVAL;
+
+	/* go through memory chunks and find the lowest and highest addresses */
+	STAILQ_FOREACH(hdr, &mp->mem_list, next) {
+		if (address_low > hdr->addr)
+			address_low = hdr->addr;
+		if (address_high < RTE_PTR_ADD(hdr->addr, hdr->len))
+			address_high = RTE_PTR_ADD(hdr->addr, hdr->len);
+		total_size += hdr->len;
+	}
+
+	/* check if mempool was not populated yet (no memory chunks) */
+	if (address_low == (void *)UINTPTR_MAX)
+		return -EINVAL;
+
+	address_diff = (size_t)RTE_PTR_DIFF(address_high, address_low);
+
+	mem_range->start = address_low;
+	mem_range->length = address_diff;
+	mem_range->is_contiguous = (total_size == address_diff) ? true : false;
+
+	return 0;
+}
+
+size_t rte_mempool_get_obj_alignment(const struct rte_mempool *mp)
+{
+	if (mp == NULL)
+		return 0;
+
+	if (mp->flags & RTE_MEMPOOL_F_NO_CACHE_ALIGN)
+		return sizeof(uint64_t);
+	else
+		return RTE_MEMPOOL_ALIGN;
+}
+
 struct mempool_callback_data {
 	TAILQ_ENTRY(mempool_callback_data) callbacks;
 	rte_mempool_event_callback *func;

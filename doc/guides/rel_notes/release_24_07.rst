@@ -61,6 +61,12 @@ New Features
   which can improve application performance under certain conditions.
   Performance test was added to help users evaluate performance on their setup.
 
+* **Added API to retrieve memory locations of objects in a mempool.**
+
+  Added mempool API ``rte_mempool_get_mem_range`` and
+  ``rte_mempool_get_obj_alignment`` to retrieve information about the memory
+  range and the alignment of objects stored in a mempool.
+
 * **Updated AF_XDP driver.**
 
   * Enabled multi-interface (UDS) support with AF_XDP Device Plugin.

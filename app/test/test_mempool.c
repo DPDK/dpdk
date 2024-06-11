@@ -843,16 +843,19 @@ test_mempool(void)
 	int ret = -1;
 	uint32_t nb_objs = 0;
 	uint32_t nb_mem_chunks = 0;
+	size_t alignment = 0;
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *mp_stack_anon = NULL;
 	struct rte_mempool *mp_stack_mempool_iter = NULL;
 	struct rte_mempool *mp_stack = NULL;
 	struct rte_mempool *default_pool = NULL;
+	struct rte_mempool *mp_alignment = NULL;
 	struct mp_data cb_arg = {
 		.ret = -1
 	};
 	const char *default_pool_ops = rte_mbuf_best_mempool_ops();
+	struct rte_mempool_mem_range_info mem_range = { 0 };
 
 	/* create a mempool (without cache) */
 	mp_nocache = rte_mempool_create("test_nocache", MEMPOOL_SIZE,
@@ -967,6 +970,72 @@ test_mempool(void)
 	}
 	rte_mempool_obj_iter(default_pool, my_obj_init, NULL);
 
+	if (rte_mempool_get_mem_range(default_pool, &mem_range)) {
+		printf("cannot get mem range from default mempool\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (rte_mempool_get_mem_range(NULL, NULL) != -EINVAL) {
+		printf("rte_mempool_get_mem_range failed to return -EINVAL "
+				"when passed invalid arguments\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (mem_range.start == NULL || mem_range.length <
+			(MEMPOOL_SIZE * MEMPOOL_ELT_SIZE)) {
+		printf("mem range of default mempool is invalid\n");
+		GOTO_ERR(ret, err);
+	}
+
+	/* by default mempool objects are aligned by RTE_MEMPOOL_ALIGN */
+	alignment = rte_mempool_get_obj_alignment(default_pool);
+	if (alignment != RTE_MEMPOOL_ALIGN) {
+		printf("rte_mempool_get_obj_alignment returned wrong value, "
+				"expected %zu, returned %zu\n",
+				(size_t)RTE_MEMPOOL_ALIGN, alignment);
+		GOTO_ERR(ret, err);
+	}
+
+	/* create a mempool with a RTE_MEMPOOL_F_NO_CACHE_ALIGN flag */
+	mp_alignment = rte_mempool_create("test_alignment",
+		1, 8, /* the small size guarantees single memory chunk */
+		0, 0, NULL, NULL, my_obj_init, NULL,
+		SOCKET_ID_ANY, RTE_MEMPOOL_F_NO_CACHE_ALIGN);
+
+	if (mp_alignment == NULL) {
+		printf("cannot allocate mempool with "
+				"RTE_MEMPOOL_F_NO_CACHE_ALIGN flag\n");
+		GOTO_ERR(ret, err);
+	}
+
+	/* mempool was created with RTE_MEMPOOL_F_NO_CACHE_ALIGN
+	 * and minimum alignment is expected which is sizeof(uint64_t)
+	 */
+	alignment = rte_mempool_get_obj_alignment(mp_alignment);
+	if (alignment != sizeof(uint64_t)) {
+		printf("rte_mempool_get_obj_alignment returned wrong value, "
+				"expected %zu, returned %zu\n",
+				(size_t)sizeof(uint64_t), alignment);
+		GOTO_ERR(ret, err);
+	}
+
+	alignment = rte_mempool_get_obj_alignment(NULL);
+	if (alignment != 0) {
+		printf("rte_mempool_get_obj_alignment failed to return 0 for "
+				" an invalid mempool\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (rte_mempool_get_mem_range(mp_alignment, &mem_range)) {
+		printf("cannot get mem range from mempool\n");
+		GOTO_ERR(ret, err);
+	}
+
+	if (!mem_range.is_contiguous) {
+		printf("mempool not contiguous\n");
+		GOTO_ERR(ret, err);
+	}
+
 	/* retrieve the mempool from its name */
 	if (rte_mempool_lookup("test_nocache") != mp_nocache) {
 		printf("Cannot lookup mempool from its name\n");
@@ -1039,6 +1108,7 @@ err:
 	rte_mempool_free(mp_stack_mempool_iter);
 	rte_mempool_free(mp_stack);
 	rte_mempool_free(default_pool);
+	rte_mempool_free(mp_alignment);
 
 	return ret;
 }

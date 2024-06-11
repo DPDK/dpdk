@@ -1918,6 +1918,55 @@ void rte_mempool_walk(void (*func)(struct rte_mempool *, void *arg),
 		      void *arg);
 
 /**
+ * A structure used to retrieve information about the memory range
+ * of the mempool.
+ */
+struct rte_mempool_mem_range_info {
+	/** Start of the memory range used by mempool objects */
+	void *start;
+	/** Length of the memory range used by mempool objects */
+	size_t length;
+	/** Are all memory addresses used by mempool objects contiguous */
+	bool is_contiguous;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Get information about the memory range used to store objects in the mempool.
+ *
+ * @param[in] mp
+ *   Pointer to an initialized mempool.
+ * @param[out] mem_range
+ *   Pointer to struct which is used to return lowest address,
+ *   length of the memory range containing all the addresses,
+ *   and whether these addresses are contiguous.
+ * @return
+ *   0 on success, -EINVAL if mempool is not valid or mem_range is NULL.
+ **/
+__rte_experimental
+int
+rte_mempool_get_mem_range(const struct rte_mempool *mp,
+	struct rte_mempool_mem_range_info *mem_range);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Return alignment of objects stored in the mempool.
+ *
+ * @param[in] mp
+ *   Pointer to a mempool.
+ * @return
+ *   Object alignment if mp is valid. 0 if mp is NULL.
+ *
+ **/
+__rte_experimental
+size_t
+rte_mempool_get_obj_alignment(const struct rte_mempool *mp);
+
+/**
  * @internal Get page size used for mempool object allocation.
  * This function is internal to mempool library and mempool drivers.
  */

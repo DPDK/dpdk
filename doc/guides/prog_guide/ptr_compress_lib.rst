@@ -36,6 +36,9 @@ Macros present in the rte_ptr_compress.h header may be used to evaluate whether 
 
 These will help you calculate compression parameters and whether these are legal for particular compression function.
 
+If using a mempool you can get the parameters you need to use in the compression macros and functions
+by using ``rte_mempool_get_mem_range()`` and ``rte_mempool_get_obj_alignment()``.
+
 .. note::
 
     Performance gains depend on the batch size of pointers and CPU capabilities such as vector extensions.
