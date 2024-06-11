@@ -40,6 +40,7 @@ These will help you calculate compression parameters and whether these are legal
 
     Performance gains depend on the batch size of pointers and CPU capabilities such as vector extensions.
     It's important to measure the performance increase on target hardware.
+    A test called ``ring_perf_autotest`` in ``dpdk-test`` can provide the measurements.
 
 Example usage
 -------------
