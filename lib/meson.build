@@ -14,6 +14,7 @@ libraries = [
         'argparse',
         'telemetry', # basic info querying
         'eal', # everything depends on eal
+        'ptr_compress',
         'ring',
         'rcu', # rcu depends on ring
         'mempool',

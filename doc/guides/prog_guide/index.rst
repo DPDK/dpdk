@@ -73,6 +73,7 @@ Programmer's Guide
     telemetry_lib
     bpf_lib
     graph_lib
+    ptr_compress_lib
     build-sdk-meson
     meson_ut
     build_app

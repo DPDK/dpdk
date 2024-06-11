@@ -55,6 +55,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Introduced pointer compression library.**
+
+  Library provides functions to compress and decompress arrays of pointers
+  which can improve application performance under certain conditions.
+  Performance test was added to help users evaluate performance on their setup.
+
 * **Updated AF_XDP driver.**
 
   * Enabled multi-interface (UDS) support with AF_XDP Device Plugin.

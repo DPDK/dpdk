@@ -1694,6 +1694,12 @@ M: Chenbo Xia <chenbox@nvidia.com>
 M: Gaetan Rivet <grive@u256.net>
 F: lib/pci/
 
+Pointer Compression
+M: Paul Szczepanek <paul.szczepanek@arm.com>
+F: lib/ptr_compress/
+F: app/test/test_ptr_compress.c
+F: doc/guides/prog_guide/ptr_compress_lib.rst
+
 Power management
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 M: David Hunt <david.hunt@intel.com>

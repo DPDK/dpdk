@@ -144,6 +144,7 @@ source_file_deps = {
     'test_power_intel_uncore.c': ['power'],
     'test_power_kvm_vm.c': ['power'],
     'test_prefetch.c': [],
+    'test_ptr_compress.c': ['ptr_compress'],
     'test_rand_perf.c': [],
     'test_rawdev.c': ['rawdev', 'bus_vdev'],
     'test_rcu_qsbr.c': ['rcu', 'hash'],
