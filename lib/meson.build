@@ -212,6 +212,22 @@ foreach l:libraries
     includes += include_directories(l)
     dpdk_includes += include_directories(l)
 
+    # special case for header only libraries
+    if sources.length() == 0
+        shared_dep = declare_dependency(include_directories: includes,
+                dependencies: shared_deps)
+        static_dep = declare_dependency(include_directories: includes,
+                dependencies: static_deps)
+        set_variable('shared_rte_' + name, shared_dep)
+        set_variable('static_rte_' + name, static_dep)
+        dpdk_shared_lib_deps += shared_dep
+        dpdk_static_lib_deps += static_dep
+        if developer_mode
+            message('lib/@0@: Defining dependency "@1@"'.format(l, name))
+        endif
+        continue
+    endif
+
     if developer_mode and is_windows and use_function_versioning
         message('@0@: Function versioning is not supported by Windows.'.format(name))
     endif
