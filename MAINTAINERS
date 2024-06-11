@@ -1220,6 +1220,12 @@ F: drivers/compress/octeontx/
 F: doc/guides/compressdevs/octeontx.rst
 F: doc/guides/compressdevs/features/octeontx.ini
 
+HiSilicon UADK compress
+M: Zhangfei Gao <zhangfei.gao@linaro.org>
+F: drivers/compress/uadk/
+F: doc/guides/compressdevs/uadk.rst
+F: doc/guides/compressdevs/features/uadk.ini
+
 Intel QuickAssist
 M: Kai Ji <kai.ji@intel.com>
 F: drivers/compress/qat/

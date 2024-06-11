@@ -118,6 +118,11 @@ New Features
 
   Added a new crypto driver for AMD Pensando hardware accelerators.
 
+* **Added UADK compress driver.**
+
+  Added a new compress driver for the UADK library. See the
+  :doc:`../compressdevs/uadk` guide for more details on this new driver.
+
 * **Updated Marvell CNXK DMA driver.**
 
   * Updated DMA driver internal pool to use higher chunk size,

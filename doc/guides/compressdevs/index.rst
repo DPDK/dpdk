@@ -15,4 +15,5 @@ Compression Device Drivers
     nitrox
     octeontx
     qat_comp
+    uadk
     zlib
