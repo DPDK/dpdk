@@ -3,12 +3,16 @@
  */
 
 #include <errno.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
+#include <rte_malloc.h>
+#include <rte_string_fns.h>
+#include <rte_thread.h>
 
 #include "fd_man.h"
 
@@ -18,6 +22,79 @@ RTE_LOG_REGISTER_SUFFIX(vhost_fdset_logtype, fdset, INFO);
 	RTE_LOG_LINE(level, VHOST_FDMAN, "" __VA_ARGS__)
 
 #define FDPOLLERR (POLLERR | POLLHUP | POLLNVAL)
+
+struct fdentry {
+	int fd;		/* -1 indicates this entry is empty */
+	fd_cb rcb;	/* callback when this fd is readable. */
+	fd_cb wcb;	/* callback when this fd is writeable.*/
+	void *dat;	/* fd context */
+	int busy;	/* whether this entry is being used in cb. */
+};
+
+struct fdset {
+	char name[RTE_THREAD_NAME_SIZE];
+	struct pollfd rwfds[MAX_FDS];
+	struct fdentry fd[MAX_FDS];
+	rte_thread_t tid;
+	pthread_mutex_t fd_mutex;
+	pthread_mutex_t fd_polling_mutex;
+	int num;	/* current fd number of this fdset */
+
+	union pipefds {
+		struct {
+			int pipefd[2];
+		};
+		struct {
+			int readfd;
+			int writefd;
+		};
+	} u;
+
+	pthread_mutex_t sync_mutex;
+	pthread_cond_t sync_cond;
+	bool sync;
+	bool destroy;
+};
+
+static int fdset_add_no_sync(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat);
+static uint32_t fdset_event_dispatch(void *arg);
+
+#define MAX_FDSETS 8
+
+static struct fdset *fdsets[MAX_FDSETS];
+static pthread_mutex_t fdsets_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static struct fdset *
+fdset_lookup(const char *name)
+{
+	int i;
+
+	for (i = 0; i < MAX_FDSETS; i++) {
+		struct fdset *fdset = fdsets[i];
+		if (fdset == NULL)
+			continue;
+
+		if (!strncmp(fdset->name, name, RTE_THREAD_NAME_SIZE))
+			return fdset;
+	}
+
+	return NULL;
+}
+
+static int
+fdset_insert(struct fdset *fdset)
+{
+	int i;
+
+	for (i = 0; i < MAX_FDSETS; i++) {
+		if (fdsets[i] == NULL) {
+			fdsets[i] = fdset;
+			return 0;
+		}
+	}
+
+	return -1;
+}
 
 static void
 fdset_pipe_read_cb(int readfd, void *dat,
@@ -63,7 +140,7 @@ fdset_pipe_init(struct fdset *fdset)
 		return -1;
 	}
 
-	ret = fdset_add(fdset, fdset->u.readfd,
+	ret = fdset_add_no_sync(fdset, fdset->u.readfd,
 			fdset_pipe_read_cb, NULL, fdset);
 	if (ret < 0) {
 		VHOST_FDMAN_LOG(ERR,
@@ -179,34 +256,77 @@ fdset_add_fd(struct fdset *pfdset, int idx, int fd,
 	pfd->revents = 0;
 }
 
-void
-fdset_uninit(struct fdset *pfdset)
+struct fdset *
+fdset_init(const char *name)
 {
-	fdset_pipe_uninit(pfdset);
-}
-
-int
-fdset_init(struct fdset *pfdset)
-{
+	struct fdset *fdset;
+	uint32_t val;
 	int i;
 
-	pthread_mutex_init(&pfdset->fd_mutex, NULL);
-	pthread_mutex_init(&pfdset->fd_polling_mutex, NULL);
+	pthread_mutex_lock(&fdsets_mutex);
+	fdset = fdset_lookup(name);
+	if (fdset) {
+		pthread_mutex_unlock(&fdsets_mutex);
+		return fdset;
+	}
+
+	fdset = rte_zmalloc(NULL, sizeof(*fdset), 0);
+	if (!fdset) {
+		VHOST_FDMAN_LOG(ERR, "Failed to alloc fdset %s", name);
+		goto err_unlock;
+	}
+
+	rte_strscpy(fdset->name, name, RTE_THREAD_NAME_SIZE);
+
+	pthread_mutex_init(&fdset->fd_mutex, NULL);
+	pthread_mutex_init(&fdset->fd_polling_mutex, NULL);
 
 	for (i = 0; i < MAX_FDS; i++) {
-		pfdset->fd[i].fd = -1;
-		pfdset->fd[i].dat = NULL;
+		fdset->fd[i].fd = -1;
+		fdset->fd[i].dat = NULL;
 	}
-	pfdset->num = 0;
+	fdset->num = 0;
 
-	return fdset_pipe_init(pfdset);
+	if (fdset_pipe_init(fdset)) {
+		VHOST_FDMAN_LOG(ERR, "Failed to init pipe for %s", name);
+		goto err_free;
+	}
+
+	if (rte_thread_create_internal_control(&fdset->tid, fdset->name,
+					fdset_event_dispatch, fdset)) {
+		VHOST_FDMAN_LOG(ERR, "Failed to create %s event dispatch thread",
+				fdset->name);
+		goto err_pipe;
+	}
+
+	if (fdset_insert(fdset)) {
+		VHOST_FDMAN_LOG(ERR, "Failed to insert fdset %s", name);
+		goto err_thread;
+	}
+
+	pthread_mutex_unlock(&fdsets_mutex);
+
+	return fdset;
+
+err_thread:
+	fdset->destroy = true;
+	fdset_sync(fdset);
+	rte_thread_join(fdset->tid, &val);
+err_pipe:
+	fdset_pipe_uninit(fdset);
+err_free:
+	rte_free(fdset);
+err_unlock:
+	pthread_mutex_unlock(&fdsets_mutex);
+
+	return NULL;
 }
 
 /**
  * Register the fd in the fdset with read/write handler and context.
  */
-int
-fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
+static int
+fdset_add_no_sync(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 {
 	int i;
 
@@ -228,6 +348,18 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 
 	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
 	pthread_mutex_unlock(&pfdset->fd_mutex);
+
+	return 0;
+}
+
+int
+fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
+{
+	int ret;
+
+	ret = fdset_add_no_sync(pfdset, fd, rcb, wcb, dat);
+	if (ret < 0)
+		return ret;
 
 	fdset_sync(pfdset);
 
@@ -312,7 +444,7 @@ fdset_try_del(struct fdset *pfdset, int fd)
  * will wait until the flag is reset to zero(which indicates the callback is
  * finished), then it could free the context after fdset_del.
  */
-uint32_t
+static uint32_t
 fdset_event_dispatch(void *arg)
 {
 	int i;
@@ -401,6 +533,9 @@ fdset_event_dispatch(void *arg)
 
 		if (need_shrink)
 			fdset_shrink(pfdset);
+
+		if (pfdset->destroy)
+			break;
 	}
 
 	return 0;

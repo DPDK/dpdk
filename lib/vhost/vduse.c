@@ -28,12 +28,10 @@
 #define VDUSE_CTRL_PATH "/dev/vduse/control"
 
 struct vduse {
-	struct fdset fdset;
+	struct fdset *fdset;
 };
 
 static struct vduse vduse;
-
-static bool vduse_events_thread;
 
 static const char * const vduse_reqs_str[] = {
 	"VDUSE_GET_VQ_STATE",
@@ -215,7 +213,7 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 	}
 
 	if (vq == dev->cvq) {
-		ret = fdset_add(&vduse.fdset, vq->kickfd, vduse_control_queue_event, NULL, dev);
+		ret = fdset_add(vduse.fdset, vq->kickfd, vduse_control_queue_event, NULL, dev);
 		if (ret) {
 			VHOST_CONFIG_LOG(dev->ifname, ERR,
 					"Failed to setup kickfd handler for VQ %u: %s",
@@ -238,7 +236,7 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 	int ret;
 
 	if (vq == dev->cvq && vq->kickfd >= 0)
-		fdset_del(&vduse.fdset, vq->kickfd);
+		fdset_del(vduse.fdset, vq->kickfd);
 
 	vq_efd.index = index;
 	vq_efd.fd = VDUSE_EVENTFD_DEASSIGN;
@@ -413,7 +411,6 @@ int
 vduse_device_create(const char *path, bool compliant_ol_flags)
 {
 	int control_fd, dev_fd, vid, ret;
-	rte_thread_t fdset_tid;
 	uint32_t i, max_queue_pairs, total_queues;
 	struct virtio_net *dev;
 	struct virtio_net_config vnet_config = {{ 0 }};
@@ -422,22 +419,12 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	struct vduse_dev_config *dev_config = NULL;
 	const char *name = path + strlen("/dev/vduse/");
 
-	/* If first device, create events dispatcher thread */
-	if (vduse_events_thread == false) {
-		if (fdset_init(&vduse.fdset) < 0) {
+	if (vduse.fdset == NULL) {
+		vduse.fdset = fdset_init("vduse-evt");
+		if (vduse.fdset == NULL) {
 			VHOST_CONFIG_LOG(path, ERR, "failed to init VDUSE fdset");
 			return -1;
 		}
-
-		ret = rte_thread_create_internal_control(&fdset_tid, "vduse-evt",
-				fdset_event_dispatch, &vduse.fdset);
-		if (ret != 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to create vduse fdset handling thread");
-			fdset_uninit(&vduse.fdset);
-			return -1;
-		}
-
-		vduse_events_thread = true;
 	}
 
 	control_fd = open(VDUSE_CTRL_PATH, O_RDWR);
@@ -555,7 +542,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 	dev->cvq = dev->virtqueue[max_queue_pairs * 2];
 
-	ret = fdset_add(&vduse.fdset, dev->vduse_dev_fd, vduse_events_handler, NULL, dev);
+	ret = fdset_add(vduse.fdset, dev->vduse_dev_fd, vduse_events_handler, NULL, dev);
 	if (ret) {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to add fd %d to vduse fdset",
 				dev->vduse_dev_fd);
@@ -602,7 +589,7 @@ vduse_device_destroy(const char *path)
 
 	vduse_device_stop(dev);
 
-	fdset_del(&vduse.fdset, dev->vduse_dev_fd);
+	fdset_del(vduse.fdset, dev->vduse_dev_fd);
 
 	if (dev->vduse_dev_fd >= 0) {
 		close(dev->vduse_dev_fd);

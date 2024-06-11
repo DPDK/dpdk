@@ -77,7 +77,7 @@ struct vhost_user_connection {
 #define MAX_VHOST_SOCKET 1024
 struct vhost_user {
 	struct vhost_user_socket *vsockets[MAX_VHOST_SOCKET];
-	struct fdset fdset;
+	struct fdset *fdset;
 	int vsocket_cnt;
 	pthread_mutex_t mutex;
 };
@@ -262,7 +262,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	conn->connfd = fd;
 	conn->vsocket = vsocket;
 	conn->vid = vid;
-	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb,
+	ret = fdset_add(vhost_user.fdset, fd, vhost_user_read_cb,
 			NULL, conn);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(vsocket->path, ERR,
@@ -395,7 +395,7 @@ vhost_user_start_server(struct vhost_user_socket *vsocket)
 	if (ret < 0)
 		goto err;
 
-	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
+	ret = fdset_add(vhost_user.fdset, fd, vhost_user_server_new_connection,
 		  NULL, vsocket);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to add listen fd %d to vhost server fdset",
@@ -1083,7 +1083,7 @@ again:
 			 * mutex lock, and try again since the r/wcb
 			 * may use the mutex lock.
 			 */
-			if (fdset_try_del(&vhost_user.fdset, vsocket->socket_fd) == -1) {
+			if (fdset_try_del(vhost_user.fdset, vsocket->socket_fd) == -1) {
 				pthread_mutex_unlock(&vhost_user.mutex);
 				goto again;
 			}
@@ -1103,7 +1103,7 @@ again:
 			 * try again since the r/wcb may use the
 			 * conn_mutex and mutex locks.
 			 */
-			if (fdset_try_del(&vhost_user.fdset,
+			if (fdset_try_del(vhost_user.fdset,
 					  conn->connfd) == -1) {
 				pthread_mutex_unlock(&vsocket->conn_mutex);
 				pthread_mutex_unlock(&vhost_user.mutex);
@@ -1171,7 +1171,6 @@ int
 rte_vhost_driver_start(const char *path)
 {
 	struct vhost_user_socket *vsocket;
-	static rte_thread_t fdset_tid;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
@@ -1183,17 +1182,10 @@ rte_vhost_driver_start(const char *path)
 	if (vsocket->is_vduse)
 		return vduse_device_create(path, vsocket->net_compliant_ol_flags);
 
-	if (fdset_tid.opaque_id == 0) {
-		if (fdset_init(&vhost_user.fdset) < 0) {
+	if (vhost_user.fdset == NULL) {
+		vhost_user.fdset = fdset_init("vhost-evt");
+		if (vhost_user.fdset == NULL) {
 			VHOST_CONFIG_LOG(path, ERR, "failed to init Vhost-user fdset");
-			return -1;
-		}
-
-		int ret = rte_thread_create_internal_control(&fdset_tid,
-				"vhost-evt", fdset_event_dispatch, &vhost_user.fdset);
-		if (ret != 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to create fdset handling thread");
-			fdset_uninit(&vhost_user.fdset);
 			return -1;
 		}
 	}
