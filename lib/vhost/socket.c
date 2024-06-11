@@ -90,13 +90,6 @@ static int create_unix_socket(struct vhost_user_socket *vsocket);
 static int vhost_user_start_client(struct vhost_user_socket *vsocket);
 
 static struct vhost_user vhost_user = {
-	.fdset = {
-		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
-		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.fd_pooling_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.sync_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.num = 0
-	},
 	.vsocket_cnt = 0,
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 };
@@ -1192,6 +1185,11 @@ rte_vhost_driver_start(const char *path)
 		return vduse_device_create(path, vsocket->net_compliant_ol_flags);
 
 	if (fdset_tid.opaque_id == 0) {
+		if (fdset_init(&vhost_user.fdset) < 0) {
+			VHOST_CONFIG_LOG(path, ERR, "failed to init Vhost-user fdset");
+			return -1;
+		}
+
 		/**
 		 * create a pipe which will be waited by poll and notified to
 		 * rebuild the wait list of poll.

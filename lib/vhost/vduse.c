@@ -31,15 +31,7 @@ struct vduse {
 	struct fdset fdset;
 };
 
-static struct vduse vduse = {
-	.fdset = {
-		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
-		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.fd_pooling_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.sync_mutex = PTHREAD_MUTEX_INITIALIZER,
-		.num = 0
-	},
-};
+static struct vduse vduse;
 
 static bool vduse_events_thread;
 
@@ -435,6 +427,11 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 	/* If first device, create events dispatcher thread */
 	if (vduse_events_thread == false) {
+		if (fdset_init(&vduse.fdset) < 0) {
+			VHOST_CONFIG_LOG(path, ERR, "failed to init VDUSE fdset");
+			return -1;
+		}
+
 		/**
 		 * create a pipe which will be waited by poll and notified to
 		 * rebuild the wait list of poll.

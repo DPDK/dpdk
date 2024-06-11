@@ -43,7 +43,7 @@ struct fdset {
 };
 
 
-void fdset_init(struct fdset *pfdset);
+int fdset_init(struct fdset *pfdset);
 
 int fdset_add(struct fdset *pfdset, int fd,
 	fd_cb rcb, fd_cb wcb, void *dat);

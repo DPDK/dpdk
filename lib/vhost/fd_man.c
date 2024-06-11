@@ -96,19 +96,23 @@ fdset_add_fd(struct fdset *pfdset, int idx, int fd,
 	pfd->revents = 0;
 }
 
-void
+int
 fdset_init(struct fdset *pfdset)
 {
 	int i;
 
-	if (pfdset == NULL)
-		return;
+	pthread_mutex_init(&pfdset->fd_mutex, NULL);
+	pthread_mutex_init(&pfdset->fd_polling_mutex, NULL);
+	pthread_mutex_init(&pfdset->sync_mutex, NULL);
+	pthread_cond_init(&pfdset->sync_cond, NULL);
 
 	for (i = 0; i < MAX_FDS; i++) {
 		pfdset->fd[i].fd = -1;
 		pfdset->fd[i].dat = NULL;
 	}
 	pfdset->num = 0;
+
+	return 0;
 }
 
 /**
