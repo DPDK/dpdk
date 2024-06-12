@@ -42,7 +42,7 @@ struct rte_ipsec_sad {
 	 * (spi_dip or spi_dip_sip). Used only in add/delete
 	 * as a helper struct.
 	 */
-	__extension__ struct hash_cnt cnt_arr[];
+	struct hash_cnt cnt_arr[];
 };
 
 TAILQ_HEAD(rte_ipsec_sad_list, rte_tailq_entry);

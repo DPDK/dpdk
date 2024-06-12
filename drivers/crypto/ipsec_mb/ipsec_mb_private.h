@@ -125,7 +125,7 @@ struct ipsec_mb_dev_private {
 	/**< PMD  type */
 	uint32_t max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
-	__extension__ uint8_t priv[];
+	uint8_t priv[];
 };
 
 /** IPSEC Multi buffer queue pair common queue pair data for all PMDs */

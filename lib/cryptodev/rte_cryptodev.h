@@ -1525,7 +1525,7 @@ struct rte_crypto_raw_dp_ctx {
 	cryptodev_sym_raw_operation_done_t dequeue_done;
 
 	/* Driver specific context data */
-	__extension__ uint8_t drv_ctx_data[];
+	uint8_t drv_ctx_data[];
 };
 
 /**

@@ -40,7 +40,7 @@ struct rte_rib_node {
 	uint8_t		depth;
 	uint8_t		flag;
 	uint64_t	nh;
-	__extension__ uint64_t ext[];
+	uint64_t ext[];
 };
 
 struct rte_rib {
