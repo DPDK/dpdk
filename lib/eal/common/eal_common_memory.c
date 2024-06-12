@@ -211,6 +211,9 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
 	msl->socket_id = socket_id;
 	msl->base_va = NULL;
 	msl->heap = heap;
+#ifdef RTE_MALLOC_ASAN
+	msl->shm_fd = -1;
+#endif
 
 	EAL_LOG(DEBUG,
 		"Memseg list allocated at socket %i, page size 0x%"PRIx64"kB",

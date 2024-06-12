@@ -1965,13 +1965,9 @@ eal_memseg_list_map_asan_shadow(struct rte_memseg_list *msl)
 {
 	const struct internal_config *internal_conf =
 			eal_get_internal_configuration();
-	void *addr;
-	void *shadow_addr;
-	size_t shadow_sz;
 	int shm_oflag;
 	char shm_path[PATH_MAX];
 	int shm_fd;
-	int ret = 0;
 
 	if (!msl->heap)
 		return 0;
@@ -1982,9 +1978,6 @@ eal_memseg_list_map_asan_shadow(struct rte_memseg_list *msl)
 		RTE_ASSERT(rte_eal_process_type() != RTE_PROC_SECONDARY);
 		return 0;
 	}
-
-	shadow_addr = ASAN_MEM_TO_SHADOW(msl->base_va);
-	shadow_sz = msl->len >> ASAN_SHADOW_SCALE;
 
 	snprintf(shm_path, sizeof(shm_path), "/%s_%s_shadow",
 		eal_get_hugefile_prefix(), msl->memseg_arr.name);
@@ -2001,36 +1994,19 @@ eal_memseg_list_map_asan_shadow(struct rte_memseg_list *msl)
 	}
 
 	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
-		ret = ftruncate(shm_fd, shadow_sz);
-		if (ret == -1) {
+		if (ftruncate(shm_fd, msl->len >> ASAN_SHADOW_SCALE) == -1) {
 			RTE_LOG(DEBUG, EAL, "shadow ftruncate() failed: %s\n",
 				strerror(errno));
-			goto out;
+			close(shm_fd);
+			if (internal_conf->process_type == RTE_PROC_PRIMARY)
+				shm_unlink(shm_path);
+			return -1;
 		}
 	}
 
-	addr = mmap(shadow_addr, shadow_sz, PROT_READ | PROT_WRITE,
-		    MAP_SHARED | MAP_FIXED, shm_fd, 0);
-	if (addr == MAP_FAILED) {
-		RTE_LOG(DEBUG, EAL, "shadow mmap() failed: %s\n",
-			strerror(errno));
-		ret = -1;
-		goto out;
-	}
+	msl->shm_fd = shm_fd;
 
-	if (addr != shadow_addr) {
-		RTE_LOG(DEBUG, EAL, "wrong shadow mmap() address\n");
-		munmap(addr, shadow_sz);
-		ret = -1;
-	}
-out:
-	close(shm_fd);
-	if (ret != 0) {
-		if (internal_conf->process_type == RTE_PROC_PRIMARY)
-			shm_unlink(shm_path);
-	}
-
-	return ret;
+	return 0;
 }
 
 void
@@ -2039,9 +2015,11 @@ eal_memseg_list_unmap_asan_shadow(struct rte_memseg_list *msl)
 	const struct internal_config *internal_conf =
 			eal_get_internal_configuration();
 
-	if (!msl->heap || internal_conf->hugepage_file.unlink_before_mapping ||
-	    internal_conf->no_shconf || internal_conf->no_hugetlbfs)
+	if (msl->shm_fd == -1)
 		return;
+
+	close(msl->shm_fd);
+	msl->shm_fd = -1;
 
 	if (munmap(ASAN_MEM_TO_SHADOW(msl->base_va),
 		   msl->len >> ASAN_SHADOW_SCALE) != 0)

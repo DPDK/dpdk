@@ -78,6 +78,9 @@ struct rte_memseg_list {
 	unsigned int external; /**< 1 if this list points to external memory */
 	unsigned int heap; /**< 1 if this list points to a heap */
 	struct rte_fbarray memseg_arr;
+#ifdef RTE_MALLOC_ASAN
+	int shm_fd;
+#endif
 };
 
 /**
