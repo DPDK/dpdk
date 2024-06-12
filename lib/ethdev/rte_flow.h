@@ -4427,6 +4427,18 @@ enum rte_flow_conv_op {
 	RTE_FLOW_CONV_OP_ITEM,
 
 	/**
+	 * Convert a single item mask.
+	 *
+	 * Duplicates only @p mask.
+	 *
+	 * - @p src type:
+	 *   @code const struct rte_flow_item * @endcode
+	 * - @p dst type:
+	 *   @code struct rte_flow_item * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM_MASK,
+
+	/**
 	 * Convert a single action.
 	 *
 	 * Duplicates @p conf but not outside objects.

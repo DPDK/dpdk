@@ -60,9 +60,10 @@ rte_flow_conv_copy(void *buf, const void *data, const size_t size,
 	bool rte_type = type >= 0;
 
 	size_t sz = rte_type ? desc[type].size : sizeof(void *);
-	if (buf == NULL || data == NULL)
+	if (data == NULL)
 		return 0;
-	rte_memcpy(buf, data, (size > sz ? sz : size));
+	if (buf != NULL)
+		rte_memcpy(buf, data, (size > sz ? sz : size));
 	if (rte_type && desc[type].desc_fn)
 		sz += desc[type].desc_fn(size > 0 ? buf : NULL, data);
 	return sz;
@@ -1090,6 +1091,7 @@ rte_flow_conv(enum rte_flow_conv_op op,
 
 	switch (op) {
 		const struct rte_flow_attr *attr;
+		const struct rte_flow_item *item;
 
 	case RTE_FLOW_CONV_OP_NONE:
 		ret = 0;
@@ -1103,6 +1105,15 @@ rte_flow_conv(enum rte_flow_conv_op op,
 		break;
 	case RTE_FLOW_CONV_OP_ITEM:
 		ret = rte_flow_conv_pattern(dst, size, src, 1, error);
+		break;
+	case RTE_FLOW_CONV_OP_ITEM_MASK:
+		item = src;
+		if (item->mask == NULL) {
+			ret = rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_MASK,
+						 item, "Mask not provided");
+			break;
+		}
+		ret = rte_flow_conv_item_spec(dst, size, src, RTE_FLOW_CONV_ITEM_MASK);
 		break;
 	case RTE_FLOW_CONV_OP_ACTION:
 		ret = rte_flow_conv_actions(dst, size, src, 1, error);
