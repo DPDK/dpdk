@@ -715,7 +715,7 @@ mana_dev_stats_reset(struct rte_eth_dev *dev __rte_unused)
 static int
 mana_get_ifname(const struct mana_priv *priv, char (*ifname)[IF_NAMESIZE])
 {
-	int ret;
+	int ret = -ENODEV;
 	DIR *dir;
 	struct dirent *dent;
 
