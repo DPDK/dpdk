@@ -319,7 +319,9 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 			/* TSO */
 			txbd1->lflags |= TX_BD_LONG_LFLAGS_LSO |
-					 TX_BD_LONG_LFLAGS_T_IPID;
+					 TX_BD_LONG_LFLAGS_T_IPID |
+					 TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM |
+					 TX_BD_LONG_LFLAGS_T_IP_CHKSUM;
 			hdr_size = tx_pkt->l2_len + tx_pkt->l3_len +
 					tx_pkt->l4_len;
 			hdr_size += (tx_pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) ?
