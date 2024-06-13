@@ -1412,6 +1412,8 @@ struct mlx5_dev_ctx_shared {
 		struct mlx5_hlist *flow_tbls; /* SWS flow table. */
 		struct mlx5_hlist *groups; /* HWS flow group. */
 	};
+	struct mlx5_hlist *mreg_cp_tbl;
+	/* Hash table of Rx metadata register copy table. */
 	struct mlx5_flow_tunnel_hub *tunnel_hub;
 	/* Direct Rules tables for FDB, NIC TX+RX */
 	void *dr_drop_action; /* Pointer to DR drop action, any domain. */
@@ -1771,8 +1773,6 @@ struct mlx5_priv {
 	int nl_socket_rdma; /* Netlink socket (NETLINK_RDMA). */
 	int nl_socket_route; /* Netlink socket (NETLINK_ROUTE). */
 	struct mlx5_nl_vlan_vmwa_context *vmwa_context; /* VLAN WA context. */
-	struct mlx5_hlist *mreg_cp_tbl;
-	/* Hash table of Rx metadata register copy table. */
 	struct mlx5_mtr_config mtr_config; /* Meter configuration */
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
 	uint8_t mtr_color_reg; /* Meter color match REG_C. */

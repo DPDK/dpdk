@@ -455,15 +455,16 @@ __mlx5_discovery_misc5_cap(struct mlx5_priv *priv)
  * Routine checks the reference counter and does actual
  * resources creation/initialization only if counter is zero.
  *
- * @param[in] priv
- *   Pointer to the private device data structure.
+ * @param[in] eth_dev
+ *   Pointer to the device.
  *
  * @return
  *   Zero on success, positive error code otherwise.
  */
 static int
-mlx5_alloc_shared_dr(struct mlx5_priv *priv)
+mlx5_alloc_shared_dr(struct rte_eth_dev *eth_dev)
 {
+	struct mlx5_priv *priv = eth_dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	char s[MLX5_NAME_SIZE] __rte_unused;
 	int err;
@@ -575,6 +576,44 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 		err = errno;
 		goto error;
 	}
+
+	if (sh->config.dv_flow_en == 1) {
+		/* Query availability of metadata reg_c's. */
+		if (!priv->sh->metadata_regc_check_flag) {
+			err = mlx5_flow_discover_mreg_c(eth_dev);
+			if (err < 0) {
+				err = -err;
+				goto error;
+			}
+		}
+		if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
+			DRV_LOG(DEBUG,
+				"port %u extensive metadata register is not supported",
+				eth_dev->data->port_id);
+			if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
+				DRV_LOG(ERR, "metadata mode %u is not supported "
+					     "(no metadata registers available)",
+					     sh->config.dv_xmeta_en);
+				err = ENOTSUP;
+				goto error;
+			}
+		}
+		if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    mlx5_flow_ext_mreg_supported(eth_dev) && sh->dv_regc0_mask) {
+			sh->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
+							    MLX5_FLOW_MREG_HTABLE_SZ,
+							    false, true, eth_dev,
+							    flow_dv_mreg_create_cb,
+							    flow_dv_mreg_match_cb,
+							    flow_dv_mreg_remove_cb,
+							    flow_dv_mreg_clone_cb,
+							    flow_dv_mreg_clone_free_cb);
+			if (!sh->mreg_cp_tbl) {
+				err = ENOMEM;
+				goto error;
+			}
+		}
+	}
 #endif
 	if (!sh->tunnel_hub && sh->config.dv_miss_info)
 		err = mlx5_alloc_tunnel_hub(sh);
@@ -658,6 +697,10 @@ error:
 	if (sh->dest_array_list) {
 		mlx5_list_destroy(sh->dest_array_list);
 		sh->dest_array_list = NULL;
+	}
+	if (sh->mreg_cp_tbl) {
+		mlx5_hlist_destroy(sh->mreg_cp_tbl);
+		sh->mreg_cp_tbl = NULL;
 	}
 	return err;
 }
@@ -750,6 +793,10 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 	if (sh->dest_array_list) {
 		mlx5_list_destroy(sh->dest_array_list);
 		sh->dest_array_list = NULL;
+	}
+	if (sh->mreg_cp_tbl) {
+		mlx5_hlist_destroy(sh->mreg_cp_tbl);
+		sh->mreg_cp_tbl = NULL;
 	}
 }
 
@@ -1508,13 +1555,6 @@ err_secondary:
 	}
 	/* Create context for virtual machine VLAN workaround. */
 	priv->vmwa_context = mlx5_vlan_vmwa_init(eth_dev, spawn->ifindex);
-	if (sh->config.dv_flow_en) {
-		err = mlx5_alloc_shared_dr(priv);
-		if (err)
-			goto error;
-		if (mlx5_flex_item_port_init(eth_dev) < 0)
-			goto error;
-	}
 	if (mlx5_devx_obj_ops_en(sh)) {
 		priv->obj_ops = devx_obj_ops;
 		mlx5_queue_counter_id_prepare(eth_dev);
@@ -1565,6 +1605,13 @@ err_secondary:
 			goto error;
 	}
 	rte_rwlock_init(&priv->ind_tbls_lock);
+	if (sh->config.dv_flow_en) {
+		err = mlx5_alloc_shared_dr(eth_dev);
+		if (err)
+			goto error;
+		if (mlx5_flex_item_port_init(eth_dev) < 0)
+			goto error;
+	}
 	if (priv->sh->config.dv_flow_en == 2) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (priv->sh->config.dv_esw_en) {
@@ -1648,43 +1695,6 @@ err_secondary:
 		err = -err;
 		goto error;
 	}
-	/* Query availability of metadata reg_c's. */
-	if (!priv->sh->metadata_regc_check_flag) {
-		err = mlx5_flow_discover_mreg_c(eth_dev);
-		if (err < 0) {
-			err = -err;
-			goto error;
-		}
-	}
-	if (!mlx5_flow_ext_mreg_supported(eth_dev)) {
-		DRV_LOG(DEBUG,
-			"port %u extensive metadata register is not supported",
-			eth_dev->data->port_id);
-		if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY) {
-			DRV_LOG(ERR, "metadata mode %u is not supported "
-				     "(no metadata registers available)",
-				     sh->config.dv_xmeta_en);
-			err = ENOTSUP;
-			goto error;
-		}
-	}
-	if (sh->config.dv_flow_en &&
-	    sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
-	    mlx5_flow_ext_mreg_supported(eth_dev) &&
-	    priv->sh->dv_regc0_mask) {
-		priv->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
-						      MLX5_FLOW_MREG_HTABLE_SZ,
-						      false, true, eth_dev,
-						      flow_dv_mreg_create_cb,
-						      flow_dv_mreg_match_cb,
-						      flow_dv_mreg_remove_cb,
-						      flow_dv_mreg_clone_cb,
-						    flow_dv_mreg_clone_free_cb);
-		if (!priv->mreg_cp_tbl) {
-			err = ENOMEM;
-			goto error;
-		}
-	}
 	rte_spinlock_init(&priv->shared_act_sl);
 	mlx5_flow_counter_mode_config(eth_dev);
 	mlx5_flow_drop_action_config(eth_dev);
@@ -1703,8 +1713,6 @@ error:
 		    priv->sh->config.dv_esw_en)
 			flow_hw_destroy_vport_action(eth_dev);
 #endif
-		if (priv->mreg_cp_tbl)
-			mlx5_hlist_destroy(priv->mreg_cp_tbl);
 		if (priv->sh)
 			mlx5_os_free_shared_dr(priv);
 		if (priv->nl_socket_route >= 0)
