@@ -22,66 +22,121 @@ gve_write_version(uint8_t *driver_version_register)
 	writeb('\n', driver_version_register);
 }
 
-static int
-gve_alloc_queue_page_list(struct gve_priv *priv, uint32_t id, uint32_t pages)
+static struct gve_queue_page_list *
+gve_alloc_queue_page_list(const char *name, uint32_t num_pages)
 {
-	char z_name[RTE_MEMZONE_NAMESIZE];
 	struct gve_queue_page_list *qpl;
 	const struct rte_memzone *mz;
 	dma_addr_t page_bus;
 	uint32_t i;
 
-	if (priv->num_registered_pages + pages >
-	    priv->max_registered_pages) {
-		PMD_DRV_LOG(ERR, "Pages %" PRIu64 " > max registered pages %" PRIu64,
-			    priv->num_registered_pages + pages,
-			    priv->max_registered_pages);
-		return -EINVAL;
-	}
-	qpl = &priv->qpl[id];
-	snprintf(z_name, sizeof(z_name), "gve_%s_qpl%d", priv->pci_dev->device.name, id);
-	mz = rte_memzone_reserve_aligned(z_name, pages * PAGE_SIZE,
+	qpl = rte_zmalloc("qpl struct",	sizeof(struct gve_queue_page_list), 0);
+	if (!qpl)
+		return NULL;
+
+	mz = rte_memzone_reserve_aligned(name, num_pages * PAGE_SIZE,
 					 rte_socket_id(),
 					 RTE_MEMZONE_IOVA_CONTIG, PAGE_SIZE);
 	if (mz == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc %s.", z_name);
-		return -ENOMEM;
+		PMD_DRV_LOG(ERR, "Failed to alloc %s.", name);
+		goto free_qpl_struct;
 	}
-	qpl->page_buses = rte_zmalloc("qpl page buses", pages * sizeof(dma_addr_t), 0);
+	qpl->page_buses = rte_zmalloc("qpl page buses",
+		num_pages * sizeof(dma_addr_t), 0);
 	if (qpl->page_buses == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc qpl %u page buses", id);
-		return -ENOMEM;
+		PMD_DRV_LOG(ERR, "Failed to alloc qpl page buses");
+		goto free_qpl_memzone;
 	}
 	page_bus = mz->iova;
-	for (i = 0; i < pages; i++) {
+	for (i = 0; i < num_pages; i++) {
 		qpl->page_buses[i] = page_bus;
 		page_bus += PAGE_SIZE;
 	}
-	qpl->id = id;
 	qpl->mz = mz;
-	qpl->num_entries = pages;
+	qpl->num_entries = num_pages;
+	return qpl;
 
-	priv->num_registered_pages += pages;
-
-	return 0;
+free_qpl_memzone:
+	rte_memzone_free(qpl->mz);
+free_qpl_struct:
+	rte_free(qpl);
+	return NULL;
 }
 
 static void
-gve_free_qpls(struct gve_priv *priv)
+gve_free_queue_page_list(struct gve_queue_page_list *qpl)
 {
-	uint16_t nb_txqs = priv->max_nb_txq;
-	uint16_t nb_rxqs = priv->max_nb_rxq;
-	uint32_t i;
+	if (qpl->mz) {
+		rte_memzone_free(qpl->mz);
+		qpl->mz = NULL;
+	}
+	if (qpl->page_buses) {
+		rte_free(qpl->page_buses);
+		qpl->page_buses = NULL;
+	}
+	rte_free(qpl);
+}
 
-	if (priv->queue_format != GVE_GQI_QPL_FORMAT)
-		return;
+struct gve_queue_page_list *
+gve_setup_queue_page_list(struct gve_priv *priv, uint16_t queue_id, bool is_rx,
+	uint32_t num_pages)
+{
+	const char *queue_type_string = is_rx ? "rx" : "tx";
+	char qpl_name[RTE_MEMZONE_NAMESIZE];
+	struct gve_queue_page_list *qpl;
+	int err;
 
-	for (i = 0; i < nb_txqs + nb_rxqs; i++) {
-		rte_memzone_free(priv->qpl[i].mz);
-		rte_free(priv->qpl[i].page_buses);
+	/* Allocate a new QPL. */
+	snprintf(qpl_name, sizeof(qpl_name), "gve_%s_%s_qpl%d",
+		priv->pci_dev->device.name, queue_type_string, queue_id);
+	qpl = gve_alloc_queue_page_list(qpl_name, num_pages);
+	if (!qpl) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to alloc %s qpl for queue %hu.",
+			    queue_type_string, queue_id);
+		return NULL;
 	}
 
-	rte_free(priv->qpl);
+	/* Assign the QPL an ID. */
+	qpl->id = queue_id;
+	if (is_rx)
+		qpl->id += priv->max_nb_txq;
+
+	/* Validate page registration limit and register QPLs. */
+	if (priv->num_registered_pages + qpl->num_entries >
+	    priv->max_registered_pages) {
+		PMD_DRV_LOG(ERR, "Pages %" PRIu64 " > max registered pages %" PRIu64,
+			    priv->num_registered_pages + qpl->num_entries,
+			    priv->max_registered_pages);
+		goto cleanup_qpl;
+	}
+	err = gve_adminq_register_page_list(priv, qpl);
+	if (err) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to register %s qpl for queue %hu.",
+			    queue_type_string, queue_id);
+		goto cleanup_qpl;
+	}
+	priv->num_registered_pages += qpl->num_entries;
+	return qpl;
+
+cleanup_qpl:
+	gve_free_queue_page_list(qpl);
+	return NULL;
+}
+
+int
+gve_teardown_queue_page_list(struct gve_priv *priv,
+	struct gve_queue_page_list *qpl)
+{
+	int err = gve_adminq_unregister_page_list(priv, qpl->id);
+	if (err) {
+		PMD_DRV_LOG(CRIT, "Unable to unregister qpl %d!", qpl->id);
+		return err;
+	}
+	priv->num_registered_pages -= qpl->num_entries;
+	gve_free_queue_page_list(qpl);
+	return 0;
 }
 
 static int
@@ -347,7 +402,6 @@ gve_dev_close(struct rte_eth_dev *dev)
 			gve_rx_queue_release_dqo(dev, i);
 	}
 
-	gve_free_qpls(priv);
 	rte_free(priv->adminq);
 
 	dev->data->mac_addrs = NULL;
@@ -1037,9 +1091,7 @@ free_cnt_array:
 static int
 gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 {
-	uint16_t pages;
 	int num_ntfy;
-	uint32_t i;
 	int err;
 
 	/* Set up the adminq */
@@ -1095,40 +1147,10 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 	PMD_DRV_LOG(INFO, "Max TX queues %d, Max RX queues %d",
 		    priv->max_nb_txq, priv->max_nb_rxq);
 
-	/* In GQI_QPL queue format:
-	 * Allocate queue page lists according to max queue number
-	 * tx qpl id should start from 0 while rx qpl id should start
-	 * from priv->max_nb_txq
-	 */
-	if (priv->queue_format == GVE_GQI_QPL_FORMAT) {
-		priv->qpl = rte_zmalloc("gve_qpl",
-					(priv->max_nb_txq + priv->max_nb_rxq) *
-					sizeof(struct gve_queue_page_list), 0);
-		if (priv->qpl == NULL) {
-			PMD_DRV_LOG(ERR, "Failed to alloc qpl.");
-			err = -ENOMEM;
-			goto free_adminq;
-		}
-
-		for (i = 0; i < priv->max_nb_txq + priv->max_nb_rxq; i++) {
-			if (i < priv->max_nb_txq)
-				pages = priv->tx_pages_per_qpl;
-			else
-				pages = priv->rx_data_slot_cnt;
-			err = gve_alloc_queue_page_list(priv, i, pages);
-			if (err != 0) {
-				PMD_DRV_LOG(ERR, "Failed to alloc qpl %u.", i);
-				goto err_qpl;
-			}
-		}
-	}
-
 setup_device:
 	err = gve_setup_device_resources(priv);
 	if (!err)
 		return 0;
-err_qpl:
-	gve_free_qpls(priv);
 free_adminq:
 	gve_adminq_free(priv);
 	return err;

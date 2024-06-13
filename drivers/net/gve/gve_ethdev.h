@@ -288,8 +288,6 @@ struct gve_priv {
 	uint16_t max_mtu;
 	struct rte_ether_addr dev_addr; /* mac address */
 
-	struct gve_queue_page_list *qpl;
-
 	struct gve_tx_queue **txqs;
 	struct gve_rx_queue **rxqs;
 
@@ -415,6 +413,13 @@ gve_set_rx_function(struct rte_eth_dev *dev);
 
 void
 gve_set_tx_function(struct rte_eth_dev *dev);
+
+struct gve_queue_page_list *
+gve_setup_queue_page_list(struct gve_priv *priv, uint16_t queue_id, bool is_rx,
+	uint32_t num_pages);
+int
+gve_teardown_queue_page_list(struct gve_priv *priv,
+	struct gve_queue_page_list *qpl);
 
 /* Below functions are used for DQO */
 

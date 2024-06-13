@@ -536,7 +536,7 @@ gve_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 		return;
 
 	if (q->is_gqi_qpl) {
-		gve_adminq_unregister_page_list(q->hw, q->qpl->id);
+		gve_teardown_queue_page_list(q->hw, q->qpl);
 		rte_free(q->iov_ring);
 		q->qpl = NULL;
 	}
@@ -619,6 +619,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	txq->tx_ring_phys_addr = mz->iova;
 	txq->mz = mz;
 
+	/* QPL-specific allocations. */
 	if (txq->is_gqi_qpl) {
 		txq->iov_ring = rte_zmalloc_socket("gve tx iov ring",
 						   sizeof(struct gve_tx_iovec) * nb_desc,
@@ -628,10 +629,12 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 			err = -ENOMEM;
 			goto err_tx_ring;
 		}
-		txq->qpl = &hw->qpl[queue_id];
-		err = gve_adminq_register_page_list(hw, txq->qpl);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Failed to register qpl %u", queue_id);
+
+		txq->qpl = gve_setup_queue_page_list(hw, queue_id, false,
+						     hw->tx_pages_per_qpl);
+		if (!txq->qpl) {
+			PMD_DRV_LOG(ERR, "Failed to alloc tx qpl for queue %hu.",
+				    queue_id);
 			goto err_iov_ring;
 		}
 	}
@@ -641,7 +644,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	if (mz == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to reserve DMA memory for TX resource");
 		err = -ENOMEM;
-		goto err_iov_ring;
+		goto err_qpl;
 	}
 	txq->qres = (struct gve_queue_resources *)mz->addr;
 	txq->qres_mz = mz;
@@ -651,7 +654,11 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	dev->data->tx_queues[queue_id] = txq;
 
 	return 0;
-
+err_qpl:
+	if (txq->is_gqi_qpl) {
+		gve_teardown_queue_page_list(hw, txq->qpl);
+		txq->qpl = NULL;
+	}
 err_iov_ring:
 	if (txq->is_gqi_qpl)
 		rte_free(txq->iov_ring);
