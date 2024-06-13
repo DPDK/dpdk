@@ -1663,7 +1663,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		if (core_parsed) {
 			RTE_LOG(ERR, EAL, "Option -c is ignored, because (%s) is set!\n",
 				(core_parsed == LCORE_OPT_LST) ? "-l" :
-				(core_parsed == LCORE_OPT_MAP) ? "--lcore" :
+				(core_parsed == LCORE_OPT_MAP) ? "--lcores" :
 				"-c");
 			return -1;
 		}
@@ -1696,7 +1696,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		if (core_parsed) {
 			RTE_LOG(ERR, EAL, "Option -l is ignored, because (%s) is set!\n",
 				(core_parsed == LCORE_OPT_MSK) ? "-c" :
-				(core_parsed == LCORE_OPT_MAP) ? "--lcore" :
+				(core_parsed == LCORE_OPT_MAP) ? "--lcores" :
 				"-l");
 			return -1;
 		}
@@ -1874,10 +1874,10 @@ eal_parse_common_option(int opt, const char *optarg,
 		}
 
 		if (core_parsed) {
-			RTE_LOG(ERR, EAL, "Option --lcore is ignored, because (%s) is set!\n",
+			RTE_LOG(ERR, EAL, "Option --lcores is ignored, because (%s) is set!\n",
 				(core_parsed == LCORE_OPT_LST) ? "-l" :
 				(core_parsed == LCORE_OPT_MSK) ? "-c" :
-				"--lcore");
+				"--lcores");
 			return -1;
 		}
 
