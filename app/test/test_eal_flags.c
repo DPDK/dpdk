@@ -671,7 +671,7 @@ test_missing_c_flag(void)
 	    launch_proc(argv26) == 0 || launch_proc(argv27) == 0 ||
 	    launch_proc(argv28) == 0 || launch_proc(argv30) == 0) {
 		printf("Error - "
-		       "process ran without error with invalid --lcore flag\n");
+		       "process ran without error with invalid --lcores flag\n");
 		return -1;
 	}
 
