@@ -85,7 +85,7 @@ examples are highlighted below.
 * :doc:`Precision Time Protocol (PTP) client<ptpclient>`: The PTP
   client is another minimal implementation of a real world application.
   In this case the application is a PTP client that communicates with a PTP
-  master clock to synchronize time on a Network Interface Card (NIC) using the
+  time transmitter to synchronize time on a Network Interface Card (NIC) using the
   IEEE1588 protocol.
 
 * :doc:`Quality of Service (QoS) Scheduler<qos_scheduler>`: The QoS
