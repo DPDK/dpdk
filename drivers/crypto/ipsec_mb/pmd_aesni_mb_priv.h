@@ -21,6 +21,19 @@
 #define MAX_NUM_SEGS 16
 #endif
 
+int
+aesni_mb_session_configure(IMB_MGR * m __rte_unused, void *priv_sess,
+		const struct rte_crypto_sym_xform *xform);
+
+uint16_t
+aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
+		uint16_t nb_ops);
+
+uint32_t
+aesni_mb_process_bulk(struct rte_cryptodev *dev __rte_unused,
+	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs sofs,
+	struct rte_crypto_sym_vec *vec);
+
 static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 	{	/* MD5 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -721,8 +734,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
-
-uint8_t pmd_driver_id_aesni_mb;
 
 struct aesni_mb_qp_data {
 	uint8_t temp_digests[IMB_MAX_JOBS][DIGEST_LENGTH_MAX];

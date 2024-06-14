@@ -124,6 +124,11 @@ New Features
 
   * Added AES-GCM IPsec operation optimization.
 
+* **Updated IPsec_MB crypto driver.**
+
+  * Made Kasumi and ChaCha-Poly PMDs to share the job code path
+    with AESNI_MB PMD.
+
 * **Added UADK compress driver.**
 
   Added a new compress driver for the UADK library. See the
