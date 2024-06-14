@@ -538,10 +538,12 @@ Time Synchronization
 ~~~~~~~~~~~~~~~~~~~~
 
 System operators may run a PTP (Precision Time Protocol) client application to
-synchronize the time on the NIC (and optionally, on the system) to a PTP master.
+synchronize the time on the NIC (and optionally, on the system) to a
+PTP timeTransmitter.
 
-The BNXT PMD supports a PTP client application to communicate with a PTP master
-clock using DPDK IEEE1588 APIs. Note that the PTP client application needs to
+The BNXT PMD supports a PTP client application to communicate with a
+PTP timeTransmitter using DPDK IEEE1588 APIs.
+Note that the PTP client application needs to
 run on PF and vector mode needs to be disabled.
 
 .. code-block:: console

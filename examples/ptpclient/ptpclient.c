@@ -119,14 +119,14 @@ struct ptp_message {
 	} __rte_packed;
 };
 
-struct ptpv2_data_slave_ordinary {
+struct ptpv2_timeReceiver_ordinary {
 	struct rte_mbuf *m;
 	struct timespec tstamp1;
 	struct timespec tstamp2;
 	struct timespec tstamp3;
 	struct timespec tstamp4;
 	struct clock_id client_clock_id;
-	struct clock_id master_clock_id;
+	struct clock_id transmitter_clock_id;
 	struct timeval new_adj;
 	int64_t delta;
 	uint16_t portid;
@@ -137,7 +137,7 @@ struct ptpv2_data_slave_ordinary {
 	uint16_t current_ptp_port;
 };
 
-static struct ptpv2_data_slave_ordinary ptp_data;
+static struct ptpv2_timeReceiver_ordinary ptp_data;
 
 static inline uint64_t timespec64_to_ns(const struct timespec *ts)
 {
@@ -266,38 +266,38 @@ port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 }
 
 static void
-print_clock_info(struct ptpv2_data_slave_ordinary *ptp_data)
+print_clock_info(struct ptpv2_timeReceiver_ordinary *ptp_data)
 {
 	int64_t nsec;
 	struct timespec net_time, sys_time;
 
-	printf("Master Clock id: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
-		ptp_data->master_clock_id.id[0],
-		ptp_data->master_clock_id.id[1],
-		ptp_data->master_clock_id.id[2],
-		ptp_data->master_clock_id.id[3],
-		ptp_data->master_clock_id.id[4],
-		ptp_data->master_clock_id.id[5],
-		ptp_data->master_clock_id.id[6],
-		ptp_data->master_clock_id.id[7]);
+	printf("TimeTransmitter Clock id: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+		ptp_data->transmitter_clock_id.id[0],
+		ptp_data->transmitter_clock_id.id[1],
+		ptp_data->transmitter_clock_id.id[2],
+		ptp_data->transmitter_clock_id.id[3],
+		ptp_data->transmitter_clock_id.id[4],
+		ptp_data->transmitter_clock_id.id[5],
+		ptp_data->transmitter_clock_id.id[6],
+		ptp_data->transmitter_clock_id.id[7]);
 
-	printf("\nT2 - Slave  Clock.  %lds %ldns",
+	printf("\nT2 - TimeReceiver  Clock.  %lds %ldns",
 			(ptp_data->tstamp2.tv_sec),
 			(ptp_data->tstamp2.tv_nsec));
 
-	printf("\nT1 - Master Clock.  %lds %ldns ",
+	printf("\nT1 - TimeTransmitter Clock.  %lds %ldns ",
 			ptp_data->tstamp1.tv_sec,
 			(ptp_data->tstamp1.tv_nsec));
 
-	printf("\nT3 - Slave  Clock.  %lds %ldns",
+	printf("\nT3 - TimeReceiver  Clock.  %lds %ldns",
 			ptp_data->tstamp3.tv_sec,
 			(ptp_data->tstamp3.tv_nsec));
 
-	printf("\nT4 - Master Clock.  %lds %ldns ",
+	printf("\nT4 - TimeTransmitter Clock.  %lds %ldns ",
 			ptp_data->tstamp4.tv_sec,
 			(ptp_data->tstamp4.tv_nsec));
 
-	printf("\nDelta between master and slave clocks:%"PRId64"ns\n",
+	printf("\nDelta between timeTransmitter and timeReceiver clocks:%"PRId64"ns\n",
 			ptp_data->delta);
 
 	clock_gettime(CLOCK_REALTIME, &sys_time);
@@ -331,7 +331,7 @@ print_clock_info(struct ptpv2_data_slave_ordinary *ptp_data)
 }
 
 static int64_t
-delta_eval(struct ptpv2_data_slave_ordinary *ptp_data)
+delta_eval(struct ptpv2_timeReceiver_ordinary *ptp_data)
 {
 	int64_t delta;
 	uint64_t t1 = 0;
@@ -353,7 +353,7 @@ delta_eval(struct ptpv2_data_slave_ordinary *ptp_data)
  * Parse the PTP SYNC message.
  */
 static void
-parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
+parse_sync(struct ptpv2_timeReceiver_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 {
 	struct ptp_header *ptp_hdr;
 
@@ -362,7 +362,7 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 	ptp_data->seqID_SYNC = rte_be_to_cpu_16(ptp_hdr->seq_id);
 
 	if (ptp_data->ptpset == 0) {
-		rte_memcpy(&ptp_data->master_clock_id,
+		rte_memcpy(&ptp_data->transmitter_clock_id,
 				&ptp_hdr->source_port_id.clock_id,
 				sizeof(struct clock_id));
 		ptp_data->ptpset = 1;
@@ -383,7 +383,7 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
  * Parse the PTP FOLLOWUP message and send DELAY_REQ to the main clock.
  */
 static void
-parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
+parse_fup(struct ptpv2_timeReceiver_ordinary *ptp_data)
 {
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ether_addr eth_addr;
@@ -402,7 +402,7 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ptp_hdr = rte_pktmbuf_mtod_offset(m, struct ptp_header *,
 					  sizeof(struct rte_ether_hdr));
-	if (memcmp(&ptp_data->master_clock_id,
+	if (memcmp(&ptp_data->transmitter_clock_id,
 			&ptp_hdr->source_port_id.clock_id,
 			sizeof(struct clock_id)) != 0)
 		return;
@@ -533,7 +533,7 @@ update_kernel_time(void)
  * Parse the DELAY_RESP message.
  */
 static void
-parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
+parse_drsp(struct ptpv2_timeReceiver_ordinary *ptp_data)
 {
 	struct rte_mbuf *m = ptp_data->m;
 	struct ptp_message *ptp_msg;
@@ -571,7 +571,7 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 	}
 }
 
-/* This function processes PTP packets, implementing slave PTP IEEE1588 L2
+/* This function processes PTP packets, implementing timeReceiver PTP IEEE1588 L2
  * functionality.
  */
 
@@ -763,7 +763,7 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error with EAL initialization\n");
 	/* >8 End of initialization of EAL. */
 
-	memset(&ptp_data, '\0', sizeof(struct ptpv2_data_slave_ordinary));
+	memset(&ptp_data, 0, sizeof(struct ptpv2_timeReceiver_ordinary));
 
 	/* Parse specific arguments. 8< */
 	argc -= ret;

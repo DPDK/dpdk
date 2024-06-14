@@ -5,8 +5,9 @@ PTP Client Sample Application
 =============================
 
 The PTP (Precision Time Protocol) client sample application is a simple
-example of using the DPDK IEEE1588 API to communicate with a PTP master clock
-to synchronize the time on the NIC and, optionally, on the Linux system.
+example of using the DPDK IEEE1588 API to communicate with a PTP
+timeTransmitter to synchronize the time on the NIC and, optionally,
+on the Linux system.
 
 Note, PTP is a time syncing protocol and cannot be used within DPDK as a
 time-stamping mechanism. See the following for an explanation of the protocol:
@@ -21,10 +22,10 @@ The PTP sample application is intended as a simple reference implementation of
 a PTP client using the DPDK IEEE1588 API.
 In order to keep the application simple the following assumptions are made:
 
-* The first discovered master is the main for the session.
+* The first discovered timeTransmitter is the main for the session.
 * Only L2 PTP packets are supported.
 * Only the PTP v2 protocol is supported.
-* Only the slave clock is implemented.
+* Only the timeReceiver clock is implemented.
 
 
 How the Application Works
@@ -38,12 +39,12 @@ How the Application Works
 
 The PTP synchronization in the sample application works as follows:
 
-* Master sends *Sync* message - the slave saves it as T2.
-* Master sends *Follow Up* message and sends time of T1.
-* Slave sends *Delay Request* frame to PTP Master and stores T3.
-* Master sends *Delay Response* T4 time which is time of received T3.
+* TimeTransmitter sends *Sync* message - the TimeReceiver saves it as T2.
+* TimeTransmitter sends *Follow Up* message and sends time of T1.
+* TimeReceiver sends *Delay Request* frame to PTP TimeTransmitter and stores T3.
+* TimeTransmitter sends *Delay Response* T4 time which is time of received T3.
 
-The adjustment for slave can be represented as:
+The adjustment for timeReceiver can be represented as:
 
    adj = -[(T2-T1)-(T4 - T3)]/2
 
@@ -71,8 +72,8 @@ Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.
 
 * ``-p portmask``: Hexadecimal portmask.
-* ``-T 0``: Update only the PTP slave clock.
-* ``-T 1``: Update the PTP slave clock and synchronize the Linux Kernel to the PTP clock.
+* ``-T 0``: Update only the PTP timeReceiver clock.
+* ``-T 1``: Update the PTP timeReceiver clock and synchronize the Linux Kernel to the PTP clock.
 
 
 Code Explanation
@@ -178,7 +179,7 @@ The forwarding loop can be interrupted and the application closed using
 PTP parsing
 ~~~~~~~~~~~
 
-The ``parse_ptp_frames()`` function processes PTP packets, implementing slave
+The ``parse_ptp_frames()`` function processes PTP packets, implementing timeReceiver
 PTP IEEE1588 L2 functionality.
 
 .. literalinclude:: ../../../examples/ptpclient/ptpclient.c
@@ -187,11 +188,11 @@ PTP IEEE1588 L2 functionality.
     :end-before:  >8 End of function processes PTP packets.
 
 There are 3 types of packets on the RX path which we must parse to create a minimal
-implementation of the PTP slave client:
+implementation of the PTP timeReceiver client:
 
 * SYNC packet.
 * FOLLOW UP packet
 * DELAY RESPONSE packet.
 
 When we parse the *FOLLOW UP* packet we also create and send a *DELAY_REQUEST* packet.
-Also when we parse the *DELAY RESPONSE* packet, and all conditions are met we adjust the PTP slave clock.
+Also when we parse the *DELAY RESPONSE* packet, and all conditions are met we adjust the PTP timeReceiver clock.
