@@ -205,16 +205,22 @@ cnxk_ae_fill_ec_params(struct cnxk_ae_sess *sess,
 		return 0;
 
 	ec->pkey.length = xform->ec.pkey.length;
-	if (xform->ec.pkey.length)
-		rte_memcpy(ec->pkey.data, xform->ec.pkey.data, xform->ec.pkey.length);
+	if (ec->pkey.length > ROC_AE_EC_DATA_MAX)
+		ec->pkey.length = ROC_AE_EC_DATA_MAX;
+	if (ec->pkey.length)
+		rte_memcpy(ec->pkey.data, xform->ec.pkey.data, ec->pkey.length);
 
 	ec->q.x.length = xform->ec.q.x.length;
-	if (xform->ec.q.x.length)
-		rte_memcpy(ec->q.x.data, xform->ec.q.x.data, xform->ec.q.x.length);
+	if (ec->q.x.length > ROC_AE_EC_DATA_MAX)
+		ec->q.x.length = ROC_AE_EC_DATA_MAX;
+	if (ec->q.x.length)
+		rte_memcpy(ec->q.x.data, xform->ec.q.x.data, ec->q.x.length);
 
 	ec->q.y.length = xform->ec.q.y.length;
+	if (ec->q.y.length > ROC_AE_EC_DATA_MAX)
+		ec->q.y.length = ROC_AE_EC_DATA_MAX;
 	if (xform->ec.q.y.length)
-		rte_memcpy(ec->q.y.data, xform->ec.q.y.data, xform->ec.q.y.length);
+		rte_memcpy(ec->q.y.data, xform->ec.q.y.data, ec->q.y.length);
 
 	return 0;
 }
@@ -735,7 +741,11 @@ cnxk_ae_sm2_sign_prep(struct rte_crypto_sm2_op_param *sm2,
 	uint8_t *dptr;
 
 	prime_len = ec_grp->prime.length;
+	if (prime_len > ROC_AE_EC_DATA_MAX)
+		prime_len = ROC_AE_EC_DATA_MAX;
 	order_len = ec_grp->order.length;
+	if (order_len > ROC_AE_EC_DATA_MAX)
+		order_len = ROC_AE_EC_DATA_MAX;
 
 	/* Truncate input length to curve prime length */
 	if (message_len > prime_len)
@@ -822,7 +832,11 @@ cnxk_ae_sm2_verify_prep(struct rte_crypto_sm2_op_param *sm2,
 	uint8_t *dptr;
 
 	prime_len = ec_grp->prime.length;
+	if (prime_len > ROC_AE_EC_DATA_MAX)
+		prime_len = ROC_AE_EC_DATA_MAX;
 	order_len = ec_grp->order.length;
+	if (order_len > ROC_AE_EC_DATA_MAX)
+		order_len = ROC_AE_EC_DATA_MAX;
 
 	/* Truncate input length to curve prime length */
 	if (message_len > prime_len)

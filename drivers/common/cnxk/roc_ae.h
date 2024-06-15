@@ -53,29 +53,31 @@ typedef enum {
 	ROC_AE_ERR_ECC_POINT_NOT_ON_CURVE = 0x11
 } roc_ae_error_code;
 
+#define ROC_AE_EC_DATA_MAX 66
+
 /* Prime and order fields of built-in elliptic curves */
 struct roc_ae_ec_group {
 	struct {
 		/* P521 maximum length */
-		uint8_t data[66];
+		uint8_t data[ROC_AE_EC_DATA_MAX];
 		unsigned int length;
 	} prime;
 
 	struct {
 		/* P521 maximum length */
-		uint8_t data[66];
+		uint8_t data[ROC_AE_EC_DATA_MAX];
 		unsigned int length;
 	} order;
 
 	struct {
 		/* P521 maximum length */
-		uint8_t data[66];
+		uint8_t data[ROC_AE_EC_DATA_MAX];
 		unsigned int length;
 	} consta;
 
 	struct {
 		/* P521 maximum length */
-		uint8_t data[66];
+		uint8_t data[ROC_AE_EC_DATA_MAX];
 		unsigned int length;
 	} constb;
 };
@@ -86,18 +88,18 @@ struct roc_ae_ec_ctx {
 
 	/* Private key */
 	struct {
-		uint8_t data[66];
+		uint8_t data[ROC_AE_EC_DATA_MAX];
 		unsigned int length;
 	} pkey;
 
 	/* Public key */
 	struct {
 		struct {
-			uint8_t data[66];
+			uint8_t data[ROC_AE_EC_DATA_MAX];
 			unsigned int length;
 		} x;
 		struct {
-			uint8_t data[66];
+			uint8_t data[ROC_AE_EC_DATA_MAX];
 			unsigned int length;
 		} y;
 	} q;
