@@ -413,6 +413,54 @@ mlx5_nta_rss_init_ptype_ctx(struct mlx5_nta_rss_ctx *rss_ctx,
 	rss_ctx->external = external;
 }
 
+static struct rte_flow_hw *
+flow_nta_create_single(struct rte_eth_dev *dev,
+		       const struct rte_flow_attr *attr,
+		       const struct rte_flow_item items[],
+		       const struct rte_flow_action actions[],
+		       struct rte_flow_action_rss *rss_conf,
+		       int64_t item_flags, uint64_t action_flags,
+		       bool external, bool copy_actions,
+		       enum mlx5_flow_type flow_type,
+		       struct rte_flow_error *error)
+{
+	struct rte_flow_hw *flow = NULL;
+	struct rte_flow_action copy[MLX5_HW_MAX_ACTS];
+	const struct rte_flow_action *_actions;
+
+	if (copy_actions) {
+		int i;
+
+		_actions = copy;
+		for (i = 0; ; i++) {
+			copy[i] = actions[i];
+			switch (actions[i].type) {
+			case RTE_FLOW_ACTION_TYPE_RSS:
+				copy[i].conf = rss_conf;
+				break;
+			case RTE_FLOW_ACTION_TYPE_INDIRECT:
+				if (MLX5_INDIRECT_ACTION_TYPE_GET(actions[i].conf) ==
+					MLX5_INDIRECT_ACTION_TYPE_RSS) {
+					copy[i].type = RTE_FLOW_ACTION_TYPE_RSS;
+					copy[i].conf = rss_conf;
+				}
+				break;
+			case RTE_FLOW_ACTION_TYPE_END:
+				goto end;
+			default:
+				break;
+			}
+		}
+	} else {
+		_actions = actions;
+	}
+end:
+	flow_hw_create_flow(dev, flow_type, attr, items,
+			    _actions, item_flags, action_flags,
+			    external, &flow, error);
+	return flow;
+}
+
 /*
  * MLX5 HW hashes IPv4 and IPv6 L3 headers and UDP, TCP, ESP L4 headers.
  * RSS expansion is required when RSS action was configured to hash
@@ -436,10 +484,11 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 		    struct rte_flow_error *error)
 {
 	struct rte_flow_hw *rss_base = NULL, *rss_next = NULL, *rss_miss = NULL;
-	struct rte_flow_action_rss ptype_rss_conf;
+	struct rte_flow_action_rss ptype_rss_conf = *rss_conf;
 	struct mlx5_nta_rss_ctx rss_ctx;
 	uint64_t rss_types = rte_eth_rss_hf_refine(rss_conf->types);
 	bool expand = true;
+	bool copy_actions = false;
 	bool inner_rss = rss_conf->level > 1;
 	bool outer_rss = !inner_rss;
 	bool l3_item = (outer_rss && (item_flags & MLX5_FLOW_LAYER_OUTER_L3)) ||
@@ -479,6 +528,7 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 		[MLX5_RSS_PTYPE_ACTION_INDEX + 1] = { .type = RTE_FLOW_ACTION_TYPE_END }
 	};
 
+	ptype_rss_conf.types = rss_types;
 	if (l4_item) {
 		/*
 		 * Original flow pattern extended up to L4 level.
@@ -497,19 +547,35 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 			/*
 			 * Original flow pattern extended up to L3 level.
 			 * RSS action was not set for L4 hash.
-			 * Original pattern does not need expansion.
 			 */
+			bool ip4_item =
+				(outer_rss && (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV4)) ||
+				(inner_rss && (item_flags & MLX5_FLOW_LAYER_INNER_L3_IPV4));
+			bool ip6_item =
+				(outer_rss && (item_flags & MLX5_FLOW_LAYER_OUTER_L3_IPV6)) ||
+				(inner_rss && (item_flags & MLX5_FLOW_LAYER_INNER_L3_IPV6));
+			bool ip4_hash = rss_types & MLX5_IPV4_LAYER_TYPES;
+			bool ip6_hash = rss_types & MLX5_IPV6_LAYER_TYPES;
+
 			expand = false;
+			if (ip4_item && ip4_hash) {
+				ptype_rss_conf.types &= ~MLX5_IPV6_LAYER_TYPES;
+				copy_actions = true;
+			} else if (ip6_item && ip6_hash) {
+				/*
+				 * MLX5 HW will not activate TIR IPv6 hash
+				 * if that TIR has also IPv4 hash
+				 */
+				ptype_rss_conf.types &= ~MLX5_IPV4_LAYER_TYPES;
+				copy_actions = true;
+			}
 		}
 	}
-	if (!expand) {
-		struct rte_flow_hw *flow = NULL;
-
-		flow_hw_create_flow(dev, flow_type, attr, items,
-				    actions, item_flags, action_flags,
-				    external, &flow, error);
-		return flow;
-	}
+	if (!expand)
+		return flow_nta_create_single(dev, attr, items, actions,
+					      &ptype_rss_conf, item_flags,
+					      action_flags, external,
+					      copy_actions, flow_type, error);
 	/* Create RSS expansions in dedicated PTYPE flow group */
 	ptype_attr.group = mlx5_hw_get_rss_ptype_group(dev);
 	if (!ptype_attr.group) {
@@ -517,11 +583,10 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 				   NULL, "cannot get RSS PTYPE group");
 		return NULL;
 	}
-	ptype_rss_conf = *rss_conf;
 	mlx5_nta_rss_init_ptype_ctx(&rss_ctx, dev, &ptype_attr, ptype_pattern,
-				    ptype_actions, rss_conf, &expansion_head,
+				    ptype_actions, &ptype_rss_conf, &expansion_head,
 				    error, item_flags, flow_type, external);
-	rss_miss = mlx5_hw_rss_ptype_create_miss_flow(dev, rss_conf, ptype_attr.group,
+	rss_miss = mlx5_hw_rss_ptype_create_miss_flow(dev, &ptype_rss_conf, ptype_attr.group,
 						      external, error);
 	if (!rss_miss)
 		goto error;
