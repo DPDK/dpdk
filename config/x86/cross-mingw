@@ -5,6 +5,7 @@ ld = 'x86_64-w64-mingw32-ld'
 ar = 'x86_64-w64-mingw32-ar'
 strip = 'x86_64-w64-mingw32-strip'
 pkgconfig = 'x86_64-w64-mingw32-pkg-config'
+pkg-config = 'x86_64-w64-mingw32-pkg-config'
 objdump = 'x86_64-w64-mingw32-objdump'
 
 [host_machine]
