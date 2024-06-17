@@ -242,6 +242,7 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 		goto out_remove;
 	}
 
+	return 0;
 out_remove:
 	pthread_mutex_lock(&pfdset->fd_mutex);
 	pfdentry = fdset_find_entry_locked(pfdset, fd);
