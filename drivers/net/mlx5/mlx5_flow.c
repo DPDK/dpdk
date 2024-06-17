@@ -3171,21 +3171,22 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
+	/* HWS can match entire VXLAN, VXLAN-GBP and VXLAN-GPE headers */
+	if (mlx5_hws_active(dev))
+		return 0;
 	valid_mask = &rte_flow_item_vxlan_mask;
 	/*
 	 * Verify only UDPv4 is present as defined in
 	 * https://tools.ietf.org/html/rfc7348
 	 */
-	if (!mlx5_hws_active(dev)) {
-		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  item, "no outer UDP layer found");
-		if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ITEM, item,
-						  "VXLAN tunnel must be fully defined");
-	}
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  item, "no outer UDP layer found");
+	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "VXLAN tunnel must be fully defined");
 	if (!mask)
 		mask = &rte_flow_item_vxlan_mask;
 
