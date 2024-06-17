@@ -439,6 +439,7 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 	struct rte_flow_action_rss ptype_rss_conf;
 	struct mlx5_nta_rss_ctx rss_ctx;
 	uint64_t rss_types = rte_eth_rss_hf_refine(rss_conf->types);
+	bool expand = true;
 	bool inner_rss = rss_conf->level > 1;
 	bool outer_rss = !inner_rss;
 	bool l3_item = (outer_rss && (item_flags & MLX5_FLOW_LAYER_OUTER_L3)) ||
@@ -484,27 +485,30 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 		 * L4 is the maximal expansion level.
 		 * Original pattern does not need expansion.
 		 */
-		rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_NONE, NULL, NULL);
-		return NULL;
-	}
-	if (!l4_hash) {
+		expand = false;
+	} else if (!l4_hash) {
 		if (!l3_hash) {
 			/*
 			 * RSS action was not configured to hash L3 or L4.
 			 * No expansion needed.
 			 */
-			rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_NONE, NULL, NULL);
-			return NULL;
-		}
-		if (l3_item) {
+			expand = false;
+		} else if (l3_item) {
 			/*
 			 * Original flow pattern extended up to L3 level.
 			 * RSS action was not set for L4 hash.
 			 * Original pattern does not need expansion.
 			 */
-			rte_flow_error_set(error, 0, RTE_FLOW_ERROR_TYPE_NONE, NULL, NULL);
-			return NULL;
+			expand = false;
 		}
+	}
+	if (!expand) {
+		struct rte_flow_hw *flow = NULL;
+
+		flow_hw_create_flow(dev, flow_type, attr, items,
+				    actions, item_flags, action_flags,
+				    external, &flow, error);
+		return flow;
 	}
 	/* Create RSS expansions in dedicated PTYPE flow group */
 	ptype_attr.group = mlx5_hw_get_rss_ptype_group(dev);
