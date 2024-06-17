@@ -13888,11 +13888,7 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 		flow = flow_nta_handle_rss(dev, attr, items, actions, rss_conf,
 					   item_flags, action_flags, external,
 					   type, error);
-		if (flow)
-			return (uintptr_t)flow;
-		if (error->type != RTE_FLOW_ERROR_TYPE_NONE)
-			return 0;
-		/* Fall Through to non-expanded RSS flow */
+		return (uintptr_t)flow;
 	}
 	/* TODO: Handle split/expand to num_flows. */
 
