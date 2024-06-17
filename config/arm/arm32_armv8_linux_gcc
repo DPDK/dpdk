@@ -4,6 +4,7 @@ cpp = ['ccache', 'arm-linux-gnueabihf-g++']
 ar = 'arm-linux-gnueabihf-gcc-ar'
 strip = 'arm-linux-gnueabihf-strip'
 pkgconfig = 'arm-linux-gnueabihf-pkg-config'
+pkg-config = 'arm-linux-gnueabihf-pkg-config'
 pcap-config = ''
 
 [host_machine]
