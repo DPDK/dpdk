@@ -314,6 +314,7 @@ struct txgbe_rx_queue {
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_TXGBE_RX_MAX_BURST * 2];
+	const struct rte_memzone *mz;
 };
 
 /**
@@ -402,6 +403,7 @@ struct txgbe_tx_queue {
 	uint8_t		    using_ipsec;
 	/**< indicates that IPsec TX feature is in use */
 #endif
+	const struct rte_memzone *mz;
 };
 
 struct txgbe_txq_ops {
