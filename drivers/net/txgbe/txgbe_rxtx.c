@@ -586,26 +586,17 @@ tx_desc_ol_flags_to_ptype(uint64_t oflags)
 	switch (oflags & RTE_MBUF_F_TX_TUNNEL_MASK) {
 	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
 	case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_GRENAT;
+		ptype |= RTE_PTYPE_TUNNEL_GRENAT;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GRE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_GRE;
+		ptype |= RTE_PTYPE_TUNNEL_GRE;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_GENEVE;
-		ptype |= RTE_PTYPE_INNER_L2_ETHER;
+		ptype |= RTE_PTYPE_TUNNEL_GENEVE;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_IPIP:
 	case RTE_MBUF_F_TX_TUNNEL_IP:
-		ptype |= RTE_PTYPE_L2_ETHER |
-			 RTE_PTYPE_L3_IPV4 |
-			 RTE_PTYPE_TUNNEL_IP;
+		ptype |= RTE_PTYPE_TUNNEL_IP;
 		break;
 	}
 
@@ -689,11 +680,20 @@ txgbe_xmit_cleanup(struct txgbe_tx_queue *txq)
 	return 0;
 }
 
+#define GRE_CHECKSUM_PRESENT	0x8000
+#define GRE_KEY_PRESENT		0x2000
+#define GRE_SEQUENCE_PRESENT	0x1000
+#define GRE_EXT_LEN		4
+#define GRE_SUPPORTED_FIELDS	(GRE_CHECKSUM_PRESENT | GRE_KEY_PRESENT |\
+				 GRE_SEQUENCE_PRESENT)
+
 static inline uint8_t
 txgbe_get_tun_len(struct rte_mbuf *mbuf)
 {
 	struct txgbe_genevehdr genevehdr;
 	const struct txgbe_genevehdr *gh;
+	const struct txgbe_grehdr *grh;
+	struct txgbe_grehdr grehdr;
 	uint8_t tun_len;
 
 	switch (mbuf->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
@@ -706,11 +706,16 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 			+ sizeof(struct txgbe_vxlanhdr);
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GRE:
-		tun_len = sizeof(struct txgbe_nvgrehdr);
+		tun_len = sizeof(struct txgbe_grehdr);
+		grh = rte_pktmbuf_read(mbuf,
+			mbuf->outer_l2_len + mbuf->outer_l3_len,
+			sizeof(grehdr), &grehdr);
+		if (grh->flags & rte_cpu_to_be_16(GRE_SUPPORTED_FIELDS))
+			tun_len += GRE_EXT_LEN;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
-		gh = rte_pktmbuf_read(mbuf,
-			mbuf->outer_l2_len + mbuf->outer_l3_len,
+		gh = rte_pktmbuf_read(mbuf, mbuf->outer_l2_len +
+			mbuf->outer_l3_len + sizeof(struct txgbe_udphdr),
 			sizeof(genevehdr), &genevehdr);
 		tun_len = sizeof(struct txgbe_udphdr)
 			+ sizeof(struct txgbe_genevehdr)
@@ -724,27 +729,26 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 }
 
 static inline uint8_t
-txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt)
+txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt, uint8_t tun_len)
 {
-	uint64_t l2_vxlan, l2_vxlan_mac, l2_vxlan_mac_vlan;
-	uint64_t l2_gre, l2_gre_mac, l2_gre_mac_vlan;
+	uint64_t inner_l2_len;
 	uint8_t ptid = 0;
 
-	l2_vxlan = sizeof(struct txgbe_udphdr) + sizeof(struct txgbe_vxlanhdr);
-	l2_vxlan_mac = l2_vxlan + sizeof(struct rte_ether_hdr);
-	l2_vxlan_mac_vlan = l2_vxlan_mac + sizeof(struct rte_vlan_hdr);
+	inner_l2_len = tx_pkt->l2_len - tun_len;
 
-	l2_gre = sizeof(struct txgbe_grehdr);
-	l2_gre_mac = l2_gre + sizeof(struct rte_ether_hdr);
-	l2_gre_mac_vlan = l2_gre_mac + sizeof(struct rte_vlan_hdr);
-
-	if (tx_pkt->l2_len == l2_vxlan || tx_pkt->l2_len == l2_gre)
+	switch (inner_l2_len) {
+	case 0:
 		ptid = TXGBE_PTID_TUN_EIG;
-	else if (tx_pkt->l2_len == l2_vxlan_mac || tx_pkt->l2_len == l2_gre_mac)
+		break;
+	case sizeof(struct rte_ether_hdr):
 		ptid = TXGBE_PTID_TUN_EIGM;
-	else if (tx_pkt->l2_len == l2_vxlan_mac_vlan ||
-			tx_pkt->l2_len == l2_gre_mac_vlan)
+		break;
+	case sizeof(struct rte_ether_hdr) + sizeof(struct rte_vlan_hdr):
 		ptid = TXGBE_PTID_TUN_EIGMV;
+		break;
+	default:
+		ptid = TXGBE_PTID_TUN_EI;
+	}
 
 	return ptid;
 }
@@ -811,8 +815,6 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_ol_req = ol_flags & TXGBE_TX_OFFLOAD_MASK;
 		if (tx_ol_req) {
 			tx_offload.ptid = tx_desc_ol_flags_to_ptid(tx_ol_req);
-			if (tx_offload.ptid & TXGBE_PTID_PKT_TUN)
-				tx_offload.ptid |= txgbe_parse_tun_ptid(tx_pkt);
 			tx_offload.l2_len = tx_pkt->l2_len;
 			tx_offload.l3_len = tx_pkt->l3_len;
 			tx_offload.l4_len = tx_pkt->l4_len;
@@ -821,6 +823,9 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			tx_offload.outer_l2_len = tx_pkt->outer_l2_len;
 			tx_offload.outer_l3_len = tx_pkt->outer_l3_len;
 			tx_offload.outer_tun_len = txgbe_get_tun_len(tx_pkt);
+			if (tx_offload.ptid & TXGBE_PTID_PKT_TUN)
+				tx_offload.ptid |= txgbe_parse_tun_ptid(tx_pkt,
+							tx_offload.outer_tun_len);
 
 #ifdef RTE_LIB_SECURITY
 			if (use_ipsec) {
