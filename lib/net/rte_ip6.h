@@ -461,7 +461,23 @@ rte_ether_mcast_from_ipv6(struct rte_ether_addr *mac, const struct rte_ipv6_addr
  * IPv6 Header
  */
 struct rte_ipv6_hdr {
-	rte_be32_t vtc_flow;	/**< IP version, traffic class & flow label. */
+	union {
+		rte_be32_t vtc_flow;        /**< IP version, traffic class & flow label. */
+		__extension__
+		struct {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			uint32_t flow_label:20; /**< Flow label */
+			uint32_t ecn:2;         /**< ECN */
+			uint32_t ds:6;          /**< Differentiated services */
+			uint32_t version:4;     /**< Version */
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+			uint32_t version:4;     /**< Version */
+			uint32_t ds:6;          /**< Differentiated services */
+			uint32_t ecn:2;         /**< ECN */
+			uint32_t flow_label:20; /**< Flow label */
+#endif
+		};
+	};
 	rte_be16_t payload_len;	/**< IP payload size, including ext. headers */
 	uint8_t  proto;		/**< Protocol, next header. */
 	uint8_t  hop_limits;	/**< Hop limits. */
