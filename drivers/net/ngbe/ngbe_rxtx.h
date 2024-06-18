@@ -291,6 +291,7 @@ struct ngbe_rx_queue {
 	struct rte_mbuf fake_mbuf;
 	/** hold packets to return to application */
 	struct rte_mbuf *rx_stage[RTE_PMD_NGBE_RX_MAX_BURST * 2];
+	const struct rte_memzone *mz;
 };
 
 /**
@@ -373,6 +374,7 @@ struct ngbe_tx_queue {
 	uint8_t              tx_deferred_start; /**< not in global dev start */
 
 	const struct ngbe_txq_ops *ops;       /**< txq ops */
+	const struct rte_memzone *mz;
 };
 
 struct ngbe_txq_ops {
