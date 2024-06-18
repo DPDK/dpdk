@@ -2670,7 +2670,9 @@ txgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
 	dev_info->min_rx_bufsize = 1024;
-	dev_info->max_rx_pktlen = 15872;
+	dev_info->max_rx_pktlen = TXGBE_MAX_MTU + TXGBE_ETH_OVERHEAD;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = TXGBE_MAX_MTU;
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
 	dev_info->max_hash_mac_addrs = TXGBE_VMDQ_NUM_UC_MAC;
 	dev_info->max_vfs = pci_dev->max_vfs;
@@ -3694,12 +3696,8 @@ txgbe_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EINVAL;
 	}
 
-	if (hw->mode)
-		wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
-			TXGBE_FRAME_SIZE_MAX);
-	else
-		wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
-			TXGBE_FRMSZ_MAX(frame_size));
+	wr32m(hw, TXGBE_FRMSZ, TXGBE_FRMSZ_MAX_MASK,
+		TXGBE_FRMSZ_MAX(frame_size));
 
 	return 0;
 }
