@@ -32,6 +32,7 @@
 
 #define NGBE_QUEUE_ITR_INTERVAL_DEFAULT	500 /* 500us */
 
+#define NGBE_MAX_MTU		9414
 /* The overhead from MTU to max frame size. */
 #define NGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
