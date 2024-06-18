@@ -320,6 +320,10 @@ skip_an_fiber:
 			value |= value_r4;
 			ngbe_write_phy_reg_mdi(hw, YT_ANA, 0, value);
 
+			/* config for yt8531sh-ca */
+			ngbe_write_phy_reg_ext_yt(hw, YT_SPEC_CONF, 0,
+						YT_SPEC_CONF_8531SH_CA);
+
 			/* software reset to make the above configuration
 			 * take effect
 			 */
