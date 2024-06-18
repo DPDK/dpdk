@@ -173,7 +173,8 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 	ngbe_reset_misc_em(hw);
 	hw->mac.clear_hw_cntrs(hw);
 
-	if (!((hw->sub_device_id & NGBE_OEM_MASK) == NGBE_RGMII_FPGA))
+	if (!(((hw->sub_device_id & NGBE_OEM_MASK) == NGBE_RGMII_FPGA) ||
+			hw->ncsi_enabled || hw->wol_enabled))
 		hw->phy.set_phy_power(hw, false);
 
 	msec_delay(50);
@@ -1709,7 +1710,8 @@ void ngbe_disable_rx(struct ngbe_hw *hw)
 	}
 
 	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
-	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
 }
 
 void ngbe_enable_rx(struct ngbe_hw *hw)
@@ -1925,6 +1927,10 @@ void ngbe_map_device_id(struct ngbe_hw *hw)
 			oem == NGBE_INTERNAL_YT8521S_SFP_GPIO ||
 			oem == NGBE_LY_YT8521S_SFP)
 		hw->gpio_ctl = true;
+
+	hw->wol_enabled = (hw->sub_system_id & NGBE_WOL_SUP_MASK) ? true : false;
+	hw->ncsi_enabled = (hw->sub_system_id & NGBE_NCSI_SUP_MASK ||
+			    hw->sub_system_id & NGBE_OCP_CARD) ? true : false;
 }
 
 /**
@@ -2065,3 +2071,23 @@ s32 ngbe_init_shared_code(struct ngbe_hw *hw)
 	return status;
 }
 
+void ngbe_set_ncsi_status(struct ngbe_hw *hw)
+{
+	u16 ncsi_pin = 0;
+	s32 err = 0;
+
+	/* need to check ncsi pin status for oem ncsi card */
+	if (hw->ncsi_enabled || hw->wol_enabled)
+		return;
+
+	err = hw->rom.readw_buffer(hw, FW_READ_SHADOW_RAM_GPIO, 1, &ncsi_pin);
+	if (err) {
+		DEBUGOUT("get ncsi pin status failed");
+		return;
+	}
+
+	if (ncsi_pin == 1) {
+		hw->ncsi_enabled = true;
+		hw->wol_enabled = true;
+	}
+}

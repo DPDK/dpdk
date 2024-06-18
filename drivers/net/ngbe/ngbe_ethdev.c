@@ -406,6 +406,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* Unlock any pending hardware semaphore */
 	ngbe_swfw_lock_reset(hw);
+	ngbe_set_ncsi_status(hw);
 
 	/* Get Hardware Flow Control setting */
 	hw->fc.requested_mode = ngbe_fc_full;
@@ -1092,10 +1093,12 @@ ngbe_dev_start(struct rte_eth_dev *dev)
 			speed |= NGBE_LINK_SPEED_10M_FULL;
 	}
 
-	err = hw->phy.init_hw(hw);
-	if (err != 0) {
-		PMD_INIT_LOG(ERR, "PHY init failed");
-		goto error;
+	if (!hw->ncsi_enabled) {
+		err = hw->phy.init_hw(hw);
+		if (err != 0) {
+			PMD_INIT_LOG(ERR, "PHY init failed");
+			goto error;
+		}
 	}
 	err = hw->mac.setup_link(hw, speed, link_up);
 	if (err != 0)
@@ -1218,7 +1221,8 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 out:
 	/* close phy to prevent reset in dev_close from restarting physical link */
-	hw->phy.set_phy_power(hw, false);
+	if (!(hw->wol_enabled || hw->ncsi_enabled))
+		hw->phy.set_phy_power(hw, false);
 
 	return 0;
 }
@@ -1231,7 +1235,8 @@ ngbe_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
-	hw->phy.set_phy_power(hw, true);
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		hw->phy.set_phy_power(hw, true);
 
 	return 0;
 }
@@ -1244,7 +1249,8 @@ ngbe_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
-	hw->phy.set_phy_power(hw, false);
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		hw->phy.set_phy_power(hw, false);
 
 	return 0;
 }

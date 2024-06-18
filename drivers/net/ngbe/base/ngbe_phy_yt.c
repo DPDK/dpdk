@@ -126,6 +126,9 @@ s32 ngbe_setup_phy_link_yt(struct ngbe_hw *hw, u32 speed,
 
 	UNREFERENCED_PARAMETER(autoneg_wait_to_complete);
 
+	if (hw->ncsi_enabled)
+		return 0;
+
 	hw->phy.autoneg_advertised = 0;
 
 	/* check chip_mode first */

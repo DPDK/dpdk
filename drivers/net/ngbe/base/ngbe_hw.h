@@ -86,5 +86,6 @@ void ngbe_map_device_id(struct ngbe_hw *hw);
 void ngbe_read_efuse(struct ngbe_hw *hw);
 u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr);
 u32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr);
+void ngbe_set_ncsi_status(struct ngbe_hw *hw);
 
 #endif /* _NGBE_HW_H_ */

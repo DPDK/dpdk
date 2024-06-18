@@ -457,6 +457,8 @@ struct ngbe_hw {
 	u32 eeprom_id;
 	u8 revision_id;
 	bool adapter_stopped;
+	bool wol_enabled;
+	bool ncsi_enabled;
 
 	uint64_t isb_dma;
 	void IOMEM *isb_mem;

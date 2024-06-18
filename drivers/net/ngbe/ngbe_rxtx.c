@@ -2943,7 +2943,10 @@ ngbe_dev_rx_init(struct rte_eth_dev *dev)
 	 * Make sure receives are disabled while setting
 	 * up the Rx context (registers, descriptor rings, etc.).
 	 */
-	wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+
+	if (!(hw->ncsi_enabled || hw->wol_enabled))
+		wr32m(hw, NGBE_MACRXCFG, NGBE_MACRXCFG_ENA, 0);
+
 	wr32m(hw, NGBE_PBRXCTL, NGBE_PBRXCTL_ENA, 0);
 
 	/* Enable receipt of broadcasted frames */
