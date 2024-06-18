@@ -696,6 +696,77 @@ test_graph_clone(void)
 }
 
 static int
+test_graph_id_collisions(void)
+{
+	static const char *node_patterns[] = {"test_node_source1", "test_node00"};
+	struct rte_graph_param gconf = {
+		.socket_id = SOCKET_ID_ANY,
+		.nb_node_patterns = 2,
+		.node_patterns = node_patterns,
+	};
+	rte_graph_t g1, g2, g3, g4;
+
+	g1 = rte_graph_create("worker1", &gconf);
+	if (g1 == RTE_GRAPH_ID_INVALID) {
+		printf("Graph 1 creation failed with error = %d\n", rte_errno);
+		return -1;
+	}
+	g2 = rte_graph_create("worker2", &gconf);
+	if (g2 == RTE_GRAPH_ID_INVALID) {
+		printf("Graph 2 creation failed with error = %d\n", rte_errno);
+		return -1;
+	}
+	g3 = rte_graph_create("worker3", &gconf);
+	if (g3 == RTE_GRAPH_ID_INVALID) {
+		printf("Graph 3 creation failed with error = %d\n", rte_errno);
+		return -1;
+	}
+	if (g1 == g2 || g2 == g3 || g1 == g3) {
+		printf("Graph ids should be different\n");
+		return -1;
+	}
+	if (rte_graph_destroy(g2) < 0) {
+		printf("Graph 2 suppression failed\n");
+		return -1;
+	}
+	g4 = rte_graph_create("worker4", &gconf);
+	if (g4 == RTE_GRAPH_ID_INVALID) {
+		printf("Graph 4 creation failed with error = %d\n", rte_errno);
+		return -1;
+	}
+	if (g1 == g3 || g1 == g4 || g3 == g4) {
+		printf("Graph ids should be different\n");
+		return -1;
+	}
+	g2 = rte_graph_clone(g1, "worker2", &gconf);
+	if (g2 == RTE_GRAPH_ID_INVALID) {
+		printf("Graph 4 creation failed with error = %d\n", rte_errno);
+		return -1;
+	}
+	if (g1 == g2 || g1 == g3 || g1 == g4 || g2 == g3 || g2 == g4 || g3 == g4) {
+		printf("Graph ids should be different\n");
+		return -1;
+	}
+	if (rte_graph_destroy(g1) < 0) {
+		printf("Graph 1 suppression failed\n");
+		return -1;
+	}
+	if (rte_graph_destroy(g2) < 0) {
+		printf("Graph 2 suppression failed\n");
+		return -1;
+	}
+	if (rte_graph_destroy(g3) < 0) {
+		printf("Graph 3 suppression failed\n");
+		return -1;
+	}
+	if (rte_graph_destroy(g4) < 0) {
+		printf("Graph 4 suppression failed\n");
+		return -1;
+	}
+	return 0;
+}
+
+static int
 test_graph_model_mcore_dispatch_node_lcore_affinity_set(void)
 {
 	rte_graph_t cloned_graph_id = RTE_GRAPH_ID_INVALID;
@@ -976,6 +1047,7 @@ static struct unit_test_suite graph_testsuite = {
 		TEST_CASE(test_lookup_functions),
 		TEST_CASE(test_create_graph),
 		TEST_CASE(test_graph_clone),
+		TEST_CASE(test_graph_id_collisions),
 		TEST_CASE(test_graph_model_mcore_dispatch_node_lcore_affinity_set),
 		TEST_CASE(test_graph_model_mcore_dispatch_core_bind_unbind),
 		TEST_CASE(test_graph_worker_model_set_get),
