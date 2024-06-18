@@ -2879,6 +2879,7 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	bool link_up;
 	int err;
 	int wait = 1;
+	u32 reg;
 
 	memset(&link, 0, sizeof(link));
 	link.link_status = RTE_ETH_LINK_DOWN;
@@ -2968,9 +2969,14 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	}
 
 	/* Re configure MAC RX */
-	if (hw->mac.type == txgbe_mac_raptor)
+	if (hw->mac.type == txgbe_mac_raptor) {
+		reg = rd32(hw, TXGBE_MACRXCFG);
+		wr32(hw, TXGBE_MACRXCFG, reg);
 		wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_PROMISC,
 			TXGBE_MACRXFLT_PROMISC);
+		reg = rd32(hw, TXGBE_MAC_WDG_TIMEOUT);
+		wr32(hw, TXGBE_MAC_WDG_TIMEOUT, reg);
+	}
 
 	return rte_eth_linkstatus_set(dev, &link);
 }
