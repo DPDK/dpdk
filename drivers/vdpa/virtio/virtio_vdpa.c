@@ -1278,13 +1278,12 @@ virtio_vdpa_dev_close_work(void *arg)
 }
 
 static int
-virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr, bool update_idx)
+virtio_vdpa_save_state(struct virtio_vdpa_priv *priv)
 {
 	struct virtio_admin_migration_get_internal_state_pending_bytes_result res;
-	struct virtio_dev_run_state_info *tmp_hw_idx;
 	struct rte_vdpa_device *vdev = priv->vdev;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
-	int i, ret = 0;
+	int ret;
 
 	ret = virtio_vdpa_cmd_get_internal_pending_bytes(priv->pf_priv,
 			priv->vf_id, &res);
@@ -1337,41 +1336,6 @@ virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr, b
 		goto out;
 	}
 
-	if (!update_idx)
-		goto out;
-
-	tmp_hw_idx = rte_zmalloc(NULL, num_vr * sizeof(struct virtio_dev_run_state_info), 0);
-	if (!tmp_hw_idx) {
-		DRV_LOG(ERR, "Failed to alloc memory to save hwidx:%s", vdev->device->name);
-		ret = -ENOMEM;
-		goto out;
-
-	}
-	ret = virtio_pci_dev_state_hw_idx_get(priv->state_mz_remote->addr,
-				res.pending_bytes, tmp_hw_idx, num_vr);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed get hwidx ret:%d", vdev->device->name,
-				priv->vf_id, ret);
-		ret = -EIO;
-		goto out_free;
-	}
-
-	/* Set_vring_base */
-	for(i = 0; i < num_vr; i++) {
-		if (tmp_hw_idx[i].flag && priv->vrings[i]->enable) {
-			DRV_LOG(INFO, "%s vid %d qid %d set last_avail_idx:%d,last_used_idx:%d",
-				vdev->device->name, priv->vid,
-				i, tmp_hw_idx[i].last_avail_idx, tmp_hw_idx[i].last_used_idx);
-			ret = rte_vhost_set_vring_base(priv->vid, i, tmp_hw_idx[i].last_avail_idx,
-						tmp_hw_idx[i].last_used_idx);
-			if (ret)
-				DRV_LOG(ERR, "%s vfid %d failed set hwidx ret:%d",
-					vdev->device->name, priv->vf_id, ret);
-		}
-	}
-
-out_free:
-	rte_free(tmp_hw_idx);
 out:
 	return ret;
 }
@@ -1445,6 +1409,7 @@ virtio_vdpa_dev_close(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
+	struct rte_vhost_vring vq;
 	uint64_t features = 0;
 	uint16_t num_vr;
 	struct timeval start, end;
@@ -1493,12 +1458,25 @@ virtio_vdpa_dev_close(int vid)
 	}
 
 	num_vr = rte_vhost_get_vring_num(priv->vid);
-	virtio_vdpa_save_state_update_hwidx(priv, num_vr, true);
 
 	/* Disable all queues */
 	for (i = 0; i < num_vr; i++) {
-		if (priv->vrings[i]->enable)
+		if (priv->vrings[i]->enable) {
 			virtio_vdpa_virtq_disable(priv, i);
+			ret = rte_vhost_get_vhost_vring(priv->vid, i, &vq);
+			if (ret) {
+				DRV_LOG(ERR, "%s virtq %d fail to get hardware idx",
+								priv->vdev->device->name, i);
+			}
+			DRV_LOG(INFO, "%s vid %d qid %d set used idx:%d",
+				vdev->device->name, priv->vid,
+				i, vq.used->idx);
+			ret = rte_vhost_set_vring_base(priv->vid, i, vq.used->idx, vq.used->idx);
+			if (ret) {
+				DRV_LOG(ERR, "%s virtq %d fail to set hardware idx",
+								priv->vdev->device->name, i);
+			}
+		}
 	}
 	virtio_pci_dev_state_all_queues_disable(priv->vpdev, priv->state_mz->addr);
 
@@ -2572,7 +2550,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	memset(priv->state_mz_remote->addr, 0, mz_len);
 
 	if (priv->restore) {
-		virtio_vdpa_save_state_update_hwidx(priv, 0, false);
+		virtio_vdpa_save_state(priv);
 	}
 
 	/* After restart from HA and interrupts alloc might cause traffic stop,
