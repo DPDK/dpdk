@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2016-2017 Intel Corporation
  */
-
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 #include <rte_crypto.h>
@@ -25,6 +24,7 @@ struct cperf_latency_ctx {
 	struct rte_mempool *pool;
 
 	void *sess;
+	uint8_t sess_owner;
 
 	cperf_populate_ops_t populate_ops;
 
@@ -46,7 +46,7 @@ cperf_latency_test_free(struct cperf_latency_ctx *ctx)
 	if (ctx == NULL)
 		return;
 
-	if (ctx->sess != NULL) {
+	if (ctx->sess != NULL && ctx->sess_owner) {
 		if (cperf_is_asym_test(ctx->options))
 			rte_cryptodev_asym_session_free(ctx->dev_id, ctx->sess);
 #ifdef RTE_LIB_SECURITY
@@ -72,7 +72,8 @@ cperf_latency_test_constructor(struct rte_mempool *sess_mp,
 		uint8_t dev_id, uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		const struct cperf_op_fns *op_fns)
+		const struct cperf_op_fns *op_fns,
+		void **sess)
 {
 	struct cperf_latency_ctx *ctx = NULL;
 	size_t extra_op_priv_size = sizeof(struct priv_op_data);
@@ -93,10 +94,18 @@ cperf_latency_test_constructor(struct rte_mempool *sess_mp,
 		sizeof(struct rte_crypto_sym_op) +
 		sizeof(struct cperf_op_result *);
 
-	ctx->sess = op_fns->sess_create(sess_mp, dev_id, options,
-			test_vector, iv_offset);
-	if (ctx->sess == NULL)
-		goto err;
+
+	if (*sess != NULL) {
+		ctx->sess = *sess;
+		ctx->sess_owner = false;
+	} else {
+		ctx->sess = op_fns->sess_create(sess_mp, dev_id, options, test_vector,
+			iv_offset);
+		if (ctx->sess == NULL)
+			goto err;
+		*sess = ctx->sess;
+		ctx->sess_owner = true;
+	}
 
 	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id,
 			extra_op_priv_size,

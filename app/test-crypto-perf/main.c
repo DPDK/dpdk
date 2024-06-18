@@ -726,6 +726,9 @@ main(int argc, char **argv)
 
 	i = 0;
 	uint8_t qp_id = 0, cdev_index = 0;
+
+	void *sess = NULL;
+
 	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 
 		if (i == total_nb_qps)
@@ -742,14 +745,30 @@ main(int argc, char **argv)
 		ctx[i] = cperf_testmap[opts.test].constructor(
 				session_pool_socket[socket_id].sess_mp,
 				cdev_id, qp_id,
-				&opts, t_vec, &op_fns);
+				&opts, t_vec, &op_fns, &sess);
+
+		/*
+		 * If sess was NULL, the constructor will have set it to a newly
+		 * created session. This means future calls to constructors will
+		 * provide this session, sharing it across all qps. If session
+		 * sharing is not enabled, re-set sess to NULL, to prevent this.
+		 */
+		if (!opts.shared_session)
+			sess = NULL;
+
 		if (ctx[i] == NULL) {
 			RTE_LOG(ERR, USER1, "Test run constructor failed\n");
 			goto err;
 		}
+
 		qp_id = (qp_id + 1) % opts.nb_qps;
-		if (qp_id == 0)
+		if (qp_id == 0) {
 			cdev_index++;
+			/* If next qp is on a new cdev, don't share the session
+			 * - it shouldn't be shared across different cdevs.
+			 */
+			sess = NULL;
+		}
 		i++;
 	}
 

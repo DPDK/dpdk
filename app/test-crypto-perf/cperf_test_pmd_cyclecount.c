@@ -29,6 +29,7 @@ struct cperf_pmd_cyclecount_ctx {
 	struct rte_crypto_op **ops_processed;
 
 	void *sess;
+	uint8_t sess_owner;
 
 	cperf_populate_ops_t populate_ops;
 
@@ -63,7 +64,7 @@ cperf_pmd_cyclecount_test_free(struct cperf_pmd_cyclecount_ctx *ctx)
 	if (!ctx)
 		return;
 
-	if (ctx->sess) {
+	if (ctx->sess != NULL && ctx->sess_owner) {
 #ifdef RTE_LIB_SECURITY
 		if (ctx->options->op_type == CPERF_PDCP ||
 				ctx->options->op_type == CPERF_DOCSIS) {
@@ -89,7 +90,8 @@ cperf_pmd_cyclecount_test_constructor(struct rte_mempool *sess_mp,
 		uint8_t dev_id, uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		const struct cperf_op_fns *op_fns)
+		const struct cperf_op_fns *op_fns,
+		void **sess)
 {
 	struct cperf_pmd_cyclecount_ctx *ctx = NULL;
 
@@ -112,10 +114,17 @@ cperf_pmd_cyclecount_test_constructor(struct rte_mempool *sess_mp,
 	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
 			sizeof(struct rte_crypto_sym_op);
 
-	ctx->sess = op_fns->sess_create(sess_mp, dev_id, options,
-			test_vector, iv_offset);
-	if (ctx->sess == NULL)
-		goto err;
+	if (*sess != NULL) {
+		ctx->sess = *sess;
+		ctx->sess_owner = false;
+	} else {
+		ctx->sess = op_fns->sess_create(sess_mp, dev_id, options, test_vector,
+			iv_offset);
+		if (ctx->sess == NULL)
+			goto err;
+		*sess = ctx->sess;
+		ctx->sess_owner = true;
+	}
 
 	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id, 0,
 			&ctx->src_buf_offset, &ctx->dst_buf_offset,

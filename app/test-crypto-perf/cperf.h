@@ -19,7 +19,8 @@ typedef void  *(*cperf_constructor_t)(
 		uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *t_vec,
-		const struct cperf_op_fns *op_fns);
+		const struct cperf_op_fns *op_fns,
+		void **sess);
 
 typedef int (*cperf_runner_t)(void *test_ctx);
 typedef void (*cperf_destructor_t)(void *test_ctx);

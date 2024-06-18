@@ -40,6 +40,7 @@ usage(char *progname)
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
 		"        aead / pdcp / docsis / ipsec / modex / secp256r1 / sm2 / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
+		" --shared-session: share 1 session across all queue pairs on crypto device\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
 		" --test-file NAME: set the test vector file path\n"
 		" --test-name NAME: set specific test name section in test file\n"
@@ -519,6 +520,14 @@ parse_sessionless(struct cperf_options *opts,
 }
 
 static int
+parse_shared_session(struct cperf_options *opts,
+		const char *arg __rte_unused)
+{
+	opts->shared_session = 1;
+	return 0;
+}
+
+static int
 parse_out_of_place(struct cperf_options *opts,
 		const char *arg __rte_unused)
 {
@@ -959,6 +968,7 @@ static struct option lgopts[] = {
 
 	{ CPERF_SILENT, no_argument, 0, 0 },
 	{ CPERF_SESSIONLESS, no_argument, 0, 0 },
+	{ CPERF_SHARED_SESSION, no_argument, 0, 0 },
 	{ CPERF_OUT_OF_PLACE, no_argument, 0, 0 },
 	{ CPERF_TEST_FILE, required_argument, 0, 0 },
 	{ CPERF_TEST_NAME, required_argument, 0, 0 },
@@ -1090,6 +1100,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_DEVTYPE,	parse_device_type },
 		{ CPERF_OPTYPE,		parse_op_type },
 		{ CPERF_SESSIONLESS,	parse_sessionless },
+		{ CPERF_SHARED_SESSION,	parse_shared_session },
 		{ CPERF_OUT_OF_PLACE,	parse_out_of_place },
 		{ CPERF_IMIX,		parse_imix },
 		{ CPERF_TEST_FILE,	parse_test_file },
@@ -1498,6 +1509,7 @@ cperf_options_dump(struct cperf_options *opts)
 		printf("# asym operation type: %s\n",
 				rte_crypto_asym_op_strings[opts->asym_op_type]);
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
+	printf("# shared session: %s\n", opts->shared_session ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");
 	if (opts->test == CPERF_TEST_TYPE_PMDCC)
 		printf("# inter-burst delay: %u ms\n", opts->pmdcc_delay);

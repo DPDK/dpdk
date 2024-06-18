@@ -27,6 +27,7 @@
 #define CPERF_DEVTYPE		("devtype")
 #define CPERF_OPTYPE		("optype")
 #define CPERF_SESSIONLESS	("sessionless")
+#define CPERF_SHARED_SESSION	("shared-session")
 #define CPERF_OUT_OF_PLACE	("out-of-place")
 #define CPERF_TEST_FILE		("test-file")
 #define CPERF_TEST_NAME		("test-name")
@@ -108,6 +109,7 @@ struct cperf_options {
 	uint16_t nb_qps;
 
 	uint32_t sessionless:1;
+	uint32_t shared_session:1;
 	uint32_t out_of_place:1;
 	uint32_t silent:1;
 	uint32_t csv:1;

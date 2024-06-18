@@ -7,7 +7,7 @@ dpdk-test-crypto-perf Application
 The ``dpdk-test-crypto-perf`` tool is a Data Plane Development Kit (DPDK)
 utility that allows measuring performance parameters of PMDs available in the
 crypto tree. There are available two measurement types: throughput and latency.
-User can use multiply cores to run tests on but only
+User can use multiple cores to run tests on but only
 one type of crypto PMD can be measured during single application
 execution. Cipher parameters, type of device, type of operation and
 chain mode have to be specified in the command line as application
@@ -185,6 +185,13 @@ The following are the application command-line options:
 * ``--sessionless``
 
         Enable session-less crypto operations mode.
+
+* ``--shared-session``
+
+        Enable sharing sessions between all queue pairs on a single crypto PMD.
+        This can be useful for benchmarking this setup,
+        or finding and debugging concurrency errors
+        that can occur while using sessions on multiple lcores simultaneously.
 
 * ``--out-of-place``
 
