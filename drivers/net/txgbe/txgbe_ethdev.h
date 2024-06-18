@@ -56,7 +56,7 @@
 #define TXGBE_5TUPLE_MAX_PRI            7
 #define TXGBE_5TUPLE_MIN_PRI            1
 
-
+#define TXGBE_MAX_MTU			9414
 /* The overhead from MTU to max frame size. */
 #define TXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
 
