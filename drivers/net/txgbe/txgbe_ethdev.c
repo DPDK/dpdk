@@ -3820,6 +3820,7 @@ txgbe_syn_filter_set(struct rte_eth_dev *dev,
 	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	uint32_t syn_info;
 	uint32_t synqf;
+	uint16_t queue;
 
 	if (filter->queue >= TXGBE_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
@@ -3829,7 +3830,11 @@ txgbe_syn_filter_set(struct rte_eth_dev *dev,
 	if (add) {
 		if (syn_info & TXGBE_SYNCLS_ENA)
 			return -EINVAL;
-		synqf = (uint32_t)TXGBE_SYNCLS_QPID(filter->queue);
+		if (RTE_ETH_DEV_SRIOV(dev).active)
+			queue = RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + filter->queue;
+		else
+			queue = filter->queue;
+		synqf = (uint32_t)TXGBE_SYNCLS_QPID(queue);
 		synqf |= TXGBE_SYNCLS_ENA;
 
 		if (filter->hig_pri)
@@ -3898,7 +3903,10 @@ txgbe_inject_5tuple_filter(struct rte_eth_dev *dev,
 	wr32(hw, TXGBE_5TFPORT(i), sdpqf);
 	wr32(hw, TXGBE_5TFCTL0(i), ftqf);
 
-	l34timir |= TXGBE_5TFCTL1_QP(filter->queue);
+	if (RTE_ETH_DEV_SRIOV(dev).active)
+		l34timir |= TXGBE_5TFCTL1_QP(RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + filter->queue);
+	else
+		l34timir |= TXGBE_5TFCTL1_QP(filter->queue);
 	wr32(hw, TXGBE_5TFCTL1(i), l34timir);
 }
 
@@ -4182,7 +4190,17 @@ txgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	if (add) {
 		etqf = TXGBE_ETFLT_ENA;
 		etqf |= TXGBE_ETFLT_ETID(filter->ether_type);
-		etqs |= TXGBE_ETCLS_QPID(filter->queue);
+		if (RTE_ETH_DEV_SRIOV(dev).active) {
+			int pool, queue;
+
+			pool = RTE_ETH_DEV_SRIOV(dev).def_vmdq_idx;
+			queue = RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + filter->queue;
+			etqf |= TXGBE_ETFLT_POOLENA;
+			etqf |= TXGBE_ETFLT_POOL(pool);
+			etqs |= TXGBE_ETCLS_QPID(queue);
+		} else {
+			etqs |= TXGBE_ETCLS_QPID(filter->queue);
+		}
 		etqs |= TXGBE_ETCLS_QENA;
 
 		ethertype_filter.ethertype = filter->ether_type;
