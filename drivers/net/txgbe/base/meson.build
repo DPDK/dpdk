@@ -22,6 +22,6 @@ foreach flag: error_cflags
 endforeach
 
 base_lib = static_library('txgbe_base', sources,
-    dependencies: [static_rte_eal, static_rte_net],
+    dependencies: [static_rte_eal, static_rte_net, static_rte_bus_pci],
     c_args: c_args)
 base_objs = base_lib.extract_all_objects(recursive: true)

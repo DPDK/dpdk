@@ -1236,6 +1236,9 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_TCPTMR                    0x000170
 #define TXGBE_ITRSEL                    0x000180
 
+#define TXGBE_BMECTL                    0x012020
+#define TXGBE_BMEPEND                   0x000168
+
 /* P2V Mailbox */
 #define TXGBE_MBMEM(i)           (0x005000 + 0x40 * (i)) /* 0-63 */
 #define TXGBE_MBCTL(i)           (0x000600 + 4 * (i)) /* 0-63 */
