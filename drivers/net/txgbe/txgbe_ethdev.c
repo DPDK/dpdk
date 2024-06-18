@@ -964,7 +964,7 @@ static int eth_txgbe_pci_remove(struct rte_pci_device *pci_dev)
 	if (!ethdev)
 		return 0;
 
-	return rte_eth_dev_destroy(ethdev, eth_txgbe_dev_uninit);
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_txgbe_dev_uninit);
 }
 
 static struct rte_pci_driver rte_txgbe_pmd = {
