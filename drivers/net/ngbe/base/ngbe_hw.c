@@ -173,6 +173,9 @@ s32 ngbe_reset_hw_em(struct ngbe_hw *hw)
 	ngbe_reset_misc_em(hw);
 	hw->mac.clear_hw_cntrs(hw);
 
+	if (!((hw->sub_device_id & NGBE_OEM_MASK) == NGBE_RGMII_FPGA))
+		hw->phy.set_phy_power(hw, false);
+
 	msec_delay(50);
 
 	/* Store the permanent mac address */
