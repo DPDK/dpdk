@@ -69,7 +69,7 @@ malloc_socket(const char *type, size_t size, unsigned int align,
 				!rte_eal_has_hugepages())
 		socket_arg = SOCKET_ID_ANY;
 
-	ptr = malloc_heap_alloc(type, size, socket_arg, 0,
+	ptr = malloc_heap_alloc(size, socket_arg, 0,
 			align == 0 ? 1 : align, 0, false);
 
 	if (trace_ena)

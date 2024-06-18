@@ -191,14 +191,12 @@ memzone_reserve_aligned_thread_unsafe(const char *name, size_t len,
 	if (len == 0 && bound == 0) {
 		/* no size constraints were placed, so use malloc elem len */
 		requested_len = 0;
-		mz_addr = malloc_heap_alloc_biggest(NULL, socket_id, flags,
-				align, contig);
+		mz_addr = malloc_heap_alloc_biggest(socket_id, flags, align, contig);
 	} else {
 		if (len == 0)
 			requested_len = bound;
 		/* allocate memory on heap */
-		mz_addr = malloc_heap_alloc(NULL, requested_len, socket_id,
-				flags, align, bound, contig);
+		mz_addr = malloc_heap_alloc(requested_len, socket_id, flags, align, bound, contig);
 	}
 	if (mz_addr == NULL) {
 		rte_errno = ENOMEM;
