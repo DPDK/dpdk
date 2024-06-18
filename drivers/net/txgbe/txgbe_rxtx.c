@@ -5160,6 +5160,7 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 	uint32_t reta;
 	uint16_t i;
 	uint16_t j;
+	uint16_t queue;
 	struct rte_eth_rss_conf rss_conf = {
 		.rss_key = conf->conf.key_len ?
 			(void *)(uintptr_t)conf->conf.key : NULL,
@@ -5192,7 +5193,12 @@ txgbe_config_rss_filter(struct rte_eth_dev *dev,
 	for (i = 0, j = 0; i < RTE_ETH_RSS_RETA_SIZE_128; i++, j++) {
 		if (j == conf->conf.queue_num)
 			j = 0;
-		reta = (reta >> 8) | LS32(conf->conf.queue[j], 24, 0xFF);
+		if (RTE_ETH_DEV_SRIOV(dev).active)
+			queue = RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx +
+				conf->conf.queue[j];
+		else
+			queue = conf->conf.queue[j];
+		reta = (reta >> 8) | LS32(queue, 24, 0xFF);
 		if ((i & 3) == 3)
 			wr32at(hw, TXGBE_REG_RSSTBL, i >> 2, reta);
 	}
