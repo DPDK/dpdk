@@ -1000,41 +1000,25 @@ txgbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static void
-txgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+txgbe_vlan_strip_q_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 {
-	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
-	struct txgbe_rx_queue *rxq;
-	bool restart;
-	uint32_t rxcfg, rxbal, rxbah;
-
 	if (on)
 		txgbe_vlan_hw_strip_enable(dev, queue);
 	else
 		txgbe_vlan_hw_strip_disable(dev, queue);
+}
 
-	rxq = dev->data->rx_queues[queue];
-	rxbal = rd32(hw, TXGBE_RXBAL(rxq->reg_idx));
-	rxbah = rd32(hw, TXGBE_RXBAH(rxq->reg_idx));
-	rxcfg = rd32(hw, TXGBE_RXCFG(rxq->reg_idx));
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
-		restart = (rxcfg & TXGBE_RXCFG_ENA) &&
-			!(rxcfg & TXGBE_RXCFG_VLAN);
-		rxcfg |= TXGBE_RXCFG_VLAN;
-	} else {
-		restart = (rxcfg & TXGBE_RXCFG_ENA) &&
-			(rxcfg & TXGBE_RXCFG_VLAN);
-		rxcfg &= ~TXGBE_RXCFG_VLAN;
-	}
-	rxcfg &= ~TXGBE_RXCFG_ENA;
+static void
+txgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
-	if (restart) {
-		/* set vlan strip for ring */
-		txgbe_dev_rx_queue_stop(dev, queue);
-		wr32(hw, TXGBE_RXBAL(rxq->reg_idx), rxbal);
-		wr32(hw, TXGBE_RXBAH(rxq->reg_idx), rxbah);
-		wr32(hw, TXGBE_RXCFG(rxq->reg_idx), rxcfg);
-		txgbe_dev_rx_queue_start(dev, queue);
+	if (!hw->adapter_stopped) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		return;
 	}
+
+	txgbe_vlan_strip_q_set(dev, queue, on);
 }
 
 static int
@@ -1259,9 +1243,9 @@ txgbe_vlan_hw_strip_config(struct rte_eth_dev *dev)
 		rxq = dev->data->rx_queues[i];
 
 		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-			txgbe_vlan_strip_queue_set(dev, i, 1);
+			txgbe_vlan_strip_q_set(dev, i, 1);
 		else
-			txgbe_vlan_strip_queue_set(dev, i, 0);
+			txgbe_vlan_strip_q_set(dev, i, 0);
 	}
 }
 
@@ -1323,6 +1307,13 @@ txgbe_vlan_offload_config(struct rte_eth_dev *dev, int mask)
 static int
 txgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (!hw->adapter_stopped && (mask & RTE_ETH_VLAN_STRIP_MASK)) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		return -EPERM;
+	}
+
 	txgbe_config_vlan_strip_on_all_queues(dev, mask);
 
 	txgbe_vlan_offload_config(dev, mask);
