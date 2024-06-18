@@ -295,6 +295,8 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	err = hw->mac.start_hw(hw);
 	if (err) {
 		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", err);
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
 		return -EIO;
 	}
 
@@ -671,8 +673,10 @@ txgbevf_dev_start(struct rte_eth_dev *dev)
 		 * now only one vector is used for Rx queue
 		 */
 		intr_vector = 1;
-		if (rte_intr_efd_enable(intr_handle, intr_vector))
+		if (rte_intr_efd_enable(intr_handle, intr_vector)) {
+			txgbe_dev_clear_queues(dev);
 			return -1;
+		}
 	}
 
 	if (rte_intr_dp_is_en(intr_handle)) {
@@ -680,6 +684,7 @@ txgbevf_dev_start(struct rte_eth_dev *dev)
 						   dev->data->nb_rx_queues)) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
 				     " intr_vec", dev->data->nb_rx_queues);
+			txgbe_dev_clear_queues(dev);
 			return -ENOMEM;
 		}
 	}

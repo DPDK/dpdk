@@ -2157,6 +2157,7 @@ txgbe_tx_queue_release(struct txgbe_tx_queue *txq)
 	if (txq != NULL && txq->ops != NULL) {
 		txq->ops->release_mbufs(txq);
 		txq->ops->free_swring(txq);
+		rte_memzone_free(txq->mz);
 		rte_free(txq);
 	}
 }
@@ -2376,6 +2377,7 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	txq->mz = tz;
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->pthresh = tx_conf->tx_thresh.pthresh;
@@ -2499,6 +2501,7 @@ txgbe_rx_queue_release(struct txgbe_rx_queue *rxq)
 		txgbe_rx_queue_release_mbufs(rxq);
 		rte_free(rxq->sw_ring);
 		rte_free(rxq->sw_sc_ring);
+		rte_memzone_free(rxq->mz);
 		rte_free(rxq);
 	}
 }
@@ -2592,6 +2595,7 @@ txgbe_reset_rx_queue(struct txgbe_adapter *adapter, struct txgbe_rx_queue *rxq)
 	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
 	rxq->rx_tail = 0;
 	rxq->nb_rx_hold = 0;
+	rte_pktmbuf_free(rxq->pkt_first_seg);
 	rxq->pkt_first_seg = NULL;
 	rxq->pkt_last_seg = NULL;
 
@@ -2677,6 +2681,7 @@ txgbe_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	rxq->mz = rz;
 	/*
 	 * Zero init all the descriptors in the ring.
 	 */
