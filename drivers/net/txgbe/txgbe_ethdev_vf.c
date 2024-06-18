@@ -971,7 +971,7 @@ txgbevf_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 		wr32(hw, TXGBE_VFIVARMISC, tmp);
 	} else {
 		/* rx or tx cause */
-		/* Workaround for ICR lost */
+		msix_vector |= TXGBE_VFIVAR_VLD; /* Workaround for ICR lost */
 		idx = ((16 * (queue & 1)) + (8 * direction));
 		tmp = rd32(hw, TXGBE_VFIVAR(queue >> 1));
 		tmp &= ~(0xFF << idx);

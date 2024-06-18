@@ -3852,13 +3852,13 @@ txgbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 
 	if (queue_id < 32) {
-		mask = rd32(hw, TXGBE_IMS(0));
-		mask &= (1 << queue_id);
-		wr32(hw, TXGBE_IMS(0), mask);
+		mask = rd32(hw, TXGBE_IMC(0));
+		mask |= (1 << queue_id);
+		wr32(hw, TXGBE_IMC(0), mask);
 	} else if (queue_id < 64) {
-		mask = rd32(hw, TXGBE_IMS(1));
-		mask &= (1 << (queue_id - 32));
-		wr32(hw, TXGBE_IMS(1), mask);
+		mask = rd32(hw, TXGBE_IMC(1));
+		mask |= (1 << (queue_id - 32));
+		wr32(hw, TXGBE_IMC(1), mask);
 	}
 	rte_intr_enable(intr_handle);
 
@@ -3873,11 +3873,11 @@ txgbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	if (queue_id < 32) {
 		mask = rd32(hw, TXGBE_IMS(0));
-		mask &= ~(1 << queue_id);
+		mask |= (1 << queue_id);
 		wr32(hw, TXGBE_IMS(0), mask);
 	} else if (queue_id < 64) {
 		mask = rd32(hw, TXGBE_IMS(1));
-		mask &= ~(1 << (queue_id - 32));
+		mask |= (1 << (queue_id - 32));
 		wr32(hw, TXGBE_IMS(1), mask);
 	}
 
@@ -3911,7 +3911,7 @@ txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 		wr32(hw, TXGBE_IVARMISC, tmp);
 	} else {
 		/* rx or tx causes */
-		/* Workaround for ICR lost */
+		msix_vector |= TXGBE_IVAR_VLD; /* Workaround for ICR lost */
 		idx = ((16 * (queue & 1)) + (8 * direction));
 		tmp = rd32(hw, TXGBE_IVAR(queue >> 1));
 		tmp &= ~(0xFF << idx);
