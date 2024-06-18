@@ -601,6 +601,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 
 	/* Vendor and Device ID need to be set before init of shared code */
+	hw->back = pci_dev;
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	if (pci_dev->id.subsystem_vendor_id == PCI_VENDOR_ID_WANGXUN) {
@@ -1717,6 +1718,8 @@ txgbe_dev_start(struct rte_eth_dev *dev)
 	hw->mac.get_link_status = true;
 	hw->dev_start = true;
 
+	txgbe_set_pcie_master(hw, true);
+
 	/* workaround for GPIO intr lost when mng_veto bit is set */
 	if (txgbe_check_reset_blocked(hw))
 		txgbe_reinit_gpio_intr(hw);
@@ -1980,6 +1983,8 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 	adapter->rss_reta_updated = 0;
 	wr32m(hw, TXGBE_LEDCTL, 0xFFFFFFFF, TXGBE_LEDCTL_SEL_MASK);
 
+	txgbe_set_pcie_master(hw, true);
+
 	hw->adapter_stopped = true;
 	dev->data->dev_started = 0;
 	hw->dev_start = false;
@@ -2061,6 +2066,8 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 	ret = txgbe_dev_stop(dev);
 
 	txgbe_dev_free_queues(dev);
+
+	txgbe_set_pcie_master(hw, false);
 
 	/* reprogram the RAR[0] in case user changed it. */
 	txgbe_set_rar(hw, 0, hw->mac.addr, 0, true);
