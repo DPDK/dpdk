@@ -2743,6 +2743,35 @@ ngbe_uc_all_hash_table_set(struct rte_eth_dev *dev, uint8_t on)
 	return 0;
 }
 
+static int
+ngbe_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t mask;
+
+	mask = rd32(hw, NGBE_IMC(0));
+	mask |= (1 << queue_id);
+	wr32(hw, NGBE_IMC(0), mask);
+	rte_intr_enable(intr_handle);
+
+	return 0;
+}
+
+static int
+ngbe_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t mask;
+
+	mask = rd32(hw, NGBE_IMS(0));
+	mask |= (1 << queue_id);
+	wr32(hw, NGBE_IMS(0), mask);
+
+	return 0;
+}
+
 /**
  * Set the IVAR registers, mapping interrupt causes to vectors
  * @param hw
@@ -2770,7 +2799,7 @@ ngbe_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
 		wr32(hw, NGBE_IVARMISC, tmp);
 	} else {
 		/* rx or tx causes */
-		/* Workaround for ICR lost */
+		msix_vector |= NGBE_IVAR_VLD; /* Workaround for ICR lost */
 		idx = ((16 * (queue & 1)) + (8 * direction));
 		tmp = rd32(hw, NGBE_IVAR(queue >> 1));
 		tmp &= ~(0xFF << idx);
@@ -3202,6 +3231,8 @@ static const struct eth_dev_ops ngbe_eth_dev_ops = {
 	.rx_queue_release           = ngbe_dev_rx_queue_release,
 	.tx_queue_setup             = ngbe_dev_tx_queue_setup,
 	.tx_queue_release           = ngbe_dev_tx_queue_release,
+	.rx_queue_intr_enable       = ngbe_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable      = ngbe_dev_rx_queue_intr_disable,
 	.dev_led_on                 = ngbe_dev_led_on,
 	.dev_led_off                = ngbe_dev_led_off,
 	.flow_ctrl_get              = ngbe_flow_ctrl_get,

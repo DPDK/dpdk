@@ -27,6 +27,7 @@ Features
 - Scattered and gather for TX and RX
 - IEEE 1588
 - FW version
+- Interrupt mode for RX
 
 
 Prerequisites
