@@ -18,11 +18,54 @@
 
 static struct graph_head graph_list = STAILQ_HEAD_INITIALIZER(graph_list);
 static rte_spinlock_t graph_lock = RTE_SPINLOCK_INITIALIZER;
-static rte_graph_t graph_id;
-
-#define GRAPH_ID_CHECK(id) ID_CHECK(id, graph_id)
 
 /* Private functions */
+static struct graph *
+graph_from_id(rte_graph_t id)
+{
+	struct graph *graph;
+	STAILQ_FOREACH(graph, &graph_list, next) {
+		if (graph->id == id)
+			return graph;
+	}
+	rte_errno = EINVAL;
+	return NULL;
+}
+
+static rte_graph_t
+graph_next_free_id(void)
+{
+	struct graph *graph;
+	rte_graph_t id = 0;
+
+	STAILQ_FOREACH(graph, &graph_list, next) {
+		if (id < graph->id)
+			break;
+		id = graph->id + 1;
+	}
+
+	return id;
+}
+
+static void
+graph_insert_ordered(struct graph *graph)
+{
+	struct graph *after, *g;
+
+	after = NULL;
+	STAILQ_FOREACH(g, &graph_list, next) {
+		if (g->id < graph->id)
+			after = g;
+		else if (g->id > graph->id)
+			break;
+	}
+	if (after == NULL) {
+		STAILQ_INSERT_HEAD(&graph_list, graph, next);
+	} else {
+		STAILQ_INSERT_AFTER(&graph_list, after, graph, next);
+	}
+}
+
 struct graph_head *
 graph_list_head_get(void)
 {
@@ -327,7 +370,7 @@ rte_graph_create(const char *name, struct rte_graph_param *prm)
 	graph->socket = prm->socket_id;
 	graph->src_node_count = src_node_count;
 	graph->node_count = graph_nodes_count(graph);
-	graph->id = graph_id;
+	graph->id = graph_next_free_id();
 
 	/* Allocate the Graph fast path memory and populate the data */
 	if (graph_fp_mem_create(graph))
@@ -338,8 +381,7 @@ rte_graph_create(const char *name, struct rte_graph_param *prm)
 		goto graph_mem_destroy;
 
 	/* All good, Lets add the graph to the list */
-	graph_id++;
-	STAILQ_INSERT_TAIL(&graph_list, graph, next);
+	graph_insert_ordered(graph);
 
 	graph_spinlock_unlock();
 	return graph->id;
@@ -378,7 +420,6 @@ rte_graph_destroy(rte_graph_t id)
 			graph_cleanup(graph);
 			STAILQ_REMOVE(&graph_list, graph, graph, next);
 			free(graph);
-			graph_id--;
 			goto done;
 		}
 		graph = tmp;
@@ -405,7 +446,8 @@ rte_graph_id_to_name(rte_graph_t id)
 {
 	struct graph *graph;
 
-	GRAPH_ID_CHECK(id);
+	if (graph_from_id(id) == NULL)
+		goto fail;
 	STAILQ_FOREACH(graph, &graph_list, next)
 		if (graph->id == id)
 			return graph->name;
@@ -422,7 +464,8 @@ rte_graph_node_get(rte_graph_t gid, uint32_t nid)
 	rte_graph_off_t off;
 	rte_node_t count;
 
-	GRAPH_ID_CHECK(gid);
+	if (graph_from_id(gid) == NULL)
+		goto fail;
 	STAILQ_FOREACH(graph, &graph_list, next)
 		if (graph->id == gid) {
 			rte_graph_foreach_node(count, off, graph->graph,
@@ -547,7 +590,8 @@ graph_scan_dump(FILE *f, rte_graph_t id, bool all)
 	struct graph *graph;
 
 	RTE_VERIFY(f);
-	GRAPH_ID_CHECK(id);
+	if (graph_from_id(id) == NULL)
+		goto fail;
 
 	STAILQ_FOREACH(graph, &graph_list, next) {
 		if (all == true) {
@@ -576,7 +620,13 @@ rte_graph_list_dump(FILE *f)
 rte_graph_t
 rte_graph_max_count(void)
 {
-	return graph_id;
+	struct graph *graph;
+	rte_graph_t count = 0;
+
+	STAILQ_FOREACH(graph, &graph_list, next)
+		count++;
+
+	return count;
 }
 
 RTE_LOG_REGISTER_DEFAULT(rte_graph_logtype, INFO);
