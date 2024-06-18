@@ -844,6 +844,9 @@ txgbe_fdir_filter_program(struct rte_eth_dev *dev,
 		return -EINVAL;
 	}
 
+	if (RTE_ETH_DEV_SRIOV(dev).active)
+		queue = RTE_ETH_DEV_SRIOV(dev).def_pool_q_idx + queue;
+
 	node = txgbe_fdir_filter_lookup(info, &rule->input);
 	if (node) {
 		if (!update) {
