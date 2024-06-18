@@ -10,7 +10,9 @@ disable_apps = run_command(list_dir_globs, disable_apps, check: true).stdout().s
 
 enable_apps = ',' + get_option('enable_apps')
 enable_apps = run_command(list_dir_globs, enable_apps, check: true).stdout().split()
+require_apps = true
 if enable_apps.length() == 0
+    require_apps = false
     enable_apps = run_command(list_dir_globs, '*', check: true).stdout().split()
 endif
 
@@ -74,6 +76,10 @@ foreach app:apps
 
     if build
         subdir(name)
+        if not build and require_apps
+            error('Cannot build explicitly requested app "@0@".\n'.format(name)
+                  + '\tReason: ' + reason)
+        endif
     endif
 
     if build
@@ -84,6 +90,10 @@ foreach app:apps
                 build = false
                 reason = 'missing internal dependency, "@0@"'.format(d)
                 message('Missing dependency "@0@" for app "@1@"'.format(d, name))
+                if require_apps
+                    error('Cannot build explicitly requested app "@0@".\n'.format(name)
+                          + '\tPlease add missing dependency "@0@" to "enable_libs" option'.format(d))
+                endif
                 break
             endif
             dep_objs += [get_variable(var_name)]
