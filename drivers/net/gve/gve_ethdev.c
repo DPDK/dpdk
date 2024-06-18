@@ -77,8 +77,7 @@ gve_free_qpls(struct gve_priv *priv)
 		return;
 
 	for (i = 0; i < nb_txqs + nb_rxqs; i++) {
-		if (priv->qpl[i].mz != NULL)
-			rte_memzone_free(priv->qpl[i].mz);
+		rte_memzone_free(priv->qpl[i].mz);
 		rte_free(priv->qpl[i].page_buses);
 	}
 

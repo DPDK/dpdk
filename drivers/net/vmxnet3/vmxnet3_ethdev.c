@@ -189,8 +189,7 @@ gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
 
 	mz = rte_memzone_lookup(z_name);
 	if (!reuse) {
-		if (mz)
-			rte_memzone_free(mz);
+		rte_memzone_free(mz);
 		return rte_memzone_reserve_aligned(z_name, size, socket_id,
 				RTE_MEMZONE_IOVA_CONTIG, align);
 	}

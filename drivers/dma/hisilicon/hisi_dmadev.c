@@ -310,8 +310,7 @@ hisi_dma_alloc_iomem(struct hisi_dma_dev *hw, uint16_t ring_size,
 static void
 hisi_dma_free_iomem(struct hisi_dma_dev *hw)
 {
-	if (hw->iomz != NULL)
-		rte_memzone_free(hw->iomz);
+	rte_memzone_free(hw->iomz);
 
 	hw->iomz = NULL;
 	hw->sqe = NULL;

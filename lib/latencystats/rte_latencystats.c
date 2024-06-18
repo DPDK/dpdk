@@ -336,8 +336,7 @@ rte_latencystats_uninit(void)
 
 	/* free up the memzone */
 	mz = rte_memzone_lookup(MZ_RTE_LATENCY_STATS);
-	if (mz)
-		rte_memzone_free(mz);
+	rte_memzone_free(mz);
 
 	return 0;
 }

@@ -158,8 +158,7 @@ void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev)
 
 	SLIST_FOREACH(tmp, &qdev->arfs_info.arfs_list_head, list) {
 		if (tmp) {
-			if (tmp->mz)
-				rte_memzone_free(tmp->mz);
+			rte_memzone_free(tmp->mz);
 			SLIST_REMOVE(&qdev->arfs_info.arfs_list_head, tmp,
 				     qede_arfs_entry, list);
 			rte_free(tmp);

@@ -73,6 +73,9 @@ expression E;
 - if (E != NULL) rte_mempool_free(E);
 + rte_mempool_free(E);
 |
+- if (E != NULL) rte_memzone_free(E);
++ rte_memzone_free(E);
+|
 - if (E != NULL) rte_pktmbuf_free(E);
 + rte_pktmbuf_free(E);
 |

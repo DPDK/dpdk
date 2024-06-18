@@ -336,8 +336,7 @@ qp_setup_cleanup:
 #else
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return ret;
-	if (qp->mb_mgr_mz)
-		rte_memzone_free(qp->mb_mgr_mz);
+	rte_memzone_free(qp->mb_mgr_mz);
 #endif
 	rte_free(qp);
 	return ret;
