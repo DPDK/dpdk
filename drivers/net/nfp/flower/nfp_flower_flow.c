@@ -161,7 +161,51 @@ nfp_flow_dev_to_priv(struct rte_eth_dev *dev)
 }
 
 static int
-nfp_mask_id_alloc(struct nfp_flow_priv *priv,
+nfp_mask_id_alloc_from_hw(struct nfp_net_hw_priv *hw_priv,
+		uint8_t *mask_id)
+{
+	int ret;
+	uint8_t freed_id;
+	uint32_t mask = 0;
+
+	/* Checking if buffer is empty. */
+	freed_id = NFP_FLOWER_MASK_ENTRY_RS - 1;
+
+	ret = nfp_rtsym_readl_indirect(hw_priv->pf_dev->sym_tbl,
+			"_FC_WC_EMU_0_MASK_ID_RING_BASE",
+			"_FC_WC_MASK_ID_RING_EMU_0", &mask);
+	if (ret != 0) {
+		*mask_id = freed_id;
+		return ret;
+	}
+
+	/* 0 is an invalid value */
+	if (mask == 0 || mask >= NFP_FLOWER_MASK_ENTRY_RS) {
+		*mask_id = freed_id;
+		return -ENOENT;
+	}
+
+	*mask_id = (uint8_t)mask;
+
+	return 0;
+}
+
+static int
+nfp_mask_id_free_from_hw(struct nfp_net_hw_priv *hw_priv,
+		uint8_t mask_id)
+{
+	int ret;
+	uint32_t mask = mask_id;
+
+	ret = nfp_rtsym_writel_indirect(hw_priv->pf_dev->sym_tbl,
+			"_FC_WC_EMU_0_MASK_ID_RING_BASE",
+			"_FC_WC_MASK_ID_RING_EMU_0", mask);
+
+	return ret;
+}
+
+static int
+nfp_mask_id_alloc_from_driver(struct nfp_flow_priv *priv,
 		uint8_t *mask_id)
 {
 	uint8_t temp_id;
@@ -194,7 +238,7 @@ nfp_mask_id_alloc(struct nfp_flow_priv *priv,
 }
 
 static int
-nfp_mask_id_free(struct nfp_flow_priv *priv,
+nfp_mask_id_free_from_driver(struct nfp_flow_priv *priv,
 		uint8_t mask_id)
 {
 	struct circ_buf *ring;
@@ -213,7 +257,33 @@ nfp_mask_id_free(struct nfp_flow_priv *priv,
 }
 
 static int
-nfp_mask_table_add(struct nfp_flow_priv *priv,
+nfp_mask_id_alloc(struct nfp_app_fw_flower *app_fw_flower,
+		uint8_t *mask_id)
+{
+	struct nfp_net_hw_priv *hw_priv;
+
+	hw_priv = app_fw_flower->pf_ethdev->process_private;
+	if (hw_priv->pf_dev->multi_pf.enabled)
+		return nfp_mask_id_alloc_from_hw(hw_priv, mask_id);
+	else
+		return nfp_mask_id_alloc_from_driver(app_fw_flower->flow_priv, mask_id);
+}
+
+static int
+nfp_mask_id_free(struct nfp_app_fw_flower *app_fw_flower,
+		uint8_t mask_id)
+{
+	struct nfp_net_hw_priv *hw_priv;
+
+	hw_priv = app_fw_flower->pf_ethdev->process_private;
+	if (hw_priv->pf_dev->multi_pf.enabled)
+		return nfp_mask_id_free_from_hw(hw_priv, mask_id);
+	else
+		return nfp_mask_id_free_from_driver(app_fw_flower->flow_priv, mask_id);
+}
+
+static int
+nfp_mask_table_add(struct nfp_app_fw_flower *app_fw_flower,
 		char *mask_data,
 		uint32_t mask_len,
 		uint8_t *id)
@@ -221,6 +291,7 @@ nfp_mask_table_add(struct nfp_flow_priv *priv,
 	int ret;
 	uint8_t mask_id;
 	uint32_t hash_key;
+	struct nfp_flow_priv *priv;
 	struct nfp_mask_id_entry *mask_entry;
 
 	mask_entry = rte_zmalloc("mask_entry", sizeof(struct nfp_mask_id_entry), 0);
@@ -229,10 +300,11 @@ nfp_mask_table_add(struct nfp_flow_priv *priv,
 		goto exit;
 	}
 
-	ret = nfp_mask_id_alloc(priv, &mask_id);
+	ret = nfp_mask_id_alloc(app_fw_flower, &mask_id);
 	if (ret != 0)
 		goto mask_entry_free;
 
+	priv = app_fw_flower->flow_priv;
 	hash_key = rte_jhash(mask_data, mask_len, priv->hash_seed);
 	mask_entry->mask_id  = mask_id;
 	mask_entry->hash_key = hash_key;
@@ -250,7 +322,7 @@ nfp_mask_table_add(struct nfp_flow_priv *priv,
 	return 0;
 
 mask_id_free:
-	nfp_mask_id_free(priv, mask_id);
+	nfp_mask_id_free(app_fw_flower, mask_id);
 mask_entry_free:
 	rte_free(mask_entry);
 exit:
@@ -258,14 +330,16 @@ exit:
 }
 
 static int
-nfp_mask_table_del(struct nfp_flow_priv *priv,
+nfp_mask_table_del(struct nfp_app_fw_flower *app_fw_flower,
 		char *mask_data,
 		uint32_t mask_len,
 		uint8_t id)
 {
 	int ret;
 	uint32_t hash_key;
+	struct nfp_flow_priv *priv;
 
+	priv = app_fw_flower->flow_priv;
 	hash_key = rte_jhash(mask_data, mask_len, priv->hash_seed);
 	ret = rte_hash_del_key(priv->mask_table, &hash_key);
 	if (ret < 0) {
@@ -273,7 +347,7 @@ nfp_mask_table_del(struct nfp_flow_priv *priv,
 		return ret;
 	}
 
-	ret = nfp_mask_id_free(priv, id);
+	ret = nfp_mask_id_free(app_fw_flower, id);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Free mask id failed.");
 		return ret;
@@ -302,19 +376,21 @@ nfp_mask_table_search(struct nfp_flow_priv *priv,
 }
 
 static bool
-nfp_check_mask_add(struct nfp_flow_priv *priv,
+nfp_check_mask_add(struct nfp_app_fw_flower *app_fw_flower,
 		char *mask_data,
 		uint32_t mask_len,
 		uint8_t *meta_flags,
 		uint8_t *mask_id)
 {
 	int ret;
+	struct nfp_flow_priv *priv;
 	struct nfp_mask_id_entry *mask_entry;
 
+	priv = app_fw_flower->flow_priv;
 	mask_entry = nfp_mask_table_search(priv, mask_data, mask_len);
 	if (mask_entry == NULL) {
 		/* Mask entry does not exist, let's create one */
-		ret = nfp_mask_table_add(priv, mask_data, mask_len, mask_id);
+		ret = nfp_mask_table_add(app_fw_flower, mask_data, mask_len, mask_id);
 		if (ret != 0)
 			return false;
 
@@ -329,21 +405,23 @@ nfp_check_mask_add(struct nfp_flow_priv *priv,
 }
 
 static bool
-nfp_check_mask_remove(struct nfp_flow_priv *priv,
+nfp_check_mask_remove(struct nfp_app_fw_flower *app_fw_flower,
 		char *mask_data,
 		uint32_t mask_len,
 		uint8_t *meta_flags)
 {
 	int ret;
+	struct nfp_flow_priv *priv;
 	struct nfp_mask_id_entry *mask_entry;
 
+	priv = app_fw_flower->flow_priv;
 	mask_entry = nfp_mask_table_search(priv, mask_data, mask_len);
 	if (mask_entry == NULL)
 		return false;
 
 	mask_entry->ref_cnt--;
 	if (mask_entry->ref_cnt == 0) {
-		ret = nfp_mask_table_del(priv, mask_data, mask_len,
+		ret = nfp_mask_table_del(app_fw_flower, mask_data, mask_len,
 				mask_entry->mask_id);
 		if (ret != 0)
 			return false;
@@ -4667,7 +4745,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	nfp_flow_meta = nfp_flow->payload.meta;
 	mask_data = nfp_flow->payload.mask_data;
 	mask_len = key_layer.key_size;
-	if (!nfp_check_mask_add(priv, mask_data, mask_len,
+	if (!nfp_check_mask_add(representor->app_fw_flower, mask_data, mask_len,
 			&nfp_flow_meta->flags, &new_mask_id)) {
 		PMD_DRV_LOG(ERR, "nfp mask add check failed.");
 		goto free_flow;
@@ -4684,7 +4762,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	flow_find = nfp_flow_table_search(priv, nfp_flow);
 	if (flow_find != NULL && !nfp_flow->merge_flag && !flow_find->merge_flag) {
 		PMD_DRV_LOG(ERR, "This flow is already exist.");
-		if (!nfp_check_mask_remove(priv, mask_data, mask_len,
+		if (!nfp_check_mask_remove(representor->app_fw_flower, mask_data, mask_len,
 				&nfp_flow_meta->flags)) {
 			PMD_DRV_LOG(ERR, "nfp mask del check failed.");
 		}
@@ -4757,7 +4835,7 @@ nfp_flow_teardown(struct nfp_app_fw_flower *app_fw_flower,
 	mask_data = nfp_flow->payload.mask_data;
 	mask_len = nfp_flow_meta->mask_len << NFP_FL_LW_SIZ;
 	nfp_flow_meta->flags &= ~NFP_FL_META_FLAG_MANAGE_MASK;
-	if (!nfp_check_mask_remove(priv, mask_data, mask_len,
+	if (!nfp_check_mask_remove(app_fw_flower, mask_data, mask_len,
 			&nfp_flow_meta->flags)) {
 		PMD_DRV_LOG(ERR, "nfp mask del check failed.");
 		return -EINVAL;
@@ -5283,24 +5361,26 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	priv->total_mem_units = ctx_split;
 	priv->ctx_count = ctx_count;
 
-	/* Init ring buffer and unallocated mask_ids. */
-	priv->mask_ids.init_unallocated = NFP_FLOWER_MASK_ENTRY_RS - 1;
-	priv->mask_ids.free_list.buf = rte_zmalloc("nfp_app_mask_ids",
-			NFP_FLOWER_MASK_ENTRY_RS * NFP_FLOWER_MASK_ELEMENT_RS, 0);
-	if (priv->mask_ids.free_list.buf == NULL) {
-		PMD_INIT_LOG(ERR, "mask id free list creation failed");
-		ret = -ENOMEM;
-		goto free_priv;
-	}
+	if (!pf_dev->multi_pf.enabled) {
+		/* Init ring buffer and unallocated mask_ids. */
+		priv->mask_ids.init_unallocated = NFP_FLOWER_MASK_ENTRY_RS - 1;
+		priv->mask_ids.free_list.buf = rte_zmalloc("nfp_app_mask_ids",
+				NFP_FLOWER_MASK_ENTRY_RS * NFP_FLOWER_MASK_ELEMENT_RS, 0);
+		if (priv->mask_ids.free_list.buf == NULL) {
+			PMD_INIT_LOG(ERR, "mask id free list creation failed");
+			ret = -ENOMEM;
+			goto free_priv;
+		}
 
-	/* Init ring buffer and unallocated stats_ids. */
-	priv->stats_ids.init_unallocated = ctx_count / ctx_split;
-	priv->stats_ids.free_list.buf = rte_zmalloc("nfp_app_stats_ids",
-			priv->stats_ring_size * NFP_FL_STATS_ELEM_RS, 0);
-	if (priv->stats_ids.free_list.buf == NULL) {
-		PMD_INIT_LOG(ERR, "stats id free list creation failed");
-		ret = -ENOMEM;
-		goto free_mask_id;
+		/* Init ring buffer and unallocated stats_ids. */
+		priv->stats_ids.init_unallocated = ctx_count / ctx_split;
+		priv->stats_ids.free_list.buf = rte_zmalloc("nfp_app_stats_ids",
+				priv->stats_ring_size * NFP_FL_STATS_ELEM_RS, 0);
+		if (priv->stats_ids.free_list.buf == NULL) {
+			PMD_INIT_LOG(ERR, "stats id free list creation failed");
+			ret = -ENOMEM;
+			goto free_mask_id;
+		}
 	}
 
 	/* Flow stats */
