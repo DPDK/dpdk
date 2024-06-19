@@ -141,6 +141,11 @@ struct nfp_pf_dev {
 	/** NFP devarg param */
 	struct nfp_devargs devargs;
 
+	/** Number of VFs supported by firmware shared by all PFs */
+	uint16_t max_vfs;
+	/** Number of VFs supported by firmware for this PF */
+	uint16_t sriov_vf;
+
 	uint8_t total_phyports;
 };
 

@@ -10,6 +10,7 @@
 #include <eal_firmware.h>
 #include <rte_alarm.h>
 #include <rte_kvargs.h>
+#include <rte_pci.h>
 
 #include "flower/nfp_flower.h"
 #include "nfd3/nfp_nfd3.h"
@@ -1858,6 +1859,103 @@ nfp_fw_app_primary_init(struct nfp_net_hw_priv *hw_priv)
 }
 
 static int
+nfp_pf_get_max_vf(struct nfp_pf_dev *pf_dev)
+{
+	int ret;
+	uint32_t max_vfs;
+
+	max_vfs = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_vf_cfg_max_vfs", &ret);
+	if (ret != 0)
+		return ret;
+
+	pf_dev->max_vfs = max_vfs;
+
+	return 0;
+}
+
+static int
+nfp_pf_get_sriov_vf(struct nfp_pf_dev *pf_dev,
+		const struct nfp_dev_info *dev_info)
+{
+	int ret;
+	off_t pos;
+	uint16_t offset;
+	uint16_t sriov_vf;
+
+	/* For 3800 single-PF and 4000 card */
+	if (!pf_dev->multi_pf.enabled) {
+		pf_dev->sriov_vf = pf_dev->max_vfs;
+		return 0;
+	}
+
+	pos = rte_pci_find_ext_capability(pf_dev->pci_dev, RTE_PCI_EXT_CAP_ID_SRIOV);
+	if (pos == 0) {
+		PMD_INIT_LOG(ERR, "Can not get the pci sriov cap");
+		return -EIO;
+	}
+
+	/*
+	 * Management firmware ensures that sriov capability registers
+	 * are initialized correctly.
+	 */
+	ret = rte_pci_read_config(pf_dev->pci_dev, &sriov_vf, sizeof(sriov_vf),
+			pos + RTE_PCI_SRIOV_TOTAL_VF);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Can not read the sriov toatl VF");
+		return -EIO;
+	}
+
+	/* Offset of first VF is relative to its PF. */
+	ret = rte_pci_read_config(pf_dev->pci_dev, &offset, sizeof(offset),
+			pos + RTE_PCI_SRIOV_VF_OFFSET);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "Can not get the VF offset");
+		return -EIO;
+	}
+
+	offset += pf_dev->multi_pf.function_id;
+	if (offset < dev_info->pf_num_per_unit)
+		return -ERANGE;
+
+	offset -= dev_info->pf_num_per_unit;
+	if (offset >= pf_dev->max_vfs || offset + sriov_vf > pf_dev->max_vfs) {
+		PMD_INIT_LOG(ERR, "The pci allocate VF is more than the MAX VF");
+		return -ERANGE;
+	}
+
+	pf_dev->sriov_vf = sriov_vf;
+
+	return 0;
+}
+
+static int
+nfp_net_get_vf_info(struct nfp_pf_dev *pf_dev,
+		const struct nfp_dev_info *dev_info)
+{
+	int ret;
+
+	ret = nfp_pf_get_max_vf(pf_dev);
+	if (ret != 0) {
+		if (ret != -ENOENT) {
+			PMD_INIT_LOG(ERR, "Read max VFs failed");
+			return ret;
+		}
+
+		PMD_INIT_LOG(WARNING, "The firmware can not support read max VFs");
+		return 0;
+	}
+
+	if (pf_dev->max_vfs == 0)
+		return 0;
+
+	ret = nfp_pf_get_sriov_vf(pf_dev, dev_info);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	void *sync;
@@ -2015,6 +2113,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	ret = nfp_net_speed_cap_get(pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to get speed capability.");
+		ret = -EIO;
+		goto sym_tbl_cleanup;
+	}
+
+	/* Get the VF info */
+	ret = nfp_net_get_vf_info(pf_dev, dev_info);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to get VF info.");
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
