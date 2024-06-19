@@ -4567,7 +4567,6 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
-		__rte_unused struct rte_flow_error *error,
 		bool validate_flag)
 {
 	uint64_t cookie;
@@ -4644,7 +4643,7 @@ nfp_flow_validate(struct rte_eth_dev *dev,
 	representor = dev->data->dev_private;
 	priv = representor->app_fw_flower->flow_priv;
 
-	nfp_flow = nfp_flow_setup(representor, attr, items, actions, error, true);
+	nfp_flow = nfp_flow_setup(representor, attr, items, actions, true);
 	if (nfp_flow == NULL) {
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -4680,7 +4679,7 @@ nfp_flow_create(struct rte_eth_dev *dev,
 	app_fw_flower = representor->app_fw_flower;
 	priv = app_fw_flower->flow_priv;
 
-	nfp_flow = nfp_flow_setup(representor, attr, items, actions, error, false);
+	nfp_flow = nfp_flow_setup(representor, attr, items, actions, false);
 	if (nfp_flow == NULL) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL, "This flow can not be offloaded.");
