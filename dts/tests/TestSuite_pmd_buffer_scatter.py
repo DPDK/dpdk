@@ -16,14 +16,14 @@ scattered packets.
 """
 
 import struct
+from dataclasses import asdict
 
 from scapy.layers.inet import IP  # type: ignore[import-untyped]
 from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 from scapy.packet import Raw  # type: ignore[import-untyped]
 from scapy.utils import hexstr  # type: ignore[import-untyped]
 
-from framework.params import Params
-from framework.params.testpmd import SimpleForwardingModes
+from framework.params.testpmd import SimpleForwardingModes, TestPmdParams
 from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.test_suite import TestSuite
 
@@ -105,16 +105,16 @@ class TestPmdBufferScatter(TestSuite):
         """
         testpmd = self.sut_node.create_interactive_shell(
             TestPmdShell,
-            app_params=Params.from_str(
-                "--mbcache=200 "
-                f"--mbuf-size={mbsize} "
-                "--max-pkt-len=9000 "
-                "--port-topology=paired "
-                "--tx-offloads=0x00008000"
+            app_params=TestPmdParams(
+                forward_mode=SimpleForwardingModes.mac,
+                mbcache=200,
+                mbuf_size=[mbsize],
+                max_pkt_len=9000,
+                tx_offloads=0x00008000,
+                **asdict(self.sut_node.create_eal_parameters()),
             ),
             privileged=True,
         )
-        testpmd.set_forward_mode(SimpleForwardingModes.mac)
         testpmd.start()
 
         for offset in [-1, 0, 1, 4, 5]:
