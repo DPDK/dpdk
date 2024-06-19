@@ -1129,7 +1129,7 @@ struct nfp_action_calculate_param {
 };
 
 typedef int (*nfp_flow_key_check_action_fn)(struct nfp_action_calculate_param *param);
-typedef int (*nfp_flow_key_calculate_action_fn)(struct nfp_action_calculate_param *param);
+typedef void (*nfp_flow_key_calculate_action_fn)(struct nfp_action_calculate_param *param);
 
 static int
 nfp_flow_action_check_port(struct nfp_action_calculate_param *param)
@@ -1368,78 +1368,63 @@ nfp_flow_key_layers_check_actions(const struct rte_flow_action actions[])
 	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_stub(struct nfp_action_calculate_param *param __rte_unused)
 {
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_port(struct nfp_action_calculate_param *param)
 {
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_output);
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_mac(struct nfp_action_calculate_param *param)
 {
 	if (!param->flag->mac_set_flag) {
 		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
 		param->flag->mac_set_flag = true;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_pop_vlan(struct nfp_action_calculate_param *param)
 {
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_pop_vlan);
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_push_vlan(struct nfp_action_calculate_param *param)
 {
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_push_vlan);
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_ipv4_addr(struct nfp_action_calculate_param *param)
 {
 	if (!param->flag->ip_set_flag) {
 		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ip4_addrs);
 		param->flag->ip_set_flag = true;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_ipv6_addr(struct nfp_action_calculate_param *param)
 {
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_tp(struct nfp_action_calculate_param *param)
 {
 	if (!param->flag->tp_set_flag) {
 		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
 		param->flag->tp_set_flag = true;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_ttl(struct nfp_action_calculate_param *param)
 {
 	if ((param->key_ls->key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
@@ -1453,68 +1438,53 @@ nfp_flow_action_calculate_ttl(struct nfp_action_calculate_param *param)
 			param->flag->tc_hl_flag = true;
 		}
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_ipv4_dscp(struct nfp_action_calculate_param *param)
 {
 	if (!param->flag->ttl_tos_flag) {
 		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
 		param->flag->ttl_tos_flag = true;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_ipv6_dscp(struct nfp_action_calculate_param *param)
 {
 	if (!param->flag->tc_hl_flag) {
 		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 		param->flag->tc_hl_flag = true;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_encap(struct nfp_action_calculate_param *param)
 {
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_meter(struct nfp_action_calculate_param *param)
 {
-	if (param->flag->meter_flag) {
-		PMD_DRV_LOG(ERR, "Only support one meter action.");
-		return -ENOTSUP;
-	}
-
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_meter);
-	param->flag->meter_flag = true;
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_action_calculate_mark(struct nfp_action_calculate_param *param)
 {
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_mark);
-
-	return 0;
 }
 
-static int
-nfp_flow_action_calculate_modify_dispatch(struct nfp_action_calculate_param *param,
-		enum rte_flow_field_id field)
+static void
+nfp_flow_action_calculate_modify(struct nfp_action_calculate_param *param)
 {
-	switch (field) {
+	const struct rte_flow_action_modify_field *conf;
+
+	conf = param->action->conf;
+
+	switch (conf->dst.field) {
 	case RTE_FLOW_FIELD_IPV4_SRC:
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_IPV4_DST:
@@ -1546,51 +1516,6 @@ nfp_flow_action_calculate_modify_dispatch(struct nfp_action_calculate_param *par
 	default:
 		break;    /* NOTREACHED */
 	}
-
-	return -ENOTSUP;
-}
-
-static int
-nfp_flow_action_calculate_modify(struct nfp_action_calculate_param *param)
-{
-	uint32_t width;
-	uint32_t dst_width;
-	uint32_t src_width;
-	const struct rte_flow_field_data *dst_data;
-	const struct rte_flow_field_data *src_data;
-	const struct rte_flow_action_modify_field *conf;
-
-	conf = param->action->conf;
-	if (conf == NULL)
-		return -EINVAL;
-
-	dst_data = &conf->dst;
-	src_data = &conf->src;
-	if (!nfp_flow_field_id_dst_support(dst_data->field) ||
-			!nfp_flow_field_id_src_support(src_data->field)) {
-		PMD_DRV_LOG(ERR, "Not supported field id");
-		return -EINVAL;
-	}
-
-	width = conf->width;
-	if (width == 0) {
-		PMD_DRV_LOG(ERR, "No bits are required to modify");
-		return -EINVAL;
-	}
-
-	dst_width = nfp_flow_field_width(dst_data->field, 0);
-	src_width = nfp_flow_field_width(src_data->field, dst_width);
-	if (width > dst_width || width > src_width) {
-		PMD_DRV_LOG(ERR, "Cannot modify more bits than the width of a field");
-		return -EINVAL;
-	}
-
-	if (!nfp_flow_is_validate_field_data(dst_data, width, dst_width)) {
-		PMD_DRV_LOG(ERR, "The dest field data has problem");
-		return -EINVAL;
-	}
-
-	return nfp_flow_action_calculate_modify_dispatch(param, dst_data->field);
 }
 
 static nfp_flow_key_calculate_action_fn action_fns[] = {
@@ -1630,7 +1555,6 @@ static int
 nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
-	int ret;
 	struct nfp_action_flag flag = {};
 	const struct rte_flow_action *action;
 	struct nfp_action_calculate_param param = {
@@ -1651,11 +1575,7 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		}
 
 		param.action = action;
-		ret = action_fns[action->type](&param);
-		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Flow action %d calculate fail", action->type);
-			return ret;
-		}
+		action_fns[action->type](&param);
 	}
 
 	return 0;
