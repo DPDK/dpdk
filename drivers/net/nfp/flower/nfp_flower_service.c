@@ -34,28 +34,25 @@ nfp_flower_service_handle_get(struct nfp_net_hw_priv *hw_priv)
 }
 
 static int
-nfp_flower_service_loop(void *arg)
+nfp_flower_service_func(void *arg)
 {
 	uint16_t slot;
 	struct nfp_app_fw_flower *app;
 	struct nfp_flower_service *service_handle;
 
 	service_handle = arg;
-	/* Waiting for enabling service */
-	while (!service_handle->enabled)
-		rte_delay_ms(1);
+	if (!service_handle->enabled)
+		return 0;
 
-	while (rte_service_runstate_get(service_handle->info.id) != 0) {
-		rte_spinlock_lock(&service_handle->spinlock);
-		for (slot = 0; slot < MAX_FLOWER_SERVICE_SLOT; slot++) {
-			app = service_handle->slots[slot];
-			if (app == NULL)
-				continue;
+	rte_spinlock_lock(&service_handle->spinlock);
+	for (slot = 0; slot < MAX_FLOWER_SERVICE_SLOT; slot++) {
+		app = service_handle->slots[slot];
+		if (app == NULL)
+			continue;
 
-			nfp_flower_ctrl_vnic_process(app);
-		}
-		rte_spinlock_unlock(&service_handle->spinlock);
+		nfp_flower_ctrl_vnic_process(app);
 	}
+	rte_spinlock_unlock(&service_handle->spinlock);
 
 	return 0;
 }
@@ -67,7 +64,7 @@ nfp_flower_service_enable(struct nfp_flower_service *service_handle)
 
 	const struct rte_service_spec flower_service = {
 		.name              = "flower_ctrl_vnic_service",
-		.callback          = nfp_flower_service_loop,
+		.callback          = nfp_flower_service_func,
 		.callback_userdata = (void *)service_handle,
 	};
 
