@@ -21,6 +21,7 @@
 #define NFP_FL_FEATS_QOS_PPS            RTE_BIT64(9)
 #define NFP_FL_FEATS_QOS_METER          RTE_BIT64(10)
 #define NFP_FL_FEATS_DECAP_V2           RTE_BIT64(11)
+#define NFP_FL_FEATS_FLOW_PARTIAL       RTE_BIT64(13)
 #define NFP_FL_FEATS_HOST_ACK           RTE_BIT64(31)
 
 /*

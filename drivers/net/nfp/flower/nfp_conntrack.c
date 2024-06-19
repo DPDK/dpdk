@@ -36,7 +36,7 @@ struct nfp_ct_flow_entry {
 	LIST_ENTRY(nfp_ct_flow_entry) post_ct_list;
 	LIST_HEAD(, nfp_ct_merge_entry) children;
 	enum ct_entry_type type;
-	struct nfp_flower_representor *repr;
+	struct rte_eth_dev *dev;
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_initial_flow rule;
 	struct nfp_fl_stats stats;
@@ -660,7 +660,7 @@ nfp_ct_flow_actions_copy(const struct rte_flow_action *src,
 
 static struct nfp_ct_flow_entry *
 nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
-		struct nfp_flower_representor *repr,
+		struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		uint64_t cookie)
@@ -672,6 +672,7 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 	struct nfp_flow_priv *priv;
 	struct nfp_ct_map_entry *me;
 	struct nfp_ct_flow_entry *fe;
+	struct nfp_flower_representor *repr;
 
 	fe = rte_zmalloc("ct_flow_entry", sizeof(*fe), 0);
 	if (fe == NULL) {
@@ -680,7 +681,7 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 	}
 
 	fe->ze = ze;
-	fe->repr = repr;
+	fe->dev = dev;
 	fe->cookie = cookie;
 	LIST_INIT(&fe->children);
 
@@ -730,6 +731,7 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 	me->cookie = fe->cookie;
 	me->fe = fe;
 
+	repr = dev->data->dev_private;
 	priv = repr->app_fw_flower->flow_priv;
 	ret = nfp_ct_map_table_add(priv, me);
 	if (!ret) {
@@ -979,7 +981,7 @@ nfp_ct_zone_entry_free(struct nfp_ct_zone_entry *ze,
 }
 
 static int
-nfp_ct_offload_add(struct nfp_flower_representor *repr,
+nfp_ct_offload_add(struct rte_eth_dev *dev,
 		struct nfp_ct_merge_entry *merge_entry)
 {
 	int ret;
@@ -987,12 +989,13 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	struct rte_flow *nfp_flow;
 	struct nfp_flow_priv *priv;
 	const struct rte_flow_item *items;
+	struct nfp_flower_representor *repr;
 	const struct rte_flow_action *actions;
 
 	cookie = rte_rand();
 	items = merge_entry->rule.items;
 	actions = merge_entry->rule.actions;
-	nfp_flow = nfp_flow_process(repr, items, actions, false, cookie, true, true);
+	nfp_flow = nfp_flow_process(dev, items, actions, false, cookie, true, true);
 	if (nfp_flow == NULL) {
 		PMD_DRV_LOG(ERR, "Process the merged flow rule failed.");
 		return -EINVAL;
@@ -1001,6 +1004,7 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	merge_entry->ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
 
 	/* Add the flow to hardware */
+	repr = dev->data->dev_private;
 	priv = repr->app_fw_flower->flow_priv;
 	ret = nfp_flower_cmsg_flow_add(repr->app_fw_flower, nfp_flow);
 	if (ret != 0) {
@@ -1442,7 +1446,7 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 	uint8_t cnt_same_action = 0;
 	struct nfp_ct_merge_entry *merge_entry;
 
-	if (pre_ct_entry->repr != post_ct_entry->repr)
+	if (pre_ct_entry->dev != post_ct_entry->dev)
 		return true;
 
 	ret = nfp_ct_merge_items_check(pre_ct_entry->rule.items,
@@ -1504,7 +1508,7 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 	}
 
 	/* Send to firmware */
-	ret = nfp_ct_offload_add(pre_ct_entry->repr, merge_entry);
+	ret = nfp_ct_offload_add(pre_ct_entry->dev, merge_entry);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Send the merged flow to firmware failed");
 		goto merge_table_del;
@@ -1557,7 +1561,7 @@ nfp_ct_merge_flow_entries(struct nfp_ct_flow_entry *fe,
 
 static bool
 nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
-		struct nfp_flower_representor *representor,
+		struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		uint64_t cookie)
@@ -1567,7 +1571,9 @@ nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_ct_flow_entry *fe;
 	const struct ct_data *ct = ct_item->spec;
+	struct nfp_flower_representor *representor;
 
+	representor = dev->data->dev_private;
 	priv = representor->app_fw_flower->flow_priv;
 	ze = nfp_ct_zone_entry_get(priv, ct->ct_zone, false);
 	if (ze == NULL) {
@@ -1576,7 +1582,7 @@ nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
 	}
 
 	/* Add entry to pre_ct_list */
-	fe = nfp_ct_flow_entry_get(ze, representor, items, actions, cookie);
+	fe = nfp_ct_flow_entry_get(ze, dev, items, actions, cookie);
 	if (fe == NULL) {
 		PMD_DRV_LOG(ERR, "Could not get ct flow entry");
 		goto ct_zone_entry_free;
@@ -1613,7 +1619,7 @@ ct_zone_entry_free:
 
 static bool
 nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
-		struct nfp_flower_representor *representor,
+		struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		uint64_t cookie)
@@ -1626,6 +1632,7 @@ nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
 	struct nfp_flow_priv *priv;
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_ct_flow_entry *fe;
+	struct nfp_flower_representor *representor;
 	const struct ct_data *ct = ct_item->spec;
 	const struct ct_data *ct_mask = ct_item->mask;
 
@@ -1636,6 +1643,7 @@ nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
 		return false;
 	}
 
+	representor = dev->data->dev_private;
 	priv = representor->app_fw_flower->flow_priv;
 	ze = nfp_ct_zone_entry_get(priv, ct->ct_zone, wildcard);
 	if (ze == NULL) {
@@ -1644,7 +1652,7 @@ nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
 	}
 
 	/* Add entry to post_ct_list */
-	fe = nfp_ct_flow_entry_get(ze, representor, items, actions, cookie);
+	fe = nfp_ct_flow_entry_get(ze, dev, items, actions, cookie);
 	if (fe == NULL) {
 		PMD_DRV_LOG(ERR, "Could not get ct flow entry");
 		goto ct_zone_entry_free;
@@ -1681,7 +1689,7 @@ ct_zone_entry_free:
 }
 
 struct rte_flow *
-nfp_ct_flow_setup(struct nfp_flower_representor *representor,
+nfp_ct_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		const struct rte_flow_item *ct_item,
@@ -1696,14 +1704,14 @@ nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 	ct = ct_item->spec;
 
 	if (is_ct_commit_flow(ct)) {
-		return nfp_flow_process(representor, &items[1], actions,
+		return nfp_flow_process(dev, &items[1], actions,
 				validate_flag, cookie, false, false);
 	}
 
 	if (is_post_ct_flow(ct)) {
-		if (nfp_flow_handle_post_ct(ct_item, representor, &items[1],
+		if (nfp_flow_handle_post_ct(ct_item, dev, &items[1],
 				actions, cookie)) {
-			return nfp_flow_process(representor, &items[1], actions,
+			return nfp_flow_process(dev, &items[1], actions,
 					validate_flag, cookie, false, false);
 		}
 
@@ -1712,9 +1720,9 @@ nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 	}
 
 	if (is_pre_ct_flow(ct, actions)) {
-		if (nfp_flow_handle_pre_ct(ct_item, representor, &items[1],
+		if (nfp_flow_handle_pre_ct(ct_item, dev, &items[1],
 				actions, cookie)) {
-			return nfp_flow_process(representor, &items[1], actions,
+			return nfp_flow_process(dev, &items[1], actions,
 					validate_flag, cookie, false, false);
 		}
 

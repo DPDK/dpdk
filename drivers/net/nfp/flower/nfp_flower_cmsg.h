@@ -976,6 +976,30 @@ struct nfp_fl_act_mark {
 	rte_be32_t mark;
 };
 
+/*
+ * Partial
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | res |  opcode |  res  | len_lw|     flag       |     resv1    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         Mark                                  |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |           queue_id            |              resv2            |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * flag = 0x0: only mark action
+ * flag = 0x1: only queue action
+ * flag = 0x2: mark and queue action
+ */
+struct nfp_fl_act_partial {
+	struct nfp_fl_act_head head;
+	uint8_t flag;
+	uint8_t resv1;
+	rte_be32_t mark;
+	rte_be16_t queue_id;
+	rte_be16_t resv2;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_pf_dev *pf_dev);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,

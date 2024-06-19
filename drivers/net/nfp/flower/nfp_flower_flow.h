@@ -195,7 +195,7 @@ void nfp_flow_priv_uninit(struct nfp_pf_dev *pf_dev);
 int nfp_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops);
 bool nfp_flow_inner_item_get(const struct rte_flow_item items[],
 		const struct rte_flow_item **inner_item);
-struct rte_flow *nfp_flow_process(struct nfp_flower_representor *representor,
+struct rte_flow *nfp_flow_process(struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		bool validate_flag,

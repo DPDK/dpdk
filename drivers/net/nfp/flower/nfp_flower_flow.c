@@ -83,7 +83,7 @@
 #define NFP_FL_ACTION_OPCODE_METER              24
 #define NFP_FL_ACTION_OPCODE_CT_NAT_EXT         25
 #define NFP_FL_ACTION_OPCODE_PUSH_GENEVE        26
-#define NFP_FL_ACTION_OPCODE_SET_MARK           27
+#define NFP_FL_ACTION_OPCODE_SET_PARTIAL        27
 #define NFP_FL_ACTION_OPCODE_NUM                32
 
 #define NFP_FL_OUT_FLAGS_LAST            RTE_BIT32(15)
@@ -150,6 +150,12 @@ struct __rte_aligned(32) nfp_pre_tun_entry {
 	uint16_t ref_cnt;
 	struct rte_ether_addr mac_addr;
 };
+
+static inline bool
+nfp_flow_support_partial(struct nfp_flower_representor *repr)
+{
+	return repr->app_fw_flower->ext_features & NFP_FL_FEATS_FLOW_PARTIAL;
+}
 
 static inline struct nfp_flow_priv *
 nfp_flow_dev_to_priv(struct rte_eth_dev *dev)
@@ -1262,12 +1268,15 @@ struct nfp_action_flag {
 	bool tp_set_flag;
 	bool mac_set_flag;
 	bool ttl_tos_flag;
+	bool partial_flag;
+	bool partial_both_flag; /**< Both means Queue and Mark action */
 };
 
 struct nfp_action_calculate_param {
 	const struct rte_flow_action *action;
 	struct nfp_fl_key_ls *key_ls;
 	struct nfp_action_flag *flag;
+	struct rte_eth_dev *dev;
 };
 
 typedef int (*nfp_flow_key_check_action_fn)(struct nfp_action_calculate_param *param);
@@ -1473,21 +1482,46 @@ nfp_flow_action_check_modify(struct nfp_action_calculate_param *param)
 	return 0;
 }
 
+static int
+nfp_flow_action_check_queue(struct nfp_action_calculate_param *param)
+{
+	struct nfp_flower_representor *repr;
+	const struct rte_flow_action_queue *queue;
+
+	repr = param->dev->data->dev_private;
+	if (!nfp_flow_support_partial(repr)) {
+		PMD_DRV_LOG(ERR, "Queue action not supported");
+		return -ENOTSUP;
+	}
+
+	queue = param->action->conf;
+	if (queue->index >= param->dev->data->nb_rx_queues ||
+			param->dev->data->rx_queues[queue->index] == NULL) {
+		PMD_DRV_LOG(ERR, "Queue index is illegal");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static nfp_flow_key_check_action_fn check_action_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_PORT_ID]          = nfp_flow_action_check_port,
 	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = nfp_flow_action_check_port,
 	[RTE_FLOW_ACTION_TYPE_METER]            = nfp_flow_action_check_meter,
 	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD]     = nfp_flow_action_check_modify,
+	[RTE_FLOW_ACTION_TYPE_QUEUE]            = nfp_flow_action_check_queue,
 };
 
 static int
-nfp_flow_key_layers_check_actions(const struct rte_flow_action actions[])
+nfp_flow_key_layers_check_actions(struct rte_eth_dev *dev,
+		const struct rte_flow_action actions[])
 {
 	int ret;
 	struct nfp_action_flag flag = {};
 	const struct rte_flow_action *action;
 	struct nfp_action_calculate_param param = {
 		.flag = &flag,
+		.dev = dev,
 	};
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
@@ -1616,7 +1650,33 @@ nfp_flow_action_calculate_meter(struct nfp_action_calculate_param *param)
 static void
 nfp_flow_action_calculate_mark(struct nfp_action_calculate_param *param)
 {
-	param->key_ls->act_size += sizeof(struct nfp_fl_act_mark);
+	struct nfp_flower_representor *repr;
+
+	repr = param->dev->data->dev_private;
+	if (!nfp_flow_support_partial(repr)) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_mark);
+		return;
+	}
+
+	if (!param->flag->partial_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_partial);
+		param->flag->partial_flag = true;
+		return;
+	}
+
+	param->flag->partial_both_flag = true;
+}
+
+static void
+nfp_flow_action_calculate_queue(struct nfp_action_calculate_param *param)
+{
+	if (!param->flag->partial_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_partial);
+		param->flag->partial_flag = true;
+		return;
+	}
+
+	param->flag->partial_both_flag = true;
 }
 
 static void
@@ -1691,10 +1751,12 @@ static nfp_flow_key_calculate_action_fn action_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_MARK]             = nfp_flow_action_calculate_mark,
 	[RTE_FLOW_ACTION_TYPE_RSS]              = nfp_flow_action_calculate_stub,
 	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD]     = nfp_flow_action_calculate_modify,
+	[RTE_FLOW_ACTION_TYPE_QUEUE]            = nfp_flow_action_calculate_queue,
 };
 
 static int
-nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
+nfp_flow_key_layers_calculate_actions(struct rte_eth_dev *dev,
+		const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
 	struct nfp_action_flag flag = {};
@@ -1702,6 +1764,7 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 	struct nfp_action_calculate_param param = {
 		.key_ls = key_ls,
 		.flag = &flag,
+		.dev = dev,
 	};
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
@@ -1720,11 +1783,18 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		action_fns[action->type](&param);
 	}
 
+	if (param.flag->partial_both_flag &&
+			key_ls->act_size != sizeof(struct nfp_fl_act_partial)) {
+		PMD_DRV_LOG(ERR, "Mark and Queue can not be offloaded with other actions");
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 
 static int
-nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
+nfp_flow_key_layers_calculate(struct rte_eth_dev *dev,
+		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
@@ -1751,13 +1821,13 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 		return ret;
 	}
 
-	ret = nfp_flow_key_layers_check_actions(actions);
+	ret = nfp_flow_key_layers_check_actions(dev, actions);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "flow actions check failed");
 		return ret;
 	}
 
-	ret = nfp_flow_key_layers_calculate_actions(actions, key_ls);
+	ret = nfp_flow_key_layers_calculate_actions(dev, actions, key_ls);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "flow actions check failed");
 		return ret;
@@ -4073,7 +4143,7 @@ nfp_flow_action_mark(char *act_data,
 	mark = action->conf;
 
 	fl_mark = (struct nfp_fl_act_mark *)act_data;
-	fl_mark->head.jump_id = NFP_FL_ACTION_OPCODE_SET_MARK;
+	fl_mark->head.jump_id = NFP_FL_ACTION_OPCODE_SET_PARTIAL;
 	fl_mark->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
 	fl_mark->reserved     = 0;
 	fl_mark->mark         = rte_cpu_to_be_32(mark->id);
@@ -4501,11 +4571,70 @@ nfp_flow_action_compile_meter(struct nfp_action_compile_param *param)
 	return 0;
 }
 
+static void
+nfp_flow_action_partial(const struct rte_flow_action *action,
+		char *act_data,
+		bool partial_flag)
+{
+	size_t act_size;
+	struct nfp_fl_act_partial *fl_partial;
+	const struct rte_flow_action_mark *mark;
+	const struct rte_flow_action_queue *queue;
+
+	if (partial_flag)
+		fl_partial = (struct nfp_fl_act_partial *)act_data - 1;
+	else
+		fl_partial = (struct nfp_fl_act_partial *)act_data;
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_MARK) {
+		mark = action->conf;
+		fl_partial->mark = rte_cpu_to_be_32(mark->id);
+		fl_partial->flag = 0;
+	} else if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+		queue = action->conf;
+		fl_partial->queue_id = rte_cpu_to_be_16(queue->index);
+		fl_partial->flag = 1;
+	}
+
+	if (partial_flag) {
+		fl_partial->flag = 2;
+		return;
+	}
+
+	act_size = sizeof(struct nfp_fl_act_partial);
+	fl_partial->head.jump_id = NFP_FL_ACTION_OPCODE_SET_PARTIAL;
+	fl_partial->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+}
+
 static int
 nfp_flow_action_compile_mark(struct nfp_action_compile_param *param)
 {
-	nfp_flow_action_mark(param->position, param->action);
-	param->position += sizeof(struct nfp_fl_act_mark);
+	if (!nfp_flow_support_partial(param->repr)) {
+		nfp_flow_action_mark(param->position, param->action);
+		param->position += sizeof(struct nfp_fl_act_mark);
+
+		return 0;
+	}
+
+	nfp_flow_action_partial(param->action, param->position, param->flag->partial_flag);
+
+	if (!param->flag->partial_flag) {
+		param->flag->partial_flag = true;
+		param->position += sizeof(struct nfp_fl_act_partial);
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_queue(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_partial(param->action, param->position, param->flag->partial_flag);
+
+	if (!param->flag->partial_flag) {
+		param->flag->partial_flag = true;
+		param->position += sizeof(struct nfp_fl_act_partial);
+	}
 
 	return 0;
 }
@@ -4631,6 +4760,7 @@ static nfp_flow_action_compile_fn action_compile_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_MARK]             = nfp_flow_action_compile_mark,
 	[RTE_FLOW_ACTION_TYPE_RSS]              = nfp_flow_action_compile_rss,
 	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD]     = nfp_flow_action_compile_modify,
+	[RTE_FLOW_ACTION_TYPE_QUEUE]            = nfp_flow_action_compile_queue,
 };
 
 static int
@@ -4683,7 +4813,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 }
 
 struct rte_flow *
-nfp_flow_process(struct nfp_flower_representor *representor,
+nfp_flow_process(struct rte_eth_dev *dev,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		bool validate_flag,
@@ -4702,12 +4832,15 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	struct nfp_flow_priv *priv;
 	struct nfp_fl_key_ls key_layer;
 	struct nfp_fl_rule_metadata *nfp_flow_meta;
+	struct nfp_flower_representor *representor;
 
-	ret = nfp_flow_key_layers_calculate(items, actions, &key_layer);
+	ret = nfp_flow_key_layers_calculate(dev, items, actions, &key_layer);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Key layers calculate failed.");
 		return NULL;
 	}
+
+	representor = dev->data->dev_private;
 
 	if (key_layer.port == (uint32_t)~0)
 		key_layer.port = representor->port_id;
@@ -4784,7 +4917,7 @@ free_stats:
 }
 
 static struct rte_flow *
-nfp_flow_setup(struct nfp_flower_representor *representor,
+nfp_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
@@ -4813,10 +4946,10 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 	cookie = rte_rand();
 
 	if (ct_item != NULL)
-		return nfp_ct_flow_setup(representor, items, actions,
+		return nfp_ct_flow_setup(dev, items, actions,
 				ct_item, validate_flag, cookie);
 
-	return nfp_flow_process(representor, items, actions, validate_flag, cookie, true, false);
+	return nfp_flow_process(dev, items, actions, validate_flag, cookie, true, false);
 }
 
 int
@@ -4864,7 +4997,7 @@ nfp_flow_validate(struct rte_eth_dev *dev,
 
 	representor = dev->data->dev_private;
 
-	nfp_flow = nfp_flow_setup(representor, attr, items, actions, true);
+	nfp_flow = nfp_flow_setup(dev, attr, items, actions, true);
 	if (nfp_flow == NULL) {
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -4900,7 +5033,7 @@ nfp_flow_create(struct rte_eth_dev *dev,
 	app_fw_flower = representor->app_fw_flower;
 	priv = app_fw_flower->flow_priv;
 
-	nfp_flow = nfp_flow_setup(representor, attr, items, actions, false);
+	nfp_flow = nfp_flow_setup(dev, attr, items, actions, false);
 	if (nfp_flow == NULL) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL, "This flow can not be offloaded.");
