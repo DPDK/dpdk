@@ -1224,6 +1224,8 @@ nfp_flow_field_id_dst_support(enum rte_flow_field_id field)
 	case RTE_FLOW_FIELD_UDP_PORT_SRC:
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV4_TTL:
 		return true;
 	default:
 		break;
@@ -1260,6 +1262,8 @@ nfp_flow_field_width(enum rte_flow_field_id field,
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_UDP_PORT_DST:
 		return 16;
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		return 8;
 	case RTE_FLOW_FIELD_POINTER:
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_VALUE:
@@ -1320,6 +1324,8 @@ nfp_flow_action_calculate_modify_dispatch(struct nfp_action_calculate_param *par
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_UDP_PORT_DST:
 		return nfp_flow_action_calculate_tp(param);
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		return nfp_flow_action_calculate_ttl(param);
 	default:
 		break;    /* NOTREACHED */
 	}
@@ -4291,6 +4297,8 @@ nfp_flow_action_compile_modify_dispatch(struct nfp_action_compile_param *param,
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_UDP_PORT_DST:
 		return nfp_flow_action_compile_tp_dst(param);
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		return nfp_flow_action_compile_ttl(param);
 	default:
 		break;    /* NOTREACHED */
 	}
