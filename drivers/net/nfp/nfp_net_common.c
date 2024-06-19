@@ -2655,6 +2655,38 @@ nfp_net_sriov_update(struct nfp_net_hw *net_hw,
 }
 
 static int
+nfp_net_vf_queues_config(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev)
+{
+	int ret;
+	uint32_t i;
+	uint32_t offset;
+
+	ret = nfp_net_sriov_check(pf_dev, NFP_NET_VF_CFG_MB_CAP_QUEUE_CONFIG);
+	if (ret != 0) {
+		if (ret == -ENOTSUP) {
+			PMD_INIT_LOG(WARNING, "Set VF max queue not supported");
+			return 0;
+		}
+
+		PMD_INIT_LOG(ERR, "Set VF max queue failed");
+		return ret;
+	}
+
+	offset = NFP_NET_VF_CFG_MB_SZ + pf_dev->max_vfs * NFP_NET_VF_CFG_SZ;
+	for (i = 0; i < pf_dev->sriov_vf; i++) {
+		ret = nfp_net_vf_reconfig(net_hw, pf_dev, NFP_NET_VF_CFG_MB_UPD_QUEUE_CONFIG,
+				pf_dev->queue_per_vf, pf_dev->vf_base_id + offset + i);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Set VF max_queue failed");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
 nfp_net_sriov_init(struct nfp_net_hw *net_hw,
 		struct nfp_pf_dev *pf_dev)
 {
@@ -2694,6 +2726,12 @@ nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
 	ret = nfp_net_sriov_init(net_hw, pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init sriov module");
+		return ret;
+	}
+
+	ret = nfp_net_vf_queues_config(net_hw, pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to config vf queue");
 		return ret;
 	}
 

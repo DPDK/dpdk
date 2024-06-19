@@ -24,9 +24,11 @@
 /* VF config mailbox */
 #define NFP_NET_VF_CFG_MB               0x0
 #define NFP_NET_VF_CFG_MB_CAP           0x0
+#define   NFP_NET_VF_CFG_MB_CAP_QUEUE_CONFIG      (0x1 << 7)
 #define   NFP_NET_VF_CFG_MB_CAP_SPLIT             (0x1 << 8)
 #define NFP_NET_VF_CFG_MB_RET           0x2
 #define NFP_NET_VF_CFG_MB_UPD           0x4
+#define   NFP_NET_VF_CFG_MB_UPD_QUEUE_CONFIG      (0x1 << 7)
 #define   NFP_NET_VF_CFG_MB_UPD_SPLIT             (0x1 << 8)
 #define NFP_NET_VF_CFG_MB_VF_CNT        0x6
 #define NFP_NET_VF_CFG_MB_VF_NUM        0x7

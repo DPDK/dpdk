@@ -35,6 +35,7 @@
 #define NFP_PF_DRIVER_NAME net_nfp_pf
 #define NFP_PF_FORCE_RELOAD_FW   "force_reload_fw"
 #define NFP_CPP_SERVICE_ENABLE   "cpp_service_enable"
+#define NFP_QUEUE_PER_VF     1
 
 struct nfp_net_init {
 	/** Sequential physical port number, only valid for CoreNIC firmware */
@@ -1971,6 +1972,8 @@ nfp_net_get_vf_info(struct nfp_pf_dev *pf_dev,
 	ret = nfp_pf_get_sriov_vf(pf_dev, dev_info);
 	if (ret < 0)
 		return ret;
+
+	pf_dev->queue_per_vf = NFP_QUEUE_PER_VF;
 
 	return 0;
 }

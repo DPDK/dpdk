@@ -158,6 +158,8 @@ struct nfp_pf_dev {
 	uint8_t total_phyports;
 	/** Id of first VF that belongs to this PF */
 	uint8_t vf_base_id;
+	/** Number of queues per VF */
+	uint32_t queue_per_vf;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024
