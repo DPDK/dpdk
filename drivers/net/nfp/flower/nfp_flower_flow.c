@@ -487,7 +487,29 @@ nfp_flow_free(struct rte_flow *nfp_flow)
 }
 
 static int
-nfp_stats_id_alloc(struct nfp_flow_priv *priv, uint32_t *ctx)
+nfp_stats_id_alloc_from_hw(struct nfp_app_fw_flower *app_fw_flower,
+		uint32_t *stats_context_id)
+{
+	int ret;
+	struct nfp_net_hw_priv *hw_priv;
+
+	hw_priv = app_fw_flower->pf_ethdev->process_private;
+	ret = nfp_rtsym_readl_indirect(hw_priv->pf_dev->sym_tbl,
+			"_FC_WC_EMU_0_HOST_CTX_RING_BASE",
+			"_FC_WC_HOST_CTX_RING_EMU_0", stats_context_id);
+	if (ret != 0)
+		return ret;
+
+	/* Check if context id is an invalid value */
+	if (*stats_context_id >= app_fw_flower->flow_priv->ctx_count)
+		return -ENOENT;
+
+	return 0;
+}
+
+static int
+nfp_stats_id_alloc_from_driver(struct nfp_flow_priv *priv,
+		uint32_t *ctx)
 {
 	struct circ_buf *ring;
 	uint32_t temp_stats_id;
@@ -523,7 +545,35 @@ nfp_stats_id_alloc(struct nfp_flow_priv *priv, uint32_t *ctx)
 }
 
 static int
-nfp_stats_id_free(struct nfp_flow_priv *priv, uint32_t ctx)
+nfp_stats_id_alloc(struct nfp_app_fw_flower *app_fw_flower,
+		uint32_t *stats_context_id)
+{
+	struct nfp_net_hw_priv *hw_priv;
+
+	hw_priv = app_fw_flower->pf_ethdev->process_private;
+	if (hw_priv->pf_dev->multi_pf.enabled)
+		return nfp_stats_id_alloc_from_hw(app_fw_flower, stats_context_id);
+	else
+		return nfp_stats_id_alloc_from_driver(app_fw_flower->flow_priv,
+				stats_context_id);
+}
+
+static int
+nfp_stats_id_free_to_hw(struct nfp_net_hw_priv *hw_priv,
+		uint32_t stats_context_id)
+{
+	int ret;
+
+	ret = nfp_rtsym_writel_indirect(hw_priv->pf_dev->sym_tbl,
+			"_FC_WC_EMU_0_HOST_CTX_RING_BASE",
+			"_FC_WC_HOST_CTX_RING_EMU_0", stats_context_id);
+
+	return ret;
+}
+
+static int
+nfp_stats_id_free_to_driver(struct nfp_flow_priv *priv,
+		uint32_t ctx)
 {
 	struct circ_buf *ring;
 
@@ -538,6 +588,20 @@ nfp_stats_id_free(struct nfp_flow_priv *priv, uint32_t ctx)
 			(priv->stats_ring_size * NFP_FL_STATS_ELEM_RS);
 
 	return 0;
+}
+
+static int
+nfp_stats_id_free(struct nfp_app_fw_flower *app_fw_flower,
+		uint32_t stats_context_id)
+{
+	struct nfp_net_hw_priv *hw_priv;
+
+	hw_priv = app_fw_flower->pf_ethdev->process_private;
+	if (hw_priv->pf_dev->multi_pf.enabled)
+		return nfp_stats_id_free_to_hw(hw_priv, stats_context_id);
+	else
+		return nfp_stats_id_free_to_driver(app_fw_flower->flow_priv,
+				stats_context_id);
 }
 
 static int
@@ -4570,8 +4634,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	if (key_layer.port == (uint32_t)~0)
 		key_layer.port = representor->port_id;
 
-	priv = representor->app_fw_flower->flow_priv;
-	ret = nfp_stats_id_alloc(priv, &stats_ctx);
+	ret = nfp_stats_id_alloc(representor->app_fw_flower, &stats_ctx);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "nfp stats id alloc failed.");
 		return NULL;
@@ -4586,6 +4649,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	nfp_flow->install_flag = install_flag;
 	nfp_flow->merge_flag = merge_flag;
 
+	priv = representor->app_fw_flower->flow_priv;
 	nfp_flow_compile_metadata(priv, nfp_flow, &key_layer, stats_ctx, cookie);
 
 	ret = nfp_flow_compile_items(representor, items, nfp_flow);
@@ -4636,7 +4700,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 free_flow:
 	nfp_flow_free(nfp_flow);
 free_stats:
-	nfp_stats_id_free(priv, stats_ctx);
+	nfp_stats_id_free(representor->app_fw_flower, stats_ctx);
 
 	return NULL;
 }
@@ -4678,15 +4742,17 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 }
 
 int
-nfp_flow_teardown(struct nfp_flow_priv *priv,
+nfp_flow_teardown(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow,
 		bool validate_flag)
 {
 	char *mask_data;
 	uint32_t mask_len;
 	uint32_t stats_ctx;
+	struct nfp_flow_priv *priv;
 	struct nfp_fl_rule_metadata *nfp_flow_meta;
 
+	priv = app_fw_flower->flow_priv;
 	nfp_flow_meta = nfp_flow->payload.meta;
 	mask_data = nfp_flow->payload.mask_data;
 	mask_len = nfp_flow_meta->mask_len << NFP_FL_LW_SIZ;
@@ -4704,7 +4770,7 @@ nfp_flow_teardown(struct nfp_flow_priv *priv,
 		priv->flower_version++;
 
 	stats_ctx = rte_be_to_cpu_32(nfp_flow_meta->host_ctx_id);
-	return nfp_stats_id_free(priv, stats_ctx);
+	return nfp_stats_id_free(app_fw_flower, stats_ctx);
 }
 
 static int
@@ -4716,11 +4782,9 @@ nfp_flow_validate(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct rte_flow *nfp_flow;
-	struct nfp_flow_priv *priv;
 	struct nfp_flower_representor *representor;
 
 	representor = dev->data->dev_private;
-	priv = representor->app_fw_flower->flow_priv;
 
 	nfp_flow = nfp_flow_setup(representor, attr, items, actions, true);
 	if (nfp_flow == NULL) {
@@ -4729,7 +4793,7 @@ nfp_flow_validate(struct rte_eth_dev *dev,
 				NULL, "This flow can not be offloaded.");
 	}
 
-	ret = nfp_flow_teardown(priv, nfp_flow, true);
+	ret = nfp_flow_teardown(representor->app_fw_flower, nfp_flow, true);
 	if (ret != 0) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -4799,7 +4863,7 @@ nfp_flow_create(struct rte_eth_dev *dev,
 	return nfp_flow;
 
 flow_teardown:
-	nfp_flow_teardown(priv, nfp_flow, false);
+	nfp_flow_teardown(app_fw_flower, nfp_flow, false);
 	nfp_flow_free(nfp_flow);
 
 	return NULL;
@@ -4838,7 +4902,7 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 	}
 
 	/* Update flow */
-	ret = nfp_flow_teardown(priv, nfp_flow, false);
+	ret = nfp_flow_teardown(app_fw_flower, nfp_flow, false);
 	if (ret != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL, "Flow teardown failed.");
@@ -5217,6 +5281,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	priv->hash_seed = (uint32_t)rte_rand();
 	priv->stats_ring_size = ctx_count;
 	priv->total_mem_units = ctx_split;
+	priv->ctx_count = ctx_count;
 
 	/* Init ring buffer and unallocated mask_ids. */
 	priv->mask_ids.init_unallocated = NFP_FLOWER_MASK_ENTRY_RS - 1;

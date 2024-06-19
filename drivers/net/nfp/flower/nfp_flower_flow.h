@@ -7,6 +7,7 @@
 #define __NFP_FLOWER_FLOW_H__
 
 #include "../nfp_net_common.h"
+#include "nfp_flower.h"
 
 /* The firmware expects lengths in units of long words */
 #define NFP_FL_LW_SIZ                   2
@@ -145,6 +146,7 @@ struct nfp_flow_priv {
 	uint32_t active_mem_unit; /**< The size of active mem units. */
 	uint32_t total_mem_units; /**< The size of total mem units. */
 	uint32_t stats_ring_size; /**< The size of stats id ring. */
+	uint32_t ctx_count; /**< Maximum number of host context. */
 	struct nfp_fl_stats_id stats_ids; /**< The stats id ring. */
 	struct nfp_fl_stats *stats; /**< Store stats of flow. */
 	rte_spinlock_t stats_lock; /** < Lock the update of 'stats' field. */
@@ -202,7 +204,7 @@ struct rte_flow *nfp_flow_process(struct nfp_flower_representor *representor,
 		bool merge_flag);
 int nfp_flow_table_add_merge(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow);
-int nfp_flow_teardown(struct nfp_flow_priv *priv,
+int nfp_flow_teardown(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_flow *nfp_flow,
 		bool validate_flag);
 void nfp_flow_free(struct rte_flow *nfp_flow);

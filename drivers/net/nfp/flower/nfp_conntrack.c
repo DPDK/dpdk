@@ -1020,7 +1020,7 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	return 0;
 
 flow_teardown:
-	nfp_flow_teardown(priv, nfp_flow, false);
+	nfp_flow_teardown(repr->app_fw_flower, nfp_flow, false);
 	nfp_flow_free(nfp_flow);
 
 	return ret;
