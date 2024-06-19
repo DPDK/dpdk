@@ -723,7 +723,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	nfp_cleanup_port_app_fw_nic(pf_dev, hw->idx, dev);
 
-	for (i = 0; i < app_fw_nic->total_phyports; i++) {
+	for (i = 0; i < pf_dev->total_phyports; i++) {
 		id = nfp_function_id_get(pf_dev, i);
 
 		/* Check to see if ports are still in use */
@@ -1491,18 +1491,52 @@ end:
 	return err;
 }
 
+static bool
+nfp_app_fw_nic_total_phyports_check(struct nfp_pf_dev *pf_dev)
+{
+	int ret;
+	uint8_t id;
+	uint8_t total_phyports;
+	char vnic_name[RTE_ETH_NAME_MAX_LEN];
+
+	/* Read the number of vNIC's created for the PF */
+	id = nfp_function_id_get(pf_dev, 0);
+	snprintf(vnic_name, sizeof(vnic_name), "nfd_cfg_pf%u_num_ports", id);
+	total_phyports = nfp_rtsym_read_le(pf_dev->sym_tbl, vnic_name, &ret);
+	if (ret != 0 || total_phyports == 0 || total_phyports > 8) {
+		PMD_INIT_LOG(ERR, "%s symbol with wrong value", vnic_name);
+		return false;
+	}
+
+	if (pf_dev->multi_pf.enabled) {
+		if (!nfp_check_multi_pf_from_fw(total_phyports)) {
+			PMD_INIT_LOG(ERR, "NSP report multipf, but FW report not multipf");
+			return false;
+		}
+	} else {
+		/*
+		 * For single PF the number of vNICs exposed should be the same as the
+		 * number of physical ports.
+		 */
+		if (total_phyports != pf_dev->nfp_eth_table->count) {
+			PMD_INIT_LOG(ERR, "Total physical ports do not match number of vNICs");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static int
 nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 {
 	uint8_t i;
 	uint8_t id;
 	int ret = 0;
-	uint32_t total_vnics;
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct nfp_eth_table *nfp_eth_table;
 	char bar_name[RTE_ETH_NAME_MAX_LEN];
 	char port_name[RTE_ETH_NAME_MAX_LEN];
-	char vnic_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 	struct nfp_net_init hw_init = {
 		.hw_priv = hw_priv,
@@ -1520,42 +1554,20 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	/* Point the app_fw_priv pointer in the PF to the coreNIC app */
 	pf_dev->app_fw_priv = app_fw_nic;
 
-	/* Read the number of vNIC's created for the PF */
-	snprintf(vnic_name, sizeof(vnic_name), "nfd_cfg_pf%u_num_ports", id);
-	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, vnic_name, &ret);
-	if (ret != 0 || total_vnics == 0 || total_vnics > 8) {
-		PMD_INIT_LOG(ERR, "%s symbol with wrong value", vnic_name);
+	/* Check the number of vNIC's created for the PF */
+	if (!nfp_app_fw_nic_total_phyports_check(pf_dev)) {
 		ret = -ENODEV;
 		goto app_cleanup;
 	}
 
-	if (pf_dev->multi_pf.enabled) {
-		if (!nfp_check_multi_pf_from_fw(total_vnics)) {
-			PMD_INIT_LOG(ERR, "NSP report multipf, but FW report not multipf");
-			ret = -ENODEV;
-			goto app_cleanup;
-		}
-	} else {
-		/*
-		 * For coreNIC the number of vNICs exposed should be the same as the
-		 * number of physical ports.
-		 */
-		if (total_vnics != nfp_eth_table->count) {
-			PMD_INIT_LOG(ERR, "Total physical ports do not match number of vNICs");
-			ret = -ENODEV;
-			goto app_cleanup;
-		}
-	}
-
 	/* Populate coreNIC app properties */
-	app_fw_nic->total_phyports = total_vnics;
-	if (total_vnics > 1)
+	if (pf_dev->total_phyports > 1)
 		app_fw_nic->multiport = true;
 
 	/* Map the symbol table */
 	snprintf(bar_name, sizeof(bar_name), "_pf%u_net_bar0", id);
 	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, bar_name,
-			app_fw_nic->total_phyports * NFP_NET_CFG_BAR_SZ,
+			pf_dev->total_phyports * NFP_NET_CFG_BAR_SZ,
 			&pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for %s", bar_name);
@@ -1566,7 +1578,7 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", pf_dev->ctrl_bar);
 
 	/* Loop through all physical ports on PF */
-	for (i = 0; i < app_fw_nic->total_phyports; i++) {
+	for (i = 0; i < pf_dev->total_phyports; i++) {
 		if (pf_dev->multi_pf.enabled)
 			snprintf(port_name, sizeof(port_name), "%s",
 					pf_dev->pci_dev->device.name);
@@ -1588,7 +1600,7 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	return 0;
 
 port_cleanup:
-	for (i = 0; i < app_fw_nic->total_phyports; i++) {
+	for (i = 0; i < pf_dev->total_phyports; i++) {
 		struct rte_eth_dev *eth_dev;
 
 		if (pf_dev->multi_pf.enabled)
@@ -1960,6 +1972,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->pci_dev = pci_dev;
 	pf_dev->nfp_eth_table = nfp_eth_table;
 	pf_dev->sync = sync;
+	pf_dev->total_phyports = nfp_net_get_port_num(pf_dev, nfp_eth_table);
 
 	ret = nfp_net_speed_cap_get(pf_dev);
 	if (ret != 0) {

@@ -917,7 +917,6 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	int ret;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
-	struct nfp_eth_table *nfp_eth_table;
 	struct rte_eth_devargs eth_da = {
 		.nb_representor_ports = 0
 	};
@@ -945,8 +944,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	/* There always exist phy repr */
-	nfp_eth_table = pf_dev->nfp_eth_table;
-	if (eth_da.nb_representor_ports < nfp_eth_table->count + 1) {
+	if (eth_da.nb_representor_ports < pf_dev->total_phyports + 1) {
 		PMD_INIT_LOG(ERR, "Should also create repr port for phy port and PF vNIC.");
 		return -ERANGE;
 	}
@@ -958,9 +956,9 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	/* Fill in flower app with repr counts */
-	app_fw_flower->num_phyport_reprs = (uint8_t)nfp_eth_table->count;
+	app_fw_flower->num_phyport_reprs = pf_dev->total_phyports;
 	app_fw_flower->num_vf_reprs = eth_da.nb_representor_ports -
-			nfp_eth_table->count - 1;
+			pf_dev->total_phyports - 1;
 
 	PMD_INIT_LOG(INFO, "%d number of VF reprs", app_fw_flower->num_vf_reprs);
 	PMD_INIT_LOG(INFO, "%d number of phyport reprs", app_fw_flower->num_phyport_reprs);

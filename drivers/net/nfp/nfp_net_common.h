@@ -140,6 +140,8 @@ struct nfp_pf_dev {
 
 	/** NFP devarg param */
 	struct nfp_devargs devargs;
+
+	uint8_t total_phyports;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024
@@ -159,7 +161,6 @@ struct nfp_app_fw_nic {
 	struct nfp_net_hw *ports[NFP_MAX_PHYPORTS];
 
 	bool multiport;
-	uint8_t total_phyports;
 };
 
 struct nfp_net_hw_priv {
