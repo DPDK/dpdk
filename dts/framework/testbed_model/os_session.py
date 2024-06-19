@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """OS-aware remote session.
 
@@ -29,6 +30,7 @@ from typing import Type, TypeVar, Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
 from framework.logger import DTSLogger
+from framework.params import Params
 from framework.remote_session import (
     CommandResult,
     InteractiveRemoteSession,
@@ -128,7 +130,7 @@ class OSSession(ABC):
         shell_cls: Type[InteractiveShellType],
         timeout: float,
         privileged: bool,
-        app_args: str,
+        app_args: Params,
     ) -> InteractiveShellType:
         """Factory for interactive session handlers.
 

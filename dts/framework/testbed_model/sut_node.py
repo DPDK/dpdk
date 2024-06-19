@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """System under test (DPDK + hardware) node.
 
@@ -14,8 +15,9 @@ An SUT node is where this SUT runs.
 import os
 import tarfile
 import time
+from dataclasses import dataclass, field
 from pathlib import PurePath
-from typing import Type
+from typing import Literal, Type
 
 from framework.config import (
     BuildTargetConfiguration,
@@ -24,6 +26,7 @@ from framework.config import (
     SutNodeConfiguration,
     TestRunConfiguration,
 )
+from framework.params import Params, Switch
 from framework.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
@@ -35,62 +38,42 @@ from .port import Port
 from .virtual_device import VirtualDevice
 
 
-class EalParameters:
+def _port_to_pci(port: Port) -> str:
+    return port.pci
+
+
+@dataclass(kw_only=True)
+class EalParams(Params):
     """The environment abstraction layer parameters.
 
-    The string representation can be created by converting the instance to a string.
+    Attributes:
+        lcore_list: The list of logical cores to use.
+        memory_channels: The number of memory channels to use.
+        prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix="vf"``.
+        no_pci: Switch to disable PCI bus, e.g.: ``no_pci=True``.
+        vdevs: Virtual devices, e.g.::
+            vdevs=[
+                VirtualDevice('net_ring0'),
+                VirtualDevice('net_ring1')
+            ]
+        ports: The list of ports to allow.
+        other_eal_param: user defined DPDK EAL parameters, e.g.:
+                ``other_eal_param='--single-file-segments'``
     """
 
-    def __init__(
-        self,
-        lcore_list: LogicalCoreList,
-        memory_channels: int,
-        prefix: str,
-        no_pci: bool,
-        vdevs: list[VirtualDevice],
-        ports: list[Port],
-        other_eal_param: str,
-    ):
-        """Initialize the parameters according to inputs.
-
-        Process the parameters into the format used on the command line.
-
-        Args:
-            lcore_list: The list of logical cores to use.
-            memory_channels: The number of memory channels to use.
-            prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix='vf'``.
-            no_pci: Switch to disable PCI bus e.g.: ``no_pci=True``.
-            vdevs: Virtual devices, e.g.::
-
-                vdevs=[
-                    VirtualDevice('net_ring0'),
-                    VirtualDevice('net_ring1')
-                ]
-            ports: The list of ports to allow.
-            other_eal_param: user defined DPDK EAL parameters, e.g.:
-                ``other_eal_param='--single-file-segments'``
-        """
-        self._lcore_list = f"-l {lcore_list}"
-        self._memory_channels = f"-n {memory_channels}"
-        self._prefix = prefix
-        if prefix:
-            self._prefix = f"--file-prefix={prefix}"
-        self._no_pci = "--no-pci" if no_pci else ""
-        self._vdevs = " ".join(f"--vdev {vdev}" for vdev in vdevs)
-        self._ports = " ".join(f"-a {port.pci}" for port in ports)
-        self._other_eal_param = other_eal_param
-
-    def __str__(self) -> str:
-        """Create the EAL string."""
-        return (
-            f"{self._lcore_list} "
-            f"{self._memory_channels} "
-            f"{self._prefix} "
-            f"{self._no_pci} "
-            f"{self._vdevs} "
-            f"{self._ports} "
-            f"{self._other_eal_param}"
-        )
+    lcore_list: LogicalCoreList = field(metadata=Params.short("l"))
+    memory_channels: int = field(metadata=Params.short("n"))
+    prefix: str = field(metadata=Params.long("file-prefix"))
+    no_pci: Switch
+    vdevs: list[VirtualDevice] | None = field(
+        default=None, metadata=Params.multiple() | Params.long("vdev")
+    )
+    ports: list[Port] | None = field(
+        default=None,
+        metadata=Params.convert_value(_port_to_pci) | Params.multiple() | Params.short("a"),
+    )
+    other_eal_param: Params | None = None
+    _separator: Literal[True] = field(default=True, init=False, metadata=Params.short("-"))
 
 
 class SutNode(Node):
@@ -373,11 +356,11 @@ class SutNode(Node):
         ascending_cores: bool = True,
         prefix: str = "dpdk",
         append_prefix_timestamp: bool = True,
-        no_pci: bool = False,
+        no_pci: Switch = None,
         vdevs: list[VirtualDevice] | None = None,
         ports: list[Port] | None = None,
         other_eal_param: str = "",
-    ) -> "EalParameters":
+    ) -> EalParams:
         """Compose the EAL parameters.
 
         Process the list of cores and the DPDK prefix and pass that along with
@@ -416,24 +399,21 @@ class SutNode(Node):
         if prefix:
             self._dpdk_prefix_list.append(prefix)
 
-        if vdevs is None:
-            vdevs = []
-
         if ports is None:
             ports = self.ports
 
-        return EalParameters(
+        return EalParams(
             lcore_list=lcore_list,
             memory_channels=self.config.memory_channels,
             prefix=prefix,
             no_pci=no_pci,
             vdevs=vdevs,
             ports=ports,
-            other_eal_param=other_eal_param,
+            other_eal_param=Params.from_str(other_eal_param),
         )
 
     def run_dpdk_app(
-        self, app_path: PurePath, eal_args: "EalParameters", timeout: float = 30
+        self, app_path: PurePath, eal_params: EalParams, timeout: float = 30
     ) -> CommandResult:
         """Run DPDK application on the remote node.
 
@@ -442,14 +422,14 @@ class SutNode(Node):
 
         Args:
             app_path: The remote path to the DPDK application.
-            eal_args: EAL parameters to run the DPDK application with.
+            eal_params: EAL parameters to run the DPDK application with.
             timeout: Wait at most this long in seconds for `command` execution to complete.
 
         Returns:
             The result of the DPDK app execution.
         """
         return self.main_session.send_command(
-            f"{app_path} {eal_args}", timeout, privileged=True, verify=True
+            f"{app_path} {eal_params}", timeout, privileged=True, verify=True
         )
 
     def configure_ipv4_forwarding(self, enable: bool) -> None:
@@ -465,8 +445,8 @@ class SutNode(Node):
         shell_cls: Type[InteractiveShellType],
         timeout: float = SETTINGS.timeout,
         privileged: bool = False,
-        app_parameters: str = "",
-        eal_parameters: EalParameters | None = None,
+        app_params: Params = Params(),
+        eal_params: EalParams | None = None,
     ) -> InteractiveShellType:
         """Extend the factory for interactive session handlers.
 
@@ -482,26 +462,26 @@ class SutNode(Node):
                 reading from the buffer and don't receive any data within the timeout
                 it will throw an error.
             privileged: Whether to run the shell with administrative privileges.
-            eal_parameters: List of EAL parameters to use to launch the app. If this
+            app_params: The parameters to be passed to the application.
+            eal_params: List of EAL parameters to use to launch the app. If this
                 isn't provided or an empty string is passed, it will default to calling
                 :meth:`create_eal_parameters`.
-            app_parameters: Additional arguments to pass into the application on the
-                command-line.
 
         Returns:
             An instance of the desired interactive application shell.
         """
         # We need to append the build directory and add EAL parameters for DPDK apps
         if shell_cls.dpdk_app:
-            if not eal_parameters:
-                eal_parameters = self.create_eal_parameters()
-            app_parameters = f"{eal_parameters} -- {app_parameters}"
+            if eal_params is None:
+                eal_params = self.create_eal_parameters()
+            eal_params.append_str(str(app_params))
+            app_params = eal_params
 
             shell_cls.path = self.main_session.join_remote_path(
                 self.remote_dpdk_build_dir, shell_cls.path
             )
 
-        return super().create_interactive_shell(shell_cls, timeout, privileged, app_parameters)
+        return super().create_interactive_shell(shell_cls, timeout, privileged, app_params)
 
     def bind_ports_to_driver(self, for_dpdk: bool = True) -> None:
         """Bind all ports on the SUT to a driver.

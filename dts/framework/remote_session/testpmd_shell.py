@@ -28,6 +28,7 @@ from typing_extensions import Self
 from framework.exception import InteractiveCommandExecutionError
 from framework.parser import ParserFn, TextParser
 from framework.settings import SETTINGS
+from framework.testbed_model.sut_node import EalParams
 from framework.utils import StrEnum
 
 from .interactive_shell import InteractiveShell
@@ -645,8 +646,14 @@ class TestPmdShell(InteractiveShell):
         Also find the number of pci addresses which were allowed on the command line when the app
         was started.
         """
-        self._app_args += " -i --mask-event intr_lsc"
-        self.number_of_ports = self._app_args.count("-a ")
+        self._app_params += " -i --mask-event intr_lsc"
+
+        assert isinstance(self._app_params, EalParams)
+
+        self.number_of_ports = (
+            len(self._app_params.ports) if self._app_params.ports is not None else 0
+        )
+
         super()._start_application(get_privileged_command)
 
     def start(self, verify: bool = True) -> None:

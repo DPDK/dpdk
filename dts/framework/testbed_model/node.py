@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """Common functionality for node management.
 
@@ -19,6 +20,7 @@ from typing import Any, Callable, Type, Union
 from framework.config import OS, NodeConfiguration, TestRunConfiguration
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
+from framework.params import Params
 from framework.settings import SETTINGS
 
 from .cpu import (
@@ -143,7 +145,7 @@ class Node(ABC):
         shell_cls: Type[InteractiveShellType],
         timeout: float = SETTINGS.timeout,
         privileged: bool = False,
-        app_args: str = "",
+        app_params: Params = Params(),
     ) -> InteractiveShellType:
         """Factory for interactive session handlers.
 
@@ -166,7 +168,7 @@ class Node(ABC):
             shell_cls,
             timeout,
             privileged,
-            app_args,
+            app_params,
         )
 
     def filter_lcores(
