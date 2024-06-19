@@ -1234,6 +1234,8 @@ nfp_flow_field_id_dst_support(enum rte_flow_field_id field)
 	case RTE_FLOW_FIELD_MAC_DST:
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_IPV4_DSCP:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_DSCP:
 		return true;
 	default:
 		break;
@@ -1279,6 +1281,8 @@ nfp_flow_field_width(enum rte_flow_field_id field,
 	case RTE_FLOW_FIELD_MAC_DST:
 		return 48;
 	case RTE_FLOW_FIELD_IPV4_DSCP:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_DSCP:
 		return 6;
 	case RTE_FLOW_FIELD_POINTER:
 		/* FALLTHROUGH */
@@ -1350,6 +1354,8 @@ nfp_flow_action_calculate_modify_dispatch(struct nfp_action_calculate_param *par
 		return nfp_flow_action_calculate_mac(param);
 	case RTE_FLOW_FIELD_IPV4_DSCP:
 		return nfp_flow_action_calculate_ipv4_dscp(param);
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		return nfp_flow_action_calculate_ipv6_dscp(param);
 	default:
 		break;    /* NOTREACHED */
 	}
@@ -4331,6 +4337,8 @@ nfp_flow_action_compile_modify_dispatch(struct nfp_action_compile_param *param,
 		return nfp_flow_action_compile_mac_dst(param);
 	case RTE_FLOW_FIELD_IPV4_DSCP:
 		return nfp_flow_action_compile_ipv4_dscp(param);
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		return nfp_flow_action_compile_ipv6_dscp(param);
 	default:
 		break;    /* NOTREACHED */
 	}
