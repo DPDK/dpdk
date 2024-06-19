@@ -3833,7 +3833,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 					ttl_tos_flag = true;
 				}
 			} else {
-				nfp_flow_action_set_hl(position, action, ttl_tos_flag);
+				nfp_flow_action_set_hl(position, action, tc_hl_flag);
 				if (!tc_hl_flag) {
 					position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 					tc_hl_flag = true;
@@ -3850,7 +3850,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP");
-			nfp_flow_action_set_tc(position, action, ttl_tos_flag);
+			nfp_flow_action_set_tc(position, action, tc_hl_flag);
 			if (!tc_hl_flag) {
 				position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 				tc_hl_flag = true;
