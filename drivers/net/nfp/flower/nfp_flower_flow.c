@@ -820,7 +820,110 @@ struct nfp_item_calculate_param {
 	struct nfp_item_flag *flag;
 };
 
+typedef int (*nfp_flow_key_check_item_fn)(struct nfp_item_calculate_param *param);
 typedef int (*nfp_flow_key_calculate_item_fn)(struct nfp_item_calculate_param *param);
+
+static int
+nfp_flow_item_check_port(struct nfp_item_calculate_param *param)
+{
+	const struct rte_flow_item_port_id *port_id;
+
+	port_id = param->item->spec;
+	if (port_id == NULL || rte_eth_dev_is_valid_port(port_id->id) == 0)
+		return -ERANGE;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_check_ipv4(struct nfp_item_calculate_param *param)
+{
+	if (!param->flag->outer_ip4_flag)
+		param->flag->outer_ip4_flag = true;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_check_ipv6(struct nfp_item_calculate_param *param)
+{
+	if (!param->flag->outer_ip6_flag)
+		param->flag->outer_ip6_flag = true;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_check_vxlan(struct nfp_item_calculate_param *param)
+{
+	if (!param->flag->outer_ip4_flag && !param->flag->outer_ip6_flag) {
+		PMD_DRV_LOG(ERR, "No outer IP layer for VXLAN tunnel.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_item_check_geneve(struct nfp_item_calculate_param *param)
+{
+	if (!param->flag->outer_ip4_flag && !param->flag->outer_ip6_flag) {
+		PMD_DRV_LOG(ERR, "No outer IP layer for GENEVE tunnel.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_item_check_gre(struct nfp_item_calculate_param *param)
+{
+	if (!param->flag->outer_ip4_flag && !param->flag->outer_ip6_flag) {
+		PMD_DRV_LOG(ERR, "No outer IP layer for GRE tunnel.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static nfp_flow_key_check_item_fn check_item_fns[] = {
+	[RTE_FLOW_ITEM_TYPE_PORT_ID]         = nfp_flow_item_check_port,
+	[RTE_FLOW_ITEM_TYPE_IPV4]            = nfp_flow_item_check_ipv4,
+	[RTE_FLOW_ITEM_TYPE_IPV6]            = nfp_flow_item_check_ipv6,
+	[RTE_FLOW_ITEM_TYPE_VXLAN]           = nfp_flow_item_check_vxlan,
+	[RTE_FLOW_ITEM_TYPE_GENEVE]          = nfp_flow_item_check_geneve,
+	[RTE_FLOW_ITEM_TYPE_GRE]             = nfp_flow_item_check_gre,
+};
+
+static int
+nfp_flow_key_layers_check_items(const struct rte_flow_item items[])
+{
+	int ret;
+	struct nfp_item_flag flag = {};
+	const struct rte_flow_item *item;
+	struct nfp_item_calculate_param param = {
+		.flag = &flag,
+	};
+
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		if (item->type >= RTE_DIM(check_item_fns)) {
+			PMD_DRV_LOG(ERR, "Flow item %d unsupported", item->type);
+			return -ERANGE;
+		}
+
+		if (check_item_fns[item->type] == NULL)
+			continue;
+
+		param.item = item;
+		ret = check_item_fns[item->type](&param);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Flow item %d check fail", item->type);
+			return ret;
+		}
+	}
+
+	return 0;
+}
 
 static int
 nfp_flow_item_calculate_stub(struct nfp_item_calculate_param *param __rte_unused)
@@ -1489,6 +1592,12 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 	key_ls->port = ~0;
 	key_ls->vlan = 0;
 	key_ls->tun_type = NFP_FL_TUN_NONE;
+
+	ret = nfp_flow_key_layers_check_items(items);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "flow items check failed");
+		return ret;
+	}
 
 	ret = nfp_flow_key_layers_calculate_items(items, key_ls);
 	if (ret != 0) {
