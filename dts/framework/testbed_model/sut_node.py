@@ -15,9 +15,8 @@ An SUT node is where this SUT runs.
 import os
 import tarfile
 import time
-from dataclasses import dataclass, field
 from pathlib import PurePath
-from typing import Literal, Type
+from typing import Type
 
 from framework.config import (
     BuildTargetConfiguration,
@@ -27,6 +26,7 @@ from framework.config import (
     TestRunConfiguration,
 )
 from framework.params import Params, Switch
+from framework.params.eal import EalParams
 from framework.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
@@ -36,44 +36,6 @@ from .node import Node
 from .os_session import InteractiveShellType, OSSession
 from .port import Port
 from .virtual_device import VirtualDevice
-
-
-def _port_to_pci(port: Port) -> str:
-    return port.pci
-
-
-@dataclass(kw_only=True)
-class EalParams(Params):
-    """The environment abstraction layer parameters.
-
-    Attributes:
-        lcore_list: The list of logical cores to use.
-        memory_channels: The number of memory channels to use.
-        prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix="vf"``.
-        no_pci: Switch to disable PCI bus, e.g.: ``no_pci=True``.
-        vdevs: Virtual devices, e.g.::
-            vdevs=[
-                VirtualDevice('net_ring0'),
-                VirtualDevice('net_ring1')
-            ]
-        ports: The list of ports to allow.
-        other_eal_param: user defined DPDK EAL parameters, e.g.:
-                ``other_eal_param='--single-file-segments'``
-    """
-
-    lcore_list: LogicalCoreList = field(metadata=Params.short("l"))
-    memory_channels: int = field(metadata=Params.short("n"))
-    prefix: str = field(metadata=Params.long("file-prefix"))
-    no_pci: Switch
-    vdevs: list[VirtualDevice] | None = field(
-        default=None, metadata=Params.multiple() | Params.long("vdev")
-    )
-    ports: list[Port] | None = field(
-        default=None,
-        metadata=Params.convert_value(_port_to_pci) | Params.multiple() | Params.short("a"),
-    )
-    other_eal_param: Params | None = None
-    _separator: Literal[True] = field(default=True, init=False, metadata=Params.short("-"))
 
 
 class SutNode(Node):

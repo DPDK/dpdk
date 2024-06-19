@@ -26,9 +26,9 @@ from typing import Callable, ClassVar
 from typing_extensions import Self
 
 from framework.exception import InteractiveCommandExecutionError
+from framework.params.eal import EalParams
 from framework.parser import ParserFn, TextParser
 from framework.settings import SETTINGS
-from framework.testbed_model.sut_node import EalParams
 from framework.utils import StrEnum
 
 from .interactive_shell import InteractiveShell
