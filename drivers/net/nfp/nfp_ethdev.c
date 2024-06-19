@@ -866,6 +866,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rxq_info_get           = nfp_net_rx_queue_info_get,
 	.tx_queue_setup         = nfp_net_tx_queue_setup,
 	.tx_queue_release       = nfp_net_tx_queue_release,
+	.txq_info_get           = nfp_net_tx_queue_info_get,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 	.udp_tunnel_port_add    = nfp_udp_tunnel_port_add,

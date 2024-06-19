@@ -846,3 +846,24 @@ nfp_net_rx_queue_info_get(struct rte_eth_dev *dev,
 	info->conf.offloads = dev_info.rx_offload_capa &
 			dev->data->dev_conf.rxmode.offloads;
 }
+
+void
+nfp_net_tx_queue_info_get(struct rte_eth_dev *dev,
+		uint16_t queue_id,
+		struct rte_eth_txq_info *info)
+{
+	struct rte_eth_dev_info dev_info;
+	struct nfp_net_hw *hw = nfp_net_get_hw(dev);
+	struct nfp_net_txq *txq = dev->data->tx_queues[queue_id];
+
+	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+		info->nb_desc = txq->tx_count / NFD3_TX_DESC_PER_PKT;
+	else
+		info->nb_desc = txq->tx_count / NFDK_TX_DESC_PER_SIMPLE_PKT;
+
+	info->conf.tx_free_thresh = txq->tx_free_thresh;
+
+	nfp_net_infos_get(dev, &dev_info);
+	info->conf.offloads = dev_info.tx_offload_capa &
+			dev->data->dev_conf.txmode.offloads;
+}
