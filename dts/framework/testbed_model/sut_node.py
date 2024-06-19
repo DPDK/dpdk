@@ -130,7 +130,7 @@ class SutNode(Node):
         Args:
             node_config: The SUT node's test run configuration.
         """
-        super(SutNode, self).__init__(node_config)
+        super().__init__(node_config)
         self._dpdk_prefix_list = []
         self._build_target_config = None
         self._env_vars = {}

@@ -48,7 +48,7 @@ class TGNode(Node):
         Args:
             node_config: The TG node's test run configuration.
         """
-        super(TGNode, self).__init__(node_config)
+        super().__init__(node_config)
         self.traffic_generator = create_traffic_generator(self, node_config.traffic_generator)
         self._logger.info(f"Created node: {self.name}")
 
@@ -90,4 +90,4 @@ class TGNode(Node):
         This extends the superclass method with TG cleanup.
         """
         self.traffic_generator.close()
-        super(TGNode, self).close()
+        super().close()
