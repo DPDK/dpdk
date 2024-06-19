@@ -235,5 +235,8 @@ int nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 uint32_t nfp_net_tx_free_bufs(struct nfp_net_txq *txq);
+void nfp_net_rx_queue_info_get(struct rte_eth_dev *dev,
+		uint16_t queue_id,
+		struct rte_eth_rxq_info *qinfo);
 
 #endif /* __NFP_RXTX_H__ */

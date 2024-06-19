@@ -828,3 +828,21 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		return nfp_net_nfdk_tx_queue_setup(dev, queue_idx,
 				nb_desc, socket_id, tx_conf);
 }
+
+void
+nfp_net_rx_queue_info_get(struct rte_eth_dev *dev,
+		uint16_t queue_id,
+		struct rte_eth_rxq_info *info)
+{
+	struct rte_eth_dev_info dev_info;
+	struct nfp_net_rxq *rxq = dev->data->rx_queues[queue_id];
+
+	info->mp = rxq->mem_pool;
+	info->nb_desc = rxq->rx_count;
+
+	info->conf.rx_free_thresh = rxq->rx_free_thresh;
+
+	nfp_net_infos_get(dev, &dev_info);
+	info->conf.offloads = dev_info.rx_offload_capa &
+			dev->data->dev_conf.rxmode.offloads;
+}

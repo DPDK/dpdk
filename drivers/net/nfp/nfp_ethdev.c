@@ -863,6 +863,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rss_hash_conf_get      = nfp_net_rss_hash_conf_get,
 	.rx_queue_setup         = nfp_net_rx_queue_setup,
 	.rx_queue_release       = nfp_net_rx_queue_release,
+	.rxq_info_get           = nfp_net_rx_queue_info_get,
 	.tx_queue_setup         = nfp_net_tx_queue_setup,
 	.tx_queue_release       = nfp_net_tx_queue_release,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
