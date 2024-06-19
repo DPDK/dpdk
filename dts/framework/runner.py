@@ -428,6 +428,7 @@ class DTSRunner:
         test_run_result.add_sut_info(sut_node.node_info)
         try:
             sut_node.set_up_test_run(test_run_config)
+            tg_node.set_up_test_run(test_run_config)
             test_run_result.update_setup(Result.PASS)
         except Exception as e:
             self._logger.exception("Test run setup failed.")
@@ -448,6 +449,7 @@ class DTSRunner:
             try:
                 self._logger.set_stage(DtsStage.test_run_teardown)
                 sut_node.tear_down_test_run()
+                tg_node.tear_down_test_run()
                 test_run_result.update_teardown(Result.PASS)
             except Exception as e:
                 self._logger.exception("Test run teardown failed.")
