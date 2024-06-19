@@ -1479,7 +1479,7 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
-	int ret = 0;
+	int ret;
 
 	key_ls->key_layer_two = 0;
 	key_ls->key_layer = NFP_FLOWER_LAYER_PORT;
@@ -1490,10 +1490,19 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 	key_ls->vlan = 0;
 	key_ls->tun_type = NFP_FL_TUN_NONE;
 
-	ret |= nfp_flow_key_layers_calculate_items(items, key_ls);
-	ret |= nfp_flow_key_layers_calculate_actions(actions, key_ls);
+	ret = nfp_flow_key_layers_calculate_items(items, key_ls);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "flow items calculate failed");
+		return ret;
+	}
 
-	return ret;
+	ret = nfp_flow_key_layers_calculate_actions(actions, key_ls);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "flow actions check failed");
+		return ret;
+	}
+
+	return 0;
 }
 
 static bool
