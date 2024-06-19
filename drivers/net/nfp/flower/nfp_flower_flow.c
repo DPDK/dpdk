@@ -317,13 +317,13 @@ nfp_check_mask_add(struct nfp_flow_priv *priv,
 		ret = nfp_mask_table_add(priv, mask_data, mask_len, mask_id);
 		if (ret != 0)
 			return false;
+
+		*meta_flags |= NFP_FL_META_FLAG_MANAGE_MASK;
 	} else {
 		/* Mask entry already exist */
 		mask_entry->ref_cnt++;
 		*mask_id = mask_entry->mask_id;
 	}
-
-	*meta_flags |= NFP_FL_META_FLAG_MANAGE_MASK;
 
 	return true;
 }
