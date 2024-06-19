@@ -907,10 +907,9 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	pci_dev = pf_dev->pci_dev;
 
 	/* Allocate a switch domain for the flower app */
-	if (app_fw_flower->switch_domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID &&
-			rte_eth_switch_domain_alloc(&app_fw_flower->switch_domain_id) != 0) {
+	ret = rte_eth_switch_domain_alloc(&app_fw_flower->switch_domain_id);
+	if (ret != 0)
 		PMD_INIT_LOG(WARNING, "failed to allocate switch domain for device");
-	}
 
 	/* Now parse PCI device args passed for representor info */
 	if (pci_dev->device.devargs != NULL) {
