@@ -974,17 +974,22 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 	return 0;
 }
 
+struct nfp_action_flag {
+	bool drop_flag;
+	bool meter_flag;
+	bool tc_hl_flag;
+	bool ip_set_flag;
+	bool tp_set_flag;
+	bool mac_set_flag;
+	bool ttl_tos_flag;
+};
+
 static int
 nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
 	int ret = 0;
-	bool meter_flag = false;
-	bool tc_hl_flag = false;
-	bool ip_set_flag = false;
-	bool tp_set_flag = false;
-	bool mac_set_flag = false;
-	bool ttl_tos_flag = false;
+	struct nfp_action_flag flag = {};
 	const struct rte_flow_action *action;
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
@@ -1018,16 +1023,16 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_MAC_SRC detected");
-			if (!mac_set_flag) {
+			if (!flag.mac_set_flag) {
 				key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
-				mac_set_flag = true;
+				flag.mac_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_MAC_DST detected");
-			if (!mac_set_flag) {
+			if (!flag.mac_set_flag) {
 				key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
-				mac_set_flag = true;
+				flag.mac_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
@@ -1046,18 +1051,18 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC detected");
-			if (!ip_set_flag) {
+			if (!flag.ip_set_flag) {
 				key_ls->act_size +=
 					sizeof(struct nfp_fl_act_set_ip4_addrs);
-				ip_set_flag = true;
+				flag.ip_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_DST detected");
-			if (!ip_set_flag) {
+			if (!flag.ip_set_flag) {
 				key_ls->act_size +=
 					sizeof(struct nfp_fl_act_set_ip4_addrs);
-				ip_set_flag = true;
+				flag.ip_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
@@ -1070,48 +1075,48 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TP_SRC detected");
-			if (!tp_set_flag) {
+			if (!flag.tp_set_flag) {
 				key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
-				tp_set_flag = true;
+				flag.tp_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TP_DST detected");
-			if (!tp_set_flag) {
+			if (!flag.tp_set_flag) {
 				key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
-				tp_set_flag = true;
+				flag.tp_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TTL detected");
 			if ((key_ls->key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
-				if (!ttl_tos_flag) {
+				if (!flag.ttl_tos_flag) {
 					key_ls->act_size +=
 						sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-					ttl_tos_flag = true;
+					flag.ttl_tos_flag = true;
 				}
 			} else {
-				if (!tc_hl_flag) {
+				if (!flag.tc_hl_flag) {
 					key_ls->act_size +=
 						sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-					tc_hl_flag = true;
+					flag.tc_hl_flag = true;
 				}
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP detected");
-			if (!ttl_tos_flag) {
+			if (!flag.ttl_tos_flag) {
 				key_ls->act_size +=
 					sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-				ttl_tos_flag = true;
+				flag.ttl_tos_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP detected");
-			if (!tc_hl_flag) {
+			if (!flag.tc_hl_flag) {
 				key_ls->act_size +=
 					sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-				tc_hl_flag = true;
+				flag.tc_hl_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
@@ -1132,9 +1137,9 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_METER detected");
-			if (!meter_flag) {
+			if (!flag.meter_flag) {
 				key_ls->act_size += sizeof(struct nfp_fl_act_meter);
-				meter_flag = true;
+				flag.meter_flag = true;
 			} else {
 				PMD_DRV_LOG(ERR, "Only support one meter action.");
 				return -ENOTSUP;
@@ -3656,13 +3661,8 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	uint32_t count;
 	char *position;
 	char *action_data;
-	bool drop_flag = false;
-	bool tc_hl_flag = false;
-	bool ip_set_flag = false;
-	bool tp_set_flag = false;
-	bool mac_set_flag = false;
-	bool ttl_tos_flag = false;
 	uint32_t total_actions = 0;
+	struct nfp_action_flag flag = {};
 	const struct rte_flow_action *action;
 	struct nfp_flower_meta_tci *meta_tci;
 	struct nfp_fl_rule_metadata *nfp_flow_meta;
@@ -3680,7 +3680,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
-			drop_flag = true;
+			flag.drop_flag = true;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_COUNT");
@@ -3714,18 +3714,18 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_MAC_SRC");
-			nfp_flow_action_set_mac(position, action, true, mac_set_flag);
-			if (!mac_set_flag) {
+			nfp_flow_action_set_mac(position, action, true, flag.mac_set_flag);
+			if (!flag.mac_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_eth);
-				mac_set_flag = true;
+				flag.mac_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_MAC_DST");
-			nfp_flow_action_set_mac(position, action, false, mac_set_flag);
-			if (!mac_set_flag) {
+			nfp_flow_action_set_mac(position, action, false, flag.mac_set_flag);
+			if (!flag.mac_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_eth);
-				mac_set_flag = true;
+				flag.mac_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
@@ -3752,18 +3752,18 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC");
-			nfp_flow_action_set_ip(position, action, true, ip_set_flag);
-			if (!ip_set_flag) {
+			nfp_flow_action_set_ip(position, action, true, flag.ip_set_flag);
+			if (!flag.ip_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_ip4_addrs);
-				ip_set_flag = true;
+				flag.ip_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_DST");
-			nfp_flow_action_set_ip(position, action, false, ip_set_flag);
-			if (!ip_set_flag) {
+			nfp_flow_action_set_ip(position, action, false, flag.ip_set_flag);
+			if (!flag.ip_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_ip4_addrs);
-				ip_set_flag = true;
+				flag.ip_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
@@ -3779,51 +3779,51 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_SRC");
 			nfp_flow_action_set_tp(position, action, true,
-					tp_set_flag, nfp_flow->tcp_flag);
-			if (!tp_set_flag) {
+					flag.tp_set_flag, nfp_flow->tcp_flag);
+			if (!flag.tp_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_tport);
-				tp_set_flag = true;
+				flag.tp_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_DST");
 			nfp_flow_action_set_tp(position, action, false,
-					tp_set_flag, nfp_flow->tcp_flag);
-			if (!tp_set_flag) {
+					flag.tp_set_flag, nfp_flow->tcp_flag);
+			if (!flag.tp_set_flag) {
 				position += sizeof(struct nfp_fl_act_set_tport);
-				tp_set_flag = true;
+				flag.tp_set_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_TTL:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TTL");
 			if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) {
-				nfp_flow_action_set_ttl(position, action, ttl_tos_flag);
-				if (!ttl_tos_flag) {
+				nfp_flow_action_set_ttl(position, action, flag.ttl_tos_flag);
+				if (!flag.ttl_tos_flag) {
 					position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-					ttl_tos_flag = true;
+					flag.ttl_tos_flag = true;
 				}
 			} else {
-				nfp_flow_action_set_hl(position, action, tc_hl_flag);
-				if (!tc_hl_flag) {
+				nfp_flow_action_set_hl(position, action, flag.tc_hl_flag);
+				if (!flag.tc_hl_flag) {
 					position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-					tc_hl_flag = true;
+					flag.tc_hl_flag = true;
 				}
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP");
-			nfp_flow_action_set_tos(position, action, ttl_tos_flag);
-			if (!ttl_tos_flag) {
+			nfp_flow_action_set_tos(position, action, flag.ttl_tos_flag);
+			if (!flag.ttl_tos_flag) {
 				position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-				ttl_tos_flag = true;
+				flag.ttl_tos_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP");
-			nfp_flow_action_set_tc(position, action, tc_hl_flag);
-			if (!tc_hl_flag) {
+			nfp_flow_action_set_tc(position, action, flag.tc_hl_flag);
+			if (!flag.tc_hl_flag) {
 				position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-				tc_hl_flag = true;
+				flag.tc_hl_flag = true;
 			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
@@ -3898,7 +3898,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		total_actions++;
 	}
 
-	if (drop_flag)
+	if (flag.drop_flag)
 		nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_DROP);
 	else if (total_actions > 1)
 		nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_NULL);
