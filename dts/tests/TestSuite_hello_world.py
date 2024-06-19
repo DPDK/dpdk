@@ -8,7 +8,7 @@ No other EAL parameters apart from cores are used.
 """
 
 from framework.test_suite import TestSuite
-from framework.testbed_model import (
+from framework.testbed_model.cpu import (
     LogicalCoreCount,
     LogicalCoreCountFilter,
     LogicalCoreList,

@@ -15,7 +15,7 @@ in the infrastructure (a faulty link between NICs or a misconfiguration).
 import re
 
 from framework.config import PortConfig
-from framework.remote_session import TestPmdShell
+from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
 from framework.test_suite import TestSuite
 from framework.utils import REGEX_FOR_PCI_ADDRESS

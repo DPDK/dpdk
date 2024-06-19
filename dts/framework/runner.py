@@ -26,6 +26,9 @@ from pathlib import Path
 from types import FunctionType
 from typing import Iterable, Sequence
 
+from framework.testbed_model.sut_node import SutNode
+from framework.testbed_model.tg_node import TGNode
+
 from .config import (
     BuildTargetConfiguration,
     Configuration,
@@ -51,7 +54,6 @@ from .test_result import (
     TestSuiteWithCases,
 )
 from .test_suite import TestSuite
-from .testbed_model import SutNode, TGNode
 
 
 class DTSRunner:

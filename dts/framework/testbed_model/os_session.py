@@ -32,13 +32,13 @@ from framework.config import Architecture, NodeConfiguration, NodeInfo
 from framework.logger import DTSLogger
 from framework.params import Params
 from framework.remote_session import (
-    CommandResult,
     InteractiveRemoteSession,
-    InteractiveShell,
     RemoteSession,
     create_interactive_session,
     create_remote_session,
 )
+from framework.remote_session.interactive_shell import InteractiveShell
+from framework.remote_session.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
 

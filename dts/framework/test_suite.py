@@ -20,10 +20,15 @@ from scapy.layers.inet import IP  # type: ignore[import-untyped]
 from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 from scapy.packet import Packet, Padding  # type: ignore[import-untyped]
 
+from framework.testbed_model.port import Port, PortLink
+from framework.testbed_model.sut_node import SutNode
+from framework.testbed_model.tg_node import TGNode
+from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
+    PacketFilteringConfig,
+)
+
 from .exception import TestCaseVerifyError
 from .logger import DTSLogger, get_dts_logger
-from .testbed_model import Port, PortLink, SutNode, TGNode
-from .testbed_model.traffic_generator import PacketFilteringConfig
 from .utils import get_packet_summaries
 
 

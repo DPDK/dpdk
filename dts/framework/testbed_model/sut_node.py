@@ -27,7 +27,7 @@ from framework.config import (
 )
 from framework.params import Params, Switch
 from framework.params.eal import EalParams
-from framework.remote_session import CommandResult
+from framework.remote_session.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
 

@@ -12,17 +12,12 @@ The interactive sessions open an interactive shell which is continuously open,
 allowing it to send and receive data within that particular shell.
 """
 
-# pylama:ignore=W0611
-
 from framework.config import NodeConfiguration
 from framework.logger import DTSLogger
 
 from .interactive_remote_session import InteractiveRemoteSession
-from .interactive_shell import InteractiveShell
-from .python_shell import PythonShell
-from .remote_session import CommandResult, RemoteSession
+from .remote_session import RemoteSession
 from .ssh_session import SSHSession
-from .testpmd_shell import TestPmdShell
 
 
 def create_remote_session(

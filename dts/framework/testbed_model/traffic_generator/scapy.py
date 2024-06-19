@@ -25,7 +25,7 @@ from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 from scapy.packet import Packet  # type: ignore[import-untyped]
 
 from framework.config import OS, ScapyTrafficGeneratorConfig
-from framework.remote_session import PythonShell
+from framework.remote_session.python_shell import PythonShell
 from framework.settings import SETTINGS
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port
