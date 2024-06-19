@@ -3689,252 +3689,423 @@ nfp_flow_count_output(const struct rte_flow_action actions[])
 	return count;
 }
 
+struct nfp_action_compile_param {
+	const struct rte_flow_action *action;
+	char *action_data;
+	char *position;
+	uint32_t *output_cnt;
+	struct rte_flow *nfp_flow;
+	struct nfp_action_flag *flag;
+	struct nfp_flower_representor *repr;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
+};
+
+typedef int (*nfp_flow_action_compile_fn)(struct nfp_action_compile_param *param);
+
+static int
+nfp_flow_action_compile_stub(struct nfp_action_compile_param *param __rte_unused)
+{
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_drop(struct nfp_action_compile_param *param)
+{
+	param->flag->drop_flag = true;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_repr_port(struct nfp_action_compile_param *param)
+{
+	int ret;
+	uint32_t output_cnt;
+
+	output_cnt = *param->output_cnt - 1;
+	*param->output_cnt = output_cnt;
+
+	ret = nfp_flow_action_output_stage(param->position, param->action,
+			param->nfp_flow_meta, output_cnt);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT");
+		return ret;
+	}
+
+	param->position += sizeof(struct nfp_fl_act_output);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_port_id(struct nfp_action_compile_param *param)
+{
+	int ret;
+	uint32_t output_cnt;
+
+	output_cnt = *param->output_cnt - 1;
+	*param->output_cnt = output_cnt;
+
+	ret = nfp_flow_action_output(param->position, param->action,
+			param->nfp_flow_meta, output_cnt);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_PORT_ID");
+		return ret;
+	}
+
+	param->position += sizeof(struct nfp_fl_act_output);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_mac_src(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_mac(param->position, param->action, true,
+			param->flag->mac_set_flag);
+	if (!param->flag->mac_set_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_eth);
+		param->flag->mac_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_mac_dst(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_mac(param->position, param->action, false,
+			param->flag->mac_set_flag);
+	if (!param->flag->mac_set_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_eth);
+		param->flag->mac_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_pop_vlan(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_pop_vlan(param->position, param->nfp_flow_meta);
+	param->position += sizeof(struct nfp_fl_act_pop_vlan);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_push_vlan(struct nfp_action_compile_param *param)
+{
+	int ret;
+
+	ret = nfp_flow_action_push_vlan(param->position, param->action);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN");
+		return ret;
+	}
+
+	param->position += sizeof(struct nfp_fl_act_push_vlan);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ipv4_src(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_ip(param->position, param->action, true,
+			param->flag->ip_set_flag);
+	if (!param->flag->ip_set_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_ip4_addrs);
+		param->flag->ip_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ipv4_dst(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_ip(param->position, param->action, false,
+			param->flag->ip_set_flag);
+	if (!param->flag->ip_set_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_ip4_addrs);
+		param->flag->ip_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ipv6_src(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_ipv6(param->position, param->action, true);
+	param->position += sizeof(struct nfp_fl_act_set_ipv6_addr);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ipv6_dst(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_ipv6(param->position, param->action, false);
+	param->position += sizeof(struct nfp_fl_act_set_ipv6_addr);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_tp_src(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_tp(param->position, param->action, true,
+			param->flag->tp_set_flag, param->nfp_flow->tcp_flag);
+	if (!param->flag->tp_set_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_tport);
+		param->flag->tp_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_tp_dst(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_tp(param->position, param->action, false,
+			param->flag->tp_set_flag, param->nfp_flow->tcp_flag);
+	if (!param->flag->tp_set_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_tport);
+		param->flag->tp_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ttl(struct nfp_action_compile_param *param)
+{
+	struct nfp_flower_meta_tci *meta_tci;
+
+	meta_tci = (struct nfp_flower_meta_tci *)param->nfp_flow->payload.unmasked_data;
+	if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) {
+		nfp_flow_action_set_ttl(param->position, param->action,
+				param->flag->ttl_tos_flag);
+		if (!param->flag->ttl_tos_flag) {
+			param->position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+			param->flag->ttl_tos_flag = true;
+		}
+	} else {
+		nfp_flow_action_set_hl(param->position, param->action,
+				param->flag->ttl_tos_flag);
+		if (!param->flag->tc_hl_flag) {
+			param->position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
+			param->flag->tc_hl_flag = true;
+		}
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ipv4_dscp(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_tos(param->position, param->action,
+			param->flag->ttl_tos_flag);
+	if (!param->flag->ttl_tos_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+		param->flag->ttl_tos_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_ipv6_dscp(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_set_tc(param->position, param->action,
+			param->flag->ttl_tos_flag);
+	if (!param->flag->tc_hl_flag) {
+		param->position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
+		param->flag->tc_hl_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_vxlan_encap(struct nfp_action_compile_param *param)
+{
+	int ret;
+
+	ret = nfp_flow_action_vxlan_encap(param->repr->app_fw_flower,
+			param->position, param->action_data, param->action,
+			param->nfp_flow_meta, &param->nfp_flow->tun);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
+		return ret;
+	}
+
+	param->position += sizeof(struct nfp_fl_act_pre_tun);
+	param->position += sizeof(struct nfp_fl_act_set_tun);
+	param->nfp_flow->type = NFP_FLOW_ENCAP;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_raw_encap(struct nfp_action_compile_param *param)
+{
+	int ret;
+
+	ret = nfp_flow_action_raw_encap(param->repr->app_fw_flower,
+			param->position, param->action_data, param->action,
+			param->nfp_flow_meta, &param->nfp_flow->tun);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_RAW_ENCAP");
+		return ret;
+	}
+
+	param->position += sizeof(struct nfp_fl_act_pre_tun);
+	param->position += sizeof(struct nfp_fl_act_set_tun);
+	param->nfp_flow->type = NFP_FLOW_ENCAP;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_tnl_decap(struct nfp_action_compile_param *param)
+{
+	int ret;
+
+	ret = nfp_flow_action_tunnel_decap(param->repr, param->action,
+			param->nfp_flow_meta, param->nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process tunnel decap");
+		return ret;
+	}
+
+	param->nfp_flow->type = NFP_FLOW_DECAP;
+	param->nfp_flow->install_flag = false;
+	if (param->action->conf != NULL)
+		param->nfp_flow->tun.payload.v6_flag = 1;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_meter(struct nfp_action_compile_param *param)
+{
+	int ret;
+
+	ret = nfp_flow_action_meter(param->repr, param->action,
+			param->position, &param->nfp_flow->mtr_id);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_METER");
+		return -EINVAL;
+	}
+
+	param->position += sizeof(struct nfp_fl_act_meter);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_mark(struct nfp_action_compile_param *param)
+{
+	nfp_flow_action_mark(param->position, param->action);
+	param->position += sizeof(struct nfp_fl_act_mark);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_compile_rss(struct nfp_action_compile_param *param)
+{
+	int ret;
+
+	ret = nfp_flow_action_rss_add(param->repr, param->action,
+			&param->nfp_flow->rss);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_RSS");
+		return ret;
+	}
+
+	param->nfp_flow->type = NFP_FLOW_RSS;
+
+	return 0;
+}
+
+static nfp_flow_action_compile_fn action_compile_fns[] = {
+	[RTE_FLOW_ACTION_TYPE_VOID]             = nfp_flow_action_compile_stub,
+	[RTE_FLOW_ACTION_TYPE_DROP]             = nfp_flow_action_compile_drop,
+	[RTE_FLOW_ACTION_TYPE_COUNT]            = nfp_flow_action_compile_stub,
+	[RTE_FLOW_ACTION_TYPE_JUMP]             = nfp_flow_action_compile_stub,
+	[RTE_FLOW_ACTION_TYPE_PORT_ID]          = nfp_flow_action_compile_port_id,
+	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = nfp_flow_action_compile_repr_port,
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC]      = nfp_flow_action_compile_mac_src,
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_DST]      = nfp_flow_action_compile_mac_dst,
+	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN]      = nfp_flow_action_compile_pop_vlan,
+	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN]     = nfp_flow_action_compile_push_vlan,
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID]  = nfp_flow_action_compile_stub,
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP]  = nfp_flow_action_compile_stub,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC]     = nfp_flow_action_compile_ipv4_src,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DST]     = nfp_flow_action_compile_ipv4_dst,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC]     = nfp_flow_action_compile_ipv6_src,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_DST]     = nfp_flow_action_compile_ipv6_dst,
+	[RTE_FLOW_ACTION_TYPE_SET_TP_SRC]       = nfp_flow_action_compile_tp_src,
+	[RTE_FLOW_ACTION_TYPE_SET_TP_DST]       = nfp_flow_action_compile_tp_dst,
+	[RTE_FLOW_ACTION_TYPE_SET_TTL]          = nfp_flow_action_compile_ttl,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP]    = nfp_flow_action_compile_ipv4_dscp,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP]    = nfp_flow_action_compile_ipv6_dscp,
+	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP]      = nfp_flow_action_compile_vxlan_encap,
+	[RTE_FLOW_ACTION_TYPE_RAW_ENCAP]        = nfp_flow_action_compile_raw_encap,
+	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP]      = nfp_flow_action_compile_tnl_decap,
+	[RTE_FLOW_ACTION_TYPE_RAW_DECAP]        = nfp_flow_action_compile_tnl_decap,
+	[RTE_FLOW_ACTION_TYPE_METER]            = nfp_flow_action_compile_meter,
+	[RTE_FLOW_ACTION_TYPE_CONNTRACK]        = nfp_flow_action_compile_stub,
+	[RTE_FLOW_ACTION_TYPE_MARK]             = nfp_flow_action_compile_mark,
+	[RTE_FLOW_ACTION_TYPE_RSS]              = nfp_flow_action_compile_rss,
+};
+
 static int
 nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
 {
 	int ret = 0;
-	uint32_t count;
-	char *position;
-	char *action_data;
+	uint32_t output_cnt;
 	uint32_t total_actions = 0;
 	struct nfp_action_flag flag = {};
 	const struct rte_flow_action *action;
-	struct nfp_flower_meta_tci *meta_tci;
 	struct nfp_fl_rule_metadata *nfp_flow_meta;
+	struct nfp_action_compile_param param = {
+		.action_data = nfp_flow->payload.action_data,
+		.position = nfp_flow->payload.action_data,
+		.nfp_flow = nfp_flow,
+		.nfp_flow_meta = nfp_flow->payload.meta,
+		.repr = representor,
+		.flag = &flag,
+	};
 
-	nfp_flow_meta = nfp_flow->payload.meta;
-	action_data   = nfp_flow->payload.action_data;
-	position      = action_data;
-	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
-
-	count = nfp_flow_count_output(actions);
+	output_cnt = nfp_flow_count_output(actions);
+	param.output_cnt = &output_cnt;
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		switch (action->type) {
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
-			flag.drop_flag = true;
-			break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_COUNT");
-			break;
-		case RTE_FLOW_ACTION_TYPE_JUMP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_JUMP");
-			break;
-		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT");
-			count--;
-			ret = nfp_flow_action_output_stage(position, action, nfp_flow_meta, count);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed when process"
-						" RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT");
-				return ret;
-			}
-
-			position += sizeof(struct nfp_fl_act_output);
-			break;
-		case RTE_FLOW_ACTION_TYPE_PORT_ID:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_PORT_ID");
-			count--;
-			ret = nfp_flow_action_output(position, action, nfp_flow_meta, count);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed when process"
-						" RTE_FLOW_ACTION_TYPE_PORT_ID");
-				return ret;
-			}
-
-			position += sizeof(struct nfp_fl_act_output);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_MAC_SRC");
-			nfp_flow_action_set_mac(position, action, true, flag.mac_set_flag);
-			if (!flag.mac_set_flag) {
-				position += sizeof(struct nfp_fl_act_set_eth);
-				flag.mac_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_MAC_DST");
-			nfp_flow_action_set_mac(position, action, false, flag.mac_set_flag);
-			if (!flag.mac_set_flag) {
-				position += sizeof(struct nfp_fl_act_set_eth);
-				flag.mac_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_OF_POP_VLAN");
-			nfp_flow_action_pop_vlan(position, nfp_flow_meta);
-			position += sizeof(struct nfp_fl_act_pop_vlan);
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN");
-			ret = nfp_flow_action_push_vlan(position, action);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed when process"
-						" RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN");
-				return ret;
-			}
-
-			/*
-			 * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP and
-			 * RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID
-			 * have also been processed.
-			 */
-			action += 2;
-			position += sizeof(struct nfp_fl_act_push_vlan);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC");
-			nfp_flow_action_set_ip(position, action, true, flag.ip_set_flag);
-			if (!flag.ip_set_flag) {
-				position += sizeof(struct nfp_fl_act_set_ip4_addrs);
-				flag.ip_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_DST");
-			nfp_flow_action_set_ip(position, action, false, flag.ip_set_flag);
-			if (!flag.ip_set_flag) {
-				position += sizeof(struct nfp_fl_act_set_ip4_addrs);
-				flag.ip_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC");
-			nfp_flow_action_set_ipv6(position, action, true);
-			position += sizeof(struct nfp_fl_act_set_ipv6_addr);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_DST");
-			nfp_flow_action_set_ipv6(position, action, false);
-			position += sizeof(struct nfp_fl_act_set_ipv6_addr);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_SRC");
-			nfp_flow_action_set_tp(position, action, true,
-					flag.tp_set_flag, nfp_flow->tcp_flag);
-			if (!flag.tp_set_flag) {
-				position += sizeof(struct nfp_fl_act_set_tport);
-				flag.tp_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TP_DST");
-			nfp_flow_action_set_tp(position, action, false,
-					flag.tp_set_flag, nfp_flow->tcp_flag);
-			if (!flag.tp_set_flag) {
-				position += sizeof(struct nfp_fl_act_set_tport);
-				flag.tp_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TTL:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_TTL");
-			if (meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) {
-				nfp_flow_action_set_ttl(position, action, flag.ttl_tos_flag);
-				if (!flag.ttl_tos_flag) {
-					position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-					flag.ttl_tos_flag = true;
-				}
-			} else {
-				nfp_flow_action_set_hl(position, action, flag.tc_hl_flag);
-				if (!flag.tc_hl_flag) {
-					position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-					flag.tc_hl_flag = true;
-				}
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP");
-			nfp_flow_action_set_tos(position, action, flag.ttl_tos_flag);
-			if (!flag.ttl_tos_flag) {
-				position += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-				flag.ttl_tos_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP");
-			nfp_flow_action_set_tc(position, action, flag.tc_hl_flag);
-			if (!flag.tc_hl_flag) {
-				position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-				flag.tc_hl_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
-			ret = nfp_flow_action_vxlan_encap(representor->app_fw_flower,
-					position, action_data, action, nfp_flow_meta,
-					&nfp_flow->tun);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed when process"
-						" RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
-				return ret;
-			}
-			position += sizeof(struct nfp_fl_act_pre_tun);
-			position += sizeof(struct nfp_fl_act_set_tun);
-			nfp_flow->type = NFP_FLOW_ENCAP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_RAW_ENCAP");
-			ret = nfp_flow_action_raw_encap(representor->app_fw_flower,
-					position, action_data, action, nfp_flow_meta,
-					&nfp_flow->tun);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed when process"
-						" RTE_FLOW_ACTION_TYPE_RAW_ENCAP");
-				return ret;
-			}
-			position += sizeof(struct nfp_fl_act_pre_tun);
-			position += sizeof(struct nfp_fl_act_set_tun);
-			nfp_flow->type = NFP_FLOW_ENCAP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
-		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
-			PMD_DRV_LOG(DEBUG, "process action tunnel decap");
-			ret = nfp_flow_action_tunnel_decap(representor, action,
-					nfp_flow_meta, nfp_flow);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed when process tunnel decap");
-				return ret;
-			}
-			nfp_flow->type = NFP_FLOW_DECAP;
-			nfp_flow->install_flag = false;
-			if (action->conf != NULL)
-				nfp_flow->tun.payload.v6_flag = 1;
-			break;
-		case RTE_FLOW_ACTION_TYPE_METER:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_METER");
-			ret = nfp_flow_action_meter(representor, action,
-					position, &nfp_flow->mtr_id);
-			if (ret != 0)
-				return -EINVAL;
-			position += sizeof(struct nfp_fl_act_meter);
-			break;
-		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_CONNTRACK");
-			break;
-		case RTE_FLOW_ACTION_TYPE_MARK:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK");
-			nfp_flow_action_mark(position, action);
-			position += sizeof(struct nfp_fl_act_mark);
-			break;
-		case RTE_FLOW_ACTION_TYPE_RSS:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_RSS");
-			ret = nfp_flow_action_rss_add(representor, action, &nfp_flow->rss);
-			if (ret != 0)
-				return ret;
-			nfp_flow->type = NFP_FLOW_RSS;
-			break;
-		default:
-			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
-			return -ENOTSUP;
+		if (action->type >= RTE_DIM(action_compile_fns) ||
+				action_compile_fns[action->type] == NULL) {
+			PMD_DRV_LOG(ERR, "Flow action %d unsupported", action->type);
+			return -ERANGE;
 		}
+
+		param.action = action;
+		ret = action_compile_fns[action->type](&param);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Flow action %d compile fail", action->type);
+			return ret;
+		}
+
 		total_actions++;
 	}
 
+	nfp_flow_meta = nfp_flow->payload.meta;
 	if (flag.drop_flag)
 		nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_DROP);
 	else if (total_actions > 1)
