@@ -246,6 +246,15 @@ NFP devargs
       firmware option, only the first one will cause the firmware reload
       and the second one will be ignored.
 
+- ``cpp_service_enable`` (default **0**)
+
+   The NFP PF PMD supports enable CPP service.
+   For example, user let a PF with PCI ID 0000:af:00.0 enable CPP service by:
+
+   .. code-block:: console
+
+      -a af:00.0,cpp_service_enable=1 -- -i
+
 Metadata Format
 ---------------
 

@@ -94,6 +94,9 @@ struct nfp_process_share {
 struct nfp_devargs {
 	/** Force reload firmware */
 	bool force_reload_fw;
+
+	/** Enable CPP bridge service */
+	bool cpp_service_enable;
 };
 
 struct nfp_pf_dev {

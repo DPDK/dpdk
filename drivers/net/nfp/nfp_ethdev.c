@@ -33,6 +33,7 @@
 
 #define NFP_PF_DRIVER_NAME net_nfp_pf
 #define NFP_PF_FORCE_RELOAD_FW   "force_reload_fw"
+#define NFP_CPP_SERVICE_ENABLE   "cpp_service_enable"
 
 struct nfp_net_init {
 	/** Sequential physical port number, only valid for CoreNIC firmware */
@@ -117,6 +118,11 @@ nfp_devargs_parse(struct nfp_devargs *nfp_devargs_param,
 
 	ret = nfp_devarg_parse_bool_para(kvlist, NFP_PF_FORCE_RELOAD_FW,
 			&nfp_devargs_param->force_reload_fw);
+	if (ret != 0)
+		goto exit;
+
+	ret = nfp_devarg_parse_bool_para(kvlist, NFP_CPP_SERVICE_ENABLE,
+			&nfp_devargs_param->cpp_service_enable);
 	if (ret != 0)
 		goto exit;
 
@@ -640,7 +646,8 @@ nfp_pf_uninit(struct nfp_net_hw_priv *hw_priv)
 {
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
-	nfp_disable_cpp_service(pf_dev);
+	if (pf_dev->devargs.cpp_service_enable)
+		nfp_disable_cpp_service(pf_dev);
 	nfp_cpp_area_release_free(pf_dev->mac_stats_area);
 	nfp_cpp_area_release_free(pf_dev->qc_area);
 	free(pf_dev->sym_tbl);
@@ -1992,9 +1999,11 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Register the CPP bridge service here for primary use */
-	ret = nfp_enable_cpp_service(pf_dev);
-	if (ret != 0)
-		PMD_INIT_LOG(INFO, "Enable cpp service failed.");
+	if (pf_dev->devargs.cpp_service_enable) {
+		ret = nfp_enable_cpp_service(pf_dev);
+		if (ret != 0)
+			PMD_INIT_LOG(INFO, "Enable cpp service failed.");
+	}
 
 	return 0;
 
@@ -2301,4 +2310,6 @@ static struct rte_pci_driver rte_nfp_net_pf_pmd = {
 RTE_PMD_REGISTER_PCI(NFP_PF_DRIVER_NAME, rte_nfp_net_pf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(NFP_PF_DRIVER_NAME, pci_id_nfp_pf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(NFP_PF_DRIVER_NAME, "* igb_uio | uio_pci_generic | vfio");
-RTE_PMD_REGISTER_PARAM_STRING(NFP_PF_DRIVER_NAME, NFP_PF_FORCE_RELOAD_FW "=<0|1>");
+RTE_PMD_REGISTER_PARAM_STRING(NFP_PF_DRIVER_NAME,
+		NFP_PF_FORCE_RELOAD_FW "=<0|1>"
+		NFP_CPP_SERVICE_ENABLE "=<0|1>");
