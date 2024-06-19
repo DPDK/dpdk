@@ -1740,7 +1740,7 @@ nfp_net_speed_capa_get_real(struct nfp_eth_media_buf *media_buf,
 }
 
 static int
-nfp_net_speed_capa_get(struct nfp_pf_dev *pf_dev,
+nfp_net_speed_cap_get_one(struct nfp_pf_dev *pf_dev,
 		uint32_t port_id)
 {
 	int ret;
@@ -1767,6 +1767,27 @@ nfp_net_speed_capa_get(struct nfp_pf_dev *pf_dev,
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Speed capability is invalid.");
 		return ret;
+	}
+
+	return 0;
+}
+
+static int
+nfp_net_speed_cap_get(struct nfp_pf_dev *pf_dev)
+{
+	int ret;
+	uint32_t i;
+	uint32_t id;
+	uint32_t count;
+
+	count = nfp_net_get_port_num(pf_dev, pf_dev->nfp_eth_table);
+	for (i = 0; i < count; i++) {
+		id = nfp_function_id_get(pf_dev, i);
+		ret = nfp_net_speed_cap_get_one(pf_dev, id);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to get port %d speed capability.", id);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -1800,8 +1821,6 @@ static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	void *sync;
-	uint32_t i;
-	uint32_t id;
 	int ret = 0;
 	uint64_t addr;
 	uint32_t cpp_id;
@@ -1952,15 +1971,11 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->nfp_eth_table = nfp_eth_table;
 	pf_dev->sync = sync;
 
-	/* Get the speed capability */
-	for (i = 0; i < nfp_eth_table->count; i++) {
-		id = nfp_function_id_get(pf_dev, i);
-		ret = nfp_net_speed_capa_get(pf_dev, id);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Failed to get speed capability.");
-			ret = -EIO;
-			goto sym_tbl_cleanup;
-		}
+	ret = nfp_net_speed_cap_get(pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to get speed capability.");
+		ret = -EIO;
+		goto sym_tbl_cleanup;
 	}
 
 	/* Configure access to tx/rx vNIC BARs */
