@@ -16,6 +16,7 @@ uint16_t nfp_nsp_get_abi_ver_major(struct nfp_nsp *state);
 uint16_t nfp_nsp_get_abi_ver_minor(struct nfp_nsp *state);
 int nfp_nsp_wait(struct nfp_nsp *state);
 int nfp_nsp_device_soft_reset(struct nfp_nsp *state);
+int nfp_nsp_device_activate(struct nfp_nsp *state);
 int nfp_nsp_load_fw(struct nfp_nsp *state, void *buf, size_t size);
 int nfp_nsp_mac_reinit(struct nfp_nsp *state);
 int nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, size_t size);

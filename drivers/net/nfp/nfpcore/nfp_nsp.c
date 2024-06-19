@@ -80,6 +80,7 @@ enum nfp_nsp_cmd {
 	SPCODE_VERSIONS         = 21, /* Report FW versions */
 	SPCODE_READ_SFF_EEPROM  = 22, /* Read module EEPROM */
 	SPCODE_READ_MEDIA       = 23, /* Get the supported/advertised media for a port */
+	SPCODE_DEV_ACTIVATE	= 29, /* Activate hardware for multiple pfs case */
 };
 
 static const struct {
@@ -727,6 +728,15 @@ nfp_nsp_hwinfo_set(struct nfp_nsp *state,
 	};
 
 	return nfp_nsp_command_buf(state, &hwinfo_set);
+}
+
+int
+nfp_nsp_device_activate(struct nfp_nsp *state)
+{
+	if (nfp_nsp_get_abi_ver_minor(state) < 38)
+		return -EOPNOTSUPP;
+
+	return nfp_nsp_command(state, SPCODE_DEV_ACTIVATE);
 }
 
 int

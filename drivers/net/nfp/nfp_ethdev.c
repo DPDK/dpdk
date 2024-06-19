@@ -1107,6 +1107,29 @@ ipsec_exit:
 	return err;
 }
 
+static int
+nfp_net_device_activate(struct nfp_cpp *cpp,
+		struct nfp_multi_pf *multi_pf)
+{
+	int ret;
+	struct nfp_nsp *nsp;
+
+	if (multi_pf->enabled && multi_pf->function_id != 0) {
+		nsp = nfp_nsp_open(cpp);
+		if (nsp == NULL) {
+			PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle");
+			return -EIO;
+		}
+
+		ret = nfp_nsp_device_activate(nsp);
+		nfp_nsp_close(nsp);
+		if (ret != 0 && ret != -EOPNOTSUPP)
+			return ret;
+	}
+
+	return 0;
+}
+
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
 
 static int
@@ -2129,6 +2152,13 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Error when parsing device args");
 		ret = -EINVAL;
+		goto eth_table_cleanup;
+	}
+
+	ret = nfp_net_device_activate(cpp, &pf_dev->multi_pf);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to activate the NFP device");
+		ret = -EIO;
 		goto eth_table_cleanup;
 	}
 
