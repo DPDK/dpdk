@@ -32,7 +32,7 @@ test_event_crypto_adapter(void)
 #define NUM_MBUFS                 (8191)
 #define MBUF_CACHE_SIZE           (256)
 #define MAXIMUM_IV_LENGTH         (16)
-#define DEFAULT_NUM_OPS_INFLIGHT  (128)
+#define DEFAULT_NUM_OPS_INFLIGHT   1024
 #define MAX_NB_SESSIONS            4
 #define TEST_APP_PORT_ID           0
 #define TEST_APP_EV_QUEUE_ID       0
