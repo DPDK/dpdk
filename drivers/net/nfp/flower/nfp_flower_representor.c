@@ -19,6 +19,11 @@ enum nfp_repr_type {
 	NFP_REPR_TYPE_MAX,          /*<< Number of representor types */
 };
 
+struct nfp_repr_init {
+	struct nfp_flower_representor *flower_repr;
+	struct nfp_net_hw_priv *hw_priv;
+};
+
 static int
 nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
@@ -603,6 +608,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	int ret;
 	uint16_t index;
 	unsigned int numa_node;
+	struct nfp_repr_init *repr_init;
 	struct nfp_net_hw_priv *hw_priv;
 	char ring_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_app_fw_flower *app_fw_flower;
@@ -610,12 +616,13 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	struct nfp_flower_representor *init_repr_data;
 
 	/* Cast the input representor data to the correct struct here */
-	init_repr_data = init_params;
+	repr_init = init_params;
+	init_repr_data = repr_init->flower_repr;
 	app_fw_flower = init_repr_data->app_fw_flower;
 
 	/* Memory has been allocated in the eth_dev_create() function */
 	repr = eth_dev->data->dev_private;
-	hw_priv = eth_dev->process_private;
+	hw_priv = repr_init->hw_priv;
 
 	/*
 	 * We need multiproduce rings as we can have multiple PF ports.
@@ -785,6 +792,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	int ret;
 	const char *pci_name;
 	struct rte_pci_device *pci_dev;
+	struct nfp_repr_init repr_init;
 	struct nfp_eth_table *nfp_eth_table;
 	struct nfp_eth_table_port *eth_port;
 	struct nfp_flower_representor flower_repr = {
@@ -793,6 +801,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	};
 
 	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
+	repr_init.hw_priv = hw_priv;
 
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
 	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, nfp_eth_table);
@@ -840,9 +849,10 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		 * Create a eth_dev for this representor.
 		 * This will also allocate private memory for the device.
 		 */
+		repr_init.flower_repr = &flower_repr;
 		ret = rte_eth_dev_create(&pci_dev->device, flower_repr.name,
 				sizeof(struct nfp_flower_representor),
-				NULL, NULL, nfp_flower_repr_init, &flower_repr);
+				NULL, NULL, nfp_flower_repr_init, &repr_init);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr");
 			break;
@@ -868,10 +878,11 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		snprintf(flower_repr.name, sizeof(flower_repr.name),
 				"%s_repr_vf%d", pci_name, i);
 
+		repr_init.flower_repr = &flower_repr;
 		/* This will also allocate private memory for the device */
 		ret = rte_eth_dev_create(&pci_dev->device, flower_repr.name,
 				sizeof(struct nfp_flower_representor),
-				NULL, NULL, nfp_flower_repr_init, &flower_repr);
+				NULL, NULL, nfp_flower_repr_init, &repr_init);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr");
 			break;
