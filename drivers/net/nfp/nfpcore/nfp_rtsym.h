@@ -40,5 +40,7 @@ int nfp_rtsym_write_le(struct nfp_rtsym_table *rtbl, const char *name,
 		uint64_t value);
 uint8_t *nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 		uint32_t min_size, struct nfp_cpp_area **area);
+uint8_t *nfp_rtsym_map_offset(struct nfp_rtsym_table *rtbl, const char *name,
+		uint32_t offset, uint32_t min_size, struct nfp_cpp_area **area);
 
 #endif /* __NFP_RTSYM_H__ */

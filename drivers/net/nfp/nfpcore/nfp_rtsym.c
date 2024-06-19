@@ -658,8 +658,9 @@ nfp_rtsym_write_le(struct nfp_rtsym_table *rtbl,
 }
 
 uint8_t *
-nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
+nfp_rtsym_map_offset(struct nfp_rtsym_table *rtbl,
 		const char *name,
+		uint32_t offset,
 		uint32_t min_size,
 		struct nfp_cpp_area **area)
 {
@@ -688,11 +689,20 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
 		return NULL;
 	}
 
-	mem = nfp_cpp_map_area(rtbl->cpp, cpp_id, addr, sym->size, area);
+	mem = nfp_cpp_map_area(rtbl->cpp, cpp_id, addr + offset, sym->size, area);
 	if (mem == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to map symbol %s", name);
 		return NULL;
 	}
 
 	return mem;
+}
+
+uint8_t *
+nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
+		const char *name,
+		uint32_t min_size,
+		struct nfp_cpp_area **area)
+{
+	return nfp_rtsym_map_offset(rtbl, name, 0, min_size, area);
 }
