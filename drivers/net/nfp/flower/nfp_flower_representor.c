@@ -460,7 +460,7 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	/* Stop flower service first */
-	nfp_flower_service_stop(app_fw_flower, hw_priv);
+	nfp_flower_service_stop(hw_priv);
 
 	/* Now it is safe to free all PF resources */
 	nfp_uninit_app_fw_flower(hw_priv);

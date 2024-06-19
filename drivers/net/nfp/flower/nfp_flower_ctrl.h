@@ -8,7 +8,7 @@
 
 #include "nfp_flower.h"
 
-void nfp_flower_ctrl_vnic_process(struct nfp_app_fw_flower *app_fw_flower);
+void nfp_flower_ctrl_vnic_process(struct nfp_net_hw_priv *hw_priv);
 uint16_t nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf);
 void nfp_flower_ctrl_vnic_xmit_register(struct nfp_app_fw_flower *app_fw_flower);

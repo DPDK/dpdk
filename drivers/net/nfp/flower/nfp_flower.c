@@ -754,7 +754,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	/* Start up flower services */
-	ret = nfp_flower_service_start(app_fw_flower, hw_priv);
+	ret = nfp_flower_service_start(hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not enable flower services");
 		ret = -ESRCH;
@@ -770,7 +770,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	return 0;
 
 ctrl_vnic_service_stop:
-	nfp_flower_service_stop(app_fw_flower, hw_priv);
+	nfp_flower_service_stop(hw_priv);
 ctrl_vnic_cleanup:
 	nfp_flower_cleanup_ctrl_vnic(app_fw_flower, hw_priv);
 ctrl_cpp_area_cleanup:
