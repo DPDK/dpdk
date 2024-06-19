@@ -264,6 +264,8 @@ nfp6000_mu_emu(uint32_t cpp_id)
 		return PUSHPULL(P32, 0);
 	case NFP_CPP_ID(0, 18, 3): /* write_queue_ring */
 		return PUSHPULL(P32, 0);
+	case NFP_CPP_ID(0, 20, 0): /* put */
+		return PUSHPULL(P32, 0);
 	case NFP_CPP_ID(0, 20, 2): /* journal */
 		return PUSHPULL(P32, 0);
 	case NFP_CPP_ID(0, 21, 0): /* get */

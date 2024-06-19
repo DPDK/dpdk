@@ -706,3 +706,106 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
 {
 	return nfp_rtsym_map_offset(rtbl, name, 0, min_size, area);
 }
+
+/**
+ * Pop a simple unsigned scalar value from ring
+ *
+ * Lookup the symbol table for ring base and address, then pop value base on
+ * the ring with cpp read and write operation.
+ *
+ * @param rtbl
+ *    NFP run-time symbol table
+ * @param aux_name
+ *    The auxiliary rtsym table name which can ensure ring base and address
+ * @param name
+ *    The rtsym table name which can handle the ring
+ * @param value
+ *    Pop this value from ring
+ *
+ * @return
+ *    0 on success, negative errno otherwise.
+ */
+int
+nfp_rtsym_readl_indirect(struct nfp_rtsym_table *rtbl,
+		const char *aux_name,
+		const char *name,
+		uint32_t *value)
+{
+	int ret;
+	uint32_t cpp_id;
+	const struct nfp_rtsym *sym;
+	const struct nfp_rtsym *aux_sym;
+
+	if (value == NULL)
+		return -EINVAL;
+
+	aux_sym = nfp_rtsym_lookup(rtbl, aux_name);
+	if (aux_sym == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s", aux_name);
+		return -ENOENT;
+	}
+
+	sym = nfp_rtsym_lookup(rtbl, name);
+	if (sym == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s", name);
+		return -ENOENT;
+	}
+
+	/* Ring Pop */
+	cpp_id = NFP_CPP_ISLAND_ID(aux_sym->target, 22, 0, aux_sym->domain);
+	ret = nfp_cpp_readl(rtbl->cpp, cpp_id, sym->addr, value);
+	if (ret != 0)
+		return -EIO;
+
+	return 0;
+}
+
+/**
+ * Push a simple unsigned scalar value to ring
+ *
+ * Lookup the symbol table for ring base and address, then Push value base on
+ * the ring with cpp read and write operation.
+ *
+ * @param rtbl
+ *    NFP run-time symbol table
+ * @param aux_name
+ *    The auxiliary rtsym table name which can ensure ring base and address
+ * @param name
+ *    The rtsym table name which can handle the ring
+ * @param value
+ *    Push this value to ring
+ *
+ * @return
+ *    0 on success, negative errno otherwise.
+ */
+int
+nfp_rtsym_writel_indirect(struct nfp_rtsym_table *rtbl,
+		const char *aux_name,
+		const char *name,
+		uint32_t value)
+{
+	int ret;
+	uint32_t cpp_id;
+	const struct nfp_rtsym *sym;
+	const struct nfp_rtsym *aux_sym;
+
+	aux_sym = nfp_rtsym_lookup(rtbl, aux_name);
+	if (aux_sym == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s", aux_name);
+		return -ENOENT;
+	}
+
+	sym = nfp_rtsym_lookup(rtbl, name);
+	if (sym == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s", name);
+		return -ENOENT;
+	}
+
+	/* Ring Put */
+	cpp_id = NFP_CPP_ISLAND_ID(aux_sym->target, 20, 0, aux_sym->domain);
+	ret = nfp_cpp_writel(rtbl->cpp, cpp_id, sym->addr, value);
+	if (ret != 0)
+		return -EIO;
+
+	return 0;
+}

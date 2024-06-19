@@ -42,5 +42,9 @@ uint8_t *nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 		uint32_t min_size, struct nfp_cpp_area **area);
 uint8_t *nfp_rtsym_map_offset(struct nfp_rtsym_table *rtbl, const char *name,
 		uint32_t offset, uint32_t min_size, struct nfp_cpp_area **area);
+int nfp_rtsym_readl_indirect(struct nfp_rtsym_table *rtbl, const char *aux_name,
+		const char *name, uint32_t *value);
+int nfp_rtsym_writel_indirect(struct nfp_rtsym_table *rtbl, const char *aux_name,
+		const char *name, uint32_t value);
 
 #endif /* __NFP_RTSYM_H__ */
