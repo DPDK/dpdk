@@ -5138,11 +5138,15 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	char flow_name[RTE_HASH_NAMESIZE];
 	char pretun_name[RTE_HASH_NAMESIZE];
 	struct nfp_app_fw_flower *app_fw_flower;
+	char ct_map_table_name[RTE_HASH_NAMESIZE];
+	char ct_zone_table_name[RTE_HASH_NAMESIZE];
 	const char *pci_name = strchr(pf_dev->pci_dev->name, ':') + 1;
 
 	snprintf(mask_name, sizeof(mask_name), "%s_mask", pci_name);
 	snprintf(flow_name, sizeof(flow_name), "%s_flow", pci_name);
 	snprintf(pretun_name, sizeof(pretun_name), "%s_pretun", pci_name);
+	snprintf(ct_map_table_name, sizeof(ct_map_table_name), "%s_ct_map_table", pci_name);
+	snprintf(ct_zone_table_name, sizeof(ct_zone_table_name), "%s_ct_zone_table", pci_name);
 
 	struct rte_hash_parameters mask_hash_params = {
 		.name       = mask_name,
@@ -5171,7 +5175,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	};
 
 	struct rte_hash_parameters ct_zone_hash_params = {
-		.name       = "ct_zone_table",
+		.name       = ct_zone_table_name,
 		.entries    = 65536,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
@@ -5180,7 +5184,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	};
 
 	struct rte_hash_parameters ct_map_hash_params = {
-		.name       = "ct_map_table",
+		.name       = ct_map_table_name,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
 		.key_len    = sizeof(uint32_t),
