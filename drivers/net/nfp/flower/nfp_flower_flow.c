@@ -1205,6 +1205,129 @@ nfp_flow_action_calculate_mark(struct nfp_action_calculate_param *param)
 	return 0;
 }
 
+static bool
+nfp_flow_field_id_dst_support(enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
+static bool
+nfp_flow_field_id_src_support(enum rte_flow_field_id field)
+{
+	return field == RTE_FLOW_FIELD_POINTER ||
+			field == RTE_FLOW_FIELD_VALUE;
+}
+
+static uint32_t
+nfp_flow_field_width(enum rte_flow_field_id field,
+		uint32_t inherit)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		return 32;
+	case RTE_FLOW_FIELD_POINTER:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_VALUE:
+		return inherit;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static bool
+nfp_flow_is_validate_field_data(const struct rte_flow_field_data *data,
+		uint32_t conf_width,
+		uint32_t data_width)
+{
+	if (data->level != 0) {
+		PMD_DRV_LOG(ERR, "The 'level' is not support");
+		return false;
+	}
+
+	if (data->tag_index != 0) {
+		PMD_DRV_LOG(ERR, "The 'tag_index' is not support");
+		return false;
+	}
+
+	if (data->class_id != 0) {
+		PMD_DRV_LOG(ERR, "The 'class_id' is not support");
+		return false;
+	}
+
+	if (data->offset + conf_width > data_width) {
+		PMD_DRV_LOG(ERR, "The 'offset' value is too big");
+		return false;
+	}
+
+	return true;
+}
+
+static int
+nfp_flow_action_calculate_modify_dispatch(struct nfp_action_calculate_param *param,
+		enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		return nfp_flow_action_calculate_ipv4_addr(param);
+	default:
+		break;    /* NOTREACHED */
+	}
+
+	return -ENOTSUP;
+}
+
+static int
+nfp_flow_action_calculate_modify(struct nfp_action_calculate_param *param)
+{
+	uint32_t width;
+	uint32_t dst_width;
+	uint32_t src_width;
+	const struct rte_flow_field_data *dst_data;
+	const struct rte_flow_field_data *src_data;
+	const struct rte_flow_action_modify_field *conf;
+
+	conf = param->action->conf;
+	if (conf == NULL)
+		return -EINVAL;
+
+	dst_data = &conf->dst;
+	src_data = &conf->src;
+	if (!nfp_flow_field_id_dst_support(dst_data->field) ||
+			!nfp_flow_field_id_src_support(src_data->field)) {
+		PMD_DRV_LOG(ERR, "Not supported field id");
+		return -EINVAL;
+	}
+
+	width = conf->width;
+	if (width == 0) {
+		PMD_DRV_LOG(ERR, "No bits are required to modify");
+		return -EINVAL;
+	}
+
+	dst_width = nfp_flow_field_width(dst_data->field, 0);
+	src_width = nfp_flow_field_width(src_data->field, dst_width);
+	if (width > dst_width || width > src_width) {
+		PMD_DRV_LOG(ERR, "Cannot modify more bits than the width of a field");
+		return -EINVAL;
+	}
+
+	if (!nfp_flow_is_validate_field_data(dst_data, width, dst_width)) {
+		PMD_DRV_LOG(ERR, "The dest field data has problem");
+		return -EINVAL;
+	}
+
+	return nfp_flow_action_calculate_modify_dispatch(param, dst_data->field);
+}
+
 static nfp_flow_key_calculate_action_fn action_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_VOID]             = nfp_flow_action_calculate_stub,
 	[RTE_FLOW_ACTION_TYPE_DROP]             = nfp_flow_action_calculate_stub,
@@ -1235,6 +1358,7 @@ static nfp_flow_key_calculate_action_fn action_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_CONNTRACK]        = nfp_flow_action_calculate_stub,
 	[RTE_FLOW_ACTION_TYPE_MARK]             = nfp_flow_action_calculate_mark,
 	[RTE_FLOW_ACTION_TYPE_RSS]              = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD]     = nfp_flow_action_calculate_modify,
 };
 
 static int
@@ -4104,6 +4228,53 @@ nfp_flow_action_compile_rss(struct nfp_action_compile_param *param)
 	return 0;
 }
 
+static int
+nfp_flow_action_compile_modify_dispatch(struct nfp_action_compile_param *param,
+		enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		return nfp_flow_action_compile_ipv4_src(param);
+	default:
+		break;    /* NOTREACHED */
+	}
+
+	return -ENOTSUP;
+}
+
+static int
+nfp_flow_action_compile_modify(struct nfp_action_compile_param *param)
+{
+	int ret;
+	struct rte_flow_action action = {};
+	const struct rte_flow_action *action_old;
+	const struct rte_flow_action_modify_field *conf;
+
+	conf = param->action->conf;
+
+	if (conf->src.field == RTE_FLOW_FIELD_POINTER) {
+		action.conf = conf->src.pvalue;
+	} else if (conf->src.field == RTE_FLOW_FIELD_VALUE) {
+		action.conf = (void *)(uintptr_t)&conf->src.value;
+	} else {
+		PMD_DRV_LOG(ERR, "The SRC field of flow modify is not right");
+		return -EINVAL;
+	}
+
+	/* Store the old action pointer */
+	action_old = param->action;
+
+	param->action = &action;
+	ret = nfp_flow_action_compile_modify_dispatch(param, conf->dst.field);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "Something wrong when modify dispatch");
+
+	/* Reload the old action pointer */
+	param->action = action_old;
+
+	return ret;
+}
+
 static nfp_flow_action_compile_fn action_compile_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_VOID]             = nfp_flow_action_compile_stub,
 	[RTE_FLOW_ACTION_TYPE_DROP]             = nfp_flow_action_compile_drop,
@@ -4134,6 +4305,7 @@ static nfp_flow_action_compile_fn action_compile_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_CONNTRACK]        = nfp_flow_action_compile_stub,
 	[RTE_FLOW_ACTION_TYPE_MARK]             = nfp_flow_action_compile_mark,
 	[RTE_FLOW_ACTION_TYPE_RSS]              = nfp_flow_action_compile_rss,
+	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD]     = nfp_flow_action_compile_modify,
 };
 
 static int
