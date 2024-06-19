@@ -14,6 +14,14 @@
 #define NFP_NET_CFG_BAR_SZ              (32 * 1024)
 
 /*
+ * Configuration sriov VF.
+ * The configuration memory begins with a mailbox region for communication with
+ * the firmware followed by individual VF entries.
+ */
+#define NFP_NET_VF_CFG_SZ               16
+#define NFP_NET_VF_CFG_MB_SZ            16
+
+/*
  * @NFP_NET_TXR_MAX:         Maximum number of TX rings
  * @NFP_NET_TXR_MASK:        Mask for TX rings
  * @NFP_NET_RXR_MAX:         Maximum number of RX rings

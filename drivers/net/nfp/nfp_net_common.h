@@ -117,6 +117,15 @@ struct nfp_pf_dev {
 	struct nfp_cpp_area *ctrl_area;
 	struct nfp_cpp_area *qc_area;
 
+	/** Pointer to the CPP area for the VF configuration BAR */
+	struct nfp_cpp_area *vf_area;
+	/** Pointer to mapped VF configuration area */
+	uint8_t *vf_bar;
+	/** Pointer to the CPP area for the VF config table */
+	struct nfp_cpp_area *vf_cfg_tbl_area;
+	/** Pointer to mapped VF config table */
+	uint8_t *vf_cfg_tbl_bar;
+
 	uint8_t *qc_bar;
 
 	struct nfp_cpp_area *mac_stats_area;

@@ -632,6 +632,16 @@ nfp_uninit_app_fw_nic(struct nfp_pf_dev *pf_dev)
 	rte_free(pf_dev->app_fw_priv);
 }
 
+static void
+nfp_net_vf_config_uninit(struct nfp_pf_dev *pf_dev)
+{
+	if (pf_dev->sriov_vf == 0)
+		return;
+
+	nfp_cpp_area_release_free(pf_dev->vf_cfg_tbl_area);
+	nfp_cpp_area_release_free(pf_dev->vf_area);
+}
+
 void
 nfp_pf_uninit(struct nfp_net_hw_priv *hw_priv)
 {
@@ -639,6 +649,7 @@ nfp_pf_uninit(struct nfp_net_hw_priv *hw_priv)
 
 	if (pf_dev->devargs.cpp_service_enable)
 		nfp_disable_cpp_service(pf_dev);
+	nfp_net_vf_config_uninit(pf_dev);
 	nfp_cpp_area_release_free(pf_dev->mac_stats_area);
 	nfp_cpp_area_release_free(pf_dev->qc_area);
 	free(pf_dev->sym_tbl);
@@ -1957,6 +1968,47 @@ nfp_net_get_vf_info(struct nfp_pf_dev *pf_dev,
 }
 
 static int
+nfp_net_vf_config_init(struct nfp_pf_dev *pf_dev)
+{
+	int ret = 0;
+	uint32_t min_size;
+	char vf_bar_name[RTE_ETH_NAME_MAX_LEN];
+	char vf_cfg_name[RTE_ETH_NAME_MAX_LEN];
+
+	if (pf_dev->sriov_vf == 0)
+		return 0;
+
+	min_size = NFP_NET_CFG_BAR_SZ * pf_dev->sriov_vf;
+	snprintf(vf_bar_name, sizeof(vf_bar_name), "_pf%d_net_vf_bar",
+			pf_dev->multi_pf.function_id);
+	pf_dev->vf_bar = nfp_rtsym_map_offset(pf_dev->sym_tbl, vf_bar_name,
+			NFP_NET_CFG_BAR_SZ * pf_dev->vf_base_id,
+			min_size, &pf_dev->vf_area);
+	if (pf_dev->vf_bar == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to get vf cfg.");
+		return -EIO;
+	}
+
+	min_size = NFP_NET_VF_CFG_SZ * pf_dev->sriov_vf + NFP_NET_VF_CFG_MB_SZ;
+	snprintf(vf_cfg_name, sizeof(vf_cfg_name), "_pf%d_net_vf_cfg2",
+			pf_dev->multi_pf.function_id);
+	pf_dev->vf_cfg_tbl_bar = nfp_rtsym_map(pf_dev->sym_tbl, vf_cfg_name,
+			min_size, &pf_dev->vf_cfg_tbl_area);
+	if (pf_dev->vf_cfg_tbl_bar == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to get vf configure table.");
+		ret = -EIO;
+		goto vf_bar_cleanup;
+	}
+
+	return 0;
+
+vf_bar_cleanup:
+	nfp_cpp_area_release_free(pf_dev->vf_area);
+
+	return ret;
+}
+
+static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	void *sync;
@@ -2148,6 +2200,12 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto hwqueues_cleanup;
 	}
 
+	ret = nfp_net_vf_config_init(pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init VF config.");
+		goto mac_stats_cleanup;
+	}
+
 	hw_priv->pf_dev = pf_dev;
 	hw_priv->dev_info = dev_info;
 
@@ -2158,7 +2216,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	ret = nfp_fw_app_primary_init(hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init hw app primary.");
-		goto mac_stats_cleanup;
+		goto vf_cfg_tbl_cleanup;
 	}
 
 	/* Register the CPP bridge service here for primary use */
@@ -2166,12 +2224,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		ret = nfp_enable_cpp_service(pf_dev);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Enable CPP service failed.");
-			goto hwqueues_cleanup;
+			goto vf_cfg_tbl_cleanup;
 		}
 	}
 
 	return 0;
 
+vf_cfg_tbl_cleanup:
+	nfp_net_vf_config_uninit(pf_dev);
 mac_stats_cleanup:
 	nfp_cpp_area_release_free(pf_dev->mac_stats_area);
 hwqueues_cleanup:
