@@ -2564,3 +2564,13 @@ nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
 	else
 		return nfp_eth_table->count;
 }
+
+uint8_t
+nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
+		uint8_t port_id)
+{
+	if (pf_dev->multi_pf.enabled)
+		return pf_dev->multi_pf.function_id;
+
+	return port_id;
+}

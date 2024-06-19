@@ -790,6 +790,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 {
 	int i;
 	int ret;
+	uint8_t id;
 	const char *pci_name;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
@@ -806,7 +807,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	repr_init.hw_priv = hw_priv;
 
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
-	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, nfp_eth_table);
+	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Cloud not send mac repr cmsgs");
 		return ret;
@@ -822,7 +823,11 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 
 	pci_name = strchr(pci_dev->name, ':') + 1;
 
-	snprintf(flower_repr.name, sizeof(flower_repr.name),
+	if (pf_dev->multi_pf.enabled)
+		snprintf(flower_repr.name, sizeof(flower_repr.name),
+			"%s_repr_pf%d", pci_name, pf_dev->multi_pf.function_id);
+	else
+		snprintf(flower_repr.name, sizeof(flower_repr.name),
 			"%s_repr_pf", pci_name);
 
 	/* Create a eth_dev for this representor */
@@ -836,7 +841,8 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 
 	/* Create a rte_eth_dev for every phyport representor */
 	for (i = 0; i < app_fw_flower->num_phyport_reprs; i++) {
-		eth_port = &nfp_eth_table->ports[i];
+		id = nfp_function_id_get(pf_dev, i);
+		eth_port = &nfp_eth_table->ports[id];
 		flower_repr.repr_type = NFP_REPR_TYPE_PHYS_PORT;
 		flower_repr.port_id = nfp_flower_get_phys_port_id(eth_port->index);
 		flower_repr.nfp_idx = eth_port->eth_index;
@@ -845,7 +851,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		/* Copy the real mac of the interface to the representor struct */
 		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr.mac_addr);
 		snprintf(flower_repr.name, sizeof(flower_repr.name),
-				"%s_repr_p%d", pci_name, i);
+				"%s_repr_p%d", pci_name, id);
 
 		/*
 		 * Create a eth_dev for this representor.

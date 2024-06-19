@@ -976,7 +976,7 @@ struct nfp_fl_act_mark {
 };
 
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
-		struct nfp_eth_table *nfp_eth_table);
+		struct nfp_pf_dev *pf_dev);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
 int nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,

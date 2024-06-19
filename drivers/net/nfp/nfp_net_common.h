@@ -328,6 +328,8 @@ int nfp_net_txrwb_alloc(struct rte_eth_dev *eth_dev);
 void nfp_net_txrwb_free(struct rte_eth_dev *eth_dev);
 uint32_t nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
 		struct nfp_eth_table *nfp_eth_table);
+uint8_t nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
+		uint8_t port_id);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

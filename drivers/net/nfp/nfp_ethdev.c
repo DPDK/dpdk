@@ -496,16 +496,6 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 	return nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
 }
 
-static uint8_t
-nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
-		uint8_t phy_port)
-{
-	if (pf_dev->multi_pf.enabled)
-		return pf_dev->multi_pf.function_id;
-
-	return phy_port;
-}
-
 static void
 nfp_net_beat_timer(void *arg)
 {

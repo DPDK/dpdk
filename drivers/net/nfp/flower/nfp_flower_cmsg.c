@@ -82,9 +82,10 @@ nfp_flower_cmsg_mac_repr_fill(struct rte_mbuf *m,
 
 int
 nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
-		struct nfp_eth_table *nfp_eth_table)
+		struct nfp_pf_dev *pf_dev)
 {
 	uint8_t i;
+	uint8_t id;
 	uint16_t cnt;
 	uint32_t nbi;
 	uint32_t nbi_port;
@@ -101,9 +102,10 @@ nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
 
 	/* Fill in the mac repr cmsg */
 	for (i = 0; i < app_fw_flower->num_phyport_reprs; i++) {
-		nbi = nfp_eth_table->ports[i].nbi;
-		nbi_port = nfp_eth_table->ports[i].base;
-		phys_port = nfp_eth_table->ports[i].index;
+		id = nfp_function_id_get(pf_dev, i);
+		nbi = pf_dev->nfp_eth_table->ports[id].nbi;
+		nbi_port =  pf_dev->nfp_eth_table->ports[id].base;
+		phys_port =  pf_dev->nfp_eth_table->ports[id].index;
 
 		nfp_flower_cmsg_mac_repr_fill(mbuf, i, nbi, nbi_port, phys_port);
 	}

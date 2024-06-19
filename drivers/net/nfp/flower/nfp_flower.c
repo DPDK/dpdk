@@ -647,14 +647,18 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 {
 	int ret;
 	int err;
+	uint8_t id;
 	uint64_t ext_features;
 	unsigned int numa_node;
 	struct nfp_net_hw *pf_hw;
 	struct nfp_net_hw *ctrl_hw;
+	char bar_name[RTE_ETH_NAME_MAX_LEN];
+	char ctrl_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_app_fw_flower *app_fw_flower;
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	numa_node = rte_socket_id();
+	id = nfp_function_id_get(pf_dev, 0);
 
 	/* Allocate memory for the Flower app */
 	app_fw_flower = rte_zmalloc_socket("nfp_app_fw_flower", sizeof(*app_fw_flower),
@@ -688,7 +692,8 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	/* Map the PF ctrl bar */
-	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_bar0",
+	snprintf(bar_name, sizeof(bar_name), "_pf%u_net_bar0", id);
+	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, bar_name,
 			NFP_NET_CFG_BAR_SZ, &pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Cloud not map the PF vNIC ctrl bar");
@@ -711,6 +716,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	/* Fill in the PF vNIC and populate app struct */
 	app_fw_flower->pf_hw = pf_hw;
 	pf_hw->super.ctrl_bar = pf_dev->ctrl_bar;
+	pf_hw->nfp_idx = pf_dev->nfp_eth_table->ports[id].index;
 
 	ret = nfp_flower_init_vnic_common(hw_priv, pf_hw, "pf_vnic");
 	if (ret != 0) {
@@ -725,7 +731,8 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	ctrl_hw = app_fw_flower->ctrl_hw;
 
 	/* Map the ctrl vNIC ctrl bar */
-	ctrl_hw->super.ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_ctrl_bar",
+	snprintf(ctrl_name, sizeof(ctrl_name), "_pf%u_net_ctrl_bar", id);
+	ctrl_hw->super.ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, ctrl_name,
 			NFP_NET_CFG_BAR_SZ, &ctrl_hw->ctrl_area);
 	if (ctrl_hw->super.ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Cloud not map the ctrl vNIC ctrl bar");
