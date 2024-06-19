@@ -984,184 +984,221 @@ struct nfp_action_flag {
 	bool ttl_tos_flag;
 };
 
+struct nfp_action_calculate_param {
+	const struct rte_flow_action *action;
+	struct nfp_fl_key_ls *key_ls;
+	struct nfp_action_flag *flag;
+};
+
+typedef int (*nfp_flow_key_calculate_action_fn)(struct nfp_action_calculate_param *param);
+
+static int
+nfp_flow_action_calculate_stub(struct nfp_action_calculate_param *param __rte_unused)
+{
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_port(struct nfp_action_calculate_param *param)
+{
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_output);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_mac(struct nfp_action_calculate_param *param)
+{
+	if (!param->flag->mac_set_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
+		param->flag->mac_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_pop_vlan(struct nfp_action_calculate_param *param)
+{
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_pop_vlan);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_push_vlan(struct nfp_action_calculate_param *param)
+{
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_push_vlan);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_ipv4_addr(struct nfp_action_calculate_param *param)
+{
+	if (!param->flag->ip_set_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ip4_addrs);
+		param->flag->ip_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_ipv6_addr(struct nfp_action_calculate_param *param)
+{
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_tp(struct nfp_action_calculate_param *param)
+{
+	if (!param->flag->tp_set_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
+		param->flag->tp_set_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_ttl(struct nfp_action_calculate_param *param)
+{
+	if ((param->key_ls->key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
+		if (!param->flag->ttl_tos_flag) {
+			param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+			param->flag->ttl_tos_flag = true;
+		}
+	} else {
+		if (!param->flag->tc_hl_flag) {
+			param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
+			param->flag->tc_hl_flag = true;
+		}
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_ipv4_dscp(struct nfp_action_calculate_param *param)
+{
+	if (!param->flag->ttl_tos_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
+		param->flag->ttl_tos_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_ipv6_dscp(struct nfp_action_calculate_param *param)
+{
+	if (!param->flag->tc_hl_flag) {
+		param->key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
+		param->flag->tc_hl_flag = true;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_encap(struct nfp_action_calculate_param *param)
+{
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_meter(struct nfp_action_calculate_param *param)
+{
+	if (param->flag->meter_flag) {
+		PMD_DRV_LOG(ERR, "Only support one meter action.");
+		return -ENOTSUP;
+	}
+
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_meter);
+	param->flag->meter_flag = true;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_calculate_mark(struct nfp_action_calculate_param *param)
+{
+	param->key_ls->act_size += sizeof(struct nfp_fl_act_mark);
+
+	return 0;
+}
+
+static nfp_flow_key_calculate_action_fn action_fns[] = {
+	[RTE_FLOW_ACTION_TYPE_VOID]             = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_DROP]             = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_COUNT]            = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_JUMP]             = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_PORT_ID]          = nfp_flow_action_calculate_port,
+	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = nfp_flow_action_calculate_port,
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC]      = nfp_flow_action_calculate_mac,
+	[RTE_FLOW_ACTION_TYPE_SET_MAC_DST]      = nfp_flow_action_calculate_mac,
+	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN]      = nfp_flow_action_calculate_pop_vlan,
+	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN]     = nfp_flow_action_calculate_push_vlan,
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID]  = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP]  = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC]     = nfp_flow_action_calculate_ipv4_addr,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DST]     = nfp_flow_action_calculate_ipv4_addr,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC]     = nfp_flow_action_calculate_ipv6_addr,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_DST]     = nfp_flow_action_calculate_ipv6_addr,
+	[RTE_FLOW_ACTION_TYPE_SET_TP_SRC]       = nfp_flow_action_calculate_tp,
+	[RTE_FLOW_ACTION_TYPE_SET_TP_DST]       = nfp_flow_action_calculate_tp,
+	[RTE_FLOW_ACTION_TYPE_SET_TTL]          = nfp_flow_action_calculate_ttl,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP]    = nfp_flow_action_calculate_ipv4_dscp,
+	[RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP]    = nfp_flow_action_calculate_ipv6_dscp,
+	[RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP]      = nfp_flow_action_calculate_encap,
+	[RTE_FLOW_ACTION_TYPE_RAW_ENCAP]        = nfp_flow_action_calculate_encap,
+	[RTE_FLOW_ACTION_TYPE_VXLAN_DECAP]      = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_RAW_DECAP]        = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_METER]            = nfp_flow_action_calculate_meter,
+	[RTE_FLOW_ACTION_TYPE_CONNTRACK]        = nfp_flow_action_calculate_stub,
+	[RTE_FLOW_ACTION_TYPE_MARK]             = nfp_flow_action_calculate_mark,
+	[RTE_FLOW_ACTION_TYPE_RSS]              = nfp_flow_action_calculate_stub,
+};
+
 static int
 nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 		struct nfp_fl_key_ls *key_ls)
 {
-	int ret = 0;
+	int ret;
 	struct nfp_action_flag flag = {};
 	const struct rte_flow_action *action;
+	struct nfp_action_calculate_param param = {
+		.key_ls = key_ls,
+		.flag = &flag,
+	};
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		/* Make sure actions length no longer than NFP_FL_MAX_A_SIZ */
 		if (key_ls->act_size > NFP_FL_MAX_A_SIZ) {
 			PMD_DRV_LOG(ERR, "The action list is too long.");
-			ret = -ERANGE;
-			break;
+			return -EINVAL;
 		}
 
-		switch (action->type) {
-		case RTE_FLOW_ACTION_TYPE_VOID:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VOID detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_DROP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_DROP detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_COUNT:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_COUNT detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_JUMP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_JUMP detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_PORT_ID:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_PORT_ID detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_output);
-			break;
-		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_output);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_MAC_SRC detected");
-			if (!flag.mac_set_flag) {
-				key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
-				flag.mac_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_MAC_DST:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_MAC_DST detected");
-			if (!flag.mac_set_flag) {
-				key_ls->act_size += sizeof(struct nfp_fl_act_set_eth);
-				flag.mac_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_POP_VLAN detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_pop_vlan);
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_push_vlan);
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_PCP detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_SRC detected");
-			if (!flag.ip_set_flag) {
-				key_ls->act_size +=
-					sizeof(struct nfp_fl_act_set_ip4_addrs);
-				flag.ip_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DST:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_DST detected");
-			if (!flag.ip_set_flag) {
-				key_ls->act_size +=
-					sizeof(struct nfp_fl_act_set_ip4_addrs);
-				flag.ip_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_SRC detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_DST detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_set_ipv6_addr);
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TP_SRC detected");
-			if (!flag.tp_set_flag) {
-				key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
-				flag.tp_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TP_DST:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TP_DST detected");
-			if (!flag.tp_set_flag) {
-				key_ls->act_size += sizeof(struct nfp_fl_act_set_tport);
-				flag.tp_set_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_TTL:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_TTL detected");
-			if ((key_ls->key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
-				if (!flag.ttl_tos_flag) {
-					key_ls->act_size +=
-						sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-					flag.ttl_tos_flag = true;
-				}
-			} else {
-				if (!flag.tc_hl_flag) {
-					key_ls->act_size +=
-						sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-					flag.tc_hl_flag = true;
-				}
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV4_DSCP detected");
-			if (!flag.ttl_tos_flag) {
-				key_ls->act_size +=
-					sizeof(struct nfp_fl_act_set_ip4_ttl_tos);
-				flag.ttl_tos_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP detected");
-			if (!flag.tc_hl_flag) {
-				key_ls->act_size +=
-					sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
-				flag.tc_hl_flag = true;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
-			key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
-			break;
-		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RAW_ENCAP detected");
-			key_ls->act_size += sizeof(struct nfp_fl_act_pre_tun);
-			key_ls->act_size += sizeof(struct nfp_fl_act_set_tun);
-			break;
-		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_VXLAN_DECAP detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RAW_DECAP detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_METER:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_METER detected");
-			if (!flag.meter_flag) {
-				key_ls->act_size += sizeof(struct nfp_fl_act_meter);
-				flag.meter_flag = true;
-			} else {
-				PMD_DRV_LOG(ERR, "Only support one meter action.");
-				return -ENOTSUP;
-			}
-			break;
-		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_CONNTRACK detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_MARK:
-			key_ls->act_size += sizeof(struct nfp_fl_act_mark);
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_MARK detected");
-			break;
-		case RTE_FLOW_ACTION_TYPE_RSS:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RSS detected");
-			break;
-		default:
-			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
-			return -ENOTSUP;
+		if (action->type >= RTE_DIM(action_fns) || action_fns[action->type] == NULL) {
+			PMD_DRV_LOG(ERR, "Flow action %d unsupported", action->type);
+			return -ERANGE;
+		}
+
+		param.action = action;
+		ret = action_fns[action->type](&param);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Flow action %d calculate fail", action->type);
+			return ret;
 		}
 	}
 
-	return ret;
+	return 0;
 }
 
 static int
