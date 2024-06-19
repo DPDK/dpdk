@@ -191,23 +191,6 @@ class RemoteSession(ABC):
             * SSHTimeoutError if the command execution times out.
         """
 
-    def close(self, force: bool = False) -> None:
-        """Close the remote session and free all used resources.
-
-        Args:
-            force: Force the closure of the connection. This may not clean up all resources.
-        """
-        self._close(force)
-
-    @abstractmethod
-    def _close(self, force: bool = False) -> None:
-        """Protocol specific steps needed to close the session properly.
-
-        Args:
-            force: Force the closure of the connection. This may not clean up all resources.
-                This doesn't have to be implemented in the overloaded method.
-        """
-
     @abstractmethod
     def is_alive(self) -> bool:
         """Check whether the remote session is still responding."""
@@ -243,3 +226,7 @@ class RemoteSession(ABC):
             source_file: The file on the local filesystem.
             destination_file: A file or directory path on the remote Node.
         """
+
+    @abstractmethod
+    def close(self) -> None:
+        """Close the remote session and free all used resources."""

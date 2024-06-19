@@ -74,10 +74,6 @@ class SSHSession(RemoteSession):
         else:
             raise SSHConnectionError(self.hostname, errors)
 
-    def is_alive(self) -> bool:
-        """Overrides :meth:`~.remote_session.RemoteSession.is_alive`."""
-        return self.session.is_connected
-
     def _send_command(self, command: str, timeout: float, env: dict | None) -> CommandResult:
         """Send a command and return the result of the execution.
 
@@ -103,6 +99,10 @@ class SSHSession(RemoteSession):
 
         return CommandResult(self.name, command, output.stdout, output.stderr, output.return_code)
 
+    def is_alive(self) -> bool:
+        """Overrides :meth:`~.remote_session.RemoteSession.is_alive`."""
+        return self.session.is_connected
+
     def copy_from(
         self,
         source_file: str | PurePath,
@@ -119,5 +119,6 @@ class SSHSession(RemoteSession):
         """Overrides :meth:`~.remote_session.RemoteSession.copy_to`."""
         self.session.put(str(source_file), str(destination_file))
 
-    def _close(self, force: bool = False) -> None:
+    def close(self) -> None:
+        """Overrides :meth:`~.remote_session.RemoteSession.close`."""
         self.session.close()

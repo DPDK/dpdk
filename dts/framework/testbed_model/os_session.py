@@ -88,14 +88,6 @@ class OSSession(ABC):
         self.remote_session = create_remote_session(node_config, name, logger)
         self.interactive_session = create_interactive_session(node_config, logger)
 
-    def close(self, force: bool = False) -> None:
-        """Close the underlying remote session.
-
-        Args:
-            force: Force the closure of the connection.
-        """
-        self.remote_session.close(force)
-
     def is_alive(self) -> bool:
         """Check whether the underlying remote session is still responding."""
         return self.remote_session.is_alive()
@@ -160,6 +152,10 @@ class OSSession(ABC):
             app_args,
             timeout,
         )
+
+    def close(self) -> None:
+        """Close the underlying remote session."""
+        self.remote_session.close()
 
     @staticmethod
     @abstractmethod
