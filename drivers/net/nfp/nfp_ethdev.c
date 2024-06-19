@@ -390,10 +390,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
 		ctrl_extend = NFP_NET_CFG_CTRL_PKT_TYPE;
 
-	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0)
-		ctrl_extend |= NFP_NET_CFG_CTRL_IPSEC |
-				NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP |
-				NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_SECURITY) != 0 ||
+			(txmode->offloads & RTE_ETH_TX_OFFLOAD_SECURITY) != 0) {
+		if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0)
+			ctrl_extend |= NFP_NET_CFG_CTRL_IPSEC |
+					NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP |
+					NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
+	}
 
 	/* Enable flow steer by extend ctrl word1. */
 	if ((cap_extend & NFP_NET_CFG_CTRL_FLOW_STEER) != 0)
