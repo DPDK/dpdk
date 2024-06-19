@@ -809,13 +809,17 @@ nfp_flow_compile_metadata(struct nfp_flow_priv *priv,
 	mbuf_off_mask  += sizeof(struct nfp_flower_in_port);
 }
 
+struct nfp_item_flag {
+	bool outer_ip4_flag;
+	bool outer_ip6_flag;
+};
+
 static int
 nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 		struct nfp_fl_key_ls *key_ls)
 {
 	struct rte_eth_dev *ethdev;
-	bool outer_ip4_flag = false;
-	bool outer_ip6_flag = false;
+	struct nfp_item_flag flag = {};
 	const struct rte_flow_item *item;
 	struct nfp_flower_representor *representor;
 	const struct rte_flow_item_port_id *port_id;
@@ -850,15 +854,15 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
 			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV4;
 			key_ls->key_size += sizeof(struct nfp_flower_ipv4);
-			if (!outer_ip4_flag)
-				outer_ip4_flag = true;
+			if (!flag.outer_ip4_flag)
+				flag.outer_ip4_flag = true;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
 			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
 			key_ls->key_size += sizeof(struct nfp_flower_ipv6);
-			if (!outer_ip6_flag)
-				outer_ip6_flag = true;
+			if (!flag.outer_ip6_flag)
+				flag.outer_ip6_flag = true;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_TCP detected");
@@ -882,14 +886,14 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
 			key_ls->tun_type = NFP_FL_TUN_VXLAN;
 			key_ls->key_layer |= NFP_FLOWER_LAYER_VXLAN;
-			if (outer_ip4_flag) {
+			if (flag.outer_ip4_flag) {
 				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
 				/*
 				 * The outer l3 layer information is
 				 * in `struct nfp_flower_ipv4_udp_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-			} else if (outer_ip6_flag) {
+			} else if (flag.outer_ip6_flag) {
 				key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
 				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
 				key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
@@ -913,14 +917,14 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
 			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GENEVE;
 			key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
-			if (outer_ip4_flag) {
+			if (flag.outer_ip4_flag) {
 				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
 				/*
 				 * The outer l3 layer information is
 				 * in `struct nfp_flower_ipv4_udp_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-			} else if (outer_ip6_flag) {
+			} else if (flag.outer_ip6_flag) {
 				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
 				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
 				/*
@@ -942,14 +946,14 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
 			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GRE;
 			key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
-			if (outer_ip4_flag) {
+			if (flag.outer_ip4_flag) {
 				key_ls->key_size += sizeof(struct nfp_flower_ipv4_gre_tun);
 				/*
 				 * The outer l3 layer information is
 				 * in `struct nfp_flower_ipv4_gre_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-			} else if (outer_ip6_flag) {
+			} else if (flag.outer_ip6_flag) {
 				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
 				key_ls->key_size += sizeof(struct nfp_flower_ipv6_gre_tun);
 				/*
