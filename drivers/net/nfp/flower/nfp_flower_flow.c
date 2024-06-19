@@ -1128,7 +1128,245 @@ struct nfp_action_calculate_param {
 	struct nfp_action_flag *flag;
 };
 
+typedef int (*nfp_flow_key_check_action_fn)(struct nfp_action_calculate_param *param);
 typedef int (*nfp_flow_key_calculate_action_fn)(struct nfp_action_calculate_param *param);
+
+static int
+nfp_flow_action_check_port(struct nfp_action_calculate_param *param)
+{
+	uint32_t port_id;
+	const struct rte_flow_action *action;
+	const struct rte_flow_action_ethdev *action_ethdev;
+	const struct rte_flow_action_port_id *action_port_id;
+
+	action = param->action;
+	if (action->conf == NULL)
+		return -EINVAL;
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT) {
+		action_ethdev = action->conf;
+		port_id = action_ethdev->port_id;
+	} else {
+		action_port_id = action->conf;
+		port_id = action_port_id->id;
+	}
+
+	if (rte_eth_dev_is_valid_port(port_id) == 0)
+		return -ERANGE;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_check_meter(struct nfp_action_calculate_param *param)
+{
+	if (param->flag->meter_flag) {
+		PMD_DRV_LOG(ERR, "Only support one meter action.");
+		return -ENOTSUP;
+	}
+
+	param->flag->meter_flag = true;
+
+	return 0;
+}
+
+static bool
+nfp_flow_field_id_dst_support(enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV4_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_UDP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_MAC_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_MAC_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV4_DSCP:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
+static bool
+nfp_flow_field_id_src_support(enum rte_flow_field_id field)
+{
+	return field == RTE_FLOW_FIELD_POINTER ||
+			field == RTE_FLOW_FIELD_VALUE;
+}
+
+static uint32_t
+nfp_flow_field_width(enum rte_flow_field_id field,
+		uint32_t inherit)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_IPV4_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV4_DST:
+		return 32;
+	case RTE_FLOW_FIELD_IPV6_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_DST:
+		return 128;
+	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_UDP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		return 16;
+	case RTE_FLOW_FIELD_IPV4_TTL:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+		return 8;
+	case RTE_FLOW_FIELD_MAC_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_MAC_DST:
+		return 48;
+	case RTE_FLOW_FIELD_IPV4_DSCP:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+		return 6;
+	case RTE_FLOW_FIELD_POINTER:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_VALUE:
+		return inherit;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static bool
+nfp_flow_is_validate_field_data(const struct rte_flow_field_data *data,
+		uint32_t conf_width,
+		uint32_t data_width)
+{
+	if (data->level != 0) {
+		PMD_DRV_LOG(ERR, "The 'level' is not support");
+		return false;
+	}
+
+	if (data->tag_index != 0) {
+		PMD_DRV_LOG(ERR, "The 'tag_index' is not support");
+		return false;
+	}
+
+	if (data->class_id != 0) {
+		PMD_DRV_LOG(ERR, "The 'class_id' is not support");
+		return false;
+	}
+
+	if (data->offset + conf_width > data_width) {
+		PMD_DRV_LOG(ERR, "The 'offset' value is too big");
+		return false;
+	}
+
+	return true;
+}
+
+static int
+nfp_flow_action_check_modify(struct nfp_action_calculate_param *param)
+{
+	uint32_t width;
+	uint32_t dst_width;
+	uint32_t src_width;
+	const struct rte_flow_field_data *dst_data;
+	const struct rte_flow_field_data *src_data;
+	const struct rte_flow_action_modify_field *conf;
+
+	conf = param->action->conf;
+	if (conf == NULL)
+		return -EINVAL;
+
+	dst_data = &conf->dst;
+	src_data = &conf->src;
+	if (!nfp_flow_field_id_dst_support(dst_data->field) ||
+			!nfp_flow_field_id_src_support(src_data->field)) {
+		PMD_DRV_LOG(ERR, "Not supported field id");
+		return -EINVAL;
+	}
+
+	width = conf->width;
+	if (width == 0) {
+		PMD_DRV_LOG(ERR, "No bits are required to modify");
+		return -EINVAL;
+	}
+
+	dst_width = nfp_flow_field_width(dst_data->field, 0);
+	src_width = nfp_flow_field_width(src_data->field, dst_width);
+	if (width > dst_width || width > src_width) {
+		PMD_DRV_LOG(ERR, "Cannot modify more bits than the width of a field");
+		return -EINVAL;
+	}
+
+	if (!nfp_flow_is_validate_field_data(dst_data, width, dst_width)) {
+		PMD_DRV_LOG(ERR, "The dest field data has problem");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static nfp_flow_key_check_action_fn check_action_fns[] = {
+	[RTE_FLOW_ACTION_TYPE_PORT_ID]          = nfp_flow_action_check_port,
+	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = nfp_flow_action_check_port,
+	[RTE_FLOW_ACTION_TYPE_METER]            = nfp_flow_action_check_meter,
+	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD]     = nfp_flow_action_check_modify,
+};
+
+static int
+nfp_flow_key_layers_check_actions(const struct rte_flow_action actions[])
+{
+	int ret;
+	struct nfp_action_flag flag = {};
+	const struct rte_flow_action *action;
+	struct nfp_action_calculate_param param = {
+		.flag = &flag,
+	};
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		if (action->type >= RTE_DIM(check_action_fns)) {
+			PMD_DRV_LOG(ERR, "Flow action %d unsupported", action->type);
+			return -ERANGE;
+		}
+
+		if (check_action_fns[action->type] == NULL)
+			continue;
+
+		param.action = action;
+		ret = check_action_fns[action->type](&param);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Flow action %d calculate fail", action->type);
+			return ret;
+		}
+	}
+
+	return 0;
+}
 
 static int
 nfp_flow_action_calculate_stub(struct nfp_action_calculate_param *param __rte_unused)
@@ -1270,124 +1508,6 @@ nfp_flow_action_calculate_mark(struct nfp_action_calculate_param *param)
 	param->key_ls->act_size += sizeof(struct nfp_fl_act_mark);
 
 	return 0;
-}
-
-static bool
-nfp_flow_field_id_dst_support(enum rte_flow_field_id field)
-{
-	switch (field) {
-	case RTE_FLOW_FIELD_IPV4_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV4_DST:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_DST:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_TCP_PORT_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_TCP_PORT_DST:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_UDP_PORT_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_UDP_PORT_DST:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV4_TTL:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_MAC_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_MAC_DST:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV4_DSCP:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_DSCP:
-		return true;
-	default:
-		break;
-	}
-
-	return false;
-}
-
-static bool
-nfp_flow_field_id_src_support(enum rte_flow_field_id field)
-{
-	return field == RTE_FLOW_FIELD_POINTER ||
-			field == RTE_FLOW_FIELD_VALUE;
-}
-
-static uint32_t
-nfp_flow_field_width(enum rte_flow_field_id field,
-		uint32_t inherit)
-{
-	switch (field) {
-	case RTE_FLOW_FIELD_IPV4_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV4_DST:
-		return 32;
-	case RTE_FLOW_FIELD_IPV6_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_DST:
-		return 128;
-	case RTE_FLOW_FIELD_TCP_PORT_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_TCP_PORT_DST:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_UDP_PORT_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_UDP_PORT_DST:
-		return 16;
-	case RTE_FLOW_FIELD_IPV4_TTL:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
-		return 8;
-	case RTE_FLOW_FIELD_MAC_SRC:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_MAC_DST:
-		return 48;
-	case RTE_FLOW_FIELD_IPV4_DSCP:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_IPV6_DSCP:
-		return 6;
-	case RTE_FLOW_FIELD_POINTER:
-		/* FALLTHROUGH */
-	case RTE_FLOW_FIELD_VALUE:
-		return inherit;
-	default:
-		break;
-	}
-
-	return 0;
-}
-
-static bool
-nfp_flow_is_validate_field_data(const struct rte_flow_field_data *data,
-		uint32_t conf_width,
-		uint32_t data_width)
-{
-	if (data->level != 0) {
-		PMD_DRV_LOG(ERR, "The 'level' is not support");
-		return false;
-	}
-
-	if (data->tag_index != 0) {
-		PMD_DRV_LOG(ERR, "The 'tag_index' is not support");
-		return false;
-	}
-
-	if (data->class_id != 0) {
-		PMD_DRV_LOG(ERR, "The 'class_id' is not support");
-		return false;
-	}
-
-	if (data->offset + conf_width > data_width) {
-		PMD_DRV_LOG(ERR, "The 'offset' value is too big");
-		return false;
-	}
-
-	return true;
 }
 
 static int
@@ -1566,6 +1686,12 @@ nfp_flow_key_layers_calculate(const struct rte_flow_item items[],
 	ret = nfp_flow_key_layers_calculate_items(items, key_ls);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "flow items calculate failed");
+		return ret;
+	}
+
+	ret = nfp_flow_key_layers_check_actions(actions);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "flow actions check failed");
 		return ret;
 	}
 
@@ -2588,9 +2714,6 @@ nfp_flow_action_output(char *act_data,
 	const struct rte_flow_action_ethdev *action_ethdev;
 	const struct rte_flow_action_port_id *action_port_id;
 
-	if (action->conf == NULL)
-		return -EINVAL;
-
 	if (action->type == RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT) {
 		action_ethdev = action->conf;
 		port_id = action_ethdev->port_id;
@@ -2598,9 +2721,6 @@ nfp_flow_action_output(char *act_data,
 		action_port_id = action->conf;
 		port_id = action_port_id->id;
 	}
-
-	if (port_id >= RTE_MAX_ETHPORTS)
-		return -ERANGE;
 
 	ethdev = &rte_eth_devices[port_id];
 	representor = ethdev->data->dev_private;
