@@ -1218,6 +1218,8 @@ nfp_flow_field_id_dst_support(enum rte_flow_field_id field)
 	case RTE_FLOW_FIELD_IPV6_DST:
 		/* FALLTHROUGH */
 	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
 		return true;
 	default:
 		break;
@@ -1247,6 +1249,8 @@ nfp_flow_field_width(enum rte_flow_field_id field,
 	case RTE_FLOW_FIELD_IPV6_DST:
 		return 128;
 	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
 		return 16;
 	case RTE_FLOW_FIELD_POINTER:
 		/* FALLTHROUGH */
@@ -1301,6 +1305,8 @@ nfp_flow_action_calculate_modify_dispatch(struct nfp_action_calculate_param *par
 	case RTE_FLOW_FIELD_IPV6_DST:
 		return nfp_flow_action_calculate_ipv6_addr(param);
 	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+		/* FALLTHROUGH */
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
 		return nfp_flow_action_calculate_tp(param);
 	default:
 		break;    /* NOTREACHED */
@@ -4267,6 +4273,8 @@ nfp_flow_action_compile_modify_dispatch(struct nfp_action_compile_param *param,
 		return nfp_flow_action_compile_ipv6_dst(param);
 	case RTE_FLOW_FIELD_TCP_PORT_SRC:
 		return nfp_flow_action_compile_tp_src(param);
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+		return nfp_flow_action_compile_tp_dst(param);
 	default:
 		break;    /* NOTREACHED */
 	}
