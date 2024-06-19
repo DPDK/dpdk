@@ -511,6 +511,8 @@ nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
 
 	pci_name = strchr(app_fw_flower->pf_hw->pf_dev->pci_dev->name, ':') + 1;
 
+	nfp_net_disable_queues(eth_dev);
+
 	snprintf(ctrl_txring_name, sizeof(ctrl_txring_name), "%s_cttx_ring", pci_name);
 	for (i = 0; i < hw->max_tx_queues; i++) {
 		txq = eth_dev->data->tx_queues[i];
