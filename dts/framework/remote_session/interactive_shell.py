@@ -17,13 +17,14 @@ environment variable configure the timeout of getting the output from command ex
 
 from abc import ABC
 from pathlib import PurePath
-from typing import Callable, ClassVar
+from typing import ClassVar
 
-from paramiko import Channel, SSHClient, channel  # type: ignore[import-untyped]
+from paramiko import Channel, channel  # type: ignore[import-untyped]
 
 from framework.logger import DTSLogger
 from framework.params import Params
 from framework.settings import SETTINGS
+from framework.testbed_model.node import Node
 
 
 class InteractiveShell(ABC):
@@ -36,13 +37,15 @@ class InteractiveShell(ABC):
     session.
     """
 
-    _interactive_session: SSHClient
+    _node: Node
     _stdin: channel.ChannelStdinFile
     _stdout: channel.ChannelFile
     _ssh_channel: Channel
     _logger: DTSLogger
     _timeout: float
     _app_params: Params
+    _privileged: bool
+    _real_path: PurePath
 
     #: Prompt to expect at the end of output when sending a command.
     #: This is often overridden by subclasses.
@@ -56,56 +59,58 @@ class InteractiveShell(ABC):
     #: Path to the executable to start the interactive application.
     path: ClassVar[PurePath]
 
-    #: Whether this application is a DPDK app. If it is, the build directory
-    #: for DPDK on the node will be prepended to the path to the executable.
-    dpdk_app: ClassVar[bool] = False
-
     def __init__(
         self,
-        interactive_session: SSHClient,
-        logger: DTSLogger,
-        get_privileged_command: Callable[[str], str] | None,
-        app_params: Params = Params(),
+        node: Node,
+        privileged: bool = False,
         timeout: float = SETTINGS.timeout,
+        start_on_init: bool = True,
+        app_params: Params = Params(),
     ) -> None:
         """Create an SSH channel during initialization.
 
         Args:
-            interactive_session: The SSH session dedicated to interactive shells.
-            logger: The logger instance this session will use.
-            get_privileged_command: A method for modifying a command to allow it to use
-                elevated privileges. If :data:`None`, the application will not be started
-                with elevated privileges.
-            app_params: The command line parameters to be passed to the application on startup.
+            node: The node on which to run start the interactive shell.
+            privileged: Enables the shell to run as superuser.
             timeout: The timeout used for the SSH channel that is dedicated to this interactive
                 shell. This timeout is for collecting output, so if reading from the buffer
                 and no output is gathered within the timeout, an exception is thrown.
+            start_on_init: Start interactive shell automatically after object initialisation.
+            app_params: The command line parameters to be passed to the application on startup.
         """
-        self._interactive_session = interactive_session
-        self._ssh_channel = self._interactive_session.invoke_shell()
+        self._node = node
+        self._logger = node._logger
+        self._app_params = app_params
+        self._privileged = privileged
+        self._timeout = timeout
+        # Ensure path is properly formatted for the host
+        self._update_real_path(self.path)
+
+        if start_on_init:
+            self.start_application()
+
+    def _setup_ssh_channel(self):
+        self._ssh_channel = self._node.main_session.interactive_session.session.invoke_shell()
         self._stdin = self._ssh_channel.makefile_stdin("w")
         self._stdout = self._ssh_channel.makefile("r")
-        self._ssh_channel.settimeout(timeout)
+        self._ssh_channel.settimeout(self._timeout)
         self._ssh_channel.set_combine_stderr(True)  # combines stdout and stderr streams
-        self._logger = logger
-        self._timeout = timeout
-        self._app_params = app_params
-        self._start_application(get_privileged_command)
 
-    def _start_application(self, get_privileged_command: Callable[[str], str] | None) -> None:
+    def _make_start_command(self) -> str:
+        """Makes the command that starts the interactive shell."""
+        start_command = f"{self._real_path} {self._app_params or ''}"
+        if self._privileged:
+            start_command = self._node.main_session._get_privileged_command(start_command)
+        return start_command
+
+    def start_application(self) -> None:
         """Starts a new interactive application based on the path to the app.
 
         This method is often overridden by subclasses as their process for
         starting may look different.
-
-        Args:
-            get_privileged_command: A function (but could be any callable) that produces
-                the version of the command with elevated privileges.
         """
-        start_command = f"{self.path} {self._app_params}"
-        if get_privileged_command is not None:
-            start_command = get_privileged_command(start_command)
-        self.send_command(start_command)
+        self._setup_ssh_channel()
+        self.send_command(self._make_start_command())
 
     def send_command(
         self, command: str, prompt: str | None = None, skip_first_line: bool = False
@@ -156,3 +161,7 @@ class InteractiveShell(ABC):
     def __del__(self) -> None:
         """Make sure the session is properly closed before deleting the object."""
         self.close()
+
+    def _update_real_path(self, path: PurePath) -> None:
+        """Updates the interactive shell's real path used at command line."""
+        self._real_path = self._node.main_session.join_remote_path(path)

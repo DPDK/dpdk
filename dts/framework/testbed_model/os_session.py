@@ -26,26 +26,22 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from ipaddress import IPv4Interface, IPv6Interface
 from pathlib import PurePath
-from typing import Type, TypeVar, Union
+from typing import Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
 from framework.logger import DTSLogger
-from framework.params import Params
 from framework.remote_session import (
     InteractiveRemoteSession,
     RemoteSession,
     create_interactive_session,
     create_remote_session,
 )
-from framework.remote_session.interactive_shell import InteractiveShell
 from framework.remote_session.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
 
 from .cpu import LogicalCore
 from .port import Port
-
-InteractiveShellType = TypeVar("InteractiveShellType", bound=InteractiveShell)
 
 
 class OSSession(ABC):
@@ -124,36 +120,6 @@ class OSSession(ABC):
             command = self._get_privileged_command(command)
 
         return self.remote_session.send_command(command, timeout, verify, env)
-
-    def create_interactive_shell(
-        self,
-        shell_cls: Type[InteractiveShellType],
-        timeout: float,
-        privileged: bool,
-        app_args: Params,
-    ) -> InteractiveShellType:
-        """Factory for interactive session handlers.
-
-        Instantiate `shell_cls` according to the remote OS specifics.
-
-        Args:
-            shell_cls: The class of the shell.
-            timeout: Timeout for reading output from the SSH channel. If you are
-                reading from the buffer and don't receive any data within the timeout
-                it will throw an error.
-            privileged: Whether to run the shell with administrative privileges.
-            app_args: The arguments to be passed to the application.
-
-        Returns:
-            An instance of the desired interactive application shell.
-        """
-        return shell_cls(
-            self.interactive_session.session,
-            self._logger,
-            self._get_privileged_command if privileged else None,
-            app_args,
-            timeout,
-        )
 
     def close(self) -> None:
         """Close the underlying remote session."""

@@ -15,12 +15,11 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 
 from abc import ABC
 from ipaddress import IPv4Interface, IPv6Interface
-from typing import Any, Callable, Type, Union
+from typing import Any, Callable, Union
 
 from framework.config import OS, NodeConfiguration, TestRunConfiguration
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
-from framework.params import Params
 from framework.settings import SETTINGS
 
 from .cpu import (
@@ -31,7 +30,7 @@ from .cpu import (
     lcore_filter,
 )
 from .linux_session import LinuxSession
-from .os_session import InteractiveShellType, OSSession
+from .os_session import OSSession
 from .port import Port
 
 
@@ -139,37 +138,6 @@ class Node(ABC):
         )
         self._other_sessions.append(connection)
         return connection
-
-    def create_interactive_shell(
-        self,
-        shell_cls: Type[InteractiveShellType],
-        timeout: float = SETTINGS.timeout,
-        privileged: bool = False,
-        app_params: Params = Params(),
-    ) -> InteractiveShellType:
-        """Factory for interactive session handlers.
-
-        Instantiate `shell_cls` according to the remote OS specifics.
-
-        Args:
-            shell_cls: The class of the shell.
-            timeout: Timeout for reading output from the SSH channel. If you are reading from
-                the buffer and don't receive any data within the timeout it will throw an error.
-            privileged: Whether to run the shell with administrative privileges.
-            app_args: The arguments to be passed to the application.
-
-        Returns:
-            An instance of the desired interactive application shell.
-        """
-        if not shell_cls.dpdk_app:
-            shell_cls.path = self.main_session.join_remote_path(shell_cls.path)
-
-        return self.main_session.create_interactive_shell(
-            shell_cls,
-            timeout,
-            privileged,
-            app_params,
-        )
 
     def filter_lcores(
         self,

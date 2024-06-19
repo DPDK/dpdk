@@ -16,7 +16,6 @@ import os
 import tarfile
 import time
 from pathlib import PurePath
-from typing import Type
 
 from framework.config import (
     BuildTargetConfiguration,
@@ -25,16 +24,13 @@ from framework.config import (
     SutNodeConfiguration,
     TestRunConfiguration,
 )
-from framework.params import Params, Switch
 from framework.params.eal import EalParams
 from framework.remote_session.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
 
-from .cpu import LogicalCoreCount, LogicalCoreList
 from .node import Node
-from .os_session import InteractiveShellType, OSSession
-from .port import Port
+from .os_session import OSSession
 from .virtual_device import VirtualDevice
 
 
@@ -59,8 +55,8 @@ class SutNode(Node):
 
     config: SutNodeConfiguration
     virtual_devices: list[VirtualDevice]
-    _dpdk_prefix_list: list[str]
-    _dpdk_timestamp: str
+    dpdk_prefix_list: list[str]
+    dpdk_timestamp: str
     _build_target_config: BuildTargetConfiguration | None
     _env_vars: dict
     _remote_tmp_dir: PurePath
@@ -80,14 +76,14 @@ class SutNode(Node):
         """
         super().__init__(node_config)
         self.virtual_devices = []
-        self._dpdk_prefix_list = []
+        self.dpdk_prefix_list = []
         self._build_target_config = None
         self._env_vars = {}
         self._remote_tmp_dir = self.main_session.get_remote_tmp_dir()
         self.__remote_dpdk_dir = None
         self._app_compile_timeout = 90
         self._dpdk_kill_session = None
-        self._dpdk_timestamp = (
+        self.dpdk_timestamp = (
             f"{str(os.getpid())}_{time.strftime('%Y%m%d%H%M%S', time.localtime())}"
         )
         self._dpdk_version = None
@@ -306,73 +302,11 @@ class SutNode(Node):
         """Kill all dpdk applications on the SUT, then clean up hugepages."""
         if self._dpdk_kill_session and self._dpdk_kill_session.is_alive():
             # we can use the session if it exists and responds
-            self._dpdk_kill_session.kill_cleanup_dpdk_apps(self._dpdk_prefix_list)
+            self._dpdk_kill_session.kill_cleanup_dpdk_apps(self.dpdk_prefix_list)
         else:
             # otherwise, we need to (re)create it
             self._dpdk_kill_session = self.create_session("dpdk_kill")
-        self._dpdk_prefix_list = []
-
-    def create_eal_parameters(
-        self,
-        lcore_filter_specifier: LogicalCoreCount | LogicalCoreList = LogicalCoreCount(),
-        ascending_cores: bool = True,
-        prefix: str = "dpdk",
-        append_prefix_timestamp: bool = True,
-        no_pci: Switch = None,
-        vdevs: list[VirtualDevice] | None = None,
-        ports: list[Port] | None = None,
-        other_eal_param: str = "",
-    ) -> EalParams:
-        """Compose the EAL parameters.
-
-        Process the list of cores and the DPDK prefix and pass that along with
-        the rest of the arguments.
-
-        Args:
-            lcore_filter_specifier: A number of lcores/cores/sockets to use
-                or a list of lcore ids to use.
-                The default will select one lcore for each of two cores
-                on one socket, in ascending order of core ids.
-            ascending_cores: Sort cores in ascending order (lowest to highest IDs).
-                If :data:`False`, sort in descending order.
-            prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix='vf'``.
-            append_prefix_timestamp: If :data:`True`, will append a timestamp to DPDK file prefix.
-            no_pci: Switch to disable PCI bus e.g.: ``no_pci=True``.
-            vdevs: Virtual devices, e.g.::
-
-                vdevs=[
-                    VirtualDevice('net_ring0'),
-                    VirtualDevice('net_ring1')
-                ]
-            ports: The list of ports to allow. If :data:`None`, all ports listed in `self.ports`
-                will be allowed.
-            other_eal_param: user defined DPDK EAL parameters, e.g.:
-                ``other_eal_param='--single-file-segments'``.
-
-        Returns:
-            An EAL param string, such as
-            ``-c 0xf -a 0000:88:00.0 --file-prefix=dpdk_1112_20190809143420``.
-        """
-        lcore_list = LogicalCoreList(self.filter_lcores(lcore_filter_specifier, ascending_cores))
-
-        if append_prefix_timestamp:
-            prefix = f"{prefix}_{self._dpdk_timestamp}"
-        prefix = self.main_session.get_dpdk_file_prefix(prefix)
-        if prefix:
-            self._dpdk_prefix_list.append(prefix)
-
-        if ports is None:
-            ports = self.ports
-
-        return EalParams(
-            lcore_list=lcore_list,
-            memory_channels=self.config.memory_channels,
-            prefix=prefix,
-            no_pci=no_pci,
-            vdevs=vdevs,
-            ports=ports,
-            other_eal_param=Params.from_str(other_eal_param),
-        )
+        self.dpdk_prefix_list = []
 
     def run_dpdk_app(
         self, app_path: PurePath, eal_params: EalParams, timeout: float = 30
@@ -401,49 +335,6 @@ class SutNode(Node):
             enable: If :data:`True`, enable the forwarding, otherwise disable it.
         """
         self.main_session.configure_ipv4_forwarding(enable)
-
-    def create_interactive_shell(
-        self,
-        shell_cls: Type[InteractiveShellType],
-        timeout: float = SETTINGS.timeout,
-        privileged: bool = False,
-        app_params: Params = Params(),
-        eal_params: EalParams | None = None,
-    ) -> InteractiveShellType:
-        """Extend the factory for interactive session handlers.
-
-        The extensions are SUT node specific:
-
-            * The default for `eal_parameters`,
-            * The interactive shell path `shell_cls.path` is prepended with path to the remote
-              DPDK build directory for DPDK apps.
-
-        Args:
-            shell_cls: The class of the shell.
-            timeout: Timeout for reading output from the SSH channel. If you are
-                reading from the buffer and don't receive any data within the timeout
-                it will throw an error.
-            privileged: Whether to run the shell with administrative privileges.
-            app_params: The parameters to be passed to the application.
-            eal_params: List of EAL parameters to use to launch the app. If this
-                isn't provided or an empty string is passed, it will default to calling
-                :meth:`create_eal_parameters`.
-
-        Returns:
-            An instance of the desired interactive application shell.
-        """
-        # We need to append the build directory and add EAL parameters for DPDK apps
-        if shell_cls.dpdk_app:
-            if eal_params is None:
-                eal_params = self.create_eal_parameters()
-            eal_params.append_str(str(app_params))
-            app_params = eal_params
-
-            shell_cls.path = self.main_session.join_remote_path(
-                self.remote_dpdk_build_dir, shell_cls.path
-            )
-
-        return super().create_interactive_shell(shell_cls, timeout, privileged, app_params)
 
     def bind_ports_to_driver(self, for_dpdk: bool = True) -> None:
         """Bind all ports on the SUT to a driver.

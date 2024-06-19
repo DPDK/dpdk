@@ -7,6 +7,7 @@ Run the helloworld example app and verify it prints a message for each used core
 No other EAL parameters apart from cores are used.
 """
 
+from framework.remote_session.dpdk_shell import compute_eal_params
 from framework.test_suite import TestSuite
 from framework.testbed_model.cpu import (
     LogicalCoreCount,
@@ -38,7 +39,7 @@ class TestHelloWorld(TestSuite):
         # get the first usable core
         lcore_amount = LogicalCoreCount(1, 1, 1)
         lcores = LogicalCoreCountFilter(self.sut_node.lcores, lcore_amount).filter()
-        eal_para = self.sut_node.create_eal_parameters(lcore_filter_specifier=lcore_amount)
+        eal_para = compute_eal_params(self.sut_node, lcore_filter_specifier=lcore_amount)
         result = self.sut_node.run_dpdk_app(self.app_helloworld_path, eal_para)
         self.verify(
             f"hello from core {int(lcores[0])}" in result.stdout,
@@ -55,8 +56,8 @@ class TestHelloWorld(TestSuite):
             "hello from core <core_id>"
         """
         # get the maximum logical core number
-        eal_para = self.sut_node.create_eal_parameters(
-            lcore_filter_specifier=LogicalCoreList(self.sut_node.lcores)
+        eal_para = compute_eal_params(
+            self.sut_node, lcore_filter_specifier=LogicalCoreList(self.sut_node.lcores)
         )
         result = self.sut_node.run_dpdk_app(self.app_helloworld_path, eal_para, 50)
         for lcore in self.sut_node.lcores:

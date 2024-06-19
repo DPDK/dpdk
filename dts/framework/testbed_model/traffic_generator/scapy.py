@@ -217,9 +217,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
             self._tg_node.config.os == OS.linux
         ), "Linux is the only supported OS for scapy traffic generation"
 
-        self.session = self._tg_node.create_interactive_shell(
-            PythonShell, timeout=5, privileged=True
-        )
+        self.session = PythonShell(self._tg_node, timeout=5, privileged=True)
 
         # import libs in remote python console
         for import_statement in SCAPY_RPC_SERVER_IMPORTS:

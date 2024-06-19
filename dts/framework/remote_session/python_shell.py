@@ -6,9 +6,7 @@
 Typical usage example in a TestSuite::
 
     from framework.remote_session import PythonShell
-    python_shell = self.tg_node.create_interactive_shell(
-        PythonShell, timeout=5, privileged=True
-    )
+    python_shell = PythonShell(self.tg_node, timeout=5, privileged=True)
     python_shell.send_command("print('Hello World')")
     python_shell.close()
 """

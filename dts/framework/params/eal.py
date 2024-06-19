@@ -35,9 +35,9 @@ class EalParams(Params):
                 ``other_eal_param='--single-file-segments'``
     """
 
-    lcore_list: LogicalCoreList = field(metadata=Params.short("l"))
-    memory_channels: int = field(metadata=Params.short("n"))
-    prefix: str = field(metadata=Params.long("file-prefix"))
+    lcore_list: LogicalCoreList | None = field(default=None, metadata=Params.short("l"))
+    memory_channels: int | None = field(default=None, metadata=Params.short("n"))
+    prefix: str = field(default="dpdk", metadata=Params.long("file-prefix"))
     no_pci: Switch = None
     vdevs: list[VirtualDevice] | None = field(
         default=None, metadata=Params.multiple() | Params.long("vdev")

@@ -7,9 +7,7 @@
 
 Typical usage example in a TestSuite::
 
-    testpmd_shell = self.sut_node.create_interactive_shell(
-            TestPmdShell, privileged=True
-        )
+    testpmd_shell = TestPmdShell(self.sut_node)
     devices = testpmd_shell.get_devices()
     for device in devices:
         print(device)
@@ -21,17 +19,18 @@ import time
 from dataclasses import dataclass, field
 from enum import Flag, auto
 from pathlib import PurePath
-from typing import Callable, ClassVar
+from typing import ClassVar
 
 from typing_extensions import Self
 
 from framework.exception import InteractiveCommandExecutionError
 from framework.params.testpmd import SimpleForwardingModes, TestPmdParams
 from framework.parser import ParserFn, TextParser
+from framework.remote_session.dpdk_shell import DPDKShell
 from framework.settings import SETTINGS
+from framework.testbed_model.cpu import LogicalCoreCount, LogicalCoreList
+from framework.testbed_model.sut_node import SutNode
 from framework.utils import StrEnum
-
-from .interactive_shell import InteractiveShell
 
 
 class TestPmdDevice:
@@ -577,26 +576,18 @@ class TestPmdPortStats(TextParser):
     tx_bps: int = field(metadata=TextParser.find_int(r"Tx-bps:\s+(\d+)"))
 
 
-class TestPmdShell(InteractiveShell):
+class TestPmdShell(DPDKShell):
     """Testpmd interactive shell.
 
     The testpmd shell users should never use
     the :meth:`~.interactive_shell.InteractiveShell.send_command` method directly, but rather
     call specialized methods. If there isn't one that satisfies a need, it should be added.
-
-    Attributes:
-        number_of_ports: The number of ports which were allowed on the command-line when testpmd
-            was started.
     """
 
-    number_of_ports: int
+    _app_params: TestPmdParams
 
     #: The path to the testpmd executable.
     path: ClassVar[PurePath] = PurePath("app", "dpdk-testpmd")
-
-    #: Flag this as a DPDK app so that it's clear this is not a system app and
-    #: needs to be looked in a specific path.
-    dpdk_app: ClassVar[bool] = True
 
     #: The testpmd's prompt.
     _default_prompt: ClassVar[str] = "testpmd>"
@@ -604,24 +595,28 @@ class TestPmdShell(InteractiveShell):
     #: This forces the prompt to appear after sending a command.
     _command_extra_chars: ClassVar[str] = "\n"
 
-    def _start_application(self, get_privileged_command: Callable[[str], str] | None) -> None:
-        """Overrides :meth:`~.interactive_shell._start_application`.
-
-        Add flags for starting testpmd in interactive mode and disabling messages for link state
-        change events before starting the application. Link state is verified before starting
-        packet forwarding and the messages create unexpected newlines in the terminal which
-        complicates output collection.
-
-        Also find the number of pci addresses which were allowed on the command line when the app
-        was started.
-        """
-        assert isinstance(self._app_params, TestPmdParams)
-
-        self.number_of_ports = (
-            len(self._app_params.ports) if self._app_params.ports is not None else 0
+    def __init__(
+        self,
+        node: SutNode,
+        privileged: bool = True,
+        timeout: float = SETTINGS.timeout,
+        lcore_filter_specifier: LogicalCoreCount | LogicalCoreList = LogicalCoreCount(),
+        ascending_cores: bool = True,
+        append_prefix_timestamp: bool = True,
+        start_on_init: bool = True,
+        **app_params,
+    ) -> None:
+        """Overrides :meth:`~.dpdk_shell.DPDKShell.__init__`. Changes app_params to kwargs."""
+        super().__init__(
+            node,
+            privileged,
+            timeout,
+            lcore_filter_specifier,
+            ascending_cores,
+            append_prefix_timestamp,
+            start_on_init,
+            TestPmdParams(**app_params),
         )
-
-        super()._start_application(get_privileged_command)
 
     def start(self, verify: bool = True) -> None:
         """Start packet forwarding with the current configuration.
@@ -642,7 +637,8 @@ class TestPmdShell(InteractiveShell):
                 self._logger.debug(f"Failed to start packet forwarding: \n{start_cmd_output}")
                 raise InteractiveCommandExecutionError("Testpmd failed to start packet forwarding.")
 
-            for port_id in range(self.number_of_ports):
+            number_of_ports = len(self._app_params.ports or [])
+            for port_id in range(number_of_ports):
                 if not self.wait_link_status_up(port_id):
                     raise InteractiveCommandExecutionError(
                         "Not all ports came up after starting packet forwarding in testpmd."
