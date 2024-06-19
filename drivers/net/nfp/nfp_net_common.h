@@ -347,6 +347,8 @@ uint32_t nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
 		struct nfp_eth_table *nfp_eth_table);
 uint8_t nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
 		uint8_t port_id);
+int nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

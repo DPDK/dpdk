@@ -197,6 +197,54 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 #define FW_VER_LEN        32
 
 /**
+ * Reconfigure the firmware of VF configure
+ *
+ * @param net_hw
+ *   Device to reconfigure
+ * @param pf_dev
+ *   Get the Device info
+ * @param update
+ *   The value for the mailbox VF command
+ * @param value
+ *   The value of update
+ * @param offset
+ *   The offset in the VF configure table
+ *
+ * @return
+ *   - (0) if OK to reconfigure vf configure.
+ *   - (-EIO) if I/O err and fail to configure the vf configure
+ */
+static int
+nfp_net_vf_reconfig(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev,
+		uint16_t update,
+		uint8_t value,
+		uint32_t offset)
+{
+	int ret;
+	struct nfp_hw *hw;
+
+	hw = &net_hw->super;
+	rte_spinlock_lock(&hw->reconfig_lock);
+
+	/* Write update info to mailbox in VF config symbol */
+	nn_writeb(value, pf_dev->vf_cfg_tbl_bar + offset);
+	nn_writew(update, pf_dev->vf_cfg_tbl_bar + NFP_NET_VF_CFG_MB_UPD);
+	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_VF);
+
+	rte_wmb();
+
+	ret = nfp_reconfig_real(hw, NFP_NET_CFG_UPDATE_VF);
+
+	rte_spinlock_unlock(&hw->reconfig_lock);
+
+	if (ret != 0)
+		return -EIO;
+
+	return nn_readw(pf_dev->vf_cfg_tbl_bar + NFP_NET_VF_CFG_MB_RET);
+}
+
+/**
  * Reconfigure the firmware via the mailbox
  *
  * @param net_hw
@@ -2573,4 +2621,81 @@ nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
 		return pf_dev->multi_pf.function_id;
 
 	return port_id;
+}
+
+static int
+nfp_net_sriov_check(struct nfp_pf_dev *pf_dev,
+		uint16_t cap)
+{
+	uint16_t cap_vf;
+
+	cap_vf = nn_readw(pf_dev->vf_cfg_tbl_bar + NFP_NET_VF_CFG_MB_CAP);
+	if ((cap_vf & cap) != cap)
+		return -ENOTSUP;
+
+	return 0;
+}
+
+static int
+nfp_net_sriov_update(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev,
+		uint16_t update)
+{
+	int ret;
+
+	/* Reuse NFP_NET_VF_CFG_MB_VF_NUM to pass vf_base_id to FW. */
+	ret = nfp_net_vf_reconfig(net_hw, pf_dev, update, pf_dev->vf_base_id,
+			NFP_NET_VF_CFG_MB_VF_NUM);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Error nfp VF reconfig");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+nfp_net_sriov_init(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev)
+{
+	int ret;
+
+	ret = nfp_net_sriov_check(pf_dev, NFP_NET_VF_CFG_MB_CAP_SPLIT);
+	if (ret != 0) {
+		if (ret == -ENOTSUP) {
+			PMD_INIT_LOG(WARNING, "Set VF split not supported");
+			return 0;
+		}
+
+		PMD_INIT_LOG(ERR, "Set VF split failed");
+		return ret;
+	}
+
+	nn_writeb(pf_dev->sriov_vf, pf_dev->vf_cfg_tbl_bar + NFP_NET_VF_CFG_MB_VF_CNT);
+
+	ret = nfp_net_sriov_update(net_hw, pf_dev, NFP_NET_VF_CFG_MB_UPD_SPLIT);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "The nfp sriov update spilt failed");
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev)
+{
+	int ret;
+
+	if (pf_dev->sriov_vf == 0)
+		return 0;
+
+	ret = nfp_net_sriov_init(net_hw, pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init sriov module");
+		return ret;
+	}
+
+	return 0;
 }

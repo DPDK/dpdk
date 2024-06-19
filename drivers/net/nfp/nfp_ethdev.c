@@ -1029,6 +1029,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	/* Initializing spinlock for reconfigs */
 	rte_spinlock_init(&hw->reconfig_lock);
 
+	if ((port == 0 || pf_dev->multi_pf.enabled)) {
+		err = nfp_net_vf_config_app_init(net_hw, pf_dev);
+		if (err != 0) {
+			PMD_INIT_LOG(ERR, "Failed to init sriov module");
+			goto xstats_free;
+		}
+	}
+
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {

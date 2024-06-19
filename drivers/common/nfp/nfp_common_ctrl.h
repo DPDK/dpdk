@@ -21,6 +21,16 @@
 #define NFP_NET_VF_CFG_SZ               16
 #define NFP_NET_VF_CFG_MB_SZ            16
 
+/* VF config mailbox */
+#define NFP_NET_VF_CFG_MB               0x0
+#define NFP_NET_VF_CFG_MB_CAP           0x0
+#define   NFP_NET_VF_CFG_MB_CAP_SPLIT             (0x1 << 8)
+#define NFP_NET_VF_CFG_MB_RET           0x2
+#define NFP_NET_VF_CFG_MB_UPD           0x4
+#define   NFP_NET_VF_CFG_MB_UPD_SPLIT             (0x1 << 8)
+#define NFP_NET_VF_CFG_MB_VF_CNT        0x6
+#define NFP_NET_VF_CFG_MB_VF_NUM        0x7
+
 /*
  * @NFP_NET_TXR_MAX:         Maximum number of TX rings
  * @NFP_NET_TXR_MASK:        Mask for TX rings
@@ -89,6 +99,7 @@
 #define   NFP_NET_CFG_UPDATE_VXLAN        (0x1 <<  9) /* VXLAN port change */
 #define   NFP_NET_CFG_UPDATE_MACADDR      (0x1 << 11) /* MAC address change */
 #define   NFP_NET_CFG_UPDATE_MBOX         (0x1 << 12) /* Mailbox update */
+#define   NFP_NET_CFG_UPDATE_VF           (0x1 << 13) /* VF settings change */
 #define   NFP_NET_CFG_UPDATE_ERR          (0x1U << 31) /* A error occurred */
 #define NFP_NET_CFG_TXRS_ENABLE         0x0008
 #define NFP_NET_CFG_RXRS_ENABLE         0x0010

@@ -724,6 +724,12 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 		goto pf_cpp_area_cleanup;
 	}
 
+	ret = nfp_net_vf_config_app_init(pf_hw, pf_dev);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init sriov module");
+		goto pf_cpp_area_cleanup;
+	}
+
 	nfp_flower_nfd_func_register(app_fw_flower);
 
 	/* The ctrl vNIC struct comes directly after the PF one */
