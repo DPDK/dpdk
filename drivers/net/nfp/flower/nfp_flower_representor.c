@@ -959,6 +959,11 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	app_fw_flower->num_phyport_reprs = pf_dev->total_phyports;
 	app_fw_flower->num_vf_reprs = eth_da.nb_representor_ports -
 			pf_dev->total_phyports - 1;
+	if (pf_dev->max_vfs != 0 && pf_dev->sriov_vf < app_fw_flower->num_vf_reprs) {
+		PMD_INIT_LOG(ERR, "The VF repr nums %d is bigger than VF nums %d",
+				app_fw_flower->num_vf_reprs, pf_dev->sriov_vf);
+		return -ERANGE;
+	}
 
 	PMD_INIT_LOG(INFO, "%d number of VF reprs", app_fw_flower->num_vf_reprs);
 	PMD_INIT_LOG(INFO, "%d number of phyport reprs", app_fw_flower->num_phyport_reprs);
