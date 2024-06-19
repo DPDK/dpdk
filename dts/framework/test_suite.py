@@ -27,7 +27,7 @@ from .testbed_model.traffic_generator import PacketFilteringConfig
 from .utils import get_packet_summaries
 
 
-class TestSuite(object):
+class TestSuite:
     """The base class with building blocks needed by most test cases.
 
         * Test suite setup/cleanup methods to override,

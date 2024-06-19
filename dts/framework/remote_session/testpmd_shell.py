@@ -27,7 +27,7 @@ from framework.utils import StrEnum
 from .interactive_shell import InteractiveShell
 
 
-class TestPmdDevice(object):
+class TestPmdDevice:
     """The data of a device that testpmd can recognize.
 
     Attributes:

@@ -7,7 +7,7 @@ Alongside support for physical hardware, DPDK can create various virtual devices
 """
 
 
-class VirtualDevice(object):
+class VirtualDevice:
     """Base class for virtual devices used by DPDK.
 
     Attributes:

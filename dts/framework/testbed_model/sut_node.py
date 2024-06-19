@@ -34,7 +34,7 @@ from .port import Port
 from .virtual_device import VirtualDevice
 
 
-class EalParameters(object):
+class EalParameters:
     """The environment abstraction layer parameters.
 
     The string representation can be created by converting the instance to a string.

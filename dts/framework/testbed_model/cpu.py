@@ -26,7 +26,7 @@ from framework.utils import expand_range
 
 
 @dataclass(slots=True, frozen=True)
-class LogicalCore(object):
+class LogicalCore:
     """Representation of a logical CPU core.
 
     A physical core is represented in OS by multiple logical cores (lcores)
@@ -50,7 +50,7 @@ class LogicalCore(object):
         return self.lcore
 
 
-class LogicalCoreList(object):
+class LogicalCoreList:
     r"""A unified way to store :class:`LogicalCore`\s.
 
     Create a unified format used across the framework and allow the user to use

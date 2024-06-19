@@ -96,7 +96,7 @@ class Result(Enum):
         return self is self.PASS
 
 
-class FixtureResult(object):
+class FixtureResult:
     """A record that stores the result of a setup or a teardown.
 
     :attr:`~Result.FAIL` is a sensible default since it prevents false positives (which could happen
@@ -132,7 +132,7 @@ class FixtureResult(object):
         return bool(self.result)
 
 
-class BaseResult(object):
+class BaseResult:
     """Common data and behavior of DTS results.
 
     Stores the results of the setup and teardown portions of the corresponding stage.
