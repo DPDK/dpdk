@@ -640,6 +640,7 @@ nfp_pf_uninit(struct nfp_net_hw_priv *hw_priv)
 {
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
+	nfp_disable_cpp_service(pf_dev);
 	nfp_cpp_area_release_free(pf_dev->mac_stats_area);
 	nfp_cpp_area_release_free(pf_dev->qc_area);
 	free(pf_dev->sym_tbl);

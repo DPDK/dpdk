@@ -45,6 +45,12 @@ nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev)
 	return 0;
 }
 
+void
+nfp_disable_cpp_service(struct nfp_pf_dev *pf_dev)
+{
+	nfp_service_disable(&pf_dev->cpp_service_info);
+}
+
 /*
  * Serving a write request to NFP from host programs. The request
  * sends the write size and the CPP target. The bridge makes use

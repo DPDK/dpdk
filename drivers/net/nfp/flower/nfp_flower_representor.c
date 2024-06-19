@@ -457,9 +457,6 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 	/* Stop flower service first */
 	nfp_flower_service_stop(app_fw_flower, hw_priv);
 
-	/* Disable cpp service */
-	nfp_service_disable(&pf_dev->cpp_service_info);
-
 	/* Now it is safe to free all PF resources */
 	nfp_uninit_app_fw_flower(hw_priv);
 	nfp_pf_uninit(hw_priv);
