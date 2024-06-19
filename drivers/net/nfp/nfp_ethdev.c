@@ -1772,6 +1772,30 @@ nfp_net_speed_capa_get(struct nfp_pf_dev *pf_dev,
 	return 0;
 }
 
+/* Force the physical port down to clear the possible DMA error */
+static int
+nfp_net_force_port_down(struct nfp_pf_dev *pf_dev,
+		struct nfp_eth_table *nfp_eth_table,
+		struct nfp_cpp *cpp)
+{
+	int ret;
+	uint32_t i;
+	uint32_t id;
+	uint32_t index;
+	uint32_t count;
+
+	count = nfp_net_get_port_num(pf_dev, nfp_eth_table);
+	for (i = 0; i < count; i++) {
+		id = nfp_function_id_get(pf_dev, i);
+		index = nfp_eth_table->ports[id].index;
+		ret = nfp_eth_set_configured(cpp, index, 0);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
@@ -1780,7 +1804,6 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	uint32_t id;
 	int ret = 0;
 	uint64_t addr;
-	uint32_t index;
 	uint32_t cpp_id;
 	uint8_t function_id;
 	struct nfp_cpp *cpp;
@@ -1874,11 +1897,11 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
 	pf_dev->multi_pf.function_id = function_id;
 
-	/* Force the physical port down to clear the possible DMA error */
-	for (i = 0; i < nfp_eth_table->count; i++) {
-		id = nfp_function_id_get(pf_dev, i);
-		index = nfp_eth_table->ports[id].index;
-		nfp_eth_set_configured(cpp, index, 0);
+	ret = nfp_net_force_port_down(pf_dev, nfp_eth_table, cpp);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to force port down");
+		ret = -EIO;
+		goto eth_table_cleanup;
 	}
 
 	ret = nfp_devargs_parse(&pf_dev->devargs, pci_dev->device.devargs);

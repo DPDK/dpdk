@@ -2554,3 +2554,13 @@ nfp_net_fec_set(struct rte_eth_dev *dev,
 
 	return nfp_eth_set_fec(hw_priv->pf_dev->cpp, eth_port->index, fec);
 }
+
+uint32_t
+nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
+		struct nfp_eth_table *nfp_eth_table)
+{
+	if (pf_dev->multi_pf.enabled)
+		return 1;
+	else
+		return nfp_eth_table->count;
+}
