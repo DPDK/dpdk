@@ -1756,9 +1756,9 @@ virtio_vdpa_dev_presetup_done(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
 	struct timeval start, end;
 	uint64_t time_used;
+	uint16_t nr_virtqs;
 	int ret, i;
 
 	gettimeofday(&start, NULL);
@@ -1774,20 +1774,8 @@ virtio_vdpa_dev_presetup_done(int vid)
 	priv->vid = vid;
 
 	for (i = 0; i < nr_virtqs; i++) {
-		ret = rte_vhost_get_vring_base(vid, i, &last_avail_idx, &last_used_idx);
-		if (ret) {
-			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
-			rte_errno = rte_errno ? rte_errno : EINVAL;
-			return -rte_errno;
-		}
-
-		DRV_LOG(INFO, "%s vid %d qid %d last_avail_idx:%d,last_used_idx:%d",
-				vdev->device->name, vid,
-				i, last_avail_idx, last_used_idx);
-
 		ret = virtio_pci_dev_state_hw_idx_set(priv->vpdev, i,
-				last_avail_idx,
-				last_used_idx, priv->state_mz->addr);
+				0, 0, priv->state_mz->addr);
 		if (ret) {
 			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
 			rte_errno = rte_errno ? rte_errno : EINVAL;
