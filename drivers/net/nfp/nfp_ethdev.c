@@ -66,46 +66,64 @@ nfp_devarg_handle_int(const char *key,
 	return 0;
 }
 
-static void
-nfp_devarg_parse_force_reload_fw(struct rte_kvargs *kvlist,
-		bool *force_reload_fw)
+static int
+nfp_devarg_parse_bool_para(struct rte_kvargs *kvlist,
+		const char *key_match,
+		bool *value_ret)
 {
 	int ret;
+	uint32_t count;
 	uint64_t value;
 
+	count = rte_kvargs_count(kvlist, key_match);
+	if (count == 0)
+		return 0;
 
-	if (rte_kvargs_count(kvlist, NFP_PF_FORCE_RELOAD_FW) != 1)
-		return;
+	if (count > 1) {
+		PMD_DRV_LOG(ERR, "Too much bool arguments: %s", key_match);
+		return -EINVAL;
+	}
 
-	ret = rte_kvargs_process(kvlist, NFP_PF_FORCE_RELOAD_FW, &nfp_devarg_handle_int, &value);
+	ret = rte_kvargs_process(kvlist, key_match, &nfp_devarg_handle_int, &value);
 	if (ret != 0)
-		return;
+		return -EINVAL;
 
-	if (value == 1)
-		*force_reload_fw = true;
-	else if (value == 0)
-		*force_reload_fw = false;
-	else
+	if (value == 1) {
+		*value_ret = true;
+	} else if (value == 0) {
+		*value_ret = false;
+	} else {
 		PMD_DRV_LOG(ERR, "The param does not work, the format is %s=0/1",
-				NFP_PF_FORCE_RELOAD_FW);
+				key_match);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
-static void
+static int
 nfp_devargs_parse(struct nfp_devargs *nfp_devargs_param,
 		const struct rte_devargs *devargs)
 {
+	int ret;
 	struct rte_kvargs *kvlist;
 
 	if (devargs == NULL)
-		return;
+		return 0;
 
 	kvlist = rte_kvargs_parse(devargs->args, NULL);
 	if (kvlist == NULL)
-		return;
+		return -EINVAL;
 
-	nfp_devarg_parse_force_reload_fw(kvlist, &nfp_devargs_param->force_reload_fw);
+	ret = nfp_devarg_parse_bool_para(kvlist, NFP_PF_FORCE_RELOAD_FW,
+			&nfp_devargs_param->force_reload_fw);
+	if (ret != 0)
+		goto exit;
 
+exit:
 	rte_kvargs_free(kvlist);
+
+	return ret;
 }
 
 static void
@@ -1855,7 +1873,12 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		nfp_eth_set_configured(cpp, index, 0);
 	}
 
-	nfp_devargs_parse(&pf_dev->devargs, pci_dev->device.devargs);
+	ret = nfp_devargs_parse(&pf_dev->devargs, pci_dev->device.devargs);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Error when parsing device args");
+		ret = -EINVAL;
+		goto eth_table_cleanup;
+	}
 
 	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo,
 			dev_info, &pf_dev->multi_pf, pf_dev->devargs.force_reload_fw) != 0) {
