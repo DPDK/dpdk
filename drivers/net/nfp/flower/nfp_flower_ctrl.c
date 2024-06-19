@@ -441,6 +441,11 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_app_fw_flower *app_fw_flower,
 		return -EINVAL;
 	}
 
+	if (repr == NULL) {
+		PMD_DRV_LOG(ERR, "Can not get 'repr' for port %#x", port);
+		return -EINVAL;
+	}
+
 	repr->link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	if ((msg->info & NFP_FLOWER_CMSG_PORT_MOD_INFO_LINK) != 0)
 		repr->link.link_status = RTE_ETH_LINK_UP;
