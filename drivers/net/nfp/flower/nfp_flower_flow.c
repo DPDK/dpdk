@@ -814,164 +814,231 @@ struct nfp_item_flag {
 	bool outer_ip6_flag;
 };
 
+struct nfp_item_calculate_param {
+	const struct rte_flow_item *item;
+	struct nfp_fl_key_ls *key_ls;
+	struct nfp_item_flag *flag;
+};
+
+typedef int (*nfp_flow_key_calculate_item_fn)(struct nfp_item_calculate_param *param);
+
+static int
+nfp_flow_item_calculate_stub(struct nfp_item_calculate_param *param __rte_unused)
+{
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_eth(struct nfp_item_calculate_param *param)
+{
+	if (param->item->spec != NULL) {
+		param->key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
+		param->key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_port(struct nfp_item_calculate_param *param)
+{
+	struct rte_eth_dev *ethdev;
+	struct nfp_flower_representor *repr;
+	const struct rte_flow_item_port_id *port_id;
+
+	port_id = param->item->spec;
+	if (port_id == NULL || port_id->id >= RTE_MAX_ETHPORTS)
+		return -ERANGE;
+
+	ethdev = &rte_eth_devices[port_id->id];
+	repr = ethdev->data->dev_private;
+	param->key_ls->port = repr->port_id;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_vlan(struct nfp_item_calculate_param *param)
+{
+	param->key_ls->vlan = NFP_FLOWER_MASK_VLAN_CFI;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_ipv4(struct nfp_item_calculate_param *param)
+{
+	param->key_ls->key_layer |= NFP_FLOWER_LAYER_IPV4;
+	param->key_ls->key_size += sizeof(struct nfp_flower_ipv4);
+	if (!param->flag->outer_ip4_flag)
+		param->flag->outer_ip4_flag = true;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_ipv6(struct nfp_item_calculate_param *param)
+{
+	param->key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
+	param->key_ls->key_size += sizeof(struct nfp_flower_ipv6);
+	if (!param->flag->outer_ip6_flag)
+		param->flag->outer_ip6_flag = true;
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_l4(struct nfp_item_calculate_param *param)
+{
+	param->key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
+	param->key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_vxlan(struct nfp_item_calculate_param *param)
+{
+	struct nfp_fl_key_ls *key_ls = param->key_ls;
+
+	/* Clear IPv4 and IPv6 bits */
+	key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+	key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
+	key_ls->tun_type = NFP_FL_TUN_VXLAN;
+	key_ls->key_layer |= NFP_FLOWER_LAYER_VXLAN;
+	if (param->flag->outer_ip4_flag) {
+		key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
+		/*
+		 * The outer l3 layer information is
+		 * in `struct nfp_flower_ipv4_udp_tun`.
+		 */
+		key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+	} else if (param->flag->outer_ip6_flag) {
+		key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
+		key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+		key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
+		/*
+		 * The outer l3 layer information is
+		 * in `struct nfp_flower_ipv6_udp_tun`.
+		 */
+		key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
+	} else {
+		PMD_DRV_LOG(ERR, "No outer IP layer for VXLAN tunnel.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_geneve(struct nfp_item_calculate_param *param)
+{
+	struct nfp_fl_key_ls *key_ls = param->key_ls;
+
+	/* Clear IPv4 and IPv6 bits */
+	key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+	key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
+	key_ls->tun_type = NFP_FL_TUN_GENEVE;
+	key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+	key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GENEVE;
+	key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+	if (param->flag->outer_ip4_flag) {
+		key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
+		/*
+		 * The outer l3 layer information is
+		 * in `struct nfp_flower_ipv4_udp_tun`.
+		 */
+		key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+	} else if (param->flag->outer_ip6_flag) {
+		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
+		key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
+		/*
+		 * The outer l3 layer information is
+		 * in `struct nfp_flower_ipv6_udp_tun`.
+		 */
+		key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
+	} else {
+		PMD_DRV_LOG(ERR, "No outer IP layer for GENEVE tunnel.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+nfp_flow_item_calculate_gre(struct nfp_item_calculate_param *param)
+{
+	struct nfp_fl_key_ls *key_ls = param->key_ls;
+
+	/* Clear IPv4 and IPv6 bits */
+	key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
+	key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
+	key_ls->tun_type = NFP_FL_TUN_GRE;
+	key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+	key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GRE;
+	key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+	if (param->flag->outer_ip4_flag) {
+		key_ls->key_size += sizeof(struct nfp_flower_ipv4_gre_tun);
+		/*
+		 * The outer l3 layer information is
+		 * in `struct nfp_flower_ipv4_gre_tun`.
+		 */
+		key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
+	} else if (param->flag->outer_ip6_flag) {
+		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
+		key_ls->key_size += sizeof(struct nfp_flower_ipv6_gre_tun);
+		/*
+		 * The outer l3 layer information is
+		 * in `struct nfp_flower_ipv6_gre_tun`.
+		 */
+		key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
+	} else {
+		PMD_DRV_LOG(ERR, "No outer IP layer for GRE tunnel.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static nfp_flow_key_calculate_item_fn item_fns[] = {
+	[RTE_FLOW_ITEM_TYPE_ETH]             = nfp_flow_item_calculate_eth,
+	[RTE_FLOW_ITEM_TYPE_PORT_ID]         = nfp_flow_item_calculate_port,
+	[RTE_FLOW_ITEM_TYPE_VLAN]            = nfp_flow_item_calculate_vlan,
+	[RTE_FLOW_ITEM_TYPE_IPV4]            = nfp_flow_item_calculate_ipv4,
+	[RTE_FLOW_ITEM_TYPE_IPV6]            = nfp_flow_item_calculate_ipv6,
+	[RTE_FLOW_ITEM_TYPE_TCP]             = nfp_flow_item_calculate_l4,
+	[RTE_FLOW_ITEM_TYPE_UDP]             = nfp_flow_item_calculate_l4,
+	[RTE_FLOW_ITEM_TYPE_SCTP]            = nfp_flow_item_calculate_l4,
+	[RTE_FLOW_ITEM_TYPE_VXLAN]           = nfp_flow_item_calculate_vxlan,
+	[RTE_FLOW_ITEM_TYPE_GENEVE]          = nfp_flow_item_calculate_geneve,
+	[RTE_FLOW_ITEM_TYPE_GRE]             = nfp_flow_item_calculate_gre,
+	[RTE_FLOW_ITEM_TYPE_GRE_KEY]         = nfp_flow_item_calculate_stub,
+};
+
 static int
 nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 		struct nfp_fl_key_ls *key_ls)
 {
-	struct rte_eth_dev *ethdev;
+	int ret;
 	struct nfp_item_flag flag = {};
 	const struct rte_flow_item *item;
-	struct nfp_flower_representor *representor;
-	const struct rte_flow_item_port_id *port_id;
+	struct nfp_item_calculate_param param = {
+		.key_ls = key_ls,
+		.flag = &flag,
+	};
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
-		switch (item->type) {
-		case RTE_FLOW_ITEM_TYPE_ETH:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
-			/*
-			 * Eth is set with no specific params.
-			 * NFP does not need this.
-			 */
-			if (item->spec == NULL)
-				continue;
-			key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
-			key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
-			break;
-		case RTE_FLOW_ITEM_TYPE_PORT_ID:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_PORT_ID detected");
-			port_id = item->spec;
-			if (port_id->id >= RTE_MAX_ETHPORTS)
-				return -ERANGE;
-			ethdev = &rte_eth_devices[port_id->id];
-			representor = ethdev->data->dev_private;
-			key_ls->port = representor->port_id;
-			break;
-		case RTE_FLOW_ITEM_TYPE_VLAN:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_VLAN detected");
-			key_ls->vlan = NFP_FLOWER_MASK_VLAN_CFI;
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV4:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
-			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV4;
-			key_ls->key_size += sizeof(struct nfp_flower_ipv4);
-			if (!flag.outer_ip4_flag)
-				flag.outer_ip4_flag = true;
-			break;
-		case RTE_FLOW_ITEM_TYPE_IPV6:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
-			key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
-			key_ls->key_size += sizeof(struct nfp_flower_ipv6);
-			if (!flag.outer_ip6_flag)
-				flag.outer_ip6_flag = true;
-			break;
-		case RTE_FLOW_ITEM_TYPE_TCP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_TCP detected");
-			key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
-			key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
-			break;
-		case RTE_FLOW_ITEM_TYPE_UDP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_UDP detected");
-			key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
-			key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
-			break;
-		case RTE_FLOW_ITEM_TYPE_SCTP:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_SCTP detected");
-			key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
-			key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
-			break;
-		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_VXLAN detected");
-			/* Clear IPv4 and IPv6 bits */
-			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
-			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
-			key_ls->tun_type = NFP_FL_TUN_VXLAN;
-			key_ls->key_layer |= NFP_FLOWER_LAYER_VXLAN;
-			if (flag.outer_ip4_flag) {
-				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
-				/*
-				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv4_udp_tun`.
-				 */
-				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-			} else if (flag.outer_ip6_flag) {
-				key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
-				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
-				key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
-				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
-				/*
-				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv6_udp_tun`.
-				 */
-				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
-			} else {
-				PMD_DRV_LOG(ERR, "No outer IP layer for VXLAN tunnel.");
-				return -EINVAL;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_GENEVE:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GENEVE detected");
-			/* Clear IPv4 and IPv6 bits */
-			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
-			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
-			key_ls->tun_type = NFP_FL_TUN_GENEVE;
-			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
-			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GENEVE;
-			key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
-			if (flag.outer_ip4_flag) {
-				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
-				/*
-				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv4_udp_tun`.
-				 */
-				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-			} else if (flag.outer_ip6_flag) {
-				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
-				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
-				/*
-				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv6_udp_tun`.
-				 */
-				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
-			} else {
-				PMD_DRV_LOG(ERR, "No outer IP layer for GENEVE tunnel.");
-				return -EINVAL;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GRE detected");
-			/* Clear IPv4 and IPv6 bits */
-			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV4;
-			key_ls->key_layer &= ~NFP_FLOWER_LAYER_IPV6;
-			key_ls->tun_type = NFP_FL_TUN_GRE;
-			key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
-			key_ls->key_layer_two |= NFP_FLOWER_LAYER2_GRE;
-			key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
-			if (flag.outer_ip4_flag) {
-				key_ls->key_size += sizeof(struct nfp_flower_ipv4_gre_tun);
-				/*
-				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv4_gre_tun`.
-				 */
-				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-			} else if (flag.outer_ip6_flag) {
-				key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
-				key_ls->key_size += sizeof(struct nfp_flower_ipv6_gre_tun);
-				/*
-				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv6_gre_tun`.
-				 */
-				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
-			} else {
-				PMD_DRV_LOG(ERR, "No outer IP layer for GRE tunnel.");
-				return -1;
-			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_GRE_KEY detected");
-			break;
-		default:
-			PMD_DRV_LOG(ERR, "Item type %d not supported.", item->type);
-			return -ENOTSUP;
+		if (item->type >= RTE_DIM(item_fns) || item_fns[item->type] == NULL) {
+			PMD_DRV_LOG(ERR, "Flow item %d unsupported", item->type);
+			return -ERANGE;
+		}
+
+		param.item = item;
+		ret = item_fns[item->type](&param);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Flow item %d calculate fail", item->type);
+			return ret;
 		}
 	}
 
