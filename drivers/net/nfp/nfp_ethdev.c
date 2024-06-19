@@ -1820,6 +1820,44 @@ nfp_net_force_port_down(struct nfp_pf_dev *pf_dev,
 }
 
 static int
+nfp_fw_app_primary_init(struct nfp_net_hw_priv *hw_priv)
+{
+	int ret;
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
+
+	switch (pf_dev->app_fw_id) {
+	case NFP_APP_FW_CORE_NIC:
+		if (pf_dev->multi_pf.enabled) {
+			ret = nfp_enable_multi_pf(pf_dev);
+			if (ret != 0)
+				return ret;
+		}
+
+		PMD_INIT_LOG(INFO, "Initializing coreNIC");
+		ret = nfp_init_app_fw_nic(hw_priv);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
+			return ret;
+		}
+		break;
+	case NFP_APP_FW_FLOWER_NIC:
+		PMD_INIT_LOG(INFO, "Initializing Flower");
+		ret = nfp_init_app_fw_flower(hw_priv);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
+			return ret;
+		}
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
+		ret = -EINVAL;
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	void *sync;
@@ -2010,32 +2048,9 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	 * PF initialization has been done at this point. Call app specific
 	 * init code now.
 	 */
-	switch (pf_dev->app_fw_id) {
-	case NFP_APP_FW_CORE_NIC:
-		if (pf_dev->multi_pf.enabled) {
-			ret = nfp_enable_multi_pf(pf_dev);
-			if (ret != 0)
-				goto mac_stats_cleanup;
-		}
-
-		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_init_app_fw_nic(hw_priv);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
-			goto mac_stats_cleanup;
-		}
-		break;
-	case NFP_APP_FW_FLOWER_NIC:
-		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_init_app_fw_flower(hw_priv);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
-			goto mac_stats_cleanup;
-		}
-		break;
-	default:
-		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
-		ret = -EINVAL;
+	ret = nfp_fw_app_primary_init(hw_priv);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init hw app primary.");
 		goto mac_stats_cleanup;
 	}
 
@@ -2132,6 +2147,38 @@ nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	return ret;
+}
+
+static int
+nfp_fw_app_secondary_init(struct nfp_net_hw_priv *hw_priv)
+{
+	int ret;
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
+
+	switch (pf_dev->app_fw_id) {
+	case NFP_APP_FW_CORE_NIC:
+		PMD_INIT_LOG(INFO, "Initializing coreNIC");
+		ret = nfp_secondary_init_app_fw_nic(hw_priv);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
+			return ret;
+		}
+		break;
+	case NFP_APP_FW_FLOWER_NIC:
+		PMD_INIT_LOG(INFO, "Initializing Flower");
+		ret = nfp_secondary_init_app_fw_flower(hw_priv);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
+			return ret;
+		}
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
+		ret = -EINVAL;
+		return ret;
+	}
+
+	return 0;
 }
 
 /*
@@ -2240,26 +2287,9 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	hw_priv->dev_info = dev_info;
 
 	/* Call app specific init code now */
-	switch (app_fw_id) {
-	case NFP_APP_FW_CORE_NIC:
-		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_secondary_init_app_fw_nic(hw_priv);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
-			goto sym_tbl_cleanup;
-		}
-		break;
-	case NFP_APP_FW_FLOWER_NIC:
-		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_secondary_init_app_fw_flower(hw_priv);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
-			goto sym_tbl_cleanup;
-		}
-		break;
-	default:
-		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
-		ret = -EINVAL;
+	ret = nfp_fw_app_secondary_init(hw_priv);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init hw app primary.");
 		goto sym_tbl_cleanup;
 	}
 
