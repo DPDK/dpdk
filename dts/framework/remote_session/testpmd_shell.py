@@ -21,10 +21,11 @@ from enum import Flag, auto
 from pathlib import PurePath
 from typing import ClassVar
 
-from typing_extensions import Self
+from typing_extensions import Self, Unpack
 
 from framework.exception import InteractiveCommandExecutionError
 from framework.params.testpmd import SimpleForwardingModes, TestPmdParams
+from framework.params.types import TestPmdParamsDict
 from framework.parser import ParserFn, TextParser
 from framework.remote_session.dpdk_shell import DPDKShell
 from framework.settings import SETTINGS
@@ -604,7 +605,7 @@ class TestPmdShell(DPDKShell):
         ascending_cores: bool = True,
         append_prefix_timestamp: bool = True,
         start_on_init: bool = True,
-        **app_params,
+        **app_params: Unpack[TestPmdParamsDict],
     ) -> None:
         """Overrides :meth:`~.dpdk_shell.DPDKShell.__init__`. Changes app_params to kwargs."""
         super().__init__(
