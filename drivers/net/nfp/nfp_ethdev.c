@@ -2001,8 +2001,10 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	/* Register the CPP bridge service here for primary use */
 	if (pf_dev->devargs.cpp_service_enable) {
 		ret = nfp_enable_cpp_service(pf_dev);
-		if (ret != 0)
-			PMD_INIT_LOG(INFO, "Enable cpp service failed.");
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Enable CPP service failed.");
+			goto hwqueues_cleanup;
+		}
 	}
 
 	return 0;
