@@ -2508,55 +2508,33 @@ nfp_flow_action_output(char *act_data,
 		struct nfp_fl_rule_metadata *nfp_flow_meta,
 		uint32_t output_cnt)
 {
-	size_t act_size;
-	struct rte_eth_dev *ethdev;
-	struct nfp_fl_act_output *output;
-	struct nfp_flower_representor *representor;
-	const struct rte_flow_action_port_id *port_id;
-
-	port_id = action->conf;
-	if (port_id == NULL || port_id->id >= RTE_MAX_ETHPORTS)
-		return -ERANGE;
-
-	ethdev = &rte_eth_devices[port_id->id];
-	representor = ethdev->data->dev_private;
-	act_size = sizeof(struct nfp_fl_act_output);
-
-	output = (struct nfp_fl_act_output *)act_data;
-	output->head.jump_id = NFP_FL_ACTION_OPCODE_OUTPUT;
-	output->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
-	output->port         = rte_cpu_to_be_32(representor->port_id);
-	if (output_cnt == 0)
-		output->flags = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
-
-	nfp_flow_meta->shortcut = rte_cpu_to_be_32(representor->port_id);
-
-	return 0;
-}
-
-static int
-nfp_flow_action_output_stage(char *act_data,
-		const struct rte_flow_action *action,
-		struct nfp_fl_rule_metadata *nfp_flow_meta,
-		uint32_t output_cnt)
-{
-	size_t act_size;
+	uint32_t port_id;
 	struct rte_eth_dev *ethdev;
 	struct nfp_fl_act_output *output;
 	struct nfp_flower_representor *representor;
 	const struct rte_flow_action_ethdev *action_ethdev;
+	const struct rte_flow_action_port_id *action_port_id;
 
-	action_ethdev = action->conf;
-	if (action_ethdev == NULL || action_ethdev->port_id >= RTE_MAX_ETHPORTS)
+	if (action->conf == NULL)
+		return -EINVAL;
+
+	if (action->type == RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT) {
+		action_ethdev = action->conf;
+		port_id = action_ethdev->port_id;
+	} else {
+		action_port_id = action->conf;
+		port_id = action_port_id->id;
+	}
+
+	if (port_id >= RTE_MAX_ETHPORTS)
 		return -ERANGE;
 
-	ethdev = &rte_eth_devices[action_ethdev->port_id];
+	ethdev = &rte_eth_devices[port_id];
 	representor = ethdev->data->dev_private;
-	act_size = sizeof(struct nfp_fl_act_output);
 
 	output = (struct nfp_fl_act_output *)act_data;
 	output->head.jump_id = NFP_FL_ACTION_OPCODE_OUTPUT;
-	output->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	output->head.len_lw  = sizeof(struct nfp_fl_act_output) >> NFP_FL_LW_SIZ;
 	output->port         = rte_cpu_to_be_32(representor->port_id);
 	if (output_cnt == 0)
 		output->flags = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
@@ -3999,28 +3977,7 @@ nfp_flow_action_compile_drop(struct nfp_action_compile_param *param)
 }
 
 static int
-nfp_flow_action_compile_repr_port(struct nfp_action_compile_param *param)
-{
-	int ret;
-	uint32_t output_cnt;
-
-	output_cnt = *param->output_cnt - 1;
-	*param->output_cnt = output_cnt;
-
-	ret = nfp_flow_action_output_stage(param->position, param->action,
-			param->nfp_flow_meta, output_cnt);
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT");
-		return ret;
-	}
-
-	param->position += sizeof(struct nfp_fl_act_output);
-
-	return 0;
-}
-
-static int
-nfp_flow_action_compile_port_id(struct nfp_action_compile_param *param)
+nfp_flow_action_compile_output(struct nfp_action_compile_param *param)
 {
 	int ret;
 	uint32_t output_cnt;
@@ -4031,7 +3988,7 @@ nfp_flow_action_compile_port_id(struct nfp_action_compile_param *param)
 	ret = nfp_flow_action_output(param->position, param->action,
 			param->nfp_flow_meta, output_cnt);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_PORT_ID");
+		PMD_DRV_LOG(ERR, "Failed process output action");
 		return ret;
 	}
 
@@ -4393,8 +4350,8 @@ static nfp_flow_action_compile_fn action_compile_fns[] = {
 	[RTE_FLOW_ACTION_TYPE_DROP]             = nfp_flow_action_compile_drop,
 	[RTE_FLOW_ACTION_TYPE_COUNT]            = nfp_flow_action_compile_stub,
 	[RTE_FLOW_ACTION_TYPE_JUMP]             = nfp_flow_action_compile_stub,
-	[RTE_FLOW_ACTION_TYPE_PORT_ID]          = nfp_flow_action_compile_port_id,
-	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = nfp_flow_action_compile_repr_port,
+	[RTE_FLOW_ACTION_TYPE_PORT_ID]          = nfp_flow_action_compile_output,
+	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = nfp_flow_action_compile_output,
 	[RTE_FLOW_ACTION_TYPE_SET_MAC_SRC]      = nfp_flow_action_compile_mac_src,
 	[RTE_FLOW_ACTION_TYPE_SET_MAC_DST]      = nfp_flow_action_compile_mac_dst,
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN]      = nfp_flow_action_compile_pop_vlan,
