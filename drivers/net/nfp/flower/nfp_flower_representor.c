@@ -791,6 +791,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	int i;
 	int ret;
 	const char *pci_name;
+	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
 	struct nfp_repr_init repr_init;
 	struct nfp_eth_table *nfp_eth_table;
@@ -800,7 +801,8 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		.app_fw_flower    = app_fw_flower,
 	};
 
-	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
+	pf_dev = hw_priv->pf_dev;
+	nfp_eth_table = pf_dev->nfp_eth_table;
 	repr_init.hw_priv = hw_priv;
 
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
@@ -816,7 +818,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	/* PF vNIC reprs get a random MAC address */
 	rte_eth_random_addr(flower_repr.mac_addr.addr_bytes);
 
-	pci_dev = hw_priv->pf_dev->pci_dev;
+	pci_dev = pf_dev->pci_dev;
 
 	pci_name = strchr(pci_dev->name, ':') + 1;
 
@@ -868,7 +870,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	 */
 	for (i = 0; i < app_fw_flower->num_vf_reprs; i++) {
 		flower_repr.repr_type = NFP_REPR_TYPE_VF;
-		flower_repr.port_id = nfp_get_pcie_port_id(hw_priv->pf_dev->cpp,
+		flower_repr.port_id = nfp_get_pcie_port_id(pf_dev->cpp,
 				NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF, i, 0);
 		flower_repr.nfp_idx = 0;
 		flower_repr.vf_id = i;
