@@ -877,7 +877,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	for (i = 0; i < app_fw_flower->num_vf_reprs; i++) {
 		flower_repr.repr_type = NFP_REPR_TYPE_VF;
 		flower_repr.port_id = nfp_get_pcie_port_id(pf_dev->cpp,
-				NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF, i, 0);
+				NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF, i + pf_dev->vf_base_id, 0);
 		flower_repr.nfp_idx = 0;
 		flower_repr.vf_id = i;
 

@@ -1923,6 +1923,7 @@ nfp_pf_get_sriov_vf(struct nfp_pf_dev *pf_dev,
 		return -ERANGE;
 	}
 
+	pf_dev->vf_base_id = offset;
 	pf_dev->sriov_vf = sriov_vf;
 
 	return 0;

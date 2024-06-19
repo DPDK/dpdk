@@ -419,6 +419,7 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 		struct rte_mbuf *pkt_burst)
 {
 	uint32_t port;
+	uint32_t index;
 	struct nfp_flower_representor *repr;
 	struct nfp_flower_cmsg_port_mod *msg;
 	struct nfp_app_fw_flower *app_fw_flower;
@@ -430,11 +431,13 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 
 	switch (NFP_FLOWER_CMSG_PORT_TYPE(port)) {
 	case NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT:
-		repr = app_fw_flower->phy_reprs[NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port)];
+		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port);
+		repr = app_fw_flower->phy_reprs[index];
 		break;
 	case NFP_FLOWER_CMSG_PORT_TYPE_PCIE_PORT:
+		index = NFP_FLOWER_CMSG_PORT_VNIC_OFFSET(port, hw_priv->pf_dev->vf_base_id);
 		if (NFP_FLOWER_CMSG_PORT_VNIC_TYPE(port) == NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF)
-			repr =  app_fw_flower->vf_reprs[NFP_FLOWER_CMSG_PORT_VNIC(port)];
+			repr =  app_fw_flower->vf_reprs[index];
 		else
 			repr = app_fw_flower->pf_repr;
 		break;

@@ -422,6 +422,7 @@ enum nfp_flower_cmsg_port_vnic_type {
 #define NFP_FLOWER_CMSG_PORT_PCI(x)             (((x) >> 14) & 0x3)  /* [14,15] */
 #define NFP_FLOWER_CMSG_PORT_VNIC_TYPE(x)       (((x) >> 12) & 0x3)  /* [12,13] */
 #define NFP_FLOWER_CMSG_PORT_VNIC(x)            (((x) >> 6) & 0x3f)  /* [6,11] */
+#define NFP_FLOWER_CMSG_PORT_VNIC_OFFSET(x, offset)    (NFP_FLOWER_CMSG_PORT_VNIC(x) - (offset))
 #define NFP_FLOWER_CMSG_PORT_PCIE_Q(x)          ((x) & 0x3f)         /* [0,5] */
 #define NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(x)   ((x) & 0xff)         /* [0,7] */
 

@@ -116,7 +116,7 @@ nfp_flower_get_repr(struct nfp_net_hw_priv *hw_priv,
 		port =  NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(port_id);
 		return app_fw_flower->phy_reprs[port];
 	case NFP_FLOWER_CMSG_PORT_TYPE_PCIE_PORT:
-		port = NFP_FLOWER_CMSG_PORT_VNIC(port_id);
+		port = NFP_FLOWER_CMSG_PORT_VNIC_OFFSET(port_id, hw_priv->pf_dev->vf_base_id);
 		return app_fw_flower->vf_reprs[port];
 	default:
 		break;

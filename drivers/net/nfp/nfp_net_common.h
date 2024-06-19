@@ -147,6 +147,8 @@ struct nfp_pf_dev {
 	uint16_t sriov_vf;
 
 	uint8_t total_phyports;
+	/** Id of first VF that belongs to this PF */
+	uint8_t vf_base_id;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024
