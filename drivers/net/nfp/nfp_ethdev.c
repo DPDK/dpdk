@@ -283,6 +283,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_eth_rxmode *rxmode;
+	struct rte_eth_txmode *txmode;
 	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -364,10 +365,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
+	txmode = &dev->data->dev_conf.txmode;
 	/* Enable vxlan */
-	if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0) {
-		new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
-		update |= NFP_NET_CFG_UPDATE_VXLAN;
+	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
+		if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0) {
+			new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
+			update |= NFP_NET_CFG_UPDATE_VXLAN;
+		}
 	}
 
 	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
