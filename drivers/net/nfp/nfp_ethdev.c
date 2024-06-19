@@ -1503,6 +1503,9 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 	struct nfp_cpp_area *area;
 	char name[RTE_ETH_NAME_MAX_LEN];
 
+	if (!pf_dev->multi_pf.enabled)
+		return 0;
+
 	memset(&net_hw, 0, sizeof(struct nfp_net_hw));
 
 	/* Map the symbol table */
@@ -1871,12 +1874,6 @@ nfp_fw_app_primary_init(struct nfp_net_hw_priv *hw_priv)
 
 	switch (pf_dev->app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
-		if (pf_dev->multi_pf.enabled) {
-			ret = nfp_enable_multi_pf(pf_dev);
-			if (ret != 0)
-				return ret;
-		}
-
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
 		ret = nfp_init_app_fw_nic(hw_priv);
 		if (ret != 0) {
@@ -2246,6 +2243,10 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		PMD_INIT_LOG(ERR, "Failed to init VF config.");
 		goto mac_stats_cleanup;
 	}
+
+	ret = nfp_enable_multi_pf(pf_dev);
+	if (ret != 0)
+		goto vf_cfg_tbl_cleanup;
 
 	hw_priv->pf_dev = pf_dev;
 	hw_priv->dev_info = dev_info;
