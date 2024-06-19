@@ -821,7 +821,7 @@ struct nfp_item_calculate_param {
 };
 
 typedef int (*nfp_flow_key_check_item_fn)(struct nfp_item_calculate_param *param);
-typedef int (*nfp_flow_key_calculate_item_fn)(struct nfp_item_calculate_param *param);
+typedef void (*nfp_flow_key_calculate_item_fn)(struct nfp_item_calculate_param *param);
 
 static int
 nfp_flow_item_check_port(struct nfp_item_calculate_param *param)
@@ -925,24 +925,21 @@ nfp_flow_key_layers_check_items(const struct rte_flow_item items[])
 	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_stub(struct nfp_item_calculate_param *param __rte_unused)
 {
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_eth(struct nfp_item_calculate_param *param)
 {
 	if (param->item->spec != NULL) {
 		param->key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
 		param->key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_port(struct nfp_item_calculate_param *param)
 {
 	struct rte_eth_dev *ethdev;
@@ -950,56 +947,43 @@ nfp_flow_item_calculate_port(struct nfp_item_calculate_param *param)
 	const struct rte_flow_item_port_id *port_id;
 
 	port_id = param->item->spec;
-	if (port_id == NULL || port_id->id >= RTE_MAX_ETHPORTS)
-		return -ERANGE;
-
 	ethdev = &rte_eth_devices[port_id->id];
 	repr = ethdev->data->dev_private;
 	param->key_ls->port = repr->port_id;
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_vlan(struct nfp_item_calculate_param *param)
 {
 	param->key_ls->vlan = NFP_FLOWER_MASK_VLAN_CFI;
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_ipv4(struct nfp_item_calculate_param *param)
 {
 	param->key_ls->key_layer |= NFP_FLOWER_LAYER_IPV4;
 	param->key_ls->key_size += sizeof(struct nfp_flower_ipv4);
 	if (!param->flag->outer_ip4_flag)
 		param->flag->outer_ip4_flag = true;
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_ipv6(struct nfp_item_calculate_param *param)
 {
 	param->key_ls->key_layer |= NFP_FLOWER_LAYER_IPV6;
 	param->key_ls->key_size += sizeof(struct nfp_flower_ipv6);
 	if (!param->flag->outer_ip6_flag)
 		param->flag->outer_ip6_flag = true;
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_l4(struct nfp_item_calculate_param *param)
 {
 	param->key_ls->key_layer |= NFP_FLOWER_LAYER_TP;
 	param->key_ls->key_size += sizeof(struct nfp_flower_tp_ports);
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_vxlan(struct nfp_item_calculate_param *param)
 {
 	struct nfp_fl_key_ls *key_ls = param->key_ls;
@@ -1016,7 +1000,7 @@ nfp_flow_item_calculate_vxlan(struct nfp_item_calculate_param *param)
 		 * in `struct nfp_flower_ipv4_udp_tun`.
 		 */
 		key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-	} else if (param->flag->outer_ip6_flag) {
+	} else {
 		key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
 		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
 		key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
@@ -1026,15 +1010,10 @@ nfp_flow_item_calculate_vxlan(struct nfp_item_calculate_param *param)
 		 * in `struct nfp_flower_ipv6_udp_tun`.
 		 */
 		key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
-	} else {
-		PMD_DRV_LOG(ERR, "No outer IP layer for VXLAN tunnel.");
-		return -EINVAL;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_geneve(struct nfp_item_calculate_param *param)
 {
 	struct nfp_fl_key_ls *key_ls = param->key_ls;
@@ -1053,7 +1032,7 @@ nfp_flow_item_calculate_geneve(struct nfp_item_calculate_param *param)
 		 * in `struct nfp_flower_ipv4_udp_tun`.
 		 */
 		key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-	} else if (param->flag->outer_ip6_flag) {
+	} else {
 		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
 		key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
 		/*
@@ -1061,15 +1040,10 @@ nfp_flow_item_calculate_geneve(struct nfp_item_calculate_param *param)
 		 * in `struct nfp_flower_ipv6_udp_tun`.
 		 */
 		key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
-	} else {
-		PMD_DRV_LOG(ERR, "No outer IP layer for GENEVE tunnel.");
-		return -EINVAL;
 	}
-
-	return 0;
 }
 
-static int
+static void
 nfp_flow_item_calculate_gre(struct nfp_item_calculate_param *param)
 {
 	struct nfp_fl_key_ls *key_ls = param->key_ls;
@@ -1088,7 +1062,7 @@ nfp_flow_item_calculate_gre(struct nfp_item_calculate_param *param)
 		 * in `struct nfp_flower_ipv4_gre_tun`.
 		 */
 		key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
-	} else if (param->flag->outer_ip6_flag) {
+	} else {
 		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_TUN_IPV6;
 		key_ls->key_size += sizeof(struct nfp_flower_ipv6_gre_tun);
 		/*
@@ -1096,12 +1070,7 @@ nfp_flow_item_calculate_gre(struct nfp_item_calculate_param *param)
 		 * in `struct nfp_flower_ipv6_gre_tun`.
 		 */
 		key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
-	} else {
-		PMD_DRV_LOG(ERR, "No outer IP layer for GRE tunnel.");
-		return -EINVAL;
 	}
-
-	return 0;
 }
 
 static nfp_flow_key_calculate_item_fn item_fns[] = {
@@ -1123,7 +1092,6 @@ static int
 nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 		struct nfp_fl_key_ls *key_ls)
 {
-	int ret;
 	struct nfp_item_flag flag = {};
 	const struct rte_flow_item *item;
 	struct nfp_item_calculate_param param = {
@@ -1138,11 +1106,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 		}
 
 		param.item = item;
-		ret = item_fns[item->type](&param);
-		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Flow item %d calculate fail", item->type);
-			return ret;
-		}
+		item_fns[item->type](&param);
 	}
 
 	return 0;
