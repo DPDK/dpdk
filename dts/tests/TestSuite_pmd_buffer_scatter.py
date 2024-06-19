@@ -23,7 +23,8 @@ from scapy.packet import Raw  # type: ignore[import-untyped]
 from scapy.utils import hexstr  # type: ignore[import-untyped]
 
 from framework.params import Params
-from framework.remote_session.testpmd_shell import TestPmdForwardingModes, TestPmdShell
+from framework.params.testpmd import SimpleForwardingModes
+from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.test_suite import TestSuite
 
 
@@ -113,7 +114,7 @@ class TestPmdBufferScatter(TestSuite):
             ),
             privileged=True,
         )
-        testpmd.set_forward_mode(TestPmdForwardingModes.mac)
+        testpmd.set_forward_mode(SimpleForwardingModes.mac)
         testpmd.start()
 
         for offset in [-1, 0, 1, 4, 5]:

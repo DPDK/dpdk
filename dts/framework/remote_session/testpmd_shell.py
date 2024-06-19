@@ -26,7 +26,7 @@ from typing import Callable, ClassVar
 from typing_extensions import Self
 
 from framework.exception import InteractiveCommandExecutionError
-from framework.params.eal import EalParams
+from framework.params.testpmd import SimpleForwardingModes, TestPmdParams
 from framework.parser import ParserFn, TextParser
 from framework.settings import SETTINGS
 from framework.utils import StrEnum
@@ -54,37 +54,6 @@ class TestPmdDevice:
     def __str__(self) -> str:
         """The PCI address captures what the device is."""
         return self.pci_address
-
-
-class TestPmdForwardingModes(StrEnum):
-    r"""The supported packet forwarding modes for :class:`~TestPmdShell`\s."""
-
-    #:
-    io = auto()
-    #:
-    mac = auto()
-    #:
-    macswap = auto()
-    #:
-    flowgen = auto()
-    #:
-    rxonly = auto()
-    #:
-    txonly = auto()
-    #:
-    csum = auto()
-    #:
-    icmpecho = auto()
-    #:
-    ieee1588 = auto()
-    #:
-    noisy = auto()
-    #:
-    fivetswap = "5tswap"
-    #:
-    shared_rxq = "shared-rxq"
-    #:
-    recycle_mbufs = auto()
 
 
 class VLANOffloadFlag(Flag):
@@ -646,9 +615,7 @@ class TestPmdShell(InteractiveShell):
         Also find the number of pci addresses which were allowed on the command line when the app
         was started.
         """
-        self._app_params += " -i --mask-event intr_lsc"
-
-        assert isinstance(self._app_params, EalParams)
+        assert isinstance(self._app_params, TestPmdParams)
 
         self.number_of_ports = (
             len(self._app_params.ports) if self._app_params.ports is not None else 0
@@ -740,7 +707,7 @@ class TestPmdShell(InteractiveShell):
             self._logger.error(f"The link for port {port_id} did not come up in the given timeout.")
         return "Link status: up" in port_info
 
-    def set_forward_mode(self, mode: TestPmdForwardingModes, verify: bool = True):
+    def set_forward_mode(self, mode: SimpleForwardingModes, verify: bool = True):
         """Set packet forwarding mode.
 
         Args:
