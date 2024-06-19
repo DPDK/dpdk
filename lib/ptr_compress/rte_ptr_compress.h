@@ -141,7 +141,7 @@ rte_ptr_compress_32_shift(void *ptr_base, void * const *src_table,
 		i += svcntd();
 	} while (i < n);
 #elif defined __ARM_NEON && !defined RTE_ARCH_ARMv8_AARCH32
-	uint64_t ptr_diff;
+	uintptr_t ptr_diff;
 	uint64x2_t v_ptr_table;
 	/* right shift is done by left shifting by negative int */
 	int64x2_t v_shift = vdupq_n_s64(-bit_shift);
@@ -202,7 +202,7 @@ rte_ptr_decompress_32_shift(void *ptr_base, uint32_t const *src_table,
 		i += svcntd();
 	} while (i < n);
 #elif defined __ARM_NEON && !defined RTE_ARCH_ARMv8_AARCH32
-	uint64_t ptr_diff;
+	uintptr_t ptr_diff;
 	uint64x2_t v_ptr_table;
 	int64x2_t v_shift = vdupq_n_s64(bit_shift);
 	uint64x2_t v_ptr_base = vdupq_n_u64((uint64_t)ptr_base);
@@ -215,7 +215,7 @@ rte_ptr_decompress_32_shift(void *ptr_base, uint32_t const *src_table,
 	}
 	/* process leftover single item in case of odd number of n */
 	if (unlikely(n & 0x1)) {
-		ptr_diff = ((uint64_t) src_table[i]) << bit_shift;
+		ptr_diff = ((uintptr_t) src_table[i]) << bit_shift;
 		dest_table[i] = RTE_PTR_ADD(ptr_base, ptr_diff);
 	}
 #else
