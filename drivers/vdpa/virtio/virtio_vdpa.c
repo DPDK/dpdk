@@ -1726,8 +1726,10 @@ virtio_vdpa_notify_area_get(int vid, int qid, uint64_t *offset, uint64_t *size)
 		return ret;
 	}
 
-	DRV_LOG(DEBUG, "Vid %d qid:%d offset:0x%"PRIx64"size:0x%"PRIx64,
-					vid, qid, *offset, *size);
+	if ((!qid)|| (!*offset))
+		DRV_LOG(DEBUG, "Vid %d qid:%d offset:0x%"PRIx64"size:0x%"PRIx64,
+						vid, qid, *offset, *size);
+
 	return 0;
 }
 static int
