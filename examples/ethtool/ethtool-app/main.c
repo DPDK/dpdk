@@ -289,7 +289,7 @@ int main(int argc, char **argv)
 		rte_exit(EXIT_FAILURE, "No available NIC ports!\n");
 	if (cnt_ports > MAX_PORTS) {
 		printf("Info: Using only %i of %i ports\n",
-			cnt_ports, MAX_PORTS
+			MAX_PORTS, cnt_ports
 			);
 		cnt_ports = MAX_PORTS;
 	}
