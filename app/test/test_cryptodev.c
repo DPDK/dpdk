@@ -12681,6 +12681,19 @@ test_dtls_1_2_record_proto_sg_opt_padding_max(void)
 }
 
 static int
+test_tls_1_3_record_proto_display_list(void)
+{
+	struct tls_record_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.display_alg = true;
+	flags.tls_version = RTE_SECURITY_VERSION_TLS_1_3;
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
 test_tls_1_3_record_proto_corrupt_pkt(void)
 {
 	struct tls_record_test_flags flags = {
@@ -18199,6 +18212,10 @@ static struct unit_test_suite tls13_record_proto_testsuite  = {
 			"TLS-1.3 record SG mode with optional padding",
 			ut_setup_security, ut_teardown,
 			test_tls_1_3_record_proto_sg_opt_padding_1),
+		TEST_CASE_NAMED_ST(
+			"Combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_display_list),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
