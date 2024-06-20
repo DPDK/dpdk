@@ -12772,6 +12772,39 @@ test_tls_1_3_record_proto_sg_opt_padding_1(void)
 	return test_tls_record_proto_opt_padding(25, 4, RTE_SECURITY_VERSION_TLS_1_3);
 }
 
+static int
+test_tls_1_3_record_proto_data_walkthrough(void)
+{
+	struct tls_record_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.data_walkthrough = true;
+	flags.tls_version = RTE_SECURITY_VERSION_TLS_1_3;
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_1_3_record_proto_sgl_data_walkthrough(void)
+{
+	struct tls_record_test_flags flags = {
+		.nb_segs_in_mbuf = 5,
+		.tls_version = RTE_SECURITY_VERSION_TLS_1_3,
+		.data_walkthrough = true
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. Test Skipped.\n");
+		return TEST_SKIPPED;
+	}
+
+	return test_tls_record_proto_all(&flags);
+}
+
 #endif
 
 static int
@@ -18216,6 +18249,14 @@ static struct unit_test_suite tls13_record_proto_testsuite  = {
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
 			test_tls_1_3_record_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"Data walkthrough combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_data_walkthrough),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode data walkthrough",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_sgl_data_walkthrough),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
