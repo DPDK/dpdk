@@ -100,6 +100,7 @@ struct tls_record_test_flags {
 	bool zero_len;
 	bool padding_corruption;
 	bool out_of_place;
+	bool skip_sess_destroy;
 	uint8_t nb_segs_in_mbuf;
 	uint8_t opt_padding;
 	enum rte_security_tls_version tls_version;
