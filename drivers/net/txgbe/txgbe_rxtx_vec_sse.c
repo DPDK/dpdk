@@ -10,7 +10,7 @@
 #include "txgbe_rxtx.h"
 #include "txgbe_rxtx_vec_common.h"
 
-#include <tmmintrin.h>
+#include <rte_vect.h>
 
 static inline void
 txgbe_rxq_rearm(struct txgbe_rx_queue *rxq)

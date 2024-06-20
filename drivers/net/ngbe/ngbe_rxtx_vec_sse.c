@@ -11,7 +11,7 @@
 #include "ngbe_rxtx.h"
 #include "ngbe_rxtx_vec_common.h"
 
-#include <tmmintrin.h>
+#include <rte_vect.h>
 
 static inline void
 ngbe_rxq_rearm(struct ngbe_rx_queue *rxq)

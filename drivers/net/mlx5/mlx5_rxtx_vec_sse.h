@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <smmintrin.h>
+#include <rte_vect.h>
 
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
