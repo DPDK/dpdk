@@ -12740,6 +12740,25 @@ test_tls_1_3_record_proto_zero_len_non_app(void)
 
 	return test_tls_record_proto_all(&flags);
 }
+
+static int
+test_tls_1_3_record_proto_dm_opt_padding(void)
+{
+	return test_tls_record_proto_opt_padding(6, 0, RTE_SECURITY_VERSION_TLS_1_3);
+}
+
+static int
+test_tls_1_3_record_proto_sg_opt_padding(void)
+{
+	return test_tls_record_proto_opt_padding(25, 5, RTE_SECURITY_VERSION_TLS_1_3);
+}
+
+static int
+test_tls_1_3_record_proto_sg_opt_padding_1(void)
+{
+	return test_tls_record_proto_opt_padding(25, 4, RTE_SECURITY_VERSION_TLS_1_3);
+}
+
 #endif
 
 static int
@@ -18168,6 +18187,18 @@ static struct unit_test_suite tls13_record_proto_testsuite  = {
 			"TLS-1.3 record with zero len and content type as ctrl",
 			ut_setup_security, ut_teardown,
 			test_tls_1_3_record_proto_zero_len_non_app),
+		TEST_CASE_NAMED_ST(
+			"TLS-1.3 record DM mode with optional padding",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_dm_opt_padding),
+		TEST_CASE_NAMED_ST(
+			"TLS-1.3 record SG mode with optional padding - 1",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_sg_opt_padding),
+		TEST_CASE_NAMED_ST(
+			"TLS-1.3 record SG mode with optional padding",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_sg_opt_padding_1),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
