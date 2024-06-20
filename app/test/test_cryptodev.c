@@ -12173,7 +12173,7 @@ again:
 		if (ret == TEST_SKIPPED)
 			continue;
 
-		if (flags->pkt_corruption) {
+		if (flags->pkt_corruption || flags->padding_corruption) {
 			if (ret == TEST_SUCCESS)
 				return TEST_FAILED;
 		} else {
@@ -12402,6 +12402,18 @@ static int
 test_tls_record_proto_sg_opt_padding_max(void)
 {
 	return test_tls_record_proto_opt_padding(33, 4, RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_sg_opt_padding_corrupt(void)
+{
+	struct tls_record_test_flags flags = {
+		.opt_padding = 8,
+		.padding_corruption = true,
+		.nb_segs_in_mbuf = 4,
+	};
+
+	return test_tls_record_proto_all(&flags);
 }
 
 static int
@@ -17997,6 +18009,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"TLS record SG mode with optional padding > max range",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_sg_opt_padding_max),
+		TEST_CASE_NAMED_ST(
+			"TLS record SG mode with padding corruption",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sg_opt_padding_corrupt),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

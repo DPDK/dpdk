@@ -41,6 +41,7 @@ static_assert(TLS_1_3_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 #define TLS_RECORD_PLAINTEXT_MIN_LEN       (1u)
+#define TLS_RECORD_PAD_CORRUPT_OFFSET      20
 
 enum tls_record_test_content_type {
 	TLS_RECORD_TEST_CONTENT_TYPE_APP,
