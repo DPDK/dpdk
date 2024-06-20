@@ -1067,19 +1067,6 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 }
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
-static inline uintptr_t get_base_addr(struct rte_mempool *mp, uint64_t *align)
-{
-	struct rte_mempool_memhdr *memhdr;
-	uintptr_t memhdr_addr, aligned_addr;
-
-	memhdr = STAILQ_FIRST(&mp->mem_list);
-	memhdr_addr = (uintptr_t)memhdr->addr;
-	aligned_addr = memhdr_addr & ~(getpagesize() - 1);
-	*align = memhdr_addr - aligned_addr;
-
-	return aligned_addr;
-}
-
 /* Check if the netdev,qid context already exists */
 static inline bool
 ctx_exists(struct pkt_rx_queue *rxq, const char *ifname,
@@ -1150,9 +1137,10 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		.fill_size = ETH_AF_XDP_DFLT_NUM_DESCS * 2,
 		.comp_size = ETH_AF_XDP_DFLT_NUM_DESCS,
 		.flags = XDP_UMEM_UNALIGNED_CHUNK_FLAG};
-	void *base_addr = NULL;
 	struct rte_mempool *mb_pool = rxq->mb_pool;
-	uint64_t umem_size, align = 0;
+	void *aligned_addr;
+	uint64_t umem_size;
+	struct rte_mempool_mem_range_info range;
 
 	if (internals->shared_umem) {
 		if (get_shared_umem(rxq, internals->if_name, &umem) < 0)
@@ -1184,19 +1172,29 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		}
 
 		umem->mb_pool = mb_pool;
-		base_addr = (void *)get_base_addr(mb_pool, &align);
-		umem_size = (uint64_t)mb_pool->populated_size *
-				(uint64_t)usr_config.frame_size +
-				align;
-
-		ret = xsk_umem__create(&umem->umem, base_addr, umem_size,
+		ret = rte_mempool_get_mem_range(mb_pool, &range);
+		if (ret < 0) {
+			AF_XDP_LOG(ERR, "Failed(%d) to get range from mempool\n", ret);
+			goto err;
+		}
+		if (!range.is_contiguous) {
+			AF_XDP_LOG(ERR, "Can't mapped to umem as mempool is not contiguous\n");
+			goto err;
+		}
+		/*
+		 * umem requires the memory area be page aligned, safe to map with a large area as
+		 * the memory pointer for each XSK TX/RX descriptor is derived from mbuf data area.
+		 */
+		aligned_addr = (void *)RTE_ALIGN_FLOOR((uintptr_t)range.start, getpagesize());
+		umem_size = range.length + RTE_PTR_DIFF(range.start, aligned_addr);
+		ret = xsk_umem__create(&umem->umem, aligned_addr, umem_size,
 				&rxq->fq, &rxq->cq, &usr_config);
 		if (ret) {
 			AF_XDP_LOG(ERR, "Failed to create umem [%d]: [%s]\n",
 				   errno, strerror(errno));
 			goto err;
 		}
-		umem->buffer = base_addr;
+		umem->buffer = aligned_addr;
 
 		if (internals->shared_umem) {
 			umem->max_xsks = mb_pool->populated_size /
