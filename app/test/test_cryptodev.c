@@ -12224,11 +12224,11 @@ test_tls_1_2_record_proto_display_list(void)
 }
 
 static int
-test_tls_1_2_record_proto_sgl(void)
+test_tls_record_proto_sgl(enum rte_security_tls_version tls_version)
 {
 	struct tls_record_test_flags flags = {
 		.nb_segs_in_mbuf = 5,
-		.tls_version = RTE_SECURITY_VERSION_TLS_1_2
+		.tls_version = tls_version
 	};
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info dev_info;
@@ -12240,6 +12240,12 @@ test_tls_1_2_record_proto_sgl(void)
 	}
 
 	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_1_2_record_proto_sgl(void)
+{
+	return test_tls_record_proto_sgl(RTE_SECURITY_VERSION_TLS_1_2);
 }
 
 static int
@@ -12573,26 +12579,19 @@ test_dtls_1_2_record_proto_antireplay4096(void)
 static int
 test_dtls_1_2_record_proto_sgl(void)
 {
-	struct tls_record_test_flags flags = {
-		.nb_segs_in_mbuf = 5,
-		.tls_version = RTE_SECURITY_VERSION_DTLS_1_2
-	};
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct rte_cryptodev_info dev_info;
-
-	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
-		printf("Device doesn't support in-place scatter-gather. Test Skipped.\n");
-		return TEST_SKIPPED;
-	}
-
-	return test_tls_record_proto_all(&flags);
+	return test_tls_record_proto_sgl(RTE_SECURITY_VERSION_DTLS_1_2);
 }
 
 static int
 test_dtls_1_2_record_proto_sgl_data_walkthrough(void)
 {
 	return test_tls_record_proto_sgl_data_walkthrough(RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
+test_dtls_1_2_record_proto_sgl_oop(void)
+{
+	return test_tls_record_proto_sgl_oop(RTE_SECURITY_VERSION_DTLS_1_2);
 }
 
 static int
@@ -12811,23 +12810,21 @@ test_tls_1_3_record_proto_data_walkthrough(void)
 }
 
 static int
+test_tls_1_3_record_proto_sgl(void)
+{
+	return test_tls_record_proto_sgl(RTE_SECURITY_VERSION_TLS_1_3);
+}
+
+static int
 test_tls_1_3_record_proto_sgl_data_walkthrough(void)
 {
-	struct tls_record_test_flags flags = {
-		.nb_segs_in_mbuf = 5,
-		.tls_version = RTE_SECURITY_VERSION_TLS_1_3,
-		.data_walkthrough = true
-	};
-	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	struct rte_cryptodev_info dev_info;
+	return test_tls_record_proto_sgl_data_walkthrough(RTE_SECURITY_VERSION_TLS_1_3);
+}
 
-	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
-	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
-		printf("Device doesn't support in-place scatter-gather. Test Skipped.\n");
-		return TEST_SKIPPED;
-	}
-
-	return test_tls_record_proto_all(&flags);
+static int
+test_tls_1_3_record_proto_sgl_oop(void)
+{
+	return test_tls_record_proto_sgl_oop(RTE_SECURITY_VERSION_TLS_1_3);
 }
 
 #endif
@@ -18146,6 +18143,10 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_dtls_1_2_record_proto_sgl_data_walkthrough),
 		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode out of place",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_sgl_oop),
+		TEST_CASE_NAMED_ST(
 			"Packet corruption",
 			ut_setup_security, ut_teardown,
 			test_dtls_1_2_record_proto_corrupt_pkt),
@@ -18287,9 +18288,17 @@ static struct unit_test_suite tls13_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_1_3_record_proto_data_walkthrough),
 		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_sgl),
+		TEST_CASE_NAMED_ST(
 			"Multi-segmented mode data walkthrough",
 			ut_setup_security, ut_teardown,
 			test_tls_1_3_record_proto_sgl_data_walkthrough),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode out of place",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_sgl_oop),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
