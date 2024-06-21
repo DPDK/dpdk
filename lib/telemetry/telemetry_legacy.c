@@ -94,7 +94,7 @@ register_client(const char *cmd __rte_unused, const char *params,
 	}
 #ifndef RTE_EXEC_ENV_WINDOWS
 	strlcpy(data, strchr(params, ':'), sizeof(data));
-	memcpy(data, &data[strlen(":\"")], strlen(data));
+	memmove(data, &data[strlen(":\"")], strlen(data));
 	if (!strchr(data, '\"')) {
 		fprintf(stderr, "Invalid client data\n");
 		return -1;
