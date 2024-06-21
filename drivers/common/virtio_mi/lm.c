@@ -1216,7 +1216,7 @@ virtio_vdpa_mi_dev_remove(struct rte_pci_device *pci_dev)
 }
 
 static void
-virtio_ha_pf_drv_ctx_set(const struct virtio_dev_name *pf, const void *ctx)
+virtio_ha_pf_drv_ctx_set(const struct virtio_dev_name *pf, const void *ctx, __rte_unused int num)
 {
 	const struct virtio_pf_ctx *pf_ctx = (const struct virtio_pf_ctx *)ctx;
 

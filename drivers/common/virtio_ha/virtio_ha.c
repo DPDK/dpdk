@@ -919,12 +919,12 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 }
 
 int
-virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx)
+virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx, int num)
 {
 	if (!pf_ctx_cb || !pf_ctx_cb->set)
 		return -1;
 
-	pf_ctx_cb->set(pf, ctx);
+	pf_ctx_cb->set(pf, ctx, num);
 
 	return 0;
 }
@@ -941,12 +941,12 @@ virtio_ha_pf_ctx_unset(const struct virtio_dev_name *pf)
 }
 
 int
-virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx)
+virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx, int vf_cnt_vm)
 {
 	if (!vf_ctx_cb || !vf_ctx_cb->set)
 		return -1;
 
-	vf_ctx_cb->set(vf, ctx);
+	vf_ctx_cb->set(vf, ctx, vf_cnt_vm);
 
 	return 0;
 }
@@ -1410,6 +1410,11 @@ virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
 		}
 	}
 
+	if (mem->nregions > 0)
+		vf_dev->vf_devargs.mem_tbl_set = true;
+	else
+		vf_dev->vf_devargs.mem_tbl_set = false;
+
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
 	else
@@ -1444,6 +1449,7 @@ virtio_ha_vf_mem_tbl_remove(struct virtio_dev_name *vf,
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
 			mem = &vf_dev->vf_ctx.ctt.mem;
 			mem->nregions = 0;
+			vf_dev->vf_devargs.mem_tbl_set = false;
 			break;
 		}
 	}

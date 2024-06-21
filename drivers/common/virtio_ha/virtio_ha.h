@@ -21,7 +21,7 @@
 
 struct virtio_dev_name;
 
-typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx);
+typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx, int vf_num_vm);
 typedef void (*ctx_unset_cb)(const struct virtio_dev_name *dev);
 typedef void (*fd_cb)(int fd, void *data);
 typedef void (*ver_time_set)(char *version, char *buildtime);
@@ -87,6 +87,7 @@ struct vdpa_vf_with_devargs {
     struct virtio_dev_name vf_name;
     char vhost_sock_addr[VDPA_MAX_SOCK_LEN];
     char vm_uuid[RTE_UUID_STRLEN];
+	bool mem_tbl_set;
 };
 
 struct virtio_vdpa_mem_region {
@@ -149,6 +150,7 @@ struct virtio_ha_vf_to_restore {
 	TAILQ_ENTRY(virtio_ha_vf_to_restore) next;
 	struct vdpa_vf_with_devargs vf_devargs;
 	struct virtio_dev_name pf_name;
+	int vf_cnt_vm; /* VF number in the same VM */
 };
 
 TAILQ_HEAD(virtio_ha_vf_restore_list, virtio_ha_vf_to_restore);
@@ -209,13 +211,13 @@ int virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf, struct vdpa_vf_ctx **ctx);
 
 /* App set PF context to PF driver */
-int virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx);
+int virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx, int num);
 
 /* App unset PF context from PF driver */
 int virtio_ha_pf_ctx_unset(const struct virtio_dev_name *pf);
 
 /* App set VF context to VF driver */
-int virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx);
+int virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx, int vf_cnt_vm);
 
 /* App unset VF context from VF driver */
 int virtio_ha_vf_ctx_unset(const struct virtio_dev_name *vf);

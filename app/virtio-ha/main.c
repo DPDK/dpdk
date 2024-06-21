@@ -514,6 +514,10 @@ ha_server_store_dma_tbl(struct virtio_ha_msg *msg)
 			}
 			memcpy(&vf_dev->vf_ctx.ctt.mem, mem, len);
 			HA_APP_LOG(INFO, "Stored vf %s DMA memory table:", vf_name->dev_bdf);
+			if (mem->nregions > 0)
+				vf_dev->vf_devargs.mem_tbl_set = true;
+			else
+				vf_dev->vf_devargs.mem_tbl_set = false;
 			for (i = 0; i < mem->nregions; i++) {
 				HA_APP_LOG(INFO, "Region %u: GPA 0x%" PRIx64 " HPA 0x%" PRIx64 " Size 0x%" PRIx64,
 					i, mem->regions[i].guest_phys_addr, mem->regions[i].host_phys_addr,
@@ -653,6 +657,7 @@ ha_server_remove_dma_tbl(struct virtio_ha_msg *msg)
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf_name->dev_bdf)) {
 			mem = &vf_dev->vf_ctx.ctt.mem;
 			mem->nregions = 0;
+			vf_dev->vf_devargs.mem_tbl_set = false;
 			HA_APP_LOG(INFO, "Removed vf %s DMA memory table", vf_name->dev_bdf);
 			break;
 		}

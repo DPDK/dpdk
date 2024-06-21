@@ -34,6 +34,7 @@ struct virtio_vdpa_iommu_domain {
 	struct virtio_vdpa_vf_drv_mem mem;
 	int container_ref_cnt;
 	int mem_tbl_ref_cnt;
+	int tbl_recover_cnt;
 };
 
 struct virtio_vdpa_vring_info {
@@ -80,6 +81,7 @@ struct virtio_vdpa_priv {
 	bool configured;
 	bool dev_conf_read;
 	bool mem_tbl_set;
+	bool tbl_recovering;
 	bool ctx_stored;
 	bool fd_args_stored;
 	bool restore;

@@ -101,7 +101,7 @@ virtio_ha_client_dev_restore_pf(int *total_vf)
 	struct virtio_dev_name *pf_list = NULL;
 	struct vdpa_vf_with_devargs *vf_list = NULL;
 	struct virtio_pf_ctx pf_ctx;
-	struct virtio_ha_vf_to_restore *vf_dev;
+	struct virtio_ha_vf_to_restore *vf_dev, *v1, *v2, *tmp;
 	int ret, i, j, nr_pf, nr_vf;
 
 	ret = virtio_ha_pf_list_query(&pf_list);
@@ -129,7 +129,7 @@ virtio_ha_client_dev_restore_pf(int *total_vf)
 			goto err;
 		}
 
-		ret = virtio_ha_pf_ctx_set(pf_list + i, &pf_ctx);
+		ret = virtio_ha_pf_ctx_set(pf_list + i, &pf_ctx, 0);
 		if (ret < 0) {
 			RTE_LOG(ERR, HA, "Failed to set pf ctx in pf driver\n");
 			ret = -1;
@@ -177,11 +177,27 @@ virtio_ha_client_dev_restore_pf(int *total_vf)
 			memset(vf_dev, 0, sizeof(struct virtio_ha_vf_to_restore));
 			memcpy(&vf_dev->vf_devargs, vf_list + j, sizeof(struct vdpa_vf_with_devargs));
 			memcpy(&vf_dev->pf_name, pf_list + i, sizeof(struct virtio_dev_name));
+			vf_dev->vf_cnt_vm = 1;
 			TAILQ_INSERT_TAIL(&rq.non_prio_q, vf_dev, next);
 		}
 
 		free(vf_list);
 		vf_list = NULL;
+	}
+
+	TAILQ_FOREACH(v1, &rq.non_prio_q, next) {
+		tmp = TAILQ_NEXT(v1, next);
+		while (tmp != NULL) {
+			v2 = tmp;
+			if (strncmp(v1->vf_devargs.vm_uuid, v2->vf_devargs.vm_uuid, RTE_UUID_STRLEN) == 0 &&
+					v1->vf_devargs.mem_tbl_set && v2->vf_devargs.mem_tbl_set) {
+				v1->vf_cnt_vm++;
+				v2->vf_cnt_vm++;
+			}
+			tmp = TAILQ_NEXT(tmp, next);
+		}
+		if (TAILQ_NEXT(v1, next) == NULL)
+			break;
 	}
 
 	ret = virtio_ha_prio_chnl_init(&rq);
@@ -229,7 +245,7 @@ virtio_ha_client_dev_restore_vf(int total_vf)
 			goto err;
 		}
 
-		ret = virtio_ha_vf_ctx_set(&vf_dev->vf_devargs.vf_name, vf_ctx);
+		ret = virtio_ha_vf_ctx_set(&vf_dev->vf_devargs.vf_name, vf_ctx, vf_dev->vf_cnt_vm);
 		if (ret < 0) {
 			RTE_LOG(ERR, HA, "Failed to set vf ctx in vf driver\n");
 			pthread_mutex_unlock(&vf_restore_lock);

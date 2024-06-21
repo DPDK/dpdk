@@ -45,6 +45,7 @@ static int stage1 = 0;
 struct virtio_ha_vf_drv_ctx {
 	struct virtio_dev_name vf_name;
 	const struct vdpa_vf_ctx *ctx;
+	int vf_num_vm;
 };
 
 extern struct virtio_vdpa_device_callback virtio_vdpa_blk_callback;
@@ -61,12 +62,13 @@ static pthread_mutex_t iommu_domain_locks[VIRTIO_VDPA_MAX_IOMMU_DOMAIN];
 static struct virtio_ha_vf_drv_ctx cached_ctx;
 
 static void
-virtio_ha_vf_drv_ctx_set(const struct virtio_dev_name *vf, const void *ctx)
+virtio_ha_vf_drv_ctx_set(const struct virtio_dev_name *vf, const void *ctx, int vf_num_vm)
 {
 	const struct vdpa_vf_ctx *vf_ctx = (const struct vdpa_vf_ctx *)ctx; 
 
 	memcpy(&cached_ctx.vf_name, vf, sizeof(struct virtio_dev_name));
 	cached_ctx.ctx = vf_ctx;
+	cached_ctx.vf_num_vm = vf_num_vm;
 }
 
 static void
@@ -76,6 +78,7 @@ virtio_ha_vf_drv_ctx_unset(const struct virtio_dev_name *vf)
 		return;
 	memset(&cached_ctx.vf_name, 0, sizeof(struct virtio_dev_name));
 	cached_ctx.ctx = NULL;
+	cached_ctx.vf_num_vm = 0;
 }
 
 static struct virtio_vdpa_priv *
@@ -135,6 +138,7 @@ alloc_iommu_domain(void)
 	iommu_domain->vfio_container_fd = -1;
 	iommu_domain->container_ref_cnt = 0;
 	iommu_domain->mem_tbl_ref_cnt = 0;
+	iommu_domain->tbl_recover_cnt = 0;
 	virtio_iommu_domains[i] = iommu_domain;
 
 	return i;
@@ -857,11 +861,15 @@ virtio_vdpa_dev_cleanup(int vid)
 	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
 	if (iommu_domain == NULL)
 		goto unlock;
+	if (priv->tbl_recovering) {
+		iommu_domain->tbl_recover_cnt--;
+		priv->tbl_recovering = false;
+	}
 	if (priv->mem_tbl_set) {
 		iommu_domain->mem_tbl_ref_cnt--;
 		priv->mem_tbl_set = false;
 	}
-	if (iommu_domain->mem_tbl_ref_cnt == 0) {
+	if (iommu_domain->mem_tbl_ref_cnt == 0 && iommu_domain->tbl_recover_cnt == 0) {
 		for (i = 0; i < iommu_domain->mem.nregions; i++) {
 			reg = &iommu_domain->mem.regions[i];
 			if (virtio_vdpa_dev_dma_unmap(priv->vfio_container_fd,
@@ -1059,6 +1067,11 @@ virtio_vdpa_dev_set_mem_table(int vid)
 
 	iommu_domain->mem.nregions = cur_mem->nregions;
 	free(cur_mem);
+
+	if (priv->tbl_recovering) {
+		iommu_domain->tbl_recover_cnt--;
+		priv->tbl_recovering = false;
+	}
 
 	if (!priv->mem_tbl_set) {
 		priv->mem_tbl_set = true;
@@ -1852,11 +1865,15 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
 	if (!iommu_domain)
 		goto unlock;
+	if (priv->tbl_recovering) {
+		iommu_domain->tbl_recover_cnt--;
+		priv->tbl_recovering = false;
+	}
 	if (priv->mem_tbl_set) {
 		iommu_domain->mem_tbl_ref_cnt--;
 		priv->mem_tbl_set = false;
 	}
-	if (iommu_domain->mem_tbl_ref_cnt == 0) {
+	if (iommu_domain->mem_tbl_ref_cnt == 0 && iommu_domain->tbl_recover_cnt == 0) {
 		mem = &iommu_domain->mem;
 		for (i = 0; i < mem->nregions; i++) {
 			ret = virtio_vdpa_raw_vfio_dma_unmap(iommu_domain->vfio_container_fd,
@@ -2344,8 +2361,11 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				iommu_domain->mem.regions[i].size = mem->regions[i].size;
 			}
 			iommu_domain->mem.nregions = mem->nregions;
+			iommu_domain->tbl_recover_cnt = cached_ctx.vf_num_vm;
 		}
 		pthread_mutex_unlock(&iommu_domain_locks[iommu_idx]);
+		if (cached_ctx.ctx->ctt.mem.nregions != 0)
+			priv->tbl_recovering = true;
 		priv->mem_tbl_set = false;
 		priv->fd_args_stored = true;
 	}
