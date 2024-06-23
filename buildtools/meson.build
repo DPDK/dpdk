@@ -6,7 +6,11 @@ check_symbols = find_program('check-symbols.sh')
 ldflags_ibverbs_static = find_program('options-ibverbs-static.sh')
 objdump = find_program('objdump', 'llvm-objdump')
 
-python3 = import('python').find_installation(required: false)
+python3_required_modules = []
+if host_machine.system() != 'windows'
+    python3_required_modules = ['elftools']
+endif
+python3 = import('python').find_installation('python3', required: false, modules: python3_required_modules)
 if python3.found()
     py3 = [python3]
 else
@@ -39,16 +43,3 @@ else
     pmdinfogen += 'elf'
 endif
 
-# TODO: starting from Meson 0.51.0 use
-#     python3 = import('python').find_installation('python',
-#        modules : python3_required_modules)
-python3_required_modules = []
-if host_machine.system() != 'windows'
-    python3_required_modules = ['elftools']
-endif
-foreach module : python3_required_modules
-    script = 'import importlib.util; import sys; exit(importlib.util.find_spec("@0@") is None)'
-    if run_command(py3, '-c', script.format(module), check: false).returncode() != 0
-        error('missing python module: @0@'.format(module))
-    endif
-endforeach
