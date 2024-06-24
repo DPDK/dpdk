@@ -41,15 +41,12 @@
 /* State Machine error - Command sequence problem */
 #define	VIRTCHNL2_STATUS_ERR_ESM	201
 
-/* These macros are used to generate compilation errors if a structure/union
- * is not exactly the correct length. It gives a divide by zero error if the
- * structure/union is not of the correct size, otherwise it creates an enum
- * that is never used.
+/* This macro is used to generate compilation errors if a structure
+ * is not exactly the correct length.
  */
-#define VIRTCHNL2_CHECK_STRUCT_LEN(n, X) enum virtchnl2_static_assert_enum_##X \
-	{ virtchnl2_static_assert_##X = (n)/((sizeof(struct X) == (n)) ? 1 : 0) }
-#define VIRTCHNL2_CHECK_UNION_LEN(n, X) enum virtchnl2_static_asset_enum_##X \
-	{ virtchnl2_static_assert_##X = (n)/((sizeof(union X) == (n)) ? 1 : 0) }
+#define VIRTCHNL2_CHECK_STRUCT_LEN(n, X)	\
+	static_assert((n) == sizeof(struct X),	\
+		      "Structure length does not match with the expected value")
 
 /* New major set of opcodes introduced and so leaving room for
  * old misc opcodes to be added in future. Also these opcodes may only
