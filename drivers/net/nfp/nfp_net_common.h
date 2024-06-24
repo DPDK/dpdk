@@ -50,6 +50,9 @@
 				RTE_ETH_RSS_NONFRAG_IPV6_UDP  | \
 				RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
 
+/* The length of firmware version string */
+#define FW_VER_LEN        32
+
 /*
  * Each PF has corresponding word to beat:
  * Offset | Usage
@@ -255,6 +258,9 @@ struct nfp_net_hw {
 
 	/** Used for rte_flow of CoreNIC firmware */
 	struct nfp_net_priv *priv;
+
+	/** Used for firmware version */
+	char fw_version[FW_VER_LEN];
 };
 
 static inline uint32_t
