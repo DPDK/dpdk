@@ -160,6 +160,9 @@ struct nfp_pf_dev {
 	uint8_t vf_base_id;
 	/** Number of queues per VF */
 	uint32_t queue_per_vf;
+
+	/** Record the speed uptade */
+	bool speed_updated;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024

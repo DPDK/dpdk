@@ -338,6 +338,8 @@ nfp_net_speed_configure(struct rte_eth_dev *dev)
 		}
 	}
 
+	hw_priv->pf_dev->speed_updated = true;
+
 	return 0;
 }
 
@@ -2246,6 +2248,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->nfp_eth_table = nfp_eth_table;
 	pf_dev->sync = sync;
 	pf_dev->total_phyports = nfp_net_get_port_num(pf_dev, nfp_eth_table);
+	pf_dev->speed_updated = false;
 
 	ret = nfp_net_speed_cap_get(pf_dev);
 	if (ret != 0) {

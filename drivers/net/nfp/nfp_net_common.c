@@ -738,22 +738,28 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 {
 	uint32_t i;
 	uint32_t speed;
+	enum nfp_eth_aneg aneg;
+	struct nfp_pf_dev *pf_dev;
 	struct nfp_eth_table *nfp_eth_table;
 	struct nfp_eth_table_port *eth_port;
 
+	pf_dev = hw_priv->pf_dev;
+	aneg = pf_dev->nfp_eth_table->ports[hw->idx].aneg;
+
 	/* Compare whether the current status has changed. */
-	if (dev->data->dev_link.link_status != link->link_status) {
-		nfp_eth_table = nfp_eth_read_ports(hw_priv->pf_dev->cpp);
+	if (pf_dev->speed_updated || aneg == NFP_ANEG_AUTO) {
+		nfp_eth_table = nfp_eth_read_ports(pf_dev->cpp);
 		if (nfp_eth_table == NULL) {
 			PMD_DRV_LOG(DEBUG, "Error reading NFP ethernet table.");
 			return -EIO;
+		} else {
+			pf_dev->nfp_eth_table->ports[hw->idx] = nfp_eth_table->ports[hw->idx];
+			free(nfp_eth_table);
+			pf_dev->speed_updated = false;
 		}
-
-		hw_priv->pf_dev->nfp_eth_table->ports[hw->idx] = nfp_eth_table->ports[hw->idx];
-		free(nfp_eth_table);
 	}
 
-	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
+	nfp_eth_table = pf_dev->nfp_eth_table;
 	eth_port = &nfp_eth_table->ports[hw->idx];
 	speed = eth_port->speed;
 
