@@ -320,8 +320,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
