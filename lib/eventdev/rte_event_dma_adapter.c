@@ -666,6 +666,7 @@ edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_a
 			ev->op = RTE_EVENT_OP_FORWARD;
 		else
 			ev->op = RTE_EVENT_OP_NEW;
+		ev->event = ops[i]->event_meta;
 	}
 
 	do {

@@ -61,7 +61,8 @@ struct rte_event dma_response_info = {
 	.queue_id = TEST_APP_EV_QUEUE_ID,
 	.sched_type = RTE_SCHED_TYPE_ATOMIC,
 	.flow_id = TEST_APP_EV_FLOWID,
-	.priority = TEST_APP_EV_PRIORITY
+	.priority = TEST_APP_EV_PRIORITY,
+	.op = RTE_EVENT_OP_NEW,
 };
 
 static struct event_dma_adapter_test_params params;
@@ -263,10 +264,12 @@ test_op_forward_mode(void)
 		op->op_mp = params.op_mpool;
 		op->dma_dev_id = TEST_DMA_DEV_ID;
 		op->vchan = TEST_DMA_VCHAN_ID;
+		op->event_meta = dma_response_info.event;
 
 		/* Fill in event info and update event_ptr with rte_event_dma_adapter_op */
 		memset(&ev[i], 0, sizeof(struct rte_event));
 		ev[i].event = 0;
+		ev[i].op = RTE_EVENT_OP_NEW;
 		ev[i].event_type = RTE_EVENT_TYPE_DMADEV;
 		ev[i].queue_id = TEST_DMA_EV_QUEUE_ID;
 		ev[i].sched_type = RTE_SCHED_TYPE_ATOMIC;
@@ -574,10 +577,11 @@ adapter_create:
 	ret = rte_event_dma_adapter_create(TEST_ADAPTER_ID, evdev, &conf, mode);
 	TEST_ASSERT_SUCCESS(ret, "Failed to create event dma adapter\n");
 
-	if (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND) {
+	event.event = dma_response_info.event;
+	if (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND)
 		ret = rte_event_dma_adapter_vchan_add(TEST_ADAPTER_ID, TEST_DMA_DEV_ID,
 							    TEST_DMA_VCHAN_ID, &event);
-	} else
+	else
 		ret = rte_event_dma_adapter_vchan_add(TEST_ADAPTER_ID, TEST_DMA_DEV_ID,
 							    TEST_DMA_VCHAN_ID, NULL);
 

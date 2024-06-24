@@ -179,8 +179,17 @@ struct rte_event_dma_adapter_op {
 	 * The dma device implementation should not modify this area.
 	 */
 	uint64_t event_meta;
-	/**< Event metadata that defines event attributes when used in OP_NEW mode.
+	/**< Event metadata of DMA completion event.
+	 * Used when RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND is not
+	 * supported in OP_NEW mode.
 	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_NEW
+	 * @see RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND
+	 *
+	 * Used when RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD is not
+	 * supported in OP_FWD mode.
+	 * @see rte_event_dma_adapter_mode::RTE_EVENT_DMA_ADAPTER_OP_FORWARD
+	 * @see RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD
+	 *
 	 * @see struct rte_event::event
 	 */
 	int16_t dma_dev_id;
