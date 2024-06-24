@@ -2640,6 +2640,56 @@ validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig
 }
 
 static inline int
+validate_op_fft_meas_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig_op,
+		bool skip_validate_output)
+{
+	struct rte_mbuf *m = op->data;
+	uint8_t i, nb_dst_segments = orig_op->nb_segments;
+	double thres_hold = 1.0;
+	uint32_t j, data_len_iq, error_num;
+	int32_t *ref_out, *op_out;
+	double estSNR, refSNR, delt, abs_delt;
+
+	TEST_ASSERT(nb_dst_segments == m->nb_segs,
+			"Number of segments differ in original (%u) and filled (%u) op fft",
+			nb_dst_segments, m->nb_segs);
+
+	/* Due to size limitation of mbuf, FFT doesn't use real mbuf. */
+	for (i = 0; i < nb_dst_segments; ++i) {
+		uint16_t offset = (i == 0) ? op->offset : 0;
+		uint32_t data_len = op->length;
+
+		TEST_ASSERT(orig_op->segments[i].length == data_len,
+				"Length of segment differ in original (%u) and filled (%u) op fft",
+				orig_op->segments[i].length, data_len);
+
+		/* Divided by 4 to get the number of 32 bits data. */
+		data_len_iq = data_len >> 2;
+		ref_out = (int32_t *)(orig_op->segments[i].addr);
+		op_out = rte_pktmbuf_mtod_offset(m, int32_t *, offset);
+		error_num = 0;
+		for (j = 0; j < data_len_iq; j++) {
+			estSNR = 10*log10(op_out[j]);
+			refSNR = 10*log10(ref_out[j]);
+			delt = refSNR - estSNR;
+			abs_delt = delt > 0 ? delt : -delt;
+			error_num += (abs_delt > thres_hold ? 1 : 0);
+		}
+		if ((error_num > 0) && !skip_validate_output) {
+			rte_memdump(stdout, "Buffer A", ref_out, data_len);
+			rte_memdump(stdout, "Buffer B", op_out, data_len);
+			TEST_ASSERT(error_num == 0,
+				"FFT Output are not matched total (%u) errors (%u)",
+				data_len_iq, error_num);
+		}
+
+		m = m->next;
+	}
+
+	return TEST_SUCCESS;
+}
+
+static inline int
 validate_op_mldts_chain(struct rte_bbdev_op_data *op,
 		struct op_data_entries *orig_op)
 {
@@ -2714,7 +2764,7 @@ validate_fft_op(struct rte_bbdev_fft_op **ops, const uint16_t n,
 				&ops[i]->fft.base_output, fft_data_orig, skip_validate_output),
 				"FFT Output buffers (op=%u) are not matched", i);
 		if (check_bit(ops[i]->fft.op_flags, RTE_BBDEV_FFT_POWER_MEAS))
-			TEST_ASSERT_SUCCESS(validate_op_fft_chain(
+			TEST_ASSERT_SUCCESS(validate_op_fft_meas_chain(
 				&ops[i]->fft.power_meas_output, fft_pwr_orig, skip_validate_output),
 				"FFT Power Output buffers (op=%u) are not matched", i);
 	}
