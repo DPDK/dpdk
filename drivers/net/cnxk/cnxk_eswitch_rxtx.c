@@ -194,7 +194,7 @@ cnxk_eswitch_dev_rx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 			mbuf->vlan_tci = rx->vtag0_tci;
 		/* Populate RSS hash */
 		mbuf->hash.rss = cqe->tag;
-		mbuf->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+		mbuf->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
 		pkts[pkt] = mbuf;
 		roc_prefetch_store_keep(mbuf);
 		plt_esw_dbg("Packet %d rec on queue %d esw qid %d hash %x mbuf %p vlan tci %d",
