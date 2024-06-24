@@ -201,6 +201,9 @@ for an additional list of options shared with other mlx5 drivers.
     and binds the AAD (ESP SPI and SN) to the payload during enqueue OP.
     It then restores the original memory layout in the decrypt OP.
     The ESP.IV size supported range is [0,16] bytes.
+    For OOP case, the PMD will replace the bytes preceding the OP destination address
+    to match the information found between the AAD pointer and the OP source address.
+    User should prepare this headroom in this case.
 
   Set to ``full_capable`` by default.
 

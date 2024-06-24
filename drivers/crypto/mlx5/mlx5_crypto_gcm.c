@@ -1000,6 +1000,7 @@ mlx5_crypto_gcm_ipsec_enqueue_burst(void *queue_pair,
 	struct mlx5_crypto_gcm_data gcm_data;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *m_src;
+	struct rte_mbuf *m_dst;
 	uint16_t mask = qp->entries_n - 1;
 	uint16_t remain = qp->entries_n - (qp->pi - qp->qp_ci);
 	uint32_t idx;
@@ -1029,19 +1030,32 @@ mlx5_crypto_gcm_ipsec_enqueue_burst(void *queue_pair,
 		MLX5_ASSERT(pkt_iv_len <= MLX5_CRYPTO_GCM_IPSEC_IV_SIZE);
 		gcm_data.src_bytes = op->sym->aead.data.length + sess->aad_len;
 		gcm_data.src_mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, op->sym->m_src);
-		/* OOP mode is not supported. */
-		MLX5_ASSERT(!op->sym->m_dst || op->sym->m_dst == m_src);
-		gcm_data.dst_addr = gcm_data.src_addr;
-		gcm_data.dst_mkey = gcm_data.src_mkey;
+		m_dst = op->sym->m_dst;
+		if (m_dst && m_dst != m_src) {
+			MLX5_ASSERT(m_dst->nb_segs == 1 &&
+				    (rte_pktmbuf_headroom(m_dst) + op->sym->aead.data.offset)
+				    >= sess->aad_len + pkt_iv_len);
+			gcm_data.dst_addr = RTE_PTR_SUB
+				(rte_pktmbuf_mtod_offset(m_dst,
+				 void *, op->sym->aead.data.offset), sess->aad_len);
+			gcm_data.dst_mkey = mlx5_mr_mb2mr(&qp->mr_ctrl, m_dst);
+		} else {
+			gcm_data.dst_addr = gcm_data.src_addr;
+			gcm_data.dst_mkey = gcm_data.src_mkey;
+		}
 		gcm_data.dst_bytes = gcm_data.src_bytes;
 		/* Digest should follow payload. */
-		MLX5_ASSERT(RTE_PTR_ADD
-			(gcm_data.src_addr, sess->aad_len + op->sym->aead.data.length) ==
-			op->sym->aead.digest.data);
-		if (sess->op_type == MLX5_CRYPTO_OP_TYPE_ENCRYPTION)
+		if (sess->op_type == MLX5_CRYPTO_OP_TYPE_ENCRYPTION) {
+			MLX5_ASSERT(RTE_PTR_ADD(gcm_data.dst_addr,
+				    sess->aad_len + op->sym->aead.data.length) ==
+				    op->sym->aead.digest.data);
 			gcm_data.dst_bytes += sess->tag_len;
-		else
+		} else {
+			MLX5_ASSERT(RTE_PTR_ADD(gcm_data.src_addr,
+				    sess->aad_len + op->sym->aead.data.length) ==
+				    op->sym->aead.digest.data);
 			gcm_data.src_bytes += sess->tag_len;
+		}
 		mlx5_crypto_gcm_wqe_set(qp, op, idx, &gcm_data);
 		/*
 		 * All the data such as IV have been copied above,
@@ -1080,6 +1094,7 @@ mlx5_crypto_gcm_restore_ipsec_mem(struct mlx5_crypto_qp *qp,
 	struct mlx5_crypto_session *sess;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *m_src;
+	struct rte_mbuf *m_dst;
 	uint8_t *payload;
 
 	while (orci != rci) {
@@ -1095,6 +1110,16 @@ mlx5_crypto_gcm_restore_ipsec_mem(struct mlx5_crypto_qp *qp,
 				RTE_PTR_SUB(payload, sess->aad_len), sess->aad_len);
 		rte_memcpy(RTE_PTR_SUB(payload, MLX5_CRYPTO_GCM_IPSEC_IV_SIZE),
 			   &qp->ipsec_mem[idx], MLX5_CRYPTO_GCM_IPSEC_IV_SIZE);
+		m_dst = op->sym->m_dst;
+		if (m_dst && m_dst != m_src) {
+			uint32_t bytes_to_copy;
+
+			bytes_to_copy = RTE_PTR_DIFF(payload, op->sym->aead.aad.data);
+			rte_memcpy(RTE_PTR_SUB(rte_pktmbuf_mtod_offset(m_dst, void *,
+				   op->sym->aead.data.offset), bytes_to_copy),
+				   op->sym->aead.aad.data,
+				   bytes_to_copy);
+		}
 		orci++;
 	}
 }
