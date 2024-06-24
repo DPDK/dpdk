@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2023 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
-#include "idpf_type.h"
 #include "idpf_prototype.h"
+#include "idpf_type.h"
 #include <virtchnl.h>
 
 

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2023 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 #ifndef _IDPF_CONTROLQ_H_
@@ -94,111 +94,6 @@ struct idpf_mbxq_desc {
 	u32 chnl_opcode;	/* avoid confusion with desc->opcode */
 	u32 chnl_retval;	/* ditto for desc->retval */
 	u32 pf_vf_id;		/* used by CP when sending to PF */
-};
-
-enum idpf_mac_type {
-	IDPF_MAC_UNKNOWN = 0,
-	IDPF_MAC_PF,
-	IDPF_MAC_VF,
-	IDPF_MAC_GENERIC
-};
-
-#define ETH_ALEN 6
-
-struct idpf_mac_info {
-	enum idpf_mac_type type;
-	u8 addr[ETH_ALEN];
-	u8 perm_addr[ETH_ALEN];
-};
-
-#define IDPF_AQ_LINK_UP 0x1
-
-/* PCI bus types */
-enum idpf_bus_type {
-	idpf_bus_type_unknown = 0,
-	idpf_bus_type_pci,
-	idpf_bus_type_pcix,
-	idpf_bus_type_pci_express,
-	idpf_bus_type_reserved
-};
-
-/* PCI bus speeds */
-enum idpf_bus_speed {
-	idpf_bus_speed_unknown	= 0,
-	idpf_bus_speed_33	= 33,
-	idpf_bus_speed_66	= 66,
-	idpf_bus_speed_100	= 100,
-	idpf_bus_speed_120	= 120,
-	idpf_bus_speed_133	= 133,
-	idpf_bus_speed_2500	= 2500,
-	idpf_bus_speed_5000	= 5000,
-	idpf_bus_speed_8000	= 8000,
-	idpf_bus_speed_reserved
-};
-
-/* PCI bus widths */
-enum idpf_bus_width {
-	idpf_bus_width_unknown	= 0,
-	idpf_bus_width_pcie_x1	= 1,
-	idpf_bus_width_pcie_x2	= 2,
-	idpf_bus_width_pcie_x4	= 4,
-	idpf_bus_width_pcie_x8	= 8,
-	idpf_bus_width_32	= 32,
-	idpf_bus_width_64	= 64,
-	idpf_bus_width_reserved
-};
-
-/* Bus parameters */
-struct idpf_bus_info {
-	enum idpf_bus_speed speed;
-	enum idpf_bus_width width;
-	enum idpf_bus_type type;
-
-	u16 func;
-	u16 device;
-	u16 lan_id;
-	u16 bus_id;
-};
-
-/* Function specific capabilities */
-struct idpf_hw_func_caps {
-	u32 num_alloc_vfs;
-	u32 vf_base_id;
-};
-
-/* Define the APF hardware struct to replace other control structs as needed
- * Align to ctlq_hw_info
- */
-struct idpf_hw {
-	/* Some part of BAR0 address space is not mapped by the LAN driver.
-	 * This results in 2 regions of BAR0 to be mapped by LAN driver which
-	 * will have its own base hardware address when mapped.
-	 */
-	u8 *hw_addr;
-	u8 *hw_addr_region2;
-	u64 hw_addr_len;
-	u64 hw_addr_region2_len;
-
-	void *back;
-
-	/* control queue - send and receive */
-	struct idpf_ctlq_info *asq;
-	struct idpf_ctlq_info *arq;
-
-	/* subsystem structs */
-	struct idpf_mac_info mac;
-	struct idpf_bus_info bus;
-	struct idpf_hw_func_caps func_caps;
-
-	/* pci info */
-	u16 device_id;
-	u16 vendor_id;
-	u16 subsystem_device_id;
-	u16 subsystem_vendor_id;
-	u8 revision_id;
-	bool adapter_stopped;
-
-	LIST_HEAD_TYPE(list_head, idpf_ctlq_info) cq_list_head;
 };
 
 int idpf_ctlq_alloc_ring_res(struct idpf_hw *hw,
