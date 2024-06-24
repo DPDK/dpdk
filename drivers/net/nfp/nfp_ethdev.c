@@ -220,11 +220,67 @@ nfp_net_nfp4000_speed_configure_check(uint16_t port_id,
 }
 
 static int
+nfp_net_speed_autoneg_set(struct nfp_net_hw_priv *hw_priv,
+		struct nfp_eth_table_port *eth_port)
+{
+	int ret;
+	struct nfp_nsp *nsp;
+
+	nsp = nfp_eth_config_start(hw_priv->pf_dev->cpp, eth_port->index);
+	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "Could not get NSP.");
+		return -EIO;
+	}
+
+	ret = nfp_eth_set_aneg(nsp, NFP_ANEG_AUTO);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to set ANEG enable.");
+		nfp_eth_config_cleanup_end(nsp);
+		return ret;
+	}
+
+	return nfp_eth_config_commit_end(nsp);
+}
+
+static int
+nfp_net_speed_fixed_set(struct nfp_net_hw_priv *hw_priv,
+		struct nfp_eth_table_port *eth_port,
+		uint32_t configure_speed)
+{
+	int ret;
+	struct nfp_nsp *nsp;
+
+	nsp = nfp_eth_config_start(hw_priv->pf_dev->cpp, eth_port->index);
+	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "Could not get NSP.");
+		return -EIO;
+	}
+
+	ret = nfp_eth_set_aneg(nsp, NFP_ANEG_DISABLED);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to set ANEG disable.");
+		goto config_cleanup;
+	}
+
+	ret = nfp_eth_set_speed(nsp, configure_speed);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to set speed.");
+		goto config_cleanup;
+	}
+
+	return nfp_eth_config_commit_end(nsp);
+
+config_cleanup:
+	nfp_eth_config_cleanup_end(nsp);
+
+	return ret;
+}
+
+static int
 nfp_net_speed_configure(struct rte_eth_dev *dev)
 {
 	int ret;
 	uint32_t speed_capa;
-	struct nfp_nsp *nsp;
 	uint32_t link_speeds;
 	uint32_t configure_speed;
 	struct nfp_eth_table_port *eth_port;
@@ -259,40 +315,30 @@ nfp_net_speed_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	nsp = nfp_eth_config_start(hw_priv->pf_dev->cpp, eth_port->index);
-	if (nsp == NULL) {
-		PMD_DRV_LOG(ERR, "Couldn't get NSP.");
-		return -EIO;
-	}
+	if (configure_speed == RTE_ETH_LINK_SPEED_AUTONEG) {
+		if (!eth_port->supp_aneg)
+			return 0;
 
-	if (link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
-		if (eth_port->supp_aneg) {
-			ret = nfp_eth_set_aneg(nsp, NFP_ANEG_AUTO);
-			if (ret != 0) {
-				PMD_DRV_LOG(ERR, "Failed to set ANEG enable.");
-				goto config_cleanup;
-			}
+		if (eth_port->aneg == NFP_ANEG_AUTO)
+			return 0;
+
+		ret = nfp_net_speed_autoneg_set(hw_priv, eth_port);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to set speed autoneg.");
+			return ret;
 		}
 	} else {
-		ret = nfp_eth_set_aneg(nsp, NFP_ANEG_DISABLED);
-		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Failed to set ANEG disable.");
-			goto config_cleanup;
-		}
+		if (eth_port->aneg == NFP_ANEG_DISABLED && configure_speed == eth_port->speed)
+			return 0;
 
-		ret = nfp_eth_set_speed(nsp, configure_speed);
+		ret = nfp_net_speed_fixed_set(hw_priv, eth_port, configure_speed);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Failed to set speed.");
-			goto config_cleanup;
+			PMD_DRV_LOG(ERR, "Failed to set speed fixed.");
+			return ret;
 		}
 	}
 
-	return nfp_eth_config_commit_end(nsp);
-
-config_cleanup:
-	nfp_eth_config_cleanup_end(nsp);
-
-	return ret;
+	return 0;
 }
 
 static int
