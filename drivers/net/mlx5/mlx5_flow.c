@@ -3412,7 +3412,7 @@ mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "GRE option following a wrong item");
-	if (!spec || !mask)
+	if ((!spec && !mlx5_hws_active(dev)) || !mask)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "At least one field gre_option(checksum/key/sequence) must be specified");
@@ -3438,18 +3438,21 @@ mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  item,
 						  "Sequence bit must be on");
-	if (mask->checksum_rsvd.checksum || mask->sequence.sequence) {
-		if (priv->sh->steering_format_version ==
-		    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 ||
-		    ((attr->group || (attr->transfer && priv->fdb_def_rule)) &&
-		     !priv->sh->misc5_cap) ||
-		    (!(priv->sh->tunnel_header_0_1 &&
-		       priv->sh->tunnel_header_2_3) &&
-		    !attr->group && (!attr->transfer || !priv->fdb_def_rule)))
-			return rte_flow_error_set(error, EINVAL,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  item,
-						  "Checksum/Sequence not supported");
+	if (!mlx5_hws_active(dev)) {
+		if (mask->checksum_rsvd.checksum || mask->sequence.sequence) {
+			if (priv->sh->steering_format_version ==
+			    MLX5_STEERING_LOGIC_FORMAT_CONNECTX_5 ||
+			    ((attr->group ||
+			      (attr->transfer && priv->fdb_def_rule)) &&
+			     !priv->sh->misc5_cap) ||
+			    (!(priv->sh->tunnel_header_0_1 &&
+			       priv->sh->tunnel_header_2_3) &&
+			     !attr->group &&
+			     (!attr->transfer || !priv->fdb_def_rule)))
+				return rte_flow_error_set
+					(error, EINVAL,	RTE_FLOW_ERROR_TYPE_ITEM,
+					 item, "Checksum/Sequence not supported");
+		}
 	}
 	ret = mlx5_flow_item_acceptable
 		(dev, item, (const uint8_t *)mask,
