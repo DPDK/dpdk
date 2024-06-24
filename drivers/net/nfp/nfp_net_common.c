@@ -730,7 +730,7 @@ nfp_net_allmulticast_disable(struct rte_eth_dev *dev)
 	return nfp_net_set_allmulticast_mode(dev, false);
 }
 
-static int
+static void
 nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 		struct nfp_net_hw *hw,
 		struct nfp_net_hw_priv *hw_priv,
@@ -750,8 +750,7 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 	if (pf_dev->speed_updated || aneg == NFP_ANEG_AUTO) {
 		nfp_eth_table = nfp_eth_read_ports(pf_dev->cpp);
 		if (nfp_eth_table == NULL) {
-			PMD_DRV_LOG(DEBUG, "Error reading NFP ethernet table.");
-			return -EIO;
+			PMD_DRV_LOG(WARNING, "Failed to update port speed.");
 		} else {
 			pf_dev->nfp_eth_table->ports[hw->idx] = nfp_eth_table->ports[hw->idx];
 			free(nfp_eth_table);
@@ -773,8 +772,6 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 	if (dev->data->dev_conf.link_speeds == RTE_ETH_LINK_SPEED_AUTONEG &&
 			eth_port->supp_aneg)
 		link->link_autoneg = RTE_ETH_LINK_AUTONEG;
-
-	return 0;
 }
 
 int
@@ -790,11 +787,7 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 	hw_priv = dev->process_private;
 	if (link->link_status == RTE_ETH_LINK_UP) {
 		if (hw_priv->pf_dev != NULL) {
-			ret = nfp_net_speed_aneg_update(dev, hw, hw_priv, link);
-			if (ret != 0) {
-				PMD_DRV_LOG(DEBUG, "Failed to update speed and aneg.");
-				return ret;
-			}
+			nfp_net_speed_aneg_update(dev, hw, hw_priv, link);
 		} else {
 			/*
 			 * Shift and mask nn_link_status so that it is effectively the value
