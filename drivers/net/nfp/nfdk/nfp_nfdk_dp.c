@@ -180,7 +180,6 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 	uint32_t meta_type;
 	struct nfp_net_hw *hw;
 	uint32_t header_offset;
-	uint8_t vlan_layer = 0;
 	uint8_t ipsec_layer = 0;
 	struct nfp_net_meta_raw meta_data;
 
@@ -223,12 +222,7 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 			meta += NFP_NET_META_FIELD_SIZE) {
 		switch (meta_type & NFP_NET_META_FIELD_MASK) {
 		case NFP_NET_META_VLAN:
-			if (vlan_layer > 0) {
-				PMD_DRV_LOG(ERR, "At most 1 layers of vlan is supported");
-				return -EINVAL;
-			}
 			nfp_net_meta_set_vlan(&meta_data, pkt, layer);
-			vlan_layer++;
 			break;
 		case NFP_NET_META_IPSEC:
 			if (ipsec_layer > 2) {
