@@ -120,6 +120,10 @@ New Features
 
   Added a new crypto driver for AMD Pensando hardware accelerators.
 
+* **Updated NVIDIA mlx5 crypto driver.**
+
+  * Added AES-GCM IPsec operation optimization.
+
 * **Added UADK compress driver.**
 
   Added a new compress driver for the UADK library. See the
