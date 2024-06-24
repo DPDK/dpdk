@@ -2131,7 +2131,8 @@ validate_op_chain(struct rte_bbdev_op_data *op,
 		uint16_t data_len = rte_pktmbuf_data_len(m) - offset;
 		total_data_size += orig_op->segments[i].length;
 
-		if (orig_op->segments[i].length > RTE_BBDEV_LDPC_E_MAX_MBUF)
+		if ((orig_op->segments[i].length + RTE_PKTMBUF_HEADROOM)
+				> RTE_BBDEV_LDPC_E_MAX_MBUF)
 			ignore_mbuf = true;
 		if (!ignore_mbuf)
 			TEST_ASSERT(orig_op->segments[i].length == data_len,
