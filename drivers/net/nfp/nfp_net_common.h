@@ -38,6 +38,9 @@
 
 #define NFP_BEAT_LENGTH         8
 
+/* The length of firmware version string */
+#define FW_VER_LEN        32
+
 /*
  * Each PF has corresponding word to beat:
  * Offset | Usage
@@ -178,6 +181,9 @@ struct nfp_net_hw {
 	struct nfp_net_tlv_caps tlv_caps;
 
 	struct nfp_net_ipsec_data *ipsec_data;
+
+	/** Used for firmware version */
+	char fw_version[FW_VER_LEN];
 };
 
 static inline uint32_t

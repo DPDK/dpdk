@@ -189,9 +189,6 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 			nfp_net_link_speed_rte2nfp(link->link_speed));
 }
 
-/* The length of firmware version string */
-#define FW_VER_LEN        32
-
 /**
  * Reconfigure the firmware via the mailbox
  *
@@ -2063,15 +2060,20 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 		size_t fw_size)
 {
 	struct nfp_net_hw *hw;
-	char mip_name[FW_VER_LEN];
-	char app_name[FW_VER_LEN];
-	char nsp_version[FW_VER_LEN];
-	char vnic_version[FW_VER_LEN];
+	char app_name[FW_VER_LEN] = {0};
+	char mip_name[FW_VER_LEN] = {0};
+	char nsp_version[FW_VER_LEN] = {0};
+	char vnic_version[FW_VER_LEN] = {0};
 
 	if (fw_size < FW_VER_LEN)
 		return FW_VER_LEN;
 
 	hw = nfp_net_get_hw(dev);
+
+	if (hw->fw_version[0] != 0) {
+		snprintf(fw_version, FW_VER_LEN, "%s", hw->fw_version);
+		return 0;
+	}
 
 	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0) {
 		snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
@@ -2085,8 +2087,16 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 	nfp_net_get_mip_name(hw, mip_name);
 	nfp_net_get_app_name(hw, app_name);
 
-	snprintf(fw_version, FW_VER_LEN, "%s %s %s %s",
+	if (nsp_version[0] == 0 || mip_name[0] == 0) {
+		snprintf(fw_version, FW_VER_LEN, "%s %s %s %s",
 			vnic_version, nsp_version, mip_name, app_name);
+		return 0;
+	}
+
+	snprintf(hw->fw_version, FW_VER_LEN, "%s %s %s %s",
+			vnic_version, nsp_version, mip_name, app_name);
+
+	snprintf(fw_version, FW_VER_LEN, "%s", hw->fw_version);
 
 	return 0;
 }
