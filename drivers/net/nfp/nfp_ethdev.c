@@ -2331,9 +2331,11 @@ sym_tbl_cleanup:
 	free(sym_tbl);
 fw_cleanup:
 	nfp_fw_unload(cpp);
-	nfp_net_keepalive_stop(&pf_dev->multi_pf);
-	nfp_net_keepalive_clear(pf_dev->multi_pf.beat_addr, pf_dev->multi_pf.function_id);
-	nfp_net_keepalive_uninit(&pf_dev->multi_pf);
+	if (pf_dev->multi_pf.enabled) {
+		nfp_net_keepalive_stop(&pf_dev->multi_pf);
+		nfp_net_keepalive_clear(pf_dev->multi_pf.beat_addr, pf_dev->multi_pf.function_id);
+		nfp_net_keepalive_uninit(&pf_dev->multi_pf);
+	}
 eth_table_cleanup:
 	free(nfp_eth_table);
 hwinfo_cleanup:
