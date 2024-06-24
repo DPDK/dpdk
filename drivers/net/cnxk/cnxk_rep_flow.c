@@ -171,6 +171,9 @@ populate_vxlan_encap_action_conf(const struct rte_flow_action_vxlan_encap *vxlan
 	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++)
 		nb_patterns++;
 
+	/* +1 for RTE_FLOW_ITEM_TYPE_END */
+	nb_patterns++;
+
 	len = sizeof(uint64_t);
 	rte_memcpy(vxlan_encap_action_data, &nb_patterns, len);
 	pattern = vxlan_conf->definition;
