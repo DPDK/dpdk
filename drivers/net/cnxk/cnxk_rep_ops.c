@@ -821,6 +821,37 @@ cnxk_rep_xstats_get_names_by_id(__rte_unused struct rte_eth_dev *eth_dev, const 
 	return n;
 }
 
+int
+cnxk_rep_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(eth_dev);
+	uint32_t frame_size = mtu + CNXK_NIX_L2_OVERHEAD;
+	int rc = -EINVAL;
+
+	/* Check if MTU is within the allowed range */
+	if ((frame_size - RTE_ETHER_CRC_LEN) < NIX_MIN_HW_FRS) {
+		plt_err("MTU is lesser than minimum");
+		goto exit;
+	}
+
+	if ((frame_size - RTE_ETHER_CRC_LEN) >
+	    ((uint32_t)roc_nix_max_pkt_len(&rep_dev->parent_dev->nix))) {
+		plt_err("MTU is greater than maximum");
+		goto exit;
+	}
+
+	frame_size -= RTE_ETHER_CRC_LEN;
+
+	/* Set frame size on Rx */
+	rc = roc_nix_mac_max_rx_len_set(&rep_dev->parent_dev->nix, frame_size);
+	if (rc) {
+		plt_err("Failed to max Rx frame length, rc=%d", rc);
+		goto exit;
+	}
+exit:
+	return rc;
+}
+
 /* CNXK platform representor dev ops */
 struct eth_dev_ops cnxk_rep_dev_ops = {
 	.dev_infos_get = cnxk_rep_dev_info_get,
@@ -844,5 +875,6 @@ struct eth_dev_ops cnxk_rep_dev_ops = {
 	.xstats_reset = cnxk_rep_xstats_reset,
 	.xstats_get_names = cnxk_rep_xstats_get_names,
 	.xstats_get_by_id = cnxk_rep_xstats_get_by_id,
-	.xstats_get_names_by_id = cnxk_rep_xstats_get_names_by_id
+	.xstats_get_names_by_id = cnxk_rep_xstats_get_names_by_id,
+	.mtu_set = cnxk_rep_mtu_set
 };

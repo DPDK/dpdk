@@ -146,5 +146,6 @@ int cnxk_rep_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids, 
 			      unsigned int n);
 int cnxk_rep_xstats_get_names_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
 				    struct rte_eth_xstat_name *xstats_names, unsigned int n);
+int cnxk_rep_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu);
 
 #endif /* __CNXK_REP_H__ */
