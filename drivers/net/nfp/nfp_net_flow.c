@@ -1063,7 +1063,7 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 
 	struct rte_hash_parameters flow_hash_params = {
 		.name       = flow_name,
-		.entries    = NFP_NET_FLOW_LIMIT,
+		.entries    = NFP_NET_FLOW_HASH_TBALE_SIZE,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
 		.key_len    = sizeof(uint32_t),

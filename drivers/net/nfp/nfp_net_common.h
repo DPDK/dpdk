@@ -179,6 +179,9 @@ struct nfp_net_flow_count {
 	uint16_t ipv6_count;
 };
 
+#define NFP_NET_HASH_REDUNDANCE (1.2)
+#define NFP_NET_FLOW_HASH_TBALE_SIZE ((NFP_NET_FLOW_LIMIT) * (NFP_NET_HASH_REDUNDANCE))
+
 struct nfp_net_priv {
 	uint32_t hash_seed; /**< Hash seed for hash tables in this structure. */
 	struct rte_hash *flow_table; /**< Hash table to store flow rules. */
