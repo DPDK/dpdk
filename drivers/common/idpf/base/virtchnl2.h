@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2023 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 #ifndef _VIRTCHNL2_H_
@@ -220,7 +220,7 @@
 #define VIRTCHNL2_CAP_FLOW_DIRECTOR		BIT(3)
 #define VIRTCHNL2_CAP_SPLITQ_QSCHED		BIT(4)
 #define VIRTCHNL2_CAP_CRC			BIT(5)
-#define VIRTCHNL2_CAP_ADQ			BIT(6)
+#define VIRTCHNL2_CAP_INLINE_FLOW_STEER		BIT(6)
 #define VIRTCHNL2_CAP_WB_ON_ITR			BIT(7)
 #define VIRTCHNL2_CAP_PROMISC			BIT(8)
 #define VIRTCHNL2_CAP_LINK_SPEED		BIT(9)
@@ -593,7 +593,8 @@ struct virtchnl2_queue_reg_chunks {
 VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_queue_reg_chunks);
 
 /* VIRTCHNL2_VPORT_FLAGS */
-#define VIRTCHNL2_VPORT_UPLINK_PORT	BIT(0)
+#define VIRTCHNL2_VPORT_UPLINK_PORT		BIT(0)
+#define VIRTCHNL2_VPORT_INLINE_FLOW_STEER_ENA	BIT(1)
 
 #define VIRTCHNL2_ETH_LENGTH_OF_ADDRESS  6
 
