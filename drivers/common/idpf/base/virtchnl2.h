@@ -471,8 +471,8 @@
  * error regardless of version mismatch.
  */
 struct virtchnl2_version_info {
-	u32 major;
-	u32 minor;
+	__le32 major;
+	__le32 minor;
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_version_info);
