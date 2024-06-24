@@ -144,7 +144,7 @@ struct nfp_net_cmsg_action {
 	uint16_t action;
 	uint8_t queue;
 	uint8_t spare;
-	uint16_t mark_id;
+	uint32_t mark_id;
 };
 
 enum nfp_net_cfg_mbox_cmd {
