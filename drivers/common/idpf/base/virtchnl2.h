@@ -2272,7 +2272,7 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 	case VIRTCHNL2_OP_GET_PTP_CAPS:
 		valid_len = sizeof(struct virtchnl2_get_ptp_caps);
 
-		if (msglen >= valid_len) {
+		if (msglen > valid_len) {
 			struct virtchnl2_get_ptp_caps *ptp_caps =
 			(struct virtchnl2_get_ptp_caps *)msg;
 
@@ -2288,7 +2288,7 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 	case VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES:
 		valid_len = sizeof(struct virtchnl2_ptp_tx_tstamp_latches);
 
-		if (msglen >= valid_len) {
+		if (msglen > valid_len) {
 			struct virtchnl2_ptp_tx_tstamp_latches *tx_tstamp_latches =
 			(struct virtchnl2_ptp_tx_tstamp_latches *)msg;
 
