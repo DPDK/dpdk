@@ -302,8 +302,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
-
 	net_hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
 			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
 	if (net_hw->eth_xstats_base == NULL) {
