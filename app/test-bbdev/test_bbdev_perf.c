@@ -94,6 +94,8 @@
 #define K0_2_2 25 /* K0 fraction numerator for rv 2 and BG 2 */
 #define K0_3_1 56 /* K0 fraction numerator for rv 3 and BG 1 */
 #define K0_3_2 43 /* K0 fraction numerator for rv 3 and BG 2 */
+#define NUM_SC_PER_RB (12) /* Number of subcarriers in a RB in 3GPP. */
+#define BITS_PER_LLR  (8)  /* Number of bits in a LLR. */
 
 #define HARQ_MEM_TOLERANCE 256
 static struct test_bbdev_vector test_vector;
@@ -2896,8 +2898,14 @@ calc_fft_size(struct rte_bbdev_fft_op *op)
 static uint32_t
 calc_mldts_size(struct rte_bbdev_mldts_op *op)
 {
-	uint32_t output_size;
-	output_size = op->mldts.num_layers * op->mldts.num_rbs * op->mldts.c_rep;
+	uint32_t output_size = 0;
+	uint16_t i;
+
+	for (i = 0; i < op->mldts.num_layers; i++)
+		output_size += op->mldts.q_m[i];
+
+	output_size *= NUM_SC_PER_RB * BITS_PER_LLR * op->mldts.num_rbs * (op->mldts.c_rep + 1);
+
 	return output_size;
 }
 
