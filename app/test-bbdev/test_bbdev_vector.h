@@ -69,6 +69,8 @@ struct test_bbdev_vector {
 	};
 	/* Additional storage for op data entries */
 	struct op_data_entries entries[DATA_NUM_TYPES];
+	/* Vector FFT window width assumption. */
+	uint16_t fft_window_width_vec;
 };
 
 /* fills test vector parameters based on test file */

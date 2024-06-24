@@ -108,6 +108,8 @@ static int ldpc_llr_decimals;
 static int ldpc_llr_size;
 /* Keep track of the LDPC decoder device capability flag */
 static uint32_t ldpc_cap_flags;
+/* FFT window width predefined on device and on vector. */
+static int fft_window_width_dev;
 
 /* Represents tested active devices */
 static struct active_device {
@@ -883,6 +885,13 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 	rte_bbdev_info_get(dev_id, info);
 	if (info->drv.device_status == RTE_BBDEV_DEV_FATAL_ERR)
 		printf("Device Status %s\n", rte_bbdev_device_status_str(info->drv.device_status));
+	if (info->drv.fft_window_width != NULL)
+		fft_window_width_dev = info->drv.fft_window_width[0];
+	else
+		fft_window_width_dev = 0;
+	if (fft_window_width_dev != 0)
+		printf("  FFT Window0 width %d\n", fft_window_width_dev);
+
 	nb_queues = RTE_MIN(rte_lcore_count(), info->drv.max_num_queues);
 	nb_queues = RTE_MIN(nb_queues, (unsigned int) MAX_QUEUES);
 
@@ -2585,7 +2594,8 @@ validate_ldpc_enc_op(struct rte_bbdev_enc_op **ops, const uint16_t n,
 }
 
 static inline int
-validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig_op)
+validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig_op,
+		bool skip_validate_output)
 {
 	struct rte_mbuf *m = op->data;
 	uint8_t i, nb_dst_segments = orig_op->nb_segments;
@@ -2615,7 +2625,7 @@ validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig
 			abs_delt = delt > 0 ? delt : -delt;
 			error_num += (abs_delt > thres_hold ? 1 : 0);
 		}
-		if (error_num > 0) {
+		if ((error_num > 0) && !skip_validate_output) {
 			rte_memdump(stdout, "Buffer A", ref_out, data_len);
 			rte_memdump(stdout, "Buffer B", op_out, data_len);
 			TEST_ASSERT(error_num == 0,
@@ -2688,16 +2698,24 @@ validate_fft_op(struct rte_bbdev_fft_op **ops, const uint16_t n,
 	int ret;
 	struct op_data_entries *fft_data_orig = &test_vector.entries[DATA_HARD_OUTPUT];
 	struct op_data_entries *fft_pwr_orig = &test_vector.entries[DATA_SOFT_OUTPUT];
+	bool skip_validate_output = false;
+
+	if ((test_vector.fft_window_width_vec > 0) &&
+			(test_vector.fft_window_width_vec != fft_window_width_dev)) {
+		printf("The vector FFT width doesn't match with device - skip %d %d\n",
+				test_vector.fft_window_width_vec, fft_window_width_dev);
+		skip_validate_output = true;
+	}
 
 	for (i = 0; i < n; ++i) {
 		ret = check_fft_status_and_ordering(ops[i], i, ref_op->status);
 		TEST_ASSERT_SUCCESS(ret, "Checking status and ordering for FFT failed");
 		TEST_ASSERT_SUCCESS(validate_op_fft_chain(
-				&ops[i]->fft.base_output, fft_data_orig),
+				&ops[i]->fft.base_output, fft_data_orig, skip_validate_output),
 				"FFT Output buffers (op=%u) are not matched", i);
 		if (check_bit(ops[i]->fft.op_flags, RTE_BBDEV_FFT_POWER_MEAS))
 			TEST_ASSERT_SUCCESS(validate_op_fft_chain(
-				&ops[i]->fft.power_meas_output, fft_pwr_orig),
+				&ops[i]->fft.power_meas_output, fft_pwr_orig, skip_validate_output),
 				"FFT Power Output buffers (op=%u) are not matched", i);
 	}
 

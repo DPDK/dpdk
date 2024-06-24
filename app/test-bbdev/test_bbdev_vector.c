@@ -1050,6 +1050,20 @@ parse_fft_params(const char *key_token, char *token,
 			}
 		}
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "fft_window_width")) {
+		tok = strtok(token, VALUE_DELIMITER);
+		if (tok == NULL)
+			return -1;
+		for (i = 0; i < FFT_WIN_SIZE; i++) {
+			if (i == 0)
+				vector->fft_window_width_vec = (uint32_t) strtoul(tok, &err, 0);
+			if (i < (FFT_WIN_SIZE - 1)) {
+				tok = strtok(NULL, VALUE_DELIMITER);
+				if (tok == NULL)
+					return -1;
+			}
+		}
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "op_flags")) {
 		vector->mask |= TEST_BBDEV_VF_OP_FLAGS;
 		ret = parse_turbo_flags(token, &op_flags, vector->op_type);
