@@ -95,7 +95,7 @@
 #define		VIRTCHNL2_OP_ADD_QUEUE_GROUPS		538
 #define		VIRTCHNL2_OP_DEL_QUEUE_GROUPS		539
 #define		VIRTCHNL2_OP_GET_PORT_STATS		540
-	/* TimeSync opcodes */
+/* TimeSync opcodes */
 #define		VIRTCHNL2_OP_GET_PTP_CAPS		541
 #define		VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES	542
 
@@ -559,7 +559,7 @@ struct virtchnl2_get_capabilities {
 	/* max number of header buffers that can be used for an LSO */
 	u8 max_hdr_buf_per_lso;
 
-	u8 reserved[10];
+	u8 pad1[10];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(80, virtchnl2_get_capabilities);
@@ -575,7 +575,7 @@ struct virtchnl2_queue_reg_chunk {
 	__le64 qtail_reg_start;
 	__le32 qtail_reg_spacing;
 
-	u8 reserved[4];
+	u8 pad1[4];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(32, virtchnl2_queue_reg_chunk);
@@ -583,7 +583,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(32, virtchnl2_queue_reg_chunk);
 /* structure to specify several chunks of contiguous queues */
 struct virtchnl2_queue_reg_chunks {
 	__le16 num_chunks;
-	u8 reserved[6];
+	u8 pad[6];
 	struct virtchnl2_queue_reg_chunk chunks[1];
 };
 
@@ -648,7 +648,7 @@ struct virtchnl2_create_vport {
 	/* see VIRTCHNL2_HEADER_SPLIT_CAPS definitions */
 	__le32 rx_split_pos;
 
-	u8 reserved[20];
+	u8 pad2[20];
 	struct virtchnl2_queue_reg_chunks chunks;
 };
 
@@ -663,7 +663,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(192, virtchnl2_create_vport);
  */
 struct virtchnl2_vport {
 	__le32 vport_id;
-	u8 reserved[4];
+	u8 pad[4];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_vport);
@@ -708,7 +708,7 @@ struct virtchnl2_txq_info {
 	__le32 egress_hdr_pasid;
 	__le32 egress_buf_pasid;
 
-	u8 reserved[8];
+	u8 pad1[8];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(56, virtchnl2_txq_info);
@@ -724,7 +724,7 @@ struct virtchnl2_config_tx_queues {
 	__le32 vport_id;
 	__le16 num_qinfo;
 
-	u8 reserved[10];
+	u8 pad[10];
 	struct virtchnl2_txq_info qinfo[1];
 };
 
@@ -749,7 +749,7 @@ struct virtchnl2_rxq_info {
 
 	__le16 ring_len;
 	u8 buffer_notif_stride;
-	u8 pad[1];
+	u8 pad;
 
 	/* Applicable only for receive buffer queues */
 	__le64 dma_head_wb_addr;
@@ -768,16 +768,15 @@ struct virtchnl2_rxq_info {
 	 * if this field is set
 	 */
 	u8 bufq2_ena;
-	u8 pad2[3];
+	u8 pad1[3];
 
 	/* Ingress pasid is used for SIOV use case */
 	__le32 ingress_pasid;
 	__le32 ingress_hdr_pasid;
 	__le32 ingress_buf_pasid;
 
-	u8 reserved[16];
+	u8 pad2[16];
 };
-
 VIRTCHNL2_CHECK_STRUCT_LEN(88, virtchnl2_rxq_info);
 
 /* VIRTCHNL2_OP_CONFIG_RX_QUEUES
@@ -791,7 +790,7 @@ struct virtchnl2_config_rx_queues {
 	__le32 vport_id;
 	__le16 num_qinfo;
 
-	u8 reserved[18];
+	u8 pad[18];
 	struct virtchnl2_rxq_info qinfo[1];
 };
 
@@ -810,7 +809,8 @@ struct virtchnl2_add_queues {
 	__le16 num_tx_complq;
 	__le16 num_rx_q;
 	__le16 num_rx_bufq;
-	u8 reserved[4];
+	u8 pad[4];
+
 	struct virtchnl2_queue_reg_chunks chunks;
 };
 
@@ -948,7 +948,7 @@ struct virtchnl2_vector_chunk {
 	__le16 start_vector_id;
 	__le16 start_evv_id;
 	__le16 num_vectors;
-	__le16 pad1;
+	__le16 pad;
 
 	/* Register offsets and spacing provided by CP.
 	 * dynamic control registers are used for enabling/disabling/re-enabling
@@ -969,15 +969,15 @@ struct virtchnl2_vector_chunk {
 	 * where n=0..2
 	 */
 	__le32 itrn_index_spacing;
-	u8 reserved[4];
+	u8 pad1[4];
 };
-
 VIRTCHNL2_CHECK_STRUCT_LEN(32, virtchnl2_vector_chunk);
 
 /* Structure to specify several chunks of contiguous interrupt vectors */
 struct virtchnl2_vector_chunks {
 	__le16 num_vchunks;
-	u8 reserved[14];
+	u8 pad[14];
+
 	struct virtchnl2_vector_chunk vchunks[1];
 };
 
@@ -992,7 +992,8 @@ VIRTCHNL2_CHECK_STRUCT_LEN(48, virtchnl2_vector_chunks);
  */
 struct virtchnl2_alloc_vectors {
 	__le16 num_vectors;
-	u8 reserved[14];
+	u8 pad[14];
+
 	struct virtchnl2_vector_chunks vchunks;
 };
 
@@ -1014,8 +1015,9 @@ struct virtchnl2_rss_lut {
 	__le32 vport_id;
 	__le16 lut_entries_start;
 	__le16 lut_entries;
-	u8 reserved[4];
-	__le32 lut[1]; /* RSS lookup table */
+	u8 pad[4];
+	/* RSS lookup table */
+	__le32 lut[1];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_rss_lut);
@@ -1039,7 +1041,7 @@ struct virtchnl2_rss_hash {
 	/* Packet Type Groups bitmap */
 	__le64 ptype_groups;
 	__le32 vport_id;
-	u8 reserved[4];
+	u8 pad[4];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_rss_hash);
@@ -1063,7 +1065,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(4, virtchnl2_sriov_vfs_info);
 /* 'chunks' is fixed size(not flexible) and will be deprecated at some point */
 struct virtchnl2_non_flex_queue_reg_chunks {
 	__le16 num_chunks;
-	u8 reserved[6];
+	u8 pad[6];
 	struct virtchnl2_queue_reg_chunk chunks[1];
 };
 
@@ -1073,7 +1075,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_non_flex_queue_reg_chunks);
 /* 'vchunks' is fixed size(not flexible) and will be deprecated at some point */
 struct virtchnl2_non_flex_vector_chunks {
 	__le16 num_vchunks;
-	u8 reserved[14];
+	u8 pad[14];
 	struct virtchnl2_vector_chunk vchunks[1];
 };
 
@@ -1100,8 +1102,7 @@ struct virtchnl2_non_flex_create_adi {
 	__le16 adi_index;
 	/* CP populates ADI id */
 	__le16 adi_id;
-	u8 reserved[64];
-	u8 pad[4];
+	u8 pad[68];
 	/* CP populates queue chunks */
 	struct virtchnl2_non_flex_queue_reg_chunks chunks;
 	/* PF sends vector chunks to CP */
@@ -1117,7 +1118,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(168, virtchnl2_non_flex_create_adi);
  */
 struct virtchnl2_non_flex_destroy_adi {
 	__le16 adi_id;
-	u8 reserved[2];
+	u8 pad[2];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(4, virtchnl2_non_flex_destroy_adi);
@@ -1220,7 +1221,7 @@ struct virtchnl2_phy_port_stats {
 	__le64 rx_runt_errors;
 	__le64 rx_illegal_bytes;
 	__le64 rx_total_pkts;
-	u8 rx_reserved[128];
+	u8 rx_pad[128];
 
 	__le64 tx_bytes;
 	__le64 tx_unicast_pkts;
@@ -1239,7 +1240,7 @@ struct virtchnl2_phy_port_stats {
 	__le64 tx_xoff_events;
 	__le64 tx_dropped_link_down_pkts;
 	__le64 tx_total_pkts;
-	u8 tx_reserved[128];
+	u8 tx_pad[128];
 	__le64 mac_local_faults;
 	__le64 mac_remote_faults;
 };
@@ -1273,7 +1274,8 @@ struct virtchnl2_event {
 	__le32 link_speed;
 	__le32 vport_id;
 	u8 link_status;
-	u8 pad[1];
+	u8 pad;
+
 	/* CP sends reset notification to PF with corresponding ADI ID */
 	__le16 adi_id;
 };
@@ -1301,7 +1303,7 @@ struct virtchnl2_queue_chunk {
 	__le32 type;
 	__le32 start_queue_id;
 	__le32 num_queues;
-	u8 reserved[4];
+	u8 pad[4];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_queue_chunk);
@@ -1309,7 +1311,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_queue_chunk);
 /* structure to specify several chunks of contiguous queues */
 struct virtchnl2_queue_chunks {
 	__le16 num_chunks;
-	u8 reserved[6];
+	u8 pad[6];
 	struct virtchnl2_queue_chunk chunks[1];
 };
 
@@ -1326,7 +1328,8 @@ VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_queue_chunks);
  */
 struct virtchnl2_del_ena_dis_queues {
 	__le32 vport_id;
-	u8 reserved[4];
+	u8 pad[4];
+
 	struct virtchnl2_queue_chunks chunks;
 };
 
@@ -1343,7 +1346,7 @@ struct virtchnl2_queue_vector {
 
 	/* see VIRTCHNL2_QUEUE_TYPE definitions */
 	__le32 queue_type;
-	u8 reserved[8];
+	u8 pad1[8];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_queue_vector);
