@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2023 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 #ifndef _IDPF_TYPE_H_
 #define _IDPF_TYPE_H_
 
-#include "idpf_controlq.h"
+#include "idpf_osdep.h"
 
 #define UNREFERENCED_XPARAMETER
 #define UNREFERENCED_1PARAMETER(_p)
