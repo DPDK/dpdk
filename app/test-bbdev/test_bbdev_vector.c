@@ -837,6 +837,10 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 		ret = parse_data_entry(key_token, token, vector,
 				DATA_HARQ_OUTPUT,
 				op_data_prefixes[DATA_HARQ_OUTPUT]);
+	else if (starts_with(key_token, op_data_prefixes[DATA_SOFT_OUTPUT]))
+		ret = parse_data_entry(key_token, token, vector,
+				DATA_SOFT_OUTPUT,
+				op_data_prefixes[DATA_SOFT_OUTPUT]);
 	else if (!strcmp(key_token, "e")) {
 		vector->mask |= TEST_BBDEV_VF_E;
 		ldpc_dec->cb_params.e = (uint32_t) strtoul(token, &err, 0);
