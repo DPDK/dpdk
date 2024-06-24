@@ -256,9 +256,14 @@ out:
 static void
 fdset_del_locked(struct fdset *pfdset, struct fdentry *pfdentry)
 {
-	if (epoll_ctl(pfdset->epfd, EPOLL_CTL_DEL, pfdentry->fd, NULL) == -1)
-		VHOST_FDMAN_LOG(ERR, "could not remove %d fd from %d epfd: %s",
-			pfdentry->fd, pfdset->epfd, strerror(errno));
+	if (epoll_ctl(pfdset->epfd, EPOLL_CTL_DEL, pfdentry->fd, NULL) == -1) {
+		if (errno == EBADF) /* File might have already been closed. */
+			VHOST_FDMAN_LOG(DEBUG, "could not remove %d fd from %d epfd: %s",
+				pfdentry->fd, pfdset->epfd, strerror(errno));
+		else
+			VHOST_FDMAN_LOG(ERR, "could not remove %d fd from %d epfd: %s",
+				pfdentry->fd, pfdset->epfd, strerror(errno));
+	}
 
 	fdset_remove_entry(pfdset, pfdentry);
 }
