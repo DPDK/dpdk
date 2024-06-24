@@ -108,15 +108,29 @@ for vector in args.test_vector:
         try:
             output = subprocess.run(call_params, timeout=args.timeout, universal_newlines=True)
         except subprocess.TimeoutExpired as e:
+            print("===========================================================")
             print("Starting Test Suite : BBdev TimeOut Tests")
+            print("INFO: One of the tests timed out {}".format(e))
+            print("INFO: Unexpected Error")
+            print("+ ------------------------------------------------------- +")
             print("== test: timeout")
-            print("TestCase [ 0] : timeout passed")
-            print(" + Tests Failed :       1")
             print("Unexpected Error")
+            print("TestCase [ 0] : timeout failed")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            print(" + Tests Failed :       1")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            exit_status = 1
         if output.returncode < 0:
+            print("===========================================================")
             print("Starting Test Suite : BBdev Exception Tests")
+            print("INFO: One of the tests returned {}".format(output.returncode))
+            print("INFO: Unexpected Error")
+            print("+ ------------------------------------------------------- +")
             print("== test: exception")
-            print("TestCase [ 0] : exception passed")
-            print(" + Tests Failed :       1")
             print("Unexpected Error")
+            print("TestCase [ 0] : exception failed")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            print(" + Tests Failed :       1")
+            print(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +")
+            exit_status = 1
 sys.exit(exit_status)
