@@ -20,8 +20,9 @@
 #define VIRTIO_HA_TIME_SIZE 32
 
 struct virtio_dev_name;
+struct virtio_ha_vm_dev_ctx;
 
-typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx, int vf_num_vm);
+typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx, struct virtio_ha_vm_dev_ctx *vm_ctx);
 typedef void (*ctx_unset_cb)(const struct virtio_dev_name *dev);
 typedef void (*fd_cb)(int fd, void *data);
 typedef void (*ver_time_set)(char *version, char *buildtime);
@@ -142,6 +143,11 @@ struct virtio_ha_device_list {
 	pthread_t prio_thread;
 };
 
+struct virtio_ha_vm_dev_ctx {
+	int vm_tbl_vf; /* Number of VFs belong to the same VM and use the DMA tbl */
+	int vm_vf; /* Number of VFs belong to the same VM and shares the same VFIO container */
+};
+
 struct virtio_ha_dev_ctx_cb {
 	ctx_set_cb set;
 	ctx_unset_cb unset;
@@ -151,7 +157,7 @@ struct virtio_ha_vf_to_restore {
 	TAILQ_ENTRY(virtio_ha_vf_to_restore) next;
 	struct vdpa_vf_with_devargs vf_devargs;
 	struct virtio_dev_name pf_name;
-	int vf_cnt_vm; /* VF number in the same VM */
+	struct virtio_ha_vm_dev_ctx vm_ctx;
 };
 
 TAILQ_HEAD(virtio_ha_vf_restore_list, virtio_ha_vf_to_restore);
@@ -212,13 +218,13 @@ int virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf, struct vdpa_vf_ctx **ctx);
 
 /* App set PF context to PF driver */
-int virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx, int num);
+int virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx, struct virtio_ha_vm_dev_ctx *vm_ctx);
 
 /* App unset PF context from PF driver */
 int virtio_ha_pf_ctx_unset(const struct virtio_dev_name *pf);
 
 /* App set VF context to VF driver */
-int virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx, int vf_cnt_vm);
+int virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx, struct virtio_ha_vm_dev_ctx *vm_ctx);
 
 /* App unset VF context from VF driver */
 int virtio_ha_vf_ctx_unset(const struct virtio_dev_name *vf);

@@ -35,6 +35,7 @@ struct virtio_vdpa_iommu_domain {
 	int container_ref_cnt;
 	int mem_tbl_ref_cnt;
 	int tbl_recover_cnt;
+	int cont_recover_cnt;
 };
 
 struct virtio_vdpa_vring_info {

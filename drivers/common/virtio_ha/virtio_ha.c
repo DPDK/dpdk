@@ -959,12 +959,12 @@ err_msg:
 }
 
 int
-virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx, int num)
+virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx, struct virtio_ha_vm_dev_ctx *vm_ctx)
 {
 	if (!pf_ctx_cb || !pf_ctx_cb->set)
 		return -1;
 
-	pf_ctx_cb->set(pf, ctx, num);
+	pf_ctx_cb->set(pf, ctx, vm_ctx);
 
 	return 0;
 }
@@ -981,12 +981,12 @@ virtio_ha_pf_ctx_unset(const struct virtio_dev_name *pf)
 }
 
 int
-virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx, int vf_cnt_vm)
+virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx, struct virtio_ha_vm_dev_ctx *vm_ctx)
 {
 	if (!vf_ctx_cb || !vf_ctx_cb->set)
 		return -1;
 
-	vf_ctx_cb->set(vf, ctx, vf_cnt_vm);
+	vf_ctx_cb->set(vf, ctx, vm_ctx);
 
 	return 0;
 }
