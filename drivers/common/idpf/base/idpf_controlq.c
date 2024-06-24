@@ -61,7 +61,7 @@ static void idpf_ctlq_init_regs(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
  */
 static void idpf_ctlq_init_rxq_bufs(struct idpf_ctlq_info *cq)
 {
-	int i = 0;
+	int i;
 
 	for (i = 0; i < cq->ring_size; i++) {
 		struct idpf_ctlq_desc *desc = IDPF_CTLQ_DESC(cq, i);
@@ -134,7 +134,7 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 {
 	struct idpf_ctlq_info *cq;
 	bool is_rxq = false;
-	int status = 0;
+	int err;
 
 	if (!qinfo->len || !qinfo->buf_size ||
 	    qinfo->len > IDPF_CTLQ_MAX_RING_SIZE ||
@@ -160,14 +160,14 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 		is_rxq = true;
 		/* fallthrough */
 	case IDPF_CTLQ_TYPE_MAILBOX_TX:
-		status = idpf_ctlq_alloc_ring_res(hw, cq);
+		err = idpf_ctlq_alloc_ring_res(hw, cq);
 		break;
 	default:
-		status = -EINVAL;
+		err = -EINVAL;
 		break;
 	}
 
-	if (status)
+	if (err)
 		goto init_free_q;
 
 	if (is_rxq) {
@@ -178,7 +178,7 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 			idpf_calloc(hw, qinfo->len,
 				    sizeof(struct idpf_ctlq_msg *));
 		if (!cq->bi.tx_msg) {
-			status = -ENOMEM;
+			err = -ENOMEM;
 			goto init_dealloc_q_mem;
 		}
 	}
@@ -192,7 +192,7 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 	LIST_INSERT_HEAD(&hw->cq_list_head, cq, cq_list);
 
 	*cq_out = cq;
-	return status;
+	return 0;
 
 init_dealloc_q_mem:
 	/* free ring buffers and the ring itself */
@@ -201,7 +201,7 @@ init_free_q:
 	idpf_free(hw, cq);
 	cq = NULL;
 
-	return status;
+	return err;
 }
 
 /**
@@ -232,27 +232,27 @@ int idpf_ctlq_init(struct idpf_hw *hw, u8 num_q,
 		   struct idpf_ctlq_create_info *q_info)
 {
 	struct idpf_ctlq_info *cq = NULL, *tmp = NULL;
-	int ret_code = 0;
-	int i = 0;
+	int err;
+	int i;
 
 	LIST_INIT(&hw->cq_list_head);
 
 	for (i = 0; i < num_q; i++) {
 		struct idpf_ctlq_create_info *qinfo = q_info + i;
 
-		ret_code = idpf_ctlq_add(hw, qinfo, &cq);
-		if (ret_code)
+		err = idpf_ctlq_add(hw, qinfo, &cq);
+		if (err)
 			goto init_destroy_qs;
 	}
 
-	return ret_code;
+	return 0;
 
 init_destroy_qs:
 	LIST_FOR_EACH_ENTRY_SAFE(cq, tmp, &hw->cq_list_head,
 				 idpf_ctlq_info, cq_list)
 		idpf_ctlq_remove(hw, cq);
 
-	return ret_code;
+	return err;
 }
 
 /**
@@ -286,9 +286,9 @@ int idpf_ctlq_send(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 		   u16 num_q_msg, struct idpf_ctlq_msg q_msg[])
 {
 	struct idpf_ctlq_desc *desc;
-	int num_desc_avail = 0;
-	int status = 0;
-	int i = 0;
+	int num_desc_avail;
+	int err = 0;
+	int i;
 
 	if (!cq || !cq->ring_size)
 		return -ENOBUFS;
@@ -298,8 +298,8 @@ int idpf_ctlq_send(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 	/* Ensure there are enough descriptors to send all messages */
 	num_desc_avail = IDPF_CTLQ_DESC_UNUSED(cq);
 	if (num_desc_avail == 0 || num_desc_avail < num_q_msg) {
-		status = -ENOSPC;
-		goto sq_send_command_out;
+		err = -ENOSPC;
+		goto err_unlock;
 	}
 
 	for (i = 0; i < num_q_msg; i++) {
@@ -370,10 +370,10 @@ int idpf_ctlq_send(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 
 	wr32(hw, cq->reg.tail, cq->next_to_use);
 
-sq_send_command_out:
+err_unlock:
 	idpf_release_lock(&cq->cq_lock);
 
-	return status;
+	return err;
 }
 
 /**
@@ -397,9 +397,8 @@ static int __idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 				struct idpf_ctlq_msg *msg_status[], bool force)
 {
 	struct idpf_ctlq_desc *desc;
-	u16 i = 0, num_to_clean;
+	u16 i, num_to_clean;
 	u16 ntc, desc_err;
-	int ret = 0;
 
 	if (!cq || !cq->ring_size)
 		return -ENOBUFS;
@@ -446,7 +445,7 @@ static int __idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 	/* Return number of descriptors actually cleaned */
 	*clean_count = i;
 
-	return ret;
+	return 0;
 }
 
 /**
@@ -513,7 +512,6 @@ int idpf_ctlq_post_rx_buffs(struct idpf_hw *hw, struct idpf_ctlq_info *cq,
 	u16 ntp = cq->next_to_post;
 	bool buffs_avail = false;
 	u16 tbp = ntp + 1;
-	int status = 0;
 	int i = 0;
 
 	if (*buff_count > cq->ring_size)
@@ -614,7 +612,7 @@ post_buffs_out:
 	/* return the number of buffers that were not posted */
 	*buff_count = *buff_count - i;
 
-	return status;
+	return 0;
 }
 
 /**
@@ -633,8 +631,8 @@ int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 {
 	u16 num_to_clean, ntc, ret_val, flags;
 	struct idpf_ctlq_desc *desc;
-	int ret_code = 0;
-	u16 i = 0;
+	int err = 0;
+	u16 i;
 
 	if (!cq || !cq->ring_size)
 		return -ENOBUFS;
@@ -667,7 +665,7 @@ int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 				      IDPF_CTLQ_FLAG_FTYPE_S;
 
 		if (flags & IDPF_CTLQ_FLAG_ERR)
-			ret_code = -EBADMSG;
+			err = -EBADMSG;
 
 		q_msg[i].cookie.mbx.chnl_opcode = LE32_TO_CPU(desc->cookie_high);
 		q_msg[i].cookie.mbx.chnl_retval = LE32_TO_CPU(desc->cookie_low);
@@ -713,7 +711,7 @@ int idpf_ctlq_recv(struct idpf_ctlq_info *cq, u16 *num_q_msg,
 
 	*num_q_msg = i;
 	if (*num_q_msg == 0)
-		ret_code = -ENOMSG;
+		err = -ENOMSG;
 
-	return ret_code;
+	return err;
 }

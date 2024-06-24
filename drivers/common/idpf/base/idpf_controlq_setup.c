@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2023 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 
@@ -34,7 +34,7 @@ static int idpf_ctlq_alloc_desc_ring(struct idpf_hw *hw,
 static int idpf_ctlq_alloc_bufs(struct idpf_hw *hw,
 				struct idpf_ctlq_info *cq)
 {
-	int i = 0;
+	int i;
 
 	/* Do not allocate DMA buffers for transmit queues */
 	if (cq->cq_type == IDPF_CTLQ_TYPE_MAILBOX_TX)
@@ -153,20 +153,20 @@ void idpf_ctlq_dealloc_ring_res(struct idpf_hw *hw, struct idpf_ctlq_info *cq)
  */
 int idpf_ctlq_alloc_ring_res(struct idpf_hw *hw, struct idpf_ctlq_info *cq)
 {
-	int ret_code;
+	int err;
 
 	/* verify input for valid configuration */
 	if (!cq->ring_size || !cq->buf_size)
 		return -EINVAL;
 
 	/* allocate the ring memory */
-	ret_code = idpf_ctlq_alloc_desc_ring(hw, cq);
-	if (ret_code)
-		return ret_code;
+	err = idpf_ctlq_alloc_desc_ring(hw, cq);
+	if (err)
+		return err;
 
 	/* allocate buffers in the rings */
-	ret_code = idpf_ctlq_alloc_bufs(hw, cq);
-	if (ret_code)
+	err = idpf_ctlq_alloc_bufs(hw, cq);
+	if (err)
 		goto idpf_init_cq_free_ring;
 
 	/* success! */
@@ -174,5 +174,5 @@ int idpf_ctlq_alloc_ring_res(struct idpf_hw *hw, struct idpf_ctlq_info *cq)
 
 idpf_init_cq_free_ring:
 	idpf_free_dma_mem(hw, &cq->desc_ring);
-	return ret_code;
+	return err;
 }
