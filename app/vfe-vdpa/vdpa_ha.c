@@ -60,12 +60,10 @@ virtio_ha_client_start(ver_time_set set_ver)
 	rte_vfio_register_dma_cb(virtio_ha_client_dma_map, virtio_ha_client_cfd_store);
 
 	ret = virtio_ha_global_cfd_query(&vfio_container_fd);
-	if (ret < 0) {
+	if (ret < 0)
 		RTE_LOG(ERR, HA, "Failed to query global container fd\n");
-		return -1;
-	} else {
+	else
 		RTE_LOG(INFO, HA, "Query success: global container fd(%d)\n", vfio_container_fd);
-	}
 
 	if (vfio_container_fd != -1)
 		rte_vfio_restore_default_cfd(vfio_container_fd);
