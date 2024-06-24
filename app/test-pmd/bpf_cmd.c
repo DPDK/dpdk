@@ -139,7 +139,7 @@ static cmdline_parse_token_string_t cmd_load_bpf_prm =
 cmdline_parse_inst_t cmd_operate_bpf_ld_parse = {
 	.f = cmd_operate_bpf_ld_parsed,
 	.data = NULL,
-	.help_str = "bpf-load rx|tx <port> <queue> <J|M|B> <file_name>",
+	.help_str = "bpf-load rx|tx <port> <queue> <J|M|-> <file_name>",
 	.tokens = {
 		(void *)&cmd_load_bpf_start,
 		(void *)&cmd_load_bpf_dir,
