@@ -52,10 +52,10 @@ struct nfp_net_cmsg_match_v4 {
 	uint32_t src_ipv4_mask;
 	uint32_t dst_ipv4;
 	uint32_t dst_ipv4_mask;
-	uint16_t src_port;
 	uint16_t src_port_mask;
-	uint16_t dst_port;
+	uint16_t src_port;
 	uint16_t dst_port_mask;
+	uint16_t dst_port;
 };
 
 /**
