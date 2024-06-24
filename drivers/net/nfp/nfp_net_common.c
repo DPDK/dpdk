@@ -1265,6 +1265,8 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	hw = nfp_net_get_hw(dev);
 	hw_priv = dev->process_private;
+	if (hw_priv == NULL)
+		return -EINVAL;
 
 	nfp_net_rx_desc_limits(hw_priv, &min_rx_desc, &max_rx_desc);
 	nfp_net_tx_desc_limits(hw, hw_priv, &min_tx_desc, &max_tx_desc);
@@ -1364,7 +1366,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	}
 
 	/* Only PF supports getting speed capability. */
-	if (hw_priv != NULL && hw_priv->pf_dev != NULL)
+	if (hw_priv->pf_dev != NULL)
 		dev_info->speed_capa = hw_priv->pf_dev->speed_capa;
 
 	return 0;
