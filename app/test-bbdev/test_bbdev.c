@@ -1239,7 +1239,6 @@ test_bbdev_invalid_driver(void)
 	TEST_ASSERT_SUCCESS(rte_bbdev_callback_unregister(dev_id,
 			RTE_BBDEV_EVENT_UNKNOWN, event_callback, NULL),
 			"Failed to unregister RTE_BBDEV_EVENT_ERROR ");
-	dev2->dev_ops = dev1.dev_ops;
 
 	/* Tests for rte_bbdev_stats_reset */
 	dev2->dev_ops = NULL;
