@@ -6,7 +6,8 @@
 TypedDicts can be used in conjunction with Unpack and kwargs for type hinting on function calls.
 
 Example:
-    ..code:: python
+    .. code:: python
+
         def create_testpmd(**kwargs: Unpack[TestPmdParamsDict]):
             params = TestPmdParams(**kwargs)
 """

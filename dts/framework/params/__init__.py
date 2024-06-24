@@ -53,9 +53,9 @@ def _reduce_functions(funcs: Iterable[FnPtr]) -> FnPtr:
 
 
 def modify_str(*funcs: FnPtr) -> Callable[[T], T]:
-    """Class decorator modifying the ``__str__`` method with a function created from its arguments.
+    r"""Class decorator modifying the ``__str__`` method with a function created from its arguments.
 
-    The :attr:`FnPtr`s fed to the decorator are executed from left to right in the arguments list
+    The :attr:`FnPtr`\s fed to the decorator are executed from left to right in the arguments list
     order.
 
     Args:

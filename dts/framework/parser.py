@@ -46,7 +46,7 @@ class TextParser(ABC):
     Example:
         The following example makes use of and demonstrates every parser function available:
 
-        ..code:: python
+        .. code:: python
 
             from dataclasses import dataclass, field
             from enum import Enum
@@ -90,7 +90,7 @@ class TextParser(ABC):
         """Makes a wrapped parser function.
 
         `parser_fn` is called and if a non-None value is returned, `wrapper_function` is called with
-        it. Otherwise the function returns early with None. In pseudo-code:
+        it. Otherwise the function returns early with None. In pseudo-code::
 
             intermediate_value := parser_fn(input)
             if intermediary_value is None then

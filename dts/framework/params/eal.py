@@ -26,13 +26,16 @@ class EalParams(Params):
         prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix="vf"``.
         no_pci: Switch to disable PCI bus, e.g.: ``no_pci=True``.
         vdevs: Virtual devices, e.g.::
+
             vdevs=[
                 VirtualDevice('net_ring0'),
                 VirtualDevice('net_ring1')
             ]
+
         ports: The list of ports to allow.
-        other_eal_param: user defined DPDK EAL parameters, e.g.:
-                ``other_eal_param='--single-file-segments'``
+        other_eal_param: user defined DPDK EAL parameters, e.g.::
+
+            ``other_eal_param='--single-file-segments'``
     """
 
     lcore_list: LogicalCoreList | None = field(default=None, metadata=Params.short("l"))
