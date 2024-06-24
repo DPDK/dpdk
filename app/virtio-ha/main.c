@@ -975,6 +975,8 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 	struct virtio_ha_event_handler hdl, *handler;
 	int sock, epfd, nev, i;
 
+	HA_APP_LOG(ERR, "version: %s", rte_version());
+
 	msg = virtio_ha_alloc_msg();
 	if (!msg) {
 		HA_APP_LOG(ERR, "Failed to alloc ha msg");

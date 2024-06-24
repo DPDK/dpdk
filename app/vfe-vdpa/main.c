@@ -22,6 +22,7 @@
 #include <rte_vf_rpc.h>
 #include <rte_vfio.h>
 #include <virtio_vdpa.h>
+#include <rte_version.h>
 
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
@@ -767,6 +768,8 @@ main(int argc, char *argv[])
 	argc -= ret;
 	argv += ret;
 	eal_start = true;
+
+	RTE_LOG(ERR, VDPA, "version: %s", rte_version());
 
 	rte_eal_vfio_get_vf_token(vf_token);
 	/* Generate VF token firstly, if the user-configured NULL*/
