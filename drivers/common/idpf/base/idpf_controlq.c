@@ -98,9 +98,6 @@ static void idpf_ctlq_shutdown(struct idpf_hw *hw, struct idpf_ctlq_info *cq)
 {
 	idpf_acquire_lock(&cq->cq_lock);
 
-	if (!cq->ring_size)
-		goto shutdown_sq_out;
-
 #ifdef SIMICS_BUILD
 	wr32(hw, cq->reg.head, 0);
 	wr32(hw, cq->reg.tail, 0);
@@ -115,7 +112,6 @@ static void idpf_ctlq_shutdown(struct idpf_hw *hw, struct idpf_ctlq_info *cq)
 	/* Set ring_size to 0 to indicate uninitialized queue */
 	cq->ring_size = 0;
 
-shutdown_sq_out:
 	idpf_release_lock(&cq->cq_lock);
 	idpf_destroy_lock(&cq->cq_lock);
 }
