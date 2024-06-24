@@ -123,7 +123,11 @@ static void
 nfp_net_flow_position_free(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
-	priv->flow_position[nfp_flow->position] = false;
+	uint32_t index;
+
+	index = NFP_NET_FLOW_LIMIT - 1 - nfp_flow->position;
+
+	priv->flow_position[index] = false;
 }
 
 static struct rte_flow *
