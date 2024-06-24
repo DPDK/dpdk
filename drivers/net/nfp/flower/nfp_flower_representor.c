@@ -845,7 +845,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		eth_port = &nfp_eth_table->ports[id];
 		flower_repr.repr_type = NFP_REPR_TYPE_PHYS_PORT;
 		flower_repr.port_id = nfp_flower_get_phys_port_id(eth_port->index);
-		flower_repr.nfp_idx = eth_port->eth_index;
+		flower_repr.nfp_idx = eth_port->index;
 		flower_repr.vf_id = i + 1;
 
 		/* Copy the real mac of the interface to the representor struct */
