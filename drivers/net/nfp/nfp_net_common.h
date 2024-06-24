@@ -165,12 +165,24 @@ struct nfp_pf_dev {
 	bool speed_updated;
 };
 
-#define NFP_NET_FLOW_LIMIT    1024
+#define NFP_NET_ETH_FLOW_LIMIT    8
+#define NFP_NET_IPV4_FLOW_LIMIT   1024
+#define NFP_NET_IPV6_FLOW_LIMIT   1024
+
+#define NFP_NET_FLOW_LIMIT    ((NFP_NET_ETH_FLOW_LIMIT) +   \
+				(NFP_NET_IPV4_FLOW_LIMIT) + \
+				(NFP_NET_IPV6_FLOW_LIMIT))
+
+struct nfp_net_flow_count {
+	uint16_t eth_count;
+	uint16_t ipv4_count;
+	uint16_t ipv6_count;
+};
 
 struct nfp_net_priv {
 	uint32_t hash_seed; /**< Hash seed for hash tables in this structure. */
 	struct rte_hash *flow_table; /**< Hash table to store flow rules. */
-	uint16_t flow_count; /**< Flow count in hash table */
+	struct nfp_net_flow_count flow_count; /**< Flow count in hash table */
 	bool flow_position[NFP_NET_FLOW_LIMIT]; /**< Flow position array */
 };
 

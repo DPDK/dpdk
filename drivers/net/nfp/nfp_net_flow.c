@@ -178,7 +178,8 @@ nfp_net_flow_free(struct nfp_net_priv *priv,
 
 static int
 nfp_net_flow_calculate_items(const struct rte_flow_item items[],
-		uint32_t *match_len)
+		uint32_t *match_len,
+		uint32_t *item_type)
 {
 	int ret = -EINVAL;
 	const struct rte_flow_item *item;
@@ -188,15 +189,18 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
 			*match_len = sizeof(struct nfp_net_cmsg_match_eth);
+			*item_type = RTE_FLOW_ITEM_TYPE_ETH;
 			ret = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v4);
+			*item_type = RTE_FLOW_ITEM_TYPE_IPV4;
 			return 0;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v6);
+			*item_type = RTE_FLOW_ITEM_TYPE_IPV6;
 			return 0;
 		default:
 			PMD_DRV_LOG(ERR, "Can't calculate match length");
@@ -643,6 +647,66 @@ nfp_net_flow_process_priority(struct rte_flow *nfp_flow,
 	}
 }
 
+static int
+nfp_net_flow_check_count(struct nfp_net_flow_count *flow_count,
+		uint32_t item_type)
+{
+	int ret = 0;
+
+	switch (item_type) {
+	case RTE_FLOW_ITEM_TYPE_ETH:
+		if (flow_count->eth_count >= NFP_NET_ETH_FLOW_LIMIT)
+			ret = -ENOSPC;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV4:
+		if (flow_count->ipv4_count >= NFP_NET_IPV4_FLOW_LIMIT)
+			ret = -ENOSPC;
+		break;
+	case RTE_FLOW_ITEM_TYPE_IPV6:
+		if (flow_count->ipv6_count >= NFP_NET_IPV6_FLOW_LIMIT)
+			ret = -ENOSPC;
+		break;
+	default:
+		ret = -ENOTSUP;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+nfp_net_flow_calculate_count(struct rte_flow *nfp_flow,
+		struct nfp_net_flow_count *flow_count,
+		bool delete_flag)
+{
+	uint16_t *count;
+
+	switch (nfp_flow->payload.cmsg_type) {
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_V4:
+	case NFP_NET_CFG_MBOX_CMD_FS_DEL_V4:
+		count = &flow_count->ipv4_count;
+		break;
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_V6:
+	case NFP_NET_CFG_MBOX_CMD_FS_DEL_V6:
+		count = &flow_count->ipv6_count;
+		break;
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_ETHTYPE:
+	case NFP_NET_CFG_MBOX_CMD_FS_DEL_ETHTYPE:
+		count = &flow_count->eth_count;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Flow count calculate failed.");
+		return -EINVAL;
+	}
+
+	if (delete_flag)
+		(*count)--;
+	else
+		(*count)++;
+
+	return 0;
+}
+
 static struct rte_flow *
 nfp_net_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
@@ -652,6 +716,7 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 	int ret;
 	char *hash_data;
 	uint32_t port_id;
+	uint32_t item_type;
 	uint32_t action_len;
 	struct nfp_net_hw *hw;
 	uint32_t match_len = 0;
@@ -666,9 +731,15 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
-	ret = nfp_net_flow_calculate_items(items, &match_len);
+	ret = nfp_net_flow_calculate_items(items, &match_len, &item_type);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Key layers calculate failed.");
+		return NULL;
+	}
+
+	ret = nfp_net_flow_check_count(&priv->flow_count, item_type);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Flow count check failed.");
 		return NULL;
 	}
 
@@ -705,7 +776,11 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 		goto free_flow;
 	}
 
-	priv->flow_count++;
+	ret = nfp_net_flow_calculate_count(nfp_flow, &priv->flow_count, false);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "NFP flow calculate count failed.");
+		goto free_flow;
+	}
 
 	nfp_net_flow_process_priority(nfp_flow, match_len);
 
@@ -719,11 +794,9 @@ free_flow:
 
 static int
 nfp_net_flow_teardown(struct nfp_net_priv *priv,
-		__rte_unused struct rte_flow *nfp_flow)
+		struct rte_flow *nfp_flow)
 {
-	priv->flow_count--;
-
-	return 0;
+	return nfp_net_flow_calculate_count(nfp_flow, &priv->flow_count, true);
 }
 
 static int
