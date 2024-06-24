@@ -3517,6 +3517,11 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 		total_actions++;
 	}
 
+	if (nfp_flow->install_flag && total_actions == 0) {
+		PMD_DRV_LOG(ERR, "The action list is empty");
+		return -ENOTSUP;
+	}
+
 	if (drop_flag)
 		nfp_flow_meta->shortcut = rte_cpu_to_be_32(NFP_FL_SC_ACT_DROP);
 	else if (total_actions > 1)
