@@ -276,8 +276,11 @@ fdset_event_dispatch(void *arg)
 					time_passed = (time.tv_sec - vsock->timestamp.tv_sec) * 1e6;
 					time_passed = (time_passed + (time.tv_usec - vsock->timestamp.tv_usec)) * 1e-6;
 					if (time_passed > VHOST_SOCK_TIME_OUT) {
+						pthread_mutex_lock(&vsock->vdpa_dev_mutex);
 						vdpa_dev = vsock->vdpa_dev;
-						vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+						if (vdpa_dev)
+							vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+						pthread_mutex_unlock(&vsock->vdpa_dev_mutex);
 						vsock->timeout_enabled = false;
 					}
 				}

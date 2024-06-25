@@ -125,6 +125,7 @@ struct vhost_user_socket {
 
 	uint64_t protocol_features;
 
+	pthread_mutex_t vdpa_dev_mutex;
 	struct rte_vdpa_device *vdpa_dev;
 
 	struct rte_vhost_device_ops const *notify_ops;

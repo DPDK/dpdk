@@ -459,8 +459,11 @@ vhost_user_client_reconnect(void *arg __rte_unused)
 					time_passed = (time.tv_sec - reconn->timestamp.tv_sec) * 1e6;
 					time_passed = (time_passed + (time.tv_usec - reconn->timestamp.tv_usec)) * 1e-6;
 					if (time_passed > VHOST_SOCK_TIME_OUT) {
+						pthread_mutex_lock(&reconn->vsocket->vdpa_dev_mutex);
 						vdpa_dev = (struct rte_vdpa_device *)reconn->vsocket->vdpa_dev;
-						vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+						if (vdpa_dev)
+							vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+						pthread_mutex_unlock(&reconn->vsocket->vdpa_dev_mutex);
 						reconn->check_timeout = false;
 					}
 				}
@@ -574,8 +577,11 @@ rte_vhost_driver_attach_vdpa_device(const char *path,
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
-	if (vsocket)
+	if (vsocket) {
+		pthread_mutex_lock(&vsocket->vdpa_dev_mutex);
 		vsocket->vdpa_dev = dev;
+		pthread_mutex_unlock(&vsocket->vdpa_dev_mutex);
+	}
 	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return vsocket ? 0 : -1;
@@ -588,8 +594,11 @@ rte_vhost_driver_detach_vdpa_device(const char *path)
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
-	if (vsocket)
+	if (vsocket) {
+		pthread_mutex_lock(&vsocket->vdpa_dev_mutex);
 		vsocket->vdpa_dev = NULL;
+		pthread_mutex_unlock(&vsocket->vdpa_dev_mutex);
+	}	
 	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return vsocket ? 0 : -1;
@@ -848,6 +857,11 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	ret = pthread_mutex_init(&vsocket->conn_mutex, NULL);
 	if (ret) {
 		VHOST_LOG_CONFIG(ERR, "(%s) failed to init connection mutex\n", path);
+		goto out_free;
+	}
+	ret = pthread_mutex_init(&vsocket->vdpa_dev_mutex, NULL);
+	if (ret) {
+		VHOST_LOG_CONFIG(ERR, "(%s) failed to init vdpa_dev mutex\n", path);
 		goto out_free;
 	}
 	vsocket->vdpa_dev = NULL;
