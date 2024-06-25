@@ -7,6 +7,7 @@
 
 #include "ice_flex_type.h"
 #include "ice_acl.h"
+#include "ice_parser.h"
 
 #define ICE_IPV4_MAKE_PREFIX_MASK(prefix) ((u32)(~0) << (32 - (prefix)))
 #define ICE_FLOW_PROF_ID_INVAL		0xfffffffffffffffful
