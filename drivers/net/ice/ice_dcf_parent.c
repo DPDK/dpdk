@@ -307,7 +307,7 @@ static int
 ice_dcf_init_parent_hw(struct ice_hw *hw)
 {
 	struct ice_aqc_get_phy_caps_data *pcaps;
-	enum ice_status status;
+	int status;
 
 	status = ice_aq_get_fw_ver(hw, NULL);
 	if (status)

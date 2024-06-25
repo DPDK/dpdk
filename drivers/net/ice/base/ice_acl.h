@@ -126,77 +126,77 @@ struct ice_acl_cntrs {
 	u16 last_cntr;
 };
 
-enum ice_status
+int
 ice_acl_create_tbl(struct ice_hw *hw, struct ice_acl_tbl_params *params);
-enum ice_status ice_acl_destroy_tbl(struct ice_hw *hw);
-enum ice_status
+int ice_acl_destroy_tbl(struct ice_hw *hw);
+int
 ice_acl_create_scen(struct ice_hw *hw, u16 match_width, u16 num_entries,
 		    u16 *scen_id);
-enum ice_status
+int
 ice_aq_alloc_acl_tbl(struct ice_hw *hw, struct ice_acl_alloc_tbl *tbl,
 		     struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_dealloc_acl_tbl(struct ice_hw *hw, u16 alloc_id,
 		       struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_program_acl_entry(struct ice_hw *hw, u8 tcam_idx, u16 entry_idx,
 			 struct ice_aqc_acl_data *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_query_acl_entry(struct ice_hw *hw, u8 tcam_idx, u16 entry_idx,
 		       struct ice_aqc_acl_data *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_alloc_actpair(struct ice_hw *hw, u16 alloc_id,
 		     struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_dealloc_actpair(struct ice_hw *hw, u16 alloc_id,
 		       struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_program_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
 		       struct ice_aqc_actpair *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_query_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
 		     struct ice_aqc_actpair *buf, struct ice_sq_cd *cd);
-enum ice_status ice_aq_dealloc_acl_res(struct ice_hw *hw, struct ice_sq_cd *cd);
-enum ice_status
+int ice_aq_dealloc_acl_res(struct ice_hw *hw, struct ice_sq_cd *cd);
+int
 ice_prgm_acl_prof_xtrct(struct ice_hw *hw, u8 prof_id,
 			struct ice_aqc_acl_prof_generic_frmt *buf,
 			struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_query_acl_prof(struct ice_hw *hw, u8 prof_id,
 		   struct ice_aqc_acl_prof_generic_frmt *buf,
 		   struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_alloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
 		       struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_dealloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
 			 struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_prog_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
 			 struct ice_aqc_acl_profile_ranges *buf,
 			 struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_query_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
 			  struct ice_aqc_acl_profile_ranges *buf,
 			  struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_alloc_acl_scen(struct ice_hw *hw, u16 *scen_id,
 		      struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_dealloc_acl_scen(struct ice_hw *hw, u16 scen_id, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_update_acl_scen(struct ice_hw *hw, u16 scen_id,
 		       struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_aq_query_acl_scen(struct ice_hw *hw, u16 scen_id,
 		      struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 		  enum ice_acl_entry_prio prio, u8 *keys, u8 *inverts,
 		  struct ice_acl_act_entry *acts, u8 acts_cnt, u16 *entry_idx);
-enum ice_status
+int
 ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
 		 struct ice_acl_act_entry *acts, u8 acts_cnt, u16 entry_idx);
-enum ice_status
+int
 ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx);
 #endif /* _ICE_ACL_H_ */

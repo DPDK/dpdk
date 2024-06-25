@@ -55,14 +55,14 @@ struct ice_parser {
 	struct ice_parser_rt rt; /* parser runtime */
 };
 
-enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr);
+int ice_parser_create(struct ice_hw *hw, struct ice_parser **psr);
 void ice_parser_destroy(struct ice_parser *psr);
 void ice_parser_dvm_set(struct ice_parser *psr, bool on);
-enum ice_status ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
+int ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
 					    u16 udp_port, bool on);
-enum ice_status ice_parser_geneve_tunnel_set(struct ice_parser *psr,
+int ice_parser_geneve_tunnel_set(struct ice_parser *psr,
 					     u16 udp_port, bool on);
-enum ice_status ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
+int ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
 					    u16 udp_port, bool on);
 
 struct ice_parser_proto_off {
@@ -83,7 +83,7 @@ struct ice_parser_result {
 	u16 flags_rss; /* 16 bits key builder flag for RSS */
 };
 
-enum ice_status ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
+int ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
 			       int pkt_len, struct ice_parser_result *rslt);
 void ice_parser_result_dump(struct ice_hw *hw, struct ice_parser_result *rslt);
 
@@ -103,7 +103,7 @@ struct ice_parser_profile {
 	ice_declare_bitmap(ptypes, ICE_FLOW_PTYPE_MAX);
 };
 
-enum ice_status ice_parser_profile_init(struct ice_parser_result *rslt,
+int ice_parser_profile_init(struct ice_parser_result *rslt,
 					const u8 *pkt_buf, const u8 *msk_buf,
 					int buf_len, enum ice_block blk,
 					bool prefix_match,

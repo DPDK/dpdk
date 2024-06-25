@@ -592,11 +592,11 @@ static int ice_set_node_rate(struct ice_hw *hw,
 			     struct ice_tm_node *tm_node,
 			     struct ice_sched_node *sched_node)
 {
-	enum ice_status status;
 	bool reset = false;
 	uint32_t peak = 0;
 	uint32_t committed = 0;
 	uint32_t rate;
+	int status;
 
 	if (tm_node == NULL || tm_node->shaper_profile == NULL) {
 		reset = true;
@@ -637,10 +637,9 @@ static int ice_cfg_hw_node(struct ice_hw *hw,
 			   struct ice_tm_node *tm_node,
 			   struct ice_sched_node *sched_node)
 {
-	enum ice_status status;
 	uint8_t priority;
 	uint16_t weight;
-	int ret;
+	int status, ret;
 
 	ret = ice_set_node_rate(hw, tm_node, sched_node);
 	if (ret) {

@@ -19,14 +19,14 @@
  *
  * Download Package (0x0C40)
  */
-static enum ice_status
+static int
 ice_aq_download_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
 		    u16 buf_size, bool last_buf, u32 *error_offset,
 		    u32 *error_info, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_download_pkg *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	if (error_offset)
 		*error_offset = 0;
@@ -64,7 +64,7 @@ ice_aq_download_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
  *
  * Upload Section (0x0C41)
  */
-enum ice_status
+int
 ice_aq_upload_section(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
 		      u16 buf_size, struct ice_sq_cd *cd)
 {
@@ -88,14 +88,14 @@ ice_aq_upload_section(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf,
  *
  * Update Package (0x0C42)
  */
-static enum ice_status
+static int
 ice_aq_update_pkg(struct ice_hw *hw, struct ice_buf_hdr *pkg_buf, u16 buf_size,
 		  bool last_buf, u32 *error_offset, u32 *error_info,
 		  struct ice_sq_cd *cd)
 {
 	struct ice_aqc_download_pkg *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	if (error_offset)
 		*error_offset = 0;
@@ -228,10 +228,10 @@ ice_is_signing_seg_type_at_idx(struct ice_pkg_hdr *pkg_hdr, u32 idx,
  * @bufs: pointer to an array of buffers
  * @count: the number of buffers in the array
  */
-enum ice_status
+int
 ice_update_pkg_no_lock(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	u32 i;
 
 	for (i = 0; i < count; i++) {
@@ -260,10 +260,10 @@ ice_update_pkg_no_lock(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
  *
  * Obtains change lock and updates package.
  */
-enum ice_status
+int
 ice_update_pkg(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 {
-	enum ice_status status;
+	int status;
 
 	status = ice_acquire_change_lock(hw, ICE_RES_WRITE);
 	if (status)
@@ -367,8 +367,8 @@ ice_dwnld_cfg_bufs_no_lock(struct ice_hw *hw, struct ice_buf *bufs, u32 start,
 		return ICE_DDP_PKG_SUCCESS;
 
 	for (i = 0; i < count; i++) {
-		enum ice_status status;
 		bool last = false;
+		int status;
 
 		bh = (struct ice_buf_hdr *)(bufs + start + i);
 
@@ -403,7 +403,7 @@ ice_dwnld_cfg_bufs_no_lock(struct ice_hw *hw, struct ice_buf *bufs, u32 start,
  *
  * Get Package Info List (0x0C43)
  */
-static enum ice_status
+static int
 ice_aq_get_pkg_info_list(struct ice_hw *hw,
 			 struct ice_aqc_get_pkg_info_resp *pkg_info,
 			 u16 buf_size, struct ice_sq_cd *cd)
@@ -606,7 +606,7 @@ static enum ice_ddp_state
 ice_post_dwnld_pkg_actions(struct ice_hw *hw)
 {
 	enum ice_ddp_state state = ICE_DDP_PKG_SUCCESS;
-	enum ice_status status;
+	int status;
 
 	status = ice_set_vlan_mode(hw);
 	if (status) {
@@ -628,7 +628,7 @@ ice_download_pkg_with_sig_seg(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
 {
 	enum ice_aq_err aq_err = hw->adminq.sq_last_status;
 	enum ice_ddp_state state = ICE_DDP_PKG_ERR;
-	enum ice_status status;
+	int status;
 	u32 i;
 
 	ice_debug(hw, ICE_DBG_INIT, "Segment ID %d\n", hw->pkg_seg_id);
@@ -674,8 +674,8 @@ static enum ice_ddp_state
 ice_dwnld_cfg_bufs(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 {
 	enum ice_ddp_state state = ICE_DDP_PKG_SUCCESS;
-	enum ice_status status;
 	struct ice_buf_hdr *bh;
+	int status;
 
 	if (!bufs || !count)
 		return ICE_DDP_PKG_ERR;
@@ -1572,7 +1572,7 @@ ice_get_sw_fv_bitmap(struct ice_hw *hw, enum ice_prof_type req_profs,
  * NOTE: The caller of the function is responsible for freeing the memory
  * allocated for every list entry.
  */
-enum ice_status
+int
 ice_get_sw_fv_list(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 		   ice_bitmap_t *bm, struct LIST_HEAD_TYPE *fv_list)
 {
@@ -1713,7 +1713,7 @@ void ice_pkg_buf_free(struct ice_hw *hw, struct ice_buf_build *bld)
  * result in some wasted space in the buffer.
  * Note: all package contents must be in Little Endian form.
  */
-enum ice_status
+int
 ice_pkg_buf_reserve_section(struct ice_buf_build *bld, u16 count)
 {
 	struct ice_buf_hdr *buf;
@@ -2129,7 +2129,7 @@ ice_boost_tcam_handler(u32 sect_type, void *section, u32 index, u32 *offset)
  * if it is found. The ice_seg parameter must not be NULL since the first call
  * to ice_pkg_enum_entry requires a pointer to an actual ice_segment structure.
  */
-static enum ice_status
+static int
 ice_find_boost_entry(struct ice_seg *ice_seg, u16 addr,
 		     struct ice_boost_tcam_entry **entry)
 {
@@ -2231,11 +2231,11 @@ void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
  *                      this case, the caller can just skip performing any
  *                      update of the package.
  */
-enum ice_status
+int
 ice_acquire_global_cfg_lock(struct ice_hw *hw,
 			    enum ice_aq_res_access_type access)
 {
-	enum ice_status status;
+	int status;
 
 	status = ice_acquire_res(hw, ICE_GLOBAL_CFG_LOCK_RES_ID, access,
 				 ICE_GLOBAL_CFG_LOCK_TIMEOUT);
@@ -2264,7 +2264,7 @@ void ice_release_global_cfg_lock(struct ice_hw *hw)
  *
  * This function will request ownership of the change lock.
  */
-enum ice_status
+int
 ice_acquire_change_lock(struct ice_hw *hw, enum ice_aq_res_access_type access)
 {
 	return ice_acquire_res(hw, ICE_CHANGE_LOCK_RES_ID, access,
@@ -2293,13 +2293,13 @@ void ice_release_change_lock(struct ice_hw *hw)
  *
  * The function will get or set tx topology
  */
-static enum ice_status
+static int
 ice_get_set_tx_topo(struct ice_hw *hw, u8 *buf, u16 buf_size,
 		    struct ice_sq_cd *cd, u8 *flags, bool set)
 {
 	struct ice_aqc_get_set_tx_topo *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	cmd = &desc.params.get_set_tx_topo;
 	if (set) {
@@ -2333,7 +2333,7 @@ ice_get_set_tx_topo(struct ice_hw *hw, u8 *buf, u16 buf_size,
  * The function will apply the new Tx topology from the package buffer
  * if available.
  */
-enum ice_status ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
+int ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 {
 	u8 *current_topo, *new_topo = NULL;
 	struct ice_run_time_cfg_seg *seg;
@@ -2341,7 +2341,7 @@ enum ice_status ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 	struct ice_pkg_hdr *pkg_hdr;
 	enum ice_ddp_state state;
 	u16 i, size = 0, offset;
-	enum ice_status status;
+	int status;
 	u32 reg = 0;
 	u8 flags;
 

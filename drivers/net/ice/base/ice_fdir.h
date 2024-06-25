@@ -318,24 +318,24 @@ ice_fdir_comp_rules_basic(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b);
 bool
 ice_fdir_comp_rules_extended(struct ice_fdir_fltr *a,  struct ice_fdir_fltr *b);
 
-enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
-enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
-enum ice_status
+int ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id);
+int ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id);
+int
 ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
-enum ice_status
+int
 ice_free_fd_guar_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
-enum ice_status
+int
 ice_alloc_fd_shrd_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr);
-enum ice_status
+int
 ice_free_fd_shrd_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr);
-enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw);
+int ice_clear_pf_fd_table(struct ice_hw *hw);
 void
 ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		       struct ice_fltr_desc *fdesc, bool add);
-enum ice_status
+int
 ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 			  u8 *pkt, bool frag, bool tun);
-enum ice_status
+int
 ice_fdir_get_prgm_pkt(struct ice_fdir_fltr *input, u8 *pkt, bool frag);
 int ice_get_fdir_cnt_all(struct ice_hw *hw);
 bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input);

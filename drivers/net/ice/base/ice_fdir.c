@@ -3502,7 +3502,7 @@ ice_fdir_get_prgm_desc(struct ice_hw *hw, struct ice_fdir_fltr *input,
  * @hw: pointer to the hardware structure
  * @cntr_id: returns counter index
  */
-enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id)
+int ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id)
 {
 	return ice_alloc_res_cntr(hw, ICE_AQC_RES_TYPE_FDIR_COUNTER_BLOCK,
 				  ICE_AQC_RES_TYPE_FLAG_DEDICATED, 1, cntr_id);
@@ -3513,7 +3513,7 @@ enum ice_status ice_alloc_fd_res_cntr(struct ice_hw *hw, u16 *cntr_id)
  * @hw: pointer to the hardware structure
  * @cntr_id: counter index to be freed
  */
-enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id)
+int ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id)
 {
 	return ice_free_res_cntr(hw, ICE_AQC_RES_TYPE_FDIR_COUNTER_BLOCK,
 				 ICE_AQC_RES_TYPE_FLAG_DEDICATED, 1, cntr_id);
@@ -3525,7 +3525,7 @@ enum ice_status ice_free_fd_res_cntr(struct ice_hw *hw, u16 cntr_id)
  * @cntr_id: returns counter index
  * @num_fltr: number of filter entries to be allocated
  */
-enum ice_status
+int
 ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr)
 {
 	return ice_alloc_res_cntr(hw, ICE_AQC_RES_TYPE_FDIR_GUARANTEED_ENTRIES,
@@ -3539,7 +3539,7 @@ ice_alloc_fd_guar_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr)
  * @cntr_id: counter index that needs to be freed
  * @num_fltr: number of filters to be freed
  */
-enum ice_status
+int
 ice_free_fd_guar_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr)
 {
 	return ice_free_res_cntr(hw, ICE_AQC_RES_TYPE_FDIR_GUARANTEED_ENTRIES,
@@ -3553,7 +3553,7 @@ ice_free_fd_guar_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr)
  * @cntr_id: returns counter index
  * @num_fltr: number of filter entries to be allocated
  */
-enum ice_status
+int
 ice_alloc_fd_shrd_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr)
 {
 	return ice_alloc_res_cntr(hw, ICE_AQC_RES_TYPE_FDIR_SHARED_ENTRIES,
@@ -3567,7 +3567,7 @@ ice_alloc_fd_shrd_item(struct ice_hw *hw, u16 *cntr_id, u16 num_fltr)
  * @cntr_id: counter index that needs to be freed
  * @num_fltr: number of filters to be freed
  */
-enum ice_status
+int
 ice_free_fd_shrd_item(struct ice_hw *hw, u16 cntr_id, u16 num_fltr)
 {
 	return ice_free_res_cntr(hw, ICE_AQC_RES_TYPE_FDIR_SHARED_ENTRIES,
@@ -3690,7 +3690,7 @@ static void ice_pkt_insert_mac_addr(u8 *pkt, u8 *addr)
  *
  * returns an open tunnel port specified for this flow type
  */
-static enum ice_status
+static int
 ice_fdir_get_open_tunnel_port(struct ice_hw *hw, enum ice_fltr_ptype flow,
 			      u16 *port)
 {
@@ -3822,7 +3822,7 @@ ice_fdir_gen_l2tpv2_pkt(u8 *pkt, struct ice_fdir_l2tpv2 *l2tpv2_data,
  * @frag: generate a fragment packet
  * @tun: true implies generate a tunnel packet
  */
-enum ice_status
+int
 ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 			  u8 *pkt, bool frag, bool tun)
 {
@@ -4810,7 +4810,7 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
  * @pkt: pointer to return filter packet
  * @frag: generate a fragment packet
  */
-enum ice_status
+int
 ice_fdir_get_prgm_pkt(struct ice_fdir_fltr *input, u8 *pkt, bool frag)
 {
 	return ice_fdir_get_gen_prgm_pkt(NULL, input, pkt, frag, false);
@@ -4995,7 +4995,7 @@ bool ice_fdir_is_dup_fltr(struct ice_hw *hw, struct ice_fdir_fltr *input)
  *
  * Clears FD table entries for a PF by issuing admin command (direct, 0x0B06)
  */
-enum ice_status ice_clear_pf_fd_table(struct ice_hw *hw)
+int ice_clear_pf_fd_table(struct ice_hw *hw)
 {
 	struct ice_aqc_clear_fd_table *cmd;
 	struct ice_aq_desc desc;

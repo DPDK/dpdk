@@ -161,10 +161,10 @@ void *ice_parser_create_table(struct ice_hw *hw, u32 sect_type,
  * @hw: pointer to the hardware structure
  * @psr: output parameter for a new parser instance be created
  */
-enum ice_status ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
+int ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 {
-	enum ice_status status;
 	struct ice_parser *p;
+	int status;
 
 	p = (struct ice_parser *)ice_malloc(hw, sizeof(struct ice_parser));
 	if (!p)
@@ -309,7 +309,7 @@ void ice_parser_destroy(struct ice_parser *psr)
  * @pkt_len: packet length
  * @rslt: input/output parameter to save parser result.
  */
-enum ice_status ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
+int ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
 			       int pkt_len, struct ice_parser_result *rslt)
 {
 	ice_parser_rt_reset(&psr->rt);
@@ -367,7 +367,7 @@ void ice_parser_dvm_set(struct ice_parser *psr, bool on)
 	_bst_vm_set(psr, "BOOST_MAC_VLAN_SVM", !on);
 }
 
-static enum ice_status
+static int
 _tunnel_port_set(struct ice_parser *psr, const char *prefix, u16 udp_port,
 		 bool on)
 {
@@ -412,7 +412,7 @@ _tunnel_port_set(struct ice_parser *psr, const char *prefix, u16 udp_port,
  * @udp_port: vxlan tunnel port in UDP header
  * @on: true to turn on; false to turn off
  */
-enum ice_status ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
+int ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
 					    u16 udp_port, bool on)
 {
 	return _tunnel_port_set(psr, "TNL_VXLAN", udp_port, on);
@@ -424,7 +424,7 @@ enum ice_status ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
  * @udp_port: geneve tunnel port in UDP header
  * @on: true to turn on; false to turn off
  */
-enum ice_status ice_parser_geneve_tunnel_set(struct ice_parser *psr,
+int ice_parser_geneve_tunnel_set(struct ice_parser *psr,
 					     u16 udp_port, bool on)
 {
 	return _tunnel_port_set(psr, "TNL_GENEVE", udp_port, on);
@@ -436,7 +436,7 @@ enum ice_status ice_parser_geneve_tunnel_set(struct ice_parser *psr,
  * @udp_port: ecpri tunnel port in UDP header
  * @on: true to turn on; false to turn off
  */
-enum ice_status ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
+int ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
 					    u16 udp_port, bool on)
 {
 	return _tunnel_port_set(psr, "TNL_UDP_ECPRI", udp_port, on);
@@ -485,7 +485,7 @@ static bool _nearest_proto_id(struct ice_parser_result *rslt, u16 offset,
  * @prefix_match: match protocol stack exactly or only prefix
  * @prof: input/output parameter to save the profile
  */
-enum ice_status ice_parser_profile_init(struct ice_parser_result *rslt,
+int ice_parser_profile_init(struct ice_parser_result *rslt,
 					const u8 *pkt_buf, const u8 *msk_buf,
 					int buf_len, enum ice_block blk,
 					bool prefix_match,

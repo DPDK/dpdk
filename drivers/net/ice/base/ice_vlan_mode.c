@@ -10,13 +10,13 @@
  * @hw: pointer to the HW struct
  * @dvm: output variable to determine if DDP supports DVM(true) or SVM(false)
  */
-static enum ice_status
+static int
 ice_pkg_get_supported_vlan_mode(struct ice_hw *hw, bool *dvm)
 {
 	u16 meta_init_size = sizeof(struct ice_meta_init_section);
 	struct ice_meta_init_section *sect;
 	struct ice_buf_build *bld;
-	enum ice_status status;
+	int status;
 
 	/* if anything fails, we assume there is no DVM support */
 	*dvm = false;
@@ -61,7 +61,7 @@ ice_pkg_get_supported_vlan_mode(struct ice_hw *hw, bool *dvm)
  *
  * Get VLAN Mode Parameters (0x020D)
  */
-static enum ice_status
+static int
 ice_aq_get_vlan_mode(struct ice_hw *hw,
 		     struct ice_aqc_get_vlan_mode *get_params)
 {
@@ -91,7 +91,7 @@ ice_aq_get_vlan_mode(struct ice_hw *hw,
 static bool ice_aq_is_dvm_ena(struct ice_hw *hw)
 {
 	struct ice_aqc_get_vlan_mode get_params = { 0 };
-	enum ice_status status;
+	int status;
 
 	status = ice_aq_get_vlan_mode(hw, &get_params);
 	if (status) {
@@ -136,7 +136,7 @@ static void ice_cache_vlan_mode(struct ice_hw *hw)
  */
 static bool ice_pkg_supports_dvm(struct ice_hw *hw)
 {
-	enum ice_status status;
+	int status;
 	bool pkg_supports_dvm;
 
 	status = ice_pkg_get_supported_vlan_mode(hw, &pkg_supports_dvm);
@@ -156,7 +156,7 @@ static bool ice_pkg_supports_dvm(struct ice_hw *hw)
 static bool ice_fw_supports_dvm(struct ice_hw *hw)
 {
 	struct ice_aqc_get_vlan_mode get_vlan_mode = { 0 };
-	enum ice_status status;
+	int status;
 
 	/* If firmware returns success, then it supports DVM, else it only
 	 * supports SVM
@@ -242,13 +242,13 @@ static struct ice_update_recipe_lkup_idx_params ice_dvm_dflt_recipes[] = {
  * ice_dvm_update_dflt_recipes - update default switch recipes in DVM
  * @hw: hardware structure used to update the recipes
  */
-static enum ice_status ice_dvm_update_dflt_recipes(struct ice_hw *hw)
+static int ice_dvm_update_dflt_recipes(struct ice_hw *hw)
 {
 	unsigned long i;
 
 	for (i = 0; i < ARRAY_SIZE(ice_dvm_dflt_recipes); i++) {
 		struct ice_update_recipe_lkup_idx_params *params;
-		enum ice_status status;
+		int status;
 
 		params = &ice_dvm_dflt_recipes[i];
 
@@ -272,7 +272,7 @@ static enum ice_status ice_dvm_update_dflt_recipes(struct ice_hw *hw)
  *
  * Set VLAN Mode Parameters (0x020C)
  */
-static enum ice_status
+static int
 ice_aq_set_vlan_mode(struct ice_hw *hw,
 		     struct ice_aqc_set_vlan_mode *set_params)
 {
@@ -307,10 +307,10 @@ ice_aq_set_vlan_mode(struct ice_hw *hw,
  * ice_set_dvm - sets up software and hardware for double VLAN mode
  * @hw: pointer to the hardware structure
  */
-static enum ice_status ice_set_dvm(struct ice_hw *hw)
+static int ice_set_dvm(struct ice_hw *hw)
 {
 	struct ice_aqc_set_vlan_mode params = { 0 };
-	enum ice_status status;
+	int status;
 
 	params.l2tag_prio_tagging = ICE_AQ_VLAN_PRIO_TAG_OUTER_CTAG;
 	params.rdma_packet = ICE_AQ_DVM_VLAN_RDMA_PKT_FLAG_SETTING;
@@ -352,10 +352,10 @@ static enum ice_status ice_set_dvm(struct ice_hw *hw)
  * ice_set_svm - set single VLAN mode
  * @hw: pointer to the HW structure
  */
-static enum ice_status ice_set_svm(struct ice_hw *hw)
+static int ice_set_svm(struct ice_hw *hw)
 {
 	struct ice_aqc_set_vlan_mode *set_params;
-	enum ice_status status;
+	int status;
 
 	status = ice_aq_set_port_params(hw->port_info, 0, false, false, false, NULL);
 	if (status) {
@@ -385,7 +385,7 @@ static enum ice_status ice_set_svm(struct ice_hw *hw)
  * ice_set_vlan_mode
  * @hw: pointer to the HW structure
  */
-enum ice_status ice_set_vlan_mode(struct ice_hw *hw)
+int ice_set_vlan_mode(struct ice_hw *hw)
 {
 	/* DCF only has the ability to query the VLAN mode. Setting the VLAN
 	 * mode is done by the PF.

@@ -242,7 +242,7 @@ ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq, uint32_t rxdid)
 		rxq->xtr_ol_flag = 0;
 }
 
-static enum ice_status
+static int
 ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 {
 	struct ice_vsi *vsi = rxq->vsi;
@@ -250,12 +250,12 @@ ice_program_hw_rx_queue(struct ice_rx_queue *rxq)
 	struct ice_pf *pf = ICE_VSI_TO_PF(vsi);
 	struct rte_eth_dev_data *dev_data = rxq->vsi->adapter->pf.dev_data;
 	struct ice_rlan_ctx rx_ctx;
-	enum ice_status err;
 	uint16_t buf_size;
 	uint32_t rxdid = ICE_RXDID_COMMS_OVS;
 	uint32_t regval;
 	struct ice_adapter *ad = rxq->vsi->adapter;
 	uint32_t frame_size = dev_data->mtu + ICE_ETH_OVERHEAD;
+	int err;
 
 	/* Set buffer size as the head split is disabled. */
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(rxq->mp) -
@@ -818,15 +818,15 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
-static enum ice_status
+static int
 ice_fdir_program_hw_rx_queue(struct ice_rx_queue *rxq)
 {
 	struct ice_vsi *vsi = rxq->vsi;
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	uint32_t rxdid = ICE_RXDID_LEGACY_1;
 	struct ice_rlan_ctx rx_ctx;
-	enum ice_status err;
 	uint32_t regval;
+	int err;
 
 	rxq->rx_hdr_len = 0;
 	rxq->rx_buf_len = 1024;
@@ -1060,10 +1060,10 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	enum ice_status status;
 	uint16_t q_ids[1];
 	uint32_t q_teids[1];
 	uint16_t q_handle = tx_queue_id;
+	int status;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues) {
 		PMD_DRV_LOG(ERR, "TX queue %u is out of range %u",
@@ -1128,10 +1128,10 @@ ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	enum ice_status status;
 	uint16_t q_ids[1];
 	uint32_t q_teids[1];
 	uint16_t q_handle = tx_queue_id;
+	int status;
 
 	txq = pf->fdir.txq;
 	if (!txq) {
