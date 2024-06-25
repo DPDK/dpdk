@@ -9333,9 +9333,10 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		 struct ice_rule_query_data *added_entry)
 {
 	struct ice_adv_fltr_mgmt_list_entry *m_entry, *adv_fltr = NULL;
-	u16 lg_act_size, lg_act_id = ICE_INVAL_LG_ACT_INDEX;
+	u16 lg_act_sz, lg_act_id = ICE_INVAL_LG_ACT_INDEX;
 	u16 rid = 0, i, pkt_len, rule_buf_sz, vsi_handle;
 	const struct ice_dummy_pkt_offsets *pkt_offsets;
+	struct ice_aqc_sw_rules_elem *lg_rule = NULL;
 	struct ice_aqc_sw_rules_elem *s_rule = NULL;
 	struct ice_aqc_sw_rules_elem *rx_tx;
 	struct LIST_HEAD_TYPE *rule_head;
@@ -9457,7 +9458,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		       ICE_SINGLE_ACT_Q_REGION_M;
 		break;
 	case ICE_SET_MARK:
-		if (rinfo->sw_act.markid != (rinfo->sw_act.markid & 0xFFFF))
+		if (rinfo->sw_act.markid > 0xFFFF)
 			nb_lg_acts_mark += 1;
 		/* Allocate a hardware table entry to hold large act. */
 		status = ice_alloc_res_lg_act(hw, &lg_act_id, nb_lg_acts_mark);
@@ -9521,18 +9522,19 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 
 	rx_tx = s_rule;
 	if (rinfo->sw_act.fltr_act == ICE_SET_MARK) {
-		lg_act_size = (u16)ICE_SW_RULE_LG_ACT_SIZE(nb_lg_acts_mark);
-		s_rule = ice_fill_sw_marker_lg_act(hw, rinfo->sw_act.markid,
-						   lg_act_id, rule_buf_sz,
-						   lg_act_size, nb_lg_acts_mark,
-						   s_rule);
-		if (!s_rule)
+		lg_act_sz = (u16)ICE_SW_RULE_LG_ACT_SIZE(nb_lg_acts_mark);
+		lg_rule = ice_fill_sw_marker_lg_act(hw, rinfo->sw_act.markid,
+						    lg_act_id, rule_buf_sz,
+						    lg_act_sz, nb_lg_acts_mark,
+						    s_rule);
+		if (!lg_rule)
 			goto err_ice_add_adv_rule;
 
-		rule_buf_sz += lg_act_size;
+		s_rule = lg_rule;
+		rule_buf_sz += lg_act_sz;
 		num_rules += 1;
 		rx_tx = (struct ice_aqc_sw_rules_elem *)
-			((u8 *)s_rule + lg_act_size);
+			((u8 *)s_rule + lg_act_sz);
 	}
 
 	status = ice_aq_sw_rules(hw, (struct ice_aqc_sw_rules *)s_rule,
