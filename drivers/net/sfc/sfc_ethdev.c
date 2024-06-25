@@ -37,8 +37,6 @@
 #define SFC_XSTAT_ID_INVALID_VAL  UINT64_MAX
 #define SFC_XSTAT_ID_INVALID_NAME '\0'
 
-uint32_t sfc_logtype_driver;
-
 static struct sfc_dp_list sfc_dp_head =
 	TAILQ_HEAD_INITIALIZER(sfc_dp_head);
 
@@ -3618,12 +3616,4 @@ RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
 	SFC_KVARG_FW_VARIANT "=" SFC_KVARG_VALUES_FW_VARIANT " "
 	SFC_KVARG_RXD_WAIT_TIMEOUT_NS "=<long> "
 	SFC_KVARG_STATS_UPDATE_PERIOD_MS "=<long>");
-
-RTE_INIT(sfc_driver_register_logtype)
-{
-	int ret;
-
-	ret = rte_log_register_type_and_pick_level(SFC_LOGTYPE_PREFIX "driver",
-						   RTE_LOG_NOTICE);
-	sfc_logtype_driver = (ret < 0) ? RTE_LOGTYPE_EAL : ret;
-}
+RTE_LOG_REGISTER_SUFFIX(sfc_logtype_driver, "driver", NOTICE);

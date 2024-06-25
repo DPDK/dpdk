@@ -11,7 +11,7 @@
 #define _SFC_LOG_H_
 
 /** Generic driver log type */
-extern uint32_t sfc_logtype_driver;
+extern int sfc_logtype_driver;
 
 /** Common log type name prefix */
 #define SFC_LOGTYPE_PREFIX	"pmd.net.sfc."
