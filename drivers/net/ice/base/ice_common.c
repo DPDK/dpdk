@@ -2470,6 +2470,8 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 			(phys_id & ICE_EXT_TOPO_DEV_IMG_LOAD_EN) != 0;
 		caps->ext_topo_dev_img_prog_en[index] =
 			(phys_id & ICE_EXT_TOPO_DEV_IMG_PROG_EN) != 0;
+		caps->ext_topo_dev_img_ver_schema[index] =
+			(phys_id & ICE_EXT_TOPO_DEV_IMG_VER_SCHEMA) != 0;
 		ice_debug(hw, ICE_DBG_INIT,
 			  "%s: ext_topo_dev_img_ver_high[%d] = %d\n",
 			  prefix, index,
@@ -2490,6 +2492,10 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 			  "%s: ext_topo_dev_img_prog_en[%d] = %d\n",
 			  prefix, index,
 			  caps->ext_topo_dev_img_prog_en[index]);
+		ice_debug(hw, ICE_DBG_INIT,
+			  "%s: ext_topo_dev_img_ver_schema[%d] = %d\n",
+			  prefix, index,
+			  caps->ext_topo_dev_img_ver_schema[index]);
 		break;
 	}
 	case ICE_AQC_CAPS_TX_SCHED_TOPO_COMP_MODE:
