@@ -880,7 +880,7 @@ ice_vsi_config_default_rss(struct ice_aqc_vsi_props *info)
 	info->q_opt_tc = ICE_AQ_VSI_Q_OPT_TC_OVR_M;
 }
 
-static enum ice_status
+static int
 ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
 				struct ice_aqc_vsi_props *info,
 				uint8_t enabled_tcmap)
@@ -2238,7 +2238,7 @@ ice_vsi_config_sw_lldp(struct ice_vsi *vsi,  bool on)
 	return ret;
 }
 
-static enum ice_status
+static int
 ice_get_hw_res(struct ice_hw *hw, uint16_t res_type,
 		uint16_t num, uint16_t desc_id,
 		uint16_t *prof_buf, uint16_t *num_prof)
@@ -2571,8 +2571,7 @@ ice_release_vsi(struct ice_vsi *vsi)
 {
 	struct ice_hw *hw;
 	struct ice_vsi_ctx vsi_ctx;
-	enum ice_status ret;
-	int error = 0;
+	int ret, error = 0;
 
 	if (!vsi)
 		return error;
@@ -2757,7 +2756,7 @@ hash_cfg_reset(struct ice_rss_hash_cfg *cfg)
 static int
 ice_hash_moveout(struct ice_pf *pf, struct ice_rss_hash_cfg *cfg)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_vsi *vsi = pf->main_vsi;
 
@@ -2778,7 +2777,7 @@ ice_hash_moveout(struct ice_pf *pf, struct ice_rss_hash_cfg *cfg)
 static int
 ice_hash_moveback(struct ice_pf *pf, struct ice_rss_hash_cfg *cfg)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_vsi *vsi = pf->main_vsi;
 
@@ -3703,7 +3702,7 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static enum ice_status
+static int
 ice_get_link_info_safe(struct ice_pf *pf, bool ena_lse,
 		       struct ice_link_status *link)
 {
@@ -4598,8 +4597,7 @@ ice_vsi_manage_vlan_stripping(struct ice_vsi *vsi, bool ena)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	enum ice_status status;
-	int err = 0;
+	int status, err = 0;
 
 	/* do not allow modifying VLAN stripping when a port VLAN is configured
 	 * on this VSI
@@ -4725,9 +4723,8 @@ static int ice_vsi_ena_outer_stripping(struct ice_vsi *vsi, u16 tpid)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	enum ice_status status;
+	int status, err = 0;
 	u8 tag_type;
-	int err = 0;
 
 	/* do not allow modifying VLAN stripping when a port VLAN is configured
 	 * on this VSI
@@ -4767,8 +4764,7 @@ ice_vsi_dis_outer_stripping(struct ice_vsi *vsi)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	enum ice_status status;
-	int err = 0;
+	int status, err = 0;
 
 	if (vsi->info.port_based_outer_vlan)
 		return 0;
@@ -5167,9 +5163,9 @@ static int
 ice_rss_hash_update(struct rte_eth_dev *dev,
 		    struct rte_eth_rss_conf *rss_conf)
 {
-	enum ice_status status = ICE_SUCCESS;
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
+	int status;
 
 	/* set hash key */
 	status = ice_set_rss_key(vsi, rss_conf->rss_key, rss_conf->rss_key_len);
@@ -5205,9 +5201,8 @@ ice_promisc_enable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	enum ice_status status;
+	int status, ret = 0;
 	uint8_t pmask;
-	int ret = 0;
 
 	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
 		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
@@ -5232,9 +5227,8 @@ ice_promisc_disable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	enum ice_status status;
+	int status, ret = 0;
 	uint8_t pmask;
-	int ret = 0;
 
 	if (dev->data->all_multicast == 1)
 		pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX;
@@ -5257,9 +5251,8 @@ ice_allmulti_enable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	enum ice_status status;
+	int status, ret = 0;
 	uint8_t pmask;
-	int ret = 0;
 
 	pmask = ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
@@ -5284,9 +5277,8 @@ ice_allmulti_disable(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
-	enum ice_status status;
+	int status, ret = 0;
 	uint8_t pmask;
-	int ret = 0;
 
 	if (dev->data->promiscuous == 1)
 		return 0; /* must remain in all_multicast mode */
@@ -5446,9 +5438,8 @@ ice_vsi_set_outer_port_vlan(struct ice_vsi *vsi, u16 vlan_info, u16 tpid)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	enum ice_status status;
+	int status, err = 0;
 	u8 tag_type;
-	int err = 0;
 
 	if (tpid_to_vsi_outer_vlan_type(tpid, &tag_type))
 		return -EINVAL;
@@ -5507,9 +5498,8 @@ static int ice_vsi_dis_outer_insertion(struct ice_vsi *vsi, struct ice_vsi_vlan_
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	enum ice_status status;
 	uint8_t vlan_flags = 0;
-	int err = 0;
+	int status, err = 0;
 
 	memset(&ctxt, 0, sizeof(ctxt));
 
@@ -5584,8 +5574,7 @@ static int ice_vsi_ena_outer_insertion(struct ice_vsi *vsi, uint16_t tpid)
 {
 	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
 	struct ice_vsi_ctx ctxt;
-	enum ice_status status;
-	int err = 0;
+	int status, err = 0;
 	u8 tag_type;
 	/* do not allow modifying VLAN stripping when a port VLAN is configured
 	 * on this VSI
@@ -5664,8 +5653,8 @@ ice_get_eeprom(struct rte_eth_dev *dev,
 	       struct rte_dev_eeprom_info *eeprom)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	enum ice_status status = ICE_SUCCESS;
 	uint8_t *data = eeprom->data;
+	int status;
 
 	eeprom->magic = hw->vendor_id | (hw->device_id << 16);
 
@@ -5693,11 +5682,11 @@ ice_get_module_info(struct rte_eth_dev *dev,
 		    struct rte_eth_dev_module_info *modinfo)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	enum ice_status status;
 	u8 sff8472_comp = 0;
 	u8 sff8472_swap = 0;
 	u8 sff8636_rev = 0;
 	u8 value = 0;
+	int status;
 
 	status = ice_aq_sff_eeprom(hw, 0, ICE_I2C_EEPROM_DEV_ADDR, 0x00, 0x00,
 				   0, &value, 1, 0, NULL);
@@ -5765,11 +5754,11 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 	uint8_t value[SFF_READ_BLOCK_SIZE] = {0};
 	uint8_t addr = ICE_I2C_EEPROM_DEV_ADDR;
 	uint8_t *data = NULL;
-	enum ice_status status;
 	bool is_sfp = false;
 	uint32_t i, j;
 	uint32_t offset = 0;
 	uint8_t page = 0;
+	int status;
 
 	if (!info || !info->length || !info->data)
 		return -EINVAL;

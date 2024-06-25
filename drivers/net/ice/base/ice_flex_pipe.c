@@ -182,7 +182,7 @@ void ice_add_dvm_hint(struct ice_hw *hw, u16 val, bool enable)
  *          ------------------------------
  * Result:  key:        b01 10 11 11 00 00
  */
-static enum ice_status
+static int
 ice_gen_key_word(u8 val, u8 valid, u8 dont_care, u8 nvr_mtch, u8 *key,
 		 u8 *key_inv)
 {
@@ -284,7 +284,7 @@ static bool ice_bits_max_set(const u8 *mask, u16 size, u16 max)
  *	dc == NULL --> dc mask is all 0's (no don't care bits)
  *	nm == NULL --> nm mask is all 0's (no never match bits)
  */
-enum ice_status
+int
 ice_set_key(u8 *key, u16 size, u8 *val, u8 *upd, u8 *dc, u8 *nm, u16 off,
 	    u16 len)
 {
@@ -445,12 +445,12 @@ ice_get_open_tunnel_port(struct ice_hw *hw, enum ice_tunnel_type type,
  * @hw: pointer to the HW structure
  * @entry: pointer to double vlan boost entry info
  */
-static enum ice_status
+static int
 ice_upd_dvm_boost_entry(struct ice_hw *hw, struct ice_dvm_entry *entry)
 {
 	struct ice_boost_tcam_section *sect_rx, *sect_tx;
-	enum ice_status status = ICE_ERR_MAX_LIMIT;
 	struct ice_buf_build *bld;
+	int status = ICE_ERR_MAX_LIMIT;
 	u8 val, dc, nm;
 
 	bld = ice_pkg_buf_alloc(hw);
@@ -513,12 +513,12 @@ ice_upd_dvm_boost_entry_err:
  *
  * Enable double vlan by updating the appropriate boost tcam entries.
  */
-enum ice_status ice_set_dvm_boost_entries(struct ice_hw *hw)
+int ice_set_dvm_boost_entries(struct ice_hw *hw)
 {
 	u16 i;
 
 	for (i = 0; i < hw->dvm_upd.count; i++) {
-		enum ice_status status;
+		int status;
 
 		status = ice_upd_dvm_boost_entry(hw, &hw->dvm_upd.tbl[i]);
 		if (status)
@@ -538,12 +538,12 @@ enum ice_status ice_set_dvm_boost_entries(struct ice_hw *hw)
  * creating a package buffer with the tunnel info and issuing an update package
  * command.
  */
-enum ice_status
+int
 ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 {
 	struct ice_boost_tcam_section *sect_rx, *sect_tx;
-	enum ice_status status = ICE_ERR_MAX_LIMIT;
 	struct ice_buf_build *bld;
+	int status = ICE_ERR_MAX_LIMIT;
 	u16 index;
 
 	ice_acquire_lock(&hw->tnl_lock);
@@ -625,11 +625,11 @@ ice_create_tunnel_end:
  * targeting the specific updates requested and then performing an update
  * package.
  */
-enum ice_status ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
+int ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 {
 	struct ice_boost_tcam_section *sect_rx, *sect_tx;
-	enum ice_status status = ICE_ERR_MAX_LIMIT;
 	struct ice_buf_build *bld;
+	int status = ICE_ERR_MAX_LIMIT;
 	u16 count = 0;
 	u16 index;
 	u16 size;
@@ -729,7 +729,7 @@ ice_destroy_tunnel_end:
  * @prot: variable to receive the protocol ID
  * @off: variable to receive the protocol offset
  */
-enum ice_status
+int
 ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
 		  u8 *prot, u16 *off)
 {
@@ -762,7 +762,7 @@ ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
  * PTG ID that contains it through the PTG parameter, with the value of
  * ICE_DEFAULT_PTG (0) meaning it is part the default PTG.
  */
-static enum ice_status
+static int
 ice_ptg_find_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg)
 {
 	if (ptype >= ICE_XLT1_CNT || !ptg)
@@ -796,7 +796,7 @@ static void ice_ptg_alloc_val(struct ice_hw *hw, enum ice_block blk, u8 ptg)
  * This function will remove the ptype from the specific PTG, and move it to
  * the default PTG (ICE_DEFAULT_PTG).
  */
-static enum ice_status
+static int
 ice_ptg_remove_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 {
 	struct ice_ptg_ptype **ch;
@@ -843,11 +843,11 @@ ice_ptg_remove_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
  * a destination PTG ID of ICE_DEFAULT_PTG (0) will move the ptype to the
  * default PTG.
  */
-static enum ice_status
+static int
 ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 {
-	enum ice_status status;
 	u8 original_ptg;
+	int status;
 
 	if (ptype > ICE_XLT1_CNT - 1)
 		return ICE_ERR_PARAM;
@@ -987,7 +987,7 @@ ice_match_prop_lst(struct LIST_HEAD_TYPE *list1, struct LIST_HEAD_TYPE *list2)
  * This function will lookup the VSI entry in the XLT2 list and return
  * the VSI group its associated with.
  */
-enum ice_status
+int
 ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig)
 {
 	if (!vsig || vsi >= ICE_MAX_VSI)
@@ -1056,7 +1056,7 @@ static u16 ice_vsig_alloc(struct ice_hw *hw, enum ice_block blk)
  * for, the list must match exactly, including the order in which the
  * characteristics are listed.
  */
-static enum ice_status
+static int
 ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
 			struct LIST_HEAD_TYPE *chs, u16 *vsig)
 {
@@ -1082,7 +1082,7 @@ ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
  * The function will remove all VSIs associated with the input VSIG and move
  * them to the DEFAULT_VSIG and mark the VSIG available.
  */
-static enum ice_status
+static int
 ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 {
 	struct ice_vsig_prof *dtmp, *del;
@@ -1143,7 +1143,7 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
  * The function will remove the input VSI from its VSI group and move it
  * to the DEFAULT_VSIG.
  */
-static enum ice_status
+static int
 ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 {
 	struct ice_vsig_vsi **vsi_head, *vsi_cur, *vsi_tgt;
@@ -1201,12 +1201,12 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
  * move the entry to the DEFAULT_VSIG, update the original VSIG and
  * then move entry to the new VSIG.
  */
-static enum ice_status
+static int
 ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 {
 	struct ice_vsig_vsi *tmp;
-	enum ice_status status;
 	u16 orig_vsig, idx;
+	int status;
 
 	idx = vsig & ICE_VSIG_IDX_M;
 
@@ -1324,7 +1324,7 @@ ice_prof_has_mask(struct ice_hw *hw, enum ice_block blk, u8 prof, u16 *masks)
  * @masks: masks for fv
  * @prof_id: receives the profile ID
  */
-static enum ice_status
+static int
 ice_find_prof_id_with_mask(struct ice_hw *hw, enum ice_block blk,
 			   struct ice_fv_word *fv, u16 *masks, u8 *prof_id)
 {
@@ -1422,7 +1422,7 @@ static bool ice_tcam_ent_rsrc_type(enum ice_block blk, u16 *rsrc_type)
  * This function allocates a new entry in a Profile ID TCAM for a specific
  * block.
  */
-static enum ice_status
+static int
 ice_alloc_tcam_ent(struct ice_hw *hw, enum ice_block blk, bool btm,
 		   u16 *tcam_idx)
 {
@@ -1442,7 +1442,7 @@ ice_alloc_tcam_ent(struct ice_hw *hw, enum ice_block blk, bool btm,
  *
  * This function frees an entry in a Profile ID TCAM for a specific block.
  */
-static enum ice_status
+static int
 ice_free_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 tcam_idx)
 {
 	u16 res_type;
@@ -1462,10 +1462,10 @@ ice_free_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 tcam_idx)
  * This function allocates a new profile ID, which also corresponds to a Field
  * Vector (Extraction Sequence) entry.
  */
-static enum ice_status
+static int
 ice_alloc_prof_id(struct ice_hw *hw, enum ice_block blk, u8 *prof_id)
 {
-	enum ice_status status;
+	int status;
 	u16 res_type;
 	u16 get_prof;
 
@@ -1487,7 +1487,7 @@ ice_alloc_prof_id(struct ice_hw *hw, enum ice_block blk, u8 *prof_id)
  *
  * This function frees a profile ID, which also corresponds to a Field Vector.
  */
-static enum ice_status
+static int
 ice_free_prof_id(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 {
 	u16 tmp_prof_id = (u16)prof_id;
@@ -1505,7 +1505,7 @@ ice_free_prof_id(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
  * @blk: the block from which to free the profile ID
  * @prof_id: the profile ID for which to increment the reference count
  */
-static enum ice_status
+static int
 ice_prof_inc_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 {
 	if (prof_id > hw->blk[blk].es.count)
@@ -1630,13 +1630,13 @@ void ice_init_all_prof_masks(struct ice_hw *hw)
  * @mask: the 16-bit mask
  * @mask_idx: variable to receive the mask index
  */
-static enum ice_status
+static int
 ice_alloc_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 idx, u16 mask,
 		    u16 *mask_idx)
 {
 	bool found_unused = false, found_copy = false;
-	enum ice_status status = ICE_ERR_MAX_LIMIT;
 	u16 unused_idx = 0, copy_idx = 0;
+	int status = ICE_ERR_MAX_LIMIT;
 	u16 i;
 
 	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
@@ -1698,7 +1698,7 @@ err_ice_alloc_prof_mask:
  * @blk: hardware block
  * @mask_idx: index of mask
  */
-static enum ice_status
+static int
 ice_free_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 mask_idx)
 {
 	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
@@ -1740,7 +1740,7 @@ exit_ice_free_prof_mask:
  * @blk: hardware block
  * @prof_id: profile ID
  */
-static enum ice_status
+static int
 ice_free_prof_masks(struct ice_hw *hw, enum ice_block blk, u16 prof_id)
 {
 	u32 mask_bm;
@@ -1802,7 +1802,7 @@ void ice_shutdown_all_prof_masks(struct ice_hw *hw)
  * @prof_id: profile ID
  * @masks: masks
  */
-static enum ice_status
+static int
 ice_update_prof_masking(struct ice_hw *hw, enum ice_block blk, u16 prof_id,
 			u16 *masks)
 {
@@ -1874,7 +1874,7 @@ ice_write_es(struct ice_hw *hw, enum ice_block blk, u8 prof_id,
  * @blk: the block from which to free the profile ID
  * @prof_id: the profile ID for which to decrement the reference count
  */
-static enum ice_status
+static int
 ice_prof_dec_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 {
 	if (prof_id > hw->blk[blk].es.count)
@@ -2138,7 +2138,7 @@ void ice_init_flow_profs(struct ice_hw *hw, u8 blk_idx)
  * ice_init_hw_tbls - init hardware table memory
  * @hw: pointer to the hardware structure
  */
-enum ice_status ice_init_hw_tbls(struct ice_hw *hw)
+int ice_init_hw_tbls(struct ice_hw *hw)
 {
 	u8 i;
 
@@ -2493,7 +2493,7 @@ void ice_clear_hw_tbls(struct ice_hw *hw)
  * @nm_msk: never match mask
  * @key: output of profile ID key
  */
-static enum ice_status
+static int
 ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
 		 u8 cdid, u16 flags, u8 vl_msk[ICE_TCAM_KEY_VAL_SZ],
 		 u8 dc_msk[ICE_TCAM_KEY_VAL_SZ], u8 nm_msk[ICE_TCAM_KEY_VAL_SZ],
@@ -2549,7 +2549,7 @@ ice_prof_gen_key(struct ice_hw *hw, enum ice_block blk, u8 ptg, u16 vsig,
  * @dc_msk: don't care mask
  * @nm_msk: never match mask
  */
-static enum ice_status
+static int
 ice_tcam_write_entry(struct ice_hw *hw, enum ice_block blk, u16 idx,
 		     u8 prof_id, u8 ptg, u16 vsig, u8 cdid, u16 flags,
 		     u8 vl_msk[ICE_TCAM_KEY_VAL_SZ],
@@ -2557,7 +2557,7 @@ ice_tcam_write_entry(struct ice_hw *hw, enum ice_block blk, u16 idx,
 		     u8 nm_msk[ICE_TCAM_KEY_VAL_SZ])
 {
 	struct ice_prof_tcam_entry;
-	enum ice_status status;
+	int status;
 
 	status = ice_prof_gen_key(hw, blk, ptg, vsig, cdid, flags, vl_msk,
 				  dc_msk, nm_msk, hw->blk[blk].prof.t[idx].key);
@@ -2576,7 +2576,7 @@ ice_tcam_write_entry(struct ice_hw *hw, enum ice_block blk, u16 idx,
  * @vsig: VSIG to query
  * @refs: pointer to variable to receive the reference count
  */
-static enum ice_status
+static int
 ice_vsig_get_ref(struct ice_hw *hw, enum ice_block blk, u16 vsig, u16 *refs)
 {
 	u16 idx = vsig & ICE_VSIG_IDX_M;
@@ -2626,7 +2626,7 @@ ice_has_prof_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl)
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
  */
-static enum ice_status
+static int
 ice_prof_bld_es(struct ice_hw *hw, enum ice_block blk,
 		struct ice_buf_build *bld, struct LIST_HEAD_TYPE *chgs)
 {
@@ -2667,7 +2667,7 @@ ice_prof_bld_es(struct ice_hw *hw, enum ice_block blk,
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
  */
-static enum ice_status
+static int
 ice_prof_bld_tcam(struct ice_hw *hw, enum ice_block blk,
 		  struct ice_buf_build *bld, struct LIST_HEAD_TYPE *chgs)
 {
@@ -2707,7 +2707,7 @@ ice_prof_bld_tcam(struct ice_hw *hw, enum ice_block blk,
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
  */
-static enum ice_status
+static int
 ice_prof_bld_xlt1(enum ice_block blk, struct ice_buf_build *bld,
 		  struct LIST_HEAD_TYPE *chgs)
 {
@@ -2742,7 +2742,7 @@ ice_prof_bld_xlt1(enum ice_block blk, struct ice_buf_build *bld,
  * @bld: the update package buffer build to add to
  * @chgs: the list of changes to make in hardware
  */
-static enum ice_status
+static int
 ice_prof_bld_xlt2(enum ice_block blk, struct ice_buf_build *bld,
 		  struct LIST_HEAD_TYPE *chgs)
 {
@@ -2784,13 +2784,13 @@ ice_prof_bld_xlt2(enum ice_block blk, struct ice_buf_build *bld,
  * @blk: hardware block
  * @chgs: the list of changes to make in hardware
  */
-static enum ice_status
+static int
 ice_upd_prof_hw(struct ice_hw *hw, enum ice_block blk,
 		struct LIST_HEAD_TYPE *chgs)
 {
 	struct ice_buf_build *b;
 	struct ice_chs_chg *tmp;
-	enum ice_status status;
+	int status;
 	u16 pkg_sects;
 	u16 xlt1 = 0;
 	u16 xlt2 = 0;
@@ -2942,7 +2942,7 @@ static const struct ice_fd_src_dst_pair ice_fd_pairs[] = {
  * @prof_id: profile ID
  * @es: extraction sequence (length of array is determined by the block)
  */
-static enum ice_status
+static int
 ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 {
 	ice_declare_bitmap(pair_list, ICE_FD_SRC_DST_PAIR_COUNT);
@@ -3118,7 +3118,7 @@ ice_get_ptype_attrib_info(enum ice_ptype_attrib_type type,
  * @attr: array of attributes that will be considered
  * @attr_cnt: number of elements in the attribute array
  */
-static enum ice_status
+static int
 ice_add_prof_attrib(struct ice_prof_map *prof, u8 ptg, u16 ptype,
 		    const struct ice_ptype_attributes *attr, u16 attr_cnt)
 {
@@ -3198,14 +3198,14 @@ static void ice_disable_fd_swap(struct ice_hw *hw, u16 prof_id)
  * it will not be written until the first call to ice_add_flow that specifies
  * the ID value used here.
  */
-enum ice_status
+int
 ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id,
 	     ice_bitmap_t *ptypes, const struct ice_ptype_attributes *attr,
 	     u16 attr_cnt, struct ice_fv_word *es, u16 *masks, bool fd_swap)
 {
 	ice_declare_bitmap(ptgs_used, ICE_XLT1_CNT);
 	struct ice_prof_map *prof;
-	enum ice_status status;
+	int status;
 	u8 prof_id;
 	u16 ptype;
 
@@ -3344,14 +3344,14 @@ ice_vsig_prof_id_count(struct ice_hw *hw, enum ice_block blk, u16 vsig)
  * @blk: hardware block
  * @idx: the index to release
  */
-static enum ice_status
+static int
 ice_rel_tcam_idx(struct ice_hw *hw, enum ice_block blk, u16 idx)
 {
 	/* Masks to invoke a never match entry */
 	u8 vl_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	u8 dc_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFE, 0xFF, 0xFF, 0xFF, 0xFF };
 	u8 nm_msk[ICE_TCAM_KEY_VAL_SZ] = { 0x01, 0x00, 0x00, 0x00, 0x00 };
-	enum ice_status status;
+	int status;
 
 	/* write the TCAM entry */
 	status = ice_tcam_write_entry(hw, blk, idx, 0, 0, 0, 0, 0, vl_msk,
@@ -3371,11 +3371,11 @@ ice_rel_tcam_idx(struct ice_hw *hw, enum ice_block blk, u16 idx)
  * @blk: hardware block
  * @prof: pointer to profile structure to remove
  */
-static enum ice_status
+static int
 ice_rem_prof_id(struct ice_hw *hw, enum ice_block blk,
 		struct ice_vsig_prof *prof)
 {
-	enum ice_status status;
+	int status;
 	u16 i;
 
 	for (i = 0; i < prof->tcam_count; i++)
@@ -3397,7 +3397,7 @@ ice_rem_prof_id(struct ice_hw *hw, enum ice_block blk,
  * @vsig: the VSIG to remove
  * @chg: the change list
  */
-static enum ice_status
+static int
 ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 	     struct LIST_HEAD_TYPE *chg)
 {
@@ -3409,7 +3409,7 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 	LIST_FOR_EACH_ENTRY_SAFE(d, t,
 				 &hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst,
 				 ice_vsig_prof, list) {
-		enum ice_status status;
+		int status;
 
 		status = ice_rem_prof_id(hw, blk, d);
 		if (status)
@@ -3454,7 +3454,7 @@ ice_rem_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
  * @hdl: profile handle indicating which profile to remove
  * @chg: list to receive a record of changes
  */
-static enum ice_status
+static int
 ice_rem_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 		     struct LIST_HEAD_TYPE *chg)
 {
@@ -3465,7 +3465,7 @@ ice_rem_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 				 &hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst,
 				 ice_vsig_prof, list)
 		if (p->profile_cookie == hdl) {
-			enum ice_status status;
+			int status;
 
 			if (ice_vsig_prof_id_count(hw, blk, vsig) == 1)
 				/* this is the last profile, remove the VSIG */
@@ -3488,12 +3488,12 @@ ice_rem_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
  * @blk: hardware block
  * @id: profile tracking ID
  */
-static enum ice_status
+static int
 ice_rem_flow_all(struct ice_hw *hw, enum ice_block blk, u64 id)
 {
 	struct ice_chs_chg *del, *tmp;
 	struct LIST_HEAD_TYPE chg;
-	enum ice_status status;
+	int status;
 	u16 i;
 
 	INIT_LIST_HEAD(&chg);
@@ -3529,10 +3529,10 @@ err_ice_rem_flow_all:
  * previously created through ice_add_prof. If any existing entries
  * are associated with this profile, they will be removed as well.
  */
-enum ice_status ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
+int ice_rem_prof(struct ice_hw *hw, enum ice_block blk, u64 id)
 {
 	struct ice_prof_map *pmap;
-	enum ice_status status;
+	int status;
 
 	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
 
@@ -3565,11 +3565,11 @@ err_ice_rem_prof:
  * @hdl: profile handle
  * @chg: change list
  */
-static enum ice_status
+static int
 ice_get_prof(struct ice_hw *hw, enum ice_block blk, u64 hdl,
 	     struct LIST_HEAD_TYPE *chg)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	struct ice_prof_map *map;
 	struct ice_chs_chg *p;
 	u16 i;
@@ -3620,7 +3620,7 @@ err_ice_get_prof:
  *
  * This routine makes a copy of the list of profiles in the specified VSIG.
  */
-static enum ice_status
+static int
 ice_get_profs_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 		   struct LIST_HEAD_TYPE *lst)
 {
@@ -3658,11 +3658,11 @@ err_ice_get_profs_vsig:
  * @lst: the list to be added to
  * @hdl: profile handle of entry to add
  */
-static enum ice_status
+static int
 ice_add_prof_to_lst(struct ice_hw *hw, enum ice_block blk,
 		    struct LIST_HEAD_TYPE *lst, u64 hdl)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	struct ice_prof_map *map;
 	struct ice_vsig_prof *p;
 	u16 i;
@@ -3706,11 +3706,11 @@ err_ice_add_prof_to_lst:
  * @vsig: the VSIG to move the VSI to
  * @chg: the change list
  */
-static enum ice_status
+static int
 ice_move_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig,
 	     struct LIST_HEAD_TYPE *chg)
 {
-	enum ice_status status;
+	int status;
 	struct ice_chs_chg *p;
 	u16 orig_vsig;
 
@@ -3780,13 +3780,13 @@ ice_rem_chg_tcam_ent(struct ice_hw *hw, u16 idx, struct LIST_HEAD_TYPE *chg)
  *
  * This function appends an enable or disable TCAM entry in the change log
  */
-static enum ice_status
+static int
 ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
 		      u16 vsig, struct ice_tcam_inf *tcam,
 		      struct LIST_HEAD_TYPE *chg)
 {
-	enum ice_status status;
 	struct ice_chs_chg *p;
+	int status;
 
 	u8 vl_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	u8 dc_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0x00, 0x00, 0x00 };
@@ -3882,13 +3882,13 @@ ice_ptg_attr_in_use(struct ice_tcam_inf *ptg_attr, ice_bitmap_t *ptgs_used,
  * @vsig: the VSIG for which to adjust profile priorities
  * @chg: the change list
  */
-static enum ice_status
+static int
 ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 			struct LIST_HEAD_TYPE *chg)
 {
 	ice_declare_bitmap(ptgs_used, ICE_XLT1_CNT);
 	struct ice_tcam_inf **attr_used;
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	struct ice_vsig_prof *t;
 	u16 attr_used_cnt = 0;
 	u16 idx;
@@ -3970,7 +3970,7 @@ err_ice_adj_prof_priorities:
  * @rev: true to add entries to the end of the list
  * @chg: the change list
  */
-static enum ice_status
+static int
 ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 		     bool rev, struct LIST_HEAD_TYPE *chg)
 {
@@ -3978,7 +3978,7 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 	u8 vl_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	u8 dc_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0x00, 0x00, 0x00 };
 	u8 nm_msk[ICE_TCAM_KEY_VAL_SZ] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	struct ice_prof_map *map;
 	struct ice_vsig_prof *t;
 	struct ice_chs_chg *p;
@@ -4086,11 +4086,11 @@ err_ice_add_prof_id_vsig:
  * @hdl: the profile handle of the profile that will be added to the VSIG
  * @chg: the change list
  */
-static enum ice_status
+static int
 ice_create_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl,
 			struct LIST_HEAD_TYPE *chg)
 {
-	enum ice_status status;
+	int status;
 	struct ice_chs_chg *p;
 	u16 new_vsig;
 
@@ -4136,13 +4136,13 @@ err_ice_create_prof_id_vsig:
  * @new_vsig: return of new VSIG
  * @chg: the change list
  */
-static enum ice_status
+static int
 ice_create_vsig_from_lst(struct ice_hw *hw, enum ice_block blk, u16 vsi,
 			 struct LIST_HEAD_TYPE *lst, u16 *new_vsig,
 			 struct LIST_HEAD_TYPE *chg)
 {
 	struct ice_vsig_prof *t;
-	enum ice_status status;
+	int status;
 	u16 vsig;
 
 	vsig = ice_vsig_alloc(hw, blk);
@@ -4178,7 +4178,7 @@ ice_find_prof_vsig(struct ice_hw *hw, enum ice_block blk, u64 hdl, u16 *vsig)
 {
 	struct ice_vsig_prof *t;
 	struct LIST_HEAD_TYPE lst;
-	enum ice_status status;
+	int status;
 
 	INIT_LIST_HEAD(&lst);
 
@@ -4211,12 +4211,12 @@ ice_find_prof_vsig(struct ice_hw *hw, enum ice_block blk, u64 hdl, u16 *vsig)
  * save time in generating a new VSIG and TCAMs till a match is
  * found and subsequent rollback when a matching VSIG is found.
  */
-enum ice_status
+int
 ice_add_vsi_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 {
 	struct ice_chs_chg *tmp, *del;
 	struct LIST_HEAD_TYPE chg;
-	enum ice_status status;
+	int status;
 
 	/* if target VSIG is default the move is invalid */
 	if ((vsig & ICE_VSIG_IDX_M) == ICE_DEFAULT_VSIG)
@@ -4249,14 +4249,14 @@ ice_add_vsi_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
  * profile indicated by the ID parameter for the VSIs specified in the VSI
  * array. Once successfully called, the flow will be enabled.
  */
-enum ice_status
+int
 ice_add_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 {
 	struct ice_vsig_prof *tmp1, *del1;
 	struct LIST_HEAD_TYPE union_lst;
 	struct ice_chs_chg *tmp, *del;
 	struct LIST_HEAD_TYPE chg;
-	enum ice_status status;
+	int status;
 	u16 vsig;
 
 	INIT_LIST_HEAD(&union_lst);
@@ -4390,7 +4390,7 @@ err_ice_add_prof_id_flow:
  * @lst: list to remove the profile from
  * @hdl: the profile handle indicating the profile to remove
  */
-static enum ice_status
+static int
 ice_rem_prof_from_list(struct ice_hw *hw, struct LIST_HEAD_TYPE *lst, u64 hdl)
 {
 	struct ice_vsig_prof *ent, *tmp;
@@ -4416,13 +4416,13 @@ ice_rem_prof_from_list(struct ice_hw *hw, struct LIST_HEAD_TYPE *lst, u64 hdl)
  * profile indicated by the ID parameter for the VSIs specified in the VSI
  * array. Once successfully called, the flow will be disabled.
  */
-enum ice_status
+int
 ice_rem_prof_id_flow(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl)
 {
 	struct ice_vsig_prof *tmp1, *del1;
 	struct LIST_HEAD_TYPE chg, copy;
 	struct ice_chs_chg *tmp, *del;
-	enum ice_status status;
+	int status;
 	u16 vsig;
 
 	INIT_LIST_HEAD(&copy);
@@ -4550,11 +4550,11 @@ err_ice_rem_prof_id_flow:
  * profile indicated by the ID parameter for the VSIs specified in the VSI
  * array. Once successfully called, the flow will be enabled.
  */
-enum ice_status
+int
 ice_flow_assoc_hw_prof(struct ice_hw *hw, enum ice_block blk,
 		       u16 dest_vsi_handle, u16 fdir_vsi_handle, int id)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	u16 vsi_num;
 
 	vsi_num = ice_get_hw_vsi_num(hw, dest_vsi_handle);

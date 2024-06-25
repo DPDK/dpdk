@@ -19,14 +19,14 @@
  *
  * Requests the complete LLDP MIB (entire packet). (0x0A00)
  */
-enum ice_status
+int
 ice_aq_get_lldp_mib(struct ice_hw *hw, u8 bridge_type, u8 mib_type, void *buf,
 		    u16 buf_size, u16 *local_len, u16 *remote_len,
 		    struct ice_sq_cd *cd)
 {
 	struct ice_aqc_lldp_get_mib *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	cmd = &desc.params.lldp_get_mib;
 
@@ -61,7 +61,7 @@ ice_aq_get_lldp_mib(struct ice_hw *hw, u8 bridge_type, u8 mib_type, void *buf,
  * Enable or Disable posting of an event on ARQ when LLDP MIB
  * associated with the interface changes (0x0A01)
  */
-enum ice_status
+int
 ice_aq_cfg_lldp_mib_change(struct ice_hw *hw, bool ena_update,
 			   struct ice_sq_cd *cd)
 {
@@ -92,7 +92,7 @@ ice_aq_cfg_lldp_mib_change(struct ice_hw *hw, bool ena_update,
  *
  * Stop or Shutdown the embedded LLDP Agent (0x0A05)
  */
-enum ice_status
+int
 ice_aq_stop_lldp(struct ice_hw *hw, bool shutdown_lldp_agent, bool persist,
 		 struct ice_sq_cd *cd)
 {
@@ -120,7 +120,7 @@ ice_aq_stop_lldp(struct ice_hw *hw, bool shutdown_lldp_agent, bool persist,
  *
  * Start the embedded LLDP Agent on all ports. (0x0A06)
  */
-enum ice_status
+int
 ice_aq_start_lldp(struct ice_hw *hw, bool persist, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_lldp_start *cmd;
@@ -601,10 +601,10 @@ ice_parse_org_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
  *
  * Parse DCB configuration from the LLDPDU
  */
-enum ice_status ice_lldp_to_dcb_cfg(u8 *lldpmib, struct ice_dcbx_cfg *dcbcfg)
+int ice_lldp_to_dcb_cfg(u8 *lldpmib, struct ice_dcbx_cfg *dcbcfg)
 {
 	struct ice_lldp_org_tlv *tlv;
-	enum ice_status ret = ICE_SUCCESS;
+	int ret = ICE_SUCCESS;
 	u16 offset = 0;
 	u16 typelen;
 	u16 type;
@@ -651,11 +651,11 @@ enum ice_status ice_lldp_to_dcb_cfg(u8 *lldpmib, struct ice_dcbx_cfg *dcbcfg)
  *
  * Query DCB configuration from the firmware
  */
-enum ice_status
+int
 ice_aq_get_dcb_cfg(struct ice_hw *hw, u8 mib_type, u8 bridgetype,
 		   struct ice_dcbx_cfg *dcbcfg)
 {
-	enum ice_status ret;
+	int ret;
 	u8 *lldpmib;
 
 	/* Allocate the LLDPDU */
@@ -689,14 +689,14 @@ ice_aq_get_dcb_cfg(struct ice_hw *hw, u8 mib_type, u8 bridgetype,
  * returns ICE_SUCCESS, caller will need to check if FW returns back the same
  * value as stated in dcbx_agent_status, and react accordingly. (0x0A09)
  */
-enum ice_status
+int
 ice_aq_start_stop_dcbx(struct ice_hw *hw, bool start_dcbx_agent,
 		       bool *dcbx_agent_status, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_lldp_stop_start_specific_agent *cmd;
 	enum ice_adminq_opc opcode;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	cmd = &desc.params.lldp_agent_ctrl;
 
@@ -726,7 +726,7 @@ ice_aq_start_stop_dcbx(struct ice_hw *hw, bool start_dcbx_agent,
  *
  * Get CEE DCBX mode operational configuration from firmware (0x0A07)
  */
-enum ice_status
+int
 ice_aq_get_cee_dcb_cfg(struct ice_hw *hw,
 		       struct ice_aqc_get_cee_dcb_cfg_resp *buff,
 		       struct ice_sq_cd *cd)
@@ -747,12 +747,12 @@ ice_aq_get_cee_dcb_cfg(struct ice_hw *hw,
  * This AQ call configures the PFC mdoe to DSCP-based PFC mode or VLAN
  * -based PFC (0x0303)
  */
-enum ice_status
+int
 ice_aq_set_pfc_mode(struct ice_hw *hw, u8 pfc_mode, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_set_query_pfc_mode *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	if (pfc_mode > ICE_AQC_PFC_DSCP_BASED_PFC)
 		return ICE_ERR_PARAM;
@@ -906,11 +906,11 @@ ice_cee_to_dcb_cfg(struct ice_aqc_get_cee_dcb_cfg_resp *cee_cfg,
  *
  * Get IEEE or CEE mode DCB configuration from the Firmware
  */
-STATIC enum ice_status
+STATIC int
 ice_get_ieee_or_cee_dcb_cfg(struct ice_port_info *pi, u8 dcbx_mode)
 {
 	struct ice_dcbx_cfg *dcbx_cfg = NULL;
-	enum ice_status ret;
+	int ret;
 
 	if (!pi)
 		return ICE_ERR_PARAM;
@@ -946,11 +946,11 @@ out:
  *
  * Get DCB configuration from the Firmware
  */
-enum ice_status ice_get_dcb_cfg(struct ice_port_info *pi)
+int ice_get_dcb_cfg(struct ice_port_info *pi)
 {
 	struct ice_aqc_get_cee_dcb_cfg_resp cee_cfg;
 	struct ice_dcbx_cfg *dcbx_cfg;
-	enum ice_status ret;
+	int ret;
 
 	if (!pi)
 		return ICE_ERR_PARAM;
@@ -1014,10 +1014,10 @@ void ice_get_dcb_cfg_from_mib_change(struct ice_port_info *pi,
  *
  * Update DCB configuration from the Firmware
  */
-enum ice_status ice_init_dcb(struct ice_hw *hw, bool enable_mib_change)
+int ice_init_dcb(struct ice_hw *hw, bool enable_mib_change)
 {
 	struct ice_qos_cfg *qos_cfg = &hw->port_info->qos_cfg;
-	enum ice_status ret = ICE_SUCCESS;
+	int ret = ICE_SUCCESS;
 
 	if (!hw->func_caps.common_cap.dcb)
 		return ICE_ERR_NOT_SUPPORTED;
@@ -1056,10 +1056,10 @@ enum ice_status ice_init_dcb(struct ice_hw *hw, bool enable_mib_change)
  *
  * Configure (disable/enable) MIB
  */
-enum ice_status ice_cfg_lldp_mib_change(struct ice_hw *hw, bool ena_mib)
+int ice_cfg_lldp_mib_change(struct ice_hw *hw, bool ena_mib)
 {
 	struct ice_qos_cfg *qos_cfg = &hw->port_info->qos_cfg;
-	enum ice_status ret;
+	int ret;
 
 	if (!hw->func_caps.common_cap.dcb)
 		return ICE_ERR_NOT_SUPPORTED;
@@ -1508,11 +1508,11 @@ void ice_dcb_cfg_to_lldp(u8 *lldpmib, u16 *miblen, struct ice_dcbx_cfg *dcbcfg)
  *
  * Set DCB configuration to the Firmware
  */
-enum ice_status ice_set_dcb_cfg(struct ice_port_info *pi)
+int ice_set_dcb_cfg(struct ice_port_info *pi)
 {
 	u8 mib_type, *lldpmib = NULL;
 	struct ice_dcbx_cfg *dcbcfg;
-	enum ice_status ret;
+	int ret;
 	struct ice_hw *hw;
 	u16 miblen;
 
@@ -1550,14 +1550,14 @@ enum ice_status ice_set_dcb_cfg(struct ice_port_info *pi)
  *
  * query current port ETS configuration
  */
-enum ice_status
+int
 ice_aq_query_port_ets(struct ice_port_info *pi,
 		      struct ice_aqc_port_ets_elem *buf, u16 buf_size,
 		      struct ice_sq_cd *cd)
 {
 	struct ice_aqc_query_port_ets *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	if (!pi)
 		return ICE_ERR_PARAM;
@@ -1577,13 +1577,13 @@ ice_aq_query_port_ets(struct ice_port_info *pi,
  *
  * update the SW DB with the new TC changes
  */
-enum ice_status
+int
 ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
 			    struct ice_aqc_port_ets_elem *buf)
 {
 	struct ice_sched_node *node, *tc_node;
 	struct ice_aqc_txsched_elem_data elem;
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 	u32 teid1, teid2;
 	u8 i, j;
 
@@ -1645,12 +1645,12 @@ ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
  * query current port ETS configuration and update the
  * SW DB with the TC changes
  */
-enum ice_status
+int
 ice_query_port_ets(struct ice_port_info *pi,
 		   struct ice_aqc_port_ets_elem *buf, u16 buf_size,
 		   struct ice_sq_cd *cd)
 {
-	enum ice_status status;
+	int status;
 
 	ice_acquire_lock(&pi->sched_lock);
 	status = ice_aq_query_port_ets(pi, buf, buf_size, cd);

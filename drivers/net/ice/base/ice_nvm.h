@@ -70,41 +70,42 @@ union ice_nvm_access_data {
 u32 ice_nvm_access_get_module(struct ice_nvm_access_cmd *cmd);
 u32 ice_nvm_access_get_flags(struct ice_nvm_access_cmd *cmd);
 u32 ice_nvm_access_get_adapter(struct ice_nvm_access_cmd *cmd);
-enum ice_status
+int
 ice_nvm_access_read(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 		    union ice_nvm_access_data *data);
-enum ice_status
+int
 ice_nvm_access_write(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 		     union ice_nvm_access_data *data);
-enum ice_status
+int
 ice_nvm_access_get_features(struct ice_nvm_access_cmd *cmd,
 			    union ice_nvm_access_data *data);
-enum ice_status
+int
 ice_handle_nvm_access(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 		      union ice_nvm_access_data *data);
-enum ice_status
+
+int
 ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access);
 void ice_release_nvm(struct ice_hw *hw);
-enum ice_status
+int
 ice_aq_read_nvm(struct ice_hw *hw, u16 module_typeid, u32 offset, u16 length,
 		void *data, bool last_command, bool read_shadow_ram,
 		struct ice_sq_cd *cd);
-enum ice_status
+int
 ice_read_flat_nvm(struct ice_hw *hw, u32 offset, u32 *length, u8 *data,
 		  bool read_shadow_ram);
-enum ice_status
+int
 ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 		       u16 module_type);
-enum ice_status
+int
 ice_get_inactive_orom_ver(struct ice_hw *hw, struct ice_orom_info *orom);
-enum ice_status
+int
 ice_get_inactive_nvm_ver(struct ice_hw *hw, struct ice_nvm_info *nvm);
-enum ice_status
+int
 ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size);
-enum ice_status ice_init_nvm(struct ice_hw *hw);
-enum ice_status ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data);
-enum ice_status
+int ice_init_nvm(struct ice_hw *hw);
+int ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data);
+int
 ice_read_sr_buf(struct ice_hw *hw, u16 offset, u16 *words, u16 *data);
-enum ice_status ice_nvm_validate_checksum(struct ice_hw *hw);
-enum ice_status ice_nvm_recalculate_checksum(struct ice_hw *hw);
+int ice_nvm_validate_checksum(struct ice_hw *hw);
+int ice_nvm_recalculate_checksum(struct ice_hw *hw);
 #endif /* _ICE_NVM_H_ */

@@ -48,6 +48,6 @@ void ice_parser_rt_pktbuf_set(struct ice_parser_rt *rt, const u8 *pkt_buf,
 			      int pkt_len);
 
 struct ice_parser_result;
-enum ice_status ice_parser_rt_execute(struct ice_parser_rt *rt,
+int ice_parser_rt_execute(struct ice_parser_rt *rt,
 				      struct ice_parser_result *rslt);
 #endif /* _ICE_PARSER_RT_H_ */

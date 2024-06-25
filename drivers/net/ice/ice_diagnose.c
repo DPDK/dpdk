@@ -713,7 +713,7 @@ int query_rl_profile(struct ice_hw *hw,
 		     uint8_t level, uint8_t flags, uint16_t profile_id,
 		     struct ice_aqc_rl_profile_elem *data)
 {
-	enum ice_status ice_status;
+	int ice_status;
 
 	data->level = level;
 	data->flags = flags;
@@ -735,14 +735,13 @@ int query_node(struct ice_hw *hw, uint32_t child, uint32_t *parent,
 	       uint8_t level, bool detail, FILE *stream)
 {
 	struct ice_aqc_txsched_elem_data data;
-	enum ice_status status;
 	struct ice_aqc_rl_profile_elem cir_prof;
 	struct ice_aqc_rl_profile_elem eir_prof;
 	struct ice_aqc_rl_profile_elem shared_prof;
 	struct ice_aqc_rl_profile_elem *cp = NULL;
 	struct ice_aqc_rl_profile_elem *ep = NULL;
 	struct ice_aqc_rl_profile_elem *sp = NULL;
-	int ret;
+	int status, ret;
 
 	status = ice_sched_query_elem(hw, child, &data);
 	if (status != ICE_SUCCESS) {

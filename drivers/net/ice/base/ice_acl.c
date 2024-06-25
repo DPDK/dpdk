@@ -13,7 +13,7 @@
  *
  * Allocate ACL table (indirect 0x0C10)
  */
-enum ice_status
+int
 ice_aq_alloc_acl_tbl(struct ice_hw *hw, struct ice_acl_alloc_tbl *tbl,
 		     struct ice_sq_cd *cd)
 {
@@ -64,7 +64,7 @@ ice_aq_alloc_acl_tbl(struct ice_hw *hw, struct ice_acl_alloc_tbl *tbl,
  * format is 'struct ice_aqc_acl_generic', pass ptr to that struct
  * as 'buf' and its size as 'buf_size'
  */
-enum ice_status
+int
 ice_aq_dealloc_acl_tbl(struct ice_hw *hw, u16 alloc_id,
 		       struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd)
 {
@@ -78,7 +78,7 @@ ice_aq_dealloc_acl_tbl(struct ice_hw *hw, u16 alloc_id,
 	return ice_aq_send_cmd(hw, &desc, buf, sizeof(*buf), cd);
 }
 
-static enum ice_status
+static int
 ice_aq_acl_entry(struct ice_hw *hw, u16 opcode, u8 tcam_idx, u16 entry_idx,
 		 struct ice_aqc_acl_data *buf, struct ice_sq_cd *cd)
 {
@@ -107,7 +107,7 @@ ice_aq_acl_entry(struct ice_hw *hw, u16 opcode, u8 tcam_idx, u16 entry_idx,
  *
  * Program ACL entry (direct 0x0C20)
  */
-enum ice_status
+int
 ice_aq_program_acl_entry(struct ice_hw *hw, u8 tcam_idx, u16 entry_idx,
 			 struct ice_aqc_acl_data *buf, struct ice_sq_cd *cd)
 {
@@ -128,7 +128,7 @@ ice_aq_program_acl_entry(struct ice_hw *hw, u8 tcam_idx, u16 entry_idx,
  * NOTE: Caller of this API to parse 'buf' appropriately since it contains
  * response (key and key invert)
  */
-enum ice_status
+int
 ice_aq_query_acl_entry(struct ice_hw *hw, u8 tcam_idx, u16 entry_idx,
 		       struct ice_aqc_acl_data *buf, struct ice_sq_cd *cd)
 {
@@ -137,7 +137,7 @@ ice_aq_query_acl_entry(struct ice_hw *hw, u8 tcam_idx, u16 entry_idx,
 }
 
 /* Helper function to alloc/dealloc ACL action pair */
-static enum ice_status
+static int
 ice_aq_actpair_a_d(struct ice_hw *hw, u16 opcode, u16 alloc_id,
 		   struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd)
 {
@@ -163,7 +163,7 @@ ice_aq_actpair_a_d(struct ice_hw *hw, u16 opcode, u16 alloc_id,
  * This command doesn't need and doesn't have its own command buffer
  * but for response format is as specified in 'struct ice_aqc_acl_generic'
  */
-enum ice_status
+int
 ice_aq_alloc_actpair(struct ice_hw *hw, u16 alloc_id,
 		     struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd)
 {
@@ -180,7 +180,7 @@ ice_aq_alloc_actpair(struct ice_hw *hw, u16 alloc_id,
  *
  *  Deallocate ACL actionpair (direct 0x0C13)
  */
-enum ice_status
+int
 ice_aq_dealloc_actpair(struct ice_hw *hw, u16 alloc_id,
 		       struct ice_aqc_acl_generic *buf, struct ice_sq_cd *cd)
 {
@@ -189,7 +189,7 @@ ice_aq_dealloc_actpair(struct ice_hw *hw, u16 alloc_id,
 }
 
 /* Helper function to program/query ACL action pair */
-static enum ice_status
+static int
 ice_aq_actpair_p_q(struct ice_hw *hw, u16 opcode, u8 act_mem_idx,
 		   u16 act_entry_idx, struct ice_aqc_actpair *buf,
 		   struct ice_sq_cd *cd)
@@ -219,7 +219,7 @@ ice_aq_actpair_p_q(struct ice_hw *hw, u16 opcode, u8 act_mem_idx,
  *
  * Program action entries (indirect 0x0C1C)
  */
-enum ice_status
+int
 ice_aq_program_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
 		       struct ice_aqc_actpair *buf, struct ice_sq_cd *cd)
 {
@@ -237,7 +237,7 @@ ice_aq_program_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
  *
  * Query ACL actionpair (indirect 0x0C25)
  */
-enum ice_status
+int
 ice_aq_query_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
 		     struct ice_aqc_actpair *buf, struct ice_sq_cd *cd)
 {
@@ -253,7 +253,7 @@ ice_aq_query_actpair(struct ice_hw *hw, u8 act_mem_idx, u16 act_entry_idx,
  * De-allocate ACL resources (direct 0x0C1A). Used by SW to release all the
  * resources allocated for it using a single command
  */
-enum ice_status ice_aq_dealloc_acl_res(struct ice_hw *hw, struct ice_sq_cd *cd)
+int ice_aq_dealloc_acl_res(struct ice_hw *hw, struct ice_sq_cd *cd)
 {
 	struct ice_aq_desc desc;
 
@@ -272,7 +272,7 @@ enum ice_status ice_aq_dealloc_acl_res(struct ice_hw *hw, struct ice_sq_cd *cd)
  *
  * This function sends ACL profile commands
  */
-static enum ice_status
+static int
 ice_acl_prof_aq_send(struct ice_hw *hw, u16 opc, u8 prof_id,
 		     struct ice_aqc_acl_prof_generic_frmt *buf,
 		     struct ice_sq_cd *cd)
@@ -296,7 +296,7 @@ ice_acl_prof_aq_send(struct ice_hw *hw, u16 opc, u8 prof_id,
  *
  * Program ACL profile extraction (indirect 0x0C1D)
  */
-enum ice_status
+int
 ice_prgm_acl_prof_xtrct(struct ice_hw *hw, u8 prof_id,
 			struct ice_aqc_acl_prof_generic_frmt *buf,
 			struct ice_sq_cd *cd)
@@ -314,7 +314,7 @@ ice_prgm_acl_prof_xtrct(struct ice_hw *hw, u8 prof_id,
  *
  * Query ACL profile (indirect 0x0C21)
  */
-enum ice_status
+int
 ice_query_acl_prof(struct ice_hw *hw, u8 prof_id,
 		   struct ice_aqc_acl_prof_generic_frmt *buf,
 		   struct ice_sq_cd *cd)
@@ -330,9 +330,9 @@ ice_query_acl_prof(struct ice_hw *hw, u8 prof_id,
  * This function checks the counter bank range for counter type and returns
  * success or failure.
  */
-static enum ice_status ice_aq_acl_cntrs_chk_params(struct ice_acl_cntrs *cntrs)
+static int ice_aq_acl_cntrs_chk_params(struct ice_acl_cntrs *cntrs)
 {
-	enum ice_status status = ICE_SUCCESS;
+	int status = ICE_SUCCESS;
 
 	if (!cntrs || !cntrs->amount)
 		return ICE_ERR_PARAM;
@@ -373,14 +373,14 @@ static enum ice_status ice_aq_acl_cntrs_chk_params(struct ice_acl_cntrs *cntrs)
  * unsuccessful if returned counter value is invalid. In this case it returns
  * an error otherwise success.
  */
-enum ice_status
+int
 ice_aq_alloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
 		       struct ice_sq_cd *cd)
 {
 	struct ice_aqc_acl_alloc_counters *cmd;
 	u16 first_cntr, last_cntr;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	/* check for invalid params */
 	status = ice_aq_acl_cntrs_chk_params(cntrs);
@@ -412,13 +412,13 @@ ice_aq_alloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
  *
  * De-allocate ACL counters (direct 0x0C17)
  */
-enum ice_status
+int
 ice_aq_dealloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
 			 struct ice_sq_cd *cd)
 {
 	struct ice_aqc_acl_dealloc_counters *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	/* check for invalid params */
 	status = ice_aq_acl_cntrs_chk_params(cntrs);
@@ -443,7 +443,7 @@ ice_aq_dealloc_acl_cntrs(struct ice_hw *hw, struct ice_acl_cntrs *cntrs,
  *
  * Program ACL profile ranges (indirect 0x0C1E)
  */
-enum ice_status
+int
 ice_prog_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
 			 struct ice_aqc_acl_profile_ranges *buf,
 			 struct ice_sq_cd *cd)
@@ -466,7 +466,7 @@ ice_prog_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
  *
  * Query ACL profile ranges (indirect 0x0C22)
  */
-enum ice_status
+int
 ice_query_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
 			  struct ice_aqc_acl_profile_ranges *buf,
 			  struct ice_sq_cd *cd)
@@ -488,13 +488,13 @@ ice_query_acl_prof_ranges(struct ice_hw *hw, u8 prof_id,
  *
  * Allocate ACL scenario (indirect 0x0C14)
  */
-enum ice_status
+int
 ice_aq_alloc_acl_scen(struct ice_hw *hw, u16 *scen_id,
 		      struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_acl_alloc_scen *cmd;
 	struct ice_aq_desc desc;
-	enum ice_status status;
+	int status;
 
 	if (!scen_id)
 		return ICE_ERR_PARAM;
@@ -518,7 +518,7 @@ ice_aq_alloc_acl_scen(struct ice_hw *hw, u16 *scen_id,
  *
  * Deallocate ACL scenario (direct 0x0C15)
  */
-enum ice_status
+int
 ice_aq_dealloc_acl_scen(struct ice_hw *hw, u16 scen_id, struct ice_sq_cd *cd)
 {
 	struct ice_aqc_acl_dealloc_scen *cmd;
@@ -541,7 +541,7 @@ ice_aq_dealloc_acl_scen(struct ice_hw *hw, u16 scen_id, struct ice_sq_cd *cd)
  *
  * Calls update or query ACL scenario
  */
-static enum ice_status
+static int
 ice_aq_update_query_scen(struct ice_hw *hw, u16 opcode, u16 scen_id,
 			 struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd)
 {
@@ -566,7 +566,7 @@ ice_aq_update_query_scen(struct ice_hw *hw, u16 opcode, u16 scen_id,
  *
  * Update ACL scenario (indirect 0x0C1B)
  */
-enum ice_status
+int
 ice_aq_update_acl_scen(struct ice_hw *hw, u16 scen_id,
 		       struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd)
 {
@@ -583,7 +583,7 @@ ice_aq_update_acl_scen(struct ice_hw *hw, u16 scen_id,
  *
  * Query ACL scenario (indirect 0x0C23)
  */
-enum ice_status
+int
 ice_aq_query_acl_scen(struct ice_hw *hw, u16 scen_id,
 		      struct ice_aqc_acl_scen *buf, struct ice_sq_cd *cd)
 {
