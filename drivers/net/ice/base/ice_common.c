@@ -3843,8 +3843,10 @@ ice_cfg_phy_fec(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 		break;
 	case ICE_FEC_DIS_AUTO:
 		/* Set No FEC and auto FEC */
-		if (!ice_fw_supports_fec_dis_auto(hw))
-			return ICE_ERR_NOT_SUPPORTED;
+		if (!ice_fw_supports_fec_dis_auto(hw)) {
+			status = ICE_ERR_NOT_SUPPORTED;
+			goto out;
+		}
 		cfg->link_fec_opt |= ICE_AQC_PHY_FEC_DIS;
 		/* fall-through */
 	case ICE_FEC_AUTO:
