@@ -1006,7 +1006,8 @@ int ice_init_hw(struct ice_hw *hw)
 	if (status)
 		goto err_unroll_cqinit;
 
-	hw->port_info = (struct ice_port_info *)
+	if (!hw->port_info)
+		hw->port_info = (struct ice_port_info *)
 			ice_malloc(hw, sizeof(*hw->port_info));
 	if (!hw->port_info) {
 		status = ICE_ERR_NO_MEMORY;
