@@ -5768,7 +5768,7 @@ ice_cfg_dflt_vsi(struct ice_port_info *pi, u16 vsi_handle, bool set,
 		 u8 direction)
 {
 	struct ice_fltr_list_entry f_list_entry;
-	struct ice_sw_recipe *recp_list;
+	struct ice_sw_recipe *recp_list = NULL;
 	struct ice_fltr_info f_info;
 	struct ice_hw *hw = pi->hw;
 	u8 lport = pi->lport;
@@ -10091,7 +10091,7 @@ int
 ice_replay_vsi_all_fltr(struct ice_hw *hw, struct ice_port_info *pi,
 			u16 vsi_handle)
 {
-	struct ice_switch_info *sw;
+	struct ice_switch_info *sw = NULL;
 	int status;
 	u8 i;
 
