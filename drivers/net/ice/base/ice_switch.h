@@ -219,19 +219,19 @@ struct ice_adv_lkup_elem {
 	union ice_prot_hdr m_u;	/* Mask of header values to match */
 };
 
-struct lg_entry_vsi_fwd {
+struct entry_vsi_fwd {
 	u16 vsi_list;
 	u8 list;
 	u8 valid;
 };
 
-struct lg_entry_to_q {
+struct entry_to_q {
 	u16 q_idx;
 	u8 q_region_sz;
 	u8 q_pri;
 };
 
-struct lg_entry_prune {
+struct entry_prune {
 	u16 vsi_list;
 	u8 list;
 	u8 egr;
@@ -239,27 +239,27 @@ struct lg_entry_prune {
 	u8 prune_t;
 };
 
-struct lg_entry_mirror {
+struct entry_mirror {
 	u16 mirror_vsi;
 };
 
-struct lg_entry_generic_act {
+struct entry_generic_act {
 	u16 generic_value;
 	u8 offset;
 	u8 priority;
 };
 
-struct lg_entry_statistics {
+struct entry_statistics {
 	u8 counter_idx;
 };
 
 union lg_act_entry {
-	struct lg_entry_vsi_fwd vsi_fwd;
-	struct lg_entry_to_q to_q;
-	struct lg_entry_prune prune;
-	struct lg_entry_mirror mirror;
-	struct lg_entry_generic_act generic_act;
-	struct lg_entry_statistics statistics;
+	struct entry_vsi_fwd vsi_fwd;
+	struct entry_to_q to_q;
+	struct entry_prune prune;
+	struct entry_mirror mirror;
+	struct entry_generic_act generic_act;
+	struct entry_statistics statistics;
 };
 struct ice_prof_type_entry {
 	u16 prof_id;
