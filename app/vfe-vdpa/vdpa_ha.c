@@ -11,6 +11,7 @@
 #include "vdpa_ha.h"
 
 #define RTE_LOGTYPE_HA RTE_LOGTYPE_USER1
+#define NULL_UUID "00000000-0000-0000-0000-000000000000"
 
 static struct virtio_ha_vf_restore_queue rq;
 static pthread_mutex_t vf_restore_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -188,7 +189,9 @@ virtio_ha_client_dev_restore_pf(int *total_vf)
 		tmp = TAILQ_NEXT(v1, next);
 		while (tmp != NULL) {
 			v2 = tmp;
-			if (strncmp(v1->vf_devargs.vm_uuid, v2->vf_devargs.vm_uuid, RTE_UUID_STRLEN) == 0 &&
+			if (strncmp(v1->vf_devargs.vm_uuid, NULL_UUID, RTE_UUID_STRLEN) != 0 &&
+				strncmp(v2->vf_devargs.vm_uuid, NULL_UUID, RTE_UUID_STRLEN) != 0 &&
+				strncmp(v1->vf_devargs.vm_uuid, v2->vf_devargs.vm_uuid, RTE_UUID_STRLEN) == 0 &&
 					v1->vf_devargs.mem_tbl_set && v2->vf_devargs.mem_tbl_set) {
 				v1->vf_cnt_vm++;
 				v2->vf_cnt_vm++;

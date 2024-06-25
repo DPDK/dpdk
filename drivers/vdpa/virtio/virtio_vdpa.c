@@ -1529,7 +1529,6 @@ virtio_vdpa_dev_config(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	struct virtio_vdpa_notifier_work *notify_work;
 	struct rte_vhost_vring vq;
 	int ret, i, vhost_sock_fd;
 	struct timeval start, end;
