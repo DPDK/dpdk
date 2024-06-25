@@ -332,7 +332,7 @@ ice_query_acl_prof(struct ice_hw *hw, u8 prof_id,
  */
 static int ice_aq_acl_cntrs_chk_params(struct ice_acl_cntrs *cntrs)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (!cntrs || !cntrs->amount)
 		return ICE_ERR_PARAM;

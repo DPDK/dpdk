@@ -604,8 +604,8 @@ ice_parse_org_tlv(struct ice_lldp_org_tlv *tlv, struct ice_dcbx_cfg *dcbcfg)
 int ice_lldp_to_dcb_cfg(u8 *lldpmib, struct ice_dcbx_cfg *dcbcfg)
 {
 	struct ice_lldp_org_tlv *tlv;
-	int ret = ICE_SUCCESS;
 	u16 offset = 0;
+	int ret = 0;
 	u16 typelen;
 	u16 type;
 	u16 len;
@@ -655,8 +655,8 @@ int
 ice_aq_get_dcb_cfg(struct ice_hw *hw, u8 mib_type, u8 bridgetype,
 		   struct ice_dcbx_cfg *dcbcfg)
 {
-	int ret;
 	u8 *lldpmib;
+	int ret;
 
 	/* Allocate the LLDPDU */
 	lldpmib = (u8 *)ice_malloc(hw, ICE_LLDPDU_SIZE);
@@ -666,7 +666,7 @@ ice_aq_get_dcb_cfg(struct ice_hw *hw, u8 mib_type, u8 bridgetype,
 	ret = ice_aq_get_lldp_mib(hw, bridgetype, mib_type, (void *)lldpmib,
 				  ICE_LLDPDU_SIZE, NULL, NULL, NULL);
 
-	if (ret == ICE_SUCCESS)
+	if (!ret)
 		/* Parse LLDP MIB to get DCB configuration */
 		ret = ice_lldp_to_dcb_cfg(lldpmib, dcbcfg);
 
@@ -686,7 +686,7 @@ ice_aq_get_dcb_cfg(struct ice_hw *hw, u8 mib_type, u8 bridgetype,
  * @cd: pointer to command details structure or NULL
  *
  * Start/Stop the embedded dcbx Agent. In case that this wrapper function
- * returns ICE_SUCCESS, caller will need to check if FW returns back the same
+ * returns 0, caller will need to check if FW returns back the same
  * value as stated in dcbx_agent_status, and react accordingly. (0x0A09)
  */
 int
@@ -711,7 +711,7 @@ ice_aq_start_stop_dcbx(struct ice_hw *hw, bool start_dcbx_agent,
 
 	*dcbx_agent_status = false;
 
-	if (status == ICE_SUCCESS &&
+	if (!status &&
 	    cmd->command == ICE_AQC_START_STOP_AGENT_START_DCBX)
 		*dcbx_agent_status = true;
 
@@ -775,7 +775,7 @@ ice_aq_set_pfc_mode(struct ice_hw *hw, u8 pfc_mode, struct ice_sq_cd *cd)
 	if (cmd->pfc_mode != pfc_mode)
 		return ICE_ERR_NOT_SUPPORTED;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -934,7 +934,7 @@ ice_get_ieee_or_cee_dcb_cfg(struct ice_port_info *pi, u8 dcbx_mode)
 				 ICE_AQ_LLDP_BRID_TYPE_NEAREST_BRID, dcbx_cfg);
 	/* Don't treat ENOENT as an error for Remote MIBs */
 	if (pi->hw->adminq.sq_last_status == ICE_AQ_RC_ENOENT)
-		ret = ICE_SUCCESS;
+		ret = 0;
 
 out:
 	return ret;
@@ -956,7 +956,7 @@ int ice_get_dcb_cfg(struct ice_port_info *pi)
 		return ICE_ERR_PARAM;
 
 	ret = ice_aq_get_cee_dcb_cfg(pi->hw, &cee_cfg, NULL);
-	if (ret == ICE_SUCCESS) {
+	if (!ret) {
 		/* CEE mode */
 		ret = ice_get_ieee_or_cee_dcb_cfg(pi, ICE_DCBX_MODE_CEE);
 		ice_cee_to_dcb_cfg(&cee_cfg, pi);
@@ -1017,7 +1017,7 @@ void ice_get_dcb_cfg_from_mib_change(struct ice_port_info *pi,
 int ice_init_dcb(struct ice_hw *hw, bool enable_mib_change)
 {
 	struct ice_qos_cfg *qos_cfg = &hw->port_info->qos_cfg;
-	int ret = ICE_SUCCESS;
+	int ret = 0;
 
 	if (!hw->func_caps.common_cap.dcb)
 		return ICE_ERR_NOT_SUPPORTED;
@@ -1512,9 +1512,9 @@ int ice_set_dcb_cfg(struct ice_port_info *pi)
 {
 	u8 mib_type, *lldpmib = NULL;
 	struct ice_dcbx_cfg *dcbcfg;
-	int ret;
 	struct ice_hw *hw;
 	u16 miblen;
+	int ret;
 
 	if (!pi)
 		return ICE_ERR_PARAM;
@@ -1583,8 +1583,8 @@ ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
 {
 	struct ice_sched_node *node, *tc_node;
 	struct ice_aqc_txsched_elem_data elem;
-	int status = ICE_SUCCESS;
 	u32 teid1, teid2;
+	int status = 0;
 	u8 i, j;
 
 	if (!pi)

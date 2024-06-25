@@ -83,7 +83,7 @@ ice_acl_scen_free_entry_idx(struct ice_acl_scen *scen, u16 idx)
 	if (!ice_test_and_clear_bit(idx, scen->entry_bitmap))
 		return ICE_ERR_DOES_NOT_EXIST;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -145,8 +145,8 @@ static int ice_acl_init_tbl(struct ice_hw *hw)
 {
 	struct ice_aqc_actpair act_buf;
 	struct ice_aqc_acl_data buf;
-	int status = ICE_SUCCESS;
 	struct ice_acl_tbl *tbl;
+	int status = 0;
 	u8 tcam_idx, i;
 	u16 idx;
 
@@ -547,7 +547,7 @@ ice_acl_alloc_partition(struct ice_hw *hw, struct ice_acl_scen *req)
 		}
 	} while (!done);
 
-	return cnt >= r_entries ? ICE_SUCCESS : ICE_ERR_MAX_LIMIT;
+	return cnt >= r_entries ? 0 : ICE_ERR_MAX_LIMIT;
 }
 
 /**
@@ -882,7 +882,7 @@ static int ice_acl_destroy_scen(struct ice_hw *hw, u16 scen_id)
 			ice_free(hw, scen);
 		}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -947,7 +947,7 @@ int ice_acl_destroy_tbl(struct ice_hw *hw)
 	ice_free(hw, hw->acl_tbl);
 	hw->acl_tbl = NULL;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -974,7 +974,7 @@ ice_acl_add_entry(struct ice_hw *hw, struct ice_acl_scen *scen,
 	struct ice_aqc_acl_data buf;
 	u8 entry_tcam, offset;
 	u16 i, num_cscd, idx;
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (!scen)
 		return ICE_ERR_DOES_NOT_EXIST;
@@ -1050,7 +1050,7 @@ ice_acl_prog_act(struct ice_hw *hw, struct ice_acl_scen *scen,
 {
 	u16 idx, entry_tcam, num_cscd, i, actx_idx = 0;
 	struct ice_aqc_actpair act_buf;
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (entry_idx >= scen->num_entry)
 		return ICE_ERR_MAX_LIMIT;
@@ -1110,8 +1110,8 @@ ice_acl_rem_entry(struct ice_hw *hw, struct ice_acl_scen *scen, u16 entry_idx)
 {
 	struct ice_aqc_actpair act_buf;
 	struct ice_aqc_acl_data buf;
-	int status = ICE_SUCCESS;
 	u16 num_cscd, idx, i;
+	int status = 0;
 	u8 entry_tcam;
 
 	if (!scen)

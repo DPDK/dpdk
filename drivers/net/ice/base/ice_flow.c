@@ -1033,7 +1033,7 @@ ice_flow_val_hdrs(struct ice_flow_seg_info *segs, u8 segs_cnt)
 			return ICE_ERR_PARAM;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* Sizes of fixed known protocol headers without header options */
@@ -1318,7 +1318,7 @@ ice_flow_proc_seg_hdrs(struct ice_flow_prof_params *params)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1354,7 +1354,7 @@ ice_flow_xtract_pkt_flags(struct ice_hw *hw,
 	params->es[idx].off = (u16)flags;
 	params->es_cnt++;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1617,7 +1617,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		off += ICE_FLOW_FV_EXTRACT_SZ;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1635,7 +1635,7 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 	u8 i;
 
 	if (!params->prof->segs[seg].raws_cnt)
-		return ICE_SUCCESS;
+		return 0;
 
 	if (params->prof->segs[seg].raws_cnt >
 	    ARRAY_SIZE(params->prof->segs[seg].raws))
@@ -1693,7 +1693,7 @@ ice_flow_xtract_raws(struct ice_hw *hw, struct ice_flow_prof_params *params,
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1708,7 +1708,7 @@ static int
 ice_flow_create_xtrct_seq(struct ice_hw *hw,
 			  struct ice_flow_prof_params *params)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u8 i;
 
 	/* For ACL, we also need to extract the direction bit (Rx,Tx) data from
@@ -1771,7 +1771,7 @@ ice_flow_sel_acl_scen(struct ice_hw *hw, struct ice_flow_prof_params *params)
 
 	params->prof->cfg.scen = cand_scen;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1852,7 +1852,7 @@ ice_flow_acl_def_entry_frmt(struct ice_flow_prof_params *params)
 	/* Store # bytes required for entry for later use */
 	params->entry_length = index - ICE_AQC_ACL_PROF_BYTE_SEL_START_IDX;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1876,7 +1876,7 @@ ice_flow_proc_segs(struct ice_hw *hw, struct ice_flow_prof_params *params)
 	switch (params->blk) {
 	case ICE_BLK_FD:
 	case ICE_BLK_RSS:
-		status = ICE_SUCCESS;
+		status = 0;
 		break;
 	case ICE_BLK_ACL:
 		status = ice_flow_acl_def_entry_frmt(params);
@@ -2030,7 +2030,7 @@ ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 	map = ice_search_prof_id(hw, blk, prof_id);
 	if (map) {
 		*hw_prof_id = map->prof_id;
-		status = ICE_SUCCESS;
+		status = 0;
 	}
 	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
 	return status;
@@ -2044,7 +2044,7 @@ ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
  * @prof: pointer to flow profile
  * @buf: destination buffer function writes partial extraction sequence to
  *
- * returns ICE_SUCCESS if no PF is associated to the given profile
+ * returns 0 if no PF is associated to the given profile
  * returns ICE_ERR_IN_USE if at least one PF is associated to the given profile
  * returns other error code for real error
  */
@@ -2071,7 +2071,7 @@ ice_flow_acl_is_prof_in_use(struct ice_hw *hw, struct ice_flow_prof *prof,
 	    buf->pf_scenario_num[2] == 0 && buf->pf_scenario_num[3] == 0 &&
 	    buf->pf_scenario_num[4] == 0 && buf->pf_scenario_num[5] == 0 &&
 	    buf->pf_scenario_num[6] == 0 && buf->pf_scenario_num[7] == 0)
-		return ICE_SUCCESS;
+		return 0;
 
 	if (buf->pf_scenario_num[0] == ICE_ACL_INVALID_SCEN &&
 	    buf->pf_scenario_num[1] == ICE_ACL_INVALID_SCEN &&
@@ -2081,7 +2081,7 @@ ice_flow_acl_is_prof_in_use(struct ice_hw *hw, struct ice_flow_prof *prof,
 	    buf->pf_scenario_num[5] == ICE_ACL_INVALID_SCEN &&
 	    buf->pf_scenario_num[6] == ICE_ACL_INVALID_SCEN &&
 	    buf->pf_scenario_num[7] == ICE_ACL_INVALID_SCEN)
-		return ICE_SUCCESS;
+		return 0;
 
 	return ICE_ERR_IN_USE;
 }
@@ -2126,7 +2126,7 @@ ice_flow_acl_free_act_cntr(struct ice_hw *hw, struct ice_flow_action *acts,
 				return status;
 		}
 	}
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2140,7 +2140,7 @@ static int
 ice_flow_acl_disassoc_scen(struct ice_hw *hw, struct ice_flow_prof *prof)
 {
 	struct ice_aqc_acl_prof_generic_frmt buf;
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u8 prof_id = 0;
 
 	ice_memset(&buf, 0, sizeof(buf), ICE_NONDMA_MEM);
@@ -2194,7 +2194,7 @@ ice_flow_rem_entry_sync(struct ice_hw *hw, enum ice_block blk,
 
 	ice_dealloc_flow_entry(hw, entry);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2504,7 +2504,7 @@ int
 ice_flow_assoc_prof(struct ice_hw *hw, enum ice_block blk,
 		    struct ice_flow_prof *prof, u16 vsi_handle)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (!ice_is_bit_set(prof->vsis, vsi_handle)) {
 		if (blk == ICE_BLK_ACL) {
@@ -2540,7 +2540,7 @@ static int
 ice_flow_disassoc_prof(struct ice_hw *hw, enum ice_block blk,
 		       struct ice_flow_prof *prof, u16 vsi_handle)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (ice_is_bit_set(prof->vsis, vsi_handle)) {
 		status = ice_rem_prof_id_flow(hw, blk,
@@ -2632,7 +2632,7 @@ ice_flow_set_hw_prof(struct ice_hw *hw, u16 dest_vsi_handle,
 	if (status)
 		goto free_params;
 
-	return ICE_SUCCESS;
+	return 0;
 
 free_params:
 	ice_free(hw, params);
@@ -2812,7 +2812,7 @@ ice_flow_acl_check_actions(struct ice_hw *hw, struct ice_flow_action *acts,
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3247,7 +3247,7 @@ ice_flow_acl_union_rng_chk(struct ice_aqc_acl_profile_ranges *dst_buf,
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3268,8 +3268,8 @@ ice_flow_acl_add_scen_entry_sync(struct ice_hw *hw, struct ice_flow_prof *prof,
 	struct ice_aqc_acl_profile_ranges query_rng_buf, cfg_rng_buf;
 	struct ice_acl_act_entry *acts = NULL;
 	struct ice_flow_entry *exist;
-	int status = ICE_SUCCESS;
 	struct ice_flow_entry *e;
+	int status = 0;
 	u8 i;
 
 	if (!entry || !(*entry) || !prof)
@@ -3440,7 +3440,7 @@ ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 {
 	struct ice_flow_entry *e = NULL;
 	struct ice_flow_prof *prof;
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	/* ACL entries must indicate an action */
 	if (blk == ICE_BLK_ACL && (!acts || !acts_cnt))
@@ -3529,7 +3529,7 @@ int ice_flow_rem_entry(struct ice_hw *hw, enum ice_block blk,
 {
 	struct ice_flow_entry *entry;
 	struct ice_flow_prof *prof;
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (entry_h == ICE_FLOW_ENTRY_HANDLE_INVAL)
 		return ICE_ERR_PARAM;
@@ -3699,7 +3699,7 @@ int ice_flow_rem_vsi_prof(struct ice_hw *hw, enum ice_block blk, u16 vsi_handle,
 				      u64 prof_id)
 {
 	struct ice_flow_prof *prof = NULL;
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (blk >= ICE_BLK_COUNT || !ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
@@ -3814,7 +3814,7 @@ ice_flow_set_rss_seg_info(struct ice_flow_seg_info *segs, u8 seg_cnt,
 	if (val && !ice_is_pow2(val))
 		return ICE_ERR_CFG;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3855,14 +3855,14 @@ int ice_rem_vsi_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 {
 	const enum ice_block blk = ICE_BLK_RSS;
 	struct ice_flow_prof *p, *t;
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u16 vsig;
 
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
 	if (LIST_EMPTY(&hw->fl_profs[blk]))
-		return ICE_SUCCESS;
+		return 0;
 
 	ice_acquire_lock(&hw->rss_locks);
 	LIST_FOR_EACH_ENTRY_SAFE(p, t, &hw->fl_profs[blk], ice_flow_prof,
@@ -3970,7 +3970,7 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 		    r->hash.addl_hdrs == prof->segs[prof->segs_cnt - 1].hdrs &&
 		    r->hash.hdr_type == hdr_type) {
 			ice_set_bit(vsi_handle, r->vsis);
-			return ICE_SUCCESS;
+			return 0;
 		}
 
 	rss_cfg = (struct ice_rss_cfg *)ice_malloc(hw, sizeof(*rss_cfg));
@@ -3985,7 +3985,7 @@ ice_add_rss_list(struct ice_hw *hw, u16 vsi_handle, struct ice_flow_prof *prof)
 
 	LIST_ADD_TAIL(&rss_cfg->l_entry, &hw->rss_list_head);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 #define ICE_FLOW_PROF_HASH_S	0
@@ -4495,8 +4495,8 @@ ice_rem_rss_cfg(struct ice_hw *hw, u16 vsi_handle,
  */
 int ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle)
 {
-	int status = ICE_SUCCESS;
 	struct ice_rss_cfg *r;
+	int status = 0;
 
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;

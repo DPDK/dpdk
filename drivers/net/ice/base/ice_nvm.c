@@ -144,7 +144,7 @@ ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
 		return status;
 
 	*data = LE16_TO_CPU(data_local);
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -192,7 +192,7 @@ int ice_acquire_nvm(struct ice_hw *hw, enum ice_aq_res_access_type access)
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	if (hw->flash.blank_nvm_mode)
-		return ICE_SUCCESS;
+		return 0;
 
 	return ice_acquire_res(hw, ICE_NVM_RES_ID, access, ICE_NVM_TIMEOUT);
 }
@@ -382,7 +382,7 @@ ice_get_nvm_css_hdr_len(struct ice_hw *hw, enum ice_bank_select bank,
 	hdr_len_dword = hdr_len_h << 16 | hdr_len_l;
 	*hdr_len = (hdr_len_dword * 2) + ICE_NVM_AUTH_HEADER_LEN;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -476,12 +476,12 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 	int status;
 
 	status = ice_read_sr_word(hw, ICE_SR_PFA_PTR, &pfa_ptr);
-	if (status != ICE_SUCCESS) {
+	if (status) {
 		ice_debug(hw, ICE_DBG_INIT, "Preserved Field Array pointer.\n");
 		return status;
 	}
 	status = ice_read_sr_word(hw, pfa_ptr, &pfa_len);
-	if (status != ICE_SUCCESS) {
+	if (status) {
 		ice_debug(hw, ICE_DBG_INIT, "Failed to read PFA length.\n");
 		return status;
 	}
@@ -495,13 +495,13 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 
 		/* Read TLV type */
 		status = ice_read_sr_word(hw, next_tlv, &tlv_sub_module_type);
-		if (status != ICE_SUCCESS) {
+		if (status) {
 			ice_debug(hw, ICE_DBG_INIT, "Failed to read TLV type.\n");
 			break;
 		}
 		/* Read TLV length */
 		status = ice_read_sr_word(hw, next_tlv + 1, &tlv_len);
-		if (status != ICE_SUCCESS) {
+		if (status) {
 			ice_debug(hw, ICE_DBG_INIT, "Failed to read TLV length.\n");
 			break;
 		}
@@ -509,7 +509,7 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 			if (tlv_len) {
 				*module_tlv = next_tlv;
 				*module_tlv_len = tlv_len;
-				return ICE_SUCCESS;
+				return 0;
 			}
 			return ICE_ERR_INVAL_SIZE;
 		}
@@ -540,14 +540,14 @@ ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
 
 	status = ice_get_pfa_module_tlv(hw, &pba_tlv, &pba_tlv_len,
 					ICE_SR_PBA_BLOCK_PTR);
-	if (status != ICE_SUCCESS) {
+	if (status) {
 		ice_debug(hw, ICE_DBG_INIT, "Failed to read PBA Block TLV.\n");
 		return status;
 	}
 
 	/* pba_size is the next word */
 	status = ice_read_sr_word(hw, (pba_tlv + 2), &pba_size);
-	if (status != ICE_SUCCESS) {
+	if (status) {
 		ice_debug(hw, ICE_DBG_INIT, "Failed to read PBA Section size.\n");
 		return status;
 	}
@@ -568,7 +568,7 @@ ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
 
 	for (i = 0; i < pba_size; i++) {
 		status = ice_read_sr_word(hw, (pba_tlv + 2 + 1) + i, &pba_word);
-		if (status != ICE_SUCCESS) {
+		if (status) {
 			ice_debug(hw, ICE_DBG_INIT, "Failed to read PBA Block word %d.\n", i);
 			return status;
 		}
@@ -605,7 +605,7 @@ static int ice_get_nvm_srev(struct ice_hw *hw, enum ice_bank_select bank, u32 *s
 
 	*srev = srev_h << 16 | srev_l;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -649,7 +649,7 @@ ice_get_nvm_ver_info(struct ice_hw *hw, enum ice_bank_select bank, struct ice_nv
 	if (status)
 		ice_debug(hw, ICE_DBG_NVM, "Failed to read NVM security revision.\n");
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -707,7 +707,7 @@ static int ice_get_orom_srev(struct ice_hw *hw, enum ice_bank_select bank, u32 *
 
 	*srev = srev_h << 16 | srev_l;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -777,7 +777,7 @@ ice_get_orom_civd_data(struct ice_hw *hw, enum ice_bank_select bank,
 
 		*civd = *tmp;
 		ice_free(hw, orom_data);
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	ice_debug(hw, ICE_DBG_NVM, "Unable to locate CIVD data within the Option ROM\n");
@@ -821,7 +821,7 @@ ice_get_orom_ver_info(struct ice_hw *hw, enum ice_bank_select bank, struct ice_o
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -867,7 +867,7 @@ static int ice_discover_flash_size(struct ice_hw *hw)
 		    hw->adminq.sq_last_status == ICE_AQ_RC_EINVAL) {
 			ice_debug(hw, ICE_DBG_NVM, "%s: New upper bound of %u bytes\n",
 				  __func__, offset);
-			status = ICE_SUCCESS;
+			status = 0;
 			max_size = offset;
 		} else if (!status) {
 			ice_debug(hw, ICE_DBG_NVM, "%s: New lower bound of %u bytes\n",
@@ -919,7 +919,7 @@ ice_read_sr_pointer(struct ice_hw *hw, u16 offset, u32 *pointer)
 	else
 		*pointer = value * 2;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -948,7 +948,7 @@ ice_read_sr_area_size(struct ice_hw *hw, u16 offset, u32 *size)
 	/* Area sizes are always specified in 4KB units */
 	*size = value * 4 * 1024;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1031,7 +1031,7 @@ ice_determine_active_flash_banks(struct ice_hw *hw)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1092,7 +1092,7 @@ int ice_init_nvm(struct ice_hw *hw)
 	if (status)
 		ice_debug(hw, ICE_DBG_INIT, "Failed to read Option ROM info.\n");
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1208,7 +1208,7 @@ ice_nvm_access_get_features(struct ice_nvm_access_cmd *cmd,
 	data->drv_features.size = sizeof(struct ice_nvm_features);
 	data->drv_features.features[0] = ICE_NVM_FEATURES_0_REG_ACCESS;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1281,18 +1281,18 @@ ice_validate_nvm_rw_reg(struct ice_nvm_access_cmd *cmd)
 	case GLNVM_GENS:
 	case GLNVM_FLA:
 	case PF_FUNC_RID:
-		return ICE_SUCCESS;
+		return 0;
 	default:
 		break;
 	}
 
 	for (i = 0; i <= GL_HIDA_MAX_INDEX; i++)
 		if (offset == (u32)GL_HIDA(i))
-			return ICE_SUCCESS;
+			return 0;
 
 	for (i = 0; i <= GL_HIBA_MAX_INDEX; i++)
 		if (offset == (u32)GL_HIBA(i))
-			return ICE_SUCCESS;
+			return 0;
 
 	/* All other register offsets are not valid */
 	return ICE_ERR_OUT_OF_RANGE;
@@ -1328,7 +1328,7 @@ ice_nvm_access_read(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 	/* Read the register and store the contents in the data field */
 	data->regval = rd32(hw, cmd->offset);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1367,7 +1367,7 @@ ice_nvm_access_write(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 	/* Write the data field to the specified register */
 	wr32(hw, cmd->offset, data->regval);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**

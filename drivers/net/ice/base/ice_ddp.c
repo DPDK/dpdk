@@ -231,7 +231,7 @@ ice_is_signing_seg_type_at_idx(struct ice_pkg_hdr *pkg_hdr, u32 idx,
 int
 ice_update_pkg_no_lock(struct ice_hw *hw, struct ice_buf *bufs, u32 count)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u32 i;
 
 	for (i = 0; i < count; i++) {
@@ -1181,7 +1181,7 @@ static int ice_get_prof_index_max(struct ice_hw *hw)
 
 	hw->switch_info->max_used_prof_index = max_prof_index;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1584,7 +1584,7 @@ ice_get_sw_fv_list(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 	u32 offset;
 
 	if (!lkups->n_val_words)
-		return ICE_SUCCESS;
+		return 0;
 
 	ice_memset(&state, 0, sizeof(state), ICE_NONDMA_MEM);
 
@@ -1634,7 +1634,7 @@ ice_get_sw_fv_list(struct ice_hw *hw, struct ice_prot_lkup_ext *lkups,
 		ice_warn(hw, "Required profiles not found in currently loaded DDP package");
 		return ICE_ERR_CFG;
 	}
-	return ICE_SUCCESS;
+	return 0;
 
 err:
 	LIST_FOR_EACH_ENTRY_SAFE(fvl, tmp, fv_list, ice_sw_fv_list_entry,
@@ -1738,7 +1738,7 @@ ice_pkg_buf_reserve_section(struct ice_buf_build *bld, u16 count)
 		FLEX_ARRAY_SIZE(buf, section_entry, count);
 	buf->data_end = CPU_TO_LE16(data_end);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2148,7 +2148,7 @@ ice_find_boost_entry(struct ice_seg *ice_seg, u16 addr,
 					  ice_boost_tcam_handler);
 		if (tcam && LE16_TO_CPU(tcam->addr) == addr) {
 			*entry = tcam;
-			return ICE_SUCCESS;
+			return 0;
 		}
 
 		ice_seg = NULL;
@@ -2224,7 +2224,7 @@ void ice_init_pkg_hints(struct ice_hw *hw, struct ice_seg *ice_seg)
  * or writing of the package. When attempting to obtain write access, the
  * caller must check for the following two return values:
  *
- * ICE_SUCCESS        - Means the caller has acquired the global config lock
+ * 0                  - Means the caller has acquired the global config lock
  *                      and can perform writing of the package.
  * ICE_ERR_AQ_NO_WORK - Indicates another driver has already written the
  *                      package or has found that no update was necessary; in
@@ -2321,7 +2321,7 @@ ice_get_set_tx_topo(struct ice_hw *hw, u8 *buf, u16 buf_size,
 	if (!set && flags)
 		*flags = desc.params.get_set_tx_topo.set_flags;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2463,7 +2463,7 @@ update_topo:
 		/* Reset is in progress, re-init the hw again */
 		ice_debug(hw, ICE_DBG_INIT, "Reset is in progress. layer topology might be applied already\n");
 		ice_check_reset(hw);
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	/* set new topology */
@@ -2480,5 +2480,5 @@ update_topo:
 	/* CORER will clear the global lock, so no explicit call
 	 * required for release
 	 */
-	return ICE_SUCCESS;
+	return 0;
 }

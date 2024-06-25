@@ -226,7 +226,7 @@ ice_gen_key_word(u8 val, u8 valid, u8 dont_care, u8 nvr_mtch, u8 *key,
 		in_key_inv >>= 1;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -313,7 +313,7 @@ ice_set_key(u8 *key, u16 size, u8 *val, u8 *upd, u8 *dc, u8 *nm, u16 off,
 				     key + off + i, key + half_size + off + i))
 			return ICE_ERR_CFG;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -525,7 +525,7 @@ int ice_set_dvm_boost_entries(struct ice_hw *hw)
 			return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -550,7 +550,7 @@ ice_create_tunnel(struct ice_hw *hw, enum ice_tunnel_type type, u16 port)
 
 	if (ice_tunnel_port_in_use_hlpr(hw, port, &index)) {
 		hw->tnl.tbl[index].ref++;
-		status = ICE_SUCCESS;
+		status = 0;
 		goto ice_create_tunnel_end;
 	}
 
@@ -640,7 +640,7 @@ int ice_destroy_tunnel(struct ice_hw *hw, u16 port, bool all)
 	if (!all && ice_tunnel_port_in_use_hlpr(hw, port, &index))
 		if (hw->tnl.tbl[index].ref > 1) {
 			hw->tnl.tbl[index].ref--;
-			status = ICE_SUCCESS;
+			status = 0;
 			goto ice_destroy_tunnel_end;
 		}
 
@@ -746,7 +746,7 @@ ice_find_prot_off(struct ice_hw *hw, enum ice_block blk, u8 prof, u8 fv_idx,
 	*prot = fv_ext[fv_idx].prot_id;
 	*off = fv_ext[fv_idx].off;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* PTG Management */
@@ -769,7 +769,7 @@ ice_ptg_find_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 *ptg)
 		return ICE_ERR_PARAM;
 
 	*ptg = hw->blk[blk].xlt1.ptypes[ptype].ptg;
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -828,7 +828,7 @@ ice_ptg_remove_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 	hw->blk[blk].xlt1.ptypes[ptype].ptg = ICE_DEFAULT_PTG;
 	hw->blk[blk].xlt1.ptypes[ptype].next_ptype = NULL;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -861,7 +861,7 @@ ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 
 	/* Is ptype already in the correct PTG? */
 	if (original_ptg == ptg)
-		return ICE_SUCCESS;
+		return 0;
 
 	/* Remove from original PTG and move back to the default PTG */
 	if (original_ptg != ICE_DEFAULT_PTG)
@@ -869,7 +869,7 @@ ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 
 	/* Moving to default PTG? Then we're done with this request */
 	if (ptg == ICE_DEFAULT_PTG)
-		return ICE_SUCCESS;
+		return 0;
 
 	/* Add ptype to PTG at beginning of list */
 	hw->blk[blk].xlt1.ptypes[ptype].next_ptype =
@@ -880,7 +880,7 @@ ice_ptg_add_mv_ptype(struct ice_hw *hw, enum ice_block blk, u16 ptype, u8 ptg)
 	hw->blk[blk].xlt1.ptypes[ptype].ptg = ptg;
 	hw->blk[blk].xlt1.t[ptype] = ptg;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* Block / table size info */
@@ -999,7 +999,7 @@ ice_vsig_find_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 *vsig)
 	 */
 	*vsig = hw->blk[blk].xlt2.vsis[vsi].vsig;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1067,7 +1067,7 @@ ice_find_dup_props_vsig(struct ice_hw *hw, enum ice_block blk,
 		if (xlt2->vsig_tbl[i].in_use &&
 		    ice_match_prop_lst(chs, &xlt2->vsig_tbl[i].prop_lst)) {
 			*vsig = ICE_VSIG_VALUE(i, hw->pf_id);
-			return ICE_SUCCESS;
+			return 0;
 		}
 
 	return ICE_ERR_DOES_NOT_EXIST;
@@ -1130,7 +1130,7 @@ ice_vsig_free(struct ice_hw *hw, enum ice_block blk, u16 vsig)
 	 */
 	INIT_LIST_HEAD(&hw->blk[blk].xlt2.vsig_tbl[idx].prop_lst);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1159,7 +1159,7 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 
 	/* entry already in default VSIG, don't have to remove */
 	if (idx == ICE_DEFAULT_VSIG)
-		return ICE_SUCCESS;
+		return 0;
 
 	vsi_head = &hw->blk[blk].xlt2.vsig_tbl[idx].first_vsi;
 	if (!(*vsi_head))
@@ -1186,7 +1186,7 @@ ice_vsig_remove_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 	vsi_cur->changed = 1;
 	vsi_cur->next_vsi = NULL;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1226,7 +1226,7 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 
 	/* no update required if vsigs match */
 	if (orig_vsig == vsig)
-		return ICE_SUCCESS;
+		return 0;
 
 	if (orig_vsig != ICE_DEFAULT_VSIG) {
 		/* remove entry from orig_vsig and add to default VSIG */
@@ -1236,7 +1236,7 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 	}
 
 	if (idx == ICE_DEFAULT_VSIG)
-		return ICE_SUCCESS;
+		return 0;
 
 	/* Create VSI entry and add VSIG and prop_mask values */
 	hw->blk[blk].xlt2.vsis[vsi].vsig = vsig;
@@ -1249,7 +1249,7 @@ ice_vsig_add_mv_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig)
 	hw->blk[blk].xlt2.vsis[vsi].next_vsi = tmp;
 	hw->blk[blk].xlt2.t[vsi] = vsig;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1348,7 +1348,7 @@ ice_find_prof_id_with_mask(struct ice_hw *hw, enum ice_block blk,
 			continue;
 
 		*prof_id = i;
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	return ICE_ERR_DOES_NOT_EXIST;
@@ -1465,9 +1465,9 @@ ice_free_tcam_ent(struct ice_hw *hw, enum ice_block blk, u16 tcam_idx)
 static int
 ice_alloc_prof_id(struct ice_hw *hw, enum ice_block blk, u8 *prof_id)
 {
-	int status;
 	u16 res_type;
 	u16 get_prof;
+	int status;
 
 	if (!ice_prof_id_rsrc_type(blk, &res_type))
 		return ICE_ERR_PARAM;
@@ -1513,7 +1513,7 @@ ice_prof_inc_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 
 	hw->blk[blk].es.ref_count[prof_id]++;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1684,7 +1684,7 @@ ice_alloc_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 idx, u16 mask,
 
 	hw->blk[blk].masks.masks[i].ref++;
 	*mask_idx = i;
-	status = ICE_SUCCESS;
+	status = 0;
 
 err_ice_alloc_prof_mask:
 	ice_release_lock(&hw->blk[blk].masks.lock);
@@ -1731,7 +1731,7 @@ ice_free_prof_mask(struct ice_hw *hw, enum ice_block blk, u16 mask_idx)
 exit_ice_free_prof_mask:
 	ice_release_lock(&hw->blk[blk].masks.lock);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1754,7 +1754,7 @@ ice_free_prof_masks(struct ice_hw *hw, enum ice_block blk, u16 prof_id)
 		if (mask_bm & BIT(i))
 			ice_free_prof_mask(hw, blk, i);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1813,7 +1813,7 @@ ice_update_prof_masking(struct ice_hw *hw, enum ice_block blk, u16 prof_id,
 
 	/* Only support FD and RSS masking, otherwise nothing to be done */
 	if (blk != ICE_BLK_RSS && blk != ICE_BLK_FD)
-		return ICE_SUCCESS;
+		return 0;
 
 	for (i = 0; i < hw->blk[blk].es.fvw; i++)
 		if (masks[i] && masks[i] != 0xFFFF) {
@@ -1841,7 +1841,7 @@ ice_update_prof_masking(struct ice_hw *hw, enum ice_block blk, u16 prof_id,
 	/* store enabled masks with profile so that they can be freed later */
 	hw->blk[blk].es.mask_ena[prof_id] = ena_mask;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1888,7 +1888,7 @@ ice_prof_dec_ref(struct ice_hw *hw, enum ice_block blk, u8 prof_id)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* Block / table section IDs */
@@ -2250,7 +2250,7 @@ int ice_init_hw_tbls(struct ice_hw *hw)
 		if (!es->mask_ena)
 			goto err;
 	}
-	return ICE_SUCCESS;
+	return 0;
 
 err:
 	ice_free_hw_tbls(hw);
@@ -2593,7 +2593,7 @@ ice_vsig_get_ref(struct ice_hw *hw, enum ice_block blk, u16 vsig, u16 *refs)
 		ptr = ptr->next_vsi;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2657,7 +2657,7 @@ ice_prof_bld_es(struct ice_hw *hw, enum ice_block blk,
 				   ICE_NONDMA_TO_NONDMA);
 		}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2698,7 +2698,7 @@ ice_prof_bld_tcam(struct ice_hw *hw, enum ice_block blk,
 				   ICE_NONDMA_TO_NONDMA);
 		}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2733,7 +2733,7 @@ ice_prof_bld_xlt1(enum ice_block blk, struct ice_buf_build *bld,
 			p->value[0] = tmp->ptg;
 		}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2775,7 +2775,7 @@ ice_prof_bld_xlt2(enum ice_block blk, struct ice_buf_build *bld,
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2790,12 +2790,12 @@ ice_upd_prof_hw(struct ice_hw *hw, enum ice_block blk,
 {
 	struct ice_buf_build *b;
 	struct ice_chs_chg *tmp;
-	int status;
 	u16 pkg_sects;
 	u16 xlt1 = 0;
 	u16 xlt2 = 0;
 	u16 tcam = 0;
 	u16 es = 0;
+	int status;
 	u16 sects;
 
 	/* count number of sections we need */
@@ -2822,7 +2822,7 @@ ice_upd_prof_hw(struct ice_hw *hw, enum ice_block blk,
 	sects = xlt1 + xlt2 + tcam + es;
 
 	if (!sects)
-		return ICE_SUCCESS;
+		return 0;
 
 	/* Build update package buffer */
 	b = ice_pkg_buf_alloc(hw);
@@ -3087,7 +3087,7 @@ ice_update_fd_swap(struct ice_hw *hw, u16 prof_id, struct ice_fv_word *es)
 	/* initially clear the mask select for this profile */
 	ice_update_fd_mask(hw, prof_id, 0);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* The entries here needs to match the order of enum ice_ptype_attrib */
@@ -3141,7 +3141,7 @@ ice_add_prof_attrib(struct ice_prof_map *prof, u8 ptg, u16 ptype,
 	if (!found)
 		return ICE_ERR_DOES_NOT_EXIST;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3288,7 +3288,7 @@ ice_add_prof(struct ice_hw *hw, enum ice_block blk, u64 id,
 	}
 
 	LIST_ADD(&prof->list, &hw->blk[blk].es.prof_map);
-	status = ICE_SUCCESS;
+	status = 0;
 
 err_ice_add_prof:
 	ice_release_lock(&hw->blk[blk].es.prof_map_lock);
@@ -3387,7 +3387,7 @@ ice_rem_prof_id(struct ice_hw *hw, enum ice_block blk,
 				return ICE_ERR_HW_TABLE;
 		}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3569,9 +3569,9 @@ static int
 ice_get_prof(struct ice_hw *hw, enum ice_block blk, u64 hdl,
 	     struct LIST_HEAD_TYPE *chg)
 {
-	int status = ICE_SUCCESS;
 	struct ice_prof_map *map;
 	struct ice_chs_chg *p;
+	int status = 0;
 	u16 i;
 
 	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
@@ -3640,7 +3640,7 @@ ice_get_profs_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 		LIST_ADD_TAIL(&p->list, lst);
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 
 err_ice_get_profs_vsig:
 	LIST_FOR_EACH_ENTRY_SAFE(ent1, ent2, lst, ice_vsig_prof, list) {
@@ -3662,9 +3662,9 @@ static int
 ice_add_prof_to_lst(struct ice_hw *hw, enum ice_block blk,
 		    struct LIST_HEAD_TYPE *lst, u64 hdl)
 {
-	int status = ICE_SUCCESS;
 	struct ice_prof_map *map;
 	struct ice_vsig_prof *p;
+	int status = 0;
 	u16 i;
 
 	ice_acquire_lock(&hw->blk[blk].es.prof_map_lock);
@@ -3710,9 +3710,9 @@ static int
 ice_move_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig,
 	     struct LIST_HEAD_TYPE *chg)
 {
-	int status;
 	struct ice_chs_chg *p;
 	u16 orig_vsig;
+	int status;
 
 	p = (struct ice_chs_chg *)ice_malloc(hw, sizeof(*p));
 	if (!p)
@@ -3734,7 +3734,7 @@ ice_move_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi, u16 vsig,
 
 	LIST_ADD(&p->list_entry, chg);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3842,7 +3842,7 @@ ice_prof_tcam_ena_dis(struct ice_hw *hw, enum ice_block blk, bool enable,
 	/* log change */
 	LIST_ADD(&p->list_entry, chg);
 
-	return ICE_SUCCESS;
+	return 0;
 
 err_ice_prof_tcam_ena_dis:
 	ice_free(hw, p);
@@ -3888,9 +3888,9 @@ ice_adj_prof_priorities(struct ice_hw *hw, enum ice_block blk, u16 vsig,
 {
 	ice_declare_bitmap(ptgs_used, ICE_XLT1_CNT);
 	struct ice_tcam_inf **attr_used;
-	int status = ICE_SUCCESS;
 	struct ice_vsig_prof *t;
 	u16 attr_used_cnt = 0;
+	int status = 0;
 	u16 idx;
 
 #define ICE_MAX_PTG_ATTRS	1024
@@ -3978,11 +3978,11 @@ ice_add_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsig, u64 hdl,
 	u8 vl_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	u8 dc_msk[ICE_TCAM_KEY_VAL_SZ] = { 0xFF, 0xFF, 0x00, 0x00, 0x00 };
 	u8 nm_msk[ICE_TCAM_KEY_VAL_SZ] = { 0x00, 0x00, 0x00, 0x00, 0x00 };
-	int status = ICE_SUCCESS;
 	struct ice_prof_map *map;
 	struct ice_vsig_prof *t;
 	struct ice_chs_chg *p;
 	u16 vsig_idx, i;
+	int status = 0;
 
 	/* Error, if this VSIG already has this profile */
 	if (ice_has_prof_vsig(hw, blk, vsig, hdl))
@@ -4090,9 +4090,9 @@ static int
 ice_create_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl,
 			struct LIST_HEAD_TYPE *chg)
 {
-	int status;
 	struct ice_chs_chg *p;
 	u16 new_vsig;
+	int status;
 
 	p = (struct ice_chs_chg *)ice_malloc(hw, sizeof(*p));
 	if (!p)
@@ -4119,7 +4119,7 @@ ice_create_prof_id_vsig(struct ice_hw *hw, enum ice_block blk, u16 vsi, u64 hdl,
 
 	LIST_ADD(&p->list_entry, chg);
 
-	return ICE_SUCCESS;
+	return 0;
 
 err_ice_create_prof_id_vsig:
 	/* let caller clean up the change list */
@@ -4163,7 +4163,7 @@ ice_create_vsig_from_lst(struct ice_hw *hw, enum ice_block blk, u16 vsi,
 
 	*new_vsig = vsig;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4194,7 +4194,7 @@ ice_find_prof_vsig(struct ice_hw *hw, enum ice_block blk, u64 hdl, u16 *vsig)
 	LIST_DEL(&t->list);
 	ice_free(hw, t);
 
-	return status == ICE_SUCCESS;
+	return !status;
 }
 
 /**
@@ -4399,7 +4399,7 @@ ice_rem_prof_from_list(struct ice_hw *hw, struct LIST_HEAD_TYPE *lst, u64 hdl)
 		if (ent->profile_cookie == hdl) {
 			LIST_DEL(&ent->list);
 			ice_free(hw, ent);
-			return ICE_SUCCESS;
+			return 0;
 		}
 
 	return ICE_ERR_DOES_NOT_EXIST;
@@ -4554,7 +4554,7 @@ int
 ice_flow_assoc_hw_prof(struct ice_hw *hw, enum ice_block blk,
 		       u16 dest_vsi_handle, u16 fdir_vsi_handle, int id)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u16 vsi_num;
 
 	vsi_num = ice_get_hw_vsi_num(hw, dest_vsi_handle);
