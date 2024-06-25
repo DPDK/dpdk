@@ -2457,6 +2457,11 @@ ice_get_recp_frm_fw(struct ice_hw *hw, struct ice_sw_recipe *recps, u8 rid,
 	if (status)
 		goto err_unroll;
 
+	if (!num_recps) {
+		status = ICE_ERR_PARAM;
+		goto err_unroll;
+	}
+
 	/* Get recipe to profile map so that we can get the fv from lkups that
 	 * we read for a recipe from FW. Since we want to minimize the number of
 	 * times we make this FW call, just make one call and cache the copy
