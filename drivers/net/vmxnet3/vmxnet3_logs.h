@@ -7,7 +7,7 @@
 
 extern int vmxnet3_logtype_init;
 #define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, vmxnet3_logtype_driver, \
+	rte_log(RTE_LOG_ ## level, vmxnet3_logtype_init, \
 		"%s(): " fmt "\n", __func__, ## args)
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
