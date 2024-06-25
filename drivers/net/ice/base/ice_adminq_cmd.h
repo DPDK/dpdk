@@ -796,7 +796,7 @@ struct ice_aqc_recipe_data_elem {
 struct ice_aqc_recipe_to_profile {
 	__le16 profile_id;
 	u8 rsvd[6];
-	ice_declare_bitmap(recipe_assoc, ICE_MAX_NUM_RECIPES);
+	u8 recipe_assoc[DIVIDE_AND_ROUND_UP(ICE_MAX_NUM_RECIPES, BITS_PER_BYTE)];
 };
 
 /* Add/Update/Remove/Get switch rules (indirect 0x02A0, 0x02A1, 0x02A2, 0x02A3)
@@ -972,7 +972,7 @@ struct ice_sw_rule_vsi_list {
 /* Query VSI list command/response entry */
 struct ice_sw_rule_vsi_list_query {
 	__le16 index;
-	ice_declare_bitmap(vsi_list, ICE_MAX_VSI);
+	u8 vsi_list[DIVIDE_AND_ROUND_UP(ICE_MAX_VSI, BITS_PER_BYTE)];
 };
 #pragma pack()
 
