@@ -101,13 +101,6 @@ ice_alloc_ctrlq_sq_ring(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	if (!cq->sq.desc_buf.va)
 		return ICE_ERR_NO_MEMORY;
 
-	cq->sq.cmd_buf = ice_calloc(hw, cq->num_sq_entries,
-				    sizeof(struct ice_sq_cd));
-	if (!cq->sq.cmd_buf) {
-		ice_free_dma_mem(hw, &cq->sq.desc_buf);
-		return ICE_ERR_NO_MEMORY;
-	}
-
 	return 0;
 }
 
@@ -309,9 +302,6 @@ do {									\
 				ice_free_dma_mem((hw),			\
 					&(qi)->ring.r.ring##_bi[i]);	\
 	}								\
-	/* free the buffer info list */					\
-	if ((qi)->ring.cmd_buf)						\
-		ice_free(hw, (qi)->ring.cmd_buf);			\
 	/* free DMA head */						\
 	ice_free(hw, (qi)->ring.dma_head);				\
 } while (0)
@@ -844,21 +834,17 @@ static u16 ice_clean_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
 	struct ice_ctl_q_ring *sq = &cq->sq;
 	u16 ntc = sq->next_to_clean;
-	struct ice_sq_cd *details;
 	struct ice_aq_desc *desc;
 
 	desc = ICE_CTL_Q_DESC(*sq, ntc);
-	details = ICE_CTL_Q_DETAILS(*sq, ntc);
 
 	while (rd32(hw, cq->sq.head) != ntc) {
 		ice_debug(hw, ICE_DBG_AQ_MSG, "ntc %d head %d.\n", ntc, rd32(hw, cq->sq.head));
 		ice_memset(desc, 0, sizeof(*desc), ICE_DMA_MEM);
-		ice_memset(details, 0, sizeof(*details), ICE_NONDMA_MEM);
 		ntc++;
 		if (ntc == sq->count)
 			ntc = 0;
 		desc = ICE_CTL_Q_DESC(*sq, ntc);
-		details = ICE_CTL_Q_DETAILS(*sq, ntc);
 	}
 
 	sq->next_to_clean = ntc;
@@ -977,7 +963,6 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	struct ice_dma_mem *dma_buf = NULL;
 	struct ice_aq_desc *desc_on_ring;
 	bool cmd_completed = false;
-	struct ice_sq_cd *details;
 	u32 total_delay = 0;
 	int status = 0;
 	u16 retval = 0;
@@ -1020,12 +1005,6 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		status = ICE_ERR_AQ_EMPTY;
 		goto sq_send_command_error;
 	}
-
-	details = ICE_CTL_Q_DETAILS(cq->sq, cq->sq.next_to_use);
-	if (cd)
-		*details = *cd;
-	else
-		ice_memset(details, 0, sizeof(*details), ICE_NONDMA_MEM);
 
 	/* Call clean and check queue available function to reclaim the
 	 * descriptors that were processed by FW/MBX; the function returns the
@@ -1114,9 +1093,9 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	ice_debug_cq(hw, cq, (void *)desc, buf, buf_size, true);
 
 	/* save writeback AQ if requested */
-	if (details->wb_desc)
-		ice_memcpy(details->wb_desc, desc_on_ring,
-			   sizeof(*details->wb_desc), ICE_DMA_TO_NONDMA);
+	if (cd && cd->wb_desc)
+		ice_memcpy(cd->wb_desc, desc_on_ring,
+			   sizeof(*cd->wb_desc), ICE_DMA_TO_NONDMA);
 
 	/* update the error if time out occurred */
 	if (!cmd_completed) {
