@@ -141,13 +141,12 @@ pci_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
 		RTE_PROT_READ | RTE_PROT_WRITE,
 		RTE_MAP_SHARED | additional_flags, fd, offset);
 	if (mapaddr == NULL) {
-		RTE_LOG(ERR, EAL,
-			"%s(): cannot map resource(%d, %p, 0x%zx, 0x%llx): %s (%p)\n",
+		PCI_LOG(ERR, "%s(): cannot map resource(%d, %p, 0x%zx, 0x%llx): %s (%p)",
 			__func__, fd, requested_addr, size,
 			(unsigned long long)offset,
 			rte_strerror(rte_errno), mapaddr);
 	} else
-		RTE_LOG(DEBUG, EAL, "  PCI memory mapped at %p\n", mapaddr);
+		PCI_LOG(DEBUG, "  PCI memory mapped at %p", mapaddr);
 
 	return mapaddr;
 }
@@ -161,12 +160,11 @@ pci_unmap_resource(void *requested_addr, size_t size)
 
 	/* Unmap the PCI memory resource of device */
 	if (rte_mem_unmap(requested_addr, size)) {
-		RTE_LOG(ERR, EAL, "%s(): cannot mem unmap(%p, %#zx): %s\n",
+		PCI_LOG(ERR, "%s(): cannot mem unmap(%p, %#zx): %s",
 			__func__, requested_addr, size,
 			rte_strerror(rte_errno));
 	} else
-		RTE_LOG(DEBUG, EAL, "  PCI memory unmapped at %p\n",
-				requested_addr);
+		PCI_LOG(DEBUG, "  PCI memory unmapped at %p", requested_addr);
 }
 /*
  * Match the PCI Driver and Device using the ID Table
@@ -226,28 +224,27 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		/* Match of device and driver failed */
 		return 1;
 
-	RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
-			loc->domain, loc->bus, loc->devid, loc->function,
-			dev->device.numa_node);
+	PCI_LOG(DEBUG, "PCI device "PCI_PRI_FMT" on NUMA socket %i",
+		loc->domain, loc->bus, loc->devid, loc->function,
+		dev->device.numa_node);
 
 	/* no initialization when marked as blocked, return without error */
 	if (dev->device.devargs != NULL &&
 		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-		RTE_LOG(INFO, EAL, "  Device is blocked, not initializing\n");
+		PCI_LOG(INFO, "  Device is blocked, not initializing");
 		return 1;
 	}
 
 	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
-		RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware\n", dev->name);
+		PCI_LOG(INFO, "Device %s is not NUMA-aware", dev->name);
 
 	already_probed = rte_dev_is_probed(&dev->device);
 	if (already_probed && !(dr->drv_flags & RTE_PCI_DRV_PROBE_AGAIN)) {
-		RTE_LOG(DEBUG, EAL, "Device %s is already probed\n",
-				dev->device.name);
+		PCI_LOG(DEBUG, "Device %s is already probed", dev->device.name);
 		return -EEXIST;
 	}
 
-	RTE_LOG(DEBUG, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
+	PCI_LOG(DEBUG, "  probe driver: %x:%x %s", dev->id.vendor_id,
 		dev->id.device_id, dr->driver.name);
 
 	if (!already_probed) {
@@ -258,7 +255,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		iova_mode = rte_eal_iova_mode();
 		if (dev_iova_mode != RTE_IOVA_DC &&
 		    dev_iova_mode != iova_mode) {
-			RTE_LOG(ERR, EAL, "  Expecting '%s' IOVA mode but current mode is '%s', not initializing\n",
+			PCI_LOG(ERR, "  Expecting '%s' IOVA mode but current mode is '%s', not initializing",
 				dev_iova_mode == RTE_IOVA_PA ? "PA" : "VA",
 				iova_mode == RTE_IOVA_PA ? "PA" : "VA");
 			return -EINVAL;
@@ -268,8 +265,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		dev->intr_handle =
 			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
 		if (dev->intr_handle == NULL) {
-			RTE_LOG(ERR, EAL,
-				"Failed to create interrupt instance for %s\n",
+			PCI_LOG(ERR, "Failed to create interrupt instance for %s",
 				dev->device.name);
 			return -ENOMEM;
 		}
@@ -279,8 +275,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		if (dev->vfio_req_intr_handle == NULL) {
 			rte_intr_instance_free(dev->intr_handle);
 			dev->intr_handle = NULL;
-			RTE_LOG(ERR, EAL,
-				"Failed to create vfio req interrupt instance for %s\n",
+			PCI_LOG(ERR, "Failed to create vfio req interrupt instance for %s",
 				dev->device.name);
 			return -ENOMEM;
 		}
@@ -304,10 +299,10 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		}
 	}
 
-	RTE_LOG(INFO, EAL, "Probe PCI driver: %s (%x:%04x) device: "PCI_PRI_FMT" (socket %i)\n",
-			dr->driver.name, dev->id.vendor_id, dev->id.device_id,
-			loc->domain, loc->bus, loc->devid, loc->function,
-			dev->device.numa_node);
+	PCI_LOG(INFO, "Probe PCI driver: %s (%x:%04x) device: "PCI_PRI_FMT" (socket %i)",
+		dr->driver.name, dev->id.vendor_id, dev->id.device_id,
+		loc->domain, loc->bus, loc->devid, loc->function,
+		dev->device.numa_node);
 	/* call the driver probe() function */
 	ret = dr->probe(dr, dev);
 	if (already_probed)
@@ -349,12 +344,12 @@ rte_pci_detach_dev(struct rte_pci_device *dev)
 	dr = dev->driver;
 	loc = &dev->addr;
 
-	RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
-			loc->domain, loc->bus, loc->devid,
-			loc->function, dev->device.numa_node);
+	PCI_LOG(DEBUG, "PCI device "PCI_PRI_FMT" on NUMA socket %i",
+		loc->domain, loc->bus, loc->devid,
+		loc->function, dev->device.numa_node);
 
-	RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
-			dev->id.device_id, dr->driver.name);
+	PCI_LOG(DEBUG, "  remove driver: %x:%x %s", dev->id.vendor_id,
+		dev->id.device_id, dr->driver.name);
 
 	if (dr->remove) {
 		ret = dr->remove(dev);
@@ -423,8 +418,7 @@ pci_probe(void)
 		ret = pci_probe_all_drivers(dev);
 		if (ret < 0) {
 			if (ret != -EEXIST) {
-				RTE_LOG(ERR, EAL, "Requested device "
-					PCI_PRI_FMT " cannot be used\n",
+				PCI_LOG(ERR, "Requested device " PCI_PRI_FMT " cannot be used",
 					dev->addr.domain, dev->addr.bus,
 					dev->addr.devid, dev->addr.function);
 				rte_errno = errno;
@@ -592,8 +586,8 @@ pci_find_device_by_addr(const void *failure_addr)
 			len = pdev->mem_resource[i].len;
 			end = start + len;
 			if (check_point >= start && check_point < end) {
-				RTE_LOG(DEBUG, EAL, "Failure address %16.16"
-					PRIx64" belongs to device %s!\n",
+				PCI_LOG(DEBUG, "Failure address %16.16"
+					PRIx64" belongs to device %s!",
 					check_point, pdev->device.name);
 				return pdev;
 			}
@@ -632,8 +626,7 @@ pci_hot_unplug_handler(struct rte_device *dev)
 		ret = pci_uio_remap_resource(pdev);
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL,
-			"Not managed by a supported kernel driver, skipped\n");
+		PCI_LOG(DEBUG, "Not managed by a supported kernel driver, skipped");
 		ret = -1;
 		break;
 	}
@@ -655,8 +648,7 @@ pci_sigbus_handler(const void *failure_addr)
 		/* The sigbus error is caused of hot-unplug. */
 		ret = pci_hot_unplug_handler(&pdev->device);
 		if (ret) {
-			RTE_LOG(ERR, EAL,
-				"Failed to handle hot-unplug for device %s",
+			PCI_LOG(ERR, "Failed to handle hot-unplug for device %s",
 				pdev->name);
 			ret = -1;
 		}
@@ -780,8 +772,7 @@ rte_pci_get_iommu_class(void)
 				continue;
 
 			dev_iova_mode = pci_device_iova_mode(drv, dev);
-			RTE_LOG(DEBUG, EAL, "PCI driver %s for device "
-				PCI_PRI_FMT " wants IOVA as '%s'\n",
+			PCI_LOG(DEBUG, "PCI driver %s for device "PCI_PRI_FMT" wants IOVA as '%s'",
 				drv->driver.name,
 				dev->addr.domain, dev->addr.bus,
 				dev->addr.devid, dev->addr.function,
@@ -796,8 +787,8 @@ rte_pci_get_iommu_class(void)
 	if (iommu_no_va == 1) {
 		iova_mode = RTE_IOVA_PA;
 		if (devices_want_va) {
-			RTE_LOG(WARNING, EAL, "Some devices want 'VA' but IOMMU does not support 'VA'.\n");
-			RTE_LOG(WARNING, EAL, "The devices that want 'VA' won't initialize.\n");
+			PCI_LOG(WARNING, "Some devices want 'VA' but IOMMU does not support 'VA'.");
+			PCI_LOG(WARNING, "The devices that want 'VA' won't initialize.");
 		}
 	} else if (devices_want_va && !devices_want_pa) {
 		iova_mode = RTE_IOVA_VA;
@@ -806,8 +797,8 @@ rte_pci_get_iommu_class(void)
 	} else {
 		iova_mode = RTE_IOVA_DC;
 		if (devices_want_va) {
-			RTE_LOG(WARNING, EAL, "Some devices want 'VA' but forcing 'DC' because other devices want 'PA'.\n");
-			RTE_LOG(WARNING, EAL, "Depending on the final decision by the EAL, not all devices may be able to initialize.\n");
+			PCI_LOG(WARNING, "Some devices want 'VA' but forcing 'DC' because other devices want 'PA'.");
+			PCI_LOG(WARNING, "Depending on the final decision by the EAL, not all devices may be able to initialize.");
 		}
 	}
 	return iova_mode;
@@ -878,7 +869,7 @@ rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap)
 	ttl = (RTE_PCI_CFG_SPACE_EXP_SIZE - RTE_PCI_CFG_SPACE_SIZE) / 8;
 
 	if (rte_pci_read_config(dev, &header, 4, offset) < 0) {
-		RTE_LOG(ERR, EAL, "error in reading extended capabilities\n");
+		PCI_LOG(ERR, "error in reading extended capabilities");
 		return -1;
 	}
 
@@ -899,8 +890,7 @@ rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap)
 			break;
 
 		if (rte_pci_read_config(dev, &header, 4, offset) < 0) {
-			RTE_LOG(ERR, EAL,
-				"error in reading extended capabilities\n");
+			PCI_LOG(ERR, "error in reading extended capabilities");
 			return -1;
 		}
 
@@ -917,7 +907,7 @@ rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable)
 
 	if (rte_pci_read_config(dev, &old_cmd, sizeof(old_cmd),
 				RTE_PCI_COMMAND) < 0) {
-		RTE_LOG(ERR, EAL, "error in reading PCI command register\n");
+		PCI_LOG(ERR, "error in reading PCI command register");
 		return -1;
 	}
 
@@ -931,7 +921,7 @@ rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable)
 
 	if (rte_pci_write_config(dev, &cmd, sizeof(cmd),
 				 RTE_PCI_COMMAND) < 0) {
-		RTE_LOG(ERR, EAL, "error in writing PCI command register\n");
+		PCI_LOG(ERR, "error in writing PCI command register");
 		return -1;
 	}
 
@@ -969,3 +959,4 @@ struct rte_pci_bus rte_pci_bus = {
 };
 
 RTE_REGISTER_BUS(pci, rte_pci_bus.bus);
+RTE_LOG_REGISTER_DEFAULT(pci_bus_logtype, NOTICE);

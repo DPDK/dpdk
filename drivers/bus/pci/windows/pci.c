@@ -246,8 +246,7 @@ get_device_resource_info(HDEVINFO dev_info,
 		/* get device info from NetUIO kernel driver */
 		ret = get_netuio_device_info(dev_info, dev_info_data, dev);
 		if (ret != 0) {
-			RTE_LOG(DEBUG, EAL,
-				"Could not retrieve device info for PCI device "
+			PCI_LOG(DEBUG, "Could not retrieve device info for PCI device "
 				PCI_PRI_FMT,
 				dev->addr.domain, dev->addr.bus,
 				dev->addr.devid, dev->addr.function);
@@ -256,9 +255,7 @@ get_device_resource_info(HDEVINFO dev_info,
 		break;
 	default:
 		/* kernel driver type is unsupported */
-		RTE_LOG(DEBUG, EAL,
-			"Kernel driver type for PCI device " PCI_PRI_FMT ","
-			" is unsupported",
+		PCI_LOG(DEBUG, "Kernel driver type for PCI device " PCI_PRI_FMT ", is unsupported",
 			dev->addr.domain, dev->addr.bus,
 			dev->addr.devid, dev->addr.function);
 		return -1;
@@ -397,7 +394,7 @@ pci_scan_one(HDEVINFO dev_info, PSP_DEVINFO_DATA device_info_data)
 
 	pdev = malloc(sizeof(*pdev));
 	if (pdev == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for internal pci device\n");
+		PCI_LOG(ERR, "Cannot allocate memory for internal pci device");
 		goto end;
 	}
 
@@ -470,7 +467,7 @@ rte_pci_scan(void)
 		DIGCF_PRESENT | DIGCF_ALLCLASSES);
 	if (dev_info == INVALID_HANDLE_VALUE) {
 		RTE_LOG_WIN32_ERR("SetupDiGetClassDevs(pci_scan)");
-		RTE_LOG(ERR, EAL, "Unable to enumerate PCI devices.\n");
+		PCI_LOG(ERR, "Unable to enumerate PCI devices.");
 		goto end;
 	}
 
@@ -495,7 +492,7 @@ rte_pci_scan(void)
 		device_info_data.cbSize = sizeof(SP_DEVINFO_DATA);
 	}
 
-	RTE_LOG(DEBUG, EAL, "PCI scan found %lu devices\n", found_device);
+	PCI_LOG(DEBUG, "PCI scan found %lu devices", found_device);
 	ret = 0;
 end:
 	if (dev_info != INVALID_HANDLE_VALUE)

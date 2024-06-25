@@ -43,7 +43,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			 */
 			fd = open(uio_res->maps[i].path, O_RDWR);
 			if (fd < 0) {
-				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+				PCI_LOG(ERR, "Cannot open %s: %s",
 					uio_res->maps[i].path, strerror(errno));
 				return -1;
 			}
@@ -55,8 +55,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 			/* fd is not needed in secondary process, close it */
 			close(fd);
 			if (mapaddr != uio_res->maps[i].addr) {
-				RTE_LOG(ERR, EAL,
-					"Cannot mmap device resource file %s to address: %p\n",
+				PCI_LOG(ERR, "Cannot mmap device resource file %s to address: %p",
 					uio_res->maps[i].path,
 					uio_res->maps[i].addr);
 				if (mapaddr != NULL) {
@@ -76,7 +75,7 @@ pci_uio_map_secondary(struct rte_pci_device *dev)
 		return 0;
 	}
 
-	RTE_LOG(ERR, EAL, "Cannot find resource for device\n");
+	PCI_LOG(ERR, "Cannot find resource for device");
 	return 1;
 }
 
@@ -171,14 +170,10 @@ pci_uio_remap_resource(struct rte_pci_device *dev)
 				PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 		if (map_address == MAP_FAILED) {
-			RTE_LOG(ERR, EAL,
-				"Cannot remap resource for device %s\n",
-				dev->name);
+			PCI_LOG(ERR, "Cannot remap resource for device %s", dev->name);
 			return -1;
 		}
-		RTE_LOG(INFO, EAL,
-			"Successful remap resource for device %s\n",
-			dev->name);
+		PCI_LOG(INFO, "Successful remap resource for device %s", dev->name);
 	}
 
 	return 0;

@@ -60,8 +60,7 @@ rte_pci_map_device(struct rte_pci_device *dev)
 		ret = pci_uio_map_resource(dev);
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL,
-			"  Not managed by a supported kernel driver, skipped\n");
+		PCI_LOG(DEBUG, "  Not managed by a supported kernel driver, skipped");
 		ret = 1;
 		break;
 	}
@@ -80,8 +79,7 @@ rte_pci_unmap_device(struct rte_pci_device *dev)
 		pci_uio_unmap_resource(dev);
 		break;
 	default:
-		RTE_LOG(DEBUG, EAL,
-			"  Not managed by a supported kernel driver, skipped\n");
+		PCI_LOG(DEBUG, "  Not managed by a supported kernel driver, skipped");
 		break;
 	}
 }
@@ -112,20 +110,19 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
 
 	if (access(devname, O_RDWR) < 0) {
-		RTE_LOG(WARNING, EAL, "  "PCI_PRI_FMT" not managed by UIO driver, "
-				"skipping\n", loc->domain, loc->bus, loc->devid, loc->function);
+		PCI_LOG(WARNING, "  "PCI_PRI_FMT" not managed by UIO driver, skipping",
+			loc->domain, loc->bus, loc->devid, loc->function);
 		return 1;
 	}
 
 	/* save fd if in primary process */
 	if (rte_intr_fd_set(dev->intr_handle, open(devname, O_RDWR))) {
-		RTE_LOG(WARNING, EAL, "Failed to save fd");
+		PCI_LOG(WARNING, "Failed to save fd");
 		goto error;
 	}
 
 	if (rte_intr_fd_get(dev->intr_handle) < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-			devname, strerror(errno));
+		PCI_LOG(ERR, "Cannot open %s: %s", devname, strerror(errno));
 		goto error;
 	}
 
@@ -135,8 +132,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	/* allocate the mapping details for secondary processes*/
 	*uio_res = rte_zmalloc("UIO_RES", sizeof(**uio_res), 0);
 	if (*uio_res == NULL) {
-		RTE_LOG(ERR, EAL,
-			"%s(): cannot store uio mmap details\n", __func__);
+		PCI_LOG(ERR, "%s(): cannot store uio mmap details", __func__);
 		goto error;
 	}
 
@@ -168,8 +164,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	/* allocate memory to keep path */
 	maps[map_idx].path = rte_malloc(NULL, strlen(devname) + 1, 0);
 	if (maps[map_idx].path == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for path: %s\n",
-				strerror(errno));
+		PCI_LOG(ERR, "Cannot allocate memory for path: %s", strerror(errno));
 		return -1;
 	}
 
@@ -178,8 +173,7 @@ pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 	 */
 	fd = open(devname, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
-				devname, strerror(errno));
+		PCI_LOG(ERR, "Cannot open %s: %s", devname, strerror(errno));
 		goto error;
 	}
 
@@ -215,7 +209,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 
 	pdev = malloc(sizeof(*pdev));
 	if (pdev == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for internal pci device\n");
+		PCI_LOG(ERR, "Cannot allocate memory for internal pci device");
 		return -1;
 	}
 
@@ -345,15 +339,15 @@ rte_pci_scan(void)
 
 	fd = open("/dev/pci", O_RDONLY);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
+		PCI_LOG(ERR, "%s(): error opening /dev/pci", __func__);
 		goto error;
 	}
 
 	do {
 		unsigned i;
 		if (ioctl(fd, PCIOCGETCONF, &conf_io) < 0) {
-			RTE_LOG(ERR, EAL, "%s(): error with ioctl on /dev/pci: %s\n",
-					__func__, strerror(errno));
+			PCI_LOG(ERR, "%s(): error with ioctl on /dev/pci: %s",
+				__func__, strerror(errno));
 			goto error;
 		}
 
@@ -375,7 +369,7 @@ rte_pci_scan(void)
 
 	close(fd);
 
-	RTE_LOG(DEBUG, EAL, "PCI scan found %u devices\n", dev_count);
+	PCI_LOG(DEBUG, "PCI scan found %u devices", dev_count);
 	return 0;
 
 error:
@@ -395,7 +389,7 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv __rte_unused,
 		     const struct rte_pci_device *pdev)
 {
 	if (pdev->kdrv != RTE_PCI_KDRV_NIC_UIO)
-		RTE_LOG(DEBUG, EAL, "Unsupported kernel driver? Defaulting to IOVA as 'PA'\n");
+		PCI_LOG(DEBUG, "Unsupported kernel driver? Defaulting to IOVA as 'PA'");
 
 	return RTE_IOVA_PA;
 }
@@ -420,7 +414,7 @@ int rte_pci_read_config(const struct rte_pci_device *dev,
 
 	fd = open("/dev/pci", O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
+		PCI_LOG(ERR, "%s(): error opening /dev/pci", __func__);
 		goto error;
 	}
 
@@ -465,7 +459,7 @@ int rte_pci_write_config(const struct rte_pci_device *dev,
 	};
 
 	if (len == 3 || len > sizeof(pi.pi_data)) {
-		RTE_LOG(ERR, EAL, "%s(): invalid pci read length\n", __func__);
+		PCI_LOG(ERR, "%s(): invalid pci read length", __func__);
 		goto error;
 	}
 
@@ -473,7 +467,7 @@ int rte_pci_write_config(const struct rte_pci_device *dev,
 
 	fd = open("/dev/pci", O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): error opening /dev/pci\n", __func__);
+		PCI_LOG(ERR, "%s(): error opening /dev/pci", __func__);
 		goto error;
 	}
 
@@ -521,7 +515,7 @@ rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
 #if defined(RTE_ARCH_X86)
 	case RTE_PCI_KDRV_NIC_UIO:
 		if (rte_eal_iopl_init() != 0) {
-			RTE_LOG(ERR, EAL, "%s(): insufficient ioport permissions for PCI device %s\n",
+			PCI_LOG(ERR, "%s(): insufficient ioport permissions for PCI device %s",
 				__func__, dev->name);
 			return -1;
 		}
