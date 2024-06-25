@@ -3966,6 +3966,7 @@ int
 ice_aq_set_link_restart_an(struct ice_port_info *pi, bool ena_link,
 			   struct ice_sq_cd *cd)
 {
+	int status = ICE_ERR_AQ_ERROR;
 	struct ice_aqc_restart_an *cmd;
 	struct ice_aq_desc desc;
 
@@ -3980,7 +3981,16 @@ ice_aq_set_link_restart_an(struct ice_port_info *pi, bool ena_link,
 	else
 		cmd->cmd_flags &= ~ICE_AQC_RESTART_AN_LINK_ENABLE;
 
-	return ice_aq_send_cmd(pi->hw, &desc, NULL, 0, cd);
+	status = ice_aq_send_cmd(pi->hw, &desc, NULL, 0, cd);
+	if (status)
+		return status;
+
+	if (ena_link)
+		pi->phy.curr_user_phy_cfg.caps |= ICE_AQC_PHY_EN_LINK;
+	else
+		pi->phy.curr_user_phy_cfg.caps &= ~ICE_AQC_PHY_EN_LINK;
+
+	return 0;
 }
 
 /**
