@@ -813,12 +813,30 @@ struct ice_aqc_sw_rules {
 	__le32 addr_low;
 };
 
+/* Add switch rule response:
+ * Content of return buffer is same as the input buffer. The status field and
+ * LUT index are updated as part of the response
+ */
+struct ice_aqc_sw_rules_elem_hdr {
+	__le16 type; /* Switch rule type, one of T_... */
+#define ICE_AQC_SW_RULES_T_LKUP_RX		0x0
+#define ICE_AQC_SW_RULES_T_LKUP_TX		0x1
+#define ICE_AQC_SW_RULES_T_LG_ACT		0x2
+#define ICE_AQC_SW_RULES_T_VSI_LIST_SET		0x3
+#define ICE_AQC_SW_RULES_T_VSI_LIST_CLEAR	0x4
+#define ICE_AQC_SW_RULES_T_PRUNE_LIST_SET	0x5
+#define ICE_AQC_SW_RULES_T_PRUNE_LIST_CLEAR	0x6
+	__le16 status;
+};
+
 /* Add/Update/Get/Remove lookup Rx/Tx command/response entry
  * This structures describes the lookup rules and associated actions. "index"
  * is returned as part of a response to a successful Add command, and can be
  * used to identify the rule for Update/Get/Remove commands.
  */
 struct ice_sw_rule_lkup_rx_tx {
+	struct ice_aqc_sw_rules_elem_hdr hdr;
+
 	__le16 recipe_id;
 #define ICE_SW_RECIPE_LOGICAL_PORT_FWD		10
 	/* Source port for LOOKUP_RX and source VSI in case of LOOKUP_TX */
@@ -895,14 +913,17 @@ struct ice_sw_rule_lkup_rx_tx {
 	 * lookup-type
 	 */
 	__le16 hdr_len;
-	u8 hdr[STRUCT_HACK_VAR_LEN];
+	u8 hdr_data[STRUCT_HACK_VAR_LEN];
 };
 
+#pragma pack(1)
 /* Add/Update/Remove large action command/response entry
  * "index" is returned as part of a response to a successful Add command, and
  * can be used to identify the action for Update/Get/Remove commands.
  */
 struct ice_sw_rule_lg_act {
+	struct ice_aqc_sw_rules_elem_hdr hdr;
+
 	__le16 index; /* Index in large action table */
 	__le16 size;
 	/* Max number of large actions */
@@ -957,16 +978,21 @@ struct ice_sw_rule_lg_act {
 #define ICE_LG_ACT_STAT_COUNT_M		(0x7F << ICE_LG_ACT_STAT_COUNT_S)
 	__le32 act[STRUCT_HACK_VAR_LEN]; /* array of size for actions */
 };
+#pragma pack()
 
+#pragma pack(1)
 /* Add/Update/Remove VSI list command/response entry
  * "index" is returned as part of a response to a successful Add command, and
  * can be used to identify the VSI list for Update/Get/Remove commands.
  */
 struct ice_sw_rule_vsi_list {
+	struct ice_aqc_sw_rules_elem_hdr hdr;
+
 	__le16 index; /* Index of VSI/Prune list */
 	__le16 number_vsi;
 	__le16 vsi[STRUCT_HACK_VAR_LEN]; /* Array of number_vsi VSI numbers */
 };
+#pragma pack()
 
 #pragma pack(1)
 /* Query VSI list command/response entry */
@@ -974,31 +1000,6 @@ struct ice_sw_rule_vsi_list_query {
 	__le16 index;
 	u8 vsi_list[DIVIDE_AND_ROUND_UP(ICE_MAX_VSI, BITS_PER_BYTE)];
 };
-#pragma pack()
-
-#pragma pack(1)
-/* Add switch rule response:
- * Content of return buffer is same as the input buffer. The status field and
- * LUT index are updated as part of the response
- */
-struct ice_aqc_sw_rules_elem {
-	__le16 type; /* Switch rule type, one of T_... */
-#define ICE_AQC_SW_RULES_T_LKUP_RX		0x0
-#define ICE_AQC_SW_RULES_T_LKUP_TX		0x1
-#define ICE_AQC_SW_RULES_T_LG_ACT		0x2
-#define ICE_AQC_SW_RULES_T_VSI_LIST_SET		0x3
-#define ICE_AQC_SW_RULES_T_VSI_LIST_CLEAR	0x4
-#define ICE_AQC_SW_RULES_T_PRUNE_LIST_SET	0x5
-#define ICE_AQC_SW_RULES_T_PRUNE_LIST_CLEAR	0x6
-	__le16 status;
-	union {
-		struct ice_sw_rule_lkup_rx_tx lkup_tx_rx;
-		struct ice_sw_rule_lg_act lg_act;
-		struct ice_sw_rule_vsi_list vsi_list;
-		struct ice_sw_rule_vsi_list_query vsi_list_query;
-	} pdata;
-};
-
 #pragma pack()
 
 /* PFC Ignore (direct 0x0301)
@@ -1012,8 +1013,8 @@ struct ice_aqc_pfc_ignore {
 	u8	reserved[14];
 };
 
-/* Set PFC Mode (direct 0x0303)
- * Query PFC Mode (direct 0x0302)
+/* Query PFC Mode (direct 0x0302)
+ * Set PFC Mode (direct 0x0303)
  */
 struct ice_aqc_set_query_pfc_mode {
 	u8	pfc_mode;
@@ -2808,7 +2809,7 @@ struct ice_aqc_move_txqs_data {
 };
 
 /* Download Package (indirect 0x0C40) */
-/* Also used for Update Package (indirect 0x0C42 and 0x0C41) */
+/* Also used for Update Package (indirect 0x0C41 and 0x0C42) */
 struct ice_aqc_download_pkg {
 	u8 flags;
 #define ICE_AQC_DOWNLOAD_PKG_LAST_BUF	0x01
