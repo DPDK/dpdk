@@ -3706,7 +3706,7 @@ ice_fdir_get_open_tunnel_port(struct ice_hw *hw, enum ice_fltr_ptype flow,
 			return ICE_ERR_DOES_NOT_EXIST;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4801,7 +4801,7 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 	if (input->flex_fltr)
 		ice_pkt_insert_u16(loc, input->flex_offset, input->flex_word);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**

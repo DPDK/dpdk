@@ -108,7 +108,7 @@ ice_alloc_ctrlq_sq_ring(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 		return ICE_ERR_NO_MEMORY;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -124,7 +124,7 @@ ice_alloc_ctrlq_rq_ring(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	cq->rq.desc_buf.va = ice_alloc_dma_mem(hw, &cq->rq.desc_buf, size);
 	if (!cq->rq.desc_buf.va)
 		return ICE_ERR_NO_MEMORY;
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -190,7 +190,7 @@ ice_alloc_rq_bufs(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 		desc->params.generic.param0 = 0;
 		desc->params.generic.param1 = 0;
 	}
-	return ICE_SUCCESS;
+	return 0;
 
 unwind_alloc_rq_bufs:
 	/* don't try to free the one that failed... */
@@ -230,7 +230,7 @@ ice_alloc_sq_bufs(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 		if (!bi->va)
 			goto unwind_alloc_sq_bufs;
 	}
-	return ICE_SUCCESS;
+	return 0;
 
 unwind_alloc_sq_bufs:
 	/* don't try to free the one that failed... */
@@ -260,7 +260,7 @@ ice_cfg_cq_regs(struct ice_hw *hw, struct ice_ctl_q_ring *ring, u16 num_entries)
 	if (rd32(hw, ring->bal) != ICE_LO_DWORD(ring->desc_buf.pa))
 		return ICE_ERR_AQ_ERROR;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -295,7 +295,7 @@ ice_cfg_rq_regs(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 	/* Update tail in the HW to post pre-allocated buffers */
 	wr32(hw, cq->rq.tail, (u32)(cq->num_rq_entries - 1));
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 #define ICE_FREE_CQ_BUFS(hw, qi, ring)					\
@@ -450,7 +450,7 @@ init_ctrlq_exit:
 static int
 ice_shutdown_sq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
-	int ret_code = ICE_SUCCESS;
+	int ret_code = 0;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
@@ -521,7 +521,7 @@ static bool ice_aq_ver_check(struct ice_hw *hw)
 static int
 ice_shutdown_rq(struct ice_hw *hw, struct ice_ctl_q_info *cq)
 {
-	int ret_code = ICE_SUCCESS;
+	int ret_code = 0;
 
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
@@ -571,7 +571,7 @@ static int ice_init_check_adminq(struct ice_hw *hw)
 		goto init_ctrlq_free_rq;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 
 init_ctrlq_free_rq:
 	ice_shutdown_rq(hw, cq);
@@ -638,7 +638,7 @@ static int ice_init_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type)
 		goto init_ctrlq_free_sq;
 
 	/* success! */
-	return ICE_SUCCESS;
+	return 0;
 
 init_ctrlq_free_sq:
 	ice_shutdown_sq(hw, cq);
@@ -949,9 +949,9 @@ ice_sq_send_cmd_nolock(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	struct ice_dma_mem *dma_buf = NULL;
 	struct ice_aq_desc *desc_on_ring;
 	bool cmd_completed = false;
-	int status = ICE_SUCCESS;
 	struct ice_sq_cd *details;
 	u32 total_delay = 0;
+	int status = 0;
 	u16 retval = 0;
 	u32 val = 0;
 
@@ -1125,7 +1125,7 @@ ice_sq_send_cmd(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 		struct ice_aq_desc *desc, void *buf, u16 buf_size,
 		struct ice_sq_cd *cd)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	/* if reset is in progress return a soft error */
 	if (hw->reset_ongoing)
@@ -1170,9 +1170,9 @@ ice_clean_rq_elem(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 {
 	u16 ntc = cq->rq.next_to_clean;
 	enum ice_aq_err rq_last_status;
-	int ret_code = ICE_SUCCESS;
 	struct ice_aq_desc *desc;
 	struct ice_dma_mem *bi;
+	int ret_code = 0;
 	u16 desc_idx;
 	u16 datalen;
 	u16 flags;

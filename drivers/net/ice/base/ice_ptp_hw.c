@@ -130,7 +130,7 @@ ice_read_cgu_reg_e822(struct ice_hw *hw, u16 addr, u32 *val)
 
 	*val = cgu_msg.data;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -161,7 +161,7 @@ ice_write_cgu_reg_e822(struct ice_hw *hw, u16 addr, u32 val)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -341,7 +341,7 @@ ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 		  ice_clk_freq_str(dw9.field.time_ref_freq_sel),
 		  bwm_lf.field.plllock_true_lock_cri ? "locked" : "unlocked");
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -378,7 +378,7 @@ static int ice_init_cgu_e822(struct ice_hw *hw)
 	if (status)
 		return status;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -540,7 +540,7 @@ ice_phy_port_reg_address_eth56g(u8 port, u16 offset, u32 *address)
 	*address = offset + eth56g_port_base[phy] +
 		   PHY_PTP_LANE_ADDR_STEP * lane;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -563,7 +563,7 @@ ice_phy_port_mem_address_eth56g(u8 port, u16 offset, u32 *address)
 	*address = offset + eth56g_port_base[phy] +
 		   PHY_PTP_MEM_START + PHY_PTP_MEM_LANE_STEP * lane;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -789,7 +789,7 @@ ice_read_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 
 	*val = ((u64)hi << P_REG_40B_HIGH_S) | (lo & P_REG_40B_LOW_M);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -830,7 +830,7 @@ ice_read_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 
 	*val = ((u64)hi << 32) | lo;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -872,7 +872,7 @@ ice_write_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -913,7 +913,7 @@ ice_write_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -956,7 +956,7 @@ ice_read_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx, u64 *tstamp)
 	 */
 	*tstamp = ((u64)hi) << TS_PHY_HIGH_S | ((u64)lo & TS_PHY_LOW_M);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -983,7 +983,7 @@ ice_clear_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1047,7 +1047,7 @@ ice_ptp_prep_phy_time_eth56g(struct ice_hw *hw, u32 time)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1103,7 +1103,7 @@ ice_ptp_prep_port_adj_eth56g(struct ice_hw *hw, u8 port, s64 time,
 	if (status)
 		goto exit_err;
 
-	return ICE_SUCCESS;
+	return 0;
 
 exit_err:
 	ice_debug(hw, ICE_DBG_PTP, "Failed to write time adjust for port %u, status %d\n",
@@ -1125,7 +1125,7 @@ exit_err:
 static int
 ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 	s64 cycles;
 	u8 port;
 
@@ -1176,7 +1176,7 @@ ice_ptp_prep_phy_incval_eth56g(struct ice_hw *hw, u64 incval)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1203,7 +1203,7 @@ ice_ptp_read_phy_incval_eth56g(struct ice_hw *hw, u8 port, u64 *incval)
 	ice_debug(hw, ICE_DBG_PTP, "read INCVAL = 0x%016llx\n",
 		  (unsigned long long)*incval);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1258,7 +1258,7 @@ ice_ptp_prep_phy_adj_target_eth56g(struct ice_hw *hw, u32 target_time)
 			goto exit_err;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 
 exit_err:
 	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, status %d\n",
@@ -1306,7 +1306,7 @@ ice_ptp_read_port_capture_eth56g(struct ice_hw *hw, u8 port, u64 *tx_ts,
 	ice_debug(hw, ICE_DBG_PTP, "rx_init = %#016llx\n",
 		  (unsigned long long)*rx_ts);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1393,7 +1393,7 @@ ice_ptp_one_port_cmd_eth56g(struct ice_hw *hw, u8 port,
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1421,7 +1421,7 @@ ice_ptp_port_cmd_eth56g(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 			return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1581,7 +1581,7 @@ ice_read_phy_and_phc_time_eth56g(struct ice_hw *hw, u8 port, u64 *phy_time,
 
 	*phy_time = tx_time;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1678,7 +1678,7 @@ ice_stop_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool soft_reset)
 
 	ice_debug(hw, ICE_DBG_PTP, "Disabled clock on PHY port %u\n", port);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1740,7 +1740,7 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
 
 	ice_debug(hw, ICE_DBG_PTP, "Enabled clock on PHY port %u\n", port);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1751,7 +1751,7 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
  */
 static int ice_ptp_init_phc_eth56g(struct ice_hw *hw)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u32 regval;
 
 	/* Enable reading switch and PHY registers over the sideband queue */
@@ -1786,7 +1786,7 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status)
 
 	ice_debug(hw, ICE_DBG_PTP, "PHY interrupt status: %x\n", *ts_status);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1807,7 +1807,7 @@ ice_ptp_init_phy_cfg(struct ice_hw *hw)
 
 	if (phy_rev == PHY_REVISION_ETH56G) {
 		hw->phy_cfg = ICE_PHY_ETH56G;
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	if (ice_is_e810(hw))
@@ -1815,7 +1815,7 @@ ice_ptp_init_phy_cfg(struct ice_hw *hw)
 	else
 		hw->phy_cfg = ICE_PHY_E822;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* ----------------------------------------------------------------------------
@@ -1982,7 +1982,7 @@ ice_read_phy_reg_e822_lp(struct ice_hw *hw, u8 port, u16 offset, u32 *val,
 
 	*val = msg.data;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 int
@@ -2035,7 +2035,7 @@ ice_read_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 
 	*val = (u64)high << P_REG_40B_HIGH_S | (low & P_REG_40B_LOW_M);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2082,7 +2082,7 @@ ice_read_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 
 	*val = (u64)high << 32 | low;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2113,7 +2113,7 @@ ice_write_phy_reg_e822_lp(struct ice_hw *hw, u8 port, u16 offset, u32 val,
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 int
@@ -2165,7 +2165,7 @@ ice_write_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2213,7 +2213,7 @@ ice_write_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2243,7 +2243,7 @@ ice_fill_quad_msg_e822(struct ice_sbq_msg_input *msg, u8 quad, u16 offset)
 	msg->msg_addr_low = ICE_LO_WORD(addr);
 	msg->msg_addr_high = ICE_HI_WORD(addr);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2278,7 +2278,7 @@ exit_err:
 	else
 		*val = msg.data;
 
-	return status;
+	return ICE_SUCCESS;
 }
 
 int
@@ -2318,7 +2318,7 @@ exit_err:
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
 			  status);
 
-	return status;
+	return ICE_SUCCESS;
 }
 
 int
@@ -2368,7 +2368,7 @@ ice_read_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx, u64 *tstamp)
 	 */
 	*tstamp = ((u64)hi) << TS_PHY_HIGH_S | ((u64)lo & TS_PHY_LOW_M);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2403,7 +2403,7 @@ ice_clear_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2428,7 +2428,7 @@ int ice_ptp_set_vernier_wl(struct ice_hw *hw)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2498,7 +2498,7 @@ ice_ptp_prep_phy_time_e822(struct ice_hw *hw, u32 time)
 			goto exit_err;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 
 exit_err:
 	ice_debug(hw, ICE_DBG_PTP, "Failed to write init time for port %u, status %d\n",
@@ -2556,7 +2556,7 @@ ice_ptp_prep_port_adj_e822(struct ice_hw *hw, u8 port, s64 time,
 	if (status)
 		goto exit_err;
 
-	return ICE_SUCCESS;
+	return 0;
 
 exit_err:
 	ice_debug(hw, ICE_DBG_PTP, "Failed to write time adjust for port %u, status %d\n",
@@ -2599,7 +2599,7 @@ ice_ptp_prep_phy_adj_e822(struct ice_hw *hw, s32 adj, bool lock_sbq)
 			return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2624,7 +2624,7 @@ ice_ptp_prep_phy_incval_e822(struct ice_hw *hw, u64 incval)
 			goto exit_err;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 
 exit_err:
 	ice_debug(hw, ICE_DBG_PTP, "Failed to write incval for port %u, status %d\n",
@@ -2656,7 +2656,7 @@ ice_ptp_read_phy_incval_e822(struct ice_hw *hw, u8 port, u64 *incval)
 	ice_debug(hw, ICE_DBG_PTP, "read INCVAL = 0x%016llx\n",
 		  (unsigned long long)*incval);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2709,7 +2709,7 @@ ice_ptp_prep_phy_adj_target_e822(struct ice_hw *hw, u32 target_time)
 			goto exit_err;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 
 exit_err:
 	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, status %d\n",
@@ -2757,7 +2757,7 @@ ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port, u64 *tx_ts,
 	ice_debug(hw, ICE_DBG_PTP, "rx_init = 0x%016llx\n",
 		  (unsigned long long)*rx_ts);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2847,7 +2847,7 @@ ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -2873,7 +2873,7 @@ ice_ptp_port_cmd_e822(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 			return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* E822 Vernier calibration functions
@@ -2956,7 +2956,7 @@ ice_phy_get_speed_and_fec_e822(struct ice_hw *hw, u8 port,
 	if (fec_out)
 		*fec_out = fec;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3082,7 +3082,7 @@ static int ice_phy_cfg_uix_e822(struct ice_hw *hw, u8 port)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3355,7 +3355,7 @@ int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port)
 	if (status)
 		return status;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3396,7 +3396,7 @@ ice_phy_cfg_fixed_tx_offset_e822(struct ice_hw *hw, u8 port)
 	if (status)
 		return status;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3493,7 +3493,7 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 	/* In some cases, there's no need to adjust for the PMD alignment */
 	if (!mult) {
 		*pmd_adj = 0;
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	/* Calculate the adjustment by multiplying TUs per second by the
@@ -3557,7 +3557,7 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 	/* Return the calculated adjustment */
 	*pmd_adj = adj;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3676,7 +3676,7 @@ int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port)
 	if (status)
 		return status;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3717,7 +3717,7 @@ ice_phy_cfg_fixed_rx_offset_e822(struct ice_hw *hw, u8 port)
 	if (status)
 		return status;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3774,7 +3774,7 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 
 	*phy_time = tx_time;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3841,7 +3841,7 @@ static int ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 
 	ice_ptp_unlock(hw);
 
-	return ICE_SUCCESS;
+	return 0;
 
 err_unlock:
 	ice_ptp_unlock(hw);
@@ -3895,7 +3895,7 @@ ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset)
 
 	ice_debug(hw, ICE_DBG_PTP, "Disabled clock on PHY port %u\n", port);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4017,7 +4017,7 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 
 	ice_debug(hw, ICE_DBG_PTP, "Enabled clock on PHY port %u\n", port);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4101,7 +4101,7 @@ int ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port)
 
 	ice_info(hw, "Exiting bypass mode on PHY port %u\n", port);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* E810 functions
@@ -4139,7 +4139,7 @@ ice_read_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 *val, bool lock_sbq)
 
 	*val = msg.data;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 static int ice_read_phy_reg_e810(struct ice_hw *hw, u32 addr, u32 *val)
@@ -4175,7 +4175,7 @@ ice_write_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 val, bool lock_sbq)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 static int ice_write_phy_reg_e810(struct ice_hw *hw, u32 addr, u32 val)
@@ -4213,7 +4213,7 @@ ice_read_phy_tstamp_ll_e810(struct ice_hw *hw, u8 idx, u8 *hi, u32 *lo)
 
 			/* Read the low 32 bit value and set the TS valid bit */
 			*lo = rd32(hw, PF_SB_ATQBAH) | TS_VALID;
-			return ICE_SUCCESS;
+			return 0;
 		}
 
 		ice_usec_delay(10, false);
@@ -4261,7 +4261,7 @@ ice_read_phy_tstamp_sbq_e810(struct ice_hw *hw, u8 lport, u8 idx, u8 *hi,
 	*lo = lo_val;
 	*hi = (u8)hi_val;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4294,7 +4294,7 @@ ice_read_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx, u64 *tstamp)
 	 */
 	*tstamp = ((u64)hi) << TS_HIGH_S | ((u64)lo & TS_LOW_M);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4329,7 +4329,7 @@ ice_clear_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4403,7 +4403,7 @@ static int ice_ptp_prep_phy_time_e810(struct ice_hw *hw, u32 time)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4447,7 +4447,7 @@ ice_ptp_prep_phy_adj_e810(struct ice_hw *hw, s32 adj, bool lock_sbq)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4484,7 +4484,7 @@ ice_ptp_prep_phy_incval_e810(struct ice_hw *hw, u64 incval)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4523,7 +4523,7 @@ ice_ptp_prep_phy_adj_target_e810(struct ice_hw *hw, u32 target_time)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4582,7 +4582,7 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* E810T SMA functions
@@ -4614,7 +4614,7 @@ ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 	/* If handle was read previously return cached value */
 	if (hw->io_expander_handle) {
 		*pca9575_handle = hw->io_expander_handle;
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	memset(&cmd, 0, sizeof(cmd));
@@ -4650,7 +4650,7 @@ ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 	hw->io_expander_handle = node_handle;
 	*pca9575_handle = hw->io_expander_handle;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4913,7 +4913,7 @@ static int ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	ice_ptp_exec_tmr_cmd(hw);
 	ice_ptp_clean_cmd(hw);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**

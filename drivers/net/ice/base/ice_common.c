@@ -183,7 +183,7 @@ static int ice_set_mac_type(struct ice_hw *hw)
 	}
 
 	ice_debug(hw, ICE_DBG_INIT, "mac_type: %d\n", hw->mac_type);
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -342,7 +342,7 @@ ice_aq_manage_mac_read(struct ice_hw *hw, void *buf, u16 buf_size,
 				   ETH_ALEN, ICE_DMA_TO_NONDMA);
 			break;
 		}
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -423,7 +423,7 @@ ice_aq_get_phy_caps(struct ice_port_info *pi, bool qual_mods, u8 report_mode,
 	ice_debug(hw, ICE_DBG_LINK, "%s: module_type[2] = 0x%x\n", prefix,
 		  pcaps->module_type[2]);
 
-	if (status == ICE_SUCCESS && report_mode == ICE_AQC_REPORT_TOPO_CAP_MEDIA) {
+	if (!status && report_mode == ICE_AQC_REPORT_TOPO_CAP_MEDIA) {
 		pi->phy.phy_type_low = LE64_TO_CPU(pcaps->phy_type_low);
 		pi->phy.phy_type_high = LE64_TO_CPU(pcaps->phy_type_high);
 		ice_memcpy(pi->phy.link_info.module_type, &pcaps->module_type,
@@ -457,7 +457,7 @@ ice_aq_get_netlist_node_pin(struct ice_hw *hw,
 		*node_handle =
 			LE16_TO_CPU(desc.params.get_link_topo_pin.addr.handle);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -485,7 +485,7 @@ ice_aq_get_netlist_node(struct ice_hw *hw, struct ice_aqc_get_link_topo *cmd,
 	if (node_part_number)
 		*node_part_number = desc.params.get_link_topo.node_part_num;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 #define MAX_NETLIST_SIZE 10
@@ -497,7 +497,7 @@ ice_aq_get_netlist_node(struct ice_hw *hw, struct ice_aqc_get_link_topo *cmd,
  * @node_handle: output parameter if node found - optional
  *
  * Find and return the node handle for a given node type and part number in the
- * netlist. When found ICE_SUCCESS is returned, ICE_ERR_DOES_NOT_EXIST
+ * netlist. When found 0 is returned, ICE_ERR_DOES_NOT_EXIST
  * otherwise. If node_handle provided, it would be set to found node handle.
  */
 int
@@ -527,7 +527,7 @@ ice_find_netlist_node(struct ice_hw *hw, u8 node_type_ctx, u8 node_part_number,
 		if (rec_node_part_number == node_part_number) {
 			if (node_handle)
 				*node_handle = rec_node_handle;
-			return ICE_SUCCESS;
+			return 0;
 		}
 	}
 
@@ -724,7 +724,7 @@ ice_aq_get_link_info(struct ice_port_info *pi, bool ena_lse,
 
 	status = ice_aq_send_cmd(hw, &desc, &link_data, sizeof(link_data), cd);
 
-	if (status != ICE_SUCCESS)
+	if (status)
 		return status;
 
 	/* save off old link status information */
@@ -783,7 +783,7 @@ ice_aq_get_link_info(struct ice_port_info *pi, bool ena_lse,
 	/* flag cleared so calling functions don't call AQ again */
 	pi->phy.get_link_info = false;
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -880,7 +880,7 @@ int ice_init_fltr_mgmt_struct(struct ice_hw *hw)
 		ice_free(hw, hw->switch_info);
 		return status;
 	}
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1163,7 +1163,7 @@ int ice_init_hw(struct ice_hw *hw)
 		goto err_unroll_fltr_mgmt_struct;
 	ice_init_lock(&hw->tnl_lock);
 
-	return ICE_SUCCESS;
+	return 0;
 
 err_unroll_fltr_mgmt_struct:
 	ice_cleanup_fltr_mgmt_struct(hw);
@@ -1260,7 +1260,7 @@ int ice_check_reset(struct ice_hw *hw)
 		return ICE_ERR_RESET_FAILED;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1285,7 +1285,7 @@ static int ice_pf_reset(struct ice_hw *hw)
 		if (ice_check_reset(hw))
 			return ICE_ERR_RESET_FAILED;
 
-		return ICE_SUCCESS;
+		return 0;
 	}
 
 	/* Reset the PF */
@@ -1311,7 +1311,7 @@ static int ice_pf_reset(struct ice_hw *hw)
 		return ICE_ERR_RESET_FAILED;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1381,7 +1381,7 @@ ice_copy_rxq_ctx_to_hw(struct ice_hw *hw, u8 *ice_rxq_ctx, u32 rxq_index)
 			  *((u32 *)(ice_rxq_ctx + (i * sizeof(u32)))));
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1412,7 +1412,7 @@ ice_copy_rxq_ctx_from_hw(struct ice_hw *hw, u8 *ice_rxq_ctx, u32 rxq_index)
 		ice_debug(hw, ICE_DBG_QCTX, "qrxdata[%d]: %08X\n", i, *ctx);
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* LAN Rx Queue Context */
@@ -1510,7 +1510,7 @@ int ice_clear_rxq_ctx(struct ice_hw *hw, u32 rxq_index)
 	for (i = 0; i < ICE_RXQ_CTX_SIZE_DWORDS; i++)
 		wr32(hw, QRX_CONTEXT(i, rxq_index), 0);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* LAN Tx Queue Context used for set Tx config by ice_aqc_opc_add_txqs,
@@ -1579,7 +1579,7 @@ ice_copy_tx_cmpltnq_ctx_to_hw(struct ice_hw *hw, u8 *ice_tx_cmpltnq_ctx,
 			  *((u32 *)(ice_tx_cmpltnq_ctx + (i * sizeof(u32)))));
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* LAN Tx Completion Queue Context */
@@ -1637,7 +1637,7 @@ ice_clear_tx_cmpltnq_ctx(struct ice_hw *hw, u32 tx_cmpltnq_index)
 	for (i = 0; i < ICE_TX_CMPLTNQ_CTX_SIZE_DWORDS; i++)
 		wr32(hw, GLTCLAN_CQ_CNTX(i, tx_cmpltnq_index), 0);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -1669,7 +1669,7 @@ ice_copy_tx_drbell_q_ctx_to_hw(struct ice_hw *hw, u8 *ice_tx_drbell_q_ctx,
 			  *((u32 *)(ice_tx_drbell_q_ctx + (i * sizeof(u32)))));
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* LAN Tx Doorbell Queue Context info */
@@ -1729,7 +1729,7 @@ ice_clear_tx_drbell_q_ctx(struct ice_hw *hw, u32 tx_drbell_q_index)
 	for (i = 0; i < ICE_TX_DRBELL_Q_CTX_SIZE_DWORDS; i++)
 		wr32(hw, QTX_COMM_DBLQ_CNTX(i, tx_drbell_q_index), 0);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /* Sideband Queue command wrappers */
@@ -1917,7 +1917,7 @@ ice_sq_send_cmd_retry(struct ice_hw *hw, struct ice_ctl_q_info *cq,
 	do {
 		status = ice_sq_send_cmd(hw, cq, desc, buf, buf_size, cd);
 
-		if (!is_cmd_for_retry || status == ICE_SUCCESS ||
+		if (!is_cmd_for_retry || !status ||
 		    hw->adminq.sq_last_status != ICE_AQ_RC_EBUSY)
 			break;
 
@@ -1964,7 +1964,7 @@ ice_aq_send_cmd(struct ice_hw *hw, struct ice_aq_desc *desc, void *buf,
 			if (retval)
 				retval &= 0xff;
 			if (retval == ICE_AQ_RC_OK)
-				status = ICE_SUCCESS;
+				status = 0;
 			else
 				status = ICE_ERR_AQ_ERROR;
 		}
@@ -2083,7 +2083,7 @@ int ice_aq_q_shutdown(struct ice_hw *hw, bool unloading)
  * Requests common resource using the admin queue commands (0x0008).
  * When attempting to acquire the Global Config Lock, the driver can
  * learn of three states:
- *  1) ICE_SUCCESS -        acquired lock, and can perform download package
+ *  1) 0 - acquired lock, and can perform download package
  *  2) ICE_ERR_AQ_ERROR -   did not get lock, driver should fail to load
  *  3) ICE_ERR_AQ_NO_WORK - did not get lock, but another driver has
  *                          successfully downloaded the package; the driver does
@@ -2134,7 +2134,7 @@ ice_aq_req_res(struct ice_hw *hw, enum ice_aq_res_ids res,
 	if (res == ICE_GLOBAL_CFG_LOCK_RES_ID) {
 		if (LE16_TO_CPU(cmd_resp->status) == ICE_AQ_RES_GLBL_SUCCESS) {
 			*timeout = LE32_TO_CPU(cmd_resp->timeout);
-			return ICE_SUCCESS;
+			return 0;
 		} else if (LE16_TO_CPU(cmd_resp->status) ==
 			   ICE_AQ_RES_GLBL_IN_PROG) {
 			*timeout = LE32_TO_CPU(cmd_resp->timeout);
@@ -3478,7 +3478,7 @@ ice_aq_set_phy_cfg(struct ice_hw *hw, struct ice_port_info *pi,
 	status = ice_aq_send_cmd(hw, &desc, cfg, sizeof(*cfg), cd);
 
 	if (hw->adminq.sq_last_status == ICE_AQ_RC_EMODE)
-		status = ICE_SUCCESS;
+		status = 0;
 
 	if (!status)
 		pi->phy.curr_user_phy_cfg = *cfg;
@@ -3517,7 +3517,7 @@ int ice_update_link_info(struct ice_port_info *pi)
 		status = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
 					     pcaps, NULL);
 
-		if (status == ICE_SUCCESS)
+		if (!status)
 			ice_memcpy(li->module_type, &pcaps->module_type,
 				   sizeof(li->module_type),
 				   ICE_NONDMA_TO_NONDMA);
@@ -3679,7 +3679,7 @@ ice_cfg_phy_fc(struct ice_port_info *pi, struct ice_aqc_set_phy_cfg_data *cfg,
 	cache_data.data.curr_user_fc_req = req_mode;
 	ice_cache_phy_user_req(pi, cache_data, ICE_FC_MODE);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -3751,7 +3751,7 @@ ice_set_fc(struct ice_port_info *pi, u8 *aq_failures, bool ena_auto_link_update)
 		for (retry_count = 0; retry_count < retry_max; retry_count++) {
 			status = ice_update_link_info(pi);
 
-			if (status == ICE_SUCCESS)
+			if (!status)
 				break;
 
 			ice_msec_delay(100, true);
@@ -3934,7 +3934,7 @@ out:
 int ice_get_link_status(struct ice_port_info *pi, bool *link_up)
 {
 	struct ice_phy_info *phy_info;
-	int status = ICE_SUCCESS;
+	int status = 0;
 
 	if (!pi || !link_up)
 		return ICE_ERR_PARAM;
@@ -4173,7 +4173,7 @@ ice_aq_read_topo_dev_nvm(struct ice_hw *hw,
 
 	ice_memcpy(data, cmd->data_read, data_size, ICE_NONDMA_TO_NONDMA);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -4825,7 +4825,7 @@ ice_set_ctx(struct ice_hw *hw, u8 *src_ctx, u8 *dest_ctx,
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -5090,7 +5090,7 @@ ice_get_ctx(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -5198,7 +5198,7 @@ ice_ena_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u16 q_handle,
 
 	/* add the LAN queue */
 	status = ice_aq_add_lan_txq(hw, num_qgrps, buf, buf_size, cd);
-	if (status != ICE_SUCCESS) {
+	if (status != 0) {
 		ice_debug(hw, ICE_DBG_SCHED, "enable queue %d failed %d\n",
 			  LE16_TO_CPU(buf->txqs[0].txq_id),
 			  hw->adminq.sq_last_status);
@@ -5293,7 +5293,7 @@ ice_dis_vsi_txq(struct ice_port_info *pi, u16 vsi_handle, u8 tc, u8 num_queues,
 		status = ice_aq_dis_lan_txq(hw, 1, qg_list, buf_size, rst_src,
 					    vmvf_num, cd);
 
-		if (status != ICE_SUCCESS)
+		if (status)
 			break;
 		ice_free_sched_node(pi, node);
 		q_ctx->q_handle = ICE_INVAL_Q_HANDLE;
@@ -5317,7 +5317,7 @@ static int
 ice_cfg_vsi_qs(struct ice_port_info *pi, u16 vsi_handle, u16 tc_bitmap,
 	       u16 *maxqs, u8 owner)
 {
-	int status = ICE_SUCCESS;
+	int status = 0;
 	u8 i;
 
 	if (!pi || pi->port_state != ICE_SCHED_PORT_STATE_READY)
@@ -5634,7 +5634,7 @@ ice_sched_query_elem(struct ice_hw *hw, u32 node_teid,
 	buf->node_teid = CPU_TO_LE32(node_teid);
 	status = ice_aq_query_sched_elems(hw, 1, buf, buf_size, &num_elem_ret,
 					  NULL);
-	if (status != ICE_SUCCESS || num_elem_ret != 1)
+	if (status || num_elem_ret != 1)
 		ice_debug(hw, ICE_DBG_SCHED, "query element failed\n");
 	return status;
 }
@@ -5829,7 +5829,7 @@ ice_aq_get_driver_param(struct ice_hw *hw, enum ice_aqc_driver_params idx,
 
 	*value = LE32_TO_CPU(cmd->param_val);
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -5887,7 +5887,7 @@ ice_aq_get_gpio(struct ice_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
 		return status;
 
 	*value = !!cmd->gpio_val;
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**

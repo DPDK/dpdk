@@ -270,7 +270,7 @@ int ice_parser_create(struct ice_hw *hw, struct ice_parser **psr)
 	}
 
 	*psr = p;
-	return ICE_SUCCESS;
+	return 0;
 err:
 	ice_parser_destroy(p);
 	return status;
@@ -389,7 +389,7 @@ _tunnel_port_set(struct ice_parser *psr, const char *prefix, u16 udp_port,
 			item->key[15] = (u8)(0xff - buf[0]);
 			item->key[16] = (u8)(0xff - buf[1]);
 
-			return ICE_SUCCESS;
+			return 0;
 		/* found a matched slot to delete */
 		} else if (!on && (item->key_inv[15] == buf[0] ||
 			   item->key_inv[16] == buf[1])) {
@@ -398,7 +398,7 @@ _tunnel_port_set(struct ice_parser *psr, const char *prefix, u16 udp_port,
 			item->key[15] = 0xff;
 			item->key[16] = 0xfe;
 
-			return ICE_SUCCESS;
+			return 0;
 		}
 		i++;
 	}
@@ -528,7 +528,7 @@ int ice_parser_profile_init(struct ice_parser_result *rslt,
 		prof->fv_num++;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**

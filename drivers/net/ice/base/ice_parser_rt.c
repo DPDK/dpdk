@@ -773,12 +773,12 @@ static void _result_resolve(struct ice_parser_rt *rt,
 int ice_parser_rt_execute(struct ice_parser_rt *rt,
 				      struct ice_parser_result *rslt)
 {
-	int status = ICE_SUCCESS;
 	struct ice_pg_nm_cam_item *pg_nm_cam;
 	struct ice_parser *psr = rt->psr;
 	struct ice_pg_cam_item *pg_cam;
 	struct ice_bst_tcam_item *bst;
 	struct ice_imem_item *imem;
+	int status = 0;
 	u16 node;
 	u16 pc;
 

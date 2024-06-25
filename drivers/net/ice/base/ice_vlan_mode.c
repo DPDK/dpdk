@@ -262,7 +262,7 @@ static int ice_dvm_update_dflt_recipes(struct ice_hw *hw)
 		}
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -345,7 +345,7 @@ static int ice_set_dvm(struct ice_hw *hw)
 		return status;
 	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 /**
@@ -391,13 +391,13 @@ int ice_set_vlan_mode(struct ice_hw *hw)
 	 * mode is done by the PF.
 	 */
 	if (hw->dcf_enabled)
-		return ICE_SUCCESS;
+		return 0;
 
 	if (!ice_is_dvm_supported(hw))
-		return ICE_SUCCESS;
+		return 0;
 
 	if (!ice_set_dvm(hw))
-		return ICE_SUCCESS;
+		return 0;
 
 	return ice_set_svm(hw);
 }
