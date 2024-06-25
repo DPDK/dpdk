@@ -1069,11 +1069,11 @@ ice_sched_add_nodes_to_layer(struct ice_port_info *pi,
 	u32 *first_teid_ptr = first_node_teid;
 	u16 new_num_nodes = num_nodes;
 	int status = 0;
+	u32 temp;
 
 	*num_nodes_added = 0;
 	while (*num_nodes_added < num_nodes) {
 		u16 max_child_nodes, num_added = 0;
-		u32 temp;
 
 		status = ice_sched_add_nodes_to_hw_layer(pi, tc_node, parent,
 							 layer,	new_num_nodes,
