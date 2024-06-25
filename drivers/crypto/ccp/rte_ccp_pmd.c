@@ -320,3 +320,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_CCP_PMD,
 	"ccp_auth_opt=<int>");
 RTE_PMD_REGISTER_CRYPTO_DRIVER(ccp_crypto_drv, cryptodev_ccp_pmd_drv.driver,
 			       ccp_cryptodev_driver_id);
+RTE_LOG_REGISTER_DEFAULT(crypto_ccp_logtype, NOTICE);

@@ -8,23 +8,18 @@
 #include <rte_cryptodev.h>
 #include "ccp_crypto.h"
 
-#define CRYPTODEV_NAME_CCP_PMD crypto_ccp
+extern int crypto_ccp_logtype;
+#define RTE_LOGTYPE_CRYPTO_CCP crypto_ccp_logtype
 
 #define CCP_LOG_ERR(fmt, args...) \
-	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD), \
-			__func__, __LINE__, ## args)
+	RTE_LOG_LINE(ERR, CRYPTO_CCP, "%s() line %u: " fmt, __func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_CCP_DEBUG
 #define CCP_LOG_INFO(fmt, args...) \
-	RTE_LOG(INFO, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD), \
-			__func__, __LINE__, ## args)
+	RTE_LOG_LINE(INFO, CRYPTO_CCP, "%s() line %u: " fmt, __func__, __LINE__, ## args)
 
 #define CCP_LOG_DBG(fmt, args...) \
-	RTE_LOG(DEBUG, CRYPTODEV, "[%s] %s() line %u: " fmt "\n", \
-			RTE_STR(CRYPTODEV_NAME_CCP_PMD), \
-			__func__, __LINE__, ## args)
+	RTE_LOG_LINE(DEBUG, CRYPTO_CCP, "%s() line %u: " fmt, __func__, __LINE__, ## args)
 #else
 #define CCP_LOG_INFO(fmt, args...)
 #define CCP_LOG_DBG(fmt, args...)
