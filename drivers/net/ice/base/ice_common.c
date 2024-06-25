@@ -2495,6 +2495,11 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 			true : false;
 		ice_debug(hw, ICE_DBG_INIT, "%s: nvm_unified_update = %d\n", prefix,
 			  caps->nvm_unified_update);
+		caps->netlist_auth =
+			(number & ICE_NVM_MGMT_NETLIST_AUTH_SUPPORT) ?
+			true : false;
+		ice_debug(hw, ICE_DBG_INIT, "%s: netlist_auth = %d\n", prefix,
+			  caps->netlist_auth);
 		break;
 	case ICE_AQC_CAPS_MAX_MTU:
 		caps->max_mtu = number;
