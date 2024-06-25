@@ -44,7 +44,7 @@ libbpf_include_dir = libbpf.get_variable(pkgconfig : 'includedir')
 # The include files <linux/bpf.h> and others include <asm/types.h>
 # but <asm/types.h> is not defined for multi-lib environment target.
 # Workaround by using include directoriy from the host build environment.
-machine_name = run_command('uname', '-m').stdout().strip()
+machine_name = run_command('uname', '-m', check: true).stdout().strip()
 march_include_dir = '/usr/include/' + machine_name + '-linux-gnu'
 
 clang_flags = [
