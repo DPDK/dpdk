@@ -719,6 +719,8 @@ struct ice_hw_common_caps {
 	bool ext_topo_dev_img_ver_schema[ICE_EXT_TOPO_DEV_IMG_COUNT];
 #define ICE_EXT_TOPO_DEV_IMG_VER_SCHEMA	BIT(2)
 	bool tx_sched_topo_comp_mode_en;
+	/* Support for OROM update in Recovery Mode */
+	bool orom_recovery_update;
 };
 
 /* IEEE 1588 TIME_SYNC specific info */

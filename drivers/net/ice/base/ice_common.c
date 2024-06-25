@@ -2502,6 +2502,11 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 	case ICE_AQC_CAPS_TX_SCHED_TOPO_COMP_MODE:
 		caps->tx_sched_topo_comp_mode_en = (number == 1);
 		break;
+	case ICE_AQC_CAPS_OROM_RECOVERY_UPDATE:
+		caps->orom_recovery_update = (number == 1);
+		ice_debug(hw, ICE_DBG_INIT, "%s: orom_recovery_update = %d\n",
+			  prefix, caps->orom_recovery_update);
+		break;
 	default:
 		/* Not one of the recognized common capabilities */
 		found = false;
