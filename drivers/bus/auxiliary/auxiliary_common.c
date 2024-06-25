@@ -106,10 +106,10 @@ rte_auxiliary_probe_one_driver(struct rte_auxiliary_driver *drv,
 	}
 
 	if (dev->device.numa_node < 0 && rte_socket_count() > 1)
-		RTE_LOG(INFO, EAL, "Device %s is not NUMA-aware\n", dev->name);
+		AUXILIARY_LOG(INFO, "Device %s is not NUMA-aware", dev->name);
 
 	if (rte_dev_is_probed(&dev->device)) {
-		RTE_LOG(DEBUG, EAL, "Device %s is already probed on auxiliary bus\n",
+		AUXILIARY_LOG(DEBUG, "Device %s is already probed on auxiliary bus",
 			dev->device.name);
 		return -EEXIST;
 	}

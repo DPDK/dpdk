@@ -116,7 +116,7 @@ open_socket_ctrl_channel(void)
 
 	sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sock_fd < 0) {
-		RTE_LOG(ERR, EAL, "failed to create unix socket\n");
+		plt_err("Failed to create unix socket");
 		return -1;
 	}
 

@@ -1058,7 +1058,7 @@ err_secondary:
 		priv->intr_handle =
 			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_SHARED);
 		if (priv->intr_handle == NULL) {
-			RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+			ERROR("can not allocate intr_handle");
 			goto port_error;
 		}
 

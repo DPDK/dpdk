@@ -464,7 +464,7 @@ fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	 * isn't managed by VFIO
 	 */
 	if (vfio_group_fd == -ENOENT) {
-		RTE_LOG(WARNING, EAL, " %s not managed by VFIO driver, skipping\n",
+		DPAA2_BUS_WARN(" %s not managed by VFIO driver, skipping",
 				dev_addr);
 		return 1;
 	}

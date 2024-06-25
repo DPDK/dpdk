@@ -499,7 +499,7 @@ rte_dpaa_bus_scan(void)
 
 	if ((access(DPAA_DEV_PATH1, F_OK) != 0) &&
 	    (access(DPAA_DEV_PATH2, F_OK) != 0)) {
-		RTE_LOG(DEBUG, EAL, "DPAA Bus not present. Skipping.\n");
+		DPAA_BUS_LOG(DEBUG, "DPAA Bus not present. Skipping.");
 		return 0;
 	}
 
@@ -578,7 +578,7 @@ rte_dpaa_bus_dev_build(void)
 		return -EINVAL;
 	}
 
-	RTE_LOG(NOTICE, EAL, "DPAA Bus Detected\n");
+	DPAA_BUS_LOG(NOTICE, "DPAA Bus Detected");
 
 	if (!dpaa_netcfg->num_ethports) {
 		DPAA_BUS_LOG(INFO, "NO DPDK mapped net interfaces available");

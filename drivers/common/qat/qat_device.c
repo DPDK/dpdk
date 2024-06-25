@@ -372,8 +372,8 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 		"QAT internal error! Read slice function not set, gen : %d",
 		qat_dev_gen);
 	if (ops_hw->qat_dev_get_slice_map(&qat_dev->options.slice_map, pci_dev) < 0) {
-		RTE_LOG(ERR, EAL,
-			"Cannot read slice configuration\n");
+		QAT_LOG(ERR,
+			"Cannot read slice configuration");
 		goto error;
 	}
 	rte_spinlock_init(&qat_dev->arb_csr_lock);
