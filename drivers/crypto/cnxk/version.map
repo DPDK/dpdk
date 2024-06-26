@@ -1,3 +1,11 @@
+EXPERIMENTAL {
+	global:
+
+	# added in 24.03
+	rte_pmd_cnxk_crypto_submit;
+	rte_pmd_cnxk_crypto_qptr_get;
+};
+
 INTERNAL {
 	global:
 

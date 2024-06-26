@@ -23,6 +23,7 @@
  * @return
  *   Pointer to queue pair structure that would be the input to submit APIs.
  */
+__rte_experimental
 void *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
 
 /**
@@ -41,6 +42,7 @@ void *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
  * @param nb_inst
  *   Number of instructions.
  */
+__rte_experimental
 void rte_pmd_cnxk_crypto_submit(void *qptr, void *inst, uint16_t nb_inst);
 
 #endif /* _PMD_CNXK_CRYPTO_H_ */
