@@ -6059,25 +6059,18 @@ int ice_ptp_clear_phy_offset_ready(struct ice_hw *hw)
 int
 ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 {
-	int err;
-
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
-		err = ice_read_phy_tstamp_eth56g(hw, block, idx, tstamp);
-		break;
+		return ice_read_phy_tstamp_eth56g(hw, block, idx, tstamp);
 	case ICE_PHY_E830:
 		return ice_read_phy_tstamp_e830(hw, block, idx, tstamp);
 	case ICE_PHY_E810:
-		err = ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
-		break;
+		return ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
 	case ICE_PHY_E822:
-		err = ice_read_phy_tstamp_e822(hw, block, idx, tstamp);
-		break;
+		return ice_read_phy_tstamp_e822(hw, block, idx, tstamp);
 	default:
-		err = ICE_ERR_NOT_SUPPORTED;
+		return ICE_ERR_NOT_SUPPORTED;
 	}
-
-	return err;
 }
 
 /**
@@ -6093,23 +6086,16 @@ ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 int
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx)
 {
-	int err;
-
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
-		err = ice_clear_phy_tstamp_eth56g(hw, block, idx);
-		break;
+		return ice_clear_phy_tstamp_eth56g(hw, block, idx);
 	case ICE_PHY_E810:
-		err = ice_clear_phy_tstamp_e810(hw, block, idx);
-		break;
+		return ice_clear_phy_tstamp_e810(hw, block, idx);
 	case ICE_PHY_E822:
-		err = ice_clear_phy_tstamp_e822(hw, block, idx);
-		break;
+		return ice_clear_phy_tstamp_e822(hw, block, idx);
 	default:
-		err = ICE_ERR_NOT_SUPPORTED;
+		return ICE_ERR_NOT_SUPPORTED;
 	}
-
-	return err;
 }
 
 /**
@@ -6139,7 +6125,6 @@ void ice_ptp_reset_ts_memory(struct ice_hw *hw)
  */
 int ice_ptp_init_phc(struct ice_hw *hw)
 {
-	int err;
 	u8 src_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 
 	/* Enable source clocks */
@@ -6150,19 +6135,14 @@ int ice_ptp_init_phc(struct ice_hw *hw)
 
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
-		err = ice_ptp_init_phc_eth56g(hw);
-		break;
+		return ice_ptp_init_phc_eth56g(hw);
 	case ICE_PHY_E810:
-		err = ice_ptp_init_phc_e810(hw);
-		break;
+		return ice_ptp_init_phc_e810(hw);
 	case ICE_PHY_E822:
-		err = ice_ptp_init_phc_e822(hw);
-		break;
+		return ice_ptp_init_phc_e822(hw);
 	default:
-		err = ICE_ERR_NOT_SUPPORTED;
+		return ICE_ERR_NOT_SUPPORTED;
 	}
-
-	return err;
 }
 
 /**
@@ -6178,26 +6158,66 @@ int ice_ptp_init_phc(struct ice_hw *hw)
  */
 int ice_get_phy_tx_tstamp_ready(struct ice_hw *hw, u8 block, u64 *tstamp_ready)
 {
-	int err;
-
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
-		err = ice_get_phy_tx_tstamp_ready_eth56g(hw, block,
-							 tstamp_ready);
-		break;
+		return ice_get_phy_tx_tstamp_ready_eth56g(hw, block,
+							  tstamp_ready);
 	case ICE_PHY_E810:
-		err = ice_get_phy_tx_tstamp_ready_e810(hw, block,
-						       tstamp_ready);
-		break;
+		return ice_get_phy_tx_tstamp_ready_e810(hw, block,
+							tstamp_ready);
 	case ICE_PHY_E822:
-		err = ice_get_phy_tx_tstamp_ready_e822(hw, block,
-						       tstamp_ready);
+		return ice_get_phy_tx_tstamp_ready_e822(hw, block,
+							tstamp_ready);
 		break;
 	default:
-		err = ICE_ERR_NOT_SUPPORTED;
+		return ICE_ERR_NOT_SUPPORTED;
 	}
+}
 
-	return err;
+/**
+ * ice_ptp_read_port_capture - Read a port's local time capture
+ * @hw: pointer to HW struct
+ * @port: Port number to read
+ * @tx_ts: on return, the Tx port time capture
+ * @rx_ts: on return, the Rx port time capture
+ *
+ * Read the port's Tx and Rx local time capture values.
+ */
+int
+ice_ptp_read_port_capture(struct ice_hw *hw, u8 port, u64 *tx_ts,
+			  u64 *rx_ts)
+{
+	switch (hw->phy_model) {
+	case ICE_PHY_ETH56G:
+		return ice_ptp_read_port_capture_eth56g(hw, port,
+							tx_ts, rx_ts);
+	case ICE_PHY_E822:
+		return ice_ptp_read_port_capture_e822(hw, port,
+						      tx_ts, rx_ts);
+	default:
+		return ICE_ERR_NOT_SUPPORTED;
+	}
+}
+
+/**
+ * ice_ptp_read_phy_incval - Read a PHY port's current incval
+ * @hw: pointer to the HW struct
+ * @port: the port to read
+ * @incval: on return, the time_clk_cyc incval for this port
+ *
+ * Read the time_clk_cyc increment value for a given PHY port.
+ */
+int
+ice_ptp_read_phy_incval(struct ice_hw *hw, u8 port, u64 *incval)
+{
+	switch (hw->phy_model) {
+	case ICE_PHY_ETH56G:
+		return ice_ptp_read_phy_incval_eth56g(hw, port, incval);
+	case ICE_PHY_E822:
+		return ice_ptp_read_phy_incval_e822(hw, port, incval);
+	default:
+		return ICE_ERR_NOT_SUPPORTED;
+	}
 }
 
 /**
