@@ -2224,15 +2224,16 @@ static struct ice_prof_type_entry ice_prof_type_tbl[ICE_GTPU_PROFILE] = {
  */
 static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 {
-	u8 vxlan_profile[12] = {10, 11, 12, 16, 17, 18, 22, 23, 24, 25, 26, 27};
+	u8 udp_tun_profile[12] = {10, 11, 12, 16, 17, 18, 22, 23, 24, 25, 26,
+				  27};
 	u8 gre_profile[12] = {13, 14, 15, 19, 20, 21, 28, 29, 30, 31, 32, 33};
 	u8 pppoe_profile[7] = {34, 35, 36, 37, 38, 39, 40};
 	u8 non_tun_profile[6] = {4, 5, 6, 7, 8, 9};
 	enum ice_sw_tunnel_type tun_type;
 	u16 i, j, k, profile_num = 0;
+	bool udp_tun_valid = false;
 	bool non_tun_valid = false;
 	bool pppoe_valid = false;
-	bool vxlan_valid = false;
 	bool gre_valid = false;
 	bool gtp_valid = false;
 	bool flag_valid = false;
@@ -2249,8 +2250,8 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 		}
 
 		for (i = 0; i < 12; i++) {
-			if (vxlan_profile[i] == j)
-				vxlan_valid = true;
+			if (udp_tun_profile[i] == j)
+				udp_tun_valid = true;
 		}
 
 		for (i = 0; i < 7; i++) {
@@ -2274,8 +2275,8 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 			flag_valid = true;
 	}
 
-	if (!non_tun_valid && vxlan_valid)
-		tun_type = ICE_SW_TUN_VXLAN;
+	if (!non_tun_valid && udp_tun_valid)
+		tun_type = ICE_SW_TUN_UDP;
 	else if (!non_tun_valid && gre_valid)
 		tun_type = ICE_SW_TUN_NVGRE;
 	else if (!non_tun_valid && pppoe_valid)
@@ -2283,9 +2284,9 @@ static enum ice_sw_tunnel_type ice_get_tun_type_for_recipe(u8 rid, bool vlan)
 	else if (!non_tun_valid && gtp_valid)
 		tun_type = ICE_SW_TUN_GTP;
 	else if (non_tun_valid &&
-		 (vxlan_valid || gre_valid || gtp_valid || pppoe_valid))
+		 (udp_tun_valid || gre_valid || gtp_valid || pppoe_valid))
 		tun_type = ICE_SW_TUN_AND_NON_TUN;
-	else if (non_tun_valid && !vxlan_valid && !gre_valid && !gtp_valid &&
+	else if (non_tun_valid && !udp_tun_valid && !gre_valid && !gtp_valid &&
 		 !pppoe_valid)
 		tun_type = ICE_NON_TUN;
 	else
@@ -7189,9 +7190,16 @@ static u16 ice_find_recp(struct ice_hw *hw, struct ice_prot_lkup_ext *lkup_exts,
 			/* If for "i"th recipe the found was never set to false
 			 * then it means we found our match
 			 */
-			if (tun_type == recp[i].tun_type && found &&
-			    priority == recp[i].priority)
-				return i; /* Return the recipe ID */
+			if (found && priority == recp[i].priority) {
+				if (tun_type == recp[i].tun_type ||
+				    (recp[i].tun_type == ICE_SW_TUN_UDP &&
+				     (tun_type == ICE_SW_TUN_VXLAN_GPE ||
+				      tun_type == ICE_SW_TUN_VXLAN ||
+				      tun_type == ICE_SW_TUN_GENEVE ||
+				      tun_type == ICE_SW_TUN_GENEVE_VLAN ||
+				      tun_type == ICE_SW_TUN_VXLAN_VLAN)))
+					return i; /* Return the recipe ID */
+			}
 		}
 	}
 	return ICE_MAX_NUM_RECIPES;
