@@ -661,6 +661,21 @@ ice_get_base_incval(struct ice_hw *hw, enum ice_src_tmr_mode src_tmr_mode)
 #define E830_HIGH_TX_MEMORY_BANK(slot, port) \
 				(E830_PRTTSYN_TXTIME_H(slot) + 0x8 * (port))
 
+/* E810T SMA controller pin control */
+#define ICE_SMA1_DIR_EN_E810T		BIT(4)
+#define ICE_SMA1_TX_EN_E810T		BIT(5)
+#define ICE_SMA2_UFL2_RX_DIS_E810T	BIT(3)
+#define ICE_SMA2_DIR_EN_E810T		BIT(6)
+#define ICE_SMA2_TX_EN_E810T		BIT(7)
+
+#define ICE_SMA1_MASK_E810T	(ICE_SMA1_DIR_EN_E810T | \
+				 ICE_SMA1_TX_EN_E810T)
+#define ICE_SMA2_MASK_E810T	(ICE_SMA2_UFL2_RX_DIS_E810T | \
+				 ICE_SMA2_DIR_EN_E810T | \
+				 ICE_SMA2_TX_EN_E810T)
+#define ICE_ALL_SMA_MASK_E810T	(ICE_SMA1_MASK_E810T | \
+				 ICE_SMA2_MASK_E810T)
+
 /* E810T PCA9575 IO controller registers */
 #define ICE_PCA9575_P0_IN	0x0
 #define ICE_PCA9575_P1_IN	0x1
@@ -671,15 +686,10 @@ ice_get_base_incval(struct ice_hw *hw, enum ice_src_tmr_mode src_tmr_mode)
 
 /* E810T PCA9575 IO controller pin control */
 #define ICE_E810T_P0_GNSS_PRSNT_N	BIT(4)
-#define ICE_E810T_P1_SMA1_DIR_EN	BIT(4)
-#define ICE_E810T_P1_SMA1_TX_EN		BIT(5)
-#define ICE_E810T_P1_SMA2_UFL2_RX_DIS	BIT(3)
-#define ICE_E810T_P1_SMA2_DIR_EN	BIT(6)
-#define ICE_E810T_P1_SMA2_TX_EN		BIT(7)
 
-#define ICE_E810T_SMA_MIN_BIT	3
-#define ICE_E810T_SMA_MAX_BIT	7
-#define ICE_E810T_P1_OFFSET	8
+#define ICE_SMA_MIN_BIT_E810T	3
+#define ICE_SMA_MAX_BIT_E810T	7
+#define ICE_PCA9575_P1_OFFSET	8
 /* 56G PHY quad register base addresses */
 #define ICE_PHY0_BASE			0x092000
 #define ICE_PHY1_BASE			0x126000
