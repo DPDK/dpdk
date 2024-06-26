@@ -374,3 +374,9 @@ roc_idev_nix_rx_chan_set(uint16_t port, uint16_t chan)
 	if (idev != NULL && port < PLT_MAX_ETHPORTS)
 		__atomic_store_n(&idev->inl_rx_inj_cfg.chan[port], chan, __ATOMIC_RELEASE);
 }
+
+uint16_t
+roc_idev_nix_inl_dev_pffunc_get(void)
+{
+	return nix_inl_dev_pffunc_get();
+}

@@ -65,8 +65,7 @@ ethdev_tel_handle_info(const char *cmd __rte_unused,
 			info = &eth_info.info;
 			dev = cnxk_eth_pmd_priv(eth_dev);
 			if (dev) {
-				info->inl_dev_pf_func =
-					roc_nix_inl_dev_pffunc_get();
+				info->inl_dev_pf_func = roc_idev_nix_inl_dev_pffunc_get();
 				info->pf_func = roc_nix_get_pf_func(&dev->nix);
 				info->max_mac_entries = dev->max_mac_entries;
 				info->dmac_filter_ena = dev->dmac_filter_enable;

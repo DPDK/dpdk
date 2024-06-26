@@ -112,6 +112,7 @@ INTERNAL {
 	roc_idev_npa_nix_get;
 	roc_idev_num_lmtlines_get;
 	roc_idev_nix_inl_meta_aura_get;
+	roc_idev_nix_inl_dev_pffunc_get;
 	roc_idev_nix_list_get;
 	roc_idev_nix_rx_chan_base_get;
 	roc_idev_nix_rx_chan_set;
@@ -244,7 +245,6 @@ INTERNAL {
 	roc_nix_inl_dev_is_probed;
 	roc_nix_inl_dev_stats_get;
 	roc_nix_inl_dev_lock;
-	roc_nix_inl_dev_pffunc_get;
 	roc_nix_inl_dev_rq;
 	roc_nix_inl_dev_rq_get;
 	roc_nix_inl_dev_rq_put;

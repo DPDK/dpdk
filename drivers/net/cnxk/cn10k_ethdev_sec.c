@@ -1360,7 +1360,7 @@ cn10k_eth_sec_rx_inject_config(void *device, uint16_t port_id, bool enable)
 	inj_cfg->io_addr = inl_lf->io_addr;
 	inj_cfg->lmt_base = nix->lmt_base;
 	channel = roc_nix_get_base_chan(nix);
-	pf_func = roc_nix_inl_dev_pffunc_get();
+	pf_func = roc_idev_nix_inl_dev_pffunc_get();
 	inj_cfg->cmd_w0 = pf_func << 48 | inj_match_id << 32 | channel << 4;
 
 	return 0;

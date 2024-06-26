@@ -34,12 +34,6 @@ nix_inl_dev_pffunc_get(void)
 	return 0;
 }
 
-uint16_t
-roc_nix_inl_dev_pffunc_get(void)
-{
-	return nix_inl_dev_pffunc_get();
-}
-
 static void
 nix_inl_selftest_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 {
