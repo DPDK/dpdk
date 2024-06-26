@@ -6052,6 +6052,42 @@ flow_hw_validate_action_port_representor(struct rte_eth_dev *dev __rte_unused,
 }
 
 static int
+flow_hw_validate_target_port_id(struct rte_eth_dev *dev,
+				uint16_t target_port_id)
+{
+	struct mlx5_priv *port_priv;
+	struct mlx5_priv *dev_priv;
+
+	if (target_port_id == MLX5_REPRESENTED_PORT_ESW_MGR)
+		return 0;
+
+	port_priv = mlx5_port_to_eswitch_info(target_port_id, false);
+	if (!port_priv) {
+		rte_errno = EINVAL;
+		DRV_LOG(ERR, "Port %u Failed to obtain E-Switch info for port %u",
+			dev->data->port_id, target_port_id);
+		return -rte_errno;
+	}
+
+	dev_priv = mlx5_dev_to_eswitch_info(dev);
+	if (!dev_priv) {
+		rte_errno = EINVAL;
+		DRV_LOG(ERR, "Port %u Failed to obtain E-Switch info for transfer proxy",
+			dev->data->port_id);
+		return -rte_errno;
+	}
+
+	if (port_priv->domain_id != dev_priv->domain_id) {
+		rte_errno = EINVAL;
+		DRV_LOG(ERR, "Port %u Failed to obtain E-Switch info for transfer proxy",
+			dev->data->port_id);
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
 flow_hw_validate_action_represented_port(struct rte_eth_dev *dev,
 					 const struct rte_flow_action *action,
 					 const struct rte_flow_action *mask,
@@ -6067,32 +6103,13 @@ flow_hw_validate_action_represented_port(struct rte_eth_dev *dev,
 					  "cannot use represented_port actions"
 					  " without an E-Switch");
 	if (mask_conf && mask_conf->port_id) {
-		struct mlx5_priv *port_priv;
-		struct mlx5_priv *dev_priv;
-
 		if (!action_conf)
 			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 						  action, "port index was not provided");
-		port_priv = mlx5_port_to_eswitch_info(action_conf->port_id, false);
-		if (!port_priv)
-			return rte_flow_error_set(error, rte_errno,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  action,
-						  "failed to obtain E-Switch"
-						  " info for port");
-		dev_priv = mlx5_dev_to_eswitch_info(dev);
-		if (!dev_priv)
-			return rte_flow_error_set(error, rte_errno,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  action,
-						  "failed to obtain E-Switch"
-						  " info for transfer proxy");
-		if (port_priv->domain_id != dev_priv->domain_id)
-			return rte_flow_error_set(error, rte_errno,
-						  RTE_FLOW_ERROR_TYPE_ACTION,
-						  action,
-						  "cannot forward to port from"
-						  " a different E-Switch");
+
+		if (flow_hw_validate_target_port_id(dev, action_conf->port_id))
+			return rte_flow_error_set(error, rte_errno, RTE_FLOW_ERROR_TYPE_ACTION,
+						  action, "port index is invalid");
 	}
 	return 0;
 }
