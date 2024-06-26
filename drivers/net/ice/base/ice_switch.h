@@ -11,8 +11,10 @@
 #define ICE_SW_CFG_MAX_BUF_LEN 2048
 #define ICE_MAX_SW 256
 #define ICE_DFLT_VSI_INVAL 0xff
-#define ICE_FLTR_RX BIT(0)
-#define ICE_FLTR_TX BIT(1)
+
+#define ICE_FLTR_RX	BIT(0)
+#define ICE_FLTR_TX	BIT(1)
+#define ICE_FLTR_RX_LB	BIT(2)
 #define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
 
 /* Switch Profile IDs for Profile related switch rules */
@@ -426,6 +428,7 @@ enum ice_promisc_flags {
 	ICE_PROMISC_BCAST_TX,
 	ICE_PROMISC_VLAN_RX,
 	ICE_PROMISC_VLAN_TX,
+	ICE_PROMISC_UCAST_RX_LB,
 	/* Max value */
 	ICE_PROMISC_MAX,
 };
