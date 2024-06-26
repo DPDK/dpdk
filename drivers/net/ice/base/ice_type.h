@@ -317,6 +317,7 @@ enum ice_vsi_type {
 	ICE_VSI_PF = 0,
 	ICE_VSI_CTRL = 3,	/* equates to ICE_VSI_PF with 1 queue pair */
 	ICE_VSI_LB = 6,
+	ICE_VSI_ADI = 8,
 };
 
 struct ice_link_status {
