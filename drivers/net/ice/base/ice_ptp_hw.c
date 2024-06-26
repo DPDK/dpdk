@@ -1209,19 +1209,35 @@ ice_phy_port_mem_write_eth56g(struct ice_hw *hw, u8 port, u16 offset, u32 val)
 /**
  * ice_is_64b_phy_reg_eth56g - Check if this is a 64bit PHY register
  * @low_addr: the low address to check
+ * @high_addr: on return, contains the high address of the 64bit register
  *
  * Checks if the provided low address is one of the known 64bit PHY values
- * represented as two 32bit registers.
+ * represented as two 32bit registers. If it is, return the appropriate high
+ * register offset to use.
  */
-static bool ice_is_64b_phy_reg_eth56g(u16 low_addr)
+static bool ice_is_64b_phy_reg_eth56g(u16 low_addr, u16 *high_addr)
 {
 	switch (low_addr) {
 	case PHY_REG_TX_TIMER_INC_PRE_L:
+		*high_addr = PHY_REG_TX_TIMER_INC_PRE_U;
+		return true;
 	case PHY_REG_RX_TIMER_INC_PRE_L:
+		*high_addr = PHY_REG_RX_TIMER_INC_PRE_U;
+		return true;
 	case PHY_REG_TX_CAPTURE_L:
+		*high_addr = PHY_REG_TX_CAPTURE_U;
+		return true;
 	case PHY_REG_RX_CAPTURE_L:
+		*high_addr = PHY_REG_RX_CAPTURE_U;
+		return true;
 	case PHY_REG_TOTAL_TX_OFFSET_L:
+		*high_addr = PHY_REG_TOTAL_TX_OFFSET_U;
+		return true;
 	case PHY_REG_TOTAL_RX_OFFSET_L:
+		*high_addr = PHY_REG_TOTAL_RX_OFFSET_U;
+		return true;
+	case PHY_REG_TX_MEMORY_STATUS_L:
+		*high_addr = PHY_REG_TX_MEMORY_STATUS_U;
 		return true;
 	default:
 		return false;
@@ -1231,15 +1247,18 @@ static bool ice_is_64b_phy_reg_eth56g(u16 low_addr)
 /**
  * ice_is_40b_phy_reg_eth56g - Check if this is a 40bit PHY register
  * @low_addr: the low address to check
+ * @high_addr: on return, contains the high address of the 40bit value
  *
  * Checks if the provided low address is one of the known 40bit PHY values
  * split into two registers with the lower 8 bits in the low register and the
- * upper 32 bits in the high register.
+ * upper 32 bits in the high register. If it is, return the high register
+ * offset to use.
  */
-static bool ice_is_40b_phy_reg_eth56g(u16 low_addr)
+static bool ice_is_40b_phy_reg_eth56g(u16 low_addr, u16 *high_addr)
 {
 	switch (low_addr) {
 	case PHY_REG_TIMETUS_L:
+		*high_addr = PHY_REG_TIMETUS_U;
 		return true;
 	default:
 		return false;
@@ -1261,11 +1280,11 @@ static bool ice_is_40b_phy_reg_eth56g(u16 low_addr)
 static int
 ice_read_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 {
-	u16 high_addr = low_addr + sizeof(u32);
 	int err;
+	u16 high_addr;
 	u32 lo, hi;
 
-	if (!ice_is_40b_phy_reg_eth56g(low_addr))
+	if (!ice_is_40b_phy_reg_eth56g(low_addr, &high_addr))
 		return ICE_ERR_PARAM;
 
 	err = ice_read_phy_reg_eth56g(hw, port, low_addr, &lo);
@@ -1302,11 +1321,11 @@ ice_read_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 static int
 ice_read_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 {
-	u16 high_addr = low_addr + sizeof(u32);
 	int err;
+	u16 high_addr;
 	u32 lo, hi;
 
-	if (!ice_is_64b_phy_reg_eth56g(low_addr))
+	if (!ice_is_64b_phy_reg_eth56g(low_addr, &high_addr))
 		return ICE_ERR_PARAM;
 
 	err = ice_read_phy_reg_eth56g(hw, port, low_addr, &lo);
@@ -1343,11 +1362,11 @@ ice_read_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 static int
 ice_write_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 {
-	u16 high_addr = low_addr + sizeof(u32);
 	int err;
+	u16 high_addr;
 	u32 lo, hi;
 
-	if (!ice_is_40b_phy_reg_eth56g(low_addr))
+	if (!ice_is_40b_phy_reg_eth56g(low_addr, &high_addr))
 		return ICE_ERR_PARAM;
 
 	lo = (u32)(val & P_REG_40B_LOW_M);
@@ -1384,11 +1403,11 @@ ice_write_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 static int
 ice_write_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 {
-	u16 high_addr = low_addr + sizeof(u32);
 	int err;
+	u16 high_addr;
 	u32 lo, hi;
 
-	if (!ice_is_64b_phy_reg_eth56g(low_addr))
+	if (!ice_is_64b_phy_reg_eth56g(low_addr, &high_addr))
 		return ICE_ERR_PARAM;
 
 	lo = ICE_LO_DWORD(val);
