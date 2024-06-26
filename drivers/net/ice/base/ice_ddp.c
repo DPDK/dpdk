@@ -416,21 +416,6 @@ ice_aq_get_pkg_info_list(struct ice_hw *hw,
 }
 
 /**
- * ice_has_signing_seg - determine if package has a signing segment
- * @hw: pointer to the hardware structure
- * @pkg_hdr: pointer to the driver's package hdr
- */
-static bool ice_has_signing_seg(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
-{
-	struct ice_generic_seg_hdr *seg_hdr;
-
-	seg_hdr = (struct ice_generic_seg_hdr *)
-		ice_find_seg_in_pkg(hw, SEGMENT_TYPE_SIGNING, pkg_hdr);
-
-	return seg_hdr ? true : false;
-}
-
-/**
  * ice_get_pkg_segment_id - get correct package segment id, based on device
  * @mac_type: MAC type of the device
  */
@@ -760,7 +745,7 @@ ice_download_pkg(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 {
 	enum ice_ddp_state state;
 
-	if (hw->pkg_has_signing_seg)
+	if (ice_match_signing_seg(pkg_hdr, hw->pkg_seg_id, hw->pkg_sign_type))
 		state = ice_download_pkg_with_sig_seg(hw, pkg_hdr);
 	else
 		state = ice_download_pkg_without_sig_seg(hw, ice_seg);
@@ -785,7 +770,6 @@ ice_init_pkg_info(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr)
 	if (!pkg_hdr)
 		return ICE_DDP_PKG_ERR;
 
-	hw->pkg_has_signing_seg = ice_has_signing_seg(hw, pkg_hdr);
 	ice_get_signing_req(hw);
 
 	ice_debug(hw, ICE_DBG_INIT, "Pkg using segment id: 0x%08X\n",
@@ -1359,12 +1343,6 @@ enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 	state = ice_init_pkg_info(hw, pkg);
 	if (state)
 		return state;
-
-	/* For packages with signing segments, must be a matching segment */
-	if (hw->pkg_has_signing_seg)
-		if (!ice_match_signing_seg(pkg, hw->pkg_seg_id,
-					   hw->pkg_sign_type))
-			return ICE_DDP_PKG_ERR;
 
 	/* before downloading the package, check package version for
 	 * compatibility with driver
