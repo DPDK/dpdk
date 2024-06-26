@@ -2896,7 +2896,7 @@ struct ice_aqc_event_lan_overflow {
 
 /* Debug Dump Internal Data (indirect 0xFF08) */
 struct ice_aqc_debug_dump_internals {
-	u8 cluster_id;
+	__le16 cluster_id; /* Expresses next cluster ID in response */
 #define ICE_AQC_DBG_DUMP_CLUSTER_ID_SW			0
 #define ICE_AQC_DBG_DUMP_CLUSTER_ID_ACL			1
 #define ICE_AQC_DBG_DUMP_CLUSTER_ID_TXSCHED		2
@@ -2910,7 +2910,7 @@ struct ice_aqc_debug_dump_internals {
 #define ICE_AQC_DBG_DUMP_CLUSTER_ID_L2P			8
 #define ICE_AQC_DBG_DUMP_CLUSTER_ID_QUEUE_MNG		9
 #define ICE_AQC_DBG_DUMP_CLUSTER_ID_FULL_CSR_SPACE	21
-	u8 reserved;
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_MNG_TRANSACTION	22
 	__le16 table_id; /* Used only for non-memory clusters */
 	__le32 idx; /* In table entries for tables, in bytes for memory */
 	__le32 addr_high;

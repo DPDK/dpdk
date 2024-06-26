@@ -437,9 +437,10 @@ static int
 ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
 {
 	struct ice_hw *hw;
+	struct ice_sq_cd *cd = NULL;
 	int i = 0;
 	uint16_t tbl_id = 0;
-	uint32_t tbl_idx = 0;
+	uint16_t tbl_idx = 0;
 	uint8_t *buffer = *buff2;
 
 	hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -469,7 +470,7 @@ ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
 			ICE_AQC_DBG_DUMP_CLUSTER_ID_SW,
 			tbl_id, tbl_idx, buff,
 			ICE_PKG_BUF_SIZE,
-			&buff_size, &tbl_id, &tbl_idx, NULL);
+			&buff_size, &tbl_id, &tbl_idx, NULL, cd);
 
 		if (res) {
 			free(buff);
@@ -481,7 +482,7 @@ ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
 
 		free(buff);
 
-		if (tbl_idx == 0xffffffff) {
+		if (tbl_idx == 0xffff) {
 			tbl_idx = 0;
 			memset(buffer, '\n', sizeof(char));
 			buffer++;

@@ -65,10 +65,10 @@ int ice_get_caps(struct ice_hw *hw);
 void ice_set_safe_mode_caps(struct ice_hw *hw);
 
 int
-ice_aq_get_internal_data(struct ice_hw *hw, u8 cluster_id, u16 table_id,
+ice_aq_get_internal_data(struct ice_hw *hw, u16 cluster_id, u16 table_id,
 			 u32 start, void *buf, u16 buf_size, u16 *ret_buf_size,
-			 u16 *ret_next_table, u32 *ret_next_index,
-			 struct ice_sq_cd *cd);
+			 u16 *ret_next_cluster, u16 *ret_next_table,
+			 u32 *ret_next_index, struct ice_sq_cd *cd);
 
 /* Define a macro that will align a pointer to point to the next memory address
  * that falls on the given power of 2 (i.e., 2, 4, 8, 16, 32, 64...). For
