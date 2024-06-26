@@ -3120,7 +3120,7 @@ ice_save_vsi_ctx(struct ice_hw *hw, u16 vsi_handle, struct ice_vsi_ctx *vsi)
  * @hw: pointer to the HW struct
  * @vsi_handle: VSI handle
  */
-static void ice_clear_vsi_q_ctx(struct ice_hw *hw, u16 vsi_handle)
+void ice_clear_vsi_q_ctx(struct ice_hw *hw, u16 vsi_handle)
 {
 	struct ice_vsi_ctx *vsi;
 	u8 i;
