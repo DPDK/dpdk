@@ -1235,8 +1235,8 @@ struct ice_switch_info {
 	ice_declare_bitmap(prof_res_bm[ICE_MAX_NUM_PROFILES], ICE_MAX_FV_WORDS);
 };
 
-/* PHY configuration */
-enum ice_phy_cfg {
+/* PHY model */
+enum ice_phy_model {
 	ICE_PHY_E810 = 1,
 	ICE_PHY_E822,
 	ICE_PHY_ETH56G,
@@ -1268,7 +1268,7 @@ struct ice_hw {
 	u8 revision_id;
 
 	u8 pf_id;		/* device profile info */
-	enum ice_phy_cfg phy_cfg;
+	enum ice_phy_model phy_model;
 	u8 phy_ports;
 	u8 max_phy_port;
 	u8 logical_pf_id;
