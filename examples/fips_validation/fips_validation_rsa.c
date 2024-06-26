@@ -328,6 +328,9 @@ parse_test_rsa_json_interim_writeback(struct fips_val *val)
 		if (prepare_vec_rsa() < 0)
 			return -1;
 
+		if (!vec.rsa.e.val)
+			return -1;
+
 		writeback_hex_str("", info.one_line_text, &vec.rsa.n);
 		obj = json_string(info.one_line_text);
 		json_object_set_new(json_info.json_write_group, "n", obj);
@@ -474,7 +477,7 @@ fips_test_randomize_message(struct fips_val *msg, struct fips_val *rand)
 	uint16_t rv_len;
 
 	if (!msg->val || !rand->val || rand->len > RV_BUF_LEN
-		|| msg->len > FIPS_TEST_JSON_BUF_LEN)
+		|| msg->len > (FIPS_TEST_JSON_BUF_LEN - 1))
 		return -EINVAL;
 
 	memset(rv, 0, sizeof(rv));
@@ -503,7 +506,7 @@ fips_test_randomize_message(struct fips_val *msg, struct fips_val *rand)
 		m[i + j] ^= rv[j];
 
 	m[i + j] = ((uint8_t *)&rv_bitlen)[0];
-	m[i + j + 1] = (((uint8_t *)&rv_bitlen)[1] >> 8) & 0xFF;
+	m[i + j + 1] = ((uint8_t *)&rv_bitlen)[1];
 
 	rte_free(msg->val);
 	msg->len = (rv_bitlen + m_bitlen + 16) / 8;
