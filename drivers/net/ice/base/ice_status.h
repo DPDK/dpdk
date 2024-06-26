@@ -36,6 +36,8 @@ enum ice_status {
 	ICE_ERR_BUF_TOO_SHORT			= -52,
 	ICE_ERR_NVM_BLANK_MODE			= -53,
 
+	ICE_ERR_UNKNOWN_PHY			= -60,
+
 	/* ARQ/ASQ specific error codes. Range -100..-109 */
 	ICE_ERR_AQ_ERROR			= -100,
 	ICE_ERR_AQ_TIMEOUT			= -101,
