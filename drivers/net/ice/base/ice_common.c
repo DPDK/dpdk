@@ -1236,7 +1236,7 @@ void ice_deinit_hw(struct ice_hw *hw)
  */
 int ice_check_reset(struct ice_hw *hw)
 {
-	u32 cnt, reg = 0, grst_timeout, uld_mask;
+	u32 cnt, reg = 0, grst_timeout, uld_mask, reset_wait_cnt;
 
 	/* Poll for Device Active state in case a recent CORER, GLOBR,
 	 * or EMPR has occurred. The grst delay value is in 100ms units.
@@ -1267,8 +1267,10 @@ int ice_check_reset(struct ice_hw *hw)
 
 	uld_mask = ICE_RESET_DONE_MASK;
 
+	reset_wait_cnt = ICE_PF_RESET_WAIT_COUNT;
+
 	/* Device is Active; check Global Reset processes are done */
-	for (cnt = 0; cnt < ICE_PF_RESET_WAIT_COUNT; cnt++) {
+	for (cnt = 0; cnt < reset_wait_cnt; cnt++) {
 		reg = rd32(hw, GLNVM_ULD) & uld_mask;
 		if (reg == uld_mask) {
 			ice_debug(hw, ICE_DBG_INIT, "Global reset processes done. %d\n", cnt);
@@ -1277,7 +1279,7 @@ int ice_check_reset(struct ice_hw *hw)
 		ice_msec_delay(10, true);
 	}
 
-	if (cnt == ICE_PF_RESET_WAIT_COUNT) {
+	if (cnt == reset_wait_cnt) {
 		ice_debug(hw, ICE_DBG_INIT, "Wait for Reset Done timed out. GLNVM_ULD = 0x%x\n",
 			  reg);
 		return ICE_ERR_RESET_FAILED;
@@ -1295,7 +1297,7 @@ int ice_check_reset(struct ice_hw *hw)
  */
 static int ice_pf_reset(struct ice_hw *hw)
 {
-	u32 cnt, reg;
+	u32 cnt, reg, reset_wait_cnt, cfg_lock_timeout;
 
 	/* If at function entry a global reset was already in progress, i.e.
 	 * state is not 'device active' or any of the reset done bits are not
@@ -1320,8 +1322,10 @@ static int ice_pf_reset(struct ice_hw *hw)
 	 * timeout plus the PFR timeout which will account for a possible reset
 	 * that is occurring during a download package operation.
 	 */
-	for (cnt = 0; cnt < ICE_GLOBAL_CFG_LOCK_TIMEOUT +
-	     ICE_PF_RESET_WAIT_COUNT; cnt++) {
+	reset_wait_cnt = ICE_PF_RESET_WAIT_COUNT;
+	cfg_lock_timeout = ICE_GLOBAL_CFG_LOCK_TIMEOUT;
+
+	for (cnt = 0; cnt < cfg_lock_timeout + reset_wait_cnt; cnt++) {
 		reg = rd32(hw, PFGEN_CTRL);
 		if (!(reg & PFGEN_CTRL_PFSWR_M))
 			break;
@@ -1329,7 +1333,7 @@ static int ice_pf_reset(struct ice_hw *hw)
 		ice_msec_delay(1, true);
 	}
 
-	if (cnt == ICE_PF_RESET_WAIT_COUNT) {
+	if (cnt == cfg_lock_timeout + reset_wait_cnt) {
 		ice_debug(hw, ICE_DBG_INIT, "PF reset polling failed to complete.\n");
 		return ICE_ERR_RESET_FAILED;
 	}
