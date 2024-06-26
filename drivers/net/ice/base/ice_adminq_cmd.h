@@ -1795,11 +1795,11 @@ struct ice_aqc_get_link_topo_pin {
 	u8 output_io_params;
 #define ICE_AQC_LINK_TOPO_OUTPUT_IO_FUNC_S	0
 #define ICE_AQC_LINK_TOPO_OUTPUT_IO_FUNC_M	\
-			(0x1F << \ ICE_AQC_LINK_TOPO_INPUT_IO_FUNC_NUM_S)
+			(0x1F << ICE_AQC_LINK_TOPO_OUTPUT_IO_FUNC_S)
 /* Use ICE_AQC_LINK_TOPO_IO_FUNC_* for the non-numerical options */
 #define ICE_AQC_LINK_TOPO_OUTPUT_IO_TYPE_S	5
 #define ICE_AQC_LINK_TOPO_OUTPUT_IO_TYPE_M	\
-			(0x7 << ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_S)
+			(0x7 << ICE_AQC_LINK_TOPO_OUTPUT_IO_TYPE_S)
 /* Use ICE_AQC_LINK_TOPO_NODE_TYPE_* for the type values */
 	u8 output_io_flags;
 #define ICE_AQC_LINK_TOPO_OUTPUT_SPEED_S	0

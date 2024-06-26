@@ -588,6 +588,9 @@ ice_aq_get_netlist_node_pin(struct ice_hw *hw,
 		*node_handle =
 			LE16_TO_CPU(desc.params.get_link_topo_pin.addr.handle);
 
+	cmd->output_io_params = desc.params.get_link_topo_pin.output_io_params;
+	cmd->output_io_flags = desc.params.get_link_topo_pin.output_io_flags;
+
 	return 0;
 }
 
