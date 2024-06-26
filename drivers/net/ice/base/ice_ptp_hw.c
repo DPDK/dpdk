@@ -940,7 +940,7 @@ ice_write_phy_eth56g_raw_lp(struct ice_hw *hw,  u32 reg_addr, u32 val,
 	phy_msg.msg_addr_high = ICE_HI_WORD(reg_addr);
 
 	phy_msg.data = val;
-	phy_msg.dest_dev = phy_56g;
+	phy_msg.dest_dev = hw->phy_addr;
 
 	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
 
@@ -970,7 +970,7 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u32 reg_addr, u32 *val,
 	phy_msg.msg_addr_low = ICE_LO_WORD(reg_addr);
 	phy_msg.msg_addr_high = ICE_HI_WORD(reg_addr);
 
-	phy_msg.dest_dev = phy_56g;
+	phy_msg.dest_dev = hw->phy_addr;
 
 	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
 
@@ -2212,6 +2212,8 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_err)
 	return 0;
 }
 
+#define ICE_DEVID_MASK 0xFFF8
+
 /**
  * ice_ptp_init_phy_model - Initialize hw->phy_model based on device type
  * @hw: pointer to the HW struct
@@ -2219,31 +2221,40 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_err)
  * Determine the PHY configuration for the device, and initialize hw->phy_model
  * for use by other functions.
  */
-int ice_ptp_init_phy_model(struct ice_hw *hw)
+void ice_ptp_init_phy_model(struct ice_hw *hw)
 {
-	int err;
 	u32 phy_rev;
 
-	ice_sb_access_ena_eth56g(hw, true);
+	switch (hw->device_id & ICE_DEVID_MASK) {
+	case ICE_DEV_ID_E825C_BACKPLANE & ICE_DEVID_MASK:
+		hw->phy_addr = eth56g_dev_0;
+		break;
+	default:
+		hw->phy_addr = 0;
+	}
 
-	err = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION, &phy_rev,
-					    true);
-	if (err)
-		return err;
+	if (hw->phy_addr) {
+		int err;
 
-	if (phy_rev == PHY_REVISION_ETH56G) {
-		hw->phy_model = ICE_PHY_ETH56G;
-		return 0;
+		ice_sb_access_ena_eth56g(hw, true);
+		err = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION,
+						 &phy_rev, true);
+		if (err)
+			return;
+
+		if (phy_rev == PHY_REVISION_ETH56G) {
+			hw->phy_model = ICE_PHY_ETH56G;
+			return;
+		}
 	}
 
 	if (ice_is_e810(hw))
 		hw->phy_model = ICE_PHY_E810;
 	else
 		hw->phy_model = ICE_PHY_E822;
+
 	hw->phy_ports = ICE_NUM_EXTERNAL_PORTS;
 	hw->max_phy_port = ICE_NUM_EXTERNAL_PORTS;
-
-	return 0;
 }
 
 /* ----------------------------------------------------------------------------
