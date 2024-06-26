@@ -4387,13 +4387,11 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle,
 	    cfg->hash_flds == ICE_HASH_INVALID)
 		return ICE_ERR_PARAM;
 
+	ice_acquire_lock(&hw->rss_locks);
 	local_cfg = *cfg;
 	if (cfg->hdr_type < ICE_RSS_ANY_HEADERS) {
-		ice_acquire_lock(&hw->rss_locks);
 		status = ice_add_rss_cfg_sync(hw, vsi_handle, &local_cfg);
-		ice_release_lock(&hw->rss_locks);
 	} else {
-		ice_acquire_lock(&hw->rss_locks);
 		local_cfg.hdr_type = ICE_RSS_OUTER_HEADERS;
 		status = ice_add_rss_cfg_sync(hw, vsi_handle, &local_cfg);
 		if (!status) {
@@ -4401,8 +4399,8 @@ ice_add_rss_cfg(struct ice_hw *hw, u16 vsi_handle,
 			status = ice_add_rss_cfg_sync(hw, vsi_handle,
 						      &local_cfg);
 		}
-		ice_release_lock(&hw->rss_locks);
 	}
+	ice_release_lock(&hw->rss_locks);
 
 	return status;
 }
