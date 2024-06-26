@@ -115,18 +115,18 @@ static int
 ice_read_cgu_reg_e82x(struct ice_hw *hw, u16 addr, u32 *val)
 {
 	struct ice_sbq_msg_input cgu_msg;
-	int status;
+	int err;
 
 	cgu_msg.opcode = ice_sbq_msg_rd;
 	cgu_msg.dest_dev = cgu;
 	cgu_msg.msg_addr_low = addr;
 	cgu_msg.msg_addr_high = 0x0;
 
-	status = ice_sbq_rw_reg_lp(hw, &cgu_msg, true);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read CGU register 0x%04x, status %d\n",
-			  addr, status);
-		return status;
+	err = ice_sbq_rw_reg_lp(hw, &cgu_msg, true);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read CGU register 0x%04x, err %d\n",
+			  addr, err);
+		return err;
 	}
 
 	*val = cgu_msg.data;
@@ -147,7 +147,7 @@ static int
 ice_write_cgu_reg_e82x(struct ice_hw *hw, u16 addr, u32 val)
 {
 	struct ice_sbq_msg_input cgu_msg;
-	int status;
+	int err;
 
 	cgu_msg.opcode = ice_sbq_msg_wr;
 	cgu_msg.dest_dev = cgu;
@@ -155,11 +155,11 @@ ice_write_cgu_reg_e82x(struct ice_hw *hw, u16 addr, u32 val)
 	cgu_msg.msg_addr_high = 0x0;
 	cgu_msg.data = val;
 
-	status = ice_sbq_rw_reg_lp(hw, &cgu_msg, true);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write CGU register 0x%04x, status %d\n",
-			  addr, status);
-		return status;
+	err = ice_sbq_rw_reg_lp(hw, &cgu_msg, true);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write CGU register 0x%04x, err %d\n",
+			  addr, err);
+		return err;
 	}
 
 	return 0;
@@ -227,7 +227,7 @@ ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 	union nac_cgu_dword22 dw22;
 	union nac_cgu_dword24 dw24;
 	union nac_cgu_dword9 dw9;
-	int status;
+	int err;
 
 	if (clk_freq >= NUM_ICE_TIME_REF_FREQ) {
 		ice_warn(hw, "Invalid TIME_REF frequency %u\n", clk_freq);
@@ -245,17 +245,17 @@ ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 		return ICE_ERR_PARAM;
 	}
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD9, &dw9.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD9, &dw9.val);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_RO_BWM_LF, &bwm_lf.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_RO_BWM_LF, &bwm_lf.val);
+	if (err)
+		return err;
 
 	/* Log the current clock configuration */
 	ice_debug(hw, ICE_DBG_PTP, "Current CGU configuration -- %s, clk_src %s, clk_freq %s, PLL %s\n",
@@ -268,67 +268,67 @@ ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 	if (dw24.field.ts_pll_enable) {
 		dw24.field.ts_pll_enable = 0;
 
-		status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
-		if (status)
-			return status;
+		err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
+		if (err)
+			return err;
 	}
 
 	/* Set the frequency */
 	dw9.field.time_ref_freq_sel = clk_freq;
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD9, dw9.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD9, dw9.val);
+	if (err)
+		return err;
 
 	/* Configure the TS PLL feedback divisor */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD19, &dw19.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD19, &dw19.val);
+	if (err)
+		return err;
 
 	dw19.field.tspll_fbdiv_intgr = e822_cgu_params[clk_freq].feedback_div;
 	dw19.field.tspll_ndivratio = 1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD19, dw19.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD19, dw19.val);
+	if (err)
+		return err;
 
 	/* Configure the TS PLL post divisor */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD22, &dw22.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD22, &dw22.val);
+	if (err)
+		return err;
 
 	dw22.field.time1588clk_div = e822_cgu_params[clk_freq].post_pll_div;
 	dw22.field.time1588clk_sel_div2 = 0;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD22, dw22.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD22, dw22.val);
+	if (err)
+		return err;
 
 	/* Configure the TS PLL pre divisor and clock source */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
+	if (err)
+		return err;
 
 	dw24.field.ref1588_ck_div = e822_cgu_params[clk_freq].refclk_pre_div;
 	dw24.field.tspll_fbdiv_frac = e822_cgu_params[clk_freq].frac_n_div;
 	dw24.field.time_ref_sel = clk_src;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
+	if (err)
+		return err;
 
 	/* Finally, enable the PLL */
 	dw24.field.ts_pll_enable = 1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
+	if (err)
+		return err;
 
 	/* Wait to verify if the PLL locks */
 	ice_msec_delay(1, true);
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_RO_BWM_LF, &bwm_lf.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_RO_BWM_LF, &bwm_lf.val);
+	if (err)
+		return err;
 
 	if (!bwm_lf.field.plllock_true_lock_cri) {
 		ice_warn(hw, "CGU PLL failed to lock\n");
@@ -364,7 +364,7 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	union nac_cgu_dword22 dw22;
 	union nac_cgu_dword24 dw24;
 	union nac_cgu_dword9 dw9;
-	int status;
+	int err;
 
 	if (*clk_freq >= NUM_ICE_TIME_REF_FREQ) {
 		ice_warn(hw, "Invalid TIME_REF frequency %u\n", *clk_freq);
@@ -382,21 +382,21 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		return ICE_ERR_PARAM;
 	}
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD9, &dw9.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD9, &dw9.val);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, &dw23.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, &dw23.val);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_RO_LOCK_E825C, &ro_lock.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_RO_LOCK_E825C, &ro_lock.val);
+	if (err)
+		return err;
 
 	/* Log the current clock configuration */
 	ice_debug(hw, ICE_DBG_PTP, "Current CGU configuration -- %s, clk_src %s, clk_freq %s, PLL %s\n",
@@ -409,73 +409,73 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	if (dw23.field.ts_pll_enable) {
 		dw23.field.ts_pll_enable = 0;
 
-		status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C,
-						dw23.val);
-		if (status)
-			return status;
+		err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C,
+					     dw23.val);
+		if (err)
+			return err;
 	}
 
 	/* Set the frequency */
 	dw9.field.time_ref_freq_sel = *clk_freq;
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD9, dw9.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD9, dw9.val);
+	if (err)
+		return err;
 
 	/* Configure the TS PLL feedback divisor */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD19, &dw19.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD19, &dw19.val);
+	if (err)
+		return err;
 
 	dw19.field.tspll_fbdiv_intgr = e822_cgu_params[*clk_freq].feedback_div;
 	dw19.field.tspll_ndivratio = 1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD19, dw19.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD19, dw19.val);
+	if (err)
+		return err;
 
 	/* Configure the TS PLL post divisor */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD22, &dw22.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD22, &dw22.val);
+	if (err)
+		return err;
 
 	dw22.field.time1588clk_div = e822_cgu_params[*clk_freq].post_pll_div;
 	dw22.field.time1588clk_sel_div2 = 0;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD22, dw22.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD22, dw22.val);
+	if (err)
+		return err;
 
 	/* Configure the TS PLL pre divisor and clock source */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, &dw23.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, &dw23.val);
+	if (err)
+		return err;
 
 	dw23.field.ref1588_ck_div = e822_cgu_params[*clk_freq].refclk_pre_div;
 	dw23.field.time_ref_sel = *clk_src;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
+	if (err)
+		return err;
 
 	dw24.field.tspll_fbdiv_frac = e822_cgu_params[*clk_freq].frac_n_div;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
+	if (err)
+		return err;
 
 	/* Finally, enable the PLL */
 	dw23.field.ts_pll_enable = 1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
+	if (err)
+		return err;
 
 	/* Wait to verify if the PLL locks */
 	ice_msec_delay(1, true);
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_RO_LOCK_E825C, &ro_lock.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_RO_LOCK_E825C, &ro_lock.val);
+	if (err)
+		return err;
 
 	if (!ro_lock.field.plllock_true_lock_cri) {
 		ice_warn(hw, "CGU PLL failed to lock\n");
@@ -505,19 +505,19 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 static int ice_cfg_cgu_pll_dis_sticky_bits_e822(struct ice_hw *hw)
 {
 	union tspll_cntr_bist_settings cntr_bist;
-	int status;
+	int err;
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_CNTR_BIST_SETTINGS,
-				       &cntr_bist.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_CNTR_BIST_SETTINGS,
+				    &cntr_bist.val);
+	if (err)
+		return err;
 
 	cntr_bist.field.i_plllock_sel_0 = 0;
 	cntr_bist.field.i_plllock_sel_1 = 0;
 
-	status = ice_write_cgu_reg_e82x(hw, TSPLL_CNTR_BIST_SETTINGS,
-					cntr_bist.val);
-	return status;
+	err = ice_write_cgu_reg_e82x(hw, TSPLL_CNTR_BIST_SETTINGS,
+				     cntr_bist.val);
+	return err;
 }
 
 /**
@@ -530,18 +530,16 @@ static int ice_cfg_cgu_pll_dis_sticky_bits_e822(struct ice_hw *hw)
 static int ice_cfg_cgu_pll_dis_sticky_bits_e825c(struct ice_hw *hw)
 {
 	union tspll_bw_tdc_e825c bw_tdc;
-	int status;
+	int err;
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_BW_TDC_E825C,
-				       &bw_tdc.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_BW_TDC_E825C, &bw_tdc.val);
+	if (err)
+		return err;
 
 	bw_tdc.field.i_plllock_sel_1_0 = 0;
 
-	status = ice_write_cgu_reg_e82x(hw, TSPLL_BW_TDC_E825C,
-					bw_tdc.val);
-	return status;
+	err = ice_write_cgu_reg_e82x(hw, TSPLL_BW_TDC_E825C, bw_tdc.val);
+	return err;
 }
 
 /**
@@ -553,11 +551,11 @@ int
 ice_cgu_ts_pll_lost_lock_e825c(struct ice_hw *hw, bool *lost_lock)
 {
 	union tspll_ro_lock_e825c ro_lock;
-	int status;
+	int err;
 
-	status = ice_read_cgu_reg_e82x(hw, TSPLL_RO_LOCK_E825C, &ro_lock.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, TSPLL_RO_LOCK_E825C, &ro_lock.val);
+	if (err)
+		return err;
 
 	if (ro_lock.field.pllunlock_flag_cri &&
 	    !ro_lock.field.plllock_true_lock_cri)
@@ -575,19 +573,19 @@ ice_cgu_ts_pll_lost_lock_e825c(struct ice_hw *hw, bool *lost_lock)
 int ice_cgu_ts_pll_restart_e825c(struct ice_hw *hw)
 {
 	union nac_cgu_dword23_e825c dw23;
-	int status;
+	int err;
 
 	/* Read the initial values of DW23 */
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, &dw23.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, &dw23.val);
+	if (err)
+		return err;
 
 	/* Disable the PLL */
 	dw23.field.ts_pll_enable = 0;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
+	if (err)
+		return err;
 
 	/* Wait 5us before reenabling PLL */
 	ice_usec_delay(5, false);
@@ -595,9 +593,9 @@ int ice_cgu_ts_pll_restart_e825c(struct ice_hw *hw)
 	/* Re-enable the PLL */
 	dw23.field.ts_pll_enable = 1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -624,11 +622,11 @@ int
 ice_cgu_bypass_mux_port_active_e825c(struct ice_hw *hw, u8 port, bool *active)
 {
 	union nac_cgu_dword11_e825c dw11;
-	int status;
+	int err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD11_E825C, &dw11.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD11_E825C, &dw11.val);
+	if (err)
+		return err;
 
 	if (dw11.field.synce_s_byp_clk == cgu_bypass_mux_port(hw, port))
 		*active = true;
@@ -651,22 +649,22 @@ ice_cfg_cgu_bypass_mux_e825c(struct ice_hw *hw, u8 port, bool clock_1588,
 {
 	union nac_cgu_dword11_e825c dw11;
 	union nac_cgu_dword10_e825c dw10;
-	int status;
+	int err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD11_E825C, &dw11.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD11_E825C, &dw11.val);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, &dw10.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, &dw10.val);
+	if (err)
+		return err;
 
 	/* ref_clk_byp1_div */
 	dw10.field.synce_ethclko_sel = 0x1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, dw10.val);
-	if (status)
-		return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, dw10.val);
+	if (err)
+		return err;
 
 	if (!ena)
 		/* net_ref_clk0 */
@@ -716,24 +714,23 @@ static int ice_get_div_e825c(u16 link_speed, u8 *divider)
 int ice_cfg_synce_ethdiv_e825c(struct ice_hw *hw, u8 *divider)
 {
 	union nac_cgu_dword10_e825c dw10;
-	int status;
+	int err;
 	u16 link_speed;
 
 	link_speed = hw->port_info->phy.link_info.link_speed;
-	status = ice_get_div_e825c(link_speed, divider);
-	if (status)
-		return status;
+	err = ice_get_div_e825c(link_speed, divider);
+	if (err)
+		return err;
 
-	status = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, &dw10.val);
-	if (status)
-		return status;
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, &dw10.val);
+	if (err)
+		return err;
 
 	/*  programmable divider value (from 2 to 16) minus 1 for ETHCLKOUT */
 	dw10.field.synce_ethdiv_m1 = *divider + 1;
 
-	status = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C,
-					dw10.val);
-	return status;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD10_E825C, dw10.val);
+	return err;
 }
 
 /**
@@ -747,15 +744,15 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 	struct ice_ts_func_info *ts_info = &hw->func_caps.ts_func_info;
 	enum ice_time_ref_freq time_ref_freq;
 	enum ice_clk_src clk_src;
-	int status;
+	int err;
 
 	/* Disable sticky lock detection so lock status reported is accurate */
 	if (ice_is_e825c(hw))
-		status = ice_cfg_cgu_pll_dis_sticky_bits_e825c(hw);
+		err = ice_cfg_cgu_pll_dis_sticky_bits_e825c(hw);
 	else
-		status = ice_cfg_cgu_pll_dis_sticky_bits_e822(hw);
-	if (status)
-		return status;
+		err = ice_cfg_cgu_pll_dis_sticky_bits_e822(hw);
+	if (err)
+		return err;
 
 	/* Configure the CGU PLL using the parameters from the function
 	 * capabilities.
@@ -763,11 +760,11 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 	time_ref_freq = (enum ice_time_ref_freq)ts_info->time_ref;
 	clk_src = (enum ice_clk_src)ts_info->clk_src;
 	if (ice_is_e825c(hw))
-		status = ice_cfg_cgu_pll_e825c(hw, &time_ref_freq, &clk_src);
+		err = ice_cfg_cgu_pll_e825c(hw, &time_ref_freq, &clk_src);
 	else
-		status = ice_cfg_cgu_pll_e822(hw, time_ref_freq, clk_src);
-	if (status)
-		return status;
+		err = ice_cfg_cgu_pll_e822(hw, time_ref_freq, clk_src);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -919,7 +916,7 @@ ice_write_phy_eth56g_raw_lp(struct ice_hw *hw,  u32 reg_addr, u32 val,
 			    bool lock_sbq)
 {
 	struct ice_sbq_msg_input phy_msg;
-	int status;
+	int err;
 
 	phy_msg.opcode = ice_sbq_msg_wr;
 
@@ -929,13 +926,13 @@ ice_write_phy_eth56g_raw_lp(struct ice_hw *hw,  u32 reg_addr, u32 val,
 	phy_msg.data = val;
 	phy_msg.dest_dev = phy_56g;
 
-	status = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
 
-	if (status)
+	if (err)
 		ice_debug(hw, ICE_DBG_PTP, "PTP failed to send msg to phy %d\n",
-			  status);
+			  err);
 
-	return status;
+	return err;
 }
 
 /**
@@ -950,7 +947,7 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u32 reg_addr, u32 *val,
 			   bool lock_sbq)
 {
 	struct ice_sbq_msg_input phy_msg;
-	int status;
+	int err;
 
 	phy_msg.opcode = ice_sbq_msg_rd;
 
@@ -959,15 +956,15 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u32 reg_addr, u32 *val,
 
 	phy_msg.dest_dev = phy_56g;
 
-	status = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
 
-	if (status)
+	if (err)
 		ice_debug(hw, ICE_DBG_PTP, "PTP failed to send msg to phy %d\n",
-			  status);
+			  err);
 	else
 		*val = phy_msg.data;
 
-	return status;
+	return err;
 }
 
 /**
@@ -1028,12 +1025,12 @@ static int
 ice_write_phy_reg_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset, u32 val,
 			    bool lock_sbq)
 {
-	int status;
+	int err;
 	u32 reg_addr;
 
-	status = ice_phy_port_reg_address_eth56g(port, offset, &reg_addr);
-	if (status)
-		return status;
+	err = ice_phy_port_reg_address_eth56g(port, offset, &reg_addr);
+	if (err)
+		return err;
 
 	return ice_write_phy_eth56g_raw_lp(hw, reg_addr, val, lock_sbq);
 }
@@ -1064,12 +1061,12 @@ static int
 ice_read_phy_reg_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset, u32 *val,
 			   bool lock_sbq)
 {
-	int status;
+	int err;
 	u32 reg_addr;
 
-	status = ice_phy_port_reg_address_eth56g(port, offset, &reg_addr);
-	if (status)
-		return status;
+	err = ice_phy_port_reg_address_eth56g(port, offset, &reg_addr);
+	if (err)
+		return err;
 
 	return ice_read_phy_eth56g_raw_lp(hw, reg_addr, val, lock_sbq);
 }
@@ -1100,12 +1097,12 @@ static int
 ice_phy_port_mem_read_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset,
 				u32 *val, bool lock_sbq)
 {
-	int status;
+	int err;
 	u32 mem_addr;
 
-	status = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
-	if (status)
-		return status;
+	err = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
+	if (err)
+		return err;
 
 	return ice_read_phy_eth56g_raw_lp(hw, mem_addr, val, lock_sbq);
 }
@@ -1137,12 +1134,12 @@ static int
 ice_phy_port_mem_write_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset,
 				 u32 val, bool lock_sbq)
 {
-	int status;
+	int err;
 	u32 mem_addr;
 
-	status = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
-	if (status)
-		return status;
+	err = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
+	if (err)
+		return err;
 
 	return ice_write_phy_eth56g_raw_lp(hw, mem_addr, val, lock_sbq);
 }
@@ -1217,24 +1214,24 @@ static int
 ice_read_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 {
 	u16 high_addr = low_addr + sizeof(u32);
-	int status;
+	int err;
 	u32 lo, hi;
 
 	if (!ice_is_40b_phy_reg_eth56g(low_addr))
 		return ICE_ERR_PARAM;
 
-	status = ice_read_phy_reg_eth56g(hw, port, low_addr, &lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register %#08x\n, status %d",
-			  (int)low_addr, status);
-		return status;
+	err = ice_read_phy_reg_eth56g(hw, port, low_addr, &lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register %#08x\n, err %d",
+			  (int)low_addr, err);
+		return err;
 	}
 
-	status = ice_read_phy_reg_eth56g(hw, port, low_addr + sizeof(u32), &hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register %08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_read_phy_reg_eth56g(hw, port, low_addr + sizeof(u32), &hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register %08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	*val = ((u64)hi << P_REG_40B_HIGH_S) | (lo & P_REG_40B_LOW_M);
@@ -1258,24 +1255,24 @@ static int
 ice_read_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 {
 	u16 high_addr = low_addr + sizeof(u32);
-	int status;
+	int err;
 	u32 lo, hi;
 
 	if (!ice_is_64b_phy_reg_eth56g(low_addr))
 		return ICE_ERR_PARAM;
 
-	status = ice_read_phy_reg_eth56g(hw, port, low_addr, &lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register %#08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_read_phy_reg_eth56g(hw, port, low_addr, &lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register %#08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_read_phy_reg_eth56g(hw, port, high_addr, &hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register %#08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_read_phy_reg_eth56g(hw, port, high_addr, &hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register %#08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	*val = ((u64)hi << 32) | lo;
@@ -1299,7 +1296,7 @@ static int
 ice_write_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 {
 	u16 high_addr = low_addr + sizeof(u32);
-	int status;
+	int err;
 	u32 lo, hi;
 
 	if (!ice_is_40b_phy_reg_eth56g(low_addr))
@@ -1308,18 +1305,18 @@ ice_write_40b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 	lo = (u32)(val & P_REG_40B_LOW_M);
 	hi = (u32)(val >> P_REG_40B_HIGH_S);
 
-	status = ice_write_phy_reg_eth56g(hw, port, low_addr, lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_write_phy_reg_eth56g(hw, port, low_addr, lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_eth56g(hw, port, high_addr, hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_write_phy_reg_eth56g(hw, port, high_addr, hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	return 0;
@@ -1340,7 +1337,7 @@ static int
 ice_write_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 {
 	u16 high_addr = low_addr + sizeof(u32);
-	int status;
+	int err;
 	u32 lo, hi;
 
 	if (!ice_is_64b_phy_reg_eth56g(low_addr))
@@ -1349,18 +1346,18 @@ ice_write_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 	lo = ICE_LO_DWORD(val);
 	hi = ICE_HI_DWORD(val);
 
-	status = ice_write_phy_reg_eth56g(hw, port, low_addr, lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_write_phy_reg_eth56g(hw, port, low_addr, lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_eth56g(hw, port, high_addr, hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_write_phy_reg_eth56g(hw, port, high_addr, hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	return 0;
@@ -1379,25 +1376,25 @@ ice_write_64b_phy_reg_eth56g(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 static int
 ice_read_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx, u64 *tstamp)
 {
-	int status;
 	u16 lo_addr, hi_addr;
 	u32 lo, hi;
+	int err;
 
 	lo_addr = (u16)PHY_TSTAMP_L(idx);
 	hi_addr = (u16)PHY_TSTAMP_U(idx);
 
-	status = ice_phy_port_mem_read_eth56g(hw, port, lo_addr, &lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_phy_port_mem_read_eth56g(hw, port, lo_addr, &lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_phy_port_mem_read_eth56g(hw, port, hi_addr, &hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_phy_port_mem_read_eth56g(hw, port, hi_addr, &hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
 	/* For 56G based internal PHYs, the timestamp is reported with the
@@ -1421,16 +1418,16 @@ ice_read_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx, u64 *tstamp)
 static int
 ice_clear_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx)
 {
-	int status;
+	int err;
 	u16 lo_addr;
 
 	lo_addr = (u16)PHY_TSTAMP_L(idx);
 
-	status = ice_phy_port_mem_write_eth56g(hw, port, lo_addr, 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_phy_port_mem_write_eth56g(hw, port, lo_addr, 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register for port %u, idx %u, err %d\n",
+			  port, idx, err);
+		return err;
 	}
 
 	return 0;
@@ -1447,14 +1444,14 @@ ice_clear_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx)
 static int
 ice_ptp_prep_port_phy_time_eth56g(struct ice_hw *hw, u8 port, u64 phy_time)
 {
-	int status;
+	int err;
 
 	/* Tx case */
-	status = ice_write_64b_phy_reg_eth56g(hw, port,
+	err = ice_write_64b_phy_reg_eth56g(hw, port,
 					      PHY_REG_TX_TIMER_INC_PRE_L,
 					      phy_time);
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	/* Rx case */
 	return ice_write_64b_phy_reg_eth56g(hw, port,
@@ -1475,7 +1472,6 @@ ice_ptp_prep_port_phy_time_eth56g(struct ice_hw *hw, u8 port, u64 phy_time)
 static int
 ice_ptp_prep_phy_time_eth56g(struct ice_hw *hw, u32 time)
 {
-	int status;
 	u64 phy_time;
 	u8 port;
 
@@ -1485,15 +1481,15 @@ ice_ptp_prep_phy_time_eth56g(struct ice_hw *hw, u32 time)
 	phy_time = (u64)time << 32;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
+		int err;
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
-		status = ice_ptp_prep_port_phy_time_eth56g(hw, port,
-							   phy_time);
+		err = ice_ptp_prep_port_phy_time_eth56g(hw, port, phy_time);
 
-		if (status) {
-			ice_debug(hw, ICE_DBG_PTP, "Failed to write init time for port %u, status %d\n",
-				  port, status);
-			return status;
+		if (err) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to write init time for port %u, err %d\n",
+				  port, err);
+			return err;
 		}
 	}
 
@@ -1521,44 +1517,40 @@ int
 ice_ptp_prep_port_adj_eth56g(struct ice_hw *hw, u8 port, s64 time,
 			     bool lock_sbq)
 {
-	int status;
 	u32 l_time, u_time;
+	int err;
 
 	l_time = ICE_LO_DWORD(time);
 	u_time = ICE_HI_DWORD(time);
 
 	/* Tx case */
-	status = ice_write_phy_reg_eth56g_lp(hw, port,
-					     PHY_REG_TX_TIMER_INC_PRE_L,
-					     l_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_TX_TIMER_INC_PRE_L,
+					  l_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
-	status = ice_write_phy_reg_eth56g_lp(hw, port,
-					     PHY_REG_TX_TIMER_INC_PRE_U,
-					     u_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_TX_TIMER_INC_PRE_U,
+					  u_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
 	/* Rx case */
-	status = ice_write_phy_reg_eth56g_lp(hw, port,
-					     PHY_REG_RX_TIMER_INC_PRE_L,
-					     l_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_RX_TIMER_INC_PRE_L,
+					  l_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
-	status = ice_write_phy_reg_eth56g_lp(hw, port,
-					     PHY_REG_RX_TIMER_INC_PRE_U,
-					     u_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_RX_TIMER_INC_PRE_U,
+					  u_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
 	return 0;
 
 exit_err:
-	ice_debug(hw, ICE_DBG_PTP, "Failed to write time adjust for port %u, status %d\n",
-		  port, status);
-	return status;
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write time adjust for port %u, err %d\n",
+		  port, err);
+	return err;
 }
 
 /**
@@ -1575,7 +1567,7 @@ exit_err:
 static int
 ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
 {
-	int status = 0;
+	int err = 0;
 	s64 cycles;
 	u8 port;
 
@@ -1589,13 +1581,12 @@ ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
 
-		status = ice_ptp_prep_port_adj_eth56g(hw, port, cycles,
-						      lock_sbq);
-		if (status)
+		err = ice_ptp_prep_port_adj_eth56g(hw, port, cycles, lock_sbq);
+		if (err)
 			break;
 	}
 
-	return status;
+	return err;
 }
 
 /**
@@ -1610,19 +1601,18 @@ ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
 static int
 ice_ptp_prep_phy_incval_eth56g(struct ice_hw *hw, u64 incval)
 {
-	int status;
 	u8 port;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
+		int err;
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
-		status = ice_write_40b_phy_reg_eth56g(hw, port,
-						      PHY_REG_TIMETUS_L,
-						      incval);
-		if (status) {
-			ice_debug(hw, ICE_DBG_PTP, "Failed to write incval for port %u, status %d\n",
-				  port, status);
-			return status;
+		err = ice_write_40b_phy_reg_eth56g(hw, port, PHY_REG_TIMETUS_L,
+						   incval);
+		if (err) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to write incval for port %u, err %d\n",
+				  port, err);
+			return err;
 		}
 	}
 
@@ -1640,14 +1630,14 @@ ice_ptp_prep_phy_incval_eth56g(struct ice_hw *hw, u64 incval)
 int
 ice_ptp_read_phy_incval_eth56g(struct ice_hw *hw, u8 port, u64 *incval)
 {
-	int status;
+	int err;
 
-	status = ice_read_40b_phy_reg_eth56g(hw, port, PHY_REG_TIMETUS_L,
+	err = ice_read_40b_phy_reg_eth56g(hw, port, PHY_REG_TIMETUS_L,
 					     incval);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read TIMETUS_L, status %d\n",
-			  status);
-		return status;
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TIMETUS_L, err %d\n",
+			  err);
+		return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "read INCVAL = 0x%016llx\n",
@@ -1672,7 +1662,7 @@ ice_ptp_read_phy_incval_eth56g(struct ice_hw *hw, u8 port, u64 *incval)
 static int
 ice_ptp_prep_phy_adj_target_eth56g(struct ice_hw *hw, u32 target_time)
 {
-	int status;
+	int err;
 	u8 port;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
@@ -1681,40 +1671,40 @@ ice_ptp_prep_phy_adj_target_eth56g(struct ice_hw *hw, u32 target_time)
 
 		/* Tx case */
 		/* No sub-nanoseconds data */
-		status = ice_write_phy_reg_eth56g_lp(hw, port,
-						     PHY_REG_TX_TIMER_CNT_ADJ_L,
-						     0, true);
-		if (status)
+		err = ice_write_phy_reg_eth56g_lp(hw, port,
+						  PHY_REG_TX_TIMER_CNT_ADJ_L,
+						  0, true);
+		if (err)
 			goto exit_err;
 
-		status = ice_write_phy_reg_eth56g_lp(hw, port,
-						     PHY_REG_TX_TIMER_CNT_ADJ_U,
-						     target_time, true);
-		if (status)
+		err = ice_write_phy_reg_eth56g_lp(hw, port,
+						  PHY_REG_TX_TIMER_CNT_ADJ_U,
+						  target_time, true);
+		if (err)
 			goto exit_err;
 
 		/* Rx case */
 		/* No sub-nanoseconds data */
-		status = ice_write_phy_reg_eth56g_lp(hw, port,
-						     PHY_REG_RX_TIMER_CNT_ADJ_L,
-						     0, true);
-		if (status)
+		err = ice_write_phy_reg_eth56g_lp(hw, port,
+						  PHY_REG_RX_TIMER_CNT_ADJ_L,
+						  0, true);
+		if (err)
 			goto exit_err;
 
-		status = ice_write_phy_reg_eth56g_lp(hw, port,
-						     PHY_REG_RX_TIMER_CNT_ADJ_U,
-						     target_time, true);
-		if (status)
+		err = ice_write_phy_reg_eth56g_lp(hw, port,
+						  PHY_REG_RX_TIMER_CNT_ADJ_U,
+						  target_time, true);
+		if (err)
 			goto exit_err;
 	}
 
 	return 0;
 
 exit_err:
-	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, status %d\n",
-		  port, status);
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, err %d\n",
+		  port, err);
 
-	return status;
+	return err;
 }
 
 /**
@@ -1730,27 +1720,27 @@ int
 ice_ptp_read_port_capture_eth56g(struct ice_hw *hw, u8 port, u64 *tx_ts,
 				 u64 *rx_ts)
 {
-	int status;
+	int err;
 
 	/* Tx case */
-	status = ice_read_64b_phy_reg_eth56g(hw, port, PHY_REG_TX_CAPTURE_L,
-					     tx_ts);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read REG_TX_CAPTURE, status %d\n",
-			  status);
-		return status;
+	err = ice_read_64b_phy_reg_eth56g(hw, port, PHY_REG_TX_CAPTURE_L,
+					  tx_ts);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read REG_TX_CAPTURE, err %d\n",
+			  err);
+		return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "tx_init = %#016llx\n",
 		  (unsigned long long)*tx_ts);
 
 	/* Rx case */
-	status = ice_read_64b_phy_reg_eth56g(hw, port, PHY_REG_RX_CAPTURE_L,
-					     rx_ts);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_CAPTURE, status %d\n",
-			  status);
-		return status;
+	err = ice_read_64b_phy_reg_eth56g(hw, port, PHY_REG_RX_CAPTURE_L,
+					  rx_ts);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_CAPTURE, err %d\n",
+			  err);
+		return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "rx_init = %#016llx\n",
@@ -1773,24 +1763,24 @@ ice_ptp_write_port_cmd_eth56g(struct ice_hw *hw, u8 port,
 			      enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
 {
 	u32 val = ice_ptp_tmr_cmd_to_port_reg(hw, cmd);
-	int status;
+	int err;
 
 	/* Tx case */
-	status = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_TX_TMR_CMD, val,
-					     lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write back TX_TMR_CMD, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_TX_TMR_CMD, val,
+					  lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write back TX_TMR_CMD, err %d\n",
+			  err);
+		return err;
 	}
 
 	/* Rx case */
-	status = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_RX_TMR_CMD, val,
-					     lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write back RX_TMR_CMD, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_RX_TMR_CMD, val,
+					  lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write back RX_TMR_CMD, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -1827,8 +1817,8 @@ ice_calc_fixed_tx_offset_eth56g(struct ice_hw *hw,
 int ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port)
 {
 	enum ice_ptp_link_spd link_spd = ICE_PTP_LNK_SPD_10G;
-	int status;
 	u64 total_offset;
+	int err;
 
 	total_offset = ice_calc_fixed_tx_offset_eth56g(hw, link_spd);
 
@@ -1836,11 +1826,10 @@ int ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port)
 	 * PHY and indicate that the Tx offset is ready. After this,
 	 * timestamps will be enabled.
 	 */
-	status = ice_write_64b_phy_reg_eth56g(hw, port,
-					      PHY_REG_TOTAL_TX_OFFSET_L,
-					      total_offset);
-	if (status)
-		return status;
+	err = ice_write_64b_phy_reg_eth56g(hw, port, PHY_REG_TOTAL_TX_OFFSET_L,
+					   total_offset);
+	if (err)
+		return err;
 
 	return ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_OFFSET_READY, 1);
 }
@@ -1881,7 +1870,7 @@ ice_calc_fixed_rx_offset_eth56g(struct ice_hw *hw,
  */
 int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port)
 {
-	int status;
+	int err;
 	u64 total_offset;
 
 	total_offset = ice_calc_fixed_rx_offset_eth56g(hw, 0);
@@ -1890,11 +1879,10 @@ int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port)
 	 * PHY and indicate that the Rx offset is ready. After this,
 	 * timestamps will be enabled.
 	 */
-	status = ice_write_64b_phy_reg_eth56g(hw, port,
-					      PHY_REG_TOTAL_RX_OFFSET_L,
-					      total_offset);
-	if (status)
-		return status;
+	err = ice_write_64b_phy_reg_eth56g(hw, port, PHY_REG_TOTAL_RX_OFFSET_L,
+					   total_offset);
+	if (err)
+		return err;
 
 	return ice_write_phy_reg_eth56g(hw, port, PHY_REG_RX_OFFSET_READY, 1);
 }
@@ -1913,10 +1901,10 @@ static int
 ice_read_phy_and_phc_time_eth56g(struct ice_hw *hw, u8 port, u64 *phy_time,
 				 u64 *phc_time)
 {
-	int status;
 	u64 tx_time, rx_time;
 	u32 zo, lo;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = ice_get_ptp_src_clock_index(hw);
 
@@ -1924,9 +1912,9 @@ ice_read_phy_and_phc_time_eth56g(struct ice_hw *hw, u8 port, u64 *phy_time,
 	ice_ptp_src_cmd(hw, ICE_PTP_READ_TIME);
 
 	/* Prepare the PHY timer for a ICE_PTP_READ_TIME capture command */
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_READ_TIME, true);
-	if (status)
-		return status;
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_READ_TIME, true);
+	if (err)
+		return err;
 
 	/* Issue the sync to start the ICE_PTP_READ_TIME capture */
 	ice_ptp_exec_tmr_cmd(hw);
@@ -1937,9 +1925,9 @@ ice_read_phy_and_phc_time_eth56g(struct ice_hw *hw, u8 port, u64 *phy_time,
 	*phc_time = (u64)lo << 32 | zo;
 
 	/* Read the captured PHY time from the PHY shadow registers */
-	status = ice_ptp_read_port_capture_eth56g(hw, port, &tx_time, &rx_time);
-	if (status)
-		return status;
+	err = ice_ptp_read_port_capture_eth56g(hw, port, &tx_time, &rx_time);
+	if (err)
+		return err;
 
 	/* If the PHY Tx and Rx timers don't match, log a warning message.
 	 * Note that this should not happen in normal circumstances since the
@@ -1970,16 +1958,16 @@ ice_read_phy_and_phc_time_eth56g(struct ice_hw *hw, u8 port, u64 *phy_time,
 static int ice_sync_phy_timer_eth56g(struct ice_hw *hw, u8 port)
 {
 	u64 phc_time, phy_time, difference;
-	int status;
+	int err;
 
 	if (!ice_ptp_lock(hw)) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to acquire PTP semaphore\n");
 		return ICE_ERR_NOT_READY;
 	}
 
-	status = ice_read_phy_and_phc_time_eth56g(hw, port, &phy_time,
-						  &phc_time);
-	if (status)
+	err = ice_read_phy_and_phc_time_eth56g(hw, port, &phy_time,
+					       &phc_time);
+	if (err)
 		goto err_unlock;
 
 	/* Calculate the amount required to add to the port time in order for
@@ -1994,12 +1982,12 @@ static int ice_sync_phy_timer_eth56g(struct ice_hw *hw, u8 port)
 	ice_ptp_src_cmd(hw, ICE_PTP_NOP);
 	difference = phc_time - phy_time;
 
-	status = ice_ptp_prep_port_adj_eth56g(hw, port, (s64)difference, true);
-	if (status)
+	err = ice_ptp_prep_port_adj_eth56g(hw, port, (s64)difference, true);
+	if (err)
 		goto err_unlock;
 
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_ADJ_TIME, true);
-	if (status)
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_ADJ_TIME, true);
+	if (err)
 		goto err_unlock;
 
 	/* Issue the sync to activate the time adjustment */
@@ -2009,9 +1997,9 @@ static int ice_sync_phy_timer_eth56g(struct ice_hw *hw, u8 port)
 	 * verify that the time was properly adjusted.
 	 */
 
-	status = ice_read_phy_and_phc_time_eth56g(hw, port, &phy_time,
-						  &phc_time);
-	if (status)
+	err = ice_read_phy_and_phc_time_eth56g(hw, port, &phy_time,
+					       &phc_time);
+	if (err)
 		goto err_unlock;
 
 	ice_info(hw, "Port %u PHY time synced to PHC: 0x%016llX, 0x%016llX\n",
@@ -2020,7 +2008,7 @@ static int ice_sync_phy_timer_eth56g(struct ice_hw *hw, u8 port)
 
 err_unlock:
 	ice_ptp_unlock(hw);
-	return status;
+	return err;
 }
 
 /**
@@ -2036,15 +2024,15 @@ err_unlock:
 int
 ice_stop_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool soft_reset)
 {
-	int status;
+	int err;
 
-	status = ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_OFFSET_READY, 0);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_OFFSET_READY, 0);
+	if (err)
+		return err;
 
-	status = ice_write_phy_reg_eth56g(hw, port, PHY_REG_RX_OFFSET_READY, 0);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_eth56g(hw, port, PHY_REG_RX_OFFSET_READY, 0);
+	if (err)
+		return err;
 
 	ice_debug(hw, ICE_DBG_PTP, "Disabled clock on PHY port %u\n", port);
 
@@ -2065,16 +2053,16 @@ ice_stop_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool soft_reset)
 int
 ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
 {
-	int status;
+	int err;
 	u32 lo, hi;
 	u64 incval;
 	u8 tmr_idx;
 
 	tmr_idx = ice_get_ptp_src_clock_index(hw);
 
-	status = ice_stop_phy_timer_eth56g(hw, port, false);
-	if (status)
-		return status;
+	err = ice_stop_phy_timer_eth56g(hw, port, false);
+	if (err)
+		return err;
 
 	ice_ptp_src_cmd(hw, ICE_PTP_NOP);
 
@@ -2082,30 +2070,30 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
 	hi = rd32(hw, GLTSYN_INCVAL_H(tmr_idx));
 	incval = (u64)hi << 32 | lo;
 
-	status = ice_write_40b_phy_reg_eth56g(hw, port, PHY_REG_TIMETUS_L,
-					      incval);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_eth56g(hw, port, PHY_REG_TIMETUS_L,
+					   incval);
+	if (err)
+		return err;
 
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_INIT_INCVAL, true);
-	if (status)
-		return status;
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_INIT_INCVAL, true);
+	if (err)
+		return err;
 
 	ice_ptp_exec_tmr_cmd(hw);
 
-	status = ice_sync_phy_timer_eth56g(hw, port);
-	if (status)
-		return status;
+	err = ice_sync_phy_timer_eth56g(hw, port);
+	if (err)
+		return err;
 
 	/* Program the Tx offset */
-	status = ice_phy_cfg_tx_offset_eth56g(hw, port);
-	if (status)
-		return status;
+	err = ice_phy_cfg_tx_offset_eth56g(hw, port);
+	if (err)
+		return err;
 
 	/* Program the Rx offset */
-	status = ice_phy_cfg_rx_offset_eth56g(hw, port);
-	if (status)
-		return status;
+	err = ice_phy_cfg_rx_offset_eth56g(hw, port);
+	if (err)
+		return err;
 
 	ice_debug(hw, ICE_DBG_PTP, "Enabled clock on PHY port %u\n", port);
 
@@ -2120,7 +2108,7 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
  */
 static int ice_ptp_init_phc_eth56g(struct ice_hw *hw)
 {
-	int status = 0;
+	int err = 0;
 	u32 regval;
 
 	/* Enable reading switch and PHY registers over the sideband queue */
@@ -2132,46 +2120,46 @@ static int ice_ptp_init_phc_eth56g(struct ice_hw *hw)
 	wr32(hw, PF_SB_REM_DEV_CTL, regval);
 
 	/* Initialize the Clock Generation Unit */
-	status = ice_init_cgu_e82x(hw);
+	err = ice_init_cgu_e82x(hw);
 
-	return status;
+	return err;
 }
 
 /**
  * ice_ptp_read_tx_hwtstamp_status_eth56g - Get the current TX timestamp
- * status mask. Returns the mask of ports where TX timestamps are available
+ * err mask. Returns the mask of ports where TX timestamps are available
  * @hw: pointer to the HW struct
- * @ts_status: the timestamp mask pointer
+ * @ts_err: the timestamp mask pointer
  */
 int
-ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status)
+ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_err)
 {
-	int status;
+	int err;
 
-	status = ice_read_phy_eth56g_raw_lp(hw, PHY_PTP_INT_STATUS, ts_status,
+	err = ice_read_phy_eth56g_raw_lp(hw, PHY_PTP_INT_STATUS, ts_err,
 					    true);
-	if (status)
-		return status;
+	if (err)
+		return err;
 
-	ice_debug(hw, ICE_DBG_PTP, "PHY interrupt status: %x\n", *ts_status);
+	ice_debug(hw, ICE_DBG_PTP, "PHY interrupt err: %x\n", *ts_err);
 
 	return 0;
 }
 
 /**
- * ice_ptp_init_phy_cfg - Get the current TX timestamp status
+ * ice_ptp_init_phy_cfg - Get the current TX timestamp err
  * mask. Returns the mask of ports where TX timestamps are available
  * @hw: pointer to the HW struct
  */
 int ice_ptp_init_phy_cfg(struct ice_hw *hw)
 {
-	int status;
+	int err;
 	u32 phy_rev;
 
-	status = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION, &phy_rev,
+	err = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION, &phy_rev,
 					    true);
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	if (phy_rev == PHY_REVISION_ETH56G) {
 		hw->phy_cfg = ICE_PHY_ETH56G;
@@ -2338,16 +2326,16 @@ ice_read_phy_reg_e822_lp(struct ice_hw *hw, u8 port, u16 offset, u32 *val,
 			 bool lock_sbq)
 {
 	struct ice_sbq_msg_input msg = {0};
-	int status;
+	int err;
 
 	ice_fill_phy_msg_e822(&msg, port, offset);
 	msg.opcode = ice_sbq_msg_rd;
 
-	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
-			  status);
-		return status;
+	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
+			  err);
+		return err;
 	}
 
 	*val = msg.data;
@@ -2376,9 +2364,9 @@ ice_read_phy_reg_e822(struct ice_hw *hw, u8 port, u16 offset, u32 *val)
 static int
 ice_read_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 {
-	int status;
 	u32 low, high;
 	u16 high_addr;
+	int err;
 
 	/* Only operate on registers known to be split into two 32bit
 	 * registers.
@@ -2389,18 +2377,18 @@ ice_read_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 		return ICE_ERR_PARAM;
 	}
 
-	status = ice_read_phy_reg_e822(hw, port, low_addr, &low);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register 0x%08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, low_addr, &low);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register 0x%08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_read_phy_reg_e822(hw, port, high_addr, &high);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register 0x%08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, high_addr, &high);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register 0x%08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	*val = (u64)high << P_REG_40B_HIGH_S | (low & P_REG_40B_LOW_M);
@@ -2423,9 +2411,9 @@ ice_read_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 static int
 ice_read_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 {
-	int status;
 	u32 low, high;
 	u16 high_addr;
+	int err;
 
 	/* Only operate on registers known to be split into two 32bit
 	 * registers.
@@ -2436,18 +2424,18 @@ ice_read_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 *val)
 		return ICE_ERR_PARAM;
 	}
 
-	status = ice_read_phy_reg_e822(hw, port, low_addr, &low);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register 0x%08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, low_addr, &low);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from low register 0x%08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_read_phy_reg_e822(hw, port, high_addr, &high);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register 0x%08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, high_addr, &high);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read from high register 0x%08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	*val = (u64)high << 32 | low;
@@ -2470,17 +2458,17 @@ ice_write_phy_reg_e822_lp(struct ice_hw *hw, u8 port, u16 offset, u32 val,
 			  bool lock_sbq)
 {
 	struct ice_sbq_msg_input msg = {0};
-	int status;
+	int err;
 
 	ice_fill_phy_msg_e822(&msg, port, offset);
 	msg.opcode = ice_sbq_msg_wr;
 	msg.data = val;
 
-	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
-			  status);
-		return status;
+	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -2505,9 +2493,9 @@ ice_write_phy_reg_e822(struct ice_hw *hw, u8 port, u16 offset, u32 val)
 static int
 ice_write_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 {
-	int status;
 	u32 low, high;
 	u16 high_addr;
+	int err;
 
 	/* Only operate on registers known to be split into a lower 8 bit
 	 * register and an upper 32 bit register.
@@ -2521,18 +2509,18 @@ ice_write_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 	low = (u32)(val & P_REG_40B_LOW_M);
 	high = (u32)(val >> P_REG_40B_HIGH_S);
 
-	status = ice_write_phy_reg_e822(hw, port, low_addr, low);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, low_addr, low);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e822(hw, port, high_addr, high);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, high_addr, high);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	return 0;
@@ -2553,9 +2541,9 @@ ice_write_40b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 static int
 ice_write_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 {
-	int status;
 	u32 low, high;
 	u16 high_addr;
+	int err;
 
 	/* Only operate on registers known to be split into two 32bit
 	 * registers.
@@ -2569,18 +2557,18 @@ ice_write_64b_phy_reg_e822(struct ice_hw *hw, u8 port, u16 low_addr, u64 val)
 	low = ICE_LO_DWORD(val);
 	high = ICE_HI_DWORD(val);
 
-	status = ice_write_phy_reg_e822(hw, port, low_addr, low);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, status %d",
-			  low_addr, status);
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, low_addr, low);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to low register 0x%08x\n, err %d",
+			  low_addr, err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e822(hw, port, high_addr, high);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, status %d",
-			  high_addr, status);
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, high_addr, high);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write to high register 0x%08x\n, err %d",
+			  high_addr, err);
+		return err;
 	}
 
 	return 0;
@@ -2632,23 +2620,24 @@ ice_read_quad_reg_e822_lp(struct ice_hw *hw, u8 quad, u16 offset, u32 *val,
 			  bool lock_sbq)
 {
 	struct ice_sbq_msg_input msg = {0};
-	int status;
+	int err;
 
-	status = ice_fill_quad_msg_e822(&msg, quad, offset);
-	if (status)
-		goto exit_err;
+	err = ice_fill_quad_msg_e822(&msg, quad, offset);
+	if (err)
+		return err;
 
 	msg.opcode = ice_sbq_msg_rd;
 
-	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-exit_err:
-	if (status)
-		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
-			  status);
-	else
-		*val = msg.data;
+	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
+			  err);
+		return err;
+	}
 
-	return ICE_SUCCESS;
+	*val = msg.data;
+
+	return 0;
 }
 
 int
@@ -2673,22 +2662,23 @@ ice_write_quad_reg_e822_lp(struct ice_hw *hw, u8 quad, u16 offset, u32 val,
 			   bool lock_sbq)
 {
 	struct ice_sbq_msg_input msg = {0};
-	int status;
+	int err;
 
-	status = ice_fill_quad_msg_e822(&msg, quad, offset);
-	if (status)
-		goto exit_err;
+	err = ice_fill_quad_msg_e822(&msg, quad, offset);
+	if (err)
+		return err;
 
 	msg.opcode = ice_sbq_msg_wr;
 	msg.data = val;
 
-	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-exit_err:
-	if (status)
-		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
-			  status);
+	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
+			  err);
+		return err;
+	}
 
-	return ICE_SUCCESS;
+	return 0;
 }
 
 int
@@ -2711,25 +2701,25 @@ ice_write_quad_reg_e822(struct ice_hw *hw, u8 quad, u16 offset, u32 val)
 static int
 ice_read_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx, u64 *tstamp)
 {
-	int status;
 	u16 lo_addr, hi_addr;
 	u32 lo, hi;
+	int err;
 
 	lo_addr = (u16)TS_L(Q_REG_TX_MEMORY_BANK_START, idx);
 	hi_addr = (u16)TS_H(Q_REG_TX_MEMORY_BANK_START, idx);
 
-	status = ice_read_quad_reg_e822(hw, quad, lo_addr, &lo);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_read_quad_reg_e822(hw, quad, lo_addr, &lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_read_quad_reg_e822(hw, quad, hi_addr, &hi);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_read_quad_reg_e822(hw, quad, hi_addr, &hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
 	/* For E822 based internal PHYs, the timestamp is reported with the
@@ -2753,24 +2743,24 @@ ice_read_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx, u64 *tstamp)
 static int
 ice_clear_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx)
 {
-	int status;
+	int err;
 	u16 lo_addr, hi_addr;
 
 	lo_addr = (u16)TS_L(Q_REG_TX_MEMORY_BANK_START, idx);
 	hi_addr = (u16)TS_H(Q_REG_TX_MEMORY_BANK_START, idx);
 
-	status = ice_write_quad_reg_e822(hw, quad, lo_addr, 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_write_quad_reg_e822(hw, quad, lo_addr, 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_write_quad_reg_e822(hw, quad, hi_addr, 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to clear high PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_write_quad_reg_e822(hw, quad, hi_addr, 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to clear high PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -2787,14 +2777,14 @@ int ice_ptp_set_vernier_wl(struct ice_hw *hw)
 	u8 port;
 
 	for (port = 0; port < hw->phy_ports; port++) {
-		int status;
+		int err;
 
-		status = ice_write_phy_reg_e822_lp(hw, port, P_REG_WL,
-						   PTP_VERNIER_WL, true);
-		if (status) {
-			ice_debug(hw, ICE_DBG_PTP, "Failed to set vernier window length for port %u, status %d\n",
-				  port, status);
-			return status;
+		err = ice_write_phy_reg_e822_lp(hw, port, P_REG_WL,
+						PTP_VERNIER_WL, true);
+		if (err) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to set vernier window length for port %u, err %d\n",
+				  port, err);
+			return err;
 		}
 	}
 
@@ -2809,7 +2799,7 @@ int ice_ptp_set_vernier_wl(struct ice_hw *hw)
  */
 static int ice_ptp_init_phc_e822(struct ice_hw *hw)
 {
-	int status;
+	int err;
 	u32 regval;
 
 	/* Enable reading switch and PHY registers over the sideband queue */
@@ -2821,9 +2811,9 @@ static int ice_ptp_init_phc_e822(struct ice_hw *hw)
 	wr32(hw, PF_SB_REM_DEV_CTL, regval);
 
 	/* Initialize the Clock Generation Unit */
-	status = ice_init_cgu_e82x(hw);
-	if (status)
-		return status;
+	err = ice_init_cgu_e82x(hw);
+	if (err)
+		return err;
 
 	/* Set window length for all the ports */
 	return ice_ptp_set_vernier_wl(hw);
@@ -2842,8 +2832,8 @@ static int ice_ptp_init_phc_e822(struct ice_hw *hw)
 static int
 ice_ptp_prep_phy_time_e822(struct ice_hw *hw, u32 time)
 {
-	int status;
 	u64 phy_time;
+	int err;
 	u8 port;
 
 	/* The time represents the upper 32 bits of the PHY timer, so we need
@@ -2854,27 +2844,27 @@ ice_ptp_prep_phy_time_e822(struct ice_hw *hw, u32 time)
 	for (port = 0; port < hw->phy_ports; port++) {
 
 		/* Tx case */
-		status = ice_write_64b_phy_reg_e822(hw, port,
-						    P_REG_TX_TIMER_INC_PRE_L,
-						    phy_time);
-		if (status)
+		err = ice_write_64b_phy_reg_e822(hw, port,
+						 P_REG_TX_TIMER_INC_PRE_L,
+						 phy_time);
+		if (err)
 			goto exit_err;
 
 		/* Rx case */
-		status = ice_write_64b_phy_reg_e822(hw, port,
-						    P_REG_RX_TIMER_INC_PRE_L,
-						    phy_time);
-		if (status)
+		err = ice_write_64b_phy_reg_e822(hw, port,
+						 P_REG_RX_TIMER_INC_PRE_L,
+						 phy_time);
+		if (err)
 			goto exit_err;
 	}
 
 	return 0;
 
 exit_err:
-	ice_debug(hw, ICE_DBG_PTP, "Failed to write init time for port %u, status %d\n",
-		  port, status);
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write init time for port %u, err %d\n",
+		  port, err);
 
-	return status;
+	return err;
 }
 
 /**
@@ -2898,40 +2888,40 @@ int
 ice_ptp_prep_port_adj_e822(struct ice_hw *hw, u8 port, s64 time,
 			   bool lock_sbq)
 {
-	int status;
 	u32 l_time, u_time;
+	int err;
 
 	l_time = ICE_LO_DWORD(time);
 	u_time = ICE_HI_DWORD(time);
 
 	/* Tx case */
-	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TIMER_INC_PRE_L,
-					   l_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TIMER_INC_PRE_L,
+					l_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
-	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TIMER_INC_PRE_U,
-					   u_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TIMER_INC_PRE_U,
+					u_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
 	/* Rx case */
-	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TIMER_INC_PRE_L,
-					   l_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TIMER_INC_PRE_L,
+					l_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
-	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TIMER_INC_PRE_U,
-					   u_time, lock_sbq);
-	if (status)
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TIMER_INC_PRE_U,
+					u_time, lock_sbq);
+	if (err)
 		goto exit_err;
 
 	return 0;
 
 exit_err:
-	ice_debug(hw, ICE_DBG_PTP, "Failed to write time adjust for port %u, status %d\n",
-		  port, status);
-	return status;
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write time adjust for port %u, err %d\n",
+		  port, err);
+	return err;
 }
 
 /**
@@ -2961,12 +2951,11 @@ ice_ptp_prep_phy_adj_e822(struct ice_hw *hw, s32 adj, bool lock_sbq)
 		cycles = -(((s64)-adj) << 32);
 
 	for (port = 0; port < hw->phy_ports; port++) {
-		int status;
+		int err;
 
-		status = ice_ptp_prep_port_adj_e822(hw, port, cycles,
-						    lock_sbq);
-		if (status)
-			return status;
+		err = ice_ptp_prep_port_adj_e822(hw, port, cycles, lock_sbq);
+		if (err)
+			return err;
 	}
 
 	return 0;
@@ -2984,23 +2973,23 @@ ice_ptp_prep_phy_adj_e822(struct ice_hw *hw, s32 adj, bool lock_sbq)
 static int
 ice_ptp_prep_phy_incval_e822(struct ice_hw *hw, u64 incval)
 {
-	int status;
+	int err;
 	u8 port;
 
 	for (port = 0; port < hw->phy_ports; port++) {
-		status = ice_write_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L,
-						    incval);
-		if (status)
+		err = ice_write_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L,
+						 incval);
+		if (err)
 			goto exit_err;
 	}
 
 	return 0;
 
 exit_err:
-	ice_debug(hw, ICE_DBG_PTP, "Failed to write incval for port %u, status %d\n",
-		  port, status);
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write incval for port %u, err %d\n",
+		  port, err);
 
-	return status;
+	return err;
 }
 
 /**
@@ -3014,13 +3003,13 @@ exit_err:
 int
 ice_ptp_read_phy_incval_e822(struct ice_hw *hw, u8 port, u64 *incval)
 {
-	int status;
+	int err;
 
-	status = ice_read_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L, incval);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read TIMETUS_L, status %d\n",
-			  status);
-		return status;
+	err = ice_read_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L, incval);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TIMETUS_L, err %d\n",
+			  err);
+		return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "read INCVAL = 0x%016llx\n",
@@ -3045,47 +3034,47 @@ ice_ptp_read_phy_incval_e822(struct ice_hw *hw, u8 port, u64 *incval)
 static int
 ice_ptp_prep_phy_adj_target_e822(struct ice_hw *hw, u32 target_time)
 {
-	int status;
+	int err;
 	u8 port;
 
 	for (port = 0; port < hw->phy_ports; port++) {
 
 		/* Tx case */
 		/* No sub-nanoseconds data */
-		status = ice_write_phy_reg_e822_lp(hw, port,
-						   P_REG_TX_TIMER_CNT_ADJ_L,
-						   0, true);
-		if (status)
+		err = ice_write_phy_reg_e822_lp(hw, port,
+						P_REG_TX_TIMER_CNT_ADJ_L,
+						0, true);
+		if (err)
 			goto exit_err;
 
-		status = ice_write_phy_reg_e822_lp(hw, port,
-						   P_REG_TX_TIMER_CNT_ADJ_U,
-						   target_time, true);
-		if (status)
+		err = ice_write_phy_reg_e822_lp(hw, port,
+						P_REG_TX_TIMER_CNT_ADJ_U,
+						target_time, true);
+		if (err)
 			goto exit_err;
 
 		/* Rx case */
 		/* No sub-nanoseconds data */
-		status = ice_write_phy_reg_e822_lp(hw, port,
-						   P_REG_RX_TIMER_CNT_ADJ_L,
-						   0, true);
-		if (status)
+		err = ice_write_phy_reg_e822_lp(hw, port,
+						P_REG_RX_TIMER_CNT_ADJ_L,
+						0, true);
+		if (err)
 			goto exit_err;
 
-		status = ice_write_phy_reg_e822_lp(hw, port,
-						   P_REG_RX_TIMER_CNT_ADJ_U,
-						   target_time, true);
-		if (status)
+		err = ice_write_phy_reg_e822_lp(hw, port,
+						P_REG_RX_TIMER_CNT_ADJ_U,
+						target_time, true);
+		if (err)
 			goto exit_err;
 	}
 
 	return 0;
 
 exit_err:
-	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, status %d\n",
-		  port, status);
+	ice_debug(hw, ICE_DBG_PTP, "Failed to write target time for port %u, err %d\n",
+		  port, err);
 
-	return status;
+	return err;
 }
 
 /**
@@ -3103,25 +3092,25 @@ int
 ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port, u64 *tx_ts,
 			       u64 *rx_ts)
 {
-	int status;
+	int err;
 
 	/* Tx case */
-	status = ice_read_64b_phy_reg_e822(hw, port, P_REG_TX_CAPTURE_L, tx_ts);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read REG_TX_CAPTURE, status %d\n",
-			  status);
-		return status;
+	err = ice_read_64b_phy_reg_e822(hw, port, P_REG_TX_CAPTURE_L, tx_ts);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read REG_TX_CAPTURE, err %d\n",
+			  err);
+		return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "tx_init = 0x%016llx\n",
 		  (unsigned long long)*tx_ts);
 
 	/* Rx case */
-	status = ice_read_64b_phy_reg_e822(hw, port, P_REG_RX_CAPTURE_L, rx_ts);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_CAPTURE, status %d\n",
-			  status);
-		return status;
+	err = ice_read_64b_phy_reg_e822(hw, port, P_REG_RX_CAPTURE_L, rx_ts);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_CAPTURE, err %d\n",
+			  err);
+		return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "rx_init = 0x%016llx\n",
@@ -3147,24 +3136,24 @@ ice_ptp_write_port_cmd_e822(struct ice_hw *hw, u8 port,
 			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
 {
 	u32 val = ice_ptp_tmr_cmd_to_port_reg(hw, cmd);
-	int status;
+	int err;
 
 	/* Tx case */
-	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TMR_CMD, val,
-					   lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write back TX_TMR_CMD, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TMR_CMD, val,
+					lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write back TX_TMR_CMD, err %d\n",
+			  err);
+		return err;
 	}
 
 	/* Rx case */
-	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TMR_CMD, val,
-					   lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write back RX_TMR_CMD, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TMR_CMD, val,
+					lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write back RX_TMR_CMD, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -3194,13 +3183,13 @@ ice_phy_get_speed_and_fec_e822(struct ice_hw *hw, u8 port,
 {
 	enum ice_ptp_link_spd link;
 	enum ice_ptp_fec_mode fec;
-	int status;
 	u32 serdes;
+	int err;
 
-	status = ice_read_phy_reg_e822(hw, port, P_REG_LINK_SPEED, &serdes);
-	if (status) {
+	err = ice_read_phy_reg_e822(hw, port, P_REG_LINK_SPEED, &serdes);
+	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to read serdes info\n");
-		return status;
+		return err;
 	}
 
 	/* Determine the FEC algorithm */
@@ -3261,23 +3250,23 @@ ice_phy_get_speed_and_fec_e822(struct ice_hw *hw, u8 port,
 void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port)
 {
 	enum ice_ptp_link_spd link_spd;
-	int status;
+	int err;
 	u32 val;
 	u8 quad;
 
-	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, NULL);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to get PHY link speed, status %d\n",
-			  status);
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, NULL);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to get PHY link speed, err %d\n",
+			  err);
 		return;
 	}
 
 	quad = port / ICE_PORTS_PER_QUAD;
 
-	status = ice_read_quad_reg_e822(hw, quad, Q_REG_TX_MEM_GBL_CFG, &val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_MEM_GLB_CFG, status %d\n",
-			  status);
+	err = ice_read_quad_reg_e822(hw, quad, Q_REG_TX_MEM_GBL_CFG, &val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_MEM_GLB_CFG, err %d\n",
+			  err);
 		return;
 	}
 
@@ -3286,10 +3275,10 @@ void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port)
 	else
 		val |= Q_REG_TX_MEM_GBL_CFG_LANE_TYPE_M;
 
-	status = ice_write_quad_reg_e822(hw, quad, Q_REG_TX_MEM_GBL_CFG, val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write back TX_MEM_GBL_CFG, status %d\n",
-			  status);
+	err = ice_write_quad_reg_e822(hw, quad, Q_REG_TX_MEM_GBL_CFG, val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write back TX_MEM_GBL_CFG, err %d\n",
+			  err);
 		return;
 	}
 }
@@ -3343,7 +3332,7 @@ void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port)
 static int ice_phy_cfg_uix_e822(struct ice_hw *hw, u8 port)
 {
 	u64 cur_freq, clk_incval, tu_per_sec, uix;
-	int status;
+	int err;
 
 	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
 	clk_incval = ice_ptp_read_src_incval(hw);
@@ -3357,23 +3346,23 @@ static int ice_phy_cfg_uix_e822(struct ice_hw *hw, u8 port)
 	/* Program the 10Gb/40Gb conversion ratio */
 	uix = DIV_U64(tu_per_sec * LINE_UI_10G_40G, 390625000);
 
-	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_10G_40G_L,
-					    uix);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write UIX66_10G_40G, status %d\n",
-			  status);
-		return status;
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_10G_40G_L,
+					 uix);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write UIX66_10G_40G, err %d\n",
+			  err);
+		return err;
 	}
 
 	/* Program the 25Gb/100Gb conversion ratio */
 	uix = DIV_U64(tu_per_sec * LINE_UI_25G_100G, 390625000);
 
-	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_25G_100G_L,
-					    uix);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write UIX66_25G_100G, status %d\n",
-			  status);
-		return status;
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_UIX66_25G_100G_L,
+					 uix);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write UIX66_25G_100G, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -3427,11 +3416,11 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	u64 cur_freq, clk_incval, tu_per_sec, phy_tus;
 	enum ice_ptp_link_spd link_spd;
 	enum ice_ptp_fec_mode fec_mode;
-	int status;
+	int err;
 
-	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
-	if (status)
-		return status;
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
 
 	cur_freq = ice_e822_pll_freq(ice_e822_time_ref(hw));
 	clk_incval = ice_ptp_read_src_incval(hw);
@@ -3453,10 +3442,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PAR_TX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_PAR_TX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_PAR_RX_TUS */
 	if (e822_vernier[link_spd].rx_par_clk)
@@ -3465,10 +3454,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PAR_RX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_PAR_RX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_PCS_TX_TUS */
 	if (e822_vernier[link_spd].tx_pcs_clk)
@@ -3477,10 +3466,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PCS_TX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_PCS_TX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_PCS_RX_TUS */
 	if (e822_vernier[link_spd].rx_pcs_clk)
@@ -3489,10 +3478,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_PCS_RX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_PCS_RX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_DESK_PAR_TX_TUS */
 	if (e822_vernier[link_spd].tx_desk_rsgb_par)
@@ -3501,10 +3490,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PAR_TX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PAR_TX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_DESK_PAR_RX_TUS */
 	if (e822_vernier[link_spd].rx_desk_rsgb_par)
@@ -3513,10 +3502,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PAR_RX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PAR_RX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_DESK_PCS_TX_TUS */
 	if (e822_vernier[link_spd].tx_desk_rsgb_pcs)
@@ -3525,10 +3514,10 @@ static int ice_phy_cfg_parpcs_e822(struct ice_hw *hw, u8 port)
 	else
 		phy_tus = 0;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PCS_TX_TUS_L,
-					    phy_tus);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_DESK_PCS_TX_TUS_L,
+					 phy_tus);
+	if (err)
+		return err;
 
 	/* P_REG_DESK_PCS_RX_TUS */
 	if (e822_vernier[link_spd].rx_desk_rsgb_pcs)
@@ -3594,12 +3583,12 @@ int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port)
 {
 	enum ice_ptp_link_spd link_spd;
 	enum ice_ptp_fec_mode fec_mode;
-	int status;
 	u64 total_offset, val;
+	int err;
 
-	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
-	if (status)
-		return status;
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
 
 	total_offset = ice_calc_fixed_tx_offset_e822(hw, link_spd);
 
@@ -3612,11 +3601,11 @@ int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port)
 	    link_spd == ICE_PTP_LNK_SPD_25G_RS ||
 	    link_spd == ICE_PTP_LNK_SPD_40G ||
 	    link_spd == ICE_PTP_LNK_SPD_50G) {
-		status = ice_read_64b_phy_reg_e822(hw, port,
-						   P_REG_PAR_PCS_TX_OFFSET_L,
-						   &val);
-		if (status)
-			return status;
+		err = ice_read_64b_phy_reg_e822(hw, port,
+						P_REG_PAR_PCS_TX_OFFSET_L,
+						&val);
+		if (err)
+			return err;
 
 		total_offset += val;
 	}
@@ -3627,11 +3616,10 @@ int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port)
 	 */
 	if (link_spd == ICE_PTP_LNK_SPD_50G_RS ||
 	    link_spd == ICE_PTP_LNK_SPD_100G_RS) {
-		status = ice_read_64b_phy_reg_e822(hw, port,
-						   P_REG_PAR_TX_TIME_L,
-						   &val);
-		if (status)
-			return status;
+		err = ice_read_64b_phy_reg_e822(hw, port, P_REG_PAR_TX_TIME_L,
+						&val);
+		if (err)
+			return err;
 
 		total_offset += val;
 	}
@@ -3640,14 +3628,14 @@ int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port)
 	 * PHY and indicate that the Tx offset is ready. After this,
 	 * timestamps will be enabled.
 	 */
-	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
-					    total_offset);
-	if (status)
-		return status;
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
+					 total_offset);
+	if (err)
+		return err;
 
-	status = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -3665,12 +3653,12 @@ ice_phy_cfg_fixed_tx_offset_e822(struct ice_hw *hw, u8 port)
 {
 	enum ice_ptp_link_spd link_spd;
 	enum ice_ptp_fec_mode fec_mode;
-	int status;
+	int err;
 	u64 total_offset;
 
-	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
-	if (status)
-		return status;
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
 
 	total_offset = ice_calc_fixed_tx_offset_e822(hw, link_spd);
 
@@ -3681,14 +3669,14 @@ ice_phy_cfg_fixed_tx_offset_e822(struct ice_hw *hw, u8 port)
 	 * Note that this skips including the more precise offsets generated
 	 * by the Vernier calibration.
 	 */
-	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
 					    total_offset);
-	if (status)
-		return status;
+	if (err)
+		return err;
 
-	status = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -3712,14 +3700,14 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 {
 	u64 cur_freq, clk_incval, tu_per_sec, mult, adj;
 	u32 pmd_adj_divisor, val;
-	int status;
+	int err;
 	u8 pmd_align;
 
-	status = ice_read_phy_reg_e822(hw, port, P_REG_PMD_ALIGNMENT, &val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read PMD alignment, status %d\n",
-			  status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, P_REG_PMD_ALIGNMENT, &val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read PMD alignment, err %d\n",
+			  err);
+		return err;
 	}
 
 	pmd_align = (u8)val;
@@ -3806,12 +3794,12 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 		u64 cycle_adj;
 		u8 rx_cycle;
 
-		status = ice_read_phy_reg_e822(hw, port, P_REG_RX_40_TO_160_CNT,
-					       &val);
-		if (status) {
-			ice_debug(hw, ICE_DBG_PTP, "Failed to read 25G-RS Rx cycle count, status %d\n",
-				  status);
-			return status;
+		err = ice_read_phy_reg_e822(hw, port, P_REG_RX_40_TO_160_CNT,
+					    &val);
+		if (err) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to read 25G-RS Rx cycle count, err %d\n",
+				  err);
+			return err;
 		}
 
 		rx_cycle = val & P_REG_RX_40_TO_160_CNT_RXCYC_M;
@@ -3828,12 +3816,12 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 		u64 cycle_adj;
 		u8 rx_cycle;
 
-		status = ice_read_phy_reg_e822(hw, port, P_REG_RX_80_TO_160_CNT,
-					       &val);
-		if (status) {
-			ice_debug(hw, ICE_DBG_PTP, "Failed to read 50G-RS Rx cycle count, status %d\n",
-				  status);
-			return status;
+		err = ice_read_phy_reg_e822(hw, port, P_REG_RX_80_TO_160_CNT,
+					    &val);
+		if (err) {
+			ice_debug(hw, ICE_DBG_PTP, "Failed to read 50G-RS Rx cycle count, err %d\n",
+				  err);
+			return err;
 		}
 
 		rx_cycle = val & P_REG_RX_80_TO_160_CNT_RXCYC_M;
@@ -3909,22 +3897,22 @@ int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port)
 	enum ice_ptp_link_spd link_spd;
 	enum ice_ptp_fec_mode fec_mode;
 	u64 total_offset, pmd, val;
-	int status;
+	int err;
 
-	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
-	if (status)
-		return status;
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
 
 	total_offset = ice_calc_fixed_rx_offset_e822(hw, link_spd);
 
 	/* Read the first Vernier offset from the PHY register and add it to
 	 * the total offset.
 	 */
-	status = ice_read_64b_phy_reg_e822(hw, port,
-					   P_REG_PAR_PCS_RX_OFFSET_L,
-					   &val);
-	if (status)
-		return status;
+	err = ice_read_64b_phy_reg_e822(hw, port,
+					P_REG_PAR_PCS_RX_OFFSET_L,
+					&val);
+	if (err)
+		return err;
 
 	total_offset += val;
 
@@ -3935,19 +3923,19 @@ int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port)
 	    link_spd == ICE_PTP_LNK_SPD_50G ||
 	    link_spd == ICE_PTP_LNK_SPD_50G_RS ||
 	    link_spd == ICE_PTP_LNK_SPD_100G_RS) {
-		status = ice_read_64b_phy_reg_e822(hw, port,
-						   P_REG_PAR_RX_TIME_L,
-						   &val);
-		if (status)
-			return status;
+		err = ice_read_64b_phy_reg_e822(hw, port,
+						P_REG_PAR_RX_TIME_L,
+						&val);
+		if (err)
+			return err;
 
 		total_offset += val;
 	}
 
 	/* In addition, Rx must account for the PMD alignment */
-	status = ice_phy_calc_pmd_adj_e822(hw, port, link_spd, fec_mode, &pmd);
-	if (status)
-		return status;
+	err = ice_phy_calc_pmd_adj_e822(hw, port, link_spd, fec_mode, &pmd);
+	if (err)
+		return err;
 
 	/* For RS-FEC, this adjustment adds delay, but for other modes, it
 	 * subtracts delay.
@@ -3961,14 +3949,14 @@ int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port)
 	 * PHY and indicate that the Rx offset is ready. After this,
 	 * timestamps will be enabled.
 	 */
-	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
-					    total_offset);
-	if (status)
-		return status;
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
+					 total_offset);
+	if (err)
+		return err;
 
-	status = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -3986,12 +3974,12 @@ ice_phy_cfg_fixed_rx_offset_e822(struct ice_hw *hw, u8 port)
 {
 	enum ice_ptp_link_spd link_spd;
 	enum ice_ptp_fec_mode fec_mode;
-	int status;
+	int err;
 	u64 total_offset;
 
-	status = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
-	if (status)
-		return status;
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
 
 	total_offset = ice_calc_fixed_rx_offset_e822(hw, link_spd);
 
@@ -4002,14 +3990,14 @@ ice_phy_cfg_fixed_rx_offset_e822(struct ice_hw *hw, u8 port)
 	 * Note that this skips including the more precise offsets generated
 	 * by Vernier calibration.
 	 */
-	status = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
 					    total_offset);
-	if (status)
-		return status;
+	if (err)
+		return err;
 
-	status = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -4028,10 +4016,10 @@ static int
 ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 			       u64 *phc_time)
 {
-	int status;
 	u64 tx_time, rx_time;
 	u32 zo, lo;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = ice_get_ptp_src_clock_index(hw);
 
@@ -4039,9 +4027,9 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 	ice_ptp_src_cmd(hw, ICE_PTP_READ_TIME);
 
 	/* Prepare the PHY timer for a ICE_PTP_READ_TIME capture command */
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_READ_TIME, true);
-	if (status)
-		return status;
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_READ_TIME, true);
+	if (err)
+		return err;
 
 	/* Issue the sync to start the ICE_PTP_READ_TIME capture */
 	ice_ptp_exec_tmr_cmd(hw);
@@ -4052,9 +4040,9 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 	*phc_time = (u64)lo << 32 | zo;
 
 	/* Read the captured PHY time from the PHY shadow registers */
-	status = ice_ptp_read_port_capture_e822(hw, port, &tx_time, &rx_time);
-	if (status)
-		return status;
+	err = ice_ptp_read_port_capture_e822(hw, port, &tx_time, &rx_time);
+	if (err)
+		return err;
 
 	/* If the PHY Tx and Rx timers don't match, log a warning message.
 	 * Note that this should not happen in normal circumstances since the
@@ -4085,15 +4073,15 @@ ice_read_phy_and_phc_time_e822(struct ice_hw *hw, u8 port, u64 *phy_time,
 static int ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 {
 	u64 phc_time, phy_time, difference;
-	int status;
+	int err;
 
 	if (!ice_ptp_lock(hw)) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to acquire PTP semaphore\n");
 		return ICE_ERR_NOT_READY;
 	}
 
-	status = ice_read_phy_and_phc_time_e822(hw, port, &phy_time, &phc_time);
-	if (status)
+	err = ice_read_phy_and_phc_time_e822(hw, port, &phy_time, &phc_time);
+	if (err)
 		goto err_unlock;
 
 	/* Calculate the amount required to add to the port time in order for
@@ -4106,12 +4094,12 @@ static int ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 	 */
 	difference = phc_time - phy_time;
 
-	status = ice_ptp_prep_port_adj_e822(hw, port, (s64)difference, true);
-	if (status)
+	err = ice_ptp_prep_port_adj_e822(hw, port, (s64)difference, true);
+	if (err)
 		goto err_unlock;
 
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_ADJ_TIME, true);
-	if (status)
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_ADJ_TIME, true);
+	if (err)
 		goto err_unlock;
 
 	/* Do not perform any action on the main timer */
@@ -4123,8 +4111,8 @@ static int ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 	/* Re-capture the timer values to flush the command registers and
 	 * verify that the time was properly adjusted.
 	 */
-	status = ice_read_phy_and_phc_time_e822(hw, port, &phy_time, &phc_time);
-	if (status)
+	err = ice_read_phy_and_phc_time_e822(hw, port, &phy_time, &phc_time);
+	if (err)
 		goto err_unlock;
 
 	ice_info(hw, "Port %u PHY time synced to PHC: 0x%016llX, 0x%016llX\n",
@@ -4137,7 +4125,7 @@ static int ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 
 err_unlock:
 	ice_ptp_unlock(hw);
-	return status;
+	return err;
 }
 
 /**
@@ -4153,36 +4141,36 @@ err_unlock:
 int
 ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset)
 {
-	int status;
+	int err;
 	u32 val;
 
-	status = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 0);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 0);
+	if (err)
+		return err;
 
-	status = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 0);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 0);
+	if (err)
+		return err;
 
-	status = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
-	if (status)
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
+	if (err)
+		return err;
 
 	val &= ~P_REG_PS_START_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
 	val &= ~P_REG_PS_ENA_CLK_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
 	if (soft_reset) {
 		val |= P_REG_PS_SFT_RESET_M;
-		status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-		if (status)
-			return status;
+		err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+		if (err)
+			return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "Disabled clock on PHY port %u\n", port);
@@ -4209,101 +4197,101 @@ ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset)
 int
 ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 {
-	int status;
 	u32 lo, hi, val;
 	u64 incval;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = ice_get_ptp_src_clock_index(hw);
 
-	status = ice_stop_phy_timer_e822(hw, port, false);
-	if (status)
-		return status;
+	err = ice_stop_phy_timer_e822(hw, port, false);
+	if (err)
+		return err;
 
 	ice_phy_cfg_lane_e822(hw, port);
 
-	status = ice_phy_cfg_uix_e822(hw, port);
-	if (status)
-		return status;
+	err = ice_phy_cfg_uix_e822(hw, port);
+	if (err)
+		return err;
 
-	status = ice_phy_cfg_parpcs_e822(hw, port);
-	if (status)
-		return status;
+	err = ice_phy_cfg_parpcs_e822(hw, port);
+	if (err)
+		return err;
 
 	lo = rd32(hw, GLTSYN_INCVAL_L(tmr_idx));
 	hi = rd32(hw, GLTSYN_INCVAL_H(tmr_idx));
 	incval = (u64)hi << 32 | lo;
 
-	status = ice_write_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L, incval);
-	if (status)
-		return status;
+	err = ice_write_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L, incval);
+	if (err)
+		return err;
 
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_INIT_INCVAL, true);
-	if (status)
-		return status;
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_INIT_INCVAL, true);
+	if (err)
+		return err;
 
 	/* Do not perform any action on the main timer */
 	ice_ptp_src_cmd(hw, ICE_PTP_NOP);
 
 	ice_ptp_exec_tmr_cmd(hw);
 
-	status = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
-	if (status)
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
+	if (err)
+		return err;
 
 	val |= P_REG_PS_SFT_RESET_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
 	val |= P_REG_PS_START_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
 	val &= ~P_REG_PS_SFT_RESET_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
-	status = ice_ptp_one_port_cmd(hw, port, ICE_PTP_INIT_INCVAL, true);
-	if (status)
-		return status;
+	err = ice_ptp_one_port_cmd(hw, port, ICE_PTP_INIT_INCVAL, true);
+	if (err)
+		return err;
 
 	ice_ptp_exec_tmr_cmd(hw);
 
 	val |= P_REG_PS_ENA_CLK_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
 	val |= P_REG_PS_LOAD_OFFSET_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status)
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err)
+		return err;
 
 	ice_ptp_exec_tmr_cmd(hw);
 
-	status = ice_sync_phy_timer_e822(hw, port);
-	if (status)
-		return status;
+	err = ice_sync_phy_timer_e822(hw, port);
+	if (err)
+		return err;
 
 	if (bypass) {
 		val |= P_REG_PS_BYPASS_MODE_M;
 		/* Enter BYPASS mode, enabling timestamps immediately. */
-		status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-		if (status)
-			return status;
+		err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+		if (err)
+			return err;
 
 		/* Program the fixed Tx offset */
-		status = ice_phy_cfg_fixed_tx_offset_e822(hw, port);
-		if (status)
-			return status;
+		err = ice_phy_cfg_fixed_tx_offset_e822(hw, port);
+		if (err)
+			return err;
 
 		/* Program the fixed Rx offset */
-		status = ice_phy_cfg_fixed_rx_offset_e822(hw, port);
-		if (status)
-			return status;
+		err = ice_phy_cfg_fixed_rx_offset_e822(hw, port);
+		if (err)
+			return err;
 	}
 
 	ice_debug(hw, ICE_DBG_PTP, "Enabled clock on PHY port %u\n", port);
@@ -4327,14 +4315,14 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
  */
 int ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port)
 {
-	int status;
+	int err;
 	u32 val;
 
-	status = ice_read_phy_reg_e822(hw, port, P_REG_TX_OV_STATUS, &val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_OV_STATUS for port %u, status %d\n",
-			  port, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, P_REG_TX_OV_STATUS, &val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_OV_STATUS for port %u, err %d\n",
+			  port, err);
+		return err;
 	}
 
 	if (!(val & P_REG_TX_OV_STATUS_OV_M)) {
@@ -4343,11 +4331,11 @@ int ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port)
 		return ICE_ERR_NOT_READY;
 	}
 
-	status = ice_read_phy_reg_e822(hw, port, P_REG_RX_OV_STATUS, &val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_OV_STATUS for port %u, status %d\n",
-			  port, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, P_REG_RX_OV_STATUS, &val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_OV_STATUS for port %u, err %d\n",
+			  port, err);
+		return err;
 	}
 
 	if (!(val & P_REG_TX_OV_STATUS_OV_M)) {
@@ -4356,26 +4344,26 @@ int ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port)
 		return ICE_ERR_NOT_READY;
 	}
 
-	status = ice_phy_cfg_tx_offset_e822(hw, port);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to program total Tx offset for port %u, status %d\n",
-			  port, status);
-		return status;
+	err = ice_phy_cfg_tx_offset_e822(hw, port);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to program total Tx offset for port %u, err %d\n",
+			  port, err);
+		return err;
 	}
 
-	status = ice_phy_cfg_rx_offset_e822(hw, port);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to program total Rx offset for port %u, status %d\n",
-			  port, status);
-		return status;
+	err = ice_phy_cfg_rx_offset_e822(hw, port);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to program total Rx offset for port %u, err %d\n",
+			  port, err);
+		return err;
 	}
 
 	/* Exit bypass mode now that the offset has been updated */
-	status = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read P_REG_PS for port %u, status %d\n",
-			  port, status);
-		return status;
+	err = ice_read_phy_reg_e822(hw, port, P_REG_PS, &val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read P_REG_PS for port %u, err %d\n",
+			  port, err);
+		return err;
 	}
 
 	if (!(val & P_REG_PS_BYPASS_MODE_M))
@@ -4383,11 +4371,11 @@ int ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port)
 			  port);
 
 	val &= ~P_REG_PS_BYPASS_MODE_M;
-	status = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to disable bypass for port %u, status %d\n",
-			  port, status);
-		return status;
+	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to disable bypass for port %u, err %d\n",
+			  port, err);
+		return err;
 	}
 
 	ice_info(hw, "Exiting bypass mode on PHY port %u\n", port);
@@ -4414,18 +4402,18 @@ static int
 ice_read_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 *val, bool lock_sbq)
 {
 	struct ice_sbq_msg_input msg = {0};
-	int status;
+	int err;
 
 	msg.msg_addr_low = ICE_LO_WORD(addr);
 	msg.msg_addr_high = ICE_HI_WORD(addr);
 	msg.opcode = ice_sbq_msg_rd;
 	msg.dest_dev = rmn_0;
 
-	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
-			  status);
-		return status;
+	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
+			  err);
+		return err;
 	}
 
 	*val = msg.data;
@@ -4451,7 +4439,7 @@ static int
 ice_write_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 val, bool lock_sbq)
 {
 	struct ice_sbq_msg_input msg = {0};
-	int status;
+	int err;
 
 	msg.msg_addr_low = ICE_LO_WORD(addr);
 	msg.msg_addr_high = ICE_HI_WORD(addr);
@@ -4459,11 +4447,11 @@ ice_write_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 val, bool lock_sbq)
 	msg.dest_dev = rmn_0;
 	msg.data = val;
 
-	status = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to phy, status %d\n",
-			  status);
-		return status;
+	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -4532,21 +4520,21 @@ ice_read_phy_tstamp_sbq_e810(struct ice_hw *hw, u8 lport, u8 idx, u8 *hi,
 {
 	u32 hi_addr = TS_EXT(HIGH_TX_MEMORY_BANK_START, lport, idx);
 	u32 lo_addr = TS_EXT(LOW_TX_MEMORY_BANK_START, lport, idx);
-	int status;
 	u32 lo_val, hi_val;
+	int err;
 
-	status = ice_read_phy_reg_e810(hw, lo_addr, &lo_val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_read_phy_reg_e810(hw, lo_addr, &lo_val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read low PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_read_phy_reg_e810(hw, hi_addr, &hi_val);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_read_phy_reg_e810(hw, hi_addr, &hi_val);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read high PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
 	*lo = lo_val;
@@ -4568,17 +4556,17 @@ ice_read_phy_tstamp_sbq_e810(struct ice_hw *hw, u8 lport, u8 idx, u8 *hi,
 static int
 ice_read_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx, u64 *tstamp)
 {
-	int status;
 	u32 lo = 0;
 	u8 hi = 0;
+	int err;
 
 	if (hw->dev_caps.ts_dev_info.ts_ll_read)
-		status = ice_read_phy_tstamp_ll_e810(hw, idx, &hi, &lo);
+		err = ice_read_phy_tstamp_ll_e810(hw, idx, &hi, &lo);
 	else
-		status = ice_read_phy_tstamp_sbq_e810(hw, lport, idx, &hi, &lo);
+		err = ice_read_phy_tstamp_sbq_e810(hw, lport, idx, &hi, &lo);
 
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	/* For E810 devices, the timestamp is reported with the lower 32 bits
 	 * in the low register, and the upper 8 bits in the high register.
@@ -4600,24 +4588,24 @@ ice_read_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx, u64 *tstamp)
 static int
 ice_clear_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx)
 {
-	int status;
+	int err;
 	u32 lo_addr, hi_addr;
 
 	lo_addr = TS_EXT(LOW_TX_MEMORY_BANK_START, lport, idx);
 	hi_addr = TS_EXT(HIGH_TX_MEMORY_BANK_START, lport, idx);
 
-	status = ice_write_phy_reg_e810(hw, lo_addr, 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, lo_addr, 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to clear low PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e810(hw, hi_addr, 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to clear high PTP timestamp register, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, hi_addr, 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to clear high PTP timestamp register, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -4634,17 +4622,17 @@ ice_clear_phy_tstamp_e810(struct ice_hw *hw, u8 lport, u8 idx)
  */
 int ice_ptp_init_phy_e810(struct ice_hw *hw)
 {
-	int status;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_ENA(tmr_idx),
-					GLTSYN_ENA_TSYN_ENA_M);
-	if (status)
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_ENA(tmr_idx),
+				     GLTSYN_ENA_TSYN_ENA_M);
+	if (err)
 		ice_debug(hw, ICE_DBG_PTP, "PTP failed in ena_phy_time_syn %d\n",
-			  status);
+			  err);
 
-	return status;
+	return err;
 }
 
 /**
@@ -4676,22 +4664,22 @@ static int ice_ptp_init_phc_e810(struct ice_hw *hw)
  */
 static int ice_ptp_prep_phy_time_e810(struct ice_hw *hw, u32 time)
 {
-	int status;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_0(tmr_idx), 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write SHTIME_0, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_0(tmr_idx), 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write SHTIME_0, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_L(tmr_idx), time);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write SHTIME_L, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_L(tmr_idx), time);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write SHTIME_L, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -4714,28 +4702,28 @@ static int ice_ptp_prep_phy_time_e810(struct ice_hw *hw, u32 time)
 static int
 ice_ptp_prep_phy_adj_e810(struct ice_hw *hw, s32 adj, bool lock_sbq)
 {
-	int status;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 
 	/* Adjustments are represented as signed 2's complement values in
 	 * nanoseconds. Sub-nanosecond adjustment is not supported.
 	 */
-	status = ice_write_phy_reg_e810_lp(hw, ETH_GLTSYN_SHADJ_L(tmr_idx),
-					   0, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write adj to PHY SHADJ_L, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810_lp(hw, ETH_GLTSYN_SHADJ_L(tmr_idx), 0,
+					lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write adj to PHY SHADJ_L, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e810_lp(hw, ETH_GLTSYN_SHADJ_H(tmr_idx),
-					   adj, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write adj to PHY SHADJ_H, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810_lp(hw, ETH_GLTSYN_SHADJ_H(tmr_idx), adj,
+					lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write adj to PHY SHADJ_H, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -4753,26 +4741,26 @@ ice_ptp_prep_phy_adj_e810(struct ice_hw *hw, s32 adj, bool lock_sbq)
 static int
 ice_ptp_prep_phy_incval_e810(struct ice_hw *hw, u64 incval)
 {
-	int status;
 	u32 high, low;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 	low = ICE_LO_DWORD(incval);
 	high = ICE_HI_DWORD(incval);
 
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHADJ_L(tmr_idx), low);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write incval to PHY SHADJ_L, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHADJ_L(tmr_idx), low);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write incval to PHY SHADJ_L, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHADJ_H(tmr_idx), high);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write incval PHY SHADJ_H, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHADJ_H(tmr_idx), high);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write incval PHY SHADJ_H, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -4795,23 +4783,23 @@ ice_ptp_prep_phy_incval_e810(struct ice_hw *hw, u64 incval)
 static int
 ice_ptp_prep_phy_adj_target_e810(struct ice_hw *hw, u32 target_time)
 {
-	int status;
+	int err;
 	u8 tmr_idx;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_0(tmr_idx), 0);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write target time to SHTIME_0, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_0(tmr_idx), 0);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write target time to SHTIME_0, err %d\n",
+			  err);
+		return err;
 	}
 
-	status = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_L(tmr_idx),
-					target_time);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to write target time to SHTIME_L, status %d\n",
-			  status);
-		return status;
+	err = ice_write_phy_reg_e810(hw, ETH_GLTSYN_SHTIME_L(tmr_idx),
+				     target_time);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write target time to SHTIME_L, err %d\n",
+			  err);
+		return err;
 	}
 
 	return 0;
@@ -4930,15 +4918,15 @@ int
 ice_read_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 *data)
 {
 	struct ice_aqc_link_topo_addr link_topo;
-	int status;
 	__le16 addr;
 	u16 handle;
+	int err;
 
 	memset(&link_topo, 0, sizeof(link_topo));
 
-	status = ice_get_pca9575_handle(hw, &handle);
-	if (status)
-		return status;
+	err = ice_get_pca9575_handle(hw, &handle);
+	if (err)
+		return err;
 
 	link_topo.handle = CPU_TO_LE16(handle);
 	link_topo.topo_params.node_type_ctx =
@@ -5283,16 +5271,16 @@ int ice_ptp_one_port_cmd(struct ice_hw *hw, u8 configured_port,
 
 	for (port = 0; port < hw->max_phy_port; port++) {
 		enum ice_ptp_tmr_cmd cmd;
-		int status;
+		int err;
 
 		/* Program the configured port with the configured command,
 		 * program all other ports with ICE_PTP_NOP.
 		 */
 		cmd = port == configured_port ? configured_cmd : ICE_PTP_NOP;
 
-		status = ice_ptp_write_port_cmd(hw, port, cmd, lock_sbq);
-		if (status)
-			return status;
+		err = ice_ptp_write_port_cmd(hw, port, cmd, lock_sbq);
+		if (err)
+			return err;
 	}
 
 	return 0;
@@ -5325,11 +5313,11 @@ static int ice_ptp_port_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 
 	/* PHY models which require programming each port separately */
 	for (port = 0; port < hw->max_phy_port; port++) {
-		int status;
+		int err;
 
-		status = ice_ptp_write_port_cmd(hw, port, cmd, lock_sbq);
-		if (status)
-			return status;
+		err = ice_ptp_write_port_cmd(hw, port, cmd, lock_sbq);
+		if (err)
+			return err;
 	}
 
 	return 0;
@@ -5349,17 +5337,17 @@ static int ice_ptp_port_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 static int ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 			   bool lock_sbq)
 {
-	int status;
+	int err;
 
 	/* First, prepare the source timer */
 	ice_ptp_src_cmd(hw, cmd);
 
 	/* Next, prepare the ports */
-	status = ice_ptp_port_cmd(hw, cmd, lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to prepare PHY ports for timer command %u, status %d\n",
-			  cmd, status);
-		return status;
+	err = ice_ptp_port_cmd(hw, cmd, lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to prepare PHY ports for timer command %u, err %d\n",
+			  cmd, err);
+		return err;
 	}
 
 	/* Write the sync command register to drive both source and PHY timer
@@ -5385,7 +5373,7 @@ static int ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
  */
 int ice_ptp_init_time(struct ice_hw *hw, u64 time)
 {
-	int status;
+	int err;
 	u8 tmr_idx;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
@@ -5403,20 +5391,20 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time)
 	/* Fill Rx and Tx ports and send msg to PHY */
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_ptp_prep_phy_time_eth56g(hw, time & 0xFFFFFFFF);
+		err = ice_ptp_prep_phy_time_eth56g(hw, time & 0xFFFFFFFF);
 		break;
 	case ICE_PHY_E810:
-		status = ice_ptp_prep_phy_time_e810(hw, time & 0xFFFFFFFF);
+		err = ice_ptp_prep_phy_time_e810(hw, time & 0xFFFFFFFF);
 		break;
 	case ICE_PHY_E822:
-		status = ice_ptp_prep_phy_time_e822(hw, time & 0xFFFFFFFF);
+		err = ice_ptp_prep_phy_time_e822(hw, time & 0xFFFFFFFF);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	return ice_ptp_tmr_cmd(hw, ICE_PTP_INIT_TIME, true);
 }
@@ -5437,7 +5425,7 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time)
  */
 int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
 {
-	int status;
+	int err;
 	u8 tmr_idx;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
@@ -5452,20 +5440,20 @@ int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
 
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_ptp_prep_phy_incval_eth56g(hw, incval);
+		err = ice_ptp_prep_phy_incval_eth56g(hw, incval);
 		break;
 	case ICE_PHY_E810:
-		status = ice_ptp_prep_phy_incval_e810(hw, incval);
+		err = ice_ptp_prep_phy_incval_e810(hw, incval);
 		break;
 	case ICE_PHY_E822:
-		status = ice_ptp_prep_phy_incval_e822(hw, incval);
+		err = ice_ptp_prep_phy_incval_e822(hw, incval);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	return ice_ptp_tmr_cmd(hw, ICE_PTP_INIT_INCVAL, true);
 }
@@ -5479,16 +5467,16 @@ int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
  */
 int ice_ptp_write_incval_locked(struct ice_hw *hw, u64 incval)
 {
-	int status;
+	int err;
 
 	if (!ice_ptp_lock(hw))
 		return ICE_ERR_NOT_READY;
 
-	status = ice_ptp_write_incval(hw, incval);
+	err = ice_ptp_write_incval(hw, incval);
 
 	ice_ptp_unlock(hw);
 
-	return status;
+	return err;
 }
 
 /**
@@ -5508,7 +5496,7 @@ int ice_ptp_write_incval_locked(struct ice_hw *hw, u64 incval)
  */
 int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 {
-	int status;
+	int err;
 	u8 tmr_idx;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
@@ -5523,23 +5511,23 @@ int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_ptp_prep_phy_adj_eth56g(hw, adj, lock_sbq);
+		err = ice_ptp_prep_phy_adj_eth56g(hw, adj, lock_sbq);
 		break;
 	case ICE_PHY_E830:
 		/* E830 sync PHYs automatically after setting GLTSYN_SHADJ */
 		return 0;
 	case ICE_PHY_E810:
-		status = ice_ptp_prep_phy_adj_e810(hw, adj, lock_sbq);
+		err = ice_ptp_prep_phy_adj_e810(hw, adj, lock_sbq);
 		break;
 	case ICE_PHY_E822:
-		status = ice_ptp_prep_phy_adj_e822(hw, adj, lock_sbq);
+		err = ice_ptp_prep_phy_adj_e822(hw, adj, lock_sbq);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	return ice_ptp_tmr_cmd(hw, ICE_PTP_ADJ_TIME, lock_sbq);
 }
@@ -5563,9 +5551,9 @@ int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 int
 ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj)
 {
-	int status;
 	u32 time_lo, time_hi;
 	u8 tmr_idx;
+	int err;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 	time_lo = ICE_LO_DWORD(at_time);
@@ -5587,38 +5575,38 @@ ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj)
 	/* Prepare PHY port adjustments */
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_ptp_prep_phy_adj_eth56g(hw, adj, true);
+		err = ice_ptp_prep_phy_adj_eth56g(hw, adj, true);
 		break;
 	case ICE_PHY_E810:
-		status = ice_ptp_prep_phy_adj_e810(hw, adj, true);
+		err = ice_ptp_prep_phy_adj_e810(hw, adj, true);
 		break;
 	case ICE_PHY_E822:
-		status = ice_ptp_prep_phy_adj_e822(hw, adj, true);
+		err = ice_ptp_prep_phy_adj_e822(hw, adj, true);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	/* Set target time for each PHY port */
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_ptp_prep_phy_adj_target_eth56g(hw, time_lo);
+		err = ice_ptp_prep_phy_adj_target_eth56g(hw, time_lo);
 		break;
 	case ICE_PHY_E810:
-		status = ice_ptp_prep_phy_adj_target_e810(hw, time_lo);
+		err = ice_ptp_prep_phy_adj_target_e810(hw, time_lo);
 		break;
 	case ICE_PHY_E822:
-		status = ice_ptp_prep_phy_adj_target_e822(hw, time_lo);
+		err = ice_ptp_prep_phy_adj_target_e822(hw, time_lo);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	if (status)
-		return status;
+	if (err)
+		return err;
 
 	return ice_ptp_tmr_cmd(hw, ICE_PTP_ADJ_TIME_AT_TIME, true);
 }
@@ -5637,25 +5625,25 @@ ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj)
 int
 ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 {
-	int status;
+	int err;
 
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_read_phy_tstamp_eth56g(hw, block, idx, tstamp);
+		err = ice_read_phy_tstamp_eth56g(hw, block, idx, tstamp);
 		break;
 	case ICE_PHY_E830:
 		return ice_read_phy_tstamp_e830(hw, block, idx, tstamp);
 	case ICE_PHY_E810:
-		status = ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
+		err = ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
 		break;
 	case ICE_PHY_E822:
-		status = ice_read_phy_tstamp_e822(hw, block, idx, tstamp);
+		err = ice_read_phy_tstamp_e822(hw, block, idx, tstamp);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	return status;
+	return err;
 }
 
 /**
@@ -5671,23 +5659,23 @@ ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 int
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx)
 {
-	int status;
+	int err;
 
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_clear_phy_tstamp_eth56g(hw, block, idx);
+		err = ice_clear_phy_tstamp_eth56g(hw, block, idx);
 		break;
 	case ICE_PHY_E810:
-		status = ice_clear_phy_tstamp_e810(hw, block, idx);
+		err = ice_clear_phy_tstamp_e810(hw, block, idx);
 		break;
 	case ICE_PHY_E822:
-		status = ice_clear_phy_tstamp_e822(hw, block, idx);
+		err = ice_clear_phy_tstamp_e822(hw, block, idx);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	return status;
+	return err;
 }
 
 /**
@@ -5698,7 +5686,7 @@ ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx)
  */
 int ice_ptp_init_phc(struct ice_hw *hw)
 {
-	int status;
+	int err;
 	u8 src_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 
 	/* Enable source clocks */
@@ -5709,19 +5697,19 @@ int ice_ptp_init_phc(struct ice_hw *hw)
 
 	switch (hw->phy_cfg) {
 	case ICE_PHY_ETH56G:
-		status = ice_ptp_init_phc_eth56g(hw);
+		err = ice_ptp_init_phc_eth56g(hw);
 		break;
 	case ICE_PHY_E810:
-		status = ice_ptp_init_phc_e810(hw);
+		err = ice_ptp_init_phc_e810(hw);
 		break;
 	case ICE_PHY_E822:
-		status = ice_ptp_init_phc_e822(hw);
+		err = ice_ptp_init_phc_e822(hw);
 		break;
 	default:
-		status = ICE_ERR_NOT_SUPPORTED;
+		err = ICE_ERR_NOT_SUPPORTED;
 	}
 
-	return status;
+	return err;
 }
 
 /**
