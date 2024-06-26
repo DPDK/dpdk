@@ -6476,7 +6476,7 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 			return -1;
 		}
 
-		ret = ice_ptp_write_incval(hw, ICE_PTP_NOMINAL_INCVAL_E810);
+		ret = ice_ptp_write_incval(hw, ICE_PTP_NOMINAL_INCVAL_E810, true);
 		if (ret) {
 			PMD_DRV_LOG(ERR,
 				"Failed to write PHC increment time value");
