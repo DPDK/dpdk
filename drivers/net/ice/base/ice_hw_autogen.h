@@ -7,6 +7,11 @@
 #ifndef _ICE_HW_AUTOGEN_H_
 #define _ICE_HW_AUTOGEN_H_
 
+#define E830_PRTTSYN_TXTIME_H(_i)		(0x001E5004 + ((_i) * 64)) /* _i=0...63 */ /* Reset Source: GLOBR */
+#define E830_PRTTSYN_TXTIME_L(_i)		(0x001E5000 + ((_i) * 64)) /* _i=0...63 */ /* Reset Source: GLOBR */
+#define E830_PRTMAC_TS_TX_MEM_VALID_L		0x001E2000 /* Reset Source: GLOBR */
+#define E830_PRTMAC_TS_TX_MEM_VALID_H		0x001E2020 /* Reset Source: GLOBR */
+
 #define GL_HIDA(_i)			(0x00082000 + ((_i) * 4))
 #define GL_HIBA(_i)			(0x00081000 + ((_i) * 4))
 #define GL_HICR				0x00082040

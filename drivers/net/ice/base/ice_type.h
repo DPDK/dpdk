@@ -204,6 +204,7 @@ enum ice_set_fc_aq_failures {
 enum ice_mac_type {
 	ICE_MAC_UNKNOWN = 0,
 	ICE_MAC_E810,
+	ICE_MAC_E830,
 	ICE_MAC_GENERIC,
 	ICE_MAC_GENERIC_3K,
 	ICE_MAC_GENERIC_3K_E825,
@@ -1233,6 +1234,7 @@ enum ice_phy_cfg {
 	ICE_PHY_E810 = 1,
 	ICE_PHY_E822,
 	ICE_PHY_ETH56G,
+	ICE_PHY_E830,
 };
 
 /* Port hardware description */
