@@ -122,7 +122,7 @@ ice_read_cgu_reg_e82x(struct ice_hw *hw, u16 addr, u32 *val)
 	cgu_msg.msg_addr_low = addr;
 	cgu_msg.msg_addr_high = 0x0;
 
-	err = ice_sbq_rw_reg_lp(hw, &cgu_msg, true);
+	err = ice_sbq_rw_reg_lp(hw, &cgu_msg, ICE_AQ_FLAG_RD, true);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to read CGU register 0x%04x, err %d\n",
 			  addr, err);
@@ -155,7 +155,7 @@ ice_write_cgu_reg_e82x(struct ice_hw *hw, u16 addr, u32 val)
 	cgu_msg.msg_addr_high = 0x0;
 	cgu_msg.data = val;
 
-	err = ice_sbq_rw_reg_lp(hw, &cgu_msg, true);
+	err = ice_sbq_rw_reg_lp(hw, &cgu_msg, ICE_AQ_FLAG_RD, true);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to write CGU register 0x%04x, err %d\n",
 			  addr, err);
@@ -948,7 +948,7 @@ ice_write_phy_eth56g_raw_lp(struct ice_hw *hw, u8 phy_index, u32 reg_addr,
 	phy_msg.data = val;
 	phy_msg.dest_dev = hw->phy_addr[phy_index];
 
-	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &phy_msg, ICE_AQ_FLAG_RD, lock_sbq);
 
 	if (err)
 		ice_debug(hw, ICE_DBG_PTP, "PTP failed to send msg to phy %d\n",
@@ -980,7 +980,7 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u8 phy_index, u32 reg_addr,
 	phy_msg.data = 0;
 	phy_msg.dest_dev = hw->phy_addr[phy_index];
 
-	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &phy_msg, ICE_AQ_FLAG_RD, lock_sbq);
 
 	if (err)
 		ice_debug(hw, ICE_DBG_PTP, "PTP failed to send msg to phy %d\n",
@@ -2530,7 +2530,7 @@ ice_read_phy_reg_e822_lp(struct ice_hw *hw, u8 port, u16 offset, u32 *val,
 	ice_fill_phy_msg_e822(&msg, port, offset);
 	msg.opcode = ice_sbq_msg_rd;
 
-	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &msg, ICE_AQ_FLAG_RD, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
 			  err);
@@ -2663,7 +2663,7 @@ ice_write_phy_reg_e822_lp(struct ice_hw *hw, u8 port, u16 offset, u32 val,
 	msg.opcode = ice_sbq_msg_wr;
 	msg.data = val;
 
-	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &msg, ICE_AQ_FLAG_RD, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
 			  err);
@@ -2827,7 +2827,7 @@ ice_read_quad_reg_e822_lp(struct ice_hw *hw, u8 quad, u16 offset, u32 *val,
 
 	msg.opcode = ice_sbq_msg_rd;
 
-	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &msg, ICE_AQ_FLAG_RD, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
 			  err);
@@ -2870,7 +2870,7 @@ ice_write_quad_reg_e822_lp(struct ice_hw *hw, u8 quad, u16 offset, u32 val,
 	msg.opcode = ice_sbq_msg_wr;
 	msg.data = val;
 
-	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &msg, ICE_AQ_FLAG_RD, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
 			  err);
@@ -4700,7 +4700,7 @@ ice_read_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 *val, bool lock_sbq)
 	msg.opcode = ice_sbq_msg_rd;
 	msg.dest_dev = rmn_0;
 
-	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &msg, ICE_AQ_FLAG_RD, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
 			  err);
@@ -4738,7 +4738,7 @@ ice_write_phy_reg_e810_lp(struct ice_hw *hw, u32 addr, u32 val, bool lock_sbq)
 	msg.dest_dev = rmn_0;
 	msg.data = val;
 
-	err = ice_sbq_rw_reg_lp(hw, &msg, lock_sbq);
+	err = ice_sbq_rw_reg_lp(hw, &msg, ICE_AQ_FLAG_RD, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to send message to PHY, err %d\n",
 			  err);
