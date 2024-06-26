@@ -83,6 +83,10 @@ New Features
     without having to do a full handshake over a Unix Domain Socket
     with the Device Plugin.
 
+* **Updated Intel ice driver.**
+
+  * Added support of E830 device family.
+
 * **Updated Intel ixgbe driver.**
 
   * Updated base code with E610 device family support.
