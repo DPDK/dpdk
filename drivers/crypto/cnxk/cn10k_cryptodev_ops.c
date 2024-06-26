@@ -1415,10 +1415,6 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 	uint64_t dptr;
 	int i;
 
-	const union cpt_res_s res = {
-		.cn10k.compcode = CPT_COMP_NOT_DONE,
-	};
-
 	vf = cdev->data->dev_private;
 
 	lmt_base = vf->rx_inj_lmtline.lmt_base;
@@ -1495,9 +1491,6 @@ again:
 		inst_67 = vsetq_lane_u64(u64_0, inst_67, 0);
 		inst_67 = vsetq_lane_u64(u64_1, inst_67, 1);
 		vst1q_u64(&inst->w6.u64, inst_67);
-
-		rte_atomic_store_explicit((unsigned long __rte_atomic *)&hw_res->u64[0], res.u64[0],
-					  rte_memory_order_relaxed);
 
 		inst += 2;
 	}
