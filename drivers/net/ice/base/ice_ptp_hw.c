@@ -3412,7 +3412,7 @@ ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port, u64 *tx_ts,
  * Note there is no equivalent of this operation on E810, as that device
  * always handles all external PHYs internally.
  */
-int
+static int
 ice_ptp_write_port_cmd_e822(struct ice_hw *hw, u8 port,
 			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
 {
@@ -5072,8 +5072,8 @@ ice_ptp_prep_phy_adj_target_e810(struct ice_hw *hw, u32 target_time)
  * Prepare the external PHYs connected to this device for a timer sync
  * command.
  */
-int ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
-			  bool lock_sbq)
+static int ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
+				 bool lock_sbq)
 {
 	u32 val = ice_ptp_tmr_cmd_to_port_reg(hw, cmd);
 	int err;
@@ -5516,7 +5516,7 @@ ice_ptp_write_direct_phc_time_e830(struct ice_hw *hw, u64 time)
  * Prepare the external PHYs connected to this device for a timer sync
  * command.
  */
-int
+static int
 ice_ptp_port_cmd_e830(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 		      bool lock_sbq)
 {
@@ -5565,7 +5565,7 @@ ice_read_phy_tstamp_e830(struct ice_hw *hw, u8 lport, u8 idx, u64 *tstamp)
  * @tstamp_ready: contents of the Tx memory status register
  *
  */
-int
+static int
 ice_get_phy_tx_tstamp_ready_e830(struct ice_hw *hw, u8 port, u64 *tstamp_ready)
 {
 	u64 hi;
@@ -5711,8 +5711,8 @@ e8xx:
  * programming only a single port, instead use ice_ptp_one_port_cmd() to
  * ensure non-modified ports get properly initialized to ICE_PTP_NOP.
  */
-int ice_ptp_write_port_cmd(struct ice_hw *hw, u8 port,
-			   enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
+static int ice_ptp_write_port_cmd(struct ice_hw *hw, u8 port,
+				  enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
 {
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
