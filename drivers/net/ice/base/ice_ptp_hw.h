@@ -270,11 +270,9 @@ ice_phy_get_speed_and_fec_e822(struct ice_hw *hw, u8 port,
 void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port);
 int
 ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset);
-int
-ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass);
+int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port);
-int ice_phy_exit_bypass_e822(struct ice_hw *hw, u8 port);
 
 /* E810 family functions */
 bool ice_is_gps_present_e810t(struct ice_hw *hw);
@@ -316,7 +314,7 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status);
 int
 ice_stop_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool soft_reset);
 int
-ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass);
+ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port);
 
