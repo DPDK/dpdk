@@ -975,7 +975,7 @@ void ice_print_rollback_msg(struct ice_hw *hw)
 	orom = &hw->flash.orom;
 	nvm = &hw->flash.nvm;
 
-	SNPRINTF(nvm_str, sizeof(nvm_str), "%x.%02x 0x%x %d.%d.%d",
+	(void)SNPRINTF(nvm_str, sizeof(nvm_str), "%x.%02x 0x%x %d.%d.%d",
 		 nvm->major, nvm->minor, nvm->eetrack, orom->major,
 		 orom->build, orom->patch);
 	ice_warn(hw,
