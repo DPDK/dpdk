@@ -55,6 +55,56 @@ struct vec_request {
 	uint64_t w2;
 };
 
+#if defined(RTE_ARCH_ARM64)
+static __rte_always_inline void __rte_hot
+cn10k_cpt_lmtst_dual_submit(uint64_t *io_addr, const uint16_t lmt_id, int *i)
+{
+	uint64_t lmt_arg;
+
+	/* Check if the total number of instructions is odd or even. */
+	const int flag_odd = *i & 0x1;
+
+	/* Reduce i by 1 when odd number of instructions.*/
+	*i -= flag_odd;
+
+	if (*i > 2 * CN10K_PKTS_PER_STEORL) {
+		lmt_arg = ROC_CN10K_DUAL_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, *io_addr);
+		lmt_arg = ROC_CN10K_DUAL_CPT_LMT_ARG | (*i / 2 - CN10K_PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
+		roc_lmt_submit_steorl(lmt_arg, *io_addr);
+		if (flag_odd) {
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN10K_CPT_INST_DW_M1 << 4);
+			lmt_arg = (uint64_t)(lmt_id + *i / 2);
+			roc_lmt_submit_steorl(lmt_arg, *io_addr);
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN10K_TWO_CPT_INST_DW_M1 << 4);
+			*i += 1;
+		}
+	} else {
+		if (*i != 0) {
+			lmt_arg =
+				ROC_CN10K_DUAL_CPT_LMT_ARG | (*i / 2 - 1) << 12 | (uint64_t)lmt_id;
+			roc_lmt_submit_steorl(lmt_arg, *io_addr);
+		}
+
+		if (flag_odd) {
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN10K_CPT_INST_DW_M1 << 4);
+			lmt_arg = (uint64_t)(lmt_id + *i / 2);
+			roc_lmt_submit_steorl(lmt_arg, *io_addr);
+			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
+				   (ROC_CN10K_TWO_CPT_INST_DW_M1 << 4);
+			*i += 1;
+		}
+	}
+
+	rte_io_wmb();
+}
+#endif
+
 static inline struct cnxk_se_sess *
 cn10k_cpt_sym_temp_sess_create(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op)
 {
@@ -1401,7 +1451,7 @@ uint16_t __rte_hot
 cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 				  struct rte_security_session **sess, uint16_t nb_pkts)
 {
-	uint64_t lmt_base, lmt_arg, io_addr, u64_0, u64_1, l2_len, pf_func;
+	uint64_t lmt_base, io_addr, u64_0, u64_1, l2_len, pf_func;
 	uint64x2_t inst_01, inst_23, inst_45, inst_67;
 	struct cn10k_sec_session *sec_sess;
 	struct rte_cryptodev *cdev = dev;
@@ -1436,7 +1486,7 @@ again:
 	if (unlikely(fc.s.qsize > fc_thresh))
 		goto exit;
 
-	for (; i < RTE_MIN(CN10K_PKTS_PER_LOOP, nb_pkts); i++) {
+	for (; i < RTE_MIN(2 * CN10K_PKTS_PER_LOOP, nb_pkts); i++) {
 
 		m = pkts[i];
 		sec_sess = (struct cn10k_sec_session *)sess[i];
@@ -1492,24 +1542,12 @@ again:
 		inst_67 = vsetq_lane_u64(u64_1, inst_67, 1);
 		vst1q_u64(&inst->w6.u64, inst_67);
 
-		inst += 2;
+		inst++;
 	}
 
-	if (i > CN10K_PKTS_PER_STEORL) {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	} else {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	}
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
-	rte_io_wmb();
-
-	if (nb_pkts - i > 0 && i == CN10K_PKTS_PER_LOOP) {
+	if (nb_pkts - i > 0 && i == 2 * CN10K_PKTS_PER_LOOP) {
 		nb_pkts -= i;
 		pkts += i;
 		count += i;

@@ -431,6 +431,7 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	struct rte_pci_device *pci_dev;
 	struct cnxk_cpt_qp *qp;
 	uint32_t nb_desc;
+	uint64_t io_addr;
 	int ret;
 
 	if (dev->data->queue_pairs[qp_id] != NULL)
@@ -484,6 +485,14 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		}
 
 		vf->rx_inj_sso_pf_func = roc_idev_nix_inl_dev_pffunc_get();
+
+		/* Update IO addr to enable dual submission */
+		io_addr = vf->rx_inj_lmtline.io_addr;
+		io_addr = (io_addr & ~(uint64_t)(0x7 << 4)) | ROC_CN10K_TWO_CPT_INST_DW_M1 << 4;
+		vf->rx_inj_lmtline.io_addr = io_addr;
+
+		/* Update FC threshold to reflect dual submission */
+		vf->rx_inj_lmtline.fc_thresh -= 32;
 
 		/* Block the queue for other submissions */
 		qp->pend_q.pq_mask = 0;

@@ -30,22 +30,35 @@
 /* Vector of sizes in the burst of 16 CPT inst except first in 63:19 of
  * APT_LMT_ARG_S
  */
-#define ROC_CN10K_CPT_LMT_ARG                                                  \
-	(ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 0) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 1) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 2) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 3) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 4) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 5) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 6) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 7) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 8) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 9) |                            \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 10) |                           \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 11) |                           \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 12) |                           \
-	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 13) |                           \
+#define ROC_CN10K_CPT_LMT_ARG                                                                      \
+	(ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 0) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 1) |     \
+	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 2) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 3) |     \
+	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 4) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 5) |     \
+	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 6) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 7) |     \
+	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 8) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 9) |     \
+	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 10) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 11) |   \
+	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 12) | ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 13) |   \
 	 ROC_CN10K_CPT_INST_DW_M1 << (19 + 3 * 14))
+
+/* Vector of sizes in the burst of 2 * 16 CPT inst except first in 63:19 of
+ * APT_LMT_ARG_S
+ */
+#define ROC_CN10K_DUAL_CPT_LMT_ARG                                                                 \
+	(ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 0) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 1) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 2) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 3) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 4) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 5) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 6) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 7) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 8) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 9) |                                            \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 10) |                                           \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 11) |                                           \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 12) |                                           \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 13) |                                           \
+	 ROC_CN10K_TWO_CPT_INST_DW_M1 << (19 + 3 * 14))
 
 /* CPT helper macros */
 #define ROC_CPT_AH_HDR_LEN	12
