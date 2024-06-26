@@ -568,6 +568,14 @@ ice_dwnld_sign_and_cfg_segs(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 	if (state)
 		goto exit;
 
+	if (count == 0) {
+		/* this is a "Reference Signature Segment" and download should
+		 * be only for the buffers in the signature segment (and not
+		 * the hardware configuration segment)
+		 */
+		goto exit;
+	}
+
 	state = ice_download_pkg_config_seg(hw, pkg_hdr, conf_idx, start,
 					    count);
 
