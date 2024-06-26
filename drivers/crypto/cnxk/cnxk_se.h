@@ -105,7 +105,7 @@ cpt_pack_iv(uint8_t *iv_src, uint8_t *iv_dst)
 }
 
 static inline void
-pdcp_iv_copy(uint8_t *iv_d, const uint8_t *iv_s, const uint8_t pdcp_alg_type, uint8_t pack_iv)
+pdcp_iv_copy(uint8_t *iv_d, const uint8_t *iv_s, const uint8_t pdcp_alg_type, const bool pack_iv)
 {
 	const uint32_t *iv_s_temp;
 	uint32_t iv_temp[4];
@@ -261,7 +261,7 @@ cpt_mac_len_verify(struct rte_crypto_auth_xform *auth)
 
 static __rte_always_inline int
 sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t offset_ctrl,
-	     const uint8_t *iv_s, int iv_len, uint8_t pack_iv, uint8_t pdcp_alg_type,
+	     const uint8_t *iv_s, int iv_len, const bool pack_iv, uint8_t pdcp_alg_type,
 	     int32_t inputlen, int32_t outputlen, uint32_t passthrough_len, uint32_t req_flags,
 	     int pdcp_flag, int decrypt)
 {
@@ -457,7 +457,7 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 
 static __rte_always_inline int
 sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t offset_ctrl,
-	      const uint8_t *iv_s, int iv_len, uint8_t pack_iv, uint8_t pdcp_alg_type,
+	      const uint8_t *iv_s, int iv_len, const bool pack_iv, uint8_t pdcp_alg_type,
 	      int32_t inputlen, int32_t outputlen, uint32_t passthrough_len, uint32_t req_flags,
 	      int pdcp_flag, int decrypt)
 {
@@ -882,7 +882,7 @@ static inline int
 pdcp_chain_sg1_prep(struct roc_se_fc_params *params, struct roc_se_ctx *cpt_ctx,
 		    struct cpt_inst_s *inst, union cpt_inst_w4 w4, int32_t inputlen,
 		    uint8_t hdr_len, uint64_t offset_ctrl, uint32_t req_flags,
-		    const uint8_t *cipher_iv, const uint8_t *auth_iv, const int pack_iv,
+		    const uint8_t *cipher_iv, const uint8_t *auth_iv, const bool pack_iv,
 		    const uint8_t pdcp_ci_alg, const uint8_t pdcp_auth_alg)
 {
 	struct roc_sglist_comp *scatter_comp, *gather_comp;
@@ -991,7 +991,7 @@ static inline int
 pdcp_chain_sg2_prep(struct roc_se_fc_params *params, struct roc_se_ctx *cpt_ctx,
 		    struct cpt_inst_s *inst, union cpt_inst_w4 w4, int32_t inputlen,
 		    uint8_t hdr_len, uint64_t offset_ctrl, uint32_t req_flags,
-		    const uint8_t *cipher_iv, const uint8_t *auth_iv, const int pack_iv,
+		    const uint8_t *cipher_iv, const uint8_t *auth_iv, const bool pack_iv,
 		    const uint8_t pdcp_ci_alg, const uint8_t pdcp_auth_alg)
 {
 	struct roc_sg2list_comp *gather_comp, *scatter_comp;
@@ -1528,7 +1528,6 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	struct roc_se_ctx *se_ctx;
 	uint64_t *offset_vaddr;
 	uint64_t offset_ctrl;
-	uint8_t pack_iv = 0;
 	int32_t inputlen;
 	void *dm_vaddr;
 	uint8_t *iv_d;
@@ -1606,10 +1605,10 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
 
 		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
-		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
+		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, false);
 
 		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + pdcp_iv_off);
-		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
+		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, false);
 
 		inst->w4.u64 = cpt_inst_w4.u64;
 		return 0;
@@ -1618,11 +1617,11 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		if (is_sg_ver2)
 			return pdcp_chain_sg2_prep(params, se_ctx, inst, cpt_inst_w4, inputlen,
 						   hdr_len, offset_ctrl, req_flags, cipher_iv,
-						   auth_iv, pack_iv, pdcp_ci_alg, pdcp_auth_alg);
+						   auth_iv, false, pdcp_ci_alg, pdcp_auth_alg);
 		else
 			return pdcp_chain_sg1_prep(params, se_ctx, inst, cpt_inst_w4, inputlen,
 						   hdr_len, offset_ctrl, req_flags, cipher_iv,
-						   auth_iv, pack_iv, pdcp_ci_alg, pdcp_auth_alg);
+						   auth_iv, false, pdcp_ci_alg, pdcp_auth_alg);
 	}
 }
 
@@ -1647,9 +1646,9 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	uint64_t *offset_vaddr;
 	uint8_t pdcp_alg_type;
 	uint32_t mac_len = 0;
-	const uint8_t *iv_s;
-	uint8_t pack_iv = 0;
 	uint64_t offset_ctrl;
+	bool pack_iv = false;
+	const uint8_t *iv_s;
 	int ret;
 
 	mac_len = se_ctx->mac_len;
@@ -1671,7 +1670,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		if (pdcp_alg_type != ROC_SE_PDCP_ALG_TYPE_AES_CMAC) {
 
 			if (params->auth_iv_len == 25)
-				pack_iv = 1;
+				pack_iv = true;
 
 			auth_offset = auth_offset / 8;
 			auth_data_len = RTE_ALIGN(auth_data_len, 8) / 8;
@@ -1694,7 +1693,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		pdcp_alg_type = se_ctx->pdcp_ci_alg;
 
 		if (params->cipher_iv_len == 25)
-			pack_iv = 1;
+			pack_iv = true;
 
 		/*
 		 * Microcode expects offsets in bytes
