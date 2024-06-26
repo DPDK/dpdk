@@ -12,6 +12,14 @@
 #define IDXD_VENDOR_ID		0x8086
 #define IDXD_DEVICE_ID_SPR	0x0B25
 
+#define DEVICE_VERSION_1	0x100
+#define DEVICE_VERSION_2	0x200
+/*
+ * Set bits for Traffic Class A & B
+ * TC-A (Bits 2:0) and TC-B (Bits 5:3)
+ */
+#define IDXD_SET_TC_A_B		0x9
+
 #define IDXD_PMD_DMADEV_NAME_PCI dmadev_idxd_pci
 
 const struct rte_pci_id pci_id_idxd_map[] = {
@@ -177,6 +185,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	uint16_t grp_offset, wq_offset; /* how far into bar0 the regs are */
 	uint16_t wq_size, total_wq_size;
 	uint8_t lg2_max_batch, lg2_max_copy_size;
+	uint32_t version;
 	unsigned int i, err_code;
 
 	pci = rte_malloc(NULL, sizeof(*pci), 0);
@@ -190,6 +199,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 
 	/* assign the bar registers, and then configure device */
 	pci->regs = dev->mem_resource[0].addr;
+	version = pci->regs->version;
 	grp_offset = (uint16_t)pci->regs->offsets[0];
 	pci->grp_regs = RTE_PTR_ADD(pci->regs, grp_offset * 0x100);
 	wq_offset = (uint16_t)(pci->regs->offsets[0] >> 16);
@@ -234,6 +244,8 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	for (i = 0; i < nb_groups; i++) {
 		pci->grp_regs[i].grpengcfg = 0;
 		pci->grp_regs[i].grpwqcfg[0] = 0;
+		if (version <= DEVICE_VERSION_2)
+			pci->grp_regs[i].grpflags |= IDXD_SET_TC_A_B;
 	}
 	for (i = 0; i < nb_wqs; i++)
 		idxd_get_wq_cfg(pci, i)[0] = 0;
@@ -278,6 +290,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 				(lg2_max_batch << WQ_BATCH_SZ_SHIFT);
 	}
 
+	IDXD_PMD_DEBUG("    Device Version: %"PRIx32, version);
 	/* dump the group configuration to output */
 	for (i = 0; i < nb_groups; i++) {
 		IDXD_PMD_DEBUG("## Group %d", i);
