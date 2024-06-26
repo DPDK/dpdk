@@ -469,9 +469,9 @@ static void _err_add(struct ice_parser_rt *rt, int idx, bool val)
 {
 	rt->pu.err_msk |= (u16)(1 << idx);
 	if (val)
-		rt->pu.flg_val |= (u16)(1 << idx);
+		rt->pu.flg_val |= (1ULL << idx);
 	else
-		rt->pu.flg_val &= ~(u16)(1 << idx);
+		rt->pu.flg_val &= ~(1ULL << idx);
 
 	ice_debug(rt->psr->hw, ICE_DBG_PARSER, "Pending update for error %d value %d\n",
 		  idx, val);
