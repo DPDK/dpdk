@@ -485,7 +485,7 @@ struct ice_flow_entry {
 	u8 acts_cnt;
 };
 
-#define ICE_FLOW_ENTRY_HNDL(e)	((intptr_t)e)
+#define ICE_FLOW_ENTRY_HNDL(e)	((u64)e)
 #define ICE_FLOW_ENTRY_PTR(h)	((struct ice_flow_entry *)(h))
 
 struct ice_flow_prof {
