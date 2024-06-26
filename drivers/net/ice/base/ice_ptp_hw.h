@@ -143,6 +143,9 @@ int
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx);
 int ice_ptp_init_phc(struct ice_hw *hw);
 bool refsync_pin_id_valid(struct ice_hw *hw, u8 id);
+int
+ice_ptp_one_port_cmd(struct ice_hw *hw, u8 configured_port,
+		     enum ice_ptp_tmr_cmd configured_cmd, bool lock_sbq);
 
 /* E822 family functions */
 int
@@ -162,11 +165,14 @@ int
 ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port,
 			       u64 *tx_ts, u64 *rx_ts);
 int
-ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port,
-			  enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
-int
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 		     enum ice_clk_src clk_src);
+int
+ice_ptp_write_port_cmd_e822(struct ice_hw *hw, u8 port,
+			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
+int
+ice_ptp_write_port_cmd(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
+		       bool lock_sbq);
 int
 ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		      enum ice_clk_src *clk_src);
@@ -179,6 +185,14 @@ int
 ice_cfg_cgu_bypass_mux_e825c(struct ice_hw *hw, u8 port_num, bool clock_1588,
 			     unsigned int ena);
 int ice_cfg_synce_ethdiv_e825c(struct ice_hw *hw, u8 *divider);
+
+/* E8 Family */
+int
+ice_ptp_port_cmd_e830(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
+		      bool lock_sbq);
+int
+ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
+		      bool lock_sbq);
 int
 ice_get_phy_tx_tstamp_ready_e830(struct ice_hw *hw, u8 port, u64 *tstamp_ready);
 
@@ -269,9 +283,6 @@ ice_ptp_read_phy_incval_eth56g(struct ice_hw *hw, u8 port, u64 *incval);
 int
 ice_ptp_read_port_capture_eth56g(struct ice_hw *hw, u8 port,
 				 u64 *tx_ts, u64 *rx_ts);
-int
-ice_ptp_one_port_cmd_eth56g(struct ice_hw *hw, u8 port,
-			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
 int
 ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status);
 int
