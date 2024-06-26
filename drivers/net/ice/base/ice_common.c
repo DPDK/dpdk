@@ -1058,6 +1058,8 @@ int ice_init_hw(struct ice_hw *hw)
 		goto err_unroll_cqinit;
 	}
 
+	hw->port_info->loopback_mode = ICE_AQC_SET_P_PARAMS_LOOPBACK_MODE_NORMAL;
+
 	/* set the back pointer to HW */
 	hw->port_info->hw = hw;
 
@@ -3231,6 +3233,8 @@ ice_aq_set_port_params(struct ice_port_info *pi, u16 bad_frame_vsi,
 	cmd = &desc.params.set_port_params;
 
 	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_port_params);
+	cmd->lb_mode = pi->loopback_mode |
+	               ICE_AQC_SET_P_PARAMS_LOOPBACK_MODE_VALID;
 	cmd->bad_frame_vsi = CPU_TO_LE16(bad_frame_vsi);
 	if (save_bad_pac)
 		cmd_flags |= ICE_AQC_SET_P_PARAMS_SAVE_BAD_PACKETS;

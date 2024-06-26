@@ -264,7 +264,12 @@ struct ice_aqc_set_port_params {
 				(0x3F << ICE_AQC_SET_P_PARAMS_LOGI_PORT_ID_S)
 #define ICE_AQC_SET_P_PARAMS_IS_LOGI_PORT	BIT(14)
 #define ICE_AQC_SET_P_PARAMS_SWID_VALID		BIT(15)
-	u8 reserved[10];
+	u8 lb_mode;
+#define ICE_AQC_SET_P_PARAMS_LOOPBACK_MODE_VALID BIT(2)
+#define ICE_AQC_SET_P_PARAMS_LOOPBACK_MODE_NORMAL 0x00
+#define ICE_AQC_SET_P_PARAMS_LOOPBACK_MODE_NO 0x01
+#define ICE_AQC_SET_P_PARAMS_LOOPBACK_MODE_HIGH 0x02
+	u8 reserved[9];
 };
 
 /* These resource type defines are used for all switch resource
