@@ -5074,6 +5074,93 @@ bool ice_is_pca9575_present(struct ice_hw *hw)
 }
 
 /**
+ * ice_ptp_read_sdp_section_from_nvm - reads SDP section from NVM
+ * @hw: pointer to the HW struct
+ * @section_exist: on return, returns true if section exist
+ * @pin_desc_num: on return, returns the number of ice_ptp_pin_desc entries
+ * @pin_config_num: on return, returns the number of pin that should be
+ *		    exposed on pin_config I/F
+ * @sdp_entries: on return, returns the SDP connection section from NVM
+ * @nvm_entries: on return, returns the number of valid entries in sdp_entries
+ *
+ * Reads SDP connection section from NVM
+ * Returns -1 if NVM read failed or section corrupted, otherwise 0
+ */
+int ice_ptp_read_sdp_section_from_nvm(struct ice_hw *hw, bool *section_exist,
+				      u8 *pin_desc_num, u8 *pin_config_num,
+				      u16 *sdp_entries, u8 *nvm_entries)
+{
+	__le16 loc_raw_data, raw_nvm_entries;
+	u32 loc_data, i, all_pin_bitmap = 0;
+	int err;
+
+	*section_exist = false;
+	*pin_desc_num = 0;
+	*pin_config_num = 0;
+
+	err = ice_acquire_nvm(hw, ICE_RES_READ);
+	if (err)
+		goto exit;
+
+	/* Read the offset of EMP_SR_PTR */
+	err = ice_aq_read_nvm(hw, ICE_AQC_NVM_START_POINT,
+			      ICE_AQC_NVM_SDP_CFG_PTR_OFFSET,
+			      ICE_AQC_NVM_SDP_CFG_PTR_RD_LEN,
+			      &loc_raw_data, false, true, NULL);
+	if (err)
+		goto exit;
+
+	/* check if section exist */
+	loc_data = LE16_TO_CPU(loc_raw_data);
+	if ((loc_data & ICE_AQC_NVM_SDP_CFG_PTR_M) == ICE_AQC_NVM_SDP_CFG_PTR_M)
+		goto exit;
+
+	if (loc_data & ICE_AQC_NVM_SDP_CFG_PTR_TYPE_M) {
+		loc_data &= ICE_AQC_NVM_SDP_CFG_PTR_M;
+		loc_data *= ICE_AQC_NVM_SECTOR_UNIT;
+	} else {
+		loc_data *= ICE_AQC_NVM_WORD_UNIT;
+	}
+
+	/* Skip SDP configuration section length (2 bytes) */
+	loc_data += ICE_AQC_NVM_SDP_CFG_HEADER_LEN;
+
+	/* read number of valid entries */
+	err = ice_aq_read_nvm(hw, ICE_AQC_NVM_START_POINT, loc_data,
+			      ICE_AQC_NVM_SDP_CFG_SEC_LEN_LEN, &raw_nvm_entries,
+			      false, true, NULL);
+	if (err)
+		goto exit;
+	*nvm_entries = (u8)LE16_TO_CPU(raw_nvm_entries);
+
+	/* Read entire SDP configuration section */
+	loc_data += ICE_AQC_NVM_SDP_CFG_SEC_LEN_LEN;
+	err = ice_aq_read_nvm(hw, ICE_AQC_NVM_START_POINT, loc_data,
+			      ICE_AQC_NVM_SDP_CFG_DATA_LEN, sdp_entries,
+			      false, true, NULL);
+	if (err)
+		goto exit;
+
+	/* get number of existing pin/connector */
+	for (i = 0; i < *nvm_entries; i++) {
+		all_pin_bitmap |= (sdp_entries[i] &
+				   ICE_AQC_NVM_SDP_CFG_PIN_MASK) >>
+				   ICE_AQC_NVM_SDP_CFG_PIN_OFFSET;
+		if (sdp_entries[i] & ICE_AQC_NVM_SDP_CFG_NA_PIN_MASK)
+			*pin_desc_num += 1;
+	}
+
+	for (i = 0; i < ICE_AQC_NVM_SDP_CFG_PIN_SIZE - 1; i++)
+		*pin_config_num += (all_pin_bitmap & (1 << i)) != 0;
+	*pin_desc_num += *pin_config_num;
+
+	*section_exist = true;
+exit:
+	ice_release_nvm(hw);
+	return err;
+}
+
+/**
  * ice_ptp_write_direct_incval_e830 - Prep PHY port increment value change
  * @hw: pointer to HW struct
  * @incval: The new 40bit increment value to prepare
