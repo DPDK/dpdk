@@ -261,6 +261,9 @@ ice_write_pca9575_reg_e810t(struct ice_hw *hw, u8 offset, u8 data);
 int ice_read_sma_ctrl_e810t(struct ice_hw *hw, u8 *data);
 int ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data);
 bool ice_is_pca9575_present(struct ice_hw *hw);
+int ice_ptp_read_sdp_section_from_nvm(struct ice_hw *hw, bool *section_exist,
+				      u8 *pin_desc_num, u8 *pin_config_num,
+				      u16 *sdp_entries, u8 *nvm_entries);
 
 void
 ice_ptp_process_cgu_err(struct ice_hw *hw, struct ice_rq_event_info *event);
