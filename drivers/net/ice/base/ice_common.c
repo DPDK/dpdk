@@ -2551,6 +2551,11 @@ ice_parse_common_caps(struct ice_hw *hw, struct ice_hw_common_caps *caps,
 		ice_debug(hw, ICE_DBG_INIT, "%s: orom_recovery_update = %d\n",
 			  prefix, caps->orom_recovery_update);
 		break;
+	case ICE_AQC_CAPS_NEXT_CLUSTER_ID:
+		caps->next_cluster_id_support = (number == 1);
+		ice_debug(hw, ICE_DBG_INIT, "%s: next_cluster_id_support = %d\n",
+			  prefix, caps->next_cluster_id_support);
+		break;
 	default:
 		/* Not one of the recognized common capabilities */
 		found = false;
