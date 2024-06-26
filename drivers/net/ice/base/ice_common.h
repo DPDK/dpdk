@@ -269,6 +269,9 @@ void ice_sbq_lock(struct ice_hw *hw);
 void ice_sbq_unlock(struct ice_hw *hw);
 int ice_sbq_rw_reg(struct ice_hw *hw, struct ice_sbq_msg_input *in, u16 flag);
 int
+ice_aq_cfg_cgu_err(struct ice_hw *hw, bool ena_event_report, bool ena_err_report,
+		   struct ice_sq_cd *cd);
+int
 ice_aq_get_sensor_reading(struct ice_hw *hw, u8 sensor, u8 format,
 			  struct ice_aqc_get_sensor_reading_resp *data,
 			  struct ice_sq_cd *cd);
