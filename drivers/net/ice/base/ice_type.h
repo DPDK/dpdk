@@ -43,6 +43,24 @@ static inline int ice_ilog2(u64 n)
 	return -1;
 }
 
+/**
+ * ice_fls - find the most significant bit set in a u64
+ * @n: u64 value to scan for a bit
+ *
+ * Returns: 0 if no bits found, otherwise the index of the highest bit that was
+ * set, like ice_fls(0x20) == 6. This means this is returning a *1 based*
+ * count, and that the maximum largest value returned is 64!
+ */
+static inline unsigned int ice_fls(u64 n)
+{
+	int ret;
+
+	ret = ice_ilog2(n);
+
+	/* add one to turn to the ilog2 value into a 1 based index */
+	return ret >= 0 ? ret + 1 : 0;
+}
+
 static inline bool ice_is_tc_ena(ice_bitmap_t bitmap, u8 tc)
 {
 	return ice_is_bit_set(&bitmap, tc);
@@ -98,6 +116,8 @@ static inline u32 ice_round_to_num(u32 N, u32 R)
 #define ICE_LO_DWORD(x)		((u32)((x) & 0xFFFFFFFF))
 #define ICE_HI_WORD(x)		((u16)(((x) >> 16) & 0xFFFF))
 #define ICE_LO_WORD(x)		((u16)((x) & 0xFFFF))
+#define ICE_HI_BYTE(x)		((u8)(((x) >> 8) & 0xFF))
+#define ICE_LO_BYTE(x)		((u8)((x) & 0xFF))
 
 /* debug masks - set these bits in hw->debug_mask to control output */
 #define ICE_DBG_TRACE		BIT_ULL(0) /* for function-trace only */
@@ -918,6 +938,14 @@ struct ice_nvm_info {
 	u8 minor;
 };
 
+/* Minimum Security Revision information */
+struct ice_minsrev_info {
+	u32 nvm;
+	u32 orom;
+	u8 nvm_valid : 1;
+	u8 orom_valid : 1;
+};
+
 /* Enumeration of possible flash banks for the NVM, OROM, and Netlist modules
  * of the flash image.
  */
@@ -1231,6 +1259,7 @@ struct ice_port_info {
 	struct ice_bw_type_info tc_node_bw_t_info[ICE_MAX_TRAFFIC_CLASS];
 	struct ice_qos_cfg qos_cfg;
 	u8 is_vf:1;
+	u8 is_custom_tx_enabled:1;
 };
 
 struct ice_switch_info {
@@ -1511,6 +1540,7 @@ enum ice_sw_fwd_act_type {
 	ICE_FWD_TO_QGRP,
 	ICE_SET_MARK,
 	ICE_DROP_PACKET,
+	ICE_LG_ACTION,
 	ICE_INVAL_ACT
 };
 

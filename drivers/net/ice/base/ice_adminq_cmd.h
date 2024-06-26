@@ -109,7 +109,6 @@ struct ice_aqc_list_caps {
 struct ice_aqc_list_caps_elem {
 	__le16 cap;
 #define ICE_AQC_CAPS_VALID_FUNCTIONS			0x0005
-#define ICE_AQC_MAX_VALID_FUNCTIONS			0x8
 #define ICE_AQC_CAPS_VSI				0x0017
 #define ICE_AQC_CAPS_DCB				0x0018
 #define ICE_AQC_CAPS_RSS				0x0040
@@ -132,6 +131,8 @@ struct ice_aqc_list_caps_elem {
 #define ICE_AQC_CAPS_NAC_TOPOLOGY			0x0087
 #define ICE_AQC_CAPS_OROM_RECOVERY_UPDATE		0x0090
 #define ICE_AQC_CAPS_ROCEV2_LAG				0x0092
+#define ICE_AQC_BIT_ROCEV2_LAG				0x01
+#define ICE_AQC_BIT_SRIOV_LAG				0x02
 #define ICE_AQC_CAPS_NEXT_CLUSTER_ID			0x0096
 	u8 major_ver;
 	u8 minor_ver;
@@ -493,6 +494,7 @@ struct ice_aqc_vsi_props {
 #define ICE_AQ_VSI_SW_FLAG_RX_PRUNE_EN_S	0
 #define ICE_AQ_VSI_SW_FLAG_RX_PRUNE_EN_M	(0xF << ICE_AQ_VSI_SW_FLAG_RX_PRUNE_EN_S)
 #define ICE_AQ_VSI_SW_FLAG_RX_VLAN_PRUNE_ENA	BIT(0)
+#define ICE_AQ_VSI_SW_FLAG_RX_PASS_PRUNE_ENA	BIT(3)
 #define ICE_AQ_VSI_SW_FLAG_LAN_ENA		BIT(4)
 	u8 veb_stat_id;
 #define ICE_AQ_VSI_SW_VEB_STAT_ID_S		0
@@ -891,6 +893,8 @@ struct ice_sw_rule_lkup_rx_tx {
 #define ICE_SINGLE_ACT_PTR		0x2
 #define ICE_SINGLE_ACT_PTR_VAL_S	4
 #define ICE_SINGLE_ACT_PTR_VAL_M	(0x1FFF << ICE_SINGLE_ACT_PTR_VAL_S)
+	/* Bit 17 should be set if pointed action includes a FWD cmd */
+#define ICE_SINGLE_ACT_PTR_HAS_FWD	BIT(17)
 	/* Bit 18 should be set to 1 */
 #define ICE_SINGLE_ACT_PTR_BIT		BIT(18)
 
@@ -1001,25 +1005,6 @@ struct ice_sw_rule_vsi_list {
 };
 #pragma pack()
 
-#pragma pack(1)
-/* Query VSI list command/response entry */
-struct ice_sw_rule_vsi_list_query {
-	__le16 index;
-	u8 vsi_list[DIVIDE_AND_ROUND_UP(ICE_MAX_VSI, BITS_PER_BYTE)];
-};
-#pragma pack()
-
-/* PFC Ignore (direct 0x0301)
- * The command and response use the same descriptor structure
- */
-struct ice_aqc_pfc_ignore {
-	u8	tc_bitmap;
-	u8	cmd_flags; /* unused in response */
-#define ICE_AQC_PFC_IGNORE_SET		BIT(7)
-#define ICE_AQC_PFC_IGNORE_CLEAR	0
-	u8	reserved[14];
-};
-
 /* Query PFC Mode (direct 0x0302)
  * Set PFC Mode (direct 0x0303)
  */
@@ -1032,17 +1017,6 @@ struct ice_aqc_set_query_pfc_mode {
 #define ICE_AQC_PFC_VLAN_BASED_PFC	1
 #define ICE_AQC_PFC_DSCP_BASED_PFC	2
 	u8	rsvd[15];
-};
-
-/* Set DCB Parameters (direct 0x0306) */
-struct ice_aqc_set_dcb_params {
-	u8 cmd_flags; /* unused in response */
-#define ICE_AQC_LINK_UP_DCB_CFG    BIT(0)
-#define ICE_AQC_PERSIST_DCB_CFG    BIT(1)
-	u8 valid_flags; /* unused in response */
-#define ICE_AQC_LINK_UP_DCB_CFG_VALID    BIT(0)
-#define ICE_AQC_PERSIST_DCB_CFG_VALID    BIT(1)
-	u8 rsvd[14];
 };
 
 /* Get Default Topology (indirect 0x0400) */
@@ -1708,6 +1682,7 @@ struct ice_aqc_set_event_mask {
 #define ICE_AQ_LINK_EVENT_PORT_TX_SUSPENDED	BIT(9)
 #define ICE_AQ_LINK_EVENT_TOPO_CONFLICT		BIT(10)
 #define ICE_AQ_LINK_EVENT_MEDIA_CONFLICT	BIT(11)
+#define ICE_AQ_LINK_EVENT_PHY_FW_LOAD_FAIL	BIT(12)
 	u8	reserved1[6];
 };
 
@@ -2048,10 +2023,17 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_REVERT_LAST_ACTIV	BIT(6) /* Write Activate only */
 #define ICE_AQC_NVM_ACTIV_SEL_MASK	MAKEMASK(0x7, 3)
 #define ICE_AQC_NVM_FLASH_ONLY		BIT(7)
-#define ICE_AQC_NVM_POR_FLAG	0	/* Used by NVM Write completion on ARQ */
-#define ICE_AQC_NVM_PERST_FLAG	1
-#define ICE_AQC_NVM_EMPR_FLAG	2
-#define ICE_AQC_NVM_EMPR_ENA		BIT(0)
+#define ICE_AQC_NVM_RESET_LVL_M		MAKEMASK(0x3, 0) /* Write reply only */
+#define ICE_AQC_NVM_POR_FLAG		0
+#define ICE_AQC_NVM_PERST_FLAG		1
+#define ICE_AQC_NVM_EMPR_FLAG		2
+#define ICE_AQC_NVM_EMPR_ENA		BIT(0) /* Write Activate reply only */
+	/* For Write Activate, several flags are sent as part of a separate
+	 * flags2 field using a separate byte. For simplicity of the software
+	 * interface, we pass the flags as a 16 bit value so these flags are
+	 * all offset by 8 bits
+	 */
+#define ICE_AQC_NVM_ACTIV_REQ_EMPR	BIT(8) /* NVM Write Activate only */
 	__le16 module_typeid;
 	__le16 length;
 #define ICE_AQC_NVM_ERASE_LEN	0xFFFF
@@ -2104,6 +2086,7 @@ struct ice_aqc_nvm {
 					     ICE_AQC_NVM_SDP_CFG_SDP_NUM_OFFSET)
 #define ICE_AQC_NVM_SDP_CFG_NA_PIN_MASK		MAKEMASK(0x1, 15)
 
+#define ICE_AQC_NVM_MINSREV_MOD_ID		0x130
 #define ICE_AQC_NVM_TX_TOPO_MOD_ID		0x14B
 #define ICE_AQC_NVM_CMPO_MOD_ID			0x153
 
@@ -2112,6 +2095,21 @@ struct ice_aqc_nvm_cmpo {
 	__le16 length;
 #define ICE_AQC_NVM_CMPO_ENABLE	BIT(8)
 	__le16 cages_cfg[8];
+};
+
+/* Used for reading and writing MinSRev using 0x0701 and 0x0703. Note that the
+ * type field is excluded from the section when reading and writing from
+ * a module using the module_typeid field with these AQ commands.
+ */
+struct ice_aqc_nvm_minsrev {
+	__le16 length;
+	__le16 validity;
+#define ICE_AQC_NVM_MINSREV_NVM_VALID		BIT(0)
+#define ICE_AQC_NVM_MINSREV_OROM_VALID		BIT(1)
+	__le16 nvm_minsrev_l;
+	__le16 nvm_minsrev_h;
+	__le16 orom_minsrev_l;
+	__le16 orom_minsrev_h;
 };
 
 struct ice_aqc_nvm_tx_topo_user_sel {
@@ -2429,6 +2427,15 @@ struct ice_aqc_clear_fd_table {
 	u8 rsvd;
 	__le16 vsi_index;
 	u8 reserved[12];
+};
+
+/* Sideband Control Interface Commands */
+/* Neighbor Device Request (indirect 0x0C00); also used for the response. */
+struct ice_aqc_neigh_dev_req {
+	__le16 sb_data_len;
+	u8 reserved[6];
+	__le32 addr_high;
+	__le32 addr_low;
 };
 
 /* Allocate ACL table (indirect 0x0C10) */
@@ -3260,10 +3267,8 @@ struct ice_aq_desc {
 		struct ice_aqc_nvm nvm;
 		struct ice_aqc_nvm_cfg nvm_cfg;
 		struct ice_aqc_nvm_checksum nvm_checksum;
-		struct ice_aqc_pfc_ignore pfc_ignore;
 		struct ice_aqc_nvm_sanitization sanitization;
 		struct ice_aqc_set_query_pfc_mode set_query_pfc_mode;
-		struct ice_aqc_set_dcb_params set_dcb_params;
 		struct ice_aqc_lldp_get_mib lldp_get_mib;
 		struct ice_aqc_lldp_set_mib_change lldp_set_event;
 		struct ice_aqc_lldp_add_delete_tlv lldp_add_delete_tlv;
@@ -3276,6 +3281,7 @@ struct ice_aq_desc {
 		struct ice_aqc_get_set_rss_lut get_set_rss_lut;
 		struct ice_aqc_get_set_rss_key get_set_rss_key;
 		struct ice_aqc_clear_fd_table clear_fd_table;
+		struct ice_aqc_neigh_dev_req neigh_dev;
 		struct ice_aqc_acl_alloc_table alloc_table;
 		struct ice_aqc_acl_tbl_actpair tbl_actpair;
 		struct ice_aqc_acl_alloc_scen alloc_scen;
@@ -3516,6 +3522,8 @@ enum ice_adminq_opc {
 	ice_aqc_opc_nvm_sr_dump				= 0x0707,
 	ice_aqc_opc_nvm_save_factory_settings		= 0x0708,
 	ice_aqc_opc_nvm_update_empr			= 0x0709,
+	ice_aqc_opc_nvm_pkg_data			= 0x070A,
+	ice_aqc_opc_nvm_pass_component_tbl		= 0x070B,
 	ice_aqc_opc_nvm_sanitization			= 0x070C,
 
 	/* LLDP commands */
@@ -3538,6 +3546,8 @@ enum ice_adminq_opc {
 	ice_aqc_opc_get_rss_key				= 0x0B04,
 	ice_aqc_opc_get_rss_lut				= 0x0B05,
 	ice_aqc_opc_clear_fd_table			= 0x0B06,
+	/* Sideband Control Interface commands */
+	ice_aqc_opc_neighbour_device_request		= 0x0C00,
 	/* ACL commands */
 	ice_aqc_opc_alloc_acl_tbl			= 0x0C10,
 	ice_aqc_opc_dealloc_acl_tbl			= 0x0C11,
