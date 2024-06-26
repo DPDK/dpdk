@@ -5254,21 +5254,6 @@ ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 }
 
 /**
- * ice_is_gps_present_e810t
- * @hw: pointer to the hw struct
- *
- * Check if the GPS generic device is present in the netlist
- */
-bool ice_is_gps_present_e810t(struct ice_hw *hw)
-{
-	if (ice_find_netlist_node(hw, ICE_AQC_LINK_TOPO_NODE_TYPE_GPS,
-				  ICE_AQC_GET_LINK_TOPO_NODE_NR_GEN_GPS, NULL))
-		return false;
-
-	return true;
-}
-
-/**
  * ice_read_pca9575_reg_e810t
  * @hw: pointer to the hw struct
  * @offset: GPIO controller register offset

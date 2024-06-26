@@ -169,6 +169,7 @@ ice_aq_get_netlist_node(struct ice_hw *hw, struct ice_aqc_get_link_topo *cmd,
 int
 ice_find_netlist_node(struct ice_hw *hw, u8 node_type_ctx, u8 node_part_number,
 		      u16 *node_handle);
+bool ice_is_gps_in_netlist(struct ice_hw *hw);
 void
 ice_update_phy_type(u64 *phy_type_low, u64 *phy_type_high,
 		    u16 link_speeds_bitmap);
