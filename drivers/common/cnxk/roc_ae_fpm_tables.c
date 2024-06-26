@@ -1261,9 +1261,9 @@ const struct ae_fpm_entry ae_fpm_tbl_scalar[ROC_AE_EC_ID_PMAX] = {
 		.data = ae_fpm_tbl_p521,
 		.len = sizeof(ae_fpm_tbl_p521)
 	},
-	{},
-	{},
-	{},
+	{ /* ROC_AE_EC_ID_P160 */ },
+	{ /* ROC_AE_EC_ID_P320 */ },
+	{ /* ROC_AE_EC_ID_P512 */ },
 	{
 		.data = ae_fpm_tbl_p256_sm2,
 		.len = sizeof(ae_fpm_tbl_p256_sm2)

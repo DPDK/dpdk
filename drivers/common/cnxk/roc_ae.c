@@ -151,9 +151,9 @@ const struct roc_ae_ec_group ae_ec_grp[ROC_AE_EC_ID_PMAX] = {
 			     0x3F, 0x00},
 		    .length = 66},
 	},
-	{},
-	{},
-	{},
+	{ /* ROC_AE_EC_ID_P160 */ },
+	{ /* ROC_AE_EC_ID_P320 */ },
+	{ /* ROC_AE_EC_ID_P512 */ },
 	{
 		.prime = {.data = {0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF,
 				   0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
