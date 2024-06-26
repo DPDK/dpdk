@@ -273,6 +273,8 @@ ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset);
 int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port);
+int
+ice_phy_cfg_intr_e822(struct ice_hw *hw, u8 quad, bool ena, u8 threshold);
 
 /* E810 family functions */
 bool ice_is_gps_present_e810t(struct ice_hw *hw);
@@ -317,6 +319,8 @@ int
 ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port);
+int
+ice_phy_cfg_intr_eth56g(struct ice_hw *hw, u8 port, bool ena, u8 threshold);
 
 #define ICE_ETH56G_PLL_FREQ		800000000
 #define ICE_ETH56G_NOMINAL_INCVAL	0x140000000ULL
