@@ -245,11 +245,11 @@ int ice_replay_vsi(struct ice_hw *hw, u16 vsi_handle);
 void ice_replay_post(struct ice_hw *hw);
 struct ice_q_ctx *
 ice_get_lan_q_ctx(struct ice_hw *hw, u16 vsi_handle, u8 tc, u16 q_handle);
-int ice_sbq_rw_reg_lp(struct ice_hw *hw,
-				  struct ice_sbq_msg_input *in, bool lock);
+int ice_sbq_rw_reg_lp(struct ice_hw *hw, struct ice_sbq_msg_input *in,
+		      u16 flag, bool lock);
 void ice_sbq_lock(struct ice_hw *hw);
 void ice_sbq_unlock(struct ice_hw *hw);
-int ice_sbq_rw_reg(struct ice_hw *hw, struct ice_sbq_msg_input *in);
+int ice_sbq_rw_reg(struct ice_hw *hw, struct ice_sbq_msg_input *in, u16 flag);
 int
 ice_aq_get_sensor_reading(struct ice_hw *hw, u8 sensor, u8 format,
 			  struct ice_aqc_get_sensor_reading_resp *data,
