@@ -778,6 +778,7 @@ struct ice_ts_func_info {
 #define ICE_TS_TMR0_ENA_M		BIT(25)
 #define ICE_TS_TMR1_ENA_M		BIT(26)
 #define ICE_TS_LL_TX_TS_READ_M		BIT(28)
+#define ICE_TS_LL_TX_TS_INT_READ_M	BIT(29)
 
 struct ice_ts_dev_info {
 	/* Device specific info */
@@ -790,6 +791,7 @@ struct ice_ts_dev_info {
 	u8 tmr0_ena : 1;
 	u8 tmr1_ena : 1;
 	u8 ts_ll_read : 1;
+	u8 ts_ll_int_read : 1;
 };
 
 #define ICE_NAC_TOPO_PRIMARY_M	BIT(0)
