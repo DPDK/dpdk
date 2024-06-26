@@ -9420,7 +9420,7 @@ ice_add_adv_rule(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	struct ice_switch_info *sw;
 	u16 nb_lg_acts_mark = 1;
 	const u8 *pkt = NULL;
-	u16 num_rules = 1;
+	u8 num_rules = 1;
 	bool prof_rule;
 	u16 word_cnt;
 	u32 act = 0;
