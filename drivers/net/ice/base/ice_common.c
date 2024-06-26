@@ -4819,7 +4819,7 @@ ice_read_byte(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
 
 	ice_memcpy(&dest_byte, src, sizeof(dest_byte), ICE_DMA_TO_NONDMA);
 
-	dest_byte &= ~(mask);
+	dest_byte &= mask;
 
 	dest_byte >>= shift_width;
 
@@ -4859,7 +4859,7 @@ ice_read_word(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
 	/* the data in the memory is stored as little endian so mask it
 	 * correctly
 	 */
-	src_word &= ~(CPU_TO_LE16(mask));
+	src_word &= CPU_TO_LE16(mask);
 
 	/* get the data back into host order before shifting */
 	dest_word = LE16_TO_CPU(src_word);
@@ -4910,7 +4910,7 @@ ice_read_dword(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
 	/* the data in the memory is stored as little endian so mask it
 	 * correctly
 	 */
-	src_dword &= ~(CPU_TO_LE32(mask));
+	src_dword &= CPU_TO_LE32(mask);
 
 	/* get the data back into host order before shifting */
 	dest_dword = LE32_TO_CPU(src_dword);
@@ -4961,7 +4961,7 @@ ice_read_qword(u8 *src_ctx, u8 *dest_ctx, struct ice_ctx_ele *ce_info)
 	/* the data in the memory is stored as little endian so mask it
 	 * correctly
 	 */
-	src_qword &= ~(CPU_TO_LE64(mask));
+	src_qword &= CPU_TO_LE64(mask);
 
 	/* get the data back into host order before shifting */
 	dest_qword = LE64_TO_CPU(src_qword);
