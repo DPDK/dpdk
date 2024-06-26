@@ -516,7 +516,11 @@ int ice_ptp_init_phy_cfg(struct ice_hw *hw);
 #define BYTES_PER_IDX_ADDR_L		4
 
 /* Tx timestamp low latency read definitions */
-#define TS_LL_READ_RETRIES		200
+#define TS_LL_MAX_TIME_READ_PER_PORT	80
+#define TS_LL_MAX_PORT			8
+#define TS_LL_DELTA_TIME		360
+#define TS_LL_READ_RETRIES		(TS_LL_MAX_TIME_READ_PER_PORT * \
+					 TS_LL_MAX_PORT) + TS_LL_DELTA_TIME
 #define TS_LL_READ_TS_INTR		BIT(30)
 #define TS_LL_READ_TS			BIT(31)
 #define TS_LL_READ_TS_IDX_S		24
