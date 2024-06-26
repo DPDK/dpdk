@@ -47,7 +47,7 @@ cperf_latency_test_free(struct cperf_latency_ctx *ctx)
 		return;
 
 	if (ctx->sess != NULL) {
-		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+		if (cperf_is_asym_test(ctx->options))
 			rte_cryptodev_asym_session_free(ctx->dev_id, ctx->sess);
 #ifdef RTE_LIB_SECURITY
 		else if (ctx->options->op_type == CPERF_PDCP ||
@@ -217,8 +217,9 @@ cperf_latency_test_runner(void *arg)
 					&imix_idx, &tsc_start);
 
 			/* Populate the mbuf with the test vector */
-			for (i = 0; i < burst_size; i++)
-				cperf_mbuf_set(ops[i]->sym->m_src,
+			if (!cperf_is_asym_test(ctx->options))
+				for (i = 0; i < burst_size; i++)
+					cperf_mbuf_set(ops[i]->sym->m_src,
 						ctx->options,
 						ctx->test_vector);
 

@@ -37,7 +37,7 @@ cperf_throughput_test_free(struct cperf_throughput_ctx *ctx)
 	if (!ctx)
 		return;
 	if (ctx->sess) {
-		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+		if (cperf_is_asym_test(ctx->options))
 			rte_cryptodev_asym_session_free(ctx->dev_id,
 					(void *)ctx->sess);
 #ifdef RTE_LIB_SECURITY

@@ -26,4 +26,6 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector);
 
+bool
+cperf_is_asym_test(const struct cperf_options *options);
 #endif /* _CPERF_TEST_COMMON_H_ */

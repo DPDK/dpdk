@@ -42,7 +42,7 @@ cperf_verify_test_free(struct cperf_verify_ctx *ctx)
 		return;
 
 	if (ctx->sess != NULL) {
-		if (ctx->options->op_type == CPERF_ASYM_MODEX)
+		if (cperf_is_asym_test(ctx->options))
 			rte_cryptodev_asym_session_free(ctx->dev_id, ctx->sess);
 #ifdef RTE_LIB_SECURITY
 		else if (ctx->options->op_type == CPERF_PDCP ||

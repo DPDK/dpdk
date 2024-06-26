@@ -152,7 +152,7 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	uint16_t crypto_op_size = sizeof(struct rte_crypto_op);
 	uint16_t crypto_op_private_size;
 
-	if (options->op_type == CPERF_ASYM_MODEX) {
+	if (cperf_is_asym_test(options)) {
 		crypto_op_size += sizeof(struct rte_crypto_asym_op);
 		snprintf(pool_name, RTE_MEMPOOL_NAMESIZE, "perf_asym_op_pool%u",
 			 rte_socket_id());
@@ -300,4 +300,13 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 		test_data += segment_sz;
 		mbuf = mbuf->next;
 	}
+}
+
+bool
+cperf_is_asym_test(const struct cperf_options *options)
+{
+	if (options->op_type == CPERF_ASYM_MODEX)
+		return true;
+
+	return false;
 }
