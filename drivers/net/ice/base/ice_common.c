@@ -1025,6 +1025,8 @@ int ice_init_hw(struct ice_hw *hw)
 
 	ice_get_itr_intrl_gran(hw);
 
+	hw->fw_vsi_num = ICE_DFLT_VSI_INVAL;
+
 	status = ice_create_all_ctrlq(hw);
 	if (status)
 		goto err_unroll_cqinit;
@@ -1036,9 +1038,11 @@ int ice_init_hw(struct ice_hw *hw)
 	if (ice_get_fw_mode(hw) == ICE_FW_MODE_ROLLBACK)
 		ice_print_rollback_msg(hw);
 
-	status = ice_clear_pf_cfg(hw);
-	if (status)
-		goto err_unroll_cqinit;
+	if (!hw->skip_clear_pf) {
+		status = ice_clear_pf_cfg(hw);
+		if (status)
+			goto err_unroll_cqinit;
+	}
 
 	/* Set bit to enable Flow Director filters */
 	wr32(hw, PFQF_FD_ENA, PFQF_FD_ENA_FD_ENA_M);

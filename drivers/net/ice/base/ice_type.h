@@ -1258,6 +1258,7 @@ struct ice_hw {
 	enum ice_mac_type mac_type;
 
 	u16 fd_ctr_base;	/* FD counter base index */
+	u16 fw_vsi_num;
 	/* pci info */
 	u16 device_id;
 	u16 vendor_id;
@@ -1404,6 +1405,8 @@ struct ice_hw {
 	ice_declare_bitmap(hw_ptype, ICE_FLOW_PTYPE_MAX);
 	u8 dvm_ena;
 	u16 io_expander_handle;
+
+	bool skip_clear_pf;
 };
 
 /* Statistics collected by each port, VSI, VEB, and S-channel */
