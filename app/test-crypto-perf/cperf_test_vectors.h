@@ -78,7 +78,7 @@ struct cperf_test_vector {
 };
 
 struct cperf_modex_test_data {
-#define DATA_SIZE  512
+#define DATA_SIZE  1024
 	struct {
 		uint8_t data[DATA_SIZE];
 		uint16_t len;
@@ -110,6 +110,6 @@ extern uint8_t aad[];
 
 extern uint8_t digest[2048];
 
-extern struct cperf_modex_test_data modex_perf_data[4];
+extern struct cperf_modex_test_data modex_perf_data[10];
 
 #endif
