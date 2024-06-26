@@ -1112,6 +1112,7 @@ __flow_hw_act_data_hdr_modify_append(struct mlx5_priv *priv,
 				     enum rte_flow_action_type type,
 				     uint16_t action_src,
 				     uint16_t action_dst,
+				     const struct rte_flow_action_modify_field *mf,
 				     uint16_t mhdr_cmds_off,
 				     uint16_t mhdr_cmds_end,
 				     bool shared,
@@ -1124,6 +1125,7 @@ __flow_hw_act_data_hdr_modify_append(struct mlx5_priv *priv,
 	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
 	if (!act_data)
 		return -1;
+	act_data->modify_header.action = *mf;
 	act_data->modify_header.mhdr_cmds_off = mhdr_cmds_off;
 	act_data->modify_header.mhdr_cmds_end = mhdr_cmds_end;
 	act_data->modify_header.shared = shared;
@@ -1605,7 +1607,7 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 	if (shared)
 		return 0;
 	ret = __flow_hw_act_data_hdr_modify_append(priv, acts, RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
-						   src_pos, mhdr->pos,
+						   src_pos, mhdr->pos, conf,
 						   cmds_start, cmds_end, shared,
 						   field, dcopy, mask);
 	if (ret)
