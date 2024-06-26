@@ -1482,6 +1482,25 @@ ice_clear_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx)
 }
 
 /**
+ * ice_ptp_reset_ts_memory_eth56g - Clear all timestamps from the port block
+ * @hw: pointer to the HW struct
+ */
+static void ice_ptp_reset_ts_memory_eth56g(struct ice_hw *hw)
+{
+	unsigned int port;
+
+	for (port = 0; port < hw->max_phy_port; port++) {
+		if (!(hw->ena_lports & BIT(port)))
+			continue;
+
+		ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_MEMORY_STATUS_L,
+					 0);
+		ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_MEMORY_STATUS_U,
+					 0);
+	}
+}
+
+/**
  * ice_ptp_prep_port_phy_time_eth56g - Prepare one PHY port with initial time
  * @hw: pointer to the HW struct
  * @port: port number
@@ -2909,6 +2928,33 @@ ice_clear_phy_tstamp_e822(struct ice_hw *hw, u8 quad, u8 idx)
 	}
 
 	return 0;
+}
+
+/**
+ * ice_ptp_reset_ts_memory_quad_e822 - Clear all timestamps from the quad block
+ * @hw: pointer to the HW struct
+ * @quad: the quad to read from
+ *
+ * Clear all timestamps from the PHY quad block that is shared between the
+ * internal PHYs on the E822 devices.
+ */
+void ice_ptp_reset_ts_memory_quad_e822(struct ice_hw *hw, u8 quad)
+{
+	ice_write_quad_reg_e822(hw, quad, Q_REG_TS_CTRL, Q_REG_TS_CTRL_M);
+	ice_write_quad_reg_e822(hw, quad, Q_REG_TS_CTRL, ~(u32)Q_REG_TS_CTRL_M);
+}
+
+/**
+ * ice_ptp_reset_ts_memory_e822 - Clear all timestamps from all quad blocks
+ * @hw: pointer to the HW struct
+ */
+static void ice_ptp_reset_ts_memory_e822(struct ice_hw *hw)
+{
+	u8 quad;
+
+	for (quad = 0; quad < ICE_MAX_QUAD; quad++) {
+		ice_ptp_reset_ts_memory_quad_e822(hw, quad);
+	}
 }
 
 /**
@@ -5967,6 +6013,25 @@ ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx)
 	}
 
 	return err;
+}
+
+/**
+ * ice_ptp_reset_ts_memory - Reset timestamp memory for all blocks
+ * @hw: pointer to the HW struct
+ */
+void ice_ptp_reset_ts_memory(struct ice_hw *hw)
+{
+	switch (hw->phy_model) {
+	case ICE_PHY_ETH56G:
+		ice_ptp_reset_ts_memory_eth56g(hw);
+		break;
+	case ICE_PHY_E822:
+		ice_ptp_reset_ts_memory_e822(hw);
+		break;
+	case ICE_PHY_E810:
+	default:
+		return;
+	}
 }
 
 /**
