@@ -157,7 +157,8 @@ const struct ice_cgu_pll_params_e822 e822_cgu_params[NUM_ICE_TIME_REF_FREQ] = {
 	},
 };
 
-/* struct ice_vernier_info_e822
+/*
+ * struct ice_vernier_info_e822
  *
  * E822 hardware calibrates the delay of the timestamp indication from the
  * actual packet transmission or reception during the initialization of the

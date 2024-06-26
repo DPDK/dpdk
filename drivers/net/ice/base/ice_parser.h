@@ -59,11 +59,11 @@ int ice_parser_create(struct ice_hw *hw, struct ice_parser **psr);
 void ice_parser_destroy(struct ice_parser *psr);
 void ice_parser_dvm_set(struct ice_parser *psr, bool on);
 int ice_parser_vxlan_tunnel_set(struct ice_parser *psr,
-					    u16 udp_port, bool on);
+				u16 udp_port, bool on);
 int ice_parser_geneve_tunnel_set(struct ice_parser *psr,
-					     u16 udp_port, bool on);
+				 u16 udp_port, bool on);
 int ice_parser_ecpri_tunnel_set(struct ice_parser *psr,
-					    u16 udp_port, bool on);
+				u16 udp_port, bool on);
 
 struct ice_parser_proto_off {
 	u8 proto_id; /* hardware protocol ID */
@@ -84,7 +84,7 @@ struct ice_parser_result {
 };
 
 int ice_parser_run(struct ice_parser *psr, const u8 *pkt_buf,
-			       int pkt_len, struct ice_parser_result *rslt);
+		   int pkt_len, struct ice_parser_result *rslt);
 void ice_parser_result_dump(struct ice_hw *hw, struct ice_parser_result *rslt);
 
 struct ice_parser_fv {
@@ -104,10 +104,10 @@ struct ice_parser_profile {
 };
 
 int ice_parser_profile_init(struct ice_parser_result *rslt,
-					const u8 *pkt_buf, const u8 *msk_buf,
-					int buf_len, enum ice_block blk,
-					bool prefix_match,
-					struct ice_parser_profile *prof);
+			    const u8 *pkt_buf, const u8 *msk_buf,
+			    int buf_len, enum ice_block blk,
+			    bool prefix_match,
+			    struct ice_parser_profile *prof);
 void ice_parser_profile_dump(struct ice_hw *hw,
 			     struct ice_parser_profile *prof);
 bool ice_check_ddp_support_proto_id(struct ice_hw *hw,

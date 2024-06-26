@@ -49,5 +49,5 @@ void ice_parser_rt_pktbuf_set(struct ice_parser_rt *rt, const u8 *pkt_buf,
 
 struct ice_parser_result;
 int ice_parser_rt_execute(struct ice_parser_rt *rt,
-				      struct ice_parser_result *rslt);
+			  struct ice_parser_result *rslt);
 #endif /* _ICE_PARSER_RT_H_ */

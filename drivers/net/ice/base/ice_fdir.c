@@ -6,6 +6,7 @@
 #include "ice_fdir.h"
 
 /* These are training packet headers used to program flow director filters. */
+
 static const u8 ice_fdir_tcpv4_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x45, 0x00,
@@ -3587,7 +3588,7 @@ int ice_get_fdir_cnt_all(struct ice_hw *hw)
 }
 
 /**
- * ice_pkt_insert_ipv6_addr - insert a be32 IPv6 address into a memory buffer.
+ * ice_pkt_insert_ipv6_addr - insert a be32 IPv6 address into a memory buffer
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @addr: IPv6 address to convert and insert into pkt at offset
@@ -3602,12 +3603,12 @@ static void ice_pkt_insert_ipv6_addr(u8 *pkt, int offset, __be32 *addr)
 }
 
 /**
- * ice_pkt_insert_u6_qfi - insert a u6 value qfi into a memory buffer for gtpu
+ * ice_pkt_insert_u6_qfi - insert a u6 value QFI into a memory buffer for GTPU
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @data: 8 bit value to convert and insert into pkt at offset
  *
- * This function is designed for inserting qfi (6 bits) for gtpu.
+ * This function is designed for inserting QFI (6 bits) for GTPU.
  */
 static void ice_pkt_insert_u6_qfi(u8 *pkt, int offset, u8 data)
 {
@@ -3618,7 +3619,7 @@ static void ice_pkt_insert_u6_qfi(u8 *pkt, int offset, u8 data)
 }
 
 /**
- * ice_pkt_insert_u8 - insert a u8 value into a memory buffer.
+ * ice_pkt_insert_u8 - insert a u8 value into a memory buffer
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @data: 8 bit value to convert and insert into pkt at offset
@@ -3629,7 +3630,7 @@ static void ice_pkt_insert_u8(u8 *pkt, int offset, u8 data)
 }
 
 /**
- * ice_pkt_insert_u8_tc - insert a u8 value into a memory buffer for TC ipv6.
+ * ice_pkt_insert_u8_tc - insert a u8 value into a memory buffer for TC IPv6
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @data: 8 bit value to convert and insert into pkt at offset
@@ -3651,7 +3652,7 @@ static void ice_pkt_insert_u8_tc(u8 *pkt, int offset, u8 data)
 }
 
 /**
- * ice_pkt_insert_u16 - insert a be16 value into a memory buffer.
+ * ice_pkt_insert_u16 - insert a be16 value into a memory buffer
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @data: 16 bit value to convert and insert into pkt at offset
@@ -3662,7 +3663,7 @@ static void ice_pkt_insert_u16(u8 *pkt, int offset, __be16 data)
 }
 
 /**
- * ice_pkt_insert_u32 - insert a be32 value into a memory buffer.
+ * ice_pkt_insert_u32 - insert a be32 value into a memory buffer
  * @pkt: packet buffer
  * @offset: offset into buffer
  * @data: 32 bit value to convert and insert into pkt at offset
@@ -3673,7 +3674,7 @@ static void ice_pkt_insert_u32(u8 *pkt, int offset, __be32 data)
 }
 
 /**
- * ice_pkt_insert_mac_addr - insert a MAC addr into a memory buffer.
+ * ice_pkt_insert_mac_addr - insert a MAC addr into a memory buffer
  * @pkt: packet buffer
  * @addr: MAC address to convert and insert into pkt at offset
  */
@@ -4101,7 +4102,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
 		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
 		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
-		ice_pkt_insert_mac_addr(loc + ETH_ALEN, input->ext_data.src_mac);
+		ice_pkt_insert_mac_addr(loc + ETH_ALEN,
+					input->ext_data.src_mac);
 		break;
 	case ICE_FLTR_PTYPE_NONF_IPV4_SCTP:
 		ice_pkt_insert_u32(loc, ICE_IPV4_DST_ADDR_OFFSET,
@@ -4223,6 +4225,8 @@ ice_fdir_get_gen_prgm_pkt(struct ice_hw *hw, struct ice_fdir_fltr *input,
 				   input->ip.v4.dst_ip);
 		ice_pkt_insert_u8(loc, ICE_IPV4_TOS_OFFSET, input->ip.v4.tos);
 		ice_pkt_insert_u8(loc, ICE_IPV4_TTL_OFFSET, input->ip.v4.ttl);
+		ice_pkt_insert_u8(loc, ICE_IPV4_PROTO_OFFSET,
+				  input->ip.v4.proto);
 		ice_pkt_insert_mac_addr(loc, input->ext_data.dst_mac);
 		ice_pkt_insert_mac_addr(loc + ETH_ALEN,
 					input->ext_data.src_mac);

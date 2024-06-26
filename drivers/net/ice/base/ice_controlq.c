@@ -470,7 +470,7 @@ shutdown_sq_out:
 }
 
 /**
- * ice_aq_ver_check - Check the reported AQ API version.
+ * ice_aq_ver_check - Check the reported AQ API version
  * @hw: pointer to the hardware structure
  *
  * Checks if the driver should load on a given AQ API version.
@@ -658,8 +658,9 @@ static bool ice_is_sbq_supported(struct ice_hw *hw)
  *
  * NOTE: this function does not destroy the control queue locks.
  */
-static void ice_shutdown_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type,
-			       bool unloading)
+static void
+ice_shutdown_ctrlq(struct ice_hw *hw, enum ice_ctl_q q_type,
+		   bool unloading)
 {
 	struct ice_ctl_q_info *cq;
 

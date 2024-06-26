@@ -651,7 +651,6 @@ struct ice_prof_tcam_entry {
 	u8 key[ICE_TCAM_KEY_SZ];
 	u8 prof_id;
 };
-
 #pragma pack()
 
 struct ice_prof_id_section {

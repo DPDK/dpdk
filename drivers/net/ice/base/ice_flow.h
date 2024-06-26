@@ -371,14 +371,14 @@ enum ice_flow_avf_hdr_field {
 enum ice_rss_cfg_hdr_type {
 	ICE_RSS_OUTER_HEADERS, /* take outer headers as inputset. */
 	ICE_RSS_INNER_HEADERS, /* take inner headers as inputset. */
-	/* take inner headers as inputset for packet with outer ipv4. */
+	/* take inner headers as inputset for packet with outer IPv4. */
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4,
-	/* take inner headers as inputset for packet with outer ipv6. */
+	/* take inner headers as inputset for packet with outer IPv6. */
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6,
 	/* take outer headers first then inner headers as inputset */
-	/* take inner as inputset for GTPoGRE with outer ipv4 + gre. */
+	/* take inner as inputset for GTPoGRE with outer IPv4 + GRE. */
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV4_GRE,
-	/* take inner as inputset for GTPoGRE with outer ipv6 + gre. */
+	/* take inner as inputset for GTPoGRE with outer IPv6 + GRE. */
 	ICE_RSS_INNER_HEADERS_W_OUTER_IPV6_GRE,
 	ICE_RSS_ANY_HEADERS
 };
@@ -576,16 +576,15 @@ int
 ice_flow_assoc_prof(struct ice_hw *hw, enum ice_block blk,
 		    struct ice_flow_prof *prof, u16 vsi_handle);
 int
-ice_flow_assoc_vsig_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi_handle,
-			u16 vsig);
-int
 ice_flow_set_hw_prof(struct ice_hw *hw, u16 dest_vsi_handle,
 		     u16 fdir_vsi_handle, struct ice_parser_profile *prof,
 		     enum ice_block blk);
 int
+ice_flow_assoc_vsig_vsi(struct ice_hw *hw, enum ice_block blk, u16 vsi_handle,
+			u16 vsig);
+int
 ice_flow_get_hw_prof(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
 		     u8 *hw_prof);
-
 u64 ice_flow_find_entry(struct ice_hw *hw, enum ice_block blk, u64 entry_id);
 int
 ice_flow_add_entry(struct ice_hw *hw, enum ice_block blk, u64 prof_id,
@@ -604,7 +603,7 @@ void
 ice_flow_add_fld_raw(struct ice_flow_seg_info *seg, u16 off, u8 len,
 		     u16 val_loc, u16 mask_loc);
 int ice_flow_rem_vsi_prof(struct ice_hw *hw, enum ice_block blk,
-				      u16 vsi_handle, u64 prof_id);
+			  u16 vsi_handle, u64 prof_id);
 void ice_rem_vsi_rss_list(struct ice_hw *hw, u16 vsi_handle);
 int ice_replay_rss_cfg(struct ice_hw *hw, u16 vsi_handle);
 int
