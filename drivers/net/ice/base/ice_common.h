@@ -84,6 +84,14 @@ ice_aq_get_internal_data(struct ice_hw *hw, u16 cluster_id, u16 table_id,
  */
 #define ICE_ALIGN(ptr, align)	(((ptr) + ((align) - 1)) & ~((align) - 1))
 
+/* Define a macro for initializing array using indexes. Due to limitation
+ * of MSVC compiler it is necessary to allow other projects to replace
+ * that macro and strip the index from initialization.
+ * Linux driver is using coccinelle to maintain source sync with upstream
+ * and is not requiring this macro.
+ */
+#define ice_arr_elem_idx(idx, val)	[(idx)] = (val)
+
 int
 ice_write_rxq_ctx(struct ice_hw *hw, struct ice_rlan_ctx *rlan_ctx,
 		  u32 rxq_index);
