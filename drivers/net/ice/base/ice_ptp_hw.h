@@ -166,6 +166,18 @@ ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port,
 int
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
 		     enum ice_clk_src clk_src);
+int
+ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
+		      enum ice_clk_src *clk_src);
+int
+ice_cgu_ts_pll_lost_lock_e825c(struct ice_hw *hw, bool *lost_lock);
+int ice_cgu_ts_pll_restart_e825c(struct ice_hw *hw);
+int
+ice_cgu_bypass_mux_port_active_e825c(struct ice_hw *hw, u8 port, bool *active);
+int
+ice_cfg_cgu_bypass_mux_e825c(struct ice_hw *hw, u8 port_num, bool clock_1588,
+			     unsigned int ena);
+int ice_cfg_synce_ethdiv_e825c(struct ice_hw *hw, u8 *divider);
 
 /**
  * ice_e822_time_ref - Get the current TIME_REF from capabilities

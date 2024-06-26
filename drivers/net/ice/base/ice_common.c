@@ -271,6 +271,25 @@ bool ice_is_e823(struct ice_hw *hw)
 }
 
 /**
+ * ice_is_e825c
+ * @hw: pointer to the hardware structure
+ *
+ * returns true if the device is E825-C based, false if not.
+ */
+bool ice_is_e825c(struct ice_hw *hw)
+{
+	switch (hw->device_id) {
+	case ICE_DEV_ID_E825C_BACKPLANE:
+	case ICE_DEV_ID_E825C_QSFP:
+	case ICE_DEV_ID_E825C_SFP:
+	case ICE_DEV_ID_E825C_SGMII:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/**
  * ice_clear_pf_cfg - Clear PF configuration
  * @hw: pointer to the hardware structure
  *
