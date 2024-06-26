@@ -165,8 +165,8 @@ int
 ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port,
 			       u64 *tx_ts, u64 *rx_ts);
 int
-ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq clk_freq,
-		     enum ice_clk_src clk_src);
+ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
+		     enum ice_clk_src *clk_src);
 int
 ice_ptp_write_port_cmd_e822(struct ice_hw *hw, u8 port,
 			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
