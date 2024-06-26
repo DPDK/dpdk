@@ -35,6 +35,39 @@ cperf_set_ops_asym_modex(struct rte_crypto_op **ops,
 }
 
 static void
+cperf_set_ops_asym_ecdsa(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   void *sess,
+		   const struct cperf_options *options,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused,
+		   uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		asym_op->ecdsa.op_type = options->asym_op_type;
+		asym_op->ecdsa.message.data = options->secp256r1_data->message.data;
+		asym_op->ecdsa.message.length = options->secp256r1_data->message.length;
+
+		asym_op->ecdsa.k.data = options->secp256r1_data->k.data;
+		asym_op->ecdsa.k.length = options->secp256r1_data->k.length;
+
+		asym_op->ecdsa.r.data = options->secp256r1_data->sign_r.data;
+		asym_op->ecdsa.r.length = options->secp256r1_data->sign_r.length;
+		asym_op->ecdsa.s.data = options->secp256r1_data->sign_s.data;
+		asym_op->ecdsa.s.length = options->secp256r1_data->sign_s.length;
+	}
+}
+
+static void
 cperf_set_ops_asym_sm2(struct rte_crypto_op **ops,
 		   uint32_t src_buf_offset __rte_unused,
 		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
@@ -974,6 +1007,27 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		return asym_sess;
 	}
 
+	if (options->op_type == CPERF_ASYM_SECP256R1) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDSA;
+		xform.ec.curve_id = options->secp256r1_data->curve;
+		xform.ec.pkey.data = options->secp256r1_data->pkey.data;
+		xform.ec.pkey.length = options->secp256r1_data->pkey.length;
+		xform.ec.q.x.data = options->secp256r1_data->pubkey_qx.data;
+		xform.ec.q.x.length = options->secp256r1_data->pubkey_qx.length;
+		xform.ec.q.y.data = options->secp256r1_data->pubkey_qy.data;
+		xform.ec.q.y.length = options->secp256r1_data->pubkey_qy.length;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "ECDSA Asym session create failed\n");
+			return NULL;
+		}
+
+		return asym_sess;
+	}
+
 	if (options->op_type == CPERF_ASYM_SM2) {
 		xform.next = NULL;
 		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
@@ -1293,6 +1347,9 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 	case CPERF_ASYM_MODEX:
 		op_fns->populate_ops = cperf_set_ops_asym_modex;
+		break;
+	case CPERF_ASYM_SECP256R1:
+		op_fns->populate_ops = cperf_set_ops_asym_ecdsa;
 		break;
 	case CPERF_ASYM_SM2:
 		op_fns->populate_ops = cperf_set_ops_asym_sm2;

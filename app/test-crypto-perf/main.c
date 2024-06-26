@@ -45,6 +45,7 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_DOCSIS] = "docsis",
 	[CPERF_IPSEC] = "ipsec",
 	[CPERF_ASYM_MODEX] = "modex",
+	[CPERF_ASYM_SECP256R1] = "ecdsa_p256r1",
 	[CPERF_ASYM_SM2] = "sm2",
 	[CPERF_TLS] = "tls-record"
 };
@@ -225,6 +226,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		};
 
 		switch (opts->op_type) {
+		case CPERF_ASYM_SECP256R1:
 		case CPERF_ASYM_SM2:
 		case CPERF_ASYM_MODEX:
 			conf.ff_disable |= (RTE_CRYPTODEV_FF_SECURITY |
@@ -362,6 +364,22 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 			if (ret != 0)
 				return ret;
 
+		}
+
+		if (opts->op_type == CPERF_ASYM_SECP256R1) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_ECDSA;
+			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			if (!rte_cryptodev_asym_xform_capability_check_optype(asym_capability,
+						opts->asym_op_type))
+				return -1;
+
+			if (asym_capability->internal_rng != 0) {
+				opts->secp256r1_data->k.data = NULL;
+				opts->secp256r1_data->k.length = 0;
+			}
 		}
 
 		if (opts->op_type == CPERF_ASYM_SM2) {

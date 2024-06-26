@@ -175,6 +175,7 @@ The following are the application command-line options:
            pdcp
            docsis
            modex
+           ecdsa_p256r1
            sm2
            ipsec
            tls-record

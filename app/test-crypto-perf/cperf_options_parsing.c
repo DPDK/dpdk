@@ -11,6 +11,7 @@
 #include <rte_ether.h>
 
 #include "cperf_options.h"
+#include "cperf_test_common.h"
 #include "cperf_test_vectors.h"
 
 #define AES_BLOCK_SIZE 16
@@ -37,7 +38,7 @@ usage(char *progname)
 		" --desc-nb N: set number of descriptors for each crypto device\n"
 		" --devtype TYPE: set crypto device type to use\n"
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
-		"        aead / pdcp / docsis / ipsec / modex / sm2 / tls-record : set operation type\n"
+		"        aead / pdcp / docsis / ipsec / modex / secp256r1 / sm2 / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
 		" --test-file NAME: set the test vector file path\n"
@@ -482,6 +483,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_ASYM_MODEX],
 			CPERF_ASYM_MODEX
+		},
+		{
+			cperf_op_type_strs[CPERF_ASYM_SECP256R1],
+			CPERF_ASYM_SECP256R1
 		},
 		{
 			cperf_op_type_strs[CPERF_ASYM_SM2],
@@ -1064,6 +1069,7 @@ cperf_options_default(struct cperf_options *opts)
 #endif
 	opts->modex_data = (struct cperf_modex_test_data *)&modex_perf_data[0];
 
+	opts->secp256r1_data = &secp256r1_perf_data;
 	opts->sm2_data = &sm2_perf_data;
 	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_SIGN;
 }
@@ -1488,7 +1494,7 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("#\n");
 	printf("# number of queue pairs per device: %u\n", opts->nb_qps);
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
-	if (opts->op_type == CPERF_ASYM_SM2)
+	if (opts->op_type == CPERF_ASYM_SM2 || opts->op_type == CPERF_ASYM_SECP256R1)
 		printf("# asym operation type: %s\n",
 				rte_crypto_asym_op_strings[opts->asym_op_type]);
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
