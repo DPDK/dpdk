@@ -7593,7 +7593,8 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 		}
 
 		for (i = 0; i < entry->r_group.n_val_pairs; i++) {
-			buf[recps].content.lkup_indx[i + 1] = entry->fv_idx[i];
+			buf[recps].content.lkup_indx[i + 1] =
+				(u8)entry->fv_idx[i];
 			buf[recps].content.mask[i + 1] =
 				CPU_TO_LE16(entry->fv_mask[i]);
 		}
@@ -7614,8 +7615,8 @@ ice_add_sw_recipe(struct ice_hw *hw, struct ice_sw_recipe *rm,
 				((chain_idx << ICE_AQ_RECIPE_RESULT_DATA_S) &
 				 ICE_AQ_RECIPE_RESULT_DATA_M);
 			ice_clear_bit(chain_idx, result_idx_bm);
-			chain_idx = ice_find_first_bit(result_idx_bm,
-						       ICE_MAX_FV_WORDS);
+			chain_idx = (u8)ice_find_first_bit(result_idx_bm,
+							   ICE_MAX_FV_WORDS);
 		}
 
 		/* fill recipe dependencies */

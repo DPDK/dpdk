@@ -4063,7 +4063,7 @@ ice_phy_calc_pmd_adj_e822(struct ice_hw *hw, u8 port,
 			return err;
 		}
 
-		rx_cycle = val & P_REG_RX_80_TO_160_CNT_RXCYC_M;
+		rx_cycle = (u8)(val & P_REG_RX_80_TO_160_CNT_RXCYC_M);
 		if (rx_cycle) {
 			mult = rx_cycle * 40;
 
@@ -5825,13 +5825,14 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time, bool wr_main_tmr)
 	/* Fill Rx and Tx ports and send msg to PHY */
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
-		err = ice_ptp_prep_phy_time_eth56g(hw, time & 0xFFFFFFFF);
+		err = ice_ptp_prep_phy_time_eth56g(hw,
+						   (u32)(time & 0xFFFFFFFF));
 		break;
 	case ICE_PHY_E810:
-		err = ice_ptp_prep_phy_time_e810(hw, time & 0xFFFFFFFF);
+		err = ice_ptp_prep_phy_time_e810(hw, (u32)(time & 0xFFFFFFFF));
 		break;
 	case ICE_PHY_E822:
-		err = ice_ptp_prep_phy_time_e822(hw, time & 0xFFFFFFFF);
+		err = ice_ptp_prep_phy_time_e822(hw, (u32)(time & 0xFFFFFFFF));
 		break;
 	default:
 		err = ICE_ERR_NOT_SUPPORTED;
