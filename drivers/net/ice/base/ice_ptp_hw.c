@@ -1509,9 +1509,6 @@ static void ice_ptp_reset_ts_memory_eth56g(struct ice_hw *hw)
 	unsigned int port;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
-		if (!(hw->ena_lports & BIT(port)))
-			continue;
-
 		ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_MEMORY_STATUS_L,
 					 0);
 		ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_MEMORY_STATUS_U,
@@ -1568,8 +1565,7 @@ ice_ptp_prep_phy_time_eth56g(struct ice_hw *hw, u32 time)
 
 	for (port = 0; port < hw->max_phy_port; port++) {
 		int err;
-		if (!(hw->ena_lports & BIT(port)))
-			continue;
+
 		err = ice_ptp_prep_port_phy_time_eth56g(hw, port, phy_time);
 
 		if (err) {
@@ -1664,8 +1660,6 @@ ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
 	cycles = (s64)adj << 32;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
-		if (!(hw->ena_lports & BIT(port)))
-			continue;
 
 		err = ice_ptp_prep_port_adj_eth56g(hw, port, cycles, lock_sbq);
 		if (err)
@@ -1691,8 +1685,6 @@ ice_ptp_prep_phy_incval_eth56g(struct ice_hw *hw, u64 incval)
 
 	for (port = 0; port < hw->max_phy_port; port++) {
 		int err;
-		if (!(hw->ena_lports & BIT(port)))
-			continue;
 		err = ice_write_40b_phy_reg_eth56g(hw, port, PHY_REG_TIMETUS_L,
 						   incval);
 		if (err) {
@@ -1752,9 +1744,6 @@ ice_ptp_prep_phy_adj_target_eth56g(struct ice_hw *hw, u32 target_time)
 	u8 port;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
-		if (!(hw->ena_lports & BIT(port)))
-			continue;
-
 		/* Tx case */
 		/* No sub-nanoseconds data */
 		err = ice_write_phy_reg_eth56g_lp(hw, port,
