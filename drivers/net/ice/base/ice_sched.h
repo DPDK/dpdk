@@ -7,6 +7,8 @@
 
 #include "ice_common.h"
 
+#define SCHED_NODE_NAME_MAX_LEN 32
+
 #define ICE_SCHED_5_LAYERS	5
 #define ICE_SCHED_9_LAYERS	9
 
@@ -119,6 +121,13 @@ ice_sched_add_elems(struct ice_port_info *pi, struct ice_sched_node *tc_node,
 int
 ice_sched_move_nodes(struct ice_port_info *pi, struct ice_sched_node *parent,
 		     u16 num_items, u32 *list);
+
+int
+ice_sched_set_node_priority(struct ice_port_info *pi, struct ice_sched_node *node,
+			    u16 priority);
+int
+ice_sched_set_node_weight(struct ice_port_info *pi, struct ice_sched_node *node,
+			  u16 weight);
 
 int ice_sched_init_port(struct ice_port_info *pi);
 int ice_sched_query_res_alloc(struct ice_hw *hw);
