@@ -4659,6 +4659,9 @@ ice_sched_save_tc_node_bw(struct ice_port_info *pi, u8 tc,
 	return 0;
 }
 
+#define ICE_SCHED_GENERIC_STRICT_MODE		BIT(4)
+#define ICE_SCHED_GENERIC_PRIO_S		1
+
 /**
  * ice_sched_set_tc_node_bw_lmt - sets TC node BW limit
  * @pi: port information structure
@@ -4683,6 +4686,17 @@ ice_sched_set_tc_node_bw_lmt(struct ice_port_info *pi, u8 tc,
 	tc_node = ice_sched_get_tc_node(pi, tc);
 	if (!tc_node)
 		goto exit_set_tc_node_bw;
+
+	/* update node's generic field */
+	buf = tc_node->info;
+	data = &buf.data;
+	data->valid_sections = ICE_AQC_ELEM_VALID_GENERIC;
+	data->generic = (tc << ICE_SCHED_GENERIC_PRIO_S) |
+		ICE_SCHED_GENERIC_STRICT_MODE;
+	status = ice_sched_update_elem(pi->hw, tc_node, &buf);
+	if (status)
+		goto exit_set_tc_node_bw;
+
 	if (bw == ICE_SCHED_DFLT_BW)
 		status = ice_sched_set_node_bw_dflt_lmt(pi, tc_node, rl_type);
 	else
