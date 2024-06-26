@@ -97,6 +97,7 @@ New Features
   * Added match with Tx queue.
   * Added match with external Tx queue.
   * Added match with E-Switch manager.
+  * Added flow item and actions validation to async flow API.
 
 * **Updated TAP driver.**
 
