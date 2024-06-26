@@ -2021,6 +2021,46 @@ mlx5_flow_validate_action_drop(struct rte_eth_dev *dev,
 }
 
 /*
+ * Check if a queue specified in the queue action is valid.
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] action
+ *   Pointer to the queue action.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_target_queue(struct rte_eth_dev *dev,
+				const struct rte_flow_action *action,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_action_queue *queue = action->conf;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (mlx5_is_external_rxq(dev, queue->index))
+		return 0;
+	if (!priv->rxqs_n)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  NULL, "No Rx queues configured");
+	if (queue->index >= priv->rxqs_n)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &queue->index,
+					  "queue index out of range");
+	if (mlx5_rxq_get(dev, queue->index) == NULL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+					  &queue->index,
+					  "queue is not configured");
+	return 0;
+}
+
+/*
  * Validate the queue action.
  *
  * @param[in] action
@@ -2044,7 +2084,6 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_queue *queue = action->conf;
 
 	if (!queue)
@@ -2060,23 +2099,7 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "queue action not supported for egress.");
-	if (mlx5_is_external_rxq(dev, queue->index))
-		return 0;
-	if (!priv->rxqs_n)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					  NULL, "No Rx queues configured");
-	if (queue->index >= priv->rxqs_n)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					  &queue->index,
-					  "queue index out of range");
-	if (mlx5_rxq_get(dev, queue->index) == NULL)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
-					  &queue->index,
-					  "queue is not configured");
-	return 0;
+	return mlx5_flow_validate_target_queue(dev, action, error);
 }
 
 /**
