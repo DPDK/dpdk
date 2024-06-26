@@ -438,6 +438,42 @@ enum ice_promisc_flags {
 	ICE_PROMISC_MAX,
 };
 
+struct ice_dummy_pkt_offsets {
+	enum ice_protocol_type type;
+	u16 offset; /* ICE_PROTOCOL_LAST indicates end of list */
+};
+
+void
+ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
+		      enum ice_sw_tunnel_type tun_type, const u8 **pkt,
+		      u16 *pkt_len,
+		      const struct ice_dummy_pkt_offsets **offsets);
+
+int
+ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
+			  struct ice_sw_rule_lkup_rx_tx *s_rule,
+			  const u8 *dummy_pkt, u16 pkt_len,
+			  const struct ice_dummy_pkt_offsets *offsets);
+
+int
+ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+		   u16 lkups_cnt, struct ice_adv_rule_info *rinfo, u16 *rid);
+
+struct ice_adv_fltr_mgmt_list_entry *
+ice_find_adv_rule_entry(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
+			u16 lkups_cnt, u16 recp_id,
+			struct ice_adv_rule_info *rinfo);
+
+int
+ice_adv_add_update_vsi_list(struct ice_hw *hw,
+			    struct ice_adv_fltr_mgmt_list_entry *m_entry,
+			    struct ice_adv_rule_info *cur_fltr,
+			    struct ice_adv_rule_info *new_fltr);
+
+struct ice_vsi_list_map_info *
+ice_find_vsi_list_entry(struct ice_sw_recipe *recp_list, u16 vsi_handle,
+			u16 *vsi_list_id);
+
 /* VSI related commands */
 int
 ice_aq_add_vsi(struct ice_hw *hw, struct ice_vsi_ctx *vsi_ctx,
