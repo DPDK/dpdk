@@ -4492,7 +4492,7 @@ static int ice_write_phy_reg_e810(struct ice_hw *hw, u32 addr, u32 val)
 static int
 ice_read_phy_tstamp_ll_e810(struct ice_hw *hw, u8 idx, u8 *hi, u32 *lo)
 {
-	u8 i;
+	unsigned int i;
 
 	/* Write TS index to read to the PF register so the FW can read it */
 	wr32(hw, PF_SB_ATQBAL, TS_LL_READ_TS_IDX(idx));
