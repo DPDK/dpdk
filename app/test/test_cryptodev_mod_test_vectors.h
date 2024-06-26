@@ -27,7 +27,6 @@ struct modex_test_data {
 		uint8_t data[DATA_SIZE];
 		uint16_t len;
 	} reminder;
-	uint16_t result_len;
 };
 struct modinv_test_data {
 	enum rte_crypto_asym_xform_type xform_type;
@@ -44,7 +43,6 @@ struct modinv_test_data {
 		uint8_t data[DATA_SIZE];
 		uint16_t len;
 	} inverse;
-	uint16_t result_len;
 };
 
 /* ModExp #1 */
@@ -109,7 +107,6 @@ modex_test_data modex_test_case_m128_b20_e3 = {
 		},
 		.len = 128
 	},
-	.result_len = 128
 };
 
 /* ModInv #1 */
@@ -167,7 +164,6 @@ modinv_test_data modinv_test_case = {
 		},
 		.len = 128
 	},
-	.result_len = 128
 };
 
 /* modular operation test data */
@@ -347,7 +343,6 @@ modex_test_data modex_group_test_cases[] = {
 		},
 		.len = 192
 	},
-	.result_len = 192
 },
 {
 	.description = "Modular Exponentiation tests for Group 14",
@@ -442,7 +437,6 @@ modex_test_data modex_group_test_cases[] = {
 		},
 		.len = 256
 	},
-	.result_len = 256
 },
 {
 	.description = "Modular Exponentiation tests for Group 15",
@@ -571,7 +565,6 @@ modex_test_data modex_group_test_cases[] = {
 		},
 		.len = 384
 	},
-	.result_len = 384
 },
 {
 	.description = "Modular Exponentiation tests for Group 16",
@@ -733,7 +726,6 @@ modex_test_data modex_group_test_cases[] = {
 		},
 		.len = 512
 	},
-	.result_len = 512
 },
 {
 	.description = "Modular Exponentiation tests for Group 17",
@@ -960,7 +952,6 @@ modex_test_data modex_group_test_cases[] = {
 		},
 		.len = 768
 	},
-	.result_len = 768
 },
 {
 	.description = "Modular Exponentiation tests for Group 18",
@@ -1252,7 +1243,6 @@ modex_test_data modex_group_test_cases[] = {
 		},
 		.len = 1024
 	},
-	.result_len = 1024
 },
 };
 
