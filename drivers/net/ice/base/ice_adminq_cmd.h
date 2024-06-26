@@ -3014,6 +3014,29 @@ struct ice_aqc_get_pkg_info_resp {
 	struct ice_aqc_get_pkg_info pkg_info[STRUCT_HACK_VAR_LEN];
 };
 
+/* Configure CGU Error Reporting (direct, 0x0C60) */
+struct ice_aqc_cfg_cgu_err {
+	u8 cmd;
+#define ICE_AQC_CFG_CGU_EVENT_SHIFT	0
+#define ICE_AQC_CFG_CGU_EVENT_MASK	BIT(ICE_AQC_CFG_CGU_EVENT_SHIFT)
+#define ICE_AQC_CFG_CGU_EVENT_EN	(0 << ICE_AQC_CFG_CGU_EVENT_SHIFT)
+#define ICE_AQC_CFG_CGU_EVENT_DIS	ICE_AQC_CFG_CGU_EVENT_MASK
+#define ICE_AQC_CFG_CGU_ERR_SHIFT	1
+#define ICE_AQC_CFG_CGU_ERR_MASK	BIT(ICE_AQC_CFG_CGU_ERR_SHIFT)
+#define ICE_AQC_CFG_CGU_ERR_EN		(0 << ICE_AQC_CFG_CGU_ERR_SHIFT)
+#define ICE_AQC_CFG_CGU_ERR_DIS		ICE_AQC_CFG_CGU_ERR_MASK
+	u8 rsvd[15];
+};
+
+/* CGU Error Event (direct, 0x0C60) */
+struct ice_aqc_event_cgu_err {
+	u8 err_type;
+#define ICE_AQC_CGU_ERR_SYNCE_LOCK_LOSS		BIT(0)
+#define ICE_AQC_CGU_ERR_HOLDOVER_CHNG		BIT(1)
+#define ICE_AQC_CGU_ERR_TIMESYNC_LOCK_LOSS	BIT(2)
+	u8 rsvd[15];
+};
+
 /* Driver Shared Parameters (direct, 0x0C90) */
 struct ice_aqc_driver_shared_params {
 	u8 set_or_get_op;
@@ -3266,6 +3289,8 @@ struct ice_aq_desc {
 		struct ice_aqc_get_vsi_resp get_vsi_resp;
 		struct ice_aqc_download_pkg download_pkg;
 		struct ice_aqc_get_pkg_info_list get_pkg_info_list;
+		struct ice_aqc_cfg_cgu_err config_cgu_err;
+		struct ice_aqc_event_cgu_err cgu_err;
 		struct ice_aqc_driver_shared_params drv_shared_params;
 		struct ice_aqc_debug_dump_internals debug_dump;
 		struct ice_aqc_set_mac_lb set_mac_lb;
@@ -3538,6 +3563,10 @@ enum ice_adminq_opc {
 	ice_aqc_opc_upload_section			= 0x0C41,
 	ice_aqc_opc_update_pkg				= 0x0C42,
 	ice_aqc_opc_get_pkg_info_list			= 0x0C43,
+
+	/* 1588/SyncE commands/events */
+	ice_aqc_opc_cfg_cgu_err				= 0x0C60,
+	ice_aqc_opc_event_cgu_err			= 0x0C60,
 
 	ice_aqc_opc_driver_shared_params		= 0x0C90,
 

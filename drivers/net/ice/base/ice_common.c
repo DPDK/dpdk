@@ -5472,6 +5472,35 @@ ice_cfg_vsi_lan(struct ice_port_info *pi, u16 vsi_handle, u16 tc_bitmap,
 }
 
 /**
+ * ice_aq_cfg_cgu_err
+ * @hw: pointer to the HW struct
+ * @ena_event_report: enable or disable event reporting
+ * @ena_err_report: enable/re-enable or disable error reporting mechanism
+ * @cd: pointer to command details structure or NULL
+ *
+ * Configure CGU error reporting mechanism (0x0C60)
+ */
+int
+ice_aq_cfg_cgu_err(struct ice_hw *hw, bool ena_event_report,
+		   bool ena_err_report, struct ice_sq_cd *cd)
+{
+	struct ice_aqc_cfg_cgu_err *cmd;
+	struct ice_aq_desc desc;
+
+	cmd = &desc.params.config_cgu_err;
+
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_cfg_cgu_err);
+
+	if (!ena_event_report)
+		cmd->cmd |= ICE_AQC_CFG_CGU_EVENT_DIS;
+
+	if (!ena_err_report)
+		cmd->cmd |= ICE_AQC_CFG_CGU_ERR_DIS;
+
+	return ice_aq_send_cmd(hw, &desc, NULL, 0, cd);
+}
+
+/**
  * ice_aq_get_sensor_reading
  * @hw: pointer to the HW struct
  * @sensor: sensor type
