@@ -1532,6 +1532,7 @@ struct rte_flow_actions_template {
 	/* Template attributes. */
 	struct rte_flow_actions_template_attr attr;
 	struct rte_flow_action *actions; /* Cached flow actions. */
+	struct rte_flow_action *orig_actions; /* Original flow actions. */
 	struct rte_flow_action *masks; /* Cached action masks.*/
 	struct mlx5dr_action_template *tmpl; /* mlx5dr action template. */
 	uint64_t action_flags; /* Bit-map of all valid action in template. */
