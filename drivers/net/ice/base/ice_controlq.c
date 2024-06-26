@@ -479,24 +479,27 @@ shutdown_sq_out:
  */
 static bool ice_aq_ver_check(struct ice_hw *hw)
 {
-	if (hw->api_maj_ver > EXP_FW_API_VER_MAJOR) {
+	u8 exp_fw_api_ver_major = EXP_FW_API_VER_MAJOR_BY_MAC(hw);
+	u8 exp_fw_api_ver_minor = EXP_FW_API_VER_MINOR_BY_MAC(hw);
+
+	if (hw->api_maj_ver > exp_fw_api_ver_major) {
 		/* Major API version is newer than expected, don't load */
 		ice_warn(hw, "The driver for the device stopped because the NVM image is newer than expected. You must install the most recent version of the network driver.\n");
 		return false;
-	} else if (hw->api_maj_ver == EXP_FW_API_VER_MAJOR) {
-		if (hw->api_min_ver > (EXP_FW_API_VER_MINOR + 2))
+	} else if (hw->api_maj_ver == exp_fw_api_ver_major) {
+		if (hw->api_min_ver > (exp_fw_api_ver_minor + 2))
 			ice_info(hw, "The driver for the device detected a newer version (%u.%u) of the NVM image than expected (%u.%u). Please install the most recent version of the network driver.\n",
 				 hw->api_maj_ver, hw->api_min_ver,
-				 EXP_FW_API_VER_MAJOR, EXP_FW_API_VER_MINOR);
-		else if ((hw->api_min_ver + 2) < EXP_FW_API_VER_MINOR)
+				 exp_fw_api_ver_major, exp_fw_api_ver_minor);
+		else if ((hw->api_min_ver + 2) < exp_fw_api_ver_minor)
 			ice_info(hw, "The driver for the device detected an older version (%u.%u) of the NVM image than expected (%u.%u). Please update the NVM image.\n",
 				 hw->api_maj_ver, hw->api_min_ver,
-				 EXP_FW_API_VER_MAJOR, EXP_FW_API_VER_MINOR);
+				 exp_fw_api_ver_major, exp_fw_api_ver_minor);
 	} else {
 		/* Major API version is older than expected, log a warning */
 		ice_info(hw, "The driver for the device detected an older version (%u.%u) of the NVM image than expected (%u.%u). Please update the NVM image.\n",
 			 hw->api_maj_ver, hw->api_min_ver,
-			 EXP_FW_API_VER_MAJOR, EXP_FW_API_VER_MINOR);
+			 exp_fw_api_ver_major, exp_fw_api_ver_minor);
 	}
 	return true;
 }
