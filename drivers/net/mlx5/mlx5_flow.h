@@ -1443,6 +1443,10 @@ struct mlx5_action_construct_data {
 	indirect_list_callback_t indirect_list_cb;
 	union {
 		struct {
+			/* Expected type of indirection action. */
+			enum rte_flow_action_type expected_type;
+		} indirect;
+		struct {
 			/* encap data len. */
 			uint16_t len;
 		} encap;
