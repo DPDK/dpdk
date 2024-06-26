@@ -998,6 +998,24 @@ __flow_hw_act_data_general_append(struct mlx5_priv *priv,
 }
 
 static __rte_always_inline int
+__flow_hw_act_data_indirect_append(struct mlx5_priv *priv,
+				   struct mlx5_hw_actions *acts,
+				   enum rte_flow_action_type type,
+				   enum rte_flow_action_type mask_type,
+				   uint16_t action_src,
+				   uint16_t action_dst)
+{
+	struct mlx5_action_construct_data *act_data;
+
+	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
+	if (!act_data)
+		return -1;
+	act_data->indirect.expected_type = mask_type;
+	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
+	return 0;
+}
+
+static __rte_always_inline int
 flow_hw_act_data_indirect_list_append(struct mlx5_priv *priv,
 				      struct mlx5_hw_actions *acts,
 				      enum rte_flow_action_type type,
@@ -2486,9 +2504,9 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 				if (flow_hw_shared_action_translate
 				(dev, actions, acts, src_pos, dr_pos))
 					goto err;
-			} else if (__flow_hw_act_data_general_append
+			} else if (__flow_hw_act_data_indirect_append
 					(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT,
-					 src_pos, dr_pos)){
+					 masks->type, src_pos, dr_pos)){
 				goto err;
 			}
 			break;
