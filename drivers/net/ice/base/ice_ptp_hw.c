@@ -5167,10 +5167,11 @@ ice_get_phy_tx_tstamp_ready_e810(struct ice_hw *hw, u8 port, u64 *tstamp_ready)
 static int
 ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 {
+	u8 node_part_number, idx, node_type_ctx_clk_mux, node_part_num_clk_mux;
+	struct ice_aqc_get_link_topo_pin cmd_pin;
+	u16 node_handle, clock_mux_handle;
 	struct ice_aqc_get_link_topo cmd;
-	u8 node_part_number, idx;
 	int status;
-	u16 node_handle;
 
 	if (!hw || !pca9575_handle)
 		return ICE_ERR_PARAM;
@@ -5182,11 +5183,46 @@ ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 	}
 
 	memset(&cmd, 0, sizeof(cmd));
+	memset(&cmd_pin, 0, sizeof(cmd_pin));
 
-	/* Set node type to GPIO controller */
+	node_type_ctx_clk_mux = (ICE_AQC_LINK_TOPO_NODE_TYPE_CLK_MUX <<
+				 ICE_AQC_LINK_TOPO_NODE_TYPE_S);
+	node_type_ctx_clk_mux |= (ICE_AQC_LINK_TOPO_NODE_CTX_GLOBAL <<
+				  ICE_AQC_LINK_TOPO_NODE_CTX_S);
+	node_part_num_clk_mux = ICE_AQC_GET_LINK_TOPO_NODE_NR_GEN_CLK_MUX;
+
+	/* Look for CLOCK MUX handle in the netlist */
+	status = ice_find_netlist_node(hw, node_type_ctx_clk_mux,
+				       node_part_num_clk_mux,
+				       &clock_mux_handle);
+	if (status)
+		return ICE_ERR_NOT_SUPPORTED;
+
+	/* Take CLOCK MUX GPIO pin */
+	cmd_pin.input_io_params = (ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_GPIO <<
+				   ICE_AQC_LINK_TOPO_INPUT_IO_TYPE_S);
+	cmd_pin.input_io_params |= (ICE_AQC_LINK_TOPO_IO_FUNC_CLK_IN <<
+				    ICE_AQC_LINK_TOPO_INPUT_IO_FUNC_S);
+	cmd_pin.addr.handle = CPU_TO_LE16(clock_mux_handle);
+	cmd_pin.addr.topo_params.node_type_ctx =
+		(ICE_AQC_LINK_TOPO_NODE_TYPE_CLK_MUX <<
+		 ICE_AQC_LINK_TOPO_NODE_TYPE_S);
+	cmd_pin.addr.topo_params.node_type_ctx |=
+		(ICE_AQC_LINK_TOPO_NODE_CTX_PROVIDED <<
+		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
+
+	status = ice_aq_get_netlist_node_pin(hw, &cmd_pin, &node_handle);
+	if (status)
+		return ICE_ERR_NOT_SUPPORTED;
+
+	/* Check what is driving the pin */
 	cmd.addr.topo_params.node_type_ctx =
-		(ICE_AQC_LINK_TOPO_NODE_TYPE_M &
-		 ICE_AQC_LINK_TOPO_NODE_TYPE_GPIO_CTRL);
+		(ICE_AQC_LINK_TOPO_NODE_TYPE_GPIO_CTRL <<
+		 ICE_AQC_LINK_TOPO_NODE_TYPE_S);
+	cmd.addr.topo_params.node_type_ctx |=
+		(ICE_AQC_LINK_TOPO_NODE_CTX_GLOBAL <<
+		 ICE_AQC_LINK_TOPO_NODE_CTX_S);
+	cmd.addr.handle = CPU_TO_LE16(node_handle);
 
 #define SW_PCA9575_SFP_TOPO_IDX		2
 #define SW_PCA9575_QSFP_TOPO_IDX	1
@@ -5207,7 +5243,7 @@ ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 		return ICE_ERR_NOT_SUPPORTED;
 
 	/* Verify if we found the right IO expander type */
-	if (node_part_number != ICE_ACQ_GET_LINK_TOPO_NODE_NR_PCA9575)
+	if (node_part_number != ICE_AQC_GET_LINK_TOPO_NODE_NR_PCA9575)
 		return ICE_ERR_NOT_SUPPORTED;
 
 	/* If present save the handle and return it */
@@ -5226,7 +5262,7 @@ ice_get_pca9575_handle(struct ice_hw *hw, u16 *pca9575_handle)
 bool ice_is_gps_present_e810t(struct ice_hw *hw)
 {
 	if (ice_find_netlist_node(hw, ICE_AQC_LINK_TOPO_NODE_TYPE_GPS,
-				  ICE_ACQ_GET_LINK_TOPO_NODE_NR_GEN_GPS, NULL))
+				  ICE_AQC_GET_LINK_TOPO_NODE_NR_GEN_GPS, NULL))
 		return false;
 
 	return true;
