@@ -1359,13 +1359,16 @@ ice_nvm_access_write(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 		return status;
 
 	/* Reject requests to write to read-only registers */
-	switch (cmd->offset) {
-	case GL_HICR_EN:
-	case GLGEN_RSTAT:
-		return ICE_ERR_OUT_OF_RANGE;
-	default:
-		break;
+	if (hw->mac_type == ICE_MAC_E830) {
+		if (cmd->offset == E830_GL_HICR_EN)
+			return ICE_ERR_OUT_OF_RANGE;
+	} else {
+		if (cmd->offset == GL_HICR_EN)
+			return ICE_ERR_OUT_OF_RANGE;
 	}
+
+	if (cmd->offset == GLGEN_RSTAT)
+		return ICE_ERR_OUT_OF_RANGE;
 
 	ice_debug(hw, ICE_DBG_NVM, "NVM access: writing register %08x with value %08x\n",
 		  cmd->offset, data->regval);
