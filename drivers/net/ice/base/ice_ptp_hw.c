@@ -2295,6 +2295,33 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status)
 	return 0;
 }
 
+/**
+ * ice_get_phy_tx_tstamp_ready_eth56g - Read the Tx memory status register
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to read from
+ * @tstamp_ready: contents of the Tx memory status register
+ *
+ * Read the PHY_REG_TX_MEMORY_STATUS register indicating which timestamps in
+ * the PHY are ready. A set bit means the corresponding timestamp is valid and
+ * ready to be captured from the PHY timestamp block.
+ */
+static int
+ice_get_phy_tx_tstamp_ready_eth56g(struct ice_hw *hw, u8 port,
+				   u64 *tstamp_ready)
+{
+	int err;
+
+	err = ice_read_64b_phy_reg_eth56g(hw, port, PHY_REG_TX_MEMORY_STATUS_L,
+					  tstamp_ready);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_MEMORY_STATUS for port %u, err %d\n",
+			  port, err);
+		return err;
+	}
+
+	return 0;
+}
+
 #define ICE_DEVID_MASK 0xFFF8
 
 /**
@@ -4540,6 +4567,41 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 }
 
 /**
+ * ice_get_phy_tx_tstamp_ready_e822 - Read Tx memory status register
+ * @hw: pointer to the HW struct
+ * @quad: the timestamp quad to read from
+ * @tstamp_ready: contents of the Tx memory status register
+ *
+ * Read the Q_REG_TX_MEMORY_STATUS register indicating which timestamps in
+ * the PHY are ready. A set bit means the corresponding timestamp is valid and
+ * ready to be captured from the PHY timestamp block.
+ */
+static int
+ice_get_phy_tx_tstamp_ready_e822(struct ice_hw *hw, u8 quad, u64 *tstamp_ready)
+{
+	u32 hi, lo;
+	int err;
+
+	err = ice_read_quad_reg_e822(hw, quad, Q_REG_TX_MEMORY_STATUS_U, &hi);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_MEMORY_STATUS_U for quad %u, err %d\n",
+			  quad, err);
+		return err;
+	}
+
+	err = ice_read_quad_reg_e822(hw, quad, Q_REG_TX_MEMORY_STATUS_L, &lo);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_MEMORY_STATUS_L for quad %u, err %d\n",
+			  quad, err);
+		return err;
+	}
+
+	*tstamp_ready = (u64)hi << 32 | (u64)lo;
+
+	return 0;
+}
+
+/**
  * ice_phy_exit_bypass_e822 - Exit bypass mode, after vernier calculations
  * @hw: pointer to the HW struct
  * @port: the PHY port to configure
@@ -5067,6 +5129,22 @@ int ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 		return err;
 	}
 
+	return 0;
+}
+
+/**
+ * ice_get_phy_tx_tstamp_ready_e810 - Read Tx memory status register
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to read
+ * @tstamp_ready: contents of the Tx memory status register
+ *
+ * E810 devices do not use a Tx memory status register. Instead simply
+ * indicate that all timestamps are currently ready.
+ */
+static int
+ice_get_phy_tx_tstamp_ready_e810(struct ice_hw *hw, u8 port, u64 *tstamp_ready)
+{
+	*tstamp_ready = 0xFFFFFFFFFFFFFFFF;
 	return 0;
 }
 
@@ -6079,6 +6157,41 @@ int ice_ptp_init_phc(struct ice_hw *hw)
 		break;
 	case ICE_PHY_E822:
 		err = ice_ptp_init_phc_e822(hw);
+		break;
+	default:
+		err = ICE_ERR_NOT_SUPPORTED;
+	}
+
+	return err;
+}
+
+/**
+ * ice_get_phy_tx_tstamp_ready - Read PHY Tx memory status indication
+ * @hw: pointer to the HW struct
+ * @block: the timestamp block to check
+ * @tstamp_ready: storage for the PHY Tx memory status information
+ *
+ * Check the PHY for Tx timestamp memory status. This reports a 64 bit value
+ * which indicates which timestamps in the block may be captured. A set bit
+ * means the timestamp can be read. An unset bit means the timestamp is not
+ * ready and software should avoid reading the register.
+ */
+int ice_get_phy_tx_tstamp_ready(struct ice_hw *hw, u8 block, u64 *tstamp_ready)
+{
+	int err;
+
+	switch (hw->phy_model) {
+	case ICE_PHY_ETH56G:
+		err = ice_get_phy_tx_tstamp_ready_eth56g(hw, block,
+							 tstamp_ready);
+		break;
+	case ICE_PHY_E810:
+		err = ice_get_phy_tx_tstamp_ready_e810(hw, block,
+						       tstamp_ready);
+		break;
+	case ICE_PHY_E822:
+		err = ice_get_phy_tx_tstamp_ready_e822(hw, block,
+						       tstamp_ready);
 		break;
 	default:
 		err = ICE_ERR_NOT_SUPPORTED;
