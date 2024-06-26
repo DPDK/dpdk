@@ -2033,6 +2033,7 @@ static const u8 dummy_ipv6_nat_pkt[] = {
 
 static const struct ice_dummy_pkt_offsets dummy_ipv4_l2tpv3_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV4_OFOS,	14 },
 	{ ICE_L2TPV3,		34 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -2042,7 +2043,8 @@ static const u8 dummy_ipv4_l2tpv3_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x08, 0x00,
+
+	0x08, 0x00,		/* ICE_ETYPE_OL 12 */
 
 	0x45, 0x00, 0x00, 0x20, /* ICE_IPV4_IL 14 */
 	0x00, 0x00, 0x40, 0x00,
@@ -2058,6 +2060,7 @@ static const u8 dummy_ipv4_l2tpv3_pkt[] = {
 
 static const struct ice_dummy_pkt_offsets dummy_ipv6_l2tpv3_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
+	{ ICE_ETYPE_OL,		12 },
 	{ ICE_IPV6_OFOS,	14 },
 	{ ICE_L2TPV3,		54 },
 	{ ICE_PROTOCOL_LAST,	0 },
@@ -2067,7 +2070,8 @@ static const u8 dummy_ipv6_l2tpv3_pkt[] = {
 	0x00, 0x00, 0x00, 0x00, /* ICE_MAC_OFOS 0 */
 	0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00,
-	0x86, 0xDD,
+
+	0x86, 0xDD,		/* ICE_ETYPE_OL 12 */
 
 	0x60, 0x00, 0x00, 0x00, /* ICE_IPV6_IL 14 */
 	0x00, 0x0c, 0x73, 0x40,
