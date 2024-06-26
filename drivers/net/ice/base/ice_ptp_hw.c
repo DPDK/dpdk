@@ -5351,10 +5351,10 @@ int ice_read_sma_ctrl_e810t(struct ice_hw *hw, u8 *data)
 
 	*data = 0;
 
-	for (i = ICE_E810T_SMA_MIN_BIT; i <= ICE_E810T_SMA_MAX_BIT; i++) {
+	for (i = ICE_SMA_MIN_BIT_E810T; i <= ICE_SMA_MAX_BIT_E810T; i++) {
 		bool pin;
 
-		status = ice_aq_get_gpio(hw, handle, i + ICE_E810T_P1_OFFSET,
+		status = ice_aq_get_gpio(hw, handle, i + ICE_PCA9575_P1_OFFSET,
 					 &pin, NULL);
 		if (status)
 			break;
@@ -5381,11 +5381,11 @@ int ice_write_sma_ctrl_e810t(struct ice_hw *hw, u8 data)
 	if (status)
 		return status;
 
-	for (i = ICE_E810T_SMA_MIN_BIT; i <= ICE_E810T_SMA_MAX_BIT; i++) {
+	for (i = ICE_SMA_MIN_BIT_E810T; i <= ICE_SMA_MAX_BIT_E810T; i++) {
 		bool pin;
 
 		pin = !(data & (1 << i));
-		status = ice_aq_set_gpio(hw, handle, i + ICE_E810T_P1_OFFSET,
+		status = ice_aq_set_gpio(hw, handle, i + ICE_PCA9575_P1_OFFSET,
 					 pin, NULL);
 		if (status)
 			break;
