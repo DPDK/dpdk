@@ -1522,6 +1522,8 @@ struct rte_flow_pattern_template {
 	/* Manages all GENEVE TLV options used by this pattern template. */
 	struct mlx5_geneve_tlv_options_mng geneve_opt_mng;
 	uint8_t flex_item; /* flex item index. */
+	/* Items on which this pattern template is based on. */
+	struct rte_flow_item *items;
 };
 
 /* Flow action template struct. */

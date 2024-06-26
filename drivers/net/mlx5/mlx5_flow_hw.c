@@ -8772,6 +8772,7 @@ flow_hw_pattern_template_create(struct rte_eth_dev *dev,
 		.mask = &tag_m,
 		.last = NULL
 	};
+	int it_items_size;
 	unsigned int i = 0;
 	int rc;
 
@@ -8815,6 +8816,31 @@ setup_pattern_template:
 	it->attr = *attr;
 	it->item_flags = item_flags;
 	it->orig_item_nb = orig_item_nb;
+	it_items_size = rte_flow_conv(RTE_FLOW_CONV_OP_PATTERN, NULL, 0, tmpl_items, error);
+	if (it_items_size <= 0) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to determine buffer size for pattern");
+		goto error;
+	}
+	it_items_size = RTE_ALIGN(it_items_size, 16);
+	it->items = mlx5_malloc(MLX5_MEM_ZERO, it_items_size, 0, rte_dev_numa_node(dev->device));
+	if (it->items == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Cannot allocate memory for pattern");
+		goto error;
+	}
+	rc = rte_flow_conv(RTE_FLOW_CONV_OP_PATTERN, it->items, it_items_size, tmpl_items, error);
+	if (rc <= 0) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "Failed to store pattern");
+		goto error;
+	}
 	it->mt = mlx5dr_match_template_create(tmpl_items, attr->relaxed_matching);
 	if (!it->mt) {
 		rte_flow_error_set(error, rte_errno,
@@ -8829,6 +8855,7 @@ setup_pattern_template:
 		else if (attr->egress)
 			it->implicit_tag = true;
 		mlx5_free(copied_items);
+		copied_items = NULL;
 	}
 	/* Either inner or outer, can't both. */
 	if (it->item_flags & (MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT |
@@ -8889,6 +8916,7 @@ error:
 			mlx5_geneve_tlv_options_unregister(priv, &it->geneve_opt_mng);
 		if (it->mt)
 			claim_zero(mlx5dr_match_template_destroy(it->mt));
+		mlx5_free(it->items);
 		mlx5_free(it);
 	}
 	if (copied_items)
@@ -8931,6 +8959,7 @@ flow_hw_pattern_template_destroy(struct rte_eth_dev *dev,
 	flow_hw_flex_item_release(dev, &template->flex_item);
 	mlx5_geneve_tlv_options_unregister(priv, &template->geneve_opt_mng);
 	claim_zero(mlx5dr_match_template_destroy(template->mt));
+	mlx5_free(template->items);
 	mlx5_free(template);
 	return 0;
 }
