@@ -4920,17 +4920,18 @@ ice_ptp_prep_phy_adj_target_e810(struct ice_hw *hw, u32 target_time)
 }
 
 /**
- * ice_ptp_port_cmd_e810 - Prepare all external PHYs for a timer command
+ * ice_ptp_port_cmd - Prepare all external PHYs for a timer command
  * @hw: pointer to HW struct
  * @cmd: Command to be sent to the port
  * @lock_sbq: true if the sideband queue lock must be acquired
+ * @eth_gltsyn_cmd_addr: address for ETH_GLTSYN_CMD register
  *
  * Prepare the external PHYs connected to this device for a timer sync
  * command.
  */
 static int
-ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
-		      bool lock_sbq)
+ice_ptp_port_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
+		 bool lock_sbq, u32 eth_gltsyn_cmd_addr)
 {
 	int status;
 	u32 cmd_val, val;
@@ -4957,7 +4958,8 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	}
 
 	/* Read, modify, write */
-	status = ice_read_phy_reg_e810_lp(hw, ETH_GLTSYN_CMD, &val, lock_sbq);
+	status = ice_read_phy_reg_e810_lp(hw, eth_gltsyn_cmd_addr, &val,
+					  lock_sbq);
 	if (status) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to read GLTSYN_CMD, status %d\n",
 			  status);
@@ -4968,7 +4970,8 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	val &= ~TS_CMD_MASK_E810;
 	val |= cmd_val;
 
-	status = ice_write_phy_reg_e810_lp(hw, ETH_GLTSYN_CMD, val, lock_sbq);
+	status = ice_write_phy_reg_e810_lp(hw, eth_gltsyn_cmd_addr, val,
+					   lock_sbq);
 	if (status) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to write back GLTSYN_CMD, status %d\n",
 			  status);
@@ -4976,6 +4979,38 @@ ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	}
 
 	return 0;
+}
+
+/**
+ * ice_ptp_port_cmd_e810 - Prepare all external PHYs for a timer command
+ * @hw: pointer to HW struct
+ * @cmd: Command to be sent to the port
+ * @lock_sbq: true if the sideband queue lock must be acquired
+ *
+ * Prepare the external PHYs connected to this device for a timer sync
+ * command.
+ */
+static int
+ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
+		      bool lock_sbq)
+{
+	return ice_ptp_port_cmd(hw, cmd, lock_sbq, E810_ETH_GLTSYN_CMD);
+}
+
+/**
+ * ice_ptp_port_cmd_e830 - Prepare all external PHYs for a timer command
+ * @hw: pointer to HW struct
+ * @cmd: Command to be sent to the port
+ * @lock_sbq: true if the sideband queue lock must be acquired
+ *
+ * Prepare the external PHYs connected to this device for a timer sync
+ * command.
+ */
+static int
+ice_ptp_port_cmd_e830(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
+		      bool lock_sbq)
+{
+	return ice_ptp_port_cmd(hw, cmd, lock_sbq, E830_ETH_GLTSYN_CMD);
 }
 
 /* E810T SMA functions
@@ -5205,6 +5240,110 @@ bool ice_is_pca9575_present(struct ice_hw *hw)
 	return false;
 }
 
+/**
+ * ice_ptp_write_direct_incval_e830 - Prep PHY port increment value change
+ * @hw: pointer to HW struct
+ * @incval: The new 40bit increment value to prepare
+ *
+ * Prepare the PHY port for a new increment value by programming the PHC
+ * GLTSYN_INCVAL_L and GLTSYN_INCVAL_H registers. The actual change is
+ * completed by FW automatically.
+ */
+static int
+ice_ptp_write_direct_incval_e830(struct ice_hw *hw, u64 incval)
+{
+	u32 high, low;
+	u8 tmr_idx;
+
+	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
+	low = ICE_LO_DWORD(incval);
+	high = ICE_HI_DWORD(incval);
+
+	wr32(hw, GLTSYN_INCVAL_L(tmr_idx), low);
+	wr32(hw, GLTSYN_INCVAL_H(tmr_idx), high);
+
+	return 0;
+}
+
+/**
+ * ice_ptp_write_direct_phc_time_e830 - Prepare PHY port with initial time
+ * @hw: Board private structure
+ * @time: Time to initialize the PHY port clock to
+ *
+ * Program the PHY port ETH_GLTSYN_SHTIME registers in preparation setting the
+ * initial clock time. The time will not actually be programmed until the
+ * driver issues an ICE_PTP_INIT_TIME command.
+ *
+ * The time value is the upper 32 bits of the PHY timer, usually in units of
+ * nominal nanoseconds.
+ */
+static int
+ice_ptp_write_direct_phc_time_e830(struct ice_hw *hw, u64 time)
+{
+	u8 tmr_idx;
+
+	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
+
+	wr32(hw, GLTSYN_TIME_0(tmr_idx), 0);
+	wr32(hw, GLTSYN_TIME_L(tmr_idx), ICE_LO_DWORD(time));
+	wr32(hw, GLTSYN_TIME_H(tmr_idx), ICE_HI_DWORD(time));
+
+	return 0;
+}
+
+/**
+ * ice_read_phy_tstamp_e830 - Read a PHY timestamp out of the external PHY
+ * @hw: pointer to the HW struct
+ * @lport: the lport to read from
+ * @idx: the timestamp index to read
+ * @tstamp: on return, the 40bit timestamp value
+ *
+ * Read a 40bit timestamp value out of the timestamp block of the external PHY
+ * on the E830 device.
+ */
+static int
+ice_read_phy_tstamp_e830(struct ice_hw *hw, u8 lport, u8 idx, u64 *tstamp)
+{
+	u32 hi_addr = E830_HIGH_TX_MEMORY_BANK(idx, lport);
+	u32 lo_addr = E830_LOW_TX_MEMORY_BANK(idx, lport);
+	u32 lo_val, hi_val, lo;
+	u8 hi;
+
+	lo_val = rd32(hw, lo_addr);
+	hi_val = rd32(hw, hi_addr);
+
+	lo = lo_val;
+	hi = (u8)hi_val;
+
+	/* For E830 devices, the timestamp is reported with the lower 32 bits
+	 * in the low register, and the upper 8 bits in the high register.
+	 */
+	*tstamp = ((u64)hi) << TS_HIGH_S | ((u64)lo & TS_LOW_M);
+
+	return 0;
+}
+
+/**
+ * ice_get_phy_tx_tstamp_ready_e830 - Read Tx memory status register
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to read
+ * @tstamp_ready: contents of the Tx memory status register
+ *
+ */
+int
+ice_get_phy_tx_tstamp_ready_e830(struct ice_hw *hw, u8 port, u64 *tstamp_ready)
+{
+	u64 hi;
+	u32 lo;
+
+	lo = rd32(hw, E830_PRTMAC_TS_TX_MEM_VALID_L);
+	hi = (u64)rd32(hw, E830_PRTMAC_TS_TX_MEM_VALID_H) << 32;
+
+	*tstamp_ready = hi | lo;
+
+	return 0;
+}
+
 /* Device agnostic functions
  *
  * The following functions implement shared behavior common to both E822/E823
@@ -5285,6 +5424,9 @@ static int ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	case ICE_PHY_ETH56G:
 		status = ice_ptp_port_cmd_eth56g(hw, cmd, lock_sbq);
 		break;
+	case ICE_PHY_E830:
+		status = ice_ptp_port_cmd_e830(hw, cmd, lock_sbq);
+		break;
 	case ICE_PHY_E810:
 		status = ice_ptp_port_cmd_e810(hw, cmd, lock_sbq);
 		break;
@@ -5330,6 +5472,10 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time)
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
 
 	/* Source timers */
+	/* For E830 we don't need to use shadow registers, its automatic */
+	if (ice_is_e830(hw))
+		return ice_ptp_write_direct_phc_time_e830(hw, time);
+
 	wr32(hw, GLTSYN_SHTIME_L(tmr_idx), ICE_LO_DWORD(time));
 	wr32(hw, GLTSYN_SHTIME_H(tmr_idx), ICE_HI_DWORD(time));
 	wr32(hw, GLTSYN_SHTIME_0(tmr_idx), 0);
@@ -5376,6 +5522,10 @@ int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
 	u8 tmr_idx;
 
 	tmr_idx = hw->func_caps.ts_func_info.tmr_index_owned;
+
+	/* For E830 we don't need to use shadow registers, its automatic */
+	if (ice_is_e830(hw))
+		return ice_ptp_write_direct_incval_e830(hw, incval);
 
 	/* Shadow Adjust */
 	wr32(hw, GLTSYN_SHADJ_L(tmr_idx), ICE_LO_DWORD(incval));
@@ -5456,6 +5606,9 @@ int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq)
 	case ICE_PHY_ETH56G:
 		status = ice_ptp_prep_phy_adj_eth56g(hw, adj, lock_sbq);
 		break;
+	case ICE_PHY_E830:
+		/* E830 sync PHYs automatically after setting GLTSYN_SHADJ */
+		return 0;
 	case ICE_PHY_E810:
 		status = ice_ptp_prep_phy_adj_e810(hw, adj, lock_sbq);
 		break;
@@ -5571,6 +5724,8 @@ ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp)
 	case ICE_PHY_ETH56G:
 		status = ice_read_phy_tstamp_eth56g(hw, block, idx, tstamp);
 		break;
+	case ICE_PHY_E830:
+		return ice_read_phy_tstamp_e830(hw, block, idx, tstamp);
 	case ICE_PHY_E810:
 		status = ice_read_phy_tstamp_e810(hw, block, idx, tstamp);
 		break;
