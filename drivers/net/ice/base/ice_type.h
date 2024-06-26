@@ -1065,6 +1065,8 @@ enum ice_rl_type {
 #define ICE_TXSCHED_GET_RL_WAKEUP_MV(p) LE16_TO_CPU((p)->info.wake_up_calc)
 #define ICE_TXSCHED_GET_RL_ENCODE(p) LE16_TO_CPU((p)->info.rl_encode)
 
+#define ICE_MAX_PORT_PER_PCI_DEV	8
+
 /* The following tree example shows the naming conventions followed under
  * ice_port_info struct for default scheduler tree topology.
  *
