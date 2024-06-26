@@ -38,11 +38,6 @@ static const u8 dummy_eth_header[DUMMY_ETH_HDR_LEN] = { 0x2, 0, 0, 0, 0, 0,
 							0x2, 0, 0, 0, 0, 0,
 							0x81, 0, 0, 0};
 
-struct ice_dummy_pkt_offsets {
-	enum ice_protocol_type type;
-	u16 offset; /* ICE_PROTOCOL_LAST indicates end of list */
-};
-
 static const struct ice_dummy_pkt_offsets dummy_gre_tcp_packet_offsets[] = {
 	{ ICE_MAC_OFOS,		0 },
 	{ ICE_ETYPE_OL,		12 },
@@ -4742,7 +4737,7 @@ ice_find_rule_entry(struct LIST_HEAD_TYPE *list_head,
  * handle element. This can be extended further to search VSI list with more
  * than 1 vsi_count. Returns pointer to VSI list entry if found.
  */
-static struct ice_vsi_list_map_info *
+struct ice_vsi_list_map_info *
 ice_find_vsi_list_entry(struct ice_sw_recipe *recp_list, u16 vsi_handle,
 			u16 *vsi_list_id)
 {
@@ -8181,7 +8176,7 @@ bool ice_is_prof_rule(enum ice_sw_tunnel_type type)
  * @rinfo: other information regarding the rule e.g. priority and action info
  * @rid: return the recipe ID of the recipe created
  */
-static int
+int
 ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 		   u16 lkups_cnt, struct ice_adv_rule_info *rinfo, u16 *rid)
 {
@@ -8383,7 +8378,7 @@ err_free_lkup_exts:
  * @pkt_len: packet length of dummy packet
  * @offsets: pointer to receive the pointer to the offsets for the packet
  */
-static void
+void
 ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 		      enum ice_sw_tunnel_type tun_type, const u8 **pkt,
 		      u16 *pkt_len,
@@ -8914,7 +8909,7 @@ ice_find_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
  * @pkt_len: packet length of dummy packet
  * @offsets: offset info for the dummy packet
  */
-static int
+int
 ice_fill_adv_dummy_packet(struct ice_adv_lkup_elem *lkups, u16 lkups_cnt,
 			  struct ice_sw_rule_lkup_rx_tx *s_rule,
 			  const u8 *dummy_pkt, u16 pkt_len,
@@ -9127,7 +9122,7 @@ ice_fill_adv_packet_vlan(u16 vlan_type, u8 *pkt,
  * Helper function to search for a given advance rule entry
  * Returns pointer to entry storing the rule if found
  */
-static struct ice_adv_fltr_mgmt_list_entry *
+struct ice_adv_fltr_mgmt_list_entry *
 ice_find_adv_rule_entry(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 			u16 lkups_cnt, u16 recp_id,
 			struct ice_adv_rule_info *rinfo)
@@ -9178,7 +9173,7 @@ ice_find_adv_rule_entry(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
  *		Add the new VSI to the previously created VSI list set
  *		using the update switch rule command
  */
-static int
+int
 ice_adv_add_update_vsi_list(struct ice_hw *hw,
 			    struct ice_adv_fltr_mgmt_list_entry *m_entry,
 			    struct ice_adv_rule_info *cur_fltr,
