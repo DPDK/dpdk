@@ -2052,6 +2052,29 @@ struct ice_aqc_nvm_checksum {
 	u8 rsvd2[12];
 };
 
+/* Used for NVM Sanitization command - 0x070C */
+struct ice_aqc_nvm_sanitization {
+	u8 cmd_flags;
+#define ICE_AQ_NVM_SANITIZE_REQ_READ				0
+#define ICE_AQ_NVM_SANITIZE_REQ_OPERATE				BIT(0)
+
+#define ICE_AQ_NVM_SANITIZE_READ_SUBJECT_NVM_BITS		0
+#define ICE_AQ_NVM_SANITIZE_READ_SUBJECT_NVM_STATE		BIT(1)
+#define ICE_AQ_NVM_SANITIZE_OPERATE_SUBJECT_CLEAR		0
+	u8 values;
+#define ICE_AQ_NVM_SANITIZE_NVM_BITS_HOST_CLEAN_SUPPORT		BIT(0)
+#define ICE_AQ_NVM_SANITIZE_NVM_BITS_BMC_CLEAN_SUPPORT		BIT(2)
+#define ICE_AQ_NVM_SANITIZE_NVM_STATE_HOST_CLEAN_DONE		BIT(0)
+#define ICE_AQ_NVM_SANITIZE_NVM_STATE_HOST_CLEAN_SUCCESS	BIT(1)
+#define ICE_AQ_NVM_SANITIZE_NVM_STATE_BMC_CLEAN_DONE		BIT(2)
+#define ICE_AQ_NVM_SANITIZE_NVM_STATE_BMC_CLEAN_SUCCESS		BIT(3)
+#define ICE_AQ_NVM_SANITIZE_OPERATE_HOST_CLEAN_DONE		BIT(0)
+#define ICE_AQ_NVM_SANITIZE_OPERATE_HOST_CLEAN_SUCCESS		BIT(1)
+#define ICE_AQ_NVM_SANITIZE_OPERATE_BMC_CLEAN_DONE		BIT(2)
+#define ICE_AQ_NVM_SANITIZE_OPERATE_BMC_CLEAN_SUCCESS		BIT(3)
+	u8 reserved[14];
+};
+
 /* Get LLDP MIB (indirect 0x0A00)
  * Note: This is also used by the LLDP MIB Change Event (0x0A01)
  * as the format is the same.
@@ -3113,6 +3136,7 @@ struct ice_aq_desc {
 		struct ice_aqc_nvm_cfg nvm_cfg;
 		struct ice_aqc_nvm_checksum nvm_checksum;
 		struct ice_aqc_pfc_ignore pfc_ignore;
+		struct ice_aqc_nvm_sanitization sanitization;
 		struct ice_aqc_set_query_pfc_mode set_query_pfc_mode;
 		struct ice_aqc_set_dcb_params set_dcb_params;
 		struct ice_aqc_lldp_get_mib lldp_get_mib;
@@ -3365,6 +3389,7 @@ enum ice_adminq_opc {
 	ice_aqc_opc_nvm_sr_dump				= 0x0707,
 	ice_aqc_opc_nvm_save_factory_settings		= 0x0708,
 	ice_aqc_opc_nvm_update_empr			= 0x0709,
+	ice_aqc_opc_nvm_sanitization			= 0x070C,
 
 	/* LLDP commands */
 	ice_aqc_opc_lldp_get_mib			= 0x0A00,
