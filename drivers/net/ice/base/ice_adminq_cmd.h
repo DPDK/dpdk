@@ -1977,6 +1977,14 @@ struct ice_aqc_nvm {
 #define ICE_AQC_NVM_LLDP_STATUS_RD_LEN		4 /* In Bytes */
 
 #define ICE_AQC_NVM_TX_TOPO_MOD_ID		0x14B
+#define ICE_AQC_NVM_CMPO_MOD_ID			0x153
+
+/* Cage Max Power override NVM module */
+struct ice_aqc_nvm_cmpo {
+	__le16 length;
+#define ICE_AQC_NVM_CMPO_ENABLE	BIT(8)
+	__le16 cages_cfg[8];
+};
 
 struct ice_aqc_nvm_tx_topo_user_sel {
 	__le16 length;
