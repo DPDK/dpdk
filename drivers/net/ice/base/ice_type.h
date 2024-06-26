@@ -1653,11 +1653,18 @@ struct ice_aq_get_set_rss_lut_params {
 
 #define ICE_FW_API_REPORT_DFLT_CFG_PATCH	3
 
+/* FW branch number for hardware families */
+#define ICE_FW_VER_BRANCH_E82X			0
+#define ICE_FW_VER_BRANCH_E810			1
+
 /* FW version for FEC disable in Auto FEC mode */
 #define ICE_FW_FEC_DIS_AUTO_BRANCH		1
 #define ICE_FW_FEC_DIS_AUTO_MAJ			7
 #define ICE_FW_FEC_DIS_AUTO_MIN			0
 #define ICE_FW_FEC_DIS_AUTO_PATCH		5
+#define ICE_FW_FEC_DIS_AUTO_MAJ_E82X		7
+#define ICE_FW_FEC_DIS_AUTO_MIN_E82X		1
+#define ICE_FW_FEC_DIS_AUTO_PATCH_E82X		2
 
 /* AQ API version for FW auto drop reports */
 #define ICE_FW_API_AUTO_DROP_MAJ		1
