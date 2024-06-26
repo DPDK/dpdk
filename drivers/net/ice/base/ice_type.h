@@ -1269,6 +1269,7 @@ struct ice_hw {
 
 	u8 pf_id;		/* device profile info */
 	enum ice_phy_model phy_model;
+	u8 phy_addr;	/* PHY address */
 	u8 phy_ports;
 	u8 max_phy_port;
 	u8 logical_pf_id;

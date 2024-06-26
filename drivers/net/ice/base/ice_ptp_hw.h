@@ -296,7 +296,7 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass);
 int ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port);
 
-int ice_ptp_init_phy_model(struct ice_hw *hw);
+void ice_ptp_init_phy_model(struct ice_hw *hw);
 
 #define PFTSYN_SEM_BYTES	4
 
