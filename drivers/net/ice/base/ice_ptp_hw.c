@@ -787,7 +787,49 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 }
 
 /**
- * @ice_ptp_tmr_cmd_to_src_reg - Convert to source timer command value
+ * ice_ptp_cgu_err_reporting - Enable/disable error reporting for CGU
+ * @hw: pointer to HW struct
+ * @enable: true if reporting should be enabled
+ *
+ * Enable or disable error events to be reported through Admin Queue.
+ *
+ * Return: 0 on success, error code otherwise
+ */
+static int ice_ptp_cgu_err_reporting(struct ice_hw *hw, bool enable)
+{
+	int err;
+
+	err = ice_aq_cfg_cgu_err(hw, enable, enable, NULL);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP,
+			  "Failed to %s CGU error reporting, err %d\n",
+			  enable ? "enable" : "disable", err);
+		return err;
+	}
+
+	return 0;
+}
+
+/**
+ * ice_ptp_process_cgu_err - Handle reported CGU error
+ * @hw: pointer to HW struct
+ * @event: reported CGU error descriptor
+ */
+void ice_ptp_process_cgu_err(struct ice_hw *hw, struct ice_rq_event_info *event)
+{
+	u8 err_type = event->desc.params.cgu_err.err_type;
+
+	if (err_type & ICE_AQC_CGU_ERR_TIMESYNC_LOCK_LOSS) {
+		ice_warn(hw, "TimeSync PLL lock lost. Retrying to acquire lock with default PLL configuration.\n");
+		ice_init_cgu_e82x(hw);
+	}
+
+	/* Reenable CGU error reporting */
+	ice_ptp_cgu_err_reporting(hw, true);
+}
+
+/**
+ * ice_ptp_tmr_cmd_to_src_reg - Convert to source timer command value
  * @hw: pointer to HW struct
  * @cmd: Timer command
  *
@@ -3051,6 +3093,11 @@ static int ice_ptp_init_phc_e822(struct ice_hw *hw)
 
 	/* Initialize the Clock Generation Unit */
 	err = ice_init_cgu_e82x(hw);
+	if (err)
+		return err;
+
+	/* Enable CGU error reporting */
+	err = ice_ptp_cgu_err_reporting(hw, true);
 	if (err)
 		return err;
 
