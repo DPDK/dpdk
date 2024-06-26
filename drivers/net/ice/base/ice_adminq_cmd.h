@@ -2928,20 +2928,33 @@ struct ice_aqc_event_lan_overflow {
 /* Debug Dump Internal Data (indirect 0xFF08) */
 struct ice_aqc_debug_dump_internals {
 	__le16 cluster_id; /* Expresses next cluster ID in response */
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_SW			0
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_ACL			1
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_TXSCHED		2
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_PROFILES		3
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_SW_E810			0
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_ACL_E810			1
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_TXSCHED_E810		2
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_PROFILES_E810		3
 /* EMP_DRAM only dumpable in device debug mode */
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_EMP_DRAM		4
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_LINK		5
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_EMP_DRAM_E810		4
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_LINK_E810			5
 /* AUX_REGS only dumpable in device debug mode */
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_AUX_REGS		6
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_DCB			7
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_L2P			8
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_QUEUE_MNG		9
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_FULL_CSR_SPACE	21
-#define ICE_AQC_DBG_DUMP_CLUSTER_ID_MNG_TRANSACTION	22
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_AUX_REGS_E810		6
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_DCB_E810			7
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_L2P_E810			8
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_QUEUE_MNG_E810		9
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_FULL_CSR_SPACE_E810		21
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_MNG_TRANSACTIONS_E810	22
+
+/* Start cluster to discover first available cluster */
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_START_ALL			0
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_SW_E830			100
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_ACL_E830			101
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_TXSCHED_E830		102
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_PROFILES_E830		103
+/* EMP_DRAM only dumpable in device debug mode */
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_LINK_E830			105
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_DCB_E830			107
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_L2P_E830			108
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_QUEUE_MNG_E830		109
+#define ICE_AQC_DBG_DUMP_CLUSTER_ID_FULL_CSR_SPACE_E830		121
 	__le16 table_id; /* Used only for non-memory clusters */
 	__le32 idx; /* In table entries for tables, in bytes for memory */
 	__le32 addr_high;
