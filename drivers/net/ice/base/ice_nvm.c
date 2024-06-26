@@ -472,7 +472,7 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 		       u16 module_type)
 {
 	u16 pfa_len, pfa_ptr;
-	u16 next_tlv;
+	u32 next_tlv;
 	int status;
 
 	status = ice_read_sr_word(hw, ICE_SR_PFA_PTR, &pfa_ptr);
@@ -489,25 +489,30 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 	 * of TLVs to find the requested one.
 	 */
 	next_tlv = pfa_ptr + 1;
-	while (next_tlv < pfa_ptr + pfa_len) {
+	while (next_tlv < ((u32)pfa_ptr + pfa_len)) {
 		u16 tlv_sub_module_type;
 		u16 tlv_len;
 
 		/* Read TLV type */
-		status = ice_read_sr_word(hw, next_tlv, &tlv_sub_module_type);
+		status = ice_read_sr_word(hw, (u16)next_tlv,
+					  &tlv_sub_module_type);
 		if (status) {
 			ice_debug(hw, ICE_DBG_INIT, "Failed to read TLV type.\n");
 			break;
 		}
 		/* Read TLV length */
-		status = ice_read_sr_word(hw, next_tlv + 1, &tlv_len);
+		status = ice_read_sr_word(hw, (u16)(next_tlv + 1), &tlv_len);
 		if (status) {
 			ice_debug(hw, ICE_DBG_INIT, "Failed to read TLV length.\n");
 			break;
 		}
+		if (tlv_len > pfa_len) {
+			ice_debug(hw, ICE_DBG_INIT, "Invalid TLV length.\n");
+			return ICE_ERR_INVAL_SIZE;
+		}
 		if (tlv_sub_module_type == module_type) {
 			if (tlv_len) {
-				*module_tlv = next_tlv;
+				*module_tlv = (u16)next_tlv;
 				*module_tlv_len = tlv_len;
 				return 0;
 			}
