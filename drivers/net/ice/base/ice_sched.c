@@ -35,7 +35,7 @@ ice_sched_add_root_node(struct ice_port_info *pi,
 		return ICE_ERR_NO_MEMORY;
 	}
 
-	ice_memcpy(&root->info, info, sizeof(*info), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&root->info, info, sizeof(*info), ICE_NONDMA_TO_NONDMA);
 	pi->root = root;
 	return 0;
 }

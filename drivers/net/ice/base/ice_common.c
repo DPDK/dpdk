@@ -377,10 +377,10 @@ ice_aq_manage_mac_read(struct ice_hw *hw, void *buf, u16 buf_size,
 		if (resp[i].addr_type == ICE_AQC_MAN_MAC_ADDR_TYPE_LAN) {
 			ice_memcpy(hw->port_info->mac.lan_addr,
 				   resp[i].mac_addr, ETH_ALEN,
-				   ICE_DMA_TO_NONDMA);
+				   ICE_NONDMA_TO_NONDMA);
 			ice_memcpy(hw->port_info->mac.perm_addr,
 				   resp[i].mac_addr,
-				   ETH_ALEN, ICE_DMA_TO_NONDMA);
+				   ETH_ALEN, ICE_NONDMA_TO_NONDMA);
 			break;
 		}
 	return 0;
@@ -4661,13 +4661,13 @@ ice_write_byte(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the target bit string */
 	dest = dest_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&dest_byte, dest, sizeof(dest_byte), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&dest_byte, dest, sizeof(dest_byte), ICE_NONDMA_TO_NONDMA);
 
 	dest_byte &= ~mask;	/* get the bits not changing */
 	dest_byte |= src_byte;	/* add in the new bits */
 
 	/* put it all back */
-	ice_memcpy(dest, &dest_byte, sizeof(dest_byte), ICE_NONDMA_TO_DMA);
+	ice_memcpy(dest, &dest_byte, sizeof(dest_byte), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -4704,13 +4704,13 @@ ice_write_word(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the target bit string */
 	dest = dest_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&dest_word, dest, sizeof(dest_word), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&dest_word, dest, sizeof(dest_word), ICE_NONDMA_TO_NONDMA);
 
 	dest_word &= ~(CPU_TO_LE16(mask));	/* get the bits not changing */
 	dest_word |= CPU_TO_LE16(src_word);	/* add in the new bits */
 
 	/* put it all back */
-	ice_memcpy(dest, &dest_word, sizeof(dest_word), ICE_NONDMA_TO_DMA);
+	ice_memcpy(dest, &dest_word, sizeof(dest_word), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -4755,13 +4755,13 @@ ice_write_dword(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the target bit string */
 	dest = dest_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&dest_dword, dest, sizeof(dest_dword), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&dest_dword, dest, sizeof(dest_dword), ICE_NONDMA_TO_NONDMA);
 
 	dest_dword &= ~(CPU_TO_LE32(mask));	/* get the bits not changing */
 	dest_dword |= CPU_TO_LE32(src_dword);	/* add in the new bits */
 
 	/* put it all back */
-	ice_memcpy(dest, &dest_dword, sizeof(dest_dword), ICE_NONDMA_TO_DMA);
+	ice_memcpy(dest, &dest_dword, sizeof(dest_dword), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -4806,13 +4806,13 @@ ice_write_qword(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the target bit string */
 	dest = dest_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&dest_qword, dest, sizeof(dest_qword), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&dest_qword, dest, sizeof(dest_qword), ICE_NONDMA_TO_NONDMA);
 
 	dest_qword &= ~(CPU_TO_LE64(mask));	/* get the bits not changing */
 	dest_qword |= CPU_TO_LE64(src_qword);	/* add in the new bits */
 
 	/* put it all back */
-	ice_memcpy(dest, &dest_qword, sizeof(dest_qword), ICE_NONDMA_TO_DMA);
+	ice_memcpy(dest, &dest_qword, sizeof(dest_qword), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -4935,7 +4935,7 @@ ice_read_byte(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the src bit string */
 	src = src_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&dest_byte, src, sizeof(dest_byte), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&dest_byte, src, sizeof(dest_byte), ICE_NONDMA_TO_NONDMA);
 
 	dest_byte &= ~(mask);
 
@@ -4945,7 +4945,7 @@ ice_read_byte(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	target = dest_ctx + ce_info->offset;
 
 	/* put it back in the struct */
-	ice_memcpy(target, &dest_byte, sizeof(dest_byte), ICE_NONDMA_TO_DMA);
+	ice_memcpy(target, &dest_byte, sizeof(dest_byte), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -4972,7 +4972,7 @@ ice_read_word(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the src bit string */
 	src = src_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&src_word, src, sizeof(src_word), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&src_word, src, sizeof(src_word), ICE_NONDMA_TO_NONDMA);
 
 	/* the data in the memory is stored as little endian so mask it
 	 * correctly
@@ -4988,7 +4988,7 @@ ice_read_word(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	target = dest_ctx + ce_info->offset;
 
 	/* put it back in the struct */
-	ice_memcpy(target, &dest_word, sizeof(dest_word), ICE_NONDMA_TO_DMA);
+	ice_memcpy(target, &dest_word, sizeof(dest_word), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -5023,7 +5023,7 @@ ice_read_dword(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the src bit string */
 	src = src_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&src_dword, src, sizeof(src_dword), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&src_dword, src, sizeof(src_dword), ICE_NONDMA_TO_NONDMA);
 
 	/* the data in the memory is stored as little endian so mask it
 	 * correctly
@@ -5039,7 +5039,7 @@ ice_read_dword(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	target = dest_ctx + ce_info->offset;
 
 	/* put it back in the struct */
-	ice_memcpy(target, &dest_dword, sizeof(dest_dword), ICE_NONDMA_TO_DMA);
+	ice_memcpy(target, &dest_dword, sizeof(dest_dword), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
@@ -5074,7 +5074,7 @@ ice_read_qword(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	/* get the current bits from the src bit string */
 	src = src_ctx + (ce_info->lsb / 8);
 
-	ice_memcpy(&src_qword, src, sizeof(src_qword), ICE_DMA_TO_NONDMA);
+	ice_memcpy(&src_qword, src, sizeof(src_qword), ICE_NONDMA_TO_NONDMA);
 
 	/* the data in the memory is stored as little endian so mask it
 	 * correctly
@@ -5090,7 +5090,7 @@ ice_read_qword(u8 *src_ctx, u8 *dest_ctx, const struct ice_ctx_ele *ce_info)
 	target = dest_ctx + ce_info->offset;
 
 	/* put it back in the struct */
-	ice_memcpy(target, &dest_qword, sizeof(dest_qword), ICE_NONDMA_TO_DMA);
+	ice_memcpy(target, &dest_qword, sizeof(dest_qword), ICE_NONDMA_TO_NONDMA);
 }
 
 /**
