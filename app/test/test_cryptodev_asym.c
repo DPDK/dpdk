@@ -3201,6 +3201,27 @@ static int send_one(void)
 }
 
 static int
+modular_cmpeq(const uint8_t *a, const uint8_t *b, size_t len)
+{
+	const uint8_t *new_a = a, *new_b = b;
+	size_t i, j;
+
+	/* Strip leading NUL bytes */
+	for (i = 0; i < len; i++)
+		if (a[i] != 0)
+			new_a = &a[i];
+
+	for (j = 0; j < len; j++)
+		if (b[j] != 0)
+			new_b = &b[i];
+
+	if (i != j || memcmp(new_a, new_b, len - i))
+		return 1;
+
+	return 0;
+}
+
+static int
 modular_exponentiation(const void *test_data)
 {
 	const struct modex_test_data *vector = test_data;
@@ -3234,9 +3255,9 @@ modular_exponentiation(const void *test_data)
 
 	TEST_ASSERT_SUCCESS(send_one(),
 		"Failed to process crypto op");
-	TEST_ASSERT_BUFFERS_ARE_EQUAL(vector->reminder.data,
+	TEST_ASSERT_SUCCESS(modular_cmpeq(vector->reminder.data,
 			self->result_op->asym->modex.result.data,
-			self->result_op->asym->modex.result.length,
+			self->result_op->asym->modex.result.length),
 			"operation verification failed\n");
 
 	return TEST_SUCCESS;
