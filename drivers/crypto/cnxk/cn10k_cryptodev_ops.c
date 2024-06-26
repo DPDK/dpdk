@@ -1467,6 +1467,8 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 
 	vf = cdev->data->dev_private;
 
+	const int nb_pkts_per_loop = 2 * CN10K_PKTS_PER_LOOP;
+
 	lmt_base = vf->rx_inj_lmtline.lmt_base;
 	io_addr = vf->rx_inj_lmtline.io_addr;
 	fc_addr = vf->rx_inj_lmtline.fc_addr;
@@ -1486,7 +1488,7 @@ again:
 	if (unlikely(fc.s.qsize > fc_thresh))
 		goto exit;
 
-	for (; i < RTE_MIN(2 * CN10K_PKTS_PER_LOOP, nb_pkts); i++) {
+	for (; i < RTE_MIN(nb_pkts_per_loop, nb_pkts); i++) {
 
 		m = pkts[i];
 		sec_sess = (struct cn10k_sec_session *)sess[i];
@@ -1547,10 +1549,11 @@ again:
 
 	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
-	if (nb_pkts - i > 0 && i == 2 * CN10K_PKTS_PER_LOOP) {
-		nb_pkts -= i;
-		pkts += i;
-		count += i;
+	if (nb_pkts - i > 0 && i == nb_pkts_per_loop) {
+		nb_pkts -= nb_pkts_per_loop;
+		pkts += nb_pkts_per_loop;
+		count += nb_pkts_per_loop;
+		sess += nb_pkts_per_loop;
 		goto again;
 	}
 
