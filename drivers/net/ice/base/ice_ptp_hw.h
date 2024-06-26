@@ -137,6 +137,7 @@ int ice_ptp_write_incval_locked(struct ice_hw *hw, u64 incval);
 int ice_ptp_adj_clock(struct ice_hw *hw, s32 adj, bool lock_sbq);
 int
 ice_ptp_adj_clock_at_time(struct ice_hw *hw, u64 at_time, s32 adj);
+int ice_ptp_clear_phy_offset_ready(struct ice_hw *hw);
 int
 ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp);
 int
