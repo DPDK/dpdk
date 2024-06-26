@@ -1205,11 +1205,8 @@ ice_get_ddp_pkg_state(struct ice_hw *hw, bool already_loaded)
 	} else if (hw->active_pkg_ver.major != ICE_PKG_SUPP_VER_MAJ ||
 		   hw->active_pkg_ver.minor != ICE_PKG_SUPP_VER_MNR) {
 		return ICE_DDP_PKG_ALREADY_LOADED_NOT_SUPPORTED;
-	} else if (hw->active_pkg_ver.major == ICE_PKG_SUPP_VER_MAJ &&
-		   hw->active_pkg_ver.minor == ICE_PKG_SUPP_VER_MNR) {
-		return ICE_DDP_PKG_COMPATIBLE_ALREADY_LOADED;
 	} else {
-		return ICE_DDP_PKG_ERR;
+		return ICE_DDP_PKG_COMPATIBLE_ALREADY_LOADED;
 	}
 }
 
