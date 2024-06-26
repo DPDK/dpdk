@@ -2027,6 +2027,41 @@ int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port)
 }
 
 /**
+ * ice_phy_cfg_intr_eth56g - Configure TX timestamp interrupt
+ * @hw: pointer to the HW struct
+ * @port: the timestamp port
+ * @ena: enable or disable interrupt
+ * @threshold: interrupt threshold
+ *
+ * Configure TX timestamp interrupt for the specified port
+ */
+
+int
+ice_phy_cfg_intr_eth56g(struct ice_hw *hw, u8 port, bool ena, u8 threshold)
+{
+	int err;
+	u32 val;
+
+	err = ice_read_phy_reg_eth56g(hw, port, PHY_REG_TS_INT_CONFIG,
+				      &val);
+	if (err)
+		return err;
+
+	if (ena) {
+		val |= PHY_TS_INT_CONFIG_ENA_M;
+		val &= ~PHY_TS_INT_CONFIG_THRESHOLD_M;
+		val |= ((threshold << PHY_TS_INT_CONFIG_THRESHOLD_S) &
+			PHY_TS_INT_CONFIG_THRESHOLD_M);
+	} else {
+		val &= ~PHY_TS_INT_CONFIG_ENA_M;
+	}
+
+	err = ice_write_phy_reg_eth56g(hw, port, PHY_REG_TS_INT_CONFIG,
+				       val);
+	return err;
+}
+
+/**
  * ice_ptp_clear_phy_offset_ready_eth56g - Clear PHY OFFSET_READY registers
  * @hw: pointer to the HW struct
  *
@@ -4543,6 +4578,44 @@ ice_get_phy_tx_tstamp_ready_e822(struct ice_hw *hw, u8 quad, u64 *tstamp_ready)
 	*tstamp_ready = (u64)hi << 32 | (u64)lo;
 
 	return 0;
+}
+
+/**
+ * ice_phy_cfg_intr_e822 - Configure TX timestamp interrupt
+ * @hw: pointer to the HW struct
+ * @quad: the timestamp quad
+ * @ena: enable or disable interrupt
+ * @threshold: interrupt threshold
+ *
+ * Configure TX timestamp interrupt for the specified quad
+ */
+
+int
+ice_phy_cfg_intr_e822(struct ice_hw *hw, u8 quad, bool ena, u8 threshold)
+{
+	int err;
+	u32 val;
+
+	err = ice_read_quad_reg_e822(hw, quad,
+				     Q_REG_TX_MEM_GBL_CFG,
+				     &val);
+	if (err)
+		return err;
+
+	if (ena) {
+		val |= Q_REG_TX_MEM_GBL_CFG_INTR_ENA_M;
+		val &= ~Q_REG_TX_MEM_GBL_CFG_INTR_THR_M;
+		val |= ((threshold << Q_REG_TX_MEM_GBL_CFG_INTR_THR_S) &
+			Q_REG_TX_MEM_GBL_CFG_INTR_THR_M);
+	} else {
+		val &= ~Q_REG_TX_MEM_GBL_CFG_INTR_ENA_M;
+	}
+
+	err = ice_write_quad_reg_e822(hw, quad,
+				      Q_REG_TX_MEM_GBL_CFG,
+				      val);
+
+	return err;
 }
 
 /* E810 functions
