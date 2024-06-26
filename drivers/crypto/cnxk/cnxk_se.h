@@ -2468,13 +2468,14 @@ fill_sess_gmac(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 }
 
 static __rte_always_inline uint32_t
-prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_t start_offset)
+prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_t start_offset,
+		     const bool is_aead, const bool is_sg_ver2)
 {
 	uint16_t index = 0;
 	void *seg_data = NULL;
 	int32_t seg_size = 0;
 
-	if (!pkt || pkt->data_len == 0) {
+	if (!pkt || (is_sg_ver2 && (pkt->data_len == 0) && !is_aead)) {
 		iovec->buf_cnt = 0;
 		return 0;
 	}
@@ -2619,13 +2620,13 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		fc_params.dst_iov = (void *)dst;
 
 		/* Store SG I/O in the api for reuse */
-		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0)) {
+		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0, false, is_sg_ver2)) {
 			plt_dp_err("Prepare src iov failed");
 			ret = -EINVAL;
 			goto err_exit;
 		}
 
-		if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
+		if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0, false, is_sg_ver2)) {
 			plt_dp_err("Prepare dst iov failed for m_dst %p", m_dst);
 			ret = -EINVAL;
 			goto err_exit;
@@ -2816,14 +2817,15 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		fc_params.dst_iov = (void *)dst;
 
 		/* Store SG I/O in the api for reuse */
-		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0)) {
+		if (prepare_iov_from_pkt(m_src, fc_params.src_iov, 0, is_aead, is_sg_ver2)) {
 			plt_dp_err("Prepare src iov failed");
 			ret = -EINVAL;
 			goto err_exit;
 		}
 
 		if (unlikely(m_dst != NULL)) {
-			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
+			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0, is_aead,
+						 is_sg_ver2)) {
 				plt_dp_err("Prepare dst iov failed for "
 					   "m_dst %p",
 					   m_dst);
@@ -2957,13 +2959,15 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		fc_params.dst_iov = (void *)dst;
 
 		/* Store SG I/O in the api for reuse */
-		if (unlikely(prepare_iov_from_pkt(m_src, fc_params.src_iov, 0))) {
+		if (unlikely(
+			    prepare_iov_from_pkt(m_src, fc_params.src_iov, 0, false, is_sg_ver2))) {
 			plt_dp_err("Prepare src iov failed");
 			ret = -EINVAL;
 			goto err_exit;
 		}
 
-		if (unlikely(prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0))) {
+		if (unlikely(
+			    prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0, false, is_sg_ver2))) {
 			plt_dp_err("Prepare dst iov failed for m_dst %p", m_dst);
 			ret = -EINVAL;
 			goto err_exit;
@@ -3080,14 +3084,16 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		fc_params.dst_iov = (void *)dst;
 
 		/* Store SG I/O in the api for reuse */
-		if (unlikely(prepare_iov_from_pkt(m_src, fc_params.src_iov, 0))) {
+		if (unlikely(
+			    prepare_iov_from_pkt(m_src, fc_params.src_iov, 0, false, is_sg_ver2))) {
 			plt_dp_err("Could not prepare src iov");
 			ret = -EINVAL;
 			goto err_exit;
 		}
 
 		if (unlikely(m_dst != NULL)) {
-			if (unlikely(prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0))) {
+			if (unlikely(prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0, false,
+							  is_sg_ver2))) {
 				plt_dp_err("Could not prepare m_dst iov %p", m_dst);
 				ret = -EINVAL;
 				goto err_exit;
@@ -3306,7 +3312,7 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	params.src_iov = (void *)src;
 
 	/*Store SG I/O in the api for reuse */
-	if (prepare_iov_from_pkt(m_src, params.src_iov, auth_range_off)) {
+	if (prepare_iov_from_pkt(m_src, params.src_iov, auth_range_off, false, is_sg_ver2)) {
 		plt_dp_err("Prepare src iov failed");
 		ret = -EINVAL;
 		goto free_mdata_and_exit;
