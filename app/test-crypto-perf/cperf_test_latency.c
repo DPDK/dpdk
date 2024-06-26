@@ -122,7 +122,11 @@ store_timestamp(struct rte_crypto_op *op, uint64_t timestamp)
 {
 	struct priv_op_data *priv_data;
 
-	priv_data = (struct priv_op_data *) (op->sym + 1);
+	if (op->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+		priv_data = (struct priv_op_data *) (op->sym + 1);
+	else
+		priv_data = (struct priv_op_data *) (op->asym + 1);
+
 	priv_data->result->status = op->status;
 	priv_data->result->tsc_end = timestamp;
 }
@@ -251,9 +255,13 @@ cperf_latency_test_runner(void *arg)
 				ctx->res[tsc_idx].tsc_start = tsc_start;
 				/*
 				 * Private data structure starts after the end of the
-				 * rte_crypto_sym_op structure.
+				 * rte_crypto_sym_op (or rte_crypto_asym_op) structure.
 				 */
-				priv_data = (struct priv_op_data *) (ops[i]->sym + 1);
+				if (ops[i]->type == RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+					priv_data = (struct priv_op_data *) (ops[i]->sym + 1);
+				else
+					priv_data = (struct priv_op_data *) (ops[i]->asym + 1);
+
 				priv_data->result = (void *)&ctx->res[tsc_idx];
 				tsc_idx++;
 			}
