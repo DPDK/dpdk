@@ -4603,7 +4603,7 @@ ice_add_update_vsi_list(struct ice_hw *hw,
 		u16 vsi_handle_arr[2];
 
 		/* A rule already exists with the new VSI being added */
-		if (cur_fltr->fwd_id.hw_vsi_id == new_fltr->fwd_id.hw_vsi_id)
+		if (cur_fltr->vsi_handle == new_fltr->vsi_handle)
 			return ICE_ERR_ALREADY_EXISTS;
 
 		vsi_handle_arr[0] = cur_fltr->vsi_handle;
@@ -4651,7 +4651,7 @@ ice_add_update_vsi_list(struct ice_hw *hw,
 
 		/* A rule already exists with the new VSI being added */
 		if (ice_is_bit_set(m_entry->vsi_list_info->vsi_map, vsi_handle))
-			return ICE_SUCCESS;
+			return ICE_ERR_ALREADY_EXISTS;
 
 		/* Update the previously created VSI list set with
 		 * the new VSI ID passed in
