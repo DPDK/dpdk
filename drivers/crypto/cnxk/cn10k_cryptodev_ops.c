@@ -7,6 +7,7 @@
 #include <rte_event_crypto_adapter.h>
 #include <rte_hexdump.h>
 #include <rte_ip.h>
+#include <rte_vect.h>
 
 #include <ethdev_driver.h>
 
@@ -1395,15 +1396,17 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	return i;
 }
 
+#if defined(RTE_ARCH_ARM64)
 uint16_t __rte_hot
 cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 				  struct rte_security_session **sess, uint16_t nb_pkts)
 {
-	uint16_t l2_len, pf_func, lmt_id, count = 0;
-	uint64_t lmt_base, lmt_arg, io_addr;
+	uint64_t lmt_base, lmt_arg, io_addr, u64_0, u64_1, l2_len, pf_func;
+	uint64x2_t inst_01, inst_23, inst_45, inst_67;
 	struct cn10k_sec_session *sec_sess;
 	struct rte_cryptodev *cdev = dev;
 	union cpt_res_s *hw_res = NULL;
+	uint16_t lmt_id, count = 0;
 	struct cpt_inst_s *inst;
 	union cpt_fc_write_s fc;
 	struct cnxk_cpt_vf *vf;
@@ -1461,25 +1464,40 @@ again:
 		hw_res = RTE_PTR_ALIGN_CEIL(hw_res, 16);
 
 		/* Prepare CPT instruction */
-		inst->w0.u64 = 0;
-		inst->w2.u64 = 0;
-		inst->w2.s.rvu_pf_func = pf_func;
-		inst->w3.u64 = (((uint64_t)m + sizeof(struct rte_mbuf)) >> 3) << 3 | 1;
 
-		inst->w4.u64 = sec_sess->inst.w4 | (rte_pktmbuf_pkt_len(m));
+		/* Word 0 and 1 */
+		inst_01 = vdupq_n_u64(0);
+		u64_0 = pf_func << 48 | *(vf->rx_chan_base + m->port) << 4 | (l2_len - 2) << 24 |
+			l2_len << 16;
+		inst_01 = vsetq_lane_u64(u64_0, inst_01, 0);
+		inst_01 = vsetq_lane_u64((uint64_t)hw_res, inst_01, 1);
+		vst1q_u64(&inst->w0.u64, inst_01);
+
+		/* Word 2 and 3 */
+		inst_23 = vdupq_n_u64(0);
+		u64_1 = (((uint64_t)m + sizeof(struct rte_mbuf)) >> 3) << 3 | 1;
+		inst_23 = vsetq_lane_u64(u64_1, inst_23, 1);
+		vst1q_u64(&inst->w2.u64, inst_23);
+
+		/* Word 4 and 5 */
+		inst_45 = vdupq_n_u64(0);
+		u64_0 = sec_sess->inst.w4 | (rte_pktmbuf_pkt_len(m));
+		inst_45 = vsetq_lane_u64(u64_0, inst_45, 0);
 		dptr = (uint64_t)rte_pktmbuf_iova(m);
-		inst->dptr = dptr;
-		inst->rptr = dptr;
+		u64_1 = dptr;
+		inst_45 = vsetq_lane_u64(u64_1, inst_45, 1);
+		vst1q_u64(&inst->w4.u64, inst_45);
 
-		inst->w0.hw_s.chan = *(vf->rx_chan_base + m->port);
-		inst->w0.hw_s.l2_len = l2_len;
-		inst->w0.hw_s.et_offset = l2_len - 2;
+		/* Word 6 and 7 */
+		inst_67 = vdupq_n_u64(0);
+		u64_0 = dptr;
+		u64_1 = sec_sess->inst.w7;
+		inst_67 = vsetq_lane_u64(u64_0, inst_67, 0);
+		inst_67 = vsetq_lane_u64(u64_1, inst_67, 1);
+		vst1q_u64(&inst->w6.u64, inst_67);
 
-		inst->res_addr = (uint64_t)hw_res;
 		rte_atomic_store_explicit((unsigned long __rte_atomic *)&hw_res->u64[0], res.u64[0],
 					  rte_memory_order_relaxed);
-
-		inst->w7.u64 = sec_sess->inst.w7;
 
 		inst += 2;
 	}
@@ -1508,6 +1526,18 @@ again:
 exit:
 	return count + i;
 }
+#else
+uint16_t __rte_hot
+cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
+				  struct rte_security_session **sess, uint16_t nb_pkts)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(pkts);
+	RTE_SET_USED(sess);
+	RTE_SET_USED(nb_pkts);
+	return 0;
+}
+#endif
 
 void
 cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev, struct cnxk_cpt_vf *vf)
