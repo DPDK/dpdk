@@ -7750,6 +7750,7 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int len, act_len, mask_len;
+	int orig_act_len;
 	unsigned int act_num;
 	unsigned int i;
 	struct rte_flow_actions_template *at = NULL;
@@ -7867,6 +7868,10 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	len += RTE_ALIGN(mask_len, 16);
 	len += RTE_ALIGN(act_num * sizeof(*at->dr_off), 16);
 	len += RTE_ALIGN(act_num * sizeof(*at->src_off), 16);
+	orig_act_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, NULL, 0, actions, error);
+	if (orig_act_len <= 0)
+		return NULL;
+	len += RTE_ALIGN(orig_act_len, 16);
 	at = mlx5_malloc(MLX5_MEM_ZERO, len + sizeof(*at),
 			 RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!at) {
@@ -7894,6 +7899,12 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	at->src_off = RTE_PTR_ADD(at->dr_off,
 				  RTE_ALIGN(act_num * sizeof(*at->dr_off), 16));
 	memcpy(at->src_off, src_off, act_num * sizeof(at->src_off[0]));
+	at->orig_actions = RTE_PTR_ADD(at->src_off,
+				       RTE_ALIGN(act_num * sizeof(*at->src_off), 16));
+	orig_act_len = rte_flow_conv(RTE_FLOW_CONV_OP_ACTIONS, at->orig_actions, orig_act_len,
+				     actions, error);
+	if (orig_act_len <= 0)
+		goto error;
 	at->actions_num = act_num;
 	for (i = 0; i < at->actions_num; ++i)
 		at->dr_off[i] = UINT16_MAX;
