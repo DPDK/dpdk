@@ -107,6 +107,7 @@ struct ice_generic_seg_hdr {
 #define SEGMENT_TYPE_METADATA	0x00000001
 #define SEGMENT_TYPE_ICE_E810	0x00000010
 #define SEGMENT_TYPE_SIGNING	0x00001001
+#define SEGMENT_TYPE_ICE_E830	0x00000017
 #define SEGMENT_TYPE_ICE_RUN_TIME_CFG 0x00000020
 	__le32 seg_type;
 	struct ice_pkg_ver seg_format_ver;
