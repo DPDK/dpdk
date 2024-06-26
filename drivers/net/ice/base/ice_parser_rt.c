@@ -346,7 +346,7 @@ static void _bst_pgp_set(struct ice_parser_rt *rt,
 		  rt->pg, bst->address);
 }
 
-static struct ice_pg_cam_item *_pg_cam_match(struct ice_parser_rt *rt)
+static struct ice_pg_cam_item *__pg_cam_match(struct ice_parser_rt *rt)
 {
 	struct ice_parser *psr = rt->psr;
 	struct ice_pg_cam_item *item;
@@ -361,7 +361,7 @@ static struct ice_pg_cam_item *_pg_cam_match(struct ice_parser_rt *rt)
 	return item;
 }
 
-static struct ice_pg_nm_cam_item *_pg_nm_cam_match(struct ice_parser_rt *rt)
+static struct ice_pg_nm_cam_item *__pg_nm_cam_match(struct ice_parser_rt *rt)
 {
 	struct ice_parser *psr = rt->psr;
 	struct ice_pg_nm_cam_item *item;
@@ -411,9 +411,8 @@ static void _flg_add(struct ice_parser_rt *rt, int idx, bool val)
 
 static void _flg_update(struct ice_parser_rt *rt, struct ice_alu *alu)
 {
-	int i;
-
 	if (alu->dedicate_flags_ena) {
+		int i;
 		if (alu->flags_extr_imm) {
 			for (i = 0; i < alu->dst_len; i++)
 				_flg_add(rt, alu->dst_start + i,
@@ -653,12 +652,12 @@ static void _alu_pg_exe(struct ice_parser_rt *rt)
 static void _proto_off_update(struct ice_parser_rt *rt)
 {
 	struct ice_parser *psr = rt->psr;
-	int i;
 
 	if (rt->action->is_pg) {
 		struct ice_proto_grp_item *proto_grp =
 			&psr->proto_grp_table[rt->action->proto_id];
 		u16 po;
+		int i;
 
 		for (i = 0; i < 8; i++) {
 			struct ice_proto_off *entry = &proto_grp->po[i];
@@ -696,11 +695,11 @@ static void _marker_set(struct ice_parser_rt *rt, int idx)
 static void _marker_update(struct ice_parser_rt *rt)
 {
 	struct ice_parser *psr = rt->psr;
-	int i;
 
 	if (rt->action->is_mg) {
 		struct ice_mk_grp_item *mk_grp =
 			&psr->mk_grp_table[rt->action->marker_id];
+		int i;
 
 		for (i = 0; i < 8; i++) {
 			u8 marker = mk_grp->markers[i];
@@ -771,13 +770,11 @@ static void _result_resolve(struct ice_parser_rt *rt,
  * @rslt: input/output parameter to save parser result
  */
 int ice_parser_rt_execute(struct ice_parser_rt *rt,
-				      struct ice_parser_result *rslt)
+			  struct ice_parser_result *rslt)
 {
 	struct ice_pg_nm_cam_item *pg_nm_cam;
 	struct ice_parser *psr = rt->psr;
 	struct ice_pg_cam_item *pg_cam;
-	struct ice_bst_tcam_item *bst;
-	struct ice_imem_item *imem;
 	int status = 0;
 	u16 node;
 	u16 pc;
@@ -786,6 +783,9 @@ int ice_parser_rt_execute(struct ice_parser_rt *rt,
 	ice_debug(rt->psr->hw, ICE_DBG_PARSER, "Start with Node: %d\n", node);
 
 	while (true) {
+		struct ice_bst_tcam_item *bst;
+		struct ice_imem_item *imem;
+
 		pc = rt->gpr[GPR_NP_IDX];
 		imem = &psr->imem_table[pc];
 		ice_debug(rt->psr->hw, ICE_DBG_PARSER, "Load imem at pc: %d\n",
@@ -829,9 +829,9 @@ int ice_parser_rt_execute(struct ice_parser_rt *rt,
 		}
 
 		rt->action = NULL;
-		pg_cam = _pg_cam_match(rt);
+		pg_cam = __pg_cam_match(rt);
 		if (!pg_cam) {
-			pg_nm_cam = _pg_nm_cam_match(rt);
+			pg_nm_cam = __pg_nm_cam_match(rt);
 			if (pg_nm_cam) {
 				ice_debug(rt->psr->hw, ICE_DBG_PARSER, "Match ParseGraph Nomatch CAM Address %d\n",
 					  pg_nm_cam->idx);

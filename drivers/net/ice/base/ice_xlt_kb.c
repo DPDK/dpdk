@@ -24,7 +24,7 @@ static void _xlt_kb_entry_dump(struct ice_hw *hw,
 }
 
 /**
- * ice_imem_dump - dump a xlt key build info
+ * ice_xlt_kb_dump - dump a xlt key build info
  * @hw: pointer to the hardware structure
  * @kb: key build to dump
  */
@@ -180,7 +180,7 @@ struct ice_xlt_kb *ice_xlt_kb_get_fd(struct ice_hw *hw)
 }
 
 /**
- * ice_xlt_kb_get_fd - create rss xlt key build
+ * ice_xlt_kb_get_rss - create rss xlt key build
  * @hw: pointer to the hardware structure
  */
 struct ice_xlt_kb *ice_xlt_kb_get_rss(struct ice_hw *hw)

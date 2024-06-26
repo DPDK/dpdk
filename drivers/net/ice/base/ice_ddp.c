@@ -1034,7 +1034,6 @@ static enum ice_ddp_state ice_chk_pkg_version(struct ice_pkg_ver *pkg_ver)
 		 (pkg_ver->major == ICE_PKG_SUPP_VER_MAJ &&
 		  pkg_ver->minor < ICE_PKG_SUPP_VER_MNR))
 		return ICE_DDP_PKG_FILE_VERSION_TOO_LOW;
-
 	return ICE_DDP_PKG_SUCCESS;
 }
 
@@ -2335,8 +2334,8 @@ int ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 	struct ice_pkg_hdr *pkg_hdr;
 	enum ice_ddp_state state;
 	u16 i, size = 0, offset;
-	int status;
 	u32 reg = 0;
+	int status;
 	u8 flags;
 
 	if (!buf || !len)

@@ -15,7 +15,7 @@
 #define ICE_FLTR_RX	BIT(0)
 #define ICE_FLTR_TX	BIT(1)
 #define ICE_FLTR_RX_LB	BIT(2)
-#define ICE_FLTR_TX_RX (ICE_FLTR_RX | ICE_FLTR_TX)
+#define ICE_FLTR_TX_RX	(ICE_FLTR_RX | ICE_FLTR_TX)
 
 /* Switch Profile IDs for Profile related switch rules */
 #define ICE_PROFID_IPV4_TCP		4
@@ -254,6 +254,7 @@ union lg_act_entry {
 	struct entry_generic_act generic_act;
 	struct entry_statistics statistics;
 };
+
 struct ice_prof_type_entry {
 	u16 prof_id;
 	enum ice_sw_tunnel_type type;
@@ -289,7 +290,8 @@ struct ice_rule_query_data {
 	u16 vsi_handle;
 };
 
-/* This structure allows to pass info about lb_en and lan_en
+/*
+ * This structure allows to pass info about lb_en and lan_en
  * flags to ice_add_adv_rule. Values in act would be used
  * only if act_valid was set to true, otherwise dflt
  * values would be used.
@@ -507,8 +509,7 @@ ice_aq_get_res_descs(struct ice_hw *hw, u16 num_entries,
 		     bool res_shared, u16 *desc_id, struct ice_sq_cd *cd);
 int
 ice_add_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_list);
-int
-ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
+int ice_remove_vlan(struct ice_hw *hw, struct LIST_HEAD_TYPE *v_list);
 void ice_rem_all_sw_rules_info(struct ice_hw *hw);
 int ice_add_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);
 int ice_remove_mac(struct ice_hw *hw, struct LIST_HEAD_TYPE *m_lst);

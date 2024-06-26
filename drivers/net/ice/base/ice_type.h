@@ -1355,7 +1355,6 @@ struct ice_hw {
 			      void *buf, u16 buf_size);
 	void *aq_send_cmd_param;
 	u8 dcf_enabled;		/* Device Config Function */
-
 	u8 api_branch;		/* API branch version */
 	u8 api_maj_ver;		/* API major version */
 	u8 api_min_ver;		/* API minor version */
@@ -1427,6 +1426,7 @@ struct ice_hw {
 	/* tunneling info */
 	struct ice_lock tnl_lock;
 	struct ice_tunnel_table tnl;
+
 	/* dvm boost update information */
 	struct ice_dvm_table dvm_upd;
 
@@ -1710,7 +1710,6 @@ struct ice_aq_get_set_rss_lut_params {
 /* AQ API version for report default configuration */
 #define ICE_FW_API_REPORT_DFLT_CFG_MAJ		1
 #define ICE_FW_API_REPORT_DFLT_CFG_MIN		7
-
 #define ICE_FW_API_REPORT_DFLT_CFG_PATCH	3
 
 /* FW branch number for hardware families */

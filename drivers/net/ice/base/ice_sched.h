@@ -101,6 +101,10 @@ int
 ice_aq_query_sched_elems(struct ice_hw *hw, u16 elems_req,
 			 struct ice_aqc_txsched_elem_data *buf, u16 buf_size,
 			 u16 *elems_ret, struct ice_sq_cd *cd);
+
+int
+ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
+			  enum ice_rl_type rl_type, u32 bw);
 int ice_sched_init_port(struct ice_port_info *pi);
 int ice_sched_query_res_alloc(struct ice_hw *hw);
 void ice_sched_get_psm_clk_freq(struct ice_hw *hw);
@@ -235,11 +239,7 @@ void ice_sched_replay_agg(struct ice_hw *hw);
 int ice_sched_replay_tc_node_bw(struct ice_port_info *pi);
 int ice_replay_vsi_agg(struct ice_hw *hw, u16 vsi_handle);
 int ice_sched_replay_root_node_bw(struct ice_port_info *pi);
-int
-ice_sched_replay_q_bw(struct ice_port_info *pi, struct ice_q_ctx *q_ctx);
-int
-ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
-			  enum ice_rl_type rl_type, u32 bw);
+int ice_sched_replay_q_bw(struct ice_port_info *pi, struct ice_q_ctx *q_ctx);
 int
 ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
 			    enum ice_rl_type rl_type, u16 bw_alloc);

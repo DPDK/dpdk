@@ -125,8 +125,7 @@ ice_read_flat_nvm(struct ice_hw *hw, u32 offset, u32 *length, u8 *data,
  *
  * Reads one 16 bit word from the Shadow RAM using ice_read_flat_nvm.
  */
-static int
-ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
+static int ice_read_sr_word_aq(struct ice_hw *hw, u16 offset, u16 *data)
 {
 	u32 bytes = sizeof(u16);
 	__le16 data_local;
@@ -535,8 +534,7 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
  *
  * Reads the part number string from the NVM.
  */
-int
-ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
+int ice_read_pba_string(struct ice_hw *hw, u8 *pba_num, u32 pba_num_size)
 {
 	u16 pba_tlv, pba_tlv_len;
 	u16 pba_word, pba_size;
@@ -620,7 +618,7 @@ static int ice_get_nvm_srev(struct ice_hw *hw, enum ice_bank_select bank, u32 *s
  * @nvm: pointer to NVM info structure
  *
  * Read the NVM EETRACK ID and map version of the main NVM image bank, filling
- * in the nvm info structure.
+ * in the NVM info structure.
  */
 static int
 ice_get_nvm_ver_info(struct ice_hw *hw, enum ice_bank_select bank, struct ice_nvm_info *nvm)
@@ -845,7 +843,7 @@ int ice_get_inactive_orom_ver(struct ice_hw *hw, struct ice_orom_info *orom)
 }
 
 /**
- * ice_discover_flash_size - Discover the available flash size.
+ * ice_discover_flash_size - Discover the available flash size
  * @hw: pointer to the HW struct
  *
  * The device flash could be up to 16MB in size. However, it is possible that
@@ -909,8 +907,7 @@ err_read_flat_nvm:
  * sector size by using the highest bit. The reported pointer value will be in
  * bytes, intended for flat NVM reads.
  */
-static int
-ice_read_sr_pointer(struct ice_hw *hw, u16 offset, u32 *pointer)
+static int ice_read_sr_pointer(struct ice_hw *hw, u16 offset, u32 *pointer)
 {
 	int status;
 	u16 value;
@@ -941,8 +938,7 @@ ice_read_sr_pointer(struct ice_hw *hw, u16 offset, u32 *pointer)
  * Each area size word is specified in 4KB sector units. This function reports
  * the size in bytes, intended for flat NVM reads.
  */
-static int
-ice_read_sr_area_size(struct ice_hw *hw, u16 offset, u32 *size)
+static int ice_read_sr_area_size(struct ice_hw *hw, u16 offset, u32 *size)
 {
 	int status;
 	u16 value;
@@ -967,8 +963,7 @@ ice_read_sr_area_size(struct ice_hw *hw, u16 offset, u32 *size)
  * structure for later use in order to calculate the correct offset to read
  * from the active module.
  */
-static int
-ice_determine_active_flash_banks(struct ice_hw *hw)
+static int ice_determine_active_flash_banks(struct ice_hw *hw)
 {
 	struct ice_bank_info *banks = &hw->flash.banks;
 	u16 ctrl_word;
