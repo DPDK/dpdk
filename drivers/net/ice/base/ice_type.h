@@ -732,6 +732,7 @@ struct ice_hw_common_caps {
 #define ICE_TS_TMR_ENA_M		BIT(2)
 #define ICE_TS_TMR_IDX_OWND_S		4
 #define ICE_TS_TMR_IDX_OWND_M		BIT(4)
+#define ICE_TS_GPIO_1PPS_ASSOC		BIT(12)
 #define ICE_TS_CLK_FREQ_S		16
 #define ICE_TS_CLK_FREQ_M		MAKEMASK(0x7, ICE_TS_CLK_FREQ_S)
 #define ICE_TS_CLK_SRC_S		20
@@ -768,6 +769,7 @@ struct ice_ts_func_info {
 	u8 tmr_index_owned : 1;
 	u8 src_tmr_owned : 1;
 	u8 tmr_ena : 1;
+	u8 gpio_1pps : 1;
 };
 
 /* Device specific definitions */

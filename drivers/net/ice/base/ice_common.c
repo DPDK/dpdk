@@ -2614,7 +2614,7 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 	u32 number = LE32_TO_CPU(cap->number);
 	u8 clk_freq;
 
-	ice_debug(hw, ICE_DBG_INIT, "1588 func caps: raw value %x\n", number);
+	ice_debug(hw, ICE_DBG_INIT, "1588 func caps: raw value %#x\n", number);
 
 	info->ena = ((number & ICE_TS_FUNC_ENA_M) != 0);
 	func_p->common_cap.ieee_1588 = info->ena;
@@ -2623,6 +2623,8 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 	info->tmr_ena = ((number & ICE_TS_TMR_ENA_M) != 0);
 	info->tmr_index_owned = ((number & ICE_TS_TMR_IDX_OWND_M) != 0);
 	info->tmr_index_assoc = ((number & ICE_TS_TMR_IDX_ASSOC_M) != 0);
+
+	info->gpio_1pps = ((number & ICE_TS_GPIO_1PPS_ASSOC) != 0);
 
 	info->clk_src = ((number & ICE_TS_CLK_SRC_M) != 0);
 	clk_freq = (number & ICE_TS_CLK_FREQ_M) >> ICE_TS_CLK_FREQ_S;
