@@ -489,6 +489,7 @@ int ice_ptp_init_phy_cfg(struct ice_hw *hw);
 
 /* Tx timestamp low latency read definitions */
 #define TS_LL_READ_RETRIES		200
+#define TS_LL_READ_TS_INTR		BIT(30)
 #define TS_LL_READ_TS			BIT(31)
 #define TS_LL_READ_TS_IDX_S		24
 #define TS_LL_READ_TS_IDX_M		MAKEMASK(0x3F, 0)
