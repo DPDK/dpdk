@@ -142,6 +142,7 @@ int
 ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp);
 int
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx);
+void ice_ptp_reset_ts_memory(struct ice_hw *hw);
 int ice_ptp_init_phc(struct ice_hw *hw);
 bool refsync_pin_id_valid(struct ice_hw *hw, u8 id);
 int
@@ -165,6 +166,7 @@ ice_ptp_read_phy_incval_e822(struct ice_hw *hw, u8 port, u64 *incval);
 int
 ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port,
 			       u64 *tx_ts, u64 *rx_ts);
+void ice_ptp_reset_ts_memory_quad_e822(struct ice_hw *hw, u8 quad);
 int
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		     enum ice_clk_src *clk_src);
