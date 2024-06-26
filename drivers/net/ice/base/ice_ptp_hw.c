@@ -5804,3 +5804,19 @@ int ice_ptp_init_phc(struct ice_hw *hw)
 
 	return status;
 }
+
+/**
+ * refsync_pin_id_valid
+ * @hw: pointer to the HW struct
+ * @id: pin index
+ *
+ * Checks whether DPLL's input pin can be configured to ref-sync pairing mode.
+ */
+bool refsync_pin_id_valid(struct ice_hw *hw, u8 id)
+{
+	/* refsync is allowed only on pins 1 or 5 for E810T */
+	if (ice_is_e810t(hw) && id != 1 && id != 5)
+		return false;
+
+	return true;
+}
