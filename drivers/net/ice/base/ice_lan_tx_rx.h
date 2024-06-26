@@ -162,7 +162,6 @@ struct ice_fltr_desc {
 
 #define ICE_FXD_FLTR_QW1_FDID_PRI_S	25
 #define ICE_FXD_FLTR_QW1_FDID_PRI_M	(0x7ULL << ICE_FXD_FLTR_QW1_FDID_PRI_S)
-#define ICE_FXD_FLTR_QW1_FDID_PRI_ZERO	0x0ULL
 #define ICE_FXD_FLTR_QW1_FDID_PRI_ONE	0x1ULL
 #define ICE_FXD_FLTR_QW1_FDID_PRI_THREE	0x3ULL
 
@@ -284,6 +283,7 @@ enum ice_rx_desc_error_l3l4e_masks {
 enum ice_rx_l2_ptype {
 	ICE_RX_PTYPE_L2_RESERVED	= 0,
 	ICE_RX_PTYPE_L2_MAC_PAY2	= 1,
+	ICE_RX_PTYPE_L2_TIMESYNC_PAY2	= 2,
 	ICE_RX_PTYPE_L2_FIP_PAY2	= 3,
 	ICE_RX_PTYPE_L2_OUI_PAY2	= 4,
 	ICE_RX_PTYPE_L2_MACCNTRL_PAY2	= 5,
@@ -343,6 +343,7 @@ enum ice_rx_ptype_inner_prot {
 	ICE_RX_PTYPE_INNER_PROT_TCP		= 2,
 	ICE_RX_PTYPE_INNER_PROT_SCTP		= 3,
 	ICE_RX_PTYPE_INNER_PROT_ICMP		= 4,
+	ICE_RX_PTYPE_INNER_PROT_TIMESYNC	= 5,
 };
 
 enum ice_rx_ptype_payload_layer {
@@ -930,6 +931,8 @@ enum ice_rx_flex_desc_exstat_bits {
 
 #define ICE_RXQ_CTX_SIZE_DWORDS		8
 #define ICE_RXQ_CTX_SZ			(ICE_RXQ_CTX_SIZE_DWORDS * sizeof(u32))
+#define ICE_TXQ_CTX_SIZE_DWORDS		10
+#define ICE_TXQ_CTX_SZ			(ICE_TXQ_CTX_SIZE_DWORDS * sizeof(u32))
 #define ICE_TX_CMPLTNQ_CTX_SIZE_DWORDS	22
 #define ICE_TX_DRBELL_Q_CTX_SIZE_DWORDS	5
 #define GLTCLAN_CQ_CNTX(i, CQ)		(GLTCLAN_CQ_CNTX0(CQ) + ((i) * 0x0800))
@@ -1070,7 +1073,7 @@ enum ice_tx_desc_len_fields {
 struct ice_tx_ctx_desc {
 	__le32 tunneling_params;
 	__le16 l2tag2;
-	__le16 gsc;
+	__le16 gcs;
 	__le64 qw1;
 };
 
@@ -1190,6 +1193,7 @@ struct ice_tlan_ctx {
 	u8 pkt_shaper_prof_idx;
 	u8 gsc_ena;
 	u8 int_q_state;	/* width not needed - internal - DO NOT WRITE!!! */
+	u16 tail;
 };
 
 /* LAN Tx Completion Queue data */
@@ -1206,6 +1210,7 @@ struct ice_tx_cmpltnq {
 #pragma pack(1)
 struct ice_tx_cmpltnq_ctx {
 	u64 base;
+#define ICE_TX_CMPLTNQ_CTX_BASE_S	7
 	u32 q_len;
 #define ICE_TX_CMPLTNQ_CTX_Q_LEN_S	4
 	u8 generation;
@@ -1213,6 +1218,9 @@ struct ice_tx_cmpltnq_ctx {
 	u8 pf_num;
 	u16 vmvf_num;
 	u8 vmvf_type;
+#define ICE_TX_CMPLTNQ_CTX_VMVF_TYPE_VF		0
+#define ICE_TX_CMPLTNQ_CTX_VMVF_TYPE_VMQ	1
+#define ICE_TX_CMPLTNQ_CTX_VMVF_TYPE_PF		2
 	u8 tph_desc_wr;
 	u8 cpuid;
 	u32 cmpltn_cache[16];
@@ -1227,15 +1235,30 @@ struct ice_tx_drbell_fmt {
 	u32 db;
 };
 
+/* FIXME: move to a .c file that references this variable */
+/* LAN Tx Doorbell Descriptor format info */
+static const struct ice_ctx_ele ice_tx_drbell_fmt_info[] = {
+					 /* Field		Width	LSB */
+	ICE_CTX_STORE(ice_tx_drbell_fmt, txq_id,		14,	0),
+	ICE_CTX_STORE(ice_tx_drbell_fmt, dd,			1,	14),
+	ICE_CTX_STORE(ice_tx_drbell_fmt, rs,			1,	15),
+	ICE_CTX_STORE(ice_tx_drbell_fmt, db,			32,	32),
+	{ 0 }
+};
 
 /* LAN Tx Doorbell Queue Context */
 #pragma pack(1)
 struct ice_tx_drbell_q_ctx {
 	u64 base;
+#define ICE_TX_DRBELL_Q_CTX_BASE_S	7
 	u16 ring_len;
+#define ICE_TX_DRBELL_Q_CTX_RING_LEN_S	4
 	u8 pf_num;
 	u16 vf_num;
 	u8 vmvf_type;
+#define ICE_TX_DRBELL_Q_CTX_VMVF_TYPE_VF	0
+#define ICE_TX_DRBELL_Q_CTX_VMVF_TYPE_VMQ	1
+#define ICE_TX_DRBELL_Q_CTX_VMVF_TYPE_PF	2
 	u8 cpuid;
 	u8 tph_desc_rd;
 	u8 tph_desc_wr;
@@ -1285,6 +1308,7 @@ struct ice_tx_drbell_q_ctx {
 /* shorter macros makes the table fit but are terse */
 #define ICE_RX_PTYPE_NOF		ICE_RX_PTYPE_NOT_FRAG
 #define ICE_RX_PTYPE_FRG		ICE_RX_PTYPE_FRAG
+#define ICE_RX_PTYPE_INNER_PROT_TS	ICE_RX_PTYPE_INNER_PROT_TIMESYNC
 
 /* Lookup table mapping the 10-bit HW PTYPE to the bit field for decoding */
 static const struct ice_rx_ptype_decoded ice_ptype_lkup[1024] = {
