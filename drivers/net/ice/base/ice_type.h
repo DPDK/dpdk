@@ -827,6 +827,9 @@ struct ice_hw_dev_caps {
 	struct ice_ts_dev_info ts_dev_info;
 	u32 num_funcs;
 	struct ice_nac_topology nac_topo;
+	/* bitmap of supported sensors */
+	u32 supported_sensors;
+#define ICE_SENSOR_SUPPORT_E810_INT_TEMP	BIT(0)
 };
 
 /* Information about MAC such as address, etc... */
