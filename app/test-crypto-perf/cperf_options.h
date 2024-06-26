@@ -49,6 +49,8 @@
 
 #define CPERF_DIGEST_SZ		("digest-sz")
 
+#define CPERF_ASYM_OP		("asym-op")
+
 #ifdef RTE_LIB_SECURITY
 #define CPERF_PDCP_SN_SZ	("pdcp-sn-sz")
 #define CPERF_PDCP_DOMAIN	("pdcp-domain")
@@ -85,6 +87,7 @@ enum cperf_op_type {
 	CPERF_DOCSIS,
 	CPERF_IPSEC,
 	CPERF_ASYM_MODEX,
+	CPERF_ASYM_SM2,
 	CPERF_TLS,
 };
 
@@ -162,6 +165,9 @@ struct cperf_options {
 	uint8_t imix_distribution_count;
 	struct cperf_modex_test_data *modex_data;
 	uint16_t modex_len;
+	struct cperf_sm2_test_data *sm2_data;
+	enum rte_crypto_asym_op_type asym_op_type;
+	enum rte_crypto_auth_algorithm asym_hash_alg;
 };
 
 void

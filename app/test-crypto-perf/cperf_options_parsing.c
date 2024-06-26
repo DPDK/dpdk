@@ -37,7 +37,7 @@ usage(char *progname)
 		" --desc-nb N: set number of descriptors for each crypto device\n"
 		" --devtype TYPE: set crypto device type to use\n"
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
-		"        aead / pdcp / docsis / ipsec / modex / tls-record : set operation type\n"
+		"        aead / pdcp / docsis / ipsec / modex / sm2 / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
 		" --test-file NAME: set the test vector file path\n"
@@ -61,6 +61,7 @@ usage(char *progname)
 		" --csv-friendly: enable test result output CSV friendly\n"
 		" --modex-len N: modex length, supported lengths are "
 		"60, 128, 255, 448. Default: 128\n"
+		" --asym-op encrypt / decrypt / sign / verify : set asym operation type\n"
 #ifdef RTE_LIB_SECURITY
 		" --pdcp-sn-sz N: set PDCP SN size N <5/7/12/15/18>\n"
 		" --pdcp-domain DOMAIN: set PDCP domain <control/user>\n"
@@ -483,6 +484,10 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 			CPERF_ASYM_MODEX
 		},
 		{
+			cperf_op_type_strs[CPERF_ASYM_SM2],
+			CPERF_ASYM_SM2
+		},
+		{
 			cperf_op_type_strs[CPERF_TLS],
 			CPERF_TLS
 		},
@@ -862,6 +867,45 @@ parse_aead_aad_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_asym_op(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map asym_op_namemap[] = {
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_ENCRYPT],
+			RTE_CRYPTO_ASYM_OP_ENCRYPT
+		},
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_DECRYPT],
+			RTE_CRYPTO_ASYM_OP_DECRYPT
+		},
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_SIGN],
+			RTE_CRYPTO_ASYM_OP_SIGN
+		},
+		{
+			rte_crypto_asym_op_strings
+			[RTE_CRYPTO_ASYM_OP_VERIFY],
+			RTE_CRYPTO_ASYM_OP_VERIFY
+		}
+	};
+
+	int id = get_str_key_id_mapping(asym_op_namemap,
+			RTE_DIM(asym_op_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "invalid ASYM operation specified\n");
+		return -1;
+	}
+
+	opts->asym_op_type = (enum rte_crypto_asym_op_type)id;
+
+	return 0;
+}
+
+
+static int
 parse_csv_friendly(struct cperf_options *opts, const char *arg __rte_unused)
 {
 	opts->csv = 1;
@@ -934,6 +978,8 @@ static struct option lgopts[] = {
 	{ CPERF_AEAD_IV_SZ, required_argument, 0, 0 },
 
 	{ CPERF_DIGEST_SZ, required_argument, 0, 0 },
+
+	{ CPERF_ASYM_OP, required_argument, 0, 0 },
 
 #ifdef RTE_LIB_SECURITY
 	{ CPERF_PDCP_SN_SZ, required_argument, 0, 0 },
@@ -1017,6 +1063,9 @@ cperf_options_default(struct cperf_options *opts)
 	opts->docsis_hdr_sz = 17;
 #endif
 	opts->modex_data = (struct cperf_modex_test_data *)&modex_perf_data[0];
+
+	opts->sm2_data = &sm2_perf_data;
+	opts->asym_op_type = RTE_CRYPTO_ASYM_OP_SIGN;
 }
 
 static int
@@ -1053,6 +1102,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_AEAD_IV_SZ,	parse_aead_iv_sz },
 		{ CPERF_AEAD_AAD_SZ,	parse_aead_aad_sz },
 		{ CPERF_DIGEST_SZ,	parse_digest_sz },
+		{ CPERF_ASYM_OP,	parse_asym_op },
 #ifdef RTE_LIB_SECURITY
 		{ CPERF_PDCP_SN_SZ,	parse_pdcp_sn_sz },
 		{ CPERF_PDCP_DOMAIN,	parse_pdcp_domain },
@@ -1438,6 +1488,9 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("#\n");
 	printf("# number of queue pairs per device: %u\n", opts->nb_qps);
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
+	if (opts->op_type == CPERF_ASYM_SM2)
+		printf("# asym operation type: %s\n",
+				rte_crypto_asym_op_strings[opts->asym_op_type]);
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");
 	if (opts->test == CPERF_TEST_TYPE_PMDCC)

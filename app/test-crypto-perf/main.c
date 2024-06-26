@@ -45,6 +45,7 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_DOCSIS] = "docsis",
 	[CPERF_IPSEC] = "ipsec",
 	[CPERF_ASYM_MODEX] = "modex",
+	[CPERF_ASYM_SM2] = "sm2",
 	[CPERF_TLS] = "tls-record"
 };
 
@@ -224,6 +225,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		};
 
 		switch (opts->op_type) {
+		case CPERF_ASYM_SM2:
 		case CPERF_ASYM_MODEX:
 			conf.ff_disable |= (RTE_CRYPTODEV_FF_SECURITY |
 					    RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO);
@@ -360,6 +362,65 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 			if (ret != 0)
 				return ret;
 
+		}
+
+		if (opts->op_type == CPERF_ASYM_SM2) {
+			asym_cap_idx.type = RTE_CRYPTO_ASYM_XFORM_SM2;
+			asym_capability = rte_cryptodev_asym_capability_get(cdev_id, &asym_cap_idx);
+			if (asym_capability == NULL)
+				return -1;
+
+			if (!rte_cryptodev_asym_xform_capability_check_optype(asym_capability,
+						opts->asym_op_type))
+				return -1;
+
+			if (rte_cryptodev_asym_xform_capability_check_hash(asym_capability,
+						RTE_CRYPTO_AUTH_SM3)) {
+				opts->asym_hash_alg = RTE_CRYPTO_AUTH_SM3;
+				if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN ||
+						opts->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+					opts->sm2_data->message.data = sm2_perf_data.message.data;
+					opts->sm2_data->message.length =
+							sm2_perf_data.message.length;
+					opts->sm2_data->id.data = sm2_perf_data.id.data;
+					opts->sm2_data->id.length = sm2_perf_data.id.length;
+				}
+			} else {
+				opts->asym_hash_alg = RTE_CRYPTO_AUTH_NULL;
+				if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN ||
+						opts->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+					opts->sm2_data->message.data = sm2_perf_data.digest.data;
+					opts->sm2_data->message.length =
+							sm2_perf_data.digest.length;
+					opts->sm2_data->id.data = NULL;
+					opts->sm2_data->id.length = 0;
+				}
+			}
+			if (asym_capability->internal_rng != 0) {
+				opts->sm2_data->k.data = NULL;
+				opts->sm2_data->k.length = 0;
+			}
+			if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_ENCRYPT) {
+				opts->sm2_data->message.data = sm2_perf_data.message.data;
+				opts->sm2_data->message.length = sm2_perf_data.message.length;
+				opts->sm2_data->cipher.data = sm2_perf_data.cipher.data;
+				opts->sm2_data->cipher.length = sm2_perf_data.cipher.length;
+			} else if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_DECRYPT) {
+				opts->sm2_data->cipher.data = sm2_perf_data.cipher.data;
+				opts->sm2_data->cipher.length = sm2_perf_data.cipher.length;
+				opts->sm2_data->message.data = sm2_perf_data.message.data;
+				opts->sm2_data->message.length = sm2_perf_data.message.length;
+			} else if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_SIGN) {
+				opts->sm2_data->sign_r.data = sm2_perf_data.sign_r.data;
+				opts->sm2_data->sign_r.length = sm2_perf_data.sign_r.length;
+				opts->sm2_data->sign_s.data = sm2_perf_data.sign_s.data;
+				opts->sm2_data->sign_s.length = sm2_perf_data.sign_s.length;
+			} else if (opts->asym_op_type == RTE_CRYPTO_ASYM_OP_VERIFY) {
+				opts->sm2_data->sign_r.data = sm2_perf_data.sign_r.data;
+				opts->sm2_data->sign_r.length = sm2_perf_data.sign_r.length;
+				opts->sm2_data->sign_s.data = sm2_perf_data.sign_s.data;
+				opts->sm2_data->sign_s.length = sm2_perf_data.sign_s.length;
+			}
 		}
 
 		if (opts->op_type == CPERF_AUTH_ONLY ||
