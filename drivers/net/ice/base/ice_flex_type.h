@@ -382,8 +382,16 @@ struct ice_sw_fv_list_entry {
 struct ice_boost_key_value {
 #define ICE_BOOST_REMAINING_HV_KEY	15
 	u8 remaining_hv_key[ICE_BOOST_REMAINING_HV_KEY];
-	__le16 hv_dst_port_key;
-	__le16 hv_src_port_key;
+	union {
+		struct {
+			__le16 hv_dst_port_key;
+			__le16 hv_src_port_key;
+		} /* udp_tunnel */;
+		struct {
+			__le16 hv_vlan_id_key;
+			__le16 hv_etype_key;
+		} vlan;
+	};
 	u8 tcam_search_key;
 };
 #pragma pack()
