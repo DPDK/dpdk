@@ -4114,8 +4114,8 @@ static int ice_sync_phy_timer_e822(struct ice_hw *hw, u8 port)
 	if (status)
 		goto err_unlock;
 
-	/* Init PHC mstr/src cmd for exec during sync */
-	ice_ptp_src_cmd(hw, ICE_PTP_READ_TIME);
+	/* Do not perform any action on the main timer */
+	ice_ptp_src_cmd(hw, ICE_PTP_NOP);
 
 	/* Issue the sync to activate the time adjustment */
 	ice_ptp_exec_tmr_cmd(hw);
@@ -4242,8 +4242,8 @@ ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 	if (status)
 		return status;
 
-	/* Init PHC mstr/src cmd for exec during sync */
-	ice_ptp_src_cmd(hw, ICE_PTP_READ_TIME);
+	/* Do not perform any action on the main timer */
+	ice_ptp_src_cmd(hw, ICE_PTP_NOP);
 
 	ice_ptp_exec_tmr_cmd(hw);
 
