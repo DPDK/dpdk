@@ -7336,12 +7336,14 @@ ice_create_first_fit_recp_def(struct ice_hw *hw,
 				(*recp_cnt)++;
 			}
 
-			grp->pairs[grp->n_val_pairs].prot_id =
-				lkup_exts->fv_words[j].prot_id;
-			grp->pairs[grp->n_val_pairs].off =
-				lkup_exts->fv_words[j].off;
-			grp->mask[grp->n_val_pairs] = lkup_exts->field_mask[j];
-			grp->n_val_pairs++;
+			if (grp->n_val_pairs < ICE_NUM_WORDS_RECIPE) {
+				grp->pairs[grp->n_val_pairs].prot_id =
+					lkup_exts->fv_words[j].prot_id;
+				grp->pairs[grp->n_val_pairs].off =
+					lkup_exts->fv_words[j].off;
+				grp->mask[grp->n_val_pairs] = lkup_exts->field_mask[j];
+				grp->n_val_pairs++;
+			}
 		}
 
 	return 0;
