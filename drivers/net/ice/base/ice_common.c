@@ -813,17 +813,28 @@ ice_fill_tx_timer_and_fc_thresh(struct ice_hw *hw,
 	 * Also, because we are operating on transmit timer and fc
 	 * threshold of LFC, we don't turn on any bit in tx_tmr_priority
 	 */
-#define IDX_OF_LFC PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_MAX_INDEX
+#define E800_IDX_OF_LFC E800_PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_MAX_INDEX
 
-	/* Retrieve the transmit timer */
-	val = rd32(hw, PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA(IDX_OF_LFC));
-	tx_timer_val = val &
-		PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_HSEC_CTL_TX_PAUSE_QUANTA_M;
-	cmd->tx_tmr_value = CPU_TO_LE16(tx_timer_val);
+	if ((hw)->mac_type == ICE_MAC_E830) {
+		/* Retrieve the transmit timer */
+		val = rd32(hw, E830_PRTMAC_CL01_PAUSE_QUANTA);
+		tx_timer_val = val & E830_PRTMAC_CL01_PAUSE_QUANTA_CL0_PAUSE_QUANTA_M;
+		cmd->tx_tmr_value = CPU_TO_LE16(tx_timer_val);
 
-	/* Retrieve the fc threshold */
-	val = rd32(hw, PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER(IDX_OF_LFC));
-	fc_thres_val = val & PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER_M;
+		/* Retrieve the fc threshold */
+		val = rd32(hw, E830_PRTMAC_CL01_QUANTA_THRESH);
+		fc_thres_val = val & E830_PRTMAC_CL01_QUANTA_THRESH_CL0_QUANTA_THRESH_M;
+	} else {
+		/* Retrieve the transmit timer */
+		val = rd32(hw, E800_PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA(E800_IDX_OF_LFC));
+		tx_timer_val = val &
+			E800_PRTMAC_HSEC_CTL_TX_PAUSE_QUANTA_HSEC_CTL_TX_PAUSE_QUANTA_M;
+		cmd->tx_tmr_value = CPU_TO_LE16(tx_timer_val);
+
+		/* Retrieve the fc threshold */
+		val = rd32(hw, E800_PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER(E800_IDX_OF_LFC));
+		fc_thres_val = val & E800_PRTMAC_HSEC_CTL_TX_PAUSE_REFRESH_TIMER_M;
+	}
 
 	cmd->fc_refresh_threshold = CPU_TO_LE16(fc_thres_val);
 }
@@ -2712,11 +2723,11 @@ ice_parse_fdir_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p)
 	if (hw->dcf_enabled)
 		return;
 	reg_val = rd32(hw, GLQF_FD_SIZE);
-	val = (reg_val & GLQF_FD_SIZE_FD_GSIZE_M) >>
+	val = (reg_val & GLQF_FD_SIZE_FD_GSIZE_M_BY_MAC(hw)) >>
 		GLQF_FD_SIZE_FD_GSIZE_S;
 	func_p->fd_fltr_guar =
 		ice_get_num_per_func(hw, val);
-	val = (reg_val & GLQF_FD_SIZE_FD_BSIZE_M) >>
+	val = (reg_val & GLQF_FD_SIZE_FD_BSIZE_M_BY_MAC(hw)) >>
 		GLQF_FD_SIZE_FD_BSIZE_S;
 	func_p->fd_fltr_best_effort = val;
 
@@ -5724,7 +5735,7 @@ enum ice_fw_modes ice_get_fw_mode(struct ice_hw *hw)
 	u32 fw_mode;
 
 	/* check the current FW mode */
-	fw_mode = rd32(hw, GL_MNG_FWSM) & GL_MNG_FWSM_FW_MODES_M;
+	fw_mode = rd32(hw, GL_MNG_FWSM) & E800_GL_MNG_FWSM_FW_MODES_M;
 
 	if (fw_mode & ICE_FW_MODE_DBG_M)
 		return ICE_FW_MODE_DBG;
