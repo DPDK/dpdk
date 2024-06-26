@@ -911,6 +911,18 @@ static void ice_ptp_exec_tmr_cmd(struct ice_hw *hw)
 	ice_flush(hw);
 }
 
+/**
+ * ice_ptp_zero_syn_dlay - Set synchronization delay to zero
+ * @hw: pointer to HW struct
+ *
+ * Zero E810 and E830 specific PTP hardware clock synchronization delay.
+ */
+static void ice_ptp_zero_syn_dlay(struct ice_hw *hw)
+{
+	wr32(hw, GLTSYN_SYNC_DLAY, 0);
+	ice_flush(hw);
+}
+
 enum eth56g_res_type {
 	ETH56G_PHY_REG,
 	ETH56G_PHY_MEM,
@@ -2368,9 +2380,10 @@ e8xx:
 
 	if (ice_is_e810(hw))
 		hw->phy_model = ICE_PHY_E810;
+	else if (ice_is_e830(hw))
+		hw->phy_model = ICE_PHY_E830;
 	else
 		hw->phy_model = ICE_PHY_E822;
-
 	hw->phy_ports = ICE_NUM_EXTERNAL_PORTS;
 	hw->max_phy_port = ICE_NUM_EXTERNAL_PORTS;
 }
@@ -4934,8 +4947,7 @@ int ice_ptp_init_phy_e810(struct ice_hw *hw)
  */
 static int ice_ptp_init_phc_e810(struct ice_hw *hw)
 {
-	/* Ensure synchronization delay is zero */
-	wr32(hw, GLTSYN_SYNC_DLAY, 0);
+	ice_ptp_zero_syn_dlay(hw);
 
 	/* Initialize the PHY */
 	return ice_ptp_init_phy_e810(hw);
@@ -5449,6 +5461,24 @@ int ice_ptp_read_sdp_section_from_nvm(struct ice_hw *hw, bool *section_exist,
 exit:
 	ice_release_nvm(hw);
 	return err;
+}
+
+/* E830 functions
+ *
+ * The following functions operate on the E830 series devices.
+ *
+ */
+
+/**
+ * ice_ptp_init_phc_e830 - Perform E830 specific PHC initialization
+ * @hw: pointer to HW struct
+ *
+ * Perform E830-specific PTP hardware clock initialization steps.
+ */
+static int ice_ptp_init_phc_e830(struct ice_hw *hw)
+{
+	ice_ptp_zero_syn_dlay(hw);
+	return 0;
 }
 
 /**
@@ -6101,6 +6131,7 @@ void ice_ptp_reset_ts_memory(struct ice_hw *hw)
 		ice_ptp_reset_ts_memory_e822(hw);
 		break;
 	case ICE_PHY_E810:
+	case ICE_PHY_E830:
 	default:
 		return;
 	}
@@ -6129,6 +6160,8 @@ int ice_ptp_init_phc(struct ice_hw *hw)
 		return ice_ptp_init_phc_e810(hw);
 	case ICE_PHY_E822:
 		return ice_ptp_init_phc_e822(hw);
+	case ICE_PHY_E830:
+		return ice_ptp_init_phc_e830(hw);
 	default:
 		return ICE_ERR_NOT_SUPPORTED;
 	}
@@ -6151,6 +6184,9 @@ int ice_get_phy_tx_tstamp_ready(struct ice_hw *hw, u8 block, u64 *tstamp_ready)
 	case ICE_PHY_ETH56G:
 		return ice_get_phy_tx_tstamp_ready_eth56g(hw, block,
 							  tstamp_ready);
+	case ICE_PHY_E830:
+		return ice_get_phy_tx_tstamp_ready_e830(hw, block,
+							tstamp_ready);
 	case ICE_PHY_E810:
 		return ice_get_phy_tx_tstamp_ready_e810(hw, block,
 							tstamp_ready);
