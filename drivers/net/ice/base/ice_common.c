@@ -5951,8 +5951,6 @@ static bool ice_is_fw_min_ver(struct ice_hw *hw, u8 branch, u8 maj, u8 min,
 			if (hw->fw_min_ver == min && hw->fw_patch >= patch)
 				return true;
 		}
-	} else if (hw->fw_branch > branch) {
-		return true;
 	}
 
 	return false;
@@ -6166,11 +6164,16 @@ bool ice_fw_supports_report_dflt_cfg(struct ice_hw *hw)
  */
 bool ice_fw_supports_fec_dis_auto(struct ice_hw *hw)
 {
-	return ice_is_fw_min_ver(hw, ICE_FW_FEC_DIS_AUTO_BRANCH,
+	return ice_is_fw_min_ver(hw, ICE_FW_VER_BRANCH_E810,
 				 ICE_FW_FEC_DIS_AUTO_MAJ,
 				 ICE_FW_FEC_DIS_AUTO_MIN,
-				 ICE_FW_FEC_DIS_AUTO_PATCH);
+				 ICE_FW_FEC_DIS_AUTO_PATCH) ||
+	       ice_is_fw_min_ver(hw, ICE_FW_VER_BRANCH_E82X,
+				 ICE_FW_FEC_DIS_AUTO_MAJ_E82X,
+				 ICE_FW_FEC_DIS_AUTO_MIN_E82X,
+				 ICE_FW_FEC_DIS_AUTO_PATCH_E82X);
 }
+
 /**
  * ice_is_fw_auto_drop_supported
  * @hw: pointer to the hardware structure
