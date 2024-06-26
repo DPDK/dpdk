@@ -146,6 +146,7 @@ struct ice_fltr_info {
 	union {
 		struct {
 			u8 mac_addr[ETH_ALEN];
+			u16 sw_id;
 		} mac;
 		struct {
 			u8 mac_addr[ETH_ALEN];
@@ -155,6 +156,7 @@ struct ice_fltr_info {
 			u16 vlan_id;
 			u16 tpid;
 			u8 tpid_valid;
+			u16 sw_id;
 		} vlan;
 		/* Set lkup_type as ICE_SW_LKUP_ETHERTYPE
 		 * if just using ethertype as filter. Set lkup_type as
@@ -192,6 +194,7 @@ struct ice_fltr_info {
 	/* Rule creations populate these indicators basing on the switch type */
 	u8 lb_en;	/* Indicate if packet can be looped back */
 	u8 lan_en;	/* Indicate if packet can be forwarded to the uplink */
+	u8 fltVeb_en;   /* Indicate if VSI is connected to floating VEB */
 };
 
 struct ice_update_recipe_lkup_idx_params {

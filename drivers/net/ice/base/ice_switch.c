@@ -3964,8 +3964,10 @@ static void ice_fill_sw_info(struct ice_hw *hw, struct ice_fltr_info *fi)
 			    (fi->lkup_type == ICE_SW_LKUP_MAC &&
 			     !IS_UNICAST_ETHER_ADDR(fi->l_data.mac.mac_addr)) ||
 			    (fi->lkup_type == ICE_SW_LKUP_MAC_VLAN &&
-			     !IS_UNICAST_ETHER_ADDR(fi->l_data.mac.mac_addr)))
-				fi->lan_en = true;
+			     !IS_UNICAST_ETHER_ADDR(fi->l_data.mac.mac_addr))) {
+				if (!fi->fltVeb_en)
+					fi->lan_en = true;
+			}
 		} else {
 			fi->lan_en = true;
 		}
