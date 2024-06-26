@@ -49,13 +49,22 @@ struct cnxk_ae_sess {
 };
 
 static __rte_always_inline void
-cnxk_ae_modex_param_normalize(uint8_t **data, size_t *len)
+cnxk_ae_modex_param_normalize(uint8_t **data, size_t *len, size_t max)
 {
+	uint8_t msw_len = *len % 8;
+	uint64_t msw_val = 0;
 	size_t i;
 
-	/* Strip leading NUL bytes */
-	for (i = 0; i < *len; i++) {
-		if ((*data)[i] != 0)
+	if (*len <= 8)
+		return;
+
+	memcpy(&msw_val, *data, msw_len);
+	if (msw_val != 0)
+		return;
+
+	for (i = msw_len; i < *len && (*len - i) < max; i += 8) {
+		memcpy(&msw_val, &(*data)[i], 8);
+		if (msw_val != 0)
 			break;
 	}
 	*data += i;
@@ -72,8 +81,8 @@ cnxk_ae_fill_modex_params(struct cnxk_ae_sess *sess,
 	uint8_t *exp = xform->modex.exponent.data;
 	uint8_t *mod = xform->modex.modulus.data;
 
-	cnxk_ae_modex_param_normalize(&mod, &mod_len);
-	cnxk_ae_modex_param_normalize(&exp, &exp_len);
+	cnxk_ae_modex_param_normalize(&mod, &mod_len, SIZE_MAX);
+	cnxk_ae_modex_param_normalize(&exp, &exp_len, mod_len);
 
 	if (unlikely(exp_len == 0 || mod_len == 0))
 		return -EINVAL;
@@ -288,7 +297,7 @@ cnxk_ae_modex_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 	struct rte_crypto_mod_op_param mod_op;
 	uint64_t total_key_len;
 	union cpt_inst_w4 w4;
-	uint32_t base_len;
+	size_t base_len;
 	uint32_t dlen;
 	uint8_t *dptr;
 
@@ -296,8 +305,11 @@ cnxk_ae_modex_prep(struct rte_crypto_op *op, struct roc_ae_buf_ptr *meta_buf,
 
 	base_len = mod_op.base.length;
 	if (unlikely(base_len > mod_len)) {
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		return -ENOTSUP;
+		cnxk_ae_modex_param_normalize(&mod_op.base.data, &base_len, mod_len);
+		if (base_len > mod_len) {
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return -ENOTSUP;
+		}
 	}
 
 	total_key_len = mod_len + exp_len;
