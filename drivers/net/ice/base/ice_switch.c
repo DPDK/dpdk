@@ -3883,6 +3883,10 @@ int ice_get_initial_sw_cfg(struct ice_hw *hw)
 
 			switch (res_type) {
 			case ICE_AQC_GET_SW_CONF_RESP_VSI:
+				if (hw->fw_vsi_num != ICE_DFLT_VSI_INVAL)
+					ice_debug(hw, ICE_DBG_SW, "fw_vsi_num %d -> %d\n",
+						  hw->fw_vsi_num, vsi_port_num);
+				hw->fw_vsi_num = vsi_port_num;
 				if (hw->dcf_enabled && !is_vf)
 					hw->pf_id = pf_vf_num;
 				break;
