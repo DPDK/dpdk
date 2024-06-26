@@ -921,7 +921,8 @@ enum ice_rx_flex_desc_exstat_bits {
 	ICE_RX_FLEX_DESC_EXSTAT_OVERSIZE_S = 3,
 };
 
-/* For ice_32b_rx_flex_desc.ts_low:
+/*
+ * For ice_32b_rx_flex_desc.ts_low:
  * [0]: Timestamp-low validity bit
  * [1:7]: Timestamp-low value
  */

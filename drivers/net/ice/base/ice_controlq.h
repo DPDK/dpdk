@@ -87,7 +87,6 @@ struct ice_sq_cd {
 	struct ice_aq_desc *wb_desc;
 };
 
-
 /* rq event information */
 struct ice_rq_event_info {
 	struct ice_aq_desc desc;

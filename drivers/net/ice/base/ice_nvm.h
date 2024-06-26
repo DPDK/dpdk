@@ -34,7 +34,6 @@ struct ice_orom_civd_info {
 	u8 combo_name_len;	/* Length of the unicode combo image version string, max of 32 */
 	__le16 combo_name[32];	/* Unicode string representing the Combo Image version */
 };
-
 #pragma pack()
 
 #define ICE_NVM_ACCESS_MAJOR_VER	0
