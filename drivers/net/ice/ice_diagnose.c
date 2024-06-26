@@ -467,7 +467,7 @@ ice_dump_switch(struct rte_eth_dev *dev, uint8_t **buff2, uint32_t *size)
 		}
 
 		res = ice_aq_get_internal_data(hw,
-			ICE_AQC_DBG_DUMP_CLUSTER_ID_SW,
+			ICE_AQC_DBG_DUMP_CLUSTER_ID_SW_E810,
 			tbl_id, tbl_idx, buff,
 			ICE_PKG_BUF_SIZE,
 			&buff_size, &tbl_id, &tbl_idx, NULL, cd);
