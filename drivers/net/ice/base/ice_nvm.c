@@ -1427,3 +1427,60 @@ ice_handle_nvm_access(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 		return ICE_ERR_PARAM;
 	}
 }
+
+/**
+ * ice_nvm_sanitize_operate - Clear the user data
+ * @hw: pointer to the HW struct
+ *
+ * Clear user data from NVM using AQ command (0x070C).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ice_nvm_sanitize_operate(struct ice_hw *hw)
+{
+	s32 status;
+	u8 values;
+
+	u8 cmd_flags = ICE_AQ_NVM_SANITIZE_REQ_OPERATE |
+		       ICE_AQ_NVM_SANITIZE_OPERATE_SUBJECT_CLEAR;
+
+	status = ice_nvm_sanitize(hw, cmd_flags, &values);
+	if (status)
+		return status;
+	if ((!(values & ICE_AQ_NVM_SANITIZE_OPERATE_HOST_CLEAN_DONE) &&
+	     !(values & ICE_AQ_NVM_SANITIZE_OPERATE_BMC_CLEAN_DONE)) ||
+	    ((values & ICE_AQ_NVM_SANITIZE_OPERATE_HOST_CLEAN_DONE) &&
+	     !(values & ICE_AQ_NVM_SANITIZE_OPERATE_HOST_CLEAN_SUCCESS)) ||
+	    ((values & ICE_AQ_NVM_SANITIZE_OPERATE_BMC_CLEAN_DONE) &&
+	     !(values & ICE_AQ_NVM_SANITIZE_OPERATE_BMC_CLEAN_SUCCESS)))
+		return ICE_ERR_AQ_ERROR;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_nvm_sanitize - Sanitize NVM
+ * @hw: pointer to the HW struct
+ * @cmd_flags: flag to the ACI command
+ * @values: values returned from the command
+ *
+ * Sanitize NVM using AQ command (0x070C).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ice_nvm_sanitize(struct ice_hw *hw, u8 cmd_flags, u8 *values)
+{
+	struct ice_aqc_nvm_sanitization *cmd;
+	struct ice_aq_desc desc;
+	s32 status;
+
+	cmd = &desc.params.sanitization;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_nvm_sanitization);
+	cmd->cmd_flags = cmd_flags;
+
+	status = ice_aq_send_cmd(hw, &desc, NULL, 0, NULL);
+	if (values)
+		*values = cmd->values;
+
+	return status;
+}

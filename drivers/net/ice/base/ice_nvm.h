@@ -108,4 +108,6 @@ int
 ice_read_sr_buf(struct ice_hw *hw, u16 offset, u16 *words, u16 *data);
 int ice_nvm_validate_checksum(struct ice_hw *hw);
 int ice_nvm_recalculate_checksum(struct ice_hw *hw);
+s32 ice_nvm_sanitize_operate(struct ice_hw *hw);
+s32 ice_nvm_sanitize(struct ice_hw *hw, u8 cmd_flags, u8 *values);
 #endif /* _ICE_NVM_H_ */
