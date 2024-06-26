@@ -3164,8 +3164,8 @@ ice_ptp_write_port_cmd_e822(struct ice_hw *hw, u8 port,
 	}
 
 	/* Rx case */
-	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TMR_CMD, val,
-					lock_sbq);
+	err = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TMR_CMD,
+					val | TS_CMD_RX_TYPE, lock_sbq);
 	if (err) {
 		ice_debug(hw, ICE_DBG_PTP, "Failed to write back RX_TMR_CMD, err %d\n",
 			  err);

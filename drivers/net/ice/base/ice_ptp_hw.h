@@ -324,6 +324,9 @@ int ice_ptp_init_phy_cfg(struct ice_hw *hw);
 #define TS_CMD_MASK_E810		0xFF
 #define TS_CMD_MASK			0xF
 #define SYNC_EXEC_CMD			0x3
+#define TS_CMD_RX_TYPE_S		0x4
+#define TS_CMD_RX_TYPE			MAKEMASK(0x18, TS_CMD_RX_TYPE_S)
+
 
 /* Macros to derive port low and high addresses on both quads */
 #define P_Q0_L(a, p) ((((a) + (0x2000 * (p)))) & 0xFFFF)
