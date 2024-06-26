@@ -632,7 +632,7 @@ crypto_adapter_qp_setup(const struct rte_cryptodev *cdev, struct cnxk_cpt_qp *qp
 	 * simultaneous enqueue from all available cores.
 	 */
 	if (roc_model_is_cn10k())
-		nb_desc_min = rte_lcore_count() * 32;
+		nb_desc_min = rte_lcore_count() * CN10K_CPT_PKTS_PER_LOOP;
 	else
 		nb_desc_min = rte_lcore_count() * 2;
 
@@ -707,7 +707,7 @@ crypto_adapter_qp_free(struct cnxk_cpt_qp *qp)
 	rte_mempool_free(qp->ca.req_mp);
 	qp->ca.enabled = false;
 
-	ret = roc_cpt_lmtline_init(qp->lf.roc_cpt, &qp->lmtline, qp->lf.lf_id);
+	ret = roc_cpt_lmtline_init(qp->lf.roc_cpt, &qp->lmtline, qp->lf.lf_id, true);
 	if (ret < 0) {
 		plt_err("Could not reset lmtline for queue pair %d", qp->lf.lf_id);
 		return ret;

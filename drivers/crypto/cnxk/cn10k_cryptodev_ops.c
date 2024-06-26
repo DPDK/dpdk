@@ -12,11 +12,6 @@
 #include <ethdev_driver.h>
 
 #include "roc_cpt.h"
-#if defined(__aarch64__)
-#include "roc_io.h"
-#else
-#include "roc_io_generic.h"
-#endif
 #include "roc_idev.h"
 #include "roc_sso.h"
 #include "roc_sso_dp.h"
@@ -40,8 +35,8 @@
 
 /* Holds information required to send crypto operations in one burst */
 struct ops_burst {
-	struct rte_crypto_op *op[CN10K_PKTS_PER_LOOP];
-	uint64_t w2[CN10K_PKTS_PER_LOOP];
+	struct rte_crypto_op *op[CN10K_CPT_PKTS_PER_LOOP];
+	uint64_t w2[CN10K_CPT_PKTS_PER_LOOP];
 	struct cn10k_sso_hws *ws;
 	struct cnxk_cpt_qp *qp;
 	uint16_t nb_ops;
@@ -54,56 +49,6 @@ struct vec_request {
 	union cpt_inst_w7 w7;
 	uint64_t w2;
 };
-
-#if defined(RTE_ARCH_ARM64)
-static __rte_always_inline void __rte_hot
-cn10k_cpt_lmtst_dual_submit(uint64_t *io_addr, const uint16_t lmt_id, int *i)
-{
-	uint64_t lmt_arg;
-
-	/* Check if the total number of instructions is odd or even. */
-	const int flag_odd = *i & 0x1;
-
-	/* Reduce i by 1 when odd number of instructions.*/
-	*i -= flag_odd;
-
-	if (*i > 2 * CN10K_PKTS_PER_STEORL) {
-		lmt_arg = ROC_CN10K_DUAL_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, *io_addr);
-		lmt_arg = ROC_CN10K_DUAL_CPT_LMT_ARG | (*i / 2 - CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
-		roc_lmt_submit_steorl(lmt_arg, *io_addr);
-		if (flag_odd) {
-			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
-				   (ROC_CN10K_CPT_INST_DW_M1 << 4);
-			lmt_arg = (uint64_t)(lmt_id + *i / 2);
-			roc_lmt_submit_steorl(lmt_arg, *io_addr);
-			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
-				   (ROC_CN10K_TWO_CPT_INST_DW_M1 << 4);
-			*i += 1;
-		}
-	} else {
-		if (*i != 0) {
-			lmt_arg =
-				ROC_CN10K_DUAL_CPT_LMT_ARG | (*i / 2 - 1) << 12 | (uint64_t)lmt_id;
-			roc_lmt_submit_steorl(lmt_arg, *io_addr);
-		}
-
-		if (flag_odd) {
-			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
-				   (ROC_CN10K_CPT_INST_DW_M1 << 4);
-			lmt_arg = (uint64_t)(lmt_id + *i / 2);
-			roc_lmt_submit_steorl(lmt_arg, *io_addr);
-			*io_addr = (*io_addr & ~(uint64_t)(0x7 << 4)) |
-				   (ROC_CN10K_TWO_CPT_INST_DW_M1 << 4);
-			*i += 1;
-		}
-	}
-
-	rte_io_wmb();
-}
-#endif
 
 static inline struct cnxk_se_sess *
 cn10k_cpt_sym_temp_sess_create(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op)
@@ -387,8 +332,8 @@ static uint16_t
 cn10k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 			const bool is_sg_ver2)
 {
-	uint64_t lmt_base, lmt_arg, io_addr;
 	struct cpt_inflight_req *infl_req;
+	uint64_t head, lmt_base, io_addr;
 	uint16_t nb_allowed, count = 0;
 	struct cnxk_cpt_qp *qp = qptr;
 	struct pending_queue *pend_q;
@@ -396,7 +341,6 @@ cn10k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 	union cpt_fc_write_s fc;
 	uint64_t *fc_addr;
 	uint16_t lmt_id;
-	uint64_t head;
 	int ret, i;
 
 	pend_q = &qp->pend_q;
@@ -426,11 +370,11 @@ again:
 		goto pend_q_commit;
 	}
 
-	for (i = 0; i < RTE_MIN(CN10K_PKTS_PER_LOOP, nb_ops); i++) {
+	for (i = 0; i < RTE_MIN(CN10K_CPT_PKTS_PER_LOOP, nb_ops); i++) {
 		infl_req = &pend_q->req_queue[head];
 		infl_req->op_flags = 0;
 
-		ret = cn10k_cpt_fill_inst(qp, ops + i, &inst[2 * i], infl_req, is_sg_ver2);
+		ret = cn10k_cpt_fill_inst(qp, ops + i, &inst[i], infl_req, is_sg_ver2);
 		if (unlikely(ret != 1)) {
 			plt_dp_err("Could not process op: %p", ops + i);
 			if (i == 0)
@@ -441,24 +385,12 @@ again:
 		pending_queue_advance(&head, pq_mask);
 	}
 
-	if (i > CN10K_PKTS_PER_STEORL) {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	} else {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	}
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
-	rte_io_wmb();
-
-	if (nb_ops - i > 0 && i == CN10K_PKTS_PER_LOOP) {
-		nb_ops -= i;
-		ops += i;
-		count += i;
+	if (nb_ops - i > 0 && i == CN10K_CPT_PKTS_PER_LOOP) {
+		nb_ops -= CN10K_CPT_PKTS_PER_LOOP;
+		ops += CN10K_CPT_PKTS_PER_LOOP;
+		count += CN10K_CPT_PKTS_PER_LOOP;
 		goto again;
 	}
 
@@ -633,7 +565,7 @@ cn10k_cpt_vec_pkt_submission_timeout_handle(void)
 static inline void
 cn10k_cpt_vec_submit(struct vec_request vec_tbl[], uint16_t vec_tbl_len, struct cnxk_cpt_qp *qp)
 {
-	uint64_t lmt_base, lmt_arg, lmt_id, io_addr;
+	uint64_t lmt_base, lmt_id, io_addr;
 	union cpt_fc_write_s fc;
 	struct cpt_inst_s *inst;
 	uint16_t burst_size;
@@ -661,7 +593,7 @@ cn10k_cpt_vec_submit(struct vec_request vec_tbl[], uint16_t vec_tbl_len, struct 
 again:
 	burst_size = RTE_MIN(CN10K_PKTS_PER_STEORL, vec_tbl_len);
 	for (i = 0; i < burst_size; i++)
-		cn10k_cpt_vec_inst_fill(&vec_tbl[i], &inst[i * 2], qp, vec_tbl[0].w7);
+		cn10k_cpt_vec_inst_fill(&vec_tbl[i], &inst[i], qp, vec_tbl[0].w7);
 
 	do {
 		fc.u64[0] = __atomic_load_n(fc_addr, __ATOMIC_RELAXED);
@@ -671,10 +603,7 @@ again:
 			cn10k_cpt_vec_pkt_submission_timeout_handle();
 	} while (true);
 
-	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | lmt_id;
-	roc_lmt_submit_steorl(lmt_arg, io_addr);
-
-	rte_io_wmb();
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
 	vec_tbl_len -= i;
 
@@ -688,12 +617,12 @@ static inline int
 ca_lmtst_vec_submit(struct ops_burst *burst, struct vec_request vec_tbl[], uint16_t *vec_tbl_len,
 		    const bool is_sg_ver2)
 {
-	struct cpt_inflight_req *infl_reqs[CN10K_PKTS_PER_LOOP];
-	uint64_t lmt_base, lmt_arg, io_addr;
+	struct cpt_inflight_req *infl_reqs[CN10K_CPT_PKTS_PER_LOOP];
 	uint16_t lmt_id, len = *vec_tbl_len;
 	struct cpt_inst_s *inst, *inst_base;
 	struct cpt_inflight_req *infl_req;
 	struct rte_event_vector *vec;
+	uint64_t lmt_base, io_addr;
 	union cpt_fc_write_s fc;
 	struct cnxk_cpt_qp *qp;
 	uint64_t *fc_addr;
@@ -730,7 +659,7 @@ ca_lmtst_vec_submit(struct ops_burst *burst, struct vec_request vec_tbl[], uint1
 	}
 
 	for (i = 0; i < burst->nb_ops; i++) {
-		inst = &inst_base[2 * i];
+		inst = &inst_base[i];
 		infl_req = infl_reqs[i];
 		infl_req->op_flags = 0;
 
@@ -790,23 +719,11 @@ submit:
 	if (CNXK_TT_FROM_TAG(burst->ws->gw_rdata) == SSO_TT_ORDERED)
 		roc_sso_hws_head_wait(burst->ws->base);
 
-	if (i > CN10K_PKTS_PER_STEORL) {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	} else {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	}
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
 	/* Store w7 of last successfully filled instruction */
 	inst = &inst_base[2 * (i - 1)];
 	vec_tbl[0].w7 = inst->w7;
-
-	rte_io_wmb();
 
 put:
 	if (i != burst->nb_ops)
@@ -820,10 +737,10 @@ put:
 static inline uint16_t
 ca_lmtst_burst_submit(struct ops_burst *burst, const bool is_sg_ver2)
 {
-	struct cpt_inflight_req *infl_reqs[CN10K_PKTS_PER_LOOP];
-	uint64_t lmt_base, lmt_arg, io_addr;
+	struct cpt_inflight_req *infl_reqs[CN10K_CPT_PKTS_PER_LOOP];
 	struct cpt_inst_s *inst, *inst_base;
 	struct cpt_inflight_req *infl_req;
+	uint64_t lmt_base, io_addr;
 	union cpt_fc_write_s fc;
 	struct cnxk_cpt_qp *qp;
 	uint64_t *fc_addr;
@@ -854,7 +771,7 @@ ca_lmtst_burst_submit(struct ops_burst *burst, const bool is_sg_ver2)
 	}
 
 	for (i = 0; i < burst->nb_ops; i++) {
-		inst = &inst_base[2 * i];
+		inst = &inst_base[i];
 		infl_req = infl_reqs[i];
 		infl_req->op_flags = 0;
 
@@ -891,19 +808,7 @@ submit:
 	if (CNXK_TT_FROM_TAG(burst->ws->gw_rdata) == SSO_TT_ORDERED)
 		roc_sso_hws_head_wait(burst->ws->base);
 
-	if (i > CN10K_PKTS_PER_STEORL) {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	} else {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	}
-
-	rte_io_wmb();
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
 put:
 	if (unlikely(i != burst->nb_ops))
@@ -965,7 +870,7 @@ cn10k_cpt_crypto_adapter_enqueue(void *ws, struct rte_event ev[], uint16_t nb_ev
 		burst.op[burst.nb_ops] = op;
 
 		/* Max nb_ops per burst check */
-		if (++burst.nb_ops == CN10K_PKTS_PER_LOOP) {
+		if (++burst.nb_ops == CN10K_CPT_PKTS_PER_LOOP) {
 			if (is_vector)
 				submitted = ca_lmtst_vec_submit(&burst, vec_tbl, &vec_tbl_len,
 								is_sg_ver2);
@@ -1467,8 +1372,6 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 
 	vf = cdev->data->dev_private;
 
-	const int nb_pkts_per_loop = 2 * CN10K_PKTS_PER_LOOP;
-
 	lmt_base = vf->rx_inj_lmtline.lmt_base;
 	io_addr = vf->rx_inj_lmtline.io_addr;
 	fc_addr = vf->rx_inj_lmtline.fc_addr;
@@ -1488,7 +1391,7 @@ again:
 	if (unlikely(fc.s.qsize > fc_thresh))
 		goto exit;
 
-	for (; i < RTE_MIN(nb_pkts_per_loop, nb_pkts); i++) {
+	for (; i < RTE_MIN(CN10K_CPT_PKTS_PER_LOOP, nb_pkts); i++) {
 
 		m = pkts[i];
 		sec_sess = (struct cn10k_sec_session *)sess[i];
@@ -1549,11 +1452,11 @@ again:
 
 	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
-	if (nb_pkts - i > 0 && i == nb_pkts_per_loop) {
-		nb_pkts -= nb_pkts_per_loop;
-		pkts += nb_pkts_per_loop;
-		count += nb_pkts_per_loop;
-		sess += nb_pkts_per_loop;
+	if (nb_pkts - i > 0 && i == CN10K_CPT_PKTS_PER_LOOP) {
+		nb_pkts -= CN10K_CPT_PKTS_PER_LOOP;
+		pkts += CN10K_CPT_PKTS_PER_LOOP;
+		count += CN10K_CPT_PKTS_PER_LOOP;
+		sess += CN10K_CPT_PKTS_PER_LOOP;
 		goto again;
 	}
 
@@ -1652,8 +1555,8 @@ cn10k_cpt_raw_enqueue_burst(void *qpair, uint8_t *drv_ctx, struct rte_crypto_sym
 			    const bool is_sgv2)
 {
 	uint16_t lmt_id, nb_allowed, nb_ops = vec->num;
-	uint64_t lmt_base, lmt_arg, io_addr, head;
 	struct cpt_inflight_req *infl_req;
+	uint64_t lmt_base, io_addr, head;
 	struct cnxk_cpt_qp *qp = qpair;
 	struct cnxk_sym_dp_ctx *dp_ctx;
 	struct pending_queue *pend_q;
@@ -1690,7 +1593,7 @@ again:
 		goto pend_q_commit;
 	}
 
-	for (i = 0; i < RTE_MIN(CN10K_PKTS_PER_LOOP, nb_ops); i++) {
+	for (i = 0; i < RTE_MIN(CN10K_CPT_PKTS_PER_LOOP, nb_ops); i++) {
 		struct cnxk_iov iov;
 
 		index = count + i;
@@ -1698,7 +1601,7 @@ again:
 		infl_req->op_flags = 0;
 
 		cnxk_raw_burst_to_iov(vec, &ofs, index, &iov);
-		ret = cn10k_cpt_raw_fill_inst(&iov, qp, dp_ctx, &inst[2 * i], infl_req,
+		ret = cn10k_cpt_raw_fill_inst(&iov, qp, dp_ctx, &inst[i], infl_req,
 					      user_data[index], is_sgv2);
 		if (unlikely(ret != 1)) {
 			plt_dp_err("Could not process vec: %d", index);
@@ -1712,21 +1615,9 @@ again:
 		pending_queue_advance(&head, pq_mask);
 	}
 
-	if (i > CN10K_PKTS_PER_STEORL) {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - CN10K_PKTS_PER_STEORL - 1) << 12 |
-			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	} else {
-		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
-		roc_lmt_submit_steorl(lmt_arg, io_addr);
-	}
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
-	rte_io_wmb();
-
-	if (nb_ops - i > 0 && i == CN10K_PKTS_PER_LOOP) {
+	if (nb_ops - i > 0 && i == CN10K_CPT_PKTS_PER_LOOP) {
 		nb_ops -= i;
 		count += i;
 		goto again;
@@ -1767,8 +1658,8 @@ cn10k_cpt_raw_enqueue(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data
 		      struct rte_crypto_va_iova_ptr *aad_or_auth_iv, void *user_data,
 		      const bool is_sgv2)
 {
-	uint64_t lmt_base, lmt_arg, io_addr, head;
 	struct cpt_inflight_req *infl_req;
+	uint64_t lmt_base, io_addr, head;
 	struct cnxk_cpt_qp *qp = qpair;
 	struct cnxk_sym_dp_ctx *dp_ctx;
 	uint16_t lmt_id, nb_allowed;
@@ -1776,7 +1667,7 @@ cn10k_cpt_raw_enqueue(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data
 	union cpt_fc_write_s fc;
 	struct cnxk_iov iov;
 	uint64_t *fc_addr;
-	int ret;
+	int ret, i = 1;
 
 	struct pending_queue *pend_q = &qp->pend_q;
 	const uint64_t pq_mask = pend_q->pq_mask;
@@ -1813,10 +1704,7 @@ cn10k_cpt_raw_enqueue(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data
 
 	pending_queue_advance(&head, pq_mask);
 
-	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
-	roc_lmt_submit_steorl(lmt_arg, io_addr);
-
-	rte_io_wmb();
+	cn10k_cpt_lmtst_dual_submit(&io_addr, lmt_id, &i);
 
 	pend_q->head = head;
 	pend_q->time_out = rte_get_timer_cycles() + DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();

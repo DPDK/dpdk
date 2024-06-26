@@ -25,6 +25,8 @@
 
 #define MOD_INC(i, l) ((i) == (l - 1) ? (i) = 0 : (i)++)
 
+#define CN10K_CPT_PKTS_PER_LOOP	  64
+
 /* Macros to form words in CPT instruction */
 #define CNXK_CPT_INST_W2(tag, tt, grp, rvu_pf_func)                            \
 	((tag) | ((uint64_t)(tt) << 32) | ((uint64_t)(grp) << 34) |            \

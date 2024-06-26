@@ -1135,8 +1135,8 @@ roc_cpt_iq_enable(struct roc_cpt_lf *lf)
 }
 
 int
-roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
-		     int lf_id)
+roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline, int lf_id,
+		     bool is_dual)
 {
 	struct roc_cpt_lf *lf;
 
@@ -1145,12 +1145,19 @@ roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline,
 		return -ENOTSUP;
 
 	lmtline->io_addr = lf->io_addr;
-	if (roc_model_is_cn10k())
-		lmtline->io_addr |= ROC_CN10K_CPT_INST_DW_M1 << 4;
+	lmtline->fc_thresh = lf->nb_desc - CPT_LF_FC_MIN_THRESHOLD;
+
+	if (roc_model_is_cn10k()) {
+		if (is_dual) {
+			lmtline->io_addr |= ROC_CN10K_TWO_CPT_INST_DW_M1 << 4;
+			lmtline->fc_thresh = lf->nb_desc -  2 * CPT_LF_FC_MIN_THRESHOLD;
+		} else {
+			lmtline->io_addr |= ROC_CN10K_CPT_INST_DW_M1 << 4;
+		}
+	}
 
 	lmtline->fc_addr = lf->fc_addr;
 	lmtline->lmt_base = lf->lmt_base;
-	lmtline->fc_thresh = lf->nb_desc - CPT_LF_FC_MIN_THRESHOLD;
 
 	return 0;
 }
