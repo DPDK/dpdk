@@ -723,6 +723,7 @@ struct ice_hw_common_caps {
 	bool tx_sched_topo_comp_mode_en;
 	/* Support for OROM update in Recovery Mode */
 	bool orom_recovery_update;
+	bool next_cluster_id_support;
 };
 
 /* IEEE 1588 TIME_SYNC specific info */
