@@ -1237,10 +1237,16 @@ struct ice_switch_info {
 
 /* PHY model */
 enum ice_phy_model {
-	ICE_PHY_E810 = 1,
+	ICE_PHY_UNSUP = -1,
+	ICE_PHY_E810  = 1,
 	ICE_PHY_E822,
 	ICE_PHY_ETH56G,
 	ICE_PHY_E830,
+};
+
+enum ice_eth56g_mode {
+	ICE_ETH56G_MODE_0,
+	ICE_ETH56G_MODE_1,
 };
 
 /* Port hardware description */
@@ -1269,9 +1275,17 @@ struct ice_hw {
 
 	u8 pf_id;		/* device profile info */
 	enum ice_phy_model phy_model;
-	u8 phy_addr;	/* PHY address */
 	u8 phy_ports;
 	u8 max_phy_port;
+#define ICE_PHYS_PER_CPLX_E824S	1
+#define ICE_PORTS_PER_PHY_E824S	8
+
+#define ICE_PHYS_PER_CPLX_C825X	2
+#define ICE_PORTS_PER_PHY_C825X	4
+
+#define MAX_PHYS_PER_ICE	2
+	u8 num_phys;
+	u8 phy_addr[MAX_PHYS_PER_ICE];		/* PHY address */
 	u8 logical_pf_id;
 
 	u16 max_burst_size;	/* driver sets this value */
@@ -1678,4 +1692,10 @@ struct ice_aq_get_set_rss_lut_params {
 /* AQ API version for FW auto drop reports */
 #define ICE_FW_API_AUTO_DROP_MAJ		1
 #define ICE_FW_API_AUTO_DROP_MIN		4
+
+static inline bool
+ice_is_nac_dual(struct ice_hw *hw)
+{
+	return !!(hw->dev_caps.nac_topo.mode & ICE_NAC_TOPO_DUAL_M);
+}
 #endif /* _ICE_TYPE_H_ */

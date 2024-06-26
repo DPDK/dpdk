@@ -911,8 +911,13 @@ static void ice_ptp_exec_tmr_cmd(struct ice_hw *hw)
 	ice_flush(hw);
 }
 
+enum eth56g_res_type {
+	ETH56G_PHY_REG,
+	ETH56G_PHY_MEM,
+};
+
 /* 56G PHY access functions */
-static const u32 eth56g_port_base[ICE_NUM_PHY_PORTS] = {
+static const u32 ice_eth56g_port_base[ICE_NUM_PHY_PORTS] = {
 	ICE_PHY0_BASE,
 	ICE_PHY1_BASE,
 	ICE_PHY2_BASE,
@@ -923,13 +928,14 @@ static const u32 eth56g_port_base[ICE_NUM_PHY_PORTS] = {
 /**
  * ice_write_phy_eth56g_raw_lp - Write a PHY port register with lock parameter
  * @hw: pointer to the HW struct
+ * @phy_index: PHY index
  * @reg_addr: PHY register address
  * @val: Value to write
  * @lock_sbq: true to lock the sideband queue
  */
 static int
-ice_write_phy_eth56g_raw_lp(struct ice_hw *hw,  u32 reg_addr, u32 val,
-			    bool lock_sbq)
+ice_write_phy_eth56g_raw_lp(struct ice_hw *hw, u8 phy_index, u32 reg_addr,
+			    u32 val, bool lock_sbq)
 {
 	struct ice_sbq_msg_input phy_msg;
 	int err;
@@ -940,7 +946,7 @@ ice_write_phy_eth56g_raw_lp(struct ice_hw *hw,  u32 reg_addr, u32 val,
 	phy_msg.msg_addr_high = ICE_HI_WORD(reg_addr);
 
 	phy_msg.data = val;
-	phy_msg.dest_dev = hw->phy_addr;
+	phy_msg.dest_dev = hw->phy_addr[phy_index];
 
 	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
 
@@ -954,13 +960,14 @@ ice_write_phy_eth56g_raw_lp(struct ice_hw *hw,  u32 reg_addr, u32 val,
 /**
  * ice_read_phy_eth56g_raw_lp - Read a PHY port register with lock parameter
  * @hw: pointer to the HW struct
- * @reg_addr: PHY port register address
- * @val: Pointer to the value to read (out param)
+ * @phy_index: PHY index
+ * @reg_addr: PHY register address
+ * @val: Value to write
  * @lock_sbq: true to lock the sideband queue
  */
 static int
-ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u32 reg_addr, u32 *val,
-			   bool lock_sbq)
+ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u8 phy_index, u32 reg_addr,
+			   u32 *val, bool lock_sbq)
 {
 	struct ice_sbq_msg_input phy_msg;
 	int err;
@@ -970,7 +977,8 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u32 reg_addr, u32 *val,
 	phy_msg.msg_addr_low = ICE_LO_WORD(reg_addr);
 	phy_msg.msg_addr_high = ICE_HI_WORD(reg_addr);
 
-	phy_msg.dest_dev = hw->phy_addr;
+	phy_msg.data = 0;
+	phy_msg.dest_dev = hw->phy_addr[phy_index];
 
 	err = ice_sbq_rw_reg_lp(hw, &phy_msg, lock_sbq);
 
@@ -986,47 +994,95 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u32 reg_addr, u32 *val,
 /**
  * ice_phy_port_reg_address_eth56g - Calculate a PHY port register address
  * @port: Port number to be written
+ * @res_type: resource type (register/memory)
  * @offset: Offset from PHY port register base
  * @address: The result address
  */
 static int
-ice_phy_port_reg_address_eth56g(u8 port, u16 offset, u32 *address)
+ice_phy_port_res_address_eth56g(u8 port, enum eth56g_res_type res_type,
+				u16 offset, u32 *address)
 {
 	u8 phy, lane;
-
-	if (port >= ICE_NUM_EXTERNAL_PORTS)
-		return ICE_ERR_OUT_OF_RANGE;
 
 	phy = port / ICE_PORTS_PER_QUAD;
 	lane = port % ICE_PORTS_PER_QUAD;
 
-	*address = offset + eth56g_port_base[phy] +
-		   PHY_PTP_LANE_ADDR_STEP * lane;
+	switch (res_type) {
+	case ETH56G_PHY_REG:
+		*address = offset + ice_eth56g_port_base[phy] +
+			   PHY_PTP_LANE_ADDR_STEP * lane;
+		break;
+	case ETH56G_PHY_MEM:
+		*address = offset + ice_eth56g_port_base[phy] +
+			   PHY_PTP_MEM_START + PHY_PTP_MEM_LANE_STEP * lane;
+		break;
+	default:
+		return ICE_ERR_PARAM;
+	}
 
 	return 0;
 }
 
 /**
- * ice_phy_port_mem_address_eth56g - Calculate a PHY port memory address
- * @port: Port number to be written
- * @offset: Offset from PHY port register base
- * @address: The result address
+ * ice_write_phy_port_eth56g_lp - Write a PHY port register with lock parameter
+ * @hw: pointer to the HW struct
+ * @reg_offs: PHY register offset
+ * @port: Port number
+ * @val: Value to write
+ * @res_type: resource type (register/memory)
+ * @lock_sbq: true to lock the sideband queue
  */
 static int
-ice_phy_port_mem_address_eth56g(u8 port, u16 offset, u32 *address)
+ice_write_phy_port_eth56g_lp(struct ice_hw *hw, u8 port, u32 reg_offs, u32 val,
+			     enum eth56g_res_type res_type, bool lock_sbq)
 {
-	u8 phy, lane;
+	u8 phy_index = port / hw->phy_ports;
+	u8 phy_port = port % hw->phy_ports;
+	int err;
+	u32 reg_addr;
 
-	if (port >= ICE_NUM_EXTERNAL_PORTS)
+	if (port >= hw->max_phy_port)
 		return ICE_ERR_OUT_OF_RANGE;
 
-	phy = port / ICE_PORTS_PER_QUAD;
-	lane = port % ICE_PORTS_PER_QUAD;
+	err = ice_phy_port_res_address_eth56g(phy_port, res_type, reg_offs,
+					      &reg_addr);
 
-	*address = offset + eth56g_port_base[phy] +
-		   PHY_PTP_MEM_START + PHY_PTP_MEM_LANE_STEP * lane;
+	if (err)
+		return err;
 
-	return 0;
+	return ice_write_phy_eth56g_raw_lp(hw, phy_index, reg_addr, val,
+					   lock_sbq);
+}
+
+/**
+ * ice_read_phy_port_eth56g_lp - Read a PHY port register with lock parameter
+ * @hw: pointer to the HW struct
+ * @reg_offs: PHY register offset
+ * @port: Port number
+ * @val: Value to write
+ * @res_type: resource type (register/memory)
+ * @lock_sbq: true to lock the sideband queue
+ */
+static int
+ice_read_phy_port_eth56g_lp(struct ice_hw *hw, u8 port, u32 reg_offs, u32 *val,
+			    enum eth56g_res_type res_type, bool lock_sbq)
+{
+	u8 phy_index = port / hw->phy_ports;
+	u8 phy_port = port % hw->phy_ports;
+	int err;
+	u32 reg_addr;
+
+	if (port >= hw->max_phy_port)
+		return ICE_ERR_OUT_OF_RANGE;
+
+	err = ice_phy_port_res_address_eth56g(phy_port, res_type, reg_offs,
+					      &reg_addr);
+
+	if (err)
+		return err;
+
+	return ice_read_phy_eth56g_raw_lp(hw, phy_index, reg_addr, val,
+					  lock_sbq);
 }
 
 /**
@@ -1041,14 +1097,8 @@ static int
 ice_write_phy_reg_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset, u32 val,
 			    bool lock_sbq)
 {
-	int err;
-	u32 reg_addr;
-
-	err = ice_phy_port_reg_address_eth56g(port, offset, &reg_addr);
-	if (err)
-		return err;
-
-	return ice_write_phy_eth56g_raw_lp(hw, reg_addr, val, lock_sbq);
+	return ice_write_phy_port_eth56g_lp(hw, port, offset, val,
+					    ETH56G_PHY_REG, lock_sbq);
 }
 
 /**
@@ -1077,14 +1127,8 @@ static int
 ice_read_phy_reg_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset, u32 *val,
 			   bool lock_sbq)
 {
-	int err;
-	u32 reg_addr;
-
-	err = ice_phy_port_reg_address_eth56g(port, offset, &reg_addr);
-	if (err)
-		return err;
-
-	return ice_read_phy_eth56g_raw_lp(hw, reg_addr, val, lock_sbq);
+	return ice_read_phy_port_eth56g_lp(hw, port, offset, val,
+					   ETH56G_PHY_REG, lock_sbq);
 }
 
 /**
@@ -1113,14 +1157,8 @@ static int
 ice_phy_port_mem_read_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset,
 				u32 *val, bool lock_sbq)
 {
-	int err;
-	u32 mem_addr;
-
-	err = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
-	if (err)
-		return err;
-
-	return ice_read_phy_eth56g_raw_lp(hw, mem_addr, val, lock_sbq);
+	return ice_read_phy_port_eth56g_lp(hw, port, offset, val,
+					   ETH56G_PHY_MEM, lock_sbq);
 }
 
 /**
@@ -1150,14 +1188,8 @@ static int
 ice_phy_port_mem_write_eth56g_lp(struct ice_hw *hw, u8 port, u16 offset,
 				 u32 val, bool lock_sbq)
 {
-	int err;
-	u32 mem_addr;
-
-	err = ice_phy_port_mem_address_eth56g(port, offset, &mem_addr);
-	if (err)
-		return err;
-
-	return ice_write_phy_eth56g_raw_lp(hw, mem_addr, val, lock_sbq);
+	return ice_write_phy_port_eth56g_lp(hw, port, offset, val,
+					    ETH56G_PHY_MEM, lock_sbq);
 }
 
 /**
@@ -2192,22 +2224,35 @@ static int ice_ptp_init_phc_eth56g(struct ice_hw *hw)
 }
 
 /**
- * ice_ptp_read_tx_hwtstamp_status_eth56g - Get the current TX timestamp
- * err mask. Returns the mask of ports where TX timestamps are available
+ * ice_ptp_read_tx_hwtstamp_status_eth56g - Get TX timestamp status
  * @hw: pointer to the HW struct
- * @ts_err: the timestamp mask pointer
+ * @ts_status: the timestamp mask pointer
+ *
+ * Read the PHY Tx timestamp status mask indicating which ports have Tx
+ * timestamps available.
  */
 int
-ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_err)
+ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_status)
 {
-	int err;
+	u32 curr_status;
+	u8 phy, mask;
 
-	err = ice_read_phy_eth56g_raw_lp(hw, PHY_PTP_INT_STATUS, ts_err,
-					    true);
-	if (err)
-		return err;
+	mask = (1 << hw->phy_ports) - 1;
+	*ts_status = 0;
 
-	ice_debug(hw, ICE_DBG_PTP, "PHY interrupt err: %x\n", *ts_err);
+	for (phy = 0; phy < hw->num_phys; phy++) {
+		int err;
+
+		err = ice_read_phy_eth56g_raw_lp(hw, phy, PHY_PTP_INT_STATUS,
+						 &curr_status, true);
+
+		if (err)
+			return err;
+
+		*ts_status |= (curr_status & mask) << (phy * hw->phy_ports);
+	}
+
+	ice_debug(hw, ICE_DBG_PTP, "PHY interrupt err: %x\n", *ts_status);
 
 	return 0;
 }
@@ -2216,37 +2261,56 @@ ice_ptp_read_tx_hwtstamp_status_eth56g(struct ice_hw *hw, u32 *ts_err)
 
 /**
  * ice_ptp_init_phy_model - Initialize hw->phy_model based on device type
- * @hw: pointer to the HW struct
+ * @hw: pointer to the HW structure
  *
- * Determine the PHY configuration for the device, and initialize hw->phy_model
+ * Determine the PHY model for the device, and initialize hw->phy_model
  * for use by other functions.
  */
 void ice_ptp_init_phy_model(struct ice_hw *hw)
 {
-	u32 phy_rev;
+	unsigned int phy;
+
+	for (phy = 0; phy < MAX_PHYS_PER_ICE; phy++)
+		hw->phy_addr[phy] = 0;
 
 	switch (hw->device_id & ICE_DEVID_MASK) {
 	case ICE_DEV_ID_E825C_BACKPLANE & ICE_DEVID_MASK:
-		hw->phy_addr = eth56g_dev_0;
+		hw->phy_addr[0] = eth56g_dev_0;
+		hw->phy_addr[1] = eth56g_dev_1;
+		hw->num_phys = ICE_PHYS_PER_CPLX_C825X;
+		hw->phy_ports = ICE_PORTS_PER_PHY_C825X;
+		hw->max_phy_port = ice_is_nac_dual(hw) ?
+		       ICE_PORTS_PER_PHY_C825X :
+		       ICE_PHYS_PER_CPLX_C825X * ICE_PORTS_PER_PHY_C825X;
 		break;
 	default:
-		hw->phy_addr = 0;
+		goto e8xx;
 	}
 
-	if (hw->phy_addr) {
-		int err;
+	ice_sb_access_ena_eth56g(hw, true);
+	for (phy = 0; phy < hw->num_phys; phy++)
+		if (hw->phy_addr[phy]) {
+			int err;
+			u32 phy_rev;
 
-		ice_sb_access_ena_eth56g(hw, true);
-		err = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION,
-						 &phy_rev, true);
-		if (err)
-			return;
+			err = ice_read_phy_eth56g_raw_lp(hw, phy,
+							 PHY_REG_REVISION,
+							 &phy_rev, true);
+			if (err) {
+				hw->phy_model = ICE_PHY_UNSUP;
+				return;
+			}
 
-		if (phy_rev == PHY_REVISION_ETH56G) {
-			hw->phy_model = ICE_PHY_ETH56G;
-			return;
+			if (phy_rev != PHY_REVISION_ETH56G) {
+				hw->phy_model = ICE_PHY_UNSUP;
+				return;
+			}
 		}
-	}
+
+	hw->phy_model = ICE_PHY_ETH56G;
+
+	return;
+e8xx:
 
 	if (ice_is_e810(hw))
 		hw->phy_model = ICE_PHY_E810;
