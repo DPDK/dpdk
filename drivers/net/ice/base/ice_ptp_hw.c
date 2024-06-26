@@ -5793,6 +5793,7 @@ static int ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
  * ice_ptp_init_time - Initialize device time to provided value
  * @hw: pointer to HW struct
  * @time: 64bits of time (GLTSYN_TIME_L and GLTSYN_TIME_H)
+ * @wr_main_tmr: program the main timer
  *
  * Initialize the device to the specified time provided. This requires a three
  * step process:
@@ -5802,7 +5803,7 @@ static int ice_ptp_tmr_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
  * 3) issue an init_time timer command to synchronously switch both the source
  *    and port timers to the new init time value at the next clock cycle.
  */
-int ice_ptp_init_time(struct ice_hw *hw, u64 time)
+int ice_ptp_init_time(struct ice_hw *hw, u64 time, bool wr_main_tmr)
 {
 	int err;
 	u8 tmr_idx;
@@ -5814,9 +5815,11 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time)
 	if (hw->phy_model == ICE_PHY_E830)
 		return ice_ptp_write_direct_phc_time_e830(hw, time);
 
-	wr32(hw, GLTSYN_SHTIME_L(tmr_idx), ICE_LO_DWORD(time));
-	wr32(hw, GLTSYN_SHTIME_H(tmr_idx), ICE_HI_DWORD(time));
-	wr32(hw, GLTSYN_SHTIME_0(tmr_idx), 0);
+	if (wr_main_tmr) {
+		wr32(hw, GLTSYN_SHTIME_L(tmr_idx), ICE_LO_DWORD(time));
+		wr32(hw, GLTSYN_SHTIME_H(tmr_idx), ICE_HI_DWORD(time));
+		wr32(hw, GLTSYN_SHTIME_0(tmr_idx), 0);
+	}
 
 	/* PHY Clks */
 	/* Fill Rx and Tx ports and send msg to PHY */
@@ -5844,8 +5847,9 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time)
  * ice_ptp_write_incval - Program PHC with new increment value
  * @hw: pointer to HW struct
  * @incval: Source timer increment value per clock cycle
+ * @wr_main_tmr: Program the main timer
  *
- * Program the PHC with a new increment value. This requires a three-step
+ * Program the timers with a new increment value. This requires a three-step
  * process:
  *
  * 1) Write the increment value to the source timer shadow registers
@@ -5854,7 +5858,8 @@ int ice_ptp_init_time(struct ice_hw *hw, u64 time)
  *    the source and port timers to the new increment value at the next clock
  *    cycle.
  */
-int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
+int ice_ptp_write_incval(struct ice_hw *hw, u64 incval,
+			 bool wr_main_tmr)
 {
 	int err;
 	u8 tmr_idx;
@@ -5865,9 +5870,11 @@ int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
 	if (hw->phy_model == ICE_PHY_E830)
 		return ice_ptp_write_direct_incval_e830(hw, incval);
 
-	/* Shadow Adjust */
-	wr32(hw, GLTSYN_SHADJ_L(tmr_idx), ICE_LO_DWORD(incval));
-	wr32(hw, GLTSYN_SHADJ_H(tmr_idx), ICE_HI_DWORD(incval));
+	if (wr_main_tmr) {
+		/* Shadow Adjust */
+		wr32(hw, GLTSYN_SHADJ_L(tmr_idx), ICE_LO_DWORD(incval));
+		wr32(hw, GLTSYN_SHADJ_H(tmr_idx), ICE_HI_DWORD(incval));
+	}
 
 	switch (hw->phy_model) {
 	case ICE_PHY_ETH56G:
@@ -5893,17 +5900,19 @@ int ice_ptp_write_incval(struct ice_hw *hw, u64 incval)
  * ice_ptp_write_incval_locked - Program new incval while holding semaphore
  * @hw: pointer to HW struct
  * @incval: Source timer increment value per clock cycle
+ * @wr_main_tmr: Program the main timer
  *
  * Program a new PHC incval while holding the PTP semaphore.
  */
-int ice_ptp_write_incval_locked(struct ice_hw *hw, u64 incval)
+int ice_ptp_write_incval_locked(struct ice_hw *hw, u64 incval,
+				bool wr_main_tmr)
 {
 	int err;
 
 	if (!ice_ptp_lock(hw))
 		return ICE_ERR_NOT_READY;
 
-	err = ice_ptp_write_incval(hw, incval);
+	err = ice_ptp_write_incval(hw, incval, wr_main_tmr);
 
 	ice_ptp_unlock(hw);
 
