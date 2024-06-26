@@ -1260,6 +1260,8 @@ struct ice_hw {
 
 	u8 pf_id;		/* device profile info */
 	enum ice_phy_cfg phy_cfg;
+	u8 phy_ports;
+	u8 max_phy_port;
 	u8 logical_pf_id;
 
 	u16 max_burst_size;	/* driver sets this value */
