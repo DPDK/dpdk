@@ -188,6 +188,8 @@ ice_ptp_read_phy_incval_e822(struct ice_hw *hw, u8 port, u64 *incval);
 int
 ice_ptp_read_port_capture_e822(struct ice_hw *hw, u8 port,
 			       u64 *tx_ts, u64 *rx_ts);
+const char *ice_clk_freq_str(u8 clk_freq);
+const char *ice_clk_src_str(u8 clk_src);
 void ice_ptp_reset_ts_memory_quad_e822(struct ice_hw *hw, u8 quad);
 int
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,

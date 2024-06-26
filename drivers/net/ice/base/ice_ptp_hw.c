@@ -171,7 +171,7 @@ ice_write_cgu_reg_e82x(struct ice_hw *hw, u16 addr, u32 val)
  *
  * Convert the specified TIME_REF clock frequency to a string.
  */
-static const char *ice_clk_freq_str(u8 clk_freq)
+const char *ice_clk_freq_str(u8 clk_freq)
 {
 	switch ((enum ice_time_ref_freq)clk_freq) {
 	case ICE_TIME_REF_FREQ_25_000:
@@ -197,7 +197,7 @@ static const char *ice_clk_freq_str(u8 clk_freq)
  *
  * Convert the specified clock source to its string name.
  */
-static const char *ice_clk_src_str(u8 clk_src)
+const char *ice_clk_src_str(u8 clk_src)
 {
 	switch ((enum ice_clk_src)clk_src) {
 	case ICE_CLK_SRC_TCX0:
