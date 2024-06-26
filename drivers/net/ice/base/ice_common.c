@@ -236,7 +236,7 @@ bool ice_is_e810t(struct ice_hw *hw)
 		case ICE_SUBDEV_ID_E810T2:
 		case ICE_SUBDEV_ID_E810T3:
 		case ICE_SUBDEV_ID_E810T4:
-		case ICE_SUBDEV_ID_E810T5:
+		case ICE_SUBDEV_ID_E810T6:
 		case ICE_SUBDEV_ID_E810T7:
 			return true;
 		}
@@ -244,8 +244,8 @@ bool ice_is_e810t(struct ice_hw *hw)
 	case ICE_DEV_ID_E810C_QSFP:
 		switch (hw->subsystem_device_id) {
 		case ICE_SUBDEV_ID_E810T2:
+		case ICE_SUBDEV_ID_E810T3:
 		case ICE_SUBDEV_ID_E810T5:
-		case ICE_SUBDEV_ID_E810T6:
 			return true;
 		}
 		break;
