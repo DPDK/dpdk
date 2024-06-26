@@ -146,7 +146,8 @@ void *ice_parser_create_table(struct ice_hw *hw, u32 sect_type,
 			if (no_offset)
 				idx++;
 			else
-				idx = hdr->offset + state.entry_idx;
+				idx = LE16_TO_CPU(hdr->offset) +
+							state.entry_idx;
 			parse_item(hw, idx,
 				   (void *)((uintptr_t)table + idx * item_size),
 				   data, item_size);
