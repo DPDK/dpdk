@@ -3798,6 +3798,7 @@ ice_dev_start(struct rte_eth_dev *dev)
 	uint8_t timer = hw->func_caps.ts_func_info.tmr_index_owned;
 	uint32_t pin_idx = ad->devargs.pin_idx;
 	struct rte_tm_error tm_err;
+	ice_bitmap_t pmask;
 
 	/* program Tx queues' context in hardware */
 	for (nb_txq = 0; nb_txq < data->nb_tx_queues; nb_txq++) {
@@ -3854,10 +3855,9 @@ ice_dev_start(struct rte_eth_dev *dev)
 		return -EIO;
 
 	/* Enable receiving broadcast packets and transmitting packets */
-	ret = ice_set_vsi_promisc(hw, vsi->idx,
-				  ICE_PROMISC_BCAST_RX | ICE_PROMISC_BCAST_TX |
-				  ICE_PROMISC_UCAST_TX | ICE_PROMISC_MCAST_TX,
-				  0);
+	pmask = ICE_PROMISC_BCAST_RX | ICE_PROMISC_BCAST_TX |
+			ICE_PROMISC_UCAST_TX | ICE_PROMISC_MCAST_TX;
+	ret = ice_set_vsi_promisc(hw, vsi->idx, &pmask, 0);
 	if (ret != ICE_SUCCESS)
 		PMD_DRV_LOG(INFO, "fail to set vsi broadcast");
 
@@ -5202,12 +5202,12 @@ ice_promisc_enable(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
 	int status, ret = 0;
-	uint8_t pmask;
+	ice_bitmap_t pmask;
 
 	pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
 		ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
-	status = ice_set_vsi_promisc(hw, vsi->idx, pmask, 0);
+	status = ice_set_vsi_promisc(hw, vsi->idx, &pmask, 0);
 	switch (status) {
 	case ICE_ERR_ALREADY_EXISTS:
 		PMD_DRV_LOG(DEBUG, "Promisc mode has already been enabled");
@@ -5228,7 +5228,7 @@ ice_promisc_disable(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
 	int status, ret = 0;
-	uint8_t pmask;
+	ice_bitmap_t pmask;
 
 	if (dev->data->all_multicast == 1)
 		pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX;
@@ -5236,7 +5236,7 @@ ice_promisc_disable(struct rte_eth_dev *dev)
 		pmask = ICE_PROMISC_UCAST_RX | ICE_PROMISC_UCAST_TX |
 			ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
-	status = ice_clear_vsi_promisc(hw, vsi->idx, pmask, 0);
+	status = ice_clear_vsi_promisc(hw, vsi->idx, &pmask, 0);
 	if (status != ICE_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to clear promisc, err=%d", status);
 		ret = -EAGAIN;
@@ -5252,11 +5252,11 @@ ice_allmulti_enable(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
 	int status, ret = 0;
-	uint8_t pmask;
+	ice_bitmap_t pmask;
 
 	pmask = ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
-	status = ice_set_vsi_promisc(hw, vsi->idx, pmask, 0);
+	status = ice_set_vsi_promisc(hw, vsi->idx, &pmask, 0);
 
 	switch (status) {
 	case ICE_ERR_ALREADY_EXISTS:
@@ -5278,14 +5278,14 @@ ice_allmulti_disable(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_vsi *vsi = pf->main_vsi;
 	int status, ret = 0;
-	uint8_t pmask;
+	ice_bitmap_t pmask;
 
 	if (dev->data->promiscuous == 1)
 		return 0; /* must remain in all_multicast mode */
 
 	pmask = ICE_PROMISC_MCAST_RX | ICE_PROMISC_MCAST_TX;
 
-	status = ice_clear_vsi_promisc(hw, vsi->idx, pmask, 0);
+	status = ice_clear_vsi_promisc(hw, vsi->idx, &pmask, 0);
 	if (status != ICE_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to clear allmulti, err=%d", status);
 		ret = -EAGAIN;
