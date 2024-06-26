@@ -142,6 +142,7 @@ ice_read_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx, u64 *tstamp);
 int
 ice_clear_phy_tstamp(struct ice_hw *hw, u8 block, u8 idx);
 int ice_ptp_init_phc(struct ice_hw *hw);
+bool refsync_pin_id_valid(struct ice_hw *hw, u8 id);
 
 /* E822 family functions */
 int
