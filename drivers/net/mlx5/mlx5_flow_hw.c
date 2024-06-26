@@ -332,6 +332,32 @@ mlx5_flow_ct_init(struct rte_eth_dev *dev,
 static __rte_always_inline uint32_t flow_hw_tx_tag_regc_mask(struct rte_eth_dev *dev);
 static __rte_always_inline uint32_t flow_hw_tx_tag_regc_value(struct rte_eth_dev *dev);
 
+static int flow_hw_async_create_validate(struct rte_eth_dev *dev,
+					 const uint32_t queue,
+					 const struct rte_flow_template_table *table,
+					 const struct rte_flow_item items[],
+					 const uint8_t pattern_template_index,
+					 const struct rte_flow_action actions[],
+					 const uint8_t action_template_index,
+					 struct rte_flow_error *error);
+static int flow_hw_async_create_by_index_validate(struct rte_eth_dev *dev,
+						  const uint32_t queue,
+						  const struct rte_flow_template_table *table,
+						  const uint32_t rule_index,
+						  const struct rte_flow_action actions[],
+						  const uint8_t action_template_index,
+						  struct rte_flow_error *error);
+static int flow_hw_async_update_validate(struct rte_eth_dev *dev,
+					 const uint32_t queue,
+					 const struct rte_flow_hw *flow,
+					 const struct rte_flow_action actions[],
+					 const uint8_t action_template_index,
+					 struct rte_flow_error *error);
+static int flow_hw_async_destroy_validate(struct rte_eth_dev *dev,
+					  const uint32_t queue,
+					  const struct rte_flow_hw *flow,
+					  struct rte_flow_error *error);
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops;
 
 /* DR action flags with different table. */
@@ -3860,6 +3886,11 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	uint32_t res_idx = 0;
 	int ret;
 
+	if (mlx5_fp_debug_enabled()) {
+		if (flow_hw_async_create_validate(dev, queue, table, items, pattern_template_index,
+						  actions, action_template_index, error))
+			return NULL;
+	}
 	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
 	if (!flow)
 		goto error;
@@ -3999,10 +4030,10 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	uint32_t res_idx = 0;
 	int ret;
 
-	if (unlikely(rule_index >= table->cfg.attr.nb_flows)) {
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Flow rule index exceeds table size");
-		return NULL;
+	if (mlx5_fp_debug_enabled()) {
+		if (flow_hw_async_create_by_index_validate(dev, queue, table, rule_index,
+							   actions, action_template_index, error))
+			return NULL;
 	}
 	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
 	if (!flow)
@@ -4135,6 +4166,11 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	uint32_t res_idx = 0;
 	int ret;
 
+	if (mlx5_fp_debug_enabled()) {
+		if (flow_hw_async_update_validate(dev, queue, of, actions, action_template_index,
+						  error))
+			return -rte_errno;
+	}
 	aux = mlx5_flow_hw_aux(dev->data->port_id, of);
 	nf = &aux->upd_flow;
 	memset(nf, 0, sizeof(struct rte_flow_hw));
@@ -4243,6 +4279,10 @@ flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
 							   &fh->table->cfg.attr);
 	int ret;
 
+	if (mlx5_fp_debug_enabled()) {
+		if (flow_hw_async_destroy_validate(dev, queue, fh, error))
+			return -rte_errno;
+	}
 	fh->operation_type = !resizable ?
 			     MLX5_FLOW_HW_FLOW_OP_TYPE_DESTROY :
 			     MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_DESTROY;
@@ -16149,6 +16189,449 @@ mlx5_reformat_action_destroy(struct rte_eth_dev *dev,
 					  "Reformat: invalid action handle");
 	mlx5dr_action_destroy(action->action);
 	mlx5_free(handle);
+	return 0;
+}
+
+static bool
+flow_hw_is_item_masked(const struct rte_flow_item *item)
+{
+	const uint8_t *byte;
+	int size;
+	int i;
+
+	if (item->mask == NULL)
+		return false;
+
+	switch ((int)item->type) {
+	case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+		size = sizeof(struct rte_flow_item_tag);
+		break;
+	case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
+		size = sizeof(struct mlx5_rte_flow_item_sq);
+		break;
+	default:
+		size = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_MASK, NULL, 0, item, NULL);
+		/*
+		 * Pattern template items are passed to this function.
+		 * These items were already validated, so error is not expected.
+		 * Also, if mask is NULL, then spec size is bigger than 0 always.
+		 */
+		MLX5_ASSERT(size > 0);
+	}
+
+	byte = (const uint8_t *)item->mask;
+	for (i = 0; i < size; ++i)
+		if (byte[i])
+			return true;
+
+	return false;
+}
+
+static int
+flow_hw_validate_rule_pattern(struct rte_eth_dev *dev,
+			      const struct rte_flow_template_table *table,
+			      const uint8_t pattern_template_idx,
+			      const struct rte_flow_item items[],
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_pattern_template *pt;
+	const struct rte_flow_item *pt_item;
+
+	if (pattern_template_idx >= table->nb_item_templates)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Pattern template index out of range");
+
+	pt = table->its[pattern_template_idx];
+	pt_item = pt->items;
+
+	/* If any item was prepended, skip it. */
+	if (pt->implicit_port || pt->implicit_tag)
+		pt_item++;
+
+	for (; pt_item->type != RTE_FLOW_ITEM_TYPE_END; pt_item++, items++) {
+		if (pt_item->type != items->type)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+						  items, "Item type does not match the template");
+
+		/*
+		 * Assumptions:
+		 * - Currently mlx5dr layer contains info on which fields in masks are supported.
+		 * - This info is not exposed to PMD directly.
+		 * - Because of that, it is assumed that since pattern template is correct,
+		 *   then, items' masks in pattern template have nonzero values only in
+		 *   supported fields.
+		 *   This is known, because a temporary mlx5dr matcher is created during pattern
+		 *   template creation to validate the template.
+		 * - As a result, it is safe to look for nonzero bytes in mask to determine if
+		 *   item spec is needed in a flow rule.
+		 */
+		if (!flow_hw_is_item_masked(pt_item))
+			continue;
+
+		if (items->spec == NULL)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
+						  items, "Item spec is required");
+
+		switch (items->type) {
+		const struct rte_flow_item_ethdev *ethdev;
+		const struct rte_flow_item_tx_queue *tx_queue;
+		struct mlx5_txq_ctrl *txq;
+
+		case RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT:
+			ethdev = items->spec;
+			if (flow_hw_validate_target_port_id(dev, ethdev->port_id)) {
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, items,
+							  "Invalid port");
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+			tx_queue = items->spec;
+			if (mlx5_is_external_txq(dev, tx_queue->tx_queue))
+				continue;
+			txq = mlx5_txq_get(dev, tx_queue->tx_queue);
+			if (!txq)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, items,
+							  "Invalid Tx queue");
+			mlx5_txq_release(dev, tx_queue->tx_queue);
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static bool
+flow_hw_valid_indirect_action_type(const struct rte_flow_action *user_action,
+				   const enum rte_flow_action_type expected_type)
+{
+	uint32_t user_indirect_type = MLX5_INDIRECT_ACTION_TYPE_GET(user_action->conf);
+	uint32_t expected_indirect_type;
+
+	switch ((int)expected_type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+	case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
+		expected_indirect_type = MLX5_INDIRECT_ACTION_TYPE_RSS;
+		break;
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+	case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
+		expected_indirect_type = MLX5_INDIRECT_ACTION_TYPE_COUNT;
+		break;
+	case RTE_FLOW_ACTION_TYPE_AGE:
+		expected_indirect_type = MLX5_INDIRECT_ACTION_TYPE_AGE;
+		break;
+	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		expected_indirect_type = MLX5_INDIRECT_ACTION_TYPE_CT;
+		break;
+	case RTE_FLOW_ACTION_TYPE_METER_MARK:
+	case MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK:
+		expected_indirect_type = MLX5_INDIRECT_ACTION_TYPE_METER_MARK;
+		break;
+	case RTE_FLOW_ACTION_TYPE_QUOTA:
+		expected_indirect_type = MLX5_INDIRECT_ACTION_TYPE_QUOTA;
+		break;
+	default:
+		return false;
+	}
+
+	return user_indirect_type == expected_indirect_type;
+}
+
+static int
+flow_hw_validate_rule_actions(struct rte_eth_dev *dev,
+			      const struct rte_flow_template_table *table,
+			      const uint8_t actions_template_idx,
+			      const struct rte_flow_action actions[],
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_actions_template *at;
+	const struct mlx5_hw_actions *hw_acts;
+	const struct mlx5_action_construct_data *act_data;
+	unsigned int idx;
+
+	if (actions_template_idx >= table->nb_action_templates)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Actions template index out of range");
+
+	at = table->ats[actions_template_idx].action_template;
+	hw_acts = &table->ats[actions_template_idx].acts;
+
+	for (idx = 0; actions[idx].type != RTE_FLOW_ACTION_TYPE_END; ++idx) {
+		const struct rte_flow_action *user_action = &actions[idx];
+		const struct rte_flow_action *tmpl_action = &at->orig_actions[idx];
+
+		if (user_action->type != tmpl_action->type)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						  user_action,
+						  "Action type does not match type specified in "
+						  "actions template");
+	}
+
+	/*
+	 * Only go through unmasked actions and check if configuration is provided.
+	 * Configuration of masked actions is ignored.
+	 */
+	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
+		const struct rte_flow_action *user_action;
+
+		user_action = &actions[act_data->action_src];
+
+		/* Skip actions which do not require conf. */
+		switch ((int)user_action->type) {
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
+		case MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK:
+			continue;
+		default:
+			break;
+		}
+
+		if (user_action->conf == NULL)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						  user_action,
+						  "Action requires configuration");
+
+		switch ((int)user_action->type) {
+		enum rte_flow_action_type expected_type;
+		const struct rte_flow_action_ethdev *ethdev;
+		const struct rte_flow_action_modify_field *mf;
+
+		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+			expected_type = act_data->indirect.expected_type;
+			if (!flow_hw_valid_indirect_action_type(user_action, expected_type))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+							  user_action,
+							  "Indirect action type does not match "
+							  "the type specified in the mask");
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			if (mlx5_flow_validate_target_queue(dev, user_action, error))
+				return -rte_errno;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			if (mlx5_validate_action_rss(dev, user_action, error))
+				return -rte_errno;
+			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			/* TODO: Compare other fields if needed. */
+			mf = user_action->conf;
+			if (mf->operation != act_data->modify_header.action.operation ||
+			    mf->src.field != act_data->modify_header.action.src.field ||
+			    mf->dst.field != act_data->modify_header.action.dst.field ||
+			    mf->width != act_data->modify_header.action.width)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+							  user_action,
+							  "Modify field configuration does not "
+							  "match configuration from actions "
+							  "template");
+			break;
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			ethdev = user_action->conf;
+			if (flow_hw_validate_target_port_id(dev, ethdev->port_id)) {
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+							  user_action, "Invalid port");
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int
+flow_hw_async_op_validate(struct rte_eth_dev *dev,
+			  const uint32_t queue,
+			  const struct rte_flow_template_table *table,
+			  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	MLX5_ASSERT(table != NULL);
+
+	if (table->cfg.external && queue >= priv->hw_attr->nb_queue)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Incorrect queue");
+
+	return 0;
+}
+
+/**
+ * Validate user input for rte_flow_async_create() implementation.
+ *
+ * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to create the flow.
+ * @param[in] table
+ *   Pointer to template table.
+ * @param[in] items
+ *   Items with flow spec value.
+ * @param[in] pattern_template_index
+ *   The item pattern flow follows from the table.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 if user input is valid.
+ *    Negative errno otherwise, rte_errno and error struct is populated.
+ */
+static int
+flow_hw_async_create_validate(struct rte_eth_dev *dev,
+			      const uint32_t queue,
+			      const struct rte_flow_template_table *table,
+			      const struct rte_flow_item items[],
+			      const uint8_t pattern_template_index,
+			      const struct rte_flow_action actions[],
+			      const uint8_t action_template_index,
+			      struct rte_flow_error *error)
+{
+	if (flow_hw_async_op_validate(dev, queue, table, error))
+		return -rte_errno;
+
+	if (table->cfg.attr.insertion_type != RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Only pattern insertion is allowed on this table");
+
+	if (flow_hw_validate_rule_pattern(dev, table, pattern_template_index, items, error))
+		return -rte_errno;
+
+	if (flow_hw_validate_rule_actions(dev, table, action_template_index, actions, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+/**
+ * Validate user input for rte_flow_async_create_by_index() implementation.
+ *
+ * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to create the flow.
+ * @param[in] table
+ *   Pointer to template table.
+ * @param[in] rule_index
+ *   Rule index in the table.
+ *   Inserting a rule to already occupied index results in undefined behavior.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 if user input is valid.
+ *    Negative errno otherwise, rte_errno and error struct is set.
+ */
+static int
+flow_hw_async_create_by_index_validate(struct rte_eth_dev *dev,
+				       const uint32_t queue,
+				       const struct rte_flow_template_table *table,
+				       const uint32_t rule_index,
+				       const struct rte_flow_action actions[],
+				       const uint8_t action_template_index,
+				       struct rte_flow_error *error)
+{
+	if (flow_hw_async_op_validate(dev, queue, table, error))
+		return -rte_errno;
+
+	if (table->cfg.attr.insertion_type != RTE_FLOW_TABLE_INSERTION_TYPE_INDEX)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Only index insertion is allowed on this table");
+
+	if (rule_index >= table->cfg.attr.nb_flows)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Flow rule index exceeds table size");
+
+	if (flow_hw_validate_rule_actions(dev, table, action_template_index, actions, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+
+/**
+ * Validate user input for rte_flow_async_update() implementation.
+ *
+ * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to create the flow.
+ * @param[in] flow
+ *   Flow rule to be updated.
+ * @param[in] actions
+ *   Action with flow spec value.
+ * @param[in] action_template_index
+ *   The action pattern flow follows from the table.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 if user input is valid.
+ *    Negative errno otherwise, rte_errno and error struct is set.
+ */
+static int
+flow_hw_async_update_validate(struct rte_eth_dev *dev,
+			      const uint32_t queue,
+			      const struct rte_flow_hw *flow,
+			      const struct rte_flow_action actions[],
+			      const uint8_t action_template_index,
+			      struct rte_flow_error *error)
+{
+	if (flow_hw_async_op_validate(dev, queue, flow->table, error))
+		return -rte_errno;
+
+	if (flow_hw_validate_rule_actions(dev, flow->table, action_template_index, actions, error))
+		return -rte_errno;
+
+	return 0;
+}
+
+/**
+ * Validate user input for rte_flow_async_destroy() implementation.
+ *
+ * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] queue
+ *   The queue to create the flow.
+ * @param[in] flow
+ *   Flow rule to be destroyed.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *    0 if user input is valid.
+ *    Negative errno otherwise, rte_errno and error struct is set.
+ */
+static int
+flow_hw_async_destroy_validate(struct rte_eth_dev *dev,
+			       const uint32_t queue,
+			       const struct rte_flow_hw *flow,
+			       struct rte_flow_error *error)
+{
+	if (flow_hw_async_op_validate(dev, queue, flow->table, error))
+		return -rte_errno;
+
 	return 0;
 }
 

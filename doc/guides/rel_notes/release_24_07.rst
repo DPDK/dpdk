@@ -99,6 +99,7 @@ New Features
   * Added match with Tx queue.
   * Added match with external Tx queue.
   * Added match with E-Switch manager.
+  * Added async flow item and actions validation.
   * Added hardware queue object context dump for Rx/Tx debugging.
 
 * **Updated TAP driver.**
