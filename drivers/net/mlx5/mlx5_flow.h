@@ -1472,6 +1472,8 @@ struct mlx5_action_construct_data {
 			 * PRM actions.
 			 */
 			uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS];
+			/* Copy of action passed to the action template. */
+			struct rte_flow_action_modify_field action;
 		} modify_header;
 		struct {
 			bool symmetric_hash_function; /* Symmetric RSS hash */
