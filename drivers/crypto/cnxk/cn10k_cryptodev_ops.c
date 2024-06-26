@@ -1405,8 +1405,10 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 	struct rte_cryptodev *cdev = dev;
 	union cpt_res_s *hw_res = NULL;
 	struct cpt_inst_s *inst;
+	union cpt_fc_write_s fc;
 	struct cnxk_cpt_vf *vf;
 	struct rte_mbuf *m;
+	uint64_t *fc_addr;
 	uint64_t dptr;
 	int i;
 
@@ -1418,13 +1420,24 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 
 	lmt_base = vf->rx_inj_lmtline.lmt_base;
 	io_addr = vf->rx_inj_lmtline.io_addr;
+	fc_addr = vf->rx_inj_lmtline.fc_addr;
 
 	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
 	pf_func = vf->rx_inj_pf_func;
 
+	const uint32_t fc_thresh = vf->rx_inj_lmtline.fc_thresh;
+
 again:
+	fc.u64[0] =
+		rte_atomic_load_explicit((RTE_ATOMIC(uint64_t) *)fc_addr, rte_memory_order_relaxed);
 	inst = (struct cpt_inst_s *)lmt_base;
-	for (i = 0; i < RTE_MIN(CN10K_PKTS_PER_LOOP, nb_pkts); i++) {
+
+	i = 0;
+
+	if (unlikely(fc.s.qsize > fc_thresh))
+		goto exit;
+
+	for (; i < RTE_MIN(CN10K_PKTS_PER_LOOP, nb_pkts); i++) {
 
 		m = pkts[i];
 		sec_sess = (struct cn10k_sec_session *)sess[i];
@@ -1492,6 +1505,7 @@ again:
 		goto again;
 	}
 
+exit:
 	return count + i;
 }
 
