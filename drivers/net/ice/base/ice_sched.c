@@ -56,6 +56,9 @@ ice_sched_find_node_by_teid(struct ice_sched_node *start_node, u32 teid)
 {
 	u16 i;
 
+	if (!start_node)
+		return NULL;
+
 	/* The TEID is same as that of the start_node */
 	if (ICE_TXSCHED_GET_NODE_TEID(start_node) == teid)
 		return start_node;
