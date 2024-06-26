@@ -797,8 +797,7 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 static u32 ice_ptp_tmr_cmd_to_src_reg(struct ice_hw *hw,
 				      enum ice_ptp_tmr_cmd cmd)
 {
-	u32 cmd_val;
-	u8 tmr_idx;
+	u32 cmd_val, tmr_idx;
 
 	switch (cmd) {
 	case ICE_PTP_INIT_TIME:
