@@ -849,7 +849,8 @@ enum ice_pcie_bus_speed {
 	ice_pcie_speed_2_5GT	= 0x14,
 	ice_pcie_speed_5_0GT	= 0x15,
 	ice_pcie_speed_8_0GT	= 0x16,
-	ice_pcie_speed_16_0GT	= 0x17
+	ice_pcie_speed_16_0GT	= 0x17,
+	ice_pcie_speed_32_0GT	= 0x18,
 };
 
 /* PCI bus widths */
