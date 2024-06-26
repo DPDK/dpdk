@@ -1061,7 +1061,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 	/* memalloc is locked, so it's safe to use thread-unsafe version */
 	ret = rte_memseg_list_walk_thread_unsafe(alloc_seg_walk, &wa);
 	if (ret == 0) {
-		EAL_LOG(ERR, "%s(): couldn't find suitable memseg_list",
+		EAL_LOG(DEBUG, "%s(): couldn't find suitable memseg_list",
 			__func__);
 		ret = -1;
 	} else if (ret > 0) {
