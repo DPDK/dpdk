@@ -748,7 +748,7 @@ ice_get_orom_civd_data(struct ice_hw *hw, enum ice_bank_select bank,
 				       orom_data, hw->flash.banks.orom_size);
 	if (status) {
 		ice_debug(hw, ICE_DBG_NVM, "Unable to read Option ROM data\n");
-		return status;
+		goto exit_error;;
 	}
 
 	/* Scan the memory buffer to locate the CIVD data section */
@@ -772,7 +772,8 @@ ice_get_orom_civd_data(struct ice_hw *hw, enum ice_bank_select bank,
 		if (sum) {
 			ice_debug(hw, ICE_DBG_NVM, "Found CIVD data with invalid checksum of %u\n",
 				  sum);
-			goto err_invalid_checksum;
+			status = ICE_ERR_NVM;
+			goto exit_error;
 		}
 
 		*civd = *tmp;
@@ -780,11 +781,12 @@ ice_get_orom_civd_data(struct ice_hw *hw, enum ice_bank_select bank,
 		return 0;
 	}
 
+	status = ICE_ERR_NVM;
 	ice_debug(hw, ICE_DBG_NVM, "Unable to locate CIVD data within the Option ROM\n");
 
-err_invalid_checksum:
+exit_error:
 	ice_free(hw, orom_data);
-	return ICE_ERR_NVM;
+	return status;
 }
 
 /**
