@@ -4834,9 +4834,16 @@ int ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 			  bool lock_sbq)
 {
 	u32 val = ice_ptp_tmr_cmd_to_port_reg(hw, cmd);
+	int err;
 
-	return ice_write_phy_reg_e810_lp(hw, E810_ETH_GLTSYN_CMD, val,
-					 lock_sbq);
+	err = ice_write_phy_reg_e810_lp(hw, E810_ETH_GLTSYN_CMD, val,
+					lock_sbq);
+	if (err) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to write back GLTSYN_CMD, err %d\n", err);
+		return err;
+	}
+
+	return 0;
 }
 
 /* E810T SMA functions
