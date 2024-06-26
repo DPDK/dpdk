@@ -195,12 +195,6 @@ int
 ice_cfg_cgu_pll_e822(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		     enum ice_clk_src *clk_src);
 int
-ice_ptp_write_port_cmd_e822(struct ice_hw *hw, u8 port,
-			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq);
-int
-ice_ptp_write_port_cmd(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
-		       bool lock_sbq);
-int
 ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		      enum ice_clk_src *clk_src);
 int
@@ -212,16 +206,6 @@ int
 ice_cfg_cgu_bypass_mux_e825c(struct ice_hw *hw, u8 port_num, bool clock_1588,
 			     unsigned int ena);
 int ice_cfg_synce_ethdiv_e825c(struct ice_hw *hw, u8 *divider);
-
-/* E8 Family */
-int
-ice_ptp_port_cmd_e830(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
-		      bool lock_sbq);
-int
-ice_ptp_port_cmd_e810(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
-		      bool lock_sbq);
-int
-ice_get_phy_tx_tstamp_ready_e830(struct ice_hw *hw, u8 port, u64 *tstamp_ready);
 
 /**
  * ice_e822_time_ref - Get the current TIME_REF from capabilities
