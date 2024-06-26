@@ -565,6 +565,22 @@ ice_aq_get_phy_caps(struct ice_port_info *pi, bool qual_mods, u8 report_mode,
 	return status;
 }
 
+#define ice_get_link_status_data_ver(hw) ((hw)->mac_type == ICE_MAC_E830 ? \
+		ICE_GET_LINK_STATUS_DATA_V2 : ICE_GET_LINK_STATUS_DATA_V1)
+
+/**
+ * ice_get_link_status_datalen
+ * @hw: pointer to the HW struct
+ *
+ * return Get Link Status datalen
+ */
+static u16 ice_get_link_status_datalen(struct ice_hw *hw)
+{
+	return (ice_get_link_status_data_ver(hw) ==
+		ICE_GET_LINK_STATUS_DATA_V1) ? ICE_GET_LINK_STATUS_DATALEN_V1 :
+		ICE_GET_LINK_STATUS_DATALEN_V2;
+}
+
 /**
  * ice_aq_get_netlist_node_pin
  * @hw: pointer to the hw struct
@@ -704,8 +720,8 @@ ice_aq_get_link_info(struct ice_port_info *pi, bool ena_lse,
 	resp->cmd_flags = CPU_TO_LE16(cmd_flags);
 	resp->lport_num = pi->lport;
 
-	status = ice_aq_send_cmd(hw, &desc, &link_data, sizeof(link_data), cd);
-
+	status = ice_aq_send_cmd(hw, &desc, &link_data,
+				 ice_get_link_status_datalen(hw), cd);
 	if (status)
 		return status;
 
