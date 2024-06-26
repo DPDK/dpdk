@@ -418,14 +418,16 @@ struct ice_adv_fltr_mgmt_list_entry {
 };
 
 enum ice_promisc_flags {
-	ICE_PROMISC_UCAST_RX = 0x1,
-	ICE_PROMISC_UCAST_TX = 0x2,
-	ICE_PROMISC_MCAST_RX = 0x4,
-	ICE_PROMISC_MCAST_TX = 0x8,
-	ICE_PROMISC_BCAST_RX = 0x10,
-	ICE_PROMISC_BCAST_TX = 0x20,
-	ICE_PROMISC_VLAN_RX = 0x40,
-	ICE_PROMISC_VLAN_TX = 0x80,
+	ICE_PROMISC_UCAST_RX = 0,
+	ICE_PROMISC_UCAST_TX,
+	ICE_PROMISC_MCAST_RX,
+	ICE_PROMISC_MCAST_TX,
+	ICE_PROMISC_BCAST_RX,
+	ICE_PROMISC_BCAST_TX,
+	ICE_PROMISC_VLAN_RX,
+	ICE_PROMISC_VLAN_TX,
+	/* Max value */
+	ICE_PROMISC_MAX,
 };
 
 /* VSI related commands */
@@ -526,22 +528,22 @@ ice_cfg_dflt_vsi(struct ice_port_info *pi, u16 vsi_handle, bool set,
 bool ice_check_if_dflt_vsi(struct ice_port_info *pi, u16 vsi_handle,
 			   bool *rule_exists);
 int
-ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-		    u16 vid);
+ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		    ice_bitmap_t *promisc_mask, u16 vid);
 int
-ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-		      u16 vid);
+ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		      ice_bitmap_t *promisc_mask, u16 vid);
 int
-ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-			 bool rm_vlan_promisc);
+ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+			 ice_bitmap_t *promisc_mask, bool rm_vlan_promisc);
 
 /* Get VSIs Promisc/defport settings */
 int
-ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-		    u16 *vid);
+ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		    ice_bitmap_t *promisc_mask, u16 *vid);
 int
-ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-			 u16 *vid);
+ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle,
+			 ice_bitmap_t *promisc_mask, u16 *vid);
 
 int
 ice_aq_add_recipe(struct ice_hw *hw,

@@ -6152,34 +6152,38 @@ ice_add_to_vsi_fltr_list(struct ice_hw *hw, u16 vsi_handle,
 /**
  * ice_determine_promisc_mask
  * @fi: filter info to parse
+ * @promisc_mask: pointer to mask to be filled in
  *
  * Helper function to determine which ICE_PROMISC_ mask corresponds
  * to given filter into.
  */
-static u8 ice_determine_promisc_mask(struct ice_fltr_info *fi)
+static void ice_determine_promisc_mask(struct ice_fltr_info *fi,
+				       ice_bitmap_t *promisc_mask)
 {
 	u16 vid = fi->l_data.mac_vlan.vlan_id;
 	u8 *macaddr = fi->l_data.mac.mac_addr;
 	bool is_tx_fltr = false;
-	u8 promisc_mask = 0;
+
+	ice_zero_bitmap(promisc_mask, ICE_PROMISC_MAX);
 
 	if (fi->flag == ICE_FLTR_TX)
 		is_tx_fltr = true;
 
-	if (IS_BROADCAST_ETHER_ADDR(macaddr))
-		promisc_mask |= is_tx_fltr ?
-			ICE_PROMISC_BCAST_TX : ICE_PROMISC_BCAST_RX;
-	else if (IS_MULTICAST_ETHER_ADDR(macaddr))
-		promisc_mask |= is_tx_fltr ?
-			ICE_PROMISC_MCAST_TX : ICE_PROMISC_MCAST_RX;
-	else if (IS_UNICAST_ETHER_ADDR(macaddr))
-		promisc_mask |= is_tx_fltr ?
-			ICE_PROMISC_UCAST_TX : ICE_PROMISC_UCAST_RX;
-	if (vid)
-		promisc_mask |= is_tx_fltr ?
-			ICE_PROMISC_VLAN_TX : ICE_PROMISC_VLAN_RX;
+	if (IS_BROADCAST_ETHER_ADDR(macaddr)) {
+		ice_set_bit(is_tx_fltr ? ICE_PROMISC_BCAST_TX
+				       : ICE_PROMISC_BCAST_RX, promisc_mask);
+	} else if (IS_MULTICAST_ETHER_ADDR(macaddr)) {
+		ice_set_bit(is_tx_fltr ? ICE_PROMISC_MCAST_TX
+				       : ICE_PROMISC_MCAST_RX, promisc_mask);
+	} else if (IS_UNICAST_ETHER_ADDR(macaddr)) {
+		ice_set_bit(is_tx_fltr ? ICE_PROMISC_UCAST_TX
+				       : ICE_PROMISC_UCAST_RX, promisc_mask);
+	}
 
-	return promisc_mask;
+	if (vid) {
+		ice_set_bit(is_tx_fltr ? ICE_PROMISC_VLAN_TX
+				       : ICE_PROMISC_VLAN_RX, promisc_mask);
+	}
 }
 
 /**
@@ -6192,10 +6196,11 @@ static u8 ice_determine_promisc_mask(struct ice_fltr_info *fi)
  * @lkup: switch rule filter lookup type
  */
 static int
-_ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-		     u16 *vid, struct ice_switch_info *sw,
-		     enum ice_sw_lkup_type lkup)
+_ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		     ice_bitmap_t *promisc_mask, u16 *vid,
+		     struct ice_switch_info *sw, enum ice_sw_lkup_type lkup)
 {
+	ice_declare_bitmap(fltr_promisc_mask, ICE_PROMISC_MAX);
 	struct ice_fltr_mgmt_list_entry *itr;
 	struct LIST_HEAD_TYPE *rule_head;
 	struct ice_lock *rule_lock;	/* Lock to protect filter rule list */
@@ -6205,9 +6210,10 @@ _ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 		return ICE_ERR_PARAM;
 
 	*vid = 0;
-	*promisc_mask = 0;
 	rule_head = &sw->recp_list[lkup].filt_rules;
 	rule_lock = &sw->recp_list[lkup].filt_rule_lock;
+
+	ice_zero_bitmap(promisc_mask, ICE_PROMISC_MAX);
 
 	ice_acquire_lock(rule_lock);
 	LIST_FOR_EACH_ENTRY(itr, rule_head,
@@ -6218,7 +6224,9 @@ _ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
 		if (!ice_vsi_uses_fltr(itr, vsi_handle))
 			continue;
 
-		*promisc_mask |= ice_determine_promisc_mask(&itr->fltr_info);
+		ice_determine_promisc_mask(&itr->fltr_info, fltr_promisc_mask);
+		ice_or_bitmap(promisc_mask, promisc_mask, fltr_promisc_mask,
+			      ICE_PROMISC_MAX);
 	}
 	ice_release_lock(rule_lock);
 
@@ -6233,9 +6241,12 @@ _ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
  * @vid: VLAN ID of promisc VLAN VSI
  */
 int
-ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-		    u16 *vid)
+ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		    ice_bitmap_t *promisc_mask, u16 *vid)
 {
+	if (!vid || !promisc_mask || !hw)
+		return ICE_ERR_PARAM;
+
 	return _ice_get_vsi_promisc(hw, vsi_handle, promisc_mask,
 				    vid, hw->switch_info, ICE_SW_LKUP_PROMISC);
 }
@@ -6248,9 +6259,12 @@ ice_get_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
  * @vid: VLAN ID of promisc VLAN VSI
  */
 int
-ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle, u8 *promisc_mask,
-			 u16 *vid)
+ice_get_vsi_vlan_promisc(struct ice_hw *hw, u16 vsi_handle,
+			 ice_bitmap_t *promisc_mask, u16 *vid)
 {
+	if (!hw || !promisc_mask || !vid)
+		return ICE_ERR_PARAM;
+
 	return _ice_get_vsi_promisc(hw, vsi_handle, promisc_mask,
 				    vid, hw->switch_info,
 				    ICE_SW_LKUP_PROMISC_VLAN);
@@ -6284,14 +6298,17 @@ ice_remove_promisc(struct ice_hw *hw, u8 recp_id,
  * _ice_clear_vsi_promisc - clear specified promiscuous mode(s)
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to clear mode
- * @promisc_mask: mask of promiscuous config bits to clear
+ * @promisc_mask: pointer to mask of promiscuous config bits to clear
  * @vid: VLAN ID to clear VLAN promiscuous
  * @sw: pointer to switch info struct for which function add rule
  */
 static int
-_ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-		       u16 vid, struct ice_switch_info *sw)
+_ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		       ice_bitmap_t *promisc_mask, u16 vid,
+		       struct ice_switch_info *sw)
 {
+	ice_declare_bitmap(compl_promisc_mask, ICE_PROMISC_MAX);
+	ice_declare_bitmap(fltr_promisc_mask, ICE_PROMISC_MAX);
 	struct ice_fltr_list_entry *fm_entry, *tmp;
 	struct LIST_HEAD_TYPE remove_list_head;
 	struct ice_fltr_mgmt_list_entry *itr;
@@ -6303,7 +6320,8 @@ _ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
 	if (!ice_is_vsi_valid(hw, vsi_handle))
 		return ICE_ERR_PARAM;
 
-	if (promisc_mask & (ICE_PROMISC_VLAN_RX | ICE_PROMISC_VLAN_TX))
+	if (ice_is_bit_set(promisc_mask, ICE_PROMISC_VLAN_RX) &&
+	    ice_is_bit_set(promisc_mask, ICE_PROMISC_VLAN_TX))
 		recipe_id = ICE_SW_LKUP_PROMISC_VLAN;
 	else
 		recipe_id = ICE_SW_LKUP_PROMISC;
@@ -6317,7 +6335,7 @@ _ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
 	LIST_FOR_EACH_ENTRY(itr, rule_head,
 			    ice_fltr_mgmt_list_entry, list_entry) {
 		struct ice_fltr_info *fltr_info;
-		u8 fltr_promisc_mask = 0;
+		ice_zero_bitmap(compl_promisc_mask, ICE_PROMISC_MAX);
 
 		if (!ice_vsi_uses_fltr(itr, vsi_handle))
 			continue;
@@ -6327,10 +6345,12 @@ _ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
 		    vid != fltr_info->l_data.mac_vlan.vlan_id)
 			continue;
 
-		fltr_promisc_mask |= ice_determine_promisc_mask(fltr_info);
+		ice_determine_promisc_mask(fltr_info, fltr_promisc_mask);
+		ice_andnot_bitmap(compl_promisc_mask, fltr_promisc_mask,
+				  promisc_mask, ICE_PROMISC_MAX);
 
 		/* Skip if filter is not completely specified by given mask */
-		if (fltr_promisc_mask & ~promisc_mask)
+		if (ice_is_any_bit_set(compl_promisc_mask, ICE_PROMISC_MAX))
 			continue;
 
 		status = ice_add_entry_to_vsi_fltr_list(hw, vsi_handle,
@@ -6359,13 +6379,16 @@ free_fltr_list:
  * ice_clear_vsi_promisc - clear specified promiscuous mode(s) for given VSI
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to clear mode
- * @promisc_mask: mask of promiscuous config bits to clear
+ * @promisc_mask: pointer to mask of promiscuous config bits to clear
  * @vid: VLAN ID to clear VLAN promiscuous
  */
 int
 ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
-		      u8 promisc_mask, u16 vid)
+		      ice_bitmap_t *promisc_mask, u16 vid)
 {
+	if (!hw || !promisc_mask)
+		return ICE_ERR_PARAM;
+
 	return _ice_clear_vsi_promisc(hw, vsi_handle, promisc_mask,
 				      vid, hw->switch_info);
 }
@@ -6374,16 +6397,18 @@ ice_clear_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
  * _ice_set_vsi_promisc - set given VSI to given promiscuous mode(s)
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to configure
- * @promisc_mask: mask of promiscuous config bits
+ * @promisc_mask: pointer to mask of promiscuous config bits
  * @vid: VLAN ID to set VLAN promiscuous
  * @lport: logical port number to configure promisc mode
  * @sw: pointer to switch info struct for which function add rule
  */
 static int
-_ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-		     u16 vid, u8 lport, struct ice_switch_info *sw)
+_ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		     ice_bitmap_t *promisc_mask, u16 vid, u8 lport,
+		     struct ice_switch_info *sw)
 {
 	enum { UCAST_FLTR = 1, MCAST_FLTR, BCAST_FLTR };
+	ice_declare_bitmap(p_mask, ICE_PROMISC_MAX);
 	struct ice_fltr_list_entry f_list_entry;
 	bool is_tx_fltr;
 	struct ice_fltr_info new_fltr;
@@ -6400,7 +6425,11 @@ _ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
 
 	ice_memset(&new_fltr, 0, sizeof(new_fltr), ICE_NONDMA_MEM);
 
-	if (promisc_mask & (ICE_PROMISC_VLAN_RX | ICE_PROMISC_VLAN_TX)) {
+	/* Do not modify original bitmap */
+	ice_cp_bitmap(p_mask, promisc_mask, ICE_PROMISC_MAX);
+
+	if (ice_is_bit_set(p_mask, ICE_PROMISC_VLAN_RX) &&
+	    ice_is_bit_set(p_mask, ICE_PROMISC_VLAN_TX)) {
 		new_fltr.lkup_type = ICE_SW_LKUP_PROMISC_VLAN;
 		new_fltr.l_data.mac_vlan.vlan_id = vid;
 		recipe_id = ICE_SW_LKUP_PROMISC_VLAN;
@@ -6414,44 +6443,43 @@ _ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
 	 * individual type, and clear it out in the input mask as it
 	 * is found.
 	 */
-	while (promisc_mask) {
+	while (ice_is_any_bit_set(p_mask, ICE_PROMISC_MAX)) {
 		struct ice_sw_recipe *recp_list;
 		u8 *mac_addr;
 
 		pkt_type = 0;
 		is_tx_fltr = false;
 
-		if (promisc_mask & ICE_PROMISC_UCAST_RX) {
-			promisc_mask &= ~ICE_PROMISC_UCAST_RX;
+		if (ice_test_and_clear_bit(ICE_PROMISC_UCAST_RX,
+					   p_mask)) {
 			pkt_type = UCAST_FLTR;
-		} else if (promisc_mask & ICE_PROMISC_UCAST_TX) {
-			promisc_mask &= ~ICE_PROMISC_UCAST_TX;
+		} else if (ice_test_and_clear_bit(ICE_PROMISC_UCAST_TX,
+						  p_mask)) {
 			pkt_type = UCAST_FLTR;
 			is_tx_fltr = true;
-		} else if (promisc_mask & ICE_PROMISC_MCAST_RX) {
-			promisc_mask &= ~ICE_PROMISC_MCAST_RX;
+		} else if (ice_test_and_clear_bit(ICE_PROMISC_MCAST_RX,
+						  p_mask)) {
 			pkt_type = MCAST_FLTR;
-		} else if (promisc_mask & ICE_PROMISC_MCAST_TX) {
-			promisc_mask &= ~ICE_PROMISC_MCAST_TX;
+		} else if (ice_test_and_clear_bit(ICE_PROMISC_MCAST_TX,
+						  p_mask)) {
 			pkt_type = MCAST_FLTR;
 			is_tx_fltr = true;
-		} else if (promisc_mask & ICE_PROMISC_BCAST_RX) {
-			promisc_mask &= ~ICE_PROMISC_BCAST_RX;
+		} else if (ice_test_and_clear_bit(ICE_PROMISC_BCAST_RX,
+						  p_mask)) {
 			pkt_type = BCAST_FLTR;
-		} else if (promisc_mask & ICE_PROMISC_BCAST_TX) {
-			promisc_mask &= ~ICE_PROMISC_BCAST_TX;
+		} else if (ice_test_and_clear_bit(ICE_PROMISC_BCAST_TX,
+						  p_mask)) {
 			pkt_type = BCAST_FLTR;
 			is_tx_fltr = true;
 		}
 
 		/* Check for VLAN promiscuous flag */
-		if (promisc_mask & ICE_PROMISC_VLAN_RX) {
-			promisc_mask &= ~ICE_PROMISC_VLAN_RX;
-		} else if (promisc_mask & ICE_PROMISC_VLAN_TX) {
-			promisc_mask &= ~ICE_PROMISC_VLAN_TX;
+		if (ice_is_bit_set(p_mask, ICE_PROMISC_VLAN_RX)) {
+			ice_clear_bit(ICE_PROMISC_VLAN_RX, p_mask);
+		} else if (ice_test_and_clear_bit(ICE_PROMISC_VLAN_TX,
+						  p_mask)) {
 			is_tx_fltr = true;
 		}
-
 		/* Set filter DA based on packet type */
 		mac_addr = new_fltr.l_data.mac.mac_addr;
 		if (pkt_type == BCAST_FLTR) {
@@ -6495,13 +6523,16 @@ set_promisc_exit:
  * ice_set_vsi_promisc - set given VSI to given promiscuous mode(s)
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to configure
- * @promisc_mask: mask of promiscuous config bits
+ * @promisc_mask: pointer to mask of promiscuous config bits
  * @vid: VLAN ID to set VLAN promiscuous
  */
 int
-ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-		    u16 vid)
+ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+		    ice_bitmap_t *promisc_mask, u16 vid)
 {
+	if (!hw || !promisc_mask)
+		return ICE_ERR_PARAM;
+
 	return _ice_set_vsi_promisc(hw, vsi_handle, promisc_mask, vid,
 				    hw->port_info->lport,
 				    hw->switch_info);
@@ -6511,7 +6542,7 @@ ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
  * _ice_set_vlan_vsi_promisc
  * @hw: pointer to the hardware structure
  * @vsi_handle: VSI handle to configure
- * @promisc_mask: mask of promiscuous config bits
+ * @promisc_mask: pointer to mask of promiscuous config bits
  * @rm_vlan_promisc: Clear VLANs VSI promisc mode
  * @lport: logical port number to configure promisc mode
  * @sw: pointer to switch info struct for which function add rule
@@ -6519,9 +6550,9 @@ ice_set_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
  * Configure VSI with all associated VLANs to given promiscuous mode(s)
  */
 static int
-_ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-			  bool rm_vlan_promisc, u8 lport,
-			  struct ice_switch_info *sw)
+_ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+			  ice_bitmap_t *promisc_mask, bool rm_vlan_promisc,
+			  u8 lport, struct ice_switch_info *sw)
 {
 	struct ice_fltr_list_entry *list_itr, *tmp;
 	struct LIST_HEAD_TYPE vsi_list_head;
@@ -6581,9 +6612,12 @@ free_fltr_list:
  * Configure VSI with all associated VLANs to given promiscuous mode(s)
  */
 int
-ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle, u8 promisc_mask,
-			 bool rm_vlan_promisc)
+ice_set_vlan_vsi_promisc(struct ice_hw *hw, u16 vsi_handle,
+			 ice_bitmap_t *promisc_mask, bool rm_vlan_promisc)
 {
+	if (!hw || !promisc_mask)
+		return ICE_ERR_PARAM;
+
 	return _ice_set_vlan_vsi_promisc(hw, vsi_handle, promisc_mask,
 					 rm_vlan_promisc, hw->port_info->lport,
 					 hw->switch_info);
