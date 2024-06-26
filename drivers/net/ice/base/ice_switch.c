@@ -7467,7 +7467,7 @@ ice_find_free_recp_res_idx(struct ice_hw *hw, const ice_bitmap_t *profiles,
 	ice_xor_bitmap(free_idx, used_idx, possible_idx, ICE_MAX_FV_WORDS);
 
 	/* return number of free indexes */
-	return (u16)ice_bitmap_hweight(free_idx, ICE_MAX_FV_WORDS);
+	return ice_bitmap_hweight(free_idx, ICE_MAX_FV_WORDS);
 }
 
 static void ice_set_recipe_index(unsigned long idx, u8 *bitmap)
@@ -8178,6 +8178,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	struct ice_sw_recipe *rm;
 	u8 i;
 	int status = ICE_SUCCESS;
+	u16 cnt;
 
 	if (!ice_is_prof_rule(rinfo->tun_type) && !lkups_cnt)
 		return ICE_ERR_PARAM;
