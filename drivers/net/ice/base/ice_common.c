@@ -2949,6 +2949,26 @@ ice_parse_nac_topo_dev_caps(struct ice_hw *hw, struct ice_hw_dev_caps *dev_p,
 }
 
 /**
+ * ice_parse_sensor_reading_cap - Parse ICE_AQC_CAPS_SENSOR_READING cap
+ * @hw: pointer to the HW struct
+ * @dev_p: pointer to device capabilities structure
+ * @cap: capability element to parse
+ *
+ * Parse ICE_AQC_CAPS_SENSOR_READING for device capability for reading
+ * enabled sensors.
+ */
+static void
+ice_parse_sensor_reading_cap(struct ice_hw *hw, struct ice_hw_dev_caps *dev_p,
+			     struct ice_aqc_list_caps_elem *cap)
+{
+	dev_p->supported_sensors = LE32_TO_CPU(cap->number);
+
+	ice_debug(hw, ICE_DBG_INIT,
+		  "dev caps: supported sensors (bitmap) = 0x%x\n",
+		  dev_p->supported_sensors);
+}
+
+/**
  * ice_parse_dev_caps - Parse device capabilities
  * @hw: pointer to the HW struct
  * @dev_p: pointer to device capabilities structure
@@ -2995,6 +3015,9 @@ ice_parse_dev_caps(struct ice_hw *hw, struct ice_hw_dev_caps *dev_p,
 			break;
 		case ICE_AQC_CAPS_NAC_TOPOLOGY:
 			ice_parse_nac_topo_dev_caps(hw, dev_p, &cap_resp[i]);
+			break;
+		case ICE_AQC_CAPS_SENSOR_READING:
+			ice_parse_sensor_reading_cap(hw, dev_p, &cap_resp[i]);
 			break;
 		default:
 			/* Don't list common capabilities as unknown */
