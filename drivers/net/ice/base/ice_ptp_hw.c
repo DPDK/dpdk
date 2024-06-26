@@ -2149,6 +2149,33 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
 }
 
 /**
+ * ice_sb_access_ena_eth56g - Enable SB devices (PHY and others) access
+ * @hw: pointer to HW struct
+ * @enable: Enable or disable access
+ *
+ * Enable sideband devices (PHY and others) access.
+ */
+static void ice_sb_access_ena_eth56g(struct ice_hw *hw, bool enable)
+{
+	u32 regval;
+
+	/* Enable reading and writing switch and PHY registers over the
+	 * sideband queue.
+	 */
+#define PF_SB_REM_DEV_CTL_SWITCH_READ BIT(1)
+#define PF_SB_REM_DEV_CTL_PHY0 BIT(2)
+	regval = rd32(hw, PF_SB_REM_DEV_CTL);
+	if (enable)
+		regval |= (PF_SB_REM_DEV_CTL_SWITCH_READ |
+			   PF_SB_REM_DEV_CTL_PHY0);
+	else
+		regval &= ~(PF_SB_REM_DEV_CTL_SWITCH_READ |
+			    PF_SB_REM_DEV_CTL_PHY0);
+
+	wr32(hw, PF_SB_REM_DEV_CTL, regval);
+}
+
+/**
  * ice_ptp_init_phc_eth56g - Perform E822 specific PHC initialization
  * @hw: pointer to HW struct
  *
@@ -2157,15 +2184,6 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port, bool bypass)
 static int ice_ptp_init_phc_eth56g(struct ice_hw *hw)
 {
 	int err = 0;
-	u32 regval;
-
-	/* Enable reading switch and PHY registers over the sideband queue */
-#define PF_SB_REM_DEV_CTL_SWITCH_READ BIT(1)
-#define PF_SB_REM_DEV_CTL_PHY0 BIT(2)
-	regval = rd32(hw, PF_SB_REM_DEV_CTL);
-	regval |= (PF_SB_REM_DEV_CTL_SWITCH_READ |
-		   PF_SB_REM_DEV_CTL_PHY0);
-	wr32(hw, PF_SB_REM_DEV_CTL, regval);
 
 	/* Initialize the Clock Generation Unit */
 	err = ice_init_cgu_e82x(hw);
@@ -2205,6 +2223,8 @@ int ice_ptp_init_phy_model(struct ice_hw *hw)
 {
 	int err;
 	u32 phy_rev;
+
+	ice_sb_access_ena_eth56g(hw, true);
 
 	err = ice_read_phy_eth56g_raw_lp(hw, PHY_REG_REVISION, &phy_rev,
 					    true);
