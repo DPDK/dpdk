@@ -1034,7 +1034,7 @@ ice_ptp_prep_phy_time_eth56g(struct ice_hw *hw, u32 time)
 	 */
 	phy_time = (u64)time << 32;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->max_phy_port; port++) {
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
 		status = ice_ptp_prep_port_phy_time_eth56g(hw, port,
@@ -1135,7 +1135,7 @@ ice_ptp_prep_phy_adj_eth56g(struct ice_hw *hw, s32 adj, bool lock_sbq)
 	 */
 	cycles = (s64)adj << 32;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->max_phy_port; port++) {
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
 
@@ -1163,7 +1163,7 @@ ice_ptp_prep_phy_incval_eth56g(struct ice_hw *hw, u64 incval)
 	int status;
 	u8 port;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->max_phy_port; port++) {
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
 		status = ice_write_40b_phy_reg_eth56g(hw, port,
@@ -1225,7 +1225,7 @@ ice_ptp_prep_phy_adj_target_eth56g(struct ice_hw *hw, u32 target_time)
 	int status;
 	u8 port;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->max_phy_port; port++) {
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
 
@@ -1412,7 +1412,7 @@ ice_ptp_port_cmd_eth56g(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 	int status;
 	u8 port;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->max_phy_port; port++) {
 		if (!(hw->ena_lports & BIT(port)))
 			continue;
 
@@ -1814,6 +1814,8 @@ ice_ptp_init_phy_cfg(struct ice_hw *hw)
 		hw->phy_cfg = ICE_PHY_E810;
 	else
 		hw->phy_cfg = ICE_PHY_E822;
+	hw->phy_ports = ICE_NUM_EXTERNAL_PORTS;
+	hw->max_phy_port = ICE_NUM_EXTERNAL_PORTS;
 
 	return 0;
 }
@@ -2416,7 +2418,7 @@ int ice_ptp_set_vernier_wl(struct ice_hw *hw)
 {
 	u8 port;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->phy_ports; port++) {
 		int status;
 
 		status = ice_write_phy_reg_e822_lp(hw, port, P_REG_WL,
@@ -2481,7 +2483,7 @@ ice_ptp_prep_phy_time_e822(struct ice_hw *hw, u32 time)
 	 */
 	phy_time = (u64)time << 32;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->phy_ports; port++) {
 
 		/* Tx case */
 		status = ice_write_64b_phy_reg_e822(hw, port,
@@ -2590,7 +2592,7 @@ ice_ptp_prep_phy_adj_e822(struct ice_hw *hw, s32 adj, bool lock_sbq)
 	else
 		cycles = -(((s64)-adj) << 32);
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->phy_ports; port++) {
 		int status;
 
 		status = ice_ptp_prep_port_adj_e822(hw, port, cycles,
@@ -2617,7 +2619,7 @@ ice_ptp_prep_phy_incval_e822(struct ice_hw *hw, u64 incval)
 	int status;
 	u8 port;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->phy_ports; port++) {
 		status = ice_write_40b_phy_reg_e822(hw, port, P_REG_TIMETUS_L,
 						    incval);
 		if (status)
@@ -2678,7 +2680,7 @@ ice_ptp_prep_phy_adj_target_e822(struct ice_hw *hw, u32 target_time)
 	int status;
 	u8 port;
 
-	for (port = 0; port < ICE_NUM_EXTERNAL_PORTS; port++) {
+	for (port = 0; port < hw->phy_ports; port++) {
 
 		/* Tx case */
 		/* No sub-nanoseconds data */
