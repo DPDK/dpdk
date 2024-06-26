@@ -483,7 +483,7 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			goto exit;
 		}
 
-		vf->rx_inj_pf_func = qp->lf.pf_func;
+		vf->rx_inj_sso_pf_func = roc_idev_nix_inl_dev_pffunc_get();
 
 		/* Block the queue for other submissions */
 		qp->pend_q.pq_mask = 0;

@@ -22,7 +22,7 @@
  */
 struct cnxk_cpt_vf {
 	struct roc_cpt_lmtline rx_inj_lmtline;
-	uint16_t rx_inj_pf_func;
+	uint16_t rx_inj_sso_pf_func;
 	uint16_t *rx_chan_base;
 	struct roc_cpt cpt;
 	struct rte_cryptodev_capabilities crypto_caps[CNXK_CPT_MAX_CAPS];

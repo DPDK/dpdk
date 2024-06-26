@@ -1423,7 +1423,7 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 	fc_addr = vf->rx_inj_lmtline.fc_addr;
 
 	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
-	pf_func = vf->rx_inj_pf_func;
+	pf_func = vf->rx_inj_sso_pf_func;
 
 	const uint32_t fc_thresh = vf->rx_inj_lmtline.fc_thresh;
 
