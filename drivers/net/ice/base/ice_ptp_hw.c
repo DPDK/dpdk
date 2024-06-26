@@ -773,6 +773,104 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 }
 
 /**
+ * @ice_ptp_tmr_cmd_to_src_reg - Convert to source timer command value
+ * @hw: pointer to HW struct
+ * @cmd: Timer command
+ *
+ * Returns: the source timer command register value for the given PTP timer
+ * command.
+ */
+static u32 ice_ptp_tmr_cmd_to_src_reg(struct ice_hw *hw,
+				      enum ice_ptp_tmr_cmd cmd)
+{
+	u32 cmd_val;
+	u8 tmr_idx;
+
+	switch (cmd) {
+	case ICE_PTP_INIT_TIME:
+		cmd_val = GLTSYN_CMD_INIT_TIME;
+		break;
+	case ICE_PTP_INIT_INCVAL:
+		cmd_val = GLTSYN_CMD_INIT_INCVAL;
+		break;
+	case ICE_PTP_ADJ_TIME:
+		cmd_val = GLTSYN_CMD_ADJ_TIME;
+		break;
+	case ICE_PTP_ADJ_TIME_AT_TIME:
+		cmd_val = GLTSYN_CMD_ADJ_INIT_TIME;
+		break;
+	case ICE_PTP_NOP:
+	case ICE_PTP_READ_TIME:
+		cmd_val = GLTSYN_CMD_READ_TIME;
+		break;
+	default:
+		ice_warn(hw, "Ignoring unrecognized timer command %u\n", cmd);
+		cmd_val = 0;
+	}
+
+	tmr_idx = ice_get_ptp_src_clock_index(hw) << SEL_CPK_SRC;
+
+	return tmr_idx | cmd_val;
+}
+
+/**
+ * ice_ptp_tmr_cmd_to_port_reg- Convert to port timer command value
+ * @hw: pointer to HW struct
+ * @cmd: Timer command
+ *
+ * Note that some hardware families use a different command register value for
+ * the PHY ports, while other hardware families use the same register values
+ * as the source timer.
+ *
+ * Returns: the PHY port timer command register value for the given PTP timer
+ * command.
+ */
+static u32 ice_ptp_tmr_cmd_to_port_reg(struct ice_hw *hw,
+				       enum ice_ptp_tmr_cmd cmd)
+{
+	u32 cmd_val, tmr_idx;
+
+	/* Certain hardware families share the same register values for the
+	 * port register and source timer register.
+	 */
+	switch (hw->phy_cfg) {
+	case ICE_PHY_E810:
+	case ICE_PHY_E830:
+		return ice_ptp_tmr_cmd_to_src_reg(hw, cmd) & TS_CMD_MASK_E810;
+	default:
+		break;
+	}
+
+	switch (cmd) {
+	case ICE_PTP_INIT_TIME:
+		cmd_val = PHY_CMD_INIT_TIME;
+		break;
+	case ICE_PTP_INIT_INCVAL:
+		cmd_val = PHY_CMD_INIT_INCVAL;
+		break;
+	case ICE_PTP_ADJ_TIME:
+		cmd_val = PHY_CMD_ADJ_TIME;
+		break;
+	case ICE_PTP_ADJ_TIME_AT_TIME:
+		cmd_val = PHY_CMD_ADJ_TIME_AT_TIME;
+		break;
+	case ICE_PTP_READ_TIME:
+		cmd_val = PHY_CMD_READ_TIME;
+		break;
+	case ICE_PTP_NOP:
+		cmd_val = 0;
+		break;
+	default:
+		ice_warn(hw, "Ignoring unrecognized timer command %u\n", cmd);
+		cmd_val = 0;
+	}
+
+	tmr_idx = ice_get_ptp_src_clock_index(hw) << SEL_PHY_SRC;
+
+	return tmr_idx | cmd_val;
+}
+
+/**
  * ice_ptp_src_cmd - Prepare source timer for a timer command
  * @hw: pointer to HW structure
  * @cmd: Timer command
@@ -781,34 +879,7 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
  */
 void ice_ptp_src_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd)
 {
-	u32 cmd_val;
-	u8 tmr_idx;
-
-	tmr_idx = ice_get_ptp_src_clock_index(hw);
-	cmd_val = tmr_idx << SEL_CPK_SRC;
-
-	switch (cmd) {
-	case ICE_PTP_INIT_TIME:
-		cmd_val |= GLTSYN_CMD_INIT_TIME;
-		break;
-	case ICE_PTP_INIT_INCVAL:
-		cmd_val |= GLTSYN_CMD_INIT_INCVAL;
-		break;
-	case ICE_PTP_ADJ_TIME:
-		cmd_val |= GLTSYN_CMD_ADJ_TIME;
-		break;
-	case ICE_PTP_ADJ_TIME_AT_TIME:
-		cmd_val |= GLTSYN_CMD_ADJ_INIT_TIME;
-		break;
-	case ICE_PTP_READ_TIME:
-		cmd_val |= GLTSYN_CMD_READ_TIME;
-		break;
-	case ICE_PTP_NOP:
-		break;
-	default:
-		ice_warn(hw, "Unknown timer command %u\n", cmd);
-		return;
-	}
+	u32 cmd_val = ice_ptp_tmr_cmd_to_src_reg(hw, cmd);
 
 	wr32(hw, GLTSYN_CMD, cmd_val);
 }
@@ -1713,47 +1784,10 @@ int
 ice_ptp_one_port_cmd_eth56g(struct ice_hw *hw, u8 port,
 			    enum ice_ptp_tmr_cmd cmd, bool lock_sbq)
 {
+	u32 val = ice_ptp_tmr_cmd_to_port_reg(hw, cmd);
 	int status;
-	u32 cmd_val, val;
-	u8 tmr_idx;
-
-	tmr_idx = ice_get_ptp_src_clock_index(hw);
-	cmd_val = tmr_idx << SEL_PHY_SRC;
-	switch (cmd) {
-	case ICE_PTP_INIT_TIME:
-		cmd_val |= PHY_CMD_INIT_TIME;
-		break;
-	case ICE_PTP_INIT_INCVAL:
-		cmd_val |= PHY_CMD_INIT_INCVAL;
-		break;
-	case ICE_PTP_ADJ_TIME:
-		cmd_val |= PHY_CMD_ADJ_TIME;
-		break;
-	case ICE_PTP_ADJ_TIME_AT_TIME:
-		cmd_val |= PHY_CMD_ADJ_TIME_AT_TIME;
-		break;
-	case ICE_PTP_READ_TIME:
-		cmd_val |= PHY_CMD_READ_TIME;
-		break;
-	default:
-		ice_warn(hw, "Unknown timer command %u\n", cmd);
-		return ICE_ERR_PARAM;
-	}
 
 	/* Tx case */
-	/* Read, modify, write */
-	status = ice_read_phy_reg_eth56g_lp(hw, port, PHY_REG_TX_TMR_CMD, &val,
-					    lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_TMR_CMD, status %d\n",
-			  status);
-		return status;
-	}
-
-	/* Modify necessary bits only and perform write */
-	val &= ~TS_CMD_MASK;
-	val |= cmd_val;
-
 	status = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_TX_TMR_CMD, val,
 					     lock_sbq);
 	if (status) {
@@ -1763,19 +1797,6 @@ ice_ptp_one_port_cmd_eth56g(struct ice_hw *hw, u8 port,
 	}
 
 	/* Rx case */
-	/* Read, modify, write */
-	status = ice_read_phy_reg_eth56g_lp(hw, port, PHY_REG_RX_TMR_CMD, &val,
-					    lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_TMR_CMD, status %d\n",
-			  status);
-		return status;
-	}
-
-	/* Modify necessary bits only and perform write */
-	val &= ~TS_CMD_MASK;
-	val |= cmd_val;
-
 	status = ice_write_phy_reg_eth56g_lp(hw, port, PHY_REG_RX_TMR_CMD, val,
 					     lock_sbq);
 	if (status) {
@@ -3169,47 +3190,10 @@ int
 ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
 			  bool lock_sbq)
 {
+	u32 val = ice_ptp_tmr_cmd_to_port_reg(hw, cmd);
 	int status;
-	u32 cmd_val, val;
-	u8 tmr_idx;
-
-	tmr_idx = ice_get_ptp_src_clock_index(hw);
-	cmd_val = tmr_idx << SEL_PHY_SRC;
-	switch (cmd) {
-	case ICE_PTP_INIT_TIME:
-		cmd_val |= PHY_CMD_INIT_TIME;
-		break;
-	case ICE_PTP_INIT_INCVAL:
-		cmd_val |= PHY_CMD_INIT_INCVAL;
-		break;
-	case ICE_PTP_ADJ_TIME:
-		cmd_val |= PHY_CMD_ADJ_TIME;
-		break;
-	case ICE_PTP_ADJ_TIME_AT_TIME:
-		cmd_val |= PHY_CMD_ADJ_TIME_AT_TIME;
-		break;
-	case ICE_PTP_READ_TIME:
-		cmd_val |= PHY_CMD_READ_TIME;
-		break;
-	default:
-		ice_warn(hw, "Unknown timer command %u\n", cmd);
-		return ICE_ERR_PARAM;
-	}
 
 	/* Tx case */
-	/* Read, modify, write */
-	status = ice_read_phy_reg_e822_lp(hw, port, P_REG_TX_TMR_CMD, &val,
-					  lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read TX_TMR_CMD, status %d\n",
-			  status);
-		return status;
-	}
-
-	/* Modify necessary bits only and perform write */
-	val &= ~TS_CMD_MASK;
-	val |= cmd_val;
-
 	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_TX_TMR_CMD, val,
 					   lock_sbq);
 	if (status) {
@@ -3219,19 +3203,6 @@ ice_ptp_one_port_cmd_e822(struct ice_hw *hw, u8 port, enum ice_ptp_tmr_cmd cmd,
 	}
 
 	/* Rx case */
-	/* Read, modify, write */
-	status = ice_read_phy_reg_e822_lp(hw, port, P_REG_RX_TMR_CMD, &val,
-					  lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read RX_TMR_CMD, status %d\n",
-			  status);
-		return status;
-	}
-
-	/* Modify necessary bits only and perform write */
-	val &= ~TS_CMD_MASK;
-	val |= cmd_val;
-
 	status = ice_write_phy_reg_e822_lp(hw, port, P_REG_RX_TMR_CMD, val,
 					   lock_sbq);
 	if (status) {
@@ -4934,41 +4905,28 @@ ice_ptp_port_cmd(struct ice_hw *hw, enum ice_ptp_tmr_cmd cmd,
 		 bool lock_sbq, u32 eth_gltsyn_cmd_addr)
 {
 	int status;
-	u32 cmd_val, val;
+	u32 val;
 
 	switch (cmd) {
 	case ICE_PTP_INIT_TIME:
-		cmd_val = GLTSYN_CMD_INIT_TIME;
+		val = GLTSYN_CMD_INIT_TIME;
 		break;
 	case ICE_PTP_INIT_INCVAL:
-		cmd_val = GLTSYN_CMD_INIT_INCVAL;
+		val = GLTSYN_CMD_INIT_INCVAL;
 		break;
 	case ICE_PTP_ADJ_TIME:
-		cmd_val = GLTSYN_CMD_ADJ_TIME;
+		val = GLTSYN_CMD_ADJ_TIME;
 		break;
 	case ICE_PTP_ADJ_TIME_AT_TIME:
-		cmd_val = GLTSYN_CMD_ADJ_INIT_TIME;
+		val = GLTSYN_CMD_ADJ_INIT_TIME;
 		break;
 	case ICE_PTP_READ_TIME:
-		cmd_val = GLTSYN_CMD_READ_TIME;
+		val = GLTSYN_CMD_READ_TIME;
 		break;
 	default:
 		ice_warn(hw, "Unknown timer command %u\n", cmd);
 		return ICE_ERR_PARAM;
 	}
-
-	/* Read, modify, write */
-	status = ice_read_phy_reg_e810_lp(hw, eth_gltsyn_cmd_addr, &val,
-					  lock_sbq);
-	if (status) {
-		ice_debug(hw, ICE_DBG_PTP, "Failed to read GLTSYN_CMD, status %d\n",
-			  status);
-		return status;
-	}
-
-	/* Modify necessary bits only and perform write */
-	val &= ~TS_CMD_MASK_E810;
-	val |= cmd_val;
 
 	status = ice_write_phy_reg_e810_lp(hw, eth_gltsyn_cmd_addr, val,
 					   lock_sbq);
