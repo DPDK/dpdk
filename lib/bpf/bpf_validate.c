@@ -638,14 +638,14 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 {
 	uint64_t msk;
 	uint32_t op;
-	size_t opsz;
+	size_t opsz, sz;
 	const char *err;
 	struct bpf_eval_state *st;
 	struct bpf_reg_val *rd, rs;
 
-	opsz = (BPF_CLASS(ins->code) == BPF_ALU) ?
+	sz = (BPF_CLASS(ins->code) == BPF_ALU) ?
 		sizeof(uint32_t) : sizeof(uint64_t);
-	opsz = opsz * CHAR_BIT;
+	opsz = sz * CHAR_BIT;
 	msk = RTE_LEN2MASK(opsz, uint64_t);
 
 	st = bvf->evst;
@@ -654,8 +654,10 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 	if (BPF_SRC(ins->code) == BPF_X) {
 		rs = st->rv[ins->src_reg];
 		eval_apply_mask(&rs, msk);
-	} else
+	} else {
+		rs = (struct bpf_reg_val){.v = {.size = sz,},};
 		eval_fill_imm(&rs, msk, ins->imm);
+	}
 
 	eval_apply_mask(rd, msk);
 
