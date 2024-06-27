@@ -6,6 +6,7 @@
 #include <time.h>
 
 #include <rte_common.h>
+#include <rte_errno.h>
 #include <rte_hexdump.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
@@ -11830,6 +11831,12 @@ test_enq_callback_setup(void)
 	/* Test with invalid crypto device */
 	cb = rte_cryptodev_add_enq_callback(RTE_CRYPTO_MAX_DEVS,
 			qp_id, test_enq_callback, NULL);
+	if (rte_errno == ENOTSUP) {
+		RTE_LOG(ERR, USER1, "%s line %d: "
+			"rte_cryptodev_add_enq_callback() "
+			"Not supported, skipped\n", __func__, __LINE__);
+		return TEST_SKIPPED;
+	}
 	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
 			"cryptodev %u did not fail",
 			qp_id, RTE_CRYPTO_MAX_DEVS);
@@ -11930,6 +11937,12 @@ test_deq_callback_setup(void)
 	/* Test with invalid crypto device */
 	cb = rte_cryptodev_add_deq_callback(RTE_CRYPTO_MAX_DEVS,
 			qp_id, test_deq_callback, NULL);
+	if (rte_errno == ENOTSUP) {
+		RTE_LOG(ERR, USER1, "%s line %d: "
+			"rte_cryptodev_add_deq_callback() "
+			"Not supported, skipped\n", __func__, __LINE__);
+		return TEST_SKIPPED;
+	}
 	TEST_ASSERT_NULL(cb, "Add callback on qp %u on "
 			"cryptodev %u did not fail",
 			qp_id, RTE_CRYPTO_MAX_DEVS);
