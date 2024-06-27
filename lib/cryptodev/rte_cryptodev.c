@@ -1489,6 +1489,10 @@ rte_cryptodev_add_enq_callback(uint8_t dev_id,
 			       rte_cryptodev_callback_fn cb_fn,
 			       void *cb_arg)
 {
+#ifndef RTE_CRYPTO_CALLBACKS
+	rte_errno = ENOTSUP;
+	return NULL;
+#endif
 	struct rte_cryptodev *dev;
 	struct rte_cryptodev_cb_rcu *list;
 	struct rte_cryptodev_cb *cb, *tail;
@@ -1554,6 +1558,9 @@ rte_cryptodev_remove_enq_callback(uint8_t dev_id,
 				  uint16_t qp_id,
 				  struct rte_cryptodev_cb *cb)
 {
+#ifndef RTE_CRYPTO_CALLBACKS
+	return -ENOTSUP;
+#endif
 	struct rte_cryptodev *dev;
 	RTE_ATOMIC(struct rte_cryptodev_cb *) *prev_cb;
 	struct rte_cryptodev_cb *curr_cb;
@@ -1628,6 +1635,10 @@ rte_cryptodev_add_deq_callback(uint8_t dev_id,
 			       rte_cryptodev_callback_fn cb_fn,
 			       void *cb_arg)
 {
+#ifndef RTE_CRYPTO_CALLBACKS
+	rte_errno = ENOTSUP;
+	return NULL;
+#endif
 	struct rte_cryptodev *dev;
 	struct rte_cryptodev_cb_rcu *list;
 	struct rte_cryptodev_cb *cb, *tail;
@@ -1694,6 +1705,9 @@ rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 				  uint16_t qp_id,
 				  struct rte_cryptodev_cb *cb)
 {
+#ifndef RTE_CRYPTO_CALLBACKS
+	return -ENOTSUP;
+#endif
 	struct rte_cryptodev *dev;
 	RTE_ATOMIC(struct rte_cryptodev_cb *) *prev_cb;
 	struct rte_cryptodev_cb *curr_cb;
