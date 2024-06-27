@@ -3423,6 +3423,9 @@ static const char * const sample_filters[] = {
 	" and ((ip[2:2] - 4 * (ip[0] & 0x0F) - 4 * ((tcp[12] & 0xF0) >> 4) > 69))",
 	/* Other */
 	"len = 128",
+	"host 1::1 or host 1::1 or host 1::1 or host 1::1 or host 1::1 or host 1::1",
+	("host 1::1 or host 1::2 or host 1::3 or host 1::4 or host 1::5 "
+	"or host 192.0.2.1 or host 192.0.2.100 or host 192.0.2.200"),
 };
 
 static int
@@ -3444,6 +3447,9 @@ test_bpf_filter(pcap_t *pcap, const char *s)
 		       __func__, __LINE__, s, rte_errno, strerror(rte_errno));
 		goto error;
 	}
+
+	printf("bpf convert for \"%s\" produced:\n", s);
+	rte_bpf_dump(stdout, prm->ins, prm->nb_ins);
 
 	bpf = rte_bpf_load(prm);
 	if (bpf == NULL) {
