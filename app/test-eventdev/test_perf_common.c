@@ -6,7 +6,7 @@
 
 #include "test_perf_common.h"
 
-#define NB_CRYPTODEV_DESCRIPTORS 1024
+#define NB_CRYPTODEV_DESCRIPTORS 4096
 #define DATA_SIZE		512
 #define IV_OFFSET (sizeof(struct rte_crypto_op) + \
 		   sizeof(struct rte_crypto_sym_op) + \
