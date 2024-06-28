@@ -1127,8 +1127,10 @@ hn_reinit(struct rte_eth_dev *dev, uint16_t mtu)
 	int i, ret = 0;
 
 	/* Point primary queues at new primary channel */
-	rxqs[0]->chan = hv->channels[0];
-	txqs[0]->chan = hv->channels[0];
+	if (rxqs[0]) {
+		rxqs[0]->chan = hv->channels[0];
+		txqs[0]->chan = hv->channels[0];
+	}
 
 	ret = hn_attach(hv, mtu);
 	if (ret)
@@ -1140,10 +1142,12 @@ hn_reinit(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 
 	/* Point any additional queues at new subchannels */
-	for (i = 1; i < dev->data->nb_rx_queues; i++)
-		rxqs[i]->chan = hv->channels[i];
-	for (i = 1; i < dev->data->nb_tx_queues; i++)
-		txqs[i]->chan = hv->channels[i];
+	if (rxqs[0]) {
+		for (i = 1; i < dev->data->nb_rx_queues; i++)
+			rxqs[i]->chan = hv->channels[i];
+		for (i = 1; i < dev->data->nb_tx_queues; i++)
+			txqs[i]->chan = hv->channels[i];
+	}
 
 	return ret;
 }
