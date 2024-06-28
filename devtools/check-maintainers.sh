@@ -85,6 +85,18 @@ check_fx () # <index file>
 	done
 }
 
+# Check that every maintainer mail is known of .mailmap:
+check_mailmap () # <index file> <mailmap file>
+{
+	sed -n -e 's/^M: \(.*<.*\)$/\1/p' $1 | sort -u | while read line; do
+		name=${line%% <*}
+		mail='<'${line##* <}
+		if ! grep -q "^$name <" $2 || ! grep -iq "^$name.*$mail" $2; then
+			echo $name mail address $mail is not in $2
+		fi
+	done
+}
+
 # Add a line to a set of lines if it begins with right pattern
 add_line_to_if () # <new line> <lines> <head pattern>
 {
@@ -128,5 +140,11 @@ echo '##########'
 echo '# wrong patterns'
 echo '##########'
 check_fx MAINTAINERS
+
+echo
+echo '##########'
+echo '# wrong mailmap'
+echo '##########'
+check_mailmap MAINTAINERS .mailmap
 
 # TODO: check overlaps
