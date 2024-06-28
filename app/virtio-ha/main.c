@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <sys/queue.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <linux/vfio.h>
 #include <unistd.h>
 #include <syslog.h>
@@ -16,6 +17,7 @@
 
 #include <rte_log.h>
 #include <rte_version.h>
+#include <rte_io.h>
 
 #include <virtio_ha.h>
 
@@ -24,6 +26,50 @@ RTE_LOG_REGISTER(virtio_ha_app_logtype, test.ha, INFO);
 #define HA_APP_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, virtio_ha_app_logtype, \
 		"VIRTIO HA APP %s(): " fmt "\n", __func__, ##args)
+
+#define REGION_ADDR(x) ((uint64_t) x << 40ULL)
+#define PCI_CAPABILITY_LIST	0x34
+#define PCI_CAP_ID_VNDR		0x09
+#define VIRTIO_PCI_CAP_COMMON_CFG	1
+#define VIRTIO_CONFIG_STATUS_RESET		0x00
+
+struct virtio_pci_cap {
+	uint8_t cap_vndr;	/* Generic PCI field: PCI_CAP_ID_VNDR */
+	uint8_t cap_next;	/* Generic PCI field: next ptr. */
+	uint8_t cap_len;	/* Generic PCI field: capability length */
+	uint8_t cfg_type;	/* Identifies the structure. */
+	uint8_t bar;		/* Where to find it. */
+	uint8_t padding[3];	/* Pad to full dword. */
+	uint32_t offset;	/* Offset within bar. */
+	uint32_t length;	/* Length of the structure, in bytes. */
+};
+
+struct virtio_pci_common_cfg {
+	/* About the whole device. */
+	uint32_t device_feature_select;	/* read-write */
+	uint32_t device_feature;	/* read-only */
+	uint32_t guest_feature_select;	/* read-write */
+	uint32_t guest_feature;		/* read-write */
+	uint16_t msix_config;		/* read-write */
+	uint16_t num_queues;		/* read-only */
+	uint8_t device_status;		/* read-write */
+	uint8_t config_generation;	/* read-only */
+
+	/* About a specific virtqueue. */
+	uint16_t queue_select;		/* read-write */
+	uint16_t queue_size;		/* read-write, power of 2. */
+	uint16_t queue_msix_vector;	/* read-write */
+	uint16_t queue_enable;		/* read-write */
+	uint16_t queue_notify_off;	/* read-only */
+	uint32_t queue_desc_lo;		/* read-write */
+	uint32_t queue_desc_hi;		/* read-write */
+	uint32_t queue_avail_lo;	/* read-write */
+	uint32_t queue_avail_hi;	/* read-write */
+	uint32_t queue_used_lo;		/* read-write */
+	uint32_t queue_used_hi;		/* read-write */
+	uint16_t queue_notify_data;		/* read-only for driver */
+	uint16_t queue_reset;		/* read-write */
+};
 
 enum ha_msg_hdlr_res {
 	HA_MSG_HDLR_ERR = 0, /* Message handling error */
@@ -969,6 +1015,139 @@ err:
 	return arg;
 }
 
+
+static uint8_t *
+ha_server_mmap_common_cfg(int fd, struct virtio_pci_cap *cap)
+{
+	struct vfio_region_info info;
+	int bar = (int)cap->bar;
+	uint8_t *addr;
+	int ret;
+
+	info.argsz = sizeof(info);
+	info.index = bar;
+	ret = ioctl(fd, VFIO_DEVICE_GET_REGION_INFO, &info);
+	if (ret < 0) {
+		HA_APP_LOG(ERR, "Failed to get region info of bar %d", bar);
+		return NULL;
+	}
+
+	addr = mmap(NULL, info.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, info.offset);
+	if (addr == MAP_FAILED) {
+		HA_APP_LOG(ERR, "Failed to mmap bar %d", bar);
+		return NULL;
+	}
+
+	return addr + cap->offset;
+}
+
+static int
+ha_server_pf_dev_reset(struct virtio_pci_common_cfg *common_cfg, uint32_t time_out_ms)
+{
+	uint32_t retry = 0;
+	const int wait_unit = 1; /* sleep wait_unit ms */
+
+	time_out_ms /= wait_unit;
+	rte_write8(VIRTIO_CONFIG_STATUS_RESET, &common_cfg->device_status);
+	/* Flush status write and wait device ready max 120 seconds. */
+	while (rte_read8(&common_cfg->device_status) != VIRTIO_CONFIG_STATUS_RESET) {
+		if (retry++ > time_out_ms) {
+			HA_APP_LOG(WARNING, "reset %d ms timeout",
+				time_out_ms * wait_unit);
+			return -1;
+		}
+		if (!(retry % (1000 / wait_unit)))
+			HA_APP_LOG(INFO, "device resetting");
+		usleep(wait_unit*1000L);
+	}
+	return 0;
+}
+
+static FILE *
+ha_server_create_pf_reset_file(void)
+{
+	FILE *fp;
+
+	fp = fopen("/tmp/pf_resetting", "w");
+	if (!fp) {
+		HA_APP_LOG(ERR, "Failed to create PF reset file");
+		return NULL;;
+	} else {
+		HA_APP_LOG(INFO, "PF reset file created");
+		return fp;
+	}
+}
+
+static void
+ha_server_remove_pf_reset_file(FILE *fp)
+{
+	fclose(fp);
+	if (remove("/tmp/pf_resetting"))
+		HA_APP_LOG(ERR, "Failed to delete PF reset file");
+	else
+		HA_APP_LOG(ERR, "PF reset file deleted");
+}
+
+static void
+ha_server_reset_all_pfs(void)
+{
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_pf_dev_list *list = &hs.pf_list;
+	uint8_t pos;
+	struct virtio_pci_cap cap;
+	int dev_fd, ret;
+	struct virtio_pci_common_cfg *common_cfg;
+
+	TAILQ_FOREACH(dev, list, next) {
+		dev_fd = dev->pf_ctx.vfio_device_fd;
+		ret = pread64(dev_fd, &pos, 1, REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + PCI_CAPABILITY_LIST);
+		if (ret != 1) {
+			HA_APP_LOG(ERR, "Failed to read cap list of %s", dev->pf_name.dev_bdf);
+			continue;
+		}
+		while (pos) {
+			ret = pread64(dev_fd, &cap, 2, REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + pos);
+			if (ret != 2) {
+				HA_APP_LOG(ERR, "Failed to read cap header at 0x%x", pos);
+				ret = -1;
+				break;
+			}
+
+			if (cap.cap_vndr != PCI_CAP_ID_VNDR)
+				goto next;
+
+			ret = pread64(dev_fd, &cap, sizeof(cap), REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + pos);
+			if (ret != sizeof(cap)) {
+				HA_APP_LOG(ERR, "Failed to read cap at 0x%x", pos);
+				ret = -1;
+				break;				
+			}
+
+			if (cap.cfg_type == VIRTIO_PCI_CAP_COMMON_CFG)
+				break;
+next:
+			pos = cap.cap_next;
+		}
+
+		if (ret < 0)
+			continue;
+
+		common_cfg = (struct virtio_pci_common_cfg *)ha_server_mmap_common_cfg(dev_fd, &cap);
+		if (!common_cfg)
+			continue;
+
+		HA_APP_LOG(INFO, "PF %s reset start", dev->pf_name.dev_bdf);
+		if (ha_server_pf_dev_reset(common_cfg, 120000) == 0)
+			HA_APP_LOG(INFO, "PF %s reset succeed", dev->pf_name.dev_bdf);
+		else
+			HA_APP_LOG(INFO, "PF %s reset fail", dev->pf_name.dev_bdf);
+	}
+
+	/* All PF reset completed, we could safely clean up DMA mapping */
+	ha_server_cleanup_global_dma();
+	HA_APP_LOG(INFO, "All PF reset completed");
+}
+
 int
 main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *argv[])
 {
@@ -976,6 +1155,7 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 	struct epoll_event event, ev[2];
 	struct virtio_ha_event_handler hdl, *handler;
 	int sock, epfd, nev, i;
+	FILE *fp;
 
 	HA_APP_LOG(ERR, "version: %s", rte_version());
 
@@ -1040,7 +1220,7 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 				if (epoll_ctl(epfd, EPOLL_CTL_DEL, handler->sock, &ev[i]) < 0)
 					HA_APP_LOG(ERR, "Failed to epoll ctl del for fd %d", handler->sock);
 				close(handler->sock);
-				ha_server_cleanup_global_dma();
+				fp = ha_server_create_pf_reset_file();
 				pthread_mutex_lock(&prio_chnl_mutex);
 				if (hs.prio_chnl_fd != -1) {
 					close(hs.prio_chnl_fd);
@@ -1054,6 +1234,10 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 					hs.prio_thread = 0;
 				}
 				pthread_create(&hs.prio_thread, NULL, monitor_vhostfd_thread, NULL);
+				if (fp) {
+					ha_server_reset_all_pfs();
+					ha_server_remove_pf_reset_file(fp);
+				}
 			} else { /* EPOLLIN */
 				handler->cb(handler->sock, handler->data);
 			}

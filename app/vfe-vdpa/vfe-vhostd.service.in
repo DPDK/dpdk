@@ -4,6 +4,7 @@ After=network.target network.service networking.service
 
 [Service]
 Type=simple
+ExecStartPre=bash @prefix@/bin/check_pf_reset.sh
 ExecStart=@prefix@/bin/vfe-vhostd -v --file-prefix=vfe-vhostd -a 0000:00:00.0 --log-level=.,debug --vfio-vf-token=cdc786f0-59d4-41d9-b554-fed36ff5e89f -- --client
 TimeoutSec=1800
 LimitNOFILE=200000

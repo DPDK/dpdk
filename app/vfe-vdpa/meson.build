@@ -20,6 +20,7 @@ deps += ['vhost', 'ethdev', 'cmdline', 'vdpa_virtio', 'common_virtio', 'common_v
 
 install_data([
             'vhostmgmt',
+            'check_pf_reset.sh'
         ],
         install_dir: 'bin')
 
