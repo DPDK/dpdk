@@ -210,6 +210,16 @@ implementer_ampere = {
                 ['RTE_MAX_LCORE', 320],
                 ['RTE_MAX_NUMA_NODES', 8]
             ]
+        },
+        '0xac4': {
+            'march': 'armv8.6-a',
+            'march_features': ['crc', 'crypto'],
+            'mcpu': 'ampere1a',
+            'flags': [
+                ['RTE_MACHINE', '"AmpereOneAC04"'],
+                ['RTE_MAX_LCORE', 384],
+                ['RTE_MAX_NUMA_NODES', 8]
+            ]
         }
     }
 }
@@ -368,6 +378,13 @@ soc_ampereone = {
     'description': 'Ampere AmpereOne',
     'implementer': '0xc0',
     'part_number': '0xac3',
+    'numa': true
+}
+
+soc_ampereoneac04 = {
+    'description': 'Ampere AmpereOne AC04',
+    'implementer': '0xc0',
+    'part_number': '0xac4',
     'numa': true
 }
 
@@ -621,6 +638,7 @@ generic:         Generic un-optimized build for armv8 aarch64 execution mode.
 generic_aarch32: Generic un-optimized build for armv8 aarch32 execution mode.
 altra:           Ampere Altra/AltraMax
 ampereone:       Ampere AmpereOne
+ampereoneac04:   Ampere AmpereOneAC04
 armada:          Marvell ARMADA
 bluefield:       NVIDIA BlueField
 bluefield3:      NVIDIA BlueField-3
@@ -658,6 +676,7 @@ socs = {
     'generic_aarch32': soc_generic_aarch32,
     'altra': soc_altra,
     'ampereone': soc_ampereone,
+    'ampereoneac04': soc_ampereoneac04,
     'armada': soc_armada,
     'bluefield': soc_bluefield,
     'bluefield3': soc_bluefield3,
