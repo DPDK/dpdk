@@ -534,6 +534,10 @@ refill:
 	ret = rte_pktmbuf_alloc_bulk(mq->mempool, &mq->buffers[head & mask], n_slots);
 	if (unlikely(ret < 0))
 		goto no_free_mbufs;
+	if (unlikely(n_slots > ring_size - (head & mask))) {
+		rte_memcpy(mq->buffers, &mq->buffers[ring_size],
+			(n_slots + (head & mask) - ring_size) * sizeof(struct rte_mbuf *));
+	}
 
 	while (n_slots--) {
 		s0 = head++ & mask;
@@ -1130,8 +1134,12 @@ memif_init_queues(struct rte_eth_dev *dev)
 		}
 		mq->buffers = NULL;
 		if (pmd->flags & ETH_MEMIF_FLAG_ZERO_COPY) {
+			/*
+			 * Allocate 2x ring_size to reserve a contiguous array for
+			 * rte_pktmbuf_alloc_bulk (to store allocated mbufs).
+			 */
 			mq->buffers = rte_zmalloc("bufs", sizeof(struct rte_mbuf *) *
-						  (1 << mq->log2_ring_size), 0);
+						  (1 << (mq->log2_ring_size + 1)), 0);
 			if (mq->buffers == NULL)
 				return -ENOMEM;
 		}
