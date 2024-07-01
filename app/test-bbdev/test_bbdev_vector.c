@@ -865,6 +865,10 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 		vector->mask |= TEST_BBDEV_VF_RV_INDEX;
 		ldpc_dec->rv_index = (uint8_t) strtoul(token, &err, 0);
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "k0")) {
+		vector->mask |= TEST_BBDEV_VF_K0;
+		ldpc_dec->k0 = (uint16_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "n_cb")) {
 		vector->mask |= TEST_BBDEV_VF_NCB;
 		ldpc_dec->n_cb = (uint16_t) strtoul(token, &err, 0);
