@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2023 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 #ifndef _IDPF_LAN_TXRX_H_
@@ -286,6 +286,24 @@ struct idpf_flex_tx_tso_ctx_qw {
 };
 
 union idpf_flex_tx_ctx_desc {
+		/* DTYPE = IDPF_TX_DESC_DTYPE_CTX (0x01) */
+	struct  {
+		struct {
+			u8 rsv[4];
+			__le16 l2tag2;
+			u8 rsv_2[2];
+		} qw0;
+		struct {
+			__le16 cmd_dtype;
+			__le16 tsyn_reg_l;
+#define IDPF_TX_DESC_CTX_TSYN_L_M	GENMASK(15, 14)
+			__le16 tsyn_reg_h;
+#define IDPF_TX_DESC_CTX_TSYN_H_M	GENMASK(15, 0)
+			__le16 mss;
+#define IDPF_TX_DESC_CTX_MSS_M		GENMASK(14, 2)
+		} qw1;
+	} tsyn;
+
 	/* DTYPE = IDPF_TX_DESC_DTYPE_FLEX_TSO_CTX (0x05) */
 	struct {
 		struct idpf_flex_tx_tso_ctx_qw qw0;
