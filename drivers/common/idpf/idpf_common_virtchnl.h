@@ -31,7 +31,7 @@ int idpf_vc_cmd_execute(struct idpf_adapter *adapter,
 			struct idpf_cmd_info *args);
 __rte_internal
 int idpf_vc_queue_switch(struct idpf_vport *vport, uint16_t qid,
-			 bool rx, bool on);
+			 bool rx, bool on, uint32_t type);
 __rte_internal
 int idpf_vc_queues_ena_dis(struct idpf_vport *vport, bool enable);
 __rte_internal

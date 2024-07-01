@@ -769,15 +769,11 @@ idpf_vc_ena_dis_one_queue(struct idpf_vport *vport, uint16_t qid,
 
 int
 idpf_vc_queue_switch(struct idpf_vport *vport, uint16_t qid,
-		     bool rx, bool on)
+		     bool rx, bool on, uint32_t type)
 {
-	uint32_t type;
 	int err, queue_id;
 
-	/* switch txq/rxq */
-	type = rx ? VIRTCHNL2_QUEUE_TYPE_RX : VIRTCHNL2_QUEUE_TYPE_TX;
-
-	if (type == VIRTCHNL2_QUEUE_TYPE_RX)
+	if (rx)
 		queue_id = vport->chunks_info.rx_start_qid + qid;
 	else
 		queue_id = vport->chunks_info.tx_start_qid + qid;
