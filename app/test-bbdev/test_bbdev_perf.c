@@ -1923,6 +1923,7 @@ copy_reference_ldpc_dec_op(struct rte_bbdev_dec_op **ops, unsigned int n,
 		ops[i]->ldpc_dec.n_cb = ldpc_dec->n_cb;
 		ops[i]->ldpc_dec.iter_max = ldpc_dec->iter_max;
 		ops[i]->ldpc_dec.rv_index = ldpc_dec->rv_index;
+		ops[i]->ldpc_dec.k0 = ldpc_dec->k0;
 		ops[i]->ldpc_dec.op_flags = ldpc_dec->op_flags;
 		ops[i]->ldpc_dec.code_block_mode = ldpc_dec->code_block_mode;
 
@@ -2171,8 +2172,10 @@ validate_op_chain(struct rte_bbdev_op_data *op,
  * As per definition in 3GPP 38.212 Table 5.4.2.1-2
  */
 static inline uint16_t
-get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
+get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index, uint16_t k0)
 {
+	if (k0 > 0)
+		return k0;
 	if (rv_index == 0)
 		return 0;
 	uint16_t n = (bg == 1 ? N_ZC_1 : N_ZC_2) * z_c;
@@ -2202,7 +2205,7 @@ compute_harq_len(struct rte_bbdev_op_ldpc_dec *ops_ld)
 {
 	uint16_t k0 = 0;
 	uint8_t max_rv = (ops_ld->rv_index == 1) ? 3 : ops_ld->rv_index;
-	k0 = get_k0(ops_ld->n_cb, ops_ld->z_c, ops_ld->basegraph, max_rv);
+	k0 = get_k0(ops_ld->n_cb, ops_ld->z_c, ops_ld->basegraph, max_rv, ops_ld->k0);
 	/* Compute RM out size and number of rows */
 	uint16_t parity_offset = (ops_ld->basegraph == 1 ? 20 : 8)
 			* ops_ld->z_c - ops_ld->n_filler;

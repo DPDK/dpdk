@@ -562,6 +562,10 @@ struct rte_bbdev_op_ldpc_dec {
 		/** Struct which stores Transport Block specific parameters */
 		struct rte_bbdev_op_dec_ldpc_tb_params tb_params;
 	};
+	/** Optional k0 Rate matching starting position, overrides rv_index when non null
+	 *  [3GPP TS38.212, section 5.4.2.1]
+	 */
+	uint16_t k0;
 };
 /* >8 End of structure rte_bbdev_op_ldpc_dec. */
 
