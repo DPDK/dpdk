@@ -35,6 +35,8 @@ Here is the suggested matching list which has been tested and verified.
    +------------+------------------+
    |    23.11   |       1.0        |
    +------------+------------------+
+   |    24.07   |       1.4        |
+   +------------+------------------+
 
 
 Configuration
