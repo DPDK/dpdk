@@ -63,6 +63,10 @@ enum virtchnl2_status {
 #define VIRTCHNL2_CHECK_STRUCT_LEN(n, X)	\
 	static_assert((n) == sizeof(struct X),	\
 		      "Structure length does not match with the expected value")
+#define VIRTCHNL2_CHECK_STRUCT_VAR_LEN(n, X, T)		\
+	VIRTCHNL2_CHECK_STRUCT_LEN(n, X)
+
+#define STRUCT_VAR_LEN		1
 
 /**
  * New major set of opcodes introduced and so leaving room for
@@ -696,10 +700,9 @@ VIRTCHNL2_CHECK_STRUCT_LEN(32, virtchnl2_queue_reg_chunk);
 struct virtchnl2_queue_reg_chunks {
 	__le16 num_chunks;
 	u8 pad[6];
-	struct virtchnl2_queue_reg_chunk chunks[1];
+	struct virtchnl2_queue_reg_chunk chunks[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_queue_reg_chunks);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(40, virtchnl2_queue_reg_chunks, chunks);
 
 /**
  * enum virtchnl2_vport_flags - Vport flags
@@ -773,7 +776,7 @@ struct virtchnl2_create_vport {
 	u8 pad[20];
 	struct virtchnl2_queue_reg_chunks chunks;
 };
-VIRTCHNL2_CHECK_STRUCT_LEN(192, virtchnl2_create_vport);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(192, virtchnl2_create_vport, chunks.chunks);
 
 /**
  * struct virtchnl2_vport - Vport identifier information
@@ -860,10 +863,9 @@ struct virtchnl2_config_tx_queues {
 	__le16 num_qinfo;
 
 	u8 pad[10];
-	struct virtchnl2_txq_info qinfo[1];
+	struct virtchnl2_txq_info qinfo[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(72, virtchnl2_config_tx_queues);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(72, virtchnl2_config_tx_queues, qinfo);
 
 /**
  * struct virtchnl2_rxq_info - Receive queue config info
@@ -942,10 +944,9 @@ struct virtchnl2_config_rx_queues {
 	__le16 num_qinfo;
 
 	u8 pad[18];
-	struct virtchnl2_rxq_info qinfo[1];
+	struct virtchnl2_rxq_info qinfo[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(112, virtchnl2_config_rx_queues);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(112, virtchnl2_config_rx_queues, qinfo);
 
 /**
  * struct virtchnl2_add_queues - Data for VIRTCHNL2_OP_ADD_QUEUES
@@ -975,16 +976,15 @@ struct virtchnl2_add_queues {
 
 	struct virtchnl2_queue_reg_chunks chunks;
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(56, virtchnl2_add_queues);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(56, virtchnl2_add_queues, chunks.chunks);
 
 /* Queue Groups Extension */
 /**
  * struct virtchnl2_rx_queue_group_info - RX queue group info
- * @rss_lut_size: IN/OUT, user can ask to update rss_lut size originally
- *		  allocated by CreateVport command. New size will be returned
- *		  if allocation succeeded, otherwise original rss_size from
- *		  CreateVport will be returned.
+ * @rss_lut_size: User can ask to update rss_lut size originally allocated by
+ *		  CreateVport command. New size will be returned if allocation
+ *		  succeeded, otherwise original rss_size from CreateVport
+ *		  will be returned.
  * @pad: Padding for future extensions
  */
 struct virtchnl2_rx_queue_group_info {
@@ -1012,7 +1012,7 @@ VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_rx_queue_group_info);
  * @cir_pad: Future extension purpose for CIR only
  * @pad2: Padding for future extensions
  */
-struct virtchnl2_tx_queue_group_info { /* IN */
+struct virtchnl2_tx_queue_group_info {
 	u8 tx_tc;
 	u8 priority;
 	u8 is_sp;
@@ -1045,19 +1045,17 @@ VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_queue_group_id);
 /**
  * struct virtchnl2_queue_group_info - Queue group info
  * @qg_id: Queue group ID
- * @num_tx_q: Number of TX queues
- * @num_tx_complq: Number of completion queues
- * @num_rx_q: Number of RX queues
- * @num_rx_bufq: Number of RX buffer queues
+ * @num_tx_q: Number of TX queues requested
+ * @num_tx_complq: Number of completion queues requested
+ * @num_rx_q: Number of RX queues requested
+ * @num_rx_bufq: Number of RX buffer queues requested
  * @tx_q_grp_info: TX queue group info
  * @rx_q_grp_info: RX queue group info
  * @pad: Padding for future extensions
- * @chunks: Queue register chunks
+ * @chunks: Queue register chunks from CP
  */
 struct virtchnl2_queue_group_info {
-	/* IN */
 	struct virtchnl2_queue_group_id qg_id;
-	/* IN, Number of queue of different types in the group. */
 	__le16 num_tx_q;
 	__le16 num_tx_complq;
 	__le16 num_rx_q;
@@ -1066,56 +1064,43 @@ struct virtchnl2_queue_group_info {
 	struct virtchnl2_tx_queue_group_info tx_q_grp_info;
 	struct virtchnl2_rx_queue_group_info rx_q_grp_info;
 	u8 pad[40];
-	struct virtchnl2_queue_reg_chunks chunks; /* OUT */
+	struct virtchnl2_queue_reg_chunks chunks;
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(120, virtchnl2_queue_group_info);
-
-/**
- * struct virtchnl2_queue_groups - Queue groups list
- * @num_queue_groups: Total number of queue groups
- * @pad: Padding for future extensions
- * @groups: Array of queue group info
- */
-struct virtchnl2_queue_groups {
-	__le16 num_queue_groups;
-	u8 pad[6];
-	struct virtchnl2_queue_group_info groups[1];
-};
-
-VIRTCHNL2_CHECK_STRUCT_LEN(128, virtchnl2_queue_groups);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(120, virtchnl2_queue_group_info, chunks.chunks);
 
 /**
  * struct virtchnl2_add_queue_groups - Add queue groups
- * @vport_id: IN, vport_id to add queue group to, same as allocated by
+ * @vport_id: Vport_id to add queue group to, same as allocated by
  *	      CreateVport. NA for mailbox and other types not assigned to vport.
+ * @num_queue_groups: Total number of queue groups
  * @pad: Padding for future extensions
- * @qg_info: IN/OUT. List of all the queue groups
  *
  * PF sends this message to request additional transmit/receive queue groups
  * beyond the ones that were assigned via CREATE_VPORT request.
  * virtchnl2_add_queue_groups structure is used to specify the number of each
  * type of queues. CP responds with the same structure with the actual number of
- * groups and queues assigned followed by num_queue_groups and num_chunks of
- * virtchnl2_queue_groups and virtchnl2_queue_chunk structures.
+ * groups and queues assigned followed by num_queue_groups and groups of
+ * virtchnl2_queue_group_info and virtchnl2_queue_chunk structures.
  *
  * Associated with VIRTCHNL2_OP_ADD_QUEUE_GROUPS.
  */
 struct virtchnl2_add_queue_groups {
 	__le32 vport_id;
-	u8 pad[4];
-	struct virtchnl2_queue_groups qg_info;
+	__le16 num_queue_groups;
+	u8 pad[10];
+	struct virtchnl2_queue_group_info groups[STRUCT_VAR_LEN];
+
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(136, virtchnl2_add_queue_groups);
 
 /**
  * struct virtchnl2_delete_queue_groups - Delete queue groups
- * @vport_id: IN, vport_id to delete queue group from, same as allocated by
+ * @vport_id: Vport ID to delete queue group from, same as allocated by
  *	      CreateVport.
- * @num_queue_groups: IN/OUT, Defines number of groups provided
+ * @num_queue_groups: Defines number of groups provided
  * @pad: Padding
- * @qg_ids: IN, IDs & types of Queue Groups to delete
+ * @qg_ids: IDs & types of Queue Groups to delete
  *
  * PF sends this message to delete queue groups.
  * PF sends virtchnl2_delete_queue_groups struct to specify the queue groups
@@ -1129,10 +1114,9 @@ struct virtchnl2_delete_queue_groups {
 	__le16 num_queue_groups;
 	u8 pad[2];
 
-	struct virtchnl2_queue_group_id qg_ids[1];
+	struct virtchnl2_queue_group_id qg_ids[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_delete_queue_groups);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(16, virtchnl2_delete_queue_groups, qg_ids);
 
 /**
  * struct virtchnl2_vector_chunk - Structure to specify a chunk of contiguous
@@ -1190,10 +1174,9 @@ struct virtchnl2_vector_chunks {
 	__le16 num_vchunks;
 	u8 pad[14];
 
-	struct virtchnl2_vector_chunk vchunks[1];
+	struct virtchnl2_vector_chunk vchunks[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(48, virtchnl2_vector_chunks);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(48, virtchnl2_vector_chunks, vchunks);
 
 /**
  * struct virtchnl2_alloc_vectors - Vector allocation info
@@ -1215,8 +1198,7 @@ struct virtchnl2_alloc_vectors {
 
 	struct virtchnl2_vector_chunks vchunks;
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(64, virtchnl2_alloc_vectors);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(64, virtchnl2_alloc_vectors, vchunks.vchunks);
 
 /**
  * struct virtchnl2_rss_lut - RSS LUT info
@@ -1237,10 +1219,9 @@ struct virtchnl2_rss_lut {
 	__le16 lut_entries_start;
 	__le16 lut_entries;
 	u8 pad[4];
-	__le32 lut[1];
+	__le32 lut[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_rss_lut);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(16, virtchnl2_rss_lut, lut);
 
 /**
  * struct virtchnl2_rss_hash - RSS hash info
@@ -1389,10 +1370,9 @@ struct virtchnl2_ptype {
 	u8 ptype_id_8;
 	u8 proto_id_count;
 	__le16 pad;
-	__le16 proto_id[1];
+	__le16 proto_id[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_ptype);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(8, virtchnl2_ptype, proto_id);
 
 /**
  * struct virtchnl2_get_ptype_info - Packet type info
@@ -1428,7 +1408,7 @@ struct virtchnl2_get_ptype_info {
 	__le16 start_ptype_id;
 	__le16 num_ptypes;
 	__le32 pad;
-	struct virtchnl2_ptype ptype[1];
+	struct virtchnl2_ptype ptype[STRUCT_VAR_LEN];
 };
 
 VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_get_ptype_info);
@@ -1629,10 +1609,9 @@ VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_queue_chunk);
 struct virtchnl2_queue_chunks {
 	__le16 num_chunks;
 	u8 pad[6];
-	struct virtchnl2_queue_chunk chunks[1];
+	struct virtchnl2_queue_chunk chunks[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_queue_chunks);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(24, virtchnl2_queue_chunks, chunks);
 
 /**
  * struct virtchnl2_del_ena_dis_queues - Enable/disable queues info
@@ -1654,8 +1633,7 @@ struct virtchnl2_del_ena_dis_queues {
 
 	struct virtchnl2_queue_chunks chunks;
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(32, virtchnl2_del_ena_dis_queues);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(32, virtchnl2_del_ena_dis_queues, chunks.chunks);
 
 /**
  * struct virtchnl2_queue_vector - Queue to vector mapping
@@ -1699,10 +1677,10 @@ struct virtchnl2_queue_vector_maps {
 	__le32 vport_id;
 	__le16 num_qv_maps;
 	u8 pad[10];
-	struct virtchnl2_queue_vector qv_maps[1];
-};
 
-VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_queue_vector_maps);
+	struct virtchnl2_queue_vector qv_maps[STRUCT_VAR_LEN];
+};
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(40, virtchnl2_queue_vector_maps, qv_maps);
 
 /**
  * struct virtchnl2_loopback - Loopback info
@@ -1754,10 +1732,10 @@ struct virtchnl2_mac_addr_list {
 	__le32 vport_id;
 	__le16 num_mac_addr;
 	u8 pad[2];
-	struct virtchnl2_mac_addr mac_addr_list[1];
-};
 
-VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_mac_addr_list);
+	struct virtchnl2_mac_addr mac_addr_list[STRUCT_VAR_LEN];
+};
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(16, virtchnl2_mac_addr_list, mac_addr_list);
 
 /**
  * struct virtchnl2_promisc_info - Promiscuous type information
@@ -1856,10 +1834,10 @@ struct virtchnl2_ptp_tx_tstamp {
 	__le16 num_latches;
 	__le16 latch_size;
 	u8 pad[4];
-	struct virtchnl2_ptp_tx_tstamp_entry ptp_tx_tstamp_entries[1];
+	struct virtchnl2_ptp_tx_tstamp_entry ptp_tx_tstamp_entries[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_tx_tstamp);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(24, virtchnl2_ptp_tx_tstamp,
+			       ptp_tx_tstamp_entries);
 
 /**
  * struct virtchnl2_get_ptp_caps - Get PTP capabilities
@@ -1884,8 +1862,8 @@ struct virtchnl2_get_ptp_caps {
 	struct virtchnl2_ptp_device_clock_control device_clock_control;
 	struct virtchnl2_ptp_tx_tstamp tx_tstamp;
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(88, virtchnl2_get_ptp_caps);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(88, virtchnl2_get_ptp_caps,
+			       tx_tstamp.ptp_tx_tstamp_entries);
 
 /**
  * struct virtchnl2_ptp_tx_tstamp_latch - Structure that describes tx tstamp
@@ -1920,13 +1898,12 @@ VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_tx_tstamp_latch);
  */
 struct virtchnl2_ptp_tx_tstamp_latches {
 	__le16 num_latches;
-	/* latch size expressed in bits */
 	__le16 latch_size;
 	u8 pad[4];
-	struct virtchnl2_ptp_tx_tstamp_latch tstamp_latches[1];
+	struct virtchnl2_ptp_tx_tstamp_latch tstamp_latches[STRUCT_VAR_LEN];
 };
-
-VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_tx_tstamp_latches);
+VIRTCHNL2_CHECK_STRUCT_VAR_LEN(24, virtchnl2_ptp_tx_tstamp_latches,
+			       tstamp_latches);
 
 static inline const char *virtchnl2_op_str(__le32 v_opcode)
 {
@@ -2002,316 +1979,6 @@ static inline const char *virtchnl2_op_str(__le32 v_opcode)
 	default:
 		return "Unsupported (update virtchnl2.h)";
 	}
-}
-
-/**
- * virtchnl2_vc_validate_vf_msg
- * @ver: Virtchnl2 version info
- * @v_opcode: Opcode for the message
- * @msg: pointer to the msg buffer
- * @msglen: msg length
- *
- * Validate msg format against struct for each opcode.
- */
-static inline int
-virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u32 v_opcode,
-			     u8 *msg, __le16 msglen)
-{
-	bool err_msg_format = false;
-	__le32 valid_len = 0;
-
-	/* Validate message length */
-	switch (v_opcode) {
-	case VIRTCHNL2_OP_VERSION:
-		valid_len = sizeof(struct virtchnl2_version_info);
-		break;
-	case VIRTCHNL2_OP_GET_CAPS:
-		valid_len = sizeof(struct virtchnl2_get_capabilities);
-		break;
-	case VIRTCHNL2_OP_CREATE_VPORT:
-		valid_len = sizeof(struct virtchnl2_create_vport);
-		if (msglen >= valid_len) {
-			struct virtchnl2_create_vport *cvport =
-				(struct virtchnl2_create_vport *)msg;
-
-			if (cvport->chunks.num_chunks == 0) {
-				/* Zero chunks is allowed as input */
-				break;
-			}
-
-			valid_len += (cvport->chunks.num_chunks - 1) *
-				      sizeof(struct virtchnl2_queue_reg_chunk);
-		}
-		break;
-	case VIRTCHNL2_OP_NON_FLEX_CREATE_ADI:
-		valid_len = sizeof(struct virtchnl2_non_flex_create_adi);
-		if (msglen >= valid_len) {
-			struct virtchnl2_non_flex_create_adi *cadi =
-				(struct virtchnl2_non_flex_create_adi *)msg;
-
-			if (cadi->chunks.num_chunks == 0) {
-				/* Zero chunks is allowed as input */
-				break;
-			}
-
-			if (cadi->vchunks.num_vchunks == 0) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (cadi->chunks.num_chunks - 1) *
-				      sizeof(struct virtchnl2_queue_reg_chunk);
-			valid_len += (cadi->vchunks.num_vchunks - 1) *
-				      sizeof(struct virtchnl2_vector_chunk);
-		}
-		break;
-	case VIRTCHNL2_OP_NON_FLEX_DESTROY_ADI:
-		valid_len = sizeof(struct virtchnl2_non_flex_destroy_adi);
-		break;
-	case VIRTCHNL2_OP_DESTROY_VPORT:
-	case VIRTCHNL2_OP_ENABLE_VPORT:
-	case VIRTCHNL2_OP_DISABLE_VPORT:
-		valid_len = sizeof(struct virtchnl2_vport);
-		break;
-	case VIRTCHNL2_OP_CONFIG_TX_QUEUES:
-		valid_len = sizeof(struct virtchnl2_config_tx_queues);
-		if (msglen >= valid_len) {
-			struct virtchnl2_config_tx_queues *ctq =
-				(struct virtchnl2_config_tx_queues *)msg;
-			if (ctq->num_qinfo == 0) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (ctq->num_qinfo - 1) *
-				     sizeof(struct virtchnl2_txq_info);
-		}
-		break;
-	case VIRTCHNL2_OP_CONFIG_RX_QUEUES:
-		valid_len = sizeof(struct virtchnl2_config_rx_queues);
-		if (msglen >= valid_len) {
-			struct virtchnl2_config_rx_queues *crq =
-				(struct virtchnl2_config_rx_queues *)msg;
-			if (crq->num_qinfo == 0) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (crq->num_qinfo - 1) *
-				     sizeof(struct virtchnl2_rxq_info);
-		}
-		break;
-	case VIRTCHNL2_OP_ADD_QUEUES:
-		valid_len = sizeof(struct virtchnl2_add_queues);
-		if (msglen >= valid_len) {
-			struct virtchnl2_add_queues *add_q =
-				(struct virtchnl2_add_queues *)msg;
-
-			if (add_q->chunks.num_chunks == 0) {
-				/* Zero chunks is allowed as input */
-				break;
-			}
-
-			valid_len += (add_q->chunks.num_chunks - 1) *
-				      sizeof(struct virtchnl2_queue_reg_chunk);
-		}
-		break;
-	case VIRTCHNL2_OP_ENABLE_QUEUES:
-	case VIRTCHNL2_OP_DISABLE_QUEUES:
-	case VIRTCHNL2_OP_DEL_QUEUES:
-		valid_len = sizeof(struct virtchnl2_del_ena_dis_queues);
-		if (msglen >= valid_len) {
-			struct virtchnl2_del_ena_dis_queues *qs =
-				(struct virtchnl2_del_ena_dis_queues *)msg;
-			if (qs->chunks.num_chunks == 0 ||
-			    qs->chunks.num_chunks > VIRTCHNL2_OP_DEL_ENABLE_DISABLE_QUEUES_MAX) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (qs->chunks.num_chunks - 1) *
-				      sizeof(struct virtchnl2_queue_chunk);
-		}
-		break;
-	case VIRTCHNL2_OP_ADD_QUEUE_GROUPS:
-		valid_len = sizeof(struct virtchnl2_add_queue_groups);
-		if (msglen != valid_len) {
-			__le64 offset;
-			__le32 i;
-			struct virtchnl2_add_queue_groups *add_queue_grp =
-				(struct virtchnl2_add_queue_groups *)msg;
-			struct virtchnl2_queue_groups *groups = &(add_queue_grp->qg_info);
-			struct virtchnl2_queue_group_info *grp_info;
-			__le32 chunk_size = sizeof(struct virtchnl2_queue_reg_chunk);
-			__le32 group_size = sizeof(struct virtchnl2_queue_group_info);
-			__le32 total_chunks_size;
-
-			if (groups->num_queue_groups == 0) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (groups->num_queue_groups - 1) *
-				      sizeof(struct virtchnl2_queue_group_info);
-			offset = (u8 *)(&groups->groups[0]) - (u8 *)groups;
-
-			for (i = 0; i < groups->num_queue_groups; i++) {
-				grp_info = (struct virtchnl2_queue_group_info *)
-						   ((u8 *)groups + offset);
-				if (grp_info->chunks.num_chunks == 0) {
-					offset += group_size;
-					continue;
-				}
-				total_chunks_size = (grp_info->chunks.num_chunks - 1) * chunk_size;
-				offset += group_size + total_chunks_size;
-				valid_len += total_chunks_size;
-			}
-		}
-		break;
-	case VIRTCHNL2_OP_DEL_QUEUE_GROUPS:
-		valid_len = sizeof(struct virtchnl2_delete_queue_groups);
-		if (msglen != valid_len) {
-			struct virtchnl2_delete_queue_groups *del_queue_grp =
-				(struct virtchnl2_delete_queue_groups *)msg;
-
-			if (del_queue_grp->num_queue_groups == 0) {
-				err_msg_format = true;
-				break;
-			}
-
-			valid_len += (del_queue_grp->num_queue_groups - 1) *
-				      sizeof(struct virtchnl2_queue_group_id);
-		}
-		break;
-	case VIRTCHNL2_OP_MAP_QUEUE_VECTOR:
-	case VIRTCHNL2_OP_UNMAP_QUEUE_VECTOR:
-		valid_len = sizeof(struct virtchnl2_queue_vector_maps);
-		if (msglen >= valid_len) {
-			struct virtchnl2_queue_vector_maps *v_qp =
-				(struct virtchnl2_queue_vector_maps *)msg;
-			if (v_qp->num_qv_maps == 0 ||
-			    v_qp->num_qv_maps > VIRTCHNL2_OP_MAP_UNMAP_QUEUE_VECTOR_MAX) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (v_qp->num_qv_maps - 1) *
-				      sizeof(struct virtchnl2_queue_vector);
-		}
-		break;
-	case VIRTCHNL2_OP_ALLOC_VECTORS:
-		valid_len = sizeof(struct virtchnl2_alloc_vectors);
-		if (msglen >= valid_len) {
-			struct virtchnl2_alloc_vectors *v_av =
-				(struct virtchnl2_alloc_vectors *)msg;
-
-			if (v_av->vchunks.num_vchunks == 0) {
-				/* Zero chunks is allowed as input */
-				break;
-			}
-
-			valid_len += (v_av->vchunks.num_vchunks - 1) *
-				      sizeof(struct virtchnl2_vector_chunk);
-		}
-		break;
-	case VIRTCHNL2_OP_DEALLOC_VECTORS:
-		valid_len = sizeof(struct virtchnl2_vector_chunks);
-		if (msglen >= valid_len) {
-			struct virtchnl2_vector_chunks *v_chunks =
-				(struct virtchnl2_vector_chunks *)msg;
-			if (v_chunks->num_vchunks == 0) {
-				err_msg_format = true;
-				break;
-			}
-			valid_len += (v_chunks->num_vchunks - 1) *
-				      sizeof(struct virtchnl2_vector_chunk);
-		}
-		break;
-	case VIRTCHNL2_OP_GET_RSS_KEY:
-	case VIRTCHNL2_OP_SET_RSS_KEY:
-		valid_len = sizeof(struct virtchnl2_rss_key);
-		if (msglen >= valid_len) {
-			struct virtchnl2_rss_key *vrk =
-				(struct virtchnl2_rss_key *)msg;
-
-			if (vrk->key_len == 0) {
-				/* Zero length is allowed as input */
-				break;
-			}
-
-			valid_len += vrk->key_len - 1;
-		}
-		break;
-	case VIRTCHNL2_OP_GET_RSS_LUT:
-	case VIRTCHNL2_OP_SET_RSS_LUT:
-		valid_len = sizeof(struct virtchnl2_rss_lut);
-		if (msglen >= valid_len) {
-			struct virtchnl2_rss_lut *vrl =
-				(struct virtchnl2_rss_lut *)msg;
-
-			if (vrl->lut_entries == 0) {
-				/* Zero entries is allowed as input */
-				break;
-			}
-
-			valid_len += (vrl->lut_entries - 1) * sizeof(vrl->lut);
-		}
-		break;
-	case VIRTCHNL2_OP_GET_RSS_HASH:
-	case VIRTCHNL2_OP_SET_RSS_HASH:
-		valid_len = sizeof(struct virtchnl2_rss_hash);
-		break;
-	case VIRTCHNL2_OP_SET_SRIOV_VFS:
-		valid_len = sizeof(struct virtchnl2_sriov_vfs_info);
-		break;
-	case VIRTCHNL2_OP_GET_PTYPE_INFO:
-		valid_len = sizeof(struct virtchnl2_get_ptype_info);
-		break;
-	case VIRTCHNL2_OP_GET_STATS:
-		valid_len = sizeof(struct virtchnl2_vport_stats);
-		break;
-	case VIRTCHNL2_OP_GET_PORT_STATS:
-		valid_len = sizeof(struct virtchnl2_port_stats);
-		break;
-	case VIRTCHNL2_OP_RESET_VF:
-		break;
-	case VIRTCHNL2_OP_GET_PTP_CAPS:
-		valid_len = sizeof(struct virtchnl2_get_ptp_caps);
-
-		if (msglen > valid_len) {
-			struct virtchnl2_get_ptp_caps *ptp_caps =
-			(struct virtchnl2_get_ptp_caps *)msg;
-
-			if (ptp_caps->tx_tstamp.num_latches == 0) {
-				err_msg_format = true;
-				break;
-			}
-
-			valid_len += ((ptp_caps->tx_tstamp.num_latches - 1) *
-				      sizeof(struct virtchnl2_ptp_tx_tstamp_entry));
-		}
-		break;
-	case VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES:
-		valid_len = sizeof(struct virtchnl2_ptp_tx_tstamp_latches);
-
-		if (msglen > valid_len) {
-			struct virtchnl2_ptp_tx_tstamp_latches *tx_tstamp_latches =
-			(struct virtchnl2_ptp_tx_tstamp_latches *)msg;
-
-			if (tx_tstamp_latches->num_latches == 0) {
-				err_msg_format = true;
-				break;
-			}
-
-			valid_len += ((tx_tstamp_latches->num_latches - 1) *
-				      sizeof(struct virtchnl2_ptp_tx_tstamp_latch));
-		}
-		break;
-	/* These are always errors coming from the VF */
-	case VIRTCHNL2_OP_EVENT:
-	case VIRTCHNL2_OP_UNKNOWN:
-	default:
-		return VIRTCHNL2_STATUS_ERR_ESRCH;
-	}
-	/* Few more checks */
-	if (err_msg_format || valid_len != msglen)
-		return VIRTCHNL2_STATUS_ERR_EINVAL;
-
-	return 0;
 }
 
 #endif /* _VIRTCHNL_2_H_ */
