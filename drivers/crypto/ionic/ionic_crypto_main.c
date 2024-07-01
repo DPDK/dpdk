@@ -193,7 +193,7 @@ iocpt_session_write(struct iocpt_session_priv *priv,
 	};
 	struct iocpt_sess_control_cmd *cmd = &ctx.cmd.sess_control;
 	uint16_t key_offset;
-	uint8_t key_segs, seg;
+	uint8_t key_segs, seg, seg_len;
 	int err;
 
 	key_segs = ((priv->key_len - 1) >> IOCPT_SESS_KEY_SEG_SHFT) + 1;
@@ -202,8 +202,9 @@ iocpt_session_write(struct iocpt_session_priv *priv,
 		ctx.pending_work = true;
 
 		key_offset = seg * cmd->key_seg_len;
-		memcpy(cmd->key, &priv->key[key_offset],
-			IOCPT_SESS_KEY_SEG_LEN);
+		seg_len = (uint8_t)RTE_MIN(priv->key_len - key_offset,
+					IOCPT_SESS_KEY_SEG_LEN);
+		memcpy(cmd->key, &priv->key[key_offset], seg_len);
 		cmd->key_seg_idx = seg;
 
 		/* Mark final segment */
