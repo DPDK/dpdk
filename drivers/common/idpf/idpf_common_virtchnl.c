@@ -366,7 +366,7 @@ idpf_vc_queue_grps_add(struct idpf_vport *vport,
 	int err = -1;
 
 	size = sizeof(*p2p_queue_grps_info) +
-	       (p2p_queue_grps_info->qg_info.num_queue_groups - 1) *
+	       (p2p_queue_grps_info->num_queue_groups - 1) *
 		   sizeof(struct virtchnl2_queue_group_info);
 
 	memset(&args, 0, sizeof(args));

@@ -2393,18 +2393,18 @@ cpfl_p2p_q_grps_add(struct idpf_vport *vport,
 	int ret;
 
 	p2p_queue_grps_info->vport_id = vport->vport_id;
-	p2p_queue_grps_info->qg_info.num_queue_groups = CPFL_P2P_NB_QUEUE_GRPS;
-	p2p_queue_grps_info->qg_info.groups[0].num_rx_q = CPFL_MAX_P2P_NB_QUEUES;
-	p2p_queue_grps_info->qg_info.groups[0].num_rx_bufq = CPFL_P2P_NB_RX_BUFQ;
-	p2p_queue_grps_info->qg_info.groups[0].num_tx_q = CPFL_MAX_P2P_NB_QUEUES;
-	p2p_queue_grps_info->qg_info.groups[0].num_tx_complq = CPFL_P2P_NB_TX_COMPLQ;
-	p2p_queue_grps_info->qg_info.groups[0].qg_id.queue_group_id = CPFL_P2P_QUEUE_GRP_ID;
-	p2p_queue_grps_info->qg_info.groups[0].qg_id.queue_group_type = VIRTCHNL2_QUEUE_GROUP_P2P;
-	p2p_queue_grps_info->qg_info.groups[0].rx_q_grp_info.rss_lut_size = 0;
-	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.tx_tc = 0;
-	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.priority = 0;
-	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.is_sp = 0;
-	p2p_queue_grps_info->qg_info.groups[0].tx_q_grp_info.pir_weight = 0;
+	p2p_queue_grps_info->num_queue_groups = CPFL_P2P_NB_QUEUE_GRPS;
+	p2p_queue_grps_info->groups[0].num_rx_q = CPFL_MAX_P2P_NB_QUEUES;
+	p2p_queue_grps_info->groups[0].num_rx_bufq = CPFL_P2P_NB_RX_BUFQ;
+	p2p_queue_grps_info->groups[0].num_tx_q = CPFL_MAX_P2P_NB_QUEUES;
+	p2p_queue_grps_info->groups[0].num_tx_complq = CPFL_P2P_NB_TX_COMPLQ;
+	p2p_queue_grps_info->groups[0].qg_id.queue_group_id = CPFL_P2P_QUEUE_GRP_ID;
+	p2p_queue_grps_info->groups[0].qg_id.queue_group_type = VIRTCHNL2_QUEUE_GROUP_P2P;
+	p2p_queue_grps_info->groups[0].rx_q_grp_info.rss_lut_size = 0;
+	p2p_queue_grps_info->groups[0].tx_q_grp_info.tx_tc = 0;
+	p2p_queue_grps_info->groups[0].tx_q_grp_info.priority = 0;
+	p2p_queue_grps_info->groups[0].tx_q_grp_info.is_sp = 0;
+	p2p_queue_grps_info->groups[0].tx_q_grp_info.pir_weight = 0;
 
 	ret = idpf_vc_queue_grps_add(vport, p2p_queue_grps_info, p2p_q_vc_out_info);
 	if (ret != 0) {
@@ -2423,13 +2423,13 @@ cpfl_p2p_queue_info_init(struct cpfl_vport *cpfl_vport,
 	struct virtchnl2_queue_reg_chunks *vc_chunks_out;
 	int i, type;
 
-	if (p2p_q_vc_out_info->qg_info.groups[0].qg_id.queue_group_type !=
+	if (p2p_q_vc_out_info->groups[0].qg_id.queue_group_type !=
 	    VIRTCHNL2_QUEUE_GROUP_P2P) {
 		PMD_DRV_LOG(ERR, "Add queue group response mismatch.");
 		return -EINVAL;
 	}
 
-	vc_chunks_out = &p2p_q_vc_out_info->qg_info.groups[0].chunks;
+	vc_chunks_out = &p2p_q_vc_out_info->groups[0].chunks;
 
 	for (i = 0; i < vc_chunks_out->num_chunks; i++) {
 		type = vc_chunks_out->chunks[i].type;
