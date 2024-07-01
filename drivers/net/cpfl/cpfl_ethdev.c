@@ -1907,7 +1907,8 @@ cpfl_stop_cfgqs(struct cpfl_adapter_ext *adapter)
 	int i, ret;
 
 	for (i = 0; i < CPFL_TX_CFGQ_NUM; i++) {
-		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, false, false);
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, false, false,
+								VIRTCHNL2_QUEUE_TYPE_CONFIG_TX);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Fail to disable Tx config queue.");
 			return ret;
@@ -1915,7 +1916,8 @@ cpfl_stop_cfgqs(struct cpfl_adapter_ext *adapter)
 	}
 
 	for (i = 0; i < CPFL_RX_CFGQ_NUM; i++) {
-		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, true, false);
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, true, false,
+								VIRTCHNL2_QUEUE_TYPE_CONFIG_RX);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Fail to disable Rx config queue.");
 			return ret;
@@ -1943,7 +1945,8 @@ cpfl_start_cfgqs(struct cpfl_adapter_ext *adapter)
 	}
 
 	for (i = 0; i < CPFL_TX_CFGQ_NUM; i++) {
-		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, false, true);
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, false, true,
+								VIRTCHNL2_QUEUE_TYPE_CONFIG_TX);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Fail to enable Tx config queue.");
 			return ret;
@@ -1951,7 +1954,8 @@ cpfl_start_cfgqs(struct cpfl_adapter_ext *adapter)
 	}
 
 	for (i = 0; i < CPFL_RX_CFGQ_NUM; i++) {
-		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, true, true);
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, true, true,
+								VIRTCHNL2_QUEUE_TYPE_CONFIG_RX);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Fail to enable Rx config queue.");
 			return ret;
