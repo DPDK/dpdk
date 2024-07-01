@@ -604,6 +604,8 @@ post_buffs_out:
 			/* Wrap to end of end ring since current ntp is 0 */
 			cq->next_to_post = cq->ring_size - 1;
 
+		idpf_wmb();
+
 		wr32(hw, cq->reg.tail, cq->next_to_post);
 	}
 
