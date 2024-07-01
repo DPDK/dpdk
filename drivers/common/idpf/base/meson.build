@@ -2,7 +2,6 @@
 # Copyright(c) 2023 Intel Corporation
 
 sources += files(
-        'idpf_common.c',
         'idpf_controlq.c',
         'idpf_controlq_setup.c',
 )
