@@ -66,14 +66,14 @@ intel_ntb_icx = {'Class': '06', 'Vendor': '8086', 'Device': '347e',
                  'SVendor': None, 'SDevice': None}
 
 cnxk_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f9,a0fa',
-                 'SVendor': None, 'SDevice': None}
+            'SVendor': None, 'SDevice': None}
 cnxk_npa = {'Class': '08', 'Vendor': '177d', 'Device': 'a0fb,a0fc',
-                 'SVendor': None, 'SDevice': None}
+            'SVendor': None, 'SDevice': None}
 cn9k_ree = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f4',
-                 'SVendor': None, 'SDevice': None}
+            'SVendor': None, 'SDevice': None}
 
 virtio_blk = {'Class': '01', 'Vendor': "1af4", 'Device': '1001,1042',
-                    'SVendor': None, 'SDevice': None}
+              'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
