@@ -797,6 +797,8 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE, "ha client dev restore vf failed\n");
 	}
 
+	virtio_ha_client_init_finish();
+	RTE_LOG(INFO, VDPA, "vfe-vhostd init finish (version: %s)\n", rte_version());
 	/* loop for exit the application */
 	while (1)
 		sleep(1);

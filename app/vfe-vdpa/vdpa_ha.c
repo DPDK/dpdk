@@ -478,6 +478,12 @@ exit:
 	return found;
 }
 
+int
+virtio_ha_client_init_finish(void)
+{
+	return virtio_ha_global_init_finish();
+}
+
 void
 virtio_ha_dev_lock(void)
 {

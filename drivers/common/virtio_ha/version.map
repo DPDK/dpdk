@@ -38,6 +38,7 @@ DPDK_22 {
 	virtio_ha_global_dma_map_remove;
 	virtio_ha_prio_chnl_init;
 	virtio_ha_prio_chnl_destroy;
+	virtio_ha_global_init_finish;
 
 	local: *;
 };

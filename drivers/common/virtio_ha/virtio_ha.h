@@ -46,8 +46,9 @@ enum virtio_ha_msg_type {
 	VIRTIO_HA_GLOBAL_QUERY_CONTAINER = 16,
 	VIRTIO_HA_GLOBAL_STORE_DMA_MAP = 17,
 	VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP = 18,
-	VIRTIO_HA_PRIO_CHNL_ADD_VF = 19,
-	VIRTIO_HA_MESSAGE_MAX = 20,
+	VIRTIO_HA_GLOBAL_INIT_FINISH = 19,
+	VIRTIO_HA_PRIO_CHNL_ADD_VF = 20,
+	VIRTIO_HA_MESSAGE_MAX = 21,
 };
 
 struct virtio_ha_msg_hdr {
@@ -288,5 +289,8 @@ int virtio_ha_global_dma_map_store(struct virtio_ha_global_dma_map *map);
 
 /* EAL layer remove global dma map of VFIO container fd to HA service */
 int virtio_ha_global_dma_map_remove(struct virtio_ha_global_dma_map *map);
+
+/* App notify HA service that all devices are init */
+int virtio_ha_global_init_finish(void);
 
 #endif /* _VIRTIO_HA_H_ */

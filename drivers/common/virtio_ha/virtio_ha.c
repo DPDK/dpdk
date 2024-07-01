@@ -1707,6 +1707,34 @@ virtio_ha_global_dma_map_remove(struct virtio_ha_global_dma_map *map)
 		return virtio_ha_global_dma_map_no_cache(map, false);
 }
 
+int
+virtio_ha_global_init_finish(void)
+{
+	struct virtio_ha_msg *msg;
+	int ret;
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) 
+		return 0;
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		return -1;
+	}
+
+	msg->hdr.type = VIRTIO_HA_GLOBAL_INIT_FINISH;
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		virtio_ha_free_msg(msg);
+		return -1;
+	}
+
+	virtio_ha_free_msg(msg);
+
+	return 0;
+}
+
 static void
 sync_dev_context_to_ha(ver_time_set set_ver)
 {
@@ -1775,4 +1803,6 @@ sync_dev_context_to_ha(ver_time_set set_ver)
 			}
 		}
 	}
+
+	virtio_ha_global_init_finish();
 }

@@ -812,6 +812,13 @@ ha_server_global_remove_dma_map(struct virtio_ha_msg *msg)
 	return HA_MSG_HDLR_SUCCESS;
 }
 
+static int
+ha_server_global_init_finish(__attribute__((__unused__)) struct virtio_ha_msg *msg)
+{
+	HA_APP_LOG(INFO, "vfe-vhostd-ha init finish (version %s)", rte_version());
+	return HA_MSG_HDLR_SUCCESS;
+}
+
 static void
 ha_server_cleanup_global_dma(void)
 {
@@ -862,6 +869,7 @@ static ha_message_handler_t ha_message_handlers[VIRTIO_HA_MESSAGE_MAX] = {
 	[VIRTIO_HA_GLOBAL_QUERY_CONTAINER] = ha_server_query_global_cfd,
 	[VIRTIO_HA_GLOBAL_STORE_DMA_MAP] = ha_server_global_store_dma_map,
 	[VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP] = ha_server_global_remove_dma_map,
+	[VIRTIO_HA_GLOBAL_INIT_FINISH] = ha_server_global_init_finish,
 };
 
 static void
