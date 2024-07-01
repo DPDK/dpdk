@@ -1021,6 +1021,8 @@ The LDPC decode parameters are set out in the table below.
 +----------------+------------+-------------------------------------------------------+
 |                |eb          |Eb, length of the RM output sequence in bits  r >= cab |
 +----------------+------------+-------------------------------------------------------+
+|                |k0          |Optional k0 Rate matching starting position override   |
++----------------+------------+-------------------------------------------------------+
 
 The mbuf input ``input`` encoded CB data is mandatory for all BBDEV PMDs
 and is the Virtual Circular Buffer data stream with null padding.
