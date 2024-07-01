@@ -26,38 +26,40 @@
 #include "ionic_logs.h"
 
 static void
-ionic_empty_array(void **array, uint32_t cnt, uint16_t idx)
+ionic_empty_array(void **array, uint32_t free_idx, uint32_t zero_idx)
 {
 	uint32_t i;
 
-	for (i = idx; i < cnt; i++)
+	for (i = 0; i < free_idx; i++)
 		if (array[i])
 			rte_pktmbuf_free_seg(array[i]);
 
-	memset(array, 0, sizeof(void *) * cnt);
+	memset(array, 0, sizeof(void *) * zero_idx);
 }
 
 static void __rte_cold
 ionic_tx_empty(struct ionic_tx_qcq *txq)
 {
 	struct ionic_queue *q = &txq->qcq.q;
+	uint32_t info_len = q->num_descs * q->num_segs;
 
-	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
+	ionic_empty_array(q->info, info_len, info_len);
 }
 
 static void __rte_cold
 ionic_rx_empty(struct ionic_rx_qcq *rxq)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
+	uint32_t info_len = q->num_descs * q->num_segs;
 
 	/*
 	 * Walk the full info array so that the clean up includes any
 	 * fragments that were left dangling for later reuse
 	 */
-	ionic_empty_array(q->info, q->num_descs * q->num_segs, 0);
+	ionic_empty_array(q->info, info_len, info_len);
 
-	ionic_empty_array((void **)rxq->mbs,
-			IONIC_MBUF_BULK_ALLOC, rxq->mb_idx);
+	ionic_empty_array((void **)rxq->mbs, rxq->mb_idx,
+			IONIC_MBUF_BULK_ALLOC);
 	rxq->mb_idx = 0;
 }
 
