@@ -83,6 +83,7 @@ mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "Port %d queue counter object cannot be created "
 			"by DevX - imissed counter will be unavailable",
 			dev->data->port_id);
+		priv->q_counters_allocation_failure = 1;
 		return;
 	}
 	priv->counter_set_id = priv->q_counters->id;

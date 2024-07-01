@@ -1986,8 +1986,12 @@ struct mlx5_priv {
 	LIST_HEAD(fdir, mlx5_fdir_flow) fdir_flows; /* fdir flows. */
 	rte_spinlock_t shared_act_sl; /* Shared actions spinlock. */
 	uint32_t rss_shared_actions; /* RSS shared actions. */
+	/* If true, indicates that we failed to allocate a q counter in the past. */
+	bool q_counters_allocation_failure;
 	struct mlx5_devx_obj *q_counters; /* DevX queue counter object. */
 	uint32_t counter_set_id; /* Queue counter ID to set in DevX objects. */
+	/* DevX queue counter object for all hairpin queues of the port. */
+	struct mlx5_devx_obj *q_counters_hairpin;
 	uint32_t lag_affinity_idx; /* LAG mode queue 0 affinity starting. */
 	rte_spinlock_t flex_item_sl; /* Flex item list spinlock. */
 	struct mlx5_flex_item flex_item[MLX5_PORT_FLEX_ITEM_NUM];

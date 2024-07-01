@@ -964,6 +964,8 @@ mlx5_queue_counter_id_prepare(struct rte_eth_dev *dev)
 		DRV_LOG(DEBUG, "Port %d queue counter object cannot be created "
 			"by DevX - fall-back to use the kernel driver global "
 			"queue counter.", dev->data->port_id);
+		priv->q_counters_allocation_failure = 1;
+
 		/* Create WQ by kernel and query its queue counter ID. */
 		if (cq) {
 			wq = mlx5_glue->create_wq(ctx,
@@ -3037,12 +3039,22 @@ mlx5_os_read_dev_stat(struct mlx5_priv *priv, const char *ctr_name,
 		if (priv->q_counters != NULL &&
 		    strcmp(ctr_name, "out_of_buffer") == 0) {
 			if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-				DRV_LOG(WARNING, "Devx out_of_buffer counter is not supported in the secondary process");
+				DRV_LOG(WARNING, "DevX out_of_buffer counter is not supported in the secondary process");
 				rte_errno = ENOTSUP;
 				return 1;
 			}
 			return mlx5_devx_cmd_queue_counter_query
 					(priv->q_counters, 0, (uint32_t *)stat);
+		}
+		if (priv->q_counters_hairpin != NULL &&
+		    strcmp(ctr_name, "hairpin_out_of_buffer") == 0) {
+			if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+				DRV_LOG(WARNING, "DevX out_of_buffer counter is not supported in the secondary process");
+				rte_errno = ENOTSUP;
+				return 1;
+			}
+			return mlx5_devx_cmd_queue_counter_query
+					(priv->q_counters_hairpin, 0, (uint32_t *)stat);
 		}
 		MKSTR(path, "%s/ports/%d/hw_counters/%s",
 		      priv->sh->ibdev_path,
