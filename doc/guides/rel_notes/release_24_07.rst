@@ -98,6 +98,7 @@ New Features
   * Added match with external Tx queue.
   * Added match with E-Switch manager.
   * Added flow item and actions validation to async flow API.
+  * Added global out of buffer counter for hairpin queues.
 
 * **Updated TAP driver.**
 

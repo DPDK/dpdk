@@ -1421,6 +1421,10 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.dev = 1,
 	},
 	{
+		.dpdk_name = "dev_internal_queue_oob",
+		.ctr_name = "dev_internal_queue_oob",
+	},
+	{
 		.dpdk_name = "tx_phy_packets",
 		.ctr_name = "tx_packets_phy",
 	},
