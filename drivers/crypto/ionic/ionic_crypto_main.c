@@ -88,7 +88,7 @@ iocpt_q_init(struct iocpt_queue *q, uint8_t type, uint32_t index,
 	q->tail_idx = 0;
 
 	q->info = rte_calloc_socket("iocpt",
-				num_descs * num_segs, sizeof(void *),
+				(uint64_t)num_descs * num_segs, sizeof(void *),
 				rte_mem_page_size(), socket_id);
 	if (q->info == NULL) {
 		IOCPT_PRINT(ERR, "Cannot allocate queue info");
