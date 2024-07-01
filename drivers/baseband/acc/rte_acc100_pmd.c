@@ -1160,7 +1160,7 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	fcw->Zc = op->ldpc_dec.z_c;
 	fcw->ncb = op->ldpc_dec.n_cb;
 	fcw->k0 = get_k0(fcw->ncb, fcw->Zc, op->ldpc_dec.basegraph,
-			op->ldpc_dec.rv_index);
+			op->ldpc_dec.rv_index, op->ldpc_dec.k0);
 	if (op->ldpc_dec.code_block_mode == RTE_BBDEV_CODE_BLOCK)
 		fcw->rm_e = op->ldpc_dec.cb_params.e;
 	else

@@ -982,8 +982,10 @@ acc_fcw_te_fill(const struct rte_bbdev_enc_op *op, struct acc_fcw_te *fcw)
  * Starting position of different redundancy versions, k0
  */
 static inline uint16_t
-get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index)
+get_k0(uint16_t n_cb, uint16_t z_c, uint8_t bg, uint8_t rv_index, uint16_t k0)
 {
+	if (k0 > 0)
+		return k0;
 	if (rv_index == 0)
 		return 0;
 	uint16_t n = (bg == 1 ? ACC_N_ZC_1 : ACC_N_ZC_2) * z_c;
@@ -1020,7 +1022,7 @@ acc_fcw_le_fill(const struct rte_bbdev_enc_op *op,
 	fcw->Zc = op->ldpc_enc.z_c;
 	fcw->ncb = op->ldpc_enc.n_cb;
 	fcw->k0 = get_k0(fcw->ncb, fcw->Zc, op->ldpc_enc.basegraph,
-			op->ldpc_enc.rv_index);
+			op->ldpc_enc.rv_index, 0);
 	fcw->rm_e = (default_e == 0) ? op->ldpc_enc.cb_params.e : default_e;
 	fcw->crc_select = check_bit(op->ldpc_enc.op_flags,
 			RTE_BBDEV_LDPC_CRC_24B_ATTACH);
