@@ -497,6 +497,56 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 }
 
 /**
+ * Create a global queue counter for all the port hairpin queues.
+ *
+ * @param priv
+ *   Device private data.
+ *
+ * @return
+ *   The counter_set_id of the queue counter object, 0 otherwise.
+ */
+static uint32_t
+mlx5_set_hairpin_queue_counter_obj(struct mlx5_priv *priv)
+{
+	if (priv->q_counters_hairpin != NULL)
+		return priv->q_counters_hairpin->id;
+
+	/* Queue counter allocation failed in the past - don't try again. */
+	if (priv->q_counters_allocation_failure != 0)
+		return 0;
+
+	if (priv->pci_dev == NULL) {
+		DRV_LOG(DEBUG, "Hairpin out of buffer counter is "
+				"only supported on PCI device.");
+		priv->q_counters_allocation_failure = 1;
+		return 0;
+	}
+
+	switch (priv->pci_dev->id.device_id) {
+	/* Counting out of buffer drops on hairpin queues is supported only on CX7 and up. */
+	case PCI_DEVICE_ID_MELLANOX_CONNECTX7:
+	case PCI_DEVICE_ID_MELLANOX_CONNECTXVF:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELD3:
+	case PCI_DEVICE_ID_MELLANOX_BLUEFIELDVF:
+
+		priv->q_counters_hairpin = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx);
+		if (priv->q_counters_hairpin == NULL) {
+			/* Failed to allocate */
+			DRV_LOG(DEBUG, "Some of the statistics of port %d "
+				"will not be available.", priv->dev_data->port_id);
+			priv->q_counters_allocation_failure = 1;
+			return 0;
+		}
+		return priv->q_counters_hairpin->id;
+	default:
+		DRV_LOG(DEBUG, "Hairpin out of buffer counter "
+				"is not available on this NIC.");
+		priv->q_counters_allocation_failure = 1;
+		return 0;
+	}
+}
+
+/**
  * Create the Rx hairpin queue object.
  *
  * @param rxq
@@ -541,7 +591,9 @@ mlx5_rxq_obj_hairpin_new(struct mlx5_rxq_priv *rxq)
 	unlocked_attr.wq_attr.log_hairpin_num_packets =
 			unlocked_attr.wq_attr.log_hairpin_data_sz -
 			MLX5_HAIRPIN_QUEUE_STRIDE;
-	unlocked_attr.counter_set_id = priv->counter_set_id;
+
+	unlocked_attr.counter_set_id = mlx5_set_hairpin_queue_counter_obj(priv);
+
 	rxq_ctrl->rxq.delay_drop = priv->config.hp_delay_drop;
 	unlocked_attr.delay_drop_en = priv->config.hp_delay_drop;
 	unlocked_attr.hairpin_data_buffer_type =

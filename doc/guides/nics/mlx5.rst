@@ -750,6 +750,9 @@ Limitations
 
   - Hairpin between two ports could only manual binding and explicit Tx flow mode. For single port hairpin, all the combinations of auto/manual binding and explicit/implicit Tx flow mode could be supported.
   - Hairpin in switchdev SR-IOV mode is not supported till now.
+  - "out_of_buffer" statistics are not available on:
+     - NICs older than ConnectX-7.
+     - DPUs older than BlueField-3.
 
 - Quota:
 
