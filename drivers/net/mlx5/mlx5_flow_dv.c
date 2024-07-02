@@ -12010,9 +12010,12 @@ flow_matcher_create_cb(void *tool_ctx, void *cb_ctx)
 		items = *((const struct rte_flow_item **)(ctx->data2));
 		resource->matcher_object = mlx5dr_bwc_matcher_create
 				(resource->group->tbl, resource->priority, items);
-		if (!(resource->matcher_object))
+		if (!resource->matcher_object) {
+			mlx5_free(resource);
 			return NULL;
+		}
 #else
+		mlx5_free(resource);
 		return NULL;
 #endif
 	}
