@@ -5,8 +5,7 @@
 
 #include "ena_eth_com.h"
 
-static struct ena_eth_io_rx_cdesc_base *ena_com_get_next_rx_cdesc(
-	struct ena_com_io_cq *io_cq)
+struct ena_eth_io_rx_cdesc_base *ena_com_get_next_rx_cdesc(struct ena_com_io_cq *io_cq)
 {
 	struct ena_eth_io_rx_cdesc_base *cdesc;
 	u16 expected_phase, head_masked;
@@ -30,6 +29,55 @@ static struct ena_eth_io_rx_cdesc_base *ena_com_get_next_rx_cdesc(
 	dma_rmb();
 
 	return cdesc;
+}
+
+void ena_com_dump_single_rx_cdesc(struct ena_com_io_cq *io_cq,
+				  struct ena_eth_io_rx_cdesc_base *desc)
+{
+	if (desc) {
+		uint32_t *desc_arr = (uint32_t *)desc;
+
+		ena_trc_err(ena_com_io_cq_to_ena_dev(io_cq),
+			    "RX descriptor value[0x%08x 0x%08x 0x%08x 0x%08x] phase[%u] first[%u] last[%u] MBZ7[%u] MZB17[%u]\n",
+			    desc_arr[0], desc_arr[1], desc_arr[2], desc_arr[3],
+			    ENA_FIELD_GET(desc->status, (uint32_t)ENA_ETH_IO_RX_DESC_PHASE_MASK,
+					  0),
+			    ENA_FIELD_GET(desc->status, (uint32_t)ENA_ETH_IO_RX_DESC_FIRST_MASK,
+					  ENA_ETH_IO_RX_DESC_FIRST_SHIFT),
+			    ENA_FIELD_GET(desc->status, (uint32_t)ENA_ETH_IO_RX_DESC_LAST_MASK,
+					  ENA_ETH_IO_RX_DESC_LAST_SHIFT),
+			    ENA_FIELD_GET(desc->status,
+					  (uint32_t)ENA_ETH_IO_RX_CDESC_BASE_MBZ7_MASK,
+					  ENA_ETH_IO_RX_CDESC_BASE_MBZ7_SHIFT),
+			    ENA_FIELD_GET(desc->status,
+					  (uint32_t)ENA_ETH_IO_RX_CDESC_BASE_MBZ17_MASK,
+					  ENA_ETH_IO_RX_CDESC_BASE_MBZ17_SHIFT));
+	}
+}
+
+void ena_com_dump_single_tx_cdesc(struct ena_com_io_cq *io_cq,
+				  struct ena_eth_io_tx_cdesc *desc)
+{
+	if (desc) {
+		uint32_t *desc_arr = (uint32_t *)desc;
+
+		ena_trc_err(ena_com_io_cq_to_ena_dev(io_cq),
+			    "TX descriptor value[0x%08x 0x%08x] phase[%u] MBZ6[%u]\n",
+			    desc_arr[0], desc_arr[1],
+			    ENA_FIELD_GET(desc->flags, (uint32_t)ENA_ETH_IO_TX_CDESC_PHASE_MASK,
+					  0),
+			    ENA_FIELD_GET(desc->flags, (uint32_t)ENA_ETH_IO_TX_CDESC_MBZ6_MASK,
+					  ENA_ETH_IO_TX_CDESC_MBZ6_SHIFT));
+	}
+}
+
+struct ena_eth_io_tx_cdesc *ena_com_tx_cdesc_idx_to_ptr(struct ena_com_io_cq *io_cq, u16 idx)
+{
+	idx &= (io_cq->q_depth - 1);
+
+	return (struct ena_eth_io_tx_cdesc *)
+		((uintptr_t)io_cq->cdesc_addr.virt_addr +
+		idx * io_cq->cdesc_entry_size_in_bytes);
 }
 
 static void *get_sq_desc_regular_queue(struct ena_com_io_sq *io_sq)
@@ -228,7 +276,7 @@ static int ena_com_sq_update_tail(struct ena_com_io_sq *io_sq)
 	return ena_com_sq_update_reqular_queue_tail(io_sq);
 }
 
-static struct ena_eth_io_rx_cdesc_base *
+struct ena_eth_io_rx_cdesc_base *
 	ena_com_rx_cdesc_idx_to_ptr(struct ena_com_io_cq *io_cq, u16 idx)
 {
 	idx &= (io_cq->q_depth - 1);
@@ -254,7 +302,6 @@ static int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
 			break;
 		status = READ_ONCE32(cdesc->status);
 
-		ena_com_cq_inc_head(io_cq);
 		if (unlikely((status & ENA_ETH_IO_RX_CDESC_BASE_FIRST_MASK) >>
 		    ENA_ETH_IO_RX_CDESC_BASE_FIRST_SHIFT && count != 0)) {
 			ena_trc_err(dev,
@@ -272,6 +319,7 @@ static int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
 			return ENA_COM_FAULT;
 		}
 
+		ena_com_cq_inc_head(io_cq);
 		count++;
 		last = (status & ENA_ETH_IO_RX_CDESC_BASE_LAST_MASK) >>
 			ENA_ETH_IO_RX_CDESC_BASE_LAST_SHIFT;

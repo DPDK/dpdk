@@ -16,6 +16,14 @@ extern "C" {
 #define ENA_LLQ_HEADER		(128UL - ENA_LLQ_ENTRY_DESC_CHUNK_SIZE)
 #define ENA_LLQ_LARGE_HEADER	(256UL - ENA_LLQ_ENTRY_DESC_CHUNK_SIZE)
 
+void ena_com_dump_single_rx_cdesc(struct ena_com_io_cq *io_cq,
+				  struct ena_eth_io_rx_cdesc_base *desc);
+void ena_com_dump_single_tx_cdesc(struct ena_com_io_cq *io_cq,
+				  struct ena_eth_io_tx_cdesc *desc);
+struct ena_eth_io_rx_cdesc_base *ena_com_get_next_rx_cdesc(struct ena_com_io_cq *io_cq);
+struct ena_eth_io_rx_cdesc_base *ena_com_rx_cdesc_idx_to_ptr(struct ena_com_io_cq *io_cq, u16 idx);
+struct ena_eth_io_tx_cdesc *ena_com_tx_cdesc_idx_to_ptr(struct ena_com_io_cq *io_cq, u16 idx);
+
 struct ena_com_tx_ctx {
 	struct ena_com_tx_meta ena_meta;
 	struct ena_com_buf *ena_bufs;
