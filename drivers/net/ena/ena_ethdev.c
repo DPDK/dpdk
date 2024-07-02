@@ -669,7 +669,8 @@ static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 		packet_type |= RTE_PTYPE_L3_IPV6;
 	}
 
-	if (!ena_rx_ctx->l4_csum_checked || ena_rx_ctx->frag) {
+	if (!ena_rx_ctx->l4_csum_checked || ena_rx_ctx->frag ||
+		!(packet_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP))) {
 		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 	} else {
 		if (unlikely(ena_rx_ctx->l4_csum_err)) {
