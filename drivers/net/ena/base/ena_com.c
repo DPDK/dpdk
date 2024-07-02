@@ -598,10 +598,6 @@ static int ena_com_wait_and_process_admin_cq_polling(struct ena_comp_ctx *comp_c
 		goto err;
 	}
 
-	ENA_WARN(comp_ctx->status != ENA_CMD_COMPLETED,
-		 admin_queue->ena_dev, "Invalid comp status %d\n",
-		 comp_ctx->status);
-
 	ret = ena_com_comp_status_to_errno(admin_queue, comp_ctx->comp_status);
 err:
 	comp_ctxt_release(admin_queue, comp_ctx);
@@ -827,10 +823,6 @@ static int ena_com_wait_and_process_admin_cq_interrupts(struct ena_comp_ctx *com
 		ret = ENA_COM_NO_DEVICE;
 		goto err;
 	}
-
-	ENA_WARN(comp_ctx->status != ENA_CMD_COMPLETED,
-		 admin_queue->ena_dev, "Invalid comp status %d\n",
-		 comp_ctx->status);
 
 	ret = ena_com_comp_status_to_errno(admin_queue, comp_ctx->comp_status);
 err:
