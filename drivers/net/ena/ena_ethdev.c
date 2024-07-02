@@ -674,13 +674,7 @@ static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 	} else {
 		if (unlikely(ena_rx_ctx->l4_csum_err)) {
 			++rx_stats->l4_csum_bad;
-			/*
-			 * For the L4 Rx checksum offload the HW may indicate
-			 * bad checksum although it's valid. Because of that,
-			 * we're setting the UNKNOWN flag to let the app
-			 * re-verify the checksum.
-			 */
-			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 		} else {
 			++rx_stats->l4_csum_good;
 			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
