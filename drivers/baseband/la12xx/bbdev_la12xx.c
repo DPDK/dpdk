@@ -1084,6 +1084,9 @@ la12xx_bbdev_remove(struct rte_vdev_device *vdev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	if (vdev == NULL)
 		return -EINVAL;
 
