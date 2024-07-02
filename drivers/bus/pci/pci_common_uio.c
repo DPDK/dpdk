@@ -105,14 +105,14 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	if (rte_intr_dev_fd_set(dev->intr_handle, -1))
 		return -1;
 
-	/* secondary processes - use already recorded details */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return pci_uio_map_secondary(dev);
-
 	/* allocate uio resource */
 	ret = pci_uio_alloc_resource(dev, &uio_res);
 	if (ret)
 		return ret;
+
+	/* secondary processes - use already recorded details */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return pci_uio_map_secondary(dev);
 
 	/* Map all BARs */
 	for (i = 0; i != PCI_MAX_RESOURCE; i++) {
@@ -225,6 +225,18 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 	if (uio_res == NULL)
 		return;
 
+	/* close fd */
+	if (rte_intr_fd_get(dev->intr_handle) >= 0)
+		close(rte_intr_fd_get(dev->intr_handle));
+	uio_cfg_fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (uio_cfg_fd >= 0) {
+		close(uio_cfg_fd);
+		rte_intr_dev_fd_set(dev->intr_handle, -1);
+	}
+
+	rte_intr_fd_set(dev->intr_handle, -1);
+	rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN);
+
 	/* secondary processes - just free maps */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return pci_uio_unmap(uio_res);
@@ -236,16 +248,4 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 
 	/* free uio resource */
 	rte_free(uio_res);
-
-	/* close fd if in primary process */
-	if (rte_intr_fd_get(dev->intr_handle) >= 0)
-		close(rte_intr_fd_get(dev->intr_handle));
-	uio_cfg_fd = rte_intr_dev_fd_get(dev->intr_handle);
-	if (uio_cfg_fd >= 0) {
-		close(uio_cfg_fd);
-		rte_intr_dev_fd_set(dev->intr_handle, -1);
-	}
-
-	rte_intr_fd_set(dev->intr_handle, -1);
-	rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN);
 }
