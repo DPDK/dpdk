@@ -406,6 +406,10 @@ static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
 static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
 static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
+static int i40e_fec_get_capability(struct rte_eth_dev *dev,
+	struct rte_eth_fec_capa *speed_fec_capa, unsigned int num);
+static int i40e_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa);
+static int i40e_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa);
 
 static const char *const valid_keys[] = {
 	ETH_I40E_FLOATING_VEB_ARG,
@@ -521,6 +525,9 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.tm_ops_get                   = i40e_tm_ops_get,
 	.tx_done_cleanup              = i40e_tx_done_cleanup,
 	.get_monitor_addr             = i40e_get_monitor_addr,
+	.fec_get_capability           = i40e_fec_get_capability,
+	.fec_get                      = i40e_fec_get,
+	.fec_set                      = i40e_fec_set,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -12299,6 +12306,238 @@ i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
 			    filter_replace.new_filter_type);
 
 	return ret;
+}
+
+static int
+i40e_fec_get_capability(struct rte_eth_dev *dev,
+	struct rte_eth_fec_capa *speed_fec_capa, __rte_unused unsigned int num)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (hw->mac.type == I40E_MAC_X722 &&
+	    !(hw->flags & I40E_HW_FLAG_X722_FEC_REQUEST_CAPABLE)) {
+		PMD_DRV_LOG(ERR, "Setting FEC encoding not supported by"
+			 " firmware. Please update the NVM image.\n");
+		return -ENOTSUP;
+	}
+
+	if (hw->device_id == I40E_DEV_ID_25G_SFP28 ||
+	    hw->device_id == I40E_DEV_ID_25G_B) {
+		if (speed_fec_capa) {
+			speed_fec_capa->speed = RTE_ETH_SPEED_NUM_25G;
+			speed_fec_capa->capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+
+		/* since HW only supports 25G */
+		return 1;
+	} else if (hw->device_id == I40E_DEV_ID_KX_X722) {
+		if (speed_fec_capa) {
+			speed_fec_capa->speed = RTE_ETH_SPEED_NUM_25G;
+			speed_fec_capa->capa = RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
+					     RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+		return 1;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
+i40e_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_aq_get_phy_abilities_resp abilities = {0};
+	struct i40e_link_status link_status = {0};
+	uint8_t current_fec_mode = 0, fec_config = 0;
+	bool link_up, enable_lse;
+	int ret = 0;
+
+	enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+	/* Get link info */
+	ret = i40e_aq_get_link_info(hw, enable_lse, &link_status, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get link information: %d\n",
+				ret);
+		return -ENOTSUP;
+	}
+
+	link_up = link_status.link_info & I40E_AQ_LINK_UP;
+
+	ret = i40e_aq_get_phy_capabilities(hw, false, false, &abilities,
+						  NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get PHY capabilities: %d\n",
+				ret);
+		return -ENOTSUP;
+	}
+
+	/**
+	 * If link is down and AUTO is enabled, AUTO is returned,
+	 * otherwise, configured FEC mode is returned.
+	 * If link is up, current FEC mode is returned.
+	 */
+	fec_config = abilities.fec_cfg_curr_mod_ext_info
+					& I40E_AQ_PHY_FEC_CONFIG_MASK;
+	current_fec_mode = link_status.fec_info;
+
+	if (link_up) {
+		switch (current_fec_mode) {
+		case I40E_AQ_CONFIG_FEC_KR_ENA:
+			*fec_capa = RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_BASER);
+			break;
+		case I40E_AQ_CONFIG_FEC_RS_ENA:
+			*fec_capa = RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_RS);
+			break;
+		case 0:
+			*fec_capa = RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_NOFEC);
+			break;
+		default:
+			return -EINVAL;
+		}
+		return 0;
+	}
+
+	if (fec_config & I40E_AQ_ENABLE_FEC_AUTO) {
+		*fec_capa = RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_AUTO);
+		return 0;
+	}
+
+	uint32_t temp_fec_capa = 0;
+	if (fec_config & I40E_AQ_ENABLE_FEC_KR)
+		temp_fec_capa |= RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_BASER);
+	if (fec_config & I40E_AQ_ENABLE_FEC_RS)
+		temp_fec_capa |= RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_RS);
+	if (temp_fec_capa == 0)
+		temp_fec_capa = RTE_ETH_FEC_MODE_TO_CAPA(RTE_ETH_FEC_NOFEC);
+
+	*fec_capa = temp_fec_capa;
+	return 0;
+}
+
+static int
+i40e_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct i40e_aq_get_phy_abilities_resp abilities = {0};
+	struct i40e_aq_set_phy_config config = {0};
+	enum i40e_status_code status;
+	uint8_t req_fec = 0, fec_auto = 0, fec_kr = 0, fec_rs = 0;
+
+	if (hw->device_id != I40E_DEV_ID_25G_SFP28 &&
+	    hw->device_id != I40E_DEV_ID_25G_B &&
+	    hw->device_id != I40E_DEV_ID_KX_X722) {
+		return -ENOTSUP;
+	}
+
+	if (hw->mac.type == I40E_MAC_X722 &&
+	    !(hw->flags & I40E_HW_FLAG_X722_FEC_REQUEST_CAPABLE)) {
+		PMD_DRV_LOG(ERR, "Setting FEC encoding not supported by"
+			 " firmware. Please update the NVM image.\n");
+		return -ENOTSUP;
+	}
+
+	/**
+	 * Copy the current user PHY configuration. The current user PHY
+	 * configuration is initialized during probe from PHY capabilities
+	 * software mode, and updated on set PHY configuration.
+	 */
+	if (fec_capa & ~(RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
+		RTE_ETH_FEC_MODE_CAPA_MASK(BASER) | RTE_ETH_FEC_MODE_CAPA_MASK(RS)))
+		return -EINVAL;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+		fec_auto = 1;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(BASER))
+		fec_kr = 1;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(RS))
+		fec_rs = 1;
+
+	if (fec_auto) {
+		if (hw->mac.type == I40E_MAC_X722) {
+			PMD_DRV_LOG(ERR, "X722 Unsupported FEC mode: AUTO");
+			return -EINVAL;
+		}
+		if (fec_kr || fec_rs) {
+			if (fec_kr)
+				req_fec = I40E_AQ_SET_FEC_ABILITY_KR |
+							I40E_AQ_SET_FEC_REQUEST_KR;
+			if (fec_rs) {
+				if (hw->mac.type == I40E_MAC_X722) {
+					PMD_DRV_LOG(ERR, "X722 Unsupported FEC mode: RS");
+					return -EINVAL;
+				}
+				req_fec |= I40E_AQ_SET_FEC_ABILITY_RS |
+							I40E_AQ_SET_FEC_REQUEST_RS;
+			}
+		} else {
+			if (hw->mac.type == I40E_MAC_X722) {
+				req_fec = I40E_AQ_SET_FEC_ABILITY_KR |
+						  I40E_AQ_SET_FEC_REQUEST_KR;
+			} else {
+				req_fec = I40E_AQ_SET_FEC_ABILITY_KR |
+						  I40E_AQ_SET_FEC_REQUEST_KR |
+						  I40E_AQ_SET_FEC_ABILITY_RS |
+						  I40E_AQ_SET_FEC_REQUEST_RS;
+			}
+		}
+	} else {
+		if (fec_kr ^ fec_rs) {
+			if (fec_kr) {
+				req_fec = I40E_AQ_SET_FEC_ABILITY_KR |
+							I40E_AQ_SET_FEC_REQUEST_KR;
+			} else {
+				if (hw->mac.type == I40E_MAC_X722) {
+					PMD_DRV_LOG(ERR, "X722 Unsupported FEC mode: RS");
+					return -EINVAL;
+				}
+				req_fec = I40E_AQ_SET_FEC_ABILITY_RS |
+							I40E_AQ_SET_FEC_REQUEST_RS;
+			}
+		} else {
+			return -EINVAL;
+		}
+	}
+
+	/* Get the current phy config */
+	status = i40e_aq_get_phy_capabilities(hw, false, false, &abilities,
+					      NULL);
+	if (status) {
+		PMD_DRV_LOG(ERR, "Failed to get PHY capabilities: %d\n",
+				status);
+		return -ENOTSUP;
+	}
+
+	if (abilities.fec_cfg_curr_mod_ext_info != req_fec) {
+		config.phy_type = abilities.phy_type;
+		config.abilities = abilities.abilities |
+				   I40E_AQ_PHY_ENABLE_ATOMIC_LINK;
+		config.phy_type_ext = abilities.phy_type_ext;
+		config.link_speed = abilities.link_speed;
+		config.eee_capability = abilities.eee_capability;
+		config.eeer = abilities.eeer_val;
+		config.low_power_ctrl = abilities.d3_lpan;
+		config.fec_config = req_fec & I40E_AQ_PHY_FEC_CONFIG_MASK;
+		status = i40e_aq_set_phy_config(hw, &config, NULL);
+		if (status) {
+			PMD_DRV_LOG(ERR, "Failed to set PHY capabilities: %d\n",
+			status);
+			return -ENOTSUP;
+		}
+	}
+
+	status = i40e_update_link_info(hw);
+	if (status) {
+		PMD_DRV_LOG(ERR, "Failed to set PHY capabilities: %d\n",
+			status);
+		return -ENOTSUP;
+	}
+
+	return 0;
 }
 
 RTE_LOG_REGISTER_SUFFIX(i40e_logtype_init, init, NOTICE);

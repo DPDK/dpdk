@@ -87,6 +87,11 @@ New Features
 
   * Added support of E830 device family.
 
+* **Updated Intel i40e driver.**
+
+  * Added support for configuring the Forward Error Correction (FEC) mode,
+    querying FEC capabilities and current FEC mode from a device.
+
 * **Updated Intel ixgbe driver.**
 
   * Updated base code with E610 device family support.
