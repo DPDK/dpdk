@@ -1625,17 +1625,25 @@ cnxk_nix_dev_stop(struct rte_eth_dev *eth_dev)
 	int count, i, j, rc;
 	void *rxq;
 
-	/* Disable all the NPC entries */
-	rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
-	if (rc)
-		return rc;
+	/* In case of Inline IPSec, will need to avoid disabling the MCAM rules and NPC Rx
+	 * in this routine to continue processing of second pass inflight packets if any.
+	 * Drop of second pass packets will leak first pass buffers on some platforms
+	 * due to hardware limitations.
+	 */
+	if (roc_feature_nix_has_second_pass_drop() ||
+	    !(dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)) {
+		/* Disable all the NPC entries */
+		rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
+		if (rc)
+			return rc;
+
+		/* Disable Rx via NPC */
+		roc_nix_npc_rx_ena_dis(&dev->nix, false);
+	}
 
 	/* Stop link change events */
 	if (!roc_nix_is_vf_or_sdp(&dev->nix))
 		roc_nix_mac_link_event_start_stop(&dev->nix, false);
-
-	/* Disable Rx via NPC */
-	roc_nix_npc_rx_ena_dis(&dev->nix, false);
 
 	roc_nix_inl_outb_soft_exp_poll_switch(&dev->nix, false);
 
@@ -2046,6 +2054,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 
 	/* Clear the flag since we are closing down */
 	dev->configured = 0;
+
+	/* Disable all the NPC entries */
+	rc = roc_npc_mcam_enable_all_entries(&dev->npc, 0);
+	if (rc)
+		return rc;
 
 	roc_nix_npc_rx_ena_dis(nix, false);
 
