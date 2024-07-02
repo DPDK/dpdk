@@ -245,7 +245,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	}
 	snprintf(devname, sizeof(devname), "/dev/uio%u", uio_num);
 
-	/* save fd if in primary process */
+	/* save fd */
 	fd = open(devname, O_RDWR);
 	if (fd < 0) {
 		RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
@@ -282,6 +282,9 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 			goto error;
 		}
 	}
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	/* allocate the mapping details for secondary processes*/
 	*uio_res = rte_zmalloc("UIO_RES", sizeof(**uio_res), 0);
