@@ -734,6 +734,13 @@ nix_inl_rq_mask_cfg(struct roc_nix *roc_nix, bool enable)
 	msk_req->rq_set.xqe_drop_ena = 0;
 	msk_req->rq_set.spb_ena = 1;
 
+	if (!roc_feature_nix_has_second_pass_drop()) {
+		msk_req->rq_set.ena = 1;
+		msk_req->rq_set.rq_int_ena = 1;
+		msk_req->rq_mask.ena = 0;
+		msk_req->rq_mask.rq_int_ena = 0;
+	}
+
 	msk_req->rq_mask.len_ol3_dis = 0;
 	msk_req->rq_mask.len_ol4_dis = 0;
 	msk_req->rq_mask.len_il3_dis = 0;
@@ -1467,7 +1474,7 @@ roc_nix_inl_rq_ena_dis(struct roc_nix *roc_nix, bool enable)
 	if (!idev)
 		return -EFAULT;
 
-	if (roc_feature_nix_has_inl_rq_mask()) {
+	if (roc_feature_nix_has_inl_rq_mask() && enable) {
 		rc = nix_inl_rq_mask_cfg(roc_nix, enable);
 		if (rc) {
 			plt_err("Failed to get rq mask rc=%d", rc);
