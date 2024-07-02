@@ -240,23 +240,22 @@ ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
 		   rte_memzone_free(mem_handle); })
 
 #define ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(				       \
-	dmadev, size, virt, phys, mem_handle, node, dev_node, alignment)       \
+	dmadev, size, virt, phys, mem_handle, node, alignment)			\
 	do {								       \
 		void *virt_addr;					       \
 		dma_addr_t phys_addr;					       \
-		ENA_TOUCH(dev_node);					       \
 		(mem_handle) = ena_mem_alloc_coherent((dmadev), (size),	       \
 			(node), (alignment), &virt_addr, &phys_addr);      \
 		(virt) = virt_addr;					       \
 		(phys) = phys_addr;					       \
 	} while (0)
 #define ENA_MEM_ALLOC_COHERENT_NODE(					       \
-	dmadev, size, virt, phys, mem_handle, node, dev_node)		       \
+	dmadev, size, virt, phys, mem_handle, node)				\
 		ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(dmadev, size, virt,	phys,  \
-			mem_handle, node, dev_node, RTE_CACHE_LINE_SIZE)
-#define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node, dev_node)		       \
+			mem_handle, node, RTE_CACHE_LINE_SIZE)
+#define ENA_MEM_ALLOC_NODE(dmadev, size, virt, node)				\
 	do {								       \
-		ENA_TOUCH(dmadev); ENA_TOUCH(dev_node);			       \
+		ENA_TOUCH(dmadev);						\
 		virt = rte_zmalloc_socket(NULL, size, 0, node);		       \
 	} while (0)
 

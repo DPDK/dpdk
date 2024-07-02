@@ -328,7 +328,6 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 			      struct ena_com_io_sq *io_sq)
 {
 	size_t size;
-	int dev_node = 0;
 
 	memset(&io_sq->desc_addr, 0x0, sizeof(io_sq->desc_addr));
 
@@ -347,8 +346,7 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 					    io_sq->desc_addr.virt_addr,
 					    io_sq->desc_addr.phys_addr,
 					    io_sq->desc_addr.mem_handle,
-					    ctx->numa_node,
-					    dev_node);
+					    ctx->numa_node);
 		if (!io_sq->desc_addr.virt_addr) {
 			ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
 					       size,
@@ -377,8 +375,7 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 		ENA_MEM_ALLOC_NODE(ena_dev->dmadev,
 				   size,
 				   io_sq->bounce_buf_ctrl.base_buffer,
-				   ctx->numa_node,
-				   dev_node);
+				   ctx->numa_node);
 		if (!io_sq->bounce_buf_ctrl.base_buffer)
 			io_sq->bounce_buf_ctrl.base_buffer = ENA_MEM_ALLOC(ena_dev->dmadev, size);
 
@@ -417,7 +414,6 @@ static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
 			      struct ena_com_io_cq *io_cq)
 {
 	size_t size;
-	int prev_node = 0;
 
 	memset(&io_cq->cdesc_addr, 0x0, sizeof(io_cq->cdesc_addr));
 
@@ -436,7 +432,6 @@ static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
 					    io_cq->cdesc_addr.phys_addr,
 					    io_cq->cdesc_addr.mem_handle,
 					    ctx->numa_node,
-					    prev_node,
 					    ENA_CDESC_RING_SIZE_ALIGNMENT);
 	if (!io_cq->cdesc_addr.virt_addr) {
 		ENA_MEM_ALLOC_COHERENT_ALIGNED(ena_dev->dmadev,
