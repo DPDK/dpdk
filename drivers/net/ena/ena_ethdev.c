@@ -280,8 +280,8 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 static void ena_control_path_handler(void *cb_arg);
 static void ena_control_path_poll_handler(void *cb_arg);
 static void ena_timer_wd_callback(struct rte_timer *timer, void *arg);
-static void ena_destroy_device(struct rte_eth_dev *eth_dev);
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev);
+static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev);
 static int ena_xstats_get_names(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				unsigned int n);
@@ -880,10 +880,14 @@ static int ena_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ena_adapter *adapter = dev->data->dev_private;
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	int ret = 0;
 	int rc;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	if (adapter->state == ENA_ADAPTER_STATE_CLOSED)
 		return 0;
 
 	if (adapter->state == ENA_ADAPTER_STATE_RUNNING)
@@ -905,6 +909,19 @@ static int ena_close(struct rte_eth_dev *dev)
 	rte_free(adapter->drv_stats);
 	adapter->drv_stats = NULL;
 
+	ena_com_set_admin_running_state(ena_dev, false);
+
+	ena_com_rss_destroy(ena_dev);
+
+	ena_com_delete_debug_area(ena_dev);
+	ena_com_delete_host_info(ena_dev);
+
+	ena_com_abort_admin_commands(ena_dev);
+	ena_com_wait_for_abort_completion(ena_dev);
+	ena_com_admin_destroy(ena_dev);
+	ena_com_mmio_reg_read_request_destroy(ena_dev);
+	ena_com_delete_customer_metrics_buffer(ena_dev);
+
 	/*
 	 * MAC is not allocated dynamically. Setting NULL should prevent from
 	 * release of the resource in the rte_eth_dev_release_port().
@@ -925,7 +942,12 @@ ena_dev_reset(struct rte_eth_dev *dev)
 		return -EPERM;
 	}
 
-	ena_destroy_device(dev);
+	rc = eth_ena_dev_uninit(dev);
+	if (rc) {
+		PMD_INIT_LOG(CRIT, "Failed to un-initialize device\n");
+		return rc;
+	}
+
 	rc = eth_ena_dev_init(dev);
 	if (rc)
 		PMD_INIT_LOG(CRIT, "Cannot initialize device\n");
@@ -2434,39 +2456,12 @@ err:
 	return rc;
 }
 
-static void ena_destroy_device(struct rte_eth_dev *eth_dev)
-{
-	struct ena_adapter *adapter = eth_dev->data->dev_private;
-	struct ena_com_dev *ena_dev = &adapter->ena_dev;
-
-	if (adapter->state == ENA_ADAPTER_STATE_FREE)
-		return;
-
-	ena_com_set_admin_running_state(ena_dev, false);
-
-	if (adapter->state != ENA_ADAPTER_STATE_CLOSED)
-		ena_close(eth_dev);
-
-	ena_com_rss_destroy(ena_dev);
-
-	ena_com_delete_debug_area(ena_dev);
-	ena_com_delete_host_info(ena_dev);
-
-	ena_com_abort_admin_commands(ena_dev);
-	ena_com_wait_for_abort_completion(ena_dev);
-	ena_com_admin_destroy(ena_dev);
-	ena_com_mmio_reg_read_request_destroy(ena_dev);
-	ena_com_delete_customer_metrics_buffer(ena_dev);
-
-	adapter->state = ENA_ADAPTER_STATE_FREE;
-}
-
 static int eth_ena_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	ena_destroy_device(eth_dev);
+	ena_close(eth_dev);
 
 	return 0;
 }
