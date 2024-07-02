@@ -812,7 +812,7 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
-		if (rc == -ENA_COM_UNSUPPORTED)
+		if (rc == ENA_COM_UNSUPPORTED)
 			PMD_DRV_LOG(WARNING, "Cannot set host attributes\n");
 		else
 			PMD_DRV_LOG(ERR, "Cannot set host attributes\n");
@@ -856,7 +856,7 @@ static void ena_config_debug_area(struct ena_adapter *adapter)
 
 	rc = ena_com_set_host_attributes(&adapter->ena_dev);
 	if (rc) {
-		if (rc == -ENA_COM_UNSUPPORTED)
+		if (rc == ENA_COM_UNSUPPORTED)
 			PMD_DRV_LOG(WARNING, "Cannot set host attributes\n");
 		else
 			PMD_DRV_LOG(ERR, "Cannot set host attributes\n");
