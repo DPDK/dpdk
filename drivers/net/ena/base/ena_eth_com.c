@@ -426,8 +426,7 @@ static int ena_com_create_and_store_tx_meta_desc(struct ena_com_io_sq *io_sq,
 	return ENA_COM_OK;
 }
 
-static void ena_com_rx_set_flags(struct ena_com_io_cq *io_cq,
-				 struct ena_com_rx_ctx *ena_rx_ctx,
+static void ena_com_rx_set_flags(struct ena_com_rx_ctx *ena_rx_ctx,
 				 struct ena_eth_io_rx_cdesc_base *cdesc)
 {
 	ena_rx_ctx->l3_proto = cdesc->status &
@@ -453,16 +452,6 @@ static void ena_com_rx_set_flags(struct ena_com_io_cq *io_cq,
 		ENA_FIELD_GET(cdesc->status,
 			      ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_MASK,
 			      ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_SHIFT);
-
-	ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
-		    "l3_proto %d l4_proto %d l3_csum_err %d l4_csum_err %d hash %u frag %d cdesc_status %x\n",
-		    ena_rx_ctx->l3_proto,
-		    ena_rx_ctx->l4_proto,
-		    ena_rx_ctx->l3_csum_err,
-		    ena_rx_ctx->l4_csum_err,
-		    ena_rx_ctx->hash,
-		    ena_rx_ctx->frag,
-		    cdesc->status);
 }
 
 /*****************************************************************************/
@@ -689,7 +678,17 @@ int ena_com_rx_pkt(struct ena_com_io_cq *io_cq,
 		    io_sq->qid, io_sq->next_to_comp);
 
 	/* Get rx flags from the last pkt */
-	ena_com_rx_set_flags(io_cq, ena_rx_ctx, cdesc);
+	ena_com_rx_set_flags(ena_rx_ctx, cdesc);
+
+	ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
+		    "l3_proto %d l4_proto %d l3_csum_err %d l4_csum_err %d hash %d frag %d cdesc_status %x\n",
+		    ena_rx_ctx->l3_proto,
+		    ena_rx_ctx->l4_proto,
+		    ena_rx_ctx->l3_csum_err,
+		    ena_rx_ctx->l4_csum_err,
+		    ena_rx_ctx->hash,
+		    ena_rx_ctx->frag,
+		    cdesc->status);
 
 	ena_rx_ctx->descs = nb_hw_desc;
 

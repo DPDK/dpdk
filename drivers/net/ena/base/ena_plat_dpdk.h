@@ -122,7 +122,11 @@ extern int ena_logtype_com;
 			"[ENA_COM: %s]" fmt, __func__, ##arg)		       \
 	)
 
-#define ena_trc_dbg(dev, format, arg...) ena_trc_log(dev, DEBUG, format, ##arg)
+#if (defined RTE_ETHDEV_DEBUG_TX) || (defined RTE_ETHDEV_DEBUG_RX)
+#define ena_trc_dbg(dev, format, ...) ena_trc_log(dev, DEBUG, format, ##__VA_ARGS__)
+#else
+#define ena_trc_dbg(dev, format, ...)
+#endif
 #define ena_trc_info(dev, format, arg...) ena_trc_log(dev, INFO, format, ##arg)
 #define ena_trc_warn(dev, format, arg...) ena_trc_log(dev, WARNING, format, ##arg)
 #define ena_trc_err(dev, format, arg...) ena_trc_log(dev, ERR, format, ##arg)

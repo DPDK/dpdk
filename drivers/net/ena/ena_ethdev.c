@@ -3124,7 +3124,7 @@ static int ena_xmit_mbuf(struct ena_ring *tx_ring, struct rte_mbuf *mbuf)
 	 */
 	if (!ena_com_sq_have_enough_space(tx_ring->ena_com_io_sq,
 					  mbuf->nb_segs + 2)) {
-		PMD_DRV_LOG(DEBUG, "Not enough space in the tx queue\n");
+		PMD_TX_LOG(DEBUG, "Not enough space in the tx queue\n");
 		return ENA_COM_NO_MEM;
 	}
 

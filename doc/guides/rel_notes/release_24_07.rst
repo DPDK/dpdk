@@ -83,6 +83,10 @@ New Features
     without having to do a full handshake over a Unix Domain Socket
     with the Device Plugin.
 
+* **Updated Amazon ena (Elastic Network Adapter) driver.**
+
+  * Reworked the driver logger usage in order to improve Tx performance.
+
 * **Updated Intel ice driver.**
 
   * Added support of E830 device family.
