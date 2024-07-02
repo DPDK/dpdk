@@ -2409,8 +2409,12 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *ena_dev, void *data)
 	/* Go over all the events */
 	while ((READ_ONCE8(aenq_common->flags) &
 		ENA_ADMIN_AENQ_COMMON_DESC_PHASE_MASK) == phase) {
-		/* Make sure the device finished writing the rest of the descriptor
-		 * before reading it.
+		/* When the phase bit of the AENQ descriptor aligns with the driver's phase bit,
+		 * it signifies the readiness of the entire AENQ descriptor.
+		 * The driver should proceed to read the descriptor's data only after confirming
+		 * and synchronizing the phase bit.
+		 * This memory fence guarantees the correct sequence of accesses to the
+		 * descriptor's memory.
 		 */
 		dma_rmb();
 
@@ -2468,8 +2472,12 @@ bool ena_com_aenq_has_keep_alive(struct ena_com_dev *ena_dev)
 	/* Go over all the events */
 	while ((READ_ONCE8(aenq_common->flags) &
 		ENA_ADMIN_AENQ_COMMON_DESC_PHASE_MASK) == phase) {
-		/* Make sure the device finished writing the rest of the descriptor
-		 * before reading it.
+		/* When the phase bit of the AENQ descriptor aligns with the driver's phase bit,
+		 * it signifies the readiness of the entire AENQ descriptor.
+		 * The driver should proceed to read the descriptor's data only after confirming
+		 * and synchronizing the phase bit.
+		 * This memory fence guarantees the correct sequence of accesses to the
+		 * descriptor's memory.
 		 */
 		dma_rmb();
 
