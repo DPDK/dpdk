@@ -325,6 +325,9 @@ void ena_rss_key_fill(void *key, size_t size);
 #define ENA_BITS_PER_U64(bitmap) (ena_bits_per_u64(bitmap))
 
 #define ENA_FIELD_GET(value, mask, offset) (((value) & (mask)) >> (offset))
+#define ENA_FIELD_PREP(value, mask, offset) (((value) << (offset)) & (mask))
+
+#define ENA_ZERO_SHIFT 0
 
 static __rte_always_inline int ena_bits_per_u64(uint64_t bitmap)
 {

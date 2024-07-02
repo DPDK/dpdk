@@ -1201,15 +1201,17 @@ static inline void ena_com_update_intr_reg(struct ena_eth_io_intr_reg *intr_reg,
 		ENA_ETH_IO_INTR_REG_RX_INTR_DELAY_MASK;
 
 	intr_reg->intr_control |=
-		(tx_delay_interval << ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT)
-		& ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK;
+		ENA_FIELD_PREP(tx_delay_interval,
+			       ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK,
+			       ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_SHIFT);
 
 	if (unmask)
 		intr_reg->intr_control |= ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
 
 	intr_reg->intr_control |=
-		(((u32)no_moderation_update) << ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT) &
-			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK;
+		ENA_FIELD_PREP(((u32)no_moderation_update),
+			       ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK,
+			       ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT);
 }
 
 static inline u8 *ena_com_get_next_bounce_buffer(struct ena_com_io_bounce_buffer_control *bounce_buf_ctrl)

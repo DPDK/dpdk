@@ -188,7 +188,9 @@ static inline void ena_com_update_numa_node(struct ena_com_io_cq *io_cq,
 	if (!io_cq->numa_node_cfg_reg)
 		return;
 
-	numa_cfg.numa_cfg = (numa_node & ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK)
+	numa_cfg.numa_cfg = (ENA_FIELD_GET(numa_node,
+					   ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK,
+					   ENA_ZERO_SHIFT))
 		| ENA_ETH_IO_NUMA_NODE_CFG_REG_ENABLED_MASK;
 
 	ENA_REG_WRITE32(io_cq->bus, numa_cfg.numa_cfg, io_cq->numa_node_cfg_reg);
@@ -230,7 +232,9 @@ static inline int ena_com_tx_comp_req_id_get(struct ena_com_io_cq *io_cq,
 	 * expected, it mean that the device still didn't update
 	 * this completion.
 	 */
-	cdesc_phase = flags & ENA_ETH_IO_TX_CDESC_PHASE_MASK;
+	cdesc_phase = ENA_FIELD_GET(flags,
+				    ENA_ETH_IO_TX_CDESC_PHASE_MASK,
+				    ENA_ZERO_SHIFT);
 	if (cdesc_phase != expected_phase)
 		return ENA_COM_TRY_AGAIN;
 
