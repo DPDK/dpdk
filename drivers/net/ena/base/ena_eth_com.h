@@ -82,15 +82,14 @@ static inline void ena_com_unmask_intr(struct ena_com_io_cq *io_cq,
 	ENA_REG_WRITE32(io_cq->bus, intr_reg->intr_control, io_cq->unmask_reg);
 }
 
+static inline u16 ena_com_used_q_entries(struct ena_com_io_sq *io_sq)
+{
+	return io_sq->tail - io_sq->next_to_comp;
+}
+
 static inline int ena_com_free_q_entries(struct ena_com_io_sq *io_sq)
 {
-	u16 tail, next_to_comp, cnt;
-
-	next_to_comp = io_sq->next_to_comp;
-	tail = io_sq->tail;
-	cnt = tail - next_to_comp;
-
-	return io_sq->q_depth - 1 - cnt;
+	return io_sq->q_depth - 1 - ena_com_used_q_entries(io_sq);
 }
 
 /* Check if the submission queue has enough space to hold required_buffers */
