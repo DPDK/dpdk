@@ -53,8 +53,6 @@
  */
 #define ENA_CLEANUP_BUF_THRESH	256
 
-#define ENA_PTYPE_HAS_HASH	(RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP)
-
 struct ena_stats {
 	char name[ETH_GSTRING_LEN];
 	int stat_offset;
@@ -645,19 +643,14 @@ static inline void ena_trigger_reset(struct ena_adapter *adapter,
 
 static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 				       struct rte_mbuf *mbuf,
-				       struct ena_com_rx_ctx *ena_rx_ctx,
-				       bool fill_hash)
+				       struct ena_com_rx_ctx *ena_rx_ctx)
 {
 	struct ena_stats_rx *rx_stats = &rx_ring->rx_stats;
 	uint64_t ol_flags = 0;
 	uint32_t packet_type = 0;
 
-	if (ena_rx_ctx->l4_proto == ENA_ETH_IO_L4_PROTO_TCP)
-		packet_type |= RTE_PTYPE_L4_TCP;
-	else if (ena_rx_ctx->l4_proto == ENA_ETH_IO_L4_PROTO_UDP)
-		packet_type |= RTE_PTYPE_L4_UDP;
-
-	if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV4) {
+	switch (ena_rx_ctx->l3_proto) {
+	case ENA_ETH_IO_L3_PROTO_IPV4:
 		packet_type |= RTE_PTYPE_L3_IPV4;
 		if (unlikely(ena_rx_ctx->l3_csum_err)) {
 			++rx_stats->l3_csum_bad;
@@ -665,27 +658,45 @@ static inline void ena_rx_mbuf_prepare(struct ena_ring *rx_ring,
 		} else {
 			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 		}
-	} else if (ena_rx_ctx->l3_proto == ENA_ETH_IO_L3_PROTO_IPV6) {
+		break;
+	case ENA_ETH_IO_L3_PROTO_IPV6:
 		packet_type |= RTE_PTYPE_L3_IPV6;
+		break;
+	default:
+		break;
 	}
 
-	if (!ena_rx_ctx->l4_csum_checked || ena_rx_ctx->frag ||
-		!(packet_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP))) {
-		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
-	} else {
-		if (unlikely(ena_rx_ctx->l4_csum_err)) {
-			++rx_stats->l4_csum_bad;
-			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+	switch (ena_rx_ctx->l4_proto) {
+	case ENA_ETH_IO_L4_PROTO_TCP:
+		packet_type |= RTE_PTYPE_L4_TCP;
+		break;
+	case ENA_ETH_IO_L4_PROTO_UDP:
+		packet_type |= RTE_PTYPE_L4_UDP;
+		break;
+	default:
+		break;
+	}
+
+	/* L4 csum is relevant only for TCP/UDP packets */
+	if ((packet_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP)) && !ena_rx_ctx->frag) {
+		if (ena_rx_ctx->l4_csum_checked) {
+			if (likely(!ena_rx_ctx->l4_csum_err)) {
+				++rx_stats->l4_csum_good;
+				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+			} else {
+				++rx_stats->l4_csum_bad;
+				ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+			}
 		} else {
-			++rx_stats->l4_csum_good;
-			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 		}
-	}
 
-	if (fill_hash &&
-	    likely((packet_type & ENA_PTYPE_HAS_HASH) && !ena_rx_ctx->frag)) {
-		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
-		mbuf->hash.rss = ena_rx_ctx->hash;
+		if (rx_ring->offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) {
+			ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+			mbuf->hash.rss = ena_rx_ctx->hash;
+		}
+	} else {
+		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN;
 	}
 
 	mbuf->ol_flags = ol_flags;
@@ -2765,7 +2776,6 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint16_t completed;
 	struct ena_com_rx_ctx ena_rx_ctx;
 	int i, rc = 0;
-	bool fill_hash;
 
 #ifdef RTE_ETHDEV_DEBUG_RX
 	/* Check adapter state */
@@ -2775,8 +2785,6 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		return 0;
 	}
 #endif
-
-	fill_hash = rx_ring->offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	descs_in_use = rx_ring->ring_size -
 		ena_com_free_q_entries(rx_ring->ena_com_io_sq) - 1;
@@ -2823,7 +2831,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		}
 
 		/* fill mbuf attributes if any */
-		ena_rx_mbuf_prepare(rx_ring, mbuf, &ena_rx_ctx, fill_hash);
+		ena_rx_mbuf_prepare(rx_ring, mbuf, &ena_rx_ctx);
 
 		if (unlikely(mbuf->ol_flags &
 				(RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD)))
