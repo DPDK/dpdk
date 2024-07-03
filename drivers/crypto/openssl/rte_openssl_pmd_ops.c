@@ -794,9 +794,34 @@ qp_setup_cleanup:
 
 /** Returns the size of the symmetric session structure */
 static unsigned
-openssl_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+openssl_pmd_sym_session_get_size(struct rte_cryptodev *dev)
 {
-	return sizeof(struct openssl_session);
+	/*
+	 * For 0 qps, return the max size of the session - this is necessary if
+	 * the user calls into this function to create the session mempool,
+	 * without first configuring the number of qps for the cryptodev.
+	 */
+	if (dev->data->nb_queue_pairs == 0) {
+		unsigned int max_nb_qps = ((struct openssl_private *)
+				dev->data->dev_private)->max_nb_qpairs;
+		return sizeof(struct openssl_session) +
+				(sizeof(void *) * max_nb_qps);
+	}
+
+	/*
+	 * With only one queue pair, the thread safety of multiple context
+	 * copies is not necessary, so don't allocate extra memory for the
+	 * array.
+	 */
+	if (dev->data->nb_queue_pairs == 1)
+		return sizeof(struct openssl_session);
+
+	/*
+	 * Otherwise, the size of the flexible array member should be enough to
+	 * fit pointers to per-qp contexts.
+	 */
+	return sizeof(struct openssl_session) +
+		(sizeof(void *) * dev->data->nb_queue_pairs);
 }
 
 /** Returns the size of the asymmetric session structure */
@@ -808,7 +833,7 @@ openssl_pmd_asym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 
 /** Configure the session from a crypto xform chain */
 static int
-openssl_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
+openssl_pmd_sym_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
 		struct rte_cryptodev_sym_session *sess)
 {
@@ -820,7 +845,8 @@ openssl_pmd_sym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		return -EINVAL;
 	}
 
-	ret = openssl_set_session_parameters(sess_private_data, xform);
+	ret = openssl_set_session_parameters(sess_private_data, xform,
+			dev->data->nb_queue_pairs);
 	if (ret != 0) {
 		OPENSSL_LOG(ERR, "failed configure session parameters");
 
