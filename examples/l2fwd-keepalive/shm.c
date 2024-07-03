@@ -5,7 +5,6 @@
 #include <time.h>
 
 #include <rte_common.h>
-#include <rte_log.h>
 #include <rte_keepalive.h>
 
 #include "shm.h"
@@ -22,34 +21,30 @@ struct rte_keepalive_shm *rte_keepalive_shm_create(void)
 	 * will get the new block mapped below.
 	 */
 	if (shm_unlink(RTE_KEEPALIVE_SHM_NAME) == -1 && errno != ENOENT)
-		printf("Warning: Error unlinking stale %s (%s)\n",
+		RTE_LOG(NOTICE, L2FWD,
+			"Warning: Error unlinking stale %s (%s)\n",
 			RTE_KEEPALIVE_SHM_NAME, strerror(errno));
 
 	fd = shm_open(RTE_KEEPALIVE_SHM_NAME,
 		O_CREAT | O_TRUNC | O_RDWR, 0666);
 	if (fd < 0)
-		RTE_LOG(INFO, EAL,
-			"Failed to open %s as SHM (%s)\n",
-			RTE_KEEPALIVE_SHM_NAME,
-			strerror(errno));
+		RTE_LOG(ERR, L2FWD, "Failed to open %s as SHM (%s)\n",
+			RTE_KEEPALIVE_SHM_NAME, strerror(errno));
 	else if (ftruncate(fd, sizeof(struct rte_keepalive_shm)) != 0)
-		RTE_LOG(INFO, EAL,
-			"Failed to resize SHM (%s)\n", strerror(errno));
+		RTE_LOG(ERR, L2FWD, "Failed to resize SHM (%s)\n", strerror(errno));
 	else {
 		ka_shm = (struct rte_keepalive_shm *) mmap(
 			0, sizeof(struct rte_keepalive_shm),
 			PROT_READ | PROT_WRITE,	MAP_SHARED, fd, 0);
 		close(fd);
 		if (ka_shm == MAP_FAILED)
-			RTE_LOG(INFO, EAL,
-				"Failed to mmap SHM (%s)\n", strerror(errno));
+			RTE_LOG(ERR, L2FWD, "Failed to mmap SHM (%s)\n", strerror(errno));
 		else {
 			memset(ka_shm, 0, sizeof(struct rte_keepalive_shm));
 
 			/* Initialize the semaphores for IPC/SHM use */
 			if (sem_init(&ka_shm->core_died, 1, 0) != 0) {
-				RTE_LOG(INFO, EAL,
-					"Failed to setup SHM semaphore (%s)\n",
+				RTE_LOG(ERR, L2FWD, "Failed to setup SHM semaphore (%s)\n",
 					strerror(errno));
 				munmap(ka_shm,
 					sizeof(struct rte_keepalive_shm));
@@ -87,7 +82,7 @@ void rte_keepalive_relayed_state(struct rte_keepalive_shm *shm,
 		 * ka_agent is not active.
 		 */
 		if (sem_getvalue(&shm->core_died, &count) == -1) {
-			RTE_LOG(INFO, EAL, "Semaphore check failed(%s)\n",
+			RTE_LOG(ERR, L2FWD, "Semaphore check failed(%s)\n",
 				strerror(errno));
 			return;
 		}
@@ -95,8 +90,7 @@ void rte_keepalive_relayed_state(struct rte_keepalive_shm *shm,
 			return;
 
 		if (sem_post(&shm->core_died) != 0)
-			RTE_LOG(INFO, EAL,
-				"Failed to increment semaphore (%s)\n",
+			RTE_LOG(ERR, L2FWD, "Failed to increment semaphore (%s)\n",
 				strerror(errno));
 	}
 }
@@ -104,9 +98,10 @@ void rte_keepalive_relayed_state(struct rte_keepalive_shm *shm,
 void rte_keepalive_shm_cleanup(struct rte_keepalive_shm *ka_shm)
 {
 	if (shm_unlink(RTE_KEEPALIVE_SHM_NAME) == -1 && errno != ENOENT)
-		printf("Warning: Error unlinking  %s (%s)\n",
+		RTE_LOG(NOTICE, L2FWD, "Warning: Error unlinking  %s (%s)\n",
 			RTE_KEEPALIVE_SHM_NAME, strerror(errno));
 
 	if (ka_shm && munmap(ka_shm, sizeof(struct rte_keepalive_shm)) != 0)
-		printf("Warning: munmap() failed\n");
+		RTE_LOG(ERR, L2FWD, "Warning: munmap() failed: %s\n",
+			strerror(errno));
 }

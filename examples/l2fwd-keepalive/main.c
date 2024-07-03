@@ -41,8 +41,6 @@
 
 #include "shm.h"
 
-#define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
-
 #define NB_MBUF_PER_PORT 3000
 
 #define MAX_PKT_BURST 32
