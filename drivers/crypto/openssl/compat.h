@@ -5,6 +5,32 @@
 #ifndef __RTA_COMPAT_H__
 #define __RTA_COMPAT_H__
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static __rte_always_inline void
+free_hmac_ctx(EVP_MAC_CTX *ctx)
+{
+	EVP_MAC_CTX_free(ctx);
+}
+
+static __rte_always_inline void
+free_cmac_ctx(EVP_MAC_CTX *ctx)
+{
+	EVP_MAC_CTX_free(ctx);
+}
+#else
+static __rte_always_inline void
+free_hmac_ctx(HMAC_CTX *ctx)
+{
+	HMAC_CTX_free(ctx);
+}
+
+static __rte_always_inline void
+free_cmac_ctx(CMAC_CTX *ctx)
+{
+	CMAC_CTX_free(ctx);
+}
+#endif
+
 #if (OPENSSL_VERSION_NUMBER < 0x10100000L)
 
 static __rte_always_inline int

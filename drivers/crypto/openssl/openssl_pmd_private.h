@@ -80,6 +80,20 @@ struct __rte_cache_aligned openssl_qp {
 	 */
 };
 
+struct evp_ctx_pair {
+	EVP_CIPHER_CTX *cipher;
+	union {
+		EVP_MD_CTX *auth;
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		EVP_MAC_CTX *hmac;
+		EVP_MAC_CTX *cmac;
+#else
+		HMAC_CTX *hmac;
+		CMAC_CTX *cmac;
+#endif
+	};
+};
+
 /** OPENSSL crypto private session structure */
 struct __rte_cache_aligned openssl_session {
 	enum openssl_chain_order chain_order;
@@ -168,11 +182,12 @@ struct __rte_cache_aligned openssl_session {
 
 	uint16_t ctx_copies_len;
 	/* < number of entries in ctx_copies */
-	EVP_CIPHER_CTX *qp_ctx[];
-	/**< Flexible array member of per-queue-pair pointers to copies of EVP
-	 * context structure. Cipher contexts are not safe to use from multiple
-	 * cores simultaneously, so maintaining these copies allows avoiding
-	 * per-buffer copying into a temporary context.
+	struct evp_ctx_pair qp_ctx[];
+	/**< Flexible array member of per-queue-pair structures, each containing
+	 * pointers to copies of the cipher and auth EVP contexts. Cipher
+	 * contexts are not safe to use from multiple cores simultaneously, so
+	 * maintaining these copies allows avoiding per-buffer copying into a
+	 * temporary context.
 	 */
 };
 

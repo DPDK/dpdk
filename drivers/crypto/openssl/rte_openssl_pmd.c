@@ -892,40 +892,45 @@ openssl_set_session_parameters(struct openssl_session *sess,
 void
 openssl_reset_session(struct openssl_session *sess)
 {
+	/* Free all the qp_ctx entries. */
 	for (uint16_t i = 0; i < sess->ctx_copies_len; i++) {
-		if (sess->qp_ctx[i] != NULL) {
-			EVP_CIPHER_CTX_free(sess->qp_ctx[i]);
-			sess->qp_ctx[i] = NULL;
+		if (sess->qp_ctx[i].cipher != NULL) {
+			EVP_CIPHER_CTX_free(sess->qp_ctx[i].cipher);
+			sess->qp_ctx[i].cipher = NULL;
+		}
+
+		switch (sess->auth.mode) {
+		case OPENSSL_AUTH_AS_AUTH:
+			EVP_MD_CTX_destroy(sess->qp_ctx[i].auth);
+			sess->qp_ctx[i].auth = NULL;
+			break;
+		case OPENSSL_AUTH_AS_HMAC:
+			free_hmac_ctx(sess->qp_ctx[i].hmac);
+			sess->qp_ctx[i].hmac = NULL;
+			break;
+		case OPENSSL_AUTH_AS_CMAC:
+			free_cmac_ctx(sess->qp_ctx[i].cmac);
+			sess->qp_ctx[i].cmac = NULL;
+			break;
 		}
 	}
 
 	EVP_CIPHER_CTX_free(sess->cipher.ctx);
-
-	if (sess->chain_order == OPENSSL_CHAIN_CIPHER_BPI)
-		EVP_CIPHER_CTX_free(sess->cipher.bpi_ctx);
 
 	switch (sess->auth.mode) {
 	case OPENSSL_AUTH_AS_AUTH:
 		EVP_MD_CTX_destroy(sess->auth.auth.ctx);
 		break;
 	case OPENSSL_AUTH_AS_HMAC:
-		EVP_PKEY_free(sess->auth.hmac.pkey);
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		EVP_MAC_CTX_free(sess->auth.hmac.ctx);
-# else
-		HMAC_CTX_free(sess->auth.hmac.ctx);
-# endif
+		free_hmac_ctx(sess->auth.hmac.ctx);
 		break;
 	case OPENSSL_AUTH_AS_CMAC:
-# if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		EVP_MAC_CTX_free(sess->auth.cmac.ctx);
-# else
-		CMAC_CTX_free(sess->auth.cmac.ctx);
-# endif
-		break;
-	default:
+		free_cmac_ctx(sess->auth.cmac.ctx);
 		break;
 	}
+
+	if (sess->chain_order == OPENSSL_CHAIN_CIPHER_BPI)
+		EVP_CIPHER_CTX_free(sess->cipher.bpi_ctx);
 }
 
 /** Provide session for operation */
@@ -1471,6 +1476,9 @@ process_openssl_auth_mac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
 	if (m == 0)
 		goto process_auth_err;
 
+	if (EVP_MAC_init(ctx, NULL, 0, NULL) <= 0)
+		goto process_auth_err;
+
 	src = rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
 
 	l = rte_pktmbuf_data_len(m) - offset;
@@ -1497,11 +1505,9 @@ process_auth_final:
 	if (EVP_MAC_final(ctx, dst, &dstlen, DIGEST_LENGTH_MAX) != 1)
 		goto process_auth_err;
 
-	EVP_MAC_CTX_free(ctx);
 	return 0;
 
 process_auth_err:
-	EVP_MAC_CTX_free(ctx);
 	OPENSSL_LOG(ERR, "Process openssl auth failed");
 	return -EINVAL;
 }
@@ -1620,7 +1626,7 @@ get_local_cipher_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 	if (sess->ctx_copies_len == 0)
 		return sess->cipher.ctx;
 
-	EVP_CIPHER_CTX **lctx = &sess->qp_ctx[qp->id];
+	EVP_CIPHER_CTX **lctx = &sess->qp_ctx[qp->id].cipher;
 
 	if (unlikely(*lctx == NULL)) {
 #if OPENSSL_VERSION_NUMBER >= 0x30200000L
@@ -1645,6 +1651,112 @@ get_local_cipher_ctx(struct openssl_session *sess, struct openssl_qp *qp)
 	}
 
 	return *lctx;
+}
+
+static inline EVP_MD_CTX *
+get_local_auth_ctx(struct openssl_session *sess, struct openssl_qp *qp)
+{
+	/* If the array is not being used, just return the main context. */
+	if (sess->ctx_copies_len == 0)
+		return sess->auth.auth.ctx;
+
+	EVP_MD_CTX **lctx = &sess->qp_ctx[qp->id].auth;
+
+	if (unlikely(*lctx == NULL)) {
+#if OPENSSL_VERSION_NUMBER >= 0x30100000L
+		/* EVP_MD_CTX_dup() added in OSSL 3.1 */
+		*lctx = EVP_MD_CTX_dup(sess->auth.auth.ctx);
+#else
+		*lctx = EVP_MD_CTX_new();
+		EVP_MD_CTX_copy(*lctx, sess->auth.auth.ctx);
+#endif
+	}
+
+	return *lctx;
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static inline EVP_MAC_CTX *
+#else
+static inline HMAC_CTX *
+#endif
+get_local_hmac_ctx(struct openssl_session *sess, struct openssl_qp *qp)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
+	/* For OpenSSL versions 3.0.0 <= v < 3.0.3, re-initing of
+	 * EVP_MAC_CTXs is broken, and doesn't actually reset their
+	 * state. This was fixed in OSSL commit c9ddc5af5199 ("Avoid
+	 * undefined behavior of provided macs on EVP_MAC
+	 * reinitialization"). In cases where the fix is not present,
+	 * fall back to duplicating the context every buffer as a
+	 * workaround, at the cost of performance.
+	 */
+	RTE_SET_USED(qp);
+	return EVP_MAC_CTX_dup(sess->auth.hmac.ctx);
+#else
+	if (sess->ctx_copies_len == 0)
+		return sess->auth.hmac.ctx;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_MAC_CTX **lctx =
+#else
+	HMAC_CTX **lctx =
+#endif
+		&sess->qp_ctx[qp->id].hmac;
+
+	if (unlikely(*lctx == NULL)) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		*lctx = EVP_MAC_CTX_dup(sess->auth.hmac.ctx);
+#else
+		*lctx = HMAC_CTX_new();
+		HMAC_CTX_copy(*lctx, sess->auth.hmac.ctx);
+#endif
+	}
+
+	return *lctx;
+#endif
+}
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+static inline EVP_MAC_CTX *
+#else
+static inline CMAC_CTX *
+#endif
+get_local_cmac_ctx(struct openssl_session *sess, struct openssl_qp *qp)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
+	/* For OpenSSL versions 3.0.0 <= v < 3.0.3, re-initing of
+	 * EVP_MAC_CTXs is broken, and doesn't actually reset their
+	 * state. This was fixed in OSSL commit c9ddc5af5199 ("Avoid
+	 * undefined behavior of provided macs on EVP_MAC
+	 * reinitialization"). In cases where the fix is not present,
+	 * fall back to duplicating the context every buffer as a
+	 * workaround, at the cost of performance.
+	 */
+	RTE_SET_USED(qp);
+	return EVP_MAC_CTX_dup(sess->auth.cmac.ctx);
+#else
+	if (sess->ctx_copies_len == 0)
+		return sess->auth.cmac.ctx;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_MAC_CTX **lctx =
+#else
+	CMAC_CTX **lctx =
+#endif
+		&sess->qp_ctx[qp->id].cmac;
+
+	if (unlikely(*lctx == NULL)) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+		*lctx = EVP_MAC_CTX_dup(sess->auth.cmac.ctx);
+#else
+		*lctx = CMAC_CTX_new();
+		CMAC_CTX_copy(*lctx, sess->auth.cmac.ctx);
+#endif
+	}
+
+	return *lctx;
+#endif
 }
 
 /** Process auth/cipher combined operation */
@@ -1895,42 +2007,40 @@ process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 
 	switch (sess->auth.mode) {
 	case OPENSSL_AUTH_AS_AUTH:
-		ctx_a = EVP_MD_CTX_create();
-		EVP_MD_CTX_copy_ex(ctx_a, sess->auth.auth.ctx);
+		ctx_a = get_local_auth_ctx(sess, qp);
 		status = process_openssl_auth(mbuf_src, dst,
 				op->sym->auth.data.offset, NULL, NULL, srclen,
 				ctx_a, sess->auth.auth.evp_algo);
-		EVP_MD_CTX_destroy(ctx_a);
 		break;
 	case OPENSSL_AUTH_AS_HMAC:
+		ctx_h = get_local_hmac_ctx(sess, qp);
 # if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		ctx_h = EVP_MAC_CTX_dup(sess->auth.hmac.ctx);
 		status = process_openssl_auth_mac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_h);
 # else
-		ctx_h = HMAC_CTX_new();
-		HMAC_CTX_copy(ctx_h, sess->auth.hmac.ctx);
 		status = process_openssl_auth_hmac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_h);
-		HMAC_CTX_free(ctx_h);
 # endif
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
+		EVP_MAC_CTX_free(ctx_h);
+#endif
 		break;
 	case OPENSSL_AUTH_AS_CMAC:
+		ctx_c = get_local_cmac_ctx(sess, qp);
 # if OPENSSL_VERSION_NUMBER >= 0x30000000L
-		ctx_c = EVP_MAC_CTX_dup(sess->auth.cmac.ctx);
 		status = process_openssl_auth_mac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_c);
 # else
-		ctx_c = CMAC_CTX_new();
-		CMAC_CTX_copy(ctx_c, sess->auth.cmac.ctx);
 		status = process_openssl_auth_cmac(mbuf_src, dst,
 				op->sym->auth.data.offset, srclen,
 				ctx_c);
-		CMAC_CTX_free(ctx_c);
 # endif
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && OPENSSL_VERSION_NUMBER < 0x30003000L)
+		EVP_MAC_CTX_free(ctx_c);
+#endif
 		break;
 	default:
 		status = -1;
