@@ -395,10 +395,10 @@ dpaa_sec_prep_ipsec_cdb(dpaa_sec_session *ses)
 
 	cdb->sh_desc[0] = cipherdata.keylen;
 	cdb->sh_desc[1] = authdata.keylen;
-	err = rta_inline_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
+	err = rta_inline_ipsec_query(IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN,
 			       DESC_JOB_IO_LEN,
 			       (unsigned int *)cdb->sh_desc,
-			       &cdb->sh_desc[2], 2);
+			       &cdb->sh_desc[2], 2, authdata.algtype, 1);
 
 	if (err < 0) {
 		DPAA_SEC_ERR("Crypto: Incorrect key lengths");
