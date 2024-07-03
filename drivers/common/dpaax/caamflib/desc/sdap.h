@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2022 NXP
+ * Copyright 2020-2023 NXP
  */
 
 #ifndef __DESC_SDAP_H__
@@ -628,6 +628,10 @@ static inline int pdcp_sdap_insert_no_snoop_op(
 		/* Save the ICV generated */
 		MOVEB(p, CONTEXT1, 0, MATH3, 0, 4, WAITCOMP | IMMED);
 
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 		/* The CHA will be reused so we need to clear it */
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
@@ -718,6 +722,10 @@ static inline int pdcp_sdap_insert_no_snoop_op(
 		/* Save the ICV which is stalling in output FIFO to MATH3 */
 		MOVEB(p, OFIFO, 0, MATH3, 0, 4, IMMED);
 
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 		/* Reset class 1 CHA */
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
