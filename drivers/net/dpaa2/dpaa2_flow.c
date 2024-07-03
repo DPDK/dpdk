@@ -236,7 +236,7 @@ static inline void dpaa2_prot_field_string(
 }
 
 static inline void dpaa2_flow_qos_table_extracts_log(
-	const struct dpaa2_dev_priv *priv)
+	const struct dpaa2_dev_priv *priv, FILE *f)
 {
 	int idx;
 	char string[32];
@@ -244,7 +244,7 @@ static inline void dpaa2_flow_qos_table_extracts_log(
 	if (!dpaa2_flow_control_log)
 		return;
 
-	printf("Setup QoS table: number of extracts: %d\r\n",
+	fprintf(f, "Setup QoS table: number of extracts: %d\r\n",
 			priv->extract.qos_key_extract.dpkg.num_extracts);
 	for (idx = 0; idx < priv->extract.qos_key_extract.dpkg.num_extracts;
 		idx++) {
@@ -253,15 +253,15 @@ static inline void dpaa2_flow_qos_table_extracts_log(
 			priv->extract.qos_key_extract.dpkg.extracts[idx]
 			.extract.from_hdr.field,
 			string);
-		printf("%s", string);
+		fprintf(f, "%s", string);
 		if ((idx + 1) < priv->extract.qos_key_extract.dpkg.num_extracts)
-			printf(" / ");
+			fprintf(f, " / ");
 	}
-	printf("\r\n");
+	fprintf(f, "\r\n");
 }
 
 static inline void dpaa2_flow_fs_table_extracts_log(
-	const struct dpaa2_dev_priv *priv, int tc_id)
+	const struct dpaa2_dev_priv *priv, int tc_id, FILE *f)
 {
 	int idx;
 	char string[32];
@@ -269,7 +269,7 @@ static inline void dpaa2_flow_fs_table_extracts_log(
 	if (!dpaa2_flow_control_log)
 		return;
 
-	printf("Setup FS table: number of extracts of TC[%d]: %d\r\n",
+	fprintf(f, "Setup FS table: number of extracts of TC[%d]: %d\r\n",
 			tc_id, priv->extract.tc_key_extract[tc_id]
 			.dpkg.num_extracts);
 	for (idx = 0; idx < priv->extract.tc_key_extract[tc_id]
@@ -279,16 +279,16 @@ static inline void dpaa2_flow_fs_table_extracts_log(
 			priv->extract.tc_key_extract[tc_id].dpkg.extracts[idx]
 			.extract.from_hdr.field,
 			string);
-		printf("%s", string);
+		fprintf(f, "%s", string);
 		if ((idx + 1) < priv->extract.tc_key_extract[tc_id]
 			.dpkg.num_extracts)
-			printf(" / ");
+			fprintf(f, " / ");
 	}
-	printf("\r\n");
+	fprintf(f, "\r\n");
 }
 
 static inline void dpaa2_flow_qos_entry_log(
-	const char *log_info, const struct rte_flow *flow, int qos_index)
+	const char *log_info, const struct rte_flow *flow, int qos_index, FILE *f)
 {
 	int idx;
 	uint8_t *key, *mask;
@@ -296,27 +296,27 @@ static inline void dpaa2_flow_qos_entry_log(
 	if (!dpaa2_flow_control_log)
 		return;
 
-	printf("\r\n%s QoS entry[%d] for TC[%d], extracts size is %d\r\n",
+	fprintf(f, "\r\n%s QoS entry[%d] for TC[%d], extracts size is %d\r\n",
 		log_info, qos_index, flow->tc_id, flow->qos_real_key_size);
 
 	key = (uint8_t *)(size_t)flow->qos_rule.key_iova;
 	mask = (uint8_t *)(size_t)flow->qos_rule.mask_iova;
 
-	printf("key:\r\n");
+	fprintf(f, "key:\r\n");
 	for (idx = 0; idx < flow->qos_real_key_size; idx++)
-		printf("%02x ", key[idx]);
+		fprintf(f, "%02x ", key[idx]);
 
-	printf("\r\nmask:\r\n");
+	fprintf(f, "\r\nmask:\r\n");
 	for (idx = 0; idx < flow->qos_real_key_size; idx++)
-		printf("%02x ", mask[idx]);
+		fprintf(f, "%02x ", mask[idx]);
 
-	printf("\r\n%s QoS ipsrc: %d, ipdst: %d\r\n", log_info,
+	fprintf(f, "\r\n%s QoS ipsrc: %d, ipdst: %d\r\n", log_info,
 		flow->ipaddr_rule.qos_ipsrc_offset,
 		flow->ipaddr_rule.qos_ipdst_offset);
 }
 
 static inline void dpaa2_flow_fs_entry_log(
-	const char *log_info, const struct rte_flow *flow)
+	const char *log_info, const struct rte_flow *flow, FILE *f)
 {
 	int idx;
 	uint8_t *key, *mask;
@@ -324,21 +324,21 @@ static inline void dpaa2_flow_fs_entry_log(
 	if (!dpaa2_flow_control_log)
 		return;
 
-	printf("\r\n%s FS/TC entry[%d] of TC[%d], extracts size is %d\r\n",
+	fprintf(f, "\r\n%s FS/TC entry[%d] of TC[%d], extracts size is %d\r\n",
 		log_info, flow->tc_index, flow->tc_id, flow->fs_real_key_size);
 
 	key = (uint8_t *)(size_t)flow->fs_rule.key_iova;
 	mask = (uint8_t *)(size_t)flow->fs_rule.mask_iova;
 
-	printf("key:\r\n");
+	fprintf(f, "key:\r\n");
 	for (idx = 0; idx < flow->fs_real_key_size; idx++)
-		printf("%02x ", key[idx]);
+		fprintf(f, "%02x ", key[idx]);
 
-	printf("\r\nmask:\r\n");
+	fprintf(f, "\r\nmask:\r\n");
 	for (idx = 0; idx < flow->fs_real_key_size; idx++)
-		printf("%02x ", mask[idx]);
+		fprintf(f, "%02x ", mask[idx]);
 
-	printf("\r\n%s FS ipsrc: %d, ipdst: %d\r\n", log_info,
+	fprintf(f, "\r\n%s FS ipsrc: %d, ipdst: %d\r\n", log_info,
 		flow->ipaddr_rule.fs_ipsrc_offset,
 		flow->ipaddr_rule.fs_ipdst_offset);
 }
@@ -3017,7 +3017,7 @@ dpaa2_flow_entry_update(
 		qos_index = curr->tc_id * priv->fs_entries +
 			curr->tc_index;
 
-		dpaa2_flow_qos_entry_log("Before update", curr, qos_index);
+		dpaa2_flow_qos_entry_log("Before update", curr, qos_index, stdout);
 
 		if (priv->num_rx_tc > 1) {
 			ret = dpni_remove_qos_entry(dpni, CMD_PRI_LOW,
@@ -3124,7 +3124,7 @@ dpaa2_flow_entry_update(
 
 		curr->qos_rule.key_size = FIXED_ENTRY_SIZE;
 
-		dpaa2_flow_qos_entry_log("Start update", curr, qos_index);
+		dpaa2_flow_qos_entry_log("Start update", curr, qos_index, stdout);
 
 		if (priv->num_rx_tc > 1) {
 			ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
@@ -3142,7 +3142,7 @@ dpaa2_flow_entry_update(
 			continue;
 		}
 
-		dpaa2_flow_fs_entry_log("Before update", curr);
+		dpaa2_flow_fs_entry_log("Before update", curr, stdout);
 		extend = -1;
 
 		ret = dpni_remove_fs_entry(dpni, CMD_PRI_LOW,
@@ -3237,7 +3237,7 @@ dpaa2_flow_entry_update(
 			curr->fs_real_key_size += extend;
 		curr->fs_rule.key_size = FIXED_ENTRY_SIZE;
 
-		dpaa2_flow_fs_entry_log("Start update", curr);
+		dpaa2_flow_fs_entry_log("Start update", curr, stdout);
 
 		ret = dpni_add_fs_entry(dpni, CMD_PRI_LOW,
 				priv->token, curr->tc_id, curr->tc_index,
@@ -3541,7 +3541,8 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 
 			/* Configure FS table first*/
 			if (is_keycfg_configured & DPAA2_FS_TABLE_RECONFIGURE) {
-				dpaa2_flow_fs_table_extracts_log(priv, flow->tc_id);
+				dpaa2_flow_fs_table_extracts_log(priv,
+							flow->tc_id, stdout);
 				if (dpkg_prepare_key_cfg(
 				&priv->extract.tc_key_extract[flow->tc_id].dpkg,
 				(uint8_t *)(size_t)priv->extract
@@ -3580,7 +3581,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 
 			/* Configure QoS table then.*/
 			if (is_keycfg_configured & DPAA2_QOS_TABLE_RECONFIGURE) {
-				dpaa2_flow_qos_table_extracts_log(priv);
+				dpaa2_flow_qos_table_extracts_log(priv, stdout);
 				if (dpkg_prepare_key_cfg(
 					&priv->extract.qos_key_extract.dpkg,
 					(uint8_t *)(size_t)priv->extract.qos_extract_param) < 0) {
@@ -3646,7 +3647,8 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 				}
 				flow->qos_rule.key_size = FIXED_ENTRY_SIZE;
 
-				dpaa2_flow_qos_entry_log("Start add", flow, qos_index);
+				dpaa2_flow_qos_entry_log("Start add", flow,
+							qos_index, stdout);
 
 				ret = dpni_add_qos_entry(dpni, CMD_PRI_LOW,
 						priv->token, &flow->qos_rule,
@@ -3697,7 +3699,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 
 			flow->fs_rule.key_size = FIXED_ENTRY_SIZE;
 
-			dpaa2_flow_fs_entry_log("Start add", flow);
+			dpaa2_flow_fs_entry_log("Start add", flow, stdout);
 
 			ret = dpni_add_fs_entry(dpni, CMD_PRI_LOW, priv->token,
 						flow->tc_id, flow->tc_index,

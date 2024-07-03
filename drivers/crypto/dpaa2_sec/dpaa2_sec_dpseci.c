@@ -1621,7 +1621,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd, struct dpaa2_sec_qp *qp)
 }
 
 static void
-dpaa2_sec_dump(struct rte_crypto_op *op)
+dpaa2_sec_dump(struct rte_crypto_op *op, FILE *f)
 {
 	int i;
 	dpaa2_sec_session *sess = NULL;
@@ -1640,18 +1640,18 @@ dpaa2_sec_dump(struct rte_crypto_op *op)
 		goto mbuf_dump;
 
 	priv = (struct ctxt_priv *)sess->ctxt;
-	printf("\n****************************************\n"
+	fprintf(f, "\n****************************************\n"
 		"session params:\n\tContext type:\t%d\n\tDirection:\t%s\n"
 		"\tCipher alg:\t%d\n\tAuth alg:\t%d\n\tAead alg:\t%d\n"
 		"\tCipher key len:\t%zd\n", sess->ctxt_type,
 		(sess->dir == DIR_ENC) ? "DIR_ENC" : "DIR_DEC",
 		sess->cipher_alg, sess->auth_alg, sess->aead_alg,
 		sess->cipher_key.length);
-		rte_hexdump(stdout, "cipher key", sess->cipher_key.data,
+		rte_hexdump(f, "cipher key", sess->cipher_key.data,
 				sess->cipher_key.length);
-		rte_hexdump(stdout, "auth key", sess->auth_key.data,
+		rte_hexdump(f, "auth key", sess->auth_key.data,
 				sess->auth_key.length);
-	printf("\tAuth key len:\t%zd\n\tIV len:\t\t%d\n\tIV offset:\t%d\n"
+	fprintf(f, "\tAuth key len:\t%zd\n\tIV len:\t\t%d\n\tIV offset:\t%d\n"
 		"\tdigest length:\t%d\n\tstatus:\t\t%d\n\taead auth only"
 		" len:\t%d\n\taead cipher text:\t%d\n",
 		sess->auth_key.length, sess->iv.length, sess->iv.offset,
@@ -1659,7 +1659,7 @@ dpaa2_sec_dump(struct rte_crypto_op *op)
 		sess->ext_params.aead_ctxt.auth_only_len,
 		sess->ext_params.aead_ctxt.auth_cipher_text);
 #ifdef RTE_LIB_SECURITY
-	printf("PDCP session params:\n"
+	fprintf(f, "PDCP session params:\n"
 		"\tDomain:\t\t%d\n\tBearer:\t\t%d\n\tpkt_dir:\t%d\n\thfn_ovd:"
 		"\t%d\n\tsn_size:\t%d\n\thfn_ovd_offset:\t%d\n\thfn:\t\t%d\n"
 		"\thfn_threshold:\t0x%x\n", sess->pdcp.domain,
@@ -1669,29 +1669,29 @@ dpaa2_sec_dump(struct rte_crypto_op *op)
 
 #endif
 	bufsize = (uint8_t)priv->flc_desc[0].flc.word1_sdl;
-	printf("Descriptor Dump:\n");
+	fprintf(f, "Descriptor Dump:\n");
 	for (i = 0; i < bufsize; i++)
-		printf("\tDESC[%d]:0x%x\n", i, priv->flc_desc[0].desc[i]);
+		fprintf(f, "\tDESC[%d]:0x%x\n", i, priv->flc_desc[0].desc[i]);
 
-	printf("\n");
+	fprintf(f, "\n");
 mbuf_dump:
 	sym_op = op->sym;
 	if (sym_op->m_src) {
-		printf("Source mbuf:\n");
-		rte_pktmbuf_dump(stdout, sym_op->m_src, sym_op->m_src->data_len);
+		fprintf(f, "Source mbuf:\n");
+		rte_pktmbuf_dump(f, sym_op->m_src, sym_op->m_src->data_len);
 	}
 	if (sym_op->m_dst) {
-		printf("Destination mbuf:\n");
-		rte_pktmbuf_dump(stdout, sym_op->m_dst, sym_op->m_dst->data_len);
+		fprintf(f, "Destination mbuf:\n");
+		rte_pktmbuf_dump(f, sym_op->m_dst, sym_op->m_dst->data_len);
 	}
 
-	printf("Session address = %p\ncipher offset: %d, length: %d\n"
+	fprintf(f, "Session address = %p\ncipher offset: %d, length: %d\n"
 		"auth offset: %d, length:  %d\n aead offset: %d, length: %d\n"
 		, sym_op->session,
 		sym_op->cipher.data.offset, sym_op->cipher.data.length,
 		sym_op->auth.data.offset, sym_op->auth.data.length,
 		sym_op->aead.data.offset, sym_op->aead.data.length);
-	printf("\n");
+	fprintf(f, "\n");
 
 }
 
@@ -1951,7 +1951,7 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 				DPAA2_SEC_DP_ERR("SEC returned Error - %x\n",
 						 fd->simple.frc);
 				if (dpaa2_sec_dp_dump > DPAA2_SEC_DP_ERR_DUMP)
-					dpaa2_sec_dump(ops[num_rx]);
+					dpaa2_sec_dump(ops[num_rx], stdout);
 			}
 
 			dpaa2_qp->rx_vq.err_pkts += 1;

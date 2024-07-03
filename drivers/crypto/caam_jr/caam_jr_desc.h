@@ -110,13 +110,13 @@
 	((struct descriptor_header_s *)(descriptor))->command.jd.desclen)
 
 /* Helper macro for dumping the hex representation of a descriptor */
-#define SEC_DUMP_DESC(descriptor) {					\
+#define SEC_DUMP_DESC(descriptor, f) {					\
 	int __i;							\
 	CAAM_JR_INFO("Des@ 0x%08x\n", (uint32_t)((uint32_t *)(descriptor)));\
 	for (__i = 0;						\
 		__i < SEC_GET_DESC_LEN(descriptor);			\
 		__i++) {						\
-		printf("0x%08x: 0x%08x\n",			\
+		fprintf(f, "0x%08x: 0x%08x\n",			\
 			(uint32_t)(((uint32_t *)(descriptor)) + __i),	\
 			*(((uint32_t *)(descriptor)) + __i));		\
 	}								\

@@ -586,7 +586,7 @@ rte_dpaa_bus_dev_build(void)
 	}
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
-	dump_netcfg(dpaa_netcfg);
+	dump_netcfg(dpaa_netcfg, stdout);
 #endif
 
 	DPAA_BUS_LOG(DEBUG, "Number of ethernet devices = %d",
