@@ -962,8 +962,6 @@ setup_acl(const int socket_id)
 	acl_log("IPv6 ACL entries %u:\n", acl_num_ipv6);
 	dump_ipv6_rules((struct acl6_rule *)acl_base_ipv6, acl_num_ipv6, 1);
 
-	memset(&acl_config, 0, sizeof(acl_config));
-
 	/* Check sockets a context should be created on */
 	if (socket_id >= NB_SOCKETS) {
 		acl_log("Socket %d is out "
@@ -972,6 +970,9 @@ setup_acl(const int socket_id)
 		acl_free_routes();
 		return;
 	}
+
+	rte_acl_free(acl_config.acx_ipv4[socket_id]);
+	rte_acl_free(acl_config.acx_ipv6[socket_id]);
 
 	acl_config.acx_ipv4[socket_id] = app_acl_init(route_base_ipv4,
 		acl_base_ipv4, route_num_ipv4, acl_num_ipv4,
