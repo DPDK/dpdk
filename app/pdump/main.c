@@ -571,11 +571,9 @@ disable_primary_monitor(void)
 }
 
 static void
-signal_handler(int sig_num)
+signal_handler(int sig_num __rte_unused)
 {
-	if (sig_num == SIGINT) {
-		quit_signal = 1;
-	}
+	quit_signal = 1;
 }
 
 static inline int
@@ -975,6 +973,11 @@ enable_primary_monitor(void)
 int
 main(int argc, char **argv)
 {
+	struct sigaction action = {
+		.sa_flags = SA_RESTART,
+		.sa_handler = signal_handler,
+	};
+	struct sigaction origaction;
 	int diag;
 	int ret;
 	int i;
@@ -983,8 +986,14 @@ main(int argc, char **argv)
 	char mp_flag[] = "--proc-type=secondary";
 	char *argp[argc + 2];
 
-	/* catch ctrl-c so we can print on exit */
-	signal(SIGINT, signal_handler);
+	/* catch ctrl-c so we can cleanup on exit */
+	sigemptyset(&action.sa_mask);
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGPIPE, &action, NULL);
+	sigaction(SIGHUP, NULL, &origaction);
+	if (origaction.sa_handler == SIG_DFL)
+		sigaction(SIGHUP, &action, NULL);
 
 	argp[0] = argv[0];
 	argp[1] = n_flag;
