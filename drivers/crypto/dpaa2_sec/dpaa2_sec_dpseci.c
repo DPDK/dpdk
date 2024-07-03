@@ -2015,6 +2015,13 @@ dpaa2_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		return 0;
 	}
 
+	if (qp_conf->nb_descriptors < (2 * FLE_POOL_CACHE_SIZE)) {
+		DPAA2_SEC_ERR("Minimum supported nb_descriptors %d,"
+			      " but given %d\n", (2 * FLE_POOL_CACHE_SIZE),
+			      qp_conf->nb_descriptors);
+		return -EINVAL;
+	}
+
 	DPAA2_SEC_DEBUG("dev =%p, queue =%d, conf =%p",
 		    dev, qp_id, qp_conf);
 
