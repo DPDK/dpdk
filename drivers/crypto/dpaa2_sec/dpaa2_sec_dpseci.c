@@ -2218,6 +2218,8 @@ dpaa2_sec_auth_init(struct rte_crypto_sym_xform *xform,
 
 	PMD_INIT_FUNC_TRACE();
 
+	memset(&authdata, 0, sizeof(authdata));
+
 	/* For SEC AUTH three descriptors are required for various stages */
 	priv = (struct ctxt_priv *)rte_zmalloc(NULL,
 			sizeof(struct ctxt_priv) + 3 *
