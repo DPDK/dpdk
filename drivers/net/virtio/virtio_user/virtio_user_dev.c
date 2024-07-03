@@ -624,7 +624,7 @@ virtio_user_alloc_vrings(struct virtio_user_dev *dev)
 	bool packed_ring = !!(dev->device_features & (1ull << VIRTIO_F_RING_PACKED));
 
 	nr_vrings = dev->max_queue_pairs * 2;
-	if (dev->device_features & (1ull << VIRTIO_NET_F_CTRL_VQ))
+	if (dev->frontend_features & (1ull << VIRTIO_NET_F_CTRL_VQ))
 		nr_vrings++;
 
 	dev->callfds = rte_zmalloc("virtio_user_dev", nr_vrings * sizeof(*dev->callfds), 0);
