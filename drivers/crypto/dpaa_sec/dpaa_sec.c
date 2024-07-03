@@ -495,7 +495,8 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 					ses->dir);
 			break;
 		default:
-			DPAA_SEC_ERR("unsupported cipher alg %d",
+			DPAA_SEC_ERR("unsupported cipher alg %s (%d)",
+					rte_cryptodev_get_cipher_algo_string(ses->cipher_alg),
 				     ses->cipher_alg);
 			return -ENOTSUP;
 		}
@@ -556,7 +557,9 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 						ses->digest_length);
 			break;
 		default:
-			DPAA_SEC_ERR("unsupported auth alg %u", ses->auth_alg);
+			DPAA_SEC_ERR("unsupported auth alg %s (%u)",
+				rte_cryptodev_get_auth_algo_string(ses->auth_alg),
+				ses->auth_alg);
 		}
 		break;
 	case DPAA_SEC_AEAD:
@@ -635,9 +638,8 @@ dpaa_sec_prep_cdb(dpaa_sec_session *ses)
 				ses->iv.length,
 				ses->digest_length, ses->dir);
 		break;
-	case DPAA_SEC_HASH_CIPHER:
 	default:
-		DPAA_SEC_ERR("error: Unsupported session");
+		DPAA_SEC_ERR("error: Unsupported session %d", ses->ctxt);
 		return -ENOTSUP;
 	}
 
@@ -2221,8 +2223,9 @@ dpaa_sec_cipher_init(struct rte_cryptodev *dev __rte_unused,
 		session->cipher_key.alg = OP_ALG_ALGSEL_ZUCE;
 		break;
 	default:
-		DPAA_SEC_ERR("Crypto: Undefined Cipher specified %u",
-			      xform->cipher.algo);
+		DPAA_SEC_ERR("Crypto: Unsupported Cipher specified %s (%u)",
+			      rte_cryptodev_get_cipher_algo_string(xform->cipher.algo),
+				  xform->cipher.algo);
 		return -ENOTSUP;
 	}
 	session->dir = (xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
@@ -2323,7 +2326,8 @@ dpaa_sec_auth_init(struct rte_cryptodev *dev __rte_unused,
 		session->auth_key.algmode = OP_ALG_AAI_CMAC;
 		break;
 	default:
-		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %u",
+		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %s (%u)",
+			rte_cryptodev_get_auth_algo_string(xform->auth.algo),
 			      xform->auth.algo);
 		return -ENOTSUP;
 	}
@@ -2412,7 +2416,8 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 		session->auth_key.algmode = OP_ALG_AAI_CMAC;
 		break;
 	default:
-		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %u",
+		DPAA_SEC_ERR("Crypto: Unsupported Auth specified %s (%u)",
+			rte_cryptodev_get_auth_algo_string(auth_xform->algo),
 			      auth_xform->algo);
 		return -ENOTSUP;
 	}
@@ -2437,7 +2442,9 @@ dpaa_sec_chain_init(struct rte_cryptodev *dev __rte_unused,
 		session->cipher_key.algmode = OP_ALG_AAI_CTR;
 		break;
 	default:
-		DPAA_SEC_ERR("Crypto: Undefined Cipher specified %u",
+
+		DPAA_SEC_ERR("Crypto: Undefined Cipher specified %s (%u)",
+			rte_cryptodev_get_cipher_algo_string(cipher_xform->algo),
 			      cipher_xform->algo);
 		return -ENOTSUP;
 	}
@@ -2849,22 +2856,9 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 		session->auth_key.alg = OP_PCL_IPSEC_AES_XCBC_MAC_96;
 		session->auth_key.algmode = OP_ALG_AAI_XCBC_MAC;
 		break;
-	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
-	case RTE_CRYPTO_AUTH_SHA1:
-	case RTE_CRYPTO_AUTH_SHA256:
-	case RTE_CRYPTO_AUTH_SHA512:
-	case RTE_CRYPTO_AUTH_SHA224:
-	case RTE_CRYPTO_AUTH_SHA384:
-	case RTE_CRYPTO_AUTH_MD5:
-	case RTE_CRYPTO_AUTH_AES_GMAC:
-	case RTE_CRYPTO_AUTH_KASUMI_F9:
-	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
-	case RTE_CRYPTO_AUTH_ZUC_EIA3:
-		DPAA_SEC_ERR("Crypto: Unsupported auth alg %u",
-			      session->auth_alg);
-		return -ENOTSUP;
 	default:
-		DPAA_SEC_ERR("Crypto: Undefined Auth specified %u",
+		DPAA_SEC_ERR("Crypto: Unsupported auth alg %s (%u)",
+			rte_cryptodev_get_auth_algo_string(session->auth_alg),
 			      session->auth_alg);
 		return -ENOTSUP;
 	}
@@ -2896,16 +2890,9 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	case RTE_CRYPTO_CIPHER_NULL:
 		session->cipher_key.alg = OP_PCL_IPSEC_NULL;
 		break;
-	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
-	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
-	case RTE_CRYPTO_CIPHER_3DES_ECB:
-	case RTE_CRYPTO_CIPHER_AES_ECB:
-	case RTE_CRYPTO_CIPHER_KASUMI_F8:
-		DPAA_SEC_ERR("Crypto: Unsupported Cipher alg %u",
-			      session->cipher_alg);
-		return -ENOTSUP;
 	default:
-		DPAA_SEC_ERR("Crypto: Undefined Cipher specified %u",
+		DPAA_SEC_ERR("Crypto: Unsupported Cipher alg %s (%u)",
+			rte_cryptodev_get_cipher_algo_string(session->cipher_alg),
 			      session->cipher_alg);
 		return -ENOTSUP;
 	}
@@ -3181,7 +3168,8 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 			session->auth_key.alg = PDCP_AUTH_TYPE_NULL;
 			break;
 		default:
-			DPAA_SEC_ERR("Crypto: Unsupported auth alg %u",
+			DPAA_SEC_ERR("Crypto: Unsupported auth alg %s (%u)",
+			rte_cryptodev_get_auth_algo_string(session->auth_alg),
 				      session->auth_alg);
 			rte_free(session->cipher_key.data);
 			return -EINVAL;
