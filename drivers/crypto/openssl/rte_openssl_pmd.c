@@ -553,6 +553,15 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 				sess->cipher.key.length,
 				sess->cipher.key.data) != 0)
 			return -EINVAL;
+
+
+		/* We use 3DES encryption also for decryption.
+		 * IV is not important for 3DES ECB.
+		 */
+		if (EVP_EncryptInit_ex(sess->cipher.ctx, EVP_des_ede3_ecb(),
+				NULL, sess->cipher.key.data,  NULL) != 1)
+			return -EINVAL;
+
 		break;
 
 	case RTE_CRYPTO_CIPHER_DES_CBC:
@@ -1172,8 +1181,7 @@ process_cipher_decrypt_err:
 /** Process cipher des 3 ctr encryption, decryption algorithm */
 static int
 process_openssl_cipher_des3ctr(struct rte_mbuf *mbuf_src, uint8_t *dst,
-		int offset, uint8_t *iv, uint8_t *key, int srclen,
-		EVP_CIPHER_CTX *ctx)
+		int offset, uint8_t *iv, int srclen, EVP_CIPHER_CTX *ctx)
 {
 	uint8_t ebuf[8], ctr[8];
 	int unused, n;
@@ -1190,12 +1198,6 @@ process_openssl_cipher_des3ctr(struct rte_mbuf *mbuf_src, uint8_t *dst,
 
 	src = rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
 	l = rte_pktmbuf_data_len(m) - offset;
-
-	/* We use 3DES encryption also for decryption.
-	 * IV is not important for 3DES ecb
-	 */
-	if (EVP_EncryptInit_ex(ctx, EVP_des_ede3_ecb(), NULL, key, NULL) <= 0)
-		goto process_cipher_des3ctr_err;
 
 	memcpy(ctr, iv, 8);
 
@@ -1740,8 +1742,7 @@ process_openssl_cipher_op
 					srclen, ctx_copy, inplace);
 	else
 		status = process_openssl_cipher_des3ctr(mbuf_src, dst,
-				op->sym->cipher.data.offset, iv,
-				sess->cipher.key.data, srclen,
+				op->sym->cipher.data.offset, iv, srclen,
 				ctx_copy);
 
 	EVP_CIPHER_CTX_free(ctx_copy);
