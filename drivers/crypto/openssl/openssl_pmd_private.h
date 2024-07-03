@@ -166,6 +166,14 @@ struct __rte_cache_aligned openssl_session {
 		/**< digest length */
 	} auth;
 
+	uint16_t ctx_copies_len;
+	/* < number of entries in ctx_copies */
+	EVP_CIPHER_CTX *qp_ctx[];
+	/**< Flexible array member of per-queue-pair pointers to copies of EVP
+	 * context structure. Cipher contexts are not safe to use from multiple
+	 * cores simultaneously, so maintaining these copies allows avoiding
+	 * per-buffer copying into a temporary context.
+	 */
 };
 
 /** OPENSSL crypto private asymmetric session structure */
@@ -217,7 +225,8 @@ struct __rte_cache_aligned openssl_asym_session {
 /** Set and validate OPENSSL crypto session parameters */
 extern int
 openssl_set_session_parameters(struct openssl_session *sess,
-		const struct rte_crypto_sym_xform *xform);
+		const struct rte_crypto_sym_xform *xform,
+		uint16_t nb_queue_pairs);
 
 /** Reset OPENSSL crypto session parameters */
 extern void
