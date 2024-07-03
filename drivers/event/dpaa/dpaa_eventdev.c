@@ -386,13 +386,13 @@ dpaa_event_dev_configure(const struct rte_eventdev *dev)
 			  sizeof(uint32_t) * priv->nb_event_queues,
 			  RTE_CACHE_LINE_SIZE);
 	if (ch_id == NULL) {
-		DPAA_EVENTDEV_ERR("Fail to allocate memory for dpaa channels\n");
+		DPAA_EVENTDEV_ERR("Fail to allocate memory for dpaa channels");
 		return -ENOMEM;
 	}
 	/* Create requested event queues within the given event device */
 	ret = qman_alloc_pool_range(ch_id, priv->nb_event_queues, 1, 0);
 	if (ret < 0) {
-		DPAA_EVENTDEV_ERR("qman_alloc_pool_range %u, err =%d\n",
+		DPAA_EVENTDEV_ERR("qman_alloc_pool_range %u, err =%d",
 				 priv->nb_event_queues, ret);
 		rte_free(ch_id);
 		return ret;
@@ -655,7 +655,7 @@ dpaa_event_eth_rx_adapter_queue_add(
 						     queue_conf);
 			if (ret) {
 				DPAA_EVENTDEV_ERR(
-					"Event Queue attach failed:%d\n", ret);
+					"Event Queue attach failed:%d", ret);
 				goto detach_configured_queues;
 			}
 		}
@@ -664,7 +664,7 @@ dpaa_event_eth_rx_adapter_queue_add(
 
 	ret = dpaa_eth_eventq_attach(eth_dev, rx_queue_id, ch_id, queue_conf);
 	if (ret)
-		DPAA_EVENTDEV_ERR("dpaa_eth_eventq_attach failed:%d\n", ret);
+		DPAA_EVENTDEV_ERR("dpaa_eth_eventq_attach failed:%d", ret);
 	return ret;
 
 detach_configured_queues:
@@ -691,7 +691,7 @@ dpaa_event_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
 			ret = dpaa_eth_eventq_detach(eth_dev, i);
 			if (ret)
 				DPAA_EVENTDEV_ERR(
-					"Event Queue detach failed:%d\n", ret);
+					"Event Queue detach failed:%d", ret);
 		}
 
 		return 0;
@@ -699,7 +699,7 @@ dpaa_event_eth_rx_adapter_queue_del(const struct rte_eventdev *dev,
 
 	ret = dpaa_eth_eventq_detach(eth_dev, rx_queue_id);
 	if (ret)
-		DPAA_EVENTDEV_ERR("dpaa_eth_eventq_detach failed:%d\n", ret);
+		DPAA_EVENTDEV_ERR("dpaa_eth_eventq_detach failed:%d", ret);
 	return ret;
 }
 
@@ -762,7 +762,7 @@ dpaa_eventdev_crypto_queue_add_all(const struct rte_eventdev *dev,
 		ret = dpaa_sec_eventq_attach(cryptodev, i,
 				ch_id, ev);
 		if (ret) {
-			DPAA_EVENTDEV_ERR("dpaa_sec_eventq_attach failed: ret %d\n",
+			DPAA_EVENTDEV_ERR("dpaa_sec_eventq_attach failed: ret %d",
 				    ret);
 			goto fail;
 		}
@@ -796,7 +796,7 @@ dpaa_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 			ch_id, &conf->ev);
 	if (ret) {
 		DPAA_EVENTDEV_ERR(
-			"dpaa_sec_eventq_attach failed: ret: %d\n", ret);
+			"dpaa_sec_eventq_attach failed: ret: %d", ret);
 		return ret;
 	}
 	return 0;
@@ -816,7 +816,7 @@ dpaa_eventdev_crypto_queue_del_all(const struct rte_eventdev *dev,
 		ret = dpaa_sec_eventq_detach(cdev, i);
 		if (ret) {
 			DPAA_EVENTDEV_ERR(
-				"dpaa_sec_eventq_detach failed:ret %d\n", ret);
+				"dpaa_sec_eventq_detach failed:ret %d", ret);
 			return ret;
 		}
 	}
@@ -839,7 +839,7 @@ dpaa_eventdev_crypto_queue_del(const struct rte_eventdev *dev,
 	ret = dpaa_sec_eventq_detach(cryptodev, rx_queue_id);
 	if (ret) {
 		DPAA_EVENTDEV_ERR(
-			"dpaa_sec_eventq_detach failed: ret: %d\n", ret);
+			"dpaa_sec_eventq_detach failed: ret: %d", ret);
 		return ret;
 	}
 

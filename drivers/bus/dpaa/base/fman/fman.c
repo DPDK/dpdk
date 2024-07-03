@@ -244,13 +244,13 @@ fman_if_init(const struct device_node *dpa_node)
 	/* Obtain the MAC node used by this interface except macless */
 	mac_phandle = of_get_property(dpa_node, mprop, &lenp);
 	if (!mac_phandle) {
-		FMAN_ERR(-EINVAL, "%s: no %s\n", dname, mprop);
+		FMAN_ERR(-EINVAL, "%s: no %s", dname, mprop);
 		return -EINVAL;
 	}
 	assert(lenp == sizeof(phandle));
 	mac_node = of_find_node_by_phandle(*mac_phandle);
 	if (!mac_node) {
-		FMAN_ERR(-ENXIO, "%s: bad 'fsl,fman-mac\n", dname);
+		FMAN_ERR(-ENXIO, "%s: bad 'fsl,fman-mac", dname);
 		return -ENXIO;
 	}
 	mname = mac_node->full_name;
@@ -262,19 +262,19 @@ fman_if_init(const struct device_node *dpa_node)
 		ports_phandle = of_get_property(mac_node, "fsl,fman-ports",
 						&lenp);
 	if (!ports_phandle) {
-		FMAN_ERR(-EINVAL, "%s: no fsl,port-handles\n",
+		FMAN_ERR(-EINVAL, "%s: no fsl,port-handles",
 			 mname);
 		return -EINVAL;
 	}
 	assert(lenp == (2 * sizeof(phandle)));
 	rx_node = of_find_node_by_phandle(ports_phandle[0]);
 	if (!rx_node) {
-		FMAN_ERR(-ENXIO, "%s: bad fsl,port-handle[0]\n", mname);
+		FMAN_ERR(-ENXIO, "%s: bad fsl,port-handle[0]", mname);
 		return -ENXIO;
 	}
 	tx_node = of_find_node_by_phandle(ports_phandle[1]);
 	if (!tx_node) {
-		FMAN_ERR(-ENXIO, "%s: bad fsl,port-handle[1]\n", mname);
+		FMAN_ERR(-ENXIO, "%s: bad fsl,port-handle[1]", mname);
 		return -ENXIO;
 	}
 
@@ -282,8 +282,7 @@ fman_if_init(const struct device_node *dpa_node)
 	if (of_device_is_compatible(dpa_node, "fsl,dpa-ethernet")) {
 		port_cell_idx = of_get_property(rx_node, "cell-index", &lenp);
 		if (!port_cell_idx) {
-			FMAN_ERR(-ENXIO,
-				 "%s: no cell-index for port\n", mname);
+			FMAN_ERR(-ENXIO, "%s: no cell-index for port", mname);
 			return -ENXIO;
 		}
 		assert(lenp == sizeof(*port_cell_idx));
@@ -305,8 +304,7 @@ fman_if_init(const struct device_node *dpa_node)
 			ext_args_cell_idx = of_get_property(ext_args_node,
 				"cell-index", &lenp);
 			if (!ext_args_cell_idx) {
-				FMAN_ERR(-ENXIO,
-					 "%s: no cell-index for ext args\n",
+				FMAN_ERR(-ENXIO, "%s: no cell-index for ext args",
 					 mname);
 				return -ENXIO;
 			}
@@ -343,7 +341,7 @@ fman_if_init(const struct device_node *dpa_node)
 	/* Allocate an object for this network interface */
 	__if = rte_malloc(NULL, sizeof(*__if), RTE_CACHE_LINE_SIZE);
 	if (!__if) {
-		FMAN_ERR(-ENOMEM, "malloc(%zu)\n", sizeof(*__if));
+		FMAN_ERR(-ENOMEM, "malloc(%zu)", sizeof(*__if));
 		goto err;
 	}
 	memset(__if, 0, sizeof(*__if));
@@ -356,12 +354,12 @@ fman_if_init(const struct device_node *dpa_node)
 	/* Map the CCSR regs for the MAC node */
 	regs_addr = of_get_address(mac_node, 0, &__if->regs_size, NULL);
 	if (!regs_addr) {
-		FMAN_ERR(-EINVAL, "of_get_address(%s)\n", mname);
+		FMAN_ERR(-EINVAL, "of_get_address(%s)", mname);
 		goto err;
 	}
 	phys_addr = of_translate_address(mac_node, regs_addr);
 	if (!phys_addr) {
-		FMAN_ERR(-EINVAL, "of_translate_address(%s, %p)\n",
+		FMAN_ERR(-EINVAL, "of_translate_address(%s, %p)",
 			 mname, regs_addr);
 		goto err;
 	}
@@ -369,7 +367,7 @@ fman_if_init(const struct device_node *dpa_node)
 			      PROT_READ | PROT_WRITE, MAP_SHARED,
 			      fman_ccsr_map_fd, phys_addr);
 	if (__if->ccsr_map == MAP_FAILED) {
-		FMAN_ERR(-errno, "mmap(0x%"PRIx64")\n", phys_addr);
+		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 		goto err;
 	}
 	na = of_n_addr_cells(mac_node);
@@ -380,13 +378,13 @@ fman_if_init(const struct device_node *dpa_node)
 	fman_node = of_get_parent(mac_node);
 	na = of_n_addr_cells(mac_node);
 	if (!fman_node) {
-		FMAN_ERR(-ENXIO, "of_get_parent(%s)\n", mname);
+		FMAN_ERR(-ENXIO, "of_get_parent(%s)", mname);
 		goto err;
 	}
 	fname = fman_node->full_name;
 	cell_idx = of_get_property(fman_node, "cell-index", &lenp);
 	if (!cell_idx) {
-		FMAN_ERR(-ENXIO, "%s: no cell-index)\n", fname);
+		FMAN_ERR(-ENXIO, "%s: no cell-index)", fname);
 		goto err;
 	}
 	assert(lenp == sizeof(*cell_idx));
@@ -395,7 +393,7 @@ fman_if_init(const struct device_node *dpa_node)
 	if (!get_once) {
 		_errno = fman_get_ip_rev(fman_node);
 		if (_errno) {
-			FMAN_ERR(-ENXIO, "%s: ip_rev is not available\n",
+			FMAN_ERR(-ENXIO, "%s: ip_rev is not available",
 				 fname);
 			goto err;
 		}
@@ -425,7 +423,7 @@ fman_if_init(const struct device_node *dpa_node)
 		char_prop = of_get_property(mac_node, "phy-connection-type",
 					    NULL);
 		if (!char_prop) {
-			printf("memac: unknown MII type assuming 1G\n");
+			FMAN_ERR(-EINVAL, "memac: unknown MII type assuming 1G");
 			/* Right now forcing memac to 1g in case of error*/
 			__if->__if.mac_type = fman_mac_1g;
 		} else {
@@ -440,7 +438,7 @@ fman_if_init(const struct device_node *dpa_node)
 				__if->__if.mac_type = fman_mac_10g;
 		}
 	} else {
-		FMAN_ERR(-EINVAL, "%s: unknown MAC type\n", mname);
+		FMAN_ERR(-EINVAL, "%s: unknown MAC type", mname);
 		goto err;
 	}
 
@@ -463,7 +461,7 @@ fman_if_init(const struct device_node *dpa_node)
 	mac_addr = of_get_property(mac_node, "local-mac-address",
 				   &lenp);
 	if (!mac_addr) {
-		FMAN_ERR(-EINVAL, "%s: no local-mac-address\n",
+		FMAN_ERR(-EINVAL, "%s: no local-mac-address",
 			 mname);
 		goto err;
 	}
@@ -473,19 +471,19 @@ fman_if_init(const struct device_node *dpa_node)
 	tx_channel_id = of_get_property(tx_node, "fsl,qman-channel-id",
 					&lenp);
 	if (!tx_channel_id) {
-		FMAN_ERR(-EINVAL, "%s: no fsl-qman-channel-id\n",
+		FMAN_ERR(-EINVAL, "%s: no fsl-qman-channel-id",
 			 tx_node->full_name);
 		goto err;
 	}
 
 	regs_addr = of_get_address(rx_node, 0, &__if->regs_size, NULL);
 	if (!regs_addr) {
-		FMAN_ERR(-EINVAL, "of_get_address(%s)\n", mname);
+		FMAN_ERR(-EINVAL, "of_get_address(%s)", mname);
 		goto err;
 	}
 	phys_addr = of_translate_address(rx_node, regs_addr);
 	if (!phys_addr) {
-		FMAN_ERR(-EINVAL, "of_translate_address(%s, %p)\n",
+		FMAN_ERR(-EINVAL, "of_translate_address(%s, %p)",
 			 mname, regs_addr);
 		goto err;
 	}
@@ -493,7 +491,7 @@ fman_if_init(const struct device_node *dpa_node)
 				 PROT_READ | PROT_WRITE, MAP_SHARED,
 				 fman_ccsr_map_fd, phys_addr);
 	if (__if->bmi_map == MAP_FAILED) {
-		FMAN_ERR(-errno, "mmap(0x%"PRIx64")\n", phys_addr);
+		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 		goto err;
 	}
 
@@ -507,7 +505,7 @@ fman_if_init(const struct device_node *dpa_node)
 	 */
 	rx_phandle = of_get_property(dpa_node, rprop, &lenp);
 	if (!rx_phandle) {
-		FMAN_ERR(-EINVAL, "%s: no fsl,qman-frame-queues-rx\n", dname);
+		FMAN_ERR(-EINVAL, "%s: no fsl,qman-frame-queues-rx", dname);
 		goto err;
 	}
 
@@ -542,7 +540,7 @@ fman_if_init(const struct device_node *dpa_node)
 	tx_phandle = of_get_property(dpa_node,
 				     "fsl,qman-frame-queues-tx", &lenp);
 	if (!tx_phandle) {
-		FMAN_ERR(-EINVAL, "%s: no fsl,qman-frame-queues-tx\n", dname);
+		FMAN_ERR(-EINVAL, "%s: no fsl,qman-frame-queues-tx", dname);
 		goto err;
 	}
 
@@ -562,7 +560,7 @@ fman_if_init(const struct device_node *dpa_node)
 	pools_phandle = of_get_property(dpa_node, "fsl,bman-buffer-pools",
 					&lenp);
 	if (!pools_phandle) {
-		FMAN_ERR(-EINVAL, "%s: no fsl,bman-buffer-pools\n", dname);
+		FMAN_ERR(-EINVAL, "%s: no fsl,bman-buffer-pools", dname);
 		goto err;
 	}
 	/* For each pool, parse the corresponding node and add a pool object
@@ -578,13 +576,13 @@ fman_if_init(const struct device_node *dpa_node)
 		/* Allocate an object for the pool */
 		bpool = rte_malloc(NULL, sizeof(*bpool), RTE_CACHE_LINE_SIZE);
 		if (!bpool) {
-			FMAN_ERR(-ENOMEM, "malloc(%zu)\n", sizeof(*bpool));
+			FMAN_ERR(-ENOMEM, "malloc(%zu)", sizeof(*bpool));
 			goto err;
 		}
 		/* Find the pool node */
 		pool_node = of_find_node_by_phandle(*pools_phandle);
 		if (!pool_node) {
-			FMAN_ERR(-ENXIO, "%s: bad fsl,bman-buffer-pools\n",
+			FMAN_ERR(-ENXIO, "%s: bad fsl,bman-buffer-pools",
 				 dname);
 			rte_free(bpool);
 			goto err;
@@ -593,7 +591,7 @@ fman_if_init(const struct device_node *dpa_node)
 		/* Extract the BPID property */
 		prop = of_get_property(pool_node, "fsl,bpid", &proplen);
 		if (!prop) {
-			FMAN_ERR(-EINVAL, "%s: no fsl,bpid\n", pname);
+			FMAN_ERR(-EINVAL, "%s: no fsl,bpid", pname);
 			rte_free(bpool);
 			goto err;
 		}
@@ -691,7 +689,7 @@ fman_init(void)
 	for_each_child_node(parent_node, dpa_node) {
 		_errno = fman_if_init(dpa_node);
 		if (_errno) {
-			FMAN_ERR(_errno, "if_init(%s)\n", dpa_node->full_name);
+			FMAN_ERR(_errno, "if_init(%s)", dpa_node->full_name);
 			goto err;
 		}
 	}

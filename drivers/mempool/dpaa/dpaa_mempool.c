@@ -285,7 +285,7 @@ dpaa_mbuf_get_count(const struct rte_mempool *mp)
 	MEMPOOL_INIT_FUNC_TRACE();
 
 	if (!mp || !mp->pool_data) {
-		DPAA_MEMPOOL_ERR("Invalid mempool provided\n");
+		DPAA_MEMPOOL_ERR("Invalid mempool provided");
 		return 0;
 	}
 
@@ -303,7 +303,7 @@ dpaa_populate(struct rte_mempool *mp, unsigned int max_objs,
 	unsigned int total_elt_sz;
 
 	if (!mp || !mp->pool_data) {
-		DPAA_MEMPOOL_ERR("Invalid mempool provided\n");
+		DPAA_MEMPOOL_ERR("Invalid mempool provided");
 		return 0;
 	}
 

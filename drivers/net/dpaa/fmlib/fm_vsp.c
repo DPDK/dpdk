@@ -55,13 +55,13 @@ fm_vsp_config(t_fm_vsp_params *p_fm_vsp_params)
 	param.id = NULL;
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_CONFIG, &param)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		return NULL;
 	}
 
 	p_vsp_dev = (t_device *)malloc(sizeof(t_device));
 	if (!p_vsp_dev) {
-		DPAA_PMD_ERR("FM VSP Params!\n");
+		DPAA_PMD_ERR("FM VSP Params!");
 		return NULL;
 	}
 	memset(p_vsp_dev, 0, sizeof(t_device));
@@ -87,7 +87,7 @@ fm_vsp_init(t_handle h_fm_vsp)
 	id.obj = UINT_TO_PTR(p_vsp_dev->id);
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_INIT, &id)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
 
@@ -109,7 +109,7 @@ fm_vsp_free(t_handle h_fm_vsp)
 	id.obj = UINT_TO_PTR(p_vsp_dev->id);
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_FREE, &id)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
 
@@ -138,7 +138,7 @@ fm_vsp_config_buffer_prefix_content(t_handle h_fm_vsp,
 
 	if (ioctl(p_dev->fd, FM_IOC_VSP_CONFIG_BUFFER_PREFIX_CONTENT,
 		  &params)) {
-		DPAA_PMD_ERR("%s ioctl error\n", __func__);
+		DPAA_PMD_ERR("ioctl error");
 		RETURN_ERROR(MINOR, E_INVALID_OPERATION, NO_MSG);
 	}
 

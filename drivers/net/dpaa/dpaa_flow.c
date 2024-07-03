@@ -531,7 +531,7 @@ fm_port_delete_pcd:
 	/* FM PORT DeletePCD */
 	ret = fm_port_delete_pcd(dpaa_intf->port_handle);
 	if (ret != E_OK) {
-		DPAA_PMD_ERR("fm_port_delete_pcd: Failed\n");
+		DPAA_PMD_ERR("fm_port_delete_pcd: Failed");
 		return ret;
 	}
 	return -1;
@@ -686,7 +686,7 @@ static inline int set_fm_port_handle(struct dpaa_if *dpaa_intf,
 	/* FM PORT Open */
 	dpaa_intf->port_handle = fm_port_open(&fm_port_params);
 	if (!dpaa_intf->port_handle) {
-		DPAA_PMD_ERR("fm_port_open: Failed\n");
+		DPAA_PMD_ERR("fm_port_open: Failed");
 		return -1;
 	}
 
