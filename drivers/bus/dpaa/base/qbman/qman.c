@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017,2019-2023 NXP
+ * Copyright 2017,2019-2024 NXP
  *
  */
 
@@ -1746,9 +1746,10 @@ int qman_retire_fq(struct qman_fq *fq, u32 *flags)
 	int rval;
 	u8 res;
 
+	/* Queue is already in retire or oos state */
 	if ((fq->state != qman_fq_state_parked) &&
 	    (fq->state != qman_fq_state_sched))
-		return -EINVAL;
+		return 0;
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	if (unlikely(fq_isset(fq, QMAN_FQ_FLAG_NO_MODIFY)))
 		return -EINVAL;

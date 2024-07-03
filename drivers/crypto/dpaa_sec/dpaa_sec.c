@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2022 NXP
+ *   Copyright 2017-2024 NXP
  *
  */
 
@@ -2504,11 +2504,15 @@ static int
 dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
 {
 	unsigned int i;
+	int ret;
 
 	for (i = 0; i < RTE_DPAA_MAX_RX_QUEUE; i++) {
 		if (&qi->inq[i] == fq) {
-			if (qman_retire_fq(fq, NULL) != 0)
-				DPAA_SEC_DEBUG("Queue is not retired\n");
+			ret = qman_retire_fq(fq, NULL);
+			if (ret != 0)
+				DPAA_SEC_ERR("Queue %d is not retired"
+					     " err: %d\n", fq->fqid,
+					     ret);
 			qman_oos_fq(fq);
 			qi->inq_attach[i] = 0;
 			return 0;
