@@ -4103,7 +4103,7 @@ dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 	cfg.dest_cfg.priority = priority;
 
 	cfg.options |= DPSECI_QUEUE_OPT_USER_CTX;
-	cfg.user_ctx = (size_t)(qp);
+	cfg.user_ctx = (size_t)(&qp->rx_vq);
 	if (event->sched_type == RTE_SCHED_TYPE_ATOMIC) {
 		cfg.options |= DPSECI_QUEUE_OPT_ORDER_PRESERVATION;
 		cfg.order_preservation_en = 1;
