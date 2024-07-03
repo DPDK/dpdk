@@ -38,6 +38,7 @@
 #include <rte_pdump.h>
 #include <rte_ring.h>
 #include <rte_string_fns.h>
+#include <rte_thread.h>
 #include <rte_time.h>
 #include <rte_version.h>
 
@@ -60,6 +61,7 @@ static const char *tmp_dir = "/tmp";
 static unsigned int ring_size = 2048;
 static const char *capture_comment;
 static const char *file_prefix;
+static const char *lcore_arg;
 static bool dump_bpf;
 static bool show_interfaces;
 static bool print_stats;
@@ -143,6 +145,7 @@ static void usage(void)
 	       "                           (default: /tmp)\n"
 	       "\n"
 	       "Miscellaneous:\n"
+	       "  --lcore=<core>           CPU core to run on (default: any)\n"
 	       "  --file-prefix=<prefix>   prefix to use for multi-process\n"
 	       "  -q                       don't report packet capture counts\n"
 	       "  -v, --version            print version information and exit\n"
@@ -343,6 +346,7 @@ static void parse_opts(int argc, char **argv)
 		{ "ifdescr",	     required_argument, NULL, 0 },
 		{ "ifname",	     required_argument, NULL, 0 },
 		{ "interface",       required_argument, NULL, 'i' },
+		{ "lcore",           required_argument, NULL, 0 },
 		{ "list-interfaces", no_argument,       NULL, 'D' },
 		{ "no-promiscuous-mode", no_argument,   NULL, 'p' },
 		{ "output-file",     required_argument, NULL, 'w' },
@@ -369,6 +373,8 @@ static void parse_opts(int argc, char **argv)
 
 			if (!strcmp(longopt, "capture-comment")) {
 				capture_comment = optarg;
+			} else if (!strcmp(longopt, "lcore")) {
+				lcore_arg = optarg;
 			} else if (!strcmp(longopt, "file-prefix")) {
 				file_prefix = optarg;
 			} else if (!strcmp(longopt, "temp-dir")) {
@@ -608,10 +614,14 @@ static void dpdk_init(void)
 		"--log-level", "notice"
 	};
 	int eal_argc = RTE_DIM(args);
+	rte_cpuset_t cpuset = { };
 	char **eal_argv;
 	unsigned int i;
 
 	if (file_prefix != NULL)
+		eal_argc += 2;
+
+	if (lcore_arg != NULL)
 		eal_argc += 2;
 
 	/* DPDK API requires mutable versions of command line arguments. */
@@ -623,6 +633,11 @@ static void dpdk_init(void)
 	for (i = 1; i < RTE_DIM(args); i++)
 		eal_argv[i] = strdup(args[i]);
 
+	if (lcore_arg != NULL) {
+		eal_argv[i++] = strdup("--lcores");
+		eal_argv[i++] = strdup(lcore_arg);
+	}
+
 	if (file_prefix != NULL) {
 		eal_argv[i++] = strdup("--file-prefix");
 		eal_argv[i++] = strdup(file_prefix);
@@ -633,8 +648,24 @@ static void dpdk_init(void)
 			rte_panic("No memory\n");
 	}
 
+	/*
+	 * Need to get the original cpuset, before EAL init changes
+	 * the affinity of this thread (main lcore).
+	 */
+	if (lcore_arg == NULL &&
+	    rte_thread_get_affinity_by_id(rte_thread_self(), &cpuset) != 0)
+		rte_panic("rte_thread_getaffinity failed\n");
+
 	if (rte_eal_init(eal_argc, eal_argv) < 0)
 		rte_exit(EXIT_FAILURE, "EAL init failed: is primary process running?\n");
+
+	/*
+	 * If no lcore argument was specified, then run this program as a normal process
+	 * which can be scheduled on any non-isolated CPU.
+	 */
+	if (lcore_arg == NULL &&
+	    rte_thread_set_affinity_by_id(rte_thread_self(), &cpuset) != 0)
+		rte_exit(EXIT_FAILURE, "Can not restore original CPU affinity\n");
 }
 
 /* Create packet ring shared between callbacks and process */
