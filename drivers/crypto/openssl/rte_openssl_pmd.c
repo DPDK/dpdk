@@ -350,7 +350,8 @@ get_aead_algo(enum rte_crypto_aead_algorithm sess_algo, size_t keylen,
 static int
 openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 		enum rte_crypto_aead_algorithm algo,
-		uint8_t tag_len, const uint8_t *key)
+		uint8_t tag_len, const uint8_t *key,
+		EVP_CIPHER_CTX **ctx)
 {
 	int iv_type = 0;
 	unsigned int do_ccm;
@@ -378,7 +379,7 @@ openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 	}
 
 	sess->cipher.mode = OPENSSL_CIPHER_LIB;
-	sess->cipher.ctx = EVP_CIPHER_CTX_new();
+	*ctx = EVP_CIPHER_CTX_new();
 
 	if (get_aead_algo(algo, sess->cipher.key.length,
 			&sess->cipher.evp_algo) != 0)
@@ -388,19 +389,19 @@ openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 
 	sess->chain_order = OPENSSL_CHAIN_COMBINED;
 
-	if (EVP_EncryptInit_ex(sess->cipher.ctx, sess->cipher.evp_algo,
+	if (EVP_EncryptInit_ex(*ctx, sess->cipher.evp_algo,
 			NULL, NULL, NULL) <= 0)
 		return -EINVAL;
 
-	if (EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, iv_type, sess->iv.length,
+	if (EVP_CIPHER_CTX_ctrl(*ctx, iv_type, sess->iv.length,
 			NULL) <= 0)
 		return -EINVAL;
 
 	if (do_ccm)
-		EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, EVP_CTRL_CCM_SET_TAG,
+		EVP_CIPHER_CTX_ctrl(*ctx, EVP_CTRL_CCM_SET_TAG,
 				tag_len, NULL);
 
-	if (EVP_EncryptInit_ex(sess->cipher.ctx, NULL, NULL, key, NULL) <= 0)
+	if (EVP_EncryptInit_ex(*ctx, NULL, NULL, key, NULL) <= 0)
 		return -EINVAL;
 
 	return 0;
@@ -410,7 +411,8 @@ openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 static int
 openssl_set_sess_aead_dec_param(struct openssl_session *sess,
 		enum rte_crypto_aead_algorithm algo,
-		uint8_t tag_len, const uint8_t *key)
+		uint8_t tag_len, const uint8_t *key,
+		EVP_CIPHER_CTX **ctx)
 {
 	int iv_type = 0;
 	unsigned int do_ccm = 0;
@@ -437,7 +439,7 @@ openssl_set_sess_aead_dec_param(struct openssl_session *sess,
 	}
 
 	sess->cipher.mode = OPENSSL_CIPHER_LIB;
-	sess->cipher.ctx = EVP_CIPHER_CTX_new();
+	*ctx = EVP_CIPHER_CTX_new();
 
 	if (get_aead_algo(algo, sess->cipher.key.length,
 			&sess->cipher.evp_algo) != 0)
@@ -447,22 +449,52 @@ openssl_set_sess_aead_dec_param(struct openssl_session *sess,
 
 	sess->chain_order = OPENSSL_CHAIN_COMBINED;
 
-	if (EVP_DecryptInit_ex(sess->cipher.ctx, sess->cipher.evp_algo,
+	if (EVP_DecryptInit_ex(*ctx, sess->cipher.evp_algo,
 			NULL, NULL, NULL) <= 0)
 		return -EINVAL;
 
-	if (EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, iv_type,
+	if (EVP_CIPHER_CTX_ctrl(*ctx, iv_type,
 			sess->iv.length, NULL) <= 0)
 		return -EINVAL;
 
 	if (do_ccm)
-		EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, EVP_CTRL_CCM_SET_TAG,
+		EVP_CIPHER_CTX_ctrl(*ctx, EVP_CTRL_CCM_SET_TAG,
 				tag_len, NULL);
 
-	if (EVP_DecryptInit_ex(sess->cipher.ctx, NULL, NULL, key, NULL) <= 0)
+	if (EVP_DecryptInit_ex(*ctx, NULL, NULL, key, NULL) <= 0)
 		return -EINVAL;
 
 	return 0;
+}
+
+static int openssl_aesni_ctx_clone(EVP_CIPHER_CTX **dest,
+		struct openssl_session *sess)
+{
+#if (OPENSSL_VERSION_NUMBER >= 0x30200000L)
+	*dest = EVP_CIPHER_CTX_dup(sess->ctx);
+	return 0;
+#elif (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+	/* OpenSSL versions 3.0.0 <= V < 3.2.0 have no dupctx() implementation
+	 * for AES-GCM and AES-CCM. In this case, we have to create new empty
+	 * contexts and initialise, as we did the original context.
+	 */
+	if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
+		sess->aead_algo = RTE_CRYPTO_AEAD_AES_GCM;
+
+	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+		return openssl_set_sess_aead_enc_param(sess, sess->aead_algo,
+				sess->auth.digest_length, sess->cipher.key.data,
+				dest);
+	else
+		return openssl_set_sess_aead_dec_param(sess, sess->aead_algo,
+				sess->auth.digest_length, sess->cipher.key.data,
+				dest);
+#else
+	*dest = EVP_CIPHER_CTX_new();
+	if (EVP_CIPHER_CTX_copy(*dest, sess->cipher.ctx) != 1)
+		return -EINVAL;
+	return 0;
+#endif
 }
 
 /** Set session cipher parameters */
@@ -623,12 +655,14 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 			return openssl_set_sess_aead_enc_param(sess,
 						RTE_CRYPTO_AEAD_AES_GCM,
 						xform->auth.digest_length,
-						xform->auth.key.data);
+						xform->auth.key.data,
+						&sess->cipher.ctx);
 		else
 			return openssl_set_sess_aead_dec_param(sess,
 						RTE_CRYPTO_AEAD_AES_GCM,
 						xform->auth.digest_length,
-						xform->auth.key.data);
+						xform->auth.key.data,
+						&sess->cipher.ctx);
 		break;
 
 	case RTE_CRYPTO_AUTH_MD5:
@@ -770,10 +804,12 @@ openssl_set_session_aead_parameters(struct openssl_session *sess,
 	/* Select cipher direction */
 	if (xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
 		return openssl_set_sess_aead_enc_param(sess, xform->aead.algo,
-				xform->aead.digest_length, xform->aead.key.data);
+				xform->aead.digest_length, xform->aead.key.data,
+				&sess->cipher.ctx);
 	else
 		return openssl_set_sess_aead_dec_param(sess, xform->aead.algo,
-				xform->aead.digest_length, xform->aead.key.data);
+				xform->aead.digest_length, xform->aead.key.data,
+				&sess->cipher.ctx);
 }
 
 /** Parse crypto xform chain and set private session parameters */
@@ -1590,6 +1626,12 @@ process_openssl_combined_op
 		return;
 	}
 
+	EVP_CIPHER_CTX *ctx;
+	if (openssl_aesni_ctx_clone(&ctx, sess) != 0) {
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		return;
+	}
+
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
 	if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
@@ -1623,12 +1665,12 @@ process_openssl_combined_op
 			status = process_openssl_auth_encryption_gcm(
 					mbuf_src, offset, srclen,
 					aad, aadlen, iv,
-					dst, tag, sess->cipher.ctx);
+					dst, tag, ctx);
 		else
 			status = process_openssl_auth_encryption_ccm(
 					mbuf_src, offset, srclen,
 					aad, aadlen, iv,
-					dst, tag, taglen, sess->cipher.ctx);
+					dst, tag, taglen, ctx);
 
 	} else {
 		if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC ||
@@ -1636,13 +1678,15 @@ process_openssl_combined_op
 			status = process_openssl_auth_decryption_gcm(
 					mbuf_src, offset, srclen,
 					aad, aadlen, iv,
-					dst, tag, sess->cipher.ctx);
+					dst, tag, ctx);
 		else
 			status = process_openssl_auth_decryption_ccm(
 					mbuf_src, offset, srclen,
 					aad, aadlen, iv,
-					dst, tag, taglen, sess->cipher.ctx);
+					dst, tag, taglen, ctx);
 	}
+
+	EVP_CIPHER_CTX_free(ctx);
 
 	if (status != 0) {
 		if (status == (-EFAULT) &&
