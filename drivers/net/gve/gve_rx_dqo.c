@@ -161,7 +161,7 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->ol_flags = 0;
 		rxm->ol_flags |= RTE_MBUF_F_RX_RSS_HASH |
 				gve_parse_csum_ol_flags(rx_desc, rxq->hw);
-		rxm->hash.rss = rte_be_to_cpu_32(rx_desc->hash);
+		rxm->hash.rss = rte_le_to_cpu_32(rx_desc->hash);
 
 		rx_pkts[nb_rx++] = rxm;
 		bytes += pkt_len;
