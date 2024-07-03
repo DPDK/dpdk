@@ -3134,8 +3134,11 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 
 		if (ipsec_xform->options.iv_gen_disable == 0)
 			encap_pdb.options |= PDBOPTS_ESP_IVSRC;
-		if (ipsec_xform->options.esn)
+		if (ipsec_xform->options.esn) {
 			encap_pdb.options |= PDBOPTS_ESP_ESN;
+			encap_pdb.seq_num_ext_hi = conf->ipsec.esn.hi;
+			encap_pdb.seq_num = conf->ipsec.esn.low;
+		}
 		if (ipsec_xform->options.copy_dscp)
 			encap_pdb.options |= PDBOPTS_ESP_DIFFSERV;
 		if (ipsec_xform->options.ecn)
@@ -3264,8 +3267,11 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		} else {
 			decap_pdb.options = sizeof(struct rte_ipv6_hdr) << 16;
 		}
-		if (ipsec_xform->options.esn)
+		if (ipsec_xform->options.esn) {
 			decap_pdb.options |= PDBOPTS_ESP_ESN;
+			decap_pdb.seq_num_ext_hi = conf->ipsec.esn.hi;
+			decap_pdb.seq_num = conf->ipsec.esn.low;
+		}
 		if (ipsec_xform->options.copy_dscp)
 			decap_pdb.options |= PDBOPTS_ESP_DIFFSERV;
 		if (ipsec_xform->options.ecn)
@@ -3697,6 +3703,31 @@ dpaa2_sec_security_session_destroy(void *dev __rte_unused,
 		memset(s, 0, sizeof(dpaa2_sec_session));
 	}
 	return 0;
+}
+
+static int
+dpaa2_sec_security_session_update(void *dev,
+			struct rte_security_session *sess,
+			struct rte_security_session_conf *conf)
+{
+	struct rte_cryptodev *cdev = (struct rte_cryptodev *)dev;
+	void *sess_private_data = SECURITY_GET_SESS_PRIV(sess);
+	int ret;
+
+	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC &&
+		conf->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		return -ENOTSUP;
+
+	dpaa2_sec_security_session_destroy(dev, sess);
+
+	ret = dpaa2_sec_set_ipsec_session(cdev, conf,
+				sess_private_data);
+	if (ret != 0) {
+		DPAA2_SEC_DEBUG("Failed to configure session parameters %d", ret);
+		return ret;
+	}
+
+	return ret;
 }
 
 static unsigned int
@@ -4153,7 +4184,7 @@ dpaa2_sec_capabilities_get(void *device __rte_unused)
 
 static const struct rte_security_ops dpaa2_sec_security_ops = {
 	.session_create = dpaa2_sec_security_session_create,
-	.session_update = NULL,
+	.session_update = dpaa2_sec_security_session_update,
 	.session_get_size = dpaa2_sec_security_session_get_size,
 	.session_stats_get = NULL,
 	.session_destroy = dpaa2_sec_security_session_destroy,
