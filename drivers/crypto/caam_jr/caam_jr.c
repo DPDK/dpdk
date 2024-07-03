@@ -587,8 +587,8 @@ hw_poll_job_ring(struct sec_job_ring_t *job_ring,
 		/* todo check if it is false alarm no desc present */
 		if (!current_desc_addr) {
 			false_alarm++;
-			printf("false alarm %" PRIu64 "real %" PRIu64
-				" sec_err =0x%x cidx Index =0%d\n",
+			CAAM_JR_ERR("false alarm %" PRIu64 "real %" PRIu64
+				" sec_err =0x%x cidx Index =0%d",
 				false_alarm, real_poll,
 				sec_error_code, job_ring->cidx);
 			rte_panic("CAAM JR descriptor NULL");

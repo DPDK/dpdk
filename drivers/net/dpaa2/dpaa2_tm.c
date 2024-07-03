@@ -499,7 +499,7 @@ dpaa2_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			node->channel_id = priv->channel_inuse;
 			priv->channel_inuse++;
 		} else {
-			printf("error no channel id available\n");
+			DPAA2_PMD_ERR("error no channel id available");
 		}
 	}
 
@@ -580,7 +580,7 @@ dpaa2_tm_configure_queue(struct rte_eth_dev *dev, struct dpaa2_tm_node *node)
 	flow_id = 0;
 
 	if (dpaa2_q == NULL) {
-		printf("Queue is not configured for node = %d\n", node->id);
+		DPAA2_PMD_ERR("Queue is not configured for node = %d", node->id);
 		return -1;
 	}
 
@@ -590,9 +590,9 @@ dpaa2_tm_configure_queue(struct rte_eth_dev *dev, struct dpaa2_tm_node *node)
 			     ((node->parent->channel_id << 8) | tc_id),
 			     flow_id, options, &tx_flow_cfg);
 	if (ret) {
-		printf("Error in setting the tx flow: "
+		DPAA2_PMD_ERR("Error in setting the tx flow: "
 		       "channel id  = %d tc_id= %d, param = 0x%x "
-		       "flow=%d err=%d\n", node->parent->channel_id, tc_id,
+		       "flow=%d err=%d", node->parent->channel_id, tc_id,
 		       ((node->parent->channel_id << 8) | tc_id), flow_id,
 		       ret);
 		return -1;
@@ -605,7 +605,7 @@ dpaa2_tm_configure_queue(struct rte_eth_dev *dev, struct dpaa2_tm_node *node)
 		DPNI_QUEUE_TX, ((node->parent->channel_id << 8) | dpaa2_q->tc_index),
 		dpaa2_q->flow_id, &tx_flow_cfg, &qid);
 	if (ret) {
-		printf("Error in getting LFQID err=%d", ret);
+		DPAA2_PMD_ERR("Error in getting LFQID err=%d", ret);
 		return -1;
 	}
 	dpaa2_q->fqid = qid.fqid;
@@ -636,7 +636,7 @@ dpaa2_tm_configure_queue(struct rte_eth_dev *dev, struct dpaa2_tm_node *node)
 					((node->parent->channel_id << 8) | tc_id),
 					&cong_notif_cfg);
 		if (ret) {
-			printf("Error in setting tx congestion notification: "
+			DPAA2_PMD_ERR("Error in setting tx congestion notification: "
 				"err=%d", ret);
 			return -ret;
 		}

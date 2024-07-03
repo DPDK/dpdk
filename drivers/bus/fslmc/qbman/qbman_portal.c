@@ -1879,7 +1879,7 @@ void qbman_pull_desc_set_rad(struct qbman_pull_desc *d, int rad)
 		else
 			d->pull.verb &= ~(1 << QB_VDQCR_VERB_RAD_SHIFT);
 	} else {
-		printf("The RAD feature is not valid when RLS = 0\n");
+		pr_warn("The RAD feature is not valid when RLS = 0\n");
 	}
 }
 

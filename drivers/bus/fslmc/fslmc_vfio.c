@@ -395,7 +395,7 @@ rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size)
 	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
 		    &dma_map);
 	if (ret) {
-		printf("Unable to map DMA address (errno = %d)\n",
+		DPAA2_BUS_ERR("Unable to map DMA address (errno = %d)",
 			errno);
 		return ret;
 	}

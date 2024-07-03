@@ -418,7 +418,7 @@ sec_configure(void)
 
 	d = opendir(SEC_UIO_DEVICE_SYS_ATTR_PATH);
 	if (d == NULL) {
-		printf("\nError opening directory '%s': %s\n",
+		CAAM_JR_ERR("Error opening directory '%s': %s",
 			SEC_UIO_DEVICE_SYS_ATTR_PATH, strerror(errno));
 		return -1;
 	}

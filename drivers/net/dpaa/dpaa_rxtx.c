@@ -103,7 +103,7 @@ static void dpaa_display_frame_info(const struct qm_fd *fd,
 	for (ii = 0; ii < fd->length20; ii++) {
 		DISPLAY_PRINT("%02x ", ptr[ii]);
 		if (((ii + 1) % 16) == 0)
-			printf("\n");
+			DISPLAY_PRINT("\n");
 	}
 	DISPLAY_PRINT("\n");
 }

@@ -817,7 +817,7 @@ qman_ern_poll_free(void)
 		fd = &swapped_msg.ern.fd;
 
 		if (unlikely(verb & 0x20)) {
-			printf("HW ERN notification, Nothing to do\n");
+			pr_warn("HW ERN notification, Nothing to do\n");
 		} else {
 			if ((fd->bpid & 0xff) != 0xff)
 				qman_free_mbuf_cb(fd);

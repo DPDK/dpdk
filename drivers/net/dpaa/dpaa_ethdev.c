@@ -282,9 +282,9 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 					dpaa_interrupt_handler,
 					(void *)dev);
 				if (ret == EINVAL)
-					printf("Failed to enable interrupt: Not Supported\n");
+					DPAA_PMD_ERR("Failed to enable interrupt: Not Supported");
 				else
-					printf("Failed to enable interrupt\n");
+					DPAA_PMD_ERR("Failed to enable interrupt");
 			}
 			dev->data->dev_conf.intr_conf.lsc = 0;
 			dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
@@ -340,7 +340,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 			dpaa_update_link_speed(__fif->node_name, speed, duplex);
 		} else {
 			/* Manual autoneg - custom advertisement speed. */
-			printf("Custom Advertisement speeds not supported\n");
+			DPAA_PMD_ERR("Custom Advertisement speeds not supported");
 		}
 	}
 
