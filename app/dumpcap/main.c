@@ -805,6 +805,11 @@ int main(int argc, char **argv)
 {
 	struct rte_ring *r;
 	struct rte_mempool *mp;
+	struct sigaction action = {
+		.sa_flags = SA_RESTART,
+		.sa_handler = signal_handler,
+	};
+	struct sigaction origaction;
 	dumpcap_out_t out;
 	char *p;
 
@@ -831,6 +836,14 @@ int main(int argc, char **argv)
 
 	if (TAILQ_EMPTY(&interfaces))
 		set_default_interface();
+
+	sigemptyset(&action.sa_mask);
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGPIPE, &action, NULL);
+	sigaction(SIGHUP, NULL, &origaction);
+	if (origaction.sa_handler == SIG_DFL)
+		sigaction(SIGHUP, &action, NULL);
 
 	r = create_ring();
 	mp = create_mempool();
