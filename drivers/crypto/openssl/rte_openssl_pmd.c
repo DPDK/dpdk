@@ -619,6 +619,8 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 		return -ENOTSUP;
 	}
 
+	EVP_CIPHER_CTX_set_padding(sess->cipher.ctx, 0);
+
 	return 0;
 }
 
@@ -1124,8 +1126,6 @@ process_openssl_cipher_encrypt(struct rte_mbuf *mbuf_src, uint8_t *dst,
 	if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
 		goto process_cipher_encrypt_err;
 
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
-
 	if (process_openssl_encryption_update(mbuf_src, offset, &dst,
 			srclen, ctx, inplace))
 		goto process_cipher_encrypt_err;
@@ -1173,8 +1173,6 @@ process_openssl_cipher_decrypt(struct rte_mbuf *mbuf_src, uint8_t *dst,
 
 	if (EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
 		goto process_cipher_decrypt_err;
-
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
 	if (process_openssl_decryption_update(mbuf_src, offset, &dst,
 			srclen, ctx, inplace))
