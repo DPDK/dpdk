@@ -393,7 +393,7 @@ exit:
 	return ret;
 }
 
-int
+static int
 dev_sigbus_handler_register(void)
 {
 	sigset_t mask;
@@ -414,7 +414,7 @@ dev_sigbus_handler_register(void)
 	return rte_errno;
 }
 
-int
+static int
 dev_sigbus_handler_unregister(void)
 {
 	rte_errno = 0;

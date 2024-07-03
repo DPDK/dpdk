@@ -530,28 +530,6 @@ int local_dev_remove(struct rte_device *dev);
 int rte_bus_sigbus_handler(const void *failure_addr);
 
 /**
- * @internal
- * Register the sigbus handler.
- *
- * @return
- *   - On success, zero.
- *   - On failure, a negative value.
- */
-int
-dev_sigbus_handler_register(void);
-
-/**
- * @internal
- * Unregister the sigbus handler.
- *
- * @return
- *   - On success, zero.
- *   - On failure, a negative value.
- */
-int
-dev_sigbus_handler_unregister(void);
-
-/**
  * Get OS-specific EAL mapping base address.
  */
 uint64_t
