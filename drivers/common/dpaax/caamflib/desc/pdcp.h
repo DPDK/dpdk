@@ -2349,7 +2349,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
@@ -2361,7 +2361,7 @@ cnstr_shdsc_pdcp_c_plane_encap(uint32_t *descbuf,
 		{	/* AES CTR */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
@@ -2489,7 +2489,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
@@ -2501,7 +2501,7 @@ cnstr_shdsc_pdcp_c_plane_decap(uint32_t *descbuf,
 		{	/* AES CTR */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
@@ -2654,7 +2654,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
@@ -2666,7 +2666,7 @@ cnstr_shdsc_pdcp_u_plane_encap(uint32_t *descbuf,
 		{	/* AES CTR */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
@@ -2839,7 +2839,7 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 		{	/* NULL */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* SNOW f8 */
@@ -2851,7 +2851,7 @@ cnstr_shdsc_pdcp_u_plane_decap(uint32_t *descbuf,
 		{	/* AES CTR */
 			SHR_WAIT,	/* NULL */
 			SHR_WAIT,	/* SNOW f9 */
-			SHR_WAIT,	/* AES CMAC */
+			SHR_ALWAYS,	/* AES CMAC */
 			SHR_WAIT	/* ZUC-I */
 		},
 		{	/* ZUC-E */
