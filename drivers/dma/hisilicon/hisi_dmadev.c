@@ -39,8 +39,6 @@ hisi_dma_queue_base(struct hisi_dma_dev *hw)
 {
 	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP08)
 		return HISI_DMA_HIP08_QUEUE_BASE;
-	else if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09)
-		return HISI_DMA_HIP09_QUEUE_BASE;
 	else
 		return 0;
 }
@@ -216,25 +214,6 @@ hisi_dma_init_hw(struct hisi_dma_dev *hw)
 				HISI_DMA_HIP08_QUEUE_INT_MASK_M, true);
 		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_MASK_REG,
 				HISI_DMA_HIP08_QUEUE_INT_MASK_M, true);
-	} else if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09) {
-		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_CTRL0_REG,
-				HISI_DMA_HIP09_QUEUE_CTRL0_ERR_ABORT_M, false);
-		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_STATUS_REG,
-				HISI_DMA_HIP09_QUEUE_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw, HISI_DMA_QUEUE_INT_MASK_REG,
-				HISI_DMA_HIP09_QUEUE_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_STATUS_REG,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M, true);
-		hisi_dma_update_queue_mbit(hw,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_REG,
-				HISI_DMA_HIP09_QUEUE_ERR_INT_MASK_M, true);
-		hisi_dma_update_queue_bit(hw, HISI_DMA_QUEUE_CTRL1_REG,
-				HISI_DMA_HIP09_QUEUE_CTRL1_VA_ENABLE_B, true);
-		hisi_dma_update_bit(hw,
-				HISI_DMA_HIP09_QUEUE_CFG_REG(hw->queue_id),
-				HISI_DMA_HIP09_QUEUE_CFG_LINK_DOWN_MASK_B,
-				true);
 	}
 }
 
@@ -256,8 +235,6 @@ hisi_dma_reg_layout(uint8_t revision)
 {
 	if (revision == HISI_DMA_REVISION_HIP08B)
 		return HISI_DMA_REG_LAYOUT_HIP08;
-	else if (revision >= HISI_DMA_REVISION_HIP09A)
-		return HISI_DMA_REG_LAYOUT_HIP09;
 	else
 		return HISI_DMA_REG_LAYOUT_INVALID;
 }
@@ -327,14 +304,11 @@ hisi_dma_info_get(const struct rte_dma_dev *dev,
 		  struct rte_dma_info *dev_info,
 		  uint32_t info_sz)
 {
-	struct hisi_dma_dev *hw = dev->data->dev_private;
+	RTE_SET_USED(dev);
 	RTE_SET_USED(info_sz);
 
 	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
 			     RTE_DMA_CAPA_OPS_COPY;
-	if (hw->reg_layout == HISI_DMA_REG_LAYOUT_HIP09)
-		dev_info->dev_capa |= RTE_DMA_CAPA_HANDLES_ERRORS;
-
 	dev_info->max_vchans = 1;
 	dev_info->max_desc = HISI_DMA_MAX_DESC_NUM;
 	dev_info->min_desc = HISI_DMA_MIN_DESC_NUM;
@@ -513,18 +487,6 @@ hisi_dma_dump_common(struct hisi_dma_dev *hw, FILE *f)
 		{ HISI_DMA_REG_LAYOUT_HIP08,
 		  HISI_DMA_HIP08_DUMP_START_REG,
 		  HISI_DMA_HIP08_DUMP_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_A_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_A_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_B_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_B_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_C_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_C_END_REG },
-		{ HISI_DMA_REG_LAYOUT_HIP09,
-		  HISI_DMA_HIP09_DUMP_REGION_D_START_REG,
-		  HISI_DMA_HIP09_DUMP_REGION_D_END_REG },
 	};
 	uint32_t i;
 

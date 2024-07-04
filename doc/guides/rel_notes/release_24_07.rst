@@ -204,6 +204,11 @@ Removed Items
   BPF is not supported and the librte-bpf test fails on 32-bit x86 kernels.
   So disable the library and the pmd.
 
+* **Removed hisilicon DMA support for HIP09 platform.**
+
+  The DMA for HIP09 is no longer available,
+  so the support is removed from hisilicon driver for HIP09 platform.
+
 
 API Changes
 -----------
