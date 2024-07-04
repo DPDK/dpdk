@@ -503,8 +503,25 @@ mlx5_alloc_shared_dr(struct rte_eth_dev *eth_dev)
 					       mlx5_flex_parser_clone_free_cb);
 	if (!sh->flex_parsers_dv)
 		goto error;
-	if (priv->sh->config.dv_flow_en == 2)
+	if (priv->sh->config.dv_flow_en == 2) {
+		if (sh->config.dv_xmeta_en != MLX5_XMETA_MODE_LEGACY &&
+		    sh->dv_regc0_mask) {
+			/* Reuse DV callback functions. */
+			sh->mreg_cp_tbl = mlx5_hlist_create(MLX5_FLOW_MREG_HNAME,
+							    MLX5_FLOW_MREG_HTABLE_SZ,
+							    false, true, eth_dev,
+							    flow_nta_mreg_create_cb,
+							    flow_dv_mreg_match_cb,
+							    flow_nta_mreg_remove_cb,
+							    flow_dv_mreg_clone_cb,
+							    flow_dv_mreg_clone_free_cb);
+			if (!sh->mreg_cp_tbl) {
+				err = ENOMEM;
+				goto error;
+			}
+		}
 		return 0;
+	}
 	/* Init port id action list. */
 	snprintf(s, sizeof(s), "%s_port_id_action_list", sh->ibdev_name);
 	sh->port_id_action_list = mlx5_list_create(s, sh, true,

@@ -8152,6 +8152,17 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 void
 mlx5_flow_stop_default(struct rte_eth_dev *dev)
 {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2) {
+		mlx5_flow_nta_del_default_copy_action(dev);
+		if (!rte_atomic_load_explicit(&priv->hws_mark_refcnt,
+					      rte_memory_order_relaxed))
+			flow_hw_rxq_flag_set(dev, false);
+		return;
+	}
+#endif
 	flow_mreg_del_default_copy_action(dev);
 	flow_rxq_flags_clear(dev);
 }
@@ -8196,7 +8207,12 @@ int
 mlx5_flow_start_default(struct rte_eth_dev *dev)
 {
 	struct rte_flow_error error;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_nta_add_default_copy_action(dev, &error);
+#endif
 	/* Make sure default copy action (reg_c[0] -> reg_b) is created. */
 	return flow_mreg_add_default_copy_action(dev, &error);
 }

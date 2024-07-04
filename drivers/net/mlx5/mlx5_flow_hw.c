@@ -616,11 +616,20 @@ flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
 
 static uint64_t
 flow_hw_action_flags_get(const struct rte_flow_action actions[],
+			 const struct rte_flow_action **qrss,
+			 const struct rte_flow_action **mark,
+			 int *encap_idx,
+			 int *act_cnt,
 			 struct rte_flow_error *error)
 {
 	uint64_t action_flags = 0;
 	const struct rte_flow_action *action;
+	const struct rte_flow_action_raw_encap *raw_encap;
+	int raw_decap_idx = -1;
+	int action_idx;
 
+	*encap_idx = -1;
+	action_idx = 0;
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; action++) {
 		int type = (int)action->type;
 		switch (type) {
@@ -643,8 +652,12 @@ flow_hw_action_flags_get(const struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_DROP:
 			action_flags |= MLX5_FLOW_ACTION_DROP;
 			break;
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			action_flags |= MLX5_FLOW_ACTION_FLAG;
+			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			action_flags |= MLX5_FLOW_ACTION_MARK;
+			*mark = action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
@@ -657,17 +670,24 @@ flow_hw_action_flags_get(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			*qrss = action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 rss:
 			action_flags |= MLX5_FLOW_ACTION_RSS;
+			*qrss = action;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			*encap_idx = action_idx;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			raw_encap = action->conf;
+			if (raw_encap->size > MLX5_ENCAPSULATION_DECISION_SIZE)
+				*encap_idx = raw_decap_idx != -1 ?
+					     raw_decap_idx : action_idx;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
@@ -675,6 +695,7 @@ rss:
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			raw_decap_idx = action_idx;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 			action_flags |= MLX5_FLOW_ACTION_SEND_TO_KERNEL;
@@ -711,7 +732,12 @@ meter:
 		default:
 			goto error;
 		}
+		action_idx++;
 	}
+	if (*encap_idx == -1)
+		*encap_idx = action_idx;
+	action_idx++; /* The END action. */
+	*act_cnt = action_idx;
 	return action_flags;
 error:
 	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
@@ -13502,10 +13528,12 @@ static int flow_hw_register_matcher(struct rte_eth_dev *dev,
 		.message = NULL,
 	};
 	struct rte_flow_attr flow_attr = *attr;
+	uint32_t specialize = 0; /* No unified FDB. */
 	struct mlx5_flow_cb_ctx ctx = {
 		.dev = dev,
 		.error = &sub_error,
 		.data = &flow_attr,
+		.data2 = &specialize,
 	};
 	void *items_ptr = &items;
 	struct mlx5_flow_cb_ctx matcher_ctx = {
@@ -13670,7 +13698,7 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		    struct rte_flow_hw **flow, struct rte_flow_error *error)
 {
 	int ret;
-	struct mlx5_hw_actions hw_act;
+	struct mlx5_hw_actions hw_act = { { NULL } };
 	struct mlx5_flow_hw_action_params ap;
 	struct mlx5_flow_dv_matcher matcher = {
 		.mask = {
@@ -13688,7 +13716,6 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		.tbl_type = 0,
 		};
 
-	memset(&hw_act, 0, sizeof(hw_act));
 	if (attr->transfer)
 		tbl_type = MLX5DR_TABLE_TYPE_FDB;
 	else if (attr->egress)
@@ -13759,8 +13786,7 @@ error:
 	if (ret) {
 		/* release after actual error */
 		if ((*flow)->nt2hws && (*flow)->nt2hws->matcher)
-			flow_hw_unregister_matcher(dev,
-						   (*flow)->nt2hws->matcher);
+			flow_hw_unregister_matcher(dev, (*flow)->nt2hws->matcher);
 	}
 	return ret;
 }
@@ -13831,8 +13857,9 @@ flow_hw_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	struct rte_flow_hw *flow = (struct rte_flow_hw *)flow_addr;
 	struct mlx5_nta_rss_flow_head head = { .slh_first = flow };
 
-	if (flow->nt2hws->chaned_flow)
+	if (!flow || !flow->nt2hws || flow->nt2hws->chaned_flow)
 		return;
+	mlx5_flow_nta_del_copy_action(dev, flow->nt2hws->rix_mreg_copy);
 	while (!SLIST_EMPTY(&head)) {
 		flow = SLIST_FIRST(&head);
 		SLIST_REMOVE_HEAD(&head, nt2hws->next);
@@ -13873,14 +13900,44 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 				     struct rte_flow_error *error)
 {
 	int ret;
+	int split;
+	int encap_idx;
+	uint32_t cpy_idx = 0;
+	int actions_n = 0;
 	struct rte_flow_hw *flow = NULL;
+	struct rte_flow_hw *prfx_flow = NULL;
+	const struct rte_flow_action *qrss = NULL;
+	const struct rte_flow_action *mark = NULL;
 	uint64_t item_flags = flow_hw_matching_item_flags_get(items);
-	uint64_t action_flags = flow_hw_action_flags_get(actions, error);
+	uint64_t action_flags = flow_hw_action_flags_get(actions, &qrss, &mark,
+							 &encap_idx, &actions_n, error);
+	struct mlx5_flow_hw_split_resource resource = {
+		.suffix = {
+			.attr = attr,
+			.items = items,
+			.actions = actions,
+		},
+	};
 
 	/*
 	 * TODO: add a call to flow_hw_validate function once it exist.
 	 * and update mlx5_flow_hw_drv_ops accordingly.
 	 */
+
+	RTE_SET_USED(encap_idx);
+	split = mlx5_flow_nta_split_metadata(dev, attr, actions, qrss, action_flags,
+					     actions_n, external, &resource, error);
+	if (split < 0)
+		return split;
+
+	/* Update the metadata copy table - MLX5_FLOW_MREG_CP_TABLE_GROUP */
+	if (((attr->ingress && attr->group != MLX5_FLOW_MREG_CP_TABLE_GROUP) ||
+	     attr->transfer) && external) {
+		ret = mlx5_flow_nta_update_copy_table(dev, &cpy_idx, mark,
+						      action_flags, error);
+		if (ret)
+			goto free;
+	}
 
 	if (action_flags & MLX5_FLOW_ACTION_RSS) {
 		const struct rte_flow_action_rss
@@ -13888,22 +13945,49 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 		flow = flow_nta_handle_rss(dev, attr, items, actions, rss_conf,
 					   item_flags, action_flags, external,
 					   type, error);
-		return (uintptr_t)flow;
+		if (flow) {
+			flow->nt2hws->rix_mreg_copy = cpy_idx;
+			cpy_idx = 0;
+			if (!split)
+				return (uintptr_t)flow;
+			goto prefix_flow;
+		}
+		goto free;
 	}
-	/* TODO: Handle split/expand to num_flows. */
-
 	/* Create single flow. */
-	ret = flow_hw_create_flow(dev, type, attr, items, actions,
-				  item_flags, action_flags,
+	ret = flow_hw_create_flow(dev, type, resource.suffix.attr, resource.suffix.items,
+				  resource.suffix.actions, item_flags, action_flags,
 				  external, &flow, error);
 	if (ret)
 		goto free;
-	if (flow)
-		return (uintptr_t)flow;
-
+	if (flow) {
+		flow->nt2hws->rix_mreg_copy = cpy_idx;
+		cpy_idx = 0;
+		if (!split)
+			return (uintptr_t)flow;
+		/* Fall Through to prefix flow creation. */
+	}
+prefix_flow:
+	ret = flow_hw_create_flow(dev, type, attr, items, resource.prefix.actions,
+				  item_flags, action_flags, external, &prfx_flow, error);
+	if (ret)
+		goto free;
+	if (prfx_flow) {
+		prfx_flow->nt2hws->rix_mreg_copy = flow->nt2hws->rix_mreg_copy;
+		flow->nt2hws->chaned_flow = 1;
+		SLIST_INSERT_AFTER(prfx_flow, flow, nt2hws->next);
+		mlx5_flow_nta_split_resource_free(dev, &resource);
+		return (uintptr_t)prfx_flow;
+	}
 free:
+	if (prfx_flow)
+		flow_hw_list_destroy(dev, type, (uintptr_t)prfx_flow);
 	if (flow)
 		flow_hw_list_destroy(dev, type, (uintptr_t)flow);
+	if (cpy_idx)
+		mlx5_flow_nta_del_copy_action(dev, cpy_idx);
+	if (split > 0)
+		mlx5_flow_nta_split_resource_free(dev, &resource);
 	return 0;
 }
 
