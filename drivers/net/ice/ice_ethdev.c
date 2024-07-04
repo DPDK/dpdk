@@ -181,6 +181,10 @@ static int ice_timesync_read_time(struct rte_eth_dev *dev,
 static int ice_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
 static int ice_timesync_disable(struct rte_eth_dev *dev);
+static int ice_fec_get_capability(struct rte_eth_dev *dev, struct rte_eth_fec_capa *speed_fec_capa,
+			   unsigned int num);
+static int ice_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa);
+static int ice_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa);
 static const uint32_t *ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev,
 						size_t *no_of_elements);
 
@@ -307,6 +311,9 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.timesync_write_time          = ice_timesync_write_time,
 	.timesync_disable             = ice_timesync_disable,
 	.tm_ops_get                   = ice_tm_ops_get,
+	.fec_get_capability           = ice_fec_get_capability,
+	.fec_get                      = ice_fec_get,
+	.fec_set                      = ice_fec_set,
 	.buffer_split_supported_hdr_ptypes_get = ice_buffer_split_supported_hdr_ptypes_get,
 };
 
@@ -6657,6 +6664,288 @@ ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev __rte_unused,
 
 	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
+}
+
+static unsigned int
+ice_fec_get_capa_num(struct ice_aqc_get_phy_caps_data *pcaps,
+			   struct rte_eth_fec_capa *speed_fec_capa)
+{
+	unsigned int num = 0;
+	int auto_fec = (pcaps->caps & ICE_AQC_PHY_EN_AUTO_FEC) ?
+		RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) : 0;
+	int link_nofec = (pcaps->link_fec_options & ICE_AQC_PHY_FEC_DIS) ?
+		RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC) : 0;
+
+	if (pcaps->eee_cap & ICE_AQC_PHY_EEE_EN_100BASE_TX) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_100M;
+			speed_fec_capa[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+		}
+		num++;
+	}
+
+	if (pcaps->eee_cap & (ICE_AQC_PHY_EEE_EN_1000BASE_T |
+		ICE_AQC_PHY_EEE_EN_1000BASE_KX)) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_1G;
+			speed_fec_capa[num].capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+		}
+		num++;
+	}
+
+	if (pcaps->eee_cap & (ICE_AQC_PHY_EEE_EN_10GBASE_T |
+		ICE_AQC_PHY_EEE_EN_10GBASE_KR)) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_10G;
+			speed_fec_capa[num].capa = auto_fec | link_nofec;
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+		}
+		num++;
+	}
+
+	if (pcaps->eee_cap & ICE_AQC_PHY_EEE_EN_25GBASE_KR) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_25G;
+			speed_fec_capa[num].capa = auto_fec | link_nofec;
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+		num++;
+	}
+
+	if (pcaps->eee_cap & ICE_AQC_PHY_EEE_EN_40GBASE_KR4) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_40G;
+			speed_fec_capa[num].capa = auto_fec | link_nofec;
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+		}
+		num++;
+	}
+
+	if (pcaps->eee_cap & (ICE_AQC_PHY_EEE_EN_50GBASE_KR2 |
+		ICE_AQC_PHY_EEE_EN_50GBASE_KR_PAM4)) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_50G;
+			speed_fec_capa[num].capa = auto_fec | link_nofec;
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+		num++;
+	}
+
+	if (pcaps->eee_cap & (ICE_AQC_PHY_EEE_EN_100GBASE_KR4 |
+		ICE_AQC_PHY_EEE_EN_100GBASE_KR2_PAM4)) {
+		if (speed_fec_capa) {
+			speed_fec_capa[num].speed = RTE_ETH_SPEED_NUM_100G;
+			speed_fec_capa[num].capa = auto_fec | link_nofec;
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+
+			if (pcaps->link_fec_options & ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN)
+				speed_fec_capa[num].capa |= RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+		}
+		num++;
+	}
+
+	return num;
+}
+
+static int
+ice_fec_get_capability(struct rte_eth_dev *dev, struct rte_eth_fec_capa *speed_fec_capa,
+			   unsigned int num)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_aqc_get_phy_caps_data pcaps = {0};
+	unsigned int capa_num;
+	int ret;
+
+	ret = ice_aq_get_phy_caps(hw->port_info, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
+				  &pcaps, NULL);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get capability information: %d\n",
+				ret);
+		return -ENOTSUP;
+	}
+
+	/* first time to get capa_num */
+	capa_num = ice_fec_get_capa_num(&pcaps, NULL);
+	if (!speed_fec_capa || num < capa_num)
+		return capa_num;
+
+	return ice_fec_get_capa_num(&pcaps, speed_fec_capa);
+}
+
+static int
+ice_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
+	bool link_up;
+	u32 temp_fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+	struct ice_link_status link_status = {0};
+	struct ice_aqc_get_phy_caps_data pcaps = {0};
+	struct ice_port_info *pi = hw->port_info;
+	u8 fec_config;
+	int ret;
+
+	if (!pi)
+		return -ENOTSUP;
+
+	ret = ice_get_link_info_safe(pf, enable_lse, &link_status);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get link information: %d\n",
+			ret);
+		return -ENOTSUP;
+	}
+
+	link_up = link_status.link_info & ICE_AQ_LINK_UP;
+
+	ret = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
+				  &pcaps, NULL);
+	if (ret != ICE_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to get capability information: %d\n",
+			ret);
+		return -ENOTSUP;
+	}
+
+	/* Get current FEC mode from port info */
+	if (link_up) {
+		switch (link_status.fec_info) {
+		case ICE_AQ_LINK_25G_KR_FEC_EN:
+			*fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+			break;
+		case ICE_AQ_LINK_25G_RS_528_FEC_EN:
+			/* fall-through */
+		case ICE_AQ_LINK_25G_RS_544_FEC_EN:
+			*fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+			break;
+		default:
+			*fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+			break;
+		}
+		return 0;
+	}
+
+	if (pcaps.caps & ICE_AQC_PHY_EN_AUTO_FEC) {
+		*fec_capa = RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+		return 0;
+	}
+
+	fec_config = pcaps.link_fec_options & ICE_AQC_PHY_FEC_MASK;
+
+	if (fec_config & (ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN |
+				ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN |
+				ICE_AQC_PHY_FEC_10G_KR_40G_KR4_REQ |
+				ICE_AQC_PHY_FEC_25G_KR_REQ))
+		temp_fec_capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+
+	if (fec_config & (ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN |
+				ICE_AQC_PHY_FEC_25G_RS_528_REQ |
+				ICE_AQC_PHY_FEC_25G_RS_544_REQ))
+		temp_fec_capa |= RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+
+	*fec_capa = temp_fec_capa;
+	return 0;
+}
+
+static int
+ice_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_port_info *pi = hw->port_info;
+	struct ice_aqc_set_phy_cfg_data cfg = { 0 };
+	bool fec_auto = false, fec_kr = false, fec_rs = false;
+
+	if (!pi)
+		return -ENOTSUP;
+
+	if (fec_capa & ~(RTE_ETH_FEC_MODE_CAPA_MASK(AUTO) |
+			RTE_ETH_FEC_MODE_CAPA_MASK(BASER) |
+			RTE_ETH_FEC_MODE_CAPA_MASK(RS)))
+		return -EINVAL;
+	/* Copy the current user PHY configuration. The current user PHY
+	 * configuration is initialized during probe from PHY capabilities
+	 * software mode, and updated on set PHY configuration.
+	 */
+	memcpy(&cfg, &pi->phy.curr_user_phy_cfg, sizeof(cfg));
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+		fec_auto = true;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(BASER))
+		fec_kr = true;
+
+	if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(RS))
+		fec_rs = true;
+
+	if (fec_auto) {
+		if (fec_kr || fec_rs) {
+			if (fec_rs) {
+				cfg.link_fec_opt = ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN |
+					ICE_AQC_PHY_FEC_25G_RS_528_REQ |
+					ICE_AQC_PHY_FEC_25G_RS_544_REQ;
+			}
+			if (fec_kr) {
+				cfg.link_fec_opt |= ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN |
+					ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN |
+					ICE_AQC_PHY_FEC_10G_KR_40G_KR4_REQ |
+					ICE_AQC_PHY_FEC_25G_KR_REQ;
+			}
+		} else {
+			cfg.link_fec_opt = ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN |
+				ICE_AQC_PHY_FEC_25G_RS_528_REQ |
+				ICE_AQC_PHY_FEC_25G_RS_544_REQ |
+				ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN |
+				ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN |
+				ICE_AQC_PHY_FEC_10G_KR_40G_KR4_REQ |
+				ICE_AQC_PHY_FEC_25G_KR_REQ;
+		}
+	} else {
+		if (fec_kr ^ fec_rs) {
+			if (fec_rs) {
+				cfg.link_fec_opt = ICE_AQC_PHY_FEC_25G_RS_CLAUSE91_EN |
+					ICE_AQC_PHY_FEC_25G_RS_528_REQ |
+					ICE_AQC_PHY_FEC_25G_RS_544_REQ;
+			} else {
+				cfg.link_fec_opt = ICE_AQC_PHY_FEC_10G_KR_40G_KR4_EN |
+					ICE_AQC_PHY_FEC_25G_KR_CLAUSE74_EN |
+					ICE_AQC_PHY_FEC_10G_KR_40G_KR4_REQ |
+					ICE_AQC_PHY_FEC_25G_KR_REQ;
+			}
+		} else {
+			return -EINVAL;
+		}
+	}
+
+	/* Recovery of accidentally rewritten bit */
+	if (pi->phy.curr_user_phy_cfg.link_fec_opt &
+			ICE_AQC_PHY_FEC_DIS)
+		cfg.link_fec_opt |= ICE_AQC_PHY_FEC_DIS;
+
+	/* Proceed only if requesting different FEC mode */
+	if (pi->phy.curr_user_phy_cfg.link_fec_opt == cfg.link_fec_opt)
+		return 0;
+
+	cfg.caps |= ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
+
+	if (ice_aq_set_phy_cfg(pi->hw, pi, &cfg, NULL))
+		return -EAGAIN;
+
+	return 0;
 }
 
 static int

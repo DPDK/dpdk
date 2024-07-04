@@ -323,6 +323,11 @@ The DCF PMD needs to advertise and acquire DCF capability which allows DCF to
 send AdminQ commands that it would like to execute over to the PF and receive
 responses for the same from PF.
 
+Forward Error Correction (FEC)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Supports get/set FEC mode and get FEC capability.
+
 Generic Flow Support
 ~~~~~~~~~~~~~~~~~~~~
 
