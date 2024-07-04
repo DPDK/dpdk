@@ -160,6 +160,10 @@ struct hns3_fdir_rule {
 	uint16_t nb_queues;
 	uint16_t location;
 	struct rte_flow_action_count act_cnt;
+	bool has_vlan_m;
+	bool has_vlan_v;
+	bool has_more_vlan_m;
+	bool has_more_vlan_v;
 };
 
 /* FDIR filter list structure */

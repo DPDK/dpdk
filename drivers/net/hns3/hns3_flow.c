@@ -616,8 +616,8 @@ hns3_parse_eth(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	if (item->spec == NULL && item->mask == NULL)
 		return 0;
 
-	if (item->mask) {
-		eth_mask = item->mask;
+	eth_mask = item->mask;
+	if (eth_mask) {
 		if (eth_mask->hdr.ether_type) {
 			hns3_set_bit(rule->input_set, INNER_ETH_TYPE, 1);
 			rule->key_conf.mask.ether_type =
@@ -633,9 +633,16 @@ hns3_parse_eth(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 			memcpy(rule->key_conf.mask.dst_mac,
 			       eth_mask->hdr.dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 		}
+		if (eth_mask->has_vlan)
+			rule->has_vlan_m = true;
 	}
 
 	eth_spec = item->spec;
+	if (eth_mask && eth_mask->has_vlan && eth_spec->has_vlan) {
+		rule->key_conf.vlan_num++;
+		rule->has_vlan_v = true;
+	}
+
 	rule->key_conf.spec.ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 	memcpy(rule->key_conf.spec.src_mac, eth_spec->hdr.src_addr.addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
@@ -651,6 +658,26 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	const struct rte_flow_item_vlan *vlan_spec;
 	const struct rte_flow_item_vlan *vlan_mask;
 
+	if (rule->has_vlan_m && !rule->has_vlan_v)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "VLAN item is conflict with 'has_vlan is 0' in ETH item");
+
+	if (rule->has_more_vlan_m && !rule->has_more_vlan_v)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "VLAN item is conflict with 'has_more_vlan is 0' in the previous VLAN item");
+
+	if (rule->has_vlan_m && rule->has_vlan_v) {
+		rule->has_vlan_m = false;
+		rule->key_conf.vlan_num--;
+	}
+
+	if (rule->has_more_vlan_m && rule->has_more_vlan_v) {
+		rule->has_more_vlan_m = false;
+		rule->key_conf.vlan_num--;
+	}
+
 	rule->key_conf.vlan_num++;
 	if (rule->key_conf.vlan_num > VLAN_TAG_NUM_MAX)
 		return rte_flow_error_set(error, EINVAL,
@@ -661,8 +688,8 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	if (item->spec == NULL && item->mask == NULL)
 		return 0;
 
-	if (item->mask) {
-		vlan_mask = item->mask;
+	vlan_mask = item->mask;
+	if (vlan_mask) {
 		if (vlan_mask->hdr.vlan_tci) {
 			if (rule->key_conf.vlan_num == 1) {
 				hns3_set_bit(rule->input_set, INNER_VLAN_TAG1,
@@ -676,6 +703,8 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 				    rte_be_to_cpu_16(vlan_mask->hdr.vlan_tci);
 			}
 		}
+		if (vlan_mask->has_more_vlan)
+			rule->has_more_vlan_m = true;
 	}
 
 	vlan_spec = item->spec;
@@ -685,6 +714,16 @@ hns3_parse_vlan(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	else
 		rule->key_conf.spec.vlan_tag2 =
 		    rte_be_to_cpu_16(vlan_spec->hdr.vlan_tci);
+
+	if (vlan_mask && vlan_mask->has_more_vlan && vlan_spec->has_more_vlan) {
+		rule->key_conf.vlan_num++;
+		if (rule->key_conf.vlan_num > VLAN_TAG_NUM_MAX)
+			return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Vlan_num is more than 2");
+		rule->has_more_vlan_v = true;
+	}
+
 	return 0;
 }
 

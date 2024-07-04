@@ -234,6 +234,74 @@ src_port=32, dst_port=32`` to queue 1:
             dst is 2.2.2.5 / udp src is 32 dst is 32 / end \
             actions mark id 1 / queue index 1 / end
 
+The flow rules::
+
+   rule-0: flow create 0 ingress pattern eth / end \
+            queue index 1 / end
+   rule-1: flow create 0 ingress pattern eth / vlan vid is 10 / end \
+            queue index 1 / end
+   rule-2: flow create 0 ingress pattern eth / vlan / vlan vid is 10 / end \
+            queue index 1 / end
+   rule-3: flow create 0 ingress pattern eth / vlan vid is 10 / vlan vid is 11 / end \
+            queue index 1 / end
+
+will match the following packet types with specific VLAN ID at the specified VLAN layer
+and any VLAN ID at the rest VLAN layer.
+
+      +--------+------------------+-------------------------------------------+
+      | rules  | ``strict``       | ``nostrict``                              |
+      +========+==================+===========================================+
+      | rule-0 | untagged         | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-1 | single-tagged    | single-tagged || multi-tagged             |
+      +--------+------------------+-------------------------------------------+
+      | rule-2 | double-tagged    | multi-tagged                              |
+      +--------+------------------+-------------------------------------------+
+      | rule-3 | double-tagged    | multi-tagged                              |
+      +--------+------------------+-------------------------------------------+
+
+The attributes ``has_vlan`` and ``has_more_vlan`` are supported.
+The usage is as follows::
+
+   rule-4: flow create 0 ingress pattern eth has_vlan is 1 / end \
+            queue index 1 / end
+   rule-5: flow create 0 ingress pattern eth has_vlan is 0 / end \
+            queue index 1 / end
+   rule-6: flow create 0 ingress pattern eth / vlan has_more_vlan is 1 / \
+            end queue index 1 / end
+   rule-7: flow create 0 ingress pattern eth / vlan has_more_vlan is 0 / \
+            end queue index 1 / end
+
+They will match the following packet types with any VLAN ID.
+
+      +--------+------------------+-------------------------------------------+
+      | rules  |  ``strict``      | ``nostrict``                              |
+      +========+==================+===========================================+
+      | rule-4 | single-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-5 | untagged         | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-6 | double-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+      | rule-7 | single-tagged    | untagged || single-tagged || multi-tagged |
+      +--------+------------------+-------------------------------------------+
+
+These two fields may be used followed by VLAN item,
+and may partially overlap or conflict with the VLAN item.
+For examples, the rule-8 will be rejected by the driver
+and rule-9, rule-10 are repeated with rule-4.
+Similar usage for ``has_more_vlan``.
+
+::
+
+   rule-8: flow create 0 ingress pattern eth has_vlan is 0 / vlan / end \
+            queue index 1 / end
+   rule-9: flow create 0 ingress pattern eth has_vlan is 1 / vlan / end \
+            queue index 1 / end
+   rule-10: flow create 0 ingress pattern eth / vlan / end \
+            queue index 1 / end
+
+
 Generic flow API
 ~~~~~~~~~~~~~~~~
 
