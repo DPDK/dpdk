@@ -727,8 +727,11 @@ struct mlx5_flow_mreg_copy_resource {
 	LIST_ENTRY(mlx5_flow_mreg_copy_resource) next;
 	/* List entry for device flows. */
 	uint32_t idx;
-	uint32_t rix_flow; /* Built flow for copy. */
 	uint32_t mark_id;
+	union {
+		uint32_t rix_flow; /* Built flow for copy. */
+		uintptr_t hw_flow;
+	};
 };
 
 /* Table tunnel parameter. */
@@ -1334,6 +1337,7 @@ struct rte_flow_nt2hws {
 	SLIST_ENTRY(rte_flow_hw) next;
 	/** Encap/decap index. */
 	uint32_t rix_encap_decap;
+	uint32_t rix_mreg_copy;
 	uint8_t chaned_flow;
 };
 
@@ -1979,6 +1983,19 @@ struct mlx5_flow_split_info {
 	uint32_t flow_idx; /**< This memory pool index to the flow. */
 	uint32_t table_id; /**< Flow table identifier. */
 	uint64_t prefix_layers; /**< Prefix subflow layers. */
+};
+
+struct mlx5_flow_hw_partial_resource {
+	const struct rte_flow_attr *attr;
+	const struct rte_flow_item *items;
+	const struct rte_flow_action *actions;
+};
+
+struct mlx5_flow_hw_split_resource {
+	struct mlx5_flow_hw_partial_resource prefix;
+	struct mlx5_flow_hw_partial_resource suffix;
+	void *buf_start; /* start address of continuous buffer. */
+	uint32_t flow_idx; /* This memory pool index to the flow. */
 };
 
 struct mlx5_hl_data {
@@ -3630,6 +3647,38 @@ flow_nta_handle_rss(struct rte_eth_dev *dev,
 extern const struct rte_flow_action_raw_decap empty_decap;
 extern const struct rte_flow_item_ipv6 nic_ipv6_mask;
 extern const struct rte_flow_item_tcp nic_tcp_mask;
+
+/* mlx5_nta_split.c */
+int
+mlx5_flow_nta_split_metadata(struct rte_eth_dev *dev,
+			     const struct rte_flow_attr *attr,
+			     const struct rte_flow_action actions[],
+			     const struct rte_flow_action *qrss,
+			     uint64_t action_flags,
+			     int actions_n,
+			     bool external,
+			     struct mlx5_flow_hw_split_resource *res,
+			     struct rte_flow_error *error);
+void
+mlx5_flow_nta_split_resource_free(struct rte_eth_dev *dev,
+				  struct mlx5_flow_hw_split_resource *res);
+struct mlx5_list_entry *
+flow_nta_mreg_create_cb(void *tool_ctx, void *cb_ctx);
+void
+flow_nta_mreg_remove_cb(void *tool_ctx, struct mlx5_list_entry *entry);
+void
+mlx5_flow_nta_del_copy_action(struct rte_eth_dev *dev, uint32_t idx);
+void
+mlx5_flow_nta_del_default_copy_action(struct rte_eth_dev *dev);
+int
+mlx5_flow_nta_add_default_copy_action(struct rte_eth_dev *dev,
+				      struct rte_flow_error *error);
+int
+mlx5_flow_nta_update_copy_table(struct rte_eth_dev *dev,
+				uint32_t *idx,
+				const struct rte_flow_action *mark,
+				uint64_t action_flags,
+				struct rte_flow_error *error);
 
 #endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
