@@ -399,7 +399,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 		struct qat_sym_op_cookie *cookie)
 {
 	union rte_crypto_sym_ofs ofs;
-	uint32_t max_len = 0;
+	uint32_t max_len = 0, oop_offset = 0;
 	uint32_t cipher_len = 0, cipher_ofs = 0;
 	uint32_t auth_len = 0, auth_ofs = 0;
 	int is_oop = (op->sym->m_dst != NULL) &&
@@ -473,6 +473,16 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 
 	max_len = RTE_MAX(cipher_ofs + cipher_len, auth_ofs + auth_len);
 
+	/* If OOP, we need to keep in mind that offset needs to start where
+	 * cipher/auth starts, namely no offset on the smaller one
+	 */
+	if (is_oop) {
+		oop_offset = RTE_MIN(auth_ofs, cipher_ofs);
+		auth_ofs -= oop_offset;
+		cipher_ofs -= oop_offset;
+		max_len -= oop_offset;
+	}
+
 	/* digest in buffer check. Needed only for wireless algos
 	 * or combined cipher-crc operations
 	 */
@@ -513,9 +523,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 			max_len = RTE_MAX(max_len, auth_ofs + auth_len +
 					ctx->digest_length);
 	}
-
-	/* Passing 0 as cipher & auth offsets are assigned into ofs later */
-	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, 0, max_len,
+	n_src = rte_crypto_mbuf_to_vec(op->sym->m_src, oop_offset, max_len,
 			in_sgl->vec, QAT_SYM_SGL_MAX_NUMBER);
 	if (unlikely(n_src < 0 || n_src > op->sym->m_src->nb_segs)) {
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -525,7 +533,7 @@ qat_sym_convert_op_to_vec_chain(struct rte_crypto_op *op,
 
 	if (unlikely((op->sym->m_dst != NULL) &&
 			(op->sym->m_dst != op->sym->m_src))) {
-		int n_dst = rte_crypto_mbuf_to_vec(op->sym->m_dst, 0,
+		int n_dst = rte_crypto_mbuf_to_vec(op->sym->m_dst, oop_offset,
 				max_len, out_sgl->vec, QAT_SYM_SGL_MAX_NUMBER);
 
 		if (n_dst < 0 || n_dst > op->sym->m_dst->nb_segs) {
