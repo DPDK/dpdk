@@ -95,7 +95,7 @@ cpfl_fxp_create(struct rte_eth_dev *dev,
 
 	ret = cpfl_rule_process(itf, ad->ctlqp[cpq_id], ad->ctlqp[cpq_id + 1],
 				rim->rules, rim->rule_num, true);
-	if (ret < 0) {
+	if (ret != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "cpfl filter create flow fail");
 		rte_free(rim);

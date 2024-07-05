@@ -62,6 +62,17 @@ enum cpfl_cfg_pkt_error_code {
 	CPFL_CFG_PKT_ERR_EMAXCOL = 9    /* Max Hash Collision */
 };
 
+static const char * const cpfl_cfg_pkt_errormsg[] = {
+	[CPFL_CFG_PKT_ERR_ESRCH] = "Bad opcode",
+	[CPFL_CFG_PKT_ERR_EEXIST] = "The rule conflicts with already existed one",
+	[CPFL_CFG_PKT_ERR_ENOSPC] = "No space left in the table",
+	[CPFL_CFG_PKT_ERR_ERANGE] = "Parameter out of range",
+	[CPFL_CFG_PKT_ERR_ESBCOMP] = "Completion error",
+	[CPFL_CFG_PKT_ERR_ENOPIN] = "Entry cannot be pinned in cache",
+	[CPFL_CFG_PKT_ERR_ENOTFND] = "Entry does not exist",
+	[CPFL_CFG_PKT_ERR_EMAXCOL] = "Maximum Hash Collisions reached",
+};
+
 /* macros for creating context for rule descriptor */
 #define MEV_RULE_VSI_ID_S		0
 #define MEV_RULE_VSI_ID_M		\
