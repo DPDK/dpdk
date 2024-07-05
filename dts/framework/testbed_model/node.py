@@ -24,14 +24,7 @@ from framework.config import (
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
 
-from .cpu import (
-    Architecture,
-    LogicalCore,
-    LogicalCoreCount,
-    LogicalCoreList,
-    LogicalCoreListFilter,
-    lcore_filter,
-)
+from .cpu import Architecture, LogicalCore, LogicalCoreCount, LogicalCoreList, lcore_filter
 from .linux_session import LinuxSession
 from .os_session import OSSession
 from .port import Port
@@ -82,24 +75,8 @@ class Node(ABC):
         self._logger = get_dts_logger(self.name)
         self.main_session = create_session(self.config, self.name, self._logger)
         self.arch = Architecture(self.main_session.get_arch_info())
-
         self._logger.info(f"Connected to node: {self.name}")
-
         self._get_remote_cpus()
-        # filter the node lcores according to the test run configuration
-        self.lcores = LogicalCoreListFilter(
-            self.lcores, LogicalCoreList(self.config.lcores)
-        ).filter()
-
-        if LogicalCore(lcore=0, core=0, socket=0, node=0) in self.lcores:
-            self._logger.info(
-                """
-                WARNING: First core being used;
-                using the first core is considered risky and should only
-                be done by advanced users.
-                """
-            )
-
         self._other_sessions = []
         self._init_ports()
 
@@ -188,7 +165,7 @@ class Node(ABC):
     def _get_remote_cpus(self) -> None:
         """Scan CPUs in the remote OS and store a list of LogicalCores."""
         self._logger.info("Getting CPU information.")
-        self.lcores = self.main_session.get_remote_cpus(self.config.use_first_core)
+        self.lcores = self.main_session.get_remote_cpus()
 
     def _setup_hugepages(self) -> None:
         """Setup hugepages on the node.

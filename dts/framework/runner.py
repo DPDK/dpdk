@@ -277,7 +277,7 @@ class DTSRunner:
                 tg_node = TGNode(tg_node_config)
                 tg_nodes[tg_node.name] = tg_node
         except Exception as e:
-            failed_node = test_run_config.system_under_test_node.node_name
+            failed_node = test_run_config.system_under_test_node
             if sut_node:
                 failed_node = test_run_config.traffic_generator_node
             self._logger.exception(f"The Creation of node {failed_node} failed.")
@@ -315,9 +315,7 @@ class DTSRunner:
         Raises:
             ConfigurationError: If the DPDK sources or build is not set up from config or settings.
         """
-        self._logger.info(
-            f"Running test run with SUT '{test_run_config.system_under_test_node.node_name}'."
-        )
+        self._logger.info(f"Running test run with SUT '{test_run_config.system_under_test_node}'.")
         test_run_result.ports = sut_node.ports
         test_run_result.sut_info = sut_node.node_info
         try:

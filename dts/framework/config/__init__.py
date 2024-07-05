@@ -161,14 +161,22 @@ class NodeConfiguration(FrozenModel):
     password: str | None = None
     #: The operating system of the :class:`~framework.testbed_model.node.Node`.
     os: OS
-    #: A comma delimited list of logical cores to use when running DPDK. ```any```, an empty
-    #: string or omitting this field means use any core except for the first one. The first core
-    #: will only be used if explicitly set.
-    lcores: LogicalCores = ""
     #: An optional hugepage configuration.
     hugepages: HugepageConfiguration | None = Field(None, alias="hugepages_2mb")
     #: The ports that can be used in testing.
     ports: list[PortConfig] = Field(min_length=1)
+
+
+class DPDKConfiguration(FrozenModel):
+    """Configuration of the DPDK EAL parameters."""
+
+    #: A comma delimited list of logical cores to use when running DPDK. ```any```, an empty
+    #: string or omitting this field means use any core except for the first one. The first core
+    #: will only be used if explicitly set.
+    lcores: LogicalCores = ""
+
+    #: The number of memory channels to use when running DPDK.
+    memory_channels: int = 1
 
     @property
     def use_first_core(self) -> bool:
@@ -179,8 +187,8 @@ class NodeConfiguration(FrozenModel):
 class SutNodeConfiguration(NodeConfiguration):
     """:class:`~framework.testbed_model.sut_node.SutNode` specific configuration."""
 
-    #: The number of memory channels to use when running DPDK.
-    memory_channels: int = 1
+    #: The runtime configuration for DPDK.
+    dpdk_config: DPDKConfiguration
 
 
 class TGNodeConfiguration(NodeConfiguration):
@@ -405,15 +413,6 @@ class TestSuiteConfig(FrozenModel):
         return self
 
 
-class TestRunSUTNodeConfiguration(FrozenModel):
-    """The SUT node configuration of a test run."""
-
-    #: The SUT node to use in this test run.
-    node_name: str
-    #: The names of virtual devices to test.
-    vdevs: list[str] = Field(default_factory=list)
-
-
 class TestRunConfiguration(FrozenModel):
     """The configuration of a test run.
 
@@ -431,10 +430,12 @@ class TestRunConfiguration(FrozenModel):
     skip_smoke_tests: bool = False
     #: The names of test suites and/or test cases to execute.
     test_suites: list[TestSuiteConfig] = Field(min_length=1)
-    #: The SUT node configuration to use in this test run.
-    system_under_test_node: TestRunSUTNodeConfiguration
+    #: The SUT node name to use in this test run.
+    system_under_test_node: str
     #: The TG node name to use in this test run.
     traffic_generator_node: str
+    #: The names of virtual devices to test.
+    vdevs: list[str] = Field(default_factory=list)
     #: The seed to use for pseudo-random generation.
     random_seed: int | None = None
 
@@ -464,12 +465,12 @@ class Configuration(FrozenModel):
         test_runs_with_nodes = []
 
         for test_run_no, test_run in enumerate(self.test_runs):
-            sut_node_name = test_run.system_under_test_node.node_name
+            sut_node_name = test_run.system_under_test_node
             sut_node = next(filter(lambda n: n.name == sut_node_name, self.nodes), None)
 
             assert sut_node is not None, (
                 f"test_runs.{test_run_no}.sut_node_config.node_name "
-                f"({test_run.system_under_test_node.node_name}) is not a valid node name"
+                f"({test_run.system_under_test_node}) is not a valid node name"
             )
             assert isinstance(sut_node, SutNodeConfiguration), (
                 f"test_runs.{test_run_no}.sut_node_config.node_name is a valid node name, "

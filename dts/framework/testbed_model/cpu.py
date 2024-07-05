@@ -185,7 +185,6 @@ class LogicalCoreFilter(ABC):
 
         # sorting by core is needed in case hyperthreading is enabled
         self._lcores_to_filter = sorted(lcore_list, key=lambda x: x.core, reverse=not ascending)
-        self.filter()
 
     @abstractmethod
     def filter(self) -> list[LogicalCore]:
@@ -228,6 +227,8 @@ class LogicalCoreCountFilter(LogicalCoreFilter):
         Returns:
             The filtered cores.
         """
+        if 0 in self._lcores_to_filter:
+            self._lcores_to_filter = self._lcores_to_filter[1:]
         sockets_to_filter = self._filter_sockets(self._lcores_to_filter)
         filtered_lcores = []
         for socket_to_filter in sockets_to_filter:
@@ -356,6 +357,9 @@ class LogicalCoreListFilter(LogicalCoreFilter):
         Raises:
             ValueError: If the specified lcore filter specifier is invalid.
         """
+        if 0 not in self._filter_specifier.lcore_list:
+            self._lcores_to_filter = self._lcores_to_filter[1:]
+
         if not len(self._filter_specifier.lcore_list):
             return self._lcores_to_filter
 
