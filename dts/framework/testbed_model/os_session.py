@@ -445,7 +445,7 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def get_remote_cpus(self, use_first_core: bool) -> list[LogicalCore]:
+    def get_remote_cpus(self) -> list[LogicalCore]:
         r"""Get the list of :class:`~.cpu.LogicalCore`\s on the remote node.
 
         Args:

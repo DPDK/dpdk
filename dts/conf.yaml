@@ -26,12 +26,11 @@ test_runs:
     skip_smoke_tests: false # optional
     test_suites: # the following test suites will be run in their entirety
       - hello_world
+    vdevs: # optional; if removed, vdevs won't be used in the execution
+      - "crypto_openssl"
     # The machine running the DPDK test executable
-    system_under_test_node:
-      node_name: "SUT 1"
-      vdevs: # optional; if removed, vdevs won't be used in the test run
-        - "crypto_openssl"
-    # Traffic generator node to use for this test run
+    system_under_test_node: "SUT 1"
+    # Traffic generator node to use for this execution environment
     traffic_generator_node: "TG 1"
 nodes:
   # Define a system under test node, having two network ports physically
@@ -40,11 +39,6 @@ nodes:
     hostname: sut1.change.me.localhost
     user: dtsuser
     os: linux
-    lcores: "" # use all available logical cores (Skips first core)
-    memory_channels: 4 # tells DPDK to use 4 memory channels
-    hugepages_2mb: # optional; if removed, will use system hugepage configuration
-        number_of: 256
-        force_first_numa: false
     ports:
       # sets up the physical link between "SUT 1"@0000:00:08.0 and "TG 1"@0000:00:08.0
       - pci: "0000:00:08.0"
@@ -58,6 +52,12 @@ nodes:
         os_driver: i40e
         peer_node: "TG 1"
         peer_pci: "0000:00:08.1"
+    hugepages_2mb: # optional; if removed, will use system hugepage configuration
+        number_of: 256
+        force_first_numa: false
+    dpdk_config:
+        lcores: "" # use all available logical cores (Skips first core)
+        memory_channels: 4 # tells DPDK to use 4 memory channels
   # Define a Scapy traffic generator node, having two network ports
   # physically connected to the corresponding ports in SUT 1 (the peer node).
   - name: "TG 1"

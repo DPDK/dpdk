@@ -67,15 +67,12 @@ class LinuxSession(PosixSession):
     def _get_privileged_command(command: str) -> str:
         return f"sudo -- sh -c '{command}'"
 
-    def get_remote_cpus(self, use_first_core: bool) -> list[LogicalCore]:
+    def get_remote_cpus(self) -> list[LogicalCore]:
         """Overrides :meth:`~.os_session.OSSession.get_remote_cpus`."""
         cpu_info = self.send_command("lscpu -p=CPU,CORE,SOCKET,NODE|grep -v \\#").stdout
         lcores = []
         for cpu_line in cpu_info.splitlines():
             lcore, core, socket, node = map(int, cpu_line.split(","))
-            if core == 0 and socket == 0 and not use_first_core:
-                self._logger.info("Not using the first physical core.")
-                continue
             lcores.append(LogicalCore(lcore, core, socket, node))
         return lcores
 
