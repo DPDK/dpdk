@@ -138,12 +138,12 @@ class ScapyTrafficGeneratorConfig(TrafficGeneratorConfig):
 #: A union type discriminating traffic generators by the `type` field.
 TrafficGeneratorConfigTypes = Annotated[ScapyTrafficGeneratorConfig, Field(discriminator="type")]
 
-#: Comma-separated list of logical cores to use. An empty string means use all lcores.
+#: Comma-separated list of logical cores to use. An empty string or ```any``` means use all lcores.
 LogicalCores = Annotated[
     str,
     Field(
-        examples=["1,2,3,4,5,18-22", "10-15"],
-        pattern=r"^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$",
+        examples=["1,2,3,4,5,18-22", "10-15", "any"],
+        pattern=r"^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$|any",
     ),
 ]
 
@@ -161,14 +161,19 @@ class NodeConfiguration(FrozenModel):
     password: str | None = None
     #: The operating system of the :class:`~framework.testbed_model.node.Node`.
     os: OS
-    #: A comma delimited list of logical cores to use when running DPDK.
-    lcores: LogicalCores = "1"
-    #: If :data:`True`, the first logical core won't be used.
-    use_first_core: bool = False
+    #: A comma delimited list of logical cores to use when running DPDK. ```any```, an empty
+    #: string or omitting this field means use any core except for the first one. The first core
+    #: will only be used if explicitly set.
+    lcores: LogicalCores = ""
     #: An optional hugepage configuration.
     hugepages: HugepageConfiguration | None = Field(None, alias="hugepages_2mb")
     #: The ports that can be used in testing.
     ports: list[PortConfig] = Field(min_length=1)
+
+    @property
+    def use_first_core(self) -> bool:
+        """Returns :data:`True` if `lcores` explicitly selects the first core."""
+        return "0" in self.lcores
 
 
 class SutNodeConfiguration(NodeConfiguration):
