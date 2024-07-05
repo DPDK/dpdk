@@ -185,7 +185,7 @@ scheduler_session_size_get(struct scheduler_ctx *sched_ctx,
 		uint8_t session_type)
 {
 	uint8_t i = 0;
-	uint32_t max_priv_sess_size = 0;
+	uint32_t max_priv_sess_size = sizeof(struct scheduler_session_ctx);
 
 	/* Check what is the maximum private session size for all workers */
 	for (i = 0; i < sched_ctx->nb_workers; i++) {
