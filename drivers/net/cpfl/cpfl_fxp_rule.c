@@ -92,6 +92,14 @@ cpfl_receive_ctlq_msg(struct idpf_hw *hw, struct idpf_ctlq_info *cq, u16 num_q_m
 
 		/* TODO - process rx controlq message */
 		for (i = 0; i < num_q_msg; i++) {
+			ret = q_msg[i].status;
+			if (ret != CPFL_CFG_PKT_ERR_OK &&
+			    q_msg[i].opcode != cpfl_ctlq_sem_query_del_rule_hash_addr) {
+				PMD_INIT_LOG(ERR, "Failed to process rx_ctrlq msg: %s",
+					cpfl_cfg_pkt_errormsg[ret]);
+				return ret;
+			}
+
 			if (q_msg[i].data_len > 0)
 				dma = q_msg[i].ctx.indirect.payload;
 			else
