@@ -40,8 +40,7 @@ nodes:
     hostname: sut1.change.me.localhost
     user: dtsuser
     os: linux
-    lcores: "" # use all the available logical cores
-    use_first_core: false # tells DPDK to use any physical core
+    lcores: "" # use all available logical cores (Skips first core)
     memory_channels: 4 # tells DPDK to use 4 memory channels
     hugepages_2mb: # optional; if removed, will use system hugepage configuration
         number_of: 256

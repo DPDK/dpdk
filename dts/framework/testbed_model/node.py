@@ -91,6 +91,15 @@ class Node(ABC):
             self.lcores, LogicalCoreList(self.config.lcores)
         ).filter()
 
+        if LogicalCore(lcore=0, core=0, socket=0, node=0) in self.lcores:
+            self._logger.info(
+                """
+                WARNING: First core being used;
+                using the first core is considered risky and should only
+                be done by advanced users.
+                """
+            )
+
         self._other_sessions = []
         self._init_ports()
 
