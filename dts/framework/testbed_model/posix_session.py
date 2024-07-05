@@ -15,7 +15,6 @@ import re
 from collections.abc import Iterable
 from pathlib import Path, PurePath, PurePosixPath
 
-from framework.config import Architecture
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
 from framework.settings import SETTINGS
 from framework.utils import (
@@ -26,6 +25,7 @@ from framework.utils import (
     extract_tarball,
 )
 
+from .cpu import Architecture
 from .os_session import OSSession, OSSessionInfo
 
 

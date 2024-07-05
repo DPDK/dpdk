@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2025 Arm Limited
 
 """CPU core representation and filtering.
 
@@ -21,8 +22,25 @@ import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, ValuesView
 from dataclasses import dataclass
+from enum import auto, unique
 
-from framework.utils import expand_range
+from framework.utils import StrEnum, expand_range
+
+
+@unique
+class Architecture(StrEnum):
+    r"""The supported architectures of :class:`~framework.testbed_model.node.Node`\s."""
+
+    #:
+    i686 = auto()
+    #:
+    x86_64 = auto()
+    #:
+    x86_32 = auto()
+    #:
+    aarch64 = auto()
+    #:
+    ppc64le = auto()
 
 
 @dataclass(slots=True, frozen=True)

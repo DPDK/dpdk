@@ -334,7 +334,7 @@ class DTSResult(BaseResult):
     """Stores environment information and test results from a DTS run.
 
         * Test run level information, such as testbed, the test suite list and
-          DPDK build configuration (compiler, target OS and cpu),
+          DPDK build compiler configuration,
         * Test suite and test case results,
         * All errors that are caught and recorded during DTS execution.
 

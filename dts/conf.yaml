@@ -14,9 +14,6 @@ test_runs:
 
       # precompiled_build_dir: Commented out because `build_options` is defined.
       build_options:
-        arch: x86_64
-        os: linux
-        cpu: native
         # the combination of the following two makes CC="ccache gcc"
         compiler: gcc
         compiler_wrapper: ccache # Optional.

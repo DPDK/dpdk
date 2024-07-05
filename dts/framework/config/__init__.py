@@ -64,22 +64,6 @@ class FrozenModel(BaseModel):
 
 
 @unique
-class Architecture(StrEnum):
-    r"""The supported architectures of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    i686 = auto()
-    #:
-    x86_64 = auto()
-    #:
-    x86_32 = auto()
-    #:
-    arm64 = auto()
-    #:
-    ppc64le = auto()
-
-
-@unique
 class OS(StrEnum):
     r"""The supported operating systems of :class:`~framework.testbed_model.node.Node`\s."""
 
@@ -89,22 +73,6 @@ class OS(StrEnum):
     freebsd = auto()
     #:
     windows = auto()
-
-
-@unique
-class CPUType(StrEnum):
-    r"""The supported CPUs of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    native = auto()
-    #:
-    armv8a = auto()
-    #:
-    dpaa2 = auto()
-    #:
-    thunderx = auto()
-    #:
-    xgene1 = auto()
 
 
 @unique
@@ -351,22 +319,11 @@ class DPDKBuildOptionsConfiguration(FrozenModel):
     The build options used for building DPDK.
     """
 
-    #: The target architecture to build for.
-    arch: Architecture
-    #: The target OS to build for.
-    os: OS
-    #: The target CPU to build for.
-    cpu: CPUType
     #: The compiler executable to use.
     compiler: Compiler
     #: This string will be put in front of the compiler when executing the build. Useful for adding
     #: wrapper commands, such as ``ccache``.
     compiler_wrapper: str = ""
-
-    @cached_property
-    def name(self) -> str:
-        """The name of the compiler."""
-        return f"{self.arch}-{self.os}-{self.cpu}-{self.compiler}"
 
 
 class DPDKUncompiledBuildConfiguration(BaseDPDKBuildConfiguration):

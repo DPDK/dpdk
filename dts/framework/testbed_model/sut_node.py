@@ -400,7 +400,7 @@ class SutNode(Node):
             dpdk_build_config: A DPDK build configuration to test.
         """
         self._env_vars = {}
-        self._env_vars.update(self.main_session.get_dpdk_build_env_vars(dpdk_build_config.arch))
+        self._env_vars.update(self.main_session.get_dpdk_build_env_vars(self.arch))
         if compiler_wrapper := dpdk_build_config.compiler_wrapper:
             self._env_vars["CC"] = f"'{compiler_wrapper} {dpdk_build_config.compiler.name}'"
         else:
@@ -410,8 +410,10 @@ class SutNode(Node):
             dpdk_build_config.compiler.name
         )
 
+        build_dir_name = f"{self.arch}-{self.config.os}-{dpdk_build_config.compiler}"
+
         self._remote_dpdk_build_dir = self.main_session.join_remote_path(
-            self._remote_dpdk_tree_path, dpdk_build_config.name
+            self._remote_dpdk_tree_path, build_dir_name
         )
 
     def _build_dpdk(self) -> None:

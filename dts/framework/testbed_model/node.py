@@ -17,7 +17,6 @@ from abc import ABC
 
 from framework.config import (
     OS,
-    Architecture,
     DPDKBuildConfiguration,
     NodeConfiguration,
     TestRunConfiguration,
@@ -26,6 +25,7 @@ from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
 
 from .cpu import (
+    Architecture,
     LogicalCore,
     LogicalCoreCount,
     LogicalCoreList,

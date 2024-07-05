@@ -28,7 +28,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePath, PurePosixPath
 
-from framework.config import Architecture, NodeConfiguration
+from framework.config import NodeConfiguration
 from framework.logger import DTSLogger
 from framework.remote_session import (
     InteractiveRemoteSession,
@@ -40,7 +40,7 @@ from framework.remote_session.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs, TarCompressionFormat
 
-from .cpu import LogicalCore
+from .cpu import Architecture, LogicalCore
 from .port import Port
 
 
