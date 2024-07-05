@@ -191,8 +191,6 @@ class NodeConfiguration(FrozenModel):
     user: str
     #: The password of the user. The use of passwords is heavily discouraged, please use SSH keys.
     password: str | None = None
-    #: The architecture of the :class:`~framework.testbed_model.node.Node`.
-    arch: Architecture
     #: The operating system of the :class:`~framework.testbed_model.node.Node`.
     os: OS
     #: A comma delimited list of logical cores to use when running DPDK.
