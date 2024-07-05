@@ -508,6 +508,14 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def get_arch_info(self) -> str:
+        """Discover CPU architecture of the remote host.
+
+        Returns:
+            Remote host CPU architecture.
+        """
+
+    @abstractmethod
     def update_ports(self, ports: list[Port]) -> None:
         """Get additional information about ports from the operating system and update them.
 

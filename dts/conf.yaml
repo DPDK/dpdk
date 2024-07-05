@@ -42,7 +42,6 @@ nodes:
   - name: "SUT 1"
     hostname: sut1.change.me.localhost
     user: dtsuser
-    arch: x86_64
     os: linux
     lcores: "" # use all the available logical cores
     use_first_core: false # tells DPDK to use any physical core
@@ -68,7 +67,6 @@ nodes:
   - name: "TG 1"
     hostname: tg1.change.me.localhost
     user: dtsuser
-    arch: x86_64
     os: linux
     ports:
       # sets up the physical link between "TG 1"@0000:00:08.0 and "SUT 1"@0000:00:08.0
