@@ -684,7 +684,8 @@ mlx5_rxq_devx_obj_new(struct mlx5_rxq_priv *rxq)
 		DRV_LOG(ERR, "Failed to create CQ.");
 		goto error;
 	}
-	rxq_data->delay_drop = priv->config.std_delay_drop;
+	if (!rxq_data->shared || !rxq_ctrl->started)
+		rxq_data->delay_drop = priv->config.std_delay_drop;
 	/* Create RQ using DevX API. */
 	ret = mlx5_rxq_create_devx_rq_resources(rxq);
 	if (ret) {

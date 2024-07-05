@@ -1853,18 +1853,20 @@ mlx5_flow_rxq_dynf_set(struct rte_eth_dev *dev)
 		if (rxq == NULL || rxq->ctrl == NULL)
 			continue;
 		data = &rxq->ctrl->rxq;
-		if (!rte_flow_dynf_metadata_avail()) {
-			data->dynf_meta = 0;
-			data->flow_meta_mask = 0;
-			data->flow_meta_offset = -1;
-			data->flow_meta_port_mask = 0;
-		} else {
-			data->dynf_meta = 1;
-			data->flow_meta_mask = rte_flow_dynf_metadata_mask;
-			data->flow_meta_offset = rte_flow_dynf_metadata_offs;
-			data->flow_meta_port_mask = priv->sh->dv_meta_mask;
+		if (!data->shared || !rxq->ctrl->started) {
+			if (!rte_flow_dynf_metadata_avail()) {
+				data->dynf_meta = 0;
+				data->flow_meta_mask = 0;
+				data->flow_meta_offset = -1;
+				data->flow_meta_port_mask = 0;
+			} else {
+				data->dynf_meta = 1;
+				data->flow_meta_mask = rte_flow_dynf_metadata_mask;
+				data->flow_meta_offset = rte_flow_dynf_metadata_offs;
+				data->flow_meta_port_mask = priv->sh->dv_meta_mask;
+			}
+			data->mark_flag = mark_flag;
 		}
-		data->mark_flag = mark_flag;
 	}
 }
 

@@ -101,14 +101,14 @@ struct __rte_cache_aligned mlx5_rxq_data {
 	unsigned int shared:1; /* Shared RXQ. */
 	unsigned int delay_drop:1; /* Enable delay drop. */
 	unsigned int cqe_comp_layout:1; /* CQE Compression Layout*/
-	unsigned int cq_ci:24;
+	uint16_t port_id;
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
-	uint16_t port_id;
 	uint32_t elts_ci;
 	uint32_t rq_ci;
 	uint16_t consumed_strd; /* Number of consumed strides in WQE. */
 	uint32_t rq_pi;
+	uint32_t cq_ci:24;
 	uint16_t rq_repl_thresh; /* Threshold for buffer replenishment. */
 	uint32_t byte_mask;
 	union {
