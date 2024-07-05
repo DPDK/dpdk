@@ -541,7 +541,7 @@ telemetry_legacy_init(void)
 	int rc;
 
 	if (num_legacy_callbacks == 1) {
-		TMTY_LOG_LINE(WARNING, "No legacy callbacks, legacy socket not created");
+		TMTY_LOG_LINE(DEBUG, "No legacy callbacks, legacy socket not created");
 		return -1;
 	}
 

@@ -76,7 +76,6 @@ for details.
       [ 2003.202721] vfio-pci 0002:02:00.0: vfio_cap_init: hiding cap 0x14@0x98
       EAL: Probe PCI driver: net_cn10k (177d:a063) device: 0002:02:00.0 (socket 0)
       PMD: RoC Model: cn10k
-      EAL: No legacy callbacks, legacy socket not created
       testpmd: create a new mbuf pool <mb_pool_0>: n=155456, size=2176, socket=0
       testpmd: preferred mempool ops selected: cn10k_mempool_ops
       Configuring Port 0 (socket 0)

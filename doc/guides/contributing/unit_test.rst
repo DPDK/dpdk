@@ -98,7 +98,6 @@ The unit test app can accept test suite names via command line arguments::
    EAL: Detected static linkage of DPDK
    EAL: Multi-process socket /run/user/26934/dpdk/rte/mp_socket
    EAL: Selected IOVA mode 'VA'
-   TELEMETRY: No legacy callbacks, legacy socket not created
    APP: HPET is not enabled, using TSC as default timer
    RTE>>version_autotest
    Version string: 'DPDK 21.08.0-rc0'
