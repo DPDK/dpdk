@@ -438,7 +438,8 @@ void *mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos);
  *   - 0 on success.
  *
  */
-int mlx5_ipool_resize(struct mlx5_indexed_pool *pool, uint32_t num_entries);
+int mlx5_ipool_resize(struct mlx5_indexed_pool *pool, uint32_t num_entries,
+		      struct rte_flow_error *error);
 
 /**
  * This function allocates new empty Three-level table.

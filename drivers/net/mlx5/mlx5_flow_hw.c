@@ -14747,11 +14747,9 @@ flow_hw_table_resize(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  table, "shrinking table is not supported");
-	ret = mlx5_ipool_resize(table->flow, nb_flows);
+	ret = mlx5_ipool_resize(table->flow, nb_flows, error);
 	if (ret)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  table, "cannot resize flows pool");
+		return ret;
 	/*
 	 * A resizable matcher doesn't support rule update. In this case, the ipool
 	 * for the resource is not created and there is no need to resize it.
