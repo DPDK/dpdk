@@ -8228,7 +8228,8 @@ mlx5_hw_flow_tunnel_ip_check(uint64_t last_item, uint64_t *item_flags)
 	if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV4) {
 		tunnel = true;
 		*item_flags |= MLX5_FLOW_LAYER_IPIP;
-	} else if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6) {
+	} else if (last_item == MLX5_FLOW_LAYER_OUTER_L3_IPV6 ||
+		   last_item == MLX5_FLOW_ITEM_OUTER_IPV6_ROUTING_EXT) {
 		tunnel = true;
 		*item_flags |= MLX5_FLOW_LAYER_IPV6_ENCAP;
 	} else {
