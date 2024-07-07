@@ -7396,11 +7396,13 @@ flow_dv_validate_attributes(struct rte_eth_dev *dev,
 }
 
 static int
-validate_integrity_bits(const struct rte_flow_item_integrity *mask,
+validate_integrity_bits(const void *arg,
 			int64_t pattern_flags, uint64_t l3_flags,
 			uint64_t l4_flags, uint64_t ip4_flag,
 			struct rte_flow_error *error)
 {
+	const struct rte_flow_item_integrity *mask = arg;
+
 	if (mask->l3_ok && !(pattern_flags & l3_flags))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM,
