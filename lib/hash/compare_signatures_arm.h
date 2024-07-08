@@ -30,20 +30,21 @@ compare_signatures_dense(uint16_t *hitmask_buffer,
 	switch (sig_cmp_fn) {
 #if defined(__ARM_NEON) && RTE_HASH_BUCKET_ENTRIES <= 8
 	case RTE_HASH_COMPARE_NEON: {
-		uint16x8_t vmat, vsig, x;
-		int16x8_t shift = {0, 1, 2, 3, 4, 5, 6, 7};
-		uint16_t low, high;
+		uint16x8_t vmat, hit1, hit2;
+		const uint16x8_t mask = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
+		const uint16x8_t vsig = vld1q_dup_u16((uint16_t const *)&sig);
 
-		vsig = vld1q_dup_u16((uint16_t const *)&sig);
 		/* Compare all signatures in the primary bucket */
-		vmat = vceqq_u16(vsig, vld1q_u16((uint16_t const *)prim_bucket_sigs));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x0001)), shift);
-		low = (uint16_t)(vaddvq_u16(x));
+		vmat = vceqq_u16(vsig, vld1q_u16(prim_bucket_sigs));
+		hit1 = vandq_u16(vmat, mask);
+
 		/* Compare all signatures in the secondary bucket */
-		vmat = vceqq_u16(vsig, vld1q_u16((uint16_t const *)sec_bucket_sigs));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x0001)), shift);
-		high = (uint16_t)(vaddvq_u16(x));
-		*hitmask_buffer = low | high << RTE_HASH_BUCKET_ENTRIES;
+		vmat = vceqq_u16(vsig, vld1q_u16(sec_bucket_sigs));
+		hit2 = vandq_u16(vmat, mask);
+
+		hit2 = vshlq_n_u16(hit2, RTE_HASH_BUCKET_ENTRIES);
+		hit2 = vorrq_u16(hit1, hit2);
+		*hitmask_buffer = vaddvq_u16(hit2);
 		break;
 	}
 #endif
