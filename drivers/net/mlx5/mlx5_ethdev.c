@@ -154,6 +154,12 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 	ret = mlx5_proc_priv_init(dev);
 	if (ret)
 		return ret;
+	ret = mlx5_dev_set_mtu(dev, dev->data->mtu);
+	if (ret) {
+		DRV_LOG(ERR, "port %u failed to set MTU to %u", dev->data->port_id,
+			dev->data->mtu);
+		return ret;
+	}
 	return 0;
 }
 
