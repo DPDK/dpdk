@@ -33,6 +33,14 @@ RTE_LOG_REGISTER_DEFAULT(hash_logtype, INFO);
 
 #include "rte_cuckoo_hash.h"
 
+#if defined(__ARM_NEON)
+#include "compare_signatures_arm.h"
+#elif defined(__SSE2__)
+#include "compare_signatures_x86.h"
+#else
+#include "compare_signatures_generic.h"
+#endif
+
 /* Mask of all flags supported by this version */
 #define RTE_HASH_EXTRA_FLAGS_MASK (RTE_HASH_EXTRA_FLAGS_TRANS_MEM_SUPPORT | \
 				   RTE_HASH_EXTRA_FLAGS_MULTI_WRITER_ADD | \
@@ -1878,63 +1886,6 @@ rte_hash_free_key_with_position(const struct rte_hash *h,
 	/* Enqueue slot to cache/ring of free slots. */
 	return free_slot(h, key_idx);
 
-}
-
-static inline void
-compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
-			const struct rte_hash_bucket *prim_bkt,
-			const struct rte_hash_bucket *sec_bkt,
-			uint16_t sig,
-			enum rte_hash_sig_compare_function sig_cmp_fn)
-{
-	unsigned int i;
-
-	/* For match mask the first bit of every two bits indicates the match */
-	switch (sig_cmp_fn) {
-#if defined(__SSE2__) && RTE_HASH_BUCKET_ENTRIES <= 8
-	case RTE_HASH_COMPARE_SSE:
-		/* Compare all signatures in the bucket */
-		*prim_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
-				_mm_load_si128(
-					(__m128i const *)prim_bkt->sig_current),
-				_mm_set1_epi16(sig)));
-		/* Extract the even-index bits only */
-		*prim_hash_matches &= 0x5555;
-		/* Compare all signatures in the bucket */
-		*sec_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
-				_mm_load_si128(
-					(__m128i const *)sec_bkt->sig_current),
-				_mm_set1_epi16(sig)));
-		/* Extract the even-index bits only */
-		*sec_hash_matches &= 0x5555;
-		break;
-#elif defined(__ARM_NEON) && RTE_HASH_BUCKET_ENTRIES <= 8
-	case RTE_HASH_COMPARE_NEON: {
-		uint16x8_t vmat, vsig, x;
-		int16x8_t shift = {-15, -13, -11, -9, -7, -5, -3, -1};
-
-		vsig = vld1q_dup_u16((uint16_t const *)&sig);
-		/* Compare all signatures in the primary bucket */
-		vmat = vceqq_u16(vsig,
-			vld1q_u16((uint16_t const *)prim_bkt->sig_current));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		*prim_hash_matches = (uint32_t)(vaddvq_u16(x));
-		/* Compare all signatures in the secondary bucket */
-		vmat = vceqq_u16(vsig,
-			vld1q_u16((uint16_t const *)sec_bkt->sig_current));
-		x = vshlq_u16(vandq_u16(vmat, vdupq_n_u16(0x8000)), shift);
-		*sec_hash_matches = (uint32_t)(vaddvq_u16(x));
-		}
-		break;
-#endif
-	default:
-		for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-			*prim_hash_matches |=
-				((sig == prim_bkt->sig_current[i]) << (i << 1));
-			*sec_hash_matches |=
-				((sig == sec_bkt->sig_current[i]) << (i << 1));
-		}
-	}
 }
 
 static inline void
