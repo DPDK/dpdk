@@ -2399,7 +2399,7 @@ vhost_user_set_log_base(struct virtio_net **pdev,
 	 * mmap from 0 to workaround a hugepage mmap bug: mmap will
 	 * fail when offset is not page size aligned.
 	 */
-	addr = mmap(0, size + off, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off);
 	alignment = get_blk_size(fd);
 	close(fd);
 	if (addr == MAP_FAILED) {
