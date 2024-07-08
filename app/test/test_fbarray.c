@@ -781,6 +781,32 @@ static int test_lookahead_mask(void)
 	return TEST_SUCCESS;
 }
 
+static int test_lookbehind_mask(void)
+{
+	/*
+	 * There is a certain type of lookbehind behavior we want to test here,
+	 * namely masking of bits that were scanned with lookbehind but that we
+	 * know do not match our criteria. This is achieved in two steps:
+	 *
+	 *   0. Look for a big enough chunk of free space (say, 62 elements)
+	 *   1. Trigger lookbehind by breaking a run somewhere inside mask 2
+	 *      (indices 128-191)
+	 *   2. Fail lookbehind by breaking the run somewhere inside mask 1
+	 *      (indices 64-127)
+	 *   3. Ensure that we can still find free space in mask 1 afterwards
+	 */
+
+	/* break run on mask 2 */
+	rte_fbarray_set_used(&param.arr, 130);
+	/* break run on mask 1 */
+	rte_fbarray_set_used(&param.arr, 70);
+
+	/* start from 190, we expect to find free space at 8 */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_prev_n_free(&param.arr, 190, 62),
+			8, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite fbarray_test_suite = {
 	.suite_name = "fbarray autotest",
 	.setup = autotest_setup,
@@ -798,6 +824,7 @@ static struct unit_test_suite fbarray_test_suite = {
 		TEST_CASE_ST(lookbehind_test_setup, reset_array, test_lookbehind),
 		/* setup for these tests is more complex so do it in test func */
 		TEST_CASE_ST(NULL, reset_array, test_lookahead_mask),
+		TEST_CASE_ST(NULL, reset_array, test_lookbehind_mask),
 		TEST_CASES_END()
 	}
 };
