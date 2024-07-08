@@ -111,6 +111,14 @@ static int lookahead_test_setup(void)
 	return init_array();
 }
 
+static int lookbehind_test_setup(void)
+{
+	/* set index 63 as used */
+	param.start = 63;
+	param.end = 63;
+	return init_array();
+}
+
 static int test_invalid(void)
 {
 	struct rte_fbarray dummy;
@@ -732,6 +740,21 @@ static int test_lookahead(void)
 	return TEST_SUCCESS;
 }
 
+static int test_lookbehind(void)
+{
+	int ret, free_len = 2;
+
+	/* run regular test first */
+	ret = test_find();
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	/* test if we can find free chunk while crossing mask boundary */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_prev_n_free(&param.arr, param.start + 1, free_len),
+			param.start - free_len, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite fbarray_test_suite = {
 	.suite_name = "fbarray autotest",
 	.setup = autotest_setup,
@@ -746,6 +769,7 @@ static struct unit_test_suite fbarray_test_suite = {
 		TEST_CASE_ST(full_msk_test_setup, reset_array, test_find),
 		TEST_CASE_ST(empty_msk_test_setup, reset_array, test_empty),
 		TEST_CASE_ST(lookahead_test_setup, reset_array, test_lookahead),
+		TEST_CASE_ST(lookbehind_test_setup, reset_array, test_lookbehind),
 		TEST_CASES_END()
 	}
 };
