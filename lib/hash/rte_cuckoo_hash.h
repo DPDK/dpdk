@@ -134,14 +134,6 @@ struct rte_hash_key {
 	char key[0];
 };
 
-/* All different signature compare functions */
-enum rte_hash_sig_compare_function {
-	RTE_HASH_COMPARE_SCALAR = 0,
-	RTE_HASH_COMPARE_SSE,
-	RTE_HASH_COMPARE_NEON,
-	RTE_HASH_COMPARE_NUM
-};
-
 /** Bucket structure */
 struct __rte_cache_aligned rte_hash_bucket {
 	uint16_t sig_current[RTE_HASH_BUCKET_ENTRIES];
@@ -199,7 +191,7 @@ struct __rte_cache_aligned rte_hash {
 	/**< Custom function used to compare keys. */
 	enum cmp_jump_table_case cmp_jump_table_idx;
 	/**< Indicates which compare function to use. */
-	enum rte_hash_sig_compare_function sig_cmp_fn;
+	unsigned int sig_cmp_fn;
 	/**< Indicates which signature compare function to use. */
 	uint32_t bucket_bitmask;
 	/**< Bitmask for getting bucket index from hash signature. */

@@ -192,6 +192,9 @@ API Changes
 * mbuf: ``RTE_MARKER`` fields ``cacheline0`` and ``cacheline1``
   have been removed from ``struct rte_mbuf``.
 
+* hash: The ``rte_hash_sig_compare_function`` internal enum is not exposed
+  in the public API anymore.
+
 
 ABI Changes
 -----------
