@@ -239,7 +239,8 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 				 * as well, so skip that on next iteration.
 				 */
 				ignore_msk = ~((1ULL << need) - 1);
-				msk_idx = lookahead_idx;
+				/* outer loop will increment msk_idx so add 1 */
+				msk_idx = lookahead_idx - 1;
 				break;
 			}
 
