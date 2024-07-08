@@ -508,8 +508,13 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 			/* figure out how many consecutive bits we need here */
 			need = RTE_MIN(left, MASK_ALIGN);
 
-			for (s_idx = 0; s_idx < need - 1; s_idx++)
+			/* count number of shifts we performed */
+			for (s_idx = 0; s_idx < need - 1; s_idx++) {
 				lookbehind_msk &= lookbehind_msk << 1ULL;
+				/* did we lose the run yet? */
+				if ((lookbehind_msk & last_bit) == 0)
+					break;
+			}
 
 			/* if last bit is not set, we've lost the run */
 			if ((lookbehind_msk & last_bit) == 0) {
@@ -518,7 +523,7 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 				 * no runs in the space we've lookbehind-scanned
 				 * as well, so skip that on next iteration.
 				 */
-				ignore_msk = UINT64_MAX << need;
+				ignore_msk = ~(UINT64_MAX << (MASK_ALIGN - s_idx - 1));
 				/* outer loop will decrement msk_idx so add 1 */
 				msk_idx = lookbehind_idx + 1;
 				break;
