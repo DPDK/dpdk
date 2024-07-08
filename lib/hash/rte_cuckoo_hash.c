@@ -1898,22 +1898,41 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 	uint64_t hits = 0;
 	int32_t i;
 	int32_t ret;
-	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
-	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
 	struct rte_hash_bucket *cur_bkt, *next_bkt;
+
+#if DENSE_HASH_BULK_LOOKUP
+	const int hitmask_padding = 0;
+	uint16_t hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#else
+	const int hitmask_padding = 1;
+	uint32_t prim_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#endif
 
 	__hash_rw_reader_lock(h);
 
 	/* Compare signatures and prefetch key slot of first hit */
 	for (i = 0; i < num_keys; i++) {
-		compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+#if DENSE_HASH_BULK_LOOKUP
+		uint16_t *hitmask = &hitmask_buffer[i];
+		compare_signatures_dense(hitmask,
+			primary_bkt[i]->sig_current,
+			secondary_bkt[i]->sig_current,
+			sig[i], h->sig_cmp_fn);
+		const unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+		const unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+		compare_signatures_sparse(&prim_hitmask_buffer[i], &sec_hitmask_buffer[i],
 			primary_bkt[i], secondary_bkt[i],
 			sig[i], h->sig_cmp_fn);
+		const unsigned int prim_hitmask = prim_hitmask_buffer[i];
+		const unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
 
-		if (prim_hitmask[i]) {
+		if (prim_hitmask) {
 			uint32_t first_hit =
-					rte_ctz32(prim_hitmask[i])
-					>> 1;
+					rte_ctz32(prim_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[first_hit];
 			const struct rte_hash_key *key_slot =
@@ -1924,10 +1943,10 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 			continue;
 		}
 
-		if (sec_hitmask[i]) {
+		if (sec_hitmask) {
 			uint32_t first_hit =
-					rte_ctz32(sec_hitmask[i])
-					>> 1;
+					rte_ctz32(sec_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[first_hit];
 			const struct rte_hash_key *key_slot =
@@ -1941,10 +1960,18 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 	/* Compare keys, first hits in primary first */
 	for (i = 0; i < num_keys; i++) {
 		positions[i] = -ENOENT;
-		while (prim_hitmask[i]) {
+#if DENSE_HASH_BULK_LOOKUP
+		uint16_t *hitmask = &hitmask_buffer[i];
+		unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+		unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+		unsigned int prim_hitmask = prim_hitmask_buffer[i];
+		unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
+		while (prim_hitmask) {
 			uint32_t hit_index =
-					rte_ctz32(prim_hitmask[i])
-					>> 1;
+					rte_ctz32(prim_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[hit_index];
 			const struct rte_hash_key *key_slot =
@@ -1966,13 +1993,13 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 				positions[i] = key_idx - 1;
 				goto next_key;
 			}
-			prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+			prim_hitmask &= ~(1 << (hit_index << hitmask_padding));
 		}
 
-		while (sec_hitmask[i]) {
+		while (sec_hitmask) {
 			uint32_t hit_index =
-					rte_ctz32(sec_hitmask[i])
-					>> 1;
+					rte_ctz32(sec_hitmask)
+					>> hitmask_padding;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[hit_index];
 			const struct rte_hash_key *key_slot =
@@ -1995,7 +2022,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 				positions[i] = key_idx - 1;
 				goto next_key;
 			}
-			sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+			sec_hitmask &= ~(1 << (hit_index << hitmask_padding));
 		}
 next_key:
 		continue;
@@ -2045,10 +2072,19 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 	uint64_t hits = 0;
 	int32_t i;
 	int32_t ret;
-	uint32_t prim_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
-	uint32_t sec_hitmask[RTE_HASH_LOOKUP_BULK_MAX] = {0};
 	struct rte_hash_bucket *cur_bkt, *next_bkt;
 	uint32_t cnt_b, cnt_a;
+
+#if DENSE_HASH_BULK_LOOKUP
+	const int hitmask_padding = 0;
+	uint16_t hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	static_assert(sizeof(*hitmask_buffer)*8/2 == RTE_HASH_BUCKET_ENTRIES,
+	"The hitmask must be exactly wide enough to accept the whole hitmask chen it is dense");
+#else
+	const int hitmask_padding = 1;
+	uint32_t prim_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+	uint32_t sec_hitmask_buffer[RTE_HASH_LOOKUP_BULK_MAX] = {0};
+#endif
 
 	for (i = 0; i < num_keys; i++)
 		positions[i] = -ENOENT;
@@ -2063,14 +2099,26 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 		/* Compare signatures and prefetch key slot of first hit */
 		for (i = 0; i < num_keys; i++) {
-			compare_signatures(&prim_hitmask[i], &sec_hitmask[i],
+#if DENSE_HASH_BULK_LOOKUP
+			uint16_t *hitmask = &hitmask_buffer[i];
+			compare_signatures_dense(hitmask,
+				primary_bkt[i]->sig_current,
+				secondary_bkt[i]->sig_current,
+				sig[i], h->sig_cmp_fn);
+			const unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+			const unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+			compare_signatures_sparse(&prim_hitmask_buffer[i], &sec_hitmask_buffer[i],
 				primary_bkt[i], secondary_bkt[i],
 				sig[i], h->sig_cmp_fn);
+			const unsigned int prim_hitmask = prim_hitmask_buffer[i];
+			const unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
 
-			if (prim_hitmask[i]) {
+			if (prim_hitmask) {
 				uint32_t first_hit =
-						rte_ctz32(prim_hitmask[i])
-						>> 1;
+						rte_ctz32(prim_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 					primary_bkt[i]->key_idx[first_hit];
 				const struct rte_hash_key *key_slot =
@@ -2081,10 +2129,10 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 				continue;
 			}
 
-			if (sec_hitmask[i]) {
+			if (sec_hitmask) {
 				uint32_t first_hit =
-						rte_ctz32(sec_hitmask[i])
-						>> 1;
+						rte_ctz32(sec_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 					secondary_bkt[i]->key_idx[first_hit];
 				const struct rte_hash_key *key_slot =
@@ -2097,10 +2145,18 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 		/* Compare keys, first hits in primary first */
 		for (i = 0; i < num_keys; i++) {
-			while (prim_hitmask[i]) {
+#if DENSE_HASH_BULK_LOOKUP
+			uint16_t *hitmask = &hitmask_buffer[i];
+			unsigned int prim_hitmask = *(uint8_t *)(hitmask);
+			unsigned int sec_hitmask = *((uint8_t *)(hitmask)+1);
+#else
+			unsigned int prim_hitmask = prim_hitmask_buffer[i];
+			unsigned int sec_hitmask = sec_hitmask_buffer[i];
+#endif
+			while (prim_hitmask) {
 				uint32_t hit_index =
-						rte_ctz32(prim_hitmask[i])
-						>> 1;
+						rte_ctz32(prim_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 				rte_atomic_load_explicit(
 					&primary_bkt[i]->key_idx[hit_index],
@@ -2126,13 +2182,13 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					positions[i] = key_idx - 1;
 					goto next_key;
 				}
-				prim_hitmask[i] &= ~(3ULL << (hit_index << 1));
+				prim_hitmask &= ~(1 << (hit_index << hitmask_padding));
 			}
 
-			while (sec_hitmask[i]) {
+			while (sec_hitmask) {
 				uint32_t hit_index =
-						rte_ctz32(sec_hitmask[i])
-						>> 1;
+						rte_ctz32(sec_hitmask)
+						>> hitmask_padding;
 				uint32_t key_idx =
 				rte_atomic_load_explicit(
 					&secondary_bkt[i]->key_idx[hit_index],
@@ -2159,7 +2215,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					positions[i] = key_idx - 1;
 					goto next_key;
 				}
-				sec_hitmask[i] &= ~(3ULL << (hit_index << 1));
+				sec_hitmask &= ~(1 << (hit_index << hitmask_padding));
 			}
 next_key:
 			continue;

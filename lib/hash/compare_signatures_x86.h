@@ -13,8 +13,11 @@
 
 #include "rte_cuckoo_hash.h"
 
+/* x86's version uses a sparsely packed hitmask buffer: every other bit is padding. */
+#define DENSE_HASH_BULK_LOOKUP 0
+
 static inline void
-compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
+compare_signatures_sparse(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 			const struct rte_hash_bucket *prim_bkt,
 			const struct rte_hash_bucket *sec_bkt,
 			uint16_t sig,

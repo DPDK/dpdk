@@ -13,21 +13,26 @@
 
 #include "rte_cuckoo_hash.h"
 
+/*
+ * The generic version could use either a dense or sparsely packed hitmask buffer,
+ * but the dense one is slightly faster.
+ */
+#define DENSE_HASH_BULK_LOOKUP 1
+
 static inline void
-compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
-			const struct rte_hash_bucket *prim_bkt,
-			const struct rte_hash_bucket *sec_bkt,
+compare_signatures_dense(uint16_t *hitmask_buffer,
+			const uint16_t *prim_bucket_sigs,
+			const uint16_t *sec_bucket_sigs,
 			uint16_t sig,
 			__rte_unused enum rte_hash_sig_compare_function sig_cmp_fn)
 {
-	unsigned int i;
+	static_assert(sizeof(*hitmask_buffer) >= 2 * (RTE_HASH_BUCKET_ENTRIES / 8),
+			"hitmask_buffer must be wide enough to fit a dense hitmask");
 
-	/* For match mask the first bit of every two bits indicates the match */
-	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		*prim_hash_matches |=
-			((sig == prim_bkt->sig_current[i]) << (i << 1));
-		*sec_hash_matches |=
-			((sig == sec_bkt->sig_current[i]) << (i << 1));
+	/* For match mask every bits indicates the match */
+	for (unsigned int i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
+		*hitmask_buffer |= (sig == prim_bucket_sigs[i]) << i;
+		*hitmask_buffer |= ((sig == sec_bucket_sigs[i]) << i) << RTE_HASH_BUCKET_ENTRIES;
 	}
 }
 #endif /* COMPARE_SIGNATURES_GENERIC_H */
