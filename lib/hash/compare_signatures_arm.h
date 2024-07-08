@@ -48,6 +48,63 @@ compare_signatures_dense(uint16_t *hitmask_buffer,
 		break;
 	}
 #endif
+#if defined(RTE_HAS_SVE_ACLE)
+	case RTE_HASH_COMPARE_SVE: {
+		svuint16_t vsign, shift, sv_matches;
+		svbool_t pred, match, bucket_wide_pred;
+		int i = 0;
+		uint64_t vl = svcnth();
+
+		vsign = svdup_u16(sig);
+		shift = svindex_u16(0, 1);
+
+		if (vl >= 2 * RTE_HASH_BUCKET_ENTRIES && RTE_HASH_BUCKET_ENTRIES <= 8) {
+			svuint16_t primary_array_vect, secondary_array_vect;
+			bucket_wide_pred = svwhilelt_b16(0, RTE_HASH_BUCKET_ENTRIES);
+			primary_array_vect = svld1_u16(bucket_wide_pred, prim_bucket_sigs);
+			secondary_array_vect = svld1_u16(bucket_wide_pred, sec_bucket_sigs);
+
+			/* We merged the two vectors so we can do both comparisons at once */
+			primary_array_vect = svsplice_u16(bucket_wide_pred, primary_array_vect,
+				secondary_array_vect);
+			pred = svwhilelt_b16(0, 2*RTE_HASH_BUCKET_ENTRIES);
+
+			/* Compare all signatures in the buckets */
+			match = svcmpeq_u16(pred, vsign, primary_array_vect);
+			if (svptest_any(svptrue_b16(), match)) {
+				sv_matches = svdup_u16(1);
+				sv_matches = svlsl_u16_z(match, sv_matches, shift);
+				*hitmask_buffer = svorv_u16(svptrue_b16(), sv_matches);
+			}
+		} else {
+			do {
+				pred = svwhilelt_b16(i, RTE_HASH_BUCKET_ENTRIES);
+				uint16_t lower_half = 0;
+				uint16_t upper_half = 0;
+				/* Compare all signatures in the primary bucket */
+				match = svcmpeq_u16(pred, vsign, svld1_u16(pred,
+					&prim_bucket_sigs[i]));
+				if (svptest_any(svptrue_b16(), match)) {
+					sv_matches = svdup_u16(1);
+					sv_matches = svlsl_u16_z(match, sv_matches, shift);
+					lower_half = svorv_u16(svptrue_b16(), sv_matches);
+				}
+				/* Compare all signatures in the secondary bucket */
+				match = svcmpeq_u16(pred, vsign, svld1_u16(pred,
+					&sec_bucket_sigs[i]));
+				if (svptest_any(svptrue_b16(), match)) {
+					sv_matches = svdup_u16(1);
+					sv_matches = svlsl_u16_z(match, sv_matches, shift);
+					upper_half = svorv_u16(svptrue_b16(), sv_matches)
+						<< RTE_HASH_BUCKET_ENTRIES;
+				}
+				hitmask_buffer[i / 8] = upper_half | lower_half;
+				i += vl;
+			} while (i < RTE_HASH_BUCKET_ENTRIES);
+		}
+		break;
+	}
+#endif
 	default:
 		for (unsigned int i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
 			*hitmask_buffer |= (sig == prim_bucket_sigs[i]) << i;
