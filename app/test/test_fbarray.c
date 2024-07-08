@@ -103,6 +103,14 @@ static int empty_msk_test_setup(void)
 	return 0;
 }
 
+static int lookahead_test_setup(void)
+{
+	/* set index 64 as used */
+	param.start = 64;
+	param.end = 64;
+	return init_array();
+}
+
 static int test_invalid(void)
 {
 	struct rte_fbarray dummy;
@@ -709,6 +717,20 @@ static int test_empty(void)
 	return TEST_SUCCESS;
 }
 
+static int test_lookahead(void)
+{
+	int ret;
+
+	/* run regular test first */
+	ret = test_find();
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	/* test if we can find free chunk while not starting with 0 */
+	TEST_ASSERT_EQUAL(rte_fbarray_find_next_n_free(&param.arr, 1, param.start),
+			param.start + 1, "Free chunk index is wrong\n");
+	return TEST_SUCCESS;
+}
 
 static struct unit_test_suite fbarray_test_suite = {
 	.suite_name = "fbarray autotest",
@@ -723,6 +745,7 @@ static struct unit_test_suite fbarray_test_suite = {
 		TEST_CASE_ST(last_msk_test_setup, reset_array, test_find),
 		TEST_CASE_ST(full_msk_test_setup, reset_array, test_find),
 		TEST_CASE_ST(empty_msk_test_setup, reset_array, test_empty),
+		TEST_CASE_ST(lookahead_test_setup, reset_array, test_lookahead),
 		TEST_CASES_END()
 	}
 };
