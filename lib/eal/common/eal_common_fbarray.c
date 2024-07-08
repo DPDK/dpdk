@@ -216,6 +216,8 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 		for (lookahead_idx = msk_idx + 1; lookahead_idx < msk->n_masks;
 				lookahead_idx++) {
 			unsigned int s_idx, need;
+			uint64_t first_bit = 1;
+
 			lookahead_msk = msk->data[lookahead_idx];
 
 			/* if we're looking for free space, invert the mask */
@@ -225,17 +227,22 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 			/* figure out how many consecutive bits we need here */
 			need = RTE_MIN(left, MASK_ALIGN);
 
-			for (s_idx = 0; s_idx < need - 1; s_idx++)
+			/* count number of shifts we performed */
+			for (s_idx = 0; s_idx < need - 1; s_idx++) {
 				lookahead_msk &= lookahead_msk >> 1ULL;
+				/* did we lose the run yet? */
+				if ((lookahead_msk & first_bit) == 0)
+					break;
+			}
 
 			/* if first bit is not set, we've lost the run */
-			if ((lookahead_msk & 1) == 0) {
+			if ((lookahead_msk & first_bit) == 0) {
 				/*
 				 * we've scanned this far, so we know there are
 				 * no runs in the space we've lookahead-scanned
 				 * as well, so skip that on next iteration.
 				 */
-				ignore_msk = ~((1ULL << need) - 1);
+				ignore_msk = ~((1ULL << (s_idx + 1)) - 1);
 				/* outer loop will increment msk_idx so add 1 */
 				msk_idx = lookahead_idx - 1;
 				break;
