@@ -512,7 +512,8 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 				 * as well, so skip that on next iteration.
 				 */
 				ignore_msk = UINT64_MAX << need;
-				msk_idx = lookbehind_idx;
+				/* outer loop will decrement msk_idx so add 1 */
+				msk_idx = lookbehind_idx + 1;
 				break;
 			}
 
