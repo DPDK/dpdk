@@ -2745,13 +2745,16 @@ send_vhost_slave_message(struct virtio_net *dev,
 {
 	int ret;
 
-	if (ctx->msg.flags & VHOST_USER_NEED_REPLY)
+	if (ctx->msg.flags & VHOST_USER_NEED_REPLY) {
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 		rte_spinlock_lock(&dev->slave_req_lock);
+	}
 
 	ret = send_vhost_message(dev, dev->slave_req_fd, ctx);
-	if (ret < 0 && (ctx->msg.flags & VHOST_USER_NEED_REPLY))
+	if (ret < 0 && (ctx->msg.flags & VHOST_USER_NEED_REPLY)) {
 		rte_spinlock_unlock(&dev->slave_req_lock);
-
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	}
 	return ret;
 }
 
@@ -3081,6 +3084,7 @@ static int process_slave_message_reply(struct virtio_net *dev,
 
 out:
 	rte_spinlock_unlock(&dev->slave_req_lock);
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 	return ret;
 }
 

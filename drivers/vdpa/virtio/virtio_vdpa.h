@@ -87,6 +87,7 @@ struct virtio_vdpa_priv {
 	bool fd_args_stored;
 	bool restore;
 	bool is_notify_thread_started;
+	bool doorbell_relay;
 	bool log_started;
 	struct virtio_dev_name vf_name;
 	struct virtio_dev_name pf_name;

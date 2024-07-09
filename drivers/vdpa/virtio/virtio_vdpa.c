@@ -519,6 +519,7 @@ virtio_vdpa_dev_notifier(void *arg)
 
 	ret = rte_vhost_host_notifier_ctrl(priv->vid, RTE_VHOST_QUEUE_ALL, true);
 	if (ret) {
+		priv->doorbell_relay = true;
 		DRV_LOG(ERR, "%s vid %d dev notifier thread failed use relay ret:%d",
 			priv->vdev->device->name, priv->vid, ret);
 
@@ -1259,10 +1260,18 @@ virtio_vdpa_features_set(int vid)
 static int
 virtio_vdpa_dev_close_work(void *arg)
 {
-	int ret;
 	struct virtio_vdpa_priv *priv = arg;
+	void *status;
+	int ret;
 
 	DRV_LOG(INFO, "%s vfid %d dev close work of lcore:%d start", priv->vdev->device->name, priv->vf_id, priv->lcore_id);
+	if (priv->is_notify_thread_started && (!priv->doorbell_relay)) {
+		ret = pthread_join(priv->notify_tid, &status);
+		if (ret) {
+			DRV_LOG(ERR, "failed to join terminated notify_ctrl thread: %s", rte_strerror(ret));
+		}
+		priv->is_notify_thread_started = false;
+	}
 
 	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
 	if (ret) {
@@ -1413,6 +1422,7 @@ virtio_vdpa_dev_close(int vid)
 	uint16_t num_vr;
 	struct timeval start, end;
 	uint64_t time_used;
+	void *status;
 	int ret, i;
 
 	if (priv == NULL) {
@@ -1425,18 +1435,19 @@ virtio_vdpa_dev_close(int vid)
 		vdev->device->name, start.tv_sec, start.tv_usec);
 
 	if (priv->is_notify_thread_started) {
-		void *status;
 		ret = pthread_cancel(priv->notify_tid);
 		if (ret) {
 			DRV_LOG(ERR, "failed to cancel notify_ctrl thread: %s",rte_strerror(ret));
+			priv->is_notify_thread_started = false;
 		}
-		if (!ret) {
+
+		if ((!ret) && priv->doorbell_relay) {
 			ret = pthread_join(priv->notify_tid, &status);
 			if (ret) {
 				DRV_LOG(ERR, "failed to join terminated notify_ctrl thread: %s", rte_strerror(ret));
 			}
+			priv->is_notify_thread_started = false;
 		}
-		priv->is_notify_thread_started = false;
 	}
 
 	virtio_vdpa_doorbell_relay_disable(priv);
@@ -1561,6 +1572,7 @@ virtio_vdpa_dev_config(int vid)
 	DRV_LOG(INFO, "%s vfid %d launch all vq notifier thread",
 			priv->vdev->device->name, priv->vf_id);
 	priv->is_notify_thread_started = false;
+	priv->doorbell_relay = false;
 	ret = pthread_create(&priv->notify_tid, NULL, virtio_vdpa_dev_notifier,
 			priv);
 	if (ret) {
