@@ -1231,7 +1231,6 @@ static int mlx5dr_matcher_init_root(struct mlx5dr_matcher *matcher)
 	struct mlx5dv_flow_match_parameters *mask;
 	struct mlx5_flow_attr flow_attr = {0};
 	struct rte_flow_error rte_error;
-	struct rte_flow_item *item;
 	uint8_t match_criteria;
 	int ret;
 
@@ -1260,20 +1259,11 @@ static int mlx5dr_matcher_init_root(struct mlx5dr_matcher *matcher)
 		return rte_errno;
 	}
 
-	/* We need the port id in case of matching representor */
-	item = matcher->mt[0].items;
-	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		if (item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR ||
-		    item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) {
-			ret = flow_hw_get_port_id_from_ctx(ctx, &flow_attr.port_id);
-			if (ret) {
-				DR_LOG(ERR, "Failed to get port id for dev %s",
-				       ctx->ibv_ctx->device->name);
-				rte_errno = EINVAL;
-				return rte_errno;
-			}
-		}
-		++item;
+	ret = flow_hw_get_port_id_from_ctx(ctx, &flow_attr.port_id);
+	if (ret) {
+		DR_LOG(ERR, "Failed to get port id for dev %s", ctx->ibv_ctx->device->name);
+		rte_errno = EINVAL;
+		return rte_errno;
 	}
 
 	mask = simple_calloc(1, MLX5_ST_SZ_BYTES(fte_match_param) +

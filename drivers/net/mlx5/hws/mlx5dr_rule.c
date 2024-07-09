@@ -694,29 +694,19 @@ int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
 				    struct mlx5dr_rule_action rule_actions[])
 {
 	struct mlx5dv_flow_matcher *dv_matcher = rule->matcher->dv_matcher;
+	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 	struct mlx5dv_flow_match_parameters *value;
 	struct mlx5_flow_attr flow_attr = {0};
 	struct mlx5dv_flow_action_attr *attr;
-	const struct rte_flow_item *cur_item;
 	struct rte_flow_error error;
 	uint8_t match_criteria;
 	int ret;
 
-	/* We need the port id in case of matching representor */
-	cur_item = items;
-	while (cur_item->type != RTE_FLOW_ITEM_TYPE_END) {
-		if (cur_item->type == RTE_FLOW_ITEM_TYPE_PORT_REPRESENTOR ||
-		    cur_item->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) {
-			ret = flow_hw_get_port_id_from_ctx(rule->matcher->tbl->ctx,
-							   &flow_attr.port_id);
-			if (ret) {
-				DR_LOG(ERR, "Failed to get port id for dev %s",
-				       rule->matcher->tbl->ctx->ibv_ctx->device->name);
-				rte_errno = EINVAL;
-				return rte_errno;
-			}
-		}
-		++cur_item;
+	ret = flow_hw_get_port_id_from_ctx(ctx, &flow_attr.port_id);
+	if (ret) {
+		DR_LOG(ERR, "Failed to get port id for dev %s", ctx->ibv_ctx->device->name);
+		rte_errno = EINVAL;
+		return rte_errno;
 	}
 
 	attr = simple_calloc(num_actions, sizeof(*attr));
