@@ -133,6 +133,7 @@ struct mlx5dr_cmd_stc_modify_attr {
 		struct {
 			uint16_t vport_num;
 			uint16_t esw_owner_vhca_id;
+			uint8_t eswitch_owner_vhca_id_valid;
 		} vport;
 		struct {
 			struct mlx5dr_pool_chunk ste;

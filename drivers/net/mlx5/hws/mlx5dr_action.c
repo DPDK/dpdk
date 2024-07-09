@@ -680,6 +680,8 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
 			fixup_stc_attr->vport.esw_owner_vhca_id = ctx->caps->vhca_id;
 			fixup_stc_attr->vport.vport_num = ctx->caps->eswitch_manager_vport_number;
+			fixup_stc_attr->vport.eswitch_owner_vhca_id_valid =
+				ctx->caps->merged_eswitch;
 			use_fixup = true;
 		}
 		break;
@@ -700,6 +702,8 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
 			fixup_stc_attr->vport.vport_num = 0;
 			fixup_stc_attr->vport.esw_owner_vhca_id = stc_attr->vport.esw_owner_vhca_id;
+			fixup_stc_attr->vport.eswitch_owner_vhca_id_valid =
+				ctx->caps->merged_eswitch;
 		}
 		use_fixup = true;
 		break;
@@ -1428,6 +1432,14 @@ static int mlx5dr_action_create_dest_vport_hws(struct mlx5dr_context *ctx,
 	}
 	action->vport.vport_num = vport_caps.vport_num;
 	action->vport.esw_owner_vhca_id = vport_caps.esw_owner_vhca_id;
+
+	if (!ctx->caps->merged_eswitch &&
+	    action->vport.esw_owner_vhca_id != ctx->caps->vhca_id) {
+		DR_LOG(ERR, "Not merged-eswitch (%d), not allowed to send to other vhca_id (%d)",
+		       ctx->caps->vhca_id, action->vport.esw_owner_vhca_id);
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
 
 	ret = mlx5dr_action_create_stcs(action, NULL);
 	if (ret) {

@@ -515,7 +515,8 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 			 stc_attr->vport.vport_num);
 		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id,
 			 stc_attr->vport.esw_owner_vhca_id);
-		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id_valid, 1);
+		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id_valid,
+			 stc_attr->vport.eswitch_owner_vhca_id_valid);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_DROP:
 	case MLX5_IFC_STC_ACTION_TYPE_NOP:
