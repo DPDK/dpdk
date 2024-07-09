@@ -1820,6 +1820,7 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 
 		action[i].modify_header.max_num_of_actions = num_of_actions;
 		action[i].modify_header.num_of_actions = num_of_actions;
+		action[i].modify_header.num_of_patterns = num_of_hdrs;
 		action[i].modify_header.arg_obj = arg_obj;
 		action[i].modify_header.pat_obj = pat_obj;
 		action[i].modify_header.require_reparse =
