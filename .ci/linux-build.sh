@@ -148,8 +148,6 @@ if [ "$ABI_CHECKS" = "true" ]; then
 
     export PATH=$(pwd)/libabigail/bin:$PATH
 
-    REF_GIT_REPO=${REF_GIT_REPO:-https://dpdk.org/git/dpdk}
-
     if [ "$(cat reference/VERSION 2>/dev/null)" != "$REF_GIT_TAG" ]; then
         rm -rf reference
     fi

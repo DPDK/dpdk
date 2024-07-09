@@ -9,7 +9,30 @@ defaults:
   run:
     shell: bash --noprofile --norc -exo pipefail {0}
 
+env:
+  REF_GIT_BRANCH: main
+  REF_GIT_REPO: https://dpdk.org/git/dpdk
+  REF_GIT_TAG: none
+
 jobs:
+  checkpatch:
+    if: github.repository != 'DPDK/dpdk'
+    name: Check patches
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check patches
+      run: |
+        git remote add upstream ${{ env.REF_GIT_REPO }}
+        git fetch upstream ${{ env.REF_GIT_BRANCH }}
+        failed=
+        devtools/check-doc-vs-code.sh upstream/${{ env.REF_GIT_BRANCH }} || failed=true
+        devtools/check-meson.py || failed=true
+        devtools/check-symbol-maps.sh || failed=true
+        [ -z "$failed" ]
   ubuntu-vm-builds:
     name: ${{ join(matrix.config.*, '-') }}
     runs-on: ${{ matrix.config.os }}
@@ -27,7 +50,6 @@ jobs:
       MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
-      REF_GIT_TAG: none
       RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
       STDATOMIC: ${{ contains(matrix.config.checks, 'stdatomic') }}
