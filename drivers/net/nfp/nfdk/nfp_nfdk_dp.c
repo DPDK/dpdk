@@ -6,7 +6,6 @@
 #include "nfp_nfdk.h"
 
 #include <bus_pci_driver.h>
-#include <nfp_platform.h>
 #include <rte_malloc.h>
 
 #include "../flower/nfp_flower.h"
@@ -14,38 +13,6 @@
 #include "../nfp_net_meta.h"
 
 #define NFDK_TX_DESC_GATHER_MAX         17
-
-/* Set TX CSUM offload flags in TX descriptor of nfdk */
-static uint64_t
-nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
-		struct rte_mbuf *mb,
-		uint64_t flags)
-{
-	uint64_t ol_flags;
-	struct nfp_net_hw *hw = txq->hw;
-
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_TXCSUM) == 0)
-		return flags;
-
-	ol_flags = mb->ol_flags;
-
-	/* Set L4 csum offload if TSO/UFO enabled. */
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0 ||
-			(ol_flags & RTE_MBUF_F_TX_UDP_SEG) != 0)
-		flags |= NFDK_DESC_TX_L4_CSUM;
-
-	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
-		flags |= NFDK_DESC_TX_ENCAP;
-
-	/* IPv6 does not need checksum */
-	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
-		flags |= NFDK_DESC_TX_L3_CSUM;
-
-	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != 0)
-		flags |= NFDK_DESC_TX_L4_CSUM;
-
-	return flags;
-}
 
 /* Set TX descriptor for TSO of nfdk */
 static uint64_t
@@ -98,14 +65,6 @@ nfp_flower_nfdk_pkt_add_metadata(struct rte_mbuf *mbuf,
 	*(rte_be32_t *)meta_offset = rte_cpu_to_be_32(port_id);
 
 	return FLOWER_PKT_DATA_OFFSET;
-}
-
-static inline uint16_t
-nfp_net_nfdk_headlen_to_segs(uint16_t headlen)
-{
-	/* First descriptor fits less data, so adjust for that */
-	return DIV_ROUND_UP(headlen + NFDK_TX_MAX_DATA_PER_DESC - NFDK_TX_MAX_DATA_PER_HEAD,
-			NFDK_TX_MAX_DATA_PER_DESC);
 }
 
 static inline void
@@ -170,7 +129,7 @@ close_block:
 	return nop_slots;
 }
 
-static int
+int
 nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 		struct nfp_net_txq *txq,
 		uint64_t *metadata)
