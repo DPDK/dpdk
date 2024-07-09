@@ -134,6 +134,7 @@ EOF
 %{dst_prefix}/bin/vhostmgmt
 %{dst_prefix}/bin/dpdk-vfe-vdpa
 %{dst_prefix}/bin/dpdk-virtio-ha
+%{dst_prefix}/bin/check_pf_reset.sh
 %{dst_prefix}/%{dst_lib}/*.so.*
 %{dst_prefix}/%{dst_lib}/dpdk/*/*.so.*
 /etc/ld.so.conf.d/%{name}-%{_arch}.conf

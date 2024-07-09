@@ -192,6 +192,7 @@ override_dh_auto_install-arch:
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vhostmgmt
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-vfe-vdpa
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-virtio-ha
+	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/check_pf_reset.sh
 	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd.service
 	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd-ha.service
 	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so.*
