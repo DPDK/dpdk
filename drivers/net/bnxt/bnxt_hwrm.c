@@ -1307,6 +1307,8 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
+	bp->vnic_cap_flags = 0;
+
 	flags = rte_le_to_cpu_32(resp->flags);
 
 	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_COS_ASSIGNMENT_CAP) {
@@ -1444,7 +1446,8 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 
 	req.async_event_fwd[2] |=
 		rte_cpu_to_le_32(ASYNC_CMPL_EVENT_ID_ECHO_REQUEST |
-				 ASYNC_CMPL_EVENT_ID_ERROR_REPORT);
+				 ASYNC_CMPL_EVENT_ID_ERROR_REPORT |
+				 ASYNC_CMPL_EVENT_ID_RSS_CHANGE);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 

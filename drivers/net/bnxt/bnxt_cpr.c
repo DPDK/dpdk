@@ -294,6 +294,12 @@ void bnxt_handle_async_event(struct bnxt *bp,
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_FLR:
 		bnxt_process_vf_flr(bp, data1);
 		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RSS_CHANGE:
+		/* RSS change notification, re-read QCAPS */
+		PMD_DRV_LOG_LINE(INFO, "Async event: RSS change event [%#x, %#x]",
+				 data1, data2);
+		bnxt_hwrm_vnic_qcaps(bp);
+		break;
 	default:
 		PMD_DRV_LOG_LINE(DEBUG, "handle_async_event id = 0x%x", event_id);
 		break;
