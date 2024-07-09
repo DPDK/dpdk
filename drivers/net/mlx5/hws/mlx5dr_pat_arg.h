@@ -31,7 +31,6 @@ struct mlx5dr_pat_cached_pattern {
 	enum mlx5dr_action_type type;
 	struct {
 		struct mlx5dr_devx_obj *pattern_obj;
-		struct dr_icm_chunk *chunk;
 		uint8_t *data;
 		uint16_t num_of_actions;
 	} mh_data;
