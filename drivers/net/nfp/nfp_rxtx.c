@@ -17,6 +17,7 @@
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
 #include "nfp_net_meta.h"
+#include "nfp_rxtx_vec.h"
 
 /*
  * The bit format and map of nfp packet type for rxd.offload_info in Rx descriptor.
@@ -866,4 +867,13 @@ nfp_net_tx_queue_info_get(struct rte_eth_dev *dev,
 	nfp_net_infos_get(dev, &dev_info);
 	info->conf.offloads = dev_info.tx_offload_capa &
 			dev->data->dev_conf.txmode.offloads;
+}
+
+void
+nfp_net_recv_pkts_set(struct rte_eth_dev *eth_dev)
+{
+	if (nfp_net_get_avx2_supported())
+		eth_dev->rx_pkt_burst = nfp_net_vec_avx2_recv_pkts;
+	else
+		eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
 }

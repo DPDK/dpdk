@@ -80,6 +80,7 @@ nfp_net_meta_parse_single(uint8_t *meta_base,
 		rte_be32_t meta_header,
 		struct nfp_net_meta_parsed *meta)
 {
+	meta->flags = 0;
 	meta->flags |= (1 << NFP_NET_META_HASH);
 	meta->hash_type = rte_be_to_cpu_32(meta_header);
 	meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)(meta_base + 4));

@@ -10,4 +10,8 @@
 
 bool nfp_net_get_avx2_supported(void);
 
+uint16_t nfp_net_vec_avx2_recv_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts);
+
 #endif /* __NFP_RXTX_VEC_AVX2_H__ */

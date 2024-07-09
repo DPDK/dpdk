@@ -245,7 +245,7 @@ nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw,
 
 	eth_dev->dev_ops = &nfp_netvf_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
-	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
+	nfp_net_recv_pkts_set(eth_dev);
 }
 
 static int
