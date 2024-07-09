@@ -30,7 +30,6 @@ struct mlx5dr_pattern_cache {
 struct mlx5dr_pattern_cache_item {
 	struct {
 		struct mlx5dr_devx_obj *pattern_obj;
-		struct dr_icm_chunk *chunk;
 		uint8_t *data;
 		uint16_t num_of_actions;
 	} mh_data;
