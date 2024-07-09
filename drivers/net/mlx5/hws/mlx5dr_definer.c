@@ -4041,14 +4041,17 @@ mlx5dr_definer_matcher_range_init(struct mlx5dr_context *ctx,
 
 	/* Create optional range definers */
 	for (i = 0; i < matcher->num_of_mt; i++) {
-		if (!mt[i].fcr_sz)
-			continue;
-
 		/* All must use range if requested */
-		if (i && !mt[i - 1].range_definer) {
+		bool is_range = !!mt[i].fcr_sz;
+		bool has_range = matcher->flags & MLX5DR_MATCHER_FLAGS_RANGE_DEFINER;
+
+		if (i && ((is_range && !has_range) || (!is_range && has_range))) {
 			DR_LOG(ERR, "Using range and non range templates is not allowed");
 			goto free_definers;
 		}
+
+		if (!mt[i].fcr_sz)
+			continue;
 
 		matcher->flags |= MLX5DR_MATCHER_FLAGS_RANGE_DEFINER;
 		/* Create definer without fcr binding, already binded */
