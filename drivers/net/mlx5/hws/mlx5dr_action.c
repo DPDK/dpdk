@@ -2968,6 +2968,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_ASO_CT:
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
 	case MLX5DR_ACTION_TYP_REMOVE_HEADER:
+	case MLX5DR_ACTION_TYP_VPORT:
 		mlx5dr_action_destroy_stcs(action);
 		break;
 	case MLX5DR_ACTION_TYP_DEST_ROOT:
@@ -3027,6 +3028,9 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 		break;
 	case MLX5DR_ACTION_TYP_LAST:
 		break;
+	default:
+		DR_LOG(ERR, "Not supported action type: %d", action->type);
+		assert(false);
 	}
 }
 
