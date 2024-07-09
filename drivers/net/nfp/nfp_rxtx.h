@@ -245,5 +245,8 @@ void nfp_net_tx_queue_info_get(struct rte_eth_dev *dev,
 		uint16_t queue_id,
 		struct rte_eth_txq_info *qinfo);
 void nfp_net_recv_pkts_set(struct rte_eth_dev *eth_dev);
+void nfp_net_parse_ptype(struct nfp_net_rxq *rxq,
+		struct nfp_net_rx_desc *rxds,
+		struct rte_mbuf *mb);
 
 #endif /* __NFP_RXTX_H__ */

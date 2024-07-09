@@ -350,7 +350,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
  * @param mb
  *   Mbuf to set the packet type.
  */
-static void
+void
 nfp_net_parse_ptype(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf *mb)

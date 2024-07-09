@@ -111,6 +111,8 @@ nfp_vec_avx2_recv_set_rxpkt1(struct nfp_net_rxq *rxq,
 
 	nfp_net_meta_parse(rxds, rxq, hw, rx_pkt, &meta);
 
+	nfp_net_parse_ptype(rxq, rxds, rx_pkt);
+
 	/* Checking the checksum flag */
 	nfp_net_rx_cksum(rxq, rxds, rx_pkt);
 }

@@ -1455,7 +1455,7 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		RTE_PTYPE_INNER_L4_SCTP,
 	};
 
-	if (dev->rx_pkt_burst != nfp_net_recv_pkts)
+	if (dev->rx_pkt_burst == NULL)
 		return NULL;
 
 	net_hw = dev->data->dev_private;
