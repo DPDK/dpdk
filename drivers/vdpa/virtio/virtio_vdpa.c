@@ -2543,7 +2543,9 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	memset(priv->state_mz_remote->addr, 0, mz_len);
 
 	if (priv->restore) {
-		virtio_vdpa_save_state(priv);
+		ret = virtio_vdpa_save_state(priv);
+		if (ret)
+			goto error;
 	}
 
 	/* After restart from HA and interrupts alloc might cause traffic stop,

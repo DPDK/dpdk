@@ -355,6 +355,8 @@ virtio_pci_dev_state_compare(struct virtio_pci_dev *vpdev, void *state, uint32_t
 			case VIRTIO_DEV_PCI_COMMON_CFG:
 				f_hdr_tmp = virtio_pci_dev_state_filed_find(f_hdr_remote, field_cnt_remote,
 									    f_hdr->type, state_remote, state_size_remote);
+				if (!f_hdr_tmp)
+					return false;
 				common_cfg = (struct virtio_pci_state_common_cfg *)(f_hdr + 1);
 				common_cfg_remote = (struct virtio_pci_state_common_cfg *)(f_hdr_tmp + 1);
 				if((common_cfg->device_feature != common_cfg_remote->device_feature) ||
@@ -372,6 +374,8 @@ virtio_pci_dev_state_compare(struct virtio_pci_dev *vpdev, void *state, uint32_t
 			case VIRTIO_DEV_CFG_SPACE:
 				f_hdr_tmp = virtio_pci_dev_state_filed_find(f_hdr_remote, field_cnt_remote,
 									    f_hdr->type, state_remote, state_size_remote);
+				if (!f_hdr_tmp)
+					return false;
 				if (hw->virtio_dev_sp_ops->dev_cfg_compare) {
 					if (hw->virtio_dev_sp_ops->dev_cfg_compare(hw, f_hdr, f_hdr_tmp))
 						break;
@@ -396,6 +400,8 @@ virtio_pci_dev_state_compare(struct virtio_pci_dev *vpdev, void *state, uint32_t
 				f_hdr_tmp = virtio_pci_dev_state_queue_filed_find(f_hdr_remote, field_cnt_remote,
 									state_remote, state_size_remote,
 									rte_le_to_cpu_16(tmp_q_cfg->queue_index));
+				if (!f_hdr_tmp)
+					return false;
 				if(memcmp(f_hdr, f_hdr_tmp, f_hdr->size + sizeof(*f_hdr))) {
 					PMD_DUMP_LOG(INFO, "VIRTIO_DEV_QUEUE_CFG, local size:%d bytes \n", f_hdr->size);
 					virtio_pci_dev_q_cfg_dump(tmp_q_cfg);
