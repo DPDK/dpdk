@@ -11,6 +11,8 @@
 #include "../flower/nfp_flower.h"
 #include "../nfp_logs.h"
 #include "../nfp_net_meta.h"
+#include "../nfp_rxtx_vec.h"
+#include "nfp_nfdk_vec.h"
 
 #define NFDK_TX_DESC_GATHER_MAX         17
 
@@ -511,6 +513,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->hw = hw;
 	txq->hw_priv = dev->process_private;
+	txq->simple_always = true;
 
 	/*
 	 * Telling the HW about the physical address of the TX ring and number
@@ -520,4 +523,13 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	nn_cfg_writeb(&hw->super, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(txq->tx_count));
 
 	return 0;
+}
+
+void
+nfp_net_nfdk_xmit_pkts_set(struct rte_eth_dev *eth_dev)
+{
+	if (nfp_net_get_avx2_supported())
+		eth_dev->tx_pkt_burst = nfp_net_nfdk_vec_avx2_xmit_pkts;
+	else
+		eth_dev->tx_pkt_burst = nfp_net_nfdk_xmit_pkts;
 }

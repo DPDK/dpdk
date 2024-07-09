@@ -69,9 +69,12 @@ struct __rte_aligned(64) nfp_net_txq {
 	/** Used by NFDk only */
 	uint16_t data_pending;
 
+	/** Used by NFDk vector xmit only */
+	bool simple_always;
+
 	/**
 	 * At this point 58 bytes have been used for all the fields in the
-	 * TX critical path. We have room for 6 bytes and still all placed
+	 * TX critical path. We have room for 5 bytes and still all placed
 	 * in a cache line.
 	 */
 	uint64_t dma;

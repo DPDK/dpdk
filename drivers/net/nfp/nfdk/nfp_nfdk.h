@@ -222,5 +222,6 @@ int nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 int nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 		struct nfp_net_txq *txq,
 		uint64_t *metadata);
+void nfp_net_nfdk_xmit_pkts_set(struct rte_eth_dev *eth_dev);
 
 #endif /* __NFP_NFDK_H__ */

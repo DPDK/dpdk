@@ -28,6 +28,7 @@
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
 #include "nfp_net_flow.h"
+#include "nfp_rxtx_vec.h"
 
 /* 64-bit per app capabilities */
 #define NFP_NET_APP_CAP_SP_INDIFF       RTE_BIT64(0) /* Indifferent to port speed */
@@ -964,7 +965,7 @@ nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw,
 	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		eth_dev->tx_pkt_burst = nfp_net_nfd3_xmit_pkts;
 	else
-		eth_dev->tx_pkt_burst = nfp_net_nfdk_xmit_pkts;
+		nfp_net_nfdk_xmit_pkts_set(eth_dev);
 
 	eth_dev->dev_ops = &nfp_net_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;

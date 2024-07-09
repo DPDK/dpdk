@@ -14,6 +14,7 @@
 
 #include "nfp_logs.h"
 #include "nfp_net_common.h"
+#include "nfp_rxtx_vec.h"
 
 #define NFP_VF_DRIVER_NAME net_nfp_vf
 
@@ -240,7 +241,7 @@ nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw,
 	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		eth_dev->tx_pkt_burst = nfp_net_nfd3_xmit_pkts;
 	else
-		eth_dev->tx_pkt_burst = nfp_net_nfdk_xmit_pkts;
+		nfp_net_nfdk_xmit_pkts_set(eth_dev);
 
 	eth_dev->dev_ops = &nfp_netvf_eth_dev_ops;
 	eth_dev->rx_queue_count = nfp_net_rx_queue_count;
