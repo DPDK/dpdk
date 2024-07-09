@@ -315,21 +315,27 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 	struct mlx5dr_action *action;
 	uint32_t packet_len_field;
 	uint8_t *action_ptr;
-	uint32_t ttl_field;
+	uint32_t tos_field;
+	uint32_t tos_size;
 	uint32_t src_addr;
 	uint32_t dst_addr;
 	bool is_v4_to_v6;
+	uint32_t ecn;
 
 	is_v4_to_v6 = attr->flags & MLX5DR_ACTION_NAT64_V4_TO_V6;
 
 	if (is_v4_to_v6) {
 		packet_len_field = MLX5_MODI_OUT_IPV4_TOTAL_LEN;
-		ttl_field = MLX5_MODI_OUT_IPV4_TTL;
+		tos_field = MLX5_MODI_OUT_IP_DSCP;
+		tos_size = 6;
+		ecn = MLX5_MODI_OUT_IP_ECN;
 		src_addr = MLX5_MODI_OUT_SIPV4;
 		dst_addr = MLX5_MODI_OUT_DIPV4;
 	} else {
 		packet_len_field = MLX5_MODI_OUT_IPV6_PAYLOAD_LEN;
-		ttl_field = MLX5_MODI_OUT_IPV6_HOPLIMIT;
+		tos_field = MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS;
+		tos_size = 8;
+		ecn = 0;
 		src_addr = MLX5_MODI_OUT_SIPV6_31_0;
 		dst_addr = MLX5_MODI_OUT_DIPV6_31_0;
 	}
@@ -352,7 +358,7 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 	}
 
 	/* | 8 bit - 8 bit     - 16 bit     |
-	 * | ttl   - protocol  - packet-len |
+	 * | TOS   - protocol  - packet-len |
 	 */
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
 	MLX5_SET(copy_action_in, action_ptr, src_field, packet_len_field);
@@ -377,12 +383,25 @@ mlx5dr_action_create_nat64_copy_state(struct mlx5dr_context *ctx,
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
-	MLX5_SET(copy_action_in, action_ptr, src_field, ttl_field);
+	MLX5_SET(copy_action_in, action_ptr, src_field, tos_field);
 	MLX5_SET(copy_action_in, action_ptr, dst_field,
 		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
 	MLX5_SET(copy_action_in, action_ptr, dst_offset, 24);
-	MLX5_SET(copy_action_in, action_ptr, length, 8);
+	MLX5_SET(copy_action_in, action_ptr, length, tos_size);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+	/* in ipv4 TOS = {dscp (6bits) - ecn (2bits) }*/
+	if (ecn) {
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
+		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
+		MLX5_SET(copy_action_in, action_ptr, src_field, ecn);
+		MLX5_SET(copy_action_in, action_ptr, dst_field,
+			attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
+		MLX5_SET(copy_action_in, action_ptr, dst_offset, 24 + tos_size);
+		MLX5_SET(copy_action_in, action_ptr, length, MLX5DR_ACTION_NAT64_ECN_SIZE);
+		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+	}
 
 	/* set sip and dip to 0, in order to have new csum */
 	mlx5dr_action_create_nat64_zero_all_addr(&action_ptr, is_v4_to_v6);
@@ -543,10 +562,13 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 	uint32_t packet_len_field;
 	uint32_t packet_len_add;
 	uint8_t *action_ptr;
+	uint32_t tos_field;
 	uint32_t ttl_field;
+	uint32_t tos_size;
 	uint32_t src_addr;
 	uint32_t dst_addr;
 	bool is_v4_to_v6;
+	uint32_t ecn;
 
 	is_v4_to_v6 = attr->flags & MLX5DR_ACTION_NAT64_V4_TO_V6;
 
@@ -557,6 +579,9 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 		ttl_field = MLX5_MODI_OUT_IPV6_HOPLIMIT;
 		src_addr = MLX5_MODI_OUT_SIPV6_31_0;
 		dst_addr = MLX5_MODI_OUT_DIPV6_31_0;
+		tos_field = MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS;
+		tos_size = 8;
+		ecn = 0;
 	} else {
 		packet_len_field = MLX5_MODI_OUT_IPV4_TOTAL_LEN;
 		/* ipv4 len is including 20 bytes of the header, so add 20 over ipv6 len */
@@ -564,6 +589,9 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 		ttl_field = MLX5_MODI_OUT_IPV4_TTL;
 		src_addr = MLX5_MODI_OUT_SIPV4;
 		dst_addr = MLX5_MODI_OUT_DIPV4;
+		tos_field = MLX5_MODI_OUT_IP_DSCP;
+		tos_size = 6;
+		ecn = MLX5_MODI_OUT_IP_ECN;
 	}
 
 	memset(modify_action_data, 0, sizeof(modify_action_data));
@@ -578,19 +606,33 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 	MLX5_SET(copy_action_in, action_ptr, length, 16);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
-	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
+	MLX5_SET(set_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_SET);
+	MLX5_SET(set_action_in, action_ptr, field, ttl_field);
+	MLX5_SET(set_action_in, action_ptr, length, 8);
+	MLX5_SET(set_action_in, action_ptr, data, MLX5DR_ACTION_NAT64_TTL_DEFAULT_VAL);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
-	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
-	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
-
+	/* copy TOS */
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
 	MLX5_SET(copy_action_in, action_ptr, src_field,
 		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
-	MLX5_SET(copy_action_in, action_ptr, dst_field, ttl_field);
+	MLX5_SET(copy_action_in, action_ptr, dst_field, tos_field);
 	MLX5_SET(copy_action_in, action_ptr, src_offset, 24);
-	MLX5_SET(copy_action_in, action_ptr, length, 8);
+	MLX5_SET(copy_action_in, action_ptr, length, tos_size);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+	if (ecn) {
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
+		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+
+		MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_COPY);
+		MLX5_SET(copy_action_in, action_ptr, src_field,
+			attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
+		MLX5_SET(copy_action_in, action_ptr, dst_field, ecn);
+		MLX5_SET(copy_action_in, action_ptr, src_offset, 24 + tos_size);
+		MLX5_SET(copy_action_in, action_ptr, length, MLX5DR_ACTION_NAT64_ECN_SIZE);
+		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
+	}
 
 	MLX5_SET(copy_action_in, action_ptr, action_type, MLX5_MODIFICATION_TYPE_NOP);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
