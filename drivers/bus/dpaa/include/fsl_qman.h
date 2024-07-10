@@ -1430,37 +1430,6 @@ void qman_dqrr_consume(struct qman_fq *fq,
 		       struct qm_dqrr_entry *dq);
 
 /**
- * qman_poll_dqrr - process DQRR (fast-path) entries
- * @limit: the maximum number of DQRR entries to process
- *
- * Use of this function requires that DQRR processing not be interrupt-driven.
- * Ie. the value returned by qman_irqsource_get() should not include
- * QM_PIRQ_DQRI. If the current CPU is sharing a portal hosted on another CPU,
- * this function will return -EINVAL, otherwise the return value is >=0 and
- * represents the number of DQRR entries processed.
- */
-__rte_internal
-int qman_poll_dqrr(unsigned int limit);
-
-/**
- * qman_poll
- *
- * Dispatcher logic on a cpu can use this to trigger any maintenance of the
- * affine portal. There are two classes of portal processing in question;
- * fast-path (which involves demuxing dequeue ring (DQRR) entries and tracking
- * enqueue ring (EQCR) consumption), and slow-path (which involves EQCR
- * thresholds, congestion state changes, etc). This function does whatever
- * processing is not triggered by interrupts.
- *
- * Note, if DQRR and some slow-path processing are poll-driven (rather than
- * interrupt-driven) then this function uses a heuristic to determine how often
- * to run slow-path processing - as slow-path processing introduces at least a
- * minimum latency each time it is run, whereas fast-path (DQRR) processing is
- * close to zero-cost if there is no work to be done.
- */
-void qman_poll(void);
-
-/**
  * qman_stop_dequeues - Stop h/w dequeuing to the s/w portal
  *
  * Disables DQRR processing of the portal. This is reference-counted, so

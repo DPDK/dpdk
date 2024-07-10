@@ -82,7 +82,6 @@ INTERNAL {
 	qman_irqsource_remove;
 	qman_modify_cgr;
 	qman_oos_fq;
-	qman_poll_dqrr;
 	qman_portal_dequeue;
 	qman_portal_poll_rx;
 	qman_query_fq_frm_cnt;

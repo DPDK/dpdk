@@ -69,7 +69,6 @@ struct qman_portal {
 	/* interrupt sources processed by portal_isr(), configurable */
 	unsigned long irq_sources;
 	u32 use_eqcr_ci_stashing;
-	u32 slowpoll;	/* only used when interrupts are off */
 	/* only 1 volatile dequeue at a time */
 	struct qman_fq *vdqcr_owned;
 	u32 sdqcr;
@@ -569,7 +568,6 @@ qman_init_portal(struct qman_portal *portal,
 	INIT_LIST_HEAD(&portal->cgr_cbs);
 	spin_lock_init(&portal->cgr_lock);
 	portal->bits = 0;
-	portal->slowpoll = 0;
 	portal->sdqcr = QM_SDQCR_SOURCE_CHANNELS | QM_SDQCR_COUNT_UPTO3 |
 			QM_SDQCR_DEDICATED_PRECEDENCE | QM_SDQCR_TYPE_PRIO_QOS |
 			QM_SDQCR_TOKEN_SET(0xab) | QM_SDQCR_CHANNELS_DEDICATED;
@@ -1368,35 +1366,6 @@ void qman_dqrr_consume(struct qman_fq *fq,
 
 	qm_dqrr_cdc_consume_1ptr(&p->p, dq, 0);
 	qm_dqrr_next(&p->p);
-}
-
-int qman_poll_dqrr(unsigned int limit)
-{
-	struct qman_portal *p = get_affine_portal();
-	int ret;
-
-	ret = __poll_portal_fast(p, limit);
-	return ret;
-}
-
-void qman_poll(void)
-{
-	struct qman_portal *p = get_affine_portal();
-
-	if ((~p->irq_sources) & QM_PIRQ_SLOW) {
-		if (!(p->slowpoll--)) {
-			u32 is = qm_isr_status_read(&p->p) & ~p->irq_sources;
-			u32 active = __poll_portal_slow(p, is);
-
-			if (active) {
-				qm_isr_status_clear(&p->p, active);
-				p->slowpoll = SLOW_POLL_BUSY;
-			} else
-				p->slowpoll = SLOW_POLL_IDLE;
-		}
-	}
-	if ((~p->irq_sources) & QM_PIRQ_DQRI)
-		__poll_portal_fast(p, FSL_QMAN_POLL_LIMIT);
 }
 
 void qman_stop_dequeues(void)
