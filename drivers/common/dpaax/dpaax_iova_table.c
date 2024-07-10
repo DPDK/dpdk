@@ -139,10 +139,12 @@ read_memory_node(unsigned int *count)
 	}
 
 	DPAAX_DEBUG("Device-tree memory node data:");
-	do {
+
+	while (j > 0) {
+		--j;
 		DPAAX_DEBUG("    %08" PRIx64 " %08zu",
 			    nodes[j].addr, nodes[j].len);
-	} while (--j);
+	}
 
 cleanup:
 	close(fd);
