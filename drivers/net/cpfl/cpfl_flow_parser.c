@@ -1696,7 +1696,7 @@ cpfl_parse_check_prog_action(struct cpfl_flow_js_mr_key_action *key_act,
 	bool check_name;
 
 	check_name = key_act->prog.has_name ? strcmp(prog->name, key_act->prog.name) == 0
-					    : atol(prog->name) == key_act->prog.id;
+					    : (uint32_t)atol(prog->name) == key_act->prog.id;
 	if (!check_name) {
 		PMD_DRV_LOG(ERR, "Not support this prog type: %s.", prog->name);
 		return -EINVAL;
