@@ -178,6 +178,7 @@ dpaa_create_device_list(void)
 		if (dev->intr_handle == NULL) {
 			DPAA_BUS_LOG(ERR, "Failed to allocate intr handle");
 			ret = -ENOMEM;
+			free(dev);
 			goto cleanup;
 		}
 
@@ -229,6 +230,7 @@ dpaa_create_device_list(void)
 		if (dev->intr_handle == NULL) {
 			DPAA_BUS_LOG(ERR, "Failed to allocate intr handle");
 			ret = -ENOMEM;
+			free(dev);
 			goto cleanup;
 		}
 
