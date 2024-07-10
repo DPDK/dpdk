@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2011-2016 Freescale Semiconductor Inc.
- * Copyright 2017,2020 NXP
+ * Copyright 2017,2020,2022,2024 NXP
  *
  */
 #include <assert.h>
@@ -27,15 +27,16 @@ static int check_fd(void)
 {
 	int ret;
 
-	if (fd >= 0)
-		return 0;
 	ret = pthread_mutex_lock(&fd_init_lock);
 	assert(!ret);
+
 	/* check again with the lock held */
 	if (fd < 0)
 		fd = open(PROCESS_PATH, O_RDWR);
+
 	ret = pthread_mutex_unlock(&fd_init_lock);
 	assert(!ret);
+
 	return (fd >= 0) ? 0 : -ENODEV;
 }
 
