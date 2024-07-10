@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018 NXP
+ * Copyright 2018-2023 NXP
  */
 
 #include <rte_memory.h>
@@ -255,10 +255,7 @@ dpaax_iova_table_populate(void)
 void
 dpaax_iova_table_depopulate(void)
 {
-	if (dpaax_iova_table_p == NULL)
-		return;
-
-	rte_free(dpaax_iova_table_p->entries);
+	rte_free(dpaax_iova_table_p);
 	dpaax_iova_table_p = NULL;
 
 	DPAAX_DEBUG("IOVA Table cleaned");
