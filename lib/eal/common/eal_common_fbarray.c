@@ -176,7 +176,7 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 
 		/* combine current ignore mask with last index ignore mask */
 		if (msk_idx == last)
-			ignore_msk |= last_msk;
+			ignore_msk &= last_msk;
 
 		/* if we have an ignore mask, ignore once */
 		if (ignore_msk) {
