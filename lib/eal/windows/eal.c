@@ -295,6 +295,13 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	/* verify if DPDK supported on architecture MMU */
+	if (!eal_mmu_supported()) {
+		rte_eal_init_alert("Unsupported MMU type.");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
 		rte_errno = ENOTSUP;

@@ -95,6 +95,13 @@ int rte_eal_memzone_init(void);
 int rte_eal_cpu_init(void);
 
 /**
+ * Check for architecture supported MMU.
+ *
+ * This function is private to EAL.
+ */
+bool eal_mmu_supported(void);
+
+/**
  * Create memseg lists
  *
  * This function is private to EAL.
