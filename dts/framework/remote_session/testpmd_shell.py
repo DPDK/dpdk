@@ -807,5 +807,5 @@ class TestPmdShell(DPDKShell):
     def _close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
         self.stop()
-        self.send_command("quit", "")
+        self.send_command("quit", "Bye...")
         return super()._close()

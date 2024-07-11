@@ -27,6 +27,7 @@ from typing import ClassVar
 from paramiko import Channel, channel  # type: ignore[import-untyped]
 from typing_extensions import Self
 
+from framework.exception import InteractiveCommandExecutionError
 from framework.logger import DTSLogger
 from framework.params import Params
 from framework.settings import SETTINGS
@@ -45,6 +46,10 @@ class SingleActiveInteractiveShell(ABC):
     Interactive shells are started and stopped using a context manager. This allows for the start
     and cleanup of the application to happen at predictable times regardless of exceptions or
     interrupts.
+
+    Attributes:
+        is_alive: :data:`True` if the application has started successfully, :data:`False`
+            otherwise.
     """
 
     _node: Node
@@ -57,6 +62,9 @@ class SingleActiveInteractiveShell(ABC):
     _privileged: bool
     _real_path: PurePath
 
+    #: The number of times to try starting the application before considering it a failure.
+    _init_attempts: ClassVar[int] = 5
+
     #: Prompt to expect at the end of output when sending a command.
     #: This is often overridden by subclasses.
     _default_prompt: ClassVar[str] = ""
@@ -68,6 +76,8 @@ class SingleActiveInteractiveShell(ABC):
 
     #: Path to the executable to start the interactive application.
     path: ClassVar[PurePath]
+
+    is_alive: bool = False
 
     def __init__(
         self,
@@ -111,11 +121,33 @@ class SingleActiveInteractiveShell(ABC):
     def _start_application(self) -> None:
         """Starts a new interactive application based on the path to the app.
 
-        This method is often overridden by subclasses as their process for
-        starting may look different.
+        This method is often overridden by subclasses as their process for starting may look
+        different. Initialization of the shell on the host can be retried up to
+        `self._init_attempts` - 1 times. This is done because some DPDK applications need slightly
+        more time after exiting their script to clean up EAL before others can start.
+
+        Raises:
+            InteractiveCommandExecutionError: If the application fails to start within the allotted
+                number of retries.
         """
         self._setup_ssh_channel()
-        self.send_command(self._make_start_command())
+        self._ssh_channel.settimeout(5)
+        start_command = self._make_start_command()
+        self.is_alive = True
+        for attempt in range(self._init_attempts):
+            try:
+                self.send_command(start_command)
+                break
+            except TimeoutError:
+                self._logger.info(
+                    f"Interactive shell failed to start (attempt {attempt+1} out of "
+                    f"{self._init_attempts})"
+                )
+        else:
+            self._ssh_channel.settimeout(self._timeout)
+            self.is_alive = False  # update state on failure to start
+            raise InteractiveCommandExecutionError("Failed to start application.")
+        self._ssh_channel.settimeout(self._timeout)
 
     def send_command(
         self, command: str, prompt: str | None = None, skip_first_line: bool = False
@@ -139,7 +171,15 @@ class SingleActiveInteractiveShell(ABC):
 
         Returns:
             All output in the buffer before expected string.
+
+        Raises:
+            InteractiveCommandExecutionError: If attempting to send a command to a shell that is
+                not currently running.
         """
+        if not self.is_alive:
+            raise InteractiveCommandExecutionError(
+                f"Cannot send command {command} to application because the shell is not running."
+            )
         self._logger.info(f"Sending: '{command}'")
         if prompt is None:
             prompt = self._default_prompt

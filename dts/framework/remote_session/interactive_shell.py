@@ -9,6 +9,9 @@ be started and stopped manually, or have the stopping process be handled at the 
 collection.
 """
 
+import weakref
+from typing import ClassVar
+
 from .single_active_interactive_shell import SingleActiveInteractiveShell
 
 
@@ -16,18 +19,26 @@ class InteractiveShell(SingleActiveInteractiveShell):
     """Adds manual start and stop functionality to interactive shells.
 
     Like its super-class, this class should not be instantiated directly and should instead be
-    extended. This class also provides an option for automated cleanup of the application through
-    the garbage collector.
+    extended. This class also provides an option for automated cleanup of the application using a
+    weakref and a finalize class. This finalize class allows for cleanup of the class at the time
+    of garbage collection and also ensures that cleanup only happens once. This way if a user
+    initiates the closing of the shell manually it is not repeated at the time of garbage
+    collection.
     """
 
+    _finalizer: weakref.finalize
+    #: One attempt should be enough for shells which don't have to worry about other instances
+    #: closing before starting a new one.
+    _init_attempts: ClassVar[int] = 1
+
     def start_application(self) -> None:
-        """Start the application."""
+        """Start the application.
+
+        After the application has started, use :class:`weakref.finalize` to manage cleanup.
+        """
         self._start_application()
+        self._finalizer = weakref.finalize(self, self._close)
 
     def close(self) -> None:
-        """Properly free all resources."""
-        self._close()
-
-    def __del__(self) -> None:
-        """Make sure the session is properly closed before deleting the object."""
-        self.close()
+        """Free all resources using :class:`weakref.finalize`."""
+        self._finalizer()
