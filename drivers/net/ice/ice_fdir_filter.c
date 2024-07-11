@@ -375,12 +375,17 @@ ice_fdir_init_filter_list(struct ice_pf *pf)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
 	struct ice_fdir_info *fdir_info = &pf->fdir;
+	struct ice_hw *hw = &pf->adapter->hw;
 	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	const uint32_t max_fd_filter_entries =
+			hw->func_caps.fd_fltr_guar + hw->func_caps.fd_fltr_best_effort;
+	/* dimension hash table as max filters + 12.5% to ensure a little headroom */
+	const uint32_t hash_table_entries = max_fd_filter_entries + (max_fd_filter_entries >> 3);
 	int ret;
 
 	struct rte_hash_parameters fdir_hash_params = {
 		.name = fdir_hash_name,
-		.entries = ICE_MAX_FDIR_FILTER_NUM,
+		.entries = hash_table_entries,
 		.key_len = sizeof(struct ice_fdir_fltr_pattern),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
@@ -398,7 +403,7 @@ ice_fdir_init_filter_list(struct ice_pf *pf)
 	}
 	fdir_info->hash_map = rte_zmalloc("ice_fdir_hash_map",
 					  sizeof(*fdir_info->hash_map) *
-					  ICE_MAX_FDIR_FILTER_NUM,
+					  hash_table_entries,
 					  0);
 	if (!fdir_info->hash_map) {
 		PMD_INIT_LOG(ERR,
