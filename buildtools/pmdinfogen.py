@@ -6,6 +6,7 @@
 import argparse
 import ctypes
 import json
+import re
 import sys
 import tempfile
 
@@ -66,11 +67,11 @@ class ELFImage:
                 return [symbol]
         return None
 
-    def find_by_prefix(self, prefix):
-        prefix = prefix.encode("utf-8") if self._legacy_elftools else prefix
+    def find_by_pattern(self, pattern):
+        pattern = pattern.encode("utf-8") if self._legacy_elftools else pattern
         for i in range(self._symtab.num_symbols()):
             symbol = self._symtab.get_symbol(i)
-            if symbol.name.startswith(prefix):
+            if re.match(pattern, symbol.name):
                 yield ELFSymbol(self._image, symbol)
 
 
@@ -97,9 +98,9 @@ class COFFImage:
     def is_big_endian(self):
         return False
 
-    def find_by_prefix(self, prefix):
+    def find_by_pattern(self, pattern):
         for symbol in self._image.symbols:
-            if symbol.name.startswith(prefix):
+            if re.match(pattern, symbol.name):
                 yield COFFSymbol(self._image, symbol)
 
     def find_by_name(self, name):
@@ -199,7 +200,7 @@ class Driver:
 
 def load_drivers(image):
     drivers = []
-    for symbol in image.find_by_prefix("this_pmd_name"):
+    for symbol in image.find_by_pattern("^this_pmd_name[0-9]+$"):
         drivers.append(Driver.load(image, symbol))
     return drivers
 
