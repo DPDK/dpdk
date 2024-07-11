@@ -351,8 +351,6 @@ struct ice_fdir_filter_conf {
 	u8 pkt_len;
 };
 
-#define ICE_MAX_FDIR_FILTER_NUM		(1024 * 16)
-
 struct ice_fdir_fltr_pattern {
 	enum ice_fltr_ptype flow_type;
 
