@@ -6,6 +6,7 @@
 #include <sys/ioctl.h>
 #include <rte_malloc.h>
 #include <rte_vfio.h>
+#include <sys/time.h>
 
 #include "virtio_pci.h"
 #include "virtio_api.h"
@@ -928,20 +929,28 @@ virtio_pci_dev_get_status(struct virtio_pci_dev *vpdev)
 int
 virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms)
 {
-	uint32_t retry = 0;
 	struct virtio_hw *hw = &vpdev->hw;
+	struct timeval start, end;
 	const int wait_unit = 1; /* sleep wait_unit ms */
+	uint64_t time_used;
+	uint32_t retry = 0;
+
+	gettimeofday(&start, NULL);
 
 	time_out_ms /= wait_unit;
 	VIRTIO_OPS(hw)->set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
 	/* Flush status write and wait device ready max 120 seconds. */
 	while (VIRTIO_OPS(hw)->get_status(hw) != VIRTIO_CONFIG_STATUS_RESET) {
-		if (retry++ > time_out_ms) {
+
+		gettimeofday(&end, NULL);
+		time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
+
+		if ((time_used/1000) > time_out_ms) {
 			PMD_INIT_LOG(WARNING, "vpdev %s  reset %d ms timeout",
 				VP_DEV_NAME(vpdev), time_out_ms * wait_unit);
 			return VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
 		}
-		if (!(retry % (1000 / wait_unit)))
+		if (!((++retry) % (1000 / wait_unit)))
 			PMD_INIT_LOG(INFO, "vpdev %s  resetting", VP_DEV_NAME(vpdev));
 		usleep(wait_unit*1000L); /* TODO: better use escaped timestamp */
 	}
