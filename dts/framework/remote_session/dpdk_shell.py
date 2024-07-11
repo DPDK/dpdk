@@ -11,7 +11,9 @@ from abc import ABC
 from pathlib import PurePath
 
 from framework.params.eal import EalParams
-from framework.remote_session.interactive_shell import InteractiveShell
+from framework.remote_session.single_active_interactive_shell import (
+    SingleActiveInteractiveShell,
+)
 from framework.settings import SETTINGS
 from framework.testbed_model.cpu import LogicalCoreCount, LogicalCoreList
 from framework.testbed_model.sut_node import SutNode
@@ -60,7 +62,7 @@ def compute_eal_params(
     return params
 
 
-class DPDKShell(InteractiveShell, ABC):
+class DPDKShell(SingleActiveInteractiveShell, ABC):
     """The base class for managing DPDK-based interactive shells.
 
     This class shouldn't be instantiated directly, but instead be extended.
@@ -79,7 +81,6 @@ class DPDKShell(InteractiveShell, ABC):
         lcore_filter_specifier: LogicalCoreCount | LogicalCoreList = LogicalCoreCount(),
         ascending_cores: bool = True,
         append_prefix_timestamp: bool = True,
-        start_on_init: bool = True,
         app_params: EalParams = EalParams(),
     ) -> None:
         """Extends :meth:`~.interactive_shell.InteractiveShell.__init__`.
@@ -95,7 +96,7 @@ class DPDKShell(InteractiveShell, ABC):
             append_prefix_timestamp,
         )
 
-        super().__init__(node, privileged, timeout, start_on_init, app_params)
+        super().__init__(node, privileged, timeout, app_params)
 
     def _update_real_path(self, path: PurePath) -> None:
         """Extends :meth:`~.interactive_shell.InteractiveShell._update_real_path`.

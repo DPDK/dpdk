@@ -99,8 +99,8 @@ class TestSmokeTests(TestSuite):
         Test:
             List all devices found in testpmd and verify the configured devices are among them.
         """
-        testpmd_driver = TestPmdShell(self.sut_node)
-        dev_list = [str(x) for x in testpmd_driver.get_devices()]
+        with TestPmdShell(self.sut_node) as testpmd:
+            dev_list = [str(x) for x in testpmd.get_devices()]
         for nic in self.nics_in_node:
             self.verify(
                 nic.pci in dev_list,

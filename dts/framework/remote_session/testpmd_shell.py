@@ -604,7 +604,6 @@ class TestPmdShell(DPDKShell):
         lcore_filter_specifier: LogicalCoreCount | LogicalCoreList = LogicalCoreCount(),
         ascending_cores: bool = True,
         append_prefix_timestamp: bool = True,
-        start_on_init: bool = True,
         **app_params: Unpack[TestPmdParamsDict],
     ) -> None:
         """Overrides :meth:`~.dpdk_shell.DPDKShell.__init__`. Changes app_params to kwargs."""
@@ -615,7 +614,6 @@ class TestPmdShell(DPDKShell):
             lcore_filter_specifier,
             ascending_cores,
             append_prefix_timestamp,
-            start_on_init,
             TestPmdParams(**app_params),
         )
 
@@ -806,7 +804,8 @@ class TestPmdShell(DPDKShell):
 
         return TestPmdPortStats.parse(output)
 
-    def close(self) -> None:
+    def _close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
+        self.stop()
         self.send_command("quit", "")
-        return super().close()
+        return super()._close()

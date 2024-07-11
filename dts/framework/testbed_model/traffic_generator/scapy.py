@@ -219,6 +219,8 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
 
         self.session = PythonShell(self._tg_node, timeout=5, privileged=True)
 
+        self.session.start_application()
+
         # import libs in remote python console
         for import_statement in SCAPY_RPC_SERVER_IMPORTS:
             self.session.send_command(import_statement)
