@@ -1136,6 +1136,9 @@ eth_em_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	struct rte_eth_link link;
 	int link_up, count;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -1;
+
 	link_up = 0;
 	hw->mac.get_link_status = 1;
 
