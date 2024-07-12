@@ -1041,6 +1041,12 @@ int
 qat_sym_dp_dequeue_done_gen1(void *qp_data, uint8_t *drv_ctx, uint32_t n);
 
 int
+qat_sym_dp_enqueue_done_gen4(void *qp_data, uint8_t *drv_ctx, uint32_t n);
+
+int
+qat_sym_dp_dequeue_done_gen4(void *qp_data, uint8_t *drv_ctx, uint32_t n);
+
+int
 qat_sym_configure_raw_dp_ctx_gen1(void *_raw_dp_ctx, void *_ctx);
 
 /* -----------------GENx control path APIs ---------------- */
