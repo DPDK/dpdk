@@ -1900,6 +1900,7 @@ M: Paul Szczepanek <paul.szczepanek@arm.com>
 M: Patrick Robb <probb@iol.unh.edu>
 T: git://dpdk.org/next/dpdk-next-dts
 F: dts/
+F: buildtools/check-dts-requirements.py
 F: devtools/dts-check-format.sh
 F: doc/guides/tools/dts.rst
 

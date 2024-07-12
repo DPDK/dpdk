@@ -54,6 +54,7 @@ DTS uses Poetry as its Python dependency management.
 Python build/development and runtime environments are the same and DTS development environment,
 DTS runtime environment or just plain DTS environment are used interchangeably.
 
+.. _dts_deps:
 
 Setting up DTS environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -294,8 +295,15 @@ When adding code to the DTS framework, pay attention to the rest of the code
 and try not to divert much from it.
 The :ref:`DTS developer tools <dts_dev_tools>` will issue warnings
 when some of the basics are not met.
+You should also build the :ref:`API documentation <building_api_docs>`
+to address any issues found during the build.
 
-The code must be properly documented with docstrings.
+The API documentation, which is a helpful reference when developing, may be accessed
+in the code directly or generated with the :ref:`API docs build steps <building_api_docs>`.
+When adding new files or modifying the directory structure,
+the corresponding changes must be made to DTS API doc sources in ``doc/api/dts``.
+
+Speaking of which, the code must be properly documented with docstrings.
 The style must conform to the `Google style
 <https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings>`_.
 See an example of the style `here
@@ -428,6 +436,35 @@ There are three tools used in DTS to help with code checking, style and formatti
 These three tools are all used in ``devtools/dts-check-format.sh``,
 the DTS code check and format script.
 Refer to the script for usage: ``devtools/dts-check-format.sh -h``.
+
+
+.. _building_api_docs:
+
+Building DTS API docs
+---------------------
+
+The documentation is built using the standard DPDK build system.
+See :doc:`../linux_gsg/build_dpdk` for more details on compiling DPDK with meson.
+
+The :ref:`doc build dependencies <doc_dependencies>` may be installed with Poetry:
+
+.. code-block:: console
+
+   poetry install --no-root --only docs
+   poetry install --no-root --with docs  # an alternative that will also install DTS dependencies
+   poetry shell
+
+After executing the meson command, build the documentation with:
+
+.. code-block:: console
+
+   ninja -C build doc
+
+The output is generated in ``build/doc/api/dts/html``.
+
+.. note::
+
+   Make sure to fix any Sphinx warnings when adding or updating docstrings.
 
 
 Configuration Schema

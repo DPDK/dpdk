@@ -24,6 +24,7 @@ get_numa_count_cmd = py3 + files('get-numa-count.py')
 get_test_suites_cmd = py3 + files('get-test-suites.py')
 has_hugepages_cmd = py3 + files('has-hugepages.py')
 cmdline_gen_cmd = py3 + files('dpdk-cmdline-gen.py')
+check_dts_requirements = py3 + files('check-dts-requirements.py')
 
 # install any build tools that end-users might want also
 install_data([

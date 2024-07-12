@@ -499,6 +499,10 @@ The script usage is::
 For both of the above scripts, the -n option is used to specify a number of commits from HEAD,
 and the -r option allows the user specify a ``git log`` range.
 
+Additionally, when contributing to the DTS tool, patches should also be checked using
+the ``dts-check-format.sh`` script in the ``devtools`` directory of the DPDK repo.
+To run the script, extra :ref:`Python dependencies <dts_deps>` are needed.
+
 .. _contrib_check_compilation:
 
 Checking Compilation

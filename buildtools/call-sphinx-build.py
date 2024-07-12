@@ -15,6 +15,8 @@ from subprocess import run
 
 # set the version in environment for sphinx to pick up
 os.environ['DPDK_VERSION'] = version
+if 'dts' in src:
+    os.environ['DTS_DOC_BUILD'] = "y"
 
 sphinx_cmd = [sphinx] + extra_args
 

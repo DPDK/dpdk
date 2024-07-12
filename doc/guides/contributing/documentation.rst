@@ -133,6 +133,8 @@ added to by the developer.
 Building the Documentation
 --------------------------
 
+.. _doc_dependencies:
+
 Dependencies
 ~~~~~~~~~~~~
 

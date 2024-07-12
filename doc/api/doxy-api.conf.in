@@ -124,6 +124,8 @@ SEARCHENGINE            = YES
 SORT_MEMBER_DOCS        = NO
 SOURCE_BROWSER          = YES
 
+ALIASES                 = "dts_api_main_page=@DTS_API_MAIN_PAGE@"
+
 EXAMPLE_PATH            = @TOPDIR@/examples
 EXAMPLE_PATTERNS        = *.c
 EXAMPLE_RECURSIVE       = YES

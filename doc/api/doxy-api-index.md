@@ -246,3 +246,6 @@ The public API headers are grouped by topics:
   [experimental APIs](@ref rte_compat.h),
   [ABI versioning](@ref rte_function_versioning.h),
   [version](@ref rte_version.h)
+
+- **tests**:
+  [**DTS**](@dts_api_main_page)

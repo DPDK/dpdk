@@ -4,6 +4,9 @@
 doxygen = find_program('doxygen', required: get_option('enable_docs'))
 
 if not doxygen.found()
+  # process DTS API doc build even if DPDK API doc build can't be done
+  cdata = configuration_data()
+  subdir('dts')
   subdir_done()
 endif
 
@@ -100,3 +103,5 @@ mandb = find_program('mandb', required: false)
 if mandb.found() and get_option('enable_docs')
     meson.add_install_script(mandb)
 endif
+
+subdir('dts')
