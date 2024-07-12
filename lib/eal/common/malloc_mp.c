@@ -755,7 +755,8 @@ request_to_primary(struct malloc_mp_req *user_req)
 	do {
 		ret = pthread_cond_timedwait(&entry->cond,
 				&mp_request_list.lock, &ts);
-	} while (ret != 0 && ret != ETIMEDOUT);
+	} while ((ret != 0 && ret != ETIMEDOUT) &&
+			entry->state == REQ_STATE_ACTIVE);
 
 	if (entry->state != REQ_STATE_COMPLETE) {
 		RTE_LOG(ERR, EAL, "Request timed out\n");
