@@ -71,3 +71,25 @@ Compiler
 --------
 
 Refer to the `Compiler Flags` in tuning guide for recommended version and `-march` flags.
+
+
+Max LCores
+----------
+
+Refer to the `Compilation` in tuning guide for allowing more threads to run as DPDK `lcores`.
+
+
+Power
+-----
+
+Core
+~~~~
+
+AMD EPYC SoC supports CPU power functions via ``rte_power`` API from `23.11 LTS` onwards.
+These are tested and validated on MILAN, GENOA, BERGAMO and SIENA
+using Linux kernel `6.4` and above with ``amd_pstate`` power driver.
+
+.. note::
+
+   * Power libraries are supported on Linux only.
+   * DPDK uncore support on Linux is work in progress.
