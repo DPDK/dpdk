@@ -34,7 +34,7 @@ The main methods exported by the Hash Library are:
 
 *   Delete entry with key: The key is provided as input. If an entry with the specified key is found in the hash,
     then the entry is removed from the hash table and the position where the entry was found in the hash table is returned.
-    If no entry with the specified key exists in the hash table, then a negative value is returned
+    If no entry with the specified key exists in the hash table, then a negative value is returned.
 
 *   Lookup for entry with key: The key is provided as input. If an entry with the specified key is found in the hash table (i.e., lookup hit),
     then the position of the entry is returned, otherwise (i.e., lookup miss) a negative value is returned.
