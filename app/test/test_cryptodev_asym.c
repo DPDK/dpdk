@@ -547,8 +547,6 @@ ut_setup_asym(void)
 			qp_id, ts_params->valid_devs[0]);
 	}
 
-	rte_cryptodev_stats_reset(ts_params->valid_devs[0]);
-
 	/* Start the device */
 	TEST_ASSERT_SUCCESS(rte_cryptodev_start(ts_params->valid_devs[0]),
 						"Failed to start cryptodev %u",
@@ -561,7 +559,6 @@ static void
 ut_teardown_asym(void)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
-	struct rte_cryptodev_stats stats;
 	uint8_t dev_id = ts_params->valid_devs[0];
 
 	if (self->sess != NULL)
@@ -570,8 +567,6 @@ ut_teardown_asym(void)
 	self->sess = NULL;
 	self->op = NULL;
 	self->result_op = NULL;
-
-	rte_cryptodev_stats_get(ts_params->valid_devs[0], &stats);
 
 	/* Stop the device */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
