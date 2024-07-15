@@ -75,6 +75,15 @@ no padding is required between objects (except for objects whose size are n x 3 
 
 When creating a new pool, the user can specify to use this feature or not.
 
+.. note::
+
+   This feature is not present for Arm systems.
+   Modern Arm Interconnects choose the SN-F (memory channel)
+   using a hash of memory address bits.
+   As a result, the load is distributed evenly in all cases,
+   including the above described, rendering this feature unnecessary.
+
+
 .. _mempool_local_cache:
 
 Local Cache
