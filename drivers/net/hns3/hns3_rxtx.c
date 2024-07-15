@@ -274,11 +274,26 @@ hns3_free_all_queues(struct rte_eth_dev *dev)
 }
 
 static int
+hns3_check_rx_dma_addr(struct hns3_hw *hw, uint64_t dma_addr)
+{
+	uint64_t rem;
+
+	rem = dma_addr & (hw->rx_dma_addr_align - 1);
+	if (rem > 0) {
+		hns3_err(hw, "The IO address of the beginning of the mbuf data "
+			 "must be %u-byte aligned", hw->rx_dma_addr_align);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int
 hns3_alloc_rx_queue_mbufs(struct hns3_hw *hw, struct hns3_rx_queue *rxq)
 {
 	struct rte_mbuf *mbuf;
 	uint64_t dma_addr;
 	uint16_t i;
+	int ret;
 
 	for (i = 0; i < rxq->nb_rx_desc; i++) {
 		mbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
@@ -299,6 +314,12 @@ hns3_alloc_rx_queue_mbufs(struct hns3_hw *hw, struct hns3_rx_queue *rxq)
 		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 		rxq->rx_ring[i].addr = dma_addr;
 		rxq->rx_ring[i].rx.bd_base_info = 0;
+
+		ret = hns3_check_rx_dma_addr(hw, dma_addr);
+		if (ret != 0) {
+			hns3_rx_queue_release_mbufs(rxq);
+			return ret;
+		}
 	}
 
 	return 0;
