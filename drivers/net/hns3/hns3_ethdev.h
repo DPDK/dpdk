@@ -487,6 +487,9 @@ struct hns3_queue_intr {
 #define HNS3_PKTS_DROP_STATS_MODE1		0
 #define HNS3_PKTS_DROP_STATS_MODE2		1
 
+#define HNS3_RX_DMA_ADDR_ALIGN_128	128
+#define HNS3_RX_DMA_ADDR_ALIGN_64	64
+
 struct hns3_hw {
 	struct rte_eth_dev_data *data;
 	void *io_base;
@@ -554,6 +557,11 @@ struct hns3_hw {
 	 * direction.
 	 */
 	uint8_t min_tx_pkt_len;
+	/*
+	 * The required alignment of the DMA address of the RX buffer.
+	 * See HNS3_RX_DMA_ADDR_ALIGN_XXX for available values.
+	 */
+	uint16_t rx_dma_addr_align;
 
 	struct hns3_queue_intr intr;
 	/*

@@ -707,6 +707,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 		hw->min_tx_pkt_len = HNS3_HIP08_MIN_TX_PKT_LEN;
 		hw->rss_info.ipv6_sctp_offload_supported = false;
 		hw->promisc_mode = HNS3_UNLIMIT_PROMISC_MODE;
+		hw->rx_dma_addr_align = HNS3_RX_DMA_ADDR_ALIGN_64;
 		return 0;
 	}
 
@@ -724,6 +725,7 @@ hns3vf_get_capability(struct hns3_hw *hw)
 	hw->drop_stats_mode = HNS3_PKTS_DROP_STATS_MODE2;
 	hw->rss_info.ipv6_sctp_offload_supported = true;
 	hw->promisc_mode = HNS3_LIMIT_PROMISC_MODE;
+	hw->rx_dma_addr_align = HNS3_RX_DMA_ADDR_ALIGN_128;
 
 	return 0;
 }
