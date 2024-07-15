@@ -626,7 +626,7 @@ test_capability(void)
 				RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO)) {
 		RTE_LOG(INFO, USER1,
 				"Device doesn't support asymmetric. Test Skipped\n");
-		return TEST_SUCCESS;
+		return TEST_SKIPPED;
 	}
 
 	/* print xform capability */
@@ -641,6 +641,7 @@ test_capability(void)
 			capa = rte_cryptodev_asym_capability_get(dev_id,
 				(const struct
 				rte_cryptodev_asym_capability_idx *) &idx);
+			TEST_ASSERT_NOT_NULL(capa, "Failed to get asymmetric capability");
 			print_asym_capa(capa);
 			}
 	}
