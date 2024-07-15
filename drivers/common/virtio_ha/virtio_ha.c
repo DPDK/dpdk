@@ -1460,9 +1460,9 @@ virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
 	}
 
 	if (mem->nregions > 0)
-		vf_dev->vf_devargs.mem_tbl_set = true;
+		vf_dev->vf_devargs.mem_tbl_in_use = true;
 	else
-		vf_dev->vf_devargs.mem_tbl_set = false;
+		vf_dev->vf_devargs.mem_tbl_in_use = false;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
@@ -1498,7 +1498,7 @@ virtio_ha_vf_mem_tbl_remove(struct virtio_dev_name *vf,
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
 			mem = &vf_dev->vf_ctx.ctt.mem;
 			mem->nregions = 0;
-			vf_dev->vf_devargs.mem_tbl_set = false;
+			vf_dev->vf_devargs.mem_tbl_in_use = false;
 			break;
 		}
 	}

@@ -12,6 +12,7 @@
 #include <linux/vfio.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <sys/time.h>
 
@@ -238,6 +239,7 @@ ha_server_app_query_vf_list(struct virtio_ha_msg *msg)
 	struct virtio_ha_pf_dev_list *list = &hs.pf_list;
 	struct virtio_ha_vf_dev_list *vf_list = NULL;
 	uint32_t nr_vf, i = 0;
+	int ret;
 
 	TAILQ_FOREACH(dev, list, next) {
 		if (!strcmp(dev->pf_name.dev_bdf, msg->hdr.bdf)) {
@@ -259,6 +261,23 @@ ha_server_app_query_vf_list(struct virtio_ha_msg *msg)
 
 	vf = (struct vdpa_vf_with_devargs *)msg->iov.iov_base;
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (vf_dev->vhost_fd != -1) {
+			ret = fcntl(vf_dev->vhost_fd, F_SETFL, O_NONBLOCK);
+			if (ret) {
+				HA_APP_LOG(ERR, "Failed to set vhost fd to non-blocking mode");
+				vf_dev->vf_devargs.mem_tbl_in_use = true;
+			}  else {
+				char buffer;
+				ssize_t bytes_read = recv(vf_dev->vhost_fd, (void *)&buffer, sizeof(char), MSG_PEEK);
+				if (bytes_read == 0)
+					/* vhost socket is disconnected */
+					vf_dev->vf_devargs.mem_tbl_in_use = false;
+				else
+					vf_dev->vf_devargs.mem_tbl_in_use = true;
+			}
+		} else {
+			vf_dev->vf_devargs.mem_tbl_in_use = false;
+		}
 		memcpy(vf + i, &vf_dev->vf_devargs, sizeof(struct vdpa_vf_with_devargs));
 		i++;		
 	}
@@ -563,12 +582,12 @@ ha_server_store_dma_tbl(struct virtio_ha_msg *msg)
 			memcpy(&vf_dev->vf_ctx.ctt.mem, mem, len);
 			HA_APP_LOG(INFO, "Stored vf %s DMA memory table:", vf_name->dev_bdf);
 			if (mem->nregions > 0)
-				vf_dev->vf_devargs.mem_tbl_set = true;
+				vf_dev->vf_devargs.mem_tbl_in_use = true;
 			else
-				vf_dev->vf_devargs.mem_tbl_set = false;
+				vf_dev->vf_devargs.mem_tbl_in_use = false;
 			for (i = 0; i < mem->nregions; i++) {
-				HA_APP_LOG(INFO, "Region %u: GPA 0x%" PRIx64 " HPA 0x%" PRIx64 " Size 0x%" PRIx64,
-					i, mem->regions[i].guest_phys_addr, mem->regions[i].host_phys_addr,
+				HA_APP_LOG(INFO, "Region %u: GPA 0x%" PRIx64 " QEMU_VA 0x%" PRIx64 " Size 0x%" PRIx64,
+					i, mem->regions[i].guest_phys_addr, mem->regions[i].guest_user_addr,
 					mem->regions[i].size);
 			}
 			break;
@@ -705,7 +724,7 @@ ha_server_remove_dma_tbl(struct virtio_ha_msg *msg)
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf_name->dev_bdf)) {
 			mem = &vf_dev->vf_ctx.ctt.mem;
 			mem->nregions = 0;
-			vf_dev->vf_devargs.mem_tbl_set = false;
+			vf_dev->vf_devargs.mem_tbl_in_use = false;
 			HA_APP_LOG(INFO, "Removed vf %s DMA memory table", vf_name->dev_bdf);
 			break;
 		}

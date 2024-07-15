@@ -177,8 +177,10 @@ virtio_ha_client_dev_restore_pf(int *total_vf)
 			memset(vf_dev, 0, sizeof(struct virtio_ha_vf_to_restore));
 			memcpy(&vf_dev->vf_devargs, vf_list + j, sizeof(struct vdpa_vf_with_devargs));
 			memcpy(&vf_dev->pf_name, pf_list + i, sizeof(struct virtio_dev_name));
+			vf_dev->vm_ctx.tbl_in_use = vf_dev->vf_devargs.mem_tbl_in_use;
 			vf_dev->vm_ctx.vm_vf = 1;
-			vf_dev->vm_ctx.vm_tbl_vf = 1;
+			if (vf_dev->vf_devargs.mem_tbl_in_use)
+				vf_dev->vm_ctx.vm_tbl_vf = 1;
 			TAILQ_INSERT_TAIL(&rq.non_prio_q, vf_dev, next);
 		}
 
@@ -195,10 +197,10 @@ virtio_ha_client_dev_restore_pf(int *total_vf)
 				strncmp(v1->vf_devargs.vm_uuid, v2->vf_devargs.vm_uuid, RTE_UUID_STRLEN) == 0) {
 				v1->vm_ctx.vm_vf++;
 				v2->vm_ctx.vm_vf++;
-				if (v1->vf_devargs.mem_tbl_set && v2->vf_devargs.mem_tbl_set) {
-					v1->vm_ctx.vm_tbl_vf++;
+				if (v1->vf_devargs.mem_tbl_in_use)
 					v2->vm_ctx.vm_tbl_vf++;
-				}
+				if (v2->vf_devargs.mem_tbl_in_use)
+					v1->vm_ctx.vm_tbl_vf++;
 			}
 			tmp = TAILQ_NEXT(tmp, next);
 		}

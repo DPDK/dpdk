@@ -89,11 +89,11 @@ struct vdpa_vf_with_devargs {
     struct virtio_dev_name vf_name;
     char vhost_sock_addr[VDPA_MAX_SOCK_LEN];
     char vm_uuid[RTE_UUID_STRLEN];
-	bool mem_tbl_set;
+	bool mem_tbl_in_use;
 };
 
 struct virtio_vdpa_mem_region {
-	uint64_t host_phys_addr;
+	uint64_t guest_user_addr;
 	uint64_t guest_phys_addr;
 	uint64_t size;
 };
@@ -146,6 +146,7 @@ struct virtio_ha_device_list {
 struct virtio_ha_vm_dev_ctx {
 	int vm_tbl_vf; /* Number of VFs belong to the same VM and use the DMA tbl */
 	int vm_vf; /* Number of VFs belong to the same VM and shares the same VFIO container */
+	bool tbl_in_use; /* The VF is using DMA tbl or not */
 };
 
 struct virtio_ha_dev_ctx_cb {

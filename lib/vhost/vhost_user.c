@@ -1119,7 +1119,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 
 	/* Always use MAP_POPULATE as it's needed for virt2phys */
 	mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
-			MAP_SHARED | MAP_POPULATE, region->fd, 0);
+			MAP_SHARED, region->fd, 0);
 
 	if (mmap_addr == MAP_FAILED) {
 		VHOST_LOG_CONFIG(ERR, "(%s) mmap failed (%s).\n", dev->ifname, strerror(errno));

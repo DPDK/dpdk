@@ -17,7 +17,7 @@ enum {
 
 struct virtio_vdpa_vf_drv_mem_region {
 	uint64_t host_user_addr;
-	uint64_t host_phys_addr;
+	uint64_t guest_user_addr;
 	uint64_t guest_phys_addr;
 	uint64_t size;
 };
