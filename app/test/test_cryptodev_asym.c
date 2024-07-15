@@ -3197,21 +3197,26 @@ static int send_one(void)
 }
 
 static int
-modular_cmpeq(const uint8_t *a, const uint8_t *b, size_t len)
+modular_cmpeq(const uint8_t *a, size_t a_len, const uint8_t *b, size_t b_len)
 {
-	const uint8_t *new_a = a, *new_b = b;
+	const uint8_t *new_a, *new_b;
 	size_t i, j;
 
 	/* Strip leading NUL bytes */
-	for (i = 0; i < len; i++)
+	for (i = 0; i < a_len; i++)
 		if (a[i] != 0)
-			new_a = &a[i];
+			break;
 
-	for (j = 0; j < len; j++)
+	for (j = 0; j < b_len; j++)
 		if (b[j] != 0)
-			new_b = &b[i];
+			break;
 
-	if (i != j || memcmp(new_a, new_b, len - i))
+	if (a_len - i != b_len - j)
+		return 1;
+
+	new_a = &a[i];
+	new_b = &b[j];
+	if (memcmp(new_a, new_b, a_len - i))
 		return 1;
 
 	return 0;
@@ -3251,7 +3256,7 @@ modular_exponentiation(const void *test_data)
 
 	TEST_ASSERT_SUCCESS(send_one(),
 		"Failed to process crypto op");
-	TEST_ASSERT_SUCCESS(modular_cmpeq(vector->reminder.data,
+	TEST_ASSERT_SUCCESS(modular_cmpeq(vector->reminder.data, vector->reminder.len,
 			self->result_op->asym->modex.result.data,
 			self->result_op->asym->modex.result.length),
 			"operation verification failed\n");
