@@ -307,7 +307,6 @@ insert_vdev(const char *name, const char *args,
 
 	dev->device.bus = &rte_vdev_bus;
 	dev->device.numa_node = SOCKET_ID_ANY;
-	dev->device.name = devargs->name;
 
 	if (find_vdev(name)) {
 		/*
@@ -322,6 +321,7 @@ insert_vdev(const char *name, const char *args,
 	if (init)
 		rte_devargs_insert(&devargs);
 	dev->device.devargs = devargs;
+	dev->device.name = devargs->name;
 	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
 
 	if (p_dev)
