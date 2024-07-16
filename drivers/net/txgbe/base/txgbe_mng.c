@@ -439,3 +439,49 @@ txgbe_mng_enabled(struct txgbe_hw *hw)
 	/* firmware does not control laser */
 	return false;
 }
+
+s32 txgbe_hic_get_lldp(struct txgbe_hw *hw)
+{
+	struct txgbe_hic_write_lldp buffer;
+	s32 err = 0;
+
+	buffer.hdr.cmd = FW_LLDP_GET_CMD;
+	buffer.hdr.buf_len = 0x1;
+	buffer.hdr.cmd_or_resp.cmd_resv = FW_CEM_CMD_RESERVED;
+	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.func = hw->bus.lan_id;
+
+	err = txgbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
+					   TXGBE_HI_COMMAND_TIMEOUT, true);
+	if (err)
+		return err;
+
+	if (buffer.hdr.cmd_or_resp.ret_status == FW_CEM_RESP_STATUS_SUCCESS) {
+		/* this field returns the status of LLDP */
+		if (buffer.func)
+			hw->lldp_enabled = true;
+		else
+			hw->lldp_enabled = false;
+	} else {
+		err = TXGBE_ERR_HOST_INTERFACE_COMMAND;
+	}
+
+	return err;
+}
+
+s32 txgbe_hic_set_lldp(struct txgbe_hw *hw, bool on)
+{
+	struct txgbe_hic_write_lldp buffer;
+
+	if (on)
+		buffer.hdr.cmd = FW_LLDP_SET_CMD_ON;
+	else
+		buffer.hdr.cmd = FW_LLDP_SET_CMD_OFF;
+	buffer.hdr.buf_len = 0x1;
+	buffer.hdr.cmd_or_resp.cmd_resv = FW_CEM_CMD_RESERVED;
+	buffer.hdr.checksum = FW_DEFAULT_CHECKSUM;
+	buffer.func = hw->bus.lan_id;
+
+	return txgbe_host_interface_command(hw, (u32 *)&buffer, sizeof(buffer),
+					    TXGBE_HI_COMMAND_TIMEOUT, false);
+}

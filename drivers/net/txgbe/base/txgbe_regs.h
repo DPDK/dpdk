@@ -1684,6 +1684,8 @@ enum txgbe_5tuple_protocol {
 #define TXGBE_ISBADDRL                  0x000160
 #define TXGBE_ISBADDRH                  0x000164
 
+#define TXGBE_LLDP_REG                  0x0F1000
+
 #define NVM_OROM_OFFSET		0x17
 #define NVM_OROM_BLK_LOW	0x83
 #define NVM_OROM_BLK_HI		0x84

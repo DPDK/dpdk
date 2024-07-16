@@ -778,10 +778,12 @@ struct txgbe_hw {
 	u16 vendor_id;
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
+	u8 port_id;
 	u8 revision_id;
 	bool adapter_stopped;
 	int api_version;
 	bool allow_unsupported_sfp;
+	bool lldp_enabled;
 	bool need_crosstalk_fix;
 	bool dev_start;
 	bool autoneg;

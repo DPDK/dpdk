@@ -27,6 +27,56 @@ static s32 txgbe_mta_vector(struct txgbe_hw *hw, u8 *mc_addr);
 static s32 txgbe_get_san_mac_addr_offset(struct txgbe_hw *hw,
 					 u16 *san_mac_offset);
 
+static s32 txgbe_is_lldp(struct txgbe_hw *hw)
+{
+	u32 tmp = 0, lldp_flash_data = 0, i;
+	s32 err = 0;
+
+	if ((hw->fw_version & TXGBE_FW_MASK) >= TXGBE_FW_GET_LLDP) {
+		err = txgbe_hic_get_lldp(hw);
+		if (err == 0)
+			return 0;
+	}
+
+	for (i = 0; i < 1024; i++) {
+		err = txgbe_flash_read_dword(hw, TXGBE_LLDP_REG + i * 4, &tmp);
+		if (err)
+			return err;
+
+		if (tmp == BIT_MASK32)
+			break;
+		lldp_flash_data = tmp;
+	}
+
+	if (lldp_flash_data & MS(hw->bus.lan_id, 1))
+		hw->lldp_enabled = true;
+	else
+		hw->lldp_enabled = false;
+
+	return 0;
+}
+
+static void txgbe_disable_lldp(struct txgbe_hw *hw)
+{
+	s32 status = 0;
+
+	if ((hw->fw_version & TXGBE_FW_MASK) < TXGBE_FW_SUPPORT_LLDP)
+		return;
+
+	status = txgbe_is_lldp(hw);
+	if (status) {
+		PMD_INIT_LOG(INFO, "Can not get LLDP status.");
+	} else if (hw->lldp_enabled) {
+		status = txgbe_hic_set_lldp(hw, false);
+		if (!status)
+			PMD_INIT_LOG(INFO,
+				"LLDP detected on port %d, turn it off by default.",
+				hw->port_id);
+		else
+			PMD_INIT_LOG(INFO, "Can not set LLDP status.");
+	}
+}
+
 /**
  * txgbe_device_supports_autoneg_fc - Check if device supports autonegotiation
  * of flow control
@@ -271,6 +321,8 @@ s32 txgbe_init_hw(struct txgbe_hw *hw)
 
 	/* Get firmware version */
 	hw->phy.get_fw_version(hw, &hw->fw_version);
+
+	txgbe_disable_lldp(hw);
 
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
@@ -2668,9 +2720,9 @@ out:
  * 1. to be sector address, when implemented erase sector command
  * 2. to be flash address when implemented read, write flash address
  *
- * Return 0 on success, return 1 on failure.
+ * Return 0 on success, return TXGBE_ERR_TIMEOUT on failure.
  */
-u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
+s32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
 {
 	u32 cmd_val, i;
 
@@ -2685,22 +2737,24 @@ u32 txgbe_fmgr_cmd_op(struct txgbe_hw *hw, u32 cmd, u32 cmd_addr)
 	}
 
 	if (i == TXGBE_SPI_TIMEOUT)
-		return 1;
+		return TXGBE_ERR_TIMEOUT;
 
 	return 0;
 }
 
-u32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr)
+s32 txgbe_flash_read_dword(struct txgbe_hw *hw, u32 addr, u32 *data)
 {
-	u32 status;
+	s32 status;
 
 	status = txgbe_fmgr_cmd_op(hw, 1, addr);
-	if (status == 0x1) {
+	if (status < 0) {
 		DEBUGOUT("Read flash timeout.");
 		return status;
 	}
 
-	return rd32(hw, TXGBE_SPIDAT);
+	*data = rd32(hw, TXGBE_SPIDAT);
+
+	return 0;
 }
 
 /**
