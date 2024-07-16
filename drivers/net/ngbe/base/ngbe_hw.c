@@ -10,6 +10,56 @@
 #include "ngbe_mng.h"
 #include "ngbe_hw.h"
 
+static s32 ngbe_is_lldp(struct ngbe_hw *hw)
+{
+	u32 tmp = 0, lldp_flash_data = 0, i;
+	s32 err = 0;
+
+	if ((hw->eeprom_id & NGBE_FW_MASK) >= NGBE_FW_GET_LLDP) {
+		err = ngbe_hic_get_lldp(hw);
+		if (err == 0)
+			return 0;
+	}
+
+	for (i = 0; i < 1024; i++) {
+		err = ngbe_flash_read_dword(hw, NGBE_LLDP_REG + i * 4, &tmp);
+		if (err)
+			return err;
+
+		if (tmp == BIT_MASK32)
+			break;
+		lldp_flash_data = tmp;
+	}
+
+	if (lldp_flash_data & MS(hw->bus.lan_id, 1))
+		hw->lldp_enabled = true;
+	else
+		hw->lldp_enabled = false;
+
+	return 0;
+}
+
+static void ngbe_disable_lldp(struct ngbe_hw *hw)
+{
+	s32 err = 0;
+
+	if ((hw->eeprom_id & NGBE_FW_MASK) < NGBE_FW_SUPPORT_LLDP)
+		return;
+
+	err = ngbe_is_lldp(hw);
+	if (err) {
+		PMD_INIT_LOG(INFO, "Can not get LLDP status.");
+	} else if (hw->lldp_enabled) {
+		err = ngbe_hic_set_lldp(hw, false);
+		if (!err)
+			PMD_INIT_LOG(INFO,
+				"LLDP detected on port %d, turn it off by default.",
+				hw->port_id);
+		else
+			PMD_INIT_LOG(INFO, "Can not set LLDP status.");
+	}
+}
+
 /**
  *  ngbe_start_hw - Prepare hardware for Tx/Rx
  *  @hw: pointer to hardware structure
@@ -55,6 +105,7 @@ s32 ngbe_init_hw(struct ngbe_hw *hw)
 
 	ngbe_read_efuse(hw);
 	ngbe_save_eeprom_version(hw);
+	ngbe_disable_lldp(hw);
 
 	/* Reset the hardware */
 	status = hw->mac.reset_hw(hw);
@@ -1816,9 +1867,9 @@ s32 ngbe_enable_rx_dma(struct ngbe_hw *hw, u32 regval)
  * 1. to be sector address, when implemented erase sector command
  * 2. to be flash address when implemented read, write flash address
  *
- * Return 0 on success, return 1 on failure.
+ * Return 0 on success, return NGBE_ERR_TIMEOUT on failure.
  */
-u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
+s32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
 {
 	u32 cmd_val, i;
 
@@ -1832,33 +1883,35 @@ u32 ngbe_fmgr_cmd_op(struct ngbe_hw *hw, u32 cmd, u32 cmd_addr)
 		usec_delay(10);
 	}
 	if (i == NGBE_SPI_TIMEOUT)
-		return 1;
+		return NGBE_ERR_TIMEOUT;
 
 	return 0;
 }
 
-u32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr)
+s32 ngbe_flash_read_dword(struct ngbe_hw *hw, u32 addr, u32 *data)
 {
-	u32 status;
+	s32 status;
 
 	status = ngbe_fmgr_cmd_op(hw, 1, addr);
-	if (status == 0x1) {
+	if (status < 0) {
 		DEBUGOUT("Read flash timeout.");
 		return status;
 	}
 
-	return rd32(hw, NGBE_SPIDAT);
+	*data = rd32(hw, NGBE_SPIDAT);
+
+	return 0;
 }
 
 void ngbe_read_efuse(struct ngbe_hw *hw)
 {
-	u32 efuse[2];
+	u32 efuse[2] = {0, 0};
 	u8 lan_id = hw->bus.lan_id;
 
-	efuse[0] = ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8);
-	efuse[1] = ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8 + 4);
+	ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8, &efuse[0]);
+	ngbe_flash_read_dword(hw, 0xfe010 + lan_id * 8 + 4, &efuse[1]);
 
-	DEBUGOUT("port %d efuse[0] = %08x, efuse[1] = %08x\n",
+	DEBUGOUT("port %d efuse[0] = %08x, efuse[1] = %08x",
 		lan_id, efuse[0], efuse[1]);
 
 	hw->gphy_efuse[0] = efuse[0];

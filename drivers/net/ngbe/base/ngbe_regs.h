@@ -1257,6 +1257,8 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_MDIOMODE_PRT1CL22	MS(1, 0x1)
 #define   NGBE_MDIOMODE_PRT0CL22	MS(0, 0x1)
 
+#define NGBE_LLDP_REG			0x0F1000
+
 #define NVM_OROM_OFFSET		0x17
 #define NVM_OROM_BLK_LOW	0x83
 #define NVM_OROM_BLK_HI		0x84
