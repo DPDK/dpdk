@@ -234,6 +234,8 @@ struct gve_priv {
 	const struct rte_memzone *cnt_array_mz;
 
 	uint16_t num_event_counters;
+	uint16_t max_tx_desc_cnt;
+	uint16_t max_rx_desc_cnt;
 	uint16_t tx_desc_cnt; /* txq size */
 	uint16_t rx_desc_cnt; /* rxq size */
 	uint16_t tx_pages_per_qpl; /* tx buffer length */
