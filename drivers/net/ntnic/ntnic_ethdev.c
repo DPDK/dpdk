@@ -172,12 +172,33 @@ eth_dev_close(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+eth_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version, size_t fw_size)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	fpga_info_t *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
+	const int length = snprintf(fw_version, fw_size, "%03d-%04d-%02d-%02d",
+			fpga_info->n_fpga_type_id, fpga_info->n_fpga_prod_id,
+			fpga_info->n_fpga_ver_id, fpga_info->n_fpga_rev_id);
+
+	if ((size_t)length < fw_size) {
+		/* We have space for the version string */
+		return 0;
+
+	} else {
+		/* We do not have space for the version string -return the needed space */
+		return length + 1;
+	}
+}
+
 static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.dev_configure = eth_dev_configure,
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,
 	.dev_infos_get = eth_dev_infos_get,
+	.fw_version_get = eth_fw_version_get,
 };
 
 static int
@@ -194,6 +215,8 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 	struct drv_s *p_drv;
 	ntdrv_4ga_t *p_nt_drv;
+	hw_info_t *p_hw_info;
+	fpga_info_t *fpga_info;
 	uint32_t n_port_mask = -1;	/* All ports enabled by default */
 	uint32_t nb_rx_queues = 1;
 	uint32_t nb_tx_queues = 1;
@@ -225,6 +248,8 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 	/* context */
 	p_nt_drv = &p_drv->ntdrv;
+	p_hw_info = &p_nt_drv->adapter_info.hw_info;
+	fpga_info = &p_nt_drv->adapter_info.fpga_info;
 
 	p_drv->p_dev = pci_dev;
 
@@ -234,6 +259,11 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	p_nt_drv->adapter_info.n_rx_host_buffers = nb_rx_queues;
 	p_nt_drv->adapter_info.n_tx_host_buffers = nb_tx_queues;
 
+	fpga_info->bar0_addr = (void *)pci_dev->mem_resource[0].addr;
+	fpga_info->bar0_size = pci_dev->mem_resource[0].len;
+	fpga_info->numa_node = pci_dev->device.numa_node;
+	fpga_info->pciident = p_nt_drv->pciident;
+	fpga_info->adapter_no = p_drv->adapter_no;
 
 	p_nt_drv->adapter_info.hw_info.pci_class_id = pci_dev->id.class_id;
 	p_nt_drv->adapter_info.hw_info.pci_vendor_id = pci_dev->id.vendor_id;
@@ -270,6 +300,15 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		/* mp_adapter_id_str is initialized after nt4ga_adapter_init(p_nt_drv) */
 		const char *const p_adapter_id_str = p_nt_drv->adapter_info.mp_adapter_id_str;
 		(void)p_adapter_id_str;
+		NT_LOG(DBG, NTNIC,
+			"%s: %s: AdapterPCI=" PCIIDENT_PRINT_STR " Hw=0x%02X_rev%d PhyPorts=%d\n",
+			(pci_dev->name[0] ? pci_dev->name : "NA"), p_adapter_id_str,
+			PCIIDENT_TO_DOMAIN(p_nt_drv->adapter_info.fpga_info.pciident),
+			PCIIDENT_TO_BUSNR(p_nt_drv->adapter_info.fpga_info.pciident),
+			PCIIDENT_TO_DEVNR(p_nt_drv->adapter_info.fpga_info.pciident),
+			PCIIDENT_TO_FUNCNR(p_nt_drv->adapter_info.fpga_info.pciident),
+			p_hw_info->hw_platform_id, fpga_info->nthw_hw_info.hw_id,
+			fpga_info->n_phy_ports);
 
 	} else {
 		NT_LOG_DBGX(ERR, NTNIC, "%s: error=%d\n",
@@ -277,7 +316,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		return -1;
 	}
 
-	n_phy_ports = 0;
+	n_phy_ports = fpga_info->n_phy_ports;
 
 	for (int n_intf_no = 0; n_intf_no < n_phy_ports; n_intf_no++) {
 		const char *const p_port_id_str = p_nt_drv->adapter_info.mp_port_id_str[n_intf_no];

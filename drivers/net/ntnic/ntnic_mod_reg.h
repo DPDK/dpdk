@@ -7,6 +7,7 @@
 #define __NTNIC_MOD_REG_H__
 
 #include <stdint.h>
+#include "nthw_fpga_model.h"
 #include "nthw_platform_drv.h"
 #include "nthw_drv.h"
 #include "nt4ga_adapter.h"

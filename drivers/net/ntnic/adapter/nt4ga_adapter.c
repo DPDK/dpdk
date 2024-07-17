@@ -6,7 +6,7 @@
 #include <rte_thread.h>
 
 #include "ntlog.h"
-#include "nt_util.h"
+#include "nthw_fpga.h"
 #include "ntnic_mod_reg.h"
 
 static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *pfh)
@@ -15,6 +15,7 @@ static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *
 	const char *const p_adapter_id_str = p_adapter_info->mp_adapter_id_str;
 	fpga_info_t *p_fpga_info = &p_adapter_info->fpga_info;
 	hw_info_t *p_hw_info = &p_adapter_info->hw_info;
+	mcu_info_t *mcu_info = &p_adapter_info->fpga_info.mcu_info;
 	char a_pci_ident_str[32];
 
 	snprintf(a_pci_ident_str, sizeof(a_pci_ident_str), PCIIDENT_PRINT_STR,
@@ -37,6 +38,8 @@ static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *
 	fprintf(pfh, "%s: Hw=0x%02X_rev%d: %s\n", p_adapter_id_str, p_hw_info->hw_platform_id,
 		p_fpga_info->nthw_hw_info.hw_id, p_fpga_info->nthw_hw_info.hw_plat_id_str);
 	fprintf(pfh, "%s: MCU Details:\n", p_adapter_id_str);
+	fprintf(pfh, "%s: HasMcu=%d McuType=%d McuDramSize=%d\n", p_adapter_id_str,
+		mcu_info->mb_has_mcu, mcu_info->mn_mcu_type, mcu_info->mn_mcu_dram_size);
 
 	return 0;
 }
@@ -48,6 +51,13 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	fpga_info_t *fpga_info = &p_adapter_info->fpga_info;
 	hw_info_t *p_hw_info = &p_adapter_info->hw_info;
 
+	/*
+	 * IMPORTANT: Most variables cannot be determined before nthw fpga model is instantiated
+	 * (nthw_fpga_init())
+	 */
+	int n_phy_ports = -1;
+	int res = -1;
+	nthw_fpga_t *p_fpga = NULL;
 
 	p_hw_info->n_nthw_adapter_id = nthw_platform_get_nthw_adapter_id(p_hw_info->pci_device_id);
 
@@ -99,6 +109,39 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		}
 	}
 
+	res = nthw_fpga_init(&p_adapter_info->fpga_info);
+
+	if (res) {
+		NT_LOG_DBGX(ERR, NTNIC, "%s: %s: FPGA=%04d res=x%08X\n", p_adapter_id_str,
+			p_dev_name, fpga_info->n_fpga_prod_id, res);
+		return res;
+	}
+
+	assert(fpga_info);
+	p_fpga = fpga_info->mp_fpga;
+	assert(p_fpga);
+	n_phy_ports = fpga_info->n_phy_ports;
+	assert(n_phy_ports >= 1);
+
+	{
+		assert(fpga_info->n_fpga_prod_id > 0);
+
+		switch (fpga_info->n_fpga_prod_id) {
+		default:
+			NT_LOG(ERR, NTNIC, "Unsupported FPGA product: %04d\n",
+				fpga_info->n_fpga_prod_id);
+			res = -1;
+			break;
+		}
+
+		if (res) {
+			NT_LOG_DBGX(ERR, NTNIC, "%s: %s: FPGA=%04d res=x%08X\n",
+				p_adapter_id_str, p_dev_name,
+				fpga_info->n_fpga_prod_id, res);
+			return res;
+		}
+	}
+
 	return 0;
 }
 
@@ -108,6 +151,10 @@ static int nt4ga_adapter_deinit(struct adapter_info_s *p_adapter_info)
 	int i;
 	int res = -1;
 
+	nthw_fpga_shutdown(&p_adapter_info->fpga_info);
+
+	/* Rac rab reset flip flop */
+	res = nthw_rac_rab_reset(fpga_info->mp_nthw_rac);
 
 	/* Free adapter port ident strings */
 	for (i = 0; i < fpga_info->n_phy_ports; i++) {

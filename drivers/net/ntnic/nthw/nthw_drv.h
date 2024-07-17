@@ -22,6 +22,7 @@ enum fpga_info_profile {
 };
 
 typedef struct mcu_info_s {
+	bool mb_has_mcu;
 	int mn_mcu_type;
 	int mn_mcu_dram_size;
 } mcu_info_t;

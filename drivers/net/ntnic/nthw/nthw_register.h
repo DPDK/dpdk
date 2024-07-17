@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
+#include "nthw_fpga_model.h"
 
 #include "fpga_model.h"
 

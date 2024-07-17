@@ -30,6 +30,11 @@ Supported NICs
 All information about NT200A02 can be found by link below:
 https://www.napatech.com/products/nt200a02-smartnic-inline/
 
+Features
+--------
+
+- FW version
+
 Limitations
 ~~~~~~~~~~~
 

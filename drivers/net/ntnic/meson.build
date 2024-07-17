@@ -16,6 +16,7 @@ includes = [
         include_directories('nthw/core/include'),
         include_directories('nthw'),
         include_directories('nthw/supported'),
+        include_directories('nthw/model'),
 ]
 
 # all sources
@@ -24,7 +25,13 @@ sources = files(
         'nthw/supported/nthw_fpga_9563_055_039_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
         'nthw/supported/nthw_fpga_mod_str_map.c',
+        'nthw/core/nthw_fpga.c',
+        'nthw/core/nthw_hif.c',
+        'nthw/core/nthw_iic.c',
+        'nthw/core/nthw_pcie3.c',
+        'nthw/model/nthw_fpga_model.c',
         'nthw/nthw_platform.c',
+        'nthw/nthw_rac.c',
         'ntlog/ntlog.c',
         'ntutil/nt_util.c',
         'ntnic_mod_reg.c',
