@@ -30,7 +30,7 @@ Compiling the Application
 
 To compile the sample application see :doc:`compiling`.
 
-The application is located in the ``l2fwd-crypt`` sub-directory.
+The application is located in the ``l2fwd-crypto`` sub-directory.
 
 Running the Application
 -----------------------
