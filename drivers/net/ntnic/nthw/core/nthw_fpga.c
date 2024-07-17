@@ -65,6 +65,88 @@ int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpg
 	return 0;
 }
 
+int nthw_fpga_iic_scan(nthw_fpga_t *p_fpga, const int n_instance_no_begin,
+	const int n_instance_no_end)
+{
+	int i;
+
+	assert(n_instance_no_begin <= n_instance_no_end);
+
+	for (i = n_instance_no_begin; i <= n_instance_no_end; i++) {
+		nthw_iic_t *p_nthw_iic = nthw_iic_new();
+
+		if (p_nthw_iic) {
+			const int rc = nthw_iic_init(p_nthw_iic, p_fpga, i, 8);
+
+			if (rc == 0) {
+				nthw_iic_set_retry_params(p_nthw_iic, -1, 100, 100, 3, 3);
+				nthw_iic_scan(p_nthw_iic);
+			}
+
+			nthw_iic_delete(p_nthw_iic);
+			p_nthw_iic = NULL;
+		}
+	}
+
+	return 0;
+}
+
+int nthw_fpga_silabs_detect(nthw_fpga_t *p_fpga, const int n_instance_no, const int n_dev_addr,
+	const int n_page_reg_addr)
+{
+	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
+	(void)p_adapter_id_str;
+	uint64_t ident = -1;
+	int res = -1;
+
+	nthw_iic_t *p_nthw_iic = nthw_iic_new();
+
+	if (p_nthw_iic) {
+		uint8_t data;
+		uint8_t a_silabs_ident[8];
+		nthw_iic_init(p_nthw_iic, p_fpga, n_instance_no, 8);
+
+		data = 0;
+		/* switch to page 0 */
+		nthw_iic_write_data(p_nthw_iic, (uint8_t)n_dev_addr, (uint8_t)n_page_reg_addr, 1,
+			&data);
+		res = nthw_iic_read_data(p_nthw_iic, (uint8_t)n_dev_addr, 0x00,
+				sizeof(a_silabs_ident), a_silabs_ident);
+
+		if (res == 0) {
+			int i;
+
+			for (i = 0; i < (int)sizeof(a_silabs_ident); i++) {
+				ident <<= 8;
+				ident |= a_silabs_ident[i];
+			}
+		}
+
+		nthw_iic_delete(p_nthw_iic);
+		p_nthw_iic = NULL;
+
+		/* Conclude SiLabs part */
+		if (res == 0) {
+			if (a_silabs_ident[3] == 0x53) {
+				if (a_silabs_ident[2] == 0x40)
+					res = 5340;
+
+				else if (a_silabs_ident[2] == 0x41)
+					res = 5341;
+
+			} else if (a_silabs_ident[2] == 38) {
+				res = 5338;
+
+			} else {
+				res = -1;
+			}
+		}
+	}
+
+	NT_LOG(DBG, NTHW, "%s: %016" PRIX64 ": %d\n", p_adapter_id_str, ident, res);
+	return res;
+}
+
 int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 {
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;

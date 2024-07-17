@@ -18,6 +18,12 @@ int nthw_fpga_shutdown(struct fpga_info_s *p_fpga_info);
 
 int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpga);
 
+int nthw_fpga_iic_scan(nthw_fpga_t *p_fpga, const int n_instance_no_begin,
+	const int n_instance_no_end);
+
+int nthw_fpga_silabs_detect(nthw_fpga_t *p_fpga, const int n_instance_no, const int n_dev_addr,
+	const int n_page_reg_addr);
+
 struct nt200a0x_ops {
 	int (*nthw_fpga_nt200a0x_init)(struct fpga_info_s *p_fpga_info);
 };

@@ -16,5 +16,7 @@
 #include "nthw_pcie3.h"
 #include "nthw_iic.h"
 
+#include "nthw_sdc.h"
+
 
 #endif	/* __NTHW_CORE_H__ */
