@@ -8616,7 +8616,7 @@ static int test_pdcp_proto(int i, int oop, enum rte_crypto_cipher_operation opc,
 	/* Out of place support */
 	if (oop) {
 		/*
-		 * For out-op-place we need to alloc another mbuf
+		 * For out-of-place we need to alloc another mbuf
 		 */
 		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		rte_pktmbuf_append(ut_params->obuf, output_vec_len);
@@ -8825,7 +8825,7 @@ test_pdcp_proto_SGL(int i, int oop,
 	/* Out of place support */
 	if (oop) {
 		/*
-		 * For out-op-place we need to alloc another mbuf
+		 * For out-of-place we need to alloc another mbuf
 		 */
 		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
 		rte_pktmbuf_append(ut_params->obuf, frag_size_oop);
@@ -14623,7 +14623,7 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 	}
 
 	/*
-	 * For out-op-place we need to alloc another mbuf
+	 * For out-of-place we need to alloc another mbuf
 	 */
 	if (oop) {
 		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
