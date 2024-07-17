@@ -24,6 +24,7 @@ static bool page_addressing(nt_nim_identifier_t id)
 	switch (id) {
 	case NT_NIM_QSFP:
 	case NT_NIM_QSFP_PLUS:
+	case NT_NIM_QSFP28:
 		return true;
 
 	default:
@@ -185,6 +186,14 @@ static int read_data_lin(nim_i2c_ctx_p ctx, uint16_t lin_addr, uint16_t length, 
 			NIM_READ);
 }
 
+/* Read and return a single byte */
+static uint8_t read_byte(nim_i2c_ctx_p ctx, uint16_t addr)
+{
+	uint8_t data;
+	read_data_lin(ctx, addr, sizeof(data), &data);
+	return data;
+}
+
 static int nim_read_id(nim_i2c_ctx_t *ctx)
 {
 	/* We are only reading the first byte so we don't care about pages here. */
@@ -294,8 +303,12 @@ static int qsfp_nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
 		state->br = 103U;	/* QSFP+: 4 x 10G = 40G */
 		break;
 
+	case 17U:
+		state->br = 255U;	/* QSFP28: 4 x 25G = 100G */
+		break;
+
 	default:
-		NT_LOG(INF, NIM, "nim_id = %u is not an QSFP/QSFP+ module\n", ctx->nim_id);
+		NT_LOG(INF, NIM, "nim_id = %u is not an QSFP/QSFP+/QSFP28 module\n", ctx->nim_id);
 		res = -1;
 	}
 
@@ -318,6 +331,9 @@ const char *nim_id_to_text(uint8_t nim_id)
 
 	case 0x0D:
 		return "QSFP+";
+
+	case 0x11:
+		return "QSFP28";
 
 	default:
 		return "ILLEGAL!";
@@ -446,6 +462,132 @@ static int qsfpplus_read_basic_data(nim_i2c_ctx_t *ctx)
 	return 0;
 }
 
+static void qsfp28_find_port_params(nim_i2c_ctx_p ctx)
+{
+	uint8_t fiber_chan_speed;
+
+	/* Table 6-17 SFF-8636 */
+	read_data_lin(ctx, QSFP_SPEC_COMPLIANCE_CODES_ADDR, 1, &fiber_chan_speed);
+
+	if (fiber_chan_speed & (1 << 7)) {
+		/* SFF-8024, Rev 4.7, Table 4-4 */
+		uint8_t extended_specification_compliance_code = 0;
+		read_data_lin(ctx, QSFP_EXT_SPEC_COMPLIANCE_CODES_ADDR, 1,
+			&extended_specification_compliance_code);
+
+		switch (extended_specification_compliance_code) {
+		case 0x02:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_SR4;
+			break;
+
+		case 0x03:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_LR4;
+			break;
+
+		case 0x0B:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_CR_CA_L;
+			break;
+
+		case 0x0C:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_CR_CA_S;
+			break;
+
+		case 0x0D:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_CR_CA_N;
+			break;
+
+		case 0x25:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_DR;
+			break;
+
+		case 0x26:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_FR;
+			break;
+
+		case 0x27:
+			ctx->port_type = NT_PORT_TYPE_QSFP28_LR;
+			break;
+
+		default:
+			ctx->port_type = NT_PORT_TYPE_QSFP28;
+		}
+
+	} else {
+		ctx->port_type = NT_PORT_TYPE_QSFP28;
+	}
+}
+
+/*
+ * If true the user must actively select the desired rate. If false the module
+ * however can still support several rates without the user is required to select
+ * one of them. Supported rates must then be deduced from the product number.
+ * SFF-8636, Rev 2.10a:
+ * p40: 6.2.7 Rate Select
+ * p85: A.2 Rate Select
+ */
+static bool qsfp28_is_rate_selection_enabled(nim_i2c_ctx_p ctx)
+{
+	const uint8_t ext_rate_select_compl_reg_addr = 141;
+	const uint8_t options_reg_addr = 195;
+	const uint8_t enh_options_reg_addr = 221;
+
+	uint8_t rate_select_ena = (read_byte(ctx, options_reg_addr) >> 5) & 0x01;	/* bit: 5 */
+
+	if (rate_select_ena == 0)
+		return false;
+
+	uint8_t rate_select_type =
+		(read_byte(ctx, enh_options_reg_addr) >> 2) & 0x03;	/* bit 3..2 */
+
+	if (rate_select_type != 2) {
+		NT_LOG(DBG, PMD, "NIM has unhandled rate select type (%d)", rate_select_type);
+		return false;
+	}
+
+	uint8_t ext_rate_select_ver =
+		read_byte(ctx, ext_rate_select_compl_reg_addr) & 0x03;	/* bit 1..0 */
+
+	if (ext_rate_select_ver != 0x02) {
+		NT_LOG(DBG, PMD, "NIM has unhandled extended rate select version (%d)",
+			ext_rate_select_ver);
+		return false;
+	}
+
+	return true;	/* When true selectRate() can be used */
+}
+
+static void qsfp28_set_speed_mask(nim_i2c_ctx_p ctx)
+{
+	if (ctx->port_type == NT_PORT_TYPE_QSFP28_FR || ctx->port_type == NT_PORT_TYPE_QSFP28_DR ||
+		ctx->port_type == NT_PORT_TYPE_QSFP28_LR) {
+		if (ctx->lane_idx < 0)
+			ctx->speed_mask = NT_LINK_SPEED_100G;
+
+		else
+			/* PAM-4 modules can only run on all lanes together */
+			ctx->speed_mask = 0;
+
+	} else {
+		if (ctx->lane_idx < 0)
+			ctx->speed_mask = NT_LINK_SPEED_100G;
+
+		else
+			ctx->speed_mask = NT_LINK_SPEED_25G;
+
+		if (qsfp28_is_rate_selection_enabled(ctx)) {
+			/*
+			 * It is assumed that if the module supports dual rates then the other rate
+			 * is 10G per lane or 40G for all lanes.
+			 */
+			if (ctx->lane_idx < 0)
+				ctx->speed_mask |= NT_LINK_SPEED_40G;
+
+			else
+				ctx->speed_mask = NT_LINK_SPEED_10G;
+		}
+	}
+}
+
 static void qsfpplus_find_port_params(nim_i2c_ctx_p ctx)
 {
 	uint8_t device_tech;
@@ -474,6 +616,7 @@ static void qsfpplus_set_speed_mask(nim_i2c_ctx_p ctx)
 static void qsfpplus_construct(nim_i2c_ctx_p ctx, int8_t lane_idx)
 {
 	assert(lane_idx < 4);
+	ctx->specific_u.qsfp.qsfp28 = false;
 	ctx->lane_idx = lane_idx;
 	ctx->lane_count = 4;
 }
@@ -514,6 +657,124 @@ static int qsfpplus_preinit(nim_i2c_ctx_p ctx, int8_t lane_idx)
 	return res;
 }
 
+static void qsfp28_wait_for_ready_after_reset(nim_i2c_ctx_p ctx)
+{
+	uint8_t data;
+	bool init_complete_flag_present = false;
+
+	/*
+	 * Revision compliance
+	 * 7: SFF-8636 Rev 2.5, 2.6 and 2.7
+	 * 8: SFF-8636 Rev 2.8, 2.9 and 2.10
+	 */
+	read_data_lin(ctx, 1, sizeof(ctx->specific_u.qsfp.specific_u.qsfp28.rev_compliance),
+		&ctx->specific_u.qsfp.specific_u.qsfp28.rev_compliance);
+	NT_LOG(DBG, NTHW, "NIM RevCompliance = %d",
+		ctx->specific_u.qsfp.specific_u.qsfp28.rev_compliance);
+
+	/* Wait if lane_idx == -1 (all lanes are used) or lane_idx == 0 (the first lane) */
+	if (ctx->lane_idx > 0)
+		return;
+
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.rev_compliance >= 7) {
+		/* Check if init complete flag is implemented */
+		read_data_lin(ctx, 221, sizeof(data), &data);
+		init_complete_flag_present = (data & (1 << 4)) != 0;
+	}
+
+	NT_LOG(DBG, NTHW, "NIM InitCompleteFlagPresent = %d", init_complete_flag_present);
+
+	/*
+	 * If the init complete flag is not present then wait 500ms that together with 500ms
+	 * after reset (in the adapter code) should be enough to read data from upper pages
+	 * that otherwise would not be ready. Especially BiDi modules AFBR-89BDDZ have been
+	 * prone to this when trying to read sensor options using getQsfpOptionsFromData()
+	 * Probably because access to the paged address space is required.
+	 */
+	if (!init_complete_flag_present) {
+		nt_os_wait_usec(500000);
+		return;
+	}
+
+	/* Otherwise wait for the init complete flag to be set */
+	int count = 0;
+
+	while (true) {
+		if (count > 10) {	/* 1 s timeout */
+			NT_LOG(WRN, NTHW, "Timeout waiting for module ready");
+			break;
+		}
+
+		read_data_lin(ctx, 6, sizeof(data), &data);
+
+		if (data & 0x01) {
+			NT_LOG(DBG, NTHW, "Module ready after %dms", count * 100);
+			break;
+		}
+
+		nt_os_wait_usec(100000);/* 100 ms */
+		count++;
+	}
+}
+
+static void qsfp28_get_fec_options(nim_i2c_ctx_p ctx)
+{
+	const char *const nim_list[] = {
+		"AFBR-89BDDZ",	/* Avago BiDi */
+		"AFBR-89BRDZ",	/* Avago BiDi, RxOnly */
+		"FTLC4352RKPL",	/* Finisar QSFP28-LR */
+		"FTLC4352RHPL",	/* Finisar QSFP28-DR */
+		"FTLC4352RJPL",	/* Finisar QSFP28-FR */
+		"SFBR-89BDDZ-CS4",	/* Foxconn, QSFP28 100G/40G BiDi */
+	};
+
+	for (size_t i = 0; i < ARRAY_SIZE(nim_list); i++) {
+		if (ctx->prod_no == nim_list[i]) {
+			ctx->options |= (1 << NIM_OPTION_MEDIA_SIDE_FEC);
+			ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ena = true;
+			NT_LOG(DBG, NTHW, "Found FEC info via PN list");
+			return;
+		}
+	}
+
+	/*
+	 * For modules not in the list find FEC info via registers
+	 * Read if the module has controllable FEC
+	 * SFF-8636, Rev 2.10a TABLE 6-28 Equalizer, Emphasis, Amplitude and Timing)
+	 * (Page 03h, Bytes 224-229)
+	 */
+	uint8_t data;
+	uint16_t addr = 227 + 3 * 128;
+	read_data_lin(ctx, addr, sizeof(data), &data);
+
+	/* Check if the module has FEC support that can be controlled */
+	ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ctrl = (data & (1 << 6)) != 0;
+	ctx->specific_u.qsfp.specific_u.qsfp28.host_side_fec_ctrl = (data & (1 << 7)) != 0;
+
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.media_side_fec_ctrl)
+		ctx->options |= (1 << NIM_OPTION_MEDIA_SIDE_FEC);
+
+	if (ctx->specific_u.qsfp.specific_u.qsfp28.host_side_fec_ctrl)
+		ctx->options |= (1 << NIM_OPTION_HOST_SIDE_FEC);
+}
+
+static int qsfp28_preinit(nim_i2c_ctx_p ctx, int8_t lane_idx)
+{
+	int res = qsfpplus_preinit(ctx, lane_idx);
+
+	if (!res) {
+		qsfp28_wait_for_ready_after_reset(ctx);
+		memset(&ctx->specific_u.qsfp.specific_u.qsfp28, 0,
+			sizeof(ctx->specific_u.qsfp.specific_u.qsfp28));
+		ctx->specific_u.qsfp.qsfp28 = true;
+		qsfp28_find_port_params(ctx);
+		qsfp28_get_fec_options(ctx);
+		qsfp28_set_speed_mask(ctx);
+	}
+
+	return res;
+}
+
 int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 {
 	int res = i2c_nim_common_construct(ctx);
@@ -521,6 +782,10 @@ int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 	switch (translate_nimid(ctx)) {
 	case NT_NIM_QSFP_PLUS:
 		qsfpplus_preinit(ctx, extra ? *(int8_t *)extra : (int8_t)-1);
+		break;
+
+	case NT_NIM_QSFP28:
+		qsfp28_preinit(ctx, extra ? *(int8_t *)extra : (int8_t)-1);
 		break;
 
 	default:

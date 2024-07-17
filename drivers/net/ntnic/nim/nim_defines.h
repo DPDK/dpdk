@@ -26,6 +26,7 @@ enum nt_nim_identifier_e {
 	NT_NIM_UNKNOWN = 0x00,	/* Nim type is unknown */
 	NT_NIM_QSFP = 0x0C,	/* Nim type = QSFP */
 	NT_NIM_QSFP_PLUS = 0x0D,/* Nim type = QSFP+ */
+	NT_NIM_QSFP28 = 0x11,	/* Nim type = QSFP28 */
 };
 typedef enum nt_nim_identifier_e nt_nim_identifier_t;
 

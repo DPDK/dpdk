@@ -17,6 +17,19 @@ enum nt_port_type_e {
 	NT_PORT_TYPE_NOT_RECOGNISED,	/* The NIM/port type not recognized */
 	NT_PORT_TYPE_QSFP_PLUS_NOT_PRESENT,	/* QSFP type but slot is empty */
 	NT_PORT_TYPE_QSFP_PLUS,	/* QSFP type */
+	NT_PORT_TYPE_QSFP28_NOT_PRESENT,/* QSFP28 type but slot is empty */
+	NT_PORT_TYPE_QSFP28,	/* QSFP28 type */
+	NT_PORT_TYPE_QSFP28_SR4,/* QSFP28-SR4 type */
+	NT_PORT_TYPE_QSFP28_LR4,/* QSFP28-LR4 type */
+	NT_PORT_TYPE_QSFP28_CR_CA_L,	/* QSFP28-CR-CA-L type */
+	NT_PORT_TYPE_QSFP28_CR_CA_S,	/* QSFP28-CR-CA-S type */
+	NT_PORT_TYPE_QSFP28_CR_CA_N,	/* QSFP28-CR-CA-N type */
+	/* QSFP28-FR type. Uses PAM4 modulation on one lane only */
+	NT_PORT_TYPE_QSFP28_FR,
+	/* QSFP28-DR type. Uses PAM4 modulation on one lane only */
+	NT_PORT_TYPE_QSFP28_DR,
+	/* QSFP28-LR type. Uses PAM4 modulation on one lane only */
+	NT_PORT_TYPE_QSFP28_LR,
 };
 
 typedef enum nt_port_type_e nt_port_type_t, *nt_port_type_p;
@@ -56,7 +69,15 @@ typedef struct nim_i2c_ctx {
 	union {
 		struct {
 			bool rx_only;
+			bool qsfp28;
 			union {
+				struct {
+					uint8_t rev_compliance;
+					bool media_side_fec_ctrl;
+					bool host_side_fec_ctrl;
+					bool media_side_fec_ena;
+					bool host_side_fec_ena;
+				} qsfp28;
 			} specific_u;
 		} qsfp;
 

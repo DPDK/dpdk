@@ -140,6 +140,26 @@ static uint32_t nt4ga_port_get_loopback_mode(struct adapter_info_s *p, int port)
 	return p_link->port_action[port].port_lpbk_mode;
 }
 
+/*
+ * port: tx power
+ */
+static int nt4ga_port_tx_power(struct adapter_info_s *p, int port, bool disable)
+{
+	nt4ga_link_t *link_info = &p->nt4ga_link;
+
+	if (link_info->u.nim_ctx[port].port_type == NT_PORT_TYPE_QSFP28_SR4 ||
+		link_info->u.nim_ctx[port].port_type == NT_PORT_TYPE_QSFP28 ||
+		link_info->u.nim_ctx[port].port_type == NT_PORT_TYPE_QSFP28_LR4) {
+		nim_i2c_ctx_t *nim_ctx = &link_info->u.var100g.nim_ctx[port];
+
+		if (!nim_ctx->specific_u.qsfp.rx_only) {
+			if (nim_qsfp_plus_nim_set_tx_laser_disable(nim_ctx, disable, -1) != 0)
+				return 1;
+		}
+	}
+
+	return 0;
+}
 
 static const struct port_ops ops = {
 	.get_nim_present = nt4ga_port_get_nim_present,
@@ -181,6 +201,11 @@ static const struct port_ops ops = {
 	.get_loopback_mode = nt4ga_port_get_loopback_mode,
 
 	.get_link_speed_capabilities = nt4ga_port_get_link_speed_capabilities,
+
+	/*
+	 * port: tx power
+	 */
+	.tx_power = nt4ga_port_tx_power,
 };
 
 void port_init(void)
