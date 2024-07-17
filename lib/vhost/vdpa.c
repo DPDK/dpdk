@@ -174,6 +174,7 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 	idx = vq->used->idx;
 	idx_m = s_vring->used->idx;
 	ret = (uint16_t)(idx_m - idx);
+	vq->used->flags = s_vring->used->flags;
 
 	while (idx != idx_m) {
 		/* copy used entry, used ring logging is not covered here */
