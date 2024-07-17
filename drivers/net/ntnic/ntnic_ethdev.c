@@ -9,6 +9,7 @@
 #include <ethdev_pci.h>
 
 #include "ntlog.h"
+#include "nt_util.h"
 
 static const struct rte_pci_id nthw_pci_id_map[] = {
 	{
