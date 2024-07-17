@@ -540,6 +540,7 @@ static int gve_adminq_create_tx_queue(struct gve_priv *priv, u32 queue_index)
 			cpu_to_be64(txq->qres_mz->iova),
 		.tx_ring_addr = cpu_to_be64(txq->tx_ring_phys_addr),
 		.ntfy_id = cpu_to_be32(txq->ntfy_id),
+		.tx_ring_size = cpu_to_be16(txq->nb_tx_desc),
 	};
 
 	if (gve_is_gqi(priv)) {
@@ -548,8 +549,6 @@ static int gve_adminq_create_tx_queue(struct gve_priv *priv, u32 queue_index)
 
 		cmd.create_tx_queue.queue_page_list_id = cpu_to_be32(qpl_id);
 	} else {
-		cmd.create_tx_queue.tx_ring_size =
-			cpu_to_be16(txq->nb_tx_desc);
 		cmd.create_tx_queue.tx_comp_ring_addr =
 			cpu_to_be64(txq->compl_ring_phys_addr);
 		cmd.create_tx_queue.tx_comp_ring_size =
@@ -584,6 +583,7 @@ static int gve_adminq_create_rx_queue(struct gve_priv *priv, u32 queue_index)
 		.queue_id = cpu_to_be32(queue_index),
 		.ntfy_id = cpu_to_be32(rxq->ntfy_id),
 		.queue_resources_addr = cpu_to_be64(rxq->qres_mz->iova),
+		.rx_ring_size = cpu_to_be16(rxq->nb_rx_desc),
 	};
 
 	if (gve_is_gqi(priv)) {
@@ -598,8 +598,6 @@ static int gve_adminq_create_rx_queue(struct gve_priv *priv, u32 queue_index)
 		cmd.create_rx_queue.queue_page_list_id = cpu_to_be32(qpl_id);
 		cmd.create_rx_queue.packet_buffer_size = cpu_to_be16(rxq->rx_buf_len);
 	} else {
-		cmd.create_rx_queue.rx_ring_size =
-			cpu_to_be16(rxq->nb_rx_desc);
 		cmd.create_rx_queue.rx_desc_ring_addr =
 			cpu_to_be64(rxq->compl_ring_phys_addr);
 		cmd.create_rx_queue.rx_data_ring_addr =

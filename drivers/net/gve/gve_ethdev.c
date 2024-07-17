@@ -510,19 +510,15 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->default_rxportconf.ring_size = priv->default_rx_desc_cnt;
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
-		.nb_max = gve_is_gqi(priv) ?
-			priv->default_rx_desc_cnt :
-			GVE_MAX_QUEUE_SIZE_DQO,
-		.nb_min = priv->default_rx_desc_cnt,
+		.nb_max = priv->max_rx_desc_cnt,
+		.nb_min = priv->min_rx_desc_cnt,
 		.nb_align = 1,
 	};
 
 	dev_info->default_txportconf.ring_size = priv->default_tx_desc_cnt;
 	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
-		.nb_max = gve_is_gqi(priv) ?
-			priv->default_tx_desc_cnt :
-			GVE_MAX_QUEUE_SIZE_DQO,
-		.nb_min = priv->default_tx_desc_cnt,
+		.nb_max = priv->max_tx_desc_cnt,
+		.nb_min = priv->min_tx_desc_cnt,
 		.nb_align = 1,
 	};
 

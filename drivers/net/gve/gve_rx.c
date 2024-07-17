@@ -304,11 +304,12 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	uint32_t mbuf_len;
 	int err = 0;
 
-	if (nb_desc != hw->default_rx_desc_cnt) {
-		PMD_DRV_LOG(WARNING, "gve doesn't support nb_desc config, use hw nb_desc %u.",
-			    hw->default_rx_desc_cnt);
+	/* Ring size is required to be a power of two. */
+	if (!rte_is_power_of_2(nb_desc)) {
+		PMD_DRV_LOG(ERR, "Invalid ring size %u. GVE ring size must be a power of 2.\n",
+			    nb_desc);
+		return -EINVAL;
 	}
-	nb_desc = hw->default_rx_desc_cnt;
 
 	/* Free memory if needed. */
 	if (dev->data->rx_queues[queue_id]) {
@@ -388,6 +389,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		rxq->qpl = gve_setup_queue_page_list(hw, queue_id, true,
 						     nb_desc);
 		if (!rxq->qpl) {
+			err = -ENOMEM;
 			PMD_DRV_LOG(ERR,
 				    "Failed to alloc rx qpl for queue %hu.",
 				    queue_id);
