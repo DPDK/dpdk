@@ -4458,7 +4458,7 @@ nfp_flow_action_compile_ttl(struct nfp_action_compile_param *param)
 		}
 	} else {
 		nfp_flow_action_set_hl(param->position, param->action,
-				param->flag->ttl_tos_flag);
+				param->flag->tc_hl_flag);
 		if (!param->flag->tc_hl_flag) {
 			param->position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 			param->flag->tc_hl_flag = true;
@@ -4485,7 +4485,7 @@ static int
 nfp_flow_action_compile_ipv6_dscp(struct nfp_action_compile_param *param)
 {
 	nfp_flow_action_set_tc(param->position, param->action,
-			param->flag->ttl_tos_flag);
+			param->flag->tc_hl_flag);
 	if (!param->flag->tc_hl_flag) {
 		param->position += sizeof(struct nfp_fl_act_set_ipv6_tc_hl_fl);
 		param->flag->tc_hl_flag = true;
