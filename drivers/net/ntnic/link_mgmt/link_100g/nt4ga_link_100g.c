@@ -11,12 +11,23 @@
 #include "ntnic_mod_reg.h"
 
 /*
+ * Check whether a NIM module is present
+ */
+static bool _nim_is_present(nthw_gpio_phy_t *gpio_phy, uint8_t if_no)
+{
+	assert(if_no < NUM_ADAPTER_PORTS_MAX);
+
+	return nthw_gpio_phy_is_module_present(gpio_phy, if_no);
+}
+
+/*
  * Initialize NIM, Code based on nt200e3_2_ptp.cpp: MyPort::createNim()
  */
-static int _create_nim(adapter_info_t *drv, int port)
+static int _create_nim(adapter_info_t *drv, int port, bool enable)
 {
 	int res = 0;
 	const uint8_t valid_nim_id = 17U;
+	nthw_gpio_phy_t *gpio_phy;
 	nim_i2c_ctx_t *nim_ctx;
 	sfp_nim_state_t nim;
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
@@ -24,13 +35,42 @@ static int _create_nim(adapter_info_t *drv, int port)
 	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
 	assert(link_info->variables_initialized);
 
+	gpio_phy = &link_info->u.var100g.gpio_phy[port];
 	nim_ctx = &link_info->u.var100g.nim_ctx[port];
+
+	/*
+	 * Check NIM is present before doing GPIO PHY reset.
+	 */
+	if (!_nim_is_present(gpio_phy, (uint8_t)port)) {
+		NT_LOG(INF, NTNIC, "%s: NIM module is absent\n", drv->mp_port_id_str[port]);
+		return 0;
+	}
+
+	/*
+	 * Perform PHY reset.
+	 */
+	NT_LOG(DBG, NTNIC, "%s: Performing NIM reset\n", drv->mp_port_id_str[port]);
+	nthw_gpio_phy_set_reset(gpio_phy, (uint8_t)port, true);
+	nt_os_wait_usec(100000);/* pause 0.1s */
+	nthw_gpio_phy_set_reset(gpio_phy, (uint8_t)port, false);
 
 	/*
 	 * Wait a little after a module has been inserted before trying to access I2C
 	 * data, otherwise the module will not respond correctly.
 	 */
 	nt_os_wait_usec(1000000);	/* pause 1.0s */
+
+	if (!_nim_is_present(gpio_phy, (uint8_t)port)) {
+		NT_LOG(DBG, NTNIC, "%s: NIM module is no longer absent!\n",
+			drv->mp_port_id_str[port]);
+		return -1;
+	}
+
+	if (!_nim_is_present(gpio_phy, (uint8_t)port)) {
+		NT_LOG(DBG, NTNIC, "%s: NIM module is no longer absent!\n",
+			drv->mp_port_id_str[port]);
+		return -1;
+	}
 
 	res = construct_and_preinit_nim(nim_ctx, NULL);
 
@@ -55,6 +95,15 @@ static int _create_nim(adapter_info_t *drv, int port)
 		NT_LOG(DBG, NTHW, "%s: The driver supports the NIM module type %s\n",
 			drv->mp_port_id_str[port], nim_id_to_text(valid_nim_id));
 		return -1;
+	}
+
+	if (enable) {
+		NT_LOG(DBG, NTNIC, "%s: De-asserting low power\n", drv->mp_port_id_str[port]);
+		nthw_gpio_phy_set_low_power(gpio_phy, (uint8_t)port, false);
+
+	} else {
+		NT_LOG(DBG, NTNIC, "%s: Asserting low power\n", drv->mp_port_id_str[port]);
+		nthw_gpio_phy_set_low_power(gpio_phy, (uint8_t)port, true);
 	}
 
 	return res;
@@ -89,7 +138,7 @@ static int _port_init(adapter_info_t *drv, int port)
 	/* Phase 3. Link state machine steps */
 
 	/* 3.1) Create NIM, ::createNim() */
-	res = _create_nim(drv, port);
+	res = _create_nim(drv, port, true);
 
 	if (res) {
 		NT_LOG(WRN, NTNIC, "%s: NIM initialization failed\n", drv->mp_port_id_str[port]);
@@ -115,6 +164,7 @@ static int _common_ptp_nim_state_machine(void *data)
 	uint32_t last_lpbk_mode[NUM_ADAPTER_PORTS_MAX];
 
 	link_state_t *link_state;
+	nthw_gpio_phy_t *gpio_phy;
 
 	if (!fpga) {
 		NT_LOG(ERR, NTNIC, "%s: fpga is NULL\n", drv->mp_adapter_id_str);
@@ -123,6 +173,7 @@ static int _common_ptp_nim_state_machine(void *data)
 
 	assert(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
 	link_state = link_info->link_state;
+	gpio_phy = link_info->u.var100g.gpio_phy;
 
 	monitor_task_is_running[adapter_no] = 1;
 	memset(last_lpbk_mode, 0, sizeof(last_lpbk_mode));
@@ -150,7 +201,7 @@ static int _common_ptp_nim_state_machine(void *data)
 				link_info->link_info[i].link_speed = NT_LINK_SPEED_UNKNOWN;
 				link_state[i].link_disabled = true;
 				/* Turn off laser and LED, etc. */
-				(void)_create_nim(drv, i);
+				(void)_create_nim(drv, i, false);
 				NT_LOG(DBG, NTNIC, "%s: Port %i is disabled\n",
 					drv->mp_port_id_str[i], i);
 				continue;
@@ -167,7 +218,13 @@ static int _common_ptp_nim_state_machine(void *data)
 
 			if (link_info->port_action[i].port_lpbk_mode != last_lpbk_mode[i]) {
 				/* Loopback mode has changed. Do something */
-				_port_init(drv, i);
+				if (!_nim_is_present(&gpio_phy[i], (uint8_t)i)) {
+					/*
+					 * If there is no Nim present, we need to initialize the
+					 * port anyway
+					 */
+					_port_init(drv, i);
+				}
 
 				NT_LOG(INF, NTNIC, "%s: Loopback mode changed=%u\n",
 					drv->mp_port_id_str[i],
@@ -224,6 +281,7 @@ static int nt4ga_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nth
 
 	if (res == 0 && !p_adapter_info->nt4ga_link.variables_initialized) {
 		nim_i2c_ctx_t *nim_ctx = p_adapter_info->nt4ga_link.u.var100g.nim_ctx;
+		nthw_gpio_phy_t *gpio_phy = p_adapter_info->nt4ga_link.u.var100g.gpio_phy;
 		int i;
 
 		for (i = 0; i < nb_ports; i++) {
@@ -239,6 +297,11 @@ static int nt4ga_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nth
 			nim_ctx[i].devaddr = 0x50;	/* 0xA0 / 2 */
 			nim_ctx[i].regaddr = 0U;
 			nim_ctx[i].type = I2C_HWIIC;
+
+			res = nthw_gpio_phy_init(&gpio_phy[i], fpga, 0 /* Only one instance */);
+
+			if (res != 0)
+				break;
 		}
 
 		if (res == 0) {

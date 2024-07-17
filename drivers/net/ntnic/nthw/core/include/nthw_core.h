@@ -17,6 +17,7 @@
 #include "nthw_iic.h"
 #include "nthw_i2cm.h"
 
+#include "nthw_gpio_phy.h"
 #include "nthw_sdc.h"
 
 #include "nthw_si5340.h"
