@@ -125,6 +125,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 
 	{
 		int i;
+		const struct link_ops_s *link_ops = NULL;
 		assert(fpga_info->n_fpga_prod_id > 0);
 
 		for (i = 0; i < NUM_ADAPTER_PORTS_MAX; i++) {
@@ -135,8 +136,15 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		switch (fpga_info->n_fpga_prod_id) {
 		/* NT200A01: 2x100G (Xilinx) */
 		case 9563:	/* NT200A02 (Cap) */
-			NT_LOG(ERR, NTNIC, "NT200A02 100G link module uninitialized\n");
-			res = -1;
+			link_ops = get_100g_link_ops();
+
+			if (link_ops == NULL) {
+				NT_LOG(ERR, NTNIC, "NT200A02 100G link module uninitialized\n");
+				res = -1;
+				break;
+			}
+
+			res = link_ops->link_init(p_adapter_info, p_fpga);
 			break;
 
 		default:

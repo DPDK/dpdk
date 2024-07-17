@@ -13,6 +13,14 @@
 #include "nt4ga_adapter.h"
 #include "ntnic_nthw_fpga_rst_nt200a0x.h"
 
+struct link_ops_s {
+	int (*link_init)(struct adapter_info_s *p_adapter_info, nthw_fpga_t *p_fpga);
+};
+
+void register_100g_link_ops(struct link_ops_s *ops);
+const struct link_ops_s *get_100g_link_ops(void);
+void link_100g_init(void);
+
 struct port_ops {
 	/*
 	 * port:s link mode

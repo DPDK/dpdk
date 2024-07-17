@@ -5,6 +5,20 @@
 
 #include "ntnic_mod_reg.h"
 
+static struct link_ops_s *link_100g_ops;
+
+void register_100g_link_ops(struct link_ops_s *ops)
+{
+	link_100g_ops = ops;
+}
+
+const struct link_ops_s *get_100g_link_ops(void)
+{
+	if (link_100g_ops == NULL)
+		link_100g_init();
+	return link_100g_ops;
+}
+
 static const struct port_ops *port_ops;
 
 void register_port_ops(const struct port_ops *ops)
