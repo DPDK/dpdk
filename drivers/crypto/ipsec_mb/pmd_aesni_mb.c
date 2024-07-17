@@ -1534,7 +1534,7 @@ aesni_mb_digest_appended_in_src(struct rte_crypto_op *op, IMB_JOB *job,
  *
  * @return
  * - 0 on success, the IMB_JOB will be filled
- * - -1 if invalid session or errors allocationg SGL linear buffer,
+ * - -1 if invalid session or errors allocating SGL linear buffer,
  *   IMB_JOB will not be filled
  */
 static inline int
