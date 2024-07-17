@@ -14,11 +14,15 @@ includes = [
         include_directories('ntlog'),
         include_directories('ntutil'),
         include_directories('nthw'),
+        include_directories('nthw/supported'),
 ]
 
 # all sources
 sources = files(
         'adapter/nt4ga_adapter.c',
+        'nthw/supported/nthw_fpga_9563_055_039_0000.c',
+        'nthw/supported/nthw_fpga_instances.c',
+        'nthw/supported/nthw_fpga_mod_str_map.c',
         'nthw/nthw_platform.c',
         'ntlog/ntlog.c',
         'ntutil/nt_util.c',
