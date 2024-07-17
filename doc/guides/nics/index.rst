@@ -53,6 +53,7 @@ Network Interface Controller Drivers
     nfb
     nfp
     ngbe
+    ntnic
     null
     octeon_ep
     octeontx

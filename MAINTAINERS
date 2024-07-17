@@ -856,6 +856,13 @@ F: drivers/net/octeon_ep/
 F: doc/guides/nics/features/octeon_ep.ini
 F: doc/guides/nics/octeon_ep.rst
 
+Napatech ntnic - EXPERIMENTAL
+M: Christian Koue Muf <ckm@napatech.com>
+M: Serhii Iliushyk <sil-plv@napatech.com>
+F: drivers/net/ntnic/
+F: doc/guides/nics/ntnic.rst
+F: doc/guides/nics/features/ntnic.ini
+
 NVIDIA mlx4
 M: Matan Azrad <matan@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
