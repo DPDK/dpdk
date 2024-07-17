@@ -2473,8 +2473,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 						list[ns].info.master = 0;
 						list[ns].info.representor = 0;
 					}
-					if (list[ns].info.port_name == bd)
-						ns++;
+					ns++;
 					break;
 				case MLX5_PHYS_PORT_NAME_TYPE_PFHPF:
 					/* Fallthrough */
