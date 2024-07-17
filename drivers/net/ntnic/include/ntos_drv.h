@@ -13,6 +13,8 @@
 
 #include <rte_ether.h>
 
+#include "nthw_drv.h"
+
 #define NUM_MAC_ADDRS_PER_PORT (16U)
 #define NUM_MULTICAST_ADDRS_PER_PORT (16U)
 
