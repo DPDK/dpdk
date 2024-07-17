@@ -1914,7 +1914,6 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 	MLX5_SET64(modify_rqt_in, in, modify_bitmask, 0x1);
 	rqt_ctx = MLX5_ADDR_OF(modify_rqt_in, in, rqt_context);
 	MLX5_SET(rqtc, rqt_ctx, list_q_type, rqt_attr->rq_type);
-	MLX5_SET(rqtc, rqt_ctx, rqt_max_size, rqt_attr->rqt_max_size);
 	MLX5_SET(rqtc, rqt_ctx, rqt_actual_size, rqt_attr->rqt_actual_size);
 	for (i = 0; i < rqt_attr->rqt_actual_size; i++)
 		MLX5_SET(rqtc, rqt_ctx, rq_num[i], rqt_attr->rq_list[i]);
