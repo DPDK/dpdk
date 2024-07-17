@@ -127,6 +127,12 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		assert(fpga_info->n_fpga_prod_id > 0);
 
 		switch (fpga_info->n_fpga_prod_id) {
+		/* NT200A01: 2x100G (Xilinx) */
+		case 9563:	/* NT200A02 (Cap) */
+			NT_LOG(ERR, NTNIC, "NT200A02 100G link module uninitialized\n");
+			res = -1;
+			break;
+
 		default:
 			NT_LOG(ERR, NTNIC, "Unsupported FPGA product: %04d\n",
 				fpga_info->n_fpga_prod_id);

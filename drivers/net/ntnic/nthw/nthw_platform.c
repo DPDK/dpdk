@@ -8,6 +8,9 @@
 nthw_adapter_id_t nthw_platform_get_nthw_adapter_id(const uint16_t n_pci_device_id)
 {
 	switch (n_pci_device_id) {
+	case NT_HW_PCI_DEVICE_ID_NT200A02:
+		return NT_HW_ADAPTER_ID_NT200A02;
+
 	default:
 		return NT_HW_ADAPTER_ID_UNKNOWN;
 	}

@@ -22,6 +22,7 @@
 #define EXCEPTION_PATH_HID 0
 
 static const struct rte_pci_id nthw_pci_id_map[] = {
+	{ RTE_PCI_DEVICE(NT_HW_PCI_VENDOR_ID, NT_HW_PCI_DEVICE_ID_NT200A02) },
 	{
 		.vendor_id = 0,
 	},	/* sentinel */
@@ -472,9 +473,11 @@ nthw_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_nthw_pmd = {
 	.id_table = nthw_pci_id_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 	.probe = nthw_pci_probe,
 	.remove = nthw_pci_remove,
 };
 
 RTE_PMD_REGISTER_PCI(net_ntnic, rte_nthw_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(net_ntnic, nthw_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ntnic, "* vfio-pci");

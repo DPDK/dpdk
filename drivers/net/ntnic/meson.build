@@ -25,6 +25,7 @@ sources = files(
         'nthw/supported/nthw_fpga_9563_055_039_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
         'nthw/supported/nthw_fpga_mod_str_map.c',
+        'nthw/core/nt200a0x/nthw_fpga_nt200a0x.c',
         'nthw/core/nthw_fpga.c',
         'nthw/core/nthw_hif.c',
         'nthw/core/nthw_iic.c',

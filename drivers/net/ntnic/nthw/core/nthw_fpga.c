@@ -152,12 +152,29 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	nthw_rac_rab_flush(p_nthw_rac);
 	p_fpga_info->mp_nthw_rac = p_nthw_rac;
 
+	bool included = true;
+	struct nt200a0x_ops *nt200a0x_ops = get_nt200a0x_ops();
+
 	switch (p_fpga_info->n_nthw_adapter_id) {
+	case NT_HW_ADAPTER_ID_NT200A02:
+		if (nt200a0x_ops != NULL)
+			res = nt200a0x_ops->nthw_fpga_nt200a0x_init(p_fpga_info);
+
+		else
+			included = false;
+
+		break;
 	default:
 		NT_LOG(ERR, NTHW, "%s: Unsupported HW product id: %d\n", p_adapter_id_str,
 			p_fpga_info->n_nthw_adapter_id);
 		res = -1;
 		break;
+	}
+
+	if (!included) {
+		NT_LOG(ERR, NTHW, "%s: NOT INCLUDED HW product: %d\n", p_adapter_id_str,
+			p_fpga_info->n_nthw_adapter_id);
+		res = -1;
 	}
 
 	if (res) {
@@ -219,4 +236,18 @@ int nthw_fpga_shutdown(struct fpga_info_s *p_fpga_info)
 	}
 
 	return res;
+}
+
+static struct nt200a0x_ops *nt200a0x_ops;
+
+void register_nt200a0x_ops(struct nt200a0x_ops *ops)
+{
+	nt200a0x_ops = ops;
+}
+
+struct nt200a0x_ops *get_nt200a0x_ops(void)
+{
+	if (nt200a0x_ops == NULL)
+		nt200a0x_ops_init();
+	return nt200a0x_ops;
 }

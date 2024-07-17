@@ -9,9 +9,11 @@
 #include <stdint.h>
 
 #define NT_HW_PCI_VENDOR_ID (0x18f4)
+#define NT_HW_PCI_DEVICE_ID_NT200A02 (0x1C5)
 
 enum nthw_adapter_id_e {
 	NT_HW_ADAPTER_ID_UNKNOWN = 0,
+	NT_HW_ADAPTER_ID_NT200A02,
 };
 
 typedef enum nthw_adapter_id_e nthw_adapter_id_t;
