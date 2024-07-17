@@ -25,6 +25,15 @@ void register_adapter_ops(const struct adapter_ops *ops);
 const struct adapter_ops *get_adapter_ops(void);
 void adapter_init(void);
 
+struct clk9563_ops {
+	const int *(*get_n_data_9563_si5340_nt200a02_u23_v5)(void);
+	const clk_profile_data_fmt2_t *(*get_p_data_9563_si5340_nt200a02_u23_v5)(void);
+};
+
+void register_clk9563_ops(struct clk9563_ops *ops);
+struct clk9563_ops *get_clk9563_ops(void);
+void clk9563_ops_init(void);
+
 struct rst_nt200a0x_ops {
 	int (*nthw_fpga_rst_nt200a0x_init)(struct fpga_info_s *p_fpga_info,
 		struct nthw_fpga_rst_nt200a0x *p_rst);

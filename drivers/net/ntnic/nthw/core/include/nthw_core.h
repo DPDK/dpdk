@@ -18,5 +18,7 @@
 
 #include "nthw_sdc.h"
 
+#include "nthw_si5340.h"
+
 
 #endif	/* __NTHW_CORE_H__ */

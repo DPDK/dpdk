@@ -552,7 +552,10 @@ static int nthw_fpga_rst_nt200a0x_init(struct fpga_info_s *p_fpga_info,
 	}
 
 	p_rst->mn_si_labs_clock_synth_model = n_si_labs_clock_synth_model;
+	p_rst->mn_si_labs_clock_synth_i2c_addr = n_si_labs_clock_synth_i2c_addr;
 	p_rst->mn_hw_id = p_fpga_info->nthw_hw_info.hw_id;
+	NT_LOG_DBGX(DEBUG, NTHW, "%s: Si%04d @ 0x%02x\n", p_adapter_id_str,
+		p_rst->mn_si_labs_clock_synth_model, p_rst->mn_si_labs_clock_synth_i2c_addr);
 
 	return res;
 }

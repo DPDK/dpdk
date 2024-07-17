@@ -19,6 +19,20 @@ const struct adapter_ops *get_adapter_ops(void)
 	return adapter_ops;
 }
 
+static struct clk9563_ops *clk9563_ops;
+
+void register_clk9563_ops(struct clk9563_ops *ops)
+{
+	clk9563_ops = ops;
+}
+
+struct clk9563_ops *get_clk9563_ops(void)
+{
+	if (clk9563_ops == NULL)
+		clk9563_ops_init();
+	return clk9563_ops;
+}
+
 static struct rst_nt200a0x_ops *rst_nt200a0x_ops;
 
 void register_rst_nt200a0x_ops(struct rst_nt200a0x_ops *ops)

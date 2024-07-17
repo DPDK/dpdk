@@ -147,6 +147,29 @@ int nthw_fpga_silabs_detect(nthw_fpga_t *p_fpga, const int n_instance_no, const 
 	return res;
 }
 
+/*
+ * NT200A02, NT200A01-HWbuild2
+ */
+int nthw_fpga_si5340_clock_synth_init_fmt2(nthw_fpga_t *p_fpga, const uint8_t n_iic_addr,
+	const clk_profile_data_fmt2_t *p_clk_profile,
+	const int n_clk_profile_rec_cnt)
+{
+	int res;
+	nthw_iic_t *p_nthw_iic = nthw_iic_new();
+	nthw_si5340_t *p_nthw_si5340 = nthw_si5340_new();
+
+	assert(p_nthw_iic);
+	assert(p_nthw_si5340);
+	nthw_iic_init(p_nthw_iic, p_fpga, 0, 8);/* I2C cycle time 125Mhz ~ 8ns */
+
+	nthw_si5340_init(p_nthw_si5340, p_nthw_iic, n_iic_addr);/* si5340_u23_i2c_addr_7bit */
+	res = nthw_si5340_config_fmt2(p_nthw_si5340, p_clk_profile, n_clk_profile_rec_cnt);
+	nthw_si5340_delete(p_nthw_si5340);
+	p_nthw_si5340 = NULL;
+
+	return res;
+}
+
 int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 {
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;

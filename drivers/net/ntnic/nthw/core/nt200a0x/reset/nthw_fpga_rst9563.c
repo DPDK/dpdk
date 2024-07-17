@@ -164,6 +164,34 @@ static int nthw_fpga_rst9563_periph_reset(nthw_fpga_t *p_fpga)
 	return 0;
 }
 
+static int nthw_fpga_rst9563_clock_synth_init(nthw_fpga_t *p_fpga,
+	const int n_si_labs_clock_synth_model,
+	const uint8_t n_si_labs_clock_synth_i2c_addr)
+{
+	const char *const p_adapter_id_str = p_fpga->p_fpga_info->mp_adapter_id_str;
+	const int n_fpga_product_id = p_fpga->mn_product_id;
+	int res;
+	const struct clk9563_ops *clk9563_ops = get_clk9563_ops();
+
+	if (clk9563_ops == NULL) {
+		NT_LOG(INF, NTNIC, "CLK9563 module not included\n");
+		return -1;
+	}
+
+	if (n_si_labs_clock_synth_model == 5340) {
+		res = nthw_fpga_si5340_clock_synth_init_fmt2(p_fpga, n_si_labs_clock_synth_i2c_addr,
+				clk9563_ops->get_p_data_9563_si5340_nt200a02_u23_v5(),
+				*clk9563_ops->get_n_data_9563_si5340_nt200a02_u23_v5());
+
+	} else {
+		NT_LOG(ERR, NTHW, "%s: Fpga %d: Unsupported clock synth model (%d)\n",
+			p_adapter_id_str, n_fpga_product_id, n_si_labs_clock_synth_model);
+		res = -1;
+	}
+
+	return res;
+}
+
 static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 	struct nthw_fpga_rst_nt200a0x *p_rst)
 {
@@ -173,9 +201,13 @@ static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
 	(void)p_adapter_id_str;
 	int res = -1;
+	int n_si_labs_clock_synth_model;
+	uint8_t n_si_labs_clock_synth_i2c_addr;
 	nthw_fpga_t *p_fpga = NULL;
 
 	p_fpga = p_fpga_info->mp_fpga;
+	n_si_labs_clock_synth_model = p_rst->mn_si_labs_clock_synth_model;
+	n_si_labs_clock_synth_i2c_addr = p_rst->mn_si_labs_clock_synth_i2c_addr;
 
 	res = nthw_fpga_rst9563_periph_reset(p_fpga);
 
@@ -183,6 +215,9 @@ static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 		NT_LOG_DBGX(DEBUG, NTHW, "%s: ERROR: res=%d\n", p_adapter_id_str, res);
 		return res;
 	}
+
+	res = nthw_fpga_rst9563_clock_synth_init(p_fpga, n_si_labs_clock_synth_model,
+			n_si_labs_clock_synth_i2c_addr);
 
 	if (res) {
 		NT_LOG_DBGX(DEBUG, NTHW, "%s: ERROR: res=%d\n", p_adapter_id_str, res);

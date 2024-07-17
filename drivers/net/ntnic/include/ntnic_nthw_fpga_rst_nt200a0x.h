@@ -17,6 +17,7 @@ struct nthw_fpga_rst_nt200a0x {
 	int mn_hw_id;
 
 	int mn_si_labs_clock_synth_model;
+	uint8_t mn_si_labs_clock_synth_i2c_addr;
 
 	nthw_field_t *mp_fld_rst_sys;
 	nthw_field_t *mp_fld_rst_sys_mmcm;
