@@ -6,7 +6,8 @@
 #ifndef _NT4GA_ADAPTER_H_
 #define _NT4GA_ADAPTER_H_
 
-#include "ntos_drv.h"
+#include "nt4ga_link.h"
+
 typedef struct hw_info_s {
 	/* pciids */
 	uint16_t pci_vendor_id;
@@ -23,6 +24,8 @@ typedef struct hw_info_s {
 } hw_info_t;
 
 typedef struct adapter_info_s {
+	struct nt4ga_link_s nt4ga_link;
+
 	struct hw_info_s hw_info;
 	struct fpga_info_s fpga_info;
 

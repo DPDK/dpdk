@@ -124,7 +124,13 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	assert(n_phy_ports >= 1);
 
 	{
+		int i;
 		assert(fpga_info->n_fpga_prod_id > 0);
+
+		for (i = 0; i < NUM_ADAPTER_PORTS_MAX; i++) {
+			/* Disable all ports. Must be enabled later */
+			p_adapter_info->nt4ga_link.port_action[i].port_disable = true;
+		}
 
 		switch (fpga_info->n_fpga_prod_id) {
 		/* NT200A01: 2x100G (Xilinx) */

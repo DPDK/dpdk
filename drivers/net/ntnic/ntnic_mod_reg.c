@@ -5,6 +5,20 @@
 
 #include "ntnic_mod_reg.h"
 
+static const struct port_ops *port_ops;
+
+void register_port_ops(const struct port_ops *ops)
+{
+	port_ops = ops;
+}
+
+const struct port_ops *get_port_ops(void)
+{
+	if (port_ops == NULL)
+		port_init();
+	return port_ops;
+}
+
 static const struct adapter_ops *adapter_ops;
 
 void register_adapter_ops(const struct adapter_ops *ops)

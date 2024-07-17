@@ -12,7 +12,55 @@
 #include "nthw_drv.h"
 #include "nt4ga_adapter.h"
 #include "ntnic_nthw_fpga_rst_nt200a0x.h"
-#include "ntos_drv.h"
+
+struct port_ops {
+	/*
+	 * port:s link mode
+	 */
+	void (*set_adm_state)(struct adapter_info_s *p, int port, bool adm_state);
+	bool (*get_adm_state)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port:s link status
+	 */
+	void (*set_link_status)(struct adapter_info_s *p, int port, bool status);
+	bool (*get_link_status)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port: link autoneg
+	 */
+	void (*set_link_autoneg)(struct adapter_info_s *p, int port, bool autoneg);
+	bool (*get_link_autoneg)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port: link speed
+	 */
+	void (*set_link_speed)(struct adapter_info_s *p, int port, nt_link_speed_t speed);
+	nt_link_speed_t (*get_link_speed)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port: link duplex
+	 */
+	void (*set_link_duplex)(struct adapter_info_s *p, int port, nt_link_duplex_t duplex);
+	nt_link_duplex_t (*get_link_duplex)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port: loopback mode
+	 */
+	void (*set_loopback_mode)(struct adapter_info_s *p, int port, uint32_t mode);
+	uint32_t (*get_loopback_mode)(struct adapter_info_s *p, int port);
+
+	uint32_t (*get_link_speed_capabilities)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port: tx power
+	 */
+	int (*tx_power)(struct adapter_info_s *p, int port, bool disable);
+};
+
+void register_port_ops(const struct port_ops *ops);
+const struct port_ops *get_port_ops(void);
+void port_init(void);
 
 struct adapter_ops {
 	int (*init)(struct adapter_info_s *p_adapter_info);

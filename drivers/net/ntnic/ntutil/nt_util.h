@@ -7,6 +7,7 @@
 #define NTOSS_SYSTEM_NT_UTIL_H
 
 #include <stdint.h>
+#include "nt4ga_link.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
@@ -30,6 +31,11 @@ struct nt_dma_s {
 	uint64_t size;
 };
 
+struct port_link_speed {
+	int port_id;
+	int link_speed;
+};
+
 struct nt_dma_s *nt_dma_alloc(uint64_t size, uint64_t align, int numa);
 void nt_dma_free(struct nt_dma_s *vfio_addr);
 
@@ -39,5 +45,10 @@ struct nt_util_vfio_impl {
 };
 
 void nt_util_vfio_init(struct nt_util_vfio_impl *impl);
+
+int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed);
+uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa);
+nt_link_speed_t convert_link_speed(int link_speed_mbps);
+int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex);
 
 #endif	/* NTOSS_SYSTEM_NT_UTIL_H */

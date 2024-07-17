@@ -96,3 +96,134 @@ void nt_dma_free(struct nt_dma_s *vfio_addr)
 	rte_free((void *)(vfio_addr->addr));
 	rte_free(vfio_addr);
 }
+
+/* NOTE: please note the difference between RTE_ETH_SPEED_NUM_xxx and RTE_ETH_LINK_SPEED_xxx */
+int nt_link_speed_to_eth_speed_num(enum nt_link_speed_e nt_link_speed)
+{
+	int eth_speed_num = RTE_ETH_SPEED_NUM_NONE;
+
+	switch (nt_link_speed) {
+	case NT_LINK_SPEED_10M:
+		eth_speed_num = RTE_ETH_SPEED_NUM_10M;
+		break;
+
+	case NT_LINK_SPEED_100M:
+		eth_speed_num = RTE_ETH_SPEED_NUM_100M;
+		break;
+
+	case NT_LINK_SPEED_1G:
+		eth_speed_num = RTE_ETH_SPEED_NUM_1G;
+		break;
+
+	case NT_LINK_SPEED_10G:
+		eth_speed_num = RTE_ETH_SPEED_NUM_10G;
+		break;
+
+	case NT_LINK_SPEED_25G:
+		eth_speed_num = RTE_ETH_SPEED_NUM_25G;
+		break;
+
+	case NT_LINK_SPEED_40G:
+		eth_speed_num = RTE_ETH_SPEED_NUM_40G;
+		break;
+
+	case NT_LINK_SPEED_50G:
+		eth_speed_num = RTE_ETH_SPEED_NUM_50G;
+		break;
+
+	case NT_LINK_SPEED_100G:
+		eth_speed_num = RTE_ETH_SPEED_NUM_100G;
+		break;
+
+	default:
+		eth_speed_num = RTE_ETH_SPEED_NUM_NONE;
+		break;
+	}
+
+	return eth_speed_num;
+}
+
+uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa)
+{
+	uint32_t eth_speed_capa = 0;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_10M)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_10M;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_100M)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_100M;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_1G)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_1G;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_10G)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_10G;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_25G)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_25G;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_40G)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_40G;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_50G)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_50G;
+
+	if (nt_link_speed_capa & NT_LINK_SPEED_100G)
+		eth_speed_capa |= RTE_ETH_LINK_SPEED_100G;
+
+	return eth_speed_capa;
+}
+
+/* Converts link speed provided in Mbps to NT specific definitions.*/
+nt_link_speed_t convert_link_speed(int link_speed_mbps)
+{
+	switch (link_speed_mbps) {
+	case 10:
+		return NT_LINK_SPEED_10M;
+
+	case 100:
+		return NT_LINK_SPEED_100M;
+
+	case 1000:
+		return NT_LINK_SPEED_1G;
+
+	case 10000:
+		return NT_LINK_SPEED_10G;
+
+	case 40000:
+		return NT_LINK_SPEED_40G;
+
+	case 100000:
+		return NT_LINK_SPEED_100G;
+
+	case 50000:
+		return NT_LINK_SPEED_50G;
+
+	case 25000:
+		return NT_LINK_SPEED_25G;
+
+	default:
+		return NT_LINK_SPEED_UNKNOWN;
+	}
+}
+
+int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex)
+{
+	int eth_link_duplex = 0;
+
+	switch (nt_link_duplex) {
+	case NT_LINK_DUPLEX_FULL:
+		eth_link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+		break;
+
+	case NT_LINK_DUPLEX_HALF:
+		eth_link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
+		break;
+
+	case NT_LINK_DUPLEX_UNKNOWN:	/* fall-through */
+	default:
+		break;
+	}
+
+	return eth_link_duplex;
+}

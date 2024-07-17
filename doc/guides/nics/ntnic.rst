@@ -34,6 +34,11 @@ Features
 --------
 
 - FW version
+- Speed capabilities
+- Link status (Link update only)
+- Unicast MAC filter
+- Multicast MAC filter
+- Promiscuous mode (Enable only. The device always run promiscuous mode)
 
 Limitations
 ~~~~~~~~~~~

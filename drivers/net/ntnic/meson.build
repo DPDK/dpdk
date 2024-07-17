@@ -22,6 +22,7 @@ includes = [
 # all sources
 sources = files(
         'adapter/nt4ga_adapter.c',
+        'link_mgmt/nt4ga_link.c',
         'nthw/supported/nthw_fpga_9563_055_039_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
         'nthw/supported/nthw_fpga_mod_str_map.c',

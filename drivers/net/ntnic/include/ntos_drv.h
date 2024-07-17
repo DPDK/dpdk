@@ -25,7 +25,17 @@ struct pmd_internals {
 	const struct rte_pci_device *pci_dev;
 	char name[20];
 	int n_intf_no;
+	int lpbk_mode;
+	unsigned int nb_rx_queues;
+	unsigned int nb_tx_queues;
+	/* Offset of the VF from the PF */
+	uint8_t vf_offset;
+	nt_meta_port_type_t type;
 	struct drv_s *p_drv;
+	/* Ethernet (MAC) addresses. Element number zero denotes default address. */
+	struct rte_ether_addr eth_addrs[NUM_MAC_ADDRS_PER_PORT];
+	/* Multicast ethernet (MAC) addresses. */
+	struct rte_ether_addr mc_addrs[NUM_MULTICAST_ADDRS_PER_PORT];
 	struct pmd_internals *next;
 };
 
