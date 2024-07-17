@@ -7,6 +7,7 @@
 #define NIM_DEFINES_H_
 
 #define NIM_IDENTIFIER_ADDR 0	/* 1 byte */
+#define QSFP_EXTENDED_IDENTIFIER 129
 
 /* I2C addresses */
 #define NIM_I2C_0XA0 0xA0	/* Basic I2C address */
@@ -23,6 +24,8 @@ typedef enum {
 
 enum nt_nim_identifier_e {
 	NT_NIM_UNKNOWN = 0x00,	/* Nim type is unknown */
+	NT_NIM_QSFP = 0x0C,	/* Nim type = QSFP */
+	NT_NIM_QSFP_PLUS = 0x0D,/* Nim type = QSFP+ */
 };
 typedef enum nt_nim_identifier_e nt_nim_identifier_t;
 

@@ -15,6 +15,8 @@ typedef enum i2c_type {
 enum nt_port_type_e {
 	NT_PORT_TYPE_NOT_AVAILABLE = 0,	/* The NIM/port type is not available (unknown) */
 	NT_PORT_TYPE_NOT_RECOGNISED,	/* The NIM/port type not recognized */
+	NT_PORT_TYPE_QSFP_PLUS_NOT_PRESENT,	/* QSFP type but slot is empty */
+	NT_PORT_TYPE_QSFP_PLUS,	/* QSFP type */
 };
 
 typedef enum nt_port_type_e nt_port_type_t, *nt_port_type_p;
@@ -51,6 +53,14 @@ typedef struct nim_i2c_ctx {
 	bool tx_disable;
 	bool dmi_supp;
 
+	union {
+		struct {
+			bool rx_only;
+			union {
+			} specific_u;
+		} qsfp;
+
+	} specific_u;
 } nim_i2c_ctx_t, *nim_i2c_ctx_p;
 
 struct nim_sensor_group {

@@ -18,6 +18,7 @@ static int _create_nim(adapter_info_t *drv, int port)
 	int res = 0;
 	const uint8_t valid_nim_id = 17U;
 	nim_i2c_ctx_t *nim_ctx;
+	sfp_nim_state_t nim;
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
 
 	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
@@ -31,10 +32,19 @@ static int _create_nim(adapter_info_t *drv, int port)
 	 */
 	nt_os_wait_usec(1000000);	/* pause 1.0s */
 
-	res = construct_and_preinit_nim(nim_ctx);
+	res = construct_and_preinit_nim(nim_ctx, NULL);
 
 	if (res)
 		return res;
+
+	res = nim_state_build(nim_ctx, &nim);
+
+	if (res)
+		return res;
+
+	NT_LOG(DBG, NTHW, "%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'\n",
+		drv->mp_port_id_str[port], nim_ctx->nim_id, nim_id_to_text(nim_ctx->nim_id), nim.br,
+		nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
 
 	/*
 	 * Does the driver support the NIM module type?
