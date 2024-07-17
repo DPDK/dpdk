@@ -117,29 +117,48 @@ nfp_vec_avx2_recv_set_rxpkt1(struct nfp_net_rxq *rxq,
 	nfp_net_rx_cksum(rxq, rxds, rx_pkt);
 }
 
-static inline void
+static inline int
 nfp_vec_avx2_recv1(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxds,
-		struct rte_mbuf *rxb,
+		struct rte_mbuf **rxb,
 		struct rte_mbuf *rx_pkt)
 {
+	/* Allocate a new mbuf into the software ring. */
+	if (rte_pktmbuf_alloc_bulk(rxq->mem_pool, rxb, 1) < 0) {
+		PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu",
+				rxq->port_id, rxq->qidx);
+		nfp_net_mbuf_alloc_failed(rxq);
+		return -ENOMEM;
+	}
+
 	nfp_vec_avx2_recv_set_rxpkt1(rxq, rxds, rx_pkt);
 
-	nfp_vec_avx2_recv_set_des1(rxq, rxds, rxb);
+	nfp_vec_avx2_recv_set_des1(rxq, rxds, *rxb);
+
+	return 0;
 }
 
-static inline void
+static inline int
 nfp_vec_avx2_recv4(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf **rxb,
 		struct rte_mbuf **rx_pkts)
 {
+	/* Allocate 4 new mbufs into the software ring. */
+	if (rte_pktmbuf_alloc_bulk(rxq->mem_pool, rxb, 4) < 0) {
+		PMD_RX_LOG(DEBUG, "RX mbuf bulk alloc failed port_id=%u queue_id=%hu",
+				rxq->port_id, rxq->qidx);
+		return -ENOMEM;
+	}
+
 	nfp_vec_avx2_recv_set_rxpkt1(rxq, rxds, rx_pkts[0]);
 	nfp_vec_avx2_recv_set_rxpkt1(rxq, rxds + 1, rx_pkts[1]);
 	nfp_vec_avx2_recv_set_rxpkt1(rxq, rxds + 2, rx_pkts[2]);
 	nfp_vec_avx2_recv_set_rxpkt1(rxq, rxds + 3, rx_pkts[3]);
 
 	nfp_vec_avx2_recv_set_des4(rxq, rxds, rxb);
+
+	return 0;
 }
 
 static inline bool
@@ -215,15 +234,8 @@ nfp_net_vec_avx2_recv_pkts(void *rx_queue,
 			_mm_storel_epi64((void *)&rx_pkts[avail],
 					_mm_loadu_si128((void *)rxb));
 
-			/* Allocate a new mbuf into the software ring. */
-			if (rte_pktmbuf_alloc_bulk(rxq->mem_pool, rxb, 1) < 0) {
-				PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu",
-						rxq->port_id, rxq->qidx);
-				nfp_net_mbuf_alloc_failed(rxq);
+			if (nfp_vec_avx2_recv1(rxq, rxds, rxb, rx_pkts[avail]) != 0)
 				goto recv_end;
-			}
-
-			nfp_vec_avx2_recv1(rxq, rxds, *rxb, rx_pkts[avail]);
 
 			avail++;
 			nb_hold++;
@@ -237,13 +249,10 @@ nfp_net_vec_avx2_recv_pkts(void *rx_queue,
 		_mm256_storeu_si256((void *)&rx_pkts[avail],
 				_mm256_loadu_si256((void *)rxb));
 
-		/* Allocate 4 new mbufs into the software ring. */
-		if (rte_pktmbuf_alloc_bulk(rxq->mem_pool, rxb, 4) < 0) {
+		if (nfp_vec_avx2_recv4(rxq, rxds, rxb, &rx_pkts[avail]) != 0) {
 			burst_receive = false;
 			continue;
 		}
-
-		nfp_vec_avx2_recv4(rxq, rxds, rxb, &rx_pkts[avail]);
 
 		avail += 4;
 		nb_hold += 4;
