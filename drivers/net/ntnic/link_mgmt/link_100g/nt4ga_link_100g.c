@@ -11,6 +11,168 @@
 #include "ntnic_mod_reg.h"
 
 /*
+ * Swap tx/rx polarity
+ */
+static int _swap_tx_rx_polarity(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs, int port, bool swap)
+{
+	const bool tx_polarity_swap[2][4] = { { true, true, false, false },
+		{ false, true, false, false }
+	};
+	const bool rx_polarity_swap[2][4] = { { false, true, true, true },
+		{ false, true, true, false }
+	};
+	uint8_t lane;
+
+	(void)drv;
+
+	for (lane = 0U; lane < 4U; lane++) {
+		if (swap) {
+			nthw_mac_pcs_swap_gty_tx_polarity(mac_pcs, lane,
+				tx_polarity_swap[port][lane]);
+			nthw_mac_pcs_swap_gty_rx_polarity(mac_pcs, lane,
+				rx_polarity_swap[port][lane]);
+
+		} else {
+			nthw_mac_pcs_swap_gty_tx_polarity(mac_pcs, lane, false);
+			nthw_mac_pcs_swap_gty_rx_polarity(mac_pcs, lane, false);
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Reset RX
+ */
+static int _reset_rx(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
+{
+	(void)drv;
+
+	nthw_mac_pcs_rx_path_rst(mac_pcs, true);
+	nt_os_wait_usec(10000);	/* 10ms */
+	nthw_mac_pcs_rx_path_rst(mac_pcs, false);
+	nt_os_wait_usec(10000);	/* 10ms */
+
+	return 0;
+}
+
+static void _set_loopback(struct adapter_info_s *p_adapter_info,
+	nthw_mac_pcs_t *mac_pcs,
+	int intf_no,
+	uint32_t mode,
+	uint32_t last_mode)
+{
+	bool swap_polerity = true;
+
+	switch (mode) {
+	case 1:
+		NT_LOG(INF, NTNIC, "%s: Applying host loopback\n",
+			p_adapter_info->mp_port_id_str[intf_no]);
+		nthw_mac_pcs_set_fec(mac_pcs, true);
+		nthw_mac_pcs_set_host_loopback(mac_pcs, true);
+		swap_polerity = false;
+		break;
+
+	case 2:
+		NT_LOG(INF, NTNIC, "%s: Applying line loopback\n",
+			p_adapter_info->mp_port_id_str[intf_no]);
+		nthw_mac_pcs_set_line_loopback(mac_pcs, true);
+		break;
+
+	default:
+		switch (last_mode) {
+		case 1:
+			NT_LOG(INF, NTNIC, "%s: Removing host loopback\n",
+				p_adapter_info->mp_port_id_str[intf_no]);
+			nthw_mac_pcs_set_host_loopback(mac_pcs, false);
+			break;
+
+		case 2:
+			NT_LOG(INF, NTNIC, "%s: Removing line loopback\n",
+				p_adapter_info->mp_port_id_str[intf_no]);
+			nthw_mac_pcs_set_line_loopback(mac_pcs, false);
+			break;
+
+		default:
+			/* Do nothing */
+			break;
+		}
+
+		break;
+	}
+
+	if (p_adapter_info->fpga_info.nthw_hw_info.hw_id == 2 ||
+		p_adapter_info->hw_info.n_nthw_adapter_id == NT_HW_ADAPTER_ID_NT200A02) {
+		(void)_swap_tx_rx_polarity(p_adapter_info, mac_pcs, intf_no, swap_polerity);
+	}
+
+	/* After changing the loopback the system must be properly reset */
+	_reset_rx(p_adapter_info, mac_pcs);
+
+	nt_os_wait_usec(10000);	/* 10ms - arbitrary choice */
+
+	if (!nthw_mac_pcs_is_rx_path_rst(mac_pcs)) {
+		nthw_mac_pcs_reset_bip_counters(mac_pcs);
+
+		if (!nthw_mac_pcs_get_fec_bypass(mac_pcs))
+			nthw_mac_pcs_reset_fec_counters(mac_pcs);
+	}
+}
+
+/*
+ * Function to retrieve the current state of a link (for one port)
+ */
+static int _link_state_build(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs,
+	nthw_gpio_phy_t *gpio_phy, int port, link_state_t *state,
+	bool is_port_disabled)
+{
+	uint32_t abs;
+	uint32_t phy_link_state;
+	uint32_t lh_abs;
+	uint32_t ll_phy_link_state;
+	uint32_t link_down_cnt;
+	uint32_t nim_interr;
+	uint32_t lh_local_fault;
+	uint32_t lh_remote_fault;
+	uint32_t lh_internal_local_fault;
+	uint32_t lh_received_local_fault;
+
+	memset(state, 0, sizeof(*state));
+	state->link_disabled = is_port_disabled;
+	nthw_mac_pcs_get_link_summary(mac_pcs, &abs, &phy_link_state, &lh_abs, &ll_phy_link_state,
+		&link_down_cnt, &nim_interr, &lh_local_fault,
+		&lh_remote_fault, &lh_internal_local_fault,
+		&lh_received_local_fault);
+
+	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
+	state->nim_present = nthw_gpio_phy_is_module_present(gpio_phy, (uint8_t)port);
+	state->lh_nim_absent = !state->nim_present;
+	state->link_up = phy_link_state ? true : false;
+
+	{
+		static char lsbuf[NUM_ADAPTER_MAX][NUM_ADAPTER_PORTS_MAX][256];
+		char buf[255];
+		const int adapter_no = drv->adapter_no;
+		snprintf(buf, sizeof(buf),
+			"%s: Port = %d: abs = %u, phy_link_state = %u, lh_abs = %u, "
+			"ll_phy_link_state = %u, "
+			"link_down_cnt = %u, nim_interr = %u, lh_local_fault = %u, lh_remote_fault = "
+			"%u, lh_internal_local_fault = %u, lh_received_local_fault = %u",
+			drv->mp_adapter_id_str, mac_pcs->mn_instance, abs, phy_link_state, lh_abs,
+			ll_phy_link_state, link_down_cnt, nim_interr, lh_local_fault,
+			lh_remote_fault, lh_internal_local_fault, lh_received_local_fault);
+
+		if (strcmp(lsbuf[adapter_no][port], buf) != 0) {
+			snprintf(lsbuf[adapter_no][port], sizeof(lsbuf[adapter_no][port]), "%s",
+				buf);
+			lsbuf[adapter_no][port][sizeof(lsbuf[adapter_no][port]) - 1U] = '\0';
+			NT_LOG(DBG, NTNIC, "%s\n", lsbuf[adapter_no][port]);
+		}
+	}
+	return 0;
+}
+
+/*
  * Check whether a NIM module is present
  */
 static bool _nim_is_present(nthw_gpio_phy_t *gpio_phy, uint8_t if_no)
@@ -18,6 +180,69 @@ static bool _nim_is_present(nthw_gpio_phy_t *gpio_phy, uint8_t if_no)
 	assert(if_no < NUM_ADAPTER_PORTS_MAX);
 
 	return nthw_gpio_phy_is_module_present(gpio_phy, if_no);
+}
+
+/*
+ * Enable RX
+ */
+static int _enable_rx(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
+{
+	(void)drv;	/* unused */
+	nthw_mac_pcs_set_rx_enable(mac_pcs, true);
+	return 0;
+}
+
+/*
+ * Enable TX
+ */
+static int _enable_tx(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
+{
+	(void)drv;	/* unused */
+	nthw_mac_pcs_set_tx_enable(mac_pcs, true);
+	nthw_mac_pcs_set_tx_sel_host(mac_pcs, true);
+	return 0;
+}
+
+/*
+ * Disable RX
+ */
+static int _disable_rx(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
+{
+	(void)drv;	/* unused */
+	nthw_mac_pcs_set_rx_enable(mac_pcs, false);
+	return 0;
+}
+
+/*
+ * Disable TX
+ */
+static int _disable_tx(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
+{
+	(void)drv;	/* unused */
+	nthw_mac_pcs_set_tx_enable(mac_pcs, false);
+	nthw_mac_pcs_set_tx_sel_host(mac_pcs, false);
+	return 0;
+}
+
+/*
+ * Check link once NIM is installed and link can be expected.
+ */
+static int check_link_state(adapter_info_t *drv, nthw_mac_pcs_t *mac_pcs)
+{
+	bool rst_required;
+	bool ber;
+	bool fec_all_locked;
+
+	rst_required = nthw_mac_pcs_reset_required(mac_pcs);
+
+	ber = nthw_mac_pcs_get_hi_ber(mac_pcs);
+
+	fec_all_locked = nthw_mac_pcs_get_fec_stat_all_am_locked(mac_pcs);
+
+	if (rst_required || ber || !fec_all_locked)
+		_reset_rx(drv, mac_pcs);
+
+	return 0;
 }
 
 /*
@@ -31,6 +256,7 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
 	nim_i2c_ctx_t *nim_ctx;
 	sfp_nim_state_t nim;
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
+	nthw_mac_pcs_t *mac_pcs = &link_info->u.var100g.mac_pcs100g[port];
 
 	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
 	assert(link_info->variables_initialized);
@@ -44,6 +270,12 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
 	if (!_nim_is_present(gpio_phy, (uint8_t)port)) {
 		NT_LOG(INF, NTNIC, "%s: NIM module is absent\n", drv->mp_port_id_str[port]);
 		return 0;
+	}
+
+	if (!enable) {
+		_disable_rx(drv, mac_pcs);
+		_disable_tx(drv, mac_pcs);
+		_reset_rx(drv, mac_pcs);
 	}
 
 	/*
@@ -114,13 +346,28 @@ static int _create_nim(adapter_info_t *drv, int port, bool enable)
  * The function shall not assume anything about the state of the adapter
  * and/or port.
  */
-static int _port_init(adapter_info_t *drv, int port)
+static int _port_init(adapter_info_t *drv, nthw_fpga_t *fpga, int port)
 {
+	int adapter_id;
+	int hw_id;
 	int res;
 	nt4ga_link_t *link_info = &drv->nt4ga_link;
 
+	nthw_mac_pcs_t *mac_pcs;
+
 	assert(port >= 0 && port < NUM_ADAPTER_PORTS_MAX);
 	assert(link_info->variables_initialized);
+
+	if (fpga && fpga->p_fpga_info) {
+		adapter_id = fpga->p_fpga_info->n_nthw_adapter_id;
+		hw_id = fpga->p_fpga_info->nthw_hw_info.hw_id;
+
+	} else {
+		adapter_id = -1;
+		hw_id = -1;
+	}
+
+	mac_pcs = &link_info->u.var100g.mac_pcs100g[port];
 
 	/*
 	 * Phase 1. Pre-state machine (`port init` functions)
@@ -134,6 +381,28 @@ static int _port_init(adapter_info_t *drv, int port)
 	link_info->link_info[port].link_duplex = NT_LINK_DUPLEX_FULL;
 	link_info->link_info[port].link_auto_neg = NT_LINK_AUTONEG_OFF;
 	link_info->speed_capa |= NT_LINK_SPEED_100G;
+	nthw_mac_pcs_set_led_mode(mac_pcs, NTHW_MAC_PCS_LED_AUTO);
+	nthw_mac_pcs_set_receiver_equalization_mode(mac_pcs, nthw_mac_pcs_receiver_mode_lpm);
+
+	/*
+	 * NT200A01 build 2 HW and NT200A02 that require GTY polarity swap
+	 * if (adapter is `NT200A01 build 2 HW or NT200A02`)
+	 */
+	if (adapter_id == NT_HW_ADAPTER_ID_NT200A02 || hw_id == 2)
+		(void)_swap_tx_rx_polarity(drv, mac_pcs, port, true);
+
+	nthw_mac_pcs_set_ts_eop(mac_pcs, true);	/* end-of-frame timestamping */
+
+	/* Work in ABSOLUTE timing mode, don't set IFG mode. */
+
+	/* Phase 2. Pre-state machine (`setup` functions) */
+
+	/* 2.1) nt200a0x.cpp:Myport::setup() */
+	NT_LOG(DBG, NTNIC, "%s: Setting up port %d\n", drv->mp_port_id_str[port], port);
+
+	NT_LOG(DBG, NTNIC, "%s: Port %d: PHY TX enable\n", drv->mp_port_id_str[port], port);
+	_enable_tx(drv, mac_pcs);
+	_reset_rx(drv, mac_pcs);
 
 	/* Phase 3. Link state machine steps */
 
@@ -146,6 +415,50 @@ static int _port_init(adapter_info_t *drv, int port)
 	}
 
 	NT_LOG(DBG, NTNIC, "%s: NIM initialized\n", drv->mp_port_id_str[port]);
+
+	/* 3.2) MyPort::nimReady() */
+
+	/* 3.3) MyPort::nimReady100Gb() */
+
+	/* Setting FEC resets the lane counter in one half of the GMF */
+	nthw_mac_pcs_set_fec(mac_pcs, true);
+	NT_LOG(DBG, NTNIC, "%s: Port %d: HOST FEC enabled\n", drv->mp_port_id_str[port], port);
+
+	if (adapter_id == NT_HW_ADAPTER_ID_NT200A02 || hw_id == 2) {
+		const uint8_t pre = 5;
+		const uint8_t diff = 25;
+		const uint8_t post = 12;
+
+		uint8_t lane = 0;
+
+		for (lane = 0; lane < 4; lane++)
+			nthw_mac_pcs_set_gty_tx_tuning(mac_pcs, lane, pre, diff, post);
+
+	} else {
+		NT_LOG(ERR, NTNIC, "Unhandled AdapterId/HwId: %02x_hwid%d\n", adapter_id, hw_id);
+		assert(0);
+	}
+
+	_reset_rx(drv, mac_pcs);
+
+	/*
+	 * 3.4) MyPort::setLinkState()
+	 *
+	 * Compensation = 1640 - dly
+	 * CMAC-core dly 188 ns
+	 * FEC no correction 87 ns
+	 * FEC active correction 211
+	 */
+	if (nthw_mac_pcs_get_fec_valid(mac_pcs))
+		nthw_mac_pcs_set_timestamp_comp_rx(mac_pcs, (1640 - 188 - 211));
+
+	else
+		nthw_mac_pcs_set_timestamp_comp_rx(mac_pcs, (1640 - 188 - 87));
+
+	/* 3.5) uint32_t MyPort::macConfig(nt_link_state_t link_state) */
+	_enable_rx(drv, mac_pcs);
+
+	nthw_mac_pcs_set_host_loopback(mac_pcs, false);
 
 	return res;
 }
@@ -163,7 +476,9 @@ static int _common_ptp_nim_state_machine(void *data)
 	const int nb_ports = fpga_info->n_phy_ports;
 	uint32_t last_lpbk_mode[NUM_ADAPTER_PORTS_MAX];
 
+	nim_i2c_ctx_t *nim_ctx;
 	link_state_t *link_state;
+	nthw_mac_pcs_t *mac_pcs;
 	nthw_gpio_phy_t *gpio_phy;
 
 	if (!fpga) {
@@ -172,7 +487,9 @@ static int _common_ptp_nim_state_machine(void *data)
 	}
 
 	assert(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
+	nim_ctx = link_info->u.var100g.nim_ctx;
 	link_state = link_info->link_state;
+	mac_pcs = link_info->u.var100g.mac_pcs100g;
 	gpio_phy = link_info->u.var100g.gpio_phy;
 
 	monitor_task_is_running[adapter_no] = 1;
@@ -183,8 +500,10 @@ static int _common_ptp_nim_state_machine(void *data)
 
 	while (monitor_task_is_running[adapter_no]) {
 		int i;
+		static bool reported_link[NUM_ADAPTER_PORTS_MAX] = { false };
 
 		for (i = 0; i < nb_ports; i++) {
+			link_state_t new_link_state;
 			const bool is_port_disabled = link_info->port_action[i].port_disable;
 			const bool was_port_disabled = link_state[i].link_disabled;
 			const bool disable_port = is_port_disabled && !was_port_disabled;
@@ -200,6 +519,7 @@ static int _common_ptp_nim_state_machine(void *data)
 				memset(&link_state[i], 0, sizeof(link_state[i]));
 				link_info->link_info[i].link_speed = NT_LINK_SPEED_UNKNOWN;
 				link_state[i].link_disabled = true;
+				reported_link[i] = false;
 				/* Turn off laser and LED, etc. */
 				(void)_create_nim(drv, i, false);
 				NT_LOG(DBG, NTNIC, "%s: Port %i is disabled\n",
@@ -223,12 +543,17 @@ static int _common_ptp_nim_state_machine(void *data)
 					 * If there is no Nim present, we need to initialize the
 					 * port anyway
 					 */
-					_port_init(drv, i);
+					_port_init(drv, fpga, i);
 				}
 
 				NT_LOG(INF, NTNIC, "%s: Loopback mode changed=%u\n",
 					drv->mp_port_id_str[i],
 					link_info->port_action[i].port_lpbk_mode);
+				_set_loopback(drv,
+					&mac_pcs[i],
+					i,
+					link_info->port_action[i].port_lpbk_mode,
+					last_lpbk_mode[i]);
 
 				if (link_info->port_action[i].port_lpbk_mode == 1)
 					link_state[i].link_up = true;
@@ -237,6 +562,65 @@ static int _common_ptp_nim_state_machine(void *data)
 				continue;
 			}
 
+			(void)_link_state_build(drv, &mac_pcs[i], &gpio_phy[i], i, &new_link_state,
+				is_port_disabled);
+
+			if (!new_link_state.nim_present) {
+				if (link_state[i].nim_present) {
+					NT_LOG(INF, NTNIC, "%s: NIM module removed\n",
+						drv->mp_port_id_str[i]);
+				}
+
+				link_state[i] = new_link_state;
+				continue;
+			}
+
+			/* NIM module is present */
+			if (new_link_state.lh_nim_absent || !link_state[i].nim_present) {
+				sfp_nim_state_t new_state;
+
+				NT_LOG(DBG, NTNIC, "%s: NIM module inserted\n",
+					drv->mp_port_id_str[i]);
+
+				if (_port_init(drv, fpga, i)) {
+					NT_LOG(ERR, NTNIC,
+						"%s: Failed to initialize NIM module\n",
+						drv->mp_port_id_str[i]);
+					continue;
+				}
+
+				if (nim_state_build(&nim_ctx[i], &new_state)) {
+					NT_LOG(ERR, NTNIC, "%s: Cannot read basic NIM data\n",
+						drv->mp_port_id_str[i]);
+					continue;
+				}
+
+				assert(new_state.br);	/* Cannot be zero if NIM is present */
+				NT_LOG(DBG, NTNIC,
+					"%s: NIM id = %u (%s), br = %u, vendor = '%s', pn = '%s', sn='%s'\n",
+					drv->mp_port_id_str[i], nim_ctx->nim_id,
+					nim_id_to_text(nim_ctx->nim_id), (unsigned int)new_state.br,
+					nim_ctx->vendor_name, nim_ctx->prod_no, nim_ctx->serial_no);
+
+				(void)_link_state_build(drv, &mac_pcs[i], &gpio_phy[i], i,
+					&link_state[i], is_port_disabled);
+
+				NT_LOG(DBG, NTNIC, "%s: NIM module initialized\n",
+					drv->mp_port_id_str[i]);
+				continue;
+			}
+
+			if (reported_link[i] != new_link_state.link_up) {
+				NT_LOG(INF, NTNIC, "%s: link is %s\n", drv->mp_port_id_str[i],
+					(new_link_state.link_up ? "up" : "down"));
+				link_info->link_info[i].link_speed =
+					(new_link_state.link_up ? NT_LINK_SPEED_100G
+						: NT_LINK_SPEED_UNKNOWN);
+				link_state[i].link_up = new_link_state.link_up;
+				reported_link[i] = new_link_state.link_up;
+			}
+
+			check_link_state(drv, &mac_pcs[i]);
 		}	/* end-for */
 
 		if (monitor_task_is_running[adapter_no])
@@ -280,6 +664,7 @@ static int nt4ga_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nth
 	assert(adapter_no >= 0 && adapter_no < NUM_ADAPTER_MAX);
 
 	if (res == 0 && !p_adapter_info->nt4ga_link.variables_initialized) {
+		nthw_mac_pcs_t *mac_pcs = p_adapter_info->nt4ga_link.u.var100g.mac_pcs100g;
 		nim_i2c_ctx_t *nim_ctx = p_adapter_info->nt4ga_link.u.var100g.nim_ctx;
 		nthw_gpio_phy_t *gpio_phy = p_adapter_info->nt4ga_link.u.var100g.gpio_phy;
 		int i;
@@ -287,6 +672,10 @@ static int nt4ga_link_100g_ports_init(struct adapter_info_s *p_adapter_info, nth
 		for (i = 0; i < nb_ports; i++) {
 			/* 2 + adapter port number */
 			const uint8_t instance = (uint8_t)(2U + i);
+			res = nthw_mac_pcs_init(&mac_pcs[i], fpga, i /* int n_instance */);
+
+			if (res != 0)
+				break;
 
 			res = nthw_iic_init(&nim_ctx[i].hwiic, fpga, instance, 8);
 

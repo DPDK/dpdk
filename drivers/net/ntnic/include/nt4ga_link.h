@@ -78,6 +78,7 @@ typedef struct port_action_s {
 
 typedef struct adapter_100g_s {
 	nim_i2c_ctx_t nim_ctx[NUM_ADAPTER_PORTS_MAX];	/* Should be the first field */
+	nthw_mac_pcs_t mac_pcs100g[NUM_ADAPTER_PORTS_MAX];
 	nthw_gpio_phy_t gpio_phy[NUM_ADAPTER_PORTS_MAX];
 } adapter_100g_t;
 
