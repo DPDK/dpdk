@@ -10,6 +10,7 @@ endif
 # includes
 includes = [
         include_directories('.'),
+        include_directories('include'),
         include_directories('ntlog'),
         include_directories('ntutil'),
 ]
