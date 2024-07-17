@@ -15,6 +15,7 @@
 #include "nthw_hif.h"
 #include "nthw_pcie3.h"
 #include "nthw_iic.h"
+#include "nthw_i2cm.h"
 
 #include "nthw_sdc.h"
 

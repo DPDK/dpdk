@@ -17,6 +17,7 @@ includes = [
         include_directories('nthw'),
         include_directories('nthw/supported'),
         include_directories('nthw/model'),
+        include_directories('nim/'),
 ]
 
 # all sources
@@ -24,6 +25,7 @@ sources = files(
         'adapter/nt4ga_adapter.c',
         'link_mgmt/link_100g/nt4ga_link_100g.c',
         'link_mgmt/nt4ga_link.c',
+        'nim/i2c_nim.c',
         'nthw/supported/nthw_fpga_9563_055_039_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
         'nthw/supported/nthw_fpga_mod_str_map.c',
@@ -33,6 +35,7 @@ sources = files(
         'nthw/core/nt200a0x/reset/nthw_fpga_rst_nt200a0x.c',
         'nthw/core/nthw_fpga.c',
         'nthw/core/nthw_hif.c',
+        'nthw/core/nthw_i2cm.c',
         'nthw/core/nthw_iic.c',
         'nthw/core/nthw_pcie3.c',
         'nthw/core/nthw_sdc.c',

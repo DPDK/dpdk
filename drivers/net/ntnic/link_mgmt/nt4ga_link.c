@@ -12,6 +12,7 @@
 #include "ntnic_mod_reg.h"
 
 #include "nt4ga_link.h"
+#include "i2c_nim.h"
 
 /*
  * port: speed capabilities
@@ -24,6 +25,16 @@ static uint32_t nt4ga_port_get_link_speed_capabilities(struct adapter_info_s *p,
 	nt4ga_link_t *const p_link = &p->nt4ga_link;
 	const uint32_t nt_link_speed_capa = p_link->speed_capa;
 	return nt_link_speed_capa;
+}
+
+/*
+ * port: nim present
+ */
+static bool nt4ga_port_get_nim_present(struct adapter_info_s *p, int port)
+{
+	nt4ga_link_t *const p_link = &p->nt4ga_link;
+	const bool nim_present = p_link->link_state[port].nim_present;
+	return nim_present;
 }
 
 /*
@@ -131,6 +142,8 @@ static uint32_t nt4ga_port_get_loopback_mode(struct adapter_info_s *p, int port)
 
 
 static const struct port_ops ops = {
+	.get_nim_present = nt4ga_port_get_nim_present,
+
 	/*
 	 * port:s link mode
 	 */

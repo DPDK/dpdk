@@ -9,6 +9,32 @@
 #include "nthw_fpga.h"
 #include "ntnic_mod_reg.h"
 
+/*
+ * Global variables shared by NT adapter types
+ */
+rte_thread_t monitor_tasks[NUM_ADAPTER_MAX];
+volatile int monitor_task_is_running[NUM_ADAPTER_MAX];
+
+/*
+ * Signal-handler to stop all monitor threads
+ */
+static void stop_monitor_tasks(int signum)
+{
+	const size_t N = ARRAY_SIZE(monitor_task_is_running);
+	size_t i;
+
+	/* Stop all monitor tasks */
+	for (i = 0; i < N; i++) {
+		const int is_running = monitor_task_is_running[i];
+		monitor_task_is_running[i] = 0;
+
+		if (signum == -1 && is_running != 0) {
+			rte_thread_join(monitor_tasks[i], NULL);
+			memset(&monitor_tasks[i], 0, sizeof(monitor_tasks[0]));
+		}
+	}
+}
+
 static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *pfh)
 {
 	const char *const p_dev_name = p_adapter_info->p_dev_name;
@@ -35,6 +61,9 @@ static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *
 		p_fpga_info->n_fpga_ver_id, p_fpga_info->n_fpga_rev_id, p_fpga_info->n_fpga_ident,
 		p_fpga_info->n_fpga_build_time);
 	fprintf(pfh, "%s: FpgaDebugMode=0x%x\n", p_adapter_id_str, p_fpga_info->n_fpga_debug_mode);
+	fprintf(pfh, "%s: Nims=%d PhyPorts=%d PhyQuads=%d RxPorts=%d TxPorts=%d\n",
+		p_adapter_id_str, p_fpga_info->n_nims, p_fpga_info->n_phy_ports,
+		p_fpga_info->n_phy_quads, p_fpga_info->n_rx_ports, p_fpga_info->n_tx_ports);
 	fprintf(pfh, "%s: Hw=0x%02X_rev%d: %s\n", p_adapter_id_str, p_hw_info->hw_platform_id,
 		p_fpga_info->nthw_hw_info.hw_id, p_fpga_info->nthw_hw_info.hw_plat_id_str);
 	fprintf(pfh, "%s: MCU Details:\n", p_adapter_id_str);
@@ -56,6 +85,7 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	 * (nthw_fpga_init())
 	 */
 	int n_phy_ports = -1;
+	int n_nim_ports = -1;
 	int res = -1;
 	nthw_fpga_t *p_fpga = NULL;
 
@@ -122,6 +152,8 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	assert(p_fpga);
 	n_phy_ports = fpga_info->n_phy_ports;
 	assert(n_phy_ports >= 1);
+	n_nim_ports = fpga_info->n_nims;
+	assert(n_nim_ports >= 1);
 
 	{
 		int i;
@@ -170,6 +202,8 @@ static int nt4ga_adapter_deinit(struct adapter_info_s *p_adapter_info)
 	fpga_info_t *fpga_info = &p_adapter_info->fpga_info;
 	int i;
 	int res = -1;
+
+	stop_monitor_tasks(-1);
 
 	nthw_fpga_shutdown(&p_adapter_info->fpga_info);
 

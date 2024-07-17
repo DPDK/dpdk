@@ -22,6 +22,8 @@ const struct link_ops_s *get_100g_link_ops(void);
 void link_100g_init(void);
 
 struct port_ops {
+	bool (*get_nim_present)(struct adapter_info_s *p, int port);
+
 	/*
 	 * port:s link mode
 	 */
@@ -59,6 +61,11 @@ struct port_ops {
 	uint32_t (*get_loopback_mode)(struct adapter_info_s *p, int port);
 
 	uint32_t (*get_link_speed_capabilities)(struct adapter_info_s *p, int port);
+
+	/*
+	 * port: nim capabilities
+	 */
+	nim_i2c_ctx_t (*get_nim_capabilities)(struct adapter_info_s *p, int port);
 
 	/*
 	 * port: tx power

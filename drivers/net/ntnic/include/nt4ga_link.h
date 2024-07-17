@@ -7,6 +7,7 @@
 #define NT4GA_LINK_H_
 
 #include "ntos_drv.h"
+#include "ntnic_nim.h"
 
 enum nt_link_state_e {
 	NT_LINK_STATE_UNKNOWN = 0,	/* The link state has not been read yet */
@@ -41,6 +42,8 @@ enum nt_link_auto_neg_e {
 
 typedef struct link_state_s {
 	bool link_disabled;
+	bool nim_present;
+	bool lh_nim_absent;
 	bool link_up;
 	enum nt_link_state_e link_state;
 	enum nt_link_state_e link_state_latched;
@@ -73,12 +76,22 @@ typedef struct port_action_s {
 	uint32_t port_lpbk_mode;
 } port_action_t;
 
+typedef struct adapter_100g_s {
+	nim_i2c_ctx_t nim_ctx[NUM_ADAPTER_PORTS_MAX];	/* Should be the first field */
+} adapter_100g_t;
+
+typedef union adapter_var_s {
+	nim_i2c_ctx_t nim_ctx[NUM_ADAPTER_PORTS_MAX];	/* First field in all the adapters type */
+	adapter_100g_t var100g;
+} adapter_var_u;
+
 typedef struct nt4ga_link_s {
 	link_state_t link_state[NUM_ADAPTER_PORTS_MAX];
 	link_info_t link_info[NUM_ADAPTER_PORTS_MAX];
 	port_action_t port_action[NUM_ADAPTER_PORTS_MAX];
 	uint32_t speed_capa;
 	bool variables_initialized;
+	adapter_var_u u;
 } nt4ga_link_t;
 
 #endif	/* NT4GA_LINK_H_ */

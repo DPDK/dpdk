@@ -52,6 +52,7 @@ typedef struct fpga_info_s {
 
 	int n_fpga_debug_mode;
 
+	int n_nims;
 	int n_phy_ports;
 	int n_phy_quads;
 	int n_rx_ports;

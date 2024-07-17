@@ -19,12 +19,14 @@ int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpg
 {
 	mcu_info_t *p_mcu_info = &p_fpga_info->mcu_info;
 
+	const int n_nims = nthw_fpga_get_product_param(p_fpga, NT_NIMS, -1);
 	const int n_phy_ports = nthw_fpga_get_product_param(p_fpga, NT_PHY_PORTS, -1);
 	const int n_phy_quads = nthw_fpga_get_product_param(p_fpga, NT_PHY_QUADS, -1);
 	const int n_rx_ports = nthw_fpga_get_product_param(p_fpga, NT_RX_PORTS, -1);
 	const int n_tx_ports = nthw_fpga_get_product_param(p_fpga, NT_TX_PORTS, -1);
 	const int n_vf_offset = nthw_fpga_get_product_param(p_fpga, NT_HIF_VF_OFFSET, 4);
 
+	p_fpga_info->n_nims = n_nims;
 	p_fpga_info->n_phy_ports = n_phy_ports;
 	p_fpga_info->n_phy_quads = n_phy_quads;
 	p_fpga_info->n_rx_ports = n_rx_ports;
@@ -236,6 +238,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	nthw_fpga_get_param_info(p_fpga_info, p_fpga);
 
 	/* debug: report params */
+	NT_LOG(DBG, NTHW, "%s: NT_NIMS=%d\n", p_adapter_id_str, p_fpga_info->n_nims);
 	NT_LOG(DBG, NTHW, "%s: NT_PHY_PORTS=%d\n", p_adapter_id_str, p_fpga_info->n_phy_ports);
 	NT_LOG(DBG, NTHW, "%s: NT_PHY_QUADS=%d\n", p_adapter_id_str, p_fpga_info->n_phy_quads);
 	NT_LOG(DBG, NTHW, "%s: NT_RX_PORTS=%d\n", p_adapter_id_str, p_fpga_info->n_rx_ports);
