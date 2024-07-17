@@ -6,8 +6,7 @@
 #ifndef __NTHW_DRV_H__
 #define __NTHW_DRV_H__
 
-#include <stddef.h>
-#include "nthw_platform_drv.h"
+#include "nthw_core.h"
 
 typedef enum nt_meta_port_type_e {
 	PORT_TYPE_PHYSICAL,
