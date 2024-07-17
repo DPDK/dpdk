@@ -238,8 +238,7 @@ struct gve_priv {
 	uint16_t max_rx_desc_cnt;
 	uint16_t tx_desc_cnt; /* txq size */
 	uint16_t rx_desc_cnt; /* rxq size */
-	uint16_t tx_pages_per_qpl; /* tx buffer length */
-	uint16_t rx_data_slot_cnt; /* rx buffer length */
+	uint16_t tx_pages_per_qpl;
 
 	/* Only valid for DQO_RDA queue format */
 	uint16_t tx_compq_size; /* tx completion queue size */

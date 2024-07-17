@@ -386,7 +386,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	/* Allocate and register QPL for the queue. */
 	if (rxq->is_gqi_qpl) {
 		rxq->qpl = gve_setup_queue_page_list(hw, queue_id, true,
-						     hw->rx_data_slot_cnt);
+						     nb_desc);
 		if (!rxq->qpl) {
 			PMD_DRV_LOG(ERR,
 				    "Failed to alloc rx qpl for queue %hu.",
