@@ -15,6 +15,7 @@
 #include "ntos_drv.h"
 #include "ntos_system.h"
 #include "ntnic_vfio.h"
+#include "ntnic_mod_reg.h"
 #include "nt_util.h"
 
 #define EXCEPTION_PATH_HID 0
@@ -127,8 +128,20 @@ eth_dev_stop(struct rte_eth_dev *eth_dev)
 static void
 drv_deinit(struct drv_s *p_drv)
 {
+	const struct adapter_ops *adapter_ops = get_adapter_ops();
+
+	if (adapter_ops == NULL) {
+		NT_LOG(ERR, NTNIC, "Adapter module uninitialized\n");
+		return;
+	}
+
 	if (p_drv == NULL)
 		return;
+
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+
+	/* stop adapter */
+	adapter_ops->deinit(&p_nt_drv->adapter_info);
 
 	/* clean memory */
 	rte_free(p_drv);
@@ -171,6 +184,13 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 {
 	nt_vfio_init();
 
+	const struct adapter_ops *adapter_ops = get_adapter_ops();
+
+	if (adapter_ops == NULL) {
+		NT_LOG(ERR, NTNIC, "Adapter module uninitialized\n");
+		return -1;
+	}
+
 	struct drv_s *p_drv;
 	ntdrv_4ga_t *p_nt_drv;
 	uint32_t n_port_mask = -1;	/* All ports enabled by default */
@@ -210,23 +230,71 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	/* Set context for NtDrv */
 	p_nt_drv->pciident = BDF_TO_PCIIDENT(pci_dev->addr.domain, pci_dev->addr.bus,
 			pci_dev->addr.devid, pci_dev->addr.function);
+	p_nt_drv->adapter_info.n_rx_host_buffers = nb_rx_queues;
+	p_nt_drv->adapter_info.n_tx_host_buffers = nb_tx_queues;
+
+
+	p_nt_drv->adapter_info.hw_info.pci_class_id = pci_dev->id.class_id;
+	p_nt_drv->adapter_info.hw_info.pci_vendor_id = pci_dev->id.vendor_id;
+	p_nt_drv->adapter_info.hw_info.pci_device_id = pci_dev->id.device_id;
+	p_nt_drv->adapter_info.hw_info.pci_sub_vendor_id = pci_dev->id.subsystem_vendor_id;
+	p_nt_drv->adapter_info.hw_info.pci_sub_device_id = pci_dev->id.subsystem_device_id;
+
+	NT_LOG(DBG, NTNIC, "%s: " PCIIDENT_PRINT_STR " %04X:%04X: %04X:%04X:\n",
+		p_nt_drv->adapter_info.mp_adapter_id_str, PCIIDENT_TO_DOMAIN(p_nt_drv->pciident),
+		PCIIDENT_TO_BUSNR(p_nt_drv->pciident), PCIIDENT_TO_DEVNR(p_nt_drv->pciident),
+		PCIIDENT_TO_FUNCNR(p_nt_drv->pciident),
+		p_nt_drv->adapter_info.hw_info.pci_vendor_id,
+		p_nt_drv->adapter_info.hw_info.pci_device_id,
+		p_nt_drv->adapter_info.hw_info.pci_sub_vendor_id,
+		p_nt_drv->adapter_info.hw_info.pci_sub_device_id);
 
 	p_nt_drv->b_shutdown = false;
+	p_nt_drv->adapter_info.pb_shutdown = &p_nt_drv->b_shutdown;
 
 	/* store context */
 	store_pdrv(p_drv);
 
+	/* initialize nt4ga nthw fpga module instance in drv */
+	int err = adapter_ops->init(&p_nt_drv->adapter_info);
+
+	if (err != 0) {
+		NT_LOG(ERR, NTNIC, "%s: Cannot initialize the adapter instance\n",
+			p_nt_drv->adapter_info.mp_adapter_id_str);
+		return -1;
+	}
+
+	/* Start ctrl, monitor, stat thread only for primary process. */
+	if (err == 0) {
+		/* mp_adapter_id_str is initialized after nt4ga_adapter_init(p_nt_drv) */
+		const char *const p_adapter_id_str = p_nt_drv->adapter_info.mp_adapter_id_str;
+		(void)p_adapter_id_str;
+
+	} else {
+		NT_LOG_DBGX(ERR, NTNIC, "%s: error=%d\n",
+			(pci_dev->name[0] ? pci_dev->name : "NA"), err);
+		return -1;
+	}
+
 	n_phy_ports = 0;
 
 	for (int n_intf_no = 0; n_intf_no < n_phy_ports; n_intf_no++) {
+		const char *const p_port_id_str = p_nt_drv->adapter_info.mp_port_id_str[n_intf_no];
+		(void)p_port_id_str;
 		struct pmd_internals *internals = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
 		char name[32];
 
-		if ((1 << n_intf_no) & ~n_port_mask)
+		if ((1 << n_intf_no) & ~n_port_mask) {
+			NT_LOG_DBGX(DEBUG, NTNIC,
+				"%s: interface #%d: skipping due to portmask 0x%02X\n",
+				p_port_id_str, n_intf_no, n_port_mask);
 			continue;
+		}
 
 		snprintf(name, sizeof(name), "ntnic%d", n_intf_no);
+		NT_LOG_DBGX(DEBUG, NTNIC, "%s: interface #%d: %s: '%s'\n", p_port_id_str,
+			n_intf_no, (pci_dev->name[0] ? pci_dev->name : "NA"), name);
 
 		internals = rte_zmalloc_socket(name, sizeof(struct pmd_internals),
 				RTE_CACHE_LINE_SIZE, pci_dev->device.numa_node);
@@ -285,6 +353,21 @@ static int
 nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 {
 	NT_LOG_DBGX(DEBUG, NTNIC, "PCI device deinitialization\n");
+
+	int i;
+	char name[32];
+
+	struct pmd_internals *internals = eth_dev->data->dev_private;
+	ntdrv_4ga_t *p_ntdrv = &internals->p_drv->ntdrv;
+	fpga_info_t *fpga_info = &p_ntdrv->adapter_info.fpga_info;
+	const int n_phy_ports = fpga_info->n_phy_ports;
+	for (i = 0; i < n_phy_ports; i++) {
+		sprintf(name, "ntnic%d", i);
+		eth_dev = rte_eth_dev_allocated(name);
+		if (eth_dev == NULL)
+			continue; /* port already released */
+		rte_eth_dev_release_port(eth_dev);
+	}
 
 	nt_vfio_remove(EXCEPTION_PATH_HID);
 	return 0;

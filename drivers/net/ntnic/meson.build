@@ -18,9 +18,11 @@ includes = [
 
 # all sources
 sources = files(
+        'adapter/nt4ga_adapter.c',
         'nthw/nthw_platform.c',
         'ntlog/ntlog.c',
         'ntutil/nt_util.c',
+        'ntnic_mod_reg.c',
         'ntnic_vfio.c',
         'ntnic_ethdev.c',
 )
