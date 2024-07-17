@@ -15,6 +15,9 @@
 
 #define GVE_DEVICE_OPTION_TOO_BIG_FMT "Length of %s option larger than expected. Possible older version of guest driver."
 
+static void gve_set_min_desc_cnt(struct gve_priv *priv,
+	struct gve_device_option_modify_ring *dev_op_modify_ring);
+
 static
 struct gve_device_option *gve_get_next_option(struct gve_device_descriptor *descriptor,
 					      struct gve_device_option *option)
@@ -107,7 +110,9 @@ void gve_parse_device_option(struct gve_priv *priv,
 		*dev_op_dqo_rda = RTE_PTR_ADD(option, sizeof(*option));
 		break;
 	case GVE_DEV_OPT_ID_MODIFY_RING:
-		if (option_length < sizeof(**dev_op_modify_ring) ||
+		/* Min ring size bound is optional. */
+		if (option_length < (sizeof(**dev_op_modify_ring) -
+			sizeof(struct gve_ring_size_bound)) ||
 		    req_feat_mask != GVE_DEV_OPT_REQ_FEAT_MASK_MODIFY_RING) {
 			PMD_DRV_LOG(WARNING, GVE_DEVICE_OPTION_ERROR_FMT,
 				    "Modify Ring",
@@ -123,6 +128,10 @@ void gve_parse_device_option(struct gve_priv *priv,
 				    "Modify Ring");
 		}
 		*dev_op_modify_ring = RTE_PTR_ADD(option, sizeof(*option));
+
+		/* Min ring size included; set the minimum ring size. */
+		if (option_length == sizeof(**dev_op_modify_ring))
+			gve_set_min_desc_cnt(priv, *dev_op_modify_ring);
 		break;
 	case GVE_DEV_OPT_ID_JUMBO_FRAMES:
 		if (option_length < sizeof(**dev_op_jumbo_frames) ||
@@ -686,16 +695,17 @@ int gve_adminq_destroy_rx_queues(struct gve_priv *priv, u32 num_queues)
 static int gve_set_desc_cnt(struct gve_priv *priv,
 			    struct gve_device_descriptor *descriptor)
 {
-	priv->tx_desc_cnt = be16_to_cpu(descriptor->tx_queue_entries);
-	if (priv->tx_desc_cnt * sizeof(priv->txqs[0]->tx_desc_ring[0])
+	priv->default_tx_desc_cnt = be16_to_cpu(descriptor->tx_queue_entries);
+	if (priv->default_tx_desc_cnt * sizeof(priv->txqs[0]->tx_desc_ring[0])
 	    < PAGE_SIZE) {
-		PMD_DRV_LOG(ERR, "Tx desc count %d too low", priv->tx_desc_cnt);
+		PMD_DRV_LOG(ERR, "Tx desc count %d too low",
+			    priv->default_tx_desc_cnt);
 		return -EINVAL;
 	}
-	priv->rx_desc_cnt = be16_to_cpu(descriptor->rx_queue_entries);
-	if (priv->rx_desc_cnt * sizeof(priv->rxqs[0]->rx_desc_ring[0])
+	priv->default_rx_desc_cnt = be16_to_cpu(descriptor->rx_queue_entries);
+	if (priv->default_rx_desc_cnt * sizeof(priv->rxqs[0]->rx_desc_ring[0])
 	    < PAGE_SIZE) {
-		PMD_DRV_LOG(ERR, "Rx desc count %d too low", priv->rx_desc_cnt);
+		PMD_DRV_LOG(ERR, "Rx desc count %d too low", priv->default_rx_desc_cnt);
 		return -EINVAL;
 	}
 	return 0;
@@ -706,12 +716,20 @@ gve_set_desc_cnt_dqo(struct gve_priv *priv,
 		     const struct gve_device_descriptor *descriptor,
 		     const struct gve_device_option_dqo_rda *dev_op_dqo_rda)
 {
-	priv->tx_desc_cnt = be16_to_cpu(descriptor->tx_queue_entries);
+	priv->default_tx_desc_cnt = be16_to_cpu(descriptor->tx_queue_entries);
 	priv->tx_compq_size = be16_to_cpu(dev_op_dqo_rda->tx_comp_ring_entries);
-	priv->rx_desc_cnt = be16_to_cpu(descriptor->rx_queue_entries);
+	priv->default_rx_desc_cnt = be16_to_cpu(descriptor->rx_queue_entries);
 	priv->rx_bufq_size = be16_to_cpu(dev_op_dqo_rda->rx_buff_ring_entries);
 
 	return 0;
+}
+
+static void
+gve_set_min_desc_cnt(struct gve_priv *priv,
+	struct gve_device_option_modify_ring *modify_ring)
+{
+	priv->min_rx_desc_cnt = be16_to_cpu(modify_ring->min_ring_size.rx);
+	priv->min_tx_desc_cnt = be16_to_cpu(modify_ring->min_ring_size.tx);
 }
 
 static void
@@ -725,8 +743,8 @@ gve_set_max_desc_cnt(struct gve_priv *priv,
 		priv->max_tx_desc_cnt = GVE_MAX_QUEUE_SIZE_DQO;
 		return;
 	}
-	priv->max_rx_desc_cnt = modify_ring->max_rx_ring_size;
-	priv->max_tx_desc_cnt = modify_ring->max_tx_ring_size;
+	priv->max_rx_desc_cnt = be16_to_cpu(modify_ring->max_ring_size.rx);
+	priv->max_tx_desc_cnt = be16_to_cpu(modify_ring->max_ring_size.tx);
 }
 
 static void gve_enable_supported_features(struct gve_priv *priv,
@@ -737,6 +755,7 @@ static void gve_enable_supported_features(struct gve_priv *priv,
 	if (dev_op_modify_ring &&
 	    (supported_features_mask & GVE_SUP_MODIFY_RING_MASK)) {
 		PMD_DRV_LOG(INFO, "MODIFY RING device option enabled.");
+		/* Min ring size set separately by virtue of it being optional. */
 		gve_set_max_desc_cnt(priv, dev_op_modify_ring);
 	}
 
@@ -818,10 +837,6 @@ int gve_adminq_describe_device(struct gve_priv *priv)
 	}
 	if (err)
 		goto free_device_descriptor;
-
-	/* Default max to current in case modify ring size option is disabled. */
-	priv->max_tx_desc_cnt = priv->tx_desc_cnt;
-	priv->max_rx_desc_cnt = priv->rx_desc_cnt;
 
 	priv->max_registered_pages =
 				be64_to_cpu(descriptor->max_registered_pages);

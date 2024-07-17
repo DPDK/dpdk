@@ -110,13 +110,20 @@ struct gve_device_option_dqo_rda {
 
 GVE_CHECK_STRUCT_LEN(8, gve_device_option_dqo_rda);
 
-struct gve_device_option_modify_ring {
-	__be32 supported_features_mask;
-	__be16 max_rx_ring_size;
-	__be16 max_tx_ring_size;
+struct gve_ring_size_bound {
+	__be16 rx;
+	__be16 tx;
 };
 
-GVE_CHECK_STRUCT_LEN(8, gve_device_option_modify_ring);
+GVE_CHECK_STRUCT_LEN(4, gve_ring_size_bound);
+
+struct gve_device_option_modify_ring {
+	__be32 supported_features_mask;
+	struct gve_ring_size_bound max_ring_size;
+	struct gve_ring_size_bound min_ring_size;
+};
+
+GVE_CHECK_STRUCT_LEN(12, gve_device_option_modify_ring);
 
 struct gve_device_option_jumbo_frames {
 	__be32 supported_features_mask;

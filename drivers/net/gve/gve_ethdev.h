@@ -15,19 +15,23 @@
 /* TODO: this is a workaround to ensure that Tx complq is enough */
 #define DQO_TX_MULTIPLIER 4
 
-#define GVE_DEFAULT_RX_FREE_THRESH   64
-#define GVE_DEFAULT_TX_FREE_THRESH   32
-#define GVE_DEFAULT_TX_RS_THRESH     32
-#define GVE_TX_MAX_FREE_SZ          512
+#define GVE_DEFAULT_MAX_RING_SIZE	1024
+#define GVE_DEFAULT_MIN_RX_RING_SIZE	512
+#define GVE_DEFAULT_MIN_TX_RING_SIZE	256
 
-#define GVE_RX_BUF_ALIGN_DQO        128
-#define GVE_RX_MIN_BUF_SIZE_DQO    1024
-#define GVE_RX_MAX_BUF_SIZE_DQO    ((16 * 1024) - GVE_RX_BUF_ALIGN_DQO)
-#define GVE_MAX_QUEUE_SIZE_DQO     4096
+#define GVE_DEFAULT_RX_FREE_THRESH	64
+#define GVE_DEFAULT_TX_FREE_THRESH	32
+#define GVE_DEFAULT_TX_RS_THRESH	32
+#define GVE_TX_MAX_FREE_SZ		512
 
-#define GVE_RX_BUF_ALIGN_GQI       2048
-#define GVE_RX_MIN_BUF_SIZE_GQI    2048
-#define GVE_RX_MAX_BUF_SIZE_GQI    4096
+#define GVE_RX_BUF_ALIGN_DQO		128
+#define GVE_RX_MIN_BUF_SIZE_DQO		1024
+#define GVE_RX_MAX_BUF_SIZE_DQO		((16 * 1024) - GVE_RX_BUF_ALIGN_DQO)
+#define GVE_MAX_QUEUE_SIZE_DQO		4096
+
+#define GVE_RX_BUF_ALIGN_GQI		2048
+#define GVE_RX_MIN_BUF_SIZE_GQI		2048
+#define GVE_RX_MAX_BUF_SIZE_GQI		4096
 
 #define GVE_RSS_HASH_KEY_SIZE 40
 #define GVE_RSS_INDIR_SIZE 128
@@ -234,10 +238,17 @@ struct gve_priv {
 	const struct rte_memzone *cnt_array_mz;
 
 	uint16_t num_event_counters;
+
+	/* TX ring size default and limits. */
+	uint16_t default_tx_desc_cnt;
 	uint16_t max_tx_desc_cnt;
+	uint16_t min_tx_desc_cnt;
+
+	/* RX ring size default and limits. */
+	uint16_t default_rx_desc_cnt;
 	uint16_t max_rx_desc_cnt;
-	uint16_t tx_desc_cnt; /* txq size */
-	uint16_t rx_desc_cnt; /* rxq size */
+	uint16_t min_rx_desc_cnt;
+
 	uint16_t tx_pages_per_qpl;
 
 	/* Only valid for DQO_RDA queue format */

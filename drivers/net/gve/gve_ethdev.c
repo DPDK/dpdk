@@ -508,17 +508,21 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.offloads = 0,
 	};
 
-	dev_info->default_rxportconf.ring_size = priv->rx_desc_cnt;
+	dev_info->default_rxportconf.ring_size = priv->default_rx_desc_cnt;
 	dev_info->rx_desc_lim = (struct rte_eth_desc_lim) {
-		.nb_max = gve_is_gqi(priv) ? priv->rx_desc_cnt : GVE_MAX_QUEUE_SIZE_DQO,
-		.nb_min = priv->rx_desc_cnt,
+		.nb_max = gve_is_gqi(priv) ?
+			priv->default_rx_desc_cnt :
+			GVE_MAX_QUEUE_SIZE_DQO,
+		.nb_min = priv->default_rx_desc_cnt,
 		.nb_align = 1,
 	};
 
-	dev_info->default_txportconf.ring_size = priv->tx_desc_cnt;
+	dev_info->default_txportconf.ring_size = priv->default_tx_desc_cnt;
 	dev_info->tx_desc_lim = (struct rte_eth_desc_lim) {
-		.nb_max = gve_is_gqi(priv) ? priv->tx_desc_cnt : GVE_MAX_QUEUE_SIZE_DQO,
-		.nb_min = priv->tx_desc_cnt,
+		.nb_max = gve_is_gqi(priv) ?
+			priv->default_tx_desc_cnt :
+			GVE_MAX_QUEUE_SIZE_DQO,
+		.nb_min = priv->default_tx_desc_cnt,
 		.nb_align = 1,
 	};
 
@@ -1088,6 +1092,15 @@ free_cnt_array:
 	return err;
 }
 
+static void
+gve_set_default_ring_size_bounds(struct gve_priv *priv)
+{
+	priv->max_tx_desc_cnt = GVE_DEFAULT_MAX_RING_SIZE;
+	priv->max_rx_desc_cnt = GVE_DEFAULT_MAX_RING_SIZE;
+	priv->min_tx_desc_cnt = GVE_DEFAULT_MIN_TX_RING_SIZE;
+	priv->min_rx_desc_cnt = GVE_DEFAULT_MIN_RX_RING_SIZE;
+}
+
 static int
 gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 {
@@ -1105,6 +1118,9 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 		PMD_DRV_LOG(ERR, "Could not verify driver compatibility: err=%d", err);
 		goto free_adminq;
 	}
+
+	/* Set default descriptor counts */
+	gve_set_default_ring_size_bounds(priv);
 
 	if (skip_describe_device)
 		goto setup_device;
