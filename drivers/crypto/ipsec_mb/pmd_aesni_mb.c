@@ -1249,7 +1249,7 @@ imb_lib_support_sgl_algo(IMB_CIPHER_MODE alg)
  *
  * @return
  * - 0 on success, the IMB_JOB will be filled
- * - -1 if invalid session or errors allocationg SGL linear buffer,
+ * - -1 if invalid session or errors allocating SGL linear buffer,
  *   IMB_JOB will not be filled
  */
 static inline int
