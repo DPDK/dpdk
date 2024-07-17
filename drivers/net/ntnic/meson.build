@@ -10,9 +10,11 @@ endif
 # includes
 includes = [
         include_directories('.'),
+        include_directories('ntlog'),
 ]
 
 # all sources
 sources = files(
+        'ntlog/ntlog.c',
         'ntnic_ethdev.c',
 )

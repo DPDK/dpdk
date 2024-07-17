@@ -7,6 +7,8 @@
 #include <rte_bus_pci.h>
 #include <ethdev_pci.h>
 
+#include "ntlog.h"
+
 static const struct rte_pci_id nthw_pci_id_map[] = {
 	{
 		.vendor_id = 0,
