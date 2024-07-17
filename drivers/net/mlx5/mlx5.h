@@ -281,6 +281,8 @@ struct mlx5_xstats_ctrl {
 	uint16_t stats_n_2nd;
 	/* Number of device stats identified by PMD. */
 	uint16_t mlx5_stats_n;
+	/* First device counters index. */
+	uint16_t dev_cnt_start;
 	/* Index in the device counters table. */
 	uint16_t dev_table_idx[MLX5_MAX_XSTATS];
 	/* Index in the output table. */
@@ -294,6 +296,9 @@ struct mlx5_xstats_ctrl {
 	/* Index in the output table, for the 2nd port in bond. */
 	uint16_t xstats_o_idx_2nd[MLX5_MAX_XSTATS];
 };
+
+/* xstats array size. */
+extern const unsigned int xstats_n;
 
 struct mlx5_stats_ctrl {
 	/* Base for imissed counter. */

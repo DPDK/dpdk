@@ -1201,6 +1201,7 @@ _mlx5_os_read_dev_counters(struct rte_eth_dev *dev, int pf, uint64_t *stats)
 	struct ethtool_stats *et_stats = (struct ethtool_stats *)et_stat_buf;
 	int ret;
 	uint16_t i_idx, o_idx;
+	uint32_t total_stats = xstats_n;
 
 	et_stats->cmd = ETHTOOL_GSTATS;
 	/* Pass the maximum value, the driver may ignore this. */
@@ -1218,19 +1219,19 @@ _mlx5_os_read_dev_counters(struct rte_eth_dev *dev, int pf, uint64_t *stats)
 		return ret;
 	}
 	if (pf <= 0) {
-		for (i = 0; i != xstats_ctrl->mlx5_stats_n; i++) {
+		for (i = 0; i != total_stats; i++) {
 			i_idx = xstats_ctrl->dev_table_idx[i];
-			if (i_idx == UINT16_MAX || xstats_ctrl->info[i].dev)
-				continue;
 			o_idx = xstats_ctrl->xstats_o_idx[i];
+			if (i_idx == UINT16_MAX || xstats_ctrl->info[o_idx].dev)
+				continue;
 			stats[o_idx] += (uint64_t)et_stats->data[i_idx];
 		}
 	} else {
-		for (i = 0; i != xstats_ctrl->mlx5_stats_n; i++) {
+		for (i = 0; i != total_stats; i++) {
 			i_idx = xstats_ctrl->dev_table_idx_2nd[i];
-			if (i_idx == UINT16_MAX)
-				continue;
 			o_idx = xstats_ctrl->xstats_o_idx_2nd[i];
+			if (i_idx == UINT16_MAX || xstats_ctrl->info[o_idx].dev)
+				continue;
 			stats[o_idx] += (uint64_t)et_stats->data[i_idx];
 		}
 	}
@@ -1273,11 +1274,11 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, bool bond_master, uint64_t *s
 			return ret;
 	}
 	/*
-	 * Read IB counters.
-	 * The counters are unique per IB device but not per net IF.
+	 * Read IB dev counters.
+	 * The counters are unique per IB device but not per netdev IF.
 	 * In bonding mode, getting the stats name only from 1 port is enough.
 	 */
-	for (i = 0; i != xstats_ctrl->mlx5_stats_n; i++) {
+	for (i = xstats_ctrl->dev_cnt_start; i < xstats_ctrl->mlx5_stats_n; i++) {
 		if (!xstats_ctrl->info[i].dev)
 			continue;
 		/* return last xstats counter if fail to read. */
@@ -1573,7 +1574,7 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 	},
 };
 
-static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
+const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
 
 static int
 mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
@@ -1619,6 +1620,7 @@ mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
 	}
 	if (!bond_master) {
 		/* Add dev counters, unique per IB device. */
+		xstats_ctrl->dev_cnt_start = xstats_ctrl->mlx5_stats_n;
 		for (j = 0; j != xstats_n; j++) {
 			if (mlx5_counters_init[j].dev) {
 				idx = xstats_ctrl->mlx5_stats_n++;
@@ -1660,6 +1662,7 @@ mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
 		}
 	}
 	/* Dev counters are always at the last now. */
+	xstats_ctrl->dev_cnt_start = xstats_ctrl->mlx5_stats_n;
 	for (j = 0; j != xstats_n; j++) {
 		if (mlx5_counters_init[j].dev) {
 			idx = xstats_ctrl->mlx5_stats_n++;
