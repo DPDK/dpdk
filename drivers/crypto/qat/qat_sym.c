@@ -291,7 +291,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 		}
 
 		cryptodev->feature_flags |= RTE_CRYPTODEV_FF_SECURITY;
-		QAT_LOG(INFO, "Device %s rte_security support ensabled", name);
+		QAT_LOG(INFO, "Device %s rte_security support enabled", name);
 	} else {
 		QAT_LOG(INFO, "Device %s rte_security support disabled", name);
 	}
