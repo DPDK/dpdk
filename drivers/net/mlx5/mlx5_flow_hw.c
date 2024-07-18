@@ -16388,10 +16388,11 @@ flow_hw_validate_rule_actions(struct rte_eth_dev *dev,
 		user_action = &actions[act_data->action_src];
 
 		/* Skip actions which do not require conf. */
-		switch ((int)user_action->type) {
+		switch ((int)act_data->type) {
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
 		case MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK:
+		case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
 			continue;
 		default:
 			break;
