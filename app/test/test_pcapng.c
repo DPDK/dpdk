@@ -235,7 +235,7 @@ parse_pcap_packet(u_char *user, const struct pcap_pkthdr *h,
 	 * but the file is open in nanonsecond mode therefore
 	 * the timestamp is really in timespec (ie. nanoseconds).
 	 */
-	ns = h->ts.tv_sec * NS_PER_S + h->ts.tv_usec;
+	ns = (uint64_t)h->ts.tv_sec * NS_PER_S + h->ts.tv_usec;
 	if (ns < ctx->start_ns || ns > ctx->end_ns) {
 		char tstart[128], tend[128];
 
