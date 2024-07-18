@@ -6806,8 +6806,6 @@ mlx5_hw_validate_action_mark(struct rte_eth_dev *dev,
 					      &attr, error);
 }
 
-#define MLX5_FLOW_DEFAULT_INGRESS_QUEUE 0
-
 static int
 mlx5_hw_validate_action_queue(struct rte_eth_dev *dev,
 			      const struct rte_flow_action *template_action,
@@ -6817,22 +6815,22 @@ mlx5_hw_validate_action_queue(struct rte_eth_dev *dev,
 			      struct rte_flow_error *error)
 {
 	const struct rte_flow_action_queue *queue_mask = template_mask->conf;
-	const struct rte_flow_action *action =
-		queue_mask && queue_mask->index ? template_action :
-		&(const struct rte_flow_action) {
-		.type = RTE_FLOW_ACTION_TYPE_QUEUE,
-		.conf = &(const struct rte_flow_action_queue) {
-			.index = MLX5_FLOW_DEFAULT_INGRESS_QUEUE
-		}
-	};
 	const struct rte_flow_attr attr = {
 		.ingress = template_attr->ingress,
 		.egress = template_attr->egress,
 		.transfer = template_attr->transfer
 	};
+	bool masked = queue_mask != NULL && queue_mask->index;
 
-	return mlx5_flow_validate_action_queue(action, action_flags,
-					       dev, &attr, error);
+	if (template_attr->egress || template_attr->transfer)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+					  "QUEUE action supported for ingress only");
+	if (masked)
+		return mlx5_flow_validate_action_queue(template_action, action_flags, dev,
+						       &attr, error);
+	else
+		return 0;
 }
 
 static int
@@ -6844,22 +6842,15 @@ mlx5_hw_validate_action_rss(struct rte_eth_dev *dev,
 			      struct rte_flow_error *error)
 {
 	const struct rte_flow_action_rss *mask = template_mask->conf;
-	const struct rte_flow_action *action = mask ? template_action :
-		&(const struct rte_flow_action) {
-		.type = RTE_FLOW_ACTION_TYPE_RSS,
-		.conf = &(const struct rte_flow_action_rss) {
-			.queue_num = 1,
-			.queue = (uint16_t [1]) {
-				MLX5_FLOW_DEFAULT_INGRESS_QUEUE
-			}
-		}
-	};
 
 	if (template_attr->egress || template_attr->transfer)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "RSS action supported for ingress only");
-	return mlx5_validate_action_rss(dev, action, error);
+	if (mask != NULL)
+		return mlx5_validate_action_rss(dev, template_action, error);
+	else
+		return 0;
 }
 
 static int
