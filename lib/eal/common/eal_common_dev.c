@@ -550,15 +550,16 @@ rte_dev_event_callback_unregister(const char *device_name,
 		next = TAILQ_NEXT(event_cb, next);
 
 		if (device_name != NULL && event_cb->dev_name != NULL) {
-			if (!strcmp(event_cb->dev_name, device_name)) {
-				if (event_cb->cb_fn != cb_fn ||
-				    (cb_arg != (void *)-1 &&
-				    event_cb->cb_arg != cb_arg))
-					continue;
-			}
+			if (strcmp(event_cb->dev_name, device_name))
+				continue;
 		} else if (device_name != NULL) {
 			continue;
 		}
+
+		/* Remove only matching callback with arg */
+		if (event_cb->cb_fn != cb_fn ||
+		    (cb_arg != (void *)-1 && event_cb->cb_arg != cb_arg))
+			continue;
 
 		/*
 		 * if this callback is not executing right now,
