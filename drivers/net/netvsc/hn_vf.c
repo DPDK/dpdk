@@ -264,7 +264,7 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 			goto exit;
 		}
 
-		ret = hn_vf_mtu_set(dev, dev->data->mtu);
+		ret = rte_eth_dev_set_mtu(port, dev->data->mtu);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Failed to set VF MTU");
 			goto exit;
@@ -796,7 +796,7 @@ int hn_vf_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	rte_rwlock_read_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
 	if (hv->vf_ctx.vf_vsc_switched && vf_dev)
-		ret = vf_dev->dev_ops->mtu_set(vf_dev, mtu);
+		ret = rte_eth_dev_set_mtu(vf_dev->data->port_id, mtu);
 	rte_rwlock_read_unlock(&hv->vf_lock);
 
 	return ret;
