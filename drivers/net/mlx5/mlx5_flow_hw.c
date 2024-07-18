@@ -10580,6 +10580,7 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
 	uint32_t xmeta = priv->sh->config.dv_xmeta_en;
 	uint32_t repr_matching = priv->sh->config.repr_matching;
+	uint32_t fdb_def_rule = priv->sh->config.fdb_def_rule;
 
 	MLX5_ASSERT(priv->hw_ctrl_fdb == NULL);
 	hw_ctrl_fdb = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hw_ctrl_fdb), 0, SOCKET_ID_ANY);
@@ -10590,70 +10591,79 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 		goto err;
 	}
 	priv->hw_ctrl_fdb = hw_ctrl_fdb;
-	/* Create templates and table for default SQ miss flow rules - root table. */
-	hw_ctrl_fdb->esw_mgr_items_tmpl = flow_hw_create_ctrl_esw_mgr_pattern_template(dev, error);
-	if (!hw_ctrl_fdb->esw_mgr_items_tmpl) {
-		DRV_LOG(ERR, "port %u failed to create E-Switch Manager item"
-			" template for control flows", dev->data->port_id);
-		goto err;
-	}
-	hw_ctrl_fdb->regc_jump_actions_tmpl = flow_hw_create_ctrl_regc_jump_actions_template
-			(dev, error);
-	if (!hw_ctrl_fdb->regc_jump_actions_tmpl) {
-		DRV_LOG(ERR, "port %u failed to create REG_C set and jump action template"
-			" for control flows", dev->data->port_id);
-		goto err;
-	}
-	hw_ctrl_fdb->hw_esw_sq_miss_root_tbl = flow_hw_create_ctrl_sq_miss_root_table
-			(dev, hw_ctrl_fdb->esw_mgr_items_tmpl, hw_ctrl_fdb->regc_jump_actions_tmpl,
-			 error);
-	if (!hw_ctrl_fdb->hw_esw_sq_miss_root_tbl) {
-		DRV_LOG(ERR, "port %u failed to create table for default sq miss (root table)"
-			" for control flows", dev->data->port_id);
-		goto err;
-	}
-	/* Create templates and table for default SQ miss flow rules - non-root table. */
-	hw_ctrl_fdb->regc_sq_items_tmpl = flow_hw_create_ctrl_regc_sq_pattern_template(dev, error);
-	if (!hw_ctrl_fdb->regc_sq_items_tmpl) {
-		DRV_LOG(ERR, "port %u failed to create SQ item template for"
-			" control flows", dev->data->port_id);
-		goto err;
-	}
-	hw_ctrl_fdb->port_actions_tmpl = flow_hw_create_ctrl_port_actions_template(dev, error);
-	if (!hw_ctrl_fdb->port_actions_tmpl) {
-		DRV_LOG(ERR, "port %u failed to create port action template"
-			" for control flows", dev->data->port_id);
-		goto err;
-	}
-	hw_ctrl_fdb->hw_esw_sq_miss_tbl = flow_hw_create_ctrl_sq_miss_table
-			(dev, hw_ctrl_fdb->regc_sq_items_tmpl, hw_ctrl_fdb->port_actions_tmpl,
-			 error);
-	if (!hw_ctrl_fdb->hw_esw_sq_miss_tbl) {
-		DRV_LOG(ERR, "port %u failed to create table for default sq miss (non-root table)"
-			" for control flows", dev->data->port_id);
-		goto err;
-	}
-	/* Create templates and table for default FDB jump flow rules. */
-	hw_ctrl_fdb->port_items_tmpl = flow_hw_create_ctrl_port_pattern_template(dev, error);
-	if (!hw_ctrl_fdb->port_items_tmpl) {
-		DRV_LOG(ERR, "port %u failed to create SQ item template for"
-			" control flows", dev->data->port_id);
-		goto err;
-	}
-	hw_ctrl_fdb->jump_one_actions_tmpl = flow_hw_create_ctrl_jump_actions_template
-			(dev, MLX5_HW_LOWEST_USABLE_GROUP, error);
-	if (!hw_ctrl_fdb->jump_one_actions_tmpl) {
-		DRV_LOG(ERR, "port %u failed to create jump action template"
-			" for control flows", dev->data->port_id);
-		goto err;
-	}
-	hw_ctrl_fdb->hw_esw_zero_tbl = flow_hw_create_ctrl_jump_table
-			(dev, hw_ctrl_fdb->port_items_tmpl, hw_ctrl_fdb->jump_one_actions_tmpl,
-			 error);
-	if (!hw_ctrl_fdb->hw_esw_zero_tbl) {
-		DRV_LOG(ERR, "port %u failed to create table for default jump to group 1"
-			" for control flows", dev->data->port_id);
-		goto err;
+	if (fdb_def_rule) {
+		/* Create templates and table for default SQ miss flow rules - root table. */
+		hw_ctrl_fdb->esw_mgr_items_tmpl =
+				flow_hw_create_ctrl_esw_mgr_pattern_template(dev, error);
+		if (!hw_ctrl_fdb->esw_mgr_items_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create E-Switch Manager item"
+				" template for control flows", dev->data->port_id);
+			goto err;
+		}
+		hw_ctrl_fdb->regc_jump_actions_tmpl =
+				flow_hw_create_ctrl_regc_jump_actions_template(dev, error);
+		if (!hw_ctrl_fdb->regc_jump_actions_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create REG_C set and jump action template"
+				" for control flows", dev->data->port_id);
+			goto err;
+		}
+		hw_ctrl_fdb->hw_esw_sq_miss_root_tbl =
+				flow_hw_create_ctrl_sq_miss_root_table
+					(dev, hw_ctrl_fdb->esw_mgr_items_tmpl,
+					 hw_ctrl_fdb->regc_jump_actions_tmpl, error);
+		if (!hw_ctrl_fdb->hw_esw_sq_miss_root_tbl) {
+			DRV_LOG(ERR, "port %u failed to create table for default sq miss (root table)"
+				" for control flows", dev->data->port_id);
+			goto err;
+		}
+		/* Create templates and table for default SQ miss flow rules - non-root table. */
+		hw_ctrl_fdb->regc_sq_items_tmpl =
+				flow_hw_create_ctrl_regc_sq_pattern_template(dev, error);
+		if (!hw_ctrl_fdb->regc_sq_items_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create SQ item template for"
+				" control flows", dev->data->port_id);
+			goto err;
+		}
+		hw_ctrl_fdb->port_actions_tmpl =
+				flow_hw_create_ctrl_port_actions_template(dev, error);
+		if (!hw_ctrl_fdb->port_actions_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create port action template"
+				" for control flows", dev->data->port_id);
+			goto err;
+		}
+		hw_ctrl_fdb->hw_esw_sq_miss_tbl =
+				flow_hw_create_ctrl_sq_miss_table
+					(dev, hw_ctrl_fdb->regc_sq_items_tmpl,
+					 hw_ctrl_fdb->port_actions_tmpl, error);
+		if (!hw_ctrl_fdb->hw_esw_sq_miss_tbl) {
+			DRV_LOG(ERR, "port %u failed to create table for default sq miss (non-root table)"
+				" for control flows", dev->data->port_id);
+			goto err;
+		}
+		/* Create templates and table for default FDB jump flow rules. */
+		hw_ctrl_fdb->port_items_tmpl =
+				flow_hw_create_ctrl_port_pattern_template(dev, error);
+		if (!hw_ctrl_fdb->port_items_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create SQ item template for"
+				" control flows", dev->data->port_id);
+			goto err;
+		}
+		hw_ctrl_fdb->jump_one_actions_tmpl =
+				flow_hw_create_ctrl_jump_actions_template
+					(dev, MLX5_HW_LOWEST_USABLE_GROUP, error);
+		if (!hw_ctrl_fdb->jump_one_actions_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create jump action template"
+				" for control flows", dev->data->port_id);
+			goto err;
+		}
+		hw_ctrl_fdb->hw_esw_zero_tbl = flow_hw_create_ctrl_jump_table
+				(dev, hw_ctrl_fdb->port_items_tmpl,
+				 hw_ctrl_fdb->jump_one_actions_tmpl, error);
+		if (!hw_ctrl_fdb->hw_esw_zero_tbl) {
+			DRV_LOG(ERR, "port %u failed to create table for default jump to group 1"
+				" for control flows", dev->data->port_id);
+			goto err;
+		}
 	}
 	/* Create templates and table for default Tx metadata copy flow rule. */
 	if (!repr_matching && xmeta == MLX5_XMETA_MODE_META32_HWS) {
@@ -15383,6 +15393,8 @@ mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	}
 	proxy_dev = &rte_eth_devices[proxy_port_id];
 	proxy_priv = proxy_dev->data->dev_private;
+	/* FDB default flow rules must be enabled. */
+	MLX5_ASSERT(proxy_priv->sh->config.fdb_def_rule);
 	if (!proxy_priv->dr_ctx)
 		return 0;
 	if (!proxy_priv->hw_ctrl_fdb ||
@@ -15447,6 +15459,8 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 	}
 	proxy_dev = &rte_eth_devices[proxy_port_id];
 	proxy_priv = proxy_dev->data->dev_private;
+	/* FDB default flow rules must be enabled. */
+	MLX5_ASSERT(proxy_priv->sh->config.fdb_def_rule);
 	if (!proxy_priv->dr_ctx) {
 		DRV_LOG(DEBUG, "Transfer proxy port (port %u) of port %u must be configured "
 			       "for HWS to create default FDB jump rule. Default rule will "

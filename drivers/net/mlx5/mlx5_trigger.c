@@ -1504,7 +1504,9 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 		if (!txq)
 			continue;
 		queue = mlx5_txq_get_sqn(txq);
-		if ((priv->representor || priv->master) && config->dv_esw_en) {
+		if ((priv->representor || priv->master) &&
+		    config->dv_esw_en &&
+		    config->fdb_def_rule) {
 			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
