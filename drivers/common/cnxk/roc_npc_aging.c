@@ -145,7 +145,7 @@ npc_age_wait_until(struct roc_npc_flow_age *flow_age)
 		plt_delay_us(sleep);
 		timeout += sleep;
 	} while (!flow_age->aged_flows_get_thread_exit &&
-		 (timeout < (flow_age->aging_poll_freq * NPC_AGE_WAIT_TIMEOUT_US)));
+		 (timeout < ((uint64_t)flow_age->aging_poll_freq * NPC_AGE_WAIT_TIMEOUT_US)));
 }
 
 uint32_t
