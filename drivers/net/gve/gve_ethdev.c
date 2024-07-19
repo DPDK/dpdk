@@ -1185,8 +1185,18 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	rte_be32_t *db_bar;
 	int err;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		if (gve_is_gqi(priv)) {
+			gve_set_rx_function(eth_dev);
+			gve_set_tx_function(eth_dev);
+			eth_dev->dev_ops = &gve_eth_dev_ops;
+		} else {
+			gve_set_rx_function_dqo(eth_dev);
+			gve_set_tx_function_dqo(eth_dev);
+			eth_dev->dev_ops = &gve_eth_dev_ops_dqo;
+		}
 		return 0;
+	}
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 
