@@ -415,7 +415,7 @@ def get_settings() -> Settings:
     args = parser.parse_args()
 
     if args.dpdk_revision_id:
-        args.dpdk_tarball_path = DPDKGitTarball(args.dpdk_revision_id, args.output_dir)
+        args.dpdk_tarball_path = Path(DPDKGitTarball(args.dpdk_revision_id, args.output_dir))
 
     args.test_suites = _process_test_suites(parser, args.test_suites)
 
