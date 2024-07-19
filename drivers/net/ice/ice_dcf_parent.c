@@ -346,8 +346,19 @@ ice_dcf_init_parent_hw(struct ice_hw *hw)
 
 	/* Initialize port_info struct with link information */
 	status = ice_aq_get_link_info(hw->port_info, true, NULL, NULL);
-	if (status)
-		goto err_unroll_alloc;
+	if (status) {
+		enum ice_mac_type type = hw->mac_type;
+
+		/* DCF uses ICE_MAC_GENERIC which can be talking to either
+		 * E810 or E830. Retry with E830 mac type to ensure correct
+		 * data length is used for IAVF communication with PF.
+		 */
+		hw->mac_type = ICE_MAC_E830;
+		status = ice_aq_get_link_info(hw->port_info, true, NULL, NULL);
+		hw->mac_type = type;
+		if (status)
+			goto err_unroll_alloc;
+	}
 
 	status = ice_init_fltr_mgmt_struct(hw);
 	if (status)
