@@ -3685,55 +3685,6 @@ bnxt_dev_supported_ptypes_get_op(struct rte_eth_dev *dev,
 	return ptypes;
 }
 
-static int bnxt_map_regs(struct bnxt *bp, uint32_t *reg_arr, int count,
-			 int reg_win)
-{
-	uint32_t reg_base = *reg_arr & 0xfffff000;
-	uint32_t win_off;
-	int i;
-
-	for (i = 0; i < count; i++) {
-		if ((reg_arr[i] & 0xfffff000) != reg_base)
-			return -ERANGE;
-	}
-	win_off = BNXT_GRCPF_REG_WINDOW_BASE_OUT + (reg_win - 1) * 4;
-	rte_write32(reg_base, (uint8_t *)bp->bar0 + win_off);
-	return 0;
-}
-
-static int bnxt_map_ptp_regs(struct bnxt *bp)
-{
-	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	uint32_t *reg_arr;
-	int rc, i;
-
-	reg_arr = ptp->rx_regs;
-	rc = bnxt_map_regs(bp, reg_arr, BNXT_PTP_RX_REGS, 5);
-	if (rc)
-		return rc;
-
-	reg_arr = ptp->tx_regs;
-	rc = bnxt_map_regs(bp, reg_arr, BNXT_PTP_TX_REGS, 6);
-	if (rc)
-		return rc;
-
-	for (i = 0; i < BNXT_PTP_RX_REGS; i++)
-		ptp->rx_mapped_regs[i] = 0x5000 + (ptp->rx_regs[i] & 0xfff);
-
-	for (i = 0; i < BNXT_PTP_TX_REGS; i++)
-		ptp->tx_mapped_regs[i] = 0x6000 + (ptp->tx_regs[i] & 0xfff);
-
-	return 0;
-}
-
-static void bnxt_unmap_ptp_regs(struct bnxt *bp)
-{
-	rte_write32(0, (uint8_t *)bp->bar0 +
-			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 16);
-	rte_write32(0, (uint8_t *)bp->bar0 +
-			 BNXT_GRCPF_REG_WINDOW_BASE_OUT + 20);
-}
-
 static uint64_t bnxt_cc_read(struct bnxt *bp)
 {
 	uint64_t ns;
@@ -3907,13 +3858,7 @@ bnxt_timesync_enable(struct rte_eth_dev *dev)
 	ptp->tx_tstamp_tc.cc_shift = shift;
 	ptp->tx_tstamp_tc.nsec_mask = (1ULL << shift) - 1;
 
-	/* TODO Revisit for Thor 2 */
-	if (!BNXT_CHIP_P5(bp))
-		bnxt_map_ptp_regs(bp);
-	else
-		rc = bnxt_ptp_start(bp);
-
-	return rc;
+	return bnxt_ptp_start(bp);
 }
 
 static int
@@ -3932,12 +3877,8 @@ bnxt_timesync_disable(struct rte_eth_dev *dev)
 
 	bnxt_hwrm_ptp_cfg(bp);
 
-	/* TODO Revisit for Thor 2 */
 	bp->ptp_all_rx_tstamp = 0;
-	if (!BNXT_CHIP_P5(bp))
-		bnxt_unmap_ptp_regs(bp);
-	else
-		bnxt_ptp_stop(bp);
+	bnxt_ptp_stop(bp);
 
 	return 0;
 }
