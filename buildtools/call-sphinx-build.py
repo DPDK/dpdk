@@ -3,6 +3,8 @@
 # Copyright(c) 2019 Intel Corporation
 #
 
+import filecmp
+import shutil
 import sys
 import os
 from os.path import join
@@ -29,5 +31,13 @@ with open(join(dst, 'sphinx_html.out'), 'w') as out:
 # create a gcc format .d file giving all the dependencies of this doc build
 with open(join(dst, '.html.d'), 'w') as d:
     d.write('html: ' + ' '.join(srcfiles) + '\n')
+
+# copy custom CSS file
+css = 'custom.css'
+src_css = join(src, css)
+dst_css = join(dst, 'html', '_static', 'css', css)
+if not os.path.exists(dst_css) or not filecmp.cmp(src_css, dst_css):
+    os.makedirs(os.path.dirname(dst_css), exist_ok=True)
+    shutil.copyfile(src_css, dst_css)
 
 sys.exit(process.returncode)
