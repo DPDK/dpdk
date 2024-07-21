@@ -1027,14 +1027,8 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 
 	HWRM_CHECK_RESULT();
 
-	/* TODO Revisit for Thor 2 */
-	if (BNXT_CHIP_P5(bp)) {
-		if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_HWRM_ACCESS))
-			return 0;
-	} else {
-		if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_DIRECT_ACCESS))
-			return 0;
-	}
+	if (!(resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_HWRM_ACCESS))
+		return 0;
 
 	if (resp->flags & HWRM_PORT_MAC_PTP_QCFG_OUTPUT_FLAGS_ONE_STEP_TX_TS)
 		bp->flags |= BNXT_FLAG_FW_CAP_ONE_STEP_TX_TS;
@@ -1042,27 +1036,6 @@ static int bnxt_hwrm_ptp_qcfg(struct bnxt *bp)
 	ptp = rte_zmalloc("ptp_cfg", sizeof(*ptp), 0);
 	if (!ptp)
 		return -ENOMEM;
-
-	if (!BNXT_CHIP_P5(bp)) {
-		ptp->rx_regs[BNXT_PTP_RX_TS_L] =
-			rte_le_to_cpu_32(resp->rx_ts_reg_off_lower);
-		ptp->rx_regs[BNXT_PTP_RX_TS_H] =
-			rte_le_to_cpu_32(resp->rx_ts_reg_off_upper);
-		ptp->rx_regs[BNXT_PTP_RX_SEQ] =
-			rte_le_to_cpu_32(resp->rx_ts_reg_off_seq_id);
-		ptp->rx_regs[BNXT_PTP_RX_FIFO] =
-			rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo);
-		ptp->rx_regs[BNXT_PTP_RX_FIFO_ADV] =
-			rte_le_to_cpu_32(resp->rx_ts_reg_off_fifo_adv);
-		ptp->tx_regs[BNXT_PTP_TX_TS_L] =
-			rte_le_to_cpu_32(resp->tx_ts_reg_off_lower);
-		ptp->tx_regs[BNXT_PTP_TX_TS_H] =
-			rte_le_to_cpu_32(resp->tx_ts_reg_off_upper);
-		ptp->tx_regs[BNXT_PTP_TX_SEQ] =
-			rte_le_to_cpu_32(resp->tx_ts_reg_off_seq_id);
-		ptp->tx_regs[BNXT_PTP_TX_FIFO] =
-			rte_le_to_cpu_32(resp->tx_ts_reg_off_fifo);
-	}
 
 	ptp->bp = bp;
 	bp->ptp_cfg = ptp;
