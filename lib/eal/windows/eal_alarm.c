@@ -211,6 +211,10 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 		}
 
 		rte_spinlock_unlock(&alarm_lock);
+
+		/* Yield control to a second thread executing eal_alarm_callback to avoid its starvation,
+		 * as it is waiting for the lock we have just released. */
+		SwitchToThread();
 	} while (executing);
 
 	rte_eal_trace_alarm_cancel(cb_fn, cb_arg, removed);
