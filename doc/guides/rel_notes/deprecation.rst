@@ -171,6 +171,10 @@ Deprecation Notices
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
 
+* cryptodev: The enum ``rte_crypto_asym_xform_type`` and struct ``rte_crypto_asym_op``
+  will be extended to include new values to support EDDSA.
+  This will break ABI compatibility with existing applications that use these data types.
+
 * cryptodev: The Intel IPsec Multi-Buffer version will be bumped
   to a minimum version of v1.4.
   This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY
