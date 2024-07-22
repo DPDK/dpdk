@@ -392,7 +392,7 @@ gve_tx_queue_start_dqo(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	rte_write32(rte_cpu_to_be_32(GVE_IRQ_MASK), txq->ntfy_addr);
 
-	dev->data->rx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 }
