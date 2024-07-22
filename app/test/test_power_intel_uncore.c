@@ -17,14 +17,12 @@ test_power_intel_uncore(void)
 #include <rte_power_uncore.h>
 #include <power_common.h>
 
-#define MAX_UNCORE_FREQS 32
-
 #define VALID_PKG 0
 #define VALID_DIE 0
 #define INVALID_PKG (rte_power_uncore_get_num_pkgs() + 1)
 #define INVALID_DIE (rte_power_uncore_get_num_dies(VALID_PKG) + 1)
 #define VALID_INDEX 1
-#define INVALID_INDEX (MAX_UNCORE_FREQS + 1)
+#define INVALID_INDEX (RTE_MAX_UNCORE_FREQS + 1)
 
 static int check_power_uncore_init(void)
 {

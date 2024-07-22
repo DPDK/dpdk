@@ -11,7 +11,6 @@
 #include "power_intel_uncore.h"
 #include "power_common.h"
 
-#define MAX_UNCORE_FREQS 32
 #define MAX_NUMA_DIE 8
 #define BUS_FREQ     100000
 #define FILTER_LENGTH 18
@@ -32,7 +31,7 @@
 struct __rte_cache_aligned uncore_power_info {
 	unsigned int die;                  /* Core die id */
 	unsigned int pkg;                  /* Package id */
-	uint32_t freqs[MAX_UNCORE_FREQS];  /* Frequency array */
+	uint32_t freqs[RTE_MAX_UNCORE_FREQS]; /* Frequency array */
 	uint32_t nb_freqs;                 /* Number of available freqs */
 	FILE *f_cur_min;                   /* FD of scaling_min */
 	FILE *f_cur_max;                   /* FD of scaling_max */
@@ -51,7 +50,7 @@ set_uncore_freq_internal(struct uncore_power_info *ui, uint32_t idx)
 	uint32_t target_uncore_freq, curr_max_freq;
 	int ret;
 
-	if (idx >= MAX_UNCORE_FREQS || idx >= ui->nb_freqs) {
+	if (idx >= RTE_MAX_UNCORE_FREQS || idx >= ui->nb_freqs) {
 		POWER_LOG(DEBUG, "Invalid uncore frequency index %u, which "
 				"should be less than %u", idx, ui->nb_freqs);
 		return -1;
@@ -221,7 +220,7 @@ power_get_available_uncore_freqs(struct uncore_power_info *ui)
 	uint32_t i, num_uncore_freqs = 0;
 
 	num_uncore_freqs = (ui->init_max_freq - ui->init_min_freq) / BUS_FREQ + 1;
-	if (num_uncore_freqs >= MAX_UNCORE_FREQS) {
+	if (num_uncore_freqs >= RTE_MAX_UNCORE_FREQS) {
 		POWER_LOG(ERR, "Too many available uncore frequencies: %d",
 				num_uncore_freqs);
 		goto out;
