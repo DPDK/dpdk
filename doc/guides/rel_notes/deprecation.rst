@@ -175,6 +175,13 @@ Deprecation Notices
   will be extended to include new values to support EDDSA.
   This will break ABI compatibility with existing applications that use these data types.
 
+* cryptodev: The ``rte_crypto_rsa_xform`` struct member to hold private key
+  in either exponent or quintuple format is changed from union to struct data type.
+  This change is to support ASN.1 syntax (RFC 3447 Appendix A.1.2).
+  This change will not break existing applications.
+
+* cryptodev: Some changes may happen to manage RSA padding for virtio-crypto.
+
 * cryptodev: The Intel IPsec Multi-Buffer version will be bumped
   to a minimum version of v1.4.
   This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY
