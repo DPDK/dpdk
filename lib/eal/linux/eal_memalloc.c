@@ -38,6 +38,8 @@
 #include "eal_memcfg.h"
 #include "eal_private.h"
 
+#include "malloc_elem.h"
+
 const int anonymous_hugepages_supported =
 #ifdef MAP_HUGE_SHIFT
 		1;
@@ -635,6 +637,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 			(unsigned int)(alloc_sz >> 20));
 		goto mapped;
 	}
+
+	asan_set_zone(addr, alloc_sz, 0);
 
 	/* we need to trigger a write to the page to enforce page fault and
 	 * ensure that page is accessible to us, but we can't overwrite value
