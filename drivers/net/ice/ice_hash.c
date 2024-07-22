@@ -660,7 +660,7 @@ ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 	int i, j, ret = 0;
 
 	if (ad->psr == NULL)
-		return -rte_errno;
+		return -ENOTSUP;
 
 	raw_spec = item->spec;
 	raw_mask = item->mask;
