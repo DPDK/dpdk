@@ -658,10 +658,13 @@ ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 	raw_spec = item->spec;
 	raw_mask = item->mask;
 
-	spec_len = strlen((char *)(uintptr_t)raw_spec->pattern);
-	if (strlen((char *)(uintptr_t)raw_mask->pattern) !=
-		spec_len)
-		return -rte_errno;
+	spec_len = strnlen((char *)(uintptr_t)raw_spec->pattern,
+		raw_spec->length + 1);
+	if (spec_len != raw_spec->length)
+		return -EINVAL;
+	if (strnlen((char *)(uintptr_t)raw_mask->pattern, raw_spec->length + 1) !=
+			spec_len)
+		return -EINVAL;
 
 	pkt_len = spec_len / 2;
 
