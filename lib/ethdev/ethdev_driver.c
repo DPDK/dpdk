@@ -303,15 +303,25 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 			return -ENODEV;
 
 		if (priv_data_size) {
+			/* try alloc private data on device-local node. */
 			ethdev->data->dev_private = rte_zmalloc_socket(
 				name, priv_data_size, RTE_CACHE_LINE_SIZE,
 				device->numa_node);
 
-			if (!ethdev->data->dev_private) {
-				RTE_ETHDEV_LOG_LINE(ERR,
-					"failed to allocate private data");
-				retval = -ENOMEM;
-				goto probe_failed;
+			/* fall back to alloc on any socket on failure */
+			if (ethdev->data->dev_private == NULL) {
+				ethdev->data->dev_private = rte_zmalloc(name,
+						priv_data_size, RTE_CACHE_LINE_SIZE);
+
+				if (ethdev->data->dev_private == NULL) {
+					RTE_ETHDEV_LOG_LINE(ERR, "failed to allocate private data");
+					retval = -ENOMEM;
+					goto probe_failed;
+				}
+				/* got memory, but not local, so issue warning */
+				RTE_ETHDEV_LOG_LINE(WARNING,
+						"Private data for ethdev '%s' not allocated on local NUMA node %d",
+						device->name, device->numa_node);
 			}
 		}
 	} else {
