@@ -173,6 +173,7 @@ struct mlx5_rxq_ctrl {
 /* RX queue private data. */
 struct mlx5_rxq_priv {
 	uint16_t idx; /* Queue index. */
+	bool possessor; /* Shared rxq_ctrl allocated for the 1st time. */
 	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *ctrl; /* Shared Rx Queue. */
 	LIST_ENTRY(mlx5_rxq_priv) owner_entry; /* Entry in shared rxq_ctrl. */
