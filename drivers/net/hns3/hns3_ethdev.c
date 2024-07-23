@@ -6046,7 +6046,7 @@ hns3_fec_get_internal(struct hns3_hw *hw, uint32_t *fec_capa)
 {
 	struct hns3_sfp_info_cmd *resp;
 	uint32_t tmp_fec_capa;
-	uint8_t auto_state;
+	uint8_t auto_state = 0;
 	struct hns3_cmd_desc desc;
 	int ret;
 
