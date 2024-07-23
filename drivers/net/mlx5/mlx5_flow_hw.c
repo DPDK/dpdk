@@ -13495,22 +13495,16 @@ static int
 flow_hw_unregister_matcher(struct rte_eth_dev *dev,
 			   struct mlx5_flow_dv_matcher *matcher)
 {
-	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_group *group = matcher->group;
+	int ret = 0;
 
-	if (matcher->matcher_object) {
-		ret = mlx5_hlist_unregister(priv->sh->groups, &matcher->group->entry);
-		if (ret)
-			goto error;
-		if (matcher->group) {
-			ret = mlx5_list_unregister(matcher->group->matchers, &matcher->entry);
-			if (ret)
-				goto error;
-		}
+	if (group) {
+		if (matcher->matcher_object)
+			ret |= mlx5_list_unregister(group->matchers, &matcher->entry);
+		ret |= mlx5_hlist_unregister(priv->sh->groups, &group->entry);
 	}
-	return 0;
-error:
-	return -EINVAL;
+	return ret;
 }
 
 static int flow_hw_register_matcher(struct rte_eth_dev *dev,
