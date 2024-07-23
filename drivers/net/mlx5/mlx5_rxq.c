@@ -938,6 +938,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = ENOMEM;
 			return -rte_errno;
 		}
+		rxq->possessor = true;
 	}
 	rxq->priv = priv;
 	rxq->idx = idx;
@@ -2015,6 +2016,7 @@ mlx5_rxq_hairpin_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	tmpl->rxq.mr_ctrl.cache_bh = (struct mlx5_mr_btree) { 0 };
 	tmpl->rxq.idx = idx;
 	rxq->hairpin_conf = *hairpin_conf;
+	rxq->possessor = true;
 	mlx5_rxq_ref(dev, idx);
 	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
 	return tmpl;
@@ -2282,7 +2284,8 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 					RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	} else { /* Refcnt zero, closing device. */
-		LIST_REMOVE(rxq_ctrl, next);
+		if (rxq->possessor)
+			LIST_REMOVE(rxq_ctrl, next);
 		LIST_REMOVE(rxq, owner_entry);
 		if (LIST_EMPTY(&rxq_ctrl->owners)) {
 			if (!rxq_ctrl->is_hairpin)
