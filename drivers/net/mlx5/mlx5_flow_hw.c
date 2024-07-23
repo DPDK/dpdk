@@ -13816,17 +13816,12 @@ flow_hw_destroy(struct rte_eth_dev *dev, struct rte_flow_hw *flow)
 	if (flow->nt2hws->flow_aux)
 		mlx5_free(flow->nt2hws->flow_aux);
 
-	if (flow->nt2hws->rix_encap_decap) {
-		ret = flow_encap_decap_resource_release(dev, flow->nt2hws->rix_encap_decap);
-		if (ret)
-			DRV_LOG(ERR, "failed to release encap decap.");
-	}
+	if (flow->nt2hws->rix_encap_decap)
+		flow_encap_decap_resource_release(dev, flow->nt2hws->rix_encap_decap);
 	if (flow->nt2hws->modify_hdr) {
 		MLX5_ASSERT(flow->nt2hws->modify_hdr->action);
-		ret = mlx5_hlist_unregister(priv->sh->modify_cmds,
-			&flow->nt2hws->modify_hdr->entry);
-		if (ret)
-			DRV_LOG(ERR, "failed to release modify action.");
+		mlx5_hlist_unregister(priv->sh->modify_cmds,
+				      &flow->nt2hws->modify_hdr->entry);
 	}
 	if (flow->nt2hws->matcher)
 		flow_hw_unregister_matcher(dev, flow->nt2hws->matcher);
