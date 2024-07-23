@@ -1189,6 +1189,7 @@ test_eventdev_profile_switch(void)
 	ev.op = RTE_EVENT_OP_NEW;
 	ev.flow_id = 0;
 	ev.u64 = 0xBADF00D0;
+	ev.sched_type = RTE_SCHED_TYPE_PARALLEL;
 	rc = rte_event_enqueue_burst(TEST_DEV_ID, 0, &ev, 1);
 	TEST_ASSERT(rc == 1, "Failed to enqueue event");
 	ev.queue_id = 1;
