@@ -61,6 +61,48 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
+* net: A new IPv6 address structure will be introduced in DPDK 24.11.
+  It will replace all ad-hoc ``uint8_t[16]`` arrays in all public APIs and structures.
+  The following libraries and symbols are expected to be affected:
+
+  ethdev
+    - ``struct rte_flow_item_icmp6_nd_ns``
+    - ``struct rte_flow_item_icmp6_nd_na``
+    - ``struct rte_flow_action_set_ipv6``
+    - ``struct rte_flow_tunnel``
+  fib
+    - ``rte_fib6_add()``
+    - ``rte_fib6_delete()``
+    - ``rte_fib6_lookup_bulk()``
+  gro
+    - ``struct tcp6_flow_key``
+  hash
+    - ``struct rte_ipv6_tuple``
+  ipsec
+    - ``struct rte_ipsec_sadv6_key``
+  lpm
+    - ``rte_lpm6_add()``
+    - ``rte_lpm6_is_rule_present()``
+    - ``rte_lpm6_delete()``
+    - ``rte_lpm6_delete_bulk_func()``
+    - ``rte_lpm6_lookup()``
+    - ``rte_lpm6_lookup_bulk_func()``
+  net
+    - ``struct rte_ipv6_hdr``
+  node
+    - ``rte_node_ip6_route_add()``
+  pipeline
+    - ``struct rte_table_action_ipv6_header``
+  rib
+    - ``rte_rib6_lookup()``
+    - ``rte_rib6_lookup_exact()``
+    - ``rte_rib6_get_nxt()``
+    - ``rte_rib6_insert()``
+    - ``rte_rib6_remove()``
+    - ``rte_rib6_get_ip()``
+  table
+    - ``struct rte_table_lpm_ipv6_key``
+
 * net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
   is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
   The struct ``rte_flow_item_vxlan_gpe`` and its mask ``rte_flow_item_vxlan_gpe_mask``
