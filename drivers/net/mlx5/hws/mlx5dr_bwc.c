@@ -181,10 +181,10 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 		      uint32_t *pending_rules,
 		      bool drain)
 {
-	bool queue_full = *pending_rules == MLX5DR_BWC_MATCHER_REHASH_QUEUE_SZ;
 	struct rte_flow_op_result comp[MLX5DR_BWC_MATCHER_REHASH_BURST_TH];
 	uint16_t burst_th = mlx5dr_bwc_get_burst_th(ctx, queue_id);
 	bool got_comp = *pending_rules >= burst_th;
+	bool queue_full;
 	int err = 0;
 	int ret;
 	int i;
@@ -193,6 +193,8 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 	if (!got_comp && !drain)
 		return 0;
 
+	/* The FULL state of a SQ is always a subcondition of the original 'got_comp'. */
+	queue_full = mlx5dr_send_engine_full(&ctx->send_queue[queue_id]);
 	while (queue_full || ((got_comp || drain) && *pending_rules)) {
 		ret = mlx5dr_send_queue_poll(ctx, queue_id, comp, burst_th);
 		if (unlikely(ret < 0)) {
