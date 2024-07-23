@@ -2496,10 +2496,8 @@ ice_dev_init(struct rte_eth_dev *dev)
 	/* Initialize TM configuration */
 	ice_tm_conf_init(dev);
 
-	if (ice_is_e810(hw))
-		hw->phy_model = ICE_PHY_E810;
-	else
-		hw->phy_model = ICE_PHY_E822;
+	/* Initialize PHY model */
+	ice_ptp_init_phy_model(hw);
 
 	if (hw->phy_model == ICE_PHY_E822) {
 		ret = ice_start_phy_timer_e822(hw, hw->pf_id);
