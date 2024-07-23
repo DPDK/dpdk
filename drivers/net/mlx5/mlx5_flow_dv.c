@@ -14534,6 +14534,7 @@ __flow_dv_translate_items_hws(const struct rte_flow_item *items,
 		.next_protocol = 0xff,
 		.attr = &rattr,
 		.rss_desc = &rss_desc,
+		.group = attr->group,
 	};
 	int ret = 0;
 

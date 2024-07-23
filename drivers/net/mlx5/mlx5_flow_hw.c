@@ -13708,7 +13708,7 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		.rss_level = 0,
 		.act_flags = action_flags,
 		.tbl_type = 0,
-		};
+	};
 
 	if (attr->transfer)
 		tbl_type = MLX5DR_TABLE_TYPE_FDB;
@@ -13727,7 +13727,7 @@ flow_hw_create_flow(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	(*flow)->nt_rule = true;
 	(*flow)->nt2hws->matcher = &matcher;
 	ret = flow_dv_translate_items_hws(items, &flow_attr, &matcher.mask.buf,
-					MLX5_SET_MATCHER_HS_M, &item_flags,
+					MLX5_SET_MATCHER_HS_M, NULL,
 					NULL, error);
 
 	if (ret)
