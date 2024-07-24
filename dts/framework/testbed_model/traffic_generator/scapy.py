@@ -128,9 +128,53 @@ RPC_FUNCTIONS = [
 
 
 class QuittableXMLRPCServer(SimpleXMLRPCServer):
-    """Basic XML-RPC server.
+    r"""Basic XML-RPC server.
 
     The server may be augmented by functions serializable by the :mod:`marshal` module.
+
+    Example:
+        ::
+
+            def hello_world():
+                # to be sent to the XML-RPC server
+                print("Hello World!")
+
+            # start the XML-RPC server on the remote node
+            # this is done by starting a Python shell on the remote node
+            from framework.remote_session import PythonShell
+            # the example assumes you're already connected to a tg_node
+            session = tg_node.create_interactive_shell(PythonShell, timeout=5, privileged=True)
+
+            # then importing the modules needed to run the server
+            # and the modules for any functions later added to the server
+            session.send_command("import xmlrpc")
+            session.send_command("from xmlrpc.server import SimpleXMLRPCServer")
+
+            # sending the source code of this class to the Python shell
+            from xmlrpc.server import SimpleXMLRPCServer
+            src = inspect.getsource(QuittableXMLRPCServer)
+            src = "\n".join([l for l in src.splitlines() if not l.isspace() and l != ""])
+            spacing = "\n" * 4
+            session.send_command(spacing + src + spacing)
+
+            # then starting the server with:
+            command = "s = QuittableXMLRPCServer(('0.0.0.0', {listen_port}));s.serve_forever()"
+            session.send_command(command, "XMLRPC OK")
+
+            # now the server is running on the remote node and we can add functions to it
+            # first connect to the server from the execution node
+            import xmlrpc.client
+            server_url = f"http://{tg_node.config.hostname}:8000"
+            rpc_server_proxy = xmlrpc.client.ServerProxy(server_url)
+
+            # get the function bytes to send
+            import marshal
+            function_bytes = marshal.dumps(hello_world.__code__)
+            rpc_server_proxy.add_rpc_function(hello_world.__name__, function_bytes)
+
+            # now we can execute the function on the server
+            xmlrpc_binary_recv: xmlrpc.client.Binary = rpc_server_proxy.hello_world()
+            print(str(xmlrpc_binary_recv))
     """
 
     def __init__(self, *args, **kwargs):
