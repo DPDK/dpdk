@@ -245,6 +245,26 @@ Limitations
   - Matching on ICMP6 following IPv6 routing extension header,
     should match ``ipv6_routing_ext_next_hdr`` instead of ICMP6.
 
+  - The supported actions order is as below::
+
+          MARK (a)
+          *_DECAP (b)
+          OF_POP_VLAN
+          COUNT | AGE
+          METER_MARK | CONNTRACK
+          OF_PUSH_VLAN
+          MODIFY_FIELD
+          *_ENCAP (c)
+          JUMP | DROP | RSS (a) | QUEUE (a) | REPRESENTED_PORT (d)
+
+    a. Only supported on ingress.
+    b. Any decapsulation action, including the combination of RAW_ENCAP and RAW_DECAP actions
+       which results in L3 decapsulation.
+       Not supported on egress.
+    c. Any encapsulation action, including the combination of RAW_ENCAP and RAW_DECAP actions
+       which results in L3 encap.
+    d. Only in transfer (switchdev) mode.
+
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
 
