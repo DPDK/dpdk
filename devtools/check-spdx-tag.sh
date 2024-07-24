@@ -27,7 +27,6 @@ check_spdx() {
 	':^*.cocci' ':^*.abignore' \
 	':^*.map' ':^*.ini' ':^*.data' ':^*.json' ':^*.cfg' ':^*.txt' \
 	':^*.svg' ':^*.png' \
-	':^drivers/net/ntnic/nthw/supported/*' ':^drivers/net/ntnic/*Registers.h' \
 	> $tmpfile
 
     errors=$(wc -l < $tmpfile)

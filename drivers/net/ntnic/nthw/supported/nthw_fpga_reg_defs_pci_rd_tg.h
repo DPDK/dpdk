@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2024 Napatech A/S
+ */
+
+/*
  * nthw_fpga_reg_defs_pci_rd_tg.h
  *
  * Auto-generated file - do *NOT* edit
