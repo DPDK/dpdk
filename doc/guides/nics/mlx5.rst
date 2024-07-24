@@ -251,6 +251,26 @@ Limitations
     IPv6 routing extension matching is not supported in flow template relaxed
     matching mode (see ``struct rte_flow_pattern_template_attr::relaxed_matching``).
 
+  - The supported actions order is as below::
+
+          MARK (a)
+          *_DECAP (b)
+          OF_POP_VLAN
+          COUNT | AGE
+          METER_MARK | CONNTRACK
+          OF_PUSH_VLAN
+          MODIFY_FIELD
+          *_ENCAP (c)
+          JUMP | DROP | RSS (a) | QUEUE (a) | REPRESENTED_PORT (d)
+
+    a. Only supported on ingress.
+    b. Any decapsulation action, including the combination of RAW_ENCAP and RAW_DECAP actions
+       which results in L3 decapsulation.
+       Not supported on egress.
+    c. Any encapsulation action, including the combination of RAW_ENCAP and RAW_DECAP actions
+       which results in L3 encap.
+    d. Only in transfer (switchdev) mode.
+
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
 
