@@ -17,7 +17,7 @@ test_power_intel_uncore(void)
 #include <rte_power_intel_uncore.h>
 #include <power_common.h>
 
-#define MAX_UNCORE_FREQS 32
+#define MAX_UNCORE_FREQS 64
 
 #define VALID_PKG 0
 #define VALID_DIE 0

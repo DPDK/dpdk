@@ -11,7 +11,7 @@
 #include "rte_power_intel_uncore.h"
 #include "power_common.h"
 
-#define MAX_UNCORE_FREQS 32
+#define MAX_UNCORE_FREQS 64
 #define MAX_NUMA_DIE 8
 #define BUS_FREQ     100000
 #define FILTER_LENGTH 18
