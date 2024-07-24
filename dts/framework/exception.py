@@ -51,26 +51,6 @@ class DTSError(Exception):
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.GENERIC_ERR
 
 
-class SSHTimeoutError(DTSError):
-    """The SSH execution of a command timed out."""
-
-    #:
-    severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
-    _command: str
-
-    def __init__(self, command: str):
-        """Define the meaning of the first argument.
-
-        Args:
-            command: The executed command.
-        """
-        self._command = command
-
-    def __str__(self) -> str:
-        """Add some context to the string representation."""
-        return f"{self._command} execution timed out."
-
-
 class SSHConnectionError(DTSError):
     """An unsuccessful SSH connection."""
 
@@ -98,8 +78,42 @@ class SSHConnectionError(DTSError):
         return message
 
 
-class SSHSessionDeadError(DTSError):
-    """The SSH session is no longer alive."""
+class _SSHTimeoutError(DTSError):
+    """The execution of a command via SSH timed out.
+
+    This class is private and meant to be raised as its interactive and non-interactive variants.
+    """
+
+    #:
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
+    _command: str
+
+    def __init__(self, command: str):
+        """Define the meaning of the first argument.
+
+        Args:
+            command: The executed command.
+        """
+        self._command = command
+
+    def __str__(self) -> str:
+        """Add some context to the string representation."""
+        return f"{self._command} execution timed out."
+
+
+class SSHTimeoutError(_SSHTimeoutError):
+    """The execution of a command on a non-interactive SSH session timed out."""
+
+
+class InteractiveSSHTimeoutError(_SSHTimeoutError):
+    """The execution of a command on an interactive SSH session timed out."""
+
+
+class _SSHSessionDeadError(DTSError):
+    """The SSH session is no longer alive.
+
+    This class is private and meant to be raised as its interactive and non-interactive variants.
+    """
 
     #:
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
@@ -116,6 +130,14 @@ class SSHSessionDeadError(DTSError):
     def __str__(self) -> str:
         """Add some context to the string representation."""
         return f"SSH session with {self._host} has died."
+
+
+class SSHSessionDeadError(_SSHSessionDeadError):
+    """Non-interactive SSH session has died."""
+
+
+class InteractiveSSHSessionDeadError(_SSHSessionDeadError):
+    """Interactive SSH session as died."""
 
 
 class ConfigurationError(DTSError):
