@@ -119,7 +119,7 @@ Typical command-line invocation to execute the application:
 
 .. code-block:: console
 
-   dpdk-test-dma-perf --config=./config_dma.ini --result=./res_dma.csv
+   dpdk-test-dma-perf --config ./config_dma.ini --result ./res_dma.csv
 
 Where ``config_dma.ini`` is the configuration file,
 and ``res_dma.csv`` will be the generated result file.
