@@ -204,7 +204,7 @@ struct rte_event_dma_adapter_op {
 	/**< Number of source segments. */
 	uint16_t nb_dst;
 	/**< Number of destination segments. */
-	struct rte_dma_sge src_dst_seg[0];
+	struct rte_dma_sge src_dst_seg[];
 	/**< Source and destination segments. */
 };
 

@@ -27,7 +27,7 @@ struct rob_ring {
 	uint32_t size;
 	uint32_t write_idx;
 	uint32_t read_idx;
-	alignas(RTE_CACHE_LINE_SIZE) void *ring[0];
+	alignas(RTE_CACHE_LINE_SIZE) void *ring[];
 };
 
 static inline struct rob_ring *

@@ -119,7 +119,7 @@ struct opdl_ring {
 	/* Stages indexed by ID */
 	struct opdl_stage *stages;
 	/* Memory for storing slot data */
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t slots[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t slots[];
 };
 
 
