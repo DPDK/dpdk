@@ -2039,7 +2039,7 @@ fpga_5gnr_harq_write_loopback(struct fpga_5gnr_queue *q,
 		}
 	}
 
-	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_input, uint8_t *, in_offset);
+	input = rte_pktmbuf_mtod_offset(harq_input, uint64_t *, in_offset);
 
 	while (left_length > 0) {
 		if (fpga_5gnr_reg_read_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
@@ -2122,7 +2122,7 @@ fpga_5gnr_harq_read_loopback(struct fpga_5gnr_queue *q,
 	}
 	left_length = harq_in_length;
 
-	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_output, uint8_t *, harq_out_offset);
+	input = rte_pktmbuf_mtod_offset(harq_output, uint64_t *, harq_out_offset);
 
 	while (left_length > 0) {
 		if (d->fpga_variant == AGX100_FPGA_VARIANT) {
