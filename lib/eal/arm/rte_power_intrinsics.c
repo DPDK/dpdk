@@ -17,7 +17,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 {
 	RTE_SET_USED(tsc_timestamp);
 
-#ifdef RTE_ARM_USE_WFE
+#ifdef RTE_ARCH_64
 	const unsigned int lcore_id = rte_lcore_id();
 	uint64_t cur_value;
 
@@ -57,7 +57,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	RTE_SET_USED(pmc);
 
 	return -ENOTSUP;
-#endif
+#endif /* RTE_ARCH_64 */
 }
 
 /**
@@ -81,13 +81,12 @@ rte_power_monitor_wakeup(const unsigned int lcore_id)
 {
 	RTE_SET_USED(lcore_id);
 
-#ifdef RTE_ARM_USE_WFE
+#ifdef RTE_ARCH_64
 	__RTE_ARM_SEV()
-
 	return 0;
 #else
 	return -ENOTSUP;
-#endif
+#endif /* RTE_ARCH_64 */
 }
 
 int

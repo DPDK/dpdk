@@ -24,8 +24,6 @@ static inline void rte_pause(void)
 	asm volatile("yield" ::: "memory");
 }
 
-#ifdef RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED
-
 /* Send a local event to quit WFE. */
 #define __RTE_ARM_SEVL() { asm volatile("sevl" : : : "memory"); }
 
@@ -147,6 +145,8 @@ static inline void rte_pause(void)
 	else if (size == 128)                              \
 		__RTE_ARM_LOAD_EXC_128(src, dst, memorder) \
 }
+
+#ifdef RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED
 
 static __rte_always_inline void
 rte_wait_until_equal_16(volatile uint16_t *addr, uint16_t expected,

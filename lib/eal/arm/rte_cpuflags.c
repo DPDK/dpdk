@@ -163,7 +163,7 @@ void
 rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
 {
 	memset(intrinsics, 0, sizeof(*intrinsics));
-#ifdef RTE_ARM_USE_WFE
+#ifdef RTE_ARCH_64
 	intrinsics->power_monitor = 1;
-#endif
+#endif /* RTE_ARCH_64 */
 }
