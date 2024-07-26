@@ -61,6 +61,15 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
+* net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
+  is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
+  The struct ``rte_flow_item_vxlan_gpe`` and its mask ``rte_flow_item_vxlan_gpe_mask``
+  are replaced with ``rte_flow_item_vxlan`` and ``rte_flow_item_vxlan_mask``.
+  The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``,
+  the structs ``rte_flow_item_vxlan_gpe``, ``rte_flow_item_vxlan_gpe_mask``,
+  and the header struct ``rte_vxlan_gpe_hdr`` with the macro ``RTE_ETHER_VXLAN_GPE_HLEN``
+  will be removed in DPDK 25.11.
+
 * ethdev: The flow API matching pattern structures, ``struct rte_flow_item_*``,
   should start with relevant protocol header structure from lib/net/.
   The individual protocol header fields and the protocol header struct
