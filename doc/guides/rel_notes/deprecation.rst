@@ -166,6 +166,9 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
+* fib: A new flag field will be introduced in ``rte_fib_conf`` structure
+  in DPDK 24.11. This field will be used to pass extra configuration settings.
+
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,
