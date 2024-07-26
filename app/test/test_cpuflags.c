@@ -156,6 +156,9 @@ test_cpuflags(void)
 
 	printf("Check for SVEBF16:\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_SVEBF16);
+
+	printf("Check for WFXT:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_WFXT);
 #endif
 
 #if defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_I686)

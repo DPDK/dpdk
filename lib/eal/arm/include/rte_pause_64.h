@@ -24,14 +24,26 @@ static inline void rte_pause(void)
 	asm volatile("yield" ::: "memory");
 }
 
-/* Send a local event to quit WFE. */
+/* Send a local event to quit WFE/WFxT. */
 #define __RTE_ARM_SEVL() { asm volatile("sevl" : : : "memory"); }
 
-/* Send a global event to quit WFE for all cores. */
+/* Send a global event to quit WFE/WFxT for all cores. */
 #define __RTE_ARM_SEV() { asm volatile("sev" : : : "memory"); }
 
 /* Put processor into low power WFE(Wait For Event) state. */
 #define __RTE_ARM_WFE() { asm volatile("wfe" : : : "memory"); }
+
+/* Put processor into low power WFET (WFE with Timeout) state. */
+#ifdef RTE_ARM_FEATURE_WFXT
+#define __RTE_ARM_WFET(t) {                               \
+	asm volatile("wfet %x[to]"                        \
+			:                                 \
+			: [to] "r" (t)                    \
+			: "memory");                      \
+	}
+#else
+#define __RTE_ARM_WFET(t) { RTE_SET_USED(t); }
+#endif
 
 /*
  * Atomic exclusive load from addr, it returns the 8-bit content of
