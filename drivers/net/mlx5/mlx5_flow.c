@@ -3865,6 +3865,15 @@ mlx5_flow_validate_item_nvgre(const struct rte_eth_dev *dev,
 	const struct rte_flow_item_nvgre *mask = item->mask;
 	int ret;
 
+	const struct rte_flow_item_nvgre hws_nic_mask = {
+		.c_k_s_rsvd0_ver = RTE_BE16(0xB000),
+		.protocol = RTE_BE16(UINT16_MAX),
+		.tni = {0xff, 0xff, 0xff},
+		.flow_id = 0xff
+	};
+	const struct rte_flow_item_nvgre *nic_mask = !mlx5_hws_active(dev) ?
+		&rte_flow_item_nvgre_mask : &hws_nic_mask;
+
 	if (target_protocol != 0xff && target_protocol != IPPROTO_GRE)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -3882,10 +3891,10 @@ mlx5_flow_validate_item_nvgre(const struct rte_eth_dev *dev,
 						  item, "L3 Layer is missing");
 	}
 	if (!mask)
-		mask = &rte_flow_item_nvgre_mask;
+		mask = nic_mask;
 	ret = mlx5_flow_item_acceptable
 		(dev, item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_nvgre_mask,
+		 (const uint8_t *)nic_mask,
 		 sizeof(struct rte_flow_item_nvgre),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret < 0)
