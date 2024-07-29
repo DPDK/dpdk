@@ -227,6 +227,7 @@ struct sfc_mae_aset_ctx {
 	struct sfc_mae_mac_addr		*dst_mac;
 	struct sfc_mae_mac_addr		*src_mac;
 
+	bool				counter_implicit;
 	bool				fate_set;
 
 	efx_mae_actions_t		*spec;
