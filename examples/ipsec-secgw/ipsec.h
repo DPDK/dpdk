@@ -117,7 +117,7 @@ struct __rte_cache_aligned ipsec_sa {
 	uint32_t spi;
 	struct cdev_qp *cqp[RTE_MAX_LCORE];
 	uint64_t seq;
-	uint32_t salt;
+	rte_be32_t salt;
 	uint32_t fallback_sessions;
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
