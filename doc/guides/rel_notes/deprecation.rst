@@ -190,6 +190,15 @@ Deprecation Notices
   This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY
   SW PMDs.
 
+* ipsec: The IPsec library is updated to support sequence number provided
+  by application. To allow the same, two new API functions are being introduced:
+  ``rte_ipsec_pkt_crypto_sqn_assign`` and ``rte_ipsec_pkt_crypto_xprepare``.
+  It separates the sequence number update functionality
+  from the existing ``rte_ipsec_pkt_crypto_prepare`` function.
+  Corresponding configure structure changes are being made for the new API.
+  Additionally a new flag ``RTE_IPSEC_SAFLAG_SQN_ASSIGN_DISABLE``
+  is introduced to disable sequence number assignment in IPsec library.
+
 * eventdev: The single-event (non-burst) enqueue and dequeue operations,
   used by static inline burst enqueue and dequeue functions in ``rte_eventdev.h``,
   will be removed in DPDK 23.11.
