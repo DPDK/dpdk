@@ -826,7 +826,7 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 			fixup_stc_attr->vport.vport_num = 0;
 			fixup_stc_attr->vport.esw_owner_vhca_id = stc_attr->vport.esw_owner_vhca_id;
 			fixup_stc_attr->vport.eswitch_owner_vhca_id_valid =
-				ctx->caps->merged_eswitch;
+				stc_attr->vport.eswitch_owner_vhca_id_valid;
 		}
 		use_fixup = true;
 		break;
@@ -1057,6 +1057,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT;
 		attr->vport.vport_num = action->vport.vport_num;
 		attr->vport.esw_owner_vhca_id =	action->vport.esw_owner_vhca_id;
+		attr->vport.eswitch_owner_vhca_id_valid = action->ctx->caps->merged_eswitch;
 		break;
 	case MLX5DR_ACTION_TYP_POP_VLAN:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS;
