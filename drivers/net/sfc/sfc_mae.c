@@ -970,6 +970,9 @@ sfc_mae_counter_del(struct sfc_adapter *sa, struct sfc_mae_counter *counter)
 
 	--(counter->refcnt);
 
+	if (counter->refcnt == 1)
+		counter->ft_switch_hit_counter = NULL;
+
 	if (counter->refcnt != 0)
 		return;
 
@@ -4512,21 +4515,23 @@ sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa, bool replayable_only,
 					return EEXIST;
 				}
 
-				if (ft_rule_type != SFC_FT_RULE_NONE) {
-					return rte_flow_error_set(error, EINVAL,
+				if (ft_rule_type != SFC_FT_RULE_SWITCH &&
+				    entry->counter->ft_switch_hit_counter != NULL) {
+					return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "cannot use indirect count action in tunnel model");
+					  "cannot use requested indirect counter as it is in use by incompatible offload");
 				}
 
 				SFC_ASSERT(ctx->counter == NULL);
 
 				rc = efx_mae_action_set_populate_count(ctx->spec);
-				if (rc != 0) {
+				if (rc != 0 && !ctx->counter_implicit) {
 					return rte_flow_error_set(error, rc,
 					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					 "failed to add COUNT to MAE action set");
 				}
 
+				ctx->counter_implicit = false;
 				ctx->counter = entry->counter;
 				++(ctx->counter->refcnt);
 				break;
@@ -5232,7 +5237,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		goto fail_action_set_spec_init;
 
 	if (spec_mae->ft_rule_type == SFC_FT_RULE_SWITCH) {
-		bool have_user_action_count = false;
+		bool have_inline_action_count = false;
 
 		/* TUNNEL rules don't decapsulate packets. SWITCH rules do. */
 		rc = efx_mae_action_set_populate_decap(ctx->spec);
@@ -5242,15 +5247,15 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		for (action = actions;
 		     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 			if (action->type == RTE_FLOW_ACTION_TYPE_COUNT) {
-				have_user_action_count = true;
+				have_inline_action_count = true;
 				break;
 			}
 		}
 
-		if (!have_user_action_count &&
+		if (!have_inline_action_count &&
 		    sfc_mae_counter_stream_enabled(sa)) {
 			/*
-			 * The user opted not to use action COUNT in this rule,
+			 * The user might have opted not to have a counter here,
 			 * but the counter should be enabled implicitly because
 			 * packets hitting this rule contribute to the tunnel's
 			 * total number of hits. See sfc_mae_counter_get().
@@ -5259,9 +5264,19 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			if (rc != 0)
 				goto fail_enforce_ft_count;
 
-			rc = sfc_mae_counter_add(sa, NULL, &ctx->counter);
-			if (rc != 0)
-				goto fail_enforce_ft_count;
+			/*
+			 * An action of type COUNT may come inlined (see above)
+			 * or via a shareable handle (enclosed by an action of
+			 * type INDIRECT). The latter is expensive to resolve
+			 * here. For now assume an implicit counter is needed.
+			 *
+			 * But if the flow does come with an indirect counter,
+			 * sfc_mae_rule_parse_action_indirect() will test the
+			 * flag to cope with its "populate" failure. It will
+			 * reset the flag so that below code can skip
+			 * creating a software object for the counter.
+			 */
+			ctx->counter_implicit = true;
 		}
 	}
 
@@ -5309,8 +5324,33 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		 */
 		efx_mae_action_set_populate_mark_reset(ctx->spec);
 
+		if (ctx->counter_implicit) {
+			/*
+			 * Turns out the rule indeed does not have a user
+			 * counter, so add one. The action bit in the
+			 * action set specification has already been
+			 * populated by the above preparse logic.
+			 */
+			rc = sfc_mae_counter_add(sa, NULL, &ctx->counter);
+			if (rc != 0)
+				goto fail_add_implicit_counter;
+		}
+
 		if (ctx->counter != NULL) {
-			(ctx->counter)->ft_switch_hit_counter =
+			struct sfc_mae_counter *counter = ctx->counter;
+
+			if (counter->indirect &&
+			    counter->refcnt > 1 /* indirect handle */ +
+					      1 /* 1st use */ &&
+			    counter->ft_switch_hit_counter !=
+			    &spec_mae->ft_ctx->switch_hit_counter) {
+				rc = rte_flow_error_set(error, EBUSY,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"requested indirect counter is in use by another tunnel context");
+				goto fail_check_indirect_counter_ft_ctx;
+			}
+
+			counter->ft_switch_hit_counter =
 				&spec_mae->ft_ctx->switch_hit_counter;
 		} else if (sfc_mae_counter_stream_enabled(sa)) {
 			SFC_ASSERT(ct);
@@ -5361,6 +5401,8 @@ fail_rule_parse_replay:
 
 fail_action_set_add:
 fail_check_fate_action:
+fail_check_indirect_counter_ft_ctx:
+fail_add_implicit_counter:
 fail_workaround_tunnel_delivery:
 fail_rule_parse_action:
 	sfc_mae_encap_header_del(sa, ctx->encap_header);
