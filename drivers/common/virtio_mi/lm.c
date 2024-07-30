@@ -217,7 +217,7 @@ virtio_vdpa_send_admin_command(struct virtadmin_ctl *avq,
 		result = virtio_vdpa_send_admin_command_split(avq, ctrl, dat_ctrl,
 			dlen, pkt_num);
 		if(result->status && (!(result->status & VIRTIO_ADMIN_CMD_STATUS_DNR_BIT))) {
-			DRV_LOG(DEBUG, "No:%d cmd status:0x%x, submit again after 1s", i, result->status);
+			DRV_LOG(INFO, "No:%d cmd status:0x%x, submit again after 1s", i, result->status);
 			usleep(1000000);
 		}
 		else

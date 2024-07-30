@@ -41,7 +41,7 @@ vtpci_msix_detect(struct rte_pci_device *dev)
 
 	ret = rte_pci_read_config(dev, &pos, 1, PCI_CAPABILITY_LIST);
 	if (ret != 1) {
-		PMD_INIT_LOG(DEBUG,
+		PMD_INIT_LOG(ERR,
 			     "failed to read pci capability list, ret %d", ret);
 		return VIRTIO_MSIX_NONE;
 	}
@@ -51,7 +51,7 @@ vtpci_msix_detect(struct rte_pci_device *dev)
 
 		ret = rte_pci_read_config(dev, cap, sizeof(cap), pos);
 		if (ret != sizeof(cap)) {
-			PMD_INIT_LOG(DEBUG,
+			PMD_INIT_LOG(ERR,
 				     "failed to read pci cap at pos: %x ret %d",
 				     pos, ret);
 			break;
@@ -63,7 +63,7 @@ vtpci_msix_detect(struct rte_pci_device *dev)
 			ret = rte_pci_read_config(dev, &flags, sizeof(flags),
 					pos + sizeof(cap));
 			if (ret != sizeof(flags)) {
-				PMD_INIT_LOG(DEBUG,
+				PMD_INIT_LOG(ERR,
 					     "failed to read pci cap at pos:"
 					     " %x ret %d", pos + 2, ret);
 				break;
@@ -483,11 +483,11 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 
 	rte_write16(1, &dev->common_cfg->queue_enable);
 
-	PMD_INIT_LOG(DEBUG, "queue %u addresses:", vq->vq_queue_index);
-	PMD_INIT_LOG(DEBUG, "\t desc_addr: %" PRIx64, desc_addr);
-	PMD_INIT_LOG(DEBUG, "\t aval_addr: %" PRIx64, avail_addr);
-	PMD_INIT_LOG(DEBUG, "\t used_addr: %" PRIx64, used_addr);
-	PMD_INIT_LOG(DEBUG, "\t notify addr: %p (notify offset: %u)",
+	PMD_INIT_LOG(INFO, "queue %u addresses:", vq->vq_queue_index);
+	PMD_INIT_LOG(INFO, "\t desc_addr: %" PRIx64, desc_addr);
+	PMD_INIT_LOG(INFO, "\t aval_addr: %" PRIx64, avail_addr);
+	PMD_INIT_LOG(INFO, "\t used_addr: %" PRIx64, used_addr);
+	PMD_INIT_LOG(INFO, "\t notify addr: %p (notify offset: %u)",
 		vq->notify_addr, notify_off);
 
 	return 0;
@@ -648,19 +648,19 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw, int dev_f
 
 	if (dev_fd == -1) {
 		if (rte_pci_map_device(pci_dev)) {
-			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
+			PMD_INIT_LOG(ERR, "failed to map pci device!");
 			return -EINVAL;
 		}
 	} else {
 		if (rte_pci_map_device_with_dev_fd(pci_dev, dev_fd)) {
-			PMD_INIT_LOG(DEBUG, "failed to map pci device with dev_fd!");
+			PMD_INIT_LOG(ERR, "failed to map pci device with dev_fd!");
 			return -EINVAL;
 		}
 	}
 
 	ret = rte_pci_read_config(pci_dev, &pos, 1, PCI_CAPABILITY_LIST);
 	if (ret != 1) {
-		PMD_INIT_LOG(DEBUG,
+		PMD_INIT_LOG(ERR,
 			     "failed to read pci capability list, ret %d", ret);
 		return -EINVAL;
 	}
@@ -668,7 +668,7 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw, int dev_f
 	while (pos) {
 		ret = rte_pci_read_config(pci_dev, &cap, 2, pos);
 		if (ret != 2) {
-			PMD_INIT_LOG(DEBUG,
+			PMD_INIT_LOG(ERR,
 				     "failed to read pci cap at pos: %x ret %d",
 				     pos, ret);
 			break;
@@ -685,7 +685,7 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw, int dev_f
 			ret = rte_pci_read_config(pci_dev, &flags, sizeof(flags),
 					pos + 2);
 			if (ret != sizeof(flags)) {
-				PMD_INIT_LOG(DEBUG,
+				PMD_INIT_LOG(ERR,
 					     "failed to read pci cap at pos:"
 					     " %x ret %d", pos + 2, ret);
 				break;
@@ -706,7 +706,7 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw, int dev_f
 
 		ret = rte_pci_read_config(pci_dev, &cap, sizeof(cap), pos);
 		if (ret != sizeof(cap)) {
-			PMD_INIT_LOG(DEBUG,
+			PMD_INIT_LOG(ERR,
 				     "failed to read pci cap at pos: %x ret %d",
 				     pos, ret);
 			break;
@@ -725,7 +725,7 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw, int dev_f
 					&dev->notify_off_multiplier,
 					4, pos + sizeof(cap));
 			if (ret != 4)
-				PMD_INIT_LOG(DEBUG,
+				PMD_INIT_LOG(ERR,
 					"failed to read notify_off_multiplier, ret %d",
 					ret);
 			else {
@@ -753,10 +753,10 @@ next:
 
 	PMD_INIT_LOG(INFO, "found modern virtio pci device");
 
-	PMD_INIT_LOG(DEBUG, "common cfg mapped at: %p", dev->common_cfg);
-	PMD_INIT_LOG(DEBUG, "device cfg mapped at: %p", dev->dev_cfg);
-	PMD_INIT_LOG(DEBUG, "isr cfg mapped at: %p", dev->isr);
-	PMD_INIT_LOG(DEBUG, "notify base: %p, notify off multiplier: %u",
+	PMD_INIT_LOG(INFO, "common cfg mapped at: %p", dev->common_cfg);
+	PMD_INIT_LOG(INFO, "device cfg mapped at: %p", dev->dev_cfg);
+	PMD_INIT_LOG(INFO, "isr cfg mapped at: %p", dev->isr);
+	PMD_INIT_LOG(INFO, "notify base: %p, notify off multiplier: %u",
 		dev->notify_base, dev->notify_off_multiplier);
 
 	return 0;
@@ -878,7 +878,7 @@ virtio_pci_dev_state_num_queue_set(struct virtio_pci_dev *vpdev)
 
 	/* Common state space */
 	hw->num_queues = rte_read16(&vpdev->common_cfg->num_queues);
-	PMD_INIT_LOG(DEBUG, "Common cfg num_queues %d", hw->num_queues);
+	PMD_INIT_LOG(INFO, "Common cfg num_queues %d", hw->num_queues);
 }
 
 int

@@ -2873,12 +2873,8 @@ vhost_user_msg_handler(int vid, int fd)
 	request = ctx.msg.request.master;
 	if (request > VHOST_USER_NONE && request < VHOST_USER_MAX &&
 			vhost_message_str[request]) {
-		if (request != VHOST_USER_IOTLB_MSG)
-			VHOST_LOG_CONFIG(INFO, "(%s) read message %s\n",
-				dev->ifname, vhost_message_str[request]);
-		else
-			VHOST_LOG_CONFIG(DEBUG, "(%s) read message %s\n",
-				dev->ifname, vhost_message_str[request]);
+		VHOST_LOG_CONFIG(INFO, "(%s) read message %s\n",
+			dev->ifname, vhost_message_str[request]);
 	} else {
 		VHOST_LOG_CONFIG(DEBUG, "(%s) external request %d\n", dev->ifname, request);
 	}

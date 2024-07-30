@@ -34,14 +34,14 @@ modern_net_get_queue_num(struct virtio_hw *hw)
 			&hw->max_queue_pairs,
 			sizeof(hw->max_queue_pairs));
 	} else {
-		PMD_INIT_LOG(DEBUG,
+		PMD_INIT_LOG(WARNING,
 				 "Neither VIRTIO_NET_F_MQ nor VIRTIO_NET_F_RSS are supported");
 		hw->max_queue_pairs = 1;
 	}
 
 	nr_vq = hw->max_queue_pairs * 2;
 
-	PMD_INIT_LOG(DEBUG, "Virtio net nr_vq is %d", nr_vq);
+	PMD_INIT_LOG(INFO, "Virtio net nr_vq is %d", nr_vq);
 	return nr_vq;
 
 }

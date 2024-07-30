@@ -32,7 +32,7 @@ modern_blk_get_queue_num(struct virtio_hw *hw)
 	} else {
 			hw->num_queues_blk = 1;
 	}
-	PMD_INIT_LOG(DEBUG, "Virtio blk nr_vq is %d", hw->num_queues_blk);
+	PMD_INIT_LOG(INFO, "Virtio blk nr_vq is %d", hw->num_queues_blk);
 
 	return hw->num_queues_blk;
 }

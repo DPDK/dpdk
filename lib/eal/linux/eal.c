@@ -915,7 +915,7 @@ rte_eal_init(int argc, char **argv)
 	long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
 	if (num_cores != -1) {
 		CPU_ZERO(&internal_conf->ctrl_cpuset);
-		for (int i = 0; i < num_cores; i++) {
+		for (i = 0; i < num_cores; i++) {
 			CPU_SET(i, &internal_conf->ctrl_cpuset);
 		}
 	} else {

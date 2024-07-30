@@ -72,7 +72,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 	virtio_pci_dev_state_num_queue_set(vpdev);
 
 	hw->device_features = VIRTIO_OPS(hw)->get_features(hw);
-	PMD_INIT_LOG(DEBUG, "device_features is 0x%"PRIx64, hw->device_features);
+	PMD_INIT_LOG(INFO, "device_features is 0x%"PRIx64, hw->device_features);
 	return vpdev;
 
 err_init:

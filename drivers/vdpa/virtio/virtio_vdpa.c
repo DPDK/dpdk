@@ -296,7 +296,7 @@ virtio_vdpa_vqs_max_get(struct rte_vdpa_device *vdev, uint32_t *queue_num)
 
 	unit = priv->dev_ops->vdpa_queue_num_unit_get();
 	*queue_num = priv->hw_nr_virtqs / unit;
-	DRV_LOG(DEBUG, "Vid %d queue num is %d unit %d", priv->vid, *queue_num, unit);
+	DRV_LOG(INFO, "Vid %d queue num is %d unit %d", priv->vid, *queue_num, unit);
 	return 0;
 }
 
@@ -633,7 +633,7 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 	if (ret)
 		return ret;
 
-	DRV_LOG(DEBUG, "vid:%d vq_idx:%d avl idx:%d use idx:%d", vid, vq_idx, vq.avail->idx, vq.used->idx);
+	DRV_LOG(INFO, "vid:%d vq_idx:%d avl idx:%d use idx:%d", vid, vq_idx, vq.avail->idx, vq.used->idx);
 
 	if (vq.callfd != -1) {
 		if (priv->nvec < (vq_idx + 1)) {
@@ -652,7 +652,7 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 		}
 		virtio_pci_dev_state_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1, priv->state_mz->addr);
 	} else {
-		DRV_LOG(DEBUG, "%s virtq %d call fd is -1, interrupt is disabled",
+		DRV_LOG(INFO, "%s virtq %d call fd is -1, interrupt is disabled",
 						priv->vdev->device->name, vq_idx);
 	}
 
@@ -662,7 +662,7 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 						priv->vdev->device->name, vq_idx);
 		return -EINVAL;
 	}
-	DRV_LOG(DEBUG, "%s virtq %d desc addr%"PRIx64,
+	DRV_LOG(INFO, "%s virtq %d desc addr %"PRIx64,
 					priv->vdev->device->name, vq_idx, gpa);
 	priv->vrings[vq_idx]->desc = gpa;
 	vring_info.desc = gpa;
@@ -673,7 +673,7 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 					priv->vdev->device->name);
 		return -EINVAL;
 	}
-	DRV_LOG(DEBUG, "Virtq %d avail addr%"PRIx64, vq_idx, gpa);
+	DRV_LOG(INFO, "Virtq %d avail addr %"PRIx64, vq_idx, gpa);
 	priv->vrings[vq_idx]->avail = gpa;
 	vring_info.avail = gpa;
 
@@ -683,7 +683,7 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 					priv->vdev->device->name);
 		return -EINVAL;
 	}
-	DRV_LOG(DEBUG, "Virtq %d used addr%"PRIx64, vq_idx, gpa);
+	DRV_LOG(INFO, "Virtq %d used addr %"PRIx64, vq_idx, gpa);
 	priv->vrings[vq_idx]->used = gpa;
 	vring_info.used = gpa;
 
@@ -691,7 +691,7 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 	priv->vrings[vq_idx]->size = vq.size;
 	vring_info.size = vq.size;
 
-	DRV_LOG(DEBUG, "Virtq %d nr_entrys:%d", vq_idx, vq.size);
+	DRV_LOG(INFO, "Virtq %d nr_entrys:%d", vq_idx, vq.size);
 
 	if (priv->configured) {
 		ret = virtio_pci_dev_queue_set(priv->vpdev, vq_idx, &vring_info);
@@ -734,7 +734,7 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 	priv->vrings[vq_idx]->conf_enable = !!state;
 
 	if (!state && !priv->vrings[vq_idx]->enable) {
-		DRV_LOG(INFO, "VDPA device %s vid:%d  set vring %d state %d already disabled, just return",
+		DRV_LOG(DEBUG, "VDPA device %s vid:%d  set vring %d state %d already disabled, just return",
 						priv->vdev->device->name, vid, vq_idx, state);
 		return 0;
 	}
@@ -1155,7 +1155,6 @@ virtio_vdpa_stop_logging(struct virtio_vdpa_priv *priv)
 	int ret;
 
 	if (!priv->log_started) {
-		DRV_LOG(WARNING, "%s logging has stopped", priv->vdev->device->name);
 		return 0;
 	}
 
@@ -1253,7 +1252,7 @@ virtio_vdpa_features_set(int vid)
 	else
 		priv->guest_features = virtio_pci_dev_state_features_set(priv->vpdev, features, priv->state_mz->addr);
 
-	DRV_LOG(INFO, "%s vid %d guest feature is %" PRIx64 ", orign feature is %" PRIx64,
+	DRV_LOG(INFO, "%s vid %d guest feature 0x%" PRIx64 ", original feature 0x%" PRIx64,
 					priv->vdev->device->name, vid,
 					priv->guest_features, features);
 
@@ -1440,7 +1439,7 @@ virtio_vdpa_dev_close(int vid)
 	if (priv->is_notify_thread_started) {
 		ret = pthread_cancel(priv->notify_tid);
 		if (ret) {
-			DRV_LOG(ERR, "failed to cancel notify_ctrl thread: %s",rte_strerror(ret));
+			DRV_LOG(DEBUG, "failed to cancel notify_ctrl thread: %s",rte_strerror(ret));
 		}
 
 		ret = rte_atomic16_cmpset(&priv->doorbell_relay, VIRTIO_VDPA_DOOR_BELL_INIT,
@@ -1618,7 +1617,7 @@ virtio_vdpa_dev_config(int vid)
 				rte_errno = rte_errno ? rte_errno : EINVAL;
 				return -rte_errno;
 			}
-			DRV_LOG(INFO, "%s vid %d qid %d recover last_avail_idx:%d,last_used_idx:%d",
+			DRV_LOG(INFO, "%s vid %d qid %d recover avail_idx:%d used_idx:%d",
 							vdev->device->name, vid,
 							i, vq.used->idx, vq.used->idx);
 
@@ -1742,7 +1741,7 @@ virtio_vdpa_notify_area_get(int vid, int qid, uint64_t *offset, uint64_t *size)
 	}
 
 	if ((!qid)|| (!*offset))
-		DRV_LOG(DEBUG, "Vid %d qid:%d offset:0x%"PRIx64"size:0x%"PRIx64,
+		DRV_LOG(INFO, "Vid %d qid:%d offset:0x%"PRIx64"size:0x%"PRIx64,
 						vid, qid, *offset, *size);
 
 	return 0;

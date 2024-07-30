@@ -199,7 +199,7 @@ static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	pthread_mutex_unlock(&rpc_ctx->rpc_lock);
 
 	t_end = rte_rdtsc_precise();
-	RTE_LOG(DEBUG, RPC, "RPC mgmtpf spend %lu us.\n",
+	RTE_LOG(INFO, RPC, "RPC mgmtpf spend %lu us.\n",
 			(t_end - t_start) * 1000000 / rte_get_tsc_hz());
 	return result;
 }
@@ -453,7 +453,7 @@ error_vf:
 	}
 	pthread_mutex_unlock(&rpc_ctx->rpc_lock);
 	t_end = rte_rdtsc_precise();
-	RTE_LOG(DEBUG, RPC, "RPC mgmtvf spent %lu us.\n",
+	RTE_LOG(INFO, RPC, "RPC mgmtvf spent %lu us.\n",
 			(t_end - t_start) * 1000000 / rte_get_tsc_hz());
 	return result;
 }
