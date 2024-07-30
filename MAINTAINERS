@@ -64,6 +64,10 @@ Next-baseband Tree
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-baseband
 
+Next-dts Tree
+M: Juraj Linkeš <juraj.linkes@pantheon.tech>
+T: git://dpdk.org/next/dpdk-next-dts
+
 Stable Branches
 M: Luca Boccassi <bluca@debian.org>
 M: Kevin Traynor <ktraynor@redhat.com>
@@ -1887,6 +1891,7 @@ F: doc/guides/tools/proc_info.rst
 
 DTS
 M: Juraj Linkeš <juraj.linkes@pantheon.tech>
+T: git://dpdk.org/next/dpdk-next-dts
 F: dts/
 F: devtools/dts-check-format.sh
 F: doc/guides/tools/dts.rst
