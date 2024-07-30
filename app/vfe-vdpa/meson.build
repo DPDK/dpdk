@@ -24,6 +24,11 @@ install_data([
         ],
         install_dir: 'bin')
 
+install_data([
+            '../../vhostd.md'
+        ],
+        install_dir: 'doc')
+
 conf = configuration_data()
 conf.set('prefix', get_option('prefix'))
 

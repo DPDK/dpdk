@@ -106,7 +106,7 @@ MACHINE=default
 %endif
 %endif
 
-CFLAGS="$CFLAGS -fcommon -Werror" meson %{target} -Dexamples=vdpa -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG' --debug -Dprefix=%{dst_prefix} -Dlibdir=%{dst_prefix}/%{dst_lib} --includedir=include/dpdk -Dmachine=$MACHINE -Dmax_ethports=1024 -Denable_drivers=$ENABLED_DRVS -Dtests=false -Ddrivers_install_subdir=dpdk/pmds --default-library=shared $MESON_PARAMS
+CFLAGS="$CFLAGS -fcommon -Werror" meson %{target} -Dexamples=vdpa -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG' --debug -Dprefix=%{dst_prefix} -Dlibdir=%{dst_prefix}/%{dst_lib} --includedir=include/dpdk -Dmachine=$MACHINE -Dmax_ethports=1024 -Denable_drivers=$ENABLED_DRVS -Dtests=false -Ddrivers_install_subdir=dpdk/pmds --default-library=static $MESON_PARAMS
 
 %build
 %{__ninja} -v -C %{target}
@@ -115,39 +115,15 @@ CFLAGS="$CFLAGS -fcommon -Werror" meson %{target} -Dexamples=vdpa -Dc_args='-DRT
 rm -rf %{buildroot}
 DESTDIR=%{buildroot} %{__ninja} -v -C %{target} install
 
-# Create ld.so.conf.d entry
-mkdir -p %{buildroot}%{_sysconfdir}/ld.so.conf.d
-cat > %{buildroot}%{_sysconfdir}/ld.so.conf.d/%{name}-%{_arch}.conf << EOF
-%{dst_prefix}/%{dst_lib}
-EOF
-
-# Export PKG_CONFIG_PATH
-mkdir -p %{buildroot}%{_sysconfdir}/profile.d
-cat > %{buildroot}%{_sysconfdir}/profile.d/%{name}-%{_arch}.sh << 'EOF'
-export PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:%{dst_prefix}/%{dst_lib}/pkgconfig
-EOF
 
 %files
-%dir %{dst_prefix}/%{dst_lib}/dpdk
-%dir %{dst_prefix}/%{dst_lib}/dpdk/pmds
 %{dst_prefix}/bin/vfe-vhost*
 %{dst_prefix}/bin/vhostmgmt
 %{dst_prefix}/bin/dpdk-vfe-vdpa
 %{dst_prefix}/bin/dpdk-virtio-ha
 %{dst_prefix}/bin/check_pf_reset.sh
-%{dst_prefix}/%{dst_lib}/*.so.*
-%{dst_prefix}/%{dst_lib}/dpdk/*/*.so.*
-/etc/ld.so.conf.d/%{name}-%{_arch}.conf
+%{dst_prefix}/doc/vhostd.md
 /usr/lib/systemd/system/*
-
-%files devel
-%{dst_prefix}/include/dpdk
-%{dst_prefix}/%{dst_lib}/*.so
-%{dst_prefix}/%{dst_lib}/dpdk/*/*.so
-%{dst_prefix}/%{dst_lib}/*.a
-%{dst_prefix}/%{dst_lib}/pkgconfig/*.pc
-/etc/ld.so.conf.d/%{name}-%{_arch}.conf
-/etc/profile.d/%{name}-%{_arch}.sh
 
 %post
 /sbin/ldconfig

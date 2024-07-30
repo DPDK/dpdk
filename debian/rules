@@ -162,7 +162,7 @@ override_dh_auto_configure:
 	dh_auto_configure -- $(DPDK_CONFIG_OPTIONS) \
 		--prefix=/$(PREFIX) \
 		--includedir=include/dpdk \
-		--default-library=shared \
+		--default-library=static \
 		-Dinclude_subdir_arch=../$(DEB_HOST_MULTIARCH)/dpdk \
 		-Dmachine=$(RTE_MACHINE) \
 		-Dkernel_dir=$(KSRC) \
@@ -180,31 +180,20 @@ endif
 override_dh_auto_install-indep:
 
 override_dh_auto_install-arch:
-	# ldconfig conf
-	mkdir -p debian/tmp/etc/ld.so.conf.d
-	echo /$(PREFIX)/lib/$(DEB_HOST_MULTIARCH) > debian/tmp/etc/ld.so.conf.d/dpdk-vhost-vfe-$(DEB_HOST_MULTIARCH).conf
-	# export PKG_CONFIG_PATH
-	mkdir -p debian/tmp/etc/profile.d
-	sed 's,@FAKE_PKG_CONFIG_PATH@,/$(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/pkgconfig,g' \
-		debian/dpdk-vhost-vfe.sh.in > debian/tmp/etc/profile.d/dpdk-vhost-vfe-$(DEB_HOST_MULTIARCH).sh
-	dh_auto_install
-	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vfe-vhost*
-	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vhostmgmt
-	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-vfe-vdpa
-	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-virtio-ha
-	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/check_pf_reset.sh
-	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd.service
-	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd-ha.service
-	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so.*
-	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*/*/*.so.*
-	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so
-	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*/*/*.so
-	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.a
-	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/pkgconfig
-	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/include
+	# debian/dpdk-vhost-vfe.install can't use prefix
+	mkdir -p $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/bin
+	mkdir -p $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/doc
+	mkdir -p $(CURDIR)/debian/dpdk-vhost-vfe/usr/lib/systemd/system/
+	install obj-*/app/dpdk-virtio-ha $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/bin/vfe-vhostd-ha
+	install obj-*/app/dpdk-vfe-vdpa $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/bin/vfe-vhostd
+	install app/vfe-vdpa/vhostmgmt $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/bin/vfe-vhost-cli
+	install app/vfe-vdpa/check_pf_reset.sh $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/bin
+	install vhostd.md $(CURDIR)/debian/dpdk-vhost-vfe/$(PREFIX)/doc
+	install obj-*/app/vfe-vdpa/vfe-vhostd.service $(CURDIR)/debian/dpdk-vhost-vfe/usr/lib/systemd/system/
+	install obj-*/app/virtio-ha/vfe-vhostd-ha.service $(CURDIR)/debian/dpdk-vhost-vfe/usr/lib/systemd/system/
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l$(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/
+	#dh_shlibdeps -l$(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/
 
 ifneq (,$(KVERS))
 	# Package: dpdk-modules-<kernel version>
