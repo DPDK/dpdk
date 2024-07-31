@@ -947,9 +947,13 @@ struct rte_ml_io_info {
 	 * @see enum rte_ml_io_type
 	 */
 	uint64_t nb_elements;
-	/** Number of elements in tensor */
+	/**< Number of elements in tensor */
 	uint64_t size;
-	/** Size of tensor in bytes */
+	/**< Size of tensor in bytes */
+	float scale;
+	/**< Scale factor */
+	int64_t zero_point;
+	/**< Zero point */
 };
 
 /** Model information structure */

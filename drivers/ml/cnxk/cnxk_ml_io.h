@@ -55,6 +55,9 @@ struct cnxk_ml_io {
 
 	/* Scale */
 	float scale;
+
+	/* Zero point */
+	int64_t zero_point;
 };
 
 /* Model / Layer IO structure */
