@@ -318,6 +318,19 @@ struct rte_ml_dev_qp_conf {
 };
 
 /**
+ * Get the number of queue pairs on a specific ML device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @return
+ *   - The number of configured queue pairs.
+ */
+__rte_experimental
+uint16_t
+rte_ml_dev_queue_pair_count(int16_t dev_id);
+
+/**
  * Set up a queue pair for a device. This should only be called when the device is stopped.
  *
  * @param dev_id

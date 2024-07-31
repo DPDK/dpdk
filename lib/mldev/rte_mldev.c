@@ -365,6 +365,21 @@ rte_ml_dev_stop(int16_t dev_id)
 	return ret;
 }
 
+uint16_t
+rte_ml_dev_queue_pair_count(int16_t dev_id)
+{
+	struct rte_ml_dev *dev;
+
+	if (!rte_ml_dev_is_valid_dev(dev_id)) {
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
+		return -EINVAL;
+	}
+
+	dev = rte_ml_dev_pmd_get_dev(dev_id);
+
+	return dev->data->nb_queue_pairs;
+}
+
 int
 rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 			    const struct rte_ml_dev_qp_conf *qp_conf, int socket_id)
