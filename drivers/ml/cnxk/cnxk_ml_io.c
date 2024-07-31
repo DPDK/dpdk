@@ -26,39 +26,40 @@ cnxk_ml_io_quantize_single(struct cnxk_ml_io *input, uint8_t *dbuffer, uint8_t *
 
 	if (dtype == qtype) {
 		rte_memcpy(qbuffer, dbuffer, input->sz_d);
-	} else {
-		switch (qtype) {
-		case RTE_ML_IO_TYPE_INT8:
-			ret = rte_ml_io_float32_to_int8(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT8:
-			ret = rte_ml_io_float32_to_uint8(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_INT16:
-			ret = rte_ml_io_float32_to_int16(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT16:
-			ret = rte_ml_io_float32_to_uint16(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_INT32:
-			ret = rte_ml_io_float32_to_int32(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT32:
-			ret = rte_ml_io_float32_to_uint32(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_INT64:
-			ret = rte_ml_io_float32_to_int64(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT64:
-			ret = rte_ml_io_float32_to_uint64(qscale, nb_elements, dbuffer, qbuffer);
-			break;
-		case RTE_ML_IO_TYPE_FP16:
-			ret = rte_ml_io_float32_to_float16(nb_elements, dbuffer, qbuffer);
-			break;
-		default:
-			plt_err("Unsupported qtype : %u", qtype);
-			ret = -ENOTSUP;
-		}
+		return ret;
+	}
+
+	switch (qtype) {
+	case RTE_ML_IO_TYPE_INT8:
+		ret = rte_ml_io_float32_to_int8(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT8:
+		ret = rte_ml_io_float32_to_uint8(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_INT16:
+		ret = rte_ml_io_float32_to_int16(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT16:
+		ret = rte_ml_io_float32_to_uint16(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_INT32:
+		ret = rte_ml_io_float32_to_int32(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT32:
+		ret = rte_ml_io_float32_to_uint32(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_INT64:
+		ret = rte_ml_io_float32_to_int64(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT64:
+		ret = rte_ml_io_float32_to_uint64(dbuffer, qbuffer, nb_elements, 1.0 / qscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_FP16:
+		ret = rte_ml_io_float32_to_float16(dbuffer, qbuffer, nb_elements);
+		break;
+	default:
+		plt_err("Unsupported qtype : %u", qtype);
+		ret = -ENOTSUP;
 	}
 
 	return ret;
@@ -80,39 +81,40 @@ cnxk_ml_io_dequantize_single(struct cnxk_ml_io *output, uint8_t *qbuffer, uint8_
 
 	if (dtype == qtype) {
 		rte_memcpy(dbuffer, qbuffer, output->sz_q);
-	} else {
-		switch (qtype) {
-		case RTE_ML_IO_TYPE_INT8:
-			ret = rte_ml_io_int8_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT8:
-			ret = rte_ml_io_uint8_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_INT16:
-			ret = rte_ml_io_int16_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT16:
-			ret = rte_ml_io_uint16_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_INT32:
-			ret = rte_ml_io_int32_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT32:
-			ret = rte_ml_io_uint32_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_INT64:
-			ret = rte_ml_io_int64_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_UINT64:
-			ret = rte_ml_io_uint64_to_float32(dscale, nb_elements, qbuffer, dbuffer);
-			break;
-		case RTE_ML_IO_TYPE_FP16:
-			ret = rte_ml_io_float16_to_float32(nb_elements, qbuffer, dbuffer);
-			break;
-		default:
-			plt_err("Unsupported qtype: %u", qtype);
-			ret = -ENOTSUP;
-		}
+		return 0;
+	}
+
+	switch (qtype) {
+	case RTE_ML_IO_TYPE_INT8:
+		ret = rte_ml_io_int8_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT8:
+		ret = rte_ml_io_uint8_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_INT16:
+		ret = rte_ml_io_int16_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT16:
+		ret = rte_ml_io_uint16_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_INT32:
+		ret = rte_ml_io_int32_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT32:
+		ret = rte_ml_io_uint32_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_INT64:
+		ret = rte_ml_io_int64_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_UINT64:
+		ret = rte_ml_io_uint64_to_float32(qbuffer, dbuffer, nb_elements, dscale, 0);
+		break;
+	case RTE_ML_IO_TYPE_FP16:
+		ret = rte_ml_io_float16_to_float32(qbuffer, dbuffer, nb_elements);
+		break;
+	default:
+		plt_err("Unsupported qtype: %u", qtype);
+		ret = -ENOTSUP;
 	}
 
 	return ret;

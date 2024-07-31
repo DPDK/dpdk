@@ -18,7 +18,7 @@
 #ifdef __ARM_FEATURE_BF16
 
 static inline void
-__float32_to_bfloat16_neon_f16x4(float32_t *input, bfloat16_t *output)
+__float32_to_bfloat16_neon_f16x4(const float32_t *input, bfloat16_t *output)
 {
 	float32x4_t f32x4;
 	bfloat16x4_t bf16x4;
@@ -34,7 +34,7 @@ __float32_to_bfloat16_neon_f16x4(float32_t *input, bfloat16_t *output)
 }
 
 static inline void
-__float32_to_bfloat16_neon_f16x1(float32_t *input, bfloat16_t *output)
+__float32_to_bfloat16_neon_f16x1(const float32_t *input, bfloat16_t *output)
 {
 	float32x4_t f32x4;
 	bfloat16x4_t bf16x4;
@@ -50,9 +50,9 @@ __float32_to_bfloat16_neon_f16x1(float32_t *input, bfloat16_t *output)
 }
 
 int
-rte_ml_io_float32_to_bfloat16(uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_bfloat16(const void *input, void *output, uint64_t nb_elements)
 {
-	float32_t *input_buffer;
+	const float32_t *input_buffer;
 	bfloat16_t *output_buffer;
 	uint64_t nb_iterations;
 	uint32_t vlen;
@@ -61,7 +61,7 @@ rte_ml_io_float32_to_bfloat16(uint64_t nb_elements, void *input, void *output)
 	if ((nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float32_t *)input;
+	input_buffer = (const float32_t *)input;
 	output_buffer = (bfloat16_t *)output;
 	vlen = 2 * sizeof(float32_t) / sizeof(bfloat16_t);
 	nb_iterations = nb_elements / vlen;
@@ -85,7 +85,7 @@ rte_ml_io_float32_to_bfloat16(uint64_t nb_elements, void *input, void *output)
 }
 
 static inline void
-__bfloat16_to_float32_neon_f32x4(bfloat16_t *input, float32_t *output)
+__bfloat16_to_float32_neon_f32x4(const bfloat16_t *input, float32_t *output)
 {
 	bfloat16x4_t bf16x4;
 	float32x4_t f32x4;
@@ -101,7 +101,7 @@ __bfloat16_to_float32_neon_f32x4(bfloat16_t *input, float32_t *output)
 }
 
 static inline void
-__bfloat16_to_float32_neon_f32x1(bfloat16_t *input, float32_t *output)
+__bfloat16_to_float32_neon_f32x1(const bfloat16_t *input, float32_t *output)
 {
 	bfloat16x4_t bf16x4;
 	float32x4_t f32x4;
@@ -117,9 +117,9 @@ __bfloat16_to_float32_neon_f32x1(bfloat16_t *input, float32_t *output)
 }
 
 int
-rte_ml_io_bfloat16_to_float32(uint64_t nb_elements, void *input, void *output)
+rte_ml_io_bfloat16_to_float32(const void *input, void *output, uint64_t nb_elements)
 {
-	bfloat16_t *input_buffer;
+	const bfloat16_t *input_buffer;
 	float32_t *output_buffer;
 	uint64_t nb_iterations;
 	uint32_t vlen;
@@ -128,7 +128,7 @@ rte_ml_io_bfloat16_to_float32(uint64_t nb_elements, void *input, void *output)
 	if ((nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (bfloat16_t *)input;
+	input_buffer = (const bfloat16_t *)input;
 	output_buffer = (float32_t *)output;
 	vlen = 2 * sizeof(float32_t) / sizeof(bfloat16_t);
 	nb_iterations = nb_elements / vlen;

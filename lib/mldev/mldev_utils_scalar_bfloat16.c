@@ -92,16 +92,16 @@ bf16_pack:
 }
 
 int
-rte_ml_io_float32_to_bfloat16(uint64_t nb_elements, void *input, void *output)
+rte_ml_io_float32_to_bfloat16(const void *input, void *output, uint64_t nb_elements)
 {
-	float *input_buffer;
+	const float *input_buffer;
 	uint16_t *output_buffer;
 	uint64_t i;
 
 	if ((nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (float *)input;
+	input_buffer = (const float *)input;
 	output_buffer = (uint16_t *)output;
 
 	for (i = 0; i < nb_elements; i++) {
@@ -174,16 +174,16 @@ fp32_pack:
 }
 
 int
-rte_ml_io_bfloat16_to_float32(uint64_t nb_elements, void *input, void *output)
+rte_ml_io_bfloat16_to_float32(const void *input, void *output, uint64_t nb_elements)
 {
-	uint16_t *input_buffer;
+	const uint16_t *input_buffer;
 	float *output_buffer;
 	uint64_t i;
 
 	if ((nb_elements == 0) || (input == NULL) || (output == NULL))
 		return -EINVAL;
 
-	input_buffer = (uint16_t *)input;
+	input_buffer = (const uint16_t *)input;
 	output_buffer = (float *)output;
 
 	for (i = 0; i < nb_elements; i++) {
