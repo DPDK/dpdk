@@ -6,54 +6,8 @@
 DPDK Release 24.07
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_24_07.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
 
 * **Introduced pointer compression library.**
 
@@ -91,7 +45,7 @@ New Features
 
 * **Updated Intel ice driver.**
 
-  * Added support of E830 device family.
+  * Added support for E830 device family.
   * Added support for configuring the Forward Error Correction (FEC) mode,
     querying FEC capabilities and current FEC mode from a device.
 
@@ -106,7 +60,7 @@ New Features
 
 * **Added Napatech ntnic net driver [EXPERIMENTAL].**
 
-  * Added the PMD driver for Napatech smartNIC
+  * Added the PMD for Napatech smartNIC:
 
     - Ability to initialize the NIC (NT200A02)
     - Supporting only one FPGA firmware (9563.55.39)
@@ -133,8 +87,7 @@ New Features
 * **Updated TAP driver.**
 
   * Updated to support up to 8 queues when used by secondary process.
-
-  * Fixed support of RSS flow action to work with current Linux kernels
+  * Fixed support for RSS flow action to work with current Linux kernels
     and BPF tooling.
     Will only be enabled if clang, libbpf 1.0 and bpftool are available.
 
@@ -190,15 +143,6 @@ New Features
 Removed Items
 -------------
 
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * **Disabled the BPF library and net/af_xdp for 32-bit x86.**
 
   BPF is not supported and the librte-bpf test fails on 32-bit x86 kernels.
@@ -213,18 +157,6 @@ Removed Items
 API Changes
 -----------
 
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * mbuf: ``RTE_MARKER`` fields ``cacheline0`` and ``cacheline1``
   have been removed from ``struct rte_mbuf``.
 
@@ -235,57 +167,14 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * No ABI change that would break compatibility with 23.11.
 
 * eventdev/dma: Reorganize the experimental fastpath structure ``rte_event_dma_adapter_op``
   to optimize the memory layout and improve performance.
 
 
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
