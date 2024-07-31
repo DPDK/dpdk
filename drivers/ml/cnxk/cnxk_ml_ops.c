@@ -1462,7 +1462,8 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 	d_offset = 0;
 	q_offset = 0;
 	for (i = 0; i < info->nb_inputs; i++) {
-		if (model->type == ML_CNXK_MODEL_TYPE_TVM) {
+		if (model->type == ML_CNXK_MODEL_TYPE_TVM &&
+		    model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) {
 			lcl_dbuffer = dbuffer[i]->addr;
 			lcl_qbuffer = qbuffer[i]->addr;
 		} else {
@@ -1474,7 +1475,8 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 		if (ret < 0)
 			return ret;
 
-		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
+		if ((model->type == ML_CNXK_MODEL_TYPE_GLOW) ||
+		    (model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL)) {
 			d_offset += info->input[i].sz_d;
 			q_offset += info->input[i].sz_q;
 		}
@@ -1516,7 +1518,8 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 	q_offset = 0;
 	d_offset = 0;
 	for (i = 0; i < info->nb_outputs; i++) {
-		if (model->type == ML_CNXK_MODEL_TYPE_TVM) {
+		if (model->type == ML_CNXK_MODEL_TYPE_TVM &&
+		    model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) {
 			lcl_qbuffer = qbuffer[i]->addr;
 			lcl_dbuffer = dbuffer[i]->addr;
 		} else {
@@ -1528,7 +1531,8 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 		if (ret < 0)
 			return ret;
 
-		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
+		if ((model->type == ML_CNXK_MODEL_TYPE_GLOW) ||
+		    (model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL)) {
 			q_offset += info->output[i].sz_q;
 			d_offset += info->output[i].sz_d;
 		}
