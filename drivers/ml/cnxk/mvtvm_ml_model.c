@@ -356,7 +356,7 @@ tvm_mrvl_model:
 	metadata = &model->mvtvm.metadata;
 	strlcpy(info->name, metadata->model.name, TVMDP_NAME_STRLEN);
 
-	info->io_layout = RTE_ML_IO_LAYOUT_SPLIT;
+	info->io_layout = RTE_ML_IO_LAYOUT_PACKED;
 }
 
 void
