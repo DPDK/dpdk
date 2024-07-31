@@ -23,7 +23,7 @@
 #define ML_FLAGS_SSO_COMPL  BIT(1)
 
 /* Hardware non-fatal error subtype database */
-static struct cnxk_ml_error_db ml_stype_db_hw_nf[] = {
+static struct cn10k_ml_error_db ml_stype_db_hw_nf[] = {
 	{ML_CN10K_FW_ERR_NOERR, "NO ERROR"},
 	{ML_CN10K_FW_ERR_UNLOAD_ID_NOT_FOUND, "UNLOAD MODEL ID NOT FOUND"},
 	{ML_CN10K_FW_ERR_LOAD_LUT_OVERFLOW, "LOAD LUT OVERFLOW"},
@@ -38,7 +38,7 @@ static struct cnxk_ml_error_db ml_stype_db_hw_nf[] = {
 };
 
 /* Driver error subtype database */
-static struct cnxk_ml_error_db ml_stype_db_driver[] = {
+static struct cn10k_ml_error_db ml_stype_db_driver[] = {
 	{ML_CN10K_DRIVER_ERR_NOERR, "NO ERROR"},
 	{ML_CN10K_DRIVER_ERR_UNKNOWN, "UNKNOWN ERROR"},
 	{ML_CN10K_DRIVER_ERR_EXCEPTION, "FW EXCEPTION"},
@@ -784,6 +784,7 @@ cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	model->result_update = cn10k_ml_result_update;
 	model->set_error_code = cn10k_ml_set_error_code;
 	model->set_poll_addr = cn10k_ml_set_poll_addr;
+	model->op_error_get = cn10k_ml_op_error_get;
 
 	return 0;
 }
@@ -1257,7 +1258,7 @@ cn10k_ml_result_update(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request)
 
 		/* Handle driver error */
 		error_code = (union cn10k_ml_error_code *)&result->error_code;
-		if (error_code->s.etype == ML_CNXK_ETYPE_DRIVER) {
+		if (error_code->s.etype == ML_CN10K_ETYPE_DRIVER) {
 			cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 
 			/* Check for exception */
@@ -1310,7 +1311,7 @@ cn10k_ml_enqueue_single(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op, ui
 
 	memset(&req->cn10k_req.result, 0, sizeof(struct cn10k_ml_result));
 	error_code = (union cn10k_ml_error_code *)&req->cn10k_req.result.error_code;
-	error_code->s.etype = ML_CNXK_ETYPE_UNKNOWN;
+	error_code->s.etype = ML_CN10K_ETYPE_UNKNOWN;
 	req->cn10k_req.result.user_ptr = op->user_ptr;
 
 	cnxk_ml_set_poll_ptr(req);
@@ -1324,16 +1325,17 @@ cn10k_ml_enqueue_single(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op, ui
 }
 
 __rte_hot int
-cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_ml_op_error *error)
+cn10k_ml_op_error_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
+		      struct rte_ml_op_error *error)
 {
 	union cn10k_ml_error_code *error_code;
 
-	PLT_SET_USED(dev);
+	PLT_SET_USED(cnxk_mldev);
 
 	error_code = (union cn10k_ml_error_code *)&op->impl_opaque;
 
 	/* Copy sub error message */
-	if (error_code->s.etype == ML_CNXK_ETYPE_HW_NONFATAL) {
+	if (error_code->s.etype == ML_CN10K_ETYPE_HW_NONFATAL) {
 		if (error_code->s.stype < PLT_DIM(ml_stype_db_hw_nf))
 			snprintf(error->message, RTE_ML_STR_MAX, "%s : %s",
 				 ml_etype_db[error_code->s.etype].str,
@@ -1341,7 +1343,7 @@ cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_m
 		else
 			snprintf(error->message, RTE_ML_STR_MAX, "%s : UNKNOWN ERROR",
 				 ml_etype_db[error_code->s.etype].str);
-	} else if (error_code->s.etype == ML_CNXK_ETYPE_DRIVER) {
+	} else if (error_code->s.etype == ML_CN10K_ETYPE_DRIVER) {
 		snprintf(error->message, RTE_ML_STR_MAX, "%s : %s",
 			 ml_etype_db[error_code->s.etype].str,
 			 ml_stype_db_driver[error_code->s.stype].str);
@@ -1387,7 +1389,7 @@ cn10k_ml_inference_sync(void *device, uint16_t index, void *input, void *output,
 
 	memset(&req->cn10k_req.result, 0, sizeof(struct cn10k_ml_result));
 	error_code = (union cn10k_ml_error_code *)&req->cn10k_req.result.error_code;
-	error_code->s.etype = ML_CNXK_ETYPE_UNKNOWN;
+	error_code->s.etype = ML_CN10K_ETYPE_UNKNOWN;
 	req->cn10k_req.result.user_ptr = NULL;
 
 	cnxk_ml_set_poll_ptr(req);

@@ -312,7 +312,7 @@ int cn10k_ml_model_params_update(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_
 /* Fast-path ops */
 __rte_hot bool cn10k_ml_enqueue_single(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
 				       uint16_t layer_id, struct cnxk_ml_qp *qp, uint64_t head);
-__rte_hot int cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op,
+__rte_hot int cn10k_ml_op_error_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
 				    struct rte_ml_op_error *error);
 __rte_hot int cn10k_ml_inference_sync(void *device, uint16_t index, void *input, void *output,
 				      uint16_t nb_batches);

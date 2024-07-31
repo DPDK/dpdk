@@ -647,9 +647,7 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 
 	cnxk_mldev->mldev->enqueue_burst = cnxk_ml_enqueue_burst;
 	cnxk_mldev->mldev->dequeue_burst = cnxk_ml_dequeue_burst;
-
-	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
-		cnxk_mldev->mldev->op_error_get = cn10k_ml_op_error_get;
+	cnxk_mldev->mldev->op_error_get = cnxk_ml_op_error_get;
 
 	/* Allocate and initialize index_map */
 	if (cnxk_mldev->index_map == NULL) {
@@ -1640,7 +1638,7 @@ dequeue_req:
 		if (plt_tsc_cycles() < req->timeout)
 			goto empty_or_active;
 		else /* Timeout, set indication of driver error */
-			model->set_error_code(req, ML_CNXK_ETYPE_DRIVER, 0);
+			model->set_error_code(req, ML_CN10K_ETYPE_DRIVER, 0);
 	}
 
 	model->result_update(cnxk_mldev, qp->id, req);
@@ -1656,6 +1654,18 @@ empty_or_active:
 	queue->tail = tail;
 
 	return count;
+}
+
+__rte_hot int
+cnxk_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_ml_op_error *error)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	cnxk_mldev = dev->data->dev_private;
+	model = cnxk_mldev->mldev->data->models[op->model_id];
+
+	return model->op_error_get(cnxk_mldev, op, error);
 }
 
 struct rte_ml_dev_ops cnxk_ml_ops = {

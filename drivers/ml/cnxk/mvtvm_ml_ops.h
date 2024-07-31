@@ -71,6 +71,8 @@ int mvtvm_ml_io_dequantize(void *device, uint16_t model_id, const char *layer_na
 
 __rte_hot bool mvtvm_ml_enqueue_single(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
 				       uint16_t layer_id, struct cnxk_ml_qp *qp, uint64_t head);
+__rte_hot int mvtvm_ml_op_error_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
+				    struct rte_ml_op_error *error);
 __rte_hot void mvtvm_ml_result_update(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request);
 __rte_hot void mvtvm_ml_set_error_code(struct cnxk_ml_req *req, uint64_t etype, uint64_t stype);
 

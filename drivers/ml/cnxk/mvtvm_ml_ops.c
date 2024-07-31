@@ -329,11 +329,13 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		model->result_update = cn10k_ml_result_update;
 		model->set_error_code = cn10k_ml_set_error_code;
 		model->set_poll_addr = cn10k_ml_set_poll_addr;
+		model->op_error_get = cn10k_ml_op_error_get;
 	} else {
 		model->enqueue_single = mvtvm_ml_enqueue_single;
 		model->result_update = mvtvm_ml_result_update;
 		model->set_error_code = mvtvm_ml_set_error_code;
 		model->set_poll_addr = mvtvm_ml_set_poll_addr;
+		model->op_error_get = mvtvm_ml_op_error_get;
 	}
 
 	return 0;
@@ -582,6 +584,17 @@ mvtvm_ml_set_error_code(struct cnxk_ml_req *req, uint64_t etype, uint64_t stype)
 	RTE_SET_USED(stype);
 
 	req->mvtvm_req.result.error_code = etype;
+}
+
+__rte_hot int
+mvtvm_ml_op_error_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
+		      struct rte_ml_op_error *error)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(op);
+	RTE_SET_USED(error);
+
+	return 0;
 }
 
 __rte_hot bool

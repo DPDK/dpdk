@@ -58,6 +58,14 @@ static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 /* Supported OCM page sizes: 1KB, 2KB, 4KB, 8KB and 16KB */
 static const int valid_ocm_page_size[] = {1024, 2048, 4096, 8192, 16384};
 
+/* Error type database */
+struct cn10k_ml_error_db ml_etype_db[] = {
+	{ML_CN10K_ETYPE_NO_ERROR, "NO_ERROR"},	      {ML_CN10K_ETYPE_FW_NONFATAL, "FW_NON_FATAL"},
+	{ML_CN10K_ETYPE_HW_NONFATAL, "HW_NON_FATAL"}, {ML_CN10K_ETYPE_HW_FATAL, "HW_FATAL"},
+	{ML_CN10K_ETYPE_HW_WARNING, "HW_WARNING"},    {ML_CN10K_ETYPE_DRIVER, "DRIVER_ERROR"},
+	{ML_CN10K_ETYPE_UNKNOWN, "UNKNOWN_ERROR"},
+};
+
 static int
 parse_string_arg(const char *key __rte_unused, const char *value, void *extra_args)
 {

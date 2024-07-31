@@ -22,22 +22,6 @@
 #define ML_CNXK_POLL_JOB_START	0
 #define ML_CNXK_POLL_JOB_FINISH 1
 
-/* Error types enumeration */
-enum cnxk_ml_error_etype {
-	/* 0x0 */ ML_CNXK_ETYPE_NO_ERROR = 0, /* No error */
-	/* 0x1 */ ML_CNXK_ETYPE_FW_NONFATAL,  /* Firmware non-fatal error */
-	/* 0x2 */ ML_CNXK_ETYPE_HW_NONFATAL,  /* Hardware non-fatal error */
-	/* 0x3 */ ML_CNXK_ETYPE_HW_FATAL,     /* Hardware fatal error */
-	/* 0x4 */ ML_CNXK_ETYPE_HW_WARNING,   /* Hardware warning */
-	/* 0x5 */ ML_CNXK_ETYPE_DRIVER,	      /* Driver specific error */
-	/* 0x6 */ ML_CNXK_ETYPE_UNKNOWN,      /* Unknown error */
-};
-
-struct cnxk_ml_error_db {
-	uint64_t code;
-	char str[RTE_ML_STR_MAX];
-};
-
 /* Device type */
 enum cnxk_ml_dev_type {
 	/* PCI based Marvell's ML HW accelerator device */
@@ -115,6 +99,6 @@ struct cnxk_ml_dev {
 	struct cnxk_ml_index_map *index_map;
 };
 
-extern struct cnxk_ml_error_db ml_etype_db[];
+extern struct cn10k_ml_error_db ml_etype_db[];
 
 #endif /* _CNXK_ML_DEV_H_ */

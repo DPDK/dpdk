@@ -83,5 +83,7 @@ __rte_hot uint16_t cnxk_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
 					 struct rte_ml_op **ops, uint16_t nb_ops);
 __rte_hot void cnxk_ml_set_poll_ptr(struct cnxk_ml_req *req);
 __rte_hot uint64_t cnxk_ml_get_poll_ptr(struct cnxk_ml_req *req);
+__rte_hot int cnxk_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op,
+				   struct rte_ml_op_error *error);
 
 #endif /* _CNXK_ML_OPS_H_ */

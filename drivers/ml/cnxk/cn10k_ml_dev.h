@@ -46,6 +46,22 @@ struct cnxk_ml_dev;
 struct cnxk_ml_req;
 struct cnxk_ml_qp;
 
+/* Error types enumeration */
+enum cn10k_ml_error_etype {
+	/* 0x0 */ ML_CN10K_ETYPE_NO_ERROR = 0, /* No error */
+	/* 0x1 */ ML_CN10K_ETYPE_FW_NONFATAL,  /* Firmware non-fatal error */
+	/* 0x2 */ ML_CN10K_ETYPE_HW_NONFATAL,  /* Hardware non-fatal error */
+	/* 0x3 */ ML_CN10K_ETYPE_HW_FATAL,     /* Hardware fatal error */
+	/* 0x4 */ ML_CN10K_ETYPE_HW_WARNING,   /* Hardware warning */
+	/* 0x5 */ ML_CN10K_ETYPE_DRIVER,       /* Driver specific error */
+	/* 0x6 */ ML_CN10K_ETYPE_UNKNOWN,      /* Unknown error */
+};
+
+struct cn10k_ml_error_db {
+	uint64_t code;
+	char str[RTE_ML_STR_MAX];
+};
+
 /* Firmware non-fatal error sub-type */
 enum cn10k_ml_error_stype_fw_nf {
 	/* 0x0 */ ML_CN10K_FW_ERR_NOERR = 0,	       /* No error */
