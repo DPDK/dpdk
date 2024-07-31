@@ -912,6 +912,16 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+	if (num_cores != -1) {
+		CPU_ZERO(&internal_conf->ctrl_cpuset);
+		for (int i = 0; i < num_cores; i++) {
+			CPU_SET(i, &internal_conf->ctrl_cpuset);
+		}
+	} else {
+		rte_eal_init_alert("Can't configure ctrl cpuset.");
+	}
+
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins");
 		rte_errno = EINVAL;
@@ -1116,12 +1126,6 @@ rte_eal_init(int argc, char **argv)
 
 	eal_check_mem_on_local_socket();
 
-	if (pthread_setaffinity_np(pthread_self(), sizeof(rte_cpuset_t),
-			&lcore_config[config->main_lcore].cpuset) != 0) {
-		rte_eal_init_alert("Cannot set affinity");
-		rte_errno = EINVAL;
-		return -1;
-	}
 	__rte_thread_init(config->main_lcore,
 		&lcore_config[config->main_lcore].cpuset);
 
