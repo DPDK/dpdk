@@ -169,11 +169,6 @@ Deprecation Notices
 * fib: A new flag field will be introduced in ``rte_fib_conf`` structure
   in DPDK 24.11. This field will be used to pass extra configuration settings.
 
-* cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
-  to have another parameter ``qp_id`` to return the queue pair ID
-  which got error interrupt to the application,
-  so that application can reset that particular queue pair.
-
 * cryptodev: The Intel IPsec Multi-Buffer version will be bumped
   to a minimum version of v1.4.
   This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY
