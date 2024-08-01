@@ -10,6 +10,7 @@ LimitNOFILE=200000
 LimitCORE=infinity
 KillSignal=SIGTERM
 Restart=always
+ExecStopPost=/usr/bin/bash -c "rm -rf /tmp/pf_resetting"
 
 [Install]
 WantedBy=multi-user.target
