@@ -35,7 +35,7 @@ struct virtnet_tx {
 };
 
 int virtio_rxq_vec_setup(struct virtnet_rx *rxvq);
-void virtio_update_packet_stats(struct virtnet_stats *stats,
-				struct rte_mbuf *mbuf);
+void virtio_update_packet_stats(struct virtnet_stats *const stats,
+		const struct rte_mbuf *const mbuf);
 
 #endif /* _VIRTIO_RXTX_H_ */
