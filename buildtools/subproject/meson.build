@@ -25,4 +25,4 @@ endif
 
 libdpdk_dep = dpdk_dep
 
-meson.override_find_program('dpdk-cmdline-gen.py', file('../dpdk-cmdline-gen.py'))
+meson.override_find_program('dpdk-cmdline-gen.py', files('../dpdk-cmdline-gen.py'))
