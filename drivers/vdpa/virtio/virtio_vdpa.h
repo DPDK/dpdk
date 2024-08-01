@@ -53,6 +53,9 @@ struct virtio_vdpa_vring_info {
 
 #define VIRTIO_VDPA_DRIVER_NAME vdpa_virtio
 
+#define VIRTIO_VDPA_DOOR_BELL_INIT 0
+#define VIRTIO_VDPA_DOOR_BELL_RELAY 1
+#define VIRTIO_VDPA_DOOR_BELL_CANCLE 2
 struct virtio_vdpa_priv {
 	TAILQ_ENTRY(virtio_vdpa_priv) next;
 	rte_uuid_t vm_uuid;
@@ -79,6 +82,7 @@ struct virtio_vdpa_priv {
 	uint64_t guest_features;
 	struct virtio_vdpa_vring_info **vrings;
 	uint16_t hw_nr_virtqs; /* Number of vq device supported */
+	volatile uint16_t doorbell_relay;
 	bool configured;
 	bool dev_conf_read;
 	bool mem_tbl_set;
@@ -87,7 +91,6 @@ struct virtio_vdpa_priv {
 	bool fd_args_stored;
 	bool restore;
 	bool is_notify_thread_started;
-	bool doorbell_relay;
 	bool log_started;
 	struct virtio_dev_name vf_name;
 	struct virtio_dev_name pf_name;
