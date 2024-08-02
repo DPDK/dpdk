@@ -53,7 +53,7 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 }
 
 static inline void
-vhost_queue_stats_update(struct virtio_net *dev, struct vhost_virtqueue *vq,
+vhost_queue_stats_update(const struct virtio_net *dev, struct vhost_virtqueue *vq,
 		struct rte_mbuf **pkts, uint16_t count)
 	__rte_shared_locks_required(&vq->access_lock)
 {
@@ -64,37 +64,25 @@ vhost_queue_stats_update(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		return;
 
 	for (i = 0; i < count; i++) {
-		struct rte_ether_addr *ea;
-		struct rte_mbuf *pkt = pkts[i];
+		const struct rte_ether_addr *ea;
+		const struct rte_mbuf *pkt = pkts[i];
 		uint32_t pkt_len = rte_pktmbuf_pkt_len(pkt);
 
 		stats->packets++;
 		stats->bytes += pkt_len;
 
-		if (pkt_len == 64) {
-			stats->size_bins[1]++;
-		} else if (pkt_len > 64 && pkt_len < 1024) {
-			uint32_t bin;
+		if (pkt_len >= 1024)
+			stats->size_bins[6 + (pkt_len > 1518)]++;
+		else if (pkt_len <= 64)
+			stats->size_bins[pkt_len >> 6]++;
+		else
+			stats->size_bins[32UL - rte_clz32(pkt_len) - 5]++;
 
-			/* count zeros, and offset into correct bin */
-			bin = (sizeof(pkt_len) * 8) - rte_clz32(pkt_len) - 5;
-			stats->size_bins[bin]++;
-		} else {
-			if (pkt_len < 64)
-				stats->size_bins[0]++;
-			else if (pkt_len < 1519)
-				stats->size_bins[6]++;
-			else
-				stats->size_bins[7]++;
-		}
-
-		ea = rte_pktmbuf_mtod(pkt, struct rte_ether_addr *);
-		if (rte_is_multicast_ether_addr(ea)) {
-			if (rte_is_broadcast_ether_addr(ea))
-				stats->broadcast++;
-			else
-				stats->multicast++;
-		}
+		ea = rte_pktmbuf_mtod(pkt, const struct rte_ether_addr *);
+		RTE_BUILD_BUG_ON(offsetof(struct virtqueue_stats, broadcast) !=
+				offsetof(struct virtqueue_stats, multicast) + sizeof(uint64_t));
+		if (unlikely(rte_is_multicast_ether_addr(ea)))
+			(&stats->multicast)[rte_is_broadcast_ether_addr(ea)]++;
 	}
 }
 
