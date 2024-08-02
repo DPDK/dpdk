@@ -89,6 +89,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t sw_id;
 	uint64_t bytes;
 	uint16_t first_sw_id;
+	uint8_t csum;
 
 	sw_ring = txq->sw_ring;
 	txr = txq->tx_ring;
@@ -114,6 +115,9 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		ol_flags = tx_pkt->ol_flags;
 		nb_used = tx_pkt->nb_segs;
 		first_sw_id = sw_id;
+
+		csum = !!(ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO);
+
 		do {
 			if (sw_ring[sw_id] != NULL)
 				PMD_DRV_LOG(DEBUG, "Overwriting an entry in sw_ring");
@@ -126,6 +130,8 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txd->pkt.dtype = GVE_TX_PKT_DESC_DTYPE_DQO;
 			txd->pkt.compl_tag = rte_cpu_to_le_16(first_sw_id);
 			txd->pkt.buf_size = RTE_MIN(tx_pkt->data_len, GVE_TX_MAX_BUF_SIZE_DQO);
+			txd->pkt.end_of_packet = 0;
+			txd->pkt.checksum_offload_enable = csum;
 
 			/* size of desc_ring and sw_ring could be different */
 			tx_id = (tx_id + 1) & mask;
@@ -137,9 +143,6 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->pkt.end_of_packet = 1;
-
-		if (ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO)
-			txd->pkt.checksum_offload_enable = 1;
 
 		txq->nb_free -= nb_used;
 		txq->nb_used += nb_used;
