@@ -33,6 +33,8 @@
 		RTE_MBUF_F_TX_L4_MASK  |	\
 		RTE_MBUF_F_TX_TCP_SEG)
 
+#define GVE_TX_CKSUM_OFFLOAD_MASK_DQO (GVE_TX_CKSUM_OFFLOAD_MASK | RTE_MBUF_F_TX_IP_CKSUM)
+
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
  */
