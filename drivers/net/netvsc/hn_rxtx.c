@@ -110,30 +110,18 @@ hn_update_packet_stats(struct hn_stats *stats, const struct rte_mbuf *m)
 	uint32_t s = m->pkt_len;
 	const struct rte_ether_addr *ea;
 
-	if (s == 64) {
-		stats->size_bins[1]++;
-	} else if (s > 64 && s < 1024) {
-		uint32_t bin;
-
-		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - rte_clz32(s) - 5;
-		stats->size_bins[bin]++;
-	} else {
-		if (s < 64)
-			stats->size_bins[0]++;
-		else if (s < 1519)
-			stats->size_bins[6]++;
-		else
-			stats->size_bins[7]++;
-	}
+	if (s >= 1024)
+		stats->size_bins[6 + (s > 1518)]++;
+	else if (s <= 64)
+		stats->size_bins[s >> 6]++;
+	else
+		stats->size_bins[32UL - rte_clz32(s) - 5]++;
 
 	ea = rte_pktmbuf_mtod(m, const struct rte_ether_addr *);
-	if (rte_is_multicast_ether_addr(ea)) {
-		if (rte_is_broadcast_ether_addr(ea))
-			stats->broadcast++;
-		else
-			stats->multicast++;
-	}
+	RTE_BUILD_BUG_ON(offsetof(struct hn_stats, broadcast) !=
+			offsetof(struct hn_stats, multicast) + sizeof(uint64_t));
+	if (unlikely(rte_is_multicast_ether_addr(ea)))
+		(&stats->multicast)[rte_is_broadcast_ether_addr(ea)]++;
 }
 
 static inline unsigned int hn_rndis_pktlen(const struct rndis_packet_msg *pkt)
