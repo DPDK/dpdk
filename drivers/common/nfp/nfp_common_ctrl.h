@@ -205,6 +205,7 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP  (0x1 << 4) /**< SA long match lookup */
 #define NFP_NET_CFG_CTRL_MULTI_PF         (0x1 << 5)
 #define NFP_NET_CFG_CTRL_FLOW_STEER       (0x1 << 8) /**< Flow Steering */
+#define NFP_NET_CFG_CTRL_VIRTIO           (0x1 << 10) /**< Virtio offload */
 #define NFP_NET_CFG_CTRL_IN_ORDER         (0x1 << 11) /**< Virtio in-order flag */
 #define NFP_NET_CFG_CTRL_USO              (0x1 << 16) /**< UDP segmentation offload */
 

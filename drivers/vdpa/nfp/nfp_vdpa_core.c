@@ -101,7 +101,7 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 static uint32_t
 nfp_vdpa_check_offloads(void)
 {
-	return NFP_NET_CFG_CTRL_SCATTER |
+	return NFP_NET_CFG_CTRL_VIRTIO  |
 			NFP_NET_CFG_CTRL_IN_ORDER;
 }
 
@@ -112,6 +112,7 @@ nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
 	int ret;
 	uint32_t update;
 	uint32_t new_ctrl;
+	uint32_t new_ext_ctrl;
 	struct timespec wait_tst;
 	struct nfp_hw *hw = &vdpa_hw->super;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
@@ -131,8 +132,6 @@ nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
 	nfp_disable_queues(hw);
 	nfp_enable_queues(hw, NFP_VDPA_MAX_QUEUES, NFP_VDPA_MAX_QUEUES);
 
-	new_ctrl = nfp_vdpa_check_offloads();
-
 	nn_cfg_writel(hw, NFP_NET_CFG_MTU, 9216);
 	nn_cfg_writel(hw, NFP_NET_CFG_FLBUFSZ, 10240);
 
@@ -147,8 +146,17 @@ nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
 	/* Writing new MAC to the specific port BAR address */
 	nfp_write_mac(hw, (uint8_t *)mac_addr);
 
+	new_ext_ctrl = nfp_vdpa_check_offloads();
+
+	update = NFP_NET_CFG_UPDATE_GEN;
+	ret = nfp_ext_reconfig(hw, new_ext_ctrl, update);
+	if (ret != 0)
+		return -EIO;
+
+	hw->ctrl_ext = new_ext_ctrl;
+
 	/* Enable device */
-	new_ctrl |= NFP_NET_CFG_CTRL_ENABLE;
+	new_ctrl = NFP_NET_CFG_CTRL_ENABLE;
 
 	/* Signal the NIC about the change */
 	update = NFP_NET_CFG_UPDATE_MACADDR |
