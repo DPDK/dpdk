@@ -36,6 +36,10 @@ struct nfp_vdpa_hw {
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 	uint8_t notify_region;
 	uint8_t nr_vring;
+
+	/** Software Live Migration */
+	bool sw_lm;
+	bool sw_fallback_running;
 };
 
 int nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw, struct rte_pci_device *dev);
