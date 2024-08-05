@@ -26,6 +26,8 @@
 #define NFP_VDPA_USED_RING_LEN(size) \
 		((size) * sizeof(struct vring_used_elem) + sizeof(struct vring_used))
 
+#define EPOLL_DATA_INTR        1
+
 struct nfp_vdpa_dev {
 	struct rte_pci_device *pci_dev;
 	struct rte_vdpa_device *vdev;
@@ -778,6 +780,139 @@ unlock_exit:
 }
 
 static int
+nfp_vdpa_vring_epoll_ctl(uint32_t queue_num,
+		struct nfp_vdpa_dev *device)
+{
+	int ret;
+	uint32_t qid;
+	struct epoll_event ev;
+	struct rte_vhost_vring vring;
+
+	for (qid = 0; qid < queue_num; qid++) {
+		ev.events = EPOLLIN | EPOLLPRI;
+		rte_vhost_get_vhost_vring(device->vid, qid, &vring);
+		ev.data.u64 = qid << 1 | (uint64_t)vring.kickfd << 32;
+		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD, vring.kickfd, &ev);
+		if (ret < 0) {
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u", qid);
+			return ret;
+		}
+	}
+
+	/* vDPA driver interrupt */
+	for (qid = 0; qid < queue_num; qid += 2) {
+		ev.events = EPOLLIN | EPOLLPRI;
+		/* Leave a flag to mark it's for interrupt */
+		ev.data.u64 = EPOLL_DATA_INTR | qid << 1 |
+				(uint64_t)device->intr_fd[qid] << 32;
+		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD,
+				device->intr_fd[qid], &ev);
+		if (ret < 0) {
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u", qid);
+			return ret;
+		}
+
+		nfp_vdpa_update_used_ring(device, qid);
+	}
+
+	return 0;
+}
+
+static int
+nfp_vdpa_vring_epoll_wait(uint32_t queue_num,
+		struct nfp_vdpa_dev *device)
+{
+	int i;
+	int fds;
+	int kickfd;
+	uint32_t qid;
+	struct epoll_event events[NFP_VDPA_MAX_QUEUES * 2];
+
+	for (;;) {
+		fds = epoll_wait(device->epoll_fd, events, queue_num * 2, -1);
+		if (fds < 0) {
+			if (errno == EINTR)
+				continue;
+
+			DRV_VDPA_LOG(ERR, "Epoll wait fail");
+			return -EACCES;
+		}
+
+		for (i = 0; i < fds; i++) {
+			qid = events[i].data.u32 >> 1;
+			kickfd = (uint32_t)(events[i].data.u64 >> 32);
+
+			nfp_vdpa_read_kickfd(kickfd);
+			if ((events[i].data.u32 & EPOLL_DATA_INTR) != 0) {
+				nfp_vdpa_update_used_ring(device, qid);
+				nfp_vdpa_irq_unmask(&device->hw);
+			} else {
+				nfp_vdpa_notify_queue(&device->hw, qid);
+			}
+		}
+	}
+
+	return 0;
+}
+
+static uint32_t
+nfp_vdpa_vring_relay(void *arg)
+{
+	int ret;
+	int epoll_fd;
+	uint16_t queue_id;
+	uint32_t queue_num;
+	struct nfp_vdpa_dev *device = arg;
+
+	epoll_fd = epoll_create(NFP_VDPA_MAX_QUEUES * 2);
+	if (epoll_fd < 0) {
+		DRV_VDPA_LOG(ERR, "failed to create epoll instance.");
+		return 1;
+	}
+
+	device->epoll_fd = epoll_fd;
+
+	queue_num = rte_vhost_get_vring_num(device->vid);
+
+	ret = nfp_vdpa_vring_epoll_ctl(queue_num, device);
+	if (ret != 0)
+		goto notify_exit;
+
+	/* Start relay with a first kick */
+	for (queue_id = 0; queue_id < queue_num; queue_id++)
+		nfp_vdpa_notify_queue(&device->hw, queue_id);
+
+	ret = nfp_vdpa_vring_epoll_wait(queue_num, device);
+	if (ret != 0)
+		goto notify_exit;
+
+	return 0;
+
+notify_exit:
+	close(device->epoll_fd);
+	device->epoll_fd = -1;
+
+	return 1;
+}
+
+static int
+nfp_vdpa_setup_vring_relay(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
+
+	snprintf(name, sizeof(name), "nfp_vring%d", device->vid);
+	ret = rte_thread_create_internal_control(&device->tid, name,
+			nfp_vdpa_vring_relay, (void *)device);
+	if (ret != 0) {
+		DRV_VDPA_LOG(ERR, "Failed to create vring relay pthread.");
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static int
 nfp_vdpa_sw_fallback(struct nfp_vdpa_dev *device)
 {
 	int ret;
@@ -803,10 +938,17 @@ nfp_vdpa_sw_fallback(struct nfp_vdpa_dev *device)
 	if (ret != 0)
 		goto unset_intr;
 
+	/* Setup vring relay thread */
+	ret = nfp_vdpa_setup_vring_relay(device);
+	if (ret != 0)
+		goto stop_vf;
+
 	device->hw.sw_fallback_running = true;
 
 	return 0;
 
+stop_vf:
+	nfp_vdpa_stop(device, true);
 unset_intr:
 	nfp_vdpa_disable_vfio_intr(device);
 error:
@@ -859,6 +1001,12 @@ nfp_vdpa_dev_close(int vid)
 	if (device->hw.sw_fallback_running) {
 		/* Reset VF */
 		nfp_vdpa_stop(device, true);
+
+		/* Remove interrupt setting */
+		nfp_vdpa_disable_vfio_intr(device);
+
+		/* Unset DMA map for guest memory */
+		nfp_vdpa_dma_map(device, false);
 
 		device->hw.sw_fallback_running = false;
 

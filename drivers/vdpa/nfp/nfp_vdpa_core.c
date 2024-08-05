@@ -270,3 +270,12 @@ nfp_vdpa_notify_queue(struct nfp_vdpa_hw *vdpa_hw,
 	nfp_qcp_notify_ptr_add(vdpa_hw->notify_addr[qid],
 			NFP_QCP_NOTIFY_WRITE_PTR, qid);
 }
+
+void nfp_vdpa_irq_unmask(struct nfp_vdpa_hw *vdpa_hw)
+{
+	struct nfp_hw *hw = &vdpa_hw->super;
+
+	/* Make sure all updates are written before un-masking */
+	rte_wmb();
+	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(1), NFP_NET_CFG_ICR_UNMASKED);
+}
