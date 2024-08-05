@@ -204,6 +204,7 @@ virtio_user_setup_queue_packed(struct virtqueue *vq,
 	vring->device = (void *)(uintptr_t)used_addr;
 	dev->packed_queues[queue_idx].avail_wrap_counter = true;
 	dev->packed_queues[queue_idx].used_wrap_counter = true;
+	dev->packed_queues[queue_idx].used_idx = 0;
 
 	for (i = 0; i < vring->num; i++)
 		vring->desc[i].flags = 0;
