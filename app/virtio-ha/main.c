@@ -642,6 +642,8 @@ ha_server_remove_devarg_vfio_fds(struct virtio_ha_msg *msg)
 		close(vf_dev->vf_ctx.vfio_device_fd);
 		close(vf_dev->vf_ctx.vfio_group_fd);
 		close(vf_dev->vf_ctx.vfio_container_fd);
+		if (vf_dev->vhost_fd != -1)
+			close(vf_dev->vhost_fd);
 		free(vf_dev);
 	}
 
