@@ -100,6 +100,16 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 	return 0;
 }
 
+static void
+nfp_vdpa_hw_queue_init(struct nfp_vdpa_hw *vdpa_hw)
+{
+	/* Distribute ring information to firmware */
+	nn_cfg_writel(&vdpa_hw->super, NFP_NET_CFG_TX_USED_INDEX,
+			vdpa_hw->vring[1].last_used_idx);
+	nn_cfg_writel(&vdpa_hw->super, NFP_NET_CFG_RX_USED_INDEX,
+			vdpa_hw->vring[0].last_used_idx);
+}
+
 static uint32_t
 nfp_vdpa_check_offloads(void)
 {
@@ -197,6 +207,9 @@ nfp_vdpa_queue_config(struct nfp_vdpa_hw *vdpa_hw,
 	}
 
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(2), vdpa_hw->vring[0].used);
+
+	if (!relay)
+		nfp_vdpa_hw_queue_init(vdpa_hw);
 
 	rte_wmb();
 }
