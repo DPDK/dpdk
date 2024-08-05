@@ -109,7 +109,8 @@ nfp_vdpa_check_offloads(void)
 
 static int
 nfp_vdpa_vf_config(struct nfp_hw *hw,
-		int vid)
+		int vid,
+		bool relay)
 {
 	int ret;
 	uint32_t update;
@@ -133,6 +134,10 @@ nfp_vdpa_vf_config(struct nfp_hw *hw,
 	nfp_write_mac(hw, (uint8_t *)mac_addr);
 
 	new_ext_ctrl = nfp_vdpa_check_offloads();
+	if (relay)
+		new_ext_ctrl |= NFP_NET_CFG_CTRL_LM_RELAY;
+	else
+		new_ext_ctrl |= NFP_NET_CFG_CTRL_SWLM;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
 	ret = nfp_ext_reconfig(hw, new_ext_ctrl, update);
@@ -149,6 +154,15 @@ nfp_vdpa_vf_config(struct nfp_hw *hw,
 			NFP_NET_CFG_UPDATE_GEN |
 			NFP_NET_CFG_UPDATE_RING;
 
+	if (relay) {
+		update |= NFP_NET_CFG_UPDATE_MSIX;
+
+		/* Enable misx interrupt for vdpa relay */
+		new_ctrl |= NFP_NET_CFG_CTRL_MSIX_TX_OFF;
+
+		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 1);
+	}
+
 	ret = nfp_reconfig(hw, new_ctrl, update);
 	if (ret < 0)
 		return -EIO;
@@ -164,20 +178,24 @@ nfp_vdpa_vf_config(struct nfp_hw *hw,
 }
 
 static void
-nfp_vdpa_queue_config(struct nfp_vdpa_hw *vdpa_hw)
+nfp_vdpa_queue_config(struct nfp_vdpa_hw *vdpa_hw,
+		bool relay)
 {
 	struct nfp_hw *hw = &vdpa_hw->super;
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(0), vdpa_hw->vring[1].desc);
-	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(0),
-			rte_log2_u32(vdpa_hw->vring[1].size));
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(1), vdpa_hw->vring[1].avail);
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(2), vdpa_hw->vring[1].used);
+	if (!relay) {
+		nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(0), vdpa_hw->vring[1].desc);
+		nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(0),
+				rte_log2_u32(vdpa_hw->vring[1].size));
+		nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(1), vdpa_hw->vring[1].avail);
+		nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(2), vdpa_hw->vring[1].used);
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(0), vdpa_hw->vring[0].desc);
-	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(0),
-			rte_log2_u32(vdpa_hw->vring[0].size));
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(1), vdpa_hw->vring[0].avail);
+		nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(0), vdpa_hw->vring[0].desc);
+		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(0),
+				rte_log2_u32(vdpa_hw->vring[0].size));
+		nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(1), vdpa_hw->vring[0].avail);
+	}
+
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(2), vdpa_hw->vring[0].used);
 
 	rte_wmb();
@@ -189,12 +207,23 @@ nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
 {
 	struct nfp_hw *hw = &vdpa_hw->super;
 
-	nfp_vdpa_queue_config(vdpa_hw);
+	nfp_vdpa_queue_config(vdpa_hw, false);
 
 	nfp_disable_queues(hw);
 	nfp_enable_queues(hw, NFP_VDPA_MAX_QUEUES, NFP_VDPA_MAX_QUEUES);
 
-	return nfp_vdpa_vf_config(hw, vid);
+	return nfp_vdpa_vf_config(hw, vid, false);
+}
+
+int
+nfp_vdpa_relay_hw_start(struct nfp_vdpa_hw *vdpa_hw,
+		int vid)
+{
+	struct nfp_hw *hw = &vdpa_hw->super;
+
+	nfp_vdpa_queue_config(vdpa_hw, true);
+
+	return nfp_vdpa_vf_config(hw, vid, true);
 }
 
 void

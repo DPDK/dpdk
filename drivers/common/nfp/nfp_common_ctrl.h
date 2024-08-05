@@ -207,6 +207,9 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_CTRL_FLOW_STEER       (0x1 << 8) /**< Flow Steering */
 #define NFP_NET_CFG_CTRL_VIRTIO           (0x1 << 10) /**< Virtio offload */
 #define NFP_NET_CFG_CTRL_IN_ORDER         (0x1 << 11) /**< Virtio in-order flag */
+#define NFP_NET_CFG_CTRL_LM_RELAY         (0x1 << 12) /**< Virtio live migration relay start */
+#define NFP_NET_CFG_CTRL_NOTIFY_DATA      (0x1 << 13) /**< Virtio notification data flag */
+#define NFP_NET_CFG_CTRL_SWLM             (0x1 << 14) /**< Virtio SW live migration enable */
 #define NFP_NET_CFG_CTRL_USO              (0x1 << 16) /**< UDP segmentation offload */
 
 #define NFP_NET_CFG_CAP_WORD1           0x00a4
