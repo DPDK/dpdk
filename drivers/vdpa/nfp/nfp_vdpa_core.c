@@ -55,7 +55,10 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 		struct rte_pci_device *pci_dev)
 {
 	uint32_t queue;
+	uint8_t *tx_bar;
+	uint32_t start_q;
 	struct nfp_hw *hw;
+	uint32_t tx_bar_off;
 	uint8_t *notify_base;
 
 	hw = &vdpa_hw->super;
@@ -81,6 +84,12 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 				idx, vdpa_hw->notify_addr[idx],
 				idx + 1, vdpa_hw->notify_addr[idx + 1]);
 	}
+
+	/* NFP vDPA cfg queue setup */
+	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
+	tx_bar_off = start_q * NFP_QCP_QUEUE_ADDR_SZ;
+	tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
+	hw->qcp_cfg = tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
 
 	vdpa_hw->features = (1ULL << VIRTIO_F_VERSION_1) |
 			(1ULL << VIRTIO_F_IN_ORDER) |
