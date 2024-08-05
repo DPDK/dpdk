@@ -223,6 +223,7 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP  (0x1 << 3) /**< SA short match lookup */
 #define NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP  (0x1 << 4) /**< SA long match lookup */
 #define NFP_NET_CFG_CTRL_MULTI_PF         (0x1 << 5)
+#define NFP_NET_CFG_CTRL_VIRTIO           (0x1 << 10) /**< Virtio offload */
 #define NFP_NET_CFG_CTRL_IN_ORDER         (0x1 << 11) /**< Virtio in-order flag */
 
 #define NFP_NET_CFG_CAP_WORD1           0x00a4
