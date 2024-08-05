@@ -105,8 +105,8 @@ nfp_vdpa_check_offloads(void)
 			NFP_NET_CFG_CTRL_IN_ORDER;
 }
 
-int
-nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
+static int
+nfp_vdpa_vf_config(struct nfp_hw *hw,
 		int vid)
 {
 	int ret;
@@ -114,23 +114,7 @@ nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
 	uint32_t new_ctrl;
 	uint32_t new_ext_ctrl;
 	struct timespec wait_tst;
-	struct nfp_hw *hw = &vdpa_hw->super;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
-
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(0), vdpa_hw->vring[1].desc);
-	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(0), rte_log2_u32(vdpa_hw->vring[1].size));
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(1), vdpa_hw->vring[1].avail);
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(2), vdpa_hw->vring[1].used);
-
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(0), vdpa_hw->vring[0].desc);
-	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(0), rte_log2_u32(vdpa_hw->vring[0].size));
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(1), vdpa_hw->vring[0].avail);
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(2), vdpa_hw->vring[0].used);
-
-	rte_wmb();
-
-	nfp_disable_queues(hw);
-	nfp_enable_queues(hw, NFP_VDPA_MAX_QUEUES, NFP_VDPA_MAX_QUEUES);
 
 	nn_cfg_writel(hw, NFP_NET_CFG_MTU, 9216);
 	nn_cfg_writel(hw, NFP_NET_CFG_FLBUFSZ, 10240);
@@ -175,6 +159,40 @@ nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
 	nanosleep(&wait_tst, 0);
 
 	return 0;
+}
+
+static void
+nfp_vdpa_queue_config(struct nfp_vdpa_hw *vdpa_hw)
+{
+	struct nfp_hw *hw = &vdpa_hw->super;
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(0), vdpa_hw->vring[1].desc);
+	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(0),
+			rte_log2_u32(vdpa_hw->vring[1].size));
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(1), vdpa_hw->vring[1].avail);
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(2), vdpa_hw->vring[1].used);
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(0), vdpa_hw->vring[0].desc);
+	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(0),
+			rte_log2_u32(vdpa_hw->vring[0].size));
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(1), vdpa_hw->vring[0].avail);
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(2), vdpa_hw->vring[0].used);
+
+	rte_wmb();
+}
+
+int
+nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw,
+		int vid)
+{
+	struct nfp_hw *hw = &vdpa_hw->super;
+
+	nfp_vdpa_queue_config(vdpa_hw);
+
+	nfp_disable_queues(hw);
+	nfp_enable_queues(hw, NFP_VDPA_MAX_QUEUES, NFP_VDPA_MAX_QUEUES);
+
+	return nfp_vdpa_vf_config(hw, vid);
 }
 
 void
