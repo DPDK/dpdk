@@ -336,8 +336,10 @@ nfp_vdpa_stop(struct nfp_vdpa_dev *device)
 }
 
 static int
-nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device)
+nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device,
+		bool relay)
 {
+	int fd;
 	int ret;
 	uint16_t i;
 	int *fd_ptr;
@@ -364,6 +366,19 @@ nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device)
 	for (i = 0; i < nr_vring; i++) {
 		rte_vhost_get_vhost_vring(device->vid, i, &vring);
 		fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd;
+	}
+
+	if (relay) {
+		for (i = 0; i < nr_vring; i += 2) {
+			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+			if (fd < 0) {
+				DRV_VDPA_LOG(ERR, "Can't setup eventfd");
+				return -EINVAL;
+			}
+
+			device->intr_fd[i] = fd;
+			fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = fd;
+		}
 	}
 
 	ret = ioctl(device->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
@@ -556,7 +571,7 @@ update_datapath(struct nfp_vdpa_dev *device)
 		if (ret != 0)
 			goto unlock_exit;
 
-		ret = nfp_vdpa_enable_vfio_intr(device);
+		ret = nfp_vdpa_enable_vfio_intr(device, false);
 		if (ret != 0)
 			goto dma_map_rollback;
 
@@ -618,6 +633,11 @@ nfp_vdpa_sw_fallback(struct nfp_vdpa_dev *device)
 		DRV_VDPA_LOG(ERR, "Unset the host notifier failed.");
 		goto error;
 	}
+
+	/* Setup interrupt for vring relay */
+	ret = nfp_vdpa_enable_vfio_intr(device, true);
+	if (ret != 0)
+		goto error;
 
 	device->hw.sw_fallback_running = true;
 
