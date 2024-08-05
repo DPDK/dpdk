@@ -604,6 +604,30 @@ unlock_exit:
 }
 
 static int
+nfp_vdpa_sw_fallback(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	int vid = device->vid;
+
+	/* Stop the direct IO data path */
+	nfp_vdpa_unset_notify_relay(device);
+	nfp_vdpa_disable_vfio_intr(device);
+
+	ret = rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, false);
+	if ((ret != 0) && (ret != -ENOTSUP)) {
+		DRV_VDPA_LOG(ERR, "Unset the host notifier failed.");
+		goto error;
+	}
+
+	device->hw.sw_fallback_running = true;
+
+	return 0;
+
+error:
+	return ret;
+}
+
+static int
 nfp_vdpa_dev_config(int vid)
 {
 	int ret;
@@ -646,8 +670,18 @@ nfp_vdpa_dev_close(int vid)
 	}
 
 	device = node->device;
-	rte_atomic_store_explicit(&device->dev_attached, 0, rte_memory_order_relaxed);
-	update_datapath(device);
+	if (device->hw.sw_fallback_running) {
+		device->hw.sw_fallback_running = false;
+
+		rte_atomic_store_explicit(&device->dev_attached, 0,
+				rte_memory_order_relaxed);
+		rte_atomic_store_explicit(&device->running, 0,
+				rte_memory_order_relaxed);
+	} else {
+		rte_atomic_store_explicit(&device->dev_attached, 0,
+				rte_memory_order_relaxed);
+		update_datapath(device);
+	}
 
 	return 0;
 }
@@ -770,7 +804,35 @@ nfp_vdpa_get_protocol_features(struct rte_vdpa_device *vdev __rte_unused,
 static int
 nfp_vdpa_set_features(int32_t vid)
 {
+	int ret;
+	uint64_t features = 0;
+	struct nfp_vdpa_dev *device;
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+
 	DRV_VDPA_LOG(DEBUG, "Start vid=%d", vid);
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	rte_vhost_get_negotiated_features(vid, &features);
+
+	if (RTE_VHOST_NEED_LOG(features) == 0)
+		return 0;
+
+	device = node->device;
+	if (device->hw.sw_lm) {
+		ret = nfp_vdpa_sw_fallback(device);
+		if (ret != 0) {
+			DRV_VDPA_LOG(ERR, "Software fallback start failed");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 

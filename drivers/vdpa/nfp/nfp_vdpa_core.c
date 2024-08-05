@@ -91,6 +91,8 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 	tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
 	hw->qcp_cfg = tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
 
+	vdpa_hw->sw_lm = true;
+
 	vdpa_hw->features = (1ULL << VIRTIO_F_VERSION_1) |
 			(1ULL << VIRTIO_F_IN_ORDER) |
 			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
