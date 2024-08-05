@@ -95,6 +95,7 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 
 	vdpa_hw->features = (1ULL << VIRTIO_F_VERSION_1) |
 			(1ULL << VIRTIO_F_IN_ORDER) |
+			(1ULL << VHOST_F_LOG_ALL) |
 			(1ULL << VHOST_USER_F_PROTOCOL_FEATURES);
 
 	return 0;
