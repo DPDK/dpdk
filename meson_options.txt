@@ -30,6 +30,8 @@ option('include_subdir_arch', type: 'string', value: '', description:
        'subdirectory where to install arch-dependent headers')
 option('kernel_dir', type: 'string', value: '', description:
        'Path to the kernel for building kernel modules. Headers must be in $kernel_dir or $kernel_dir/build. Modules will be installed in /lib/modules.')
+option('log_ts', type: 'boolean', value: 'false', description:
+       'Add timestamp in the beginning of every log')
 option('machine', type: 'string', value: 'auto', description:
        'Alias of cpu_instruction_set.')
 option('max_ethports', type: 'integer', value: 32, description:

@@ -482,3 +482,5 @@ if get_option('default_library') == 'both'
  "default_library" to either "static" or "shared" to select default linkage
  for apps and any examples.''')
 endif
+
+dpdk_conf.set('RTE_LOG_TIMESTAMP', get_option('log_ts'))
