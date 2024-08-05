@@ -53,7 +53,9 @@ static const char *virtio_err_str[] =
 	"Can't allocate iommu domain",
 	"Vhost socket file already exists",
 	"Exceed max VFIO group number",
-	"VF device is restoring", /*40*/
+	"Fail to save state", /*40*/
+	"Fail to store fds to HA",
+	"VF device is restoring",
 };
 
 const char *rte_vdpa_err_str_get(int32_t err)

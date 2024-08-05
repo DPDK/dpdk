@@ -2559,8 +2559,10 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (priv->restore) {
 		ret = virtio_vdpa_save_state(priv);
-		if (ret)
+		if (ret) {
+			rte_errno = VFE_VDPA_ERR_ADD_VF_SAVE_STATE;
 			goto error;
+		}
 	}
 
 	/* After restart from HA and interrupts alloc might cause traffic stop,
@@ -2607,6 +2609,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			priv->vfio_group_fd, priv->vfio_dev_fd);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to store vf devargs and vfio fds", devname);
+			rte_errno = VFE_VDPA_ERR_ADD_VF_STORE_FD;
 			goto error;
 		}
 		priv->fd_args_stored = true;
