@@ -11,6 +11,8 @@
 #include <nfp_common_pci.h>
 #include <nfp_dev.h>
 #include <rte_vfio.h>
+#include <rte_eal_paging.h>
+#include <rte_malloc.h>
 #include <vdpa_driver.h>
 
 #include "nfp_vdpa_core.h"
@@ -20,6 +22,9 @@
 
 #define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
 		sizeof(int) * (NFP_VDPA_MAX_QUEUES * 2 + 1))
+
+#define NFP_VDPA_USED_RING_LEN(size) \
+		((size) * sizeof(struct vring_used_elem) + sizeof(struct vring_used))
 
 struct nfp_vdpa_dev {
 	struct rte_pci_device *pci_dev;
@@ -261,15 +266,85 @@ nfp_vdpa_qva_to_gpa(int vid,
 	return gpa;
 }
 
+static void
+nfp_vdpa_relay_vring_free(struct nfp_vdpa_dev *device,
+		uint16_t vring_index)
+{
+	uint16_t i;
+	uint64_t size;
+	struct rte_vhost_vring vring;
+	uint64_t m_vring_iova = NFP_VDPA_RELAY_VRING;
+
+	for (i = 0; i < vring_index; i++) {
+		rte_vhost_get_vhost_vring(device->vid, i, &vring);
+
+		size = RTE_ALIGN_CEIL(vring_size(vring.size, rte_mem_page_size()),
+				rte_mem_page_size());
+		rte_vfio_container_dma_unmap(device->vfio_container_fd,
+				(uint64_t)(uintptr_t)device->hw.m_vring[i].desc,
+				m_vring_iova, size);
+
+		rte_free(device->hw.m_vring[i].desc);
+		m_vring_iova += size;
+	}
+}
+
 static int
-nfp_vdpa_start(struct nfp_vdpa_dev *device)
+nfp_vdpa_relay_vring_alloc(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	uint16_t i;
+	uint64_t size;
+	void *vring_buf;
+	uint64_t page_size;
+	struct rte_vhost_vring vring;
+	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+	uint64_t m_vring_iova = NFP_VDPA_RELAY_VRING;
+
+	page_size = rte_mem_page_size();
+
+	for (i = 0; i < vdpa_hw->nr_vring; i++) {
+		rte_vhost_get_vhost_vring(device->vid, i, &vring);
+
+		size = RTE_ALIGN_CEIL(vring_size(vring.size, page_size), page_size);
+		vring_buf = rte_zmalloc("nfp_vdpa_relay", size, page_size);
+		if (vring_buf == NULL)
+			goto vring_free_all;
+
+		vring_init(&vdpa_hw->m_vring[i], vring.size, vring_buf, page_size);
+
+		ret = rte_vfio_container_dma_map(device->vfio_container_fd,
+				(uint64_t)(uintptr_t)vring_buf, m_vring_iova, size);
+		if (ret != 0) {
+			DRV_VDPA_LOG(ERR, "vDPA vring relay dma map failed.");
+			goto vring_free_one;
+		}
+
+		m_vring_iova += size;
+	}
+
+	return 0;
+
+vring_free_one:
+	rte_free(device->hw.m_vring[i].desc);
+vring_free_all:
+	nfp_vdpa_relay_vring_free(device, i);
+
+	return -ENOSPC;
+}
+
+static int
+nfp_vdpa_start(struct nfp_vdpa_dev *device,
+		bool relay)
 {
 	int ret;
 	int vid;
 	uint16_t i;
 	uint64_t gpa;
+	uint16_t size;
 	struct rte_vhost_vring vring;
 	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+	uint64_t m_vring_iova = NFP_VDPA_RELAY_VRING;
 
 	vid = device->vid;
 	vdpa_hw->nr_vring = rte_vhost_get_vring_num(vid);
@@ -278,15 +353,21 @@ nfp_vdpa_start(struct nfp_vdpa_dev *device)
 	if (ret != 0)
 		return ret;
 
+	if (relay) {
+		ret = nfp_vdpa_relay_vring_alloc(device);
+		if (ret != 0)
+			return ret;
+	}
+
 	for (i = 0; i < vdpa_hw->nr_vring; i++) {
 		ret = rte_vhost_get_vhost_vring(vid, i, &vring);
 		if (ret != 0)
-			return ret;
+			goto relay_vring_free;
 
 		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.desc);
 		if (gpa == 0) {
 			DRV_VDPA_LOG(ERR, "Fail to get GPA for descriptor ring.");
-			return -1;
+			goto relay_vring_free;
 		}
 
 		vdpa_hw->vring[i].desc = gpa;
@@ -294,33 +375,107 @@ nfp_vdpa_start(struct nfp_vdpa_dev *device)
 		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.avail);
 		if (gpa == 0) {
 			DRV_VDPA_LOG(ERR, "Fail to get GPA for available ring.");
-			return -1;
+			goto relay_vring_free;
 		}
 
 		vdpa_hw->vring[i].avail = gpa;
 
-		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.used);
-		if (gpa == 0) {
-			DRV_VDPA_LOG(ERR, "Fail to get GPA for used ring.");
-			return -1;
+		/* Direct I/O for Tx queue, relay for Rx queue */
+		if (relay && ((i & 1) == 0)) {
+			vdpa_hw->vring[i].used = m_vring_iova +
+					(char *)vdpa_hw->m_vring[i].used -
+					(char *)vdpa_hw->m_vring[i].desc;
+
+			ret = rte_vhost_get_vring_base(vid, i,
+					&vdpa_hw->m_vring[i].avail->idx,
+					&vdpa_hw->m_vring[i].used->idx);
+			if (ret != 0)
+				goto relay_vring_free;
+		} else {
+			gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.used);
+			if (gpa == 0) {
+				DRV_VDPA_LOG(ERR, "Fail to get GPA for used ring.");
+				goto relay_vring_free;
+			}
+
+			vdpa_hw->vring[i].used = gpa;
 		}
 
-		vdpa_hw->vring[i].used = gpa;
-
 		vdpa_hw->vring[i].size = vring.size;
+
+		if (relay) {
+			size = RTE_ALIGN_CEIL(vring_size(vring.size,
+					rte_mem_page_size()), rte_mem_page_size());
+			m_vring_iova += size;
+		}
 
 		ret = rte_vhost_get_vring_base(vid, i,
 				&vdpa_hw->vring[i].last_avail_idx,
 				&vdpa_hw->vring[i].last_used_idx);
 		if (ret != 0)
-			return ret;
+			goto relay_vring_free;
 	}
 
-	return nfp_vdpa_hw_start(&device->hw, vid);
+	if (relay)
+		return nfp_vdpa_relay_hw_start(&device->hw, vid);
+	else
+		return nfp_vdpa_hw_start(&device->hw, vid);
+
+relay_vring_free:
+	if (relay)
+		nfp_vdpa_relay_vring_free(device, vdpa_hw->nr_vring);
+
+	return -EFAULT;
 }
 
 static void
-nfp_vdpa_stop(struct nfp_vdpa_dev *device)
+nfp_vdpa_update_used_ring(struct nfp_vdpa_dev *dev,
+		uint16_t qid)
+{
+	rte_vdpa_relay_vring_used(dev->vid, qid, &dev->hw.m_vring[qid]);
+	rte_vhost_vring_call(dev->vid, qid);
+}
+
+static void
+nfp_vdpa_relay_stop(struct nfp_vdpa_dev *device)
+{
+	int vid;
+	uint32_t i;
+	uint64_t len;
+	struct rte_vhost_vring vring;
+	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+
+	nfp_vdpa_hw_stop(vdpa_hw);
+
+	vid = device->vid;
+	for (i = 0; i < vdpa_hw->nr_vring; i++) {
+		/* Synchronize remaining new used entries if any */
+		if ((i & 1) == 0)
+			nfp_vdpa_update_used_ring(device, i);
+
+		rte_vhost_get_vhost_vring(vid, i, &vring);
+		len = NFP_VDPA_USED_RING_LEN(vring.size);
+		vdpa_hw->vring[i].last_avail_idx = vring.avail->idx;
+		vdpa_hw->vring[i].last_used_idx = vring.used->idx;
+
+		rte_vhost_set_vring_base(vid, i,
+				vdpa_hw->vring[i].last_avail_idx,
+				vdpa_hw->vring[i].last_used_idx);
+
+		rte_vhost_log_used_vring(vid, i, 0, len);
+
+		if (vring.used->idx != vring.avail->idx)
+			rte_atomic_store_explicit(
+					(unsigned short __rte_atomic *)&vring.used->idx,
+					vring.avail->idx, rte_memory_order_release);
+	}
+
+	nfp_vdpa_relay_vring_free(device, vdpa_hw->nr_vring);
+}
+
+static void
+nfp_vdpa_stop(struct nfp_vdpa_dev *device,
+		bool relay)
 {
 	int vid;
 	uint32_t i;
@@ -329,10 +484,14 @@ nfp_vdpa_stop(struct nfp_vdpa_dev *device)
 	nfp_vdpa_hw_stop(vdpa_hw);
 
 	vid = device->vid;
-	for (i = 0; i < vdpa_hw->nr_vring; i++)
-		rte_vhost_set_vring_base(vid, i,
-				vdpa_hw->vring[i].last_avail_idx,
-				vdpa_hw->vring[i].last_used_idx);
+	if (relay)
+		nfp_vdpa_relay_stop(device);
+	else
+		for (i = 0; i < vdpa_hw->nr_vring; i++)
+			rte_vhost_set_vring_base(vid, i,
+					vdpa_hw->vring[i].last_avail_idx,
+					vdpa_hw->vring[i].last_used_idx);
+
 }
 
 static int
@@ -575,7 +734,7 @@ update_datapath(struct nfp_vdpa_dev *device)
 		if (ret != 0)
 			goto dma_map_rollback;
 
-		ret = nfp_vdpa_start(device);
+		ret = nfp_vdpa_start(device, false);
 		if (ret != 0)
 			goto disable_vfio_intr;
 
@@ -591,7 +750,7 @@ update_datapath(struct nfp_vdpa_dev *device)
 					rte_memory_order_relaxed) != 0))) {
 		nfp_vdpa_unset_notify_relay(device);
 
-		nfp_vdpa_stop(device);
+		nfp_vdpa_stop(device, false);
 
 		ret = nfp_vdpa_disable_vfio_intr(device);
 		if (ret != 0)
@@ -608,7 +767,7 @@ update_datapath(struct nfp_vdpa_dev *device)
 	return 0;
 
 vdpa_stop:
-	nfp_vdpa_stop(device);
+	nfp_vdpa_stop(device, false);
 disable_vfio_intr:
 	nfp_vdpa_disable_vfio_intr(device);
 dma_map_rollback:
@@ -639,10 +798,17 @@ nfp_vdpa_sw_fallback(struct nfp_vdpa_dev *device)
 	if (ret != 0)
 		goto error;
 
+	/* Config the VF */
+	ret = nfp_vdpa_start(device, true);
+	if (ret != 0)
+		goto unset_intr;
+
 	device->hw.sw_fallback_running = true;
 
 	return 0;
 
+unset_intr:
+	nfp_vdpa_disable_vfio_intr(device);
 error:
 	return ret;
 }
@@ -691,6 +857,9 @@ nfp_vdpa_dev_close(int vid)
 
 	device = node->device;
 	if (device->hw.sw_fallback_running) {
+		/* Reset VF */
+		nfp_vdpa_stop(device, true);
+
 		device->hw.sw_fallback_running = false;
 
 		rte_atomic_store_explicit(&device->dev_attached, 0,

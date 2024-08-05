@@ -9,11 +9,14 @@
 #include <bus_pci_driver.h>
 #include <nfp_common.h>
 #include <rte_ether.h>
+#include <rte_vhost.h>
 
 #define NFP_VDPA_MAX_QUEUES         1
 
 #define NFP_VDPA_NOTIFY_ADDR_BASE        0x4000
 #define NFP_VDPA_NOTIFY_ADDR_INTERVAL    0x1000
+
+#define NFP_VDPA_RELAY_VRING             0xd0000000
 
 struct nfp_vdpa_vring {
 	uint64_t desc;
@@ -40,11 +43,16 @@ struct nfp_vdpa_hw {
 	/** Software Live Migration */
 	bool sw_lm;
 	bool sw_fallback_running;
+
+	/** Mediated vring for SW fallback */
+	struct vring m_vring[NFP_VDPA_MAX_QUEUES * 2];
 };
 
 int nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw, struct rte_pci_device *dev);
 
 int nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw, int vid);
+
+int nfp_vdpa_relay_hw_start(struct nfp_vdpa_hw *vdpa_hw, int vid);
 
 void nfp_vdpa_hw_stop(struct nfp_vdpa_hw *vdpa_hw);
 
