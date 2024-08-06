@@ -179,6 +179,7 @@ struct __rte_cache_aligned dpaa2_queue {
 	uint16_t resv;
 	uint64_t offloads;
 	uint64_t lpbk_cntx;
+	uint8_t data_stashing_off;
 };
 
 struct swp_active_dqs {
@@ -461,6 +462,49 @@ static inline
 struct qbman_result *get_swp_active_dqs(uint16_t dpio_index)
 {
 	return rte_global_active_dqs_list[dpio_index].global_active_dqs;
+}
+
+/* 00 00 00 - last 6 bit represent data, annotation,
+ * context stashing setting 01 01 00 (0x14)
+ * (in following order ->DS AS CS)
+ * to enable 1 line data, 1 line annotation.
+ * For LX2, this setting should be 01 00 00 (0x10)
+ */
+#define DPAA2_FLC_STASHING_MAX_BIT_SIZE 2
+#define DPAA2_FLC_STASHING_MAX_CACHE_LINE \
+	((1ULL << DPAA2_FLC_STASHING_MAX_BIT_SIZE) - 1)
+
+enum dpaa2_flc_stashing_type {
+	DPAA2_FLC_CNTX_STASHING = 0,
+	DPAA2_FLC_ANNO_STASHING =
+		DPAA2_FLC_CNTX_STASHING + DPAA2_FLC_STASHING_MAX_BIT_SIZE,
+	DPAA2_FLC_DATA_STASHING =
+		DPAA2_FLC_ANNO_STASHING + DPAA2_FLC_STASHING_MAX_BIT_SIZE,
+	DPAA2_FLC_END_STASHING =
+		DPAA2_FLC_DATA_STASHING + DPAA2_FLC_STASHING_MAX_BIT_SIZE
+};
+
+#define DPAA2_STASHING_ALIGN_SIZE (1 << DPAA2_FLC_END_STASHING)
+
+static inline void
+dpaa2_flc_stashing_set(enum dpaa2_flc_stashing_type type,
+	uint8_t cache_line, uint64_t *flc)
+{
+	RTE_ASSERT(cache_line <= DPAA2_FLC_STASHING_MAX_CACHE_LINE);
+	RTE_ASSERT(type == DPAA2_FLC_CNTX_STASHING ||
+		type == DPAA2_FLC_ANNO_STASHING ||
+		type == DPAA2_FLC_DATA_STASHING);
+
+	(*flc) &= ~(DPAA2_FLC_STASHING_MAX_CACHE_LINE << type);
+	(*flc) |= (cache_line << type);
+}
+
+static inline void
+dpaa2_flc_stashing_clear_all(uint64_t *flc)
+{
+	dpaa2_flc_stashing_set(DPAA2_FLC_CNTX_STASHING, 0, flc);
+	dpaa2_flc_stashing_set(DPAA2_FLC_ANNO_STASHING, 0, flc);
+	dpaa2_flc_stashing_set(DPAA2_FLC_DATA_STASHING, 0, flc);
 }
 
 static inline
