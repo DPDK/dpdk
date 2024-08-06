@@ -3444,6 +3444,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		}
 	} else {
 		DPAA2_SEC_ERR("Invalid crypto type");
+		rte_free(priv);
 		return -EINVAL;
 	}
 
