@@ -3391,6 +3391,7 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 	struct alginfo *p_authdata = NULL;
 	int bufsize = -1;
 	struct sec_flow_context *flc;
+	uint64_t flc_iova;
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
 	int swap = true;
 #else
@@ -3398,6 +3399,8 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 #endif
 
 	PMD_INIT_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
 
 	memset(session, 0, sizeof(dpaa2_sec_session));
 
@@ -3648,14 +3651,13 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		goto out;
 	}
 
-	/* Enable the stashing control bit */
+	flc_iova = DPAA2_VADDR_TO_IOVA(flc);
+	/* Enable the stashing control bit and data stashing only.*/
 	DPAA2_SET_FLC_RSC(flc);
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq) | 0x14);
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
+	dpaa2_flc_stashing_set(DPAA2_FLC_DATA_STASHING, 1,
+		&flc_iova);
+	flc->word2_rflc_31_0 = lower_32_bits(flc_iova);
+	flc->word3_rflc_63_32 = upper_32_bits(flc_iova);
 
 	flc->word1_sdl = (uint8_t)bufsize;
 
