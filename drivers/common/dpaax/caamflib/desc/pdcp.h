@@ -1220,6 +1220,11 @@ pdcp_insert_cplane_snow_aes_op(struct program *p,
 		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
 		MOVEB(p, CONTEXT1, 0, MATH3, 0, 4, WAITCOMP | IMMED);
 
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
+
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
 		     CLRW_CLR_C1CTX |
@@ -1920,6 +1925,11 @@ pdcp_insert_cplane_zuc_aes_op(struct program *p,
 		SEQFIFOLOAD(p, MSG1, 0, VLF | LAST1 | FLUSH1);
 
 		MOVEB(p, OFIFO, 0, MATH3, 0, 4, IMMED);
+
+		/* conditional jump with calm added to ensure that the
+		 * previous processing has been completed
+		 */
+		JUMP(p, 1, LOCAL_JUMP, ALL_TRUE, CALM);
 
 		LOAD(p, CLRW_RESET_CLS1_CHA |
 		     CLRW_CLR_C1KEY |
