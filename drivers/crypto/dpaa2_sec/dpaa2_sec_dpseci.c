@@ -2007,7 +2007,7 @@ dpaa2_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
 	struct dpseci_rx_queue_cfg cfg;
 	int32_t retcode;
-	char str[30];
+	char str[RTE_MEMZONE_NAMESIZE];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2067,8 +2067,7 @@ dpaa2_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		return -ENOMEM;
 	}
 
-	cfg.options = cfg.options | DPSECI_QUEUE_OPT_USER_CTX;
-	cfg.user_ctx = (size_t)(&qp->rx_vq);
+	cfg.dest_cfg.dest_type = DPSECI_DEST_NONE;
 	retcode = dpseci_set_rx_queue(dpseci, CMD_PRI_LOW, priv->token,
 				      qp_id, &cfg);
 	return retcode;
@@ -3062,14 +3061,19 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 	struct alginfo authdata, cipherdata;
 	int bufsize;
 	struct sec_flow_context *flc;
+	uint64_t flc_iova;
 	int ret = -1;
 
 	PMD_INIT_FUNC_TRACE();
 
-	priv = (struct ctxt_priv *)rte_zmalloc(NULL,
-				sizeof(struct ctxt_priv) +
-				sizeof(struct sec_flc_desc),
-				RTE_CACHE_LINE_SIZE);
+	RTE_SET_USED(dev);
+
+	/** Make FLC address to align with stashing, low 6 bits are used
+	 * control stashing.
+	 */
+	priv = rte_zmalloc(NULL, sizeof(struct ctxt_priv) +
+		sizeof(struct sec_flc_desc),
+		DPAA2_STASHING_ALIGN_SIZE);
 
 	if (priv == NULL) {
 		DPAA2_SEC_ERR("No memory for priv CTXT");
@@ -3079,10 +3083,12 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 	flc = &priv->flc_desc[0].flc;
 
 	if (ipsec_xform->life.bytes_hard_limit != 0 ||
-	    ipsec_xform->life.bytes_soft_limit != 0 ||
-	    ipsec_xform->life.packets_hard_limit != 0 ||
-	    ipsec_xform->life.packets_soft_limit != 0)
+		ipsec_xform->life.bytes_soft_limit != 0 ||
+		ipsec_xform->life.packets_hard_limit != 0 ||
+		ipsec_xform->life.packets_soft_limit != 0) {
+		rte_free(priv);
 		return -ENOTSUP;
+	}
 
 	memset(session, 0, sizeof(dpaa2_sec_session));
 
@@ -3332,24 +3338,26 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 				1, 0, (rta_sec_era >= RTA_SEC_ERA_10) ?
 				SHR_WAIT : SHR_SERIAL,
 				&decap_pdb, &cipherdata, &authdata);
-	} else
+	} else {
+		ret = -EINVAL;
 		goto out;
+	}
 
 	if (bufsize < 0) {
+		ret = -EINVAL;
 		DPAA2_SEC_ERR("Crypto: Invalid SEC-DESC buffer length");
 		goto out;
 	}
 
 	flc->word1_sdl = (uint8_t)bufsize;
 
-	/* Enable the stashing control bit */
+	flc_iova = DPAA2_VADDR_TO_IOVA(flc);
+	/* Enable the stashing control bit and data stashing only.*/
 	DPAA2_SET_FLC_RSC(flc);
-	flc->word2_rflc_31_0 = lower_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq) | 0x14);
-	flc->word3_rflc_63_32 = upper_32_bits(
-			(size_t)&(((struct dpaa2_sec_qp *)
-			dev->data->queue_pairs[0])->rx_vq));
+	dpaa2_flc_stashing_set(DPAA2_FLC_DATA_STASHING, 1,
+		&flc_iova);
+	flc->word2_rflc_31_0 = lower_32_bits(flc_iova);
+	flc->word3_rflc_63_32 = upper_32_bits(flc_iova);
 
 	/* Set EWS bit i.e. enable write-safe */
 	DPAA2_SET_FLC_EWS(flc);
