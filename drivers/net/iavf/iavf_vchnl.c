@@ -255,8 +255,8 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 		case VIRTCHNL_EVENT_LINK_CHANGE:
 			vf->link_up =
 				vpe->event_data.link_event.link_status;
-			if (vf->vf_res->vf_cap_flags &
-				VIRTCHNL_VF_CAP_ADV_LINK_SPEED) {
+			if (vf->vf_res != NULL &&
+			    vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_ADV_LINK_SPEED) {
 				vf->link_speed =
 				    vpe->event_data.link_event_adv.link_speed;
 			} else {
