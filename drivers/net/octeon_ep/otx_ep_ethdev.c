@@ -658,6 +658,7 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 
 	otx_epvf = OTX_EP_DEV(eth_dev);
 	otx_ep_mbox_send_dev_exit(eth_dev);
+	otx_ep_mbox_uninit(eth_dev);
 	otx_epvf->fn_list.disable_io_queues(otx_epvf);
 	num_queues = otx_epvf->nb_rx_queues;
 	for (q_no = 0; q_no < num_queues; q_no++) {
@@ -727,6 +728,7 @@ otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	otx_ep_mbox_uninit(eth_dev);
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
@@ -828,7 +830,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
-	if (otx_ep_mbox_version_check(eth_dev))
+	if (otx_ep_mbox_init(eth_dev))
 		return -EINVAL;
 
 	if (otx_ep_eth_dev_query_set_vf_mac(eth_dev,

@@ -17,7 +17,10 @@
  * with new command and it's version info.
  */
 static uint32_t otx_ep_cmd_versions[OTX_EP_MBOX_CMD_MAX] = {
-	[0 ... OTX_EP_MBOX_CMD_DEV_REMOVE] = OTX_EP_MBOX_VERSION_V1
+	[0 ... OTX_EP_MBOX_CMD_DEV_REMOVE] = OTX_EP_MBOX_VERSION_V1,
+	[OTX_EP_MBOX_CMD_GET_FW_INFO ... OTX_EP_MBOX_NOTIF_LINK_STATUS] = OTX_EP_MBOX_VERSION_V2,
+	[OTX_EP_MBOX_NOTIF_PF_FLR] = OTX_EP_MBOX_VERSION_V3
+
 };
 
 static int
@@ -288,10 +291,9 @@ otx_ep_mbox_get_max_pkt_len(struct rte_eth_dev *eth_dev)
 	return rsp.s_get_mtu.mtu;
 }
 
-int otx_ep_mbox_version_check(struct rte_eth_dev *eth_dev)
+static void
+otx_ep_mbox_version_check(struct otx_ep_device *otx_ep)
 {
-	struct otx_ep_device *otx_ep =
-		(struct otx_ep_device *)(eth_dev)->data->dev_private;
 	union otx_ep_mbox_word cmd;
 	union otx_ep_mbox_word rsp;
 	int ret;
@@ -312,13 +314,71 @@ int otx_ep_mbox_version_check(struct rte_eth_dev *eth_dev)
 	if (ret == OTX_EP_MBOX_CMD_STATUS_NACK || rsp.s_version.version == 0) {
 		otx_ep_dbg("VF Mbox version fallback to base version from:%u",
 			(uint32_t)cmd.s_version.version);
-		return 0;
+		return;
 	}
 	otx_ep->mbox_neg_ver = (uint32_t)rsp.s_version.version;
 	otx_ep_dbg("VF Mbox version:%u Negotiated VF version with PF:%u",
 		    (uint32_t)cmd.s_version.version,
 		    (uint32_t)rsp.s_version.version);
+}
+
+static void
+otx_ep_mbox_intr_handler(void *param)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
+	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
+	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	union otx_ep_mbox_word mbox_cmd;
+
+	if (otx2_read64(otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0)) & CNXK_EP_MBOX_INTR) {
+		mbox_cmd.u64 = otx2_read64(otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_DATA(0));
+		otx2_write64(CNXK_EP_MBOX_ENAB | CNXK_EP_MBOX_INTR,
+			     otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0));
+		if (mbox_cmd.s.opcode == OTX_EP_MBOX_NOTIF_PF_FLR) {
+			rte_spinlock_lock(&otx_ep->mbox_lock);
+			mbox_cmd.s.type = OTX_EP_MBOX_TYPE_RSP_ACK;
+			otx2_write64(mbox_cmd.u64, otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_DATA(0));
+			rte_spinlock_unlock(&otx_ep->mbox_lock);
+			rte_dev_event_callback_process(pdev->name, RTE_DEV_EVENT_REMOVE);
+		} else {
+			otx_ep_err("Invalid mbox opcode");
+		}
+	}
+}
+
+int
+otx_ep_mbox_init(struct rte_eth_dev *eth_dev)
+{
+	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
+	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	otx_ep_mbox_version_check(otx_ep);
+
+	rte_intr_callback_register(pdev->intr_handle, otx_ep_mbox_intr_handler, (void *)eth_dev);
+
+	if (rte_intr_enable(pdev->intr_handle)) {
+		otx_ep_err("rte_intr_enable failed");
+		return -1;
+	}
+
+	/* Enable pf-vf mbox interrupt & clear the status */
+	otx2_write64(CNXK_EP_MBOX_ENAB | CNXK_EP_MBOX_INTR,
+		     otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0));
+
 	return 0;
+}
+
+void
+otx_ep_mbox_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
+	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	otx2_write64(0, otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0));
+
+	rte_intr_disable(pdev->intr_handle);
+
+	rte_intr_callback_unregister(pdev->intr_handle, otx_ep_mbox_intr_handler, (void *)eth_dev);
 }
 
 int otx_ep_mbox_send_dev_exit(struct rte_eth_dev *eth_dev)
