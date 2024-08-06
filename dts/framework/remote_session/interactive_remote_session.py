@@ -5,6 +5,7 @@
 
 import socket
 import traceback
+from typing import Union
 
 from paramiko import AutoAddPolicy, SSHClient, Transport  # type: ignore[import-untyped]
 from paramiko.ssh_exception import (  # type: ignore[import-untyped]
@@ -52,7 +53,7 @@ class InteractiveRemoteSession:
     session: SSHClient
     _logger: DTSLogger
     _node_config: NodeConfiguration
-    _transport: Transport | None
+    _transport: Union[Transport, None]
 
     def __init__(self, node_config: NodeConfiguration, logger: DTSLogger) -> None:
         """Connect to the node during initialization.
