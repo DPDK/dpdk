@@ -4,7 +4,7 @@ Virtio VF PCIe devices can be attached to the guest VM using vhost acceleration 
 
 # Prerequisites
 
-1. Minimum hypervisor kernel version - Linux kernel 5.7 (for VFIO SR-IOV support).
+1. Minimum hypervisor kernel version - Linux kernel 5.15 (for VFIO SR-IOV support).
 2. To use high-availability (the additional vfe-vhostd-ha service which can persist datapath when vfe-vhostd crashes), this linux [kernel patch](https://github.com/torvalds/linux/commit/ffed0518d871482e26c5826c0875bea6775446da)  must be applied on hypervisor.
 
 # Install vHost Acceleration Software Stack
@@ -337,6 +337,10 @@ Add `x-early-migration=on` in VM XML:
     <qemu:arg value='-device'/>
     <qemu:arg value='virtio-net-pci,netdev=vhost1,mac=00:00:00:00:33:00,vectors=10,page-per-vq=on,rx_queue_size=1024,tx_queue_size=1024,mq=on,disable-legacy=on,disable-modern=off,x-early-migration=on'/>
 
+### None support of vIOMMU mode
+
+`iommu_platform=on` isn't supported.
+
 # Isolate DPA cores for both virtio-net controller and virtio-blk controller
 
 ## Limit the arm cores snap can use
@@ -367,13 +371,23 @@ In virtio-net controller configuration file /opt/mellanox/mlnx_virtnet/virtnet.c
 
 # Trouble shooting tips
 
-* Error on host: `Can't bind virtio device to VFIO`.
+* Error on host: `Can't bind virtio device to VFIO`.  
 
   Solution: Add intel_iommu=on iommu=pt to /proc/cmdline.
 
 * Error on host: `vfio-pci 0001:86:00.3: can't enable 127 VFs (bus 87 out of range of [bus 86])`  
 
   Solution: Add pci=realloc,assign-busses to /proc/cmdline.
+
+* vhostd log like following(map after unmap):
+
+      VIRTIO VDPA virtio_vdpa_dev_dma_unmap(): DMA unmap region: HVA 0x7f6c40000000, GPA 0x0, QEMU_VA 0x7f31c0000000, size 0xc0000000.
+      VIRTIO VDPA virtio_vdpa_dev_dma_unmap(): DMA unmap region: HVA 0x7f6900000000, GPA 0x100000000, QEMU_VA 0x7f3280000000, size 0x340000000.
+      VIRTIO VDPA virtio_vdpa_dev_set_mem_table(): DMA map region 0: HVA 0x7f62c0000000, GPA 0x0, QEMU_VA 0x7f3a00000000, size 0xc0000000.
+      VIRTIO VDPA virtio_vdpa_dev_set_mem_table(): DMA map region 1: HVA 0x7f5f80000000, GPA 0x100000000, QEMU_VA 0x7f3ac0000000, size 0x340000000.
+
+  This kind of log may hint same UUID VFs are used by different VM. This is wrong setting, and the behavior is unpredictable.
+
 
 # Reference
 For NVIDIA BlueField virtio-net PCIe devices and NVIDIA BlueField-3 virtio-blk configuration, Please refer lastest document in [BlueField DPUs / SuperNICs & DOCA](https://docs.nvidia.com/networking/dpu-doca/index.html#doca):
