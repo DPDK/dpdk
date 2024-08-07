@@ -245,6 +245,7 @@ struct mlx5_hca_attr {
 	struct mlx5_hca_vdpa_attr vdpa;
 	struct mlx5_hca_flow_attr flow;
 	struct mlx5_hca_flex_attr flex;
+	uint8_t log_max_wq_sz;
 	int log_max_qp_sz;
 	int log_max_cq_sz;
 	int log_max_qp;
