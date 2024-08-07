@@ -1027,6 +1027,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->log_max_qp = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp);
 	attr->log_max_cq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_cq_sz);
 	attr->log_max_qp_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_qp_sz);
+	attr->log_max_wq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_wq_sz);
 	attr->log_max_mrw_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_mrw_sz);
 	attr->log_max_pd = MLX5_GET(cmd_hca_cap, hcattr, log_max_pd);
 	attr->log_max_srq = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq);

@@ -333,6 +333,14 @@ mlx5_tx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (*desc > 1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz) {
+		DRV_LOG(ERR,
+			"port %u number of descriptors requested for Tx queue"
+			" %u is more than supported",
+			dev->data->port_id, idx);
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
 	if (*desc <= MLX5_TX_COMP_THRESH) {
 		DRV_LOG(WARNING,
 			"port %u number of descriptors requested for Tx queue"

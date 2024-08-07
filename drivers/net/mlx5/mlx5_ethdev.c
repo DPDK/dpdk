@@ -359,6 +359,10 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->flow_type_rss_offloads = ~MLX5_RSS_HF_MASK;
 	mlx5_set_default_params(dev, info);
 	mlx5_set_txlimit_params(dev, info);
+	info->rx_desc_lim.nb_max =
+		1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz;
+	info->tx_desc_lim.nb_max =
+		1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz;
 	if (priv->sh->cdev->config.hca_attr.mem_rq_rmp &&
 	    priv->obj_ops.rxq_obj_new == devx_obj_ops.rxq_obj_new)
 		info->dev_capa |= RTE_ETH_DEV_CAPA_RXQ_SHARE;

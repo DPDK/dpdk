@@ -655,6 +655,14 @@ mlx5_rx_queue_pre_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t *desc,
 	struct mlx5_rxq_priv *rxq;
 	bool empty;
 
+	if (*desc > 1 << priv->sh->cdev->config.hca_attr.log_max_wq_sz) {
+		DRV_LOG(ERR,
+			"port %u number of descriptors requested for Rx queue"
+			" %u is more than supported",
+			dev->data->port_id, idx);
+		rte_errno = EINVAL;
+		return -EINVAL;
+	}
 	if (!rte_is_power_of_2(*desc)) {
 		*desc = 1 << log2above(*desc);
 		DRV_LOG(WARNING,
