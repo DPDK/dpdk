@@ -27,7 +27,7 @@ jobs:
       MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
-      REF_GIT_TAG: v24.03
+      REF_GIT_TAG: none
       RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
       STDATOMIC: ${{ contains(matrix.config.checks, 'stdatomic') }}
@@ -47,7 +47,7 @@ jobs:
             checks: stdatomic
           - os: ubuntu-22.04
             compiler: gcc
-            checks: abi+debug+doc+examples+tests
+            checks: debug+doc+examples+tests
           - os: ubuntu-22.04
             compiler: clang
             checks: asan+doc+tests

@@ -1,4 +1,4 @@
-DPDK_24 {
+DPDK_25 {
 	global:
 
 	rte_fbk_hash_create;
@@ -47,16 +47,16 @@ DPDK_24 {
 	local: *;
 };
 
-INTERNAL {
-	global:
-
-	rte_thash_gfni_stub;
-	rte_thash_gfni_bulk_stub;
-};
-
 EXPERIMENTAL {
 	global:
 
 	# added in 24.07
 	rte_hash_rcu_qsbr_dq_reclaim;
+};
+
+INTERNAL {
+	global:
+
+	rte_thash_gfni_stub;
+	rte_thash_gfni_bulk_stub;
 };

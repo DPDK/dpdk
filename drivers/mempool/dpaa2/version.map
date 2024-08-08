@@ -1,4 +1,4 @@
-DPDK_24 {
+DPDK_25 {
 	global:
 
 	rte_dpaa2_mbuf_from_buf_addr;

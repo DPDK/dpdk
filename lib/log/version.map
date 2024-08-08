@@ -1,10 +1,10 @@
-DPDK_24 {
+DPDK_25 {
 	global:
 
 	rte_log;
+	rte_log_can_log;
 	rte_log_cur_msg_loglevel;
 	rte_log_cur_msg_logtype;
-	rte_log_can_log;
 	rte_log_dump;
 	rte_log_get_global_level;
 	rte_log_get_level;

@@ -33,22 +33,3 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-[suppress_type]
-	name = rte_mbuf
-	type_kind = struct
-	has_size_change = no
-	has_data_member = {cacheline0, rearm_data, rx_descriptor_fields1, cacheline1}
-
-[suppress_type]
-	name = rte_pipeline_table_entry
-
-[suppress_type]
-	name = rte_rcu_qsbr
-
-[suppress_type]
-	name = rte_eth_fp_ops
-	has_data_member_inserted_between = {offset_of(reserved2), end}
-
-[suppress_type]
-	name = rte_crypto_fp_ops
-	has_data_member_inserted_between = {offset_of(reserved), end}
