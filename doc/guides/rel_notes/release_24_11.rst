@@ -70,6 +70,7 @@ New Features
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
+  * Added recent 1400/14000 and 15000 models to the supported list.
 
 
 Removed Items

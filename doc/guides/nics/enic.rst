@@ -17,7 +17,8 @@ ENIC PMD supports all recent generations of Cisco VIC adapters including:
 
 - VIC 1200 series
 - VIC 1300 series
-- VIC 1400 series
+- VIC 1400/14000 series
+- VIC 15000 series
 
 Supported features
 ------------------
