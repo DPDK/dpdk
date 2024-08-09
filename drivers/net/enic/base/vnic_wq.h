@@ -50,6 +50,9 @@ struct vnic_wq {
 	const struct rte_memzone *cqmsg_rz;
 	uint16_t last_completed_index;
 	uint64_t offloads;
+	bool admin_chan;
+	const struct rte_memzone *admin_msg_rz;
+	uint64_t soft_stats_tx;
 };
 
 static inline unsigned int vnic_wq_desc_avail(struct vnic_wq *wq)
@@ -148,6 +151,8 @@ buf_idx_incr(uint32_t n_descriptors, uint32_t idx)
 
 void vnic_wq_free(struct vnic_wq *wq);
 int vnic_wq_alloc(struct vnic_dev *vdev, struct vnic_wq *wq, unsigned int index,
+	unsigned int desc_count, unsigned int desc_size);
+int vnic_admin_wq_alloc(struct vnic_dev *vdev, struct vnic_wq *wq,
 	unsigned int desc_count, unsigned int desc_size);
 void vnic_wq_init_start(struct vnic_wq *wq, unsigned int cq_index,
 	unsigned int fetch_index, unsigned int posted_index,

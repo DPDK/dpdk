@@ -59,12 +59,15 @@ struct vnic_cq {
 	unsigned int tobe_rx_coal_timeval;
 	ktime_t prev_ts;
 #endif
+	bool admin_chan;
 };
 
 void vnic_cq_free(struct vnic_cq *cq);
 int vnic_cq_alloc(struct vnic_dev *vdev, struct vnic_cq *cq, unsigned int index,
 	unsigned int socket_id,
 	unsigned int desc_count, unsigned int desc_size);
+int vnic_admin_cq_alloc(struct vnic_dev *vdev, struct vnic_cq *cq, unsigned int index,
+	unsigned int socket_id, unsigned int desc_count, unsigned int desc_size);
 void vnic_cq_init(struct vnic_cq *cq, unsigned int flow_control_enable,
 	unsigned int color_enable, unsigned int cq_head, unsigned int cq_tail,
 	unsigned int cq_tail_color, unsigned int interrupt_enable,
