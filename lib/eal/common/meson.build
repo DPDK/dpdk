@@ -31,6 +31,7 @@ sources += files(
         'eal_common_uuid.c',
         'malloc_elem.c',
         'malloc_heap.c',
+        'rte_bitset.c',
         'rte_malloc.c',
         'rte_random.c',
         'rte_reciprocal.c',

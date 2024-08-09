@@ -33,6 +33,7 @@ source_file_deps = {
     'test_bitcount.c': [],
     'test_bitmap.c': [],
     'test_bitops.c': [],
+    'test_bitset.c': [],
     'test_bitratestats.c': ['metrics', 'bitratestats', 'ethdev'] + sample_packet_forward_deps,
     'test_bpf.c': ['bpf', 'net'],
     'test_byteorder.c': [],

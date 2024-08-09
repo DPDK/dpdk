@@ -174,6 +174,7 @@ The public API headers are grouped by topics:
   [ring](@ref rte_ring.h),
   [stack](@ref rte_stack.h),
   [tailq](@ref rte_tailq.h),
+  [bitset](@ref rte_bitset.h),
   [bitmap](@ref rte_bitmap.h)
 
 - **packet framework**:

@@ -396,6 +396,9 @@ EXPERIMENTAL {
 
 	# added in 24.03
 	rte_vfio_get_device_info; # WINDOWS_NO_EXPORT
+
+	# added in 24.11
+	rte_bitset_to_str;
 };
 
 INTERNAL {

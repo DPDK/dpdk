@@ -70,6 +70,16 @@ New Features
   The new public API elements are polymorphic, using the _Generic-based
   macros (for C) and function overloading (in C++ translation units).
 
+* **Added multi-word bitset API.**
+
+  A new multi-word bitset API has been introduced in the EAL.
+  The RTE bitset is optimized for scenarios where the bitset size exceeds the
+  capacity of a single word (e.g., larger than 64 bits), but is not large
+  enough to justify the overhead and complexity of the more scalable,
+  yet slower, <rte_bitmap.h> API.
+  This addition provides an efficient and straightforward alternative
+  for handling bitsets of intermediate sizes.
+
 * **Extended service cores statistics.**
 
   Two new per-service counters are added to the service cores framework.

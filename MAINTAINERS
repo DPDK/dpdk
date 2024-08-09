@@ -256,6 +256,12 @@ M: Jack Bond-Preston <jack.bond-preston@foss.arm.com>
 F: lib/eal/include/rte_bitops.h
 F: app/test/test_bitops.c
 
+Bitset
+M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
+F: lib/eal/include/rte_bitset.h
+F: lib/eal/common/rte_bitset.c
+F: app/test/test_bitset.c
+
 Bitmap
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/eal/include/rte_bitmap.h
