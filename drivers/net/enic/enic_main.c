@@ -32,21 +32,6 @@
 #include "vnic_intr.h"
 #include "vnic_nic.h"
 
-static int is_zero_addr(uint8_t *addr)
-{
-	return !(addr[0] |  addr[1] | addr[2] | addr[3] | addr[4] | addr[5]);
-}
-
-static int is_mcast_addr(uint8_t *addr)
-{
-	return addr[0] & 1;
-}
-
-static int is_eth_addr_valid(uint8_t *addr)
-{
-	return !is_mcast_addr(addr) && !is_zero_addr(addr);
-}
-
 void
 enic_rxmbuf_queue_release(__rte_unused struct enic *enic, struct vnic_rq *rq)
 {
@@ -176,11 +161,6 @@ int enic_del_mac_address(struct enic *enic, int mac_index)
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
 {
 	int err;
-
-	if (!is_eth_addr_valid(mac_addr)) {
-		dev_err(enic, "invalid mac address\n");
-		return -EINVAL;
-	}
 
 	err = enic_dev_add_addr(enic, mac_addr);
 	if (err)
