@@ -72,6 +72,17 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 	txq->complq_tail = next;
 }
 
+static inline void
+gve_tx_fill_seg_desc_dqo(volatile union gve_tx_desc_dqo *desc, struct rte_mbuf *tx_pkt)
+{
+	uint32_t hlen = tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len;
+	desc->tso_ctx.cmd_dtype.dtype = GVE_TX_TSO_CTX_DESC_DTYPE_DQO;
+	desc->tso_ctx.cmd_dtype.tso = 1;
+	desc->tso_ctx.mss = (uint16_t)tx_pkt->tso_segsz;
+	desc->tso_ctx.tso_total_len = tx_pkt->pkt_len - hlen;
+	desc->tso_ctx.header_len = (uint8_t)hlen;
+}
+
 uint16_t
 gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -89,6 +100,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t sw_id;
 	uint64_t bytes;
 	uint16_t first_sw_id;
+	uint8_t tso;
 	uint8_t csum;
 
 	sw_ring = txq->sw_ring;
@@ -109,14 +121,22 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				gve_tx_clean_dqo(txq);
 		}
 
-		if (txq->nb_free < tx_pkt->nb_segs)
-			break;
-
 		ol_flags = tx_pkt->ol_flags;
 		nb_used = tx_pkt->nb_segs;
 		first_sw_id = sw_id;
 
+		tso = !!(ol_flags & RTE_MBUF_F_TX_TCP_SEG);
 		csum = !!(ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO);
+
+		nb_used += tso;
+		if (txq->nb_free < nb_used)
+			break;
+
+		if (tso) {
+			txd = &txr[tx_id];
+			gve_tx_fill_seg_desc_dqo(txd, tx_pkt);
+			tx_id = (tx_id + 1) & mask;
+		}
 
 		do {
 			if (sw_ring[sw_id] != NULL)
