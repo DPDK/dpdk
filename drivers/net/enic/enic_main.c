@@ -20,6 +20,7 @@
 
 #include "enic_compat.h"
 #include "enic.h"
+#include "enic_sriov.h"
 #include "wq_enet_desc.h"
 #include "rq_enet_desc.h"
 #include "cq_enet_desc.h"
@@ -30,11 +31,6 @@
 #include "vnic_cq.h"
 #include "vnic_intr.h"
 #include "vnic_nic.h"
-
-static inline int enic_is_sriov_vf(struct enic *enic)
-{
-	return enic->pdev->id.device_id == PCI_DEVICE_ID_CISCO_VIC_ENET_VF;
-}
 
 static int is_zero_addr(uint8_t *addr)
 {
@@ -174,7 +170,7 @@ int enic_del_mac_address(struct enic *enic, int mac_index)
 	struct rte_eth_dev *eth_dev = enic->rte_dev;
 	uint8_t *mac_addr = eth_dev->data->mac_addrs[mac_index].addr_bytes;
 
-	return vnic_dev_del_addr(enic->vdev, mac_addr);
+	return enic_dev_del_addr(enic, mac_addr);
 }
 
 int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
@@ -186,7 +182,7 @@ int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
 		return -EINVAL;
 	}
 
-	err = vnic_dev_add_addr(enic->vdev, mac_addr);
+	err = enic_dev_add_addr(enic, mac_addr);
 	if (err)
 		dev_err(enic, "add mac addr failed\n");
 	return err;
@@ -442,7 +438,19 @@ enic_intr_handler(void *arg)
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
 	struct enic *enic = pmd_priv(dev);
 
+	ENICPMD_FUNC_TRACE();
+
 	vnic_intr_return_all_credits(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
+
+	if (enic_is_vf(enic)) {
+		/*
+		 * When using the admin channel, VF receives link
+		 * status changes from PF. enic_poll_vf_admin_chan()
+		 * calls RTE_ETH_EVENT_INTR_LSC.
+		 */
+		enic_poll_vf_admin_chan(enic);
+		return;
+	}
 
 	enic_link_update(dev);
 	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
@@ -662,14 +670,13 @@ int enic_enable(struct enic *enic)
 	for (index = 0; index < enic->rq_count; index++)
 		enic_start_rq(enic, index);
 
-	vnic_dev_add_addr(enic->vdev, enic->mac_addr);
+	enic_dev_add_addr(enic, enic->mac_addr);
 
 	vnic_dev_enable_wait(enic->vdev);
 
 	/* Register and enable error interrupt */
 	rte_intr_callback_register(enic->pdev->intr_handle,
 		enic_intr_handler, (void *)enic->rte_dev);
-
 	rte_intr_enable(enic->pdev->intr_handle);
 	/* Unmask LSC interrupt */
 	vnic_intr_unmask(&enic->intr[ENICPMD_LSC_INTR_OFFSET]);
@@ -687,6 +694,12 @@ int enic_alloc_intr_resources(struct enic *enic)
 		enic->wq_count, enic_vnic_rq_count(enic),
 		enic->cq_count, enic->intr_count);
 
+	if (enic_is_vf(enic)) {
+		dev_info(enic, "vNIC admin channel resources used: wq %d rq %d cq %d\n",
+			 enic->conf_admin_wq_count, enic->conf_admin_rq_count,
+			 enic->conf_admin_cq_count);
+	}
+
 	for (i = 0; i < enic->intr_count; i++) {
 		err = vnic_intr_alloc(enic->vdev, &enic->intr[i], i);
 		if (err) {
@@ -694,6 +707,7 @@ int enic_alloc_intr_resources(struct enic *enic)
 			return err;
 		}
 	}
+
 	return 0;
 }
 
@@ -1120,8 +1134,7 @@ int enic_disable(struct enic *enic)
 
 	enic_fm_destroy(enic);
 
-	if (!enic_is_sriov_vf(enic))
-		vnic_dev_del_addr(enic->vdev, enic->mac_addr);
+	enic_dev_del_addr(enic, enic->mac_addr);
 
 	for (i = 0; i < enic->wq_count; i++) {
 		err = vnic_wq_disable(&enic->wq[i]);
@@ -1156,6 +1169,8 @@ int enic_disable(struct enic *enic)
 	for (i = 0; i < enic->intr_count; i++)
 		vnic_intr_clean(&enic->intr[i]);
 
+	if (enic_is_vf(enic))
+		enic_disable_vf_admin_chan(enic, true);
 	return 0;
 }
 
@@ -1316,10 +1331,24 @@ int enic_init_rss_nic_cfg(struct enic *enic)
 
 int enic_setup_finish(struct enic *enic)
 {
+	int err;
+
+	ENICPMD_FUNC_TRACE();
 	enic_init_soft_stats(enic);
+
+	/*
+	 * Enable admin channel so we can perform certain devcmds
+	 * via admin channel. For example, vnic_dev_packet_filter()
+	 */
+	if (enic_is_vf(enic)) {
+		err = enic_enable_vf_admin_chan(enic);
+		if (err)
+			return err;
+	}
 
 	/* switchdev: enable promisc mode on PF */
 	if (enic->switchdev_mode) {
+		RTE_VERIFY(!enic_is_vf(enic));
 		vnic_dev_packet_filter(enic->vdev,
 				       0 /* directed  */,
 				       0 /* multicast */,
@@ -1331,7 +1360,7 @@ int enic_setup_finish(struct enic *enic)
 		return 0;
 	}
 	/* Default conf */
-	vnic_dev_packet_filter(enic->vdev,
+	err = enic_dev_packet_filter(enic,
 		1 /* directed  */,
 		1 /* multicast */,
 		1 /* broadcast */,
@@ -1341,7 +1370,7 @@ int enic_setup_finish(struct enic *enic)
 	enic->promisc = 0;
 	enic->allmulti = 1;
 
-	return 0;
+	return err;
 }
 
 static int enic_rss_conf_valid(struct enic *enic,
@@ -1455,13 +1484,14 @@ int enic_set_vlan_strip(struct enic *enic)
 
 int enic_add_packet_filter(struct enic *enic)
 {
+	ENICPMD_FUNC_TRACE();
 	/* switchdev ignores packet filters */
 	if (enic->switchdev_mode) {
 		ENICPMD_LOG(DEBUG, " switchdev: ignore packet filter");
 		return 0;
 	}
 	/* Args -> directed, multicast, broadcast, promisc, allmulti */
-	return vnic_dev_packet_filter(enic->vdev, 1, 1, 1,
+	return enic_dev_packet_filter(enic, 1, 1, 1,
 		enic->promisc, enic->allmulti);
 }
 
@@ -1497,6 +1527,9 @@ int enic_set_vnic_res(struct enic *enic)
 	if (eth_dev->data->dev_conf.intr_conf.rxq) {
 		required_intr += eth_dev->data->nb_rx_queues;
 	}
+	/* FW adds 2 interrupts for admin chan. Use 1 for RQ */
+	if (enic_is_vf(enic))
+		required_intr += 1;
 	ENICPMD_LOG(DEBUG, "Required queues for PF: rq %u wq %u cq %u",
 		    required_rq, required_wq, required_cq);
 	if (enic->vf_required_rq) {
@@ -1851,6 +1884,22 @@ static int enic_dev_init(struct enic *enic)
 		dev_err(enic, "mac addr storage alloc failed, aborting.\n");
 		return -1;
 	}
+
+	/*
+	 * If PF has not assigned any MAC address for VF, generate a random one.
+	 */
+	if (enic_is_vf(enic)) {
+		struct rte_ether_addr ea;
+
+		memcpy(ea.addr_bytes, enic->mac_addr, RTE_ETHER_ADDR_LEN);
+		if (!rte_is_valid_assigned_ether_addr(&ea)) {
+			rte_eth_random_addr(ea.addr_bytes);
+			ENICPMD_LOG(INFO, "assigned random MAC address " RTE_ETHER_ADDR_PRT_FMT,
+				    RTE_ETHER_ADDR_BYTES(&ea));
+			memcpy(enic->mac_addr, ea.addr_bytes, RTE_ETHER_ADDR_LEN);
+		}
+	}
+
 	rte_ether_addr_copy((struct rte_ether_addr *)enic->mac_addr,
 			eth_dev->data->mac_addrs);
 

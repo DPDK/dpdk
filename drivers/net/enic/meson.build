@@ -23,6 +23,7 @@ sources = files(
         'enic_main.c',
         'enic_res.c',
         'enic_rxtx.c',
+        'enic_sriov.c',
         'enic_vf_representor.c',
 )
 deps += ['hash']

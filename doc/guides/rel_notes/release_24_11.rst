@@ -67,6 +67,10 @@ New Features
 
   The new statistics are useful for debugging and profiling.
 
+* **Updated Cisco enic driver.**
+
+  * Added SR-IOV VF support.
+
 
 Removed Items
 -------------

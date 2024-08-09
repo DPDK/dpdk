@@ -38,8 +38,36 @@ enum vnic_res_type {
 	RES_TYPE_MQ_WQ,                 /* MQ Work queues */
 	RES_TYPE_MQ_RQ,                 /* MQ Receive queues */
 	RES_TYPE_MQ_CQ,                 /* MQ Completion queues */
-	RES_TYPE_DEPRECATED1,           /* Old version of devcmd 2 */
-	RES_TYPE_DEVCMD2,               /* Device control region */
+	RES_TYPE_DEPRECATED1,		/* Old version of devcmd 2 */
+	RES_TYPE_DEPRECATED2,		/* Old version of devcmd 2 */
+	RES_TYPE_DEVCMD2,		/* Device control region */
+	RES_TYPE_RDMA_WQ,		/* RDMA WQ */
+	RES_TYPE_RDMA_RQ,		/* RDMA RQ */
+	RES_TYPE_RDMA_CQ,		/* RDMA CQ */
+	RES_TYPE_RDMA_RKEY_TABLE,	/* RDMA RKEY table */
+	RES_TYPE_RDMA_RQ_HEADER_TABLE,	/* RDMA RQ Header Table */
+	RES_TYPE_RDMA_RQ_TABLE,		/* RDMA RQ Table */
+	RES_TYPE_RDMA_RD_RESP_HEADER_TABLE,	/* RDMA Read Response Header Table */
+	RES_TYPE_RDMA_RD_RESP_TABLE,	/* RDMA Read Response Table */
+	RES_TYPE_RDMA_QP_STATS_TABLE,	/* RDMA per QP stats table */
+	RES_TYPE_WQ_MREGS,		/* XXX snic proto only */
+	RES_TYPE_GRPMBR_INTR,		/* Group member interrupt control */
+	RES_TYPE_DPKT,			/* Direct Packet memory region */
+	RES_TYPE_RDMA2_DATA_WQ,		/* RDMA datapath command WQ */
+	RES_TYPE_RDMA2_REG_WQ,		/* RDMA registration command WQ */
+	RES_TYPE_RDMA2_CQ,		/* RDMA datapath CQ */
+	RES_TYPE_MQ_RDMA2_DATA_WQ,	/* RDMA datapath command WQ */
+	RES_TYPE_MQ_RDMA2_REG_WQ,	/* RDMA registration command WQ */
+	RES_TYPE_MQ_RDMA2_CQ,		/* RDMA datapath CQ */
+	RES_TYPE_PTP,			/* PTP registers */
+	RES_TYPE_INTR_CTRL2,		/* Extended INTR CTRL registers */
+	RES_TYPE_SRIOV_INTR,		/* VF intr */
+	RES_TYPE_VF_WQ,			/* VF WQ */
+	RES_TYPE_VF_RQ,			/* VF RQ */
+	RES_TYPE_VF_CQ,			/* VF CQ */
+	RES_TYPE_ADMIN_WQ,		/* admin channel WQ */
+	RES_TYPE_ADMIN_RQ,		/* admin channel RQ */
+	RES_TYPE_ADMIN_CQ,		/* admin channel CQ */
 	RES_TYPE_MAX,			/* Count of resource types */
 };
 
