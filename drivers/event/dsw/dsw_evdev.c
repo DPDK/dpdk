@@ -123,6 +123,7 @@ dsw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 		queue->schedule_type = conf->schedule_type;
 	}
 
+	rte_bitset_init(queue->serving_ports, DSW_MAX_PORTS);
 	queue->num_serving_ports = 0;
 
 	return 0;
@@ -149,20 +150,16 @@ dsw_queue_release(struct rte_eventdev *dev __rte_unused,
 static void
 queue_add_port(struct dsw_queue *queue, uint16_t port_id)
 {
-	uint64_t port_mask = UINT64_C(1) << port_id;
-
-	queue->serving_ports |=	port_mask;
+	rte_bitset_set(queue->serving_ports, port_id);
 	queue->num_serving_ports++;
 }
 
 static bool
 queue_remove_port(struct dsw_queue *queue, uint16_t port_id)
 {
-	uint64_t port_mask = UINT64_C(1) << port_id;
-
-	if (queue->serving_ports & port_mask) {
+	if (rte_bitset_test(queue->serving_ports, port_id)) {
 		queue->num_serving_ports--;
-		queue->serving_ports ^= port_mask;
+		rte_bitset_clear(queue->serving_ports, port_id);
 		return true;
 	}
 
@@ -264,14 +261,12 @@ initial_flow_to_port_assignment(struct dsw_evdev *dsw)
 		struct dsw_queue *queue = &dsw->queues[queue_id];
 		uint16_t flow_hash;
 		for (flow_hash = 0; flow_hash < DSW_MAX_FLOWS; flow_hash++) {
-			uint8_t skip =
-				rte_rand_max(queue->num_serving_ports);
+			uint8_t skip = rte_rand_max(queue->num_serving_ports);
 			uint8_t port_id;
 
 			for (port_id = 0;; port_id++) {
-				uint64_t port_mask = UINT64_C(1) << port_id;
-
-				if (queue->serving_ports & port_mask) {
+				if (rte_bitset_test(queue->serving_ports,
+						    port_id)) {
 					if (skip == 0)
 						break;
 					skip--;

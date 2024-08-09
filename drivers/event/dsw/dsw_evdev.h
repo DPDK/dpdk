@@ -7,6 +7,7 @@
 
 #include <eventdev_pmd.h>
 
+#include <rte_bitset.h>
 #include <rte_event_ring.h>
 #include <rte_eventdev.h>
 
@@ -237,7 +238,7 @@ struct __rte_cache_aligned dsw_port {
 
 struct dsw_queue {
 	uint8_t schedule_type;
-	uint64_t serving_ports;
+	RTE_BITSET_DECLARE(serving_ports, DSW_MAX_PORTS);
 	uint16_t num_serving_ports;
 
 	alignas(RTE_CACHE_LINE_SIZE) uint8_t flow_to_port_map[DSW_MAX_FLOWS];
