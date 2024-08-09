@@ -22,11 +22,6 @@ test_alarm_callback(void *cb_arg)
 static int
 test_alarm(void)
 {
-#ifdef RTE_EXEC_ENV_FREEBSD
-	printf("The alarm API is not supported on FreeBSD\n");
-	return 0;
-#endif
-
 	/* check if it will fail to set alarm with wrong us value */
 	printf("check if it will fail to set alarm with wrong ms values\n");
 	if (rte_eal_alarm_set(0, test_alarm_callback,
