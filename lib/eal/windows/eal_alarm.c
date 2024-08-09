@@ -92,6 +92,13 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	LARGE_INTEGER deadline;
 	int ret;
 
+	/* Check parameters, including that us won't cause a uint64_t overflow */
+	if (us < 1 || us > (UINT64_MAX - US_PER_S)) {
+		EAL_LOG(ERR, "Invalid alarm interval");
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	if (cb_fn == NULL) {
 		EAL_LOG(ERR, "NULL callback");
 		ret = -EINVAL;
