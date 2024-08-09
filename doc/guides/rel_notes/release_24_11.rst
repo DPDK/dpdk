@@ -104,6 +104,10 @@ New Features
 
   * Added mempool driver support for CN20K SoC.
 
+* **Updated Cisco enic driver.**
+
+  * Added SR-IOV VF support.
+
 * **Updated Marvell cnxk net driver.**
 
   * Added ethdev driver support for CN20K SoC.

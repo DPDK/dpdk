@@ -646,6 +646,20 @@ enum vnic_devcmd_cmd {
 	 *	   bit 2: 64 bytes
 	 */
 	CMD_CQ_ENTRY_SIZE_SET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 90),
+
+	/*
+	 * enable/disable wq/rq queue pair of qp_type on a PF/VF.
+	 * in: (u32) a0 = wq/rq qp_type
+	 * in: (u32) a0 = enable(1)/disable(0)
+	 */
+	CMD_QP_TYPE_SET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 97),
+
+	/*
+	 * SRIOV vic stats get
+	 * in: (u64) a0 = host buffer addr for stats dump
+	 * in  (u32) a1 = length of the buffer
+	 */
+	CMD_SRIOV_STATS_GET = _CMDC(_CMD_DIR_WRITE, _CMD_VTYPE_ENET, 98),
 };
 
 /* Modes for exchanging advanced filter capabilities. The modes supported by
@@ -1193,5 +1207,40 @@ typedef enum {
 #define VNIC_RQ_CQ_ENTRY_SIZE_16_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_16)
 #define VNIC_RQ_CQ_ENTRY_SIZE_32_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_32)
 #define VNIC_RQ_CQ_ENTRY_SIZE_64_CAPABLE	(1 << VNIC_RQ_CQ_ENTRY_SIZE_64)
+
+/* CMD_QP_TYPE_SET */
+#define QP_TYPE_ADMIN   0
+
+struct vnic_sriov_stats {
+	uint32_t ver;
+	uint8_t sriov_vlan_membership_cap;   /* sriov support vlan-membership */
+	uint8_t sriov_vlan_membership_enabled; /* Default is disabled (0) */
+	uint8_t sriov_rss_vf_full_cap;	     /* sriov VFs support full rss */
+	uint8_t sriov_host_rx_stats;	     /* host does rx stats */
+
+	/* IGx/EGx classifier TCAM
+	 */
+	uint32_t ig_classifier0_tcam_cfg;    /* IG0 TCAM config entries */
+	uint32_t ig_classifier0_tcam_free;   /* IG0 TCAM free count */
+	uint32_t eg_classifier0_tcam_cfg;    /* EG0 TCAM config entries */
+	uint32_t eg_classifier0_tcam_free;   /* EG0 TCAM free count */
+
+	uint32_t ig_classifier1_tcam_cfg;    /* IG1 TCAM config entries */
+	uint32_t ig_classifier1_tcam_free;   /* IG1 TCAM free count */
+	uint32_t eg_classifier1_tcam_cfg;    /* EG1 TCAM config entries */
+	uint32_t eg_classifier1_tcam_free;   /* EG1 TCAM free count */
+
+	/* IGx/EGx flow table entries
+	 */
+	uint32_t sriov_ig_flow_table_cfg;    /* sriov IG FTE config */
+	uint32_t sriov_ig_flow_table_free;   /* sriov IG FTE free */
+	uint32_t sriov_eg_flow_table_cfg;    /* sriov EG FTE config */
+	uint32_t sriov_eg_flow_table_free;   /* sriov EG FTE free */
+
+	uint8_t admin_qp_ready[32];	     /* admin_qp ready bits (256) */
+	uint16_t vf_index;		     /* VF index or SRIOV_PF_IDX */
+	uint16_t reserved1;
+	uint32_t reserved2[256 - 23];
+};
 
 #endif /* _VNIC_DEVCMD_H_ */

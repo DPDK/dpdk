@@ -300,4 +300,16 @@ void enic_get_res_counts(struct enic *enic)
 		"vNIC resources avail: wq %d rq %d cq %d intr %d\n",
 		enic->conf_wq_count, enic->conf_rq_count,
 		enic->conf_cq_count, enic->conf_intr_count);
+
+	if (!enic_is_vf(enic))
+		return;
+
+	enic->conf_admin_wq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_WQ);
+	enic->conf_admin_rq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_RQ);
+	enic->conf_admin_cq_count = vnic_dev_get_res_count(enic->vdev, RES_TYPE_ADMIN_CQ);
+
+	dev_info(enic_get_dev(enic),
+		"vNIC admin channel resources avail: wq %d rq %d cq %d\n",
+		enic->conf_admin_wq_count, enic->conf_admin_rq_count,
+		enic->conf_admin_cq_count);
 }

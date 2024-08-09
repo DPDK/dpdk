@@ -55,6 +55,7 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 		sizeof(struct cq_enet_rq_desc_64) :
 		sizeof(struct cq_enet_rq_desc);
 	RTE_BUILD_BUG_ON(sizeof(struct cq_enet_rq_desc_64) != 64);
+	uint64_t bytes;
 
 	cq = &enic->cq[enic_cq_rq(enic, sop_rq->index)];
 	cq_idx = cq->to_clean;		/* index of cqd, rqd, mbuf_table */
@@ -66,6 +67,8 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* Receive until the end of the ring, at most. */
 	max_rx = RTE_MIN(nb_pkts, cq->ring.desc_count - cq_idx);
+
+	bytes = 0;
 
 	while (max_rx) {
 		volatile struct rq_enet_desc *rqd_ptr;
@@ -155,6 +158,8 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxmb->port = enic->port_id;
 		rxmb->data_len = seg_length;
 
+		bytes += seg_length;
+
 		rq->rx_nb_hold++;
 
 		if (!(enic_cq_rx_desc_eop(ciflags))) {
@@ -225,6 +230,10 @@ enic_recv_pkts_common(void *rx_queue, struct rte_mbuf **rx_pkts,
 				  &sop_rq->ctrl->posted_index);
 	}
 
+	if (enic->sriov_vf_soft_rx_stats && bytes) {
+		sop_rq->soft_stats_pkts += nb_rx;
+		sop_rq->soft_stats_bytes += bytes;
+	}
 
 	return nb_rx;
 }
@@ -256,6 +265,7 @@ enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	uint8_t color;
 	bool overlay;
 	bool tnl;
+	uint64_t bytes;
 
 	rq = rx_queue;
 	enic = vnic_dev_priv(rq->vdev);
@@ -283,6 +293,8 @@ enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	port_id = enic->port_id;
 	overlay = enic->overlay_offload;
 
+	bytes = 0;
+
 	rx = rx_pkts;
 	while (max_rx) {
 		max_rx--;
@@ -304,6 +316,9 @@ enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
 		mb->pkt_len = mb->data_len;
 		mb->port = port_id;
+
+		bytes += mb->pkt_len;
+
 		tnl = overlay && (cqd->completed_index_flags &
 				  CQ_ENET_RQ_DESC_FLAGS_FCOE) != 0;
 		mb->packet_type =
@@ -350,6 +365,11 @@ enic_noscatter_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rte_wmb();
 		iowrite32_relaxed(rq->posted_index,
 				  &rq->ctrl->posted_index);
+	}
+
+	if (enic->sriov_vf_soft_rx_stats && bytes) {
+		rq->soft_stats_pkts += (rx - rx_pkts);
+		rq->soft_stats_bytes += bytes;
 	}
 
 	return rx - rx_pkts;

@@ -21,6 +21,7 @@
 #include "vnic_rq.h"
 #include "vnic_enet.h"
 #include "enic.h"
+#include "enic_sriov.h"
 
 /*
  * The set of PCI devices this driver supports
@@ -28,7 +29,6 @@
 #define CISCO_PCI_VENDOR_ID 0x1137
 static const struct rte_pci_id pci_id_enic_map[] = {
 	{RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET)},
-	{RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET_VF)},
 	{RTE_PCI_DEVICE(CISCO_PCI_VENDOR_ID, PCI_DEVICE_ID_CISCO_VIC_ENET_SN)},
 	{.vendor_id = 0, /* sentinel */},
 };
@@ -707,7 +707,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		for (i = 0; i < enic->mc_count; i++) {
 			addr = &enic->mc_addrs[i];
 			debug_log_add_del_addr(addr, false);
-			ret = vnic_dev_del_addr(enic->vdev, addr->addr_bytes);
+			ret = enic_dev_del_addr(enic, addr->addr_bytes);
 			if (ret)
 				return ret;
 		}
@@ -734,7 +734,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		if (j < nb_mc_addr)
 			continue;
 		debug_log_add_del_addr(addr, false);
-		ret = vnic_dev_del_addr(enic->vdev, addr->addr_bytes);
+		ret = enic_dev_del_addr(enic, addr->addr_bytes);
 		if (ret)
 			return ret;
 	}
@@ -748,7 +748,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		if (j < enic->mc_count)
 			continue;
 		debug_log_add_del_addr(addr, true);
-		ret = vnic_dev_add_addr(enic->vdev, addr->addr_bytes);
+		ret = enic_dev_add_addr(enic, addr->addr_bytes);
 		if (ret)
 			return ret;
 	}
