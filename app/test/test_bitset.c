@@ -213,6 +213,48 @@ test_flip(void)
 	return test_flip_fun(rte_bitset_test, rte_bitset_assign, rte_bitset_flip);
 }
 
+static bool
+bitset_atomic_test(const uint64_t *bitset, size_t bit_num)
+{
+	return rte_bitset_atomic_test(bitset, bit_num, rte_memory_order_relaxed);
+}
+
+static void
+bitset_atomic_set(uint64_t *bitset, size_t bit_num)
+{
+	rte_bitset_atomic_set(bitset, bit_num, rte_memory_order_relaxed);
+}
+
+static void
+bitset_atomic_clear(uint64_t *bitset, size_t bit_num)
+{
+	rte_bitset_atomic_clear(bitset, bit_num, rte_memory_order_relaxed);
+}
+
+static void
+bitset_atomic_flip(uint64_t *bitset, size_t bit_num)
+{
+	rte_bitset_atomic_flip(bitset, bit_num, rte_memory_order_relaxed);
+}
+
+static void
+bitset_atomic_assign(uint64_t *bitset, size_t bit_num, bool bit_value)
+{
+	rte_bitset_atomic_assign(bitset, bit_num, bit_value, rte_memory_order_relaxed);
+}
+
+static int
+test_atomic_set_clear(void)
+{
+	return test_set_clear_fun(bitset_atomic_test, bitset_atomic_set, bitset_atomic_clear);
+}
+
+static int
+test_atomic_flip(void)
+{
+	return test_flip_fun(bitset_atomic_test, bitset_atomic_assign, bitset_atomic_flip);
+}
+
 static ssize_t
 find(const bool *ary, size_t num_bools, size_t start, size_t len, bool set)
 {
@@ -835,6 +877,8 @@ static struct unit_test_suite bitset_tests = {
 	.unit_test_cases = {
 		TEST_CASE_ST(NULL, NULL, test_set_clear),
 		TEST_CASE_ST(NULL, NULL, test_flip),
+		TEST_CASE_ST(NULL, NULL, test_atomic_set_clear),
+		TEST_CASE_ST(NULL, NULL, test_atomic_flip),
 		TEST_CASE_ST(NULL, NULL, test_find),
 		TEST_CASE_ST(NULL, NULL, test_foreach),
 		TEST_CASE_ST(NULL, NULL, test_count),

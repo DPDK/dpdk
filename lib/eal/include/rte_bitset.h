@@ -352,6 +352,149 @@ rte_bitset_flip(uint64_t *bitset, size_t bit_num)
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
+ * Atomically test if a bit is set.
+ *
+ * Atomically test if a bit in a bitset is set with the specified
+ * memory ordering.
+ *
+ * @param bitset
+ *   A pointer to the array of words making up the bitset.
+ * @param bit_num
+ *   Index of the bit to test. Index 0 is the least significant bit.
+ * @param memory_order
+ *   The memory order to use.
+ * @return
+ *   Returns true if the bit is '1', and false if the bit is '0'.
+ */
+__rte_experimental
+static inline bool
+rte_bitset_atomic_test(const uint64_t *bitset, size_t bit_num, int memory_order)
+{
+	return __RTE_BITSET_DELEGATE_N(rte_bit_atomic_test, bitset, bit_num, memory_order);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically set a bit in the bitset.
+ *
+ * Set a bit in a bitset as an atomic operation, with the specified
+ * memory ordering.
+ *
+ * rte_bitset_atomic_set() is multi-thread safe, provided all threads
+ * acting in parallel on the same bitset does so through
+ * @c rte_bitset_atomic_*() functions.
+ *
+ * Bits are numbered from 0 to (size - 1) (inclusive).
+ *
+ * @param bitset
+ *   A pointer to the array of words making up the bitset.
+ * @param bit_num
+ *   The index of the bit to be set.
+ * @param memory_order
+ *   The memory order to use.
+ */
+__rte_experimental
+static inline void
+rte_bitset_atomic_set(uint64_t *bitset, size_t bit_num, int memory_order)
+{
+	__RTE_BITSET_DELEGATE_N(rte_bit_atomic_set, bitset, bit_num, memory_order);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically clear a bit in the bitset.
+ *
+ * Clear a bit in a bitset as an atomic operation, with the specified
+ * memory ordering.
+ *
+ * rte_bitset_atomic_clear() is multi-thread safe, provided all
+ * threads acting in parallel on the same bitset does so through @c
+ * rte_bitset_atomic_*() functions.
+ *
+ * Bits are numbered from 0 to (size - 1) (inclusive).
+ *
+ * @param bitset
+ *   A pointer to the array of words making up the bitset.
+ * @param bit_num
+ *   The index of the bit to be cleared.
+ * @param memory_order
+ *   The memory order to use.
+ */
+__rte_experimental
+static inline void
+rte_bitset_atomic_clear(uint64_t *bitset, size_t bit_num, int memory_order)
+{
+	__RTE_BITSET_DELEGATE_N(rte_bit_atomic_clear, bitset, bit_num, memory_order);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically set or clear a bit in the bitset.
+ *
+ * Assign a value to a bit in a bitset as an atomic operation, with
+ * the specified memory ordering.
+ *
+ * rte_bitset_atomic_assign() is multi-thread safe, provided all
+ * threads acting in parallel on the same bitset does so through
+ * @c rte_bitset_atomic_*() functions.
+ *
+ * Bits are numbered from 0 to (size - 1) (inclusive).
+ *
+ * @param bitset
+ *   A pointer to the array of words making up the bitset.
+ * @param bit_num
+ *   The index of the bit to be set or cleared.
+ * @param bit_value
+ *   Control if the bit should be set or cleared.
+ * @param memory_order
+ *   The memory order to use.
+ */
+__rte_experimental
+static inline void
+rte_bitset_atomic_assign(uint64_t *bitset, size_t bit_num, bool bit_value, int memory_order)
+{
+	__RTE_BITSET_DELEGATE_N(rte_bit_atomic_assign, bitset, bit_num, bit_value, memory_order);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically change the value of a bit in the bitset.
+ *
+ * Flip a bit in a bitset as an atomic operation, with the specified
+ * memory ordering.
+ *
+ * rte_bitset_atomic_flip() is multi-thread safe, provided all threads
+ * acting in parallel on the same bitset does so through
+ * @c rte_bitset_atomic_*() functions.
+ *
+ * Bits are numbered from 0 to (size - 1) (inclusive).
+ *
+ * @param bitset
+ *   A pointer to the array of words making up the bitset.
+ * @param bit_num
+ *   The index of the bit to be flipped.
+ * @param memory_order
+ *   The memory order to use.
+ */
+__rte_experimental
+static inline void
+rte_bitset_atomic_flip(uint64_t *bitset, size_t bit_num, int memory_order)
+{
+	__RTE_BITSET_DELEGATE_N(rte_bit_atomic_flip, bitset, bit_num, memory_order);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
  * Set all bits in the bitset.
  *
  * @param bitset
