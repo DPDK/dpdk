@@ -4176,7 +4176,6 @@ static int bnxt_get_module_eeprom(struct rte_eth_dev *dev,
 
 	switch (module_info[0]) {
 	case SFF_MODULE_ID_SFP:
-		module_info[SFF_DIAG_SUPPORT_OFFSET] = 0;
 		if (module_info[SFF_DIAG_SUPPORT_OFFSET]) {
 			pg_addr[2] = I2C_DEV_ADDR_A2;
 			pg_addr[3] = I2C_DEV_ADDR_A2;
