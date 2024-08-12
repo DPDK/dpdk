@@ -66,17 +66,9 @@ extern int odm_logtype;
 #define odm_read64(addr)       rte_read64_relaxed((volatile void *)(addr))
 #define odm_write64(val, addr) rte_write64_relaxed((val), (volatile void *)(addr))
 
-#define odm_err(...)                                                                               \
-	rte_log(RTE_LOG_ERR, odm_logtype,                                                          \
-		RTE_FMT("%s(): %u" RTE_FMT_HEAD(__VA_ARGS__, ), __func__, __LINE__,                \
-			RTE_FMT_TAIL(__VA_ARGS__, )))
-#define odm_info(...)                                                                              \
-	rte_log(RTE_LOG_INFO, odm_logtype,                                                         \
-		RTE_FMT("%s(): %u" RTE_FMT_HEAD(__VA_ARGS__, ), __func__, __LINE__,                \
-			RTE_FMT_TAIL(__VA_ARGS__, )))
-#define odm_debug(...)                                                                             \
-	rte_log(RTE_LOG_DEBUG, odm_logtype,                                                        \
-		RTE_FMT("%s(): %u" RTE_FMT_HEAD(__VA_ARGS__, ), __func__, __LINE__,                \
+#define ODM_LOG(level, ...) \
+	rte_log(RTE_LOG_ ## level, odm_logtype, \
+		RTE_FMT("%s(): %u" RTE_FMT_HEAD(__VA_ARGS__,) "\n", __func__, __LINE__, \
 			RTE_FMT_TAIL(__VA_ARGS__, )))
 
 /*

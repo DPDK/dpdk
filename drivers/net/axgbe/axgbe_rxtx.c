@@ -92,7 +92,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	dma = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx, size, 128,
 				       socket_id);
 	if (!dma) {
-		PMD_DRV_LOG(ERR, "ring_dma_zone_reserve for rx_ring failed\n");
+		PMD_DRV_LOG_LINE(ERR, "ring_dma_zone_reserve for rx_ring failed");
 		axgbe_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
@@ -105,7 +105,7 @@ int axgbe_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					  RTE_CACHE_LINE_SIZE,
 					  socket_id);
 	if (!rxq->sw_ring) {
-		PMD_DRV_LOG(ERR, "rte_zmalloc for sw_ring failed\n");
+		PMD_DRV_LOG_LINE(ERR, "rte_zmalloc for sw_ring failed");
 		axgbe_rx_queue_release(rxq);
 		return -ENOMEM;
 	}
@@ -139,8 +139,8 @@ static void axgbe_prepare_rx_stop(struct axgbe_port *pdata,
 	}
 
 	if (!time_before(rte_get_timer_cycles(), rx_timeout))
-		PMD_DRV_LOG(ERR,
-			    "timed out waiting for Rx queue %u to empty\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "timed out waiting for Rx queue %u to empty",
 			    queue);
 }
 
@@ -224,8 +224,8 @@ axgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		tmbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(!tmbuf)) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed port_id = %u"
-				    " queue_id = %u\n",
+			PMD_DRV_LOG_LINE(ERR, "RX mbuf alloc failed port_id = %u"
+				    " queue_id = %u",
 				    (unsigned int)rxq->port_id,
 				    (unsigned int)rxq->queue_id);
 			rte_eth_devices[
@@ -359,8 +359,8 @@ next_desc:
 
 		tmbuf = rte_mbuf_raw_alloc(rxq->mb_pool);
 		if (unlikely(!tmbuf)) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed port_id = %u"
-				    " queue_id = %u\n",
+			PMD_DRV_LOG_LINE(ERR, "RX mbuf alloc failed port_id = %u"
+				    " queue_id = %u",
 				    (unsigned int)rxq->port_id,
 				    (unsigned int)rxq->queue_id);
 			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
@@ -677,8 +677,8 @@ static void axgbe_txq_prepare_tx_stop(struct axgbe_port *pdata,
 	}
 
 	if (!time_before(rte_get_timer_cycles(), tx_timeout))
-		PMD_DRV_LOG(ERR,
-			    "timed out waiting for Tx queue %u to empty\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "timed out waiting for Tx queue %u to empty",
 			    queue);
 }
 
@@ -721,8 +721,8 @@ static void axgbe_prepare_tx_stop(struct axgbe_port *pdata,
 	}
 
 	if (!time_before(rte_get_timer_cycles(), tx_timeout))
-		PMD_DRV_LOG(ERR,
-			    "timed out waiting for Tx DMA channel %u to stop\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "timed out waiting for Tx DMA channel %u to stop",
 			    queue);
 }
 

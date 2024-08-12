@@ -19,7 +19,7 @@ extern int eventdev_dlb2_log_level;
 	DLB2_LOG_IMPL(ERR, fmt, ## args)
 
 /* remove debug logs at compile time unless actually debugging */
-#define DLB2_LOG_DBG(fmt, args...) \
-	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt, ## args)
+#define DLB2_LOG_LINE_DBG(fmt, args...) \
+	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt "\n", ## args)
 
 #endif /* _DLB2_EVDEV_LOG_H_ */

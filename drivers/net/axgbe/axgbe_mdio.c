@@ -203,7 +203,7 @@ static void axgbe_change_mode(struct axgbe_port *pdata,
 	case AXGBE_MODE_UNKNOWN:
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "invalid operation mode requested (%u)\n", mode);
+		PMD_DRV_LOG_LINE(ERR, "invalid operation mode requested (%u)", mode);
 	}
 }
 
@@ -285,7 +285,7 @@ static void axgbe_an73_restart(struct axgbe_port *pdata)
 	axgbe_an73_enable_interrupts(pdata);
 	axgbe_an73_set(pdata, true, true);
 
-	PMD_DRV_LOG(DEBUG, "CL73 AN enabled/restarted\n");
+	PMD_DRV_LOG_LINE(DEBUG, "CL73 AN enabled/restarted");
 }
 
 static void axgbe_an73_disable(struct axgbe_port *pdata)
@@ -294,7 +294,7 @@ static void axgbe_an73_disable(struct axgbe_port *pdata)
 	axgbe_an73_disable_interrupts(pdata);
 	pdata->an_start = 0;
 
-	PMD_DRV_LOG(DEBUG, "CL73 AN disabled\n");
+	PMD_DRV_LOG_LINE(DEBUG, "CL73 AN disabled");
 }
 
 static void axgbe_an_restart(struct axgbe_port *pdata)
@@ -372,7 +372,7 @@ static enum axgbe_an axgbe_an73_tx_training(struct axgbe_port *pdata,
 	XMDIO_WRITE(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_10GBR_PMD_CTRL, reg);
 	pdata->kr_start_time = rte_get_timer_cycles();
 
-	PMD_DRV_LOG(DEBUG, "KR training initiated\n");
+	PMD_DRV_LOG_LINE(DEBUG, "KR training initiated");
 	if (pdata->phy_if.phy_impl.kr_training_post)
 		pdata->phy_if.phy_impl.kr_training_post(pdata);
 
@@ -455,8 +455,8 @@ static enum axgbe_an axgbe_an73_page_received(struct axgbe_port *pdata)
 
 			pdata->an_start = rte_get_timer_cycles();
 
-			PMD_DRV_LOG(NOTICE,
-				    "CL73 AN timed out, resetting state\n");
+			PMD_DRV_LOG_LINE(NOTICE,
+				    "CL73 AN timed out, resetting state");
 		}
 	}
 
@@ -548,7 +548,7 @@ next_int:
 		pdata->an_state = AXGBE_AN_ERROR;
 	}
 
-	PMD_DRV_LOG(DEBUG, "CL73 AN : %s\n",
+	PMD_DRV_LOG_LINE(DEBUG, "CL73 AN : %s",
 		    axgbe_state_as_string(pdata->an_state));
 
 again:
@@ -582,7 +582,7 @@ again:
 		pdata->eth_dev->data->dev_link.link_status =
 			RTE_ETH_LINK_DOWN;
 	} else if (pdata->an_state == AXGBE_AN_ERROR) {
-		PMD_DRV_LOG(ERR, "error during auto-negotiation, state=%u\n",
+		PMD_DRV_LOG_LINE(ERR, "error during auto-negotiation, state=%u",
 			    cur_state);
 		pdata->an_int = 0;
 		axgbe_an73_clear_interrupts(pdata);
@@ -597,7 +597,7 @@ again:
 		if (pdata->phy_if.phy_impl.an_post)
 			pdata->phy_if.phy_impl.an_post(pdata);
 
-		PMD_DRV_LOG(DEBUG, "CL73 AN result: %s\n",
+		PMD_DRV_LOG_LINE(DEBUG, "CL73 AN result: %s",
 			    axgbe_state_as_string(pdata->an_result));
 	}
 
@@ -641,7 +641,7 @@ static void axgbe_an37_state_machine(struct axgbe_port *pdata)
 	}
 
 	if (pdata->an_state == AXGBE_AN_ERROR) {
-		PMD_DRV_LOG(ERR, "error during auto-negotiation, state=%u\n",
+		PMD_DRV_LOG_LINE(ERR, "error during auto-negotiation, state=%u",
 			    cur_state);
 		pdata->an_int = 0;
 		axgbe_an37_clear_interrupts(pdata);
@@ -703,7 +703,7 @@ static void axgbe_an37_isr(struct axgbe_port *pdata)
 
 static void axgbe_an_isr(struct axgbe_port *pdata)
 {
-	PMD_DRV_LOG(DEBUG, "AN interrupt received\n");
+	PMD_DRV_LOG_LINE(DEBUG, "AN interrupt received");
 
 	switch (pdata->an_mode) {
 	case AXGBE_AN_MODE_CL73:
@@ -813,7 +813,7 @@ static void axgbe_an73_init(struct axgbe_port *pdata)
 
 	XMDIO_WRITE(pdata, MDIO_MMD_AN, MDIO_AN_ADVERTISE, reg);
 
-	PMD_DRV_LOG(DEBUG, "CL73 AN initialized\n");
+	PMD_DRV_LOG_LINE(DEBUG, "CL73 AN initialized");
 }
 
 static void axgbe_an_init(struct axgbe_port *pdata)
@@ -865,7 +865,7 @@ static int axgbe_phy_config_fixed(struct axgbe_port *pdata)
 {
 	enum axgbe_mode mode;
 
-	PMD_DRV_LOG(DEBUG, "fixed PHY configuration\n");
+	PMD_DRV_LOG_LINE(DEBUG, "fixed PHY configuration");
 
 	/* Disable auto-negotiation */
 	axgbe_an_disable(pdata);
@@ -912,9 +912,9 @@ static int __axgbe_phy_config_aneg(struct axgbe_port *pdata, bool set_mode)
 		ret = axgbe_phy_config_fixed(pdata);
 		if (ret || !pdata->kr_redrv)
 			goto out;
-		PMD_DRV_LOG(DEBUG, "AN redriver support\n");
+		PMD_DRV_LOG_LINE(DEBUG, "AN redriver support");
 	} else {
-		PMD_DRV_LOG(DEBUG, "AN PHY configuration\n");
+		PMD_DRV_LOG_LINE(DEBUG, "AN PHY configuration");
 	}
 
 	/* Disable auto-negotiation interrupt */
@@ -1018,7 +1018,7 @@ static void axgbe_check_link_timeout(struct axgbe_port *pdata)
 			}
 		}
 
-		PMD_DRV_LOG(NOTICE, "AN link timeout\n");
+		PMD_DRV_LOG_LINE(NOTICE, "AN link timeout");
 		axgbe_phy_config_aneg(pdata);
 	}
 }
@@ -1161,7 +1161,7 @@ adjust_link:
 
 static void axgbe_phy_stop(struct axgbe_port *pdata)
 {
-	PMD_DRV_LOG(DEBUG, "stopping PHY\n");
+	PMD_DRV_LOG_LINE(DEBUG, "stopping PHY");
 	if (!pdata->phy_started)
 		return;
 	/* Indicate the PHY is down */
@@ -1177,7 +1177,7 @@ static int axgbe_phy_start(struct axgbe_port *pdata)
 {
 	int ret;
 
-	PMD_DRV_LOG(DEBUG, "starting PHY\n");
+	PMD_DRV_LOG_LINE(DEBUG, "starting PHY");
 
 	ret = pdata->phy_if.phy_impl.start(pdata);
 	if (ret)

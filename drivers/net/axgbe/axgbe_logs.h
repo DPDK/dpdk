@@ -19,8 +19,8 @@ extern int axgbe_logtype_init;
 #endif
 
 extern int axgbe_logtype_driver;
-#define PMD_DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, axgbe_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
+#define RTE_LOGTYPE_AXGBE_DRIVER axgbe_logtype_driver
+#define PMD_DRV_LOG_LINE(level, fmt, ...) \
+	RTE_LOG(level, AXGBE_DRIVER, "%s(): " fmt "\n", __func__, ## __VA_ARGS__)
 
 #endif /* _AXGBE_LOGS_H_ */

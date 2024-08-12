@@ -1347,7 +1347,7 @@ ulp_ctx_attach(struct bnxt *bp,
 	/* Create a TF Client */
 	rc = ulp_ctx_session_open(bp, session);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to open ctxt session, rc:%d\n", rc);
+		PMD_DRV_LOG_LINE(ERR, "Failed to open ctxt session, rc:%d", rc);
 		tfp->session = NULL;
 		return rc;
 	}

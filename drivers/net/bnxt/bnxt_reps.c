@@ -159,11 +159,11 @@ bnxt_get_dflt_vnic_svif(struct bnxt *bp, struct bnxt_representor *vf_rep_bp)
 					  &vf_rep_bp->dflt_vnic_id,
 					  &vf_rep_bp->svif);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to get default vnic id of VF\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to get default vnic id of VF");
 		vf_rep_bp->dflt_vnic_id = BNXT_DFLT_VNIC_ID_INVALID;
 		vf_rep_bp->svif = BNXT_SVIF_INVALID;
 	} else {
-		PMD_DRV_LOG(INFO, "vf_rep->dflt_vnic_id = %d\n",
+		PMD_DRV_LOG_LINE(INFO, "vf_rep->dflt_vnic_id = %d",
 				vf_rep_bp->dflt_vnic_id);
 	}
 	if (vf_rep_bp->dflt_vnic_id != BNXT_DFLT_VNIC_ID_INVALID &&
@@ -185,7 +185,7 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 	uint16_t first_vf_id;
 	int rc = 0;
 
-	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR init\n", eth_dev->data->port_id);
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR init", eth_dev->data->port_id);
 	vf_rep_bp->vf_id = rep_params->vf_id;
 	vf_rep_bp->switch_domain_id = rep_params->switch_domain_id;
 	vf_rep_bp->parent_dev = rep_params->parent_dev;
@@ -224,8 +224,8 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 
 	bnxt_print_link_info(eth_dev);
 
-	PMD_DRV_LOG(INFO,
-		    "Switch domain id %d: Representor Device %d init done\n",
+	PMD_DRV_LOG_LINE(INFO,
+		    "Switch domain id %d: Representor Device %d init done",
 		    vf_rep_bp->switch_domain_id, vf_rep_bp->vf_id);
 
 	if (BNXT_REP_BASED_PF(vf_rep_bp)) {
@@ -239,12 +239,12 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 			if (rc)
 				return rc;
 			if (first_vf_id == 0xffff) {
-				PMD_DRV_LOG(ERR,
-					    "Invalid first_vf_id fid:%x\n",
+				PMD_DRV_LOG_LINE(ERR,
+					    "Invalid first_vf_id fid:%x",
 					    vf_rep_bp->fw_fid);
 				return -EINVAL;
 			}
-			PMD_DRV_LOG(INFO, "first_vf_id = %x parent_fid:%x\n",
+			PMD_DRV_LOG_LINE(INFO, "first_vf_id = %x parent_fid:%x",
 				    first_vf_id, vf_rep_bp->fw_fid);
 			vf_rep_bp->fw_fid = rep_params->vf_id + first_vf_id;
 		}
@@ -256,7 +256,7 @@ int bnxt_representor_init(struct rte_eth_dev *eth_dev, void *params)
 			vf_rep_bp->parent_pf_idx = parent_bp->fw_fid - 1;
 	}
 
-	PMD_DRV_LOG(INFO, "vf_rep->fw_fid = %d\n", vf_rep_bp->fw_fid);
+	PMD_DRV_LOG_LINE(INFO, "vf_rep->fw_fid = %d", vf_rep_bp->fw_fid);
 
 	return 0;
 }
@@ -271,11 +271,11 @@ int bnxt_representor_uninit(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR uninit\n", eth_dev->data->port_id);
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR uninit", eth_dev->data->port_id);
 	eth_dev->data->mac_addrs = NULL;
 
 	if (!bnxt_rep_check_parent(rep)) {
-		PMD_DRV_LOG(DEBUG, "BNXT Port:%d already freed\n",
+		PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d already freed",
 			    eth_dev->data->port_id);
 		return 0;
 	}
@@ -370,15 +370,15 @@ static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	struct bnxt *parent_bp;
 
 	if (!vfr || !vfr->parent_dev) {
-		PMD_DRV_LOG(ERR,
-				"No memory allocated for representor\n");
+		PMD_DRV_LOG_LINE(ERR,
+				"No memory allocated for representor");
 		return -ENOMEM;
 	}
 
 	parent_bp = vfr->parent_dev->data->dev_private;
 	if (parent_bp && !parent_bp->ulp_ctx) {
-		PMD_DRV_LOG(ERR,
-			    "ulp context not allocated for parent\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "ulp context not allocated for parent");
 		return -EIO;
 	}
 
@@ -393,11 +393,11 @@ static int bnxt_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	 */
 	rc = bnxt_tf_vfr_alloc(vfr_ethdev);
 	if (!rc)
-		PMD_DRV_LOG(DEBUG, "allocated representor %d in FW\n",
+		PMD_DRV_LOG_LINE(DEBUG, "allocated representor %d in FW",
 			    vfr->vf_id);
 	else
-		PMD_DRV_LOG(ERR,
-			    "Failed to alloc representor %d in FW\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Failed to alloc representor %d in FW",
 			    vfr->vf_id);
 
 	return rc;
@@ -480,14 +480,14 @@ static int bnxt_vfr_free(struct bnxt_representor *vfr)
 	struct bnxt *parent_bp;
 
 	if (!vfr || !vfr->parent_dev) {
-		PMD_DRV_LOG(ERR,
-			    "No memory allocated for representor\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "No memory allocated for representor");
 		return -ENOMEM;
 	}
 
 	parent_bp = vfr->parent_dev->data->dev_private;
 	if (!parent_bp) {
-		PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR already freed\n",
+		PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR already freed",
 			    vfr->dpdk_port_id);
 		return 0;
 	}
@@ -498,12 +498,12 @@ static int bnxt_vfr_free(struct bnxt_representor *vfr)
 
 	rc = bnxt_tf_vfr_free(vfr);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to free representor %d in FW\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Failed to free representor %d in FW",
 			    vfr->vf_id);
 	}
 
-	PMD_DRV_LOG(DEBUG, "freed representor %d in FW\n",
+	PMD_DRV_LOG_LINE(DEBUG, "freed representor %d in FW",
 		    vfr->vf_id);
 	vfr->vfr_tx_cfa_action = 0;
 
@@ -549,11 +549,11 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* MAC Specifics */
 	if (!bnxt_rep_check_parent(rep_bp)) {
 		/* Need not be an error scenario, if parent is closed first */
-		PMD_DRV_LOG(INFO, "Rep parent port does not exist.\n");
+		PMD_DRV_LOG_LINE(INFO, "Rep parent port does not exist.");
 		return rc;
 	}
 	parent_bp = rep_bp->parent_dev->data->dev_private;
-	PMD_DRV_LOG(DEBUG, "Representor dev_info_get_op\n");
+	PMD_DRV_LOG_LINE(DEBUG, "Representor dev_info_get_op");
 	dev_info->max_mac_addrs = parent_bp->max_l2_ctx;
 	dev_info->max_hash_mac_addrs = 0;
 
@@ -592,7 +592,7 @@ int bnxt_rep_dev_configure_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt_representor *rep_bp = eth_dev->data->dev_private;
 
-	PMD_DRV_LOG(DEBUG, "Representor dev_configure_op\n");
+	PMD_DRV_LOG_LINE(DEBUG, "Representor dev_configure_op");
 	rep_bp->rx_queues = (void *)eth_dev->data->rx_queues;
 	rep_bp->tx_nr_rings = eth_dev->data->nb_tx_queues;
 	rep_bp->rx_nr_rings = eth_dev->data->nb_rx_queues;
@@ -640,30 +640,30 @@ int bnxt_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	int rc = 0;
 
 	if (queue_idx >= rep_bp->rx_nr_rings) {
-		PMD_DRV_LOG(ERR,
-			    "Cannot create Rx ring %d. %d rings available\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Cannot create Rx ring %d. %d rings available",
 			    queue_idx, rep_bp->rx_nr_rings);
 		return -EINVAL;
 	}
 
 	if (!nb_desc || nb_desc > MAX_RX_DESC_CNT) {
-		PMD_DRV_LOG(ERR, "nb_desc %d is invalid\n", nb_desc);
+		PMD_DRV_LOG_LINE(ERR, "nb_desc %d is invalid", nb_desc);
 		return -EINVAL;
 	}
 
 	if (!parent_bp->rx_queues) {
-		PMD_DRV_LOG(ERR, "Parent Rx qs not configured yet\n");
+		PMD_DRV_LOG_LINE(ERR, "Parent Rx qs not configured yet");
 		return -EINVAL;
 	}
 
 	parent_rxq = parent_bp->rx_queues[queue_idx];
 	if (!parent_rxq) {
-		PMD_DRV_LOG(ERR, "Parent RxQ has not been configured yet\n");
+		PMD_DRV_LOG_LINE(ERR, "Parent RxQ has not been configured yet");
 		return -EINVAL;
 	}
 
 	if (nb_desc != parent_rxq->nb_rx_desc) {
-		PMD_DRV_LOG(ERR, "nb_desc %d do not match parent rxq", nb_desc);
+		PMD_DRV_LOG_LINE(ERR, "nb_desc %d do not match parent rxq", nb_desc);
 		return -EINVAL;
 	}
 
@@ -677,7 +677,7 @@ int bnxt_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				 sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
-		PMD_DRV_LOG(ERR, "bnxt_vfr_rx_queue allocation failed!\n");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_vfr_rx_queue allocation failed!");
 		return -ENOMEM;
 	}
 
@@ -694,7 +694,7 @@ int bnxt_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				      rxq->rx_ring->rx_ring_struct->ring_size,
 				      RTE_CACHE_LINE_SIZE, socket_id);
 	if (!buf_ring) {
-		PMD_DRV_LOG(ERR, "bnxt_rx_vfr_buf_ring allocation failed!\n");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_rx_vfr_buf_ring allocation failed!");
 		rc = -ENOMEM;
 		goto out;
 	}
@@ -740,30 +740,30 @@ int bnxt_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_vf_rep_tx_queue *vfr_txq;
 
 	if (queue_idx >= rep_bp->tx_nr_rings) {
-		PMD_DRV_LOG(ERR,
-			    "Cannot create Tx rings %d. %d rings available\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Cannot create Tx rings %d. %d rings available",
 			    queue_idx, rep_bp->tx_nr_rings);
 		return -EINVAL;
 	}
 
 	if (!nb_desc || nb_desc > MAX_TX_DESC_CNT) {
-		PMD_DRV_LOG(ERR, "nb_desc %d is invalid", nb_desc);
+		PMD_DRV_LOG_LINE(ERR, "nb_desc %d is invalid", nb_desc);
 		return -EINVAL;
 	}
 
 	if (!parent_bp->tx_queues) {
-		PMD_DRV_LOG(ERR, "Parent Tx qs not configured yet\n");
+		PMD_DRV_LOG_LINE(ERR, "Parent Tx qs not configured yet");
 		return -EINVAL;
 	}
 
 	parent_txq = parent_bp->tx_queues[queue_idx];
 	if (!parent_txq) {
-		PMD_DRV_LOG(ERR, "Parent TxQ has not been configured yet\n");
+		PMD_DRV_LOG_LINE(ERR, "Parent TxQ has not been configured yet");
 		return -EINVAL;
 	}
 
 	if (nb_desc != parent_txq->nb_tx_desc) {
-		PMD_DRV_LOG(ERR, "nb_desc %d do not match parent txq", nb_desc);
+		PMD_DRV_LOG_LINE(ERR, "nb_desc %d do not match parent txq", nb_desc);
 		return -EINVAL;
 	}
 
@@ -777,14 +777,14 @@ int bnxt_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 				     sizeof(struct bnxt_vf_rep_tx_queue),
 				     RTE_CACHE_LINE_SIZE, socket_id);
 	if (!vfr_txq) {
-		PMD_DRV_LOG(ERR, "bnxt_vfr_tx_queue allocation failed!");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_vfr_tx_queue allocation failed!");
 		return -ENOMEM;
 	}
 	txq = rte_zmalloc_socket("bnxt_tx_queue",
 				 sizeof(struct bnxt_tx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!txq) {
-		PMD_DRV_LOG(ERR, "bnxt_tx_queue allocation failed!");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_tx_queue allocation failed!");
 		rte_free(vfr_txq);
 		return -ENOMEM;
 	}

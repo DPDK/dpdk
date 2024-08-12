@@ -16,9 +16,9 @@
 static void bond_mode_8023ad_ext_periodic_cb(void *arg);
 #ifdef RTE_LIBRTE_BOND_DEBUG_8023AD
 
-#define MODE4_DEBUG(fmt, ...)				\
+#define MODE4_DEBUG_LOG(fmt, ...)			\
 	rte_log(RTE_LOG_DEBUG, bond_logtype,		\
-		"%6u [Port %u: %s] " fmt,		\
+		"%6u [Port %u: %s] " fmt "\n",		\
 		bond_dbg_get_time_diff_ms(), member_id,	\
 		__func__, ##__VA_ARGS__)
 
@@ -122,7 +122,7 @@ bond_print_lacp(struct lacpdu *l)
 #define BOND_PRINT_LACP(lacpdu) bond_print_lacp(lacpdu)
 #else
 #define BOND_PRINT_LACP(lacpdu) do { } while (0)
-#define MODE4_DEBUG(fmt, ...) do { } while (0)
+#define MODE4_DEBUG_LOG(...) do { } while (0)
 #endif
 
 static const struct rte_ether_addr lacp_mac_addr = {
@@ -234,7 +234,7 @@ show_warnings(uint16_t member_id)
 			     member_id);
 
 	if (warnings & WRN_NOT_LACP_CAPABLE)
-		MODE4_DEBUG("Port %u is not LACP capable!\n", member_id);
+		MODE4_DEBUG_LOG("Port %u is not LACP capable!", member_id);
 }
 
 static void
@@ -264,7 +264,7 @@ rx_machine(struct bond_dev_private *internals, uint16_t member_id,
 
 	if (SM_FLAG(port, BEGIN)) {
 		/* Initialize stuff */
-		MODE4_DEBUG("-> INITIALIZE\n");
+		MODE4_DEBUG_LOG("-> INITIALIZE");
 		SM_FLAG_CLR(port, MOVED);
 		port->selected = UNSELECTED;
 
@@ -296,7 +296,7 @@ rx_machine(struct bond_dev_private *internals, uint16_t member_id,
 	}
 
 	if (lacp) {
-		MODE4_DEBUG("LACP -> CURRENT\n");
+		MODE4_DEBUG_LOG("LACP -> CURRENT");
 		BOND_PRINT_LACP(lacp);
 		/* Update selected flag. If partner parameters are defaulted assume they
 		 * are match. If not defaulted  compare LACP actor with ports partner
@@ -305,7 +305,7 @@ rx_machine(struct bond_dev_private *internals, uint16_t member_id,
 			(ACTOR_STATE(port, AGGREGATION) != PARTNER_STATE(port, AGGREGATION)
 			|| memcmp(&port->partner, &lacp->actor.port_params,
 				sizeof(port->partner)) != 0)) {
-			MODE4_DEBUG("selected <- UNSELECTED\n");
+			MODE4_DEBUG_LOG("selected <- UNSELECTED");
 			port->selected = UNSELECTED;
 		}
 
@@ -404,7 +404,7 @@ periodic_machine(struct bond_dev_private *internals, uint16_t member_id)
 		timer_force_expired(&port->tx_machine_timer);
 		SM_FLAG_CLR(port, PARTNER_SHORT_TIMEOUT);
 
-		MODE4_DEBUG("-> NO_PERIODIC ( %s%s%s)\n",
+		MODE4_DEBUG_LOG("-> NO_PERIODIC ( %s%s%s)",
 			SM_FLAG(port, BEGIN) ? "begin " : "",
 			SM_FLAG(port, LACP_ENABLED) ? "" : "LACP disabled ",
 			active ? "LACP active " : "LACP passive ");
@@ -471,7 +471,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 		if (SM_FLAG(port, BEGIN) ||
 				!timer_is_stopped(&port->wait_while_timer)) {
 			SM_FLAG_SET(port, NTT);
-			MODE4_DEBUG("-> DETACHED\n");
+			MODE4_DEBUG_LOG("-> DETACHED");
 		}
 		timer_cancel(&port->wait_while_timer);
 	}
@@ -481,7 +481,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 			timer_set(&port->wait_while_timer,
 				internals->mode4.aggregate_wait_timeout);
 
-			MODE4_DEBUG("DETACHED -> WAITING\n");
+			MODE4_DEBUG_LOG("DETACHED -> WAITING");
 		}
 		/* Waiting state entered */
 		return;
@@ -499,7 +499,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 		ACTOR_STATE_CLR(port, COLLECTING);
 		/* Clear actor sync to activate transit ATTACHED in condition bellow */
 		ACTOR_STATE_CLR(port, SYNCHRONIZATION);
-		MODE4_DEBUG("Out of sync -> ATTACHED\n");
+		MODE4_DEBUG_LOG("Out of sync -> ATTACHED");
 	}
 
 	if (!ACTOR_STATE(port, SYNCHRONIZATION)) {
@@ -509,11 +509,11 @@ mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 
 		ACTOR_STATE_SET(port, SYNCHRONIZATION);
 		SM_FLAG_SET(port, NTT);
-		MODE4_DEBUG("ATTACHED Entered\n");
+		MODE4_DEBUG_LOG("ATTACHED Entered");
 	} else if (!ACTOR_STATE(port, COLLECTING)) {
 		/* Start collecting if in sync */
 		if (PARTNER_STATE(port, SYNCHRONIZATION)) {
-			MODE4_DEBUG("ATTACHED -> COLLECTING\n");
+			MODE4_DEBUG_LOG("ATTACHED -> COLLECTING");
 			ACTOR_STATE_SET(port, COLLECTING);
 			SM_FLAG_SET(port, NTT);
 		}
@@ -525,7 +525,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 				/* Enable  DISTRIBUTING if partner is collecting */
 				ACTOR_STATE_SET(port, DISTRIBUTING);
 				SM_FLAG_SET(port, NTT);
-				MODE4_DEBUG("COLLECTING -> DISTRIBUTING\n");
+				MODE4_DEBUG_LOG("COLLECTING -> DISTRIBUTING");
 				RTE_BOND_LOG(INFO,
 					"Bond %u: member id %u distributing started.",
 					internals->port_id, member_id);
@@ -536,7 +536,7 @@ mux_machine(struct bond_dev_private *internals, uint16_t member_id)
 				 * is not collecting */
 				ACTOR_STATE_CLR(port, DISTRIBUTING);
 				SM_FLAG_SET(port, NTT);
-				MODE4_DEBUG("DISTRIBUTING -> COLLECTING\n");
+				MODE4_DEBUG_LOG("DISTRIBUTING -> COLLECTING");
 				RTE_BOND_LOG(INFO,
 					"Bond %u: member id %u distributing stopped.",
 					internals->port_id, member_id);
@@ -622,7 +622,7 @@ tx_machine(struct bond_dev_private *internals, uint16_t member_id)
 	lacpdu->tlv_type_terminator = TLV_TYPE_TERMINATOR_INFORMATION;
 	lacpdu->terminator_length = 0;
 
-	MODE4_DEBUG("Sending LACP frame\n");
+	MODE4_DEBUG_LOG("Sending LACP frame");
 	BOND_PRINT_LACP(lacpdu);
 
 	if (internals->mode4.dedicated_queues.enabled == 0) {
@@ -752,9 +752,9 @@ selection_logic(struct bond_dev_private *internals, uint16_t member_id)
 	if (new_agg_id != port->aggregator_port_id) {
 		port->aggregator_port_id = new_agg_id;
 
-		MODE4_DEBUG("-> SELECTED: ID=%3u\n"
-			"\t%s aggregator ID=%3u\n",
-			port->aggregator_port_id,
+		MODE4_DEBUG_LOG("-> SELECTED: ID=%3u",
+			port->aggregator_port_id);
+		MODE4_DEBUG_LOG("\t%s aggregator ID=%3u",
 			port->aggregator_port_id == member_id ?
 				"aggregator not found, using default" : "aggregator found",
 			port->aggregator_port_id);
@@ -828,8 +828,8 @@ rx_machine_update(struct bond_dev_private *internals, uint16_t member_id,
 				RTE_ETHER_ADDR_FMT_SIZE, &partner->port_params.system);
 			rte_ether_format_addr(self_system_name,
 				RTE_ETHER_ADDR_FMT_SIZE, &agg->actor.system);
-			MODE4_DEBUG("preferred partner system %s "
-				"is not equal with self system: %s\n",
+			MODE4_DEBUG_LOG("preferred partner system %s "
+				"is not equal with self system: %s",
 				preferred_system_name, self_system_name);
 		}
 		rte_pktmbuf_free(lacp_pkt);
@@ -1666,7 +1666,7 @@ rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t member_id,
 	if (lacp->lacpdu.subtype != SLOW_SUBTYPE_LACP)
 		return -EINVAL;
 
-	MODE4_DEBUG("sending LACP frame\n");
+	MODE4_DEBUG_LOG("sending LACP frame");
 
 	return rte_ring_enqueue(port->tx_ring, lacp_pkt);
 }

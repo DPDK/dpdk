@@ -190,7 +190,7 @@ zqmq_input_ring_disable(uint8_t *bar_addr, uint16_t ring)
 	}
 
 	if (zqmq_activity_stat.s.queue_active) {
-		NITROX_LOG(ERR, "Failed to disable zqmq ring %d\n", ring);
+		NITROX_LOG_LINE(ERR, "Failed to disable zqmq ring %d", ring);
 		return -EBUSY;
 	}
 
@@ -271,7 +271,7 @@ setup_zqmq_input_ring(uint8_t *bar_addr, uint16_t ring, uint32_t rsize,
 	}
 
 	if (!zqmq_en.s.queue_enable) {
-		NITROX_LOG(ERR, "Failed to enable zqmq ring %d\n", ring);
+		NITROX_LOG_LINE(ERR, "Failed to enable zqmq ring %d", ring);
 		err = -EFAULT;
 	} else {
 		err = 0;

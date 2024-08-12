@@ -59,7 +59,7 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 	if (!BNXT_TRUFLOW_EN(bp))
 		return;
 
-	PMD_DRV_LOG(INFO, "Default vnic change async event received\n");
+	PMD_DRV_LOG_LINE(INFO, "Default vnic change async event received");
 	event_data = rte_le_to_cpu_32(async_cmp->event_data1);
 
 	vnic_state = (event_data & BNXT_DEFAULT_VNIC_STATE_MASK) >>
@@ -72,7 +72,7 @@ bnxt_process_default_vnic_change(struct bnxt *bp,
 
 	vf_fid = (event_data & BNXT_DEFAULT_VNIC_CHANGE_VF_ID_MASK) >>
 			BNXT_DEFAULT_VNIC_CHANGE_VF_ID_SFT;
-	PMD_DRV_LOG(INFO, "async event received vf_id 0x%x\n", vf_fid);
+	PMD_DRV_LOG_LINE(INFO, "async event received vf_id 0x%x", vf_fid);
 
 	for (vf_id = 0; vf_id < BNXT_MAX_VF_REPS(bp); vf_id++) {
 		eth_dev = bp->rep_info[vf_id].vfr_eth_dev;
@@ -97,16 +97,16 @@ static void bnxt_handle_event_error_report(struct bnxt *bp,
 {
 	switch (BNXT_EVENT_ERROR_REPORT_TYPE(data1)) {
 	case HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_BASE_EVENT_DATA1_ERROR_TYPE_PAUSE_STORM:
-		PMD_DRV_LOG(WARNING, "Port:%d Pause Storm detected!\n",
+		PMD_DRV_LOG_LINE(WARNING, "Port:%d Pause Storm detected!",
 			    bp->eth_dev->data->port_id);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_BASE_EVENT_DATA1_ERROR_TYPE_DUAL_DATA_RATE_NOT_SUPPORTED:
-		PMD_DRV_LOG(WARNING, "Port:%d Speed change not supported with dual rate transceivers on this board",
+		PMD_DRV_LOG_LINE(WARNING, "Port:%d Speed change not supported with dual rate transceivers on this board",
 			    bp->eth_dev->data->port_id);
 		break;
 	default:
-		PMD_DRV_LOG(INFO, "FW reported unknown error type data1 %d"
-			    " data2: %d\n", data1, data2);
+		PMD_DRV_LOG_LINE(INFO, "FW reported unknown error type data1 %d"
+			    " data2: %d", data1, data2);
 		break;
 	}
 }
@@ -121,13 +121,13 @@ void bnxt_handle_vf_cfg_change(void *arg)
 	if (eth_dev->data->dev_started) {
 		rc = bnxt_dev_stop_op(eth_dev);
 		if (rc != 0) {
-			PMD_DRV_LOG(ERR, "Failed to stop Port:%u\n", eth_dev->data->port_id);
+			PMD_DRV_LOG_LINE(ERR, "Failed to stop Port:%u", eth_dev->data->port_id);
 			return;
 		}
 
 		rc = bnxt_dev_start_op(eth_dev);
 		if (rc != 0)
-			PMD_DRV_LOG(ERR, "Failed to start Port:%u\n", eth_dev->data->port_id);
+			PMD_DRV_LOG_LINE(ERR, "Failed to start Port:%u", eth_dev->data->port_id);
 	}
 }
 
@@ -144,7 +144,7 @@ bnxt_process_vf_flr(struct bnxt *bp, uint32_t data1)
 	vfid = (data1 & HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_MASK) >>
 		HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_SFT;
 
-	PMD_DRV_LOG(INFO, "VF FLR async event received pfid: %u, vfid: %u\n",
+	PMD_DRV_LOG_LINE(INFO, "VF FLR async event received pfid: %u, vfid: %u",
 		    pfid, vfid);
 }
 
@@ -176,17 +176,17 @@ void bnxt_handle_async_event(struct bnxt *bp,
 			RTE_ETH_EVENT_INTR_LSC, NULL);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PF_DRVR_UNLOAD:
-		PMD_DRV_LOG(INFO, "Async event: PF driver unloaded\n");
+		PMD_DRV_LOG_LINE(INFO, "Async event: PF driver unloaded");
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_CFG_CHANGE:
-		PMD_DRV_LOG(INFO, "Port %u: VF config change async event\n", port_id);
-		PMD_DRV_LOG(INFO, "event: data1 %#x data2 %#x\n", data1, data2);
+		PMD_DRV_LOG_LINE(INFO, "Port %u: VF config change async event", port_id);
+		PMD_DRV_LOG_LINE(INFO, "event: data1 %#x data2 %#x", data1, data2);
 		bnxt_hwrm_func_qcfg(bp, NULL);
 		if (BNXT_VF(bp))
 			rte_eal_alarm_set(1, bnxt_handle_vf_cfg_change, (void *)bp);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_PORT_CONN_NOT_ALLOWED:
-		PMD_DRV_LOG(INFO, "Port conn async event\n");
+		PMD_DRV_LOG_LINE(INFO, "Port conn async event");
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_RESET_NOTIFY:
 		/*
@@ -216,13 +216,13 @@ void bnxt_handle_async_event(struct bnxt *bp,
 			BNXT_MIN_FW_READY_TIMEOUT;
 		if ((event_data & EVENT_DATA1_REASON_CODE_MASK) ==
 		    EVENT_DATA1_REASON_CODE_FW_EXCEPTION_FATAL) {
-			PMD_DRV_LOG(INFO,
-				    "Port %u: Firmware fatal reset event received\n",
+			PMD_DRV_LOG_LINE(INFO,
+				    "Port %u: Firmware fatal reset event received",
 				    port_id);
 			bp->flags |= BNXT_FLAG_FATAL_ERROR;
 		} else {
-			PMD_DRV_LOG(INFO,
-				    "Port %u: Firmware non-fatal reset event received\n",
+			PMD_DRV_LOG_LINE(INFO,
+				    "Port %u: Firmware non-fatal reset event received",
 				    port_id);
 		}
 
@@ -243,7 +243,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 			info->flags |= BNXT_FLAG_RECOVERY_ENABLED;
 		} else {
 			info->flags &= ~BNXT_FLAG_RECOVERY_ENABLED;
-			PMD_DRV_LOG(INFO, "Driver recovery watchdog is disabled\n");
+			PMD_DRV_LOG_LINE(INFO, "Driver recovery watchdog is disabled");
 			return;
 		}
 
@@ -253,8 +253,8 @@ void bnxt_handle_async_event(struct bnxt *bp,
 			info->flags &= ~BNXT_FLAG_PRIMARY_FUNC;
 
 		status = bnxt_read_fw_status_reg(bp, BNXT_FW_STATUS_REG);
-		PMD_DRV_LOG(INFO,
-			    "Port: %u Driver recovery watchdog, role: %s, FW status: 0x%x (%s)\n",
+		PMD_DRV_LOG_LINE(INFO,
+			    "Port: %u Driver recovery watchdog, role: %s, FW status: 0x%x (%s)",
 			    port_id, bnxt_is_primary_func(bp) ? "primary" : "backup", status,
 			    (status == BNXT_FW_STATUS_HEALTHY) ? "healthy" : "unhealthy");
 
@@ -269,15 +269,15 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bnxt_schedule_fw_health_check(bp);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEBUG_NOTIFICATION:
-		PMD_DRV_LOG(INFO, "Port: %u DNC event: data1 %#x data2 %#x\n",
+		PMD_DRV_LOG_LINE(INFO, "Port: %u DNC event: data1 %#x data2 %#x",
 			    port_id, data1, data2);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_DEFAULT_VNIC_CHANGE:
 		bnxt_process_default_vnic_change(bp, async_cmp);
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ECHO_REQUEST:
-		PMD_DRV_LOG(INFO,
-			    "Port %u: Received fw echo request: data1 %#x data2 %#x\n",
+		PMD_DRV_LOG_LINE(INFO,
+			    "Port %u: Received fw echo request: data1 %#x data2 %#x",
 			    port_id, data1, data2);
 		if (bp->recovery_info)
 			bnxt_hwrm_fw_echo_reply(bp, data1, data2);
@@ -289,7 +289,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bnxt_process_vf_flr(bp, data1);
 		break;
 	default:
-		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);
+		PMD_DRV_LOG_LINE(DEBUG, "handle_async_event id = 0x%x", event_id);
 		break;
 	}
 }
@@ -305,7 +305,7 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 	int rc;
 
 	if (bp->pf->active_vfs <= 0) {
-		PMD_DRV_LOG(ERR, "Forwarded VF with no active VFs\n");
+		PMD_DRV_LOG_LINE(ERR, "Forwarded VF with no active VFs");
 		return;
 	}
 
@@ -324,8 +324,8 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 
 	if (fw_vf_id < bp->pf->first_vf_id ||
 	    fw_vf_id >= bp->pf->first_vf_id + bp->pf->active_vfs) {
-		PMD_DRV_LOG(ERR,
-		"FWD req's source_id 0x%x out of range 0x%x - 0x%x (%d %d)\n",
+		PMD_DRV_LOG_LINE(ERR,
+		"FWD req's source_id 0x%x out of range 0x%x - 0x%x (%d %d)",
 			fw_vf_id, bp->pf->first_vf_id,
 			(bp->pf->first_vf_id) + bp->pf->active_vfs - 1,
 			bp->pf->first_vf_id, bp->pf->active_vfs);
@@ -363,8 +363,8 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 		/* Forward */
 		rc = bnxt_hwrm_exec_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
 		if (rc) {
-			PMD_DRV_LOG(ERR,
-				"Failed to send FWD req VF 0x%x, type 0x%x.\n",
+			PMD_DRV_LOG_LINE(ERR,
+				"Failed to send FWD req VF 0x%x, type 0x%x.",
 				fw_vf_id - bp->pf->first_vf_id,
 				rte_le_to_cpu_16(fwd_cmd->req_type));
 		}
@@ -374,8 +374,8 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 reject:
 	rc = bnxt_hwrm_reject_fwd_resp(bp, fw_vf_id, fwd_cmd, req_len);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			"Failed to send REJECT req VF 0x%x, type 0x%x.\n",
+		PMD_DRV_LOG_LINE(ERR,
+			"Failed to send REJECT req VF 0x%x, type 0x%x.",
 			fw_vf_id - bp->pf->first_vf_id,
 			rte_le_to_cpu_16(fwd_cmd->req_type));
 	}
@@ -388,7 +388,7 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 	bool evt = 0;
 
 	if (bp == NULL || cmp == NULL) {
-		PMD_DRV_LOG(ERR, "invalid NULL argument\n");
+		PMD_DRV_LOG_LINE(ERR, "invalid NULL argument");
 		return evt;
 	}
 
@@ -408,7 +408,7 @@ int bnxt_event_hwrm_resp_handler(struct bnxt *bp, struct cmpl_base *cmp)
 		break;
 	default:
 		/* Ignore any other events */
-		PMD_DRV_LOG(DEBUG, "Ignoring %02x completion\n", CMP_TYPE(cmp));
+		PMD_DRV_LOG_LINE(DEBUG, "Ignoring %02x completion", CMP_TYPE(cmp));
 		break;
 	}
 

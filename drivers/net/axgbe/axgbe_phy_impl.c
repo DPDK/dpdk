@@ -312,7 +312,7 @@ again2:
 	}
 
 	if (redrv_data[0] != 0xff) {
-		PMD_DRV_LOG(ERR, "Redriver write checksum error\n");
+		PMD_DRV_LOG_LINE(ERR, "Redriver write checksum error");
 		ret = -EIO;
 	}
 
@@ -437,7 +437,7 @@ static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
 
 	pthread_mutex_unlock(&pdata->phy_mutex);
 
-	PMD_DRV_LOG(ERR, "unable to obtain hardware mutexes\n");
+	PMD_DRV_LOG_LINE(ERR, "unable to obtain hardware mutexes");
 
 	return -ETIMEDOUT;
 }
@@ -679,7 +679,7 @@ static int axgbe_phy_sfp_read_eeprom(struct axgbe_port *pdata)
 
 	ret = axgbe_phy_sfp_get_mux(pdata);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "I2C error setting SFP MUX\n");
+		PMD_DRV_LOG_LINE(ERR, "I2C error setting SFP MUX");
 		return ret;
 	}
 
@@ -689,7 +689,7 @@ static int axgbe_phy_sfp_read_eeprom(struct axgbe_port *pdata)
 				 &eeprom_addr, sizeof(eeprom_addr),
 				 &sfp_eeprom, sizeof(sfp_eeprom));
 	if (ret) {
-		PMD_DRV_LOG(ERR, "I2C error reading SFP EEPROM\n");
+		PMD_DRV_LOG_LINE(ERR, "I2C error reading SFP EEPROM");
 		goto put;
 	}
 
@@ -735,7 +735,7 @@ static void axgbe_phy_sfp_signals(struct axgbe_port *pdata)
 				 &gpio_reg, sizeof(gpio_reg),
 				 gpio_ports, sizeof(gpio_ports));
 	if (ret) {
-		PMD_DRV_LOG(ERR, "I2C error reading SFP GPIOs\n");
+		PMD_DRV_LOG_LINE(ERR, "I2C error reading SFP GPIOs");
 		return;
 	}
 
@@ -836,7 +836,7 @@ static void axgbe_phy_sfp_detect(struct axgbe_port *pdata)
 	axgbe_phy_sfp_parse_eeprom(pdata);
 	axgbe_phy_sfp_external_phy(pdata);
 
-	PMD_DRV_LOG(DEBUG, "SFP Base: %s\n",
+	PMD_DRV_LOG_LINE(DEBUG, "SFP Base: %s",
 		    axgbe_base_as_string(phy_data->sfp_base));
 
 put:
@@ -1064,7 +1064,7 @@ static unsigned int axgbe_phy_an_advertising(struct axgbe_port *pdata)
 		advertising |= ADVERTISED_1000baseKX_Full;
 		break;
 	case AXGBE_PORT_MODE_10GBASE_T:
-		PMD_DRV_LOG(ERR, "10GBASE_T mode is not supported\n");
+		PMD_DRV_LOG_LINE(ERR, "10GBASE_T mode is not supported");
 		break;
 	case AXGBE_PORT_MODE_10GBASE_R:
 		advertising |= ADVERTISED_10000baseKR_Full;
@@ -1251,7 +1251,7 @@ static void axgbe_rx_adaptation(struct axgbe_port *pdata)
 		/* If the block lock is found, update the helpers
 		 * and declare the link up
 		 */
-		PMD_DRV_LOG(NOTICE, "Rx adaptation - Block_lock done\n");
+		PMD_DRV_LOG_LINE(NOTICE, "Rx adaptation - Block_lock done");
 		pdata->rx_adapt_done = true;
 		pdata->mode_set = false;
 		return;
@@ -1271,7 +1271,7 @@ rx_adapt_reinit:
 
 	/* step 1: Check for RX_VALID && LF_SIGDET */
 	if ((reg & XGBE_PMA_RX_VAL_SIG_MASK) != XGBE_PMA_RX_VAL_SIG_MASK) {
-		PMD_DRV_LOG(NOTICE, "RX_VALID or LF_SIGDET is unset, issue rrc\n");
+		PMD_DRV_LOG_LINE(NOTICE, "RX_VALID or LF_SIGDET is unset, issue rrc");
 		axgbe_phy_rrc(pdata);
 		if (pdata->rx_adapt_retries++ >= MAX_RX_ADAPT_RETRIES) {
 			pdata->rx_adapt_retries = 0;
@@ -1301,7 +1301,7 @@ static void axgbe_phy_rx_reset(struct axgbe_port *pdata)
 		XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_CTRL1,
 				 XGBE_PMA_RX_RST_0_MASK, XGBE_PMA_RX_RST_0_RESET_OFF);
 		rte_delay_us(45);
-		PMD_DRV_LOG(ERR, "firmware mailbox reset performed\n");
+		PMD_DRV_LOG_LINE(ERR, "firmware mailbox reset performed");
 	}
 }
 
@@ -1331,7 +1331,7 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 
 	/* Log if a previous command did not complete */
 	if (XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS)) {
-		PMD_DRV_LOG(NOTICE, "firmware mailbox not ready for command\n");
+		PMD_DRV_LOG_LINE(NOTICE, "firmware mailbox not ready for command");
 		axgbe_phy_rx_reset(pdata);
 	}
 
@@ -1351,7 +1351,7 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 			goto do_rx_adaptation;
 		rte_delay_us(1500);
 	}
-	PMD_DRV_LOG(NOTICE, "firmware mailbox command did not complete\n");
+	PMD_DRV_LOG_LINE(NOTICE, "firmware mailbox command did not complete");
 	/* Reset on error */
 	axgbe_phy_rx_reset(pdata);
 	goto reenable_pll;
@@ -1360,7 +1360,7 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 do_rx_adaptation:
 	if (pdata->en_rx_adap && sub_cmd == AXGBE_MB_SUBCMD_RX_ADAP &&
 	    (cmd == AXGBE_MB_CMD_SET_10G_KR || cmd == AXGBE_MB_CMD_SET_10G_SFI)) {
-		PMD_DRV_LOG(NOTICE, "Enabling RX adaptation\n");
+		PMD_DRV_LOG_LINE(NOTICE, "Enabling RX adaptation");
 		pdata->mode_set = true;
 		axgbe_phy_rx_adaptation(pdata);
 		/* return from here to avoid enabling PLL ctrl
@@ -1384,7 +1384,7 @@ static void axgbe_phy_rrc(struct axgbe_port *pdata)
 	/* Receiver Reset Cycle */
 	axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_RRC, AXGBE_MB_SUBCMD_NONE);
 
-	PMD_DRV_LOG(DEBUG, "receiver reset complete\n");
+	PMD_DRV_LOG_LINE(DEBUG, "receiver reset complete");
 }
 
 static void axgbe_phy_power_off(struct axgbe_port *pdata)
@@ -1396,7 +1396,7 @@ static void axgbe_phy_power_off(struct axgbe_port *pdata)
 
 	phy_data->cur_mode = AXGBE_MODE_UNKNOWN;
 
-	PMD_DRV_LOG(DEBUG, "phy powered off\n");
+	PMD_DRV_LOG_LINE(DEBUG, "phy powered off");
 }
 
 static bool enable_rx_adap(struct axgbe_port *pdata, enum axgbe_mode mode)
@@ -1453,7 +1453,7 @@ static void axgbe_phy_sfi_mode(struct axgbe_port *pdata)
 
 	phy_data->cur_mode = AXGBE_MODE_SFI;
 
-	PMD_DRV_LOG(DEBUG, "10GbE SFI mode set\n");
+	PMD_DRV_LOG_LINE(DEBUG, "10GbE SFI mode set");
 }
 
 static void axgbe_phy_kr_mode(struct axgbe_port *pdata)
@@ -1471,7 +1471,7 @@ static void axgbe_phy_kr_mode(struct axgbe_port *pdata)
 						AXGBE_MB_SUBCMD_NONE);
 	phy_data->cur_mode = AXGBE_MODE_KR;
 
-	PMD_DRV_LOG(DEBUG, "10GbE KR mode set\n");
+	PMD_DRV_LOG_LINE(DEBUG, "10GbE KR mode set");
 }
 
 static void axgbe_phy_kx_2500_mode(struct axgbe_port *pdata)
@@ -1987,7 +1987,7 @@ static int axgbe_phy_mdio_reset_setup(struct axgbe_port *pdata)
 	case AXGBE_MDIO_RESET_INT_GPIO:
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unsupported MDIO reset (%#x)\n",
+		PMD_DRV_LOG_LINE(ERR, "unsupported MDIO reset (%#x)",
 			    phy_data->mdio_reset);
 		return -EINVAL;
 	}
@@ -2270,7 +2270,7 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 
 	/* Check if enabled */
 	if (!axgbe_phy_port_enabled(pdata)) {
-		PMD_DRV_LOG(ERR, "device is not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "device is not enabled");
 		return -ENODEV;
 	}
 
@@ -2281,7 +2281,7 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 
 	phy_data = rte_zmalloc("phy_data memory", sizeof(*phy_data), 0);
 	if (!phy_data) {
-		PMD_DRV_LOG(ERR, "phy_data allocation failed\n");
+		PMD_DRV_LOG_LINE(ERR, "phy_data allocation failed");
 		return -ENOMEM;
 	}
 	pdata->phy_data = phy_data;
@@ -2300,14 +2300,14 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 
 	/* Validate the connection requested */
 	if (axgbe_phy_conn_type_mismatch(pdata)) {
-		PMD_DRV_LOG(ERR, "phy mode/connection mismatch (%#x/%#x)\n",
+		PMD_DRV_LOG_LINE(ERR, "phy mode/connection mismatch (%#x/%#x)",
 			    phy_data->port_mode, phy_data->conn_type);
 		return -EINVAL;
 	}
 
 	/* Validate the mode requested */
 	if (axgbe_phy_port_mode_mismatch(pdata)) {
-		PMD_DRV_LOG(ERR, "phy mode/speed mismatch (%#x/%#x)\n",
+		PMD_DRV_LOG_LINE(ERR, "phy mode/speed mismatch (%#x/%#x)",
 			    phy_data->port_mode, phy_data->port_speeds);
 		return -EINVAL;
 	}
@@ -2319,7 +2319,7 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 
 	/* Validate the re-driver information */
 	if (axgbe_phy_redrv_error(phy_data)) {
-		PMD_DRV_LOG(ERR, "phy re-driver settings error\n");
+		PMD_DRV_LOG_LINE(ERR, "phy re-driver settings error");
 		return -EINVAL;
 	}
 	pdata->kr_redrv = phy_data->redrv;
@@ -2499,7 +2499,7 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		ret = pdata->hw_if.set_ext_mii_mode(pdata, phy_data->mdio_addr,
 						    phy_data->phydev_mode);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "mdio port/clause not compatible (%d/%u)\n",
+			PMD_DRV_LOG_LINE(ERR, "mdio port/clause not compatible (%d/%u)",
 				    phy_data->mdio_addr, phy_data->phydev_mode);
 			return -EINVAL;
 		}
@@ -2509,7 +2509,7 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		ret = pdata->hw_if.set_ext_mii_mode(pdata, phy_data->redrv_addr,
 						    AXGBE_MDIO_MODE_CL22);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "redriver mdio port not compatible (%u)\n",
+			PMD_DRV_LOG_LINE(ERR, "redriver mdio port not compatible (%u)",
 				    phy_data->redrv_addr);
 			return -EINVAL;
 		}

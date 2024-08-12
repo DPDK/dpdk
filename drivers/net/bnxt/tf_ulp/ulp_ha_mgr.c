@@ -413,7 +413,7 @@ ulp_ha_mgr_init(struct bnxt_ulp_context *ulp_ctx)
 
 	rc = pthread_mutex_init(&ha_info->ha_lock, NULL);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to initialize ha mutex\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to initialize ha mutex");
 		goto cleanup;
 	}
 	rc = ulp_ha_mgr_timer_start(ulp_ctx->cfg_data);

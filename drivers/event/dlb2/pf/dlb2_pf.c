@@ -289,7 +289,7 @@ dlb2_alloc_coherent_aligned(const struct rte_memzone **mz, uintptr_t *phys,
 	*mz = rte_memzone_reserve_aligned(mz_name, size, socket_id,
 					 RTE_MEMZONE_IOVA_CONTIG, align);
 	if (*mz == NULL) {
-		DLB2_LOG_DBG("Unable to allocate DMA memory of size %zu bytes - %s\n",
+		DLB2_LOG_LINE_DBG("Unable to allocate DMA memory of size %zu bytes - %s",
 			     size, rte_strerror(rte_errno));
 		*phys = 0;
 		return NULL;
@@ -716,7 +716,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 	int q;
 	const void *probe_args = NULL;
 
-	DLB2_LOG_DBG("Enter with dev_id=%d socket_id=%d",
+	DLB2_LOG_LINE_DBG("Enter with dev_id=%d socket_id=%d",
 		     eventdev->data->dev_id, eventdev->data->socket_id);
 
 	for (q = 0; q < DLB2_MAX_NUM_PORTS_ALL; q++)

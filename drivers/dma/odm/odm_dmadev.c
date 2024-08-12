@@ -494,10 +494,10 @@ odm_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t nb
 	}
 
 #ifdef ODM_DEBUG
-	odm_debug("cring_head: 0x%" PRIx16, cring_head);
-	odm_debug("Submitted: 0x%" PRIx64, vq->stats.submitted);
-	odm_debug("Completed: 0x%" PRIx64, vq->stats.completed);
-	odm_debug("Hardware count: 0x%" PRIx64, odm_read64(odm->rbase + ODM_VDMA_CNT(vchan)));
+	ODM_LOG(DEBUG, "cring_head: 0x%" PRIx16, cring_head);
+	ODM_LOG(DEBUG, "Submitted: 0x%" PRIx64, vq->stats.submitted);
+	ODM_LOG(DEBUG, "Completed: 0x%" PRIx64, vq->stats.completed);
+	ODM_LOG(DEBUG, "Hardware count: 0x%" PRIx64, odm_read64(odm->rbase + ODM_VDMA_CNT(vchan)));
 #endif
 
 	for (cnt = 0; cnt < nb_cpls; cnt++) {
@@ -651,11 +651,11 @@ odm_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_dev
 
 	dmadev = rte_dma_pmd_allocate(name, pci_dev->device.numa_node, sizeof(*odm));
 	if (dmadev == NULL) {
-		odm_err("DMA device allocation failed for %s", name);
+		ODM_LOG(ERR, "DMA device allocation failed for %s", name);
 		return -ENOMEM;
 	}
 
-	odm_info("DMA device %s probed", name);
+	ODM_LOG(INFO, "DMA device %s probed", name);
 	odm = dmadev->data->dev_private;
 
 	dmadev->device = &pci_dev->device;

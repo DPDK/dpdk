@@ -28,7 +28,7 @@ nitrox_setup_cmdq(struct nitrox_qp *qp, uint8_t *bar_addr,
 					 RTE_MEMZONE_256MB,
 					 CMDQ_PKT_IN_ALIGN);
 	if (!mz) {
-		NITROX_LOG(ERR, "cmdq memzone reserve failed for %s queue\n",
+		NITROX_LOG_LINE(ERR, "cmdq memzone reserve failed for %s queue",
 			   mz_name);
 		return -ENOMEM;
 	}
@@ -48,7 +48,7 @@ nitrox_setup_cmdq(struct nitrox_qp *qp, uint8_t *bar_addr,
 					    mz->iova);
 		break;
 	default:
-		NITROX_LOG(ERR, "Invalid queue type %d\n", qp->type);
+		NITROX_LOG_LINE(ERR, "Invalid queue type %d", qp->type);
 		err = -EINVAL;
 		break;
 	}
@@ -73,7 +73,7 @@ nitrox_setup_ridq(struct nitrox_qp *qp, int socket_id)
 				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!qp->ridq) {
-		NITROX_LOG(ERR, "Failed to create rid queue\n");
+		NITROX_LOG_LINE(ERR, "Failed to create rid queue");
 		return -ENOMEM;
 	}
 
@@ -112,8 +112,8 @@ nitrox_qp_setup(struct nitrox_qp *qp, uint8_t *bar_addr, const char *dev_name,
 
 	count = rte_align32pow2(nb_descriptors);
 	if (count > MAX_CMD_QLEN) {
-		NITROX_LOG(ERR, "%s: Number of descriptors too big %d,"
-			   " greater than max queue length %d\n",
+		NITROX_LOG_LINE(ERR, "%s: Number of descriptors too big %d,"
+			   " greater than max queue length %d",
 			   dev_name, count,
 			   MAX_CMD_QLEN);
 		return -EINVAL;

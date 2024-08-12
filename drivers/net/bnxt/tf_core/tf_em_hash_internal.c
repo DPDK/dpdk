@@ -62,8 +62,8 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 			    DP_DEFRAG_TO_FIT);
 
 	if (index == DP_INVALID_INDEX) {
-		PMD_DRV_LOG(ERR,
-			    "%s, EM entry index allocation failed\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "%s, EM entry index allocation failed",
 			    tf_dir_2_str(parms->dir));
 		return -1;
 	}

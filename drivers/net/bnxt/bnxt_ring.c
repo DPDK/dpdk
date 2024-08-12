@@ -50,7 +50,7 @@ static void bnxt_init_ring_grps(struct bnxt *bp)
 int bnxt_alloc_ring_grps(struct bnxt *bp)
 {
 	if (bp->max_tx_rings == 0) {
-		PMD_DRV_LOG(ERR, "No TX rings available!\n");
+		PMD_DRV_LOG_LINE(ERR, "No TX rings available!");
 		return -EBUSY;
 	}
 
@@ -61,7 +61,7 @@ int bnxt_alloc_ring_grps(struct bnxt *bp)
 		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
 	} else if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
 		/* 1 ring is for default completion ring */
-		PMD_DRV_LOG(ERR, "Insufficient resource: Ring Group\n");
+		PMD_DRV_LOG_LINE(ERR, "Insufficient resource: Ring Group");
 		return -ENOSPC;
 	}
 
@@ -70,8 +70,8 @@ int bnxt_alloc_ring_grps(struct bnxt *bp)
 					   sizeof(*bp->grp_info) *
 					   bp->max_ring_grps, 0);
 		if (!bp->grp_info) {
-			PMD_DRV_LOG(ERR,
-				    "Failed to alloc grp info tbl.\n");
+			PMD_DRV_LOG_LINE(ERR,
+				    "Failed to alloc grp info tbl.");
 			return -ENOMEM;
 		}
 		bnxt_init_ring_grps(bp);
@@ -416,7 +416,7 @@ static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 		if (nqr) {
 			nq_ring_id = nqr->cp_ring_struct->fw_ring_id;
 		} else {
-			PMD_DRV_LOG(ERR, "NQ ring is NULL\n");
+			PMD_DRV_LOG_LINE(ERR, "NQ ring is NULL");
 			return -EINVAL;
 		}
 	}
@@ -657,8 +657,8 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 
 	if (rxq->rx_started) {
 		if (bnxt_init_one_rx_ring(rxq)) {
-			PMD_DRV_LOG(ERR,
-				    "ring%d bnxt_init_one_rx_ring failed!\n",
+			PMD_DRV_LOG_LINE(ERR,
+				    "ring%d bnxt_init_one_rx_ring failed!",
 				    queue_index);
 			rc = -ENOMEM;
 			goto err_out;
@@ -675,8 +675,8 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	return 0;
 
 err_out:
-	PMD_DRV_LOG(ERR,
-		    "Failed to allocate receive queue %d, rc %d.\n",
+	PMD_DRV_LOG_LINE(ERR,
+		    "Failed to allocate receive queue %d, rc %d.",
 		    queue_index, rc);
 	return rc;
 }

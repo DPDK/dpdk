@@ -11,7 +11,8 @@
 #include "bnxt_ulp.h"
 #include "ulp_template_db_enum.h"
 
-#define BNXT_TF_DBG(lvl, fmt, args...)	PMD_DRV_LOG(lvl, fmt, ## args)
+#define BNXT_TF_DBG(lvl, fmt, ...) \
+	RTE_LOG(lvl, BNXT, "%s(): " fmt, __func__, ## __VA_ARGS__)
 
 #define BNXT_TF_INF(fmt, args...)
 

@@ -110,7 +110,7 @@ int bnxt_free_int(struct bnxt *bp)
 		} while (count++ < 10);
 
 		if (rc < 0) {
-			PMD_DRV_LOG(ERR, "irq cb unregister failed rc: %d\n",
+			PMD_DRV_LOG_LINE(ERR, "irq cb unregister failed rc: %d",
 				    rc);
 			return rc;
 		}
@@ -177,7 +177,7 @@ int bnxt_setup_int(struct bnxt *bp)
 			bp->irq_tbl[i].handler = bnxt_int_handler;
 		}
 	} else {
-		PMD_DRV_LOG(ERR, "bnxt_irq_tbl setup failed\n");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_irq_tbl setup failed");
 		return -ENOMEM;
 	}
 

@@ -86,7 +86,7 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 
 	rc = pthread_mutex_init(&ulp_fc_info->fc_lock, NULL);
 	if (rc) {
-		PMD_DRV_LOG(ERR, "Failed to initialize fc mutex\n");
+		PMD_DRV_LOG_LINE(ERR, "Failed to initialize fc mutex");
 		goto error;
 	}
 
@@ -269,16 +269,16 @@ ulp_bulk_get_flow_stats(struct tf *tfp,
 		((uintptr_t)(fc_info->shadow_hw_tbl[dir].mem_pa));
 
 	if (!stats) {
-		PMD_DRV_LOG(ERR,
-			    "BULK: Memory not initialized id:0x%x dir:%d\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "BULK: Memory not initialized id:0x%x dir:%d",
 			    parms.starting_idx, dir);
 		return -EINVAL;
 	}
 
 	rc = tf_tbl_bulk_get(tfp, &parms);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "BULK: Get failed for id:0x%x rc:%d\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "BULK: Get failed for id:0x%x rc:%d",
 			    parms.starting_idx, rc);
 		return rc;
 	}
@@ -337,8 +337,8 @@ ulp_fc_tf_flow_stat_get(struct bnxt_ulp_context *ctxt,
 	parms.data = (uint8_t *)&stats;
 	rc = tf_get_tbl_entry(tfp, &parms);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "Get failed for id:0x%x rc:%d\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Get failed for id:0x%x rc:%d",
 			    parms.idx, rc);
 		return rc;
 	}
@@ -358,7 +358,7 @@ ulp_fc_tf_flow_stat_get(struct bnxt_ulp_context *ctxt,
 		sparms.data_sz_in_bytes = sizeof(uint64_t);
 		rc = tf_set_tbl_entry(tfp, &sparms);
 		if (rc) {
-			PMD_DRV_LOG(ERR, "Set failed for id:0x%x rc:%d\n",
+			PMD_DRV_LOG_LINE(ERR, "Set failed for id:0x%x rc:%d",
 				    sparms.idx, rc);
 			return rc;
 		}
@@ -391,8 +391,8 @@ static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
 	parms.data = (uint8_t *)&stats;
 	rc = tf_get_tbl_entry(tfp, &parms);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "Get failed for id:0x%x rc:%d\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "Get failed for id:0x%x rc:%d",
 			    parms.idx, rc);
 		return rc;
 	}
@@ -419,7 +419,7 @@ static int ulp_get_single_flow_stat(struct bnxt_ulp_context *ctxt,
 		if (ulp_flow_db_parent_flow_count_update(ctxt, pc_idx,
 							 t_sw->pkt_count,
 							 t_sw->byte_count)) {
-			PMD_DRV_LOG(ERR, "Error updating parent counters\n");
+			PMD_DRV_LOG_LINE(ERR, "Error updating parent counters");
 		}
 	}
 

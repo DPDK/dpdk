@@ -162,13 +162,13 @@ static int axgbe_i2c_isr(struct axgbe_port *pdata)
 
 	isr = XI2C_IOREAD(pdata, IC_RAW_INTR_STAT);
 
-	PMD_DRV_LOG(DEBUG, "I2C interrupt received: status=%#010x\n", isr);
+	PMD_DRV_LOG_LINE(DEBUG, "I2C interrupt received: status=%#010x", isr);
 
 	axgbe_i2c_clear_isr_interrupts(pdata, isr);
 
 	if (isr & AXGBE_INTR_TX_ABRT) {
-		PMD_DRV_LOG(DEBUG,
-			    "I2C TX_ABRT received (%#010x) for target %#04x\n",
+		PMD_DRV_LOG_LINE(DEBUG,
+			    "I2C TX_ABRT received (%#010x) for target %#04x",
 			    state->tx_abort_source, state->op->target);
 
 		axgbe_i2c_disable_interrupts(pdata);
@@ -232,7 +232,7 @@ static int axgbe_i2c_xfer(struct axgbe_port *pdata, struct axgbe_i2c_op *op)
 	pthread_mutex_lock(&pdata->i2c_mutex);
 	ret = axgbe_i2c_disable(pdata);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "failed to disable i2c master\n");
+		PMD_DRV_LOG_LINE(ERR, "failed to disable i2c master");
 		pthread_mutex_unlock(&pdata->i2c_mutex);
 		return ret;
 	}
@@ -249,7 +249,7 @@ static int axgbe_i2c_xfer(struct axgbe_port *pdata, struct axgbe_i2c_op *op)
 	axgbe_i2c_clear_all_interrupts(pdata);
 	ret = axgbe_i2c_enable(pdata);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "failed to enable i2c master\n");
+		PMD_DRV_LOG_LINE(ERR, "failed to enable i2c master");
 		pthread_mutex_unlock(&pdata->i2c_mutex);
 		return ret;
 	}
@@ -268,7 +268,7 @@ static int axgbe_i2c_xfer(struct axgbe_port *pdata, struct axgbe_i2c_op *op)
 		}
 	}
 
-	PMD_DRV_LOG(ERR, "i2c operation timed out\n");
+	PMD_DRV_LOG_LINE(ERR, "i2c operation timed out");
 	axgbe_i2c_disable_interrupts(pdata);
 	axgbe_i2c_disable(pdata);
 	ret = -ETIMEDOUT;
@@ -293,7 +293,7 @@ static void axgbe_i2c_stop(struct axgbe_port *pdata)
 	if (!pdata->i2c.started)
 		return;
 
-	PMD_DRV_LOG(DEBUG, "stopping I2C\n");
+	PMD_DRV_LOG_LINE(DEBUG, "stopping I2C");
 
 	pdata->i2c.started = 0;
 	axgbe_i2c_disable_interrupts(pdata);
@@ -306,7 +306,7 @@ static int axgbe_i2c_start(struct axgbe_port *pdata)
 	if (pdata->i2c.started)
 		return 0;
 
-	PMD_DRV_LOG(DEBUG, "starting I2C\n");
+	PMD_DRV_LOG_LINE(DEBUG, "starting I2C");
 
 	pdata->i2c.started = 1;
 
@@ -321,7 +321,7 @@ static int axgbe_i2c_init(struct axgbe_port *pdata)
 
 	ret = axgbe_i2c_disable(pdata);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "failed to disable i2c master\n");
+		PMD_DRV_LOG_LINE(ERR, "failed to disable i2c master");
 		return ret;
 	}
 

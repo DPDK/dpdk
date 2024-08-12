@@ -56,8 +56,8 @@ tf_em_insert_int_entry(struct tf *tfp,
 	pool = (struct dpool *)tfs->em_pool[parms->dir];
 	index = dpool_alloc(pool, TF_SESSION_EM_ENTRY_SIZE, 0);
 	if (index == DP_INVALID_INDEX) {
-		PMD_DRV_LOG(ERR,
-			    "%s, EM entry index allocation failed\n",
+		PMD_DRV_LOG_LINE(ERR,
+			    "%s, EM entry index allocation failed",
 			    tf_dir_2_str(parms->dir));
 		return -1;
 	}

@@ -1207,12 +1207,8 @@ extern const struct rte_flow_ops bnxt_flow_meter_ops;
 
 extern int bnxt_logtype_driver;
 #define RTE_LOGTYPE_BNXT bnxt_logtype_driver
-#define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
-
-#define PMD_DRV_LOG(level, fmt, args...) \
-	  PMD_DRV_LOG_RAW(level, fmt, ## args)
+#define PMD_DRV_LOG_LINE(level, fmt, ...) \
+	RTE_LOG(level, BNXT, "%s(): " fmt "\n", __func__, ## __VA_ARGS__)
 
 #define BNXT_LINK_SPEEDS_V2_OPTIONS(f) \
 	((f) & HWRM_PORT_PHY_QCFG_OUTPUT_OPTION_FLAGS_SPEEDS2_SUPPORTED)

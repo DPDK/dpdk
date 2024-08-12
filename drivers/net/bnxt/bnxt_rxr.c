@@ -76,12 +76,12 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	rxbd = &rxr->ag_desc_ring[prod];
 	rx_buf = &rxr->ag_buf_ring[prod];
 	if (rxbd == NULL) {
-		PMD_DRV_LOG(ERR, "Jumbo Frame. rxbd is NULL\n");
+		PMD_DRV_LOG_LINE(ERR, "Jumbo Frame. rxbd is NULL");
 		return -EINVAL;
 	}
 
 	if (rx_buf == NULL) {
-		PMD_DRV_LOG(ERR, "Jumbo Frame. rx_buf is NULL\n");
+		PMD_DRV_LOG_LINE(ERR, "Jumbo Frame. rx_buf is NULL");
 		return -EINVAL;
 	}
 
@@ -159,7 +159,7 @@ static void bnxt_rx_ring_reset(void *arg)
 
 		rc = bnxt_hwrm_rx_ring_reset(bp, i);
 		if (rc) {
-			PMD_DRV_LOG(ERR, "Rx ring%d reset failed\n", i);
+			PMD_DRV_LOG_LINE(ERR, "Rx ring%d reset failed", i);
 			continue;
 		}
 
@@ -247,7 +247,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	data_cons = tpa_start->opaque;
 	tpa_info = &rxr->tpa_info[agg_id];
 	if (unlikely(data_cons != rxr->rx_next_cons)) {
-		PMD_DRV_LOG(ERR, "TPA cons %x, expected cons %x\n",
+		PMD_DRV_LOG_LINE(ERR, "TPA cons %x, expected cons %x",
 			    data_cons, rxr->rx_next_cons);
 		bnxt_sched_ring_reset(rxq);
 		return;
@@ -318,7 +318,7 @@ static int bnxt_prod_ag_mbuf(struct bnxt_rx_queue *rxq)
 	/* TODO batch allocation for better performance */
 	while (rte_bitmap_get(rxr->ag_bitmap, bmap_next)) {
 		if (unlikely(bnxt_alloc_ag_data(rxq, rxr, raw_next))) {
-			PMD_DRV_LOG(ERR, "agg mbuf alloc failed: prod=0x%x\n",
+			PMD_DRV_LOG_LINE(ERR, "agg mbuf alloc failed: prod=0x%x",
 				    raw_next);
 			break;
 		}
@@ -432,7 +432,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	struct bnxt_tpa_info *tpa_info;
 
 	if (unlikely(rxq->in_reset)) {
-		PMD_DRV_LOG(ERR, "rxq->in_reset: raw_cp_cons:%d\n",
+		PMD_DRV_LOG_LINE(ERR, "rxq->in_reset: raw_cp_cons:%d",
 			    *raw_cp_cons);
 		bnxt_discard_rx(rxq->bp, cpr, raw_cp_cons, tpa_end);
 		return NULL;
@@ -1093,7 +1093,7 @@ static int bnxt_crx_pkt(struct rte_mbuf **rx_pkt,
 	bnxt_set_vlan_crx(rxcmp, mbuf);
 
 	if (bnxt_alloc_rx_data(rxq, rxr, raw_prod)) {
-		PMD_DRV_LOG(ERR, "mbuf alloc failed with prod=0x%x\n",
+		PMD_DRV_LOG_LINE(ERR, "mbuf alloc failed with prod=0x%x",
 			    raw_prod);
 		rc = -ENOMEM;
 		goto rx;
@@ -1186,7 +1186,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	cons = rxcmp->opaque;
 	if (unlikely(cons != rxr->rx_next_cons)) {
 		bnxt_discard_rx(bp, cpr, &tmp_raw_cons, rxcmp);
-		PMD_DRV_LOG(ERR, "RX cons %x != expected cons %x\n",
+		PMD_DRV_LOG_LINE(ERR, "RX cons %x != expected cons %x",
 			    cons, rxr->rx_next_cons);
 		bnxt_sched_ring_reset(rxq);
 		rc = -EBUSY;
@@ -1272,7 +1272,7 @@ reuse_rx_mbuf:
 	 */
 	raw_prod = RING_NEXT(raw_prod);
 	if (bnxt_alloc_rx_data(rxq, rxr, raw_prod)) {
-		PMD_DRV_LOG(ERR, "mbuf alloc failed with prod=0x%x\n",
+		PMD_DRV_LOG_LINE(ERR, "mbuf alloc failed with prod=0x%x",
 			    raw_prod);
 		rc = -ENOMEM;
 		goto rx;
@@ -1398,7 +1398,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 					cpr->cp_ring_struct->ring_size))
 			break;
 		if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_HWRM_DONE) {
-			PMD_DRV_LOG(ERR, "Rx flush done\n");
+			PMD_DRV_LOG_LINE(ERR, "Rx flush done");
 		} else if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_RX_L2_COMPRESS) {
 			rc = bnxt_crx_pkt(&rx_pkts[nb_rx_pkts], rxq,
 					  (struct rx_pkt_compress_cmpl *)rxcmp,
@@ -1631,8 +1631,8 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	for (i = 0; i < ring->ring_size; i++) {
 		if (unlikely(!rxr->rx_buf_ring[i])) {
 			if (bnxt_alloc_rx_data(rxq, rxr, raw_prod) != 0) {
-				PMD_DRV_LOG(WARNING,
-					    "RxQ %d allocated %d of %d mbufs\n",
+				PMD_DRV_LOG_LINE(WARNING,
+					    "RxQ %d allocated %d of %d mbufs",
 					    rxq->queue_id, i, ring->ring_size);
 				return -ENOMEM;
 			}
@@ -1661,8 +1661,8 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	for (i = 0; i < ring->ring_size; i++) {
 		if (unlikely(!rxr->ag_buf_ring[i])) {
 			if (bnxt_alloc_ag_data(rxq, rxr, raw_prod) != 0) {
-				PMD_DRV_LOG(WARNING,
-					    "RxQ %d allocated %d of %d mbufs\n",
+				PMD_DRV_LOG_LINE(WARNING,
+					    "RxQ %d allocated %d of %d mbufs",
 					    rxq->queue_id, i, ring->ring_size);
 				return -ENOMEM;
 			}
@@ -1670,7 +1670,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 		rxr->ag_raw_prod = raw_prod;
 		raw_prod = RING_NEXT(raw_prod);
 	}
-	PMD_DRV_LOG(DEBUG, "AGG Done!\n");
+	PMD_DRV_LOG_LINE(DEBUG, "AGG Done!");
 
 	if (rxr->tpa_info) {
 		unsigned int max_aggs = BNXT_TPA_MAX_AGGS(rxq->bp);
@@ -1687,7 +1687,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 			}
 		}
 	}
-	PMD_DRV_LOG(DEBUG, "TPA alloc Done!\n");
+	PMD_DRV_LOG_LINE(DEBUG, "TPA alloc Done!");
 
 	return 0;
 }

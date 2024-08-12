@@ -781,7 +781,7 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 		return ret;
 
 	if (!eth_dev->data->dev_started) {
-		PMD_DRV_LOG(ERR, "Device Initialization not complete!\n");
+		PMD_DRV_LOG_LINE(ERR, "Device Initialization not complete!");
 		return -EINVAL;
 	}
 
@@ -1180,13 +1180,13 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 
 	if (BNXT_VF(bp) || !BNXT_SINGLE_PF(bp) ||
 	    !(bp->flags & BNXT_FLAG_PORT_STATS)) {
-		PMD_DRV_LOG(ERR, "Operation not supported\n");
+		PMD_DRV_LOG_LINE(ERR, "Operation not supported");
 		return -ENOTSUP;
 	}
 
 	ret = bnxt_hwrm_port_clr_stats(bp);
 	if (ret != 0)
-		PMD_DRV_LOG(ERR, "Failed to reset xstats: %s\n",
+		PMD_DRV_LOG_LINE(ERR, "Failed to reset xstats: %s",
 			    strerror(-ret));
 
 	bnxt_clear_prev_stat(bp);

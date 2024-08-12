@@ -832,7 +832,7 @@ dlb2_hw_create_sched_domain(struct dlb2_eventdev *dlb2,
 		evdev_dlb2_default_info.max_event_port_dequeue_depth;
 
 	if (device_version == DLB2_HW_V2_5) {
-		DLB2_LOG_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, credits=%d\n",
+		DLB2_LOG_LINE_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, credits=%d",
 			     cfg->num_ldb_queues,
 			     resources_asked->num_ldb_ports,
 			     cfg->num_dir_ports,
@@ -840,7 +840,7 @@ dlb2_hw_create_sched_domain(struct dlb2_eventdev *dlb2,
 			     cfg->num_hist_list_entries,
 			     cfg->num_credits);
 	} else {
-		DLB2_LOG_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, ldb_credits=%d, dir_credits=%d\n",
+		DLB2_LOG_LINE_DBG("sched domain create - ldb_qs=%d, ldb_ports=%d, dir_ports=%d, atomic_inflights=%d, hist_list_entries=%d, ldb_credits=%d, dir_credits=%d",
 			     cfg->num_ldb_queues,
 			     resources_asked->num_ldb_ports,
 			     cfg->num_dir_ports,
@@ -1250,7 +1250,7 @@ dlb2_hw_create_ldb_queue(struct dlb2_eventdev *dlb2,
 	queue->sched_type = sched_type;
 	queue->config_state = DLB2_CONFIGURED;
 
-	DLB2_LOG_DBG("Created LB event queue %d, nb_inflights=%d, nb_seq=%d, qid inflights=%d\n",
+	DLB2_LOG_LINE_DBG("Created LB event queue %d, nb_inflights=%d, nb_seq=%d, qid inflights=%d",
 		     qm_qid,
 		     cfg.num_atomic_inflights,
 		     cfg.num_sequence_numbers,
@@ -1586,7 +1586,7 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 
 	qm_port_id = cfg.response.id;
 
-	DLB2_LOG_DBG("dlb2: ev_port %d uses qm LB port %d <<<<<\n",
+	DLB2_LOG_LINE_DBG("dlb2: ev_port %d uses qm LB port %d <<<<<",
 		     ev_port->id, qm_port_id);
 
 	qm_port = &ev_port->qm_port;
@@ -1680,7 +1680,7 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 		qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
 		qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
 
-		DLB2_LOG_DBG("dlb2: created ldb port %d, depth = %d, ldb credits=%d, dir credits=%d\n",
+		DLB2_LOG_LINE_DBG("dlb2: created ldb port %d, depth = %d, ldb credits=%d, dir credits=%d",
 			     qm_port_id,
 			     dequeue_depth,
 			     qm_port->ldb_credits,
@@ -1689,7 +1689,7 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 		qm_port->credits = credit_high_watermark;
 		qm_port->credit_pool[DLB2_COMBINED_POOL] = &dlb2->credit_pool;
 
-		DLB2_LOG_DBG("dlb2: created ldb port %d, depth = %d, credits=%d\n",
+		DLB2_LOG_LINE_DBG("dlb2: created ldb port %d, depth = %d, credits=%d",
 			     qm_port_id,
 			     dequeue_depth,
 			     qm_port->credits);
@@ -1809,7 +1809,7 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 
 	qm_port_id = cfg.response.id;
 
-	DLB2_LOG_DBG("dlb2: ev_port %d uses qm DIR port %d <<<<<\n",
+	DLB2_LOG_LINE_DBG("dlb2: ev_port %d uses qm DIR port %d <<<<<",
 		     ev_port->id, qm_port_id);
 
 	qm_port = &ev_port->qm_port;
@@ -1881,7 +1881,7 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 		qm_port->credit_pool[DLB2_DIR_QUEUE] = &dlb2->dir_credit_pool;
 		qm_port->credit_pool[DLB2_LDB_QUEUE] = &dlb2->ldb_credit_pool;
 
-		DLB2_LOG_DBG("dlb2: created dir port %d, depth = %d cr=%d,%d\n",
+		DLB2_LOG_LINE_DBG("dlb2: created dir port %d, depth = %d cr=%d,%d",
 			     qm_port_id,
 			     dequeue_depth,
 			     dir_credit_high_watermark,
@@ -1890,7 +1890,7 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 		qm_port->credits = credit_high_watermark;
 		qm_port->credit_pool[DLB2_COMBINED_POOL] = &dlb2->credit_pool;
 
-		DLB2_LOG_DBG("dlb2: created dir port %d, depth = %d cr=%d\n",
+		DLB2_LOG_LINE_DBG("dlb2: created dir port %d, depth = %d cr=%d",
 			     qm_port_id,
 			     dequeue_depth,
 			     credit_high_watermark);
@@ -2089,7 +2089,7 @@ dlb2_hw_map_ldb_qid_to_port(struct dlb2_hw_dev *handle,
 			     cfg.qid,
 			     cfg.priority);
 	} else {
-		DLB2_LOG_DBG("dlb2: mapped queue %d to qm_port %d\n",
+		DLB2_LOG_LINE_DBG("dlb2: mapped queue %d to qm_port %d",
 			     qm_qid, qm_port_id);
 	}
 
@@ -2305,13 +2305,13 @@ dlb2_eventdev_port_link(struct rte_eventdev *dev, void *event_port,
 	 * queues pointer.
 	 */
 	if (nb_links == 0) {
-		DLB2_LOG_DBG("dlb2: nb_links is 0\n");
+		DLB2_LOG_LINE_DBG("dlb2: nb_links is 0");
 		return 0; /* Ignore and return success */
 	}
 
 	dlb2 = ev_port->dlb2;
 
-	DLB2_LOG_DBG("Linking %u queues to %s port %d\n",
+	DLB2_LOG_LINE_DBG("Linking %u queues to %s port %d",
 		     nb_links,
 		     ev_port->qm_port.is_directed ? "DIR" : "LDB",
 		     ev_port->id);
@@ -2408,7 +2408,7 @@ dlb2_event_queue_detach_ldb(struct dlb2_eventdev *dlb2,
 	 * It blindly attempts to unmap all queues.
 	 */
 	if (i == DLB2_MAX_NUM_QIDS_PER_LDB_CQ) {
-		DLB2_LOG_DBG("dlb2: ignoring LB QID %d not mapped for qm_port %d.\n",
+		DLB2_LOG_LINE_DBG("dlb2: ignoring LB QID %d not mapped for qm_port %d.",
 			     ev_queue->qm_queue.id,
 			     ev_port->qm_port.id);
 		return 0;
@@ -2441,12 +2441,12 @@ dlb2_eventdev_port_unlink(struct rte_eventdev *dev, void *event_port,
 	}
 
 	if (queues == NULL || nb_unlinks == 0) {
-		DLB2_LOG_DBG("dlb2: queues is NULL or nb_unlinks is 0\n");
+		DLB2_LOG_LINE_DBG("dlb2: queues is NULL or nb_unlinks is 0");
 		return 0; /* Ignore and return success */
 	}
 
 	if (ev_port->qm_port.is_directed) {
-		DLB2_LOG_DBG("dlb2: ignore unlink from dir port %d\n",
+		DLB2_LOG_LINE_DBG("dlb2: ignore unlink from dir port %d",
 			     ev_port->id);
 		rte_errno = 0;
 		return nb_unlinks; /* as if success */
@@ -2651,7 +2651,7 @@ dlb2_eventdev_start(struct rte_eventdev *dev)
 	}
 
 	dlb2->run_state = DLB2_RUN_STATE_STARTED;
-	DLB2_LOG_DBG("dlb2: sched_domain_start completed OK\n");
+	DLB2_LOG_LINE_DBG("dlb2: sched_domain_start completed OK");
 
 	return 0;
 }
@@ -2746,7 +2746,7 @@ dlb2_check_enqueue_hw_ldb_credits(struct dlb2_port *qm_port)
 			DLB2_INC_STAT(
 			qm_port->ev_port->stats.traffic.tx_nospc_ldb_hw_credits,
 			1);
-			DLB2_LOG_DBG("ldb credits exhausted\n");
+			DLB2_LOG_LINE_DBG("ldb credits exhausted");
 			return 1; /* credits exhausted */
 		}
 	}
@@ -2765,7 +2765,7 @@ dlb2_check_enqueue_hw_dir_credits(struct dlb2_port *qm_port)
 			DLB2_INC_STAT(
 			qm_port->ev_port->stats.traffic.tx_nospc_dir_hw_credits,
 			1);
-			DLB2_LOG_DBG("dir credits exhausted\n");
+			DLB2_LOG_LINE_DBG("dir credits exhausted");
 			return 1; /* credits exhausted */
 		}
 	}
@@ -2783,7 +2783,7 @@ dlb2_check_enqueue_hw_credits(struct dlb2_port *qm_port)
 		if (unlikely(qm_port->cached_credits == 0)) {
 			DLB2_INC_STAT(
 			qm_port->ev_port->stats.traffic.tx_nospc_hw_credits, 1);
-			DLB2_LOG_DBG("credits exhausted\n");
+			DLB2_LOG_LINE_DBG("credits exhausted");
 			return 1; /* credits exhausted */
 		}
 	}
@@ -2817,7 +2817,7 @@ dlb2_consume_qe_immediate(struct dlb2_port *qm_port, int num)
 
 	dlb2_movntdq_single(port_data->pp_addr, qe);
 
-	DLB2_LOG_DBG("dlb2: consume immediate - %d QEs\n", num);
+	DLB2_LOG_LINE_DBG("dlb2: consume immediate - %d QEs", num);
 
 	qm_port->owed_tokens = 0;
 
@@ -2888,7 +2888,7 @@ dlb2_event_enqueue_prep(struct dlb2_eventdev_port *ev_port,
 		}
 		switch (ev->sched_type) {
 		case RTE_SCHED_TYPE_ORDERED:
-			DLB2_LOG_DBG("dlb2: put_qe: RTE_SCHED_TYPE_ORDERED\n");
+			DLB2_LOG_LINE_DBG("dlb2: put_qe: RTE_SCHED_TYPE_ORDERED");
 			if (qm_queue->sched_type != RTE_SCHED_TYPE_ORDERED) {
 				DLB2_LOG_ERR("dlb2: tried to send ordered event to unordered queue %d\n",
 					     *queue_id);
@@ -2898,11 +2898,11 @@ dlb2_event_enqueue_prep(struct dlb2_eventdev_port *ev_port,
 			*sched_type = DLB2_SCHED_ORDERED;
 			break;
 		case RTE_SCHED_TYPE_ATOMIC:
-			DLB2_LOG_DBG("dlb2: put_qe: RTE_SCHED_TYPE_ATOMIC\n");
+			DLB2_LOG_LINE_DBG("dlb2: put_qe: RTE_SCHED_TYPE_ATOMIC");
 			*sched_type = DLB2_SCHED_ATOMIC;
 			break;
 		case RTE_SCHED_TYPE_PARALLEL:
-			DLB2_LOG_DBG("dlb2: put_qe: RTE_SCHED_TYPE_PARALLEL\n");
+			DLB2_LOG_LINE_DBG("dlb2: put_qe: RTE_SCHED_TYPE_PARALLEL");
 			if (qm_queue->sched_type == RTE_SCHED_TYPE_ORDERED)
 				*sched_type = DLB2_SCHED_ORDERED;
 			else
@@ -2930,7 +2930,7 @@ dlb2_event_enqueue_prep(struct dlb2_eventdev_port *ev_port,
 			}
 			cached_credits = &qm_port->cached_credits;
 		}
-		DLB2_LOG_DBG("dlb2: put_qe: RTE_SCHED_TYPE_DIRECTED\n");
+		DLB2_LOG_LINE_DBG("dlb2: put_qe: RTE_SCHED_TYPE_DIRECTED");
 
 		*sched_type = DLB2_SCHED_DIRECTED;
 	}
@@ -4450,7 +4450,7 @@ dlb2_eventdev_stop(struct rte_eventdev *dev)
 	rte_spinlock_lock(&dlb2->qm_instance.resource_lock);
 
 	if (dlb2->run_state == DLB2_RUN_STATE_STOPPED) {
-		DLB2_LOG_DBG("Internal error: already stopped\n");
+		DLB2_LOG_LINE_DBG("Internal error: already stopped");
 		rte_spinlock_unlock(&dlb2->qm_instance.resource_lock);
 		return;
 	} else if (dlb2->run_state != DLB2_RUN_STATE_STARTED) {

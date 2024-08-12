@@ -94,8 +94,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 					    RTE_MIN(bp->max_l2_ctx,
 					    RTE_MIN(bp->max_rsscos_ctx,
 						    RTE_ETH_64_POOLS)));
-			PMD_DRV_LOG(DEBUG,
-				    "pools = %u max_pools = %u\n",
+			PMD_DRV_LOG_LINE(DEBUG,
+				    "pools = %u max_pools = %u",
 				    pools, max_pools);
 			if (pools > max_pools)
 				pools = max_pools;
@@ -104,7 +104,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : 1;
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "Unsupported mq_mod %d\n",
+			PMD_DRV_LOG_LINE(ERR, "Unsupported mq_mod %d",
 				dev_conf->rxmode.mq_mode);
 			rc = -EINVAL;
 			goto err_out;
@@ -115,7 +115,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 	pools = RTE_MIN(pools, bp->rx_cp_nr_rings);
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
-	PMD_DRV_LOG(DEBUG, "pools = %u nb_q_per_grp = %u\n",
+	PMD_DRV_LOG_LINE(DEBUG, "pools = %u nb_q_per_grp = %u",
 		    pools, nb_q_per_grp);
 	start_grp_id = 0;
 	end_grp_id = nb_q_per_grp;
@@ -123,7 +123,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	for (i = 0; i < pools; i++) {
 		vnic = &bp->vnic_info[i];
 		if (!vnic) {
-			PMD_DRV_LOG(ERR, "VNIC alloc failed\n");
+			PMD_DRV_LOG_LINE(ERR, "VNIC alloc failed");
 			rc = -ENOMEM;
 			goto err_out;
 		}
@@ -133,8 +133,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		for (j = 0; j < nb_q_per_grp; j++, ring_idx++) {
 			rxq = bp->eth_dev->data->rx_queues[ring_idx];
 			rxq->vnic = vnic;
-			PMD_DRV_LOG(DEBUG,
-				    "rxq[%d] = %p vnic[%d] = %p\n",
+			PMD_DRV_LOG_LINE(DEBUG,
+				    "rxq[%d] = %p vnic[%d] = %p",
 				    ring_idx, rxq, i, vnic);
 		}
 		if (i == 0) {
@@ -155,7 +155,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 		filter = bnxt_alloc_filter(bp);
 		if (!filter) {
-			PMD_DRV_LOG(ERR, "L2 filter alloc failed\n");
+			PMD_DRV_LOG_LINE(ERR, "L2 filter alloc failed");
 			rc = -ENOMEM;
 			goto err_out;
 		}
@@ -332,14 +332,14 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		return rc;
 
 	if (queue_idx >= bnxt_max_rings(bp)) {
-		PMD_DRV_LOG(ERR,
-			"Cannot create Rx ring %d. Only %d rings available\n",
+		PMD_DRV_LOG_LINE(ERR,
+			"Cannot create Rx ring %d. Only %d rings available",
 			queue_idx, bp->max_rx_rings);
 		return -EINVAL;
 	}
 
 	if (nb_desc < BNXT_MIN_RING_DESC || nb_desc > MAX_RX_DESC_CNT) {
-		PMD_DRV_LOG(ERR, "nb_desc %d is invalid\n", nb_desc);
+		PMD_DRV_LOG_LINE(ERR, "nb_desc %d is invalid", nb_desc);
 		return -EINVAL;
 	}
 
@@ -351,7 +351,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq = rte_zmalloc_socket("bnxt_rx_queue", sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
-		PMD_DRV_LOG(ERR, "bnxt_rx_queue allocation failed!\n");
+		PMD_DRV_LOG_LINE(ERR, "bnxt_rx_queue allocation failed!");
 		return -ENOMEM;
 	}
 	rxq->bp = bp;
@@ -360,22 +360,22 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq->rx_free_thresh =
 		RTE_MIN(rte_align32pow2(nb_desc) / 4, RTE_BNXT_MAX_RX_BURST);
 
-	PMD_DRV_LOG(DEBUG,
-		    "App supplied RXQ drop_en status : %d\n", rx_conf->rx_drop_en);
+	PMD_DRV_LOG_LINE(DEBUG,
+		    "App supplied RXQ drop_en status : %d", rx_conf->rx_drop_en);
 	rxq->drop_en = BNXT_DEFAULT_RX_DROP_EN;
 
-	PMD_DRV_LOG(DEBUG, "RX Buf MTU %d\n", eth_dev->data->mtu);
+	PMD_DRV_LOG_LINE(DEBUG, "RX Buf MTU %d", eth_dev->data->mtu);
 
 	eth_dev->data->rx_queues[queue_idx] = rxq;
 
 	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "init_rx_ring_struct failed!\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "init_rx_ring_struct failed!");
 		goto err;
 	}
 
-	PMD_DRV_LOG(DEBUG, "RX Buf size is %d\n", rxq->rx_buf_size);
+	PMD_DRV_LOG_LINE(DEBUG, "RX Buf size is %d", rxq->rx_buf_size);
 	rxq->queue_id = queue_idx;
 	rxq->port_id = eth_dev->data->port_id;
 	if (rx_offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)
@@ -387,8 +387,8 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rc = bnxt_alloc_rings(bp, socket_id, queue_idx, NULL, rxq, rxq->cp_ring,
 			      NULL, "rxr");
 	if (rc) {
-		PMD_DRV_LOG(ERR,
-			    "ring_dma_zone_reserve for rx_ring failed!\n");
+		PMD_DRV_LOG_LINE(ERR,
+			    "ring_dma_zone_reserve for rx_ring failed!");
 		goto err;
 	}
 	rxq->rx_mbuf_alloc_fail = 0;
@@ -469,13 +469,13 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return rc;
 
 	if (rxq == NULL) {
-		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
+		PMD_DRV_LOG_LINE(ERR, "Invalid Rx queue %d", rx_queue_id);
 		return -EINVAL;
 	}
 
 	vnic = bnxt_vnic_queue_id_get_next(bp, rx_queue_id, &vnic_idx);
 	if (vnic == NULL) {
-		PMD_DRV_LOG(ERR, "VNIC not initialized for RxQ %d\n",
+		PMD_DRV_LOG_LINE(ERR, "VNIC not initialized for RxQ %d",
 			    rx_queue_id);
 		return -EINVAL;
 	}
@@ -511,23 +511,23 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		/* Reconfigure default receive ring and MRU. */
 		bnxt_hwrm_vnic_cfg(bp, vnic);
 
-		PMD_DRV_LOG(INFO, "Rx queue started %d\n", rx_queue_id);
+		PMD_DRV_LOG_LINE(INFO, "Rx queue started %d", rx_queue_id);
 
 		if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 			if (BNXT_HAS_RING_GRPS(bp)) {
 				if (vnic->fw_grp_ids[rx_queue_id] !=
 				    INVALID_HW_RING_ID) {
-					PMD_DRV_LOG(ERR, "invalid ring id %d\n",
+					PMD_DRV_LOG_LINE(ERR, "invalid ring id %d",
 						    rx_queue_id);
 					return 0;
 				}
 
 				vnic->fw_grp_ids[rx_queue_id] = fw_grp_id;
-				PMD_DRV_LOG(DEBUG, "vnic = %p fw_grp_id = %d\n",
+				PMD_DRV_LOG_LINE(DEBUG, "vnic = %p fw_grp_id = %d",
 					    vnic, fw_grp_id);
 			}
 
-			PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Rx Queue Count %d",
 				    vnic->rx_queue_cnt);
 			rc += bnxt_vnic_rss_queue_status_update(bp, vnic);
 		}
@@ -541,8 +541,8 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rxq->rx_started = false;
 	}
 
-	PMD_DRV_LOG(INFO,
-		    "queue %d, rx_deferred_start %d, state %d!\n",
+	PMD_DRV_LOG_LINE(INFO,
+		    "queue %d, rx_deferred_start %d, state %d!",
 		    rx_queue_id, rxq->rx_deferred_start,
 		    bp->eth_dev->data->rx_queue_state[rx_queue_id]);
 
@@ -568,25 +568,25 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	 * Default CQ for async notifications
 	 */
 	if (!BNXT_NUM_ASYNC_CPR(bp) && !rx_queue_id) {
-		PMD_DRV_LOG(ERR, "Cannot stop Rx queue id %d\n", rx_queue_id);
+		PMD_DRV_LOG_LINE(ERR, "Cannot stop Rx queue id %d", rx_queue_id);
 		return -EINVAL;
 	}
 
 	rxq = bp->rx_queues[rx_queue_id];
 	if (!rxq) {
-		PMD_DRV_LOG(ERR, "Invalid Rx queue %d\n", rx_queue_id);
+		PMD_DRV_LOG_LINE(ERR, "Invalid Rx queue %d", rx_queue_id);
 		return -EINVAL;
 	}
 
 	vnic = bnxt_vnic_queue_id_get_next(bp, q_id, &vnic_idx);
 	if (!vnic) {
-		PMD_DRV_LOG(ERR, "VNIC not initialized for RxQ %d\n", q_id);
+		PMD_DRV_LOG_LINE(ERR, "VNIC not initialized for RxQ %d", q_id);
 		return -EINVAL;
 	}
 
 	dev->data->rx_queue_state[q_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 	rxq->rx_started = false;
-	PMD_DRV_LOG(DEBUG, "Rx queue stopped\n");
+	PMD_DRV_LOG_LINE(DEBUG, "Rx queue stopped");
 
 	do {
 		active_queue_cnt = 0;
@@ -594,7 +594,7 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			if (BNXT_HAS_RING_GRPS(bp))
 				vnic->fw_grp_ids[q_id] = INVALID_HW_RING_ID;
 
-			PMD_DRV_LOG(DEBUG, "Rx Queue Count %d\n",
+			PMD_DRV_LOG_LINE(DEBUG, "Rx Queue Count %d",
 				    vnic->rx_queue_cnt);
 			rc = bnxt_vnic_rss_queue_status_update(bp, vnic);
 		}

@@ -54,19 +54,19 @@ bnxt_pmd_get_bp(uint16_t port)
 	struct rte_eth_dev *dev;
 
 	if (!rte_eth_dev_is_valid_port(port)) {
-		PMD_DRV_LOG(ERR, "Invalid port %d\n", port);
+		PMD_DRV_LOG_LINE(ERR, "Invalid port %d", port);
 		return NULL;
 	}
 
 	dev = &rte_eth_devices[port];
 	if (!is_bnxt_supported(dev)) {
-		PMD_DRV_LOG(ERR, "Device %d not supported\n", port);
+		PMD_DRV_LOG_LINE(ERR, "Device %d not supported", port);
 		return NULL;
 	}
 
 	bp = (struct bnxt *)dev->data->dev_private;
 	if (!BNXT_TRUFLOW_EN(bp)) {
-		PMD_DRV_LOG(ERR, "TRUFLOW not enabled\n");
+		PMD_DRV_LOG_LINE(ERR, "TRUFLOW not enabled");
 		return NULL;
 	}
 
