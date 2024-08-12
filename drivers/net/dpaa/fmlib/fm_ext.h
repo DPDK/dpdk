@@ -15,25 +15,8 @@
 #define MODULE_FM		0x00010000
 #define __ERR_MODULE__		MODULE_FM
 
-/* #define FM_LIB_DBG */
-
-#if defined(FM_LIB_DBG)
-	#define _fml_dbg(fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_pmd, "fmlib:%s(): " fmt "\n", \
-			__func__, ##args)
-#else
-	#define _fml_dbg(arg...)
-#endif
-
-/*#define FM_IOCTL_DBG*/
-
-#if defined(FM_IOCTL_DBG)
-	#define _fm_ioctl_dbg(fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_pmd, "fmioc:%s(): " fmt "\n", \
-				__func__, ##args)
-#else
-	#define _fm_ioctl_dbg(arg...)
-#endif
+#define _fml_dbg(...)
+#define _fm_ioctl_dbg(...)
 
 /*
  * @Group	lnx_ioctl_ncsw_grp	NetCommSw Linux User-Space (IOCTL) API
