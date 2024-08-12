@@ -805,7 +805,7 @@ openssl_pmd_sym_session_get_size(struct rte_cryptodev *dev)
 		unsigned int max_nb_qps = ((struct openssl_private *)
 				dev->data->dev_private)->max_nb_qpairs;
 		return sizeof(struct openssl_session) +
-				(sizeof(void *) * max_nb_qps);
+				(sizeof(struct evp_ctx_pair) * max_nb_qps);
 	}
 
 	/*
@@ -818,10 +818,11 @@ openssl_pmd_sym_session_get_size(struct rte_cryptodev *dev)
 
 	/*
 	 * Otherwise, the size of the flexible array member should be enough to
-	 * fit pointers to per-qp contexts.
+	 * fit pointers to per-qp contexts. This is twice the number of queue
+	 * pairs, to allow for auth and cipher contexts.
 	 */
 	return sizeof(struct openssl_session) +
-		(sizeof(void *) * dev->data->nb_queue_pairs);
+		(sizeof(struct evp_ctx_pair) * dev->data->nb_queue_pairs);
 }
 
 /** Returns the size of the asymmetric session structure */
