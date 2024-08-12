@@ -31,11 +31,8 @@ extern int ixgbe_logtype_tx;
 #endif
 
 extern int ixgbe_logtype_driver;
-#define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ixgbe_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
-
+#define RTE_LOGTYPE_IXGBE_DRIVER ixgbe_logtype_driver
 #define PMD_DRV_LOG(level, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
+	RTE_LOG(level, IXGBE_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 
 #endif /* _IXGBE_LOGS_H_ */

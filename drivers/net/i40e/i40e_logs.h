@@ -30,11 +30,8 @@ extern int i40e_logtype_tx;
 #endif
 
 extern int i40e_logtype_driver;
-#define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, i40e_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
-
+#define RTE_LOGTYPE_I40E_DRIVER i40e_logtype_driver
 #define PMD_DRV_LOG(level, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
+	RTE_LOG(level, I40E_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 
 #endif /* _I40E_LOGS_H_ */

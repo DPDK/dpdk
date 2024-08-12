@@ -35,12 +35,8 @@ extern int igc_logtype_driver;
 #define PMD_TX_LOG(level, fmt, args...) do { } while (0)
 #endif
 
-#define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, igc_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
-
 #define PMD_DRV_LOG(level, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
+	RTE_LOG(level, IGC_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 
 #ifdef __cplusplus
 }

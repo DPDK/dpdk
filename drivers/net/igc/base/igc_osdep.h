@@ -27,7 +27,7 @@
 #define msec_delay_irq(x) DELAY(1000 * (x))
 
 #define DEBUGFUNC(F)            DEBUGOUT(F "\n")
-#define DEBUGOUT(S, args...)    PMD_DRV_LOG_RAW(DEBUG, S, ##args)
+#define DEBUGOUT(S, ...)        RTE_LOG(DEBUG, IGC_DRIVER, "%s(): " S, __func__, ## __VA_ARGS__)
 #define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
 #define DEBUGOUT3(S, args...)   DEBUGOUT(S, ##args)

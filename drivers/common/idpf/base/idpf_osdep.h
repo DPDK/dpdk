@@ -25,6 +25,8 @@
 #include <rte_io.h>
 #include <rte_compat.h>
 
+#include "../idpf_common_logs.h"
+
 #define INLINE inline
 #define STATIC static
 
@@ -108,16 +110,14 @@ typedef struct idpf_lock idpf_lock;
 #define FIELD_SIZEOF(t, f) (sizeof(((t *)0)->(f)))
 #define MAKEMASK(m, s) ((m) << (s))
 
-extern int idpf_common_logger;
-
-#define DEBUGOUT(S)		rte_log(RTE_LOG_DEBUG, idpf_common_logger, S)
-#define DEBUGOUT2(S, A...)	rte_log(RTE_LOG_DEBUG, idpf_common_logger, S, ##A)
+#define DEBUGOUT(S, ...)	RTE_LOG(DEBUG, IDPF_COMMON, S, ## __VA_ARGS__)
+#define DEBUGOUT2(S, ...)	DEBUGOUT(S, ## __VA_ARGS__)
 #define DEBUGFUNC(F)		DEBUGOUT(F "\n")
 
 #define idpf_debug(h, m, s, ...)					\
 	do {								\
 		if (((m) & (h)->debug_mask))				\
-			PMD_DRV_LOG_RAW(DEBUG, "idpf %02x.%x " s,       \
+			DEBUGOUT("idpf %02x.%x " s "\n",		\
 					(h)->bus.device, (h)->bus.func,	\
 					##__VA_ARGS__);			\
 	} while (0)

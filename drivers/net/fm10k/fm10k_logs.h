@@ -33,11 +33,8 @@ extern int fm10k_logtype_tx;
 #endif
 
 extern int fm10k_logtype_driver;
-#define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, fm10k_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
-
+#define RTE_LOGTYPE_FM10K_DRIVER fm10k_logtype_driver
 #define PMD_DRV_LOG(level, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
+	RTE_LOG(level, FM10K_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 
 #endif /* _FM10K_LOGS_H_ */

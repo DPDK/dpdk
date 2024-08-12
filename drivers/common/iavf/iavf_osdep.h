@@ -143,16 +143,16 @@ writeq(uint64_t value, volatile void *addr)
 #define IAVF_WRITE_FLUSH(a) IAVF_READ_REG(a, IAVF_VFGEN_RSTAT)
 
 extern int iavf_common_logger;
+#define RTE_LOGTYPE_IAVF_COMMON iavf_common_logger
 
-#define DEBUGOUT(S)          rte_log(RTE_LOG_DEBUG, iavf_common_logger, S)
-#define DEBUGOUT2(S, A...)   rte_log(RTE_LOG_DEBUG, iavf_common_logger, S, ##A)
+#define DEBUGOUT(S, ...)     RTE_LOG(DEBUG, IAVF_COMMON, S, ## __VA_ARGS__)
+#define DEBUGOUT2(S, ...)    DEBUGOUT(S, ## __VA_ARGS__)
 #define DEBUGFUNC(F)         DEBUGOUT(F "\n")
 
 #define iavf_debug(h, m, s, ...)                                \
 do {                                                            \
 	if (((m) & (h)->debug_mask))                            \
-		rte_log(RTE_LOG_DEBUG, iavf_common_logger,      \
-			"iavf %02x.%x " s,                      \
+		DEBUGOUT("iavf %02x.%x " s,                      \
 			(h)->bus.device, (h)->bus.func,         \
 					##__VA_ARGS__);         \
 } while (0)

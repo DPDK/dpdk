@@ -82,8 +82,8 @@ typedef enum i40e_status_code i40e_status;
 
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
 
-#define DEBUGOUT(S)        PMD_DRV_LOG_RAW(DEBUG, S)
-#define DEBUGOUT1(S, A...) PMD_DRV_LOG_RAW(DEBUG, S, ##A)
+#define DEBUGOUT(S, ...) RTE_LOG(DEBUG, I40E_DRIVER, "%s(): " S, __func__, ## __VA_ARGS__)
+#define DEBUGOUT1 DEBUGOUT
 
 #define DEBUGFUNC(F) DEBUGOUT(F "\n")
 #define DEBUGOUT2 DEBUGOUT1
@@ -94,7 +94,7 @@ typedef enum i40e_status_code i40e_status;
 #define i40e_debug(h, m, s, ...)                                \
 do {                                                            \
 	if (((m) & (h)->debug_mask))                            \
-		PMD_DRV_LOG_RAW(DEBUG, "i40e %02x.%x " s,       \
+		DEBUGOUT("i40e %02x.%x " s,			\
 			(h)->bus.device, (h)->bus.func,         \
 					##__VA_ARGS__);         \
 } while (0)

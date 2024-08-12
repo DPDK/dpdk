@@ -149,7 +149,7 @@ writeq(uint64_t value, volatile void *addr)
 #define ice_debug(h, m, s, ...)					\
 do {								\
 	if (((m) & (h)->debug_mask))				\
-		PMD_DRV_LOG_RAW(DEBUG, "ice %02x.%x " s,	\
+		RTE_LOG(DEBUG, ICE_DRIVER, "ice %02x.%x " s,	\
 			(h)->bus.device, (h)->bus.func,		\
 					##__VA_ARGS__);		\
 } while (0)
