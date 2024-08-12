@@ -283,6 +283,8 @@ struct rte_bbdev_stats {
 	 *     bbdev operation
 	 */
 	uint64_t acc_offload_cycles;
+	/** Available number of enqueue batch on that queue. */
+	uint16_t enqueue_depth_avail;
 };
 
 /**

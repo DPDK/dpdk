@@ -239,6 +239,9 @@ ABI Changes
   instead of per packet crypto operation.
   This change is required to support virtio-crypto specifications.
 
+* bbdev: The structure ``rte_bbdev_stats`` was updated to add a new parameter
+  to optionally report the number of enqueue batch available ``enqueue_depth_avail``.
+
 * eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
 
