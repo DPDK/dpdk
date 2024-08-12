@@ -100,6 +100,9 @@ API Changes
 ABI Changes
 -----------
 
+  * bbdev: Structure ``rte_bbdev_stats`` was updated to add new parameter
+    to optionally report number of enqueue batch available ``enqueue_depth_avail``.
+
 .. This section should contain ABI changes. Sample format:
 
    * sample: Add a short 1-2 sentence description of the ABI change
