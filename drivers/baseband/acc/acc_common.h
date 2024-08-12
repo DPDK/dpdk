@@ -1557,6 +1557,24 @@ acc_aq_avail(struct rte_bbdev_queue_data *q_data, uint16_t num_ops)
 	return aq_avail;
 }
 
+/* Update queue stats during enqueue. */
+static inline void
+acc_update_qstat_enqueue(struct rte_bbdev_queue_data *q_data,
+		uint16_t enq_count, uint16_t enq_err_count)
+{
+	q_data->queue_stats.enqueued_count += enq_count;
+	q_data->queue_stats.enqueue_err_count += enq_err_count;
+	q_data->queue_stats.enqueue_depth_avail = acc_aq_avail(q_data, 0);
+}
+
+/* Update queue stats during dequeue. */
+static inline void
+acc_update_qstat_dequeue(struct rte_bbdev_queue_data *q_data, uint16_t deq_count)
+{
+	q_data->queue_stats.dequeued_count += deq_count;
+	q_data->queue_stats.enqueue_depth_avail = acc_aq_avail(q_data, 0);
+}
+
 /* Calculates number of CBs in processed encoder TB based on 'r' and input
  * length.
  */
