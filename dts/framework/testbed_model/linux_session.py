@@ -123,12 +123,12 @@ class LinuxSession(PosixSession):
     def _mount_huge_pages(self) -> None:
         self._logger.info("Re-mounting Hugepages.")
         hugapge_fs_cmd = "awk '/hugetlbfs/ { print $2 }' /proc/mounts"
-        self.send_command(f"umount $({hugapge_fs_cmd})")
+        self.send_command(f"umount $({hugapge_fs_cmd})", privileged=True)
         result = self.send_command(hugapge_fs_cmd)
         if result.stdout == "":
             remote_mount_path = "/mnt/huge"
-            self.send_command(f"mkdir -p {remote_mount_path}")
-            self.send_command(f"mount -t hugetlbfs nodev {remote_mount_path}")
+            self.send_command(f"mkdir -p {remote_mount_path}", privileged=True)
+            self.send_command(f"mount -t hugetlbfs nodev {remote_mount_path}", privileged=True)
 
     def _supports_numa(self) -> bool:
         # the system supports numa if self._numa_nodes is non-empty and there are more
