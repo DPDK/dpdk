@@ -6437,6 +6437,22 @@ ice_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/**
+ * ice_ptp_write_init - Set PHC time to provided value
+ * @hw: Hardware private structure
+ *
+ * Set the PHC time to CLOCK_REALTIME
+ */
+static int ice_ptp_write_init(struct ice_hw *hw)
+{
+	uint64_t ns;
+	struct timespec sys_time;
+	clock_gettime(CLOCK_REALTIME, &sys_time);
+	ns = rte_timespec_to_ns(&sys_time);
+
+	return ice_ptp_init_time(hw, ns, true);
+}
+
 static int
 ice_timesync_enable(struct rte_eth_dev *dev)
 {
@@ -6465,6 +6481,16 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 			return -1;
 		}
 	}
+
+	if (!ice_ptp_lock(hw)) {
+		ice_debug(hw, ICE_DBG_PTP, "Failed to acquire PTP semaphore");
+		return ICE_ERR_NOT_READY;
+	}
+
+	ret = ice_ptp_write_init(hw);
+	ice_ptp_unlock(hw);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to set current system time to PHC timer");
 
 	/* Initialize cycle counters for system time/RX/TX timestamp */
 	memset(&ad->systime_tc, 0, sizeof(struct rte_timecounter));
