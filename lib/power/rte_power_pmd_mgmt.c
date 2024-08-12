@@ -665,7 +665,7 @@ rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 	 * ports before calling any of these API's, so we can assume that the
 	 * callbacks can be freed. we're intentionally casting away const-ness.
 	 */
-	rte_free((void *)queue_cfg->cb);
+	rte_free((void *)(uintptr_t)queue_cfg->cb);
 	free(queue_cfg);
 
 	return 0;

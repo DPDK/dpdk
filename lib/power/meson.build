@@ -30,7 +30,5 @@ headers = files(
         'rte_power_pmd_mgmt.h',
         'rte_power_uncore.h',
 )
-if cc.has_argument('-Wno-cast-qual')
-    cflags += '-Wno-cast-qual'
-endif
+
 deps += ['timer', 'ethdev']
