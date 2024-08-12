@@ -882,8 +882,21 @@ static cmdline_parse_token_num_t cmd_add_port_tm_node_shaper_profile_packet_mode
 		struct cmd_add_port_tm_node_shaper_profile_result,
 			pkt_mode, RTE_UINT32);
 
+static int
+get_printable_rate(uint64_t rate, char *buffer, size_t size)
+{
+	if (rate >= 1000 * 1000 * 1000)
+		return snprintf(buffer, size, "%.1fG", rate / (1000 * 1000 * 1000.0));
+	else if (rate >= 1000 * 1000)
+		return snprintf(buffer, size, "%.1fM", rate / (1000 * 1000.0));
+	else if (rate >= 1000)
+		return snprintf(buffer, size, "%.1fK", rate / 1000.0);
+	else
+		return snprintf(buffer, size, "%"PRIu64, rate);
+}
+
 static void cmd_add_port_tm_node_shaper_profile_parsed(void *parsed_result,
-	__rte_unused struct cmdline *cl,
+	struct cmdline *cl,
 	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_node_shaper_profile_result *res = parsed_result;
@@ -892,7 +905,19 @@ static void cmd_add_port_tm_node_shaper_profile_parsed(void *parsed_result,
 	uint32_t shaper_id = res->shaper_id;
 	uint32_t pkt_len_adjust = res->pktlen_adjust;
 	portid_t port_id = res->port_id;
+	char rate_str[20];
 	int ret;
+
+	cmdline_printf(cl, "adding node shaper on port %u, with id %u\n", res->port_id, shaper_id);
+	get_printable_rate(res->cmit_tb_rate, rate_str, sizeof(rate_str));
+	cmdline_printf(cl, "# committed rate: %s, t.b. size: %"PRIu64"\n",
+			rate_str, res->cmit_tb_size);
+
+	get_printable_rate(res->peak_tb_rate, rate_str, sizeof(rate_str));
+	cmdline_printf(cl, "# peak rate: %s, t.b. size: %"PRIu64"\n",
+			rate_str, res->peak_tb_size);
+	cmdline_printf(cl, "# pkt length adjust: %u\n", res->pktlen_adjust);
+	cmdline_printf(cl, "# packet mode: %s\n", res->pkt_mode ? "true" : "false (bytes mode)");
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
@@ -1635,7 +1660,7 @@ static cmdline_parse_token_string_t
 		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
 
 static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
-	__rte_unused struct cmdline *cl,
+	struct cmdline *cl,
 	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_nonleaf_node_result *res = parsed_result;
@@ -1658,6 +1683,20 @@ static void cmd_add_port_tm_nonleaf_node_parsed(void *parsed_result,
 		parent_node_id = UINT32_MAX;
 	else
 		parent_node_id = res->parent_node_id;
+
+	if (parent_node_id != UINT32_MAX)
+		cmdline_printf(cl, "adding node on port %u, with id %u and parent node %u\n",
+				port_id, res->node_id, parent_node_id);
+	else
+		cmdline_printf(cl, "adding node on port %u, with id %u as root node\n",
+				port_id, res->node_id);
+	cmdline_printf(cl, "# priority: %u\n", res->priority);
+	cmdline_printf(cl, "# weight: %u\n", res->weight);
+	cmdline_printf(cl, "# level_id: %u\n", res->level_id);
+	cmdline_printf(cl, "# shaper_profile_id: %d\n", res->shaper_profile_id);
+	cmdline_printf(cl, "# num SP priorities: %u\n", res->n_sp_priorities);
+	cmdline_printf(cl, "# stats_mask: %"PRIx64"\n", res->stats_mask);
+	cmdline_printf(cl, "# shared shapers: '%s'\n", s_str);
 
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
@@ -1964,7 +2003,7 @@ static cmdline_parse_token_string_t
 		 multi_shared_shaper_id, TOKEN_STRING_MULTI);
 
 static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
-	__rte_unused struct cmdline *cl,
+	struct cmdline *cl,
 	__rte_unused void *data)
 {
 	struct cmd_add_port_tm_leaf_node_result *res = parsed_result;
@@ -1987,6 +2026,21 @@ static void cmd_add_port_tm_leaf_node_parsed(void *parsed_result,
 		parent_node_id = UINT32_MAX;
 	else
 		parent_node_id = res->parent_node_id;
+
+	if (parent_node_id != UINT32_MAX)
+		cmdline_printf(cl, "adding leaf node on port %u, with id %u and parent node %u\n",
+				port_id, res->node_id, parent_node_id);
+	else
+		cmdline_printf(cl, "adding leaf node on port %u, with id %u as root node\n",
+				port_id, res->node_id);
+	cmdline_printf(cl, "# priority: %u\n", res->priority);
+	cmdline_printf(cl, "# weight: %u\n", res->weight);
+	cmdline_printf(cl, "# level_id: %u\n", res->level_id);
+	cmdline_printf(cl, "# shaper_profile_id: %d\n", res->shaper_profile_id);
+	cmdline_printf(cl, "# cman_mode: %u\n", res->cman_mode);
+	cmdline_printf(cl, "# wred_profile_id: %d\n", res->wred_profile_id);
+	cmdline_printf(cl, "# stats_mask: %"PRIx64"\n", res->stats_mask);
+	cmdline_printf(cl, "# shared shapers: '%s'\n", s_str);
 
 	shared_shaper_id = (uint32_t *)malloc(MAX_NUM_SHARED_SHAPERS *
 		sizeof(uint32_t));
