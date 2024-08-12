@@ -5819,6 +5819,7 @@ get_bbdev_queue_stats(uint16_t dev_id, uint16_t queue_id,
 	stats->enqueue_warn_count = q_stats->enqueue_warn_count;
 	stats->dequeue_warn_count = q_stats->dequeue_warn_count;
 	stats->acc_offload_cycles = q_stats->acc_offload_cycles;
+	stats->enqueue_depth_avail = q_stats->enqueue_depth_avail;
 
 	return 0;
 }
