@@ -20,7 +20,6 @@ test_cryptodev_deps = ['bus_vdev', 'net', 'cryptodev', 'security']
 source_file_deps = {
     # The C files providing functionality to other test cases
     'packet_burst_generator.c': packet_burst_generator_deps,
-#    'resource.c': [],          # unused currently.
     'sample_packet_forward.c': sample_packet_forward_deps,
     'virtual_pmd.c': virtual_pmd_deps,
 
@@ -158,7 +157,6 @@ source_file_deps = {
     'test_reciprocal_division_perf.c': [],
     'test_red.c': ['sched'],
     'test_reorder.c': ['reorder'],
-#    'test_resource.c': [],
     'test_rib.c': ['net', 'rib'],
     'test_rib6.c': ['net', 'rib'],
     'test_ring.c': ['ptr_compress'],
