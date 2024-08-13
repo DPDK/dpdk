@@ -1879,6 +1879,7 @@ F: app/test/test_resource.c
 F: app/test/virtual_pmd.c
 F: app/test/virtual_pmd.h
 F: buildtools/has-hugepages.py
+F: buildtools/gen-header.py
 F: buildtools/get-test-suites.py
 
 Sample packet helper functions for unit test

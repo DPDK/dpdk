@@ -22,6 +22,7 @@ sphinx_wrapper = py3 + files('call-sphinx-build.py')
 get_cpu_count_cmd = py3 + files('get-cpu-count.py')
 get_numa_count_cmd = py3 + files('get-numa-count.py')
 get_test_suites_cmd = py3 + files('get-test-suites.py')
+header_gen_cmd = py3 + files('gen-header.py')
 has_hugepages_cmd = py3 + files('has-hugepages.py')
 cmdline_gen_cmd = py3 + files('dpdk-cmdline-gen.py')
 check_dts_requirements = py3 + files('check-dts-requirements.py')
@@ -49,4 +50,3 @@ else
     pmdinfo += 'ar'
     pmdinfogen += 'elf'
 endif
-
