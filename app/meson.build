@@ -55,6 +55,7 @@ foreach app:apps
     build = true
     reason = '<unknown reason>' # set if build == false to explain
     sources = []
+    resources = []
     includes = []
     cflags = default_cflags
     ldflags = default_ldflags
@@ -115,7 +116,7 @@ foreach app:apps
     endif
 
     exec = executable('dpdk-' + name,
-            sources,
+            [ sources, resources ],
             c_args: cflags,
             link_args: ldflags,
             link_whole: link_libs,

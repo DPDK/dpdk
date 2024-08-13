@@ -36,7 +36,7 @@ source_file_deps = {
     'test_bitratestats.c': ['metrics', 'bitratestats', 'ethdev'] + sample_packet_forward_deps,
     'test_bpf.c': ['bpf', 'net'],
     'test_byteorder.c': [],
-#    'test_cfgfile.c': ['cfgfile'],
+    'test_cfgfile.c': ['cfgfile'],
     'test_cksum.c': ['net'],
     'test_cksum_perf.c': ['net'],
     'test_cmdline.c': [],
@@ -265,3 +265,7 @@ if not is_windows
             build_by_default: true,
             install: false)
 endif
+
+subdir('test_cfgfiles')
+
+resources += test_cfgfile_h
