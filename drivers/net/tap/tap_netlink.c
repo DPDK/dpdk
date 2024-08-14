@@ -302,7 +302,8 @@ tap_nlattr_add(struct nlmsghdr *nh, unsigned short type,
 	rta = (struct rtattr *)NLMSG_TAIL(nh);
 	rta->rta_len = RTA_LENGTH(data_len);
 	rta->rta_type = type;
-	memcpy(RTA_DATA(rta), data, data_len);
+	if (data_len > 0)
+		memcpy(RTA_DATA(rta), data, data_len);
 	nh->nlmsg_len = NLMSG_ALIGN(nh->nlmsg_len) + RTA_ALIGN(rta->rta_len);
 }
 
