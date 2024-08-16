@@ -960,7 +960,18 @@ static void
 ipsec_event_vector_free(struct rte_event *ev)
 {
 	struct rte_event_vector *vec = ev->vec;
-	rte_pktmbuf_free_bulk(vec->mbufs + vec->elem_offset, vec->nb_elem);
+
+	if (ev->event_type == RTE_EVENT_TYPE_CRYPTODEV_VECTOR) {
+		struct rte_crypto_op *cop;
+		int i;
+
+		for (i = 0; i < vec->nb_elem; i++) {
+			cop = vec->ptrs[i];
+			rte_pktmbuf_free(cop->sym->m_src);
+		}
+	} else {
+		rte_pktmbuf_free_bulk(vec->mbufs + vec->elem_offset, vec->nb_elem);
+	}
 	rte_mempool_put(rte_mempool_from_obj(vec), vec);
 }
 
