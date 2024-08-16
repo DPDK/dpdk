@@ -727,6 +727,18 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 	mbuf->ol_flags |= ol_flags;
 }
 
+static void bnxt_get_rx_ts(struct bnxt *bp)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+	if (!ptp)
+		return;
+
+	rte_spinlock_lock(&ptp->ptp_lock);
+	ptp->rx_timestamp = ptp->old_time;
+	rte_spinlock_unlock(&ptp->ptp_lock);
+}
+
 static void
 bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 {
@@ -1198,7 +1210,10 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		      bp->ptp_cfg) {
 		mbuf->ol_flags |= RTE_MBUF_F_RX_IEEE1588_PTP |
 				  RTE_MBUF_F_RX_IEEE1588_TMST;
-		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+		if (BNXT_CHIP_P5(bp))
+			bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+		else
+			bnxt_get_rx_ts(rxq->bp);
 #ifndef RTE_IOVA_IN_MBUF
 		bnxt_timestamp_dynfield_set(mbuf,
 					    bp->ptp_cfg->mb_rx_timestamp_offset,
