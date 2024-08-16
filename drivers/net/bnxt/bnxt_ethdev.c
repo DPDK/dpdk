@@ -3685,99 +3685,6 @@ bnxt_dev_supported_ptypes_get_op(struct rte_eth_dev *dev,
 	return ptypes;
 }
 
-static uint64_t bnxt_cc_read(struct bnxt *bp)
-{
-	uint64_t ns;
-
-	ns = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-			      BNXT_GRCPF_REG_SYNC_TIME));
-	ns |= (uint64_t)(rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-					  BNXT_GRCPF_REG_SYNC_TIME + 4))) << 32;
-	return ns;
-}
-
-static int bnxt_get_tx_ts(struct bnxt *bp, uint64_t *ts)
-{
-	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	uint32_t fifo;
-
-	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->tx_mapped_regs[BNXT_PTP_TX_FIFO]));
-	if (fifo & BNXT_PTP_TX_FIFO_EMPTY)
-		return -EAGAIN;
-
-	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->tx_mapped_regs[BNXT_PTP_TX_FIFO]));
-	*ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->tx_mapped_regs[BNXT_PTP_TX_TS_L]));
-	*ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->tx_mapped_regs[BNXT_PTP_TX_TS_H])) << 32;
-	rte_read32((uint8_t *)bp->bar0 + ptp->tx_mapped_regs[BNXT_PTP_TX_SEQ]);
-
-	return 0;
-}
-
-static int bnxt_clr_rx_ts(struct bnxt *bp, uint64_t *last_ts)
-{
-	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	struct bnxt_pf_info *pf = bp->pf;
-	uint16_t port_id;
-	int i = 0;
-	uint32_t fifo;
-
-	if (!ptp || (bp->flags & BNXT_FLAG_CHIP_P5))
-		return -EINVAL;
-
-	port_id = pf->port_id;
-	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
-	while ((fifo & BNXT_PTP_RX_FIFO_PENDING) && (i < BNXT_PTP_RX_PND_CNT)) {
-		rte_write32(1 << port_id, (uint8_t *)bp->bar0 +
-			    ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO_ADV]);
-		fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-					ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
-		*last_ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-					ptp->rx_mapped_regs[BNXT_PTP_RX_TS_L]));
-		*last_ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-					ptp->rx_mapped_regs[BNXT_PTP_RX_TS_H])) << 32;
-		i++;
-	}
-
-	if (i >= BNXT_PTP_RX_PND_CNT)
-		return -EBUSY;
-
-	return 0;
-}
-
-static int bnxt_get_rx_ts(struct bnxt *bp, uint64_t *ts)
-{
-	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	struct bnxt_pf_info *pf = bp->pf;
-	uint16_t port_id;
-	uint32_t fifo;
-
-	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
-	if (!(fifo & BNXT_PTP_RX_FIFO_PENDING))
-		return -EAGAIN;
-
-	port_id = pf->port_id;
-	rte_write32(1 << port_id, (uint8_t *)bp->bar0 +
-	       ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO_ADV]);
-
-	fifo = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				   ptp->rx_mapped_regs[BNXT_PTP_RX_FIFO]));
-	if (fifo & BNXT_PTP_RX_FIFO_PENDING)
-		return bnxt_clr_rx_ts(bp, ts);
-
-	*ts = rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->rx_mapped_regs[BNXT_PTP_RX_TS_L]));
-	*ts |= (uint64_t)rte_le_to_cpu_32(rte_read32((uint8_t *)bp->bar0 +
-				ptp->rx_mapped_regs[BNXT_PTP_RX_TS_H])) << 32;
-
-	return 0;
-}
-
 static int
 bnxt_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
@@ -3808,12 +3715,9 @@ bnxt_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 	if (!ptp)
 		return -ENOTSUP;
 
-	/* TODO Revisit for Thor 2 */
 	if (BNXT_CHIP_P5(bp))
 		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_CURRENT_TIME,
 					     &systime_cycles);
-	else
-		systime_cycles = bnxt_cc_read(bp);
 
 	ns = rte_timecounter_update(&ptp->tc, systime_cycles);
 	*ts = rte_ns_to_timespec(ns);
@@ -3896,11 +3800,7 @@ bnxt_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 	if (!ptp)
 		return -ENOTSUP;
 
-	/* TODO Revisit for Thor 2 */
-	if (BNXT_CHIP_P5(bp))
-		rx_tstamp_cycles = ptp->rx_timestamp;
-	else
-		bnxt_get_rx_ts(bp, &rx_tstamp_cycles);
+	rx_tstamp_cycles = ptp->rx_timestamp;
 
 	ns = rte_timecounter_update(&ptp->rx_tstamp_tc, rx_tstamp_cycles);
 	*timestamp = rte_ns_to_timespec(ns);
@@ -3921,11 +3821,8 @@ bnxt_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 
 	/* TODO Revisit for Thor 2 */
-	if (BNXT_CHIP_P5(bp))
-		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
-					     &tx_tstamp_cycles);
-	else
-		rc = bnxt_get_tx_ts(bp, &tx_tstamp_cycles);
+	rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
+				     &tx_tstamp_cycles);
 
 	ns = rte_timecounter_update(&ptp->tx_tstamp_tc, tx_tstamp_cycles);
 	*timestamp = rte_ns_to_timespec(ns);
