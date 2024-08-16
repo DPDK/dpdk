@@ -727,6 +727,18 @@ bnxt_set_ol_flags(struct bnxt_rx_ring_info *rxr, struct rx_pkt_cmpl *rxcmp,
 	mbuf->ol_flags = ol_flags;
 }
 
+static void bnxt_get_rx_ts(struct bnxt *bp)
+{
+	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
+
+	if (!ptp)
+		return;
+
+	rte_spinlock_lock(&ptp->ptp_lock);
+	ptp->rx_timestamp = ptp->old_time;
+	rte_spinlock_unlock(&ptp->ptp_lock);
+}
+
 static void
 bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 {
@@ -1193,8 +1205,12 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (unlikely((rte_le_to_cpu_16(rxcmp->flags_type) &
 		      RX_PKT_CMPL_FLAGS_MASK) ==
 		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP) ||
-		      bp->ptp_all_rx_tstamp)
-		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+		      bp->ptp_all_rx_tstamp) {
+		if (BNXT_CHIP_P5(bp))
+			bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+		else
+			bnxt_get_rx_ts(rxq->bp);
+	}
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V3) {
 		bnxt_parse_csum_v3(mbuf, rxcmp1);
