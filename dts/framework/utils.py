@@ -303,3 +303,8 @@ class MultiInheritanceBaseClass:
     def __init__(self, *args, **kwargs) -> None:
         """Call the init method of :class:`object`."""
         super().__init__()
+
+
+def to_pascal_case(text: str) -> str:
+    """Convert `text` from snake_case to PascalCase."""
+    return "".join([seg.capitalize() for seg in text.split("_")])

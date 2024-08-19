@@ -47,9 +47,9 @@ Examples:
 
 import inspect
 from abc import ABC, abstractmethod
-from collections.abc import MutableSet, Sequence
+from collections.abc import MutableSet
 from dataclasses import dataclass
-from typing import Callable, ClassVar, Protocol
+from typing import TYPE_CHECKING, Callable, ClassVar, Protocol
 
 from typing_extensions import Self
 
@@ -65,6 +65,9 @@ from framework.remote_session.testpmd_shell import (
 
 from .sut_node import SutNode
 from .topology import Topology, TopologyType
+
+if TYPE_CHECKING:
+    from framework.test_suite import TestCase
 
 
 class Capability(ABC):
@@ -354,8 +357,7 @@ class TopologyCapability(Capability):
         if inspect.isclass(test_case_or_suite):
             if self.topology_type is not TopologyType.default:
                 self.add_to_required(test_case_or_suite)
-                func_test_cases, perf_test_cases = test_case_or_suite.get_test_cases()
-                for test_case in func_test_cases | perf_test_cases:
+                for test_case in test_case_or_suite.get_test_cases():
                     if test_case.topology_type.topology_type is TopologyType.default:
                         # test case topology has not been set, use the one set by the test suite
                         self.add_to_required(test_case)
@@ -446,7 +448,7 @@ class TestProtocol(Protocol):
     required_capabilities: ClassVar[set[Capability]] = set()
 
     @classmethod
-    def get_test_cases(cls, test_case_sublist: Sequence[str] | None = None) -> tuple[set, set]:
+    def get_test_cases(cls) -> list[type["TestCase"]]:
         """Get test cases. Should be implemented by subclasses containing test cases.
 
         Raises:

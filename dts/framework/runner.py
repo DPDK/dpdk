@@ -225,7 +225,7 @@ class DTSRunner:
         for test_suite_config in test_suite_configs:
             test_suite_class = self._get_test_suite_class(test_suite_config.test_suite)
             test_cases: list[type[TestCase]] = []
-            func_test_cases, perf_test_cases = test_suite_class.get_test_cases(
+            func_test_cases, perf_test_cases = test_suite_class.filter_test_cases(
                 test_suite_config.test_cases
             )
             if func:
