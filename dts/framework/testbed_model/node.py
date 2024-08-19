@@ -17,7 +17,12 @@ from abc import ABC
 from ipaddress import IPv4Interface, IPv6Interface
 from typing import Union
 
-from framework.config import OS, DPDKLocation, NodeConfiguration, TestRunConfiguration
+from framework.config import (
+    OS,
+    DPDKBuildConfiguration,
+    NodeConfiguration,
+    TestRunConfiguration,
+)
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
 
@@ -89,13 +94,15 @@ class Node(ABC):
         self._init_ports()
 
     def _init_ports(self) -> None:
-        self.ports = [Port(port_config) for port_config in self.config.ports]
+        self.ports = [Port(self.name, port_config) for port_config in self.config.ports]
         self.main_session.update_ports(self.ports)
         for port in self.ports:
             self.configure_port_state(port)
 
     def set_up_test_run(
-        self, test_run_config: TestRunConfiguration, dpdk_location: DPDKLocation
+        self,
+        test_run_config: TestRunConfiguration,
+        dpdk_build_config: DPDKBuildConfiguration,
     ) -> None:
         """Test run setup steps.
 
@@ -105,7 +112,7 @@ class Node(ABC):
         Args:
             test_run_config: A test run configuration according to which
                 the setup steps will be taken.
-            dpdk_location: The target source of the DPDK tree.
+            dpdk_build_config: The build configuration of DPDK.
         """
         self._setup_hugepages()
 

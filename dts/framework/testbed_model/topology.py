@@ -99,7 +99,16 @@ class Topology:
                     port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
 
         self.type = TopologyType.get_from_value(len(port_links))
-        dummy_port = Port(PortConfig("", "", "", "", "", ""))
+        dummy_port = Port(
+            "",
+            PortConfig(
+                pci="0000:00:00.0",
+                os_driver_for_dpdk="",
+                os_driver="",
+                peer_node="",
+                peer_pci="0000:00:00.0",
+            ),
+        )
         self.tg_port_egress = dummy_port
         self.sut_port_ingress = dummy_port
         self.sut_port_egress = dummy_port

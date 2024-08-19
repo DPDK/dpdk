@@ -127,7 +127,7 @@ class TestSmokeTests(TestSuite):
         path_to_devbind = self.sut_node.path_to_devbind_script
 
         all_nics_in_dpdk_devbind = self.sut_node.main_session.send_command(
-            f"{path_to_devbind} --status | awk '{REGEX_FOR_PCI_ADDRESS}'",
+            f"{path_to_devbind} --status | awk '/{REGEX_FOR_PCI_ADDRESS}/'",
             SETTINGS.timeout,
         ).stdout
 

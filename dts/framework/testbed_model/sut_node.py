@@ -15,11 +15,17 @@ An SUT node is where this SUT runs.
 import os
 import time
 from dataclasses import dataclass
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 from framework.config import (
     DPDKBuildConfiguration,
-    DPDKLocation,
+    DPDKBuildOptionsConfiguration,
+    DPDKPrecompiledBuildConfiguration,
+    DPDKUncompiledBuildConfiguration,
+    LocalDPDKTarballLocation,
+    LocalDPDKTreeLocation,
+    RemoteDPDKTarballLocation,
+    RemoteDPDKTreeLocation,
     SutNodeConfiguration,
     TestRunConfiguration,
 )
@@ -178,7 +184,9 @@ class SutNode(Node):
         return DPDKBuildInfo(dpdk_version=self.dpdk_version, compiler_version=self.compiler_version)
 
     def set_up_test_run(
-        self, test_run_config: TestRunConfiguration, dpdk_location: DPDKLocation
+        self,
+        test_run_config: TestRunConfiguration,
+        dpdk_build_config: DPDKBuildConfiguration,
     ) -> None:
         """Extend the test run setup with vdev config and DPDK build set up.
 
@@ -188,12 +196,12 @@ class SutNode(Node):
         Args:
             test_run_config: A test run configuration according to which
                 the setup steps will be taken.
-            dpdk_location: The target source of the DPDK tree.
+            dpdk_build_config: The build configuration of DPDK.
         """
-        super().set_up_test_run(test_run_config, dpdk_location)
-        for vdev in test_run_config.vdevs:
+        super().set_up_test_run(test_run_config, dpdk_build_config)
+        for vdev in test_run_config.system_under_test_node.vdevs:
             self.virtual_devices.append(VirtualDevice(vdev))
-        self._set_up_dpdk(dpdk_location, test_run_config.dpdk_config.dpdk_build_config)
+        self._set_up_dpdk(dpdk_build_config)
 
     def tear_down_test_run(self) -> None:
         """Extend the test run teardown with virtual device teardown and DPDK teardown."""
@@ -202,7 +210,8 @@ class SutNode(Node):
         self._tear_down_dpdk()
 
     def _set_up_dpdk(
-        self, dpdk_location: DPDKLocation, dpdk_build_config: DPDKBuildConfiguration | None
+        self,
+        dpdk_build_config: DPDKBuildConfiguration,
     ) -> None:
         """Set up DPDK the SUT node and bind ports.
 
@@ -211,21 +220,26 @@ class SutNode(Node):
         are bound to those that DPDK needs.
 
         Args:
-            dpdk_location: The location of the DPDK tree.
-            dpdk_build_config: A DPDK build configuration to test. If :data:`None`,
-                DTS will use pre-built DPDK from a :dataclass:`DPDKLocation`.
+            dpdk_build_config: A DPDK build configuration to test.
         """
-        self._set_remote_dpdk_tree_path(dpdk_location.dpdk_tree, dpdk_location.remote)
-        if not self._remote_dpdk_tree_path:
-            if dpdk_location.dpdk_tree:
-                self._copy_dpdk_tree(dpdk_location.dpdk_tree)
-            elif dpdk_location.tarball:
-                self._prepare_and_extract_dpdk_tarball(dpdk_location.tarball, dpdk_location.remote)
+        match dpdk_build_config.dpdk_location:
+            case RemoteDPDKTreeLocation(dpdk_tree=dpdk_tree):
+                self._set_remote_dpdk_tree_path(dpdk_tree)
+            case LocalDPDKTreeLocation(dpdk_tree=dpdk_tree):
+                self._copy_dpdk_tree(dpdk_tree)
+            case RemoteDPDKTarballLocation(tarball=tarball):
+                self._validate_remote_dpdk_tarball(tarball)
+                self._prepare_and_extract_dpdk_tarball(tarball)
+            case LocalDPDKTarballLocation(tarball=tarball):
+                remote_tarball = self._copy_dpdk_tarball_to_remote(tarball)
+                self._prepare_and_extract_dpdk_tarball(remote_tarball)
 
-        self._set_remote_dpdk_build_dir(dpdk_location.build_dir)
-        if not self.remote_dpdk_build_dir and dpdk_build_config:
-            self._configure_dpdk_build(dpdk_build_config)
-            self._build_dpdk()
+        match dpdk_build_config:
+            case DPDKPrecompiledBuildConfiguration(precompiled_build_dir=build_dir):
+                self._set_remote_dpdk_build_dir(build_dir)
+            case DPDKUncompiledBuildConfiguration(build_options=build_options):
+                self._configure_dpdk_build(build_options)
+                self._build_dpdk()
 
         self.bind_ports_to_driver()
 
@@ -238,37 +252,29 @@ class SutNode(Node):
         self.compiler_version = None
         self.bind_ports_to_driver(for_dpdk=False)
 
-    def _set_remote_dpdk_tree_path(self, dpdk_tree: str | None, remote: bool):
+    def _set_remote_dpdk_tree_path(self, dpdk_tree: PurePath):
         """Set the path to the remote DPDK source tree based on the provided DPDK location.
-
-        If :data:`dpdk_tree` and :data:`remote` are defined, check existence of :data:`dpdk_tree`
-        on SUT node and sets the `_remote_dpdk_tree_path` property. Otherwise, sets nothing.
 
         Verify DPDK source tree existence on the SUT node, if exists sets the
         `_remote_dpdk_tree_path` property, otherwise sets nothing.
 
         Args:
             dpdk_tree: The path to the DPDK source tree directory.
-            remote: Indicates whether the `dpdk_tree` is already on the SUT node, instead of the
-                execution host.
 
         Raises:
             RemoteFileNotFoundError: If the DPDK source tree is expected to be on the SUT node but
                 is not found.
         """
-        if remote and dpdk_tree:
-            if not self.main_session.remote_path_exists(dpdk_tree):
-                raise RemoteFileNotFoundError(
-                    f"Remote DPDK source tree '{dpdk_tree}' not found in SUT node."
-                )
-            if not self.main_session.is_remote_dir(dpdk_tree):
-                raise ConfigurationError(
-                    f"Remote DPDK source tree '{dpdk_tree}' must be a directory."
-                )
+        if not self.main_session.remote_path_exists(dpdk_tree):
+            raise RemoteFileNotFoundError(
+                f"Remote DPDK source tree '{dpdk_tree}' not found in SUT node."
+            )
+        if not self.main_session.is_remote_dir(dpdk_tree):
+            raise ConfigurationError(f"Remote DPDK source tree '{dpdk_tree}' must be a directory.")
 
-            self.__remote_dpdk_tree_path = PurePath(dpdk_tree)
+        self.__remote_dpdk_tree_path = dpdk_tree
 
-    def _copy_dpdk_tree(self, dpdk_tree_path: str) -> None:
+    def _copy_dpdk_tree(self, dpdk_tree_path: Path) -> None:
         """Copy the DPDK source tree to the SUT.
 
         Args:
@@ -288,25 +294,45 @@ class SutNode(Node):
             self._remote_tmp_dir, PurePath(dpdk_tree_path).name
         )
 
-    def _prepare_and_extract_dpdk_tarball(self, dpdk_tarball: str, remote: bool) -> None:
-        """Ensure the DPDK tarball is available on the SUT node and extract it.
-
-        This method ensures that the DPDK source tree tarball is available on the
-        SUT node. If the `dpdk_tarball` is local, it is copied to the SUT node. If the
-        `dpdk_tarball` is already on the SUT node, it verifies its existence.
-        The `dpdk_tarball` is then extracted on the SUT node.
-
-        This method sets the `_remote_dpdk_tree_path` property to the path of the
-        extracted DPDK tree on the SUT node.
+    def _validate_remote_dpdk_tarball(self, dpdk_tarball: PurePath) -> None:
+        """Validate the DPDK tarball on the SUT node.
 
         Args:
-            dpdk_tarball: The path to the DPDK tarball, either locally or on the SUT node.
-            remote: Indicates whether the `dpdk_tarball` is already on the SUT node, instead of the
-                execution host.
+            dpdk_tarball: The path to the DPDK tarball on the SUT node.
 
         Raises:
-            RemoteFileNotFoundError: If the `dpdk_tarball` is expected to be on the SUT node but
-                is not found.
+            RemoteFileNotFoundError: If the `dpdk_tarball` is expected to be on the SUT node but is
+                not found.
+            ConfigurationError: If the `dpdk_tarball` is a valid path but not a valid tar archive.
+        """
+        if not self.main_session.remote_path_exists(dpdk_tarball):
+            raise RemoteFileNotFoundError(f"Remote DPDK tarball '{dpdk_tarball}' not found in SUT.")
+        if not self.main_session.is_remote_tarfile(dpdk_tarball):
+            raise ConfigurationError(f"Remote DPDK tarball '{dpdk_tarball}' must be a tar archive.")
+
+    def _copy_dpdk_tarball_to_remote(self, dpdk_tarball: Path) -> PurePath:
+        """Copy the local DPDK tarball to the SUT node.
+
+        Args:
+            dpdk_tarball: The local path to the DPDK tarball.
+
+        Returns:
+            The path of the copied tarball on the SUT node.
+        """
+        self._logger.info(
+            f"Copying DPDK tarball to SUT: '{dpdk_tarball}' into '{self._remote_tmp_dir}'."
+        )
+        self.main_session.copy_to(dpdk_tarball, self._remote_tmp_dir)
+        return self.main_session.join_remote_path(self._remote_tmp_dir, dpdk_tarball.name)
+
+    def _prepare_and_extract_dpdk_tarball(self, remote_tarball_path: PurePath) -> None:
+        """Prepare the remote DPDK tree path and extract the tarball.
+
+        This method extracts the remote tarball and sets the `_remote_dpdk_tree_path` property to
+        the path of the extracted DPDK tree on the SUT node.
+
+        Args:
+            remote_tarball_path: The path to the DPDK tarball on the SUT node.
         """
 
         def remove_tarball_suffix(remote_tarball_path: PurePath) -> PurePath:
@@ -324,30 +350,9 @@ class SutNode(Node):
                     return PurePath(str(remote_tarball_path).replace(suffixes_to_remove, ""))
             return remote_tarball_path.with_suffix("")
 
-        if remote:
-            if not self.main_session.remote_path_exists(dpdk_tarball):
-                raise RemoteFileNotFoundError(
-                    f"Remote DPDK tarball '{dpdk_tarball}' not found in SUT."
-                )
-            if not self.main_session.is_remote_tarfile(dpdk_tarball):
-                raise ConfigurationError(
-                    f"Remote DPDK tarball '{dpdk_tarball}' must be a tar archive."
-                )
-
-            remote_tarball_path = PurePath(dpdk_tarball)
-        else:
-            self._logger.info(
-                f"Copying DPDK tarball to SUT: '{dpdk_tarball}' into '{self._remote_tmp_dir}'."
-            )
-            self.main_session.copy_to(dpdk_tarball, self._remote_tmp_dir)
-
-            remote_tarball_path = self.main_session.join_remote_path(
-                self._remote_tmp_dir, PurePath(dpdk_tarball).name
-            )
-
         tarball_top_dir = self.main_session.get_tarball_top_dir(remote_tarball_path)
         self.__remote_dpdk_tree_path = self.main_session.join_remote_path(
-            PurePath(remote_tarball_path).parent,
+            remote_tarball_path.parent,
             tarball_top_dir or remove_tarball_suffix(remote_tarball_path),
         )
 
@@ -360,33 +365,32 @@ class SutNode(Node):
             self._remote_dpdk_tree_path,
         )
 
-    def _set_remote_dpdk_build_dir(self, build_dir: str | None):
+    def _set_remote_dpdk_build_dir(self, build_dir: str):
         """Set the `remote_dpdk_build_dir` on the SUT.
 
-        If :data:`build_dir` is defined, check existence on the SUT node and sets the
+        Check existence on the SUT node and sets the
         `remote_dpdk_build_dir` property by joining the `_remote_dpdk_tree_path` and `build_dir`.
         Otherwise, sets nothing.
 
         Args:
-            build_dir: If it's defined, DPDK has been pre-built and the build directory is located
+            build_dir: DPDK has been pre-built and the build directory is located
                 in a subdirectory of `dpdk_tree` or `tarball` root directory.
 
         Raises:
             RemoteFileNotFoundError: If the `build_dir` is expected but does not exist on the SUT
                 node.
         """
-        if build_dir:
-            remote_dpdk_build_dir = self.main_session.join_remote_path(
-                self._remote_dpdk_tree_path, build_dir
+        remote_dpdk_build_dir = self.main_session.join_remote_path(
+            self._remote_dpdk_tree_path, build_dir
+        )
+        if not self.main_session.remote_path_exists(remote_dpdk_build_dir):
+            raise RemoteFileNotFoundError(
+                f"Remote DPDK build dir '{remote_dpdk_build_dir}' not found in SUT node."
             )
-            if not self.main_session.remote_path_exists(remote_dpdk_build_dir):
-                raise RemoteFileNotFoundError(
-                    f"Remote DPDK build dir '{remote_dpdk_build_dir}' not found in SUT node."
-                )
 
-            self._remote_dpdk_build_dir = PurePath(remote_dpdk_build_dir)
+        self._remote_dpdk_build_dir = PurePath(remote_dpdk_build_dir)
 
-    def _configure_dpdk_build(self, dpdk_build_config: DPDKBuildConfiguration) -> None:
+    def _configure_dpdk_build(self, dpdk_build_config: DPDKBuildOptionsConfiguration) -> None:
         """Populate common environment variables and set the DPDK build related properties.
 
         This method sets `compiler_version` for additional information and `remote_dpdk_build_dir`

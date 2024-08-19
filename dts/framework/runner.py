@@ -30,7 +30,15 @@ from framework.testbed_model.capability import Capability, get_supported_capabil
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
 
-from .config import Configuration, TestRunConfiguration, TestSuiteConfig, load_config
+from .config import (
+    Configuration,
+    DPDKPrecompiledBuildConfiguration,
+    SutNodeConfiguration,
+    TestRunConfiguration,
+    TestSuiteConfig,
+    TGNodeConfiguration,
+    load_config,
+)
 from .exception import (
     BlockingTestSuiteError,
     ConfigurationError,
@@ -133,11 +141,10 @@ class DTSRunner:
             self._result.update_setup(Result.PASS)
 
             # for all test run sections
-            for test_run_config in self._configuration.test_runs:
+            for test_run_with_nodes_config in self._configuration.test_runs_with_nodes:
+                test_run_config, sut_node_config, tg_node_config = test_run_with_nodes_config
                 self._logger.set_stage(DtsStage.test_run_setup)
-                self._logger.info(
-                    f"Running test run with SUT '{test_run_config.system_under_test_node.name}'."
-                )
+                self._logger.info(f"Running test run with SUT '{sut_node_config.name}'.")
                 self._init_random_seed(test_run_config)
                 test_run_result = self._result.add_test_run(test_run_config)
                 # we don't want to modify the original config, so create a copy
@@ -145,7 +152,7 @@ class DTSRunner:
                     SETTINGS.test_suites if SETTINGS.test_suites else test_run_config.test_suites
                 )
                 if not test_run_config.skip_smoke_tests:
-                    test_run_test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
+                    test_run_test_suites[:0] = [TestSuiteConfig(test_suite="smoke_tests")]
                 try:
                     test_suites_with_cases = self._get_test_suites_with_cases(
                         test_run_test_suites, test_run_config.func, test_run_config.perf
@@ -161,6 +168,8 @@ class DTSRunner:
                     self._connect_nodes_and_run_test_run(
                         sut_nodes,
                         tg_nodes,
+                        sut_node_config,
+                        tg_node_config,
                         test_run_config,
                         test_run_result,
                         test_suites_with_cases,
@@ -223,10 +232,10 @@ class DTSRunner:
         test_suites_with_cases = []
 
         for test_suite_config in test_suite_configs:
-            test_suite_class = self._get_test_suite_class(test_suite_config.test_suite)
+            test_suite_class = self._get_test_suite_class(test_suite_config.test_suite_name)
             test_cases: list[type[TestCase]] = []
             func_test_cases, perf_test_cases = test_suite_class.filter_test_cases(
-                test_suite_config.test_cases
+                test_suite_config.test_cases_names
             )
             if func:
                 test_cases.extend(func_test_cases)
@@ -305,6 +314,8 @@ class DTSRunner:
         self,
         sut_nodes: dict[str, SutNode],
         tg_nodes: dict[str, TGNode],
+        sut_node_config: SutNodeConfiguration,
+        tg_node_config: TGNodeConfiguration,
         test_run_config: TestRunConfiguration,
         test_run_result: TestRunResult,
         test_suites_with_cases: Iterable[TestSuiteWithCases],
@@ -319,24 +330,26 @@ class DTSRunner:
         Args:
             sut_nodes: A dictionary storing connected/to be connected SUT nodes.
             tg_nodes: A dictionary storing connected/to be connected TG nodes.
+            sut_node_config: The test run's SUT node configuration.
+            tg_node_config: The test run's TG node configuration.
             test_run_config: A test run configuration.
             test_run_result: The test run's result.
             test_suites_with_cases: The test suites with test cases to run.
         """
-        sut_node = sut_nodes.get(test_run_config.system_under_test_node.name)
-        tg_node = tg_nodes.get(test_run_config.traffic_generator_node.name)
+        sut_node = sut_nodes.get(sut_node_config.name)
+        tg_node = tg_nodes.get(tg_node_config.name)
 
         try:
             if not sut_node:
-                sut_node = SutNode(test_run_config.system_under_test_node)
+                sut_node = SutNode(sut_node_config)
                 sut_nodes[sut_node.name] = sut_node
             if not tg_node:
-                tg_node = TGNode(test_run_config.traffic_generator_node)
+                tg_node = TGNode(tg_node_config)
                 tg_nodes[tg_node.name] = tg_node
         except Exception as e:
-            failed_node = test_run_config.system_under_test_node.name
+            failed_node = test_run_config.system_under_test_node.node_name
             if sut_node:
-                failed_node = test_run_config.traffic_generator_node.name
+                failed_node = test_run_config.traffic_generator_node
             self._logger.exception(f"The Creation of node {failed_node} failed.")
             test_run_result.update_setup(Result.FAIL, e)
 
@@ -369,14 +382,22 @@ class DTSRunner:
             ConfigurationError: If the DPDK sources or build is not set up from config or settings.
         """
         self._logger.info(
-            f"Running test run with SUT '{test_run_config.system_under_test_node.name}'."
+            f"Running test run with SUT '{test_run_config.system_under_test_node.node_name}'."
         )
         test_run_result.add_sut_info(sut_node.node_info)
         try:
-            dpdk_location = SETTINGS.dpdk_location or test_run_config.dpdk_config.dpdk_location
-            sut_node.set_up_test_run(test_run_config, dpdk_location)
+            dpdk_build_config = test_run_config.dpdk_config
+            if new_location := SETTINGS.dpdk_location:
+                dpdk_build_config = dpdk_build_config.model_copy(
+                    update={"dpdk_location": new_location}
+                )
+            if dir := SETTINGS.precompiled_build_dir:
+                dpdk_build_config = DPDKPrecompiledBuildConfiguration(
+                    dpdk_location=dpdk_build_config.dpdk_location, precompiled_build_dir=dir
+                )
+            sut_node.set_up_test_run(test_run_config, dpdk_build_config)
             test_run_result.add_dpdk_build_info(sut_node.get_dpdk_build_info())
-            tg_node.set_up_test_run(test_run_config, dpdk_location)
+            tg_node.set_up_test_run(test_run_config, dpdk_build_config)
             test_run_result.update_setup(Result.PASS)
         except Exception as e:
             self._logger.exception("Test run setup failed.")

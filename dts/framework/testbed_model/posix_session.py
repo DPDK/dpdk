@@ -201,12 +201,12 @@ class PosixSession(OSSession):
         if expected_dir:
             self.send_command(f"ls {expected_dir}", verify=True)
 
-    def is_remote_dir(self, remote_path: str) -> bool:
+    def is_remote_dir(self, remote_path: PurePath) -> bool:
         """Overrides :meth:`~.os_session.OSSession.is_remote_dir`."""
         result = self.send_command(f"test -d {remote_path}")
         return not result.return_code
 
-    def is_remote_tarfile(self, remote_tarball_path: str) -> bool:
+    def is_remote_tarfile(self, remote_tarball_path: PurePath) -> bool:
         """Overrides :meth:`~.os_session.OSSession.is_remote_tarfile`."""
         result = self.send_command(f"tar -tvf {remote_tarball_path}")
         return not result.return_code

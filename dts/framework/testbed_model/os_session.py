@@ -364,7 +364,7 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def is_remote_dir(self, remote_path: str) -> bool:
+    def is_remote_dir(self, remote_path: PurePath) -> bool:
         """Check if the `remote_path` is a directory.
 
         Args:
@@ -375,7 +375,7 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def is_remote_tarfile(self, remote_tarball_path: str) -> bool:
+    def is_remote_tarfile(self, remote_tarball_path: PurePath) -> bool:
         """Check if the `remote_tarball_path` is a tar archive.
 
         Args:
