@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2019 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """Test suite runner module.
 
@@ -17,8 +18,6 @@ The test suite stage sets up steps common to all test cases
 and the test case stage runs test cases individually.
 """
 
-import importlib
-import inspect
 import os
 import random
 import sys
@@ -39,12 +38,7 @@ from .config import (
     TGNodeConfiguration,
     load_config,
 )
-from .exception import (
-    BlockingTestSuiteError,
-    ConfigurationError,
-    SSHTimeoutError,
-    TestCaseVerifyError,
-)
+from .exception import BlockingTestSuiteError, SSHTimeoutError, TestCaseVerifyError
 from .logger import DTSLogger, DtsStage, get_dts_logger
 from .settings import SETTINGS
 from .test_result import (
@@ -215,11 +209,10 @@ class DTSRunner:
         func: bool,
         perf: bool,
     ) -> list[TestSuiteWithCases]:
-        """Test suites with test cases discovery.
+        """Get test suites with selected cases.
 
-        The test suites with test cases defined in the user configuration are discovered
-        and stored for future use so that we don't import the modules twice and so that
-        the list of test suites with test cases is available for recording right away.
+        The test suites with test cases defined in the user configuration are selected
+        and the corresponding functions and classes are gathered.
 
         Args:
             test_suite_configs: Test suite configurations.
@@ -227,12 +220,12 @@ class DTSRunner:
             perf: Whether to include performance test cases in the final list.
 
         Returns:
-            The discovered test suites, each with test cases.
+            The test suites, each with test cases.
         """
         test_suites_with_cases = []
 
         for test_suite_config in test_suite_configs:
-            test_suite_class = self._get_test_suite_class(test_suite_config.test_suite_name)
+            test_suite_class = test_suite_config.test_suite_spec.class_obj
             test_cases: list[type[TestCase]] = []
             func_test_cases, perf_test_cases = test_suite_class.filter_test_cases(
                 test_suite_config.test_cases_names
@@ -245,70 +238,7 @@ class DTSRunner:
             test_suites_with_cases.append(
                 TestSuiteWithCases(test_suite_class=test_suite_class, test_cases=test_cases)
             )
-
         return test_suites_with_cases
-
-    def _get_test_suite_class(self, module_name: str) -> type[TestSuite]:
-        """Find the :class:`TestSuite` class in `module_name`.
-
-        The full module name is `module_name` prefixed with `self._test_suite_module_prefix`.
-        The module name is a standard filename with words separated with underscores.
-        Search the `module_name` for a :class:`TestSuite` class which starts
-        with `self._test_suite_class_prefix`, continuing with CamelCase `module_name`.
-        The first matching class is returned.
-
-        The CamelCase convention applies to abbreviations, acronyms, initialisms and so on::
-
-            OS -> Os
-            TCP -> Tcp
-
-        Args:
-            module_name: The module name without prefix where to search for the test suite.
-
-        Returns:
-            The found test suite class.
-
-        Raises:
-            ConfigurationError: If the corresponding module is not found or
-                a valid :class:`TestSuite` is not found in the module.
-        """
-
-        def is_test_suite(object) -> bool:
-            """Check whether `object` is a :class:`TestSuite`.
-
-            The `object` is a subclass of :class:`TestSuite`, but not :class:`TestSuite` itself.
-
-            Args:
-                object: The object to be checked.
-
-            Returns:
-                :data:`True` if `object` is a subclass of `TestSuite`.
-            """
-            try:
-                if issubclass(object, TestSuite) and object is not TestSuite:
-                    return True
-            except TypeError:
-                return False
-            return False
-
-        testsuite_module_path = f"{self._test_suite_module_prefix}{module_name}"
-        try:
-            test_suite_module = importlib.import_module(testsuite_module_path)
-        except ModuleNotFoundError as e:
-            raise ConfigurationError(
-                f"Test suite module '{testsuite_module_path}' not found."
-            ) from e
-
-        camel_case_suite_name = "".join(
-            [suite_word.capitalize() for suite_word in module_name.split("_")]
-        )
-        full_suite_name_to_find = f"{self._test_suite_class_prefix}{camel_case_suite_name}"
-        for class_name, class_obj in inspect.getmembers(test_suite_module, is_test_suite):
-            if class_name == full_suite_name_to_find:
-                return class_obj
-        raise ConfigurationError(
-            f"Couldn't find any valid test suites in {test_suite_module.__name__}."
-        )
 
     def _connect_nodes_and_run_test_run(
         self,
