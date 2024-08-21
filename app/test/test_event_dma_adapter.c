@@ -271,7 +271,10 @@ test_op_forward_mode(void)
 		ev[i].event = 0;
 		ev[i].op = RTE_EVENT_OP_NEW;
 		ev[i].event_type = RTE_EVENT_TYPE_DMADEV;
-		ev[i].queue_id = TEST_DMA_EV_QUEUE_ID;
+		if (params.internal_port_op_fwd)
+			ev[i].queue_id = TEST_APP_EV_QUEUE_ID;
+		else
+			ev[i].queue_id = TEST_DMA_EV_QUEUE_ID;
 		ev[i].sched_type = RTE_SCHED_TYPE_ATOMIC;
 		ev[i].flow_id = 0xAABB;
 		ev[i].event_ptr = op;
