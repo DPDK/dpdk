@@ -16,13 +16,13 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 	uint64_t ol_flags;
 	int i;
 	int r;
-	__m128i addr0, addr1, addr2, addr3;
+	register __m128i addr0, addr1, addr2, addr3;
 	/**
 	 * shuffle mask be used to shuffle the 16 bytes.
 	 * byte 0-5 wills be swapped with byte 6-11.
 	 * byte 12-15 will keep unchanged.
 	 */
-	__m128i shfl_msk = _mm_set_epi8(15, 14, 13, 12,
+	register const __m128i shfl_msk = _mm_set_epi8(15, 14, 13, 12,
 					5, 4, 3, 2,
 					1, 0, 11, 10,
 					9, 8, 7, 6);
