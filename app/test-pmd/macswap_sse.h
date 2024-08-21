@@ -45,19 +45,22 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		mb[0] = pkts[i++];
 		eth_hdr[0] = rte_pktmbuf_mtod(mb[0], struct rte_ether_hdr *);
 		addr0 = _mm_loadu_si128((__m128i *)eth_hdr[0]);
+		mbuf_field_set(mb[0], ol_flags);
 
 		mb[1] = pkts[i++];
 		eth_hdr[1] = rte_pktmbuf_mtod(mb[1], struct rte_ether_hdr *);
 		addr1 = _mm_loadu_si128((__m128i *)eth_hdr[1]);
-
+		mbuf_field_set(mb[1], ol_flags);
 
 		mb[2] = pkts[i++];
 		eth_hdr[2] = rte_pktmbuf_mtod(mb[2], struct rte_ether_hdr *);
 		addr2 = _mm_loadu_si128((__m128i *)eth_hdr[2]);
+		mbuf_field_set(mb[2], ol_flags);
 
 		mb[3] = pkts[i++];
 		eth_hdr[3] = rte_pktmbuf_mtod(mb[3], struct rte_ether_hdr *);
 		addr3 = _mm_loadu_si128((__m128i *)eth_hdr[3]);
+		mbuf_field_set(mb[3], ol_flags);
 
 		addr0 = _mm_shuffle_epi8(addr0, shfl_msk);
 		addr1 = _mm_shuffle_epi8(addr1, shfl_msk);
@@ -69,10 +72,6 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 		_mm_storeu_si128((__m128i *)eth_hdr[2], addr2);
 		_mm_storeu_si128((__m128i *)eth_hdr[3], addr3);
 
-		mbuf_field_set(mb[0], ol_flags);
-		mbuf_field_set(mb[1], ol_flags);
-		mbuf_field_set(mb[2], ol_flags);
-		mbuf_field_set(mb[3], ol_flags);
 		r -= 4;
 	}
 
@@ -84,10 +83,10 @@ do_macswap(struct rte_mbuf *pkts[], uint16_t nb,
 
 		/* Swap dest and src mac addresses. */
 		addr0 = _mm_loadu_si128((__m128i *)eth_hdr[0]);
+		mbuf_field_set(mb[0], ol_flags);
+
 		addr0 = _mm_shuffle_epi8(addr0, shfl_msk);
 		_mm_storeu_si128((__m128i *)eth_hdr[0], addr0);
-
-		mbuf_field_set(mb[0], ol_flags);
 	}
 }
 
