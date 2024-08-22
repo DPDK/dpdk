@@ -111,6 +111,11 @@ noiommu_flag = False
 args = []
 
 
+# check if this system has NUMA support
+def is_numa():
+    return os.path.exists('/sys/devices/system/node')
+
+
 # check if a specific kernel module is loaded
 def module_is_loaded(module):
     global loaded_modules
@@ -611,20 +616,28 @@ def show_device_status(devices_type, device_name, if_field=False):
         print("".join('=' * len(msg)))
         return
 
+    print_numa = is_numa()
+
     # print each category separately, so we can clearly see what's used by DPDK
     if dpdk_drv:
+        extra_param = "drv=%(Driver_str)s unused=%(Module_str)s"
+        if print_numa:
+            extra_param = "numa_node=%(NUMANode)s " + extra_param
         display_devices("%s devices using DPDK-compatible driver" % device_name,
-                        dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
+                        dpdk_drv, extra_param)
     if kernel_drv:
-        if_text = ""
+        extra_param = "drv=%(Driver_str)s unused=%(Module_str)s"
         if if_field:
-            if_text = "if=%(Interface)s "
-        display_devices("%s devices using kernel driver" % device_name, kernel_drv,
-                        if_text + "drv=%(Driver_str)s "
-                        "unused=%(Module_str)s %(Active)s")
+            extra_param = "if=%(Interface)s " + extra_param
+        if print_numa:
+            extra_param = "numa_node=%(NUMANode)s " + extra_param
+        display_devices("%s devices using kernel driver" % device_name,
+                        kernel_drv, extra_param)
     if no_drv:
-        display_devices("Other %s devices" % device_name, no_drv,
-                        "unused=%(Module_str)s")
+        extra_param = "unused=%(Module_str)s"
+        if print_numa:
+            extra_param = "numa_node=%(NUMANode)s " + extra_param
+        display_devices("Other %s devices" % device_name, no_drv, extra_param)
 
 
 def show_status():
