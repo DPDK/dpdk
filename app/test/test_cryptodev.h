@@ -233,6 +233,44 @@ fail:
 	return NULL;
 }
 
+static inline struct rte_mbuf *
+create_segmented_mbuf_multi_pool(struct rte_mempool *mbuf_pool_small,
+		struct rte_mempool *mbuf_pool_large, int pkt_len, int nb_segs, uint8_t pattern)
+{
+	struct rte_mempool *mbuf_pool;
+	int max_seg_len, seg_len;
+
+	if (nb_segs < 1) {
+		printf("Number of segments must be 1 or more (is %d)\n", nb_segs);
+		return NULL;
+	}
+
+	if (pkt_len >= nb_segs)
+		seg_len = pkt_len / nb_segs;
+	else
+		seg_len = 1;
+
+	/* Determine max segment length */
+	max_seg_len = seg_len + pkt_len % nb_segs;
+
+	if (max_seg_len > LARGE_MBUF_DATAPAYLOAD_SIZE) {
+		printf("Segment size %d is too big\n", max_seg_len);
+		return NULL;
+	}
+
+	if (max_seg_len > MBUF_DATAPAYLOAD_SIZE)
+		mbuf_pool = mbuf_pool_large;
+	else
+		mbuf_pool = mbuf_pool_small;
+
+	if (mbuf_pool == NULL) {
+		printf("Invalid mbuf pool\n");
+		return NULL;
+	}
+
+	return create_segmented_mbuf(mbuf_pool, pkt_len, nb_segs, pattern);
+}
+
 int
 process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
 		struct rte_crypto_op *op, uint8_t is_cipher, uint8_t is_auth,

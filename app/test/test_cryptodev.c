@@ -11990,12 +11990,13 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		}
 
 		/* Setup source mbuf payload */
-		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool, td[i].input_text.len,
-				nb_segs, 0);
+		ut_params->ibuf = create_segmented_mbuf_multi_pool(ts_params->mbuf_pool,
+				ts_params->large_mbuf_pool, td[i].input_text.len, nb_segs, 0);
 		pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, td[i].input_text.data);
 		if (flags->out_of_place)
-			ut_params->obuf = create_segmented_mbuf(ts_params->mbuf_pool,
-					td[i].output_text.len, nb_segs, 0);
+			ut_params->obuf = create_segmented_mbuf_multi_pool(ts_params->mbuf_pool,
+					ts_params->large_mbuf_pool, td[i].output_text.len, nb_segs,
+					0);
 		else
 			ut_params->obuf = NULL;
 
@@ -12225,6 +12226,10 @@ skip_decrypt:
 
 		pass_cnt++;
 	}
+
+	if (flags->data_walkthrough)
+		printf("\t Min payload size: %d, Max payload size: %d\n",
+				TLS_RECORD_PLAINTEXT_MIN_LEN, max_payload_len);
 
 	if (pass_cnt > 0)
 		return TEST_SUCCESS;

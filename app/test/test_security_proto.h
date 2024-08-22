@@ -10,9 +10,12 @@
 
 #include "test_cryptodev.h"
 
-#define TEST_SEC_CLEARTEXT_MAX_LEN  (MBUF_DATAPAYLOAD_SIZE - 1024)
-#define TEST_SEC_CIPHERTEXT_MAX_LEN (MBUF_DATAPAYLOAD_SIZE)
+#define TEST_SEC_CLEARTEXT_MAX_LEN  17408u
+#define TEST_SEC_CIPHERTEXT_MAX_LEN 18437u
 #define TEST_SEC_PKTS_MAX 32
+
+static_assert(TEST_SEC_CIPHERTEXT_MAX_LEN <= LARGE_MBUF_DATAPAYLOAD_SIZE,
+	      "TEST_SEC_CIPHERTEXT_MAX_LEN should not be greater than LARGE_MBUF_DATAPAYLOAD_SIZE");
 
 struct crypto_param {
 	enum rte_crypto_sym_xform_type type;

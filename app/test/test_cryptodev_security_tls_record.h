@@ -11,32 +11,32 @@
 #include "test_security_proto.h"
 
 /* TLS 1.2 Ciphertext length can be up to (2^14 + 2048 + 5 (TLS Header)) Bytes */
-#define TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN  (4096u)
+#define TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN  (18437u)
 static_assert(TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
 	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* TLS 1.2 Plaintext length can be up to (2^14 + 1024) Bytes */
-#define TLS_1_2_RECORD_PLAINTEXT_MAX_LEN   (3072u)
+#define TLS_1_2_RECORD_PLAINTEXT_MAX_LEN   (17408u)
 static_assert(TLS_1_2_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* DTLS 1.2 Ciphertext length is similar to TLS 1.2 */
-#define DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN (4096u)
+#define DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN (18437u)
 static_assert(DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
 	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* DTLS 1.2 Plaintext length is similar to TLS 1.2 */
-#define DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN  (3072u)
+#define DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN  (17408u)
 static_assert(DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* TLS 1.3 Ciphertext length can be up to (2^14 + 256 + 5 (TLS Header)) Bytes */
-#define TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN  (4096u)
+#define TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN  (16645u)
 static_assert(TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
 	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
 /* TLS 1.3 Plaintext length can be up to 2^14 Bytes */
-#define TLS_1_3_RECORD_PLAINTEXT_MAX_LEN   (3072u)
+#define TLS_1_3_RECORD_PLAINTEXT_MAX_LEN   (16384u)
 static_assert(TLS_1_3_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
 
