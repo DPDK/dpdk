@@ -3,6 +3,7 @@
  * Copyright 2020 NXP
  */
 
+#include <stdbool.h>
 #include <time.h>
 
 #include <rte_common.h>
@@ -718,7 +719,7 @@ check_capabilities_supported(enum rte_crypto_sym_xform_type type,
 		const int *algs, uint16_t num_algs)
 {
 	uint8_t dev_id = testsuite_params.valid_devs[0];
-	bool some_alg_supported = FALSE;
+	bool some_alg_supported = false;
 	uint16_t i;
 
 	for (i = 0; i < num_algs && !some_alg_supported; i++) {
@@ -727,7 +728,7 @@ check_capabilities_supported(enum rte_crypto_sym_xform_type type,
 		};
 		if (rte_cryptodev_sym_capability_get(dev_id,
 				&alg) != NULL)
-			some_alg_supported = TRUE;
+			some_alg_supported = true;
 	}
 	if (!some_alg_supported)
 		return TEST_SKIPPED;

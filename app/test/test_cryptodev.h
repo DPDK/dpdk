@@ -8,9 +8,6 @@
 
 #define HEX_DUMP 0
 
-#define FALSE                           0
-#define TRUE                            1
-
 #define MAX_NUM_OPS_INFLIGHT            (4096)
 #define MIN_NUM_OPS_INFLIGHT            (128)
 #define DEFAULT_NUM_OPS_INFLIGHT        (128)
