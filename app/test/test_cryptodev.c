@@ -587,7 +587,7 @@ testsuite_setup(void)
 		/* Not already created so create */
 		ts_params->large_mbuf_pool = rte_pktmbuf_pool_create(
 				"CRYPTO_LARGE_MBUFPOOL",
-				1, 0, 0, UINT16_MAX,
+				1, 0, 0, LARGE_MBUF_SIZE,
 				rte_socket_id());
 		if (ts_params->large_mbuf_pool == NULL) {
 			RTE_LOG(ERR, USER1,
