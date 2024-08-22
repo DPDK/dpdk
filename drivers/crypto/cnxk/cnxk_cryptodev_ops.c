@@ -499,6 +499,27 @@ exit:
 	return ret;
 }
 
+int
+cnxk_cpt_queue_pair_reset(struct rte_cryptodev *dev, uint16_t qp_id,
+			  const struct rte_cryptodev_qp_conf *conf, int socket_id)
+{
+	if (conf == NULL) {
+		struct cnxk_cpt_vf *vf = dev->data->dev_private;
+		struct roc_cpt_lf *lf;
+
+		if (vf == NULL)
+			return -ENOTSUP;
+
+		lf = vf->cpt.lf[qp_id];
+		roc_cpt_lf_reset(lf);
+		roc_cpt_iq_enable(lf);
+
+		return 0;
+	}
+
+	return cnxk_cpt_queue_pair_setup(dev, qp_id, conf, socket_id);
+}
+
 uint32_t
 cnxk_cpt_qp_depth_used(void *qptr)
 {

@@ -954,6 +954,20 @@ cpt_lf_fini(struct roc_cpt_lf *lf)
 }
 
 void
+roc_cpt_lf_reset(struct roc_cpt_lf *lf)
+{
+	if (lf == NULL)
+		return;
+
+	cpt_lf_misc_intr_enb_dis(lf, false);
+	cpt_lf_done_intr_enb_dis(lf, false);
+	roc_cpt_iq_disable(lf);
+	roc_cpt_iq_reset(lf);
+	cpt_lf_misc_intr_enb_dis(lf, true);
+	cpt_lf_done_intr_enb_dis(lf, true);
+}
+
+void
 roc_cpt_lf_fini(struct roc_cpt_lf *lf)
 {
 	if (lf == NULL)

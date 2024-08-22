@@ -127,6 +127,9 @@ int cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			      const struct rte_cryptodev_qp_conf *conf,
 			      int socket_id __rte_unused);
 
+int cnxk_cpt_queue_pair_reset(struct rte_cryptodev *dev, uint16_t qp_id,
+			      const struct rte_cryptodev_qp_conf *conf, int socket_id);
+
 int cnxk_cpt_queue_pair_release(struct rte_cryptodev *dev, uint16_t qp_id);
 
 unsigned int cnxk_cpt_sym_session_get_size(struct rte_cryptodev *dev);
