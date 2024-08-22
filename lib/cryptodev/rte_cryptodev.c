@@ -1223,6 +1223,30 @@ rte_cryptodev_queue_pairs_config(struct rte_cryptodev *dev, uint16_t nb_qpairs,
 }
 
 int
+rte_cryptodev_queue_pair_reset(uint8_t dev_id, uint16_t queue_pair_id,
+		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
+{
+	struct rte_cryptodev *dev;
+
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
+		CDEV_LOG_ERR("Invalid dev_id=%" PRIu8, dev_id);
+		return -EINVAL;
+	}
+
+	dev = &rte_crypto_devices[dev_id];
+	if (queue_pair_id >= dev->data->nb_queue_pairs) {
+		CDEV_LOG_ERR("Invalid queue_pair_id=%d", queue_pair_id);
+		return -EINVAL;
+	}
+
+	if (*dev->dev_ops->queue_pair_reset == NULL)
+		return -ENOTSUP;
+
+	rte_cryptodev_trace_queue_pair_reset(dev_id, queue_pair_id, qp_conf, socket_id);
+	return (*dev->dev_ops->queue_pair_reset)(dev, queue_pair_id, qp_conf, socket_id);
+}
+
+int
 rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 {
 	struct rte_cryptodev *dev;

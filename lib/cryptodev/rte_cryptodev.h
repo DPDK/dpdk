@@ -859,6 +859,35 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Reset a queue pair for a device.
+ * The caller of this API must ensure that, there are no enqueues to the queue and there are no
+ * pending/inflight packets in the queue when the API is called.
+ * The API can reconfigure the queue pair when the queue pair configuration data is provided.
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	queue_pair_id	The index of the queue pairs to set up. The value must be in the
+ *				range [0, nb_queue_pair - 1] previously supplied to
+ *				rte_cryptodev_configure().
+ * @param	qp_conf		The pointer to configuration data to be used for the queue pair.
+ *				It should be NULL, if the API is called from an interrupt context.
+ * @param	socket_id	The *socket_id* argument is the socket identifier in case of NUMA.
+ *				The value can be *SOCKET_ID_ANY* if there is no NUMA constraint
+ *				for the DMA memory allocated for the queue pair.
+ *
+ * @return
+ *   - 0:  Queue pair is reset successfully.
+ *   - ENOTSUP: If the operation is not supported by the PMD.
+ *   - <0: Queue pair reset failed
+ */
+__rte_experimental
+int
+rte_cryptodev_queue_pair_reset(uint8_t dev_id, uint16_t queue_pair_id,
+		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id);
+
+/**
  * Get the status of queue pairs setup on a specific crypto device
  *
  * @param	dev_id		Crypto device identifier.
