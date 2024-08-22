@@ -144,7 +144,8 @@ pktmbuf_write(struct rte_mbuf *mbuf, int offset, int len, const uint8_t *buffer)
 }
 
 static inline uint8_t *
-pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset) {
+pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset)
+{
 	struct rte_mbuf *m;
 
 	for (m = mbuf; (m != NULL) && (offset > m->data_len); m = m->next)
@@ -158,7 +159,8 @@ pktmbuf_mtod_offset(struct rte_mbuf *mbuf, int offset) {
 }
 
 static inline rte_iova_t
-pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset) {
+pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset)
+{
 	struct rte_mbuf *m;
 
 	for (m = mbuf; (m != NULL) && (offset > m->data_len); m = m->next)
@@ -173,8 +175,8 @@ pktmbuf_iova_offset(struct rte_mbuf *mbuf, int offset) {
 
 static inline struct rte_mbuf *
 create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
-		int nb_segs, uint8_t pattern) {
-
+		int nb_segs, uint8_t pattern)
+{
 	struct rte_mbuf *m = NULL, *mbuf = NULL;
 	int size, t_len, data_len = 0;
 	uint8_t *dst;
