@@ -707,6 +707,7 @@ struct rte_cryptodev_ops cn9k_cpt_ops = {
 	.stats_reset = NULL,
 	.queue_pair_setup = cnxk_cpt_queue_pair_setup,
 	.queue_pair_release = cnxk_cpt_queue_pair_release,
+	.queue_pair_reset = cnxk_cpt_queue_pair_reset,
 
 	/* Symmetric crypto ops */
 	.sym_session_get_size = cnxk_cpt_sym_session_get_size,

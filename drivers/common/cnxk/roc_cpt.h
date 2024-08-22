@@ -187,6 +187,7 @@ int __roc_api roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf, bool rxc
 void __roc_api roc_cpt_dev_clear(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lf_init(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf);
 void __roc_api roc_cpt_lf_fini(struct roc_cpt_lf *lf);
+void __roc_api roc_cpt_lf_reset(struct roc_cpt_lf *lf);
 int __roc_api roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr,
 				   bool inval);
 int __roc_api roc_cpt_lf_ctx_reload(struct roc_cpt_lf *lf, void *cptr);
