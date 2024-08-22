@@ -59,6 +59,16 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_cryptodev_trace_queue_pair_reset,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint16_t queue_pair_id,
+		const struct rte_cryptodev_qp_conf *conf, int socket_id),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u16(queue_pair_id);
+	rte_trace_point_emit_u32(conf->nb_descriptors);
+	rte_trace_point_emit_int(socket_id);
+)
+
+RTE_TRACE_POINT(
 	rte_cryptodev_trace_sym_session_pool_create,
 	RTE_TRACE_POINT_ARGS(const char *name, uint32_t nb_elts,
 		uint32_t elt_size, uint32_t cache_size,

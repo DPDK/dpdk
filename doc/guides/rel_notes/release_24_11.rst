@@ -67,6 +67,11 @@ New Features
 
   The new statistics are useful for debugging and profiling.
 
+* **Added cryptodev queue pair reset support.**
+
+  A new API ``rte_cryptodev_queue_pair_reset`` is added to reset a particular
+  queue pair of a device.
+
 
 Removed Items
 -------------

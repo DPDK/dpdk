@@ -87,6 +87,9 @@ EXPERIMENTAL {
 
 	# added in 24.03
 	__rte_cryptodev_trace_qp_depth_used;
+
+	# added in 24.11
+	rte_cryptodev_queue_pair_reset;
 };
 
 INTERNAL {
