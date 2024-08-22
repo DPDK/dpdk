@@ -6,15 +6,10 @@
 
 #include <rte_cryptodev.h>
 
-#define HEX_DUMP 0
-
 #define MAX_NUM_OPS_INFLIGHT            (4096)
 #define MIN_NUM_OPS_INFLIGHT            (128)
 #define DEFAULT_NUM_OPS_INFLIGHT        (128)
 
-#define MAX_NUM_QPS_PER_QAT_DEVICE      (2)
-#define DEFAULT_NUM_QPS_PER_QAT_DEVICE  (2)
-#define DEFAULT_BURST_SIZE              (64)
 #define DEFAULT_NUM_XFORMS              (2)
 #define NUM_MBUFS                       (8191)
 #define MBUF_CACHE_SIZE                 (256)
