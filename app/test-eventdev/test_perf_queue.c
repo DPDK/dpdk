@@ -42,6 +42,7 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 	struct rte_event ev;
 	PERF_WORKER_INIT;
 
+	RTE_SET_USED(pe);
 	while (t->done == false) {
 		deq = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
 
@@ -52,7 +53,7 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 
 		if ((prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) &&
 		    (ev.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
-			if (perf_handle_crypto_ev(&ev, &pe, enable_fwd_latency))
+			if (perf_handle_crypto_ev(&ev))
 				continue;
 		} else {
 			pe = ev.event_ptr;
@@ -60,8 +61,8 @@ perf_queue_worker(void *arg, const int enable_fwd_latency)
 
 		stage = ev.queue_id % nb_stages;
 		if (enable_fwd_latency && !prod_timer_type && stage == 0)
-		/* first q in pipeline, mark timestamp to compute fwd latency */
-			perf_mark_fwd_latency(pe);
+			/* first q in pipeline, mark timestamp to compute fwd latency */
+			perf_mark_fwd_latency(prod_type, &ev);
 
 		/* last stage in pipeline */
 		if (unlikely(stage == laststage)) {
@@ -93,6 +94,7 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 	PERF_WORKER_INIT;
 	uint16_t i;
 
+	RTE_SET_USED(pe);
 	while (t->done == false) {
 		nb_rx = rte_event_dequeue_burst(dev, port, ev, BURST_SIZE, 0);
 
@@ -104,7 +106,7 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 		for (i = 0; i < nb_rx; i++) {
 			if ((prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) &&
 			    (ev[i].event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
-				if (perf_handle_crypto_ev(&ev[i], &pe, enable_fwd_latency))
+				if (perf_handle_crypto_ev(&ev[i]))
 					continue;
 			}
 
@@ -114,7 +116,7 @@ perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
 				/* first queue in pipeline.
 				 * mark time stamp to compute fwd latency
 				 */
-				perf_mark_fwd_latency(ev[i].event_ptr);
+				perf_mark_fwd_latency(prod_type, &ev[i]);
 			}
 			/* last stage in pipeline */
 			if (unlikely(stage == laststage)) {
@@ -169,7 +171,7 @@ perf_queue_worker_vector(void *arg, const int enable_fwd_latency)
 		stage = ev.queue_id % nb_stages;
 		/* First q in pipeline, mark timestamp to compute fwd latency */
 		if (enable_fwd_latency && !prod_timer_type && stage == 0)
-			perf_mark_fwd_latency(pe);
+			pe->timestamp = rte_get_timer_cycles();
 
 		/* Last stage in pipeline */
 		if (unlikely(stage == laststage)) {
