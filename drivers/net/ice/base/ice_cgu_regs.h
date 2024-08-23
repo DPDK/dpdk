@@ -64,6 +64,17 @@ union nac_cgu_dword11_e825c {
 	u32 val;
 };
 
+#define NAC_CGU_DWORD16_E825C 0x40
+union nac_cgu_dword16_e825c {
+	struct {
+		u32 synce_remndr : 6;
+		u32 synce_phlmt_en : 1;
+		u32 misc13 : 17;
+		u32 tspll_ck_refclkfreq : 8;
+	} field;
+	u32 val;
+};
+
 #define NAC_CGU_DWORD19 0x4c
 union nac_cgu_dword19 {
 	struct {
@@ -120,6 +131,13 @@ union nac_cgu_dword23_e825c {
 	u32 val;
 };
 
+union nac_cgu_dword24_e825c {
+	struct {
+		u32 tspll_fbdiv_frac : 32;
+	} field;
+	u32 val;
+};
+
 #define NAC_CGU_DWORD24 0x60
 union nac_cgu_dword24 {
 	struct {
@@ -133,6 +151,7 @@ union nac_cgu_dword24 {
 	} field;
 	u32 val;
 };
+
 
 #define TSPLL_CNTR_BIST_SETTINGS 0x344
 union tspll_cntr_bist_settings {

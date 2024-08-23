@@ -2585,6 +2585,10 @@ ice_parse_1588_func_caps(struct ice_hw *hw, struct ice_hw_func_caps *func_p,
 
 	info->clk_src = ((number & ICE_TS_CLK_SRC_M) != 0);
 	clk_freq = (number & ICE_TS_CLK_FREQ_M) >> ICE_TS_CLK_FREQ_S;
+	if (ice_is_e825c(hw)) {
+		info->clk_src = ICE_CLK_SRC_TCX0;
+		clk_freq = ICE_TIME_REF_FREQ_156_250;
+	}
 	if (clk_freq < NUM_ICE_TIME_REF_FREQ) {
 		info->time_ref = (enum ice_time_ref_freq)clk_freq;
 	} else {

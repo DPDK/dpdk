@@ -362,10 +362,11 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		      enum ice_clk_src *clk_src)
 {
 	union tspll_ro_lock_e825c ro_lock;
+	union nac_cgu_dword16_e825c dw16;
 	union nac_cgu_dword23_e825c dw23;
+	union nac_cgu_dword24_e825c dw24;
 	union nac_cgu_dword19 dw19;
 	union nac_cgu_dword22 dw22;
-	union nac_cgu_dword24 dw24;
 	union nac_cgu_dword9 dw9;
 	int err;
 
@@ -380,8 +381,8 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	}
 
 	if (*clk_src == ICE_CLK_SRC_TCX0 &&
-	    *clk_freq != ICE_TIME_REF_FREQ_25_000) {
-		ice_warn(hw, "TCX0 only supports 25 MHz frequency\n");
+	    *clk_freq != ICE_TIME_REF_FREQ_156_250) {
+		ice_warn(hw, "TCX0 only supports 156.25 MHz frequency\n");
 		return ICE_ERR_PARAM;
 	}
 
@@ -390,6 +391,10 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 		return err;
 
 	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD24, &dw24.val);
+	if (err)
+		return err;
+
+	err = ice_read_cgu_reg_e82x(hw, NAC_CGU_DWORD16_E825C, &dw16.val);
 	if (err)
 		return err;
 
@@ -403,7 +408,7 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 
 	/* Log the current clock configuration */
 	ice_debug(hw, ICE_DBG_PTP, "Current CGU configuration -- %s, clk_src %s, clk_freq %s, PLL %s\n",
-		  dw24.field.ts_pll_enable ? "enabled" : "disabled",
+		  dw23.field.ts_pll_enable ? "enabled" : "disabled",
 		  ice_clk_src_str(dw23.field.time_ref_sel),
 		  ice_clk_freq_str(dw9.field.time_ref_freq_sel),
 		  ro_lock.field.plllock_true_lock_cri ? "locked" : "unlocked");
@@ -418,9 +423,33 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 			return err;
 	}
 
-	/* Set the frequency */
+	if (dw9.field.time_sync_en) {
+		dw9.field.time_sync_en = 0;
+
+		err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD9,
+					     dw9.val);
+		if (err)
+			return err;
+	}
+
+	/* Set the frequency and enable the correct receiver */
 	dw9.field.time_ref_freq_sel = *clk_freq;
+	if (*clk_src == ICE_CLK_SRC_TCX0) {
+		dw9.field.time_ref_en = 0;
+		dw9.field.clk_eref0_en = 1;
+	} else {
+		dw9.field.time_ref_en = 1;
+		dw9.field.clk_eref0_en = 0;
+	}
+	dw9.field.time_sync_en = 1;
 	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD9, dw9.val);
+	if (err)
+		return err;
+
+	/* Choose the referenced frequency */
+	dw16.field.tspll_ck_refclkfreq =
+	e825c_cgu_params[*clk_freq].tspll_ck_refclkfreq;
+	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD16_E825C, dw16.val);
 	if (err)
 		return err;
 
@@ -429,8 +458,8 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	if (err)
 		return err;
 
-	dw19.field.tspll_fbdiv_intgr = e822_cgu_params[*clk_freq].feedback_div;
-	dw19.field.tspll_ndivratio = 1;
+	dw19.field.tspll_fbdiv_intgr = e825c_cgu_params[*clk_freq].tspll_fbdiv_intgr;
+	dw19.field.tspll_ndivratio = e825c_cgu_params[*clk_freq].tspll_ndivratio;
 
 	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD19, dw19.val);
 	if (err)
@@ -441,7 +470,8 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	if (err)
 		return err;
 
-	dw22.field.time1588clk_div = e822_cgu_params[*clk_freq].post_pll_div;
+	/* those two are constant for E825C */
+	dw22.field.time1588clk_div = 5;
 	dw22.field.time1588clk_sel_div2 = 0;
 
 	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD22, dw22.val);
@@ -453,14 +483,14 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	if (err)
 		return err;
 
-	dw23.field.ref1588_ck_div = e822_cgu_params[*clk_freq].refclk_pre_div;
+	dw23.field.ref1588_ck_div = REF1588_CK_DIV;
 	dw23.field.time_ref_sel = *clk_src;
 
 	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD23_E825C, dw23.val);
 	if (err)
 		return err;
 
-	dw24.field.tspll_fbdiv_frac = e822_cgu_params[*clk_freq].frac_n_div;
+	dw24.field.tspll_fbdiv_frac = e825c_cgu_params[*clk_freq].tspll_fbdiv_frac;
 
 	err = ice_write_cgu_reg_e82x(hw, NAC_CGU_DWORD24, dw24.val);
 	if (err)
@@ -486,11 +516,9 @@ ice_cfg_cgu_pll_e825c(struct ice_hw *hw, enum ice_time_ref_freq *clk_freq,
 	}
 
 	/* Log the current clock configuration */
-	ice_debug(hw, ICE_DBG_PTP, "New CGU configuration -- %s, clk_src %s, clk_freq %s, PLL %s\n",
-		  dw24.field.ts_pll_enable ? "enabled" : "disabled",
+	ice_debug(hw, ICE_DBG_PTP, "New CGU configuration -- clk_src %s, clk_freq %s\n",
 		  ice_clk_src_str(dw23.field.time_ref_sel),
-		  ice_clk_freq_str(dw9.field.time_ref_freq_sel),
-		  ro_lock.field.plllock_true_lock_cri ? "locked" : "unlocked");
+		  ice_clk_freq_str(dw9.field.time_ref_freq_sel));
 
 	*clk_freq = (enum ice_time_ref_freq)dw9.field.time_ref_freq_sel;
 	*clk_src = (enum ice_clk_src)dw23.field.time_ref_sel;
@@ -770,7 +798,10 @@ static int ice_init_cgu_e82x(struct ice_hw *hw)
 		ice_warn(hw, "Failed to lock TS PLL to predefined frequency. Retrying with fallback frequency.\n");
 
 		/* Try to lock to internal 25 MHz TCXO as a fallback */
-		time_ref_freq = ICE_TIME_REF_FREQ_25_000;
+		if (hw->phy_model == ICE_PHY_ETH56G)
+			time_ref_freq = ICE_TIME_REF_FREQ_156_250;
+		else
+			time_ref_freq = ICE_TIME_REF_FREQ_25_000;
 		clk_src = ICE_CLK_SRC_TCX0;
 		if (ice_is_e825c(hw))
 			err = ice_cfg_cgu_pll_e825c(hw, &time_ref_freq,
@@ -2328,21 +2359,15 @@ ice_start_phy_timer_eth56g(struct ice_hw *hw, u8 port)
  */
 static void ice_sb_access_ena_eth56g(struct ice_hw *hw, bool enable)
 {
-	u32 regval;
-
 	/* Enable reading and writing switch and PHY registers over the
 	 * sideband queue.
 	 */
-#define PF_SB_REM_DEV_CTL_SWITCH_READ BIT(1)
-#define PF_SB_REM_DEV_CTL_PHY0 BIT(2)
-	regval = rd32(hw, PF_SB_REM_DEV_CTL);
-	if (enable)
-		regval |= (PF_SB_REM_DEV_CTL_SWITCH_READ |
-			   PF_SB_REM_DEV_CTL_PHY0);
-	else
-		regval &= ~(PF_SB_REM_DEV_CTL_SWITCH_READ |
-			    PF_SB_REM_DEV_CTL_PHY0);
+	u32 regval = rd32(hw, PF_SB_REM_DEV_CTL);
 
+	if (enable)
+		regval |= (cgu | eth56g_dev_0 | eth56g_dev_1);
+	else
+		regval &= ~(cgu | eth56g_dev_0 | eth56g_dev_1);
 	wr32(hw, PF_SB_REM_DEV_CTL, regval);
 }
 
