@@ -1032,6 +1032,7 @@ acc100_dev_info_get(struct rte_bbdev *dev,
 	dev_info->num_queues[RTE_BBDEV_OP_LDPC_ENC] = d->acc_conf.q_dl_5g.num_aqs_per_groups *
 			d->acc_conf.q_dl_5g.num_qgroups;
 	dev_info->num_queues[RTE_BBDEV_OP_FFT] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_MLDTS] = 0;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_DEC] = d->acc_conf.q_ul_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_ENC] = d->acc_conf.q_dl_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_DEC] = d->acc_conf.q_ul_5g.num_qgroups;
