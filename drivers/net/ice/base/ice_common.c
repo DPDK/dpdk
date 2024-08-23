@@ -184,11 +184,11 @@ static int ice_set_mac_type(struct ice_hw *hw)
 	case ICE_DEV_ID_E830_QSFP56:
 	case ICE_DEV_ID_E830_SFP:
 	case ICE_DEV_ID_E830C_BACKPLANE:
-	case ICE_DEV_ID_E830_XXV_BACKPLANE:
+	case ICE_DEV_ID_E830_L_BACKPLANE:
 	case ICE_DEV_ID_E830C_QSFP:
-	case ICE_DEV_ID_E830_XXV_QSFP:
+	case ICE_DEV_ID_E830_L_QSFP:
 	case ICE_DEV_ID_E830C_SFP:
-	case ICE_DEV_ID_E830_XXV_SFP:
+	case ICE_DEV_ID_E830_L_SFP:
 		hw->mac_type = ICE_MAC_E830;
 		break;
 	default:
