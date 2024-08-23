@@ -499,12 +499,13 @@ ice_download_pkg_sig_seg(struct ice_hw *hw, struct ice_sign_seg *seg)
  * @idx: segment index
  * @start: starting buffer
  * @count: buffer count
+ * @last_seg: last segment being downloaded
  *
  * Note: idx must reference a ICE segment
  */
 static enum ice_ddp_state
 ice_download_pkg_config_seg(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
-			    u32 idx, u32 start, u32 count)
+			    u32 idx, u32 start, u32 count, bool last_seg)
 {
 	struct ice_buf_table *bufs;
 	enum ice_ddp_state state;
@@ -522,7 +523,7 @@ ice_download_pkg_config_seg(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 		return ICE_DDP_PKG_ERR;
 
 	state = ice_dwnld_cfg_bufs_no_lock(hw, bufs->buf_array, start, count,
-					   true);
+					   last_seg);
 
 	return state;
 }
@@ -541,9 +542,11 @@ ice_dwnld_sign_and_cfg_segs(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 {
 	enum ice_ddp_state state;
 	struct ice_sign_seg *seg;
+	bool last_seg = true;
 	u32 conf_idx;
 	u32 start;
 	u32 count;
+	u32 flags;
 
 	seg = (struct ice_sign_seg *)ice_get_pkg_seg_by_idx(pkg_hdr, idx);
 	if (!seg) {
@@ -554,6 +557,10 @@ ice_dwnld_sign_and_cfg_segs(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 	conf_idx = LE32_TO_CPU(seg->signed_seg_idx);
 	start = LE32_TO_CPU(seg->signed_buf_start);
 	count = LE32_TO_CPU(seg->signed_buf_count);
+	flags = LE32_TO_CPU(seg->flags);
+
+	if (flags & ICE_SIGN_SEG_FLAGS_VALID)
+		last_seg = !!(flags & ICE_SIGN_SEG_FLAGS_LAST);
 
 	state = ice_download_pkg_sig_seg(hw, seg);
 	if (state)
@@ -568,7 +575,7 @@ ice_dwnld_sign_and_cfg_segs(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 	}
 
 	state = ice_download_pkg_config_seg(hw, pkg_hdr, conf_idx, start,
-					    count);
+					    count, last_seg);
 
 exit:
 	return state;
