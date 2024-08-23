@@ -2365,9 +2365,10 @@ static void ice_sb_access_ena_eth56g(struct ice_hw *hw, bool enable)
 	u32 regval = rd32(hw, PF_SB_REM_DEV_CTL);
 
 	if (enable)
-		regval |= (cgu | eth56g_dev_0 | eth56g_dev_1);
+		regval |= (BIT(eth56g_dev_1));
 	else
-		regval &= ~(cgu | eth56g_dev_0 | eth56g_dev_1);
+		regval &= ~(BIT(eth56g_dev_1));
+
 	wr32(hw, PF_SB_REM_DEV_CTL, regval);
 }
 
@@ -5691,6 +5692,7 @@ void ice_ptp_init_phy_model(struct ice_hw *hw)
 	}
 
 	ice_sb_access_ena_eth56g(hw, true);
+
 	for (phy = 0; phy < hw->num_phys; phy++)
 		if (hw->phy_addr[phy]) {
 			int err;
