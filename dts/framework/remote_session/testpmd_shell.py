@@ -635,6 +635,7 @@ class TestPmdShell(DPDKShell):
     """
 
     _app_params: TestPmdParams
+    _ports: list[TestPmdPort] | None
 
     #: The path to the testpmd executable.
     path: ClassVar[PurePath] = PurePath("app", "dpdk-testpmd")
@@ -669,8 +670,22 @@ class TestPmdShell(DPDKShell):
             TestPmdParams(**app_params),
             name,
         )
-
         self.ports_started = not self._app_params.disable_device_start
+        self._ports = None
+
+    @property
+    def ports(self) -> list[TestPmdPort]:
+        """The ports of the instance.
+
+        This caches the ports returned by :meth:`show_port_info_all`.
+        To force an update of port information, execute :meth:`show_port_info_all` or
+        :meth:`show_port_info`.
+
+        Returns: The list of known testpmd ports.
+        """
+        if self._ports is None:
+            return self.show_port_info_all()
+        return self._ports
 
     @requires_started_ports
     def start(self, verify: bool = True) -> None:
@@ -853,7 +868,8 @@ class TestPmdShell(DPDKShell):
         # executed on a pseudo-terminal created by paramiko on the remote node, lines end with CRLF.
         # Therefore we also need to take the carriage return into account.
         iter = re.finditer(r"\*{21}.*?[\r\n]{4}", output + "\r\n", re.S)
-        return [TestPmdPort.parse(block.group(0)) for block in iter]
+        self._ports = [TestPmdPort.parse(block.group(0)) for block in iter]
+        return self._ports
 
     def show_port_info(self, port_id: int) -> TestPmdPort:
         """Returns the given port information.
@@ -871,7 +887,16 @@ class TestPmdShell(DPDKShell):
         if output.startswith("Invalid port"):
             raise InteractiveCommandExecutionError("invalid port given")
 
-        return TestPmdPort.parse(output)
+        port = TestPmdPort.parse(output)
+        self._update_port(port)
+        return port
+
+    def _update_port(self, port: TestPmdPort) -> None:
+        if self._ports:
+            self._ports = [
+                existing_port if port.id != existing_port.id else port
+                for existing_port in self._ports
+            ]
 
     def show_port_stats_all(self) -> list[TestPmdPortStats]:
         """Returns the statistics of all the ports.
