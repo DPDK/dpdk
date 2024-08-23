@@ -658,6 +658,8 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 	dev_info->num_queues[RTE_BBDEV_OP_TURBO_ENC] = dev_info->max_num_queues / 2;
 	dev_info->num_queues[RTE_BBDEV_OP_LDPC_DEC] = 0;
 	dev_info->num_queues[RTE_BBDEV_OP_LDPC_ENC] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_FFT] = 0;
+	dev_info->num_queues[RTE_BBDEV_OP_MLDTS] = 0;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_DEC] = 1;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_ENC] = 1;
 }
