@@ -468,8 +468,8 @@ class TestPmdPort(TextParser):
         metadata=DeviceCapabilitiesFlag.make_parser(),
     )
     #:
-    device_error_handling_mode: DeviceErrorHandlingMode = field(
-        metadata=DeviceErrorHandlingMode.make_parser()
+    device_error_handling_mode: DeviceErrorHandlingMode | None = field(
+        default=None, metadata=DeviceErrorHandlingMode.make_parser()
     )
     #:
     device_private_info: str | None = field(
