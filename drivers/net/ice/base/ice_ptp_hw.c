@@ -1092,7 +1092,7 @@ ice_read_phy_eth56g_raw_lp(struct ice_hw *hw, u8 phy_index, u32 reg_addr,
  */
 static int
 ice_phy_port_res_address_eth56g(u8 port, enum eth56g_res_type res_type,
-				u16 offset, u32 *address)
+				u32 offset, u32 *address)
 {
 	u8 phy, lane;
 
@@ -1615,7 +1615,7 @@ ice_clear_phy_tstamp_eth56g(struct ice_hw *hw, u8 port, u8 idx)
  */
 static void ice_ptp_reset_ts_memory_eth56g(struct ice_hw *hw)
 {
-	unsigned int port;
+	u8 port;
 
 	for (port = 0; port < hw->max_phy_port; port++) {
 		ice_write_phy_reg_eth56g(hw, port, PHY_REG_TX_MEMORY_STATUS_L,
@@ -2019,21 +2019,6 @@ int ice_phy_cfg_tx_offset_eth56g(struct ice_hw *hw, u8 port)
 }
 
 /**
- * ice_calc_fixed_rx_offset_eth56g - Calculated the fixed Rx offset for a port
- * @hw: pointer to HW struct
- * @link_spd: The Link speed to calculate for
- *
- * Determine the fixed Rx latency for a given link speed.
- */
-static u64
-ice_calc_fixed_rx_offset_eth56g(struct ice_hw *hw,
-				enum ice_ptp_link_spd link_spd)
-{
-	u64 fixed_offset = 0;
-	return fixed_offset;
-}
-
-/**
  * ice_phy_cfg_rx_offset_eth56g - Configure total Rx timestamp offset
  * @hw: pointer to the HW struct
  * @port: the PHY port to configure
@@ -2055,16 +2040,8 @@ ice_calc_fixed_rx_offset_eth56g(struct ice_hw *hw,
 int ice_phy_cfg_rx_offset_eth56g(struct ice_hw *hw, u8 port)
 {
 	int err;
-	u64 total_offset;
 
-	total_offset = ice_calc_fixed_rx_offset_eth56g(hw, 0);
-
-	/* Now that the total offset has been calculated, program it to the
-	 * PHY and indicate that the Rx offset is ready. After this,
-	 * timestamps will be enabled.
-	 */
-	err = ice_write_64b_phy_reg_eth56g(hw, port, PHY_REG_TOTAL_RX_OFFSET_L,
-					   total_offset);
+	err = ice_write_64b_phy_reg_eth56g(hw, port, PHY_REG_TOTAL_RX_OFFSET_L, 0);
 	if (err)
 		return err;
 
@@ -5672,7 +5649,7 @@ void ice_ptp_unlock(struct ice_hw *hw)
  */
 void ice_ptp_init_phy_model(struct ice_hw *hw)
 {
-	unsigned int phy;
+	u8 phy;
 
 	for (phy = 0; phy < MAX_PHYS_PER_ICE; phy++)
 		hw->phy_addr[phy] = 0;
