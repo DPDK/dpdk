@@ -2271,6 +2271,22 @@ void ice_release_change_lock(struct ice_hw *hw)
 }
 
 /**
+ * ice_is_get_tx_sched_new_format
+ * @hw: pointer to the HW struct
+ *
+ * Determines if the new format for the Tx scheduler get api is supported
+ */
+static bool
+ice_is_get_tx_sched_new_format(struct ice_hw *hw)
+{
+	if (ice_is_e830(hw))
+		return true;
+	if (ice_is_e825c(hw))
+		return true;
+	return false;
+}
+
+/**
  * ice_get_set_tx_topo - get or set tx topology
  * @hw: pointer to the HW struct
  * @buf: pointer to tx topology buffer
@@ -2303,7 +2319,7 @@ ice_get_set_tx_topo(struct ice_hw *hw, u8 *buf, u16 buf_size,
 		ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_get_tx_topo);
 		cmd->get_flags = ICE_AQC_TX_TOPO_GET_RAM;
 
-		if (!ice_is_e830(hw))
+		if (!ice_is_get_tx_sched_new_format(hw))
 			desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
 	}
 
