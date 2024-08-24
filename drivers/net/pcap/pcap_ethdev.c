@@ -522,6 +522,12 @@ open_iface_live(const char *iface, pcap_t **pcap) {
 		return -1;
 	}
 
+	if (pcap_setnonblock(*pcap, 1, errbuf)) {
+		PMD_LOG(ERR, "Couldn't set non-blocking on %s: %s", iface, errbuf);
+		pcap_close(*pcap);
+		return -1;
+	}
+
 	return 0;
 }
 
