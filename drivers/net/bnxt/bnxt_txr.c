@@ -600,6 +600,20 @@ static bool bnxt_is_tx_cmpl_type(uint16_t type)
 		type == CMPL_BASE_TYPE_TX_L2);
 }
 
+static void bnxt_get_tx_ts_p7(struct bnxt *bp, struct tx_cmpl_packet_timestamp *txcmp)
+{
+	uint64_t tx_timestamp;
+
+	if (!(bp->fw_cap & BNXT_FW_CAP_TX_TS_CMP))
+		return;
+
+	if (!bp->ptp_cfg || !bp->ieee_1588)
+		return;
+
+	tx_timestamp = rte_le_to_cpu_16(txcmp->ts_ns_mid);
+	bp->ptp_cfg->tx_timestamp = (tx_timestamp << 32) | rte_le_to_cpu_32(txcmp->ts_ns_lo);
+}
+
 static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 {
 	uint32_t nb_tx_pkts = 0, cons, ring_mask, opaque;
@@ -629,6 +643,8 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 			RTE_LOG_DP_LINE(ERR, BNXT,
 					"Unhandled CMP type %02x",
 					CMP_TYPE(txcmp));
+		if (CMP_TYPE(txcmp) == CMPL_BASE_TYPE_TX_L2_PKT_TS)
+			bnxt_get_tx_ts_p7(txq->bp, (struct tx_cmpl_packet_timestamp *)txcmp);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	} while (nb_tx_pkts < ring_mask);
 
