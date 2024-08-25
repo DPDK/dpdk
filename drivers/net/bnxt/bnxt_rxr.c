@@ -740,13 +740,13 @@ static void bnxt_get_rx_ts(struct bnxt *bp)
 }
 
 static void
-bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
+bnxt_get_rx_ts_p5_p7(struct bnxt *bp, uint32_t rx_ts_cmpl)
 {
 	struct bnxt_ptp_cfg *ptp = bp->ptp_cfg;
-	uint64_t last_hwrm_time = 0;
+	uint64_t last_hwrm_time;
 	uint64_t pkt_time = 0;
 
-	if (!BNXT_CHIP_P5(bp) || !ptp)
+	if (!ptp)
 		return;
 
 	/* On P5, Rx timestamps are provided directly in the
@@ -1206,8 +1206,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		      RX_PKT_CMPL_FLAGS_MASK) ==
 		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP) ||
 		      bp->ptp_all_rx_tstamp) {
-		if (BNXT_CHIP_P5(bp))
-			bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+		if (BNXT_CHIP_P5_P7(bp))
+			bnxt_get_rx_ts_p5_p7(rxq->bp, rxcmp1->reorder);
 		else
 			bnxt_get_rx_ts(rxq->bp);
 	}

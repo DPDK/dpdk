@@ -3820,9 +3820,11 @@ bnxt_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	if (!ptp)
 		return -ENOTSUP;
 
-	/* TODO Revisit for Thor 2 */
-	rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
-				     &tx_tstamp_cycles);
+	if (BNXT_CHIP_P7(bp))
+		tx_tstamp_cycles = ptp->tx_timestamp;
+	else
+		rc = bnxt_hwrm_port_ts_query(bp, BNXT_PTP_FLAGS_PATH_TX,
+					     &tx_tstamp_cycles);
 
 	ns = rte_timecounter_update(&ptp->tx_tstamp_tc, tx_tstamp_cycles);
 	*timestamp = rte_ns_to_timespec(ns);

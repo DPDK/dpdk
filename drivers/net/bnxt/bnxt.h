@@ -404,6 +404,8 @@ struct bnxt_ptp_cfg {
 	uint64_t			current_time;
 	uint64_t			old_time;
 	rte_spinlock_t			ptp_lock;
+	/* On P7, the Tx timestamp is present in the Tx completion record */
+	uint64_t			tx_timestamp;
 };
 
 struct bnxt_coal {
@@ -874,6 +876,7 @@ struct bnxt {
 	 (bp)->hwrm_spec_code >= HWRM_VERSION_1_9_2 && \
 	 !BNXT_VF((bp)))
 #define BNXT_FW_CAP_UDP_GSO		BIT(13)
+#define BNXT_FW_CAP_TX_TS_CMP		BIT(16)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN &&\
 				 (bp)->app_id != 0xFF)
 
