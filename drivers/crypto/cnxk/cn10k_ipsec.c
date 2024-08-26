@@ -350,13 +350,11 @@ cn10k_ipsec_stats_get(struct cnxk_cpt_qp *qp, struct cn10k_sec_session *sess,
 	if (sess->ipsec.is_outbound) {
 		out_sa = &sa->out_sa;
 		roc_cpt_lf_ctx_flush(&qp->lf, out_sa, false);
-		rte_delay_ms(1);
 		stats->ipsec.opackets = out_sa->ctx.mib_pkts;
 		stats->ipsec.obytes = out_sa->ctx.mib_octs;
 	} else {
 		in_sa = &sa->in_sa;
 		roc_cpt_lf_ctx_flush(&qp->lf, in_sa, false);
-		rte_delay_ms(1);
 		stats->ipsec.ipackets = in_sa->ctx.mib_pkts;
 		stats->ipsec.ibytes = in_sa->ctx.mib_octs;
 	}
