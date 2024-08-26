@@ -92,6 +92,7 @@ DPDK_CONFIG_OPTIONS += -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG'
 DPDK_CONFIG_OPTIONS += --debug
 DPDK_CONFIG_OPTIONS += -Dtests=false
 DPDK_CONFIG_OPTIONS += -Denable_drivers=$(DPDK_ENABLED_DRVS)
+DPDK_CONFIG_OPTIONS += -Dlog_ts=true
 
 # Ensure build is optimized for release
 DPDK_CONFIG_OPTIONS += --buildtype=release
