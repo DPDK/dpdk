@@ -125,12 +125,12 @@ static void
 dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 {
 #define STRING_LEN	28
-#define COMMAND_LEN	50
+#define AFFINITY_LEN	128
 	uint32_t cpu_mask = 1;
-	int ret;
 	size_t len = 0;
 	char *temp = NULL, *token = NULL;
-	char string[STRING_LEN], command[COMMAND_LEN];
+	char string[STRING_LEN];
+	char smp_affinity[AFFINITY_LEN];
 	FILE *file;
 
 	snprintf(string, STRING_LEN, "dpio.%d", dpio_id);
@@ -155,16 +155,24 @@ dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id, int cpu_id)
 	}
 
 	cpu_mask = cpu_mask << cpu_id;
-	snprintf(command, COMMAND_LEN, "echo %X > /proc/irq/%s/smp_affinity",
-		 cpu_mask, token);
-	ret = system(command);
-	if (ret < 0)
-		DPAA2_BUS_DEBUG(
-			"Failed to affine interrupts on respective core");
-	else
-		DPAA2_BUS_DEBUG(" %s command is executed", command);
-
+	snprintf(smp_affinity, AFFINITY_LEN, "/proc/irq/%s/smp_affinity", token);
 	free(temp);
+	fclose(file);
+
+	file = fopen(smp_affinity, "w");
+	if (file == NULL) {
+		DPAA2_BUS_WARN("Failed to open %s", smp_affinity);
+		return;
+	}
+	fprintf(file, "%X\n", cpu_mask);
+	fflush(file);
+
+	if (ferror(file)) {
+		fclose(file);
+		DPAA2_BUS_WARN("Failed to write to %s", smp_affinity);
+		return;
+	}
+
 	fclose(file);
 }
 
