@@ -9,6 +9,7 @@
 #define MAX_NUM_OPS_INFLIGHT            (4096)
 #define MIN_NUM_OPS_INFLIGHT            (128)
 #define DEFAULT_NUM_OPS_INFLIGHT        (128)
+#define TEST_STATS_RETRIES              (100)
 
 #define DEFAULT_NUM_XFORMS              (2)
 #define NUM_MBUFS                       (8191)
