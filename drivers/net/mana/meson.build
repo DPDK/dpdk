@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 Microsoft Corporation
 
-if not is_linux or not dpdk_conf.has('RTE_ARCH_X86')
+if not is_linux or not (dpdk_conf.has('RTE_ARCH_X86') or dpdk_conf.has('RTE_ARCH_ARM64'))
     build = false
-    reason = 'only supported on x86 Linux'
+    reason = 'only supported on x86 or arm64 Linux'
     subdir_done()
 endif
 

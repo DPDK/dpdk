@@ -5,6 +5,7 @@
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
 #include <rte_log.h>
+#include <stdlib.h>
 
 #include <infiniband/verbs.h>
 
