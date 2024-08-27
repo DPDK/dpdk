@@ -5,12 +5,12 @@ set -e -x
 name=dpdk-vhost-vfe
 topdir=/tmp/build_dpdk_topdir
 specfile=pkg/$name.spec
-release=`rpm --eval 1%{?dist}`
-VER=`rpmspec --srpm  -q --queryformat='%{VERSION}\n' $specfile`
+release=`rpmspec --srpm  -q --queryformat='%{RELEASE}\n' $specfile`
+ver=`rpmspec --srpm  -q --queryformat='%{VERSION}\n' $specfile`
 
-srctar=$name-$VER.tar.gz
-srcrpm=$name-$VER-$release.src.rpm
-binrpm=$name-$VER-$release.`uname -m`.rpm
+srctar=$name-$ver.tar.gz
+srcrpm=$name-$ver-$release.src.rpm
+binrpm=$name-$ver-$release.`uname -m`.rpm
 srcrpm_full=$topdir/SRPMS/$srcrpm
 binrpm_full=$topdir/RPMS/`uname -m`/$binrpm
 
@@ -22,7 +22,7 @@ if [[ ! -f $srcrpm ]] ; then
 
 	rm -rf $topdir/SOURCES/$srctar
 	git archive \
-		--format=tar.gz --prefix=$name-$VER/ -o $topdir/SOURCES/$srctar HEAD
+		--format=tar.gz --prefix=$name-$ver/ -o $topdir/SOURCES/$srctar HEAD
 
 	rpmbuild -bs --define "_topdir $topdir" $specfile
 
