@@ -897,7 +897,6 @@ rte_bbdev_dequeue_fft_ops(uint16_t dev_id, uint16_t queue_id,
  *   The number of operations actually dequeued (this is the number of entries
  *   copied into the @p ops array).
  */
-__rte_experimental
 static inline uint16_t
 rte_bbdev_dequeue_mldts_ops(uint16_t dev_id, uint16_t queue_id,
 		struct rte_bbdev_mldts_op **ops, uint16_t num_ops)
