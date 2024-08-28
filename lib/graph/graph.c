@@ -745,7 +745,7 @@ graph_to_dot(FILE *f, struct graph *graph)
 			if (rc < 0)
 				goto end;
 		} else if (graph_node->node->nb_edges == 0) {
-			rc = fprintf(f, " [color=darkorange]");
+			rc = fprintf(f, " [fontcolor=darkorange shape=plain]");
 			if (rc < 0)
 				goto end;
 		}
@@ -753,9 +753,12 @@ graph_to_dot(FILE *f, struct graph *graph)
 		if (rc < 0)
 			goto end;
 		for (i = 0; i < graph_node->node->nb_edges; i++) {
+			const char *node_attrs = attrs;
+			if (graph_node->adjacency_list[i]->node->nb_edges == 0)
+				node_attrs = " [color=darkorange]";
 			rc = fprintf(f, "\t\"%s\" -> \"%s\"%s;\n", node_name,
 				     graph_node->adjacency_list[i]->node->name,
-				     attrs);
+				     node_attrs);
 			if (rc < 0)
 				goto end;
 		}
