@@ -3541,32 +3541,7 @@ mac_reset_top:
 reset_hw_out:
 	return status;
 }
-/**
- * ixgbe_fw_ver_check - Check the reported FW API version
- * @hw: pointer to the hardware structure
- *
- * Checks if the driver should load on a given FW API version.
- *
- * Return: 'true' if the driver should attempt to load. 'false' otherwise.
- */
-static bool ixgbe_fw_ver_check(struct ixgbe_hw *hw)
-{
-	if (hw->api_maj_ver > IXGBE_FW_API_VER_MAJOR) {
-		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED, "The driver for the device stopped because the NVM image is newer than expected. You must install the most recent version of the network driver.\n");
-		return false;
-	} else if (hw->api_maj_ver == IXGBE_FW_API_VER_MAJOR) {
-		if (hw->api_min_ver >
-		    (IXGBE_FW_API_VER_MINOR + IXGBE_FW_API_VER_DIFF_ALLOWED)) {
-			ERROR_REPORT1(IXGBE_ERROR_CAUTION, "The driver for the device detected a newer version of the NVM image than expected. Please install the most recent version of the network driver.\n");
-		} else if ((hw->api_min_ver + IXGBE_FW_API_VER_DIFF_ALLOWED) <
-			   IXGBE_FW_API_VER_MINOR) {
-			ERROR_REPORT1(IXGBE_ERROR_CAUTION, "The driver for the device detected an older version of the NVM image than expected. Please update the NVM image.\n");
-		}
-	} else {
-		ERROR_REPORT1(IXGBE_ERROR_CAUTION, "The driver for the device detected an older version of the NVM image than expected. Please update the NVM image.\n");
-	}
-	return true;
-}
+
 /**
  * ixgbe_start_hw_E610 - Prepare hardware for Tx/Rx
  * @hw: pointer to hardware structure
@@ -3584,10 +3559,6 @@ s32 ixgbe_start_hw_E610(struct ixgbe_hw *hw)
 	if (ret_val)
 		goto out;
 
-	if (!ixgbe_fw_ver_check(hw)) {
-		ret_val = IXGBE_ERR_FW_API_VER;
-		goto out;
-	}
 	ret_val = ixgbe_start_hw_generic(hw);
 	if (ret_val != IXGBE_SUCCESS)
 		goto out;
