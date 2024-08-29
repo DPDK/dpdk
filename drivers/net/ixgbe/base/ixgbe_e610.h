@@ -85,7 +85,6 @@ s32 ixgbe_aci_read_nvm(struct ixgbe_hw *hw, u16 module_typeid, u32 offset,
 s32 ixgbe_nvm_validate_checksum(struct ixgbe_hw *hw);
 s32 ixgbe_nvm_recalculate_checksum(struct ixgbe_hw *hw);
 
-s32 ixgbe_get_nvm_minsrevs(struct ixgbe_hw *hw, struct ixgbe_minsrev_info *minsrevs);
 s32 ixgbe_get_inactive_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 s32 ixgbe_get_active_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 s32 ixgbe_init_nvm(struct ixgbe_hw *hw);

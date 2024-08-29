@@ -2489,60 +2489,6 @@ static s32 ixgbe_read_nvm_sr_copy(struct ixgbe_hw *hw,
 }
 
 /**
- * ixgbe_get_nvm_minsrevs - Get the minsrevs values from flash
- * @hw: pointer to the HW struct
- * @minsrevs: structure to store NVM and OROM minsrev values
- *
- * Read the Minimum Security Revision TLV and extract
- * the revision values from the flash image
- * into a readable structure for processing.
- *
- * Return: the exit code of the operation.
- */
-s32 ixgbe_get_nvm_minsrevs(struct ixgbe_hw *hw,
-			   struct ixgbe_minsrev_info *minsrevs)
-{
-	struct ixgbe_aci_cmd_nvm_minsrev data;
-	s32 status;
-	u16 valid;
-
-	status = ixgbe_acquire_nvm(hw, IXGBE_RES_READ);
-	if (status)
-		return status;
-
-	status = ixgbe_aci_read_nvm(hw, IXGBE_ACI_NVM_MINSREV_MOD_ID,
-				    0, sizeof(data), &data,
-				    true, false);
-
-	ixgbe_release_nvm(hw);
-
-	if (status)
-		return status;
-
-	valid = IXGBE_LE16_TO_CPU(data.validity);
-
-	/* Extract NVM minimum security revision */
-	if (valid & IXGBE_ACI_NVM_MINSREV_NVM_VALID) {
-		u16 minsrev_l = IXGBE_LE16_TO_CPU(data.nvm_minsrev_l);
-		u16 minsrev_h = IXGBE_LE16_TO_CPU(data.nvm_minsrev_h);
-
-		minsrevs->nvm = minsrev_h << 16 | minsrev_l;
-		minsrevs->nvm_valid = true;
-	}
-
-	/* Extract the OROM minimum security revision */
-	if (valid & IXGBE_ACI_NVM_MINSREV_OROM_VALID) {
-		u16 minsrev_l = IXGBE_LE16_TO_CPU(data.orom_minsrev_l);
-		u16 minsrev_h = IXGBE_LE16_TO_CPU(data.orom_minsrev_h);
-
-		minsrevs->orom = minsrev_h << 16 | minsrev_l;
-		minsrevs->orom_valid = true;
-	}
-
-	return IXGBE_SUCCESS;
-}
-
-/**
  * ixgbe_get_nvm_srev - Read the security revision from the NVM CSS header
  * @hw: pointer to the HW struct
  * @bank: whether to read from the active or inactive flash bank
