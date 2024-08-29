@@ -4342,7 +4342,8 @@ s32 ixgbe_setup_phy_link_E610(struct ixgbe_hw *hw)
 {
 	struct ixgbe_aci_cmd_get_phy_caps_data pcaps;
 	struct ixgbe_aci_cmd_set_phy_cfg_data pcfg;
-	u8 rmode = IXGBE_ACI_REPORT_ACTIVE_CFG;
+	u8 rmode = IXGBE_ACI_REPORT_TOPO_CAP_MEDIA;
+	u64 sup_phy_type_low, sup_phy_type_high;
 	s32 rc;
 
 	rc = ixgbe_aci_get_link_info(hw, false, NULL);
@@ -4359,6 +4360,15 @@ s32 ixgbe_setup_phy_link_E610(struct ixgbe_hw *hw)
 		goto err;
 	}
 
+	sup_phy_type_low = pcaps.phy_type_low;
+	sup_phy_type_high = pcaps.phy_type_high;
+
+	/* Get Active configuration to avoid unintended changes */
+	rc = ixgbe_aci_get_phy_caps(hw, false, IXGBE_ACI_REPORT_ACTIVE_CFG,
+				    &pcaps);
+	if (rc) {
+		goto err;
+	}
 	ixgbe_copy_phy_caps_to_cfg(&pcaps, &pcfg);
 
 	/* Set default PHY types for a given speed */
@@ -4406,8 +4416,8 @@ s32 ixgbe_setup_phy_link_E610(struct ixgbe_hw *hw)
 	}
 
 	/* Mask the set values to avoid requesting unsupported link types */
-	pcfg.phy_type_low &= pcaps.phy_type_low;
-	pcfg.phy_type_high &= pcaps.phy_type_high;
+	pcfg.phy_type_low &= sup_phy_type_low;
+	pcfg.phy_type_high &= sup_phy_type_high;
 
 	if (pcfg.phy_type_high != pcaps.phy_type_high ||
 	    pcfg.phy_type_low != pcaps.phy_type_low ||
