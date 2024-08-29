@@ -130,6 +130,7 @@
 #define IXGBE_DEV_ID_E610_10G_T			0x57B0
 #define IXGBE_DEV_ID_E610_2_5G_T		0x57B1
 #define IXGBE_DEV_ID_E610_SGMII			0x57B2
+#define IXGBE_DEV_ID_E610_VF			0x57AD
 
 #define IXGBE_CAT(r, m) IXGBE_##r##m
 
@@ -3676,6 +3677,7 @@ enum ixgbe_mac_type {
 	ixgbe_mac_X550EM_x_vf,
 	ixgbe_mac_X550EM_a_vf,
 	ixgbe_mac_E610,
+	ixgbe_mac_E610_vf,
 	ixgbe_num_macs
 };
 

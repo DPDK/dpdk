@@ -2076,6 +2076,8 @@ struct ixgbe_orom_civd_info {
 /* Function specific capabilities */
 struct ixgbe_hw_func_caps {
 	struct ixgbe_hw_common_caps common_cap;
+	u32 num_allocd_vfs;		/* Number of allocated VFs */
+	u32 vf_base_id;			/* Logical ID of the first VF */
 	u32 guar_num_vsi;
 	struct ixgbe_ts_func_info ts_func_info;
 	bool no_drop_policy_ena;
@@ -2084,6 +2086,7 @@ struct ixgbe_hw_func_caps {
 /* Device wide capabilities */
 struct ixgbe_hw_dev_caps {
 	struct ixgbe_hw_common_caps common_cap;
+	u32 num_vfs_exposed;		/* Total number of VFs exposed */
 	u32 num_vsi_allocd_to_host;	/* Excluding EMP VSI */
 	u32 num_flow_director_fltr;	/* Number of FD filters available */
 	struct ixgbe_ts_dev_info ts_dev_info;
