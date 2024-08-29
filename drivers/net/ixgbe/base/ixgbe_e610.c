@@ -2314,7 +2314,7 @@ s32 ixgbe_nvm_recalculate_checksum(struct ixgbe_hw *hw)
 	struct ixgbe_aci_desc desc;
 	s32 status;
 
-	status = ixgbe_acquire_nvm(hw, IXGBE_RES_READ);
+	status = ixgbe_acquire_nvm(hw, IXGBE_RES_WRITE);
 	if (status)
 		return status;
 
