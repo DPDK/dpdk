@@ -671,6 +671,9 @@ ixgbe_parse_common_caps(struct ixgbe_hw *hw, struct ixgbe_hw_common_caps *caps,
 	case IXGBE_ACI_CAPS_VALID_FUNCTIONS:
 		caps->valid_functions = number;
 		break;
+	case IXGBE_ACI_CAPS_SRIOV:
+		caps->sr_iov_1_1 = (number == 1);
+		break;
 	case IXGBE_ACI_CAPS_VMDQ:
 		caps->vmdq = (number == 1);
 		break;
@@ -834,6 +837,25 @@ ixgbe_parse_valid_functions_cap(struct ixgbe_hw *hw,
 }
 
 /**
+ * ixgbe_parse_vf_dev_caps - Parse IXGBE_ACI_CAPS_VF device caps
+ * @hw: pointer to the HW struct
+ * @dev_p: pointer to device capabilities structure
+ * @cap: capability element to parse
+ *
+ * Parse IXGBE_ACI_CAPS_VF for device capabilities.
+ */
+static void ixgbe_parse_vf_dev_caps(struct ixgbe_hw *hw,
+				    struct ixgbe_hw_dev_caps *dev_p,
+				    struct ixgbe_aci_cmd_list_caps_elem *cap)
+{
+	u32 number = IXGBE_LE32_TO_CPU(cap->number);
+
+	UNREFERENCED_1PARAMETER(hw);
+
+	dev_p->num_vfs_exposed = number;
+}
+
+/**
  * ixgbe_parse_vsi_dev_caps - Parse IXGBE_ACI_CAPS_VSI device caps
  * @hw: pointer to the HW struct
  * @dev_p: pointer to device capabilities structure
@@ -944,6 +966,9 @@ static void ixgbe_parse_dev_caps(struct ixgbe_hw *hw,
 			ixgbe_parse_valid_functions_cap(hw, dev_p,
 							&cap_resp[i]);
 			break;
+		case IXGBE_ACI_CAPS_VF:
+			ixgbe_parse_vf_dev_caps(hw, dev_p, &cap_resp[i]);
+			break;
 		case IXGBE_ACI_CAPS_VSI:
 			ixgbe_parse_vsi_dev_caps(hw, dev_p, &cap_resp[i]);
 			break;
@@ -960,6 +985,27 @@ static void ixgbe_parse_dev_caps(struct ixgbe_hw *hw,
 		}
 	}
 
+}
+
+/**
+ * ixgbe_parse_vf_func_caps - Parse IXGBE_ACI_CAPS_VF function caps
+ * @hw: pointer to the HW struct
+ * @func_p: pointer to function capabilities structure
+ * @cap: pointer to the capability element to parse
+ *
+ * Extract function capabilities for IXGBE_ACI_CAPS_VF.
+ */
+static void ixgbe_parse_vf_func_caps(struct ixgbe_hw *hw,
+				     struct ixgbe_hw_func_caps *func_p,
+				     struct ixgbe_aci_cmd_list_caps_elem *cap)
+{
+	u32 logical_id = IXGBE_LE32_TO_CPU(cap->logical_id);
+	u32 number = IXGBE_LE32_TO_CPU(cap->number);
+
+	UNREFERENCED_1PARAMETER(hw);
+
+	func_p->num_allocd_vfs = number;
+	func_p->vf_base_id = logical_id;
 }
 
 /**
@@ -1073,6 +1119,9 @@ static void ixgbe_parse_func_caps(struct ixgbe_hw *hw,
 					&cap_resp[i], "func caps");
 
 		switch (cap) {
+		case IXGBE_ACI_CAPS_VF:
+			ixgbe_parse_vf_func_caps(hw, func_p, &cap_resp[i]);
+			break;
 		case IXGBE_ACI_CAPS_VSI:
 			ixgbe_parse_vsi_func_caps(hw, func_p, &cap_resp[i]);
 			break;

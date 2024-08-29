@@ -672,6 +672,8 @@ struct ixgbe_aci_cmd_list_caps_elem {
 	__le16 cap;
 #define IXGBE_ACI_CAPS_VALID_FUNCTIONS			0x0005
 #define IXGBE_ACI_MAX_VALID_FUNCTIONS			0x8
+#define IXGBE_ACI_CAPS_SRIOV				0x0012
+#define IXGBE_ACI_CAPS_VF				0x0013
 #define IXGBE_ACI_CAPS_VMDQ				0x0014
 #define IXGBE_ACI_CAPS_VSI				0x0017
 #define IXGBE_ACI_CAPS_DCB				0x0018
@@ -1954,6 +1956,8 @@ struct ixgbe_hw_common_caps {
 #define IXGBE_MAX_SUPPORTED_GPIO_SDP	8
 	u8 led[IXGBE_MAX_SUPPORTED_GPIO_LED];
 	u8 sdp[IXGBE_MAX_SUPPORTED_GPIO_SDP];
+	/* SR-IOV virtualization */
+	u8 sr_iov_1_1;			/* SR-IOV enabled */
 	/* VMDQ */
 	u8 vmdq;			/* VMDQ supported */
 
