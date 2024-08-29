@@ -1683,7 +1683,6 @@ s32 ixgbe_aci_get_link_info(struct ixgbe_hw *hw, bool ena_lse,
 	struct ixgbe_aci_cmd_get_link_status *resp;
 	struct ixgbe_link_status *li_old, *li;
 	struct ixgbe_fc_info *hw_fc_info;
-	enum ixgbe_media_type *hw_media_type;
 	struct ixgbe_aci_desc desc;
 	bool tx_pause, rx_pause;
 	u8 cmd_flags;
@@ -1693,7 +1692,6 @@ s32 ixgbe_aci_get_link_info(struct ixgbe_hw *hw, bool ena_lse,
 		return IXGBE_ERR_PARAM;
 
 	li_old = &hw->link.link_info_old;
-	hw_media_type = &hw->phy.media_type;
 	li = &hw->link.link_info;
 	hw_fc_info = &hw->fc;
 
@@ -1714,7 +1712,6 @@ s32 ixgbe_aci_get_link_info(struct ixgbe_hw *hw, bool ena_lse,
 	li->link_speed = IXGBE_LE16_TO_CPU(link_data.link_speed);
 	li->phy_type_low = IXGBE_LE64_TO_CPU(link_data.phy_type_low);
 	li->phy_type_high = IXGBE_LE64_TO_CPU(link_data.phy_type_high);
-	*hw_media_type = ixgbe_get_media_type_from_phy_type(hw);
 	li->link_info = link_data.link_info;
 	li->link_cfg_err = link_data.link_cfg_err;
 	li->an_info = link_data.an_info;
@@ -3664,9 +3661,10 @@ enum ixgbe_media_type ixgbe_get_media_type_E610(struct ixgbe_hw *hw)
 			}
 		}
 
-		/* Based on search above try to discover media type */
-		hw->phy.media_type = ixgbe_get_media_type_from_phy_type(hw);
 	}
+
+	/* Based on link status or search above try to discover media type */
+	hw->phy.media_type = ixgbe_get_media_type_from_phy_type(hw);
 
 	return hw->phy.media_type;
 }
