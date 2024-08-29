@@ -3431,6 +3431,8 @@ s32 ixgbe_init_ops_E610(struct ixgbe_hw *hw)
 	mac->ops.get_fw_tsam_mode = ixgbe_get_fw_tsam_mode_E610;
 	mac->ops.get_fw_version = ixgbe_aci_get_fw_ver;
 	mac->ops.get_nvm_version = ixgbe_get_active_nvm_ver;
+	mac->ops.get_thermal_sensor_data = NULL;
+	mac->ops.init_thermal_sensor_thresh = NULL;
 
 	/* PHY */
 	phy->ops.init = ixgbe_init_phy_ops_E610;
