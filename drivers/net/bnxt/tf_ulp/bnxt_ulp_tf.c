@@ -476,7 +476,11 @@ ulp_tf_cntxt_app_caps_init(struct bnxt *bp,
 					       info[i].min_flow_priority);
 		bnxt_ulp_max_flow_priority_set(ulp_ctx,
 					       info[i].max_flow_priority);
-		ulp_ctx->cfg_data->feature_bits = info[i].feature_bits;
+		/* Update the capability feature bits*/
+		if (bnxt_ulp_cap_feat_process(info[i].feature_bits,
+					      &ulp_ctx->cfg_data->feature_bits))
+			return -EINVAL;
+
 		bnxt_ulp_cntxt_ptr2_default_class_bits_set(ulp_ctx,
 							   info[i].default_class_bits);
 		bnxt_ulp_cntxt_ptr2_default_act_bits_set(ulp_ctx,
