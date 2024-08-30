@@ -606,6 +606,38 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 					    BNXT_ULP_DIR_EGRESS);
 	}
 
+	/* perform the conversion from dpdk port to bnxt ifindex */
+	if (ulp_port_db_dev_port_to_ulp_index(ulp_ctx,
+					      dev->data->port_id,
+					      &ifindex)) {
+		BNXT_TF_DBG(ERR, "Port id is not valid\n");
+		goto parse_error;
+	}
+	port_type = ulp_port_db_port_type_get(ulp_ctx, ifindex);
+	if (port_type == BNXT_ULP_INTF_TYPE_INVALID) {
+		BNXT_TF_DBG(ERR, "Port type is not valid\n");
+		goto parse_error;
+	}
+
+	bnxt_ulp_init_parser_cf_defaults(&params, dev->data->port_id);
+
+	/* Emulating the match port for direction processing */
+	ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_MATCH_PORT_TYPE,
+			    port_type);
+
+	if ((params.dir_attr & BNXT_ULP_FLOW_ATTR_INGRESS) &&
+	    port_type == BNXT_ULP_INTF_TYPE_VF_REP) {
+		ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
+				    BNXT_ULP_DIR_EGRESS);
+	} else {
+		/* Assign the input direction */
+		if (params.dir_attr & BNXT_ULP_FLOW_ATTR_INGRESS)
+			ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
+					    BNXT_ULP_DIR_INGRESS);
+		else
+			ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
+					    BNXT_ULP_DIR_EGRESS);
+	}
 	/* Parse the shared action */
 	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
