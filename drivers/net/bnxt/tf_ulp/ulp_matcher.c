@@ -106,7 +106,7 @@ ulp_matcher_class_hash_lookup(struct bnxt_ulp_matcher_data *matcher_data,
 			      struct ulp_rte_parser_params *params,
 			      uint32_t *class_hash_idx)
 {
-	struct ulp_matcher_hash_db_key key = { 0 };
+	struct ulp_matcher_hash_db_key key = { {0} };
 	struct ulp_matcher_class_db_node *node;
 	int32_t idx;
 	int32_t rc = -ENOENT;
@@ -137,7 +137,7 @@ ulp_matcher_class_hash_add(struct bnxt_ulp_matcher_data *matcher_data,
 			   uint32_t class_match_idx,
 			   uint32_t *class_hash_idx)
 {
-	struct ulp_matcher_hash_db_key key = { 0 };
+	struct ulp_matcher_hash_db_key key = { {0} };
 	struct ulp_matcher_class_db_node *node;
 	int32_t hash_idx;
 	int32_t rc = -EINVAL;
@@ -235,7 +235,7 @@ ulp_matcher_action_hash_lookup(struct bnxt_ulp_matcher_data *matcher_data,
 			       struct ulp_rte_parser_params *params,
 			       uint32_t *act_tmpl_idx)
 {
-	struct ulp_matcher_action_hash_db_key key = { 0 };
+	struct ulp_matcher_action_hash_db_key key = { {0} };
 	struct ulp_matcher_act_db_node *node;
 	int32_t idx;
 
@@ -258,7 +258,7 @@ ulp_matcher_action_hash_add(struct bnxt_ulp_matcher_data *matcher_data,
 			    struct ulp_rte_parser_params *params,
 			    uint32_t match_idx)
 {
-	struct ulp_matcher_action_hash_db_key key = { 0 };
+	struct ulp_matcher_action_hash_db_key key = { {0} };
 	struct ulp_matcher_act_db_node *node;
 	int32_t hash_idx;
 	int32_t rc = -EINVAL;

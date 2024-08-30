@@ -582,10 +582,6 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		return rc;
 	}
 
-	/* Disable VFR support and support egress temporarily for Thor2 */
-	if (dev_id == BNXT_ULP_DEVICE_ID_THOR2)
-		bp->flags2 |= BNXT_FLAGS2_TESTPMD_EN;
-
 	if (bp->ulp_ctx) {
 		BNXT_DRV_DBG(DEBUG, "ulp ctx already allocated\n");
 		return rc;

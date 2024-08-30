@@ -2258,7 +2258,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_MAC_DST
 	},
-	/* field_cond: act_tid: 1, int_full_act_record.0 */
+	/* field_cond: act_tid: 1, int_full_act_record.0:10*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_VXLAN_DECAP
@@ -2267,7 +2267,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_GENEVE_DECAP
 	},
-	/* field_cond: act_tid: 1, int_compact_act_record.0 */
+	/* field_cond: act_tid: 1, int_compact_act_record.0:12*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_VXLAN_DECAP

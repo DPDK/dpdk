@@ -16,12 +16,22 @@
 #define ULP_GEN_TBL_FID_OFFSET		0
 #define ULP_GEN_TBL_FID_SIZE_BITS	32
 
+enum ulp_gen_list_search_flag {
+	ULP_GEN_LIST_SEARCH_MISSED = 1,
+	ULP_GEN_LIST_SEARCH_FOUND = 2,
+	ULP_GEN_LIST_SEARCH_FOUND_SUBSET = 3,
+	ULP_GEN_LIST_SEARCH_FOUND_SUPERSET = 4,
+	ULP_GEN_LIST_SEARCH_FULL = 5
+};
+
 /* Structure to pass the generic table values across APIs */
 struct ulp_mapper_gen_tbl_entry {
 	uint32_t			*ref_count;
 	uint32_t			byte_data_size;
 	uint8_t				*byte_data;
 	enum bnxt_ulp_byte_order	byte_order;
+	uint32_t			byte_key_size;
+	uint8_t				*byte_key;
 };
 
 /*
@@ -38,7 +48,8 @@ struct ulp_mapper_gen_tbl_cont {
 	/* First 4 bytes is either tcam_idx or fid and rest are identities */
 	uint8_t				*byte_data;
 	uint8_t				*byte_key;
-	uint32_t			byte_key_size;
+	uint32_t			byte_key_ex_size;/* exact match size */
+	uint32_t			byte_key_par_size; /*partial match */
 	uint32_t			seq_cnt;
 };
 
@@ -106,19 +117,21 @@ int32_t
 ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir);
 
 /*
- * Set the data in the generic table entry
+ * Set the data in the generic table entry, Data is in Big endian format
  *
  * entry [in] - generic table entry
- * len [in] - The length of the data in bits to be set
+ * key [in] - pointer to the key to be used for setting the value.
+ * key_size [in] - The length of the key in bytess to be set
  * data [in] - pointer to the data to be used for setting the value.
  * data_size [in] - length of the data pointer in bytes.
  *
  * returns 0 on success
  */
 int32_t
-ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
-				  uint32_t len, uint8_t *data,
-				  uint32_t data_size);
+ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_list *tbl_list,
+				  struct ulp_mapper_gen_tbl_entry *entry,
+				  uint8_t *key, uint32_t key_size,
+				  uint8_t *data, uint32_t data_size);
 
 /*
  * Get the data in the generic table entry
@@ -194,19 +207,16 @@ ulp_gen_tbl_simple_list_add_entry(struct ulp_mapper_gen_tbl_list *tbl_list,
 				  uint32_t *key_index,
 				  struct ulp_mapper_gen_tbl_entry *ent);
 /*
- * Perform overlap search in the simple list
+ * Perform simple list search
  *
  * tbl_list [in] - pointer to the generic table list
  * match_key [in] -  Key data that needs to be matched
- * byte_data [in] -  result data that needs to check for overlap
- * is_overlap [out] - returns 0 if overlap.
+ * key_idx [out] - returns key index .
  *
  * returns 0 on success.
  */
-int32_t
-ulp_gen_tbl_simple_list_search_overlap(struct ulp_mapper_gen_tbl_list *tbl_list,
-				       uint8_t *match_key,
-				       uint8_t *match_data,
-				       uint32_t byte_data_len,
-				       uint32_t *is_overlap);
+uint32_t
+ulp_gen_tbl_simple_list_search(struct ulp_mapper_gen_tbl_list *tbl_list,
+			       uint8_t *match_key,
+			       uint32_t *key_idx);
 #endif /* _ULP_EN_TBL_H_ */

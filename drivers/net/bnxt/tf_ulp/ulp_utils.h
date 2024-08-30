@@ -14,6 +14,7 @@
 #define ULP_BUFFER_ALIGN_16_BYTE	16
 #define ULP_BUFFER_ALIGN_64_BYTE	64
 #define ULP_64B_IN_BYTES		8
+#define ULP_64B_IN_BITS			64
 
 /*
  * Macros for bitmap sets and gets

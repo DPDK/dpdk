@@ -62,13 +62,21 @@ ulp_mapper_generic_tbl_list_init(struct bnxt_ulp_context *ulp_ctx,
 				     idx);
 			return -EINVAL;
 		}
-		/* For simple list allocate memory for key storage too*/
-		if (tbl->gen_tbl_type == BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST)
-			key_sz = tbl->key_num_bytes;
-		else
-			key_sz = 0;
-
 		entry = &mapper_data->gen_tbl_list[idx];
+
+		/* For simple list allocate memory for key storage*/
+		if (tbl->gen_tbl_type == BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST &&
+		    tbl->key_num_bytes) {
+			key_sz = tbl->key_num_bytes +
+				tbl->partial_key_num_bytes;
+			entry->container.byte_key_ex_size = tbl->key_num_bytes;
+			entry->container.byte_key_par_size =
+				tbl->partial_key_num_bytes;
+		} else {
+			key_sz = 0;
+		}
+
+		/* Allocate memory for result data and key data */
 		if (tbl->result_num_entries != 0) {
 			/* assign the name */
 			entry->gen_tbl_name = tbl->name;
@@ -94,18 +102,23 @@ ulp_mapper_generic_tbl_list_init(struct bnxt_ulp_context *ulp_ctx,
 				(uint32_t *)entry->mem_data;
 			size = sizeof(uint32_t) * (tbl->result_num_entries + 1);
 			entry->container.byte_data = &entry->mem_data[size];
-			if (key_sz) {
-				size += tbl->result_num_bytes *
-					(tbl->result_num_entries + 1);
-				entry->container.byte_key =
-					&entry->mem_data[size];
-				entry->container.byte_key_size = key_sz;
-			}
 			entry->container.byte_order = tbl->result_byte_order;
 		} else {
 			BNXT_DRV_DBG(DEBUG, "%s: Unused Gen tbl entry is %d\n",
 				     tbl->name, idx);
+			continue;
 		}
+
+		/* assign the memory for key data */
+		if (tbl->gen_tbl_type == BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST &&
+		    key_sz) {
+			size += tbl->result_num_bytes *
+				(tbl->result_num_entries + 1);
+			entry->container.byte_key =
+				&entry->mem_data[size];
+		}
+
+		/* Initialize Hash list for hash based generic table */
 		if (tbl->gen_tbl_type == BNXT_ULP_GEN_TBL_TYPE_HASH_LIST &&
 		    tbl->hash_tbl_entries) {
 			cparams.key_size = tbl->key_num_bytes;
@@ -121,7 +134,6 @@ ulp_mapper_generic_tbl_list_init(struct bnxt_ulp_context *ulp_ctx,
 			}
 		}
 	}
-	/* success */
 	return 0;
 }
 
@@ -145,6 +157,9 @@ ulp_mapper_generic_tbl_list_deinit(struct bnxt_ulp_mapper_data *mapper_data)
 		if (tbl_list->mem_data) {
 			rte_free(tbl_list->mem_data);
 			tbl_list->mem_data = NULL;
+			tbl_list->container.byte_data = NULL;
+			tbl_list->container.byte_key = NULL;
+			tbl_list->container.ref_count = NULL;
 		}
 		if (tbl_list->hash_tbl) {
 			ulp_gen_hash_tbl_list_deinit(tbl_list->hash_tbl);
@@ -181,6 +196,15 @@ ulp_mapper_gen_tbl_entry_get(struct ulp_mapper_gen_tbl_list *tbl_list,
 	entry->byte_data = &tbl_list->container.byte_data[key *
 		entry->byte_data_size];
 	entry->byte_order = tbl_list->container.byte_order;
+	if (tbl_list->tbl_type == BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST) {
+		entry->byte_key_size = tbl_list->container.byte_key_ex_size +
+			tbl_list->container.byte_key_par_size;
+		entry->byte_key = &tbl_list->container.byte_key[key *
+			entry->byte_key_size];
+	} else {
+		entry->byte_key = NULL;
+		entry->byte_key_size = 0;
+	}
 	return 0;
 }
 
@@ -214,31 +238,41 @@ ulp_mapper_gen_tbl_idx_calculate(uint32_t res_sub_type, uint32_t dir)
  * Set the data in the generic table entry, Data is in Big endian format
  *
  * entry [in] - generic table entry
- * len [in] - The length of the data in bits to be set
+ * key [in] - pointer to the key to be used for setting the value.
+ * key_size [in] - The length of the key in bytess to be set
  * data [in] - pointer to the data to be used for setting the value.
  * data_size [in] - length of the data pointer in bytes.
  *
  * returns 0 on success
  */
 int32_t
-ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_entry *entry,
-				  uint32_t len, uint8_t *data,
-				  uint32_t data_size)
+ulp_mapper_gen_tbl_entry_data_set(struct ulp_mapper_gen_tbl_list *tbl_list,
+				  struct ulp_mapper_gen_tbl_entry *entry,
+				  uint8_t *key, uint32_t key_size,
+				  uint8_t *data, uint32_t data_size)
 {
 	/* validate the null arguments */
-	if (!entry || !data) {
+	if (!entry || !key || !data) {
 		BNXT_DRV_DBG(ERR, "invalid argument\n");
 		return -EINVAL;
 	}
 
 	/* check the size of the buffer for validation */
-	if (len > ULP_BYTE_2_BITS(entry->byte_data_size) ||
-	    data_size < ULP_BITS_2_BYTE(len)) {
+	if (data_size > entry->byte_data_size) {
 		BNXT_DRV_DBG(ERR, "invalid offset or length %x:%x\n",
-			     len, entry->byte_data_size);
+			     data_size, entry->byte_data_size);
 		return -EINVAL;
 	}
-	memcpy(entry->byte_data, data, ULP_BITS_2_BYTE(len));
+	memcpy(entry->byte_data, data, data_size);
+	if (tbl_list->tbl_type == BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST) {
+		if (key_size > entry->byte_key_size) {
+			BNXT_DRV_DBG(ERR, "invalid offset or length %x:%x\n",
+				     key_size, entry->byte_key_size);
+		return -EINVAL;
+		}
+		memcpy(entry->byte_key, key, key_size);
+	}
+	tbl_list->container.seq_cnt++;
 	return 0;
 }
 
@@ -489,11 +523,12 @@ ulp_gen_tbl_simple_list_add_entry(struct ulp_mapper_gen_tbl_list *tbl_list,
 		ent->ref_count = &cont->ref_count[idx];
 		if (ULP_GEN_TBL_REF_CNT(ent) == 0) {
 			/* add the entry */
-			key_size = cont->byte_key_size;
+			key_size = cont->byte_key_ex_size +
+				cont->byte_key_par_size;
 			entry_key = &cont->byte_key[idx * key_size];
 			ent->byte_data_size = cont->byte_data_size;
 			ent->byte_data = &cont->byte_data[idx *
-				ent->byte_data_size];
+				cont->byte_data_size];
 			memcpy(entry_key, key, key_size);
 			memcpy(ent->byte_data, data, ent->byte_data_size);
 			ent->byte_order = cont->byte_order;
@@ -502,73 +537,92 @@ ulp_gen_tbl_simple_list_add_entry(struct ulp_mapper_gen_tbl_list *tbl_list,
 			return 0;
 		}
 	}
-	/* No more memory left to add*/
+	/* No more memory */
 	return -ENOMEM;
 }
 
-/*
- * Perform overlap search in the simple list
- *
- * tbl_list [in] - pointer to the generic table list
- * match_key [in] -  Key data that needs to be matched
- * byte_data [in] -  result data that needs to check for overlap
- * is_overlap [out] - returns 0 if overlap.
- *
- * returns 0 on success.
- */
-int32_t
-ulp_gen_tbl_simple_list_search_overlap(struct ulp_mapper_gen_tbl_list *tbl_list,
-				       uint8_t *match_key,
-				       uint8_t *match_data,
-				       uint32_t byte_data_len,
-				       uint32_t *is_overlap)
+/* perform the subset and superset. len should be 64bit multiple*/
+static enum ulp_gen_list_search_flag
+ulp_gen_tbl_overlap_check(uint8_t *key1, uint8_t *key2, uint32_t len)
 {
-	struct ulp_mapper_gen_tbl_cont	*cont;
-	uint32_t data_size, key_size, idx;
-	uint8_t *entry_data, *entry_key;
-	uint32_t superset, subset, sz;
-	uint32_t skip_bytes, cnt = 0;
+	uint32_t sz = 0, superset = 0, subset = 0;
 	uint64_t src, dst;
 
-	/* ignore the rid field in the result */
-	skip_bytes = ULP_BITS_2_BYTE(ULP_GEN_TBL_FID_SIZE_BITS);
-	byte_data_len -= skip_bytes;
-	match_data = match_data + skip_bytes;
+	while (sz  < len) {
+		memcpy(&dst, key2, sizeof(dst));
+		memcpy(&src, key1, sizeof(src));
+		sz += sizeof(src);
+		if (dst == src)
+			continue;
+		else if (dst == (dst | src))
+			superset = 1;
+		else if (src == (dst | src))
+			subset = 1;
+		else
+			return ULP_GEN_LIST_SEARCH_MISSED;
+	}
+	if (superset && !subset)
+		return ULP_GEN_LIST_SEARCH_FOUND_SUPERSET;
+	if (!superset && subset)
+		return ULP_GEN_LIST_SEARCH_FOUND_SUBSET;
+	return ULP_GEN_LIST_SEARCH_FOUND;
+}
+
+uint32_t
+ulp_gen_tbl_simple_list_search(struct ulp_mapper_gen_tbl_list *tbl_list,
+			       uint8_t *match_key,
+			       uint32_t *key_idx)
+{
+	enum ulp_gen_list_search_flag rc = ULP_GEN_LIST_SEARCH_FULL;
+	uint32_t idx = 0, key_idx_set = 0, sz = 0, key_size = 0;
+	struct ulp_mapper_gen_tbl_entry ent = { 0 };
+	struct ulp_mapper_gen_tbl_cont	*cont = &tbl_list->container;
+	uint8_t *k1 = NULL, *k2, *entry_key;
+	uint32_t valid_ent = 0;
+
+	key_size = cont->byte_key_ex_size + cont->byte_key_par_size;
+	if (cont->byte_key_par_size)
+		k1 = match_key + cont->byte_key_ex_size;
 
 	/* sequentially search for the matching key */
-	cont = &tbl_list->container;
-	key_size = cont->byte_key_size;
-	data_size = cont->byte_data_size;
-	for (idx = 0; idx < cont->num_elem && cnt < cont->seq_cnt; idx++) {
-		if (cont->ref_count[idx] > 0) {
-			cnt++;
-			entry_key = &cont->byte_key[idx * key_size];
-			/* First key should match */
-			if (memcmp(match_key, entry_key, key_size))
-				continue;
-			/* perform the subset and super set */
-			entry_data = &cont->byte_data[idx * data_size];
-			entry_data = entry_data + skip_bytes;
-			sz = 0;
-			superset = 0;
-			subset = 0;
-			while (sz + sizeof(src) <= byte_data_len) {
-				memcpy(&dst, entry_data, sizeof(dst));
-				memcpy(&src, match_data, sizeof(src));
-				if (dst == src)
-					continue;
-				if (dst == (dst | src))
-					superset = 1;
-				if (src == (dst | src))
-					subset = 1;
-				sz += sizeof(src);
+	while (idx < cont->num_elem) {
+		ent.ref_count = &cont->ref_count[idx];
+		entry_key = &cont->byte_key[idx * key_size];
+		/* check ref count not zero and exact key matches */
+		if (ULP_GEN_TBL_REF_CNT(&ent)) {
+			/* compare the exact match */
+			if (!memcmp(match_key, entry_key,
+				    cont->byte_key_ex_size)) {
+				/* Match the partial key*/
+				if (cont->byte_key_par_size) {
+					k2 = entry_key + cont->byte_key_ex_size;
+					sz = cont->byte_key_par_size;
+					rc = ulp_gen_tbl_overlap_check(k1, k2,
+								       sz);
+					if (rc != ULP_GEN_LIST_SEARCH_MISSED) {
+						*key_idx = idx;
+						return rc;
+					}
+				} else {
+					/* found the entry return */
+					rc = ULP_GEN_LIST_SEARCH_FOUND;
+					*key_idx = idx;
+					return rc;
+				}
 			}
-			if ((superset && !subset) || (!superset && subset)) {
-				*is_overlap = 0; /* it is a overlap */
-				break;
+			++valid_ent;
+		} else {
+			/* empty slot */
+			if (!key_idx_set) {
+				*key_idx = idx;
+				key_idx_set = 1;
+				rc = ULP_GEN_LIST_SEARCH_MISSED;
 			}
+			if (valid_ent >= cont->seq_cnt)
+				return rc;
 		}
+		idx++;
 	}
-	return 0;
+	return rc;
 }
 
