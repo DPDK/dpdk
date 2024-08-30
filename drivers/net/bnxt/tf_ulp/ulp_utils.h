@@ -108,9 +108,9 @@ struct ulp_regfile {
  *
  * regfile [in] Ptr to a regfile instance
  *
- * returns 0 on error or 1 on success
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_regfile_init(struct ulp_regfile *regfile);
 
 /*
@@ -120,9 +120,9 @@ ulp_regfile_init(struct ulp_regfile *regfile);
  *
  * field [in] The field to be read within the regfile.
  *
- * returns the byte array
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_regfile_read(struct ulp_regfile *regfile,
 		 enum bnxt_ulp_rf_idx field,
 		 uint64_t *data);
@@ -186,9 +186,9 @@ ulp_bs_push_msb(uint8_t *bs, uint16_t pos, uint8_t len, uint8_t *val);
  * order [in] The byte order for the blob.  Currently only supporting
  * big endian.  All fields are packed with this order.
  *
- * returns 0 on error or 1 on success
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_blob_init(struct ulp_blob *blob,
 	      uint16_t bitlen,
 	      enum bnxt_ulp_byte_order order);
@@ -204,9 +204,10 @@ ulp_blob_init(struct ulp_blob *blob,
  * datalen [in] The number of bits to be added to the blob.
  *
  * The offset of the data is updated after each push of data.
- * NULL returned on error.
+ *
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_blob_push(struct ulp_blob *blob,
 	      uint8_t *data,
 	      uint32_t datalen);
@@ -224,9 +225,10 @@ ulp_blob_push(struct ulp_blob *blob,
  * datalen [in] The number of bits to be added to the blob.
  *
  * The offset of the data is updated after each push of data.
- * NULL returned on error.
+ *
+ * returns zero on success
  */
-uint32_t
+int32_t
 ulp_blob_insert(struct ulp_blob *blob, uint32_t offset,
 		uint8_t *data, uint32_t datalen);
 
@@ -503,9 +505,9 @@ ulp_blob_buffer_copy(struct ulp_blob *dst, struct ulp_blob *src);
  *
  * bitlen [in] The number of bits to read into val
  *
- * returns number of bits read, zero on error
+ * returns zero on success.
  */
-uint16_t
+int32_t
 ulp_operand_read(uint8_t *operand,
 		 uint8_t *val,
 		 uint16_t bitlen);

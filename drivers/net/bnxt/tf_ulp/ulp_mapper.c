@@ -573,7 +573,7 @@ ulp_mapper_fdb_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		/* get the fid from the regfile */
 		rc = ulp_regfile_read(parms->regfile, tbl->fdb_operand,
 				      &val64);
-		if (!rc) {
+		if (rc) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 				     tbl->fdb_operand);
 			return -EINVAL;
@@ -630,8 +630,8 @@ ulp_mapper_priority_opc_process(struct bnxt_ulp_mapper_parms *parms,
 			*priority = tbl->pri_operand;
 		break;
 	case BNXT_ULP_PRI_OPC_REGFILE:
-		if (!ulp_regfile_read(parms->regfile, tbl->pri_operand,
-				      &regval)) {
+		if (ulp_regfile_read(parms->regfile, tbl->pri_operand,
+				     &regval)) {
 			BNXT_DRV_DBG(ERR, "regfile[%u] read oob\n",
 				     tbl->pri_operand);
 			rc = -EINVAL;
@@ -880,8 +880,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		*value = 1;
 		break;
 	case BNXT_ULP_FIELD_SRC_CF:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "CF operand read failed\n");
 			return -EINVAL;
 		}
@@ -896,15 +896,15 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		*value = ULP_COMP_FLD_IDX_RD(parms, idx);
 		break;
 	case BNXT_ULP_FIELD_SRC_RF:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "RF operand read failed\n");
 			return -EINVAL;
 		}
 
 		idx = tfp_be_to_cpu_16(idx);
 		/* Uninitialized regfile entries return 0 */
-		if (!ulp_regfile_read(parms->regfile, idx, &lregval) ||
+		if (ulp_regfile_read(parms->regfile, idx, &lregval) ||
 		    sizeof(uint64_t) < bytelen) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob %u\n", idx,
 				     bytelen);
@@ -915,8 +915,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		*value = tfp_be_to_cpu_64(lregval);
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_PROP:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Action operand read failed\n");
 			return -EINVAL;
 		}
@@ -940,8 +940,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_PROP_SZ:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Action sz operand read failed\n");
 			return -EINVAL;
 		}
@@ -954,8 +954,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		*val = &parms->act_prop->act_details[idx];
 
 		/* get the size index next */
-		if (!ulp_operand_read(&field_opr[sizeof(uint16_t)],
-				      (uint8_t *)&size_idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(&field_opr[sizeof(uint16_t)],
+				     (uint8_t *)&size_idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Action sz operand read failed\n");
 			return -EINVAL;
 		}
@@ -970,8 +970,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		*val_len = ULP_BYTE_2_BITS(val_size);
 		break;
 	case BNXT_ULP_FIELD_SRC_GLB_RF:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Global regfile read failed\n");
 			return -EINVAL;
 		}
@@ -990,8 +990,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	case BNXT_ULP_FIELD_SRC_HF:
 	case BNXT_ULP_FIELD_SRC_SUB_HF:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Header field read failed\n");
 			return -EINVAL;
 		}
@@ -1021,9 +1021,9 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			*val = &buffer[field_size - bytelen];
 		} else {
 			/* get the offset next */
-			if (!ulp_operand_read(&field_opr[sizeof(uint16_t)],
-					      (uint8_t *)&offset,
-					      sizeof(uint16_t))) {
+			if (ulp_operand_read(&field_opr[sizeof(uint16_t)],
+					     (uint8_t *)&offset,
+					     sizeof(uint16_t))) {
 				BNXT_DRV_DBG(ERR, "Hdr fld size read failed\n");
 				return -EINVAL;
 			}
@@ -1037,8 +1037,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_HDR_BIT:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&lregval, sizeof(uint64_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&lregval, sizeof(uint64_t))) {
 			BNXT_DRV_DBG(ERR, "Header bit read failed\n");
 			return -EINVAL;
 		}
@@ -1051,8 +1051,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_ACT_BIT:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&lregval, sizeof(uint64_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&lregval, sizeof(uint64_t))) {
 			BNXT_DRV_DBG(ERR, "Action bit read failed\n");
 			return -EINVAL;
 		}
@@ -1065,8 +1065,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_FIELD_BIT:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Field bit read failed\n");
 			return -EINVAL;
 		}
@@ -1085,8 +1085,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_PORT_TABLE:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "CF operand read failed\n");
 			return -EINVAL;
 		}
@@ -1100,8 +1100,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		/* The port id is present in the comp field list */
 		port_id = ULP_COMP_FLD_IDX_RD(parms, idx);
 		/* get the port table enum  */
-		if (!ulp_operand_read(field_opr + sizeof(uint16_t),
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr + sizeof(uint16_t),
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Port table enum read failed\n");
 			return -EINVAL;
 		}
@@ -1113,8 +1113,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_ENC_HDR_BIT:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&lregval, sizeof(uint64_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&lregval, sizeof(uint64_t))) {
 			BNXT_DRV_DBG(ERR, "Header bit read failed\n");
 			return -EINVAL;
 		}
@@ -1127,8 +1127,8 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		break;
 	case BNXT_ULP_FIELD_SRC_ENC_FIELD:
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Header field read failed\n");
 			return -EINVAL;
 		}
@@ -1158,15 +1158,15 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_FIELD_SRC_LIST_AND:
 	case BNXT_ULP_FIELD_SRC_LIST_OR:
 		/* read the cond table index and count */
-		if (!ulp_operand_read(field_opr,
-				      (uint8_t *)&idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Cond idx operand read failed\n");
 			return -EINVAL;
 		}
 		idx = tfp_be_to_cpu_16(idx);
 
-		if (!ulp_operand_read(field_opr + sizeof(uint16_t),
-				      (uint8_t *)&size_idx, sizeof(uint16_t))) {
+		if (ulp_operand_read(field_opr + sizeof(uint16_t),
+				     (uint8_t *)&size_idx, sizeof(uint16_t))) {
 			BNXT_DRV_DBG(ERR, "Cond count operand read failed\n");
 			return -EINVAL;
 		}
@@ -1244,7 +1244,7 @@ static int32_t ulp_mapper_field_blob_write(enum bnxt_ulp_field_src fld_src,
 	} else if (fld_src == BNXT_ULP_FIELD_SRC_SKIP) {
 		/* do nothing */
 	} else {
-		if (!ulp_blob_push(blob, val, val_len)) {
+		if (ulp_blob_push(blob, val, val_len)) {
 			BNXT_DRV_DBG(ERR, "push of val1 failed\n");
 			return -EINVAL;
 		}
@@ -1265,8 +1265,8 @@ ulp_mapper_field_opc_next(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t idx;
 
 	/* read the cond table index and count */
-	if (!ulp_operand_read(field_opr,
-			      (uint8_t *)&idx, sizeof(uint16_t))) {
+	if (ulp_operand_read(field_opr,
+			     (uint8_t *)&idx, sizeof(uint16_t))) {
 		BNXT_DRV_DBG(ERR, "field idx operand read failed\n");
 		return -EINVAL;
 	}
@@ -1534,8 +1534,8 @@ ulp_mapper_key_recipe_fields_get(struct bnxt_ulp_mapper_parms *parms,
 	};
 
 	/* Get the recipe index from the registry file */
-	if (!ulp_regfile_read(parms->regfile, tbl->key_recipe_operand,
-			      &regval)) {
+	if (ulp_regfile_read(parms->regfile, tbl->key_recipe_operand,
+			     &regval)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tbl idx from regfile[%d].\n",
 			     tbl->tbl_operand);
 		return NULL;
@@ -1568,8 +1568,8 @@ ulp_mapper_key_recipe_field_opc_next(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t idx;
 
 	/* read the cond table index and count */
-	if (!ulp_operand_read(field_opr,
-			      (uint8_t *)&idx, sizeof(uint16_t))) {
+	if (ulp_operand_read(field_opr,
+			     (uint8_t *)&idx, sizeof(uint16_t))) {
 		BNXT_DRV_DBG(ERR, "field idx operand read failed\n");
 		return -EINVAL;
 	}
@@ -1749,9 +1749,9 @@ ulp_mapper_key_recipe_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Get the recipe_id from the regfile */
 	if (!alloc && regfile) {
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand,
-				      &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     tbl->tbl_operand,
+				     &regval)) {
 			BNXT_DRV_DBG(ERR,
 				     "Fail to get tbl idx from regfile[%d].\n",
 				     tbl->tbl_operand);
@@ -2162,9 +2162,9 @@ ulp_mapper_tbl_result_build(struct bnxt_ulp_mapper_parms *parms,
 	if (encap_flds) {
 		uint32_t pad = 0;
 		/* Initialize the encap blob */
-		if (!ulp_blob_init(&encap_blob,
-				   ULP_BYTE_2_BITS(tbl->record_size),
-				   parms->device_params->encap_byte_order)) {
+		if (ulp_blob_init(&encap_blob,
+				  ULP_BYTE_2_BITS(tbl->record_size),
+				  parms->device_params->encap_byte_order)) {
 			BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 			return -EINVAL;
 		}
@@ -2276,9 +2276,9 @@ ulp_mapper_mark_act_ptr_process(struct bnxt_ulp_mapper_parms *parms,
 	       sizeof(mark));
 	mark = tfp_be_to_cpu_32(mark);
 
-	if (!ulp_regfile_read(parms->regfile,
-			      BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
-			      &val64)) {
+	if (ulp_regfile_read(parms->regfile,
+			     BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+			     &val64)) {
 		BNXT_DRV_DBG(ERR, "read action ptr main failed\n");
 		return -EINVAL;
 	}
@@ -2321,9 +2321,9 @@ ulp_mapper_mark_vfr_idx_process(struct bnxt_ulp_mapper_parms *parms,
 	mark = ULP_COMP_FLD_IDX_RD(parms, BNXT_ULP_CF_IDX_DEV_PORT_ID);
 
 	 /* Get the main action pointer */
-	if (!ulp_regfile_read(parms->regfile,
-			      BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
-			      &val64)) {
+	if (ulp_regfile_read(parms->regfile,
+			     BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+			     &val64)) {
 		BNXT_DRV_DBG(ERR, "read action ptr main failed\n");
 		return -EINVAL;
 	}
@@ -2425,8 +2425,8 @@ ulp_mapper_wc_tcam_tbl_dyn_post_process(struct bnxt_ulp_device_params *dparms,
 
 	/* The new length accounts for the ctrl word length and num slices */
 	tlen = tlen + clen * num_slices;
-	if (!ulp_blob_init(tkey, tlen, key->byte_order) ||
-	    !ulp_blob_init(tmask, tlen, mask->byte_order)) {
+	if (ulp_blob_init(tkey, tlen, key->byte_order) ||
+	    ulp_blob_init(tmask, tlen, mask->byte_order)) {
 		BNXT_DRV_DBG(ERR, "Unable to post process wc tcam entry\n");
 		return -EINVAL;
 	}
@@ -2560,9 +2560,9 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		pad = ULP_BYTE_2_BITS(sizeof(uint8_t)) -
 		ULP_BITS_IS_BYTE_NOT_ALIGNED(tbl->key_bit_size);
 
-	if (!ulp_blob_init(&key, tbl->key_bit_size + pad +
-			   tbl->partial_key_bit_size,
-			   parms->device_params->key_byte_order)) {
+	if (ulp_blob_init(&key, tbl->key_bit_size + pad +
+			  tbl->partial_key_bit_size,
+			  parms->device_params->key_byte_order)) {
 		BNXT_DRV_DBG(ERR, "Failed to alloc blob\n");
 		return -EINVAL;
 	}
@@ -2722,8 +2722,8 @@ ulp_mapper_gen_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 
 		/* Initialize the blob data */
-		if (!ulp_blob_init(&data, tbl->result_bit_size,
-				   gen_tbl_ent.byte_order)) {
+		if (ulp_blob_init(&data, tbl->result_bit_size,
+				  gen_tbl_ent.byte_order)) {
 			BNXT_DRV_DBG(ERR, "Failed initial index table blob\n");
 			return -EINVAL;
 		}
@@ -2816,7 +2816,7 @@ ulp_mapper_ctrl_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	} else if (tbl->fdb_opcode == BNXT_ULP_FDB_OPC_DELETE_RID_REGFILE) {
 		rc = ulp_regfile_read(parms->regfile, tbl->fdb_operand, &val64);
-		if (!rc) {
+		if (rc) {
 			BNXT_DRV_DBG(ERR, "Failed to get RID from regfile\n");
 			return rc;
 		}
@@ -2959,8 +2959,8 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint8_t ttype;
 
 	/* Initialize the blob data */
-	if (!ulp_blob_init(&data, tbl->result_bit_size,
-			   BNXT_ULP_BYTE_ORDER_BE)) {
+	if (ulp_blob_init(&data, tbl->result_bit_size,
+			  BNXT_ULP_BYTE_ORDER_BE)) {
 		BNXT_DRV_DBG(ERR, "Failed initial ulp_global table blob\n");
 		return -EINVAL;
 	}
@@ -3213,7 +3213,7 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		result = !ULP_INDEX_BITMAP_GET(parms->fld_bitmap->bits, bit);
 		break;
 	case BNXT_ULP_COND_OPC_RF_IS_SET:
-		if (!ulp_regfile_read(parms->regfile, operand, &regval)) {
+		if (ulp_regfile_read(parms->regfile, operand, &regval)) {
 			BNXT_DRV_DBG(ERR,
 				     "regfile[%" PRIu64 "] read oob\n",
 				     operand);
@@ -3222,7 +3222,7 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		result = regval != 0;
 		break;
 	case BNXT_ULP_COND_OPC_RF_NOT_SET:
-		if (!ulp_regfile_read(parms->regfile, operand, &regval)) {
+		if (ulp_regfile_read(parms->regfile, operand, &regval)) {
 			BNXT_DRV_DBG(ERR,
 				    "regfile[%" PRIu64 "] read oob\n", operand);
 			return -EINVAL;
@@ -3369,7 +3369,7 @@ ulp_mapper_func_opr_compute(struct bnxt_ulp_mapper_parms *parms,
 		*result = ULP_COMP_FLD_IDX_RD(parms, func_opr);
 		break;
 	case BNXT_ULP_FUNC_SRC_REGFILE:
-		if (!ulp_regfile_read(parms->regfile, func_opr, &regval)) {
+		if (ulp_regfile_read(parms->regfile, func_opr, &regval)) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 						(uint32_t)func_opr);
 			return -EINVAL;
@@ -3480,9 +3480,9 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 	if (value) {
 		if (fld->field_src2 == BNXT_ULP_FIELD_SRC_NEXT) {
 			/* read the next key ext table index */
-			if (!ulp_operand_read(fld->field_opr2,
-					      (uint8_t *)&ext_idx,
-					      sizeof(uint16_t))) {
+			if (ulp_operand_read(fld->field_opr2,
+					     (uint8_t *)&ext_idx,
+					     sizeof(uint16_t))) {
 				BNXT_DRV_DBG(ERR,
 					     "field idx operand read failed\n");
 				return -EINVAL;
@@ -3507,9 +3507,9 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 	} else {
 		if (fld->field_src3 == BNXT_ULP_FIELD_SRC_NEXT) {
 			/* read the next key ext table index */
-			if (!ulp_operand_read(fld->field_opr3,
-					      (uint8_t *)&ext_idx,
-					      sizeof(uint16_t))) {
+			if (ulp_operand_read(fld->field_opr3,
+					     (uint8_t *)&ext_idx,
+					     sizeof(uint16_t))) {
 				BNXT_DRV_DBG(ERR,
 					     "field idx operand read failed\n");
 				return -EINVAL;
@@ -3938,9 +3938,9 @@ ulp_mapper_conflict_resolution_process(struct bnxt_ulp_mapper_parms *parms,
 		if (tbl->resource_func ==
 		    BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE) {
 			/* Perform the check that generic table is hit or not */
-			if (!ulp_regfile_read(parms->regfile,
-					      BNXT_ULP_RF_IDX_GENERIC_TBL_MISS,
-					      &regval)) {
+			if (ulp_regfile_read(parms->regfile,
+					     BNXT_ULP_RF_IDX_GENERIC_TBL_MISS,
+					     &regval)) {
 				BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 					     BNXT_ULP_RF_IDX_GENERIC_TBL_MISS);
 				return -EINVAL;
@@ -3952,9 +3952,9 @@ ulp_mapper_conflict_resolution_process(struct bnxt_ulp_mapper_parms *parms,
 			}
 		}
 		/* compare the new flow signature against stored one */
-		if (!ulp_regfile_read(parms->regfile,
-				      BNXT_ULP_RF_IDX_FLOW_SIG_ID,
-				      &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     BNXT_ULP_RF_IDX_FLOW_SIG_ID,
+				     &regval)) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 				     BNXT_ULP_RF_IDX_FLOW_SIG_ID);
 			return -EINVAL;
@@ -4111,8 +4111,8 @@ next_iteration:
 
 			/* least significant 16 bits from reg_file index */
 			rf_idx = (uint32_t)(cond_goto & 0xFFFF);
-			if (!ulp_regfile_read(parms->regfile, rf_idx,
-					      &regval)) {
+			if (ulp_regfile_read(parms->regfile, rf_idx,
+					     &regval)) {
 				BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 					     rf_idx);
 				rc = -EINVAL;
@@ -4364,7 +4364,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* initialize the registry file for further processing */
-	if (!ulp_regfile_init(parms->regfile)) {
+	if (ulp_regfile_init(parms->regfile)) {
 		BNXT_DRV_DBG(ERR, "regfile initialization failed.\n");
 		return -EINVAL;
 	}

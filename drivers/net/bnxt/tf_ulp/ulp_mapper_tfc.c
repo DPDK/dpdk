@@ -116,7 +116,7 @@ ulp_mapper_tfc_wc_tcam_post_process(struct bnxt_ulp_device_params *dparms,
 
 	/* The new length accounts for the ctrl word length and num slices */
 	tlen = tlen + (clen + 1) * num_slices;
-	if (!ulp_blob_init(tkey, tlen, key->byte_order)) {
+	if (ulp_blob_init(tkey, tlen, key->byte_order)) {
 		BNXT_DRV_DBG(ERR, "Unable to post process wc tcam entry\n");
 		return -EINVAL;
 	}
@@ -225,9 +225,9 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		key_byte_order = dparms->key_byte_order;
 
 	res_byte_order = dparms->result_byte_order;
-	if (!ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
-	    !ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size, res_byte_order)) {
+	if (ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
+	    ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
+	    ulp_blob_init(&data, tbl->result_bit_size, res_byte_order)) {
 		BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -491,8 +491,8 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	byte_order = dparms->em_byte_order;
 	/* Initialize the key/result blobs */
-	if (!ulp_blob_init(&key, tbl->blob_key_bit_size, byte_order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size, byte_order)) {
+	if (ulp_blob_init(&key, tbl->blob_key_bit_size, byte_order) ||
+	    ulp_blob_init(&data, tbl->result_bit_size, byte_order)) {
 		BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -780,8 +780,8 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bit_size = ulp_mapper_tfc_dyn_blob_size_get(parms, tbl);
 
 	/* Initialize the blob data */
-	if (!ulp_blob_init(&data, bit_size,
-			   parms->device_params->result_byte_order)) {
+	if (ulp_blob_init(&data, bit_size,
+			  parms->device_params->result_byte_order)) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize index table blob\n");
 		return -EINVAL;
 	}
@@ -846,8 +846,8 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * with the index from the regfile, scan and store the
 		 * identifiers, and return.
 		 */
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand, &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     tbl->tbl_operand, &regval)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from regfile[%d]\n",
 				     tbl->tbl_operand);
@@ -894,9 +894,9 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* read the CMM identifier from the regfile, it is not allocated */
 	if (!alloc && regfile) {
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand,
-				      &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     tbl->tbl_operand,
+				     &regval)) {
 			BNXT_DRV_DBG(ERR,
 				    "Failed to get tbl idx from regfile[%d].\n",
 				     tbl->tbl_operand);
@@ -1093,8 +1093,8 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bit_size = ulp_mapper_tfc_dyn_blob_size_get(parms, tbl);
 
 	/* Initialize the blob data */
-	if (!ulp_blob_init(&data, bit_size,
-			   parms->device_params->result_byte_order)) {
+	if (ulp_blob_init(&data, bit_size,
+			  parms->device_params->result_byte_order)) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize cmm table blob\n");
 		return -EINVAL;
 	}
@@ -1159,8 +1159,8 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * with the index from the regfile, scan and store the
 		 * identifiers, and return.
 		 */
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand, &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     tbl->tbl_operand, &regval)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from regfile[%d]\n",
 				     tbl->tbl_operand);
@@ -1180,9 +1180,9 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* read the CMM handle from the regfile, it is not allocated */
 	if (!alloc && regfile) {
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand,
-				      &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     tbl->tbl_operand,
+				     &regval)) {
 			BNXT_DRV_DBG(ERR,
 				    "Failed to get tbl idx from regfile[%d].\n",
 				     tbl->tbl_operand);
@@ -1449,8 +1449,8 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	/* Initialize the blob data */
-	if (!ulp_blob_init(&data, tbl->result_bit_size,
-			   parms->device_params->result_byte_order)) {
+	if (ulp_blob_init(&data, tbl->result_bit_size,
+			  parms->device_params->result_byte_order)) {
 		BNXT_DRV_DBG(ERR, "Failed initial index table blob\n");
 		return -EINVAL;
 	}
@@ -1468,7 +1468,7 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		idx = ULP_COMP_FLD_IDX_RD(parms, tbl->tbl_operand);
 		break;
 	case BNXT_ULP_IF_TBL_OPC_WR_REGFILE:
-		if (!ulp_regfile_read(parms->regfile, tbl->tbl_operand, &idx)) {
+		if (ulp_regfile_read(parms->regfile, tbl->tbl_operand, &idx)) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 				     tbl->tbl_operand);
 			return -EINVAL;
@@ -1480,8 +1480,8 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	case BNXT_ULP_IF_TBL_OPC_RD_COMP_FIELD:
 		/* Initialize the result blob */
-		if (!ulp_blob_init(&res_blob, tbl->result_bit_size,
-				   parms->device_params->result_byte_order)) {
+		if (ulp_blob_init(&res_blob, tbl->result_bit_size,
+				  parms->device_params->result_byte_order)) {
 			BNXT_DRV_DBG(ERR, "Failed initial result blob\n");
 			return -EINVAL;
 		}
