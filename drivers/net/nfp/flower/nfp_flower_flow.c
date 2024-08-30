@@ -1044,14 +1044,11 @@ static nfp_flow_key_check_item_fn check_item_fns[] = {
 };
 
 static int
-nfp_flow_key_layers_check_items(const struct rte_flow_item items[])
+nfp_flow_key_layers_check_items(const struct rte_flow_item items[],
+		struct nfp_item_calculate_param *param)
 {
 	int ret;
-	struct nfp_item_flag flag = {};
 	const struct rte_flow_item *item;
-	struct nfp_item_calculate_param param = {
-		.flag = &flag,
-	};
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		if (item->type >= RTE_DIM(check_item_fns)) {
@@ -1062,8 +1059,8 @@ nfp_flow_key_layers_check_items(const struct rte_flow_item items[])
 		if (check_item_fns[item->type] == NULL)
 			continue;
 
-		param.item = item;
-		ret = check_item_fns[item->type](&param);
+		param->item = item;
+		ret = check_item_fns[item->type](param);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Flow item %d check fail", item->type);
 			return ret;
@@ -1081,10 +1078,17 @@ nfp_flow_item_calculate_stub(struct nfp_item_calculate_param *param __rte_unused
 static void
 nfp_flow_item_calculate_eth(struct nfp_item_calculate_param *param)
 {
-	if (param->item->spec != NULL) {
-		param->key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
-		param->key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
-	}
+	struct nfp_fl_key_ls *key_ls;
+	const struct rte_flow_item_eth *spec;
+
+	spec = param->item->spec;
+	if (spec == NULL)
+		return;
+
+	key_ls = param->key_ls;
+
+	key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
+	key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
 }
 
 static void
@@ -1238,14 +1242,9 @@ static nfp_flow_key_calculate_item_fn item_fns[] = {
 
 static int
 nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
-		struct nfp_fl_key_ls *key_ls)
+		struct nfp_item_calculate_param *param)
 {
-	struct nfp_item_flag flag = {};
 	const struct rte_flow_item *item;
-	struct nfp_item_calculate_param param = {
-		.key_ls = key_ls,
-		.flag = &flag,
-	};
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		if (item->type >= RTE_DIM(item_fns) || item_fns[item->type] == NULL) {
@@ -1253,8 +1252,8 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 			return -ERANGE;
 		}
 
-		param.item = item;
-		item_fns[item->type](&param);
+		param->item = item;
+		item_fns[item->type](param);
 	}
 
 	return 0;
@@ -1799,6 +1798,8 @@ nfp_flow_key_layers_calculate(struct rte_eth_dev *dev,
 		struct nfp_fl_key_ls *key_ls)
 {
 	int ret;
+	struct nfp_item_flag flag = {};
+	struct nfp_item_calculate_param param = {};
 
 	key_ls->key_layer_two = 0;
 	key_ls->key_layer = NFP_FLOWER_LAYER_PORT;
@@ -1809,13 +1810,17 @@ nfp_flow_key_layers_calculate(struct rte_eth_dev *dev,
 	key_ls->vlan = 0;
 	key_ls->tun_type = NFP_FL_TUN_NONE;
 
-	ret = nfp_flow_key_layers_check_items(items);
+	param.key_ls = key_ls;
+	param.flag = &flag;
+
+	ret = nfp_flow_key_layers_check_items(items, &param);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "flow items check failed");
 		return ret;
 	}
 
-	ret = nfp_flow_key_layers_calculate_items(items, key_ls);
+	memset(param.flag, 0, sizeof(struct nfp_item_flag));
+	ret = nfp_flow_key_layers_calculate_items(items, &param);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "flow items calculate failed");
 		return ret;
