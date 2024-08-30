@@ -88,7 +88,7 @@ tf_tcam_mgr_row_entry_used(struct cfa_tcam_mgr_table_rows_0 *row,
 /* Initialize the resource usage buffer for WC-TCAM tables */
 void tf_tcam_usage_init(struct tf *tfp)
 {
-	enum cfa_tcam_mgr_tbl_type type = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS;
+	enum cfa_tcam_mgr_tbl_type type = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM;
 	struct cfa_tcam_mgr_table_data *table_data = NULL;
 	struct tf_resc_wc_tcam_usage *usage_data = NULL;
 	struct cfa_tcam_mgr_data *tcam_mgr_data;
@@ -169,7 +169,7 @@ int tf_tcam_usage_update(struct tf *tfp,
 		return -1;
 
 	/* Support WC-TCAM APPs only */
-	if (tcam_tbl_type != CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS)
+	if (tcam_tbl_type != CFA_TCAM_MGR_TBL_TYPE_WC_TCAM)
 		return 0;
 
 	resc_usage_control.buffer_dirty[dir] = 1;
