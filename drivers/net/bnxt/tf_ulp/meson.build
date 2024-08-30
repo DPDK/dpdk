@@ -25,7 +25,6 @@ sources += files(
         'ulp_rte_handler_tbl.c',
         'ulp_rte_parser.c',
         'ulp_tun.c',
-        'ulp_utils.c',
 	'ulp_mapper_tf.c',
 	'ulp_mapper_tfc.c',
 	'bnxt_ulp_tf.c',

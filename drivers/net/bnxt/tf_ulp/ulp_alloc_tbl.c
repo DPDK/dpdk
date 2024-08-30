@@ -8,6 +8,7 @@
 #include "tf_core.h"
 #include "ulp_mapper.h"
 #include "ulp_alloc_tbl.h"
+#include "bnxt_ulp_utils.h"
 
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #include "ulp_template_debug_proto.h"

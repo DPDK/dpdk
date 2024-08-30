@@ -6,6 +6,7 @@
 #include <rte_malloc.h>
 #include "bnxt.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_utils.h"
 #include "ulp_template_struct.h"
 #include "ulp_mapper.h"

@@ -14,6 +14,7 @@
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
+#include "bnxt_ulp_utils.h"
 #include "bnxt_ulp_tfc.h"
 #include "bnxt_tf_common.h"
 #include "hsi_struct_def_dpdk.h"

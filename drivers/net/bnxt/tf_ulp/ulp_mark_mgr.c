@@ -8,6 +8,7 @@
 #include <rte_log.h>
 #include "bnxt.h"
 #include "bnxt_ulp.h"
+#include "bnxt_ulp_utils.h"
 #include "tf_ext_flow_handle.h"
 #include "ulp_mark_mgr.h"
 #include "bnxt_tf_common.h"

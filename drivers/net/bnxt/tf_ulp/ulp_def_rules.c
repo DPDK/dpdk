@@ -4,6 +4,7 @@
  */
 
 #include "bnxt_tf_common.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_template_struct.h"
 #include "ulp_template_db_enum.h"
 #include "ulp_template_db_field.h"

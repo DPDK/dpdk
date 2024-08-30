@@ -28,6 +28,7 @@
 #include "tfp.h"
 #include "bnxt_tf_common.h"
 #include "bnxt_ulp_tf.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_rte_parser.h"
 #include "ulp_matcher.h"
 #include "ulp_flow_db.h"

@@ -5,6 +5,7 @@
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_tun.h"
 #include "ulp_utils.h"
 

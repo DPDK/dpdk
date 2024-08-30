@@ -13,6 +13,7 @@
 #include "bnxt_hwrm.h"
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_port_db.h"
 #include "ulp_flow_db.h"
 

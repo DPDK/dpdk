@@ -8,6 +8,7 @@
 #include "ulp_ha_mgr.h"
 #include "tfp.h"
 #include "tf_util.h"
+#include "bnxt_ulp_utils.h"
 #include "bnxt_ulp_tf.h"
 
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
@@ -936,7 +937,7 @@ ulp_mapper_tf_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			     struct bnxt_ulp_mapper_tbl_info *tbl)
 {
 	struct ulp_blob	data, res_blob;
-	uint64_t idx;
+	uint64_t idx = 0;
 	uint16_t tmplen;
 	int32_t rc = 0;
 	struct tf_set_if_tbl_entry_parms iftbl_params = { 0 };

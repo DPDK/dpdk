@@ -10,6 +10,7 @@
 #include <rte_alarm.h>
 #include "bnxt.h"
 #include "bnxt_ulp.h"
+#include "bnxt_ulp_utils.h"
 #include "bnxt_ulp_tf.h"
 #include "bnxt_tf_common.h"
 #include "ulp_ha_mgr.h"
