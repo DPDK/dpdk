@@ -9,6 +9,8 @@
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
 #include <rte_spinlock.h>
+#include <rte_mtr.h>
+#include <rte_version.h>
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
@@ -1316,6 +1318,65 @@ ulp_tf_global_cfg_update(struct bnxt *bp,
 	return rc;
 }
 
+/**
+ * When a port is initialized by dpdk. This functions is called
+ * to enable the meter and initializes the meter global configurations.
+ */
+#define BNXT_THOR_FMTCR_NUM_MET_MET_1K (0x7UL << 20)
+#define BNXT_THOR_FMTCR_CNTRS_ENABLE (0x1UL << 25)
+#define BNXT_THOR_FMTCR_INTERVAL_1K (1024)
+static int32_t
+ulp_tf_flow_mtr_init(struct bnxt *bp)
+{
+	int rc = 0;
+
+	/*
+	 * Enable metering. Set the meter global configuration register.
+	 * Set number of meter to 1K. Disable the drop counter for now.
+	 */
+	rc = ulp_tf_global_cfg_update(bp, TF_DIR_RX, TF_METER_CFG,
+				      0,
+				      BNXT_THOR_FMTCR_NUM_MET_MET_1K,
+				      1);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to set rx meter configuration\n");
+		goto jump_to_error;
+	}
+
+	rc = ulp_tf_global_cfg_update(bp, TF_DIR_TX, TF_METER_CFG,
+				      0,
+				      BNXT_THOR_FMTCR_NUM_MET_MET_1K,
+				      1);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to set tx meter configuration\n");
+		goto jump_to_error;
+	}
+
+	/*
+	 * Set meter refresh rate to 1024 clock cycle. This value works for
+	 * most bit rates especially for high rates.
+	 */
+	rc = ulp_tf_global_cfg_update(bp, TF_DIR_RX, TF_METER_INTERVAL_CFG,
+				      0,
+				      BNXT_THOR_FMTCR_INTERVAL_1K,
+				      1);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to set rx meter interval\n");
+		goto jump_to_error;
+	}
+
+	rc = bnxt_flow_mtr_init(bp);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to config meter\n");
+		goto jump_to_error;
+	}
+
+	return rc;
+
+jump_to_error:
+	return rc;
+}
+
 /*
  * When a port is deinit'ed by dpdk. This function is called
  * and this function clears the ULP context and rest of the
@@ -1498,7 +1559,7 @@ ulp_tf_init(struct bnxt *bp,
 	}
 
 	if (ulp_dev_id == BNXT_ULP_DEVICE_ID_THOR) {
-		rc = bnxt_flow_meter_init(bp);
+		rc = ulp_tf_flow_mtr_init(bp);
 		if (rc) {
 			BNXT_DRV_DBG(ERR, "Failed to config meter\n");
 			goto jump_to_error;
@@ -1513,11 +1574,59 @@ jump_to_error:
 	return rc;
 }
 
+/**
+ * Get meter capabilities.
+ */
+#define MAX_FLOW_PER_METER 1024
+#define MAX_METER_RATE_100GBPS ((1ULL << 30) * 100 / 8)
+static int
+ulp_tf_mtr_cap_get(struct bnxt *bp,
+		   struct rte_mtr_capabilities *cap)
+{
+	struct tf_get_session_info_parms iparms;
+	struct tf *tfp;
+	int32_t rc = 0;
+
+	/* Get number of meter reserved for this session */
+	memset(&iparms, 0, sizeof(iparms));
+	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	rc = tf_get_session_info(tfp, &iparms);
+	if (rc != 0) {
+		BNXT_DRV_DBG(ERR, "Failed to get session resource info\n");
+		return rc;
+	}
+
+	memset(cap, 0, sizeof(struct rte_mtr_capabilities));
+
+	cap->n_max = iparms.session_info.tbl[TF_DIR_RX].info[TF_TBL_TYPE_METER_INST].stride;
+	if (!cap->n_max) {
+		BNXT_DRV_DBG(ERR, "Meter is not supported\n");
+		return -EINVAL;
+	}
+
+#if (RTE_VERSION_NUM(21, 05, 0, 0) <= RTE_VERSION)
+	cap->srtcm_rfc2697_byte_mode_supported = 1;
+#endif
+	cap->n_shared_max = cap->n_max;
+	/* No meter is identical */
+	cap->identical = 1;
+	cap->shared_identical = 1;
+	cap->shared_n_flows_per_mtr_max = MAX_FLOW_PER_METER;
+	cap->chaining_n_mtrs_per_flow_max = 1; /* Chaining is not supported. */
+	cap->meter_srtcm_rfc2697_n_max = cap->n_max;
+	cap->meter_rate_max = MAX_METER_RATE_100GBPS;
+	/* No stats supported now */
+	cap->stats_mask = 0;
+
+	return 0;
+}
+
 const struct bnxt_ulp_core_ops bnxt_ulp_tf_core_ops = {
 	.ulp_ctx_attach = ulp_tf_ctx_attach,
 	.ulp_ctx_detach = ulp_tf_ctx_detach,
 	.ulp_deinit =  ulp_tf_deinit,
 	.ulp_init =  ulp_tf_init,
 	.ulp_vfr_session_fid_add = NULL,
-	.ulp_vfr_session_fid_rem = NULL
+	.ulp_vfr_session_fid_rem = NULL,
+	.ulp_mtr_cap_get = ulp_tf_mtr_cap_get
 };

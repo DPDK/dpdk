@@ -12,6 +12,7 @@
 
 #include "rte_version.h"
 #include "rte_ethdev.h"
+#include "rte_mtr.h"
 
 #include "bnxt.h"
 #include "ulp_template_db_enum.h"
@@ -231,6 +232,10 @@ struct bnxt_ulp_core_ops {
 	int32_t
 	(*ulp_vfr_session_fid_rem)(struct bnxt_ulp_context *ulp_ctx,
 				  uint16_t rep_fid);
+
+	int32_t
+	(*ulp_mtr_cap_get)(struct bnxt *bp,
+			   struct rte_mtr_capabilities *cap);
 };
 
 extern const struct bnxt_ulp_core_ops bnxt_ulp_tf_core_ops;
@@ -566,9 +571,6 @@ bnxt_ulp_cntxt_ecpri_udp_port_set(struct bnxt_ulp_context *ulp_ctx,
 unsigned int
 bnxt_ulp_cntxt_ecpri_udp_port_get(struct bnxt_ulp_context *ulp_ctx);
 
-int32_t
-bnxt_flow_meter_init(struct bnxt *bp);
-
 uint32_t
 bnxt_ulp_cntxt_convert_dev_id(uint32_t ulp_dev_id);
 
@@ -618,4 +620,8 @@ bnxt_ulp_vfr_session_fid_add(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 bnxt_ulp_vfr_session_fid_rem(struct bnxt_ulp_context *ulp_ctx,
 			     uint16_t vfr_fid);
+
+int32_t
+bnxt_flow_mtr_init(struct bnxt *bp __rte_unused);
+
 #endif /* _BNXT_ULP_H_ */
