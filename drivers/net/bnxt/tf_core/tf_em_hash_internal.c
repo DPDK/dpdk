@@ -65,7 +65,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 		PMD_DRV_LOG_LINE(ERR,
 			    "%s, EM entry index allocation failed",
 			    tf_dir_2_str(parms->dir));
-		return -1;
+		return -ENOMEM; /* no more space to add entries */
 	}
 
 	if (dev->ops->tf_dev_cfa_key_hash == NULL)
@@ -87,7 +87,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 	if (rc) {
 		/* Free the allocated index before returning */
 		dpool_free(pool, index);
-		return -1;
+		return rc;
 	}
 
 	TF_SET_GFID(gfid,
