@@ -859,6 +859,37 @@ ulp_mapper_field_port_db_process(struct bnxt_ulp_mapper_parms *parms,
 }
 
 static int32_t
+ulp_mapper_field_port_db_write(struct bnxt_ulp_mapper_parms *parms,
+			       uint32_t port_id,
+			       uint16_t idx,
+			       uint8_t *val,
+			       uint32_t length)
+{
+	enum bnxt_ulp_port_table port_data = idx;
+	uint32_t val32;
+
+	switch (port_data) {
+	case BNXT_ULP_PORT_TABLE_PHY_PORT_MIRROR_ID:
+		if (ULP_BITS_2_BYTE(length) > sizeof(val32)) {
+			BNXT_DRV_DBG(ERR, "Invalid data length %u\n", length);
+			return -EINVAL;
+		}
+		memcpy(&val32, val, ULP_BITS_2_BYTE(length));
+		if (unlikely(ulp_port_db_port_table_mirror_set(parms->ulp_ctx,
+							       port_id,
+							       val32))) {
+			BNXT_DRV_DBG(ERR, "Invalid port id %u\n", port_id);
+			return -EINVAL;
+		}
+		break;
+	default:
+		BNXT_DRV_DBG(ERR, "Invalid port_data %d\n", port_data);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int32_t
 ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			     enum bnxt_ulp_field_src field_src,
 			     uint8_t *field_opr,
@@ -3569,6 +3600,10 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 		process_src1 = 1;
 	case BNXT_ULP_FUNC_OPC_COND_LIST:
 		break;
+	case BNXT_ULP_FUNC_OPC_PORT_TABLE:
+		process_src1 = 1;
+		process_src2 = 1;
+		break;
 	default:
 		break;
 	}
@@ -3680,6 +3715,12 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 						      &res, sizeof(res)))
 			return -EINVAL;
 		break;
+	case BNXT_ULP_FUNC_OPC_PORT_TABLE:
+		rc = ulp_mapper_field_port_db_write(parms, res1,
+						    func_info->func_dst_opr,
+						    (uint8_t *)&res2,
+						    func_info->func_oper_size);
+		return rc;
 	default:
 		BNXT_DRV_DBG(ERR, "invalid func code %u\n",
 			     func_info->func_opc);
@@ -3842,7 +3883,7 @@ ulp_mapper_cond_execute_list_process(struct bnxt_ulp_mapper_parms *parms,
 {
 	struct bnxt_ulp_mapper_cond_list_info *execute_info;
 	struct bnxt_ulp_mapper_cond_list_info *oper;
-	int32_t cond_list_res, cond_res = 0, rc = 0;
+	int32_t cond_list_res = 0, cond_res = 0, rc = 0;
 	uint32_t idx;
 
 	/* set the execute result to true */

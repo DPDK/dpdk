@@ -181,6 +181,8 @@ ulp_allocator_tbl_list_alloc(struct bnxt_ulp_mapper_data *mapper_data,
 		BNXT_DRV_DBG(ERR, "unable to alloc index %x\n", idx);
 		return -ENOMEM;
 	}
+	/* Not using zero index */
+	*alloc_id += 1;
 	return 0;
 }
 
@@ -210,6 +212,8 @@ ulp_allocator_tbl_list_free(struct bnxt_ulp_mapper_data *mapper_data,
 		BNXT_DRV_DBG(ERR, "invalid table index %x\n", idx);
 		return -EINVAL;
 	}
+	/* not using zero index */
+	index -= 1;
 	if (index < 0 || index > entry->num_entries) {
 		BNXT_DRV_DBG(ERR, "invalid alloc index %x\n", index);
 		return -EINVAL;

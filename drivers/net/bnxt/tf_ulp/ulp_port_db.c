@@ -514,6 +514,49 @@ ulp_port_db_phy_port_svif_get(struct bnxt_ulp_context *ulp_ctxt,
 }
 
 /*
+ * Api to get the socket direct svif for a given device port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * svif [out] the socket direct svif of the given device index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_dev_port_socket_direct_svif_get(struct bnxt_ulp_context *ulp_ctxt,
+					    uint32_t port_id,
+					    uint16_t *svif)
+{
+	struct bnxt_ulp_port_db *port_db;
+	uint32_t ifindex;
+	uint16_t phy_port_id, func_id;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+
+	if (!port_db || port_id >= RTE_MAX_ETHPORTS) {
+		BNXT_DRV_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	if (!port_db->dev_port_list[port_id])
+		return -ENOENT;
+
+	/* Get physical port id */
+	ifindex = port_db->dev_port_list[port_id];
+	func_id = port_db->ulp_intf_list[ifindex].drv_func_id;
+	phy_port_id = port_db->ulp_func_id_tbl[func_id].phy_port_id;
+
+	/* Calculate physical port id for socket direct port */
+	phy_port_id = phy_port_id ? 0 : 1;
+	if (phy_port_id >= port_db->phy_port_cnt) {
+		BNXT_DRV_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	*svif = port_db->phy_port_list[phy_port_id].port_svif;
+	return 0;
+}
+
+/*
  * Api to get the port type for a given ulp ifindex.
  *
  * ulp_ctxt [in] Ptr to ulp context
@@ -811,4 +854,50 @@ ulp_port_db_port_table_scope_get(struct bnxt_ulp_context *ulp_ctxt,
 		return 0;
 	}
 	return -EINVAL;
+}
+
+/* Api to get the PF Mirror Id for a given port id
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * mirror id [in] mirror id
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_table_mirror_set(struct bnxt_ulp_context *ulp_ctxt,
+				  uint16_t port_id, uint32_t mirror_id)
+{
+	struct ulp_phy_port_info *port_data;
+	struct bnxt_ulp_port_db *port_db;
+	struct ulp_interface_info *intf;
+	struct ulp_func_if_info *func;
+	uint32_t ifindex;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db) {
+		BNXT_DRV_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+
+	if (ulp_port_db_dev_port_to_ulp_index(ulp_ctxt, port_id, &ifindex)) {
+		BNXT_DRV_DBG(ERR, "Invalid port id %u\n", port_id);
+		return -EINVAL;
+	}
+
+	intf = &port_db->ulp_intf_list[ifindex];
+	func = &port_db->ulp_func_id_tbl[intf->drv_func_id];
+	if (!func->func_valid) {
+		BNXT_DRV_DBG(ERR, "Invalid func for port id %u\n", port_id);
+		return -EINVAL;
+	}
+
+	port_data = &port_db->phy_port_list[func->phy_port_id];
+	if (!port_data->port_valid) {
+		BNXT_DRV_DBG(ERR, "Invalid phy port\n");
+		return -EINVAL;
+	}
+
+	port_data->port_mirror_id = mirror_id;
+	return 0;
 }

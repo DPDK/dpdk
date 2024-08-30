@@ -92,9 +92,19 @@ enum bnxt_rte_flow_action_type {
 	BNXT_RTE_FLOW_ACTION_TYPE_LAST
 };
 
+#define BNXT_ULP_MAX_GROUP_CNT		8
+struct bnxt_ulp_grp_rule_info {
+	uint32_t			group_id;
+	uint32_t			flow_id;
+	uint8_t				dir;
+	uint8_t				valid;
+};
+
 struct bnxt_ulp_df_rule_info {
 	uint32_t			def_port_flow_id;
+	uint32_t			promisc_flow_id;
 	uint8_t				valid;
+	struct bnxt_ulp_grp_rule_info	grp_df_rule[BNXT_ULP_MAX_GROUP_CNT];
 };
 
 struct bnxt_ulp_vfr_rule_info {
@@ -290,5 +300,26 @@ bnxt_ulp_cntxt_entry_acquire(void *arg);
 
 void
 bnxt_ulp_cntxt_entry_release(void);
+
+int32_t
+bnxt_ulp_promisc_mode_set(struct bnxt *bp, uint8_t enable);
+
+int32_t
+bnxt_ulp_set_prio_attribute(struct ulp_rte_parser_params *params,
+			    const struct rte_flow_attr *attr);
+
+void
+bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
+			    const struct rte_flow_attr *attr);
+
+void
+bnxt_ulp_init_parser_cf_defaults(struct ulp_rte_parser_params *params,
+				 uint16_t port_id);
+
+int32_t
+bnxt_ulp_grp_miss_act_set(struct rte_eth_dev *dev,
+			  const struct rte_flow_attr *attr,
+			  const struct rte_flow_action actions[],
+			  uint32_t *flow_id);
 
 #endif /* _BNXT_ULP_H_ */
