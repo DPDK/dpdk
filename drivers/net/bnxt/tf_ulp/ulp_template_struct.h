@@ -344,6 +344,7 @@ struct bnxt_ulp_mapper_tbl_info {
 	/* control table messages */
 	const char			*false_message;
 	const char			*true_message;
+	const char			*description;
 };
 
 struct bnxt_ulp_mapper_field_info {

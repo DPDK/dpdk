@@ -614,13 +614,6 @@ ulp_tfc_ctx_init(struct bnxt *bp,
 	/* Initialize the context entries list */
 	bnxt_ulp_cntxt_list_init();
 
-	/* Add the context to the context entries list */
-	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Failed to add the context list entry\n");
-		return -ENOMEM;
-	}
-
 	/* Allocate memory to hold ulp context data. */
 	ulp_data = rte_zmalloc("bnxt_ulp_data",
 			       sizeof(struct bnxt_ulp_data), 0);
@@ -634,6 +627,13 @@ ulp_tfc_ctx_init(struct bnxt *bp,
 	session->cfg_data = ulp_data;
 	ulp_data->ref_cnt++;
 	ulp_data->ulp_flags |= BNXT_ULP_VF_REP_ENABLED;
+
+	/* Add the context to the context entries list */
+	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to add the context list entry\n");
+		goto error_deinit;
+	}
 
 	rc = bnxt_ulp_devid_get(bp, &devid);
 	if (rc) {

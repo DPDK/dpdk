@@ -175,7 +175,8 @@ bnxt_ulp_cntxt_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 
 	ulp_ctx->cfg_data->vxlan_ip_port = vxlan_ip_port;
-
+	if (vxlan_ip_port)
+		ulp_ctx->cfg_data->ulp_flags |= BNXT_ULP_STATIC_VXLAN_SUPPORT;
 	return 0;
 }
 
@@ -221,6 +222,8 @@ bnxt_ulp_cntxt_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 
 	ulp_ctx->cfg_data->vxlan_port = vxlan_port;
+	if (vxlan_port)
+		ulp_ctx->cfg_data->ulp_flags |= BNXT_ULP_STATIC_VXLAN_SUPPORT;
 
 	return 0;
 }
@@ -544,30 +547,6 @@ bnxt_ulp_destroy_vfr_default_rules(struct bnxt *bp, bool global)
 }
 
 static int
-ulp_cust_vxlan_alloc(struct bnxt *bp)
-{
-	int rc = 0;
-
-	if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
-		rc = bnxt_tunnel_dst_port_alloc(bp,
-						bp->ulp_ctx->cfg_data->vxlan_port,
-					HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN);
-		if (rc)
-			BNXT_DRV_DBG(ERR, "Failed to set global vxlan port\n");
-	}
-
-	if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
-		rc = bnxt_tunnel_dst_port_alloc(bp,
-						bp->ulp_ctx->cfg_data->vxlan_ip_port,
-					HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4);
-		if (rc)
-			BNXT_DRV_DBG(ERR, "Failed to set global custom vxlan_ip port\n");
-	}
-
-	return rc;
-}
-
-static int
 ulp_l2_etype_tunnel_alloc(struct bnxt *bp)
 {
 	int rc = 0;
@@ -759,10 +738,6 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		}
 	}
 
-	rc = ulp_cust_vxlan_alloc(bp); /* BAUCOM: Is this safe and generic? */
-	if (rc)
-		goto jump_to_error;
-
 	rc = ulp_l2_etype_tunnel_alloc(bp);
 	if (rc)
 		goto jump_to_error;
@@ -772,28 +747,6 @@ bnxt_ulp_port_init(struct bnxt *bp)
 jump_to_error:
 	bnxt_ulp_port_deinit(bp);
 	return rc;
-}
-
-static void
-ulp_cust_vxlan_free(struct bnxt *bp)
-{
-	int rc;
-
-	if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
-		rc = bnxt_tunnel_dst_port_free(bp,
-					       bp->ulp_ctx->cfg_data->vxlan_port,
-				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN);
-		if (rc)
-			BNXT_DRV_DBG(ERR, "Failed to clear global vxlan port\n");
-	}
-
-	if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
-		rc = bnxt_tunnel_dst_port_free(bp,
-					       bp->ulp_ctx->cfg_data->vxlan_ip_port,
-				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4);
-		if (rc)
-			BNXT_DRV_DBG(ERR, "Failed to clear global custom vxlan port\n");
-	}
 }
 
 static void
@@ -869,7 +822,6 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	if (bp->ulp_ctx->cfg_data && bp->ulp_ctx->cfg_data->ref_cnt) {
 		bp->ulp_ctx->cfg_data->ref_cnt--;
 		/* Free tunnels for each port */
-		ulp_cust_vxlan_free(bp);
 		ulp_l2_etype_tunnel_free(bp);
 		if (bp->ulp_ctx->cfg_data->ref_cnt) {
 			/* Free the ulp context in the context entry list */
@@ -1503,9 +1455,10 @@ bnxt_ulp_cntxt_entry_acquire(void *arg)
 
 	/* take a lock and get the first ulp context available */
 	if (rte_spinlock_trylock(&bnxt_ulp_ctxt_lock)) {
-		TAILQ_FOREACH(entry, &ulp_cntx_list, next)
+		TAILQ_FOREACH(entry, &ulp_cntx_list, next) {
 			if (entry->ulp_ctx->cfg_data == arg)
 				return entry->ulp_ctx;
+		}
 		rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
 	}
 	return NULL;
