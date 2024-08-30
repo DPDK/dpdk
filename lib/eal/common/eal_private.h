@@ -338,6 +338,25 @@ eal_memseg_list_unmap_asan_shadow(__rte_unused struct rte_memseg_list *msl)
 #endif
 
 /**
+ * Get the MSL ASan shadow shared memory object file descriptor.
+ *
+ * @param msl
+ *  Index of the MSL.
+ * @return
+ *  A file descriptor.
+ */
+#ifdef RTE_MALLOC_ASAN
+int
+eal_memseg_list_get_asan_shadow_fd(int msl_idx);
+#else
+static inline int
+eal_memseg_list_get_asan_shadow_fd(__rte_unused int msl_idx)
+{
+	return -1;
+}
+#endif
+
+/**
  * Distribute available memory between MSLs.
  *
  * @return

@@ -691,20 +691,20 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 #ifdef RTE_MALLOC_ASAN
 	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
-	struct rte_memseg_list *msl = &mcfg->memsegs[list_idx];
+	int shadow_shm_fd = eal_memseg_list_get_asan_shadow_fd(list_idx);
 
-	if (msl->shm_fd != -1) {
+	if (shadow_shm_fd != -1) {
 		void *shadow_base_addr, *shadow_addr;
 		off_t shadow_map_offset;
 		size_t shadow_sz;
 
-		shadow_base_addr = ASAN_MEM_TO_SHADOW(msl->base_va);
+		shadow_base_addr = ASAN_MEM_TO_SHADOW(mcfg->memsegs[list_idx].base_va);
 		shadow_addr = ASAN_MEM_TO_SHADOW(addr);
 		shadow_map_offset = (char *)shadow_addr - (char *)shadow_base_addr;
 		shadow_sz = alloc_sz >> ASAN_SHADOW_SCALE;
 
 		va = mmap(shadow_addr, shadow_sz, PROT_READ | PROT_WRITE,
-			  MAP_SHARED | MAP_FIXED, msl->shm_fd, shadow_map_offset);
+			  MAP_SHARED | MAP_FIXED, shadow_shm_fd, shadow_map_offset);
 		if (va == MAP_FAILED) {
 			RTE_LOG(DEBUG, EAL, "shadow mmap() failed: %s\n",
 				strerror(errno));
