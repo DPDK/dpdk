@@ -106,6 +106,8 @@ extern struct bnxt_ulp_mapper_ident_info ulp_wh_plus_act_ident_list[];
 
 /* Global declarations */
 extern uint8_t ulp_glb_field_tbl[];
+extern uint32_t ulp_glb_app_sig_tbl[];
+extern uint32_t ulp_glb_app_sig_tbl[];
 
 extern struct
 bnxt_ulp_shared_act_info ulp_shared_act_info[];

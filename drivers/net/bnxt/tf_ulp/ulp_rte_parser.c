@@ -24,7 +24,9 @@
 #define ULP_VLAN_PRIORITY_MASK		0x700
 #define ULP_VLAN_TAG_MASK		0xFFF /* Last 12 bits*/
 #define ULP_UDP_PORT_VXLAN		4789
-#define ULP_UDP_PORT_VXLAN_MASK	 0XFFFF
+#define ULP_UDP_PORT_VXLAN_MASK		0xFFFF
+#define ULP_UDP_PORT_VXLAN_GPE		4790
+#define ULP_UDP_PORT_VXLAN_GPE_MASK	0xFFFF
 
 /* Utility function to skip the void items. */
 static inline int32_t
@@ -1273,6 +1275,13 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 			       BNXT_ULP_HDR_BIT_T_VXLAN);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
 	}
+
+	if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP && dst_port ==
+	    tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN_GPE)) {
+		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
+			       BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	}
 }
 
 /* Function to handle the parsing of RTE Flow item UDP Header. */
@@ -1513,6 +1522,73 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 				    ULP_UDP_PORT_VXLAN);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT_MASK,
 				    ULP_UDP_PORT_VXLAN_MASK);
+	}
+
+	return BNXT_TF_RC_SUCCESS;
+}
+
+/* Function to handle the parsing of RTE Flow item Vxlan GPE Header. */
+int32_t
+ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
+			      struct ulp_rte_parser_params *params)
+{
+	const struct rte_flow_item_vxlan_gpe *vxlan_gpe_spec = item->spec;
+	const struct rte_flow_item_vxlan_gpe *vxlan_gpe_mask = item->mask;
+	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	uint32_t idx = 0;
+	uint16_t dport;
+	uint32_t size;
+
+	if (ulp_rte_prsr_fld_size_validate(params, &idx,
+					   BNXT_ULP_PROTO_HDR_VXLAN_GPE_NUM)) {
+		BNXT_TF_DBG(ERR, "Error parsing protocol header\n");
+		return BNXT_TF_RC_ERROR;
+	}
+
+	/*
+	 * Copy the rte_flow_item for vxlan gpe into hdr_field using vxlan
+	 * header fields
+	 */
+	size = sizeof(((struct rte_flow_item_vxlan_gpe *)NULL)->flags);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(vxlan_gpe_spec, flags),
+			      ulp_deference_struct(vxlan_gpe_mask, flags),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	size = sizeof(((struct rte_flow_item_vxlan_gpe *)NULL)->rsvd0);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(vxlan_gpe_spec, rsvd0),
+			      ulp_deference_struct(vxlan_gpe_mask, rsvd0),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	size = sizeof(((struct rte_flow_item_vxlan_gpe *)NULL)->protocol);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(vxlan_gpe_spec, protocol),
+			      ulp_deference_struct(vxlan_gpe_mask, protocol),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	size = sizeof(((struct rte_flow_item_vxlan_gpe *)NULL)->vni);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(vxlan_gpe_spec, vni),
+			      ulp_deference_struct(vxlan_gpe_mask, vni),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	size = sizeof(((struct rte_flow_item_vxlan_gpe *)NULL)->rsvd1);
+	ulp_rte_prsr_fld_mask(params, &idx, size,
+			      ulp_deference_struct(vxlan_gpe_spec, rsvd1),
+			      ulp_deference_struct(vxlan_gpe_mask, rsvd1),
+			      ULP_PRSR_ACT_DEFAULT);
+
+	/* Update the hdr_bitmap with vxlan gpe*/
+	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+
+	dport = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT);
+	if (!dport) {
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
+				    ULP_UDP_PORT_VXLAN_GPE);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT_MASK,
+				    ULP_UDP_PORT_VXLAN_GPE_MASK);
 	}
 
 	return BNXT_TF_RC_SUCCESS;

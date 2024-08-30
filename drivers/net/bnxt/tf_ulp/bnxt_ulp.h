@@ -58,6 +58,7 @@
 					BNXT_ULP_APP_HA_DYNAMIC)
 
 #define ULP_APP_CUST_VXLAN_SUPPORT(ctx)	   ((ctx)->cfg_data->vxlan_port != 0)
+#define ULP_APP_VXLAN_GPE_SUPPORT(ctx)     ((ctx)->cfg_data->vxlan_gpe_port != 0)
 #define ULP_APP_CUST_VXLAN_IP_SUPPORT(ctx) ((ctx)->cfg_data->vxlan_ip_port != 0)
 
 enum bnxt_ulp_flow_mem_type {
@@ -111,7 +112,9 @@ struct bnxt_ulp_data {
 	uint8_t				app_id;
 	uint8_t				num_shared_clients;
 	struct bnxt_flow_app_tun_ent	app_tun[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
+	uint32_t			default_priority;
 	uint32_t			vxlan_port;
+	uint32_t			vxlan_gpe_port;
 	uint32_t			vxlan_ip_port;
 	uint32_t			ecpri_udp_port;
 	uint8_t				hu_reg_state;
@@ -368,6 +371,9 @@ bnxt_ulp_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
 			uint32_t vxlan_port);
 unsigned int
 bnxt_ulp_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx);
+
+unsigned int
+bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx);
 
 int
 bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,

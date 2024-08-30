@@ -555,12 +555,15 @@ bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
 	case BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI:
 		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_ECPRI;
 		break;
+	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE:
+		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE;
+		break;
 	default:
 		BNXT_TF_DBG(ERR, "Tunnel Type (%d) invalid\n", type);
 		return -EINVAL;
 	}
 
-	if (!udp_port && type != BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI) {
+	if (!udp_port) {
 		/* Free based on the handle */
 		if (!handle) {
 			BNXT_TF_DBG(ERR, "Free with invalid handle\n");
