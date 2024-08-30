@@ -24,6 +24,7 @@
 #include "bnxt_tf_pmd_shim.h"
 #ifdef TF_FLOW_SCALE_QUERY
 #include "tf_resources.h"
+#include "tfc_resources.h"
 #endif /* TF_FLOW_SCALE_QUERY */
 
 static uint8_t mapper_fld_zeros[16] = { 0 };
@@ -4322,7 +4323,7 @@ ulp_mapper_resources_free(struct bnxt_ulp_context *ulp_ctx,
 #ifdef TF_FLOW_SCALE_QUERY
 	/* update for regular flows only */
 	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
-		tf_resc_usage_update_all(ulp_ctx->bp);
+		ulp_resc_usage_sync(ulp_ctx);
 #endif /* TF_FLOW_SCALE_QUERY */
 
 	return frc;
@@ -4475,7 +4476,7 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 #ifdef TF_FLOW_SCALE_QUERY
-	tf_resc_usage_update_all(ulp_ctx->bp);
+	ulp_resc_usage_sync(ulp_ctx);
 #endif /* TF_FLOW_SCALE_QUERY */
 
 	return rc;
@@ -4513,6 +4514,27 @@ flow_error:
 
 	return rc;
 }
+
+#ifdef TF_FLOW_SCALE_QUERY
+/* Sync resource usage state with firmware */
+int ulp_resc_usage_sync(struct bnxt_ulp_context *ulp_ctx)
+{
+	uint32_t dev_id;
+	if (unlikely(bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id))) {
+		BNXT_DRV_DBG(ERR, "Invalid ulp context\n");
+		return -EINVAL;
+	}
+
+	if (dev_id == BNXT_ULP_DEVICE_ID_THOR) {
+		tf_resc_resume_usage_update();
+		tf_resc_usage_update_all(ulp_ctx->bp);
+	} else if (dev_id == BNXT_ULP_DEVICE_ID_THOR2) {
+		tfc_resc_usage_query_all(ulp_ctx->bp);
+	}
+
+	return 0;
+}
+#endif /* TF_FLOW_SCALE_QUERY */
 
 int32_t
 ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)

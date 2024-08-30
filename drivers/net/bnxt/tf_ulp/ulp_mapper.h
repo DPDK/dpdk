@@ -302,4 +302,9 @@ ulp_mapper_init(struct bnxt_ulp_context	*ulp_ctx);
 void
 ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx);
 
+#ifdef TF_FLOW_SCALE_QUERY
+int32_t
+ulp_resc_usage_sync(struct bnxt_ulp_context *ulp_ctx);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 #endif /* _ULP_MAPPER_H_ */

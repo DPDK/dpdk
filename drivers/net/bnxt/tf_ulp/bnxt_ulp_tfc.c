@@ -34,6 +34,7 @@
 #include "ulp_ha_mgr.h"
 #include "bnxt_tf_pmd_shim.h"
 #include "ulp_template_db_tbl.h"
+#include "tfc_resources.h"
 
 /* define to enable shared table scope */
 #define TFC_SHARED_TBL_SCOPE_ENABLE 0
@@ -1052,6 +1053,11 @@ ulp_tfc_init(struct bnxt *bp,
 			goto jump_to_error;
 		}
 	}
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Query resource statstics from firmware */
+	tfc_resc_usage_query_all(bp);
+#endif /* TF_FLOW_SCALE_QUERY */
 
 	BNXT_DRV_DBG(DEBUG, "ulp ctx has been initialized\n");
 	return rc;
