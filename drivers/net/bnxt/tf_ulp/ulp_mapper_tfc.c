@@ -161,7 +161,7 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	struct ulp_blob tkey, tmask; /* transform key and mask */
 	uint32_t alloc_tcam = 0, alloc_ident = 0, write_tcam = 0;
 	struct ulp_flow_db_res_params fid_parms = { 0 };
-	enum cfa_track_type tt = CFA_TRACK_TYPE_SID;
+	enum cfa_track_type tt = tbl->track_type;
 	enum bnxt_ulp_byte_order key_byte_order;
 	enum bnxt_ulp_byte_order res_byte_order;
 	struct bnxt_ulp_mapper_key_info	*kflds;
@@ -753,7 +753,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bool alloc = false, write = false, global = false, regfile = false;
 	struct bnxt_ulp_glb_resource_info glb_res = { 0 };
 	uint16_t bit_size, wordlen = 0, tmplen = 0;
-	enum cfa_track_type tt = CFA_TRACK_TYPE_SID;
+	enum cfa_track_type tt = tbl->track_type;
 	struct ulp_flow_db_res_params fid_parms;
 	struct tfc_idx_tbl_info tbl_info = { 0 };
 	struct tfc *tfcp = NULL;
@@ -1527,11 +1527,11 @@ ulp_mapper_tfc_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 			   uint32_t session_type __rte_unused,
 			   uint16_t ident_type,
 			   uint8_t direction,
+			   enum cfa_track_type tt,
 			   uint64_t *identifier_id)
 {
 	struct tfc *tfcp = NULL;
 	struct tfc_identifier_info ident_info = { 0 };
-	enum cfa_track_type tt = CFA_TRACK_TYPE_SID;
 	int32_t rc = 0;
 	uint16_t fw_fid = 0;
 

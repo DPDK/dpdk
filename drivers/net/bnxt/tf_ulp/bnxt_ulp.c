@@ -1127,6 +1127,40 @@ bnxt_ulp_cntxt_fid_get(struct bnxt_ulp_context *ulp, uint16_t *fid)
 	return 0;
 }
 
+void
+bnxt_ulp_cntxt_ptr2_default_class_bits_set(struct bnxt_ulp_context *ulp_ctx,
+					   uint64_t bits)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return;
+	ulp_ctx->cfg_data->default_class_bits = bits;
+}
+
+uint64_t
+bnxt_ulp_cntxt_ptr2_default_class_bits_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+	return ulp_ctx->cfg_data->default_class_bits;
+}
+
+void
+bnxt_ulp_cntxt_ptr2_default_act_bits_set(struct bnxt_ulp_context *ulp_ctx,
+					 uint64_t bits)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return;
+	ulp_ctx->cfg_data->default_act_bits = bits;
+}
+
+uint64_t
+bnxt_ulp_cntxt_ptr2_default_act_bits_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+	return ulp_ctx->cfg_data->default_act_bits;
+}
+
 /*
  * Get the device table entry based on the device id.
  *

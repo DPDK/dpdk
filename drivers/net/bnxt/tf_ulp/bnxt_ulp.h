@@ -150,6 +150,8 @@ struct bnxt_ulp_data {
 	enum bnxt_ulp_session_type	def_session_type;
 	uint16_t			num_key_recipes_per_dir;
 	uint64_t			feature_bits;
+	uint64_t			default_class_bits;
+	uint64_t			default_act_bits;
 };
 
 enum bnxt_ulp_tfo_type {
@@ -623,5 +625,18 @@ bnxt_ulp_vfr_session_fid_rem(struct bnxt_ulp_context *ulp_ctx,
 
 int32_t
 bnxt_flow_mtr_init(struct bnxt *bp __rte_unused);
+
+void
+bnxt_ulp_cntxt_ptr2_default_class_bits_set(struct bnxt_ulp_context *ulp_ctx,
+					   uint64_t bits);
+
+uint64_t
+bnxt_ulp_cntxt_ptr2_default_class_bits_get(struct bnxt_ulp_context *ulp_ctx);
+
+void
+bnxt_ulp_cntxt_ptr2_default_act_bits_set(struct bnxt_ulp_context *ulp_ctx,
+					 uint64_t bits);
+uint64_t
+bnxt_ulp_cntxt_ptr2_default_act_bits_get(struct bnxt_ulp_context *ulp_ctx);
 
 #endif /* _BNXT_ULP_H_ */

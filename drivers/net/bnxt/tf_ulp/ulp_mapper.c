@@ -171,10 +171,13 @@ ulp_mapper_resource_ident_allocate(struct bnxt_ulp_context *ulp_ctx,
 	session_type = shared ?  BNXT_ULP_SESSION_TYPE_SHARED :
 				 BNXT_ULP_SESSION_TYPE_DEFAULT;
 
+	/* Global identifiers are tracked by session */
 	rc = op->ulp_mapper_core_ident_alloc_process(ulp_ctx,
 						     session_type,
 						     glb_res->resource_type,
-						     glb_res->direction, &id);
+						     glb_res->direction,
+						     CFA_TRACK_TYPE_SID,
+						     &id);
 	if (rc)
 		return rc;
 
@@ -751,7 +754,9 @@ ulp_mapper_ident_process(struct bnxt_ulp_mapper_parms *parms,
 	rc = op->ulp_mapper_core_ident_alloc_process(parms->ulp_ctx,
 						     tbl->session_type,
 						     ident->ident_type,
-						     tbl->direction, &id);
+						     tbl->direction,
+						     tbl->track_type,
+						     &id);
 	if (rc) {
 		BNXT_DRV_DBG(ERR, "identifier process failed\n");
 		return rc;

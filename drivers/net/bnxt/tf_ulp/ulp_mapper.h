@@ -135,6 +135,7 @@ struct ulp_mapper_core_ops {
 					       uint32_t session_type,
 					       uint16_t ident_type,
 					       uint8_t direction,
+					       enum cfa_track_type tt,
 					       uint64_t *identifier_id);
 
 	int32_t
