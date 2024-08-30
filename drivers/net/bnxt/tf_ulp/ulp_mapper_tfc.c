@@ -608,8 +608,12 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		if (tbl->tbl_opcode == BNXT_ULP_EM_TBL_OPC_WR_REGFILE) {
 			uint64_t val = 0;
 
-			/* over max flows or hash collision */
-			if (rc == -E2BIG || rc == -ENOMEM) {
+			/* hash collision */
+			if (rc == -E2BIG)
+				BNXT_DRV_DBG(DEBUG, "Duplicate EM entry\n");
+
+			/* over max flows */
+			if (rc == -ENOMEM) {
 				val = 1;
 				rc = 0;
 				BNXT_DRV_DBG(DEBUG,
@@ -618,9 +622,11 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			ulp_regfile_write(parms->regfile, tbl->tbl_operand,
 					  rte_cpu_to_be_64(val));
 		}
-		if (rc)
+
+		if (rc && rc != -E2BIG)
 			BNXT_DRV_DBG(ERR,
 				     "Failed to insert em entry rc=%d.\n", rc);
+
 		if (rc && error != NULL && tfc_is_mpc_error(rc))
 			rte_flow_error_set((struct rte_flow_error *)error, EIO,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1021,6 +1027,7 @@ ulp_mapper_tfc_index_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	struct tfc *tfcp = NULL;
 	struct tfc_idx_tbl_info tbl_info = { 0 };
 	uint16_t fw_fid = 0;
+	int32_t rc;
 
 	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
@@ -1039,7 +1046,16 @@ ulp_mapper_tfc_index_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	tbl_info.id = (uint16_t)res->resource_hndl;
 
 	/* TBD: check to see if the memory needs to be cleaned as well*/
-	return tfc_idx_tbl_free(tfcp, fw_fid, &tbl_info);
+	rc = tfc_idx_tbl_free(tfcp, fw_fid, &tbl_info);
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	if (!rc)
+		BNXT_DRV_DBG(DEBUG, "Freed Index [%s]:[%s] = 0x%X\n",
+		     tfc_dir_2_str(tbl_info.dir),
+		     tfc_idx_tbl_2_str(tbl_info.rsubtype), tbl_info.id);
+#endif
+#endif
+	return rc;
 }
 
 static int32_t
@@ -1568,7 +1584,7 @@ ulp_mapper_tfc_ident_free(struct bnxt_ulp_context *ulp_ctx,
 	}
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_INF("Freed Identifier [%s]:[%s] = 0x%X\n",
+	BNXT_DRV_DBG(DEBUG, "Freed Identifier [%s]:[%s] = 0x%X\n",
 		     tfc_dir_2_str(ident_info.dir),
 		     tfc_ident_2_str(ident_info.rsubtype), ident_info.id);
 #endif
@@ -1604,6 +1620,13 @@ ulp_mapper_tfc_tcam_entry_free(struct bnxt_ulp_context *ulp,
 			    tcam_info.id);
 		return -EINVAL;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_DRV_DBG(DEBUG, "Freed TCAM [%s]:[%s] = 0x%X\n",
+		     tfc_dir_2_str(tcam_info.dir),
+		     tfc_tcam_2_str(tcam_info.rsubtype), tcam_info.id);
+#endif
+#endif
 	return 0;
 }
 

@@ -1511,4 +1511,6 @@ const struct bnxt_ulp_core_ops bnxt_ulp_tf_core_ops = {
 	.ulp_ctx_detach = ulp_tf_ctx_detach,
 	.ulp_deinit =  ulp_tf_deinit,
 	.ulp_init =  ulp_tf_init,
+	.ulp_vfr_session_fid_add = NULL,
+	.ulp_vfr_session_fid_rem = NULL
 };

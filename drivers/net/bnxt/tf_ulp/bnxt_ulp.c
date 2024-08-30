@@ -1567,3 +1567,31 @@ bnxt_ulp_feature_bits_get(struct bnxt_ulp_context *ulp_ctx)
 	return ulp_ctx->cfg_data->feature_bits;
 }
 
+/* Add the VF Rep endpoint to the session */
+int32_t
+bnxt_ulp_vfr_session_fid_add(struct bnxt_ulp_context *ulp_ctx,
+			     uint16_t vfr_fid)
+{
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL || ulp_ctx->ops == NULL)
+		return -EINVAL;
+	if (ulp_ctx->ops->ulp_vfr_session_fid_add)
+		rc = ulp_ctx->ops->ulp_vfr_session_fid_add(ulp_ctx, vfr_fid);
+
+	return rc;
+}
+
+/* Remove the VF Rep endpoint from the session */
+int32_t
+bnxt_ulp_vfr_session_fid_rem(struct bnxt_ulp_context *ulp_ctx,
+			     uint16_t vfr_fid)
+{
+	int32_t rc = 0;
+
+	if (ulp_ctx == NULL || ulp_ctx->ops == NULL)
+		return -EINVAL;
+	if (ulp_ctx->ops->ulp_vfr_session_fid_rem)
+		rc = ulp_ctx->ops->ulp_vfr_session_fid_rem(ulp_ctx, vfr_fid);
+	return rc;
+}

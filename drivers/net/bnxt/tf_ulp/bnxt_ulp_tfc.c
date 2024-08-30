@@ -336,7 +336,7 @@ ulp_tfc_tbl_scope_init(struct bnxt *bp)
 {
 	struct tfc_tbl_scope_mem_alloc_parms mem_parms;
 	struct tfc_tbl_scope_size_query_parms qparms =  { 0 };
-	uint8_t max_lkup_sz[CFA_DIR_MAX], max_act_sz[CFA_DIR_MAX];
+	uint16_t max_lkup_sz[CFA_DIR_MAX], max_act_sz[CFA_DIR_MAX];
 	struct tfc_tbl_scope_cpm_alloc_parms cparms;
 	uint16_t fid, max_pools;
 	bool first = true, shared = false;
@@ -682,6 +682,71 @@ error_deinit:
 }
 
 static int32_t
+ulp_tfc_vfr_session_fid_add(struct bnxt_ulp_context *ulp_ctx, uint16_t rep_fid)
+{
+	uint16_t fid_cnt = 0, sid = 0;
+	struct tfc *tfcp = NULL;
+	int rc;
+
+	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
+	if (!tfcp) {
+		PMD_DRV_LOG_LINE(ERR, "Unable to get tfcp from ulp_ctx");
+		return -EINVAL;
+	}
+
+	/* Get the session id */
+	rc = bnxt_ulp_cntxt_sid_get(ulp_ctx, &sid);
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR, "Unable to get SID for VFR FID=%d", rep_fid);
+		return rc;
+	}
+
+	rc = tfc_session_fid_add(tfcp, rep_fid, sid, &fid_cnt);
+	if (!rc)
+		PMD_DRV_LOG_LINE(DEBUG,
+				 "EFID=%d added to SID=%d, %d total",
+				 rep_fid, sid, fid_cnt);
+	else
+		PMD_DRV_LOG_LINE(ERR,
+				 "Failed to add EFID=%d to SID=%d",
+				 rep_fid, sid);
+	return rc;
+}
+
+static int32_t
+ulp_tfc_vfr_session_fid_rem(struct bnxt_ulp_context *ulp_ctx, uint16_t rep_fid)
+{
+	uint16_t fid_cnt = 0, sid = 0;
+	struct tfc *tfcp = NULL;
+	int rc;
+
+	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
+	if (!tfcp) {
+		PMD_DRV_LOG_LINE(ERR, "Unable tfcp from ulp_ctx");
+		return -EINVAL;
+	}
+
+	/* Get the session id */
+	rc = bnxt_ulp_cntxt_sid_get(ulp_ctx, &sid);
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR, "Unable to get SID for VFR FID=%d", rep_fid);
+		return rc;
+	}
+
+	rc = tfc_session_fid_rem(tfcp, rep_fid, &fid_cnt);
+	if (!rc)
+		PMD_DRV_LOG_LINE(DEBUG,
+				 "Removed EFID=%d from SID=%d, %d remain",
+				 rep_fid, sid, fid_cnt);
+	else
+		PMD_DRV_LOG_LINE(ERR,
+				 "Failed to remove EFID=%d from SID=%d",
+				 rep_fid, sid);
+
+	return rc;
+}
+
+static int32_t
 ulp_tfc_ctx_attach(struct bnxt *bp,
 		   struct bnxt_ulp_session_state *session)
 {
@@ -703,6 +768,12 @@ ulp_tfc_ctx_attach(struct bnxt *bp,
 		return rc;
 	}
 
+	rc = bnxt_ulp_devid_get(bp, &dev_id);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Unable to get device id from ulp.\n");
+		return rc;
+	}
+
 	/* Increment the ulp context data reference count usage. */
 	bp->ulp_ctx->cfg_data = session->cfg_data;
 	bp->ulp_ctx->cfg_data->ref_cnt++;
@@ -710,12 +781,12 @@ ulp_tfc_ctx_attach(struct bnxt *bp,
 	rc = tfc_session_fid_add(&bp->tfcp, bp->fw_fid,
 				 session->session_id, &fid_cnt);
 	if (rc) {
-		BNXT_DRV_DBG(ERR, "Failed to add FID:%d to SID:%d.\n",
+		BNXT_DRV_DBG(ERR, "Failed to add RFID:%d to SID:%d.\n",
 			     bp->fw_fid, session->session_id);
 		return rc;
 	}
-	BNXT_DRV_DBG(DEBUG, "SID:%d added FID:%d\n",
-		     session->session_id, bp->fw_fid);
+	BNXT_DRV_DBG(DEBUG, "RFID:%d added to SID:%d\n",
+		     bp->fw_fid, session->session_id);
 
 	rc = bnxt_ulp_cntxt_sid_set(bp->ulp_ctx, session->session_id);
 	if (rc) {
@@ -739,13 +810,6 @@ ulp_tfc_ctx_attach(struct bnxt *bp,
 		BNXT_DRV_DBG(ERR, "Unable to get the app id from ulp.\n");
 		return -EINVAL;
 	}
-
-	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &dev_id);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Unable do get the dev_id.\n");
-		return -EINVAL;
-	}
-
 	flags = bp->ulp_ctx->cfg_data->ulp_flags;
 	if (ULP_APP_DEV_UNSUPPORTED_ENABLED(flags)) {
 		BNXT_DRV_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -769,11 +833,11 @@ ulp_tfc_ctx_detach(struct bnxt *bp,
 
 	rc = tfc_session_fid_rem(&bp->tfcp, bp->fw_fid, &fid_cnt);
 	if (rc)
-		BNXT_DRV_DBG(ERR, "Failed to remove FID:%d from SID:%d\n",
+		BNXT_DRV_DBG(ERR, "Failed to remove RFID:%d from SID:%d\n",
 			     bp->fw_fid, session->session_id);
 	else
-		BNXT_DRV_DBG(DEBUG, "SID:%d removed FID:%d CNT:%d\n",
-			     session->session_id, bp->fw_fid, fid_cnt);
+		BNXT_DRV_DBG(DEBUG, "Removed RFID:%d from SID:%d CNT:%d\n",
+			     bp->fw_fid, session->session_id, fid_cnt);
 	bnxt_ulp_cntxt_sid_reset(bp->ulp_ctx);
 	(void)tfc_close(&bp->tfcp);
 }
@@ -826,11 +890,11 @@ ulp_tfc_deinit(struct bnxt *bp,
 
 	rc = tfc_session_fid_rem(&bp->tfcp, bp->fw_fid, &fid_cnt);
 	if (rc)
-		BNXT_DRV_DBG(ERR, "Failed to remove FID:%d from SID:%d\n",
+		BNXT_DRV_DBG(ERR, "Failed to remove RFID:%d from SID:%d\n",
 			     bp->fw_fid, session->session_id);
 	else
-		BNXT_DRV_DBG(DEBUG, "SID:%d removed FID:%d CNT:%d\n",
-			     session->session_id, bp->fw_fid, fid_cnt);
+		BNXT_DRV_DBG(DEBUG, "Removed RFID:%d from SID:%d CNT:%d\n",
+			     bp->fw_fid, session->session_id, fid_cnt);
 	bnxt_ulp_cntxt_sid_reset(bp->ulp_ctx);
 	(void)tfc_close(&bp->tfcp);
 
@@ -853,6 +917,12 @@ ulp_tfc_init(struct bnxt *bp,
 	uint16_t sid;
 	int rc;
 
+	rc = bnxt_ulp_devid_get(bp, &ulp_dev_id);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Unable to get device id from ulp.\n");
+		return rc;
+	}
+
 	bp->tfcp.bp = bp;
 	rc = tfc_open(&bp->tfcp);
 	if (rc) {
@@ -872,7 +942,7 @@ ulp_tfc_init(struct bnxt *bp,
 		BNXT_DRV_DBG(ERR, "Failed to allocate a session id\n");
 		return rc;
 	}
-	BNXT_DRV_DBG(DEBUG, "SID:%d allocated with FID:%d\n", sid, bp->fw_fid);
+	BNXT_DRV_DBG(DEBUG, "SID:%d allocated with RFID:%d\n", sid, bp->fw_fid);
 	session->session_id = sid;
 	rc = bnxt_ulp_cntxt_sid_set(bp->ulp_ctx, sid);
 	if (rc) {
@@ -897,13 +967,6 @@ ulp_tfc_init(struct bnxt *bp,
 	if (rc) {
 		BNXT_DRV_DBG(ERR, "Unable to initialize flow db lock\n");
 		goto jump_to_error;
-	}
-
-	/* Initialize ulp dparms with values devargs passed */
-	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Unable to get device id from ulp.\n");
-		return rc;
 	}
 
 	rc = ulp_tfc_dparms_init(bp, bp->ulp_ctx, ulp_dev_id);
@@ -968,4 +1031,6 @@ const struct bnxt_ulp_core_ops bnxt_ulp_tfc_core_ops = {
 	.ulp_ctx_detach = ulp_tfc_ctx_detach,
 	.ulp_deinit =  ulp_tfc_deinit,
 	.ulp_init =  ulp_tfc_init,
+	.ulp_vfr_session_fid_add = ulp_tfc_vfr_session_fid_add,
+	.ulp_vfr_session_fid_rem = ulp_tfc_vfr_session_fid_rem
 };

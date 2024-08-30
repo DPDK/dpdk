@@ -1846,6 +1846,21 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 
 	/* Initialize bnxt ULP port details */
 	if (bnxt_enable_ulp(bp)) {
+		if (BNXT_CHIP_P7(bp)) {
+			/* Need to release the Fid from AFM control */
+			rc = bnxt_hwrm_release_afm_func(bp, bp->fw_fid,
+							bp->fw_fid,
+							HWRM_CFA_RELEASE_AFM_FUNC_INPUT_TYPE_RFID,
+							0);
+			if (rc) {
+				PMD_DRV_LOG_LINE(ERR,
+						 "Failed in hwrm release afm func:%u rc=%d",
+						 bp->fw_fid, rc);
+				goto error;
+			}
+			PMD_DRV_LOG_LINE(DEBUG, "Released RFID:%d", bp->fw_fid);
+		}
+
 		rc = bnxt_ulp_port_init(bp);
 		if (rc)
 			goto error;

@@ -83,10 +83,13 @@ ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
 	cmm_info.rsubtype = CFA_RSUBTYPE_CMM_ACT;
 	cmm_info.act_handle = handle;
 	cmm_info.dir = (enum cfa_dir)direction;
-	cmm_clr.clr = true;
-	cmm_clr.offset_in_byte = 0;
-	cmm_clr.sz_in_byte = sizeof(data64[ULP_FC_TFC_PKT_CNT_OFFS]) +
-			     sizeof(data64[ULP_FC_TFC_BYTE_CNT_OFFS]);
+	/* Read and Clear the hw stat if requested */
+	if (count->reset) {
+		cmm_clr.clr = true;
+		cmm_clr.offset_in_byte = 0;
+		cmm_clr.sz_in_byte = sizeof(data64[ULP_FC_TFC_PKT_CNT_OFFS]) +
+			sizeof(data64[ULP_FC_TFC_BYTE_CNT_OFFS]);
+	}
 	rc = tfc_act_get(tfcp, NULL, &cmm_info, &cmm_clr, data, &word_size);
 	if (rc) {
 		BNXT_DRV_DBG(ERR,
