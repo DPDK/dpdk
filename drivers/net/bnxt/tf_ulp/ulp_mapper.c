@@ -21,6 +21,9 @@
 #include "ulp_port_db.h"
 #include "ulp_ha_mgr.h"
 #include "bnxt_tf_pmd_shim.h"
+#ifdef TF_FLOW_SCALE_QUERY
+#include "tf_resources.h"
+#endif /* TF_FLOW_SCALE_QUERY */
 
 static uint8_t mapper_fld_zeros[16] = { 0 };
 
@@ -4315,6 +4318,12 @@ ulp_mapper_resources_free(struct bnxt_ulp_context *ulp_ctx,
 	if (rc)
 		frc = rc;
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* update for regular flows only */
+	if (flow_type == BNXT_ULP_FDB_TYPE_REGULAR)
+		tf_resc_usage_update_all(ulp_ctx->bp);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return frc;
 }
 
@@ -4463,6 +4472,10 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 		if (rc)
 			goto flow_error;
 	}
+
+#ifdef TF_FLOW_SCALE_QUERY
+	tf_resc_usage_update_all(ulp_ctx->bp);
+#endif /* TF_FLOW_SCALE_QUERY */
 
 	return rc;
 

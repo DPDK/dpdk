@@ -12,6 +12,9 @@
 #include "ulp_flow_db.h"
 #include "ulp_fc_mgr.h"
 #include "ulp_tun.h"
+#ifdef TF_FLOW_SCALE_QUERY
+#include "tf_resources.h"
+#endif /* TF_FLOW_SCALE_QUERY */
 
 #define ULP_FLOW_DB_RES_DIR_BIT		31
 #define ULP_FLOW_DB_RES_DIR_MASK	0x80000000
@@ -956,8 +959,15 @@ ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+#ifdef TF_FLOW_SCALE_QUERY
+	tf_resc_pause_usage_update();
+#endif
 	while (!ulp_flow_db_next_entry_get(flow_db, flow_type, &fid))
 		ulp_mapper_resources_free(ulp_ctx, flow_type, fid, NULL);
+#ifdef TF_FLOW_SCALE_QUERY
+	tf_resc_resume_usage_update();
+	tf_resc_usage_update_all(ulp_ctx->bp);
+#endif
 
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
@@ -994,6 +1004,9 @@ ulp_flow_db_function_flow_flush(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+#ifdef TF_FLOW_SCALE_QUERY
+	tf_resc_pause_usage_update();
+#endif
 	while (!ulp_flow_db_next_entry_get(flow_db, BNXT_ULP_FDB_TYPE_REGULAR,
 					   &flow_id)) {
 		if (flow_db->func_id_tbl[flow_id] == func_id)
@@ -1002,6 +1015,10 @@ ulp_flow_db_function_flow_flush(struct bnxt_ulp_context *ulp_ctx,
 						  flow_id,
 						  NULL);
 	}
+#ifdef TF_FLOW_SCALE_QUERY
+	tf_resc_resume_usage_update();
+	tf_resc_usage_update_all(ulp_ctx->bp);
+#endif
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	return 0;
 }
