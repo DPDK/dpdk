@@ -261,7 +261,6 @@ tf_tcam_unbind(struct tf *tfp)
 
 			tcam_db->tcam_db[i] = NULL;
 		}
-
 	}
 
 	rc = tf_tcam_mgr_unbind_msg(tfp, dev);
