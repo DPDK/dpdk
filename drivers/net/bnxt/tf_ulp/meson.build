@@ -31,6 +31,8 @@ sources += files(
 	'bnxt_ulp_tfc.c',
 	'ulp_fc_mgr_tfc.c',
 	'ulp_fc_mgr_tf.c',
-	'ulp_alloc_tbl.c')
+	'ulp_alloc_tbl.c',
+	'ulp_sc_mgr.c',
+	'ulp_sc_mgr_tfc.c')
 
 subdir('generic_templates')

@@ -670,11 +670,21 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 	struct bnxt_ulp_context *ulp_ctx;
 	struct rte_flow_action_rss *rss_conf;
 	struct rte_flow_query_count *count;
+	enum bnxt_ulp_device_id  dev_id;
 	uint32_t flow_id;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (unlikely(!ulp_ctx)) {
 		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to query flow.");
+		return -EINVAL;
+	}
+
+	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Can't identify the device\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to query flow.");
@@ -696,7 +706,11 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		count = data;
-		rc = ulp_fc_mgr_query_count_get(ulp_ctx, flow_id, count);
+		if (dev_id == BNXT_ULP_DEVICE_ID_THOR2)
+			rc = ulp_sc_mgr_query_count_get(ulp_ctx, flow_id, count);
+		else
+			rc = ulp_fc_mgr_query_count_get(ulp_ctx, flow_id, count);
+
 		if (unlikely(rc)) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
