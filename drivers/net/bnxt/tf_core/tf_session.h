@@ -175,11 +175,6 @@ struct tf_session {
 	uint16_t wc_num_slices_per_row;
 
 	/**
-	 * Indicates if TCAM is controlled by TCAM Manager
-	 */
-	int tcam_mgr_control[TF_DIR_MAX][TF_TCAM_TBL_TYPE_MAX];
-
-	/**
 	 * TCAM Manager handle pointing to session based tcam memory
 	 */
 	void *tcam_mgr_handle;
