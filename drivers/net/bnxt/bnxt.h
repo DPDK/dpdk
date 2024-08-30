@@ -989,13 +989,17 @@ struct bnxt {
 	uint8_t			vxlan_port_cnt;
 	uint8_t			geneve_port_cnt;
 	uint8_t			ecpri_port_cnt;
+	uint8_t			l2_etype_tunnel_cnt;
 	uint16_t		vxlan_port;
 	uint16_t		geneve_port;
 	uint16_t		ecpri_port;
 	uint16_t		vxlan_fw_dst_port_id;
 	uint16_t		geneve_fw_dst_port_id;
 	uint16_t		ecpri_fw_dst_port_id;
+#define BNXT_L2_ETYPE_TUNNEL_ID 0xFFFF /* CUSTOM L2 ENCAP - VF representors */
+	uint16_t		l2_etype_tunnel_id;
 	uint16_t		ecpri_upar_in_use;
+	uint8_t			l2_etype_upar_in_use;
 	uint32_t		fw_ver;
 	uint32_t		hwrm_spec_code;
 

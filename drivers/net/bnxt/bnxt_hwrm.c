@@ -3542,6 +3542,10 @@ bnxt_free_tunnel_ports(struct bnxt *bp)
 	if (bp->ecpri_port_cnt)
 		bnxt_hwrm_tunnel_dst_port_free(bp, bp->ecpri_fw_dst_port_id,
 			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_ECPRI);
+
+	if (bp->l2_etype_tunnel_cnt)
+		bnxt_hwrm_tunnel_dst_port_free(bp, bp->l2_etype_tunnel_id,
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_L2_ETYPE);
 }
 
 void bnxt_free_all_hwrm_resources(struct bnxt *bp)
@@ -4839,6 +4843,10 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 		bp->ecpri_port = port;
 		bp->ecpri_upar_in_use = resp->upar_in_use;
 		break;
+	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_L2_ETYPE:
+		bp->l2_etype_tunnel_id = port;
+		bp->l2_etype_upar_in_use = resp->upar_in_use;
+		break;
 	default:
 		break;
 	}
@@ -4867,6 +4875,9 @@ int bnxt_hwrm_tunnel_upar_id_get(struct bnxt *bp, uint8_t *upar_id,
 		*upar_id = resp->upar_in_use;
 		break;
 	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_SRV6:
+		*upar_id = resp->upar_in_use;
+		break;
+	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_L2_ETYPE:
 		*upar_id = resp->upar_in_use;
 		break;
 	default:
@@ -4913,6 +4924,13 @@ int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 		bp->ecpri_port = 0;
 		bp->ecpri_upar_in_use = 0;
 		bp->ecpri_port_cnt = 0;
+	}
+
+	if (tunnel_type ==
+	    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_L2_ETYPE) {
+		bp->l2_etype_tunnel_cnt = 0;
+		bp->l2_etype_tunnel_id = 0;
+		bp->l2_etype_upar_in_use = 0;
 	}
 
 	bnxt_hwrm_set_tpa(bp);
