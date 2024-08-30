@@ -28,6 +28,8 @@
 struct ulp_fdb_resource_info {
 	/* Points to next resource in the chained list. */
 	uint32_t			nxt_resource_idx;
+	/* TBD: used for tfc stat resource for now */
+	uint32_t			reserve_flag;
 	union {
 		uint64_t		resource_em_handle;
 		struct {
@@ -94,6 +96,7 @@ struct ulp_flow_db_res_params {
 	uint8_t				fdb_flags;
 	uint8_t				critical_resource;
 	uint64_t			resource_hndl;
+	uint32_t			reserve_flag;
 };
 
 /*
