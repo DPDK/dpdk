@@ -290,8 +290,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
-	.pri_opcode  = BNXT_ULP_PRI_OPC_APP_PRI_OR_CONST,
-	.pri_operand = ULP_THOR2_SYM_L2_CTXT_PRI_APP,
+	.pri_opcode  = BNXT_ULP_PRI_OPC_CONST,
+	.pri_operand = 140,
 	.ident_start_idx = 10,
 	.ident_nums = 1
 	},
@@ -310,8 +310,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
-	.pri_opcode  = BNXT_ULP_PRI_OPC_APP_PRI_OR_CONST,
-	.pri_operand = ULP_THOR2_SYM_L2_CTXT_PRI_APP,
+	.pri_opcode  = BNXT_ULP_PRI_OPC_CONST,
+	.pri_operand = 140,
 	.key_start_idx = 15,
 	.blob_key_bit_size = 256,
 	.key_bit_size = 256,
@@ -17602,7 +17602,9 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.description = "loopback",
 		.field_bit_size = 1,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_opr1 = {
+			0xff}
 		},
 	.field_info_spec = {
 		.description = "loopback",
@@ -30502,17 +30504,13 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 5,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_THOR2_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "tun_hdr_type",
 		.field_bit_size = 5,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_THOR2_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -30520,17 +30518,13 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.description = "out_tun_hdr_type",
 		.field_bit_size = 5,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_THOR2_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	.field_info_spec = {
 		.description = "out_tun_hdr_type",
 		.field_bit_size = 5,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr1 = {
-		ULP_THOR2_SYM_TUN_HDR_TYPE_NONE}
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
