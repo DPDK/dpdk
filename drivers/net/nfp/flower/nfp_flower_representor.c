@@ -56,8 +56,8 @@ nfp_flower_repr_dev_infos_get(__rte_unused struct rte_eth_dev *dev,
 	pf_hw = repr->app_fw_flower->pf_hw;
 
 	/* Hardcoded pktlen and queues for now */
-	dev_info->max_rx_queues = 1;
-	dev_info->max_tx_queues = 1;
+	dev_info->max_rx_queues = (uint16_t)pf_hw->max_rx_queues;
+	dev_info->max_tx_queues = (uint16_t)pf_hw->max_tx_queues;
 	dev_info->min_rx_bufsize = RTE_ETHER_MIN_MTU;
 	dev_info->max_rx_pktlen = 9000;
 
@@ -581,10 +581,6 @@ nfp_flower_pf_repr_init(struct rte_eth_dev *eth_dev,
 	/* This backer port is that of the eth_device created for the PF vNIC */
 	eth_dev->data->backer_port_id = 0;
 
-	/* Only single queues for representor devices */
-	eth_dev->data->nb_rx_queues = 1;
-	eth_dev->data->nb_tx_queues = 1;
-
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
@@ -661,10 +657,6 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 
 	/* This backer port is that of the eth_device created for the PF vNIC */
 	eth_dev->data->backer_port_id = 0;
-
-	/* Only single queues for representor devices */
-	eth_dev->data->nb_rx_queues = 1;
-	eth_dev->data->nb_tx_queues = 1;
 
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
