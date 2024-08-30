@@ -49,6 +49,36 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_class_tmpl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
 		.cond_start_idx = 48,
 		.cond_nums = 0 }
+	},
+	/* class_tid: 5, ingress */
+	[5] = {
+	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.num_tbls = 1,
+	.start_tbl_idx = 95,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_start_idx = 50,
+		.cond_nums = 0 }
+	},
+	/* class_tid: 6, ingress */
+	[6] = {
+	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.num_tbls = 1,
+	.start_tbl_idx = 96,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_start_idx = 50,
+		.cond_nums = 0 }
+	},
+	/* class_tid: 7, ingress */
+	[7] = {
+	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.num_tbls = 1,
+	.start_tbl_idx = 97,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_start_idx = 50,
+		.cond_nums = 0 }
 	}
 };
 
@@ -1268,7 +1298,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 8,
 	.key_num_fields = 1,
 	.result_start_idx = 321,
-	.result_bit_size = 70,
+	.result_bit_size = 69,
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 3, , table: parif_def_lkup_arec_ptr.ing_0 */
@@ -1452,7 +1482,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 8,
 	.key_num_fields = 1,
 	.result_start_idx = 368,
-	.result_bit_size = 70,
+	.result_bit_size = 69,
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 3, , table: l2_cntxt_tcam_cache.rd */
@@ -1542,7 +1572,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.key_bit_size = 8,
 	.key_num_fields = 1,
 	.result_start_idx = 386,
-	.result_bit_size = 70,
+	.result_bit_size = 69,
 	.result_num_fields = 5
 	},
 	{ /* class_tid: 3, , table: int_full_act_record.egr_0 */
@@ -2205,6 +2235,48 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_class_tbl_list[] = {
 	.result_start_idx = 649,
 	.result_bit_size = 179,
 	.result_num_fields = 8
+	},
+	{ /* class_tid: 5, , table: control.reject */
+	.description = "control.reject",
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
+	.direction = TF_DIR_RX,
+	.true_message = "Reject: wh+ not supporting promiscuous template",
+	.execute_info = {
+		.cond_true_goto  = 1023,
+		.cond_false_goto = 0,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 50,
+		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
+	},
+	{ /* class_tid: 6, , table: control.reject */
+	.description = "control.reject",
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
+	.direction = TF_DIR_RX,
+	.true_message = "Reject: wh+ not supporting promiscuous template",
+	.execute_info = {
+		.cond_true_goto  = 1023,
+		.cond_false_goto = 0,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 50,
+		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
+	},
+	{ /* class_tid: 7, , table: control.reject */
+	.description = "control.reject",
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
+	.direction = TF_DIR_RX,
+	.true_message = "Reject: wh+ not supporting group miss action template",
+	.execute_info = {
+		.cond_true_goto  = 1023,
+		.cond_false_goto = 0,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 50,
+		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	}
 };
 
@@ -16221,7 +16293,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "prof_func_id",
-	.field_bit_size = 8,
+	.field_bit_size = 7,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
@@ -16535,7 +16607,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "prof_func_id",
-	.field_bit_size = 8,
+	.field_bit_size = 7,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},
@@ -16665,7 +16737,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_class_result_field_list[] = {
 	},
 	{
 	.description = "prof_func_id",
-	.field_bit_size = 8,
+	.field_bit_size = 7,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 	},

@@ -13,7 +13,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor2_class_tmpl_list[] = {
 	/* class_tid: 1, ingress */
 	[1] = {
 	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
-	.num_tbls = 77,
+	.num_tbls = 76,
 	.start_tbl_idx = 0,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
@@ -23,8 +23,8 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor2_class_tmpl_list[] = {
 	/* class_tid: 2, egress */
 	[2] = {
 	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
-	.num_tbls = 50,
-	.start_tbl_idx = 77,
+	.num_tbls = 49,
+	.start_tbl_idx = 76,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
 		.cond_start_idx = 2109,
@@ -34,7 +34,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor2_class_tmpl_list[] = {
 	[3] = {
 	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
 	.num_tbls = 35,
-	.start_tbl_idx = 127,
+	.start_tbl_idx = 125,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
 		.cond_start_idx = 4177,
@@ -44,10 +44,40 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor2_class_tmpl_list[] = {
 	[4] = {
 	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
 	.num_tbls = 19,
-	.start_tbl_idx = 162,
+	.start_tbl_idx = 160,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
 		.cond_start_idx = 4181,
+		.cond_nums = 0 }
+	},
+	/* class_tid: 5, ingress */
+	[5] = {
+	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
+	.num_tbls = 1,
+	.start_tbl_idx = 179,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_start_idx = 4183,
+		.cond_nums = 0 }
+	},
+	/* class_tid: 6, ingress */
+	[6] = {
+	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
+	.num_tbls = 1,
+	.start_tbl_idx = 180,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_start_idx = 4183,
+		.cond_nums = 0 }
+	},
+	/* class_tid: 7, ingress */
+	[7] = {
+	.device_name = BNXT_ULP_DEVICE_ID_THOR2,
+	.num_tbls = 1,
+	.start_tbl_idx = 181,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
+		.cond_start_idx = 4183,
 		.cond_nums = 0 }
 	}
 };
@@ -1001,12 +1031,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.direction = TF_DIR_RX,
 	.execute_info = {
 		.cond_true_goto  = 1,
-		.cond_false_goto = 13,
+		.cond_false_goto = 12,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
 		.cond_start_idx = 141,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
+	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* class_tid: 1, , table: hdr_overlap_cache.overlap_check */
 	.description = "hdr_overlap_cache.overlap_check",
@@ -1023,7 +1054,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 99,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
@@ -1046,7 +1077,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID
+	.fdb_operand = BNXT_ULP_RF_IDX_RID_1
 	},
 	{ /* class_tid: 1, , table: profile_tcam.allocate_wc_profile */
 	.description = "profile_tcam.allocate_wc_profile",
@@ -1063,7 +1094,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID_1,
 	.pri_opcode  = BNXT_ULP_PRI_OPC_APP_PRI_OR_CONST,
 	.pri_operand = ULP_THOR2_SYM_PROF_TCAM_PRI_APP,
 	.track_type = CFA_TRACK_TYPE_SID,
@@ -1085,7 +1116,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_KEY_ID_0,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID_1,
 	.track_type = CFA_TRACK_TYPE_SID,
 	.result_start_idx = 60,
 	.result_bit_size = 256,
@@ -1106,7 +1137,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.key_start_idx = 102,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
@@ -1117,20 +1149,6 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.result_start_idx = 232,
 	.result_bit_size = 48,
 	.result_num_fields = 3
-	},
-	{ /* class_tid: 1, , table: control.proto_header_rid_alloc */
-	.description = "control.proto_header_rid_alloc",
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
-	.direction = TF_DIR_RX,
-	.execute_info = {
-		.cond_true_goto  = 1,
-		.cond_false_goto = 1,
-		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 485,
-		.cond_nums = 0 },
-	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* class_tid: 1, , table: fkb_select.em_gen_template_alloc */
 	.description = "fkb_select.em_gen_template_alloc",
@@ -1563,7 +1581,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
-		.cond_true_goto  = -30,
+		.cond_true_goto  = -29,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 2109,
@@ -1984,12 +2002,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.direction = TF_DIR_TX,
 	.execute_info = {
 		.cond_true_goto  = 1,
-		.cond_false_goto = 13,
+		.cond_false_goto = 12,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
 		.cond_start_idx = 2202,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
+	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* class_tid: 2, , table: hdr_overlap_cache.overlap_check */
 	.description = "hdr_overlap_cache.overlap_check",
@@ -2006,7 +2025,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 273,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
@@ -2029,7 +2048,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID
+	.fdb_operand = BNXT_ULP_RF_IDX_RID_1
 	},
 	{ /* class_tid: 2, , table: profile_tcam.allocate_wc_profile */
 	.description = "profile_tcam.allocate_wc_profile",
@@ -2046,7 +2065,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID_1,
 	.pri_opcode  = BNXT_ULP_PRI_OPC_CONST,
 	.pri_operand = 0,
 	.track_type = CFA_TRACK_TYPE_SID,
@@ -2068,7 +2087,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_KEY_ID_0,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID_1,
 	.track_type = CFA_TRACK_TYPE_SID,
 	.result_start_idx = 662,
 	.result_bit_size = 256,
@@ -2089,7 +2108,8 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
+	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.key_start_idx = 276,
 	.blob_key_bit_size = 12,
 	.key_bit_size = 12,
@@ -2100,20 +2120,6 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.result_start_idx = 834,
 	.result_bit_size = 48,
 	.result_num_fields = 3
-	},
-	{ /* class_tid: 2, , table: control.proto_header_rid_alloc */
-	.description = "control.proto_header_rid_alloc",
-	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
-	.direction = TF_DIR_TX,
-	.execute_info = {
-		.cond_true_goto  = 1,
-		.cond_false_goto = 1,
-		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2549,
-		.cond_nums = 0 },
-	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
-	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
-	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* class_tid: 2, , table: fkb_select.em_gen_template_alloc */
 	.description = "fkb_select.em_gen_template_alloc",
@@ -2547,7 +2553,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
-		.cond_true_goto  = -29,
+		.cond_true_goto  = -28,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 4177,
@@ -3793,6 +3799,48 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor2_class_tbl_list[] = {
 		.func_opr2 = BNXT_ULP_CF_IDX_DEV_PORT_ID,
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC },
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_PUSH_AND_SET_VFR_FLAG
+	},
+	{ /* class_tid: 5, , table: control.reject */
+	.description = "control.reject",
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
+	.direction = TF_DIR_RX,
+	.true_message = "Reject: Thor2 not supporting promiscuous template",
+	.execute_info = {
+		.cond_true_goto  = 1023,
+		.cond_false_goto = 0,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 4183,
+		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
+	},
+	{ /* class_tid: 6, , table: control.reject */
+	.description = "control.reject",
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
+	.direction = TF_DIR_RX,
+	.true_message = "Reject: Thor2 not supporting promiscuous template",
+	.execute_info = {
+		.cond_true_goto  = 1023,
+		.cond_false_goto = 0,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 4183,
+		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
+	},
+	{ /* class_tid: 7, , table: control.reject */
+	.description = "control.reject",
+	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
+	.direction = TF_DIR_RX,
+	.true_message = "Reject: Thor2 not supporting group miss action template",
+	.execute_info = {
+		.cond_true_goto  = 1023,
+		.cond_false_goto = 0,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 4183,
+		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
+	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	}
 };
 
@@ -23894,9 +23942,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			139 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -23965,9 +24014,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			142 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -24037,9 +24087,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			483 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -25407,12 +25458,12 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.description = "metadata",
 		.field_bit_size = 32,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_opr1 = {
-		(ULP_THOR2_SYM_CHAIN_META_VAL_MASK >> 24) & 0xff,
-		(ULP_THOR2_SYM_CHAIN_META_VAL_MASK >> 16) & 0xff,
-		(ULP_THOR2_SYM_CHAIN_META_VAL_MASK >> 8) & 0xff,
-		ULP_THOR2_SYM_CHAIN_META_VAL_MASK & 0xff}
+			0xff,
+			0xff,
+			0xff,
+			0xff}
 		},
 	.field_info_spec = {
 		.description = "metadata",
@@ -25428,7 +25479,7 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.field_opr2 = {
 		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
 		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
-		.field_src3 = BNXT_ULP_FIELD_SRC_CONST
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -26760,9 +26811,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			1277 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -26845,9 +26897,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			1282 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -28068,9 +28121,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			2094 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -28803,9 +28857,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			2200 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -28874,9 +28929,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			2203 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -28946,9 +29002,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			2547 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -30335,12 +30392,12 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.description = "metadata",
 		.field_bit_size = 32,
 		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
-		.field_src1 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_opr1 = {
-		(0xf0000000 >> 24) & 0xff,
-		(0xf0000000 >> 16) & 0xff,
-		(0xf0000000 >> 8) & 0xff,
-		0xf0000000 & 0xff}
+			0xff,
+			0xff,
+			0xff,
+			0xff}
 		},
 	.field_info_spec = {
 		.description = "metadata",
@@ -30356,7 +30413,7 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 		.field_opr2 = {
 		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
 		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
-		.field_src3 = BNXT_ULP_FIELD_SRC_CONST
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	{
@@ -31688,9 +31745,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			3345 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -31773,9 +31831,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			3350 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -32996,9 +33055,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor2_class_key_info_list[] = {
 			4162 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
 		.field_opr2 = {
-		ULP_THOR2_SYM_CHAIN_META_TYPE},
+		(BNXT_ULP_RF_IDX_JUMP_META >> 8) & 0xff,
+		BNXT_ULP_RF_IDX_JUMP_META & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -50274,8 +50334,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor2_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-	(BNXT_ULP_RF_IDX_RID >> 8) & 0xff,
-	BNXT_ULP_RF_IDX_RID & 0xff}
+	(BNXT_ULP_RF_IDX_RID_1 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_RID_1 & 0xff}
 	},
 	{
 	.description = "wc_profile_id",
@@ -54932,8 +54992,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor2_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
-	(BNXT_ULP_RF_IDX_RID >> 8) & 0xff,
-	BNXT_ULP_RF_IDX_RID & 0xff}
+	(BNXT_ULP_RF_IDX_RID_1 >> 8) & 0xff,
+	BNXT_ULP_RF_IDX_RID_1 & 0xff}
 	},
 	{
 	.description = "wc_profile_id",
@@ -60504,7 +60564,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
@@ -60534,7 +60594,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
@@ -60550,7 +60610,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
@@ -60615,7 +60675,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "wc_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_WC_PROF,
+	.ident_type = CFA_RSUBTYPE_IDENT_WC_PROF,
 	.regfile_idx = BNXT_ULP_RF_IDX_WC_PROFILE_ID_0,
 	.ident_bit_size = 8,
 	.ident_bit_pos = 12
@@ -60624,7 +60684,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_EM_PROF,
+	.ident_type = CFA_RSUBTYPE_IDENT_EM_PROF,
 	.regfile_idx = BNXT_ULP_RF_IDX_EM_PROFILE_ID_0,
 	.ident_bit_size = 8,
 	.ident_bit_pos = 33
@@ -60730,7 +60790,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "wc_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_WC_PROF,
+	.ident_type = CFA_RSUBTYPE_IDENT_WC_PROF,
 	.regfile_idx = BNXT_ULP_RF_IDX_WC_PROFILE_ID_0,
 	.ident_bit_size = 8,
 	.ident_bit_pos = 12
@@ -60739,7 +60799,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "em_profile_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_EM_PROF,
+	.ident_type = CFA_RSUBTYPE_IDENT_EM_PROF,
 	.regfile_idx = BNXT_ULP_RF_IDX_EM_PROFILE_ID_0,
 	.ident_bit_size = 8,
 	.ident_bit_pos = 33
@@ -60768,7 +60828,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "prof_func_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_PROF_FUNC,
+	.ident_type = CFA_RSUBTYPE_IDENT_PROF_FUNC,
 	.regfile_idx = BNXT_ULP_RF_IDX_PROF_FUNC_ID_0,
 	.ident_bit_size = 0,
 	.ident_bit_pos = 0
@@ -60784,7 +60844,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
@@ -60793,7 +60853,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "prof_func_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_PROF_FUNC,
+	.ident_type = CFA_RSUBTYPE_IDENT_PROF_FUNC,
 	.regfile_idx = BNXT_ULP_RF_IDX_PROF_FUNC_ID_0,
 	.ident_bit_size = 8,
 	.ident_bit_pos = 100
@@ -60801,7 +60861,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
@@ -60817,7 +60877,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
@@ -60845,7 +60905,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "prof_func_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_PROF_FUNC,
+	.ident_type = CFA_RSUBTYPE_IDENT_PROF_FUNC,
 	.regfile_idx = BNXT_ULP_RF_IDX_PROF_FUNC_ID_0,
 	.ident_bit_size = 0,
 	.ident_bit_pos = 0
@@ -60861,7 +60921,7 @@ struct bnxt_ulp_mapper_ident_info ulp_thor2_class_ident_list[] = {
 	{
 	.description = "l2_cntxt_id",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_IDENTIFIER,
-	.ident_type = TF_IDENT_TYPE_L2_CTXT_HIGH,
+	.ident_type = CFA_RSUBTYPE_IDENT_L2CTX,
 	.regfile_idx = BNXT_ULP_RF_IDX_L2_CNTXT_ID_0,
 	.ident_bit_size = 11,
 	.ident_bit_pos = 109
