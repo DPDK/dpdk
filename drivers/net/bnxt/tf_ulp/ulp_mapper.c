@@ -3789,6 +3789,8 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_FUNC_OPC_GT:
 	case BNXT_ULP_FUNC_OPC_LE:
 	case BNXT_ULP_FUNC_OPC_LT:
+	case BNXT_ULP_FUNC_OPC_ADD:
+	case BNXT_ULP_FUNC_OPC_SUB:
 		process_src1 = 1;
 		process_src2 = 1;
 		break;
@@ -3840,6 +3842,12 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_FUNC_OPC_LT:
 		if (res1 < res2)
 			res = 1;
+		break;
+	case BNXT_ULP_FUNC_OPC_ADD:
+		res = res1 + res2;
+		break;
+	case BNXT_ULP_FUNC_OPC_SUB:
+		res = res1 - res2;
 		break;
 	case BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF:
 		res = res1;
