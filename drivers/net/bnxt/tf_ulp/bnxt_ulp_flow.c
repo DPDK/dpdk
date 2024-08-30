@@ -577,6 +577,66 @@ bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
 	return ret;
 }
 
+/*
+ * Fill the rte_flow_query_rss 'rss_conf' argument passed
+ * in the rte_flow_query() with the values obtained and
+ * accumulated locally.
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * flow_id [in] The HW flow ID
+ *
+ * rss_conf [out] The rte_flow_query_count 'data' that is set
+ *
+ */
+static int ulp_flow_query_rss_get(struct bnxt_ulp_context *ctxt,
+			   uint32_t flow_id,
+			   struct rte_flow_action_rss *rss_conf)
+{
+	struct ulp_flow_db_res_params params;
+	uint32_t nxt_resource_index = 0;
+	bool found_cntr_resource = false;
+	struct bnxt *bp;
+	uint16_t vnic_id = 0;
+	int rc = 0;
+
+	bp = bnxt_ulp_cntxt_bp_get(ctxt);
+	if (!bp) {
+		BNXT_DRV_DBG(ERR, "Failed to get bp from ulp cntxt\n");
+		return -EINVAL;
+	}
+
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ctxt)) {
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
+		return -EINVAL;
+	}
+	do {
+		rc = ulp_flow_db_resource_get(ctxt,
+					      BNXT_ULP_FDB_TYPE_REGULAR,
+					      flow_id,
+					      &nxt_resource_index,
+					      &params);
+		if (params.resource_func ==
+		     BNXT_ULP_RESOURCE_FUNC_VNIC_TABLE &&
+		     (params.resource_sub_type ==
+		       BNXT_ULP_RESOURCE_SUB_TYPE_VNIC_TABLE_RSS ||
+		      params.resource_sub_type ==
+		       BNXT_ULP_RESOURCE_SUB_TYPE_VNIC_TABLE_QUEUE)) {
+			vnic_id = params.resource_hndl;
+			found_cntr_resource = true;
+			break;
+		}
+
+	} while (!rc && nxt_resource_index);
+
+	if (found_cntr_resource)
+		bnxt_vnic_rss_query_info_fill(bp, rss_conf, vnic_id);
+
+	bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+
+	return rc;
+}
+
 /* Function to query the rte flows. */
 static int32_t
 bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
@@ -587,6 +647,7 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 {
 	int rc = 0;
 	struct bnxt_ulp_context *ulp_ctx;
+	struct rte_flow_action_rss *rss_conf;
 	struct rte_flow_query_count *count;
 	uint32_t flow_id;
 
@@ -602,6 +663,16 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 	flow_id = (uint32_t)(uintptr_t)flow;
 
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		rss_conf = (struct rte_flow_action_rss *)data;
+		rc = ulp_flow_query_rss_get(ulp_ctx, flow_id, rss_conf);
+		if (rc) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to query RSS info.");
+		}
+
+		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		count = data;
 		rc = ulp_fc_mgr_query_count_get(ulp_ctx, flow_id, count);

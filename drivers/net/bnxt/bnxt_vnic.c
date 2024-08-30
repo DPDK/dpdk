@@ -30,6 +30,7 @@
 			((BNXT_VNIC_BITMAP_SIZE - 1) - \
 			((i) % BNXT_VNIC_BITMAP_SIZE))) & 1)
 
+static uint16_t rss_query_queues[BNXT_VNIC_MAX_QUEUE_SIZE];
 /*
  * VNIC Functions
  */
@@ -777,16 +778,21 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 	}
 
 	/* hwrm_type conversion */
+	vnic->hash_f = rss_info->rss_func;
+	vnic->rss_types = rss_info->rss_types;
 	vnic->hash_type = bnxt_rte_to_hwrm_hash_types(rss_info->rss_types);
 	vnic->hash_mode = bnxt_rte_to_hwrm_hash_level(bp, rss_info->rss_types,
 						      rss_info->rss_level);
 
 	/* configure the key */
-	if (!rss_info->key_len)
+	if (!rss_info->key_len) {
 		/* If hash key has not been specified, use random hash key.*/
 		bnxt_prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
-	else
+		vnic->key_len = HW_HASH_KEY_SIZE;
+	} else {
 		memcpy(vnic->rss_hash_key, rss_info->key, rss_info->key_len);
+		vnic->key_len = rss_info->key_len;
+	}
 
 	/* Prepare the indirection table */
 	bnxt_vnic_populate_rss_table(bp, vnic);
@@ -818,6 +824,35 @@ bnxt_vnic_rss_create(struct bnxt *bp,
 fail_cleanup:
 	bnxt_vnic_rss_delete(bp, idx);
 	return NULL;
+}
+
+void
+bnxt_vnic_rss_query_info_fill(struct bnxt *bp,
+			      struct rte_flow_action_rss *rss_conf,
+			      uint16_t vnic_id)
+{
+	struct bnxt_vnic_info *vnic_info;
+	int idx;
+
+	vnic_info = bnxt_vnic_queue_db_get_vnic(bp, vnic_id);
+	if (vnic_info == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "lookup failed for id %d", vnic_id);
+		return;
+	}
+
+	rss_conf->key_len = vnic_info->key_len;
+	rss_conf->key = vnic_info->rss_hash_key;
+	rss_conf->func = vnic_info->hash_f;
+	rss_conf->level = vnic_info->hash_mode;
+	rss_conf->types = vnic_info->rss_types;
+
+	memset(rss_query_queues, 0, sizeof(rss_query_queues));
+	for (idx = 0; idx < BNXT_VNIC_MAX_QUEUE_SIZE; idx++)
+		if (BNXT_VNIC_BITMAP_GET(vnic_info->queue_bitmap, idx)) {
+			rss_query_queues[rss_conf->queue_num] = idx;
+			rss_conf->queue_num += 1;
+		}
+	rss_conf->queue = (const uint16_t *)&rss_query_queues;
 }
 
 int32_t
