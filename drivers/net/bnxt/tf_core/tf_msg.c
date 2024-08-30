@@ -1612,20 +1612,20 @@ tf_msg_tcam_entry_set(struct tf *tfp,
 	req.result_size = parms->result_size;
 	data_size = 2 * req.key_size + req.result_size;
 
-	if (data_size <= TF_PCI_BUF_SIZE_MAX) {
-		/* use pci buffer */
-		data = &req.dev_data[0];
-	} else {
-		/* use dma buffer */
-		req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DMA;
-		rc = tf_msg_alloc_dma_buf(&buf, data_size);
-		if (rc)
-			goto cleanup;
-		data = buf.va_addr;
-		tfp_memcpy(&req.dev_data[0],
-			   &buf.pa_addr,
-			   sizeof(buf.pa_addr));
-	}
+	/*
+	 * Always use dma buffer, as the delete multi slice
+	 * tcam entries not support with HWRM request buffer
+	 * only DMA'ed buffer can update the mode bits for
+	 * the delete to work
+	 */
+	req.flags |= HWRM_TF_TCAM_SET_INPUT_FLAGS_DMA;
+	rc = tf_msg_alloc_dma_buf(&buf, data_size);
+	if (rc)
+		goto cleanup;
+	data = buf.va_addr;
+	tfp_memcpy(&req.dev_data[0],
+		   &buf.pa_addr,
+		   sizeof(buf.pa_addr));
 
 	tfp_memcpy(&data[0], parms->key, parms->key_size);
 	tfp_memcpy(&data[parms->key_size], parms->mask, parms->key_size);
