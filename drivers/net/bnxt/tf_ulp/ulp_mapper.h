@@ -19,6 +19,7 @@
 #include "ulp_utils.h"
 #include "ulp_gen_tbl.h"
 #include "tfc_em.h"
+#include "bitalloc.h"
 
 #define ULP_IDENTS_INVALID ((uint16_t)0xffff)
 
@@ -40,6 +41,7 @@ struct bnxt_ulp_key_recipe_info {
 	uint32_t num_recipes;
 	uint8_t max_fields;
 	struct bnxt_ulp_key_recipe_entry **recipes[BNXT_ULP_DIRECTION_LAST][ULP_RECIPE_TYPE_MAX];
+	struct bitalloc *recipe_ba[BNXT_ULP_DIRECTION_LAST][ULP_RECIPE_TYPE_MAX];
 };
 
 struct ulp_mapper_core_ops;

@@ -257,6 +257,10 @@ ulp_tf_resources_get(struct bnxt_ulp_context *ulp_ctx,
 		return -EINVAL;
 	}
 
+	/* use DEFAULT_NON_HA instead of DEFAULT resources if HA is disabled */
+	if (ULP_APP_HA_IS_DYNAMIC(ulp_ctx))
+		stype = ulp_ctx->cfg_data->def_session_type;
+
 	unnamed = bnxt_ulp_resource_resv_list_get(&unum);
 	if (unnamed == NULL) {
 		BNXT_DRV_DBG(ERR, "Unable to get resource resv list.\n");
