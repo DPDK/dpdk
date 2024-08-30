@@ -31,16 +31,15 @@ struct bnxt_ulp_mapper_glb_resource_entry {
 
 #define BNXT_ULP_KEY_RECIPE_MAX_FLDS 128
 struct bnxt_ulp_key_recipe_entry {
-	bool in_use;
 	uint32_t cnt;
 	struct bnxt_ulp_mapper_key_info	flds[BNXT_ULP_KEY_RECIPE_MAX_FLDS];
 };
 
+#define ULP_RECIPE_TYPE_MAX (BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_WM + 1)
 struct bnxt_ulp_key_recipe_info {
 	uint32_t num_recipes;
 	uint8_t max_fields;
-	struct bnxt_ulp_key_recipe_entry *em_recipes[BNXT_ULP_DIRECTION_LAST];
-	struct bnxt_ulp_key_recipe_entry *wc_recipes[BNXT_ULP_DIRECTION_LAST];
+	struct bnxt_ulp_key_recipe_entry **recipes[BNXT_ULP_DIRECTION_LAST][ULP_RECIPE_TYPE_MAX];
 };
 
 struct ulp_mapper_core_ops;

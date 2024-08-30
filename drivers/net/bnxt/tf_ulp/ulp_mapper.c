@@ -1280,65 +1280,71 @@ ulp_mapper_field_opc_next(struct bnxt_ulp_mapper_parms *parms,
 static void
 ulp_mapper_key_recipe_tbl_deinit(struct bnxt_ulp_mapper_data *mdata)
 {
+	struct bnxt_ulp_key_recipe_entry **recipes;
 	enum bnxt_ulp_direction dir;
+	uint32_t idx, ftype;
+
+	/* If recipe table is not initialized then exit */
+	if (!mdata->key_recipe_info.num_recipes)
+		return;
 
 	for (dir = 0; dir < BNXT_ULP_DIRECTION_LAST; dir++) {
-		rte_free(mdata->key_recipe_info.em_recipes[dir]);
-		rte_free(mdata->key_recipe_info.wc_recipes[dir]);
+		for (ftype = 0; ftype < ULP_RECIPE_TYPE_MAX; ftype++) {
+			recipes = mdata->key_recipe_info.recipes[dir][ftype];
+			for (idx = 0; idx < mdata->key_recipe_info.num_recipes;
+			      idx++) {
+				if (recipes[idx])
+					rte_free(recipes[idx]);
+			}
+			rte_free(mdata->key_recipe_info.recipes[dir][ftype]);
+			mdata->key_recipe_info.recipes[dir][ftype] =  NULL;
+		}
 	}
+	mdata->key_recipe_info.num_recipes = 0;
 }
 
 static int32_t
 ulp_mapper_key_recipe_tbl_init(struct bnxt_ulp_context *ulp_ctx,
 			       struct bnxt_ulp_mapper_data *mdata)
 {
-	struct bnxt_ulp_key_recipe_entry *recipes;
+	struct bnxt_ulp_key_recipe_entry **recipes;
 	enum bnxt_ulp_direction dir;
-	uint32_t dev_id = 0;
-	uint32_t num_recipes;
+	uint32_t dev_id = 0, size_val;
+	uint32_t num_recipes, ftype;
 	int32_t rc = 0;
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
 		BNXT_DRV_DBG(ERR, "Unable to get device id from ulp.\n");
-		return rc;
+		return -EINVAL;
 	}
 	num_recipes = bnxt_ulp_num_key_recipes_get(ulp_ctx);
 	if (!num_recipes)
-		return 0;
+		return rc;
 
+	size_val = sizeof(struct bnxt_ulp_key_recipe_entry *);
 	for (dir = 0; dir < BNXT_ULP_DIRECTION_LAST; dir++) {
-		recipes = rte_zmalloc("key_recipe_em",
-				   sizeof(struct bnxt_ulp_key_recipe_entry) *
-				   num_recipes, 0);
-		if (!recipes)
-			goto error;
-		mdata->key_recipe_info.em_recipes[dir] = recipes;
-
-		recipes = rte_zmalloc("key_recipe_wc",
-				   sizeof(struct bnxt_ulp_key_recipe_entry) *
-				   num_recipes, 0);
-		if (!recipes)
-			goto error;
-		mdata->key_recipe_info.wc_recipes[dir] = recipes;
+		for (ftype = 0; ftype < ULP_RECIPE_TYPE_MAX; ftype++) {
+			recipes = rte_zmalloc("key_recipe_list",
+					      size_val * num_recipes, 0);
+			if (!recipes) {
+				BNXT_DRV_DBG(ERR, "Uanable to alloc memory\n");
+				return -ENOMEM;
+			}
+			mdata->key_recipe_info.recipes[dir][ftype] = recipes;
+		}
 	}
-
 	mdata->key_recipe_info.num_recipes = num_recipes;
 	mdata->key_recipe_info.max_fields = BNXT_ULP_KEY_RECIPE_MAX_FLDS;
-
-	return 0;
-error:
-	(void)ulp_mapper_key_recipe_tbl_deinit(mdata);
-	return -ENOMEM;
+	return rc;
 }
 
-static struct bnxt_ulp_key_recipe_entry *
-ulp_mapper_key_recipe_entry_get(struct bnxt_ulp_context *ulp_ctx,
-				enum bnxt_ulp_direction dir,
-				enum bnxt_ulp_resource_sub_type stype,
-				uint8_t recipe_id, uint8_t *max_fields)
+static struct bnxt_ulp_mapper_data *
+ulp_mapper_key_recipe_args_validate(struct bnxt_ulp_context *ulp_ctx,
+				    enum bnxt_ulp_direction dir,
+				    enum bnxt_ulp_resource_sub_type stype,
+				    uint8_t recipe_id)
 {
-	struct bnxt_ulp_key_recipe_entry *recipes;
 	struct bnxt_ulp_mapper_data *mdata;
 
 	mdata = (struct bnxt_ulp_mapper_data *)
@@ -1355,52 +1361,54 @@ ulp_mapper_key_recipe_entry_get(struct bnxt_ulp_context *ulp_ctx,
 		BNXT_DRV_DBG(ERR, "Recipes are not supported\n");
 		return NULL;
 	}
-	switch (stype) {
-	case BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_WM:
-		recipes = mdata->key_recipe_info.wc_recipes[dir];
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_EM:
-		recipes = mdata->key_recipe_info.em_recipes[dir];
-		break;
-	default:
-		BNXT_DRV_DBG(ERR, "Invalid type (%d) for key recipe.\n", stype);
+	if (stype != BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_WM &&
+	    stype != BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_EM) {
+		BNXT_DRV_DBG(ERR, "Invalid type (%d) in key recipe\n", stype);
 		return NULL;
-	};
-
-	if (recipe_id >= mdata->key_recipe_info.num_recipes) {
-		BNXT_DRV_DBG(ERR, "key recipe id out of range(%d >= %d)\n",
+	}
+	if (recipe_id >= mdata->key_recipe_info.num_recipes ||
+	    !mdata->key_recipe_info.num_recipes) {
+		BNXT_DRV_DBG(ERR, "Key recipe id out of range(%d >= %d)\n",
 			     recipe_id, mdata->key_recipe_info.num_recipes);
 		return NULL;
 	}
-
-	if (max_fields)
-		*max_fields = mdata->key_recipe_info.max_fields;
-	return &recipes[recipe_id];
+	return mdata;
 }
 
-/* Not a strict alloc, it is allocating with the key id */
 static struct bnxt_ulp_key_recipe_entry *
 ulp_mapper_key_recipe_alloc(struct bnxt_ulp_context *ulp_ctx,
 			    enum bnxt_ulp_direction dir,
 			    enum bnxt_ulp_resource_sub_type stype,
 			    uint8_t recipe_id, uint8_t *max_fields)
 {
-	struct bnxt_ulp_key_recipe_entry *recipe;
+	struct bnxt_ulp_key_recipe_entry **recipes;
+	struct bnxt_ulp_mapper_data *mdata = NULL;
+	uint32_t size_s = sizeof(struct bnxt_ulp_key_recipe_entry);
 
-	recipe = ulp_mapper_key_recipe_entry_get(ulp_ctx, dir, stype,
-						 recipe_id, max_fields);
-	if (recipe) {
-		if (recipe->in_use) {
-			BNXT_DRV_INF("Recipe ID (%d) already allocated\n",
-				     recipe_id);
+	mdata = ulp_mapper_key_recipe_args_validate(ulp_ctx, dir,
+						    stype, recipe_id);
+	if (mdata == NULL)
+		return NULL;
+
+	recipes = mdata->key_recipe_info.recipes[dir][stype];
+	if (recipes[recipe_id] == NULL) {
+		recipes[recipe_id] = rte_zmalloc("key_recipe_entry", size_s, 0);
+		if (recipes[recipe_id] == NULL) {
+			BNXT_DRV_DBG(ERR, "Unable to alloc key recipe\n");
 			return NULL;
 		}
-		recipe->in_use = true;
-		recipe->cnt = 0;
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_DRV_INF("Alloc key recipe [%s]:[%s] = 0x%X\n",
+		     (dir == BNXT_ULP_DIRECTION_INGRESS) ? "rx" : "tx",
+		     ulp_mapper_key_recipe_type_to_str(stype), recipe_id);
+#endif
+#endif
+		*max_fields = mdata->key_recipe_info.max_fields;
+		return recipes[recipe_id];
 	}
-
-	/* key will be null if it failed */
-	return recipe;
+	BNXT_DRV_DBG(ERR, "Recipe ID (%d) already allocated\n", recipe_id);
+	return NULL;
 }
 
 /* The free just marks the entry as not in use and resets the number of entries
@@ -1412,15 +1420,19 @@ ulp_mapper_key_recipe_free(struct bnxt_ulp_context *ulp_ctx,
 			   enum bnxt_ulp_resource_sub_type stype,
 			   uint32_t index)
 {
-	struct bnxt_ulp_key_recipe_entry *recipe;
+	struct bnxt_ulp_key_recipe_entry **recipes;
+	struct bnxt_ulp_mapper_data *mdata = NULL;
 
-	recipe = ulp_mapper_key_recipe_entry_get(ulp_ctx, dir, stype,
-					      index, NULL);
-	if (recipe == NULL)
+	mdata = ulp_mapper_key_recipe_args_validate(ulp_ctx, dir,
+						    stype, index);
+	if (mdata == NULL)
 		return -EINVAL;
 
-	recipe->in_use = false;
-	recipe->cnt = 0;
+	recipes = mdata->key_recipe_info.recipes[dir][stype];
+	if (recipes[index] == NULL)
+		return -EINVAL;
+	rte_free(recipes[index]);
+	recipes[index] = NULL;
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
 	BNXT_DRV_INF("Free key recipe [%s]:[%s] = 0x%X\n",
@@ -1428,7 +1440,6 @@ ulp_mapper_key_recipe_free(struct bnxt_ulp_context *ulp_ctx,
 		     ulp_mapper_key_recipe_type_to_str(stype), index);
 #endif
 #endif
-
 	return 0;
 }
 
@@ -1454,8 +1465,9 @@ ulp_mapper_key_recipe_fields_get(struct bnxt_ulp_mapper_parms *parms,
 				 struct bnxt_ulp_mapper_tbl_info *tbl,
 				 uint32_t *num_flds)
 {
-	struct bnxt_ulp_key_recipe_entry *recipe;
+	struct bnxt_ulp_key_recipe_entry **recipes;
 	enum bnxt_ulp_resource_sub_type stype;
+	struct bnxt_ulp_mapper_data *mdata = NULL;
 	uint64_t recipe_id = 0;
 
 	/* Don't like this, but need to convert from a tbl resource func to the
@@ -1475,22 +1487,25 @@ ulp_mapper_key_recipe_fields_get(struct bnxt_ulp_mapper_parms *parms,
 	};
 
 	/* Get the recipe index from the registry file */
-	if (!ulp_regfile_read(parms->regfile,
-			      tbl->key_recipe_operand,
+	if (!ulp_regfile_read(parms->regfile, tbl->key_recipe_operand,
 			      &recipe_id)) {
-		BNXT_DRV_DBG(ERR,
-			     "Failed to get tbl idx from regfile[%d].\n",
+		BNXT_DRV_DBG(ERR, "Failed to get tbl idx from regfile[%d].\n",
 			     tbl->tbl_operand);
 		return NULL;
 	}
 	recipe_id = tfp_be_to_cpu_64(recipe_id);
-	recipe = ulp_mapper_key_recipe_entry_get(parms->ulp_ctx, tbl->direction,
-					      stype, recipe_id, NULL);
-	if (recipe == NULL || !recipe->in_use)
+	mdata = ulp_mapper_key_recipe_args_validate(parms->ulp_ctx,
+						    tbl->direction,
+						    stype, recipe_id);
+	if (mdata == NULL)
 		return NULL;
 
-	*num_flds = recipe->cnt;
-	return &recipe->flds[0];
+	recipes = mdata->key_recipe_info.recipes[tbl->direction][stype];
+	if (recipes[recipe_id] == NULL)
+		return NULL;
+
+	*num_flds = recipes[recipe_id]->cnt;
+	return &recipes[recipe_id]->flds[0];
 }
 
 static int32_t
@@ -3552,7 +3567,7 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
-	BNXT_DRV_DBG(DEBUG, "write the %" PRIu64 " into func_opc %u\n", res,
+	BNXT_DRV_DBG(DEBUG, "write the %" PRIX64 " into func_opc %u\n", res,
 		     func_info->func_dst_opr);
 #endif
 #endif
