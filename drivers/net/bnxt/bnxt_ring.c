@@ -57,6 +57,7 @@ int bnxt_alloc_ring_grps(struct bnxt *bp)
 	/* P5 does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
 	 */
+	/* TODO Revisit for Thor 2 */
 	if (BNXT_CHIP_P5_P7(bp)) {
 		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
 	} else if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
@@ -329,7 +330,7 @@ int bnxt_alloc_rings(struct bnxt *bp, unsigned int socket_id, uint16_t qidx,
 	return 0;
 }
 
-static void bnxt_init_dflt_coal(struct bnxt_coal *coal)
+void bnxt_init_dflt_coal(struct bnxt_coal *coal)
 {
 	/* Tick values in micro seconds.
 	 * 1 coal_buf x bufs_per_record = 1 completion record.
@@ -347,12 +348,12 @@ static void bnxt_init_dflt_coal(struct bnxt_coal *coal)
 	coal->cmpl_aggr_dma_tmr_during_int = BNXT_CMPL_AGGR_DMA_TMR_DURING_INT;
 }
 
-static void bnxt_set_db(struct bnxt *bp,
-			struct bnxt_db_info *db,
-			uint32_t ring_type,
-			uint32_t map_idx,
-			uint32_t fid,
-			uint32_t ring_mask)
+void bnxt_set_db(struct bnxt *bp,
+		 struct bnxt_db_info *db,
+		 uint32_t ring_type,
+		 uint32_t map_idx,
+		 uint32_t fid,
+		 uint32_t ring_mask)
 {
 	if (BNXT_CHIP_P5_P7(bp)) {
 		int db_offset = DB_PF_OFFSET;
@@ -400,8 +401,8 @@ static void bnxt_set_db(struct bnxt *bp,
 	db->db_ring_mask = ring_mask;
 }
 
-static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
-				struct bnxt_cp_ring_info *cpr)
+int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
+			 struct bnxt_cp_ring_info *cpr)
 {
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 	uint32_t nq_ring_id = HWRM_NA_SIGNATURE;

@@ -24,8 +24,10 @@
 #include "bnxt_util.h"
 
 #include "tf_core.h"
+#include "tfc.h"
 #include "bnxt_ulp.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_mpc.h"
 #include "bnxt_vnic.h"
 
 /* Vendor ID */
@@ -1035,6 +1037,7 @@ struct bnxt {
 	struct bnxt_ring_stats_ext	*prev_tx_ring_stats_ext;
 	struct bnxt_vnic_queue_db vnic_queue_db;
 
+	struct bnxt_mpc		*mpc;
 #define BNXT_MAX_MC_ADDRS	((bp)->max_mcast_addr)
 	struct rte_ether_addr	*mcast_addr_list;
 	rte_iova_t		mc_list_dma_addr;
