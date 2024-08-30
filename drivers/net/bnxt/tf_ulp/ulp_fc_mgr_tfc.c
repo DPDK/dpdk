@@ -43,6 +43,7 @@ static uint8_t *data;
 static int32_t
 ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
 			 uint8_t direction,
+			 uint32_t session_type __rte_unused,
 			 uint64_t handle,
 			 struct rte_flow_query_count *count)
 {

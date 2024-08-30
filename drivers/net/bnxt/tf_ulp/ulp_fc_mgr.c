@@ -525,6 +525,7 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	bool found_cntr_resource = false;
 	bool found_parent_flow = false;
 	uint32_t pc_idx = 0;
+	uint32_t session_type = 0;
 	uint8_t dir;
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
@@ -569,8 +570,9 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	}
 
 	dir = params.direction;
+	session_type = ulp_flow_db_shared_session_get(&params);
 	if (!(ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN)) {
-		rc = fc_ops->ulp_flow_stat_get(ctxt, dir,
+		rc = fc_ops->ulp_flow_stat_get(ctxt, dir, session_type,
 					       params.resource_hndl, count);
 		bnxt_ulp_cntxt_release_fdb_lock(ctxt);
 		return rc;
@@ -581,7 +583,7 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
 		hw_cntr_id = params.resource_hndl;
 		if (!ulp_fc_info->num_counters) {
-			rc = fc_ops->ulp_flow_stat_get(ctxt, dir,
+			rc = fc_ops->ulp_flow_stat_get(ctxt, dir, session_type,
 						       hw_cntr_id, count);
 			bnxt_ulp_cntxt_release_fdb_lock(ctxt);
 			return rc;

@@ -7,6 +7,7 @@
 #define _ULP_FC_MGR_H_
 
 #include "bnxt_ulp.h"
+#include "ulp_flow_db.h"
 
 #define ULP_FLAG_FC_THREAD			BIT(0)
 #define ULP_FLAG_FC_SW_AGG_EN			BIT(1)
@@ -28,6 +29,7 @@ struct bnxt_ulp_fc_core_ops {
 	int32_t
 	(*ulp_flow_stat_get)(struct bnxt_ulp_context *ctxt,
 			     uint8_t direction,
+			     uint32_t session_type,
 			     uint64_t handle,
 			     struct rte_flow_query_count *count);
 	int32_t
