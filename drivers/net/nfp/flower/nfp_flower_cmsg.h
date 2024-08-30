@@ -708,6 +708,20 @@ struct nfp_flower_ipv6_gre_tun {
 	rte_be32_t reserved2;
 };
 
+/*
+ * L3 other (1W/4B)
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |            reserved           |           ethertype           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * Note: This is only used when no specific L3 header available.
+ */
+struct nfp_flower_l3_other {
+	rte_be16_t reserved;
+	rte_be16_t ethertype;
+};
+
 struct nfp_fl_act_head {
 	uint8_t jump_id;
 	uint8_t len_lw;

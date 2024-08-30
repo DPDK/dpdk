@@ -26,6 +26,7 @@
 #define NFP_FLOWER_LAYER_VXLAN          RTE_BIT32(7)
 
 #define NFP_FLOWER_LAYER2_GRE           RTE_BIT32(0)
+#define NFP_FLOWER_LAYER2_L3_OTHER      RTE_BIT32(3)
 #define NFP_FLOWER_LAYER2_QINQ          RTE_BIT32(4)
 #define NFP_FLOWER_LAYER2_GENEVE        RTE_BIT32(5)
 #define NFP_FLOWER_LAYER2_GENEVE_OP     RTE_BIT32(6)
@@ -962,10 +963,15 @@ struct nfp_item_flag {
 	bool outer_ip6_flag;
 };
 
+struct nfp_item_shared_flag {
+	bool l3_other_flag;
+};
+
 struct nfp_item_calculate_param {
 	const struct rte_flow_item *item;
 	struct nfp_fl_key_ls *key_ls;
 	struct nfp_item_flag *flag;
+	struct nfp_item_shared_flag shared_flag;
 };
 
 typedef int (*nfp_flow_key_check_item_fn)(struct nfp_item_calculate_param *param);
@@ -1065,6 +1071,9 @@ nfp_flow_key_layers_check_items(const struct rte_flow_item items[],
 			PMD_DRV_LOG(ERR, "Flow item %d check fail", item->type);
 			return ret;
 		}
+
+		if (item->type != RTE_FLOW_ITEM_TYPE_ETH)
+			param->shared_flag.l3_other_flag = true;
 	}
 
 	return 0;
@@ -1089,6 +1098,13 @@ nfp_flow_item_calculate_eth(struct nfp_item_calculate_param *param)
 
 	key_ls->key_layer |= NFP_FLOWER_LAYER_MAC;
 	key_ls->key_size += sizeof(struct nfp_flower_mac_mpls);
+
+	if (!param->shared_flag.l3_other_flag && spec->type != 0) {
+		key_ls->key_layer |= NFP_FLOWER_LAYER_EXT_META;
+		key_ls->key_size += sizeof(struct nfp_flower_ext_meta);
+		key_ls->key_layer_two |= NFP_FLOWER_LAYER2_L3_OTHER;
+		key_ls->key_size += sizeof(struct nfp_flower_l3_other);
+	}
 }
 
 static void
@@ -1870,6 +1886,9 @@ nfp_flow_merge_eth(struct nfp_flow_merge_param *param)
 	const struct rte_flow_item *item;
 	const struct rte_flow_item_eth *spec;
 	const struct rte_flow_item_eth *mask;
+	struct nfp_flower_l3_other *l3_other;
+	struct nfp_flower_meta_tci *meta_tci;
+	struct nfp_flower_ext_meta *ext_meta = NULL;
 
 	item = param->item;
 	spec = item->spec;
@@ -1891,6 +1910,21 @@ nfp_flow_merge_eth(struct nfp_flow_merge_param *param)
 
 	eth->mpls_lse = 0;
 	*param->mbuf_off += sizeof(struct nfp_flower_mac_mpls);
+
+	meta_tci = (struct nfp_flower_meta_tci *)param->nfp_flow->payload.unmasked_data;
+	if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_EXT_META) != 0)
+		ext_meta = (struct nfp_flower_ext_meta *)(meta_tci + 1);
+
+	if (ext_meta != NULL &&
+			(ext_meta->nfp_flow_key_layer2 & NFP_FLOWER_LAYER2_L3_OTHER) != 0) {
+		l3_other = (void *)(*param->mbuf_off);
+		if (param->is_mask)
+			l3_other->ethertype = mask->type;
+		else
+			l3_other->ethertype = spec->type;
+
+		*param->mbuf_off += sizeof(struct nfp_flower_l3_other);
+	}
 
 eth_end:
 	return 0;
