@@ -126,24 +126,24 @@ nfp_flower_get_repr(struct nfp_net_hw_priv *hw_priv,
 }
 
 bool
-nfp_flower_pf_dispatch_pkts(struct nfp_net_hw_priv *hw_priv,
+nfp_flower_pf_dispatch_pkts(struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mbuf,
 		uint32_t port_id)
 {
 	struct nfp_flower_representor *repr;
 
-	repr = nfp_flower_get_repr(hw_priv, port_id);
+	repr = nfp_flower_get_repr(rxq->hw_priv, port_id);
 	if (repr == NULL) {
 		PMD_RX_LOG(ERR, "Can not get repr for port %u", port_id);
 		return false;
 	}
 
-	if (repr->ring == NULL) {
+	if (repr->ring == NULL || repr->ring[rxq->qidx] == NULL) {
 		PMD_RX_LOG(ERR, "No ring available for repr_port %s", repr->name);
 		return false;
 	}
 
-	if (rte_ring_enqueue(repr->ring, (void *)mbuf) != 0)
+	if (rte_ring_enqueue(repr->ring[rxq->qidx], (void *)mbuf) != 0)
 		return false;
 
 	return true;

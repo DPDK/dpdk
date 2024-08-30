@@ -138,13 +138,14 @@ nfp_flower_repr_dev_stop(struct rte_eth_dev *dev)
 static int
 nfp_flower_repr_rx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t rx_queue_id,
-		__rte_unused uint16_t nb_rx_desc,
+		uint16_t nb_rx_desc,
 		unsigned int socket_id,
 		__rte_unused const struct rte_eth_rxconf *rx_conf,
 		__rte_unused struct rte_mempool *mb_pool)
 {
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *pf_hw;
+	char ring_name[RTE_RING_NAMESIZE];
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
@@ -155,6 +156,15 @@ nfp_flower_repr_rx_queue_setup(struct rte_eth_dev *dev,
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
 		return -ENOMEM;
+
+	snprintf(ring_name, sizeof(ring_name), "%s-%s-%u", repr->name, "Rx", rx_queue_id);
+	repr->ring[rx_queue_id] = rte_ring_create(ring_name, nb_rx_desc,
+			rte_socket_id(), 0);
+	if (repr->ring[rx_queue_id] == NULL) {
+		PMD_DRV_LOG(ERR, "rte_ring_create failed for rx queue %u", rx_queue_id);
+		rte_free(rxq);
+		return -ENOMEM;
+	}
 
 	rxq->hw = pf_hw;
 	rxq->qidx = rx_queue_id;
@@ -249,18 +259,18 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 
 	dev = &rte_eth_devices[rxq->port_id];
 	repr = dev->data->dev_private;
-	if (unlikely(repr->ring == NULL)) {
+	if (unlikely(repr->ring == NULL) ||
+			unlikely(repr->ring[rxq->qidx] == NULL)) {
 		PMD_RX_LOG(ERR, "representor %s has no ring configured!",
 				repr->name);
 		return 0;
 	}
 
-	total_dequeue = rte_ring_dequeue_burst(repr->ring, (void *)rx_pkts,
-			nb_pkts, &available);
+	total_dequeue = rte_ring_dequeue_burst(repr->ring[rxq->qidx],
+			(void *)rx_pkts, nb_pkts, &available);
 	if (total_dequeue != 0) {
-		PMD_RX_LOG(DEBUG, "Representor Rx burst for %s, port_id: %#x, "
-				"received: %u, available: %u", repr->name,
-				repr->port_id, total_dequeue, available);
+		PMD_RX_LOG(DEBUG, "Port: %#x, queue: %hu received: %u, available: %u",
+				repr->port_id, rxq->qidx, total_dequeue, available);
 
 		data_len = 0;
 		for (i = 0; i < total_dequeue; i++)
@@ -328,12 +338,16 @@ static void
 nfp_flower_repr_free_queue(struct rte_eth_dev *eth_dev)
 {
 	uint16_t i;
+	struct nfp_flower_representor *repr;
 
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
 		rte_free(eth_dev->data->tx_queues[i]);
 
-	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		repr = eth_dev->data->dev_private;
+		rte_ring_free(repr->ring[i]);
 		rte_free(eth_dev->data->rx_queues[i]);
+	}
 }
 
 static void
@@ -378,7 +392,7 @@ nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 
 	repr = eth_dev->data->dev_private;
 	rte_free(repr->repr_xstats_base);
-	rte_ring_free(repr->ring);
+	rte_free(repr->ring);
 
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
 		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(repr->port_id);
@@ -627,9 +641,11 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	 */
 	snprintf(ring_name, sizeof(ring_name), "%s_%s", init_repr_data->name, "ring");
 	numa_node = rte_socket_id();
-	repr->ring = rte_ring_create(ring_name, 256, numa_node, RING_F_SC_DEQ);
+	repr->ring = rte_zmalloc_socket(ring_name,
+			sizeof(struct rte_ring *) * app_fw_flower->pf_hw->max_rx_queues,
+			RTE_CACHE_LINE_SIZE, numa_node);
 	if (repr->ring == NULL) {
-		PMD_DRV_LOG(ERR, "rte_ring_create failed for %s", ring_name);
+		PMD_DRV_LOG(ERR, "Ring create failed for %s", ring_name);
 		return -ENOMEM;
 	}
 
@@ -704,7 +720,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 mac_cleanup:
 	rte_free(eth_dev->data->mac_addrs);
 ring_cleanup:
-	rte_ring_free(repr->ring);
+	rte_free(repr->ring);
 
 	return ret;
 }
