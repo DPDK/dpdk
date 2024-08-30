@@ -17,7 +17,7 @@ struct nfp_flower_representor {
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct rte_ether_addr mac_addr;
 	struct nfp_app_fw_flower *app_fw_flower;
-	struct rte_ring *ring;
+	struct rte_ring **ring;
 	struct rte_eth_link link;
 	struct rte_eth_stats repr_stats;
 

@@ -419,7 +419,6 @@ nfp_net_recv_pkts(void *rx_queue,
 	struct nfp_net_dp_buf *rxb;
 	struct nfp_net_rx_desc *rxds;
 	uint16_t avail_multiplexed = 0;
-	struct nfp_net_hw_priv *hw_priv;
 
 	rxq = rx_queue;
 	if (unlikely(rxq == NULL)) {
@@ -432,7 +431,6 @@ nfp_net_recv_pkts(void *rx_queue,
 	}
 
 	hw = rxq->hw;
-	hw_priv = rxq->hw_priv;
 
 	while (avail + avail_multiplexed < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
@@ -523,7 +521,7 @@ nfp_net_recv_pkts(void *rx_queue,
 
 		if (((meta.flags >> NFP_NET_META_PORTID) & 0x1) == 0) {
 			rx_pkts[avail++] = mb;
-		} else if (nfp_flower_pf_dispatch_pkts(hw_priv, mb, meta.port_id)) {
+		} else if (nfp_flower_pf_dispatch_pkts(rxq, mb, meta.port_id)) {
 			avail_multiplexed++;
 		} else {
 			rte_pktmbuf_free(mb);
