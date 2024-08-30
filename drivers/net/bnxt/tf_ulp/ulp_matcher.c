@@ -4,6 +4,7 @@
  */
 
 #include "ulp_matcher.h"
+#include "ulp_mapper.h"
 #include "ulp_utils.h"
 
 /* Utility function to calculate the class matcher hash */
@@ -47,10 +48,13 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 	struct bnxt_ulp_class_match_info *class_match;
 	uint32_t class_hid;
 	uint16_t tmpl_id;
+	uint32_t app_id_sig;
+
+	app_id_sig = bnxt_ulp_glb_app_id_sig_get(params->app_id);
 
 	/* calculate the hash of the given flow */
 	class_hid = ulp_matcher_class_hash_calculate((params->hdr_bitmap.bits ^
-						     params->app_id),
+						     app_id_sig),
 						     params->fld_s_bitmap.bits);
 
 	/* validate the calculate hash values */
@@ -71,9 +75,9 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 	}
 
 	/* Match the application id before proceeding */
-	if (params->app_id != class_match->app_sig) {
+	if (app_id_sig != class_match->app_sig) {
 		BNXT_TF_DBG(DEBUG, "Field to match the app id %u:%u\n",
-			    params->app_id, class_match->app_sig);
+			    app_id_sig, class_match->app_sig);
 		goto error;
 	}
 
@@ -99,13 +103,16 @@ int32_t
 ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 			 uint32_t *act_id)
 {
+	struct bnxt_ulp_act_match_info *act_match;
+	uint32_t app_id_sig;
 	uint32_t act_hid;
 	uint16_t tmpl_id;
-	struct bnxt_ulp_act_match_info *act_match;
+
+	app_id_sig = bnxt_ulp_glb_app_id_sig_get(params->app_id);
 
 	/* calculate the hash of the given flow action */
 	act_hid = ulp_matcher_action_hash_calculate(params->act_bitmap.bits,
-						    params->app_id);
+						    app_id_sig);
 
 	/* validate the calculate hash values */
 	if (act_hid >= BNXT_ULP_ACT_SIG_TBL_MAX_SZ)
@@ -121,9 +128,9 @@ ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 	}
 
 	/* Match the application id before proceeding */
-	if (params->app_id != act_match->app_sig) {
+	if (app_id_sig != act_match->app_sig) {
 		BNXT_TF_DBG(DEBUG, "Field to match the app id %u:%u\n",
-			    params->app_id, act_match->app_sig);
+			    app_id_sig, act_match->app_sig);
 		goto error;
 	}
 

@@ -98,6 +98,8 @@ struct bnxt_ulp_mapper_create_parms {
 	uint16_t			port_id;
 };
 
+uint32_t bnxt_ulp_glb_app_id_sig_get(uint8_t app_id);
+
 /* Function to initialize any dynamic mapper data. */
 int32_t
 ulp_mapper_init(struct bnxt_ulp_context	*ulp_ctx);

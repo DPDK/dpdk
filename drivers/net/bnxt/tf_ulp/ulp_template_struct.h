@@ -373,6 +373,7 @@ struct bnxt_ulp_app_capabilities_info {
 	uint8_t				ha_pool_id;
 	uint8_t				ha_reg_state;
 	uint8_t				ha_reg_cnt;
+	uint8_t				tunnel_next_proto;
 	uint32_t			flags;
 };
 

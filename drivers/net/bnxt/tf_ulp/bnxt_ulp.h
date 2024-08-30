@@ -58,11 +58,15 @@
 #define ULP_APP_HA_IS_DYNAMIC(ctx)	((ctx)->cfg_data->ulp_flags &\
 					BNXT_ULP_APP_HA_DYNAMIC)
 
-#define ULP_APP_CUST_VXLAN_SUPPORT(ctx)	   ((ctx)->cfg_data->vxlan_port != 0)
+#define ULP_APP_CUST_VXLAN_EN(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_CUST_VXLAN_SUPPORT)
 #define ULP_APP_VXLAN_GPE_SUPPORT(ctx)     ((ctx)->cfg_data->vxlan_gpe_port != 0)
-#define ULP_APP_CUST_VXLAN_IP_SUPPORT(ctx) ((ctx)->cfg_data->vxlan_ip_port != 0)
 #define ULP_APP_L2_ETYPE_SUPPORT(ctx)	((ctx)->cfg_data->ulp_flags &\
 					BNXT_ULP_APP_L2_ETYPE)
+#define ULP_APP_CUST_VXLAN_SUPPORT(ctx)	\
+	((ctx) && (ctx)->cfg_data && (ctx)->cfg_data->vxlan_port != 0)
+#define ULP_APP_CUST_VXLAN_IP_SUPPORT(ctx)\
+	((ctx) && (ctx)->cfg_data && (ctx)->cfg_data->vxlan_ip_port != 0)
 
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
@@ -120,10 +124,11 @@ struct bnxt_ulp_data {
 	uint32_t			vxlan_gpe_port;
 	uint32_t			vxlan_ip_port;
 	uint32_t			ecpri_udp_port;
+	uint32_t			hu_session_type;
 	uint8_t				hu_reg_state;
 	uint8_t				hu_reg_cnt;
-	uint32_t			hu_session_type;
 	uint8_t				ha_pool_id;
+	uint8_t				tunnel_next_proto;
 	enum bnxt_ulp_session_type	def_session_type;
 };
 
@@ -165,6 +170,9 @@ struct ulp_context_list_entry {
 	TAILQ_ENTRY(ulp_context_list_entry)	next;
 	struct bnxt_ulp_context			*ulp_ctx;
 };
+
+bool
+ulp_is_default_session_active(struct bnxt_ulp_context *ulp_ctx);
 
 /*
  * Allow the deletion of context only for the bnxt device that
@@ -381,14 +389,23 @@ bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx);
 int
 bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
 			   uint32_t vxlan_ip_port);
+
 unsigned int
 bnxt_ulp_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx);
 
 int
 bnxt_ulp_ecpri_udp_port_set(struct bnxt_ulp_context *ulp_ctx,
 			    uint32_t ecpri_udp_port);
+
 unsigned int
 bnxt_ulp_ecpri_udp_port_get(struct bnxt_ulp_context *ulp_ctx);
+
+uint32_t
+bnxt_ulp_vxlan_gpe_next_proto_set(struct bnxt_ulp_context *ulp_ctx,
+				  uint8_t tunnel_next_proto);
+
+uint8_t
+bnxt_ulp_vxlan_gpe_next_proto_get(struct bnxt_ulp_context *ulp_ctx);
 
 int32_t
 bnxt_flow_meter_init(struct bnxt *bp);

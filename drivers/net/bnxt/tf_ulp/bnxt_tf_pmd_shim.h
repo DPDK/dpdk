@@ -21,6 +21,7 @@ enum bnxt_global_register_tunnel_type {
 	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN,
 	BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI,
 	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE,
+	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6,
 	BNXT_GLOBAL_REGISTER_TUNNEL_MAX
 };
 
@@ -59,5 +60,5 @@ int32_t
 bnxt_tunnel_upar_id_get(struct bnxt *bp,
 			uint8_t type,
 			uint8_t *upar_id);
-int32_t bnxt_pmd_get_hot_upgrade_env(void);
+bool bnxt_pmd_get_hot_up_config(void);
 #endif /* _BNXT_TF_PMD_ABSTRACT_H_ */

@@ -48,6 +48,14 @@ static int32_t bnxt_ulp_cntxt_list_init(void);
 static int32_t bnxt_ulp_cntxt_list_add(struct bnxt_ulp_context *ulp_ctx);
 static void bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx);
 
+bool
+ulp_is_default_session_active(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (ulp_ctx == NULL || ulp_ctx->g_tfp[0] == NULL)
+		return false;
+
+	return true;
+}
 /*
  * Allow the deletion of context only for the bnxt device that
  * created the session.
@@ -294,7 +302,7 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 {
 	struct bnxt_ulp_resource_resv_info *unnamed;
 	struct bnxt_ulp_glb_resource_info *named;
-	uint32_t unum, nnum;
+	uint32_t unum = 0, nnum = 0;
 	int32_t rc;
 
 	if (ulp_ctx == NULL || res == NULL) {
@@ -315,24 +323,21 @@ bnxt_ulp_tf_shared_session_resources_get(struct bnxt_ulp_context *ulp_ctx,
 	 */
 	/* Get the baseline counts */
 	unnamed = bnxt_ulp_app_resource_resv_list_get(&unum);
-	if (unnamed == NULL) {
-		BNXT_TF_DBG(ERR, "Unable to get shared resource resv list.\n");
-		return -EINVAL;
-	}
-	rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, stype,
-					     res);
-	if (rc) {
-		BNXT_TF_DBG(ERR,
-			    "Unable to calc resources for shared session.\n");
-		return -EINVAL;
+	if (unum) {
+		rc = bnxt_ulp_unnamed_resources_calc(ulp_ctx, unnamed, unum, stype,
+						     res);
+		if (rc) {
+			BNXT_TF_DBG(ERR,
+				    "Unable to calc resources for shared session.\n");
+			return -EINVAL;
+		}
 	}
 
 	/* Get the named list and add the totals */
 	named = bnxt_ulp_app_glb_resource_info_list_get(&nnum);
-	if (named == NULL) {
-		BNXT_TF_DBG(ERR, "Unable to get app global resource list\n");
-		return -EINVAL;
-	}
+	if (!nnum)
+		return 0;
+
 	rc = bnxt_ulp_named_resources_calc(ulp_ctx, named, nnum, stype, res);
 	if (rc)
 		BNXT_TF_DBG(ERR, "Unable to calc named resources\n");
@@ -442,7 +447,7 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 		}
 		if (info[i].flags & BNXT_ULP_APP_CAP_HA_DYNAMIC) {
 			/* Read the environment variable to determine hot up */
-			if (!bnxt_pmd_get_hot_upgrade_env()) {
+			if (!bnxt_pmd_get_hot_up_config()) {
 				ulp_ctx->cfg_data->ulp_flags |=
 					BNXT_ULP_APP_HA_DYNAMIC;
 				/* reset Hot upgrade, dynamically disabled */
@@ -458,9 +463,14 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 			ulp_ctx->cfg_data->ulp_flags |=
 				BNXT_ULP_APP_L2_ETYPE;
 
+		if (info[i].flags & BNXT_ULP_APP_CAP_CUST_VXLAN)
+			ulp_ctx->cfg_data->ulp_flags |=
+				BNXT_ULP_CUST_VXLAN_SUPPORT;
+
 		bnxt_ulp_vxlan_ip_port_set(ulp_ctx, info[i].vxlan_ip_port);
 		bnxt_ulp_vxlan_port_set(ulp_ctx, info[i].vxlan_port);
 		bnxt_ulp_ecpri_udp_port_set(ulp_ctx, info[i].ecpri_udp_port);
+		bnxt_ulp_vxlan_gpe_next_proto_set(ulp_ctx, info[i].tunnel_next_proto);
 
 		/* set the shared session support from firmware */
 		fw = info[i].upgrade_fw_update;
@@ -529,6 +539,29 @@ bnxt_ulp_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx)
 		return 0;
 
 	return (unsigned int)ulp_ctx->cfg_data->vxlan_ip_port;
+}
+
+/* Function to set the number for vxlan_gpe next_proto into the context */
+uint32_t
+bnxt_ulp_vxlan_gpe_next_proto_set(struct bnxt_ulp_context *ulp_ctx,
+				  uint8_t tunnel_next_proto)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->tunnel_next_proto = tunnel_next_proto;
+
+	return 0;
+}
+
+/* Function to retrieve the vxlan_gpe next_proto from the context. */
+uint8_t
+bnxt_ulp_vxlan_gpe_next_proto_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return ulp_ctx->cfg_data->tunnel_next_proto;
 }
 
 /* Function to set the number for vxlan port into the context */
@@ -1602,6 +1635,28 @@ bnxt_ulp_destroy_vfr_default_rules(struct bnxt *bp, bool global)
 	}
 }
 
+static void
+ulp_cust_vxlan_free(struct bnxt *bp)
+{
+	int rc;
+
+	if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
+		rc = bnxt_tunnel_dst_port_free(bp,
+					       bp->ulp_ctx->cfg_data->vxlan_port,
+				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to clear global vxlan port\n");
+	}
+
+	if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
+		rc = bnxt_tunnel_dst_port_free(bp,
+					       bp->ulp_ctx->cfg_data->vxlan_ip_port,
+				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4);
+		if (rc)
+			BNXT_TF_DBG(ERR, "Failed to clear global custom vxlan port\n");
+	}
+}
+
 /*
  * When a port is deinit'ed by dpdk. This function is called
  * and this function clears the ULP context and rest of the
@@ -1623,6 +1678,9 @@ bnxt_ulp_deinit(struct bnxt *bp,
 		if (rc)
 			BNXT_TF_DBG(ERR, "Failed to close HA (%d)\n", rc);
 	}
+
+	/* Free tunnel configuration */
+	ulp_cust_vxlan_free(bp);
 
 	/* clean up default flows */
 	bnxt_ulp_destroy_df_rules(bp, true);
@@ -2008,28 +2066,6 @@ ulp_l2_etype_tunnel_free(struct bnxt *bp)
 	bp->l2_etype_tunnel_cnt--;
 }
 
-static void
-ulp_cust_vxlan_free(struct bnxt *bp)
-{
-	int rc;
-
-	if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
-		rc = bnxt_tunnel_dst_port_free(bp,
-					       bp->ulp_ctx->cfg_data->vxlan_port,
-				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN);
-		if (rc)
-			BNXT_TF_DBG(ERR, "Failed to clear global vxlan port\n");
-	}
-
-	if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
-		rc = bnxt_tunnel_dst_port_free(bp,
-					       bp->ulp_ctx->cfg_data->vxlan_ip_port,
-				     HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4);
-		if (rc)
-			BNXT_TF_DBG(ERR, "Failed to clear global custom vxlan port\n");
-	}
-}
-
 /*
  * When a port is de-initialized by dpdk. This functions clears up
  * the port specific details.
@@ -2081,15 +2117,16 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 	/* Check the reference count to deinit or deattach*/
 	if (bp->ulp_ctx->cfg_data && bp->ulp_ctx->cfg_data->ref_cnt) {
 		bp->ulp_ctx->cfg_data->ref_cnt--;
+		/* Free tunnels for each port */
+		ulp_l2_etype_tunnel_free(bp);
 		if (bp->ulp_ctx->cfg_data->ref_cnt) {
-			/* Free tunnel configurations */
-			ulp_cust_vxlan_free(bp);
-			ulp_l2_etype_tunnel_free(bp);
-
 			/* free the port details */
 			/* Free the default flow rule associated to this port */
 			bnxt_ulp_destroy_df_rules(bp, false);
 			bnxt_ulp_destroy_vfr_default_rules(bp, false);
+
+			/* Free the ulp context in the context entry list */
+			bnxt_ulp_cntxt_list_del(bp->ulp_ctx);
 
 			/* free flows associated with this port */
 			bnxt_ulp_flush_port_flows(bp);
@@ -2104,9 +2141,6 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 			bnxt_ulp_deinit(bp, session);
 		}
 	}
-
-	/* Free the ulp context in the context entry list */
-	bnxt_ulp_cntxt_list_del(bp->ulp_ctx);
 
 	/* clean up the session */
 	ulp_session_deinit(session);

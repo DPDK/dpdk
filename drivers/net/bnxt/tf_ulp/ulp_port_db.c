@@ -50,8 +50,8 @@ int32_t	ulp_port_db_init(struct bnxt_ulp_context *ulp_ctxt, uint8_t port_cnt)
 	/* Attach the port database to the ulp context. */
 	bnxt_ulp_cntxt_ptr2_port_db_set(ulp_ctxt, port_db);
 
-	/* index 0 is not being used hence add 1 to size */
-	port_db->ulp_intf_list_size = BNXT_PORT_DB_MAX_INTF_LIST + 1;
+	/* 256 VFs + PFs etc. so making it 512*/
+	port_db->ulp_intf_list_size = BNXT_PORT_DB_MAX_INTF_LIST * 2;
 	/* Allocate the port tables */
 	port_db->ulp_intf_list = rte_zmalloc("bnxt_ulp_port_db_intf_list",
 					     port_db->ulp_intf_list_size *
