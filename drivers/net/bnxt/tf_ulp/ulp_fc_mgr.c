@@ -563,23 +563,29 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 
 	} while (!rc && nxt_resource_index);
 
-	bnxt_ulp_cntxt_release_fdb_lock(ctxt);
-
-	if (rc || !found_cntr_resource)
+	if (rc || !found_cntr_resource) {
+		bnxt_ulp_cntxt_release_fdb_lock(ctxt);
 		return rc;
+	}
 
 	dir = params.direction;
-	if (!(ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN))
-		return fc_ops->ulp_flow_stat_get(ctxt, dir,
-						 params.resource_hndl, count);
+	if (!(ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN)) {
+		rc = fc_ops->ulp_flow_stat_get(ctxt, dir,
+					       params.resource_hndl, count);
+		bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+		return rc;
+	}
 
 	if (!found_parent_flow &&
 	    params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
 		hw_cntr_id = params.resource_hndl;
-		if (!ulp_fc_info->num_counters)
-			return fc_ops->ulp_flow_stat_get(ctxt, dir,
-							 hw_cntr_id, count);
+		if (!ulp_fc_info->num_counters) {
+			rc = fc_ops->ulp_flow_stat_get(ctxt, dir,
+						       hw_cntr_id, count);
+			bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+			return rc;
+		}
 
 		/* TODO:
 		 * Think about optimizing with try_lock later
@@ -603,9 +609,14 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		   params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
 		/* Get stats from the parent child table */
-		ulp_flow_db_parent_flow_count_get(ctxt, pc_idx,
-						  &count->hits, &count->bytes,
-						  count->reset);
+		if (ulp_flow_db_parent_flow_count_get(ctxt, flow_id,
+						      pc_idx,
+						      &count->hits,
+						      &count->bytes,
+						      count->reset)) {
+			bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+			return -EIO;
+		}
 		if (count->hits)
 			count->hits_set = 1;
 		if (count->bytes)
@@ -613,7 +624,7 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	} else {
 		rc = -EINVAL;
 	}
-
+	bnxt_ulp_cntxt_release_fdb_lock(ctxt);
 	return rc;
 }
 

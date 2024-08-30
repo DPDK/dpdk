@@ -63,6 +63,7 @@ struct bnxt_ulp_flow_tbl {
 struct ulp_fdb_parent_info {
 	uint32_t	valid;
 	uint32_t	parent_fid;
+	uint32_t	parent_ref_cnt;
 	uint32_t	counter_acc;
 	uint64_t	pkt_count;
 	uint64_t	byte_count;
@@ -389,6 +390,7 @@ ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t flow_id,
 				  uint32_t pc_idx,
 				  uint64_t *packet_count,
 				  uint64_t *byte_count,
