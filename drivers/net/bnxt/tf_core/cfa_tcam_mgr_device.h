@@ -42,6 +42,15 @@ TF_TCAM_TABLE_ROWS_DEF(2);
 TF_TCAM_TABLE_ROWS_DEF(4);
 TF_TCAM_TABLE_ROWS_DEF(8);
 
+/*
+ * The following macros are for setting the entry status in a row entry.
+ * row is (struct cfa_tcam_mgr_table_rows_0 *)
+ */
+#define ROW_ENTRY_INUSE(row, entry)  ((row)->entry_inuse &   (1U << (entry)))
+#define ROW_ENTRY_SET(row, entry)    ((row)->entry_inuse |=  (1U << (entry)))
+#define ROW_ENTRY_CLEAR(row, entry)  ((row)->entry_inuse &= ~(1U << (entry)))
+#define ROW_INUSE(row)               ((row)->entry_inuse != 0)
+
 #define TF_TCAM_MAX_ENTRIES (L2_CTXT_TCAM_RX_MAX_ENTRIES +	\
 			     L2_CTXT_TCAM_TX_MAX_ENTRIES +	\
 			     PROF_TCAM_RX_MAX_ENTRIES +		\

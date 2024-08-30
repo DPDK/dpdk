@@ -4410,6 +4410,22 @@ ulp_mapper_flow_create(struct bnxt_ulp_context *ulp_ctx,
 			goto flow_error;
 	}
 
+#ifdef TF_FLOW_SCALE_QUERY
+	tfp = bnxt_ulp_cntxt_tfp_get(ulp_ctx, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	if (!tfp) {
+		BNXT_DRV_DBG(ERR, "Failed to get truflow pointer\n");
+		return -EINVAL;
+	}
+
+	if (parms->act_bitmap->bits & BNXT_ULP_FLOW_DIR_BITMASK_EGR)
+		dir = TF_DIR_TX;
+	else
+		dir = TF_DIR_RX;
+
+	/* sync resource usage state with firmware */
+	tf_update_resc_usage(tfp, dir, TF_FLOW_RESC_TYPE_ALL);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return rc;
 
 flow_error:

@@ -364,7 +364,8 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				 struct tf_rm_element_cfg *cfg,
 				 uint16_t *alloc_cnt,
 				 uint16_t num_elements,
-				 uint16_t *req_cnt)
+				 uint16_t *req_cnt,
+				 __rte_unused enum tf_dir dir)
 {
 	int parent, child;
 	const char *type_str = NULL;
@@ -388,6 +389,13 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 				dev->ops->tf_dev_get_resource_str(tfp,
 							 cfg[parent].hcapi_type,
 							 &type_str);
+#ifdef TF_FLOW_SCALE_QUERY
+				/* Initialize the usage buffer for SRAM tables */
+				tf_tbl_usage_init(tfp,
+						  dir,
+						  parent,
+						  alloc_cnt[parent]);
+#endif /* TF_FLOW_SCALE_QUERY */
 			}
 
 			/* Search again through all the elements */
@@ -418,6 +426,13 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 					combined_cnt += cnt;
 					/* Clear the requested child count */
 					req_cnt[child] = 0;
+#ifdef TF_FLOW_SCALE_QUERY
+					/* Initialize the usage buffer for SRAM tables */
+					tf_tbl_usage_init(tfp->session->session_id.id,
+							  dir,
+							  child,
+							  alloc_cnt[child]);
+#endif /* TF_FLOW_SCALE_QUERY */
 				}
 			}
 			/* Save the parent count to be requested */
@@ -501,7 +516,8 @@ tf_rm_create_db(struct tf *tfp,
 	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
-					 req_cnt);
+					 req_cnt,
+					 parms->dir);
 
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
@@ -672,6 +688,22 @@ tf_rm_create_db(struct tf *tfp,
 				}
 			}
 			j++;
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* Initialize the usage buffer for Meter tables */
+			if (cfg->hcapi_type == CFA_RESOURCE_TYPE_P58_METER ||
+			    cfg->hcapi_type == CFA_RESOURCE_TYPE_P58_METER_PROF) {
+				uint32_t tbl_type;
+				if (cfg->hcapi_type == CFA_RESOURCE_TYPE_P58_METER)
+					tbl_type = TF_TBL_TYPE_METER_INST;
+				else
+					tbl_type = TF_TBL_TYPE_METER_PROF;
+				tf_tbl_usage_init(tfp->session->session_id.id,
+						  parms->dir,
+						  tbl_type,
+						  req_cnt[i]);
+			}
+#endif /* TF_FLOW_SCALE_QUERY */
 		} else {
 			/* Bail out as we want what we requested for
 			 * all elements, not any less.
@@ -755,7 +787,8 @@ tf_rm_create_db_no_reservation(struct tf *tfp,
 	tf_rm_update_parent_reservations(tfp, dev, parms->cfg,
 					 parms->alloc_cnt,
 					 parms->num_elements,
-					 req_cnt);
+					 req_cnt,
+					 parms->dir);
 
 	/* Process capabilities against DB requirements. However, as a
 	 * DB can hold elements that are not HCAPI we can reduce the
