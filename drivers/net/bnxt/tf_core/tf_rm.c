@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -428,7 +428,7 @@ tf_rm_update_parent_reservations(struct tf *tfp,
 					req_cnt[child] = 0;
 #ifdef TF_FLOW_SCALE_QUERY
 					/* Initialize the usage buffer for SRAM tables */
-					tf_tbl_usage_init(tfp->session->session_id.id,
+					tf_tbl_usage_init(tfp,
 							  dir,
 							  child,
 							  alloc_cnt[child]);
@@ -698,7 +698,7 @@ tf_rm_create_db(struct tf *tfp,
 					tbl_type = TF_TBL_TYPE_METER_INST;
 				else
 					tbl_type = TF_TBL_TYPE_METER_PROF;
-				tf_tbl_usage_init(tfp->session->session_id.id,
+				tf_tbl_usage_init(tfp,
 						  parms->dir,
 						  tbl_type,
 						  req_cnt[i]);

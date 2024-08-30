@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -1187,7 +1187,7 @@ struct tf_dev_ops {
 	 *    0       - Success
 	 *    -EINVAL - Error
 	 */
-	int (*tf_dev_update_tbl_usage_buffer)(uint32_t session_id,
+	int (*tf_dev_update_tbl_usage_buffer)(struct tf *tfp,
 					      enum tf_dir dir,
 					      enum tf_tbl_type tbl_type,
 					      uint32_t resc_opt);

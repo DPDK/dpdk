@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -199,7 +199,7 @@ tf_session_create(struct tf *tfp,
 
 #ifdef TF_FLOW_SCALE_QUERY
 	/* Reset the resource usage buffer before binding a device */
-	tf_resc_usage_reset(parms->open_cfg->device_type, tfp->session->session_id.id);
+	tf_resc_usage_reset(tfp, parms->open_cfg->device_type);
 #endif /* TF_FLOW_SCALE_QUERY */
 
 	rc = tf_dev_bind(tfp,

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -97,29 +97,29 @@ typedef struct cfa_tf_resc_usage {
 /* global data stored in firmware memory and TruFlow driver */
 extern cfa_tf_resc_usage_t tf_resc_usage[TF_DIR_MAX];
 
-void tf_resc_usage_reset(enum tf_device_type type, int session_id);
+void tf_resc_usage_reset(struct tf *tfp, enum tf_device_type type);
 
-void tf_tcam_usage_init(int session_id);
+void tf_tcam_usage_init(struct tf *tfp);
 
-int tf_tcam_usage_update(int session_id,
+int tf_tcam_usage_update(struct tf *tfp,
 			 enum tf_dir dir,
 			 int tcam_tbl_type,
 			 void *key_row,
 			 enum tf_resc_opt resc_opt);
 
-void tf_em_usage_init(uint32_t session_id, enum tf_dir dir, uint16_t max_entries);
+void tf_em_usage_init(struct tf *tfp, enum tf_dir dir, uint16_t max_entries);
 
-int tf_em_usage_update(uint32_t session_id,
+int tf_em_usage_update(struct tf *tfp,
 		       enum tf_dir dir,
 		       uint16_t size,
 		       enum tf_resc_opt resc_opt);
 
-void tf_tbl_usage_init(uint32_t session_id,
+void tf_tbl_usage_init(struct tf *tfp,
 		       enum tf_dir dir,
 		       uint32_t tbl_type,
 		       uint16_t max_entries);
 
-int tf_tbl_usage_update(uint32_t session_id,
+int tf_tbl_usage_update(struct tf *tfp,
 			enum tf_dir dir,
 			uint32_t tbl_type,
 			enum tf_resc_opt resc_opt);

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -111,7 +111,7 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 
 #ifdef TF_FLOW_SCALE_QUERY
 	/* Update usage state buffer for EM */
-	tf_em_usage_update(tfs->session_id.id,
+	tf_em_usage_update(tfp,
 			   parms->dir,
 			   num_of_entries,
 			   TF_RESC_ALLOC);
@@ -155,7 +155,7 @@ tf_em_hash_delete_int_entry(struct tf *tfp,
 #ifdef TF_FLOW_SCALE_QUERY
 	/* Update usage state buffer for EM */
 	size = DP_FLAGS_SIZE(pool->entry[parms->index - pool->start_index].flags);
-	tf_em_usage_update(tfs->session_id.id,
+	tf_em_usage_update(tfp,
 			   parms->dir,
 			   size,
 			   TF_RESC_FREE);
