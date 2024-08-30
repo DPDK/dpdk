@@ -1247,6 +1247,7 @@ skip_rss_table:
 				   RTE_FLOW_ERROR_TYPE_ACTION,
 				   act,
 				   "VNIC RSS configure failed");
+		vnic->rss_types_local = 0;
 		rc = -rte_errno;
 		goto ret;
 	}
@@ -1698,8 +1699,10 @@ ret:
 	}
 
 	if (rte_errno)  {
-		if (vnic && STAILQ_EMPTY(&vnic->filter))
+		if (vnic && STAILQ_EMPTY(&vnic->filter)) {
 			vnic->rx_queue_cnt = 0;
+			vnic->rss_types_local = 0;
+		}
 
 		if (rxq && !vnic->rx_queue_cnt)
 			rxq->vnic = &bp->vnic_info[0];

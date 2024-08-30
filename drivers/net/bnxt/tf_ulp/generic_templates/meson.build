@@ -4,10 +4,12 @@
 
 includes += include_directories('.')
 sources += files(
-        'ulp_template_db_class.c',
-        'ulp_template_db_act.c',
-        'ulp_template_db_tbl.c',
-        'ulp_template_db_wh_plus_act.c',
-        'ulp_template_db_wh_plus_class.c',
-        'ulp_template_db_thor_act.c',
-        'ulp_template_db_thor_class.c')
+	'ulp_template_db_class.c',
+	'ulp_template_db_act.c',
+	'ulp_template_db_tbl.c',
+	'ulp_template_db_wh_plus_act.c',
+	'ulp_template_db_wh_plus_class.c',
+	'ulp_template_db_thor_act.c',
+	'ulp_template_db_thor_class.c',
+	'ulp_template_db_thor2_act.c',
+	'ulp_template_db_thor2_class.c')

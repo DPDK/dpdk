@@ -522,6 +522,13 @@ static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nr_pkts)
 	txr->tx_raw_cons = raw_cons;
 }
 
+static bool bnxt_is_tx_cmpl_type(uint16_t type)
+{
+	return (type == CMPL_BASE_TYPE_TX_L2_PKT_TS ||
+		type == CMPL_BASE_TYPE_TX_L2_COAL ||
+		type == CMPL_BASE_TYPE_TX_L2);
+}
+
 static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 {
 	uint32_t nb_tx_pkts = 0, cons, ring_mask, opaque;
@@ -545,7 +552,7 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 
 		opaque = rte_le_to_cpu_32(txcmp->opaque);
 
-		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
+		if (bnxt_is_tx_cmpl_type(CMP_TYPE(txcmp)))
 			nb_tx_pkts += opaque;
 		else
 			RTE_LOG_DP_LINE(ERR, BNXT,
@@ -637,6 +644,16 @@ int bnxt_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (rc)
 		return rc;
 
+	/* reset the previous stats for the tx_queue since the counters
+	 * will be cleared when the queue is started.
+	 */
+	if (BNXT_TPA_V2_P7(bp))
+		memset(&bp->prev_tx_ring_stats_ext[tx_queue_id], 0,
+		       sizeof(struct bnxt_ring_stats));
+	else
+		memset(&bp->prev_tx_ring_stats[tx_queue_id], 0,
+		       sizeof(struct bnxt_ring_stats));
+
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 	txq->tx_started = true;
 	PMD_DRV_LOG_LINE(DEBUG, "Tx queue started");
@@ -664,6 +681,15 @@ int bnxt_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
+static bool bnxt_is_tx_mpc_flush_cmpl_type(uint16_t type)
+{
+	return (type == CMPL_BASE_TYPE_TX_L2_PKT_TS ||
+		type == CMPL_BASE_TYPE_TX_L2_COAL ||
+		type == CMPL_BASE_TYPE_TX_L2 ||
+		type == CMPL_BASE_TYPE_MID_PATH_SHORT ||
+		type == CMPL_BASE_TYPE_MID_PATH_LONG);
+}
+
 /* Sweep the Tx completion queue till HWRM_DONE for ring flush is received.
  * The mbufs will not be freed in this call.
  * They will be freed during ring free as a part of mem cleanup.
@@ -689,7 +715,7 @@ int bnxt_flush_tx_cmp(struct bnxt_cp_ring_info *cpr)
 		opaque = rte_cpu_to_le_32(txcmp->opaque);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 
-		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
+		if (bnxt_is_tx_mpc_flush_cmpl_type(CMP_TYPE(txcmp)))
 			nb_tx_pkts += opaque;
 		else if (CMP_TYPE(txcmp) == HWRM_CMPL_TYPE_HWRM_DONE)
 			return 1;

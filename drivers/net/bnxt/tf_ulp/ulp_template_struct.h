@@ -16,6 +16,7 @@
 #include "rte_sctp.h"
 #include "rte_flow.h"
 #include "tf_core.h"
+#include "cfa_resources.h"
 
 /* Number of fields for each protocol */
 #define BNXT_ULP_PROTO_HDR_SVIF_NUM	2
@@ -28,6 +29,7 @@
 #define BNXT_ULP_PROTO_HDR_TCP_NUM	9
 #define BNXT_ULP_PROTO_HDR_VXLAN_NUM	4
 #define BNXT_ULP_PROTO_HDR_VXLAN_GPE_NUM 5
+#define BNXT_ULP_PROTO_HDR_GENEVE_NUM 4
 #define BNXT_ULP_PROTO_HDR_GRE_NUM	2
 #define BNXT_ULP_PROTO_HDR_ICMP_NUM	5
 #define BNXT_ULP_PROTO_HDR_ECPRI_NUM	2
@@ -94,7 +96,10 @@ struct ulp_rte_parser_params {
 	uint32_t			act_pattern_id;
 	uint8_t				app_id;
 	uint8_t				tun_idx;
-
+	uint16_t			class_info_idx;
+	uint64_t			wc_field_bitmap;
+	uint64_t			cf_bitmap;
+	uint64_t			exclude_field_bitmap;
 };
 
 /* Flow Parser Header Information Structure */
@@ -146,6 +151,12 @@ struct bnxt_ulp_class_match_info {
 	uint32_t		hdr_sig_id;
 	uint64_t		flow_sig_id;
 	uint32_t		flow_pattern_id;
+	uint8_t			app_id;
+	struct ulp_rte_bitmap	hdr_bitmap;
+	uint64_t		field_man_bitmap;
+	uint64_t		field_opt_bitmap;
+	uint64_t		field_exclude_bitmap;
+	uint8_t			field_list[BNXT_ULP_GLB_FIELD_TBL_SIZE + 1];
 };
 
 /* Flow Matcher templates Structure for class entries */
@@ -159,11 +170,8 @@ struct bnxt_ulp_action_match_info {
 };
 
 struct bnxt_ulp_act_match_info {
-	struct ulp_rte_bitmap	act_sig;
-	uint32_t		act_hid;
+	struct ulp_rte_bitmap	act_bitmap;
 	uint32_t		act_tid;
-	uint32_t		act_pattern_id;
-	uint8_t			app_sig;
 };
 
 /* Flow Matcher templates Structure for action entries */
@@ -188,8 +196,8 @@ struct bnxt_ulp_mapper_func_info {
 	enum bnxt_ulp_func_opc		func_opc;
 	enum bnxt_ulp_func_src		func_src1;
 	enum bnxt_ulp_func_src		func_src2;
-	uint16_t			func_opr1;
-	uint16_t			func_opr2;
+	uint64_t			func_opr1;
+	uint64_t			func_opr2;
 	uint16_t			func_dst_opr;
 };
 
@@ -200,12 +208,17 @@ struct bnxt_ulp_template_device_tbls {
 	uint32_t tbl_list_size;
 	struct bnxt_ulp_mapper_key_info *key_info_list;
 	uint32_t key_info_list_size;
+	struct bnxt_ulp_mapper_field_info *key_ext_list;
+	uint32_t key_ext_list_size;
 	struct bnxt_ulp_mapper_field_info *result_field_list;
 	uint32_t result_field_list_size;
 	struct bnxt_ulp_mapper_ident_info *ident_list;
 	uint32_t ident_list_size;
 	struct bnxt_ulp_mapper_cond_info *cond_list;
 	uint32_t cond_list_size;
+	struct bnxt_ulp_mapper_cond_list_info *cond_oper_list;
+	uint32_t cond_oper_list_size;
+
 };
 
 struct bnxt_ulp_dyn_size_map {
@@ -251,6 +264,7 @@ struct bnxt_ulp_device_params {
 	uint32_t			wc_mode_list[4];
 	uint32_t			wc_mod_list_max_size;
 	uint32_t			wc_ctl_size_bits;
+	const struct bnxt_ulp_generic_tbl_params *gen_tbl_params;
 	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 };
 
@@ -313,6 +327,14 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	/* Shared session */
 	enum bnxt_ulp_session_type	session_type;
+
+	/* Key recipes for generic templates */
+	enum bnxt_ulp_key_recipe_opc key_recipe_opcode;
+	uint32_t key_recipe_operand;
+
+	/* control table messages */
+	const char			*false_message;
+	const char			*true_message;
 };
 
 struct bnxt_ulp_mapper_field_info {
@@ -375,6 +397,16 @@ struct bnxt_ulp_app_capabilities_info {
 	uint8_t				ha_reg_cnt;
 	uint8_t				tunnel_next_proto;
 	uint32_t			flags;
+	uint32_t			max_pools;
+	uint8_t				em_multiplier;
+	uint32_t			num_rx_flows;
+	uint32_t			num_tx_flows;
+	uint16_t			act_rx_max_sz;
+	uint16_t			act_tx_max_sz;
+	uint16_t			em_rx_key_max_sz;
+	uint16_t			em_tx_key_max_sz;
+	uint32_t			pbl_page_sz_in_bytes;
+	uint16_t			num_key_recipes_per_dir;
 };
 
 struct bnxt_ulp_cache_tbl_params {
@@ -383,6 +415,7 @@ struct bnxt_ulp_cache_tbl_params {
 
 struct bnxt_ulp_generic_tbl_params {
 	const char			*name;
+	enum bnxt_ulp_gen_tbl_type	gen_tbl_type;
 	uint16_t			result_num_entries;
 	uint16_t			result_num_bytes;
 	enum bnxt_ulp_byte_order	result_byte_order;

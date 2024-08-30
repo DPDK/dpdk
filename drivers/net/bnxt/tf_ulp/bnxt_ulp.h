@@ -40,7 +40,9 @@
 #define BNXT_ULP_CUST_VXLAN_SUPPORT	0x100
 #define BNXT_ULP_MULTI_SHARED_SUPPORT	0x200
 #define BNXT_ULP_APP_HA_DYNAMIC		0x400
-#define BNXT_ULP_APP_L2_ETYPE		0x800
+#define BNXT_ULP_APP_SRV6               0x800
+#define BNXT_ULP_APP_L2_ETYPE		0x1000
+#define BNXT_ULP_SHARED_TBL_SCOPE_ENABLED 0x2000
 
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 #define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
@@ -106,6 +108,7 @@ struct bnxt_ulp_data {
 	struct bnxt_ulp_flow_db		*flow_db;
 	pthread_mutex_t			flow_db_lock;
 	void				*mapper_data;
+	void				*matcher_data;
 	struct bnxt_ulp_port_db		*port_db;
 	struct bnxt_ulp_fc_info		*fc_info;
 	struct bnxt_ulp_ha_mgr_info	*ha_info;
@@ -125,17 +128,47 @@ struct bnxt_ulp_data {
 	uint32_t			vxlan_ip_port;
 	uint32_t			ecpri_udp_port;
 	uint32_t			hu_session_type;
+	uint32_t			max_pools;
+	uint32_t			num_rx_flows;
+	uint32_t			num_tx_flows;
+	uint16_t			act_rx_max_sz;
+	uint16_t			act_tx_max_sz;
+	uint16_t			em_rx_key_max_sz;
+	uint16_t			em_tx_key_max_sz;
+	uint32_t			page_sz;
 	uint8_t				hu_reg_state;
 	uint8_t				hu_reg_cnt;
 	uint8_t				ha_pool_id;
 	uint8_t				tunnel_next_proto;
+	uint8_t				em_multiplier;
 	enum bnxt_ulp_session_type	def_session_type;
+	uint16_t			num_key_recipes_per_dir;
+};
+
+enum bnxt_ulp_tfo_type {
+	BNXT_ULP_TFO_TYPE_INVALID = 0,
+	BNXT_ULP_TFO_TYPE_TF,
+	BNXT_ULP_TFO_TYPE_TFC
 };
 
 #define BNXT_ULP_SESSION_MAX 3
+#define BNXT_ULP_TFO_SID_FLAG (1)
+#define BNXT_ULP_TFO_TSID_FLAG (1 << 1)
+
 struct bnxt_ulp_context {
 	struct bnxt_ulp_data	*cfg_data;
-	struct tf		*g_tfp[BNXT_ULP_SESSION_MAX];
+	struct bnxt *bp;
+	enum bnxt_ulp_tfo_type tfo_type;
+	union {
+		void *g_tfp[BNXT_ULP_SESSION_MAX];
+		struct {
+			uint32_t tfo_flags;
+			void *tfcp;
+			uint16_t sid;
+			uint8_t tsid;
+		};
+	};
+	const struct bnxt_ulp_core_ops *ops;
 };
 
 struct bnxt_ulp_pci_info {
@@ -153,6 +186,8 @@ struct bnxt_ulp_session_state {
 	struct bnxt_ulp_data		*cfg_data;
 	struct tf			*g_tfp[BNXT_ULP_SESSION_MAX];
 	uint32_t			session_opened[BNXT_ULP_SESSION_MAX];
+	/* Need to revisit a union for the tf related data */
+	uint16_t			session_id;
 };
 
 /* ULP flow id structure */
@@ -170,6 +205,28 @@ struct ulp_context_list_entry {
 	TAILQ_ENTRY(ulp_context_list_entry)	next;
 	struct bnxt_ulp_context			*ulp_ctx;
 };
+
+struct bnxt_ulp_core_ops {
+	int32_t
+	(*ulp_init)(struct bnxt *bp,
+		      struct bnxt_ulp_session_state *session);
+	void
+	(*ulp_deinit)(struct bnxt *bp,
+		      struct bnxt_ulp_session_state *session);
+	int32_t
+	(*ulp_ctx_attach)(struct bnxt *bp,
+			  struct bnxt_ulp_session_state *session);
+	void
+	(*ulp_ctx_detach)(struct bnxt *bp,
+			  struct bnxt_ulp_session_state *session);
+};
+
+extern const struct bnxt_ulp_core_ops bnxt_ulp_tf_core_ops;
+extern const struct bnxt_ulp_core_ops bnxt_ulp_tfc_core_ops;
+
+int32_t
+bnxt_ulp_devid_get(struct bnxt *bp,
+		   enum bnxt_ulp_device_id  *ulp_dev_id);
 
 bool
 ulp_is_default_session_active(struct bnxt_ulp_context *ulp_ctx);
@@ -209,7 +266,7 @@ int32_t
 bnxt_ulp_cntxt_tbl_scope_id_get(struct bnxt_ulp_context *ulp_ctx,
 				uint32_t *tbl_scope_id);
 
-/* Function to set the tfp session details in the ulp context. */
+/* Function to set the bp associated with the ulp_ctx */
 int32_t
 bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp,
 		       enum bnxt_ulp_session_type s_type,
@@ -219,6 +276,48 @@ bnxt_ulp_cntxt_tfp_set(struct bnxt_ulp_context *ulp,
 struct tf *
 bnxt_ulp_cntxt_tfp_get(struct bnxt_ulp_context *ulp,
 		       enum bnxt_ulp_session_type s_type);
+
+int32_t
+bnxt_ulp_cntxt_bp_set(struct bnxt_ulp_context *ulp, struct bnxt *bp);
+
+/* Function to get the bp associated with the ulp_ctx */
+struct bnxt *
+bnxt_ulp_cntxt_bp_get(struct bnxt_ulp_context *ulp);
+
+/* Function to set the v3 table scope id, only works for tfc objects */
+int32_t
+bnxt_ulp_cntxt_tsid_set(struct bnxt_ulp_context *ulp_ctx, uint8_t tsid);
+
+/*
+ * Function to set the v3 table scope id, only works for tfc objects
+ * There isn't a known invalid value for tsid, so this is necessary in order to
+ * know that the tsid is not set.
+ */
+void
+bnxt_ulp_cntxt_tsid_reset(struct bnxt_ulp_context *ulp_ctx);
+
+/* Function to set the v3 table scope id, only works for tfc objects */
+int32_t
+bnxt_ulp_cntxt_tsid_get(struct bnxt_ulp_context *ulp_ctx, uint8_t *tsid);
+
+/* Function to set the v3 session id, only works for tfc objects */
+int32_t
+bnxt_ulp_cntxt_sid_set(struct bnxt_ulp_context *ulp_ctx, uint16_t session_id);
+
+/*
+ * Function to reset the v3 session id, only works for tfc objects
+ * There isn't a known invalid value for sid, so this is necessary in order to
+ * know that the sid is not set.
+ */
+void
+bnxt_ulp_cntxt_sid_reset(struct bnxt_ulp_context *ulp_ctx);
+
+/* Function to get the v3 session id, only works for tfc objects */
+int32_t
+bnxt_ulp_cntxt_sid_get(struct bnxt_ulp_context *ulp_ctx, uint16_t *sid);
+
+int32_t
+bnxt_ulp_cntxt_fid_get(struct bnxt_ulp_context *ulp, uint16_t *fw_fid);
 
 /* Get the device table entry based on the device id. */
 struct bnxt_ulp_device_params *
@@ -256,6 +355,15 @@ bnxt_ulp_cntxt_ptr2_mapper_data_set(struct bnxt_ulp_context *ulp_ctx,
 /* Function to get the ulp mapper data from the ulp context */
 void *
 bnxt_ulp_cntxt_ptr2_mapper_data_get(struct bnxt_ulp_context *ulp_ctx);
+
+/* Function to add the ulp matcher data to the ulp context */
+int32_t
+bnxt_ulp_cntxt_ptr2_matcher_data_set(struct bnxt_ulp_context *ulp_ctx,
+				     void *matcher_data);
+
+/* Function to get the ulp matcher data from the ulp context */
+void *
+bnxt_ulp_cntxt_ptr2_matcher_data_get(struct bnxt_ulp_context *ulp_ctx);
 
 /* Function to set the port database to the ulp context. */
 int32_t
@@ -340,9 +448,8 @@ bnxt_ulp_cntxt_multi_shared_session_enabled(struct bnxt_ulp_context *ulp_ctx);
 struct bnxt_ulp_app_capabilities_info *
 bnxt_ulp_app_cap_list_get(uint32_t *num_entries);
 
-int32_t
-bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
-			     uint8_t app_id, uint32_t dev_id);
+struct bnxt_ulp_resource_resv_info *
+bnxt_ulp_app_resource_resv_list_get(uint32_t *num_entries);
 
 struct bnxt_ulp_resource_resv_info *
 bnxt_ulp_resource_resv_list_get(uint32_t *num_entries);
@@ -407,6 +514,26 @@ bnxt_ulp_vxlan_gpe_next_proto_set(struct bnxt_ulp_context *ulp_ctx,
 uint8_t
 bnxt_ulp_vxlan_gpe_next_proto_get(struct bnxt_ulp_context *ulp_ctx);
 
+int
+bnxt_ulp_cntxt_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t vxlan_port);
+unsigned int
+bnxt_ulp_cntxt_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx);
+
+unsigned int
+bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx);
+
+int
+bnxt_ulp_cntxt_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t vxlan_ip_port);
+unsigned int
+bnxt_ulp_cntxt_vxlan_ip_port_get(struct bnxt_ulp_context *ulp_ctx);
+int
+bnxt_ulp_cntxt_ecpri_udp_port_set(struct bnxt_ulp_context *ulp_ctx,
+			uint32_t ecpri_udp_port);
+unsigned int
+bnxt_ulp_cntxt_ecpri_udp_port_get(struct bnxt_ulp_context *ulp_ctx);
+
 int32_t
 bnxt_flow_meter_init(struct bnxt *bp);
 
@@ -425,4 +552,28 @@ bnxt_ulp_ha_reg_cnt_get(struct bnxt_ulp_context *ulp_ctx);
 
 struct tf*
 bnxt_ulp_bp_tfp_get(struct bnxt *bp, enum bnxt_ulp_session_type type);
+
+int32_t
+bnxt_ulp_cntxt_ha_reg_set(struct bnxt_ulp_context *ulp_ctx,
+			  uint8_t state, uint8_t cnt);
+
+uint32_t
+bnxt_ulp_cntxt_ha_reg_state_get(struct bnxt_ulp_context *ulp_ctx);
+
+uint32_t
+bnxt_ulp_cntxt_ha_reg_cnt_get(struct bnxt_ulp_context *ulp_ctx);
+
+int32_t bnxt_ulp_cntxt_list_init(void);
+
+int32_t bnxt_ulp_cntxt_list_add(struct bnxt_ulp_context *ulp_ctx);
+
+void bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx);
+
+void
+bnxt_ulp_destroy_vfr_default_rules(struct bnxt *bp, bool global);
+
+void bnxt_ulp_num_key_recipes_set(struct bnxt_ulp_context *ulp_ctx,
+				  uint16_t recipes);
+
+int32_t bnxt_ulp_num_key_recipes_get(struct bnxt_ulp_context *ulp_ctx);
 #endif /* _BNXT_ULP_H_ */

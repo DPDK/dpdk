@@ -43,10 +43,10 @@ enum bnxt_ulp_intf_type bnxt_pmd_get_interface_type(uint16_t port);
 int32_t bnxt_pmd_set_unicast_rxmask(struct rte_eth_dev *eth_dev);
 int32_t bnxt_pmd_queue_action_create(struct bnxt_ulp_mapper_parms *parms,
 				     uint16_t *vnic_idx, uint16_t *vnic_id);
-int32_t bnxt_pmd_queue_action_delete(struct tf *tfp, uint16_t vnic_idx);
+int32_t bnxt_pmd_queue_action_delete(struct bnxt *bp, uint16_t vnic_idx);
 int32_t bnxt_pmd_rss_action_create(struct bnxt_ulp_mapper_parms *parms,
 				   uint16_t *vnic_idx, uint16_t *vnic_id);
-int32_t bnxt_pmd_rss_action_delete(struct tf *tfp, uint16_t vnic_idx);
+int32_t bnxt_pmd_rss_action_delete(struct bnxt *bp, uint16_t vnic_idx);
 int32_t bnxt_tunnel_dst_port_free(struct bnxt *bp,
 				  uint16_t port,
 				  uint8_t type);
@@ -61,4 +61,8 @@ bnxt_tunnel_upar_id_get(struct bnxt *bp,
 			uint8_t type,
 			uint8_t *upar_id);
 bool bnxt_pmd_get_hot_up_config(void);
+int32_t ulp_ctx_mh_get_session_name(struct bnxt *bp,
+				    struct tf_open_session_parms *parms);
+
+int32_t bnxt_pmd_bd_act_set(uint16_t port_id, uint32_t act);
 #endif /* _BNXT_TF_PMD_ABSTRACT_H_ */

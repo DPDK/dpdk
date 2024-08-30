@@ -53,6 +53,7 @@ struct ulp_func_if_info {
 	uint16_t		phy_port_id;
 	uint16_t		ifindex;
 	uint16_t		vf_meta_data;
+	uint8_t			table_scope;
 };
 
 /* Structure for the Port database resource information. */
@@ -360,11 +361,22 @@ ulp_port_db_port_meta_data_get(struct bnxt_ulp_context *ulp_ctxt,
  * ulp_ctxt [in] Ptr to ulp context
  * port_id [in] dpdk port id
  * fid_data [out] the function id of the given port
- *
- * Returns 0 on success or negative number on failure.
  */
 int32_t
 ulp_port_db_port_vf_fid_get(struct bnxt_ulp_context *ulp_ctxt,
 			    uint16_t port_id, uint8_t **fid_data);
 
+/*
+ * Api to get the table scope for a given port id.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * table_scope data [out] the table scope
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+
+int32_t
+ulp_port_db_port_table_scope_get(struct bnxt_ulp_context *ulp_ctxt,
+				 uint16_t port_id, uint8_t **tsid);
 #endif /* _ULP_PORT_DB_H_ */
