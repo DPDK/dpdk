@@ -1557,3 +1557,13 @@ bnxt_ulp_num_key_recipes_get(struct bnxt_ulp_context *ulp_ctx)
 		return 0;
 	return ulp_ctx->cfg_data->num_key_recipes_per_dir;
 }
+
+/* This function gets the feature bits */
+uint64_t
+bnxt_ulp_feature_bits_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+	return ulp_ctx->cfg_data->feature_bits;
+}
+

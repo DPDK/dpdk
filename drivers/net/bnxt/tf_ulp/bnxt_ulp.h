@@ -143,6 +143,7 @@ struct bnxt_ulp_data {
 	uint8_t				em_multiplier;
 	enum bnxt_ulp_session_type	def_session_type;
 	uint16_t			num_key_recipes_per_dir;
+	uint64_t			feature_bits;
 };
 
 enum bnxt_ulp_tfo_type {
@@ -576,4 +577,8 @@ void bnxt_ulp_num_key_recipes_set(struct bnxt_ulp_context *ulp_ctx,
 				  uint16_t recipes);
 
 int32_t bnxt_ulp_num_key_recipes_get(struct bnxt_ulp_context *ulp_ctx);
+
+uint64_t
+bnxt_ulp_feature_bits_get(struct bnxt_ulp_context *ulp_ctx);
+
 #endif /* _BNXT_ULP_H_ */

@@ -3205,6 +3205,13 @@ ulp_mapper_cond_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		if (opc == BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET)
 			result = !result;
 		break;
+	case BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET:
+	case BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET:
+		regval = bnxt_ulp_feature_bits_get(parms->ulp_ctx);
+		result = ULP_BITMAP_ISSET(regval, operand);
+		if (opc == BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET)
+			result = !ULP_BITMAP_ISSET(regval, operand);
+		break;
 	default:
 		BNXT_DRV_DBG(ERR, "Invalid conditional opcode %d\n", opc);
 		rc = -EINVAL;
@@ -3313,16 +3320,19 @@ ulp_mapper_bd_act_set(struct bnxt_ulp_mapper_parms *parms __rte_unused,
 	return bnxt_pmd_bd_act_set(port_id, action);
 }
 
+/* oper size is in bits and res size are in bytes */
 static int32_t
 ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 				  uint32_t idx, uint8_t dir,
-				  uint64_t *res)
+				  uint32_t oper_size, uint64_t *res,
+				  uint32_t res_size)
 {
 	struct bnxt_ulp_mapper_field_info *fld;
 	uint8_t *val = NULL;
 	uint32_t val_len = 0;
 	uint64_t value = 0;
 	uint16_t ext_idx = 0;
+	uint8_t *res_local = (uint8_t *)res;
 
 	/* Get the field info from the key ext list */
 	fld = ulp_mapper_tmpl_key_ext_list_get(parms, idx);
@@ -3335,7 +3345,7 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 	/* process the condition  list */
 	if (ulp_mapper_field_src_process(parms, fld->field_src1,
 					 fld->field_opr1, dir,
-					 1, ULP_64B_IN_BITS, &val,
+					 1, oper_size, &val,
 					 &val_len, &value)) {
 		BNXT_DRV_DBG(ERR, "error processing func opcode %u\n",
 			     idx);
@@ -3353,12 +3363,13 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 			}
 			ext_idx = tfp_be_to_cpu_16(ext_idx);
 			return ulp_mapper_func_cond_list_process(parms, ext_idx,
-								 dir, res);
+								 dir, oper_size,
+								 res, res_size);
 		} else {
 			/* get the value from then part */
 			if (ulp_mapper_field_src_process(parms, fld->field_src2,
 							 fld->field_opr2, dir,
-							 1, ULP_64B_IN_BITS,
+							 1, oper_size,
 							 &val, &val_len,
 							 &value)) {
 				BNXT_DRV_DBG(ERR,
@@ -3379,12 +3390,13 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 			}
 			ext_idx = tfp_be_to_cpu_16(ext_idx);
 			return ulp_mapper_func_cond_list_process(parms, ext_idx,
-								 dir, res);
+								 dir, oper_size,
+								 res, res_size);
 		} else {
 			/* get the value from else part */
 			if (ulp_mapper_field_src_process(parms, fld->field_src3,
 							 fld->field_opr3, dir,
-							 1, ULP_64B_IN_BITS,
+							 1, oper_size,
 							 &val, &val_len,
 							 &value)) {
 				BNXT_DRV_DBG(ERR,
@@ -3395,7 +3407,12 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	}
 	/* write the value into result */
-	ulp_operand_read(val, (uint8_t *)res, ULP_BITS_2_BYTE_NR(val_len));
+	ulp_operand_read(val, res_local + res_size -
+			 ULP_BITS_2_BYTE_NR(oper_size),
+			 ULP_BITS_2_BYTE_NR(val_len));
+
+	/* convert the data to cpu format */
+	*res = tfp_be_to_cpu_64(*res);
 	return 0;
 }
 
@@ -3551,7 +3568,8 @@ ulp_mapper_func_info_process(struct bnxt_ulp_mapper_parms *parms,
 		if (ulp_mapper_func_cond_list_process(parms,
 						      func_info->func_opr1,
 						      tbl->direction,
-						      &res))
+						      func_info->func_oper_size,
+						      &res, sizeof(res)))
 			return -EINVAL;
 		break;
 	default:

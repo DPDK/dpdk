@@ -199,6 +199,7 @@ struct bnxt_ulp_mapper_func_info {
 	uint64_t			func_opr1;
 	uint64_t			func_opr2;
 	uint16_t			func_dst_opr;
+	uint32_t			func_oper_size;
 };
 
 struct bnxt_ulp_template_device_tbls {
@@ -413,6 +414,7 @@ struct bnxt_ulp_app_capabilities_info {
 	uint16_t			em_tx_key_max_sz;
 	uint32_t			pbl_page_sz_in_bytes;
 	uint16_t			num_key_recipes_per_dir;
+	uint64_t			feature_bits;
 };
 
 struct bnxt_ulp_cache_tbl_params {
