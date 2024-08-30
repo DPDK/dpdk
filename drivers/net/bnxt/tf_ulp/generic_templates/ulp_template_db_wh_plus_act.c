@@ -99,6 +99,16 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
 		.cond_start_idx = 124,
 		.cond_nums = 0 }
+	},
+	/* act_tid: 10, egress */
+	[10] = {
+	.device_name = BNXT_ULP_DEVICE_ID_WH_PLUS,
+	.num_tbls = 0,
+	.start_tbl_idx = 0,
+	.reject_info = {
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
+		.cond_start_idx = 134,
+		.cond_nums = 0 }
 	}
 };
 

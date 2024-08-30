@@ -28,20 +28,27 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 	},
 	[2] = {
 	.act_bitmap = { .bits =
+		BNXT_ULP_ACT_BIT_JUMP |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 1
+	},
+	[3] = {
+	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED |
 		BNXT_ULP_ACT_BIT_SAMPLE |
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 2
 	},
-	[3] = {
+	[4] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_DELETE |
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 2
 	},
-	[4] = {
+	[5] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_DEC_TTL |
@@ -58,7 +65,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 3
 	},
-	[5] = {
+	[6] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_RSS |
@@ -67,40 +74,40 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 4
 	},
-	[6] = {
-	.act_bitmap = { .bits =
-		BNXT_ULP_ACT_BIT_METER_PROFILE |
-		BNXT_ULP_FLOW_DIR_BITMASK_ING },
-	.act_tid = 5
-	},
 	[7] = {
 	.act_bitmap = { .bits =
-		BNXT_ULP_ACT_BIT_SHARED_METER |
+		BNXT_ULP_ACT_BIT_METER_PROFILE |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 5
 	},
 	[8] = {
 	.act_bitmap = { .bits =
-		BNXT_ULP_ACT_BIT_DELETE |
-		BNXT_ULP_ACT_BIT_METER_PROFILE |
+		BNXT_ULP_ACT_BIT_SHARED_METER |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 5
 	},
 	[9] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_DELETE |
-		BNXT_ULP_ACT_BIT_SHARED_METER |
+		BNXT_ULP_ACT_BIT_METER_PROFILE |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 5
 	},
 	[10] = {
+	.act_bitmap = { .bits =
+		BNXT_ULP_ACT_BIT_DELETE |
+		BNXT_ULP_ACT_BIT_SHARED_METER |
+		BNXT_ULP_FLOW_DIR_BITMASK_ING },
+	.act_tid = 5
+	},
+	[11] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_UPDATE |
 		BNXT_ULP_ACT_BIT_SHARED_METER |
 		BNXT_ULP_FLOW_DIR_BITMASK_ING },
 	.act_tid = 5
 	},
-	[11] = {
+	[12] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_DROP |
 		BNXT_ULP_ACT_BIT_SET_VLAN_PCP |
@@ -113,7 +120,14 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 6
 	},
-	[12] = {
+	[13] = {
+	.act_bitmap = { .bits =
+		BNXT_ULP_ACT_BIT_JUMP |
+		BNXT_ULP_ACT_BIT_COUNT |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.act_tid = 6
+	},
+	[14] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_COUNT |
 		BNXT_ULP_ACT_BIT_SET_MAC_SRC |
@@ -130,7 +144,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 7
 	},
-	[13] = {
+	[15] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_MULTIPLE_PORT |
@@ -142,7 +156,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 8
 	},
-	[14] = {
+	[16] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |
 		BNXT_ULP_ACT_BIT_MULTIPLE_PORT |
@@ -151,7 +165,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 9
 	},
-	[15] = {
+	[17] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_SHARED |
 		BNXT_ULP_ACT_BIT_SAMPLE |
@@ -160,7 +174,7 @@ struct bnxt_ulp_act_match_info ulp_act_match_list[] = {
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.act_tid = 10
 	},
-	[16] = {
+	[18] = {
 	.act_bitmap = { .bits =
 		BNXT_ULP_ACT_BIT_DELETE |
 		BNXT_ULP_ACT_BIT_SHARED_SAMPLE |

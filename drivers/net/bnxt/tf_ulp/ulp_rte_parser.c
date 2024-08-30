@@ -3181,11 +3181,20 @@ ulp_rte_set_ttl_act_handler(const struct rte_flow_action *action_item,
 
 /* Function to handle the parsing of RTE Flow action JUMP */
 int32_t
-ulp_rte_jump_act_handler(const struct rte_flow_action *action_item __rte_unused,
+ulp_rte_jump_act_handler(const struct rte_flow_action *action_item,
 			 struct ulp_rte_parser_params *params)
 {
-	/* Update the act_bitmap with dec ttl */
-	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
+	const struct rte_flow_action_jump *jump_act;
+	struct ulp_rte_act_prop *act = &params->act_prop;
+	uint32_t group_id;
+
+	jump_act = action_item->conf;
+	if (jump_act) {
+		group_id = rte_cpu_to_be_32(jump_act->group);
+		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_JUMP],
+		       &group_id, BNXT_ULP_ACT_PROP_SZ_JUMP);
+		ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_JUMP);
+	}
 	return BNXT_TF_RC_SUCCESS;
 }
 

@@ -20,6 +20,7 @@
 #include "ulp_gen_tbl.h"
 #include "tfc_em.h"
 #include "bitalloc.h"
+#include "ulp_alloc_tbl.h"
 
 #define ULP_IDENTS_INVALID ((uint16_t)0xffff)
 
@@ -52,6 +53,7 @@ struct bnxt_ulp_mapper_data {
 		glb_res_tbl[TF_DIR_MAX][BNXT_ULP_GLB_RF_IDX_LAST];
 	struct ulp_mapper_gen_tbl_list gen_tbl_list[BNXT_ULP_GEN_TBL_MAX_SZ];
 	struct bnxt_ulp_key_recipe_info key_recipe_info;
+	struct ulp_allocator_tbl_entry alloc_tbl[BNXT_ULP_ALLOCATOR_TBL_MAX_SZ];
 };
 
 /* Internal Structure for passing the arguments around */

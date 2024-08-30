@@ -3982,6 +3982,61 @@ ulp_mapper_conflict_resolution_process(struct bnxt_ulp_mapper_parms *parms,
 }
 
 static int32_t
+ulp_mapper_allocator_tbl_process(struct bnxt_ulp_mapper_parms *parms,
+				 struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	struct ulp_flow_db_res_params fid_parms;
+	int32_t alloc_index, rc = 0;
+	uint64_t regval = 0;
+
+	/* Only Alloc opcode is supported for now */
+	if (tbl->tbl_opcode != BNXT_ULP_ALLOC_TBL_OPC_ALLOC)
+		return 0; /* nothing to done */
+
+	/* allocate the index from the allocator */
+	rc = ulp_allocator_tbl_list_alloc(parms->mapper_data,
+					  tbl->resource_sub_type,
+					  tbl->direction, &alloc_index);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "unable to alloc index %x:%x\n",
+			     tbl->resource_sub_type, tbl->direction);
+		return -EINVAL;
+	}
+
+	/* Write to the regfile */
+	regval = rte_cpu_to_be_64(alloc_index);
+	rc = ulp_regfile_write(parms->regfile, tbl->tbl_operand, regval);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to write regfile[%d] rc=%d\n",
+			     tbl->tbl_operand, rc);
+		return -EINVAL;
+	}
+
+	/* update the flow database */
+	memset(&fid_parms, 0, sizeof(fid_parms));
+	fid_parms.direction	= tbl->direction;
+	fid_parms.resource_func	= tbl->resource_func;
+	fid_parms.resource_type	= tbl->resource_type;
+	fid_parms.resource_sub_type = tbl->resource_sub_type;
+	fid_parms.resource_hndl	= alloc_index;
+	fid_parms.critical_resource = tbl->critical_resource;
+
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to link resource to flow rc = %d\n",
+			     rc);
+		goto error;
+	}
+	return rc;
+error:
+	/* Free the allocated index */
+	(void)ulp_allocator_tbl_list_free(parms->mapper_data,
+					  tbl->resource_sub_type,
+					  tbl->direction, alloc_index);
+	return rc;
+}
+
+static int32_t
 ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, void *error)
 {
 	struct bnxt_ulp_mapper_tbl_info *tbls;
@@ -4072,6 +4127,9 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, void *error)
 		case BNXT_ULP_RESOURCE_FUNC_KEY_RECIPE_TABLE:
 			rc = ulp_mapper_key_recipe_tbl_process(parms, tbl);
 			break;
+		case BNXT_ULP_RESOURCE_FUNC_ALLOCATOR_TABLE:
+			rc = ulp_mapper_allocator_tbl_process(parms, tbl);
+			break;
 		default:
 			BNXT_DRV_DBG(ERR, "Unexpected mapper resource %d\n",
 				     tbl->resource_func);
@@ -4149,6 +4207,7 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 			 void *error)
 {
 	const struct ulp_mapper_core_ops *mapper_op;
+	struct bnxt_ulp_mapper_data *mdata;
 	int32_t	rc = 0;
 
 	if (!res || !ulp) {
@@ -4196,6 +4255,17 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 		rc = ulp_mapper_key_recipe_free(ulp, res->direction,
 						res->resource_sub_type,
 						res->resource_hndl);
+		break;
+	case BNXT_ULP_RESOURCE_FUNC_ALLOCATOR_TABLE:
+		mdata = bnxt_ulp_cntxt_ptr2_mapper_data_get(ulp);
+		if (!mdata) {
+			BNXT_DRV_DBG(ERR, "Unable to get mapper data\n");
+			return -EINVAL;
+		}
+		rc = ulp_allocator_tbl_list_free(mdata,
+						 res->resource_sub_type,
+						 res->direction,
+						 res->resource_hndl);
 		break;
 	default:
 		break;
@@ -4520,6 +4590,12 @@ ulp_mapper_init(struct bnxt_ulp_context *ulp_ctx)
 		goto error;
 	}
 
+	rc = ulp_allocator_tbl_list_init(ulp_ctx, data);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to initialize allocator tbl\n");
+		goto error;
+	}
+
 	return 0;
 error:
 	/* Ignore the return code in favor of returning the original error. */
@@ -4554,6 +4630,9 @@ ulp_mapper_deinit(struct bnxt_ulp_context *ulp_ctx)
 
 	/* Free the key recipe table */
 	(void)ulp_mapper_key_recipe_tbl_deinit(data);
+
+	/* Free the allocator table */
+	(void)ulp_allocator_tbl_list_deinit(data);
 
 	rte_free(data);
 	/* Reset the data pointer within the ulp_ctx. */
