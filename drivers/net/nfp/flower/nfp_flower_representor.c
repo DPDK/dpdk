@@ -315,12 +315,11 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	/* This points to the PF vNIC that owns this representor */
 	dev = repr->app_fw_flower->pf_ethdev;
 
-	/* Only using Tx queue 0 for now. */
-	pf_tx_queue = dev->data->tx_queues[0];
+	pf_tx_queue = dev->data->tx_queues[txq->qidx];
 	sent = nfp_flower_pf_xmit_pkts(pf_tx_queue, tx_pkts, nb_pkts);
 	if (sent != 0) {
-		PMD_TX_LOG(DEBUG, "Representor Tx burst for %s, port_id: %#x transmitted: %hu",
-				repr->name, repr->port_id, sent);
+		PMD_TX_LOG(DEBUG, "Port: %#x transmitted: %hu queue: %u",
+				repr->port_id, sent, txq->qidx);
 
 		data_len = 0;
 		for (i = 0; i < sent; i++)
