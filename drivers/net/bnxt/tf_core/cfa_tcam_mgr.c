@@ -909,6 +909,7 @@ cfa_tcam_mgr_init(int sess_idx, enum cfa_tcam_mgr_device_type type,
 	/* Now calculate the max entries per table and global max entries based
 	 * on the updated table limits.
 	 */
+	cfa_tcam_mgr_max_entries[sess_idx] = 0;
 	for (dir = 0; dir < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx]); dir++)
 		for (tbl_type = 0;
 		     tbl_type < ARRAY_SIZE(cfa_tcam_mgr_tables[sess_idx][dir]);
@@ -958,8 +959,8 @@ cfa_tcam_mgr_init(int sess_idx, enum cfa_tcam_mgr_device_type type,
 	if (parms != NULL)
 		parms->max_entries = cfa_tcam_mgr_max_entries[sess_idx];
 
-	CFA_TCAM_MGR_LOG(INFO, "Global TCAM table initialized for sess_idx %d.\n",
-			 sess_idx);
+	CFA_TCAM_MGR_LOG(DEBUG, "Global TCAM table initialized for sess_idx %d max entries %d.\n",
+			 sess_idx, cfa_tcam_mgr_max_entries[sess_idx]);
 
 	return 0;
 }
