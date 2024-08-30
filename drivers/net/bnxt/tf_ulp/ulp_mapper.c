@@ -654,6 +654,12 @@ ulp_mapper_priority_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = -EINVAL;
 		break;
 	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	if (!rc)
+		BNXT_DRV_DBG(DEBUG, "Tcam priority = 0x%x\n", *priority);
+#endif
+#endif
 	return rc;
 }
 

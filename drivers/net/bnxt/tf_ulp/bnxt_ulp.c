@@ -235,7 +235,17 @@ bnxt_ulp_cntxt_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx)
 	return (unsigned int)ulp_ctx->cfg_data->vxlan_port;
 }
 
-/* Function to retrieve the default app priority from the context. */
+int
+bnxt_ulp_default_app_priority_set(struct bnxt_ulp_context *ulp_ctx,
+				  uint32_t prio)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->default_priority = prio;
+	return 0;
+}
+
 unsigned int
 bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx)
 {
@@ -243,6 +253,64 @@ bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx)
 		return 0;
 
 	return (unsigned int)ulp_ctx->cfg_data->default_priority;
+}
+
+int
+bnxt_ulp_max_def_priority_set(struct bnxt_ulp_context *ulp_ctx,
+			      uint32_t prio)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->max_def_priority = prio;
+	return 0;
+}
+
+unsigned int
+bnxt_ulp_max_def_priority_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (unsigned int)ulp_ctx->cfg_data->max_def_priority;
+}
+
+int
+bnxt_ulp_min_flow_priority_set(struct bnxt_ulp_context *ulp_ctx, uint32_t prio)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->min_flow_priority = prio;
+	return 0;
+}
+
+unsigned int
+bnxt_ulp_min_flow_priority_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return ulp_ctx->cfg_data->min_flow_priority;
+}
+
+int
+bnxt_ulp_max_flow_priority_set(struct bnxt_ulp_context *ulp_ctx, uint32_t prio)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return -EINVAL;
+
+	ulp_ctx->cfg_data->max_flow_priority = prio;
+	return 0;
+}
+
+unsigned int
+bnxt_ulp_max_flow_priority_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return ulp_ctx->cfg_data->max_flow_priority;
 }
 
 /* The function to initialize bp flags with truflow features */
