@@ -872,7 +872,7 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 	struct bnxt_ulp_mapper_data *m;
 	uint8_t bit;
 	uint32_t port_id, val_size, field_size;
-	uint16_t idx, size_idx, offset;
+	uint16_t idx = 0, size_idx = 0, offset = 0;
 	uint32_t bytelen = ULP_BITS_2_BYTE(bitlen);
 	uint8_t *buffer;
 	uint64_t lregval;
@@ -1291,7 +1291,7 @@ ulp_mapper_field_opc_next(struct bnxt_ulp_mapper_parms *parms,
 			  const char *name)
 {
 	struct bnxt_ulp_mapper_field_info *field_info;
-	uint16_t idx;
+	uint16_t idx = 0;
 
 	/* read the cond table index and count */
 	if (unlikely(ulp_operand_read(field_opr,
@@ -1594,7 +1594,7 @@ ulp_mapper_key_recipe_field_opc_next(struct bnxt_ulp_mapper_parms *parms,
 				     struct bnxt_ulp_mapper_field_info *ofld)
 {
 	struct bnxt_ulp_mapper_field_info *field_info;
-	uint16_t idx;
+	uint16_t idx = 0;
 
 	/* read the cond table index and count */
 	if (unlikely(ulp_operand_read(field_opr,
@@ -3776,11 +3776,6 @@ ulp_mapper_cond_reject_list_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* set the rejection result to accept */
 	*res = 0;
-
-	/* If act rej cond is not enabled then skip reject cond processing */
-	if (parms->tmpl_type == BNXT_ULP_TEMPLATE_TYPE_ACTION &&
-	    !ULP_COMP_FLD_IDX_RD(parms, BNXT_ULP_CF_IDX_ACT_REJ_COND_EN))
-		return rc;
 
 	/* get the reject condition list */
 	reject_info = ulp_mapper_tmpl_reject_list_get(parms, tid);

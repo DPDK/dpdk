@@ -1298,6 +1298,7 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 			     enum bnxt_ulp_hdr_bit hdr_bit)
 {
 	uint16_t stat_port = 0;
+	struct bnxt *bp;
 
 	switch (hdr_bit) {
 	case BNXT_ULP_HDR_BIT_I_UDP:
@@ -1364,10 +1365,21 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 
 		/* if udp and equal to static vxlan port then set tunnel bits*/
 		if (stat_port && dst_port == tfp_cpu_to_be_16(stat_port)) {
+			bp = bnxt_pmd_get_bp(params->port_id);
+			if (bp == NULL) {
+				BNXT_DRV_DBG(ERR, "Invalid bp\n");
+				return;
+			}
 			ULP_BITMAP_SET(params->hdr_fp_bit.bits,
 				       BNXT_ULP_HDR_BIT_T_VXLAN);
 			ULP_BITMAP_SET(params->cf_bitmap,
 				       BNXT_ULP_CF_BIT_IS_TUNNEL);
+			if (bp->vxlan_ip_upar_in_use &
+			    HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_UPAR_IN_USE_UPAR0) {
+				ULP_COMP_FLD_IDX_WR(params,
+						    BNXT_ULP_CF_IDX_VXLAN_IP_UPAR_ID,
+						    ULP_WP_SYM_TUN_HDR_TYPE_UPAR1);
+			}
 		}
 	} else {
 		/* if dynamic Vxlan is enabled then skip dport checks */
