@@ -25,17 +25,6 @@
 #define I40E_DEV_ID_25G_B		0x158A
 #define I40E_DEV_ID_25G_SFP28		0x158B
 #define I40E_DEV_ID_10G_BASE_T_BC	0x15FF
-#if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
-#define I40E_DEV_ID_VF			0x154C
-#define I40E_DEV_ID_VF_HV		0x1571
-#define I40E_DEV_ID_ADAPTIVE_VF		0x1889
-#endif /* VF_DRIVER */
-#ifdef X722_A0_SUPPORT
-#define I40E_DEV_ID_X722_A0		0x374C
-#if defined(INTEGRATED_VF) || defined(VF_DRIVER)
-#define I40E_DEV_ID_X722_A0_VF		0x374D
-#endif
-#endif
 #define I40E_DEV_ID_10G_B		0x104F
 #define I40E_DEV_ID_10G_SFP		0x104E
 #define I40E_DEV_ID_5G_BASE_T_BC	0x101F
@@ -49,9 +38,6 @@
 #define I40E_DEV_ID_1G_BASE_T_X722	0x37D1
 #define I40E_DEV_ID_10G_BASE_T_X722	0x37D2
 #define I40E_DEV_ID_SFP_I_X722		0x37D3
-#if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
-#define I40E_DEV_ID_X722_VF		0x37CD
-#endif /* VF_DRIVER */
 #define I40E_DEV_ID_SFP_X722_A		0x0DDA
 
 #define i40e_is_40G_device(d)		((d) == I40E_DEV_ID_QSFP_A  || \

@@ -17,11 +17,6 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
     subdir_done()
 endif
 
-cflags += ['-DPF_DRIVER',
-    '-DVF_DRIVER',
-    '-DINTEGRATED_VF',
-    '-DX722_A0_SUPPORT']
-
 subdir('base')
 objs = [base_objs]
 

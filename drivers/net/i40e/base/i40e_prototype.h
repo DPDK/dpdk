@@ -46,9 +46,6 @@ i40e_asq_send_command_v2(struct i40e_hw *hw,
 			 u16  buff_size,
 			 struct i40e_asq_cmd_details *cmd_details,
 			 enum i40e_admin_queue_err *aq_status);
-#ifdef VF_DRIVER
-bool i40e_asq_done(struct i40e_hw *hw);
-#endif
 
 /* debug function for adminq */
 void i40e_debug_aq(struct i40e_hw *hw, enum i40e_debug_mask mask,
@@ -70,8 +67,6 @@ enum i40e_status_code i40e_aq_set_rss_key(struct i40e_hw *hw,
 				     struct i40e_aqc_get_set_rss_key_data *key);
 const char *i40e_aq_str(struct i40e_hw *hw, enum i40e_admin_queue_err aq_err);
 const char *i40e_stat_str(struct i40e_hw *hw, enum i40e_status_code stat_err);
-
-#ifdef PF_DRIVER
 
 u32 i40e_led_get(struct i40e_hw *hw);
 void i40e_led_set(struct i40e_hw *hw, u32 mode, bool blink);
@@ -498,7 +493,6 @@ void i40e_nvmupd_check_wait_event(struct i40e_hw *hw, u16 opcode,
 				  struct i40e_aq_desc *desc);
 void i40e_nvmupd_clear_wait_state(struct i40e_hw *hw);
 void i40e_set_pci_config_data(struct i40e_hw *hw, u16 link_status);
-#endif /* PF_DRIVER */
 enum i40e_status_code i40e_enable_eee(struct i40e_hw *hw, bool enable);
 
 enum i40e_status_code i40e_set_mac_type(struct i40e_hw *hw);
@@ -510,7 +504,6 @@ STATIC INLINE struct i40e_rx_ptype_decoded decode_rx_desc_ptype(u8 ptype)
 	return i40e_ptype_lookup[ptype];
 }
 
-#ifdef PF_DRIVER
 /**
  * i40e_virtchnl_link_speed - Convert AdminQ link_speed to virtchnl definition
  * @link_speed: the speed to convert
@@ -545,7 +538,6 @@ i40e_virtchnl_link_speed(enum i40e_aq_link_speed link_speed)
 		return VIRTCHNL_LINK_SPEED_UNKNOWN;
 	}
 }
-#endif /* PF_DRIVER */
 
 /* i40e_common for VF drivers*/
 void i40e_vf_parse_hw_config(struct i40e_hw *hw,

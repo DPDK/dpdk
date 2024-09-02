@@ -20,19 +20,11 @@
 #define UNREFERENCED_4PARAMETER(_p, _q, _r, _s) (_p); (_q); (_r); (_s);
 #define UNREFERENCED_5PARAMETER(_p, _q, _r, _s, _t) (_p); (_q); (_r); (_s); (_t);
 
-#ifndef LINUX_MACROS
-#ifndef BIT
 #define BIT(a) (1UL << (a))
-#endif /* BIT */
-#ifndef BIT_ULL
 #define BIT_ULL(a) (1ULL << (a))
-#endif /* BIT_ULL */
-#endif /* LINUX_MACROS */
 
-#ifndef I40E_MASK
 /* I40E_MASK is a macro used on 32 bit registers */
 #define I40E_MASK(mask, shift) (mask << shift)
-#endif
 
 #define I40E_MAX_PF			16
 #define I40E_MAX_PF_VSI			64
@@ -65,9 +57,7 @@
 struct i40e_hw;
 typedef void (*I40E_ADMINQ_CALLBACK)(struct i40e_hw *, struct i40e_aq_desc *);
 
-#ifndef ETH_ALEN
 #define ETH_ALEN	6
-#endif
 /* Data type manipulation macros. */
 #define I40E_HI_DWORD(x)	((u32)((((x) >> 16) >> 16) & 0xFFFFFFFF))
 #define I40E_LO_DWORD(x)	((u32)((x) & 0xFFFFFFFF))

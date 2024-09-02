@@ -28,7 +28,6 @@ STATIC void i40e_adminq_init_regs(struct i40e_hw *hw)
 		hw->aq.arq.len  = I40E_VF_ARQLEN1;
 		hw->aq.arq.bal  = I40E_VF_ARQBAL1;
 		hw->aq.arq.bah  = I40E_VF_ARQBAH1;
-#ifdef PF_DRIVER
 	} else {
 		hw->aq.asq.tail = I40E_PF_ATQT;
 		hw->aq.asq.head = I40E_PF_ATQH;
@@ -40,7 +39,6 @@ STATIC void i40e_adminq_init_regs(struct i40e_hw *hw)
 		hw->aq.arq.len  = I40E_PF_ARQLEN;
 		hw->aq.arq.bal  = I40E_PF_ARQBAL;
 		hw->aq.arq.bah  = I40E_PF_ARQBAH;
-#endif
 	}
 }
 
@@ -278,26 +276,8 @@ STATIC enum i40e_status_code i40e_config_asq_regs(struct i40e_hw *hw)
 	wr32(hw, hw->aq.asq.tail, 0);
 
 	/* set starting point */
-#ifdef PF_DRIVER
-#ifdef INTEGRATED_VF
-	if (!i40e_is_vf(hw))
-		wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
-					  I40E_PF_ATQLEN_ATQENABLE_MASK));
-#else
 	wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
 				  I40E_PF_ATQLEN_ATQENABLE_MASK));
-#endif /* INTEGRATED_VF */
-#endif /* PF_DRIVER */
-#ifdef VF_DRIVER
-#ifdef INTEGRATED_VF
-	if (i40e_is_vf(hw))
-		wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
-					  I40E_VF_ATQLEN1_ATQENABLE_MASK));
-#else
-	wr32(hw, hw->aq.asq.len, (hw->aq.num_asq_entries |
-				  I40E_VF_ATQLEN1_ATQENABLE_MASK));
-#endif /* INTEGRATED_VF */
-#endif /* VF_DRIVER */
 	wr32(hw, hw->aq.asq.bal, I40E_LO_DWORD(hw->aq.asq.desc_buf.pa));
 	wr32(hw, hw->aq.asq.bah, I40E_HI_DWORD(hw->aq.asq.desc_buf.pa));
 
@@ -325,26 +305,8 @@ STATIC enum i40e_status_code i40e_config_arq_regs(struct i40e_hw *hw)
 	wr32(hw, hw->aq.arq.tail, 0);
 
 	/* set starting point */
-#ifdef PF_DRIVER
-#ifdef INTEGRATED_VF
-	if (!i40e_is_vf(hw))
-		wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
-					  I40E_PF_ARQLEN_ARQENABLE_MASK));
-#else
 	wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
 				  I40E_PF_ARQLEN_ARQENABLE_MASK));
-#endif /* INTEGRATED_VF */
-#endif /* PF_DRIVER */
-#ifdef VF_DRIVER
-#ifdef INTEGRATED_VF
-	if (i40e_is_vf(hw))
-		wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
-					  I40E_VF_ARQLEN1_ARQENABLE_MASK));
-#else
-	wr32(hw, hw->aq.arq.len, (hw->aq.num_arq_entries |
-				  I40E_VF_ARQLEN1_ARQENABLE_MASK));
-#endif /* INTEGRATED_VF */
-#endif /* VF_DRIVER */
 	wr32(hw, hw->aq.arq.bal, I40E_LO_DWORD(hw->aq.arq.desc_buf.pa));
 	wr32(hw, hw->aq.arq.bah, I40E_HI_DWORD(hw->aq.arq.desc_buf.pa));
 
@@ -552,7 +514,6 @@ shutdown_arq_out:
 	i40e_release_spinlock(&hw->aq.arq_spinlock);
 	return ret_code;
 }
-#ifdef PF_DRIVER
 
 /**
  *  i40e_resume_aq - resume AQ processing from 0
@@ -571,7 +532,6 @@ STATIC void i40e_resume_aq(struct i40e_hw *hw)
 
 	i40e_config_arq_regs(hw);
 }
-#endif /* PF_DRIVER */
 
 /**
  *  i40e_set_hw_flags - set HW flags
@@ -685,9 +645,6 @@ enum i40e_status_code i40e_init_adminq(struct i40e_hw *hw)
 	if (ret_code != I40E_SUCCESS)
 		goto init_adminq_free_asq;
 
-	/* VF has no need of firmware */
-	if (i40e_is_vf(hw))
-		goto init_adminq_exit;
 	/* There are some cases where the firmware may not be quite ready
 	 * for AdminQ operations, so we retry the AdminQ setup a few times
 	 * if we see timeouts in this first AQ call.
@@ -823,11 +780,7 @@ u16 i40e_clean_asq(struct i40e_hw *hw)
  *  Returns true if the firmware has processed all descriptors on the
  *  admin send queue. Returns false if there are still requests pending.
  **/
-#ifdef VF_DRIVER
-bool i40e_asq_done(struct i40e_hw *hw)
-#else
 STATIC bool i40e_asq_done(struct i40e_hw *hw)
-#endif
 {
 	/* AQ designers suggest use of head for better
 	 * timing reliability than DD bit
@@ -1028,11 +981,7 @@ i40e_asq_send_command_exec(struct i40e_hw *hw,
 	/* update the error if time out occurred */
 	if ((!cmd_completed) &&
 	    (!details->async && !details->postpone)) {
-#ifdef PF_DRIVER
 		if (rd32(hw, hw->aq.asq.len) & I40E_GL_ATQLEN_ATQCRIT_MASK) {
-#else
-		if (rd32(hw, hw->aq.asq.len) & I40E_VF_ATQLEN1_ATQCRIT_MASK) {
-#endif
 			i40e_debug(hw, I40E_DEBUG_AQ_MESSAGE,
 				   "AQTX: AQ Critical error.\n");
 			status = I40E_ERR_ADMIN_QUEUE_CRITICAL_ERROR;
@@ -1160,19 +1109,7 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	}
 
 	/* set next_to_use to head */
-#ifdef INTEGRATED_VF
-	if (!i40e_is_vf(hw))
-		ntu = rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK;
-	else
-		ntu = rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK;
-#else
-#ifdef PF_DRIVER
 	ntu = rd32(hw, hw->aq.arq.head) & I40E_PF_ARQH_ARQH_MASK;
-#endif /* PF_DRIVER */
-#ifdef VF_DRIVER
-	ntu = rd32(hw, hw->aq.arq.head) & I40E_VF_ARQH1_ARQH_MASK;
-#endif /* VF_DRIVER */
-#endif /* INTEGRATED_VF */
 	if (ntu == ntc) {
 		/* nothing to do - shouldn't need to update ring's values */
 		ret_code = I40E_ERR_ADMIN_QUEUE_NO_WORK;
@@ -1230,9 +1167,7 @@ enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 	hw->aq.arq.next_to_clean = ntc;
 	hw->aq.arq.next_to_use = ntu;
 
-#ifdef PF_DRIVER
 	i40e_nvmupd_check_wait_event(hw, LE16_TO_CPU(e->desc.opcode), &e->desc);
-#endif /* PF_DRIVER */
 clean_arq_element_out:
 	/* Set pending if needed, unlock and return */
 	if (pending != NULL)
