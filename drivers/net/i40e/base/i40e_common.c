@@ -4253,7 +4253,7 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 	 */
 	if (hw->num_ports != 0) {
 		hw->partition_id = (hw->pf_id / hw->num_ports) + 1;
-		hw->num_partitions = num_functions / hw->num_ports;
+		hw->num_partitions = (u16)(num_functions / hw->num_ports);
 	}
 
 	/* additional HW specific goodies that might
@@ -6180,7 +6180,7 @@ enum i40e_status_code i40e_aq_alternate_write_indirect(struct i40e_hw *hw,
 	cmd_resp->length = CPU_TO_LE32(dw_count);
 
 	status = i40e_asq_send_command(hw, &desc, buffer,
-				       I40E_LO_DWORD(4*dw_count), NULL);
+				       I40E_LO_WORD(4*dw_count), NULL);
 
 	return status;
 }
@@ -6261,7 +6261,7 @@ enum i40e_status_code i40e_aq_alternate_read_indirect(struct i40e_hw *hw,
 	cmd_resp->length = CPU_TO_LE32(dw_count);
 
 	status = i40e_asq_send_command(hw, &desc, buffer,
-				       I40E_LO_DWORD(4*dw_count), NULL);
+				       I40E_LO_WORD(4*dw_count), NULL);
 
 	return status;
 }

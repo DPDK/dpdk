@@ -906,7 +906,7 @@ enum i40e_status_code i40e_init_dcb(struct i40e_hw *hw, bool enable_mib_change)
 		return I40E_ERR_NOT_READY;
 
 	/* Get the LLDP AdminStatus for the current port */
-	adminstatus = lldp_cfg.adminstatus >> (hw->port * 4);
+	adminstatus = (u8)(lldp_cfg.adminstatus >> (hw->port * 4));
 	adminstatus &= 0xF;
 
 	/* LLDP agent disabled */
