@@ -542,8 +542,11 @@ static const struct rte_i40e_xstats_name_off rte_i40e_stats_strings[] = {
 	{"rx_dropped_packets", offsetof(struct i40e_eth_stats, rx_discards)},
 	{"rx_unknown_protocol_packets", offsetof(struct i40e_eth_stats,
 		rx_unknown_protocol)},
-	{"rx_size_error_packets", offsetof(struct i40e_pf, rx_err1) -
-				  offsetof(struct i40e_pf, stats)},
+	/*
+	 * all other offsets are against i40e_eth_stats which is first member
+	 * in i40e_hw_port_stats, so these offsets are interchangeable
+	 */
+	{"rx_size_error_packets", offsetof(struct i40e_hw_port_stats, rx_err1)},
 	{"tx_unicast_packets", offsetof(struct i40e_eth_stats, tx_unicast)},
 	{"tx_multicast_packets", offsetof(struct i40e_eth_stats, tx_multicast)},
 	{"tx_broadcast_packets", offsetof(struct i40e_eth_stats, tx_broadcast)},
@@ -3282,10 +3285,10 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    pf->offset_loaded,
 			    &os->eth.rx_unknown_protocol,
 			    &ns->eth.rx_unknown_protocol);
-	i40e_stat_update_48(hw, I40E_GL_RXERR1_H(hw->pf_id + I40E_MAX_VF),
-			    I40E_GL_RXERR1_L(hw->pf_id + I40E_MAX_VF),
-			    pf->offset_loaded, &pf->rx_err1_offset,
-			    &pf->rx_err1);
+	i40e_stat_update_48(hw, I40E_GL_RXERR1H(hw->pf_id + I40E_MAX_VF),
+			    I40E_GL_RXERR1L(hw->pf_id + I40E_MAX_VF),
+			    pf->offset_loaded, &os->rx_err1,
+			    &ns->rx_err1);
 	i40e_stat_update_48_in_64(hw, I40E_GLPRT_GOTCH(hw->port),
 				  I40E_GLPRT_GOTCL(hw->port),
 				  pf->offset_loaded, &os->eth.tx_bytes,
@@ -3486,7 +3489,7 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			pf->main_vsi->eth_stats.rx_multicast +
 			pf->main_vsi->eth_stats.rx_broadcast -
 			pf->main_vsi->eth_stats.rx_discards -
-			pf->rx_err1;
+			ns->rx_err1;
 	stats->opackets = ns->eth.tx_unicast +
 			ns->eth.tx_multicast +
 			ns->eth.tx_broadcast;
@@ -3501,7 +3504,7 @@ i40e_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	stats->ierrors  = ns->crc_errors +
 			ns->rx_length_errors + ns->rx_undersize +
 			ns->rx_oversize + ns->rx_fragments + ns->rx_jabber +
-			pf->rx_err1;
+			ns->rx_err1;
 
 	if (pf->vfs) {
 		for (i = 0; i < pf->vf_num; i++) {
@@ -6404,8 +6407,6 @@ i40e_pf_setup(struct i40e_pf *pf)
 	memset(&pf->stats_offset, 0, sizeof(struct i40e_hw_port_stats));
 	memset(&pf->internal_stats, 0, sizeof(struct i40e_eth_stats));
 	memset(&pf->internal_stats_offset, 0, sizeof(struct i40e_eth_stats));
-	pf->rx_err1 = 0;
-	pf->rx_err1_offset = 0;
 
 	ret = i40e_pf_get_switch_config(pf);
 	if (ret != I40E_SUCCESS) {

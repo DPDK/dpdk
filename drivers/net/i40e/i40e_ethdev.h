@@ -20,13 +20,6 @@
 #include "base/i40e_type.h"
 #include "base/virtchnl.h"
 
-/**
- * _i=0...143,
- * counters 0-127 are for the 128 VFs,
- * counters 128-143 are for the 16 PFs
- */
-#define I40E_GL_RXERR1_H(_i)	(0x00318004 + ((_i) * 8))
-
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
 /* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */
@@ -1128,8 +1121,6 @@ struct i40e_pf {
 	struct i40e_hw_port_stats stats_offset;
 	struct i40e_hw_port_stats stats;
 	struct i40e_mbuf_stats mbuf_stats;
-	u64 rx_err1;	/* rxerr1 */
-	u64 rx_err1_offset;
 
 	/* internal packet statistics, it should be excluded from the total */
 	struct i40e_eth_stats internal_stats_offset;
