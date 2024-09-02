@@ -1587,7 +1587,6 @@ static u32 i40e_led_is_mine(struct i40e_hw *hw, int idx)
  **/
 u32 i40e_led_get(struct i40e_hw *hw)
 {
-	u32 current_mode = 0;
 	u32 mode = 0;
 	int i;
 
@@ -1599,21 +1598,6 @@ u32 i40e_led_get(struct i40e_hw *hw)
 
 		if (!gpio_val)
 			continue;
-
-		/* ignore gpio LED src mode entries related to the activity
-		 *  LEDs
-		 */
-		current_mode = ((gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK)
-				>> I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT);
-		switch (current_mode) {
-		case I40E_COMBINED_ACTIVITY:
-		case I40E_FILTER_ACTIVITY:
-		case I40E_MAC_ACTIVITY:
-		case I40E_LINK_ACTIVITY:
-			continue;
-		default:
-			break;
-		}
 
 		mode = (gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK) >>
 			I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT;
@@ -1634,7 +1618,6 @@ u32 i40e_led_get(struct i40e_hw *hw)
  **/
 void i40e_led_set(struct i40e_hw *hw, u32 mode, bool blink)
 {
-	u32 current_mode = 0;
 	int i;
 
 	if (mode & ~I40E_LED_MODE_VALID) {
@@ -1650,21 +1633,6 @@ void i40e_led_set(struct i40e_hw *hw, u32 mode, bool blink)
 
 		if (!gpio_val)
 			continue;
-
-		/* ignore gpio LED src mode entries related to the activity
-		 * LEDs
-		 */
-		current_mode = ((gpio_val & I40E_GLGEN_GPIO_CTL_LED_MODE_MASK)
-				>> I40E_GLGEN_GPIO_CTL_LED_MODE_SHIFT);
-		switch (current_mode) {
-		case I40E_COMBINED_ACTIVITY:
-		case I40E_FILTER_ACTIVITY:
-		case I40E_MAC_ACTIVITY:
-		case I40E_LINK_ACTIVITY:
-			continue;
-		default:
-			break;
-		}
 
 		if (I40E_IS_X710TL_DEVICE(hw->device_id)) {
 			u32 pin_func = 0;
