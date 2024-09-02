@@ -91,6 +91,19 @@ sources += files('cnxk_telemetry_bphy.c',
                  'cnxk_telemetry_sso.c',
 )
 
+if meson.is_cross_build()
+    soc_type = meson.get_cross_property('platform', '')
+else
+    soc_type = platform
+endif
+if soc_type == 'cn9k'
+    dpdk_conf.set('ROC_PLATFORM_CN9K', 1)
+elif soc_type == 'cn10k'
+    dpdk_conf.set('ROC_PLATFORM_CN10K', 1)
+elif soc_type == 'cn20k'
+    dpdk_conf.set('ROC_PLATFORM_CN20K', 1)
+endif
+
 deps += ['bus_pci', 'net', 'telemetry']
 
 require_iova_in_mbuf = false
