@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2017-2020 Intel Corporation
+ * Copyright(c) 2017-2024 Intel Corporation
  */
 
 Intel® I40E driver
 ==================
 
-This directory contains source code of FreeBSD i40e driver of version
-cid-i40e.2021.08.16.tar.gz released by the team which develops
+This directory contains source code of i40e base driver generated on
+2024-08-30 released by the team which develops
 basic drivers for any i40e NIC. The directory of base/ contains the
 original source package.
 This driver is valid for the product(s) listed below
