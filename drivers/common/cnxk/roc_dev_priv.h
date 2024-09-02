@@ -102,8 +102,16 @@ struct mbox_sync {
 
 struct mbox_platform {
 	uint8_t pfaf_vec;
-	uint8_t pfvf_vec;
-	uint8_t pfvf1_vec;
+	uint8_t pfvf_mbox0_vec;
+	uint8_t pfvf_mbox1_vec;
+	uint8_t pfvf1_mbox0_vec;
+	uint8_t pfvf1_mbox1_vec;
+	uint64_t pfvf_mbox_intx[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf_mbox_int_ena_w1s[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf_mbox_int_ena_w1c[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf1_mbox_intx[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf1_mbox_int_ena_w1s[MAX_VFPF_DWORD_BITS];
+	uint64_t pfvf1_mbox_int_ena_w1c[MAX_VFPF_DWORD_BITS];
 	uintptr_t mbox_reg_base;
 	uintptr_t mbox_region_base;
 };
@@ -137,7 +145,9 @@ struct dev {
 	const struct plt_memzone *lmt_mz;
 	struct mbox_sync sync;
 	uintptr_t mbox_reg_base;
-	struct mbox_platform mbox_plat;
+	uintptr_t vf_mbox_base;
+	const struct plt_memzone *vf_mbox_mz;
+	struct mbox_platform *mbox_plat;
 } __plt_cache_aligned;
 
 struct npa {

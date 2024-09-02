@@ -118,6 +118,7 @@
 
 #define __plt_aligned	    __rte_aligned
 #define plt_align32pow2	    rte_align32pow2
+#define plt_align64pow2	    rte_align64pow2
 #define plt_align32prevpow2 rte_align32prevpow2
 
 #define plt_bitmap			rte_bitmap

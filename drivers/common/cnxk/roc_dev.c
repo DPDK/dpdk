@@ -24,6 +24,9 @@
 #define ROC_DEV_MBOX_PEND BIT_ULL(0)
 #define ROC_DEV_FLR_PEND  BIT_ULL(1)
 
+/* RVU PF interrupt status as received from AF*/
+#define RVU_PF_INTR_STATUS 0x3
+
 static void *
 mbox_mem_map(off_t off, size_t size)
 {
@@ -84,7 +87,7 @@ pf_af_sync_msg(struct dev *dev, struct mbox_msghdr **rsp)
 			break;
 		}
 		int_status = plt_read64(dev->mbox_reg_base + RVU_PF_INT);
-	} while ((int_status & 0x1) != 0x1);
+	} while (!(int_status & RVU_PF_INTR_STATUS));
 
 	/* Clear */
 	plt_write64(int_status, dev->mbox_reg_base + RVU_PF_INT);
@@ -137,7 +140,7 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 			break;
 		}
 		int_status = plt_read64(dev->mbox_reg_base + RVU_PF_INT);
-	} while ((int_status & 0x1) != 0x1);
+	} while (!(int_status & RVU_PF_INTR_STATUS));
 
 	/* Clear */
 	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT);
@@ -387,7 +390,7 @@ roc_vf_pf_mbox_irq(void *param)
 	sz = sizeof(intrb.bits[0]) * MAX_VFPF_DWORD_BITS;
 	memset(intrb.bits, 0, sz);
 	for (vfpf = 0; vfpf < MAX_VFPF_DWORD_BITS; ++vfpf) {
-		intr = plt_read64(dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(vfpf));
+		intr = plt_read64(dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_intx[vfpf]);
 		if (!intr)
 			continue;
 
@@ -396,7 +399,7 @@ roc_vf_pf_mbox_irq(void *param)
 
 		/* Save and clear intr bits */
 		intrb.bits[vfpf] |= intr;
-		plt_write64(intr, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(vfpf));
+		plt_write64(intr, dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_intx[vfpf]);
 		signal_thread = true;
 	}
 
@@ -842,7 +845,7 @@ roc_pf_vf_mbox_irq(void *param)
 	 */
 	mbox_data = plt_read64(dev->mbox_reg_base + RVU_VF_VFPF_MBOX0);
 	/* If interrupt occurred for down message */
-	if (mbox_data & MBOX_DOWN_MSG) {
+	if (mbox_data & MBOX_DOWN_MSG || intr & BIT_ULL(1)) {
 		mbox_data &= ~MBOX_DOWN_MSG;
 		plt_write64(mbox_data, dev->mbox_reg_base + RVU_VF_VFPF_MBOX0);
 
@@ -850,7 +853,7 @@ roc_pf_vf_mbox_irq(void *param)
 		process_msgs(dev, dev->mbox);
 	}
 	/* If interrupt occurred for UP message */
-	if (mbox_data & MBOX_UP_MSG) {
+	if (mbox_data & MBOX_UP_MSG || intr & BIT_ULL(0)) {
 		mbox_data &= ~MBOX_UP_MSG;
 		plt_write64(mbox_data, dev->mbox_reg_base + RVU_VF_VFPF_MBOX0);
 
@@ -903,35 +906,61 @@ mbox_register_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 	int i, rc;
 
 	/* HW clear irq */
-	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
-		plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+		plt_write64(~0ull, dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_int_ena_w1c[i]);
+		plt_write64(~0ull, dev->mbox_reg_base + dev->mbox_plat->pfvf1_mbox_int_ena_w1c[i]);
+	}
 
 	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1C);
 
 	/* MBOX interrupt for VF(0...63) <-> PF */
-	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf_vec);
+	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat->pfvf_mbox0_vec);
 
 	if (rc) {
 		plt_err("Fail to register PF(VF0-63) mbox irq");
 		return rc;
 	}
 	/* MBOX interrupt for VF(64...128) <-> PF */
-	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf1_vec);
+	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat->pfvf_mbox1_vec);
 
 	if (rc) {
 		plt_err("Fail to register PF(VF64-128) mbox irq");
 		return rc;
 	}
+
+	/* Additional interrupt vector which can be used by VF -> PF using when
+	 * RVU_VF_VFPF_TRIG(1) trigger register.
+	 */
+	if (roc_model_is_cn20k()) {
+		/* MBOX1 interrupt for VF(0...63) <-> PF */
+		rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev,
+				      dev->mbox_plat->pfvf1_mbox0_vec);
+
+		if (rc) {
+			plt_err("Fail to register PF1(VF0-63) mbox irq");
+			return rc;
+		}
+		/* MBOX1 interrupt for VF(64...128) <-> PF */
+		rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev,
+				      dev->mbox_plat->pfvf1_mbox1_vec);
+
+		if (rc) {
+			plt_err("Fail to register PF1(VF64-128) mbox irq");
+			return rc;
+		}
+	}
 	/* MBOX interrupt AF <-> PF */
-	rc = dev_irq_register(intr_handle, roc_af_pf_mbox_irq, dev, dev->mbox_plat.pfaf_vec);
+	rc = dev_irq_register(intr_handle, roc_af_pf_mbox_irq, dev, dev->mbox_plat->pfaf_vec);
 	if (rc) {
 		plt_err("Fail to register AF<->PF mbox irq");
 		return rc;
 	}
 
 	/* HW enable intr */
-	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
-		plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INT_ENA_W1SX(i));
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+		plt_write64(~0ull, dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_int_ena_w1s[i]);
+		plt_write64(~0ull, dev->mbox_reg_base + dev->mbox_plat->pfvf1_mbox_int_ena_w1s[i]);
+	}
 
 	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT);
 	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1S);
@@ -978,20 +1007,32 @@ mbox_unregister_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 	int i;
 
 	/* HW clear irq */
-	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
-		plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
+	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+		plt_write64(~0ull, dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_int_ena_w1c[i]);
+		plt_write64(~0ull, dev->mbox_reg_base + dev->mbox_plat->pfvf1_mbox_int_ena_w1c[i]);
+	}
 
 	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1C);
 
 	/* Unregister the interrupt handler for each vectors */
 	/* MBOX interrupt for VF(0...63) <-> PF */
-	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf_vec);
+	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat->pfvf_mbox0_vec);
 
 	/* MBOX interrupt for VF(64...128) <-> PF */
-	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf1_vec);
+	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat->pfvf_mbox1_vec);
+
+	if (roc_model_is_cn20k()) {
+		/* MBOX1 interrupt for VF(0...63) <-> PF */
+		dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev,
+				   dev->mbox_plat->pfvf1_mbox0_vec);
+
+		/* MBOX1 interrupt for VF(64...128) <-> PF */
+		dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev,
+				   dev->mbox_plat->pfvf1_mbox1_vec);
+	}
 
 	/* MBOX interrupt AF <-> PF */
-	dev_irq_unregister(intr_handle, roc_af_pf_mbox_irq, dev, dev->mbox_plat.pfaf_vec);
+	dev_irq_unregister(intr_handle, roc_af_pf_mbox_irq, dev, dev->mbox_plat->pfaf_vec);
 }
 
 static void
@@ -1222,9 +1263,15 @@ clear_rvum_interrupts(struct dev *dev)
 			plt_write64(intr, dev->mbox_reg_base + RVU_PF_INT);
 		for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
 			/* Clear MBOX interrupts */
-			intr = plt_read64(dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(i));
-			if (intr)
-				plt_write64(intr, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(i));
+			intr = plt_read64(dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_intx[i]);
+			if (intr) {
+				plt_write64(intr,
+					    dev->mbox_reg_base + dev->mbox_plat->pfvf_mbox_intx[i]);
+				if (roc_model_is_cn20k())
+					plt_write64(intr,
+						    dev->mbox_reg_base +
+							    dev->mbox_plat->pfvf1_mbox_intx[i]);
+			}
 			/* Clear VF FLR interrupts */
 			intr = plt_read64(dev->bar2 + RVU_PF_VFFLR_INTX(i));
 			if (intr)
@@ -1266,6 +1313,32 @@ dev_vf_hwcap_update(struct plt_pci_device *pci_dev, struct dev *dev)
 }
 
 static uintptr_t
+cn20k_pfvf_mbox_alloc(struct dev *dev, uint16_t max_vfs)
+{
+	char name[PLT_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	uint32_t vf_mbox_region;
+
+	vf_mbox_region = plt_align64pow2(MBOX_SIZE * max_vfs);
+	/* Allocating memory for LMT region */
+	sprintf(name, "PFVF_MBOX_REGION%x", dev->pf_func);
+
+	mz = plt_memzone_reserve_aligned(name, vf_mbox_region, 0, MBOX_SIZE);
+	if (!mz) {
+		plt_err("Memory alloc failed: %s", strerror(errno));
+		goto fail;
+	}
+
+	dev->vf_mbox_base = mz->iova;
+	dev->vf_mbox_mz = mz;
+	plt_write64(dev->vf_mbox_base, dev->mbox_reg_base + RVU_PF_VF_MBOX_ADDR);
+
+	return dev->vf_mbox_base;
+fail:
+	return (uintptr_t)NULL;
+}
+
+static uintptr_t
 dev_vf_mbase_get(struct plt_pci_device *pci_dev, struct dev *dev)
 {
 	void *vf_mbase = NULL;
@@ -1274,8 +1347,11 @@ dev_vf_mbase_get(struct plt_pci_device *pci_dev, struct dev *dev)
 	if (dev_is_vf(dev))
 		return 0;
 
-	/* For CN10K onwards, it is just after PF MBOX */
-	if (!roc_model_is_cn9k())
+	if (roc_model_is_cn20k())
+		return cn20k_pfvf_mbox_alloc(dev, pci_dev->max_vfs);
+
+	/* For CN10K, it is just after PF MBOX */
+	if (roc_model_is_cn10k())
 		return dev->bar4 + MBOX_SIZE;
 
 	pa = plt_read64(dev->bar2 + RVU_PF_VF_BAR4_ADDR);
@@ -1430,8 +1506,10 @@ dev_cache_line_size_valid(void)
 }
 
 static void
-mbox_platform_changes(struct mbox_platform *mbox_plat, uintptr_t bar2, uintptr_t bar4)
+mbox_platform_changes(struct mbox_platform *mbox_plat, uintptr_t bar2, uintptr_t bar4, bool is_vf)
 {
+	int i;
+
 	if (roc_model_is_cn20k()) {
 		/* For CN20K, AF allocates mbox memory in DRAM and writes PF
 		 * regions/offsets in RVU_MBOX_AF_PFX_ADDR, the RVU_PFX_FUNC_PFAF_MBOX
@@ -1443,14 +1521,37 @@ mbox_platform_changes(struct mbox_platform *mbox_plat, uintptr_t bar2, uintptr_t
 				((uint64_t)RVU_BLOCK_ADDR_MBOX << RVU_FUNC_BLKADDR_SHIFT));
 		/* Interrupt vectors */
 		mbox_plat->pfaf_vec = RVU_MBOX_PF_INT_VEC_AFPF_MBOX;
-		mbox_plat->pfvf_vec = RVU_MBOX_PF_INT_VEC_VFPF_MBOX0;
-		mbox_plat->pfvf1_vec = RVU_MBOX_PF_INT_VEC_VFPF_MBOX1;
+		mbox_plat->pfvf_mbox0_vec = RVU_MBOX_PF_INT_VEC_VFPF_MBOX0;
+		mbox_plat->pfvf_mbox1_vec = RVU_MBOX_PF_INT_VEC_VFPF_MBOX1;
+		mbox_plat->pfvf1_mbox0_vec = RVU_MBOX_PF_INT_VEC_VFPF1_MBOX0;
+		mbox_plat->pfvf1_mbox1_vec = RVU_MBOX_PF_INT_VEC_VFPF1_MBOX1;
+		for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+			mbox_plat->pfvf_mbox_int_ena_w1s[i] = RVU_MBOX_PF_VFPF_INT_ENA_W1SX(i);
+			mbox_plat->pfvf_mbox_int_ena_w1c[i] = RVU_MBOX_PF_VFPF_INT_ENA_W1CX(i);
+			mbox_plat->pfvf_mbox_intx[i] = RVU_MBOX_PF_VFPF_INTX(i);
+			mbox_plat->pfvf1_mbox_int_ena_w1s[i] = RVU_MBOX_PF_VFPF1_INT_ENA_W1SX(i);
+			mbox_plat->pfvf1_mbox_int_ena_w1c[i] = RVU_MBOX_PF_VFPF1_INT_ENA_W1CX(i);
+			mbox_plat->pfvf1_mbox_intx[i] = RVU_MBOX_PF_VFPF1_INTX(i);
+		}
 	} else {
 		mbox_plat->mbox_reg_base = bar2;
 		mbox_plat->mbox_region_base = bar4;
 		mbox_plat->pfaf_vec = RVU_PF_INT_VEC_AFPF_MBOX;
-		mbox_plat->pfvf_vec = RVU_PF_INT_VEC_VFPF_MBOX0;
-		mbox_plat->pfvf1_vec = RVU_PF_INT_VEC_VFPF_MBOX1;
+		mbox_plat->pfvf_mbox0_vec = RVU_PF_INT_VEC_VFPF_MBOX0;
+		mbox_plat->pfvf_mbox1_vec = RVU_PF_INT_VEC_VFPF_MBOX1;
+		for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
+			mbox_plat->pfvf_mbox_int_ena_w1s[i] = RVU_PF_VFPF_MBOX_INT_ENA_W1SX(i);
+			mbox_plat->pfvf_mbox_int_ena_w1c[i] = RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i);
+			mbox_plat->pfvf_mbox_intx[i] = RVU_PF_VFPF_MBOX_INTX(i);
+		}
+	}
+	if (is_vf) {
+		if (roc_model_is_cn20k())
+			mbox_plat->mbox_region_base =
+				bar2 + (RVU_VF_MBOX_REGION +
+					((uint64_t)RVU_BLOCK_ADDR_MBOX << RVU_FUNC_BLKADDR_SHIFT));
+		if (roc_model_is_cn10k())
+			mbox_plat->mbox_region_base = bar2 + RVU_VF_MBOX_REGION;
 	}
 }
 
@@ -1462,6 +1563,7 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	int direction, up_direction, rc;
 	uintptr_t vf_mbase = 0;
 	uint64_t intr_offset;
+	bool is_vf;
 
 	if (!dev_cache_line_size_valid())
 		return -EFAULT;
@@ -1471,12 +1573,21 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 		return -EFAULT;
 	}
 
+	dev_vf_hwcap_update(pci_dev, dev);
+	is_vf = dev_is_vf(dev);
+
 	bar2 = (uintptr_t)pci_dev->mem_resource[2].addr;
 	bar4 = (uintptr_t)pci_dev->mem_resource[4].addr;
-	mbox_platform_changes(&dev->mbox_plat, bar2, bar4);
+	dev->mbox_plat = plt_zmalloc(sizeof(struct mbox_platform), 0);
+	if (!dev->mbox_plat) {
+		plt_err("Failed to allocate mem for mbox_plat");
+		rc = -ENOMEM;
+		goto fail;
+	}
+	mbox_platform_changes(dev->mbox_plat, bar2, bar4, is_vf);
 
-	mbox_reg_base = dev->mbox_plat.mbox_reg_base;
-	mbox_region_base = dev->mbox_plat.mbox_region_base;
+	mbox_reg_base = dev->mbox_plat->mbox_reg_base;
+	mbox_region_base = dev->mbox_plat->mbox_region_base;
 	if (mbox_reg_base == 0 || mbox_region_base == 0) {
 		plt_err("Failed to get PCI bars");
 		rc = -ENODEV;
@@ -1499,12 +1610,9 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	dev->maxvf = pci_dev->max_vfs;
 	dev->bar2 = bar2;
 	dev->bar4 = bar4;
-	dev->mbox_reg_base = dev->mbox_plat.mbox_reg_base;
-	dev_vf_hwcap_update(pci_dev, dev);
+	dev->mbox_reg_base = dev->mbox_plat->mbox_reg_base;
 
-	if (dev_is_vf(dev)) {
-		if (!roc_model_is_cn9k())
-			mbox_region_base = bar2 + RVU_VF_MBOX_REGION;
+	if (is_vf) {
 		direction = MBOX_DIR_VFPF;
 		up_direction = MBOX_DIR_VFPF_UP;
 		intr_offset = RVU_VF_INT;
@@ -1585,7 +1693,7 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	}
 
 	/* Register VF-FLR irq handlers */
-	if (!dev_is_vf(dev)) {
+	if (!is_vf) {
 		rc = dev_vf_flr_register_irqs(pci_dev, dev);
 		if (rc)
 			goto stop_msg_thrd;
@@ -1622,6 +1730,8 @@ mbox_fini:
 	mbox_fini(dev->mbox);
 	mbox_fini(&dev->mbox_up);
 error:
+	plt_free(dev->mbox_plat);
+fail:
 	return rc;
 }
 
@@ -1653,8 +1763,13 @@ dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 
 	mbox_unregister_irq(pci_dev, dev);
 
-	if (!dev_is_vf(dev))
+	if (!dev_is_vf(dev)) {
 		vf_flr_unregister_irqs(pci_dev, dev);
+		/* Releasing memory allocated for mbox region */
+		if (dev->vf_mbox_mz)
+			plt_memzone_free(dev->vf_mbox_mz);
+	}
+
 	/* Release PF - VF */
 	mbox = &dev->mbox_vfpf;
 	if (mbox->hwbase && mbox->dev)
@@ -1674,6 +1789,7 @@ dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 	mbox_fini(mbox);
 	dev->mbox_active = 0;
 
+	plt_free(dev->mbox_plat);
 	/* Disable MSIX vectors */
 	dev_irqs_disable(intr_handle);
 	return 0;

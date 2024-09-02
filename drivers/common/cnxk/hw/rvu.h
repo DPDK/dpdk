@@ -103,8 +103,12 @@
 #define RVU_VF_MSIX_PBAX(a)		 (0xf0000ull | (uint64_t)(a) << 3)
 
 /* CN20k RVU mbox registers */
-#define RVU_MBOX_AF_AFPFX_TRIGX(a) (0x9000 | (a) << 3)
-#define RVU_MBOX_PF_PFAF_TRIGX(a)  RVU_PF_PFAF_MBOXX(a)
+#define RVU_MBOX_AF_AFPFX_TRIGX(a)    (0x9000 | (a) << 3)
+#define RVU_MBOX_PF_PFAF_TRIGX(a)     RVU_PF_PFAF_MBOXX(a)
+#define RVU_MBOX_PF_VFX_PFVF_TRIGX(a) (0x2000 | (a) << 3)
+#define RVU_MBOX_VF_VFPF_TRIGX(a)     (0x3000 | (a) << 3)
+
+#define RVU_PF_VF_MBOX_ADDR (0xC40)
 
 /* cn20k Enum */
 #define RVU_PFX_FUNC_PFAF_MBOX (0x80000)
@@ -177,6 +181,16 @@
 #define RVU_MBOX_PF_INT_VEC_VFPF1_MBOX0 (0x6ull)
 #define RVU_MBOX_PF_INT_VEC_VFPF1_MBOX1 (0x7ull)
 #define RVU_MBOX_PF_INT_VEC_AFPF_MBOX	(0x8ull)
+
+#define RVU_MBOX_PF_VFPF_INTX(a)	 (0x1000 | (a) << 3)
+#define RVU_MBOX_PF_VFPF_INT_W1SX(a)	 (0x1020 | (a) << 3)
+#define RVU_MBOX_PF_VFPF_INT_ENA_W1SX(a) (0x1040 | (a) << 3)
+#define RVU_MBOX_PF_VFPF_INT_ENA_W1CX(a) (0x1060 | (a) << 3)
+
+#define RVU_MBOX_PF_VFPF1_INTX(a)	  (0x1080 | (a) << 3)
+#define RVU_MBOX_PF_VFPF1_INT_W1SX(a)	  (0x10a0 | (a) << 3)
+#define RVU_MBOX_PF_VFPF1_INT_ENA_W1SX(a) (0x10c0 | (a) << 3)
+#define RVU_MBOX_PF_VFPF1_INT_ENA_W1CX(a) (0x10e0 | (a) << 3)
 
 #define AF_BAR2_ALIASX_SIZE (0x100000ull)
 

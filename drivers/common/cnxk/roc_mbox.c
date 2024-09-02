@@ -66,6 +66,22 @@ cn20k_mbox_setup(struct mbox *mbox, int direction)
 		mbox->trigger = RVU_MBOX_PF_PFAF_TRIGX(1);
 		mbox->tr_shift = 0;
 		break;
+	case MBOX_DIR_PFVF:
+		mbox->trigger = RVU_MBOX_PF_VFX_PFVF_TRIGX(1);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_PFVF_UP:
+		mbox->trigger = RVU_MBOX_PF_VFX_PFVF_TRIGX(0);
+		mbox->tr_shift = 4;
+		break;
+	case MBOX_DIR_VFPF:
+		mbox->trigger = RVU_MBOX_VF_VFPF_TRIGX(0);
+		mbox->tr_shift = 0;
+		break;
+	case MBOX_DIR_VFPF_UP:
+		mbox->trigger = RVU_MBOX_VF_VFPF_TRIGX(1);
+		mbox->tr_shift = 0;
+		break;
 	default:
 		return -ENODEV;
 	}
