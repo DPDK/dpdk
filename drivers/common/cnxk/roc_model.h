@@ -12,6 +12,7 @@
 extern struct roc_model *roc_model;
 
 struct roc_model {
+/* CN9k Models*/
 #define ROC_MODEL_CN96xx_A0    BIT_ULL(0)
 #define ROC_MODEL_CN96xx_B0    BIT_ULL(1)
 #define ROC_MODEL_CN96xx_C0    BIT_ULL(2)
@@ -24,6 +25,7 @@ struct roc_model {
 #define ROC_MODEL_CNF95xxN_B0  BIT_ULL(15)
 #define ROC_MODEL_CN98xx_A0    BIT_ULL(16)
 #define ROC_MODEL_CN98xx_A1    BIT_ULL(17)
+/* CN10k Models*/
 #define ROC_MODEL_CN106xx_A0   BIT_ULL(20)
 #define ROC_MODEL_CNF105xx_A0  BIT_ULL(21)
 #define ROC_MODEL_CNF105xxN_A0 BIT_ULL(22)
@@ -32,6 +34,9 @@ struct roc_model {
 #define ROC_MODEL_CNF105xx_A1  BIT_ULL(25)
 #define ROC_MODEL_CN106xx_B0   BIT_ULL(26)
 #define ROC_MODEL_CNF105xxN_B0 BIT_ULL(27)
+/* CN20k Models*/
+#define ROC_MODEL_CN206xx_A0   BIT_ULL(40)
+
 /* Following flags describe platform code is running on */
 #define ROC_ENV_HW   BIT_ULL(61)
 #define ROC_ENV_EMUL BIT_ULL(62)
@@ -43,6 +48,7 @@ struct roc_model {
 	char env[ROC_MODEL_STR_LEN_MAX];
 } __plt_cache_aligned;
 
+/* CN9K models */
 #define ROC_MODEL_CN96xx_Ax (ROC_MODEL_CN96xx_A0 | ROC_MODEL_CN96xx_B0)
 #define ROC_MODEL_CN98xx_Ax (ROC_MODEL_CN98xx_A0 | ROC_MODEL_CN98xx_A1)
 #define ROC_MODEL_CN9K                                                         \
@@ -56,6 +62,7 @@ struct roc_model {
 	 ROC_MODEL_CNF95xxN_A0 | ROC_MODEL_CNF95xxN_A1 |                       \
 	 ROC_MODEL_CNF95xxN_B0)
 
+/* CN10K models */
 #define ROC_MODEL_CN106xx   (ROC_MODEL_CN106xx_A0 | ROC_MODEL_CN106xx_A1 | ROC_MODEL_CN106xx_B0)
 #define ROC_MODEL_CNF105xx  (ROC_MODEL_CNF105xx_A0 | ROC_MODEL_CNF105xx_A1)
 #define ROC_MODEL_CNF105xxN (ROC_MODEL_CNF105xxN_A0 | ROC_MODEL_CNF105xxN_B0)
@@ -64,6 +71,10 @@ struct roc_model {
 	(ROC_MODEL_CN106xx | ROC_MODEL_CNF105xx | ROC_MODEL_CNF105xxN |        \
 	 ROC_MODEL_CN103xx)
 #define ROC_MODEL_CNF10K (ROC_MODEL_CNF105xx | ROC_MODEL_CNF105xxN)
+
+/* CN20K models */
+#define ROC_MODEL_CN206xx   (ROC_MODEL_CN206xx_A0)
+#define ROC_MODEL_CN20K     (ROC_MODEL_CN206xx)
 
 /* Runtime variants */
 static inline uint64_t
@@ -78,13 +89,32 @@ roc_model_runtime_is_cn10k(void)
 	return (roc_model->flag & (ROC_MODEL_CN10K));
 }
 
+static inline uint64_t
+roc_model_runtime_is_cn20k(void)
+{
+	return (roc_model->flag & (ROC_MODEL_CN20K));
+}
+
 /* Compile time variants */
 #ifdef ROC_PLATFORM_CN9K
 #define roc_model_constant_is_cn9k()  1
 #define roc_model_constant_is_cn10k() 0
-#else
+#define roc_model_constant_is_cn20k() 0
+#endif
+#ifdef ROC_PLATFORM_CN10K
 #define roc_model_constant_is_cn9k()  0
 #define roc_model_constant_is_cn10k() 1
+#define roc_model_constant_is_cn20k() 0
+#endif
+#ifdef ROC_PLATFORM_CN20K
+#define roc_model_constant_is_cn9k()  0
+#define roc_model_constant_is_cn10k() 0
+#define roc_model_constant_is_cn20k() 1
+#endif
+#if !defined(ROC_PLATFORM_CN9K) && !defined(ROC_PLATFORM_CN10K) && !defined(ROC_PLATFORM_CN20K)
+#define roc_model_constant_is_cn9k()  0
+#define roc_model_constant_is_cn10k() 0
+#define roc_model_constant_is_cn20k() 0
 #endif
 
 /*
@@ -97,7 +127,7 @@ roc_model_is_cn9k(void)
 #ifdef ROC_PLATFORM_CN9K
 	return 1;
 #endif
-#ifdef ROC_PLATFORM_CN10K
+#if defined(ROC_PLATFORM_CN10K) || defined(ROC_PLATFORM_CN20K)
 	return 0;
 #endif
 	return roc_model_runtime_is_cn9k();
@@ -109,10 +139,22 @@ roc_model_is_cn10k(void)
 #ifdef ROC_PLATFORM_CN10K
 	return 1;
 #endif
-#ifdef ROC_PLATFORM_CN9K
+#if defined(ROC_PLATFORM_CN9K) || defined(ROC_PLATFORM_CN20K)
 	return 0;
 #endif
 	return roc_model_runtime_is_cn10k();
+}
+
+static inline uint64_t
+roc_model_is_cn20k(void)
+{
+#ifdef ROC_PLATFORM_CN20K
+	return 1;
+#endif
+#if defined(ROC_PLATFORM_CN9K) || defined(ROC_PLATFORM_CN10K)
+	return 0;
+#endif
+	return roc_model_runtime_is_cn20k();
 }
 
 static inline uint64_t
