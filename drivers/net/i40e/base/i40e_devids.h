@@ -31,7 +31,8 @@
 #define I40E_DEV_ID_1G_BASE_T_BC	0x0DD2
 #define I40E_IS_X710TL_DEVICE(d) \
 	(((d) == I40E_DEV_ID_10G_BASE_T_BC) || \
-	((d) == I40E_DEV_ID_5G_BASE_T_BC))
+	((d) == I40E_DEV_ID_5G_BASE_T_BC) || \
+	((d) == I40E_DEV_ID_1G_BASE_T_BC))
 #define I40E_DEV_ID_KX_X722		0x37CE
 #define I40E_DEV_ID_QSFP_X722		0x37CF
 #define I40E_DEV_ID_SFP_X722		0x37D0
