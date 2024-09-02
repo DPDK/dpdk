@@ -69,6 +69,7 @@ const char *i40e_aq_str(struct i40e_hw *hw, enum i40e_admin_queue_err aq_err);
 const char *i40e_stat_str(struct i40e_hw *hw, enum i40e_status_code stat_err);
 
 u32 i40e_led_get(struct i40e_hw *hw);
+bool i40e_led_get_blink(struct i40e_hw *hw);
 void i40e_led_set(struct i40e_hw *hw, u32 mode, bool blink);
 enum i40e_status_code i40e_led_set_phy(struct i40e_hw *hw, bool on,
 				       u16 led_addr, u32 mode);

@@ -1569,6 +1569,35 @@ u32 i40e_led_get(struct i40e_hw *hw)
 }
 
 /**
+ * i40e_led_get_blink - return current LED blink setting
+ * @hw: pointer to the hw struct
+ *
+ * The value returned is the LED_BLINK bit as defined in the
+ * GPIO register definitions (0 = no blink, 1 = do blink).
+ **/
+bool i40e_led_get_blink(struct i40e_hw *hw)
+{
+	bool blink = 0;
+	int i;
+
+	/* as per the documentation GPIO 22-29 are the LED
+	 * GPIO pins named LED0..LED7
+	 */
+	for (i = I40E_LED0; i <= I40E_GLGEN_GPIO_CTL_MAX_INDEX; i++) {
+		u32 gpio_val = i40e_led_is_mine(hw, i);
+
+		if (!gpio_val)
+			continue;
+
+		blink = (gpio_val & I40E_GLGEN_GPIO_CTL_LED_BLINK_MASK) >>
+			I40E_GLGEN_GPIO_CTL_LED_BLINK_SHIFT;
+		break;
+	}
+
+	return blink;
+}
+
+/**
  * i40e_led_set - set new on/off mode
  * @hw: pointer to the hw struct
  * @mode: 0=off, 0xf=on (else see manual for mode details)
