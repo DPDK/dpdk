@@ -775,7 +775,7 @@ union i40e_16byte_rx_desc {
 		__le64 hdr_addr; /* Header buffer address */
 	} read;
 	struct {
-		struct {
+		struct i40e_16b_rx_wb_qw0 {
 			struct {
 				union {
 					__le16 mirroring_status;
@@ -794,6 +794,9 @@ union i40e_16byte_rx_desc {
 			__le64 status_error_len;
 		} qword1;
 	} wb;  /* writeback */
+	struct {
+		u64 qword[2];
+	} raw;
 };
 
 union i40e_32byte_rx_desc {
