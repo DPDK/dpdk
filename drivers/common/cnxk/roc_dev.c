@@ -69,7 +69,7 @@ pf_af_sync_msg(struct dev *dev, struct mbox_msghdr **rsp)
 	int rc = 0;
 
 	/* We need to disable PF interrupts. We are in timer interrupt */
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1C);
 
 	/* Send message */
 	mbox_msg_send(mbox, 0);
@@ -82,14 +82,14 @@ pf_af_sync_msg(struct dev *dev, struct mbox_msghdr **rsp)
 			rc = -EIO;
 			break;
 		}
-		int_status = plt_read64(dev->bar2 + RVU_PF_INT);
+		int_status = plt_read64(dev->mbox_reg_base + RVU_PF_INT);
 	} while ((int_status & 0x1) != 0x1);
 
 	/* Clear */
-	plt_write64(int_status, dev->bar2 + RVU_PF_INT);
+	plt_write64(int_status, dev->mbox_reg_base + RVU_PF_INT);
 
 	/* Enable interrupts */
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1S);
 
 	if (rc == 0) {
 		/* Get message */
@@ -122,7 +122,7 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 	int i;
 
 	/* We need to disable PF interrupts. We are in timer interrupt */
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1C);
 
 	/* Send message to AF */
 	mbox_msg_send(mbox, 0);
@@ -132,18 +132,17 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 		plt_delay_ms(sleep);
 		timeout++;
 		if (timeout >= mbox->rsp_tmo) {
-			plt_err("Routed messages %d timeout: %dms", num_msg,
-				mbox->rsp_tmo);
+			plt_err("Routed messages %d timeout: %dms", num_msg, mbox->rsp_tmo);
 			break;
 		}
-		int_status = plt_read64(dev->bar2 + RVU_PF_INT);
+		int_status = plt_read64(dev->mbox_reg_base + RVU_PF_INT);
 	} while ((int_status & 0x1) != 0x1);
 
 	/* Clear */
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT);
 
 	/* Enable interrupts */
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1S);
 
 	req_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
 	if (req_hdr->num_msgs != num_msg)
@@ -387,16 +386,16 @@ roc_vf_pf_mbox_irq(void *param)
 	sz = sizeof(intrb.bits[0]) * MAX_VFPF_DWORD_BITS;
 	memset(intrb.bits, 0, sz);
 	for (vfpf = 0; vfpf < MAX_VFPF_DWORD_BITS; ++vfpf) {
-		intr = plt_read64(dev->bar2 + RVU_PF_VFPF_MBOX_INTX(vfpf));
+		intr = plt_read64(dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(vfpf));
 		if (!intr)
 			continue;
 
-		plt_base_dbg("vfpf: %d intr: 0x%" PRIx64 " (pf:%d, vf:%d)",
-			     vfpf, intr, dev->pf, dev->vf);
+		plt_base_dbg("vfpf: %d intr: 0x%" PRIx64 " (pf:%d, vf:%d)", vfpf, intr, dev->pf,
+			     dev->vf);
 
 		/* Save and clear intr bits */
 		intrb.bits[vfpf] |= intr;
-		plt_write64(intr, dev->bar2 + RVU_PF_VFPF_MBOX_INTX(vfpf));
+		plt_write64(intr, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(vfpf));
 		signal_thread = true;
 	}
 
@@ -830,21 +829,21 @@ roc_pf_vf_mbox_irq(void *param)
 	uint64_t mbox_data;
 	uint64_t intr;
 
-	intr = plt_read64(dev->bar2 + RVU_VF_INT);
+	intr = plt_read64(dev->mbox_reg_base + RVU_VF_INT);
 	if (intr == 0)
 		plt_base_dbg("Proceeding to check mbox UP messages if any");
 
-	plt_write64(intr, dev->bar2 + RVU_VF_INT);
+	plt_write64(intr, dev->mbox_reg_base + RVU_VF_INT);
 	plt_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
 
 	/* Reading for UP/DOWN message, next message sending will be delayed
 	 * by 1ms until this region is zeroed mbox_wait_for_zero()
 	 */
-	mbox_data = plt_read64(dev->bar2 + RVU_VF_VFPF_MBOX0);
+	mbox_data = plt_read64(dev->mbox_reg_base + RVU_VF_VFPF_MBOX0);
 	/* If interrupt occurred for down message */
 	if (mbox_data & MBOX_DOWN_MSG) {
 		mbox_data &= ~MBOX_DOWN_MSG;
-		plt_write64(mbox_data, dev->bar2 + RVU_VF_VFPF_MBOX0);
+		plt_write64(mbox_data, dev->mbox_reg_base + RVU_VF_VFPF_MBOX0);
 
 		/* First process all configuration messages */
 		process_msgs(dev, dev->mbox);
@@ -852,7 +851,7 @@ roc_pf_vf_mbox_irq(void *param)
 	/* If interrupt occurred for UP message */
 	if (mbox_data & MBOX_UP_MSG) {
 		mbox_data &= ~MBOX_UP_MSG;
-		plt_write64(mbox_data, dev->bar2 + RVU_VF_VFPF_MBOX0);
+		plt_write64(mbox_data, dev->mbox_reg_base + RVU_VF_VFPF_MBOX0);
 
 		/* Process Uplink messages */
 		process_msgs_up(dev, &dev->mbox_up);
@@ -867,29 +866,29 @@ roc_af_pf_mbox_irq(void *param)
 	uint64_t mbox_data;
 	uint64_t intr;
 
-	intr = plt_read64(dev->bar2 + RVU_PF_INT);
+	intr = plt_read64(dev->mbox_reg_base + RVU_PF_INT);
 	if (intr == 0)
 		plt_base_dbg("Proceeding to check mbox UP messages if any");
 
-	plt_write64(intr, dev->bar2 + RVU_PF_INT);
+	plt_write64(intr, dev->mbox_reg_base + RVU_PF_INT);
 	plt_base_dbg("Irq 0x%" PRIx64 "(pf:%d,vf:%d)", intr, dev->pf, dev->vf);
 
 	/* Reading for UP/DOWN message, next message sending will be delayed
 	 * by 1ms until this region is zeroed mbox_wait_for_zero()
 	 */
-	mbox_data = plt_read64(dev->bar2 + RVU_PF_PFAF_MBOX0);
+	mbox_data = plt_read64(dev->mbox_reg_base + RVU_PF_PFAF_MBOX0);
 	/* If interrupt occurred for down message */
-	if (mbox_data & MBOX_DOWN_MSG) {
+	if (mbox_data & MBOX_DOWN_MSG || intr & BIT_ULL(1)) {
 		mbox_data &= ~MBOX_DOWN_MSG;
-		plt_write64(mbox_data, dev->bar2 + RVU_PF_PFAF_MBOX0);
+		plt_write64(mbox_data, dev->mbox_reg_base + RVU_PF_PFAF_MBOX0);
 
 		/* First process all configuration messages */
 		process_msgs(dev, dev->mbox);
 	}
 	/* If interrupt occurred for up message */
-	if (mbox_data & MBOX_UP_MSG) {
+	if (mbox_data & MBOX_UP_MSG || intr & BIT_ULL(0)) {
 		mbox_data &= ~MBOX_UP_MSG;
-		plt_write64(mbox_data, dev->bar2 + RVU_PF_PFAF_MBOX0);
+		plt_write64(mbox_data, dev->mbox_reg_base + RVU_PF_PFAF_MBOX0);
 
 		/* Process Uplink messages */
 		process_msgs_up(dev, &dev->mbox_up);
@@ -904,30 +903,26 @@ mbox_register_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 
 	/* HW clear irq */
 	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
-		plt_write64(~0ull,
-			    dev->bar2 + RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
+		plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
 
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1C);
 
 	/* MBOX interrupt for VF(0...63) <-> PF */
-	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev,
-			      RVU_PF_INT_VEC_VFPF_MBOX0);
+	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf_vec);
 
 	if (rc) {
 		plt_err("Fail to register PF(VF0-63) mbox irq");
 		return rc;
 	}
 	/* MBOX interrupt for VF(64...128) <-> PF */
-	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev,
-			      RVU_PF_INT_VEC_VFPF_MBOX1);
+	rc = dev_irq_register(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf1_vec);
 
 	if (rc) {
 		plt_err("Fail to register PF(VF64-128) mbox irq");
 		return rc;
 	}
 	/* MBOX interrupt AF <-> PF */
-	rc = dev_irq_register(intr_handle, roc_af_pf_mbox_irq, dev,
-			      RVU_PF_INT_VEC_AFPF_MBOX);
+	rc = dev_irq_register(intr_handle, roc_af_pf_mbox_irq, dev, dev->mbox_plat.pfaf_vec);
 	if (rc) {
 		plt_err("Fail to register AF<->PF mbox irq");
 		return rc;
@@ -935,11 +930,10 @@ mbox_register_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 
 	/* HW enable intr */
 	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
-		plt_write64(~0ull,
-			    dev->bar2 + RVU_PF_VFPF_MBOX_INT_ENA_W1SX(i));
+		plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INT_ENA_W1SX(i));
 
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT);
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1S);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1S);
 
 	return rc;
 }
@@ -951,19 +945,18 @@ mbox_register_vf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 	int rc;
 
 	/* Clear irq */
-	plt_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1C);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_VF_INT_ENA_W1C);
 
 	/* MBOX interrupt PF <-> VF */
-	rc = dev_irq_register(intr_handle, roc_pf_vf_mbox_irq, dev,
-			      RVU_VF_INT_VEC_MBOX);
+	rc = dev_irq_register(intr_handle, roc_pf_vf_mbox_irq, dev, RVU_VF_INT_VEC_MBOX);
 	if (rc) {
 		plt_err("Fail to register PF<->VF mbox irq");
 		return rc;
 	}
 
 	/* HW enable intr */
-	plt_write64(~0ull, dev->bar2 + RVU_VF_INT);
-	plt_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1S);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_VF_INT);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_VF_INT_ENA_W1S);
 
 	return rc;
 }
@@ -985,23 +978,19 @@ mbox_unregister_pf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 
 	/* HW clear irq */
 	for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i)
-		plt_write64(~0ull,
-			    dev->bar2 + RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
+		plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INT_ENA_W1CX(i));
 
-	plt_write64(~0ull, dev->bar2 + RVU_PF_INT_ENA_W1C);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_PF_INT_ENA_W1C);
 
 	/* Unregister the interrupt handler for each vectors */
 	/* MBOX interrupt for VF(0...63) <-> PF */
-	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev,
-			   RVU_PF_INT_VEC_VFPF_MBOX0);
+	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf_vec);
 
 	/* MBOX interrupt for VF(64...128) <-> PF */
-	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev,
-			   RVU_PF_INT_VEC_VFPF_MBOX1);
+	dev_irq_unregister(intr_handle, roc_vf_pf_mbox_irq, dev, dev->mbox_plat.pfvf1_vec);
 
 	/* MBOX interrupt AF <-> PF */
-	dev_irq_unregister(intr_handle, roc_af_pf_mbox_irq, dev,
-			   RVU_PF_INT_VEC_AFPF_MBOX);
+	dev_irq_unregister(intr_handle, roc_af_pf_mbox_irq, dev, dev->mbox_plat.pfaf_vec);
 }
 
 static void
@@ -1010,11 +999,10 @@ mbox_unregister_vf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	/* Clear irq */
-	plt_write64(~0ull, dev->bar2 + RVU_VF_INT_ENA_W1C);
+	plt_write64(~0ull, dev->mbox_reg_base + RVU_VF_INT_ENA_W1C);
 
 	/* Unregister the interrupt handler */
-	dev_irq_unregister(intr_handle, roc_pf_vf_mbox_irq, dev,
-			   RVU_VF_INT_VEC_MBOX);
+	dev_irq_unregister(intr_handle, roc_pf_vf_mbox_irq, dev, RVU_VF_INT_VEC_MBOX);
 }
 
 static void
@@ -1223,21 +1211,19 @@ clear_rvum_interrupts(struct dev *dev)
 
 	if (dev_is_vf(dev)) {
 		/* Clear VF mbox interrupt */
-		intr = plt_read64(dev->bar2 + RVU_VF_INT);
+		intr = plt_read64(dev->mbox_reg_base + RVU_VF_INT);
 		if (intr)
-			plt_write64(intr, dev->bar2 + RVU_VF_INT);
+			plt_write64(intr, dev->mbox_reg_base + RVU_VF_INT);
 	} else {
 		/* Clear AF PF interrupt line */
-		intr = plt_read64(dev->bar2 + RVU_PF_INT);
+		intr = plt_read64(dev->mbox_reg_base + RVU_PF_INT);
 		if (intr)
-			plt_write64(intr, dev->bar2 + RVU_PF_INT);
+			plt_write64(intr, dev->mbox_reg_base + RVU_PF_INT);
 		for (i = 0; i < MAX_VFPF_DWORD_BITS; ++i) {
 			/* Clear MBOX interrupts */
-			intr = plt_read64(dev->bar2 + RVU_PF_VFPF_MBOX_INTX(i));
+			intr = plt_read64(dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(i));
 			if (intr)
-				plt_write64(intr,
-					    dev->bar2 +
-						    RVU_PF_VFPF_MBOX_INTX(i));
+				plt_write64(intr, dev->mbox_reg_base + RVU_PF_VFPF_MBOX_INTX(i));
 			/* Clear VF FLR interrupts */
 			intr = plt_read64(dev->bar2 + RVU_PF_VFFLR_INTX(i));
 			if (intr)
@@ -1352,7 +1338,7 @@ dev_lmt_setup(struct dev *dev)
 	int rc;
 
 	if (roc_model_is_cn9k()) {
-		dev->lmt_base = dev->bar2 + (RVU_BLOCK_ADDR_LMT << 20);
+		dev->lmt_base = dev->mbox_reg_base + (RVU_BLOCK_ADDR_LMT << 20);
 		return 0;
 	}
 
@@ -1382,8 +1368,7 @@ dev_lmt_setup(struct dev *dev)
 	 * Alignment value LMT_REGION_SIZE to handle the case where all lines
 	 * are used by 1 core.
 	 */
-	mz = plt_lmt_region_reserve_aligned(name, LMT_REGION_SIZE,
-					    LMT_REGION_SIZE);
+	mz = plt_lmt_region_reserve_aligned(name, LMT_REGION_SIZE, LMT_REGION_SIZE);
 	if (!mz) {
 		plt_err("Memory alloc failed: %s", strerror(errno));
 		goto fail;
@@ -1427,8 +1412,7 @@ dev_cache_line_size_valid(void)
 {
 	if (roc_model_is_cn9k()) {
 		if (PLT_CACHE_LINE_SIZE != 128) {
-			plt_err("Cache line size of %d is wrong for CN9K",
-				PLT_CACHE_LINE_SIZE);
+			plt_err("Cache line size of %d is wrong for CN9K", PLT_CACHE_LINE_SIZE);
 			return false;
 		}
 	} else if (roc_model_is_cn10k()) {
@@ -1436,8 +1420,7 @@ dev_cache_line_size_valid(void)
 			plt_warn("Cache line size of %d might affect performance",
 				 PLT_CACHE_LINE_SIZE);
 		} else if (PLT_CACHE_LINE_SIZE != 64) {
-			plt_err("Cache line size of %d is wrong for CN10K",
-				PLT_CACHE_LINE_SIZE);
+			plt_err("Cache line size of %d is wrong for CN10K", PLT_CACHE_LINE_SIZE);
 			return false;
 		}
 	}
@@ -1445,12 +1428,37 @@ dev_cache_line_size_valid(void)
 	return true;
 }
 
+static void
+mbox_platform_changes(struct mbox_platform *mbox_plat, uintptr_t bar2, uintptr_t bar4)
+{
+	if (roc_model_is_cn20k()) {
+		/* For CN20K, AF allocates mbox memory in DRAM and writes PF
+		 * regions/offsets in RVU_MBOX_AF_PFX_ADDR, the RVU_PFX_FUNC_PFAF_MBOX
+		 * gives the aliased address to access AF/PF mailbox regions.
+		 */
+		mbox_plat->mbox_reg_base = bar2;
+		mbox_plat->mbox_region_base =
+			bar2 + (RVU_PFX_FUNC_PFAF_MBOX +
+				((uint64_t)RVU_BLOCK_ADDR_MBOX << RVU_FUNC_BLKADDR_SHIFT));
+		/* Interrupt vectors */
+		mbox_plat->pfaf_vec = RVU_MBOX_PF_INT_VEC_AFPF_MBOX;
+		mbox_plat->pfvf_vec = RVU_MBOX_PF_INT_VEC_VFPF_MBOX0;
+		mbox_plat->pfvf1_vec = RVU_MBOX_PF_INT_VEC_VFPF_MBOX1;
+	} else {
+		mbox_plat->mbox_reg_base = bar2;
+		mbox_plat->mbox_region_base = bar4;
+		mbox_plat->pfaf_vec = RVU_PF_INT_VEC_AFPF_MBOX;
+		mbox_plat->pfvf_vec = RVU_PF_INT_VEC_VFPF_MBOX0;
+		mbox_plat->pfvf1_vec = RVU_PF_INT_VEC_VFPF_MBOX1;
+	}
+}
+
 int
 dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 {
+	uintptr_t mbox_reg_base, mbox_region_base, bar2, bar4;
 	char name[MBOX_HANDLER_NAME_MAX_LEN];
 	int direction, up_direction, rc;
-	uintptr_t bar2, bar4, mbox;
 	uintptr_t vf_mbase = 0;
 	uint64_t intr_offset;
 
@@ -1464,38 +1472,42 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 
 	bar2 = (uintptr_t)pci_dev->mem_resource[2].addr;
 	bar4 = (uintptr_t)pci_dev->mem_resource[4].addr;
-	if (bar2 == 0 || bar4 == 0) {
+	mbox_platform_changes(&dev->mbox_plat, bar2, bar4);
+
+	mbox_reg_base = dev->mbox_plat.mbox_reg_base;
+	mbox_region_base = dev->mbox_plat.mbox_region_base;
+	if (mbox_reg_base == 0 || mbox_region_base == 0) {
 		plt_err("Failed to get PCI bars");
 		rc = -ENODEV;
 		goto error;
 	}
-
-	/* Trigger fault on bar2 and bar4 regions
+	/* Trigger fault on mbox_reg_base and mbox_region_base
 	 * to avoid BUG_ON in remap_pfn_range()
 	 * in latest kernel.
 	 */
-	*(volatile uint64_t *)bar2;
-	*(volatile uint64_t *)bar4;
+	*(volatile uint64_t *)mbox_reg_base;
+	*(volatile uint64_t *)mbox_region_base;
 
 	/* Check ROC model supported */
 	if (roc_model->flag == 0) {
 		rc = UTIL_ERR_INVALID_MODEL;
+		plt_err("Unsupported roc model");
 		goto error;
 	}
 
 	dev->maxvf = pci_dev->max_vfs;
 	dev->bar2 = bar2;
 	dev->bar4 = bar4;
+	dev->mbox_reg_base = dev->mbox_plat.mbox_reg_base;
 	dev_vf_hwcap_update(pci_dev, dev);
 
 	if (dev_is_vf(dev)) {
-		mbox = (roc_model_is_cn9k() ?
-			bar4 : (bar2 + RVU_VF_MBOX_REGION));
+		if (!roc_model_is_cn9k())
+			mbox_region_base = bar2 + RVU_VF_MBOX_REGION;
 		direction = MBOX_DIR_VFPF;
 		up_direction = MBOX_DIR_VFPF_UP;
 		intr_offset = RVU_VF_INT;
 	} else {
-		mbox = bar4;
 		direction = MBOX_DIR_PFAF;
 		up_direction = MBOX_DIR_PFAF_UP;
 		intr_offset = RVU_PF_INT;
@@ -1505,12 +1517,14 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	clear_rvum_interrupts(dev);
 
 	/* Initialize the local mbox */
-	rc = mbox_init(&dev->mbox_local, mbox, bar2, direction, 1, intr_offset);
+	rc = mbox_init(&dev->mbox_local, mbox_region_base, mbox_reg_base, direction, 1,
+		       intr_offset);
 	if (rc)
 		goto error;
 	dev->mbox = &dev->mbox_local;
 
-	rc = mbox_init(&dev->mbox_up, mbox, bar2, up_direction, 1, intr_offset);
+	rc = mbox_init(&dev->mbox_up, mbox_region_base, mbox_reg_base, up_direction, 1,
+		       intr_offset);
 	if (rc)
 		goto mbox_fini;
 
@@ -1544,14 +1558,14 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 			goto mbox_unregister;
 		}
 		/* Init mbox object */
-		rc = mbox_init(&dev->mbox_vfpf, vf_mbase, bar2, MBOX_DIR_PFVF,
+		rc = mbox_init(&dev->mbox_vfpf, vf_mbase, mbox_reg_base, MBOX_DIR_PFVF,
 			       pci_dev->max_vfs, intr_offset);
 		if (rc)
 			goto iounmap;
 
 		/* PF -> VF UP messages */
-		rc = mbox_init(&dev->mbox_vfpf_up, vf_mbase, bar2,
-			       MBOX_DIR_PFVF_UP, pci_dev->max_vfs, intr_offset);
+		rc = mbox_init(&dev->mbox_vfpf_up, vf_mbase, mbox_reg_base, MBOX_DIR_PFVF_UP,
+			       pci_dev->max_vfs, intr_offset);
 		if (rc)
 			goto iounmap;
 

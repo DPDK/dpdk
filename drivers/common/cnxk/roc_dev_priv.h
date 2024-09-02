@@ -81,6 +81,14 @@ struct mbox_sync {
 	pthread_mutex_t mutex;
 };
 
+struct mbox_platform {
+	uint8_t pfaf_vec;
+	uint8_t pfvf_vec;
+	uint8_t pfvf1_vec;
+	uintptr_t mbox_reg_base;
+	uintptr_t mbox_region_base;
+};
+
 struct dev {
 	uint16_t pf;
 	int16_t vf;
@@ -109,6 +117,8 @@ struct dev {
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
 	const struct plt_memzone *lmt_mz;
 	struct mbox_sync sync;
+	uintptr_t mbox_reg_base;
+	struct mbox_platform mbox_plat;
 } __plt_cache_aligned;
 
 struct npa {
