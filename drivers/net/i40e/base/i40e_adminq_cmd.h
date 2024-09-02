@@ -2660,7 +2660,6 @@ struct i40e_aqc_lldp_stop {
 I40E_CHECK_CMD_LENGTH(i40e_aqc_lldp_stop);
 
 /* Start LLDP (direct 0x0A06) */
-
 struct i40e_aqc_lldp_start {
 	u8	command;
 #define I40E_AQ_LLDP_AGENT_START		0x1

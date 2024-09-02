@@ -1308,7 +1308,6 @@ enum i40e_status_code i40e_dcb_config_to_lldp(u8 *lldpmib, u16 *miblen,
 	return ret;
 }
 
-
 /**
  * _i40e_read_lldp_cfg - generic read of LLDP Configuration data from NVM
  * @hw: pointer to the HW structure

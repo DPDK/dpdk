@@ -50,7 +50,6 @@
 
 /* Max timeout in ms for the phy to respond */
 #define I40E_MAX_PHY_TIMEOUT		500
-
 /* Check whether address is multicast. */
 #define I40E_IS_MULTICAST(address) (bool)(((u8 *)(address))[0] & ((u8)0x01))
 
@@ -676,7 +675,6 @@ struct i40e_dcbx_config {
 struct i40e_hw {
 	u8 *hw_addr;
 	void *back;
-
 	/* subsystem structs */
 	struct i40e_phy_info phy;
 	struct i40e_mac_info mac;

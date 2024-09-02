@@ -950,7 +950,6 @@ struct i40e_rx_ptype_decoded i40e_ptype_lookup[] = {
 	I40E_PTT_UNUSED_ENTRY(255)
 };
 
-
 /**
  * i40e_validate_mac_addr - Validate unicast MAC address
  * @mac_addr: pointer to MAC address
@@ -1426,7 +1425,6 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 	}
 
 	i40e_clear_pxe_mode(hw);
-
 
 	return I40E_SUCCESS;
 }
@@ -2022,7 +2020,6 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 	enum i40e_status_code status;
 	bool tx_pause, rx_pause;
 	u16 command_flags;
-
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_get_link_status);
 
 	if (enable_lse)
@@ -2324,7 +2321,7 @@ enum i40e_status_code i40e_aq_add_vsi(struct i40e_hw *hw,
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 
 	status = i40e_asq_send_command(hw, &desc, &vsi_ctx->info,
-				    sizeof(vsi_ctx->info), cmd_details);
+				       sizeof(vsi_ctx->info), cmd_details);
 
 	if (status != I40E_SUCCESS)
 		goto aq_add_vsi_exit;
@@ -2746,7 +2743,7 @@ enum i40e_status_code i40e_aq_update_vsi_params(struct i40e_hw *hw,
 	desc.flags |= CPU_TO_LE16((u16)(I40E_AQ_FLAG_BUF | I40E_AQ_FLAG_RD));
 
 	status = i40e_asq_send_command(hw, &desc, &vsi_ctx->info,
-				    sizeof(vsi_ctx->info), cmd_details);
+				       sizeof(vsi_ctx->info), cmd_details);
 
 	vsi_ctx->vsis_allocated = LE16_TO_CPU(resp->vsi_used);
 	vsi_ctx->vsis_unallocated = LE16_TO_CPU(resp->vsi_free);
@@ -2956,7 +2953,7 @@ enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw)
 	if (((hw->phy.link_info.link_info & I40E_AQ_MEDIA_AVAILABLE) &&
 	     ((hw->phy.link_info.link_info & I40E_AQ_LINK_UP) ||
 	      !(hw->phy.link_info_old.link_info & I40E_AQ_LINK_UP))) ||
-		hw->mac.type == I40E_MAC_X722) {
+	    hw->mac.type == I40E_MAC_X722) {
 		status = i40e_aq_get_phy_capabilities(hw, false,
 						      hw->mac.type ==
 						      I40E_MAC_X722,
@@ -2980,7 +2977,6 @@ enum i40e_status_code i40e_update_link_info(struct i40e_hw *hw)
 	}
 	return status;
 }
-
 
 /**
  * i40e_get_link_speed
@@ -3831,10 +3827,9 @@ enum i40e_status_code i40e_aq_write_nvm_config(struct i40e_hw *hw,
  *
  * Indicate NVM update in process.
  **/
-enum i40e_status_code
-i40e_aq_nvm_update_in_process(struct i40e_hw *hw,
-			      bool update_flow_state,
-			      struct i40e_asq_cmd_details *cmd_details)
+enum i40e_status_code i40e_aq_nvm_update_in_process(struct i40e_hw *hw,
+				bool update_flow_state,
+				struct i40e_asq_cmd_details *cmd_details)
 {
 	struct i40e_aq_desc desc;
 	struct i40e_aqc_nvm_update_in_process *cmd =
@@ -4892,7 +4887,6 @@ enum i40e_status_code i40e_aq_delete_element(struct i40e_hw *hw, u16 seid,
 	i40e_fill_default_direct_cmd_desc(&desc, i40e_aqc_opc_delete_element);
 
 	cmd->seid = CPU_TO_LE16(seid);
-
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
 	return status;
@@ -6167,7 +6161,6 @@ i40e_status_code i40e_aq_replace_cloud_filters(struct i40e_hw *hw,
 	return status;
 }
 
-
 /**
  * i40e_aq_alternate_write
  * @hw: pointer to the hardware structure
@@ -6524,7 +6517,6 @@ enum i40e_status_code i40e_aq_debug_dump(struct i40e_hw *hw, u8 cluster_id,
 
 	return status;
 }
-
 
 /**
  * i40e_enable_eee
@@ -7280,9 +7272,9 @@ enum i40e_status_code i40e_get_lpi_counters(struct i40e_hw *hw,
 	 */
 	if ((hw->device_id == I40E_DEV_ID_10G_BASE_T_BC ||
 	     hw->device_id == I40E_DEV_ID_5G_BASE_T_BC) &&
-	    hw->phy.link_info.link_speed != I40E_LINK_SPEED_1GB) {
+	     hw->phy.link_info.link_speed != I40E_LINK_SPEED_1GB) {
 		enum i40e_status_code retval;
-		u32 cmd_status = 0;
+		u32 cmd_status;
 
 		*is_clear = false;
 		retval = i40e_aq_run_phy_activity(hw,

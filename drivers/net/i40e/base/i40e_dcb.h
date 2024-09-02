@@ -183,7 +183,6 @@ struct i40e_dcbx_variables {
 	u32 deftsaassignment;
 };
 
-
 enum i40e_get_fw_lldp_status_resp {
 	I40E_GET_FW_LLDP_STATUS_DISABLED = 0,
 	I40E_GET_FW_LLDP_STATUS_ENABLED = 1

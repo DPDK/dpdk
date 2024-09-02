@@ -33,11 +33,12 @@ void i40e_adminq_init_ring_data(struct i40e_hw *hw);
 enum i40e_status_code i40e_clean_arq_element(struct i40e_hw *hw,
 					     struct i40e_arq_event_info *e,
 					     u16 *events_pending);
-enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
-				struct i40e_aq_desc *desc,
-				void *buff, /* can be NULL */
-				u16  buff_size,
-				struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code
+i40e_asq_send_command(struct i40e_hw *hw,
+		      struct i40e_aq_desc *desc,
+		      void *buff, /* can be NULL */
+		      u16  buff_size,
+		      struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code
 i40e_asq_send_command_v2(struct i40e_hw *hw,
 			 struct i40e_aq_desc *desc,
@@ -275,10 +276,9 @@ enum i40e_status_code i40e_aq_update_nvm(struct i40e_hw *hw, u8 module_pointer,
 enum i40e_status_code i40e_aq_rearrange_nvm(struct i40e_hw *hw,
 				u8 rearrange_nvm,
 				struct i40e_asq_cmd_details *cmd_details);
-enum i40e_status_code
-i40e_aq_nvm_update_in_process(struct i40e_hw *hw,
-			      bool update_flow_state,
-			      struct i40e_asq_cmd_details *cmd_details);
+enum i40e_status_code i40e_aq_nvm_update_in_process(struct i40e_hw *hw,
+				bool update_flow_state,
+				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_get_lldp_mib(struct i40e_hw *hw, u8 bridge_type,
 				u8 mib_type, void *buff, u16 buff_size,
 				u16 *local_len, u16 *remote_len,
