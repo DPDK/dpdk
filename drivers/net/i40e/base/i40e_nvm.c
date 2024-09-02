@@ -61,7 +61,7 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 				       enum i40e_aq_resource_access_type access)
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
-	u64 gtime, timeout;
+	u32 gtime, timeout;
 	u64 time_left = 0;
 
 	DEBUGFUNC("i40e_acquire_nvm");
@@ -85,7 +85,7 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 	if (ret_code && time_left) {
 		/* Poll until the current NVM owner timeouts */
 		timeout = I40E_MS_TO_GTIME(I40E_MAX_NVM_TIMEOUT) + gtime;
-		while ((gtime < timeout) && time_left) {
+		while ((s32)(gtime - timeout) < 0 && time_left) {
 			i40e_msec_delay(10);
 			gtime = rd32(hw, I40E_GLVFGEN_TIMER);
 			ret_code = i40e_aq_request_resource(hw,
@@ -1301,9 +1301,9 @@ retry:
 		u32 gtime;
 
 		gtime = rd32(hw, I40E_GLVFGEN_TIMER);
-		if (gtime >= hw->nvm.hw_semaphore_timeout) {
+		if ((s32)(gtime - hw->nvm.hw_semaphore_timeout) >= 0) {
 			i40e_debug(hw, I40E_DEBUG_ALL,
-				   "NVMUPD: write semaphore expired (%d >= %" PRIu64 "), retrying\n",
+				   "NVMUPD: write semaphore expired (%d >= %" PRIu32 "), retrying\n",
 				   gtime, hw->nvm.hw_semaphore_timeout);
 			i40e_release_nvm(hw);
 			status = i40e_acquire_nvm(hw, I40E_RESOURCE_WRITE);
