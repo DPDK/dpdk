@@ -233,7 +233,7 @@ enum i40e_status_code i40e_aq_set_switch_config(struct i40e_hw *hw,
 enum i40e_status_code i40e_aq_request_resource(struct i40e_hw *hw,
 				enum i40e_aq_resources_ids resource,
 				enum i40e_aq_resource_access_type access,
-				u8 sdp_number, u64 *timeout,
+				u8 sdp_number, u32 *timeout,
 				struct i40e_asq_cmd_details *cmd_details);
 enum i40e_status_code i40e_aq_release_resource(struct i40e_hw *hw,
 				enum i40e_aq_resources_ids resource,

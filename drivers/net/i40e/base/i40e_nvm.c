@@ -62,7 +62,7 @@ enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
 	u32 gtime, timeout;
-	u64 time_left = 0;
+	u32 time_left = 0;
 
 	DEBUGFUNC("i40e_acquire_nvm");
 
@@ -127,8 +127,8 @@ enum i40e_status_code i40e_acquire_nvm_ex(struct i40e_hw *hw,
 					   u32 custom_timeout)
 {
 	enum i40e_status_code ret_code = I40E_SUCCESS;
-	u64 gtime, timeout;
-	u64 time_left = 0;
+	u32 gtime, timeout;
+	u32 time_left = 0;
 
 	DEBUGFUNC("i40e_acquire_nvm");
 
