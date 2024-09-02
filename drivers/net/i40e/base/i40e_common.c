@@ -4215,8 +4215,8 @@ STATIC void i40e_parse_discover_capabilities(struct i40e_hw *hw, void *buff,
 		/* use AQ read to get the physical register offset instead
 		 * of the port relative offset
 		 */
-		i40e_aq_debug_read_register(hw, port_cfg_reg, &port_cfg, NULL);
-		if (!(port_cfg & I40E_PRTGEN_CNF_PORT_DIS_MASK))
+		status = i40e_aq_debug_read_register(hw, port_cfg_reg, &port_cfg, NULL);
+		if ((status == I40E_SUCCESS) && (!(port_cfg & I40E_PRTGEN_CNF_PORT_DIS_MASK)))
 			hw->num_ports++;
 	}
 
