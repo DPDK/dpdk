@@ -110,6 +110,75 @@ i40e_i40e_acquire_nvm_exit:
 	return ret_code;
 }
 
+
+/**
+ * i40e_acquire_nvm_ex - Specific request only for
+ * OID_INTEL_FLASH_INFO_TIMEOUT for acquiring the NVM ownership
+ * @hw: pointer to the HW structure
+ * @access: NVM access type (read or write)
+ * @custom_timeout: timeout for aquire NVM (read)
+ *
+ * This function will request NVM ownership for reading
+ * via the proper Admin Command.
+ **/
+
+enum i40e_status_code i40e_acquire_nvm_ex(struct i40e_hw *hw,
+				       enum i40e_aq_resource_access_type access,
+					   u32 custom_timeout)
+{
+	enum i40e_status_code ret_code = I40E_SUCCESS;
+	u64 gtime, timeout;
+	u64 time_left = 0;
+
+	DEBUGFUNC("i40e_acquire_nvm");
+
+	if (hw->nvm.blank_nvm_mode)
+		goto i40e_i40e_acquire_nvm_exit;
+
+	ret_code = i40e_aq_request_resource(hw, I40E_NVM_RESOURCE_ID, access,
+					    0, &time_left, NULL);
+	/* Reading the Global Device Timer */
+	gtime = rd32(hw, I40E_GLVFGEN_TIMER);
+
+	/* Store the timeout */
+	hw->nvm.hw_semaphore_timeout = I40E_MS_TO_GTIME(time_left) + gtime;
+
+	if (ret_code)
+		i40e_debug(hw, I40E_DEBUG_NVM,
+			   "NVM acquire type %d failed time_left=%llu ret=%d aq_err=%d\n",
+			   access, (unsigned long long)time_left, ret_code,
+			   hw->aq.asq_last_status);
+
+	if (ret_code && time_left) {
+		/* Poll until the current NVM owner timeouts */
+		timeout = I40E_MS_TO_GTIME(custom_timeout) + gtime;
+		while ((gtime < timeout) && time_left) {
+			i40e_msec_delay(10);
+			gtime = rd32(hw, I40E_GLVFGEN_TIMER);
+			ret_code = i40e_aq_request_resource(hw,
+							I40E_NVM_RESOURCE_ID,
+							access, 0, &time_left,
+							NULL);
+			if (ret_code == I40E_SUCCESS) {
+				hw->nvm.hw_semaphore_timeout =
+					    I40E_MS_TO_GTIME(time_left) + gtime;
+				break;
+			}
+		}
+		if (ret_code != I40E_SUCCESS) {
+			hw->nvm.hw_semaphore_timeout = 0;
+			i40e_debug(hw, I40E_DEBUG_NVM,
+				   "NVM acquire timed out, wait %llu ms before trying again. status=%d aq_err=%d\n",
+				   (unsigned long long)time_left, ret_code,
+				   hw->aq.asq_last_status);
+		}
+	}
+
+i40e_i40e_acquire_nvm_exit:
+	return ret_code;
+}
+
+
 /**
  * i40e_release_nvm - Generic request for releasing the NVM ownership
  * @hw: pointer to the HW structure
@@ -334,6 +403,32 @@ enum i40e_status_code i40e_read_nvm_word(struct i40e_hw *hw, u16 offset,
 		return ret_code;
 	ret_code = __i40e_read_nvm_word(hw, offset, data);
 
+	if (hw->flags & I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK)
+		i40e_release_nvm(hw);
+	return ret_code;
+}
+
+/**
+ * i40e_read_nvm_word_ex - Specific request only for
+ * OID_INTEL_FLASH_INFO_TIMEOUT for Reads NVM word, acquires lock if necessary
+ * @hw: pointer to the HW structure
+ * @offset: offset of the Shadow RAM word to read (0x000000 - 0x001FFF)
+ * @data: word read from the Shadow RAM
+ * @custom_timeout: timeout for aquire NVM (read)
+ *
+ * Reads one 16 bit word from the Shadow RAM.
+ **/
+enum i40e_status_code i40e_read_nvm_word_ex(struct i40e_hw *hw, u16 offset,
+					 u16 *data, u32 custom_timeout)
+{
+	enum i40e_status_code ret_code = I40E_SUCCESS;
+
+	if (hw->flags & I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK)
+		ret_code = i40e_acquire_nvm_ex(hw, I40E_RESOURCE_READ, custom_timeout);
+
+	if (ret_code)
+		return ret_code;
+	ret_code = __i40e_read_nvm_word(hw, offset, data);
 	if (hw->flags & I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK)
 		i40e_release_nvm(hw);
 	return ret_code;

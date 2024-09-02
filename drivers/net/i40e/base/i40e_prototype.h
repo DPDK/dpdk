@@ -464,9 +464,14 @@ enum i40e_aq_link_speed i40e_get_link_speed(struct i40e_hw *hw);
 enum i40e_status_code i40e_init_nvm(struct i40e_hw *hw);
 enum i40e_status_code i40e_acquire_nvm(struct i40e_hw *hw,
 				      enum i40e_aq_resource_access_type access);
+enum i40e_status_code i40e_acquire_nvm_ex(struct i40e_hw *hw,
+				       enum i40e_aq_resource_access_type access,
+					   u32 custom_timeout);
 void i40e_release_nvm(struct i40e_hw *hw);
 enum i40e_status_code i40e_read_nvm_word(struct i40e_hw *hw, u16 offset,
 					 u16 *data);
+enum i40e_status_code i40e_read_nvm_word_ex(struct i40e_hw *hw, u16 offset,
+					 u16 *data, u32 custom_timeout);
 enum i40e_status_code
 i40e_read_nvm_module_data(struct i40e_hw *hw, u8 module_ptr, u16 module_offset,
 			  u16 data_offset, u16 words_data_size, u16 *data_ptr);
