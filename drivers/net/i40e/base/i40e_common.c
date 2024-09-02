@@ -8048,7 +8048,8 @@ i40e_validate_profile(struct i40e_hw *hw, struct i40e_profile_segment *profile,
 	u32 sec_off;
 	u32 i;
 
-	if (track_id == I40E_DDP_TRACKID_INVALID) {
+	if (track_id == I40E_DDP_TRACKID_INVALID ||
+	    track_id == I40E_DDP_TRACKID_RDONLY) {
 		i40e_debug(hw, I40E_DEBUG_PACKAGE, "Invalid track_id\n");
 		return I40E_NOT_SUPPORTED;
 	}
