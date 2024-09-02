@@ -23,6 +23,7 @@
 /* VF interrupt message pending bits - mbox or flr */
 #define ROC_DEV_MBOX_PEND BIT_ULL(0)
 #define ROC_DEV_FLR_PEND  BIT_ULL(1)
+
 static void *
 mbox_mem_map(off_t off, size_t size)
 {

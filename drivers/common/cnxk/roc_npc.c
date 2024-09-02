@@ -616,7 +616,10 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		case ROC_NPC_ACTION_TYPE_VF:
 			vf_act = (const struct roc_npc_action_vf *)actions->conf;
 			req_act |= ROC_NPC_ACTION_TYPE_VF;
-			vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
+			if (roc_model_is_cn20k())
+				vf_id = vf_act->id & RVU_PFVF_FUNC_MASK_CN20K;
+			else
+				vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
 			pf_func &= (0xfc00);
 			pf_func = (pf_func | (vf_id + 1));
 			break;

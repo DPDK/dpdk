@@ -7,12 +7,19 @@
 
 #define DEV_HWCAP_F_VF BIT_ULL(0) /* VF device */
 
+/* PF and VF bit encoding parameters in pcifunc */
+#define RVU_PFVF_PF_SHIFT_CN20K	  9
+#define RVU_PFVF_PF_MASK_CN20K	  0x7F
+#define RVU_PFVF_FUNC_SHIFT_CN20K 0
+#define RVU_PFVF_FUNC_MASK_CN20K  0x1FF
+
 #define RVU_PFVF_PF_SHIFT   10
 #define RVU_PFVF_PF_MASK    0x3F
 #define RVU_PFVF_FUNC_SHIFT 0
 #define RVU_PFVF_FUNC_MASK  0x3FF
-#define RVU_MAX_VF	    64 /* RVU_PF_VFPF_MBOX_INT(0..1) */
-#define RVU_MAX_INT_RETRY   3
+
+#define RVU_MAX_VF	  64 /* RVU_PF_VFPF_MBOX_INT(0..1) */
+#define RVU_MAX_INT_RETRY 3
 
 /* PF/VF message handling timer */
 #define VF_PF_MBOX_TIMER_MS (20 * 1000)
@@ -52,25 +59,37 @@ struct dev_ops {
 static inline int
 dev_get_vf(uint16_t pf_func)
 {
-	return (((pf_func >> RVU_PFVF_FUNC_SHIFT) & RVU_PFVF_FUNC_MASK) - 1);
+	if (roc_model_is_cn20k())
+		return (((pf_func >> RVU_PFVF_FUNC_SHIFT_CN20K) & RVU_PFVF_FUNC_MASK_CN20K) - 1);
+	else
+		return (((pf_func >> RVU_PFVF_FUNC_SHIFT) & RVU_PFVF_FUNC_MASK) - 1);
 }
 
 static inline int
 dev_get_pf(uint16_t pf_func)
 {
-	return (pf_func >> RVU_PFVF_PF_SHIFT) & RVU_PFVF_PF_MASK;
+	if (roc_model_is_cn20k())
+		return (pf_func >> RVU_PFVF_PF_SHIFT_CN20K) & RVU_PFVF_PF_MASK_CN20K;
+	else
+		return (pf_func >> RVU_PFVF_PF_SHIFT) & RVU_PFVF_PF_MASK;
 }
 
 static inline int
 dev_pf_func(int pf, int vf)
 {
-	return (pf << RVU_PFVF_PF_SHIFT) | ((vf << RVU_PFVF_FUNC_SHIFT) + 1);
+	if (roc_model_is_cn20k())
+		return (pf << RVU_PFVF_PF_SHIFT_CN20K) | ((vf << RVU_PFVF_FUNC_SHIFT_CN20K) + 1);
+	else
+		return (pf << RVU_PFVF_PF_SHIFT) | ((vf << RVU_PFVF_FUNC_SHIFT) + 1);
 }
 
 static inline int
 dev_is_afvf(uint16_t pf_func)
 {
-	return !(pf_func & ~RVU_PFVF_FUNC_MASK);
+	if (roc_model_is_cn20k())
+		return !(pf_func & ~RVU_PFVF_FUNC_MASK_CN20K);
+	else
+		return !(pf_func & ~RVU_PFVF_FUNC_MASK);
 }
 
 struct mbox_sync {
