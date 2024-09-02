@@ -980,9 +980,6 @@ enum i40e_status_code i40e_init_shared_code(struct i40e_hw *hw)
 	else
 		hw->pf_id = (u8)(func_rid & 0x7);
 
-	if (hw->mac.type == I40E_MAC_X722)
-		hw->flags |= I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE |
-			     I40E_HW_FLAG_NVM_READ_REQUIRES_LOCK;
 	/* NVMUpdate features structure initialization */
 	hw->nvmupd_features.major = I40E_NVMUPD_FEATURES_API_VER_MAJOR;
 	hw->nvmupd_features.minor = I40E_NVMUPD_FEATURES_API_VER_MINOR;
