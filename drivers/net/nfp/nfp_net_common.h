@@ -207,6 +207,8 @@ struct nfp_net_hw_priv {
 
 	/** NFP ASIC params */
 	const struct nfp_dev_info *dev_info;
+
+	bool is_pf;
 };
 
 struct nfp_net_hw {

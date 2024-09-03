@@ -2299,6 +2299,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (ret != 0)
 		goto vf_cfg_tbl_cleanup;
 
+	hw_priv->is_pf = true;
 	hw_priv->pf_dev = pf_dev;
 	hw_priv->dev_info = dev_info;
 
@@ -2545,6 +2546,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	pf_dev->pci_dev = pci_dev;
 	pf_dev->sync = sync;
 
+	hw_priv->is_pf = true;
 	hw_priv->pf_dev = pf_dev;
 	hw_priv->dev_info = dev_info;
 
