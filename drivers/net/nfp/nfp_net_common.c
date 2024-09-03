@@ -2224,6 +2224,9 @@ nfp_net_version_check(struct nfp_hw *hw,
 	if (!nfp_net_is_valid_nfd_version(pf_dev->ver))
 		return false;
 
+	if (!nfp_net_is_valid_version_class(pf_dev->ver))
+		return false;
+
 	return true;
 }
 
@@ -2363,6 +2366,28 @@ nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version)
 	}
 
 	return false;
+}
+
+bool
+nfp_net_is_valid_version_class(struct nfp_net_fw_ver version)
+{
+	switch (version.class) {
+	case NFP_NET_CFG_VERSION_CLASS_GENERIC:
+		return true;
+	case NFP_NET_CFG_VERSION_CLASS_NO_EMEM:
+		return true;
+	default:
+		return false;
+	}
+}
+
+void
+nfp_net_ctrl_bar_size_set(struct nfp_pf_dev *pf_dev)
+{
+	if (pf_dev->ver.class == NFP_NET_CFG_VERSION_CLASS_GENERIC)
+		pf_dev->ctrl_bar_size = NFP_NET_CFG_BAR_SZ_32K;
+	else
+		pf_dev->ctrl_bar_size = NFP_NET_CFG_BAR_SZ_8K;
 }
 
 /* Disable rx and tx functions to allow for reconfiguring. */

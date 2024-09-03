@@ -30,13 +30,15 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 	uint32_t tlv_type;
 	struct nfp_net_hw *net_hw;
 	struct nfp_net_tlv_caps *caps;
+	struct nfp_net_hw_priv *hw_priv;
 
 	net_hw = dev->data->dev_private;
+	hw_priv = dev->process_private;
 	caps = &net_hw->tlv_caps;
 	nfp_net_tlv_caps_reset(caps);
 
 	data = net_hw->super.ctrl_bar + NFP_NET_CFG_TLV_BASE;
-	end = net_hw->super.ctrl_bar + NFP_NET_CFG_BAR_SZ;
+	end = net_hw->super.ctrl_bar + hw_priv->pf_dev->ctrl_bar_size;
 
 	hdr = rte_read32(data);
 	if (hdr == 0) {

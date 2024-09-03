@@ -117,6 +117,7 @@ struct nfp_pf_dev {
 	struct nfp_eth_table *nfp_eth_table;
 
 	uint8_t *ctrl_bar;
+	uint32_t ctrl_bar_size;
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
@@ -354,6 +355,7 @@ void nfp_net_tx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 int nfp_net_check_dma_mask(struct nfp_pf_dev *pf_dev, char *name);
 int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
+bool nfp_net_is_valid_version_class(struct nfp_net_fw_ver version);
 struct nfp_net_hw *nfp_net_get_hw(const struct rte_eth_dev *dev);
 int nfp_net_stop(struct rte_eth_dev *dev);
 int nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
@@ -380,6 +382,7 @@ int nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
 		struct nfp_pf_dev *pf_dev);
 bool nfp_net_version_check(struct nfp_hw *hw,
 		struct nfp_pf_dev *pf_dev);
+void nfp_net_ctrl_bar_size_set(struct nfp_pf_dev *pf_dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)
