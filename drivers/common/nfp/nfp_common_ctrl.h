@@ -219,8 +219,7 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_CAP_WORD1           0x00a4
 
 /* 16B reserved for future use (0x00b0 - 0x00c0). */
-#define NFP_NET_CFG_RESERVED            0x00b0
-#define NFP_NET_CFG_RESERVED_SZ         0x0010
+#define NFP_NET_CFG_MAX_FS_CAP          0x00b8
 
 /*
  * RSS configuration (0x0100 - 0x01ac):
