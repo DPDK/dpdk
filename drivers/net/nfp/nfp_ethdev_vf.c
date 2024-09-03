@@ -295,6 +295,9 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		goto pf_dev_free;
 	}
 
+	/* Set the ctrl bar size */
+	nfp_net_ctrl_bar_size_set(pf_dev);
+
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
 	err = nfp_net_common_init(pf_dev, net_hw);

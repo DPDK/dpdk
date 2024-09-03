@@ -11,7 +11,9 @@
  *
  * On the NFP6000, due to THB-350, the configuration BAR is 32K in size.
  */
-#define NFP_NET_CFG_BAR_SZ              (32 * 1024)
+#define NFP_NET_CFG_BAR_SZ_32K          (32 * 1024)
+#define NFP_NET_CFG_BAR_SZ_8K           (8 * 1024)
+#define NFP_NET_CFG_BAR_SZ_MIN          NFP_NET_CFG_BAR_SZ_8K
 
 /*
  * Configuration sriov VF.
@@ -121,6 +123,10 @@
 struct nfp_net_fw_ver {
 	uint8_t minor;
 	uint8_t major;
+	/**
+	 * BIT0: class, refer NFP_NET_CFG_VERSION_CLASS_*
+	 * BIT[7:1]: reserved
+	 */
 	uint8_t class;
 	/**
 	 * This byte can be extended for more use.
@@ -147,6 +153,8 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_VERSION             0x0030
 #define   NFP_NET_CFG_VERSION_DP_NFD3   0
 #define   NFP_NET_CFG_VERSION_DP_NFDK   1
+#define   NFP_NET_CFG_VERSION_CLASS_GENERIC    0
+#define   NFP_NET_CFG_VERSION_CLASS_NO_EMEM    1
 #define NFP_NET_CFG_STS                 0x0034
 #define   NFP_NET_CFG_STS_LINK            (0x1 << 0) /* Link up or down */
 /* Link rate */
