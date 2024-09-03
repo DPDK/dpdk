@@ -1408,7 +1408,7 @@ nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 	int ret;
 	bool fw_changed = true;
 
-	if (nfp_nsp_fw_loaded(nsp) && !force_reload_fw) {
+	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) && !force_reload_fw) {
 		ret = nfp_fw_check_change(cpp, fw_name, &fw_changed);
 		if (ret != 0)
 			return ret;
@@ -1449,7 +1449,7 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		goto keepalive_uninit;
 	}
 
-	if (nfp_nsp_fw_loaded(nsp) && !reload_fw) {
+	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) && !reload_fw) {
 		err = nfp_fw_check_change(cpp, fw_name, &fw_changed);
 		if (err != 0)
 			goto keepalive_stop;
