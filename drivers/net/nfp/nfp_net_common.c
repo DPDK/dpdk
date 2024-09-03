@@ -783,7 +783,7 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 
 	hw_priv = dev->process_private;
 	if (link->link_status == RTE_ETH_LINK_UP) {
-		if (hw_priv->pf_dev != NULL) {
+		if (hw_priv->is_pf) {
 			nfp_net_speed_aneg_update(dev, hw, hw_priv, link);
 		} else {
 			/*
@@ -845,7 +845,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 	 * Not applicable for VFs as the associated PF is still attached to the
 	 * kernel driver.
 	 */
-	if (hw_priv != NULL && hw_priv->pf_dev != NULL)
+	if (hw_priv != NULL && hw_priv->is_pf)
 		nfp_net_notify_port_speed(hw, &link);
 
 	return ret;
@@ -1366,7 +1366,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	}
 
 	/* Only PF supports getting speed capability. */
-	if (hw_priv->pf_dev != NULL)
+	if (hw_priv->is_pf)
 		dev_info->speed_capa = hw_priv->pf_dev->speed_capa;
 
 	return 0;
