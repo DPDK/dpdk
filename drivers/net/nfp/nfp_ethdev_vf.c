@@ -235,10 +235,10 @@ static const struct eth_dev_ops nfp_netvf_eth_dev_ops = {
 };
 
 static inline void
-nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw,
+nfp_netvf_ethdev_ops_mount(struct nfp_pf_dev *pf_dev,
 		struct rte_eth_dev *eth_dev)
 {
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		eth_dev->tx_pkt_burst = nfp_net_nfd3_xmit_pkts;
 	else
 		nfp_net_nfdk_xmit_pkts_set(eth_dev);
@@ -256,6 +256,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	uint32_t start_q;
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
+	struct nfp_pf_dev *pf_dev;
 	uint64_t tx_bar_off = 0;
 	uint64_t rx_bar_off = 0;
 	struct rte_pci_device *pci_dev;
@@ -280,13 +281,27 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
+	pf_dev = rte_zmalloc(NULL, sizeof(*pf_dev), 0);
+	if (pf_dev == NULL) {
+		PMD_INIT_LOG(ERR, "Can not allocate memory for the PF device.");
+		return -ENOMEM;
+	}
+
+	pf_dev->pci_dev = pci_dev;
+
+	/* Check the version from firmware */
+	if (!nfp_net_version_check(hw, pf_dev)) {
+		err = -EINVAL;
+		goto pf_dev_free;
+	}
+
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
-	err = nfp_net_common_init(pci_dev, net_hw);
+	err = nfp_net_common_init(pf_dev, net_hw);
 	if (err != 0)
-		return err;
+		goto pf_dev_free;
 
-	nfp_netvf_ethdev_ops_mount(net_hw, eth_dev);
+	nfp_netvf_ethdev_ops_mount(pf_dev, eth_dev);
 
 	hw_priv = rte_zmalloc(NULL, sizeof(*hw_priv), 0);
 	if (hw_priv == NULL) {
@@ -296,6 +311,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	}
 
 	hw_priv->dev_info = dev_info;
+	hw_priv->pf_dev = pf_dev;
 
 	eth_dev->process_private = hw_priv;
 
@@ -330,7 +346,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
-	nfp_net_log_device_information(net_hw);
+	nfp_net_log_device_information(net_hw, pf_dev);
 
 	/* Initializing spinlock for reconfigs */
 	rte_spinlock_init(&hw->reconfig_lock);
@@ -381,6 +397,8 @@ free_xstats:
 	rte_free(net_hw->eth_xstats_base);
 hw_priv_free:
 	rte_free(hw_priv);
+pf_dev_free:
+	rte_free(pf_dev);
 
 	return err;
 }

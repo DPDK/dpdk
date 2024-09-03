@@ -343,15 +343,15 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 void
-nfp_flower_ctrl_vnic_xmit_register(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_ctrl_vnic_xmit_register(struct nfp_pf_dev *pf_dev)
 {
-	struct nfp_net_hw *hw;
 	struct nfp_flower_nfd_func *nfd_func;
+	struct nfp_app_fw_flower *app_fw_flower;
 
-	hw = app_fw_flower->pf_hw;
+	app_fw_flower = pf_dev->app_fw_priv;
 	nfd_func = &app_fw_flower->nfd_func;
 
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfd3_xmit;
 	else
 		nfd_func->ctrl_vnic_xmit_t = nfp_flower_ctrl_vnic_nfdk_xmit;
