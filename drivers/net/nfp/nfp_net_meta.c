@@ -269,14 +269,15 @@ nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 }
 
 void
-nfp_net_meta_init_format(struct nfp_net_hw *hw)
+nfp_net_meta_init_format(struct nfp_net_hw *hw,
+		struct nfp_pf_dev *pf_dev)
 {
 	/*
 	 * ABI 4.x and ctrl vNIC always use chained metadata, in other cases we allow use of
 	 * single metadata if only RSS(v1) is supported by hw capability, and RSS(v2)
 	 * also indicate that we are using chained metadata.
 	 */
-	if (hw->ver.major == 4) {
+	if (pf_dev->ver.major == 4) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
 	} else if ((hw->super.cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;

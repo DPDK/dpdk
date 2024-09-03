@@ -108,6 +108,8 @@ struct nfp_pf_dev {
 
 	enum nfp_app_fw_id app_fw_id;
 
+	struct nfp_net_fw_ver ver;
+
 	/** Pointer to the app running on the PF */
 	void *app_fw_priv;
 
@@ -219,7 +221,6 @@ struct nfp_net_hw {
 	const struct rte_memzone *txrwb_mz;
 
 	/** Info from the firmware */
-	struct nfp_net_fw_ver ver;
 	uint32_t max_mtu;
 	uint32_t mtu;
 	uint32_t rx_offset;
@@ -276,8 +277,9 @@ nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
 /* Prototypes for common NFP functions */
 int nfp_net_mbox_reconfig(struct nfp_net_hw *hw, uint32_t mbox_cmd);
 int nfp_net_configure(struct rte_eth_dev *dev);
-int nfp_net_common_init(struct rte_pci_device *pci_dev, struct nfp_net_hw *hw);
-void nfp_net_log_device_information(const struct nfp_net_hw *hw);
+int nfp_net_common_init(struct nfp_pf_dev *pf_dev, struct nfp_net_hw *hw);
+void nfp_net_log_device_information(const struct nfp_net_hw *hw,
+		struct nfp_pf_dev *pf_dev);
 void nfp_net_enable_queues(struct rte_eth_dev *dev);
 void nfp_net_disable_queues(struct rte_eth_dev *dev);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
@@ -346,12 +348,10 @@ int nfp_net_set_vxlan_port(struct nfp_net_hw *hw, size_t idx, uint16_t port);
 void nfp_net_rx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 		uint16_t *min_rx_desc,
 		uint16_t *max_rx_desc);
-void nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
-		struct nfp_net_hw_priv *hw_priv,
+void nfp_net_tx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
-int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
-void nfp_net_cfg_read_version(struct nfp_net_hw *hw);
+int nfp_net_check_dma_mask(struct nfp_pf_dev *pf_dev, char *name);
 int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
 struct nfp_net_hw *nfp_net_get_hw(const struct rte_eth_dev *dev);
@@ -377,6 +377,8 @@ uint32_t nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
 uint8_t nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
 		uint8_t port_id);
 int nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
+		struct nfp_pf_dev *pf_dev);
+bool nfp_net_version_check(struct nfp_hw *hw,
 		struct nfp_pf_dev *pf_dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\

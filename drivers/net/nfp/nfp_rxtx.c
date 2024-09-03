@@ -816,11 +816,11 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf)
 {
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 
-	hw = nfp_net_get_hw(dev);
+	hw_priv = dev->process_private;
 
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (hw_priv->pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		return nfp_net_nfd3_tx_queue_setup(dev, queue_idx,
 				nb_desc, socket_id, tx_conf);
 	else
@@ -852,10 +852,10 @@ nfp_net_tx_queue_info_get(struct rte_eth_dev *dev,
 		struct rte_eth_txq_info *info)
 {
 	struct rte_eth_dev_info dev_info;
-	struct nfp_net_hw *hw = nfp_net_get_hw(dev);
+	struct nfp_net_hw_priv *hw_priv = dev->process_private;
 	struct nfp_net_txq *txq = dev->data->tx_queues[queue_id];
 
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (hw_priv->pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		info->nb_desc = txq->tx_count / NFD3_TX_DESC_PER_PKT;
 	else
 		info->nb_desc = txq->tx_count / NFDK_TX_DESC_PER_SIMPLE_PKT;

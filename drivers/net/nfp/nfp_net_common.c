@@ -349,13 +349,14 @@ nfp_net_configure(struct rte_eth_dev *dev)
 }
 
 void
-nfp_net_log_device_information(const struct nfp_net_hw *hw)
+nfp_net_log_device_information(const struct nfp_net_hw *hw,
+		struct nfp_pf_dev *pf_dev)
 {
 	uint32_t cap = hw->super.cap;
 	uint32_t cap_ext = hw->super.cap_ext;
 
 	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
-			hw->ver.major, hw->ver.minor, hw->max_mtu);
+			pf_dev->ver.major, pf_dev->ver.minor, hw->max_mtu);
 
 	PMD_INIT_LOG(INFO, "CAP: %#x", cap);
 	PMD_INIT_LOG(INFO, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
@@ -1235,14 +1236,13 @@ nfp_net_rx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 }
 
 void
-nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
-		struct nfp_net_hw_priv *hw_priv,
+nfp_net_tx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc)
 {
 	uint16_t tx_dpp;
 
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (hw_priv->pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		tx_dpp = NFD3_TX_DESC_PER_PKT;
 	else
 		tx_dpp = NFDK_TX_DESC_PER_SIMPLE_PKT;
@@ -1269,7 +1269,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		return -EINVAL;
 
 	nfp_net_rx_desc_limits(hw_priv, &min_rx_desc, &max_rx_desc);
-	nfp_net_tx_desc_limits(hw, hw_priv, &min_tx_desc, &max_tx_desc);
+	nfp_net_tx_desc_limits(hw_priv, &min_tx_desc, &max_tx_desc);
 
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
@@ -1373,11 +1373,13 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 int
-nfp_net_common_init(struct rte_pci_device *pci_dev,
+nfp_net_common_init(struct nfp_pf_dev *pf_dev,
 		struct nfp_net_hw *hw)
 {
 	const int stride = 4;
+	struct rte_pci_device *pci_dev;
 
+	pci_dev = pf_dev->pci_dev;
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
@@ -1391,11 +1393,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 		return -ENODEV;
 	}
 
-	nfp_net_cfg_read_version(hw);
-	if (!nfp_net_is_valid_nfd_version(hw->ver))
-		return -EINVAL;
-
-	if (nfp_net_check_dma_mask(hw, pci_dev->name) != 0)
+	if (nfp_net_check_dma_mask(pf_dev, pci_dev->name) != 0)
 		return -ENODEV;
 
 	/* Get some of the read-only fields from the config BAR */
@@ -1404,10 +1402,10 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 	hw->max_mtu = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_MTU);
 	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
-	nfp_net_meta_init_format(hw);
+	nfp_net_meta_init_format(hw, pf_dev);
 
 	/* Read the Rx offset configured from firmware */
-	if (hw->ver.major < 2)
+	if (pf_dev->ver.major < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
 		hw->rx_offset = nn_cfg_readl(&hw->super, NFP_NET_CFG_RX_OFFSET);
@@ -2158,10 +2156,10 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *net_hw,
  * than 40 bits.
  */
 int
-nfp_net_check_dma_mask(struct nfp_net_hw *hw,
+nfp_net_check_dma_mask(struct nfp_pf_dev *pf_dev,
 		char *name)
 {
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3 &&
+	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3 &&
 			rte_mem_check_dma_mask(40) != 0) {
 		PMD_DRV_LOG(ERR, "Device %s can't be used: restricted dma mask to 40 bits!",
 				name);
@@ -2205,16 +2203,28 @@ nfp_net_txrwb_free(struct rte_eth_dev *eth_dev)
 	net_hw->txrwb_mz = NULL;
 }
 
-void
-nfp_net_cfg_read_version(struct nfp_net_hw *hw)
+static void
+nfp_net_cfg_read_version(struct nfp_hw *hw,
+		struct nfp_pf_dev *pf_dev)
 {
 	union {
 		uint32_t whole;
 		struct nfp_net_fw_ver split;
 	} version;
 
-	version.whole = nn_cfg_readl(&hw->super, NFP_NET_CFG_VERSION);
-	hw->ver = version.split;
+	version.whole = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+	pf_dev->ver = version.split;
+}
+
+bool
+nfp_net_version_check(struct nfp_hw *hw,
+		struct nfp_pf_dev *pf_dev)
+{
+	nfp_net_cfg_read_version(hw, pf_dev);
+	if (!nfp_net_is_valid_nfd_version(pf_dev->ver))
+		return false;
+
+	return true;
 }
 
 static void
@@ -2289,6 +2299,7 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 		size_t fw_size)
 {
 	struct nfp_net_hw *hw;
+	struct nfp_pf_dev *pf_dev;
 	struct nfp_net_hw_priv *hw_priv;
 	char app_name[FW_VER_LEN] = {0};
 	char mip_name[FW_VER_LEN] = {0};
@@ -2300,6 +2311,7 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 
 	hw = nfp_net_get_hw(dev);
 	hw_priv = dev->process_private;
+	pf_dev = hw_priv->pf_dev;
 
 	if (hw->fw_version[0] != 0) {
 		snprintf(fw_version, FW_VER_LEN, "%s", hw->fw_version);
@@ -2308,8 +2320,8 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 
 	if (!rte_eth_dev_is_repr(dev)) {
 		snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
-			hw->ver.extend, hw->ver.class,
-			hw->ver.major, hw->ver.minor);
+			pf_dev->ver.extend, pf_dev->ver.class,
+			pf_dev->ver.major, pf_dev->ver.minor);
 	} else {
 		snprintf(vnic_version, FW_VER_LEN, "*");
 	}

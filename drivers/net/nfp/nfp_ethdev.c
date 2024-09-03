@@ -960,10 +960,10 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 };
 
 static inline void
-nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw,
+nfp_net_ethdev_ops_mount(struct nfp_pf_dev *pf_dev,
 		struct rte_eth_dev *eth_dev)
 {
-	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
+	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		eth_dev->tx_pkt_burst = nfp_net_nfd3_xmit_pkts;
 	else
 		nfp_net_nfdk_xmit_pkts_set(eth_dev);
@@ -1031,7 +1031,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 	PMD_INIT_LOG(DEBUG, "MAC stats: %p", net_hw->mac_stats);
 
-	err = nfp_net_common_init(pci_dev, net_hw);
+	err = nfp_net_common_init(pf_dev, net_hw);
 	if (err != 0)
 		return err;
 
@@ -1047,7 +1047,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 		return err;
 	}
 
-	nfp_net_ethdev_ops_mount(net_hw, eth_dev);
+	nfp_net_ethdev_ops_mount(pf_dev, eth_dev);
 
 	net_hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *
 			nfp_net_xstats_size(eth_dev), 0);
@@ -1075,7 +1075,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
-	nfp_net_log_device_information(net_hw);
+	nfp_net_log_device_information(net_hw, pf_dev);
 
 	/* Initializing spinlock for reconfigs */
 	rte_spinlock_init(&hw->reconfig_lock);
@@ -1553,9 +1553,6 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 	struct nfp_cpp_area *area;
 	char name[RTE_ETH_NAME_MAX_LEN];
 
-	if (!pf_dev->multi_pf.enabled)
-		return 0;
-
 	memset(&net_hw, 0, sizeof(struct nfp_net_hw));
 
 	/* Map the symbol table */
@@ -1570,6 +1567,16 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 
 	hw = &net_hw.super;
 	hw->ctrl_bar = ctrl_bar;
+
+	/* Check the version from firmware */
+	if (!nfp_net_version_check(hw, pf_dev)) {
+		PMD_INIT_LOG(ERR, "Not the valid version.");
+		err = -EINVAL;
+		goto end;
+	}
+
+	if (!pf_dev->multi_pf.enabled)
+		goto end;
 
 	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
 	if ((cap_extend & NFP_NET_CFG_CTRL_MULTI_PF) == 0) {
@@ -2359,10 +2366,10 @@ static int
 nfp_secondary_net_init(struct rte_eth_dev *eth_dev,
 		void *para)
 {
-	struct nfp_net_hw *net_hw;
+	struct nfp_net_hw_priv *hw_priv;
 
-	net_hw = eth_dev->data->dev_private;
-	nfp_net_ethdev_ops_mount(net_hw, eth_dev);
+	hw_priv = para;
+	nfp_net_ethdev_ops_mount(hw_priv->pf_dev, eth_dev);
 
 	eth_dev->process_private = para;
 
