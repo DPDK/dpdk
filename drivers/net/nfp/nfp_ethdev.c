@@ -1023,7 +1023,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	if (pf_dev->multi_pf.enabled)
 		hw->ctrl_bar = pf_dev->ctrl_bar;
 	else
-		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_NET_CFG_BAR_SZ);
+		hw->ctrl_bar = pf_dev->ctrl_bar + (port * pf_dev->ctrl_bar_size);
 
 	net_hw->mac_stats = pf_dev->mac_stats_bar +
 				(net_hw->nfp_idx * NFP_MAC_STATS_SIZE);
@@ -1556,9 +1556,10 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 	memset(&net_hw, 0, sizeof(struct nfp_net_hw));
 
 	/* Map the symbol table */
+	pf_dev->ctrl_bar_size = NFP_NET_CFG_BAR_SZ_MIN;
 	snprintf(name, sizeof(name), "_pf%u_net_bar0",
 			pf_dev->multi_pf.function_id);
-	ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, name, NFP_NET_CFG_BAR_SZ,
+	ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, name, pf_dev->ctrl_bar_size,
 			&area);
 	if (ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to find data vNIC memory symbol");
@@ -1574,6 +1575,9 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 		err = -EINVAL;
 		goto end;
 	}
+
+	/* Set the ctrl bar size */
+	nfp_net_ctrl_bar_size_set(pf_dev);
 
 	if (!pf_dev->multi_pf.enabled)
 		goto end;
@@ -1671,7 +1675,7 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	/* Map the symbol table */
 	snprintf(bar_name, sizeof(bar_name), "_pf%u_net_bar0", id);
 	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, bar_name,
-			pf_dev->total_phyports * NFP_NET_CFG_BAR_SZ,
+			pf_dev->total_phyports * pf_dev->ctrl_bar_size,
 			&pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for %s", bar_name);
@@ -2066,11 +2070,11 @@ nfp_net_vf_config_init(struct nfp_pf_dev *pf_dev)
 	if (pf_dev->sriov_vf == 0)
 		return 0;
 
-	min_size = NFP_NET_CFG_BAR_SZ * pf_dev->sriov_vf;
+	min_size = pf_dev->ctrl_bar_size * pf_dev->sriov_vf;
 	snprintf(vf_bar_name, sizeof(vf_bar_name), "_pf%d_net_vf_bar",
 			pf_dev->multi_pf.function_id);
 	pf_dev->vf_bar = nfp_rtsym_map_offset(pf_dev->sym_tbl, vf_bar_name,
-			NFP_NET_CFG_BAR_SZ * pf_dev->vf_base_id,
+			pf_dev->ctrl_bar_size * pf_dev->vf_base_id,
 			min_size, &pf_dev->vf_area);
 	if (pf_dev->vf_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to get vf cfg.");
@@ -2296,15 +2300,15 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto hwqueues_cleanup;
 	}
 
+	ret = nfp_enable_multi_pf(pf_dev);
+	if (ret != 0)
+		goto mac_stats_cleanup;
+
 	ret = nfp_net_vf_config_init(pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init VF config.");
-		goto mac_stats_cleanup;
-	}
-
-	ret = nfp_enable_multi_pf(pf_dev);
-	if (ret != 0)
 		goto vf_cfg_tbl_cleanup;
+	}
 
 	hw_priv->is_pf = true;
 	hw_priv->pf_dev = pf_dev;
