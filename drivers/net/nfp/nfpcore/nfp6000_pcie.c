@@ -370,6 +370,16 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 	if (nfp_bar_write(nfp, bar, barcfg_msix_general) < 0)
 		return -EIO;
 
+
+	/* Reserve BAR2.0 for expansion rom mapping */
+	if (type == RTE_PROC_PRIMARY) {
+		if (nfp->pci_dev->id.device_id == PCI_DEVICE_ID_NFP3800_PF_NIC) {
+			bar = &nfp->bar[16];
+			if (bar != NULL)
+				bar->lock = true;
+		}
+	}
+
 	return 0;
 }
 
