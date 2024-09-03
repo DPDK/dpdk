@@ -1324,16 +1324,30 @@ nfp_fw_check_change(struct nfp_cpp *cpp,
 
 static int
 nfp_fw_reload(struct nfp_nsp *nsp,
-		char *fw_name)
+		char *fw_name,
+		int reset)
 {
 	int err;
+	bool reset_flag;
 
-	nfp_nsp_device_soft_reset(nsp);
+	reset_flag = (reset == NFP_NSP_DRV_RESET_ALWAYS) ||
+			(reset == NFP_NSP_DRV_RESET_DISK);
+
+	if (reset_flag) {
+		err = nfp_nsp_device_soft_reset(nsp);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "NFP firmware soft reset failed");
+			return err;
+		}
+	}
+
 	err = nfp_fw_upload(nsp, fw_name);
-	if (err != 0)
+	if (err != 0) {
 		PMD_DRV_LOG(ERR, "NFP firmware load failed");
+		return err;
+	}
 
-	return err;
+	return 0;
 }
 
 static bool
@@ -1399,11 +1413,27 @@ nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
 
 	return false;
 }
+
 static int
-nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
+nfp_fw_reload_from_flash(struct nfp_nsp *nsp)
+{
+	int ret;
+
+	ret = nfp_nsp_load_stored_fw(nsp);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Load firmware from flash failed.");
+		return -EACCES;
+	}
+
+	return 0;
+}
+
+static int
+nfp_fw_reload_for_single_pf_from_disk(struct nfp_nsp *nsp,
 		char *fw_name,
 		struct nfp_cpp *cpp,
-		bool force_reload_fw)
+		bool force_reload_fw,
+		int reset)
 {
 	int ret;
 	bool fw_changed = true;
@@ -1417,9 +1447,73 @@ nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 	if (!fw_changed)
 		return 0;
 
-	ret = nfp_fw_reload(nsp, fw_name);
+	ret = nfp_fw_reload(nsp, fw_name, reset);
 	if (ret != 0)
 		return ret;
+
+	return 0;
+}
+
+static int
+nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
+		char *fw_name,
+		struct nfp_cpp *cpp,
+		bool force_reload_fw,
+		int reset,
+		int policy)
+{
+	int ret;
+
+	if (policy == NFP_NSP_APP_FW_LOAD_FLASH && nfp_nsp_has_stored_fw_load(nsp)) {
+		ret = nfp_fw_reload_from_flash(nsp);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Load single PF firmware from flash failed.");
+			return ret;
+		}
+	} else if (fw_name[0] != 0) {
+		ret = nfp_fw_reload_for_single_pf_from_disk(nsp, fw_name, cpp,
+				force_reload_fw, reset);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Load single PF firmware from disk failed.");
+			return ret;
+		}
+	} else {
+		PMD_DRV_LOG(ERR, "Not load firmware, please update flash or recofigure card.");
+		return -ENODATA;
+	}
+
+	return 0;
+}
+
+static int
+nfp_fw_reload_for_multi_pf_from_disk(struct nfp_nsp *nsp,
+		char *fw_name,
+		struct nfp_cpp *cpp,
+		const struct nfp_dev_info *dev_info,
+		struct nfp_multi_pf *multi_pf,
+		bool force_reload_fw,
+		int reset)
+{
+	int err;
+	bool fw_changed = true;
+	bool skip_load_fw = false;
+	bool reload_fw = force_reload_fw;
+
+	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) && !reload_fw) {
+		err = nfp_fw_check_change(cpp, fw_name, &fw_changed);
+		if (err != 0)
+			return err;
+	}
+
+	if (!fw_changed || reload_fw)
+		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf, &reload_fw);
+
+	if (skip_load_fw && !reload_fw)
+		return 0;
+
+	err = nfp_fw_reload(nsp, fw_name, reset);
+	if (err != 0)
+		return err;
 
 	return 0;
 }
@@ -1430,12 +1524,11 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		struct nfp_cpp *cpp,
 		const struct nfp_dev_info *dev_info,
 		struct nfp_multi_pf *multi_pf,
-		bool force_reload_fw)
+		bool force_reload_fw,
+		int reset,
+		int policy)
 {
 	int err;
-	bool fw_changed = true;
-	bool skip_load_fw = false;
-	bool reload_fw = force_reload_fw;
 
 	err = nfp_net_keepalive_init(cpp, multi_pf);
 	if (err != 0) {
@@ -1449,21 +1542,24 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		goto keepalive_uninit;
 	}
 
-	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) && !reload_fw) {
-		err = nfp_fw_check_change(cpp, fw_name, &fw_changed);
-		if (err != 0)
+	if (policy == NFP_NSP_APP_FW_LOAD_FLASH && nfp_nsp_has_stored_fw_load(nsp)) {
+		err = nfp_fw_reload_from_flash(nsp);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Load multi PF firmware from flash failed.");
 			goto keepalive_stop;
-	}
-
-	if (!fw_changed || reload_fw)
-		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf, &reload_fw);
-
-	if (skip_load_fw && !reload_fw)
-		return 0;
-
-	err = nfp_fw_reload(nsp, fw_name);
-	if (err != 0)
+		}
+	} else if (fw_name[0] != 0) {
+		err = nfp_fw_reload_for_multi_pf_from_disk(nsp, fw_name, cpp,
+				dev_info, multi_pf, force_reload_fw, reset);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Load multi PF firmware from disk failed.");
+			goto keepalive_stop;
+		}
+	} else {
+		PMD_DRV_LOG(ERR, "Not load firmware, please update flash or recofigure card.");
+		err = -ENODATA;
 		goto keepalive_stop;
+	}
 
 	nfp_net_keepalive_clear_others(dev_info, multi_pf);
 
@@ -1478,6 +1574,57 @@ keepalive_uninit:
 }
 
 static int
+nfp_strtol(const char *buf,
+		int base,
+		long *value)
+{
+	long val;
+	char *tmp;
+
+	if (value == NULL)
+		return -EINVAL;
+
+	val = strtol(buf, &tmp, base);
+	if (tmp == NULL || *tmp != 0)
+		return -EINVAL;
+
+	*value = val;
+
+	return 0;
+}
+
+static int
+nfp_fw_policy_value_get(struct nfp_nsp *nsp,
+		const char *key,
+		const char *default_val,
+		int max_val,
+		int *value)
+{
+	int ret;
+	int64_t val;
+	char buf[64];
+
+	snprintf(buf, sizeof(buf), "%s", key);
+	ret = nfp_nsp_hwinfo_lookup_optional(nsp, buf, sizeof(buf), default_val);
+	if (ret != 0)
+		return ret;
+
+	ret = nfp_strtol(buf, 0, &val);
+	if (ret != 0 || val < 0 || val > max_val) {
+		PMD_DRV_LOG(WARNING, "Invalid value '%s' from '%s', ignoring",
+				buf, key);
+		/* Fall back to the default value */
+		ret = nfp_strtol(default_val, 0, &val);
+		if (ret != 0)
+			return ret;
+	}
+
+	*value = val;
+
+	return 0;
+}
+
+static int
 nfp_fw_setup(struct rte_pci_device *dev,
 		struct nfp_cpp *cpp,
 		struct nfp_eth_table *nfp_eth_table,
@@ -1487,14 +1634,10 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		bool force_reload_fw)
 {
 	int err;
+	int reset;
+	int policy;
 	char fw_name[125];
 	struct nfp_nsp *nsp;
-
-	err = nfp_fw_get_name(dev, cpp, nfp_eth_table, hwinfo, fw_name, sizeof(fw_name));
-	if (err != 0) {
-		PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
-		return err;
-	}
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL) {
@@ -1502,12 +1645,40 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		return -EIO;
 	}
 
-	if (multi_pf->enabled)
-		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, cpp, dev_info, multi_pf,
-				force_reload_fw);
-	else
-		err = nfp_fw_reload_for_single_pf(nsp, fw_name, cpp, force_reload_fw);
+	err = nfp_fw_policy_value_get(nsp, "abi_drv_reset",
+			NFP_NSP_DRV_RESET_DEFAULT, NFP_NSP_DRV_RESET_NEVER,
+			&reset);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Get 'abi_drv_reset' from HWinfo failed.");
+		goto close_nsp;
+	}
 
+	err = nfp_fw_policy_value_get(nsp, "app_fw_from_flash",
+			NFP_NSP_APP_FW_LOAD_DEFAULT, NFP_NSP_APP_FW_LOAD_PREF,
+			&policy);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Get 'app_fw_from_flash' from HWinfo failed.");
+		goto close_nsp;
+	}
+
+	fw_name[0] = 0;
+	if (policy != NFP_NSP_APP_FW_LOAD_FLASH) {
+		err = nfp_fw_get_name(dev, cpp, nfp_eth_table, hwinfo, fw_name,
+				sizeof(fw_name));
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
+			goto close_nsp;
+		}
+	}
+
+	if (multi_pf->enabled)
+		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, cpp, dev_info,
+				multi_pf, force_reload_fw, reset, policy);
+	else
+		err = nfp_fw_reload_for_single_pf(nsp, fw_name, cpp,
+				force_reload_fw, reset, policy);
+
+close_nsp:
 	nfp_nsp_close(nsp);
 	return err;
 }
