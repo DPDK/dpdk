@@ -8,6 +8,18 @@
 
 #include "nfp_cpp.h"
 
+/* Defines the valid values of the 'abi_drv_reset' hwinfo key */
+#define NFP_NSP_DRV_RESET_DISK                  0
+#define NFP_NSP_DRV_RESET_ALWAYS                1
+#define NFP_NSP_DRV_RESET_NEVER                 2
+#define NFP_NSP_DRV_RESET_DEFAULT               "0"
+
+/* Defines the valid values of the 'app_fw_from_flash' hwinfo key */
+#define NFP_NSP_APP_FW_LOAD_DISK                0
+#define NFP_NSP_APP_FW_LOAD_FLASH               1
+#define NFP_NSP_APP_FW_LOAD_PREF                2
+#define NFP_NSP_APP_FW_LOAD_DEFAULT             "2"
+
 struct nfp_nsp;
 
 struct nfp_nsp *nfp_nsp_open(struct nfp_cpp *cpp);
@@ -225,6 +237,9 @@ enum nfp_nsp_sensor_id {
 int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
 		uint32_t *val);
 bool nfp_nsp_fw_loaded(struct nfp_nsp *state);
+int nfp_nsp_load_stored_fw(struct nfp_nsp *state);
+int nfp_nsp_hwinfo_lookup_optional(struct nfp_nsp *state,
+		void *buf, size_t size, const char *default_val);
 
 /* The buf used to receive bitmap of link modes */
 struct nfp_eth_media_buf {
