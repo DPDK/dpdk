@@ -88,9 +88,12 @@ nfp_net_flow_position_acquire(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
 	uint32_t i;
+	uint32_t limit;
+
+	limit = priv->flow_limit;
 
 	if (priority != 0) {
-		i = NFP_NET_FLOW_LIMIT - priority - 1;
+		i = limit - priority - 1;
 
 		if (priv->flow_position[i]) {
 			PMD_DRV_LOG(ERR, "There is already a flow rule in this place.");
@@ -102,19 +105,19 @@ nfp_net_flow_position_acquire(struct nfp_net_priv *priv,
 		return 0;
 	}
 
-	for (i = 0; i < NFP_NET_FLOW_LIMIT; i++) {
+	for (i = 0; i < limit; i++) {
 		if (!priv->flow_position[i]) {
 			priv->flow_position[i] = true;
 			break;
 		}
 	}
 
-	if (i == NFP_NET_FLOW_LIMIT) {
+	if (i == limit) {
 		PMD_DRV_LOG(ERR, "The limited flow number is reach.");
 		return -ERANGE;
 	}
 
-	nfp_flow->position = NFP_NET_FLOW_LIMIT - i - 1;
+	nfp_flow->position = limit - i - 1;
 
 	return 0;
 }
@@ -1053,11 +1056,24 @@ nfp_net_flow_ops_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static uint32_t
+nfp_net_fs_max_entry_get(struct nfp_hw *hw)
+{
+	uint32_t cnt;
+
+	cnt = nn_cfg_readl(hw, NFP_NET_CFG_MAX_FS_CAP);
+	if (cnt != 0)
+		return cnt;
+
+	return NFP_NET_FLOW_LIMIT;
+}
+
 int
 nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 		uint16_t port)
 {
 	int ret = 0;
+	struct nfp_hw *hw;
 	struct nfp_net_priv *priv;
 	char flow_name[RTE_HASH_NAMESIZE];
 	struct nfp_app_fw_nic *app_fw_nic;
@@ -1067,7 +1083,6 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 
 	struct rte_hash_parameters flow_hash_params = {
 		.name       = flow_name,
-		.entries    = NFP_NET_FLOW_HASH_TBALE_SIZE,
 		.hash_func  = rte_jhash,
 		.socket_id  = rte_socket_id(),
 		.key_len    = sizeof(uint32_t),
@@ -1085,17 +1100,37 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 	app_fw_nic->ports[port]->priv = priv;
 	priv->hash_seed = (uint32_t)rte_rand();
 
-	/* Flow table */
-	flow_hash_params.hash_func_init_val = priv->hash_seed;
-	priv->flow_table = rte_hash_create(&flow_hash_params);
-	if (priv->flow_table == NULL) {
-		PMD_INIT_LOG(ERR, "flow hash table creation failed");
+	/* Flow limit */
+	hw = &app_fw_nic->ports[port]->super;
+	priv->flow_limit = nfp_net_fs_max_entry_get(hw);
+	if (priv->flow_limit == 0) {
+		PMD_INIT_LOG(ERR, "NFP app nic flow limit not right.");
+		ret = -EINVAL;
+		goto free_priv;
+	}
+
+	/* Flow position array */
+	priv->flow_position = rte_zmalloc(NULL, sizeof(bool) * priv->flow_limit, 0);
+	if (priv->flow_position == NULL) {
+		PMD_INIT_LOG(ERR, "NFP app nic flow position creation failed.");
 		ret = -ENOMEM;
 		goto free_priv;
 	}
 
+	/* Flow table */
+	flow_hash_params.hash_func_init_val = priv->hash_seed;
+	flow_hash_params.entries = priv->flow_limit * NFP_NET_HASH_REDUNDANCE;
+	priv->flow_table = rte_hash_create(&flow_hash_params);
+	if (priv->flow_table == NULL) {
+		PMD_INIT_LOG(ERR, "flow hash table creation failed");
+		ret = -ENOMEM;
+		goto free_flow_position;
+	}
+
 	return 0;
 
+free_flow_position:
+	rte_free(priv->flow_position);
 free_priv:
 	rte_free(priv);
 exit:
@@ -1114,8 +1149,10 @@ nfp_net_flow_priv_uninit(struct nfp_pf_dev *pf_dev,
 
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[port]->priv;
-	if (priv != NULL)
+	if (priv != NULL) {
 		rte_hash_free(priv->flow_table);
+		rte_free(priv->flow_position);
+	}
 
 	rte_free(priv);
 }
