@@ -165,6 +165,7 @@ DPDK_25 {
 	rte_lcore_iterate;
 	rte_lcore_to_cpu_id;
 	rte_lcore_to_socket_id;
+	rte_lcore_register_usage_cb;
 	rte_malloc;
 	rte_malloc_dump_heaps;
 	rte_malloc_dump_stats;
@@ -387,7 +388,6 @@ EXPERIMENTAL {
 	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT
 
 	# added in 23.03
-	rte_lcore_register_usage_cb;
 	__rte_eal_trace_generic_blob;
 
 	# added in 23.07

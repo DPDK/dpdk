@@ -359,9 +359,6 @@ struct rte_lcore_usage {
 typedef int (*rte_lcore_usage_cb)(unsigned int lcore_id, struct rte_lcore_usage *usage);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Register a callback from an application to be called in rte_lcore_dump() and
  * the /eal/lcore/info telemetry endpoint handler. Applications are expected to
  * report lcore usage statistics via this callback.
@@ -373,7 +370,6 @@ typedef int (*rte_lcore_usage_cb)(unsigned int lcore_id, struct rte_lcore_usage 
  * @param cb
  *   The callback function.
  */
-__rte_experimental
 void rte_lcore_register_usage_cb(rte_lcore_usage_cb cb);
 
 /**
