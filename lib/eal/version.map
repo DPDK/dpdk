@@ -23,6 +23,7 @@ DPDK_25 {
 	rte_class_unregister;
 	rte_cpu_get_flag_enabled;
 	rte_cpu_get_flag_name;
+	rte_cpu_get_intrinsics_support; # WINDOWS_NO_EXPORT
 	rte_cpu_is_supported; # WINDOWS_NO_EXPORT
 	rte_cycles_vmware_tsc_map; # WINDOWS_NO_EXPORT
 	rte_delay_us;
@@ -384,7 +385,6 @@ EXPERIMENTAL {
 
 	# added in 20.11
 	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT
-	rte_cpu_get_intrinsics_support; # WINDOWS_NO_EXPORT
 
 	# added in 23.03
 	rte_lcore_register_usage_cb;

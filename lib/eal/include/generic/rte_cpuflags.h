@@ -33,15 +33,11 @@ struct rte_cpu_intrinsics {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Check CPU support for various intrinsics at runtime.
  *
  * @param intrinsics
  *     Pointer to a structure to be filled.
  */
-__rte_experimental
 void
 rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics);
 
