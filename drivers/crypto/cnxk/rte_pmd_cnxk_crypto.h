@@ -31,6 +31,23 @@ struct rte_pmd_cnxk_crypto_qptr;
 struct rte_pmd_cnxk_crypto_cptr;
 
 /**
+ *
+ * @brief Crypto CNXK queue pair stats.
+ *
+ * This structure represents the queue pair stats retrieved from CPT HW queue.
+ */
+struct rte_pmd_cnxk_crypto_qp_stats {
+	/** Packet counter of the packets that used CPT context cache and was encrypted */
+	uint64_t ctx_enc_pkts;
+	/** Byte counter of the packets that used CPT context cache and was encrypted */
+	uint64_t ctx_enc_bytes;
+	/** Packet counter of the packets that used CPT context cache and was decrypted */
+	uint64_t ctx_dec_pkts;
+	/** Byte counter of the packets that used CPT context cache and was decrypted */
+	uint64_t ctx_dec_bytes;
+};
+
+/**
  * @brief Crypto CNXK PMD session structure.
  *
  * This structure represents the session structure that would be used to store the session
@@ -175,5 +192,22 @@ __rte_experimental
 int rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
 				   struct rte_pmd_cnxk_crypto_cptr *cptr, void *data,
 				   uint32_t len);
+
+/**
+ * Get the HW Queue Pair (LF) stats.
+ *
+ * @param qptr
+ *  Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param[out] stats
+ *  Pointer to the structure where stats will be copied.
+ *
+ * @return
+ *   - 0 On success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				     struct rte_pmd_cnxk_crypto_qp_stats *stats);
 
 #endif /* _PMD_CNXK_CRYPTO_H_ */

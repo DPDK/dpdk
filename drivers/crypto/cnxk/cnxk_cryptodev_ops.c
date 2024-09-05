@@ -1161,3 +1161,35 @@ rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
 
 	return 0;
 }
+
+int
+rte_pmd_cnxk_crypto_qp_stats_get(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				 struct rte_pmd_cnxk_crypto_qp_stats *stats)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	struct roc_cpt_lf *lf;
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(stats == NULL)) {
+		plt_err("Invalid stats pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(roc_model_is_cn9k())) {
+		plt_err("Invalid cnxk model");
+		return -EINVAL;
+	}
+
+	lf = &qp->lf;
+
+	stats->ctx_enc_pkts = plt_read64(lf->rbase + CPT_LF_CTX_ENC_PKT_CNT);
+	stats->ctx_enc_bytes = plt_read64(lf->rbase + CPT_LF_CTX_ENC_BYTE_CNT);
+	stats->ctx_dec_bytes = plt_read64(lf->rbase + CPT_LF_CTX_DEC_BYTE_CNT);
+	stats->ctx_dec_bytes = plt_read64(lf->rbase + CPT_LF_CTX_DEC_BYTE_CNT);
+
+	return 0;
+}

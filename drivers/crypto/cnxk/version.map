@@ -10,6 +10,7 @@ EXPERIMENTAL {
 	rte_pmd_cnxk_crypto_cptr_get;
 	rte_pmd_cnxk_crypto_cptr_read;
 	rte_pmd_cnxk_crypto_cptr_write;
+	rte_pmd_cnxk_crypto_qp_stats_get;
 };
 
 INTERNAL {
