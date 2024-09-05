@@ -1100,6 +1100,7 @@ cpt_sm_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_p
 {
 	int32_t inputlen, outputlen, enc_dlen;
 	union cpt_inst_w4 cpt_inst_w4;
+	uint32_t passthr_len, pad_len;
 	uint32_t passthrough_len = 0;
 	const uint8_t *src = NULL;
 	struct roc_se_ctx *se_ctx;
@@ -1119,21 +1120,18 @@ cpt_sm_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_p
 	if (unlikely(!(flags & ROC_SE_VALID_IV_BUF)))
 		iv_len = 0;
 
-	encr_offset += iv_len;
-	enc_dlen = RTE_ALIGN_CEIL(encr_data_len, 8) + encr_offset;
+	passthr_len = encr_offset + iv_len;
+	passthr_len = RTE_ALIGN_CEIL(passthr_len, 8);
+	pad_len = passthr_len - encr_offset - iv_len;
+	enc_dlen = RTE_ALIGN_CEIL(encr_data_len, 8) + passthr_len;
 
 	inputlen = enc_dlen;
 	outputlen = enc_dlen;
 
 	cpt_inst_w4.s.param1 = encr_data_len;
 
-	if (unlikely(encr_offset >> 8)) {
-		plt_dp_err("Offset not supported");
-		plt_dp_err("enc_offset: %d", encr_offset);
-		return -1;
-	}
-
-	offset_ctrl = rte_cpu_to_be_64((uint64_t)encr_offset);
+	offset_ctrl = passthr_len & 0xff;
+	offset_ctrl = rte_cpu_to_be_64(offset_ctrl);
 
 	/*
 	 * In cn9k, cn10k since we have a limitation of
@@ -1146,14 +1144,14 @@ cpt_sm_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_p
 
 		/* Use Direct mode */
 
-		offset_vaddr = PLT_PTR_SUB(dm_vaddr, ROC_SE_OFF_CTRL_LEN + iv_len);
+		offset_vaddr = PLT_PTR_SUB(dm_vaddr, ROC_SE_OFF_CTRL_LEN + pad_len + iv_len);
 		*(uint64_t *)offset_vaddr = offset_ctrl;
 
 		/* DPTR */
 		inst->dptr = (uint64_t)offset_vaddr;
 
 		/* RPTR should just exclude offset control word */
-		inst->rptr = (uint64_t)dm_vaddr - iv_len;
+		inst->rptr = (uint64_t)dm_vaddr - iv_len - pad_len;
 
 		cpt_inst_w4.s.dlen = inputlen + ROC_SE_OFF_CTRL_LEN;
 
@@ -1171,12 +1169,13 @@ cpt_sm_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_p
 		inst->w4.u64 = cpt_inst_w4.u64;
 
 		if (is_sg_ver2)
-			ret = sg2_inst_prep(fc_params, inst, offset_ctrl, src, iv_len, 0, 0,
-					    inputlen, outputlen, passthrough_len, flags, 0,
+			ret = sg2_inst_prep(fc_params, inst, offset_ctrl, src, iv_len + pad_len, 0,
+					    0, inputlen, outputlen, passthrough_len, flags, 0,
 					    decrypt);
 		else
-			ret = sg_inst_prep(fc_params, inst, offset_ctrl, src, iv_len, 0, 0,
-					   inputlen, outputlen, passthrough_len, flags, 0, decrypt);
+			ret = sg_inst_prep(fc_params, inst, offset_ctrl, src, iv_len + pad_len, 0,
+					   0, inputlen, outputlen, passthrough_len, flags, 0,
+					   decrypt);
 
 		if (unlikely(ret)) {
 			plt_dp_err("sg prep failed");
