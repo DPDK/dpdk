@@ -170,6 +170,19 @@ nfp_net_link_speed_rte2nfp(uint32_t speed)
 	return NFP_NET_CFG_STS_LINK_RATE_UNKNOWN;
 }
 
+static uint32_t
+nfp_net_link_speed_nfp2rte_check(uint32_t speed)
+{
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
+		if (speed == nfp_net_link_speed_nfp2rte[i])
+			return nfp_net_link_speed_nfp2rte[i];
+	}
+
+	return RTE_ETH_SPEED_NUM_NONE;
+}
+
 static void
 nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 		struct rte_eth_link *link)
@@ -734,8 +747,6 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 		struct nfp_net_hw_priv *hw_priv,
 		struct rte_eth_link *link)
 {
-	uint32_t i;
-	uint32_t speed;
 	enum nfp_eth_aneg aneg;
 	struct nfp_pf_dev *pf_dev;
 	struct nfp_eth_table *nfp_eth_table;
@@ -758,14 +769,8 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 
 	nfp_eth_table = pf_dev->nfp_eth_table;
 	eth_port = &nfp_eth_table->ports[hw->idx];
-	speed = eth_port->speed;
 
-	for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
-		if (nfp_net_link_speed_nfp2rte[i] == speed) {
-			link->link_speed = speed;
-			break;
-		}
-	}
+	link->link_speed = nfp_net_link_speed_nfp2rte_check(eth_port->speed);
 
 	if (dev->data->dev_conf.link_speeds == RTE_ETH_LINK_SPEED_AUTONEG &&
 			eth_port->supp_aneg)
