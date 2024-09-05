@@ -25,7 +25,9 @@
 #include "cnxk_se.h"
 
 #include "cn10k_cryptodev_ops.h"
+#include "cn10k_cryptodev_sec.h"
 #include "cn9k_cryptodev_ops.h"
+#include "cn9k_ipsec.h"
 
 #include "rte_pmd_cnxk_crypto.h"
 
@@ -1016,4 +1018,51 @@ rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, ui
 		return cnxk_crypto_cn9k_submit(qptr, inst, nb_inst);
 
 	plt_err("Invalid cnxk model");
+}
+
+struct rte_pmd_cnxk_crypto_cptr *
+rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
+{
+	if (rte_sess == NULL) {
+		plt_err("Invalid session pointer");
+		return NULL;
+	}
+
+	if (rte_sess->sec_sess == NULL) {
+		plt_err("Invalid RTE session pointer");
+		return NULL;
+	}
+
+	if (rte_sess->op_type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+		struct cnxk_ae_sess *ae_sess = PLT_PTR_CAST(rte_sess->crypto_asym_sess);
+		return PLT_PTR_CAST(&ae_sess->hw_ctx);
+	}
+
+	if (rte_sess->op_type != RTE_CRYPTO_OP_TYPE_SYMMETRIC) {
+		plt_err("Invalid crypto operation type");
+		return NULL;
+	}
+
+	if (rte_sess->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		struct cnxk_se_sess *se_sess = PLT_PTR_CAST(rte_sess->crypto_sym_sess);
+		return PLT_PTR_CAST(&se_sess->roc_se_ctx.se_ctx);
+	}
+
+	if (rte_sess->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
+		if (roc_model_is_cn10k()) {
+			struct cn10k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
+			return PLT_PTR_CAST(&sec_sess->sa);
+		}
+
+		if (roc_model_is_cn9k()) {
+			struct cn9k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
+			return PLT_PTR_CAST(&sec_sess->sa);
+		}
+
+		plt_err("Invalid cnxk model");
+		return NULL;
+	}
+
+	plt_err("Invalid session type");
+	return NULL;
 }

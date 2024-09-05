@@ -4,6 +4,9 @@ EXPERIMENTAL {
 	# added in 24.03
 	rte_pmd_cnxk_crypto_submit;
 	rte_pmd_cnxk_crypto_qptr_get;
+
+	# added in 24.07
+	rte_pmd_cnxk_crypto_cptr_get;
 };
 
 INTERNAL {
