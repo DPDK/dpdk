@@ -32,14 +32,11 @@ BEGIN {
 		for (i in deny_expr) {
 			forbidden_added = "^\\+.*" deny_expr[i];
 			forbidden_removed="^-.*" deny_expr[i];
-			current = expressions[deny_expr[i]]
 			if ($0 ~ forbidden_added) {
-				count = count + 1;
-				expressions[deny_expr[i]] = current + 1
+				count = count + 1
 			}
 			if ($0 ~ forbidden_removed) {
-				count = count - 1;
-				expressions[deny_expr[i]] = current - 1
+				count = count - 1
 			}
 		}
 	}
@@ -49,12 +46,13 @@ BEGIN {
 	}
 }
 # switch to next file , check if the balance of add/remove
-# of previous filehad new additions
+# of previous file had new additions
 ($0 ~ "^\\+\\+\\+ b/") {
 	in_file = 0;
 	if (count > 0) {
 		exit;
 	}
+	count = 0
 	for (i in deny_folders) {
 		re = "^\\+\\+\\+ b/" deny_folders[i];
 		if ($0 ~ re) {
