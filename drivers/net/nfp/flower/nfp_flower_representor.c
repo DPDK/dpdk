@@ -29,18 +29,13 @@ nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
 	int ret;
-	uint32_t nn_link_status;
-	struct nfp_net_hw *pf_hw;
 	struct rte_eth_link *link;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
 	link = &repr->link;
 
-	pf_hw = repr->app_fw_flower->pf_hw;
-	nn_link_status = nn_cfg_readw(&pf_hw->super, NFP_NET_CFG_STS);
-
-	ret = nfp_net_link_update_common(dev, link, nn_link_status);
+	ret = nfp_net_link_update_common(dev, link, link->link_status);
 
 	return ret;
 }
