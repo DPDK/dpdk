@@ -13,6 +13,7 @@ BEGIN {
 	in_file=0;
 	in_comment=0;
 	count=0;
+	warned=0;
 	comment_start="/*"
 	comment_end="*/"
 }
@@ -50,7 +51,8 @@ BEGIN {
 ($0 ~ "^\\+\\+\\+ b/") {
 	in_file = 0;
 	if (count > 0) {
-		exit;
+		warned = warned + 1
+		print "Warning in " substr(last_file,7) ":"
 	}
 	count = 0
 	for (i in deny_folders) {
@@ -66,7 +68,10 @@ BEGIN {
 }
 END {
 	if (count > 0) {
+		warned = warned + 1
 		print "Warning in " substr(last_file,7) ":"
+	}
+	if (warned > 0) {
 		print MESSAGE
 		exit RET_ON_FAIL
 	}
