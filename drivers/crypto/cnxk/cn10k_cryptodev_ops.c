@@ -1366,8 +1366,8 @@ cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
 	union cpt_fc_write_s fc;
 	struct cnxk_cpt_vf *vf;
 	struct rte_mbuf *m;
+	uint64_t u64_dptr;
 	uint64_t *fc_addr;
-	uint64_t dptr;
 	int i;
 
 	vf = cdev->data->dev_private;
@@ -1401,11 +1401,6 @@ again:
 			break;
 		}
 
-		if (unlikely(!rte_pktmbuf_is_contiguous(m))) {
-			plt_dp_err("Multi seg is not supported");
-			break;
-		}
-
 		l2_len = m->l2_len;
 
 		*rte_security_dynfield(m) = (uint64_t)sec_sess->userdata;
@@ -1415,6 +1410,46 @@ again:
 		hw_res = RTE_PTR_ALIGN_CEIL(hw_res, 16);
 
 		/* Prepare CPT instruction */
+		if (m->nb_segs > 1) {
+			struct rte_mbuf *last = rte_pktmbuf_lastseg(m);
+			uintptr_t dptr, rxphdr, wqe_hdr;
+			uint16_t i;
+
+			if ((m->nb_segs > CNXK_CPT_MAX_SG_SEGS) ||
+			    (rte_pktmbuf_tailroom(m) < CNXK_CPT_MIN_TAILROOM_REQ))
+				goto exit;
+
+			wqe_hdr = rte_pktmbuf_mtod_offset(last, uintptr_t, last->data_len);
+			wqe_hdr += BIT_ULL(7);
+			wqe_hdr = (wqe_hdr - 1) & ~(BIT_ULL(7) - 1);
+
+			/* Pointer to WQE header */
+			*(uint64_t *)(m + 1) = wqe_hdr;
+
+			/* Reserve SG list after end of last mbuf data location. */
+			rxphdr = wqe_hdr + 8;
+			dptr = rxphdr + 7 * 8;
+
+			/* Prepare Multiseg SG list */
+			i = fill_sg2_comp_from_pkt((struct roc_sg2list_comp *)dptr, 0, m);
+			u64_dptr = dptr | ((uint64_t)(i) << 60);
+		} else {
+			struct roc_sg2list_comp *sg2;
+			uintptr_t dptr, wqe_hdr;
+
+			/* Reserve space for WQE, NIX_RX_PARSE_S and SG_S.
+			 * Populate SG_S with num segs and seg length
+			 */
+			wqe_hdr = (uintptr_t)(m + 1);
+			*(uint64_t *)(m + 1) = wqe_hdr;
+
+			sg2 = (struct roc_sg2list_comp *)(wqe_hdr + 8 * 8);
+			sg2->u.s.len[0] = rte_pktmbuf_pkt_len(m);
+			sg2->u.s.valid_segs = 1;
+
+			dptr = (uint64_t)rte_pktmbuf_iova(m);
+			u64_dptr = dptr;
+		}
 
 		/* Word 0 and 1 */
 		inst_01 = vdupq_n_u64(0);
@@ -1434,16 +1469,12 @@ again:
 		inst_45 = vdupq_n_u64(0);
 		u64_0 = sec_sess->inst.w4 | (rte_pktmbuf_pkt_len(m));
 		inst_45 = vsetq_lane_u64(u64_0, inst_45, 0);
-		dptr = (uint64_t)rte_pktmbuf_iova(m);
-		u64_1 = dptr;
-		inst_45 = vsetq_lane_u64(u64_1, inst_45, 1);
+		inst_45 = vsetq_lane_u64(u64_dptr, inst_45, 1);
 		vst1q_u64(&inst->w4.u64, inst_45);
 
 		/* Word 6 and 7 */
 		inst_67 = vdupq_n_u64(0);
-		u64_0 = dptr;
 		u64_1 = sec_sess->inst.w7;
-		inst_67 = vsetq_lane_u64(u64_0, inst_67, 0);
 		inst_67 = vsetq_lane_u64(u64_1, inst_67, 1);
 		vst1q_u64(&inst->w6.u64, inst_67);
 

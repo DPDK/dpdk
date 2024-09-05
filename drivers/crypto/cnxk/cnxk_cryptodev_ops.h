@@ -18,7 +18,14 @@
 
 /* Space for ctrl_word(8B), IV(48B), passthrough alignment(8B) */
 #define CNXK_CPT_MIN_HEADROOM_REQ 64
-#define CNXK_CPT_MIN_TAILROOM_REQ 102
+/* Tailroom required for RX-inject path.
+ * In RX-inject path, space is required for below entities:
+ * WQE header and NIX_RX_PARSE_S
+ * SG list format for 6 IOVA pointers
+ * Space for 128 byte alignment.
+ */
+#define CNXK_CPT_MIN_TAILROOM_REQ 256
+#define CNXK_CPT_MAX_SG_SEGS	  6
 
 /* Default command timeout in seconds */
 #define DEFAULT_COMMAND_TIMEOUT 4
