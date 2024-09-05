@@ -273,7 +273,7 @@ static uint16_t
 eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	unsigned int i;
-	struct pcap_pkthdr header;
+	struct pcap_pkthdr *header;
 	struct pmd_process_private *pp;
 	const u_char *packet;
 	struct rte_mbuf *mbuf;
@@ -293,9 +293,13 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	 */
 	for (i = 0; i < nb_pkts; i++) {
 		/* Get the next PCAP packet */
-		packet = pcap_next(pcap, &header);
-		if (unlikely(packet == NULL))
+		int ret = pcap_next_ex(pcap, &header, &packet);
+		if (ret != 1) {
+			if (ret == PCAP_ERROR)
+				pcap_q->rx_stat.err_pkts++;
+
 			break;
+		}
 
 		mbuf = rte_pktmbuf_alloc(pcap_q->mb_pool);
 		if (unlikely(mbuf == NULL)) {
@@ -303,33 +307,30 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 		}
 
-		if (header.caplen <= rte_pktmbuf_tailroom(mbuf)) {
+		uint32_t len = header->caplen;
+		if (len <= rte_pktmbuf_tailroom(mbuf)) {
 			/* pcap packet will fit in the mbuf, can copy it */
-			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), packet,
-					header.caplen);
-			mbuf->data_len = (uint16_t)header.caplen;
+			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), packet, len);
+			mbuf->data_len = len;
 		} else {
 			/* Try read jumbo frame into multi mbufs. */
 			if (unlikely(eth_pcap_rx_jumbo(pcap_q->mb_pool,
-						       mbuf,
-						       packet,
-						       header.caplen) == -1)) {
+						       mbuf, packet, len) == -1)) {
 				pcap_q->rx_stat.err_pkts++;
 				rte_pktmbuf_free(mbuf);
 				break;
 			}
 		}
 
-		mbuf->pkt_len = (uint16_t)header.caplen;
-		*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset,
-			rte_mbuf_timestamp_t *) =
-				(uint64_t)header.ts.tv_sec * 1000000 +
-				header.ts.tv_usec;
+		mbuf->pkt_len = len;
+		uint64_t us = (uint64_t)header->ts.tv_sec * US_PER_S + header->ts.tv_usec;
+
+		*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset, rte_mbuf_timestamp_t *) = us;
 		mbuf->ol_flags |= timestamp_rx_dynflag;
 		mbuf->port = pcap_q->port_id;
 		bufs[num_rx] = mbuf;
 		num_rx++;
-		rx_bytes += header.caplen;
+		rx_bytes += len;
 	}
 	pcap_q->rx_stat.pkts += num_rx;
 	pcap_q->rx_stat.bytes += rx_bytes;
