@@ -660,10 +660,10 @@ outb_dbg_iv_update(struct roc_ot_ipsec_outb_sa *outb_sa, const char *__iv_str)
 	if (!iv_str)
 		return;
 
-	if (outb_sa->w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
-	    outb_sa->w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
-	    outb_sa->w2.s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
-	    outb_sa->w2.s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+	if (outb_sa->w2.s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    outb_sa->w2.s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
+	    outb_sa->w2.s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    outb_sa->w2.s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		memset(outb_sa->iv.s.iv_dbg1, 0, sizeof(outb_sa->iv.s.iv_dbg1));
 		memset(outb_sa->iv.s.iv_dbg2, 0, sizeof(outb_sa->iv.s.iv_dbg2));
 

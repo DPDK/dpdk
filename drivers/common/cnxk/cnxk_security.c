@@ -66,15 +66,15 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 
 		switch (crypto_xfrm->aead.algo) {
 		case RTE_CRYPTO_AEAD_AES_GCM:
-			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_GCM;
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
+			w2->s.enc_type = ROC_IE_SA_ENC_AES_GCM;
+			w2->s.auth_type = ROC_IE_SA_AUTH_NULL;
 			memcpy(salt_key, &ipsec_xfrm->salt, 4);
 			tmp_salt = (uint32_t *)salt_key;
 			*tmp_salt = rte_be_to_cpu_32(*tmp_salt);
 			break;
 		case RTE_CRYPTO_AEAD_AES_CCM:
-			w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CCM;
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
+			w2->s.enc_type = ROC_IE_SA_ENC_AES_CCM;
+			w2->s.auth_type = ROC_IE_SA_AUTH_NULL;
 			ccm_flag = 0x07 & ~ROC_CPT_AES_CCM_CTR_LEN;
 			*salt_key = ccm_flag;
 			memcpy(PLT_PTR_ADD(salt_key, 1), &ipsec_xfrm->salt, 3);
@@ -88,16 +88,16 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 		if (cipher_xfrm != NULL) {
 			switch (cipher_xfrm->cipher.algo) {
 			case RTE_CRYPTO_CIPHER_NULL:
-				w2->s.enc_type = ROC_IE_OT_SA_ENC_NULL;
+				w2->s.enc_type = ROC_IE_SA_ENC_NULL;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CBC:
-				w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CBC;
+				w2->s.enc_type = ROC_IE_SA_ENC_AES_CBC;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CTR:
-				w2->s.enc_type = ROC_IE_OT_SA_ENC_AES_CTR;
+				w2->s.enc_type = ROC_IE_SA_ENC_AES_CTR;
 				break;
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
-				w2->s.enc_type = ROC_IE_OT_SA_ENC_3DES_CBC;
+				w2->s.enc_type = ROC_IE_SA_ENC_3DES_CBC;
 				break;
 			default:
 				return -ENOTSUP;
@@ -113,25 +113,25 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 				plt_err("anti-replay can't be supported with integrity service disabled");
 				return -EINVAL;
 			}
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_NULL;
+			w2->s.auth_type = ROC_IE_SA_AUTH_NULL;
 			break;
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA1;
+			w2->s.auth_type = ROC_IE_SA_AUTH_SHA1;
 			break;
 		case RTE_CRYPTO_AUTH_SHA256_HMAC:
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA2_256;
+			w2->s.auth_type = ROC_IE_SA_AUTH_SHA2_256;
 			break;
 		case RTE_CRYPTO_AUTH_SHA384_HMAC:
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA2_384;
+			w2->s.auth_type = ROC_IE_SA_AUTH_SHA2_384;
 			break;
 		case RTE_CRYPTO_AUTH_SHA512_HMAC:
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_SHA2_512;
+			w2->s.auth_type = ROC_IE_SA_AUTH_SHA2_512;
 			break;
 		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_AES_XCBC_128;
+			w2->s.auth_type = ROC_IE_SA_AUTH_AES_XCBC_128;
 			break;
 		case RTE_CRYPTO_AUTH_AES_GMAC:
-			w2->s.auth_type = ROC_IE_OT_SA_AUTH_AES_GMAC;
+			w2->s.auth_type = ROC_IE_SA_AUTH_AES_GMAC;
 			key = auth_xfrm->auth.key.data;
 			length = auth_xfrm->auth.key.length;
 			memcpy(salt_key, &ipsec_xfrm->salt, 4);
@@ -174,12 +174,9 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 	}
 
 	/* Set AES key length */
-	if (w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CBC ||
-	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
-	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
-	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
-	    w2->s.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
-	    w2->s.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+	if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC || w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR || w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM || w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		switch (length) {
 		case ROC_CPT_AES128_KEY_LEN:
 			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
@@ -809,11 +806,11 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		switch (crypto_xform->aead.algo) {
 		case RTE_CRYPTO_AEAD_AES_GCM:
-			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_GCM;
+			ctl->enc_type = ROC_IE_SA_ENC_AES_GCM;
 			aes_key_len = crypto_xform->aead.key.length;
 			break;
 		case RTE_CRYPTO_AEAD_AES_CCM:
-			ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CCM;
+			ctl->enc_type = ROC_IE_SA_ENC_AES_CCM;
 			aes_key_len = crypto_xform->aead.key.length;
 			break;
 		default:
@@ -824,20 +821,20 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 		if (cipher_xform != NULL) {
 			switch (cipher_xform->cipher.algo) {
 			case RTE_CRYPTO_CIPHER_NULL:
-				ctl->enc_type = ROC_IE_ON_SA_ENC_NULL;
+				ctl->enc_type = ROC_IE_SA_ENC_NULL;
 				break;
 			case RTE_CRYPTO_CIPHER_DES_CBC:
-				ctl->enc_type = ROC_IE_ON_SA_ENC_DES_CBC;
+				ctl->enc_type = ROC_IE_SA_ENC_DES_CBC;
 				break;
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
-				ctl->enc_type = ROC_IE_ON_SA_ENC_3DES_CBC;
+				ctl->enc_type = ROC_IE_SA_ENC_3DES_CBC;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CBC:
-				ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CBC;
+				ctl->enc_type = ROC_IE_SA_ENC_AES_CBC;
 				aes_key_len = cipher_xform->cipher.key.length;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CTR:
-				ctl->enc_type = ROC_IE_ON_SA_ENC_AES_CTR;
+				ctl->enc_type = ROC_IE_SA_ENC_AES_CTR;
 				aes_key_len = cipher_xform->cipher.key.length;
 				break;
 			default:
@@ -848,32 +845,32 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 
 		switch (auth_xform->auth.algo) {
 		case RTE_CRYPTO_AUTH_NULL:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_NULL;
+			ctl->auth_type = ROC_IE_SA_AUTH_NULL;
 			break;
 		case RTE_CRYPTO_AUTH_MD5_HMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_MD5;
+			ctl->auth_type = ROC_IE_SA_AUTH_MD5;
 			break;
 		case RTE_CRYPTO_AUTH_SHA1_HMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA1;
+			ctl->auth_type = ROC_IE_SA_AUTH_SHA1;
 			break;
 		case RTE_CRYPTO_AUTH_SHA224_HMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_224;
+			ctl->auth_type = ROC_IE_SA_AUTH_SHA2_224;
 			break;
 		case RTE_CRYPTO_AUTH_SHA256_HMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_256;
+			ctl->auth_type = ROC_IE_SA_AUTH_SHA2_256;
 			break;
 		case RTE_CRYPTO_AUTH_SHA384_HMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_384;
+			ctl->auth_type = ROC_IE_SA_AUTH_SHA2_384;
 			break;
 		case RTE_CRYPTO_AUTH_SHA512_HMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_SHA2_512;
+			ctl->auth_type = ROC_IE_SA_AUTH_SHA2_512;
 			break;
 		case RTE_CRYPTO_AUTH_AES_GMAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_AES_GMAC;
+			ctl->auth_type = ROC_IE_SA_AUTH_AES_GMAC;
 			aes_key_len = auth_xform->auth.key.length;
 			break;
 		case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
-			ctl->auth_type = ROC_IE_ON_SA_AUTH_AES_XCBC_128;
+			ctl->auth_type = ROC_IE_SA_AUTH_AES_XCBC_128;
 			break;
 		default:
 			plt_err("Unsupported auth algorithm");
@@ -882,12 +879,9 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 	}
 
 	/* Set AES key length */
-	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CBC ||
-	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM ||
-	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CTR ||
-	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
-	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM ||
-	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
+	if (ctl->enc_type == ROC_IE_SA_ENC_AES_CBC || ctl->enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    ctl->enc_type == ROC_IE_SA_ENC_AES_CTR || ctl->enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    ctl->enc_type == ROC_IE_SA_ENC_AES_CCM || ctl->auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		switch (aes_key_len) {
 		case 16:
 			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
@@ -998,30 +992,26 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 	if (ret)
 		return ret;
 
-	if (ctl->enc_type == ROC_IE_ON_SA_ENC_AES_GCM ||
-	    ctl->enc_type == ROC_IE_ON_SA_ENC_AES_CCM || ctl->auth_type == ROC_IE_ON_SA_AUTH_NULL ||
-	    ctl->auth_type == ROC_IE_ON_SA_AUTH_AES_GMAC) {
+	if (ctl->enc_type == ROC_IE_SA_ENC_AES_GCM || ctl->enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    ctl->auth_type == ROC_IE_SA_AUTH_NULL || ctl->auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		template = &out_sa->aes_gcm.template;
 		ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_gcm.template);
 	} else {
 		switch (ctl->auth_type) {
-		case ROC_IE_ON_SA_AUTH_MD5:
-		case ROC_IE_ON_SA_AUTH_SHA1:
+		case ROC_IE_SA_AUTH_MD5:
+		case ROC_IE_SA_AUTH_SHA1:
 			template = &out_sa->sha1.template;
-			ctx_len = offsetof(struct roc_ie_on_outb_sa,
-					   sha1.template);
+			ctx_len = offsetof(struct roc_ie_on_outb_sa, sha1.template);
 			break;
-		case ROC_IE_ON_SA_AUTH_SHA2_256:
-		case ROC_IE_ON_SA_AUTH_SHA2_384:
-		case ROC_IE_ON_SA_AUTH_SHA2_512:
+		case ROC_IE_SA_AUTH_SHA2_256:
+		case ROC_IE_SA_AUTH_SHA2_384:
+		case ROC_IE_SA_AUTH_SHA2_512:
 			template = &out_sa->sha2.template;
-			ctx_len = offsetof(struct roc_ie_on_outb_sa,
-					   sha2.template);
+			ctx_len = offsetof(struct roc_ie_on_outb_sa, sha2.template);
 			break;
-		case ROC_IE_ON_SA_AUTH_AES_XCBC_128:
+		case ROC_IE_SA_AUTH_AES_XCBC_128:
 			template = &out_sa->aes_xcbc.template;
-			ctx_len = offsetof(struct roc_ie_on_outb_sa,
-					   aes_xcbc.template);
+			ctx_len = offsetof(struct roc_ie_on_outb_sa, aes_xcbc.template);
 			break;
 		default:
 			plt_err("Unsupported auth algorithm");

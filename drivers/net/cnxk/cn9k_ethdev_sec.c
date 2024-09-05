@@ -422,10 +422,10 @@ outb_dbg_iv_update(struct roc_ie_on_common_sa *common_sa, const char *__iv_str)
 	if (!iv_str)
 		return;
 
-	if (common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_GCM ||
-	    common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_CTR ||
-	    common_sa->ctl.enc_type == ROC_IE_OT_SA_ENC_AES_CCM ||
-	    common_sa->ctl.auth_type == ROC_IE_OT_SA_AUTH_AES_GMAC) {
+	if (common_sa->ctl.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    common_sa->ctl.enc_type == ROC_IE_SA_ENC_AES_CTR ||
+	    common_sa->ctl.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    common_sa->ctl.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		iv_dbg = common_sa->iv.gcm.iv;
 		iv_len = 8;
 	}
@@ -534,7 +534,7 @@ cn9k_eth_sec_session_update(void *device,
 	outb_priv->esn = ipsec->esn.value;
 
 	memcpy(&outb_priv->nonce, outb_sa->common_sa.iv.gcm.nonce, 4);
-	if (outb_sa->common_sa.ctl.enc_type == ROC_IE_ON_SA_ENC_AES_GCM)
+	if (outb_sa->common_sa.ctl.enc_type == ROC_IE_SA_ENC_AES_GCM)
 		outb_priv->copy_salt = 1;
 
 	rlens = &outb_priv->rlens;
@@ -750,7 +750,7 @@ cn9k_eth_sec_session_create(void *device,
 		outb_priv->seq = 1;
 
 		memcpy(&outb_priv->nonce, outb_sa->common_sa.iv.gcm.nonce, 4);
-		if (outb_sa->common_sa.ctl.enc_type == ROC_IE_ON_SA_ENC_AES_GCM)
+		if (outb_sa->common_sa.ctl.enc_type == ROC_IE_SA_ENC_AES_GCM)
 			outb_priv->copy_salt = 1;
 
 		/* Save rlen info */
