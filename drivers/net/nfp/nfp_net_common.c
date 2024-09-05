@@ -311,6 +311,24 @@ nfp_net_get_hw(const struct rte_eth_dev *dev)
 	return hw;
 }
 
+uint8_t
+nfp_net_get_idx(const struct rte_eth_dev *dev)
+{
+	uint8_t idx;
+
+	if (rte_eth_dev_is_repr(dev)) {
+		struct nfp_flower_representor *repr;
+		repr = dev->data->dev_private;
+		idx = repr->idx;
+	} else {
+		struct nfp_net_hw *hw;
+		hw = dev->data->dev_private;
+		idx = hw->idx;
+	}
+
+	return idx;
+}
+
 /*
  * Configure an Ethernet device.
  *
@@ -743,17 +761,18 @@ nfp_net_allmulticast_disable(struct rte_eth_dev *dev)
 
 static void
 nfp_net_pf_speed_update(struct rte_eth_dev *dev,
-		struct nfp_net_hw *hw,
 		struct nfp_net_hw_priv *hw_priv,
 		struct rte_eth_link *link)
 {
+	uint8_t idx;
 	enum nfp_eth_aneg aneg;
 	struct nfp_pf_dev *pf_dev;
 	struct nfp_eth_table *nfp_eth_table;
 	struct nfp_eth_table_port *eth_port;
 
 	pf_dev = hw_priv->pf_dev;
-	aneg = pf_dev->nfp_eth_table->ports[hw->idx].aneg;
+	idx = nfp_net_get_idx(dev);
+	aneg = pf_dev->nfp_eth_table->ports[idx].aneg;
 
 	/* Compare whether the current status has changed. */
 	if (pf_dev->speed_updated || aneg == NFP_ANEG_AUTO) {
@@ -761,14 +780,14 @@ nfp_net_pf_speed_update(struct rte_eth_dev *dev,
 		if (nfp_eth_table == NULL) {
 			PMD_DRV_LOG(WARNING, "Failed to update port speed.");
 		} else {
-			pf_dev->nfp_eth_table->ports[hw->idx] = nfp_eth_table->ports[hw->idx];
+			pf_dev->nfp_eth_table->ports[idx] = nfp_eth_table->ports[idx];
 			free(nfp_eth_table);
 			pf_dev->speed_updated = false;
 		}
 	}
 
 	nfp_eth_table = pf_dev->nfp_eth_table;
-	eth_port = &nfp_eth_table->ports[hw->idx];
+	eth_port = &nfp_eth_table->ports[idx];
 
 	link->link_speed = nfp_net_link_speed_nfp2rte_check(eth_port->speed);
 
@@ -797,7 +816,6 @@ nfp_net_vf_speed_update(struct rte_eth_link *link,
 
 int
 nfp_net_link_update_common(struct rte_eth_dev *dev,
-		struct nfp_net_hw *hw,
 		struct rte_eth_link *link,
 		uint32_t link_status)
 {
@@ -807,7 +825,7 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 	hw_priv = dev->process_private;
 	if (link->link_status == RTE_ETH_LINK_UP) {
 		if (hw_priv->is_pf)
-			nfp_net_pf_speed_update(dev, hw, hw_priv, link);
+			nfp_net_pf_speed_update(dev, hw_priv, link);
 		else
 			nfp_net_vf_speed_update(link, link_status);
 	}
@@ -851,7 +869,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
-	ret = nfp_net_link_update_common(dev, hw, &link, nn_link_status);
+	ret = nfp_net_link_update_common(dev, &link, nn_link_status);
 	if (ret == -EIO)
 		return ret;
 
