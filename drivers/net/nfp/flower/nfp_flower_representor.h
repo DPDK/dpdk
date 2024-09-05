@@ -23,6 +23,8 @@ struct nfp_flower_representor {
 
 	struct rte_eth_xstat *repr_xstats_base;
 	uint8_t *mac_stats;
+	/** Sequential physical port number, only valid for repr of physical port */
+	uint8_t idx;
 };
 
 int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
