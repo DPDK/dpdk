@@ -945,7 +945,7 @@ cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id)
 	return 0;
 }
 
-void *
+struct rte_pmd_cnxk_crypto_qptr *
 rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id)
 {
 	const struct rte_crypto_fp_ops *fp_ops;
@@ -958,9 +958,9 @@ rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id)
 }
 
 static inline void
-cnxk_crypto_cn10k_submit(void *qptr, void *inst, uint16_t nb_inst)
+cnxk_crypto_cn10k_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
 {
-	struct cnxk_cpt_qp *qp = qptr;
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
 	uint64_t lmt_base, io_addr;
 	uint16_t lmt_id;
 	void *lmt_dst;
@@ -987,9 +987,9 @@ again:
 }
 
 static inline void
-cnxk_crypto_cn9k_submit(void *qptr, void *inst, uint16_t nb_inst)
+cnxk_crypto_cn9k_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
 {
-	struct cnxk_cpt_qp *qp = qptr;
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
 
 	const uint64_t lmt_base = qp->lf.lmt_base;
 	const uint64_t io_addr = qp->lf.io_addr;
@@ -1008,7 +1008,7 @@ cnxk_crypto_cn9k_submit(void *qptr, void *inst, uint16_t nb_inst)
 }
 
 void
-rte_pmd_cnxk_crypto_submit(void *qptr, void *inst, uint16_t nb_inst)
+rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, uint16_t nb_inst)
 {
 	if (roc_model_is_cn10k())
 		return cnxk_crypto_cn10k_submit(qptr, inst, nb_inst);

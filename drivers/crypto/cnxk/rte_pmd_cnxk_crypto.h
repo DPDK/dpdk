@@ -13,6 +13,16 @@
 
 #include <stdint.h>
 
+/* Forward declarations */
+
+/**
+ * @brief Crypto CNXK PMD QPTR opaque pointer.
+ *
+ * This structure represents the queue pair structure that would be the input to APIs that use
+ * hardware queues.
+ */
+struct rte_pmd_cnxk_crypto_qptr;
+
 /**
  * Get queue pointer of a specific queue in a cryptodev.
  *
@@ -21,10 +31,11 @@
  * @param qp_id
  *   Index of the queue pair.
  * @return
- *   Pointer to queue pair structure that would be the input to submit APIs.
+ *   - On success, pointer to queue pair structure that would be the input to submit APIs.
+ *   - NULL on error.
  */
 __rte_experimental
-void *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
+struct rte_pmd_cnxk_crypto_qptr *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
 
 /**
  * Submit CPT instruction (cpt_inst_s) to hardware (CPT).
@@ -43,6 +54,7 @@ void *rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id);
  *   Number of instructions.
  */
 __rte_experimental
-void rte_pmd_cnxk_crypto_submit(void *qptr, void *inst, uint16_t nb_inst);
+void rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst,
+				uint16_t nb_inst);
 
 #endif /* _PMD_CNXK_CRYPTO_H_ */
