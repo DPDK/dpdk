@@ -185,6 +185,7 @@ plt_thread_is_valid(plt_thread_t thr)
 #define plt_intr_efds_index_set		rte_intr_efds_index_set
 #define plt_intr_elist_index_get	rte_intr_elist_index_get
 #define plt_intr_elist_index_set	rte_intr_elist_index_set
+#define plt_is_aligned			rte_is_aligned
 
 #define plt_alarm_set	 rte_eal_alarm_set
 #define plt_alarm_cancel rte_eal_alarm_cancel
