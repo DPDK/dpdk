@@ -293,7 +293,6 @@ int nfp_net_promisc_disable(struct rte_eth_dev *dev);
 int nfp_net_allmulticast_enable(struct rte_eth_dev *dev);
 int nfp_net_allmulticast_disable(struct rte_eth_dev *dev);
 int nfp_net_link_update_common(struct rte_eth_dev *dev,
-		struct nfp_net_hw *hw,
 		struct rte_eth_link *link,
 		uint32_t link_status);
 int nfp_net_link_update(struct rte_eth_dev *dev,
@@ -357,6 +356,7 @@ int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
 bool nfp_net_is_valid_version_class(struct nfp_net_fw_ver version);
 struct nfp_net_hw *nfp_net_get_hw(const struct rte_eth_dev *dev);
+uint8_t nfp_net_get_idx(const struct rte_eth_dev *dev);
 int nfp_net_stop(struct rte_eth_dev *dev);
 int nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
 		struct rte_eth_fc_conf *fc_conf);
