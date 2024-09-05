@@ -155,7 +155,7 @@ int rte_eal_primary_proc_alive(const char *config_file_path);
  */
 bool rte_mp_disable(void);
 
-#define RTE_MP_MAX_FD_NUM	8    /* The max amount of fds */
+#define RTE_MP_MAX_FD_NUM	253  /* The max amount of fds (see SCM_MAX_FD) */
 #define RTE_MP_MAX_NAME_LEN	64   /* The max length of action name */
 #define RTE_MP_MAX_PARAM_LEN	256  /* The max length of param */
 struct rte_mp_msg {

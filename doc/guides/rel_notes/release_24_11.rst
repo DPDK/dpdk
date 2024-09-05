@@ -127,6 +127,10 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: The maximum number of file descriptors that can be passed to a secondary process
+  has been increased from 8 to 253 (which is the maximum possible with Unix domain socket).
+  This allows for more queues when using software devices such as TAP and XDP.
+
 
 Known Issues
 ------------
