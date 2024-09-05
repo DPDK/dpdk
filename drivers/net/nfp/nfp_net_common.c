@@ -777,6 +777,24 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 		link->link_autoneg = RTE_ETH_LINK_AUTONEG;
 }
 
+static void
+nfp_net_vf_speed_update(struct rte_eth_link *link,
+		uint32_t link_status)
+{
+	size_t link_rate_index;
+
+	/*
+	 * Shift and mask link_status so that it is effectively the value
+	 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
+	 */
+	link_rate_index = (link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+			NFP_NET_CFG_STS_LINK_RATE_MASK;
+	if (link_rate_index < RTE_DIM(nfp_net_link_speed_nfp2rte))
+		link->link_speed = nfp_net_link_speed_nfp2rte[link_rate_index];
+	else
+		link->link_speed = RTE_ETH_SPEED_NUM_NONE;
+}
+
 int
 nfp_net_link_update_common(struct rte_eth_dev *dev,
 		struct nfp_net_hw *hw,
@@ -784,23 +802,14 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 		uint32_t link_status)
 {
 	int ret;
-	uint32_t nn_link_status;
 	struct nfp_net_hw_priv *hw_priv;
 
 	hw_priv = dev->process_private;
 	if (link->link_status == RTE_ETH_LINK_UP) {
-		if (hw_priv->is_pf) {
+		if (hw_priv->is_pf)
 			nfp_net_speed_aneg_update(dev, hw, hw_priv, link);
-		} else {
-			/*
-			 * Shift and mask nn_link_status so that it is effectively the value
-			 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
-			 */
-			nn_link_status = (link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-					NFP_NET_CFG_STS_LINK_RATE_MASK;
-			if (nn_link_status < RTE_DIM(nfp_net_link_speed_nfp2rte))
-				link->link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
-		}
+		else
+			nfp_net_vf_speed_update(link, link_status);
 	}
 
 	ret = rte_eth_linkstatus_set(dev, link);
