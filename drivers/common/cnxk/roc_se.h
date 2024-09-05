@@ -331,6 +331,7 @@ struct roc_se_ctx {
 	/* auth_iv_offset passed to PDCP_CHAIN opcode based on FVC bit */
 	uint8_t pdcp_iv_offset;
 	union cpt_inst_w4 template_w4;
+	uint8_t *auth_key;
 	/* Below fields are accessed by hardware */
 	struct se_ctx_s {
 		/* Word0 */
@@ -355,7 +356,6 @@ struct roc_se_ctx {
 			struct roc_se_sm_context sm_ctx;
 		};
 	} se_ctx __plt_aligned(ROC_ALIGN);
-	uint8_t *auth_key;
 } __plt_aligned(ROC_ALIGN);
 
 struct roc_se_fc_params {
