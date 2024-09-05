@@ -40,7 +40,7 @@ nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 	pf_hw = repr->app_fw_flower->pf_hw;
 	nn_link_status = nn_cfg_readw(&pf_hw->super, NFP_NET_CFG_STS);
 
-	ret = nfp_net_link_update_common(dev, pf_hw, link, nn_link_status);
+	ret = nfp_net_link_update_common(dev, link, nn_link_status);
 
 	return ret;
 }
