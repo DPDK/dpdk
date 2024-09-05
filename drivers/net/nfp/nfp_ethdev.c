@@ -281,6 +281,7 @@ static int
 nfp_net_speed_configure(struct rte_eth_dev *dev)
 {
 	int ret;
+	uint8_t idx;
 	uint32_t speed_capa;
 	uint32_t link_speeds;
 	uint32_t configure_speed;
@@ -289,8 +290,9 @@ nfp_net_speed_configure(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw = dev->data->dev_private;
 	struct nfp_net_hw_priv *hw_priv = dev->process_private;
 
+	idx = nfp_net_get_idx(dev);
 	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
-	eth_port = &nfp_eth_table->ports[net_hw->idx];
+	eth_port = &nfp_eth_table->ports[idx];
 
 	speed_capa = hw_priv->pf_dev->speed_capa;
 	if (speed_capa == 0) {
@@ -308,7 +310,7 @@ nfp_net_speed_configure(struct rte_eth_dev *dev)
 
 	/* NFP4000 does not allow the port 0 25Gbps and port 1 10Gbps at the same time. */
 	if (net_hw->device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) {
-		ret = nfp_net_nfp4000_speed_configure_check(net_hw->idx,
+		ret = nfp_net_nfp4000_speed_configure_check(idx,
 				configure_speed, nfp_eth_table);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Failed to configure speed for NFP4000.");
