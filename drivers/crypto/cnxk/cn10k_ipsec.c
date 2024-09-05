@@ -135,7 +135,11 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, out_sa, false);
+	ret = roc_cpt_lf_ctx_flush(lf, out_sa, false);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush outbound session");
+		goto sa_dptr_free;
+	}
 
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_IPSEC;
 	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);
@@ -236,7 +240,11 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, in_sa, true);
+	ret = roc_cpt_lf_ctx_flush(lf, in_sa, true);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush inbound session");
+		goto sa_dptr_free;
+	}
 
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_IPSEC;
 	plt_atomic_thread_fence(__ATOMIC_SEQ_CST);

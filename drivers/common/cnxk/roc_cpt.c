@@ -826,7 +826,7 @@ roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 
 	if (err.s.flush_st_flt) {
 		plt_err("CTX flush could not complete due to store fault");
-		abort();
+		return -EFAULT;
 	}
 
 	return 0;

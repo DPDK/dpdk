@@ -707,7 +707,11 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, read_sa, true);
+	ret = roc_cpt_lf_ctx_flush(lf, read_sa, true);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush TLS read session to hardware");
+		goto sa_dptr_free;
+	}
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
@@ -796,7 +800,11 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Trigger CTX flush so that data is written back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, write_sa, false);
+	ret = roc_cpt_lf_ctx_flush(lf, write_sa, false);
+	if (ret == -EFAULT) {
+		plt_err("Could not flush TLS write session to hardware");
+		goto sa_dptr_free;
+	}
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
