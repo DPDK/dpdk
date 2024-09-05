@@ -1020,6 +1020,30 @@ rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *inst, ui
 	plt_err("Invalid cnxk model");
 }
 
+int
+rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
+			       struct rte_pmd_cnxk_crypto_cptr *cptr, bool invalidate)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(cptr == NULL)) {
+		plt_err("Invalid CPTR pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(!roc_model_is_cn10k())) {
+		plt_err("Invalid cnxk model");
+		return -EINVAL;
+	}
+
+	return roc_cpt_lf_ctx_flush(&qp->lf, cptr, invalidate);
+}
+
 struct rte_pmd_cnxk_crypto_cptr *
 rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 {

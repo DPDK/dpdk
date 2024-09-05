@@ -6,6 +6,7 @@ EXPERIMENTAL {
 	rte_pmd_cnxk_crypto_qptr_get;
 
 	# added in 24.07
+	rte_pmd_cnxk_crypto_cptr_flush;
 	rte_pmd_cnxk_crypto_cptr_get;
 };
 

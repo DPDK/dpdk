@@ -87,6 +87,31 @@ void rte_pmd_cnxk_crypto_submit(struct rte_pmd_cnxk_crypto_qptr *qptr, void *ins
 				uint16_t nb_inst);
 
 /**
+ * Flush the CPTR from CPT CTX cache.
+ *
+ * This API must be called only after the cryptodev and queue pair is configured and is started.
+ *
+ * @param qptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param cptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_cptr_get`` or any valid CPTR address that can be
+ *   used with CPT CTX cache.
+ * @param invalidate
+ *   If true, invalidate the CTX cache entry. If false, flush the CTX cache entry.
+ * @return
+ *   - 0 on success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ *     - -ENOTSUP if the operation is not supported.
+ *     - -EAGAIN if the operation is not successful.
+ *     - -EFAULT if the operation failed.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_cptr_flush(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				   struct rte_pmd_cnxk_crypto_cptr *cptr,
+				   bool invalidate);
+
+/**
  * Get the HW CPTR pointer from the rte_crypto/rte_security session.
  *
  * @param rte_sess
