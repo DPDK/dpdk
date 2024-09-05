@@ -742,7 +742,7 @@ nfp_net_allmulticast_disable(struct rte_eth_dev *dev)
 }
 
 static void
-nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
+nfp_net_pf_speed_update(struct rte_eth_dev *dev,
 		struct nfp_net_hw *hw,
 		struct nfp_net_hw_priv *hw_priv,
 		struct rte_eth_link *link)
@@ -807,14 +807,14 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 	hw_priv = dev->process_private;
 	if (link->link_status == RTE_ETH_LINK_UP) {
 		if (hw_priv->is_pf)
-			nfp_net_speed_aneg_update(dev, hw, hw_priv, link);
+			nfp_net_pf_speed_update(dev, hw, hw_priv, link);
 		else
 			nfp_net_vf_speed_update(link, link_status);
 	}
 
 	ret = rte_eth_linkstatus_set(dev, link);
 	if (ret == 0) {
-		if (link->link_status != 0)
+		if (link->link_status == RTE_ETH_LINK_UP)
 			PMD_DRV_LOG(INFO, "NIC Link is Up");
 		else
 			PMD_DRV_LOG(INFO, "NIC Link is Down");
