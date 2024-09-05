@@ -153,10 +153,10 @@ static const uint32_t nfp_net_link_speed_nfp2rte[] = {
 	[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
 };
 
-static uint16_t
-nfp_net_link_speed_rte2nfp(uint16_t speed)
+static size_t
+nfp_net_link_speed_rte2nfp(uint32_t speed)
 {
-	uint16_t i;
+	size_t i;
 
 	for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
 		if (speed == nfp_net_link_speed_nfp2rte[i])
