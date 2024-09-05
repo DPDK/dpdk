@@ -8,6 +8,8 @@ EXPERIMENTAL {
 	# added in 24.07
 	rte_pmd_cnxk_crypto_cptr_flush;
 	rte_pmd_cnxk_crypto_cptr_get;
+	rte_pmd_cnxk_crypto_cptr_read;
+	rte_pmd_cnxk_crypto_cptr_write;
 };
 
 INTERNAL {

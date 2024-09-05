@@ -124,4 +124,56 @@ __rte_experimental
 struct rte_pmd_cnxk_crypto_cptr *rte_pmd_cnxk_crypto_cptr_get(
 	struct rte_pmd_cnxk_crypto_sess *rte_sess);
 
+/**
+ * Read HW context (CPTR).
+ *
+ * @param qptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param cptr
+ *   Pointer obtained with ``rte_pmd_cnxk_crypto_cptr_get`` or any valid CPTR address that can be
+ *   used with CPT CTX cache.
+ * @param[out] data
+ *   Destination pointer to copy CPTR context for application.
+ * @param len
+ *   Length of CPTR context to copy into data parameter.
+ *
+ * @return
+ *   - 0 On success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ *     - -ENOTSUP if the operation is not supported.
+ *     - -EAGAIN if the operation is not successful.
+ *     - -EFAULT if the operation failed.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_cptr_read(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				  struct rte_pmd_cnxk_crypto_cptr *cptr, void *data,
+				  uint32_t len);
+
+/**
+ * Write HW context (CPTR).
+ *
+ * @param qptr
+ *  Pointer obtained with ``rte_pmd_cnxk_crypto_qptr_get``.
+ * @param cptr
+ *  Pointer obtained with ``rte_pmd_cnxk_crypto_cptr_get`` or any valid CPTR address that can be
+ *  used with CPT CTX cache.
+ * @param data
+ *  Source pointer to copy CPTR context from application.
+ * @param len
+ *  Length of CPTR context to copy from data parameter.
+ *
+ * @return
+ *   - 0 On success.
+ *   - Negative value on error.
+ *     - -EINVAL if the input parameters are invalid.
+ *     - -ENOTSUP if the operation is not supported.
+ *     - -EAGAIN if the operation is not successful.
+ *     - -EFAULT if the operation failed.
+ */
+__rte_experimental
+int rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
+				   struct rte_pmd_cnxk_crypto_cptr *cptr, void *data,
+				   uint32_t len);
+
 #endif /* _PMD_CNXK_CRYPTO_H_ */

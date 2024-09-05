@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_atomic.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
 #include <rte_errno.h>
@@ -1089,4 +1090,74 @@ rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 
 	plt_err("Invalid session type");
 	return NULL;
+}
+
+int
+rte_pmd_cnxk_crypto_cptr_read(struct rte_pmd_cnxk_crypto_qptr *qptr,
+			      struct rte_pmd_cnxk_crypto_cptr *cptr, void *data, uint32_t len)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	int ret;
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(cptr == NULL)) {
+		plt_err("Invalid CPTR pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(data == NULL)) {
+		plt_err("Invalid data pointer");
+		return -EINVAL;
+	}
+
+	ret = roc_cpt_lf_ctx_flush(&qp->lf, cptr, false);
+	if (ret)
+		return ret;
+
+	/* Wait for the flush to complete. */
+	rte_delay_ms(1);
+
+	memcpy(data, cptr, len);
+	return 0;
+}
+
+int
+rte_pmd_cnxk_crypto_cptr_write(struct rte_pmd_cnxk_crypto_qptr *qptr,
+			       struct rte_pmd_cnxk_crypto_cptr *cptr, void *data, uint32_t len)
+{
+	struct cnxk_cpt_qp *qp = PLT_PTR_CAST(qptr);
+	int ret;
+
+	if (unlikely(qptr == NULL)) {
+		plt_err("Invalid queue pair pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(cptr == NULL)) {
+		plt_err("Invalid CPTR pointer");
+		return -EINVAL;
+	}
+
+	if (unlikely(data == NULL)) {
+		plt_err("Invalid data pointer");
+		return -EINVAL;
+	}
+
+	ret = roc_cpt_ctx_write(&qp->lf, data, cptr, len);
+	if (ret) {
+		plt_err("Could not write to CPTR");
+		return ret;
+	}
+
+	ret = roc_cpt_lf_ctx_flush(&qp->lf, cptr, false);
+	if (ret)
+		return ret;
+
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
+
+	return 0;
 }
