@@ -81,8 +81,8 @@ rte_rcu_qsbr_init(struct rte_rcu_qsbr *v, uint32_t max_threads)
 int
 rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
-	unsigned int i, id, success;
-	uint64_t old_bmap, new_bmap;
+	unsigned int i, id;
+	uint64_t old_bmap;
 
 	if (v == NULL || thread_id >= v->max_threads) {
 		RCU_LOG(ERR, "Invalid input parameter");
@@ -97,31 +97,15 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	id = thread_id & __RTE_QSBR_THRID_MASK;
 	i = thread_id >> __RTE_QSBR_THRID_INDEX_SHIFT;
 
-	/* Make sure that the counter for registered threads does not
-	 * go out of sync. Hence, additional checks are required.
+	/* Add the thread to the bitmap of registered threads */
+	old_bmap = rte_atomic_fetch_or_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+						(1UL << id), rte_memory_order_release);
+
+	/* Increment the number of threads registered only if the thread was not already
+	 * registered
 	 */
-	/* Check if the thread is already registered */
-	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					rte_memory_order_relaxed);
-	if (old_bmap & 1UL << id)
-		return 0;
-
-	do {
-		new_bmap = old_bmap | (1UL << id);
-		success = rte_atomic_compare_exchange_strong_explicit(
-					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, new_bmap,
-					rte_memory_order_release, rte_memory_order_relaxed);
-
-		if (success)
-			rte_atomic_fetch_add_explicit(&v->num_threads,
-						1, rte_memory_order_relaxed);
-		else if (old_bmap & (1UL << id))
-			/* Someone else registered this thread.
-			 * Counter should not be incremented.
-			 */
-			return 0;
-	} while (success == 0);
+	if (!(old_bmap & (1UL << id)))
+		rte_atomic_fetch_add_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
@@ -132,8 +116,8 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 int
 rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
-	unsigned int i, id, success;
-	uint64_t old_bmap, new_bmap;
+	unsigned int i, id;
+	uint64_t old_bmap;
 
 	if (v == NULL || thread_id >= v->max_threads) {
 		RCU_LOG(ERR, "Invalid input parameter");
@@ -148,35 +132,18 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	id = thread_id & __RTE_QSBR_THRID_MASK;
 	i = thread_id >> __RTE_QSBR_THRID_INDEX_SHIFT;
 
-	/* Make sure that the counter for registered threads does not
-	 * go out of sync. Hence, additional checks are required.
+	/* Make sure any loads of the shared data structure are
+	 * completed before removal of the thread from the bitmap of
+	 * reporting threads.
 	 */
-	/* Check if the thread is already unregistered */
-	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					rte_memory_order_relaxed);
-	if (!(old_bmap & (1UL << id)))
-		return 0;
+	old_bmap = rte_atomic_fetch_and_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+						 ~(1UL << id), rte_memory_order_release);
 
-	do {
-		new_bmap = old_bmap & ~(1UL << id);
-		/* Make sure any loads of the shared data structure are
-		 * completed before removal of the thread from the list of
-		 * reporting threads.
-		 */
-		success = rte_atomic_compare_exchange_strong_explicit(
-					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, new_bmap,
-					rte_memory_order_release, rte_memory_order_relaxed);
-
-		if (success)
-			rte_atomic_fetch_sub_explicit(&v->num_threads,
-						1, rte_memory_order_relaxed);
-		else if (!(old_bmap & (1UL << id)))
-			/* Someone else unregistered this thread.
-			 * Counter should not be incremented.
-			 */
-			return 0;
-	} while (success == 0);
+	/* Decrement the number of threads unregistered only if the thread was not already
+	 * unregistered
+	 */
+	if (old_bmap & (1UL << id))
+		rte_atomic_fetch_sub_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
