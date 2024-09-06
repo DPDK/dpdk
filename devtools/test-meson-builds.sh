@@ -253,21 +253,18 @@ build build-x86-generic cc skipABI -Dcheck_includes=true \
 
 # 32-bit with default compiler
 if check_cc_flags '-m32' ; then
+	target_override='i386-pc-linux-gnu'
 	if [ -d '/usr/lib/i386-linux-gnu' ] ; then
-		# 32-bit pkgconfig on Debian/Ubuntu
-		export PKG_CONFIG_LIBDIR='/usr/lib/i386-linux-gnu/pkgconfig'
+		# 32-bit pkgconfig on Debian/Ubuntu, use cross file
+		build build-32b $srcdir/config/x86/cross-32bit-debian.ini ABI
 	elif [ -d '/usr/lib32' ] ; then
 		# 32-bit pkgconfig on Arch
-		export PKG_CONFIG_LIBDIR='/usr/lib32/pkgconfig'
+		build build-32b $srcdir/config/x86/cross-32bit-arch.ini ABI
 	else
 		# 32-bit pkgconfig on RHEL/Fedora (lib vs lib64)
-		export PKG_CONFIG_LIBDIR='/usr/lib/pkgconfig'
+		build build-32b $srcdir/config/x86/cross-32bit-fedora.ini ABI
 	fi
-	target_override='i386-pc-linux-gnu'
-	build build-32b cc ABI -Dc_args='-m32' -Dc_link_args='-m32' \
-			-Dcpp_args='-m32' -Dcpp_link_args='-m32'
 	target_override=
-	unset PKG_CONFIG_LIBDIR
 fi
 
 # x86 MinGW
