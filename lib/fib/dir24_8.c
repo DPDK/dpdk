@@ -530,8 +530,8 @@ dir24_8_create(const char *name, int socket_id, struct rte_fib_conf *fib_conf)
 
 	snprintf(mem_name, sizeof(mem_name), "DP_%s", name);
 	dp = rte_zmalloc_socket(name, sizeof(struct dir24_8_tbl) +
-		DIR24_8_TBL24_NUM_ENT * (1 << nh_sz), RTE_CACHE_LINE_SIZE,
-		socket_id);
+		DIR24_8_TBL24_NUM_ENT * (1 << nh_sz) + sizeof(uint32_t),
+		RTE_CACHE_LINE_SIZE, socket_id);
 	if (dp == NULL) {
 		rte_errno = ENOMEM;
 		return NULL;

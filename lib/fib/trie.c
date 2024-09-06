@@ -652,8 +652,8 @@ trie_create(const char *name, int socket_id,
 
 	snprintf(mem_name, sizeof(mem_name), "DP_%s", name);
 	dp = rte_zmalloc_socket(name, sizeof(struct rte_trie_tbl) +
-		TRIE_TBL24_NUM_ENT * (1 << nh_sz), RTE_CACHE_LINE_SIZE,
-		socket_id);
+		TRIE_TBL24_NUM_ENT * (1 << nh_sz) + sizeof(uint32_t),
+		RTE_CACHE_LINE_SIZE, socket_id);
 	if (dp == NULL) {
 		rte_errno = ENOMEM;
 		return dp;
