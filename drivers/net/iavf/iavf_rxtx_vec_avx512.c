@@ -1892,6 +1892,7 @@ iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 		uint32_t copied = 0;
 		/* n is multiple of 32 */
 		while (copied < n) {
+#ifdef RTE_ARCH_64
 			const __m512i a = _mm512_loadu_si512(&txep[copied]);
 			const __m512i b = _mm512_loadu_si512(&txep[copied + 8]);
 			const __m512i c = _mm512_loadu_si512(&txep[copied + 16]);
@@ -1901,6 +1902,12 @@ iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 			_mm512_storeu_si512(&cache_objs[copied + 8], b);
 			_mm512_storeu_si512(&cache_objs[copied + 16], c);
 			_mm512_storeu_si512(&cache_objs[copied + 24], d);
+#else
+			const __m512i a = _mm512_loadu_si512(&txep[copied]);
+			const __m512i b = _mm512_loadu_si512(&txep[copied + 16]);
+			_mm512_storeu_si512(&cache_objs[copied], a);
+			_mm512_storeu_si512(&cache_objs[copied + 16], b);
+#endif
 			copied += 32;
 		}
 		cache->len += n;
