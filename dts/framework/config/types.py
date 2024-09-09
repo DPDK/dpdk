@@ -121,6 +121,8 @@ class TestRunConfigDict(TypedDict):
     system_under_test_node: TestRunSUTConfigDict
     #:
     traffic_generator_node: str
+    #:
+    random_seed: int
 
 
 class ConfigurationDict(TypedDict):

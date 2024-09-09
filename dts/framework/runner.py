@@ -20,6 +20,7 @@ and the test case stage runs test cases individually.
 import importlib
 import inspect
 import os
+import random
 import re
 import sys
 from pathlib import Path
@@ -147,6 +148,7 @@ class DTSRunner:
                 self._logger.info(
                     f"Running test run with SUT '{test_run_config.system_under_test_node.name}'."
                 )
+                self._init_random_seed(test_run_config)
                 test_run_result = self._result.add_test_run(test_run_config)
                 # we don't want to modify the original config, so create a copy
                 test_run_test_suites = list(
@@ -723,3 +725,9 @@ class DTSRunner:
             self._logger.info("DTS execution has ended.")
 
         sys.exit(self._result.get_return_code())
+
+    def _init_random_seed(self, conf: TestRunConfiguration) -> None:
+        """Initialize the random seed to use for the test run."""
+        seed = SETTINGS.random_seed or conf.random_seed or random.randrange(0xFFFF_FFFF)
+        self._logger.info(f"Initializing test run with random seed {seed}.")
+        random.seed(seed)

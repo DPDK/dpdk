@@ -66,6 +66,12 @@ The command line arguments along with the supported environment variables are:
 
     Re-run each test case this many times in case of a failure.
 
+.. option:: --random-seed
+.. envvar:: DTS_RANDOM_SEED
+
+    The seed to use with the pseudo-random generator. If not specified, the configuration value is
+    used instead. If that's also not specified, a random seed is generated.
+
 The module provides one key module-level variable:
 
 Attributes:
@@ -115,6 +121,8 @@ class Settings:
     test_suites: list[TestSuiteConfig] = field(default_factory=list)
     #:
     re_run: int = 0
+    #:
+    random_seed: int | None = None
 
 
 SETTINGS: Settings = Settings()
@@ -374,6 +382,15 @@ def _get_parser() -> _DTSArgumentParser:
         metavar="N_TIMES",
     )
     _add_env_var_to_action(action, "RERUN")
+
+    action = parser.add_argument(
+        "--random-seed",
+        type=int,
+        help="The seed to use with the pseudo-random generator. If not specified, the configuration"
+        " value is used instead. If that's also not specified, a random seed is generated.",
+        metavar="NUMBER",
+    )
+    _add_env_var_to_action(action)
 
     return parser
 

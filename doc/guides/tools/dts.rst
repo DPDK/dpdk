@@ -251,6 +251,9 @@ DTS is run with ``main.py`` located in the ``dts`` directory after entering Poet
                            ... | DTS_TEST_SUITES='suite, suite case, ...' (default: [])
      --re-run N_TIMES, --re_run N_TIMES
                            [DTS_RERUN] Re-run each test case the specified number of times if a test failure occurs. (default: 0)
+     --random-seed NUMBER  [DTS_RANDOM_SEED] The seed to use with the pseudo-random generator.
+                           If not specified, the configuration value is used instead.
+                           If that's also not specified, a random seed is generated. (default: None)
 
 
 The brackets contain the names of environment variables that set the same thing.
@@ -547,6 +550,8 @@ involved in the testing. These can be defined with the following mappings:
    |                            |               | argument to DPDK. **Example**: ``crypto_openssl`` |
    +----------------------------+---------------+---------------------------------------------------+
    | ``traffic_generator_node`` | Node name for the traffic generator node.                         |
+   +----------------------------+-------------------------------------------------------------------+
+   | ``random_seed``            | (*optional*) *int* – Set a seed for pseudo-random generation.     |
    +----------------------------+-------------------------------------------------------------------+
 
 ``nodes``

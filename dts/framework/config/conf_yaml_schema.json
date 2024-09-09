@@ -379,6 +379,10 @@
           },
           "traffic_generator_node": {
             "$ref": "#/definitions/node_name"
+          },
+          "random_seed": {
+            "type": "integer",
+            "description": "Optional field. Allows you to set a seed for pseudo-random generation."
           }
         },
         "additionalProperties": false,

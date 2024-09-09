@@ -445,6 +445,7 @@ class TestRunConfiguration:
         system_under_test_node: The SUT node to use in this test run.
         traffic_generator_node: The TG node to use in this test run.
         vdevs: The names of virtual devices to test.
+        random_seed: The seed to use for pseudo-random generation.
     """
 
     build_targets: list[BuildTargetConfiguration]
@@ -455,6 +456,7 @@ class TestRunConfiguration:
     system_under_test_node: SutNodeConfiguration
     traffic_generator_node: TGNodeConfiguration
     vdevs: list[str]
+    random_seed: int | None
 
     @classmethod
     def from_dict(
@@ -497,6 +499,7 @@ class TestRunConfiguration:
         vdevs = (
             d["system_under_test_node"]["vdevs"] if "vdevs" in d["system_under_test_node"] else []
         )
+        random_seed = d.get("random_seed", None)
         return cls(
             build_targets=build_targets,
             perf=d["perf"],
@@ -506,6 +509,7 @@ class TestRunConfiguration:
             system_under_test_node=system_under_test_node,
             traffic_generator_node=traffic_generator_node,
             vdevs=vdevs,
+            random_seed=random_seed,
         )
 
     def copy_and_modify(self, **kwargs) -> Self:
