@@ -14,16 +14,17 @@ Typical usage example in a TestSuite::
     testpmd_shell.close()
 """
 
+import functools
 import re
 import time
 from dataclasses import dataclass, field
 from enum import Flag, auto
 from pathlib import PurePath
-from typing import ClassVar
+from typing import Any, Callable, ClassVar, Concatenate, ParamSpec
 
 from typing_extensions import Self, Unpack
 
-from framework.exception import InteractiveCommandExecutionError
+from framework.exception import InteractiveCommandExecutionError, InternalError
 from framework.params.testpmd import SimpleForwardingModes, TestPmdParams
 from framework.params.types import TestPmdParamsDict
 from framework.parser import ParserFn, TextParser
@@ -32,6 +33,9 @@ from framework.settings import SETTINGS
 from framework.testbed_model.cpu import LogicalCoreCount, LogicalCoreList
 from framework.testbed_model.sut_node import SutNode
 from framework.utils import StrEnum
+
+P = ParamSpec("P")
+TestPmdShellMethod = Callable[Concatenate["TestPmdShell", P], Any]
 
 
 class TestPmdDevice:
@@ -577,12 +581,57 @@ class TestPmdPortStats(TextParser):
     tx_bps: int = field(metadata=TextParser.find_int(r"Tx-bps:\s+(\d+)"))
 
 
+def requires_stopped_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
+    """Decorator for :class:`TestPmdShell` commands methods that require stopped ports.
+
+    If the decorated method is called while the ports are started, then these are stopped before
+    continuing.
+
+    Args:
+        func: The :class:`TestPmdShell` method to decorate.
+    """
+
+    @functools.wraps(func)
+    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+        if self.ports_started:
+            self._logger.debug("Ports need to be stopped to continue.")
+            self.stop_all_ports()
+
+        return func(self, *args, **kwargs)
+
+    return _wrapper
+
+
+def requires_started_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
+    """Decorator for :class:`TestPmdShell` commands methods that require started ports.
+
+    If the decorated method is called while the ports are stopped, then these are started before
+    continuing.
+
+    Args:
+        func: The :class:`TestPmdShell` method to decorate.
+    """
+
+    @functools.wraps(func)
+    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+        if not self.ports_started:
+            self._logger.debug("Ports need to be started to continue.")
+            self.start_all_ports()
+
+        return func(self, *args, **kwargs)
+
+    return _wrapper
+
+
 class TestPmdShell(DPDKShell):
     """Testpmd interactive shell.
 
     The testpmd shell users should never use
     the :meth:`~.interactive_shell.InteractiveShell.send_command` method directly, but rather
     call specialized methods. If there isn't one that satisfies a need, it should be added.
+
+    Attributes:
+        ports_started: Indicates whether the ports are started.
     """
 
     _app_params: TestPmdParams
@@ -595,6 +644,8 @@ class TestPmdShell(DPDKShell):
 
     #: This forces the prompt to appear after sending a command.
     _command_extra_chars: ClassVar[str] = "\n"
+
+    ports_started: bool
 
     def __init__(
         self,
@@ -619,6 +670,9 @@ class TestPmdShell(DPDKShell):
             name,
         )
 
+        self.ports_started = not self._app_params.disable_device_start
+
+    @requires_started_ports
     def start(self, verify: bool = True) -> None:
         """Start packet forwarding with the current configuration.
 
@@ -722,6 +776,42 @@ class TestPmdShell(DPDKShell):
             raise InteractiveCommandExecutionError(
                 f"Test pmd failed to set fwd mode to {mode.value}"
             )
+
+    def stop_all_ports(self, verify: bool = True) -> None:
+        """Stops all the ports.
+
+        Args:
+            verify: If :data:`True`, the output of the command will be checked for a successful
+                execution.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the ports were not
+                stopped successfully.
+        """
+        self._logger.debug("Stopping all the ports...")
+        output = self.send_command("port stop all")
+        if verify and not output.strip().endswith("Done"):
+            raise InteractiveCommandExecutionError("Ports were not stopped successfully.")
+
+        self.ports_started = False
+
+    def start_all_ports(self, verify: bool = True) -> None:
+        """Starts all the ports.
+
+        Args:
+            verify: If :data:`True`, the output of the command will be checked for a successful
+                execution.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the ports were not
+                started successfully.
+        """
+        self._logger.debug("Starting all the ports...")
+        output = self.send_command("port start all")
+        if verify and not output.strip().endswith("Done"):
+            raise InteractiveCommandExecutionError("Ports were not started successfully.")
+
+        self.ports_started = True
 
     def show_port_info_all(self) -> list[TestPmdPort]:
         """Returns the information of all the ports.
