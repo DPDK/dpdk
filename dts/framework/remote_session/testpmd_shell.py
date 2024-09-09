@@ -813,6 +813,22 @@ class TestPmdShell(DPDKShell):
 
         self.ports_started = True
 
+    @requires_stopped_ports
+    def set_ports_queues(self, number_of: int) -> None:
+        """Sets the number of queues per port.
+
+        Args:
+            number_of: The number of RX/TX queues to create per port.
+
+        Raises:
+            InternalError: If `number_of` is invalid.
+        """
+        if number_of < 1:
+            raise InternalError("The number of queues must be positive and non-zero.")
+
+        self.send_command(f"port config all rxq {number_of}")
+        self.send_command(f"port config all txq {number_of}")
+
     def show_port_info_all(self) -> list[TestPmdPort]:
         """Returns the information of all the ports.
 
