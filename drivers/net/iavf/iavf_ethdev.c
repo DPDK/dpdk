@@ -2962,6 +2962,7 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	if (vf->promisc_unicast_enabled || vf->promisc_multicast_enabled)
 		iavf_config_promisc(adapter, false, false);
 
+	iavf_vf_reset(hw);
 	iavf_shutdown_adminq(hw);
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
 		/* disable uio intr before callback unregister */
@@ -3041,17 +3042,6 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-
-	if (!vf->in_reset_recovery) {
-		ret = iavf_aq_send_msg_to_pf(hw, VIRTCHNL_OP_RESET_VF,
-						IAVF_SUCCESS, NULL, 0, NULL);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "fail to send cmd VIRTCHNL_OP_RESET_VF");
-			return ret;
-		}
-	}
-
 	/*
 	 * Check whether the VF reset has been done and inform application,
 	 * to avoid calling the virtual channel command, which may cause

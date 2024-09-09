@@ -7,6 +7,7 @@ INTERNAL {
 	iavf_set_mac_type;
 	iavf_shutdown_adminq;
 	iavf_vf_parse_hw_config;
+	iavf_vf_reset;
 
 	local: *;
 };

@@ -79,6 +79,7 @@ STATIC INLINE struct iavf_rx_ptype_decoded decode_rx_desc_ptype(u8 ptype)
 __rte_internal
 void iavf_vf_parse_hw_config(struct iavf_hw *hw,
 			     struct virtchnl_vf_resource *msg);
+__rte_internal
 enum iavf_status iavf_vf_reset(struct iavf_hw *hw);
 __rte_internal
 enum iavf_status iavf_aq_send_msg_to_pf(struct iavf_hw *hw,
