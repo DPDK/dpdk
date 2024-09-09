@@ -13,12 +13,13 @@ needed by subclasses:
     * Test case verification.
 """
 
+from collections import Counter
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
 from typing import ClassVar, Union
 
 from scapy.layers.inet import IP  # type: ignore[import-untyped]
 from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
-from scapy.packet import Packet, Padding  # type: ignore[import-untyped]
+from scapy.packet import Packet, Padding, raw  # type: ignore[import-untyped]
 
 from framework.testbed_model.port import Port, PortLink
 from framework.testbed_model.sut_node import SutNode
@@ -199,9 +200,34 @@ class TestSuite:
         Returns:
             A list of received packets.
         """
-        packet = self._adjust_addresses(packet)
-        return self.tg_node.send_packet_and_capture(
-            packet,
+        return self.send_packets_and_capture(
+            [packet],
+            filter_config,
+            duration,
+        )
+
+    def send_packets_and_capture(
+        self,
+        packets: list[Packet],
+        filter_config: PacketFilteringConfig = PacketFilteringConfig(),
+        duration: float = 1,
+    ) -> list[Packet]:
+        """Send and receive `packets` using the associated TG.
+
+        Send `packets` through the appropriate interface and receive on the appropriate interface.
+        Modify the packets with l3/l2 addresses corresponding to the testbed and desired traffic.
+
+        Args:
+            packets: The packets to send.
+            filter_config: The filter to use when capturing packets.
+            duration: Capture traffic for this amount of time after sending `packet`.
+
+        Returns:
+            A list of received packets.
+        """
+        packets = [self._adjust_addresses(packet) for packet in packets]
+        return self.tg_node.send_packets_and_capture(
+            packets,
             self._tg_port_egress,
             self._tg_port_ingress,
             filter_config,
@@ -302,6 +328,40 @@ class TestSuite:
                 f"not found among received {get_packet_summaries(received_packets)}"
             )
             self._fail_test_case_verify("An expected packet not found among received packets.")
+
+    def match_all_packets(
+        self, expected_packets: list[Packet], received_packets: list[Packet]
+    ) -> None:
+        """Matches all the expected packets against the received ones.
+
+        Matching is performed by counting down the occurrences in a dictionary which keys are the
+        raw packet bytes. No deep packet comparison is performed. All the unexpected packets (noise)
+        are automatically ignored.
+
+        Args:
+            expected_packets: The packets we are expecting to receive.
+            received_packets: All the packets that were received.
+
+        Raises:
+            TestCaseVerifyError: if and not all the `expected_packets` were found in
+                `received_packets`.
+        """
+        expected_packets_counters = Counter(map(raw, expected_packets))
+        received_packets_counters = Counter(map(raw, received_packets))
+        # The number of expected packets is subtracted by the number of received packets, ignoring
+        # any unexpected packets and capping at zero.
+        missing_packets_counters = expected_packets_counters - received_packets_counters
+        missing_packets_count = missing_packets_counters.total()
+        self._logger.debug(
+            f"match_all_packets: expected {len(expected_packets)}, "
+            f"received {len(received_packets)}, missing {missing_packets_count}"
+        )
+
+        if missing_packets_count != 0:
+            self._fail_test_case_verify(
+                f"Not all packets were received, expected {len(expected_packets)} "
+                f"but {missing_packets_count} were missing."
+            )
 
     def _compare_packets(self, expected_packet: Packet, received_packet: Packet) -> bool:
         self._logger.debug(

@@ -63,37 +63,6 @@ class CapturingTrafficGenerator(TrafficGenerator):
         """This traffic generator can capture traffic."""
         return True
 
-    def send_packet_and_capture(
-        self,
-        packet: Packet,
-        send_port: Port,
-        receive_port: Port,
-        filter_config: PacketFilteringConfig,
-        duration: float,
-        capture_name: str = _get_default_capture_name(),
-    ) -> list[Packet]:
-        """Send `packet` and capture received traffic.
-
-        Send `packet` on `send_port` and then return all traffic captured
-        on `receive_port` for the given `duration`.
-
-        The captured traffic is recorded in the `capture_name`.pcap file.
-
-        Args:
-            packet: The packet to send.
-            send_port: The egress port on the TG node.
-            receive_port: The ingress port in the TG node.
-            filter_config: Filters to apply when capturing packets.
-            duration: Capture traffic for this amount of time after sending the packet.
-            capture_name: The name of the .pcap file where to store the capture.
-
-        Returns:
-             The received packets. May be empty if no packets are captured.
-        """
-        return self.send_packets_and_capture(
-            [packet], send_port, receive_port, filter_config, duration, capture_name
-        )
-
     def send_packets_and_capture(
         self,
         packets: list[Packet],

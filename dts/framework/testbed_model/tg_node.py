@@ -51,22 +51,22 @@ class TGNode(Node):
         self.traffic_generator = create_traffic_generator(self, node_config.traffic_generator)
         self._logger.info(f"Created node: {self.name}")
 
-    def send_packet_and_capture(
+    def send_packets_and_capture(
         self,
-        packet: Packet,
+        packets: list[Packet],
         send_port: Port,
         receive_port: Port,
         filter_config: PacketFilteringConfig = PacketFilteringConfig(),
         duration: float = 1,
     ) -> list[Packet]:
-        """Send `packet`, return received traffic.
+        """Send `packets`, return received traffic.
 
-        Send `packet` on `send_port` and then return all traffic captured
+        Send `packets` on `send_port` and then return all traffic captured
         on `receive_port` for the given duration. Also record the captured traffic
         in a pcap file.
 
         Args:
-            packet: The packet to send.
+            packets: The packets to send.
             send_port: The egress port on the TG node.
             receive_port: The ingress port in the TG node.
             filter_config: The filter to use when capturing packets.
@@ -75,8 +75,8 @@ class TGNode(Node):
         Returns:
              A list of received packets. May be empty if no packets are captured.
         """
-        return self.traffic_generator.send_packet_and_capture(
-            packet,
+        return self.traffic_generator.send_packets_and_capture(
+            packets,
             send_port,
             receive_port,
             filter_config,
