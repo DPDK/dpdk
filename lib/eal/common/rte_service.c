@@ -57,6 +57,8 @@ struct __rte_cache_aligned rte_service_spec_impl {
 
 struct service_stats {
 	RTE_ATOMIC(uint64_t) calls;
+	RTE_ATOMIC(uint64_t) idle_calls;
+	RTE_ATOMIC(uint64_t) error_calls;
 	RTE_ATOMIC(uint64_t) cycles;
 };
 
@@ -369,6 +371,21 @@ rte_service_runstate_get(uint32_t id)
 
 }
 
+static void
+service_counter_add(RTE_ATOMIC(uint64_t) *counter, uint64_t operand)
+{
+	/* The lcore service worker thread is the only writer, and
+	 * thus only a non-atomic load and an atomic store is needed,
+	 * and not the more expensive atomic add.
+	 */
+	uint64_t value;
+
+	value = rte_atomic_load_explicit(counter, rte_memory_order_relaxed);
+
+	rte_atomic_store_explicit(counter, value + operand,
+				  rte_memory_order_relaxed);
+}
+
 static inline void
 service_runner_do_callback(struct rte_service_spec_impl *s,
 			   struct core_state *cs, uint32_t service_idx)
@@ -380,27 +397,23 @@ service_runner_do_callback(struct rte_service_spec_impl *s,
 		uint64_t start = rte_rdtsc();
 		int rc = s->spec.callback(userdata);
 
-		/* The lcore service worker thread is the only writer,
-		 * and thus only a non-atomic load and an atomic store
-		 * is needed, and not the more expensive atomic
-		 * add.
-		 */
 		struct service_stats *service_stats =
 			&cs->service_stats[service_idx];
+
+		service_counter_add(&service_stats->calls, 1);
+
+		if (rc == -EAGAIN)
+			service_counter_add(&service_stats->idle_calls, 1);
+		else if (rc != 0)
+			service_counter_add(&service_stats->error_calls, 1);
 
 		if (likely(rc != -EAGAIN)) {
 			uint64_t end = rte_rdtsc();
 			uint64_t cycles = end - start;
 
-			rte_atomic_store_explicit(&cs->cycles, cs->cycles + cycles,
-				rte_memory_order_relaxed);
-			rte_atomic_store_explicit(&service_stats->cycles,
-				service_stats->cycles + cycles,
-				rte_memory_order_relaxed);
+			service_counter_add(&cs->cycles, cycles);
+			service_counter_add(&service_stats->cycles, cycles);
 		}
-
-		rte_atomic_store_explicit(&service_stats->calls,
-			service_stats->calls + 1, rte_memory_order_relaxed);
 	} else {
 		s->spec.callback(userdata);
 	}
@@ -868,6 +881,24 @@ lcore_attr_get_service_calls(uint32_t service_id, unsigned int lcore)
 }
 
 static uint64_t
+lcore_attr_get_service_idle_calls(uint32_t service_id, unsigned int lcore)
+{
+	struct core_state *cs = &lcore_states[lcore];
+
+	return rte_atomic_load_explicit(&cs->service_stats[service_id].idle_calls,
+		rte_memory_order_relaxed);
+}
+
+static uint64_t
+lcore_attr_get_service_error_calls(uint32_t service_id, unsigned int lcore)
+{
+	struct core_state *cs = &lcore_states[lcore];
+
+	return rte_atomic_load_explicit(&cs->service_stats[service_id].error_calls,
+		rte_memory_order_relaxed);
+}
+
+static uint64_t
 lcore_attr_get_service_cycles(uint32_t service_id, unsigned int lcore)
 {
 	struct core_state *cs = &lcore_states[lcore];
@@ -900,6 +931,18 @@ attr_get_service_calls(uint32_t service_id)
 }
 
 static uint64_t
+attr_get_service_idle_calls(uint32_t service_id)
+{
+	return attr_get(service_id, lcore_attr_get_service_idle_calls);
+}
+
+static uint64_t
+attr_get_service_error_calls(uint32_t service_id)
+{
+	return attr_get(service_id, lcore_attr_get_service_error_calls);
+}
+
+static uint64_t
 attr_get_service_cycles(uint32_t service_id)
 {
 	return attr_get(service_id, lcore_attr_get_service_cycles);
@@ -917,6 +960,12 @@ rte_service_attr_get(uint32_t id, uint32_t attr_id, uint64_t *attr_value)
 	switch (attr_id) {
 	case RTE_SERVICE_ATTR_CALL_COUNT:
 		*attr_value = attr_get_service_calls(id);
+		return 0;
+	case RTE_SERVICE_ATTR_IDLE_CALL_COUNT:
+		*attr_value = attr_get_service_idle_calls(id);
+		return 0;
+	case RTE_SERVICE_ATTR_ERROR_CALL_COUNT:
+		*attr_value = attr_get_service_error_calls(id);
 		return 0;
 	case RTE_SERVICE_ATTR_CYCLES:
 		*attr_value = attr_get_service_cycles(id);

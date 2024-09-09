@@ -55,6 +55,18 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Extended service cores statistics.**
+
+  Two new per-service counters are added to the service cores framework.
+
+  * ``RTE_SERVICE_ATTR_IDLE_CALL_COUNT`` tracks the number of service function
+    invocations where no actual work was performed.
+
+  * ``RTE_SERVICE_ATTR_ERROR_CALL_COUNT`` tracks the number invocations
+    resulting in an error.
+
+  The new statistics are useful for debugging and profiling.
+
 
 Removed Items
 -------------
