@@ -27,6 +27,7 @@ apps = [
         'test-pmd',
         'test-regex',
         'test-sad',
+        'sniffer',
         'test-security-perf',
 ]
 
