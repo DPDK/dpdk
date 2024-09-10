@@ -187,6 +187,8 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_SYNCE_SET_CGU_DPLL_CONFIG = 126,
 	VIRTCHNL_OP_SYNCE_GET_CGU_INFO = 127,
 	VIRTCHNL_OP_SYNCE_GET_HW_INFO = 128,
+	VIRTCHNL_OP_GNSS_READ_I2C = 129,
+	VIRTCHNL_OP_GNSS_WRITE_I2C = 130,
 	VIRTCHNL_OP_MAX,
 };
 
@@ -335,6 +337,10 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 		return "VIRTCHNL_OP_SYNCE_GET_CGU_INFO";
 	case VIRTCHNL_OP_SYNCE_GET_HW_INFO:
 		return "VIRTCHNL_OP_SYNCE_GET_HW_INFO";
+	case VIRTCHNL_OP_GNSS_READ_I2C:
+		return "VIRTCHNL_OP_GNSS_READ_I2C";
+	case VIRTCHNL_OP_GNSS_WRITE_I2C:
+		return "VIRTCHNL_OP_GNSS_WRITE_I2C";
 	case VIRTCHNL_OP_FLOW_SUBSCRIBE:
 		return "VIRTCHNL_OP_FLOW_SUBSCRIBE";
 	case VIRTCHNL_OP_FLOW_UNSUBSCRIBE:
@@ -2182,6 +2188,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_quanta_cfg);
 #define VIRTCHNL_1588_PTP_CAP_WRITE_PHC		BIT(3)
 #define VIRTCHNL_1588_PTP_CAP_PHC_REGS		BIT(4)
 #define VIRTCHNL_1588_PTP_CAP_SYNCE			BIT(6)
+#define VIRTCHNL_1588_PTP_CAP_GNSS			BIT(7)
 
 struct virtchnl_phc_regs {
 	u32 clock_hi;
@@ -2447,6 +2454,59 @@ struct virtchnl_synce_get_hw_info {
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(72, virtchnl_synce_get_hw_info);
+
+struct virtchnl_link_topo_params {
+	u8 lport_num;
+	u8 lport_num_valid;
+	u8 node_type_ctx;
+#define VIRTCHNL_LINK_TOPO_NODE_TYPE_GPS	11
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_S		4
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_M		\
+				(0xF << VIRTCHNL_LINK_TOPO_NODE_CTX_S)
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_GLOBAL	0
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_BOARD	1
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_PORT	2
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_NODE	3
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_PROVIDED	4
+#define VIRTCHNL_LINK_TOPO_NODE_CTX_OVERRIDE	5
+	u8 index;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(4, virtchnl_link_topo_params);
+
+struct virtchnl_link_topo_addr {
+	struct virtchnl_link_topo_params topo_params;
+	u16  handle;
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(6, virtchnl_link_topo_addr);
+
+struct virtchnl_gnss_i2c {
+	struct virtchnl_link_topo_addr topo_addr;
+	u16 i2c_addr;
+	u8 i2c_params;
+#define VIRTCHNL_I2C_DATA_SIZE_S	0
+#define VIRTCHNL_I2C_DATA_SIZE_M	(0xF << VIRTCHNL_I2C_DATA_SIZE_S)
+#define VIRTCHNL_I2C_ADDR_TYPE_M	BIT(4)
+#define VIRTCHNL_I2C_ADDR_TYPE_7BIT	0
+#define VIRTCHNL_I2C_ADDR_TYPE_10BIT	VIRTCHNL_I2C_ADDR_TYPE_M
+#define VIRTCHNL_I2C_DATA_OFFSET_S	5
+#define VIRTCHNL_I2C_DATA_OFFSET_M	(0x3 << VIRTCHNL_I2C_DATA_OFFSET_S)
+#define VIRTCHNL_I2C_USE_REPEATED_START	BIT(7)
+	u8 rsvd;
+	u16 i2c_bus_addr;
+#define VIRTCHNL_I2C_ADDR_7BIT_MASK	0x7F
+#define VIRTCHNL_I2C_ADDR_10BIT_MASK	0x3FF
+	u8 i2c_data[4]; /* Used only by write command, reserved in read. */
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_gnss_i2c);
+
+struct virtchnl_gnss_read_i2c_resp {
+	u8 i2c_data[16];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_gnss_read_i2c_resp);
 
 /* Since VF messages are limited by u16 size, precalculate the maximum possible
  * values of nested elements in virtchnl structures that virtual channel can
@@ -2824,6 +2884,12 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 	case VIRTCHNL_OP_SYNCE_GET_CGU_INFO:
 		break;
 	case VIRTCHNL_OP_SYNCE_GET_HW_INFO:
+		break;
+	case VIRTCHNL_OP_GNSS_READ_I2C:
+		valid_len = sizeof(struct virtchnl_gnss_i2c);
+		break;
+	case VIRTCHNL_OP_GNSS_WRITE_I2C:
+		valid_len = sizeof(struct virtchnl_gnss_i2c);
 		break;
 	case VIRTCHNL_OP_ENABLE_QUEUES_V2:
 	case VIRTCHNL_OP_DISABLE_QUEUES_V2:
