@@ -841,7 +841,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 	dlb2_dev->enqueue_four = dlb2_movdir64b;
 
-	DLB2_LOG_INFO(" for %s: cpu core used in pp profiling: %d\n",
+	DLB2_HW_INFO(hw, " for %s: cpu core used in pp profiling: %d\n",
 		      is_ldb ? "LDB" : "DIR", cpu);
 
 	memset(cos_cycles, 0, num_sort * sizeof(struct dlb2_pp_thread_data));
@@ -854,7 +854,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 		err = rte_thread_attr_init(&th_attr);
 		if (err != 0) {
-			DLB2_LOG_ERR(": thread attribute failed! err=%d", err);
+			DLB2_HW_ERR(hw, ": thread attribute failed! err=%d\n", err);
 			return;
 		}
 		CPU_SET(cpu, &th_attr.cpuset);
@@ -862,7 +862,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 		err = rte_thread_create(&thread, &th_attr,
 				&dlb2_pp_profile_func, &dlb2_thread_data[i]);
 		if (err) {
-			DLB2_LOG_ERR(": thread creation failed! err=%d", err);
+			DLB2_HW_ERR(hw, ": thread creation failed! err=%d\n", err);
 			return;
 		}
 
@@ -871,7 +871,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 		err = rte_thread_join(thread, NULL);
 		if (err) {
-			DLB2_LOG_ERR(": thread join failed! err=%d", err);
+			DLB2_HW_ERR(hw, ": thread join failed! err=%d\n", err);
 			return;
 		}
 
@@ -911,7 +911,7 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 
 	for (i = 0; i < num_ports; i++) {
 		port_allocations[i] = dlb2_thread_data[i].pp;
-		DLB2_LOG_INFO(": pp %d cycles %d", port_allocations[i],
+		DLB2_HW_INFO(hw, ": pp %d cycles %d\n", port_allocations[i],
 			      dlb2_thread_data[i].cycles);
 	}
 
@@ -929,7 +929,7 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 	}
 
 	if (mask && rte_eal_parse_coremask(mask, cores)) {
-		DLB2_LOG_ERR(": Invalid producer coremask=%s", mask);
+		DLB2_HW_ERR(hw, ": Invalid producer coremask=%s\n", mask);
 		return -1;
 	}
 
@@ -956,7 +956,7 @@ dlb2_resource_probe(struct dlb2_hw *hw, const void *probe_args)
 				break;
 			}
 		} else if (is_pcore) {
-			DLB2_LOG_ERR("Producer coremask(%s) must be a subset of EAL coremask",
+			DLB2_HW_ERR(hw, "Producer coremask(%s) must be a subset of EAL coremask\n",
 				     mask);
 			return -1;
 		}
@@ -4599,7 +4599,7 @@ dlb2_verify_create_ldb_port_args(struct dlb2_hw *hw,
 		return -EINVAL;
 	}
 
-	DLB2_LOG_INFO(": LDB: cos=%d port:%d\n", id, port->id.phys_id);
+	DLB2_HW_INFO(hw, ": LDB: cos=%d port:%d\n", id, port->id.phys_id);
 
 	/* Check cache-line alignment */
 	if ((cq_dma_base & 0x3F) != 0) {
@@ -4826,7 +4826,7 @@ dlb2_verify_create_dir_port_args(struct dlb2_hw *hw,
 			resp->status = DLB2_ST_DIR_PORTS_UNAVAILABLE;
 			return -EINVAL;
 		}
-		DLB2_LOG_INFO(": DIR: port:%d is_producer=%d\n",
+		DLB2_HW_INFO(hw, ": DIR: port:%d is_producer=%d\n",
 			      pq->id.phys_id, args->is_producer);
 
 	}
