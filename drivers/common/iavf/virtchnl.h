@@ -174,6 +174,19 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_CONFIG_QUANTA = 113,
 	VIRTCHNL_OP_FLOW_SUBSCRIBE = 114,
 	VIRTCHNL_OP_FLOW_UNSUBSCRIBE = 115,
+	VIRTCHNL_OP_SYNCE_GET_PHY_REC_CLK_OUT = 116,
+	VIRTCHNL_OP_SYNCE_SET_PHY_REC_CLK_OUT = 117,
+	VIRTCHNL_OP_SYNCE_GET_CGU_REF_PRIO = 118,
+	VIRTCHNL_OP_SYNCE_SET_CGU_REF_PRIO = 119,
+	VIRTCHNL_OP_SYNCE_GET_INPUT_PIN_CFG = 120,
+	VIRTCHNL_OP_SYNCE_SET_INPUT_PIN_CFG = 121,
+	VIRTCHNL_OP_SYNCE_GET_OUTPUT_PIN_CFG = 122,
+	VIRTCHNL_OP_SYNCE_SET_OUTPUT_PIN_CFG = 123,
+	VIRTCHNL_OP_SYNCE_GET_CGU_ABILITIES = 124,
+	VIRTCHNL_OP_SYNCE_GET_CGU_DPLL_STATUS = 125,
+	VIRTCHNL_OP_SYNCE_SET_CGU_DPLL_CONFIG = 126,
+	VIRTCHNL_OP_SYNCE_GET_CGU_INFO = 127,
+	VIRTCHNL_OP_SYNCE_GET_HW_INFO = 128,
 	VIRTCHNL_OP_MAX,
 };
 
@@ -296,6 +309,32 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 		return "VIRTCHNL_OP_1588_PTP_ADJ_FREQ";
 	case VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP:
 		return "VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP";
+	case VIRTCHNL_OP_SYNCE_GET_PHY_REC_CLK_OUT:
+		return "VIRTCHNL_OP_SYNCE_GET_PHY_REC_CLK_OUT";
+	case VIRTCHNL_OP_SYNCE_SET_PHY_REC_CLK_OUT:
+		return "VIRTCHNL_OP_SYNCE_SET_PHY_REC_CLK_OUT";
+	case VIRTCHNL_OP_SYNCE_GET_CGU_REF_PRIO:
+		return "VIRTCHNL_OP_SYNCE_GET_CGU_REF_PRIO";
+	case VIRTCHNL_OP_SYNCE_SET_CGU_REF_PRIO:
+		return "VIRTCHNL_OP_SYNCE_SET_CGU_REF_PRIO";
+	case VIRTCHNL_OP_SYNCE_GET_INPUT_PIN_CFG:
+		return "VIRTCHNL_OP_SYNCE_GET_INPUT_PIN_CFG";
+	case VIRTCHNL_OP_SYNCE_SET_INPUT_PIN_CFG:
+		return "VIRTCHNL_OP_SYNCE_SET_INPUT_PIN_CFG";
+	case VIRTCHNL_OP_SYNCE_GET_OUTPUT_PIN_CFG:
+		return "VIRTCHNL_OP_SYNCE_GET_OUTPUT_PIN_CFG";
+	case VIRTCHNL_OP_SYNCE_SET_OUTPUT_PIN_CFG:
+		return "VIRTCHNL_OP_SYNCE_SET_OUTPUT_PIN_CFG";
+	case VIRTCHNL_OP_SYNCE_GET_CGU_ABILITIES:
+		return "VIRTCHNL_OP_SYNCE_GET_CGU_ABILITIES";
+	case VIRTCHNL_OP_SYNCE_GET_CGU_DPLL_STATUS:
+		return "VIRTCHNL_OP_SYNCE_GET_CGU_DPLL_STATUS";
+	case VIRTCHNL_OP_SYNCE_SET_CGU_DPLL_CONFIG:
+		return "VIRTCHNL_OP_SYNCE_SET_CGU_DPLL_CONFIG";
+	case VIRTCHNL_OP_SYNCE_GET_CGU_INFO:
+		return "VIRTCHNL_OP_SYNCE_GET_CGU_INFO";
+	case VIRTCHNL_OP_SYNCE_GET_HW_INFO:
+		return "VIRTCHNL_OP_SYNCE_GET_HW_INFO";
 	case VIRTCHNL_OP_FLOW_SUBSCRIBE:
 		return "VIRTCHNL_OP_FLOW_SUBSCRIBE";
 	case VIRTCHNL_OP_FLOW_UNSUBSCRIBE:
@@ -2142,6 +2181,7 @@ VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_quanta_cfg);
 #define VIRTCHNL_1588_PTP_CAP_READ_PHC		BIT(2)
 #define VIRTCHNL_1588_PTP_CAP_WRITE_PHC		BIT(3)
 #define VIRTCHNL_1588_PTP_CAP_PHC_REGS		BIT(4)
+#define VIRTCHNL_1588_PTP_CAP_SYNCE			BIT(6)
 
 struct virtchnl_phc_regs {
 	u32 clock_hi;
@@ -2195,6 +2235,218 @@ struct virtchnl_phc_tx_tstamp {
 	u8 rsvd[8];
 };
 VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_phc_tx_tstamp);
+
+struct virtchnl_synce_get_phy_rec_clk_out {
+	u8 phy_output;
+	u8 port_num;
+#define VIRTCHNL_GET_PHY_REC_CLK_OUT_CURR_PORT	0xFF
+	u8 flags;
+#define VIRTCHNL_GET_PHY_REC_CLK_OUT_OUT_EN	BIT(0)
+	u8 rsvd[13];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_get_phy_rec_clk_out);
+
+struct virtchnl_synce_set_phy_rec_clk_out {
+	u8 phy_output;
+	u8 enable;
+	u8 rsvd[14];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_set_phy_rec_clk_out);
+
+struct virtchnl_synce_get_cgu_ref_prio {
+	u8 dpll_num;
+	u8 ref_idx;
+	u8 ref_priority;
+	u8 rsvd[13];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_get_cgu_ref_prio);
+
+struct virtchnl_synce_set_cgu_ref_prio {
+	u8 dpll_num;
+	u8 ref_idx;
+	u8 ref_priority;
+	u8 rsvd[13];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_set_cgu_ref_prio);
+
+struct virtchnl_synce_get_input_pin_cfg {
+	u32 freq;
+	u32 phase_delay;
+	u8 input_idx;
+	u8 status;
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_LOS		BIT(0)
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_SCM_FAIL		BIT(1)
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_CFM_FAIL		BIT(2)
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_GST_FAIL		BIT(3)
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_PFM_FAIL		BIT(4)
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_ESYNC_FAIL	BIT(6)
+#define VIRTCHNL_GET_CGU_IN_CFG_STATUS_ESYNC_CAP	BIT(7)
+	u8 type;
+#define VIRTCHNL_GET_CGU_IN_CFG_TYPE_READ_ONLY		BIT(0)
+#define VIRTCHNL_GET_CGU_IN_CFG_TYPE_GPS		BIT(4)
+#define VIRTCHNL_GET_CGU_IN_CFG_TYPE_EXTERNAL		BIT(5)
+#define VIRTCHNL_GET_CGU_IN_CFG_TYPE_PHY		BIT(6)
+	u8 flags1;
+#define VIRTCHNL_GET_CGU_IN_CFG_FLG1_PHASE_DELAY_SUPP	BIT(0)
+#define VIRTCHNL_GET_CGU_IN_CFG_FLG1_1PPS_SUPP		BIT(2)
+#define VIRTCHNL_GET_CGU_IN_CFG_FLG1_10MHZ_SUPP		BIT(3)
+#define VIRTCHNL_GET_CGU_IN_CFG_FLG1_ANYFREQ		BIT(7)
+	u8 flags2;
+#define VIRTCHNL_GET_CGU_IN_CFG_FLG2_INPUT_EN		BIT(5)
+#define VIRTCHNL_GET_CGU_IN_CFG_FLG2_ESYNC_EN		BIT(6)
+	u8 rsvd[3];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_get_input_pin_cfg);
+
+struct virtchnl_synce_set_input_pin_cfg {
+	u32 freq;
+	u32 phase_delay;
+	u8 input_idx;
+	u8 flags1;
+#define VIRTCHNL_SET_CGU_IN_CFG_FLG1_UPDATE_FREQ	BIT(6)
+#define VIRTCHNL_SET_CGU_IN_CFG_FLG1_UPDATE_DELAY	BIT(7)
+	u8 flags2;
+#define VIRTCHNL_SET_CGU_IN_CFG_FLG2_INPUT_EN		BIT(5)
+#define VIRTCHNL_SET_CGU_IN_CFG_FLG2_ESYNC_EN		BIT(6)
+	u8 rsvd[5];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_set_input_pin_cfg);
+
+struct virtchnl_synce_get_output_pin_cfg {
+	u32 freq;
+	u32 src_freq;
+	u8 output_idx;
+	u8 flags;
+#define VIRTCHNL_GET_CGU_OUT_CFG_OUT_EN		BIT(0)
+#define VIRTCHNL_GET_CGU_OUT_CFG_ESYNC_EN	BIT(1)
+#define VIRTCHNL_GET_CGU_OUT_CFG_ESYNC_ABILITY	BIT(2)
+	u8 src_sel;
+#define VIRTCHNL_GET_CGU_OUT_CFG_DPLL_SRC_SEL_SHIFT	0
+#define VIRTCHNL_GET_CGU_OUT_CFG_DPLL_SRC_SEL \
+	(0x1F << VIRTCHNL_GET_CGU_OUT_CFG_DPLL_SRC_SEL_SHIFT)
+#define VIRTCHNL_GET_CGU_OUT_CFG_DPLL_MODE_SHIFT	5
+#define VIRTCHNL_GET_CGU_OUT_CFG_DPLL_MODE \
+	(0x7 << VIRTCHNL_GET_CGU_OUT_CFG_DPLL_MODE_SHIFT)
+	u8 rsvd[5];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_get_output_pin_cfg);
+
+struct virtchnl_synce_set_output_pin_cfg {
+	u32 freq;
+	u32 phase_delay;
+	u8 output_idx;
+	u8 flags;
+#define VIRTCHNL_SET_CGU_OUT_CFG_OUT_EN		BIT(0)
+#define VIRTCHNL_SET_CGU_OUT_CFG_ESYNC_EN	BIT(1)
+#define VIRTCHNL_SET_CGU_OUT_CFG_UPDATE_FREQ	BIT(2)
+#define VIRTCHNL_SET_CGU_OUT_CFG_UPDATE_PHASE	BIT(3)
+#define VIRTCHNL_SET_CGU_OUT_CFG_UPDATE_SRC_SEL	BIT(4)
+	u8 src_sel;
+#define VIRTCHNL_SET_CGU_OUT_CFG_DPLL_SRC_SEL	0x1F
+	u8 rsvd[5];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_set_output_pin_cfg);
+
+struct virtchnl_synce_get_cgu_abilities {
+	u8 num_inputs;
+	u8 num_outputs;
+	u8 pps_dpll_idx;
+	u8 synce_dpll_idx;
+	u32 max_in_freq;
+	u32 max_in_phase_adj;
+	u32 max_out_freq;
+	u32 max_out_phase_adj;
+	u8 cgu_part_num;
+	u8 rsvd[3];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_synce_get_cgu_abilities);
+
+struct virtchnl_synce_get_cgu_dpll_status {
+	s64 phase_offset;
+	u16 dpll_state;
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_LOCK			BIT(0)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_HO			BIT(1)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_HO_READY		BIT(2)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_FLHIT		BIT(5)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_PSLHIT		BIT(7)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_CLK_REF_SHIFT	8
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_CLK_REF_SEL	\
+	(0x1F << VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_CLK_REF_SHIFT)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_MODE_SHIFT		13
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_MODE \
+	(0x7 << VIRTCHNL_GET_CGU_DPLL_STATUS_STATE_MODE_SHIFT)
+	u8 dpll_num;
+	u8 ref_state;
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_REF_SW_LOS			BIT(0)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_REF_SW_SCM			BIT(1)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_REF_SW_CFM			BIT(2)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_REF_SW_GST			BIT(3)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_REF_SW_PFM			BIT(4)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_FAST_LOCK_EN		BIT(5)
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_REF_SW_ESYNC		BIT(6)
+	u8 eec_mode;
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_EEC_MODE_1			0xA
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_EEC_MODE_2			0xB
+#define VIRTCHNL_GET_CGU_DPLL_STATUS_EEC_MODE_UNKNOWN		0xF
+	u8 rsvd[11];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_synce_get_cgu_dpll_status);
+
+struct virtchnl_synce_set_cgu_dpll_config {
+	u8 dpll_num;
+	u8 ref_state;
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_SW_LOS		BIT(0)
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_SW_SCM		BIT(1)
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_SW_CFM		BIT(2)
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_SW_GST		BIT(3)
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_SW_PFM		BIT(4)
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_FLOCK_EN	BIT(5)
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_REF_SW_ESYNC	BIT(6)
+	u8 config;
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_CLK_REF_SEL	0x1F
+#define VIRTCHNL_SET_CGU_DPLL_CONFIG_MODE		(0x7 << 5)
+	u8 eec_mode;
+	u8 rsvd[12];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_set_cgu_dpll_config);
+
+struct virtchnl_synce_get_cgu_info {
+	u32 cgu_id;
+	u32 cgu_cfg_ver;
+	u32 cgu_fw_ver;
+	u8 rsvd[4];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_synce_get_cgu_info);
+
+struct virtchnl_cgu_pin {
+	u8 pin_index;
+	char name[63];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(64, virtchnl_cgu_pin);
+
+struct virtchnl_synce_get_hw_info {
+	u8 cgu_present;
+	u8 rclk_present;
+	u8 c827_idx;
+	u8 len;
+	u8 rsvd[4];
+	struct virtchnl_cgu_pin pins[1];
+};
+
+VIRTCHNL_CHECK_STRUCT_LEN(72, virtchnl_synce_get_hw_info);
 
 /* Since VF messages are limited by u16 size, precalculate the maximum possible
  * values of nested elements in virtchnl structures that virtual channel can
@@ -2536,6 +2788,42 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		break;
 	case VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP:
 		valid_len = sizeof(struct virtchnl_phc_tx_tstamp);
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_PHY_REC_CLK_OUT:
+		valid_len = sizeof(struct virtchnl_synce_get_phy_rec_clk_out);
+		break;
+	case VIRTCHNL_OP_SYNCE_SET_PHY_REC_CLK_OUT:
+		valid_len = sizeof(struct virtchnl_synce_set_phy_rec_clk_out);
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_CGU_REF_PRIO:
+		valid_len = sizeof(struct virtchnl_synce_get_cgu_ref_prio);
+		break;
+	case VIRTCHNL_OP_SYNCE_SET_CGU_REF_PRIO:
+		valid_len = sizeof(struct virtchnl_synce_set_cgu_ref_prio);
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_INPUT_PIN_CFG:
+		valid_len = sizeof(struct virtchnl_synce_get_input_pin_cfg);
+		break;
+	case VIRTCHNL_OP_SYNCE_SET_INPUT_PIN_CFG:
+		valid_len = sizeof(struct virtchnl_synce_set_input_pin_cfg);
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_OUTPUT_PIN_CFG:
+		valid_len = sizeof(struct virtchnl_synce_get_output_pin_cfg);
+		break;
+	case VIRTCHNL_OP_SYNCE_SET_OUTPUT_PIN_CFG:
+		valid_len = sizeof(struct virtchnl_synce_set_output_pin_cfg);
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_CGU_ABILITIES:
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_CGU_DPLL_STATUS:
+		valid_len = sizeof(struct virtchnl_synce_get_cgu_dpll_status);
+		break;
+	case VIRTCHNL_OP_SYNCE_SET_CGU_DPLL_CONFIG:
+		valid_len = sizeof(struct virtchnl_synce_set_cgu_dpll_config);
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_CGU_INFO:
+		break;
+	case VIRTCHNL_OP_SYNCE_GET_HW_INFO:
 		break;
 	case VIRTCHNL_OP_ENABLE_QUEUES_V2:
 	case VIRTCHNL_OP_DISABLE_QUEUES_V2:
