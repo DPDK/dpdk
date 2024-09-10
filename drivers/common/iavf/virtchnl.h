@@ -161,6 +161,10 @@ enum virtchnl_ops {
 	VIRTCHNL_OP_DISABLE_VLAN_FILTERING_V2 = 59,
 	VIRTCHNL_OP_1588_PTP_GET_CAPS = 60,
 	VIRTCHNL_OP_1588_PTP_GET_TIME = 61,
+	VIRTCHNL_OP_1588_PTP_SET_TIME = 62,
+	VIRTCHNL_OP_1588_PTP_ADJ_TIME = 63,
+	VIRTCHNL_OP_1588_PTP_ADJ_FREQ = 64,
+	VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP = 65,
 	VIRTCHNL_OP_GET_QOS_CAPS = 66,
 	VIRTCHNL_OP_CONFIG_QUEUE_TC_MAP = 67,
 	VIRTCHNL_OP_ENABLE_QUEUES_V2 = 107,
@@ -284,6 +288,14 @@ static inline const char *virtchnl_op_str(enum virtchnl_ops v_opcode)
 		return "VIRTCHNL_OP_1588_PTP_GET_CAPS";
 	case VIRTCHNL_OP_1588_PTP_GET_TIME:
 		return "VIRTCHNL_OP_1588_PTP_GET_TIME";
+	case VIRTCHNL_OP_1588_PTP_SET_TIME:
+		return "VIRTCHNL_OP_1588_PTP_SET_TIME";
+	case VIRTCHNL_OP_1588_PTP_ADJ_TIME:
+		return "VIRTCHNL_OP_1588_PTP_ADJ_TIME";
+	case VIRTCHNL_OP_1588_PTP_ADJ_FREQ:
+		return "VIRTCHNL_OP_1588_PTP_ADJ_FREQ";
+	case VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP:
+		return "VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP";
 	case VIRTCHNL_OP_FLOW_SUBSCRIBE:
 		return "VIRTCHNL_OP_FLOW_SUBSCRIBE";
 	case VIRTCHNL_OP_FLOW_UNSUBSCRIBE:
@@ -2125,8 +2137,11 @@ struct virtchnl_quanta_cfg {
 
 VIRTCHNL_CHECK_STRUCT_LEN(12, virtchnl_quanta_cfg);
 
+#define VIRTCHNL_1588_PTP_CAP_TX_TSTAMP		BIT(0)
 #define VIRTCHNL_1588_PTP_CAP_RX_TSTAMP		BIT(1)
 #define VIRTCHNL_1588_PTP_CAP_READ_PHC		BIT(2)
+#define VIRTCHNL_1588_PTP_CAP_WRITE_PHC		BIT(3)
+#define VIRTCHNL_1588_PTP_CAP_PHC_REGS		BIT(4)
 
 struct virtchnl_phc_regs {
 	u32 clock_hi;
@@ -2136,6 +2151,11 @@ struct virtchnl_phc_regs {
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(24, virtchnl_phc_regs);
+
+enum virtchnl_ptp_tstamp_format {
+	VIRTCHNL_1588_PTP_TSTAMP_40BIT = 0,
+	VIRTCHNL_1588_PTP_TSTAMP_64BIT_NS = 1,
+};
 
 struct virtchnl_ptp_caps {
 	struct virtchnl_phc_regs phc_regs;
@@ -2157,6 +2177,24 @@ struct virtchnl_phc_time {
 };
 
 VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_phc_time);
+
+struct virtchnl_phc_adj_time {
+	s64 delta;
+	u8 rsvd[8];
+};
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_phc_adj_time);
+
+struct virtchnl_phc_adj_freq {
+	s64 scaled_ppm;
+	u8 rsvd[8];
+};
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_phc_adj_freq);
+
+struct virtchnl_phc_tx_tstamp {
+	u64 tstamp;
+	u8 rsvd[8];
+};
+VIRTCHNL_CHECK_STRUCT_LEN(16, virtchnl_phc_tx_tstamp);
 
 /* Since VF messages are limited by u16 size, precalculate the maximum possible
  * values of nested elements in virtchnl structures that virtual channel can
@@ -2486,6 +2524,18 @@ virtchnl_vc_validate_vf_msg(struct virtchnl_version_info *ver, u32 v_opcode,
 		break;
 	case VIRTCHNL_OP_1588_PTP_GET_TIME:
 		valid_len = sizeof(struct virtchnl_phc_time);
+		break;
+	case VIRTCHNL_OP_1588_PTP_SET_TIME:
+		valid_len = sizeof(struct virtchnl_phc_time);
+		break;
+	case VIRTCHNL_OP_1588_PTP_ADJ_TIME:
+		valid_len = sizeof(struct virtchnl_phc_adj_time);
+		break;
+	case VIRTCHNL_OP_1588_PTP_ADJ_FREQ:
+		valid_len = sizeof(struct virtchnl_phc_adj_freq);
+		break;
+	case VIRTCHNL_OP_1588_PTP_TX_TIMESTAMP:
+		valid_len = sizeof(struct virtchnl_phc_tx_tstamp);
 		break;
 	case VIRTCHNL_OP_ENABLE_QUEUES_V2:
 	case VIRTCHNL_OP_DISABLE_QUEUES_V2:
