@@ -302,9 +302,10 @@ dsw_pmd_priv(const struct rte_eventdev *eventdev)
 	return eventdev->data->dev_private;
 }
 
+extern int event_dsw_logtype;
+#define RTE_LOGTYPE_EVENT_DSW event_dsw_logtype
 #define DSW_LOG_DP(level, fmt, args...)					\
-	RTE_LOG_DP(level, EVENTDEV, "[%s] %s() line %u: " fmt,		\
-		   DSW_PMD_NAME,					\
+	RTE_LOG_DP(level, EVENT_DSW, "%s() line %u: " fmt,		\
 		   __func__, __LINE__, ## args)
 
 #define DSW_LOG_DP_PORT(level, port_id, fmt, args...)		\
