@@ -906,6 +906,7 @@ pmd_mtr_stats_read(struct rte_eth_dev *dev,
 		struct rte_mtr_stats s;
 		uint64_t s_mask = 0;
 
+		memset(&s, 0, sizeof(s));
 		mtr_stats_convert(p,
 			m,
 			&counters.stats[0],
