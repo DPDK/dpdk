@@ -626,12 +626,13 @@ drain_inbound_crypto_queues(const struct lcore_conf *qconf,
 	uint32_t n;
 	struct ipsec_traffic trf;
 	unsigned int lcoreid = rte_lcore_id();
+	const int nb_pkts = RTE_DIM(trf.ipsec.pkts);
 
 	if (app_sa_prm.enable == 0) {
 
 		/* dequeue packets from crypto-queue */
 		n = ipsec_inbound_cqp_dequeue(ctx, trf.ipsec.pkts,
-			RTE_DIM(trf.ipsec.pkts));
+			RTE_MIN(MAX_PKT_BURST, nb_pkts));
 
 		trf.ip4.num = 0;
 		trf.ip6.num = 0;
@@ -663,12 +664,13 @@ drain_outbound_crypto_queues(const struct lcore_conf *qconf,
 {
 	uint32_t n;
 	struct ipsec_traffic trf;
+	const int nb_pkts = RTE_DIM(trf.ipsec.pkts);
 
 	if (app_sa_prm.enable == 0) {
 
 		/* dequeue packets from crypto-queue */
 		n = ipsec_outbound_cqp_dequeue(ctx, trf.ipsec.pkts,
-			RTE_DIM(trf.ipsec.pkts));
+			RTE_MIN(MAX_PKT_BURST, nb_pkts));
 
 		trf.ip4.num = 0;
 		trf.ip6.num = 0;
