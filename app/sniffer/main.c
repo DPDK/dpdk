@@ -1974,6 +1974,7 @@ main(int argc, char *argv[])
 
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid) {
+		RTE_LOG(INFO, VHOST_PORT, "port %d initialized\n", portid);
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << portid)) == 0) {
 			RTE_LOG(INFO, VHOST_PORT,
@@ -1983,7 +1984,6 @@ main(int argc, char *argv[])
 		if (port_init(portid) != 0)
 			rte_exit(EXIT_FAILURE,
 				"Cannot initialize network ports\n");
-		RTE_LOG(INFO, VHOST_PORT, "port %d initialized\n", portid);
 	}
 
 	/* Enable stats if the user option is set. */
