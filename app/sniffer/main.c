@@ -1983,6 +1983,7 @@ main(int argc, char *argv[])
 		if (port_init(portid) != 0)
 			rte_exit(EXIT_FAILURE,
 				"Cannot initialize network ports\n");
+		printf("port %d initialized\n", portid);
 	}
 
 	/* Enable stats if the user option is set. */
