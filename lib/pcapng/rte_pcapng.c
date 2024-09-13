@@ -475,7 +475,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const char *comment)
 {
 	struct pcapng_enhance_packet_block *epb;
-	uint32_t orig_len, data_len, padding, flags;
+	uint32_t orig_len, pkt_len, padding, flags;
 	struct pcapng_option *opt;
 	uint64_t timestamp;
 	uint16_t optlen;
@@ -516,8 +516,8 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		    (md->ol_flags & RTE_MBUF_F_RX_RSS_HASH));
 
 	/* pad the packet to 32 bit boundary */
-	data_len = rte_pktmbuf_data_len(mc);
-	padding = RTE_ALIGN(data_len, sizeof(uint32_t)) - data_len;
+	pkt_len = rte_pktmbuf_pkt_len(mc);
+	padding = RTE_ALIGN(pkt_len, sizeof(uint32_t)) - pkt_len;
 	if (padding > 0) {
 		void *tail = rte_pktmbuf_append(mc, padding);
 
@@ -584,7 +584,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		goto fail;
 
 	epb->block_type = PCAPNG_ENHANCED_PACKET_BLOCK;
-	epb->block_length = rte_pktmbuf_data_len(mc);
+	epb->block_length = rte_pktmbuf_pkt_len(mc);
 
 	/* Interface index is filled in later during write */
 	mc->port = port_id;
@@ -593,7 +593,7 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 	timestamp = rte_get_tsc_cycles();
 	epb->timestamp_hi = timestamp >> 32;
 	epb->timestamp_lo = (uint32_t)timestamp;
-	epb->capture_length = data_len;
+	epb->capture_length = pkt_len;
 	epb->original_length = orig_len;
 
 	/* set trailer of block length */
@@ -623,7 +623,7 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
 		/* sanity check that is really a pcapng mbuf */
 		epb = rte_pktmbuf_mtod(m, struct pcapng_enhance_packet_block *);
 		if (unlikely(epb->block_type != PCAPNG_ENHANCED_PACKET_BLOCK ||
-			     epb->block_length != rte_pktmbuf_data_len(m))) {
+			     epb->block_length != rte_pktmbuf_pkt_len(m))) {
 			rte_errno = EINVAL;
 			return -1;
 		}

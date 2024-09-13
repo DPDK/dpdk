@@ -102,6 +102,14 @@ mbuf1_prepare(struct dummy_mbuf *dm, uint32_t plen)
 	pkt.udp.dgram_len = rte_cpu_to_be_16(plen);
 
 	memcpy(rte_pktmbuf_mtod(dm->mb, void *), &pkt, sizeof(pkt));
+
+	/* Idea here is to create mbuf chain big enough that after mbuf deep copy they won't be
+	 * compressed into single mbuf to properly test store of chained mbufs
+	 */
+	dummy_mbuf_prep(&dm->mb[1], dm->buf[1], sizeof(dm->buf[1]), pkt_len);
+	dummy_mbuf_prep(&dm->mb[2], dm->buf[2], sizeof(dm->buf[2]), pkt_len);
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[1]);
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[2]);
 }
 
 static int
@@ -117,7 +125,7 @@ test_setup(void)
 
 	/* Make a pool for cloned packets */
 	mp = rte_pktmbuf_pool_create_by_ops("pcapng_test_pool",
-					    MAX_BURST, 0, 0,
+					    MAX_BURST * 32, 0, 0,
 					    rte_pcapng_mbuf_size(pkt_len) + 128,
 					    SOCKET_ID_ANY, "ring_mp_sc");
 	if (mp == NULL) {
@@ -155,7 +163,7 @@ fill_pcapng_file(rte_pcapng_t *pcapng, unsigned int num_packets)
 		for (i = 0; i < burst_size; i++) {
 			struct rte_mbuf *mc;
 
-			mc = rte_pcapng_copy(port_id, 0, orig, mp, pkt_len,
+			mc = rte_pcapng_copy(port_id, 0, orig, mp, rte_pktmbuf_pkt_len(orig),
 					     RTE_PCAPNG_DIRECTION_IN, NULL);
 			if (mc == NULL) {
 				fprintf(stderr, "Cannot copy packet\n");
