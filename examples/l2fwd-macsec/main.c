@@ -446,7 +446,8 @@ fill_macsec_sc_conf(uint16_t portid, struct rte_security_macsec_sc *sc_conf)
 		}
 		sc_conf->sc_tx.active = 1;
 		sc_conf->sc_tx.sci = mcs_port_params[portid].sci;
-		if (mcs_port_params[portid].xpn > 0)
+		if (mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_128 ||
+			       mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_256)
 			sc_conf->sc_tx.is_xpn = 1;
 	} else {
 		for (i = 0; i < RTE_SECURITY_MACSEC_NUM_AN; i++) {
@@ -456,7 +457,8 @@ fill_macsec_sc_conf(uint16_t portid, struct rte_security_macsec_sc *sc_conf)
 			}
 		}
 		sc_conf->sc_rx.active = 1;
-		if (mcs_port_params[portid].xpn > 0)
+		if (mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_128 ||
+			       mcs_port_params[portid].alg == RTE_SECURITY_MACSEC_ALG_GCM_XPN_256)
 			sc_conf->sc_rx.is_xpn = 1;
 	}
 }
@@ -1008,7 +1010,7 @@ l2fwd_macsec_default_options(struct l2fwd_macsec_options *options)
 		if ((options->rx_portmask & (1 << portid)) != 0)
 			mcs_port_params[portid].dir = RTE_SECURITY_MACSEC_DIR_RX;
 
-		mcs_port_params[portid].alg = RTE_SECURITY_MACSEC_ALG_GCM_128;
+		mcs_port_params[portid].alg = RTE_SECURITY_MACSEC_ALG_GCM_XPN_128;
 		memcpy(mcs_port_params[portid].sa_key.data, key, 16);
 		mcs_port_params[portid].sa_key.len = 16;
 		memcpy(mcs_port_params[portid].salt, salt, MCS_SALT_LEN);
