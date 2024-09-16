@@ -1120,9 +1120,12 @@ rte_vfio_enable(const char *modname)
 	}
 
 	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
-		/* open a new container */
-		default_vfio_cfg->vfio_container_fd =
-				rte_vfio_get_container_fd();
+		if (vfio_mp_sync_setup() == -1) {
+			default_vfio_cfg->vfio_container_fd = -1;
+		} else {
+			/* open a new container */
+			default_vfio_cfg->vfio_container_fd = rte_vfio_get_container_fd();
+		}
 	} else {
 		/* get the default container from the primary process */
 		default_vfio_cfg->vfio_container_fd =

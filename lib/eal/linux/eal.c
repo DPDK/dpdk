@@ -867,16 +867,6 @@ rte_eal_iopl_init(void)
 	return 0;
 }
 
-#ifdef VFIO_PRESENT
-static int rte_eal_vfio_setup(void)
-{
-	if (rte_vfio_enable("vfio"))
-		return -1;
-
-	return 0;
-}
-#endif
-
 static void rte_eal_init_alert(const char *msg)
 {
 	fprintf(stderr, "EAL: FATAL: %s\n", msg);
@@ -1162,7 +1152,7 @@ rte_eal_init(int argc, char **argv)
 	}
 
 #ifdef VFIO_PRESENT
-	if (rte_eal_vfio_setup() < 0) {
+	if (rte_vfio_enable("vfio")) {
 		rte_eal_init_alert("Cannot init VFIO");
 		rte_errno = EAGAIN;
 		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
@@ -1290,12 +1280,6 @@ rte_eal_init(int argc, char **argv)
 		rte_errno = ENOTSUP;
 		return -1;
 	}
-
-#ifdef VFIO_PRESENT
-	/* Register mp action after probe() so that we got enough info */
-	if (rte_vfio_is_enabled("vfio") && vfio_mp_sync_setup() < 0)
-		return -1;
-#endif
 
 	/* initialize default service/lcore mappings and start running. Ignore
 	 * -ENOTSUP, as it indicates no service coremask passed to EAL.
