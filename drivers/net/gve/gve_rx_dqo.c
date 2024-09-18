@@ -6,6 +6,7 @@
 
 #include "gve_ethdev.h"
 #include "base/gve_adminq.h"
+#include "rte_mbuf_ptype.h"
 
 static inline void
 gve_rx_refill_dqo(struct gve_rx_queue *rxq)
@@ -75,38 +76,63 @@ gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 	rxq->bufq_tail = next_avail;
 }
 
-static inline uint16_t
-gve_parse_csum_ol_flags(volatile struct gve_rx_compl_desc_dqo *rx_desc,
-		struct gve_priv *priv) {
-	uint64_t ol_flags = 0;
-	struct gve_ptype ptype =
-		priv->ptype_lut_dqo->ptypes[rx_desc->packet_type];
-
+static inline void
+gve_parse_csum_ol_flags(struct rte_mbuf *rx_mbuf,
+	volatile struct gve_rx_compl_desc_dqo *rx_desc)
+{
 	if (!rx_desc->l3_l4_processed)
-		return ol_flags;
+		return;
 
-	if (ptype.l3_type == GVE_L3_TYPE_IPV4) {
+	if (rx_mbuf->packet_type & RTE_PTYPE_L3_IPV4) {
 		if (rx_desc->csum_ip_err)
-			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+			rx_mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 		else
-			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+			rx_mbuf->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 	}
 
 	if (rx_desc->csum_l4_err) {
-		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
-		return ol_flags;
+		rx_mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+		return;
 	}
-	switch (ptype.l4_type) {
-	case GVE_L4_TYPE_TCP:
-	case GVE_L4_TYPE_UDP:
-	case GVE_L4_TYPE_ICMP:
-	case GVE_L4_TYPE_SCTP:
-		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+	if (rx_mbuf->packet_type & RTE_PTYPE_L4_MASK)
+		rx_mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+}
+
+static inline void
+gve_rx_set_mbuf_ptype(struct gve_priv *priv, struct rte_mbuf *rx_mbuf,
+		      volatile struct gve_rx_compl_desc_dqo *rx_desc)
+{
+	struct gve_ptype ptype =
+		priv->ptype_lut_dqo->ptypes[rx_desc->packet_type];
+	rx_mbuf->packet_type = 0;
+
+	switch (ptype.l3_type) {
+	case GVE_L3_TYPE_IPV4:
+		rx_mbuf->packet_type |= RTE_PTYPE_L3_IPV4;
+		break;
+	case GVE_L3_TYPE_IPV6:
+		rx_mbuf->packet_type |= RTE_PTYPE_L3_IPV6;
 		break;
 	default:
 		break;
 	}
-	return ol_flags;
+
+	switch (ptype.l4_type) {
+	case GVE_L4_TYPE_TCP:
+		rx_mbuf->packet_type |= RTE_PTYPE_L4_TCP;
+		break;
+	case GVE_L4_TYPE_UDP:
+		rx_mbuf->packet_type |= RTE_PTYPE_L4_UDP;
+		break;
+	case GVE_L4_TYPE_ICMP:
+		rx_mbuf->packet_type |= RTE_PTYPE_L4_ICMP;
+		break;
+	case GVE_L4_TYPE_SCTP:
+		rx_mbuf->packet_type |= RTE_PTYPE_L4_SCTP;
+		break;
+	default:
+		break;
+	}
 }
 
 uint16_t
@@ -158,9 +184,9 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->pkt_len = pkt_len;
 		rxm->data_len = pkt_len;
 		rxm->port = rxq->port_id;
-		rxm->ol_flags = 0;
-		rxm->ol_flags |= RTE_MBUF_F_RX_RSS_HASH |
-				gve_parse_csum_ol_flags(rx_desc, rxq->hw);
+		gve_rx_set_mbuf_ptype(rxq->hw, rxm, rx_desc);
+		rxm->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
+		gve_parse_csum_ol_flags(rxm, rx_desc);
 		rxm->hash.rss = rte_le_to_cpu_32(rx_desc->hash);
 
 		rx_pkts[nb_rx++] = rxm;
