@@ -2498,6 +2498,8 @@ int mlx5_flex_get_sample_id(const struct mlx5_flex_item *tp,
 int mlx5_flex_get_parser_value_per_byte_off(const struct rte_flow_item_flex *item,
 					    void *flex, uint32_t byte_off,
 					    bool is_mask, bool tunnel, uint32_t *value);
+int mlx5_flex_get_tunnel_mode(const struct rte_flow_item *item,
+			      enum rte_flow_item_flex_tunnel_mode *tunnel_mode);
 int mlx5_flex_acquire_index(struct rte_eth_dev *dev,
 			    struct rte_flow_item_flex_handle *handle,
 			    bool acquire);

@@ -292,6 +292,33 @@ mlx5_flex_get_parser_value_per_byte_off(const struct rte_flow_item_flex *item,
 }
 
 /**
+ * Get the flex parser tunnel mode.
+ *
+ * @param[in] item
+ *   RTE Flex item.
+ * @param[in, out] tunnel_mode
+ *   Pointer to return tunnel mode.
+ *
+ * @return
+ *   0 on success, otherwise negative error code.
+ */
+int
+mlx5_flex_get_tunnel_mode(const struct rte_flow_item *item,
+			  enum rte_flow_item_flex_tunnel_mode *tunnel_mode)
+{
+	if (item && item->spec && tunnel_mode) {
+		const struct rte_flow_item_flex *spec = item->spec;
+		struct mlx5_flex_item *flex = (struct mlx5_flex_item *)spec->handle;
+
+		if (flex) {
+			*tunnel_mode = flex->tunnel_mode;
+			return 0;
+		}
+	}
+	return -EINVAL;
+}
+
+/**
  * Translate item pattern into matcher fields according to translation
  * array.
  *
