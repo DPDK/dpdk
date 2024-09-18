@@ -3483,3 +3483,326 @@ Tested Platforms
 * df33fb53e4  rcu: fix acked token in debug log
 * 063cddfc74  rcu: use atomic operation on acked token
 * 63bf81a617  test: fix named test macro
+
+21.11.8 Release Notes
+---------------------
+
+
+21.11.8 Fixes
+~~~~~~~~~~~~~
+
+* app/bbdev: fix interrupt tests
+* app/dumpcap: handle SIGTERM and SIGHUP
+* app/pdump: handle SIGTERM and SIGHUP
+* app/testpmd: cleanup cleanly from signal
+* app/testpmd: fix build on signed comparison
+* app/testpmd: fix early exit from signal
+* app/testpmd: fix help string of BPF load command
+* app/testpmd: fix interactive mode on Windows
+* app/testpmd: fix lcore ID restriction
+* app/testpmd: fix outer IP checksum offload
+* app/testpmd: fix parsing for connection tracking item
+* app/testpmd: handle IEEE1588 init failure
+* baseband/la12xx: forbid secondary process
+* bpf: fix load hangs with six IPv6 addresses
+* bpf: fix MOV instruction evaluation
+* buildtools: fix build with clang 17 and ASan
+* bus/dpaa: fix bus scan for DMA devices
+* bus/dpaa: fix memory leak in bus scan
+* bus/dpaa: remove redundant file descriptor check
+* bus/pci: fix build with musl 1.2.4 / Alpine 3.19
+* bus/pci: fix FD in secondary process
+* bus/pci: fix UIO resource mapping in secondary process
+* bus/vdev: fix device reinitialization
+* common/dpaax/caamflib: fix PDCP AES-AES watchdog error
+* common/dpaax/caamflib: fix PDCP-SDAP watchdog error
+* common/dpaax: fix IOVA table cleanup
+* common/dpaax: fix node array overrun
+* common/mlx5: fix unsigned/signed mismatch
+* common/mlx5: remove unneeded field when modify RQ table
+* config: fix warning for cross build with meson >= 1.3.0
+* crypto/cnxk: fix minimal input normalization
+* cryptodev: fix build without crypto callbacks
+* cryptodev: validate crypto callbacks from next node
+* crypto/dpaa2_sec: fix event queue user context
+* crypto/openssl: optimize 3DES-CTR context init
+* dmadev: fix structure alignment
+* dma/idxd: add generic option for queue config
+* dma/idxd: add verbose option to config script
+* dma/idxd: fix default for workqueue options
+* dma/idxd: fix setup with Ubuntu 24.04
+* doc: add baseline mode in l3fwd-power guide
+* doc: fix mbuf flags
+* doc: fix testpmd ring size command
+* doc: fix typo in l2fwd-crypto guide
+* doc: remove reference to mbuf pkt field
+* eal: fix logs for '--lcores'
+* eal/linux: lower log level on allocation attempt failure
+* eal/unix: support ZSTD compression for firmware
+* eal/windows: install sched.h file
+* ethdev: fix device init without socket-local memory
+* ethdev: fix GENEVE option item conversion
+* event/sw: fix warning from useless snprintf
+* fbarray: fix finding for unaligned length
+* fbarray: fix incorrect lookahead behavior
+* fbarray: fix incorrect lookbehind behavior
+* fbarray: fix lookahead ignore mask handling
+* fbarray: fix lookbehind ignore mask handling
+* hash: check name when creating a hash
+* hash: fix RCU reclamation size
+* hash: fix return code description in Doxygen
+* kni: use strscpy
+* latencystats: fix literal float suffix
+* malloc: fix multi-process wait condition handling
+* net/af_packet: align Rx/Tx structs to cache line
+* net/af_xdp: count mbuf allocation failures
+* net/af_xdp: fix port ID in Rx mbuf
+* net/ark: fix index arithmetic
+* net/axgbe: check only minimum speed for cables
+* net/axgbe: delay AN timeout during KR training
+* net/axgbe: disable interrupts during device removal
+* net/axgbe: fix connection for SFP+ active cables
+* net/axgbe: fix fluctuations for 1G Bel Fuse SFP
+* net/axgbe: fix linkup in PHY status
+* net/axgbe: fix MDIO access for non-zero ports and CL45 PHYs
+* net/axgbe: fix SFP codes check for DAC cables
+* net/axgbe: fix Tx flow on 30H HW
+* net/axgbe: reset link when link never comes back
+* net/axgbe: update DMA coherency values
+* net/cnxk: fix outbound security with higher packet burst
+* net/cnxk: fix promiscuous state after MAC change
+* net/cnxk: fix RSS config
+* net/e1000/base: fix link power down
+* net/ena: fix bad checksum handling
+* net/ena: fix checksum handling
+* net/ena: fix return value check
+* net: fix outer UDP checksum in Intel prepare helper
+* net/fm10k: fix cleanup during init failure
+* net/hns3: check Rx DMA address alignmnent
+* net/hns3: disable SCTP verification tag for RSS hash input
+* net/hns3: fix double free for Rx/Tx queue
+* net/hns3: fix offload flag of IEEE 1588
+* net/hns3: fix Rx timestamp flag
+* net/hns3: fix uninitialized variable in FEC query
+* net/hns3: fix variable overflow
+* net/i40e: fix outer UDP checksum offload for X710
+* net/ice/base: fix board type definition
+* net/ice/base: fix check for existing switch rule
+* net/ice/base: fix GCS descriptor field offsets
+* net/ice/base: fix masking when reading context
+* net/ice/base: fix pointer to variable outside scope
+* net/ice/base: fix potential TLV length overflow
+* net/ice/base: fix return type of bitmap hamming weight
+* net/ice/base: fix sign extension
+* net/ice/base: fix size when allocating children arrays
+* net/ice/base: fix temporary failures reading NVM
+* net/ice: fix check for outer UDP checksum offload
+* net/ice: fix memory leaks in raw pattern parsing
+* net/ice: fix return value for raw pattern parsing
+* net/ixgbe/base: fix 5G link speed reported on VF
+* net/ixgbe/base: fix PHY ID for X550
+* net/ixgbe/base: revert advertising for X550 2.5G/5G
+* net/ixgbe: do not create delayed interrupt handler twice
+* net/ixgbe: do not update link status in secondary process
+* net/mlx5: fix Arm build with GCC 9.1
+* net/mlx5: fix end condition of reading xstats
+* net/mlx5: fix hash Rx queue release in flow sample
+* net/mlx5: fix indexed pool with invalid index
+* net/mlx5: fix MTU configuration
+* net/mlx5: fix uplink port probing in bonding mode
+* net/nfp: fix disabling 32-bit build
+* net/ngbe: fix hotplug remove
+* net/ngbe: fix memory leaks
+* net/ngbe: fix MTU range
+* net/ngbe: keep PHY power down while device probing
+* net/softnic: fix maybe-uninitialized warning
+* net/tap: fix file descriptor check in isolated flow
+* net/txgbe: fix flow filters in VT mode
+* net/txgbe: fix hotplug remove
+* net/txgbe: fix memory leaks
+* net/txgbe: fix MTU range
+* net/txgbe: fix Rx interrupt
+* net/txgbe: fix tunnel packet parsing
+* net/txgbe: fix Tx hang on queue disable
+* net/txgbe: fix VF promiscuous and allmulticast
+* net/txgbe: reconfigure more MAC Rx registers
+* net/txgbe: restrict configuration of VLAN strip offload
+* net/virtio: fix MAC table update
+* net/virtio-user: add memcpy check
+* net/vmxnet3: fix init logs
+* pcapng: add memcpy check
+* telemetry: fix connection parameter parsing
+* telemetry: lower log level on socket error
+* test/crypto: fix allocation comment
+* test/crypto: fix asymmetric capability test
+* test/crypto: fix vector global buffer overflow
+* test/crypto: remove unused stats in setup
+* vdpa/sfc: remove dead code
+* version: 21.11.8-rc1
+* vhost: cleanup resubmit info before inflight setup
+* vhost: fix build with GCC 13
+
+21.11.8 Validation
+~~~~~~~~~~~~~~~~~~
+
+* `Red Hat(R) Testing <https://mails.dpdk.org/archives/stable/2024-September/049938.html>`__
+
+   * Platform
+
+      * RHEL 9
+      * Kernel 5.14
+      * Qemu 8.2
+      * X540-AT2 NIC(ixgbe, 10G)
+
+   * Functionality
+
+      * Guest with device assignment(PF) throughput testing(1G hugepage size)
+      * Guest with device assignment(PF) throughput testing(2M hugepage size)
+      * Guest with device assignment(VF) throughput testing
+      * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+      * PVP vhost-user 2Q throughput testing
+      * PVP vhost-user 1Q cross numa node  throughput testing
+      * Guest with vhost-user 2 queues throughput testing
+      * vhost-user reconnect with dpdk-client, qemu-server: qemu reconnect
+      * vhost-user reconnect with dpdk-client, qemu-server: ovs reconnect
+      * PVP 1Q live migration testing
+      * PVP 1Q cross numa node live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+      * Guest with ovs+dpdk+vhost-user 2Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 4Q live migration testing
+      * Host PF + DPDK testing
+      * Host VF + DPDK testing
+
+
+* `Intel(R) Testing <https://mails.dpdk.org/archives/stable/2024-September/049940.html>`__
+
+   * Basic Intel(R) NIC(ixgbe, i40e and ice) testing
+
+      * PF (i40e, ixgbe)
+      * VF (i40e, ixgbe)
+      * PF/VF (ice)
+      * Compile Testing
+      * Intel NIC single core/NIC performance
+      * IPsec
+
+   * Basic cryptodev and virtio testing
+
+      * vhost/virtio basic loopback, PVP and performance test
+      * cryptodev Function/Performance
+
+
+* `Nvidia(R) Testing <https://mails.dpdk.org/archives/stable/2024-September/049948.html>`__
+
+   * Basic functionality with testpmd
+
+      * Tx/Rx
+      * xstats
+      * Timestamps
+      * Link status
+      * RTE flow
+      * RSS
+      * VLAN filtering, stripping and insertion
+      * Checksum/TSO
+      * ptype
+      * link_status_interrupt example application
+      * l3fwd-power example application
+      * Multi-process example applications
+      * Hardware LRO tests
+      * Regex application
+      * Buffer Split
+      * Tx scheduling
+
+   * Build tests
+   * ConnectX-6 Dx
+   * ConnectX-7
+   * BlueField-2
+
+21.11.8 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* DPDK 21.11.8 contains fixes up to DPDK 24.07
+* Issues identified/fixed in DPDK main branch after DPDK 24.07 may be present in DPDK 21.11.8
+
+21.11.8 Fixes skipped and status unresolved
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* c5b531d6ee  app/crypto-perf: fix session freeing
+* 61b52e7edb  app/test: fix reference to master in bonding test
+* 7bdf7a13ae  app/testpmd: fix encap/decap size calculation
+* 461c287ab5  app/testpmd: fix GRO packets flush on timeout
+* ecf408d2aa  app/testpmd: fix indirect action flush
+* 4edbcc7b53  bpf: disable on 32-bit x86
+* 4edbcc7b53  bpf: disable on 32-bit x86
+* 5d8c1f6253  common/cnxk: check error in MAC address set
+* a6f639e079  common/cnxk: fix BP threshold calculation
+* 772e30281a  common/cnxk: fix CPT backpressure disable on LBK
+* 48054ca384  common/cnxk: fix link config for SDP
+* 1c7a4d37e7  common/cnxk: fix mailbox timeout due to deadlock
+* 59ceaa72d5  common/cnxk: fix part number for CN10K
+* 5781638519  common/cnxk: fix RQ mask config for CN10KB chip
+* 56fa6f92e9  common/cnxk: fix RSS key configuration
+* 37ca457d3f  common/mlx5: fix obtaining IB device in LAG mode
+* cedb44dc87  common/mlx5: improve AES-XTS tweak capability check
+* 7be74edb90  common/mlx5: use just sufficient barrier for Arm
+* 046341575b  crypto/dpaa_sec: fix IPsec descriptor
+* 9d91c3047d  crypto/openssl: fix memory leaks in asym operations
+* 17d5bc6135  crypto/openssl: make per-QP auth context clones
+* b1d7112602  crypto/openssl: make per-QP cipher context clones
+* 3dd3115078  dma/cnxk: fix chunk buffer failure return code
+* ba39a261a7  dma/cnxk: fix completion ring tail wrap
+* 95a955e3e0  dma/cnxk: fix device reconfigure
+* 2a3f42942a  dma/hisilicon: remove support for HIP09 platform
+* b9a87346b0  ethdev: fix strict aliasing in link up
+* 694e8e643d  event/cnxk: fix CASP usage for clang
+* b37fe88a2c  event/cnxk: fix LMTST write for single event mode
+* 3fe71706ab  event/cnxk: fix stale data in workslot
+* 04dac73643  eventdev/crypto: fix enqueue count
+* 4b04134cbb  eventdev/crypto: fix failed events
+* da73a2a0d1  eventdev/crypto: fix offset used while flushing events
+* ad12d08f05  eventdev/crypto: fix opaque field handling
+* f442c04001  eventdev/crypto: fix overflow in circular buffer
+* 4b97893816  examples: fix lcore ID restriction
+* 548de9091c  examples: fix port ID restriction
+* b23c5bd71a  examples: fix queue ID restriction
+* 9a518054b5  examples/l3fwd: fix duplicate expression for default nexthop
+* 927cb43fe9  examples/l3fwd: fix port group mask with AltiVec
+* 547f294357  gro: fix reordering of packets
+* 6df1bc6b3b  mempool/cnxk: avoid hang when counting batch allocs
+* b3ddd649ad  mempool/cnxk: fix alloc from non-EAL threads
+* 97039941b2  net/af_xdp: parse UMEM map info from mempool
+* abdabad636  net/af_xdp: remove unused local statistic
+* e82b0fe097  net/axgbe: disable RRC for yellow carp devices
+* a78a1ed8ba  net/bonding: fix failover time of LACP with mode 4
+* 02a2accb5f  net/bonding: fix flow count query
+* 26a6bda9df  net/cnxk: add cookies check for multi-segment offload
+* 5a0f64d84b  net/cnxk: fix configuring large Rx/Tx queues
+* 3232c95d2c  net/cnxk: fix indirect mbuf handling in Tx
+* 8ed5ca4dda  net/cnxk: fix mbuf fields in multi-segment Tx
+* 7752f14026  net/cnxk: fix Rx flush on CN10k
+* 4c2f14bc6d  net/cnxk: fix xstats reset
+* ee0fa7552a  net/dpaa: forbid MTU configuration for shared interface
+* 0f044b6681  net/iavf: fix refine protocol header
+* 0b241667cc  net/iavf: fix tainted scalar
+* b125c0e721  net/iavf: fix tainted scalar
+* 92a16af450  net/iavf: fix virtchnl command called in interrupt
+* df44ba7a3c  net/ice/base: fix preparing PHY for timesync command
+* e2072ba1b0  net/ice/base: fix resource leak
+* 9749dffe23  net/ice: fix MAC type of E822 and E823
+* 87e4384d26  net/mlx5: fix condition of LACP miss flow
+* 2ece3b7186  net/mlx5: fix flow workspace double free in Windows
+* 1cfb78d2c4  net/mlx5: fix meter policy priority
+* 48adbc80ba  net/mlx5: remove GENEVE options length limitation
+* a74c5001e9  net/ngbe: add proper memory barriers in Rx
+* 79be49dd2d  net/ngbe: add special config for YT8531SH-CA PHY
+* 31a28a99fd  net/ngbe: add spinlock protection on YT PHY
+* 21f702d556  net/ngbe: fix link status in no LSC mode
+* 659cfce01e  net/ngbe: remove redundant codes
+* 44a8635459  net/thunderx: fix DMAC control register update
+* 12011b11a3  net/txgbe: adapt to MNG veto bit setting
+* 5e170dd8b6  net/txgbe: fix blocking system events
+* 166591931b  pcapng: modify timestamp calculation
+* df33fb53e4  rcu: fix acked token in debug log
+* 063cddfc74  rcu: use atomic operation on acked token
+* 4ad17a1c8f  test/crypto: fix enqueue/dequeue callback case
+* 63bf81a617  test: fix named test macro
