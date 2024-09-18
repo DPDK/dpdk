@@ -82,6 +82,10 @@
 #define HAVE_SK_ALLOC_KERN_PARAM
 #endif
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+#define strlcpy strscpy
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0) || \
 	(defined(RHEL_RELEASE_CODE) && \
 	 RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 4)) || \
