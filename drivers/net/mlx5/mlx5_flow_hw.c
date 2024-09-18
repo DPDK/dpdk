@@ -558,6 +558,7 @@ flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
 	uint64_t last_item = 0;
 
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		enum rte_flow_item_flex_tunnel_mode tunnel_mode = FLEX_TUNNEL_MODE_SINGLE;
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
 		int item_type = items->type;
 
@@ -605,6 +606,13 @@ flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
 			break;
 		case RTE_FLOW_ITEM_TYPE_COMPARE:
 			last_item = MLX5_FLOW_ITEM_COMPARE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_FLEX:
+			mlx5_flex_get_tunnel_mode(items, &tunnel_mode);
+			last_item = tunnel_mode == FLEX_TUNNEL_MODE_TUNNEL ?
+					MLX5_FLOW_ITEM_FLEX_TUNNEL :
+					tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
+						MLX5_FLOW_ITEM_OUTER_FLEX;
 			break;
 		default:
 			break;
