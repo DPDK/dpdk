@@ -38,10 +38,12 @@ worker_generic(void *arg)
 		}
 		received++;
 
-		/* The first worker stage does classification */
-		if (ev.queue_id == cdata.qid[0])
+		/* The first worker stage does classification and sets txq. */
+		if (ev.queue_id == cdata.qid[0]) {
 			ev.flow_id = ev.mbuf->hash.rss
 						% cdata.num_fids;
+			rte_event_eth_tx_adapter_txq_set(ev.mbuf, 0);
+		}
 
 		ev.queue_id = cdata.next_qid[ev.queue_id];
 		ev.op = RTE_EVENT_OP_FORWARD;
@@ -96,10 +98,12 @@ worker_generic_burst(void *arg)
 
 		for (i = 0; i < nb_rx; i++) {
 
-			/* The first worker stage does classification */
-			if (events[i].queue_id == cdata.qid[0])
+			/* The first worker stage does classification and sets txq. */
+			if (events[i].queue_id == cdata.qid[0]) {
 				events[i].flow_id = events[i].mbuf->hash.rss
 							% cdata.num_fids;
+				rte_event_eth_tx_adapter_txq_set(events[i].mbuf, 0);
+			}
 
 			events[i].queue_id = cdata.next_qid[events[i].queue_id];
 			events[i].op = RTE_EVENT_OP_FORWARD;
