@@ -25,14 +25,20 @@ RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_stop,
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_close,
 	lib.ethdev.close)
 
-RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst,
-	lib.ethdev.rx.burst)
+RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst_empty,
+	lib.ethdev.rx.burst.empty)
+
+RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_rx_burst_nonempty,
+	lib.ethdev.rx.burst.nonempty)
 
 RTE_TRACE_POINT_REGISTER(rte_ethdev_trace_tx_burst,
 	lib.ethdev.tx.burst)
 
-RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks,
-	lib.ethdev.call_rx_callbacks)
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks_empty,
+	lib.ethdev.call_rx_callbacks.empty)
+
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks_nonempty,
+	lib.ethdev.call_rx_callbacks.nonempty)
 
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_tx_callbacks,
 	lib.ethdev.call_tx_callbacks)

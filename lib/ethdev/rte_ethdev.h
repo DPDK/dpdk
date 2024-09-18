@@ -6132,7 +6132,10 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 	}
 #endif
 
-	rte_ethdev_trace_rx_burst(port_id, queue_id, (void **)rx_pkts, nb_rx);
+	if (unlikely(nb_rx))
+		rte_ethdev_trace_rx_burst_nonempty(port_id, queue_id, (void **)rx_pkts, nb_rx);
+	else
+		rte_ethdev_trace_rx_burst_empty(port_id, queue_id, (void **)rx_pkts);
 	return nb_rx;
 }
 
