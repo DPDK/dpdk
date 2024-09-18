@@ -92,7 +92,7 @@ Setting up DTS environment
 
    .. code-block:: console
 
-      poetry install --no-root
+      poetry install
       poetry shell
 
 #. **SSH Connection**
@@ -450,8 +450,8 @@ The :ref:`doc build dependencies <doc_dependencies>` may be installed with Poetr
 
 .. code-block:: console
 
-   poetry install --no-root --only docs
-   poetry install --no-root --with docs  # an alternative that will also install DTS dependencies
+   poetry install --only docs
+   poetry install --with docs  # an alternative that will also install DTS dependencies
    poetry shell
 
 After executing the meson command, build the documentation with:

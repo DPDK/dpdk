@@ -3,6 +3,7 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 [tool.poetry]
+package-mode = false
 name = "dts"
 version = "0.1.0"
 description = "DPDK Test Suite."

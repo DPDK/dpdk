@@ -37,7 +37,7 @@ to allow you to connect to hosts without specifying a password.
 ```shell
 docker build --target dev -t dpdk-dts .
 docker run -v $(pwd)/..:/dpdk -v /home/dtsuser/.ssh:/root/.ssh:ro -it dpdk-dts bash
-$ poetry install --no-root
+$ poetry install
 $ poetry shell
 ```
 
@@ -46,7 +46,7 @@ $ poetry shell
 ```shell
 docker build --target dev -t dpdk-dts .
 docker run -v $(pwd)/..:/dpdk -it dpdk-dts bash
-$ poetry install --no-root
+$ poetry install
 $ poetry shell
 ```
 
