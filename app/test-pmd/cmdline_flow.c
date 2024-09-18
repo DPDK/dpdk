@@ -105,7 +105,6 @@ enum index {
 	HASH,
 
 	/* Flex arguments */
-	FLEX_ITEM_INIT,
 	FLEX_ITEM_CREATE,
 	FLEX_ITEM_DESTROY,
 
@@ -1249,7 +1248,6 @@ struct parse_action_priv {
 	})
 
 static const enum index next_flex_item[] = {
-	FLEX_ITEM_INIT,
 	FLEX_ITEM_CREATE,
 	FLEX_ITEM_DESTROY,
 	ZERO,
@@ -3931,15 +3929,6 @@ static const struct token token_list[] = {
 		.help = "flex item API",
 		.next = NEXT(next_flex_item),
 		.call = parse_flex,
-	},
-	[FLEX_ITEM_INIT] = {
-		.name = "init",
-		.help = "flex item init",
-		.args = ARGS(ARGS_ENTRY(struct buffer, args.flex.token),
-			     ARGS_ENTRY(struct buffer, port)),
-		.next = NEXT(NEXT_ENTRY(COMMON_FLEX_TOKEN),
-			     NEXT_ENTRY(COMMON_PORT_ID)),
-		.call = parse_flex
 	},
 	[FLEX_ITEM_CREATE] = {
 		.name = "create",
@@ -10720,7 +10709,6 @@ parse_flex(struct context *ctx, const struct token *token,
 		switch (ctx->curr) {
 		default:
 			break;
-		case FLEX_ITEM_INIT:
 		case FLEX_ITEM_CREATE:
 		case FLEX_ITEM_DESTROY:
 			out->command = ctx->curr;
