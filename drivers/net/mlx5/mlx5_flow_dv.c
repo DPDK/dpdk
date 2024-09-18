@@ -1481,7 +1481,6 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 	const struct mlx5_flex_pattern_field *map;
 	uint32_t offset = data->offset;
 	uint32_t width_left = width;
-	uint32_t def;
 	uint32_t cur_width = 0;
 	uint32_t tmp_ofs;
 	uint32_t idx = 0;
@@ -1506,7 +1505,7 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 	tmp_ofs = pos < data->offset ? data->offset - pos : 0;
 	for (j = i; i < flex->mapnum && width_left > 0; ) {
 		map = flex->map + i;
-		id = mlx5_flex_get_sample_id(flex, i, &pos, false, &def);
+		id = mlx5_flex_get_sample_id(flex, i, &pos, false);
 		if (id == -1) {
 			i++;
 			/* All left length is dummy */
@@ -1525,7 +1524,7 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 			 * 2. Width has been covered.
 			 */
 			for (j = i + 1; j < flex->mapnum; j++) {
-				tmp_id = mlx5_flex_get_sample_id(flex, j, &pos, false, &def);
+				tmp_id = mlx5_flex_get_sample_id(flex, j, &pos, false);
 				if (tmp_id == -1) {
 					i = j;
 					pos -= flex->map[j].width;
