@@ -207,7 +207,6 @@ EXPERIMENTAL {
 	rte_flow_dev_dump;
 
 	# added in 20.05
-	__rte_ethdev_trace_rx_burst;
 	__rte_ethdev_trace_tx_burst;
 	rte_flow_get_aged_flows;
 
@@ -325,6 +324,12 @@ EXPERIMENTAL {
 	rte_flow_template_table_resizable;
 	rte_flow_template_table_resize;
 	rte_flow_template_table_resize_complete;
+
+	# added in 24.11
+	__rte_ethdev_trace_rx_burst_empty;
+	__rte_ethdev_trace_rx_burst_nonempty;
+	__rte_eth_trace_call_rx_callbacks_empty;
+	__rte_eth_trace_call_rx_callbacks_nonempty;
 };
 
 INTERNAL {
