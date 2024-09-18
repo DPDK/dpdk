@@ -60,7 +60,7 @@
 #define MLX5_ROOT_TBL_MODIFY_NUM		16
 
 /* Maximal number of flex items created on the port.*/
-#define MLX5_PORT_FLEX_ITEM_NUM			4
+#define MLX5_PORT_FLEX_ITEM_NUM			8
 
 /* Maximal number of field/field parts to map into sample registers .*/
 #define MLX5_FLEX_ITEM_MAPPING_NUM		32
