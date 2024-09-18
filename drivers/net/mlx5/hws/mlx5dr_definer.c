@@ -3267,8 +3267,17 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			break;
 		case RTE_FLOW_ITEM_TYPE_FLEX:
 			ret = mlx5dr_definer_conv_item_flex_parser(&cd, items, i);
-			item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
-						  MLX5_FLOW_ITEM_OUTER_FLEX;
+			if (ret == 0) {
+				enum rte_flow_item_flex_tunnel_mode tunnel_mode =
+								FLEX_TUNNEL_MODE_SINGLE;
+
+				ret = mlx5_flex_get_tunnel_mode(items, &tunnel_mode);
+				if (tunnel_mode == FLEX_TUNNEL_MODE_TUNNEL)
+					item_flags |= MLX5_FLOW_ITEM_FLEX_TUNNEL;
+				else
+					item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
+								  MLX5_FLOW_ITEM_OUTER_FLEX;
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_MPLS:
 			ret = mlx5dr_definer_conv_item_mpls(&cd, items, i);
