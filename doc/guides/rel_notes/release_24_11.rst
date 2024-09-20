@@ -55,6 +55,18 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added new bit manipulation API.**
+
+  The support for bit-level operations on single 32- and 64-bit words in
+  <rte_bitops.h> has been extended with semantically well-defined functions.
+
+  * ``rte_bit_[test|set|clear|assign|flip]`` functions provide excellent
+    performance (by avoiding restricting the compiler and CPU), but give
+    no guarantees in regards to memory ordering or atomicity.
+
+  The new public API elements are polymorphic, using the _Generic-based
+  macros (for C) and function overloading (in C++ translation units).
+
 * **Extended service cores statistics.**
 
   Two new per-service counters are added to the service cores framework.

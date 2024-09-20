@@ -2,6 +2,7 @@
  * Copyright(c) 2020 Arm Limited
  * Copyright(c) 2010-2019 Intel Corporation
  * Copyright(c) 2023 Microsoft Corporation
+ * Copyright(c) 2024 Ericsson AB
  */
 
 #ifndef _RTE_BITOPS_H_
@@ -11,12 +12,14 @@
  * @file
  * Bit Operations
  *
- * This file defines a family of APIs for bit operations
- * without enforcing memory ordering.
+ * This file provides functionality for low-level, single-word
+ * arithmetic and bit-level operations, such as counting or
+ * setting individual bits.
  */
 
 #include <stdint.h>
 
+#include <rte_compat.h>
 #include <rte_debug.h>
 
 #ifdef __cplusplus
@@ -104,6 +107,194 @@ extern "C" {
  */
 #define RTE_FIELD_GET64(mask, reg) \
 		((typeof(mask))(((reg) & (mask)) >> rte_ctz64(mask)))
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Test bit in word.
+ *
+ * Generic selection macro to test the value of a bit in a 32-bit or
+ * 64-bit word. The type of operation depends on the type of the @c
+ * addr parameter.
+ *
+ * This macro does not give any guarantees in regards to memory
+ * ordering or atomicity.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ */
+#define rte_bit_test(addr, nr) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_test32, \
+		const uint32_t *: __rte_bit_test32, \
+		uint64_t *: __rte_bit_test64, \
+		const uint64_t *: __rte_bit_test64) \
+			(addr, nr)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Set bit in word.
+ *
+ * Generic selection macro to set a bit in a 32-bit or 64-bit
+ * word. The type of operation depends on the type of the @c addr
+ * parameter.
+ *
+ * This macro does not give any guarantees in regards to memory
+ * ordering or atomicity.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ */
+#define rte_bit_set(addr, nr) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_set32, \
+		uint64_t *: __rte_bit_set64) \
+			(addr, nr)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Clear bit in word.
+ *
+ * Generic selection macro to clear a bit in a 32-bit or 64-bit
+ * word. The type of operation depends on the type of the @c addr
+ * parameter.
+ *
+ * This macro does not give any guarantees in regards to memory
+ * ordering or atomicity.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ */
+#define rte_bit_clear(addr, nr) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_clear32, \
+		uint64_t *: __rte_bit_clear64) \
+			(addr, nr)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Assign a value to a bit in word.
+ *
+ * Generic selection macro to assign a value to a bit in a 32-bit or 64-bit
+ * word. The type of operation depends on the type of the @c addr parameter.
+ *
+ * This macro does not give any guarantees in regards to memory
+ * ordering or atomicity.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param value
+ *   The new value of the bit - true for '1', or false for '0'.
+ */
+#define rte_bit_assign(addr, nr, value) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_assign32, \
+		uint64_t *: __rte_bit_assign64) \
+			(addr, nr, value)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Flip a bit in word.
+ *
+ * Generic selection macro to change the value of a bit to '0' if '1'
+ * or '1' if '0' in a 32-bit or 64-bit word. The type of operation
+ * depends on the type of the @c addr parameter.
+ *
+ * This macro does not give any guarantees in regards to memory
+ * ordering or atomicity.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ */
+#define rte_bit_flip(addr, nr) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_flip32, \
+		uint64_t *: __rte_bit_flip64) \
+			(addr, nr)
+
+#define __RTE_GEN_BIT_TEST(variant, qualifier, size) \
+__rte_experimental \
+static inline bool \
+__rte_bit_ ## variant ## test ## size(const qualifier uint ## size ## _t *addr, unsigned int nr) \
+{ \
+	RTE_ASSERT(nr < size); \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	return *addr & mask; \
+}
+
+#define __RTE_GEN_BIT_SET(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_ ## variant ## set ## size(qualifier uint ## size ## _t *addr, unsigned int nr) \
+{ \
+	RTE_ASSERT(nr < size); \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	*addr |= mask; \
+}
+
+#define __RTE_GEN_BIT_CLEAR(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_ ## variant ## clear ## size(qualifier uint ## size ## _t *addr, unsigned int nr) \
+{ \
+	RTE_ASSERT(nr < size); \
+	uint ## size ## _t mask = ~((uint ## size ## _t)1 << nr); \
+	(*addr) &= mask; \
+}
+
+#define __RTE_GEN_BIT_ASSIGN(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_ ## variant ## assign ## size(qualifier uint ## size ## _t *addr, unsigned int nr, \
+		bool value) \
+{ \
+	if (value) \
+		__rte_bit_ ## variant ## set ## size(addr, nr); \
+	else \
+		__rte_bit_ ## variant ## clear ## size(addr, nr); \
+}
+
+#define __RTE_GEN_BIT_FLIP(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, unsigned int nr) \
+{ \
+	bool value; \
+	value = __rte_bit_ ## variant ## test ## size(addr, nr); \
+	__rte_bit_ ## variant ## assign ## size(addr, nr, !value); \
+}
+
+#define __RTE_GEN_BIT_OPS(v, qualifier, size) \
+	__RTE_GEN_BIT_TEST(v, qualifier, size) \
+	__RTE_GEN_BIT_SET(v, qualifier, size) \
+	__RTE_GEN_BIT_CLEAR(v, qualifier, size) \
+	__RTE_GEN_BIT_ASSIGN(v, qualifier, size) \
+	__RTE_GEN_BIT_FLIP(v, qualifier, size)
+
+#define __RTE_GEN_BIT_OPS_SIZE(size) \
+	__RTE_GEN_BIT_OPS(,, size)
+
+__RTE_GEN_BIT_OPS_SIZE(32)
+__RTE_GEN_BIT_OPS_SIZE(64)
 
 /*------------------------ 32-bit relaxed operations ------------------------*/
 
@@ -787,6 +978,73 @@ rte_log2_u64(uint64_t v)
 
 #ifdef __cplusplus
 }
+
+/*
+ * Since C++ doesn't support generic selection (i.e., _Generic),
+ * function overloading is used instead. Such functions must be
+ * defined outside 'extern "C"' to be accepted by the compiler.
+ */
+
+#undef rte_bit_test
+#undef rte_bit_set
+#undef rte_bit_clear
+#undef rte_bit_assign
+#undef rte_bit_flip
+
+#define __RTE_BIT_OVERLOAD_V_2(family, v, fun, qualifier, size, arg1_type, arg1_name) \
+static inline void \
+rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name) \
+{ \
+	__rte_bit_ ## family ## v ## fun ## size(addr, arg1_name); \
+}
+
+#define __RTE_BIT_OVERLOAD_SZ_2(family, fun, qualifier, size, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_V_2(family,, fun, qualifier, size, arg1_type, arg1_name)
+
+#define __RTE_BIT_OVERLOAD_2(family, fun, qualifier, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_SZ_2(family, fun, qualifier, 32, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_SZ_2(family, fun, qualifier, 64, arg1_type, arg1_name)
+
+#define __RTE_BIT_OVERLOAD_V_2R(family, v, fun, qualifier, size, ret_type, arg1_type, arg1_name) \
+static inline ret_type \
+rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name) \
+{ \
+	return __rte_bit_ ## family ## v ## fun ## size(addr, arg1_name); \
+}
+
+#define __RTE_BIT_OVERLOAD_SZ_2R(family, fun, qualifier, size, ret_type, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_V_2R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name)
+
+#define __RTE_BIT_OVERLOAD_2R(family, fun, qualifier, ret_type, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_SZ_2R(family, fun, qualifier, 32, ret_type, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_SZ_2R(family, fun, qualifier, 64, ret_type, arg1_type, arg1_name)
+
+#define __RTE_BIT_OVERLOAD_V_3(family, v, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+static inline void \
+rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name, \
+		arg2_type arg2_name) \
+{ \
+	__rte_bit_ ## family ## v ## fun ## size(addr, arg1_name, arg2_name); \
+}
+
+#define __RTE_BIT_OVERLOAD_SZ_3(family, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_V_3(family,, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name)
+
+#define __RTE_BIT_OVERLOAD_3(family, fun, qualifier, arg1_type, arg1_name, arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_SZ_3(family, fun, qualifier, 32, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_SZ_3(family, fun, qualifier, 64, arg1_type, arg1_name, \
+		arg2_type, arg2_name)
+
+__RTE_BIT_OVERLOAD_2R(, test, const, bool, unsigned int, nr)
+__RTE_BIT_OVERLOAD_2(, set,, unsigned int, nr)
+__RTE_BIT_OVERLOAD_2(, clear,, unsigned int, nr)
+__RTE_BIT_OVERLOAD_3(, assign,, unsigned int, nr, bool, value)
+__RTE_BIT_OVERLOAD_2(, flip,, unsigned int, nr)
+
 #endif
 
 #endif /* _RTE_BITOPS_H_ */
