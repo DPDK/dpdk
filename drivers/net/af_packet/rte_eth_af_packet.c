@@ -40,6 +40,9 @@
 #define DFLT_FRAME_SIZE		(1 << 11)
 #define DFLT_FRAME_COUNT	(1 << 9)
 
+static uint64_t timestamp_dynflag;
+static int timestamp_dynfield_offset = -1;
+
 struct __rte_cache_aligned pkt_rx_queue {
 	int sockfd;
 
@@ -51,6 +54,7 @@ struct __rte_cache_aligned pkt_rx_queue {
 	struct rte_mempool *mb_pool;
 	uint16_t in_port;
 	uint8_t vlan_strip;
+	uint8_t timestamp_offloading;
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long rx_bytes;
@@ -82,6 +86,7 @@ struct pmd_internals {
 	struct pkt_rx_queue *rx_queue;
 	struct pkt_tx_queue *tx_queue;
 	uint8_t vlan_strip;
+	uint8_t timestamp_offloading;
 };
 
 static const char *valid_arguments[] = {
@@ -155,6 +160,16 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 			if (!pkt_q->vlan_strip && rte_vlan_insert(&mbuf))
 				PMD_LOG(ERR, "Failed to reinsert VLAN tag");
+		}
+
+		/* add kernel provided timestamp when offloading is enabled */
+		if (pkt_q->timestamp_offloading) {
+			/* since TPACKET_V2 timestamps are provided in nanoseconds resolution */
+			*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset,
+				rte_mbuf_timestamp_t *) =
+					(uint64_t)ppd->tp_sec * 1000000000 + ppd->tp_nsec;
+
+			mbuf->ol_flags |= timestamp_dynflag;
 		}
 
 		/* release incoming frame and advance ring buffer */
@@ -317,6 +332,16 @@ eth_dev_start(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = dev->data->dev_private;
 	uint16_t i;
 
+	if (internals->timestamp_offloading) {
+		/* Register mbuf field and flag for Rx timestamp */
+		int rc = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
+				&timestamp_dynflag);
+		if (rc) {
+			PMD_LOG(ERR, "Cannot register mbuf field/flag for timestamp");
+			return rc;
+		}
+	}
+
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 	for (i = 0; i < internals->nb_queues; i++) {
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -365,6 +390,7 @@ eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	internals->vlan_strip = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
+	internals->timestamp_offloading = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP);
 	return 0;
 }
 
@@ -381,7 +407,8 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 	dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_MULTI_SEGS |
 		RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
-	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 
 	return 0;
 }
@@ -508,6 +535,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	dev->data->rx_queues[rx_queue_id] = pkt_q;
 	pkt_q->in_port = dev->data->port_id;
 	pkt_q->vlan_strip = internals->vlan_strip;
+	pkt_q->timestamp_offloading = internals->timestamp_offloading;
 
 	return 0;
 }

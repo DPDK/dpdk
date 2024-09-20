@@ -69,6 +69,8 @@ framecnt=512):
 Features and Limitations
 ------------------------
 
-The PMD will re-insert the VLAN tag transparently to the packet if the kernel
-strips it, as long as the ``RTE_ETH_RX_OFFLOAD_VLAN_STRIP`` is not enabled by the
-application.
+*  The PMD will re-insert the VLAN tag transparently to the packet if the kernel
+   strips it, as long as the ``RTE_ETH_RX_OFFLOAD_VLAN_STRIP`` is not enabled by the
+   application.
+*  The PMD will add the kernel packet timestamp with nanoseconds resolution and
+   UNIX origo, i.e. time since 1-JAN-1970 UTC, if ``RTE_ETH_RX_OFFLOAD_TIMESTAMP`` is enabled.
