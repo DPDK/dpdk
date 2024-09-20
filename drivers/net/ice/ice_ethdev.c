@@ -6,6 +6,7 @@
 #include <ethdev_pci.h>
 
 #include <ctype.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1873,21 +1874,60 @@ ice_load_pkg_type(struct ice_hw *hw)
 	return package_type;
 }
 
+static int ice_read_customized_path(char *pkg_file, uint16_t buff_len)
+{
+	int fp, n;
+
+	fp = open(ICE_PKG_FILE_CUSTOMIZED_PATH, O_RDONLY);
+	if (fp < 0) {
+		PMD_INIT_LOG(INFO, "Failed to read CUSTOMIZED_PATH");
+		return -EIO;
+	}
+
+	n = read(fp, pkg_file, buff_len - 1);
+	if (n == 0) {
+		close(fp);
+		return -EIO;
+	}
+
+	if (pkg_file[n - 1] == '\n')
+		n--;
+
+	pkg_file[n] = '\0';
+
+	close(fp);
+	return 0;
+}
+
 int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 {
 	struct ice_hw *hw = &adapter->hw;
 	char pkg_file[ICE_MAX_PKG_FILENAME_SIZE];
+	char customized_path[ICE_MAX_PKG_FILENAME_SIZE];
 	char opt_ddp_filename[ICE_MAX_PKG_FILENAME_SIZE];
 	void *buf;
 	size_t bufsz;
 	int err;
 
-	if (!use_dsn)
-		goto no_dsn;
-
 	memset(opt_ddp_filename, 0, ICE_MAX_PKG_FILENAME_SIZE);
 	snprintf(opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE,
 		"ice-%016" PRIx64 ".pkg", dsn);
+
+	if (ice_read_customized_path(customized_path, ICE_MAX_PKG_FILENAME_SIZE) == 0) {
+		if (use_dsn) {
+			snprintf(pkg_file, RTE_DIM(pkg_file), "%s/%s",
+					customized_path, opt_ddp_filename);
+			if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+				goto load_fw;
+		}
+		snprintf(pkg_file, RTE_DIM(pkg_file), "%s/%s", customized_path, "ice.pkg");
+		if (rte_firmware_read(pkg_file, &buf, &bufsz) == 0)
+			goto load_fw;
+	}
+
+	if (!use_dsn)
+		goto no_dsn;
+
 	strncpy(pkg_file, ICE_PKG_FILE_SEARCH_PATH_UPDATES,
 		ICE_MAX_PKG_FILENAME_SIZE);
 	strcat(pkg_file, opt_ddp_filename);
