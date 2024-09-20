@@ -52,10 +52,6 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
@@ -64,6 +60,10 @@ extern "C" {
 #include <rte_table_hash.h>
 
 #include "rte_pipeline.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Table actions. */
 enum rte_table_action_type {

@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_HASH_FUNC_H__
 #define __INCLUDE_RTE_SWX_HASH_FUNC_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Hash Function
@@ -31,9 +27,5 @@ typedef uint32_t
 (*rte_swx_hash_func_t)(const void *key,
 		       uint32_t length,
 		       uint32_t seed);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -16,10 +16,6 @@
 
 #include <sched.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* These macros are compatible with bundled sys/queue.h. */
 #define RTE_TAILQ_HEAD(name, type) \
 struct name { \
@@ -58,9 +54,5 @@ struct { \
  * If ssize_t is defined in user code, it necessarily has the same type.
  */
 typedef long long ssize_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_OS_H_ */

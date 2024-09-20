@@ -11,10 +11,6 @@
  * Auxiliary Bus Interface.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -27,6 +23,10 @@ extern "C" {
 #include <rte_interrupts.h>
 #include <dev_driver.h>
 #include <rte_kvargs.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_BUS_AUXILIARY_NAME "auxiliary"
 

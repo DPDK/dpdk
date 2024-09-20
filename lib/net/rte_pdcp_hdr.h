@@ -16,10 +16,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * 4.3.1
  *
@@ -139,9 +135,5 @@ struct rte_pdcp_up_ctrl_pdu_hdr {
 	 */
 	uint8_t bitmap[];
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_PDCP_HDR_H */

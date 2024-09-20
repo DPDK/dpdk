@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_PORT_ETHDEV_H__
 #define __INCLUDE_RTE_SWX_PORT_ETHDEV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Ethernet Device Input and Output Ports
@@ -16,6 +12,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_swx_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Ethernet device input port (reader) creation parameters. */
 struct rte_swx_port_ethdev_reader_params {

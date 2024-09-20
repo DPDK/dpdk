@@ -5,10 +5,6 @@
 #ifndef _RTE_EVENTDEV_PMD_H_
 #define _RTE_EVENTDEV_PMD_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** @file
  * RTE Event PMD APIs
  *
@@ -30,6 +26,10 @@ extern "C" {
 
 #include "event_timer_adapter_pmd.h"
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern int rte_event_logtype;
 #define RTE_LOGTYPE_EVENTDEV rte_event_logtype

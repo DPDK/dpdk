@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_CTL_H__
 #define __INCLUDE_RTE_SWX_CTL_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Pipeline Control
@@ -21,6 +17,10 @@ extern "C" {
 
 #include "rte_swx_port.h"
 #include "rte_swx_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_swx_pipeline;
 

@@ -5,10 +5,6 @@
 #ifndef _CRYPTODEV_PMD_H_
 #define _CRYPTODEV_PMD_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** @file
  * RTE Crypto PMD APIs
  *
@@ -27,6 +23,10 @@ extern "C" {
 
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 #define RTE_CRYPTODEV_PMD_DEFAULT_MAX_NB_QUEUE_PAIRS	8

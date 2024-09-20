@@ -18,10 +18,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * TCP Header
  */
@@ -48,9 +44,5 @@ struct rte_tcp_hdr {
 #define RTE_TCP_RST_FLAG 0x04 /**< Reset the connection */
 #define RTE_TCP_SYN_FLAG 0x02 /**< Synchronize sequence numbers */
 #define RTE_TCP_FIN_FLAG 0x01 /**< No more data from sender */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_TCP_H_ */

@@ -14,16 +14,16 @@
 #ifndef _RTE_EVENT_RING_
 #define _RTE_EVENT_RING_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_common.h>
 #include <rte_ring.h>
 #include <rte_ring_elem.h>
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_TAILQ_EVENT_RING_NAME "RTE_EVENT_RING"
 

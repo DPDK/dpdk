@@ -6,13 +6,13 @@
 #ifndef BUS_VMBUS_DRIVER_H
 #define BUS_VMBUS_DRIVER_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bus_vmbus.h>
 #include <rte_compat.h>
 #include <dev_driver.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct vmbus_channel;
 struct vmbus_mon_page;

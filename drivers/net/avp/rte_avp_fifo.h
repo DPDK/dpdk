@@ -8,10 +8,6 @@
 
 #include "rte_avp_common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef __KERNEL__
 /* Write memory barrier for kernel compiles */
 #define AVP_WMB() smp_wmb()
@@ -26,6 +22,10 @@ extern "C" {
 
 #ifndef __KERNEL__
 #include <rte_debug.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Initializes the avp fifo structure

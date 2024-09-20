@@ -5,13 +5,13 @@
 #ifndef __RTE_LRU_ARM64_H__
 #define __RTE_LRU_ARM64_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_vect.h>
 #include <rte_bitops.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_TABLE_HASH_LRU_STRATEGY
 #ifdef __ARM_NEON

@@ -5,13 +5,13 @@
 #ifndef _RTE_NET_PTYPE_H_
 #define _RTE_NET_PTYPE_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_tcp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Structure containing header lengths associated to a packet, filled

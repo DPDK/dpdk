@@ -14,10 +14,6 @@
  * as supported symmetric crypto operation combinations.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_compat.h>
@@ -25,6 +21,10 @@ extern "C" {
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Crypto IO Vector (in analogy with struct iovec)

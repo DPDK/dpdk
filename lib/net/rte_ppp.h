@@ -14,10 +14,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * PPP Header
  */
@@ -26,9 +22,5 @@ struct rte_ppp_hdr {
 	uint8_t ctrl; /**< PPP control(8) */
 	rte_be16_t proto_id; /**< PPP protocol identifier(16) */
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_PPP_H_ */

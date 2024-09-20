@@ -772,8 +772,16 @@ struct rte_dma_sge {
 	uint32_t length; /**< The DMA operation length. */
 };
 
+#ifdef __cplusplus
+}
+#endif
+
 #include "rte_dmadev_core.h"
 #include "rte_dmadev_trace_fp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**@{@name DMA operation flag
  * @see rte_dma_copy()

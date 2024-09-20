@@ -6,10 +6,6 @@
 #ifndef __INCLUDE_RTE_METER_H__
 #define __INCLUDE_RTE_METER_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Traffic Metering
@@ -21,6 +17,10 @@ extern "C" {
  */
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Application Programmer's Interface (API)

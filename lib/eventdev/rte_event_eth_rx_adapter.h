@@ -87,16 +87,16 @@
  * event based so the callback can also modify the event data if it needs to.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
 #include <rte_service.h>
 
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_EVENT_ETH_RX_ADAPTER_MAX_INSTANCE 32
 

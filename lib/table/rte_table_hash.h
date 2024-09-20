@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_HASH_H__
 #define __INCLUDE_RTE_TABLE_HASH_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table Hash
@@ -51,6 +47,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Hash function */
 typedef uint64_t (*rte_table_hash_op_hash)(

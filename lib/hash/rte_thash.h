@@ -15,10 +15,6 @@
  * after GRE header decapsulating)
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_byteorder.h>
@@ -28,6 +24,10 @@ extern "C" {
 
 #if defined(RTE_ARCH_X86) || defined(__ARM_NEON)
 #include <rte_vect.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #ifdef RTE_ARCH_X86

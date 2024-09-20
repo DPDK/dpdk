@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_TABLE_SELECTOR_H__
 #define __INCLUDE_RTE_SWX_TABLE_SELECTOR_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Selector Table
@@ -20,6 +16,10 @@ extern "C" {
 #include <rte_compat.h>
 
 #include "rte_swx_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Selector table creation parameters. */
 struct rte_swx_table_selector_params {

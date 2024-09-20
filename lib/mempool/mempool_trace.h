@@ -11,14 +11,14 @@
  * APIs for mempool trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "rte_mempool.h"
 
 #include <rte_memzone.h>
 #include <rte_trace_point.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_TRACE_POINT(
 	rte_mempool_trace_create,

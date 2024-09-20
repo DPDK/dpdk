@@ -13,10 +13,6 @@
  * This file provides a log API to RTE applications.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -25,6 +21,10 @@ extern "C" {
 
 #include <rte_common.h>
 #include <rte_config.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* SDK log type */
 #define RTE_LOGTYPE_EAL        0 /**< Log related to eal. */

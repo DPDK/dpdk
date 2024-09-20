@@ -5,10 +5,6 @@
 #ifndef _RTE_SEQLOCK_H_
 #define _RTE_SEQLOCK_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Seqlock
@@ -94,6 +90,10 @@ extern "C" {
 #include <rte_branch_prediction.h>
 #include <rte_seqcount.h>
 #include <rte_spinlock.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The RTE seqlock type.

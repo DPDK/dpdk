@@ -4,16 +4,16 @@
 #ifndef __INCLUDE_RTE_SWX_PIPELINE_SPEC_H__
 #define __INCLUDE_RTE_SWX_PIPELINE_SPEC_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdio.h>
 
 #include <rte_common.h>
 
 #include <rte_swx_pipeline.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * extobj.

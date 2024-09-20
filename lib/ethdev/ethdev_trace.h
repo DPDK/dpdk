@@ -11,16 +11,16 @@
  * API for ethdev trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <dev_driver.h>
 #include <rte_trace_point.h>
 
 #include "rte_ethdev.h"
 #include "rte_mtr.h"
 #include "rte_tm.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_TRACE_POINT(
 	rte_ethdev_trace_configure,

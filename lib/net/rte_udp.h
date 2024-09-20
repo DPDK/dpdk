@@ -18,10 +18,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * UDP Header
  */
@@ -31,9 +27,5 @@ struct rte_udp_hdr {
 	rte_be16_t dgram_len;   /**< UDP datagram length */
 	rte_be16_t dgram_cksum; /**< UDP datagram checksum */
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_UDP_H_ */

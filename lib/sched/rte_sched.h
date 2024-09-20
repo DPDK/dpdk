@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_SCHED_H__
 #define __INCLUDE_RTE_SCHED_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Hierarchical Scheduler
@@ -61,6 +57,10 @@ extern "C" {
 /** Congestion Management */
 #include "rte_red.h"
 #include "rte_pie.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum number of queues per pipe.
  * Note that the multiple queues (power of 2) can only be assigned to

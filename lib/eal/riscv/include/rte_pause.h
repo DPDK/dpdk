@@ -7,13 +7,13 @@
 #ifndef RTE_PAUSE_RISCV_H
 #define RTE_PAUSE_RISCV_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "rte_atomic.h"
 
 #include "generic/rte_pause.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline void rte_pause(void)
 {

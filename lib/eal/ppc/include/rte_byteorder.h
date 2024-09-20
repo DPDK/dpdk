@@ -8,12 +8,12 @@
 #ifndef _RTE_BYTEORDER_PPC_64_H_
 #define _RTE_BYTEORDER_PPC_64_H_
 
+#include <stdint.h>
+#include "generic/rte_byteorder.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include "generic/rte_byteorder.h"
 
 /*
  * An architecture-optimized byte swap for a 16-bit value.

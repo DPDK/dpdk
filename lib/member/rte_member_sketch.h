@@ -5,12 +5,12 @@
 #ifndef RTE_MEMBER_SKETCH_H
 #define RTE_MEMBER_SKETCH_H
 
+#include <rte_vect.h>
+#include <rte_ring_elem.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_vect.h>
-#include <rte_ring_elem.h>
 
 #define NUM_ROW_SCALAR 5
 #define INTERVAL (1 << 15)

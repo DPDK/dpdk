@@ -5,10 +5,6 @@
 #ifndef PACKET_BURST_GENERATOR_H_
 #define PACKET_BURST_GENERATOR_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_mbuf.h>
 #include <rte_ether.h>
 #include <rte_arp.h>
@@ -16,6 +12,10 @@ extern "C" {
 #include <rte_udp.h>
 #include <rte_tcp.h>
 #include <rte_sctp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define IPV4_ADDR(a, b, c, d)(((a & 0xff) << 24) | ((b & 0xff) << 16) | \
 		((c & 0xff) << 8) | (d & 0xff))

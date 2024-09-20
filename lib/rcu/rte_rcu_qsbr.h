@@ -21,10 +21,6 @@
  * entered quiescent state.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <inttypes.h>
 #include <stdalign.h>
 #include <stdbool.h>
@@ -35,6 +31,10 @@ extern "C" {
 #include <rte_debug.h>
 #include <rte_atomic.h>
 #include <rte_ring.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern int rte_rcu_log_type;
 #define RTE_LOGTYPE_RCU rte_rcu_log_type

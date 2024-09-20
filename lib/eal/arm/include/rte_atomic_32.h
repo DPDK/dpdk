@@ -9,11 +9,11 @@
 #  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
+#include "generic/rte_atomic.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_atomic.h"
 
 #define	rte_mb()  __sync_synchronize()
 

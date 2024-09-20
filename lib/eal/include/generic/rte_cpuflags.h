@@ -15,6 +15,10 @@
 
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Structure used to describe platform-specific intrinsics that may or may not
  * be supported at runtime.
@@ -103,5 +107,9 @@ rte_cpu_getauxval(unsigned long type);
  */
 int
 rte_cpu_strcmp_auxval(unsigned long type, const char *str);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_CPUFLAGS_H_ */

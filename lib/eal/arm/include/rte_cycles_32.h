@@ -15,11 +15,11 @@
 
 #include <time.h>
 
+#include "generic/rte_cycles.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_cycles.h"
 
 /**
  * Read the time base register.

@@ -11,13 +11,13 @@
  * API for mlx5 PMD trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <mlx5_prm.h>
 #include <rte_mbuf.h>
 #include <rte_trace_point.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* TX burst subroutines trace points. */
 RTE_TRACE_POINT_FP(

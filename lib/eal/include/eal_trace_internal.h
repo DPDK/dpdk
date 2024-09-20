@@ -11,15 +11,15 @@
  * API for EAL trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_alarm.h>
 #include <rte_interrupts.h>
 #include <rte_trace_point.h>
 
 #include "eal_interrupts.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Alarm */
 RTE_TRACE_POINT(

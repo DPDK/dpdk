@@ -15,15 +15,15 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_eal_memconfig.h>
 #include <rte_fbarray.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_PGSIZE_4K   (1ULL << 12)
 #define RTE_PGSIZE_64K  (1ULL << 16)

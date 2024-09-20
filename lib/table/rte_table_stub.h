@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_STUB_H__
 #define __INCLUDE_RTE_TABLE_STUB_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table Stub
@@ -17,6 +13,10 @@ extern "C" {
  */
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Stub table parameters: NONE */
 

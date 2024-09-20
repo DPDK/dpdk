@@ -17,10 +17,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * InfiniBand Base Transport Header according to
  * IB Specification Vol 1-Release-1.4.
@@ -62,9 +58,5 @@ struct rte_ib_bth {
 
 /** RoCEv2 default port. */
 #define RTE_ROCEV2_DEFAULT_PORT 4791
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_IB_H */

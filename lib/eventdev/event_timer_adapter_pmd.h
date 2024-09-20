@@ -16,10 +16,6 @@
  * versioning.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "rte_event_timer_adapter.h"
 
 /*
@@ -111,9 +107,5 @@ struct __rte_cache_aligned rte_event_timer_adapter_data {
 	uint8_t started : 1;
 	/**< Flag to indicate adapter started. */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __EVENT_TIMER_ADAPTER_PMD_H__ */

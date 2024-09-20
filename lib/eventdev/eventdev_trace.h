@@ -11,16 +11,16 @@
  * API for ethdev trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_trace_point.h>
 
 #include "rte_eventdev.h"
 #include "rte_event_crypto_adapter.h"
 #include "rte_event_eth_rx_adapter.h"
 #include "rte_event_timer_adapter.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_TRACE_POINT(
 	rte_eventdev_trace_configure,

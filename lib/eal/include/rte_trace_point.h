@@ -16,10 +16,6 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -32,6 +28,10 @@ extern "C" {
 #include <rte_string_fns.h>
 #include <rte_trace.h>
 #include <rte_uuid.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** The tracepoint object. */
 typedef RTE_ATOMIC(uint64_t) rte_trace_point_t;

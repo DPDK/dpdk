@@ -17,10 +17,6 @@
 #include <rte_ipsec_sa.h>
 #include <rte_mbuf.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct rte_ipsec_session;
 
 /**
@@ -180,6 +176,10 @@ void
 rte_ipsec_telemetry_sa_del(const struct rte_ipsec_sa *sa);
 
 #include <rte_ipsec_group.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef __cplusplus
 }

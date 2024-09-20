@@ -5,11 +5,11 @@
 #ifndef RTE_CYCLES_LOONGARCH_H
 #define RTE_CYCLES_LOONGARCH_H
 
+#include "generic/rte_cycles.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "generic/rte_cycles.h"
 
 /**
  * Read the time base register.

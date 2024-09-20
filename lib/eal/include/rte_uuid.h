@@ -10,13 +10,13 @@
 #ifndef _RTE_UUID_H_
 #define _RTE_UUID_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Struct describing a Universal Unique Identifier

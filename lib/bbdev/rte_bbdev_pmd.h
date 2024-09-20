@@ -14,14 +14,14 @@
  * bbdev interface. User applications should not use this API.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_log.h>
 
 #include "rte_bbdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Suggested value for SW based devices */
 #define RTE_BBDEV_DEFAULT_MAX_NB_QUEUES RTE_MAX_LCORE

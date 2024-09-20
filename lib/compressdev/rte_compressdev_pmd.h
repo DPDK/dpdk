@@ -13,16 +13,16 @@
  * them directly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <dev_driver.h>
 
 #include "rte_compressdev.h"
 #include "rte_compressdev_internal.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_COMPRESSDEV_PMD_NAME_ARG			("name")
 #define RTE_COMPRESSDEV_PMD_SOCKET_ID_ARG		("socket_id")

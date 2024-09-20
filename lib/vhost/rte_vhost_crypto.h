@@ -5,11 +5,11 @@
 #ifndef _VHOST_CRYPTO_H_
 #define _VHOST_CRYPTO_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 /* pre-declare structs to avoid including full headers */
 struct rte_mempool;

@@ -5,12 +5,12 @@
 #ifndef _RTE_TIME_H_
 #define _RTE_TIME_H_
 
+#include <stdint.h>
+#include <time.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include <time.h>
 
 #define NSEC_PER_SEC             1000000000L
 

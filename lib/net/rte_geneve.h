@@ -14,10 +14,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** GENEVE default port. */
 #define RTE_GENEVE_DEFAULT_PORT 6081
 
@@ -60,9 +56,5 @@ struct rte_geneve_hdr {
 
 /* GENEVE ETH next protocol types */
 #define RTE_GENEVE_TYPE_ETH	0x6558 /**< Ethernet Protocol. */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_GENEVE_H_ */

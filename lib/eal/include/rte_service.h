@@ -23,15 +23,15 @@
  * application has access to the remaining lcores as normal.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include<stdio.h>
 #include <stdint.h>
 
 #include <rte_config.h>
 #include <rte_lcore.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_SERVICE_NAME_MAX 32
 

@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_H__
 #define __INCLUDE_RTE_TABLE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table
@@ -263,9 +259,5 @@ struct rte_table_ops {
 	rte_table_op_lookup f_lookup;                 /**< Lookup */
 	rte_table_op_stats_read f_stats;              /**< Stats */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

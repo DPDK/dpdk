@@ -8,13 +8,13 @@
 #ifndef __FSL_QMAN_H
 #define __FSL_QMAN_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <dpaa_rbtree.h>
 #include <rte_compat.h>
 #include <rte_eventdev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* FQ lookups (turn this on for 64bit user-space) */
 #ifdef RTE_ARCH_64

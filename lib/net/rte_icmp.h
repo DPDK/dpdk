@@ -18,10 +18,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * ICMP base header
  */
@@ -58,9 +54,5 @@ struct rte_icmp_hdr {
 #define RTE_IP_ICMP_ECHO_REQUEST 8
 #define RTE_ICMP6_ECHO_REQUEST 128
 #define RTE_ICMP6_ECHO_REPLY   129
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_ICMP_H_ */

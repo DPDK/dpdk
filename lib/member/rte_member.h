@@ -54,10 +54,6 @@
 #ifndef _RTE_MEMBER_H_
 #define _RTE_MEMBER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -98,6 +94,10 @@ typedef uint16_t member_set_t;
 #else
 #include <rte_jhash.h>
 #define MEMBER_HASH_FUNC       rte_jhash
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /** @internal setsummary structure. */

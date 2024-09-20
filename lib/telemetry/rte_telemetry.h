@@ -5,13 +5,13 @@
 #ifndef _RTE_TELEMETRY_H_
 #define _RTE_TELEMETRY_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_compat.h>
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Maximum length for string used in object. */
 #define RTE_TEL_MAX_STRING_LEN 128

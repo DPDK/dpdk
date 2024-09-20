@@ -19,15 +19,15 @@
  * they acquired the lock.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_lcore.h>
 #include <rte_common.h>
 #include <rte_pause.h>
 #include <rte_branch_prediction.h>
 #include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The rte_mcslock_t type.

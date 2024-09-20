@@ -5,10 +5,6 @@
 #ifndef _RTE_CPUFLAGS_ARM64_H_
 #define _RTE_CPUFLAGS_ARM64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Enumeration of all CPU features supported
  */
@@ -39,9 +35,5 @@ enum rte_cpu_flag_t {
 };
 
 #include "generic/rte_cpuflags.h"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_CPUFLAGS_ARM64_H_ */

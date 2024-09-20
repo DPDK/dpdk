@@ -14,10 +14,6 @@
 #ifndef _RTE_SCTP_H_
 #define _RTE_SCTP_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_byteorder.h>
@@ -31,9 +27,5 @@ struct rte_sctp_hdr {
 	rte_be32_t tag;      /**< Validation tag. */
 	rte_be32_t cksum;    /**< Checksum. */
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_SCTP_H_ */

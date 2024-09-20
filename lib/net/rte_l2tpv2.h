@@ -74,10 +74,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * L2TPv2 Message Type
  */
@@ -238,9 +234,5 @@ struct rte_l2tpv2_combined_msg_hdr {
 		struct rte_l2tpv2_msg_without_all_options type7;
 	};
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_L2TPV2_H_ */

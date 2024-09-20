@@ -13,12 +13,12 @@
  * eal_common_thread.c and common\include\rte_per_lcore.h as Microsoft libc
  * does not contain pthread.h. This may be removed in future releases.
  */
+#include <rte_common.h>
+#include <rte_windows.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include <rte_windows.h>
 
 #define PTHREAD_BARRIER_SERIAL_THREAD TRUE
 

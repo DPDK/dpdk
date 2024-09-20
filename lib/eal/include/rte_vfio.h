@@ -10,10 +10,6 @@
  * RTE VFIO. This library provides various VFIO related utility functions.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -31,6 +27,10 @@ extern "C" {
 #define HAVE_VFIO_DEV_REQ_INTERFACE
 #endif /* kernel version >= 4.0.0 */
 #endif /* RTE_EAL_VFIO */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef VFIO_PRESENT
 

@@ -11,10 +11,6 @@
  * Defines wireless base band layer 1 operations and capabilities
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
@@ -22,6 +18,10 @@ extern "C" {
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Number of columns in sub-block interleaver (36.212, section 5.1.4.1.1) */
 #define RTE_BBDEV_TURBO_C_SUBBLOCK (32)

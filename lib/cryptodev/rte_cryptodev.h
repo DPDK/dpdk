@@ -14,10 +14,6 @@
  * authentication operations.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include "rte_kvargs.h"
 #include "rte_crypto.h"
@@ -1859,6 +1855,10 @@ int rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 				      struct rte_cryptodev_cb *cb);
 
 #include <rte_cryptodev_core.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 /**
  *
  * Dequeue a burst of processed crypto operations from a queue on the crypto

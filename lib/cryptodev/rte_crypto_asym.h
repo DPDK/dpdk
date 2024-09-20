@@ -14,10 +14,6 @@
  * asymmetric crypto operations.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 #include <stdint.h>
 
@@ -727,9 +723,5 @@ struct rte_crypto_asym_op {
 	 * Please refer to the RTE_CRYPTO_ASYM_FLAG_*.
 	 */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_CRYPTO_ASYM_H_ */

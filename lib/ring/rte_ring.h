@@ -34,12 +34,12 @@
  * for more information.
  */
 
+#include <rte_ring_core.h>
+#include <rte_ring_elem.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring_core.h>
-#include <rte_ring_elem.h>
 
 /**
  * Calculate the memory size needed for a ring

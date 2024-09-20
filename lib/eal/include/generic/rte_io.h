@@ -17,6 +17,10 @@
 #include <rte_compat.h>
 #include <rte_atomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __DOXYGEN__
 
 /**
@@ -395,5 +399,9 @@ rte_write32_wc_relaxed(uint32_t value, volatile void *addr)
 #endif /* RTE_NATIVE_WRITE32_WC */
 
 #endif /* RTE_OVERRIDE_IO_H */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_IO_H_ */

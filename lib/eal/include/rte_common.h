@@ -12,10 +12,6 @@
  * for DPDK.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <assert.h>
 #include <limits.h>
 #include <stdint.h>
@@ -25,6 +21,10 @@ extern "C" {
 
 /* OS specific include */
 #include <rte_os.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_TOOLCHAIN_MSVC
 #ifndef typeof

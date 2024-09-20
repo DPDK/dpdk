@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_LPM_IPV6_H__
 #define __INCLUDE_RTE_TABLE_LPM_IPV6_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table LPM for IPv6
@@ -44,6 +40,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_LPM_IPV6_ADDR_SIZE 16
 

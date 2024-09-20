@@ -17,11 +17,11 @@
  * load balancing of network ports
  */
 
+#include <rte_ether.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ether.h>
 
 /* Supported modes of operation of link bonding library  */
 

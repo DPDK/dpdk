@@ -145,10 +145,6 @@
  * a 0 value by the receive function of the driver for a given number of tries.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 /* Use this macro to check if LRO API is supported */
@@ -5965,6 +5961,10 @@ __rte_experimental
 int rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config);
 
 #include <rte_ethdev_core.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal

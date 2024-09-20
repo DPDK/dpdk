@@ -12,10 +12,6 @@
  * RTE Security Common Definitions
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <sys/types.h>
 
 #include <rte_compat.h>
@@ -23,6 +19,10 @@ extern "C" {
 #include <rte_crypto.h>
 #include <rte_ip.h>
 #include <rte_mbuf_dyn.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** IPSec protocol mode */
 enum rte_security_ipsec_sa_mode {

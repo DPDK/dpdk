@@ -5,14 +5,14 @@
 #ifndef _RTE_ETH_VHOST_H_
 #define _RTE_ETH_VHOST_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
 
 #include <rte_vhost.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Event description.

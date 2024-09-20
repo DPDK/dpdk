@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_EXTERN_H__
 #define __INCLUDE_RTE_SWX_EXTERN_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Extern objects and functions
@@ -90,9 +86,5 @@ typedef int
  */
 typedef int
 (*rte_swx_extern_func_t)(void *mailbox);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

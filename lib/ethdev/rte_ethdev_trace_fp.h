@@ -11,11 +11,11 @@
  * API for ethdev trace support
  */
 
+#include <rte_trace_point.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_trace_point.h>
 
 RTE_TRACE_POINT_FP(
 	rte_ethdev_trace_rx_burst,

@@ -12,13 +12,13 @@
  * RTE PCI Library
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <inttypes.h>
 #include <sys/types.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  * Conventional PCI and PCI-X Mode 1 devices have 256 bytes of

@@ -11,10 +11,6 @@
  * RTE CRC Hash
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_branch_prediction.h>
@@ -37,6 +33,10 @@ extern uint8_t rte_hash_crc32_alg;
 #include "rte_crc_x86.h"
 #else
 #include "rte_crc_generic.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /**

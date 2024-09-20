@@ -5,10 +5,6 @@
 #ifndef _RTE_ETHDEV_DRIVER_H_
 #define _RTE_ETHDEV_DRIVER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  *
@@ -23,6 +19,10 @@ extern "C" {
 #include <dev_driver.h>
 #include <rte_compat.h>
 #include <rte_ethdev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal

@@ -167,13 +167,13 @@
  * from the start of the rte_crypto_op including initialization vector (IV).
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include "rte_eventdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Crypto event adapter mode

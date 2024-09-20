@@ -8,10 +8,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "generic/rte_memcpy.h"
 
 #ifdef RTE_ARCH_ARM_NEON_MEMCPY
@@ -22,6 +18,10 @@ extern "C" {
 
 /* ARM NEON Intrinsics are used to copy data */
 #include <arm_neon.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline void
 rte_mov16(uint8_t *dst, const uint8_t *src)

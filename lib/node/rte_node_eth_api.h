@@ -16,14 +16,14 @@
  * and its queue associations.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_graph.h>
 #include <rte_mempool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Port config for ethdev_rx and ethdev_tx node.

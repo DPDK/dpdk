@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_PIPELINE_H__
 #define __INCLUDE_RTE_SWX_PIPELINE_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Pipeline
@@ -21,6 +17,10 @@ extern "C" {
 #include "rte_swx_port.h"
 #include "rte_swx_table.h"
 #include "rte_swx_extern.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Name size. */
 #ifndef RTE_SWX_NAME_SIZE

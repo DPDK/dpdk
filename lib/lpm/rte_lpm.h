@@ -391,6 +391,10 @@ static inline void
 rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 	uint32_t defv);
 
+#ifdef __cplusplus
+}
+#endif
+
 #if defined(RTE_ARCH_ARM)
 #ifdef RTE_HAS_SVE_ACLE
 #include "rte_lpm_sve.h"
@@ -405,10 +409,6 @@ rte_lpm_lookupx4(const struct rte_lpm *lpm, xmm_t ip, uint32_t hop[4],
 #include "rte_lpm_sse.h"
 #else
 #include "rte_lpm_scalar.h"
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* _RTE_LPM_H_ */

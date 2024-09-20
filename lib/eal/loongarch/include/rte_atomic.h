@@ -9,12 +9,12 @@
 #  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
+#include <rte_common.h>
+#include "generic/rte_atomic.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include "generic/rte_atomic.h"
 
 #define rte_mb()	do { asm volatile("dbar 0":::"memory"); } while (0)
 

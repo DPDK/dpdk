@@ -237,10 +237,6 @@
  * \endcode
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_errno.h>
@@ -2468,6 +2464,10 @@ rte_event_vector_pool_create(const char *name, unsigned int n,
 			     int socket_id);
 
 #include <rte_eventdev_core.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static __rte_always_inline uint16_t
 __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,

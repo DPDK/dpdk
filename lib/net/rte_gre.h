@@ -19,10 +19,6 @@
  * over an Internet Protocol network.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * GRE Header
  */
@@ -69,9 +65,5 @@ struct rte_gre_hdr_opt_key {
 struct rte_gre_hdr_opt_sequence {
 	rte_be32_t sequence;
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_GRE_H_ */

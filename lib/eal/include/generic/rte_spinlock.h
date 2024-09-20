@@ -25,6 +25,10 @@
 #include <rte_pause.h>
 #include <rte_stdatomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * The rte_spinlock_t type.
  */
@@ -317,5 +321,9 @@ static inline void rte_spinlock_recursive_unlock_tm(
 __rte_warn_unused_result
 static inline int rte_spinlock_recursive_trylock_tm(
 	rte_spinlock_recursive_t *slr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_SPINLOCK_H_ */

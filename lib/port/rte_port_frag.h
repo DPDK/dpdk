@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_PORT_IP_FRAG_H__
 #define __INCLUDE_RTE_PORT_IP_FRAG_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port for IPv4 Fragmentation
@@ -30,6 +26,10 @@ extern "C" {
 
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** ring_reader_ipv4_frag port parameters */
 struct rte_port_ring_reader_frag_params {

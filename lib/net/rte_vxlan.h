@@ -16,11 +16,6 @@
 #include <rte_byteorder.h>
 #include <rte_udp.h>
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** VXLAN default port. */
 #define RTE_VXLAN_DEFAULT_PORT 4789
 /** VXLAN GPE port. */
@@ -151,10 +146,5 @@ struct rte_vxlan_gpe_hdr {
 #define RTE_VXLAN_GPE_TYPE_MPLS 5 /**< MPLS Protocol. */
 #define RTE_VXLAN_GPE_TYPE_GBP  6 /**< GBP Protocol. */
 #define RTE_VXLAN_GPE_TYPE_VBNG 7 /**< vBNG Protocol. */
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_VXLAN_H_ */

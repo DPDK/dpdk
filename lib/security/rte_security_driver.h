@@ -12,12 +12,12 @@
  * RTE Security Common Definitions
  */
 
+#include <rte_compat.h>
+#include "rte_security.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_compat.h>
-#include "rte_security.h"
 
 /**
  * @internal

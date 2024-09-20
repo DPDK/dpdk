@@ -14,11 +14,11 @@
  *
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 #define RTE_PMD_AFU_N3000_NLB   1
 #define RTE_PMD_AFU_N3000_DMA   2

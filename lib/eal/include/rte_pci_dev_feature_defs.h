@@ -5,10 +5,6 @@
 #ifndef _RTE_PCI_DEV_DEFS_H_
 #define _RTE_PCI_DEV_DEFS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* interrupt mode */
 enum rte_intr_mode {
 	RTE_INTR_MODE_NONE = 0,
@@ -16,9 +12,5 @@ enum rte_intr_mode {
 	RTE_INTR_MODE_MSI,
 	RTE_INTR_MODE_MSIX
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_PCI_DEV_DEFS_H_ */

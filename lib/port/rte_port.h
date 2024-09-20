@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_PORT_H__
 #define __INCLUDE_RTE_PORT_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port
@@ -223,9 +219,5 @@ struct rte_port_out_ops {
 	rte_port_out_op_flush f_flush;        /**< Flush */
 	rte_port_out_op_stats_read f_stats;   /**< Stats */
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

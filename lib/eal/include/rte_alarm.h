@@ -14,11 +14,11 @@
  * Does not require hpet support.
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 /**
  * Signature of callback back function called when an alarm goes off.

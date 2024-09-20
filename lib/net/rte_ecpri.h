@@ -17,10 +17,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * eCPRI Protocol Revision 1.0, 1.1, 1.2, 2.0: 0001b
  * Other values are reserved for future
@@ -181,9 +177,5 @@ struct rte_ecpri_combined_msg_hdr {
 		rte_be32_t dummy[3];
 	};
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_ECPRI_H_ */

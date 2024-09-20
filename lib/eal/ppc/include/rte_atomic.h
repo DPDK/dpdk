@@ -12,12 +12,12 @@
 #ifndef _RTE_ATOMIC_PPC_64_H_
 #define _RTE_ATOMIC_PPC_64_H_
 
+#include <stdint.h>
+#include "generic/rte_atomic.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
-#include "generic/rte_atomic.h"
 
 #define	rte_mb()  asm volatile("sync" : : : "memory")
 

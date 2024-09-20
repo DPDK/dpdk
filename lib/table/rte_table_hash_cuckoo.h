@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_HASH_CUCKOO_H__
 #define __INCLUDE_RTE_TABLE_HASH_CUCKOO_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table Hash Cuckoo
@@ -19,6 +15,10 @@ extern "C" {
 #include <rte_hash.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Hash table parameters */
 struct rte_table_hash_cuckoo_params {

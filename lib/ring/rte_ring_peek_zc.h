@@ -67,11 +67,11 @@
  * with enqueue/dequeue operation till _finish_ completes.
  */
 
+#include <rte_ring_peek_elem_pvt.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_ring_peek_elem_pvt.h>
 
 /**
  * Ring zero-copy information structure.

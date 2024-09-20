@@ -10,14 +10,14 @@
  * as Microsoft libc does not contain regex.h. This may be removed in
  * future releases.
  */
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define REG_NOMATCH 1
 #define REG_ESPACE 12
 
 #include <rte_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* defining regex_t for Windows */
 typedef void *regex_t;

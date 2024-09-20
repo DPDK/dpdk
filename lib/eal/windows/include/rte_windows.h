@@ -5,10 +5,6 @@
 #ifndef _RTE_WINDOWS_H_
 #define _RTE_WINDOWS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file Windows-specific facilities
  *
@@ -50,9 +46,5 @@ extern "C" {
 #define RTE_LOG_WIN32_ERR(...) \
 	RTE_LOG_LINE_PREFIX(DEBUG, EAL, \
 		"GetLastError()=%lu: ", GetLastError(), __VA_ARGS__)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* _RTE_WINDOWS_H_ */

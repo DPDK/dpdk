@@ -13,10 +13,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define RTE_DTLS_TYPE_INVALID               0 /**< Invalid DTLS message type. */
 #define RTE_DTLS_TYPE_CHANGE_CIPHER_SPEC   20 /**< Change cipher spec message. */
 #define RTE_DTLS_TYPE_ALERT                21 /**< Alert message. */
@@ -53,9 +49,5 @@ struct rte_dtls_hdr {
 	/** The length (in bytes) of the following DTLS packet. */
 	rte_be16_t length;
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_DTLS_H */

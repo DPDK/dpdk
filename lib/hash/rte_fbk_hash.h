@@ -18,14 +18,14 @@
 #include <stdint.h>
 #include <errno.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <rte_hash_crc.h>
 #include <rte_jhash.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_FBK_HASH_INIT_VAL_DEFAULT
 /** Initialising value used when calculating hash. */

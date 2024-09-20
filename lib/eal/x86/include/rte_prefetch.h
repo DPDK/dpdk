@@ -5,10 +5,6 @@
 #ifndef _RTE_PREFETCH_X86_64_H_
 #define _RTE_PREFETCH_X86_64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef RTE_TOOLCHAIN_MSVC
 #include <emmintrin.h>
 #endif
@@ -16,6 +12,10 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_common.h>
 #include "generic/rte_prefetch.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline void rte_prefetch0(const volatile void *p)
 {

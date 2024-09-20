@@ -5,11 +5,11 @@
 #ifndef _RTE_CRYPTODEV_TRACE_FP_H_
 #define _RTE_CRYPTODEV_TRACE_FP_H_
 
+#include <rte_trace_point.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_trace_point.h>
 
 RTE_TRACE_POINT_FP(
 	rte_cryptodev_trace_enqueue_burst,

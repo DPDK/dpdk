@@ -12,16 +12,16 @@
  * dispatch model.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_errno.h>
 #include <rte_mempool.h>
 #include <rte_memzone.h>
 #include <rte_ring.h>
 
 #include "rte_graph_worker_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_GRAPH_SCHED_WQ_SIZE_MULTIPLIER  8
 #define RTE_GRAPH_SCHED_WQ_SIZE(nb_nodes)   \

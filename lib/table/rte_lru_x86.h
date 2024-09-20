@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_LRU_X86_H__
 #define __INCLUDE_RTE_LRU_X86_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_config.h>
@@ -95,10 +91,6 @@ do {									\
 	bucket->lru_list = _mm_extract_epi64(lru, 0) | orvals[mru_val];	\
 } while (0)
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

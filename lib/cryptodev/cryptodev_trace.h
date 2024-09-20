@@ -11,13 +11,13 @@
  * API for cryptodev trace support
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_trace_point.h>
 
 #include "rte_cryptodev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_TRACE_POINT(
 	rte_cryptodev_trace_configure,

@@ -22,10 +22,6 @@
  *  https://locklessinc.com/articles/locks/
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <errno.h>
 
 #include <rte_branch_prediction.h>
@@ -33,6 +29,10 @@ extern "C" {
 #include <rte_lock_annotations.h>
 #include <rte_pause.h>
 #include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The rte_rwlock_t type.

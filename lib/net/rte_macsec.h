@@ -13,10 +13,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define RTE_MACSEC_TCI_VER_MASK	0x80 /**< Version mask for MACsec. Should be 0. */
 #define RTE_MACSEC_TCI_ES	0x40 /**< Mask for End station (ES) bit - SCI is not valid. */
 #define RTE_MACSEC_TCI_SC	0x20 /**< Mask for SCI present bit. */
@@ -55,9 +51,5 @@ struct rte_macsec_hdr {
 struct rte_macsec_sci_hdr {
 	uint8_t sci[RTE_MACSEC_SCI_LEN]; /**< Optional secure channel ID. */
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_MACSEC_H */

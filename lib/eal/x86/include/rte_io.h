@@ -5,15 +5,15 @@
 #ifndef _RTE_IO_X86_H_
 #define _RTE_IO_X86_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include "rte_cpuflags.h"
 
 #define RTE_NATIVE_WRITE32_WC
 #include "generic/rte_io.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal

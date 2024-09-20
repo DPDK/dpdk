@@ -18,15 +18,15 @@
 #include <rte_memory.h>
 #include <rte_mempool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef __cplusplus
 /* These are not C++-aware. */
 #include <linux/vhost.h>
 #include <linux/virtio_ring.h>
 #include <linux/virtio_net.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 #define RTE_VHOST_USER_CLIENT		(1ULL << 0)

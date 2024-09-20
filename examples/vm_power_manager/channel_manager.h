@@ -5,15 +5,15 @@
 #ifndef CHANNEL_MANAGER_H_
 #define CHANNEL_MANAGER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <linux/limits.h>
 #include <linux/un.h>
 #include <stdbool.h>
 
 #include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Maximum name length including '\0' terminator */
 #define CHANNEL_MGR_MAX_NAME_LEN    64

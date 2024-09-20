@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_PORT_ETHDEV_H__
 #define __INCLUDE_RTE_PORT_ETHDEV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port Ethernet Device
@@ -20,6 +16,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** ethdev_reader port parameters */
 struct rte_port_ethdev_reader_params {

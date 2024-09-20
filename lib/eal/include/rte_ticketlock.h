@@ -17,14 +17,14 @@
  * All locks must be initialised before use, and only initialised once.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_common.h>
 #include <rte_lcore.h>
 #include <rte_pause.h>
 #include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The rte_ticketlock_t type.

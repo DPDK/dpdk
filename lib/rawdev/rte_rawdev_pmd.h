@@ -13,10 +13,6 @@
  * any application.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 
 #include <dev_driver.h>
@@ -25,6 +21,10 @@ extern "C" {
 #include <rte_common.h>
 
 #include "rte_rawdev.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern int librawdev_logtype;
 #define RTE_LOGTYPE_RAWDEV librawdev_logtype

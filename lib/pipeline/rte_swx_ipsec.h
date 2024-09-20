@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_IPSEC_H__
 #define __INCLUDE_RTE_SWX_IPSEC_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Internet Protocol Security (IPsec)
@@ -52,6 +48,10 @@ extern "C" {
 
 #include <rte_compat.h>
 #include <rte_crypto_sym.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * IPsec Setup API

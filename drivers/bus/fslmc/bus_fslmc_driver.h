@@ -13,10 +13,6 @@
  * RTE FSLMC Bus Interface
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -39,6 +35,10 @@ extern "C" {
 
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 

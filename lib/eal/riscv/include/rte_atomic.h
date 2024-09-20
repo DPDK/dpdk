@@ -12,14 +12,14 @@
 #  error Platform must be built with RTE_FORCE_INTRINSICS
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <rte_common.h>
 #include <rte_config.h>
 #include "generic/rte_atomic.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define rte_mb()	asm volatile("fence rw, rw" : : : "memory")
 

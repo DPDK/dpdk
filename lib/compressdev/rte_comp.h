@@ -11,11 +11,11 @@
  * RTE definitions for Data Compression Service
  */
 
+#include <rte_mbuf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_mbuf.h>
 
 /**
  * compression service feature flags

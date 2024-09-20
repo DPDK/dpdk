@@ -17,10 +17,6 @@
 #include <stdint.h>
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Simplified GTP protocol header.
  * Contains 8-bit header info, 8-bit message type,
@@ -149,9 +145,5 @@ struct rte_gtp_psc_type1_hdr {
 /* GTP destination port number */
 #define RTE_GTPC_UDP_PORT 2123 /**< GTP-C UDP destination port */
 #define RTE_GTPU_UDP_PORT 2152 /**< GTP-U UDP destination port */
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_GTP_H_ */

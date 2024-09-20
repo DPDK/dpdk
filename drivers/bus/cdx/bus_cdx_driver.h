@@ -10,10 +10,6 @@
  * AMD CDX bus interface
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdlib.h>
 #include <inttypes.h>
 #include <linux/types.h>
@@ -21,6 +17,10 @@ extern "C" {
 #include <bus_driver.h>
 #include <dev_driver.h>
 #include <rte_interrupts.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Forward declarations */
 struct rte_cdx_device;

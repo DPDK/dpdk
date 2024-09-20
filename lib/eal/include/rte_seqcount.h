@@ -5,10 +5,6 @@
 #ifndef _RTE_SEQCOUNT_H_
 #define _RTE_SEQCOUNT_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Seqcount
@@ -26,6 +22,10 @@ extern "C" {
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_stdatomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * The RTE seqcount type.

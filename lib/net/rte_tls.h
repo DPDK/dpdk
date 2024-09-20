@@ -13,10 +13,6 @@
 
 #include <rte_byteorder.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define RTE_TLS_TYPE_INVALID              0 /**< Invalid TLS message type. */
 #define RTE_TLS_TYPE_CHANGE_CIPHER_SPEC  20 /**< Change cipher spec message. */
 #define RTE_TLS_TYPE_ALERT               21 /**< Alert message. */
@@ -40,9 +36,5 @@ struct rte_tls_hdr {
 	/** The length (in bytes) of the following TLS packet. */
 	rte_be16_t length;
 } __rte_packed;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_TLS_H */

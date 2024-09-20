@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_TABLE_WM_H__
 #define __INCLUDE_RTE_SWX_TABLE_WM_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Wildcard Match Table
@@ -15,6 +11,10 @@ extern "C" {
 
 
 #include <rte_swx_table.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Wildcard match table operations. */
 extern struct rte_swx_table_ops rte_swx_table_wildcard_match_ops;

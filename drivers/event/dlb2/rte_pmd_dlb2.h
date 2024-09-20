@@ -11,13 +11,13 @@
 #ifndef _RTE_PMD_DLB2_H_
 #define _RTE_PMD_DLB2_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @warning

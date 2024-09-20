@@ -14,13 +14,13 @@
  *
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Response sent back to i40e driver from user app after callback

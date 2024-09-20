@@ -5,11 +5,11 @@
 #ifndef IOAT_HW_DEFS_H
 #define IOAT_HW_DEFS_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdint.h>
 
 #define IOAT_PCI_CHANERR_INT_OFFSET	0x180
 

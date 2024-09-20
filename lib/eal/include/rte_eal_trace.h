@@ -11,11 +11,11 @@
  * API for EAL trace support
  */
 
+#include <rte_trace_point.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_trace_point.h>
 
 /* Generic */
 RTE_TRACE_POINT(

@@ -7,10 +7,6 @@
 
 #include <assert.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef RTE_ENABLE_STDATOMIC
 #ifndef _MSC_VER
 #ifdef __STDC_NO_ATOMICS__
@@ -185,10 +181,6 @@ typedef int rte_memory_order;
 #define __rte_atomic_thread_fence(memorder) \
 	__atomic_thread_fence(memorder)
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif /* RTE_STDATOMIC_H */

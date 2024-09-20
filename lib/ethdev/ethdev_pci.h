@@ -6,15 +6,15 @@
 #ifndef _RTE_ETHDEV_PCI_H_
 #define _RTE_ETHDEV_PCI_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_malloc.h>
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
 #include <rte_config.h>
 #include <ethdev_driver.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Copy pci device info to the Ethernet device data.

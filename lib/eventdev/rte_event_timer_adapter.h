@@ -107,13 +107,13 @@
  * All these use cases require high resolution and low time drift.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 
 #include "rte_eventdev.h"
 #include "rte_eventdev_trace_fp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Timer adapter clock source

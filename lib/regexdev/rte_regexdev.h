@@ -194,10 +194,6 @@
  * - rte_regexdev_dequeue_burst()
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_dev.h>
@@ -1427,6 +1423,10 @@ struct rte_regex_ops {
 };
 
 #include "rte_regexdev_core.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @warning

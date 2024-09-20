@@ -5,10 +5,6 @@
 #ifndef _RTE_IO_ARM64_H_
 #define _RTE_IO_ARM64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #define RTE_OVERRIDE_IO_H
@@ -16,6 +12,10 @@ extern "C" {
 #include "generic/rte_io.h"
 #include <rte_compat.h>
 #include "rte_atomic_64.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static __rte_always_inline uint8_t
 rte_read8_relaxed(const volatile void *addr)

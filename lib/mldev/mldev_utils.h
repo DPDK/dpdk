@@ -5,10 +5,6 @@
 #ifndef RTE_MLDEV_UTILS_H
 #define RTE_MLDEV_UTILS_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  *
@@ -19,6 +15,10 @@ extern "C" {
 
 #include <rte_compat.h>
 #include <rte_mldev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal

@@ -5,16 +5,16 @@
 #ifndef _RTE_COMPRESSDEV_INTERNAL_H_
 #define _RTE_COMPRESSDEV_INTERNAL_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* rte_compressdev_internal.h
  * This file holds Compressdev private data structures.
  */
 #include <rte_log.h>
 
 #include "rte_comp.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_COMPRESSDEV_NAME_MAX_LEN	(64)
 /**< Max length of name of comp PMD */

@@ -6,12 +6,12 @@
 #ifndef _RTE_GRAPH_WORKER_H_
 #define _RTE_GRAPH_WORKER_H_
 
+#include "rte_graph_model_rtc.h"
+#include "rte_graph_model_mcore_dispatch.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "rte_graph_model_rtc.h"
-#include "rte_graph_model_mcore_dispatch.h"
 
 /**
  * Perform graph walk on the circular buffer and invoke the process function

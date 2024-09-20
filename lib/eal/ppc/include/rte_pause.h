@@ -5,13 +5,13 @@
 #ifndef _RTE_PAUSE_PPC64_H_
 #define _RTE_PAUSE_PPC64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "rte_atomic.h"
 
 #include "generic/rte_pause.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 static inline void rte_pause(void)
 {

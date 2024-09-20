@@ -16,13 +16,13 @@
  * list of rte_devargs structures.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 #include <rte_dev.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_bus;
 

@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_PORT_EVENTDEV_H__
 #define __INCLUDE_RTE_PORT_EVENTDEV_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Port Eventdev Interface
@@ -23,6 +19,10 @@ extern "C" {
 #include <rte_eventdev.h>
 
 #include "rte_port.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Eventdev_reader port parameters */
 struct rte_port_eventdev_reader_params {

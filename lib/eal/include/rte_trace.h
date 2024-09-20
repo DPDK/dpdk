@@ -16,15 +16,15 @@
  * @b EXPERIMENTAL: this API may change without prior notice
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdio.h>
 
 #include <rte_common.h>
 #include <rte_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  *  Test if trace is enabled.

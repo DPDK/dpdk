@@ -13,15 +13,15 @@
  * This file manages the list of device drivers.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdio.h>
 
 #include <rte_config.h>
 #include <rte_common.h>
 #include <rte_log.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct rte_bus;
 struct rte_devargs;

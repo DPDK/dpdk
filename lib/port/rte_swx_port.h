@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_PORT_H__
 #define __INCLUDE_RTE_SWX_PORT_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Port
@@ -239,9 +235,5 @@ struct rte_swx_port_out_ops {
 	/** Statistics counters read. Must be non-NULL. */
 	rte_swx_port_out_stats_read_t stats_read;
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

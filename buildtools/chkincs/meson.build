@@ -37,16 +37,6 @@ if not add_languages('cpp', required: false)
     subdir_done()
 endif
 
-# check for extern C in files, since this is not detected as an error by the compiler
-grep = find_program('grep', required: false)
-if grep.found()
-    errlist = run_command([grep, '--files-without-match', '^extern "C"', dpdk_chkinc_headers],
-            check: false, capture: true).stdout().split()
-    if errlist != []
-        error('Files missing C++ \'extern "C"\' guards:\n- ' + '\n- '.join(errlist))
-    endif
-endif
-
 gen_cpp_files = generator(gen_c_file_for_header,
         output: '@BASENAME@.cpp',
         arguments: ['@INPUT@', '@OUTPUT@'])

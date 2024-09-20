@@ -20,10 +20,6 @@
  * from the same queue.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -31,6 +27,10 @@ extern "C" {
 #include <rte_cpuflags.h>
 
 #include "rte_bbdev_op.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef RTE_BBDEV_MAX_DEVS
 #define RTE_BBDEV_MAX_DEVS 128  /**< Max number of devices */

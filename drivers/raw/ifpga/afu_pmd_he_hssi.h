@@ -5,12 +5,12 @@
 #ifndef AFU_PMD_HE_HSSI_H
 #define AFU_PMD_HE_HSSI_H
 
+#include "afu_pmd_core.h"
+#include "rte_pmd_afu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "afu_pmd_core.h"
-#include "rte_pmd_afu.h"
 
 #define HE_HSSI_UUID_L    0xbb370242ac130002
 #define HE_HSSI_UUID_H    0x823c334c98bf11ea

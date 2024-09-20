@@ -5,10 +5,6 @@
 #ifndef __INCLUDE_RTE_TABLE_LPM_H__
 #define __INCLUDE_RTE_TABLE_LPM_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE Table LPM for IPv4
@@ -44,6 +40,10 @@ extern "C" {
 #include <stdint.h>
 
 #include "rte_table.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** LPM table parameters */
 struct rte_table_lpm_params {

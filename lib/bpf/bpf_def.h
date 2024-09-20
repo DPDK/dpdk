@@ -7,10 +7,6 @@
 #ifndef _RTE_BPF_DEF_H_
 #define _RTE_BPF_DEF_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  *
@@ -143,9 +139,5 @@ struct ebpf_insn {
  * eBPF allows functions with R1-R5 as arguments.
  */
 #define	EBPF_FUNC_MAX_ARGS	(EBPF_REG_6 - EBPF_REG_1)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* RTE_BPF_DEF_H_ */

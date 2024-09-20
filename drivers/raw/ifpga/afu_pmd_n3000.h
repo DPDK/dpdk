@@ -5,12 +5,12 @@
 #ifndef AFU_PMD_N3000_H
 #define AFU_PMD_N3000_H
 
+#include "afu_pmd_core.h"
+#include "rte_pmd_afu.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "afu_pmd_core.h"
-#include "rte_pmd_afu.h"
 
 #define N3000_AFU_UUID_L  0xc000c9660d824272
 #define N3000_AFU_UUID_H  0x9aeffe5f84570612

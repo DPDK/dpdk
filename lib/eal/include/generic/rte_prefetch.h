@@ -7,6 +7,10 @@
 
 #include <rte_compat.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @file
  *
@@ -145,5 +149,9 @@ rte_prefetch2_write(const void *p)
 __rte_experimental
 static inline void
 rte_cldemote(const volatile void *p);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_PREFETCH_H_ */

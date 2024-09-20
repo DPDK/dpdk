@@ -5,16 +5,16 @@
 #ifndef _VDPA_DRIVER_H_
 #define _VDPA_DRIVER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 
 #include <rte_compat.h>
 
 #include "rte_vhost.h"
 #include "rte_vdpa.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define RTE_VHOST_QUEUE_ALL UINT16_MAX
 

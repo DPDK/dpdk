@@ -5,16 +5,16 @@
 #ifndef _RTE_TRACE_POINT_REGISTER_H_
 #define _RTE_TRACE_POINT_REGISTER_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifdef _RTE_TRACE_POINT_H_
 #error for registration, include this file first before <rte_trace_point.h>
 #endif
 
 #include <rte_per_lcore.h>
 #include <rte_trace_point.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 RTE_DECLARE_PER_LCORE(volatile int, trace_point_sz);
 

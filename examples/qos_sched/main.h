@@ -5,11 +5,11 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include <rte_sched.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_sched.h>
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 

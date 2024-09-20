@@ -15,12 +15,12 @@
  * This API allows to do control path functions of ip6_* nodes
  * like ip6_lookup, ip6_rewrite.
  */
+#include <rte_common.h>
+#include <rte_compat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <rte_common.h>
-#include <rte_compat.h>
 
 /**
  * IP6 lookup next nodes.

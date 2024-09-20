@@ -6,13 +6,13 @@
 #ifndef _RTE_SPINLOCK_PPC_64_H_
 #define _RTE_SPINLOCK_PPC_64_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <rte_common.h>
 #include <rte_pause.h>
 #include "generic/rte_spinlock.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Fixme: Use intrinsics to implement the spinlock on Power architecture */
 

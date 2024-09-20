@@ -10,10 +10,6 @@
  * Platform bus interface.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -22,6 +18,10 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_os.h>
 #include <rte_vfio.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Forward declarations */
 struct rte_platform_bus;

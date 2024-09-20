@@ -4,10 +4,6 @@
 #ifndef __INCLUDE_RTE_SWX_KEYCMP_H__
 #define __INCLUDE_RTE_SWX_KEYCMP_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * @file
  * RTE SWX Key Comparison Functions
@@ -15,6 +11,10 @@ extern "C" {
 
 #include <stdint.h>
 #include <string.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Key comparison function prototype

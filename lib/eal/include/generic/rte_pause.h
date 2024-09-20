@@ -19,6 +19,10 @@
 #include <rte_atomic.h>
 #include <rte_stdatomic.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Pause CPU execution for a short while
  *
@@ -135,5 +139,9 @@ rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
 		rte_pause();                                             \
 } while (0)
 #endif /* ! RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_PAUSE_H_ */

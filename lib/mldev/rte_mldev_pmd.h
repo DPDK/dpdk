@@ -14,16 +14,16 @@
  * These APIs are for MLDEV PMDs only and user applications should not call them directly.
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 
 #include <rte_common.h>
 #include <rte_compat.h>
 #include <rte_mldev.h>
 #include <rte_mldev_core.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @internal
