@@ -21,6 +21,7 @@
 
 #include <rte_compat.h>
 #include <rte_debug.h>
+#include <rte_stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -231,6 +232,206 @@ extern "C" {
 		uint64_t *: __rte_bit_flip64) \
 			(addr, nr)
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Test if a particular bit in a word is set with a particular memory
+ * order.
+ *
+ * Test a bit with the resulting memory load ordered as per the
+ * specified memory order.
+ *
+ * @param addr
+ *   A pointer to the word to query.
+ * @param nr
+ *   The index of the bit.
+ * @param memory_order
+ *   The memory order to use.
+ * @return
+ *   Returns true if the bit is set, and false otherwise.
+ */
+#define rte_bit_atomic_test(addr, nr, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_test32, \
+		const uint32_t *: __rte_bit_atomic_test32, \
+		uint64_t *: __rte_bit_atomic_test64, \
+		const uint64_t *: __rte_bit_atomic_test64) \
+			(addr, nr, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically set bit in word.
+ *
+ * Generic selection macro to atomically set bit specified by @c nr in
+ * the word pointed to by @c addr to '1', with the memory ordering as
+ * specified by @c memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param memory_order
+ *   The memory order to use.
+ */
+#define rte_bit_atomic_set(addr, nr, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_set32, \
+		uint64_t *: __rte_bit_atomic_set64) \
+			(addr, nr, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically clear bit in word.
+ *
+ * Generic selection macro to atomically set bit specified by @c nr in
+ * the word pointed to by @c addr to '0', with the memory ordering as
+ * specified by @c memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param memory_order
+ *   The memory order to use.
+ */
+#define rte_bit_atomic_clear(addr, nr, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_clear32, \
+		uint64_t *: __rte_bit_atomic_clear64) \
+			(addr, nr, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically assign a value to bit in word.
+ *
+ * Generic selection macro to atomically set bit specified by @c nr in the
+ * word pointed to by @c addr to the value indicated by @c value, with
+ * the memory ordering as specified with @c memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param value
+ *   The new value of the bit - true for '1', or false for '0'.
+ * @param memory_order
+ *   The memory order to use.
+ */
+#define rte_bit_atomic_assign(addr, nr, value, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_assign32, \
+		uint64_t *: __rte_bit_atomic_assign64) \
+			(addr, nr, value, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically flip bit in word.
+ *
+ * Generic selection macro to atomically negate the value of the bit
+ * specified by @c nr in the word pointed to by @c addr to the value
+ * indicated by @c value, with the memory ordering as specified with
+ * @c memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param memory_order
+ *   The memory order to use.
+ */
+#define rte_bit_atomic_flip(addr, nr, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_flip32, \
+		uint64_t *: __rte_bit_atomic_flip64) \
+			(addr, nr, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically test and set a bit in word.
+ *
+ * Generic selection macro to atomically test and set bit specified by
+ * @c nr in the word pointed to by @c addr to '1', with the memory
+ * ordering as specified with @c memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param memory_order
+ *   The memory order to use.
+ * @return
+ *   Returns true if the bit was set, and false otherwise.
+ */
+#define rte_bit_atomic_test_and_set(addr, nr, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_test_and_set32, \
+		uint64_t *: __rte_bit_atomic_test_and_set64) \
+			(addr, nr, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically test and clear a bit in word.
+ *
+ * Generic selection macro to atomically test and clear bit specified
+ * by @c nr in the word pointed to by @c addr to '0', with the memory
+ * ordering as specified with @c memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param memory_order
+ *   The memory order to use.
+ * @return
+ *   Returns true if the bit was set, and false otherwise.
+ */
+#define rte_bit_atomic_test_and_clear(addr, nr, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_test_and_clear32, \
+		uint64_t *: __rte_bit_atomic_test_and_clear64) \
+			(addr, nr, memory_order)
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Atomically test and assign a bit in word.
+ *
+ * Generic selection macro to atomically test and assign bit specified
+ * by @c nr in the word pointed to by @c addr the value specified by
+ * @c value, with the memory ordering as specified with @c
+ * memory_order.
+ *
+ * @param addr
+ *   A pointer to the word to modify.
+ * @param nr
+ *   The index of the bit.
+ * @param value
+ *   The new value of the bit - true for '1', or false for '0'.
+ * @param memory_order
+ *   The memory order to use.
+ * @return
+ *   Returns true if the bit was set, and false otherwise.
+ */
+#define rte_bit_atomic_test_and_assign(addr, nr, value, memory_order) \
+	_Generic((addr), \
+		uint32_t *: __rte_bit_atomic_test_and_assign32, \
+		uint64_t *: __rte_bit_atomic_test_and_assign64) \
+			(addr, nr, value, memory_order)
+
 #define __RTE_GEN_BIT_TEST(variant, qualifier, size) \
 __rte_experimental \
 static inline bool \
@@ -295,6 +496,131 @@ __rte_bit_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, unsign
 
 __RTE_GEN_BIT_OPS_SIZE(32)
 __RTE_GEN_BIT_OPS_SIZE(64)
+
+#define __RTE_GEN_BIT_ATOMIC_TEST(variant, qualifier, size) \
+__rte_experimental \
+static inline bool \
+__rte_bit_atomic_ ## variant ## test ## size(const qualifier uint ## size ## _t *addr, \
+		unsigned int nr, int memory_order) \
+{ \
+	RTE_ASSERT(nr < size); \
+	const qualifier RTE_ATOMIC(uint ## size ## _t) *a_addr = \
+		(const qualifier RTE_ATOMIC(uint ## size ## _t) *)addr; \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	return rte_atomic_load_explicit(a_addr, memory_order) & mask; \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_SET(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_atomic_ ## variant ## set ## size(qualifier uint ## size ## _t *addr, \
+		unsigned int nr, int memory_order) \
+{ \
+	RTE_ASSERT(nr < size); \
+	qualifier RTE_ATOMIC(uint ## size ## _t) *a_addr = \
+		(qualifier RTE_ATOMIC(uint ## size ## _t) *)addr; \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	rte_atomic_fetch_or_explicit(a_addr, mask, memory_order); \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_CLEAR(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_atomic_ ## variant ## clear ## size(qualifier uint ## size ## _t *addr, \
+		unsigned int nr, int memory_order) \
+{ \
+	RTE_ASSERT(nr < size); \
+	qualifier RTE_ATOMIC(uint ## size ## _t) *a_addr = \
+		(qualifier RTE_ATOMIC(uint ## size ## _t) *)addr; \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	rte_atomic_fetch_and_explicit(a_addr, ~mask, memory_order); \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_FLIP(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_atomic_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, \
+		unsigned int nr, int memory_order) \
+{ \
+	RTE_ASSERT(nr < size); \
+	qualifier RTE_ATOMIC(uint ## size ## _t) *a_addr = \
+		(qualifier RTE_ATOMIC(uint ## size ## _t) *)addr; \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	rte_atomic_fetch_xor_explicit(a_addr, mask, memory_order); \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_ASSIGN(variant, qualifier, size) \
+__rte_experimental \
+static inline void \
+__rte_bit_atomic_## variant ## assign ## size(qualifier uint ## size ## _t *addr, \
+		unsigned int nr, bool value, int memory_order) \
+{ \
+	if (value) \
+		__rte_bit_atomic_ ## variant ## set ## size(addr, nr, memory_order); \
+	else \
+		__rte_bit_atomic_ ## variant ## clear ## size(addr, nr, memory_order); \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_TEST_AND_SET(variant, qualifier, size) \
+__rte_experimental \
+static inline bool \
+__rte_bit_atomic_ ## variant ## test_and_set ## size(qualifier uint ## size ## _t *addr, \
+		unsigned int nr, int memory_order) \
+{ \
+	RTE_ASSERT(nr < size); \
+	qualifier RTE_ATOMIC(uint ## size ## _t) *a_addr = \
+		(qualifier RTE_ATOMIC(uint ## size ## _t) *)addr; \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	uint ## size ## _t prev; \
+	prev = rte_atomic_fetch_or_explicit(a_addr, mask, memory_order); \
+	return prev & mask; \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_TEST_AND_CLEAR(variant, qualifier, size) \
+__rte_experimental \
+static inline bool \
+__rte_bit_atomic_ ## variant ## test_and_clear ## size(qualifier uint ## size ## _t *addr, \
+		unsigned int nr, int memory_order) \
+{ \
+	RTE_ASSERT(nr < size); \
+	qualifier RTE_ATOMIC(uint ## size ## _t) *a_addr = \
+		(qualifier RTE_ATOMIC(uint ## size ## _t) *)addr; \
+	uint ## size ## _t mask = (uint ## size ## _t)1 << nr; \
+	uint ## size ## _t prev; \
+	prev = rte_atomic_fetch_and_explicit(a_addr, ~mask, memory_order); \
+	return prev & mask; \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_TEST_AND_ASSIGN(variant, qualifier, size) \
+__rte_experimental \
+static inline bool \
+__rte_bit_atomic_ ## variant ## test_and_assign ## size( \
+		qualifier uint ## size ## _t *addr, unsigned int nr, bool value, \
+		int memory_order) \
+{ \
+	if (value) \
+		return __rte_bit_atomic_ ## variant ## test_and_set ## size(addr, nr, \
+			memory_order); \
+	else \
+		return __rte_bit_atomic_ ## variant ## test_and_clear ## size(addr, nr, \
+			memory_order); \
+}
+
+#define __RTE_GEN_BIT_ATOMIC_OPS(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_TEST(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_SET(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_CLEAR(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_ASSIGN(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_TEST_AND_SET(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_TEST_AND_CLEAR(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_TEST_AND_ASSIGN(variant, qualifier, size) \
+	__RTE_GEN_BIT_ATOMIC_FLIP(variant, qualifier, size)
+
+#define __RTE_GEN_BIT_ATOMIC_OPS_SIZE(size) \
+	__RTE_GEN_BIT_ATOMIC_OPS(,, size)
+
+__RTE_GEN_BIT_ATOMIC_OPS_SIZE(32)
+__RTE_GEN_BIT_ATOMIC_OPS_SIZE(64)
 
 /*------------------------ 32-bit relaxed operations ------------------------*/
 
@@ -991,6 +1317,15 @@ rte_log2_u64(uint64_t v)
 #undef rte_bit_assign
 #undef rte_bit_flip
 
+#undef rte_bit_atomic_test
+#undef rte_bit_atomic_set
+#undef rte_bit_atomic_clear
+#undef rte_bit_atomic_assign
+#undef rte_bit_atomic_flip
+#undef rte_bit_atomic_test_and_set
+#undef rte_bit_atomic_test_and_clear
+#undef rte_bit_atomic_test_and_assign
+
 #define __RTE_BIT_OVERLOAD_V_2(family, v, fun, qualifier, size, arg1_type, arg1_name) \
 static inline void \
 rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name) \
@@ -1039,11 +1374,85 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 	__RTE_BIT_OVERLOAD_SZ_3(family, fun, qualifier, 64, arg1_type, arg1_name, \
 		arg2_type, arg2_name)
 
+#define __RTE_BIT_OVERLOAD_V_3R(family, v, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+static inline ret_type \
+rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name, \
+		arg2_type arg2_name) \
+{ \
+	return __rte_bit_ ## family ## v ## fun ## size(addr, arg1_name, arg2_name); \
+}
+
+#define __RTE_BIT_OVERLOAD_SZ_3R(family, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_V_3R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name)
+
+#define __RTE_BIT_OVERLOAD_3R(family, fun, qualifier, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_SZ_3R(family, fun, qualifier, 32, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_SZ_3R(family, fun, qualifier, 64, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name)
+
+#define __RTE_BIT_OVERLOAD_V_4(family, v, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+static inline void \
+rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name, \
+		arg2_type arg2_name, arg3_type arg3_name) \
+{ \
+	__rte_bit_ ## family ## v ## fun ## size(addr, arg1_name, arg2_name, arg3_name); \
+}
+
+#define __RTE_BIT_OVERLOAD_SZ_4(family, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_V_4(family,, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name)
+
+#define __RTE_BIT_OVERLOAD_4(family, fun, qualifier, arg1_type, arg1_name, arg2_type, arg2_name, \
+		arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_SZ_4(family, fun, qualifier, 32, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_SZ_4(family, fun, qualifier, 64, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name)
+
+#define __RTE_BIT_OVERLOAD_V_4R(family, v, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+static inline ret_type \
+rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_name, \
+		arg2_type arg2_name, arg3_type arg3_name) \
+{ \
+	return __rte_bit_ ## family ## v ## fun ## size(addr, arg1_name, arg2_name, \
+		arg3_name); \
+}
+
+#define __RTE_BIT_OVERLOAD_SZ_4R(family, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_V_4R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name)
+
+#define __RTE_BIT_OVERLOAD_4R(family, fun, qualifier, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_SZ_4R(family, fun, qualifier, 32, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_SZ_4R(family, fun, qualifier, 64, ret_type, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name)
+
 __RTE_BIT_OVERLOAD_2R(, test, const, bool, unsigned int, nr)
 __RTE_BIT_OVERLOAD_2(, set,, unsigned int, nr)
 __RTE_BIT_OVERLOAD_2(, clear,, unsigned int, nr)
 __RTE_BIT_OVERLOAD_3(, assign,, unsigned int, nr, bool, value)
 __RTE_BIT_OVERLOAD_2(, flip,, unsigned int, nr)
+
+__RTE_BIT_OVERLOAD_3R(atomic_, test, const, bool, unsigned int, nr, int, memory_order)
+__RTE_BIT_OVERLOAD_3(atomic_, set,, unsigned int, nr, int, memory_order)
+__RTE_BIT_OVERLOAD_3(atomic_, clear,, unsigned int, nr, int, memory_order)
+__RTE_BIT_OVERLOAD_4(atomic_, assign,, unsigned int, nr, bool, value, int, memory_order)
+__RTE_BIT_OVERLOAD_3(atomic_, flip,, unsigned int, nr, int, memory_order)
+__RTE_BIT_OVERLOAD_3R(atomic_, test_and_set,, bool, unsigned int, nr, int, memory_order)
+__RTE_BIT_OVERLOAD_3R(atomic_, test_and_clear,, bool, unsigned int, nr, int, memory_order)
+__RTE_BIT_OVERLOAD_4R(atomic_, test_and_assign,, bool, unsigned int, nr, bool, value,
+	int, memory_order)
 
 #endif
 

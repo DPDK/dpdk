@@ -64,6 +64,9 @@ New Features
     performance (by avoiding restricting the compiler and CPU), but give
     no guarantees in regards to memory ordering or atomicity.
 
+  * ``rte_bit_atomic_*`` provide atomic bit-level operations, including
+    the possibility to specify memory ordering constraints.
+
   The new public API elements are polymorphic, using the _Generic-based
   macros (for C) and function overloading (in C++ translation units).
 

@@ -3,10 +3,13 @@
  * Copyright(c) 2024 Ericsson AB
  */
 
+#include <inttypes.h>
 #include <stdbool.h>
 
-#include <rte_launch.h>
 #include <rte_bitops.h>
+#include <rte_cycles.h>
+#include <rte_launch.h>
+#include <rte_lcore.h>
 #include <rte_random.h>
 #include "test.h"
 
@@ -52,6 +55,221 @@ GEN_TEST_BIT_ACCESS(test_bit_access32, rte_bit_set, rte_bit_clear, rte_bit_assig
 
 GEN_TEST_BIT_ACCESS(test_bit_access64, rte_bit_set, rte_bit_clear, rte_bit_assign, rte_bit_flip,
 	rte_bit_test, 64)
+
+#define bit_atomic_set(addr, nr) \
+	rte_bit_atomic_set(addr, nr, rte_memory_order_relaxed)
+
+#define bit_atomic_clear(addr, nr) \
+	rte_bit_atomic_clear(addr, nr, rte_memory_order_relaxed)
+
+#define bit_atomic_assign(addr, nr, value) \
+	rte_bit_atomic_assign(addr, nr, value, rte_memory_order_relaxed)
+
+#define bit_atomic_flip(addr, nr) \
+	rte_bit_atomic_flip(addr, nr, rte_memory_order_relaxed)
+
+#define bit_atomic_test(addr, nr) \
+	rte_bit_atomic_test(addr, nr, rte_memory_order_relaxed)
+
+GEN_TEST_BIT_ACCESS(test_bit_atomic_access32, bit_atomic_set, bit_atomic_clear, bit_atomic_assign,
+	bit_atomic_flip, bit_atomic_test, 32)
+
+GEN_TEST_BIT_ACCESS(test_bit_atomic_access64, bit_atomic_set, bit_atomic_clear, bit_atomic_assign,
+	bit_atomic_flip, bit_atomic_test, 64)
+
+#define PARALLEL_TEST_RUNTIME 0.25
+
+#define GEN_TEST_BIT_PARALLEL_ASSIGN(size) \
+struct parallel_access_lcore ## size \
+{ \
+	unsigned int bit; \
+	uint ## size ##_t *word; \
+	bool failed; \
+}; \
+static int \
+run_parallel_assign ## size(void *arg) \
+{ \
+	struct parallel_access_lcore ## size *lcore = arg; \
+	uint64_t deadline = rte_get_timer_cycles() + PARALLEL_TEST_RUNTIME * rte_get_timer_hz(); \
+	bool value = false; \
+	do { \
+		bool new_value = rte_rand() & 1; \
+		bool use_test_and_modify = rte_rand() & 1; \
+		bool use_assign = rte_rand() & 1; \
+		if (rte_bit_atomic_test(lcore->word, lcore->bit, \
+					rte_memory_order_relaxed) != value) { \
+			lcore->failed = true; \
+			break; \
+		} \
+		if (use_test_and_modify) { \
+			bool old_value; \
+			if (use_assign) { \
+				old_value = rte_bit_atomic_test_and_assign(lcore->word, \
+					lcore->bit, new_value, rte_memory_order_relaxed); \
+			} else { \
+				old_value = new_value ? \
+					rte_bit_atomic_test_and_set(lcore->word, lcore->bit, \
+						rte_memory_order_relaxed) : \
+					rte_bit_atomic_test_and_clear(lcore->word, lcore->bit, \
+						rte_memory_order_relaxed); \
+			} \
+			if (old_value != value) { \
+				lcore->failed = true; \
+				break; \
+			} \
+		} else { \
+			if (use_assign) { \
+				rte_bit_atomic_assign(lcore->word, lcore->bit, new_value, \
+					rte_memory_order_relaxed); \
+			} else { \
+				if (new_value) \
+					rte_bit_atomic_set(lcore->word, lcore->bit, \
+						rte_memory_order_relaxed); \
+				else \
+					rte_bit_atomic_clear(lcore->word, lcore->bit, \
+						rte_memory_order_relaxed); \
+			} \
+		} \
+		value = new_value; \
+	} while (rte_get_timer_cycles() < deadline); \
+	return 0; \
+} \
+static int \
+test_bit_atomic_parallel_assign ## size(void) \
+{ \
+	unsigned int worker_lcore_id; \
+	uint ## size ## _t word = 0; \
+	struct parallel_access_lcore ## size lmain = { .word = &word }; \
+	struct parallel_access_lcore ## size lworker = { .word = &word }; \
+	if (rte_lcore_count() < 2) { \
+		printf("Need multiple cores to run parallel test.\n"); \
+		return TEST_SKIPPED; \
+	} \
+	worker_lcore_id = rte_get_next_lcore(-1, 1, 0); \
+	lmain.bit = rte_rand_max(size); \
+	do { \
+		lworker.bit = rte_rand_max(size); \
+	} while (lworker.bit == lmain.bit); \
+	int rc = rte_eal_remote_launch(run_parallel_assign ## size, &lworker, worker_lcore_id); \
+	TEST_ASSERT(rc == 0, "Worker thread launch failed"); \
+	run_parallel_assign ## size(&lmain); \
+	rte_eal_mp_wait_lcore(); \
+	TEST_ASSERT(!lmain.failed, "Main lcore atomic access failed"); \
+	TEST_ASSERT(!lworker.failed, "Worker lcore atomic access failed"); \
+	return TEST_SUCCESS; \
+}
+
+GEN_TEST_BIT_PARALLEL_ASSIGN(32)
+GEN_TEST_BIT_PARALLEL_ASSIGN(64)
+
+#define GEN_TEST_BIT_PARALLEL_TEST_AND_MODIFY(size) \
+struct parallel_test_and_set_lcore ## size \
+{ \
+	uint ## size ##_t *word; \
+	unsigned int bit; \
+	uint64_t flips; \
+}; \
+static int \
+run_parallel_test_and_modify ## size(void *arg) \
+{ \
+	struct parallel_test_and_set_lcore ## size *lcore = arg; \
+	uint64_t deadline = rte_get_timer_cycles() + PARALLEL_TEST_RUNTIME * rte_get_timer_hz(); \
+	do { \
+		bool old_value; \
+		bool new_value = rte_rand() & 1; \
+		bool use_assign = rte_rand() & 1; \
+		if (use_assign) \
+			old_value = rte_bit_atomic_test_and_assign(lcore->word, lcore->bit, \
+				new_value, rte_memory_order_relaxed); \
+		else \
+			old_value = new_value ? \
+				rte_bit_atomic_test_and_set(lcore->word, lcore->bit, \
+					rte_memory_order_relaxed) : \
+				rte_bit_atomic_test_and_clear(lcore->word, lcore->bit, \
+					rte_memory_order_relaxed); \
+		if (old_value != new_value) \
+			lcore->flips++; \
+	} while (rte_get_timer_cycles() < deadline); \
+	return 0; \
+} \
+static int \
+test_bit_atomic_parallel_test_and_modify ## size(void) \
+{ \
+	unsigned int worker_lcore_id; \
+	uint ## size ## _t word = 0; \
+	unsigned int bit = rte_rand_max(size); \
+	struct parallel_test_and_set_lcore ## size lmain = { .word = &word, .bit = bit }; \
+	struct parallel_test_and_set_lcore ## size lworker = { .word = &word, .bit = bit }; \
+	if (rte_lcore_count() < 2) { \
+		printf("Need multiple cores to run parallel test.\n"); \
+		return TEST_SKIPPED; \
+	} \
+	worker_lcore_id = rte_get_next_lcore(-1, 1, 0); \
+	int rc = rte_eal_remote_launch(run_parallel_test_and_modify ## size, &lworker, \
+		worker_lcore_id); \
+	TEST_ASSERT(rc == 0, "Worker thread launch failed"); \
+	run_parallel_test_and_modify ## size(&lmain); \
+	rte_eal_mp_wait_lcore(); \
+	uint64_t total_flips = lmain.flips + lworker.flips; \
+	bool expected_value = total_flips % 2; \
+	TEST_ASSERT(expected_value == rte_bit_test(&word, bit), \
+		"After %"PRId64" flips, the bit value should be %d", total_flips, expected_value); \
+	uint64_t expected_word = 0; \
+	rte_bit_assign(&expected_word, bit, expected_value); \
+	TEST_ASSERT(expected_word == word, "Untouched bits have changed value"); \
+	return TEST_SUCCESS; \
+}
+
+GEN_TEST_BIT_PARALLEL_TEST_AND_MODIFY(32)
+GEN_TEST_BIT_PARALLEL_TEST_AND_MODIFY(64)
+
+#define GEN_TEST_BIT_PARALLEL_FLIP(size) \
+struct parallel_flip_lcore ## size \
+{ \
+	uint ## size ##_t *word; \
+	unsigned int bit; \
+	uint64_t flips; \
+}; \
+static int \
+run_parallel_flip ## size(void *arg) \
+{ \
+	struct parallel_flip_lcore ## size *lcore = arg; \
+	uint64_t deadline = rte_get_timer_cycles() + PARALLEL_TEST_RUNTIME * rte_get_timer_hz(); \
+	do { \
+		rte_bit_atomic_flip(lcore->word, lcore->bit, rte_memory_order_relaxed); \
+		lcore->flips++; \
+	} while (rte_get_timer_cycles() < deadline); \
+	return 0; \
+} \
+static int \
+test_bit_atomic_parallel_flip ## size(void) \
+{ \
+	unsigned int worker_lcore_id; \
+	uint ## size ## _t word = 0; \
+	unsigned int bit = rte_rand_max(size); \
+	struct parallel_flip_lcore ## size lmain = { .word = &word, .bit = bit }; \
+	struct parallel_flip_lcore ## size lworker = { .word = &word, .bit = bit }; \
+	if (rte_lcore_count() < 2) { \
+		printf("Need multiple cores to run parallel test.\n"); \
+		return TEST_SKIPPED; \
+	} \
+	worker_lcore_id = rte_get_next_lcore(-1, 1, 0); \
+	int rc = rte_eal_remote_launch(run_parallel_flip ## size, &lworker, worker_lcore_id); \
+	TEST_ASSERT(rc == 0, "Worker thread launch failed"); \
+	run_parallel_flip ## size(&lmain); \
+	rte_eal_mp_wait_lcore(); \
+	uint64_t total_flips = lmain.flips + lworker.flips; \
+	bool expected_value = total_flips % 2; \
+	TEST_ASSERT(expected_value == rte_bit_test(&word, bit), \
+		"After %"PRId64" flips, the bit value should be %d", total_flips, expected_value); \
+	uint64_t expected_word = 0; \
+	rte_bit_assign(&expected_word, bit, expected_value); \
+	TEST_ASSERT(expected_word == word, "Untouched bits have changed value"); \
+	return TEST_SUCCESS; \
+}
+
+GEN_TEST_BIT_PARALLEL_FLIP(32)
+GEN_TEST_BIT_PARALLEL_FLIP(64)
 
 static uint32_t val32;
 static uint64_t val64;
@@ -169,6 +387,16 @@ static struct unit_test_suite test_suite = {
 	.unit_test_cases = {
 		TEST_CASE(test_bit_access32),
 		TEST_CASE(test_bit_access64),
+		TEST_CASE(test_bit_access32),
+		TEST_CASE(test_bit_access64),
+		TEST_CASE(test_bit_atomic_access32),
+		TEST_CASE(test_bit_atomic_access64),
+		TEST_CASE(test_bit_atomic_parallel_assign32),
+		TEST_CASE(test_bit_atomic_parallel_assign64),
+		TEST_CASE(test_bit_atomic_parallel_test_and_modify32),
+		TEST_CASE(test_bit_atomic_parallel_test_and_modify64),
+		TEST_CASE(test_bit_atomic_parallel_flip32),
+		TEST_CASE(test_bit_atomic_parallel_flip64),
 		TEST_CASE(test_bit_relaxed_set),
 		TEST_CASE(test_bit_relaxed_clear),
 		TEST_CASE(test_bit_relaxed_test_set_clear),
