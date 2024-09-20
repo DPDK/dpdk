@@ -9,7 +9,7 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 if meson.is_cross_build()
-        soc_type = meson.get_cross_property('platform', '')
+        soc_type = meson.get_external_property('platform', '')
 else
         soc_type = platform
 endif

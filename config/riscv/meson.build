@@ -84,8 +84,8 @@ if not meson.is_cross_build()
     endif
 else
     # cross build
-    vendor_id = meson.get_cross_property('vendor_id')
-    arch_id = meson.get_cross_property('arch_id')
+    vendor_id = meson.get_external_property('vendor_id')
+    arch_id = meson.get_external_property('arch_id')
 endif
 
 if not vendors.has_key(vendor_id)

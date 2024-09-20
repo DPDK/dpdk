@@ -32,8 +32,8 @@ subdirs = [
 ]
 
 if meson.is_cross_build()
-    disable_drivers += ',' + meson.get_cross_property('disable_drivers', '')
-    enable_drivers += ',' + meson.get_cross_property('enable_drivers', '')
+    disable_drivers += ',' + meson.get_external_property('disable_drivers', '')
+    enable_drivers += ',' + meson.get_external_property('enable_drivers', '')
 endif
 
 # add cmdline disabled drivers and meson disabled drivers together

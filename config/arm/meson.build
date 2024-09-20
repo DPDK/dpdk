@@ -745,7 +745,7 @@ if dpdk_conf.get('RTE_ARCH_32')
     dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
     if meson.is_cross_build()
         update_flags = true
-        soc = meson.get_cross_property('platform', '')
+        soc = meson.get_external_property('platform', '')
         if soc == ''
             error('Arm SoC must be specified in the cross file.')
         endif
@@ -800,7 +800,7 @@ else
         endif
     else
         # cross build
-        soc = meson.get_cross_property('platform', '')
+        soc = meson.get_external_property('platform', '')
         if soc == ''
             error('Arm SoC must be specified in the cross file.')
         endif
