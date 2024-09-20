@@ -17,7 +17,7 @@ if not lib.found()
     build = false
     reason = 'missing dependency, "libIPSec_MB"'
 # if the lib is found, check it's the right format
-elif meson.version().version_compare('>=0.60') and not cc.links(
+elif not cc.links(
         'int main(void) {return 0;}', dependencies: lib)
     build = false
     reason = 'incompatible dependency, "libIPSec_MB"'
