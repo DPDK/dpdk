@@ -44,7 +44,7 @@ Compilation of the DPDK
 
 *   Python 3.6 or later.
 
-*   Meson (version 0.53.2+) and ninja
+*   Meson (version 0.57+) and ninja
 
     * ``meson`` & ``ninja-build`` packages in most Linux distributions
     * If the packaged version is below the minimum version, the latest versions
