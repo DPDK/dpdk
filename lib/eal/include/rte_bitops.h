@@ -131,8 +131,12 @@ extern "C" {
 	_Generic((addr), \
 		uint32_t *: __rte_bit_test32, \
 		const uint32_t *: __rte_bit_test32, \
+		volatile uint32_t *: __rte_bit_v_test32, \
+		const volatile uint32_t *: __rte_bit_v_test32, \
 		uint64_t *: __rte_bit_test64, \
-		const uint64_t *: __rte_bit_test64) \
+		const uint64_t *: __rte_bit_test64, \
+		volatile uint64_t *: __rte_bit_v_test64, \
+		const volatile uint64_t *: __rte_bit_v_test64) \
 			(addr, nr)
 
 /**
@@ -156,7 +160,9 @@ extern "C" {
 #define rte_bit_set(addr, nr) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_set32, \
-		uint64_t *: __rte_bit_set64) \
+		volatile uint32_t *: __rte_bit_v_set32, \
+		uint64_t *: __rte_bit_set64, \
+		volatile uint64_t *: __rte_bit_v_set64) \
 			(addr, nr)
 
 /**
@@ -180,7 +186,9 @@ extern "C" {
 #define rte_bit_clear(addr, nr) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_clear32, \
-		uint64_t *: __rte_bit_clear64) \
+		volatile uint32_t *: __rte_bit_v_clear32, \
+		uint64_t *: __rte_bit_clear64, \
+		volatile uint64_t *: __rte_bit_v_clear64) \
 			(addr, nr)
 
 /**
@@ -205,7 +213,9 @@ extern "C" {
 #define rte_bit_assign(addr, nr, value) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_assign32, \
-		uint64_t *: __rte_bit_assign64) \
+		volatile uint32_t *: __rte_bit_v_assign32, \
+		uint64_t *: __rte_bit_assign64, \
+		volatile uint64_t *: __rte_bit_v_assign64) \
 			(addr, nr, value)
 
 /**
@@ -229,7 +239,9 @@ extern "C" {
 #define rte_bit_flip(addr, nr) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_flip32, \
-		uint64_t *: __rte_bit_flip64) \
+		volatile uint32_t *: __rte_bit_v_flip32, \
+		uint64_t *: __rte_bit_flip64, \
+		volatile uint64_t *: __rte_bit_v_flip64) \
 			(addr, nr)
 
 /**
@@ -255,8 +267,12 @@ extern "C" {
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_test32, \
 		const uint32_t *: __rte_bit_atomic_test32, \
+		volatile uint32_t *: __rte_bit_atomic_v_test32, \
+		const volatile uint32_t *: __rte_bit_atomic_v_test32, \
 		uint64_t *: __rte_bit_atomic_test64, \
-		const uint64_t *: __rte_bit_atomic_test64) \
+		const uint64_t *: __rte_bit_atomic_test64, \
+		volatile uint64_t *: __rte_bit_atomic_v_test64, \
+		const volatile uint64_t *: __rte_bit_atomic_v_test64) \
 			(addr, nr, memory_order)
 
 /**
@@ -279,7 +295,9 @@ extern "C" {
 #define rte_bit_atomic_set(addr, nr, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_set32, \
-		uint64_t *: __rte_bit_atomic_set64) \
+		volatile uint32_t *: __rte_bit_atomic_v_set32, \
+		uint64_t *: __rte_bit_atomic_set64, \
+		volatile uint64_t *: __rte_bit_atomic_v_set64) \
 			(addr, nr, memory_order)
 
 /**
@@ -302,7 +320,9 @@ extern "C" {
 #define rte_bit_atomic_clear(addr, nr, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_clear32, \
-		uint64_t *: __rte_bit_atomic_clear64) \
+		volatile uint32_t *: __rte_bit_atomic_v_clear32, \
+		uint64_t *: __rte_bit_atomic_clear64, \
+		volatile uint64_t *: __rte_bit_atomic_v_clear64) \
 			(addr, nr, memory_order)
 
 /**
@@ -327,7 +347,9 @@ extern "C" {
 #define rte_bit_atomic_assign(addr, nr, value, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_assign32, \
-		uint64_t *: __rte_bit_atomic_assign64) \
+		volatile uint32_t *: __rte_bit_atomic_v_assign32, \
+		uint64_t *: __rte_bit_atomic_assign64, \
+		volatile uint64_t *: __rte_bit_atomic_v_assign64) \
 			(addr, nr, value, memory_order)
 
 /**
@@ -351,7 +373,9 @@ extern "C" {
 #define rte_bit_atomic_flip(addr, nr, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_flip32, \
-		uint64_t *: __rte_bit_atomic_flip64) \
+		volatile uint32_t *: __rte_bit_atomic_v_flip32, \
+		uint64_t *: __rte_bit_atomic_flip64, \
+		volatile uint64_t *: __rte_bit_atomic_v_flip64) \
 			(addr, nr, memory_order)
 
 /**
@@ -376,7 +400,9 @@ extern "C" {
 #define rte_bit_atomic_test_and_set(addr, nr, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_test_and_set32, \
-		uint64_t *: __rte_bit_atomic_test_and_set64) \
+		volatile uint32_t *: __rte_bit_atomic_v_test_and_set32, \
+		uint64_t *: __rte_bit_atomic_test_and_set64, \
+		volatile uint64_t *: __rte_bit_atomic_v_test_and_set64) \
 			(addr, nr, memory_order)
 
 /**
@@ -401,7 +427,9 @@ extern "C" {
 #define rte_bit_atomic_test_and_clear(addr, nr, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_test_and_clear32, \
-		uint64_t *: __rte_bit_atomic_test_and_clear64) \
+		volatile uint32_t *: __rte_bit_atomic_v_test_and_clear32, \
+		uint64_t *: __rte_bit_atomic_test_and_clear64, \
+		volatile uint64_t *: __rte_bit_atomic_v_test_and_clear64) \
 			(addr, nr, memory_order)
 
 /**
@@ -429,7 +457,9 @@ extern "C" {
 #define rte_bit_atomic_test_and_assign(addr, nr, value, memory_order) \
 	_Generic((addr), \
 		uint32_t *: __rte_bit_atomic_test_and_assign32, \
-		uint64_t *: __rte_bit_atomic_test_and_assign64) \
+		volatile uint32_t *: __rte_bit_atomic_v_test_and_assign32, \
+		uint64_t *: __rte_bit_atomic_test_and_assign64, \
+		volatile uint64_t *: __rte_bit_atomic_v_test_and_assign64) \
 			(addr, nr, value, memory_order)
 
 #define __RTE_GEN_BIT_TEST(variant, qualifier, size) \
@@ -492,7 +522,8 @@ __rte_bit_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, unsign
 	__RTE_GEN_BIT_FLIP(v, qualifier, size)
 
 #define __RTE_GEN_BIT_OPS_SIZE(size) \
-	__RTE_GEN_BIT_OPS(,, size)
+	__RTE_GEN_BIT_OPS(,, size) \
+	__RTE_GEN_BIT_OPS(v_, volatile, size)
 
 __RTE_GEN_BIT_OPS_SIZE(32)
 __RTE_GEN_BIT_OPS_SIZE(64)
@@ -617,7 +648,8 @@ __rte_bit_atomic_ ## variant ## test_and_assign ## size( \
 	__RTE_GEN_BIT_ATOMIC_FLIP(variant, qualifier, size)
 
 #define __RTE_GEN_BIT_ATOMIC_OPS_SIZE(size) \
-	__RTE_GEN_BIT_ATOMIC_OPS(,, size)
+	__RTE_GEN_BIT_ATOMIC_OPS(,, size) \
+	__RTE_GEN_BIT_ATOMIC_OPS(v_, volatile, size)
 
 __RTE_GEN_BIT_ATOMIC_OPS_SIZE(32)
 __RTE_GEN_BIT_ATOMIC_OPS_SIZE(64)
@@ -1334,7 +1366,8 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 }
 
 #define __RTE_BIT_OVERLOAD_SZ_2(family, fun, qualifier, size, arg1_type, arg1_name) \
-	__RTE_BIT_OVERLOAD_V_2(family,, fun, qualifier, size, arg1_type, arg1_name)
+	__RTE_BIT_OVERLOAD_V_2(family,, fun, qualifier, size, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_V_2(family, v_, fun, qualifier volatile, size, arg1_type, arg1_name)
 
 #define __RTE_BIT_OVERLOAD_2(family, fun, qualifier, arg1_type, arg1_name) \
 	__RTE_BIT_OVERLOAD_SZ_2(family, fun, qualifier, 32, arg1_type, arg1_name) \
@@ -1348,7 +1381,9 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 }
 
 #define __RTE_BIT_OVERLOAD_SZ_2R(family, fun, qualifier, size, ret_type, arg1_type, arg1_name) \
-	__RTE_BIT_OVERLOAD_V_2R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name)
+	__RTE_BIT_OVERLOAD_V_2R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name) \
+	__RTE_BIT_OVERLOAD_V_2R(family, v_, fun, qualifier volatile, size, ret_type, arg1_type, \
+		arg1_name)
 
 #define __RTE_BIT_OVERLOAD_2R(family, fun, qualifier, ret_type, arg1_type, arg1_name) \
 	__RTE_BIT_OVERLOAD_SZ_2R(family, fun, qualifier, 32, ret_type, arg1_type, arg1_name) \
@@ -1366,6 +1401,8 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 #define __RTE_BIT_OVERLOAD_SZ_3(family, fun, qualifier, size, arg1_type, arg1_name, \
 		arg2_type, arg2_name) \
 	__RTE_BIT_OVERLOAD_V_3(family,, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_V_3(family, v_, fun, qualifier volatile, size, arg1_type, arg1_name, \
 		arg2_type, arg2_name)
 
 #define __RTE_BIT_OVERLOAD_3(family, fun, qualifier, arg1_type, arg1_name, arg2_type, arg2_name) \
@@ -1386,7 +1423,9 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 #define __RTE_BIT_OVERLOAD_SZ_3R(family, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
 		arg2_type, arg2_name) \
 	__RTE_BIT_OVERLOAD_V_3R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
-		arg2_type, arg2_name)
+		arg2_type, arg2_name) \
+	__RTE_BIT_OVERLOAD_V_3R(family, v_, fun, qualifier volatile, size, ret_type, \
+		arg1_type, arg1_name, arg2_type, arg2_name)
 
 #define __RTE_BIT_OVERLOAD_3R(family, fun, qualifier, ret_type, arg1_type, arg1_name, \
 		arg2_type, arg2_name) \
@@ -1407,6 +1446,8 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 #define __RTE_BIT_OVERLOAD_SZ_4(family, fun, qualifier, size, arg1_type, arg1_name, \
 		arg2_type, arg2_name, arg3_type, arg3_name) \
 	__RTE_BIT_OVERLOAD_V_4(family,, fun, qualifier, size, arg1_type, arg1_name, \
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_V_4(family, v_, fun, qualifier volatile, size, arg1_type, arg1_name, \
 		arg2_type, arg2_name, arg3_type, arg3_name)
 
 #define __RTE_BIT_OVERLOAD_4(family, fun, qualifier, arg1_type, arg1_name, arg2_type, arg2_name, \
@@ -1429,7 +1470,9 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 #define __RTE_BIT_OVERLOAD_SZ_4R(family, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
 		arg2_type, arg2_name, arg3_type, arg3_name) \
 	__RTE_BIT_OVERLOAD_V_4R(family,, fun, qualifier, size, ret_type, arg1_type, arg1_name, \
-		arg2_type, arg2_name, arg3_type, arg3_name)
+		arg2_type, arg2_name, arg3_type, arg3_name) \
+	__RTE_BIT_OVERLOAD_V_4R(family, v_, fun, qualifier volatile, size, ret_type, \
+		arg1_type, arg1_name, arg2_type, arg2_name, arg3_type, arg3_name)
 
 #define __RTE_BIT_OVERLOAD_4R(family, fun, qualifier, ret_type, arg1_type, arg1_name, \
 		arg2_type, arg2_name, arg3_type, arg3_name) \

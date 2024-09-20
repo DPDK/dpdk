@@ -13,13 +13,14 @@
 #include <rte_random.h>
 #include "test.h"
 
-#define GEN_TEST_BIT_ACCESS(test_name, set_fun, clear_fun, assign_fun, flip_fun, test_fun, size) \
+#define GEN_TEST_BIT_ACCESS(test_name, set_fun, clear_fun, assign_fun, flip_fun, test_fun, size, \
+		mod) \
 static int \
 test_name(void) \
 { \
 	uint ## size ## _t reference = (uint ## size ## _t)rte_rand(); \
 	unsigned int bit_nr; \
-	uint ## size ## _t word = (uint ## size ## _t)rte_rand(); \
+	mod uint ## size ## _t word = (uint ## size ## _t)rte_rand(); \
 	for (bit_nr = 0; bit_nr < size; bit_nr++) { \
 		bool reference_bit = (reference >> bit_nr) & 1; \
 		bool assign = rte_rand() & 1; \
@@ -37,7 +38,7 @@ test_name(void) \
 		TEST_ASSERT(test_fun(&word, bit_nr) != reference_bit, \
 			"Bit %d had unflipped value", bit_nr); \
 		flip_fun(&word, bit_nr); \
-		const uint ## size ## _t *const_ptr = &word; \
+		const mod uint ## size ## _t *const_ptr = &word; \
 		TEST_ASSERT(test_fun(const_ptr, bit_nr) == reference_bit, \
 			"Bit %d had unexpected value", bit_nr); \
 	} \
@@ -51,10 +52,16 @@ test_name(void) \
 }
 
 GEN_TEST_BIT_ACCESS(test_bit_access32, rte_bit_set, rte_bit_clear, rte_bit_assign, rte_bit_flip,
-	rte_bit_test, 32)
+	rte_bit_test, 32,)
 
 GEN_TEST_BIT_ACCESS(test_bit_access64, rte_bit_set, rte_bit_clear, rte_bit_assign, rte_bit_flip,
-	rte_bit_test, 64)
+	rte_bit_test, 64,)
+
+GEN_TEST_BIT_ACCESS(test_bit_v_access32, rte_bit_set, rte_bit_clear, rte_bit_assign, rte_bit_flip,
+	rte_bit_test, 32, volatile)
+
+GEN_TEST_BIT_ACCESS(test_bit_v_access64, rte_bit_set, rte_bit_clear, rte_bit_assign, rte_bit_flip,
+	rte_bit_test, 64, volatile)
 
 #define bit_atomic_set(addr, nr) \
 	rte_bit_atomic_set(addr, nr, rte_memory_order_relaxed)
@@ -72,10 +79,16 @@ GEN_TEST_BIT_ACCESS(test_bit_access64, rte_bit_set, rte_bit_clear, rte_bit_assig
 	rte_bit_atomic_test(addr, nr, rte_memory_order_relaxed)
 
 GEN_TEST_BIT_ACCESS(test_bit_atomic_access32, bit_atomic_set, bit_atomic_clear, bit_atomic_assign,
-	bit_atomic_flip, bit_atomic_test, 32)
+	bit_atomic_flip, bit_atomic_test, 32,)
 
 GEN_TEST_BIT_ACCESS(test_bit_atomic_access64, bit_atomic_set, bit_atomic_clear, bit_atomic_assign,
-	bit_atomic_flip, bit_atomic_test, 64)
+	bit_atomic_flip, bit_atomic_test, 64,)
+
+GEN_TEST_BIT_ACCESS(test_bit_atomic_v_access32, bit_atomic_set, bit_atomic_clear, bit_atomic_assign,
+	bit_atomic_flip, bit_atomic_test, 32, volatile)
+
+GEN_TEST_BIT_ACCESS(test_bit_atomic_v_access64, bit_atomic_set, bit_atomic_clear, bit_atomic_assign,
+	bit_atomic_flip, bit_atomic_test, 64, volatile)
 
 #define PARALLEL_TEST_RUNTIME 0.25
 
@@ -389,8 +402,12 @@ static struct unit_test_suite test_suite = {
 		TEST_CASE(test_bit_access64),
 		TEST_CASE(test_bit_access32),
 		TEST_CASE(test_bit_access64),
+		TEST_CASE(test_bit_v_access32),
+		TEST_CASE(test_bit_v_access64),
 		TEST_CASE(test_bit_atomic_access32),
 		TEST_CASE(test_bit_atomic_access64),
+		TEST_CASE(test_bit_atomic_v_access32),
+		TEST_CASE(test_bit_atomic_v_access64),
 		TEST_CASE(test_bit_atomic_parallel_assign32),
 		TEST_CASE(test_bit_atomic_parallel_assign64),
 		TEST_CASE(test_bit_atomic_parallel_test_and_modify32),
