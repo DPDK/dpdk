@@ -2,10 +2,7 @@
 # Copyright(c) 2017-2019 Intel Corporation
 
 project('DPDK', 'c',
-        # Get version number from file.
-        # Fallback to "more" for Windows compatibility.
-        version: run_command(find_program('cat', 'more'),
-            files('VERSION'), check: true).stdout().strip(),
+        version: files('VERSION'),
         license: 'BSD',
         default_options: [
             'buildtype=release',
