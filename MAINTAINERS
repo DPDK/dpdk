@@ -423,27 +423,27 @@ T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/
 F: app/test/test_ethdev*
 F: devtools/test-null.sh
-F: doc/guides/prog_guide/switch_representation.rst
+F: doc/guides/prog_guide/ethdev/switch_representation.rst
 
 Flow API
 M: Ori Kam <orika@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: app/test-pmd/cmdline_flow.c
-F: doc/guides/prog_guide/rte_flow.rst
+F: doc/guides/prog_guide/ethdev/flow_offload.rst
 F: lib/ethdev/rte_flow*
 
 Traffic Management API
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/rte_tm*
-F: doc/guides/prog_guide/traffic_management.rst
+F: doc/guides/prog_guide/ethdev/traffic_management.rst
 F: app/test-pmd/cmdline_tm.*
 
 Traffic Metering and Policing API - EXPERIMENTAL
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/rte_mtr*
-F: doc/guides/prog_guide/traffic_metering_and_policing.rst
+F: doc/guides/prog_guide/ethdev/traffic_metering_and_policing.rst
 F: app/test-pmd/cmdline_mtr.*
 
 Baseband API
@@ -520,7 +520,7 @@ Eventdev API
 M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/
-F: doc/guides/prog_guide/eventdev.rst
+F: doc/guides/prog_guide/eventdev/eventdev.rst
 F: drivers/event/skeleton/
 F: app/test/test_eventdev.c
 F: examples/l3fwd/l3fwd_event*
@@ -530,35 +530,35 @@ M: Naga Harish K S V <s.v.naga.harish.k@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*eth_rx_adapter*
 F: app/test/test_event_eth_rx_adapter.c
-F: doc/guides/prog_guide/event_ethernet_rx_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_ethernet_rx_adapter.rst
 
 Eventdev Ethdev Tx Adapter API
 M: Naga Harish K S V <s.v.naga.harish.k@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*eth_tx_adapter*
 F: app/test/test_event_eth_tx_adapter.c
-F: doc/guides/prog_guide/event_ethernet_tx_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_ethernet_tx_adapter.rst
 
 Eventdev Timer Adapter API
 M: Erik Gabriel Carrillo <erik.g.carrillo@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*timer_adapter*
 F: app/test/test_event_timer_adapter.c
-F: doc/guides/prog_guide/event_timer_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_timer_adapter.rst
 
 Eventdev Crypto Adapter API
 M: Abhinandan Gujjar <abhinandan.gujjar@intel.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*crypto_adapter*
 F: app/test/test_event_crypto_adapter.c
-F: doc/guides/prog_guide/event_crypto_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_crypto_adapter.rst
 
 Eventdev DMA Adapter API
 M: Amit Prakash Shukla <amitprakashs@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 F: lib/eventdev/*dma_adapter*
 F: app/test/test_event_dma_adapter.c
-F: doc/guides/prog_guide/event_dma_adapter.rst
+F: doc/guides/prog_guide/eventdev/event_dma_adapter.rst
 
 Raw device API
 M: Sachin Saxena <sachin.saxena@oss.nxp.com>
@@ -1586,7 +1586,7 @@ F: doc/guides/sample_app_ug/packet_ordering.rst
 Hierarchical scheduler
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/sched/
-F: doc/guides/prog_guide/qos_framework.rst
+F: doc/guides/prog_guide/ethdev/qos_framework.rst
 F: app/test/test_pie.c
 F: app/test/test_red.c
 F: app/test/test_sched.c
@@ -1757,7 +1757,7 @@ Dispatcher - EXPERIMENTAL
 M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
 F: lib/dispatcher/
 F: app/test/test_dispatcher.c
-F: doc/guides/prog_guide/dispatcher_lib.rst
+F: doc/guides/prog_guide/eventdev/dispatcher_lib.rst
 
 Job statistics
 F: lib/jobstats/
