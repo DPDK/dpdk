@@ -169,6 +169,7 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 	cvq->last_avail_idx++;
 	if (cvq->last_avail_idx >= cvq->size)
 		cvq->last_avail_idx -= cvq->size;
+	vhost_virtqueue_reconnect_log_split(cvq);
 
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
 		vhost_avail_event(cvq) = cvq->last_avail_idx;
@@ -181,6 +182,7 @@ err:
 	cvq->last_avail_idx++;
 	if (cvq->last_avail_idx >= cvq->size)
 		cvq->last_avail_idx -= cvq->size;
+	vhost_virtqueue_reconnect_log_split(cvq);
 
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
 		vhost_avail_event(cvq) = cvq->last_avail_idx;
