@@ -136,7 +136,7 @@ vduse_control_queue_event(int fd, void *arg, int *remove __rte_unused)
 }
 
 static void
-vduse_vring_setup(struct virtio_net *dev, unsigned int index)
+vduse_vring_setup(struct virtio_net *dev, unsigned int index, bool reconnect)
 {
 	struct vhost_virtqueue *vq = dev->virtqueue[index];
 	struct vhost_vring_addr *ra = &vq->ring_addrs;
@@ -152,6 +152,19 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 		return;
 	}
 
+	if (reconnect) {
+		vq->last_avail_idx = vq->reconnect_log->last_avail_idx;
+		vq->last_used_idx = vq->reconnect_log->last_avail_idx;
+	} else {
+		vq->last_avail_idx = vq_info.split.avail_index;
+		vq->last_used_idx = vq_info.split.avail_index;
+	}
+	vq->size = vq_info.num;
+	vq->ready = true;
+	vq->enabled = vq_info.ready;
+	ra->desc_user_addr = vq_info.desc_addr;
+	ra->avail_user_addr = vq_info.driver_addr;
+	ra->used_user_addr = vq_info.device_addr;
 	VHOST_CONFIG_LOG(dev->ifname, INFO, "VQ %u info:", index);
 	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tnum: %u", vq_info.num);
 	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tdesc_addr: %llx",
@@ -160,17 +173,9 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 			(unsigned long long)vq_info.driver_addr);
 	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tdevice_addr: %llx",
 			(unsigned long long)vq_info.device_addr);
-	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tavail_idx: %u", vq_info.split.avail_index);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tavail_idx: %u", vq->last_avail_idx);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tused_idx: %u", vq->last_used_idx);
 	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tready: %u", vq_info.ready);
-
-	vq->last_avail_idx = vq_info.split.avail_index;
-	vq->size = vq_info.num;
-	vq->ready = true;
-	vq->enabled = vq_info.ready;
-	ra->desc_user_addr = vq_info.desc_addr;
-	ra->avail_user_addr = vq_info.driver_addr;
-	ra->used_user_addr = vq_info.device_addr;
-
 	vq->kickfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	if (vq->kickfd < 0) {
 		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to init kickfd for VQ %u: %s",
@@ -267,7 +272,7 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 }
 
 static void
-vduse_device_start(struct virtio_net *dev)
+vduse_device_start(struct virtio_net *dev, bool reconnect)
 {
 	unsigned int i, ret;
 
@@ -287,6 +292,15 @@ vduse_device_start(struct virtio_net *dev)
 		return;
 	}
 
+	if (reconnect && dev->features != dev->reconnect_log->features) {
+		VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"Mismatch between reconnect file features 0x%" PRIx64 " & device features 0x%" PRIx64,
+				dev->reconnect_log->features, dev->features);
+		return;
+	}
+
+	dev->reconnect_log->features = dev->features;
+
 	VHOST_CONFIG_LOG(dev->ifname, INFO, "Negotiated Virtio features: 0x%" PRIx64,
 		dev->features);
 
@@ -300,7 +314,7 @@ vduse_device_start(struct virtio_net *dev)
 	}
 
 	for (i = 0; i < dev->nr_vring; i++)
-		vduse_vring_setup(dev, i);
+		vduse_vring_setup(dev, i, reconnect);
 
 	dev->flags |= VIRTIO_DEV_READY;
 
@@ -373,6 +387,7 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 				req.s.status);
 		old_status = dev->status;
 		dev->status = req.s.status;
+		dev->reconnect_log->status = dev->status;
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
 	case VDUSE_UPDATE_IOTLB:
@@ -398,7 +413,7 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 
 	if ((old_status ^ dev->status) & VIRTIO_DEVICE_STATUS_DRIVER_OK) {
 		if (dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)
-			vduse_device_start(dev);
+			vduse_device_start(dev, false);
 		else
 			vduse_device_stop(dev);
 	}
@@ -407,10 +422,64 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 			vduse_req_id_to_str(req.type), req.type);
 }
 
+static char vduse_reconnect_dir[PATH_MAX];
+static bool vduse_reconnect_path_set;
+
+static int
+vduse_reconnect_path_init(void)
+{
+	const char *directory;
+	int ret;
+
+	/* from RuntimeDirectory= see systemd.exec */
+	directory = getenv("RUNTIME_DIRECTORY");
+	if (directory == NULL) {
+		/*
+		 * Used standard convention defined in
+		 * XDG Base Directory Specification and
+		 * Filesystem Hierarchy Standard.
+		 */
+		if (getuid() == 0)
+			directory = "/var/run";
+		else
+			directory = getenv("XDG_RUNTIME_DIR") ? : "/tmp";
+	}
+
+	ret = snprintf(vduse_reconnect_dir, sizeof(vduse_reconnect_dir), "%s/vduse",
+			directory);
+	if (ret < 0 || ret == sizeof(vduse_reconnect_dir)) {
+		VHOST_CONFIG_LOG("vduse", ERR, "Error creating VDUSE reconnect path name");
+		return -1;
+	}
+
+	ret = mkdir(vduse_reconnect_dir, 0700);
+	if (ret < 0 && errno != EEXIST) {
+		VHOST_CONFIG_LOG("vduse", ERR, "Error creating '%s': %s",
+				vduse_reconnect_dir, strerror(errno));
+		return -1;
+	}
+
+	VHOST_CONFIG_LOG("vduse", INFO, "Created VDUSE reconnect directory in %s",
+			vduse_reconnect_dir);
+
+	return 0;
+}
+
+static void
+vduse_reconnect_handler(int fd, void *arg, int *remove)
+{
+	struct virtio_net *dev = arg;
+
+	vduse_device_start(dev, true);
+
+	close(fd);
+	*remove = 1;
+}
+
 int
 vduse_device_create(const char *path, bool compliant_ol_flags)
 {
-	int control_fd, dev_fd, vid, ret;
+	int control_fd, dev_fd, vid, ret, reco_fd;
 	uint32_t i, max_queue_pairs, total_queues;
 	struct virtio_net *dev;
 	struct virtio_net_config vnet_config = {{ 0 }};
@@ -418,6 +487,9 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	uint64_t features;
 	struct vduse_dev_config *dev_config = NULL;
 	const char *name = path + strlen("/dev/vduse/");
+	char reconnect_file[PATH_MAX];
+	struct vhost_reconnect_data *reconnect_log = NULL;
+	bool reconnect = false;
 
 	if (vduse.fdset == NULL) {
 		vduse.fdset = fdset_init("vduse-evt");
@@ -425,6 +497,20 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 			VHOST_CONFIG_LOG(path, ERR, "failed to init VDUSE fdset");
 			return -1;
 		}
+	}
+
+	if (vduse_reconnect_path_set == false) {
+		if (vduse_reconnect_path_init() < 0) {
+			VHOST_CONFIG_LOG(path, ERR, "failed to initialize reconnect path");
+			return -1;
+		}
+		vduse_reconnect_path_set = true;
+	}
+
+	ret = snprintf(reconnect_file, sizeof(reconnect_file), "%s/%s", vduse_reconnect_dir, name);
+	if (ret < 0 || ret == sizeof(reconnect_file)) {
+		VHOST_CONFIG_LOG(name, ERR, "Failed to create vduse reconnect path name");
+		return -1;
 	}
 
 	control_fd = open(VDUSE_CTRL_PATH, O_RDWR);
@@ -437,14 +523,6 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	if (ioctl(control_fd, VDUSE_SET_API_VERSION, &ver)) {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to set API version: %" PRIu64 ": %s",
 				ver, strerror(errno));
-		ret = -1;
-		goto out_ctrl_close;
-	}
-
-	dev_config = malloc(offsetof(struct vduse_dev_config, config) +
-			sizeof(vnet_config));
-	if (!dev_config) {
-		VHOST_CONFIG_LOG(name, ERR, "Failed to allocate VDUSE config");
 		ret = -1;
 		goto out_ctrl_close;
 	}
@@ -469,23 +547,118 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	else
 		total_queues += 1; /* Includes ctrl queue */
 
-	vnet_config.max_virtqueue_pairs = max_queue_pairs;
-	memset(dev_config, 0, sizeof(struct vduse_dev_config));
+	if (access(path, F_OK) == 0) {
+		VHOST_CONFIG_LOG(name, INFO, "Device already exists, reconnecting...");
+		reconnect = true;
 
-	strncpy(dev_config->name, name, VDUSE_NAME_MAX - 1);
-	dev_config->device_id = VIRTIO_ID_NET;
-	dev_config->vendor_id = 0;
-	dev_config->features = features;
-	dev_config->vq_num = total_queues;
-	dev_config->vq_align = sysconf(_SC_PAGE_SIZE);
-	dev_config->config_size = sizeof(struct virtio_net_config);
-	memcpy(dev_config->config, &vnet_config, sizeof(vnet_config));
+		reco_fd = open(reconnect_file, O_RDWR, 0600);
+		if (reco_fd < 0) {
+			if (errno == ENOENT)
+				VHOST_CONFIG_LOG(name, ERR, "Missing reconnect file (%s)",
+						reconnect_file);
+			else
+				VHOST_CONFIG_LOG(name, ERR, "Failed to open reconnect file %s (%s)",
+						reconnect_file, strerror(errno));
+			ret = -1;
+			goto out_ctrl_close;
+		}
 
-	ret = ioctl(control_fd, VDUSE_CREATE_DEV, dev_config);
-	if (ret < 0) {
-		VHOST_CONFIG_LOG(name, ERR, "Failed to create VDUSE device: %s",
-				strerror(errno));
-		goto out_free;
+		reconnect_log = mmap(NULL, sizeof(*reconnect_log), PROT_READ | PROT_WRITE,
+				MAP_SHARED, reco_fd, 0);
+		close(reco_fd);
+		if (reconnect_log == MAP_FAILED) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to mmap reconnect file %s (%s)",
+					reconnect_file, strerror(errno));
+			ret = -1;
+			goto out_ctrl_close;
+		}
+
+		if (reconnect_log->version != VHOST_RECONNECT_VERSION) {
+			VHOST_CONFIG_LOG(name, ERR,
+					"Version mismatch between backend (0x%x) & reconnection file (0x%x)",
+					VHOST_RECONNECT_VERSION, reconnect_log->version);
+		}
+
+		if ((reconnect_log->features & features) != reconnect_log->features) {
+			VHOST_CONFIG_LOG(name, ERR,
+					"Features mismatch between backend (0x%" PRIx64 ") & reconnection file (0x%" PRIx64 ")",
+					features, reconnect_log->features);
+			ret = -1;
+			goto out_ctrl_close;
+		}
+
+		if (reconnect_log->nr_vrings != total_queues) {
+			VHOST_CONFIG_LOG(name, ERR,
+					"Queues number mismatch between backend (%u) and reconnection file (%u)",
+					total_queues, reconnect_log->nr_vrings);
+			ret = -1;
+			goto out_ctrl_close;
+		}
+	} else {
+		reco_fd = open(reconnect_file, O_CREAT | O_EXCL | O_RDWR, 0600);
+		if (reco_fd < 0) {
+			if (errno == EEXIST) {
+				VHOST_CONFIG_LOG(name, ERR, "Reconnect file %s exists but not the device",
+						reconnect_file);
+			} else {
+				VHOST_CONFIG_LOG(name, ERR, "Failed to open reconnect file %s (%s)",
+						reconnect_file, strerror(errno));
+			}
+			ret = -1;
+			goto out_ctrl_close;
+		}
+
+		ret = ftruncate(reco_fd, sizeof(*reconnect_log));
+		if (ret < 0) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to truncate reconnect file %s (%s)",
+					reconnect_file, strerror(errno));
+			close(reco_fd);
+			goto out_ctrl_close;
+		}
+
+		reconnect_log = mmap(NULL, sizeof(*reconnect_log), PROT_READ | PROT_WRITE,
+					MAP_SHARED, reco_fd, 0);
+		close(reco_fd);
+		if (reconnect_log == MAP_FAILED) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to mmap reconnect file %s (%s)",
+					reconnect_file, strerror(errno));
+			ret = -1;
+			goto out_ctrl_close;
+		}
+
+		reconnect_log->version = VHOST_RECONNECT_VERSION;
+
+		dev_config = malloc(offsetof(struct vduse_dev_config, config) +
+				sizeof(vnet_config));
+		if (!dev_config) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to allocate VDUSE config");
+			ret = -1;
+			goto out_ctrl_close;
+		}
+
+		vnet_config.max_virtqueue_pairs = max_queue_pairs;
+		memset(dev_config, 0, sizeof(struct vduse_dev_config));
+
+		rte_strscpy(dev_config->name, name, VDUSE_NAME_MAX - 1);
+		dev_config->device_id = VIRTIO_ID_NET;
+		dev_config->vendor_id = 0;
+		dev_config->features = features;
+		dev_config->vq_num = total_queues;
+		dev_config->vq_align = sysconf(_SC_PAGE_SIZE);
+		dev_config->config_size = sizeof(struct virtio_net_config);
+		memcpy(dev_config->config, &vnet_config, sizeof(vnet_config));
+
+		ret = ioctl(control_fd, VDUSE_CREATE_DEV, dev_config);
+		if (ret < 0) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to create VDUSE device: %s",
+					strerror(errno));
+			goto out_free;
+		}
+
+		memcpy(&reconnect_log->config, &vnet_config, sizeof(vnet_config));
+		reconnect_log->nr_vrings = total_queues;
+		free(dev_config);
+		dev_config = NULL;
 	}
 
 	dev_fd = open(path, O_RDWR);
@@ -519,16 +692,27 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	strncpy(dev->ifname, path, IF_NAME_SZ - 1);
 	dev->vduse_ctrl_fd = control_fd;
 	dev->vduse_dev_fd = dev_fd;
+	dev->reconnect_log = reconnect_log;
+	if (reconnect)
+		dev->status = dev->reconnect_log->status;
+
 	vhost_setup_virtio_net(dev->vid, true, compliant_ol_flags, true, true);
 
 	for (i = 0; i < total_queues; i++) {
 		struct vduse_vq_config vq_cfg = { 0 };
+		struct vhost_virtqueue *vq;
 
 		ret = alloc_vring_queue(dev, i);
 		if (ret) {
 			VHOST_CONFIG_LOG(name, ERR, "Failed to alloc vring %d metadata", i);
 			goto out_dev_destroy;
 		}
+
+		vq = dev->virtqueue[i];
+		vq->reconnect_log = &reconnect_log->vring[i];
+
+		if (reconnect)
+			continue;
 
 		vq_cfg.index = i;
 		vq_cfg.max_size = 1024;
@@ -549,7 +733,32 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		goto out_dev_destroy;
 	}
 
-	free(dev_config);
+	if (reconnect && dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)  {
+		/*
+		 * Make vduse_device_start() being executed in the same
+		 * context for both reconnection and fresh startup.
+		 */
+		reco_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		if (reco_fd < 0) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to create reco_fd: %s",
+					strerror(errno));
+			ret = -1;
+			goto out_dev_destroy;
+		}
+
+		ret = fdset_add(vduse.fdset, reco_fd, vduse_reconnect_handler, NULL, dev);
+		if (ret) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to add reconnect fd %d to vduse fdset",
+					reco_fd);
+			goto out_dev_destroy;
+		}
+
+		ret = eventfd_write(reco_fd, (eventfd_t)1);
+		if (ret < 0) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to write to reconnect eventfd");
+			goto out_dev_destroy;
+		}
+	}
 
 	return 0;
 
@@ -587,6 +796,9 @@ vduse_device_destroy(const char *path)
 	if (vid == RTE_MAX_VHOST_DEVICE)
 		return -1;
 
+	if (dev->reconnect_log)
+		munmap(dev->reconnect_log, sizeof(*dev->reconnect_log));
+
 	vduse_device_stop(dev);
 
 	fdset_del(vduse.fdset, dev->vduse_dev_fd);
@@ -597,10 +809,26 @@ vduse_device_destroy(const char *path)
 	}
 
 	if (dev->vduse_ctrl_fd >= 0) {
+		char reconnect_file[PATH_MAX];
+
 		ret = ioctl(dev->vduse_ctrl_fd, VDUSE_DESTROY_DEV, name);
-		if (ret)
+		if (ret) {
 			VHOST_CONFIG_LOG(name, ERR, "Failed to destroy VDUSE device: %s",
 					strerror(errno));
+		} else {
+			/*
+			 * VDUSE device was no more attached to the vDPA bus,
+			 * so we can remove the reconnect file.
+			 */
+			ret = snprintf(reconnect_file, sizeof(reconnect_file), "%s/%s",
+					vduse_reconnect_dir, name);
+			if (ret < 0 || ret == sizeof(reconnect_file))
+				VHOST_CONFIG_LOG(name, ERR,
+						"Failed to create vduse reconnect path name");
+			else
+				unlink(reconnect_file);
+		}
+
 		close(dev->vduse_ctrl_fd);
 		dev->vduse_ctrl_fd = -1;
 	}
