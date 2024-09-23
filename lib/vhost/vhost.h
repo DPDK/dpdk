@@ -269,6 +269,24 @@ struct vhost_async {
 	};
 };
 
+#define VHOST_RECONNECT_VERSION		0x0
+#define VHOST_MAX_VRING			0x100
+#define VHOST_MAX_QUEUE_PAIRS		0x80
+
+struct __rte_cache_aligned vhost_reconnect_vring {
+	uint16_t last_avail_idx;
+	bool avail_wrap_counter;
+};
+
+struct vhost_reconnect_data {
+	uint32_t version;
+	uint64_t features;
+	uint8_t status;
+	struct virtio_net_config config;
+	uint32_t nr_vrings;
+	struct vhost_reconnect_vring vring[VHOST_MAX_VRING];
+};
+
 /**
  * Structure contains variables relevant to RX/TX virtqueues.
  */
@@ -351,6 +369,7 @@ struct __rte_cache_aligned vhost_virtqueue {
 	struct virtqueue_stats	stats;
 
 	RTE_ATOMIC(bool) irq_pending;
+	struct vhost_reconnect_vring *reconnect_log;
 };
 
 /* Virtio device status as per Virtio specification */
@@ -361,9 +380,6 @@ struct __rte_cache_aligned vhost_virtqueue {
 #define VIRTIO_DEVICE_STATUS_FEATURES_OK	0x08
 #define VIRTIO_DEVICE_STATUS_DEV_NEED_RESET	0x40
 #define VIRTIO_DEVICE_STATUS_FAILED		0x80
-
-#define VHOST_MAX_VRING			0x100
-#define VHOST_MAX_QUEUE_PAIRS		0x80
 
 /* Declare IOMMU related bits for older kernels */
 #ifndef VIRTIO_F_IOMMU_PLATFORM
@@ -538,7 +554,25 @@ struct __rte_cache_aligned virtio_net {
 	struct rte_vhost_user_extern_ops extern_ops;
 
 	struct vhost_backend_ops *backend_ops;
+
+	struct vhost_reconnect_data *reconnect_log;
 };
+
+static __rte_always_inline void
+vhost_virtqueue_reconnect_log_split(struct vhost_virtqueue *vq)
+{
+	if (vq->reconnect_log != NULL)
+		vq->reconnect_log->last_avail_idx = vq->last_avail_idx;
+}
+
+static __rte_always_inline void
+vhost_virtqueue_reconnect_log_packed(struct vhost_virtqueue *vq)
+{
+	if (vq->reconnect_log != NULL) {
+		vq->reconnect_log->last_avail_idx = vq->last_avail_idx;
+		vq->reconnect_log->avail_wrap_counter = vq->avail_wrap_counter;
+	}
+}
 
 static inline void
 vq_assert_lock__(struct virtio_net *dev, struct vhost_virtqueue *vq, const char *func)
@@ -584,6 +618,7 @@ vq_inc_last_avail_packed(struct vhost_virtqueue *vq, uint16_t num)
 		vq->avail_wrap_counter ^= 1;
 		vq->last_avail_idx -= vq->size;
 	}
+	vhost_virtqueue_reconnect_log_packed(vq);
 }
 
 void __vhost_log_cache_write(struct virtio_net *dev,

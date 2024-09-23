@@ -1433,6 +1433,7 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		}
 
 		vq->last_avail_idx += num_buffers;
+		vhost_virtqueue_reconnect_log_split(vq);
 	}
 
 	do_data_copy_enqueue(dev, vq);
@@ -1845,6 +1846,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev, struct vhost_virtqueue 
 		pkts_info[slot_idx].mbuf = pkts[pkt_idx];
 
 		vq->last_avail_idx += num_buffers;
+		vhost_virtqueue_reconnect_log_split(vq);
 	}
 
 	if (unlikely(pkt_idx == 0))
@@ -1873,6 +1875,7 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev, struct vhost_virtqueue 
 		/* recover shadow used ring and available ring */
 		vq->shadow_used_idx -= num_descs;
 		vq->last_avail_idx -= num_descs;
+		vhost_virtqueue_reconnect_log_split(vq);
 	}
 
 	/* keep used descriptors */
@@ -2088,6 +2091,7 @@ dma_error_handler_packed(struct vhost_virtqueue *vq, uint16_t slot_idx,
 		vq->last_avail_idx = vq->last_avail_idx + vq->size - descs_err;
 		vq->avail_wrap_counter ^= 1;
 	}
+	vhost_virtqueue_reconnect_log_packed(vq);
 
 	if (async->buffer_idx_packed >= buffers_err)
 		async->buffer_idx_packed -= buffers_err;
@@ -3170,6 +3174,7 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	if (likely(vq->shadow_used_idx)) {
 		vq->last_avail_idx += vq->shadow_used_idx;
+		vhost_virtqueue_reconnect_log_split(vq);
 		do_data_copy_dequeue(vq);
 		flush_shadow_used_ring_split(dev, vq);
 		vhost_vring_call_split(dev, vq);
@@ -3842,6 +3847,7 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		async->desc_idx_split++;
 
 		vq->last_avail_idx++;
+		vhost_virtqueue_reconnect_log_split(vq);
 	}
 
 	if (unlikely(dropped))
@@ -3860,6 +3866,7 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		pkt_idx = n_xfer;
 		/* recover available ring */
 		vq->last_avail_idx -= pkt_err;
+		vhost_virtqueue_reconnect_log_split(vq);
 
 		/**
 		 * recover async channel copy related structures and free pktmbufs
@@ -4141,6 +4148,7 @@ virtio_dev_tx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			vq->last_avail_idx += vq->size - descs_err;
 			vq->avail_wrap_counter ^= 1;
 		}
+		vhost_virtqueue_reconnect_log_packed(vq);
 	}
 
 	async->pkts_idx += pkt_idx;
