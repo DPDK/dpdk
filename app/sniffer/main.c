@@ -1976,7 +1976,6 @@ main(int argc, char *argv[])
 
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid) {
-		RTE_LOG(INFO, VHOST_PORT, "port %d initialized  with driver %s\n", portid, rte_get(portid));
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << portid)) == 0) {
 			RTE_LOG(INFO, VHOST_PORT,
