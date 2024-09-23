@@ -18,9 +18,11 @@ from framework.config import PortConfig
 from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
 from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.capability import TopologyType, requires
 from framework.utils import REGEX_FOR_PCI_ADDRESS
 
 
+@requires(topology_type=TopologyType.no_link)
 class TestSmokeTests(TestSuite):
     """DPDK and infrastructure smoke test suite.
 

@@ -28,7 +28,7 @@ from framework.testbed_model.capability import TestProtocol
 from framework.testbed_model.port import Port
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
-from framework.testbed_model.topology import Topology, TopologyType
+from framework.testbed_model.topology import Topology
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
@@ -74,7 +74,6 @@ class TestSuite(TestProtocol):
     #: will block the execution of all subsequent test suites in the current build target.
     is_blocking: ClassVar[bool] = False
     _logger: DTSLogger
-    _topology_type: TopologyType
     _sut_port_ingress: Port
     _sut_port_egress: Port
     _sut_ip_address_ingress: Union[IPv4Interface, IPv6Interface]
@@ -103,7 +102,6 @@ class TestSuite(TestProtocol):
         self.sut_node = sut_node
         self.tg_node = tg_node
         self._logger = get_dts_logger(self.__class__.__name__)
-        self._topology_type = topology.type
         self._tg_port_egress = topology.tg_port_egress
         self._sut_port_ingress = topology.sut_port_ingress
         self._sut_port_egress = topology.sut_port_egress
@@ -565,6 +563,8 @@ class TestCase(TestProtocol, Protocol[TestSuiteMethodType]):
             test_case.skip = cls.skip
             test_case.skip_reason = cls.skip_reason
             test_case.required_capabilities = set()
+            test_case.topology_type = cls.topology_type
+            test_case.topology_type.add_to_required(test_case)
             test_case.test_type = test_case_type
             return test_case
 

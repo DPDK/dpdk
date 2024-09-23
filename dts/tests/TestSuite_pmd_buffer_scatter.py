@@ -54,15 +54,9 @@ class TestPmdBufferScatter(TestSuite):
         """Set up the test suite.
 
         Setup:
-            Verify that we have at least 2 port links in the current test run
-            and increase the MTU of both ports on the traffic generator to 9000
+            Increase the MTU of both ports on the traffic generator to 9000
             to support larger packet sizes.
         """
-        self.verify(
-            self._topology_type > 1,
-            "There must be at least two port links to run the scatter test suite",
-        )
-
         self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_egress)
         self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_ingress)
 

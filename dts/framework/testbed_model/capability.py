@@ -7,11 +7,32 @@ This module provides a protocol that defines the common attributes of test cases
 and support for test environment capabilities.
 
 Many test cases are testing features not available on all hardware.
+On the other hand, some test cases or suites may not need the most complex topology available.
+
+The module allows developers to mark test cases or suites a requiring certain hardware capabilities
+or a particular topology with the :func:`requires` decorator.
+
+There are differences between hardware and topology capabilities:
+
+    * Hardware capabilities are assumed to not be required when not specified.
+    * However, some topology is always available, so each test case or suite is assigned
+      a default topology if no topology is specified in the decorator.
 
 The module also allows developers to mark test cases or suites as requiring certain
 hardware capabilities with the :func:`requires` decorator.
 
-Example:
+Examples:
+    .. code:: python
+
+        from framework.test_suite import TestSuite, func_test
+        from framework.testbed_model.capability import TopologyType, requires
+        # The whole test suite (each test case within) doesn't require any links.
+        @requires(topology_type=TopologyType.no_link)
+        @func_test
+        class TestHelloWorld(TestSuite):
+            def hello_world_single_core(self):
+            ...
+
     .. code:: python
 
         from framework.test_suite import TestSuite, func_test
@@ -24,6 +45,7 @@ Example:
             def test_scatter_mbuf_2048(self):
 """
 
+import inspect
 from abc import ABC, abstractmethod
 from collections.abc import MutableSet, Sequence
 from dataclasses import dataclass
@@ -31,6 +53,7 @@ from typing import Callable, ClassVar, Protocol
 
 from typing_extensions import Self
 
+from framework.exception import ConfigurationError
 from framework.logger import get_dts_logger
 from framework.remote_session.testpmd_shell import (
     NicCapability,
@@ -41,7 +64,7 @@ from framework.remote_session.testpmd_shell import (
 )
 
 from .sut_node import SutNode
-from .topology import Topology
+from .topology import Topology, TopologyType
 
 
 class Capability(ABC):
@@ -251,6 +274,165 @@ class DecoratedNicCapability(Capability):
         return f"{self.nic_capability}"
 
 
+@dataclass
+class TopologyCapability(Capability):
+    """A wrapper around :class:`~.topology.TopologyType`.
+
+    Each test case must be assigned a topology. It could be done explicitly;
+    the implicit default is :attr:`~.topology.TopologyType.default`, which this class defines
+    as equal to :attr:`~.topology.TopologyType.two_links`.
+
+    Test case topology may be set by setting the topology for the whole suite.
+    The priority in which topology is set is as follows:
+
+        #. The topology set using the :func:`requires` decorator with a test case,
+        #. The topology set using the :func:`requires` decorator with a test suite,
+        #. The default topology if the decorator is not used.
+
+    The default topology of test suite (i.e. when not using the decorator
+    or not setting the topology with the decorator) does not affect the topology of test cases.
+
+    New instances should be created with the :meth:`create_unique` class method to ensure
+    there are no duplicate instances.
+
+    Attributes:
+        topology_type: The topology type that defines each instance.
+    """
+
+    topology_type: TopologyType
+
+    _unique_capabilities: ClassVar[dict[str, Self]] = {}
+
+    def _preprocess_required(self, test_case_or_suite: type["TestProtocol"]) -> None:
+        test_case_or_suite.required_capabilities.discard(test_case_or_suite.topology_type)
+        test_case_or_suite.topology_type = self
+
+    @classmethod
+    def get_unique(cls, topology_type: TopologyType) -> "TopologyCapability":
+        """Get the capability uniquely identified by `topology_type`.
+
+        This is a factory method that implements a quasi-enum pattern.
+        The instances of this class are stored in an internal class variable,
+        `_unique_capabilities`.
+
+        If an instance identified by `topology_type` doesn't exist,
+        it is created and added to `_unique_capabilities`.
+        If it exists, it is returned so that a new identical instance is not created.
+
+        Args:
+            topology_type: The topology type.
+
+        Returns:
+            The capability uniquely identified by `topology_type`.
+        """
+        if topology_type.name not in cls._unique_capabilities:
+            cls._unique_capabilities[topology_type.name] = cls(topology_type)
+        return cls._unique_capabilities[topology_type.name]
+
+    @classmethod
+    def get_supported_capabilities(
+        cls, sut_node: SutNode, topology: "Topology"
+    ) -> set["TopologyCapability"]:
+        """Overrides :meth:`~Capability.get_supported_capabilities`."""
+        supported_capabilities = set()
+        topology_capability = cls.get_unique(topology.type)
+        for topology_type in TopologyType:
+            candidate_topology_type = cls.get_unique(topology_type)
+            if candidate_topology_type <= topology_capability:
+                supported_capabilities.add(candidate_topology_type)
+        return supported_capabilities
+
+    def set_required(self, test_case_or_suite: type["TestProtocol"]) -> None:
+        """The logic for setting the required topology of a test case or suite.
+
+        Decorators are applied on methods of a class first, then on the class.
+        This means we have to modify test case topologies when processing the test suite topologies.
+        At that point, the test case topologies have been set by the :func:`requires` decorator.
+        The test suite topology only affects the test case topologies
+        if not :attr:`~.topology.TopologyType.default`.
+        """
+        if inspect.isclass(test_case_or_suite):
+            if self.topology_type is not TopologyType.default:
+                self.add_to_required(test_case_or_suite)
+                func_test_cases, perf_test_cases = test_case_or_suite.get_test_cases()
+                for test_case in func_test_cases | perf_test_cases:
+                    if test_case.topology_type.topology_type is TopologyType.default:
+                        # test case topology has not been set, use the one set by the test suite
+                        self.add_to_required(test_case)
+                    elif test_case.topology_type > test_case_or_suite.topology_type:
+                        raise ConfigurationError(
+                            "The required topology type of a test case "
+                            f"({test_case.__name__}|{test_case.topology_type}) "
+                            "cannot be more complex than that of a suite "
+                            f"({test_case_or_suite.__name__}|{test_case_or_suite.topology_type})."
+                        )
+        else:
+            self.add_to_required(test_case_or_suite)
+
+    def __eq__(self, other) -> bool:
+        """Compare the :attr:`~TopologyCapability.topology_type`s.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            :data:`True` if the topology types are the same.
+        """
+        return self.topology_type == other.topology_type
+
+    def __lt__(self, other) -> bool:
+        """Compare the :attr:`~TopologyCapability.topology_type`s.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            :data:`True` if the instance's topology type is less complex than the compared object's.
+        """
+        return self.topology_type < other.topology_type
+
+    def __gt__(self, other) -> bool:
+        """Compare the :attr:`~TopologyCapability.topology_type`s.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            :data:`True` if the instance's topology type is more complex than the compared object's.
+        """
+        return other < self
+
+    def __le__(self, other) -> bool:
+        """Compare the :attr:`~TopologyCapability.topology_type`s.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            :data:`True` if the instance's topology type is less complex or equal than
+            the compared object's.
+        """
+        return not self > other
+
+    def __hash__(self):
+        """Each instance is identified by :attr:`topology_type`."""
+        return self.topology_type.__hash__()
+
+    def __str__(self):
+        """Easy to read string of class and name of :attr:`topology_type`.
+
+        Converts :attr:`TopologyType.default` to the actual value.
+        """
+        name = self.topology_type.name
+        if self.topology_type is TopologyType.default:
+            name = TopologyType.get_from_value(self.topology_type.value).name
+        return f"{type(self.topology_type).__name__}.{name}"
+
+    def __repr__(self):
+        """Easy to read string of class and name of :attr:`topology_type`."""
+        return self.__str__()
+
+
 class TestProtocol(Protocol):
     """Common test suite and test case attributes."""
 
@@ -258,6 +440,8 @@ class TestProtocol(Protocol):
     skip: ClassVar[bool] = False
     #: The reason for skipping the test case or suite.
     skip_reason: ClassVar[str] = ""
+    #: The topology type of the test case or suite.
+    topology_type: ClassVar[TopologyCapability] = TopologyCapability(TopologyType.default)
     #: The capabilities the test case or suite requires in order to be executed.
     required_capabilities: ClassVar[set[Capability]] = set()
 
@@ -273,11 +457,13 @@ class TestProtocol(Protocol):
 
 def requires(
     *nic_capabilities: NicCapability,
+    topology_type: TopologyType = TopologyType.default,
 ) -> Callable[[type[TestProtocol]], type[TestProtocol]]:
     """A decorator that adds the required capabilities to a test case or test suite.
 
     Args:
         nic_capabilities: The NIC capabilities that are required by the test case or test suite.
+        topology_type: The topology type the test suite or case requires.
 
     Returns:
         The decorated test case or test suite.
@@ -287,6 +473,9 @@ def requires(
         for nic_capability in nic_capabilities:
             decorated_nic_capability = DecoratedNicCapability.get_unique(nic_capability)
             decorated_nic_capability.add_to_required(test_case_or_suite)
+
+        topology_capability = TopologyCapability.get_unique(topology_type)
+        topology_capability.set_required(test_case_or_suite)
 
         return test_case_or_suite
 

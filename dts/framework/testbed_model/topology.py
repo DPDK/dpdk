@@ -8,15 +8,20 @@ The link information then implies what type of topology is available.
 """
 
 from dataclasses import dataclass
-from enum import IntEnum
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
+
+if TYPE_CHECKING:
+    from enum import Enum as NoAliasEnum
+else:
+    from aenum import NoAliasEnum
 
 from framework.config import PortConfig
+from framework.exception import ConfigurationError
 
 from .port import Port
 
 
-class TopologyType(IntEnum):
+class TopologyType(int, NoAliasEnum):
     """Supported topology types."""
 
     #: A topology with no Traffic Generator.
@@ -25,6 +30,28 @@ class TopologyType(IntEnum):
     one_link = 1
     #: A topology with two physical links between the Sut node and the TG node.
     two_links = 2
+    #: The default topology required by test cases if not specified otherwise.
+    default = 2
+
+    @classmethod
+    def get_from_value(cls, value: int) -> "TopologyType":
+        r"""Get the corresponding instance from value.
+
+        :class:`~enum.Enum`\s that don't allow aliases don't know which instance should be returned
+        as there could be multiple valid instances. Except for the :attr:`default` value,
+        :class:`TopologyType` is a regular :class:`~enum.Enum`.
+        When getting an instance from value, we're not interested in the default,
+        since we already know the value, allowing us to remove the ambiguity.
+        """
+        match value:
+            case 0:
+                return TopologyType.no_link
+            case 1:
+                return TopologyType.one_link
+            case 2:
+                return TopologyType.two_links
+            case _:
+                raise ConfigurationError("More than two links in a topology are not supported.")
 
 
 class Topology:
@@ -71,7 +98,7 @@ class Topology:
                 ):
                     port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
 
-        self.type = TopologyType(len(port_links))
+        self.type = TopologyType.get_from_value(len(port_links))
         dummy_port = Port(PortConfig("", "", "", "", "", ""))
         self.tg_port_egress = dummy_port
         self.sut_port_ingress = dummy_port

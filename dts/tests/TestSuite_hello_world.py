@@ -9,6 +9,7 @@ No other EAL parameters apart from cores are used.
 
 from framework.remote_session.dpdk_shell import compute_eal_params
 from framework.test_suite import TestSuite, func_test
+from framework.testbed_model.capability import TopologyType, requires
 from framework.testbed_model.cpu import (
     LogicalCoreCount,
     LogicalCoreCountFilter,
@@ -16,6 +17,7 @@ from framework.testbed_model.cpu import (
 )
 
 
+@requires(topology_type=TopologyType.no_link)
 class TestHelloWorld(TestSuite):
     """DPDK hello world app test suite."""
 
