@@ -5,13 +5,28 @@
 
 This module provides a protocol that defines the common attributes of test cases and suites
 and support for test environment capabilities.
+
+Many test cases are testing features not available on all hardware.
+
+The module also allows developers to mark test cases or suites as requiring certain
+hardware capabilities with the :func:`requires` decorator.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import MutableSet, Sequence
+from dataclasses import dataclass
 from typing import Callable, ClassVar, Protocol
 
 from typing_extensions import Self
+
+from framework.logger import get_dts_logger
+from framework.remote_session.testpmd_shell import (
+    NicCapability,
+    TestPmdShell,
+    TestPmdShellCapabilityMethod,
+    TestPmdShellDecorator,
+    TestPmdShellMethod,
+)
 
 from .sut_node import SutNode
 from .topology import Topology
@@ -96,6 +111,134 @@ class Capability(ABC):
         """The subclasses must be hashable so that they can be stored in sets."""
 
 
+@dataclass
+class DecoratedNicCapability(Capability):
+    """A wrapper around :class:`~framework.remote_session.testpmd_shell.NicCapability`.
+
+    New instances should be created with the :meth:`create_unique` class method to ensure
+    there are no duplicate instances.
+
+    Attributes:
+        nic_capability: The NIC capability that defines each instance.
+        capability_fn: The capability retrieval function of `nic_capability`.
+        capability_decorator: The decorator function of `nic_capability`.
+            This function will wrap `capability_fn`.
+    """
+
+    nic_capability: NicCapability
+    capability_fn: TestPmdShellCapabilityMethod
+    capability_decorator: TestPmdShellDecorator | None
+    _unique_capabilities: ClassVar[dict[NicCapability, Self]] = {}
+
+    @classmethod
+    def get_unique(cls, nic_capability: NicCapability) -> "DecoratedNicCapability":
+        """Get the capability uniquely identified by `nic_capability`.
+
+        This is a factory method that implements a quasi-enum pattern.
+        The instances of this class are stored in an internal class variable,
+        `_unique_capabilities`.
+
+        If an instance identified by `nic_capability` doesn't exist,
+        it is created and added to `_unique_capabilities`.
+        If it exists, it is returned so that a new identical instance is not created.
+
+        Args:
+            nic_capability: The NIC capability.
+
+        Returns:
+            The capability uniquely identified by `nic_capability`.
+        """
+        decorator_fn = None
+        if isinstance(nic_capability.value, tuple):
+            capability_fn, decorator_fn = nic_capability.value
+        else:
+            capability_fn = nic_capability.value
+
+        if nic_capability not in cls._unique_capabilities:
+            cls._unique_capabilities[nic_capability] = cls(
+                nic_capability, capability_fn, decorator_fn
+            )
+        return cls._unique_capabilities[nic_capability]
+
+    @classmethod
+    def get_supported_capabilities(
+        cls, sut_node: SutNode, topology: "Topology"
+    ) -> set["DecoratedNicCapability"]:
+        """Overrides :meth:`~Capability.get_supported_capabilities`.
+
+        The capabilities are first sorted by decorators, then reduced into a single function which
+        is then passed to the decorator. This way we execute each decorator only once.
+        Each capability is first checked whether it's supported/unsupported
+        before executing its `capability_fn` so that each capability is retrieved only once.
+        """
+        supported_conditional_capabilities: set["DecoratedNicCapability"] = set()
+        logger = get_dts_logger(f"{sut_node.name}.{cls.__name__}")
+        if topology.type is topology.type.no_link:
+            logger.debug(
+                "No links available in the current topology, not getting NIC capabilities."
+            )
+            return supported_conditional_capabilities
+        logger.debug(
+            f"Checking which NIC capabilities from {cls.capabilities_to_check} are supported."
+        )
+        if cls.capabilities_to_check:
+            capabilities_to_check_map = cls._get_decorated_capabilities_map()
+            with TestPmdShell(
+                sut_node, privileged=True, disable_device_start=True
+            ) as testpmd_shell:
+                for conditional_capability_fn, capabilities in capabilities_to_check_map.items():
+                    supported_capabilities: set[NicCapability] = set()
+                    unsupported_capabilities: set[NicCapability] = set()
+                    capability_fn = cls._reduce_capabilities(
+                        capabilities, supported_capabilities, unsupported_capabilities
+                    )
+                    if conditional_capability_fn:
+                        capability_fn = conditional_capability_fn(capability_fn)
+                    capability_fn(testpmd_shell)
+                    for capability in capabilities:
+                        if capability.nic_capability in supported_capabilities:
+                            supported_conditional_capabilities.add(capability)
+
+        logger.debug(f"Found supported capabilities {supported_conditional_capabilities}.")
+        return supported_conditional_capabilities
+
+    @classmethod
+    def _get_decorated_capabilities_map(
+        cls,
+    ) -> dict[TestPmdShellDecorator | None, set["DecoratedNicCapability"]]:
+        capabilities_map: dict[TestPmdShellDecorator | None, set["DecoratedNicCapability"]] = {}
+        for capability in cls.capabilities_to_check:
+            if capability.capability_decorator not in capabilities_map:
+                capabilities_map[capability.capability_decorator] = set()
+            capabilities_map[capability.capability_decorator].add(capability)
+
+        return capabilities_map
+
+    @classmethod
+    def _reduce_capabilities(
+        cls,
+        capabilities: set["DecoratedNicCapability"],
+        supported_capabilities: MutableSet,
+        unsupported_capabilities: MutableSet,
+    ) -> TestPmdShellMethod:
+        def reduced_fn(testpmd_shell: TestPmdShell) -> None:
+            for capability in capabilities:
+                if capability not in supported_capabilities | unsupported_capabilities:
+                    capability.capability_fn(
+                        testpmd_shell, supported_capabilities, unsupported_capabilities
+                    )
+
+        return reduced_fn
+
+    def __hash__(self) -> int:
+        """Instances are identified by :attr:`nic_capability` and :attr:`capability_decorator`."""
+        return hash(self.nic_capability)
+
+    def __repr__(self) -> str:
+        """Easy to read string of :attr:`nic_capability` and :attr:`capability_decorator`."""
+        return f"{self.nic_capability}"
+
+
 class TestProtocol(Protocol):
     """Common test suite and test case attributes."""
 
@@ -114,6 +257,28 @@ class TestProtocol(Protocol):
             NotImplementedError: The subclass does not implement the method.
         """
         raise NotImplementedError()
+
+
+def requires(
+    *nic_capabilities: NicCapability,
+) -> Callable[[type[TestProtocol]], type[TestProtocol]]:
+    """A decorator that adds the required capabilities to a test case or test suite.
+
+    Args:
+        nic_capabilities: The NIC capabilities that are required by the test case or test suite.
+
+    Returns:
+        The decorated test case or test suite.
+    """
+
+    def add_required_capability(test_case_or_suite: type[TestProtocol]) -> type[TestProtocol]:
+        for nic_capability in nic_capabilities:
+            decorated_nic_capability = DecoratedNicCapability.get_unique(nic_capability)
+            decorated_nic_capability.add_to_required(test_case_or_suite)
+
+        return test_case_or_suite
+
+    return add_required_capability
 
 
 def get_supported_capabilities(

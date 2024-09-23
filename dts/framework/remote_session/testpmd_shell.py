@@ -17,10 +17,16 @@ Typical usage example in a TestSuite::
 import functools
 import re
 import time
+from collections.abc import Callable, MutableSet
 from dataclasses import dataclass, field
 from enum import Flag, auto
 from pathlib import PurePath
-from typing import Any, Callable, ClassVar, Concatenate, ParamSpec
+from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, TypeAlias
+
+if TYPE_CHECKING:
+    from enum import Enum as NoAliasEnum
+else:
+    from aenum import NoAliasEnum
 
 from typing_extensions import Self, Unpack
 
@@ -36,6 +42,12 @@ from framework.utils import REGEX_FOR_MAC_ADDRESS, StrEnum
 
 P = ParamSpec("P")
 TestPmdShellMethod = Callable[Concatenate["TestPmdShell", P], Any]
+
+TestPmdShellCapabilityMethod: TypeAlias = Callable[
+    ["TestPmdShell", MutableSet["NicCapability"], MutableSet["NicCapability"]], None
+]
+
+TestPmdShellDecorator: TypeAlias = Callable[[TestPmdShellMethod], TestPmdShellMethod]
 
 
 class TestPmdDevice:
@@ -1545,3 +1557,44 @@ class TestPmdShell(DPDKShell):
         self.stop()
         self.send_command("quit", "Bye...")
         return super()._close()
+
+
+class NicCapability(NoAliasEnum):
+    """A mapping between capability names and the associated :class:`TestPmdShell` methods.
+
+    The :class:`TestPmdShell` capability checking method executes the command that checks
+    whether the capability is supported.
+    A decorator may optionally be added to the method that will add and remove configuration
+    that's necessary to retrieve the capability support status.
+    The Enum members may be assigned the method itself or a tuple of
+    (capability_checking_method, decorator_function).
+
+    The signature of each :class:`TestPmdShell` capability checking method must be::
+
+        fn(self, supported_capabilities: MutableSet, unsupported_capabilities: MutableSet) -> None
+
+    The capability checking method must get whether a capability is supported or not
+    from a testpmd command. If multiple capabilities can be obtained from a testpmd command,
+    each should be obtained in the method. These capabilities should then
+    be added to `supported_capabilities` or `unsupported_capabilities` based on their support.
+
+    The two dictionaries are shared across all capability discovery function calls in a given
+    test run so that we don't call the same function multiple times.
+    """
+
+    def __call__(
+        self,
+        testpmd_shell: TestPmdShell,
+        supported_capabilities: MutableSet[Self],
+        unsupported_capabilities: MutableSet[Self],
+    ) -> None:
+        """Execute the associated capability retrieval function.
+
+        Args:
+            testpmd_shell: :class:`TestPmdShell` object to which the function will be bound to.
+            supported_capabilities: The dictionary storing the supported capabilities
+                of a given test run.
+            unsupported_capabilities: The dictionary storing the unsupported capabilities
+                of a given test run.
+        """
+        self.value(testpmd_shell, supported_capabilities, unsupported_capabilities)
