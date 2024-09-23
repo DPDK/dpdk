@@ -1198,6 +1198,123 @@ class TestPmdVerbosePacket(TextParser):
     l4_len: int | None = field(default=None, metadata=TextParser.find_int(r"l4_len=(\d+)"))
 
 
+class RxOffloadCapability(Flag):
+    """Rx offload capabilities of a device.
+
+    The flags are taken from ``lib/ethdev/rte_ethdev.h``.
+    They're prefixed with ``RTE_ETH_RX_OFFLOAD`` in ``lib/ethdev/rte_ethdev.h``
+    instead of ``RX_OFFLOAD``, which is what testpmd changes the prefix to.
+    The values are not contiguous, so the correspondence is preserved
+    by specifying concrete values interspersed between auto() values.
+
+    The ``RX_OFFLOAD`` prefix has been preserved so that the same flag names can be used
+    in :class:`NicCapability`. The prefix is needed in :class:`NicCapability` since there's
+    no other qualifier which would sufficiently distinguish it from other capabilities.
+
+    References:
+        DPDK lib: ``lib/ethdev/rte_ethdev.h``
+        testpmd display function: ``app/test-pmd/cmdline.c:print_rx_offloads()``
+    """
+
+    #:
+    RX_OFFLOAD_VLAN_STRIP = auto()
+    #: Device supports L3 checksum offload.
+    RX_OFFLOAD_IPV4_CKSUM = auto()
+    #: Device supports L4 checksum offload.
+    RX_OFFLOAD_UDP_CKSUM = auto()
+    #: Device supports L4 checksum offload.
+    RX_OFFLOAD_TCP_CKSUM = auto()
+    #: Device supports Large Receive Offload.
+    RX_OFFLOAD_TCP_LRO = auto()
+    #: Device supports QinQ (queue in queue) offload.
+    RX_OFFLOAD_QINQ_STRIP = auto()
+    #: Device supports inner packet L3 checksum.
+    RX_OFFLOAD_OUTER_IPV4_CKSUM = auto()
+    #: Device supports MACsec.
+    RX_OFFLOAD_MACSEC_STRIP = auto()
+    #: Device supports filtering of a VLAN Tag identifier.
+    RX_OFFLOAD_VLAN_FILTER = 1 << 9
+    #: Device supports VLAN offload.
+    RX_OFFLOAD_VLAN_EXTEND = auto()
+    #: Device supports receiving segmented mbufs.
+    RX_OFFLOAD_SCATTER = 1 << 13
+    #: Device supports Timestamp.
+    RX_OFFLOAD_TIMESTAMP = auto()
+    #: Device supports crypto processing while packet is received in NIC.
+    RX_OFFLOAD_SECURITY = auto()
+    #: Device supports CRC stripping.
+    RX_OFFLOAD_KEEP_CRC = auto()
+    #: Device supports L4 checksum offload.
+    RX_OFFLOAD_SCTP_CKSUM = auto()
+    #: Device supports inner packet L4 checksum.
+    RX_OFFLOAD_OUTER_UDP_CKSUM = auto()
+    #: Device supports RSS hashing.
+    RX_OFFLOAD_RSS_HASH = auto()
+    #: Device supports
+    RX_OFFLOAD_BUFFER_SPLIT = auto()
+    #: Device supports all checksum capabilities.
+    RX_OFFLOAD_CHECKSUM = RX_OFFLOAD_IPV4_CKSUM | RX_OFFLOAD_UDP_CKSUM | RX_OFFLOAD_TCP_CKSUM
+    #: Device supports all VLAN capabilities.
+    RX_OFFLOAD_VLAN = (
+        RX_OFFLOAD_VLAN_STRIP
+        | RX_OFFLOAD_VLAN_FILTER
+        | RX_OFFLOAD_VLAN_EXTEND
+        | RX_OFFLOAD_QINQ_STRIP
+    )
+
+    @classmethod
+    def from_string(cls, line: str) -> Self:
+        """Make an instance from a string containing the flag names separated with a space.
+
+        Args:
+            line: The line to parse.
+
+        Returns:
+            A new instance containing all found flags.
+        """
+        flag = cls(0)
+        for flag_name in line.split():
+            flag |= cls[f"RX_OFFLOAD_{flag_name}"]
+        return flag
+
+    @classmethod
+    def make_parser(cls, per_port: bool) -> ParserFn:
+        """Make a parser function.
+
+        Args:
+            per_port: If :data:`True`, will return capabilities per port. If :data:`False`,
+                will return capabilities per queue.
+
+        Returns:
+            ParserFn: A dictionary for the `dataclasses.field` metadata argument containing a
+                parser function that makes an instance of this flag from text.
+        """
+        granularity = "Port" if per_port else "Queue"
+        return TextParser.wrap(
+            TextParser.find(rf"Per {granularity}\s+:(.*)$", re.MULTILINE),
+            cls.from_string,
+        )
+
+
+@dataclass
+class RxOffloadCapabilities(TextParser):
+    """The result of testpmd's ``show port <port_id> rx_offload capabilities`` command.
+
+    References:
+        testpmd command function: ``app/test-pmd/cmdline.c:cmd_rx_offload_get_capa()``
+        testpmd display function: ``app/test-pmd/cmdline.c:cmd_rx_offload_get_capa_parsed()``
+    """
+
+    #:
+    port_id: int = field(
+        metadata=TextParser.find_int(r"Rx Offloading Capabilities of port (\d+) :")
+    )
+    #: Per-queue Rx offload capabilities.
+    per_queue: RxOffloadCapability = field(metadata=RxOffloadCapability.make_parser(False))
+    #: Capabilities other than per-queue Rx offload capabilities.
+    per_port: RxOffloadCapability = field(metadata=RxOffloadCapability.make_parser(True))
+
+
 def requires_stopped_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
     """Decorator for :class:`TestPmdShell` commands methods that require stopped ports.
 
@@ -1665,6 +1782,42 @@ class TestPmdShell(DPDKShell):
     ====== Capability retrieval methods ======
     """
 
+    def get_capabilities_rx_offload(
+        self,
+        supported_capabilities: MutableSet["NicCapability"],
+        unsupported_capabilities: MutableSet["NicCapability"],
+    ) -> None:
+        """Get all rx offload capabilities and divide them into supported and unsupported.
+
+        Args:
+            supported_capabilities: Supported capabilities will be added to this set.
+            unsupported_capabilities: Unsupported capabilities will be added to this set.
+        """
+        self._logger.debug("Getting rx offload capabilities.")
+        command = f"show port {self.ports[0].id} rx_offload capabilities"
+        rx_offload_capabilities_out = self.send_command(command)
+        rx_offload_capabilities = RxOffloadCapabilities.parse(rx_offload_capabilities_out)
+        self._update_capabilities_from_flag(
+            supported_capabilities,
+            unsupported_capabilities,
+            RxOffloadCapability,
+            rx_offload_capabilities.per_port | rx_offload_capabilities.per_queue,
+        )
+
+    def _update_capabilities_from_flag(
+        self,
+        supported_capabilities: MutableSet["NicCapability"],
+        unsupported_capabilities: MutableSet["NicCapability"],
+        flag_class: type[Flag],
+        supported_flags: Flag,
+    ) -> None:
+        """Divide all flags from `flag_class` into supported and unsupported."""
+        for flag in flag_class:
+            if flag in supported_flags:
+                supported_capabilities.add(NicCapability[str(flag.name)])
+            else:
+                unsupported_capabilities.add(NicCapability[str(flag.name)])
+
     @requires_started_ports
     def get_capabilities_rxq_info(
         self,
@@ -1715,6 +1868,86 @@ class NicCapability(NoAliasEnum):
     SCATTERED_RX_ENABLED: TestPmdShellNicCapability = (
         TestPmdShell.get_capabilities_rxq_info,
         add_remove_mtu(9000),
+    )
+    #:
+    RX_OFFLOAD_VLAN_STRIP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports L3 checksum offload.
+    RX_OFFLOAD_IPV4_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports L4 checksum offload.
+    RX_OFFLOAD_UDP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports L4 checksum offload.
+    RX_OFFLOAD_TCP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports Large Receive Offload.
+    RX_OFFLOAD_TCP_LRO: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports QinQ (queue in queue) offload.
+    RX_OFFLOAD_QINQ_STRIP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports inner packet L3 checksum.
+    RX_OFFLOAD_OUTER_IPV4_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports MACsec.
+    RX_OFFLOAD_MACSEC_STRIP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports filtering of a VLAN Tag identifier.
+    RX_OFFLOAD_VLAN_FILTER: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports VLAN offload.
+    RX_OFFLOAD_VLAN_EXTEND: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports receiving segmented mbufs.
+    RX_OFFLOAD_SCATTER: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports Timestamp.
+    RX_OFFLOAD_TIMESTAMP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports crypto processing while packet is received in NIC.
+    RX_OFFLOAD_SECURITY: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports CRC stripping.
+    RX_OFFLOAD_KEEP_CRC: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports L4 checksum offload.
+    RX_OFFLOAD_SCTP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports inner packet L4 checksum.
+    RX_OFFLOAD_OUTER_UDP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports RSS hashing.
+    RX_OFFLOAD_RSS_HASH: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports scatter Rx packets to segmented mbufs.
+    RX_OFFLOAD_BUFFER_SPLIT: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports all checksum capabilities.
+    RX_OFFLOAD_CHECKSUM: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports all VLAN capabilities.
+    RX_OFFLOAD_VLAN: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_rx_offload
     )
 
     def __call__(
