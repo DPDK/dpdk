@@ -564,6 +564,7 @@ class TestCase(TestProtocol, Protocol[TestSuiteMethodType]):
             test_case = cast(type[TestCase], func)
             test_case.skip = cls.skip
             test_case.skip_reason = cls.skip_reason
+            test_case.required_capabilities = set()
             test_case.test_type = test_case_type
             return test_case
 

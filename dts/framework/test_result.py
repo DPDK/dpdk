@@ -25,9 +25,11 @@ variable modify the directory where the files with results will be stored.
 
 import os.path
 from collections.abc import MutableSequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Union
+
+from framework.testbed_model.capability import Capability
 
 from .config import (
     OS,
@@ -59,10 +61,18 @@ class TestSuiteWithCases:
     Attributes:
         test_suite_class: The test suite class.
         test_cases: The test case methods.
+        required_capabilities: The combined required capabilities of both the test suite
+            and the subset of test cases.
     """
 
     test_suite_class: type[TestSuite]
     test_cases: list[type[TestCase]]
+    required_capabilities: set[Capability] = field(default_factory=set, init=False)
+
+    def __post_init__(self):
+        """Gather the required capabilities of the test suite and all test cases."""
+        for test_object in [self.test_suite_class] + self.test_cases:
+            self.required_capabilities.update(test_object.required_capabilities)
 
     def create_config(self) -> TestSuiteConfig:
         """Generate a :class:`TestSuiteConfig` from the stored test suite with test cases.
@@ -74,6 +84,34 @@ class TestSuiteWithCases:
             test_suite=self.test_suite_class.__name__,
             test_cases=[test_case.__name__ for test_case in self.test_cases],
         )
+
+    def mark_skip_unsupported(self, supported_capabilities: set[Capability]) -> None:
+        """Mark the test suite and test cases to be skipped.
+
+        The mark is applied if object to be skipped requires any capabilities and at least one of
+        them is not among `supported_capabilities`.
+
+        Args:
+            supported_capabilities: The supported capabilities.
+        """
+        for test_object in [self.test_suite_class, *self.test_cases]:
+            capabilities_not_supported = test_object.required_capabilities - supported_capabilities
+            if capabilities_not_supported:
+                test_object.skip = True
+                capability_str = (
+                    "capability" if len(capabilities_not_supported) == 1 else "capabilities"
+                )
+                test_object.skip_reason = (
+                    f"Required {capability_str} '{capabilities_not_supported}' not found."
+                )
+        if not self.test_suite_class.skip:
+            if all(test_case.skip for test_case in self.test_cases):
+                self.test_suite_class.skip = True
+
+                self.test_suite_class.skip_reason = (
+                    "All test cases are marked to be skipped with reasons: "
+                    f"{' '.join(test_case.skip_reason for test_case in self.test_cases)}"
+                )
 
     @property
     def skip(self) -> bool:

@@ -26,6 +26,7 @@ from pathlib import Path
 from types import MethodType
 from typing import Iterable
 
+from framework.testbed_model.capability import Capability, get_supported_capabilities
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
 
@@ -454,6 +455,21 @@ class DTSRunner:
                 self._logger.exception("Build target teardown failed.")
                 build_target_result.update_teardown(Result.FAIL, e)
 
+    def _get_supported_capabilities(
+        self,
+        sut_node: SutNode,
+        topology_config: Topology,
+        test_suites_with_cases: Iterable[TestSuiteWithCases],
+    ) -> set[Capability]:
+
+        capabilities_to_check = set()
+        for test_suite_with_cases in test_suites_with_cases:
+            capabilities_to_check.update(test_suite_with_cases.required_capabilities)
+
+        self._logger.debug(f"Found capabilities to check: {capabilities_to_check}")
+
+        return get_supported_capabilities(sut_node, topology_config, capabilities_to_check)
+
     def _run_test_suites(
         self,
         sut_node: SutNode,
@@ -465,6 +481,12 @@ class DTSRunner:
 
         The method assumes the build target we're testing has already been built on the SUT node.
         The current build target thus corresponds to the current DPDK build present on the SUT node.
+
+        Before running any suites, the method determines whether they should be skipped
+        by inspecting any required capabilities the test suite needs and comparing those
+        to capabilities supported by the tested environment. If all capabilities are supported,
+        the suite is run. If all test cases in a test suite would be skipped, the whole test suite
+        is skipped (the setup and teardown is not run).
 
         If a blocking test suite (such as the smoke test suite) fails, the rest of the test suites
         in the current build target won't be executed.
@@ -478,7 +500,11 @@ class DTSRunner:
         """
         end_build_target = False
         topology = Topology(sut_node.ports, tg_node.ports)
+        supported_capabilities = self._get_supported_capabilities(
+            sut_node, topology, test_suites_with_cases
+        )
         for test_suite_with_cases in test_suites_with_cases:
+            test_suite_with_cases.mark_skip_unsupported(supported_capabilities)
             test_suite_result = build_target_result.add_test_suite(test_suite_with_cases)
             try:
                 if not test_suite_with_cases.skip:
