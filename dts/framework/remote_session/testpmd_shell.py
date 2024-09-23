@@ -1838,6 +1838,24 @@ class TestPmdShell(DPDKShell):
         else:
             unsupported_capabilities.add(NicCapability.SCATTERED_RX_ENABLED)
 
+    def get_capabilities_show_port_info(
+        self,
+        supported_capabilities: MutableSet["NicCapability"],
+        unsupported_capabilities: MutableSet["NicCapability"],
+    ) -> None:
+        """Get all capabilities from show port info and divide them into supported and unsupported.
+
+        Args:
+            supported_capabilities: Supported capabilities will be added to this set.
+            unsupported_capabilities: Unsupported capabilities will be added to this set.
+        """
+        self._update_capabilities_from_flag(
+            supported_capabilities,
+            unsupported_capabilities,
+            DeviceCapabilitiesFlag,
+            self.ports[0].device_capabilities,
+        )
+
 
 class NicCapability(NoAliasEnum):
     """A mapping between capability names and the associated :class:`TestPmdShell` methods.
@@ -1948,6 +1966,26 @@ class NicCapability(NoAliasEnum):
     #: Device supports all VLAN capabilities.
     RX_OFFLOAD_VLAN: TestPmdShellCapabilityMethod = functools.partial(
         TestPmdShell.get_capabilities_rx_offload
+    )
+    #: Device supports Rx queue setup after device started.
+    RUNTIME_RX_QUEUE_SETUP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_show_port_info
+    )
+    #: Device supports Tx queue setup after device started.
+    RUNTIME_TX_QUEUE_SETUP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_show_port_info
+    )
+    #: Device supports shared Rx queue among ports within Rx domain and switch domain.
+    RXQ_SHARE: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_show_port_info
+    )
+    #: Device supports keeping flow rules across restart.
+    FLOW_RULE_KEEP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_show_port_info
+    )
+    #: Device supports keeping shared flow objects across restart.
+    FLOW_SHARED_OBJECT_KEEP: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_show_port_info
     )
 
     def __call__(
