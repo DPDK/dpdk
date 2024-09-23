@@ -58,7 +58,7 @@ class TestPmdBufferScatter(TestSuite):
             to support larger packet sizes.
         """
         self.verify(
-            len(self._port_links) > 1,
+            self._topology_type > 1,
             "There must be at least two port links to run the scatter test suite",
         )
 

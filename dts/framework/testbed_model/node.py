@@ -90,7 +90,7 @@ class Node(ABC):
         self._init_ports()
 
     def _init_ports(self) -> None:
-        self.ports = [Port(self.name, port_config) for port_config in self.config.ports]
+        self.ports = [Port(port_config) for port_config in self.config.ports]
         self.main_session.update_ports(self.ports)
         for port in self.ports:
             self.configure_port_state(port)

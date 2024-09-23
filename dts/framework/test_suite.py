@@ -25,9 +25,10 @@ from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 from scapy.packet import Packet, Padding, raw  # type: ignore[import-untyped]
 
 from framework.testbed_model.capability import TestProtocol
-from framework.testbed_model.port import Port, PortLink
+from framework.testbed_model.port import Port
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
+from framework.testbed_model.topology import Topology, TopologyType
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
@@ -73,7 +74,7 @@ class TestSuite(TestProtocol):
     #: will block the execution of all subsequent test suites in the current build target.
     is_blocking: ClassVar[bool] = False
     _logger: DTSLogger
-    _port_links: list[PortLink]
+    _topology_type: TopologyType
     _sut_port_ingress: Port
     _sut_port_egress: Port
     _sut_ip_address_ingress: Union[IPv4Interface, IPv6Interface]
@@ -87,6 +88,7 @@ class TestSuite(TestProtocol):
         self,
         sut_node: SutNode,
         tg_node: TGNode,
+        topology: Topology,
     ):
         """Initialize the test suite testbed information and basic configuration.
 
@@ -96,34 +98,20 @@ class TestSuite(TestProtocol):
         Args:
             sut_node: The SUT node where the test suite will run.
             tg_node: The TG node where the test suite will run.
+            topology: The topology where the test suite will run.
         """
         self.sut_node = sut_node
         self.tg_node = tg_node
         self._logger = get_dts_logger(self.__class__.__name__)
-        self._port_links = []
-        self._process_links()
-        self._sut_port_ingress, self._tg_port_egress = (
-            self._port_links[0].sut_port,
-            self._port_links[0].tg_port,
-        )
-        self._sut_port_egress, self._tg_port_ingress = (
-            self._port_links[1].sut_port,
-            self._port_links[1].tg_port,
-        )
+        self._topology_type = topology.type
+        self._tg_port_egress = topology.tg_port_egress
+        self._sut_port_ingress = topology.sut_port_ingress
+        self._sut_port_egress = topology.sut_port_egress
+        self._tg_port_ingress = topology.tg_port_ingress
         self._sut_ip_address_ingress = ip_interface("192.168.100.2/24")
         self._sut_ip_address_egress = ip_interface("192.168.101.2/24")
         self._tg_ip_address_egress = ip_interface("192.168.100.3/24")
         self._tg_ip_address_ingress = ip_interface("192.168.101.3/24")
-
-    def _process_links(self) -> None:
-        """Construct links between SUT and TG ports."""
-        for sut_port in self.sut_node.ports:
-            for tg_port in self.tg_node.ports:
-                if (sut_port.identifier, sut_port.peer) == (
-                    tg_port.peer,
-                    tg_port.identifier,
-                ):
-                    self._port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
 
     @classmethod
     def get_test_cases(

@@ -54,7 +54,7 @@ class Port:
     mac_address: str = ""
     logical_name: str = ""
 
-    def __init__(self, node_name: str, config: PortConfig):
+    def __init__(self, config: PortConfig):
         """Initialize the port from `node_name` and `config`.
 
         Args:
@@ -62,7 +62,7 @@ class Port:
             config: The test run configuration of the port.
         """
         self.identifier = PortIdentifier(
-            node=node_name,
+            node=config.node,
             pci=config.pci,
         )
         self.os_driver = config.os_driver

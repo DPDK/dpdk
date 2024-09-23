@@ -54,6 +54,7 @@ from .test_result import (
     TestSuiteWithCases,
 )
 from .test_suite import TestCase, TestSuite
+from .testbed_model.topology import Topology
 
 
 class DTSRunner:
@@ -476,6 +477,7 @@ class DTSRunner:
             test_suites_with_cases: The test suites with test cases to run.
         """
         end_build_target = False
+        topology = Topology(sut_node.ports, tg_node.ports)
         for test_suite_with_cases in test_suites_with_cases:
             test_suite_result = build_target_result.add_test_suite(test_suite_with_cases)
             try:
@@ -483,6 +485,7 @@ class DTSRunner:
                     self._run_test_suite(
                         sut_node,
                         tg_node,
+                        topology,
                         test_suite_result,
                         test_suite_with_cases,
                     )
@@ -508,6 +511,7 @@ class DTSRunner:
         self,
         sut_node: SutNode,
         tg_node: TGNode,
+        topology: Topology,
         test_suite_result: TestSuiteResult,
         test_suite_with_cases: TestSuiteWithCases,
     ) -> None:
@@ -535,7 +539,7 @@ class DTSRunner:
         self._logger.set_stage(
             DtsStage.test_suite_setup, Path(SETTINGS.output_dir, test_suite_name)
         )
-        test_suite = test_suite_with_cases.test_suite_class(sut_node, tg_node)
+        test_suite = test_suite_with_cases.test_suite_class(sut_node, tg_node, topology)
         try:
             self._logger.info(f"Starting test suite setup: {test_suite_name}")
             test_suite.set_up_suite()
