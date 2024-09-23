@@ -10,7 +10,7 @@ Send a packet to the SUT node, verify it comes back on the second port on the TG
 from scapy.layers.inet import IP, UDP  # type: ignore[import-untyped]
 from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 
-from framework.test_suite import TestSuite
+from framework.test_suite import TestSuite, func_test
 
 
 class TestOsUdp(TestSuite):
@@ -26,6 +26,7 @@ class TestOsUdp(TestSuite):
         self.sut_node.bind_ports_to_driver(for_dpdk=False)
         self.configure_testbed_ipv4()
 
+    @func_test
     def test_os_udp(self) -> None:
         """Basic UDP IPv4 traffic test case.
 

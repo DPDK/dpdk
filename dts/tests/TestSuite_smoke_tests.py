@@ -17,7 +17,7 @@ import re
 from framework.config import PortConfig
 from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
-from framework.test_suite import TestSuite
+from framework.test_suite import TestSuite, func_test
 from framework.utils import REGEX_FOR_PCI_ADDRESS
 
 
@@ -47,6 +47,7 @@ class TestSmokeTests(TestSuite):
         self.dpdk_build_dir_path = self.sut_node.remote_dpdk_build_dir
         self.nics_in_node = self.sut_node.config.ports
 
+    @func_test
     def test_unit_tests(self) -> None:
         """DPDK meson ``fast-tests`` unit tests.
 
@@ -63,6 +64,7 @@ class TestSmokeTests(TestSuite):
             privileged=True,
         )
 
+    @func_test
     def test_driver_tests(self) -> None:
         """DPDK meson ``driver-tests`` unit tests.
 
@@ -91,6 +93,7 @@ class TestSmokeTests(TestSuite):
             privileged=True,
         )
 
+    @func_test
     def test_devices_listed_in_testpmd(self) -> None:
         """Testpmd device discovery.
 
@@ -108,6 +111,7 @@ class TestSmokeTests(TestSuite):
                 "please check your configuration",
             )
 
+    @func_test
     def test_device_bound_to_driver(self) -> None:
         """Device driver in OS.
 

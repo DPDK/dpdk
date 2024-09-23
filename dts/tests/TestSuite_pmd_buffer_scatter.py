@@ -24,7 +24,7 @@ from scapy.utils import hexstr  # type: ignore[import-untyped]
 
 from framework.params.testpmd import SimpleForwardingModes
 from framework.remote_session.testpmd_shell import TestPmdShell
-from framework.test_suite import TestSuite
+from framework.test_suite import TestSuite, func_test
 
 
 class TestPmdBufferScatter(TestSuite):
@@ -123,6 +123,7 @@ class TestPmdBufferScatter(TestSuite):
                     f"{offset}.",
                 )
 
+    @func_test
     def test_scatter_mbuf_2048(self) -> None:
         """Run the :meth:`pmd_scatter` test with `mbsize` set to 2048."""
         self.pmd_scatter(mbsize=2048)

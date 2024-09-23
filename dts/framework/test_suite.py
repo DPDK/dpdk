@@ -13,9 +13,12 @@ needed by subclasses:
     * Test case verification.
 """
 
+import inspect
 from collections import Counter
+from collections.abc import Callable, Sequence
+from enum import Enum, auto
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
-from typing import ClassVar, Union
+from typing import ClassVar, Protocol, TypeVar, Union, cast
 
 from scapy.layers.inet import IP  # type: ignore[import-untyped]
 from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
@@ -28,7 +31,7 @@ from framework.testbed_model.traffic_generator.capturing_traffic_generator impor
     PacketFilteringConfig,
 )
 
-from .exception import TestCaseVerifyError
+from .exception import ConfigurationError, TestCaseVerifyError
 from .logger import DTSLogger, get_dts_logger
 from .utils import get_packet_summaries
 
@@ -120,6 +123,68 @@ class TestSuite:
                     tg_port.identifier,
                 ):
                     self._port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
+
+    @classmethod
+    def get_test_cases(
+        cls, test_case_sublist: Sequence[str] | None = None
+    ) -> tuple[set[type["TestCase"]], set[type["TestCase"]]]:
+        """Filter `test_case_subset` from this class.
+
+        Test cases are regular (or bound) methods decorated with :func:`func_test`
+        or :func:`perf_test`.
+
+        Args:
+            test_case_sublist: Test case names to filter from this class.
+                If empty or :data:`None`, return all test cases.
+
+        Returns:
+            The filtered test case functions. This method returns functions as opposed to methods,
+            as methods are bound to instances and this method only has access to the class.
+
+        Raises:
+            ConfigurationError: If a test case from `test_case_subset` is not found.
+        """
+
+        def is_test_case(function: Callable) -> bool:
+            if inspect.isfunction(function):
+                # TestCase is not used at runtime, so we can't use isinstance() with `function`.
+                # But function.test_type exists.
+                if hasattr(function, "test_type"):
+                    return isinstance(function.test_type, TestCaseType)
+            return False
+
+        if test_case_sublist is None:
+            test_case_sublist = []
+
+        # the copy is needed so that the condition "elif test_case_sublist" doesn't
+        # change mid-cycle
+        test_case_sublist_copy = list(test_case_sublist)
+        func_test_cases = set()
+        perf_test_cases = set()
+
+        for test_case_name, test_case_function in inspect.getmembers(cls, is_test_case):
+            if test_case_name in test_case_sublist_copy:
+                # if test_case_sublist_copy is non-empty, remove the found test case
+                # so that we can look at the remainder at the end
+                test_case_sublist_copy.remove(test_case_name)
+            elif test_case_sublist:
+                # the original list not being empty means we're filtering test cases
+                # since we didn't remove test_case_name in the previous branch,
+                # it doesn't match the filter and we don't want to remove it
+                continue
+
+            match test_case_function.test_type:
+                case TestCaseType.PERFORMANCE:
+                    perf_test_cases.add(test_case_function)
+                case TestCaseType.FUNCTIONAL:
+                    func_test_cases.add(test_case_function)
+
+        if test_case_sublist_copy:
+            raise ConfigurationError(
+                f"Test cases {test_case_sublist_copy} not found among functions of {cls.__name__}."
+            )
+
+        return func_test_cases, perf_test_cases
 
     def set_up_suite(self) -> None:
         """Set up test fixtures common to all test cases.
@@ -462,3 +527,59 @@ class TestSuite:
         if received_packet.src != expected_packet.src or received_packet.dst != expected_packet.dst:
             return False
         return True
+
+
+#: The generic type for a method of an instance of TestSuite
+TestSuiteMethodType = TypeVar("TestSuiteMethodType", bound=Callable[[TestSuite], None])
+
+
+class TestCaseType(Enum):
+    """The types of test cases."""
+
+    #:
+    FUNCTIONAL = auto()
+    #:
+    PERFORMANCE = auto()
+
+
+class TestCase(Protocol[TestSuiteMethodType]):
+    """Definition of the test case type for static type checking purposes.
+
+    The type is applied to test case functions through a decorator, which casts the decorated
+    test case function to :class:`TestCase` and sets common variables.
+    """
+
+    #:
+    test_type: ClassVar[TestCaseType]
+    #: necessary for mypy so that it can treat this class as the function it's shadowing
+    __call__: TestSuiteMethodType
+
+    @classmethod
+    def make_decorator(
+        cls, test_case_type: TestCaseType
+    ) -> Callable[[TestSuiteMethodType], type["TestCase"]]:
+        """Create a decorator for test suites.
+
+        The decorator casts the decorated function as :class:`TestCase`,
+        sets it as `test_case_type`
+        and initializes common variables defined in :class:`RequiresCapabilities`.
+
+        Args:
+            test_case_type: Either a functional or performance test case.
+
+        Returns:
+            The decorator of a functional or performance test case.
+        """
+
+        def _decorator(func: TestSuiteMethodType) -> type[TestCase]:
+            test_case = cast(type[TestCase], func)
+            test_case.test_type = test_case_type
+            return test_case
+
+        return _decorator
+
+
+#: The decorator for functional test cases.
+func_test: Callable = TestCase.make_decorator(TestCaseType.FUNCTIONAL)
+#: The decorator for performance test cases.
+perf_test: Callable = TestCase.make_decorator(TestCaseType.PERFORMANCE)

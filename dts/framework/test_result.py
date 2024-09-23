@@ -27,7 +27,6 @@ import os.path
 from collections.abc import MutableSequence
 from dataclasses import dataclass
 from enum import Enum, auto
-from types import FunctionType
 from typing import Union
 
 from .config import (
@@ -44,7 +43,7 @@ from .config import (
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLogger
 from .settings import SETTINGS
-from .test_suite import TestSuite
+from .test_suite import TestCase, TestSuite
 
 
 @dataclass(slots=True, frozen=True)
@@ -63,7 +62,7 @@ class TestSuiteWithCases:
     """
 
     test_suite_class: type[TestSuite]
-    test_cases: list[FunctionType]
+    test_cases: list[type[TestCase]]
 
     def create_config(self) -> TestSuiteConfig:
         """Generate a :class:`TestSuiteConfig` from the stored test suite with test cases.
