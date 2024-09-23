@@ -479,7 +479,20 @@ class DTSRunner:
         for test_suite_with_cases in test_suites_with_cases:
             test_suite_result = build_target_result.add_test_suite(test_suite_with_cases)
             try:
-                self._run_test_suite(sut_node, tg_node, test_suite_result, test_suite_with_cases)
+                if not test_suite_with_cases.skip:
+                    self._run_test_suite(
+                        sut_node,
+                        tg_node,
+                        test_suite_result,
+                        test_suite_with_cases,
+                    )
+                else:
+                    self._logger.info(
+                        f"Test suite execution SKIPPED: "
+                        f"'{test_suite_with_cases.test_suite_class.__name__}'. Reason: "
+                        f"{test_suite_with_cases.test_suite_class.skip_reason}"
+                    )
+                    test_suite_result.update_setup(Result.SKIP)
             except BlockingTestSuiteError as e:
                 self._logger.exception(
                     f"An error occurred within {test_suite_with_cases.test_suite_class.__name__}. "
@@ -578,14 +591,21 @@ class DTSRunner:
             test_case_result = test_suite_result.add_test_case(test_case_name)
             all_attempts = SETTINGS.re_run + 1
             attempt_nr = 1
-            self._run_test_case(test_suite, test_case, test_case_result)
-            while not test_case_result and attempt_nr < all_attempts:
-                attempt_nr += 1
-                self._logger.info(
-                    f"Re-running FAILED test case '{test_case_name}'. "
-                    f"Attempt number {attempt_nr} out of {all_attempts}."
-                )
+            if not test_case.skip:
                 self._run_test_case(test_suite, test_case, test_case_result)
+                while not test_case_result and attempt_nr < all_attempts:
+                    attempt_nr += 1
+                    self._logger.info(
+                        f"Re-running FAILED test case '{test_case_name}'. "
+                        f"Attempt number {attempt_nr} out of {all_attempts}."
+                    )
+                    self._run_test_case(test_suite, test_case, test_case_result)
+            else:
+                self._logger.info(
+                    f"Test case execution SKIPPED: {test_case_name}. Reason: "
+                    f"{test_case.skip_reason}"
+                )
+                test_case_result.update_setup(Result.SKIP)
 
     def _run_test_case(
         self,

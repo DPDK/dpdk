@@ -24,6 +24,7 @@ from scapy.layers.inet import IP  # type: ignore[import-untyped]
 from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 from scapy.packet import Packet, Padding, raw  # type: ignore[import-untyped]
 
+from framework.testbed_model.capability import TestProtocol
 from framework.testbed_model.port import Port, PortLink
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
@@ -36,7 +37,7 @@ from .logger import DTSLogger, get_dts_logger
 from .utils import get_packet_summaries
 
 
-class TestSuite:
+class TestSuite(TestProtocol):
     """The base class with building blocks needed by most test cases.
 
         * Test suite setup/cleanup methods to override,
@@ -542,7 +543,7 @@ class TestCaseType(Enum):
     PERFORMANCE = auto()
 
 
-class TestCase(Protocol[TestSuiteMethodType]):
+class TestCase(TestProtocol, Protocol[TestSuiteMethodType]):
     """Definition of the test case type for static type checking purposes.
 
     The type is applied to test case functions through a decorator, which casts the decorated
@@ -573,6 +574,8 @@ class TestCase(Protocol[TestSuiteMethodType]):
 
         def _decorator(func: TestSuiteMethodType) -> type[TestCase]:
             test_case = cast(type[TestCase], func)
+            test_case.skip = cls.skip
+            test_case.skip_reason = cls.skip_reason
             test_case.test_type = test_case_type
             return test_case
 
