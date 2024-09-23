@@ -10,6 +10,18 @@ Many test cases are testing features not available on all hardware.
 
 The module also allows developers to mark test cases or suites as requiring certain
 hardware capabilities with the :func:`requires` decorator.
+
+Example:
+    .. code:: python
+
+        from framework.test_suite import TestSuite, func_test
+        from framework.testbed_model.capability import NicCapability, requires
+        class TestPmdBufferScatter(TestSuite):
+            # only the test case requires the SCATTERED_RX_ENABLED capability
+            # other test cases may not require it
+            @requires(NicCapability.SCATTERED_RX_ENABLED)
+            @func_test
+            def test_scatter_mbuf_2048(self):
 """
 
 from abc import ABC, abstractmethod

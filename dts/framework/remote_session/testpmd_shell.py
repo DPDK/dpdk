@@ -49,6 +49,10 @@ TestPmdShellCapabilityMethod: TypeAlias = Callable[
 
 TestPmdShellDecorator: TypeAlias = Callable[[TestPmdShellMethod], TestPmdShellMethod]
 
+TestPmdShellNicCapability = (
+    TestPmdShellCapabilityMethod | tuple[TestPmdShellCapabilityMethod, TestPmdShellDecorator]
+)
+
 
 class TestPmdDevice:
     """The data of a device that testpmd can recognize.
@@ -390,6 +394,81 @@ def make_device_private_info_parser() -> ParserFn:
         return info
 
     return TextParser.wrap(TextParser.find(r"Device private info:\s+([\s\S]+)"), _validate)
+
+
+class RxQueueState(StrEnum):
+    """RX queue states.
+
+    References:
+        DPDK lib: ``lib/ethdev/rte_ethdev.h``
+        testpmd display function: ``app/test-pmd/config.c:get_queue_state_name()``
+    """
+
+    #:
+    stopped = auto()
+    #:
+    started = auto()
+    #:
+    hairpin = auto()
+    #:
+    unknown = auto()
+
+    @classmethod
+    def make_parser(cls) -> ParserFn:
+        """Makes a parser function.
+
+        Returns:
+            ParserFn: A dictionary for the `dataclasses.field` metadata argument containing a
+                parser function that makes an instance of this enum from text.
+        """
+        return TextParser.wrap(TextParser.find(r"Rx queue state: ([^\r\n]+)"), cls)
+
+
+@dataclass
+class TestPmdRxqInfo(TextParser):
+    """Representation of testpmd's ``show rxq info <port_id> <queue_id>`` command.
+
+    References:
+        testpmd command function: ``app/test-pmd/cmdline.c:cmd_showqueue()``
+        testpmd display function: ``app/test-pmd/config.c:rx_queue_infos_display()``
+    """
+
+    #:
+    port_id: int = field(metadata=TextParser.find_int(r"Infos for port (\d+)\b ?, RX queue \d+\b"))
+    #:
+    queue_id: int = field(metadata=TextParser.find_int(r"Infos for port \d+\b ?, RX queue (\d+)\b"))
+    #: Mempool used by that queue
+    mempool: str = field(metadata=TextParser.find(r"Mempool: ([^\r\n]+)"))
+    #: Ring prefetch threshold
+    rx_prefetch_threshold: int = field(
+        metadata=TextParser.find_int(r"RX prefetch threshold: (\d+)\b")
+    )
+    #: Ring host threshold
+    rx_host_threshold: int = field(metadata=TextParser.find_int(r"RX host threshold: (\d+)\b"))
+    #: Ring writeback threshold
+    rx_writeback_threshold: int = field(
+        metadata=TextParser.find_int(r"RX writeback threshold: (\d+)\b")
+    )
+    #: Drives the freeing of Rx descriptors
+    rx_free_threshold: int = field(metadata=TextParser.find_int(r"RX free threshold: (\d+)\b"))
+    #: Drop packets if no descriptors are available
+    rx_drop_packets: bool = field(metadata=TextParser.find(r"RX drop packets: on"))
+    #: Do not start queue with rte_eth_dev_start()
+    rx_deferred_start: bool = field(metadata=TextParser.find(r"RX deferred start: on"))
+    #: Scattered packets Rx enabled
+    rx_scattered_packets: bool = field(metadata=TextParser.find(r"RX scattered packets: on"))
+    #: The state of the queue
+    rx_queue_state: str = field(metadata=RxQueueState.make_parser())
+    #: Configured number of RXDs
+    number_of_rxds: int = field(metadata=TextParser.find_int(r"Number of RXDs: (\d+)\b"))
+    #: Hardware receive buffer size
+    rx_buffer_size: int | None = field(
+        default=None, metadata=TextParser.find_int(r"RX buffer size: (\d+)\b")
+    )
+    #: Burst mode information
+    burst_mode: str | None = field(
+        default=None, metadata=TextParser.find(r"Burst mode: ([^\r\n]+)")
+    )
 
 
 @dataclass
@@ -1161,6 +1240,30 @@ def requires_started_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
     return _wrapper
 
 
+def add_remove_mtu(mtu: int = 1500) -> Callable[[TestPmdShellMethod], TestPmdShellMethod]:
+    """Configure MTU to `mtu` on all ports, run the decorated function, then revert.
+
+    Args:
+        mtu: The MTU to configure all ports on.
+
+    Returns:
+        The method decorated with setting and reverting MTU.
+    """
+
+    def decorator(func: TestPmdShellMethod) -> TestPmdShellMethod:
+        @functools.wraps(func)
+        def wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+            original_mtu = self.ports[0].mtu
+            self.set_port_mtu_all(mtu=mtu, verify=False)
+            retval = func(self, *args, **kwargs)
+            self.set_port_mtu_all(original_mtu if original_mtu else 1500, verify=False)
+            return retval
+
+        return wrapper
+
+    return decorator
+
+
 class TestPmdShell(DPDKShell):
     """Testpmd interactive shell.
 
@@ -1558,6 +1661,30 @@ class TestPmdShell(DPDKShell):
         self.send_command("quit", "Bye...")
         return super()._close()
 
+    """
+    ====== Capability retrieval methods ======
+    """
+
+    @requires_started_ports
+    def get_capabilities_rxq_info(
+        self,
+        supported_capabilities: MutableSet["NicCapability"],
+        unsupported_capabilities: MutableSet["NicCapability"],
+    ) -> None:
+        """Get all rxq capabilities and divide them into supported and unsupported.
+
+        Args:
+            supported_capabilities: Supported capabilities will be added to this set.
+            unsupported_capabilities: Unsupported capabilities will be added to this set.
+        """
+        self._logger.debug("Getting rxq capabilities.")
+        command = f"show rxq info {self.ports[0].id} 0"
+        rxq_info = TestPmdRxqInfo.parse(self.send_command(command))
+        if rxq_info.rx_scattered_packets:
+            supported_capabilities.add(NicCapability.SCATTERED_RX_ENABLED)
+        else:
+            unsupported_capabilities.add(NicCapability.SCATTERED_RX_ENABLED)
+
 
 class NicCapability(NoAliasEnum):
     """A mapping between capability names and the associated :class:`TestPmdShell` methods.
@@ -1579,8 +1706,16 @@ class NicCapability(NoAliasEnum):
     be added to `supported_capabilities` or `unsupported_capabilities` based on their support.
 
     The two dictionaries are shared across all capability discovery function calls in a given
-    test run so that we don't call the same function multiple times.
+    test run so that we don't call the same function multiple times. For example, when we find
+    :attr:`SCATTERED_RX_ENABLED` in :meth:`TestPmdShell.get_capabilities_rxq_info`,
+    we don't go looking for it again if a different test case also needs it.
     """
+
+    #: Scattered packets Rx enabled
+    SCATTERED_RX_ENABLED: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rxq_info,
+        add_remove_mtu(9000),
+    )
 
     def __call__(
         self,
