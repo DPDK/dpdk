@@ -432,6 +432,8 @@ port_init(uint16_t port)
 
 		return retval;
 	}
+
+	RTE_LOG(INFO, VHOST_PORT, "port %d,driver %s.\n", dev_info->device->name, dev_info->driver_name);
 	if (dev_info.max_vmdq_pools == 0) {
 		RTE_LOG(ERR, VHOST_PORT, "Failed to get VMDq info.\n");
 		return -1;
@@ -1974,7 +1976,7 @@ main(int argc, char *argv[])
 
 	/* initialize all ports */
 	RTE_ETH_FOREACH_DEV(portid) {
-		RTE_LOG(INFO, VHOST_PORT, "port %d initialized\n", portid);
+		RTE_LOG(INFO, VHOST_PORT, "port %d initialized  with driver %s\n", portid, rte_get(portid));
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << portid)) == 0) {
 			RTE_LOG(INFO, VHOST_PORT,
