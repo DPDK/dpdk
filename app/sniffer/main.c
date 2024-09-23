@@ -433,7 +433,7 @@ port_init(uint16_t port)
 		return retval;
 	}
 
-	RTE_LOG(INFO, VHOST_PORT, "port %d,driver %s.\n", dev_info->device->name, dev_info->driver_name);
+	RTE_LOG(INFO, VHOST_PORT, "port %d,driver %s.\n", dev_info.device->name, dev_info.driver_name);
 	if (dev_info.max_vmdq_pools == 0) {
 		RTE_LOG(ERR, VHOST_PORT, "Failed to get VMDq info.\n");
 		return -1;
