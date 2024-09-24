@@ -638,6 +638,7 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 
 	/* Rule is not completed yet */
 	if (rule->status == MLX5DR_RULE_STATUS_CREATING) {
+		DR_LOG(NOTICE, "Cannot destroy, rule creation still in progress");
 		rte_errno = EBUSY;
 		return rte_errno;
 	}
@@ -806,12 +807,14 @@ static int mlx5dr_rule_enqueue_precheck(struct mlx5dr_rule *rule,
 	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 
 	if (unlikely(!attr->user_data)) {
+		DR_LOG(DEBUG, "User data must be provided for rule operations");
 		rte_errno = EINVAL;
 		return rte_errno;
 	}
 
 	/* Check if there is room in queue */
 	if (unlikely(mlx5dr_send_engine_full(&ctx->send_queue[attr->queue_id]))) {
+		DR_LOG(NOTICE, "No room in queue[%d]", attr->queue_id);
 		rte_errno = EBUSY;
 		return rte_errno;
 	}
@@ -823,6 +826,7 @@ static int mlx5dr_rule_enqueue_precheck_move(struct mlx5dr_rule *rule,
 					     struct mlx5dr_rule_attr *attr)
 {
 	if (unlikely(rule->status != MLX5DR_RULE_STATUS_CREATED)) {
+		DR_LOG(DEBUG, "Cannot move, rule status is invalid");
 		rte_errno = EINVAL;
 		return rte_errno;
 	}
@@ -835,6 +839,7 @@ static int mlx5dr_rule_enqueue_precheck_create(struct mlx5dr_rule *rule,
 {
 	if (unlikely(mlx5dr_matcher_is_in_resize(rule->matcher))) {
 		/* Matcher in resize - new rules are not allowed */
+		DR_LOG(NOTICE, "Resizing in progress, cannot create rule");
 		rte_errno = EAGAIN;
 		return rte_errno;
 	}
@@ -1068,6 +1073,7 @@ int mlx5dr_rule_hash_calculate(struct mlx5dr_matcher *matcher,
 	    mlx5dr_table_is_root(matcher->tbl) ||
 	    matcher->tbl->ctx->caps->access_index_mode == MLX5DR_MATCHER_INSERT_BY_HASH ||
 	    matcher->tbl->ctx->caps->flow_table_hash_type != MLX5_FLOW_TABLE_HASH_TYPE_CRC32) {
+		DR_LOG(DEBUG, "Matcher is not supported");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
