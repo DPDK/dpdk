@@ -598,8 +598,15 @@ static void mlx5dr_send_engine_poll_cq(struct mlx5dr_send_engine *queue,
 	    cqe_owner != sw_own)
 		return;
 
-	if (unlikely(cqe_opcode != MLX5_CQE_REQ))
+	if (unlikely(cqe_opcode != MLX5_CQE_REQ)) {
+		struct mlx5_err_cqe *err_cqe = (struct mlx5_err_cqe *)cqe;
+
+		DR_LOG(ERR, "CQE ERR:0x%x, Vendor_ERR:0x%x, OP:0x%x, QPN:0x%x, WQE_CNT:0x%x",
+			err_cqe->syndrome, err_cqe->vendor_err_synd, cqe_opcode,
+			(rte_be_to_cpu_32(err_cqe->s_wqe_opcode_qpn) & 0xffffff),
+			rte_be_to_cpu_16(err_cqe->wqe_counter));
 		queue->err = true;
+	}
 
 	rte_io_rmb();
 
