@@ -37,6 +37,7 @@ usage(char *progname)
 		" --segment-sz N: set the size of the segment to use\n"
 		" --desc-nb N: set number of descriptors for each crypto device\n"
 		" --devtype TYPE: set crypto device type to use\n"
+		" --low-prio-qp-mask mask: set low priority for queues set in mask(hex)\n"
 		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
 		"        aead / pdcp / docsis / ipsec / modex / secp256r1 / sm2 / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
@@ -941,6 +942,22 @@ parse_pmd_cyclecount_delay_ms(struct cperf_options *opts,
 	return 0;
 }
 
+static int
+parse_low_prio_qp_mask(struct cperf_options *opts, const char *arg)
+{
+	char *end = NULL;
+	unsigned long n;
+
+	/* parse hexadecimal string */
+	n = strtoul(arg, &end, 16);
+	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return -1;
+
+	opts->low_prio_qp_mask = n;
+
+	return 0;
+}
+
 typedef int (*option_parser_t)(struct cperf_options *opts,
 		const char *arg);
 
@@ -961,6 +978,8 @@ static struct option lgopts[] = {
 	{ CPERF_BUFFER_SIZE, required_argument, 0, 0 },
 	{ CPERF_SEGMENT_SIZE, required_argument, 0, 0 },
 	{ CPERF_DESC_NB, required_argument, 0, 0 },
+
+	{ CPERF_LOW_PRIO_QP_MASK, required_argument, 0, 0 },
 
 	{ CPERF_IMIX, required_argument, 0, 0 },
 	{ CPERF_DEVTYPE, required_argument, 0, 0 },
@@ -1097,6 +1116,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_BUFFER_SIZE,	parse_buffer_sz },
 		{ CPERF_SEGMENT_SIZE,	parse_segment_sz },
 		{ CPERF_DESC_NB,	parse_desc_nb },
+		{ CPERF_LOW_PRIO_QP_MASK,	parse_low_prio_qp_mask },
 		{ CPERF_DEVTYPE,	parse_device_type },
 		{ CPERF_OPTYPE,		parse_op_type },
 		{ CPERF_SESSIONLESS,	parse_sessionless },

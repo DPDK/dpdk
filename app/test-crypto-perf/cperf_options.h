@@ -32,6 +32,8 @@
 #define CPERF_TEST_FILE		("test-file")
 #define CPERF_TEST_NAME		("test-name")
 
+#define CPERF_LOW_PRIO_QP_MASK	("low-prio-qp-mask")
+
 #define CPERF_CIPHER_ALGO	("cipher-algo")
 #define CPERF_CIPHER_OP		("cipher-op")
 #define CPERF_CIPHER_KEY_SZ	("cipher-key-sz")
@@ -107,6 +109,7 @@ struct cperf_options {
 	uint32_t *imix_buffer_sizes;
 	uint32_t nb_descriptors;
 	uint16_t nb_qps;
+	uint64_t low_prio_qp_mask;
 
 	uint32_t sessionless:1;
 	uint32_t shared_session:1;
