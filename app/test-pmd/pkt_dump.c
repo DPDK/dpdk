@@ -51,6 +51,7 @@ int pkt_log_init(void) {
     } else {
         printf("log register failed %d\n", log_type);
     }
+    return 0;
 }
 
 static int mrg_mbuf(struct rte_mbuf *first_mbuf, uint16_t expct_len)
