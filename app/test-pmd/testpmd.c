@@ -4380,6 +4380,9 @@ main(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Cannot register log type");
 	rte_log_set_level(testpmd_logtype, RTE_LOG_DEBUG);
 
+	if (pkt_log_init() < 0)
+		rte_exit(EXIT_FAILURE, "Cannot init packet logging\n");
+
 	diag = rte_eal_init(argc, argv);
 	if (diag < 0)
 		rte_exit(EXIT_FAILURE, "Cannot init EAL: %s\n",

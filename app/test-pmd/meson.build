@@ -26,6 +26,7 @@ sources = files(
         'testpmd.c',
         'txonly.c',
         'util.c',
+        'pkt_dump.c',
 )
 
 if dpdk_conf.has('RTE_HAS_JANSSON')

@@ -46,6 +46,7 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
+	uint16_t nb;
 	uint16_t nb_tx;
 	uint32_t retry;
 	uint64_t start_tsc = 0;
@@ -61,6 +62,10 @@ pkt_burst_io_forward(struct fwd_stream *fs)
 	if (unlikely(nb_rx == 0))
 		return;
 	fs->rx_packets += nb_rx;
+
+	for (nb = 0; nb < nb_rx; nb ++) {
+		show_mbuf(pkts_burst[nb]);
+	}
 
 	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
 			pkts_burst, nb_rx);
