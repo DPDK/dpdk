@@ -9,6 +9,24 @@
 
 int log_type;
 
+#define ETHER_ADDR_PRT_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define ETHER_ADDR_BYTES(mac_addrs) \
+	(mac_addrs[0]), \
+	(mac_addrs[1]), \
+	(mac_addrs[2]), \
+	(mac_addrs[3]), \
+	(mac_addrs[4]), \
+	(mac_addrs[5])
+#define IPv4_UINT32_BYTES_FMT "%u.%u.%u.%u"
+#define IPv4_UINT32_BYTES(addr) \
+	(uint8_t) (((addr) >> 24) & 0xFF),\
+	(uint8_t) (((addr) >> 16) & 0xFF),\
+	(uint8_t) (((addr) >> 8) & 0xFF),\
+	(uint8_t) ((addr) & 0xFF)
+
+int pkt_may_pull(struct rte_mbuf *mbuf, uint16_t hdr_len);
+int mrg_mbuf(struct rte_mbuf *first_mbuf, uint16_t expct_len);
+
 #define PKT_DUMP_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, log_type, __VA_ARGS__)
 
@@ -20,11 +38,11 @@ int log_type;
 		}																\
 	} while(0)
 
-int pkt_log_init() {
+int pkt_log_init(void) {
     FILE *f;
     log_type = rte_log_register("pkt_dump"); 
     if (log_type >= 0) {
-        rte_log_set_global_level(log_type, RTE_LOG_DEBUG);
+        rte_log_set_global_level(RTE_LOG_DEBUG);
         f = fopen("/home/jun/vm/pkt.log", "a+");
         if (f == NULL) {
             printf("open file failed\n");
@@ -37,7 +55,7 @@ int pkt_log_init() {
     }
 }
 
-int mrg_mbuf(struct rte_mbuf *first_mbuf, uint16_t expct_len)
+static int mrg_mbuf(struct rte_mbuf *first_mbuf, uint16_t expct_len)
 {
     uint16_t cpy_len, need_len, mrg_sge;
     void *first_mbuf_tail;
@@ -91,9 +109,8 @@ static int first_fragment(const struct rte_ipv4_hdr * hdr)
 		return 1;
 	return 0;
 }
-static void show_meta(uint16_t portid, struct rte_mbuf *m)
+static void show_meta(struct rte_mbuf *m)
 {
-    struct rte_eth_dev_info dev_info;
     PKT_DUMP_LOG(INFO, "meta:\t\t mbuf:%p next:%p pkt_len:%u data_len:%u nb_segs:%u \n",
         m, m->next, m->pkt_len, m->data_len, m->nb_segs);
 }
@@ -177,7 +194,7 @@ static void show_vxlan_hdr(struct rte_vxlan_hdr *vxlan_hdr)
 
 static void show_binary_stream(char *data, uint32_t len) {
 	uint32_t idx = 0;
-	uint32_t len = 128;
+	uint32_t rlen = len > 128 ? 128 : len;
 	uint8_t *cur;
 	char *outbase;
 	char *out_cur;
@@ -190,7 +207,7 @@ static void show_binary_stream(char *data, uint32_t len) {
 	out_cur = outbase;
 
 	cur = (uint8_t *)data;
-	for (idx = 0; idx < len; idx ++) {
+	for (idx = 0; idx < rlen; idx ++) {
 		if (*cur < 0x10) {
 			out_cur += sprintf(out_cur, "0%x", *cur);
 		} else {
