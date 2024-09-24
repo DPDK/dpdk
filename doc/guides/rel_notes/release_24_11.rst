@@ -112,6 +112,9 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* cryptodev: The queue pair configuration structure ``rte_cryptodev_qp_conf``
+  is updated to have a new parameter to set priority of that particular queue pair.
+
 
 Known Issues
 ------------
