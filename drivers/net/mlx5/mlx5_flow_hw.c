@@ -1905,7 +1905,7 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	const struct rte_flow_action_meter_mark *meter_mark = action->conf;
 	struct mlx5_aso_mtr *aso_mtr;
 	struct mlx5_flow_meter_info *fm;
-	uint32_t mtr_id;
+	uint32_t mtr_id = 0;
 	uintptr_t handle = (uintptr_t)MLX5_INDIRECT_ACTION_TYPE_METER_MARK <<
 					MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 
@@ -1917,8 +1917,15 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	if (meter_mark->profile == NULL)
 		return NULL;
 	aso_mtr = mlx5_ipool_malloc(pool->idx_pool, &mtr_id);
-	if (!aso_mtr)
+	if (!aso_mtr) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "failed to allocate aso meter entry");
+		if (mtr_id)
+			mlx5_ipool_free(pool->idx_pool, mtr_id);
 		return NULL;
+	}
 	/* Fill the flow meter parameters. */
 	aso_mtr->type = ASO_METER_INDIRECT;
 	fm = &aso_mtr->fm;
@@ -3926,8 +3933,10 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 			return NULL;
 	}
 	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
-	if (!flow)
+	if (!flow) {
+		rte_errno = ENOMEM;
 		goto error;
+	}
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
@@ -3938,8 +3947,10 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	flow->idx = flow_idx;
 	if (table->resource) {
 		mlx5_ipool_malloc(table->resource, &res_idx);
-		if (!res_idx)
+		if (!res_idx) {
+			rte_errno = ENOMEM;
 			goto error;
+		}
 		flow->res_idx = res_idx;
 	} else {
 		flow->res_idx = flow_idx;
@@ -4070,8 +4081,10 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 			return NULL;
 	}
 	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
-	if (!flow)
+	if (!flow) {
+		rte_errno = ENOMEM;
 		goto error;
+	}
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
@@ -4082,8 +4095,10 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	flow->idx = flow_idx;
 	if (table->resource) {
 		mlx5_ipool_malloc(table->resource, &res_idx);
-		if (!res_idx)
+		if (!res_idx) {
+			rte_errno = ENOMEM;
 			goto error;
+		}
 		flow->res_idx = res_idx;
 	} else {
 		flow->res_idx = flow_idx;
@@ -4218,8 +4233,10 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	nf->idx = of->idx;
 	if (table->resource) {
 		mlx5_ipool_malloc(table->resource, &res_idx);
-		if (!res_idx)
+		if (!res_idx) {
+			rte_errno = ENOMEM;
 			goto error;
+		}
 		nf->res_idx = res_idx;
 	} else {
 		nf->res_idx = of->res_idx;
