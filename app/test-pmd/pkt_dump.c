@@ -6,6 +6,7 @@
 #include <rte_udp.h>
 #include <rte_icmp.h>
 #include <rte_vxlan.h>
+#include "testpmd.h"
 
 int log_type;
 
@@ -23,9 +24,6 @@ int log_type;
 	(uint8_t) (((addr) >> 16) & 0xFF),\
 	(uint8_t) (((addr) >> 8) & 0xFF),\
 	(uint8_t) ((addr) & 0xFF)
-
-int pkt_may_pull(struct rte_mbuf *mbuf, uint16_t hdr_len);
-int mrg_mbuf(struct rte_mbuf *first_mbuf, uint16_t expct_len);
 
 #define PKT_DUMP_LOG(level, ...) \
 	rte_log(RTE_LOG_ ## level, log_type, __VA_ARGS__)
@@ -118,8 +116,8 @@ static void show_meta(struct rte_mbuf *m)
 static void show_eth_hdr(struct rte_ether_hdr *eth_hdr)
 {
 	PKT_DUMP_LOG(INFO, "eth_hdr:\t "ETHER_ADDR_PRT_FMT" > "ETHER_ADDR_PRT_FMT"  type:%x\n",
-		ETHER_ADDR_BYTES(eth_hdr->s_addr.addr_bytes),
-		ETHER_ADDR_BYTES(eth_hdr->d_addr.addr_bytes),
+		ETHER_ADDR_BYTES(eth_hdr->src_addr.addr_bytes),
+		ETHER_ADDR_BYTES(eth_hdr->dst_addr.addr_bytes),
 		ntohs(eth_hdr->ether_type));
 }
 
