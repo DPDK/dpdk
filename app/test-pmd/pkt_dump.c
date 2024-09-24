@@ -87,7 +87,7 @@ static int mrg_mbuf(struct rte_mbuf *first_mbuf, uint16_t expct_len)
     return (first_mbuf->data_len >= expct_len) ? 1 : 0;
 }
 
-int pkt_may_pull(struct rte_mbuf *mbuf, uint16_t hdr_len)
+static int pkt_may_pull(struct rte_mbuf *mbuf, uint16_t hdr_len)
 {
     if (likely(hdr_len <= mbuf->data_len))
         return 1;
@@ -184,11 +184,6 @@ static void show_icmp_hdr(struct rte_icmp_hdr *icmp_hdr)
 		icmp_hdr->icmp_type, icmp_hdr->icmp_code);   
 }
 
-static void show_vxlan_hdr(struct rte_vxlan_hdr *vxlan_hdr)
-{
-    PKT_DUMP_LOG(INFO, "vxlan_hdr:\t flags:%u  vni:%u\n", vxlan_hdr->vx_flags, vxlan_hdr->vx_vni);
-}
-
 
 static void show_binary_stream(char *data, uint32_t len) {
 	uint32_t idx = 0;
@@ -237,7 +232,6 @@ void show_mbuf(struct rte_mbuf *m) {
     struct rte_udp_hdr *udp_hdr;
     struct rte_tcp_hdr *tcp_hdr;
     struct rte_icmp_hdr *icmp_hdr;
-    struct rte_vxlan_hdr *vxlan_hdr;
 
     /* meta */
     show_meta(m);
