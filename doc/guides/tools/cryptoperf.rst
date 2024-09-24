@@ -361,6 +361,11 @@ The following are the application command-line options:
 
         Set TLS/DTLS protocol version for perf test (default is TLS1.2).
 
+* ``--low-prio-qp-mask <mask>``
+
+        Set low priority for queue pairs set in the hexadecimal mask.
+        This is an optional parameter, if not set all queue pairs will be on same high priority.
+
 Test Vector File
 ~~~~~~~~~~~~~~~~
 

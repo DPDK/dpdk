@@ -249,7 +249,8 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		}
 
 		struct rte_cryptodev_qp_conf qp_conf = {
-			.nb_descriptors = opts->nb_descriptors
+			.nb_descriptors = opts->nb_descriptors,
+			.priority = RTE_CRYPTODEV_QP_PRIORITY_HIGHEST
 		};
 
 		/**
@@ -315,6 +316,9 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		}
 
 		for (j = 0; j < opts->nb_qps; j++) {
+			if ((1 << j) & opts->low_prio_qp_mask)
+				qp_conf.priority = RTE_CRYPTODEV_QP_PRIORITY_LOWEST;
+
 			ret = rte_cryptodev_queue_pair_setup(cdev_id, j,
 				&qp_conf, socket_id);
 			if (ret < 0) {
