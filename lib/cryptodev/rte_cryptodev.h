@@ -604,12 +604,34 @@ enum rte_cryptodev_event_type {
 	RTE_CRYPTODEV_EVENT_MAX		/**< max value of this enum */
 };
 
+/* Crypto queue pair priority levels */
+#define RTE_CRYPTODEV_QP_PRIORITY_HIGHEST   0
+/**< Highest priority of a cryptodev queue pair
+ * @see rte_cryptodev_queue_pair_setup(), rte_cryptodev_enqueue_burst()
+ */
+#define RTE_CRYPTODEV_QP_PRIORITY_NORMAL    128
+/**< Normal priority of a cryptodev queue pair
+ * @see rte_cryptodev_queue_pair_setup(), rte_cryptodev_enqueue_burst()
+ */
+#define RTE_CRYPTODEV_QP_PRIORITY_LOWEST    255
+/**< Lowest priority of a cryptodev queue pair
+ * @see rte_cryptodev_queue_pair_setup(), rte_cryptodev_enqueue_burst()
+ */
+
 /** Crypto device queue pair configuration structure. */
 /* Structure rte_cryptodev_qp_conf 8<*/
 struct rte_cryptodev_qp_conf {
 	uint32_t nb_descriptors; /**< Number of descriptors per queue pair */
 	struct rte_mempool *mp_session;
 	/**< The mempool for creating session in sessionless mode */
+	uint8_t priority;
+	/**< Priority for this queue pair relative to other queue pairs.
+	 *
+	 * The requested priority should in the range of
+	 * [@ref RTE_CRYPTODEV_QP_PRIORITY_HIGHEST, @ref RTE_CRYPTODEV_QP_PRIORITY_LOWEST].
+	 * The implementation may normalize the requested priority to
+	 * device supported priority value.
+	 */
 };
 /* >8 End of structure rte_cryptodev_qp_conf. */
 

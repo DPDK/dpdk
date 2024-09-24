@@ -174,9 +174,6 @@ Deprecation Notices
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
 
-* cryptodev: The structure ``rte_cryptodev_qp_conf`` will be updated
-  to have a new parameter to set priority of that particular queue pair.
-
 * cryptodev: The enum ``rte_crypto_asym_xform_type`` and struct ``rte_crypto_asym_op``
   will be extended to include new values to support EDDSA.
   This will break ABI compatibility with existing applications that use these data types.

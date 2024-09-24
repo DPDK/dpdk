@@ -162,6 +162,9 @@ ABI Changes
   has been increased from 8 to 253 (which is the maximum possible with Unix domain socket).
   This allows for more queues when using software devices such as TAP and XDP.
 
+* cryptodev: The queue pair configuration structure ``rte_cryptodev_qp_conf``
+  is updated to have a new parameter to set priority of that particular queue pair.
+
 * eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
 
