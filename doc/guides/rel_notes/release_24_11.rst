@@ -67,6 +67,11 @@ New Features
 
   The new statistics are useful for debugging and profiling.
 
+* **Added a new insertion by index with pattern table insertion type.**
+
+  Extended rte_flow_table_insertion_type enum with new
+  RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN type.
+
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
