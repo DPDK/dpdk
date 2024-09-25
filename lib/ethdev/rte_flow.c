@@ -2090,6 +2090,7 @@ rte_flow_async_create_by_index(uint16_t port_id,
 			       struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_flow *flow;
 
 #ifdef RTE_FLOW_DEBUG
 	if (!rte_eth_dev_is_valid_port(port_id)) {
@@ -2104,10 +2105,15 @@ rte_flow_async_create_by_index(uint16_t port_id,
 	}
 #endif
 
-	return dev->flow_fp_ops->async_create_by_index(dev, queue_id,
+	flow = dev->flow_fp_ops->async_create_by_index(dev, queue_id,
 						       op_attr, template_table, rule_index,
 						       actions, actions_template_index,
 						       user_data, error);
+
+	rte_flow_trace_async_create_by_index(port_id, queue_id, op_attr, template_table, rule_index,
+					     actions, actions_template_index, user_data, flow);
+
+	return flow;
 }
 
 struct rte_flow *
@@ -2124,6 +2130,7 @@ rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
 					    struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_flow *flow;
 
 #ifdef RTE_FLOW_DEBUG
 	if (!rte_eth_dev_is_valid_port(port_id)) {
@@ -2139,11 +2146,18 @@ rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
 	}
 #endif
 
-	return dev->flow_fp_ops->async_create_by_index_with_pattern(dev, queue_id, op_attr,
+	flow = dev->flow_fp_ops->async_create_by_index_with_pattern(dev, queue_id, op_attr,
 								    template_table, rule_index,
 								    pattern, pattern_template_index,
 								    actions, actions_template_index,
 								    user_data, error);
+
+	rte_flow_trace_async_create_by_index_with_pattern(port_id, queue_id, op_attr,
+							  template_table, rule_index, pattern,
+							  pattern_template_index, actions,
+							  actions_template_index, user_data, flow);
+
+	return flow;
 }
 
 int
