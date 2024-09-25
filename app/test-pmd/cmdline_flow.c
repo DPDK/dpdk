@@ -785,6 +785,9 @@ enum index {
 	ACTION_IPV6_EXT_PUSH_INDEX_VALUE,
 	ACTION_NAT64,
 	ACTION_NAT64_MODE,
+	ACTION_JUMP_TO_TABLE_INDEX,
+	ACTION_JUMP_TO_TABLE_INDEX_TABLE,
+	ACTION_JUMP_TO_TABLE_INDEX_INDEX,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -2328,6 +2331,7 @@ static const enum index next_action[] = {
 	ACTION_IPV6_EXT_REMOVE,
 	ACTION_IPV6_EXT_PUSH,
 	ACTION_NAT64,
+	ACTION_JUMP_TO_TABLE_INDEX,
 	ZERO,
 };
 
@@ -2685,6 +2689,13 @@ static const enum index next_hash_subcmd[] = {
 static const enum index next_hash_encap_dest_subcmd[] = {
 	ENCAP_HASH_FIELD_SRC_PORT,
 	ENCAP_HASH_FIELD_GRE_FLOW_ID,
+	ZERO,
+};
+
+static const enum index action_jump_to_table_index[] = {
+	ACTION_JUMP_TO_TABLE_INDEX_TABLE,
+	ACTION_JUMP_TO_TABLE_INDEX_INDEX,
+	ACTION_NEXT,
 	ZERO,
 };
 
@@ -7608,6 +7619,29 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_nat64, type)),
 		.call = parse_vc_conf,
 	},
+	[ACTION_JUMP_TO_TABLE_INDEX] = {
+		.name = "jump_to_table_index",
+		.help = "Jump to table index",
+		.priv = PRIV_ACTION(JUMP_TO_TABLE_INDEX,
+				    sizeof(struct rte_flow_action_jump_to_table_index)),
+		.next = NEXT(action_jump_to_table_index),
+		.call = parse_vc,
+	},
+	[ACTION_JUMP_TO_TABLE_INDEX_TABLE] = {
+		.name = "table",
+		.help = "table to redirect traffic to",
+		.next = NEXT(action_jump_to_table_index, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_jump_to_table_index, table)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_JUMP_TO_TABLE_INDEX_INDEX] = {
+		.name = "index",
+		.help = "rule index to redirect traffic to",
+		.next = NEXT(action_jump_to_table_index, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_jump_to_table_index, index)),
+		.call = parse_vc_conf,
+	},
+
 	/* Top level command. */
 	[SET] = {
 		.name = "set",
