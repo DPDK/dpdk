@@ -2344,6 +2344,50 @@ RTE_TRACE_POINT_FP(
 )
 
 RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_create_by_index,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_template_table *template_table,
+		uint32_t rule_index,
+		const struct rte_flow_action *actions,
+		uint8_t actions_template_index,
+		const void *user_data, const struct rte_flow *flow),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(template_table);
+	rte_trace_point_emit_u32(rule_index);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_u8(actions_template_index);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_ptr(flow);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_flow_trace_async_create_by_index_with_pattern,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		const struct rte_flow_template_table *template_table,
+		uint32_t rule_index,
+		const struct rte_flow_item *pattern,
+		uint8_t pattern_template_index,
+		const struct rte_flow_action *actions,
+		uint8_t actions_template_index,
+		const void *user_data, const struct rte_flow *flow),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(queue_id);
+	rte_trace_point_emit_ptr(op_attr);
+	rte_trace_point_emit_ptr(template_table);
+	rte_trace_point_emit_u32(rule_index);
+	rte_trace_point_emit_ptr(pattern);
+	rte_trace_point_emit_u8(pattern_template_index);
+	rte_trace_point_emit_ptr(actions);
+	rte_trace_point_emit_u8(actions_template_index);
+	rte_trace_point_emit_ptr(user_data);
+	rte_trace_point_emit_ptr(flow);
+)
+
+RTE_TRACE_POINT_FP(
 	rte_flow_trace_async_destroy,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t queue_id,
 		const struct rte_flow_op_attr *op_attr,
