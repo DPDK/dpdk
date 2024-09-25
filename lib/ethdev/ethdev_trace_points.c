@@ -589,6 +589,12 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_template_table_destroy,
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create,
 	lib.ethdev.flow.async_create)
 
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create_by_index,
+	lib.ethdev.flow.async_create_by_index)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_create_by_index_with_pattern,
+	lib.ethdev.flow.async_create_by_index_with_pattern)
+
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_destroy,
 	lib.ethdev.flow.async_destroy)
 
