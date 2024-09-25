@@ -1030,7 +1030,7 @@ static const char *const meter_colors[] = {
 };
 
 static const char *const table_insertion_types[] = {
-	"pattern", "index", NULL
+	"pattern", "index", "index_with_pattern", NULL
 };
 
 static const char *const table_hash_funcs[] = {

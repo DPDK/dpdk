@@ -104,6 +104,11 @@ New Features
 
   * Added mempool driver support for CN20K SoC.
 
+* **Extended flow table index features.**
+
+  * Extended the flow table insertion type enum with
+    ``RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN`` type.
+
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
