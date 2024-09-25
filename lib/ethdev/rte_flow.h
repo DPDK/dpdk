@@ -3262,6 +3262,15 @@ enum rte_flow_action_type {
 	 * @see struct rte_flow_action_nat64
 	 */
 	RTE_FLOW_ACTION_TYPE_NAT64,
+
+	/**
+	 * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX,
+	 *
+	 * Redirects packets to a particular index in a flow table.
+	 *
+	 * @see struct rte_flow_action_jump_to_table_index.
+	 */
+	RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX,
 };
 
 /**
@@ -4265,6 +4274,20 @@ rte_flow_dynf_metadata_set(struct rte_mbuf *m, uint32_t v)
 {
 	*RTE_FLOW_DYNF_METADATA(m) = v;
 }
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX
+ *
+ * Redirects packets to a particular index in a flow table.
+ *
+ */
+struct rte_flow_action_jump_to_table_index {
+	struct rte_flow_template_table *table;
+	uint32_t index;
+};
 
 /**
  * Definition of a single action.
