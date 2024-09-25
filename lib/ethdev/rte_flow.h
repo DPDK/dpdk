@@ -5898,6 +5898,10 @@ enum rte_flow_table_insertion_type {
 	 * Index-based insertion.
 	 */
 	RTE_FLOW_TABLE_INSERTION_TYPE_INDEX,
+	/**
+	 * Index-based insertion with pattern.
+	 */
+	RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN,
 };
 
 /**
