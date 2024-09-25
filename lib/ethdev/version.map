@@ -330,6 +330,7 @@ EXPERIMENTAL {
 	__rte_ethdev_trace_rx_burst_nonempty;
 	__rte_eth_trace_call_rx_callbacks_empty;
 	__rte_eth_trace_call_rx_callbacks_nonempty;
+	rte_flow_async_create_by_index_with_pattern;
 };
 
 INTERNAL {
