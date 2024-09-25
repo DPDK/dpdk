@@ -2636,8 +2636,8 @@ port_flow_template_table_create(portid_t port_id, uint32_t id,
 	}
 	pt->nb_pattern_templates = nb_pattern_templates;
 	pt->nb_actions_templates = nb_actions_templates;
-	rte_memcpy(&pt->flow_attr, &table_attr->flow_attr,
-		   sizeof(struct rte_flow_attr));
+	rte_memcpy(&pt->attr, table_attr,
+		   sizeof(struct rte_flow_template_table_attr));
 	printf("Template table #%u created\n", pt->id);
 	return 0;
 }
@@ -2835,7 +2835,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	}
 	job->type = QUEUE_JOB_TYPE_FLOW_CREATE;
 
-	pf = port_flow_new(&pt->flow_attr, pattern, actions, &error);
+	pf = port_flow_new(&pt->attr.flow_attr, pattern, actions, &error);
 	if (!pf) {
 		free(job);
 		return port_flow_complain(&error);
@@ -2846,12 +2846,22 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	}
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x11, sizeof(error));
-	if (rule_idx == UINT32_MAX)
+	if (pt->attr.insertion_type == RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN)
 		flow = rte_flow_async_create(port_id, queue_id, &op_attr, pt->table,
 			pattern, pattern_idx, actions, actions_idx, job, &error);
-	else
+	else if (pt->attr.insertion_type == RTE_FLOW_TABLE_INSERTION_TYPE_INDEX)
 		flow = rte_flow_async_create_by_index(port_id, queue_id, &op_attr, pt->table,
 			rule_idx, actions, actions_idx, job, &error);
+	else if (pt->attr.insertion_type == RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN)
+		flow = rte_flow_async_create_by_index_with_pattern(port_id, queue_id, &op_attr,
+			pt->table, rule_idx, pattern, pattern_idx, actions, actions_idx, job,
+			&error);
+	else {
+		free(pf);
+		free(job);
+		printf("Insertion type %d is invalid\n", pt->attr.insertion_type);
+		return -EINVAL;
+	}
 	if (!flow) {
 		free(pf);
 		free(job);
@@ -3060,7 +3070,7 @@ port_queue_flow_update(portid_t port_id, queueid_t queue_id,
 	}
 	job->type = QUEUE_JOB_TYPE_FLOW_UPDATE;
 
-	uf = port_flow_new(&pt->flow_attr, pf->rule.pattern_ro, actions, &error);
+	uf = port_flow_new(&pt->attr.flow_attr, pf->rule.pattern_ro, actions, &error);
 	if (!uf) {
 		free(job);
 		return port_flow_complain(&error);
