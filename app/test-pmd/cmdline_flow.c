@@ -1585,6 +1585,12 @@ static const enum index next_async_insert_subcmd[] = {
 	ZERO,
 };
 
+static const enum index next_async_pattern_subcmd[] = {
+	QUEUE_PATTERN_TEMPLATE,
+	QUEUE_ACTIONS_TEMPLATE,
+	ZERO,
+};
+
 static const enum index item_param[] = {
 	ITEM_PARAM_IS,
 	ITEM_PARAM_SPEC,
@@ -3788,7 +3794,7 @@ static const struct token token_list[] = {
 	[QUEUE_RULE_ID] = {
 		.name = "rule_index",
 		.help = "specify flow rule index",
-		.next = NEXT(NEXT_ENTRY(QUEUE_ACTIONS_TEMPLATE),
+		.next = NEXT(next_async_pattern_subcmd,
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.vc.rule_id)),

@@ -319,6 +319,19 @@ typedef struct rte_flow *(*rte_flow_async_create_by_index_t)(struct rte_eth_dev 
 							     void *user_data,
 							     struct rte_flow_error *error);
 
+/** @internal Enqueue rule creation by index with pattern operation. */
+typedef struct rte_flow *(*rte_flow_async_create_by_index_with_pattern_t)(struct rte_eth_dev *dev,
+							uint32_t queue,
+							const struct rte_flow_op_attr *attr,
+							struct rte_flow_template_table *table,
+							uint32_t rule_index,
+							const struct rte_flow_item *items,
+							uint8_t pattern_template_index,
+							const struct rte_flow_action *actions,
+							uint8_t action_template_index,
+							void *user_data,
+							struct rte_flow_error *error);
+
 /** @internal Enqueue rule update operation. */
 typedef int (*rte_flow_async_actions_update_t)(struct rte_eth_dev *dev,
 					       uint32_t queue_id,
@@ -436,6 +449,7 @@ struct __rte_cache_aligned rte_flow_fp_ops {
 	rte_flow_async_create_t async_create;
 	rte_flow_async_create_by_index_t async_create_by_index;
 	rte_flow_async_actions_update_t async_actions_update;
+	rte_flow_async_create_by_index_with_pattern_t async_create_by_index_with_pattern;
 	rte_flow_async_destroy_t async_destroy;
 	rte_flow_push_t push;
 	rte_flow_pull_t pull;

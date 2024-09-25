@@ -108,6 +108,8 @@ New Features
 
   * Extended the flow table insertion type enum with
     ``RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN`` type.
+  * Added a function for inserting a flow rule by index with pattern:
+    ``rte_flow_async_create_by_index_with_pattern()``.
 
 * **Updated Cisco enic driver.**
 

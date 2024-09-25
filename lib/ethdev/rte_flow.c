@@ -2109,6 +2109,42 @@ rte_flow_async_create_by_index(uint16_t port_id,
 						       user_data, error);
 }
 
+struct rte_flow *
+rte_flow_async_create_by_index_with_pattern(uint16_t port_id,
+					    uint32_t queue_id,
+					    const struct rte_flow_op_attr *op_attr,
+					    struct rte_flow_template_table *template_table,
+					    uint32_t rule_index,
+					    const struct rte_flow_item pattern[],
+					    uint8_t pattern_template_index,
+					    const struct rte_flow_action actions[],
+					    uint8_t actions_template_index,
+					    void *user_data,
+					    struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_FLOW_DEBUG
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		rte_flow_error_set(error, ENODEV, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   rte_strerror(ENODEV));
+		return NULL;
+	}
+	if (dev->flow_fp_ops == NULL ||
+	    dev->flow_fp_ops->async_create_by_index_with_pattern == NULL) {
+		rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   rte_strerror(ENOSYS));
+		return NULL;
+	}
+#endif
+
+	return dev->flow_fp_ops->async_create_by_index_with_pattern(dev, queue_id, op_attr,
+								    template_table, rule_index,
+								    pattern, pattern_template_index,
+								    actions, actions_template_index,
+								    user_data, error);
+}
+
 int
 rte_flow_async_destroy(uint16_t port_id,
 		       uint32_t queue_id,
@@ -2733,6 +2769,24 @@ rte_flow_dummy_async_create_by_index(struct rte_eth_dev *dev __rte_unused,
 	return NULL;
 }
 
+static struct rte_flow *
+rte_flow_dummy_async_create_by_index_with_pattern(struct rte_eth_dev *dev __rte_unused,
+						uint32_t queue __rte_unused,
+						const struct rte_flow_op_attr *attr __rte_unused,
+						struct rte_flow_template_table *table __rte_unused,
+						uint32_t rule_index __rte_unused,
+						const struct rte_flow_item items[] __rte_unused,
+						uint8_t pattern_template_index __rte_unused,
+						const struct rte_flow_action actions[] __rte_unused,
+						uint8_t action_template_index __rte_unused,
+						void *user_data __rte_unused,
+						struct rte_flow_error *error)
+{
+	rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   rte_strerror(ENOSYS));
+	return NULL;
+}
+
 static int
 rte_flow_dummy_async_actions_update(struct rte_eth_dev *dev __rte_unused,
 				    uint32_t queue_id __rte_unused,
@@ -2899,6 +2953,7 @@ struct rte_flow_fp_ops rte_flow_fp_default_ops = {
 	.async_create = rte_flow_dummy_async_create,
 	.async_create_by_index = rte_flow_dummy_async_create_by_index,
 	.async_actions_update = rte_flow_dummy_async_actions_update,
+	.async_create_by_index_with_pattern = rte_flow_dummy_async_create_by_index_with_pattern,
 	.async_destroy = rte_flow_dummy_async_destroy,
 	.push = rte_flow_dummy_push,
 	.pull = rte_flow_dummy_pull,
