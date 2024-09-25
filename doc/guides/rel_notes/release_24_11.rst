@@ -104,6 +104,10 @@ New Features
   Added API for inserting the rule by index with pattern.
   Introduced rte_flow_async_create_by_index_with_pattern() function.
 
+* **Added the action to redirect packets to a particular index in a flow table.**
+
+  Introduced RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX action type.
+
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
