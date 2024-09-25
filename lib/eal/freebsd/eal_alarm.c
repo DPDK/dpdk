@@ -318,7 +318,13 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 			}
 			ap_prev = ap;
 		}
+
 		rte_spinlock_unlock(&alarm_list_lk);
+
+		/* Yield control to a second thread executing eal_alarm_callback to avoid
+		 * its starvation, as it is waiting for the lock we have just released.
+		 */
+		sched_yield();
 	} while (executing != 0);
 
 	if (count == 0 && err == 0)
