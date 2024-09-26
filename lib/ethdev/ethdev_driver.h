@@ -339,6 +339,93 @@ typedef int (*eth_allmulticast_disable_t)(struct rte_eth_dev *dev);
 typedef int (*eth_link_update_t)(struct rte_eth_dev *dev,
 				int wait_to_complete);
 
+/**
+ * @internal
+ * Get number of current active lanes
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param speed_lanes
+ *   Number of active lanes that the link has trained up. This information
+ *   is displayed for Autonegotiated or Fixed speed trained link.
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, get speed_lanes data success.
+ * @retval -ENOTSUP
+ *   Operation is not supported.
+ * @retval -EIO
+ *   Device is removed.
+ */
+typedef int (*eth_speed_lanes_get_t)(struct rte_eth_dev *dev, uint32_t *speed_lanes);
+
+/**
+ * @internal
+ * Set speed lanes supported by the NIC. This configuration is applicable only when
+ * fix speed is already configured and or will be configured. This api requires the
+ * port be stopped, since driver has to re-configure PHY with fixed speed and lanes.
+ * If no lanes are configured prior or after "port config X speed Y duplex Z", the
+ * driver will choose the default lane for that speed to bring up the link.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ * @param speed_lanes
+ *   Non-negative number of lanes
+ *
+ * @return
+ *   Negative errno value on error, 0 on success.
+ *
+ * @retval 0
+ *   Success, set lanes success.
+ * @retval -ENOTSUP
+ *   Operation is not supported.
+ * @retval -EINVAL
+ *   Unsupported number of lanes for fixed speed requested.
+ * @retval -EIO
+ *   Device is removed.
+ */
+typedef int (*eth_speed_lanes_set_t)(struct rte_eth_dev *dev, uint32_t speed_lanes);
+
+/**
+ * @internal
+ * Get supported link speed lanes capability. The driver returns number of lanes
+ * supported per speed in the form of lanes capability bitmap per speed.
+ *
+ * @param speed_lanes_capa
+ *   A pointer to num of rte_eth_speed_lanes_capa struct array which carries the
+ *   bit map of lanes supported per speed. The number of supported speeds is the
+ *   size of this speed_lanes_capa table. In link up condition, only active supported
+ *   speeds lanes bitmap information will be displayed. In link down condition, all
+ *   the supported speeds and its supported lanes bitmap would be fetched and displayed.
+ *
+ *   This api is overloaded to fetch the size of the speed_lanes_capa array if
+ *   testpmd calls the driver with speed_lanes_capa = NULL and num = 0
+ *
+ * @param num
+ *   Number of elements in a speed_speed_lanes_capa array. This num is equal to the
+ *   number of supported speeds by the controller. This value will vary in link up
+ *   and link down condition. num is updated by the driver if speed_lanes_capa is NULL.
+ *
+ * @return
+ *   Negative errno value on error, positive value on success.
+ *
+ * @retval positive value
+ *   A non-negative value lower or equal to num: success. The return value
+ *   is the number of entries filled in the speed lanes array.
+ *   A non-negative value higher than num: error, the given speed lanes capa array
+ *   is too small. The return value corresponds to the num that should
+ *   be given to succeed. The entries in the speed lanes capa array are not valid
+ *   and shall not be used by the caller.
+ * @retval -ENOTSUP
+ *   Operation is not supported.
+ * @retval -EINVAL
+ *   *num* or *speed_lanes_capa* invalid.
+ */
+typedef int (*eth_speed_lanes_get_capability_t)(struct rte_eth_dev *dev,
+						struct rte_eth_speed_lanes_capa *speed_lanes_capa,
+						unsigned int num);
+
 /** @internal Get global I/O statistics of an Ethernet device. */
 typedef int (*eth_stats_get_t)(struct rte_eth_dev *dev,
 				struct rte_eth_stats *igb_stats);
@@ -1247,6 +1334,10 @@ struct eth_dev_ops {
 	eth_dev_close_t            dev_close;     /**< Close device */
 	eth_dev_reset_t		   dev_reset;	  /**< Reset device */
 	eth_link_update_t          link_update;   /**< Get device link state */
+	eth_speed_lanes_get_t	   speed_lanes_get;	  /**<Get link speed active lanes */
+	eth_speed_lanes_set_t      speed_lanes_set;	  /**<set the link speeds supported lanes */
+	/** Get link speed lanes capability */
+	eth_speed_lanes_get_capability_t speed_lanes_get_capa;
 	/** Check if the device was physically removed */
 	eth_is_removed_t           is_removed;
 
