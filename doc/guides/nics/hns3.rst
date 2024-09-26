@@ -407,6 +407,15 @@ be provided to avoid scheduling the CPU core used by DPDK application threads fo
 other tasks. Before starting the Linux OS, add the kernel isolation boot parameter.
 For example, "isolcpus=1-18 nohz_full=1-18 rcu_nocbs=1-18".
 
+Dump registers
+--------------
+
+HNS3 supports dumping registers values with their names,
+and supports filtering by module names.
+The available module names are ``bios``, ``ssu``, ``igu_egu``,
+``rpu``, ``ncsi``, ``rtc``, ``ppp``, ``rcb``, ``tqp``, ``rtc``, ``cmdq``,
+``common_pf``, ``common_vf``, ``ring``, ``tqp_intr``, ``32_bit_dfx``,
+``64_bit_dfx``.
 
 Limitations or Known issues
 ---------------------------
