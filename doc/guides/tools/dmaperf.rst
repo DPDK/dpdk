@@ -5,27 +5,25 @@ dpdk-test-dma-perf Application
 ==============================
 
 The ``dpdk-test-dma-perf`` tool is a Data Plane Development Kit (DPDK) application
-that enables testing the performance of DMA (Direct Memory Access) devices available within DPDK.
-It provides a test framework to assess the performance of CPU and DMA devices
-under various scenarios, such as varying buffer lengths.
-Doing so provides insight into the potential performance
-when using these DMA devices for acceleration in DPDK applications.
+that evaluates the performance of DMA (Direct Memory Access) devices accessible in DPDK environment.
+It provides a benchmark framework to assess the performance
+of CPU and DMA devices under various combinations,
+such as varying buffer lengths, scatter-gather copy, copying in remote memory etc.
+It helps in evaluating performance of DMA device as hardware acceleration vehicle
+in DPDK application.
 
-It supports memory copy performance tests for now,
-comparing the performance of CPU and DMA automatically in various conditions
+In addition, this tool supports memory-to-memory, memory-to-device and device-to-memory copy tests,
+to compare the performance of CPU and DMA capabilities under various conditions
 with the help of a pre-set configuration file.
 
 
 Configuration
 -------------
 
-This application uses inherent DPDK EAL command-line options
-as well as custom command-line options in the application.
-An example configuration file for the application is provided
-and gives the meanings for each parameter.
-
-Here is an extracted sample from the configuration file
-(the complete sample can be found in the application source directory):
+Along with EAL command-line arguments, this application supports
+various parameters for the benchmarking through a configuration file.
+An example configuration file is provided below
+along with the application to demonstrate all the parameters.
 
 .. code-block:: ini
 
@@ -39,7 +37,8 @@ Here is an extracted sample from the configuration file
    dst_numa_node=0
    cache_flush=0
    test_seconds=2
-   lcore_dma=lcore10@0000:00:04.2, lcore11@0000:00:04.3
+   lcore_dma0=lcore=10,dev=0000:00:04.2,dir=mem2mem
+   lcore_dma0=lcore=11,dev=0000:00:04.3,dir=mem2mem
    eal_args=--in-memory --file-prefix=test
 
    [case2]
@@ -53,14 +52,37 @@ Here is an extracted sample from the configuration file
    lcore = 3, 4
    eal_args=--in-memory --no-pci
 
+   [case3]
+   skip=1
+   type=DMA_MEM_COPY
+   dma_src_sge=4
+   dma_dst_sge=1
+   mem_size=10
+   buf_size=64,8192,2,MUL
+   dma_ring_size=1024
+   kick_batch=32
+   src_numa_node=0
+   dst_numa_node=0
+   cache_flush=0
+   test_seconds=2
+   lcore_dma0=lcore=10,dev=0000:00:04.1,dir=mem2mem
+   lcore_dma1=lcore=11,dev=0000:00:04.2,dir=dev2mem,raddr=0x200000000,coreid=1,pfid=2,vfid=3
+   lcore_dma2=lcore=12,dev=0000:00:04.3,dir=mem2dev,raddr=0x200000000,coreid=1,pfid=2,vfid=3
+   eal_args=--in-memory --file-prefix=test
+
 The configuration file is divided into multiple sections, each section represents a test case.
-The four variables ``mem_size``, ``buf_size``, ``dma_ring_size``, and ``kick_batch``
+The four mandatory variables ``mem_size``, ``buf_size``, ``dma_ring_size``, and ``kick_batch``
 can vary in each test case.
 The format for this is ``variable=first,last,increment,ADD|MUL``.
-This means that the first value of the variable is 'first',
-the last value is 'last',
-'increment' is the step size,
-and 'ADD|MUL' indicates whether the change is by addition or multiplication.
+This means that the first value of the variable is ``first``,
+the last value is ``last``, ``increment`` is the step size,
+and ``ADD|MUL`` indicates whether the change is by addition or multiplication.
+
+The variables for mem2dev and dev2mem copy are
+``dir``, ``dev``, ``lcore``, ``coreid``, ``pfid``, ``vfid``, ``raddr``
+and can vary for each device.
+
+For scatter-gather copy test ``dma_src_sge``, ``dma_dst_sge`` must be configured.
 
 Each case can only have one variable change,
 and each change will generate a scenario, so each case can have multiple scenarios.
@@ -69,9 +91,18 @@ and each change will generate a scenario, so each case can have multiple scenari
 Configuration Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
+``skip``
+  To skip a test-case, must be configured as ``1``
+
 ``type``
   The type of the test.
   Currently supported types are ``DMA_MEM_COPY`` and ``CPU_MEM_COPY``.
+
+``dma_src_sge``
+  Number of source segments for scatter-gather.
+
+``dma_dst_sge``
+  Number of destination segments for scatter-gather.
 
 ``mem_size``
   The size of the memory footprint in megabytes (MB) for source and destination.
@@ -99,7 +130,35 @@ Configuration Parameters
   Controls the test time for each scenario.
 
 ``lcore_dma``
-  Specifies the lcore/DMA mapping.
+  Specifies the lcore/DMA mapping and per device specific config.
+
+    * ``lcore``
+        Core number mapped to a DMA device.
+
+    * ``dir``
+        The direction of data transfer.
+        Currently supported directions:
+
+          * ``mem2mem`` - memory to memory copy
+
+          * ``mem2dev`` - memory to device copy
+
+          * ``dev2mem`` - device to memory copy
+
+    * ``dev``
+        DMA device bus address.
+
+    * ``raddr``
+        Remote machine address for ``mem2dev`` and ``dev2mem`` copy.
+
+    * ``coreid``
+        Denotes PCIe core index for ``mem2dev`` and ``dev2mem`` copy.
+
+    * ``pfid``
+        Denotes PF-id to be used for ``mem2dev`` and ``dev2mem`` copy.
+
+    * ``vfid``
+        Denotes VF-id of PF-id to be used for ``mem2dev`` and ``dev2mem`` copy.
 
 .. note::
 
@@ -131,6 +190,4 @@ with the same name as the configuration file with the addition of ``_result.csv`
 Limitations
 -----------
 
-Currently, this tool only supports memory copy performance tests.
-Additional enhancements are possible in the future
-to support more types of tests for DMA devices and CPUs.
+Additional enhancements are possible in the future.

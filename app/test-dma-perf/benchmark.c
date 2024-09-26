@@ -148,11 +148,13 @@ cache_flush_buf(__rte_unused struct rte_mbuf **array,
 
 static int
 vchan_data_populate(uint32_t dev_id, struct rte_dma_vchan_conf *qconf,
-		    struct test_configure *cfg)
+		    struct test_configure *cfg, uint16_t dev_num)
 {
+	struct vchan_dev_config *vchan_dconfig;
 	struct rte_dma_info info;
 
-	qconf->direction = cfg->transfer_dir;
+	vchan_dconfig = &cfg->dma_config[dev_num].vchan_dev;
+	qconf->direction = vchan_dconfig->tdir;
 
 	rte_dma_info_get(dev_id, &info);
 	if (!(RTE_BIT64(qconf->direction) & info.dev_capa))
@@ -164,16 +166,16 @@ vchan_data_populate(uint32_t dev_id, struct rte_dma_vchan_conf *qconf,
 	case RTE_DMA_DIR_MEM_TO_DEV:
 		qconf->dst_port.pcie.vfen = 1;
 		qconf->dst_port.port_type = RTE_DMA_PORT_PCIE;
-		qconf->dst_port.pcie.coreid = cfg->vchan_dev.port.pcie.coreid;
-		qconf->dst_port.pcie.vfid = cfg->vchan_dev.port.pcie.vfid;
-		qconf->dst_port.pcie.pfid = cfg->vchan_dev.port.pcie.pfid;
+		qconf->dst_port.pcie.coreid = vchan_dconfig->port.pcie.coreid;
+		qconf->dst_port.pcie.vfid = vchan_dconfig->port.pcie.vfid;
+		qconf->dst_port.pcie.pfid = vchan_dconfig->port.pcie.pfid;
 		break;
 	case RTE_DMA_DIR_DEV_TO_MEM:
 		qconf->src_port.pcie.vfen = 1;
 		qconf->src_port.port_type = RTE_DMA_PORT_PCIE;
-		qconf->src_port.pcie.coreid = cfg->vchan_dev.port.pcie.coreid;
-		qconf->src_port.pcie.vfid = cfg->vchan_dev.port.pcie.vfid;
-		qconf->src_port.pcie.pfid = cfg->vchan_dev.port.pcie.pfid;
+		qconf->src_port.pcie.coreid = vchan_dconfig->port.pcie.coreid;
+		qconf->src_port.pcie.vfid = vchan_dconfig->port.pcie.vfid;
+		qconf->src_port.pcie.pfid = vchan_dconfig->port.pcie.pfid;
 		break;
 	case RTE_DMA_DIR_MEM_TO_MEM:
 	case RTE_DMA_DIR_DEV_TO_DEV:
@@ -185,14 +187,15 @@ vchan_data_populate(uint32_t dev_id, struct rte_dma_vchan_conf *qconf,
 
 /* Configuration of device. */
 static void
-configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg, uint8_t sges_max)
+configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg, uint8_t sges_max,
+		       uint16_t dev_num)
 {
 	uint16_t vchan = 0;
 	struct rte_dma_info info;
 	struct rte_dma_conf dev_config = { .nb_vchans = 1 };
 	struct rte_dma_vchan_conf qconf = { 0 };
 
-	if (vchan_data_populate(dev_id, &qconf, cfg) != 0)
+	if (vchan_data_populate(dev_id, &qconf, cfg, dev_num) != 0)
 		rte_exit(EXIT_FAILURE, "Error with vchan data populate.\n");
 
 	if (rte_dma_configure(dev_id, &dev_config) != 0)
@@ -219,8 +222,8 @@ configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg, uint8_t sges
 static int
 config_dmadevs(struct test_configure *cfg)
 {
-	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
-	uint32_t nb_workers = ldm->cnt;
+	uint32_t nb_workers = cfg->num_worker;
+	struct lcore_dma_map_t *ldm;
 	uint32_t i;
 	int dev_id;
 	uint16_t nb_dmadevs = 0;
@@ -230,16 +233,17 @@ config_dmadevs(struct test_configure *cfg)
 	if (cfg->is_sg)
 		nb_sges = RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges);
 
-	for (i = 0; i < ldm->cnt; i++) {
-		dma_name = ldm->dma_names[i];
+	for (i = 0; i < nb_workers; i++) {
+		ldm = &cfg->dma_config[i].lcore_dma_map;
+		dma_name = ldm->dma_names;
 		dev_id = rte_dma_get_dev_id_by_name(dma_name);
 		if (dev_id < 0) {
 			fprintf(stderr, "Error: Fail to find DMA %s.\n", dma_name);
 			goto end;
 		}
 
-		ldm->dma_ids[i] = dev_id;
-		configure_dmadev_queue(dev_id, cfg, nb_sges);
+		ldm->dma_id = dev_id;
+		configure_dmadev_queue(dev_id, cfg, nb_sges, nb_dmadevs);
 		++nb_dmadevs;
 	}
 
@@ -436,7 +440,6 @@ setup_memory_env(struct test_configure *cfg,
 			 struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
 			 struct rte_dma_sge **src_sges, struct rte_dma_sge **dst_sges)
 {
-	static struct rte_mbuf_ext_shared_info *ext_buf_info;
 	unsigned int cur_buf_size = cfg->buf_size.cur;
 	unsigned int buf_size = cur_buf_size + RTE_PKTMBUF_HEADROOM;
 	unsigned int nr_sockets;
@@ -499,41 +502,6 @@ setup_memory_env(struct test_configure *cfg,
 		memset(rte_pktmbuf_mtod((*dsts)[i], void *), 0, cur_buf_size);
 	}
 
-	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM ||
-	    cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV) {
-		ext_buf_info = rte_malloc(NULL, sizeof(struct rte_mbuf_ext_shared_info), 0);
-		if (ext_buf_info == NULL) {
-			printf("Error: ext_buf_info malloc failed.\n");
-			return -1;
-		}
-	}
-
-	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM) {
-		ext_buf_info->free_cb = dummy_free_ext_buf;
-		ext_buf_info->fcb_opaque = NULL;
-		for (i = 0; i < nr_buf; i++) {
-			/* Using mbuf structure to hold remote iova address. */
-			rte_pktmbuf_attach_extbuf((*srcs)[i],
-				(void *)(cfg->vchan_dev.raddr + (i * buf_size)),
-				(rte_iova_t)(cfg->vchan_dev.raddr + (i * buf_size)),
-				0, ext_buf_info);
-			rte_mbuf_ext_refcnt_update(ext_buf_info, 1);
-		}
-	}
-
-	if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV) {
-		ext_buf_info->free_cb = dummy_free_ext_buf;
-		ext_buf_info->fcb_opaque = NULL;
-		for (i = 0; i < nr_buf; i++) {
-			/* Using mbuf structure to hold remote iova address. */
-			rte_pktmbuf_attach_extbuf((*dsts)[i],
-				(void *)(cfg->vchan_dev.raddr + (i * buf_size)),
-				(rte_iova_t)(cfg->vchan_dev.raddr + (i * buf_size)),
-				0, ext_buf_info);
-			rte_mbuf_ext_refcnt_update(ext_buf_info, 1);
-		}
-	}
-
 	if (cfg->is_sg) {
 		uint8_t nb_src_sges = cfg->nb_src_sges;
 		uint8_t nb_dst_sges = cfg->nb_dst_sges;
@@ -575,8 +543,7 @@ setup_memory_env(struct test_configure *cfg,
 static uint32_t
 align_buffer_count(struct test_configure *cfg, uint32_t *nr_sgsrc, uint32_t *nr_sgdst)
 {
-	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
-	uint16_t nb_workers = ldm->cnt;
+	uint16_t nb_workers = cfg->num_worker;
 	uint32_t nr_buf;
 
 	nr_buf = (cfg->mem_size.cur * 1024 * 1024) / (cfg->buf_size.cur * 2);
@@ -619,18 +586,98 @@ get_work_function(struct test_configure *cfg)
 	return fn;
 }
 
+static int
+attach_ext_buffer(struct vchan_dev_config *vchan_dev, struct lcore_params *lcore, bool is_sg,
+		  uint32_t nr_sgsrc, uint32_t nr_sgdst)
+{
+	static struct rte_mbuf_ext_shared_info *ext_buf_info;
+	struct rte_dma_sge **src_sges, **dst_sges;
+	struct rte_mbuf **srcs, **dsts;
+	unsigned int cur_buf_size;
+	unsigned int buf_size;
+	uint32_t nr_buf;
+	uint32_t i;
+
+	cur_buf_size = lcore->buf_size;
+	buf_size = cur_buf_size + RTE_PKTMBUF_HEADROOM;
+	nr_buf = lcore->nr_buf;
+	srcs = lcore->srcs;
+	dsts = lcore->dsts;
+
+	ext_buf_info = rte_malloc(NULL, sizeof(struct rte_mbuf_ext_shared_info), 0);
+	if (ext_buf_info == NULL) {
+		printf("Error: ext_buf_info malloc failed.\n");
+		return -1;
+	}
+	ext_buf_info->free_cb = dummy_free_ext_buf;
+	ext_buf_info->fcb_opaque = NULL;
+
+	if (vchan_dev->tdir == RTE_DMA_DIR_DEV_TO_MEM) {
+		for (i = 0; i < nr_buf; i++) {
+			/* Using mbuf structure to hold remote iova address. */
+			rte_pktmbuf_attach_extbuf(srcs[i],
+				(void *)(vchan_dev->raddr + (i * buf_size)),
+				(rte_iova_t)(vchan_dev->raddr + (i * buf_size)), 0, ext_buf_info);
+			rte_mbuf_ext_refcnt_update(ext_buf_info, 1);
+		}
+	}
+
+	if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
+		for (i = 0; i < nr_buf; i++) {
+			/* Using mbuf structure to hold remote iova address. */
+			rte_pktmbuf_attach_extbuf(dsts[i],
+				(void *)(vchan_dev->raddr + (i * buf_size)),
+				(rte_iova_t)(vchan_dev->raddr + (i * buf_size)), 0, ext_buf_info);
+			rte_mbuf_ext_refcnt_update(ext_buf_info, 1);
+		}
+	}
+
+	if (is_sg) {
+		uint8_t nb_src_sges = lcore->sge.nb_srcs;
+		uint8_t nb_dst_sges = lcore->sge.nb_dsts;
+		uint32_t sglen_src, sglen_dst;
+
+		src_sges = &lcore->sge.srcs;
+		dst_sges = &lcore->sge.dsts;
+
+		sglen_src = cur_buf_size / nb_src_sges;
+		sglen_dst = cur_buf_size / nb_dst_sges;
+
+		if (vchan_dev->tdir == RTE_DMA_DIR_DEV_TO_MEM) {
+			for (i = 0; i < nr_sgsrc; i++) {
+				(*src_sges)[i].addr = rte_pktmbuf_iova(srcs[i]);
+				(*src_sges)[i].length = sglen_src;
+				if (!((i+1) % nb_src_sges))
+					(*src_sges)[i].length += (cur_buf_size % nb_src_sges);
+			}
+		}
+
+		if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
+			for (i = 0; i < nr_sgdst; i++) {
+				(*dst_sges)[i].addr = rte_pktmbuf_iova(dsts[i]);
+				(*dst_sges)[i].length = sglen_dst;
+				if (!((i+1) % nb_dst_sges))
+					(*dst_sges)[i].length += (cur_buf_size % nb_dst_sges);
+			}
+		}
+	}
+
+	return 0;
+}
+
 int
 mem_copy_benchmark(struct test_configure *cfg)
 {
-	uint32_t i, j;
+	uint32_t i, j, k;
 	uint32_t offset;
 	unsigned int lcore_id = 0;
 	struct rte_mbuf **srcs = NULL, **dsts = NULL, **m = NULL;
 	struct rte_dma_sge *src_sges = NULL, *dst_sges = NULL;
-	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
+	struct vchan_dev_config *vchan_dev = NULL;
+	struct lcore_dma_map_t *lcore_dma_map = NULL;
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
-	uint16_t nb_workers = ldm->cnt;
+	uint16_t nb_workers = cfg->num_worker;
 	uint16_t test_secs = cfg->test_secs;
 	float memory = 0;
 	uint32_t avg_cycles = 0;
@@ -660,7 +707,10 @@ mem_copy_benchmark(struct test_configure *cfg)
 	printf("Start testing....\n");
 
 	for (i = 0; i < nb_workers; i++) {
-		lcore_id = ldm->lcores[i];
+		lcore_dma_map = &cfg->dma_config[i].lcore_dma_map;
+		vchan_dev = &cfg->dma_config[i].vchan_dev;
+
+		lcore_id = lcore_dma_map->lcore;
 		offset = nr_buf / nb_workers * i;
 		lcores[i] = rte_malloc(NULL, sizeof(struct lcore_params), 0);
 		if (lcores[i] == NULL) {
@@ -668,10 +718,11 @@ mem_copy_benchmark(struct test_configure *cfg)
 			break;
 		}
 		if (cfg->is_dma) {
-			lcores[i]->dma_name = ldm->dma_names[i];
-			lcores[i]->dev_id = ldm->dma_ids[i];
+			lcores[i]->dma_name = lcore_dma_map->dma_names;
+			lcores[i]->dev_id = lcore_dma_map->dma_id;
 			lcores[i]->kick_batch = kick_batch;
 		}
+
 		lcores[i]->worker_id = i;
 		lcores[i]->nr_buf = (uint32_t)(nr_buf / nb_workers);
 		lcores[i]->buf_size = buf_size;
@@ -688,8 +739,14 @@ mem_copy_benchmark(struct test_configure *cfg)
 			lcores[i]->sge.dsts = dst_sges + (nr_sgdst / nb_workers * i);
 		}
 
-		rte_eal_remote_launch(get_work_function(cfg), (void *)(lcores[i]),
-				lcore_id);
+		if (vchan_dev->tdir == RTE_DMA_DIR_DEV_TO_MEM ||
+		    vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
+			if (attach_ext_buffer(vchan_dev, lcores[i], cfg->is_sg,
+					      (nr_sgsrc/nb_workers), (nr_sgdst/nb_workers)) < 0)
+				goto out;
+		}
+
+		rte_eal_remote_launch(get_work_function(cfg), (void *)(lcores[i]), lcore_id);
 	}
 
 	while (1) {
@@ -721,52 +778,64 @@ mem_copy_benchmark(struct test_configure *cfg)
 
 	rte_eal_mp_wait_lcore();
 
-	if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_MEM && !cfg->is_sg) {
-		for (i = 0; i < (nr_buf / nb_workers) * nb_workers; i++) {
-			if (memcmp(rte_pktmbuf_mtod(srcs[i], void *),
-				   rte_pktmbuf_mtod(dsts[i], void *),
-				   cfg->buf_size.cur) != 0) {
-				printf("Copy validation fails for buffer number %d\n", i);
-				ret = -1;
-				goto out;
+	for (k = 0; k < nb_workers; k++) {
+		struct rte_mbuf **src_buf = NULL, **dst_buf = NULL;
+		uint32_t nr_buf_pt = nr_buf / nb_workers;
+		vchan_dev = &cfg->dma_config[k].vchan_dev;
+		offset = nr_buf / nb_workers * k;
+		src_buf = srcs + offset;
+		dst_buf = dsts + offset;
+
+		if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_MEM && !cfg->is_sg) {
+			for (i = 0; i < nr_buf_pt; i++) {
+				if (memcmp(rte_pktmbuf_mtod(src_buf[i], void *),
+							    rte_pktmbuf_mtod(dst_buf[i], void *),
+							    cfg->buf_size.cur) != 0) {
+					printf("Copy validation fails for buffer number %d\n", i);
+					ret = -1;
+					goto out;
+				}
 			}
-		}
-	} else if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_MEM && cfg->is_sg) {
-		size_t src_remsz = buf_size % cfg->nb_src_sges;
-		size_t dst_remsz = buf_size % cfg->nb_dst_sges;
-		size_t src_sz = buf_size / cfg->nb_src_sges;
-		size_t dst_sz = buf_size / cfg->nb_dst_sges;
-		uint8_t src[buf_size], dst[buf_size];
-		uint8_t *sbuf, *dbuf, *ptr;
+		} else if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_MEM && cfg->is_sg) {
+			size_t src_remsz = buf_size % cfg->nb_src_sges;
+			size_t dst_remsz = buf_size % cfg->nb_dst_sges;
+			size_t src_sz = buf_size / cfg->nb_src_sges;
+			size_t dst_sz = buf_size / cfg->nb_dst_sges;
+			uint8_t src[buf_size], dst[buf_size];
+			uint8_t *sbuf, *dbuf, *ptr;
 
-		for (i = 0; i < (nr_buf / RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges)); i++) {
-			sbuf = src;
-			dbuf = dst;
-			ptr = NULL;
+			for (i = 0; i < (nr_buf_pt / RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges));
+			     i++) {
+				sbuf = src;
+				dbuf = dst;
+				ptr = NULL;
 
-			for (j = 0; j < cfg->nb_src_sges; j++) {
-				ptr = rte_pktmbuf_mtod(srcs[i * cfg->nb_src_sges + j], uint8_t *);
-				memcpy(sbuf, ptr, src_sz);
-				sbuf += src_sz;
-			}
+				for (j = 0; j < cfg->nb_src_sges; j++) {
+					ptr = rte_pktmbuf_mtod(src_buf[i * cfg->nb_src_sges + j],
+							       uint8_t *);
+					memcpy(sbuf, ptr, src_sz);
+					sbuf += src_sz;
+				}
 
-			if (src_remsz)
-				memcpy(sbuf, ptr + src_sz, src_remsz);
+				if (src_remsz)
+					memcpy(sbuf, ptr + src_sz, src_remsz);
 
-			for (j = 0; j < cfg->nb_dst_sges; j++) {
-				ptr = rte_pktmbuf_mtod(dsts[i * cfg->nb_dst_sges + j], uint8_t *);
-				memcpy(dbuf, ptr, dst_sz);
-				dbuf += dst_sz;
-			}
+				for (j = 0; j < cfg->nb_dst_sges; j++) {
+					ptr = rte_pktmbuf_mtod(dst_buf[i * cfg->nb_dst_sges + j],
+							       uint8_t *);
+					memcpy(dbuf, ptr, dst_sz);
+					dbuf += dst_sz;
+				}
 
-			if (dst_remsz)
-				memcpy(dbuf, ptr + dst_sz, dst_remsz);
+				if (dst_remsz)
+					memcpy(dbuf, ptr + dst_sz, dst_remsz);
 
-			if (memcmp(src, dst, buf_size) != 0) {
-				printf("SG Copy validation fails for buffer number %d\n",
-					i * cfg->nb_src_sges);
-				ret = -1;
-				goto out;
+				if (memcmp(src, dst, buf_size) != 0) {
+					printf("SG Copy validation fails for buffer number %d\n",
+							i * cfg->nb_src_sges);
+					ret = -1;
+					goto out;
+				}
 			}
 		}
 	}
@@ -775,9 +844,12 @@ mem_copy_benchmark(struct test_configure *cfg)
 	bandwidth_total = 0;
 	avg_cycles_total = 0;
 	for (i = 0; i < nb_workers; i++) {
+		vchan_dev = &cfg->dma_config[i].vchan_dev;
 		calc_result(buf_size, nr_buf, nb_workers, test_secs,
 			lcores[i]->worker_info.test_cpl,
 			&memory, &avg_cycles, &bandwidth, &mops);
+		printf("Direction: %s\n", vchan_dev->tdir == 0 ? "mem2mem" :
+			vchan_dev->tdir == 1 ? "mem2dev" : "dev2mem");
 		output_result(cfg, lcores[i], kick_batch, avg_cycles, buf_size,
 			nr_buf / nb_workers, memory, bandwidth, mops);
 		mops_total += mops;
@@ -792,17 +864,26 @@ mem_copy_benchmark(struct test_configure *cfg)
 
 out:
 
-	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM)
-		m = srcs;
-	else if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV)
-		m = dsts;
+	for (k = 0; k < nb_workers; k++) {
+		struct rte_mbuf **sbuf = NULL, **dbuf = NULL;
+		vchan_dev = &cfg->dma_config[k].vchan_dev;
+		offset = nr_buf / nb_workers * k;
+		m = NULL;
+		if (vchan_dev->tdir == RTE_DMA_DIR_DEV_TO_MEM) {
+			sbuf = srcs + offset;
+			m = sbuf;
+		} else if (vchan_dev->tdir == RTE_DMA_DIR_MEM_TO_DEV) {
+			dbuf = dsts + offset;
+			m = dbuf;
+		}
 
-	if (m) {
-		for (i = 0; i < nr_buf; i++)
-			rte_pktmbuf_detach_extbuf(m[i]);
+		if (m) {
+			for (i = 0; i < (nr_buf / nb_workers); i++)
+				rte_pktmbuf_detach_extbuf(m[i]);
 
-		if (m[0]->shinfo && rte_mbuf_ext_refcnt_read(m[0]->shinfo) == 0)
-			rte_free(m[0]->shinfo);
+			if (m[0]->shinfo && rte_mbuf_ext_refcnt_read(m[0]->shinfo) == 0)
+				rte_free(m[0]->shinfo);
+		}
 	}
 
 	/* free mbufs used in the test */
@@ -838,8 +919,9 @@ out:
 
 	if (cfg->is_dma) {
 		for (i = 0; i < nb_workers; i++) {
-			printf("Stopping dmadev %d\n", ldm->dma_ids[i]);
-			rte_dma_stop(ldm->dma_ids[i]);
+			lcore_dma_map = &cfg->dma_config[i].lcore_dma_map;
+			printf("Stopping dmadev %d\n", lcore_dma_map->dma_id);
+			rte_dma_stop(lcore_dma_map->dma_id);
 		}
 	}
 
