@@ -10,12 +10,9 @@
 #include "hns3_rxtx.h"
 #include "hns3_regs.h"
 
-#define MAX_SEPARATE_NUM	4
-#define SEPARATOR_VALUE		0xFFFFFFFF
-#define REG_NUM_PER_LINE	4
-#define REG_LEN_PER_LINE	(REG_NUM_PER_LINE * sizeof(uint32_t))
+#define HNS3_64_BIT_REG_OUTPUT_SIZE (sizeof(uint64_t) / sizeof(uint32_t))
 
-static int hns3_get_dfx_reg_line(struct hns3_hw *hw, uint32_t *lines);
+static int hns3_get_dfx_reg_cnt(struct hns3_hw *hw, uint32_t *count);
 
 static const uint32_t cmdq_reg_addrs[] = {HNS3_CMDQ_TX_DEPTH_REG,
 					  HNS3_CMDQ_TX_TAIL_REG,
@@ -111,23 +108,21 @@ static int
 hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	uint32_t cmdq_lines, common_lines, ring_lines, tqp_intr_lines;
 	uint32_t regs_num_32_bit, regs_num_64_bit;
-	uint32_t dfx_reg_lines;
+	uint32_t dfx_reg_cnt;
+	uint32_t common_cnt;
 	uint32_t len;
 	int ret;
 
-	cmdq_lines = sizeof(cmdq_reg_addrs) / REG_LEN_PER_LINE + 1;
 	if (hns->is_vf)
-		common_lines =
-			sizeof(common_vf_reg_addrs) / REG_LEN_PER_LINE + 1;
+		common_cnt = sizeof(common_vf_reg_addrs);
 	else
-		common_lines = sizeof(common_reg_addrs) / REG_LEN_PER_LINE + 1;
-	ring_lines = sizeof(ring_reg_addrs) / REG_LEN_PER_LINE + 1;
-	tqp_intr_lines = sizeof(tqp_intr_reg_addrs) / REG_LEN_PER_LINE + 1;
+		common_cnt = sizeof(common_reg_addrs);
 
-	len = (cmdq_lines + common_lines + ring_lines * hw->tqps_num +
-	      tqp_intr_lines * hw->intr_tqps_num) * REG_NUM_PER_LINE;
+	len = sizeof(cmdq_reg_addrs) + common_cnt +
+		sizeof(ring_reg_addrs) * hw->tqps_num +
+		sizeof(tqp_intr_reg_addrs) * hw->intr_tqps_num;
+	len /= sizeof(uint32_t);
 
 	if (!hns->is_vf) {
 		ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
@@ -136,18 +131,16 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 				 "ret = %d.", ret);
 			return ret;
 		}
-		dfx_reg_lines = regs_num_32_bit * sizeof(uint32_t) /
-					REG_LEN_PER_LINE + 1;
-		dfx_reg_lines += regs_num_64_bit * sizeof(uint64_t) /
-					REG_LEN_PER_LINE + 1;
+		dfx_reg_cnt = regs_num_32_bit +
+			      regs_num_64_bit * HNS3_64_BIT_REG_OUTPUT_SIZE;
 
-		ret = hns3_get_dfx_reg_line(hw, &dfx_reg_lines);
+		ret = hns3_get_dfx_reg_cnt(hw, &dfx_reg_cnt);
 		if (ret) {
 			hns3_err(hw, "fail to get the number of dfx registers, "
 				 "ret = %d.", ret);
 			return ret;
 		}
-		len += dfx_reg_lines * REG_NUM_PER_LINE;
+		len += dfx_reg_cnt;
 	}
 
 	*length = len;
@@ -269,18 +262,6 @@ hns3_get_64_bit_regs(struct hns3_hw *hw, uint32_t regs_num, void *data)
 }
 
 static int
-hns3_insert_reg_separator(int reg_num, uint32_t *data)
-{
-	int separator_num;
-	int i;
-
-	separator_num = MAX_SEPARATE_NUM - reg_num % REG_NUM_PER_LINE;
-	for (i = 0; i < separator_num; i++)
-		*data++ = SEPARATOR_VALUE;
-	return separator_num;
-}
-
-static int
 hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -294,7 +275,6 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 	reg_num = sizeof(cmdq_reg_addrs) / sizeof(uint32_t);
 	for (i = 0; i < reg_num; i++)
 		*data++ = hns3_read_dev(hw, cmdq_reg_addrs[i]);
-	data += hns3_insert_reg_separator(reg_num, data);
 
 	if (hns->is_vf)
 		reg_num = sizeof(common_vf_reg_addrs) / sizeof(uint32_t);
@@ -305,7 +285,6 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 			*data++ = hns3_read_dev(hw, common_vf_reg_addrs[i]);
 		else
 			*data++ = hns3_read_dev(hw, common_reg_addrs[i]);
-	data += hns3_insert_reg_separator(reg_num, data);
 
 	reg_num = sizeof(ring_reg_addrs) / sizeof(uint32_t);
 	for (j = 0; j < hw->tqps_num; j++) {
@@ -313,7 +292,6 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 		for (i = 0; i < reg_num; i++)
 			*data++ = hns3_read_dev(hw,
 						ring_reg_addrs[i] + reg_offset);
-		data += hns3_insert_reg_separator(reg_num, data);
 	}
 
 	reg_num = sizeof(tqp_intr_reg_addrs) / sizeof(uint32_t);
@@ -322,7 +300,6 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 		for (i = 0; i < reg_num; i++)
 			*data++ = hns3_read_dev(hw, tqp_intr_reg_addrs[i] +
 						reg_offset);
-		data += hns3_insert_reg_separator(reg_num, data);
 	}
 	return data - origin_data_ptr;
 }
@@ -398,17 +375,15 @@ hns3_dfx_reg_fetch_data(struct hns3_cmd_desc *desc, int bd_num, uint32_t *reg)
 		index = i % HNS3_CMD_DESC_DATA_NUM;
 		*reg++ = desc[desc_index].data[index];
 	}
-	reg_num += hns3_insert_reg_separator(reg_num, reg);
 
 	return reg_num;
 }
 
 static int
-hns3_get_dfx_reg_line(struct hns3_hw *hw, uint32_t *lines)
+hns3_get_dfx_reg_cnt(struct hns3_hw *hw, uint32_t *count)
 {
 	int opcode_num = RTE_DIM(hns3_dfx_reg_opcode_list);
 	uint32_t bd_num_list[opcode_num];
-	uint32_t bd_num, data_len;
 	int ret;
 	int i;
 
@@ -416,11 +391,8 @@ hns3_get_dfx_reg_line(struct hns3_hw *hw, uint32_t *lines)
 	if (ret)
 		return ret;
 
-	for (i = 0; i < opcode_num; i++) {
-		bd_num = bd_num_list[i];
-		data_len = bd_num * HNS3_CMD_DESC_DATA_NUM * sizeof(uint32_t);
-		*lines += data_len / REG_LEN_PER_LINE + 1;
-	}
+	for (i = 0; i < opcode_num; i++)
+		*count += bd_num_list[i] * HNS3_CMD_DESC_DATA_NUM;
 
 	return 0;
 }
@@ -467,7 +439,6 @@ hns3_get_dfx_regs(struct hns3_hw *hw, void **data)
 int
 hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 {
-#define HNS3_64_BIT_REG_SIZE (sizeof(uint64_t) / sizeof(uint32_t))
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	uint32_t regs_num_32_bit;
@@ -512,16 +483,13 @@ hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 		return ret;
 	}
 	data += regs_num_32_bit;
-	data += hns3_insert_reg_separator(regs_num_32_bit, data);
 
 	ret = hns3_get_64_bit_regs(hw, regs_num_64_bit, data);
 	if (ret) {
 		hns3_err(hw, "Get 64 bit register failed, ret = %d", ret);
 		return ret;
 	}
-	data += regs_num_64_bit * HNS3_64_BIT_REG_SIZE;
-	data += hns3_insert_reg_separator(regs_num_64_bit *
-					  HNS3_64_BIT_REG_SIZE, data);
+	data += regs_num_64_bit * HNS3_64_BIT_REG_OUTPUT_SIZE;
 
 	return  hns3_get_dfx_regs(hw, (void **)&data);
 }
