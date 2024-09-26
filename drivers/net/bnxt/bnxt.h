@@ -328,6 +328,7 @@ struct bnxt_link_info {
 	uint16_t                cfg_auto_link_speeds2_mask;
 	uint8_t                 active_lanes;
 	uint8_t			option_flags;
+	uint16_t                pmd_speed_lanes;
 };
 
 #define BNXT_COS_QUEUE_COUNT	8
@@ -1215,6 +1216,7 @@ extern int bnxt_logtype_driver;
 #define BNXT_LINK_SPEEDS_V2_VF(bp) (BNXT_VF((bp)) && ((bp)->link_info->option_flags))
 #define BNXT_LINK_SPEEDS_V2(bp) (((bp)->link_info) && (((bp)->link_info->support_speeds_v2) || \
 						       BNXT_LINK_SPEEDS_V2_VF((bp))))
+#define BNXT_MAX_SPEED_LANES 8
 extern const struct rte_flow_ops bnxt_ulp_rte_flow_ops;
 int32_t bnxt_ulp_port_init(struct bnxt *bp);
 void bnxt_ulp_port_deinit(struct bnxt *bp);
@@ -1240,4 +1242,5 @@ int bnxt_flow_meter_ops_get(struct rte_eth_dev *eth_dev, void *arg);
 struct bnxt_vnic_info *bnxt_get_default_vnic(struct bnxt *bp);
 struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type);
 uint64_t bnxt_eth_rss_support(struct bnxt *bp);
+uint16_t bnxt_parse_eth_link_speed_v2(struct bnxt *bp);
 #endif
