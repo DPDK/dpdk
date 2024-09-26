@@ -234,6 +234,18 @@ class TestSuite:
             duration,
         )
 
+    def send_packets(
+        self,
+        packets: list[Packet],
+    ) -> None:
+        """Send packets using the traffic generator and do not capture received traffic.
+
+        Args:
+            packets: Packets to send.
+        """
+        packets = self._adjust_addresses(packets)
+        self.tg_node.send_packets(packets, self._tg_port_egress)
+
     def get_expected_packet(self, packet: Packet) -> Packet:
         """Inject the proper L2/L3 addresses into `packet`.
 

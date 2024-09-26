@@ -83,6 +83,15 @@ class TGNode(Node):
             duration,
         )
 
+    def send_packets(self, packets: list[Packet], port: Port):
+        """Send packets without capturing resulting received packets.
+
+        Args:
+            packets: Packets to send.
+            port: Port to send the packets on.
+        """
+        self.traffic_generator.send_packets(packets, port)
+
     def close(self) -> None:
         """Free all resources used by the node.
 
