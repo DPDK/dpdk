@@ -331,6 +331,9 @@ EXPERIMENTAL {
 	__rte_eth_trace_call_rx_callbacks_empty;
 	__rte_eth_trace_call_rx_callbacks_nonempty;
 	rte_eth_dev_get_reg_info_ext;
+	rte_eth_speed_lanes_get;
+	rte_eth_speed_lanes_get_capability;
+	rte_eth_speed_lanes_set;
 	rte_flow_async_create_by_index_with_pattern;
 };
 

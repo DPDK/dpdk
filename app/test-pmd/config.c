@@ -786,6 +786,7 @@ port_infos_display(portid_t port_id)
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int ret;
 	char fw_version[ETHDEV_FWVERS_LEN];
+	uint32_t lanes;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		print_valid_ports();
@@ -828,6 +829,8 @@ port_infos_display(portid_t port_id)
 
 	printf("\nLink status: %s\n", (link.link_status) ? ("up") : ("down"));
 	printf("Link speed: %s\n", rte_eth_link_speed_to_str(link.link_speed));
+	if (rte_eth_speed_lanes_get(port_id, &lanes) == 0)
+		printf("Active Lanes: %d\n", lanes);
 	printf("Link duplex: %s\n", (link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
 	       ("full-duplex") : ("half-duplex"));
 	printf("Autoneg status: %s\n", (link.link_autoneg == RTE_ETH_LINK_AUTONEG) ?
@@ -7254,3 +7257,4 @@ show_mcast_macs(portid_t port_id)
 		printf("  %s\n", buf);
 	}
 }
+

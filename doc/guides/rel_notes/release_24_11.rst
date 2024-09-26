@@ -104,6 +104,10 @@ New Features
 
   * Added mempool driver support for CN20K SoC.
 
+* **Added link speed lanes API.**
+
+  Added functions to query or force the link lanes configuration.
+
 * **Extended flow table index features.**
 
   * Extended the flow table insertion type enum with
