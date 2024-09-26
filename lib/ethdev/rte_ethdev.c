@@ -6389,7 +6389,36 @@ rte_eth_read_clock(uint16_t port_id, uint64_t *clock)
 int
 rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info)
 {
+	struct rte_dev_reg_info reg_info = { 0 };
+	int ret;
+
+	if (info == NULL) {
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Cannot get ethdev port %u register info to NULL",
+			port_id);
+		return -EINVAL;
+	}
+
+	reg_info.length = info->length;
+	reg_info.data = info->data;
+
+	ret = rte_eth_dev_get_reg_info_ext(port_id, &reg_info);
+	if (ret != 0)
+		return ret;
+
+	info->length = reg_info.length;
+	info->width = reg_info.width;
+	info->version = reg_info.version;
+	info->offset = reg_info.offset;
+
+	return 0;
+}
+
+int
+rte_eth_dev_get_reg_info_ext(uint16_t port_id, struct rte_dev_reg_info *info)
+{
 	struct rte_eth_dev *dev;
+	uint32_t i;
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
@@ -6402,12 +6431,21 @@ rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info)
 		return -EINVAL;
 	}
 
+	if (info->names != NULL && info->length != 0)
+		memset(info->names, 0, sizeof(struct rte_eth_reg_name) * info->length);
+
 	if (*dev->dev_ops->get_reg == NULL)
 		return -ENOTSUP;
 	ret = eth_err(port_id, (*dev->dev_ops->get_reg)(dev, info));
 
 	rte_ethdev_trace_get_reg_info(port_id, info, ret);
 
+	/* Report the default names if drivers not report. */
+	if (ret == 0 && info->names != NULL && strlen(info->names[0].name) == 0) {
+		for (i = 0; i < info->length; i++)
+			snprintf(info->names[i].name, RTE_ETH_REG_NAME_SIZE,
+				"index_%u", info->offset + i);
+	}
 	return ret;
 }
 

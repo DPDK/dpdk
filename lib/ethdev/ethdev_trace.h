@@ -1152,6 +1152,8 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u32(info->length);
 	rte_trace_point_emit_u32(info->width);
 	rte_trace_point_emit_u32(info->version);
+	rte_trace_point_emit_ptr(info->names);
+	rte_trace_point_emit_ptr(info->filter);
 	rte_trace_point_emit_int(ret);
 )
 
