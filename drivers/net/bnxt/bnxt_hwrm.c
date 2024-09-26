@@ -72,6 +72,7 @@ struct link_speeds2_tbl {
 	uint32_t rte_speed_num;
 	uint16_t hwrm_speed;
 	uint16_t sig_mode;
+	uint16_t lanes;
 	const char *desc;
 } link_speeds2_tbl[] = {
 	{
@@ -81,6 +82,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_1G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_1GB,
 		BNXT_SIG_MODE_NRZ,
+		1,
 		"1Gb NRZ",
 	}, {
 		100,
@@ -89,6 +91,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_10G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_10GB,
 		BNXT_SIG_MODE_NRZ,
+		1,
 		"10Gb NRZ",
 	}, {
 		250,
@@ -97,6 +100,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_25G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_25GB,
 		BNXT_SIG_MODE_NRZ,
+		1,
 		"25Gb NRZ",
 	}, {
 		400,
@@ -105,6 +109,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_40G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_40GB,
 		BNXT_SIG_MODE_NRZ,
+		4,
 		"40Gb NRZ",
 	}, {
 		500,
@@ -113,6 +118,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_50G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_50GB,
 		BNXT_SIG_MODE_NRZ,
+		2,
 		"50Gb NRZ",
 	}, {
 		1000,
@@ -121,6 +127,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_100G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_100GB,
 		BNXT_SIG_MODE_NRZ,
+		4,
 		"100Gb NRZ",
 	}, {
 		501,
@@ -129,6 +136,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_50G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_50GB_PAM4_56,
 		BNXT_SIG_MODE_PAM4,
+		1,
 		"50Gb (PAM4-56: 50G per lane)",
 	}, {
 		1001,
@@ -137,6 +145,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_100G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_100GB_PAM4_56,
 		BNXT_SIG_MODE_PAM4,
+		2,
 		"100Gb (PAM4-56: 50G per lane)",
 	}, {
 		2001,
@@ -145,6 +154,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_200G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_200GB_PAM4_56,
 		BNXT_SIG_MODE_PAM4,
+		4,
 		"200Gb (PAM4-56: 50G per lane)",
 	}, {
 		4001,
@@ -153,6 +163,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_400G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_56,
 		BNXT_SIG_MODE_PAM4,
+		8,
 		"400Gb (PAM4-56: 50G per lane)",
 	}, {
 		1002,
@@ -161,6 +172,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_100G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_100GB_PAM4_112,
 		BNXT_SIG_MODE_PAM4_112,
+		1,
 		"100Gb (PAM4-112: 100G per lane)",
 	}, {
 		2002,
@@ -169,6 +181,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_200G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_200GB_PAM4_112,
 		BNXT_SIG_MODE_PAM4_112,
+		2,
 		"200Gb (PAM4-112: 100G per lane)",
 	}, {
 		4002,
@@ -177,6 +190,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_400G,
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_112,
 		BNXT_SIG_MODE_PAM4_112,
+		4,
 		"400Gb (PAM4-112: 100G per lane)",
 	}, {
 		0,
@@ -185,6 +199,7 @@ struct link_speeds2_tbl {
 		RTE_ETH_SPEED_NUM_NONE,	/* None matches, No speed */
 		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_1GB, /* Placeholder for wrong HWRM */
 		BNXT_SIG_MODE_NRZ, /* default sig */
+		0,
 		"Unknown",
 	},
 };
@@ -264,17 +279,29 @@ static const char *bnxt_get_xcvr_type(uint32_t xcvr_identifier_type_tx_lpi_timer
 /* Utility function to lookup speeds2 table and
  * return a rte to hwrm speed matching row to the client
  */
-static
-struct link_speeds2_tbl *bnxt_get_rte_hwrm_speeds2_entry(uint32_t speed)
+static struct link_speeds2_tbl *bnxt_get_rte_hwrm_speeds2_entry(struct bnxt *bp)
 {
 	int i, max;
+	uint32_t speed, lanes;
+	bool check_lanes;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+
+	speed = dev_conf->link_speeds;
+	lanes = bp->link_info->pmd_speed_lanes;
 
 	max = BNXT_SPEEDS2_TBL_SZ - 1;
 	speed &= ~RTE_ETH_LINK_SPEED_FIXED;
+	check_lanes = !(lanes == 0);
+
 	for (i = 0; i < max; i++) {
-		if (speed == link_speeds2_tbl[i].rte_speed)
+		if (speed == link_speeds2_tbl[i].rte_speed &&
+		    (lanes == link_speeds2_tbl[i].lanes || !check_lanes))
 			break;
 	}
+
+	if (!check_lanes)
+		PMD_DRV_LOG_LINE(INFO, "Given lanes %d, Configuring default lanes %d %s",
+			    lanes, link_speeds2_tbl[i].lanes, link_speeds2_tbl[i].desc);
 	return (struct link_speeds2_tbl *)&link_speeds2_tbl[i];
 }
 
@@ -3579,11 +3606,11 @@ static uint16_t bnxt_check_eth_link_autoneg(uint32_t conf_link)
 	return !conf_link;
 }
 
-static uint16_t bnxt_parse_eth_link_speed_v2(uint32_t conf_link_speed)
+uint16_t bnxt_parse_eth_link_speed_v2(struct bnxt *bp)
 {
 	/* get bitmap value based on speed */
 	return ((struct link_speeds2_tbl *)
-		bnxt_get_rte_hwrm_speeds2_entry(conf_link_speed))->force_val;
+		bnxt_get_rte_hwrm_speeds2_entry(bp))->force_val;
 }
 
 static uint16_t bnxt_parse_eth_link_speed(struct bnxt *bp, uint32_t conf_link_speed,
@@ -3598,7 +3625,7 @@ static uint16_t bnxt_parse_eth_link_speed(struct bnxt *bp, uint32_t conf_link_sp
 
 	/* Handle P7 chips saperately. It got enhanced phy attribs to choose from */
 	if (BNXT_LINK_SPEEDS_V2(bp))
-		return bnxt_parse_eth_link_speed_v2(conf_link_speed);
+		return bnxt_parse_eth_link_speed_v2(bp);
 
 	switch (conf_link_speed & ~RTE_ETH_LINK_SPEED_FIXED) {
 	case RTE_ETH_LINK_SPEED_100M:
@@ -3902,6 +3929,7 @@ static int bnxt_hwrm_port_phy_cfg_v2(struct bnxt *bp, struct bnxt_link_info *con
 	} else {
 		enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_FORCE_LINK_SPEEDS2;
 		req.force_link_speeds2 = rte_cpu_to_le_16(conf->link_speed);
+		PMD_DRV_LOG_LINE(INFO, "Force speed %d", conf->link_speed);
 	}
 
 	/* Fill rest of the req message */

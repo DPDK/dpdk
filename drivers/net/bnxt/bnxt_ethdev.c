@@ -122,6 +122,24 @@ static const char *const bnxt_dev_args[] = {
 	NULL
 };
 
+#define BNXT_SPEEDS_SUPP_SPEED_LANES (RTE_ETH_LINK_SPEED_10G | \
+				      RTE_ETH_LINK_SPEED_25G | \
+				      RTE_ETH_LINK_SPEED_40G | \
+				      RTE_ETH_LINK_SPEED_50G | \
+				      RTE_ETH_LINK_SPEED_100G | \
+				      RTE_ETH_LINK_SPEED_200G | \
+				      RTE_ETH_LINK_SPEED_400G)
+
+static const struct rte_eth_speed_lanes_capa speed_lanes_capa_tbl[] = {
+	{ RTE_ETH_SPEED_NUM_10G, RTE_BIT32(1) },
+	{ RTE_ETH_SPEED_NUM_25G, RTE_BIT32(1) },
+	{ RTE_ETH_SPEED_NUM_40G, RTE_BIT32(4) },
+	{ RTE_ETH_SPEED_NUM_50G, RTE_BIT32(1) | RTE_BIT32(2) },
+	{ RTE_ETH_SPEED_NUM_100G, RTE_BIT32(1) | RTE_BIT32(2) | RTE_BIT32(4) },
+	{ RTE_ETH_SPEED_NUM_200G, RTE_BIT32(2) | RTE_BIT32(4) },
+	{ RTE_ETH_SPEED_NUM_400G, RTE_BIT32(4) | RTE_BIT32(8) },
+};
+
 /*
  * cqe-mode = an non-negative 8-bit number
  */
@@ -696,13 +714,35 @@ static inline bool bnxt_force_link_config(struct bnxt *bp)
 	}
 }
 
-static int bnxt_update_phy_setting(struct bnxt *bp)
+static int bnxt_validate_speed_lanes_change(struct bnxt *bp)
 {
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct rte_eth_link *link = &bp->eth_dev->data->dev_link;
-	struct rte_eth_link new;
 	uint32_t curr_speed_bit;
 	int rc;
+
+	/* Check if speed x lanes combo is supported */
+	if (dev_conf->link_speeds)  {
+		rc = bnxt_parse_eth_link_speed_v2(bp);
+		if (rc == 0)
+			return -EINVAL;
+	}
+
+	/* convert to speedbit flag */
+	curr_speed_bit = rte_eth_speed_bitflag((uint32_t)link->link_speed, 1);
+
+	/* check if speed and lanes have changed */
+	if (dev_conf->link_speeds != curr_speed_bit ||
+	    bp->link_info->active_lanes != bp->link_info->pmd_speed_lanes)
+		return 1;
+
+	return 0;
+}
+
+static int bnxt_update_phy_setting(struct bnxt *bp)
+{
+	struct rte_eth_link new;
+	int rc, rc1 = 0;
 
 	rc = bnxt_get_hwrm_link_config(bp, &new);
 	if (rc) {
@@ -710,8 +750,14 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 		return rc;
 	}
 
-	/* convert to speedbit flag */
-	curr_speed_bit = rte_eth_speed_bitflag((uint32_t)link->link_speed, 1);
+	/* Validate speeds2 requirements */
+	if (BNXT_LINK_SPEEDS_V2(bp)) {
+		rc1 = bnxt_validate_speed_lanes_change(bp);
+		if (rc1 == -EINVAL) {
+			PMD_DRV_LOG_LINE(ERR, "Failed to set correct lanes");
+			return rc1;
+		}
+	}
 
 	/*
 	 * Device is not obliged link down in certain scenarios, even
@@ -719,8 +765,7 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 	 * to shutdown the port, bnxt_get_hwrm_link_config() call always
 	 * returns link up. Force phy update always in that case.
 	 */
-	if (!new.link_status || bnxt_force_link_config(bp) ||
-	    (BNXT_LINK_SPEEDS_V2(bp) && dev_conf->link_speeds != curr_speed_bit)) {
+	if (!new.link_status || bnxt_force_link_config(bp) || rc1 == 1) {
 		rc = bnxt_set_hwrm_link_config(bp, true);
 		if (rc) {
 			PMD_DRV_LOG_LINE(ERR, "Failed to update PHY settings");
@@ -1331,16 +1376,17 @@ resource_error:
 void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 {
 	struct rte_eth_link *link = &eth_dev->data->dev_link;
+	struct bnxt *bp = eth_dev->data->dev_private;
 
 	if (link->link_status)
-		PMD_DRV_LOG_LINE(DEBUG, "Port %d Link Up - speed %u Mbps - %s",
+		PMD_DRV_LOG_LINE(DEBUG, "Port %d Link Up - speed %u Mbps - %s Lanes - %d",
 			eth_dev->data->port_id,
 			(uint32_t)link->link_speed,
 			(link->link_duplex == RTE_ETH_LINK_FULL_DUPLEX) ?
-			("full-duplex") : ("half-duplex"));
+			("full-duplex") : ("half-duplex"),
+			(uint16_t)bp->link_info->active_lanes);
 	else
-		PMD_DRV_LOG_LINE(INFO, "Port %d Link Down",
-			eth_dev->data->port_id);
+		PMD_DRV_LOG_LINE(INFO, "Port %d Link Down", eth_dev->data->port_id);
 }
 
 /*
@@ -4191,6 +4237,105 @@ static int bnxt_get_module_eeprom(struct rte_eth_dev *dev,
 	return length ? -EINVAL : 0;
 }
 
+#if (RTE_VERSION_NUM(22, 11, 0, 0) <= RTE_VERSION)
+static int bnxt_speed_lanes_set(struct rte_eth_dev *dev, uint32_t speed_lanes)
+{
+	struct bnxt *bp = dev->data->dev_private;
+
+	if (!BNXT_LINK_SPEEDS_V2(bp))
+		return -ENOTSUP;
+
+	bp->link_info->pmd_speed_lanes = speed_lanes;
+
+	return 0;
+}
+
+static uint32_t
+bnxt_get_speed_lanes_capa(struct rte_eth_speed_lanes_capa *speed_lanes_capa,
+			  uint32_t speed_capa)
+{
+	uint32_t speed_bit;
+	uint32_t num = 0;
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(speed_lanes_capa_tbl); i++) {
+		speed_bit =
+			rte_eth_speed_bitflag(speed_lanes_capa_tbl[i].speed,
+					      RTE_ETH_LINK_FULL_DUPLEX);
+		if ((speed_capa & speed_bit) == 0)
+			continue;
+
+		speed_lanes_capa[num].speed = speed_lanes_capa_tbl[i].speed;
+		speed_lanes_capa[num].capa = speed_lanes_capa_tbl[i].capa;
+		num++;
+	}
+
+	return num;
+}
+
+static int bnxt_speed_lanes_get_capa(struct rte_eth_dev *dev,
+				     struct rte_eth_speed_lanes_capa *speed_lanes_capa,
+				     unsigned int num)
+{
+	struct rte_eth_link *link = &dev->data->dev_link;
+	struct bnxt *bp = dev->data->dev_private;
+	unsigned int speed_num;
+	uint32_t speed_capa;
+	int rc;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
+
+	if (!BNXT_LINK_SPEEDS_V2(bp))
+		return -ENOTSUP;
+
+	/* speed_num counts number of speed capabilities.
+	 * When link is down, show the user choice all combinations of speeds x lanes
+	 */
+	if (link->link_status) {
+		speed_capa = bnxt_get_speed_capabilities_v2(bp);
+		speed_num = rte_popcount32(speed_capa & BNXT_SPEEDS_SUPP_SPEED_LANES);
+	} else {
+		speed_capa = BNXT_SPEEDS_SUPP_SPEED_LANES;
+		speed_num = rte_popcount32(BNXT_SPEEDS_SUPP_SPEED_LANES);
+	}
+	if (speed_num == 0)
+		return -ENOTSUP;
+
+	if (speed_lanes_capa == NULL)
+		return speed_num;
+
+	if (num < speed_num)
+		return -EINVAL;
+
+	return bnxt_get_speed_lanes_capa(speed_lanes_capa, speed_capa);
+}
+
+static int bnxt_speed_lanes_get(struct rte_eth_dev *dev, uint32_t *lanes)
+{
+	struct rte_eth_link *link = &dev->data->dev_link;
+	struct bnxt *bp = dev->data->dev_private;
+	int rc;
+
+	rc = is_bnxt_in_error(bp);
+	if (rc)
+		return rc;
+
+	if (!BNXT_LINK_SPEEDS_V2(bp))
+		return -ENOTSUP;
+
+	if (!link->link_status)
+		return -EINVAL;
+
+	 /* user app expects lanes 1 for zero */
+	*lanes = (bp->link_info->active_lanes) ?
+		bp->link_info->active_lanes : 1;
+	return 0;
+}
+
+#endif
+
 /*
  * Initialization
  */
@@ -4262,6 +4407,11 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.timesync_read_rx_timestamp = bnxt_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp = bnxt_timesync_read_tx_timestamp,
 	.mtr_ops_get = bnxt_flow_meter_ops_get,
+#if (RTE_VERSION_NUM(22, 11, 0, 0) <= RTE_VERSION)
+	.speed_lanes_get = bnxt_speed_lanes_get,
+	.speed_lanes_set = bnxt_speed_lanes_set,
+	.speed_lanes_get_capa = bnxt_speed_lanes_get_capa,
+#endif
 };
 
 static uint32_t bnxt_map_reset_regs(struct bnxt *bp, uint32_t reg)
