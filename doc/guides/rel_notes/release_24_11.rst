@@ -113,6 +113,12 @@ New Features
   * Added a flow action to redirect packets to a particular index in a flow table:
     ``RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX``.
 
+* **Added support for dumping registers with names and filtering by modules.**
+
+  Added a new function ``rte_eth_dev_get_reg_info_ext()``
+  to filter the registers by module names and get the information
+  (names, values and other attributes) of the filtered registers.
+
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
@@ -261,6 +267,9 @@ ABI Changes
 * eal: The maximum number of file descriptors that can be passed to a secondary process
   has been increased from 8 to 253 (which is the maximum possible with Unix domain socket).
   This allows for more queues when using software devices such as TAP and XDP.
+
+* ethdev: Added ``filter`` and ``names`` fields to ``rte_dev_reg_info`` structure
+  for filtering by modules and reporting names of registers.
 
 * cryptodev: The queue pair configuration structure ``rte_cryptodev_qp_conf``
   is updated to have a new parameter to set priority of that particular queue pair.
