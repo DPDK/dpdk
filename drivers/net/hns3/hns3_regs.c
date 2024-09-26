@@ -105,11 +105,92 @@ hns3_get_regs_num(struct hns3_hw *hw, uint32_t *regs_num_32_bit,
 }
 
 static int
+hns3_get_32_64_regs_cnt(struct hns3_hw *hw, uint32_t *count)
+{
+	uint32_t regs_num_32_bit, regs_num_64_bit;
+	int ret;
+
+	ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
+	if (ret) {
+		hns3_err(hw, "fail to get the number of registers, "
+			 "ret = %d.", ret);
+		return ret;
+	}
+
+	*count += regs_num_32_bit + regs_num_64_bit * HNS3_64_BIT_REG_OUTPUT_SIZE;
+	return 0;
+}
+
+static int
+hns3_get_dfx_reg_bd_num(struct hns3_hw *hw, uint32_t *bd_num_list,
+			uint32_t list_size)
+{
+#define HNS3_GET_DFX_REG_BD_NUM_SIZE	4
+	struct hns3_cmd_desc desc[HNS3_GET_DFX_REG_BD_NUM_SIZE];
+	uint32_t index, desc_index;
+	uint32_t bd_num;
+	uint32_t i;
+	int ret;
+
+	for (i = 0; i < HNS3_GET_DFX_REG_BD_NUM_SIZE - 1; i++) {
+		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_DFX_BD_NUM, true);
+		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
+	}
+	/* The last BD does not need a next flag */
+	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_DFX_BD_NUM, true);
+
+	ret = hns3_cmd_send(hw, desc, HNS3_GET_DFX_REG_BD_NUM_SIZE);
+	if (ret) {
+		hns3_err(hw, "fail to get dfx bd num, ret = %d.", ret);
+		return ret;
+	}
+
+	/* The first data in the first BD is a reserved field */
+	for (i = 1; i <= list_size; i++) {
+		desc_index = i / HNS3_CMD_DESC_DATA_NUM;
+		index = i % HNS3_CMD_DESC_DATA_NUM;
+		bd_num = rte_le_to_cpu_32(desc[desc_index].data[index]);
+		bd_num_list[i - 1] = bd_num;
+	}
+
+	return 0;
+}
+
+static int
+hns3_get_dfx_reg_cnt(struct hns3_hw *hw, uint32_t *count)
+{
+	int opcode_num = RTE_DIM(hns3_dfx_reg_opcode_list);
+	uint32_t bd_num_list[opcode_num];
+	int ret;
+	int i;
+
+	ret = hns3_get_dfx_reg_bd_num(hw, bd_num_list, opcode_num);
+	if (ret)
+		return ret;
+
+	for (i = 0; i < opcode_num; i++)
+		*count += bd_num_list[i] * HNS3_CMD_DESC_DATA_NUM;
+
+	return 0;
+}
+
+static int
+hns3_get_firmware_reg_cnt(struct hns3_hw *hw, uint32_t *count)
+{
+	int ret;
+
+	ret = hns3_get_32_64_regs_cnt(hw, count);
+	if (ret < 0)
+		return ret;
+
+	return hns3_get_dfx_reg_cnt(hw, count);
+}
+
+static int
 hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	uint32_t regs_num_32_bit, regs_num_64_bit;
-	uint32_t dfx_reg_cnt;
+	uint32_t dfx_reg_cnt = 0;
 	uint32_t common_cnt;
 	uint32_t len;
 	int ret;
@@ -125,16 +206,7 @@ hns3_get_regs_length(struct hns3_hw *hw, uint32_t *length)
 	len /= sizeof(uint32_t);
 
 	if (!hns->is_vf) {
-		ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
-		if (ret) {
-			hns3_err(hw, "fail to get the number of registers, "
-				 "ret = %d.", ret);
-			return ret;
-		}
-		dfx_reg_cnt = regs_num_32_bit +
-			      regs_num_64_bit * HNS3_64_BIT_REG_OUTPUT_SIZE;
-
-		ret = hns3_get_dfx_reg_cnt(hw, &dfx_reg_cnt);
+		ret = hns3_get_firmware_reg_cnt(hw, &dfx_reg_cnt);
 		if (ret) {
 			hns3_err(hw, "fail to get the number of dfx registers, "
 				 "ret = %d.", ret);
@@ -305,41 +377,6 @@ hns3_direct_access_regs(struct hns3_hw *hw, uint32_t *data)
 }
 
 static int
-hns3_get_dfx_reg_bd_num(struct hns3_hw *hw, uint32_t *bd_num_list,
-			uint32_t list_size)
-{
-#define HNS3_GET_DFX_REG_BD_NUM_SIZE	4
-	struct hns3_cmd_desc desc[HNS3_GET_DFX_REG_BD_NUM_SIZE];
-	uint32_t index, desc_index;
-	uint32_t bd_num;
-	uint32_t i;
-	int ret;
-
-	for (i = 0; i < HNS3_GET_DFX_REG_BD_NUM_SIZE - 1; i++) {
-		hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_DFX_BD_NUM, true);
-		desc[i].flag |= rte_cpu_to_le_16(HNS3_CMD_FLAG_NEXT);
-	}
-	/* The last BD does not need a next flag */
-	hns3_cmd_setup_basic_desc(&desc[i], HNS3_OPC_DFX_BD_NUM, true);
-
-	ret = hns3_cmd_send(hw, desc, HNS3_GET_DFX_REG_BD_NUM_SIZE);
-	if (ret) {
-		hns3_err(hw, "fail to get dfx bd num, ret = %d.", ret);
-		return ret;
-	}
-
-	/* The first data in the first BD is a reserved field */
-	for (i = 1; i <= list_size; i++) {
-		desc_index = i / HNS3_CMD_DESC_DATA_NUM;
-		index = i % HNS3_CMD_DESC_DATA_NUM;
-		bd_num = rte_le_to_cpu_32(desc[desc_index].data[index]);
-		bd_num_list[i - 1] = bd_num;
-	}
-
-	return 0;
-}
-
-static int
 hns3_dfx_reg_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
 			int bd_num, uint32_t opcode)
 {
@@ -377,24 +414,6 @@ hns3_dfx_reg_fetch_data(struct hns3_cmd_desc *desc, int bd_num, uint32_t *reg)
 	}
 
 	return reg_num;
-}
-
-static int
-hns3_get_dfx_reg_cnt(struct hns3_hw *hw, uint32_t *count)
-{
-	int opcode_num = RTE_DIM(hns3_dfx_reg_opcode_list);
-	uint32_t bd_num_list[opcode_num];
-	int ret;
-	int i;
-
-	ret = hns3_get_dfx_reg_bd_num(hw, bd_num_list, opcode_num);
-	if (ret)
-		return ret;
-
-	for (i = 0; i < opcode_num; i++)
-		*count += bd_num_list[i] * HNS3_CMD_DESC_DATA_NUM;
-
-	return 0;
 }
 
 static int
@@ -436,13 +455,41 @@ hns3_get_dfx_regs(struct hns3_hw *hw, void **data)
 	return ret;
 }
 
+static int
+hns3_get_regs_from_firmware(struct hns3_hw *hw, uint32_t *data)
+{
+	uint32_t regs_num_32_bit;
+	uint32_t regs_num_64_bit;
+	int ret;
+
+	ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
+	if (ret) {
+		hns3_err(hw, "Get register number failed, ret = %d", ret);
+		return ret;
+	}
+
+	ret = hns3_get_32_bit_regs(hw, regs_num_32_bit, data);
+	if (ret) {
+		hns3_err(hw, "Get 32 bit register failed, ret = %d", ret);
+		return ret;
+	}
+	data += regs_num_32_bit;
+
+	ret = hns3_get_64_bit_regs(hw, regs_num_64_bit, data);
+	if (ret) {
+		hns3_err(hw, "Get 64 bit register failed, ret = %d", ret);
+		return ret;
+	}
+	data += regs_num_64_bit * HNS3_64_BIT_REG_OUTPUT_SIZE;
+
+	return hns3_get_dfx_regs(hw, (void **)&data);
+}
+
 int
 hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 {
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint32_t regs_num_32_bit;
-	uint32_t regs_num_64_bit;
 	uint32_t length;
 	uint32_t *data;
 	int ret;
@@ -470,26 +517,6 @@ hns3_get_regs(struct rte_eth_dev *eth_dev, struct rte_dev_reg_info *regs)
 	if (hns->is_vf)
 		return 0;
 
-	ret = hns3_get_regs_num(hw, &regs_num_32_bit, &regs_num_64_bit);
-	if (ret) {
-		hns3_err(hw, "Get register number failed, ret = %d", ret);
-		return ret;
-	}
-
 	/* fetching PF common registers values from firmware */
-	ret = hns3_get_32_bit_regs(hw, regs_num_32_bit, data);
-	if (ret) {
-		hns3_err(hw, "Get 32 bit register failed, ret = %d", ret);
-		return ret;
-	}
-	data += regs_num_32_bit;
-
-	ret = hns3_get_64_bit_regs(hw, regs_num_64_bit, data);
-	if (ret) {
-		hns3_err(hw, "Get 64 bit register failed, ret = %d", ret);
-		return ret;
-	}
-	data += regs_num_64_bit * HNS3_64_BIT_REG_OUTPUT_SIZE;
-
-	return  hns3_get_dfx_regs(hw, (void **)&data);
+	return  hns3_get_regs_from_firmware(hw, data);
 }
