@@ -357,6 +357,15 @@ struct rte_eth_link {
 #define RTE_ETH_LINK_MAX_STR_LEN 40 /**< Max length of default link string. */
 /**@}*/
 
+/* Translate from link speed lanes to speed lanes capa */
+#define RTE_ETH_SPEED_LANES_TO_CAPA(x) RTE_BIT32(x)
+
+/* A structure used to get and set lanes capabilities per link speed */
+struct rte_eth_speed_lanes_capa {
+	uint32_t speed;
+	uint32_t capa;
+};
+
 /**
  * A structure used to configure the ring threshold registers of an Rx/Tx
  * queue for an Ethernet port.
@@ -3113,6 +3122,80 @@ const char *rte_eth_link_speed_to_str(uint32_t link_speed);
 __rte_experimental
 int rte_eth_link_to_str(char *str, size_t len,
 			const struct rte_eth_link *eth_link);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get Active lanes.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param lanes
+ *   Driver updates lanes with the number of active lanes.
+ *   On a supported NIC on link up, lanes will be a non-zero value irrespective whether the
+ *   link is Autonegotiated or Fixed speed. No information is displayed for error.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support.
+ *     that operation.
+ *   - (-EIO) if device is removed.
+ *   - (-ENODEV)  if *port_id* invalid.
+ */
+__rte_experimental
+int rte_eth_speed_lanes_get(uint16_t port_id, uint32_t *lanes);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Set speed lanes supported by the NIC.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param speed_lanes
+ *   A non-zero number of speed lanes, that will be applied to the ethernet PHY
+ *   along with the fixed speed configuration. Driver returns error if the user
+ *   lanes is not in speeds capability list.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support.
+ *     that operation.
+ *   - (-EIO) if device is removed.
+ *   - (-ENODEV)  if *port_id* invalid.
+ *   - (-EINVAL)  if *lanes* count not in speeds capability list.
+ */
+__rte_experimental
+int rte_eth_speed_lanes_set(uint16_t port_id, uint32_t speed_lanes);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get speed lanes supported by the NIC.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param speed_lanes_capa
+ *   An array of supported speed and its supported lanes.
+ * @param num
+ *   Size of the speed_lanes_capa array. The size is equal to the supported speeds list size.
+ *   Value of num is derived by calling this api with speed_lanes_capa=NULL and num=0
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if underlying hardware OR driver doesn't support.
+ *     that operation.
+ *   - (-EIO) if device is removed.
+ *   - (-ENODEV)  if *port_id* invalid.
+ *   - (-EINVAL)  if *speed_lanes* invalid
+ */
+__rte_experimental
+int rte_eth_speed_lanes_get_capability(uint16_t port_id,
+				       struct rte_eth_speed_lanes_capa *speed_lanes_capa,
+				       unsigned int num);
 
 /**
  * Retrieve the general I/O statistics of an Ethernet device.
