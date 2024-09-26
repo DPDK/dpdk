@@ -36,9 +36,10 @@ from framework.logger import DTSLogger, get_dts_logger
 from framework.params import Params
 from framework.settings import SETTINGS
 from framework.testbed_model.node import Node
+from framework.utils import MultiInheritanceBaseClass
 
 
-class SingleActiveInteractiveShell(ABC):
+class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
     """The base class for managing interactive shells.
 
     This class shouldn't be instantiated directly, but instead be extended. It contains
@@ -93,8 +94,12 @@ class SingleActiveInteractiveShell(ABC):
         timeout: float = SETTINGS.timeout,
         app_params: Params = Params(),
         name: str | None = None,
+        **kwargs,
     ) -> None:
         """Create an SSH channel during initialization.
+
+        Additional keyword arguments can be passed through `kwargs` if needed for fulfilling other
+        constructors in the case of multiple inheritance.
 
         Args:
             node: The node on which to run start the interactive shell.
@@ -115,6 +120,7 @@ class SingleActiveInteractiveShell(ABC):
         self._timeout = timeout
         # Ensure path is properly formatted for the host
         self._update_real_path(self.path)
+        super().__init__(node, **kwargs)
 
     def _setup_ssh_channel(self):
         self._ssh_channel = self._node.main_session.interactive_session.session.invoke_shell()

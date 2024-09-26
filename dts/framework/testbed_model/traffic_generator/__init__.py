@@ -36,7 +36,7 @@ def create_traffic_generator(
     """
     match traffic_generator_config:
         case ScapyTrafficGeneratorConfig():
-            return ScapyTrafficGenerator(tg_node, traffic_generator_config)
+            return ScapyTrafficGenerator(tg_node, traffic_generator_config, privileged=True)
         case _:
             raise ConfigurationError(
                 f"Unknown traffic generator: {traffic_generator_config.traffic_generator_type}"

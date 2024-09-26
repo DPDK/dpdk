@@ -29,6 +29,7 @@ from scapy.packet import Packet  # type: ignore[import-untyped]
 from .exception import ConfigurationError, InternalError
 
 REGEX_FOR_PCI_ADDRESS: str = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/"
+REGEX_FOR_BASE64_ENCODING: str = "[-a-zA-Z0-9+\\/]*={0,3}"
 
 
 def expand_range(range_str: str) -> list[int]:
@@ -319,3 +320,17 @@ def generate_random_packets(
         return packet / random.randbytes(usable_payload_size)
 
     return [_make_packet() for _ in range(number_of)]
+
+
+class MultiInheritanceBaseClass:
+    """A base class for classes utilizing multiple inheritance.
+
+    This class enables it's subclasses to support both single and multiple inheritance by acting as
+    a stopping point in the tree of calls to the constructors of superclasses. This class is able
+    to exist at the end of the Method Resolution Order (MRO) so that subclasses can call
+    :meth:`super.__init__` without repercussion.
+    """
+
+    def __init__(self, *args, **kwargs) -> None:
+        """Call the init method of :class:`object`."""
+        super().__init__()
