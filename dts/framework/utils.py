@@ -14,22 +14,19 @@ Attributes:
     REGEX_FOR_PCI_ADDRESS: The regex representing a PCI address, e.g. ``0000:00:08.0``.
 """
 
-import atexit
 import fnmatch
 import json
 import os
 import random
-import subprocess
 import tarfile
 from enum import Enum, Flag
 from pathlib import Path
-from subprocess import SubprocessError
 from typing import Any, Callable
 
 from scapy.layers.inet import IP, TCP, UDP, Ether  # type: ignore[import-untyped]
 from scapy.packet import Packet  # type: ignore[import-untyped]
 
-from .exception import ConfigurationError, InternalError
+from .exception import InternalError
 
 REGEX_FOR_PCI_ADDRESS: str = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/"
 _REGEX_FOR_COLON_OR_HYPHEN_SEP_MAC: str = r"(?:[\da-fA-F]{2}[:-]){5}[\da-fA-F]{2}"
@@ -78,31 +75,6 @@ def get_packet_summaries(packets: list[Packet]) -> str:
     else:
         packet_summaries = json.dumps(list(map(lambda pkt: pkt.summary(), packets)), indent=4)
     return f"Packet contents: \n{packet_summaries}"
-
-
-def get_commit_id(rev_id: str) -> str:
-    """Given a Git revision ID, return the corresponding commit ID.
-
-    Args:
-        rev_id: The Git revision ID.
-
-    Raises:
-        ConfigurationError: The ``git rev-parse`` command failed, suggesting
-            an invalid or ambiguous revision ID was supplied.
-    """
-    result = subprocess.run(
-        ["git", "rev-parse", "--verify", rev_id],
-        text=True,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise ConfigurationError(
-            f"{rev_id} is not a valid git reference.\n"
-            f"Command: {result.args}\n"
-            f"Stdout: {result.stdout}\n"
-            f"Stderr: {result.stderr}"
-        )
-    return result.stdout.strip()
 
 
 class StrEnum(Enum):
@@ -178,95 +150,6 @@ class TarCompressionFormat(StrEnum):
         'tar.{compression format}'.
         """
         return f"{self.value}" if self == self.none else f"{self.none.value}.{self.value}"
-
-
-class DPDKGitTarball:
-    """Compressed tarball of DPDK from the repository.
-
-    The class supports the :class:`os.PathLike` protocol,
-    which is used to get the Path of the tarball::
-
-        from pathlib import Path
-        tarball = DPDKGitTarball("HEAD", "output")
-        tarball_path = Path(tarball)
-    """
-
-    _git_ref: str
-    _tar_compression_format: TarCompressionFormat
-    _tarball_dir: Path
-    _tarball_name: str
-    _tarball_path: Path | None
-
-    def __init__(
-        self,
-        git_ref: str,
-        output_dir: str,
-        tar_compression_format: TarCompressionFormat = TarCompressionFormat.xz,
-    ):
-        """Create the tarball during initialization.
-
-        The DPDK version is specified with `git_ref`. The tarball will be compressed with
-        `tar_compression_format`, which must be supported by the DTS execution environment.
-        The resulting tarball will be put into `output_dir`.
-
-        Args:
-            git_ref: A git commit ID, tag ID or tree ID.
-            output_dir: The directory where to put the resulting tarball.
-            tar_compression_format: The compression format to use.
-        """
-        self._git_ref = git_ref
-        self._tar_compression_format = tar_compression_format
-
-        self._tarball_dir = Path(output_dir, "tarball")
-
-        self._create_tarball_dir()
-
-        self._tarball_name = (
-            f"dpdk-tarball-{self._git_ref}.{self._tar_compression_format.extension}"
-        )
-        self._tarball_path = self._check_tarball_path()
-        if not self._tarball_path:
-            self._create_tarball()
-
-    def _create_tarball_dir(self) -> None:
-        os.makedirs(self._tarball_dir, exist_ok=True)
-
-    def _check_tarball_path(self) -> Path | None:
-        if self._tarball_name in os.listdir(self._tarball_dir):
-            return Path(self._tarball_dir, self._tarball_name)
-        return None
-
-    def _create_tarball(self) -> None:
-        self._tarball_path = Path(self._tarball_dir, self._tarball_name)
-
-        atexit.register(self._delete_tarball)
-
-        result = subprocess.run(
-            'git -C "$(git rev-parse --show-toplevel)" archive '
-            f'{self._git_ref} --prefix="dpdk-tarball-{self._git_ref + os.sep}" | '
-            f"{self._tar_compression_format} > {Path(self._tarball_path.absolute())}",
-            shell=True,
-            text=True,
-            capture_output=True,
-        )
-
-        if result.returncode != 0:
-            raise SubprocessError(
-                f"Git archive creation failed with exit code {result.returncode}.\n"
-                f"Command: {result.args}\n"
-                f"Stdout: {result.stdout}\n"
-                f"Stderr: {result.stderr}"
-            )
-
-        atexit.unregister(self._delete_tarball)
-
-    def _delete_tarball(self) -> None:
-        if self._tarball_path and os.path.exists(self._tarball_path):
-            os.remove(self._tarball_path)
-
-    def __fspath__(self) -> str:
-        """The os.PathLike protocol implementation."""
-        return str(self._tarball_path)
 
 
 def convert_to_list_of_string(value: Any | list[Any]) -> list[str]:

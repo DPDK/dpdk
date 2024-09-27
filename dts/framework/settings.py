@@ -42,21 +42,14 @@ The command line arguments along with the supported environment variables are:
 .. option:: --dpdk-tree
 .. envvar:: DTS_DPDK_TREE
 
-    The path to the DPDK source tree directory to test. Cannot be used in conjunction with --tarball
-    and --revision.
+    The path to the DPDK source tree directory to test. Cannot be used in conjunction with
+    --tarball.
 
 .. option:: --tarball, --snapshot
 .. envvar:: DTS_DPDK_TARBALL
 
     The path to the DPDK source tarball to test. DPDK must be contained in a folder with the same
-    name as the tarball file. Cannot be used in conjunction with --dpdk-tree and
-    --revision.
-
-.. option:: --revision, --rev, --git-ref
-.. envvar:: DTS_DPDK_REVISION_ID
-
-    Git revision ID to test. Could be commit, tag, tree ID etc. To test local changes, first commit
-    them, then use their commit ID. Cannot be used in conjunction with --dpdk-tree and --tarball.
+    name as the tarball file. Cannot be used in conjunction with --dpdk-tree.
 
 .. option:: --remote-source
 .. envvar:: DTS_REMOTE_SOURCE
@@ -109,8 +102,6 @@ from pathlib import Path
 from typing import Callable
 
 from .config import DPDKLocation, TestSuiteConfig
-from .exception import ConfigurationError
-from .utils import DPDKGitTarball, get_commit_id
 
 
 @dataclass(slots=True)
@@ -257,14 +248,6 @@ class _EnvVarHelpFormatter(ArgumentDefaultsHelpFormatter):
         return help
 
 
-def _parse_revision_id(rev_id: str) -> str:
-    """Validate revision ID and retrieve corresponding commit ID."""
-    try:
-        return get_commit_id(rev_id)
-    except ConfigurationError:
-        raise argparse.ArgumentTypeError("The Git revision ID supplied is invalid or ambiguous")
-
-
 def _required_with_one_of(parser: _DTSArgumentParser, action: Action, *required_dests: str) -> None:
     """Verify that `action` is listed together with at least one of `required_dests`.
 
@@ -372,7 +355,7 @@ def _get_parser() -> _DTSArgumentParser:
     action = dpdk_source.add_argument(
         "--dpdk-tree",
         help="The path to the DPDK source tree directory to test. Cannot be used in conjunction "
-        "with --tarball and --revision.",
+        "with --tarball.",
         metavar="DIR_PATH",
         dest="dpdk_tree_path",
     )
@@ -382,25 +365,11 @@ def _get_parser() -> _DTSArgumentParser:
         "--tarball",
         "--snapshot",
         help="The path to the DPDK source tarball to test. DPDK must be contained in a folder with "
-        "the same name as the tarball file. Cannot be used in conjunction with --dpdk-tree and "
-        "--revision.",
+        "the same name as the tarball file. Cannot be used in conjunction with --dpdk-tree.",
         metavar="FILE_PATH",
         dest="dpdk_tarball_path",
     )
     _add_env_var_to_action(action, "DPDK_TARBALL")
-
-    action = dpdk_source.add_argument(
-        "--revision",
-        "--rev",
-        "--git-ref",
-        type=_parse_revision_id,
-        help="Git revision ID to test. Could be commit, tag, tree ID etc. To test local changes, "
-        "first commit them, then use their commit ID. Cannot be used in conjunction with "
-        "--dpdk-tree and --tarball.",
-        metavar="ID",
-        dest="dpdk_revision_id",
-    )
-    _add_env_var_to_action(action)
 
     action = dpdk_build.add_argument(
         "--remote-source",
@@ -410,9 +379,7 @@ def _get_parser() -> _DTSArgumentParser:
         "the SUT node. Can only be used with --dpdk-tree or --tarball.",
     )
     _add_env_var_to_action(action)
-    _required_with_one_of(
-        parser, action, "dpdk_tarball_path", "dpdk_tree_path"
-    )  # ignored if passed with git-ref
+    _required_with_one_of(parser, action, "dpdk_tarball_path", "dpdk_tree_path")
 
     action = dpdk_build.add_argument(
         "--precompiled-build-dir",
@@ -563,9 +530,6 @@ def get_settings() -> Settings:
     parser = _get_parser()
 
     args = parser.parse_args()
-
-    if args.dpdk_revision_id:
-        args.dpdk_tarball_path = Path(DPDKGitTarball(args.dpdk_revision_id, args.output_dir))
 
     args.dpdk_location = _process_dpdk_location(
         args.dpdk_tree_path, args.dpdk_tarball_path, args.remote_source, args.precompiled_build_dir
