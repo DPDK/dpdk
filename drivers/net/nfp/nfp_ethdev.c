@@ -932,6 +932,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
 	.dev_infos_get          = nfp_net_infos_get,
 	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
+	.dev_ptypes_set         = nfp_net_ptypes_set,
 	.mtu_set                = nfp_net_dev_mtu_set,
 	.mac_addr_set           = nfp_net_set_mac_addr,
 	.vlan_offload_set       = nfp_net_vlan_offload_set,
