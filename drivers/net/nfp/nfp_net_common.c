@@ -1459,11 +1459,51 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		return NULL;
 
 	net_hw = dev->data->dev_private;
-	if ((net_hw->super.ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return NULL;
 
 	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
+}
+
+int
+nfp_net_ptypes_set(struct rte_eth_dev *dev,
+		uint32_t ptype_mask)
+{
+	int ret;
+	uint32_t update;
+	uint32_t ctrl_ext;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
+
+	net_hw = dev->data->dev_private;
+	hw = &net_hw->super;
+
+	if ((hw->cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+		return -ENOTSUP;
+
+	ctrl_ext = hw->ctrl_ext;
+	if (ptype_mask == 0) {
+		if ((ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+			return 0;
+
+		ctrl_ext &= ~NFP_NET_CFG_CTRL_PKT_TYPE;
+	} else {
+		if ((ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
+			return 0;
+
+		ctrl_ext |= NFP_NET_CFG_CTRL_PKT_TYPE;
+	}
+
+	update = NFP_NET_CFG_UPDATE_GEN;
+
+	ret = nfp_ext_reconfig(hw, ctrl_ext, update);
+	if (ret != 0)
+		return ret;
+
+	hw->ctrl_ext = ctrl_ext;
+
+	return 0;
 }
 
 int
