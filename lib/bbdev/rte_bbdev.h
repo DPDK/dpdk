@@ -1062,6 +1062,53 @@ rte_bbdev_device_status_str(enum rte_bbdev_device_status status);
 const char*
 rte_bbdev_enqueue_status_str(enum rte_bbdev_enqueue_status status);
 
+/**
+ * Dump operations info from device to a file.
+ * This API is used for debugging provided input operations, not a dataplane API.
+ *
+ *  @param dev_id
+ *    The device identifier.
+ *
+ *  @param queue_index
+ *    Index of queue.
+ *
+ *  @param file
+ *    A pointer to a file for output.
+ *
+ * @returns
+ *   - 0 on success
+ *   - ENOTSUP if interrupts are not supported by the identified device
+ *   - negative value on failure - as returned from PMD
+ *
+ */
+__rte_experimental
+int
+rte_bbdev_queue_ops_dump(uint16_t dev_id, uint16_t queue_index, FILE *file);
+
+
+/**
+ * String of parameters related to the parameters of an operation of a given type.
+ *
+ *  @param op
+ *    Pointer to an operation.
+ *
+ *  @param op_type
+ *    Operation type enum.
+ *
+ *  @param str
+ *    String being describing the operations.
+ *
+ *  @param len
+ *    Size of the string buffer.
+ *
+ * @returns
+ *   String describing the provided operation.
+ *
+ */
+__rte_experimental
+char *
+rte_bbdev_ops_param_string(void *op, enum rte_bbdev_op_type op_type, char *str, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif

@@ -133,6 +133,13 @@ typedef int (*rte_bbdev_queue_intr_enable_t)(struct rte_bbdev *dev,
 typedef int (*rte_bbdev_queue_intr_disable_t)(struct rte_bbdev *dev,
 				    uint16_t queue_id);
 
+/*
+ * @internal
+ * Function to dump previous operations on a queue of a device.
+ */
+typedef int (*rte_bbdev_queue_ops_dump_t)(struct rte_bbdev *dev,
+		uint16_t queue_id, FILE *file);
+
 /**
  * Operations implemented by drivers. Fields marked as "Required" must be
  * provided by a driver for a device to have basic functionality. "Optional"
@@ -170,6 +177,8 @@ struct rte_bbdev_ops {
 	rte_bbdev_queue_intr_enable_t queue_intr_enable;
 	/** Disable queue interrupt. Optional */
 	rte_bbdev_queue_intr_disable_t queue_intr_disable;
+	/** Dump operations on the queue. Optional */
+	rte_bbdev_queue_ops_dump_t queue_ops_dump;
 };
 
 /**
