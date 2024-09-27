@@ -13,7 +13,7 @@ This intermediate module implements the common parts of mostly POSIX compliant d
 
 import re
 from collections.abc import Iterable
-from pathlib import PurePath, PurePosixPath
+from pathlib import Path, PurePath, PurePosixPath
 
 from framework.config import Architecture, NodeInfo
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
@@ -85,21 +85,13 @@ class PosixSession(OSSession):
         """Overrides :meth:`~.os_session.OSSession.join_remote_path`."""
         return PurePosixPath(*args)
 
-    def copy_from(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
         """Overrides :meth:`~.os_session.OSSession.copy_from`."""
-        self.remote_session.copy_from(source_file, destination_file)
+        self.remote_session.copy_from(source_file, destination_dir)
 
-    def copy_to(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def copy_to(self, source_file: str | Path, destination_dir: str | PurePath) -> None:
         """Overrides :meth:`~.os_session.OSSession.copy_to`."""
-        self.remote_session.copy_to(source_file, destination_file)
+        self.remote_session.copy_to(source_file, destination_dir)
 
     def remove_remote_dir(
         self,

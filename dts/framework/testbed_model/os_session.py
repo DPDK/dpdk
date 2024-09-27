@@ -25,7 +25,7 @@ Example:
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from ipaddress import IPv4Interface, IPv6Interface
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
@@ -178,35 +178,29 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def copy_from(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
         """Copy a file from the remote node to the local filesystem.
 
         Copy `source_file` from the remote node associated with this remote
-        session to `destination_file` on the local filesystem.
+        session to `destination_dir` on the local filesystem.
 
         Args:
-            source_file: the file on the remote node.
-            destination_file: a file or directory path on the local filesystem.
+            source_file: The file on the remote node.
+            destination_dir: The directory path on the local filesystem where the `source_file`
+                will be saved.
         """
 
     @abstractmethod
-    def copy_to(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def copy_to(self, source_file: str | Path, destination_dir: str | PurePath) -> None:
         """Copy a file from local filesystem to the remote node.
 
-        Copy `source_file` from local filesystem to `destination_file`
+        Copy `source_file` from local filesystem to `destination_dir`
         on the remote node associated with this remote session.
 
         Args:
-            source_file: the file on the local filesystem.
-            destination_file: a file or directory path on the remote node.
+            source_file: The file on the local filesystem.
+            destination_dir: The directory path on the remote Node where the `source_file`
+                will be saved.
         """
 
     @abstractmethod

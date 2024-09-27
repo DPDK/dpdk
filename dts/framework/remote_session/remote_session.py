@@ -12,7 +12,7 @@ the structure of the result of a command execution.
 
 from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
 from framework.config import NodeConfiguration
 from framework.exception import RemoteCommandExecutionError
@@ -196,35 +196,29 @@ class RemoteSession(ABC):
         """Check whether the remote session is still responding."""
 
     @abstractmethod
-    def copy_from(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
         """Copy a file from the remote Node to the local filesystem.
 
         Copy `source_file` from the remote Node associated with this remote session
-        to `destination_file` on the local filesystem.
+        to `destination_dir` on the local filesystem.
 
         Args:
             source_file: The file on the remote Node.
-            destination_file: A file or directory path on the local filesystem.
+            destination_dir: The directory path on the local filesystem where the `source_file`
+                will be saved.
         """
 
     @abstractmethod
-    def copy_to(
-        self,
-        source_file: str | PurePath,
-        destination_file: str | PurePath,
-    ) -> None:
+    def copy_to(self, source_file: str | Path, destination_dir: str | PurePath) -> None:
         """Copy a file from local filesystem to the remote Node.
 
-        Copy `source_file` from local filesystem to `destination_file` on the remote Node
+        Copy `source_file` from local filesystem to `destination_dir` on the remote Node
         associated with this remote session.
 
         Args:
             source_file: The file on the local filesystem.
-            destination_file: A file or directory path on the remote Node.
+            destination_dir: The directory path on the remote Node where the `source_file`
+                will be saved.
         """
 
     @abstractmethod
