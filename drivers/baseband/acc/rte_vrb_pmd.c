@@ -1436,6 +1436,62 @@ vrb_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
 	return 0;
 }
 
+static int
+vrb_queue_ops_dump(struct rte_bbdev *dev, uint16_t queue_id, FILE *f)
+{
+	struct acc_queue *q = dev->data->queues[queue_id].queue_private;
+	struct rte_bbdev_dec_op *op;
+	uint16_t i, int_nb;
+	volatile union acc_info_ring_data *ring_data;
+	uint16_t info_ring_head = q->d->info_ring_head;
+	static char str[1024];
+
+	if (f == NULL) {
+		rte_bbdev_log(ERR, "Invalid File input");
+		return -EINVAL;
+	}
+
+	/** Print generic information on queue status. */
+	fprintf(f, "Dump of operations %s on Queue %d by %s\n",
+			rte_bbdev_op_type_str(q->op_type), queue_id, dev->device->driver->name);
+	fprintf(f, "    AQ Enqueued %d Dequeued %d Depth %d - Available Enq %d Deq %d\n",
+			q->aq_enqueued, q->aq_dequeued, q->aq_depth,
+			acc_ring_avail_enq(q), acc_ring_avail_deq(q));
+
+	/** Print information captured in the info ring. */
+	if (q->d->info_ring != NULL) {
+		fprintf(f, "Info Ring Buffer - Head %d\n", q->d->info_ring_head);
+		ring_data = q->d->info_ring + (q->d->info_ring_head & ACC_INFO_RING_MASK);
+		while (ring_data->valid) {
+			int_nb = int_from_ring(*ring_data, q->d->device_variant);
+			if ((int_nb < ACC_PF_INT_DMA_DL_DESC_IRQ) || (
+					int_nb > ACC_PF_INT_DMA_MLD_DESC_IRQ)) {
+				fprintf(f, "  InfoRing: ITR:%d Info:0x%x",
+						int_nb, ring_data->detailed_info);
+				/* Initialize Info Ring entry and move forward. */
+				ring_data->valid = 0;
+			}
+			info_ring_head++;
+			ring_data = q->d->info_ring + (info_ring_head & ACC_INFO_RING_MASK);
+		}
+	}
+
+	fprintf(f, "Ring Content - Head %d Tail %d Depth %d\n",
+			q->sw_ring_head, q->sw_ring_tail, q->sw_ring_depth);
+	/** Print information about each operation in the software ring. */
+	for (i = 0; i < q->sw_ring_depth; ++i) {
+		op = (q->ring_addr + i)->req.op_addr;
+		if (op != NULL)
+			fprintf(f, "  %d\tn %d %s", i, (q->ring_addr + i)->req.numCBs,
+					rte_bbdev_ops_param_string(op, q->op_type,
+							str, sizeof(str)));
+	}
+
+	fprintf(f, "== End of File ==\n");
+
+	return 0;
+}
+
 static const struct rte_bbdev_ops vrb_bbdev_ops = {
 	.setup_queues = vrb_setup_queues,
 	.intr_enable = vrb_intr_enable,
@@ -1445,7 +1501,8 @@ static const struct rte_bbdev_ops vrb_bbdev_ops = {
 	.queue_release = vrb_queue_release,
 	.queue_stop = vrb_queue_stop,
 	.queue_intr_enable = vrb_queue_intr_enable,
-	.queue_intr_disable = vrb_queue_intr_disable
+	.queue_intr_disable = vrb_queue_intr_disable,
+	.queue_ops_dump = vrb_queue_ops_dump
 };
 
 /* PCI PF address map. */
