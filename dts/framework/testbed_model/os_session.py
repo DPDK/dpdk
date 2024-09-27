@@ -138,17 +138,6 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def guess_dpdk_remote_dir(self, remote_dir: str | PurePath) -> PurePath:
-        """Try to find DPDK directory in `remote_dir`.
-
-        The directory is the one which is created after the extraction of the tarball. The files
-        are usually extracted into a directory starting with ``dpdk-``.
-
-        Returns:
-            The absolute path of the DPDK remote directory, empty path if not found.
-        """
-
-    @abstractmethod
     def get_remote_tmp_dir(self) -> PurePath:
         """Get the path of the temporary directory of the remote OS.
 
@@ -175,6 +164,17 @@ class OSSession(ABC):
 
         Returns:
             The resulting joined path.
+        """
+
+    @abstractmethod
+    def remote_path_exists(self, remote_path: str | PurePath) -> bool:
+        """Check whether `remote_path` exists on the remote system.
+
+        Args:
+            remote_path: The path to check.
+
+        Returns:
+            :data:`True` if the path exists, :data:`False` otherwise.
         """
 
     @abstractmethod
@@ -342,6 +342,47 @@ class OSSession(ABC):
             remote_tarball_path: The tarball path on the remote node.
             expected_dir: If non-empty, check whether `expected_dir` exists after extracting
                 the archive.
+        """
+
+    @abstractmethod
+    def is_remote_dir(self, remote_path: str) -> bool:
+        """Check if the `remote_path` is a directory.
+
+        Args:
+            remote_tarball_path: The path to the remote tarball.
+
+        Returns:
+            If :data:`True` the `remote_path` is a directory, otherwise :data:`False`.
+        """
+
+    @abstractmethod
+    def is_remote_tarfile(self, remote_tarball_path: str) -> bool:
+        """Check if the `remote_tarball_path` is a tar archive.
+
+        Args:
+            remote_tarball_path: The path to the remote tarball.
+
+        Returns:
+            If :data:`True` the `remote_tarball_path` is a tar archive, otherwise :data:`False`.
+        """
+
+    @abstractmethod
+    def get_tarball_top_dir(
+        self, remote_tarball_path: str | PurePath
+    ) -> str | PurePosixPath | None:
+        """Get the top directory of the remote tarball.
+
+        Examines the contents of a tarball located at the given `remote_tarball_path` and
+        determines the top-level directory. If all files and directories in the tarball share
+        the same top-level directory, that directory name is returned. If the tarball contains
+        multiple top-level directories or is empty, the method return None.
+
+        Args:
+            remote_tarball_path: The path to the remote tarball.
+
+        Returns:
+            The top directory of the tarball. If there are multiple top directories
+            or the tarball is empty, returns :data:`None`.
         """
 
     @abstractmethod

@@ -110,9 +110,8 @@
         "mscv"
       ]
     },
-    "dpdk_build": {
+    "build_options": {
       "type": "object",
-      "description": "DPDK build configuration supported by DTS.",
       "properties": {
         "arch": {
           "type": "string",
@@ -133,7 +132,7 @@
         "compiler": {
           "$ref": "#/definitions/compiler"
         },
-          "compiler_wrapper": {
+        "compiler_wrapper": {
           "type": "string",
           "description": "This will be added before compiler to the CC variable when building DPDK. Optional."
         }
@@ -145,6 +144,63 @@
         "cpu",
         "compiler"
       ]
+    },
+    "dpdk_build": {
+      "type": "object",
+      "description": "DPDK source and build configuration.",
+      "properties": {
+        "dpdk_tree": {
+          "type": "string",
+          "description": "The path to the DPDK source tree directory to test. Only one of `dpdk_tree` or `tarball` must be provided."
+        },
+        "tarball": {
+          "type": "string",
+          "description": "The path to the DPDK source tarball to test. Only one of `dpdk_tree` or `tarball` must be provided."
+        },
+        "remote": {
+          "type": "boolean",
+          "description": "Optional, defaults to false. If it's true, the `dpdk_tree` or `tarball` is located on the SUT node, instead of the execution host."
+        },
+        "precompiled_build_dir": {
+          "type": "string",
+          "description": "If it's defined, DPDK has been pre-built and the build directory is located in a subdirectory of DPDK tree root directory. Otherwise, will be using a `build_options` to build the DPDK from source. Either this or `build_options` must be defined, but not both."
+        },
+        "build_options": {
+          "$ref": "#/definitions/build_options",
+          "description": "Either this or `precompiled_build_dir` must be defined, but not both. DPDK build configuration supported by DTS."
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+            "required": [
+              "dpdk_tree"
+              ]
+            },
+            {
+              "required": [
+                "tarball"
+              ]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": [
+                "precompiled_build_dir"
+              ]
+            },
+            {
+              "required": [
+                "build_options"
+              ]
+            }
+          ]
+        }
+      ],
+      "additionalProperties": false
     },
     "hugepages_2mb": {
       "type": "object",

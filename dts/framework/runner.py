@@ -364,15 +364,19 @@ class DTSRunner:
             test_run_config: A test run configuration.
             test_run_result: The test run's result.
             test_suites_with_cases: The test suites with test cases to run.
+
+        Raises:
+            ConfigurationError: If the DPDK sources or build is not set up from config or settings.
         """
         self._logger.info(
             f"Running test run with SUT '{test_run_config.system_under_test_node.name}'."
         )
         test_run_result.add_sut_info(sut_node.node_info)
         try:
-            sut_node.set_up_test_run(test_run_config)
+            dpdk_location = SETTINGS.dpdk_location or test_run_config.dpdk_config.dpdk_location
+            sut_node.set_up_test_run(test_run_config, dpdk_location)
             test_run_result.add_dpdk_build_info(sut_node.get_dpdk_build_info())
-            tg_node.set_up_test_run(test_run_config)
+            tg_node.set_up_test_run(test_run_config, dpdk_location)
             test_run_result.update_setup(Result.PASS)
         except Exception as e:
             self._logger.exception("Test run setup failed.")

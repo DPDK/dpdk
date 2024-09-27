@@ -184,8 +184,8 @@ class InteractiveCommandExecutionError(DTSError):
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR
 
 
-class RemoteDirectoryExistsError(DTSError):
-    """A directory that exists on a remote node."""
+class RemoteFileNotFoundError(DTSError):
+    """A remote file or directory is requested but doesn’t exist."""
 
     #:
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR

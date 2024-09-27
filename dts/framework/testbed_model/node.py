@@ -15,12 +15,11 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 
 from abc import ABC
 from ipaddress import IPv4Interface, IPv6Interface
-from typing import Any, Callable, Union
+from typing import Union
 
-from framework.config import OS, NodeConfiguration, TestRunConfiguration
+from framework.config import OS, DPDKLocation, NodeConfiguration, TestRunConfiguration
 from framework.exception import ConfigurationError
 from framework.logger import DTSLogger, get_dts_logger
-from framework.settings import SETTINGS
 
 from .cpu import (
     LogicalCore,
@@ -95,7 +94,9 @@ class Node(ABC):
         for port in self.ports:
             self.configure_port_state(port)
 
-    def set_up_test_run(self, test_run_config: TestRunConfiguration) -> None:
+    def set_up_test_run(
+        self, test_run_config: TestRunConfiguration, dpdk_location: DPDKLocation
+    ) -> None:
         """Test run setup steps.
 
         Configure hugepages on all DTS node types. Additional steps can be added by
@@ -104,6 +105,7 @@ class Node(ABC):
         Args:
             test_run_config: A test run configuration according to which
                 the setup steps will be taken.
+            dpdk_location: The target source of the DPDK tree.
         """
         self._setup_hugepages()
 
@@ -215,18 +217,6 @@ class Node(ABC):
             self.main_session.close()
         for session in self._other_sessions:
             session.close()
-
-    @staticmethod
-    def skip_setup(func: Callable[..., Any]) -> Callable[..., Any]:
-        """Skip the decorated function.
-
-        The :option:`--skip-setup` command line argument and the :envvar:`DTS_SKIP_SETUP`
-        environment variable enable the decorator.
-        """
-        if SETTINGS.skip_setup:
-            return lambda *args: None
-        else:
-            return func
 
 
 def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger) -> OSSession:

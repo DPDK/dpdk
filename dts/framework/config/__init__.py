@@ -35,6 +35,7 @@ All of them use slots and are frozen:
 
 import json
 import os.path
+import tarfile
 from dataclasses import dataclass, fields
 from enum import auto, unique
 from pathlib import Path
@@ -47,6 +48,7 @@ from typing_extensions import Self
 from framework.config.types import (
     ConfigurationDict,
     DPDKBuildConfigDict,
+    DPDKConfigurationDict,
     NodeConfigDict,
     PortConfigDict,
     TestRunConfigDict,
@@ -381,6 +383,117 @@ class DPDKBuildConfiguration:
 
 
 @dataclass(slots=True, frozen=True)
+class DPDKLocation:
+    """DPDK location.
+
+    The path to the DPDK sources, build dir and type of location.
+
+    Attributes:
+        dpdk_tree: The path to the DPDK source tree directory. Only one of `dpdk_tree` or `tarball`
+            must be provided.
+        tarball: The path to the DPDK tarball. Only one of `dpdk_tree` or `tarball` must be
+            provided.
+        remote: Optional, defaults to :data:`False`. If :data:`True`, `dpdk_tree` or `tarball` is
+            located on the SUT node, instead of the execution host.
+        build_dir: If it's defined, DPDK has been pre-compiled and the build directory is located in
+            a subdirectory of `dpdk_tree` or `tarball` root directory. Otherwise, will be using
+            `build_options` from configuration to build the DPDK from source.
+    """
+
+    dpdk_tree: str | None
+    tarball: str | None
+    remote: bool
+    build_dir: str | None
+
+    @classmethod
+    def from_dict(cls, d: DPDKConfigurationDict) -> Self:
+        """A convenience method that processes and validates the inputs before creating an instance.
+
+        Validate existence and format of `dpdk_tree` or `tarball` on local filesystem, if
+        `remote` is False.
+
+        Args:
+            d: The configuration dictionary.
+
+        Returns:
+            The DPDK location instance.
+
+        Raises:
+            ConfigurationError: If `dpdk_tree` or `tarball` not found in local filesystem or they
+                aren't in the right format.
+        """
+        dpdk_tree = d.get("dpdk_tree")
+        tarball = d.get("tarball")
+        remote = d.get("remote", False)
+
+        if not remote:
+            if dpdk_tree:
+                if not Path(dpdk_tree).exists():
+                    raise ConfigurationError(
+                        f"DPDK tree '{dpdk_tree}' not found in local filesystem."
+                    )
+
+                if not Path(dpdk_tree).is_dir():
+                    raise ConfigurationError(f"The DPDK tree '{dpdk_tree}' must be a directory.")
+
+                dpdk_tree = os.path.realpath(dpdk_tree)
+
+            if tarball:
+                if not Path(tarball).exists():
+                    raise ConfigurationError(
+                        f"DPDK tarball '{tarball}' not found in local filesystem."
+                    )
+
+                if not tarfile.is_tarfile(tarball):
+                    raise ConfigurationError(
+                        f"The DPDK tarball '{tarball}' must be a valid tar archive."
+                    )
+
+        return cls(
+            dpdk_tree=dpdk_tree,
+            tarball=tarball,
+            remote=remote,
+            build_dir=d.get("precompiled_build_dir"),
+        )
+
+
+@dataclass
+class DPDKConfiguration:
+    """The configuration of the DPDK build.
+
+    The configuration contain the location of the DPDK and configuration used for
+    building it.
+
+    Attributes:
+        dpdk_location: The location of the DPDK tree.
+        dpdk_build_config: A DPDK build configuration to test. If :data:`None`,
+            DTS will use pre-built DPDK from `build_dir` in a :class:`DPDKLocation`.
+    """
+
+    dpdk_location: DPDKLocation
+    dpdk_build_config: DPDKBuildConfiguration | None
+
+    @classmethod
+    def from_dict(cls, d: DPDKConfigurationDict) -> Self:
+        """A convenience method that processes the inputs before creating an instance.
+
+        Args:
+            d: The configuration dictionary.
+
+        Returns:
+            The DPDK configuration.
+        """
+        return cls(
+            dpdk_location=DPDKLocation.from_dict(d),
+            dpdk_build_config=(
+                DPDKBuildConfiguration.from_dict(d["build_options"])
+                if d.get("build_options")
+                else None
+            ),
+        )
+
+
+@dataclass(slots=True, frozen=True)
 class DPDKBuildInfo:
     """Various versions and other information about a DPDK build.
 
@@ -389,8 +502,8 @@ class DPDKBuildInfo:
         compiler_version: The version of the compiler used to build DPDK.
     """
 
-    dpdk_version: str
-    compiler_version: str
+    dpdk_version: str | None
+    compiler_version: str | None
 
 
 @dataclass(slots=True, frozen=True)
@@ -437,7 +550,7 @@ class TestRunConfiguration:
     and with what DPDK build.
 
     Attributes:
-        dpdk_build: A DPDK build to test.
+        dpdk_config: The DPDK configuration used to test.
         perf: Whether to run performance tests.
         func: Whether to run functional tests.
         skip_smoke_tests: Whether to skip smoke tests.
@@ -448,7 +561,7 @@ class TestRunConfiguration:
         random_seed: The seed to use for pseudo-random generation.
     """
 
-    dpdk_build: DPDKBuildConfiguration
+    dpdk_config: DPDKConfiguration
     perf: bool
     func: bool
     skip_smoke_tests: bool
@@ -498,7 +611,7 @@ class TestRunConfiguration:
         )
         random_seed = d.get("random_seed", None)
         return cls(
-            dpdk_build=DPDKBuildConfiguration.from_dict(d["dpdk_build"]),
+            dpdk_config=DPDKConfiguration.from_dict(d["dpdk_build"]),
             perf=d["perf"],
             func=d["func"],
             skip_smoke_tests=skip_smoke_tests,
