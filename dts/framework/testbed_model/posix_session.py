@@ -18,7 +18,13 @@ from pathlib import Path, PurePath, PurePosixPath
 from framework.config import Architecture, NodeInfo
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
 from framework.settings import SETTINGS
-from framework.utils import MesonArgs
+from framework.utils import (
+    MesonArgs,
+    TarCompressionFormat,
+    convert_to_list_of_string,
+    create_tarball,
+    extract_tarball,
+)
 
 from .os_session import OSSession
 
@@ -93,6 +99,48 @@ class PosixSession(OSSession):
         """Overrides :meth:`~.os_session.OSSession.copy_to`."""
         self.remote_session.copy_to(source_file, destination_dir)
 
+    def copy_dir_from(
+        self,
+        source_dir: str | PurePath,
+        destination_dir: str | Path,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_dir_from`."""
+        source_dir = PurePath(source_dir)
+        remote_tarball_path = self.create_remote_tarball(source_dir, compress_format, exclude)
+
+        self.copy_from(remote_tarball_path, destination_dir)
+        self.remove_remote_file(remote_tarball_path)
+
+        tarball_path = Path(destination_dir, f"{source_dir.name}.{compress_format.extension}")
+        extract_tarball(tarball_path)
+        tarball_path.unlink()
+
+    def copy_dir_to(
+        self,
+        source_dir: str | Path,
+        destination_dir: str | PurePath,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_dir_to`."""
+        source_dir = Path(source_dir)
+        tarball_path = create_tarball(source_dir, compress_format, exclude=exclude)
+        self.copy_to(tarball_path, destination_dir)
+        tarball_path.unlink()
+
+        remote_tar_path = self.join_remote_path(
+            destination_dir, f"{source_dir.name}.{compress_format.extension}"
+        )
+        self.extract_remote_tarball(remote_tar_path)
+        self.remove_remote_file(remote_tar_path)
+
+    def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
+        """Overrides :meth:`~.os_session.OSSession.remove_remote_dir`."""
+        opts = PosixSession.combine_short_options(f=force)
+        self.send_command(f"rm{opts} {remote_file_path}")
+
     def remove_remote_dir(
         self,
         remote_dir_path: str | PurePath,
@@ -103,10 +151,42 @@ class PosixSession(OSSession):
         opts = PosixSession.combine_short_options(r=recursive, f=force)
         self.send_command(f"rm{opts} {remote_dir_path}")
 
-    def extract_remote_tarball(
+    def create_remote_tarball(
         self,
-        remote_tarball_path: str | PurePath,
-        expected_dir: str | PurePath | None = None,
+        remote_dir_path: str | PurePath,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> PurePosixPath:
+        """Overrides :meth:`~.os_session.OSSession.create_remote_tarball`."""
+
+        def generate_tar_exclude_args(exclude_patterns) -> str:
+            """Generate args to exclude patterns when creating a tarball.
+
+            Args:
+                exclude_patterns: Patterns for files or directories to exclude from the tarball.
+                    These patterns are used with `tar`'s `--exclude` option.
+
+            Returns:
+                The generated string args to exclude the specified patterns.
+            """
+            if exclude_patterns:
+                exclude_patterns = convert_to_list_of_string(exclude_patterns)
+                return "".join([f" --exclude={pattern}" for pattern in exclude_patterns])
+            return ""
+
+        posix_remote_dir_path = PurePosixPath(remote_dir_path)
+        target_tarball_path = PurePosixPath(f"{remote_dir_path}.{compress_format.extension}")
+
+        self.send_command(
+            f"tar caf {target_tarball_path}{generate_tar_exclude_args(exclude)} "
+            f"-C {posix_remote_dir_path.parent} {posix_remote_dir_path.name}",
+            60,
+        )
+
+        return target_tarball_path
+
+    def extract_remote_tarball(
+        self, remote_tarball_path: str | PurePath, expected_dir: str | PurePath | None = None
     ) -> None:
         """Overrides :meth:`~.os_session.OSSession.extract_remote_tarball`."""
         self.send_command(

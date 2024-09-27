@@ -25,7 +25,7 @@ Example:
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from ipaddress import IPv4Interface, IPv6Interface
-from pathlib import Path, PurePath
+from pathlib import Path, PurePath, PurePosixPath
 from typing import Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
@@ -38,7 +38,7 @@ from framework.remote_session import (
 )
 from framework.remote_session.remote_session import CommandResult
 from framework.settings import SETTINGS
-from framework.utils import MesonArgs
+from framework.utils import MesonArgs, TarCompressionFormat
 
 from .cpu import LogicalCore
 from .port import Port
@@ -204,6 +204,95 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def copy_dir_from(
+        self,
+        source_dir: str | PurePath,
+        destination_dir: str | Path,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> None:
+        """Copy a directory from the remote node to the local filesystem.
+
+        Copy `source_dir` from the remote node associated with this remote session to
+        `destination_dir` on the local filesystem. The new local directory will be created
+        at `destination_dir` path.
+
+        Example:
+            source_dir = '/remote/path/to/source'
+            destination_dir = '/local/path/to/destination'
+            compress_format = TarCompressionFormat.xz
+
+            The method will:
+                1. Create a tarball from `source_dir`, resulting in:
+                    '/remote/path/to/source.tar.xz',
+                2. Copy '/remote/path/to/source.tar.xz' to
+                    '/local/path/to/destination/source.tar.xz',
+                3. Extract the contents of the tarball, resulting in:
+                    '/local/path/to/destination/source/',
+                4. Remove the tarball after extraction
+                    ('/local/path/to/destination/source.tar.xz').
+
+            Final Path Structure:
+                '/local/path/to/destination/source/'
+
+        Args:
+            source_dir: The directory on the remote node.
+            destination_dir: The directory path on the local filesystem.
+            compress_format: The compression format to use. Defaults to no compression.
+            exclude: Patterns for files or directories to exclude from the tarball.
+                These patterns are used with `tar`'s `--exclude` option.
+        """
+
+    @abstractmethod
+    def copy_dir_to(
+        self,
+        source_dir: str | Path,
+        destination_dir: str | PurePath,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> None:
+        """Copy a directory from the local filesystem to the remote node.
+
+        Copy `source_dir` from the local filesystem to `destination_dir` on the remote node
+        associated with this remote session. The new remote directory will be created at
+        `destination_dir` path.
+
+        Example:
+            source_dir = '/local/path/to/source'
+            destination_dir = '/remote/path/to/destination'
+            compress_format = TarCompressionFormat.xz
+
+            The method will:
+                1. Create a tarball from `source_dir`, resulting in:
+                    '/local/path/to/source.tar.xz',
+                2. Copy '/local/path/to/source.tar.xz' to
+                    '/remote/path/to/destination/source.tar.xz',
+                3. Extract the contents of the tarball, resulting in:
+                    '/remote/path/to/destination/source/',
+                4. Remove the tarball after extraction
+                    ('/remote/path/to/destination/source.tar.xz').
+
+            Final Path Structure:
+                '/remote/path/to/destination/source/'
+
+        Args:
+            source_dir: The directory on the local filesystem.
+            destination_dir: The directory path on the remote node.
+            compress_format: The compression format to use. Defaults to no compression.
+            exclude: Patterns for files or directories to exclude from the tarball.
+                These patterns are used with `fnmatch.fnmatch` to filter out files.
+        """
+
+    @abstractmethod
+    def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
+        """Remove remote file, by default remove forcefully.
+
+        Args:
+            remote_file_path: The file path to remove.
+            force: If :data:`True`, ignore all warnings and try to remove at all costs.
+        """
+
+    @abstractmethod
     def remove_remote_dir(
         self,
         remote_dir_path: str | PurePath,
@@ -213,9 +302,32 @@ class OSSession(ABC):
         """Remove remote directory, by default remove recursively and forcefully.
 
         Args:
-            remote_dir_path: The path of the directory to remove.
+            remote_dir_path: The directory path to remove.
             recursive: If :data:`True`, also remove all contents inside the directory.
             force: If :data:`True`, ignore all warnings and try to remove at all costs.
+        """
+
+    @abstractmethod
+    def create_remote_tarball(
+        self,
+        remote_dir_path: str | PurePath,
+        compress_format: TarCompressionFormat = TarCompressionFormat.none,
+        exclude: str | list[str] | None = None,
+    ) -> PurePosixPath:
+        """Create a tarball from the contents of the specified remote directory.
+
+        This method creates a tarball containing all files and directories
+        within `remote_dir_path`. The tarball will be saved in the directory of
+        `remote_dir_path` and will be named based on `remote_dir_path`.
+
+        Args:
+            remote_dir_path: The directory path on the remote node.
+            compress_format: The compression format to use. Defaults to no compression.
+            exclude: Patterns for files or directories to exclude from the tarball.
+                These patterns are used with `tar`'s `--exclude` option.
+
+        Returns:
+            The path to the created tarball on the remote node.
         """
 
     @abstractmethod
@@ -227,7 +339,7 @@ class OSSession(ABC):
         """Extract remote tarball in its remote directory.
 
         Args:
-            remote_tarball_path: The path of the tarball on the remote node.
+            remote_tarball_path: The tarball path on the remote node.
             expected_dir: If non-empty, check whether `expected_dir` exists after extracting
                 the archive.
         """
