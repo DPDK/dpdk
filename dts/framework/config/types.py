@@ -71,7 +71,7 @@ class NodeConfigDict(TypedDict):
     traffic_generator: TrafficGeneratorConfigDict
 
 
-class BuildTargetConfigDict(TypedDict):
+class DPDKBuildConfigDict(TypedDict):
     """Allowed keys and values."""
 
     #:
@@ -108,7 +108,7 @@ class TestRunConfigDict(TypedDict):
     """Allowed keys and values."""
 
     #:
-    build_targets: list[BuildTargetConfigDict]
+    dpdk_builds: list[DPDKBuildConfigDict]
     #:
     perf: bool
     #:

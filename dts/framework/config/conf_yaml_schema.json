@@ -110,9 +110,9 @@
         "mscv"
       ]
     },
-    "build_target": {
+    "dpdk_build": {
       "type": "object",
-      "description": "Targets supported by DTS",
+      "description": "DPDK build configuration supported by DTS.",
       "properties": {
         "arch": {
           "type": "string",
@@ -328,10 +328,10 @@
       "items": {
         "type": "object",
         "properties": {
-          "build_targets": {
+          "dpdk_builds": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/build_target"
+              "$ref": "#/definitions/dpdk_build"
             },
             "minimum": 1
           },
@@ -388,7 +388,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "build_targets",
+          "dpdk_builds",
           "perf",
           "func",
           "test_suites",

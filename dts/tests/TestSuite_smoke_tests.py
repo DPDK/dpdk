@@ -31,7 +31,7 @@ class TestSmokeTests(TestSuite):
 
     Attributes:
         is_blocking: This test suite will block the execution of all other test suites
-            in the build target after it.
+            in the DPDK build after it.
         nics_in_node: The NICs present on the SUT node.
     """
 

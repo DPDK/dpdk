@@ -4,7 +4,7 @@
 
 test_runs:
   # define one test run environment
-  - build_targets:
+  - dpdk_builds:
       - arch: x86_64
         os: linux
         cpu: native

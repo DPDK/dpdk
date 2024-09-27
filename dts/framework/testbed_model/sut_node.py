@@ -18,8 +18,8 @@ import time
 from pathlib import PurePath
 
 from framework.config import (
-    BuildTargetConfiguration,
-    BuildTargetInfo,
+    DPDKBuildConfiguration,
+    DPDKBuildInfo,
     NodeInfo,
     SutNodeConfiguration,
     TestRunConfiguration,
@@ -57,7 +57,7 @@ class SutNode(Node):
     virtual_devices: list[VirtualDevice]
     dpdk_prefix_list: list[str]
     dpdk_timestamp: str
-    _build_target_config: BuildTargetConfiguration | None
+    _dpdk_build_config: DPDKBuildConfiguration | None
     _env_vars: dict
     _remote_tmp_dir: PurePath
     __remote_dpdk_dir: PurePath | None
@@ -77,7 +77,7 @@ class SutNode(Node):
         super().__init__(node_config)
         self.virtual_devices = []
         self.dpdk_prefix_list = []
-        self._build_target_config = None
+        self._dpdk_build_config = None
         self._env_vars = {}
         self._remote_tmp_dir = self.main_session.get_remote_tmp_dir()
         self.__remote_dpdk_dir = None
@@ -115,9 +115,9 @@ class SutNode(Node):
         This is the directory where DPDK was built.
         We assume it was built in a subdirectory of the extracted tarball.
         """
-        if self._build_target_config:
+        if self._dpdk_build_config:
             return self.main_session.join_remote_path(
-                self._remote_dpdk_dir, self._build_target_config.name
+                self._remote_dpdk_dir, self._dpdk_build_config.name
             )
         else:
             return self.main_session.join_remote_path(self._remote_dpdk_dir, "build")
@@ -140,13 +140,13 @@ class SutNode(Node):
     def compiler_version(self) -> str:
         """The node's compiler version."""
         if self._compiler_version is None:
-            if self._build_target_config is not None:
+            if self._dpdk_build_config is not None:
                 self._compiler_version = self.main_session.get_compiler_version(
-                    self._build_target_config.compiler.name
+                    self._dpdk_build_config.compiler.name
                 )
             else:
                 self._logger.warning(
-                    "Failed to get compiler version because _build_target_config is None."
+                    "Failed to get compiler version because _dpdk_build_config is None."
                 )
                 return ""
         return self._compiler_version
@@ -160,15 +160,13 @@ class SutNode(Node):
             )
         return self._path_to_devbind_script
 
-    def get_build_target_info(self) -> BuildTargetInfo:
-        """Get additional build target information.
+    def get_dpdk_build_info(self) -> DPDKBuildInfo:
+        """Get additional DPDK build information.
 
         Returns:
-            The build target information,
+            The DPDK build information,
         """
-        return BuildTargetInfo(
-            dpdk_version=self.dpdk_version, compiler_version=self.compiler_version
-        )
+        return DPDKBuildInfo(dpdk_version=self.dpdk_version, compiler_version=self.compiler_version)
 
     def _guess_dpdk_remote_dir(self) -> PurePath:
         return self.main_session.guess_dpdk_remote_dir(self._remote_tmp_dir)
@@ -189,40 +187,39 @@ class SutNode(Node):
         super().tear_down_test_run()
         self.virtual_devices = []
 
-    def set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
+    def set_up_dpdk(self, dpdk_build_config: DPDKBuildConfiguration) -> None:
         """Set up DPDK the SUT node and bind ports.
 
         DPDK setup includes setting all internals needed for the build, the copying of DPDK tarball
         and then building DPDK. The drivers are bound to those that DPDK needs.
 
         Args:
-            build_target_config: The build target test run configuration according to which
+            dpdk_build_config: The DPDK build test run configuration according to which
                 the setup steps will be taken.
         """
-        self._configure_build_target(build_target_config)
+        self._configure_dpdk_build(dpdk_build_config)
         self._copy_dpdk_tarball()
         self._build_dpdk()
         self.bind_ports_to_driver()
 
-    def tear_down_build_target(self) -> None:
+    def tear_down_dpdk(self) -> None:
         """Reset DPDK variables and bind port driver to the OS driver."""
         self._env_vars = {}
-        self._build_target_config = None
+        self._dpdk_build_config = None
         self.__remote_dpdk_dir = None
         self._dpdk_version = None
         self._compiler_version = None
         self.bind_ports_to_driver(for_dpdk=False)
 
-    def _configure_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
-        """Populate common environment variables and set build target config."""
+    def _configure_dpdk_build(self, dpdk_build_config: DPDKBuildConfiguration) -> None:
+        """Populate common environment variables and set DPDK build config."""
         self._env_vars = {}
-        self._build_target_config = build_target_config
-        self._env_vars.update(self.main_session.get_dpdk_build_env_vars(build_target_config.arch))
-        self._env_vars["CC"] = build_target_config.compiler.name
-        if build_target_config.compiler_wrapper:
-            self._env_vars["CC"] = (
-                f"'{build_target_config.compiler_wrapper} {build_target_config.compiler.name}'"
-            )  # fmt: skip
+        self._dpdk_build_config = dpdk_build_config
+        self._env_vars.update(self.main_session.get_dpdk_build_env_vars(dpdk_build_config.arch))
+        if compiler_wrapper := dpdk_build_config.compiler_wrapper:
+            self._env_vars["CC"] = f"'{compiler_wrapper} {dpdk_build_config.compiler.name}'"
+        else:
+            self._env_vars["CC"] = dpdk_build_config.compiler.name
 
     @Node.skip_setup
     def _copy_dpdk_tarball(self) -> None:

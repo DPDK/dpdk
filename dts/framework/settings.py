@@ -278,7 +278,7 @@ def _get_parser() -> _DTSArgumentParser:
         "--config-file",
         default=SETTINGS.config_file_path,
         type=Path,
-        help="The configuration file that describes the test cases, SUTs and targets.",
+        help="The configuration file that describes the test cases, SUTs and DPDK build configs.",
         metavar="FILE_PATH",
         dest="config_file_path",
     )

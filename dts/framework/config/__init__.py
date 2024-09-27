@@ -45,8 +45,8 @@ import yaml
 from typing_extensions import Self
 
 from framework.config.types import (
-    BuildTargetConfigDict,
     ConfigurationDict,
+    DPDKBuildConfigDict,
     NodeConfigDict,
     PortConfigDict,
     TestRunConfigDict,
@@ -335,7 +335,7 @@ class NodeInfo:
 
 
 @dataclass(slots=True, frozen=True)
-class BuildTargetConfiguration:
+class DPDKBuildConfiguration:
     """DPDK build configuration.
 
     The configuration used for building DPDK.
@@ -358,7 +358,7 @@ class BuildTargetConfiguration:
     name: str
 
     @classmethod
-    def from_dict(cls, d: BuildTargetConfigDict) -> Self:
+    def from_dict(cls, d: DPDKBuildConfigDict) -> Self:
         r"""A convenience method that processes the inputs before creating an instance.
 
         `arch`, `os`, `cpu` and `compiler` are converted to :class:`Enum`\s and
@@ -368,7 +368,7 @@ class BuildTargetConfiguration:
             d: The configuration dictionary.
 
         Returns:
-            The build target configuration instance.
+            The DPDK build configuration instance.
         """
         return cls(
             arch=Architecture(d["arch"]),
@@ -381,8 +381,8 @@ class BuildTargetConfiguration:
 
 
 @dataclass(slots=True, frozen=True)
-class BuildTargetInfo:
-    """Various versions and other information about a build target.
+class DPDKBuildInfo:
+    """Various versions and other information about a DPDK build.
 
     Attributes:
         dpdk_version: The DPDK version that was built.
@@ -437,7 +437,7 @@ class TestRunConfiguration:
     and with what DPDK build.
 
     Attributes:
-        build_targets: A list of DPDK builds to test.
+        dpdk_builds: A list of DPDK builds to test.
         perf: Whether to run performance tests.
         func: Whether to run functional tests.
         skip_smoke_tests: Whether to skip smoke tests.
@@ -448,7 +448,7 @@ class TestRunConfiguration:
         random_seed: The seed to use for pseudo-random generation.
     """
 
-    build_targets: list[BuildTargetConfiguration]
+    dpdk_builds: list[DPDKBuildConfiguration]
     perf: bool
     func: bool
     skip_smoke_tests: bool
@@ -466,7 +466,7 @@ class TestRunConfiguration:
     ) -> Self:
         """A convenience method that processes the inputs before creating an instance.
 
-        The build target and the test suite config are transformed into their respective objects.
+        The DPDK build and the test suite config are transformed into their respective objects.
         SUT and TG configurations are taken from `node_map`. The other (:class:`bool`) attributes
         are just stored.
 
@@ -477,8 +477,8 @@ class TestRunConfiguration:
         Returns:
             The test run configuration instance.
         """
-        build_targets: list[BuildTargetConfiguration] = list(
-            map(BuildTargetConfiguration.from_dict, d["build_targets"])
+        dpdk_builds: list[DPDKBuildConfiguration] = list(
+            map(DPDKBuildConfiguration.from_dict, d["dpdk_builds"])
         )
         test_suites: list[TestSuiteConfig] = list(map(TestSuiteConfig.from_dict, d["test_suites"]))
         sut_name = d["system_under_test_node"]["node_name"]
@@ -501,7 +501,7 @@ class TestRunConfiguration:
         )
         random_seed = d.get("random_seed", None)
         return cls(
-            build_targets=build_targets,
+            dpdk_builds=dpdk_builds,
             perf=d["perf"],
             func=d["func"],
             skip_smoke_tests=skip_smoke_tests,
@@ -552,7 +552,7 @@ class Configuration:
     def from_dict(cls, d: ConfigurationDict) -> Self:
         """A convenience method that processes the inputs before creating an instance.
 
-        Build target and test suite config are transformed into their respective objects.
+        DPDK build and test suite config are transformed into their respective objects.
         SUT and TG configurations are taken from `node_map`. The other (:class:`bool`) attributes
         are just stored.
 
