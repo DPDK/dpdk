@@ -108,7 +108,7 @@ class TestRunConfigDict(TypedDict):
     """Allowed keys and values."""
 
     #:
-    dpdk_builds: list[DPDKBuildConfigDict]
+    dpdk_build: DPDKBuildConfigDict
     #:
     perf: bool
     #:

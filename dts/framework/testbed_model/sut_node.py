@@ -181,13 +181,15 @@ class SutNode(Node):
         super().set_up_test_run(test_run_config)
         for vdev in test_run_config.vdevs:
             self.virtual_devices.append(VirtualDevice(vdev))
+        self._set_up_dpdk(test_run_config.dpdk_build)
 
     def tear_down_test_run(self) -> None:
         """Extend the test run teardown with virtual device teardown."""
         super().tear_down_test_run()
         self.virtual_devices = []
+        self._tear_down_dpdk()
 
-    def set_up_dpdk(self, dpdk_build_config: DPDKBuildConfiguration) -> None:
+    def _set_up_dpdk(self, dpdk_build_config: DPDKBuildConfiguration) -> None:
         """Set up DPDK the SUT node and bind ports.
 
         DPDK setup includes setting all internals needed for the build, the copying of DPDK tarball
@@ -202,7 +204,7 @@ class SutNode(Node):
         self._build_dpdk()
         self.bind_ports_to_driver()
 
-    def tear_down_dpdk(self) -> None:
+    def _tear_down_dpdk(self) -> None:
         """Reset DPDK variables and bind port driver to the OS driver."""
         self._env_vars = {}
         self._dpdk_build_config = None

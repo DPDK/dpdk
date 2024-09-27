@@ -33,15 +33,11 @@ class DtsStage(StrEnum):
     #:
     test_run_setup = auto()
     #:
-    dpdk_build_setup = auto()
-    #:
     test_suite_setup = auto()
     #:
     test_suite = auto()
     #:
     test_suite_teardown = auto()
-    #:
-    dpdk_build_teardown = auto()
     #:
     test_run_teardown = auto()
     #:

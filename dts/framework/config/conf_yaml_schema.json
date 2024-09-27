@@ -328,12 +328,8 @@
       "items": {
         "type": "object",
         "properties": {
-          "dpdk_builds": {
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/dpdk_build"
-            },
-            "minimum": 1
+          "dpdk_build": {
+            "$ref": "#/definitions/dpdk_build"
           },
           "perf": {
             "type": "boolean",
@@ -388,7 +384,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "dpdk_builds",
+          "dpdk_build",
           "perf",
           "func",
           "test_suites",

@@ -71,7 +71,7 @@ class TestSuite(TestProtocol):
     sut_node: SutNode
     tg_node: TGNode
     #: Whether the test suite is blocking. A failure of a blocking test suite
-    #: will block the execution of all subsequent test suites in the current DPDK build.
+    #: will block the execution of all subsequent test suites in the current test run.
     is_blocking: ClassVar[bool] = False
     _logger: DTSLogger
     _sut_port_ingress: Port

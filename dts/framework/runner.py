@@ -12,7 +12,7 @@ The module is responsible for running DTS in a series of stages:
     #. Test suite stage,
     #. Test case stage.
 
-The test run and DPDK build stages set up the environment before running test suites.
+The test run stage sets up the environment before running test suites.
 The test suite stage sets up steps common to all test cases
 and the test case stage runs test cases individually.
 """
@@ -30,13 +30,7 @@ from framework.testbed_model.capability import Capability, get_supported_capabil
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
 
-from .config import (
-    Configuration,
-    DPDKBuildConfiguration,
-    TestRunConfiguration,
-    TestSuiteConfig,
-    load_config,
-)
+from .config import Configuration, TestRunConfiguration, TestSuiteConfig, load_config
 from .exception import (
     BlockingTestSuiteError,
     ConfigurationError,
@@ -46,7 +40,6 @@ from .exception import (
 from .logger import DTSLogger, DtsStage, get_dts_logger
 from .settings import SETTINGS
 from .test_result import (
-    DPDKBuildResult,
     DTSResult,
     Result,
     TestCaseResult,
@@ -71,9 +64,9 @@ class DTSRunner:
     :class:`~.framework.exception.DTSError`\s.
 
     Example:
-        An error occurs in a DPDK build setup. The current DPDK build is aborted,
-        all test suites and their test cases are marked as blocked and the run continues
-        with the next DPDK build. If the errored DPDK build was the last one in the
+        An error occurs in a test suite setup. The current test suite is aborted,
+        all its test cases are marked as blocked and the run continues
+        with the next test suite. If the errored test suite was the last one in the
         given test run, the next test run begins.
     """
 
@@ -99,16 +92,16 @@ class DTSRunner:
         self._perf_test_case_regex = r"test_perf_"
 
     def run(self) -> None:
-        """Run all DPDK build in all test runs from the test run configuration.
+        """Run all test runs from the test run configuration.
 
-        Before running test suites, test runs and DPDK builds are first set up.
-        The test runs and DPDK builds defined in the test run configuration are iterated over.
-        The test runs define which tests to run and where to run them and DPDK builds define
-        the DPDK build setup.
+        Before running test suites, test runs are first set up.
+        The test runs defined in the test run configuration are iterated over.
+        The test runs define which tests to run and where to run them.
 
-        The tests suites are set up for each test run/DPDK build tuple and each discovered
+        The test suites are set up for each test run and each discovered
         test case within the test suite is set up, executed and torn down. After all test cases
-        have been executed, the test suite is torn down and the next DPDK build will be tested.
+        have been executed, the test suite is torn down and the next test suite will be run. Once
+        all test suites have been run, the next test run will be tested.
 
         In order to properly mark test suites and test cases as blocked in case of a failure,
         we need to have discovered which test suites and test cases to run before any failures
@@ -118,17 +111,13 @@ class DTSRunner:
 
             #. Test run setup
 
-                #. DPDK build setup
+                #. Test suite setup
 
-                    #. Test suite setup
+                    #. Test case setup
+                    #. Test case logic
+                    #. Test case teardown
 
-                        #. Test case setup
-                        #. Test case logic
-                        #. Test case teardown
-
-                    #. Test suite teardown
-
-                #. DPDK build teardown
+                #. Test suite teardown
 
             #. Test run teardown
 
@@ -366,7 +355,7 @@ class DTSRunner:
     ) -> None:
         """Run the given test run.
 
-        This involves running the test run setup as well as running all DPDK builds
+        This involves running the test run setup as well as running all test suites
         in the given test run. After that, the test run teardown is run.
 
         Args:
@@ -382,6 +371,7 @@ class DTSRunner:
         test_run_result.add_sut_info(sut_node.node_info)
         try:
             sut_node.set_up_test_run(test_run_config)
+            test_run_result.add_dpdk_build_info(sut_node.get_dpdk_build_info())
             tg_node.set_up_test_run(test_run_config)
             test_run_result.update_setup(Result.PASS)
         except Exception as e:
@@ -389,15 +379,7 @@ class DTSRunner:
             test_run_result.update_setup(Result.FAIL, e)
 
         else:
-            for dpdk_build_config in test_run_config.dpdk_builds:
-                dpdk_build_result = test_run_result.add_dpdk_build(dpdk_build_config)
-                self._run_dpdk_build(
-                    sut_node,
-                    tg_node,
-                    dpdk_build_config,
-                    dpdk_build_result,
-                    test_suites_with_cases,
-                )
+            self._run_test_suites(sut_node, tg_node, test_run_result, test_suites_with_cases)
 
         finally:
             try:
@@ -408,52 +390,6 @@ class DTSRunner:
             except Exception as e:
                 self._logger.exception("Test run teardown failed.")
                 test_run_result.update_teardown(Result.FAIL, e)
-
-    def _run_dpdk_build(
-        self,
-        sut_node: SutNode,
-        tg_node: TGNode,
-        dpdk_build_config: DPDKBuildConfiguration,
-        dpdk_build_result: DPDKBuildResult,
-        test_suites_with_cases: Iterable[TestSuiteWithCases],
-    ) -> None:
-        """Run the given DPDK build.
-
-        This involves running the DPDK build setup as well as running all test suites
-        of the DPDK build's test run.
-        After that, DPDK build teardown is run.
-
-        Args:
-            sut_node: The test run's sut node.
-            tg_node: The test run's tg node.
-            dpdk_build_config: A DPDK build's test run configuration.
-            dpdk_build_result: The DPDK build level result object associated
-                with the current DPDK build.
-            test_suites_with_cases: The test suites with test cases to run.
-        """
-        self._logger.set_stage(DtsStage.dpdk_build_setup)
-        self._logger.info(f"Running DPDK build '{dpdk_build_config.name}'.")
-
-        try:
-            sut_node.set_up_dpdk(dpdk_build_config)
-            self._result.dpdk_version = sut_node.dpdk_version
-            dpdk_build_result.add_dpdk_build_info(sut_node.get_dpdk_build_info())
-            dpdk_build_result.update_setup(Result.PASS)
-        except Exception as e:
-            self._logger.exception("DPDK build setup failed.")
-            dpdk_build_result.update_setup(Result.FAIL, e)
-
-        else:
-            self._run_test_suites(sut_node, tg_node, dpdk_build_result, test_suites_with_cases)
-
-        finally:
-            try:
-                self._logger.set_stage(DtsStage.dpdk_build_teardown)
-                sut_node.tear_down_dpdk()
-                dpdk_build_result.update_teardown(Result.PASS)
-            except Exception as e:
-                self._logger.exception("DPDK build teardown failed.")
-                dpdk_build_result.update_teardown(Result.FAIL, e)
 
     def _get_supported_capabilities(
         self,
@@ -474,10 +410,10 @@ class DTSRunner:
         self,
         sut_node: SutNode,
         tg_node: TGNode,
-        dpdk_build_result: DPDKBuildResult,
+        test_run_result: TestRunResult,
         test_suites_with_cases: Iterable[TestSuiteWithCases],
     ) -> None:
-        """Run `test_suites_with_cases` with the current DPDK build.
+        """Run `test_suites_with_cases` with the current test run.
 
         The method assumes the DPDK we're testing has already been built on the SUT node.
 
@@ -488,13 +424,12 @@ class DTSRunner:
         is skipped (the setup and teardown is not run).
 
         If a blocking test suite (such as the smoke test suite) fails, the rest of the test suites
-        in the current DPDK build won't be executed.
+        in the current test run won't be executed.
 
         Args:
             sut_node: The test run's SUT node.
             tg_node: The test run's TG node.
-            dpdk_build_result: The DPDK build level result object associated
-                with the current DPDK build.
+            test_run_result: The test run's result.
             test_suites_with_cases: The test suites with test cases to run.
         """
         end_dpdk_build = False
@@ -504,7 +439,7 @@ class DTSRunner:
         )
         for test_suite_with_cases in test_suites_with_cases:
             test_suite_with_cases.mark_skip_unsupported(supported_capabilities)
-            test_suite_result = dpdk_build_result.add_test_suite(test_suite_with_cases)
+            test_suite_result = test_run_result.add_test_suite(test_suite_with_cases)
             try:
                 if not test_suite_with_cases.skip:
                     self._run_test_suite(
@@ -524,7 +459,7 @@ class DTSRunner:
             except BlockingTestSuiteError as e:
                 self._logger.exception(
                     f"An error occurred within {test_suite_with_cases.test_suite_class.__name__}. "
-                    "Skipping DPDK build ..."
+                    "Skipping the rest of the test suites in this test run."
                 )
                 self._result.add_error(e)
                 end_dpdk_build = True

@@ -4,13 +4,13 @@
 
 test_runs:
   # define one test run environment
-  - dpdk_builds:
-      - arch: x86_64
-        os: linux
-        cpu: native
-        # the combination of the following two makes CC="ccache gcc"
-        compiler: gcc
-        compiler_wrapper: ccache
+  - dpdk_build:
+      arch: x86_64
+      os: linux
+      cpu: native
+      # the combination of the following two makes CC="ccache gcc"
+      compiler: gcc
+      compiler_wrapper: ccache
     perf: false # disable performance testing
     func: true # enable functional testing
     skip_smoke_tests: false # optional

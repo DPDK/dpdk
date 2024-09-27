@@ -8,12 +8,11 @@ The results are recorded in a hierarchical manner:
 
     * :class:`DTSResult` contains
     * :class:`TestRunResult` contains
-    * :class:`DPDKBuildResult` contains
     * :class:`TestSuiteResult` contains
     * :class:`TestCaseResult`
 
 Each result may contain multiple lower level results, e.g. there are multiple
-:class:`TestSuiteResult`\s in a :class:`DPDKBuildResult`.
+:class:`TestSuiteResult`\s in a :class:`TestRunResult`.
 The results have common parts, such as setup and teardown results, captured in :class:`BaseResult`,
 which also defines some common behaviors in its methods.
 
@@ -36,7 +35,6 @@ from .config import (
     Architecture,
     Compiler,
     CPUType,
-    DPDKBuildConfiguration,
     DPDKBuildInfo,
     NodeInfo,
     TestRunConfiguration,
@@ -184,7 +182,7 @@ class BaseResult:
     Stores the results of the setup and teardown portions of the corresponding stage.
     The hierarchical nature of DTS results is captured recursively in an internal list.
     A stage is each level in this particular hierarchy (pre-run or the top-most level,
-    test run, DPDK build, test suite and test case.)
+    test run, test suite and test case).
 
     Attributes:
         setup_result: The result of the setup of the particular stage.
@@ -269,8 +267,8 @@ class BaseResult:
 class DTSResult(BaseResult):
     """Stores environment information and test results from a DTS run.
 
-        * Test run level information, such as testbed and the test suite list,
-        * DPDK build level information, such as compiler, target OS and cpu,
+        * Test run level information, such as testbed, the test suite list and
+          DPDK build configuration (compiler, target OS and cpu),
         * Test suite and test case results,
         * All errors that are caught and recorded during DTS execution.
 
@@ -364,44 +362,61 @@ class DTSResult(BaseResult):
 class TestRunResult(BaseResult):
     """The test run specific result.
 
-    The internal list stores the results of all DPDK builds in a given test run.
+    The internal list stores the results of all test suites in a given test run.
 
     Attributes:
+        arch: The DPDK build architecture.
+        os: The DPDK build operating system.
+        cpu: The DPDK build CPU.
+        compiler: The DPDK build compiler.
+        compiler_version: The DPDK build compiler version.
+        dpdk_version: The built DPDK version.
         sut_os_name: The operating system of the SUT node.
         sut_os_version: The operating system version of the SUT node.
         sut_kernel_version: The operating system kernel version of the SUT node.
     """
 
+    arch: Architecture
+    os: OS
+    cpu: CPUType
+    compiler: Compiler
+    compiler_version: str | None
+    dpdk_version: str | None
     sut_os_name: str
     sut_os_version: str
     sut_kernel_version: str
     _config: TestRunConfiguration
-    _parent_result: DTSResult
     _test_suites_with_cases: list[TestSuiteWithCases]
 
     def __init__(self, test_run_config: TestRunConfiguration):
-        """Extend the constructor with the test run's config and DTSResult.
+        """Extend the constructor with the test run's config.
 
         Args:
             test_run_config: A test run configuration.
         """
         super().__init__()
+        self.arch = test_run_config.dpdk_build.arch
+        self.os = test_run_config.dpdk_build.os
+        self.cpu = test_run_config.dpdk_build.cpu
+        self.compiler = test_run_config.dpdk_build.compiler
+        self.compiler_version = None
+        self.dpdk_version = None
         self._config = test_run_config
         self._test_suites_with_cases = []
 
-    def add_dpdk_build(self, dpdk_build_config: DPDKBuildConfiguration) -> "DPDKBuildResult":
-        """Add and return the child result (DPDK build).
+    def add_test_suite(
+        self,
+        test_suite_with_cases: TestSuiteWithCases,
+    ) -> "TestSuiteResult":
+        """Add and return the child result (test suite).
 
         Args:
-            dpdk_build: The DPDK build's test run configuration.
+            test_suite_with_cases: The test suite with test cases.
 
         Returns:
-            The DPDK build's result.
+            The test suite's result.
         """
-        result = DPDKBuildResult(
-            self._test_suites_with_cases,
-            dpdk_build_config,
-        )
+        result = TestSuiteResult(test_suite_with_cases)
         self.child_results.append(result)
         return result
 
@@ -437,71 +452,6 @@ class TestRunResult(BaseResult):
         self.sut_os_version = sut_info.os_version
         self.sut_kernel_version = sut_info.kernel_version
 
-    def _mark_results(self, result) -> None:
-        """Mark the build target results as `result`."""
-        for dpdk_build in self._config.dpdk_builds:
-            child_result = self.add_dpdk_build(dpdk_build)
-            child_result.update_setup(result)
-
-
-class DPDKBuildResult(BaseResult):
-    """The DPDK build specific result.
-
-    The internal list stores the results of all test suites in a given DPDK build.
-
-    Attributes:
-        arch: The DPDK DPDK build architecture.
-        os: The DPDK DPDK build operating system.
-        cpu: The DPDK DPDK build CPU.
-        compiler: The DPDK DPDK build compiler.
-        compiler_version: The DPDK DPDK build compiler version.
-        dpdk_version: The built DPDK version.
-    """
-
-    arch: Architecture
-    os: OS
-    cpu: CPUType
-    compiler: Compiler
-    compiler_version: str | None
-    dpdk_version: str | None
-    _test_suites_with_cases: list[TestSuiteWithCases]
-
-    def __init__(
-        self,
-        test_suites_with_cases: list[TestSuiteWithCases],
-        dpdk_build_config: DPDKBuildConfiguration,
-    ):
-        """Extend the constructor with the DPDK build's config and test suites with cases.
-
-        Args:
-            test_suites_with_cases: The test suites with test cases to be run in this DPDK build.
-            dpdk_build_config: The DPDK build's test run configuration.
-        """
-        super().__init__()
-        self.arch = dpdk_build_config.arch
-        self.os = dpdk_build_config.os
-        self.cpu = dpdk_build_config.cpu
-        self.compiler = dpdk_build_config.compiler
-        self.compiler_version = None
-        self.dpdk_version = None
-        self._test_suites_with_cases = test_suites_with_cases
-
-    def add_test_suite(
-        self,
-        test_suite_with_cases: TestSuiteWithCases,
-    ) -> "TestSuiteResult":
-        """Add and return the child result (test suite).
-
-        Args:
-            test_suite_with_cases: The test suite with test cases.
-
-        Returns:
-            The test suite's result.
-        """
-        result = TestSuiteResult(test_suite_with_cases)
-        self.child_results.append(result)
-        return result
-
     def add_dpdk_build_info(self, versions: DPDKBuildInfo) -> None:
         """Add information about the DPDK build gathered at runtime.
 
@@ -529,11 +479,10 @@ class TestSuiteResult(BaseResult):
 
     test_suite_name: str
     _test_suite_with_cases: TestSuiteWithCases
-    _parent_result: DPDKBuildResult
     _child_configs: list[str]
 
     def __init__(self, test_suite_with_cases: TestSuiteWithCases):
-        """Extend the constructor with test suite's config and DPDKBuildResult.
+        """Extend the constructor with test suite's config.
 
         Args:
             test_suite_with_cases: The test suite with test cases.
@@ -576,7 +525,7 @@ class TestCaseResult(BaseResult, FixtureResult):
     test_case_name: str
 
     def __init__(self, test_case_name: str):
-        """Extend the constructor with test case's name and TestSuiteResult.
+        """Extend the constructor with test case's name.
 
         Args:
             test_case_name: The test case's name.
