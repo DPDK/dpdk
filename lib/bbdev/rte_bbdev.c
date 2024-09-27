@@ -1190,3 +1190,216 @@ rte_bbdev_enqueue_status_str(enum rte_bbdev_enqueue_status status)
 	rte_bbdev_log(ERR, "Invalid enqueue status");
 	return NULL;
 }
+
+
+int
+rte_bbdev_queue_ops_dump(uint16_t dev_id, uint16_t queue_id, FILE *f)
+{
+	struct rte_bbdev_queue_data *q_data;
+	struct rte_bbdev_stats *stats;
+	uint16_t i;
+	struct rte_bbdev *dev = get_dev(dev_id);
+
+	VALID_DEV_OR_RET_ERR(dev, dev_id);
+	VALID_QUEUE_OR_RET_ERR(queue_id, dev);
+	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
+	VALID_FUNC_OR_RET_ERR(dev->dev_ops->queue_ops_dump, dev_id);
+
+	q_data = &dev->data->queues[queue_id];
+
+	if (f == NULL)
+		return -EINVAL;
+
+	fprintf(f, "Dump of operations on %s queue %d\n",
+			dev->data->name, queue_id);
+	fprintf(f, "  Last Enqueue Status %s\n",
+			rte_bbdev_enqueue_status_str(q_data->enqueue_status));
+	for (i = 0; i < RTE_BBDEV_ENQ_STATUS_SIZE_MAX; i++)
+		if (q_data->queue_stats.enqueue_status_count[i] > 0)
+			fprintf(f, "  Enqueue Status Counters %s %" PRIu64 "\n",
+					rte_bbdev_enqueue_status_str(i),
+					q_data->queue_stats.enqueue_status_count[i]);
+	stats = &dev->data->queues[queue_id].queue_stats;
+
+	fprintf(f, "  Enqueue Count %" PRIu64 " Warning %" PRIu64 " Error %" PRIu64 "\n",
+			stats->enqueued_count, stats->enqueue_warn_count,
+			stats->enqueue_err_count);
+	fprintf(f, "  Dequeue Count %" PRIu64 " Warning %" PRIu64 " Error %" PRIu64 "\n",
+			stats->dequeued_count, stats->dequeue_warn_count,
+			stats->dequeue_err_count);
+
+	return dev->dev_ops->queue_ops_dump(dev, queue_id, f);
+}
+
+char *
+rte_bbdev_ops_param_string(void *op, enum rte_bbdev_op_type op_type, char *str, uint32_t len)
+{
+	static char partial[1024];
+	struct rte_bbdev_dec_op *op_dec;
+	struct rte_bbdev_enc_op *op_enc;
+	struct rte_bbdev_fft_op *op_fft;
+	struct rte_bbdev_mldts_op *op_mldts;
+
+	rte_iova_t add0 = 0, add1 = 0, add2 = 0, add3 = 0, add4 = 0;
+
+	if (op == NULL) {
+		snprintf(str, len, "Invalid Operation pointer\n");
+		return str;
+	}
+
+	if (op_type == RTE_BBDEV_OP_LDPC_DEC) {
+		op_dec = op;
+		if (op_dec->ldpc_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
+			snprintf(partial, sizeof(partial), "C %d Cab %d Ea %d Eb %d r %d",
+					op_dec->ldpc_dec.tb_params.c,
+					op_dec->ldpc_dec.tb_params.cab,
+					op_dec->ldpc_dec.tb_params.ea,
+					op_dec->ldpc_dec.tb_params.eb,
+					op_dec->ldpc_dec.tb_params.r);
+		else
+			snprintf(partial, sizeof(partial), "E %d", op_dec->ldpc_dec.cb_params.e);
+		if (op_dec->ldpc_dec.input.data != NULL)
+			add0 = rte_pktmbuf_iova_offset(op_dec->ldpc_dec.input.data, 0);
+		if (op_dec->ldpc_dec.hard_output.data != NULL)
+			add1 = rte_pktmbuf_iova_offset(op_dec->ldpc_dec.hard_output.data, 0);
+		if (op_dec->ldpc_dec.soft_output.data != NULL)
+			add2 = rte_pktmbuf_iova_offset(op_dec->ldpc_dec.soft_output.data, 0);
+		if (op_dec->ldpc_dec.harq_combined_input.data != NULL)
+			add3 = rte_pktmbuf_iova_offset(op_dec->ldpc_dec.harq_combined_input.data,
+					0);
+		if (op_dec->ldpc_dec.harq_combined_output.data != NULL)
+			add4 = rte_pktmbuf_iova_offset(op_dec->ldpc_dec.harq_combined_output.data,
+					0);
+		snprintf(str, len, "op %x st %x BG %d Zc %d Ncb %d qm %d F %d Rv %d It %d It %d "
+			"HARQin %d in %" PRIx64 " ho %" PRIx64 " so %" PRIx64 " hi %" PRIx64 " "
+			"ho %" PRIx64 " %s\n",
+			op_dec->ldpc_dec.op_flags, op_dec->status,
+			op_dec->ldpc_dec.basegraph, op_dec->ldpc_dec.z_c,
+			op_dec->ldpc_dec.n_cb, op_dec->ldpc_dec.q_m,
+			op_dec->ldpc_dec.n_filler, op_dec->ldpc_dec.rv_index,
+			op_dec->ldpc_dec.iter_max, op_dec->ldpc_dec.iter_count,
+			op_dec->ldpc_dec.harq_combined_input.length,
+			add0, add1, add2, add3, add4, partial);
+	} else if (op_type == RTE_BBDEV_OP_TURBO_DEC) {
+		op_dec = op;
+		if (op_dec->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
+			snprintf(partial, sizeof(partial), "C %d Cab %d Ea %d Eb %d r %d K %d",
+					op_dec->turbo_dec.tb_params.c,
+					op_dec->turbo_dec.tb_params.cab,
+					op_dec->turbo_dec.tb_params.ea,
+					op_dec->turbo_dec.tb_params.eb,
+					op_dec->turbo_dec.tb_params.r,
+					op_dec->turbo_dec.tb_params.k_neg);
+		else
+			snprintf(partial, sizeof(partial), "E %d K %d",
+					op_dec->turbo_dec.cb_params.e,
+					op_dec->turbo_dec.cb_params.k);
+		if (op_dec->turbo_dec.input.data != NULL)
+			add0 = rte_pktmbuf_iova_offset(op_dec->turbo_dec.input.data, 0);
+		if (op_dec->turbo_dec.hard_output.data != NULL)
+			add1 = rte_pktmbuf_iova_offset(op_dec->turbo_dec.hard_output.data, 0);
+		if (op_dec->turbo_dec.soft_output.data != NULL)
+			add2 = rte_pktmbuf_iova_offset(op_dec->turbo_dec.soft_output.data, 0);
+		snprintf(str, len, "op %x st %x CBM %d Iter %d map %d Rv %d ext %d "
+				"in %" PRIx64 " ho %" PRIx64 " so %" PRIx64 " %s\n",
+				op_dec->turbo_dec.op_flags, op_dec->status,
+				op_dec->turbo_dec.code_block_mode,
+				op_dec->turbo_dec.iter_max, op_dec->turbo_dec.num_maps,
+				op_dec->turbo_dec.rv_index, op_dec->turbo_dec.ext_scale,
+				add0, add1, add2, partial);
+	} else if (op_type == RTE_BBDEV_OP_LDPC_ENC) {
+		op_enc = op;
+		if (op_enc->ldpc_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
+			snprintf(partial, sizeof(partial), "C %d Cab %d Ea %d Eb %d r %d",
+					op_enc->ldpc_enc.tb_params.c,
+					op_enc->ldpc_enc.tb_params.cab,
+					op_enc->ldpc_enc.tb_params.ea,
+					op_enc->ldpc_enc.tb_params.eb,
+					op_enc->ldpc_enc.tb_params.r);
+		else
+			snprintf(partial, sizeof(partial), "E %d",
+					op_enc->ldpc_enc.cb_params.e);
+		if (op_enc->ldpc_enc.input.data != NULL)
+			add0 = rte_pktmbuf_iova_offset(op_enc->ldpc_enc.input.data, 0);
+		if (op_enc->ldpc_enc.output.data != NULL)
+			add1 = rte_pktmbuf_iova_offset(op_enc->ldpc_enc.output.data, 0);
+		snprintf(str, len, "op %x st %x BG %d Zc %d Ncb %d q_m %d F %d Rv %d "
+				"in %" PRIx64 " out %" PRIx64 " %s\n",
+				op_enc->ldpc_enc.op_flags, op_enc->status,
+				op_enc->ldpc_enc.basegraph, op_enc->ldpc_enc.z_c,
+				op_enc->ldpc_enc.n_cb, op_enc->ldpc_enc.q_m,
+				op_enc->ldpc_enc.n_filler, op_enc->ldpc_enc.rv_index,
+				add0, add1, partial);
+	} else if (op_type == RTE_BBDEV_OP_TURBO_ENC) {
+		op_enc = op;
+		if (op_enc->turbo_enc.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK)
+			snprintf(partial, sizeof(partial),
+					"C %d Cab %d Ea %d Eb %d r %d K %d Ncb %d",
+					op_enc->turbo_enc.tb_params.c,
+					op_enc->turbo_enc.tb_params.cab,
+					op_enc->turbo_enc.tb_params.ea,
+					op_enc->turbo_enc.tb_params.eb,
+					op_enc->turbo_enc.tb_params.r,
+					op_enc->turbo_enc.tb_params.k_neg,
+					op_enc->turbo_enc.tb_params.ncb_neg);
+		else
+			snprintf(partial, sizeof(partial), "E %d K %d",
+					op_enc->turbo_enc.cb_params.e,
+					op_enc->turbo_enc.cb_params.k);
+		if (op_enc->turbo_enc.input.data != NULL)
+			add0 = rte_pktmbuf_iova_offset(op_enc->turbo_enc.input.data, 0);
+		if (op_enc->turbo_enc.output.data != NULL)
+			add1 = rte_pktmbuf_iova_offset(op_enc->turbo_enc.output.data, 0);
+		snprintf(str, len, "op %x st %x CBM %d Rv %d In %" PRIx64 " Out %" PRIx64 " %s\n",
+				op_enc->turbo_enc.op_flags, op_enc->status,
+				op_enc->turbo_enc.code_block_mode, op_enc->turbo_enc.rv_index,
+				add0, add1, partial);
+	} else if (op_type == RTE_BBDEV_OP_FFT) {
+		op_fft = op;
+		if (op_fft->fft.base_input.data != NULL)
+			add0 = rte_pktmbuf_iova_offset(op_fft->fft.base_input.data, 0);
+		if (op_fft->fft.base_output.data != NULL)
+			add1 = rte_pktmbuf_iova_offset(op_fft->fft.base_output.data, 0);
+		if (op_fft->fft.dewindowing_input.data != NULL)
+			add2 = rte_pktmbuf_iova_offset(op_fft->fft.dewindowing_input.data, 0);
+		if (op_fft->fft.power_meas_output.data != NULL)
+			add3 = rte_pktmbuf_iova_offset(op_fft->fft.power_meas_output.data, 0);
+		snprintf(str, len, "op %x st %x in %d inl %d out %d outl %d cs %x ants %d "
+				"idft %d dft %d cst %d ish %d dsh %d ncs %d pwsh %d fp16 %d fr %d "
+				"outde %d in %" PRIx64 " out %" PRIx64 " dw %" PRIx64 " "
+				"pm %" PRIx64 "\n",
+				op_fft->fft.op_flags, op_fft->status,
+				op_fft->fft.input_sequence_size, op_fft->fft.input_leading_padding,
+				op_fft->fft.output_sequence_size,
+				op_fft->fft.output_leading_depadding,
+				op_fft->fft.cs_bitmap, op_fft->fft.num_antennas_log2,
+				op_fft->fft.idft_log2, op_fft->fft.dft_log2,
+				op_fft->fft.cs_time_adjustment,
+				op_fft->fft.idft_shift, op_fft->fft.dft_shift,
+				op_fft->fft.ncs_reciprocal, op_fft->fft.power_shift,
+				op_fft->fft.fp16_exp_adjust, op_fft->fft.freq_resample_mode,
+				op_fft->fft.output_depadded_size, add0, add1, add2, add3);
+	} else if (op_type == RTE_BBDEV_OP_MLDTS) {
+		op_mldts = op;
+		if (op_mldts->mldts.qhy_input.data != NULL)
+			add0 = rte_pktmbuf_iova_offset(op_mldts->mldts.qhy_input.data, 0);
+		if (op_mldts->mldts.r_input.data != NULL)
+			add1 = rte_pktmbuf_iova_offset(op_mldts->mldts.r_input.data, 0);
+		if (op_mldts->mldts.output.data != NULL)
+			add2 = rte_pktmbuf_iova_offset(op_mldts->mldts.output.data, 0);
+		snprintf(str, len,
+				"op %x st %x rbs %d lay %d rrep %d crep%d qm %d %d %d %d "
+				"qhy %" PRIx64 " r %" PRIx64 " out %" PRIx64 "\n",
+				op_mldts->mldts.op_flags, op_mldts->status,
+				op_mldts->mldts.num_rbs, op_mldts->mldts.num_layers,
+				op_mldts->mldts.r_rep, op_mldts->mldts.c_rep,
+				op_mldts->mldts.q_m[0], op_mldts->mldts.q_m[1],
+				op_mldts->mldts.q_m[2], op_mldts->mldts.q_m[3],
+				add0, add1, add2);
+
+	} else {
+		snprintf(str, len, "Invalid Operation type %d\n", op_type);
+	}
+
+	return str;
+}
