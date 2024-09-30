@@ -6311,6 +6311,24 @@ rte_eth_timesync_adjust_time(uint16_t port_id, int64_t delta)
 }
 
 int
+rte_eth_timesync_adjust_freq(uint16_t port_id, int64_t ppm)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	if (*dev->dev_ops->timesync_adjust_freq == NULL)
+		return -ENOTSUP;
+	ret = eth_err(port_id, (*dev->dev_ops->timesync_adjust_freq)(dev, ppm));
+
+	rte_eth_trace_timesync_adjust_freq(port_id, ppm, ret);
+
+	return ret;
+}
+
+int
 rte_eth_timesync_read_time(uint16_t port_id, struct timespec *timestamp)
 {
 	struct rte_eth_dev *dev;

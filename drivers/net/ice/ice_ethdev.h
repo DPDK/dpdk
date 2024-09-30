@@ -614,6 +614,8 @@ struct ice_adapter {
 	struct rte_timecounter systime_tc;
 	struct rte_timecounter rx_tstamp_tc;
 	struct rte_timecounter tx_tstamp_tc;
+	uint8_t ptp_tx_block;
+	uint8_t ptp_tx_index;
 	bool ptp_ena;
 	uint64_t time_hw;
 	struct ice_fdir_prof_info fdir_prof_info[ICE_MAX_PTGS];

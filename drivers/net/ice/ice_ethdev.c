@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <math.h>
 
 #include <rte_tailq.h>
 #include <rte_os_shim.h>
@@ -176,6 +177,7 @@ static int ice_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 static int ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 					  struct timespec *timestamp);
 static int ice_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta);
+static int ice_timesync_adjust_freq(struct rte_eth_dev *dev, int64_t ppm);
 static int ice_timesync_read_time(struct rte_eth_dev *dev,
 				  struct timespec *timestamp);
 static int ice_timesync_write_time(struct rte_eth_dev *dev,
@@ -307,6 +309,7 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.timesync_read_rx_timestamp   = ice_timesync_read_rx_timestamp,
 	.timesync_read_tx_timestamp   = ice_timesync_read_tx_timestamp,
 	.timesync_adjust_time         = ice_timesync_adjust_time,
+	.timesync_adjust_freq         = ice_timesync_adjust_freq,
 	.timesync_read_time           = ice_timesync_read_time,
 	.timesync_write_time          = ice_timesync_write_time,
 	.timesync_disable             = ice_timesync_disable,
@@ -2332,6 +2335,34 @@ ice_get_supported_rxdid(struct ice_hw *hw)
 	return supported_rxdid;
 }
 
+static void ice_ptp_init_info(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_adapter *ad =
+		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	switch (hw->phy_model) {
+	case ICE_PHY_ETH56G:
+		ad->ptp_tx_block = hw->pf_id;
+		ad->ptp_tx_index = 0;
+		break;
+	case ICE_PHY_E810:
+	/* fallthrough */
+	case ICE_PHY_E830:
+		ad->ptp_tx_block = hw->port_info->lport;
+		ad->ptp_tx_index = 0;
+		break;
+	case ICE_PHY_E822:
+		ad->ptp_tx_block = hw->pf_id / ICE_PORTS_PER_QUAD;
+		ad->ptp_tx_index = (hw->pf_id % ICE_PORTS_PER_QUAD) *
+				ICE_PORTS_PER_PHY_E822 * ICE_QUADS_PER_PHY_E822;
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Unsupported PHY model");
+		break;
+	}
+}
+
 static int
 ice_dev_init(struct rte_eth_dev *dev)
 {
@@ -2498,6 +2529,9 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	/* Initialize PHY model */
 	ice_ptp_init_phy_model(hw);
+
+	/* Initialize PTP info */
+	ice_ptp_init_info(dev);
 
 	if (hw->phy_model == ICE_PHY_E822) {
 		ret = ice_start_phy_timer_e822(hw, hw->pf_id);
@@ -6466,23 +6500,6 @@ ice_timesync_enable(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Initialize cycle counters for system time/RX/TX timestamp */
-	memset(&ad->systime_tc, 0, sizeof(struct rte_timecounter));
-	memset(&ad->rx_tstamp_tc, 0, sizeof(struct rte_timecounter));
-	memset(&ad->tx_tstamp_tc, 0, sizeof(struct rte_timecounter));
-
-	ad->systime_tc.cc_mask = ICE_CYCLECOUNTER_MASK;
-	ad->systime_tc.cc_shift = 0;
-	ad->systime_tc.nsec_mask = 0;
-
-	ad->rx_tstamp_tc.cc_mask = ICE_CYCLECOUNTER_MASK;
-	ad->rx_tstamp_tc.cc_shift = 0;
-	ad->rx_tstamp_tc.nsec_mask = 0;
-
-	ad->tx_tstamp_tc.cc_mask = ICE_CYCLECOUNTER_MASK;
-	ad->tx_tstamp_tc.cc_shift = 0;
-	ad->tx_tstamp_tc.nsec_mask = 0;
-
 	ad->ptp_ena = 1;
 
 	return 0;
@@ -6497,14 +6514,13 @@ ice_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_rx_queue *rxq;
 	uint32_t ts_high;
-	uint64_t ts_ns, ns;
+	uint64_t ts_ns;
 
 	rxq = dev->data->rx_queues[flags];
 
 	ts_high = rxq->time_high;
 	ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, ts_high);
-	ns = rte_timecounter_update(&ad->rx_tstamp_tc, ts_ns);
-	*timestamp = rte_ns_to_timespec(ns);
+	*timestamp = rte_ns_to_timespec(ts_ns);
 
 	return 0;
 }
@@ -6516,22 +6532,18 @@ ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_adapter *ad =
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	uint8_t lport;
-	uint64_t ts_ns, ns, tstamp;
+	uint64_t ts_ns, tstamp;
 	const uint64_t mask = 0xFFFFFFFF;
 	int ret;
 
-	lport = hw->port_info->lport;
-
-	ret = ice_read_phy_tstamp(hw, lport, 0, &tstamp);
-	if (ret) {
+	ret = ice_read_phy_tstamp(hw, ad->ptp_tx_block, ad->ptp_tx_index, &tstamp);
+	if (ret || tstamp == 0) {
 		PMD_DRV_LOG(ERR, "Failed to read phy timestamp");
 		return -1;
 	}
 
 	ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1, (tstamp >> 8) & mask);
-	ns = rte_timecounter_update(&ad->tx_tstamp_tc, ts_ns);
-	*timestamp = rte_ns_to_timespec(ns);
+	*timestamp = rte_ns_to_timespec(ts_ns);
 
 	return 0;
 }
@@ -6539,28 +6551,108 @@ ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 static int
 ice_timesync_adjust_time(struct rte_eth_dev *dev, int64_t delta)
 {
-	struct ice_adapter *ad =
-			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t tmr_idx = hw->func_caps.ts_func_info.tmr_index_assoc;
+	uint32_t lo, lo2, hi;
+	uint64_t time, ns;
+	int ret;
 
-	ad->systime_tc.nsec += delta;
-	ad->rx_tstamp_tc.nsec += delta;
-	ad->tx_tstamp_tc.nsec += delta;
+	if (delta > INT32_MAX || delta < INT32_MIN) {
+		lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
+		hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
+		lo2 = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
 
+		if (lo2 < lo) {
+			lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
+			hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
+		}
+
+		time = ((uint64_t)hi << 32) | lo;
+		ns = time + delta;
+
+		wr32(hw, GLTSYN_SHTIME_L(tmr_idx), ICE_LO_DWORD(ns));
+		wr32(hw, GLTSYN_SHTIME_H(tmr_idx), ICE_HI_DWORD(ns));
+		wr32(hw, GLTSYN_SHTIME_0(tmr_idx), 0);
+
+		ret = ice_ptp_init_time(hw, ns, true);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "PTP init time failed, err %d", ret);
+			return -1;
+		}
+		return 0;
+	}
+
+	ret = ice_ptp_adj_clock(hw, delta, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "PTP adj clock failed, err %d", ret);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+ice_timesync_adjust_freq(struct rte_eth_dev *dev, int64_t ppm)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int64_t incval, diff = 0;
+	bool negative = false;
+	uint64_t div, rem;
+	uint64_t divisor = 1000000ULL << 16;
+	int shift;
+	int ret;
+
+	incval = ice_get_base_incval(hw, ICE_SRC_TMR_MODE_NANOSECONDS);
+
+	if (ppm < 0) {
+		negative = true;
+		ppm = -ppm;
+	}
+
+	/* can incval * ppm overflow ? */
+	if (log2(incval) + log2(ppm) > 62) {
+		rem = ppm % divisor;
+		div = ppm / divisor;
+		diff = div * incval;
+		ppm = rem;
+
+		shift = log2(incval) + log2(ppm) - 62;
+		if (shift > 0) {
+			/* drop precision */
+			ppm >>= shift;
+			divisor >>= shift;
+		}
+	}
+
+	if (divisor)
+		diff = diff + incval * ppm / divisor;
+
+	if (negative)
+		incval -= diff;
+	else
+		incval += diff;
+
+	ret = ice_ptp_write_incval_locked(hw, incval, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "PTP failed to set incval, err %d", ret);
+		return -1;
+	}
 	return 0;
 }
 
 static int
 ice_timesync_write_time(struct rte_eth_dev *dev, const struct timespec *ts)
 {
-	struct ice_adapter *ad =
-			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint64_t ns;
+	int ret;
 
 	ns = rte_timespec_to_ns(ts);
-
-	ad->systime_tc.nsec = ns;
-	ad->rx_tstamp_tc.nsec = ns;
-	ad->tx_tstamp_tc.nsec = ns;
+	ret = ice_ptp_init_time(hw, ns, true);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "PTP init time failed, err %d", ret);
+		return -1;
+	}
 
 	return 0;
 }
@@ -6569,11 +6661,9 @@ static int
 ice_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 {
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ice_adapter *ad =
-			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint8_t tmr_idx = hw->func_caps.ts_func_info.tmr_index_assoc;
 	uint32_t hi, lo, lo2;
-	uint64_t time, ns;
+	uint64_t time;
 
 	lo = ICE_READ_REG(hw, GLTSYN_TIME_L(tmr_idx));
 	hi = ICE_READ_REG(hw, GLTSYN_TIME_H(tmr_idx));
@@ -6585,8 +6675,7 @@ ice_timesync_read_time(struct rte_eth_dev *dev, struct timespec *ts)
 	}
 
 	time = ((uint64_t)hi << 32) | lo;
-	ns = rte_timecounter_update(&ad->systime_tc, time);
-	*ts = rte_ns_to_timespec(ns);
+	*ts = rte_ns_to_timespec(time);
 
 	return 0;
 }
