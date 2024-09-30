@@ -3858,6 +3858,8 @@ For example, to configure a RTE_FLOW_TYPE_JUMP action as a miss action for ingre
       struct rte_flow_error err;
       rte_flow_group_set_miss_actions(port, 1, &attr, act, &err);
 
+.. _flow_templates:
+
 Flow templates
 ~~~~~~~~~~~~~~
 

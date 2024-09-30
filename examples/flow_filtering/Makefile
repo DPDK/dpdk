@@ -3,7 +3,9 @@
 
 APP = flow
 
-SRCS-y := main.c
+SRCS-y := main.c flow_skeleton.c
+subdir := snippets
+snippet_objects := $(addprefix build/,$(notdir $(patsubst %.c,%.o,$(wildcard $(subdir)/*.c))))
 
 PKGCONF ?= pkg-config
 
@@ -34,11 +36,14 @@ endif
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
-build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
-	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
+build/$(APP)-shared: $(SRCS-y) $(snippet_objects) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) $(snippet_objects) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
-build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
-	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
+build/$(APP)-static: $(SRCS-y) $(snippet_objects) Makefile $(PC_FILE) | build
+	$(CC) $(CFLAGS) $(SRCS-y) $(snippet_objects) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
+
+build/snippet_%.o: $(subdir)/snippet_%.c | build
+	$(CC) -c $(CFLAGS) -Wno-unused-function $< -o $@
 
 build:
 	@mkdir -p $@
