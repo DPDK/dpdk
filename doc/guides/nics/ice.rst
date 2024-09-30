@@ -328,6 +328,21 @@ Forward Error Correction (FEC)
 
 Supports get/set FEC mode and get FEC capability.
 
+Time Synchronisation
+~~~~~~~~~~~~~~~~~~~~
+
+The system operator can run a PTP (Precision Time Protocol) client application
+to synchronise the time on the network card (and optionally the time on the
+system) to the PTP master.
+
+ICE PMD supports PTP client applications that use the DPDK IEEE1588 API to
+communicate with the PTP master clock. Note that the PTP client application
+needs to run on the PF and vector mode needs to be disabled.
+
+.. code-block:: console
+
+    examples/dpdk-ptpclient -c f -n 3 -a 0000:ec:00.1 -- -T 1 -p 0x1 --controller=pi
+
 Generic Flow Support
 ~~~~~~~~~~~~~~~~~~~~
 
