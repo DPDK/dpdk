@@ -12,7 +12,9 @@
  * process, enqueue and move streams of objects to the next nodes.
  */
 
+#include <assert.h>
 #include <stdalign.h>
+#include <stddef.h>
 
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -111,14 +113,21 @@ struct __rte_cache_aligned rte_node {
 		} dispatch;
 	};
 	/* Fast path area  */
+	__extension__ struct __rte_cache_aligned {
 #define RTE_NODE_CTX_SZ 16
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t ctx[RTE_NODE_CTX_SZ]; /**< Node Context. */
-	uint16_t size;		/**< Total number of objects available. */
-	uint16_t idx;		/**< Number of objects used. */
-	rte_graph_off_t off;	/**< Offset of node in the graph reel. */
-	uint64_t total_cycles;	/**< Cycles spent in this node. */
-	uint64_t total_calls;	/**< Calls done to this node. */
-	uint64_t total_objs;	/**< Objects processed by this node. */
+		union {
+			uint8_t ctx[RTE_NODE_CTX_SZ];
+			__extension__ struct {
+				void *ctx_ptr;
+				void *ctx_ptr2;
+			};
+		}; /**< Node Context. */
+		uint16_t size;		/**< Total number of objects available. */
+		uint16_t idx;		/**< Number of objects used. */
+		rte_graph_off_t off;	/**< Offset of node in the graph reel. */
+		uint64_t total_cycles;	/**< Cycles spent in this node. */
+		uint64_t total_calls;	/**< Calls done to this node. */
+		uint64_t total_objs;	/**< Objects processed by this node. */
 		union {
 			void **objs;	   /**< Array of object pointers. */
 			uint64_t objs_u64;
@@ -127,8 +136,12 @@ struct __rte_cache_aligned rte_node {
 			rte_node_process_t process; /**< Process function. */
 			uint64_t process_u64;
 		};
-	alignas(RTE_CACHE_LINE_MIN_SIZE) struct rte_node *nodes[]; /**< Next nodes. */
+		alignas(RTE_CACHE_LINE_MIN_SIZE) struct rte_node *nodes[]; /**< Next nodes. */
+	};
 };
+
+static_assert(offsetof(struct rte_node, nodes) - offsetof(struct rte_node, ctx)
+	== RTE_CACHE_LINE_MIN_SIZE, "rte_node fast path area must fit in 64 bytes");
 
 /**
  * @internal
