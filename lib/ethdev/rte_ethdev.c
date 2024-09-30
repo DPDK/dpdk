@@ -5857,13 +5857,19 @@ static void
 eth_dev_adjust_nb_desc(uint16_t *nb_desc,
 		const struct rte_eth_desc_lim *desc_lim)
 {
+	/* Upcast to uint32 to avoid potential overflow with RTE_ALIGN_CEIL(). */
+	uint32_t nb_desc_32 = (uint32_t)*nb_desc;
+
 	if (desc_lim->nb_align != 0)
-		*nb_desc = RTE_ALIGN_CEIL(*nb_desc, desc_lim->nb_align);
+		nb_desc_32 = RTE_ALIGN_CEIL(nb_desc_32, desc_lim->nb_align);
 
 	if (desc_lim->nb_max != 0)
-		*nb_desc = RTE_MIN(*nb_desc, desc_lim->nb_max);
+		nb_desc_32 = RTE_MIN(nb_desc_32, desc_lim->nb_max);
 
-	*nb_desc = RTE_MAX(*nb_desc, desc_lim->nb_min);
+	nb_desc_32 = RTE_MAX(nb_desc_32, desc_lim->nb_min);
+
+	/* Assign clipped u32 back to u16. */
+	*nb_desc = (uint16_t)nb_desc_32;
 }
 
 int
