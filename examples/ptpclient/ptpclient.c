@@ -46,6 +46,35 @@ static volatile bool force_quit;
 #define KERNEL_TIME_ADJUST_LIMIT  20000
 #define PTP_PROTOCOL             0x88F7
 
+#define KP 0.7
+#define KI 0.3
+#define FREQ_EST_MARGIN 0.001
+
+enum servo_state {
+	SERVO_UNLOCKED,
+	SERVO_JUMP,
+	SERVO_LOCKED,
+};
+
+struct pi_servo {
+	double offset[2];
+	double local[2];
+	double drift;
+	double last_freq;
+	int count;
+
+	double max_frequency;
+	double step_threshold;
+	double first_step_threshold;
+	int first_update;
+};
+
+enum controller_mode {
+	MODE_NONE,
+	MODE_PI,
+	MAX_ALL
+} mode = MODE_NONE;
+
 struct rte_mempool *mbuf_pool;
 uint32_t ptp_enabled_port_mask;
 uint8_t ptp_enabled_port_nb;
@@ -135,6 +164,9 @@ struct ptpv2_data_slave_ordinary {
 	uint8_t ptpset;
 	uint8_t kernel_time_set;
 	uint16_t current_ptp_port;
+	int64_t master_offset;
+	int64_t path_delay;
+	struct pi_servo *servo;
 };
 
 static struct ptpv2_data_slave_ordinary ptp_data;
@@ -293,36 +325,44 @@ print_clock_info(struct ptpv2_data_slave_ordinary *ptp_data)
 			ptp_data->tstamp3.tv_sec,
 			(ptp_data->tstamp3.tv_nsec));
 
-	printf("\nT4 - Master Clock.  %lds %ldns ",
+	printf("\nT4 - Master Clock.  %lds %ldns\n",
 			ptp_data->tstamp4.tv_sec,
 			(ptp_data->tstamp4.tv_nsec));
 
-	printf("\nDelta between master and slave clocks:%"PRId64"ns\n",
+	if (mode == MODE_NONE) {
+		printf("\nDelta between master and slave clocks:%"PRId64"ns\n",
 			ptp_data->delta);
 
-	clock_gettime(CLOCK_REALTIME, &sys_time);
-	rte_eth_timesync_read_time(ptp_data->current_ptp_port, &net_time);
+		clock_gettime(CLOCK_REALTIME, &sys_time);
+		rte_eth_timesync_read_time(ptp_data->current_ptp_port,
+					   &net_time);
 
-	time_t ts = net_time.tv_sec;
+		time_t ts = net_time.tv_sec;
 
-	printf("\n\nComparison between Linux kernel Time and PTP:");
+		printf("\n\nComparison between Linux kernel Time and PTP:");
 
-	printf("\nCurrent PTP Time: %.24s %.9ld ns",
+		printf("\nCurrent PTP Time: %.24s %.9ld ns",
 			ctime(&ts), net_time.tv_nsec);
 
-	nsec = (int64_t)timespec64_to_ns(&net_time) -
+		nsec = (int64_t)timespec64_to_ns(&net_time) -
 			(int64_t)timespec64_to_ns(&sys_time);
-	ptp_data->new_adj = ns_to_timeval(nsec);
+		ptp_data->new_adj = ns_to_timeval(nsec);
 
-	gettimeofday(&ptp_data->new_adj, NULL);
+		gettimeofday(&ptp_data->new_adj, NULL);
 
-	time_t tp = ptp_data->new_adj.tv_sec;
+		time_t tp = ptp_data->new_adj.tv_sec;
 
-	printf("\nCurrent SYS Time: %.24s %.6ld ns",
-				ctime(&tp), ptp_data->new_adj.tv_usec);
+		printf("\nCurrent SYS Time: %.24s %.6ld ns",
+			ctime(&tp), ptp_data->new_adj.tv_usec);
 
-	printf("\nDelta between PTP and Linux Kernel time:%"PRId64"ns\n",
-				nsec);
+		printf("\nDelta between PTP and Linux Kernel time:%"PRId64"ns\n",
+			nsec);
+	}
+
+	if (mode == MODE_PI) {
+		printf("path delay: %"PRId64"ns\n", ptp_data->path_delay);
+		printf("master offset: %"PRId64"ns\n", ptp_data->master_offset);
+	}
 
 	printf("[Ctrl+C to quit]\n");
 
@@ -385,21 +425,11 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 static void
 parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 {
-	struct rte_ether_hdr *eth_hdr;
-	struct rte_ether_addr eth_addr;
 	struct ptp_header *ptp_hdr;
-	struct clock_id *client_clkid;
 	struct ptp_message *ptp_msg;
-	struct delay_req_msg *req_msg;
-	struct rte_mbuf *created_pkt;
 	struct tstamp *origin_tstamp;
-	struct rte_ether_addr eth_multicast = ether_multicast;
-	size_t pkt_size;
-	int wait_us;
 	struct rte_mbuf *m = ptp_data->m;
-	int ret;
 
-	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
 	ptp_hdr = rte_pktmbuf_mtod_offset(m, struct ptp_header *,
 					  sizeof(struct rte_ether_hdr));
 	if (memcmp(&ptp_data->master_clock_id,
@@ -416,6 +446,150 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 	ptp_data->tstamp1.tv_sec =
 		((uint64_t)ntohl(origin_tstamp->sec_lsb)) |
 		(((uint64_t)ntohs(origin_tstamp->sec_msb)) << 32);
+}
+
+static double
+pi_sample(struct pi_servo *s, int64_t offset, double local_ts,
+	  enum servo_state *state)
+{
+	double ki_term, ppb = s->last_freq;
+	double freq_est_interval, localdiff;
+
+	switch (s->count) {
+	case 0:
+		s->offset[0] = offset;
+		s->local[0] = local_ts;
+		*state = SERVO_UNLOCKED;
+		s->count = 1;
+		break;
+	case 1:
+		s->offset[1] = offset;
+		s->local[1] = local_ts;
+
+		/* Make sure the first sample is older than the second. */
+		if (s->local[0] >= s->local[1]) {
+			*state = SERVO_UNLOCKED;
+			s->count = 0;
+			break;
+		}
+
+		/* Wait long enough before estimating the frequency offset. */
+		localdiff = (s->local[1] - s->local[0]) / 1e9;
+		localdiff += localdiff * FREQ_EST_MARGIN;
+		freq_est_interval = 0.016 / KI;
+		if (freq_est_interval > 1000.0)
+			freq_est_interval = 1000.0;
+
+		if (localdiff < freq_est_interval) {
+			*state = SERVO_UNLOCKED;
+			break;
+		}
+
+		/* Adjust drift by the measured frequency offset. */
+		s->drift += (1e9 - s->drift) * (s->offset[1] - s->offset[0]) /
+						(s->local[1] - s->local[0]);
+
+		if (s->drift < -s->max_frequency)
+			s->drift = -s->max_frequency;
+		else if (s->drift > s->max_frequency)
+			s->drift = s->max_frequency;
+
+		if ((s->first_update &&
+		     s->first_step_threshold &&
+		     s->first_step_threshold < llabs(offset)) ||
+		    (s->step_threshold &&
+		     s->step_threshold < llabs(offset)))
+			*state = SERVO_JUMP;
+		else
+			*state = SERVO_LOCKED;
+
+		ppb = s->drift;
+		s->count = 2;
+		break;
+	case 2:
+		/*
+		 * reset the clock servo when offset is greater than the max
+		 * offset value. Note that the clock jump will be performed in
+		 * step 1, so it is not necessary to have clock jump
+		 * immediately. This allows re-calculating drift as in initial
+		 * clock startup.
+		 */
+		if (s->step_threshold &&
+		    s->step_threshold < llabs(offset)) {
+			*state = SERVO_UNLOCKED;
+			s->count = 0;
+			break;
+		}
+
+		ki_term = KI * offset;
+		ppb = KP * offset + s->drift + ki_term;
+		if (ppb < -s->max_frequency)
+			ppb = -s->max_frequency;
+		else if (ppb > s->max_frequency)
+			ppb = s->max_frequency;
+		else
+			s->drift += ki_term;
+
+		*state = SERVO_LOCKED;
+		break;
+	}
+
+	s->last_freq = ppb;
+	return ppb;
+}
+
+static void
+ptp_adjust_freq(struct ptpv2_data_slave_ordinary *ptp_data)
+{
+	uint64_t t1_ns, t2_ns;
+	double adj_freq;
+	enum servo_state state = SERVO_UNLOCKED;
+
+	t1_ns = timespec64_to_ns(&ptp_data->tstamp1);
+	t2_ns = timespec64_to_ns(&ptp_data->tstamp2);
+	ptp_data->master_offset = t2_ns - t1_ns - ptp_data->path_delay;
+	if (!ptp_data->path_delay)
+		return;
+
+	adj_freq = pi_sample(ptp_data->servo, ptp_data->master_offset, t2_ns,
+		     &state);
+
+	switch (state) {
+	case SERVO_UNLOCKED:
+		break;
+	case SERVO_JUMP:
+		ptp_data->servo->first_update = 0;
+		rte_eth_timesync_adjust_freq(ptp_data->portid,
+						-(long)(adj_freq * 65.536));
+		rte_eth_timesync_adjust_time(ptp_data->portid,
+					     -ptp_data->master_offset);
+		break;
+	case SERVO_LOCKED:
+		ptp_data->servo->first_update = 0;
+		rte_eth_timesync_adjust_freq(ptp_data->portid,
+					     -(long)(adj_freq * 65.536));
+		break;
+	}
+}
+
+static void
+send_delay_request(struct ptpv2_data_slave_ordinary *ptp_data)
+{
+	struct rte_ether_hdr *eth_hdr;
+	struct rte_ether_addr eth_addr;
+	struct ptp_header *ptp_hdr;
+	struct clock_id *client_clkid;
+	struct delay_req_msg *req_msg;
+	struct rte_mbuf *created_pkt;
+	struct rte_ether_addr eth_multicast = ether_multicast;
+	size_t pkt_size;
+	int wait_us;
+	struct rte_mbuf *m = ptp_data->m;
+	int ret;
+
+	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
+			+ sizeof(struct rte_ether_hdr));
 
 	if (ptp_data->seqID_FOLLOWUP == ptp_data->seqID_SYNC) {
 		ret = rte_eth_macaddr_get(ptp_data->portid, &eth_addr);
@@ -488,11 +662,10 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 		ptp_data->tstamp3.tv_sec = 0;
 
 		/* Wait at least 1 us to read TX timestamp. */
-		while ((rte_eth_timesync_read_tx_timestamp(ptp_data->portid,
-				&ptp_data->tstamp3) < 0) && (wait_us < 1000)) {
+		do {
 			rte_delay_us(1);
-			wait_us++;
-		}
+		} while ((rte_eth_timesync_read_tx_timestamp(ptp_data->portid,
+				&ptp_data->tstamp3) < 0) && (wait_us++ < 10));
 	}
 }
 
@@ -529,6 +702,25 @@ update_kernel_time(void)
 
 }
 
+static void
+clock_path_delay(struct ptpv2_data_slave_ordinary *ptp_data)
+{
+	uint64_t t1_ns, t2_ns, t3_ns, t4_ns;
+	int64_t pd, diff;
+
+	t1_ns = timespec64_to_ns(&ptp_data->tstamp1);
+	t2_ns = timespec64_to_ns(&ptp_data->tstamp2);
+	t3_ns = timespec64_to_ns(&ptp_data->tstamp3);
+	t4_ns = timespec64_to_ns(&ptp_data->tstamp4);
+
+	pd = (t2_ns - t3_ns) + (t4_ns - t1_ns);
+	diff = t3_ns - t2_ns;
+	if (diff <= INT32_MAX && diff >= INT32_MIN)
+		ptp_data->path_delay = pd / 2;
+	else
+		ptp_data->path_delay = 0;
+}
+
 /*
  * Parse the DELAY_RESP message.
  */
@@ -541,7 +733,7 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 	uint16_t seq_id;
 
 	ptp_msg = rte_pktmbuf_mtod_offset(m, struct ptp_message *,
-					  sizeof(struct rte_ether_hdr));
+					sizeof(struct rte_ether_hdr));
 	seq_id = rte_be_to_cpu_16(ptp_msg->delay_resp.hdr.seq_id);
 	if (memcmp(&ptp_data->client_clock_id,
 		   &ptp_msg->delay_resp.req_port_id.clock_id,
@@ -553,11 +745,15 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 				((uint64_t)ntohl(rx_tstamp->sec_lsb)) |
 				(((uint64_t)ntohs(rx_tstamp->sec_msb)) << 32);
 
-			/* Evaluate the delta for adjustment. */
-			ptp_data->delta = delta_eval(ptp_data);
+			if (mode == MODE_PI) {
+				clock_path_delay(ptp_data);
+			} else {
+				/* Evaluate the delta for adjustment. */
+				ptp_data->delta = delta_eval(ptp_data);
 
-			rte_eth_timesync_adjust_time(ptp_data->portid,
-						     ptp_data->delta);
+				rte_eth_timesync_adjust_time(ptp_data->portid,
+								ptp_data->delta);
+			}
 
 			ptp_data->current_ptp_port = ptp_data->portid;
 
@@ -597,6 +793,9 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
 			break;
 		case FOLLOW_UP:
 			parse_fup(&ptp_data);
+			if (mode == MODE_PI)
+				ptp_adjust_freq(&ptp_data);
+			send_delay_request(&ptp_data);
 			break;
 		case DELAY_RESP:
 			parse_drsp(&ptp_data);
@@ -688,6 +887,21 @@ parse_ptp_kernel(const char *param)
 	return 1;
 }
 
+static void
+servo_init(struct pi_servo *servo)
+{
+	memset(servo, 0x00, sizeof(*servo));
+
+	servo->drift = 100000000;
+	servo->last_freq = 100000000;
+	servo->count = 0;
+
+	servo->max_frequency = 100000000;
+	servo->step_threshold = 0.1 * NSEC_PER_SEC;
+	servo->first_step_threshold = 0.00002 * NSEC_PER_SEC;
+	servo->first_update = 1;
+}
+
 /* Parse the commandline arguments. */
 static int
 ptp_parse_args(int argc, char **argv)
@@ -696,7 +910,10 @@ ptp_parse_args(int argc, char **argv)
 	char **argvopt;
 	int option_index;
 	char *prgname = argv[0];
-	static struct option lgopts[] = { {NULL, 0, 0, 0} };
+	static struct option lgopts[] = {
+		{"controller", 1, 0, 0},
+		{NULL, 0, 0, 0}
+	};
 
 	argvopt = argv;
 
@@ -723,6 +940,11 @@ ptp_parse_args(int argc, char **argv)
 			}
 
 			ptp_data.kernel_time_set = ret;
+			break;
+		case 0:
+			if (!strcmp(lgopts[option_index].name, "controller"))
+				if (!strcmp(optarg, "pi"))
+					mode = MODE_PI;
 			break;
 
 		default:
@@ -778,6 +1000,14 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Error with PTP initialization\n");
 	/* >8 End of parsing specific arguments. */
 
+	if (mode == MODE_PI) {
+		ptp_data.servo = malloc(sizeof(*(ptp_data.servo)));
+		if (!ptp_data.servo)
+			rte_exit(EXIT_FAILURE, "no memory for servo\n");
+
+		servo_init(ptp_data.servo);
+	}
+
 	/* Check that there is an even number of ports to send/receive on. */
 	nb_ports = rte_eth_dev_count_avail();
 
@@ -830,6 +1060,9 @@ main(int argc, char *argv[])
 
 		rte_eth_dev_close(portid);
 	}
+
+	if (mode == MODE_PI)
+		free(ptp_data.servo);
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
