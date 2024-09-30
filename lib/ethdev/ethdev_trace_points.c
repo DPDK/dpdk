@@ -409,6 +409,9 @@ RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_read_tx_timestamp,
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_adjust_time,
 	lib.ethdev.timesync_adjust_time)
 
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_adjust_freq,
+	lib.ethdev.timesync_adjust_freq)
+
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_timesync_read_time,
 	lib.ethdev.timesync_read_time)
 

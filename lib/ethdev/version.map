@@ -325,6 +325,9 @@ EXPERIMENTAL {
 	rte_flow_template_table_resizable;
 	rte_flow_template_table_resize;
 	rte_flow_template_table_resize_complete;
+
+	# added in 24.11
+	rte_eth_timesync_adjust_freq;
 };
 
 INTERNAL {
