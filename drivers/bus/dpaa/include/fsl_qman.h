@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
- * Copyright 2019 NXP
+ * Copyright 2019-2022 NXP
  *
  */
 
@@ -1237,6 +1237,8 @@ struct qman_fq {
 
 	/* DPDK Interface */
 	void *dpaa_intf;
+	/*to store tx_conf_queue corresponding to tx_queue*/
+	struct qman_fq *tx_conf_queue;
 
 	struct rte_event ev;
 	/* affined portal in case of static queue */

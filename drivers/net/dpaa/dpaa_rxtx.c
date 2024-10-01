@@ -1083,8 +1083,7 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	struct dpaa_sw_buf_free buf_to_free[DPAA_MAX_SGS * DPAA_MAX_DEQUEUE_NUM_FRAMES];
 	uint32_t free_count = 0;
 	struct qman_fq *fq = q;
-	struct dpaa_if *dpaa_intf = fq->dpaa_intf;
-	struct qman_fq *fq_txconf = dpaa_intf->tx_conf_queues;
+	struct qman_fq *fq_txconf = fq->tx_conf_queue;
 
 	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
