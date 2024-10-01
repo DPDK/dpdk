@@ -1047,8 +1047,8 @@ mbox_unregister_vf_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 	dev_irq_unregister(intr_handle, roc_pf_vf_mbox_irq, dev, RVU_VF_INT_VEC_MBOX);
 }
 
-static void
-mbox_unregister_irq(struct plt_pci_device *pci_dev, struct dev *dev)
+void
+dev_mbox_unregister_irq(struct plt_pci_device *pci_dev, struct dev *dev)
 {
 	if (dev_is_vf(dev))
 		mbox_unregister_vf_irq(pci_dev, dev);
@@ -1126,8 +1126,8 @@ roc_pf_vf_flr_irq(void *param)
 	}
 }
 
-static int
-vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
+void
+dev_vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 {
 	struct plt_intr_handle *intr_handle = pci_dev->intr_handle;
 	int i;
@@ -1143,8 +1143,6 @@ vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev)
 
 	dev_irq_unregister(intr_handle, roc_pf_vf_flr_irq, dev,
 			   RVU_PF_INT_VEC_VFFLR1);
-
-	return 0;
 }
 
 int
@@ -1723,7 +1721,7 @@ thread_fail:
 iounmap:
 	dev_vf_mbase_put(pci_dev, vf_mbase);
 mbox_unregister:
-	mbox_unregister_irq(pci_dev, dev);
+	dev_mbox_unregister_irq(pci_dev, dev);
 	if (dev->ops)
 		plt_free(dev->ops);
 mbox_fini:
@@ -1761,10 +1759,10 @@ dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 	if (dev->lmt_mz)
 		plt_memzone_free(dev->lmt_mz);
 
-	mbox_unregister_irq(pci_dev, dev);
+	dev_mbox_unregister_irq(pci_dev, dev);
 
 	if (!dev_is_vf(dev)) {
-		vf_flr_unregister_irqs(pci_dev, dev);
+		dev_vf_flr_unregister_irqs(pci_dev, dev);
 		/* Releasing memory allocated for mbox region */
 		if (dev->vf_mbox_mz)
 			plt_memzone_free(dev->vf_mbox_mz);

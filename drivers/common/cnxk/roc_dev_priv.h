@@ -170,6 +170,8 @@ int dev_irqs_disable(struct plt_intr_handle *intr_handle);
 int dev_irq_reconfigure(struct plt_intr_handle *intr_handle, uint16_t max_intr);
 
 int dev_mbox_register_irq(struct plt_pci_device *pci_dev, struct dev *dev);
+void dev_mbox_unregister_irq(struct plt_pci_device *pci_dev, struct dev *dev);
 int dev_vf_flr_register_irqs(struct plt_pci_device *pci_dev, struct dev *dev);
+void dev_vf_flr_unregister_irqs(struct plt_pci_device *pci_dev, struct dev *dev);
 
 #endif /* _ROC_DEV_PRIV_H */
