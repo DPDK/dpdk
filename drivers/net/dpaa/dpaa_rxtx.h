@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017,2020-2021 NXP
+ *   Copyright 2017,2020-2022 NXP
  *
  */
 
@@ -260,7 +260,7 @@ struct dpaa_eth_parse_results_t {
 struct annotations_t {
 	uint8_t reserved[DEFAULT_RX_ICEOF];
 	struct dpaa_eth_parse_results_t parse;	/**< Pointer to Parsed result*/
-	uint64_t reserved1;
+	uint64_t timestamp;
 	uint64_t hash;			/**< Hash Result */
 };
 

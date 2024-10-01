@@ -14,6 +14,7 @@ sources = files(
         'dpaa_flow.c',
         'dpaa_rxtx.c',
         'dpaa_fmc.c',
+        'dpaa_ptp.c',
 )
 
 if cc.has_argument('-Wno-pointer-arith')
