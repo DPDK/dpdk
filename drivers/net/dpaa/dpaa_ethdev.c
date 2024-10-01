@@ -971,7 +971,7 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	struct fman_if *fif = dev->process_private;
 	struct qman_fq *rxq = &dpaa_intf->rx_queues[queue_idx];
 	struct qm_mcc_initfq opts = {0};
-	u32 flags = 0;
+	u32 ch_id, flags = 0;
 	int ret;
 	u32 buffsz = rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
 	uint32_t max_rx_pktlen;
@@ -1095,7 +1095,9 @@ int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 						DPAA_IF_RX_CONTEXT_STASH;
 
 		/*Create a channel and associate given queue with the channel*/
-		qman_alloc_pool_range((u32 *)&rxq->ch_id, 1, 1, 0);
+		qman_alloc_pool_range(&ch_id, 1, 1, 0);
+		rxq->ch_id = (u16)ch_id;
+
 		opts.we_mask = opts.we_mask | QM_INITFQ_WE_DESTWQ;
 		opts.fqd.dest.channel = rxq->ch_id;
 		opts.fqd.dest.wq = DPAA_IF_RX_PRIORITY;
