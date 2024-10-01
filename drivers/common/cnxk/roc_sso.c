@@ -765,7 +765,14 @@ sso_update_msix_vec_count(struct roc_sso *roc_sso, uint16_t sso_vec_cnt)
 		return dev_irq_reconfigure(pci_dev->intr_handle, mbox_vec_cnt + npa_vec_cnt);
 	}
 
+	/* Before re-configuring unregister irqs */
 	npa_vec_cnt = (dev->npa.pci_dev == pci_dev) ? NPA_LF_INT_VEC_POISON + 1 : 0;
+	if (npa_vec_cnt)
+		npa_unregister_irqs(&dev->npa);
+
+	dev_mbox_unregister_irq(pci_dev, dev);
+	if (!dev_is_vf(dev))
+		dev_vf_flr_unregister_irqs(pci_dev, dev);
 
 	/* Re-configure to include SSO vectors */
 	rc = dev_irq_reconfigure(pci_dev->intr_handle, mbox_vec_cnt + npa_vec_cnt + sso_vec_cnt);
