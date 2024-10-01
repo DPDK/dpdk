@@ -494,6 +494,10 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	first_seg->data_len = sg_temp->length;
 	first_seg->pkt_len = sg_temp->length;
 	rte_mbuf_refcnt_set(first_seg, 1);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	rte_mempool_check_cookies(rte_mempool_from_obj((void *)first_seg),
+			(void **)&first_seg, 1, 1);
+#endif
 
 	first_seg->port = ifid;
 	first_seg->nb_segs = 1;
@@ -511,6 +515,10 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 		first_seg->pkt_len += sg_temp->length;
 		first_seg->nb_segs += 1;
 		rte_mbuf_refcnt_set(cur_seg, 1);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		rte_mempool_check_cookies(rte_mempool_from_obj((void *)cur_seg),
+				(void **)&cur_seg, 1, 1);
+#endif
 		prev_seg->next = cur_seg;
 		if (sg_temp->final) {
 			cur_seg->next = NULL;
@@ -522,6 +530,10 @@ dpaa_eth_sg_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 			first_seg->pkt_len, first_seg->nb_segs);
 
 	dpaa_eth_packet_info(first_seg, vaddr);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	rte_mempool_check_cookies(rte_mempool_from_obj((void *)temp),
+			(void **)&temp, 1, 1);
+#endif
 	rte_pktmbuf_free_seg(temp);
 
 	return first_seg;
@@ -562,6 +574,10 @@ dpaa_eth_fd_to_mbuf(const struct qm_fd *fd, uint32_t ifid)
 	mbuf->ol_flags = 0;
 	mbuf->next = NULL;
 	rte_mbuf_refcnt_set(mbuf, 1);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	rte_mempool_check_cookies(rte_mempool_from_obj((void *)mbuf),
+			(void **)&mbuf, 1, 1);
+#endif
 	dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
 
 	return mbuf;
@@ -676,6 +692,10 @@ dpaa_rx_cb_no_prefetch(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 		mbuf->ol_flags = 0;
 		mbuf->next = NULL;
 		rte_mbuf_refcnt_set(mbuf, 1);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		rte_mempool_check_cookies(rte_mempool_from_obj((void *)mbuf),
+			(void **)&mbuf, 1, 1);
+#endif
 		dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
 		dpaa_display_frame_info(fd, fq[0]->fqid, true);
 		if (dpaa_ieee_1588) {
@@ -722,6 +742,10 @@ dpaa_rx_cb(struct qman_fq **fq, struct qm_dqrr_entry **dqrr,
 		mbuf->ol_flags = 0;
 		mbuf->next = NULL;
 		rte_mbuf_refcnt_set(mbuf, 1);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		rte_mempool_check_cookies(rte_mempool_from_obj((void *)mbuf),
+			(void **)&mbuf, 1, 1);
+#endif
 		dpaa_eth_packet_info(mbuf, mbuf->buf_addr);
 		dpaa_display_frame_info(fd, fq[0]->fqid, true);
 		if (dpaa_ieee_1588) {
@@ -972,6 +996,10 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		return -1;
 	}
 
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	rte_mempool_check_cookies(rte_mempool_from_obj((void *)temp),
+			(void **)&temp, 1, 0);
+#endif
 	fd->cmd = 0;
 	fd->opaque_addr = 0;
 
@@ -1017,6 +1045,10 @@ dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 			} else {
 				sg_temp->bpid =
 					DPAA_MEMPOOL_TO_BPID(cur_seg->pool);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+				rte_mempool_check_cookies(rte_mempool_from_obj((void *)cur_seg),
+					(void **)&cur_seg, 1, 0);
+#endif
 			}
 		} else if (RTE_MBUF_HAS_EXTBUF(cur_seg)) {
 			free_buf[*free_count].seg = cur_seg;
@@ -1074,6 +1106,10 @@ tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
 			 * released by BMAN.
 			 */
 			DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr, bp_info->bpid);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+			rte_mempool_check_cookies(rte_mempool_from_obj((void *)mbuf),
+				(void **)&mbuf, 1, 0);
+#endif
 		}
 	} else if (RTE_MBUF_HAS_EXTBUF(mbuf)) {
 		buf_to_free[*free_count].seg = mbuf;
@@ -1302,6 +1338,10 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 						DPAA_TX_CKSUM_OFFLOAD_MASK)
 						dpaa_unsegmented_checksum(mbuf,
 							&fd_arr[loop]);
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+				rte_mempool_check_cookies(rte_mempool_from_obj((void *)mbuf),
+						(void **)&mbuf, 1, 0);
+#endif
 					continue;
 				}
 			} else {
