@@ -2,7 +2,7 @@
  *
  * Copyright 2010-2012 Freescale Semiconductor, Inc.
  * All rights reserved.
- * Copyright 2019-2021 NXP
+ * Copyright 2019-2022 NXP
  *
  */
 
@@ -292,6 +292,21 @@ struct rx_bmi_regs {
 	uint32_t fmbm_rdbg;		/**< Rx Debug-*/
 };
 
+struct tx_bmi_regs {
+	uint32_t fmbm_tcfg;		/**< Tx Configuration*/
+	uint32_t fmbm_tst;		/**< Tx Status*/
+	uint32_t fmbm_tda;		/**< Tx DMA attributes*/
+	uint32_t fmbm_tfp;		/**< Tx FIFO Parameters*/
+	uint32_t fmbm_tfed;		/**< Tx Frame End Data*/
+	uint32_t fmbm_ticp;		/**< Tx Internal Context Parameters*/
+	uint32_t fmbm_tfdne;		/**< Tx Frame Dequeue Next Engine*/
+	uint32_t fmbm_tfca;		/**< Tx Frame Attributes*/
+	uint32_t fmbm_tcfqid;		/**< Tx Confirmation Frame Queue ID*/
+	uint32_t fmbm_tefqid;		/**< Tx Error Frame Queue ID*/
+	uint32_t fmbm_tfene;		/**< Tx Frame Enqueue Next Engine*/
+	uint32_t fmbm_trlmts;		/**< Tx Rate Limiter Scale*/
+	uint32_t fmbm_trlmt;		/**< Tx Rate Limiter*/
+};
 struct fman_port_qmi_regs {
 	uint32_t fmqm_pnc;		/**< PortID n Configuration Register */
 	uint32_t fmqm_pns;		/**< PortID n Status Register */
@@ -380,6 +395,7 @@ struct __fman_if {
 	uint64_t regs_size;
 	void *ccsr_map;
 	void *bmi_map;
+	void *tx_bmi_map;
 	void *qmi_map;
 	struct list_head node;
 };
