@@ -28,6 +28,7 @@ u32 fman_dealloc_bufs_mask_lo;
 
 int fman_ccsr_map_fd = -1;
 static COMPAT_LIST_HEAD(__ifs);
+void *rtc_map;
 
 /* This is the (const) global variable that callers have read-only access to.
  * Internally, we have read-write access directly to __ifs.
@@ -537,6 +538,20 @@ fman_if_init(const struct device_node *dpa_node)
 	if (__if->tx_bmi_map == MAP_FAILED) {
 		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 		goto err;
+	}
+
+	if (!rtc_map) {
+		__if->rtc_map = mmap(NULL, FMAN_IEEE_1588_SIZE,
+				PROT_READ | PROT_WRITE, MAP_SHARED,
+				fman_ccsr_map_fd, FMAN_IEEE_1588_OFFSET);
+		if (__if->rtc_map == MAP_FAILED) {
+			pr_err("Can not map FMan RTC regs base\n");
+			_errno = -EINVAL;
+			goto err;
+		}
+		rtc_map = __if->rtc_map;
+	} else {
+		__if->rtc_map = rtc_map;
 	}
 
 	/* No channel ID for MAC-less */

@@ -148,6 +148,7 @@ Features
   - Packet type information
   - Checksum offload
   - Promiscuous mode
+  - IEEE1588 PTP
 
 DPAA Mempool Driver
 ~~~~~~~~~~~~~~~~~~~

@@ -64,6 +64,12 @@
 #define GROUP_ADDRESS		0x0000010000000000LL
 #define HASH_CTRL_ADDR_MASK	0x0000003F
 
+#define FMAN_RTC_MAX_NUM_OF_ALARMS		3
+#define FMAN_RTC_MAX_NUM_OF_PERIODIC_PULSES	4
+#define FMAN_RTC_MAX_NUM_OF_EXT_TRIGGERS	3
+#define FMAN_IEEE_1588_OFFSET			0X1AFE000
+#define FMAN_IEEE_1588_SIZE			4096
+
 /* Pre definitions of FMAN interface and Bpool structures */
 struct __fman_if;
 struct fman_if_bpool;
@@ -307,6 +313,44 @@ struct tx_bmi_regs {
 	uint32_t fmbm_trlmts;		/**< Tx Rate Limiter Scale*/
 	uint32_t fmbm_trlmt;		/**< Tx Rate Limiter*/
 };
+
+/* Description FM RTC timer alarm */
+struct t_tmr_alarm {
+	uint32_t tmr_alarm_h;
+	uint32_t tmr_alarm_l;
+};
+
+/* Description FM RTC timer Ex trigger */
+struct t_tmr_ext_trigger {
+	uint32_t tmr_etts_h;
+	uint32_t tmr_etts_l;
+};
+
+struct rtc_regs {
+	uint32_t tmr_id;	/* 0x000 Module ID register */
+	uint32_t tmr_id2;	/* 0x004 Controller ID register */
+	uint32_t reserved0008[30];
+	uint32_t tmr_ctrl;	/* 0x0080 timer control register */
+	uint32_t tmr_tevent;	/* 0x0084 timer event register */
+	uint32_t tmr_temask;	/* 0x0088 timer event mask register */
+	uint32_t reserved008c[3];
+	uint32_t tmr_cnt_h;	/* 0x0098 timer counter high register */
+	uint32_t tmr_cnt_l;	/* 0x009c timer counter low register */
+	uint32_t tmr_add;	/* 0x00a0 timer drift compensation addend register */
+	uint32_t tmr_acc;	/* 0x00a4 timer accumulator register */
+	uint32_t tmr_prsc;	/* 0x00a8 timer prescale */
+	uint32_t reserved00ac;
+	uint32_t tmr_off_h;	/* 0x00b0 timer offset high */
+	uint32_t tmr_off_l;	/* 0x00b4 timer offset low  */
+	struct t_tmr_alarm tmr_alarm[FMAN_RTC_MAX_NUM_OF_ALARMS];
+				/* 0x00b8 timer alarm */
+	uint32_t tmr_fiper[FMAN_RTC_MAX_NUM_OF_PERIODIC_PULSES];
+				/* 0x00d0 timer fixed period interval */
+	struct t_tmr_ext_trigger tmr_etts[FMAN_RTC_MAX_NUM_OF_EXT_TRIGGERS];
+				/* 0x00e0 time stamp general purpose external */
+	uint32_t reserved00f0[4];
+};
+
 struct fman_port_qmi_regs {
 	uint32_t fmqm_pnc;		/**< PortID n Configuration Register */
 	uint32_t fmqm_pns;		/**< PortID n Status Register */
@@ -396,6 +440,7 @@ struct __fman_if {
 	void *ccsr_map;
 	void *bmi_map;
 	void *tx_bmi_map;
+	void *rtc_map;
 	void *qmi_map;
 	struct list_head node;
 };
