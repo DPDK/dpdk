@@ -1751,7 +1751,7 @@ cnxk_nix_dev_start(struct rte_eth_dev *eth_dev)
 	else
 		cnxk_eth_dev_ops.timesync_disable(eth_dev);
 
-	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP || dev->ptp_en) {
 		rc = rte_mbuf_dyn_rx_timestamp_register
 			(&dev->tstamp.tstamp_dynfield_offset,
 			 &dev->tstamp.rx_tstamp_dynflag);
