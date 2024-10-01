@@ -31,6 +31,10 @@ __otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 	volatile uint64_t reg_val = 0ull;
 	int count = 0;
 
+	reg_val = otx2_read64(otx_ep->hw_addr + CNXK_EP_R_MBOX_VF_PF_DATA(0));
+	if (reg_val == UINT64_MAX)
+		return -ENODEV;
+
 	cmd.s.type = OTX_EP_MBOX_TYPE_CMD;
 	otx2_write64(cmd.u64, otx_ep->hw_addr + CNXK_EP_R_MBOX_VF_PF_DATA(0));
 
@@ -41,6 +45,8 @@ __otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 	for (count = 0; count < OTX_EP_MBOX_TIMEOUT_MS; count++) {
 		rte_delay_ms(1);
 		reg_val = otx2_read64(otx_ep->hw_addr + CNXK_EP_R_MBOX_VF_PF_DATA(0));
+		if (reg_val == UINT64_MAX)
+			return -ENODEV;
 		if (reg_val != cmd.u64) {
 			rsp->u64 = reg_val;
 			break;
@@ -351,6 +357,7 @@ otx_ep_mbox_init(struct rte_eth_dev *eth_dev)
 {
 	struct otx_ep_device *otx_ep = (struct otx_ep_device *)eth_dev->data->dev_private;
 	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	uint64_t reg_val;
 
 	otx_ep_mbox_version_check(otx_ep);
 
@@ -360,6 +367,10 @@ otx_ep_mbox_init(struct rte_eth_dev *eth_dev)
 		otx_ep_err("rte_intr_enable failed");
 		return -1;
 	}
+
+	reg_val = otx2_read64(otx_ep->hw_addr + CNXK_EP_R_MBOX_PF_VF_INT(0));
+	if (reg_val == UINT64_MAX)
+		return -ENODEV;
 
 	/* Enable pf-vf mbox interrupt & clear the status */
 	otx2_write64(CNXK_EP_MBOX_ENAB | CNXK_EP_MBOX_INTR,

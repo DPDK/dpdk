@@ -410,6 +410,8 @@ otx_ep_vf_setup_device(struct otx_ep_device *otx_ep)
 
 	/* Get IOQs (RPVF] count */
 	reg_val = rte_read64(otx_ep->hw_addr + OTX_EP_R_IN_CONTROL(0));
+	if (reg_val == UINT64_MAX)
+		return -ENODEV;
 
 	otx_ep->sriov_info.rings_per_vf = ((reg_val >> OTX_EP_R_IN_CTL_RPVF_POS)
 					  & OTX_EP_R_IN_CTL_RPVF_MASK);
