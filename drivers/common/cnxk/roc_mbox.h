@@ -309,6 +309,7 @@ struct mbox_msghdr {
 	M(NIX_MCAST_GRP_UPDATE, 0x802d, nix_mcast_grp_update, nix_mcast_grp_update_req,            \
 	  nix_mcast_grp_update_rsp)                                                                \
 	M(NIX_GET_LF_STATS,    0x802e, nix_get_lf_stats, nix_get_lf_stats_req, nix_lf_stats_rsp)   \
+	M(NIX_CN20K_AQ_ENQ, 0x802f, nix_cn20k_aq_enq, nix_cn20k_aq_enq_req, nix_cn20k_aq_enq_rsp)  \
 	/* MCS mbox IDs (range 0xa000 - 0xbFFF) */                                                 \
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
@@ -1440,6 +1441,57 @@ struct nix_lf_free_req {
 #define NIX_LF_DISABLE_FLOWS	 BIT_ULL(0)
 #define NIX_LF_DONT_FREE_TX_VTAG BIT_ULL(1)
 	uint64_t __io flags;
+};
+
+/* CN20x NIX AQ enqueue msg */
+struct nix_cn20k_aq_enq_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io qidx;
+	uint8_t __io ctype;
+	uint8_t __io op;
+	union {
+		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_RQ */
+		__io struct nix_cn20k_rq_ctx_s rq;
+		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_SQ */
+		__io struct nix_cn20k_sq_ctx_s sq;
+		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_CQ */
+		__io struct nix_cn20k_cq_ctx_s cq;
+		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_RSS */
+		__io struct nix_rsse_s rss;
+		/* Valid when op == WRITE/INIT and ctype == NIX_AQ_CTYPE_MCE */
+		__io struct nix_rx_mce_s mce;
+		/* Valid when op == WRITE/INIT and
+		 * ctype == NIX_AQ_CTYPE_BAND_PROF
+		 */
+		__io struct nix_band_prof_s prof;
+	};
+	/* Mask data when op == WRITE (1=write, 0=don't write) */
+	union {
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_RQ */
+		__io struct nix_cn20k_rq_ctx_s rq_mask;
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_SQ */
+		__io struct nix_cn20k_sq_ctx_s sq_mask;
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_CQ */
+		__io struct nix_cn20k_cq_ctx_s cq_mask;
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_RSS */
+		__io struct nix_rsse_s rss_mask;
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_MCE */
+		__io struct nix_rx_mce_s mce_mask;
+		/* Valid when op == WRITE and ctype == NIX_AQ_CTYPE_BAND_PROF */
+		__io struct nix_band_prof_s prof_mask;
+	};
+};
+
+struct nix_cn20k_aq_enq_rsp {
+	struct mbox_msghdr hdr;
+	union {
+		__io struct nix_cn20k_rq_ctx_s rq;
+		__io struct nix_cn20k_sq_ctx_s sq;
+		__io struct nix_cn20k_cq_ctx_s cq;
+		__io struct nix_rsse_s rss;
+		__io struct nix_rx_mce_s mce;
+		__io struct nix_band_prof_s prof;
+	};
 };
 
 /* CN10x NIX AQ enqueue msg */

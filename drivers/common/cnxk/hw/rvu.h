@@ -67,7 +67,9 @@
 #define RVU_PF_VFX_PFVF_MBOXX(a, b)                                            \
 	(0x0ull | (uint64_t)(a) << 12 | (uint64_t)(b) << 3)
 #define RVU_PF_VF_BAR4_ADDR		 (0x10ull)
-#define RVU_PF_BLOCK_ADDRX_DISC(a)	 (0x200ull | (uint64_t)(a) << 3)
+
+#define RVU_PF_DISC			 (0x0ull)  /* [CN20K, .) */
+#define RVU_PF_BLOCK_ADDRX_DISC(a)	 (0x200ull | (uint64_t)(a) << 3)  /* [CN9K, CN20K) */
 #define RVU_PF_VFME_STATUSX(a)		 (0x800ull | (uint64_t)(a) << 3)
 #define RVU_PF_VFTRPENDX(a)		 (0x820ull | (uint64_t)(a) << 3)
 #define RVU_PF_VFTRPEND_W1SX(a)		 (0x840ull | (uint64_t)(a) << 3)
@@ -91,7 +93,8 @@
 #define RVU_PF_MSIX_VECX_ADDR(a)	 (0x80000ull | (uint64_t)(a) << 4)
 #define RVU_PF_MSIX_VECX_CTL(a)		 (0x80008ull | (uint64_t)(a) << 4)
 #define RVU_PF_MSIX_PBAX(a)		 (0xf0000ull | (uint64_t)(a) << 3)
-#define RVU_VF_VFPF_MBOXX(a)		 (0x0ull | (uint64_t)(a) << 3)
+#define RVU_VF_DISC			 (0x0ull)  /* [CN20K, .) */
+#define RVU_VF_VFPF_MBOXX(a)		 (0x0ull | (uint64_t)(a) << 3) /* [CN9K, CN20K) */
 #define RVU_VF_INT			 (0x20ull)
 #define RVU_VF_INT_W1S			 (0x28ull)
 #define RVU_VF_INT_ENA_W1S		 (0x30ull)
