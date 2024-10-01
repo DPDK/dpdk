@@ -11,6 +11,8 @@ EXPERIMENTAL {
 
 	# added in 23.11
 	rte_pmd_cnxk_hw_session_base_get;
+	rte_pmd_cnxk_inl_dev_qptr_get;
+	rte_pmd_cnxk_inl_dev_submit;
 	rte_pmd_cnxk_inl_ipsec_res;
 	rte_pmd_cnxk_sa_flush;
 };

@@ -33,6 +33,8 @@ struct inl_cpt_channel {
 #define CNXK_NIX_INL_DEV_NAME_LEN                                              \
 	(sizeof(CNXK_NIX_INL_DEV_NAME) + PCI_PRI_STR_SIZE)
 
+struct cnxk_ethdev_pmd_ops cnxk_pmd_ops;
+
 static inline int
 bitmap_ctzll(uint64_t slab)
 {
@@ -297,6 +299,18 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 	return NULL;
 }
 
+uint16_t
+rte_pmd_cnxk_inl_dev_submit(struct rte_pmd_cnxk_inl_dev_q *qptr, void *inst, uint16_t nb_inst)
+{
+	return cnxk_pmd_ops.inl_dev_submit((struct roc_nix_inl_dev_q *)qptr, inst, nb_inst);
+}
+
+struct rte_pmd_cnxk_inl_dev_q *
+rte_pmd_cnxk_inl_dev_qptr_get(void)
+{
+	return roc_nix_inl_dev_qptr_get(0);
+}
+
 union rte_pmd_cnxk_ipsec_hw_sa *
 rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb)
 {
@@ -353,6 +367,7 @@ rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_h
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct cnxk_eth_sec_sess *eth_sec;
+	struct roc_nix_inl_dev_q *q;
 	void *sa;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
@@ -360,6 +375,10 @@ rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_h
 		sa = eth_sec->sa;
 	else
 		sa = sess;
+
+	q = dev->inb.inl_dev_q;
+	if (q && cnxk_nix_inl_fc_check(q->fc_addr, &q->fc_addr_sw, q->nb_desc, 1))
+		return -EAGAIN;
 
 	return roc_nix_inl_ctx_write(&dev->nix, data, sa, inb, len);
 }

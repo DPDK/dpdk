@@ -845,6 +845,17 @@ cn9k_eth_sec_capabilities_get(void *device __rte_unused)
 	return cn9k_eth_sec_capabilities;
 }
 
+static uint16_t
+cn9k_inl_dev_submit(struct roc_nix_inl_dev_q *q, void *inst, uint16_t nb_inst)
+{
+	/* Not supported */
+	PLT_SET_USED(q);
+	PLT_SET_USED(inst);
+	PLT_SET_USED(nb_inst);
+
+	return 0;
+}
+
 void
 cn9k_eth_sec_ops_override(void)
 {
@@ -859,4 +870,7 @@ cn9k_eth_sec_ops_override(void)
 	cnxk_eth_sec_ops.session_update = cn9k_eth_sec_session_update;
 	cnxk_eth_sec_ops.session_destroy = cn9k_eth_sec_session_destroy;
 	cnxk_eth_sec_ops.capabilities_get = cn9k_eth_sec_capabilities_get;
+
+	/* Update platform specific rte_pmd_cnxk ops */
+	cnxk_pmd_ops.inl_dev_submit = cn9k_inl_dev_submit;
 }

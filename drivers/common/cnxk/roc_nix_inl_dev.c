@@ -168,6 +168,7 @@ exit:
 static int
 nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 {
+	struct roc_nix_inl_dev_q *q_info;
 	struct dev *dev = &inl_dev->dev;
 	bool ctx_ilen_valid = false;
 	struct roc_cpt_lf *lf;
@@ -208,6 +209,13 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 			plt_err("Failed to initialize CPT LF, rc=%d", rc);
 			goto lf_free;
 		}
+
+		q_info = &inl_dev->q_info[i];
+		q_info->nb_desc = lf->nb_desc;
+		q_info->fc_addr = lf->fc_addr;
+		q_info->io_addr = lf->io_addr;
+		q_info->lmt_base = lf->lmt_base;
+		q_info->rbase = lf->rbase;
 
 		roc_cpt_iq_enable(lf);
 	}
@@ -833,6 +841,30 @@ nix_inl_outb_poll_thread_setup(struct nix_inl_dev *inl_dev)
 
 exit:
 	return rc;
+}
+
+void *
+roc_nix_inl_dev_qptr_get(uint8_t qid)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev) {
+		plt_err("Inline Device could not be detected");
+		return NULL;
+	}
+	if (!inl_dev->attach_cptlf) {
+		plt_err("No CPT LFs are attached to Inline Device");
+		return NULL;
+	}
+	if (qid >= inl_dev->nb_cptlf) {
+		plt_err("Invalid qid: %u total queues: %d", qid, inl_dev->nb_cptlf);
+		return NULL;
+	}
+	return &inl_dev->q_info[qid];
 }
 
 int

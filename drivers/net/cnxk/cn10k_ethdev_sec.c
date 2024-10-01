@@ -1305,6 +1305,45 @@ cn10k_eth_sec_rx_inject_config(void *device, uint16_t port_id, bool enable)
 	return 0;
 }
 
+#define CPT_LMTST_BURST 32
+static uint16_t
+cn10k_inl_dev_submit(struct roc_nix_inl_dev_q *q, void *inst, uint16_t nb_inst)
+{
+	uintptr_t lbase = q->lmt_base;
+	uint8_t lnum, shft, loff;
+	uint16_t left, burst;
+	rte_iova_t io_addr;
+	uint16_t lmt_id;
+
+	/* Check the flow control to avoid the queue overflow */
+	if (cnxk_nix_inl_fc_check(q->fc_addr, &q->fc_addr_sw, q->nb_desc, nb_inst))
+		return 0;
+
+	io_addr = q->io_addr;
+	ROC_LMT_CPT_BASE_ID_GET(lbase, lmt_id);
+
+	left = nb_inst;
+again:
+	burst = left > CPT_LMTST_BURST ? CPT_LMTST_BURST : left;
+
+	lnum = 0;
+	loff = 0;
+	shft = 16;
+	memcpy(PLT_PTR_CAST(lbase), inst, burst * sizeof(struct cpt_inst_s));
+	loff = (burst % 2) ? 1 : 0;
+	lnum = (burst / 2);
+	shft = shft + (lnum * 3);
+
+	left -= burst;
+	cn10k_nix_sec_steorl(io_addr, lmt_id, lnum, loff, shft);
+	rte_io_wmb();
+	if (left) {
+		inst = RTE_PTR_ADD(inst, burst * sizeof(struct cpt_inst_s));
+		goto again;
+	}
+	return nb_inst;
+}
+
 void
 cn10k_eth_sec_ops_override(void)
 {
@@ -1341,4 +1380,7 @@ cn10k_eth_sec_ops_override(void)
 	cnxk_eth_sec_ops.macsec_sa_stats_get = cnxk_eth_macsec_sa_stats_get;
 	cnxk_eth_sec_ops.rx_inject_configure = cn10k_eth_sec_rx_inject_config;
 	cnxk_eth_sec_ops.inb_pkt_rx_inject = cn10k_eth_sec_inb_rx_inject;
+
+	/* Update platform specific rte_pmd_cnxk ops */
+	cnxk_pmd_ops.inl_dev_submit = cn10k_inl_dev_submit;
 }

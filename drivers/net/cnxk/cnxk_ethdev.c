@@ -135,6 +135,7 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 			rc = -ENOMEM;
 			goto cleanup;
 		}
+		dev->inb.inl_dev_q = roc_nix_inl_dev_qptr_get(0);
 	}
 
 	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY ||

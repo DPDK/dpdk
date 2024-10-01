@@ -100,6 +100,8 @@ struct nix_inl_dev {
 	uint32_t curr_ipsec_idx;
 	uint32_t max_ipsec_rules;
 	uint32_t alloc_ipsec_rules;
+
+	struct roc_nix_inl_dev_q q_info[NIX_INL_CPT_LF];
 };
 
 int nix_inl_sso_register_irqs(struct nix_inl_dev *inl_dev);

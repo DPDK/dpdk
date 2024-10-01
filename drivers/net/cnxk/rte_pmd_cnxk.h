@@ -489,6 +489,13 @@ union rte_pmd_cnxk_cpt_res_s {
 	uint64_t u64[2];
 };
 
+/** Forward structure declaration for inline device queue. Applications obtain a pointer
+ * to this structure using the ``rte_pmd_cnxk_inl_dev_qptr_get`` API and use it to submit
+ * CPT instructions (cpt_inst_s) to the inline device via the
+ * ``rte_pmd_cnxk_inl_dev_submit`` API.
+ */
+struct rte_pmd_cnxk_inl_dev_q;
+
 /**
  * Read HW SA context from session.
  *
@@ -578,4 +585,32 @@ union rte_pmd_cnxk_ipsec_hw_sa *rte_pmd_cnxk_hw_session_base_get(uint16_t portid
  */
 __rte_experimental
 int rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, bool inb);
+
+/**
+ * Get queue pointer of Inline Device.
+ *
+ * @return
+ *   - Pointer to queue structure that would be the input to submit API.
+ *   - NULL upon failure.
+ */
+__rte_experimental
+struct rte_pmd_cnxk_inl_dev_q *rte_pmd_cnxk_inl_dev_qptr_get(void);
+
+/**
+ * Submit CPT instruction(s) (cpt_inst_s) to Inline Device.
+ *
+ * @param qptr
+ *   Pointer obtained with ``rte_pmd_cnxk_inl_dev_qptr_get``.
+ * @param inst
+ *   Pointer to an array of ``cpt_inst_s`` prapared by application.
+ * @param nb_inst
+ *   Number of instructions to be processed.
+ *
+ * @return
+ *   Number of instructions processed.
+ */
+__rte_experimental
+uint16_t rte_pmd_cnxk_inl_dev_submit(struct rte_pmd_cnxk_inl_dev_q *qptr, void *inst,
+				     uint16_t nb_inst);
+
 #endif /* _PMD_CNXK_H_ */

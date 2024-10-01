@@ -99,8 +99,17 @@ struct roc_nix_inl_dev {
 	uint8_t rx_inj_ena; /* Rx Inject Enable */
 	/* End of input parameters */
 
-#define ROC_NIX_INL_MEM_SZ (1408)
+#define ROC_NIX_INL_MEM_SZ (2048)
 	uint8_t reserved[ROC_NIX_INL_MEM_SZ] __plt_cache_aligned;
+} __plt_cache_aligned;
+
+struct roc_nix_inl_dev_q {
+	uint32_t nb_desc;
+	uintptr_t rbase;
+	uintptr_t lmt_base;
+	uint64_t *fc_addr;
+	uint64_t io_addr;
+	int32_t fc_addr_sw;
 } __plt_cache_aligned;
 
 /* NIX Inline Device API */
@@ -176,5 +185,6 @@ int __roc_api roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr,
 				    void *sa_cptr, bool inb, uint16_t sa_len);
 void __roc_api roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix, FILE *file);
 uint64_t __roc_api roc_nix_inl_eng_caps_get(struct roc_nix *roc_nix);
+void *__roc_api roc_nix_inl_dev_qptr_get(uint8_t qid);
 
 #endif /* _ROC_NIX_INL_H_ */
