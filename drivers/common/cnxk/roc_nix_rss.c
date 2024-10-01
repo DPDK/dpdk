@@ -70,7 +70,7 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 				goto exit;
 			req = mbox_alloc_msg_nix_aq_enq(mbox);
 			if (!req) {
-				rc =  NIX_ERR_NO_MEM;
+				rc = NIX_ERR_NO_MEM;
 				goto exit;
 			}
 		}
@@ -93,7 +93,7 @@ nix_cn9k_rss_reta_set(struct nix *nix, uint8_t group,
 				goto exit;
 			req = mbox_alloc_msg_nix_aq_enq(mbox);
 			if (!req) {
-				rc =  NIX_ERR_NO_MEM;
+				rc = NIX_ERR_NO_MEM;
 				goto exit;
 			}
 		}
@@ -115,8 +115,8 @@ exit:
 }
 
 static int
-nix_rss_reta_set(struct nix *nix, uint8_t group,
-		 uint16_t reta[ROC_NIX_RSS_RETA_MAX], uint8_t lock_rx_ctx)
+nix_cn10k_rss_reta_set(struct nix *nix, uint8_t group, uint16_t reta[ROC_NIX_RSS_RETA_MAX],
+		       uint8_t lock_rx_ctx)
 {
 	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
 	struct nix_cn10k_aq_enq_req *req;
@@ -178,6 +178,70 @@ exit:
 	return rc;
 }
 
+static int
+nix_rss_reta_set(struct nix *nix, uint8_t group, uint16_t reta[ROC_NIX_RSS_RETA_MAX],
+		 uint8_t lock_rx_ctx)
+{
+	struct mbox *mbox = mbox_get((&nix->dev)->mbox);
+	struct nix_cn20k_aq_enq_req *req;
+	uint16_t idx;
+	int rc;
+
+	for (idx = 0; idx < nix->reta_sz; idx++) {
+		req = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (!req) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			rc = mbox_process(mbox);
+			if (rc < 0)
+				goto exit;
+			req = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+			if (!req) {
+				rc =  NIX_ERR_NO_MEM;
+				goto exit;
+			}
+		}
+		req->rss.rq = reta[idx];
+		/* Fill AQ info */
+		req->qidx = (group * nix->reta_sz) + idx;
+		req->ctype = NIX_AQ_CTYPE_RSS;
+		req->op = NIX_AQ_INSTOP_INIT;
+
+		if (!lock_rx_ctx)
+			continue;
+
+		req = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+		if (!req) {
+			/* The shared memory buffer can be full.
+			 * Flush it and retry
+			 */
+			rc = mbox_process(mbox);
+			if (rc < 0)
+				goto exit;
+			req = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+			if (!req) {
+				rc =  NIX_ERR_NO_MEM;
+				goto exit;
+			}
+		}
+		req->rss.rq = reta[idx];
+		/* Fill AQ info */
+		req->qidx = (group * nix->reta_sz) + idx;
+		req->ctype = NIX_AQ_CTYPE_RSS;
+		req->op = NIX_AQ_INSTOP_LOCK;
+	}
+
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		goto exit;
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
 int
 roc_nix_rss_reta_set(struct roc_nix *roc_nix, uint8_t group,
 		     uint16_t reta[ROC_NIX_RSS_RETA_MAX])
@@ -191,6 +255,8 @@ roc_nix_rss_reta_set(struct roc_nix *roc_nix, uint8_t group,
 	if (roc_model_is_cn9k())
 		rc = nix_cn9k_rss_reta_set(nix, group, reta,
 					   roc_nix->lock_rx_ctx);
+	else if (roc_model_is_cn10k())
+		rc = nix_cn10k_rss_reta_set(nix, group, reta, roc_nix->lock_rx_ctx);
 	else
 		rc = nix_rss_reta_set(nix, group, reta, roc_nix->lock_rx_ctx);
 	if (rc)
