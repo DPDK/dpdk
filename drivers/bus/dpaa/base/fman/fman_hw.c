@@ -243,10 +243,11 @@ fman_if_stats_get_all(struct fman_if *p, uint64_t *value, int n)
 	int i;
 	uint64_t base_offset = offsetof(struct memac_regs, reoct_l);
 
-	for (i = 0; i < n; i++)
-		value[i] = (((u64)in_be32((char *)regs + base_offset + 8 * i) |
-				(u64)in_be32((char *)regs + base_offset +
-				8 * i + 4)) << 32);
+	for (i = 0; i < n; i++) {
+		uint64_t a = in_be32((char *)regs + base_offset + 8 * i);
+		uint64_t b = in_be32((char *)regs + base_offset + 8 * i + 4);
+		value[i] = a | b << 32;
+	}
 }
 
 void
