@@ -8,6 +8,7 @@
 int
 roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 {
+	struct npa_cn20k_aq_enq_req *req_cn20k;
 	struct npa_aq_enq_req *req;
 	struct npa_aq_enq_rsp *rsp;
 	uint64_t aura_handle;
@@ -25,7 +26,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 	mbox = mbox_get(lf->mbox);
 	/* Set/clear sqb aura fc_ena */
 	aura_handle = sq->aura_handle;
-	req = mbox_alloc_msg_npa_aq_enq(mbox);
+	if (roc_model_is_cn20k()) {
+		req_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+		req = (struct npa_aq_enq_req *)req_cn20k;
+	} else {
+		req = mbox_alloc_msg_npa_aq_enq(mbox);
+	}
 	if (req == NULL)
 		goto exit;
 
@@ -52,7 +58,12 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 
 	/* Read back npa aura ctx */
 	if (enable) {
-		req = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (roc_model_is_cn20k()) {
+			req_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
+			req = (struct npa_aq_enq_req *)req_cn20k;
+		} else {
+			req = mbox_alloc_msg_npa_aq_enq(mbox);
+		}
 		if (req == NULL) {
 			rc = -ENOSPC;
 			goto exit;

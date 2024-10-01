@@ -216,10 +216,10 @@ struct npa_aura_op_wdata_s {
 	uint64_t drop : 1;
 };
 
-/* NPA aura context structure */
+/* NPA aura context structure [CN9K, CN10K] */
 struct npa_aura_s {
 	uint64_t pool_addr : 64; /* W0 */
-	uint64_t ena : 1;
+	uint64_t ena : 1; /* W1 */
 	uint64_t rsvd_66_65 : 2;
 	uint64_t pool_caching : 1;
 	uint64_t pool_way_mask : 16;
@@ -233,24 +233,24 @@ struct npa_aura_s {
 	uint64_t shift : 6;
 	uint64_t rsvd_119_118 : 2;
 	uint64_t avg_level : 8;
-	uint64_t count : 36;
+	uint64_t count : 36; /* W2 */
 	uint64_t rsvd_167_164 : 4;
 	uint64_t nix0_bpid : 9;
 	uint64_t rsvd_179_177 : 3;
 	uint64_t nix1_bpid : 9;
 	uint64_t rsvd_191_189 : 3;
-	uint64_t limit : 36;
+	uint64_t limit : 36; /* W3 */
 	uint64_t rsvd_231_228 : 4;
 	uint64_t bp : 8;
 	uint64_t rsvd_242_240 : 3;
-	uint64_t fc_be : 1; /* [CN10K, .) */
+	uint64_t fc_be : 1; /* [CN10K] */
 	uint64_t fc_ena : 1;
 	uint64_t fc_up_crossing : 1;
 	uint64_t fc_stype : 2;
 	uint64_t fc_hyst_bits : 4;
 	uint64_t rsvd_255_252 : 4;
 	uint64_t fc_addr : 64; /* W4 */
-	uint64_t pool_drop : 8;
+	uint64_t pool_drop : 8; /* W5 */
 	uint64_t update_time : 16;
 	uint64_t err_int : 8;
 	uint64_t err_int_ena : 8;
@@ -262,17 +262,17 @@ struct npa_aura_s {
 	uint64_t rsvd_371 : 1;
 	uint64_t err_qint_idx : 7;
 	uint64_t rsvd_383_379 : 5;
-	uint64_t thresh : 36;
+	uint64_t thresh : 36; /* W6 */
 	uint64_t rsvd_423_420 : 4;
-	uint64_t fc_msh_dst : 11; /* [CN10K, .) */
+	uint64_t fc_msh_dst : 11; /* [CN10K] */
 	uint64_t rsvd_447_435 : 13;
 	uint64_t rsvd_511_448 : 64; /* W7 */
 };
 
-/* NPA pool context structure */
+/* NPA pool context structure [CN9K, CN10K] */
 struct npa_pool_s {
 	uint64_t stack_base : 64; /* W0 */
-	uint64_t ena : 1;
+	uint64_t ena : 1; /* W1 */
 	uint64_t nat_align : 1;
 	uint64_t rsvd_67_66 : 2;
 	uint64_t stack_caching : 1;
@@ -282,11 +282,11 @@ struct npa_pool_s {
 	uint64_t rsvd_103_100 : 4;
 	uint64_t buf_size : 11;
 	uint64_t rsvd_127_115 : 13;
-	uint64_t stack_max_pages : 32;
+	uint64_t stack_max_pages : 32; /* W2 */
 	uint64_t stack_pages : 32;
-	uint64_t op_pc : 48;
+	uint64_t op_pc : 48; /* W3 */
 	uint64_t rsvd_255_240 : 16;
-	uint64_t stack_offset : 4;
+	uint64_t stack_offset : 4; /* W4 */
 	uint64_t rsvd_263_260 : 4;
 	uint64_t shift : 6;
 	uint64_t rsvd_271_270 : 2;
@@ -296,14 +296,14 @@ struct npa_pool_s {
 	uint64_t fc_stype : 2;
 	uint64_t fc_hyst_bits : 4;
 	uint64_t fc_up_crossing : 1;
-	uint64_t fc_be : 1; /* [CN10K, .) */
+	uint64_t fc_be : 1; /* [CN10K] */
 	uint64_t rsvd_299_298 : 2;
 	uint64_t update_time : 16;
 	uint64_t rsvd_319_316 : 4;
 	uint64_t fc_addr : 64;	 /* W5 */
 	uint64_t ptr_start : 64; /* W6 */
 	uint64_t ptr_end : 64;	 /* W7 */
-	uint64_t rsvd_535_512 : 24;
+	uint64_t rsvd_535_512 : 24; /* W8 */
 	uint64_t err_int : 8;
 	uint64_t err_int_ena : 8;
 	uint64_t thresh_int : 1;
@@ -314,10 +314,140 @@ struct npa_pool_s {
 	uint64_t rsvd_563 : 1;
 	uint64_t err_qint_idx : 7;
 	uint64_t rsvd_575_571 : 5;
-	uint64_t thresh : 36;
+	uint64_t thresh : 36; /* W9 */
 	uint64_t rsvd_615_612 : 4;
-	uint64_t fc_msh_dst : 11; /* [CN10K, .) */
+	uint64_t fc_msh_dst : 11; /* [CN10K] */
 	uint64_t rsvd_639_627 : 13;
+	uint64_t rsvd_703_640 : 64;  /* W10 */
+	uint64_t rsvd_767_704 : 64;  /* W11 */
+	uint64_t rsvd_831_768 : 64;  /* W12 */
+	uint64_t rsvd_895_832 : 64;  /* W13 */
+	uint64_t rsvd_959_896 : 64;  /* W14 */
+	uint64_t rsvd_1023_960 : 64; /* W15 */
+};
+
+/* NPA aura context structure [CN20K] */
+struct npa_cn20k_aura_s {
+	uint64_t pool_addr : 64; /* W0 */
+	uint64_t ena : 1;   /* W1 */
+	uint64_t rsvd_66_65 : 2;
+	uint64_t pool_caching : 1;
+	uint64_t rsvd_68 : 16;
+	uint64_t avg_con : 9;
+	uint64_t rsvd_93 : 1;
+	uint64_t pool_drop_ena : 1;
+	uint64_t aura_drop_ena : 1;
+	uint64_t bp_ena : 1;
+	uint64_t rsvd_103_97 : 7;
+	uint64_t aura_drop : 8;
+	uint64_t shift : 6;
+	uint64_t rsvd_119_118 : 2;
+	uint64_t avg_level : 8;
+	uint64_t count : 36; /* W2 */
+	uint64_t rsvd_167_164 : 4;
+	uint64_t bpid : 12;
+	uint64_t rsvd_191_180 : 12;
+	uint64_t limit : 36; /* W3 */
+	uint64_t rsvd_231_228 : 4;
+	uint64_t bp : 7;
+	uint64_t rsvd_243_239 : 5;
+	uint64_t fc_ena : 1;
+	uint64_t fc_up_crossing : 1;
+	uint64_t fc_stype : 2;
+	uint64_t fc_hyst_bits : 4;
+	uint64_t rsvd_255_252 : 4;
+	uint64_t fc_addr : 64;  /* W4 */
+	uint64_t pool_drop : 8; /* W5 */
+	uint64_t update_time : 16;
+	uint64_t err_int : 8;
+	uint64_t err_int_ena : 8;
+	uint64_t thresh_int : 1;
+	uint64_t thresh_int_ena : 1;
+	uint64_t thresh_up : 1;
+	uint64_t rsvd_363 : 1;
+	uint64_t thresh_qint_idx : 7;
+	uint64_t rsvd_371 : 1;
+	uint64_t err_qint_idx : 7;
+	uint64_t rsvd_383_379 : 5;
+	uint64_t thresh : 36; /* W6*/
+	uint64_t rsvd_423_420 : 4;
+	uint64_t fc_msh_dst : 11;
+	uint64_t rsvd_438_435 : 4;
+	uint64_t op_dpc_ena : 1;
+	uint64_t op_dpc_set : 6;
+	uint64_t stream_ctx : 1;
+	uint64_t unified_ctx : 1;
+	uint64_t rsvd_511_448 : 64; /* W7 */
+};
+
+/* NPA pool context structure [CN20K] */
+struct npa_cn20k_pool_s {
+	uint64_t stack_base : 64; /* W0 */
+	uint64_t ena : 1; /* W1 */
+	uint64_t nat_align : 1;
+	uint64_t rsvd_67_66 : 2;
+	uint64_t stack_caching : 1;
+	uint64_t rsvd_87_69 : 19;
+	uint64_t buf_offset : 12;
+	uint64_t rsvd_103_100 : 4;
+	uint64_t buf_size : 12;
+	uint64_t rsvd_119_116 : 4;
+	uint64_t ref_cnt_prof : 3;
+	uint64_t rsvd_127_123 : 5;
+	uint64_t stack_max_pages : 32; /* W2 */
+	uint64_t stack_pages : 32;
+	uint64_t bp_0 : 7; /* W3 */
+	uint64_t bp_1 : 7;
+	uint64_t bp_2 : 7;
+	uint64_t bp_3 : 7;
+	uint64_t bp_4 : 7;
+	uint64_t bp_5 : 7;
+	uint64_t bp_6 : 7;
+	uint64_t bp_7 : 7;
+	uint64_t bp_ena_0 : 1;
+	uint64_t bp_ena_1 : 1;
+	uint64_t bp_ena_2 : 1;
+	uint64_t bp_ena_3 : 1;
+	uint64_t bp_ena_4 : 1;
+	uint64_t bp_ena_5 : 1;
+	uint64_t bp_ena_6 : 1;
+	uint64_t bp_ena_7 : 1;
+	uint64_t stack_offset : 4; /* W4 */
+	uint64_t rsvd_263_260 : 4;
+	uint64_t shift : 6;
+	uint64_t rsvd_271_270 : 2;
+	uint64_t avg_level : 8;
+	uint64_t avg_con : 9;
+	uint64_t fc_ena : 1;
+	uint64_t fc_stype : 2;
+	uint64_t fc_hyst_bits : 4;
+	uint64_t fc_up_crossing : 1;
+	uint64_t rsvd_299_297 : 3;
+	uint64_t update_time : 16;
+	uint64_t rsvd_319_316 : 4;
+	uint64_t fc_addr : 64;   /* W5 */
+	uint64_t ptr_start : 64; /* W6 */
+	uint64_t ptr_end : 64;   /* W7 */
+	uint64_t bpid_0 : 12; /* W8 */
+	uint64_t rsvd_535_524 : 12;
+	uint64_t err_int : 8;
+	uint64_t err_int_ena : 8;
+	uint64_t thresh_int : 1;
+	uint64_t thresh_int_ena : 1;
+	uint64_t thresh_up : 1;
+	uint64_t rsvd_555 : 1;
+	uint64_t thresh_qint_idx : 7;
+	uint64_t rsvd_563 : 1;
+	uint64_t err_qint_idx : 7;
+	uint64_t rsvd_575_571 : 5;
+	uint64_t thresh : 36; /* W9 */
+	uint64_t rsvd_615_612 : 4;
+	uint64_t fc_msh_dst : 11;
+	uint64_t rsvd_630_627 : 4;
+	uint64_t op_dpc_ena : 1;
+	uint64_t op_dpc_set : 6;
+	uint64_t stream_ctx : 1;
+	uint64_t rsvd_639 : 1;
 	uint64_t rsvd_703_640 : 64;  /* W10 */
 	uint64_t rsvd_767_704 : 64;  /* W11 */
 	uint64_t rsvd_831_768 : 64;  /* W12 */

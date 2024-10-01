@@ -690,6 +690,7 @@ int
 roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npa_cn20k_aq_enq_req *npa_aq_cn20k;
 	int rc = -1, q, rq = nix->nb_rx_queues;
 	struct npa_aq_enq_rsp *npa_rsp;
 	struct npa_aq_enq_req *npa_aq;
@@ -772,8 +773,12 @@ roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file)
 			continue;
 		}
 
-		/* Dump SQB Aura minimal info */
-		npa_aq = mbox_alloc_msg_npa_aq_enq(mbox_get(npa_lf->mbox));
+		if (roc_model_is_cn20k()) {
+			npa_aq_cn20k = mbox_alloc_msg_npa_cn20k_aq_enq(mbox_get(npa_lf->mbox));
+			npa_aq = (struct npa_aq_enq_req *)npa_aq_cn20k; /* Common fields */
+		} else {
+			npa_aq = mbox_alloc_msg_npa_aq_enq(mbox_get(npa_lf->mbox));
+		}
 		if (npa_aq == NULL) {
 			rc = -ENOSPC;
 			mbox_put(npa_lf->mbox);
