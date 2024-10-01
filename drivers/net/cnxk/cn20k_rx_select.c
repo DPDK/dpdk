@@ -22,10 +22,8 @@ pick_rx_func(struct rte_eth_dev *eth_dev, const eth_rx_burst_t rx_burst[NIX_RX_O
 static uint16_t __rte_noinline __rte_hot __rte_unused
 cn20k_nix_flush_rx(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts)
 {
-	RTE_SET_USED(rx_queue);
-	RTE_SET_USED(rx_pkts);
-	RTE_SET_USED(pkts);
-	return 0;
+	const uint16_t flags = NIX_RX_MULTI_SEG_F | NIX_RX_REAS_F | NIX_RX_OFFLOAD_SECURITY_F;
+	return cn20k_nix_flush_recv_pkts(rx_queue, rx_pkts, pkts, flags);
 }
 
 #if defined(RTE_ARCH_ARM64)

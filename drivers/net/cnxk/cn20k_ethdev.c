@@ -330,6 +330,33 @@ cn20k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t nb_
 	return 0;
 }
 
+static void
+cn20k_nix_rx_queue_meta_aura_update(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	struct cn20k_eth_rxq *rxq;
+	struct roc_nix_rq *rq;
+	int i;
+
+	/* Update Aura handle for fastpath rx queues */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rq = &dev->rqs[i];
+		rxq = eth_dev->data->rx_queues[i];
+		rxq->meta_aura = rq->meta_aura_handle;
+		rxq->meta_pool = dev->nix.meta_mempool;
+		/* Assume meta packet from normal aura if meta aura is not setup
+		 */
+		if (!rxq->meta_aura) {
+			rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+			rxq->meta_aura = rxq_sp->qconf.mp->pool_id;
+			rxq->meta_pool = (uintptr_t)rxq_sp->qconf.mp;
+		}
+	}
+	/* Store mempool in lookup mem */
+	cnxk_nix_lookup_mem_metapool_set(dev);
+}
+
 static int
 cn20k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 {
@@ -368,6 +395,74 @@ cn20k_nix_configure(struct rte_eth_dev *eth_dev)
 	plt_nix_dbg("Configured port%d platform specific rx_offload_flags=%x"
 		    " tx_offload_flags=0x%x",
 		    eth_dev->data->port_id, dev->rx_offload_flags, dev->tx_offload_flags);
+	return 0;
+}
+
+/* Function to enable ptp config for VFs */
+static void
+nix_ptp_enable_vf(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	if (nix_recalc_mtu(eth_dev))
+		plt_err("Failed to set MTU size for ptp");
+
+	dev->rx_offload_flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+
+	/* Setting up the function pointers as per new offload flags */
+	cn20k_eth_set_rx_function(eth_dev);
+	cn20k_eth_set_tx_function(eth_dev);
+}
+
+static uint16_t
+nix_ptp_vf_burst(void *queue, struct rte_mbuf **mbufs, uint16_t pkts)
+{
+	struct cn20k_eth_rxq *rxq = queue;
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	struct rte_eth_dev *eth_dev;
+
+	RTE_SET_USED(mbufs);
+	RTE_SET_USED(pkts);
+
+	rxq_sp = cnxk_eth_rxq_to_sp(rxq);
+	eth_dev = rxq_sp->dev->eth_dev;
+	nix_ptp_enable_vf(eth_dev);
+
+	return 0;
+}
+
+static int
+cn20k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
+{
+	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
+	struct rte_eth_dev *eth_dev;
+	struct cn20k_eth_rxq *rxq;
+	int i;
+
+	if (!dev)
+		return -EINVAL;
+
+	eth_dev = dev->eth_dev;
+	if (!eth_dev)
+		return -EINVAL;
+
+	dev->ptp_en = ptp_en;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		rxq->mbuf_initializer = cnxk_nix_rxq_mbuf_setup(dev);
+	}
+
+	if (roc_nix_is_vf_or_sdp(nix) && !(roc_nix_is_sdp(nix)) && !(roc_nix_is_lbk(nix))) {
+		/* In case of VF, setting of MTU cannot be done directly in this
+		 * function as this is running as part of MBOX request(PF->VF)
+		 * and MTU setting also requires MBOX message to be
+		 * sent(VF->PF)
+		 */
+		eth_dev->rx_pkt_burst = nix_ptp_vf_burst;
+		rte_mb();
+	}
+
 	return 0;
 }
 
@@ -451,11 +546,21 @@ cn20k_nix_dev_start(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	/* Update VF about data off shifted by 8 bytes if PTP already
+	 * enabled in PF owning this VF
+	 */
+	if (dev->ptp_en && (!roc_nix_is_pf(nix) && (!roc_nix_is_sdp(nix))))
+		nix_ptp_enable_vf(eth_dev);
+
 	/* Setting up the rx[tx]_offload_flags due to change
 	 * in rx[tx]_offloads.
 	 */
 	dev->rx_offload_flags |= nix_rx_offload_flags(eth_dev);
 	dev->tx_offload_flags |= nix_tx_offload_flags(eth_dev);
+
+	if (dev->rx_offload_flags & NIX_RX_OFFLOAD_SECURITY_F)
+		cn20k_nix_rx_queue_meta_aura_update(eth_dev);
+
 	/* Set flags for Rx Inject feature */
 	if (roc_idev_nix_rx_inject_get(nix->port_id))
 		dev->rx_offload_flags |= NIX_RX_SEC_REASSEMBLY_F;
@@ -621,6 +726,20 @@ nix_tm_ops_override(void)
 	if (init_once)
 		return;
 	init_once = 1;
+
+	/* Update platform specific ops */
+}
+
+static void
+npc_flow_ops_override(void)
+{
+	static int init_once;
+
+	if (init_once)
+		return;
+	init_once = 1;
+
+	/* Update platform specific ops */
 }
 
 static int
@@ -633,6 +752,7 @@ static int
 cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	struct rte_eth_dev *eth_dev;
+	struct cnxk_eth_dev *dev;
 	int rc;
 
 	rc = roc_plt_init();
@@ -643,6 +763,7 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	nix_eth_dev_ops_override();
 	nix_tm_ops_override();
+	npc_flow_ops_override();
 
 	/* Common probe */
 	rc = cnxk_nix_probe(pci_drv, pci_dev);
@@ -664,6 +785,11 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		cn20k_eth_set_rx_function(eth_dev);
 		return 0;
 	}
+
+	dev = cnxk_eth_pmd_priv(eth_dev);
+
+	/* Register up msg callbacks for PTP information */
+	roc_nix_ptp_info_cb_register(&dev->nix, cn20k_nix_ptp_info_update_cb);
 
 	return 0;
 }
