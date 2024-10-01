@@ -4,10 +4,17 @@
 #include <cnxk_ethdev.h>
 
 #include <rte_eventdev.h>
+#include <rte_pmd_cnxk.h>
 
 #define CNXK_NIX_CQ_INL_CLAMP_MAX (64UL * 1024UL)
 
 #define NIX_TM_DFLT_RR_WT 71
+
+const char *
+rte_pmd_cnxk_model_str_get(void)
+{
+	return roc_model->name;
+}
 
 static inline uint64_t
 nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)

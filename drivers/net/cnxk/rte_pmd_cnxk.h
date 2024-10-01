@@ -680,4 +680,13 @@ int rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_
  */
 __rte_experimental
 void rte_pmd_cnxk_hw_inline_inb_cfg_set(uint16_t portid, struct rte_pmd_cnxk_ipsec_inb_cfg *cfg);
+
+/**
+ * Retrieves model name on which it is running as a string.
+ *
+ * @return
+ *   Returns model string, ex."cn10ka_a1"
+ */
+__rte_experimental
+const char *rte_pmd_cnxk_model_str_get(void);
 #endif /* _PMD_CNXK_H_ */
