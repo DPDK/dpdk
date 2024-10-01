@@ -16,6 +16,7 @@
 #else
 #include "roc_io_generic.h"
 #endif
+#include "roc_model.h"
 #include "roc_npa_dp.h"
 
 #define ROC_AURA_OP_LIMIT_MASK (BIT_ULL(36) - 1)
@@ -68,11 +69,12 @@ roc_npa_aura_op_alloc(uint64_t aura_handle, const int drop)
 static inline uint64_t
 roc_npa_aura_op_cnt_get(uint64_t aura_handle)
 {
-	uint64_t wdata;
+	uint64_t wdata, shift;
 	int64_t *addr;
 	uint64_t reg;
 
-	wdata = roc_npa_aura_handle_to_aura(aura_handle) << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = roc_npa_aura_handle_to_aura(aura_handle) << shift;
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_AURA_OP_CNT);
 	reg = roc_atomic64_add_nosync(wdata, addr);
@@ -87,11 +89,13 @@ static inline void
 roc_npa_aura_op_cnt_set(uint64_t aura_handle, const int sign, uint64_t count)
 {
 	uint64_t reg = count & (BIT_ULL(36) - 1);
+	uint64_t shift;
 
 	if (sign)
 		reg |= BIT_ULL(43); /* CNT_ADD */
 
-	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << 44);
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << shift);
 
 	plt_write64(reg, roc_npa_aura_handle_to_base(aura_handle) +
 				 NPA_LF_AURA_OP_CNT);
@@ -100,11 +104,12 @@ roc_npa_aura_op_cnt_set(uint64_t aura_handle, const int sign, uint64_t count)
 static inline uint64_t
 roc_npa_aura_op_limit_get(uint64_t aura_handle)
 {
-	uint64_t wdata;
+	uint64_t wdata, shift;
 	int64_t *addr;
 	uint64_t reg;
 
-	wdata = roc_npa_aura_handle_to_aura(aura_handle) << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = roc_npa_aura_handle_to_aura(aura_handle) << shift;
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_AURA_OP_LIMIT);
 	reg = roc_atomic64_add_nosync(wdata, addr);
@@ -119,8 +124,10 @@ static inline void
 roc_npa_aura_op_limit_set(uint64_t aura_handle, uint64_t limit)
 {
 	uint64_t reg = limit & ROC_AURA_OP_LIMIT_MASK;
+	uint64_t shift;
 
-	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << 44);
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	reg |= (roc_npa_aura_handle_to_aura(aura_handle) << shift);
 
 	plt_write64(reg, roc_npa_aura_handle_to_base(aura_handle) +
 				 NPA_LF_AURA_OP_LIMIT);
@@ -129,11 +136,12 @@ roc_npa_aura_op_limit_set(uint64_t aura_handle, uint64_t limit)
 static inline uint64_t
 roc_npa_aura_op_available(uint64_t aura_handle)
 {
-	uint64_t wdata;
+	uint64_t wdata, shift;
 	uint64_t reg;
 	int64_t *addr;
 
-	wdata = roc_npa_aura_handle_to_aura(aura_handle) << 44;
+	shift = roc_model_is_cn20k() ? 47 : 44;
+	wdata = roc_npa_aura_handle_to_aura(aura_handle) << shift;
 	addr = (int64_t *)(roc_npa_aura_handle_to_base(aura_handle) +
 			   NPA_LF_POOL_OP_AVAILABLE);
 	reg = roc_atomic64_add_nosync(wdata, addr);
