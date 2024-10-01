@@ -495,7 +495,7 @@ union rte_pmd_cnxk_cpt_res_s {
  * @param device
  *   Port identifier of Ethernet device.
  * @param sess
- *   Handle of the security session.
+ *   Handle of the security session as void *.
  * @param[out] data
  *   Destination pointer to copy SA context for application.
  * @param len
@@ -505,7 +505,7 @@ union rte_pmd_cnxk_cpt_res_s {
  *   0 on success, a negative errno value otherwise.
  */
 __rte_experimental
-int rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
+int rte_pmd_cnxk_hw_sa_read(void *device, void *sess,
 			    union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len);
 /**
  * Write HW SA context to session.
@@ -513,7 +513,7 @@ int rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
  * @param device
  *   Port identifier of Ethernet device.
  * @param sess
- *   Handle of the security session.
+ *   Handle of the security session as void *.
  * @param[in] data
  *   Source data pointer from application to copy SA context into session.
  * @param len
@@ -523,7 +523,7 @@ int rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
  *   0 on success, a negative errno value otherwise.
  */
 __rte_experimental
-int rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
+int rte_pmd_cnxk_hw_sa_write(void *device, void *sess,
 			     union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len);
 
 /**

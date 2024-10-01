@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_pmd_cnxk.h>
+
 #include <cnxk_ethdev.h>
 #include <cnxk_mempool.h>
 
@@ -293,6 +295,67 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 	}
 
 	return NULL;
+}
+
+int
+rte_pmd_cnxk_hw_sa_read(void *device, void *__sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			uint32_t len)
+{
+	struct rte_security_session *sess = __sess;
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_sec_sess *eth_sec;
+	int rc;
+
+	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
+	if (eth_sec == NULL)
+		return -EINVAL;
+
+	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb, ROC_NIX_INL_SA_OP_FLUSH);
+	if (rc)
+		return -EINVAL;
+	rte_delay_ms(1);
+	memcpy(data, eth_sec->sa, len);
+
+	return 0;
+}
+
+int
+rte_pmd_cnxk_hw_sa_write(void *device, void *__sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			 uint32_t len)
+{
+	struct rte_security_session *sess = __sess;
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct cnxk_eth_sec_sess *eth_sec;
+	int rc = -EINVAL;
+
+	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
+	if (eth_sec == NULL)
+		return rc;
+	rc = roc_nix_inl_ctx_write(&dev->nix, data, eth_sec->sa, eth_sec->inb, len);
+	if (rc)
+		return rc;
+
+	return 0;
+}
+
+union rte_pmd_cnxk_cpt_res_s *
+rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
+{
+	const union nix_rx_parse_u *rx;
+	uint16_t desc_size;
+	uintptr_t wqe;
+
+	if (!mbuf || !(mbuf->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD))
+		return NULL;
+
+	wqe = (uintptr_t)(mbuf + 1);
+	rx = (const union nix_rx_parse_u *)(wqe + 8);
+	desc_size = (rx->desc_sizem1 + 1) * 16;
+
+	/* rte_pmd_cnxk_cpt_res_s sits after SG list at 16B aligned address */
+	return (void *)(wqe + 64 + desc_size);
 }
 
 static unsigned int
