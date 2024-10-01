@@ -1044,7 +1044,7 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		if (iavf_configure_queues(adapter,
 				IAVF_CFG_Q_NUM_PER_BUF, index) != 0) {
 			PMD_DRV_LOG(ERR, "configure queues failed");
-			goto err_queue;
+			goto error;
 		}
 		num_queue_pairs -= IAVF_CFG_Q_NUM_PER_BUF;
 		index += IAVF_CFG_Q_NUM_PER_BUF;
@@ -1052,12 +1052,12 @@ iavf_dev_start(struct rte_eth_dev *dev)
 
 	if (iavf_configure_queues(adapter, num_queue_pairs, index) != 0) {
 		PMD_DRV_LOG(ERR, "configure queues failed");
-		goto err_queue;
+		goto error;
 	}
 
 	if (iavf_config_rx_queues_irqs(dev, intr_handle) != 0) {
 		PMD_DRV_LOG(ERR, "configure irq failed");
-		goto err_queue;
+		goto error;
 	}
 	/* re-enable intr again, because efd assign may change */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
@@ -1077,14 +1077,12 @@ iavf_dev_start(struct rte_eth_dev *dev)
 
 	if (iavf_start_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "enable queues failed");
-		goto err_mac;
+		goto error;
 	}
 
 	return 0;
 
-err_mac:
-	iavf_add_del_all_mac_addr(adapter, false);
-err_queue:
+error:
 	return -1;
 }
 
@@ -1112,16 +1110,6 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	rte_intr_efd_disable(intr_handle);
 	/* Rx interrupt vector mapping free */
 	rte_intr_vec_list_free(intr_handle);
-
-	/* adminq will be disabled when vf is resetting. */
-	if (!vf->in_reset_recovery) {
-		/* remove all mac addrs */
-		iavf_add_del_all_mac_addr(adapter, false);
-
-		/* remove all multicast addresses */
-		iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
-				  false);
-	}
 
 	iavf_stop_queues(dev);
 
