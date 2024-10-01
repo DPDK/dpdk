@@ -651,7 +651,13 @@ static inline int set_pcd_netenv_scheme(struct dpaa_if *dpaa_intf,
 
 static inline int get_port_type(struct fman_if *fif)
 {
-	if (fif->mac_type == fman_mac_1g)
+	/* For 1G fm-mac9 and fm-mac10 ports, configure the VSP as 10G
+	 * ports so that kernel can configure correct port.
+	 */
+	if (fif->mac_type == fman_mac_1g &&
+		fif->mac_idx >= DPAA_10G_MAC_START_IDX)
+		return e_FM_PORT_TYPE_RX_10G;
+	else if (fif->mac_type == fman_mac_1g)
 		return e_FM_PORT_TYPE_RX;
 	else if (fif->mac_type == fman_mac_2_5g)
 		return e_FM_PORT_TYPE_RX_2_5G;
