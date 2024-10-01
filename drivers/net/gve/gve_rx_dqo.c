@@ -195,14 +195,12 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 	if (nb_rx > 0) {
 		rxq->rx_tail = rx_id;
-		if (rx_id_bufq != rxq->next_avail)
-			rxq->next_avail = rx_id_bufq;
-
-		gve_rx_refill_dqo(rxq);
+		rxq->next_avail = rx_id_bufq;
 
 		rxq->stats.packets += nb_rx;
 		rxq->stats.bytes += bytes;
 	}
+	gve_rx_refill_dqo(rxq);
 
 	return nb_rx;
 }
