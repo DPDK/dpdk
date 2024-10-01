@@ -433,6 +433,13 @@ struct cnxk_eth_dev {
 
 	/* Eswitch domain ID */
 	uint16_t switch_domain_id;
+
+	/* SSO event dev */
+	void *evdev_priv;
+
+	/* SSO event dev ptp  */
+	void (*cnxk_sso_ptp_tstamp_cb)
+	     (uint16_t port_id, uint16_t flags, bool ptp_en);
 };
 
 struct cnxk_eth_rxq_sp {
