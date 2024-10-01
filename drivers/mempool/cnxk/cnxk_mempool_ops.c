@@ -192,7 +192,7 @@ cnxk_mempool_plt_init(void)
 
 	if (roc_model_is_cn9k()) {
 		rte_mbuf_set_platform_mempool_ops("cn9k_mempool_ops");
-	} else if (roc_model_is_cn10k()) {
+	} else if (roc_model_is_cn10k() || roc_model_is_cn20k()) {
 		rte_mbuf_set_platform_mempool_ops("cn10k_mempool_ops");
 		rc = cn10k_mempool_plt_init();
 	}
