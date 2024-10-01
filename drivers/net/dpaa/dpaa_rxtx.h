@@ -274,4 +274,9 @@ void dpaa_rx_cb_prepare(struct qm_dqrr_entry *dq, void **bufs);
 
 void dpaa_rx_cb_no_prefetch(struct qman_fq **fq,
 		    struct qm_dqrr_entry **dqrr, void **bufs, int num_bufs);
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+void
+dpaa_force_display_frame_set(int set);
+#endif
+
 #endif
