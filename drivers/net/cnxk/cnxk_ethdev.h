@@ -424,6 +424,13 @@ struct cnxk_eth_dev {
 	/* MCS device */
 	struct cnxk_mcs_dev *mcs_dev;
 	struct cnxk_macsec_sess_list mcs_list;
+
+	/* SSO event dev */
+	void *evdev_priv;
+
+	/* SSO event dev ptp  */
+	void (*cnxk_sso_ptp_tstamp_cb)
+	     (uint16_t port_id, uint16_t flags, bool ptp_en);
 };
 
 struct cnxk_eth_rxq_sp {
