@@ -110,11 +110,38 @@ static void dpaa_display_frame_info(const struct qm_fd *fd,
 #define dpaa_display_frame_info(a, b, c)
 #endif
 
-static inline void dpaa_slow_parsing(struct rte_mbuf *m __rte_unused,
-				     uint64_t prs __rte_unused)
+static inline void
+dpaa_slow_parsing(struct rte_mbuf *m,
+	const struct annotations_t *annot)
 {
+	const struct dpaa_eth_parse_results_t *parse;
+
 	DPAA_DP_LOG(DEBUG, "Slow parsing");
-	/*TBD:XXX: to be implemented*/
+	parse = &annot->parse;
+
+	if (parse->ethernet)
+		m->packet_type |= RTE_PTYPE_L2_ETHER;
+	if (parse->vlan)
+		m->packet_type |= RTE_PTYPE_L2_ETHER_VLAN;
+	if (parse->first_ipv4)
+		m->packet_type |= RTE_PTYPE_L3_IPV4;
+	if (parse->first_ipv6)
+		m->packet_type |= RTE_PTYPE_L3_IPV6;
+	if (parse->gre)
+		m->packet_type |= RTE_PTYPE_TUNNEL_GRE;
+	if (parse->last_ipv4)
+		m->packet_type |= RTE_PTYPE_L3_IPV4_EXT;
+	if (parse->last_ipv6)
+		m->packet_type |= RTE_PTYPE_L3_IPV6_EXT;
+	if (parse->l4_type == DPAA_PR_L4_TCP_TYPE)
+		m->packet_type |= RTE_PTYPE_L4_TCP;
+	else if (parse->l4_type == DPAA_PR_L4_UDP_TYPE)
+		m->packet_type |= RTE_PTYPE_L4_UDP;
+	else if (parse->l4_type == DPAA_PR_L4_IPSEC_TYPE &&
+		!parse->l4_info_err && parse->esp_sum)
+		m->packet_type |= RTE_PTYPE_TUNNEL_ESP;
+	else if (parse->l4_type == DPAA_PR_L4_SCTP_TYPE)
+		m->packet_type |= RTE_PTYPE_L4_SCTP;
 }
 
 static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
@@ -228,7 +255,7 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m, void *fd_virt_addr)
 		break;
 	/* More switch cases can be added */
 	default:
-		dpaa_slow_parsing(m, prs);
+		dpaa_slow_parsing(m, annot);
 	}
 
 	m->tx_offload = annot->parse.ip_off[0];
