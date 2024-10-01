@@ -709,6 +709,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	uint16_t later_skip = 0;
 	struct rte_mbuf *head;
 	const rte_iova_t *eol;
+	bool rx_inj = false;
 	uint64_t cq_w5 = 0;
 	uint16_t ihl = 0;
 	uint64_t fsz = 0;
@@ -729,7 +730,9 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		/* Rx Inject packet must have Match ID 0xFFFF and for this
 		 * wqe will get from address stored at mbuf+1 location
 		 */
-		if ((flags & NIX_RX_REAS_F) && hdr->w0.match_id == 0xFFFFU)
+		rx_inj = ((flags & NIX_RX_REAS_F) && ((hdr->w0.match_id == 0xFFFFU) ||
+					       (hdr->w0.cookie == 0xFFFFFFFFU)));
+		if (rx_inj)
 			wqe = (const uint64_t *)*((uint64_t *)(mbuf + 1));
 		else
 			wqe = (const uint64_t *)(mbuf + 1);
@@ -786,7 +789,8 @@ again:
 	later_skip = (uintptr_t)mbuf->buf_addr - (uintptr_t)mbuf;
 
 	while (nb_segs) {
-		mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
+		if (!(flags & NIX_RX_REAS_F) || !rx_inj)
+			mbuf->next = (struct rte_mbuf *)(*iova_list - later_skip);
 		mbuf = mbuf->next;
 
 		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
@@ -804,7 +808,8 @@ again:
 		mbuf->data_len = sg_len;
 		sg = sg >> 16;
 		p = (uintptr_t)&mbuf->rearm_data;
-		*(uint64_t *)p = rearm & ~0xFFFF;
+		if (!(flags & NIX_RX_REAS_F) || !rx_inj)
+			*(uint64_t *)p = rearm & ~0xFFFF;
 		nb_segs--;
 		iova_list++;
 
@@ -1259,7 +1264,6 @@ cn10k_nix_rx_inj_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd)
 			slist++;
 		}
 		m_next = m->next;
-		m->next = NULL;
 		m = m_next;
 	} while (nb_segs);
 
