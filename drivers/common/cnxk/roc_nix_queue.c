@@ -384,6 +384,94 @@ exit:
 	return rc;
 }
 
+static int
+nix_rq_cn10k_cman_cfg(struct dev *dev, struct roc_nix_rq *rq)
+{
+	struct nix_cn10k_aq_enq_req *aq;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	int rc;
+
+	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+	if (!aq) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	aq->qidx = rq->qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
+		aq->rq.lpb_pool_pass = rq->red_pass;
+		aq->rq.lpb_pool_drop = rq->red_drop;
+		aq->rq_mask.lpb_pool_pass = ~(aq->rq_mask.lpb_pool_pass);
+		aq->rq_mask.lpb_pool_drop = ~(aq->rq_mask.lpb_pool_drop);
+	}
+
+	if (rq->spb_red_pass && (rq->spb_red_pass >= rq->spb_red_drop)) {
+		aq->rq.spb_pool_pass = rq->spb_red_pass;
+		aq->rq.spb_pool_drop = rq->spb_red_drop;
+		aq->rq_mask.spb_pool_pass = ~(aq->rq_mask.spb_pool_pass);
+		aq->rq_mask.spb_pool_drop = ~(aq->rq_mask.spb_pool_drop);
+	}
+
+	if (rq->xqe_red_pass && (rq->xqe_red_pass >= rq->xqe_red_drop)) {
+		aq->rq.xqe_pass = rq->xqe_red_pass;
+		aq->rq.xqe_drop = rq->xqe_red_drop;
+		aq->rq_mask.xqe_drop = ~(aq->rq_mask.xqe_drop);
+		aq->rq_mask.xqe_pass = ~(aq->rq_mask.xqe_pass);
+	}
+
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+nix_rq_cman_cfg(struct dev *dev, struct roc_nix_rq *rq)
+{
+	struct nix_cn20k_aq_enq_req *aq;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	int rc;
+
+	aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
+	if (!aq) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	aq->qidx = rq->qid;
+	aq->ctype = NIX_AQ_CTYPE_RQ;
+	aq->op = NIX_AQ_INSTOP_WRITE;
+
+	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
+		aq->rq.lpb_pool_pass = rq->red_pass;
+		aq->rq.lpb_pool_drop = rq->red_drop;
+		aq->rq_mask.lpb_pool_pass = ~(aq->rq_mask.lpb_pool_pass);
+		aq->rq_mask.lpb_pool_drop = ~(aq->rq_mask.lpb_pool_drop);
+	}
+
+	if (rq->spb_red_pass && (rq->spb_red_pass >= rq->spb_red_drop)) {
+		aq->rq.spb_pool_pass = rq->spb_red_pass;
+		aq->rq.spb_pool_drop = rq->spb_red_drop;
+		aq->rq_mask.spb_pool_pass = ~(aq->rq_mask.spb_pool_pass);
+		aq->rq_mask.spb_pool_drop = ~(aq->rq_mask.spb_pool_drop);
+	}
+
+	if (rq->xqe_red_pass && (rq->xqe_red_pass >= rq->xqe_red_drop)) {
+		aq->rq.xqe_pass = rq->xqe_red_pass;
+		aq->rq.xqe_drop = rq->xqe_red_drop;
+		aq->rq_mask.xqe_drop = ~(aq->rq_mask.xqe_drop);
+		aq->rq_mask.xqe_pass = ~(aq->rq_mask.xqe_pass);
+	}
+
+	rc = mbox_process(mbox);
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
 int
 nix_rq_cn9k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints,
 		bool cfg, bool ena)
@@ -678,52 +766,6 @@ nix_rq_cn10k_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cf
 	}
 
 	return 0;
-}
-
-static int
-nix_rq_cman_cfg(struct dev *dev, struct roc_nix_rq *rq)
-{
-	struct nix_cn10k_aq_enq_req *aq;
-	struct mbox *mbox = mbox_get(dev->mbox);
-	int rc;
-
-	aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
-	if (!aq) {
-		rc = -ENOSPC;
-		goto exit;
-	}
-
-	aq->qidx = rq->qid;
-	aq->ctype = NIX_AQ_CTYPE_RQ;
-	aq->op = NIX_AQ_INSTOP_WRITE;
-
-	if (rq->red_pass && (rq->red_pass >= rq->red_drop)) {
-		aq->rq.lpb_pool_pass = rq->red_pass;
-		aq->rq.lpb_pool_drop = rq->red_drop;
-		aq->rq_mask.lpb_pool_pass = ~(aq->rq_mask.lpb_pool_pass);
-		aq->rq_mask.lpb_pool_drop = ~(aq->rq_mask.lpb_pool_drop);
-
-	}
-
-	if (rq->spb_red_pass && (rq->spb_red_pass >= rq->spb_red_drop)) {
-		aq->rq.spb_pool_pass = rq->spb_red_pass;
-		aq->rq.spb_pool_drop = rq->spb_red_drop;
-		aq->rq_mask.spb_pool_pass = ~(aq->rq_mask.spb_pool_pass);
-		aq->rq_mask.spb_pool_drop = ~(aq->rq_mask.spb_pool_drop);
-
-	}
-
-	if (rq->xqe_red_pass && (rq->xqe_red_pass >= rq->xqe_red_drop)) {
-		aq->rq.xqe_pass = rq->xqe_red_pass;
-		aq->rq.xqe_drop = rq->xqe_red_drop;
-		aq->rq_mask.xqe_drop = ~(aq->rq_mask.xqe_drop);
-		aq->rq_mask.xqe_pass = ~(aq->rq_mask.xqe_pass);
-	}
-
-	rc = mbox_process(mbox);
-exit:
-	mbox_put(mbox);
-	return rc;
 }
 
 int
@@ -1021,6 +1063,8 @@ roc_nix_rq_cman_config(struct roc_nix *roc_nix, struct roc_nix_rq *rq)
 
 	if (is_cn9k)
 		rc = nix_rq_cn9k_cman_cfg(dev, rq);
+	else if (roc_model_is_cn10k())
+		rc = nix_rq_cn10k_cman_cfg(dev, rq);
 	else
 		rc = nix_rq_cman_cfg(dev, rq);
 
