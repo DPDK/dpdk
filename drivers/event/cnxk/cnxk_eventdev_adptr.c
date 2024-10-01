@@ -213,7 +213,7 @@ static void
 cnxk_sso_tstamp_cfg(uint16_t port_id, struct cnxk_eth_dev *cnxk_eth_dev,
 		    struct cnxk_sso_evdev *dev)
 {
-	if (cnxk_eth_dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
+	if (cnxk_eth_dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP || cnxk_eth_dev->ptp_en)
 		dev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
 }
 

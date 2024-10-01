@@ -911,12 +911,40 @@ cn9k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 	}
 }
 
+static void
+eventdev_fops_tstamp_update(struct rte_eventdev *event_dev)
+{
+	struct rte_event_fp_ops *fp_op =
+		rte_event_fp_ops + event_dev->data->dev_id;
+
+	fp_op->dequeue = event_dev->dequeue;
+	fp_op->dequeue_burst = event_dev->dequeue_burst;
+}
+
+static void
+cn9k_sso_tstamp_hdl_update(uint16_t port_id, uint16_t flags, bool ptp_en)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct cnxk_eth_dev *cnxk_eth_dev = dev->data->dev_private;
+	struct rte_eventdev *event_dev = cnxk_eth_dev->evdev_priv;
+	struct cnxk_sso_evdev *evdev = cnxk_sso_pmd_priv(event_dev);
+
+	evdev->rx_offloads |= flags;
+	if (ptp_en)
+		evdev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
+	else
+		evdev->tstamp[port_id] = NULL;
+	cn9k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	eventdev_fops_tstamp_update(event_dev);
+}
+
 static int
 cn9k_sso_rx_adapter_queue_add(
 	const struct rte_eventdev *event_dev, const struct rte_eth_dev *eth_dev,
 	int32_t rx_queue_id,
 	const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
 {
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct cn9k_eth_rxq *rxq;
 	void *lookup_mem;
 	int rc;
@@ -929,6 +957,9 @@ cn9k_sso_rx_adapter_queue_add(
 					   queue_conf);
 	if (rc)
 		return -EINVAL;
+
+	cnxk_eth_dev->cnxk_sso_ptp_tstamp_cb = cn9k_sso_tstamp_hdl_update;
+	cnxk_eth_dev->evdev_priv = (struct rte_eventdev *)(uintptr_t)event_dev;
 
 	rxq = eth_dev->data->rx_queues[0];
 	lookup_mem = rxq->lookup_mem;
