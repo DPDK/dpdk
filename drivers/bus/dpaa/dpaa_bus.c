@@ -43,6 +43,7 @@
 #include <fsl_qman.h>
 #include <fsl_bman.h>
 #include <netcfg.h>
+#include <fman.h>
 
 struct rte_dpaa_bus {
 	struct rte_bus bus;
@@ -203,9 +204,12 @@ dpaa_create_device_list(void)
 
 		/* Create device name */
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
-		sprintf(dev->name, "fm%d-mac%d", (fman_intf->fman_idx + 1),
-			fman_intf->mac_idx);
-		DPAA_BUS_LOG(INFO, "%s netdev added", dev->name);
+		if (fman_intf->mac_type == fman_offline)
+			sprintf(dev->name, "fm%d-oh%d",
+				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
+		else
+			sprintf(dev->name, "fm%d-mac%d",
+				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
 		dev->device.name = dev->name;
 		dev->device.devargs = dpaa_devargs_lookup(dev);
 
@@ -441,7 +445,7 @@ static int
 rte_dpaa_bus_parse(const char *name, void *out)
 {
 	unsigned int i, j;
-	size_t delta;
+	size_t delta, dev_delta;
 	size_t max_name_len;
 
 	/* There are two ways of passing device name, with and without
@@ -458,16 +462,25 @@ rte_dpaa_bus_parse(const char *name, void *out)
 		delta = 5;
 	}
 
+	/* dev_delta points to the dev name (mac/oh/onic). Not valid for
+	 * dpaa_sec.
+	 */
+	dev_delta = delta + sizeof("fm.-") - 1;
+
 	if (strncmp("dpaa_sec", &name[delta], 8) == 0) {
 		if (sscanf(&name[delta], "dpaa_sec-%u", &i) != 1 ||
 				i < 1 || i > 4)
 			return -EINVAL;
 		max_name_len = sizeof("dpaa_sec-.") - 1;
+	} else if (strncmp("oh", &name[dev_delta], 2) == 0) {
+		if (sscanf(&name[delta], "fm%u-oh%u", &i, &j) != 2 ||
+				i >= 2 || j >= 16)
+			return -EINVAL;
+		max_name_len = sizeof("fm.-oh..") - 1;
 	} else {
 		if (sscanf(&name[delta], "fm%u-mac%u", &i, &j) != 2 ||
 				i >= 2 || j >= 16)
 			return -EINVAL;
-
 		max_name_len = sizeof("fm.-mac..") - 1;
 	}
 
