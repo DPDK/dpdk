@@ -60,6 +60,18 @@ void fman_if_stats_reset(struct fman_if *p);
 __rte_internal
 void fman_if_stats_get_all(struct fman_if *p, uint64_t *value, int n);
 
+__rte_internal
+void fman_if_bmi_stats_enable(struct fman_if *p);
+
+__rte_internal
+void fman_if_bmi_stats_disable(struct fman_if *p);
+
+__rte_internal
+void fman_if_bmi_stats_get_all(struct fman_if *p, uint64_t *value);
+
+__rte_internal
+void fman_if_bmi_stats_reset(struct fman_if *p);
+
 /* Set ignore pause option for a specific interface */
 void fman_if_set_rx_ignore_pause_frames(struct fman_if *p, bool enable);
 
