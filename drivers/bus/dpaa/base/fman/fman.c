@@ -43,7 +43,7 @@ if_destructor(struct __fman_if *__if)
 	if (!__if)
 		return;
 
-	if (__if->__if.mac_type == fman_offline)
+	if (__if->__if.mac_type == fman_offline_internal)
 		goto cleanup;
 
 	list_for_each_entry_safe(bp, tmpbp, &__if->__if.bpool_list, node) {
@@ -465,7 +465,7 @@ fman_if_init(const struct device_node *dpa_node)
 	__if->__if.is_memac = 0;
 
 	if (is_offline)
-		__if->__if.mac_type = fman_offline;
+		__if->__if.mac_type = fman_offline_internal;
 	else if (of_device_is_compatible(mac_node, "fsl,fman-1g-mac"))
 		__if->__if.mac_type = fman_mac_1g;
 	else if (of_device_is_compatible(mac_node, "fsl,fman-10g-mac"))
@@ -791,6 +791,292 @@ oh_init_done:
 		    dname, __if->__if.tx_channel_id, __if->__if.fman_idx,
 		    __if->__if.mac_idx);
 
+	/* Don't add OH port to the port list since they will be used by ONIC
+	 * ports.
+	 */
+	if (!is_offline)
+		list_add_tail(&__if->__if.node, &__ifs);
+
+	return 0;
+err:
+	if_destructor(__if);
+	return _errno;
+}
+
+static int fman_if_init_onic(const struct device_node *dpa_node)
+{
+	struct __fman_if *__if;
+	struct fman_if_bpool *bpool;
+	const phandle *tx_pools_phandle;
+	const phandle *tx_channel_id, *mac_addr, *cell_idx;
+	const phandle *rx_phandle;
+	const struct device_node *pool_node;
+	size_t lenp;
+	int _errno;
+	const phandle *p_onic_oh_nodes = NULL;
+	const struct device_node *rx_oh_node = NULL;
+	const struct device_node *tx_oh_node = NULL;
+	const phandle *p_fman_rx_oh_node = NULL, *p_fman_tx_oh_node = NULL;
+	const struct device_node *fman_rx_oh_node = NULL;
+	const struct device_node *fman_tx_oh_node = NULL;
+	const struct device_node *fman_node;
+	uint32_t na = OF_DEFAULT_NA;
+	uint64_t rx_phandle_host[4] = {0};
+	uint64_t cell_idx_host = 0;
+
+	if (of_device_is_available(dpa_node) == false)
+		return 0;
+
+	if (!of_device_is_compatible(dpa_node, "fsl,dpa-ethernet-generic"))
+		return 0;
+
+	/* Allocate an object for this network interface */
+	__if = rte_malloc(NULL, sizeof(*__if), RTE_CACHE_LINE_SIZE);
+	if (!__if) {
+		FMAN_ERR(-ENOMEM, "malloc(%zu)", sizeof(*__if));
+		goto err;
+	}
+	memset(__if, 0, sizeof(*__if));
+
+	INIT_LIST_HEAD(&__if->__if.bpool_list);
+
+	strlcpy(__if->node_name, dpa_node->name, IF_NAME_MAX_LEN - 1);
+	__if->node_name[IF_NAME_MAX_LEN - 1] = '\0';
+
+	strlcpy(__if->node_path, dpa_node->full_name, PATH_MAX - 1);
+	__if->node_path[PATH_MAX - 1] = '\0';
+
+	/* Mac node is onic */
+	__if->__if.is_memac = 0;
+	__if->__if.mac_type = fman_onic;
+
+	/* Extract the MAC address for linux peer */
+	mac_addr = of_get_property(dpa_node, "local-mac-address", &lenp);
+	if (!mac_addr) {
+		FMAN_ERR(-EINVAL, "%s: no local-mac-address",
+			 dpa_node->full_name);
+		goto err;
+	}
+
+	memcpy(&__if->__if.onic_info.peer_mac, mac_addr, ETHER_ADDR_LEN);
+
+	/* Extract the Rx port (it's the first of the two port handles)
+	 * and get its channel ID.
+	 */
+	p_onic_oh_nodes = of_get_property(dpa_node, "fsl,oh-ports", &lenp);
+	if (!p_onic_oh_nodes) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get p_onic_oh_nodes",
+			 dpa_node->full_name);
+		goto err;
+	}
+
+	rx_oh_node = of_find_node_by_phandle(p_onic_oh_nodes[0]);
+	if (!rx_oh_node) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get rx_oh_node",
+			 dpa_node->full_name);
+		goto err;
+	}
+
+	p_fman_rx_oh_node = of_get_property(rx_oh_node, "fsl,fman-oh-port",
+					    &lenp);
+	if (!p_fman_rx_oh_node) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get p_fman_rx_oh_node",
+			 rx_oh_node->full_name);
+		goto err;
+	}
+
+	fman_rx_oh_node = of_find_node_by_phandle(*p_fman_rx_oh_node);
+	if (!fman_rx_oh_node) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get fman_rx_oh_node",
+			 rx_oh_node->full_name);
+		goto err;
+	}
+
+	tx_channel_id = of_get_property(fman_rx_oh_node, "fsl,qman-channel-id",
+					&lenp);
+	if (!tx_channel_id) {
+		FMAN_ERR(-EINVAL, "%s: no fsl-qman-channel-id",
+			 rx_oh_node->full_name);
+		goto err;
+	}
+	assert(lenp == sizeof(*tx_channel_id));
+
+	__if->__if.tx_channel_id = of_read_number(tx_channel_id, na);
+
+	/* Extract the FQs from which oNIC driver in Linux is dequeuing */
+	rx_phandle = of_get_property(rx_oh_node, "fsl,qman-frame-queues-oh",
+				     &lenp);
+	if (!rx_phandle) {
+		FMAN_ERR(-EINVAL, "%s: no fsl,qman-frame-queues-oh",
+			 rx_oh_node->full_name);
+		goto err;
+	}
+	assert(lenp == (4 * sizeof(phandle)));
+
+	__if->__if.onic_info.rx_start = of_read_number(&rx_phandle[2], na);
+	__if->__if.onic_info.rx_count = of_read_number(&rx_phandle[3], na);
+
+	/* Extract the Rx FQIDs */
+	tx_oh_node = of_find_node_by_phandle(p_onic_oh_nodes[1]);
+	if (!tx_oh_node) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get tx_oh_node",
+			 dpa_node->full_name);
+		goto err;
+	}
+
+	p_fman_tx_oh_node = of_get_property(tx_oh_node, "fsl,fman-oh-port",
+					    &lenp);
+	if (!p_fman_tx_oh_node) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get p_fman_tx_oh_node",
+			 tx_oh_node->full_name);
+		goto err;
+	}
+
+	fman_tx_oh_node = of_find_node_by_phandle(*p_fman_tx_oh_node);
+	if (!fman_tx_oh_node) {
+		FMAN_ERR(-EINVAL, "%s: couldn't get fman_tx_oh_node",
+			 tx_oh_node->full_name);
+		goto err;
+	}
+
+	cell_idx = of_get_property(fman_tx_oh_node, "cell-index", &lenp);
+	if (!cell_idx) {
+		FMAN_ERR(-ENXIO, "%s: no cell-index)", tx_oh_node->full_name);
+		goto err;
+	}
+	assert(lenp == sizeof(*cell_idx));
+
+	cell_idx_host = of_read_number(cell_idx, lenp / sizeof(phandle));
+	__if->__if.mac_idx = cell_idx_host;
+
+	fman_node = of_get_parent(fman_tx_oh_node);
+	cell_idx = of_get_property(fman_node, "cell-index", &lenp);
+	if (!cell_idx) {
+		FMAN_ERR(-ENXIO, "%s: no cell-index)", tx_oh_node->full_name);
+		goto err;
+	}
+	assert(lenp == sizeof(*cell_idx));
+
+	cell_idx_host = of_read_number(cell_idx, lenp / sizeof(phandle));
+	__if->__if.fman_idx = cell_idx_host;
+
+	rx_phandle = of_get_property(tx_oh_node, "fsl,qman-frame-queues-oh",
+				     &lenp);
+	if (!rx_phandle) {
+		FMAN_ERR(-EINVAL, "%s: no fsl,qman-frame-queues-oh",
+			 dpa_node->full_name);
+		goto err;
+	}
+	assert(lenp == (4 * sizeof(phandle)));
+
+	rx_phandle_host[0] = of_read_number(&rx_phandle[0], na);
+	rx_phandle_host[1] = of_read_number(&rx_phandle[1], na);
+	rx_phandle_host[2] = of_read_number(&rx_phandle[2], na);
+	rx_phandle_host[3] = of_read_number(&rx_phandle[3], na);
+
+	assert((rx_phandle_host[1] == 1) && (rx_phandle_host[3] == 1));
+
+	__if->__if.fqid_rx_err = rx_phandle_host[0];
+	__if->__if.fqid_rx_def = rx_phandle_host[2];
+
+	/* Don't Extract the Tx FQIDs */
+	__if->__if.fqid_tx_err = 0;
+	__if->__if.fqid_tx_confirm = 0;
+
+	/* Obtain the buffer pool nodes used by Tx OH port */
+	tx_pools_phandle = of_get_property(tx_oh_node, "fsl,bman-buffer-pools",
+			&lenp);
+	if (!tx_pools_phandle) {
+		FMAN_ERR(-EINVAL, "%s: no fsl,bman-buffer-pools",
+			 tx_oh_node->full_name);
+		goto err;
+	}
+	assert(lenp && !(lenp % sizeof(phandle)));
+
+	/* For each pool, parse the corresponding node and add a pool object to
+	 * the interface's "bpool_list".
+	 */
+
+	while (lenp) {
+		size_t proplen;
+		const phandle *prop;
+		uint64_t bpool_host[6] = {0};
+
+		/* Allocate an object for the pool */
+		bpool = rte_malloc(NULL, sizeof(*bpool), RTE_CACHE_LINE_SIZE);
+		if (!bpool) {
+			FMAN_ERR(-ENOMEM, "malloc(%zu)", sizeof(*bpool));
+			goto err;
+		}
+
+		/* Find the pool node */
+		pool_node = of_find_node_by_phandle(*tx_pools_phandle);
+		if (!pool_node) {
+			FMAN_ERR(-ENXIO, "%s: bad fsl,bman-buffer-pools",
+				 tx_oh_node->full_name);
+			rte_free(bpool);
+			goto err;
+		}
+
+		/* Extract the BPID property */
+		prop = of_get_property(pool_node, "fsl,bpid", &proplen);
+		if (!prop) {
+			FMAN_ERR(-EINVAL, "%s: no fsl,bpid",
+				 pool_node->full_name);
+			rte_free(bpool);
+			goto err;
+		}
+		assert(proplen == sizeof(*prop));
+
+		bpool->bpid = of_read_number(prop, na);
+
+		/* Extract the cfg property (count/size/addr). "fsl,bpool-cfg"
+		 * indicates for the Bman driver to seed the pool.
+		 * "fsl,bpool-ethernet-cfg" is used by the network driver. The
+		 * two are mutually exclusive, so check for either of them.
+		 */
+
+		prop = of_get_property(pool_node, "fsl,bpool-cfg", &proplen);
+		if (!prop)
+			prop = of_get_property(pool_node,
+					       "fsl,bpool-ethernet-cfg",
+					       &proplen);
+		if (!prop) {
+			/* It's OK for there to be no bpool-cfg */
+			bpool->count = bpool->size = bpool->addr = 0;
+		} else {
+			assert(proplen == (6 * sizeof(*prop)));
+
+			bpool_host[0] = of_read_number(&prop[0], na);
+			bpool_host[1] = of_read_number(&prop[1], na);
+			bpool_host[2] = of_read_number(&prop[2], na);
+			bpool_host[3] = of_read_number(&prop[3], na);
+			bpool_host[4] = of_read_number(&prop[4], na);
+			bpool_host[5] = of_read_number(&prop[5], na);
+
+			bpool->count = ((uint64_t)bpool_host[0] << 32) |
+				       bpool_host[1];
+			bpool->size = ((uint64_t)bpool_host[2] << 32) |
+				      bpool_host[3];
+			bpool->addr = ((uint64_t)bpool_host[4] << 32) |
+				      bpool_host[5];
+		}
+
+		/* Parsing of the pool is complete, add it to the interface
+		 * list.
+		 */
+		list_add_tail(&bpool->node, &__if->__if.bpool_list);
+		lenp -= sizeof(phandle);
+		tx_pools_phandle++;
+	}
+
+	fman_if_vsp_init(__if);
+
+	/* Parsing of the network interface is complete, add it to the list. */
+	DPAA_BUS_DEBUG("Found %s, Tx Channel = %x, FMAN = %x, Port ID = %x",
+		       dpa_node->full_name, __if->__if.tx_channel_id,
+		       __if->__if.fman_idx, __if->__if.mac_idx);
+
 	list_add_tail(&__if->__if.node, &__ifs);
 	return 0;
 err:
@@ -830,6 +1116,13 @@ fman_init(void)
 		}
 	}
 
+	for_each_compatible_node(dpa_node, NULL, "fsl,dpa-ethernet-generic") {
+		/* it is a oNIC interface */
+		_errno = fman_if_init_onic(dpa_node);
+		if (_errno)
+			FMAN_ERR(_errno, "if_init(%s)", dpa_node->full_name);
+	}
+
 	return 0;
 err:
 	fman_finish();
@@ -847,7 +1140,7 @@ fman_finish(void)
 		int _errno;
 
 		/* No need to disable Offline port */
-		if (__if->__if.mac_type == fman_offline)
+		if (__if->__if.mac_type == fman_offline_internal)
 			continue;
 
 		/* disable Rx and Tx */
