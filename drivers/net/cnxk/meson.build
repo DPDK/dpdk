@@ -14,7 +14,7 @@ else
         soc_type = platform
 endif
 
-if soc_type != 'cn9k' and soc_type != 'cn10k'
+if soc_type != 'cn9k' and soc_type != 'cn10k' and soc_type != 'cn20k'
         soc_type = 'all'
 endif
 
@@ -230,6 +230,15 @@ sources += files(
 )
 endif
 endif
+
+
+if soc_type == 'cn20k' or soc_type == 'all'
+# CN20K
+sources += files(
+        'cn20k_ethdev.c',
+)
+endif
+
 
 deps += ['bus_pci', 'cryptodev', 'eventdev', 'security']
 deps += ['common_cnxk', 'mempool_cnxk']

@@ -94,6 +94,10 @@ New Features
 
   * Added mempool driver support for CN20K SoC.
 
+* **Updated Marvell cnxk net driver.**
+
+  * Added ethdev driver support for CN20K SoC.
+
 * **Added cryptodev queue pair reset support.**
 
   A new API ``rte_cryptodev_queue_pair_reset`` is added

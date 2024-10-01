@@ -59,6 +59,9 @@
 
 #define CNXK_TX_MARK_FMT_MASK (0xFFFFFFFFFFFFull)
 
+#define CNXK_NIX_CQ_ENTRY_SZ 128
+#define CQE_SZ(x)            ((x) * CNXK_NIX_CQ_ENTRY_SZ)
+
 struct cnxk_eth_txq_comp {
 	uintptr_t desc_base;
 	uintptr_t cq_door;
