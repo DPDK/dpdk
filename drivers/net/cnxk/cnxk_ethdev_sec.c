@@ -311,6 +311,17 @@ rte_pmd_cnxk_inl_dev_qptr_get(void)
 	return roc_nix_inl_dev_qptr_get(0);
 }
 
+int
+rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_type type,
+			     struct rte_pmd_cnxk_cpt_q_stats *stats, uint16_t idx)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	return roc_nix_inl_cpt_lf_stats_get(&dev->nix, (enum roc_nix_cpt_lf_stats_type)type,
+					    (struct roc_nix_cpt_lf_stats *)stats, idx);
+}
+
 union rte_pmd_cnxk_ipsec_hw_sa *
 rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb)
 {

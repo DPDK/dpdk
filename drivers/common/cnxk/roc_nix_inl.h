@@ -112,6 +112,13 @@ struct roc_nix_inl_dev_q {
 	int32_t fc_addr_sw;
 } __plt_cache_aligned;
 
+struct roc_nix_cpt_lf_stats {
+	uint64_t enc_pkts;
+	uint64_t enc_bytes;
+	uint64_t dec_pkts;
+	uint64_t dec_bytes;
+};
+
 /* NIX Inline Device API */
 int __roc_api roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev);
 int __roc_api roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev);
@@ -187,4 +194,12 @@ void __roc_api roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix, FILE *file
 uint64_t __roc_api roc_nix_inl_eng_caps_get(struct roc_nix *roc_nix);
 void *__roc_api roc_nix_inl_dev_qptr_get(uint8_t qid);
 
+enum roc_nix_cpt_lf_stats_type {
+	ROC_NIX_CPT_LF_STATS_INL_DEV,
+	ROC_NIX_CPT_LF_STATS_KERNEL,
+	ROC_NIX_CPT_LF_STATS_ETHDEV = 2,
+};
+int __roc_api roc_nix_inl_cpt_lf_stats_get(struct roc_nix *roc_nix,
+					   enum roc_nix_cpt_lf_stats_type type,
+					   struct roc_nix_cpt_lf_stats *stats, uint16_t idx);
 #endif /* _ROC_NIX_INL_H_ */

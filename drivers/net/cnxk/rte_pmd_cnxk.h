@@ -47,6 +47,30 @@ enum rte_pmd_cnxk_sec_action_alg {
 	RTE_PMD_CNXK_SEC_ACTION_ALG4,
 };
 
+/** CPT queue type for obtaining queue hardware statistics. */
+enum rte_pmd_cnxk_cpt_q_stats_type {
+	/** Type to get Inline Device LF(s) statistics */
+	RTE_PMD_CNXK_CPT_Q_STATS_INL_DEV,
+	/** Type to get Inline Inbound LF which is attached to kernel device
+	 * statistics.
+	 */
+	RTE_PMD_CNXK_CPT_Q_STATS_KERNEL,
+	/** Type to get CPT LF which is attached to ethdev statistics */
+	RTE_PMD_CNXK_CPT_Q_STATS_ETHDEV = 2,
+};
+
+/** CPT queue hardware statistics */
+struct rte_pmd_cnxk_cpt_q_stats {
+	/** Encrypted packet count */
+	uint64_t enc_pkts;
+	/** Encrypted byte count */
+	uint64_t enc_bytes;
+	/** Decrypted packet count */
+	uint64_t dec_pkts;
+	/** Decrypted byte count */
+	uint64_t dec_bytes;
+};
+
 struct rte_pmd_cnxk_sec_action {
 	/** Used as lookup result for ALG3 */
 	uint32_t sa_index;
@@ -613,4 +637,23 @@ __rte_experimental
 uint16_t rte_pmd_cnxk_inl_dev_submit(struct rte_pmd_cnxk_inl_dev_q *qptr, void *inst,
 				     uint16_t nb_inst);
 
+/**
+ * Retrieves the hardware statistics of a given port and stats type.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param type
+ *   The type of hardware statistics to retrieve, as defined in the
+ *   ``enum rte_pmd_cnxk_cpt_q_stats_type``.
+ * @param stats
+ *   Pointer where the retrieved statistics will be stored.
+ * @param idx
+ *   The index of the queue of a given type.
+ *
+ * @return
+ *   0 Upon success, a negative errno value otherwise.
+ */
+__rte_experimental
+int rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_type type,
+				 struct rte_pmd_cnxk_cpt_q_stats *stats, uint16_t idx);
 #endif /* _PMD_CNXK_H_ */

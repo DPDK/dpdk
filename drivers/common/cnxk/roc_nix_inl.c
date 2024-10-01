@@ -1812,6 +1812,73 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	return -ENOTSUP;
 }
 
+static inline int
+nix_inl_dev_cpt_lf_stats_get(struct roc_nix *roc_nix, struct roc_nix_cpt_lf_stats *stats,
+			     uint16_t idx)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	struct roc_cpt_lf *lf = NULL;
+
+	PLT_SET_USED(roc_nix);
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (inl_dev && inl_dev->attach_cptlf) {
+		if (idx >= inl_dev->nb_cptlf) {
+			plt_err("Invalid idx: %u total lfs: %d", idx, inl_dev->nb_cptlf);
+			return -EINVAL;
+		}
+		lf = &inl_dev->cpt_lf[idx];
+	} else {
+		plt_err("No CPT LF(s) are found for Inline Device");
+		return -EINVAL;
+	}
+	stats->enc_pkts = plt_read64(lf->rbase + CPT_LF_CTX_ENC_PKT_CNT);
+	stats->enc_bytes = plt_read64(lf->rbase + CPT_LF_CTX_ENC_BYTE_CNT);
+	stats->dec_pkts = plt_read64(lf->rbase + CPT_LF_CTX_DEC_PKT_CNT);
+	stats->dec_bytes = plt_read64(lf->rbase + CPT_LF_CTX_DEC_BYTE_CNT);
+
+	return 0;
+}
+
+static inline int
+nix_eth_dev_cpt_lf_stats_get(struct roc_nix *roc_nix, struct roc_nix_cpt_lf_stats *stats,
+			     uint16_t idx)
+{
+	struct roc_cpt_lf *lf;
+	struct nix *nix;
+
+	if (!roc_nix)
+		return -EINVAL;
+	nix = roc_nix_to_nix_priv(roc_nix);
+	if (idx >= nix->nb_cpt_lf) {
+		plt_err("Invalid idx: %u total lfs: %d", idx, nix->nb_cpt_lf);
+		return -EINVAL;
+	}
+	lf = &nix->cpt_lf_base[idx];
+	stats->enc_pkts = plt_read64(lf->rbase + CPT_LF_CTX_ENC_PKT_CNT);
+	stats->enc_bytes = plt_read64(lf->rbase + CPT_LF_CTX_ENC_BYTE_CNT);
+	stats->dec_pkts = plt_read64(lf->rbase + CPT_LF_CTX_DEC_PKT_CNT);
+	stats->dec_bytes = plt_read64(lf->rbase + CPT_LF_CTX_DEC_BYTE_CNT);
+
+	return 0;
+}
+
+int
+roc_nix_inl_cpt_lf_stats_get(struct roc_nix *roc_nix, enum roc_nix_cpt_lf_stats_type type,
+			     struct roc_nix_cpt_lf_stats *stats, uint16_t idx)
+{
+	switch (type) {
+	case ROC_NIX_CPT_LF_STATS_INL_DEV:
+		return nix_inl_dev_cpt_lf_stats_get(roc_nix, stats, idx);
+	case ROC_NIX_CPT_LF_STATS_ETHDEV:
+		return nix_eth_dev_cpt_lf_stats_get(roc_nix, stats, idx);
+	default:
+		return -EINVAL;
+	}
+}
+
 int
 roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 {
