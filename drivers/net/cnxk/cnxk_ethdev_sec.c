@@ -297,47 +297,71 @@ cnxk_eth_sec_sess_get_by_sess(struct cnxk_eth_dev *dev,
 	return NULL;
 }
 
-int
-rte_pmd_cnxk_hw_sa_read(void *device, void *__sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
-			uint32_t len)
+union rte_pmd_cnxk_ipsec_hw_sa *
+rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb)
 {
-	struct rte_security_session *sess = __sess;
-	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uintptr_t sa_base;
+
+	if (inb)
+		sa_base = roc_nix_inl_inb_sa_base_get(&dev->nix, dev->inb.inl_dev);
+	else
+		sa_base = roc_nix_inl_outb_sa_base_get(&dev->nix);
+
+	return (union rte_pmd_cnxk_ipsec_hw_sa *)sa_base;
+}
+
+int
+rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, bool inb)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	return roc_nix_inl_sa_sync(&dev->nix, sess, inb, ROC_NIX_INL_SA_OP_FLUSH);
+}
+
+int
+rte_pmd_cnxk_hw_sa_read(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			uint32_t len, bool inb)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct cnxk_eth_sec_sess *eth_sec;
+	void *sa;
 	int rc;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
-	if (eth_sec == NULL)
-		return -EINVAL;
+	if (eth_sec)
+		sa = eth_sec->sa;
+	else
+		sa = sess;
 
-	rc = roc_nix_inl_sa_sync(&dev->nix, eth_sec->sa, eth_sec->inb, ROC_NIX_INL_SA_OP_FLUSH);
+	rc = roc_nix_inl_sa_sync(&dev->nix, sa, inb, ROC_NIX_INL_SA_OP_FLUSH);
 	if (rc)
 		return -EINVAL;
-	rte_delay_ms(1);
-	memcpy(data, eth_sec->sa, len);
+
+	memcpy(data, sa, len);
 
 	return 0;
 }
 
 int
-rte_pmd_cnxk_hw_sa_write(void *device, void *__sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
-			 uint32_t len)
+rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			 uint32_t len, bool inb)
 {
-	struct rte_security_session *sess = __sess;
-	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct cnxk_eth_sec_sess *eth_sec;
-	int rc = -EINVAL;
+	void *sa;
 
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
-	if (eth_sec == NULL)
-		return rc;
-	rc = roc_nix_inl_ctx_write(&dev->nix, data, eth_sec->sa, eth_sec->inb, len);
-	if (rc)
-		return rc;
+	if (eth_sec)
+		sa = eth_sec->sa;
+	else
+		sa = sess;
 
-	return 0;
+	return roc_nix_inl_ctx_write(&dev->nix, data, sa, inb, len);
 }
 
 union rte_pmd_cnxk_cpt_res_s *

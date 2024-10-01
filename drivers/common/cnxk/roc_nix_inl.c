@@ -1685,6 +1685,7 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 	struct roc_cpt_lf *outb_lf = NULL;
 	union cpt_lf_ctx_reload reload;
 	union cpt_lf_ctx_flush flush;
+	union cpt_lf_ctx_err err;
 	bool get_inl_lf = true;
 	uintptr_t rbase;
 	struct nix *nix;
@@ -1726,6 +1727,14 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 		case ROC_NIX_INL_SA_OP_FLUSH:
 			flush.s.cptr = ((uintptr_t)sa) >> 7;
 			plt_write64(flush.u, rbase + CPT_LF_CTX_FLUSH);
+			plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
+			/* Read a CSR to ensure that the FLUSH operation is complete */
+			err.u = plt_read64(rbase + CPT_LF_CTX_ERR);
+
+			if (err.s.flush_st_flt) {
+				plt_warn("CTX flush could not complete");
+				return -EIO;
+			}
 			break;
 		case ROC_NIX_INL_SA_OP_RELOAD:
 			reload.s.cptr = ((uintptr_t)sa) >> 7;

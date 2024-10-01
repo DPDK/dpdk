@@ -10,7 +10,9 @@ EXPERIMENTAL {
 	rte_pmd_cnxk_hw_sa_write;
 
 	# added in 23.11
+	rte_pmd_cnxk_hw_session_base_get;
 	rte_pmd_cnxk_inl_ipsec_res;
+	rte_pmd_cnxk_sa_flush;
 };
 
 INTERNAL {

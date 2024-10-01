@@ -492,7 +492,7 @@ union rte_pmd_cnxk_cpt_res_s {
 /**
  * Read HW SA context from session.
  *
- * @param device
+ * @param portid
  *   Port identifier of Ethernet device.
  * @param sess
  *   Handle of the security session as void *.
@@ -500,17 +500,19 @@ union rte_pmd_cnxk_cpt_res_s {
  *   Destination pointer to copy SA context for application.
  * @param len
  *   Length of SA context to copy into data parameter.
+ * @param inb
+ *   Determines the type of specified SA.
  *
  * @return
  *   0 on success, a negative errno value otherwise.
  */
 __rte_experimental
-int rte_pmd_cnxk_hw_sa_read(void *device, void *sess,
-			    union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len);
+int rte_pmd_cnxk_hw_sa_read(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			    uint32_t len, bool inb);
 /**
  * Write HW SA context to session.
  *
- * @param device
+ * @param portid
  *   Port identifier of Ethernet device.
  * @param sess
  *   Handle of the security session as void *.
@@ -518,13 +520,15 @@ int rte_pmd_cnxk_hw_sa_read(void *device, void *sess,
  *   Source data pointer from application to copy SA context into session.
  * @param len
  *   Length of SA context to copy from data parameter.
+ * @param inb
+ *   Determines the type of specified SA.
  *
  * @return
  *   0 on success, a negative errno value otherwise.
  */
 __rte_experimental
-int rte_pmd_cnxk_hw_sa_write(void *device, void *sess,
-			     union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len);
+int rte_pmd_cnxk_hw_sa_write(uint16_t portid, void *sess, union rte_pmd_cnxk_ipsec_hw_sa *data,
+			     uint32_t len, bool inb);
 
 /**
  * Get pointer to CPT result info for inline inbound processed pkt.
@@ -542,4 +546,36 @@ int rte_pmd_cnxk_hw_sa_write(void *device, void *sess,
  */
 __rte_experimental
 union rte_pmd_cnxk_cpt_res_s *rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf);
+
+/**
+ * Get pointer to the Inline Inbound or Outbound SA table base.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param inb
+ *   Determines the type of SA base to be returned.
+ *   When inb is true, the method returns the Inbound SA base.
+ *   When inb is false, the method returns the Outbound SA base.
+ *
+ * @return
+ *   Pointer to Inbound or Outbound SA base.
+ */
+__rte_experimental
+union rte_pmd_cnxk_ipsec_hw_sa *rte_pmd_cnxk_hw_session_base_get(uint16_t portid, bool inb);
+
+/**
+ * Executes a CPT flush on the specified session.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param sess
+ *   Handle of the session on which the CPT flush will be executed.
+ * @param inb
+ *   Determines the type of SA to be flushed, Inbound or Outbound.
+ *
+ * @return
+ *   0 Upon success, a negative errno value otherwise.
+ */
+__rte_experimental
+int rte_pmd_cnxk_sa_flush(uint16_t portid, union rte_pmd_cnxk_ipsec_hw_sa *sess, bool inb);
 #endif /* _PMD_CNXK_H_ */
