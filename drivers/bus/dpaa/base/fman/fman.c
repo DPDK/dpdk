@@ -153,7 +153,7 @@ static void fman_if_vsp_init(struct __fman_if *__if)
 	size_t lenp;
 	const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
 
-	if (__if->__if.mac_type == fman_mac_1g) {
+	if (__if->__if.mac_idx <= 8) {
 		for_each_compatible_node(dev, NULL,
 			"fsl,fman-port-1g-rx-extended-args") {
 			prop = of_get_property(dev, "cell-index", &lenp);
@@ -176,7 +176,32 @@ static void fman_if_vsp_init(struct __fman_if *__if)
 				}
 			}
 		}
-	} else if (__if->__if.mac_type == fman_mac_10g) {
+
+		for_each_compatible_node(dev, NULL,
+					 "fsl,fman-port-op-extended-args") {
+			prop = of_get_property(dev, "cell-index", &lenp);
+
+			if (prop) {
+				cell_index = of_read_number(&prop[0],
+						lenp / sizeof(phandle));
+
+				if (cell_index == __if->__if.mac_idx) {
+					prop = of_get_property(dev,
+							       "vsp-window",
+							       &lenp);
+
+					if (prop) {
+						__if->__if.num_profiles =
+							of_read_number(&prop[0],
+								       1);
+						__if->__if.base_profile_id =
+							of_read_number(&prop[1],
+								       1);
+					}
+				}
+			}
+		}
+	} else {
 		for_each_compatible_node(dev, NULL,
 			"fsl,fman-port-10g-rx-extended-args") {
 			prop = of_get_property(dev, "cell-index", &lenp);
