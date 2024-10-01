@@ -60,7 +60,7 @@ roc_plt_init(void)
 	return 0;
 }
 
-RTE_LOG_REGISTER(cnxk_logtype_base, pmd.cnxk.base, NOTICE);
+RTE_LOG_REGISTER(cnxk_logtype_base, pmd.cnxk.base, INFO);
 RTE_LOG_REGISTER(cnxk_logtype_mbox, pmd.cnxk.mbox, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_cpt, pmd.crypto.cnxk, NOTICE);
 RTE_LOG_REGISTER(cnxk_logtype_npa, pmd.mempool.cnxk, NOTICE);
