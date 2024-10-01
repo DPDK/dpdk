@@ -171,8 +171,10 @@ dpaa_create_device_list(void)
 	struct fm_eth_port_cfg *cfg;
 	struct fman_if *fman_intf;
 
+	rte_dpaa_bus.device_count = 0;
+
 	/* Creating Ethernet Devices */
-	for (i = 0; i < dpaa_netcfg->num_ethports; i++) {
+	for (i = 0; dpaa_netcfg && (i < dpaa_netcfg->num_ethports); i++) {
 		dev = calloc(1, sizeof(struct rte_dpaa_device));
 		if (!dev) {
 			DPAA_BUS_LOG(ERR, "Failed to allocate ETH devices");
@@ -204,8 +206,11 @@ dpaa_create_device_list(void)
 
 		/* Create device name */
 		memset(dev->name, 0, RTE_ETH_NAME_MAX_LEN);
-		if (fman_intf->mac_type == fman_offline)
+		if (fman_intf->mac_type == fman_offline_internal)
 			sprintf(dev->name, "fm%d-oh%d",
+				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
+		else if (fman_intf->mac_type == fman_onic)
+			sprintf(dev->name, "fm%d-onic%d",
 				(fman_intf->fman_idx + 1), fman_intf->mac_idx);
 		else
 			sprintf(dev->name, "fm%d-mac%d",
@@ -216,7 +221,7 @@ dpaa_create_device_list(void)
 		dpaa_add_to_device_list(dev);
 	}
 
-	rte_dpaa_bus.device_count = i;
+	rte_dpaa_bus.device_count += i;
 
 	/* Unlike case of ETH, RTE_LIBRTE_DPAA_MAX_CRYPTODEV SEC devices are
 	 * constantly created only if "sec" property is found in the device
@@ -477,6 +482,11 @@ rte_dpaa_bus_parse(const char *name, void *out)
 				i >= 2 || j >= 16)
 			return -EINVAL;
 		max_name_len = sizeof("fm.-oh..") - 1;
+	} else if (strncmp("onic", &name[dev_delta], 4) == 0) {
+		if (sscanf(&name[delta], "fm%u-onic%u", &i, &j) != 2 ||
+				i >= 2 || j >= 16)
+			return -EINVAL;
+		max_name_len = sizeof("fm.-onic..") - 1;
 	} else {
 		if (sscanf(&name[delta], "fm%u-mac%u", &i, &j) != 2 ||
 				i >= 2 || j >= 16)
