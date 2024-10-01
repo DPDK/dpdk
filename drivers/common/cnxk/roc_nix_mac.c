@@ -91,11 +91,6 @@ roc_nix_mac_addr_set(struct roc_nix *roc_nix, const uint8_t addr[])
 		goto exit;
 	}
 
-	if (dev_active_vfs(&nix->dev)) {
-		rc = NIX_ERR_OP_NOTSUP;
-		goto exit;
-	}
-
 	req = mbox_alloc_msg_cgx_mac_addr_set(mbox);
 	if (req == NULL)
 		goto exit;
@@ -148,11 +143,6 @@ roc_nix_mac_addr_add(struct roc_nix *roc_nix, uint8_t addr[])
 	int rc;
 
 	if (roc_nix_is_vf_or_sdp(roc_nix)) {
-		rc = NIX_ERR_OP_NOTSUP;
-		goto exit;
-	}
-
-	if (dev_active_vfs(&nix->dev)) {
 		rc = NIX_ERR_OP_NOTSUP;
 		goto exit;
 	}
