@@ -85,7 +85,7 @@ roc_plt_init(void)
 	return 0;
 }
 
-RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_base, base, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_base, base, INFO);
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_mbox, mbox, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_cpt, crypto, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_ml, ml, NOTICE);
