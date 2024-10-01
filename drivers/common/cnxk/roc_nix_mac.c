@@ -363,11 +363,6 @@ roc_nix_mac_stats_reset(struct roc_nix *roc_nix)
 	struct msg_req *req;
 	int rc = -ENOSPC;
 
-	if (roc_model_is_cn10k()) {
-		rc = 0;
-		goto exit;
-	}
-
 	if (roc_nix_is_vf_or_sdp(roc_nix)) {
 		rc = 0;
 		goto exit;
