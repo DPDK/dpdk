@@ -1748,6 +1748,7 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	struct nix_inl_dev *inl_dev = NULL;
 	struct roc_cpt_lf *outb_lf = NULL;
 	union cpt_lf_ctx_flush flush;
+	union cpt_lf_ctx_err err;
 	bool get_inl_lf = true;
 	uintptr_t rbase;
 	struct nix *nix;
@@ -1789,6 +1790,13 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 		flush.s.cptr = ((uintptr_t)sa_cptr) >> 7;
 		plt_write64(flush.u, rbase + CPT_LF_CTX_FLUSH);
 
+		plt_atomic_thread_fence(__ATOMIC_ACQ_REL);
+
+		/* Read a CSR to ensure that the FLUSH operation is complete */
+		err.u = plt_read64(rbase + CPT_LF_CTX_ERR);
+
+		if (err.s.flush_st_flt)
+			plt_warn("CTX flush could not complete");
 		return 0;
 	}
 	plt_nix_dbg("Could not get CPT LF for CTX write");
