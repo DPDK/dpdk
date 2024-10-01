@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright 2017,2020 NXP
+ * Copyright 2017,2020,2022 NXP
  *
  */
 
@@ -564,6 +564,10 @@ fman_if_set_ic_params(struct fman_if *fm_if,
 	unsigned int *fmbm_ricp =
 		&((struct rx_bmi_regs *)__if->bmi_map)->fmbm_ricp;
 	out_be32(fmbm_ricp, val);
+
+	unsigned int *fmbm_ticp =
+		&((struct tx_bmi_regs *)__if->tx_bmi_map)->fmbm_ticp;
+	out_be32(fmbm_ticp, val);
 
 	return 0;
 }

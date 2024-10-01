@@ -151,6 +151,14 @@ struct dpaa_if {
 	void *netenv_handle;
 	void *scheme_handle[2];
 	uint32_t scheme_count;
+	/*stores timestamp of last received packet on dev*/
+	uint64_t rx_timestamp;
+	/*stores timestamp of last received tx confirmation packet on dev*/
+	uint64_t tx_timestamp;
+	/* stores pointer to next tx_conf queue that should be processed,
+	 * it corresponds to last packet transmitted
+	 */
+	struct qman_fq *next_tx_conf_queue;
 
 	void *vsp_handle[DPAA_VSP_PROFILE_MAX_NUM];
 	uint32_t vsp_bpid[DPAA_VSP_PROFILE_MAX_NUM];
@@ -232,6 +240,15 @@ struct dpaa_if_rx_bmi_stats {
 	uint32_t fmbm_rodc;		/**< Rx Out of Buffers Discard nntr*/
 	uint32_t fmbm_rbdc;		/**< Rx Buffers Deallocate Counter*/
 };
+
+int
+dpaa_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
+		struct timespec *timestamp);
+
+int
+dpaa_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
+		struct timespec *timestamp,
+		uint32_t flags __rte_unused);
 
 /* PMD related logs */
 extern int dpaa_logtype_pmd;

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2010-2016 Freescale Semiconductor Inc.
- * Copyright 2017-2020 NXP
+ * Copyright 2017-2024 NXP
  *
  */
 
@@ -516,6 +516,25 @@ fman_if_init(const struct device_node *dpa_node)
 				 PROT_READ | PROT_WRITE, MAP_SHARED,
 				 fman_ccsr_map_fd, phys_addr);
 	if (__if->bmi_map == MAP_FAILED) {
+		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
+		goto err;
+	}
+
+	regs_addr = of_get_address(tx_node, 0, &__if->regs_size, NULL);
+	if (!regs_addr) {
+		FMAN_ERR(-EINVAL, "of_get_address(%s)", mname);
+		goto err;
+	}
+	phys_addr = of_translate_address(tx_node, regs_addr);
+	if (!phys_addr) {
+		FMAN_ERR(-EINVAL, "of_translate_address(%s, %p)",
+			mname, regs_addr);
+		goto err;
+	}
+	__if->tx_bmi_map = mmap(NULL, __if->regs_size,
+				PROT_READ | PROT_WRITE, MAP_SHARED,
+				fman_ccsr_map_fd, phys_addr);
+	if (__if->tx_bmi_map == MAP_FAILED) {
 		FMAN_ERR(-errno, "mmap(0x%"PRIx64")", phys_addr);
 		goto err;
 	}

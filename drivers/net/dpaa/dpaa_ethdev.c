@@ -1674,6 +1674,8 @@ static struct eth_dev_ops dpaa_devops = {
 	.rx_queue_intr_disable	  = dpaa_dev_queue_intr_disable,
 	.rss_hash_update	  = dpaa_dev_rss_hash_update,
 	.rss_hash_conf_get        = dpaa_dev_rss_hash_conf_get,
+	.timesync_read_rx_timestamp = dpaa_timesync_read_rx_timestamp,
+	.timesync_read_tx_timestamp = dpaa_timesync_read_tx_timestamp,
 };
 
 static bool
