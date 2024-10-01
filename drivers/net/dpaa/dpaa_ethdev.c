@@ -255,7 +255,6 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 			DPAA_PMD_ERR("Cannot open IF socket");
 			return -errno;
 		}
-
 		strncpy(ifr.ifr_name, dpaa_intf->name, IFNAMSIZ - 1);
 
 		if (ioctl(socket_fd, SIOCGIFMTU, &ifr) < 0) {
@@ -1894,6 +1893,7 @@ dpaa_tx_conf_queue_init(struct qman_fq *fq)
 	return ret;
 }
 
+#if defined(RTE_LIBRTE_DPAA_DEBUG_DRIVER)
 /* Initialise a DEBUG FQ ([rt]x_error, rx_default) */
 static int dpaa_def_queue_init(struct qman_fq *fq, uint32_t fqid)
 {
@@ -1924,6 +1924,7 @@ static int dpaa_def_queue_init(struct qman_fq *fq, uint32_t fqid)
 			    fqid, ret);
 	return ret;
 }
+#endif
 
 /* Initialise a network interface */
 static int
@@ -1957,6 +1958,41 @@ dpaa_dev_init_secondary(struct rte_eth_dev *eth_dev)
 
 	return 0;
 }
+
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+static int
+dpaa_error_queue_init(struct dpaa_if *dpaa_intf,
+	struct fman_if *fman_intf)
+{
+	int i, ret;
+	struct qman_fq *err_queues = dpaa_intf->debug_queues;
+	uint32_t err_fqid = 0;
+
+	if (fman_intf->is_shared_mac) {
+		DPAA_PMD_DEBUG("Shared MAC's err queues are handled in kernel");
+		return 0;
+	}
+
+	for (i = 0; i < DPAA_DEBUG_FQ_MAX_NUM; i++) {
+		if (i == DPAA_DEBUG_FQ_RX_ERROR)
+			err_fqid = fman_intf->fqid_rx_err;
+		else if (i == DPAA_DEBUG_FQ_TX_ERROR)
+			err_fqid = fman_intf->fqid_tx_err;
+		else
+			continue;
+		ret = dpaa_def_queue_init(&err_queues[i], err_fqid);
+		if (ret) {
+			DPAA_PMD_ERR("DPAA %s ERROR queue init failed!",
+				i == DPAA_DEBUG_FQ_RX_ERROR ?
+				"RX" : "TX");
+			return ret;
+		}
+		err_queues[i].dpaa_intf = dpaa_intf;
+	}
+
+	return 0;
+}
+#endif
 
 static int
 check_devargs_handler(__rte_unused const char *key, const char *value,
@@ -2203,25 +2239,11 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		}
 	}
 	dpaa_intf->nb_tx_queues = MAX_DPAA_CORES;
-
-#if !defined(RTE_LIBRTE_DPAA_DEBUG_DRIVER)
-	if (dpaa_ieee_1588)
+#if defined(RTE_LIBRTE_DPAA_DEBUG_DRIVER)
+	ret = dpaa_error_queue_init(dpaa_intf, fman_intf);
+	if (ret)
+		goto free_tx;
 #endif
-	{
-		ret = dpaa_def_queue_init(&dpaa_intf->debug_queues
-				[DPAA_DEBUG_FQ_RX_ERROR], fman_intf->fqid_rx_err);
-		if (ret) {
-			DPAA_PMD_ERR("DPAA RX ERROR queue init failed!");
-			goto free_tx;
-		}
-		dpaa_intf->debug_queues[DPAA_DEBUG_FQ_RX_ERROR].dpaa_intf = dpaa_intf;
-		ret = dpaa_def_queue_init(&dpaa_intf->debug_queues
-				[DPAA_DEBUG_FQ_TX_ERROR], fman_intf->fqid_tx_err);
-		if (ret) {
-			DPAA_PMD_ERR("DPAA TX ERROR queue init failed!");
-			goto free_tx;
-		}
-	}
 	DPAA_PMD_DEBUG("All frame queues created");
 
 	/* Get the initial configuration for flow control */
