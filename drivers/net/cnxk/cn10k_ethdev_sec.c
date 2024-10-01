@@ -754,6 +754,9 @@ cn10k_eth_sec_session_create(void *device,
 	else if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
 		return -ENOTSUP;
 
+	if (nix->custom_inb_sa)
+		return -ENOTSUP;
+
 	if (rte_security_dynfield_register() < 0)
 		return -ENOTSUP;
 
@@ -1038,6 +1041,8 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 			return cnxk_eth_macsec_session_destroy(dev, sess);
 		return -ENOENT;
 	}
+	if (dev->nix.custom_inb_sa)
+		return -ENOTSUP;
 
 	lock = eth_sec->inb ? &dev->inb.lock : &dev->outb.lock;
 	rte_spinlock_lock(lock);

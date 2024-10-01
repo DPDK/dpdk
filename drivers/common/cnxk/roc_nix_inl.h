@@ -33,6 +33,7 @@
 
 #define ROC_NIX_INL_MAX_SOFT_EXP_RNGS                                          \
 	(PLT_MAX_ETHPORTS * ROC_NIX_SOFT_EXP_PER_PORT_MAX_RINGS)
+#define ROC_NIX_INL_INB_CUSTOM_SA_SZ 512
 
 /* Reassembly configuration */
 #define ROC_NIX_INL_REAS_ACTIVE_LIMIT	  0xFFF
@@ -97,6 +98,7 @@ struct roc_nix_inl_dev {
 	uint32_t meta_buf_sz;
 	uint32_t max_ipsec_rules;
 	uint8_t rx_inj_ena; /* Rx Inject Enable */
+	uint8_t custom_inb_sa;
 	/* End of input parameters */
 
 #define ROC_NIX_INL_MEM_SZ (2048)

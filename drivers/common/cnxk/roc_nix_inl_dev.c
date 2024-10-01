@@ -420,6 +420,8 @@ nix_inl_nix_setup(struct nix_inl_dev *inl_dev)
 	/* CN9K SA is different */
 	if (roc_model_is_cn9k())
 		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
+	else if (inl_dev->custom_inb_sa)
+		inb_sa_sz = ROC_NIX_INL_INB_CUSTOM_SA_SZ;
 	else
 		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
 
@@ -942,6 +944,7 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->nb_meta_bufs = roc_inl_dev->nb_meta_bufs;
 	inl_dev->meta_buf_sz = roc_inl_dev->meta_buf_sz;
 	inl_dev->soft_exp_poll_freq = roc_inl_dev->soft_exp_poll_freq;
+	inl_dev->custom_inb_sa = roc_inl_dev->custom_inb_sa;
 
 	if (roc_inl_dev->rx_inj_ena) {
 		inl_dev->rx_inj_ena = 1;

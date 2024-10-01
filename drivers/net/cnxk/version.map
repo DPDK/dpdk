@@ -11,6 +11,7 @@ EXPERIMENTAL {
 
 	# added in 23.11
 	rte_pmd_cnxk_cpt_q_stats_get;
+	rte_pmd_cnxk_hw_inline_inb_cfg_set;
 	rte_pmd_cnxk_hw_session_base_get;
 	rte_pmd_cnxk_inl_dev_qptr_get;
 	rte_pmd_cnxk_inl_dev_submit;

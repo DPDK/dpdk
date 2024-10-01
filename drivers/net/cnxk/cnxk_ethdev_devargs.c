@@ -281,6 +281,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_FLOW_AGING_POLL_FREQ	"aging_poll_freq"
 #define CNXK_NIX_RX_INJ_ENABLE	"rx_inj_ena"
 #define CNXK_CUSTOM_META_AURA_DIS "custom_meta_aura_dis"
+#define CNXK_CUSTOM_INB_SA	  "custom_inb_sa"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -304,6 +305,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t scalar_enable = 0;
 	uint16_t tx_compl_ena = 0;
 	uint16_t custom_sa_act = 0;
+	uint8_t custom_inb_sa = 0;
 	struct rte_kvargs *kvlist;
 	uint32_t meta_buf_sz = 0;
 	uint16_t no_inl_dev = 0;
@@ -362,6 +364,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_NIX_RX_INJ_ENABLE, &parse_flag, &rx_inj_ena);
 	rte_kvargs_process(kvlist, CNXK_CUSTOM_META_AURA_DIS, &parse_flag,
 			   &custom_meta_aura_dis);
+	rte_kvargs_process(kvlist, CNXK_CUSTOM_INB_SA, &parse_flag, &custom_inb_sa);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -381,6 +384,7 @@ null_devargs:
 	dev->nix.lock_rx_ctx = lock_rx_ctx;
 	dev->nix.custom_sa_action = custom_sa_act;
 	dev->nix.sqb_slack = sqb_slack;
+	dev->nix.custom_inb_sa = custom_inb_sa;
 
 	if (roc_feature_nix_has_own_meta_aura())
 		dev->nix.meta_buf_sz = meta_buf_sz;

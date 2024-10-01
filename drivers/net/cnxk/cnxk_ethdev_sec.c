@@ -19,6 +19,7 @@
 #define CNXK_NIX_SOFT_EXP_POLL_FREQ   "soft_exp_poll_freq"
 #define CNXK_MAX_IPSEC_RULES	"max_ipsec_rules"
 #define CNXK_NIX_INL_RX_INJ_ENABLE	"rx_inj_ena"
+#define CNXK_NIX_CUSTOM_INB_SA	      "custom_inb_sa"
 
 /* Default soft expiry poll freq in usec */
 #define CNXK_NIX_SOFT_EXP_POLL_FREQ_DFLT 100
@@ -198,7 +199,7 @@ parse_max_ipsec_rules(const char *key, const char *value, void *extra_args)
 }
 
 static int
-parse_inl_rx_inj_ena(const char *key, const char *value, void *extra_args)
+parse_val_u8(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
 	uint32_t val;
@@ -412,6 +413,16 @@ rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
 	return (void *)(wqe + 64 + desc_size);
 }
 
+void
+rte_pmd_cnxk_hw_inline_inb_cfg_set(uint16_t portid, struct rte_pmd_cnxk_ipsec_inb_cfg *cfg)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[portid];
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	dev->nix.inb_cfg_param1 = cfg->param1;
+	dev->nix.inb_cfg_param2 = cfg->param2;
+}
+
 static unsigned int
 cnxk_eth_sec_session_get_size(void *device __rte_unused)
 {
@@ -481,6 +492,7 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	struct inl_cpt_channel cpt_channel;
 	uint32_t max_ipsec_rules = 0;
 	struct rte_kvargs *kvlist;
+	uint8_t custom_inb_sa = 0;
 	uint32_t nb_meta_bufs = 0;
 	uint32_t meta_buf_sz = 0;
 	uint8_t rx_inj_ena = 0;
@@ -510,7 +522,8 @@ nix_inl_parse_devargs(struct rte_devargs *devargs,
 	rte_kvargs_process(kvlist, CNXK_NIX_SOFT_EXP_POLL_FREQ,
 			   &parse_val_u32, &soft_exp_poll_freq);
 	rte_kvargs_process(kvlist, CNXK_MAX_IPSEC_RULES, &parse_max_ipsec_rules, &max_ipsec_rules);
-	rte_kvargs_process(kvlist, CNXK_NIX_INL_RX_INJ_ENABLE, &parse_inl_rx_inj_ena, &rx_inj_ena);
+	rte_kvargs_process(kvlist, CNXK_NIX_INL_RX_INJ_ENABLE, &parse_val_u8, &rx_inj_ena);
+	rte_kvargs_process(kvlist, CNXK_NIX_CUSTOM_INB_SA, &parse_val_u8, &custom_inb_sa);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -526,6 +539,7 @@ null_devargs:
 	inl_dev->max_ipsec_rules = max_ipsec_rules;
 	if (roc_feature_nix_has_rx_inject())
 		inl_dev->rx_inj_ena = rx_inj_ena;
+	inl_dev->custom_inb_sa = custom_inb_sa;
 	return 0;
 exit:
 	return -EINVAL;
@@ -654,4 +668,5 @@ RTE_PMD_REGISTER_PARAM_STRING(cnxk_nix_inl,
 			      CNXK_NIX_INL_META_BUF_SZ "=<1-U32_MAX>"
 			      CNXK_NIX_SOFT_EXP_POLL_FREQ "=<0-U32_MAX>"
 			      CNXK_MAX_IPSEC_RULES "=<1-4095>"
-			      CNXK_NIX_INL_RX_INJ_ENABLE "=1");
+			      CNXK_NIX_INL_RX_INJ_ENABLE "=1"
+			      CNXK_NIX_CUSTOM_INB_SA "=1");

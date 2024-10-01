@@ -49,14 +49,14 @@ enum rte_pmd_cnxk_sec_action_alg {
 
 /** CPT queue type for obtaining queue hardware statistics. */
 enum rte_pmd_cnxk_cpt_q_stats_type {
-	/** Type to get Inline Device LF(s) statistics */
+	/** Type to get Inline Device queue(s) statistics */
 	RTE_PMD_CNXK_CPT_Q_STATS_INL_DEV,
-	/** Type to get Inline Inbound LF which is attached to kernel device
+	/** Type to get Inline Inbound queue which is attached to kernel device
 	 * statistics.
 	 */
 	RTE_PMD_CNXK_CPT_Q_STATS_KERNEL,
-	/** Type to get CPT LF which is attached to ethdev statistics */
-	RTE_PMD_CNXK_CPT_Q_STATS_ETHDEV = 2,
+	/** Type to get CPT queue which is attached to ethdev statistics */
+	RTE_PMD_CNXK_CPT_Q_STATS_ETHDEV,
 };
 
 /** CPT queue hardware statistics */
@@ -513,6 +513,18 @@ union rte_pmd_cnxk_cpt_res_s {
 	uint64_t u64[2];
 };
 
+/** Inline IPsec inbound queue configuration */
+struct rte_pmd_cnxk_ipsec_inb_cfg {
+	/** Param1 of PROCESS_INBOUND_IPSEC_PACKET as mentioned in the CPT
+	 * microcode document.
+	 */
+	uint16_t param1;
+	/** Param2 of PROCESS_INBOUND_IPSEC_PACKET as mentioned in the CPT
+	 * microcode document.
+	 */
+	uint16_t param2;
+};
+
 /** Forward structure declaration for inline device queue. Applications obtain a pointer
  * to this structure using the ``rte_pmd_cnxk_inl_dev_qptr_get`` API and use it to submit
  * CPT instructions (cpt_inst_s) to the inline device via the
@@ -656,4 +668,16 @@ uint16_t rte_pmd_cnxk_inl_dev_submit(struct rte_pmd_cnxk_inl_dev_q *qptr, void *
 __rte_experimental
 int rte_pmd_cnxk_cpt_q_stats_get(uint16_t portid, enum rte_pmd_cnxk_cpt_q_stats_type type,
 				 struct rte_pmd_cnxk_cpt_q_stats *stats, uint16_t idx);
+
+/**
+ * Set the configuration for hardware inline inbound IPsec processing. This API must be
+ * called before calling the ``rte_eth_dev_configure`` API.
+ *
+ * @param portid
+ *   Port identifier of Ethernet device.
+ * @param cfg
+ *   Pointer to the IPsec inbound configuration structure.
+ */
+__rte_experimental
+void rte_pmd_cnxk_hw_inline_inb_cfg_set(uint16_t portid, struct rte_pmd_cnxk_ipsec_inb_cfg *cfg);
 #endif /* _PMD_CNXK_H_ */

@@ -1269,6 +1269,9 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	dev->rx_offloads = rxmode->offloads;
 	dev->tx_offloads = txmode->offloads;
 
+	if (nix->custom_inb_sa)
+		dev->rx_offloads |= RTE_ETH_RX_OFFLOAD_SECURITY;
+
 	/* Prepare rx cfg */
 	rx_cfg = ROC_NIX_LF_RX_CFG_DIS_APAD;
 	if (dev->rx_offloads &

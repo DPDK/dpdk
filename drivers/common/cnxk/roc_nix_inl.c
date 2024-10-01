@@ -406,6 +406,8 @@ nix_inl_inb_sa_tbl_setup(struct roc_nix *roc_nix)
 	/* CN9K SA size is different */
 	if (roc_model_is_cn9k())
 		inb_sa_sz = ROC_NIX_INL_ON_IPSEC_INB_SA_SZ;
+	else if (roc_nix->custom_inb_sa)
+		inb_sa_sz = ROC_NIX_INL_INB_CUSTOM_SA_SZ;
 	else
 		inb_sa_sz = ROC_NIX_INL_OT_IPSEC_INB_SA_SZ;
 
@@ -910,6 +912,11 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 		cfg.param1 = u.u16;
 		cfg.param2 = 0;
 		cfg.opcode = (ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC | (1 << 6));
+
+		if (roc_nix->custom_inb_sa) {
+			cfg.param1 = roc_nix->inb_cfg_param1;
+			cfg.param2 = roc_nix->inb_cfg_param2;
+		}
 		rc = roc_nix_bpids_alloc(roc_nix, ROC_NIX_INTF_TYPE_CPT_NIX, 1, bpids);
 		if (rc > 0) {
 			nix->cpt_nixbpid = bpids[0];
@@ -1767,7 +1774,6 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	if (roc_model_is_cn9k()) {
 		return 0;
 	}
-
 	if (idev)
 		inl_dev = idev->nix_inl_dev;
 
@@ -1775,6 +1781,11 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 		return -EINVAL;
 
 	if (roc_nix) {
+		if (inb && roc_nix->custom_inb_sa && sa_len > ROC_NIX_INL_INB_CUSTOM_SA_SZ) {
+			plt_nix_dbg("SA length: %u is more than allocated length: %u", sa_len,
+				    ROC_NIX_INL_INB_CUSTOM_SA_SZ);
+			return -EINVAL;
+		}
 		nix = roc_nix_to_nix_priv(roc_nix);
 		outb_lf = nix->cpt_lf_base;
 
@@ -1889,6 +1900,7 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 	uint16_t max_spi = 0;
 	uint32_t rq_refs = 0;
 	uint8_t pkind = 0;
+	size_t inb_sa_sz;
 	int i;
 
 	if (roc_model_is_cn9k())
@@ -1906,6 +1918,7 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 		if (!nix->inl_inb_ena)
 			return 0;
 		sa_base = nix->inb_sa_base;
+		inb_sa_sz = nix->inb_sa_sz;
 		max_spi = roc_nix->ipsec_in_max_spi;
 	}
 
@@ -1917,6 +1930,7 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 			inl_dev->ts_ena = ts_ena;
 			max_spi = inl_dev->ipsec_in_max_spi;
 			sa_base = inl_dev->inb_sa_base;
+			inb_sa_sz = inl_dev->inb_sa_sz;
 		} else if (inl_dev->ts_ena != ts_ena) {
 			if (inl_dev->ts_ena)
 				plt_err("Inline device is already configured with TS enable");
@@ -1935,8 +1949,7 @@ roc_nix_inl_ts_pkind_set(struct roc_nix *roc_nix, bool ts_ena, bool inb_inl_dev)
 		return 0;
 
 	for (i = 0; i < max_spi; i++) {
-		sa = ((uint8_t *)sa_base) +
-		     (i * ROC_NIX_INL_OT_IPSEC_INB_SA_SZ);
+		sa = ((uint8_t *)sa_base) + (i * inb_sa_sz);
 		((struct roc_ot_ipsec_inb_sa *)sa)->w0.s.pkind = pkind;
 	}
 	return 0;

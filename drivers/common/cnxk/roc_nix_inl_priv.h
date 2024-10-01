@@ -94,6 +94,7 @@ struct nix_inl_dev {
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
 	uint8_t rx_inj_ena; /* Rx Inject Enable */
+	uint8_t custom_inb_sa;
 
 	/* NPC */
 	int *ipsec_index;
