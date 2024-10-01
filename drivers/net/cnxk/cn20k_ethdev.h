@@ -8,4 +8,7 @@
 #include <cnxk_ethdev.h>
 #include <cnxk_security.h>
 
+/* Rx and Tx routines */
+void cn20k_eth_set_rx_function(struct rte_eth_dev *eth_dev);
+
 #endif /* __CN20K_ETHDEV_H__ */

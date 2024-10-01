@@ -5,6 +5,41 @@
 #include "cn20k_rx.h"
 #include "cn20k_tx.h"
 
+static uint16_t
+nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct rte_eth_dev_data *data = eth_dev->data;
+	struct rte_eth_conf *conf = &data->dev_conf;
+	struct rte_eth_rxmode *rxmode = &conf->rxmode;
+	uint16_t flags = 0;
+
+	if (rxmode->mq_mode == RTE_ETH_MQ_RX_RSS &&
+	    (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH))
+		flags |= NIX_RX_OFFLOAD_RSS_F;
+
+	if (dev->rx_offloads & (RTE_ETH_RX_OFFLOAD_TCP_CKSUM | RTE_ETH_RX_OFFLOAD_UDP_CKSUM))
+		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
+
+	if (dev->rx_offloads &
+	    (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM | RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM))
+		flags |= NIX_RX_OFFLOAD_CHECKSUM_F;
+
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
+		flags |= NIX_RX_MULTI_SEG_F;
+
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+		flags |= NIX_RX_OFFLOAD_TSTAMP_F;
+
+	if (!dev->ptype_disable)
+		flags |= NIX_RX_OFFLOAD_PTYPE_F;
+
+	if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+		flags |= NIX_RX_OFFLOAD_SECURITY_F;
+
+	return flags;
+}
+
 static int
 cn20k_nix_ptypes_set(struct rte_eth_dev *eth_dev, uint32_t ptype_mask)
 {
@@ -18,6 +53,7 @@ cn20k_nix_ptypes_set(struct rte_eth_dev *eth_dev, uint32_t ptype_mask)
 		dev->ptype_disable = 1;
 	}
 
+	cn20k_eth_set_rx_function(eth_dev);
 	return 0;
 }
 
@@ -187,6 +223,9 @@ cn20k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t nb_
 		rc = nix_recalc_mtu(eth_dev);
 		if (rc)
 			return rc;
+
+		/* Update offload flags */
+		dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
 	}
 
 	rq = &dev->rqs[qid];
@@ -245,6 +284,8 @@ cn20k_nix_configure(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	/* Update offload flags */
+	dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
 	/* reset reassembly dynfield/flag offset */
 	dev->reass_dynfield_off = -1;
 	dev->reass_dynflag_bit = -1;
@@ -271,6 +312,10 @@ cn20k_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
 		nix_form_default_desc(dev, eth_dev->data->tx_queues[i], i);
 
+	/* Setting up the rx[tx]_offload_flags due to change
+	 * in rx[tx]_offloads.
+	 */
+	cn20k_eth_set_rx_function(eth_dev);
 	return 0;
 }
 
@@ -290,6 +335,10 @@ cn20k_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
 		nix_form_default_desc(dev, eth_dev->data->tx_queues[i], i);
 
+	/* Setting up the rx[tx]_offload_flags due to change
+	 * in rx[tx]_offloads.
+	 */
+	cn20k_eth_set_rx_function(eth_dev);
 	return 0;
 }
 
@@ -325,10 +374,15 @@ cn20k_nix_dev_start(struct rte_eth_dev *eth_dev)
 	if (rc)
 		return rc;
 
+	/* Setting up the rx[tx]_offload_flags due to change
+	 * in rx[tx]_offloads.
+	 */
+	dev->rx_offload_flags |= nix_rx_offload_flags(eth_dev);
 	/* Set flags for Rx Inject feature */
 	if (roc_idev_nix_rx_inject_get(nix->port_id))
 		dev->rx_offload_flags |= NIX_RX_SEC_REASSEMBLY_F;
 
+	cn20k_eth_set_rx_function(eth_dev);
 	return 0;
 }
 
@@ -525,8 +579,11 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		return -ENOENT;
 	}
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/* Setup callbacks for secondary process */
+		cn20k_eth_set_rx_function(eth_dev);
 		return 0;
+	}
 
 	return 0;
 }
