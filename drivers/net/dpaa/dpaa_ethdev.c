@@ -411,6 +411,7 @@ dpaa_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_TUNNEL_ESP,
+		RTE_PTYPE_TUNNEL_GRE,
 	};
 
 	PMD_INIT_FUNC_TRACE();

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017,2020-2022 NXP
+ *   Copyright 2017,2020-2024 NXP
  *
  */
 
@@ -162,98 +162,77 @@
 
 #define DPAA_PKT_L3_LEN_SHIFT	7
 
+enum dpaa_parse_result_l4_type {
+	DPAA_PR_L4_TCP_TYPE = 1,
+	DPAA_PR_L4_UDP_TYPE = 2,
+	DPAA_PR_L4_IPSEC_TYPE = 3,
+	DPAA_PR_L4_SCTP_TYPE = 4,
+	DPAA_PR_L4_DCCP_TYPE = 5
+};
+
 /**
  * FMan parse result array
  */
 struct dpaa_eth_parse_results_t {
-	 uint8_t     lpid;		 /**< Logical port id */
-	 uint8_t     shimr;		 /**< Shim header result  */
-	 union {
-		uint16_t              l2r;	/**< Layer 2 result */
+	uint8_t lpid; /**< Logical port id */
+	uint8_t shimr; /**< Shim header result  */
+	union {
+		uint16_t l2r; /**< Layer 2 result */
 		struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-			uint16_t      ethernet:1;
-			uint16_t      vlan:1;
-			uint16_t      llc_snap:1;
-			uint16_t      mpls:1;
-			uint16_t      ppoe_ppp:1;
-			uint16_t      unused_1:3;
-			uint16_t      unknown_eth_proto:1;
-			uint16_t      eth_frame_type:2;
-			uint16_t      l2r_err:5;
+			uint16_t unused_1:3;
+			uint16_t ppoe_ppp:1;
+			uint16_t mpls:1;
+			uint16_t llc_snap:1;
+			uint16_t vlan:1;
+			uint16_t ethernet:1;
+
+			uint16_t l2r_err:5;
+			uint16_t eth_frame_type:2;
 			/*00-unicast, 01-multicast, 11-broadcast*/
-#else
-			uint16_t      l2r_err:5;
-			uint16_t      eth_frame_type:2;
-			uint16_t      unknown_eth_proto:1;
-			uint16_t      unused_1:3;
-			uint16_t      ppoe_ppp:1;
-			uint16_t      mpls:1;
-			uint16_t      llc_snap:1;
-			uint16_t      vlan:1;
-			uint16_t      ethernet:1;
-#endif
+			uint16_t unknown_eth_proto:1;
 		} __rte_packed;
-	 } __rte_packed;
-	 union {
-		uint16_t              l3r;	/**< Layer 3 result */
+	} __rte_packed;
+	union {
+		uint16_t l3r;	/**< Layer 3 result */
 		struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-			uint16_t      first_ipv4:1;
-			uint16_t      first_ipv6:1;
-			uint16_t      gre:1;
-			uint16_t      min_enc:1;
-			uint16_t      last_ipv4:1;
-			uint16_t      last_ipv6:1;
-			uint16_t      first_info_err:1;/*0 info, 1 error*/
-			uint16_t      first_ip_err_code:5;
-			uint16_t      last_info_err:1;	/*0 info, 1 error*/
-			uint16_t      last_ip_err_code:3;
-#else
-			uint16_t      last_ip_err_code:3;
-			uint16_t      last_info_err:1;	/*0 info, 1 error*/
-			uint16_t      first_ip_err_code:5;
-			uint16_t      first_info_err:1;/*0 info, 1 error*/
-			uint16_t      last_ipv6:1;
-			uint16_t      last_ipv4:1;
-			uint16_t      min_enc:1;
-			uint16_t      gre:1;
-			uint16_t      first_ipv6:1;
-			uint16_t      first_ipv4:1;
-#endif
+			uint16_t unused_2:1;
+			uint16_t l3_err:1;
+			uint16_t last_ipv6:1;
+			uint16_t last_ipv4:1;
+			uint16_t min_enc:1;
+			uint16_t gre:1;
+			uint16_t first_ipv6:1;
+			uint16_t first_ipv4:1;
+
+			uint16_t unused_3:8;
 		} __rte_packed;
-	 } __rte_packed;
-	 union {
-		uint8_t               l4r;	/**< Layer 4 result */
+	} __rte_packed;
+	union {
+		uint8_t l4r;	/**< Layer 4 result */
 		struct{
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-			uint8_t	       l4_type:3;
-			uint8_t	       l4_info_err:1;
-			uint8_t	       l4_result:4;
-					/* if type IPSec: 1 ESP, 2 AH */
-#else
-			uint8_t        l4_result:4;
-					/* if type IPSec: 1 ESP, 2 AH */
-			uint8_t        l4_info_err:1;
-			uint8_t        l4_type:3;
-#endif
+			uint8_t l4cv:1;
+			uint8_t unused_4:1;
+			uint8_t ah:1;
+			uint8_t esp_sum:1;
+			uint8_t l4_info_err:1;
+			uint8_t l4_type:3;
 		} __rte_packed;
-	 } __rte_packed;
-	 uint8_t     cplan;		 /**< Classification plan id */
-	 uint16_t    nxthdr;		 /**< Next Header  */
-	 uint16_t    cksum;		 /**< Checksum */
-	 uint32_t    lcv;		 /**< LCV */
-	 uint8_t     shim_off[3];	 /**< Shim offset */
-	 uint8_t     eth_off;		 /**< ETH offset */
-	 uint8_t     llc_snap_off;	 /**< LLC_SNAP offset */
-	 uint8_t     vlan_off[2];	 /**< VLAN offset */
-	 uint8_t     etype_off;		 /**< ETYPE offset */
-	 uint8_t     pppoe_off;		 /**< PPP offset */
-	 uint8_t     mpls_off[2];	 /**< MPLS offset */
-	 uint8_t     ip_off[2];		 /**< IP offset */
-	 uint8_t     gre_off;		 /**< GRE offset */
-	 uint8_t     l4_off;		 /**< Layer 4 offset */
-	 uint8_t     nxthdr_off;	 /**< Parser end point */
+	} __rte_packed;
+	uint8_t cplan; /**< Classification plan id */
+	uint16_t nxthdr; /**< Next Header  */
+	uint16_t cksum; /**< Checksum */
+	uint32_t lcv; /**< LCV */
+	uint8_t shim_off[3]; /**< Shim offset */
+	uint8_t eth_off; /**< ETH offset */
+	uint8_t llc_snap_off; /**< LLC_SNAP offset */
+	uint8_t vlan_off[2]; /**< VLAN offset */
+	uint8_t etype_off; /**< ETYPE offset */
+	uint8_t pppoe_off; /**< PPP offset */
+	uint8_t mpls_off[2]; /**< MPLS offset */
+	uint8_t ip_off[2]; /**< IP offset */
+	uint8_t gre_off; /**< GRE offset */
+	uint8_t l4_off; /**< Layer 4 offset */
+	uint8_t nxthdr_off; /**< Parser end point */
 } __rte_packed;
 
 /* The structure is the Prepended Data to the Frame which is used by FMAN */
