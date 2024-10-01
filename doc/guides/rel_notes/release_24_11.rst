@@ -90,6 +90,10 @@ New Features
   (and vice versa); freeing the same pointer twice in the same routine;
   freeing an object that was not created by allocation; etc.
 
+* **Updated Marvell cnxk mempool driver.**
+
+  * Added mempool driver support for CN20K SoC.
+
 * **Added cryptodev queue pair reset support.**
 
   A new API ``rte_cryptodev_queue_pair_reset`` is added
