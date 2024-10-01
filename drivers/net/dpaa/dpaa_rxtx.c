@@ -1082,6 +1082,9 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	uint32_t seqn, index, flags[DPAA_TX_BURST_SIZE] = {0};
 	struct dpaa_sw_buf_free buf_to_free[DPAA_MAX_SGS * DPAA_MAX_DEQUEUE_NUM_FRAMES];
 	uint32_t free_count = 0;
+	struct qman_fq *fq = q;
+	struct dpaa_if *dpaa_intf = fq->dpaa_intf;
+	struct qman_fq *fq_txconf = dpaa_intf->tx_conf_queues;
 
 	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
 		ret = rte_dpaa_portal_init((void *)0);
@@ -1162,6 +1165,10 @@ dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 				mbuf = temp_mbuf;
 				realloc_mbuf = 0;
 			}
+
+			if (dpaa_ieee_1588)
+				fd_arr[loop].cmd |= DPAA_FD_CMD_FCO | qman_fq_fqid(fq_txconf);
+
 indirect_buf:
 			state = tx_on_dpaa_pool(mbuf, bp_info,
 						&fd_arr[loop],
@@ -1190,6 +1197,9 @@ send_pkts:
 		sent += frames_to_send;
 	}
 
+	if (dpaa_ieee_1588)
+		dpaa_eth_tx_conf(fq_txconf);
+
 	DPAA_DP_LOG(DEBUG, "Transmitted %d buffers on queue: %p", sent, q);
 
 	for (loop = 0; loop < free_count; loop++) {
@@ -1198,6 +1208,45 @@ send_pkts:
 	}
 
 	return sent;
+}
+
+void
+dpaa_eth_tx_conf(void *q)
+{
+	struct qman_fq *fq = q;
+	struct qm_dqrr_entry *dq;
+	int num_tx_conf, ret, dq_num;
+	uint32_t vdqcr_flags = 0;
+
+	if (unlikely(rte_dpaa_bpid_info == NULL &&
+				rte_eal_process_type() == RTE_PROC_SECONDARY))
+		rte_dpaa_bpid_info = fq->bp_array;
+
+	if (unlikely(!DPAA_PER_LCORE_PORTAL)) {
+		ret = rte_dpaa_portal_init((void *)0);
+		if (ret) {
+			DPAA_PMD_ERR("Failure in affining portal");
+			return;
+		}
+	}
+
+	num_tx_conf = DPAA_MAX_DEQUEUE_NUM_FRAMES - 2;
+
+	do {
+		dq_num = 0;
+		ret = qman_set_vdq(fq, num_tx_conf, vdqcr_flags);
+		if (ret)
+			return;
+		do {
+			dq = qman_dequeue(fq);
+			if (!dq)
+				continue;
+			dq_num++;
+			dpaa_display_frame_info(&dq->fd, fq->fqid, true);
+			qman_dqrr_consume(fq, dq);
+			dpaa_free_mbuf(&dq->fd);
+		} while (fq->flags & QMAN_FQ_STATE_VDQCR);
+	} while (dq_num == num_tx_conf);
 }
 
 uint16_t
