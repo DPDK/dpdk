@@ -14,6 +14,13 @@
 #include <cnxk_security.h>
 #include <roc_priv.h>
 
+cnxk_ethdev_rx_offload_cb_t cnxk_ethdev_rx_offload_cb;
+void
+cnxk_ethdev_rx_offload_cb_register(cnxk_ethdev_rx_offload_cb_t cb)
+{
+	cnxk_ethdev_rx_offload_cb = cb;
+}
+
 static struct rte_cryptodev_capabilities cn10k_eth_sec_crypto_caps[] = {
 	{	/* AES GCM */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -891,6 +898,9 @@ cn10k_eth_sec_session_create(void *device,
 		    !(dev->rx_offload_flags & NIX_RX_REAS_F)) {
 			dev->rx_offload_flags |= NIX_RX_REAS_F;
 			cn10k_eth_set_rx_function(eth_dev);
+			if (cnxk_ethdev_rx_offload_cb)
+				cnxk_ethdev_rx_offload_cb(eth_dev->data->port_id,
+							  NIX_RX_REAS_F);
 		}
 	} else {
 		struct roc_ot_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
