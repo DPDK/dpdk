@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2014-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2019 NXP
+ *   Copyright 2017-2024 NXP
  *
  */
 #ifndef __DPAA_ETHDEV_H__
@@ -112,6 +112,7 @@
 #define FMC_FILE "/tmp/fmc.bin"
 
 extern struct rte_mempool *dpaa_tx_sg_pool;
+extern int dpaa_ieee_1588;
 
 /* structure to free external and indirect
  * buffers.
@@ -131,6 +132,7 @@ struct dpaa_if {
 	struct qman_fq *rx_queues;
 	struct qman_cgr *cgr_rx;
 	struct qman_fq *tx_queues;
+	struct qman_fq *tx_conf_queues;
 	struct qman_cgr *cgr_tx;
 	struct qman_fq debug_queues[2];
 	uint16_t nb_rx_queues;

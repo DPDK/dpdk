@@ -281,6 +281,8 @@ uint16_t dpaa_eth_queue_tx_slow(void *q, struct rte_mbuf **bufs,
 				uint16_t nb_bufs);
 uint16_t dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs);
 
+void dpaa_eth_tx_conf(void *q);
+
 uint16_t dpaa_eth_tx_drop_all(void *q  __rte_unused,
 			      struct rte_mbuf **bufs __rte_unused,
 			      uint16_t nb_bufs __rte_unused);

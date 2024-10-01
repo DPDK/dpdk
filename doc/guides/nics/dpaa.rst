@@ -264,6 +264,9 @@ for details.
       Done
       testpmd>
 
+* Use dev arg option ``drv_ieee1588=1`` to enable IEEE 1588 support
+  at driver level, e.g. ``dpaa:fm1-mac3,drv_ieee1588=1``.
+
 FMAN Config
 -----------
 
