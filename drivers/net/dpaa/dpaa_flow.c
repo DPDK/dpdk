@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2017-2019,2021 NXP
+ * Copyright 2017-2019,2021-2024 NXP
  */
 
 /* System headers */
@@ -29,6 +29,11 @@ return &scheme_params->param.key_ext_and_hash.extract_array[hdr_idx];
 #define SCH_EXT_FULL_FLD(scheme_params, hdr_idx) \
 	SCH_EXT_HDR(scheme_params, hdr_idx).extract_by_hdr_type.full_field
 
+/* FMAN mac indexes mappings (0 is unused, first 8 are for 1G, next for 10G
+ * ports).
+ */
+const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
+
 /* FM global info */
 struct dpaa_fm_info {
 	t_handle fman_handle;
@@ -47,17 +52,6 @@ struct dpaa_fm_model {
 static struct dpaa_fm_info fm_info;
 static struct dpaa_fm_model fm_model;
 static const char *fm_log = "/tmp/fmdpdk.bin";
-
-static inline uint8_t fm_default_vsp_id(struct fman_if *fif)
-{
-	/* Avoid being same as base profile which could be used
-	 * for kernel interface of shared mac.
-	 */
-	if (fif->base_profile_id)
-		return 0;
-	else
-		return DPAA_DEFAULT_RXQ_VSP_ID;
-}
 
 static void fm_prev_cleanup(void)
 {
@@ -649,12 +643,14 @@ static inline int set_pcd_netenv_scheme(struct dpaa_if *dpaa_intf,
 }
 
 
-static inline int get_port_type(struct fman_if *fif)
+static inline int get_rx_port_type(struct fman_if *fif)
 {
+	if (fif->mac_type == fman_offline)
+		return e_FM_PORT_TYPE_OH_OFFLINE_PARSING;
 	/* For 1G fm-mac9 and fm-mac10 ports, configure the VSP as 10G
 	 * ports so that kernel can configure correct port.
 	 */
-	if (fif->mac_type == fman_mac_1g &&
+	else if (fif->mac_type == fman_mac_1g &&
 		fif->mac_idx >= DPAA_10G_MAC_START_IDX)
 		return e_FM_PORT_TYPE_RX_10G;
 	else if (fif->mac_type == fman_mac_1g)
@@ -665,7 +661,7 @@ static inline int get_port_type(struct fman_if *fif)
 		return e_FM_PORT_TYPE_RX_10G;
 
 	DPAA_PMD_ERR("MAC type unsupported");
-	return -1;
+	return e_FM_PORT_TYPE_DUMMY;
 }
 
 static inline int set_fm_port_handle(struct dpaa_if *dpaa_intf,
@@ -676,17 +672,12 @@ static inline int set_fm_port_handle(struct dpaa_if *dpaa_intf,
 	ioc_fm_pcd_net_env_params_t dist_units;
 	PMD_INIT_FUNC_TRACE();
 
-	/* FMAN mac indexes mappings (0 is unused,
-	 * first 8 are for 1G, next for 10G ports
-	 */
-	uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
-
 	/* Memset FM port params */
 	memset(&fm_port_params, 0, sizeof(fm_port_params));
 
 	/* Set FM port params */
 	fm_port_params.h_fm = fm_info.fman_handle;
-	fm_port_params.port_type = get_port_type(fif);
+	fm_port_params.port_type = get_rx_port_type(fif);
 	fm_port_params.port_id = mac_idx[fif->mac_idx];
 
 	/* FM PORT Open */
@@ -949,7 +940,6 @@ static int dpaa_port_vsp_configure(struct dpaa_if *dpaa_intf,
 {
 	t_fm_vsp_params vsp_params;
 	t_fm_buffer_prefix_content buf_prefix_cont;
-	uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
 	uint8_t idx = mac_idx[fif->mac_idx];
 	int ret;
 
@@ -970,17 +960,31 @@ static int dpaa_port_vsp_configure(struct dpaa_if *dpaa_intf,
 	memset(&vsp_params, 0, sizeof(vsp_params));
 	vsp_params.h_fm = fman_handle;
 	vsp_params.relative_profile_id = vsp_id;
-	vsp_params.port_params.port_id = idx;
+	if (fif->mac_type == fman_offline)
+		vsp_params.port_params.port_id = fif->mac_idx;
+	else
+		vsp_params.port_params.port_id = idx;
+
 	if (fif->mac_type == fman_mac_1g) {
 		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX;
 	} else if (fif->mac_type == fman_mac_2_5g) {
 		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX_2_5G;
 	} else if (fif->mac_type == fman_mac_10g) {
 		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX_10G;
+	} else if (fif->mac_type == fman_offline) {
+		vsp_params.port_params.port_type =
+				e_FM_PORT_TYPE_OH_OFFLINE_PARSING;
 	} else {
 		DPAA_PMD_ERR("Mac type %d error", fif->mac_type);
 		return -1;
 	}
+
+	vsp_params.port_params.port_type = get_rx_port_type(fif);
+	if (vsp_params.port_params.port_type == e_FM_PORT_TYPE_DUMMY) {
+		DPAA_PMD_ERR("Mac type %d error", fif->mac_type);
+		return -1;
+	}
+
 	vsp_params.ext_buf_pools.num_of_pools_used = 1;
 	vsp_params.ext_buf_pools.ext_buf_pool[0].id = dpaa_intf->vsp_bpid[vsp_id];
 	vsp_params.ext_buf_pools.ext_buf_pool[0].size = mbuf_data_room_size;

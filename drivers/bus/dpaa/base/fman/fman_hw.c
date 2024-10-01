@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- * Copyright 2017,2020,2022 NXP
+ * Copyright 2017,2020,2022-2023 NXP
  *
  */
 
@@ -88,6 +88,10 @@ fman_if_add_hash_mac_addr(struct fman_if *p, uint8_t *eth)
 
 	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
 
+	/* Add hash mac addr not supported on Offline port */
+	if (__if->__if.mac_type == fman_offline)
+		return 0;
+
 	eth_addr = ETH_ADDR_TO_UINT64(eth);
 
 	if (!(eth_addr & GROUP_ADDRESS))
@@ -109,6 +113,15 @@ fman_if_get_primary_mac_addr(struct fman_if *p, uint8_t *eth)
 	void *mac_reg =
 		&((struct memac_regs *)__if->ccsr_map)->mac_addr0.mac_addr_l;
 	u32 val = in_be32(mac_reg);
+	int i;
+
+	/* Get mac addr not supported on Offline port */
+	/* Return NULL mac address */
+	if (__if->__if.mac_type == fman_offline) {
+		for (i = 0; i < 6; i++)
+			eth[i] = 0x0;
+		return 0;
+	}
 
 	eth[0] = (val & 0x000000ff) >> 0;
 	eth[1] = (val & 0x0000ff00) >> 8;
@@ -130,6 +143,10 @@ fman_if_clear_mac_addr(struct fman_if *p, uint8_t addr_num)
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
 	void *reg;
 
+	/* Clear mac addr not supported on Offline port */
+	if (m->__if.mac_type == fman_offline)
+		return;
+
 	if (addr_num) {
 		reg = &((struct memac_regs *)m->ccsr_map)->
 				mac_addr[addr_num-1].mac_addr_l;
@@ -149,9 +166,12 @@ int
 fman_if_add_mac_addr(struct fman_if *p, uint8_t *eth, uint8_t addr_num)
 {
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
-
 	void *reg;
 	u32 val;
+
+	/* Set mac addr not supported on Offline port */
+	if (m->__if.mac_type == fman_offline)
+		return 0;
 
 	memcpy(&m->__if.mac_addr, eth, ETHER_ADDR_LEN);
 

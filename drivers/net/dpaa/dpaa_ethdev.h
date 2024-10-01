@@ -121,6 +121,9 @@ enum {
 extern struct rte_mempool *dpaa_tx_sg_pool;
 extern int dpaa_ieee_1588;
 
+/* PMD related logs */
+extern int dpaa_logtype_pmd;
+
 /* structure to free external and indirect
  * buffers.
  */
@@ -265,6 +268,9 @@ int
 dpaa_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 		struct timespec *timestamp,
 		uint32_t flags __rte_unused);
+
+uint8_t
+fm_default_vsp_id(struct fman_if *fif);
 
 /* PMD related logs */
 extern int dpaa_logtype_pmd;

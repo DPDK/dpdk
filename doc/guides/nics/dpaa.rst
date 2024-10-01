@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright 2017,2020 NXP
+    Copyright 2017,2020-2024 NXP
 
 
 DPAA Poll Mode Driver
@@ -136,6 +136,8 @@ RTE framework and DPAA internal components/drivers.
   The Ethernet driver is bound to a FMAN port and implements the interfaces
   needed to connect the DPAA network interface to the network stack.
   Each FMAN Port corresponds to a DPDK network interface.
+- PMD also supports OH mode, where the port works as a HW assisted virtual port
+  without actually connecting to a Physical MAC.
 
 
 Features
@@ -149,6 +151,8 @@ Features
   - Checksum offload
   - Promiscuous mode
   - IEEE1588 PTP
+  - OH Port for inter application communication
+
 
 DPAA Mempool Driver
 ~~~~~~~~~~~~~~~~~~~
@@ -325,6 +329,28 @@ FMLIB
    The location for the fmd driver as used by FMLIB and FMC is as follows:
    `Kernel FMD Driver
    <https://source.codeaurora.org/external/qoriq/qoriq-components/linux/tree/drivers/net/ethernet/freescale/sdk_fman?h=linux-4.19-rt>`_.
+
+OH Port
+~~~~~~~
+   Offline(O/H) port is a type of hardware port
+   which is able to dequeue and enqueue from/to a QMan queue.
+   The FMan applies a Parse Classify Distribute (PCD) flow
+   and (if configured to do so) enqueues the frame back in a QMan queue.
+
+   The FMan is able to copy the frame into new buffers and enqueue back to the QMan.
+   This means these ports can be used to send and receive packets
+   between two applications as well.
+
+   An O/H port have two queues.
+   One to receive and one to send the packets.
+   It will loopback all the packets on Tx queue which are received on Rx queue.
+
+
+		--------      Tx Packets      ---------
+		| App  | - -  - - - - - - - > | O/H   |
+		|      | < - - - - - - - - -  | Port  |
+		--------      Rx Packets      ---------
+
 
 VSP (Virtual Storage Profile)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
