@@ -395,34 +395,36 @@ static int
 gve_rxq_mbufs_alloc_dqo(struct gve_rx_queue *rxq)
 {
 	struct rte_mbuf *nmb;
+	uint16_t rx_mask;
 	uint16_t i;
 	int diag;
 
-	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0], rxq->nb_rx_desc);
+	rx_mask = rxq->nb_rx_desc - 1;
+	diag = rte_pktmbuf_alloc_bulk(rxq->mpool, &rxq->sw_ring[0],
+				      rx_mask);
 	if (diag < 0) {
 		rxq->stats.no_mbufs_bulk++;
-		for (i = 0; i < rxq->nb_rx_desc - 1; i++) {
+		for (i = 0; i < rx_mask; i++) {
 			nmb = rte_pktmbuf_alloc(rxq->mpool);
 			if (!nmb)
 				break;
 			rxq->sw_ring[i] = nmb;
 		}
 		if (i < rxq->nb_rx_desc - 1) {
-			rxq->stats.no_mbufs += rxq->nb_rx_desc - 1 - i;
+			rxq->stats.no_mbufs += rx_mask - i;
 			return -ENOMEM;
 		}
 	}
 
-	for (i = 0; i < rxq->nb_rx_desc; i++) {
-		if (i == rxq->nb_rx_desc - 1)
-			break;
+	for (i = 0; i < rx_mask; i++) {
 		nmb = rxq->sw_ring[i];
 		rxq->rx_ring[i].buf_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb));
 		rxq->rx_ring[i].buf_id = rte_cpu_to_le_16(i);
 	}
+	rxq->rx_ring[rx_mask].buf_id = rte_cpu_to_le_16(rx_mask);
 
 	rxq->nb_rx_hold = 0;
-	rxq->bufq_tail = rxq->nb_rx_desc - 1;
+	rxq->bufq_tail = rx_mask;
 
 	rte_write32(rxq->bufq_tail, rxq->qrx_tail);
 
