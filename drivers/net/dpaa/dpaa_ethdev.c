@@ -561,10 +561,10 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	if (dpaa_intf->cgr_rx) {
 		for (loop = 0; loop < dpaa_intf->nb_rx_queues; loop++)
 			qman_delete_cgr(&dpaa_intf->cgr_rx[loop]);
+		rte_free(dpaa_intf->cgr_rx);
+		dpaa_intf->cgr_rx = NULL;
 	}
 
-	rte_free(dpaa_intf->cgr_rx);
-	dpaa_intf->cgr_rx = NULL;
 	/* Release TX congestion Groups */
 	if (dpaa_intf->cgr_tx) {
 		for (loop = 0; loop < MAX_DPAA_CORES; loop++)
@@ -578,6 +578,15 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dpaa_intf->tx_queues);
 	dpaa_intf->tx_queues = NULL;
+	if (dpaa_intf->port_handle) {
+		if (dpaa_fm_deconfig(dpaa_intf, fif))
+			DPAA_PMD_WARN("DPAA FM "
+				"deconfig failed");
+	}
+	if (fif->num_profiles) {
+		if (dpaa_port_vsp_cleanup(dpaa_intf, fif))
+			DPAA_PMD_WARN("DPAA FM vsp cleanup failed");
+	}
 
 	return ret;
 }
@@ -2608,26 +2617,6 @@ static void __attribute__((destructor(102))) dpaa_finish(void)
 		return;
 
 	if (!(default_q || fmc_q)) {
-		unsigned int i;
-
-		for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-			if (rte_eth_devices[i].dev_ops == &dpaa_devops) {
-				struct rte_eth_dev *dev = &rte_eth_devices[i];
-				struct dpaa_if *dpaa_intf =
-					dev->data->dev_private;
-				struct fman_if *fif =
-					dev->process_private;
-				if (dpaa_intf->port_handle)
-					if (dpaa_fm_deconfig(dpaa_intf, fif))
-						DPAA_PMD_WARN("DPAA FM "
-							"deconfig failed");
-				if (fif->num_profiles) {
-					if (dpaa_port_vsp_cleanup(dpaa_intf,
-								  fif))
-						DPAA_PMD_WARN("DPAA FM vsp cleanup failed");
-				}
-			}
-		}
 		if (is_global_init)
 			if (dpaa_fm_term())
 				DPAA_PMD_WARN("DPAA FM term failed");
