@@ -23,4 +23,5 @@ EXPERIMENTAL {
 INTERNAL {
 	global:
 	cnxk_nix_inb_mode_set;
+	cnxk_ethdev_rx_offload_cb_register;
 };
