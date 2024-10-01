@@ -88,8 +88,9 @@ fman_if_add_hash_mac_addr(struct fman_if *p, uint8_t *eth)
 
 	struct __fman_if *__if = container_of(p, struct __fman_if, __if);
 
-	/* Add hash mac addr not supported on Offline port */
-	if (__if->__if.mac_type == fman_offline)
+	/* Add hash mac addr not supported on Offline port and onic port */
+	if (__if->__if.mac_type == fman_offline_internal ||
+	    __if->__if.mac_type == fman_onic)
 		return 0;
 
 	eth_addr = ETH_ADDR_TO_UINT64(eth);
@@ -115,9 +116,10 @@ fman_if_get_primary_mac_addr(struct fman_if *p, uint8_t *eth)
 	u32 val = in_be32(mac_reg);
 	int i;
 
-	/* Get mac addr not supported on Offline port */
+	/* Get mac addr not supported on Offline port and onic port */
 	/* Return NULL mac address */
-	if (__if->__if.mac_type == fman_offline) {
+	if (__if->__if.mac_type == fman_offline_internal ||
+	    __if->__if.mac_type == fman_onic) {
 		for (i = 0; i < 6; i++)
 			eth[i] = 0x0;
 		return 0;
@@ -143,8 +145,9 @@ fman_if_clear_mac_addr(struct fman_if *p, uint8_t addr_num)
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
 	void *reg;
 
-	/* Clear mac addr not supported on Offline port */
-	if (m->__if.mac_type == fman_offline)
+	/* Clear mac addr not supported on Offline port and onic port */
+	if (m->__if.mac_type == fman_offline_internal ||
+	    m->__if.mac_type == fman_onic)
 		return;
 
 	if (addr_num) {
@@ -169,8 +172,9 @@ fman_if_add_mac_addr(struct fman_if *p, uint8_t *eth, uint8_t addr_num)
 	void *reg;
 	u32 val;
 
-	/* Set mac addr not supported on Offline port */
-	if (m->__if.mac_type == fman_offline)
+	/* Set mac addr not supported on Offline port and onic port */
+	if (m->__if.mac_type == fman_offline_internal ||
+	    m->__if.mac_type == fman_onic)
 		return 0;
 
 	memcpy(&m->__if.mac_addr, eth, ETHER_ADDR_LEN);

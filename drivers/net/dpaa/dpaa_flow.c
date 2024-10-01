@@ -645,7 +645,11 @@ static inline int set_pcd_netenv_scheme(struct dpaa_if *dpaa_intf,
 
 static inline int get_rx_port_type(struct fman_if *fif)
 {
-	if (fif->mac_type == fman_offline)
+	/* For onic ports, configure the VSP as offline ports so that
+	 * kernel can configure correct port.
+	 */
+	if (fif->mac_type == fman_offline_internal ||
+	    fif->mac_type == fman_onic)
 		return e_FM_PORT_TYPE_OH_OFFLINE_PARSING;
 	/* For 1G fm-mac9 and fm-mac10 ports, configure the VSP as 10G
 	 * ports so that kernel can configure correct port.
@@ -960,24 +964,11 @@ static int dpaa_port_vsp_configure(struct dpaa_if *dpaa_intf,
 	memset(&vsp_params, 0, sizeof(vsp_params));
 	vsp_params.h_fm = fman_handle;
 	vsp_params.relative_profile_id = vsp_id;
-	if (fif->mac_type == fman_offline)
+	if (fif->mac_type == fman_offline_internal ||
+	    fif->mac_type == fman_onic)
 		vsp_params.port_params.port_id = fif->mac_idx;
 	else
 		vsp_params.port_params.port_id = idx;
-
-	if (fif->mac_type == fman_mac_1g) {
-		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX;
-	} else if (fif->mac_type == fman_mac_2_5g) {
-		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX_2_5G;
-	} else if (fif->mac_type == fman_mac_10g) {
-		vsp_params.port_params.port_type = e_FM_PORT_TYPE_RX_10G;
-	} else if (fif->mac_type == fman_offline) {
-		vsp_params.port_params.port_type =
-				e_FM_PORT_TYPE_OH_OFFLINE_PARSING;
-	} else {
-		DPAA_PMD_ERR("Mac type %d error", fif->mac_type);
-		return -1;
-	}
 
 	vsp_params.port_params.port_type = get_rx_port_type(fif);
 	if (vsp_params.port_params.port_type == e_FM_PORT_TYPE_DUMMY) {

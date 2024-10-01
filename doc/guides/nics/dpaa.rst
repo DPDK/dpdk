@@ -136,7 +136,7 @@ RTE framework and DPAA internal components/drivers.
   The Ethernet driver is bound to a FMAN port and implements the interfaces
   needed to connect the DPAA network interface to the network stack.
   Each FMAN Port corresponds to a DPDK network interface.
-- PMD also supports OH mode, where the port works as a HW assisted virtual port
+- PMD also support OH/ONIC mode, where the port works as a HW assisted virtual port
   without actually connecting to a Physical MAC.
 
 
@@ -152,6 +152,7 @@ Features
   - Promiscuous mode
   - IEEE1588 PTP
   - OH Port for inter application communication
+  - ONIC virtual port support
 
 
 DPAA Mempool Driver
@@ -350,6 +351,38 @@ OH Port
 		| App  | - -  - - - - - - - > | O/H   |
 		|      | < - - - - - - - - -  | Port  |
 		--------      Rx Packets      ---------
+
+
+ONIC
+~~~~
+   To use OH port to communicate between two applications,
+   we can assign Rx port of an O/H port to Application 1
+   and Tx port to Application 2
+   so that Application 1 can send packets to Application 2.
+   Similarly, we can assign Tx port of another O/H port to Application 1
+   and Rx port to Application 2
+   so that Application 2 can send packets to Application 1.
+
+   ONIC is logically defined to achieve it.
+   Internally it will use one Rx queue of an O/H port
+   and one Tx queue of another O/H port.
+   For application, it will behave as single O/H port.
+
+   +------+         +------+        +------+        +------+        +------+
+   |      |   Tx    |      |   Rx   | O/H  |   Tx   |      |   Rx   |      |
+   |      | - - - > |      | -  - > | Port | -  - > |      | -  - > |      |
+   |      |         |      |        |  1   |        |      |        |      |
+   |      |         |      |        +------+        |      |        |      |
+   | App  |         | ONIC |                        | ONIC |        | App  |
+   |  1   |         | Port |                        | Port |        |  2   |
+   |      |         |  1   |        +------+        |  2   |        |      |
+   |      |   Rx    |      |   Tx   | O/H  |   Rx   |      |   Tx   |      |
+   |      | < - - - |      | < - - -| Port | < - - -|      | < - - -|      |
+   |      |         |      |        |  2   |        |      |        |      |
+   +------+         +------+        +------+        +------+        +------+
+
+   All the packets received by ONIC port 1 will be send to ONIC port 2 and vice versa.
+   These ports can be used by DPDK applications just like physical ports.
 
 
 VSP (Virtual Storage Profile)

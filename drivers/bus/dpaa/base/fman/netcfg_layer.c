@@ -44,7 +44,7 @@ dump_netcfg(struct netcfg_info *cfg_ptr, FILE *f)
 
 		fprintf(f, "\n+ Fman %d, MAC %d (%s);\n",
 		       __if->fman_idx, __if->mac_idx,
-		       (__if->mac_type == fman_offline) ? "OFFLINE" :
+		       (__if->mac_type == fman_offline_internal) ? "OFFLINE" :
 		       (__if->mac_type == fman_mac_1g) ? "1G" :
 		       (__if->mac_type == fman_mac_2_5g) ? "2.5G" : "10G");
 
@@ -57,7 +57,7 @@ dump_netcfg(struct netcfg_info *cfg_ptr, FILE *f)
 		fprintf(f, "\tfqid_rx_def: 0x%x\n", p_cfg->rx_def);
 		fprintf(f, "\tfqid_rx_err: 0x%x\n", __if->fqid_rx_err);
 
-		if (__if->mac_type != fman_offline) {
+		if (__if->mac_type != fman_offline_internal) {
 			fprintf(f, "\tfqid_tx_err: 0x%x\n", __if->fqid_tx_err);
 			fprintf(f, "\tfqid_tx_confirm: 0x%x\n", __if->fqid_tx_confirm);
 			fman_if_for_each_bpool(bpool, __if)

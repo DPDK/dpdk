@@ -78,7 +78,7 @@ TAILQ_HEAD(rte_fman_if_list, __fman_if);
 
 /* Represents the different flavour of network interface */
 enum fman_mac_type {
-	fman_offline = 0,
+	fman_offline_internal = 0,
 	fman_mac_1g,
 	fman_mac_10g,
 	fman_mac_2_5g,
@@ -366,6 +366,16 @@ struct fman_port_qmi_regs {
 	uint32_t fmqm_pndcc;		/**< PortID n Dequeue Confirm Counter */
 };
 
+struct onic_port_cfg {
+	char macless_name[IF_NAME_MAX_LEN];
+	uint32_t rx_start;
+	uint32_t rx_count;
+	uint32_t tx_start;
+	uint32_t tx_count;
+	struct rte_ether_addr src_mac;
+	struct rte_ether_addr peer_mac;
+};
+
 /* This struct exports parameters about an Fman network interface, determined
  * from the device-tree.
  */
@@ -400,6 +410,9 @@ struct fman_if {
 	uint32_t fqid_rx_err;
 	uint32_t fqid_tx_err;
 	uint32_t fqid_tx_confirm;
+
+	/* oNIC port info */
+	struct onic_port_cfg onic_info;
 
 	struct list_head bpool_list;
 	/* The node for linking this interface into "fman_if_list" */
