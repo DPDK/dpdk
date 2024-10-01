@@ -219,10 +219,66 @@ cn20k_nix_tx_ext_subs(const uint16_t flags)
 		       ((flags & (NIX_TX_OFFLOAD_VLAN_QINQ_F | NIX_TX_OFFLOAD_TSO_F)) ? 1 : 0);
 }
 
+static __rte_always_inline uint8_t
+cn20k_nix_tx_dwords(const uint16_t flags, const uint8_t segdw)
+{
+	if (!(flags & NIX_TX_MULTI_SEG_F))
+		return cn20k_nix_tx_ext_subs(flags) + 2;
+
+	/* Already everything is accounted for in segdw */
+	return segdw;
+}
+
+static __rte_always_inline uint8_t
+cn20k_nix_pkts_per_vec_brst(const uint16_t flags)
+{
+	return ((flags & NIX_TX_NEED_EXT_HDR) ? 2 : 4) << ROC_LMT_LINES_PER_CORE_LOG2;
+}
+
+static __rte_always_inline uint8_t
+cn20k_nix_tx_dwords_per_line(const uint16_t flags)
+{
+	return (flags & NIX_TX_NEED_EXT_HDR) ? ((flags & NIX_TX_OFFLOAD_TSTAMP_F) ? 8 : 6) : 8;
+}
+
 static __rte_always_inline uint64_t
 cn20k_nix_tx_steor_data(const uint16_t flags)
 {
 	const uint64_t dw_m1 = cn20k_nix_tx_ext_subs(flags) + 1;
+	uint64_t data;
+
+	/* This will be moved to addr area */
+	data = dw_m1;
+	/* 15 vector sizes for single seg */
+	data |= dw_m1 << 19;
+	data |= dw_m1 << 22;
+	data |= dw_m1 << 25;
+	data |= dw_m1 << 28;
+	data |= dw_m1 << 31;
+	data |= dw_m1 << 34;
+	data |= dw_m1 << 37;
+	data |= dw_m1 << 40;
+	data |= dw_m1 << 43;
+	data |= dw_m1 << 46;
+	data |= dw_m1 << 49;
+	data |= dw_m1 << 52;
+	data |= dw_m1 << 55;
+	data |= dw_m1 << 58;
+	data |= dw_m1 << 61;
+
+	return data;
+}
+
+static __rte_always_inline uint8_t
+cn20k_nix_tx_dwords_per_line_seg(const uint16_t flags)
+{
+	return ((flags & NIX_TX_NEED_EXT_HDR) ? (flags & NIX_TX_OFFLOAD_TSTAMP_F) ? 8 : 6 : 4);
+}
+
+static __rte_always_inline uint64_t
+cn20k_nix_tx_steor_vec_data(const uint16_t flags)
+{
+	const uint64_t dw_m1 = cn20k_nix_tx_dwords_per_line(flags) - 1;
 	uint64_t data;
 
 	/* This will be moved to addr area */
@@ -274,6 +330,33 @@ cn20k_nix_tx_skeleton(struct cn20k_eth_txq *txq, uint64_t *cmd, const uint16_t f
 		else
 			cmd[2] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
 	}
+}
+
+static __rte_always_inline void
+cn20k_nix_sec_fc_wait_one(struct cn20k_eth_txq *txq)
+{
+	uint64_t nb_desc = txq->cpt_desc;
+	uint64_t fc;
+
+#ifdef RTE_ARCH_ARM64
+	asm volatile(PLT_CPU_FEATURE_PREAMBLE
+		     "		ldxr %[space], [%[addr]]		\n"
+		     "		cmp %[nb_desc], %[space]		\n"
+		     "		b.hi .Ldne%=				\n"
+		     "		sevl					\n"
+		     ".Lrty%=:	wfe					\n"
+		     "		ldxr %[space], [%[addr]]		\n"
+		     "		cmp %[nb_desc], %[space]		\n"
+		     "		b.ls .Lrty%=				\n"
+		     ".Ldne%=:						\n"
+		     : [space] "=&r"(fc)
+		     : [nb_desc] "r"(nb_desc), [addr] "r"(txq->cpt_fc)
+		     : "memory");
+#else
+	RTE_SET_USED(fc);
+	while (nb_desc <= __atomic_load_n(txq->cpt_fc, __ATOMIC_RELAXED))
+		;
+#endif
 }
 
 static __rte_always_inline void
@@ -346,6 +429,136 @@ again:
 }
 
 #if defined(RTE_ARCH_ARM64)
+static __rte_always_inline void
+cn20k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
+		       uintptr_t *nixtx_addr, uintptr_t lbase, uint8_t *lnum, uint8_t *loff,
+		       uint8_t *shft, uint64_t sa_base, const uint16_t flags)
+{
+	struct cn20k_sec_sess_priv sess_priv;
+	uint32_t pkt_len, dlen_adj, rlen;
+	uint8_t l3l4type, chksum;
+	uint64x2_t cmd01, cmd23;
+	uint8_t l2_len, l3_len;
+	uintptr_t dptr, nixtx;
+	uint64_t ucode_cmd[4];
+	uint64_t *laddr, w0;
+	uint16_t tag;
+	uint64_t sa;
+
+	sess_priv.u64 = *rte_security_dynfield(m);
+
+	if (flags & NIX_TX_NEED_SEND_HDR_W1) {
+		/* Extract l3l4type either from il3il4type or ol3ol4type */
+		if (flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F && flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F) {
+			l2_len = vgetq_lane_u8(*cmd0, 10);
+			/* L4 ptr from send hdr includes l2 and l3 len */
+			l3_len = vgetq_lane_u8(*cmd0, 11) - l2_len;
+			l3l4type = vgetq_lane_u8(*cmd0, 13);
+		} else {
+			l2_len = vgetq_lane_u8(*cmd0, 8);
+			/* L4 ptr from send hdr includes l2 and l3 len */
+			l3_len = vgetq_lane_u8(*cmd0, 9) - l2_len;
+			l3l4type = vgetq_lane_u8(*cmd0, 12);
+		}
+
+		chksum = (l3l4type & 0x1) << 1 | !!(l3l4type & 0x30);
+		chksum = ~chksum;
+		sess_priv.chksum = sess_priv.chksum & chksum;
+		/* Clear SEND header flags */
+		*cmd0 = vsetq_lane_u16(0, *cmd0, 6);
+	} else {
+		l2_len = m->l2_len;
+		l3_len = m->l3_len;
+	}
+
+	/* Retrieve DPTR */
+	dptr = vgetq_lane_u64(*cmd1, 1);
+	pkt_len = vgetq_lane_u16(*cmd0, 0);
+
+	/* Calculate dlen adj */
+	dlen_adj = pkt_len - l2_len;
+	/* Exclude l3 len from roundup for transport mode */
+	dlen_adj -= sess_priv.mode ? 0 : l3_len;
+	rlen = (dlen_adj + sess_priv.roundup_len) + (sess_priv.roundup_byte - 1);
+	rlen &= ~(uint64_t)(sess_priv.roundup_byte - 1);
+	rlen += sess_priv.partial_len;
+	dlen_adj = rlen - dlen_adj;
+
+	/* Update send descriptors. Security is single segment only */
+	*cmd0 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd0, 0);
+
+	/* CPT word 5 and word 6 */
+	w0 = 0;
+	ucode_cmd[2] = 0;
+	if (flags & NIX_TX_MULTI_SEG_F && m->nb_segs > 1) {
+		struct rte_mbuf *last = rte_pktmbuf_lastseg(m);
+
+		/* Get area where NIX descriptor needs to be stored */
+		nixtx = rte_pktmbuf_mtod_offset(last, uintptr_t, last->data_len + dlen_adj);
+		nixtx += BIT_ULL(7);
+		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+		nixtx += 16;
+
+		dptr = nixtx + ((flags & NIX_TX_NEED_EXT_HDR) ? 32 : 16);
+
+		/* Set l2 length as data offset */
+		w0 = (uint64_t)l2_len << 16;
+		w0 |= cn20k_nix_tx_ext_subs(flags) + NIX_NB_SEGS_TO_SEGDW(m->nb_segs);
+		ucode_cmd[1] = dptr | ((uint64_t)m->nb_segs << 60);
+	} else {
+		/* Get area where NIX descriptor needs to be stored */
+		nixtx = dptr + pkt_len + dlen_adj;
+		nixtx += BIT_ULL(7);
+		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
+		nixtx += 16;
+
+		w0 |= cn20k_nix_tx_ext_subs(flags) + 1ULL;
+		dptr += l2_len;
+		ucode_cmd[1] = dptr;
+		*cmd1 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd1, 0);
+		/* DLEN passed is excluding L2 HDR */
+		pkt_len -= l2_len;
+	}
+	w0 |= ((((int64_t)nixtx - (int64_t)dptr) & 0xFFFFF) << 32);
+	/* CPT word 0 and 1 */
+	cmd01 = vdupq_n_u64(0);
+	cmd01 = vsetq_lane_u64(w0, cmd01, 0);
+	/* CPT_RES_S is 16B above NIXTX */
+	cmd01 = vsetq_lane_u64(nixtx - 16, cmd01, 1);
+
+	/* Return nixtx addr */
+	*nixtx_addr = nixtx;
+
+	/* CPT Word 4 and Word 7 */
+	tag = sa_base & 0xFFFFUL;
+	sa_base &= ~0xFFFFUL;
+	sa = (uintptr_t)roc_nix_inl_ot_ipsec_outb_sa(sa_base, sess_priv.sa_idx);
+	ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
+	ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_OUTBOUND_IPSEC << 48 | 1UL << 54 |
+			((uint64_t)sess_priv.chksum) << 32 | ((uint64_t)sess_priv.dec_ttl) << 34 |
+			pkt_len);
+
+	/* CPT word 2 and 3 */
+	cmd23 = vdupq_n_u64(0);
+	cmd23 = vsetq_lane_u64((((uint64_t)RTE_EVENT_TYPE_CPU << 28) | tag |
+				CNXK_ETHDEV_SEC_OUTB_EV_SUB << 20), cmd23, 0);
+	cmd23 = vsetq_lane_u64((uintptr_t)m | 1, cmd23, 1);
+
+	/* Move to our line */
+	laddr = LMT_OFF(lbase, *lnum, *loff ? 64 : 0);
+
+	/* Write CPT instruction to lmt line */
+	vst1q_u64(laddr, cmd01);
+	vst1q_u64((laddr + 2), cmd23);
+
+	*(__uint128_t *)(laddr + 4) = *(__uint128_t *)ucode_cmd;
+	*(__uint128_t *)(laddr + 6) = *(__uint128_t *)(ucode_cmd + 2);
+
+	/* Move to next line for every other CPT inst */
+	*loff = !(*loff);
+	*lnum = *lnum + (*loff ? 0 : 1);
+	*shft = *shft + (*loff ? 0 : 3);
+}
 
 static __rte_always_inline void
 cn20k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr, uintptr_t lbase,
@@ -544,6 +757,156 @@ cn20k_nix_prefree_seg(struct rte_mbuf *m, struct rte_mbuf **extm, struct cn20k_e
 		return cnxk_nix_prefree_seg(m, aura);
 	}
 }
+
+#if defined(RTE_ARCH_ARM64)
+/* Only called for first segments of single segmented mbufs */
+static __rte_always_inline void
+cn20k_nix_prefree_seg_vec(struct rte_mbuf **mbufs, struct rte_mbuf **extm,
+			  struct cn20k_eth_txq *txq, uint64x2_t *senddesc01_w0,
+			  uint64x2_t *senddesc23_w0, uint64x2_t *senddesc01_w1,
+			  uint64x2_t *senddesc23_w1)
+{
+	struct rte_mbuf **tx_compl_ptr = txq->tx_compl.ptr;
+	uint32_t nb_desc_mask = txq->tx_compl.nb_desc_mask;
+	bool tx_compl_ena = txq->tx_compl.ena;
+	struct rte_mbuf *m0, *m1, *m2, *m3;
+	struct rte_mbuf *cookie;
+	uint64_t w0, w1, aura;
+	uint64_t sqe_id;
+
+	m0 = mbufs[0];
+	m1 = mbufs[1];
+	m2 = mbufs[2];
+	m3 = mbufs[3];
+
+	/* mbuf 0 */
+	w0 = vgetq_lane_u64(*senddesc01_w0, 0);
+	if (RTE_MBUF_HAS_EXTBUF(m0)) {
+		w0 |= BIT_ULL(19);
+		w1 = vgetq_lane_u64(*senddesc01_w1, 0);
+		w1 &= ~0xFFFF000000000000UL;
+		if (unlikely(!tx_compl_ena)) {
+			m0->next = *extm;
+			*extm = m0;
+		} else {
+			sqe_id = rte_atomic_fetch_add_explicit(&txq->tx_compl.sqe_id, 1,
+							       rte_memory_order_relaxed);
+			sqe_id = sqe_id & nb_desc_mask;
+			/* Set PNC */
+			w0 |= BIT_ULL(43);
+			w1 |= sqe_id << 48;
+			tx_compl_ptr[sqe_id] = m0;
+			*senddesc01_w1 = vsetq_lane_u64(w1, *senddesc01_w1, 0);
+		}
+	} else {
+		cookie = RTE_MBUF_DIRECT(m0) ? m0 : rte_mbuf_from_indirect(m0);
+		aura = (w0 >> 20) & 0xFFFFF;
+		w0 &= ~0xFFFFF00000UL;
+		w0 |= cnxk_nix_prefree_seg(m0, &aura) << 19;
+		w0 |= aura << 20;
+
+		if ((w0 & BIT_ULL(19)) == 0)
+			RTE_MEMPOOL_CHECK_COOKIES(cookie->pool, (void **)&cookie, 1, 0);
+	}
+	*senddesc01_w0 = vsetq_lane_u64(w0, *senddesc01_w0, 0);
+
+	/* mbuf1 */
+	w0 = vgetq_lane_u64(*senddesc01_w0, 1);
+	if (RTE_MBUF_HAS_EXTBUF(m1)) {
+		w0 |= BIT_ULL(19);
+		w1 = vgetq_lane_u64(*senddesc01_w1, 1);
+		w1 &= ~0xFFFF000000000000UL;
+		if (unlikely(!tx_compl_ena)) {
+			m1->next = *extm;
+			*extm = m1;
+		} else {
+			sqe_id = rte_atomic_fetch_add_explicit(&txq->tx_compl.sqe_id, 1,
+							       rte_memory_order_relaxed);
+			sqe_id = sqe_id & nb_desc_mask;
+			/* Set PNC */
+			w0 |= BIT_ULL(43);
+			w1 |= sqe_id << 48;
+			tx_compl_ptr[sqe_id] = m1;
+			*senddesc01_w1 = vsetq_lane_u64(w1, *senddesc01_w1, 1);
+		}
+	} else {
+		cookie = RTE_MBUF_DIRECT(m1) ? m1 : rte_mbuf_from_indirect(m1);
+		aura = (w0 >> 20) & 0xFFFFF;
+		w0 &= ~0xFFFFF00000UL;
+		w0 |= cnxk_nix_prefree_seg(m1, &aura) << 19;
+		w0 |= aura << 20;
+
+		if ((w0 & BIT_ULL(19)) == 0)
+			RTE_MEMPOOL_CHECK_COOKIES(cookie->pool, (void **)&cookie, 1, 0);
+	}
+	*senddesc01_w0 = vsetq_lane_u64(w0, *senddesc01_w0, 1);
+
+	/* mbuf 2 */
+	w0 = vgetq_lane_u64(*senddesc23_w0, 0);
+	if (RTE_MBUF_HAS_EXTBUF(m2)) {
+		w0 |= BIT_ULL(19);
+		w1 = vgetq_lane_u64(*senddesc23_w1, 0);
+		w1 &= ~0xFFFF000000000000UL;
+		if (unlikely(!tx_compl_ena)) {
+			m2->next = *extm;
+			*extm = m2;
+		} else {
+			sqe_id = rte_atomic_fetch_add_explicit(&txq->tx_compl.sqe_id, 1,
+							       rte_memory_order_relaxed);
+			sqe_id = sqe_id & nb_desc_mask;
+			/* Set PNC */
+			w0 |= BIT_ULL(43);
+			w1 |= sqe_id << 48;
+			tx_compl_ptr[sqe_id] = m2;
+			*senddesc23_w1 = vsetq_lane_u64(w1, *senddesc23_w1, 0);
+		}
+	} else {
+		cookie = RTE_MBUF_DIRECT(m2) ? m2 : rte_mbuf_from_indirect(m2);
+		aura = (w0 >> 20) & 0xFFFFF;
+		w0 &= ~0xFFFFF00000UL;
+		w0 |= cnxk_nix_prefree_seg(m2, &aura) << 19;
+		w0 |= aura << 20;
+
+		if ((w0 & BIT_ULL(19)) == 0)
+			RTE_MEMPOOL_CHECK_COOKIES(cookie->pool, (void **)&cookie, 1, 0);
+	}
+	*senddesc23_w0 = vsetq_lane_u64(w0, *senddesc23_w0, 0);
+
+	/* mbuf3 */
+	w0 = vgetq_lane_u64(*senddesc23_w0, 1);
+	if (RTE_MBUF_HAS_EXTBUF(m3)) {
+		w0 |= BIT_ULL(19);
+		w1 = vgetq_lane_u64(*senddesc23_w1, 1);
+		w1 &= ~0xFFFF000000000000UL;
+		if (unlikely(!tx_compl_ena)) {
+			m3->next = *extm;
+			*extm = m3;
+		} else {
+			sqe_id = rte_atomic_fetch_add_explicit(&txq->tx_compl.sqe_id, 1,
+							       rte_memory_order_relaxed);
+			sqe_id = sqe_id & nb_desc_mask;
+			/* Set PNC */
+			w0 |= BIT_ULL(43);
+			w1 |= sqe_id << 48;
+			tx_compl_ptr[sqe_id] = m3;
+			*senddesc23_w1 = vsetq_lane_u64(w1, *senddesc23_w1, 1);
+		}
+	} else {
+		cookie = RTE_MBUF_DIRECT(m3) ? m3 : rte_mbuf_from_indirect(m3);
+		aura = (w0 >> 20) & 0xFFFFF;
+		w0 &= ~0xFFFFF00000UL;
+		w0 |= cnxk_nix_prefree_seg(m3, &aura) << 19;
+		w0 |= aura << 20;
+
+		if ((w0 & BIT_ULL(19)) == 0)
+			RTE_MEMPOOL_CHECK_COOKIES(cookie->pool, (void **)&cookie, 1, 0);
+	}
+	*senddesc23_w0 = vsetq_lane_u64(w0, *senddesc23_w0, 1);
+#ifndef RTE_LIBRTE_MEMPOOL_DEBUG
+	RTE_SET_USED(cookie);
+#endif
+}
+#endif
 
 static __rte_always_inline void
 cn20k_nix_xmit_prepare_tso(struct rte_mbuf *m, const uint64_t flags)
@@ -1350,6 +1713,1078 @@ again:
 	return pkts;
 }
 
+#if defined(RTE_ARCH_ARM64)
+
+#define NIX_DESCS_PER_LOOP 4
+
+static __rte_always_inline void
+cn20k_nix_lmt_next(uint8_t dw, uintptr_t laddr, uint8_t *lnum, uint8_t *loff, uint8_t *shift,
+		   __uint128_t *data128, uintptr_t *next)
+{
+	/* Go to next line if we are out of space */
+	if ((*loff + (dw << 4)) > 128) {
+		*data128 = *data128 | (((__uint128_t)((*loff >> 4) - 1)) << *shift);
+		*shift = *shift + 3;
+		*loff = 0;
+		*lnum = *lnum + 1;
+	}
+
+	*next = (uintptr_t)LMT_OFF(laddr, *lnum, *loff);
+	*loff = *loff + (dw << 4);
+}
+
+static __rte_always_inline void
+cn20k_nix_xmit_store(struct cn20k_eth_txq *txq, struct rte_mbuf *mbuf, struct rte_mbuf **extm,
+		     uint8_t segdw, uintptr_t laddr, uint64x2_t cmd0, uint64x2_t cmd1,
+		     uint64x2_t cmd2, uint64x2_t cmd3, const uint16_t flags)
+{
+	RTE_SET_USED(txq);
+	RTE_SET_USED(mbuf);
+	RTE_SET_USED(extm);
+	RTE_SET_USED(segdw);
+
+	if (flags & NIX_TX_NEED_EXT_HDR) {
+		/* Store the prepared send desc to LMT lines */
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			vst1q_u64(LMT_OFF(laddr, 0, 0), cmd0);
+			vst1q_u64(LMT_OFF(laddr, 0, 16), cmd2);
+			vst1q_u64(LMT_OFF(laddr, 0, 32), cmd1);
+			vst1q_u64(LMT_OFF(laddr, 0, 48), cmd3);
+		} else {
+			vst1q_u64(LMT_OFF(laddr, 0, 0), cmd0);
+			vst1q_u64(LMT_OFF(laddr, 0, 16), cmd2);
+			vst1q_u64(LMT_OFF(laddr, 0, 32), cmd1);
+		}
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
+	} else {
+		/* Store the prepared send desc to LMT lines */
+		vst1q_u64(LMT_OFF(laddr, 0, 0), cmd0);
+		vst1q_u64(LMT_OFF(laddr, 0, 16), cmd1);
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 0);
+	}
+}
+
+static __rte_always_inline uint16_t
+cn20k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts, uint16_t pkts,
+			   uint64_t *cmd, const uint16_t flags)
+{
+	uint64x2_t dataoff_iova0, dataoff_iova1, dataoff_iova2, dataoff_iova3;
+	uint64x2_t len_olflags0, len_olflags1, len_olflags2, len_olflags3;
+	uint64x2_t cmd0[NIX_DESCS_PER_LOOP], cmd1[NIX_DESCS_PER_LOOP], cmd2[NIX_DESCS_PER_LOOP],
+		cmd3[NIX_DESCS_PER_LOOP];
+	uint16_t left, scalar, burst, i, lmt_id, c_lmt_id;
+	uint64_t *mbuf0, *mbuf1, *mbuf2, *mbuf3, pa;
+	uint64x2_t senddesc01_w0, senddesc23_w0;
+	uint64x2_t senddesc01_w1, senddesc23_w1;
+	uint64x2_t sendext01_w0, sendext23_w0;
+	uint64x2_t sendext01_w1, sendext23_w1;
+	uint64x2_t sendmem01_w0, sendmem23_w0;
+	uint64x2_t sendmem01_w1, sendmem23_w1;
+	uint8_t segdw[NIX_DESCS_PER_LOOP + 1];
+	uint64x2_t sgdesc01_w0, sgdesc23_w0;
+	uint64x2_t sgdesc01_w1, sgdesc23_w1;
+	struct cn20k_eth_txq *txq = tx_queue;
+	rte_iova_t io_addr = txq->io_addr;
+	uint8_t lnum, shift = 0, loff = 0;
+	uintptr_t laddr = txq->lmt_base;
+	uint8_t c_lnum, c_shft, c_loff;
+	uint64x2_t ltypes01, ltypes23;
+	uint64x2_t xtmp128, ytmp128;
+	uint64x2_t xmask01, xmask23;
+	uintptr_t c_laddr = laddr;
+	rte_iova_t c_io_addr;
+	uint64_t sa_base;
+	union wdata {
+		__uint128_t data128;
+		uint64_t data[2];
+	} wd;
+	struct rte_mbuf *extm = NULL;
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, flags & NIX_TX_VWQE_F);
+
+	if (!(flags & NIX_TX_VWQE_F)) {
+		scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
+		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+		NIX_XMIT_FC_CHECK_RETURN(txq, pkts);
+	} else {
+		scalar = pkts & (NIX_DESCS_PER_LOOP - 1);
+		pkts = RTE_ALIGN_FLOOR(pkts, NIX_DESCS_PER_LOOP);
+	}
+
+	if (!(flags & NIX_TX_VWQE_F)) {
+		senddesc01_w0 = vld1q_dup_u64(&txq->send_hdr_w0);
+	} else {
+		uint64_t w0 = (txq->send_hdr_w0 & 0xFFFFF00000000000) |
+			      ((uint64_t)(cn20k_nix_tx_ext_subs(flags) + 1) << 40);
+
+		senddesc01_w0 = vdupq_n_u64(w0);
+	}
+	senddesc23_w0 = senddesc01_w0;
+
+	senddesc01_w1 = vdupq_n_u64(0);
+	senddesc23_w1 = senddesc01_w1;
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+		sgdesc01_w0 = vdupq_n_u64((NIX_SUBDC_SG << 60) | (NIX_SENDLDTYPE_LDWB << 58) |
+					  BIT_ULL(48));
+	else
+		sgdesc01_w0 = vdupq_n_u64((NIX_SUBDC_SG << 60) | BIT_ULL(48));
+	sgdesc23_w0 = sgdesc01_w0;
+
+	if (flags & NIX_TX_NEED_EXT_HDR) {
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			sendext01_w0 = vdupq_n_u64((NIX_SUBDC_EXT << 60) | BIT_ULL(15));
+			sendmem01_w0 = vdupq_n_u64((NIX_SUBDC_MEM << 60) |
+						   (NIX_SENDMEMALG_SETTSTMP << 56));
+			sendmem23_w0 = sendmem01_w0;
+			sendmem01_w1 = vdupq_n_u64(txq->ts_mem);
+			sendmem23_w1 = sendmem01_w1;
+		} else {
+			sendext01_w0 = vdupq_n_u64((NIX_SUBDC_EXT << 60));
+		}
+		sendext23_w0 = sendext01_w0;
+
+		if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F)
+			sendext01_w1 = vdupq_n_u64(12 | 12U << 24);
+		else
+			sendext01_w1 = vdupq_n_u64(0);
+		sendext23_w1 = sendext01_w1;
+	}
+
+	/* Get LMT base address and LMT ID as lcore id */
+	ROC_LMT_BASE_ID_GET(laddr, lmt_id);
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		ROC_LMT_CPT_BASE_ID_GET(c_laddr, c_lmt_id);
+		c_io_addr = txq->cpt_io_addr;
+		sa_base = txq->sa_base;
+	}
+
+	left = pkts;
+again:
+	/* Number of packets to prepare depends on offloads enabled. */
+	burst = left > cn20k_nix_pkts_per_vec_brst(flags) ? cn20k_nix_pkts_per_vec_brst(flags) :
+							    left;
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		wd.data128 = 0;
+		shift = 16;
+	}
+	lnum = 0;
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		loff = 0;
+		c_loff = 0;
+		c_lnum = 0;
+		c_shft = 16;
+	}
+
+	for (i = 0; i < burst; i += NIX_DESCS_PER_LOOP) {
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F &&
+		    (((int)((16 - c_lnum) << 1) - c_loff) < 4)) {
+			burst = i;
+			break;
+		}
+
+		/* Clear lower 32bit of SEND_HDR_W0 and SEND_SG_W0 */
+		senddesc01_w0 = vbicq_u64(senddesc01_w0, vdupq_n_u64(0x800FFFFFFFF));
+		sgdesc01_w0 = vbicq_u64(sgdesc01_w0, vdupq_n_u64(0xFFFFFFFF));
+
+		senddesc23_w0 = senddesc01_w0;
+		sgdesc23_w0 = sgdesc01_w0;
+
+		/* Clear vlan enables. */
+		if (flags & NIX_TX_NEED_EXT_HDR) {
+			sendext01_w1 = vbicq_u64(sendext01_w1, vdupq_n_u64(0x3FFFF00FFFF00));
+			sendext23_w1 = sendext01_w1;
+		}
+
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			/* Reset send mem alg to SETTSTMP from SUB*/
+			sendmem01_w0 = vbicq_u64(sendmem01_w0, vdupq_n_u64(BIT_ULL(59)));
+			/* Reset send mem address to default. */
+			sendmem01_w1 = vbicq_u64(sendmem01_w1, vdupq_n_u64(0xF));
+			sendmem23_w0 = sendmem01_w0;
+			sendmem23_w1 = sendmem01_w1;
+		}
+
+		/* Move mbufs to iova */
+		mbuf0 = (uint64_t *)tx_pkts[0];
+		mbuf1 = (uint64_t *)tx_pkts[1];
+		mbuf2 = (uint64_t *)tx_pkts[2];
+		mbuf3 = (uint64_t *)tx_pkts[3];
+
+		/*
+		 * Get mbuf's, olflags, iova, pktlen, dataoff
+		 * dataoff_iovaX.D[0] = iova,
+		 * dataoff_iovaX.D[1](15:0) = mbuf->dataoff
+		 * len_olflagsX.D[0] = ol_flags,
+		 * len_olflagsX.D[1](63:32) = mbuf->pkt_len
+		 */
+		dataoff_iova0 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf0)->data_off, vld1q_u64(mbuf0), 1);
+		len_olflags0 = vld1q_u64(mbuf0 + 3);
+		dataoff_iova1 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf1)->data_off, vld1q_u64(mbuf1), 1);
+		len_olflags1 = vld1q_u64(mbuf1 + 3);
+		dataoff_iova2 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf2)->data_off, vld1q_u64(mbuf2), 1);
+		len_olflags2 = vld1q_u64(mbuf2 + 3);
+		dataoff_iova3 =
+			vsetq_lane_u64(((struct rte_mbuf *)mbuf3)->data_off, vld1q_u64(mbuf3), 1);
+		len_olflags3 = vld1q_u64(mbuf3 + 3);
+
+		/* Move mbufs to point pool */
+		mbuf0 = (uint64_t *)((uintptr_t)mbuf0 + offsetof(struct rte_mbuf, pool));
+		mbuf1 = (uint64_t *)((uintptr_t)mbuf1 + offsetof(struct rte_mbuf, pool));
+		mbuf2 = (uint64_t *)((uintptr_t)mbuf2 + offsetof(struct rte_mbuf, pool));
+		mbuf3 = (uint64_t *)((uintptr_t)mbuf3 + offsetof(struct rte_mbuf, pool));
+
+		if (flags & (NIX_TX_OFFLOAD_OL3_OL4_CSUM_F | NIX_TX_OFFLOAD_L3_L4_CSUM_F)) {
+			/* Get tx_offload for ol2, ol3, l2, l3 lengths */
+			/*
+			 * E(8):OL2_LEN(7):OL3_LEN(9):E(24):L3_LEN(9):L2_LEN(7)
+			 * E(8):OL2_LEN(7):OL3_LEN(9):E(24):L3_LEN(9):L2_LEN(7)
+			 */
+
+			asm volatile("LD1 {%[a].D}[0],[%[in]]\n\t"
+				     : [a] "+w"(senddesc01_w1)
+				     : [in] "r"(mbuf0 + 2)
+				     : "memory");
+
+			asm volatile("LD1 {%[a].D}[1],[%[in]]\n\t"
+				     : [a] "+w"(senddesc01_w1)
+				     : [in] "r"(mbuf1 + 2)
+				     : "memory");
+
+			asm volatile("LD1 {%[b].D}[0],[%[in]]\n\t"
+				     : [b] "+w"(senddesc23_w1)
+				     : [in] "r"(mbuf2 + 2)
+				     : "memory");
+
+			asm volatile("LD1 {%[b].D}[1],[%[in]]\n\t"
+				     : [b] "+w"(senddesc23_w1)
+				     : [in] "r"(mbuf3 + 2)
+				     : "memory");
+
+			/* Get pool pointer alone */
+			mbuf0 = (uint64_t *)*mbuf0;
+			mbuf1 = (uint64_t *)*mbuf1;
+			mbuf2 = (uint64_t *)*mbuf2;
+			mbuf3 = (uint64_t *)*mbuf3;
+		} else {
+			/* Get pool pointer alone */
+			mbuf0 = (uint64_t *)*mbuf0;
+			mbuf1 = (uint64_t *)*mbuf1;
+			mbuf2 = (uint64_t *)*mbuf2;
+			mbuf3 = (uint64_t *)*mbuf3;
+		}
+
+		const uint8x16_t shuf_mask2 = {
+			0x4, 0x5, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			0xc, 0xd, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		};
+		xtmp128 = vzip2q_u64(len_olflags0, len_olflags1);
+		ytmp128 = vzip2q_u64(len_olflags2, len_olflags3);
+
+		/*
+		 * Pick only 16 bits of pktlen preset at bits 63:32
+		 * and place them at bits 15:0.
+		 */
+		xtmp128 = vqtbl1q_u8(xtmp128, shuf_mask2);
+		ytmp128 = vqtbl1q_u8(ytmp128, shuf_mask2);
+
+		/* Add pairwise to get dataoff + iova in sgdesc_w1 */
+		sgdesc01_w1 = vpaddq_u64(dataoff_iova0, dataoff_iova1);
+		sgdesc23_w1 = vpaddq_u64(dataoff_iova2, dataoff_iova3);
+
+		/* Orr both sgdesc_w0 and senddesc_w0 with 16 bits of
+		 * pktlen at 15:0 position.
+		 */
+		sgdesc01_w0 = vorrq_u64(sgdesc01_w0, xtmp128);
+		sgdesc23_w0 = vorrq_u64(sgdesc23_w0, ytmp128);
+		senddesc01_w0 = vorrq_u64(senddesc01_w0, xtmp128);
+		senddesc23_w0 = vorrq_u64(senddesc23_w0, ytmp128);
+
+		/* Move mbuf to point to pool_id. */
+		mbuf0 = (uint64_t *)((uintptr_t)mbuf0 + offsetof(struct rte_mempool, pool_id));
+		mbuf1 = (uint64_t *)((uintptr_t)mbuf1 + offsetof(struct rte_mempool, pool_id));
+		mbuf2 = (uint64_t *)((uintptr_t)mbuf2 + offsetof(struct rte_mempool, pool_id));
+		mbuf3 = (uint64_t *)((uintptr_t)mbuf3 + offsetof(struct rte_mempool, pool_id));
+
+		if ((flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F) &&
+		    !(flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)) {
+			/*
+			 * Lookup table to translate ol_flags to
+			 * il3/il4 types. But we still use ol3/ol4 types in
+			 * senddesc_w1 as only one header processing is enabled.
+			 */
+			const uint8x16_t tbl = {
+				/* [0-15] = il4type:il3type */
+				0x04, /* none (IPv6 assumed) */
+				0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6 assumed) */
+				0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6 assumed) */
+				0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6 assumed) */
+				0x03, /* RTE_MBUF_F_TX_IP_CKSUM */
+				0x13, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM */
+				0x23, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_SCTP_CKSUM */
+				0x33, /* RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM */
+				0x02, /* RTE_MBUF_F_TX_IPV4  */
+				0x12, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_TCP_CKSUM */
+				0x22, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_SCTP_CKSUM */
+				0x32, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_UDP_CKSUM */
+				0x03, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM */
+				0x13, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_TCP_CKSUM
+				       */
+				0x23, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_SCTP_CKSUM
+				       */
+				0x33, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+				       * RTE_MBUF_F_TX_UDP_CKSUM
+				       */
+			};
+
+			/* Extract olflags to translate to iltypes */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/*
+			 * E(47):L3_LEN(9):L2_LEN(7+z)
+			 * E(47):L3_LEN(9):L2_LEN(7+z)
+			 */
+			senddesc01_w1 = vshlq_n_u64(senddesc01_w1, 1);
+			senddesc23_w1 = vshlq_n_u64(senddesc23_w1, 1);
+
+			/* Move OLFLAGS bits 55:52 to 51:48
+			 * with zeros prepended on the byte and rest
+			 * don't care
+			 */
+			xtmp128 = vshrq_n_u8(xtmp128, 4);
+			ytmp128 = vshrq_n_u8(ytmp128, 4);
+			/*
+			 * E(48):L3_LEN(8):L2_LEN(z+7)
+			 * E(48):L3_LEN(8):L2_LEN(z+7)
+			 */
+			const int8x16_t tshft3 = {
+				-1, 0, 8, 8, 8, 8, 8, 8,
+				-1, 0, 8, 8, 8, 8, 8, 8,
+			};
+
+			senddesc01_w1 = vshlq_u8(senddesc01_w1, tshft3);
+			senddesc23_w1 = vshlq_u8(senddesc23_w1, tshft3);
+
+			/* Do the lookup */
+			ltypes01 = vqtbl1q_u8(tbl, xtmp128);
+			ltypes23 = vqtbl1q_u8(tbl, ytmp128);
+
+			/* Pick only relevant fields i.e Bit 48:55 of iltype
+			 * and place it in ol3/ol4type of senddesc_w1
+			 */
+			const uint8x16_t shuf_mask0 = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0x6, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xE, 0xFF, 0xFF, 0xFF,
+			};
+
+			ltypes01 = vqtbl1q_u8(ltypes01, shuf_mask0);
+			ltypes23 = vqtbl1q_u8(ltypes23, shuf_mask0);
+
+			/* Prepare ol4ptr, ol3ptr from ol3len, ol2len.
+			 * a [E(32):E(16):OL3(8):OL2(8)]
+			 * a = a + (a << 8)
+			 * a [E(32):E(16):(OL3+OL2):OL2]
+			 * => E(32):E(16)::OL4PTR(8):OL3PTR(8)
+			 */
+			senddesc01_w1 = vaddq_u8(senddesc01_w1, vshlq_n_u16(senddesc01_w1, 8));
+			senddesc23_w1 = vaddq_u8(senddesc23_w1, vshlq_n_u16(senddesc23_w1, 8));
+
+			/* Move ltypes to senddesc*_w1 */
+			senddesc01_w1 = vorrq_u64(senddesc01_w1, ltypes01);
+			senddesc23_w1 = vorrq_u64(senddesc23_w1, ltypes23);
+		} else if (!(flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F) &&
+			   (flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)) {
+			/*
+			 * Lookup table to translate ol_flags to
+			 * ol3/ol4 types.
+			 */
+
+			const uint8x16_t tbl = {
+				/* [0-15] = ol4type:ol3type */
+				0x00, /* none */
+				0x03, /* OUTER_IP_CKSUM */
+				0x02, /* OUTER_IPV4 */
+				0x03, /* OUTER_IPV4 | OUTER_IP_CKSUM */
+				0x04, /* OUTER_IPV6 */
+				0x00, /* OUTER_IPV6 | OUTER_IP_CKSUM */
+				0x00, /* OUTER_IPV6 | OUTER_IPV4 */
+				0x00, /* OUTER_IPV6 | OUTER_IPV4 |
+				       * OUTER_IP_CKSUM
+				       */
+				0x00, /* OUTER_UDP_CKSUM */
+				0x33, /* OUTER_UDP_CKSUM | OUTER_IP_CKSUM */
+				0x32, /* OUTER_UDP_CKSUM | OUTER_IPV4 */
+				0x33, /* OUTER_UDP_CKSUM | OUTER_IPV4 |
+				       * OUTER_IP_CKSUM
+				       */
+				0x34, /* OUTER_UDP_CKSUM | OUTER_IPV6 */
+				0x00, /* OUTER_UDP_CKSUM | OUTER_IPV6 |
+				       * OUTER_IP_CKSUM
+				       */
+				0x00, /* OUTER_UDP_CKSUM | OUTER_IPV6 |
+				       * OUTER_IPV4
+				       */
+				0x00, /* OUTER_UDP_CKSUM | OUTER_IPV6 |
+				       * OUTER_IPV4 | OUTER_IP_CKSUM
+				       */
+			};
+
+			/* Extract olflags to translate to iltypes */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/*
+			 * E(47):OL3_LEN(9):OL2_LEN(7+z)
+			 * E(47):OL3_LEN(9):OL2_LEN(7+z)
+			 */
+			const uint8x16_t shuf_mask5 = {
+				0x6, 0x5, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xE, 0xD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			};
+			senddesc01_w1 = vqtbl1q_u8(senddesc01_w1, shuf_mask5);
+			senddesc23_w1 = vqtbl1q_u8(senddesc23_w1, shuf_mask5);
+
+			/* Extract outer ol flags only */
+			const uint64x2_t o_cksum_mask = {
+				0x1C00020000000000,
+				0x1C00020000000000,
+			};
+
+			xtmp128 = vandq_u64(xtmp128, o_cksum_mask);
+			ytmp128 = vandq_u64(ytmp128, o_cksum_mask);
+
+			/* Extract OUTER_UDP_CKSUM bit 41 and
+			 * move it to bit 61
+			 */
+
+			xtmp128 = xtmp128 | vshlq_n_u64(xtmp128, 20);
+			ytmp128 = ytmp128 | vshlq_n_u64(ytmp128, 20);
+
+			/* Shift oltype by 2 to start nibble from BIT(56)
+			 * instead of BIT(58)
+			 */
+			xtmp128 = vshrq_n_u8(xtmp128, 2);
+			ytmp128 = vshrq_n_u8(ytmp128, 2);
+			/*
+			 * E(48):L3_LEN(8):L2_LEN(z+7)
+			 * E(48):L3_LEN(8):L2_LEN(z+7)
+			 */
+			const int8x16_t tshft3 = {
+				-1, 0, 8, 8, 8, 8, 8, 8,
+				-1, 0, 8, 8, 8, 8, 8, 8,
+			};
+
+			senddesc01_w1 = vshlq_u8(senddesc01_w1, tshft3);
+			senddesc23_w1 = vshlq_u8(senddesc23_w1, tshft3);
+
+			/* Do the lookup */
+			ltypes01 = vqtbl1q_u8(tbl, xtmp128);
+			ltypes23 = vqtbl1q_u8(tbl, ytmp128);
+
+			/* Pick only relevant fields i.e Bit 56:63 of oltype
+			 * and place it in ol3/ol4type of senddesc_w1
+			 */
+			const uint8x16_t shuf_mask0 = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0x7, 0xFF, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xF, 0xFF, 0xFF, 0xFF,
+			};
+
+			ltypes01 = vqtbl1q_u8(ltypes01, shuf_mask0);
+			ltypes23 = vqtbl1q_u8(ltypes23, shuf_mask0);
+
+			/* Prepare ol4ptr, ol3ptr from ol3len, ol2len.
+			 * a [E(32):E(16):OL3(8):OL2(8)]
+			 * a = a + (a << 8)
+			 * a [E(32):E(16):(OL3+OL2):OL2]
+			 * => E(32):E(16)::OL4PTR(8):OL3PTR(8)
+			 */
+			senddesc01_w1 = vaddq_u8(senddesc01_w1, vshlq_n_u16(senddesc01_w1, 8));
+			senddesc23_w1 = vaddq_u8(senddesc23_w1, vshlq_n_u16(senddesc23_w1, 8));
+
+			/* Move ltypes to senddesc*_w1 */
+			senddesc01_w1 = vorrq_u64(senddesc01_w1, ltypes01);
+			senddesc23_w1 = vorrq_u64(senddesc23_w1, ltypes23);
+		} else if ((flags & NIX_TX_OFFLOAD_L3_L4_CSUM_F) &&
+			   (flags & NIX_TX_OFFLOAD_OL3_OL4_CSUM_F)) {
+			/* Lookup table to translate ol_flags to
+			 * ol4type, ol3type, il4type, il3type of senddesc_w1
+			 */
+			const uint8x16x2_t tbl = {{
+				{
+					/* [0-15] = il4type:il3type */
+					0x04, /* none (IPv6) */
+					0x14, /* RTE_MBUF_F_TX_TCP_CKSUM (IPv6) */
+					0x24, /* RTE_MBUF_F_TX_SCTP_CKSUM (IPv6) */
+					0x34, /* RTE_MBUF_F_TX_UDP_CKSUM (IPv6) */
+					0x03, /* RTE_MBUF_F_TX_IP_CKSUM */
+					0x13, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
+					       */
+					0x23, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
+					       */
+					0x33, /* RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
+					       */
+					0x02, /* RTE_MBUF_F_TX_IPV4 */
+					0x12, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
+					       */
+					0x22, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
+					       */
+					0x32, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
+					       */
+					0x03, /* RTE_MBUF_F_TX_IPV4 |
+					       * RTE_MBUF_F_TX_IP_CKSUM
+					       */
+					0x13, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_TCP_CKSUM
+					       */
+					0x23, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_SCTP_CKSUM
+					       */
+					0x33, /* RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM |
+					       * RTE_MBUF_F_TX_UDP_CKSUM
+					       */
+				},
+
+				{
+					/* [16-31] = ol4type:ol3type */
+					0x00, /* none */
+					0x03, /* OUTER_IP_CKSUM */
+					0x02, /* OUTER_IPV4 */
+					0x03, /* OUTER_IPV4 | OUTER_IP_CKSUM */
+					0x04, /* OUTER_IPV6 */
+					0x00, /* OUTER_IPV6 | OUTER_IP_CKSUM */
+					0x00, /* OUTER_IPV6 | OUTER_IPV4 */
+					0x00, /* OUTER_IPV6 | OUTER_IPV4 |
+					       * OUTER_IP_CKSUM
+					       */
+					0x00, /* OUTER_UDP_CKSUM */
+					0x33, /* OUTER_UDP_CKSUM |
+					       * OUTER_IP_CKSUM
+					       */
+					0x32, /* OUTER_UDP_CKSUM |
+					       * OUTER_IPV4
+					       */
+					0x33, /* OUTER_UDP_CKSUM |
+					       * OUTER_IPV4 | OUTER_IP_CKSUM
+					       */
+					0x34, /* OUTER_UDP_CKSUM |
+					       * OUTER_IPV6
+					       */
+					0x00, /* OUTER_UDP_CKSUM | OUTER_IPV6 |
+					       * OUTER_IP_CKSUM
+					       */
+					0x00, /* OUTER_UDP_CKSUM | OUTER_IPV6 |
+					       * OUTER_IPV4
+					       */
+					0x00, /* OUTER_UDP_CKSUM | OUTER_IPV6 |
+					       * OUTER_IPV4 | OUTER_IP_CKSUM
+					       */
+				},
+			}};
+
+			/* Extract olflags to translate to oltype & iltype */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/*
+			 * E(8):OL2_LN(7):OL3_LN(9):E(23):L3_LN(9):L2_LN(7+z)
+			 * E(8):OL2_LN(7):OL3_LN(9):E(23):L3_LN(9):L2_LN(7+z)
+			 */
+			const uint32x4_t tshft_4 = {
+				1,
+				0,
+				1,
+				0,
+			};
+			senddesc01_w1 = vshlq_u32(senddesc01_w1, tshft_4);
+			senddesc23_w1 = vshlq_u32(senddesc23_w1, tshft_4);
+
+			/*
+			 * E(32):L3_LEN(8):L2_LEN(7+Z):OL3_LEN(8):OL2_LEN(7+Z)
+			 * E(32):L3_LEN(8):L2_LEN(7+Z):OL3_LEN(8):OL2_LEN(7+Z)
+			 */
+			const uint8x16_t shuf_mask5 = {
+				0x6, 0x5, 0x0, 0x1, 0xFF, 0xFF, 0xFF, 0xFF,
+				0xE, 0xD, 0x8, 0x9, 0xFF, 0xFF, 0xFF, 0xFF,
+			};
+			senddesc01_w1 = vqtbl1q_u8(senddesc01_w1, shuf_mask5);
+			senddesc23_w1 = vqtbl1q_u8(senddesc23_w1, shuf_mask5);
+
+			/* Extract outer and inner header ol_flags */
+			const uint64x2_t oi_cksum_mask = {
+				0x1CF0020000000000,
+				0x1CF0020000000000,
+			};
+
+			xtmp128 = vandq_u64(xtmp128, oi_cksum_mask);
+			ytmp128 = vandq_u64(ytmp128, oi_cksum_mask);
+
+			/* Extract OUTER_UDP_CKSUM bit 41 and
+			 * move it to bit 61
+			 */
+
+			xtmp128 = xtmp128 | vshlq_n_u64(xtmp128, 20);
+			ytmp128 = ytmp128 | vshlq_n_u64(ytmp128, 20);
+
+			/* Shift right oltype by 2 and iltype by 4
+			 * to start oltype nibble from BIT(58)
+			 * instead of BIT(56) and iltype nibble from BIT(48)
+			 * instead of BIT(52).
+			 */
+			const int8x16_t tshft5 = {
+				8, 8, 8, 8, 8, 8, -4, -2,
+				8, 8, 8, 8, 8, 8, -4, -2,
+			};
+
+			xtmp128 = vshlq_u8(xtmp128, tshft5);
+			ytmp128 = vshlq_u8(ytmp128, tshft5);
+			/*
+			 * E(32):L3_LEN(8):L2_LEN(8):OL3_LEN(8):OL2_LEN(8)
+			 * E(32):L3_LEN(8):L2_LEN(8):OL3_LEN(8):OL2_LEN(8)
+			 */
+			const int8x16_t tshft3 = {
+				-1, 0, -1, 0, 0, 0, 0, 0,
+				-1, 0, -1, 0, 0, 0, 0, 0,
+			};
+
+			senddesc01_w1 = vshlq_u8(senddesc01_w1, tshft3);
+			senddesc23_w1 = vshlq_u8(senddesc23_w1, tshft3);
+
+			/* Mark Bit(4) of oltype */
+			const uint64x2_t oi_cksum_mask2 = {
+				0x1000000000000000,
+				0x1000000000000000,
+			};
+
+			xtmp128 = vorrq_u64(xtmp128, oi_cksum_mask2);
+			ytmp128 = vorrq_u64(ytmp128, oi_cksum_mask2);
+
+			/* Do the lookup */
+			ltypes01 = vqtbl2q_u8(tbl, xtmp128);
+			ltypes23 = vqtbl2q_u8(tbl, ytmp128);
+
+			/* Pick only relevant fields i.e Bit 48:55 of iltype and
+			 * Bit 56:63 of oltype and place it in corresponding
+			 * place in senddesc_w1.
+			 */
+			const uint8x16_t shuf_mask0 = {
+				0xFF, 0xFF, 0xFF, 0xFF, 0x7, 0x6, 0xFF, 0xFF,
+				0xFF, 0xFF, 0xFF, 0xFF, 0xF, 0xE, 0xFF, 0xFF,
+			};
+
+			ltypes01 = vqtbl1q_u8(ltypes01, shuf_mask0);
+			ltypes23 = vqtbl1q_u8(ltypes23, shuf_mask0);
+
+			/* Prepare l4ptr, l3ptr, ol4ptr, ol3ptr from
+			 * l3len, l2len, ol3len, ol2len.
+			 * a [E(32):L3(8):L2(8):OL3(8):OL2(8)]
+			 * a = a + (a << 8)
+			 * a [E:(L3+L2):(L2+OL3):(OL3+OL2):OL2]
+			 * a = a + (a << 16)
+			 * a [E:(L3+L2+OL3+OL2):(L2+OL3+OL2):(OL3+OL2):OL2]
+			 * => E(32):IL4PTR(8):IL3PTR(8):OL4PTR(8):OL3PTR(8)
+			 */
+			senddesc01_w1 = vaddq_u8(senddesc01_w1, vshlq_n_u32(senddesc01_w1, 8));
+			senddesc23_w1 = vaddq_u8(senddesc23_w1, vshlq_n_u32(senddesc23_w1, 8));
+
+			/* Continue preparing l4ptr, l3ptr, ol4ptr, ol3ptr */
+			senddesc01_w1 = vaddq_u8(senddesc01_w1, vshlq_n_u32(senddesc01_w1, 16));
+			senddesc23_w1 = vaddq_u8(senddesc23_w1, vshlq_n_u32(senddesc23_w1, 16));
+
+			/* Move ltypes to senddesc*_w1 */
+			senddesc01_w1 = vorrq_u64(senddesc01_w1, ltypes01);
+			senddesc23_w1 = vorrq_u64(senddesc23_w1, ltypes23);
+		}
+
+		xmask01 = vdupq_n_u64(0);
+		xmask23 = xmask01;
+		asm volatile("LD1 {%[a].H}[0],[%[in]]\n\t"
+			     : [a] "+w"(xmask01)
+			     : [in] "r"(mbuf0)
+			     : "memory");
+
+		asm volatile("LD1 {%[a].H}[4],[%[in]]\n\t"
+			     : [a] "+w"(xmask01)
+			     : [in] "r"(mbuf1)
+			     : "memory");
+
+		asm volatile("LD1 {%[b].H}[0],[%[in]]\n\t"
+			     : [b] "+w"(xmask23)
+			     : [in] "r"(mbuf2)
+			     : "memory");
+
+		asm volatile("LD1 {%[b].H}[4],[%[in]]\n\t"
+			     : [b] "+w"(xmask23)
+			     : [in] "r"(mbuf3)
+			     : "memory");
+		xmask01 = vshlq_n_u64(xmask01, 20);
+		xmask23 = vshlq_n_u64(xmask23, 20);
+
+		senddesc01_w0 = vorrq_u64(senddesc01_w0, xmask01);
+		senddesc23_w0 = vorrq_u64(senddesc23_w0, xmask23);
+
+		if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+			/* Tx ol_flag for vlan. */
+			const uint64x2_t olv = {RTE_MBUF_F_TX_VLAN, RTE_MBUF_F_TX_VLAN};
+			/* Bit enable for VLAN1 */
+			const uint64x2_t mlv = {BIT_ULL(49), BIT_ULL(49)};
+			/* Tx ol_flag for QnQ. */
+			const uint64x2_t olq = {RTE_MBUF_F_TX_QINQ, RTE_MBUF_F_TX_QINQ};
+			/* Bit enable for VLAN0 */
+			const uint64x2_t mlq = {BIT_ULL(48), BIT_ULL(48)};
+			/* Load vlan values from packet. outer is VLAN 0 */
+			uint64x2_t ext01 = {
+				((uint32_t)tx_pkts[0]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[0]->vlan_tci) << 32,
+				((uint32_t)tx_pkts[1]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[1]->vlan_tci) << 32,
+			};
+			uint64x2_t ext23 = {
+				((uint32_t)tx_pkts[2]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[2]->vlan_tci) << 32,
+				((uint32_t)tx_pkts[3]->vlan_tci_outer) << 8 |
+					((uint64_t)tx_pkts[3]->vlan_tci) << 32,
+			};
+
+			/* Get ol_flags of the packets. */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/* ORR vlan outer/inner values into cmd. */
+			sendext01_w1 = vorrq_u64(sendext01_w1, ext01);
+			sendext23_w1 = vorrq_u64(sendext23_w1, ext23);
+
+			/* Test for offload enable bits and generate masks. */
+			xtmp128 = vorrq_u64(vandq_u64(vtstq_u64(xtmp128, olv), mlv),
+					    vandq_u64(vtstq_u64(xtmp128, olq), mlq));
+			ytmp128 = vorrq_u64(vandq_u64(vtstq_u64(ytmp128, olv), mlv),
+					    vandq_u64(vtstq_u64(ytmp128, olq), mlq));
+
+			/* Set vlan enable bits into cmd based on mask. */
+			sendext01_w1 = vorrq_u64(sendext01_w1, xtmp128);
+			sendext23_w1 = vorrq_u64(sendext23_w1, ytmp128);
+		}
+
+		if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+			/* Tx ol_flag for timestamp. */
+			const uint64x2_t olf = {RTE_MBUF_F_TX_IEEE1588_TMST,
+						RTE_MBUF_F_TX_IEEE1588_TMST};
+			/* Set send mem alg to SUB. */
+			const uint64x2_t alg = {BIT_ULL(59), BIT_ULL(59)};
+			/* Increment send mem address by 8. */
+			const uint64x2_t addr = {0x8, 0x8};
+
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			/* Check if timestamp is requested and generate inverted
+			 * mask as we need not make any changes to default cmd
+			 * value.
+			 */
+			xtmp128 = vmvnq_u32(vtstq_u64(olf, xtmp128));
+			ytmp128 = vmvnq_u32(vtstq_u64(olf, ytmp128));
+
+			/* Change send mem address to an 8 byte offset when
+			 * TSTMP is disabled.
+			 */
+			sendmem01_w1 = vaddq_u64(sendmem01_w1, vandq_u64(xtmp128, addr));
+			sendmem23_w1 = vaddq_u64(sendmem23_w1, vandq_u64(ytmp128, addr));
+			/* Change send mem alg to SUB when TSTMP is disabled. */
+			sendmem01_w0 = vorrq_u64(sendmem01_w0, vandq_u64(xtmp128, alg));
+			sendmem23_w0 = vorrq_u64(sendmem23_w0, vandq_u64(ytmp128, alg));
+
+			cmd3[0] = vzip1q_u64(sendmem01_w0, sendmem01_w1);
+			cmd3[1] = vzip2q_u64(sendmem01_w0, sendmem01_w1);
+			cmd3[2] = vzip1q_u64(sendmem23_w0, sendmem23_w1);
+			cmd3[3] = vzip2q_u64(sendmem23_w0, sendmem23_w1);
+		}
+
+		if ((flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) && !(flags & NIX_TX_OFFLOAD_SECURITY_F)) {
+			/* Set don't free bit if reference count > 1 */
+			cn20k_nix_prefree_seg_vec(tx_pkts, &extm, txq, &senddesc01_w0,
+						  &senddesc23_w0, &senddesc01_w1, &senddesc23_w1);
+		} else if (!(flags & NIX_TX_MULTI_SEG_F) && !(flags & NIX_TX_OFFLOAD_SECURITY_F)) {
+			/* Move mbufs to iova */
+			mbuf0 = (uint64_t *)tx_pkts[0];
+			mbuf1 = (uint64_t *)tx_pkts[1];
+			mbuf2 = (uint64_t *)tx_pkts[2];
+			mbuf3 = (uint64_t *)tx_pkts[3];
+
+			/* Mark mempool object as "put" since
+			 * it is freed by NIX
+			 */
+			RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf0)->pool, (void **)&mbuf0,
+						  1, 0);
+
+			RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf1)->pool, (void **)&mbuf1,
+						  1, 0);
+
+			RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf2)->pool, (void **)&mbuf2,
+						  1, 0);
+
+			RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf3)->pool, (void **)&mbuf3,
+						  1, 0);
+		}
+
+		/* Create 4W cmd for 4 mbufs (sendhdr, sgdesc) */
+		cmd0[0] = vzip1q_u64(senddesc01_w0, senddesc01_w1);
+		cmd0[1] = vzip2q_u64(senddesc01_w0, senddesc01_w1);
+		cmd0[2] = vzip1q_u64(senddesc23_w0, senddesc23_w1);
+		cmd0[3] = vzip2q_u64(senddesc23_w0, senddesc23_w1);
+
+		cmd1[0] = vzip1q_u64(sgdesc01_w0, sgdesc01_w1);
+		cmd1[1] = vzip2q_u64(sgdesc01_w0, sgdesc01_w1);
+		cmd1[2] = vzip1q_u64(sgdesc23_w0, sgdesc23_w1);
+		cmd1[3] = vzip2q_u64(sgdesc23_w0, sgdesc23_w1);
+
+		if (flags & NIX_TX_NEED_EXT_HDR) {
+			cmd2[0] = vzip1q_u64(sendext01_w0, sendext01_w1);
+			cmd2[1] = vzip2q_u64(sendext01_w0, sendext01_w1);
+			cmd2[2] = vzip1q_u64(sendext23_w0, sendext23_w1);
+			cmd2[3] = vzip2q_u64(sendext23_w0, sendext23_w1);
+		}
+
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+			const uint64x2_t olf = {RTE_MBUF_F_TX_SEC_OFFLOAD,
+						RTE_MBUF_F_TX_SEC_OFFLOAD};
+			uintptr_t next;
+			uint8_t dw;
+
+			/* Extract ol_flags. */
+			xtmp128 = vzip1q_u64(len_olflags0, len_olflags1);
+			ytmp128 = vzip1q_u64(len_olflags2, len_olflags3);
+
+			xtmp128 = vtstq_u64(olf, xtmp128);
+			ytmp128 = vtstq_u64(olf, ytmp128);
+
+			/* Process mbuf0 */
+			dw = cn20k_nix_tx_dwords(flags, segdw[0]);
+			if (vgetq_lane_u64(xtmp128, 0))
+				cn20k_nix_prep_sec_vec(tx_pkts[0], &cmd0[0], &cmd1[0], &next,
+						       c_laddr, &c_lnum, &c_loff, &c_shft, sa_base,
+						       flags);
+			else
+				cn20k_nix_lmt_next(dw, laddr, &lnum, &loff, &shift, &wd.data128,
+						   &next);
+
+			/* Store mbuf0 to LMTLINE/CPT NIXTX area */
+			cn20k_nix_xmit_store(txq, tx_pkts[0], &extm, segdw[0], next, cmd0[0],
+					     cmd1[0], cmd2[0], cmd3[0], flags);
+
+			/* Process mbuf1 */
+			dw = cn20k_nix_tx_dwords(flags, segdw[1]);
+			if (vgetq_lane_u64(xtmp128, 1))
+				cn20k_nix_prep_sec_vec(tx_pkts[1], &cmd0[1], &cmd1[1], &next,
+						       c_laddr, &c_lnum, &c_loff, &c_shft, sa_base,
+						       flags);
+			else
+				cn20k_nix_lmt_next(dw, laddr, &lnum, &loff, &shift, &wd.data128,
+						   &next);
+
+			/* Store mbuf1 to LMTLINE/CPT NIXTX area */
+			cn20k_nix_xmit_store(txq, tx_pkts[1], &extm, segdw[1], next, cmd0[1],
+					     cmd1[1], cmd2[1], cmd3[1], flags);
+
+			/* Process mbuf2 */
+			dw = cn20k_nix_tx_dwords(flags, segdw[2]);
+			if (vgetq_lane_u64(ytmp128, 0))
+				cn20k_nix_prep_sec_vec(tx_pkts[2], &cmd0[2], &cmd1[2], &next,
+						       c_laddr, &c_lnum, &c_loff, &c_shft, sa_base,
+						       flags);
+			else
+				cn20k_nix_lmt_next(dw, laddr, &lnum, &loff, &shift, &wd.data128,
+						   &next);
+
+			/* Store mbuf2 to LMTLINE/CPT NIXTX area */
+			cn20k_nix_xmit_store(txq, tx_pkts[2], &extm, segdw[2], next, cmd0[2],
+					     cmd1[2], cmd2[2], cmd3[2], flags);
+
+			/* Process mbuf3 */
+			dw = cn20k_nix_tx_dwords(flags, segdw[3]);
+			if (vgetq_lane_u64(ytmp128, 1))
+				cn20k_nix_prep_sec_vec(tx_pkts[3], &cmd0[3], &cmd1[3], &next,
+						       c_laddr, &c_lnum, &c_loff, &c_shft, sa_base,
+						       flags);
+			else
+				cn20k_nix_lmt_next(dw, laddr, &lnum, &loff, &shift, &wd.data128,
+						   &next);
+
+			/* Store mbuf3 to LMTLINE/CPT NIXTX area */
+			cn20k_nix_xmit_store(txq, tx_pkts[3], &extm, segdw[3], next, cmd0[3],
+					     cmd1[3], cmd2[3], cmd3[3], flags);
+
+		} else if (flags & NIX_TX_NEED_EXT_HDR) {
+			/* Store the prepared send desc to LMT lines */
+			if (flags & NIX_TX_OFFLOAD_TSTAMP_F) {
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd3[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd0[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd2[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 96), cmd1[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 112), cmd3[1]);
+				lnum += 1;
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd3[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd0[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd2[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 96), cmd1[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 112), cmd3[3]);
+			} else {
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[0]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd0[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd2[1]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[1]);
+				lnum += 1;
+				vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd2[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd1[2]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd0[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd2[3]);
+				vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[3]);
+			}
+			lnum += 1;
+		} else {
+			/* Store the prepared send desc to LMT lines */
+			vst1q_u64(LMT_OFF(laddr, lnum, 0), cmd0[0]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 16), cmd1[0]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 32), cmd0[1]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 48), cmd1[1]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 64), cmd0[2]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 80), cmd1[2]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 96), cmd0[3]);
+			vst1q_u64(LMT_OFF(laddr, lnum, 112), cmd1[3]);
+			lnum += 1;
+		}
+
+		tx_pkts = tx_pkts + NIX_DESCS_PER_LOOP;
+	}
+
+	/* Roundup lnum to last line if it is partial */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		lnum = lnum + !!loff;
+		wd.data128 = wd.data128 | (((__uint128_t)(((loff >> 4) - 1) & 0x7) << shift));
+	}
+
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+		wd.data[0] >>= 16;
+
+	if ((flags & NIX_TX_VWQE_F) && !(ws[3] & BIT_ULL(35)))
+		ws[3] = roc_sso_hws_head_wait(ws[0]);
+
+	left -= burst;
+
+	/* Submit CPT instructions if any */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		uint16_t sec_pkts = (c_lnum << 1) + c_loff;
+
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, sec_pkts);
+		cn20k_nix_sec_fc_wait(txq, sec_pkts);
+		cn20k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff, c_shft);
+	}
+
+	/* Trigger LMTST */
+	if (lnum > 16) {
+		if (!(flags & NIX_TX_OFFLOAD_SECURITY_F))
+			wd.data[0] = cn20k_nix_tx_steor_vec_data(flags);
+
+		pa = io_addr | (wd.data[0] & 0x7) << 4;
+		wd.data[0] &= ~0x7ULL;
+
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+			wd.data[0] <<= 16;
+
+		wd.data[0] |= (15ULL << 12);
+		wd.data[0] |= (uint64_t)lmt_id;
+
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, cn20k_nix_pkts_per_vec_brst(flags) >> 1);
+		/* STEOR0 */
+		roc_lmt_submit_steorl(wd.data[0], pa);
+
+		if (!(flags & NIX_TX_OFFLOAD_SECURITY_F))
+			wd.data[1] = cn20k_nix_tx_steor_vec_data(flags);
+
+		pa = io_addr | (wd.data[1] & 0x7) << 4;
+		wd.data[1] &= ~0x7ULL;
+
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+			wd.data[1] <<= 16;
+
+		wd.data[1] |= ((uint64_t)(lnum - 17)) << 12;
+		wd.data[1] |= (uint64_t)(lmt_id + 16);
+
+		if (flags & NIX_TX_VWQE_F) {
+			cn20k_nix_vwqe_wait_fc(txq,
+					       burst - (cn20k_nix_pkts_per_vec_brst(flags) >> 1));
+		}
+		/* STEOR1 */
+		roc_lmt_submit_steorl(wd.data[1], pa);
+	} else if (lnum) {
+		if (!(flags & NIX_TX_OFFLOAD_SECURITY_F))
+			wd.data[0] = cn20k_nix_tx_steor_vec_data(flags);
+
+		pa = io_addr | (wd.data[0] & 0x7) << 4;
+		wd.data[0] &= ~0x7ULL;
+
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+			wd.data[0] <<= 16;
+
+		wd.data[0] |= ((uint64_t)(lnum - 1)) << 12;
+		wd.data[0] |= (uint64_t)lmt_id;
+
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, burst);
+		/* STEOR0 */
+		roc_lmt_submit_steorl(wd.data[0], pa);
+	}
+
+	rte_io_wmb();
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && !txq->tx_compl.ena) {
+		cn20k_nix_free_extmbuf(extm);
+		extm = NULL;
+	}
+
+	if (left)
+		goto again;
+
+	if (unlikely(scalar))
+		pkts += cn20k_nix_xmit_pkts(tx_queue, ws, tx_pkts, scalar, cmd, flags);
+	return pkts;
+}
+
+#else
+static __rte_always_inline uint16_t
+cn20k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts, uint16_t pkts,
+			   uint64_t *cmd, const uint16_t flags)
+{
+	RTE_SET_USED(ws);
+	RTE_SET_USED(tx_queue);
+	RTE_SET_USED(tx_pkts);
+	RTE_SET_USED(pkts);
+	RTE_SET_USED(cmd);
+	RTE_SET_USED(flags);
+	return 0;
+}
+#endif
+
 #define L3L4CSUM_F   NIX_TX_OFFLOAD_L3_L4_CSUM_F
 #define OL3OL4CSUM_F NIX_TX_OFFLOAD_OL3_OL4_CSUM_F
 #define VLAN_F	     NIX_TX_OFFLOAD_VLAN_QINQ_F
@@ -1566,10 +3001,11 @@ NIX_TX_FASTPATH_MODES
 	uint16_t __rte_noinline __rte_hot fn(void *tx_queue, struct rte_mbuf **tx_pkts,            \
 					     uint16_t pkts)                                        \
 	{                                                                                          \
-		RTE_SET_USED(tx_queue);                                                            \
-		RTE_SET_USED(tx_pkts);                                                             \
-		RTE_SET_USED(pkts);                                                                \
-		return 0;                                                                          \
+		uint64_t cmd[sz];                                                                  \
+		/* For TSO inner checksum is a must */                                             \
+		if (((flags) & NIX_TX_OFFLOAD_TSO_F) && !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))  \
+			return 0;                                                                  \
+		return cn20k_nix_xmit_pkts_vector(tx_queue, NULL, tx_pkts, pkts, cmd, (flags));    \
 	}
 
 #define NIX_TX_XMIT_VEC_MSEG(fn, sz, flags)                                                        \
