@@ -40,6 +40,78 @@ nix_rx_offload_flags(struct rte_eth_dev *eth_dev)
 	return flags;
 }
 
+static uint16_t
+nix_tx_offload_flags(struct rte_eth_dev *eth_dev)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint64_t conf = dev->tx_offloads;
+	struct roc_nix *nix = &dev->nix;
+	uint16_t flags = 0;
+
+	/* Fastpath is dependent on these enums */
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_TCP_CKSUM != (1ULL << 52));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_SCTP_CKSUM != (2ULL << 52));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_UDP_CKSUM != (3ULL << 52));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_IP_CKSUM != (1ULL << 54));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_IPV4 != (1ULL << 55));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_OUTER_IP_CKSUM != (1ULL << 58));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_OUTER_IPV4 != (1ULL << 59));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_OUTER_IPV6 != (1ULL << 60));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_TX_OUTER_UDP_CKSUM != (1ULL << 41));
+	RTE_BUILD_BUG_ON(RTE_MBUF_L2_LEN_BITS != 7);
+	RTE_BUILD_BUG_ON(RTE_MBUF_L3_LEN_BITS != 9);
+	RTE_BUILD_BUG_ON(RTE_MBUF_OUTL2_LEN_BITS != 7);
+	RTE_BUILD_BUG_ON(RTE_MBUF_OUTL3_LEN_BITS != 9);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) !=
+			 offsetof(struct rte_mbuf, buf_addr) + 16);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
+			 offsetof(struct rte_mbuf, buf_addr) + 24);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
+			 offsetof(struct rte_mbuf, ol_flags) + 12);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, tx_offload) !=
+			 offsetof(struct rte_mbuf, pool) + 2 * sizeof(void *));
+
+	if (conf & RTE_ETH_TX_OFFLOAD_VLAN_INSERT || conf & RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
+		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+
+	if (conf & RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM || conf & RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM)
+		flags |= NIX_TX_OFFLOAD_OL3_OL4_CSUM_F;
+
+	if (conf & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM || conf & RTE_ETH_TX_OFFLOAD_TCP_CKSUM ||
+	    conf & RTE_ETH_TX_OFFLOAD_UDP_CKSUM || conf & RTE_ETH_TX_OFFLOAD_SCTP_CKSUM)
+		flags |= NIX_TX_OFFLOAD_L3_L4_CSUM_F;
+
+	if (!(conf & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE))
+		flags |= NIX_TX_OFFLOAD_MBUF_NOFF_F;
+
+	if (conf & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
+		flags |= NIX_TX_MULTI_SEG_F;
+
+	/* Enable Inner checksum for TSO */
+	if (conf & RTE_ETH_TX_OFFLOAD_TCP_TSO)
+		flags |= (NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_L3_L4_CSUM_F);
+
+	/* Enable Inner and Outer checksum for Tunnel TSO */
+	if (conf & (RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO | RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO |
+		    RTE_ETH_TX_OFFLOAD_GRE_TNL_TSO))
+		flags |= (NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_OL3_OL4_CSUM_F |
+			  NIX_TX_OFFLOAD_L3_L4_CSUM_F);
+
+	if ((dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP))
+		flags |= NIX_TX_OFFLOAD_TSTAMP_F;
+
+	if (conf & RTE_ETH_TX_OFFLOAD_SECURITY)
+		flags |= NIX_TX_OFFLOAD_SECURITY_F;
+
+	if (dev->tx_mark)
+		flags |= NIX_TX_OFFLOAD_VLAN_QINQ_F;
+
+	if (nix->tx_compl_ena)
+		flags |= NIX_TX_OFFLOAD_MBUF_NOFF_F;
+
+	return flags;
+}
+
 static int
 cn20k_nix_ptypes_set(struct rte_eth_dev *eth_dev, uint32_t ptype_mask)
 {
@@ -226,6 +298,7 @@ cn20k_nix_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t nb_
 
 		/* Update offload flags */
 		dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
+		dev->tx_offload_flags = nix_tx_offload_flags(eth_dev);
 	}
 
 	rq = &dev->rqs[qid];
@@ -286,6 +359,8 @@ cn20k_nix_configure(struct rte_eth_dev *eth_dev)
 
 	/* Update offload flags */
 	dev->rx_offload_flags = nix_rx_offload_flags(eth_dev);
+	dev->tx_offload_flags = nix_tx_offload_flags(eth_dev);
+
 	/* reset reassembly dynfield/flag offset */
 	dev->reass_dynfield_off = -1;
 	dev->reass_dynflag_bit = -1;
@@ -316,6 +391,7 @@ cn20k_nix_timesync_enable(struct rte_eth_dev *eth_dev)
 	 * in rx[tx]_offloads.
 	 */
 	cn20k_eth_set_rx_function(eth_dev);
+	cn20k_eth_set_tx_function(eth_dev);
 	return 0;
 }
 
@@ -339,6 +415,7 @@ cn20k_nix_timesync_disable(struct rte_eth_dev *eth_dev)
 	 * in rx[tx]_offloads.
 	 */
 	cn20k_eth_set_rx_function(eth_dev);
+	cn20k_eth_set_tx_function(eth_dev);
 	return 0;
 }
 
@@ -378,10 +455,12 @@ cn20k_nix_dev_start(struct rte_eth_dev *eth_dev)
 	 * in rx[tx]_offloads.
 	 */
 	dev->rx_offload_flags |= nix_rx_offload_flags(eth_dev);
+	dev->tx_offload_flags |= nix_tx_offload_flags(eth_dev);
 	/* Set flags for Rx Inject feature */
 	if (roc_idev_nix_rx_inject_get(nix->port_id))
 		dev->rx_offload_flags |= NIX_RX_SEC_REASSEMBLY_F;
 
+	cn20k_eth_set_tx_function(eth_dev);
 	cn20k_eth_set_rx_function(eth_dev);
 	return 0;
 }
@@ -581,6 +660,7 @@ cn20k_nix_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		/* Setup callbacks for secondary process */
+		cn20k_eth_set_tx_function(eth_dev);
 		cn20k_eth_set_rx_function(eth_dev);
 		return 0;
 	}

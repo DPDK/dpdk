@@ -237,6 +237,7 @@ if soc_type == 'cn20k' or soc_type == 'all'
 sources += files(
         'cn20k_ethdev.c',
         'cn20k_rx_select.c',
+        'cn20k_tx_select.c',
 )
 
 if host_machine.cpu_family().startswith('aarch') and not disable_template
@@ -276,9 +277,45 @@ sources += files(
         'rx/cn20k/rx_all_offload.c',
 )
 
+sources += files(
+        'tx/cn20k/tx_0_15.c',
+        'tx/cn20k/tx_16_31.c',
+        'tx/cn20k/tx_32_47.c',
+        'tx/cn20k/tx_48_63.c',
+        'tx/cn20k/tx_64_79.c',
+        'tx/cn20k/tx_80_95.c',
+        'tx/cn20k/tx_96_111.c',
+        'tx/cn20k/tx_112_127.c',
+        'tx/cn20k/tx_0_15_mseg.c',
+        'tx/cn20k/tx_16_31_mseg.c',
+        'tx/cn20k/tx_32_47_mseg.c',
+        'tx/cn20k/tx_48_63_mseg.c',
+        'tx/cn20k/tx_64_79_mseg.c',
+        'tx/cn20k/tx_80_95_mseg.c',
+        'tx/cn20k/tx_96_111_mseg.c',
+        'tx/cn20k/tx_112_127_mseg.c',
+        'tx/cn20k/tx_0_15_vec.c',
+        'tx/cn20k/tx_16_31_vec.c',
+        'tx/cn20k/tx_32_47_vec.c',
+        'tx/cn20k/tx_48_63_vec.c',
+        'tx/cn20k/tx_64_79_vec.c',
+        'tx/cn20k/tx_80_95_vec.c',
+        'tx/cn20k/tx_96_111_vec.c',
+        'tx/cn20k/tx_112_127_vec.c',
+        'tx/cn20k/tx_0_15_vec_mseg.c',
+        'tx/cn20k/tx_16_31_vec_mseg.c',
+        'tx/cn20k/tx_32_47_vec_mseg.c',
+        'tx/cn20k/tx_48_63_vec_mseg.c',
+        'tx/cn20k/tx_64_79_vec_mseg.c',
+        'tx/cn20k/tx_80_95_vec_mseg.c',
+        'tx/cn20k/tx_96_111_vec_mseg.c',
+        'tx/cn20k/tx_112_127_vec_mseg.c',
+        'tx/cn20k/tx_all_offload.c',
+)
 else
 sources += files(
         'rx/cn20k/rx_all_offload.c',
+        'tx/cn20k/tx_all_offload.c',
 )
 endif
 endif

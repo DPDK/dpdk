@@ -10,5 +10,6 @@
 
 /* Rx and Tx routines */
 void cn20k_eth_set_rx_function(struct rte_eth_dev *eth_dev);
+void cn20k_eth_set_tx_function(struct rte_eth_dev *eth_dev);
 
 #endif /* __CN20K_ETHDEV_H__ */
