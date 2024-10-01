@@ -863,6 +863,183 @@ cn20k_nix_xmit_prepare_tstamp(struct cn20k_eth_txq *txq, uintptr_t lmt_addr,
 }
 
 static __rte_always_inline uint16_t
+cn20k_nix_prepare_mseg(struct cn20k_eth_txq *txq, struct rte_mbuf *m, struct rte_mbuf **extm,
+		       uint64_t *cmd, const uint16_t flags)
+{
+	uint64_t prefree = 0, aura0, aura, nb_segs, segdw;
+	struct nix_send_hdr_s *send_hdr;
+	union nix_send_sg_s *sg, l_sg;
+	union nix_send_sg2_s l_sg2;
+	struct rte_mbuf *cookie;
+	struct rte_mbuf *m_next;
+	uint8_t off, is_sg2;
+	uint64_t len, dlen;
+	uint64_t ol_flags;
+	uint64_t *slist;
+
+	send_hdr = (struct nix_send_hdr_s *)cmd;
+
+	if (flags & NIX_TX_NEED_EXT_HDR)
+		off = 2;
+	else
+		off = 0;
+
+	sg = (union nix_send_sg_s *)&cmd[2 + off];
+	len = send_hdr->w0.total;
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F)
+		ol_flags = m->ol_flags;
+
+	/* Start from second segment, first segment is already there */
+	dlen = m->data_len;
+	is_sg2 = 0;
+	l_sg.u = sg->u;
+	/* Clear l_sg.u first seg length that might be stale from vector path */
+	l_sg.u &= ~0xFFFFUL;
+	l_sg.u |= dlen;
+	len -= dlen;
+	nb_segs = m->nb_segs - 1;
+	m_next = m->next;
+	m->next = NULL;
+	m->nb_segs = 1;
+	slist = &cmd[3 + off + 1];
+
+	cookie = RTE_MBUF_DIRECT(m) ? m : rte_mbuf_from_indirect(m);
+	/* Set invert df if buffer is not to be freed by H/W */
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+		aura = send_hdr->w0.aura;
+		prefree = cn20k_nix_prefree_seg(m, extm, txq, send_hdr, &aura);
+		send_hdr->w0.aura = aura;
+		l_sg.i1 = prefree;
+	}
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+	/* Mark mempool object as "put" since it is freed by NIX */
+	if (!prefree)
+		RTE_MEMPOOL_CHECK_COOKIES(cookie->pool, (void **)&cookie, 1, 0);
+	rte_io_wmb();
+#else
+	RTE_SET_USED(cookie);
+#endif
+
+	/* Quickly handle single segmented packets. With this if-condition
+	 * compiler will completely optimize out the below do-while loop
+	 * from the Tx handler when NIX_TX_MULTI_SEG_F offload is not set.
+	 */
+	if (!(flags & NIX_TX_MULTI_SEG_F))
+		goto done;
+
+	aura0 = send_hdr->w0.aura;
+	m = m_next;
+	if (!m)
+		goto done;
+
+	/* Fill mbuf segments */
+	do {
+		uint64_t iova;
+
+		/* Save the current mbuf properties. These can get cleared in
+		 * cnxk_nix_prefree_seg()
+		 */
+		m_next = m->next;
+		iova = rte_mbuf_data_iova(m);
+		dlen = m->data_len;
+		len -= dlen;
+
+		nb_segs--;
+		aura = aura0;
+		prefree = 0;
+
+		m->next = NULL;
+
+		cookie = RTE_MBUF_DIRECT(m) ? m : rte_mbuf_from_indirect(m);
+		if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F) {
+			aura = roc_npa_aura_handle_to_aura(m->pool->pool_id);
+			prefree = cn20k_nix_prefree_seg(m, extm, txq, send_hdr, &aura);
+			is_sg2 = aura != aura0 && !prefree;
+		}
+
+		if (unlikely(is_sg2)) {
+			/* This mbuf belongs to a different pool and
+			 * DF bit is not to be set, so use SG2 subdesc
+			 * so that it is freed to the appropriate pool.
+			 */
+
+			/* Write the previous descriptor out */
+			sg->u = l_sg.u;
+
+			/* If the current SG subdc does not have any
+			 * iovas in it, then the SG2 subdc can overwrite
+			 * that SG subdc.
+			 *
+			 * If the current SG subdc has 2 iovas in it, then
+			 * the current iova word should be left empty.
+			 */
+			slist += (-1 + (int)l_sg.segs);
+			sg = (union nix_send_sg_s *)slist;
+
+			l_sg2.u = l_sg.u & 0xC00000000000000; /* LD_TYPE */
+			l_sg2.subdc = NIX_SUBDC_SG2;
+			l_sg2.aura = aura;
+			l_sg2.seg1_size = dlen;
+			l_sg.u = l_sg2.u;
+
+			slist++;
+			*slist = iova;
+			slist++;
+		} else {
+			*slist = iova;
+			/* Set invert df if buffer is not to be freed by H/W */
+			l_sg.u |= (prefree << (l_sg.segs + 55));
+			/* Set the segment length */
+			l_sg.u |= ((uint64_t)dlen << (l_sg.segs << 4));
+			l_sg.segs += 1;
+			slist++;
+		}
+
+		if ((is_sg2 || l_sg.segs > 2) && nb_segs) {
+			sg->u = l_sg.u;
+			/* Next SG subdesc */
+			sg = (union nix_send_sg_s *)slist;
+			l_sg.u &= 0xC00000000000000; /* LD_TYPE */
+			l_sg.subdc = NIX_SUBDC_SG;
+			slist++;
+		}
+
+#ifdef RTE_LIBRTE_MEMPOOL_DEBUG
+		/* Mark mempool object as "put" since it is freed by NIX
+		 */
+		if (!prefree)
+			RTE_MEMPOOL_CHECK_COOKIES(cookie->pool, (void **)&cookie, 1, 0);
+#else
+		RTE_SET_USED(cookie);
+#endif
+		m = m_next;
+	} while (nb_segs);
+
+done:
+	/* Add remaining bytes of security data to last seg */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD && len) {
+		uint8_t shft = (l_sg.subdc == NIX_SUBDC_SG) ? ((l_sg.segs - 1) << 4) : 0;
+
+		dlen = ((l_sg.u >> shft) & 0xFFFFULL) + len;
+		l_sg.u = l_sg.u & ~(0xFFFFULL << shft);
+		l_sg.u |= dlen << shft;
+	}
+
+	/* Write the last subdc out */
+	sg->u = l_sg.u;
+
+	segdw = (uint64_t *)slist - (uint64_t *)&cmd[2 + off];
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	/* Default dwords */
+	segdw += (off >> 1) + 1 + !!(flags & NIX_TX_OFFLOAD_TSTAMP_F);
+	send_hdr->w0.sizem1 = segdw - 1;
+
+	return segdw;
+}
+
+static __rte_always_inline uint16_t
 cn20k_nix_xmit_pkts(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts, uint16_t pkts,
 		    uint64_t *cmd, const uint16_t flags)
 {
@@ -995,6 +1172,170 @@ again:
 			cn20k_nix_vwqe_wait_fc(txq, burst);
 		/* STEOR0 */
 		roc_lmt_submit_steorl(data, pa);
+	}
+
+	rte_io_wmb();
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && !txq->tx_compl.ena) {
+		cn20k_nix_free_extmbuf(extm);
+		extm = NULL;
+	}
+
+	if (left)
+		goto again;
+
+	return pkts;
+}
+
+static __rte_always_inline uint16_t
+cn20k_nix_xmit_pkts_mseg(void *tx_queue, uint64_t *ws, struct rte_mbuf **tx_pkts, uint16_t pkts,
+			 uint64_t *cmd, const uint16_t flags)
+{
+	struct cn20k_eth_txq *txq = tx_queue;
+	uintptr_t pa0, pa1, lbase = txq->lmt_base;
+	const rte_iova_t io_addr = txq->io_addr;
+	uint16_t segdw, lmt_id, burst, left, i;
+	struct rte_mbuf *extm = NULL;
+	uint8_t lnum, c_lnum, c_loff;
+	uintptr_t c_lbase = lbase;
+	uint64_t lso_tun_fmt = 0;
+	uint64_t mark_fmt = 0;
+	uint8_t mark_flag = 0;
+	uint64_t data0, data1;
+	rte_iova_t c_io_addr;
+	uint8_t shft, c_shft;
+	__uint128_t data128;
+	uint16_t c_lmt_id;
+	uint64_t sa_base;
+	uintptr_t laddr;
+	bool sec;
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, flags & NIX_TX_VWQE_F);
+
+	if (!(flags & NIX_TX_VWQE_F))
+		NIX_XMIT_FC_CHECK_RETURN(txq, pkts);
+
+	/* Get cmd skeleton */
+	cn20k_nix_tx_skeleton(txq, cmd, flags, !(flags & NIX_TX_VWQE_F));
+
+	if (flags & NIX_TX_OFFLOAD_TSO_F)
+		lso_tun_fmt = txq->lso_tun_fmt;
+
+	if (flags & NIX_TX_OFFLOAD_VLAN_QINQ_F) {
+		mark_fmt = txq->mark_fmt;
+		mark_flag = txq->mark_flag;
+	}
+
+	/* Get LMT base address and LMT ID as lcore id */
+	ROC_LMT_BASE_ID_GET(lbase, lmt_id);
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		ROC_LMT_CPT_BASE_ID_GET(c_lbase, c_lmt_id);
+		c_io_addr = txq->cpt_io_addr;
+		sa_base = txq->sa_base;
+	}
+
+	left = pkts;
+again:
+	burst = left > 32 ? 32 : left;
+	shft = 16;
+	data128 = 0;
+
+	lnum = 0;
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		c_lnum = 0;
+		c_loff = 0;
+		c_shft = 16;
+	}
+
+	for (i = 0; i < burst; i++) {
+		cn20k_nix_tx_mbuf_validate(tx_pkts[i], flags);
+
+		/* Perform header writes for TSO, barrier at
+		 * lmt steorl will suffice.
+		 */
+		if (flags & NIX_TX_OFFLOAD_TSO_F)
+			cn20k_nix_xmit_prepare_tso(tx_pkts[i], flags);
+
+		cn20k_nix_xmit_prepare(txq, tx_pkts[i], &extm, cmd, flags, lso_tun_fmt, &sec,
+				       mark_flag, mark_fmt);
+
+		laddr = (uintptr_t)LMT_OFF(lbase, lnum, 0);
+
+		/* Prepare CPT instruction and get nixtx addr */
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+			cn20k_nix_prep_sec(tx_pkts[i], cmd, &laddr, c_lbase, &c_lnum, &c_loff,
+					   &c_shft, sa_base, flags);
+
+		/* Move NIX desc to LMT/NIXTX area */
+		cn20k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
+		/* Store sg list directly on lmt line */
+		segdw = cn20k_nix_prepare_mseg(txq, tx_pkts[i], &extm, (uint64_t *)laddr, flags);
+		cn20k_nix_xmit_prepare_tstamp(txq, laddr, tx_pkts[i]->ol_flags, segdw, flags);
+		if (!(flags & NIX_TX_OFFLOAD_SECURITY_F) || !sec) {
+			lnum++;
+			data128 |= (((__uint128_t)(segdw - 1)) << shft);
+			shft += 3;
+		}
+	}
+
+	if ((flags & NIX_TX_VWQE_F) && !(ws[3] & BIT_ULL(35)))
+		ws[3] = roc_sso_hws_head_wait(ws[0]);
+
+	left -= burst;
+	tx_pkts += burst;
+
+	/* Submit CPT instructions if any */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
+		uint16_t sec_pkts = ((c_lnum << 1) + c_loff);
+
+		/* Reduce pkts to be sent to CPT */
+		burst -= sec_pkts;
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, sec_pkts);
+		cn20k_nix_sec_fc_wait(txq, sec_pkts);
+		cn20k_nix_sec_steorl(c_io_addr, c_lmt_id, c_lnum, c_loff, c_shft);
+	}
+
+	data0 = (uint64_t)data128;
+	data1 = (uint64_t)(data128 >> 64);
+	/* Make data0 similar to data1 */
+	data0 >>= 16;
+	/* Trigger LMTST */
+	if (burst > 16) {
+		pa0 = io_addr | (data0 & 0x7) << 4;
+		data0 &= ~0x7ULL;
+		/* Move lmtst1..15 sz to bits 63:19 */
+		data0 <<= 16;
+		data0 |= (15ULL << 12);
+		data0 |= (uint64_t)lmt_id;
+
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, 16);
+		/* STEOR0 */
+		roc_lmt_submit_steorl(data0, pa0);
+
+		pa1 = io_addr | (data1 & 0x7) << 4;
+		data1 &= ~0x7ULL;
+		data1 <<= 16;
+		data1 |= ((uint64_t)(burst - 17)) << 12;
+		data1 |= (uint64_t)(lmt_id + 16);
+
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, burst - 16);
+		/* STEOR1 */
+		roc_lmt_submit_steorl(data1, pa1);
+	} else if (burst) {
+		pa0 = io_addr | (data0 & 0x7) << 4;
+		data0 &= ~0x7ULL;
+		/* Move lmtst1..15 sz to bits 63:19 */
+		data0 <<= 16;
+		data0 |= ((burst - 1ULL) << 12);
+		data0 |= (uint64_t)lmt_id;
+
+		if (flags & NIX_TX_VWQE_F)
+			cn20k_nix_vwqe_wait_fc(txq, burst);
+		/* STEOR0 */
+		roc_lmt_submit_steorl(data0, pa0);
 	}
 
 	rte_io_wmb();
@@ -1213,10 +1554,12 @@ NIX_TX_FASTPATH_MODES
 	uint16_t __rte_noinline __rte_hot fn(void *tx_queue, struct rte_mbuf **tx_pkts,            \
 					     uint16_t pkts)                                        \
 	{                                                                                          \
-		RTE_SET_USED(tx_queue);                                                            \
-		RTE_SET_USED(tx_pkts);                                                             \
-		RTE_SET_USED(pkts);                                                                \
-		return 0;                                                                          \
+		uint64_t cmd[(sz) + CNXK_NIX_TX_MSEG_SG_DWORDS - 2];                               \
+		/* For TSO inner checksum is a must */                                             \
+		if (((flags) & NIX_TX_OFFLOAD_TSO_F) && !((flags) & NIX_TX_OFFLOAD_L3_L4_CSUM_F))  \
+			return 0;                                                                  \
+		return cn20k_nix_xmit_pkts_mseg(tx_queue, NULL, tx_pkts, pkts, cmd,                \
+						flags | NIX_TX_MULTI_SEG_F);                       \
 	}
 
 #define NIX_TX_XMIT_VEC(fn, sz, flags)                                                             \
@@ -1246,5 +1589,4 @@ uint16_t __rte_noinline __rte_hot cn20k_nix_xmit_pkts_all_offload(void *tx_queue
 uint16_t __rte_noinline __rte_hot cn20k_nix_xmit_pkts_vec_all_offload(void *tx_queue,
 								      struct rte_mbuf **tx_pkts,
 								      uint16_t pkts);
-
 #endif /* __CN20K_TX_H__ */
