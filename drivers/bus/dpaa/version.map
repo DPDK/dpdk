@@ -24,6 +24,10 @@ INTERNAL {
 	fman_dealloc_bufs_mask_hi;
 	fman_dealloc_bufs_mask_lo;
 	fman_if_add_mac_addr;
+	fman_if_bmi_stats_enable;
+	fman_if_bmi_stats_disable;
+	fman_if_bmi_stats_get_all;
+	fman_if_bmi_stats_reset;
 	fman_if_clear_mac_addr;
 	fman_if_disable_rx;
 	fman_if_discard_rx_errors;

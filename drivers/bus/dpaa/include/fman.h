@@ -56,6 +56,8 @@
 #define FMAN_PORT_BMI_FIFO_UNITS	0x100
 #define FMAN_PORT_IC_OFFSET_UNITS	0x10
 
+#define FMAN_BMI_COUNTERS_EN 0x80000000
+
 #define FMAN_ENABLE_BPOOL_DEPLETION	0xF00000F0
 
 #define HASH_CTRL_MCAST_EN	0x00000100
@@ -260,7 +262,7 @@ struct rx_bmi_regs {
 					/**< Buffer Manager pool Information-*/
 	uint32_t fmbm_acnt[FMAN_PORT_MAX_EXT_POOLS_NUM];
 					/**< Allocate Counter-*/
-	uint32_t reserved0130[8];
+	uint32_t reserved0120[16];
 					/**< 0x130/0x140 - 0x15F reserved -*/
 	uint32_t fmbm_rcgm[FMAN_PORT_CG_MAP_NUM];
 					/**< Congestion Group Map*/
