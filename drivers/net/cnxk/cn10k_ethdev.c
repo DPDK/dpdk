@@ -473,7 +473,7 @@ cn10k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 	struct cnxk_eth_dev *dev = (struct cnxk_eth_dev *)nix;
 	struct rte_eth_dev *eth_dev;
 	struct cn10k_eth_rxq *rxq;
-	int i;
+	int i, rc;
 
 	if (!dev)
 		return -EINVAL;
@@ -496,7 +496,17 @@ cn10k_nix_ptp_info_update_cb(struct roc_nix *nix, bool ptp_en)
 		 * and MTU setting also requires MBOX message to be
 		 * sent(VF->PF)
 		 */
+		if (dev->ptp_en) {
+			rc = rte_mbuf_dyn_rx_timestamp_register
+				(&dev->tstamp.tstamp_dynfield_offset,
+				 &dev->tstamp.rx_tstamp_dynflag);
+			if (rc != 0) {
+				plt_err("Failed to register Rx timestamp field/flag");
+				return -EINVAL;
+			}
+		}
 		eth_dev->rx_pkt_burst = nix_ptp_vf_burst;
+		rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst = eth_dev->rx_pkt_burst;
 		rte_mb();
 	}
 
