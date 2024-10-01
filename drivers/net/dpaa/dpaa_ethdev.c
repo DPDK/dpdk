@@ -131,6 +131,22 @@ static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
 		offsetof(struct dpaa_if_stats, tvlan)},
 	{"rx_undersized",
 		offsetof(struct dpaa_if_stats, tund)},
+	{"rx_frame_counter",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rfrc)},
+	{"rx_bad_frames_count",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rfbc)},
+	{"rx_large_frames_count",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rlfc)},
+	{"rx_filter_frames_count",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rffc)},
+	{"rx_frame_discrad_count",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rfdc)},
+	{"rx_frame_list_dma_err_count",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rfldec)},
+	{"rx_out_of_buffer_discard ",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rodc)},
+	{"rx_buf_diallocate",
+		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rbdc)},
 };
 
 static struct rte_dpaa_driver rte_dpaa_pmd;
@@ -430,6 +446,7 @@ static void dpaa_interrupt_handler(void *param)
 static int dpaa_eth_dev_start(struct rte_eth_dev *dev)
 {
 	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct fman_if *fif = dev->process_private;
 	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
@@ -443,7 +460,9 @@ static int dpaa_eth_dev_start(struct rte_eth_dev *dev)
 	else
 		dev->tx_pkt_burst = dpaa_eth_queue_tx;
 
-	fman_if_enable_rx(dev->process_private);
+	fman_if_bmi_stats_enable(fif);
+	fman_if_bmi_stats_reset(fif);
+	fman_if_enable_rx(fif);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -461,8 +480,10 @@ static int dpaa_eth_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 	dev->data->dev_started = 0;
 
-	if (!fif->is_shared_mac)
+	if (!fif->is_shared_mac) {
+		fman_if_bmi_stats_disable(fif);
 		fman_if_disable_rx(fif);
+	}
 	dev->tx_pkt_burst = dpaa_eth_tx_drop_all;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
@@ -769,6 +790,7 @@ static int dpaa_eth_stats_reset(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_stats_reset(dev->process_private);
+	fman_if_bmi_stats_reset(dev->process_private);
 
 	return 0;
 }
@@ -777,8 +799,9 @@ static int
 dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		    unsigned int n)
 {
-	unsigned int i = 0, num = RTE_DIM(dpaa_xstats_strings);
+	unsigned int i = 0, j, num = RTE_DIM(dpaa_xstats_strings);
 	uint64_t values[sizeof(struct dpaa_if_stats) / 8];
+	unsigned int bmi_count = sizeof(struct dpaa_if_rx_bmi_stats) / 4;
 
 	if (n < num)
 		return num;
@@ -789,10 +812,16 @@ dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	fman_if_stats_get_all(dev->process_private, values,
 			      sizeof(struct dpaa_if_stats) / 8);
 
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < num - (bmi_count - 1); i++) {
 		xstats[i].id = i;
 		xstats[i].value = values[dpaa_xstats_strings[i].offset / 8];
 	}
+	fman_if_bmi_stats_get_all(dev->process_private, values);
+	for (j = 0; i < num; i++, j++) {
+		xstats[i].id = i;
+		xstats[i].value = values[j];
+	}
+
 	return i;
 }
 
@@ -819,8 +848,9 @@ static int
 dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		      uint64_t *values, unsigned int n)
 {
-	unsigned int i, stat_cnt = RTE_DIM(dpaa_xstats_strings);
+	unsigned int i, j, stat_cnt = RTE_DIM(dpaa_xstats_strings);
 	uint64_t values_copy[sizeof(struct dpaa_if_stats) / 8];
+	unsigned int bmi_count = sizeof(struct dpaa_if_rx_bmi_stats) / 4;
 
 	if (!ids) {
 		if (n < stat_cnt)
@@ -832,9 +862,13 @@ dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		fman_if_stats_get_all(dev->process_private, values_copy,
 				      sizeof(struct dpaa_if_stats) / 8);
 
-		for (i = 0; i < stat_cnt; i++)
+		for (i = 0; i < stat_cnt - (bmi_count - 1); i++)
 			values[i] =
 				values_copy[dpaa_xstats_strings[i].offset / 8];
+
+		fman_if_bmi_stats_get_all(dev->process_private, values);
+		for (j = 0; i < stat_cnt; i++, j++)
+			values[i] = values_copy[j];
 
 		return stat_cnt;
 	}
