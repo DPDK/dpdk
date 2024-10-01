@@ -38,5 +38,6 @@ roc_ot_ipsec_outb_sa_init(struct roc_ot_ipsec_outb_sa *sa)
 	offset = offsetof(struct roc_ot_ipsec_outb_sa, ctx);
 	sa->w0.s.ctx_push_size = (offset / ROC_CTX_UNIT_8B) + 1;
 	sa->w0.s.ctx_size = ROC_IE_OT_CTX_ILEN;
+	sa->w0.s.ctx_hdr_size = ROC_IE_OT_SA_CTX_HDR_SIZE;
 	sa->w0.s.aop_valid = 1;
 }
