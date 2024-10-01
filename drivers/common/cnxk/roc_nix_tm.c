@@ -1058,10 +1058,30 @@ nix_tm_sq_sched_conf(struct nix *nix, struct nix_tm_node *node,
 		}
 		aq->sq.smq_rr_quantum = rr_quantum;
 		aq->sq_mask.smq_rr_quantum = ~aq->sq_mask.smq_rr_quantum;
-	} else {
+	} else if (roc_model_is_cn10k()) {
 		struct nix_cn10k_aq_enq_req *aq;
 
 		aq = mbox_alloc_msg_nix_cn10k_aq_enq(mbox);
+		if (!aq) {
+			rc = -ENOSPC;
+			goto exit;
+		}
+
+		aq->qidx = qid;
+		aq->ctype = NIX_AQ_CTYPE_SQ;
+		aq->op = NIX_AQ_INSTOP_WRITE;
+
+		/* smq update only when needed */
+		if (!rr_quantum_only) {
+			aq->sq.smq = smq;
+			aq->sq_mask.smq = ~aq->sq_mask.smq;
+		}
+		aq->sq.smq_rr_weight = rr_quantum;
+		aq->sq_mask.smq_rr_weight = ~aq->sq_mask.smq_rr_weight;
+	} else {
+		struct nix_cn20k_aq_enq_req *aq;
+
+		aq = mbox_alloc_msg_nix_cn20k_aq_enq(mbox);
 		if (!aq) {
 			rc = -ENOSPC;
 			goto exit;

@@ -1392,6 +1392,8 @@ roc_nix_inl_dev_rq_get(struct roc_nix_rq *rq, bool enable)
 	mbox = mbox_get(dev->mbox);
 	if (roc_model_is_cn9k())
 		rc = nix_rq_cn9k_cfg(dev, inl_rq, inl_dev->qints, false, enable);
+	else if (roc_model_is_cn10k())
+		rc = nix_rq_cn10k_cfg(dev, inl_rq, inl_dev->qints, false, enable);
 	else
 		rc = nix_rq_cfg(dev, inl_rq, inl_dev->qints, false, enable);
 	if (rc) {
