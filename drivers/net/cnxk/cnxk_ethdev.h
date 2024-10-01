@@ -443,6 +443,13 @@ struct cnxk_eth_dev {
 	/* Reassembly dynfield/flag offsets */
 	int reass_dynfield_off;
 	int reass_dynflag_bit;
+
+	/* SSO event dev */
+	void *evdev_priv;
+
+	/* SSO event dev ptp  */
+	void (*cnxk_sso_ptp_tstamp_cb)
+	     (uint16_t port_id, uint16_t flags, bool ptp_en);
 };
 
 struct cnxk_eth_rxq_sp {
