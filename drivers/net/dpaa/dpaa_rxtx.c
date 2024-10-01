@@ -693,13 +693,26 @@ dpaa_rx_cb_atomic(void *event,
 }
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
-static inline void dpaa_eth_err_queue(struct dpaa_if *dpaa_intf)
+static inline void
+dpaa_eth_err_queue(struct qman_fq *fq)
 {
 	struct rte_mbuf *mbuf;
 	struct qman_fq *debug_fq;
 	int ret, i;
 	struct qm_dqrr_entry *dq;
 	struct qm_fd *fd;
+	struct dpaa_if *dpaa_intf;
+
+	dpaa_intf = fq->dpaa_intf;
+	if (fq != &dpaa_intf->rx_queues[0]) {
+		/* Associate error queues to the first RXQ.*/
+		return;
+	}
+
+	if (dpaa_intf->cfg->fman_if->is_shared_mac) {
+		/* Error queues of shared MAC are handled in kernel. */
+		return;
+	}
 
 	if (unlikely(!RTE_PER_LCORE(dpaa_io))) {
 		ret = rte_dpaa_portal_init((void *)0);
@@ -708,7 +721,7 @@ static inline void dpaa_eth_err_queue(struct dpaa_if *dpaa_intf)
 			return;
 		}
 	}
-	for (i = 0; i <= DPAA_DEBUG_FQ_TX_ERROR; i++) {
+	for (i = 0; i < DPAA_DEBUG_FQ_MAX_NUM; i++) {
 		debug_fq = &dpaa_intf->debug_queues[i];
 		ret = qman_set_vdq(debug_fq, 4, QM_VDQCR_EXACT);
 		if (ret)
@@ -751,8 +764,7 @@ uint16_t dpaa_eth_queue_rx(void *q,
 		rte_dpaa_bpid_info = fq->bp_array;
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
-	if (fq->fqid == ((struct dpaa_if *)fq->dpaa_intf)->rx_queues[0].fqid)
-		dpaa_eth_err_queue((struct dpaa_if *)fq->dpaa_intf);
+	dpaa_eth_err_queue(fq);
 #endif
 
 	if (likely(fq->is_static))

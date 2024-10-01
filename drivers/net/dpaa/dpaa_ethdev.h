@@ -78,8 +78,11 @@
 #define DPAA_IF_RX_CONTEXT_STASH		0
 
 /* Each "debug" FQ is represented by one of these */
-#define DPAA_DEBUG_FQ_RX_ERROR   0
-#define DPAA_DEBUG_FQ_TX_ERROR   1
+enum {
+	DPAA_DEBUG_FQ_RX_ERROR,
+	DPAA_DEBUG_FQ_TX_ERROR,
+	DPAA_DEBUG_FQ_MAX_NUM
+};
 
 #define DPAA_RSS_OFFLOAD_ALL ( \
 	RTE_ETH_RSS_L2_PAYLOAD | \
@@ -106,6 +109,10 @@
 /**< Didn't calculate L4 Checksum */
 #define DPAA_FD_CMD_CFQ			0x00ffffff
 /**< Confirmation Frame Queue */
+
+#define DPAA_1G_MAC_START_IDX 1
+#define DPAA_10G_MAC_START_IDX 9
+#define DPAA_2_5G_MAC_START_IDX DPAA_10G_MAC_START_IDX
 
 #define DPAA_DEFAULT_RXQ_VSP_ID		1
 
@@ -134,7 +141,7 @@ struct dpaa_if {
 	struct qman_fq *tx_queues;
 	struct qman_fq *tx_conf_queues;
 	struct qman_cgr *cgr_tx;
-	struct qman_fq debug_queues[2];
+	struct qman_fq debug_queues[DPAA_DEBUG_FQ_MAX_NUM];
 	uint16_t nb_rx_queues;
 	uint16_t nb_tx_queues;
 	uint32_t ifid;

@@ -76,6 +76,7 @@ enum fman_mac_type {
 	fman_mac_1g,
 	fman_mac_10g,
 	fman_mac_2_5g,
+	fman_onic,
 };
 
 struct mac_addr {
