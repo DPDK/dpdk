@@ -2057,6 +2057,9 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	int8_t dev_vspids[DPAA_MAX_NUM_PCD_QUEUES];
 	int8_t vsp_id = -1;
 	struct rte_device *dev = eth_dev->device;
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+	char *penv;
+#endif
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2135,6 +2138,12 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		if (td_tx_threshold > UINT16_MAX)
 			td_tx_threshold = CGR_RX_PERFQ_THRESH;
 	}
+
+#ifdef RTE_LIBRTE_DPAA_DEBUG_DRIVER
+	penv = getenv("DPAA_DISPLAY_FRAME_AND_PARSER_RESULT");
+	if (penv)
+		dpaa_force_display_frame_set(atoi(penv));
+#endif
 
 	/* If congestion control is enabled globally*/
 	if (num_rx_fqs > 0 && td_threshold) {

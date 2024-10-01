@@ -227,6 +227,11 @@ state during application initialization:
   application want to use eventdev with DPAA device.
   Currently these queues are not used for LS1023/LS1043 platform by default.
 
+- ``DPAA_DISPLAY_FRAME_AND_PARSER_RESULT`` (default 0)
+
+  This defines the debug flag, whether to dump the detailed frame
+  and packet parsing result for the incoming packets.
+
 
 Driver compilation and testing
 ------------------------------
