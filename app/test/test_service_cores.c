@@ -49,21 +49,27 @@ testsuite_teardown(void)
 static int32_t dummy_cb(void *args)
 {
 	RTE_SET_USED(args);
+	int32_t rc;
 
 	service_calls++;
 
 	switch (rte_rand_max(3)) {
 	case 0:
-		return 0;
+		rc = 0;
+		break;
 	case 1:
 		service_idle_calls++;
-		return -EAGAIN;
+		rc = -EAGAIN;
+		break;
 	default:
 		service_error_calls++;
-		return -ENOENT;
+		rc = -ENOENT;
+		break;
 	}
 
 	rte_delay_ms(SERVICE_DELAY);
+
+	return rc;
 }
 
 static int32_t dummy_mt_unsafe_cb(void *args)
