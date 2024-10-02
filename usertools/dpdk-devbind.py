@@ -107,6 +107,7 @@ loaded_modules = None
 b_flag = None
 status_flag = False
 force_flag = False
+noiommu_flag = False
 args = []
 
 
@@ -477,6 +478,34 @@ def unbind_all(dev_list, force=False):
         unbind_one(d, force)
 
 
+def has_iommu():
+    """Check if IOMMU is enabled on system"""
+    return len(os.listdir("/sys/class/iommu")) > 0
+
+
+def check_noiommu_mode():
+    """Check and enable the noiommu mode for VFIO drivers"""
+    global noiommu_flag
+    filename = "/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
+
+    try:
+        with open(filename, "r") as f:
+            if f.read(1) == "1":
+                return
+    except OSError as err:
+        sys.exit(f"Error: failed to check unsafe noiommu mode - Cannot open {filename}: {err}")
+
+    if not noiommu_flag:
+        sys.exit("Error: IOMMU support is disabled, use --noiommu-mode for binding in noiommu mode")
+
+    try:
+        with open(filename, "w") as f:
+            f.write("1")
+    except OSError as err:
+        sys.exit(f"Error: failed to enable unsafe noiommu mode - Cannot open {filename}: {err}")
+    print("Warning: enabling unsafe no IOMMU mode for VFIO drivers")
+
+
 def bind_all(dev_list, driver, force=False):
     """Bind method, takes a list of device locations"""
     global devices
@@ -502,6 +531,10 @@ def bind_all(dev_list, driver, force=False):
         dev_list = map(dev_id_from_dev_name, dev_list)
     except ValueError as ex:
         sys.exit(ex)
+
+    # check for IOMMU support
+    if driver == "vfio-pci" and not has_iommu():
+        check_noiommu_mode()
 
     for d in dev_list:
         bind_one(d, driver, force)
@@ -648,6 +681,7 @@ def parse_args():
     global status_flag
     global status_dev
     global force_flag
+    global noiommu_flag
     global args
 
     parser = argparse.ArgumentParser(
@@ -695,6 +729,10 @@ To bind 0000:02:00.0 and 0000:02:00.1 to the ixgbe kernel driver
         action='store_true',
         help="Unbind a device (equivalent to \"-b none\")")
     parser.add_argument(
+        '--noiommu-mode',
+        action='store_true',
+        help="If IOMMU is not available, enable no IOMMU mode for VFIO drivers")
+    parser.add_argument(
         '--force',
         action='store_true',
         help="""
@@ -720,6 +758,8 @@ For devices bound to Linux kernel drivers, they may be referred to by interface 
         status_dev = "all"
     if opt.force:
         force_flag = True
+    if opt.noiommu_mode:
+        noiommu_flag = True
     if opt.bind:
         b_flag = opt.bind
     elif opt.unbind:
