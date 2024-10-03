@@ -732,6 +732,29 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+	{	/* SM3 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SM3,
+				.block_size = 64,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+#endif
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -840,7 +863,10 @@ static const unsigned int auth_digest_byte_lengths[] = {
 		[IMB_AUTH_SHA_512]		= 64,
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
 		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
-		[IMB_AUTH_KASUMI_UIA1]		= 4
+		[IMB_AUTH_KASUMI_UIA1]		= 4,
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+		[IMB_AUTH_SM3]			= 32
+#endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
 };

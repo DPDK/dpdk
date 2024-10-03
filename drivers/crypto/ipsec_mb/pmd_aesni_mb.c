@@ -377,6 +377,11 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		sess->template_job.hash_alg = IMB_AUTH_SHA_512;
 		auth_precompute = 0;
 		break;
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_AUTH_SM3:
+		sess->template_job.hash_alg = IMB_AUTH_SM3;
+		break;
+#endif
 	default:
 		IPSEC_MB_LOG(ERR,
 			"Unsupported authentication algorithm selection");
