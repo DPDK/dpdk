@@ -916,6 +916,7 @@ test_ipsec_post_process(const struct rte_mbuf *m, const struct ipsec_test_data *
 		seg = seg->next;
 	}
 	len = RTE_MIN(len, data_len);
+	TEST_ASSERT(len <= IPSEC_TEXT_MAX_LEN, "Invalid packet length: %u", len);
 	/* Copy mbuf payload to continuous buffer */
 	output = rte_pktmbuf_read(m, 0, len, output_text);
 	if (output != output_text)
