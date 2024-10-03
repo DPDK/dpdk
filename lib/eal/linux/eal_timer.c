@@ -192,7 +192,7 @@ get_tsc_freq(void)
 {
 #ifdef CLOCK_MONOTONIC_RAW
 #define NS_PER_SEC 1E9
-#define CYC_PER_10MHZ 1E7
+#define CYC_PER_100KHZ 1E5
 
 	struct timespec sleeptime = {.tv_nsec = NS_PER_SEC / 10 }; /* 1/10 second */
 
@@ -209,8 +209,8 @@ get_tsc_freq(void)
 
 		double secs = (double)ns/NS_PER_SEC;
 		tsc_hz = (uint64_t)((end - start)/secs);
-		/* Round up to 10Mhz. 1E7 ~ 10Mhz */
-		return RTE_ALIGN_MUL_NEAR(tsc_hz, CYC_PER_10MHZ);
+		/* Round up to 100Khz. 1E5 ~ 100Khz */
+		return RTE_ALIGN_MUL_NEAR(tsc_hz, CYC_PER_100KHZ);
 	}
 #endif
 	return 0;
