@@ -451,6 +451,9 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 	uint8_t is_zuc = 0;
 	uint8_t is_snow3g = 0;
 	uint8_t is_kasumi = 0;
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+	uint8_t is_sm4 = 0;
+#endif
 
 	if (xform == NULL) {
 		sess->template_job.cipher_mode = IMB_CIPHER_NULL;
@@ -521,6 +524,22 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		sess->iv.offset = xform->cipher.iv.offset;
 		sess->template_job.iv_len_in_bytes = xform->cipher.iv.length;
 		return 0;
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_CIPHER_SM4_CBC:
+		sess->template_job.cipher_mode = IMB_CIPHER_SM4_CBC;
+		is_sm4 = 1;
+		break;
+	case RTE_CRYPTO_CIPHER_SM4_ECB:
+		sess->template_job.cipher_mode = IMB_CIPHER_SM4_ECB;
+		is_sm4 = 1;
+		break;
+#endif
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	case RTE_CRYPTO_CIPHER_SM4_CTR:
+		sess->template_job.cipher_mode = IMB_CIPHER_SM4_CNTR;
+		is_sm4 = 1;
+		break;
+#endif
 	default:
 		IPSEC_MB_LOG(ERR, "Unsupported cipher mode parameter");
 		return -ENOTSUP;
@@ -655,6 +674,15 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 					&sess->cipher.pKeySched_kasumi_cipher);
 		sess->template_job.enc_keys = &sess->cipher.pKeySched_kasumi_cipher;
 		sess->template_job.dec_keys = &sess->cipher.pKeySched_kasumi_cipher;
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+	} else if (is_sm4) {
+		sess->template_job.key_len_in_bytes = IMB_KEY_128_BYTES;
+		IMB_SM4_KEYEXP(mb_mgr, xform->cipher.key.data,
+				sess->cipher.expanded_sm4_keys.encode,
+				sess->cipher.expanded_sm4_keys.decode);
+		sess->template_job.enc_keys = sess->cipher.expanded_sm4_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_sm4_keys.decode;
+#endif
 	} else {
 		if (xform->cipher.key.length != 8) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
