@@ -75,6 +75,7 @@ New Features
 * **Updated IPsec_MB crypto driver.**
 
   * Added support for SM3 algorithm.
+  * Added support for SM3 HMAC algorithm.
 
 
 Removed Items
