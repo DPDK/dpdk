@@ -374,7 +374,7 @@ void set_tsc_freq(void);
  *
  * This function is private to the EAL.
  */
-uint64_t get_tsc_freq(void);
+uint64_t get_tsc_freq(uint64_t arch_hz);
 
 /**
  * Get TSC frequency if the architecture supports.

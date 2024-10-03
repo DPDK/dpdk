@@ -66,8 +66,7 @@ set_tsc_freq(void)
 	}
 
 	freq = get_tsc_freq_arch();
-	if (!freq)
-		freq = get_tsc_freq();
+	freq = get_tsc_freq(freq);
 	if (!freq)
 		freq = estimate_tsc_freq();
 

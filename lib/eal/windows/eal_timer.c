@@ -49,12 +49,15 @@ end:
 }
 
 uint64_t
-get_tsc_freq(void)
+get_tsc_freq(uint64_t arch_hz)
 {
 	LARGE_INTEGER t_start, t_end, elapsed_us;
 	LARGE_INTEGER frequency;
 	uint64_t tsc_hz;
 	uint64_t end, start;
+
+	if (arch_hz)
+		return arch_hz;
 
 	QueryPerformanceFrequency(&frequency);
 
