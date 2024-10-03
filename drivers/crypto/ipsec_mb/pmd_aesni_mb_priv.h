@@ -775,6 +775,64 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* SM4 CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_CBC,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* SM4 ECB */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_ECB,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+#endif
+#if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
+	{	/* SM4 CTR */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_SM4_CTR,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 #endif
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
@@ -953,6 +1011,17 @@ struct __rte_cache_aligned aesni_mb_session {
 			/* *< SNOW3G scheduled cipher key */
 			kasumi_key_sched_t pKeySched_kasumi_cipher;
 			/* *< KASUMI scheduled cipher key */
+#if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
+			struct {
+				alignas(16) uint32_t encode[IMB_SM4_KEY_SCHEDULE_ROUNDS];
+				/* *< encode key */
+				alignas(16) uint32_t decode[IMB_SM4_KEY_SCHEDULE_ROUNDS];
+				/* *< decode key */
+			} expanded_sm4_keys;
+			/* *< Expanded SM4 keys - Original 128 bit key is
+			 * expanded into 32 round keys, each 32 bits.
+			 */
+#endif
 		};
 	} cipher;
 
