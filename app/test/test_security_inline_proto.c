@@ -1449,12 +1449,27 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	for (i = 0; i < nb_rx; i++) {
 		rte_pktmbuf_adj(rx_pkts_burst[i], RTE_ETHER_HDR_LEN);
 
-		ret = test_ipsec_post_process(rx_pkts_burst[i], td,
-					      res_d, silent, flags);
-		if (ret != TEST_SUCCESS) {
-			for ( ; i < nb_rx; i++)
+		/* For tests with status as error for test success,
+		 * skip verification
+		 */
+		if (td->ipsec_xform.direction ==
+		    RTE_SECURITY_IPSEC_SA_DIR_INGRESS && (flags->icv_corrupt ||
+		    flags->sa_expiry_pkts_hard || flags->tunnel_hdr_verify ||
+		    td->ar_packet)) {
+			if (!(rx_pkts_burst[i]->ol_flags &
+			    RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED)) {
 				rte_pktmbuf_free(rx_pkts_burst[i]);
-			goto out;
+				rx_pkts_burst[i] = NULL;
+				return TEST_FAILED;
+			}
+		} else {
+			ret = test_ipsec_post_process(rx_pkts_burst[i], td,
+						      res_d, silent, flags);
+			if (ret != TEST_SUCCESS) {
+				for ( ; i < nb_rx; i++)
+					rte_pktmbuf_free(rx_pkts_burst[i]);
+				goto out;
+			}
 		}
 
 		ret = test_ipsec_stats_verify(ctx, ses, flags,
