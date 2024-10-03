@@ -87,6 +87,10 @@ New Features
   A new API ``rte_cryptodev_queue_pair_reset`` is added
   to reset a particular queue pair of a device.
 
+* **Updated IPsec_MB crypto driver.**
+
+  * Added support for SM3 algorithm.
+
 * **Added event device pre-scheduling support.**
 
   Added support for pre-scheduling of events to event ports
