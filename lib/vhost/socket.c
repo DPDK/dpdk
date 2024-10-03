@@ -860,6 +860,18 @@ rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs)
 		goto unlock_exit;
 	}
 
+	/*
+	 * This is only useful for VDUSE for which number of virtqueues is set
+	 * by the backend. For Vhost-user, the number of virtqueues is defined
+	 * by the frontend.
+	 */
+	if (!vsocket->is_vduse) {
+		VHOST_CONFIG_LOG(path, DEBUG,
+				"Keeping %u max queue pairs for Vhost-user backend",
+				VHOST_MAX_QUEUE_PAIRS);
+		goto unlock_exit;
+	}
+
 	vsocket->max_queue_pairs = max_queue_pairs;
 
 unlock_exit:
