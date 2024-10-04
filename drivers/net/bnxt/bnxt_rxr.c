@@ -955,10 +955,6 @@ bnxt_set_ol_flags_crx(struct bnxt_rx_ring_info *rxr,
 		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 	}
 
-#ifdef RTE_LIBRTE_IEEE1588
-	/* TODO: TIMESTAMP flags need to be parsed and set. */
-#endif
-
 	mbuf->ol_flags = ol_flags;
 }
 
@@ -1079,10 +1075,6 @@ static int bnxt_crx_pkt(struct rte_mbuf **rx_pkt,
 	mbuf->pkt_len = rxcmp->len;
 	mbuf->data_len = mbuf->pkt_len;
 	mbuf->port = rxq->port_id;
-
-#ifdef RTE_LIBRTE_IEEE1588
-	/* TODO: Add timestamp support. */
-#endif
 
 	bnxt_set_ol_flags_crx(rxr, rxcmp, mbuf);
 	mbuf->packet_type = bnxt_parse_pkt_type_crx(rxcmp);
