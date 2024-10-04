@@ -328,6 +328,12 @@ statistics. Per SA telemetry statistics can be enabled using
 ``rte_ipsec_telemetry_sa_add`` and disabled using
 ``rte_ipsec_telemetry_sa_del``. Note that these calls are not thread safe.
 
+Stateless IPsec packet processing support
+-----------------------------------------
+Support for stateless IPsec packet processing allowing use of custom
+sequence number to be used for IPsec outbound processing.
+rte_ipsec_pkt_stateless_prepare() takes as input the state parameter
+from the application and prepares the packet for IPsec processing.
 
 Limitations
 -----------

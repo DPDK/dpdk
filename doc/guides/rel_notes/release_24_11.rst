@@ -120,6 +120,11 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* ipsec: New APIs ``rte_ipsec_pkr_crypto_prepare_stateless`` and
+  ``rte_ipsec_pkt_cpu_prepare_stateless`` are added to support
+  stateless IPsec processing. These APIs enables user to provide
+  sequence number to be used for the IPsec operation.
+
 
 ABI Changes
 -----------
