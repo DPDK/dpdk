@@ -323,6 +323,7 @@ int app_init(void)
 	uint32_t i;
 	char ring_name[MAX_NAME_LEN];
 	char pool_name[MAX_NAME_LEN];
+	int ret;
 
 	if (rte_eth_dev_count_avail() == 0)
 		rte_exit(EXIT_FAILURE, "No Ethernet port - bye\n");
@@ -368,12 +369,20 @@ int app_init(void)
 		app_init_port(qos_conf[i].tx_port, qos_conf[i].mbuf_pool);
 
 		memset(&link, 0, sizeof(link));
-		rte_eth_link_get(qos_conf[i].tx_port, &link);
+		ret = rte_eth_link_get(qos_conf[i].tx_port, &link);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_link_get: err=%d, port=%u: %s\n",
+				 ret, qos_conf[i].tx_port, rte_strerror(-ret));
 		if (link.link_status == 0)
 			printf("Waiting for link on port %u\n", qos_conf[i].tx_port);
+
 		while (link.link_status == 0 && retry_count--) {
 			rte_delay_ms(retry_delay);
-			rte_eth_link_get(qos_conf[i].tx_port, &link);
+			ret = rte_eth_link_get(qos_conf[i].tx_port, &link);
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_link_get: err=%d, port=%u: %s\n",
+				 ret, qos_conf[i].tx_port, rte_strerror(-ret));
 		}
 
 		qos_conf[i].sched_port = app_init_sched_port(qos_conf[i].tx_port, socket);
