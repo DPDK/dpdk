@@ -180,6 +180,10 @@ esp_outb_tun_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	struct rte_crypto_op *cop[], uint16_t num);
 
 uint16_t
+esp_outb_tun_prepare_stateless(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
+	struct rte_crypto_op *cop[], uint16_t num, struct rte_ipsec_state *state);
+
+uint16_t
 esp_outb_trs_prepare(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
 	struct rte_crypto_op *cop[], uint16_t num);
 
@@ -206,6 +210,10 @@ inline_proto_outb_pkt_process(const struct rte_ipsec_session *ss,
 uint16_t
 cpu_outb_tun_pkt_prepare(const struct rte_ipsec_session *ss,
 		struct rte_mbuf *mb[], uint16_t num);
+uint16_t
+cpu_outb_tun_pkt_prepare_stateless(const struct rte_ipsec_session *ss,
+		struct rte_mbuf *mb[], uint16_t num, struct rte_ipsec_state *state);
+
 uint16_t
 cpu_outb_trs_pkt_prepare(const struct rte_ipsec_session *ss,
 		struct rte_mbuf *mb[], uint16_t num);

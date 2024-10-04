@@ -710,6 +710,7 @@ lksd_none_pkt_func_select(const struct rte_ipsec_sa *sa,
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6):
 		pf->prepare.async = esp_outb_tun_prepare;
+		pf->prepare_stateless.async = esp_outb_tun_prepare_stateless;
 		pf->process = (sa->sqh_len != 0) ?
 			esp_outb_sqh_process : pkt_flag_process;
 		break;
@@ -748,6 +749,7 @@ cpu_crypto_pkt_func_select(const struct rte_ipsec_sa *sa,
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV4):
 	case (RTE_IPSEC_SATP_DIR_OB | RTE_IPSEC_SATP_MODE_TUNLV6):
 		pf->prepare.sync = cpu_outb_tun_pkt_prepare;
+		pf->prepare_stateless.sync = cpu_outb_tun_pkt_prepare_stateless;
 		pf->process = (sa->sqh_len != 0) ?
 			esp_outb_sqh_process : pkt_flag_process;
 		break;
@@ -810,7 +812,7 @@ ipsec_sa_pkt_func_select(const struct rte_ipsec_session *ss,
 	int32_t rc;
 
 	rc = 0;
-	pf[0] = (struct rte_ipsec_sa_pkt_func) { {NULL}, NULL };
+	pf[0] = (struct rte_ipsec_sa_pkt_func) { {NULL}, {NULL}, NULL };
 
 	switch (ss->type) {
 	case RTE_SECURITY_ACTION_TYPE_NONE:

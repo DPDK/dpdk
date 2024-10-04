@@ -106,6 +106,11 @@ New Features
 
   * Added support for asymmetric crypto EdDSA algorithm.
 
+* **Added stateless IPsec processing.**
+
+  New functions were added to enable
+  providing sequence number to be used for the IPsec operation.
+
 * **Added event device pre-scheduling support.**
 
   Added support for pre-scheduling of events to event ports
