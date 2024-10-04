@@ -323,7 +323,7 @@ struct rte_crypto_rsa_xform {
 
 	enum rte_crypto_rsa_priv_key_type key_type;
 
-	union {
+	struct {
 		rte_crypto_uint d;
 		/**< the RSA private exponent */
 		struct rte_crypto_rsa_priv_key_qt qt;

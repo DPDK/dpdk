@@ -174,11 +174,6 @@ Deprecation Notices
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
 
-* cryptodev: The ``rte_crypto_rsa_xform`` struct member to hold private key
-  in either exponent or quintuple format is changed from union to struct data type.
-  This change is to support ASN.1 syntax (RFC 3447 Appendix A.1.2).
-  This change will not break existing applications.
-
 * cryptodev: Some changes may happen to manage RSA padding for virtio-crypto.
 
 * cryptodev: The Intel IPsec Multi-Buffer version will be bumped
