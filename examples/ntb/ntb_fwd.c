@@ -1285,7 +1285,10 @@ main(int argc, char **argv)
 	eth_port_id = rte_eth_find_next(0);
 
 	if (eth_port_id < RTE_MAX_ETHPORTS) {
-		rte_eth_dev_info_get(eth_port_id, &ethdev_info);
+		ret = rte_eth_dev_info_get(eth_port_id, &ethdev_info);
+		if (ret)
+			rte_exit(EXIT_FAILURE, "Can't get info for port %u\n", eth_port_id);
+
 		eth_pconf.rx_adv_conf.rss_conf.rss_hf &=
 				ethdev_info.flow_type_rss_offloads;
 		ret = rte_eth_dev_configure(eth_port_id, num_queues,
