@@ -100,8 +100,8 @@ enum rte_flow_action_type dpaa2_supported_fs_action_type[] = {
 
 #ifndef __cplusplus
 static const struct rte_flow_item_eth dpaa2_flow_item_eth_mask = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.hdr.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+	.hdr.src_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	.hdr.ether_type = RTE_BE16(0xffff),
 };
 
@@ -117,12 +117,10 @@ static const struct rte_flow_item_ipv4 dpaa2_flow_item_ipv4_mask = {
 
 static const struct rte_flow_item_ipv6 dpaa2_flow_item_ipv6_mask = {
 	.hdr = {
-		.src_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
-		.dst_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+		.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 		.proto = 0xff
 	},
 };
