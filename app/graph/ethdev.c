@@ -208,10 +208,22 @@ ethdev_show(const char *name)
 	if (rc < 0)
 		return rc;
 
-	rte_eth_dev_info_get(port_id, &info);
-	rte_eth_stats_get(port_id, &stats);
-	rte_eth_macaddr_get(port_id, &addr);
-	rte_eth_link_get(port_id, &link);
+	rc = rte_eth_dev_info_get(port_id, &info);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_link_get(port_id, &link);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_stats_get(port_id, &stats);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_macaddr_get(port_id, &addr);
+	if (rc < 0)
+		return rc;
+
 	rte_eth_dev_get_mtu(port_id, &mtu);
 
 	length = strlen(conn->msg_out);
