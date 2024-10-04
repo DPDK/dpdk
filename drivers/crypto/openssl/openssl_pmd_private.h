@@ -231,10 +231,23 @@ struct __rte_cache_aligned openssl_asym_session {
 #endif
 		} s;
 		struct {
+			uint8_t curve_id;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+			EC_GROUP * group;
+			BIGNUM *priv_key;
+#endif
+		} ec;
+		struct {
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM * params;
 #endif
 		} sm2;
+		struct {
+			uint8_t curve_id;
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+			OSSL_PARAM * params;
+#endif
+		} eddsa;
 	} u;
 };
 /** Set and validate OPENSSL crypto session parameters */
