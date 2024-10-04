@@ -8,8 +8,7 @@ This sample application demonstrates the use of EFD library as a flow-level
 load balancer, for more information about the EFD Library please refer to the
 DPDK programmer's guide.
 
-This sample application is a variant of the
-:ref:`client-server sample application <multi_process_app>`
+This sample application is a variant of the :doc:`multi_process`
 where a specific target node is specified for every and each flow
 (not in a round-robin fashion as the original load balancing sample application).
 

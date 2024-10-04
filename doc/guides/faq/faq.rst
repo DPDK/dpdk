@@ -186,7 +186,7 @@ I350 has RSS support and 8 queue pairs can be used in RSS mode. It should work w
 How can hugepage-backed memory be shared among multiple processes?
 ------------------------------------------------------------------
 
-See the Primary and Secondary examples in the :ref:`multi-process sample application <multi_process_app>`.
+See the Primary and Secondary examples in the :doc:`../sample_app_ug/multi_process`.
 
 
 Why can't my application receive packets on my system with UEFI Secure Boot enabled?
