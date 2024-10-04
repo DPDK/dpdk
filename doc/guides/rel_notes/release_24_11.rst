@@ -142,6 +142,10 @@ ABI Changes
 * cryptodev: The enum ``rte_crypto_asym_xform_type`` and struct ``rte_crypto_asym_op``
   are updated to include new values to support EDDSA.
 
+* cryptodev: The ``rte_crypto_rsa_xform`` struct member to hold private key
+  in either exponent or quintuple format is changed from union to struct data type.
+  This change is to support ASN.1 syntax (RFC 3447 Appendix A.1.2).
+
 
 Known Issues
 ------------
