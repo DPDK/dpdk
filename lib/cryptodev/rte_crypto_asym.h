@@ -45,6 +45,10 @@ rte_crypto_asym_op_strings[];
  * and if the flag is not set, shared secret will be padded to the left with
  * zeros to the size of the underlying algorithm (default)
  */
+#define RTE_CRYPTO_ASYM_FLAG_PUB_KEY_COMPRESSED		RTE_BIT32(2)
+/**<
+ * Flag to denote public key will be returned in compressed form
+ */
 
 /**
  * List of elliptic curves. This enum aligns with
@@ -61,7 +65,20 @@ enum rte_crypto_curve_id {
 	RTE_CRYPTO_EC_GROUP_SECP256R1 = 23,
 	RTE_CRYPTO_EC_GROUP_SECP384R1 = 24,
 	RTE_CRYPTO_EC_GROUP_SECP521R1 = 25,
+	RTE_CRYPTO_EC_GROUP_ED25519   = 29,
+	RTE_CRYPTO_EC_GROUP_ED448     = 30,
 	RTE_CRYPTO_EC_GROUP_SM2       = 41,
+};
+
+/**
+ * List of Edwards curve instances as per RFC 8032 (Section 5).
+ */
+enum rte_crypto_edward_instance {
+	RTE_CRYPTO_EDCURVE_25519,
+	RTE_CRYPTO_EDCURVE_25519CTX,
+	RTE_CRYPTO_EDCURVE_25519PH,
+	RTE_CRYPTO_EDCURVE_448,
+	RTE_CRYPTO_EDCURVE_448PH
 };
 
 /**
@@ -114,6 +131,10 @@ enum rte_crypto_asym_xform_type {
 	/**< ShangMi 2
 	 * Performs Encrypt, Decrypt, Sign and Verify.
 	 * Refer to rte_crypto_asym_op_type.
+	 */
+	RTE_CRYPTO_ASYM_XFORM_EDDSA,
+	/**< Edwards Curve Digital Signature Algorithm
+	 * Perform Signature Generation and Verification.
 	 */
 	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
 	/**< End of list */
@@ -582,6 +603,31 @@ struct rte_crypto_ecdsa_op_param {
 };
 
 /**
+ * EdDSA operation params
+ */
+struct rte_crypto_eddsa_op_param {
+	enum rte_crypto_asym_op_type op_type;
+	/**< Signature generation or verification */
+
+	rte_crypto_param message;
+	/**< Input message digest to be signed or verified */
+
+	rte_crypto_param context;
+	/**< Context value for the sign op.
+	 *   Must not be empty for Ed25519ctx instance.
+	 */
+
+	enum rte_crypto_edward_instance instance;
+	/**< Type of Edwards curve. */
+
+	rte_crypto_uint sign;
+	/**< Edward curve signature
+	 *     output : for signature generation
+	 *     input  : for signature verification
+	 */
+};
+
+/**
  * Structure for EC point multiplication operation param
  */
 struct rte_crypto_ecpm_op_param {
@@ -716,6 +762,7 @@ struct rte_crypto_asym_op {
 		struct rte_crypto_ecdsa_op_param ecdsa;
 		struct rte_crypto_ecpm_op_param ecpm;
 		struct rte_crypto_sm2_op_param sm2;
+		struct rte_crypto_eddsa_op_param eddsa;
 	};
 	uint16_t flags;
 	/**<
