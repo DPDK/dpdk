@@ -616,7 +616,6 @@ test_setup(void)
 		mac_addr.addr_bytes[5] = 0x10 + port->port_id;
 		rte_eth_dev_default_mac_addr_set(port->port_id, &mac_addr);
 
-		rte_eth_dev_info_get(port->port_id, &port->dev_info);
 		retval = rte_eth_dev_info_get(port->port_id, &port->dev_info);
 		TEST_ASSERT((retval == 0),
 				"Error during getting device (port %u) info: %s\n",
