@@ -15,6 +15,8 @@ enum curve {
 	SECP384R1,
 	SECP521R1,
 	SECP521R1_UA,
+	ED25519,
+	ED448,
 	END_OF_CURVE_LIST
 };
 
@@ -24,6 +26,8 @@ const char *curve[] = {"SECP192R1",
 		       "SECP384R1",
 		       "SECP521R1",
 		       "SECP521R1(unaligned)",
+		       "ED25519",
+		       "ED448",
 };
 
 struct crypto_testsuite_ecdsa_params {
