@@ -68,6 +68,36 @@ cperf_set_ops_asym_ecdsa(struct rte_crypto_op **ops,
 }
 
 static void
+cperf_set_ops_asym_eddsa(struct rte_crypto_op **ops,
+		   uint32_t src_buf_offset __rte_unused,
+		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
+		   void *sess,
+		   const struct cperf_options *options,
+		   const struct cperf_test_vector *test_vector __rte_unused,
+		   uint16_t iv_offset __rte_unused,
+		   uint32_t *imix_idx __rte_unused,
+		   uint64_t *tsc_start __rte_unused)
+{
+	uint16_t i;
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_asym_op *asym_op = ops[i]->asym;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		rte_crypto_op_attach_asym_session(ops[i], sess);
+
+		asym_op->eddsa.op_type = options->asym_op_type;
+		asym_op->eddsa.message.data = options->eddsa_data->message.data;
+		asym_op->eddsa.message.length = options->eddsa_data->message.length;
+
+		asym_op->eddsa.instance = options->eddsa_data->instance;
+
+		asym_op->eddsa.sign.data = options->eddsa_data->sign.data;
+		asym_op->eddsa.sign.length = options->eddsa_data->sign.length;
+	}
+}
+
+static void
 cperf_set_ops_asym_sm2(struct rte_crypto_op **ops,
 		   uint32_t src_buf_offset __rte_unused,
 		   uint32_t dst_buf_offset __rte_unused, uint16_t nb_ops,
@@ -1031,6 +1061,25 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		return asym_sess;
 	}
 
+	if (options->op_type == CPERF_ASYM_ED25519) {
+		xform.next = NULL;
+		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_EDDSA;
+		xform.ec.curve_id = options->eddsa_data->curve;
+		xform.ec.pkey.data = options->eddsa_data->pkey.data;
+		xform.ec.pkey.length = options->eddsa_data->pkey.length;
+		xform.ec.q.x.data = options->eddsa_data->pubkey.data;
+		xform.ec.q.x.length = options->eddsa_data->pubkey.length;
+
+		ret = rte_cryptodev_asym_session_create(dev_id, &xform,
+				sess_mp, &asym_sess);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "EdDSA Asym session create failed\n");
+			return NULL;
+		}
+
+		return asym_sess;
+	}
+
 	if (options->op_type == CPERF_ASYM_SM2) {
 		xform.next = NULL;
 		xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
@@ -1353,6 +1402,9 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 	case CPERF_ASYM_SECP256R1:
 		op_fns->populate_ops = cperf_set_ops_asym_ecdsa;
+		break;
+	case CPERF_ASYM_ED25519:
+		op_fns->populate_ops = cperf_set_ops_asym_eddsa;
 		break;
 	case CPERF_ASYM_SM2:
 		op_fns->populate_ops = cperf_set_ops_asym_sm2;
