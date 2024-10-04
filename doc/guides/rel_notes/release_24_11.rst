@@ -102,6 +102,10 @@ New Features
 
   * Added support for asymmetric crypto EdDSA algorithm.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added support for asymmetric crypto EdDSA algorithm.
+
 * **Added event device pre-scheduling support.**
 
   Added support for pre-scheduling of events to event ports

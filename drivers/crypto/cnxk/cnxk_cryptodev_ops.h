@@ -111,6 +111,8 @@ struct cnxk_cpt_qp {
 	/**< Session mempool */
 };
 
+int cnxk_cpt_asym_get_mlen(void);
+
 int cnxk_cpt_dev_config(struct rte_cryptodev *dev,
 			struct rte_cryptodev_config *conf);
 
