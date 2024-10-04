@@ -889,8 +889,8 @@ static struct chrte_fparse parseitem[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.fptr  = ch_rte_parsetype_eth,
 		.dmask = &(const struct rte_flow_item_eth){
-			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+			.src.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 			.type = 0xffff,
 		}
 	},
@@ -918,12 +918,10 @@ static struct chrte_fparse parseitem[] = {
 		.fptr  = ch_rte_parsetype_ipv6,
 		.dmask = &(const struct rte_flow_item_ipv6) {
 			.hdr = {
-				.src_addr =
-					"\xff\xff\xff\xff\xff\xff\xff\xff"
-					"\xff\xff\xff\xff\xff\xff\xff\xff",
-				.dst_addr =
-					"\xff\xff\xff\xff\xff\xff\xff\xff"
-					"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 				.vtc_flow = RTE_BE32(0xff000000),
 			},
 		},

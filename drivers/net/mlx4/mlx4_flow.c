@@ -582,7 +582,7 @@ static const struct mlx4_flow_proc_item mlx4_flow_proc_item_list[] = {
 				       RTE_FLOW_ITEM_TYPE_IPV4),
 		.mask_support = &(const struct rte_flow_item_eth){
 			/* Only destination MAC can be matched. */
-			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 		},
 		.mask_default = &rte_flow_item_eth_mask,
 		.mask_sz = sizeof(struct rte_flow_item_eth),
@@ -1304,10 +1304,10 @@ mlx4_flow_internal(struct mlx4_priv *priv, struct rte_flow_error *error)
 	};
 	struct rte_flow_item_eth eth_spec;
 	const struct rte_flow_item_eth eth_mask = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	const struct rte_flow_item_eth eth_allmulti = {
-		.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+		.dst.addr_bytes = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_vlan vlan_spec;
 	const struct rte_flow_item_vlan vlan_mask = {

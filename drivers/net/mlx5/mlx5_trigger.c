@@ -1562,23 +1562,23 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_item_eth bcast = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	struct rte_flow_item_eth ipv6_multi_spec = {
-		.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+		.dst.addr_bytes = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_eth ipv6_multi_mask = {
-		.dst.addr_bytes = "\xff\xff\x00\x00\x00\x00",
+		.dst.addr_bytes = { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_eth unicast = {
-		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.src.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	struct rte_flow_item_eth unicast_mask = {
-		.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	const unsigned int vlan_filter_n = priv->vlan_filter_n;
 	const struct rte_ether_addr cmp = {
-		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	unsigned int i;
 	unsigned int j;
@@ -1647,8 +1647,8 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 		return 0;
 	if (dev->data->promiscuous) {
 		struct rte_flow_item_eth promisc = {
-			.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.dst.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+			.src.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 			.type = 0,
 		};
 
@@ -1658,8 +1658,8 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	}
 	if (dev->data->all_multicast) {
 		struct rte_flow_item_eth multicast = {
-			.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
-			.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+			.dst.addr_bytes = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 },
+			.src.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 			.type = 0,
 		};
 
