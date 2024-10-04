@@ -53,10 +53,8 @@ rte_ethtool_get_drvinfo(uint16_t port_id, struct ethtool_drvinfo *drvinfo)
 		sizeof(drvinfo->bus_info));
 
 	memset(&reg_info, 0, sizeof(reg_info));
-	rte_eth_dev_get_reg_info(port_id, &reg_info);
-	n = reg_info.length;
-	if (n > 0)
-		drvinfo->regdump_len = n;
+	if (rte_eth_dev_get_reg_info(port_id, &reg_info) == 0)
+		drvinfo->regdump_len = reg_info.length;
 	else
 		drvinfo->regdump_len = 0;
 
