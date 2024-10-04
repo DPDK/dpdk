@@ -118,6 +118,15 @@ struct cperf_ecdsa_test_data {
 	int curve;
 };
 
+struct cperf_eddsa_test_data {
+	rte_crypto_param pubkey;
+	rte_crypto_param pkey;
+	rte_crypto_param sign;
+	rte_crypto_param message;
+	int curve;
+	int instance;
+};
+
 struct cperf_sm2_test_data {
 	rte_crypto_param pubkey_qx;
 	rte_crypto_param pubkey_qy;
@@ -147,6 +156,7 @@ extern uint8_t digest[2048];
 
 extern struct cperf_modex_test_data modex_perf_data[10];
 extern struct cperf_ecdsa_test_data secp256r1_perf_data;
+extern struct cperf_eddsa_test_data ed25519_perf_data;
 extern struct cperf_sm2_test_data sm2_perf_data;
 
 #endif
