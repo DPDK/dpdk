@@ -588,8 +588,11 @@ setup_lpm(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(route_base_v4[i].if_out,
-				     &dev_info);
+		ret = rte_eth_dev_info_get(route_base_v4[i].if_out, &dev_info);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "Unable to get device info for port %u\n",
+				 route_base_v4[i].if_out);
+
 		ret = rte_lpm_add(ipv4_l3fwd_lpm_lookup_struct[socketid],
 			route_base_v4[i].ip,
 			route_base_v4[i].depth,
@@ -632,8 +635,11 @@ setup_lpm(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
-		rte_eth_dev_info_get(route_base_v6[i].if_out,
-				     &dev_info);
+		ret = rte_eth_dev_info_get(route_base_v6[i].if_out, &dev_info);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "Unable to get device info for port %u\n",
+				 route_base_v6[i].if_out);
+
 		ret = rte_lpm6_add(ipv6_l3fwd_lpm_lookup_struct[socketid],
 			&route_base_v6[i].ip6,
 			route_base_v6[i].depth,
