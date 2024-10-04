@@ -68,7 +68,7 @@ cnxk_cpt_sec_get_mlen(void)
 	return len;
 }
 
-static int
+int
 cnxk_cpt_asym_get_mlen(void)
 {
 	uint32_t len;

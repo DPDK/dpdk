@@ -11,7 +11,7 @@
 #include "roc_ae.h"
 #include "roc_cpt.h"
 
-#define CNXK_CPT_MAX_CAPS		 55
+#define CNXK_CPT_MAX_CAPS		 56
 #define CNXK_SEC_IPSEC_CRYPTO_MAX_CAPS	 16
 #define CNXK_SEC_TLS_1_3_CRYPTO_MAX_CAPS 3
 #define CNXK_SEC_TLS_1_2_CRYPTO_MAX_CAPS 7

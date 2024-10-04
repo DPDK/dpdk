@@ -87,6 +87,10 @@ New Features
 
   Added support for asymmetric crypto EDDSA algorithm.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  Added support for asymmetric crypto EDDSA algorithm.
+
 
 Removed Items
 -------------
