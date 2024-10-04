@@ -20,6 +20,7 @@ sources = files(
         'fips_validation_xts.c',
         'fips_validation_rsa.c',
         'fips_validation_ecdsa.c',
+        'fips_validation_eddsa.c',
         'fips_dev_self_test.c',
         'main.c',
 )
