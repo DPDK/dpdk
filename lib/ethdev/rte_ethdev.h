@@ -3075,7 +3075,8 @@ int rte_eth_allmulticast_get(uint16_t port_id);
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
+int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link)
+	__rte_warn_unused_result;
 
 /**
  * Retrieve the link status (up/down), the duplex mode (half/full),
@@ -3091,7 +3092,8 @@ int rte_eth_link_get(uint16_t port_id, struct rte_eth_link *link);
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link);
+int rte_eth_link_get_nowait(uint16_t port_id, struct rte_eth_link *link)
+	__rte_warn_unused_result;
 
 /**
  * @warning
@@ -3499,7 +3501,8 @@ int rte_eth_macaddrs_get(uint16_t port_id, struct rte_ether_addr *ma,
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info);
+int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info)
+	__rte_warn_unused_result;
 
 /**
  * @warning
@@ -3517,7 +3520,8 @@ int rte_eth_dev_info_get(uint16_t port_id, struct rte_eth_dev_info *dev_info);
  *   - (-EINVAL) if bad parameter.
  */
 __rte_experimental
-int rte_eth_dev_conf_get(uint16_t port_id, struct rte_eth_conf *dev_conf);
+int rte_eth_dev_conf_get(uint16_t port_id, struct rte_eth_conf *dev_conf)
+	__rte_warn_unused_result;
 
 /**
  * Retrieve the firmware version of a device.
@@ -3539,8 +3543,8 @@ int rte_eth_dev_conf_get(uint16_t port_id, struct rte_eth_conf *dev_conf);
  *   - (>0) if *fw_size* is not enough to store firmware version, return
  *          the size of the non truncated string.
  */
-int rte_eth_dev_fw_version_get(uint16_t port_id,
-			       char *fw_version, size_t fw_size);
+int rte_eth_dev_fw_version_get(uint16_t port_id, char *fw_version, size_t fw_size)
+	__rte_warn_unused_result;
 
 /**
  * Retrieve the supported packet types of an Ethernet device.
@@ -3582,7 +3586,9 @@ int rte_eth_dev_fw_version_get(uint16_t port_id,
  *   - (-EINVAL) if bad parameter.
  */
 int rte_eth_dev_get_supported_ptypes(uint16_t port_id, uint32_t ptype_mask,
-				     uint32_t *ptypes, int num);
+				     uint32_t *ptypes, int num)
+	__rte_warn_unused_result;
+
 /**
  * Inform Ethernet device about reduced range of packet types to handle.
  *
@@ -5209,7 +5215,8 @@ int rte_eth_dev_get_reg_info_ext(uint16_t port_id, struct rte_dev_reg_info *info
  *   - (-EIO) if device is removed.
  *   - others depends on the specific operations implementation.
  */
-int rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info);
+int rte_eth_dev_get_reg_info(uint16_t port_id, struct rte_dev_reg_info *info)
+	__rte_warn_unused_result;
 
 /**
  * Retrieve size of device EEPROM
@@ -5281,8 +5288,8 @@ int rte_eth_dev_set_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info);
  */
 __rte_experimental
 int
-rte_eth_dev_get_module_info(uint16_t port_id,
-			    struct rte_eth_dev_module_info *modinfo);
+rte_eth_dev_get_module_info(uint16_t port_id, struct rte_eth_dev_module_info *modinfo)
+	__rte_warn_unused_result;
 
 /**
  * @warning
@@ -5305,8 +5312,8 @@ rte_eth_dev_get_module_info(uint16_t port_id,
  */
 __rte_experimental
 int
-rte_eth_dev_get_module_eeprom(uint16_t port_id,
-			      struct rte_dev_eeprom_info *info);
+rte_eth_dev_get_module_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info)
+	__rte_warn_unused_result;
 
 /**
  * Set the list of multicast addresses to filter on an Ethernet device.
@@ -7013,7 +7020,8 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
  *   - (-EINVAL) if bad parameter.
  */
 __rte_experimental
-int rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes, int num);
+int rte_eth_buffer_split_get_supported_hdr_ptypes(uint16_t port_id, uint32_t *ptypes, int num)
+	__rte_warn_unused_result;
 
 /**
  * @warning
