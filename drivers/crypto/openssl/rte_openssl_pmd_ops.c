@@ -593,6 +593,16 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 		},
 		}
 	},
+	{	/* ECFPM */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECFPM,
+				.op_types = 0
+				}
+			}
+		}
+	},
 	{	/* SM2 */
 		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
 		{.asym = {
@@ -606,6 +616,20 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 				 (1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
 				{.internal_rng = 1
 				}
+			}
+		}
+		}
+	},
+	{	/* EdDSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_EDDSA,
+				.hash_algos = (1 << RTE_CRYPTO_AUTH_SHA512 |
+					       1 << RTE_CRYPTO_AUTH_SHAKE_256),
+				.op_types =
+				((1<<RTE_CRYPTO_ASYM_OP_SIGN) |
+				 (1 << RTE_CRYPTO_ASYM_OP_VERIFY)),
 			}
 		}
 		}
@@ -1356,6 +1380,47 @@ err_dsa:
 		BN_free(pub_key);
 		return -1;
 	}
+	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
+	{
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		EC_GROUP *ecgrp = NULL;
+
+		asym_session->xfrm_type = xform->xform_type;
+
+		switch (xform->ec.curve_id) {
+		case RTE_CRYPTO_EC_GROUP_SECP192R1:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_secp192k1);
+			break;
+		case RTE_CRYPTO_EC_GROUP_SECP224R1:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_secp224r1);
+			break;
+		case RTE_CRYPTO_EC_GROUP_SECP256R1:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_secp256k1);
+			break;
+		case RTE_CRYPTO_EC_GROUP_SECP384R1:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_secp384r1);
+			break;
+		case RTE_CRYPTO_EC_GROUP_SECP521R1:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_secp521r1);
+			break;
+		case RTE_CRYPTO_EC_GROUP_ED25519:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_ED25519);
+			break;
+		case RTE_CRYPTO_EC_GROUP_ED448:
+			ecgrp = EC_GROUP_new_by_curve_name(NID_ED448);
+			break;
+		default:
+			break;
+		}
+
+		asym_session->u.ec.curve_id = xform->ec.curve_id;
+		asym_session->u.ec.group = ecgrp;
+		break;
+#else
+		OPENSSL_LOG(WARNING, "ECFPM unsupported for OpenSSL Version < 3.0");
+		return -ENOTSUP;
+#endif
+	}
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
 	{
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
@@ -1439,6 +1504,66 @@ err_sm2:
 #endif
 #else
 		OPENSSL_LOG(WARNING, "SM2 unsupported for OpenSSL Version < 3.0");
+		return -ENOTSUP;
+#endif
+	}
+	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
+	{
+#if (OPENSSL_VERSION_NUMBER >= 0x30300000L)
+		OSSL_PARAM_BLD *param_bld = NULL;
+		OSSL_PARAM *params = NULL;
+		int ret = -1;
+
+		asym_session->u.eddsa.curve_id = xform->ec.curve_id;
+
+		param_bld = OSSL_PARAM_BLD_new();
+		if (!param_bld) {
+			OPENSSL_LOG(ERR, "failed to allocate params");
+			goto err_eddsa;
+		}
+
+		ret = OSSL_PARAM_BLD_push_utf8_string(param_bld,
+			  OSSL_PKEY_PARAM_GROUP_NAME, "ED25519", sizeof("ED25519"));
+		if (!ret) {
+			OPENSSL_LOG(ERR, "failed to push params");
+			goto err_eddsa;
+		}
+
+		ret = OSSL_PARAM_BLD_push_octet_string(param_bld, OSSL_PKEY_PARAM_PRIV_KEY,
+				xform->ec.pkey.data, xform->ec.pkey.length);
+		if (!ret) {
+			OPENSSL_LOG(ERR, "failed to push params");
+			goto err_eddsa;
+		}
+
+		ret = OSSL_PARAM_BLD_push_octet_string(param_bld, OSSL_PKEY_PARAM_PUB_KEY,
+				xform->ec.q.x.data, xform->ec.q.x.length);
+		if (!ret) {
+			OPENSSL_LOG(ERR, "failed to push params");
+			goto err_eddsa;
+		}
+
+		params = OSSL_PARAM_BLD_to_param(param_bld);
+		if (!params) {
+			OPENSSL_LOG(ERR, "failed to push params");
+			goto err_eddsa;
+		}
+
+		asym_session->u.eddsa.params = params;
+		OSSL_PARAM_BLD_free(param_bld);
+
+		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_EDDSA;
+		break;
+err_eddsa:
+		if (param_bld)
+			OSSL_PARAM_BLD_free(param_bld);
+
+		if (asym_session->u.eddsa.params)
+			OSSL_PARAM_free(asym_session->u.eddsa.params);
+
+		return -1;
+#else
+		OPENSSL_LOG(WARNING, "EdDSA unsupported for OpenSSL Version < 3.3");
 		return -ENOTSUP;
 #endif
 	}
@@ -1538,6 +1663,12 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_free(sess->u.sm2.params);
 #endif
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_EDDSA:
+#if (OPENSSL_VERSION_NUMBER >= 0x30300000L)
+		OSSL_PARAM_free(sess->u.eddsa.params);
+#endif
+		break;
 	default:
 		break;
 	}
