@@ -406,10 +406,10 @@ static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 		.mask_support = &(const struct rte_flow_item_ipv6){
 			.hdr = {
 				.proto    = 0xff,
-				.src_addr = "\xff\xff\xff\xff\xff\xff\xff\xff"
-						"\xff\xff\xff\xff\xff\xff\xff\xff",
-				.dst_addr = "\xff\xff\xff\xff\xff\xff\xff\xff"
-						"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 			},
 		},
 		.mask_default = &rte_flow_item_ipv6_mask,
