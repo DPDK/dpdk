@@ -926,31 +926,7 @@ prepare_rsa_op(void)
 	__rte_crypto_op_reset(env.op, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
 
 	asym = env.op->asym;
-	asym->rsa.padding.type = info.interim_info.rsa_data.padding;
-	asym->rsa.padding.hash = info.interim_info.rsa_data.auth;
-
 	if (env.digest) {
-		if (asym->rsa.padding.type == RTE_CRYPTO_RSA_PADDING_PKCS1_5) {
-			int b_len = 0;
-			uint8_t b[32];
-
-			b_len = get_hash_oid(asym->rsa.padding.hash, b);
-			if (b_len < 0) {
-				RTE_LOG(ERR, USER1, "Failed to get digest info for hash %d\n",
-					asym->rsa.padding.hash);
-				return -EINVAL;
-			}
-
-			if (b_len) {
-				msg.len = env.digest_len + b_len;
-				msg.val = rte_zmalloc(NULL, msg.len, 0);
-				rte_memcpy(msg.val, b, b_len);
-				rte_memcpy(msg.val + b_len, env.digest, env.digest_len);
-				rte_free(env.digest);
-				env.digest = msg.val;
-				env.digest_len = msg.len;
-			}
-		}
 		msg.val = env.digest;
 		msg.len = env.digest_len;
 	} else {
@@ -1619,6 +1595,34 @@ prepare_rsa_xform(struct rte_crypto_asym_xform *xform)
 	xform->rsa.e.length = vec.rsa.e.len;
 	xform->rsa.n.data = vec.rsa.n.val;
 	xform->rsa.n.length = vec.rsa.n.len;
+
+	xform->rsa.padding.type = info.interim_info.rsa_data.padding;
+	xform->rsa.padding.hash = info.interim_info.rsa_data.auth;
+	if (env.digest) {
+		if (xform->rsa.padding.type == RTE_CRYPTO_RSA_PADDING_PKCS1_5) {
+			struct fips_val msg;
+			int b_len = 0;
+			uint8_t b[32];
+
+			b_len = get_hash_oid(xform->rsa.padding.hash, b);
+			if (b_len < 0) {
+				RTE_LOG(ERR, USER1, "Failed to get digest info for hash %d\n",
+					xform->rsa.padding.hash);
+				return -EINVAL;
+			}
+
+			if (b_len) {
+				msg.len = env.digest_len + b_len;
+				msg.val = rte_zmalloc(NULL, msg.len, 0);
+				rte_memcpy(msg.val, b, b_len);
+				rte_memcpy(msg.val + b_len, env.digest, env.digest_len);
+				rte_free(env.digest);
+				env.digest = msg.val;
+				env.digest_len = msg.len;
+			}
+		}
+	}
+
 	return 0;
 }
 

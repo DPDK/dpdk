@@ -196,6 +196,12 @@ ABI Changes
   in either exponent or quintuple format is changed from union to struct data type.
   This change is to support ASN.1 syntax (RFC 3447 Appendix A.1.2).
 
+* cryptodev: The padding struct ``rte_crypto_rsa_padding`` is moved
+  from ``rte_crypto_rsa_op_param`` to ``rte_crypto_rsa_xform``
+  as the padding information is part of session creation
+  instead of per packet crypto operation.
+  This change is required to support virtio-crypto specifications.
+
 * eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
 
