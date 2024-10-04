@@ -1499,7 +1499,7 @@ main(int argc, char **argv)
 
 	if (mem_info) {
 		meminfo_display();
-		return 0;
+		goto cleanup;
 	}
 
 	nb_ports = rte_eth_dev_count_avail();
@@ -1567,6 +1567,7 @@ main(int argc, char **argv)
 	RTE_ETH_FOREACH_DEV(i)
 		rte_eth_dev_close(i);
 
+cleanup:
 	ret = rte_eal_cleanup();
 	if (ret)
 		printf("Error from rte_eal_cleanup(), %d\n", ret);
