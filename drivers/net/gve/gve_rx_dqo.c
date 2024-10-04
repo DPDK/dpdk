@@ -132,6 +132,8 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (rx_desc->generation != rxq->cur_gen_bit)
 			break;
 
+		rte_io_rmb();
+
 		if (unlikely(rx_desc->rx_error)) {
 			rxq->stats.errors++;
 			continue;
