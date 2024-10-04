@@ -2742,8 +2742,8 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_eth *mask = item->mask;
 	const struct rte_flow_item_eth nic_mask = {
-		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-		.hdr.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+		.hdr.src_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 		.hdr.ether_type = RTE_BE16(0xffff),
 		.has_vlan = ext_vlan_sup ? 1 : 0,
 	};
@@ -3005,12 +3005,10 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 nic_mask = {
 		.hdr = {
-			.src_addr =
-				"\xff\xff\xff\xff\xff\xff\xff\xff"
-				"\xff\xff\xff\xff\xff\xff\xff\xff",
-			.dst_addr =
-				"\xff\xff\xff\xff\xff\xff\xff\xff"
-				"\xff\xff\xff\xff\xff\xff\xff\xff",
+			.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+			.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 			.vtc_flow = RTE_BE32(0xffffffff),
 			.proto = 0xff,
 		},
@@ -3230,7 +3228,7 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 		uint8_t vni[4];
 	} id = { .vlan_id = 0, };
 	const struct rte_flow_item_vxlan nic_mask = {
-		.hdr.vni = "\xff\xff\xff",
+		.hdr.vni =  { 0xff, 0xff, 0xff },
 		.hdr.rsvd1 = 0xff,
 	};
 	const struct rte_flow_item_vxlan *valid_mask;
@@ -3313,7 +3311,7 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 	} id = { .vlan_id = 0, };
 
 	struct rte_flow_item_vxlan_gpe nic_mask = {
-		.vni = "\xff\xff\xff",
+		.vni =  { 0xff, 0xff, 0xff },
 		.protocol = 0xff,
 	};
 
@@ -3611,7 +3609,7 @@ mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 			  MLX5_GENEVE_OPT_LEN_1 : MLX5_GENEVE_OPT_LEN_0;
 	const struct rte_flow_item_geneve nic_mask = {
 		.ver_opt_len_o_c_rsvd0 = RTE_BE16(0x3f80),
-		.vni = "\xff\xff\xff",
+		.vni =  { 0xff, 0xff, 0xff },
 		.protocol = RTE_BE16(UINT16_MAX),
 	};
 

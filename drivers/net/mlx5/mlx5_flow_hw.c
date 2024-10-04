@@ -235,67 +235,67 @@ static uint32_t mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_MAX]
 
 /* Ethernet item spec for promiscuous mode. */
 static const struct rte_flow_item_eth ctrl_rx_eth_promisc_spec = {
-	.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 /* Ethernet item mask for promiscuous mode. */
 static const struct rte_flow_item_eth ctrl_rx_eth_promisc_mask = {
-	.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 
 /* Ethernet item spec for all multicast mode. */
 static const struct rte_flow_item_eth ctrl_rx_eth_mcast_spec = {
-	.hdr.dst_addr.addr_bytes = "\x01\x00\x00\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 /* Ethernet item mask for all multicast mode. */
 static const struct rte_flow_item_eth ctrl_rx_eth_mcast_mask = {
-	.hdr.dst_addr.addr_bytes = "\x01\x00\x00\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 
 /* Ethernet item spec for IPv4 multicast traffic. */
 static const struct rte_flow_item_eth ctrl_rx_eth_ipv4_mcast_spec = {
-	.hdr.dst_addr.addr_bytes = "\x01\x00\x5e\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0x01, 0x00, 0x5e, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 /* Ethernet item mask for IPv4 multicast traffic. */
 static const struct rte_flow_item_eth ctrl_rx_eth_ipv4_mcast_mask = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 
 /* Ethernet item spec for IPv6 multicast traffic. */
 static const struct rte_flow_item_eth ctrl_rx_eth_ipv6_mcast_spec = {
-	.hdr.dst_addr.addr_bytes = "\x33\x33\x00\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0x33, 0x33, 0x00, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 /* Ethernet item mask for IPv6 multicast traffic. */
 static const struct rte_flow_item_eth ctrl_rx_eth_ipv6_mcast_mask = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\x00\x00\x00\x00",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 
 /* Ethernet item mask for unicast traffic. */
 static const struct rte_flow_item_eth ctrl_rx_eth_dmac_mask = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 
 /* Ethernet item spec for broadcast. */
 static const struct rte_flow_item_eth ctrl_rx_eth_bcast_spec = {
-	.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+	.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+	.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	.hdr.ether_type = 0,
 };
 
@@ -7966,8 +7966,8 @@ flow_hw_create_lacp_rx_pattern_template(struct rte_eth_dev *dev, struct rte_flow
 		.ingress = 1,
 	};
 	struct rte_flow_item_eth lacp_mask = {
-		.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.dst.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.src.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 		.type = 0xFFFF,
 	};
 	struct rte_flow_item eth_all[] = {
@@ -12726,7 +12726,7 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 	const struct rte_ether_addr cmp = {
-		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	unsigned int i;
 
@@ -12772,7 +12772,7 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 	const struct rte_ether_addr cmp = {
-		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 	};
 	unsigned int i;
 	unsigned int j;

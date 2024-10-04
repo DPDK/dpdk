@@ -73,7 +73,7 @@ mbuf1_prepare(struct dummy_mbuf *dm, uint32_t plen)
 		struct rte_udp_hdr udp;
 	} pkt = {
 		.eth = {
-			.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 			.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4),
 		},
 		.ip = {

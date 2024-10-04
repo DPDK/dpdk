@@ -1804,8 +1804,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 			RTE_FLOW_ITEM_TYPE_IPV6),
 		.mask_support = &(const struct rte_flow_item_eth) {
 			.hdr = {
-				.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-				.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+				.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.src_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 				.ether_type          = RTE_BE16(0xffff),
 			},
 			.has_vlan = 1,
@@ -1857,10 +1857,10 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 				.vtc_flow   = RTE_BE32(0x0ff00000),
 				.proto      = 0xff,
 				.hop_limits = 0xff,
-				.src_addr   = "\xff\xff\xff\xff\xff\xff\xff\xff"
-					"\xff\xff\xff\xff\xff\xff\xff\xff",
-				.dst_addr   = "\xff\xff\xff\xff\xff\xff\xff\xff"
-					"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.src_addr   = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+						0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.dst_addr   = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+						0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 			},
 			.has_frag_ext = 1,
 		},
@@ -1918,7 +1918,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_GENEVE] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
 		.mask_support = &(const struct rte_flow_item_geneve) {
-			.vni = "\xff\xff\xff",
+			.vni =  { 0xff, 0xff, 0xff },
 		},
 		.mask_default = &rte_flow_item_geneve_mask,
 		.mask_sz = sizeof(struct rte_flow_item_geneve),

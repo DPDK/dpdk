@@ -318,8 +318,8 @@ create_default_flow(const struct mcs_test_vector *td, uint16_t portid,
 	struct rte_flow *flow;
 	struct rte_flow_item_eth eth = { .hdr.ether_type = 0, };
 	static const struct rte_flow_item_eth eth_mask = {
-		.hdr.dst_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
-		.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.hdr.dst_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.hdr.src_addr.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
 		.hdr.ether_type = RTE_BE16(0x0000),
 	};
 

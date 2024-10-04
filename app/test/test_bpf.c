@@ -3346,7 +3346,7 @@ test_bpf_filter_sanity(pcap_t *pcap)
 
 	hdr = rte_pktmbuf_mtod(m, typeof(hdr));
 	hdr->eth_hdr = (struct rte_ether_hdr) {
-		.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 		.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4),
 	};
 	hdr->ip_hdr = (struct rte_ipv4_hdr) {

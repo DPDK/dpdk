@@ -3836,7 +3836,7 @@ For example, to create a pattern template to match on the destination MAC:
 
    const struct rte_flow_pattern_template_attr attr = {.ingress = 1};
    struct rte_flow_item_eth eth_m = {
-       .dst.addr_bytes = "\xff\xff\xff\xff\xff\xff";
+       .dst.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
    };
    struct rte_flow_item pattern[] = {
        [0] = {.type = RTE_FLOW_ITEM_TYPE_ETH,
