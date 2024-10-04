@@ -197,6 +197,7 @@ struct __rte_cache_aligned openssl_asym_session {
 	union {
 		struct rsa {
 			RSA *rsa;
+			uint32_t pad;
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			EVP_PKEY_CTX * ctx;
 #endif

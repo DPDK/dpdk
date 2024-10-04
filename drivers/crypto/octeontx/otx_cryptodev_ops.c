@@ -708,7 +708,7 @@ otx_cpt_asym_rsa_op(struct rte_crypto_op *cop, struct cpt_request_info *req,
 		memcpy(rsa->cipher.data, req->rptr, rsa->cipher.length);
 		break;
 	case RTE_CRYPTO_ASYM_OP_DECRYPT:
-		if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE)
+		if (rsa_ctx->padding.type == RTE_CRYPTO_RSA_PADDING_NONE)
 			rsa->message.length = rsa_ctx->n.length;
 		else {
 			/* Get length of decrypted output */
@@ -725,7 +725,7 @@ otx_cpt_asym_rsa_op(struct rte_crypto_op *cop, struct cpt_request_info *req,
 		memcpy(rsa->sign.data, req->rptr, rsa->sign.length);
 		break;
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
-		if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE)
+		if (rsa_ctx->padding.type == RTE_CRYPTO_RSA_PADDING_NONE)
 			rsa->sign.length = rsa_ctx->n.length;
 		else {
 			/* Get length of decrypted output */

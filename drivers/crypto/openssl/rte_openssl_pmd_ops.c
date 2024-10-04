@@ -913,6 +913,7 @@ static int openssl_set_asym_session_parameters(
 		if (!n || !e)
 			goto err_rsa;
 
+		asym_session->u.r.pad = xform->rsa.padding.type;
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_BLD * param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {

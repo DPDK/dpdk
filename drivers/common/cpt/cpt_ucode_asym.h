@@ -327,7 +327,7 @@ cpt_rsa_prep(struct asym_op_params *rsa_params,
 	/* Result buffer */
 	rlen = mod_len;
 
-	if (rsa_op.padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
+	if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
 		/* Use mod_exp operation for no_padding type */
 		vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_MODEX;
 		vq_cmd_w0.s.param2 = exp_len;
@@ -412,7 +412,7 @@ cpt_rsa_crt_prep(struct asym_op_params *rsa_params,
 	/* Result buffer */
 	rlen = mod_len;
 
-	if (rsa_op.padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
+	if (rsa->padding.type == RTE_CRYPTO_RSA_PADDING_NONE) {
 		/*Use mod_exp operation for no_padding type */
 		vq_cmd_w0.s.opcode.minor = CPT_MINOR_OP_MODEX_CRT;
 	} else {
