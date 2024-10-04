@@ -72,6 +72,11 @@ New Features
   A new API ``rte_cryptodev_queue_pair_reset`` is added to reset a particular
   queue pair of a device.
 
+* **Added support for asymmetric EDDSA in cryptodev.**
+
+  Support for asymmetric EDDSA as referenced in
+  RFC: https://datatracker.ietf.org/doc/html/rfc8032 is added in cryptodev.
+
 * **Updated IPsec_MB crypto driver.**
 
   * Added support for SM3 algorithm.
@@ -125,6 +130,9 @@ ABI Changes
 
 * cryptodev: The queue pair configuration structure ``rte_cryptodev_qp_conf``
   is updated to have a new parameter to set priority of that particular queue pair.
+
+* cryptodev: The enum ``rte_crypto_asym_xform_type`` and struct ``rte_crypto_asym_op``
+  are updated to include new values to support EDDSA.
 
 
 Known Issues
