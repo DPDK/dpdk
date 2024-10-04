@@ -24,6 +24,8 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 	if (compl_desc->generation != txq->cur_gen_bit)
 		return;
 
+	rte_io_rmb();
+
 	compl_tag = rte_le_to_cpu_16(compl_desc->completion_tag);
 
 	aim_txq = txq->txqs[compl_desc->id];
