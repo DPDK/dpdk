@@ -11,66 +11,36 @@
 static inline void
 gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 {
-	volatile struct gve_rx_desc_dqo *rx_buf_ring;
 	volatile struct gve_rx_desc_dqo *rx_buf_desc;
 	struct rte_mbuf *nmb[rxq->nb_rx_hold];
 	uint16_t nb_refill = rxq->nb_rx_hold;
-	uint16_t nb_desc = rxq->nb_rx_desc;
 	uint16_t next_avail = rxq->bufq_tail;
 	struct rte_eth_dev *dev;
 	uint64_t dma_addr;
-	uint16_t delta;
 	int i;
 
 	if (rxq->nb_rx_hold < rxq->free_thresh)
 		return;
 
-	rx_buf_ring = rxq->rx_ring;
-	delta = nb_desc - next_avail;
-	if (unlikely(delta < nb_refill)) {
-		if (likely(rte_pktmbuf_alloc_bulk(rxq->mpool, nmb, delta) == 0)) {
-			for (i = 0; i < delta; i++) {
-				rx_buf_desc = &rx_buf_ring[next_avail + i];
-				rxq->sw_ring[next_avail + i] = nmb[i];
-				dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb[i]));
-				rx_buf_desc->header_buf_addr = 0;
-				rx_buf_desc->buf_addr = dma_addr;
-			}
-			nb_refill -= delta;
-			next_avail = 0;
-			rxq->nb_rx_hold -= delta;
-		} else {
-			rxq->stats.no_mbufs_bulk++;
-			rxq->stats.no_mbufs += nb_desc - next_avail;
-			dev = &rte_eth_devices[rxq->port_id];
-			dev->data->rx_mbuf_alloc_failed += nb_desc - next_avail;
-			PMD_DRV_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
-				    rxq->port_id, rxq->queue_id);
-			return;
-		}
+	if (unlikely(rte_pktmbuf_alloc_bulk(rxq->mpool, nmb, nb_refill))) {
+		rxq->stats.no_mbufs_bulk++;
+		rxq->stats.no_mbufs += nb_refill;
+		dev = &rte_eth_devices[rxq->port_id];
+		dev->data->rx_mbuf_alloc_failed += nb_refill;
+		PMD_DRV_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
+			    rxq->port_id, rxq->queue_id);
+		return;
 	}
 
-	if (nb_desc - next_avail >= nb_refill) {
-		if (likely(rte_pktmbuf_alloc_bulk(rxq->mpool, nmb, nb_refill) == 0)) {
-			for (i = 0; i < nb_refill; i++) {
-				rx_buf_desc = &rx_buf_ring[next_avail + i];
-				rxq->sw_ring[next_avail + i] = nmb[i];
-				dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb[i]));
-				rx_buf_desc->header_buf_addr = 0;
-				rx_buf_desc->buf_addr = dma_addr;
-			}
-			next_avail += nb_refill;
-			rxq->nb_rx_hold -= nb_refill;
-		} else {
-			rxq->stats.no_mbufs_bulk++;
-			rxq->stats.no_mbufs += nb_desc - next_avail;
-			dev = &rte_eth_devices[rxq->port_id];
-			dev->data->rx_mbuf_alloc_failed += nb_desc - next_avail;
-			PMD_DRV_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
-				    rxq->port_id, rxq->queue_id);
-		}
+	for (i = 0; i < nb_refill; i++) {
+		rx_buf_desc = &rxq->rx_ring[next_avail];
+		rxq->sw_ring[next_avail] = nmb[i];
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(nmb[i]));
+		rx_buf_desc->header_buf_addr = 0;
+		rx_buf_desc->buf_addr = dma_addr;
+		next_avail = (next_avail + 1) & (rxq->nb_rx_desc - 1);
 	}
-
+	rxq->nb_rx_hold -= nb_refill;
 	rte_write32(next_avail, rxq->qrx_tail);
 
 	rxq->bufq_tail = next_avail;
