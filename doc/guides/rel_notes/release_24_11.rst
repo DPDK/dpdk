@@ -87,6 +87,12 @@ New Features
   registers by module names and get the information (names, values and other
   attributes) of the filtered registers.
 
+* **Updated Amazon ENA (Elastic Network Adapter) net driver.**
+
+  * Modified the PMD API that controls the LLQ header policy.
+  * Replaced ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
+    with a new shared devarg ``llq_policy`` that keeps the same logic.
+
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
@@ -124,6 +130,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* drivers/net/ena: Removed ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
+  and replaced it with a new shared devarg ``llq_policy`` that keeps the same logic.
 
 ABI Changes
 -----------

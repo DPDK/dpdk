@@ -337,9 +337,6 @@ struct ena_adapter {
 	uint32_t active_aenq_groups;
 
 	bool trigger_reset;
-	bool enable_llq;
-	bool use_large_llq_hdr;
-	bool use_normal_llq_hdr;
 	ena_llq_policy llq_header_policy;
 
 	uint32_t last_tx_comp_qid;

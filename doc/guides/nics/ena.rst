@@ -107,11 +107,18 @@ Configuration
 Runtime Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-   * **large_llq_hdr** (default 0)
+   * **llq_policy** (default 1)
 
-     Enables or disables usage of large LLQ headers. This option will have
-     effect only if the device also supports large LLQ headers. Otherwise, the
-     default value will be used.
+     Controls whether use device recommended header policy or override it:
+
+     0 - Disable LLQ (Use with extreme caution as it leads to a huge performance
+     degradation on AWS instances built with Nitro v4 onwards).
+
+     1 - Accept device recommended LLQ policy (Default).
+
+     2 - Enforce normal LLQ policy.
+
+     3 - Enforce large LLQ policy.
 
    * **normal_llq_hdr** (default 0)
 
@@ -125,15 +132,6 @@ Runtime Configuration
      application. Checking for missing Tx completions happens in the driver's
      timer service. Setting this parameter to 0 disables this feature. Maximum
      allowed value is 60 seconds.
-
-   * **enable_llq** (default 1)
-
-     Determines whenever the driver should use the LLQ (if it's available) or
-     not.
-
-     **NOTE: On the 6th generation AWS instances disabling LLQ may lead to a
-     huge performance degradation. In general disabling LLQ is highly not
-     recommended!**
 
    * **control_poll_interval** (default 0)
 
