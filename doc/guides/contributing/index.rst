@@ -15,6 +15,7 @@ Contributor's Guidelines
     documentation
     unit_test
     new_library
+    new_driver
     patches
     vulnerability
     stable
