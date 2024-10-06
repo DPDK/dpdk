@@ -123,6 +123,12 @@ New Features
   to filter the registers by module names and get the information
   (names, values and other attributes) of the filtered registers.
 
+* **Updated Amazon ENA (Elastic Network Adapter) net driver.**
+
+  * Modified the PMD API that controls the LLQ header policy.
+  * Replaced ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
+    with a new shared devarg ``llq_policy`` that keeps the same logic.
+
 * **Updated Cisco enic driver.**
 
   * Added SR-IOV VF support.
@@ -251,6 +257,9 @@ API Changes
   * ``rte_kvargs_process_opt`` has been added to behave as ``rte_kvargs_process`` in previous
     releases: it handles key=value and only-key cases.
   * Both ``rte_kvargs_process`` and ``rte_kvargs_process_opt`` reject a NULL ``kvlist`` parameter.
+
+* drivers/net/ena: Removed ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
+  and replaced it with a new shared devarg ``llq_policy`` that keeps the same logic.
 
 
 ABI Changes

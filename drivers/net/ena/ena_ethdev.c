@@ -79,18 +79,25 @@ struct ena_stats {
 	ENA_STAT_ENTRY(stat, srd)
 
 /* Device arguments */
-#define ENA_DEVARG_LARGE_LLQ_HDR "large_llq_hdr"
-#define ENA_DEVARG_NORMAL_LLQ_HDR "normal_llq_hdr"
+
+/* llq_policy Controls whether to disable LLQ, use device recommended
+ * header policy or overriding the device recommendation.
+ * 0 - Disable LLQ. Use with extreme caution as it leads to a huge
+ *     performance degradation on AWS instances built with Nitro v4 onwards.
+ * 1 - Accept device recommended LLQ policy (Default).
+ *     Device can recommend normal or large LLQ policy.
+ * 2 - Enforce normal LLQ policy.
+ * 3 - Enforce large LLQ policy.
+ *     Required for packets with header that exceed 96 bytes on
+ *     AWS instances built with Nitro v2 and Nitro v1.
+ */
+#define ENA_DEVARG_LLQ_POLICY "llq_policy"
+
 /* Timeout in seconds after which a single uncompleted Tx packet should be
  * considered as a missing.
  */
 #define ENA_DEVARG_MISS_TXC_TO "miss_txc_to"
-/*
- * Controls whether LLQ should be used (if available). Enabled by default.
- * NOTE: It's highly not recommended to disable the LLQ, as it may lead to a
- * huge performance degradation on 6th generation AWS instances.
- */
-#define ENA_DEVARG_ENABLE_LLQ "enable_llq"
+
 /*
  * Controls the period of time (in milliseconds) between two consecutive inspections of
  * the control queues when the driver is in poll mode and not using interrupts.
@@ -294,9 +301,9 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 				const uint64_t *ids,
 				uint64_t *values,
 				unsigned int n);
-static int ena_process_bool_devarg(const char *key,
-				   const char *value,
-				   void *opaque);
+static int ena_process_llq_policy_devarg(const char *key,
+			const char *value,
+			void *opaque);
 static int ena_parse_devargs(struct ena_adapter *adapter,
 			     struct rte_devargs *devargs);
 static void ena_copy_customer_metrics(struct ena_adapter *adapter,
@@ -312,7 +319,6 @@ static int ena_rx_queue_intr_disable(struct rte_eth_dev *dev,
 static int ena_configure_aenq(struct ena_adapter *adapter);
 static int ena_mp_primary_handle(const struct rte_mp_msg *mp_msg,
 				 const void *peer);
-static ena_llq_policy ena_define_llq_hdr_policy(struct ena_adapter *adapter);
 static bool ena_use_large_llq_hdr(struct ena_adapter *adapter, uint8_t recommended_entry_size);
 
 static const struct eth_dev_ops ena_dev_ops = {
@@ -2320,9 +2326,6 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Assign default devargs values */
 	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
-	adapter->enable_llq = true;
-	adapter->use_large_llq_hdr = false;
-	adapter->use_normal_llq_hdr = false;
 
 	/* Get user bypass */
 	rc = ena_parse_devargs(adapter, pci_dev->device.devargs);
@@ -2330,8 +2333,6 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG_LINE(CRIT, "Failed to parse devargs");
 		goto err;
 	}
-	adapter->llq_header_policy = ena_define_llq_hdr_policy(adapter);
-
 	rc = ena_com_allocate_customer_metrics_buffer(ena_dev);
 	if (rc != 0) {
 		PMD_INIT_LOG_LINE(CRIT, "Failed to allocate customer metrics buffer");
@@ -3734,44 +3735,31 @@ static int ena_process_uint_devarg(const char *key,
 	return 0;
 }
 
-static int ena_process_bool_devarg(const char *key,
-				   const char *value,
-				   void *opaque)
+static int ena_process_llq_policy_devarg(const char *key, const char *value, void *opaque)
 {
 	struct ena_adapter *adapter = opaque;
-	bool bool_value;
+	uint32_t policy;
 
-	/* Parse the value. */
-	if (strcmp(value, "1") == 0) {
-		bool_value = true;
-	} else if (strcmp(value, "0") == 0) {
-		bool_value = false;
+	policy = strtoul(value, NULL, DECIMAL_BASE);
+	if (policy < ENA_LLQ_POLICY_LAST) {
+		adapter->llq_header_policy = policy;
 	} else {
 		PMD_INIT_LOG_LINE(ERR,
-			"Invalid value: '%s' for key '%s'. Accepted: '0' or '1'",
+			"Invalid value: '%s' for key '%s'. valid [0-3]",
 			value, key);
 		return -EINVAL;
 	}
-
-	/* Now, assign it to the proper adapter field. */
-	if (strcmp(key, ENA_DEVARG_LARGE_LLQ_HDR) == 0)
-		adapter->use_large_llq_hdr = bool_value;
-	else if (strcmp(key, ENA_DEVARG_NORMAL_LLQ_HDR) == 0)
-		adapter->use_normal_llq_hdr = bool_value;
-	else if (strcmp(key, ENA_DEVARG_ENABLE_LLQ) == 0)
-		adapter->enable_llq = bool_value;
-
+	PMD_INIT_LOG_LINE(INFO,
+		"LLQ policy is %u [0 - disabled, 1 - device recommended, 2 - normal, 3 - large]",
+		adapter->llq_header_policy);
 	return 0;
 }
 
-static int ena_parse_devargs(struct ena_adapter *adapter,
-			     struct rte_devargs *devargs)
+static int ena_parse_devargs(struct ena_adapter *adapter, struct rte_devargs *devargs)
 {
 	static const char * const allowed_args[] = {
-		ENA_DEVARG_LARGE_LLQ_HDR,
-		ENA_DEVARG_NORMAL_LLQ_HDR,
+		ENA_DEVARG_LLQ_POLICY,
 		ENA_DEVARG_MISS_TXC_TO,
-		ENA_DEVARG_ENABLE_LLQ,
 		ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL,
 		NULL,
 	};
@@ -3787,21 +3775,12 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 			devargs->args);
 		return -EINVAL;
 	}
-
-	rc = rte_kvargs_process(kvlist, ENA_DEVARG_LARGE_LLQ_HDR,
-		ena_process_bool_devarg, adapter);
-	if (rc != 0)
-		goto exit;
-	rc = rte_kvargs_process(kvlist, ENA_DEVARG_NORMAL_LLQ_HDR,
-		ena_process_bool_devarg, adapter);
+	rc = rte_kvargs_process(kvlist, ENA_DEVARG_LLQ_POLICY,
+			ena_process_llq_policy_devarg, adapter);
 	if (rc != 0)
 		goto exit;
 	rc = rte_kvargs_process(kvlist, ENA_DEVARG_MISS_TXC_TO,
 		ena_process_uint_devarg, adapter);
-	if (rc != 0)
-		goto exit;
-	rc = rte_kvargs_process(kvlist, ENA_DEVARG_ENABLE_LLQ,
-		ena_process_bool_devarg, adapter);
 	if (rc != 0)
 		goto exit;
 	rc = rte_kvargs_process(kvlist, ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL,
@@ -4027,9 +4006,7 @@ RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ena,
-	ENA_DEVARG_LARGE_LLQ_HDR "=<0|1> "
-	ENA_DEVARG_NORMAL_LLQ_HDR "=<0|1> "
-	ENA_DEVARG_ENABLE_LLQ "=<0|1> "
+	ENA_DEVARG_LLQ_POLICY "=<0|1|2|3> "
 	ENA_DEVARG_MISS_TXC_TO "=<uint>"
 	ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL "=<0-1000>");
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_init, init, NOTICE);
@@ -4215,17 +4192,6 @@ end:
 	rsp->result = res;
 	/* Return just IPC processing status */
 	return rte_mp_reply(&mp_rsp, peer);
-}
-
-static ena_llq_policy ena_define_llq_hdr_policy(struct ena_adapter *adapter)
-{
-	if (!adapter->enable_llq)
-		return ENA_LLQ_POLICY_DISABLED;
-	if (adapter->use_large_llq_hdr)
-		return ENA_LLQ_POLICY_LARGE;
-	if (adapter->use_normal_llq_hdr)
-		return ENA_LLQ_POLICY_NORMAL;
-	return ENA_LLQ_POLICY_RECOMMENDED;
 }
 
 static bool ena_use_large_llq_hdr(struct ena_adapter *adapter, uint8_t recommended_entry_size)
