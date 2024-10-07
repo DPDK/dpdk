@@ -64,6 +64,8 @@ struct evt_options {
 	uint8_t nb_timer_adptrs;
 	uint8_t timdev_use_burst;
 	uint8_t per_port_pool;
+	uint8_t preschedule;
+	uint8_t preschedule_opted;
 	uint8_t sched_type_list[EVT_MAX_STAGES];
 	uint16_t mbuf_sz;
 	uint16_t wkr_deq_dep;
@@ -184,6 +186,30 @@ evt_configure_eventdev(struct evt_options *opt, uint8_t nb_queues,
 		return ret;
 	}
 
+	if (opt->preschedule_opted && opt->preschedule) {
+		switch (opt->preschedule) {
+		case RTE_EVENT_PRESCHEDULE_ADAPTIVE:
+			if (!(info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)) {
+				evt_err("Preschedule type %d not supported", opt->preschedule);
+				return -EINVAL;
+			}
+			break;
+		case RTE_EVENT_PRESCHEDULE:
+			if (!(info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE)) {
+				evt_err("Preschedule type %d not supported", opt->preschedule);
+				return -EINVAL;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (!opt->preschedule_opted) {
+		if (info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE)
+			opt->preschedule = RTE_EVENT_PRESCHEDULE_ADAPTIVE;
+	}
+
 	if (opt->deq_tmo_nsec) {
 		if (opt->deq_tmo_nsec < info.min_dequeue_timeout_ns) {
 			opt->deq_tmo_nsec = info.min_dequeue_timeout_ns;
@@ -198,16 +224,15 @@ evt_configure_eventdev(struct evt_options *opt, uint8_t nb_queues,
 	}
 
 	const struct rte_event_dev_config config = {
-			.dequeue_timeout_ns = opt->deq_tmo_nsec,
-			.nb_event_queues = nb_queues,
-			.nb_event_ports = nb_ports,
-			.nb_single_link_event_port_queues = 0,
-			.nb_events_limit  = info.max_num_events,
-			.nb_event_queue_flows = opt->nb_flows,
-			.nb_event_port_dequeue_depth =
-				info.max_event_port_dequeue_depth,
-			.nb_event_port_enqueue_depth =
-				info.max_event_port_enqueue_depth,
+		.dequeue_timeout_ns = opt->deq_tmo_nsec,
+		.nb_event_queues = nb_queues,
+		.nb_event_ports = nb_ports,
+		.nb_single_link_event_port_queues = 0,
+		.nb_events_limit = info.max_num_events,
+		.nb_event_queue_flows = opt->nb_flows,
+		.nb_event_port_dequeue_depth = info.max_event_port_dequeue_depth,
+		.nb_event_port_enqueue_depth = info.max_event_port_enqueue_depth,
+		.preschedule_type = opt->preschedule,
 	};
 
 	return rte_event_dev_configure(opt->dev_id, &config);
