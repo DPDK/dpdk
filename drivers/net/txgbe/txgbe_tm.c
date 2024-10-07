@@ -12,7 +12,7 @@ static int txgbe_tm_capabilities_get(struct rte_eth_dev *dev,
 				     struct rte_tm_error *error);
 static int txgbe_shaper_profile_add(struct rte_eth_dev *dev,
 				    uint32_t shaper_profile_id,
-				    struct rte_tm_shaper_params *profile,
+				    const struct rte_tm_shaper_params *profile,
 				    struct rte_tm_error *error);
 static int txgbe_shaper_profile_del(struct rte_eth_dev *dev,
 				    uint32_t shaper_profile_id,
@@ -218,7 +218,7 @@ txgbe_shaper_profile_search(struct rte_eth_dev *dev,
 }
 
 static int
-txgbe_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
+txgbe_shaper_profile_param_check(const struct rte_tm_shaper_params *profile,
 				 struct rte_tm_error *error)
 {
 	/* min rate not supported */
@@ -252,7 +252,7 @@ txgbe_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
 static int
 txgbe_shaper_profile_add(struct rte_eth_dev *dev,
 			 uint32_t shaper_profile_id,
-			 struct rte_tm_shaper_params *profile,
+			 const struct rte_tm_shaper_params *profile,
 			 struct rte_tm_error *error)
 {
 	struct txgbe_tm_conf *tm_conf = TXGBE_DEV_TM_CONF(dev);

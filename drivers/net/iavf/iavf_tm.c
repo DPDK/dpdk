@@ -10,7 +10,7 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 				 __rte_unused struct rte_tm_error *error);
 static int iavf_shaper_profile_add(struct rte_eth_dev *dev,
 				   uint32_t shaper_profile_id,
-				   struct rte_tm_shaper_params *profile,
+				   const struct rte_tm_shaper_params *profile,
 				   struct rte_tm_error *error);
 static int iavf_shaper_profile_del(struct rte_eth_dev *dev,
 				   uint32_t shaper_profile_id,
@@ -487,7 +487,7 @@ iavf_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 }
 
 static int
-iavf_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
+iavf_shaper_profile_param_check(const struct rte_tm_shaper_params *profile,
 				struct rte_tm_error *error)
 {
 	/* min bucket size not supported */
@@ -515,7 +515,7 @@ iavf_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
 static int
 iavf_shaper_profile_add(struct rte_eth_dev *dev,
 			uint32_t shaper_profile_id,
-			struct rte_tm_shaper_params *profile,
+			const struct rte_tm_shaper_params *profile,
 			struct rte_tm_error *error)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
