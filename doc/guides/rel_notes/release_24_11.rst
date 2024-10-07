@@ -93,6 +93,9 @@ New Features
   * Added ``rte_event_port_preschedule_modify``
     to modify pre-scheduling type on a given event port.
 
+  * Added ``rte_event_port_preschedule``
+    to allow applications provide explicit pre-schedule hints to event ports.
+
 * **Updated event device library for independent enqueue feature.**
 
   Added support for independent enqueue feature.
