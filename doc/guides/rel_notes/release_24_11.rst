@@ -82,6 +82,14 @@ New Features
 
   The new statistics are useful for debugging and profiling.
 
+* **Added event device pre-scheduling support.**
+
+  Added support for pre-scheduling of events to event ports
+  to improve scheduling performance and latency.
+
+  * Added ``rte_event_dev_config::preschedule_type``
+    to configure the device level pre-scheduling type.
+
 * **Updated event device library for independent enqueue feature.**
 
   Added support for independent enqueue feature.
@@ -147,6 +155,8 @@ ABI Changes
 * eal: The maximum number of file descriptors that can be passed to a secondary process
   has been increased from 8 to 253 (which is the maximum possible with Unix domain socket).
   This allows for more queues when using software devices such as TAP and XDP.
+
+* eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
 
 Known Issues
