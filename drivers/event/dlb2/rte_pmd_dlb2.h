@@ -20,6 +20,30 @@ extern "C" {
 #endif
 
 /**
+ * Macro function to get QID depth of rte_event metadata.
+ * Currently lower 2 bits of 'rsvd' field are used to store QID depth.
+ */
+#define RTE_PMD_DLB2_GET_QID_DEPTH(x) ((x)->rsvd & 0x3)
+
+/**
+ * Macro function to set QID depth of rte_event metadata.
+ * Currently lower 2 bits of 'rsvd' field are used to store QID depth.
+ */
+#define RTE_PMD_DLB2_SET_QID_DEPTH(x, v) ((x)->rsvd = ((x)->rsvd & ~0x3) | (v & 0x3))
+
+/**
+ * Macro function to get QE weight from rte_event metadata.
+ * Currently upper 2 bits of 'rsvd' field are used to store QE weight.
+ */
+#define RTE_PMD_DLB2_GET_QE_WEIGHT(x) (((x)->rsvd >> 2) & 0x3)
+
+/**
+ * Macro function to set QE weight from rte_event metadata.
+ * Currently upper 2 bits of 'rsvd' field are used to store QE weight.
+ */
+#define RTE_PMD_DLB2_SET_QE_WEIGHT(x, v) ((x)->rsvd = ((x)->rsvd & 0x3) | ((v & 0x3) << 2))
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
  *

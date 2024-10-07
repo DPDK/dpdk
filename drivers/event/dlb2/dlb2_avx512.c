@@ -151,20 +151,20 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 		 */
 #define DLB2_QE_EV_TYPE_WORD 0
 		sse_qe[0] = _mm_insert_epi16(sse_qe[0],
-					     ev[0].sub_event_type << 8 |
-						ev[0].event_type,
+					     ev[0].sub_event_type << 4 |
+						ev[0].event_type << 12,
 					     DLB2_QE_EV_TYPE_WORD);
 		sse_qe[0] = _mm_insert_epi16(sse_qe[0],
-					     ev[1].sub_event_type << 8 |
-						ev[1].event_type,
+					     ev[1].sub_event_type << 4 |
+						ev[1].event_type << 12,
 					     DLB2_QE_EV_TYPE_WORD + 4);
 		sse_qe[1] = _mm_insert_epi16(sse_qe[1],
-					     ev[2].sub_event_type << 8 |
-						ev[2].event_type,
+					     ev[2].sub_event_type << 4 |
+						ev[2].event_type << 12,
 					     DLB2_QE_EV_TYPE_WORD);
 		sse_qe[1] = _mm_insert_epi16(sse_qe[1],
-					     ev[3].sub_event_type << 8 |
-						ev[3].event_type,
+					     ev[3].sub_event_type << 4 |
+						ev[3].event_type << 12,
 					     DLB2_QE_EV_TYPE_WORD + 4);
 
 		if (qm_port->use_avx512) {
@@ -238,11 +238,11 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 		}
 
 			/* will only be set for DLB 2.5 + */
-		if (qm_port->cq_weight) {
-			qe[0].weight = ev[0].impl_opaque & 3;
-			qe[1].weight = ev[1].impl_opaque & 3;
-			qe[2].weight = ev[2].impl_opaque & 3;
-			qe[3].weight = ev[3].impl_opaque & 3;
+		if (qm_port->dlb2->enable_cq_weight) {
+			qe[0].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[0]);
+			qe[1].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[1]);
+			qe[2].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[2]);
+			qe[3].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[3]);
 		}
 
 		break;
@@ -267,6 +267,7 @@ dlb2_event_build_hcws(struct dlb2_port *qm_port,
 			}
 			qe[i].u.event_type.major = ev[i].event_type;
 			qe[i].u.event_type.sub = ev[i].sub_event_type;
+			qe[i].weight = RTE_PMD_DLB2_GET_QE_WEIGHT(&ev[i]);
 		}
 		break;
 	case 0:

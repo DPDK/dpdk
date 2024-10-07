@@ -91,6 +91,10 @@ New Features
   Applications should use ``RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ`` to enable
   the feature if the capability ``RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ`` exists.
 
+* **Updated DLB2 event driver.**
+
+  * Added independent enqueue feature.
+
 
 Removed Items
 -------------
