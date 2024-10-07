@@ -359,7 +359,7 @@ static int
 dpaa2_node_check_params(struct rte_eth_dev *dev, uint32_t node_id,
 		__rte_unused uint32_t priority, uint32_t weight,
 		       uint32_t level_id,
-		       struct rte_tm_node_params *params,
+		       const struct rte_tm_node_params *params,
 		       struct rte_tm_error *error)
 {
 	if (node_id == RTE_TM_NODE_ID_NULL)
@@ -431,7 +431,7 @@ dpaa2_node_check_params(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 dpaa2_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority, uint32_t weight,
-	      uint32_t level_id, struct rte_tm_node_params *params,
+	      uint32_t level_id, const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;

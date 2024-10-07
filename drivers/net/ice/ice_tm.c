@@ -15,7 +15,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 static int ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error);
 static int ice_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 			    struct rte_tm_error *error);
@@ -82,7 +82,7 @@ ice_tm_conf_uninit(struct rte_eth_dev *dev)
 static int
 ice_node_param_check(struct ice_pf *pf, uint32_t node_id,
 		      uint32_t priority, uint32_t weight,
-		      struct rte_tm_node_params *params,
+		      const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	/* checked all the unsupported parameter */
@@ -337,7 +337,7 @@ static int
 ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
