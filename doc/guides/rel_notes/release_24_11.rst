@@ -90,6 +90,9 @@ New Features
   * Added ``rte_event_port_preschedule_modify`` to modify pre-scheduling type
     on a given event port.
 
+  * Added ``rte_event_port_preschedule`` to allow applications provide explicit
+    pre-schedule hints to event ports.
+
 
 Removed Items
 -------------

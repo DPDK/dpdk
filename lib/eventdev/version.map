@@ -151,6 +151,8 @@ EXPERIMENTAL {
 	# added in 24.11
 	rte_event_port_preschedule_modify;
 	__rte_eventdev_trace_port_preschedule_modify;
+	rte_event_port_preschedule;
+	__rte_eventdev_trace_port_preschedule;
 };
 
 INTERNAL {

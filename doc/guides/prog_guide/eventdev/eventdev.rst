@@ -395,6 +395,15 @@ will be treated as a no-op.
    // Disable pre-scheduling if thread is about to be scheduled out and issue dequeue() to drain
    // pending events.
 
+Application may  provide a hint to the eventdev PMD to pre-schedule the next event without
+releasing the current flow context. Event device that support this feature advertises
+the capability via the ``RTE_EVENT_DEV_CAP_PRESCHEDULE_EXPLICIT`` flag.
+If pre-scheduling is already enabled at a event device or event port level or if the
+capability is not supported then the hint is ignored.
+
+.. code-block:: c
+
+   rte_event_port_preschedule(dev_id, port_id, RTE_EVENT_PRESCHEDULE);
 
 Starting the EventDev
 ~~~~~~~~~~~~~~~~~~~~~

@@ -52,6 +52,9 @@ RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_port_profile_switch,
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_port_preschedule_modify,
 	lib.eventdev.port.preschedule.modify)
 
+RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_port_preschedule,
+	lib.eventdev.port.preschedule)
+
 /* Eventdev Rx adapter trace points */
 RTE_TRACE_POINT_REGISTER(rte_eventdev_trace_eth_rx_adapter_create,
 	lib.eventdev.rx.adapter.create)
