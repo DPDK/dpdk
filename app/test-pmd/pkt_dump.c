@@ -41,7 +41,7 @@ int pkt_log_init(void) {
     log_type = rte_log_register("pkt_dump"); 
     if (log_type >= 0) {
         rte_log_set_global_level(RTE_LOG_DEBUG);
-        f = fopen("/home/jun/vm/pkt1.log", "a+");
+        f = fopen("/home/jun/vm/pkt.log", "a+");
         if (f == NULL) {
             printf("open file failed\n");
             return -1;
