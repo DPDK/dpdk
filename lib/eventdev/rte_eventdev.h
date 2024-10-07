@@ -442,6 +442,25 @@ struct rte_event;
  * @see RTE_SCHED_TYPE_PARALLEL
  */
 
+#define RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ  (1ULL << 16)
+/**< Event device is capable of independent enqueue.
+ * A new capability, RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ, will indicate that Eventdev
+ * supports the enqueue in any order or specifically in a different order than the
+ * dequeue. Eventdev PMD can either dequeue events in the changed order in which
+ * they are enqueued or restore the original order before sending them to the
+ * underlying hardware device. A flag is provided during the port configuration to
+ * inform Eventdev PMD that the application intends to use an independent enqueue
+ * order on a particular port. Note that this capability only matters for eventdevs
+ * supporting burst mode.
+ *
+ * When an implicit release is enabled on a port, Eventdev PMD will also handle
+ * the insertion of RELEASE events in place of dropped events. The independent enqueue
+ * feature only applies to FORWARD and RELEASE events. New events (op=RTE_EVENT_OP_NEW)
+ * will be dequeued in the order the application enqueues them and do not maintain
+ * any order relative to FORWARD/RELEASE events. FORWARD vs NEW relaxed ordering
+ * only applies to ports that have enabled independent enqueue feature.
+ */
+
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
 /**< Highest priority level for events and queues.
@@ -1065,6 +1084,18 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *
  * Note that this flag is only a hint, so PMDs must operate under the
  * assumption that any port can enqueue an event with any type of op.
+ *
+ *  @see rte_event_port_setup()
+ */
+#define RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ   (1ULL << 5)
+/**< Flag to enable independent enqueue. Must not be set if the device
+ * is not RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ capable. This feature
+ * allows an application to enqueue RTE_EVENT_OP_FORWARD or
+ * RTE_EVENT_OP_RELEASE in an order different than the order the
+ * events were dequeued from the event device, while maintaining
+ * RTE_SCHED_TYPE_ATOMIC or RTE_SCHED_TYPE_ORDERED semantics.
+ *
+ * Note that this flag only matters for Eventdevs supporting burst mode.
  *
  *  @see rte_event_port_setup()
  */

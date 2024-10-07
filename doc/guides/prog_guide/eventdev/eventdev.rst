@@ -472,6 +472,30 @@ A flush callback can be passed to the function to handle any outstanding events.
 
         Invocation of this API does not affect the existing port configuration.
 
+Independent Enqueue Capability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This capability applies to eventdev devices that expects all forwarded events
+to be enqueued in the same order as they are dequeued.
+For dropped events, their releases should come
+at the same location as the original event was expected.
+The eventdev device has this restriction as it uses the order
+to retrieve information about the original event that was sent to the CPU.
+This contains information like atomic flow ID to release the flow lock
+and ordered events sequence number to restore the original order.
+
+This capability only matters to eventdevs supporting burst mode.
+On ports where the application is going to change enqueue order,
+``RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ`` support should be enabled.
+
+Example code to inform PMD that the application plans to use
+independent enqueue order on a port:
+
+.. code-block:: c
+
+   if (capability & RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ)
+       port_config = port_config | RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ;
+
 Stopping the EventDev
 ~~~~~~~~~~~~~~~~~~~~~
 
