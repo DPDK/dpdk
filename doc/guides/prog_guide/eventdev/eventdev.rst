@@ -357,6 +357,29 @@ Worker path:
        // Process the event received.
    }
 
+Event Pre-scheduling
+~~~~~~~~~~~~~~~~~~~~
+
+Event pre-scheduling improves scheduling performance by assigning events to event ports in advance
+when dequeues are issued.
+The `rte_event_dequeue_burst` operation initiates the pre-schedule operation, which completes
+in parallel without affecting the dequeued event flow contexts and dequeue latency.
+On the next dequeue operation, the pre-scheduled events are dequeued and pre-schedule is initiated
+again.
+
+An application can use event pre-scheduling if the event device supports it at either device
+level or at a individual port level.
+The application must check pre-schedule capability by checking if ``rte_event_dev_info.event_dev_cap``
+has the bit ``RTE_EVENT_DEV_CAP_PRESCHEDULE`` or ``RTE_EVENT_DEV_CAP_PRESCHEDULE_ADAPTIVE`` set, if
+present pre-scheduling can be enabled at device
+configuration time by setting appropriate pre-schedule type in ``rte_event_dev_config.preschedule``.
+
+The following pre-schedule types are supported:
+ * ``RTE_EVENT_PRESCHEDULE_NONE`` - No pre-scheduling.
+ * ``RTE_EVENT_PRESCHEDULE`` - Always issue a pre-schedule when dequeue is issued.
+ * ``RTE_EVENT_PRESCHEDULE_ADAPTIVE`` - Issue pre-schedule when dequeue is issued and there are
+   no forward progress constraints.
+
 Starting the EventDev
 ~~~~~~~~~~~~~~~~~~~~~
 

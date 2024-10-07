@@ -79,6 +79,14 @@ New Features
 
   * Updated DSW driver for independent enqueue feature.
 
+* **Added event device pre-scheduling support.**
+
+  Added support for pre-scheduling of events to event ports to improve
+  scheduling performance and latency.
+
+  * Added ``rte_event_dev_config::preschedule_type`` to configure the device
+    level pre-scheduling type.
+
 
 Removed Items
 -------------
@@ -124,6 +132,8 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config``
+  structure.
 
 Known Issues
 ------------
