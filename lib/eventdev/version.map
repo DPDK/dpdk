@@ -147,6 +147,10 @@ EXPERIMENTAL {
 	rte_event_port_profile_unlink;
 	rte_event_port_profile_links_get;
 	__rte_eventdev_trace_port_profile_switch;
+
+	# added in 24.11
+	rte_event_port_preschedule_modify;
+	__rte_eventdev_trace_port_preschedule_modify;
 };
 
 INTERNAL {

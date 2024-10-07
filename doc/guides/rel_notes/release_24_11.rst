@@ -90,6 +90,9 @@ New Features
   * Added ``rte_event_dev_config::preschedule_type``
     to configure the device level pre-scheduling type.
 
+  * Added ``rte_event_port_preschedule_modify``
+    to modify pre-scheduling type on a given event port.
+
 * **Updated event device library for independent enqueue feature.**
 
   Added support for independent enqueue feature.

@@ -1252,7 +1252,8 @@ test_eventdev_profile_switch(void)
 }
 
 static int
-preschedule_test(enum rte_event_dev_preschedule_type preschedule_type, const char *preschedule_name)
+preschedule_test(enum rte_event_dev_preschedule_type preschedule_type, const char *preschedule_name,
+		 uint8_t modify)
 {
 #define NB_EVENTS     1024
 	uint64_t start, total;
@@ -1270,7 +1271,11 @@ preschedule_test(enum rte_event_dev_preschedule_type preschedule_type, const cha
 		TEST_ASSERT(rc == 1, "Failed to enqueue event");
 	}
 
-	RTE_SET_USED(preschedule_type);
+	if (modify) {
+		rc = rte_event_port_preschedule_modify(TEST_DEV_ID, 0, preschedule_type);
+		TEST_ASSERT_SUCCESS(rc, "Failed to modify preschedule type");
+	}
+
 	total = 0;
 	while (cnt) {
 		start = rte_rdtsc_precise();
@@ -1335,13 +1340,13 @@ test_eventdev_preschedule_configure(void)
 
 	rc = preschedule_configure(RTE_EVENT_PRESCHEDULE_NONE, &info);
 	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
-	rc = preschedule_test(RTE_EVENT_PRESCHEDULE_NONE, "RTE_EVENT_PRESCHEDULE_NONE");
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE_NONE, "RTE_EVENT_PRESCHEDULE_NONE", 0);
 	TEST_ASSERT_SUCCESS(rc, "Failed to test preschedule RTE_EVENT_PRESCHEDULE_NONE");
 
 	rte_event_dev_stop(TEST_DEV_ID);
 	rc = preschedule_configure(RTE_EVENT_PRESCHEDULE, &info);
 	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
-	rc = preschedule_test(RTE_EVENT_PRESCHEDULE, "RTE_EVENT_PRESCHEDULE");
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE, "RTE_EVENT_PRESCHEDULE", 0);
 	TEST_ASSERT_SUCCESS(rc, "Failed to test preschedule RTE_EVENT_PRESCHEDULE");
 
 	if (info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE) {
@@ -1349,9 +1354,37 @@ test_eventdev_preschedule_configure(void)
 		rc = preschedule_configure(RTE_EVENT_PRESCHEDULE_ADAPTIVE, &info);
 		TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
 		rc = preschedule_test(RTE_EVENT_PRESCHEDULE_ADAPTIVE,
-				      "RTE_EVENT_PRESCHEDULE_ADAPTIVE");
+				      "RTE_EVENT_PRESCHEDULE_ADAPTIVE", 0);
 		TEST_ASSERT_SUCCESS(rc,
 				    "Failed to test preschedule RTE_EVENT_PRESCHEDULE_ADAPTIVE");
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_preschedule_modify(void)
+{
+	struct rte_event_dev_info info;
+	int rc;
+
+	rte_event_dev_info_get(TEST_DEV_ID, &info);
+	if ((info.event_dev_cap & RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE) == 0)
+		return TEST_SKIPPED;
+
+	rc = preschedule_configure(RTE_EVENT_PRESCHEDULE_NONE, &info);
+	TEST_ASSERT_SUCCESS(rc, "Failed to configure eventdev");
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE_NONE, "RTE_EVENT_PRESCHEDULE_NONE", 1);
+	TEST_ASSERT_SUCCESS(rc, "Failed to test per port preschedule RTE_EVENT_PRESCHEDULE_NONE");
+
+	rc = preschedule_test(RTE_EVENT_PRESCHEDULE, "RTE_EVENT_PRESCHEDULE", 1);
+	TEST_ASSERT_SUCCESS(rc, "Failed to test per port preschedule RTE_EVENT_PRESCHEDULE");
+
+	if (info.event_dev_cap & RTE_EVENT_DEV_CAP_EVENT_PRESCHEDULE_ADAPTIVE) {
+		rc = preschedule_test(RTE_EVENT_PRESCHEDULE_ADAPTIVE,
+				      "RTE_EVENT_PRESCHEDULE_ADAPTIVE", 1);
+		TEST_ASSERT_SUCCESS(
+			rc, "Failed to test per port preschedule RTE_EVENT_PRESCHEDULE_ADAPTIVE");
 	}
 
 	return TEST_SUCCESS;
@@ -1419,6 +1452,8 @@ static struct unit_test_suite eventdev_common_testsuite  = {
 			test_eventdev_profile_switch),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_preschedule_configure),
+		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
+			test_eventdev_preschedule_modify),
 		TEST_CASE_ST(eventdev_setup_device, eventdev_stop_device,
 			test_eventdev_link),
 		TEST_CASE_ST(eventdev_setup_device, eventdev_stop_device,
