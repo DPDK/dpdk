@@ -245,6 +245,10 @@ static struct unit_test_suite trace_tests = {
 static int
 test_trace(void)
 {
+	if (!rte_trace_feature_is_enabled()) {
+		printf("Trace omitted at build-time, skipping test\n");
+		return TEST_SKIPPED;
+	}
 	return unit_test_suite_runner(&trace_tests);
 }
 

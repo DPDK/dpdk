@@ -30,6 +30,7 @@ extern "C" {
 #include <rte_per_lcore.h>
 #include <rte_stdatomic.h>
 #include <rte_string_fns.h>
+#include <rte_trace.h>
 #include <rte_uuid.h>
 
 /** The tracepoint object. */
@@ -359,6 +360,8 @@ __rte_trace_point_emit_ev_header(void *mem, uint64_t in)
 #define __rte_trace_point_emit_header_generic(t) \
 void *mem; \
 do { \
+	if (!rte_trace_feature_is_enabled()) \
+		return; \
 	const uint64_t val = rte_atomic_load_explicit(t, rte_memory_order_acquire); \
 	if (likely(!(val & __RTE_TRACE_FIELD_ENABLE_MASK))) \
 		return; \

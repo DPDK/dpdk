@@ -23,6 +23,8 @@ rte_trace_point_t __rte_section("__rte_trace_point") __##trace; \
 static const char __##trace##_name[] = RTE_STR(name); \
 RTE_INIT(trace##_init) \
 { \
+	if (!rte_trace_feature_is_enabled()) \
+		return; \
 	__rte_trace_point_register(&__##trace, __##trace##_name, \
 		(void (*)(void)) trace); \
 }

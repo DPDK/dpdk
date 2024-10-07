@@ -36,6 +36,26 @@ __rte_experimental
 bool rte_trace_is_enabled(void);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Test if trace feature is enabled at compile time.
+ *
+ * @return
+ *   true if trace feature is enabled, false otherwise.
+ */
+__rte_experimental
+static __rte_always_inline bool
+rte_trace_feature_is_enabled(void)
+{
+#ifdef RTE_TRACE
+	return true;
+#else
+	return false;
+#endif
+}
+
+/**
  * Enumerate trace mode operation.
  */
 enum rte_trace_mode {
