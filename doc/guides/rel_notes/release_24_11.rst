@@ -95,6 +95,10 @@ New Features
 
   * Added independent enqueue feature.
 
+* **Updated DSW event driver.**
+
+  * Added independent enqueue feature.
+
 
 Removed Items
 -------------
