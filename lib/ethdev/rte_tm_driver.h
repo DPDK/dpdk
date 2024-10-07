@@ -51,7 +51,7 @@ typedef int (*rte_tm_node_capabilities_get_t)(struct rte_eth_dev *dev,
 /** @internal Traffic manager WRED profile add */
 typedef int (*rte_tm_wred_profile_add_t)(struct rte_eth_dev *dev,
 	uint32_t wred_profile_id,
-	struct rte_tm_wred_params *profile,
+	const struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error);
 
 /** @internal Traffic manager WRED profile delete */
