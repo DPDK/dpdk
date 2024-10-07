@@ -123,7 +123,7 @@ mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_c
 	/* Configure TVMDP library */
 	ret = tvmdp_configure(cnxk_mldev->mldev->data->nb_models, rte_get_tsc_cycles);
 	if (ret != 0)
-		plt_err("TVMDP configuration failed, error = %d\n", ret);
+		plt_err("TVMDP configuration failed, error = %d", ret);
 
 	return ret;
 }
@@ -138,7 +138,7 @@ mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev)
 	/* Close TVMDP library configuration */
 	ret = tvmdp_close();
 	if (ret != 0)
-		plt_err("TVMDP close failed, error = %d\n", ret);
+		plt_err("TVMDP close failed, error = %d", ret);
 
 	return ret;
 }
@@ -296,7 +296,7 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	/* Get model metadata - stage 2 */
 	ret = tvmdp_model_metadata_get_stage2(model->model_id, &model->mvtvm.metadata);
 	if (ret != 0) {
-		plt_err("TVMDP: Failed to get metadata, model_id = %u, error = %d\n",
+		plt_err("TVMDP: Failed to get metadata, model_id = %u, error = %d",
 			model->model_id, ret);
 		goto error;
 	}

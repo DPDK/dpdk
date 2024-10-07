@@ -215,7 +215,7 @@ mrvl_pp2_fixup_init(void)
 		dummy_pool_id[i] = mrvl_reserve_bit(&used_bpools[i],
 					     PP2_BPOOL_NUM_POOLS);
 		if (dummy_pool_id[i] < 0) {
-			MRVL_LOG(ERR, "Can't find free pool\n");
+			MRVL_LOG(ERR, "Can't find free pool");
 			return -1;
 		}
 
@@ -227,7 +227,7 @@ mrvl_pp2_fixup_init(void)
 		bpool_params.dummy_short_pool = 1;
 		err = pp2_bpool_init(&bpool_params, &dummy_pool[i]);
 		if (err != 0 || !dummy_pool[i]) {
-			MRVL_LOG(ERR, "BPool init failed!\n");
+			MRVL_LOG(ERR, "BPool init failed!");
 			used_bpools[i] &= ~(1 << dummy_pool_id[i]);
 			return -1;
 		}
@@ -491,7 +491,7 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_conf.rxmode.mtu > priv->max_mtu) {
-		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u\n",
+		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u",
 			 dev->data->dev_conf.rxmode.mtu,
 			 priv->max_mtu);
 		return -EINVAL;
@@ -770,7 +770,7 @@ static int mrvl_populate_vlan_table(struct rte_eth_dev *dev, int on)
 				vbit >>= 1;
 			ret = mrvl_vlan_filter_set(dev, vlan, on);
 			if (ret) {
-				MRVL_LOG(ERR, "Failed to setup VLAN filter\n");
+				MRVL_LOG(ERR, "Failed to setup VLAN filter");
 				return ret;
 			}
 		}
@@ -1875,7 +1875,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	int ret;
 
 	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
-		MRVL_LOG(ERR, "VLAN stripping is not supported\n");
+		MRVL_LOG(ERR, "VLAN stripping is not supported");
 		return -ENOTSUP;
 	}
 
@@ -1890,7 +1890,7 @@ static int mrvl_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	if (mask & RTE_ETH_VLAN_EXTEND_MASK) {
-		MRVL_LOG(ERR, "Extend VLAN not supported\n");
+		MRVL_LOG(ERR, "Extend VLAN not supported");
 		return -ENOTSUP;
 	}
 
@@ -1941,7 +1941,7 @@ mrvl_fill_bpool(struct mrvl_rxq *rxq, int num)
 			!= cookie_addr_high) {
 			MRVL_LOG(ERR,
 				"mbuf virtual addr high is out of range "
-				"0x%x instead of 0x%x\n",
+				"0x%x instead of 0x%x",
 				(uint32_t)((uint64_t)mbufs[i] >> 32),
 				(uint32_t)(cookie_addr_high >> 32));
 			goto out;

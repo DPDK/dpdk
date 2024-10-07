@@ -500,7 +500,7 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 	entry = rte_cfgfile_get_entry(file, sec_name,
 				      MRVL_TOK_PARSER_UDF_PROTO);
 	if (!entry) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set", udf,
 			 MRVL_TOK_PARSER_UDF_PROTO);
 		return -1;
 	}
@@ -509,7 +509,7 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 	entry_field = rte_cfgfile_get_entry(file, sec_name,
 				       MRVL_TOK_PARSER_UDF_FIELD);
 	if (!entry_field) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set", udf,
 			 MRVL_TOK_PARSER_UDF_FIELD);
 		return -1;
 	}
@@ -523,7 +523,7 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 			field_size = 2;
 		} else {
 			MRVL_LOG(ERR, "UDF[%d]: mismatch between '%s' proto "
-				 "and '%s' field\n", udf,
+				 "and '%s' field", udf,
 				 MRVL_TOK_PARSER_UDF_PROTO_ETH,
 				 entry_field);
 			return -1;
@@ -537,45 +537,45 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 			field_size = 2;
 		} else {
 			MRVL_LOG(ERR, "UDF[%d]: mismatch between '%s' proto "
-				 "and '%s' field\n", udf,
+				 "and '%s' field", udf,
 				 MRVL_TOK_PARSER_UDF_PROTO_UDP,
 				 entry_field);
 			return -1;
 		}
 	} else {
-		MRVL_LOG(ERR, "UDF[%d]: Unsupported '%s' proto\n", udf, entry);
+		MRVL_LOG(ERR, "UDF[%d]: Unsupported '%s' proto", udf, entry);
 		return -1;
 	}
 
 	snprintf(malloc_name, sizeof(malloc_name), "mrvl_udf_%d_key", udf);
 	udf_params->match_key = rte_zmalloc(malloc_name, field_size, 0);
 	if (udf_params->match_key == NULL) {
-		MRVL_LOG(ERR, "Cannot allocate udf %d key\n", udf);
+		MRVL_LOG(ERR, "Cannot allocate udf %d key", udf);
 		return -1;
 	}
 	snprintf(malloc_name, sizeof(malloc_name), "mrvl_udf_%d_mask", udf);
 	udf_params->match_mask = rte_zmalloc(malloc_name, field_size, 0);
 	if (udf_params->match_mask == NULL) {
-		MRVL_LOG(ERR, "Cannot allocate udf %d mask\n", udf);
+		MRVL_LOG(ERR, "Cannot allocate udf %d mask", udf);
 		return -1;
 	}
 
 	/* Read 'key' field */
 	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PARSER_UDF_KEY);
 	if (!entry) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set", udf,
 			 MRVL_TOK_PARSER_UDF_KEY);
 		return -1;
 	}
 
 	if (strncmp(entry, "0x", 2) != 0)  {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must start with '0x'\n",
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must start with '0x'",
 			 udf, MRVL_TOK_PARSER_UDF_KEY);
 		return -EINVAL;
 	}
 
 	if (strlen(entry) != FIELD_LEN_IN_CHARS(field_size)) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field's len must be %d\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field's len must be %d", udf,
 			 MRVL_TOK_PARSER_UDF_KEY,
 			 FIELD_LEN_IN_CHARS(field_size));
 		return -EINVAL;
@@ -588,7 +588,7 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 		if (get_val_securely8(tmp_arr, 16,
 				      &udf_params->match_key[i]) < 0) {
 			MRVL_LOG(ERR, "UDF[%d]: '%s' field's value is not in "
-				"hex format\n", udf, MRVL_TOK_PARSER_UDF_KEY);
+				"hex format", udf, MRVL_TOK_PARSER_UDF_KEY);
 			return -EINVAL;
 		}
 		entry += 2;
@@ -597,18 +597,18 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 	/* Read 'mask' field */
 	entry = rte_cfgfile_get_entry(file, sec_name, MRVL_TOK_PARSER_UDF_MASK);
 	if (!entry) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set", udf,
 			 MRVL_TOK_PARSER_UDF_MASK);
 		return -1;
 	}
 	if (strncmp(entry, "0x", 2) != 0) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must start with '0x'\n",
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must start with '0x'",
 			 udf, MRVL_TOK_PARSER_UDF_MASK);
 		return -EINVAL;
 	}
 
 	if (strlen(entry) != FIELD_LEN_IN_CHARS(field_size)) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field's len must be %d\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field's len must be %d", udf,
 			 MRVL_TOK_PARSER_UDF_MASK,
 			 FIELD_LEN_IN_CHARS(field_size));
 		return -EINVAL;
@@ -621,7 +621,7 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 		if (get_val_securely8(tmp_arr, 16,
 				      &udf_params->match_mask[i]) < 0) {
 			MRVL_LOG(ERR, "UDF[%d]: '%s' field's value is not in "
-				"hex format\n", udf, MRVL_TOK_PARSER_UDF_MASK);
+				"hex format", udf, MRVL_TOK_PARSER_UDF_MASK);
 			return -EINVAL;
 		}
 		entry += 2;
@@ -631,7 +631,7 @@ parse_udf(struct rte_cfgfile *file, const char *sec_name, int udf,
 	entry = rte_cfgfile_get_entry(file, sec_name,
 				      MRVL_TOK_PARSER_UDF_OFFSET);
 	if (!entry) {
-		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set\n", udf,
+		MRVL_LOG(ERR, "UDF[%d]: '%s' field must be set", udf,
 			 MRVL_TOK_PARSER_UDF_OFFSET);
 		return -1;
 	}
@@ -663,7 +663,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 	char sec_name[32];
 
 	if (file == NULL) {
-		MRVL_LOG(ERR, "Cannot load configuration %s\n", path);
+		MRVL_LOG(ERR, "Cannot load configuration %s", path);
 		return -1;
 	}
 
@@ -672,7 +672,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 	 */
 	*cfg = rte_zmalloc("mrvl_cfg", sizeof(struct mrvl_cfg), 0);
 	if (*cfg == NULL) {
-		MRVL_LOG(ERR, "Cannot allocate configuration %s\n", path);
+		MRVL_LOG(ERR, "Cannot allocate configuration %s", path);
 		return -1;
 	}
 
@@ -681,7 +681,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		sizeof(MRVL_TOK_PARSER_UDF) - 1);
 
 	if (n && n > PP2_MAX_UDFS_SUPPORTED) {
-		MRVL_LOG(ERR, "found %d udf sections, but only %d are supported\n",
+		MRVL_LOG(ERR, "found %d udf sections, but only %d are supported",
 			 n, PP2_MAX_UDFS_SUPPORTED);
 		return -1;
 	}
@@ -693,14 +693,14 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		/* udf sections must be sequential. */
 		if (rte_cfgfile_num_sections(file, sec_name,
 				strlen(sec_name)) <= 0) {
-			MRVL_LOG(ERR, "udf sections must be sequential (0 - %d)\n",
+			MRVL_LOG(ERR, "udf sections must be sequential (0 - %d)",
 				 PP2_MAX_UDFS_SUPPORTED - 1);
 			return -1;
 		}
 
 		ret = parse_udf(file, sec_name, i, *cfg);
 		if (ret) {
-			MRVL_LOG(ERR, "Error in parsing %s!\n", sec_name);
+			MRVL_LOG(ERR, "Error in parsing %s!", sec_name);
 			return -1;
 		}
 	}
@@ -763,7 +763,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 				PP2_PPIO_HDR_ETH_EXT_DSA;
 			} else {
 				MRVL_LOG(ERR,
-					"Error in parsing %s value (%s)!\n",
+					"Error in parsing %s value (%s)!",
 					MRVL_TOK_START_HDR, entry);
 				return -1;
 			}
@@ -823,7 +823,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 					PP2_CLS_QOS_TBL_VLAN_PRI;
 			} else {
 				MRVL_LOG(ERR,
-					"Error in parsing %s value (%s)!\n",
+					"Error in parsing %s value (%s)!",
 					MRVL_TOK_MAPPING_PRIORITY, entry);
 				return -1;
 			}
@@ -851,7 +851,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 			ret = get_outq_cfg(file, n, i, *cfg);
 			if (ret < 0) {
 				MRVL_LOG(ERR,
-					"Error %d parsing port %d outq %d!\n",
+					"Error %d parsing port %d outq %d!",
 					ret, n, i);
 				return -1;
 			}
@@ -861,7 +861,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 			ret = parse_tc_cfg(file, n, i, *cfg);
 			if (ret < 0) {
 				MRVL_LOG(ERR,
-					"Error %d parsing port %d tc %d!\n",
+					"Error %d parsing port %d tc %d!",
 					ret, n, i);
 				return -1;
 			}
@@ -889,7 +889,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		if (entry) {
 			if (get_val_securely(entry, &val) < 0) {
 				MRVL_LOG(ERR,
-					"Error in parsing %s value (%s)!\n",
+					"Error in parsing %s value (%s)!",
 					MRVL_TOK_FWD_BAD_FRAMES, entry);
 				return -1;
 			}
@@ -904,7 +904,7 @@ mrvl_get_cfg(const char *key __rte_unused, const char *path, void *extra_args)
 		if (entry) {
 			if (get_val_securely(entry, &val) < 0) {
 				MRVL_LOG(ERR,
-					"Error in parsing %s value (%s)!\n",
+					"Error in parsing %s value (%s)!",
 					MRVL_TOK_FILL_BPOOL_BUFFS, entry);
 				return -1;
 			}
@@ -972,7 +972,7 @@ setup_policer(struct mrvl_priv *priv, struct pp2_cls_plcr_params *params)
 	 *
 	 * Lets use 0th then.
 	 */
-	sprintf(match, "policer-%d:%d\n", priv->pp_id, 0);
+	sprintf(match, "policer-%d:%d", priv->pp_id, 0);
 	params->match = match;
 
 	ret = pp2_cls_plcr_init(params, &priv->default_policer);

@@ -50,7 +50,7 @@ mvtvm_ml_model_type_get(struct rte_ml_model_params *params)
 	/* Check if all objects are available */
 	for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
 		if (!object_found[i]) {
-			plt_err("Object %s not found in archive!\n", mvtvm_object_list[i]);
+			plt_err("Object %s not found in archive!", mvtvm_object_list[i]);
 			return ML_CNXK_MODEL_TYPE_INVALID;
 		}
 	}
@@ -100,7 +100,7 @@ mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params, struct mvtvm_ml_mo
 	/* Check if all objects are parsed */
 	for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
 		if (!object_found[i]) {
-			plt_err("Object %s not found in archive!\n", mvtvm_object_list[i]);
+			plt_err("Object %s not found in archive!", mvtvm_object_list[i]);
 			goto error;
 		}
 	}
