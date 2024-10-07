@@ -380,6 +380,22 @@ The following pre-schedule types are supported:
  * ``RTE_EVENT_PRESCHEDULE_ADAPTIVE`` - Issue pre-schedule when dequeue is issued and there are
    no forward progress constraints.
 
+Event devices that support ``RTE_EVENT_DEV_CAP_PER_PORT_PRESCHEDULE`` capability allow
+applications to modify pre-scheduling at a per port level at runtime in fast-path.
+To modify event pre-scheduling at a given event port, the application can use
+``rte_event_port_preschedule_modify()`` API.
+This API can be called even if the event device does not support per port pre-scheduling, it
+will be treated as a no-op.
+
+.. code-block:: c
+
+   rte_event_port_preschedule_modify(dev_id, port_id, RTE_EVENT_PRESCHEDULE);
+   // Dequeue events from the event port with normal dequeue() function.
+   rte_event_port_preschedule_modify(dev_id, port_id, RTE_EVENT_PRESCHEDULE_NONE);
+   // Disable pre-scheduling if thread is about to be scheduled out and issue dequeue() to drain
+   // pending events.
+
+
 Starting the EventDev
 ~~~~~~~~~~~~~~~~~~~~~
 

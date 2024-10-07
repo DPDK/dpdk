@@ -184,6 +184,8 @@ struct __rte_cache_aligned rte_eventdev {
 	/**< Pointer to PMD DMA adapter enqueue function. */
 	event_profile_switch_t profile_switch;
 	/**< Pointer to PMD Event switch profile function. */
+	event_preschedule_modify_t preschedule_modify;
+	/**< Pointer to PMD Event port pre-schedule type modify function.  */
 
 	uint64_t reserved_64s[3]; /**< Reserved for future fields */
 	void *reserved_ptrs[3];	  /**< Reserved for future fields */

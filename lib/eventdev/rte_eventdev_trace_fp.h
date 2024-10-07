@@ -8,7 +8,7 @@
 /**
  * @file
  *
- * API for ethdev trace support
+ * API for eventdev trace support
  */
 
 #ifdef __cplusplus
@@ -52,6 +52,15 @@ RTE_TRACE_POINT_FP(
 	rte_trace_point_emit_u8(dev_id);
 	rte_trace_point_emit_u8(port_id);
 	rte_trace_point_emit_u8(profile);
+)
+
+RTE_TRACE_POINT_FP(
+	rte_eventdev_trace_port_preschedule_modify,
+	RTE_TRACE_POINT_ARGS(uint8_t dev_id, uint8_t port_id,
+			     int type),
+	rte_trace_point_emit_u8(dev_id);
+	rte_trace_point_emit_u8(port_id);
+	rte_trace_point_emit_int(type);
 )
 
 RTE_TRACE_POINT_FP(
