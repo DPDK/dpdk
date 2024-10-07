@@ -442,3 +442,24 @@ cn10k_sso_hws_profile_switch(void *port, uint8_t profile)
 
 	return 0;
 }
+
+int __rte_hot
+cn10k_sso_hws_preschedule_modify(void *port, enum rte_event_dev_preschedule_type type)
+{
+	struct cn10k_sso_hws *ws = port;
+
+	ws->gw_wdata &= ~(BIT(19) | BIT(20));
+	switch (type) {
+	default:
+	case RTE_EVENT_PRESCHEDULE_NONE:
+		break;
+	case RTE_EVENT_PRESCHEDULE:
+		ws->gw_wdata |= BIT(19);
+		break;
+	case RTE_EVENT_PRESCHEDULE_ADAPTIVE:
+		ws->gw_wdata |= BIT(19) | BIT(20);
+		break;
+	}
+
+	return 0;
+}

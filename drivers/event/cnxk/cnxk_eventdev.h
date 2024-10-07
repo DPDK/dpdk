@@ -30,7 +30,6 @@
 #define CNXK_SSO_GGRP_QOS  "qos"
 #define CNXK_SSO_FORCE_BP  "force_rx_bp"
 #define CN9K_SSO_SINGLE_WS "single_ws"
-#define CN10K_SSO_GW_MODE  "gw_mode"
 #define CN10K_SSO_STASH	   "stash"
 
 #define CNXK_SSO_MAX_PROFILES 2
