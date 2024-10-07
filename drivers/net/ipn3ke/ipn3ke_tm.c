@@ -1010,7 +1010,7 @@ ipn3ke_tm_tdrop_profile_delete(struct rte_eth_dev *dev,
 static int
 ipn3ke_tm_node_add_check_parameter(uint32_t tm_id,
 	uint32_t node_id, uint32_t parent_node_id, uint32_t priority,
-	uint32_t weight, uint32_t level_id, struct rte_tm_node_params *params,
+	uint32_t weight, uint32_t level_id, const struct rte_tm_node_params *params,
 	struct rte_tm_error *error)
 {
 	uint32_t level_of_node_id;
@@ -1168,7 +1168,7 @@ ipn3ke_tm_node_add_check_mount(uint32_t tm_id,
 static int
 ipn3ke_tm_node_add(struct rte_eth_dev *dev,
 	uint32_t node_id, uint32_t parent_node_id, uint32_t priority,
-	uint32_t weight, uint32_t level_id, struct rte_tm_node_params *params,
+	uint32_t weight, uint32_t level_id, const struct rte_tm_node_params *params,
 	struct rte_tm_error *error)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(dev);

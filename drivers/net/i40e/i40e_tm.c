@@ -20,7 +20,7 @@ static int i40e_shaper_profile_del(struct rte_eth_dev *dev,
 static int i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			 uint32_t parent_node_id, uint32_t priority,
 			 uint32_t weight, uint32_t level_id,
-			 struct rte_tm_node_params *params,
+			 const struct rte_tm_node_params *params,
 			 struct rte_tm_error *error);
 static int i40e_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 			    struct rte_tm_error *error);
@@ -353,7 +353,7 @@ i40e_tm_node_search(struct rte_eth_dev *dev,
 static int
 i40e_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 		      uint32_t priority, uint32_t weight,
-		      struct rte_tm_node_params *params,
+		      const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -450,7 +450,7 @@ static int
 i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);

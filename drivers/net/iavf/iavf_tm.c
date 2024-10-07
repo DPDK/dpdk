@@ -18,7 +18,7 @@ static int iavf_shaper_profile_del(struct rte_eth_dev *dev,
 static int iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error);
 static int iavf_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 			    struct rte_tm_error *error);
@@ -131,7 +131,7 @@ iavf_tm_node_search(struct rte_eth_dev *dev,
 static int
 iavf_node_param_check(struct iavf_info *vf, uint32_t node_id,
 		      uint32_t priority, uint32_t weight,
-		      struct rte_tm_node_params *params,
+		      const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	/* checked all the unsupported parameter */
@@ -271,7 +271,7 @@ static int
 iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);

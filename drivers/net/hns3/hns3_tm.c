@@ -329,7 +329,7 @@ hns3_tm_node_search(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_nonleaf_node_param_check(struct rte_eth_dev *dev,
-				 struct rte_tm_node_params *params,
+				 const struct rte_tm_node_params *params,
 				 struct rte_tm_error *error)
 {
 	struct hns3_tm_shaper_profile *shaper_profile;
@@ -364,7 +364,7 @@ hns3_tm_nonleaf_node_param_check(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
-			      struct rte_tm_node_params *params,
+			      const struct rte_tm_node_params *params,
 			      struct rte_tm_error *error)
 
 {
@@ -408,7 +408,7 @@ hns3_tm_leaf_node_param_check(struct rte_eth_dev *dev __rte_unused,
 static int
 hns3_tm_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 			 uint32_t priority, uint32_t weight,
-			 struct rte_tm_node_params *params,
+			 const struct rte_tm_node_params *params,
 			 struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -457,7 +457,7 @@ hns3_tm_node_param_check(struct rte_eth_dev *dev, uint32_t node_id,
 
 static int
 hns3_tm_port_node_add(struct rte_eth_dev *dev, uint32_t node_id,
-		      uint32_t level_id, struct rte_tm_node_params *params,
+		      uint32_t level_id, const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -503,7 +503,7 @@ hns3_tm_port_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		    uint32_t level_id, struct hns3_tm_node *parent_node,
-		    struct rte_tm_node_params *params,
+		    const struct rte_tm_node_params *params,
 		    struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -554,7 +554,7 @@ hns3_tm_tc_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 static int
 hns3_tm_queue_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		       uint32_t level_id, struct hns3_tm_node *parent_node,
-		       struct rte_tm_node_params *params,
+		       const struct rte_tm_node_params *params,
 		       struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -601,7 +601,7 @@ static int
 hns3_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		 uint32_t parent_node_id, uint32_t priority,
 		 uint32_t weight, uint32_t level_id,
-		 struct rte_tm_node_params *params,
+		 const struct rte_tm_node_params *params,
 		 struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -1230,7 +1230,7 @@ static int
 hns3_tm_node_add_wrap(struct rte_eth_dev *dev, uint32_t node_id,
 		      uint32_t parent_node_id, uint32_t priority,
 		      uint32_t weight, uint32_t level_id,
-		      struct rte_tm_node_params *params,
+		      const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);

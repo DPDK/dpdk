@@ -286,7 +286,7 @@ int rte_tm_node_add(uint16_t port_id,
 	uint32_t priority,
 	uint32_t weight,
 	uint32_t level_id,
-	struct rte_tm_node_params *params,
+	const struct rte_tm_node_params *params,
 	struct rte_tm_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];

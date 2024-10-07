@@ -12,7 +12,7 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 static int ice_dcf_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error);
 static int ice_dcf_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 			    struct rte_tm_error *error);
@@ -139,7 +139,7 @@ ice_dcf_shaper_profile_search(struct rte_eth_dev *dev,
 static int
 ice_dcf_node_param_check(struct ice_dcf_hw *hw, uint32_t node_id,
 		      uint32_t priority, uint32_t weight,
-		      struct rte_tm_node_params *params,
+		      const struct rte_tm_node_params *params,
 		      struct rte_tm_error *error)
 {
 	/* checked all the unsupported parameter */
@@ -230,7 +230,7 @@ static int
 ice_dcf_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	      uint32_t parent_node_id, uint32_t priority,
 	      uint32_t weight, uint32_t level_id,
-	      struct rte_tm_node_params *params,
+	      const struct rte_tm_node_params *params,
 	      struct rte_tm_error *error)
 {
 	enum ice_dcf_tm_node_type parent_node_type = ICE_DCF_TM_NODE_TYPE_MAX;
