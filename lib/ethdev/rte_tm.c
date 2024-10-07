@@ -153,7 +153,7 @@ int rte_tm_node_capabilities_get(uint16_t port_id,
 /* Add WRED profile */
 int rte_tm_wred_profile_add(uint16_t port_id,
 	uint32_t wred_profile_id,
-	struct rte_tm_wred_params *profile,
+	const struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
