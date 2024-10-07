@@ -377,6 +377,8 @@ uint16_t __rte_hot cn10k_sso_hws_enq_fwd_burst(void *port,
 					       const struct rte_event ev[],
 					       uint16_t nb_events);
 int __rte_hot cn10k_sso_hws_profile_switch(void *port, uint8_t profile);
+int __rte_hot cn10k_sso_hws_preschedule_modify(void *port,
+					       enum rte_event_dev_preschedule_type type);
 
 #define R(name, flags)                                                         \
 	uint16_t __rte_hot cn10k_sso_hws_deq_##name(                           \

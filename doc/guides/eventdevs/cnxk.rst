@@ -78,16 +78,6 @@ Runtime Config Options
 
     -a 0002:0e:00.0,single_ws=1
 
-- ``CN10K Getwork mode``
-
-  CN10K supports three getwork prefetch modes no prefetch[0], prefetch
-  immediately[1] and delayed prefetch on forward progress event[2].
-  The default getwork mode is 2.
-
-  For example::
-
-    -a 0002:0e:00.0,gw_mode=1
-
 - ``Event Group QoS support``
 
   SSO GGRPs i.e. queue uses DRAM & SRAM buffers to hold in-flight
