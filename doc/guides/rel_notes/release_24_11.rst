@@ -77,6 +77,8 @@ New Features
 
   * Updated DLB2 driver for independent enqueue feature.
 
+  * Updated DSW driver for independent enqueue feature.
+
 
 Removed Items
 -------------
