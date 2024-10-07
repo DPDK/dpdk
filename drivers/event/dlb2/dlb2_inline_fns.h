@@ -32,4 +32,12 @@ dlb2_movdir64b(void *dest, void *src)
 	: "a" (dest), "d" (src));
 }
 
+static inline void
+dlb2_movdir64b_single(void *pp_addr, void *qe4)
+{
+	asm volatile(".byte 0x66, 0x0f, 0x38, 0xf8, 0x02"
+		:
+	: "a" (pp_addr), "d" (qe4));
+}
+
 #endif /* _DLB2_INLINE_FNS_H_ */
