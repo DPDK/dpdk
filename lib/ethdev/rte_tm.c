@@ -218,7 +218,7 @@ int rte_tm_shared_wred_context_delete(uint16_t port_id,
 /* Add shaper profile */
 int rte_tm_shaper_profile_add(uint16_t port_id,
 	uint32_t shaper_profile_id,
-	struct rte_tm_shaper_params *profile,
+	const struct rte_tm_shaper_params *profile,
 	struct rte_tm_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];

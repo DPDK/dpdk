@@ -18,7 +18,7 @@ static int ice_dcf_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 			    struct rte_tm_error *error);
 static int ice_dcf_shaper_profile_add(struct rte_eth_dev *dev,
 			uint32_t shaper_profile_id,
-			struct rte_tm_shaper_params *profile,
+			const struct rte_tm_shaper_params *profile,
 			struct rte_tm_error *error);
 static int ice_dcf_shaper_profile_del(struct rte_eth_dev *dev,
 				   uint32_t shaper_profile_id,
@@ -463,7 +463,7 @@ ice_dcf_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 }
 
 static int
-ice_dcf_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
+ice_dcf_shaper_profile_param_check(const struct rte_tm_shaper_params *profile,
 				struct rte_tm_error *error)
 {
 	/* min bucket size not supported */
@@ -491,7 +491,7 @@ ice_dcf_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
 static int
 ice_dcf_shaper_profile_add(struct rte_eth_dev *dev,
 			uint32_t shaper_profile_id,
-			struct rte_tm_shaper_params *profile,
+			const struct rte_tm_shaper_params *profile,
 			struct rte_tm_error *error)
 {
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
