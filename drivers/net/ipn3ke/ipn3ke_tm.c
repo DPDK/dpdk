@@ -848,7 +848,7 @@ ipn3ke_tm_shaper_profile_delete(struct rte_eth_dev *dev,
 
 static int
 ipn3ke_tm_tdrop_profile_check(__rte_unused struct rte_eth_dev *dev,
-	uint32_t tdrop_profile_id, struct rte_tm_wred_params *profile,
+	uint32_t tdrop_profile_id, const struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error)
 {
 	enum rte_color color;
@@ -931,7 +931,7 @@ ipn3ke_hw_tm_tdrop_wr(struct ipn3ke_hw *hw,
 /* Traffic manager TDROP profile add */
 static int
 ipn3ke_tm_tdrop_profile_add(struct rte_eth_dev *dev,
-	uint32_t tdrop_profile_id, struct rte_tm_wred_params *profile,
+	uint32_t tdrop_profile_id, const struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(dev);
