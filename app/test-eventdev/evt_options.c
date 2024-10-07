@@ -131,6 +131,17 @@ evt_parse_tx_pkt_sz(struct evt_options *opt, const char *arg __rte_unused)
 }
 
 static int
+evt_parse_preschedule(struct evt_options *opt, const char *arg __rte_unused)
+{
+	int ret;
+
+	ret = parser_read_uint8(&(opt->preschedule), arg);
+	opt->preschedule_opted = 1;
+
+	return ret;
+}
+
+static int
 evt_parse_timer_prod_type(struct evt_options *opt, const char *arg __rte_unused)
 {
 	opt->prod_type = EVT_PROD_TYPE_EVENT_TIMER_ADPTR;
@@ -510,6 +521,10 @@ usage(char *program)
 		"                       across all the ethernet devices before\n"
 		"                       event workers start.\n"
 		"\t--tx_pkt_sz        : Packet size to use with Tx first."
+		"\t--preschedule      : Pre-schedule type to use.\n"
+		"                       0 - disable pre-schedule\n"
+		"                       1 - pre-schedule\n"
+		"                       2 - pre-schedule adaptive (Default)\n"
 		);
 	printf("available tests:\n");
 	evt_test_dump_names();
@@ -598,6 +613,7 @@ static struct option lgopts[] = {
 	{ EVT_HELP,                0, 0, 0 },
 	{ EVT_TX_FIRST,            1, 0, 0 },
 	{ EVT_TX_PKT_SZ,           1, 0, 0 },
+	{ EVT_PRESCHEDULE,         1, 0, 0 },
 	{ NULL,                    0, 0, 0 }
 };
 
@@ -647,6 +663,7 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_PER_PORT_POOL, evt_parse_per_port_pool},
 		{ EVT_TX_FIRST, evt_parse_tx_first},
 		{ EVT_TX_PKT_SZ, evt_parse_tx_pkt_sz},
+		{ EVT_PRESCHEDULE, evt_parse_preschedule},
 	};
 
 	for (i = 0; i < RTE_DIM(parsermap); i++) {

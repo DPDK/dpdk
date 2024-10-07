@@ -236,6 +236,13 @@ The following are the application command-line options:
        Packet size to use for `--tx_first`.
        Only applicable for `pipeline_atq` and `pipeline_queue` tests.
 
+* ``--preschedule``
+
+       Enable pre-scheduling of events.
+       0 - Disable pre-scheduling.
+       1 - Enable pre-scheduling.
+       2 - Enable pre-schedule with adaptive mode (Default).
+
 
 Eventdev Tests
 --------------
