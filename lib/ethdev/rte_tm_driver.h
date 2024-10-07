@@ -75,7 +75,7 @@ typedef int (*rte_tm_shared_wred_context_delete_t)(
 /** @internal Traffic manager shaper profile add */
 typedef int (*rte_tm_shaper_profile_add_t)(struct rte_eth_dev *dev,
 	uint32_t shaper_profile_id,
-	struct rte_tm_shaper_params *profile,
+	const struct rte_tm_shaper_params *profile,
 	struct rte_tm_error *error);
 
 /** @internal Traffic manager shaper profile delete */

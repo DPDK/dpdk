@@ -380,7 +380,7 @@ mrvl_shaper_profile_from_id(struct mrvl_priv *priv, uint32_t shaper_profile_id)
  */
 static int
 mrvl_shaper_profile_add(struct rte_eth_dev *dev, uint32_t shaper_profile_id,
-			struct rte_tm_shaper_params *params,
+			const struct rte_tm_shaper_params *params,
 			struct rte_tm_error *error)
 {
 	struct mrvl_priv *priv = dev->data->dev_private;

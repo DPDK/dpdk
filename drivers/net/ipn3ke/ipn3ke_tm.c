@@ -722,7 +722,7 @@ ipn3ke_tm_node_capabilities_get(struct rte_eth_dev *dev,
 }
 
 static int
-ipn3ke_tm_shaper_parame_trans(struct rte_tm_shaper_params *profile,
+ipn3ke_tm_shaper_parame_trans(const struct rte_tm_shaper_params *profile,
 	struct ipn3ke_tm_shaper_profile *local_profile,
 	const struct ipn3ke_tm_shaper_params_range_type *ref_data)
 {
@@ -747,7 +747,7 @@ ipn3ke_tm_shaper_parame_trans(struct rte_tm_shaper_params *profile,
 
 static int
 ipn3ke_tm_shaper_profile_add(struct rte_eth_dev *dev,
-	uint32_t shaper_profile_id, struct rte_tm_shaper_params *profile,
+	uint32_t shaper_profile_id, const struct rte_tm_shaper_params *profile,
 	struct rte_tm_error *error)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(dev);

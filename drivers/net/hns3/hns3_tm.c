@@ -166,7 +166,7 @@ hns3_tm_shaper_profile_search(struct rte_eth_dev *dev,
 
 static int
 hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
-				   struct rte_tm_shaper_params *profile,
+				   const struct rte_tm_shaper_params *profile,
 				   struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -220,7 +220,7 @@ hns3_tm_shaper_profile_param_check(struct rte_eth_dev *dev,
 static int
 hns3_tm_shaper_profile_add(struct rte_eth_dev *dev,
 			   uint32_t shaper_profile_id,
-			   struct rte_tm_shaper_params *profile,
+			   const struct rte_tm_shaper_params *profile,
 			   struct rte_tm_error *error)
 {
 	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -1198,7 +1198,7 @@ hns3_tm_capabilities_get_wrap(struct rte_eth_dev *dev,
 static int
 hns3_tm_shaper_profile_add_wrap(struct rte_eth_dev *dev,
 				uint32_t shaper_profile_id,
-				struct rte_tm_shaper_params *profile,
+				const struct rte_tm_shaper_params *profile,
 				struct rte_tm_error *error)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
