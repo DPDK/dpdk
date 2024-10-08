@@ -776,7 +776,7 @@ vhost_blk_bdev_construct(const char *bdev_name,
 	bdev->data = rte_zmalloc(NULL, blk_cnt * blk_size, 0);
 	if (!bdev->data) {
 		fprintf(stderr, "No enough reserved huge memory for disk\n");
-		free(bdev);
+		rte_free(bdev);
 		return NULL;
 	}
 
