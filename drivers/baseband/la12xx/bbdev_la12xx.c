@@ -789,6 +789,7 @@ setup_la12xx_dev(struct rte_bbdev *dev)
 		ipc_priv->hugepg_start.size = hp->len;
 
 		rte_free(hp);
+		hp = NULL;
 	}
 
 	dev_ipc = open_ipc_dev(priv->modem_id);
