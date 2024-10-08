@@ -118,7 +118,7 @@ class VLANOffloadFlag(Flag):
                 r"strip (?P<STRIP>on|off), "
                 r"filter (?P<FILTER>on|off), "
                 r"extend (?P<EXTEND>on|off), "
-                r"qinq strip (?P<QINQ_STRIP>on|off)$",
+                r"qinq strip (?P<QINQ_STRIP>on|off)",
                 re.MULTILINE,
                 named=True,
             ),
@@ -1771,6 +1771,177 @@ class TestPmdShell(DPDKShell):
                 prev_header = match.group("HEADER")
             out.append(TestPmdVerbosePacket.parse(f"{prev_header}\n{match.group('PACKET')}"))
         return out
+
+    def set_vlan_filter(self, port: int, enable: bool, verify: bool = True) -> None:
+        """Set vlan filter on.
+
+        Args:
+            port: The port number to enable VLAN filter on.
+            enable: Enable the filter on `port` if :data:`True`, otherwise disable it.
+            verify: If :data:`True`, the output of the command and show port info
+                is scanned to verify that vlan filtering was set successfully.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the filter
+                fails to update.
+        """
+        filter_cmd_output = self.send_command(f"vlan set filter {'on' if enable else 'off'} {port}")
+        if verify:
+            vlan_settings = self.show_port_info(port_id=port).vlan_offload
+            if enable ^ (vlan_settings is not None and VLANOffloadFlag.FILTER in vlan_settings):
+                self._logger.debug(
+                    f"""Failed to {'enable' if enable else 'disable'}
+                                   filter on port {port}: \n{filter_cmd_output}"""
+                )
+                raise InteractiveCommandExecutionError(
+                    f"""Failed to {'enable' if enable else 'disable'}
+                    filter on port {port}"""
+                )
+
+    def rx_vlan(self, vlan: int, port: int, add: bool, verify: bool = True) -> None:
+        """Add specified vlan tag to the filter list on a port. Requires vlan filter to be on.
+
+        Args:
+            vlan: The vlan tag to add, should be within 1-1005.
+            port: The port number to add the tag on.
+            add: Adds the tag if :data:`True`, otherwise removes the tag.
+            verify: If :data:`True`, the output of the command is scanned to verify that
+                the vlan tag was added to the filter list on the specified port.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the tag
+                is not added.
+        """
+        rx_cmd_output = self.send_command(f"rx_vlan {'add' if add else 'rm'} {vlan} {port}")
+        if verify:
+            if (
+                "VLAN-filtering disabled" in rx_cmd_output
+                or "Invalid vlan_id" in rx_cmd_output
+                or "Bad arguments" in rx_cmd_output
+            ):
+                self._logger.debug(
+                    f"""Failed to {'add' if add else 'remove'} tag {vlan}
+                    port {port}: \n{rx_cmd_output}"""
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to {'add' if add else 'remove'} tag {vlan} on port {port}."
+                )
+
+    def set_vlan_strip(self, port: int, enable: bool, verify: bool = True) -> None:
+        """Enable or disable vlan stripping on the specified port.
+
+        Args:
+            port: The port number to use.
+            enable: If :data:`True`, will turn vlan stripping on, otherwise will turn off.
+            verify: If :data:`True`, the output of the command and show port info
+                is scanned to verify that vlan stripping was enabled on the specified port.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and stripping
+                fails to update.
+        """
+        strip_cmd_output = self.send_command(f"vlan set strip {'on' if enable else 'off'} {port}")
+        if verify:
+            vlan_settings = self.show_port_info(port_id=port).vlan_offload
+            if enable ^ (vlan_settings is not None and VLANOffloadFlag.STRIP in vlan_settings):
+                self._logger.debug(
+                    f"""Failed to set strip {'on' if enable else 'off'}
+                    port {port}: \n{strip_cmd_output}"""
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to set strip {'on' if enable else 'off'} port {port}."
+                )
+
+    @requires_stopped_ports
+    def tx_vlan_set(
+        self, port: int, enable: bool, vlan: int | None = None, verify: bool = True
+    ) -> None:
+        """Set hardware insertion of vlan tags in packets sent on a port.
+
+        Args:
+            port: The port number to use.
+            enable: Sets vlan tag insertion if :data:`True`, and resets if :data:`False`.
+            vlan: The vlan tag to insert if enable is :data:`True`.
+            verify: If :data:`True`, the output of the command is scanned to verify that
+                vlan insertion was enabled on the specified port.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the insertion
+                tag is not set.
+        """
+        if enable:
+            tx_vlan_cmd_output = self.send_command(f"tx_vlan set {port} {vlan}")
+            if verify:
+                if (
+                    "Please stop port" in tx_vlan_cmd_output
+                    or "Invalid vlan_id" in tx_vlan_cmd_output
+                    or "Invalid port" in tx_vlan_cmd_output
+                ):
+                    self._logger.debug(
+                        f"Failed to set vlan tag {vlan} on port {port}:\n{tx_vlan_cmd_output}"
+                    )
+                    raise InteractiveCommandExecutionError(
+                        f"Testpmd failed to set vlan insertion tag {vlan} on port {port}."
+                    )
+        else:
+            tx_vlan_cmd_output = self.send_command(f"tx_vlan reset {port}")
+            if verify:
+                if "Please stop port" in tx_vlan_cmd_output or "Invalid port" in tx_vlan_cmd_output:
+                    self._logger.debug(
+                        f"Failed to reset vlan insertion on port {port}: \n{tx_vlan_cmd_output}"
+                    )
+                    raise InteractiveCommandExecutionError(
+                        f"Testpmd failed to reset vlan insertion on port {port}."
+                    )
+
+    def set_promisc(self, port: int, enable: bool, verify: bool = True) -> None:
+        """Enable or disable promiscuous mode for the specified port.
+
+        Args:
+            port: Port number to use.
+            enable: If :data:`True`, turn promiscuous mode on, otherwise turn off.
+            verify: If :data:`True` an additional command will be sent to verify that
+                promiscuous mode is properly set. Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and promiscuous mode
+                is not correctly set.
+        """
+        promisc_cmd_output = self.send_command(f"set promisc {port} {'on' if enable else 'off'}")
+        if verify:
+            stats = self.show_port_info(port_id=port)
+            if enable ^ stats.is_promiscuous_mode_enabled:
+                self._logger.debug(
+                    f"Failed to set promiscuous mode on port {port}: \n{promisc_cmd_output}"
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to set promiscuous mode on port {port}."
+                )
+
+    def set_verbose(self, level: int, verify: bool = True) -> None:
+        """Set debug verbosity level.
+
+        Args:
+            level: 0 - silent except for error
+                1 - fully verbose except for Tx packets
+                2 - fully verbose except for Rx packets
+                >2 - fully verbose
+            verify: If :data:`True` the command output will be scanned to verify that verbose level
+                is properly set. Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and verbose level
+            is not correctly set.
+        """
+        verbose_cmd_output = self.send_command(f"set verbose {level}")
+        if verify:
+            if "Change verbose level" not in verbose_cmd_output:
+                self._logger.debug(
+                    f"Failed to set verbose level to {level}: \n{verbose_cmd_output}"
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to set verbose level to {level}."
+                )
 
     def _close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
