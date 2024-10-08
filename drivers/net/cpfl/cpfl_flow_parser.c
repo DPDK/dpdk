@@ -737,7 +737,6 @@ cpfl_flow_js_mr_layout(json_t *ob_layouts, struct cpfl_flow_js_mr_action_mod *js
 	return 0;
 
 err:
-	rte_free(js_mod->layout);
 	return -EINVAL;
 }
 
