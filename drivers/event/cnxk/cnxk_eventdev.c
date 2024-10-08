@@ -109,8 +109,8 @@ cnxk_setup_event_ports(const struct rte_eventdev *event_dev,
 	return 0;
 hws_fini:
 	for (i = i - 1; i >= 0; i--) {
-		event_dev->data->ports[i] = NULL;
 		rte_free(cnxk_sso_hws_get_cookie(event_dev->data->ports[i]));
+		event_dev->data->ports[i] = NULL;
 	}
 	return -ENOMEM;
 }
