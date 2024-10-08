@@ -14,16 +14,27 @@ if is_linux or cc.get_id() == 'gcc'
     endif
 endif
 
-# check if compiler is working with _mm512_extracti64x4_epi64
-# Ref: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82887
-if cc.has_argument('-mavx512f')
+cc_avx512_flags = ['-mavx512f', '-mavx512vl', '-mavx512dq', '-mavx512bw']
+cc_has_avx512 = false
+target_has_avx512 = false
+if binutils_ok and cc.has_multi_arguments(cc_avx512_flags)
+    # check if compiler is working with _mm512_extracti64x4_epi64
+    # Ref: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82887
     code = '''#include <immintrin.h>
     void test(__m512i zmm){
         __m256i ymm = _mm512_extracti64x4_epi64(zmm, 0);}'''
-    result = cc.compiles(code, args : '-mavx512f', name : 'AVX512 checking')
+    result = cc.compiles(code, args : cc_avx512_flags, name : 'AVX512 checking')
     if result == false
         machine_args += '-mno-avx512f'
         warning('Broken _mm512_extracti64x4_epi64, disabling AVX512 support')
+    else
+        cc_has_avx512 = true
+        target_has_avx512 = (
+                cc.get_define('__AVX512F__', args: machine_args) != '' and
+                cc.get_define('__AVX512BW__', args: machine_args) != '' and
+                cc.get_define('__AVX512DQ__', args: machine_args) != '' and
+                cc.get_define('__AVX512VL__', args: machine_args) != ''
+            )
     endif
 endif
 
