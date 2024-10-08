@@ -82,6 +82,14 @@ New Features
 
   The new statistics are useful for debugging and profiling.
 
+* **Hardened rte_malloc and related functions.**
+
+  Added function attributes to ``rte_malloc`` and similar functions
+  that can catch some obvious bugs at compile time (with GCC 11.0 or later).
+  Examples: calling ``free`` on pointer that was allocated with ``rte_malloc``
+  (and vice versa); freeing the same pointer twice in the same routine;
+  freeing an object that was not created by allocation; etc.
+
 * **Added cryptodev queue pair reset support.**
 
   A new API ``rte_cryptodev_queue_pair_reset`` is added
