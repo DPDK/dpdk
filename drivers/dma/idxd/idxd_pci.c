@@ -300,7 +300,7 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	return nb_wqs;
 
 err:
-	free(pci);
+	rte_free(pci);
 	return err_code;
 }
 
