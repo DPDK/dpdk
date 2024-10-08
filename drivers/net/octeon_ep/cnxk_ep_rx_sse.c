@@ -52,7 +52,7 @@ cnxk_ep_process_pkts_vec_sse(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 		s01 = _mm_shuffle_epi8(s01, bswap_mask);
 		/* Vertical add, consolidate outside loop */
 		bytes = _mm_add_epi32(bytes, s01);
-		/* Segregate to packet length and data length. */
+		/* Separate into packet length and data length. */
 		s23 = _mm_shuffle_epi32(s01, _MM_SHUFFLE(3, 3, 1, 1));
 		s01 = _mm_shuffle_epi8(s01, cpy_mask);
 		s23 = _mm_shuffle_epi8(s23, cpy_mask);

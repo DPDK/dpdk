@@ -61,7 +61,7 @@ cnxk_ep_process_pkts_vec_neon(struct rte_mbuf **rx_pkts, struct otx_ep_droq *dro
 
 		/* Vertical add, consolidate outside the loop. */
 		bytes += vaddq_u32(bytes, s01);
-		/* Segregate to packet length and data length. */
+		/* Separate into packet length and data length. */
 		s23 = vqtbl1q_u8(s01, mask1);
 		s01 = vqtbl1q_u8(s01, mask0);
 
