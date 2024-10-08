@@ -3907,11 +3907,11 @@ igb_delete_2tuple_filter(struct rte_eth_dev *dev,
 
 	filter_info->twotuple_mask &= ~(1 << filter->index);
 	TAILQ_REMOVE(&filter_info->twotuple_list, filter, entries);
-	rte_free(filter);
 
 	E1000_WRITE_REG(hw, E1000_TTQF(filter->index), E1000_TTQF_DISABLE_MASK);
 	E1000_WRITE_REG(hw, E1000_IMIR(filter->index), 0);
 	E1000_WRITE_REG(hw, E1000_IMIREXT(filter->index), 0);
+	rte_free(filter);
 	return 0;
 }
 
@@ -4348,7 +4348,6 @@ igb_delete_5tuple_filter_82576(struct rte_eth_dev *dev,
 
 	filter_info->fivetuple_mask &= ~(1 << filter->index);
 	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
-	rte_free(filter);
 
 	E1000_WRITE_REG(hw, E1000_FTQF(filter->index),
 			E1000_FTQF_VF_BP | E1000_FTQF_MASK);
@@ -4357,6 +4356,7 @@ igb_delete_5tuple_filter_82576(struct rte_eth_dev *dev,
 	E1000_WRITE_REG(hw, E1000_SPQF(filter->index), 0);
 	E1000_WRITE_REG(hw, E1000_IMIR(filter->index), 0);
 	E1000_WRITE_REG(hw, E1000_IMIREXT(filter->index), 0);
+	rte_free(filter);
 	return 0;
 }
 
