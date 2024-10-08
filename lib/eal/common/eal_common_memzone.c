@@ -331,9 +331,10 @@ rte_memzone_free(const struct rte_memzone *mz)
 
 	rte_rwlock_write_unlock(&mcfg->mlock);
 
+	rte_eal_trace_memzone_free(name, addr, ret);
+
 	rte_free(addr);
 
-	rte_eal_trace_memzone_free(name, addr, ret);
 	return ret;
 }
 
