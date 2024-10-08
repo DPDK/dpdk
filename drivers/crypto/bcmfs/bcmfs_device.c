@@ -139,7 +139,7 @@ fsdev_allocate_one_dev(struct rte_vdev_device *vdev,
 	return fsdev;
 
 cleanup:
-	free(fsdev);
+	rte_free(fsdev);
 
 	return NULL;
 }
@@ -163,7 +163,7 @@ fsdev_release(struct bcmfs_device *fsdev)
 		return;
 
 	TAILQ_REMOVE(&fsdev_list, fsdev, next);
-	free(fsdev);
+	rte_free(fsdev);
 }
 
 static int
