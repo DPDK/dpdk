@@ -103,6 +103,30 @@ rte_rawdev_pmd_get_named_dev(const char *name)
 }
 
 /**
+ * Get the rte_rawdev structure device pointer for given device ID.
+ *
+ * @param dev_id
+ *   raw device index.
+ *
+ * @return
+ *   - The rte_rawdev structure pointer for the given device ID.
+ */
+static inline struct rte_rawdev *
+rte_rawdev_pmd_get_dev(uint8_t dev_id)
+{
+	struct rte_rawdev *dev;
+
+	if (dev_id >= RTE_RAWDEV_MAX_DEVS)
+		return NULL;
+
+	dev = &rte_rawdevs[dev_id];
+	if (dev->attached == RTE_RAWDEV_ATTACHED)
+		return dev;
+
+	return NULL;
+}
+
+/**
  * Validate if the raw device index is a valid attached raw device.
  *
  * @param dev_id
