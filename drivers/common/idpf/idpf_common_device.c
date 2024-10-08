@@ -136,8 +136,7 @@ idpf_init_mbx(struct idpf_hw *hw)
 	if (ret != 0)
 		return ret;
 
-	LIST_FOR_EACH_ENTRY_SAFE(ctlq, NULL, &hw->cq_list_head,
-				 struct idpf_ctlq_info, cq_list) {
+	LIST_FOR_EACH_ENTRY(ctlq, &hw->cq_list_head, struct idpf_ctlq_info, cq_list) {
 		if (ctlq->q_id == IDPF_CTLQ_ID &&
 		    ctlq->cq_type == IDPF_CTLQ_TYPE_MAILBOX_TX)
 			hw->asq = ctlq;
