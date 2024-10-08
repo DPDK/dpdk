@@ -39,18 +39,9 @@ if arch_subdir == 'x86'
             c_args: [cflags, '-mavx2'])
     objs += iavf_avx2_lib.extract_objects('iavf_rxtx_vec_avx2.c')
 
-    iavf_avx512_cpu_support = (
-        cc.get_define('__AVX512F__', args: machine_args) != '' and
-        cc.get_define('__AVX512BW__', args: machine_args) != '')
-
-    iavf_avx512_cc_support = (
-        not machine_args.contains('-mno-avx512f') and
-        cc.has_argument('-mavx512f') and
-        cc.has_argument('-mavx512bw'))
-
-    if iavf_avx512_cpu_support == true or iavf_avx512_cc_support == true
+    if cc_has_avx512
         cflags += ['-DCC_AVX512_SUPPORT']
-        avx512_args = [cflags, '-mavx512f', '-mavx512bw']
+        avx512_args = cflags + cc_avx512_flags
         if cc.has_argument('-march=skylake-avx512')
             avx512_args += '-march=skylake-avx512'
         endif
