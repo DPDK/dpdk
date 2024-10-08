@@ -390,11 +390,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	return qat_dev;
 error:
 	rte_free(qat_dev->command_line);
-	if (rte_memzone_free(qat_dev_mz)) {
-		QAT_LOG(DEBUG,
-			"QAT internal error! Trying to free already allocated memzone: %s",
-			qat_dev_mz->name);
-	}
+	rte_memzone_free(qat_dev_mz);
 	return NULL;
 }
 
