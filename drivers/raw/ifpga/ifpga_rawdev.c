@@ -1495,7 +1495,7 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 
 		nb_intr = rte_intr_nb_intr_get(*intr_handle);
 
-		intr_efds = calloc(nb_intr, sizeof(int));
+		intr_efds = rte_calloc("ifpga_efds", nb_intr, sizeof(int), 0);
 		if (!intr_efds)
 			return -ENOMEM;
 
@@ -1504,7 +1504,7 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 
 		ret = opae_acc_set_irq(acc, vec_start, count, intr_efds);
 		if (ret) {
-			free(intr_efds);
+			rte_free(intr_efds);
 			return -EINVAL;
 		}
 	}
@@ -1513,13 +1513,13 @@ ifpga_register_msix_irq(struct ifpga_rawdev *dev, int port_id,
 	ret = rte_intr_callback_register(*intr_handle,
 			handler, (void *)arg);
 	if (ret) {
-		free(intr_efds);
+		rte_free(intr_efds);
 		return -EINVAL;
 	}
 
 	IFPGA_RAWDEV_PMD_INFO("success register %s interrupt\n", name);
 
-	free(intr_efds);
+	rte_free(intr_efds);
 	return 0;
 }
 
