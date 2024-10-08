@@ -135,8 +135,8 @@ cnxk_nix_inl_custom_meta_pool_cb(uintptr_t pmpool, uintptr_t *mpool, const char 
 			return -EINVAL;
 		}
 
-		rte_mempool_free(hp);
 		plt_free(hp->pool_config);
+		rte_mempool_free(hp);
 
 		*aura_handle = 0;
 		*mpool = 0;
