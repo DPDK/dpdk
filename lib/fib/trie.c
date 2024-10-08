@@ -51,8 +51,10 @@ static inline rte_fib6_lookup_fn_t
 get_vector_fn(enum rte_fib_trie_nh_sz nh_sz)
 {
 #ifdef CC_TRIE_AVX512_SUPPORT
-	if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0) ||
-			(rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ) <= 0 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) <= 0 ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512)
 		return NULL;
 	switch (nh_sz) {
 	case RTE_FIB6_TRIE_2B:
