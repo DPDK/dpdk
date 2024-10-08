@@ -3019,7 +3019,6 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 		goto free_entry;
 	}
 
-	rte_free(entry);
 	rte_free(find_entry);
 	priv->pre_tun_cnt--;
 
