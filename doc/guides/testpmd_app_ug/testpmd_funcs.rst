@@ -2790,6 +2790,33 @@ where:
 * ``n_shared_shapers``: Number of shared shapers.
 * ``shared_shaper_id``: Shared shaper id.
 
+Query port traffic management hierarchy node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An added traffic management hierarchy node, whether leaf of non-leaf,
+can be queried using::
+
+    testpmd> show port tm node (port_id) (node_id)
+
+where ``port_id`` and ``node_id`` are the numeric identifiers of the ethernet port
+and the previously added traffic management node, respectively.
+The output of this command are the parameters previously provided to the add call,
+printed with appropriate labels.
+For example::
+
+   testpmd> show port tm node 0 90
+   Port 0 TM Node 90
+     Parent Node ID: 100
+     Level ID: 1
+     Priority: 0
+     Weight: 1
+     Shaper Profile ID: <none>
+     Shared Shaper IDs: <none>
+     Stats Mask: 0
+     Nonleaf Node Parameters
+       Num Strict Priorities: 1
+       WFQ Weights Mode: WFQ
+
 Delete port traffic management hierarchy node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
