@@ -2596,8 +2596,9 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	/* Hard output. */
 	mbuf_append(h_output_head, h_output, h_out_length);
 	if (op->ldpc_dec.harq_combined_output.length > 0) {
-		/* Push the HARQ output into host memory. */
+		/* Push the HARQ output into host memory overwriting existing data. */
 		struct rte_mbuf *hq_output_head, *hq_output;
+		op->ldpc_dec.harq_combined_output.data->data_len = 0;
 		hq_output_head = op->ldpc_dec.harq_combined_output.data;
 		hq_output = op->ldpc_dec.harq_combined_output.data;
 		hq_len = op->ldpc_dec.harq_combined_output.length;
