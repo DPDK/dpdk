@@ -194,6 +194,10 @@ ABI Changes
 * cryptodev: The queue pair configuration structure ``rte_cryptodev_qp_conf``
   is updated to have a new parameter to set priority of that particular queue pair.
 
+* cryptodev: The list end enumerators ``RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END``
+  and ``RTE_CRYPTO_RSA_PADDING_TYPE_LIST_END`` are removed
+  to allow subsequent addition of new asymmetric algorithms and RSA padding types.
+
 * cryptodev: The enum ``rte_crypto_asym_xform_type`` and struct ``rte_crypto_asym_op``
   are updated to include new values to support EdDSA.
 

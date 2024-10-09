@@ -136,8 +136,6 @@ enum rte_crypto_asym_xform_type {
 	/**< Edwards Curve Digital Signature Algorithm
 	 * Perform Signature Generation and Verification.
 	 */
-	RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END
-	/**< End of list */
 };
 
 /**
@@ -185,7 +183,6 @@ enum rte_crypto_rsa_padding_type {
 	/**< RSA PKCS#1 OAEP padding scheme */
 	RTE_CRYPTO_RSA_PADDING_PSS,
 	/**< RSA PKCS#1 PSS padding scheme */
-	RTE_CRYPTO_RSA_PADDING_TYPE_LIST_END
 };
 
 /**
