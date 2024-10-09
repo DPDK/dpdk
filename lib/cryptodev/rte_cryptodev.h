@@ -181,6 +181,9 @@ struct rte_cryptodev_asymmetric_xform_capability {
 		 * Value 0 means unavailable, and application should pass the required
 		 * random value. Otherwise, PMD would internally compute the random number.
 		 */
+
+		uint32_t op_capa[RTE_CRYPTO_ASYM_OP_LIST_END];
+		/**< Operation specific capabilities. */
 	};
 
 	uint64_t hash_algos;
@@ -354,6 +357,26 @@ bool
 rte_cryptodev_asym_xform_capability_check_hash(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
 	enum rte_crypto_auth_algorithm hash);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Check if op capability is supported
+ *
+ * @param	capability	Description of the asymmetric crypto capability.
+ * @param	op_type		op type
+ * @param	cap		op capability
+ *
+ * @return
+ *   - Return 1 if the op capability is supported
+ *   - Return 0 if unsupported
+ */
+__rte_experimental
+int
+rte_cryptodev_asym_xform_capability_check_opcap(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+	enum rte_crypto_asym_op_type op_type, uint8_t cap);
 
 /**
  * Provide the cipher algorithm enum, given an algorithm string
