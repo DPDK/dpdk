@@ -2835,8 +2835,8 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	if (encp->enc_rx_es_super_buffer_supported)
 		avail_caps |= SFC_DP_HW_FW_CAP_RX_ES_SUPER_BUFFER;
 
-	rc = sfc_kvargs_process(sa, SFC_KVARG_RX_DATAPATH,
-				sfc_kvarg_string_handler, &rx_name);
+	rc = sfc_kvargs_process_opt(sa, SFC_KVARG_RX_DATAPATH,
+				    sfc_kvarg_string_handler, &rx_name);
 	if (rc != 0)
 		goto fail_kvarg_rx_datapath;
 
@@ -2878,8 +2878,8 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	sfc_notice(sa, "use %s Rx datapath", sas->dp_rx_name);
 
-	rc = sfc_kvargs_process(sa, SFC_KVARG_TX_DATAPATH,
-				sfc_kvarg_string_handler, &tx_name);
+	rc = sfc_kvargs_process_opt(sa, SFC_KVARG_TX_DATAPATH,
+				    sfc_kvarg_string_handler, &tx_name);
 	if (rc != 0)
 		goto fail_kvarg_tx_datapath;
 
@@ -3073,8 +3073,8 @@ sfc_parse_switch_mode(struct sfc_adapter *sa, bool has_representors)
 
 	sfc_log_init(sa, "entry");
 
-	rc = sfc_kvargs_process(sa, SFC_KVARG_SWITCH_MODE,
-				sfc_kvarg_string_handler, &switch_mode);
+	rc = sfc_kvargs_process_opt(sa, SFC_KVARG_SWITCH_MODE,
+				    sfc_kvarg_string_handler, &switch_mode);
 	if (rc != 0)
 		goto fail_kvargs;
 

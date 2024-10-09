@@ -23,9 +23,6 @@ sfc_efx_kvarg_dev_class_handler(__rte_unused const char *key,
 {
 	enum sfc_efx_dev_class *dev_class = opaque;
 
-	if (class_str == NULL)
-		return *dev_class;
-
 	if (strcmp(class_str, "vdpa") == 0) {
 		*dev_class = SFC_EFX_DEV_CLASS_VDPA;
 	} else if (strcmp(class_str, "net") == 0) {
