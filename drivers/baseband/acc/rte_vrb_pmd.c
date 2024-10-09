@@ -745,10 +745,13 @@ free_tail_ptrs:
 free_sw_rings:
 	if (d->device_variant == VRB1_VARIANT) {
 		rte_free(d->sw_rings_base);
+		d->sw_rings_base = NULL;
 		d->sw_rings = NULL;
 	} else if (d->device_variant == VRB2_VARIANT) {
-		for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++)
+		for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++) {
 			rte_free(d->sw_rings_array[i]);
+			d->sw_rings_array[i] = 0;
+		}
 	}
 
 	return ret;
@@ -786,6 +789,7 @@ vrb_intr_enable(struct rte_bbdev *dev)
 					"Couldn't enable interrupts for device: %s",
 					dev->data->name);
 			rte_free(d->info_ring);
+			d->info_ring = NULL;
 			return ret;
 		}
 		ret = rte_intr_callback_register(dev->intr_handle,
@@ -795,6 +799,7 @@ vrb_intr_enable(struct rte_bbdev *dev)
 					"Couldn't register interrupt callback for device: %s",
 					dev->data->name);
 			rte_free(d->info_ring);
+			d->info_ring = NULL;
 			return ret;
 		}
 
@@ -849,6 +854,7 @@ vrb_intr_enable(struct rte_bbdev *dev)
 					"Couldn't enable interrupts for device: %s",
 					dev->data->name);
 			rte_free(d->info_ring);
+			d->info_ring = NULL;
 			return ret;
 		}
 		ret = rte_intr_callback_register(dev->intr_handle,
@@ -858,6 +864,7 @@ vrb_intr_enable(struct rte_bbdev *dev)
 					"Couldn't register interrupt callback for device: %s",
 					dev->data->name);
 			rte_free(d->info_ring);
+			d->info_ring = NULL;
 			return ret;
 		}
 
@@ -878,28 +885,25 @@ vrb_dev_close(struct rte_bbdev *dev)
 
 	vrb_check_ir(d);
 	if (d->device_variant == VRB1_VARIANT) {
-		if (d->sw_rings_base != NULL) {
-			rte_free(d->tail_ptrs);
-			rte_free(d->info_ring);
-			rte_free(d->sw_rings_base);
-			rte_free(d->harq_layout);
-			d->tail_ptrs = NULL;
-			d->info_ring = NULL;
-			d->sw_rings_base = NULL;
-			d->harq_layout = NULL;
-		}
+		rte_free(d->tail_ptrs);
+		rte_free(d->info_ring);
+		rte_free(d->sw_rings_base);
+		rte_free(d->harq_layout);
+		d->tail_ptrs = NULL;
+		d->info_ring = NULL;
+		d->sw_rings_base = NULL;
+		d->sw_rings = NULL;
+		d->harq_layout = NULL;
 	} else if (d->device_variant == VRB2_VARIANT) {
-		if (d->sw_rings_array[1] != NULL) {
-			rte_free(d->tail_ptrs);
-			rte_free(d->info_ring);
-			rte_free(d->harq_layout);
-			d->tail_ptrs = NULL;
-			d->info_ring = NULL;
-			d->harq_layout = NULL;
-			for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++) {
-				rte_free(d->sw_rings_array[i]);
-				d->sw_rings_array[i] = NULL;
-			}
+		rte_free(d->tail_ptrs);
+		rte_free(d->info_ring);
+		rte_free(d->harq_layout);
+		d->tail_ptrs = NULL;
+		d->info_ring = NULL;
+		d->harq_layout = NULL;
+		for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++) {
+			rte_free(d->sw_rings_array[i]);
+			d->sw_rings_array[i] = NULL;
 		}
 	}
 	/* Ensure all in flight HW transactions are completed. */
