@@ -957,6 +957,9 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	struct acc_queue *q;
 	int32_t q_idx;
 	int ret;
+	union acc_dma_desc *desc = NULL;
+	unsigned int desc_idx, b_idx;
+	int fcw_len;
 
 	if (d == NULL) {
 		rte_bbdev_log(ERR, "Undefined device");
@@ -983,16 +986,33 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	}
 
 	/* Prepare the Ring with default descriptor format. */
-	union acc_dma_desc *desc = NULL;
-	unsigned int desc_idx, b_idx;
-	int fcw_len = (conf->op_type == RTE_BBDEV_OP_LDPC_ENC ?
-			ACC_FCW_LE_BLEN : (conf->op_type == RTE_BBDEV_OP_TURBO_DEC ?
-			ACC_FCW_TD_BLEN : (conf->op_type == RTE_BBDEV_OP_LDPC_DEC ?
-			ACC_FCW_LD_BLEN : (conf->op_type == RTE_BBDEV_OP_FFT ?
-			ACC_FCW_FFT_BLEN : ACC_FCW_MLDTS_BLEN))));
-
-	if ((q->d->device_variant == VRB2_VARIANT) && (conf->op_type == RTE_BBDEV_OP_FFT))
-		fcw_len = ACC_FCW_FFT_BLEN_3;
+	switch (conf->op_type) {
+	case RTE_BBDEV_OP_LDPC_ENC:
+		fcw_len = ACC_FCW_LE_BLEN;
+		break;
+	case RTE_BBDEV_OP_LDPC_DEC:
+		fcw_len = ACC_FCW_LD_BLEN;
+		break;
+	case RTE_BBDEV_OP_TURBO_DEC:
+		fcw_len = ACC_FCW_TD_BLEN;
+		break;
+	case RTE_BBDEV_OP_TURBO_ENC:
+		fcw_len = ACC_FCW_TE_BLEN;
+		break;
+	case RTE_BBDEV_OP_FFT:
+		fcw_len = ACC_FCW_FFT_BLEN;
+		if (q->d->device_variant == VRB2_VARIANT)
+			fcw_len = ACC_FCW_FFT_BLEN_3;
+		break;
+	case RTE_BBDEV_OP_MLDTS:
+		fcw_len = ACC_FCW_MLDTS_BLEN;
+		break;
+	default:
+		/* NOT REACHED. */
+		fcw_len = 0;
+		rte_bbdev_log(ERR, "Unexpected error in %s using type %d", __func__, conf->op_type);
+		break;
+	}
 
 	for (desc_idx = 0; desc_idx < d->sw_ring_max_depth; desc_idx++) {
 		desc = q->ring_addr + desc_idx;
@@ -1758,8 +1778,7 @@ vrb_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	if (fcw->hcout_en > 0) {
 		parity_offset = (op->ldpc_dec.basegraph == 1 ? 20 : 8)
 				* op->ldpc_dec.z_c - op->ldpc_dec.n_filler;
-		k0_p = (fcw->k0 > parity_offset) ?
-				fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
+		k0_p = (fcw->k0 > parity_offset) ? fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
 		ncb_p = fcw->ncb - op->ldpc_dec.n_filler;
 		l = k0_p + fcw->rm_e;
 		harq_out_length = (uint16_t) fcw->hcin_size0;
@@ -2001,16 +2020,15 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 		next_triplet++;
 	}
 
-	if (check_bit(op->ldpc_dec.op_flags,
-				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
 		if (op->ldpc_dec.harq_combined_output.data == 0) {
 			rte_bbdev_log(ERR, "HARQ output is not defined");
 			return -1;
 		}
 
-		/* Pruned size of the HARQ */
+		/* Pruned size of the HARQ. */
 		h_p_size = fcw->hcout_size0 + fcw->hcout_size1;
-		/* Non-Pruned size of the HARQ */
+		/* Non-Pruned size of the HARQ. */
 		h_np_size = fcw->hcout_offset > 0 ?
 				fcw->hcout_offset + fcw->hcout_size1 :
 				h_p_size;
@@ -2584,7 +2602,6 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
 		else
 			seg_total_left = fcw->rm_e;
-
 		ret = vrb_dma_desc_ld_fill(op, &desc->req, &input, h_output,
 				&in_offset, &h_out_offset,
 				&h_out_length, &mbuf_total_left,
@@ -2646,7 +2663,6 @@ vrb_enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	desc_first = desc;
 	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
 	harq_layout = q->d->harq_layout;
-
 	vrb_fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout, q->d->device_variant);
 
 	input = op->ldpc_dec.input.data;
@@ -3274,7 +3290,7 @@ vrb2_dequeue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **r
 	return 1;
 }
 
-/* Dequeue one LDPC encode operations from device in TB mode.
+/* Dequeue one encode operations from device in TB mode.
  * That operation may cover multiple descriptors.
  */
 static inline int
