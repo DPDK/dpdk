@@ -608,15 +608,20 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 		{.asym = {
 			.xform_capa = {
 				.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2,
-				.hash_algos = (1 << RTE_CRYPTO_AUTH_SM3),
 				.op_types =
-				((1<<RTE_CRYPTO_ASYM_OP_SIGN) |
+				((1 << RTE_CRYPTO_ASYM_OP_SIGN) |
 				 (1 << RTE_CRYPTO_ASYM_OP_VERIFY) |
 				 (1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) |
 				 (1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
-				{.internal_rng = 1
-				}
-			}
+				.op_capa = {
+					[RTE_CRYPTO_ASYM_OP_ENCRYPT] = (1 << RTE_CRYPTO_SM2_RNG),
+					[RTE_CRYPTO_ASYM_OP_DECRYPT] = (1 << RTE_CRYPTO_SM2_RNG),
+					[RTE_CRYPTO_ASYM_OP_SIGN] = (1 << RTE_CRYPTO_SM2_RNG) |
+								    (1 << RTE_CRYPTO_SM2_PH),
+					[RTE_CRYPTO_ASYM_OP_VERIFY] = (1 << RTE_CRYPTO_SM2_RNG) |
+								      (1 << RTE_CRYPTO_SM2_PH)
+				},
+			},
 		}
 		}
 	},
