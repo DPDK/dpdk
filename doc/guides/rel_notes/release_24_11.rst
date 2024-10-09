@@ -160,6 +160,10 @@ ABI Changes
   is part of session creation instead of per packet crypto operation.
   This change is required to support virtio-crypto specifications.
 
+* cryptodev: The list end enumerators ``RTE_CRYPTO_ASYM_XFORM_TYPE_LIST_END`` and
+  ``RTE_CRYPTO_RSA_PADDING_TYPE_LIST_END`` are removed to allow subsequent addition of
+  new asymmetric algorithms and RSA padding types.
+
 
 Known Issues
 ------------
