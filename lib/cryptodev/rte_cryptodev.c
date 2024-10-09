@@ -628,6 +628,22 @@ rte_cryptodev_asym_xform_capability_check_hash(
 	return ret;
 }
 
+int
+rte_cryptodev_asym_xform_capability_check_opcap(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+	enum rte_crypto_asym_op_type op_type, uint8_t cap)
+{
+	int ret = 0;
+
+	if (!(capability->op_types & (1 << op_type)))
+		return ret;
+
+	if (capability->op_capa[op_type] & (1 << cap))
+		ret = 1;
+
+	return ret;
+}
+
 /* spinlock for crypto device enq callbacks */
 static rte_spinlock_t rte_cryptodev_callback_lock = RTE_SPINLOCK_INITIALIZER;
 

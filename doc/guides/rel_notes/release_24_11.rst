@@ -120,6 +120,10 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* cryptodev: New API ``rte_cryptodev_asym_xform_capability_check_opcap``
+  is added to check per operation capability which is required for
+  asymmetric algorithms such as SM2, EdDSA.
+
 * ipsec: New APIs ``rte_ipsec_pkr_crypto_prepare_stateless`` and
   ``rte_ipsec_pkt_cpu_prepare_stateless`` are added to support
   stateless IPsec processing. These APIs enables user to provide
