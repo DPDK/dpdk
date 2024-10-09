@@ -63,8 +63,6 @@ typedef uint64_t dma_addr_t;
 
 #define ENA_CDESC_RING_SIZE_ALIGNMENT  (1 << 12) /* 4K */
 
-#define ENA_ABORT() abort()
-
 #define ENA_MSLEEP(x) rte_delay_us_sleep(x * 1000)
 #define ENA_USLEEP(x) rte_delay_us_sleep(x)
 #define ENA_UDELAY(x) rte_delay_us_block(x)
