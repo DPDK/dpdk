@@ -2291,7 +2291,7 @@ rte_pmd_tun_probe(struct rte_vdev_device *dev)
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {
 			if (rte_kvargs_count(kvlist, ETH_TAP_IFACE_ARG) == 1) {
-				ret = rte_kvargs_process(kvlist,
+				ret = rte_kvargs_process_opt(kvlist,
 					ETH_TAP_IFACE_ARG,
 					&set_interface_name,
 					tun_name);
@@ -2487,10 +2487,10 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {
 			if (rte_kvargs_count(kvlist, ETH_TAP_IFACE_ARG) == 1) {
-				ret = rte_kvargs_process(kvlist,
-							 ETH_TAP_IFACE_ARG,
-							 &set_interface_name,
-							 tap_name);
+				ret = rte_kvargs_process_opt(kvlist,
+							     ETH_TAP_IFACE_ARG,
+							     &set_interface_name,
+							     tap_name);
 				if (ret == -1)
 					goto leave;
 			}
