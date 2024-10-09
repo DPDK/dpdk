@@ -167,29 +167,47 @@ rte_kvargs_count(const struct rte_kvargs *kvlist, const char *key_match)
 	return ret;
 }
 
-/*
- * For each matching key, call the given handler function.
- */
-int
-rte_kvargs_process(const struct rte_kvargs *kvlist,
-		const char *key_match,
-		arg_handler_t handler,
-		void *opaque_arg)
+static int
+kvargs_process_common(const struct rte_kvargs *kvlist, const char *key_match,
+		      arg_handler_t handler, void *opaque_arg, bool support_only_key)
 {
 	const struct rte_kvargs_pair *pair;
 	unsigned i;
 
 	if (kvlist == NULL)
-		return 0;
+		return -1;
 
 	for (i = 0; i < kvlist->count; i++) {
 		pair = &kvlist->pairs[i];
 		if (key_match == NULL || strcmp(pair->key, key_match) == 0) {
+			if (!support_only_key && pair->value == NULL)
+				return -1;
 			if ((*handler)(pair->key, pair->value, opaque_arg) < 0)
 				return -1;
 		}
 	}
+
 	return 0;
+}
+
+/*
+ * For each matching key in key=value, call the given handler function.
+ */
+int
+rte_kvargs_process(const struct rte_kvargs *kvlist, const char *key_match, arg_handler_t handler,
+		   void *opaque_arg)
+{
+	return kvargs_process_common(kvlist, key_match, handler, opaque_arg, false);
+}
+
+/*
+ * For each matching key in key=value or only-key, call the given handler function.
+ */
+int
+rte_kvargs_process_opt(const struct rte_kvargs *kvlist, const char *key_match,
+		       arg_handler_t handler, void *opaque_arg)
+{
+	return kvargs_process_common(kvlist, key_match, handler, opaque_arg, true);
 }
 
 /* free the rte_kvargs structure */

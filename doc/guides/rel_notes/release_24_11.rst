@@ -179,6 +179,14 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* kvargs: reworked the process API.
+
+  * The already existing ``rte_kvargs_process`` now only handles key=value cases and
+    rejects if only a key is present in the parsed string.
+  * ``rte_kvargs_process_opt`` has been added to behave as ``rte_kvargs_process`` in previous
+    releases: it handles key=value and only-key cases.
+  * Both ``rte_kvargs_process`` and ``rte_kvargs_process_opt`` reject a NULL ``kvlist`` parameter.
+
 
 ABI Changes
 -----------

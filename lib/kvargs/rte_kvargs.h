@@ -166,14 +166,17 @@ const char *rte_kvargs_get_with_value(const struct rte_kvargs *kvlist,
 				      const char *key, const char *value);
 
 /**
- * Call a handler function for each key/value matching the key
+ * Call a handler function for each key=value matching the key
  *
- * For each key/value association that matches the given key, calls the
+ * For each key=value association that matches the given key, calls the
  * handler function with the for a given arg_name passing the value on the
  * dictionary for that key and a given extra argument.
  *
+ * @note Compared to @see rte_kvargs_process_opt, this API will return -1
+ * when handle only-key case (that is the matched key's value is NULL).
+ *
  * @param kvlist
- *   The rte_kvargs structure. No error if NULL.
+ *   The rte_kvargs structure.
  * @param key_match
  *   The key on which the handler should be called, or NULL to process handler
  *   on all associations
@@ -187,6 +190,30 @@ const char *rte_kvargs_get_with_value(const struct rte_kvargs *kvlist,
  *   - Negative on error
  */
 int rte_kvargs_process(const struct rte_kvargs *kvlist,
+	const char *key_match, arg_handler_t handler, void *opaque_arg);
+
+/**
+ * Call a handler function for each key=value or only-key matching the key
+ *
+ * For each key=value or only-key association that matches the given key, calls
+ * the handler function with the for a given arg_name passing the value on the
+ * dictionary for that key and a given extra argument.
+ *
+ * @param kvlist
+ *   The rte_kvargs structure.
+ * @param key_match
+ *   The key on which the handler should be called, or NULL to process handler
+ *   on all associations
+ * @param handler
+ *   The function to call for each matching key
+ * @param opaque_arg
+ *   A pointer passed unchanged to the handler
+ *
+ * @return
+ *   - 0 on success
+ *   - Negative on error
+ */
+int rte_kvargs_process_opt(const struct rte_kvargs *kvlist,
 	const char *key_match, arg_handler_t handler, void *opaque_arg);
 
 /**

@@ -8,6 +8,7 @@ DPDK_25 {
 	rte_kvargs_parse;
 	rte_kvargs_parse_delim;
 	rte_kvargs_process;
+	rte_kvargs_process_opt;
 
 	local: *;
 };
