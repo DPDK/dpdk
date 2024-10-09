@@ -32,6 +32,7 @@ DPDK_25 {
 	rte_vhost_driver_get_vdpa_device;
 	rte_vhost_driver_register;
 	rte_vhost_driver_set_features;
+	rte_vhost_driver_set_max_queue_num;
 	rte_vhost_driver_set_protocol_features;
 	rte_vhost_driver_start;
 	rte_vhost_driver_unregister;
@@ -97,7 +98,6 @@ EXPERIMENTAL {
 	rte_vhost_async_dma_unconfigure;
 
 	# added in 23.07
-	rte_vhost_driver_set_max_queue_num;
 	rte_vhost_notify_guest;
 };
 
