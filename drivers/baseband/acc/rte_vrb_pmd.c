@@ -1270,7 +1270,6 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 				RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION |
 				RTE_BBDEV_LDPC_LLR_COMPRESSION |
 				RTE_BBDEV_LDPC_SOFT_OUT_ENABLE |
-				RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS |
 				RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS |
 				RTE_BBDEV_LDPC_DEC_INTERRUPTS,
 			.llr_size = 8,
@@ -1584,18 +1583,18 @@ vrb_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->so_en = check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_SOFT_OUT_ENABLE);
 		fcw->so_bypass_intlv = check_bit(op->ldpc_dec.op_flags,
 				RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS);
-		fcw->so_bypass_rm = check_bit(op->ldpc_dec.op_flags,
-				RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS);
+		fcw->so_bypass_rm = 0;
 		fcw->minsum_offset = 1;
 		fcw->dec_llrclip   = 2;
 	}
 
 	/*
-	 * These are all implicitly set
+	 * These are all implicitly set:
 	 * fcw->synd_post = 0;
 	 * fcw->dec_convllr = 0;
 	 * fcw->hcout_convllr = 0;
 	 * fcw->hcout_size1 = 0;
+	 * fcw->so_it = 0;
 	 * fcw->hcout_offset = 0;
 	 * fcw->negstop_th = 0;
 	 * fcw->negstop_it = 0;
