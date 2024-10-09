@@ -149,6 +149,8 @@
 #define VRB2_VF_ID_SHIFT     6
 
 #define ACC_MAX_FFT_WIN      16
+#define ACC_MAX_RING_BUFFER  64
+#define VRB2_MAX_Q_PER_OP 256
 
 extern int acc_common_logtype;
 #define RTE_LOGTYPE_ACC_COMMON acc_common_logtype
@@ -581,6 +583,9 @@ struct acc_device {
 	void *sw_rings_base;  /* Base addr of un-aligned memory for sw rings */
 	void *sw_rings;  /* 64MBs of 64MB aligned memory for sw rings */
 	rte_iova_t sw_rings_iova;  /* IOVA address of sw_rings */
+	void *sw_rings_array[ACC_MAX_RING_BUFFER];  /* Array of aligned memory for sw rings. */
+	rte_iova_t sw_rings_iova_array[ACC_MAX_RING_BUFFER];  /* Array of sw_rings IOVA. */
+	uint32_t queue_index[ACC_MAX_RING_BUFFER]; /* Tracking queue index per ring buffer. */
 	/* Virtual address of the info memory routed to the this function under
 	 * operation, whether it is PF or VF.
 	 * HW may DMA information data at this location asynchronously

@@ -282,7 +282,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 		/* Check the depth of the AQs. */
 		reg_len0 = acc_reg_read(d, d->reg_addr->depth_log0_offset);
 		reg_len1 = acc_reg_read(d, d->reg_addr->depth_log1_offset);
-		for (acc = 0; acc < NUM_ACC; acc++) {
+		for (acc = 0; acc < VRB1_NUM_ACCS; acc++) {
 			qtopFromAcc(&q_top, acc, acc_conf);
 			if (q_top->first_qgroup_index < ACC_NUM_QGRPS_PER_WORD)
 				q_top->aq_depth_log2 =
@@ -291,7 +291,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 				q_top->aq_depth_log2 = (reg_len1 >> ((q_top->first_qgroup_index -
 						ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
 		}
-	} else {
+	} else if (d->device_variant == VRB2_VARIANT) {
 		reg0 = acc_reg_read(d, d->reg_addr->qman_group_func);
 		reg1 = acc_reg_read(d, d->reg_addr->qman_group_func + 4);
 		reg2 = acc_reg_read(d, d->reg_addr->qman_group_func + 8);
@@ -309,7 +309,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 					idx = (reg2 >> ((qg % ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
 				else
 					idx = (reg3 >> ((qg % ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
-				if (idx < VRB_NUM_ACCS) {
+				if (idx < VRB2_NUM_ACCS) {
 					acc = qman_func_id[idx];
 					updateQtop(acc, qg, acc_conf, d);
 				}
@@ -322,7 +322,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 		reg_len2 = acc_reg_read(d, d->reg_addr->depth_log0_offset + 8);
 		reg_len3 = acc_reg_read(d, d->reg_addr->depth_log0_offset + 12);
 
-		for (acc = 0; acc < NUM_ACC; acc++) {
+		for (acc = 0; acc < VRB2_NUM_ACCS; acc++) {
 			qtopFromAcc(&q_top, acc, acc_conf);
 			if (q_top->first_qgroup_index / ACC_NUM_QGRPS_PER_WORD == 0)
 				q_top->aq_depth_log2 = (reg_len0 >> ((q_top->first_qgroup_index %
@@ -544,6 +544,7 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 {
 	uint32_t phys_low, phys_high, value;
 	struct acc_device *d = dev->data->dev_private;
+	uint16_t queues_per_op, i;
 	int ret;
 
 	if (d->pf_device && !d->acc_conf.pf_mode_en) {
@@ -565,26 +566,36 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 		return -ENODEV;
 	}
 
-	alloc_sw_rings_min_mem(dev, d, num_queues, socket_id);
+	if (d->device_variant == VRB1_VARIANT) {
+		alloc_sw_rings_min_mem(dev, d, num_queues, socket_id);
 
-	/* If minimal memory space approach failed, then allocate
-	 * the 2 * 64MB block for the sw rings.
-	 */
-	if (d->sw_rings == NULL)
-		alloc_2x64mb_sw_rings_mem(dev, d, socket_id);
+		/* If minimal memory space approach failed, then allocate
+		 * the 2 * 64MB block for the sw rings.
+		 */
+		if (d->sw_rings == NULL)
+			alloc_2x64mb_sw_rings_mem(dev, d, socket_id);
 
-	if (d->sw_rings == NULL) {
-		rte_bbdev_log(NOTICE,
-				"Failure allocating sw_rings memory");
-		return -ENOMEM;
+		if (d->sw_rings == NULL) {
+			rte_bbdev_log(NOTICE, "Failure allocating sw_rings memory");
+			return -ENOMEM;
+		}
+	} else if (d->device_variant == VRB2_VARIANT) {
+		queues_per_op = RTE_MIN(VRB2_MAX_Q_PER_OP, num_queues);
+		for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++) {
+			alloc_sw_rings_min_mem(dev, d, queues_per_op, socket_id);
+			if (d->sw_rings == NULL) {
+				rte_bbdev_log(NOTICE, "Failure allocating sw_rings memory %d", i);
+				return -ENOMEM;
+			}
+			/* Moves the pointer to the relevant array. */
+			d->sw_rings_array[i] = d->sw_rings;
+			d->sw_rings_iova_array[i] = d->sw_rings_iova;
+			d->sw_rings = NULL;
+			d->sw_rings_base = NULL;
+			d->sw_rings_iova = 0;
+			d->queue_index[i] = 0;
+		}
 	}
-
-	/* Configure device with the base address for DMA descriptor rings.
-	 * Same descriptor rings used for UL and DL DMA Engines.
-	 * Note : Assuming only VF0 bundle is used for PF mode.
-	 */
-	phys_high = (uint32_t)(d->sw_rings_iova >> 32);
-	phys_low  = (uint32_t)(d->sw_rings_iova & ~(ACC_SIZE_64MBYTE-1));
 
 	/* Read the populated cfg from device registers. */
 	fetch_acc_config(dev);
@@ -600,20 +611,60 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	if (d->pf_device)
 		acc_reg_write(d, VRB1_PfDmaAxiControl, 1);
 
-	acc_reg_write(d, d->reg_addr->dma_ring_ul5g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->dma_ring_ul5g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->dma_ring_dl5g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->dma_ring_dl5g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->dma_ring_ul4g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->dma_ring_ul4g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->dma_ring_dl4g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->dma_ring_dl4g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->dma_ring_fft_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->dma_ring_fft_lo, phys_low);
-	if (d->device_variant == VRB2_VARIANT) {
-		acc_reg_write(d, d->reg_addr->dma_ring_mld_hi, phys_high);
-		acc_reg_write(d, d->reg_addr->dma_ring_mld_lo, phys_low);
+	if (d->device_variant == VRB1_VARIANT) {
+		/* Configure device with the base address for DMA descriptor rings.
+		 * Same descriptor rings used for UL and DL DMA Engines.
+		 * Note : Assuming only VF0 bundle is used for PF mode.
+		 */
+		phys_high = (uint32_t)(d->sw_rings_iova >> 32);
+		phys_low  = (uint32_t)(d->sw_rings_iova & ~(ACC_SIZE_64MBYTE-1));
+		acc_reg_write(d, d->reg_addr->dma_ring_ul5g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->dma_ring_ul5g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->dma_ring_dl5g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->dma_ring_dl5g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->dma_ring_ul4g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->dma_ring_ul4g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->dma_ring_dl4g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->dma_ring_dl4g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->dma_ring_fft_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->dma_ring_fft_lo, phys_low);
+	} else if (d->device_variant == VRB2_VARIANT) {
+		/* Configure device with the base address for DMA descriptor rings.
+		 * Different ring buffer used for each operation type.
+		 * Note : Assuming only VF0 bundle is used for PF mode.
+		 */
+		acc_reg_write(d, d->reg_addr->dma_ring_ul5g_hi,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_LDPC_DEC] >> 32));
+		acc_reg_write(d, d->reg_addr->dma_ring_ul5g_lo,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_LDPC_DEC]
+				& ~(ACC_SIZE_64MBYTE - 1)));
+		acc_reg_write(d, d->reg_addr->dma_ring_dl5g_hi,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_LDPC_ENC] >> 32));
+		acc_reg_write(d, d->reg_addr->dma_ring_dl5g_lo,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_LDPC_ENC]
+				& ~(ACC_SIZE_64MBYTE - 1)));
+		acc_reg_write(d, d->reg_addr->dma_ring_ul4g_hi,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_TURBO_DEC] >> 32));
+		acc_reg_write(d, d->reg_addr->dma_ring_ul4g_lo,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_TURBO_DEC]
+				& ~(ACC_SIZE_64MBYTE - 1)));
+		acc_reg_write(d, d->reg_addr->dma_ring_dl4g_hi,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_TURBO_ENC] >> 32));
+		acc_reg_write(d, d->reg_addr->dma_ring_dl4g_lo,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_TURBO_ENC]
+				& ~(ACC_SIZE_64MBYTE - 1)));
+		acc_reg_write(d, d->reg_addr->dma_ring_fft_hi,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_FFT] >> 32));
+		acc_reg_write(d, d->reg_addr->dma_ring_fft_lo,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_FFT]
+				& ~(ACC_SIZE_64MBYTE - 1)));
+		acc_reg_write(d, d->reg_addr->dma_ring_mld_hi,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_MLDTS] >> 32));
+		acc_reg_write(d, d->reg_addr->dma_ring_mld_lo,
+				(uint32_t)(d->sw_rings_iova_array[RTE_BBDEV_OP_MLDTS]
+				& ~(ACC_SIZE_64MBYTE - 1)));
 	}
+
 	/*
 	 * Configure Ring Size to the max queue ring size
 	 * (used for wrapping purpose).
@@ -637,19 +688,21 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 
 	phys_high = (uint32_t)(d->tail_ptr_iova >> 32);
 	phys_low  = (uint32_t)(d->tail_ptr_iova);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_ul5g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_ul5g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_dl5g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_dl5g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_ul4g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_ul4g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_fft_hi, phys_high);
-	acc_reg_write(d, d->reg_addr->tail_ptrs_fft_lo, phys_low);
-	if (d->device_variant == VRB2_VARIANT) {
-		acc_reg_write(d, d->reg_addr->tail_ptrs_mld_hi, phys_high);
-		acc_reg_write(d, d->reg_addr->tail_ptrs_mld_lo, phys_low);
+	{
+		acc_reg_write(d, d->reg_addr->tail_ptrs_ul5g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_ul5g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_dl5g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_dl5g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_ul4g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_ul4g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_lo, phys_low);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_fft_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_fft_lo, phys_low);
+		if (d->device_variant == VRB2_VARIANT) {
+			acc_reg_write(d, d->reg_addr->tail_ptrs_mld_hi, phys_high);
+			acc_reg_write(d, d->reg_addr->tail_ptrs_mld_lo, phys_low);
+		}
 	}
 
 	ret = allocate_info_ring(dev);
@@ -685,8 +738,13 @@ free_tail_ptrs:
 	rte_free(d->tail_ptrs);
 	d->tail_ptrs = NULL;
 free_sw_rings:
-	rte_free(d->sw_rings_base);
-	d->sw_rings = NULL;
+	if (d->device_variant == VRB1_VARIANT) {
+		rte_free(d->sw_rings_base);
+		d->sw_rings = NULL;
+	} else if (d->device_variant == VRB2_VARIANT) {
+		for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++)
+			rte_free(d->sw_rings_array[i]);
+	}
 
 	return ret;
 }
@@ -810,17 +868,34 @@ vrb_intr_enable(struct rte_bbdev *dev)
 static int
 vrb_dev_close(struct rte_bbdev *dev)
 {
+	int i;
 	struct acc_device *d = dev->data->dev_private;
+
 	vrb_check_ir(d);
-	if (d->sw_rings_base != NULL) {
-		rte_free(d->tail_ptrs);
-		rte_free(d->info_ring);
-		rte_free(d->sw_rings_base);
-		rte_free(d->harq_layout);
-		d->tail_ptrs = NULL;
-		d->info_ring = NULL;
-		d->sw_rings_base = NULL;
-		d->harq_layout = NULL;
+	if (d->device_variant == VRB1_VARIANT) {
+		if (d->sw_rings_base != NULL) {
+			rte_free(d->tail_ptrs);
+			rte_free(d->info_ring);
+			rte_free(d->sw_rings_base);
+			rte_free(d->harq_layout);
+			d->tail_ptrs = NULL;
+			d->info_ring = NULL;
+			d->sw_rings_base = NULL;
+			d->harq_layout = NULL;
+		}
+	} else if (d->device_variant == VRB2_VARIANT) {
+		if (d->sw_rings_array[1] != NULL) {
+			rte_free(d->tail_ptrs);
+			rte_free(d->info_ring);
+			rte_free(d->harq_layout);
+			d->tail_ptrs = NULL;
+			d->info_ring = NULL;
+			d->harq_layout = NULL;
+			for (i = 0; i <= RTE_BBDEV_OP_MLDTS; i++) {
+				rte_free(d->sw_rings_array[i]);
+				d->sw_rings_array[i] = NULL;
+			}
+		}
 	}
 	/* Ensure all in flight HW transactions are completed. */
 	usleep(ACC_LONG_WAIT);
@@ -891,8 +966,16 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	}
 
 	q->d = d;
-	q->ring_addr = RTE_PTR_ADD(d->sw_rings, (d->sw_ring_size * queue_id));
-	q->ring_addr_iova = d->sw_rings_iova + (d->sw_ring_size * queue_id);
+	if (d->device_variant == VRB1_VARIANT) {
+		q->ring_addr = RTE_PTR_ADD(d->sw_rings, (d->sw_ring_size * queue_id));
+		q->ring_addr_iova = d->sw_rings_iova + (d->sw_ring_size * queue_id);
+	} else if (d->device_variant == VRB2_VARIANT) {
+		q->ring_addr = RTE_PTR_ADD(d->sw_rings_array[conf->op_type],
+				(d->sw_ring_size * d->queue_index[conf->op_type]));
+		q->ring_addr_iova = d->sw_rings_iova_array[conf->op_type] +
+				(d->sw_ring_size * d->queue_index[conf->op_type]);
+		d->queue_index[conf->op_type]++;
+	}
 
 	/* Prepare the Ring with default descriptor format. */
 	union acc_dma_desc *desc = NULL;
@@ -1347,8 +1430,14 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	dev_info->queue_priority[RTE_BBDEV_OP_FFT] = d->acc_conf.q_fft.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_MLDTS] = d->acc_conf.q_mld.num_qgroups;
 	dev_info->max_num_queues = 0;
-	for (i = RTE_BBDEV_OP_NONE; i <= RTE_BBDEV_OP_MLDTS; i++)
+	for (i = RTE_BBDEV_OP_NONE; i <= RTE_BBDEV_OP_MLDTS; i++) {
+		if (unlikely(dev_info->num_queues[i] > VRB2_MAX_Q_PER_OP)) {
+			rte_bbdev_log(ERR, "Unexpected number of queues %d exposed for op %d",
+					dev_info->num_queues[i], i);
+			dev_info->num_queues[i] = VRB2_MAX_Q_PER_OP;
+		}
 		dev_info->max_num_queues += dev_info->num_queues[i];
+	}
 	dev_info->queue_size_lim = ACC_MAX_QUEUE_DEPTH;
 	dev_info->hardware_accelerated = true;
 	dev_info->max_dl_queue_priority =
@@ -4239,7 +4328,8 @@ vrb_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 			d->reg_addr = &vrb1_pf_reg_addr;
 		else
 			d->reg_addr = &vrb1_vf_reg_addr;
-	} else {
+	} else if ((pci_dev->id.device_id == RTE_VRB2_PF_DEVICE_ID) ||
+			(pci_dev->id.device_id == RTE_VRB2_VF_DEVICE_ID)) {
 		d->device_variant = VRB2_VARIANT;
 		d->queue_offset = vrb2_queue_offset;
 		d->num_qgroups = VRB2_NUM_QGRPS;
