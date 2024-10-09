@@ -564,6 +564,7 @@ free_tail_ptrs:
 	d->tail_ptrs = NULL;
 free_sw_rings:
 	rte_free(d->sw_rings_base);
+	d->sw_rings_base = NULL;
 	d->sw_rings = NULL;
 
 	return ret;
@@ -593,6 +594,7 @@ acc100_intr_enable(struct rte_bbdev *dev)
 					"Couldn't enable interrupts for device: %s",
 					dev->data->name);
 			rte_free(d->info_ring);
+			d->info_ring = NULL;
 			return ret;
 		}
 		ret = rte_intr_callback_register(dev->intr_handle,
@@ -602,6 +604,7 @@ acc100_intr_enable(struct rte_bbdev *dev)
 					"Couldn't register interrupt callback for device: %s",
 					dev->data->name);
 			rte_free(d->info_ring);
+			d->info_ring = NULL;
 			return ret;
 		}
 
@@ -619,16 +622,15 @@ acc100_dev_close(struct rte_bbdev *dev)
 {
 	struct acc_device *d = dev->data->dev_private;
 	acc100_check_ir(d);
-	if (d->sw_rings_base != NULL) {
-		rte_free(d->tail_ptrs);
-		rte_free(d->info_ring);
-		rte_free(d->sw_rings_base);
-		rte_free(d->harq_layout);
-		d->sw_rings_base = NULL;
-		d->tail_ptrs = NULL;
-		d->info_ring = NULL;
-		d->harq_layout = NULL;
-	}
+	rte_free(d->tail_ptrs);
+	rte_free(d->info_ring);
+	rte_free(d->sw_rings_base);
+	rte_free(d->harq_layout);
+	d->tail_ptrs = NULL;
+	d->info_ring = NULL;
+	d->sw_rings_base = NULL;
+	d->sw_rings = NULL;
+	d->harq_layout = NULL;
 	/* Ensure all in flight HW transactions are completed */
 	usleep(ACC_LONG_WAIT);
 	return 0;
@@ -4235,6 +4237,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc_device *d,
 	rte_bbdev_log(INFO, "Number of 5GUL engines %d", numEngines);
 
 	rte_free(d->sw_rings_base);
+	d->sw_rings_base = NULL;
 	usleep(ACC_LONG_WAIT);
 }
 
