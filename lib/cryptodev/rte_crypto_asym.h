@@ -639,40 +639,6 @@ struct rte_crypto_ecpm_op_param {
 };
 
 /**
- * Asymmetric crypto transform data
- *
- * Structure describing asym xforms.
- */
-struct rte_crypto_asym_xform {
-	struct rte_crypto_asym_xform *next;
-	/**< Pointer to next xform to set up xform chain.*/
-	enum rte_crypto_asym_xform_type xform_type;
-	/**< Asymmetric crypto transform */
-
-	union {
-		struct rte_crypto_rsa_xform rsa;
-		/**< RSA xform parameters */
-
-		struct rte_crypto_modex_xform modex;
-		/**< Modular Exponentiation xform parameters */
-
-		struct rte_crypto_modinv_xform modinv;
-		/**< Modular Multiplicative Inverse xform parameters */
-
-		struct rte_crypto_dh_xform dh;
-		/**< DH xform parameters */
-
-		struct rte_crypto_dsa_xform dsa;
-		/**< DSA xform parameters */
-
-		struct rte_crypto_ec_xform ec;
-		/**< EC xform parameters, used by elliptic curve based
-		 * operations.
-		 */
-	};
-};
-
-/**
  * SM2 operation capabilities
  */
 enum rte_crypto_sm2_op_capa {
@@ -744,6 +710,40 @@ struct rte_crypto_sm2_op_param {
 	 *              where prime field length is N bytes)
 	 *     input  : for signature verification
 	 */
+};
+
+/**
+ * Asymmetric crypto transform data
+ *
+ * Structure describing asym xforms.
+ */
+struct rte_crypto_asym_xform {
+	struct rte_crypto_asym_xform *next;
+	/**< Pointer to next xform to set up xform chain.*/
+	enum rte_crypto_asym_xform_type xform_type;
+	/**< Asymmetric crypto transform */
+
+	union {
+		struct rte_crypto_rsa_xform rsa;
+		/**< RSA xform parameters */
+
+		struct rte_crypto_modex_xform modex;
+		/**< Modular Exponentiation xform parameters */
+
+		struct rte_crypto_modinv_xform modinv;
+		/**< Modular Multiplicative Inverse xform parameters */
+
+		struct rte_crypto_dh_xform dh;
+		/**< DH xform parameters */
+
+		struct rte_crypto_dsa_xform dsa;
+		/**< DSA xform parameters */
+
+		struct rte_crypto_ec_xform ec;
+		/**< EC xform parameters, used by elliptic curve based
+		 * operations.
+		 */
+	};
 };
 
 /**
