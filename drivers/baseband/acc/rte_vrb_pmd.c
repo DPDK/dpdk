@@ -1222,7 +1222,6 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_TURBO_HALF_ITERATION_EVEN |
 					RTE_BBDEV_TURBO_CONTINUE_CRC_MATCH |
 					RTE_BBDEV_TURBO_EARLY_TERMINATION |
-					RTE_BBDEV_TURBO_DEC_INTERRUPTS |
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
 					RTE_BBDEV_TURBO_MAP_DEC |
 					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
@@ -1243,7 +1242,6 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_TURBO_CRC_24B_ATTACH |
 					RTE_BBDEV_TURBO_RV_INDEX_BYPASS |
 					RTE_BBDEV_TURBO_RATE_MATCH |
-					RTE_BBDEV_TURBO_ENC_INTERRUPTS |
 					RTE_BBDEV_TURBO_ENC_SCATTER_GATHER,
 				.num_buffers_src =
 						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
@@ -1257,8 +1255,7 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 				.capability_flags =
 					RTE_BBDEV_LDPC_RATE_MATCH |
 					RTE_BBDEV_LDPC_CRC_24B_ATTACH |
-					RTE_BBDEV_LDPC_INTERLEAVER_BYPASS |
-					RTE_BBDEV_LDPC_ENC_INTERRUPTS,
+					RTE_BBDEV_LDPC_INTERLEAVER_BYPASS,
 				.num_buffers_src =
 						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 				.num_buffers_dst =
@@ -1279,8 +1276,7 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 				RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS |
 				RTE_BBDEV_LDPC_DEC_SCATTER_GATHER |
 				RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION |
-				RTE_BBDEV_LDPC_LLR_COMPRESSION |
-				RTE_BBDEV_LDPC_DEC_INTERRUPTS,
+				RTE_BBDEV_LDPC_LLR_COMPRESSION,
 			.llr_size = 8,
 			.llr_decimals = 1,
 			.num_buffers_src =
