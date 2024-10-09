@@ -119,6 +119,16 @@ typedef int (*rte_tm_node_resume_t)(struct rte_eth_dev *dev,
 	uint32_t node_id,
 	struct rte_tm_error *error);
 
+/** @internal Traffic manager node query */
+typedef int (*rte_tm_node_query_t)(const struct rte_eth_dev *dev,
+	uint32_t node_id,
+	uint32_t *parent_node_id,
+	uint32_t *priority,
+	uint32_t *weight,
+	uint32_t *level_id,
+	struct rte_tm_node_params *params,
+	struct rte_tm_error *error);
+
 /** @internal Traffic manager hierarchy commit */
 typedef int (*rte_tm_hierarchy_commit_t)(struct rte_eth_dev *dev,
 	int clear_on_fail,
@@ -248,6 +258,8 @@ struct rte_tm_ops {
 	rte_tm_node_suspend_t node_suspend;
 	/** Traffic manager node resume */
 	rte_tm_node_resume_t node_resume;
+	/** Traffic manager node query */
+	rte_tm_node_query_t node_query;
 	/** Traffic manager hierarchy commit */
 	rte_tm_hierarchy_commit_t hierarchy_commit;
 

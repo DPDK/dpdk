@@ -2111,6 +2111,137 @@ cmdline_parse_inst_t cmd_add_port_tm_leaf_node = {
 	},
 };
 
+struct cmd_show_port_tm_node_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t tm;
+	cmdline_fixed_string_t node;
+	uint16_t port_id;
+	uint32_t node_id;
+};
+
+static cmdline_parse_token_string_t cmd_show_port_tm_node_show_tok =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_result, show, "show");
+static cmdline_parse_token_string_t cmd_show_port_tm_node_port_tok =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_result, port, "port");
+static cmdline_parse_token_string_t cmd_show_port_tm_node_tm_tok =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_result, tm, "tm");
+static cmdline_parse_token_string_t cmd_show_port_tm_node_node_tok =
+	TOKEN_STRING_INITIALIZER(struct cmd_show_port_tm_node_result, node, "node");
+static cmdline_parse_token_num_t cmd_show_port_tm_node_port_id_tok =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_node_result, port_id, RTE_UINT16);
+static cmdline_parse_token_num_t cmd_show_port_tm_node_node_id_tok =
+	TOKEN_NUM_INITIALIZER(struct cmd_show_port_tm_node_result, node_id, RTE_UINT32);
+
+static void
+cmd_show_port_tm_node_parsed(void *parsed_result, struct cmdline *cl, void *data __rte_unused)
+{
+	const struct cmd_show_port_tm_node_result *res = parsed_result;
+	const portid_t port_id = res->port_id;
+	const uint32_t node_id = res->node_id;
+	struct rte_tm_node_params params = {0};
+	struct rte_tm_error error = {0};
+	uint32_t parent_id, priority, weight, level_id;
+	int is_leaf;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	ret = rte_tm_node_query(port_id, node_id,
+			&parent_id, &priority, &weight, &level_id, &params, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+
+	ret = rte_tm_node_type_get(port_id, node_id, &is_leaf, &error);
+	if (ret != 0) {
+		print_err_msg(&error);
+		return;
+	}
+
+	cmdline_printf(cl, "Port %u TM Node %u\n", port_id, node_id);
+	if (parent_id == RTE_TM_NODE_ID_NULL)
+		cmdline_printf(cl, "  Parent Node ID: <NULL>\n");
+	else
+		cmdline_printf(cl, "  Parent Node ID: %d\n", parent_id);
+	cmdline_printf(cl, "  Level ID: %u\n", level_id);
+	cmdline_printf(cl, "  Priority: %u\n", priority);
+	cmdline_printf(cl, "  Weight: %u\n", weight);
+	if (params.shaper_profile_id == RTE_TM_SHAPER_PROFILE_ID_NONE)
+		cmdline_printf(cl, "  Shaper Profile ID: <none>\n");
+	else
+		cmdline_printf(cl, "  Shaper Profile ID: %d\n", params.shaper_profile_id);
+	cmdline_printf(cl, "  Shared Shaper IDs: ");
+	if (params.n_shared_shapers == 0)
+		cmdline_printf(cl, "<none>\n");
+	else {
+		for (uint32_t i = 0; i < params.n_shared_shapers; i++)
+			cmdline_printf(cl, "%u ", params.shared_shaper_id[i]);
+		cmdline_printf(cl, "\n");
+	}
+	cmdline_printf(cl, "  Stats Mask: %"PRIu64"\n", params.stats_mask);
+	if (is_leaf) {
+		cmdline_printf(cl, "  Leaf Node Parameters\n");
+		switch (params.leaf.cman) {
+		case RTE_TM_CMAN_TAIL_DROP:
+			cmdline_printf(cl, "    CMAN Mode: Tail Drop\n");
+			break;
+		case RTE_TM_CMAN_HEAD_DROP:
+			cmdline_printf(cl, "    CMAN Mode: Head Drop\n");
+			break;
+		case RTE_TM_CMAN_WRED:
+			cmdline_printf(cl, "    CMAN Mode: WRED\n");
+			break;
+		}
+		if (params.leaf.wred.wred_profile_id == RTE_TM_WRED_PROFILE_ID_NONE)
+			cmdline_printf(cl, "    WRED Profile ID: <none>\n");
+		else
+			cmdline_printf(cl, "    WRED Profile ID: %u\n",
+					params.leaf.wred.wred_profile_id);
+		cmdline_printf(cl, "    Shared WRED Context Ids: ");
+		if (params.leaf.wred.n_shared_wred_contexts == 0)
+			cmdline_printf(cl, "<none>\n");
+		else {
+			for (uint32_t i = 0; i < params.leaf.wred.n_shared_wred_contexts; i++)
+				cmdline_printf(cl, "%u ",
+						params.leaf.wred.shared_wred_context_id[i]);
+			cmdline_printf(cl, "\n");
+		}
+	} else {
+		cmdline_printf(cl, "  Nonleaf Node Parameters\n");
+		cmdline_printf(cl, "    Num Strict Priorities: %u\n",
+				params.nonleaf.n_sp_priorities);
+		cmdline_printf(cl, "    WFQ Weights Mode: ");
+		if (params.nonleaf.wfq_weight_mode == NULL)
+			cmdline_printf(cl, "WFQ\n");
+		else {
+			for (uint32_t i = 0; i < params.nonleaf.n_sp_priorities; i++)
+				cmdline_printf(cl, "%s(%d) ",
+					params.nonleaf.wfq_weight_mode[i] ? "Bytes" : "Packet",
+					params.nonleaf.wfq_weight_mode[i]);
+			cmdline_printf(cl, "\n");
+		}
+	}
+}
+
+
+cmdline_parse_inst_t cmd_show_port_tm_node = {
+	.f = cmd_show_port_tm_node_parsed,
+	.data = NULL,
+	.help_str = "",
+	.tokens = {
+		(void *)&cmd_show_port_tm_node_show_tok,
+		(void *)&cmd_show_port_tm_node_port_tok,
+		(void *)&cmd_show_port_tm_node_tm_tok,
+		(void *)&cmd_show_port_tm_node_node_tok,
+		(void *)&cmd_show_port_tm_node_port_id_tok,
+		(void *)&cmd_show_port_tm_node_node_id_tok,
+		NULL,
+	}
+};
+
 /* *** Delete Port TM Node *** */
 struct cmd_del_port_tm_node_result {
 	cmdline_fixed_string_t del;

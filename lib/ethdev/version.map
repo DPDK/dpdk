@@ -336,6 +336,7 @@ EXPERIMENTAL {
 	rte_eth_speed_lanes_set;
 	rte_eth_timesync_adjust_freq;
 	rte_flow_async_create_by_index_with_pattern;
+	rte_tm_node_query;
 };
 
 INTERNAL {
