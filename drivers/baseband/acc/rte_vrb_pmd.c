@@ -545,7 +545,7 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	uint32_t phys_low, phys_high, value;
 	struct acc_device *d = dev->data->dev_private;
 	uint16_t queues_per_op, i;
-	int ret;
+	int ret, max_queues = 0;
 
 	if (d->pf_device && !d->acc_conf.pf_mode_en) {
 		rte_bbdev_log(NOTICE,
@@ -672,10 +672,15 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	value = log2_basic(d->sw_ring_size / ACC_RING_SIZE_GRANULARITY);
 	acc_reg_write(d, d->reg_addr->ring_size, value);
 
+	if (d->device_variant == VRB1_VARIANT)
+		max_queues = VRB1_NUM_QGRPS * VRB1_NUM_AQS;
+	else if (d->device_variant == VRB2_VARIANT)
+		max_queues = VRB2_NUM_QGRPS * VRB2_NUM_AQS;
+
 	/* Configure tail pointer for use when SDONE enabled. */
 	if (d->tail_ptrs == NULL)
 		d->tail_ptrs = rte_zmalloc_socket(dev->device->driver->name,
-				VRB_MAX_QGRPS * VRB_MAX_AQS * sizeof(uint32_t),
+				max_queues * sizeof(uint32_t),
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (d->tail_ptrs == NULL) {
 		rte_bbdev_log(ERR, "Failed to allocate tail ptr for %s:%u",
