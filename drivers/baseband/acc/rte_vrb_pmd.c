@@ -412,7 +412,7 @@ vrb_check_ir(struct acc_device *acc_dev)
 			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
 					int_nb, ring_data->detailed_info);
 			/* Initialize Info Ring entry and move forward. */
-			ring_data->val = 0;
+			ring_data->valid = 0;
 		}
 		info_ring_head++;
 		ring_data = acc_dev->info_ring + (info_ring_head & ACC_INFO_RING_MASK);
