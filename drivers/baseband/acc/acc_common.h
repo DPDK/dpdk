@@ -767,6 +767,7 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 	int i = 0;
 	uint32_t q_sw_ring_size = ACC_MAX_QUEUE_DEPTH * get_desc_len();
 	uint32_t dev_sw_ring_size = q_sw_ring_size * num_queues;
+	uint32_t alignment = q_sw_ring_size * rte_align32pow2(num_queues);
 	/* Free first in case this is a reconfiguration */
 	rte_free(d->sw_rings_base);
 
@@ -774,12 +775,12 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 	while (i < ACC_SW_RING_MEM_ALLOC_ATTEMPTS) {
 		/*
 		 * sw_ring allocated memory is guaranteed to be aligned to
-		 * q_sw_ring_size at the condition that the requested size is
-		 * less than the page size
+		 * the variable 'alignment' at the condition that the requested
+		 * size is less than the page size
 		 */
 		sw_rings_base = rte_zmalloc_socket(
 				dev->device->driver->name,
-				dev_sw_ring_size, q_sw_ring_size, socket);
+				dev_sw_ring_size, alignment, socket);
 
 		if (sw_rings_base == NULL) {
 			rte_acc_log(ERR,
