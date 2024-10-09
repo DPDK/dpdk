@@ -1363,7 +1363,7 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 				RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS |
 				RTE_BBDEV_LDPC_DEC_INTERRUPTS,
 			.llr_size = 8,
-			.llr_decimals = 2,
+			.llr_decimals = 1,
 			.num_buffers_src =
 					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 			.num_buffers_hard_out =
@@ -1737,8 +1737,8 @@ vrb_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->so_bypass_intlv = check_bit(op->ldpc_dec.op_flags,
 				RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS);
 		fcw->so_bypass_rm = 0;
-		fcw->minsum_offset = 1;
-		fcw->dec_llrclip   = 2;
+		fcw->minsum_offset = 0;
+		fcw->dec_llrclip   = 0;
 	}
 
 	/*
