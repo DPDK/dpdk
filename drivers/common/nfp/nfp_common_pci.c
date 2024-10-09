@@ -170,10 +170,8 @@ nfp_parse_class_options(const struct rte_devargs *devargs)
 	if (kvargs == NULL)
 		return dev_class;
 
-	if (rte_kvargs_count(kvargs, RTE_DEVARGS_KEY_CLASS) != 0) {
-		rte_kvargs_process(kvargs, RTE_DEVARGS_KEY_CLASS,
-				nfp_kvarg_dev_class_handler, &dev_class);
-	}
+	rte_kvargs_process_opt(kvargs, RTE_DEVARGS_KEY_CLASS,
+			       nfp_kvarg_dev_class_handler, &dev_class);
 
 	rte_kvargs_free(kvargs);
 
