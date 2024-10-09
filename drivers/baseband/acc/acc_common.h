@@ -95,8 +95,8 @@
 #define ACC_COMPANION_PTRS             8
 #define ACC_FCW_VER                    2
 #define ACC_MUX_5GDL_DESC              6
-#define ACC_CMP_ENC_SIZE               20
-#define ACC_CMP_DEC_SIZE               24
+#define ACC_CMP_ENC_SIZE               (sizeof(struct rte_bbdev_op_ldpc_enc) - ACC_ENC_OFFSET)
+#define ACC_CMP_DEC_SIZE               (sizeof(struct rte_bbdev_op_ldpc_dec) - ACC_DEC_OFFSET)
 #define ACC_ENC_OFFSET                (32)
 #define ACC_DEC_OFFSET                (80)
 #define ACC_LIMIT_DL_MUX_BITS          534
