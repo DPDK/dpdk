@@ -709,6 +709,9 @@ RTE_TRACE_POINT_REGISTER(rte_tm_trace_mark_vlan_dei,
 RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_add,
 	lib.ethdev.tm.node_add)
 
+RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_query,
+	lib.ethdev.tm.node_query)
+
 RTE_TRACE_POINT_REGISTER(rte_tm_trace_node_capabilities_get,
 	lib.ethdev.tm.node_capabilities_get)
 

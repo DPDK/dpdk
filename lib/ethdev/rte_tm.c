@@ -301,6 +301,28 @@ int rte_tm_node_add(uint16_t port_id,
 	return ret;
 }
 
+int rte_tm_node_query(uint16_t port_id,
+	uint32_t node_id,
+	uint32_t *parent_node_id,
+	uint32_t *priority,
+	uint32_t *weight,
+	uint32_t *level_id,
+	struct rte_tm_node_params *params,
+	struct rte_tm_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	int ret;
+
+	ret = RTE_TM_FUNC(port_id, node_query)(dev,
+		node_id, parent_node_id, priority, weight, level_id,
+		params, error);
+
+	rte_tm_trace_node_query(port_id, node_id, parent_node_id, priority,
+			      weight, level_id, params, ret);
+
+	return ret;
+}
+
 /* Delete node from traffic manager hierarchy */
 int rte_tm_node_delete(uint16_t port_id,
 	uint32_t node_id,

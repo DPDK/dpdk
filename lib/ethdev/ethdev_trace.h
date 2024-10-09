@@ -1906,6 +1906,22 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_tm_trace_node_query,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t node_id,
+		uint32_t *parent_node_id, uint32_t *priority,
+		uint32_t *weight, uint32_t *level_id,
+		struct rte_tm_node_params *params, int ret),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u32(node_id);
+	rte_trace_point_emit_ptr(parent_node_id);
+	rte_trace_point_emit_ptr(priority);
+	rte_trace_point_emit_ptr(weight);
+	rte_trace_point_emit_ptr(level_id);
+	rte_trace_point_emit_ptr(params);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
 	rte_tm_trace_node_delete,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint32_t node_id, int ret),
 	rte_trace_point_emit_u16(port_id);
