@@ -47,6 +47,11 @@ struct nthw_dbs_s {
 	nthw_field_t *mp_fld_rx_init_val_idx;
 	nthw_field_t *mp_fld_rx_init_val_ptr;
 
+	nthw_register_t *mp_reg_rx_ptr;
+	nthw_field_t *mp_fld_rx_ptr_ptr;
+	nthw_field_t *mp_fld_rx_ptr_queue;
+	nthw_field_t *mp_fld_rx_ptr_valid;
+
 	nthw_register_t *mp_reg_tx_init;
 	nthw_field_t *mp_fld_tx_init_init;
 	nthw_field_t *mp_fld_tx_init_queue;
@@ -56,6 +61,20 @@ struct nthw_dbs_s {
 	nthw_field_t *mp_fld_tx_init_val_idx;
 	nthw_field_t *mp_fld_tx_init_val_ptr;
 
+	nthw_register_t *mp_reg_tx_ptr;
+	nthw_field_t *mp_fld_tx_ptr_ptr;
+	nthw_field_t *mp_fld_tx_ptr_queue;
+	nthw_field_t *mp_fld_tx_ptr_valid;
+
+	nthw_register_t *mp_reg_rx_idle;
+	nthw_field_t *mp_fld_rx_idle_idle;
+	nthw_field_t *mp_fld_rx_idle_queue;
+	nthw_field_t *mp_fld_rx_idle_busy;
+
+	nthw_register_t *mp_reg_tx_idle;
+	nthw_field_t *mp_fld_tx_idle_idle;
+	nthw_field_t *mp_fld_tx_idle_queue;
+	nthw_field_t *mp_fld_tx_idle_busy;
 };
 
 typedef struct nthw_dbs_s nthw_dbs_t;
