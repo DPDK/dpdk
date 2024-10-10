@@ -140,10 +140,19 @@ int nthw_rac_rab_reset(nthw_rac_t *p);
 
 int nthw_rac_rab_write32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint32_t address,
 	uint32_t word_cnt, const uint32_t *p_data);
+int nthw_rac_rab_write32_dma(nthw_rac_t *p, nthw_rab_bus_id_t bus_id, uint32_t address,
+	uint32_t word_cnt, const uint32_t *p_data);
 int nthw_rac_rab_read32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint32_t address,
 	uint32_t word_cnt, uint32_t *p_data);
+int nthw_rac_rab_read32_dma(nthw_rac_t *p, nthw_rab_bus_id_t bus_id, uint32_t address,
+	uint32_t word_cnt, struct dma_buf_ptr *buf_ptr);
+
+uint32_t nthw_rac_rab_get_free(nthw_rac_t *p);
 
 int nthw_rac_rab_flush(nthw_rac_t *p);
+
+int nthw_rac_rab_dma_begin(nthw_rac_t *p);
+int nthw_rac_rab_dma_commit(nthw_rac_t *p);
 
 void nthw_rac_bar0_read32(const struct fpga_info_s *p_fpga_info, uint32_t reg_addr,
 	uint32_t word_cnt, uint32_t *p_data);

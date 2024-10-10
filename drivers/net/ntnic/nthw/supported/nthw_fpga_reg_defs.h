@@ -14,6 +14,7 @@
 #define _NTHW_FPGA_REG_DEFS_
 
 #include "nthw_fpga_reg_defs_cat.h"
+#include "nthw_fpga_reg_defs_flm.h"
 #include "nthw_fpga_reg_defs_gfg.h"
 #include "nthw_fpga_reg_defs_gmf.h"
 #include "nthw_fpga_reg_defs_gpio_phy.h"

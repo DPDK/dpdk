@@ -12,6 +12,7 @@
 
 #include <pthread.h>
 
+#define RAB_DMA_WAIT (1000000)
 
 #define RAB_READ (0x01)
 #define RAB_WRITE (0x02)
@@ -384,6 +385,186 @@ void nthw_rac_bar0_write32(const struct fpga_info_s *p_fpga_info, uint32_t reg_a
 
 	for (uint32_t i = 0; i < word_cnt; i++)
 		dst_addr[i] = p_data[i];
+}
+
+int nthw_rac_rab_dma_begin(nthw_rac_t *p)
+{
+	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+
+	pthread_mutex_lock(&p->m_mutex);
+
+	if (p->m_dma_active) {
+		pthread_mutex_unlock(&p->m_mutex);
+		NT_LOG(ERR, NTHW,
+			"%s: DMA begin requested, but a DMA transaction is already active",
+			p_adapter_id_str);
+		return -1;
+	}
+
+	p->m_dma_active = true;
+
+	return 0;
+}
+
+static void nthw_rac_rab_dma_activate(nthw_rac_t *p)
+{
+	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+	const uint32_t completion = RAB_COMPLETION << RAB_OPR_LO;
+
+	/* Write completion word */
+	p->m_dma_in_buf[p->m_dma_in_ptr_wr] = completion;
+	p->m_dma_in_ptr_wr = (uint16_t)((p->m_dma_in_ptr_wr + 1) & (RAB_DMA_BUF_CNT - 1));
+
+	/* Clear output completion word */
+	p->m_dma_out_buf[p->m_dma_out_ptr_rd] = 0;
+
+	/* Update DMA pointer and start transfer */
+	nthw_rac_reg_write32(p_fpga_info, p->RAC_RAB_DMA_IB_WR_ADDR,
+		(uint32_t)(p->m_dma_in_ptr_wr * sizeof(uint32_t)));
+}
+
+static int nthw_rac_rab_dma_wait(nthw_rac_t *p)
+{
+	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+	const uint32_t completion = RAB_COMPLETION << RAB_OPR_LO;
+	uint32_t i;
+
+	for (i = 0; i < RAB_DMA_WAIT; i++) {
+		nt_os_wait_usec_poll(1);
+
+		if ((p->m_dma_out_buf[p->m_dma_out_ptr_rd] & completion) == completion)
+			break;
+	}
+
+	if (i == RAB_DMA_WAIT) {
+		NT_LOG(ERR, NTHW, "%s: RAB: Unexpected value of completion (0x%08X)",
+			p_adapter_id_str, p->m_dma_out_buf[p->m_dma_out_ptr_rd]);
+		return -1;
+	}
+
+	p->m_dma_out_ptr_rd = (uint16_t)((p->m_dma_out_ptr_rd + 1) & (RAB_DMA_BUF_CNT - 1));
+	p->m_in_free = RAB_DMA_BUF_CNT;
+
+	return 0;
+}
+
+int nthw_rac_rab_dma_commit(nthw_rac_t *p)
+{
+	int ret;
+
+	if (!p->m_dma_active) {
+		/* Expecting mutex not to be locked! */
+		assert(0);      /* alert developer that something is wrong */
+		return -1;
+	}
+
+	nthw_rac_rab_dma_activate(p);
+	ret = nthw_rac_rab_dma_wait(p);
+
+	p->m_dma_active = false;
+
+	pthread_mutex_unlock(&p->m_mutex);
+
+	return ret;
+}
+
+uint32_t nthw_rac_rab_get_free(nthw_rac_t *p)
+{
+	if (!p->m_dma_active) {
+		/* Expecting mutex not to be locked! */
+		assert(0);      /* alert developer that something is wrong */
+		return -1;
+	}
+
+	return p->m_in_free;
+}
+
+int nthw_rac_rab_write32_dma(nthw_rac_t *p, nthw_rab_bus_id_t bus_id, uint32_t address,
+	uint32_t word_cnt, const uint32_t *p_data)
+{
+	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+
+	if (word_cnt == 0 || word_cnt > 256) {
+		NT_LOG(ERR, NTHW,
+			"%s: Failed rab dma write length check - bus: %d addr: 0x%08X wordcount: %d - inBufFree: 0x%08X",
+			p_adapter_id_str, bus_id, address, word_cnt, p->m_in_free);
+		assert(0);      /* alert developer that something is wrong */
+		return -1;
+	}
+
+	if (p->m_in_free < (word_cnt + 3)) {
+		/*
+		 * No more memory available.
+		 * nthw_rac_rab_dma_commit() needs to be called to start and finish pending
+		 * transfers.
+		 */
+		return -1;
+	}
+
+	p->m_in_free -= (word_cnt + 1);
+
+	/* Write the command word */
+	p->m_dma_in_buf[p->m_dma_in_ptr_wr] = (RAB_WRITE << RAB_OPR_LO) |
+		((word_cnt & ((1 << RAB_CNT_BW) - 1)) << RAB_CNT_LO) | (bus_id << RAB_BUSID_LO) |
+		address;
+	p->m_dma_in_ptr_wr = (uint16_t)((p->m_dma_in_ptr_wr + 1) & (RAB_DMA_BUF_CNT - 1));
+
+	for (uint32_t i = 0; i < word_cnt; i++) {
+		p->m_dma_in_buf[p->m_dma_in_ptr_wr] = p_data[i];
+		p->m_dma_in_ptr_wr = (uint16_t)((p->m_dma_in_ptr_wr + 1) & (RAB_DMA_BUF_CNT - 1));
+	}
+
+	return 0;
+}
+
+int nthw_rac_rab_read32_dma(nthw_rac_t *p, nthw_rab_bus_id_t bus_id, uint32_t address,
+	uint32_t word_cnt, struct dma_buf_ptr *buf_ptr)
+{
+	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+
+	if (word_cnt == 0 || word_cnt > 256) {
+		NT_LOG(ERR, NTHW,
+			"%s: Failed rab dma read length check - bus: %d addr: 0x%08X wordcount: %d - inBufFree: 0x%08X",
+			p_adapter_id_str, bus_id, address, word_cnt, p->m_in_free);
+		assert(0);      /* alert developer that something is wrong */
+		return -1;
+	}
+
+	if ((word_cnt + 3) > RAB_DMA_BUF_CNT) {
+		NT_LOG(ERR, NTHW,
+			"%s: Failed rab dma read length check - bus: %d addr: 0x%08X wordcount: %d",
+			p_adapter_id_str, bus_id, address, word_cnt);
+		return -1;
+	}
+
+	if (p->m_in_free < 3) {
+		/*
+		 * No more memory available.
+		 * nthw_rac_rab_dma_commit() needs to be called to start and finish pending
+		 * transfers.
+		 */
+		return -1;
+	}
+
+	p->m_in_free -= 1;
+
+	/* Write the command word */
+	p->m_dma_in_buf[p->m_dma_in_ptr_wr] = (RAB_READ << RAB_OPR_LO) |
+		((word_cnt & ((1 << RAB_CNT_BW) - 1)) << RAB_CNT_LO) | (bus_id << RAB_BUSID_LO) |
+		address;
+	p->m_dma_in_ptr_wr = (uint16_t)((p->m_dma_in_ptr_wr + 1) & (RAB_DMA_BUF_CNT - 1));
+
+	buf_ptr->index = p->m_dma_out_ptr_rd;
+	buf_ptr->size = RAB_DMA_BUF_CNT;
+	buf_ptr->base = p->m_dma_out_buf;
+	p->m_dma_out_ptr_rd =
+		(uint16_t)((p->m_dma_out_ptr_rd + word_cnt) & (RAB_DMA_BUF_CNT - 1U));
+
+	return 0;
 }
 
 int nthw_rac_rab_write32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint32_t address,
