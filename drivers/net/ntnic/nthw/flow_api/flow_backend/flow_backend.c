@@ -13,6 +13,7 @@
 #include "flow_nthw_hsh.h"
 #include "flow_nthw_qsl.h"
 #include "flow_nthw_slc_lr.h"
+#include "flow_nthw_pdb.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -34,6 +35,7 @@ static struct backend_dev_s {
 	struct hsh_nthw *p_hsh_nthw;
 	struct qsl_nthw *p_qsl_nthw;
 	struct slc_lr_nthw *p_slc_lr_nthw;
+	struct pdb_nthw *p_pdb_nthw;
 	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
@@ -1488,6 +1490,81 @@ static int slc_lr_rcp_flush(void *be_dev, const struct slc_lr_func_s *slc_lr, in
 }
 
 /*
+ * PDB
+ */
+
+static bool pdb_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_pdb_nthw != NULL;
+}
+
+static uint32_t pdb_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return (uint32_t)((nthw_module_get_major_version(be->p_pdb_nthw->m_pdb) << 16) |
+			(nthw_module_get_minor_version(be->p_pdb_nthw->m_pdb) & 0xffff));
+}
+
+static int pdb_rcp_flush(void *be_dev, const struct pdb_func_s *pdb, int category, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, pdb, be->p_pdb_nthw);
+
+	if (pdb->ver == 9) {
+		pdb_nthw_rcp_cnt(be->p_pdb_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			pdb_nthw_rcp_select(be->p_pdb_nthw, category + i);
+			pdb_nthw_rcp_descriptor(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].descriptor);
+			pdb_nthw_rcp_desc_len(be->p_pdb_nthw, pdb->v9.rcp[category + i].desc_len);
+			pdb_nthw_rcp_tx_port(be->p_pdb_nthw, pdb->v9.rcp[category + i].tx_port);
+			pdb_nthw_rcp_tx_ignore(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].tx_ignore);
+			pdb_nthw_rcp_tx_now(be->p_pdb_nthw, pdb->v9.rcp[category + i].tx_now);
+			pdb_nthw_rcp_crc_overwrite(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].crc_overwrite);
+			pdb_nthw_rcp_align(be->p_pdb_nthw, pdb->v9.rcp[category + i].align);
+			pdb_nthw_rcp_ofs0_dyn(be->p_pdb_nthw, pdb->v9.rcp[category + i].ofs0_dyn);
+			pdb_nthw_rcp_ofs0_rel(be->p_pdb_nthw, pdb->v9.rcp[category + i].ofs0_rel);
+			pdb_nthw_rcp_ofs1_dyn(be->p_pdb_nthw, pdb->v9.rcp[category + i].ofs1_dyn);
+			pdb_nthw_rcp_ofs1_rel(be->p_pdb_nthw, pdb->v9.rcp[category + i].ofs1_rel);
+			pdb_nthw_rcp_ofs2_dyn(be->p_pdb_nthw, pdb->v9.rcp[category + i].ofs2_dyn);
+			pdb_nthw_rcp_ofs2_rel(be->p_pdb_nthw, pdb->v9.rcp[category + i].ofs2_rel);
+			pdb_nthw_rcp_ip_prot_tnl(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].ip_prot_tnl);
+			pdb_nthw_rcp_ppc_hsh(be->p_pdb_nthw, pdb->v9.rcp[category + i].ppc_hsh);
+			pdb_nthw_rcp_duplicate_en(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].duplicate_en);
+			pdb_nthw_rcp_duplicate_bit(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].duplicate_bit);
+			pdb_nthw_rcp_duplicate_bit(be->p_pdb_nthw,
+				pdb->v9.rcp[category + i].pcap_keep_fcs);
+			pdb_nthw_rcp_flush(be->p_pdb_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(pdb, be->p_pdb_nthw);
+	return 0;
+}
+
+static int pdb_config_flush(void *be_dev, const struct pdb_func_s *pdb)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, pdb, be->p_pdb_nthw);
+
+	if (pdb->ver == 9) {
+		pdb_nthw_config_ts_format(be->p_pdb_nthw, pdb->v9.config->ts_format);
+		pdb_nthw_config_port_ofs(be->p_pdb_nthw, pdb->v9.config->port_ofs);
+		pdb_nthw_config_flush(be->p_pdb_nthw);
+	}
+
+	CHECK_DEBUG_OFF(pdb, be->p_pdb_nthw);
+	return 0;
+}
+
+/*
  * DBS
  */
 
@@ -1611,6 +1688,11 @@ const struct flow_api_backend_ops flow_be_iface = {
 	slc_lr_get_present,
 	slc_lr_get_version,
 	slc_lr_rcp_flush,
+
+	pdb_get_present,
+	pdb_get_version,
+	pdb_rcp_flush,
+	pdb_config_flush,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
@@ -1691,6 +1773,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_slc_lr_nthw = NULL;
 	}
 
+	/* Init nthw PDB */
+	if (pdb_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct pdb_nthw *ppdbnthw = pdb_nthw_new();
+		pdb_nthw_init(ppdbnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_pdb_nthw = ppdbnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_pdb_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1707,6 +1799,7 @@ static void bin_flow_backend_done(void *dev)
 	hsh_nthw_delete(be_dev->p_hsh_nthw);
 	qsl_nthw_delete(be_dev->p_qsl_nthw);
 	slc_lr_nthw_delete(be_dev->p_slc_lr_nthw);
+	pdb_nthw_delete(be_dev->p_pdb_nthw);
 }
 
 static const struct flow_backend_ops ops = {

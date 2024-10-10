@@ -29,6 +29,7 @@
 #define MOD_PCIE3 (0xfbc48c18UL)
 #define MOD_PCI_RD_TG (0x9ad9eed2UL)
 #define MOD_PCI_WR_TG (0x274b69e1UL)
+#define MOD_PDB (0xa7771bffUL)
 #define MOD_QSL (0x448ed859UL)
 #define MOD_RAC (0xae830b42UL)
 #define MOD_RST9563 (0x385d6d1dUL)
