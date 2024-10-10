@@ -13,6 +13,99 @@
 #include "nthw_drv.h"
 #include "nt4ga_adapter.h"
 #include "ntnic_nthw_fpga_rst_nt200a0x.h"
+#include "ntnic_virt_queue.h"
+
+/* sg ops section */
+struct sg_ops_s {
+	/* Setup a virtQueue for a VM */
+	struct nthw_virt_queue *(*nthw_setup_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
+		uint32_t index,
+		uint16_t start_idx,
+		uint16_t start_ptr,
+		void *avail_struct_phys_addr,
+		void *used_struct_phys_addr,
+		void *desc_struct_phys_addr,
+		uint16_t queue_size,
+		uint32_t host_id,
+		uint32_t header,
+		uint32_t vq_type,
+		int irq_vector);
+	struct nthw_virt_queue *(*nthw_setup_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
+		uint32_t index,
+		uint16_t start_idx,
+		uint16_t start_ptr,
+		void *avail_struct_phys_addr,
+		void *used_struct_phys_addr,
+		void *desc_struct_phys_addr,
+		uint16_t queue_size,
+		uint32_t host_id,
+		uint32_t port,
+		uint32_t virtual_port,
+		uint32_t header,
+		uint32_t vq_type,
+		int irq_vector,
+		uint32_t in_order);
+	struct nthw_virt_queue *(*nthw_setup_mngd_rx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
+		uint32_t index,
+		uint32_t queue_size,
+		uint32_t host_id,
+		uint32_t header,
+		/*
+		 * Memory that can be used
+		 * for virtQueue structs
+		 */
+		struct nthw_memory_descriptor *p_virt_struct_area,
+		/*
+		 * Memory that can be used for packet
+		 * buffers - Array must have queue_size
+		 * entries
+		 */
+		struct nthw_memory_descriptor *p_packet_buffers,
+		uint32_t vq_type,
+		int irq_vector);
+	int (*nthw_release_mngd_rx_virt_queue)(struct nthw_virt_queue *rxvq);
+	struct nthw_virt_queue *(*nthw_setup_mngd_tx_virt_queue)(nthw_dbs_t *p_nthw_dbs,
+		uint32_t index,
+		uint32_t queue_size,
+		uint32_t host_id,
+		uint32_t port,
+		uint32_t virtual_port,
+		uint32_t header,
+		/*
+		 * Memory that can be used
+		 * for virtQueue structs
+		 */
+		struct nthw_memory_descriptor *p_virt_struct_area,
+		/*
+		 * Memory that can be used for packet
+		 * buffers - Array must have queue_size
+		 * entries
+		 */
+		struct nthw_memory_descriptor *p_packet_buffers,
+		uint32_t vq_type,
+		int irq_vector,
+		uint32_t in_order);
+	int (*nthw_release_mngd_tx_virt_queue)(struct nthw_virt_queue *txvq);
+	/*
+	 * These functions handles both Split and Packed including merged buffers (jumbo)
+	 */
+	uint16_t (*nthw_get_rx_packets)(struct nthw_virt_queue *rxvq,
+		uint16_t n,
+		struct nthw_received_packets *rp,
+		uint16_t *nb_pkts);
+	void (*nthw_release_rx_packets)(struct nthw_virt_queue *rxvq, uint16_t n);
+	uint16_t (*nthw_get_tx_packets)(struct nthw_virt_queue *txvq,
+		uint16_t n,
+		uint16_t *first_idx,
+		struct nthw_cvirtq_desc *cvq,
+		struct nthw_memory_descriptor **p_virt_addr);
+	void (*nthw_release_tx_packets)(struct nthw_virt_queue *txvq,
+		uint16_t n,
+		uint16_t n_segs[]);
+	int (*nthw_virt_queue_init)(struct fpga_info_s *p_fpga_info);
+};
+
+const struct sg_ops_s *get_sg_ops(void);
 
 struct link_ops_s {
 	int (*link_init)(struct adapter_info_s *p_adapter_info, nthw_fpga_t *p_fpga);

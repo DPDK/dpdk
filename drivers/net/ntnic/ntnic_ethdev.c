@@ -53,6 +53,8 @@ static const struct rte_pci_id nthw_pci_id_map[] = {
 	},	/* sentinel */
 };
 
+static const struct sg_ops_s *sg_ops;
+
 static rte_spinlock_t hwlock = RTE_SPINLOCK_INITIALIZER;
 
 /*
@@ -181,6 +183,14 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	}
 
 	return 0;
+}
+
+static void release_hw_virtio_queues(struct hwq_s *hwq)
+{
+	if (!hwq || hwq->vf_num == 0)
+		return;
+
+	hwq->vf_num = 0;
 }
 
 static void eth_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
@@ -474,6 +484,21 @@ eth_dev_close(struct rte_eth_dev *eth_dev)
 	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 
+	if (internals->type != PORT_TYPE_VIRTUAL) {
+		struct ntnic_rx_queue *rx_q = internals->rxq_scg;
+		struct ntnic_tx_queue *tx_q = internals->txq_scg;
+
+		uint q;
+
+		if (sg_ops != NULL) {
+			for (q = 0; q < internals->nb_rx_queues; q++)
+				sg_ops->nthw_release_mngd_rx_virt_queue(rx_q[q].vq);
+
+			for (q = 0; q < internals->nb_tx_queues; q++)
+				sg_ops->nthw_release_mngd_tx_virt_queue(tx_q[q].vq);
+		}
+	}
+
 	internals->p_drv = NULL;
 
 	if (p_drv) {
@@ -728,6 +753,28 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		return -1;
 	}
 
+	/* Initialize the queue system */
+	if (err == 0) {
+		sg_ops = get_sg_ops();
+
+		if (sg_ops != NULL) {
+			err = sg_ops->nthw_virt_queue_init(fpga_info);
+
+			if (err != 0) {
+				NT_LOG(ERR, NTNIC,
+					"%s: Cannot initialize scatter-gather queues",
+					p_nt_drv->adapter_info.mp_adapter_id_str);
+
+			} else {
+				NT_LOG(DBG, NTNIC, "%s: Initialized scatter-gather queues",
+					p_nt_drv->adapter_info.mp_adapter_id_str);
+			}
+
+		} else {
+			NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		}
+	}
+
 	/* Start ctrl, monitor, stat thread only for primary process. */
 	if (err == 0) {
 		/* mp_adapter_id_str is initialized after nt4ga_adapter_init(p_nt_drv) */
@@ -891,6 +938,26 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 	ntdrv_4ga_t *p_ntdrv = &internals->p_drv->ntdrv;
 	fpga_info_t *fpga_info = &p_ntdrv->adapter_info.fpga_info;
 	const int n_phy_ports = fpga_info->n_phy_ports;
+
+	/* let running threads end Rx and Tx activity */
+	if (sg_ops != NULL) {
+		nt_os_wait_usec(1 * 1000 * 1000);
+
+		while (internals) {
+			for (i = internals->nb_tx_queues - 1; i >= 0; i--) {
+				sg_ops->nthw_release_mngd_tx_virt_queue(internals->txq_scg[i].vq);
+				release_hw_virtio_queues(&internals->txq_scg[i].hwq);
+			}
+
+			for (i = internals->nb_rx_queues - 1; i >= 0; i--) {
+				sg_ops->nthw_release_mngd_rx_virt_queue(internals->rxq_scg[i].vq);
+				release_hw_virtio_queues(&internals->rxq_scg[i].hwq);
+			}
+
+			internals = internals->next;
+		}
+	}
+
 	for (i = 0; i < n_phy_ports; i++) {
 		sprintf(name, "ntnic%d", i);
 		eth_dev = rte_eth_dev_allocated(name);
