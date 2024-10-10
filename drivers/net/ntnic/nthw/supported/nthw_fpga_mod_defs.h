@@ -19,6 +19,7 @@
 #define MOD_GFG (0xfc423807UL)
 #define MOD_GMF (0x68b1d15aUL)
 #define MOD_GPIO_PHY (0xbbe81659UL)
+#define MOD_HFU (0x4a70e72UL)
 #define MOD_HIF (0x7815363UL)
 #define MOD_HSH (0x501484bfUL)
 #define MOD_I2CM (0x93bc7780UL)
