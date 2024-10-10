@@ -21,6 +21,7 @@
 #define MOD_HIF (0x7815363UL)
 #define MOD_I2CM (0x93bc7780UL)
 #define MOD_IIC (0x7629cddbUL)
+#define MOD_KM (0xcfbd9dbeUL)
 #define MOD_MAC_PCS (0x7abe24c7UL)
 #define MOD_PCIE3 (0xfbc48c18UL)
 #define MOD_PCI_RD_TG (0x9ad9eed2UL)
