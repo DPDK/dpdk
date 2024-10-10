@@ -16,6 +16,7 @@
 #include "hw_mod_pdb_v9.h"
 #include "hw_mod_slc_lr_v2.h"
 #include "hw_mod_hsh_v5.h"
+#include "hw_mod_tpe_v3.h"
 
 #define MAX_PHYS_ADAPTERS 8
 
@@ -111,6 +112,18 @@ struct pdb_func_s {
 
 	union {
 		struct hw_mod_pdb_v9_s v9;
+	};
+};
+
+struct tpe_func_s {
+	COMMON_FUNC_INFO_S;
+	uint32_t nb_rcp_categories;
+	uint32_t nb_ifr_categories;
+	uint32_t nb_cpy_writers;
+	uint32_t nb_rpl_depth;
+	uint32_t nb_rpl_ext_categories;
+	union {
+		struct hw_mod_tpe_v3_s v3;
 	};
 };
 
@@ -244,6 +257,20 @@ struct flow_api_backend_ops {
 	uint32_t (*get_pdb_version)(void *dev);
 	int (*pdb_rcp_flush)(void *dev, const struct pdb_func_s *pdb, int category, int cnt);
 	int (*pdb_config_flush)(void *dev, const struct pdb_func_s *pdb);
+
+	/* TPE */
+	bool (*get_tpe_present)(void *dev);
+	uint32_t (*get_tpe_version)(void *dev);
+	int (*tpe_rpp_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_rpp_ifr_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_ifr_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_ins_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_rpl_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_rpl_ext_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_rpl_rpl_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_cpy_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_hfu_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_csu_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
 };
 
 struct flow_api_backend_s {

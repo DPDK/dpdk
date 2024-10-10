@@ -12,6 +12,11 @@
 
 #include "flow_nthw_tx_ins.h"
 
+void tx_ins_nthw_set_debug_mode(struct tx_ins_nthw *p, unsigned int n_debug_mode)
+{
+	nthw_module_set_debug_mode(p->m_tx_ins, n_debug_mode);
+}
+
 struct tx_ins_nthw *tx_ins_nthw_new(void)
 {
 	struct tx_ins_nthw *p = malloc(sizeof(struct tx_ins_nthw));
@@ -59,4 +64,35 @@ int tx_ins_nthw_init(struct tx_ins_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	p->mp_rcp_data_len = nthw_register_get_field(p->mp_rcp_data, INS_RCP_DATA_LEN);
 
 	return 0;
+}
+
+void tx_ins_nthw_rcp_select(const struct tx_ins_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_addr, val);
+}
+
+void tx_ins_nthw_rcp_cnt(const struct tx_ins_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_cnt, val);
+}
+
+void tx_ins_nthw_rcp_dyn(const struct tx_ins_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_dyn, val);
+}
+
+void tx_ins_nthw_rcp_ofs(const struct tx_ins_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_ofs, val);
+}
+
+void tx_ins_nthw_rcp_len(const struct tx_ins_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len, val);
+}
+
+void tx_ins_nthw_rcp_flush(const struct tx_ins_nthw *p)
+{
+	nthw_register_flush(p->mp_rcp_ctrl, 1);
+	nthw_register_flush(p->mp_rcp_data, 1);
 }

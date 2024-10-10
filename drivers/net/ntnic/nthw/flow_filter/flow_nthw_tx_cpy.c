@@ -12,6 +12,11 @@
 
 #include "flow_nthw_tx_cpy.h"
 
+void tx_cpy_nthw_set_debug_mode(struct tx_cpy_nthw *p, unsigned int n_debug_mode)
+{
+	nthw_module_set_debug_mode(p->m_tx_cpy, n_debug_mode);
+}
+
 struct tx_cpy_nthw *tx_cpy_nthw_new(void)
 {
 	struct tx_cpy_nthw *p = malloc(sizeof(struct tx_cpy_nthw));
@@ -336,4 +341,48 @@ int tx_cpy_nthw_init(struct tx_cpy_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	}
 
 	return 0;
+}
+
+void tx_cpy_nthw_writer_select(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_field_set_val32(p->m_writers[index].mp_writer_ctrl_addr, val);
+}
+
+void tx_cpy_nthw_writer_cnt(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_field_set_val32(p->m_writers[index].mp_writer_ctrl_cnt, val);
+}
+
+void tx_cpy_nthw_writer_reader_select(const struct tx_cpy_nthw *p, unsigned int index,
+	uint32_t val)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_field_set_val32(p->m_writers[index].mp_writer_data_reader_select, val);
+}
+
+void tx_cpy_nthw_writer_dyn(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_field_set_val32(p->m_writers[index].mp_writer_data_dyn, val);
+}
+
+void tx_cpy_nthw_writer_ofs(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_field_set_val32(p->m_writers[index].mp_writer_data_ofs, val);
+}
+
+void tx_cpy_nthw_writer_len(const struct tx_cpy_nthw *p, unsigned int index, uint32_t val)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_field_set_val32(p->m_writers[index].mp_writer_data_len, val);
+}
+
+void tx_cpy_nthw_writer_flush(const struct tx_cpy_nthw *p, unsigned int index)
+{
+	assert(index < p->m_writers_cnt);
+	nthw_register_flush(p->m_writers[index].mp_writer_ctrl, 1);
+	nthw_register_flush(p->m_writers[index].mp_writer_data, 1);
 }
