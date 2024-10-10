@@ -236,6 +236,12 @@ power_acpi_cpufreq_init(unsigned int lcore_id)
 	struct acpi_power_info *pi;
 	uint32_t exp_state;
 
+	if (!power_acpi_cpufreq_check_supported()) {
+		POWER_LOG(ERR, "%s driver is not supported",
+				POWER_ACPI_DRIVER);
+		return -1;
+	}
+
 	if (lcore_id >= RTE_MAX_LCORE) {
 		POWER_LOG(ERR, "Lcore id %u can not exceeds %u",
 				lcore_id, RTE_MAX_LCORE - 1U);
