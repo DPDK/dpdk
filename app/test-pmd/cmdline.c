@@ -674,6 +674,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"(max_thresh) (prob_inv)]\n"
 			"    Set congestion management configuration\n\n"
 
+			"set port (port_id) led (on|off)\n"
+			"    Set a controllable LED associated with a certain"
+			" port on or off.\n\n"
+
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -13512,6 +13516,53 @@ static cmdline_parse_inst_t cmd_config_tx_affinity_map = {
 	},
 };
 
+/* *** SET THE LED FOR CERTAIN PORT TO ON/OFF *** */
+struct cmd_dev_led_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t led;
+	cmdline_fixed_string_t state;
+};
+
+static void
+cmd_set_dev_led_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_dev_led_result *res = parsed_result;
+
+	if (strcmp(res->state, "on") == 0)
+		set_dev_led(res->port_id, true);
+	else
+		set_dev_led(res->port_id, false);
+}
+
+static cmdline_parse_token_string_t cmd_dev_led_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_dev_led_result, set, "set");
+static cmdline_parse_token_string_t cmd_dev_led_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_dev_led_result, port, "port");
+static cmdline_parse_token_num_t cmd_dev_led_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_dev_led_result, port_id, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_dev_led =
+	TOKEN_STRING_INITIALIZER(struct cmd_dev_led_result, led, "led");
+static cmdline_parse_token_string_t cmd_dev_state =
+	TOKEN_STRING_INITIALIZER(struct cmd_dev_led_result, state, "on#off");
+
+static cmdline_parse_inst_t cmd_set_dev_led = {
+	.f = cmd_set_dev_led_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> led <on/off>",
+	.tokens = {
+		(void *)&cmd_dev_led_set,
+		(void *)&cmd_dev_led_port,
+		(void *)&cmd_dev_led_port_id,
+		(void *)&cmd_dev_led,
+		(void *)&cmd_dev_state,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -13756,6 +13807,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_show_port_cman_config,
 	&cmd_set_port_cman_config,
 	&cmd_config_tx_affinity_map,
+	&cmd_set_dev_led,
 	NULL,
 };
 

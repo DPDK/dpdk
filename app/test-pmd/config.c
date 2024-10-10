@@ -5371,6 +5371,26 @@ set_fwd_eth_peer(portid_t port_id, char *peer_addr)
 	peer_eth_addrs[port_id] = new_peer_addr;
 }
 
+void
+set_dev_led(portid_t port_id, bool active)
+{
+	int ret;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		fprintf(stderr, "Error: Invalid port number %u\n", port_id);
+		return;
+	}
+
+	if (active)
+		ret = rte_eth_led_on(port_id);
+	else
+		ret = rte_eth_led_off(port_id);
+
+	if (ret < 0)
+		fprintf(stderr, "Error: Unable to change LED state for port %u: %s\n",
+			port_id, rte_strerror(-ret));
+}
+
 int
 set_fwd_lcores_list(unsigned int *lcorelist, unsigned int nb_lc)
 {
