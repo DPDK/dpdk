@@ -7,6 +7,7 @@
 #define __NTNIC_MOD_REG_H__
 
 #include <stdint.h>
+#include "flow_api.h"
 #include "nthw_fpga_model.h"
 #include "nthw_platform_drv.h"
 #include "nthw_drv.h"
@@ -116,5 +117,12 @@ struct rst9563_ops {
 void register_rst9563_ops(struct rst9563_ops *ops);
 struct rst9563_ops *get_rst9563_ops(void);
 void rst9563_ops_init(void);
+
+struct flow_filter_ops {
+	int (*flow_filter_init)(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device,
+		int adapter_no);
+};
+
+const struct flow_filter_ops *get_flow_filter_ops(void);
 
 #endif	/* __NTNIC_MOD_REG_H__ */

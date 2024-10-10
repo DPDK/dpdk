@@ -88,3 +88,10 @@ struct rst9563_ops *get_rst9563_ops(void)
 		rst9563_ops_init();
 	return rst9563_ops;
 }
+
+static const struct flow_filter_ops *flow_filter_ops;
+
+const struct flow_filter_ops *get_flow_filter_ops(void)
+{
+	return flow_filter_ops;
+}
