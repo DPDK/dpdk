@@ -132,6 +132,7 @@ New Features
 * **Update Napatech ntnic net driver [EXPERIMENTAL].**
 
   * Update supported version of the FPGA to 9563.55.49
+  * Fix Coverity issues
 
 * **Added cryptodev queue pair reset support.**
 

@@ -217,19 +217,19 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	n_fpga_ident = p_fpga_info->n_fpga_ident;
 
 	p_fpga_mgr = nthw_fpga_mgr_new();
-	nthw_fpga_mgr_init(p_fpga_mgr, nthw_fpga_instances,
-		(const void *)sa_nthw_fpga_mod_str_map);
-	nthw_fpga_mgr_log_dump(p_fpga_mgr);
-	p_fpga = nthw_fpga_mgr_query_fpga(p_fpga_mgr, n_fpga_ident, p_fpga_info);
-	p_fpga_info->mp_fpga = p_fpga;
-
-	if (p_fpga == NULL) {
-		NT_LOG(ERR, NTHW, "%s: Unsupported FPGA: %s (%08X)\n", p_adapter_id_str,
-			s_fpga_prod_ver_rev_str, p_fpga_info->n_fpga_build_time);
-		return -1;
-	}
-
 	if (p_fpga_mgr) {
+		nthw_fpga_mgr_init(p_fpga_mgr, nthw_fpga_instances,
+			(const void *)sa_nthw_fpga_mod_str_map);
+		nthw_fpga_mgr_log_dump(p_fpga_mgr);
+		p_fpga = nthw_fpga_mgr_query_fpga(p_fpga_mgr, n_fpga_ident, p_fpga_info);
+		p_fpga_info->mp_fpga = p_fpga;
+
+		if (p_fpga == NULL) {
+			NT_LOG(ERR, NTHW, "%s: Unsupported FPGA: %s (%08X)\n", p_adapter_id_str,
+				s_fpga_prod_ver_rev_str, p_fpga_info->n_fpga_build_time);
+			return -1;
+		}
+
 		nthw_fpga_mgr_delete(p_fpga_mgr);
 		p_fpga_mgr = NULL;
 	}

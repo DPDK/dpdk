@@ -49,6 +49,7 @@ vfio_get(int vf_num)
 int
 nt_vfio_setup(struct rte_pci_device *dev)
 {
+	int ret;
 	char devname[RTE_DEV_NAME_MAX_LEN] = { 0 };
 	int iommu_group_num;
 	int vf_num;
@@ -71,7 +72,9 @@ nt_vfio_setup(struct rte_pci_device *dev)
 	vfio->iova_addr = START_VF_IOVA;
 
 	rte_pci_device_name(&dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
-	rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname, &iommu_group_num);
+	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname, &iommu_group_num);
+	if (ret <= 0)
+		return -1;
 
 	if (vf_num == 0) {
 		/* use default container for pf0 */
