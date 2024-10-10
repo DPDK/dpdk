@@ -20,6 +20,7 @@
 #include "nthw_fpga_reg_defs_hif.h"
 #include "nthw_fpga_reg_defs_i2cm.h"
 #include "nthw_fpga_reg_defs_iic.h"
+#include "nthw_fpga_reg_defs_km.h"
 #include "nthw_fpga_reg_defs_mac_pcs.h"
 #include "nthw_fpga_reg_defs_pcie3.h"
 #include "nthw_fpga_reg_defs_pci_rd_tg.h"

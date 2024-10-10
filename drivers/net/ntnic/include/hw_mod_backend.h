@@ -10,6 +10,7 @@
 
 #include "hw_mod_cat_v18.h"
 #include "hw_mod_cat_v21.h"
+#include "hw_mod_km_v7.h"
 
 #define MAX_PHYS_ADAPTERS 8
 
@@ -37,6 +38,23 @@ struct cat_func_s {
 	union {
 		struct hw_mod_cat_v18_s v18;
 		struct hw_mod_cat_v21_s v21;
+	};
+};
+
+struct km_func_s {
+	COMMON_FUNC_INFO_S;
+	uint32_t nb_categories;
+	uint32_t nb_cam_banks;
+	uint32_t nb_cam_record_words;
+	uint32_t nb_cam_records;
+	uint32_t nb_tcam_banks;
+	uint32_t nb_tcam_bank_width;
+	/* not read from backend, but rather set using version */
+	uint32_t nb_km_rcp_mask_a_word_size;
+	/* --- || --- */
+	uint32_t nb_km_rcp_mask_b_word_size;
+	union {
+		struct hw_mod_km_v7_s v7;
 	};
 };
 
@@ -112,6 +130,16 @@ struct flow_api_backend_ops {
 	int (*cat_rck_flush)(void *dev, const struct cat_func_s *cat, int index, int cnt);
 	int (*cat_len_flush)(void *dev, const struct cat_func_s *cat, int index, int cnt);
 	int (*cat_kcc_flush)(void *dev, const struct cat_func_s *cat, int index, int cnt);
+
+	/* KM */
+	bool (*get_km_present)(void *dev);
+	uint32_t (*get_km_version)(void *dev);
+	int (*km_rcp_flush)(void *dev, const struct km_func_s *km, int category, int cnt);
+	int (*km_cam_flush)(void *dev, const struct km_func_s *km, int bank, int record, int cnt);
+	int (*km_tcam_flush)(void *dev, const struct km_func_s *km, int bank, int byte, int value,
+		int cnt);
+	int (*km_tci_flush)(void *dev, const struct km_func_s *km, int bank, int record, int cnt);
+	int (*km_tcq_flush)(void *dev, const struct km_func_s *km, int bank, int record, int cnt);
 };
 
 struct flow_api_backend_s {

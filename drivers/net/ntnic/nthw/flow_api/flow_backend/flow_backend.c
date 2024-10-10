@@ -7,6 +7,7 @@
 
 #include "flow_nthw_info.h"
 #include "flow_nthw_cat.h"
+#include "flow_nthw_km.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -23,6 +24,7 @@ static struct backend_dev_s {
 	enum debug_mode_e dmode;
 	struct info_nthw *p_info_nthw;
 	struct cat_nthw *p_cat_nthw;
+	struct km_nthw *p_km_nthw;
 } be_devs[MAX_PHYS_ADAPTERS];
 
 #define CHECK_DEBUG_ON(be, mod, inst)                                                             \
@@ -721,6 +723,191 @@ static int cat_kcc_flush(void *be_dev, const struct cat_func_s *cat, int len_ind
 }
 
 /*
+ * KM
+ */
+
+static bool km_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_km_nthw != NULL;
+}
+
+static uint32_t km_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return (uint32_t)((nthw_module_get_major_version(be->p_km_nthw->m_km) << 16) |
+			(nthw_module_get_minor_version(be->p_km_nthw->m_km) & 0xffff));
+}
+
+static int km_rcp_flush(void *be_dev, const struct km_func_s *km, int category, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+
+	CHECK_DEBUG_ON(be, km, be->p_km_nthw);
+
+	if (km->ver == 7) {
+		km_nthw_rcp_cnt(be->p_km_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			km_nthw_rcp_select(be->p_km_nthw, category + i);
+			km_nthw_rcp_qw0_dyn(be->p_km_nthw, km->v7.rcp[category + i].qw0_dyn);
+			km_nthw_rcp_qw0_ofs(be->p_km_nthw, km->v7.rcp[category + i].qw0_ofs);
+			km_nthw_rcp_qw0_sel_a(be->p_km_nthw, km->v7.rcp[category + i].qw0_sel_a);
+			km_nthw_rcp_qw0_sel_b(be->p_km_nthw, km->v7.rcp[category + i].qw0_sel_b);
+			km_nthw_rcp_qw4_dyn(be->p_km_nthw, km->v7.rcp[category + i].qw4_dyn);
+			km_nthw_rcp_qw4_ofs(be->p_km_nthw, km->v7.rcp[category + i].qw4_ofs);
+			km_nthw_rcp_qw4_sel_a(be->p_km_nthw, km->v7.rcp[category + i].qw4_sel_a);
+			km_nthw_rcp_qw4_sel_b(be->p_km_nthw, km->v7.rcp[category + i].qw4_sel_b);
+			km_nthw_rcp_dw8_dyn(be->p_km_nthw, km->v7.rcp[category + i].dw8_dyn);
+			km_nthw_rcp_dw8_ofs(be->p_km_nthw, km->v7.rcp[category + i].dw8_ofs);
+			km_nthw_rcp_dw8_sel_a(be->p_km_nthw, km->v7.rcp[category + i].dw8_sel_a);
+			km_nthw_rcp_dw8_sel_b(be->p_km_nthw, km->v7.rcp[category + i].dw8_sel_b);
+			km_nthw_rcp_dw10_dyn(be->p_km_nthw, km->v7.rcp[category + i].dw10_dyn);
+			km_nthw_rcp_dw10_ofs(be->p_km_nthw, km->v7.rcp[category + i].dw10_ofs);
+			km_nthw_rcp_dw10_sel_a(be->p_km_nthw, km->v7.rcp[category + i].dw10_sel_a);
+			km_nthw_rcp_dw10_sel_b(be->p_km_nthw, km->v7.rcp[category + i].dw10_sel_b);
+			km_nthw_rcp_swx_cch(be->p_km_nthw, km->v7.rcp[category + i].swx_cch);
+			km_nthw_rcp_swx_sel_a(be->p_km_nthw, km->v7.rcp[category + i].swx_sel_a);
+			km_nthw_rcp_swx_sel_b(be->p_km_nthw, km->v7.rcp[category + i].swx_sel_b);
+			km_nthw_rcp_mask_da(be->p_km_nthw, km->v7.rcp[category + i].mask_d_a);
+			km_nthw_rcp_mask_b(be->p_km_nthw, km->v7.rcp[category + i].mask_b);
+			km_nthw_rcp_dual(be->p_km_nthw, km->v7.rcp[category + i].dual);
+			km_nthw_rcp_paired(be->p_km_nthw, km->v7.rcp[category + i].paired);
+			km_nthw_rcp_el_a(be->p_km_nthw, km->v7.rcp[category + i].el_a);
+			km_nthw_rcp_el_b(be->p_km_nthw, km->v7.rcp[category + i].el_b);
+			km_nthw_rcp_info_a(be->p_km_nthw, km->v7.rcp[category + i].info_a);
+			km_nthw_rcp_info_b(be->p_km_nthw, km->v7.rcp[category + i].info_b);
+			km_nthw_rcp_ftm_a(be->p_km_nthw, km->v7.rcp[category + i].ftm_a);
+			km_nthw_rcp_ftm_b(be->p_km_nthw, km->v7.rcp[category + i].ftm_b);
+			km_nthw_rcp_bank_a(be->p_km_nthw, km->v7.rcp[category + i].bank_a);
+			km_nthw_rcp_bank_b(be->p_km_nthw, km->v7.rcp[category + i].bank_b);
+			km_nthw_rcp_kl_a(be->p_km_nthw, km->v7.rcp[category + i].kl_a);
+			km_nthw_rcp_kl_b(be->p_km_nthw, km->v7.rcp[category + i].kl_b);
+			km_nthw_rcp_keyway_a(be->p_km_nthw, km->v7.rcp[category + i].keyway_a);
+			km_nthw_rcp_keyway_b(be->p_km_nthw, km->v7.rcp[category + i].keyway_b);
+			km_nthw_rcp_synergy_mode(be->p_km_nthw,
+				km->v7.rcp[category + i].synergy_mode);
+			km_nthw_rcp_dw0_b_dyn(be->p_km_nthw, km->v7.rcp[category + i].dw0_b_dyn);
+			km_nthw_rcp_dw0_b_ofs(be->p_km_nthw, km->v7.rcp[category + i].dw0_b_ofs);
+			km_nthw_rcp_dw2_b_dyn(be->p_km_nthw, km->v7.rcp[category + i].dw2_b_dyn);
+			km_nthw_rcp_dw2_b_ofs(be->p_km_nthw, km->v7.rcp[category + i].dw2_b_ofs);
+			km_nthw_rcp_sw4_b_dyn(be->p_km_nthw, km->v7.rcp[category + i].sw4_b_dyn);
+			km_nthw_rcp_sw4_b_ofs(be->p_km_nthw, km->v7.rcp[category + i].sw4_b_ofs);
+			km_nthw_rcp_sw5_b_dyn(be->p_km_nthw, km->v7.rcp[category + i].sw5_b_dyn);
+			km_nthw_rcp_sw5_b_ofs(be->p_km_nthw, km->v7.rcp[category + i].sw5_b_ofs);
+			km_nthw_rcp_flush(be->p_km_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(km, be->p_km_nthw);
+	return 0;
+}
+
+static int km_cam_flush(void *be_dev, const struct km_func_s *km, int bank, int record, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, km, be->p_km_nthw);
+
+	if (km->ver == 7) {
+		km_nthw_cam_cnt(be->p_km_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			km_nthw_cam_select(be->p_km_nthw, (bank << 11) + record + i);
+			km_nthw_cam_w0(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].w0);
+			km_nthw_cam_w1(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].w1);
+			km_nthw_cam_w2(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].w2);
+			km_nthw_cam_w3(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].w3);
+			km_nthw_cam_w4(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].w4);
+			km_nthw_cam_w5(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].w5);
+			km_nthw_cam_ft0(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].ft0);
+			km_nthw_cam_ft1(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].ft1);
+			km_nthw_cam_ft2(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].ft2);
+			km_nthw_cam_ft3(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].ft3);
+			km_nthw_cam_ft4(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].ft4);
+			km_nthw_cam_ft5(be->p_km_nthw, km->v7.cam[(bank << 11) + record + i].ft5);
+			km_nthw_cam_flush(be->p_km_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(km, be->p_km_nthw);
+	return 0;
+}
+
+static int km_tcam_flush(void *be_dev, const struct km_func_s *km, int bank, int byte, int value,
+	int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, km, be->p_km_nthw);
+
+	if (km->ver == 7) {
+		int start_idx = bank * 4 * 256 + byte * 256 + value;
+		km_nthw_tcam_cnt(be->p_km_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			if (km->v7.tcam[start_idx + i].dirty) {
+				km_nthw_tcam_select(be->p_km_nthw, start_idx + i);
+				km_nthw_tcam_t(be->p_km_nthw, km->v7.tcam[start_idx + i].t);
+				km_nthw_tcam_flush(be->p_km_nthw);
+				km->v7.tcam[start_idx + i].dirty = 0;
+			}
+		}
+	}
+
+	CHECK_DEBUG_OFF(km, be->p_km_nthw);
+	return 0;
+}
+
+/*
+ * bank is the TCAM bank, index is the index within the bank (0..71)
+ */
+static int km_tci_flush(void *be_dev, const struct km_func_s *km, int bank, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, km, be->p_km_nthw);
+
+	if (km->ver == 7) {
+		/* TCAM bank width in version 3 = 72 */
+		km_nthw_tci_cnt(be->p_km_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			km_nthw_tci_select(be->p_km_nthw, bank * 72 + index + i);
+			km_nthw_tci_color(be->p_km_nthw, km->v7.tci[bank * 72 + index + i].color);
+			km_nthw_tci_ft(be->p_km_nthw, km->v7.tci[bank * 72 + index + i].ft);
+			km_nthw_tci_flush(be->p_km_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(km, be->p_km_nthw);
+	return 0;
+}
+
+/*
+ * bank is the TCAM bank, index is the index within the bank (0..71)
+ */
+static int km_tcq_flush(void *be_dev, const struct km_func_s *km, int bank, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, km, be->p_km_nthw);
+
+	if (km->ver == 7) {
+		/* TCAM bank width in version 3 = 72 */
+		km_nthw_tcq_cnt(be->p_km_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			/* adr = lover 4 bits = bank, upper 7 bits = index */
+			km_nthw_tcq_select(be->p_km_nthw, bank + (index << 4) + i);
+			km_nthw_tcq_bank_mask(be->p_km_nthw,
+				km->v7.tcq[bank + (index << 4) + i].bank_mask);
+			km_nthw_tcq_qual(be->p_km_nthw, km->v7.tcq[bank + (index << 4) + i].qual);
+			km_nthw_tcq_flush(be->p_km_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(km, be->p_km_nthw);
+	return 0;
+}
+
+/*
  * DBS
  */
 
@@ -805,6 +992,14 @@ const struct flow_api_backend_ops flow_be_iface = {
 	cat_rck_flush,
 	cat_len_flush,
 	cat_kcc_flush,
+
+	km_get_present,
+	km_get_version,
+	km_rcp_flush,
+	km_cam_flush,
+	km_tcam_flush,
+	km_tci_flush,
+	km_tcq_flush,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
@@ -825,6 +1020,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_cat_nthw = NULL;
 	}
 
+	/* Init nthw KM */
+	if (km_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct km_nthw *pkmnthw = km_nthw_new();
+		km_nthw_init(pkmnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_km_nthw = pkmnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_km_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -836,6 +1041,7 @@ static void bin_flow_backend_done(void *dev)
 	struct backend_dev_s *be_dev = (struct backend_dev_s *)dev;
 	info_nthw_delete(be_dev->p_info_nthw);
 	cat_nthw_delete(be_dev->p_cat_nthw);
+	km_nthw_delete(be_dev->p_km_nthw);
 }
 
 static const struct flow_backend_ops ops = {
