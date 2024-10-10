@@ -39,7 +39,7 @@ int nthw_hif_init(nthw_hif_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		return mod == NULL ? -1 : 0;
 
 	if (mod == NULL) {
-		NT_LOG(ERR, NTHW, "%s: HIF %d: no such instance\n",
+		NT_LOG(ERR, NTHW, "%s: HIF %d: no such instance",
 			p_fpga->p_fpga_info->mp_adapter_id_str, n_instance);
 		return -1;
 	}
@@ -76,10 +76,10 @@ int nthw_hif_init(nthw_hif_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	p->mn_fpga_id_build_no = nthw_field_get_updated(p->mp_fld_prod_id_msb_build_no);
 	p->mn_fpga_id_item = nthw_field_get_updated(p->mp_fld_prod_id_msb_type_id);
 
-	NT_LOG(DBG, NTHW, "%s: HIF %d: %d-%d-%d-%d-%d\n", p_adapter_id_str, p->mn_instance,
+	NT_LOG(DBG, NTHW, "%s: HIF %d: %d-%d-%d-%d-%d", p_adapter_id_str, p->mn_instance,
 		p->mn_fpga_id_item, p->mn_fpga_id_prod, p->mn_fpga_id_ver,
 		p->mn_fpga_id_rev, p->mn_fpga_id_build_no);
-	NT_LOG(DBG, NTHW, "%s: HIF %d: HIF ref clock: %d Hz (%d ticks/ps)\n", p_adapter_id_str,
+	NT_LOG(DBG, NTHW, "%s: HIF %d: HIF ref clock: %d Hz (%d ticks/ps)", p_adapter_id_str,
 		p->mn_instance, p->mn_fpga_hif_ref_clk_freq, p->mn_fpga_param_hif_per_ps);
 
 	p->mp_reg_build_seed = NULL;	/* Reg/Fld not present on HIF */

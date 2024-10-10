@@ -49,3 +49,29 @@ which is required for the PMD to use vfio-pci on the PF.
 This support has been back-ported to older Linux distributions
 and they are also supported.
 If vfio-pci is not required, kernel version 4.18 is supported.
+
+
+Logging and Debugging
+---------------------
+
+NTNIC supports several groups of logging
+that can be enabled with ``--log-level`` parameter:
+
+NTNIC
+   Logging info from the main PMD code. i.e. code that is related to DPDK::
+
+      --log-level=pmd.net.ntnic.ntnic,8
+
+NTHW
+   Logging info from NTHW. i.e. code that is related to the FPGA and the adapter::
+
+      --log-level=pmd.net.ntnic.nthw,8
+
+FILTER
+   Logging info from filter. i.e. code that is related to the binary filter::
+
+        --log-level=pmd.net.ntnic.filter,8
+
+To enable logging on all levels use wildcard in the following way::
+
+   --log-level=pmd.net.ntnic.*,8

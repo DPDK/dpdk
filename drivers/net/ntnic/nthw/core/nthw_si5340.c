@@ -102,7 +102,7 @@ static int nthw_si5340_cfg(nthw_si5340_t *p, const void *p_data, int data_cnt,
 	uint8_t value;
 	uint8_t ctrl_value;
 
-	NT_LOG(DBG, NTHW, "%s: data_cnt = %d, data_format = %d\n", p_adapter_id_str,
+	NT_LOG(DBG, NTHW, "%s: data_cnt = %d, data_format = %d", p_adapter_id_str,
 		data_cnt, data_format);
 
 	for (i = 0; i < data_cnt; i++) {
@@ -117,7 +117,7 @@ static int nthw_si5340_cfg(nthw_si5340_t *p, const void *p_data, int data_cnt,
 			p_data = ((const clk_profile_data_fmt2_t *)p_data) + 1;
 
 		} else {
-			NT_LOG(ERR, NTHW, "%s: Unhandled Si5340 data format (%d)\n",
+			NT_LOG(ERR, NTHW, "%s: Unhandled Si5340 data format (%d)",
 				p_adapter_id_str, data_format);
 			return -1;
 		}
@@ -138,7 +138,7 @@ static int nthw_si5340_cfg(nthw_si5340_t *p, const void *p_data, int data_cnt,
 
 		if (ctrl_value != value) {
 			NT_LOG(ERR, NTHW,
-				"%s: Si5340 configuration readback check failed. (Addr = 0x%04X, Write = 0x%02X, Read = 0x%02X)\n",
+				"%s: Si5340 configuration readback check failed. (Addr = 0x%04X, Write = 0x%02X, Read = 0x%02X)",
 				p_adapter_id_str, addr, value, ctrl_value);
 			return -1;
 		}
@@ -175,7 +175,7 @@ int nthw_si5340_config(nthw_si5340_t *p, const void *p_data, int data_cnt,
 
 	if (!success) {
 		NT_LOG(ERR, NTHW,
-			"%s: Si5340 configuration failed. (Status = 0x%02X, Sticky = 0x%02X)\n",
+			"%s: Si5340 configuration failed. (Status = 0x%02X, Sticky = 0x%02X)",
 			p_adapter_id_str, status, sticky);
 		return -1;
 	}
@@ -186,7 +186,7 @@ int nthw_si5340_config(nthw_si5340_t *p, const void *p_data, int data_cnt,
 	design_id[sizeof(design_id) - 1] = 0;
 
 	(void)design_id;/* Only used in debug mode */
-	NT_LOG(DBG, NTHW, "%s: Si5340.Design_id = %s\n", p_adapter_id_str, design_id);
+	NT_LOG(DBG, NTHW, "%s: Si5340.Design_id = %s", p_adapter_id_str, design_id);
 
 	return 0;
 }

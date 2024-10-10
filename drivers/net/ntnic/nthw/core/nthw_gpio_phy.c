@@ -19,7 +19,7 @@ int nthw_gpio_phy_init(nthw_gpio_phy_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		return p_mod == NULL ? -1 : 0;
 
 	if (p_mod == NULL) {
-		NT_LOG(ERR, NTHW, "%s: GPIO_PHY %d: no such instance\n",
+		NT_LOG(ERR, NTHW, "%s: GPIO_PHY %d: no such instance",
 			p_fpga->p_fpga_info->mp_adapter_id_str, n_instance);
 		return -1;
 	}

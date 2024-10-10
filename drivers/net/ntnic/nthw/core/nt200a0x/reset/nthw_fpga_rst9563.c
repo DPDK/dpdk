@@ -26,20 +26,20 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 	p->mn_fpga_version = n_fpga_version;
 	p->mn_fpga_revision = n_fpga_revision;
 
-	NT_LOG_DBGX(DEBUG, NTHW, "%s: FPGA reset setup: FPGA %04d-%02d-%02d\n", p_adapter_id_str,
+	NT_LOG_DBGX(DBG, NTHW, "%s: FPGA reset setup: FPGA %04d-%02d-%02d", p_adapter_id_str,
 				n_fpga_product_id, n_fpga_version, n_fpga_revision);
 
 	p_mod_rst = nthw_fpga_query_module(p_fpga, MOD_RST9563, 0);
 
 	if (p_mod_rst == NULL) {
-		NT_LOG(ERR, NTHW, "%s: RST %d: no such instance\n", p_adapter_id_str, 0);
+		NT_LOG(ERR, NTHW, "%s: RST %d: no such instance", p_adapter_id_str, 0);
 		return -1;
 	}
 
 	p_mod_rst = nthw_fpga_query_module(p_fpga, MOD_RST9563, 0);
 
 	if (p_mod_rst == NULL) {
-		NT_LOG(ERR, NTHW, "%s: RST %d: no such instance\n", p_adapter_id_str, 0);
+		NT_LOG(ERR, NTHW, "%s: RST %d: no such instance", p_adapter_id_str, 0);
 		return -1;
 	}
 
@@ -70,10 +70,10 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 	p->mp_fld_rst_tmc = nthw_register_query_field(p_curr_reg, RST9563_RST_TMC);
 
 	if (!p->mp_fld_rst_tsm_ref_mmcm)
-		NT_LOG(DBG, NTHW, "%s: No RST9563_RST_TSM_REF_MMCM found\n", p_adapter_id_str);
+		NT_LOG(DBG, NTHW, "%s: No RST9563_RST_TSM_REF_MMCM found", p_adapter_id_str);
 
 	if (!p->mp_fld_rst_tmc)
-		NT_LOG(DBG, NTHW, "%s: No RST9563_RST_TMC found\n", p_adapter_id_str);
+		NT_LOG(DBG, NTHW, "%s: No RST9563_RST_TMC found", p_adapter_id_str);
 
 	nthw_register_update(p_curr_reg);
 
@@ -105,7 +105,7 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 	p->mp_fld_stat_tsm_ref_mmcm_locked = NULL;	/* Field not present on 9563 */
 
 	if (!p->mp_fld_stat_tsm_ref_mmcm_locked) {
-		NT_LOG(DBG, NTHW, "%s: No RST9563_STAT_TSM_REF_MMCM_LOCKED found\n",
+		NT_LOG(DBG, NTHW, "%s: No RST9563_STAT_TSM_REF_MMCM_LOCKED found",
 			p_adapter_id_str);
 	}
 
@@ -127,7 +127,7 @@ static int nthw_fpga_rst9563_setup(nthw_fpga_t *p_fpga, struct nthw_fpga_rst_nt2
 	p->mp_fld_sticky_tsm_ref_mmcm_unlocked = NULL;	/* Field not present on 9563 */
 
 	if (!p->mp_fld_sticky_tsm_ref_mmcm_unlocked) {
-		NT_LOG(DBG, NTHW, "%s: No RST9563_STICKY_TSM_REF_MMCM_UNLOCKED found\n",
+		NT_LOG(DBG, NTHW, "%s: No RST9563_STICKY_TSM_REF_MMCM_UNLOCKED found",
 			p_adapter_id_str);
 	}
 
@@ -151,7 +151,7 @@ static int nthw_fpga_rst9563_periph_reset(nthw_fpga_t *p_fpga)
 	if (p_mod_rst) {
 		nthw_register_t *p_reg_rst;
 		nthw_field_t *p_fld_rst_periph;
-		NT_LOG(DBG, NTHW, "%s: PERIPH RST\n", p_adapter_id_str);
+		NT_LOG(DBG, NTHW, "%s: PERIPH RST", p_adapter_id_str);
 		p_reg_rst = nthw_module_get_register(p_mod_rst, RST9563_RST);
 		p_fld_rst_periph = nthw_register_get_field(p_reg_rst, RST9563_RST_PERIPH);
 		nthw_field_set_flush(p_fld_rst_periph);
@@ -174,7 +174,7 @@ static int nthw_fpga_rst9563_clock_synth_init(nthw_fpga_t *p_fpga,
 	const struct clk9563_ops *clk9563_ops = get_clk9563_ops();
 
 	if (clk9563_ops == NULL) {
-		NT_LOG(INF, NTNIC, "CLK9563 module not included\n");
+		NT_LOG(INF, NTNIC, "CLK9563 module not included");
 		return -1;
 	}
 
@@ -184,7 +184,7 @@ static int nthw_fpga_rst9563_clock_synth_init(nthw_fpga_t *p_fpga,
 				*clk9563_ops->get_n_data_9563_si5340_nt200a02_u23_v5());
 
 	} else {
-		NT_LOG(ERR, NTHW, "%s: Fpga %d: Unsupported clock synth model (%d)\n",
+		NT_LOG(ERR, NTHW, "%s: Fpga %d: Unsupported clock synth model (%d)",
 			p_adapter_id_str, n_fpga_product_id, n_si_labs_clock_synth_model);
 		res = -1;
 	}
@@ -212,7 +212,7 @@ static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 	res = nthw_fpga_rst9563_periph_reset(p_fpga);
 
 	if (res) {
-		NT_LOG_DBGX(DEBUG, NTHW, "%s: ERROR: res=%d\n", p_adapter_id_str, res);
+		NT_LOG_DBGX(DBG, NTHW, "%s: ERROR: res=%d", p_adapter_id_str, res);
 		return res;
 	}
 
@@ -220,14 +220,14 @@ static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 			n_si_labs_clock_synth_i2c_addr);
 
 	if (res) {
-		NT_LOG_DBGX(DEBUG, NTHW, "%s: ERROR: res=%d\n", p_adapter_id_str, res);
+		NT_LOG_DBGX(DBG, NTHW, "%s: ERROR: res=%d", p_adapter_id_str, res);
 		return res;
 	}
 
 	res = nthw_fpga_rst9563_setup(p_fpga, p_rst);
 
 	if (res) {
-		NT_LOG_DBGX(DEBUG, NTHW, "%s: ERROR: res=%d\n", p_adapter_id_str, res);
+		NT_LOG_DBGX(DBG, NTHW, "%s: ERROR: res=%d", p_adapter_id_str, res);
 		return res;
 	}
 
@@ -235,7 +235,7 @@ static int nthw_fpga_rst9563_init(struct fpga_info_s *p_fpga_info,
 	res = rst_ops != NULL ? rst_ops->nthw_fpga_rst_nt200a0x_reset(p_fpga, p_rst) : -1;
 
 	if (res) {
-		NT_LOG_DBGX(DEBUG, NTHW, "%s: ERROR: res=%d\n", p_adapter_id_str, res);
+		NT_LOG_DBGX(DBG, NTHW, "%s: ERROR: res=%d", p_adapter_id_str, res);
 		return res;
 	}
 
@@ -246,6 +246,6 @@ static struct rst9563_ops rst9563_ops = { .nthw_fpga_rst9563_init = nthw_fpga_rs
 
 void rst9563_ops_init(void)
 {
-	NT_LOG(INF, NTHW, "RST9563 OPS INIT\n");
+	NT_LOG(DBG, NTHW, "RST9563 OPS INIT");
 	register_rst9563_ops(&rst9563_ops);
 }

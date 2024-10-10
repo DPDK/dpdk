@@ -38,7 +38,7 @@ int nthw_pcie3_init(nthw_pcie3_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		return mod == NULL ? -1 : 0;
 
 	if (mod == NULL) {
-		NT_LOG(ERR, NTHW, "%s: PCIE3 %d: no such instance\n",
+		NT_LOG(ERR, NTHW, "%s: PCIE3 %d: no such instance",
 			p_fpga->p_fpga_info->mp_adapter_id_str, n_instance);
 		return -1;
 	}
@@ -250,7 +250,7 @@ int nthw_pcie3_get_stat_rate(nthw_pcie3_t *p, uint64_t *p_pci_rx_rate, uint64_t 
 int nthw_pcie3_end_point_counters_sample_post(nthw_pcie3_t *p,
 	struct nthw_hif_end_point_counters *epc)
 {
-	NT_LOG_DBGX(DEBUG, NTHW);
+	NT_LOG_DBGX(DBG, NTHW);
 	assert(epc);
 	nthw_pcie3_get_stat_rate(p, &epc->cur_tx, &epc->cur_rx, &epc->n_ref_clk_cnt,
 		&epc->n_tags_in_use, &epc->cur_pci_nt_util,

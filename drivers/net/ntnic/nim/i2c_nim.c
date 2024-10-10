@@ -28,7 +28,7 @@ static bool page_addressing(nt_nim_identifier_t id)
 		return true;
 
 	default:
-		NT_LOG(DBG, NTNIC, "Unknown NIM identifier %d\n", id);
+		NT_LOG(DBG, NTNIC, "Unknown NIM identifier %d", id);
 		return false;
 	}
 }
@@ -160,14 +160,14 @@ static int nim_read_write_data_lin(nim_i2c_ctx_p ctx, bool m_page_addressing, ui
 		if (use_page_select) {
 			if (nim_setup_page(ctx, (uint8_t)((lin_addr / 128) - 1)) != 0) {
 				NT_LOG(ERR, NTNIC,
-					"Cannot set up page for linear address %u\n", lin_addr);
+					"Cannot set up page for linear address %u", lin_addr);
 				return -1;
 			}
 		}
 
 		if (nim_read_write_i2c_data(ctx, do_write, lin_addr, i2c_addr, a_reg_addr,
 				(uint8_t)seq_cnt, p_data) != 0) {
-			NT_LOG(ERR, NTNIC, " Call to nim_read_write_i2c_data failed\n");
+			NT_LOG(ERR, NTNIC, " Call to nim_read_write_i2c_data failed");
 			return -1;
 		}
 
@@ -219,7 +219,7 @@ static int i2c_nim_common_construct(nim_i2c_ctx_p ctx)
 		res = -1;
 
 	if (res) {
-		NT_LOG(ERR, PMD, "Can't read NIM id.");
+		NT_LOG(ERR, NTNIC, "Can't read NIM id.");
 		return res;
 	}
 
@@ -308,7 +308,7 @@ static int qsfp_nim_state_build(nim_i2c_ctx_t *ctx, sfp_nim_state_t *state)
 		break;
 
 	default:
-		NT_LOG(INF, NIM, "nim_id = %u is not an QSFP/QSFP+/QSFP28 module\n", ctx->nim_id);
+		NT_LOG(INF, NTNIC, "nim_id = %u is not an QSFP/QSFP+/QSFP28 module", ctx->nim_id);
 		res = -1;
 	}
 
@@ -405,7 +405,7 @@ static int qsfpplus_read_basic_data(nim_i2c_ctx_t *ctx)
 	uint16_t nim_units[5] = { 1000, 2, 1, 1, 1 };	/* QSFP MSA units in meters */
 	const char *yes_no[2] = { "No", "Yes" };
 	(void)yes_no;
-	NT_LOG(DBG, NTNIC, "Instance %d: NIM id: %s (%d)\n", ctx->instance,
+	NT_LOG(DBG, NTNIC, "Instance %d: NIM id: %s (%d)", ctx->instance,
 		nim_id_to_text(ctx->nim_id), ctx->nim_id);
 
 	/* Read DMI options */
@@ -415,12 +415,12 @@ static int qsfpplus_read_basic_data(nim_i2c_ctx_t *ctx)
 	}
 
 	ctx->avg_pwr = options & QSFP_DMI_AVG_PWR_BIT;
-	NT_LOG(DBG, NTNIC, "Instance %d: NIM options: (DMI: Yes, AvgPwr: %s)\n", ctx->instance,
+	NT_LOG(DBG, NTNIC, "Instance %d: NIM options: (DMI: Yes, AvgPwr: %s)", ctx->instance,
 		yes_no[ctx->avg_pwr]);
 
 	qsfp_read_vendor_info(ctx);
-	NT_LOG(DBG, PMD,
-		"Instance %d: NIM info: (Vendor: %s, PN: %s, SN: %s, Date: %s, Rev: %s)\n",
+	NT_LOG(DBG, NTNIC,
+		"Instance %d: NIM info: (Vendor: %s, PN: %s, SN: %s, Date: %s, Rev: %s)",
 		ctx->instance, ctx->vendor_name, ctx->prod_no, ctx->serial_no, ctx->date, ctx->rev);
 
 	if (nim_read_write_data_lin(ctx, pg_addr, QSFP_SUP_LEN_INFO_LIN_ADDR, sizeof(nim_len_info),
@@ -540,7 +540,7 @@ static bool qsfp28_is_rate_selection_enabled(nim_i2c_ctx_p ctx)
 		(read_byte(ctx, enh_options_reg_addr) >> 2) & 0x03;	/* bit 3..2 */
 
 	if (rate_select_type != 2) {
-		NT_LOG(DBG, PMD, "NIM has unhandled rate select type (%d)", rate_select_type);
+		NT_LOG(DBG, NTNIC, "NIM has unhandled rate select type (%d)", rate_select_type);
 		return false;
 	}
 
@@ -548,7 +548,7 @@ static bool qsfp28_is_rate_selection_enabled(nim_i2c_ctx_p ctx)
 		read_byte(ctx, ext_rate_select_compl_reg_addr) & 0x03;	/* bit 1..0 */
 
 	if (ext_rate_select_ver != 0x02) {
-		NT_LOG(DBG, PMD, "NIM has unhandled extended rate select version (%d)",
+		NT_LOG(DBG, NTNIC, "NIM has unhandled extended rate select version (%d)",
 			ext_rate_select_ver);
 		return false;
 	}
@@ -790,7 +790,7 @@ int construct_and_preinit_nim(nim_i2c_ctx_p ctx, void *extra)
 
 	default:
 		res = 1;
-		NT_LOG(ERR, NTHW, "NIM type %s is not supported.\n", nim_id_to_text(ctx->nim_id));
+		NT_LOG(ERR, NTHW, "NIM type %s is not supported.", nim_id_to_text(ctx->nim_id));
 	}
 
 	return res;

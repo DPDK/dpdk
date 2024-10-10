@@ -16,8 +16,6 @@
 
 #define NTLOG_HELPER_STR_SIZE_MAX (1024)
 
-RTE_LOG_REGISTER_DEFAULT(nt_logtype, NOTICE)
-
 char *ntlog_helper_str_alloc(const char *sinit)
 {
 	char *s = malloc(NTLOG_HELPER_STR_SIZE_MAX);
