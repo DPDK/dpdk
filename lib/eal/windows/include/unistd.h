@@ -12,4 +12,15 @@
 
 #include <io.h>
 
+/*
+ * Windows appears to be missing STD*_FILENO macros, so define here.
+ * For simplicity, assume that if STDIN_FILENO is missing, all are,
+ * rather than checking each individually.
+ */
+#ifndef STDIN_FILENO
+#define STDIN_FILENO _fileno(stdin)
+#define STDOUT_FILENO _fileno(stdout)
+#define STDERR_FILENO _fileno(stderr)
+#endif
+
 #endif /* _UNISTD_H_ */
