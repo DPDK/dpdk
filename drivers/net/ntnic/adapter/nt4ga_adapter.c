@@ -217,11 +217,28 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 
 static int nt4ga_adapter_deinit(struct adapter_info_s *p_adapter_info)
 {
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL)
+		NT_LOG(ERR, NTNIC, "%s: flow_filter module uninitialized", __func__);
+
 	fpga_info_t *fpga_info = &p_adapter_info->fpga_info;
 	int i;
 	int res = -1;
 
 	stop_monitor_tasks(-1);
+
+	/* Nt4ga Deinit Filter */
+	nt4ga_filter_t *p_filter = &p_adapter_info->nt4ga_filter;
+
+	if (flow_filter_ops != NULL) {
+		res = flow_filter_ops->flow_filter_done(p_filter->mp_flow_device);
+
+		if (res != 0) {
+			NT_LOG(ERR, NTNIC, "Cannot deinitialize filter");
+			return res;
+		}
+	}
 
 	nthw_fpga_shutdown(&p_adapter_info->fpga_info);
 

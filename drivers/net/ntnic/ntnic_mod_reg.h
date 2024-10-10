@@ -121,6 +121,7 @@ void rst9563_ops_init(void);
 struct flow_filter_ops {
 	int (*flow_filter_init)(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device,
 		int adapter_no);
+	int (*flow_filter_done)(struct flow_nic_dev *dev);
 };
 
 const struct flow_filter_ops *get_flow_filter_ops(void);
