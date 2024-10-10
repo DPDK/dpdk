@@ -230,6 +230,8 @@ New Features
   * Added support for SM3 algorithm.
   * Added support for SM3 HMAC algorithm.
   * Added support for SM4 CBC, SM4 ECB and SM4 CTR algorithms.
+  * Bumped the minimum version requirement of Intel IPsec Multi-buffer library to v1.4.
+    Affected PMDs: KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY.
 
 * **Updated openssl crypto driver.**
 

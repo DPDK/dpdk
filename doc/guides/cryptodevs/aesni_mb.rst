@@ -137,7 +137,8 @@ and the Multi-Buffer library version supported by them:
    DPDK version    Multi-buffer library version
    ==============  ============================
    20.11 - 21.08   0.53 - 1.3
-   21.11+          1.0  - 1.5
+   21.11 - 24.07   1.0  - 1.5
+   24.11+          1.4  - 1.5
    ==============  ============================
 
 Initialization

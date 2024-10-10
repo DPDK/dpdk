@@ -66,7 +66,8 @@ and the external crypto libraries supported by them:
    =============  ================================
    DPDK version   Crypto library version
    =============  ================================
-   21.11+         Multi-buffer library 1.0-1.5
+   21.11 - 24.07  Multi-buffer library 1.0  - 1.5
+   24.11+         Multi-buffer library 1.4  - 1.5
    =============  ================================
 
 Initialization
