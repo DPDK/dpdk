@@ -19,6 +19,7 @@
 #include "nthw_fpga_reg_defs_gmf.h"
 #include "nthw_fpga_reg_defs_gpio_phy.h"
 #include "nthw_fpga_reg_defs_hif.h"
+#include "nthw_fpga_reg_defs_hsh.h"
 #include "nthw_fpga_reg_defs_i2cm.h"
 #include "nthw_fpga_reg_defs_ifr.h"
 #include "nthw_fpga_reg_defs_iic.h"

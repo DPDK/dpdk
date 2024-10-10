@@ -10,6 +10,7 @@
 #include "flow_nthw_cat.h"
 #include "flow_nthw_km.h"
 #include "flow_nthw_flm.h"
+#include "flow_nthw_hsh.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -28,6 +29,7 @@ static struct backend_dev_s {
 	struct cat_nthw *p_cat_nthw;
 	struct km_nthw *p_km_nthw;
 	struct flm_nthw *p_flm_nthw;
+	struct hsh_nthw *p_hsh_nthw;
 	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
@@ -1261,6 +1263,69 @@ static int flm_inf_sta_data_update(void *be_dev, const struct flm_func_s *flm, u
 }
 
 /*
+ * HSH
+ */
+
+static bool hsh_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_hsh_nthw != NULL;
+}
+
+static uint32_t hsh_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return (uint32_t)((nthw_module_get_major_version(be->p_hsh_nthw->m_hsh) << 16) |
+			(nthw_module_get_minor_version(be->p_hsh_nthw->m_hsh) & 0xffff));
+}
+
+static int hsh_rcp_flush(void *be_dev, const struct hsh_func_s *hsh, int category, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, hsh, be->p_hsh_nthw);
+
+	if (hsh->ver == 5) {
+		hsh_nthw_rcp_cnt(be->p_hsh_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			hsh_nthw_rcp_select(be->p_hsh_nthw, category + i);
+			hsh_nthw_rcp_load_dist_type(be->p_hsh_nthw,
+				hsh->v5.rcp[category + i].load_dist_type);
+			hsh_nthw_rcp_mac_port_mask(be->p_hsh_nthw,
+				hsh->v5.rcp[category + i].mac_port_mask);
+			hsh_nthw_rcp_sort(be->p_hsh_nthw, hsh->v5.rcp[category + i].sort);
+			hsh_nthw_rcp_qw0_pe(be->p_hsh_nthw, hsh->v5.rcp[category + i].qw0_pe);
+			hsh_nthw_rcp_qw0_ofs(be->p_hsh_nthw, hsh->v5.rcp[category + i].qw0_ofs);
+			hsh_nthw_rcp_qw4_pe(be->p_hsh_nthw, hsh->v5.rcp[category + i].qw4_pe);
+			hsh_nthw_rcp_qw4_ofs(be->p_hsh_nthw, hsh->v5.rcp[category + i].qw4_ofs);
+			hsh_nthw_rcp_w8_pe(be->p_hsh_nthw, hsh->v5.rcp[category + i].w8_pe);
+			hsh_nthw_rcp_w8_ofs(be->p_hsh_nthw, hsh->v5.rcp[category + i].w8_ofs);
+			hsh_nthw_rcp_w8_sort(be->p_hsh_nthw, hsh->v5.rcp[category + i].w8_sort);
+			hsh_nthw_rcp_w9_pe(be->p_hsh_nthw, hsh->v5.rcp[category + i].w9_pe);
+			hsh_nthw_rcp_w9_ofs(be->p_hsh_nthw, hsh->v5.rcp[category + i].w9_ofs);
+			hsh_nthw_rcp_w9_sort(be->p_hsh_nthw, hsh->v5.rcp[category + i].w9_sort);
+			hsh_nthw_rcp_w9_p(be->p_hsh_nthw, hsh->v5.rcp[category + i].w9_p);
+			hsh_nthw_rcp_p_mask(be->p_hsh_nthw, hsh->v5.rcp[category + i].p_mask);
+			hsh_nthw_rcp_word_mask(be->p_hsh_nthw,
+				hsh->v5.rcp[category + i].word_mask);
+			hsh_nthw_rcp_seed(be->p_hsh_nthw, hsh->v5.rcp[category + i].seed);
+			hsh_nthw_rcp_tnl_p(be->p_hsh_nthw, hsh->v5.rcp[category + i].tnl_p);
+			hsh_nthw_rcp_hsh_valid(be->p_hsh_nthw,
+				hsh->v5.rcp[category + i].hsh_valid);
+			hsh_nthw_rcp_hsh_type(be->p_hsh_nthw, hsh->v5.rcp[category + i].hsh_type);
+			hsh_nthw_rcp_toeplitz(be->p_hsh_nthw, hsh->v5.rcp[category + i].toeplitz);
+			hsh_nthw_rcp_k(be->p_hsh_nthw, hsh->v5.rcp[category + i].k);
+			hsh_nthw_rcp_auto_ipv4_mask(be->p_hsh_nthw,
+				hsh->v5.rcp[category + i].auto_ipv4_mask);
+			hsh_nthw_rcp_flush(be->p_hsh_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(hsh, be->p_hsh_nthw);
+	return 0;
+}
+
+/*
  * DBS
  */
 
@@ -1369,6 +1434,10 @@ const struct flow_api_backend_ops flow_be_iface = {
 	flm_stat_update,
 	flm_lrn_data_flush,
 	flm_inf_sta_data_update,
+
+	hsh_get_present,
+	hsh_get_version,
+	hsh_rcp_flush,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
@@ -1419,6 +1488,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_ifr_nthw = NULL;
 	}
 
+	/* Init nthw HSH */
+	if (hsh_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct hsh_nthw *phshnthw = hsh_nthw_new();
+		hsh_nthw_init(phshnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_hsh_nthw = phshnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_hsh_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1432,6 +1511,7 @@ static void bin_flow_backend_done(void *dev)
 	cat_nthw_delete(be_dev->p_cat_nthw);
 	km_nthw_delete(be_dev->p_km_nthw);
 	flm_nthw_delete(be_dev->p_flm_nthw);
+	hsh_nthw_delete(be_dev->p_hsh_nthw);
 }
 
 static const struct flow_backend_ops ops = {
