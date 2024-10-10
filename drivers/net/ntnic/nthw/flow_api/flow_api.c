@@ -287,6 +287,9 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	if (init_resource_elements(ndev, RES_KM_FLOW_TYPE, ndev->be.cat.nb_flow_types))
 		goto err_exit;
 
+	if (init_resource_elements(ndev, RES_KM_CATEGORY, ndev->be.km.nb_categories))
+		goto err_exit;
+
 	if (init_resource_elements(ndev, RES_SLC_LR_RCP, ndev->be.max_categories))
 		goto err_exit;
 

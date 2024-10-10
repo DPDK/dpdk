@@ -667,6 +667,97 @@ static nthw_fpga_register_init_s iic_registers[] = {
 	{ IIC_TX_FIFO_OCY, 69, 4, NTHW_FPGA_REG_TYPE_RO, 0, 1, iic_tx_fifo_ocy_fields },
 };
 
+static nthw_fpga_field_init_s km_cam_ctrl_fields[] = {
+	{ KM_CAM_CTRL_ADR, 13, 0, 0x0000 },
+	{ KM_CAM_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_cam_data_fields[] = {
+	{ KM_CAM_DATA_FT0, 4, 192, 0x0000 }, { KM_CAM_DATA_FT1, 4, 196, 0x0000 },
+	{ KM_CAM_DATA_FT2, 4, 200, 0x0000 }, { KM_CAM_DATA_FT3, 4, 204, 0x0000 },
+	{ KM_CAM_DATA_FT4, 4, 208, 0x0000 }, { KM_CAM_DATA_FT5, 4, 212, 0x0000 },
+	{ KM_CAM_DATA_W0, 32, 0, 0x0000 }, { KM_CAM_DATA_W1, 32, 32, 0x0000 },
+	{ KM_CAM_DATA_W2, 32, 64, 0x0000 }, { KM_CAM_DATA_W3, 32, 96, 0x0000 },
+	{ KM_CAM_DATA_W4, 32, 128, 0x0000 }, { KM_CAM_DATA_W5, 32, 160, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_rcp_ctrl_fields[] = {
+	{ KM_RCP_CTRL_ADR, 5, 0, 0x0000 },
+	{ KM_RCP_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_rcp_data_fields[] = {
+	{ KM_RCP_DATA_BANK_A, 12, 694, 0x0000 }, { KM_RCP_DATA_BANK_B, 12, 706, 0x0000 },
+	{ KM_RCP_DATA_DUAL, 1, 651, 0x0000 }, { KM_RCP_DATA_DW0_B_DYN, 5, 729, 0x0000 },
+	{ KM_RCP_DATA_DW0_B_OFS, 8, 734, 0x0000 }, { KM_RCP_DATA_DW10_DYN, 5, 55, 0x0000 },
+	{ KM_RCP_DATA_DW10_OFS, 8, 60, 0x0000 }, { KM_RCP_DATA_DW10_SEL_A, 2, 68, 0x0000 },
+	{ KM_RCP_DATA_DW10_SEL_B, 2, 70, 0x0000 }, { KM_RCP_DATA_DW2_B_DYN, 5, 742, 0x0000 },
+	{ KM_RCP_DATA_DW2_B_OFS, 8, 747, 0x0000 }, { KM_RCP_DATA_DW8_DYN, 5, 36, 0x0000 },
+	{ KM_RCP_DATA_DW8_OFS, 8, 41, 0x0000 }, { KM_RCP_DATA_DW8_SEL_A, 3, 49, 0x0000 },
+	{ KM_RCP_DATA_DW8_SEL_B, 3, 52, 0x0000 }, { KM_RCP_DATA_EL_A, 4, 653, 0x0000 },
+	{ KM_RCP_DATA_EL_B, 3, 657, 0x0000 }, { KM_RCP_DATA_FTM_A, 16, 662, 0x0000 },
+	{ KM_RCP_DATA_FTM_B, 16, 678, 0x0000 }, { KM_RCP_DATA_INFO_A, 1, 660, 0x0000 },
+	{ KM_RCP_DATA_INFO_B, 1, 661, 0x0000 }, { KM_RCP_DATA_KEYWAY_A, 1, 725, 0x0000 },
+	{ KM_RCP_DATA_KEYWAY_B, 1, 726, 0x0000 }, { KM_RCP_DATA_KL_A, 4, 718, 0x0000 },
+	{ KM_RCP_DATA_KL_B, 3, 722, 0x0000 }, { KM_RCP_DATA_MASK_A, 384, 75, 0x0000 },
+	{ KM_RCP_DATA_MASK_B, 192, 459, 0x0000 }, { KM_RCP_DATA_PAIRED, 1, 652, 0x0000 },
+	{ KM_RCP_DATA_QW0_DYN, 5, 0, 0x0000 }, { KM_RCP_DATA_QW0_OFS, 8, 5, 0x0000 },
+	{ KM_RCP_DATA_QW0_SEL_A, 3, 13, 0x0000 }, { KM_RCP_DATA_QW0_SEL_B, 3, 16, 0x0000 },
+	{ KM_RCP_DATA_QW4_DYN, 5, 19, 0x0000 }, { KM_RCP_DATA_QW4_OFS, 8, 24, 0x0000 },
+	{ KM_RCP_DATA_QW4_SEL_A, 2, 32, 0x0000 }, { KM_RCP_DATA_QW4_SEL_B, 2, 34, 0x0000 },
+	{ KM_RCP_DATA_SW4_B_DYN, 5, 755, 0x0000 }, { KM_RCP_DATA_SW4_B_OFS, 8, 760, 0x0000 },
+	{ KM_RCP_DATA_SW5_B_DYN, 5, 768, 0x0000 }, { KM_RCP_DATA_SW5_B_OFS, 8, 773, 0x0000 },
+	{ KM_RCP_DATA_SWX_CCH, 1, 72, 0x0000 }, { KM_RCP_DATA_SWX_SEL_A, 1, 73, 0x0000 },
+	{ KM_RCP_DATA_SWX_SEL_B, 1, 74, 0x0000 }, { KM_RCP_DATA_SYNERGY_MODE, 2, 727, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_status_fields[] = {
+	{ KM_STATUS_TCQ_RDY, 1, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_tcam_ctrl_fields[] = {
+	{ KM_TCAM_CTRL_ADR, 14, 0, 0x0000 },
+	{ KM_TCAM_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_tcam_data_fields[] = {
+	{ KM_TCAM_DATA_T, 72, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_tci_ctrl_fields[] = {
+	{ KM_TCI_CTRL_ADR, 10, 0, 0x0000 },
+	{ KM_TCI_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_tci_data_fields[] = {
+	{ KM_TCI_DATA_COLOR, 32, 0, 0x0000 },
+	{ KM_TCI_DATA_FT, 4, 32, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_tcq_ctrl_fields[] = {
+	{ KM_TCQ_CTRL_ADR, 7, 0, 0x0000 },
+	{ KM_TCQ_CTRL_CNT, 5, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s km_tcq_data_fields[] = {
+	{ KM_TCQ_DATA_BANK_MASK, 12, 0, 0x0000 },
+	{ KM_TCQ_DATA_QUAL, 3, 12, 0x0000 },
+};
+
+static nthw_fpga_register_init_s km_registers[] = {
+	{ KM_CAM_CTRL, 2, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_cam_ctrl_fields },
+	{ KM_CAM_DATA, 3, 216, NTHW_FPGA_REG_TYPE_WO, 0, 12, km_cam_data_fields },
+	{ KM_RCP_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_rcp_ctrl_fields },
+	{ KM_RCP_DATA, 1, 781, NTHW_FPGA_REG_TYPE_WO, 0, 44, km_rcp_data_fields },
+	{ KM_STATUS, 10, 1, NTHW_FPGA_REG_TYPE_RO, 0, 1, km_status_fields },
+	{ KM_TCAM_CTRL, 4, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_tcam_ctrl_fields },
+	{ KM_TCAM_DATA, 5, 72, NTHW_FPGA_REG_TYPE_WO, 0, 1, km_tcam_data_fields },
+	{ KM_TCI_CTRL, 6, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_tci_ctrl_fields },
+	{ KM_TCI_DATA, 7, 36, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_tci_data_fields },
+	{ KM_TCQ_CTRL, 8, 21, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_tcq_ctrl_fields },
+	{ KM_TCQ_DATA, 9, 15, NTHW_FPGA_REG_TYPE_WO, 0, 2, km_tcq_data_fields },
+};
+
 static nthw_fpga_field_init_s mac_pcs_bad_code_fields[] = {
 	{ MAC_PCS_BAD_CODE_CODE_ERR, 16, 0, 0x0000 },
 };
@@ -1311,6 +1402,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_IIC, 1, MOD_IIC, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 896, 22, iic_registers },
 	{ MOD_IIC, 2, MOD_IIC, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 24832, 22, iic_registers },
 	{ MOD_IIC, 3, MOD_IIC, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 24960, 22, iic_registers },
+	{ MOD_KM, 0, MOD_KM, 0, 7, NTHW_FPGA_BUS_TYPE_RAB1, 1024, 11, km_registers },
 	{
 		MOD_MAC_PCS, 0, MOD_MAC_PCS, 0, 2, NTHW_FPGA_BUS_TYPE_RAB2, 10240, 44,
 		mac_pcs_registers
@@ -1488,5 +1580,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 16, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 17, fpga_modules,
 };
