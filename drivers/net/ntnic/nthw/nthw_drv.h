@@ -71,6 +71,8 @@ typedef struct fpga_info_s {
 	struct nthw_pcie3 *mp_nthw_pcie3;
 	struct nthw_tsm *mp_nthw_tsm;
 
+	nthw_dbs_t *mp_nthw_dbs;
+
 	uint8_t *bar0_addr;	/* Needed for register read/write */
 	size_t bar0_size;
 

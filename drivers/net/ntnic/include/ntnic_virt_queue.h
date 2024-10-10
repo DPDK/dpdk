@@ -13,7 +13,8 @@
 
 struct nthw_virt_queue;
 
-struct nthw_virtq_desc_buf;
+#define SPLIT_RING        0
+#define IN_ORDER          1
 
 struct nthw_cvirtq_desc;
 

@@ -47,6 +47,7 @@ struct __rte_cache_aligned ntnic_rx_queue {
 
 	struct hwq_s           hwq;
 	struct nthw_virt_queue *vq;
+	int nb_hw_rx_descr;
 	nt_meta_port_type_t type;
 	uint32_t port;     /* Rx port for this queue */
 	enum fpga_info_profile profile;  /* Inline / Capture */
@@ -57,7 +58,12 @@ struct __rte_cache_aligned ntnic_tx_queue {
 	struct flow_queue_id_s queue; /* queue info - user id and hw queue index */
 	struct hwq_s hwq;
 	struct nthw_virt_queue *vq;
+	int nb_hw_tx_descr;
+	/* Used for bypass in NTDVIO0 header on  Tx - pre calculated */
+	int target_id;
 	nt_meta_port_type_t type;
+	/* only used for exception tx queue from OVS SW switching */
+	int rss_target_id;
 
 	uint32_t port;     /* Tx port for this queue */
 	int  enabled;  /* Enabling/disabling of this queue */
