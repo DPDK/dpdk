@@ -12,6 +12,7 @@
 #include "hw_mod_cat_v21.h"
 #include "hw_mod_flm_v25.h"
 #include "hw_mod_km_v7.h"
+#include "hw_mod_hsh_v5.h"
 
 #define MAX_PHYS_ADAPTERS 8
 
@@ -72,6 +73,16 @@ struct flm_func_s {
 	uint32_t nb_load_aps_max;
 	union {
 		struct hw_mod_flm_v25_s v25;
+	};
+};
+
+struct hsh_func_s {
+	COMMON_FUNC_INFO_S;
+	uint32_t nb_rcp;/* number of HSH recipes supported by FPGA */
+	/* indication if Toeplitz is supported by FPGA, i.e. 0 - unsupported, 1 - supported */
+	uint32_t toeplitz;
+	union {
+		struct hw_mod_hsh_v5_s v5;
 	};
 };
 
@@ -180,6 +191,11 @@ struct flow_api_backend_ops {
 		uint32_t *inf_data, uint32_t inf_size,
 		uint32_t *inf_word_cnt, uint32_t *sta_data,
 		uint32_t sta_size, uint32_t *sta_word_cnt);
+
+	/* HSH */
+	bool (*get_hsh_present)(void *dev);
+	uint32_t (*get_hsh_version)(void *dev);
+	int (*hsh_rcp_flush)(void *dev, const struct hsh_func_s *hsh, int category, int cnt);
 };
 
 struct flow_api_backend_s {

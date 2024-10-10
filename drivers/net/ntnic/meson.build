@@ -48,6 +48,7 @@ sources = files(
         'nthw/flow_api/flow_filter.c',
         'nthw/flow_filter/flow_nthw_cat.c',
         'nthw/flow_filter/flow_nthw_flm.c',
+        'nthw/flow_filter/flow_nthw_hsh.c',
         'nthw/flow_filter/flow_nthw_ifr.c',
         'nthw/flow_filter/flow_nthw_info.c',
         'nthw/flow_filter/flow_nthw_km.c',
