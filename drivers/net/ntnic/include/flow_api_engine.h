@@ -8,6 +8,11 @@
 
 /*
  * Resource management
+ */
+#define BIT_CONTAINER_8_ALIGN(x) (((x) + 7) / 8)
+
+/*
+ * Resource management
  * These are free resources in FPGA
  * Other FPGA memory lists are linked to one of these
  * and will implicitly follow them
