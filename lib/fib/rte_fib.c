@@ -342,3 +342,14 @@ rte_fib_select_lookup(struct rte_fib *fib,
 		return -EINVAL;
 	}
 }
+
+int
+rte_fib_rcu_qsbr_add(struct rte_fib *fib, struct rte_fib_rcu_config *cfg)
+{
+	switch (fib->type) {
+	case RTE_FIB_DIR24_8:
+		return dir24_8_rcu_qsbr_add(fib->dp, cfg, fib->name);
+	default:
+		return -ENOTSUP;
+	}
+}

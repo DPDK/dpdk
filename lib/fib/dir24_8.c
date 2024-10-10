@@ -14,6 +14,7 @@
 #include <rte_rib.h>
 #include <rte_fib.h>
 #include "dir24_8.h"
+#include "fib_log.h"
 
 #ifdef CC_DIR24_8_AVX512_SUPPORT
 
@@ -185,6 +186,12 @@ tbl8_alloc(struct dir24_8_tbl *dp, uint64_t nh)
 	uint8_t	*tbl8_ptr;
 
 	tbl8_idx = tbl8_get_idx(dp);
+
+	/* If there are no tbl8 groups try to reclaim one. */
+	if (unlikely(tbl8_idx == -ENOSPC && dp->dq &&
+			!rte_rcu_qsbr_dq_reclaim(dp->dq, 1, NULL, NULL, NULL)))
+		tbl8_idx = tbl8_get_idx(dp);
+
 	if (tbl8_idx < 0)
 		return tbl8_idx;
 	tbl8_ptr = (uint8_t *)dp->tbl8 +
@@ -196,6 +203,25 @@ tbl8_alloc(struct dir24_8_tbl *dp, uint64_t nh)
 		DIR24_8_TBL8_GRP_NUM_ENT);
 	dp->cur_tbl8s++;
 	return tbl8_idx;
+}
+
+static void
+tbl8_cleanup_and_free(struct dir24_8_tbl *dp, uint64_t tbl8_idx)
+{
+	uint8_t *ptr = (uint8_t *)dp->tbl8 + (tbl8_idx * DIR24_8_TBL8_GRP_NUM_ENT << dp->nh_sz);
+
+	memset(ptr, 0, DIR24_8_TBL8_GRP_NUM_ENT << dp->nh_sz);
+	tbl8_free_idx(dp, tbl8_idx);
+	dp->cur_tbl8s--;
+}
+
+static void
+__rcu_qsbr_free_resource(void *p, void *data, unsigned int n __rte_unused)
+{
+	struct dir24_8_tbl *dp = p;
+	uint64_t tbl8_idx = *(uint64_t *)data;
+
+	tbl8_cleanup_and_free(dp, tbl8_idx);
 }
 
 static void
@@ -219,8 +245,6 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint8_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr8[i] = 0;
 		break;
 	case RTE_FIB_DIR24_8_2B:
 		ptr16 = &((uint16_t *)dp->tbl8)[tbl8_idx *
@@ -232,8 +256,6 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint16_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr16[i] = 0;
 		break;
 	case RTE_FIB_DIR24_8_4B:
 		ptr32 = &((uint32_t *)dp->tbl8)[tbl8_idx *
@@ -245,8 +267,6 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint32_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr32[i] = 0;
 		break;
 	case RTE_FIB_DIR24_8_8B:
 		ptr64 = &((uint64_t *)dp->tbl8)[tbl8_idx *
@@ -258,12 +278,18 @@ tbl8_recycle(struct dir24_8_tbl *dp, uint32_t ip, uint64_t tbl8_idx)
 		}
 		((uint64_t *)dp->tbl24)[ip >> 8] =
 			nh & ~DIR24_8_EXT_ENT;
-		for (i = 0; i < DIR24_8_TBL8_GRP_NUM_ENT; i++)
-			ptr64[i] = 0;
 		break;
 	}
-	tbl8_free_idx(dp, tbl8_idx);
-	dp->cur_tbl8s--;
+
+	if (dp->v == NULL) {
+		tbl8_cleanup_and_free(dp, tbl8_idx);
+	} else if (dp->rcu_mode == RTE_FIB_QSBR_MODE_SYNC) {
+		rte_rcu_qsbr_synchronize(dp->v, RTE_QSBR_THRID_INVALID);
+		tbl8_cleanup_and_free(dp, tbl8_idx);
+	} else { /* RTE_FIB_QSBR_MODE_DQ */
+		if (rte_rcu_qsbr_dq_enqueue(dp->dq, &tbl8_idx))
+			FIB_LOG(ERR, "Failed to push QSBR FIFO");
+	}
 }
 
 static int
@@ -578,7 +604,58 @@ dir24_8_free(void *p)
 {
 	struct dir24_8_tbl *dp = (struct dir24_8_tbl *)p;
 
+	rte_rcu_qsbr_dq_delete(dp->dq);
 	rte_free(dp->tbl8_idxes);
 	rte_free(dp->tbl8);
 	rte_free(dp);
+}
+
+int
+dir24_8_rcu_qsbr_add(struct dir24_8_tbl *dp, struct rte_fib_rcu_config *cfg,
+	const char *name)
+{
+	struct rte_rcu_qsbr_dq_parameters params = {0};
+	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
+
+	if (dp == NULL || cfg == NULL) {
+		rte_errno = EINVAL;
+		return 1;
+	}
+
+	if (dp->v != NULL) {
+		rte_errno = EEXIST;
+		return 1;
+	}
+
+	if (cfg->mode == RTE_FIB_QSBR_MODE_SYNC) {
+		/* No other things to do. */
+	} else if (cfg->mode == RTE_FIB_QSBR_MODE_DQ) {
+		/* Init QSBR defer queue. */
+		snprintf(rcu_dq_name, sizeof(rcu_dq_name),
+				"FIB_RCU_%s", name);
+		params.name = rcu_dq_name;
+		params.size = cfg->dq_size;
+		if (params.size == 0)
+			params.size = RTE_FIB_RCU_DQ_RECLAIM_SZ;
+		params.trigger_reclaim_limit = cfg->reclaim_thd;
+		params.max_reclaim_size = cfg->reclaim_max;
+		if (params.max_reclaim_size == 0)
+			params.max_reclaim_size = RTE_FIB_RCU_DQ_RECLAIM_MAX;
+		params.esize = sizeof(uint64_t);
+		params.free_fn = __rcu_qsbr_free_resource;
+		params.p = dp;
+		params.v = cfg->v;
+		dp->dq = rte_rcu_qsbr_dq_create(&params);
+		if (dp->dq == NULL) {
+			FIB_LOG(ERR, "LPM defer queue creation failed");
+			return 1;
+		}
+	} else {
+		rte_errno = EINVAL;
+		return 1;
+	}
+	dp->rcu_mode = cfg->mode;
+	dp->v = cfg->v;
+
+	return 0;
 }
