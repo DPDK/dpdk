@@ -28,7 +28,7 @@ static const char *const sa_nthw_fpga_bus_type_str[] = {
 
 static const char *get_bus_name(int n_bus_type_id)
 {
-	if (n_bus_type_id >= 1 && n_bus_type_id <= (int)ARRAY_SIZE(sa_nthw_fpga_bus_type_str))
+	if (n_bus_type_id >= 0 && n_bus_type_id < (int)ARRAY_SIZE(sa_nthw_fpga_bus_type_str))
 		return sa_nthw_fpga_bus_type_str[n_bus_type_id];
 
 	return "ERR";
@@ -678,45 +678,51 @@ void nthw_register_set_debug_mode(nthw_register_t *p, unsigned int debug_mode)
 static int nthw_register_read_data(const nthw_register_t *p)
 {
 	int rc = -1;
+	if (p) {
+		if (p->mp_owner) {
+			const int n_bus_type_id = nthw_module_get_bus(p->mp_owner);
+			const uint32_t addr = p->mn_addr;
+			const uint32_t len = p->mn_len;
+			uint32_t *const p_data = p->mp_shadow;
+			const bool trc = (p->mn_debug_mode & NTHW_REG_TRACE_ON_READ);
 
-	const int n_bus_type_id = nthw_module_get_bus(p->mp_owner);
-	const uint32_t addr = p->mn_addr;
-	const uint32_t len = p->mn_len;
-	uint32_t *const p_data = p->mp_shadow;
-	const bool trc = (p->mn_debug_mode & NTHW_REG_TRACE_ON_READ);
+			struct fpga_info_s *p_fpga_info = NULL;
 
-	struct fpga_info_s *p_fpga_info = NULL;
+			if (p->mp_owner->mp_owner)
+				p_fpga_info = p->mp_owner->mp_owner->p_fpga_info;
 
-	if (p && p->mp_owner && p->mp_owner->mp_owner)
-		p_fpga_info = p->mp_owner->mp_owner->p_fpga_info;
+			assert(p_fpga_info);
+			assert(p_data);
 
-	assert(p_fpga_info);
-	assert(p_data);
-
-	rc = nthw_read_data(p_fpga_info, trc, n_bus_type_id, addr, len, p_data);
+			rc = nthw_read_data(p_fpga_info, trc, n_bus_type_id, addr, len, p_data);
+		}
+	}
 	return rc;
 }
 
 static int nthw_register_write_data(const nthw_register_t *p, uint32_t cnt)
 {
 	int rc = -1;
+	if (p) {
+		if (p->mp_owner) {
+			const int n_bus_type_id = nthw_module_get_bus(p->mp_owner);
+			const uint32_t addr = p->mn_addr;
+			const uint32_t len = p->mn_len;
+			uint32_t *const p_data = p->mp_shadow;
+			const bool trc = (p->mn_debug_mode & NTHW_REG_TRACE_ON_WRITE);
 
-	const int n_bus_type_id = nthw_module_get_bus(p->mp_owner);
-	const uint32_t addr = p->mn_addr;
-	const uint32_t len = p->mn_len;
-	uint32_t *const p_data = p->mp_shadow;
-	const bool trc = (p->mn_debug_mode & NTHW_REG_TRACE_ON_WRITE);
+			struct fpga_info_s *p_fpga_info = NULL;
 
-	struct fpga_info_s *p_fpga_info = NULL;
+			if (p->mp_owner->mp_owner)
+				p_fpga_info = p->mp_owner->mp_owner->p_fpga_info;
 
-	if (p && p->mp_owner && p->mp_owner->mp_owner)
-		p_fpga_info = p->mp_owner->mp_owner->p_fpga_info;
+			assert(p_fpga_info);
+			assert(p_data);
 
-	assert(p_fpga_info);
-	assert(p_data);
-
-	rc = nthw_write_data(p_fpga_info, trc, n_bus_type_id, addr, (len * cnt), p_data);
-
+			rc = nthw_write_data(p_fpga_info, trc, n_bus_type_id, addr, (len * cnt),
+				p_data);
+		}
+	}
 	return rc;
 }
 

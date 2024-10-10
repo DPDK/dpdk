@@ -42,7 +42,7 @@ static struct drv_s *_g_p_drv[NUM_ADAPTER_MAX] = { NULL };
 static void
 store_pdrv(struct drv_s *p_drv)
 {
-	if (p_drv->adapter_no > NUM_ADAPTER_MAX) {
+	if (p_drv->adapter_no >= NUM_ADAPTER_MAX) {
 		NT_LOG(ERR, NTNIC,
 			"Internal error adapter number %u out of range. Max number of adapters: %u\n",
 			p_drv->adapter_no, NUM_ADAPTER_MAX);
@@ -384,16 +384,17 @@ eth_dev_close(struct rte_eth_dev *eth_dev)
 	internals->p_drv = NULL;
 
 	rte_eth_dev_release_port(eth_dev);
+	if (p_drv) {
+		/* decrease initialized ethernet devices */
+		p_drv->n_eth_dev_init_count--;
 
-	/* decrease initialized ethernet devices */
-	p_drv->n_eth_dev_init_count--;
-
-	/*
-	 * rte_pci_dev has no private member for p_drv
-	 * wait until all rte_eth_dev's are closed - then close adapters via p_drv
-	 */
-	if (!p_drv->n_eth_dev_init_count && p_drv)
-		drv_deinit(p_drv);
+		/*
+		 * rte_pci_dev has no private member for p_drv
+		 * wait until all rte_eth_dev's are closed - then close adapters via p_drv
+		 */
+		if (!p_drv->n_eth_dev_init_count)
+			drv_deinit(p_drv);
+	}
 
 	return 0;
 }

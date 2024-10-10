@@ -263,7 +263,7 @@ static int nthw_fpga_rst_nt200a0x_reset(nthw_fpga_t *p_fpga,
 	if (p->mp_fld_rst_serdes_rx)
 		nthw_field_set_flush(p->mp_fld_rst_serdes_rx);	/* 0x03 2 ports */
 
-	if (p->mp_fld_rst_serdes_rx_datapath) {
+	if (p->mp_fld_rst_serdes_rx_datapath && p->mp_fld_rst_serdes_rx) {
 		nthw_field_set_flush(p->mp_fld_rst_serdes_rx_datapath);
 		nthw_field_clr_flush(p->mp_fld_rst_serdes_rx);
 	}

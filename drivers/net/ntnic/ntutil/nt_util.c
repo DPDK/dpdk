@@ -31,7 +31,8 @@ uint64_t nt_os_get_time_monotonic_counter(void)
 /* Allocation size matching minimum alignment of specified size */
 uint64_t nt_util_align_size(uint64_t size)
 {
-	return 1 << rte_log2_u64(size);
+	uint64_t alignment_size = 1ULL << rte_log2_u64(size);
+	return alignment_size;
 }
 
 void nt_util_vfio_init(struct nt_util_vfio_impl *impl)

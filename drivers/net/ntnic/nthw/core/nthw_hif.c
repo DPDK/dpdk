@@ -83,23 +83,11 @@ int nthw_hif_init(nthw_hif_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		p->mn_instance, p->mn_fpga_hif_ref_clk_freq, p->mn_fpga_param_hif_per_ps);
 
 	p->mp_reg_build_seed = NULL;	/* Reg/Fld not present on HIF */
-
-	if (p->mp_reg_build_seed)
-		p->mp_fld_build_seed = NULL;	/* Reg/Fld not present on HIF */
-	else
-		p->mp_fld_build_seed = NULL;
+	p->mp_fld_build_seed = NULL;	/* Reg/Fld not present on HIF */
 
 	p->mp_reg_core_speed = NULL;	/* Reg/Fld not present on HIF */
-
-	if (p->mp_reg_core_speed) {
-		p->mp_fld_core_speed = NULL;	/* Reg/Fld not present on HIF */
-		p->mp_fld_ddr3_speed = NULL;	/* Reg/Fld not present on HIF */
-
-	} else {
-		p->mp_reg_core_speed = NULL;
-		p->mp_fld_core_speed = NULL;
-		p->mp_fld_ddr3_speed = NULL;
-	}
+	p->mp_fld_core_speed = NULL;	/* Reg/Fld not present on HIF */
+	p->mp_fld_ddr3_speed = NULL;	/* Reg/Fld not present on HIF */
 
 	/* Optional registers since: 2018-04-25 */
 	p->mp_reg_int_mask = NULL;	/* Reg/Fld not present on HIF */
