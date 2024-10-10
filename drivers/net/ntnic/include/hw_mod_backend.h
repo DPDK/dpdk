@@ -8,6 +8,8 @@
 
 #include <stdbool.h>
 
+#include "ntlog.h"
+
 #include "hw_mod_cat_v18.h"
 #include "hw_mod_cat_v21.h"
 #include "hw_mod_flm_v25.h"
@@ -275,6 +277,7 @@ struct flow_api_backend_ops {
 
 struct flow_api_backend_s {
 	void *be_dev;
+	const struct flow_api_backend_ops *iface;
 };
 
 #endif  /* _HW_MOD_BACKEND_H_ */
