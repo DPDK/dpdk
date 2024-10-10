@@ -23,6 +23,13 @@ struct nthw_virt_queue;
  * contiguous) In Used descriptors it must be ignored
  */
 #define VIRTQ_DESC_F_NEXT 1
+/*
+ * SPLIT : This marks a buffer as device write-only (otherwise device read-only).
+ * PACKED: This marks a descriptor as device write-only (otherwise device read-only).
+ * PACKED: In a used descriptor, this bit is used to specify whether any data has been written by
+ * the device into any parts of the buffer.
+ */
+#define VIRTQ_DESC_F_WRITE 2
 
 /*
  * Split Ring virtq Descriptor

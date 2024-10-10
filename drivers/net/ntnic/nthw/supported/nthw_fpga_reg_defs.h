@@ -16,6 +16,7 @@
 #include "nthw_fpga_reg_defs_cat.h"
 #include "nthw_fpga_reg_defs_cpy.h"
 #include "nthw_fpga_reg_defs_csu.h"
+#include "nthw_fpga_reg_defs_dbs.h"
 #include "nthw_fpga_reg_defs_flm.h"
 #include "nthw_fpga_reg_defs_gfg.h"
 #include "nthw_fpga_reg_defs_gmf.h"
