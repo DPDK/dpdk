@@ -31,8 +31,7 @@ static const char *get_bus_name(int n_bus_type_id)
 	if (n_bus_type_id >= 1 && n_bus_type_id <= (int)ARRAY_SIZE(sa_nthw_fpga_bus_type_str))
 		return sa_nthw_fpga_bus_type_str[n_bus_type_id];
 
-	else
-		return "ERR";
+	return "ERR";
 }
 
 /*
@@ -1146,16 +1145,16 @@ static int nthw_field_wait_cond32(const nthw_field_t *p, enum nthw_field_match e
 	while (true) {
 		uint32_t val = nthw_field_get_updated(p);
 
-		if (e_match == NTHW_FIELD_MATCH_SET_ANY && val != 0) {
+		if (e_match == NTHW_FIELD_MATCH_SET_ANY && val != 0)
 			return 0;
 
-		} else if (e_match == NTHW_FIELD_MATCH_SET_ALL && val == n_mask) {
+		if (e_match == NTHW_FIELD_MATCH_SET_ALL && val == n_mask)
 			return 0;
 
-		} else if (e_match == NTHW_FIELD_MATCH_CLR_ALL && val == 0) {
+		if (e_match == NTHW_FIELD_MATCH_CLR_ALL && val == 0)
 			return 0;
 
-		} else if (e_match == NTHW_FIELD_MATCH_CLR_ANY) {
+		if (e_match == NTHW_FIELD_MATCH_CLR_ANY) {
 			uint32_t mask = nthw_field_get_mask(p);
 
 			if (val != mask)

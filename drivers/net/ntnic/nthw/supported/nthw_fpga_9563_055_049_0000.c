@@ -179,7 +179,7 @@ static nthw_fpga_register_init_s gpio_phy_registers[] = {
 };
 
 static nthw_fpga_field_init_s hif_build_time_fields[] = {
-	{ HIF_BUILD_TIME_TIME, 32, 0, 1713859545 },
+	{ HIF_BUILD_TIME_TIME, 32, 0, 1726740521 },
 };
 
 static nthw_fpga_field_init_s hif_config_fields[] = {
@@ -202,7 +202,7 @@ static nthw_fpga_field_init_s hif_prod_id_ex_fields[] = {
 
 static nthw_fpga_field_init_s hif_prod_id_lsb_fields[] = {
 	{ HIF_PROD_ID_LSB_GROUP_ID, 16, 16, 9563 },
-	{ HIF_PROD_ID_LSB_REV_ID, 8, 0, 39 },
+	{ HIF_PROD_ID_LSB_REV_ID, 8, 0, 49 },
 	{ HIF_PROD_ID_LSB_VER_ID, 8, 8, 55 },
 };
 
@@ -247,27 +247,27 @@ static nthw_fpga_field_init_s hif_test1_fields[] = {
 };
 
 static nthw_fpga_field_init_s hif_uuid0_fields[] = {
-	{ HIF_UUID0_UUID0, 32, 0, 1237800326 },
+	{ HIF_UUID0_UUID0, 32, 0, 1021928912 },
 };
 
 static nthw_fpga_field_init_s hif_uuid1_fields[] = {
-	{ HIF_UUID1_UUID1, 32, 0, 3057550372 },
+	{ HIF_UUID1_UUID1, 32, 0, 2998983545 },
 };
 
 static nthw_fpga_field_init_s hif_uuid2_fields[] = {
-	{ HIF_UUID2_UUID2, 32, 0, 2445752330 },
+	{ HIF_UUID2_UUID2, 32, 0, 827210969 },
 };
 
 static nthw_fpga_field_init_s hif_uuid3_fields[] = {
-	{ HIF_UUID3_UUID3, 32, 0, 1864147557 },
+	{ HIF_UUID3_UUID3, 32, 0, 462142918 },
 };
 
 static nthw_fpga_register_init_s hif_registers[] = {
-	{ HIF_BUILD_TIME, 16, 32, NTHW_FPGA_REG_TYPE_RO, 1713859545, 1, hif_build_time_fields },
+	{ HIF_BUILD_TIME, 16, 32, NTHW_FPGA_REG_TYPE_RO, 1726740521, 1, hif_build_time_fields },
 	{ HIF_CONFIG, 24, 7, NTHW_FPGA_REG_TYPE_RW, 0, 3, hif_config_fields },
 	{ HIF_CONTROL, 40, 13, NTHW_FPGA_REG_TYPE_MIXED, 4097, 3, hif_control_fields },
 	{ HIF_PROD_ID_EX, 112, 32, NTHW_FPGA_REG_TYPE_RO, 1, 3, hif_prod_id_ex_fields },
-	{ HIF_PROD_ID_LSB, 0, 32, NTHW_FPGA_REG_TYPE_RO, 626734887, 3, hif_prod_id_lsb_fields },
+	{ HIF_PROD_ID_LSB, 0, 32, NTHW_FPGA_REG_TYPE_RO, 626734897, 3, hif_prod_id_lsb_fields },
 	{ HIF_PROD_ID_MSB, 8, 22, NTHW_FPGA_REG_TYPE_RO, 200, 2, hif_prod_id_msb_fields },
 	{ HIF_SAMPLE_TIME, 96, 1, NTHW_FPGA_REG_TYPE_WO, 0, 1, hif_sample_time_fields },
 	{ HIF_STATUS, 32, 10, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, hif_status_fields },
@@ -277,10 +277,10 @@ static nthw_fpga_register_init_s hif_registers[] = {
 	{ HIF_STAT_TX, 80, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, hif_stat_tx_fields },
 	{ HIF_TEST0, 48, 32, NTHW_FPGA_REG_TYPE_RW, 287454020, 1, hif_test0_fields },
 	{ HIF_TEST1, 56, 32, NTHW_FPGA_REG_TYPE_RW, 2864434397, 1, hif_test1_fields },
-	{ HIF_UUID0, 128, 32, NTHW_FPGA_REG_TYPE_RO, 1237800326, 1, hif_uuid0_fields },
-	{ HIF_UUID1, 144, 32, NTHW_FPGA_REG_TYPE_RO, 3057550372, 1, hif_uuid1_fields },
-	{ HIF_UUID2, 160, 32, NTHW_FPGA_REG_TYPE_RO, 2445752330, 1, hif_uuid2_fields },
-	{ HIF_UUID3, 176, 32, NTHW_FPGA_REG_TYPE_RO, 1864147557, 1, hif_uuid3_fields },
+	{ HIF_UUID0, 128, 32, NTHW_FPGA_REG_TYPE_RO, 1021928912, 1, hif_uuid0_fields },
+	{ HIF_UUID1, 144, 32, NTHW_FPGA_REG_TYPE_RO, 2998983545, 1, hif_uuid1_fields },
+	{ HIF_UUID2, 160, 32, NTHW_FPGA_REG_TYPE_RO, 827210969, 1, hif_uuid2_fields },
+	{ HIF_UUID3, 176, 32, NTHW_FPGA_REG_TYPE_RO, 462142918, 1, hif_uuid3_fields },
 };
 
 static nthw_fpga_field_init_s iic_adr_fields[] = {
@@ -1071,7 +1071,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 
 static nthw_fpga_prod_param_s product_parameters[] = {
 	{ NT_BUILD_NUMBER, 0 },
-	{ NT_BUILD_TIME, 1713859545 },
+	{ NT_BUILD_TIME, 1726740521 },
 	{ NT_CATEGORIES, 64 },
 	{ NT_CAT_DCT_PRESENT, 0 },
 	{ NT_CAT_END_OFS_SUPPORT, 0 },
@@ -1101,7 +1101,7 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 	{ NT_FLM_CACHE, 1 },
 	{ NT_FLM_CATEGORIES, 32 },
 	{ NT_FLM_ENTRY_SIZE, 64 },
-	{ NT_FLM_LOAD_APS_MAX, 260000000 },
+	{ NT_FLM_LOAD_APS_MAX, 270000000 },
 	{ NT_FLM_LOAD_LPS_MAX, 300000000 },
 	{ NT_FLM_PRESENT, 1 },
 	{ NT_FLM_PRIOS, 4 },
@@ -1176,7 +1176,7 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 	{ NT_QUEUES, 128 },
 	{ NT_RAC_RAB_INTERFACES, 3 },
 	{ NT_RAC_RAB_OB_UPDATE, 0 },
-	{ NT_REVISION_ID, 39 },
+	{ NT_REVISION_ID, 49 },
 	{ NT_RMC_LAG_GROUPS, 1 },
 	{ NT_RMC_PRESENT, 1 },
 	{ NT_ROA_CATEGORIES, 1024 },
@@ -1225,6 +1225,6 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 	{ 0, -1 },	/* END */
 };
 
-nthw_fpga_prod_init_s nthw_fpga_9563_055_039_0000 = {
-	200, 9563, 55, 39, 0, 0, 1713859545, 152, product_parameters, 15, fpga_modules,
+nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 15, fpga_modules,
 };

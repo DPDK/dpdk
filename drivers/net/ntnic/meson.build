@@ -26,7 +26,7 @@ sources = files(
         'link_mgmt/link_100g/nt4ga_link_100g.c',
         'link_mgmt/nt4ga_link.c',
         'nim/i2c_nim.c',
-        'nthw/supported/nthw_fpga_9563_055_039_0000.c',
+        'nthw/supported/nthw_fpga_9563_055_049_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
         'nthw/supported/nthw_fpga_mod_str_map.c',
         'nthw/core/nt200a0x/clock_profiles/nthw_fpga_clk9563.c',
