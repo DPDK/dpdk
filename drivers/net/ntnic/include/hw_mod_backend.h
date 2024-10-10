@@ -7,6 +7,7 @@
 #define _HW_MOD_BACKEND_H_
 
 #include <stdbool.h>
+#include <string.h>
 
 #include "ntlog.h"
 
@@ -583,6 +584,25 @@ struct slc_lr_func_s {
 		struct hw_mod_slc_lr_v2_s v2;
 	};
 };
+enum hw_slc_lr_e {
+	/* functions */
+	HW_SLC_LR_RCP_PRESET_ALL = 0,
+	HW_SLC_LR_RCP_COMPARE,
+	HW_SLC_LR_RCP_FIND,
+	/* fields */
+	HW_SLC_LR_RCP_HEAD_SLC_EN = FIELD_START_INDEX,
+	HW_SLC_LR_RCP_HEAD_DYN,
+	HW_SLC_LR_RCP_HEAD_OFS,
+	HW_SLC_LR_RCP_TAIL_SLC_EN,
+	HW_SLC_LR_RCP_TAIL_DYN,
+	HW_SLC_LR_RCP_TAIL_OFS,
+	HW_SLC_LR_RCP_PCAP
+};
+bool hw_mod_slc_lr_present(struct flow_api_backend_s *be);
+int hw_mod_slc_lr_alloc(struct flow_api_backend_s *be);
+void hw_mod_slc_lr_free(struct flow_api_backend_s *be);
+int hw_mod_slc_lr_reset(struct flow_api_backend_s *be);
+int hw_mod_slc_lr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 struct pdb_func_s {
 	COMMON_FUNC_INFO_S;
@@ -761,6 +781,7 @@ struct flow_api_backend_s {
 	struct flm_func_s flm;
 	struct hsh_func_s hsh;
 	struct qsl_func_s qsl;
+	struct slc_lr_func_s slc_lr;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;
