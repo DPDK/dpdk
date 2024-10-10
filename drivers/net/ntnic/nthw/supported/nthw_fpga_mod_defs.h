@@ -37,6 +37,7 @@
 #define MOD_RST9563 (0x385d6d1dUL)
 #define MOD_SDC (0xd2369530UL)
 #define MOD_SLC_LR (0x969fc50bUL)
+#define MOD_TX_CPY (0x60acf217UL)
 #define MOD_IDX_COUNT (14)
 
 /* aliases - only aliases go below this point */

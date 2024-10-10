@@ -14,6 +14,7 @@
 #define _NTHW_FPGA_REG_DEFS_
 
 #include "nthw_fpga_reg_defs_cat.h"
+#include "nthw_fpga_reg_defs_cpy.h"
 #include "nthw_fpga_reg_defs_flm.h"
 #include "nthw_fpga_reg_defs_gfg.h"
 #include "nthw_fpga_reg_defs_gmf.h"
@@ -37,6 +38,7 @@
 #include "nthw_fpga_reg_defs_sdc.h"
 #include "nthw_fpga_reg_defs_slc.h"
 #include "nthw_fpga_reg_defs_slc_lr.h"
+#include "nthw_fpga_reg_defs_tx_cpy.h"
 
 /* aliases */
 
