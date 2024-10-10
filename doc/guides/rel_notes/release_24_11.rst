@@ -135,6 +135,7 @@ New Features
   * Fix Coverity issues
   * Fix issues related to release 24.07
   * Extended and fixed the implementation of the logging
+  * Added NT flow filter init API
 
 * **Added cryptodev queue pair reset support.**
 

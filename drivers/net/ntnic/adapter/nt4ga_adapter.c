@@ -75,6 +75,11 @@ static int nt4ga_adapter_show_info(struct adapter_info_s *p_adapter_info, FILE *
 
 static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 {
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL)
+		NT_LOG(ERR, NTNIC, "%s: flow_filter module uninitialized", __func__);
+
 	char *const p_dev_name = malloc(24);
 	char *const p_adapter_id_str = malloc(24);
 	fpga_info_t *fpga_info = &p_adapter_info->fpga_info;
@@ -154,6 +159,19 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 	assert(n_phy_ports >= 1);
 	n_nim_ports = fpga_info->n_nims;
 	assert(n_nim_ports >= 1);
+
+	/* Nt4ga Init Filter */
+	nt4ga_filter_t *p_filter = &p_adapter_info->nt4ga_filter;
+
+	if (flow_filter_ops != NULL) {
+		res = flow_filter_ops->flow_filter_init(p_fpga, &p_filter->mp_flow_device,
+				p_adapter_info->adapter_no);
+
+		if (res != 0) {
+			NT_LOG(ERR, NTNIC, "%s: Cannot initialize filter", p_adapter_id_str);
+			return res;
+		}
+	}
 
 	{
 		int i;

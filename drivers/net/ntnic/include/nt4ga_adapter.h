@@ -23,7 +23,13 @@ typedef struct hw_info_s {
 	int hw_reserved1;
 } hw_info_t;
 
+/*
+ * Services provided by the adapter module
+ */
+#include "nt4ga_filter.h"
+
 typedef struct adapter_info_s {
+	struct nt4ga_filter_s nt4ga_filter;
 	struct nt4ga_link_s nt4ga_link;
 
 	struct hw_info_s hw_info;
