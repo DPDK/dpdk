@@ -69,16 +69,33 @@ enum nthw_virt_queue_usage {
 
 struct nthw_virt_queue {
 	/* Pointers to virt-queue structs */
-	struct {
-		/* SPLIT virtqueue */
-		struct virtq_avail *p_avail;
-		struct virtq_used *p_used;
-		struct virtq_desc *p_desc;
-		/* Control variables for virt-queue structs */
-		uint16_t am_idx;
-		uint16_t used_idx;
-		uint16_t cached_idx;
-		uint16_t tx_descr_avail_idx;
+	union {
+		struct {
+			/* SPLIT virtqueue */
+			struct virtq_avail *p_avail;
+			struct virtq_used *p_used;
+			struct virtq_desc *p_desc;
+			/* Control variables for virt-queue structs */
+			uint16_t am_idx;
+			uint16_t used_idx;
+			uint16_t cached_idx;
+			uint16_t tx_descr_avail_idx;
+		};
+		struct {
+			/* PACKED virtqueue */
+			struct pvirtq_event_suppress *driver_event;
+			struct pvirtq_event_suppress *device_event;
+			struct pvirtq_desc *desc;
+			/*
+			 * when in-order release used Tx packets from FPGA it may collapse
+			 * into a batch. When getting new Tx buffers we may only need
+			 * partial
+			 */
+			uint16_t next_avail;
+			uint16_t next_used;
+			uint16_t avail_wrap_count;
+			uint16_t used_wrap_count;
+		};
 	};
 
 	/* Array with packet buffers */
@@ -106,6 +123,11 @@ struct nthw_virt_queue {
 	void *avail_struct_phys_addr;
 	void *used_struct_phys_addr;
 	void *desc_struct_phys_addr;
+};
+
+struct pvirtq_struct_layout_s {
+	size_t driver_event_offset;
+	size_t device_event_offset;
 };
 
 static struct nthw_virt_queue rxvq[MAX_VIRT_QUEUES];
@@ -607,6 +629,143 @@ nthw_setup_mngd_tx_virt_queue_split(nthw_dbs_t *p_nthw_dbs,
 }
 
 /*
+ * Packed Ring
+ */
+static int nthw_setup_managed_virt_queue_packed(struct nthw_virt_queue *vq,
+	struct pvirtq_struct_layout_s *pvirtq_layout,
+	struct nthw_memory_descriptor *p_virt_struct_area,
+	struct nthw_memory_descriptor *p_packet_buffers,
+	uint16_t flags,
+	int rx)
+{
+	/* page aligned */
+	assert(((uintptr_t)p_virt_struct_area->phys_addr & 0xfff) == 0);
+	assert(p_packet_buffers);
+
+	/* clean canvas */
+	memset(p_virt_struct_area->virt_addr, 0,
+		sizeof(struct pvirtq_desc) * vq->queue_size +
+		sizeof(struct pvirtq_event_suppress) * 2 + sizeof(int) * vq->queue_size);
+
+	pvirtq_layout->device_event_offset = sizeof(struct pvirtq_desc) * vq->queue_size;
+	pvirtq_layout->driver_event_offset =
+		pvirtq_layout->device_event_offset + sizeof(struct pvirtq_event_suppress);
+
+	vq->desc = p_virt_struct_area->virt_addr;
+	vq->device_event = (void *)((uintptr_t)vq->desc + pvirtq_layout->device_event_offset);
+	vq->driver_event = (void *)((uintptr_t)vq->desc + pvirtq_layout->driver_event_offset);
+
+	vq->next_avail = 0;
+	vq->next_used = 0;
+	vq->avail_wrap_count = 1;
+	vq->used_wrap_count = 1;
+
+	/*
+	 * Only possible if FPGA always delivers in-order
+	 * Buffer ID used is the index in the p_packet_buffers array
+	 */
+	unsigned int i;
+	struct pvirtq_desc *p_desc = vq->desc;
+
+	for (i = 0; i < vq->queue_size; i++) {
+		if (rx) {
+			p_desc[i].addr = (uint64_t)p_packet_buffers[i].phys_addr;
+			p_desc[i].len = p_packet_buffers[i].len;
+		}
+
+		p_desc[i].id = i;
+		p_desc[i].flags = flags;
+	}
+
+	if (rx)
+		vq->avail_wrap_count ^= 1;	/* filled up available buffers for Rx */
+	else
+		vq->used_wrap_count ^= 1;	/* pre-fill free buffer IDs */
+
+	if (vq->queue_size == 0)
+		return -1;	/* don't allocate memory with size of 0 bytes */
+
+	vq->p_virtual_addr = malloc(vq->queue_size * sizeof(*p_packet_buffers));
+
+	if (vq->p_virtual_addr == NULL)
+		return -1;
+
+	memcpy(vq->p_virtual_addr, p_packet_buffers, vq->queue_size * sizeof(*p_packet_buffers));
+
+	/* Not used yet by FPGA - make sure we disable */
+	vq->device_event->flags = RING_EVENT_FLAGS_DISABLE;
+
+	return 0;
+}
+
+static struct nthw_virt_queue *
+nthw_setup_managed_rx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
+	uint32_t index,
+	uint32_t queue_size,
+	uint32_t host_id,
+	uint32_t header,
+	struct nthw_memory_descriptor *p_virt_struct_area,
+	struct nthw_memory_descriptor *p_packet_buffers,
+	int irq_vector)
+{
+	struct pvirtq_struct_layout_s pvirtq_layout;
+	struct nthw_virt_queue *vq = &rxvq[index];
+	/* Set size and setup packed vq ring */
+	vq->queue_size = queue_size;
+
+	/* Use Avail flag bit == 1 because wrap bit is initially set to 1 - and Used is inverse */
+	if (nthw_setup_managed_virt_queue_packed(vq, &pvirtq_layout, p_virt_struct_area,
+			p_packet_buffers,
+			VIRTQ_DESC_F_WRITE | VIRTQ_DESC_F_AVAIL, 1) != 0)
+		return NULL;
+
+	nthw_setup_rx_virt_queue(p_nthw_dbs, index, 0x8000, 0,	/* start wrap ring counter as 1 */
+		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+			pvirtq_layout.driver_event_offset),
+		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+			pvirtq_layout.device_event_offset),
+		p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
+		header, PACKED_RING, irq_vector);
+
+	vq->usage = NTHW_VIRTQ_MANAGED;
+	return vq;
+}
+
+static struct nthw_virt_queue *
+nthw_setup_managed_tx_virt_queue_packed(nthw_dbs_t *p_nthw_dbs,
+	uint32_t index,
+	uint32_t queue_size,
+	uint32_t host_id,
+	uint32_t port,
+	uint32_t virtual_port,
+	uint32_t header,
+	int irq_vector,
+	uint32_t in_order,
+	struct nthw_memory_descriptor *p_virt_struct_area,
+	struct nthw_memory_descriptor *p_packet_buffers)
+{
+	struct pvirtq_struct_layout_s pvirtq_layout;
+	struct nthw_virt_queue *vq = &txvq[index];
+	/* Set size and setup packed vq ring */
+	vq->queue_size = queue_size;
+
+	if (nthw_setup_managed_virt_queue_packed(vq, &pvirtq_layout, p_virt_struct_area,
+			p_packet_buffers, 0, 0) != 0)
+		return NULL;
+
+	nthw_setup_tx_virt_queue(p_nthw_dbs, index, 0x8000, 0,	/* start wrap ring counter as 1 */
+		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+			pvirtq_layout.driver_event_offset),
+		(void *)((uintptr_t)p_virt_struct_area->phys_addr +
+			pvirtq_layout.device_event_offset),
+		p_virt_struct_area->phys_addr, (uint16_t)queue_size, host_id,
+		port, virtual_port, header, PACKED_RING, irq_vector, in_order);
+
+	vq->usage = NTHW_VIRTQ_MANAGED;
+	return vq;
+}
+
+/*
  * Create a Managed Rx Virt Queue
  *
  * Notice: The queue will be created with interrupts disabled.
@@ -627,6 +786,11 @@ nthw_setup_mngd_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	switch (vq_type) {
 	case SPLIT_RING:
 		return nthw_setup_mngd_rx_virt_queue_split(p_nthw_dbs, index, queue_size,
+				host_id, header, p_virt_struct_area,
+				p_packet_buffers, irq_vector);
+
+	case PACKED_RING:
+		return nthw_setup_managed_rx_virt_queue_packed(p_nthw_dbs, index, queue_size,
 				host_id, header, p_virt_struct_area,
 				p_packet_buffers, irq_vector);
 
@@ -661,6 +825,13 @@ nthw_setup_mngd_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	switch (vq_type) {
 	case SPLIT_RING:
 		return nthw_setup_mngd_tx_virt_queue_split(p_nthw_dbs, index, queue_size,
+				host_id, port, virtual_port, header,
+				irq_vector, in_order,
+				p_virt_struct_area,
+				p_packet_buffers);
+
+	case PACKED_RING:
+		return nthw_setup_managed_tx_virt_queue_packed(p_nthw_dbs, index, queue_size,
 				host_id, port, virtual_port, header,
 				irq_vector, in_order,
 				p_virt_struct_area,
