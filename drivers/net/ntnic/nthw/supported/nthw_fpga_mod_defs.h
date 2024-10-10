@@ -33,6 +33,7 @@
 #define MOD_PDB (0xa7771bffUL)
 #define MOD_QSL (0x448ed859UL)
 #define MOD_RAC (0xae830b42UL)
+#define MOD_RPP_LR (0xba7f945cUL)
 #define MOD_RST9563 (0x385d6d1dUL)
 #define MOD_SDC (0xd2369530UL)
 #define MOD_SLC_LR (0x969fc50bUL)
