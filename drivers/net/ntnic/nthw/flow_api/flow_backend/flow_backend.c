@@ -8,6 +8,7 @@
 #include "flow_nthw_info.h"
 #include "flow_nthw_ifr.h"
 #include "flow_nthw_cat.h"
+#include "flow_nthw_csu.h"
 #include "flow_nthw_km.h"
 #include "flow_nthw_flm.h"
 #include "flow_nthw_hfu.h"
@@ -42,6 +43,7 @@ static struct backend_dev_s {
 	struct hfu_nthw *p_hfu_nthw;    /* TPE module */
 	struct rpp_lr_nthw *p_rpp_lr_nthw;      /* TPE module */
 	struct tx_cpy_nthw *p_tx_cpy_nthw;      /* TPE module */
+	struct csu_nthw *p_csu_nthw;    /* TPE module */
 	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
@@ -1819,6 +1821,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_tx_cpy_nthw = NULL;
 	}
 
+	/* Init nthw CSU */
+	if (csu_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct csu_nthw *ptr = csu_nthw_new();
+		csu_nthw_init(ptr, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_csu_nthw = ptr;
+
+	} else {
+		be_devs[physical_adapter_no].p_csu_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1836,6 +1848,7 @@ static void bin_flow_backend_done(void *dev)
 	qsl_nthw_delete(be_dev->p_qsl_nthw);
 	slc_lr_nthw_delete(be_dev->p_slc_lr_nthw);
 	pdb_nthw_delete(be_dev->p_pdb_nthw);
+	csu_nthw_delete(be_dev->p_csu_nthw);
 	hfu_nthw_delete(be_dev->p_hfu_nthw);
 	rpp_lr_nthw_delete(be_dev->p_rpp_lr_nthw);
 	tx_cpy_nthw_delete(be_dev->p_tx_cpy_nthw);
