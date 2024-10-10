@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "ntos_drv.h"
+#include "nt_util.h"
 #include "ntnic_virt_queue.h"
 #include "ntnic_mod_reg.h"
 #include "ntlog.h"
@@ -36,6 +37,26 @@
 #define TX_UW_POLL_SPEED 8
 
 #define VIRTQ_AVAIL_F_NO_INTERRUPT 1
+
+#define vq_log_arg(vq, format, ...)
+
+/*
+ * Packed Ring helper macros
+ */
+#define PACKED(vq_type) ((vq_type) == PACKED_RING ? 1 : 0)
+
+#define avail_flag(vq) ((vq)->avail_wrap_count ? VIRTQ_DESC_F_AVAIL : 0)
+#define used_flag_inv(vq) ((vq)->avail_wrap_count ? 0 : VIRTQ_DESC_F_USED)
+
+#define inc_avail(vq, num)                                                                        \
+	do {                                                                                      \
+		struct nthw_virt_queue *temp_vq = (vq);                                           \
+		temp_vq->next_avail += (num);                                                     \
+		if (temp_vq->next_avail >= temp_vq->queue_size) {                                 \
+			temp_vq->next_avail -= temp_vq->queue_size;                               \
+			temp_vq->avail_wrap_count ^= 1;                                           \
+		}                                                                                 \
+	} while (0)
 
 struct __rte_aligned(8) virtq_avail {
 	uint16_t flags;
@@ -115,6 +136,7 @@ struct nthw_virt_queue {
 	uint32_t host_id;
 	uint32_t port;	/* Only used by TX queues */
 	uint32_t virtual_port;	/* Only used by TX queues */
+	uint32_t header;
 	/*
 	 * Only used by TX queues:
 	 *   0: VirtIO-Net header (12 bytes).
@@ -415,6 +437,237 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 
 	/* Return queue handle */
 	return &rxvq[index];
+}
+
+static int dbs_wait_hw_queue_shutdown(struct nthw_virt_queue *vq, int rx);
+
+static int dbs_wait_on_busy(struct nthw_virt_queue *vq, uint32_t *idle, int rx)
+{
+	uint32_t busy;
+	uint32_t queue;
+	int err = 0;
+	nthw_dbs_t *p_nthw_dbs = vq->mp_nthw_dbs;
+
+	do {
+		if (rx)
+			err = get_rx_idle(p_nthw_dbs, idle, &queue, &busy);
+
+		else
+			err = get_tx_idle(p_nthw_dbs, idle, &queue, &busy);
+	} while (!err && busy);
+
+	return err;
+}
+
+static int dbs_wait_hw_queue_shutdown(struct nthw_virt_queue *vq, int rx)
+{
+	int err = 0;
+	uint32_t idle = 0;
+	nthw_dbs_t *p_nthw_dbs = vq->mp_nthw_dbs;
+
+	err = dbs_wait_on_busy(vq, &idle, rx);
+
+	if (err) {
+		if (err == -ENOTSUP) {
+			nt_os_wait_usec(200000);
+			return 0;
+		}
+
+		return -1;
+	}
+
+	do {
+		if (rx)
+			err = set_rx_idle(p_nthw_dbs, 1, vq->index);
+
+		else
+			err = set_tx_idle(p_nthw_dbs, 1, vq->index);
+
+		if (err)
+			return -1;
+
+		if (dbs_wait_on_busy(vq, &idle, rx) != 0)
+			return -1;
+
+	} while (idle == 0);
+
+	return 0;
+}
+
+static int dbs_internal_release_rx_virt_queue(struct nthw_virt_queue *rxvq)
+{
+	nthw_dbs_t *p_nthw_dbs = rxvq->mp_nthw_dbs;
+
+	if (rxvq == NULL)
+		return -1;
+
+	/* Clear UW */
+	rxvq->used_struct_phys_addr = NULL;
+
+	if (set_rx_uw_data(p_nthw_dbs, rxvq->index, (uint64_t)rxvq->used_struct_phys_addr,
+			rxvq->host_id, 0, PACKED(rxvq->vq_type), 0, 0, 0) != 0) {
+		return -1;
+	}
+
+	/* Disable AM */
+	rxvq->am_enable = RX_AM_DISABLE;
+
+	if (set_rx_am_data(p_nthw_dbs,
+			rxvq->index,
+			(uint64_t)rxvq->avail_struct_phys_addr,
+			rxvq->am_enable,
+			rxvq->host_id,
+			PACKED(rxvq->vq_type),
+			0) != 0) {
+		return -1;
+	}
+
+	/* Let the FPGA finish packet processing */
+	if (dbs_wait_hw_queue_shutdown(rxvq, 1) != 0)
+		return -1;
+
+	/* Clear rest of AM */
+	rxvq->avail_struct_phys_addr = NULL;
+	rxvq->host_id = 0;
+
+	if (set_rx_am_data(p_nthw_dbs,
+			rxvq->index,
+			(uint64_t)rxvq->avail_struct_phys_addr,
+			rxvq->am_enable,
+			rxvq->host_id,
+			PACKED(rxvq->vq_type),
+			0) != 0)
+		return -1;
+
+	/* Clear DR */
+	rxvq->desc_struct_phys_addr = NULL;
+
+	if (set_rx_dr_data(p_nthw_dbs,
+			rxvq->index,
+			(uint64_t)rxvq->desc_struct_phys_addr,
+			rxvq->host_id,
+			0,
+			rxvq->header,
+			PACKED(rxvq->vq_type)) != 0)
+		return -1;
+
+	/* Initialize queue */
+	dbs_init_rx_queue(p_nthw_dbs, rxvq->index, 0, 0);
+
+	/* Reset queue state */
+	rxvq->usage = NTHW_VIRTQ_UNUSED;
+	rxvq->mp_nthw_dbs = p_nthw_dbs;
+	rxvq->index = 0;
+	rxvq->queue_size = 0;
+
+	return 0;
+}
+
+static int nthw_release_mngd_rx_virt_queue(struct nthw_virt_queue *rxvq)
+{
+	if (rxvq == NULL || rxvq->usage != NTHW_VIRTQ_MANAGED)
+		return -1;
+
+	if (rxvq->p_virtual_addr) {
+		free(rxvq->p_virtual_addr);
+		rxvq->p_virtual_addr = NULL;
+	}
+
+	return dbs_internal_release_rx_virt_queue(rxvq);
+}
+
+static int dbs_internal_release_tx_virt_queue(struct nthw_virt_queue *txvq)
+{
+	nthw_dbs_t *p_nthw_dbs = txvq->mp_nthw_dbs;
+
+	if (txvq == NULL)
+		return -1;
+
+	/* Clear UW */
+	txvq->used_struct_phys_addr = NULL;
+
+	if (set_tx_uw_data(p_nthw_dbs, txvq->index, (uint64_t)txvq->used_struct_phys_addr,
+			txvq->host_id, 0, PACKED(txvq->vq_type), 0, 0, 0,
+			txvq->in_order) != 0) {
+		return -1;
+	}
+
+	/* Disable AM */
+	txvq->am_enable = TX_AM_DISABLE;
+
+	if (set_tx_am_data(p_nthw_dbs,
+			txvq->index,
+			(uint64_t)txvq->avail_struct_phys_addr,
+			txvq->am_enable,
+			txvq->host_id,
+			PACKED(txvq->vq_type),
+			0) != 0) {
+		return -1;
+	}
+
+	/* Let the FPGA finish packet processing */
+	if (dbs_wait_hw_queue_shutdown(txvq, 0) != 0)
+		return -1;
+
+	/* Clear rest of AM */
+	txvq->avail_struct_phys_addr = NULL;
+	txvq->host_id = 0;
+
+	if (set_tx_am_data(p_nthw_dbs,
+			txvq->index,
+			(uint64_t)txvq->avail_struct_phys_addr,
+			txvq->am_enable,
+			txvq->host_id,
+			PACKED(txvq->vq_type),
+			0) != 0) {
+		return -1;
+	}
+
+	/* Clear DR */
+	txvq->desc_struct_phys_addr = NULL;
+	txvq->port = 0;
+	txvq->header = 0;
+
+	if (set_tx_dr_data(p_nthw_dbs,
+			txvq->index,
+			(uint64_t)txvq->desc_struct_phys_addr,
+			txvq->host_id,
+			0,
+			txvq->port,
+			txvq->header,
+			PACKED(txvq->vq_type)) != 0) {
+		return -1;
+	}
+
+	/* Clear QP */
+	txvq->virtual_port = 0;
+
+	if (nthw_dbs_set_tx_qp_data(p_nthw_dbs, txvq->index, txvq->virtual_port) != 0)
+		return -1;
+
+	/* Initialize queue */
+	dbs_init_tx_queue(p_nthw_dbs, txvq->index, 0, 0);
+
+	/* Reset queue state */
+	txvq->usage = NTHW_VIRTQ_UNUSED;
+	txvq->mp_nthw_dbs = p_nthw_dbs;
+	txvq->index = 0;
+	txvq->queue_size = 0;
+
+	return 0;
+}
+
+static int nthw_release_mngd_tx_virt_queue(struct nthw_virt_queue *txvq)
+{
+	if (txvq == NULL || txvq->usage != NTHW_VIRTQ_MANAGED)
+		return -1;
+
+	if (txvq->p_virtual_addr) {
+		free(txvq->p_virtual_addr);
+		txvq->p_virtual_addr = NULL;
+	}
+
+	return dbs_internal_release_tx_virt_queue(txvq);
 }
 
 static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
@@ -844,11 +1097,111 @@ nthw_setup_mngd_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	return NULL;
 }
 
+/*
+ * Put buffers back into Avail Ring
+ */
+static void nthw_release_rx_packets(struct nthw_virt_queue *rxvq, uint16_t n)
+{
+	if (rxvq->vq_type == SPLIT_RING) {
+		rxvq->am_idx = (uint16_t)(rxvq->am_idx + n);
+		rxvq->p_avail->idx = rxvq->am_idx;
+
+	} else if (rxvq->vq_type == PACKED_RING) {
+		int i;
+		/*
+		 * Defer flags update on first segment - due to serialization towards HW and
+		 * when jumbo segments are added
+		 */
+
+		uint16_t first_flags = VIRTQ_DESC_F_WRITE | avail_flag(rxvq) | used_flag_inv(rxvq);
+		struct pvirtq_desc *first_desc = &rxvq->desc[rxvq->next_avail];
+
+		uint32_t len = rxvq->p_virtual_addr[0].len;	/* all same size */
+
+		/* Optimization point: use in-order release */
+
+		for (i = 0; i < n; i++) {
+			struct pvirtq_desc *desc = &rxvq->desc[rxvq->next_avail];
+
+			desc->id = rxvq->next_avail;
+			desc->addr = (uint64_t)rxvq->p_virtual_addr[desc->id].phys_addr;
+			desc->len = len;
+
+			if (i)
+				desc->flags = VIRTQ_DESC_F_WRITE | avail_flag(rxvq) |
+					used_flag_inv(rxvq);
+
+			inc_avail(rxvq, 1);
+		}
+
+		rte_rmb();
+		first_desc->flags = first_flags;
+	}
+}
+
+static void nthw_release_tx_packets(struct nthw_virt_queue *txvq, uint16_t n, uint16_t n_segs[])
+{
+	int i;
+
+	if (txvq->vq_type == SPLIT_RING) {
+		/* Valid because queue_size is always 2^n */
+		uint16_t queue_mask = (uint16_t)(txvq->queue_size - 1);
+
+		vq_log_arg(txvq, "pkts %i, avail idx %i, start at %i", n, txvq->am_idx,
+			txvq->tx_descr_avail_idx);
+
+		for (i = 0; i < n; i++) {
+			int idx = txvq->am_idx & queue_mask;
+			txvq->p_avail->ring[idx] = txvq->tx_descr_avail_idx;
+			txvq->tx_descr_avail_idx =
+				(txvq->tx_descr_avail_idx + n_segs[i]) & queue_mask;
+			txvq->am_idx++;
+		}
+
+		/* Make sure the ring has been updated before HW reads index update */
+		rte_mb();
+		txvq->p_avail->idx = txvq->am_idx;
+		vq_log_arg(txvq, "new avail idx %i, descr_idx %i", txvq->p_avail->idx,
+			txvq->tx_descr_avail_idx);
+
+	} else if (txvq->vq_type == PACKED_RING) {
+		/*
+		 * Defer flags update on first segment - due to serialization towards HW and
+		 * when jumbo segments are added
+		 */
+
+		uint16_t first_flags = avail_flag(txvq) | used_flag_inv(txvq);
+		struct pvirtq_desc *first_desc = &txvq->desc[txvq->next_avail];
+
+		for (i = 0; i < n; i++) {
+			struct pvirtq_desc *desc = &txvq->desc[txvq->next_avail];
+
+			desc->id = txvq->next_avail;
+			desc->addr = (uint64_t)txvq->p_virtual_addr[desc->id].phys_addr;
+
+			if (i)
+				/* bitwise-or here because next flags may already have been setup
+				 */
+				desc->flags |= avail_flag(txvq) | used_flag_inv(txvq);
+
+			inc_avail(txvq, 1);
+		}
+
+		/* Proper read barrier before FPGA may see first flags */
+		rte_rmb();
+		first_desc->flags = first_flags;
+	}
+}
+
 static struct sg_ops_s sg_ops = {
 	.nthw_setup_rx_virt_queue = nthw_setup_rx_virt_queue,
 	.nthw_setup_tx_virt_queue = nthw_setup_tx_virt_queue,
 	.nthw_setup_mngd_rx_virt_queue = nthw_setup_mngd_rx_virt_queue,
+	.nthw_release_mngd_rx_virt_queue = nthw_release_mngd_rx_virt_queue,
 	.nthw_setup_mngd_tx_virt_queue = nthw_setup_mngd_tx_virt_queue,
+	.nthw_release_mngd_tx_virt_queue = nthw_release_mngd_tx_virt_queue,
+	.nthw_release_rx_packets = nthw_release_rx_packets,
+	.nthw_release_tx_packets = nthw_release_tx_packets,
 	.nthw_virt_queue_init = nthw_virt_queue_init
 };
 

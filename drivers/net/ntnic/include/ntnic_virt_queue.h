@@ -45,8 +45,14 @@ struct __rte_aligned(8) virtq_desc {
 	uint16_t next;
 };
 
+
+/*
+ * Packed Ring special structures and defines
+ */
+
 /* additional packed ring flags */
 #define VIRTQ_DESC_F_AVAIL     (1 << 7)
+#define VIRTQ_DESC_F_USED      (1 << 15)
 
 /* descr phys address must be 16 byte aligned */
 struct __rte_aligned(16) pvirtq_desc {
