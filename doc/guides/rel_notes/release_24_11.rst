@@ -129,6 +129,10 @@ New Features
 
   * Added ethdev driver support for CN20K SoC.
 
+* **Update Napatech ntnic net driver [EXPERIMENTAL].**
+
+  * Update supported version of the FPGA to 9563.55.49
+
 * **Added cryptodev queue pair reset support.**
 
   A new API ``rte_cryptodev_queue_pair_reset`` is added
@@ -192,6 +196,7 @@ New Features
 * **Updated DSW event driver.**
 
   * Added independent enqueue feature.
+
 
 
 Removed Items
