@@ -14,6 +14,7 @@
 #define _NTHW_FPGA_MOD_DEFS_H_
 
 #define MOD_UNKNOWN (0L)/* Unknown/uninitialized - keep this as the first element */
+#define MOD_CAT (0x30b447c2UL)
 #define MOD_GFG (0xfc423807UL)
 #define MOD_GMF (0x68b1d15aUL)
 #define MOD_GPIO_PHY (0xbbe81659UL)
