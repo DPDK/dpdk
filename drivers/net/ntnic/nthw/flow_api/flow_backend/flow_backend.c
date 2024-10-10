@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "flow_nthw_info.h"
+#include "flow_nthw_ifr.h"
 #include "flow_nthw_cat.h"
 #include "flow_nthw_km.h"
 #include "flow_nthw_flm.h"
@@ -27,6 +28,7 @@ static struct backend_dev_s {
 	struct cat_nthw *p_cat_nthw;
 	struct km_nthw *p_km_nthw;
 	struct flm_nthw *p_flm_nthw;
+	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
 #define CHECK_DEBUG_ON(be, mod, inst)                                                             \
@@ -1405,6 +1407,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 
 	} else {
 		be_devs[physical_adapter_no].p_flm_nthw = NULL;
+	}
+
+	/* Init nthw IFR */
+	if (ifr_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct ifr_nthw *ifrnthw = ifr_nthw_new();
+		ifr_nthw_init(ifrnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_ifr_nthw = ifrnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_ifr_nthw = NULL;
 	}
 
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
