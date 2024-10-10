@@ -20,6 +20,7 @@ static const struct {
 	{ "CAT", hw_mod_cat_alloc, hw_mod_cat_free, hw_mod_cat_reset, hw_mod_cat_present },
 	{ "KM", hw_mod_km_alloc, hw_mod_km_free, hw_mod_km_reset, hw_mod_km_present },
 	{ "FLM", hw_mod_flm_alloc, hw_mod_flm_free, hw_mod_flm_reset, hw_mod_flm_present },
+	{ "HSH", hw_mod_hsh_alloc, hw_mod_hsh_free, hw_mod_hsh_reset, hw_mod_hsh_present },
 };
 #define MOD_COUNT (ARRAY_SIZE(module))
 

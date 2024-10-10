@@ -496,6 +496,41 @@ struct hsh_func_s {
 		struct hw_mod_hsh_v5_s v5;
 	};
 };
+enum hw_hsh_e {
+	/* functions */
+	HW_HSH_RCP_PRESET_ALL = 0,
+	HW_HSH_RCP_COMPARE,
+	HW_HSH_RCP_FIND,
+	/* fields */
+	HW_HSH_RCP_LOAD_DIST_TYPE = FIELD_START_INDEX,
+	HW_HSH_RCP_MAC_PORT_MASK,
+	HW_HSH_RCP_SORT,
+	HW_HSH_RCP_QW0_PE,
+	HW_HSH_RCP_QW0_OFS,
+	HW_HSH_RCP_QW4_PE,
+	HW_HSH_RCP_QW4_OFS,
+	HW_HSH_RCP_W8_PE,
+	HW_HSH_RCP_W8_OFS,
+	HW_HSH_RCP_W8_SORT,
+	HW_HSH_RCP_W9_PE,
+	HW_HSH_RCP_W9_OFS,
+	HW_HSH_RCP_W9_SORT,
+	HW_HSH_RCP_W9_P,
+	HW_HSH_RCP_P_MASK,
+	HW_HSH_RCP_WORD_MASK,
+	HW_HSH_RCP_SEED,
+	HW_HSH_RCP_TNL_P,
+	HW_HSH_RCP_HSH_VALID,
+	HW_HSH_RCP_HSH_TYPE,
+	HW_HSH_RCP_TOEPLITZ,
+	HW_HSH_RCP_K,
+	HW_HSH_RCP_AUTO_IPV4_MASK
+};
+bool hw_mod_hsh_present(struct flow_api_backend_s *be);
+int hw_mod_hsh_alloc(struct flow_api_backend_s *be);
+void hw_mod_hsh_free(struct flow_api_backend_s *be);
+int hw_mod_hsh_reset(struct flow_api_backend_s *be);
+int hw_mod_hsh_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 struct qsl_func_s {
 	COMMON_FUNC_INFO_S;
@@ -688,6 +723,7 @@ struct flow_api_backend_s {
 	struct cat_func_s cat;
 	struct km_func_s km;
 	struct flm_func_s flm;
+	struct hsh_func_s hsh;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;
