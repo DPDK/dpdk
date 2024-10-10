@@ -27,6 +27,7 @@ typedef struct hw_info_s {
  * Services provided by the adapter module
  */
 #include "nt4ga_filter.h"
+#include "ntnic_stat.h"
 
 typedef struct adapter_info_s {
 	struct nt4ga_filter_s nt4ga_filter;

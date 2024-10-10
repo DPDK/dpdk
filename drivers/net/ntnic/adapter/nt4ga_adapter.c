@@ -212,6 +212,20 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		}
 	}
 
+	nthw_rmc_t *p_nthw_rmc = nthw_rmc_new();
+	if (p_nthw_rmc == NULL) {
+		NT_LOG(ERR, NTNIC, "Failed to allocate memory for RMC module");
+		return -1;
+	}
+
+	res = nthw_rmc_init(p_nthw_rmc, p_fpga, 0);
+	if (res) {
+		NT_LOG(ERR, NTNIC, "Failed to initialize RMC module");
+		return -1;
+	}
+
+	nthw_rmc_unblock(p_nthw_rmc, false);
+
 	return 0;
 }
 

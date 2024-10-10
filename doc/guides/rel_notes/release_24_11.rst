@@ -137,6 +137,7 @@ New Features
   * Extended and fixed the implementation of the logging
   * Added NT flow filter init API
   * Added NT flow backend initialization API
+  * Added initialization of FPGA modules related to flow HW offload
 
 * **Added cryptodev queue pair reset support.**
 
