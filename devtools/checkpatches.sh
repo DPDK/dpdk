@@ -89,6 +89,7 @@ check_forbidden_additions() { # <patch>
 
 	# refrain from using compiler attribute without defining a common macro
 	awk -v FOLDERS="lib drivers app examples" \
+		-v SKIP_FILES='lib/eal/include/rte_common.h' \
 		-v EXPRESSIONS="__attribute__" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using compiler attribute directly' \
