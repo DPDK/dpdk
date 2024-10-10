@@ -26,6 +26,7 @@
 #include "nthw_fpga_reg_defs_i2cm.h"
 #include "nthw_fpga_reg_defs_ifr.h"
 #include "nthw_fpga_reg_defs_iic.h"
+#include "nthw_fpga_reg_defs_ins.h"
 #include "nthw_fpga_reg_defs_km.h"
 #include "nthw_fpga_reg_defs_mac_pcs.h"
 #include "nthw_fpga_reg_defs_pcie3.h"
@@ -40,6 +41,7 @@
 #include "nthw_fpga_reg_defs_slc.h"
 #include "nthw_fpga_reg_defs_slc_lr.h"
 #include "nthw_fpga_reg_defs_tx_cpy.h"
+#include "nthw_fpga_reg_defs_tx_ins.h"
 
 /* aliases */
 
