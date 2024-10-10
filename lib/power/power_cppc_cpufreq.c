@@ -34,7 +34,7 @@
 #define POWER_SYSFILE_SYS_MAX \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/cpuinfo_max_freq"
 
-#define POWER_CPPC_DRIVER "cppc-cpufreq"
+#define POWER_CPPC_DRIVER "cppc_cpufreq"
 #define BUS_FREQ     100000
 
 enum power_state {
