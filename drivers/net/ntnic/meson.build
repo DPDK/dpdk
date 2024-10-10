@@ -17,6 +17,7 @@ includes = [
         include_directories('nthw'),
         include_directories('nthw/supported'),
         include_directories('nthw/model'),
+        include_directories('nthw/flow_filter'),
         include_directories('nim/'),
 ]
 
@@ -43,7 +44,9 @@ sources = files(
         'nthw/core/nthw_sdc.c',
         'nthw/core/nthw_si5340.c',
         'nthw/flow_api/flow_api.c',
+        'nthw/flow_api/flow_backend/flow_backend.c',
         'nthw/flow_api/flow_filter.c',
+        'nthw/flow_filter/flow_nthw_info.c',
         'nthw/model/nthw_fpga_model.c',
         'nthw/nthw_platform.c',
         'nthw/nthw_rac.c',

@@ -124,7 +124,9 @@ struct flow_backend_ops {
 	void (*bin_flow_backend_done)(void *be_dev);
 };
 
+void register_flow_backend_ops(const struct flow_backend_ops *ops);
 const struct flow_backend_ops *get_flow_backend_ops(void);
+void flow_backend_init(void);
 
 struct flow_filter_ops {
 	int (*flow_filter_init)(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device,

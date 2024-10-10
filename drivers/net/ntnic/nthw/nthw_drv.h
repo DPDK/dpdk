@@ -14,6 +14,8 @@ typedef enum nt_meta_port_type_e {
 	PORT_TYPE_OVERRIDE,
 } nt_meta_port_type_t;
 
+#include "nthw_helper.h"
+
 enum fpga_info_profile {
 	FPGA_INFO_PROFILE_UNKNOWN = 0,
 	FPGA_INFO_PROFILE_VSWITCH = 1,
