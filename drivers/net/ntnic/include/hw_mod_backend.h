@@ -370,6 +370,122 @@ struct flm_func_s {
 		struct hw_mod_flm_v25_s v25;
 	};
 };
+enum hw_flm_e {
+	/* functions */
+	HW_FLM_CONTROL_PRESET_ALL = 0,
+	HW_FLM_RCP_PRESET_ALL,
+	HW_FLM_FLOW_LRN_DATA,
+	HW_FLM_FLOW_INF_STA_DATA,
+	/* Control fields */
+	HW_FLM_CONTROL_ENABLE = FIELD_START_INDEX,
+	HW_FLM_CONTROL_INIT,
+	HW_FLM_CONTROL_LDS,
+	HW_FLM_CONTROL_LFS,
+	HW_FLM_CONTROL_LIS,
+	HW_FLM_CONTROL_UDS,
+	HW_FLM_CONTROL_UIS,
+	HW_FLM_CONTROL_RDS,
+	HW_FLM_CONTROL_RIS,
+	HW_FLM_CONTROL_PDS,
+	HW_FLM_CONTROL_PIS,
+	HW_FLM_CONTROL_CRCWR,
+	HW_FLM_CONTROL_CRCRD,
+	HW_FLM_CONTROL_RBL,
+	HW_FLM_CONTROL_EAB,
+	HW_FLM_CONTROL_SPLIT_SDRAM_USAGE,
+	HW_FLM_STATUS_CALIB_SUCCESS,
+	HW_FLM_STATUS_CALIB_FAIL,
+	HW_FLM_STATUS_INITDONE,
+	HW_FLM_STATUS_IDLE,
+	HW_FLM_STATUS_CRITICAL,
+	HW_FLM_STATUS_PANIC,
+	HW_FLM_STATUS_CRCERR,
+	HW_FLM_STATUS_EFT_BP,
+	HW_FLM_STATUS_CACHE_BUFFER_CRITICAL,
+	HW_FLM_LOAD_BIN,
+	HW_FLM_LOAD_LPS,
+	HW_FLM_LOAD_APS,
+	HW_FLM_PRIO_LIMIT0,
+	HW_FLM_PRIO_FT0,
+	HW_FLM_PRIO_LIMIT1,
+	HW_FLM_PRIO_FT1,
+	HW_FLM_PRIO_LIMIT2,
+	HW_FLM_PRIO_FT2,
+	HW_FLM_PRIO_LIMIT3,
+	HW_FLM_PRIO_FT3,
+	HW_FLM_PST_PRESET_ALL,
+	HW_FLM_PST_BP,
+	HW_FLM_PST_PP,
+	HW_FLM_PST_TP,
+	HW_FLM_RCP_LOOKUP,
+	HW_FLM_RCP_QW0_DYN,
+	HW_FLM_RCP_QW0_OFS,
+	HW_FLM_RCP_QW0_SEL,
+	HW_FLM_RCP_QW4_DYN,
+	HW_FLM_RCP_QW4_OFS,
+	HW_FLM_RCP_SW8_DYN,
+	HW_FLM_RCP_SW8_OFS,
+	HW_FLM_RCP_SW8_SEL,
+	HW_FLM_RCP_SW9_DYN,
+	HW_FLM_RCP_SW9_OFS,
+	HW_FLM_RCP_MASK,
+	HW_FLM_RCP_KID,
+	HW_FLM_RCP_OPN,
+	HW_FLM_RCP_IPN,
+	HW_FLM_RCP_BYT_DYN,
+	HW_FLM_RCP_BYT_OFS,
+	HW_FLM_RCP_TXPLM,
+	HW_FLM_RCP_AUTO_IPV4_MASK,
+	HW_FLM_BUF_CTRL_LRN_FREE,
+	HW_FLM_BUF_CTRL_INF_AVAIL,
+	HW_FLM_BUF_CTRL_STA_AVAIL,
+	HW_FLM_STAT_LRN_DONE,
+	HW_FLM_STAT_LRN_IGNORE,
+	HW_FLM_STAT_LRN_FAIL,
+	HW_FLM_STAT_UNL_DONE,
+	HW_FLM_STAT_UNL_IGNORE,
+	HW_FLM_STAT_REL_DONE,
+	HW_FLM_STAT_REL_IGNORE,
+	HW_FLM_STAT_PRB_DONE,
+	HW_FLM_STAT_PRB_IGNORE,
+	HW_FLM_STAT_AUL_DONE,
+	HW_FLM_STAT_AUL_IGNORE,
+	HW_FLM_STAT_AUL_FAIL,
+	HW_FLM_STAT_TUL_DONE,
+	HW_FLM_STAT_FLOWS,
+	HW_FLM_STAT_STA_DONE,	/* module ver 0.20 */
+	HW_FLM_STAT_INF_DONE,	/* module ver 0.20 */
+	HW_FLM_STAT_INF_SKIP,	/* module ver 0.20 */
+	HW_FLM_STAT_PCK_HIT,	/* module ver 0.20 */
+	HW_FLM_STAT_PCK_MISS,	/* module ver 0.20 */
+	HW_FLM_STAT_PCK_UNH,	/* module ver 0.20 */
+	HW_FLM_STAT_PCK_DIS,	/* module ver 0.20 */
+	HW_FLM_STAT_CSH_HIT,	/* module ver 0.20 */
+	HW_FLM_STAT_CSH_MISS,	/* module ver 0.20 */
+	HW_FLM_STAT_CSH_UNH,	/* module ver 0.20 */
+	HW_FLM_STAT_CUC_START,	/* module ver 0.20 */
+	HW_FLM_STAT_CUC_MOVE,	/* module ver 0.20 */
+	HW_FLM_SCAN_I,	/* module ver 0.22 */
+	HW_FLM_SCRUB_PRESET_ALL,
+	HW_FLM_SCRUB_T,	/* module ver 0.22 */
+	HW_FLM_SCRUB_R,	/* module ver 0.24 */
+	HW_FLM_SCRUB_DEL,	/* module ver 0.24 */
+	HW_FLM_SCRUB_INF,	/* module ver 0.24 */
+};
+
+bool hw_mod_flm_present(struct flow_api_backend_s *be);
+int hw_mod_flm_alloc(struct flow_api_backend_s *be);
+void hw_mod_flm_free(struct flow_api_backend_s *be);
+int hw_mod_flm_reset(struct flow_api_backend_s *be);
+
+int hw_mod_flm_control_flush(struct flow_api_backend_s *be);
+int hw_mod_flm_control_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value);
+
+int hw_mod_flm_scan_flush(struct flow_api_backend_s *be);
+
+int hw_mod_flm_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_flm_scrub_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 struct hsh_func_s {
 	COMMON_FUNC_INFO_S;
@@ -571,6 +687,7 @@ struct flow_api_backend_s {
 	/* flow filter FPGA modules */
 	struct cat_func_s cat;
 	struct km_func_s km;
+	struct flm_func_s flm;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;
