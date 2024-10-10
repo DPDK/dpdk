@@ -136,6 +136,7 @@ New Features
   * Fix issues related to release 24.07
   * Extended and fixed the implementation of the logging
   * Added NT flow filter init API
+  * Added NT flow backend initialization API
 
 * **Added cryptodev queue pair reset support.**
 

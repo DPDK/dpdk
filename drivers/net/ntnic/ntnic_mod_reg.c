@@ -89,9 +89,24 @@ struct rst9563_ops *get_rst9563_ops(void)
 	return rst9563_ops;
 }
 
+static const struct flow_backend_ops *flow_backend_ops;
+
+const struct flow_backend_ops *get_flow_backend_ops(void)
+{
+	return flow_backend_ops;
+}
+
 static const struct flow_filter_ops *flow_filter_ops;
+
+void register_flow_filter_ops(const struct flow_filter_ops *ops)
+{
+	flow_filter_ops = ops;
+}
 
 const struct flow_filter_ops *get_flow_filter_ops(void)
 {
+	if (flow_filter_ops == NULL)
+		init_flow_filter();
+
 	return flow_filter_ops;
 }

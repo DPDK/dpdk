@@ -118,12 +118,21 @@ void register_rst9563_ops(struct rst9563_ops *ops);
 struct rst9563_ops *get_rst9563_ops(void);
 void rst9563_ops_init(void);
 
+struct flow_backend_ops {
+	const struct flow_api_backend_ops *(*bin_flow_backend_init)(nthw_fpga_t *p_fpga,
+		void **be_dev);
+};
+
+const struct flow_backend_ops *get_flow_backend_ops(void);
+
 struct flow_filter_ops {
 	int (*flow_filter_init)(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device,
 		int adapter_no);
 	int (*flow_filter_done)(struct flow_nic_dev *dev);
 };
 
+void register_flow_filter_ops(const struct flow_filter_ops *ops);
 const struct flow_filter_ops *get_flow_filter_ops(void);
+void init_flow_filter(void);
 
 #endif	/* __NTNIC_MOD_REG_H__ */
