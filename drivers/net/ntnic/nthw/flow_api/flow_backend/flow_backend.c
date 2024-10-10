@@ -11,6 +11,7 @@
 #include "flow_nthw_km.h"
 #include "flow_nthw_flm.h"
 #include "flow_nthw_hsh.h"
+#include "flow_nthw_qsl.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -30,6 +31,7 @@ static struct backend_dev_s {
 	struct km_nthw *p_km_nthw;
 	struct flm_nthw *p_flm_nthw;
 	struct hsh_nthw *p_hsh_nthw;
+	struct qsl_nthw *p_qsl_nthw;
 	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
@@ -1326,6 +1328,115 @@ static int hsh_rcp_flush(void *be_dev, const struct hsh_func_s *hsh, int categor
 }
 
 /*
+ * QSL
+ */
+
+static bool qsl_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_qsl_nthw != NULL;
+}
+
+static uint32_t qsl_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return (uint32_t)((nthw_module_get_major_version(be->p_qsl_nthw->m_qsl) << 16) |
+			(nthw_module_get_minor_version(be->p_qsl_nthw->m_qsl) & 0xffff));
+}
+
+static int qsl_rcp_flush(void *be_dev, const struct qsl_func_s *qsl, int category, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, qsl, be->p_qsl_nthw);
+
+	if (qsl->ver == 7) {
+		qsl_nthw_rcp_cnt(be->p_qsl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			qsl_nthw_rcp_select(be->p_qsl_nthw, category + i);
+			qsl_nthw_rcp_discard(be->p_qsl_nthw, qsl->v7.rcp[category + i].discard);
+			qsl_nthw_rcp_drop(be->p_qsl_nthw, qsl->v7.rcp[category + i].drop);
+			qsl_nthw_rcp_tbl_lo(be->p_qsl_nthw, qsl->v7.rcp[category + i].tbl_lo);
+			qsl_nthw_rcp_tbl_hi(be->p_qsl_nthw, qsl->v7.rcp[category + i].tbl_hi);
+			qsl_nthw_rcp_tbl_idx(be->p_qsl_nthw, qsl->v7.rcp[category + i].tbl_idx);
+			qsl_nthw_rcp_tbl_msk(be->p_qsl_nthw, qsl->v7.rcp[category + i].tbl_msk);
+			qsl_nthw_rcp_lr(be->p_qsl_nthw, qsl->v7.rcp[category + i].lr);
+			qsl_nthw_rcp_tsa(be->p_qsl_nthw, qsl->v7.rcp[category + i].tsa);
+			qsl_nthw_rcp_vli(be->p_qsl_nthw, qsl->v7.rcp[category + i].vli);
+			qsl_nthw_rcp_flush(be->p_qsl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(qsl, be->p_qsl_nthw);
+	return 0;
+}
+
+static int qsl_qst_flush(void *be_dev, const struct qsl_func_s *qsl, int entry, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, qsl, be->p_qsl_nthw);
+
+	if (qsl->ver == 7) {
+		qsl_nthw_qst_cnt(be->p_qsl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			qsl_nthw_qst_select(be->p_qsl_nthw, entry + i);
+			qsl_nthw_qst_queue(be->p_qsl_nthw, qsl->v7.qst[entry + i].queue);
+			qsl_nthw_qst_en(be->p_qsl_nthw, qsl->v7.qst[entry + i].en);
+
+			qsl_nthw_qst_tx_port(be->p_qsl_nthw, qsl->v7.qst[entry + i].tx_port);
+			qsl_nthw_qst_lre(be->p_qsl_nthw, qsl->v7.qst[entry + i].lre);
+			qsl_nthw_qst_tci(be->p_qsl_nthw, qsl->v7.qst[entry + i].tci);
+			qsl_nthw_qst_ven(be->p_qsl_nthw, qsl->v7.qst[entry + i].ven);
+			qsl_nthw_qst_flush(be->p_qsl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(qsl, be->p_qsl_nthw);
+	return 0;
+}
+
+static int qsl_qen_flush(void *be_dev, const struct qsl_func_s *qsl, int entry, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, qsl, be->p_qsl_nthw);
+
+	if (qsl->ver == 7) {
+		qsl_nthw_qen_cnt(be->p_qsl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			qsl_nthw_qen_select(be->p_qsl_nthw, entry + i);
+			qsl_nthw_qen_en(be->p_qsl_nthw, qsl->v7.qen[entry + i].en);
+			qsl_nthw_qen_flush(be->p_qsl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(qsl, be->p_qsl_nthw);
+	return 0;
+}
+
+static int qsl_unmq_flush(void *be_dev, const struct qsl_func_s *qsl, int entry, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, qsl, be->p_qsl_nthw);
+
+	if (qsl->ver == 7) {
+		qsl_nthw_unmq_cnt(be->p_qsl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			qsl_nthw_unmq_select(be->p_qsl_nthw, entry + i);
+			qsl_nthw_unmq_dest_queue(be->p_qsl_nthw,
+				qsl->v7.unmq[entry + i].dest_queue);
+			qsl_nthw_unmq_en(be->p_qsl_nthw, qsl->v7.unmq[entry + i].en);
+			qsl_nthw_unmq_flush(be->p_qsl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(qsl, be->p_qsl_nthw);
+	return 0;
+}
+
+/*
  * DBS
  */
 
@@ -1438,6 +1549,13 @@ const struct flow_api_backend_ops flow_be_iface = {
 	hsh_get_present,
 	hsh_get_version,
 	hsh_rcp_flush,
+
+	qsl_get_present,
+	qsl_get_version,
+	qsl_rcp_flush,
+	qsl_qst_flush,
+	qsl_qen_flush,
+	qsl_unmq_flush,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
@@ -1498,6 +1616,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_hsh_nthw = NULL;
 	}
 
+	/* Init nthw QSL */
+	if (qsl_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct qsl_nthw *pqslnthw = qsl_nthw_new();
+		qsl_nthw_init(pqslnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_qsl_nthw = pqslnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_qsl_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1512,6 +1640,7 @@ static void bin_flow_backend_done(void *dev)
 	km_nthw_delete(be_dev->p_km_nthw);
 	flm_nthw_delete(be_dev->p_flm_nthw);
 	hsh_nthw_delete(be_dev->p_hsh_nthw);
+	qsl_nthw_delete(be_dev->p_qsl_nthw);
 }
 
 static const struct flow_backend_ops ops = {
