@@ -37,7 +37,7 @@ int nthw_sdc_init(nthw_sdc_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		return mod == NULL ? -1 : 0;
 
 	if (mod == NULL) {
-		NT_LOG(ERR, NTHW, "%s: SDC %d: no such instance\n", p_adapter_id_str, n_instance);
+		NT_LOG(ERR, NTHW, "%s: SDC %d: no such instance", p_adapter_id_str, n_instance);
 		return -1;
 	}
 

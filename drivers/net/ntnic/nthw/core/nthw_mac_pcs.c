@@ -35,7 +35,7 @@ int nthw_mac_pcs_init(nthw_mac_pcs_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		return mod == NULL ? -1 : 0;
 
 	if (mod == NULL) {
-		NT_LOG(ERR, NTHW, "%s: MAC_PCS %d: no such instance\n",
+		NT_LOG(ERR, NTHW, "%s: MAC_PCS %d: no such instance",
 			p_fpga->p_fpga_info->mp_adapter_id_str, n_instance);
 		return -1;
 	}
@@ -596,7 +596,7 @@ bool nthw_mac_pcs_reset_required(nthw_mac_pcs_t *p)
 
 void nthw_mac_pcs_set_fec(nthw_mac_pcs_t *p, bool enable)
 {
-	NT_LOG(DBG, NTHW, "Port %u: Set FEC: %u\n", p->m_port_no, enable);
+	NT_LOG(DBG, NTHW, "Port %u: Set FEC: %u", p->m_port_no, enable);
 
 	nthw_field_get_updated(p->mp_field_fec_ctrl_reg_rs_fec_ctrl_in);
 
@@ -646,12 +646,12 @@ void nthw_mac_pcs_reset_fec_counters(nthw_mac_pcs_t *p)
 	nthw_register_update(p->mp_reg_fec_ucw_cnt);
 
 	if (nthw_field_get_val32(p->mp_field_fec_cw_cnt_cw_cnt)) {
-		NT_LOG(DBG, NTHW, "Port %u: FEC_CW_CNT: %u\n", p->m_port_no,
+		NT_LOG(DBG, NTHW, "Port %u: FEC_CW_CNT: %u", p->m_port_no,
 			nthw_field_get_val32(p->mp_field_fec_cw_cnt_cw_cnt));
 	}
 
 	if (nthw_field_get_val32(p->mp_field_fec_ucw_cnt_ucw_cnt)) {
-		NT_LOG(DBG, NTHW, "Port %u: FEC_UCW_CNT: %u\n", p->m_port_no,
+		NT_LOG(DBG, NTHW, "Port %u: FEC_UCW_CNT: %u", p->m_port_no,
 			nthw_field_get_val32(p->mp_field_fec_ucw_cnt_ucw_cnt));
 	}
 }
@@ -735,7 +735,7 @@ void nthw_mac_pcs_set_gty_tx_tuning(nthw_mac_pcs_t *p, uint8_t lane, uint8_t tx_
 	}
 
 	NT_LOG(DBG, NTHW,
-		"Port %u, lane %u: GTY tx_pre_csr: %d, tx_diff_ctl: %d, tx_post_csr: %d\n",
+		"Port %u, lane %u: GTY tx_pre_csr: %d, tx_diff_ctl: %d, tx_post_csr: %d",
 		p->m_port_no, lane, tx_pre_csr, tx_diff_ctl, tx_post_csr);
 }
 
@@ -768,7 +768,7 @@ void nthw_mac_pcs_set_receiver_equalization_mode(nthw_mac_pcs_t *p, uint8_t mode
 	nthw_field_set_val32(p->mp_field_gty_ctl_rx_equa_rst2, 0);
 	nthw_field_set_val_flush32(p->mp_field_gty_ctl_rx_equa_rst3, 0);
 
-	NT_LOG(DBG, NTHW, "Port %u: GTY receiver mode: %s\n", p->m_port_no,
+	NT_LOG(DBG, NTHW, "Port %u: GTY receiver mode: %s", p->m_port_no,
 		(mode == c_mac_pcs_receiver_mode_dfe ? "DFE" : "LPM"));
 }
 
@@ -794,7 +794,7 @@ void nthw_mac_pcs_swap_gty_tx_polarity(nthw_mac_pcs_t *p, uint8_t lane, bool swa
 		break;
 	}
 
-	NT_LOG(DBG, NTHW, "Port %u: set GTY Tx lane (%d) polarity: %d\n", p->m_port_no, lane,
+	NT_LOG(DBG, NTHW, "Port %u: set GTY Tx lane (%d) polarity: %d", p->m_port_no, lane,
 		swap);
 }
 
@@ -820,7 +820,7 @@ void nthw_mac_pcs_swap_gty_rx_polarity(nthw_mac_pcs_t *p, uint8_t lane, bool swa
 		break;
 	}
 
-	NT_LOG(DBG, NTHW, "Port %u: set GTY Rx lane (%d) polarity: %d\n", p->m_port_no, lane,
+	NT_LOG(DBG, NTHW, "Port %u: set GTY Rx lane (%d) polarity: %d", p->m_port_no, lane,
 		swap);
 }
 

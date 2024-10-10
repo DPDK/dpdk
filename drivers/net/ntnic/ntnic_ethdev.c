@@ -44,7 +44,7 @@ store_pdrv(struct drv_s *p_drv)
 {
 	if (p_drv->adapter_no >= NUM_ADAPTER_MAX) {
 		NT_LOG(ERR, NTNIC,
-			"Internal error adapter number %u out of range. Max number of adapters: %u\n",
+			"Internal error adapter number %u out of range. Max number of adapters: %u",
 			p_drv->adapter_no, NUM_ADAPTER_MAX);
 		return;
 	}
@@ -52,7 +52,7 @@ store_pdrv(struct drv_s *p_drv)
 	if (_g_p_drv[p_drv->adapter_no] != 0) {
 		NT_LOG(WRN, NTNIC,
 			"Overwriting adapter structure for PCI  " PCIIDENT_PRINT_STR
-			" with adapter structure for PCI  " PCIIDENT_PRINT_STR "\n",
+			" with adapter structure for PCI  " PCIIDENT_PRINT_STR,
 			PCIIDENT_TO_DOMAIN(_g_p_drv[p_drv->adapter_no]->ntdrv.pciident),
 			PCIIDENT_TO_BUSNR(_g_p_drv[p_drv->adapter_no]->ntdrv.pciident),
 			PCIIDENT_TO_DEVNR(_g_p_drv[p_drv->adapter_no]->ntdrv.pciident),
@@ -95,7 +95,7 @@ eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Link management module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
@@ -133,7 +133,7 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Link management module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
@@ -174,7 +174,7 @@ eth_mac_addr_add(struct rte_eth_dev *eth_dev,
 	if (index >= NUM_MAC_ADDRS_PER_PORT) {
 		const struct pmd_internals *const internals =
 			(struct pmd_internals *)eth_dev->data->dev_private;
-		NT_LOG_DBGX(DEBUG, NTNIC, "Port %i: illegal index %u (>= %u)\n",
+		NT_LOG_DBGX(DBG, NTNIC, "Port %i: illegal index %u (>= %u)",
 			internals->n_intf_no, index, NUM_MAC_ADDRS_PER_PORT);
 		return -1;
 	}
@@ -204,8 +204,8 @@ eth_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	size_t i;
 
 	if (nb_mc_addr >= NUM_MULTICAST_ADDRS_PER_PORT) {
-		NT_LOG_DBGX(DEBUG, NTNIC,
-			"Port %i: too many multicast addresses %u (>= %u)\n",
+		NT_LOG_DBGX(DBG, NTNIC,
+			"Port %i: too many multicast addresses %u (>= %u)",
 			internals->n_intf_no, nb_mc_addr, NUM_MULTICAST_ADDRS_PER_PORT);
 		return -1;
 	}
@@ -223,7 +223,7 @@ eth_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 static int
 eth_dev_configure(struct rte_eth_dev *eth_dev)
 {
-	NT_LOG_DBGX(DEBUG, NTNIC, "Called for eth_dev %p\n", eth_dev);
+	NT_LOG_DBGX(DBG, NTNIC, "Called for eth_dev %p", eth_dev);
 
 	/* The device is ALWAYS running promiscuous mode. */
 	eth_dev->data->promiscuous ^= ~eth_dev->data->promiscuous;
@@ -236,7 +236,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Link management module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
@@ -245,7 +245,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 	const int n_intf_no = internals->n_intf_no;
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
 
-	NT_LOG_DBGX(DEBUG, NTNIC, "Port %u\n", internals->n_intf_no);
+	NT_LOG_DBGX(DBG, NTNIC, "Port %u", internals->n_intf_no);
 
 	if (internals->type == PORT_TYPE_VIRTUAL || internals->type == PORT_TYPE_OVERRIDE) {
 		eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
@@ -264,8 +264,8 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 		while (port_ops->get_link_status(p_adapter_info, n_intf_no) == RTE_ETH_LINK_DOWN) {
 			/* break out after 5 sec */
 			if (++loop >= 50) {
-				NT_LOG_DBGX(DEBUG, NTNIC,
-					"TIMEOUT No link on port %i (5sec timeout)\n",
+				NT_LOG_DBGX(DBG, NTNIC,
+					"TIMEOUT No link on port %i (5sec timeout)",
 					internals->n_intf_no);
 				break;
 			}
@@ -294,7 +294,7 @@ eth_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
 
-	NT_LOG_DBGX(DEBUG, NTNIC, "Port %u\n", internals->n_intf_no);
+	NT_LOG_DBGX(DBG, NTNIC, "Port %u", internals->n_intf_no);
 
 	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	return 0;
@@ -306,7 +306,7 @@ eth_dev_set_link_up(struct rte_eth_dev *eth_dev)
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Link management module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
@@ -332,7 +332,7 @@ eth_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Link management module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
@@ -358,7 +358,7 @@ drv_deinit(struct drv_s *p_drv)
 	const struct adapter_ops *adapter_ops = get_adapter_ops();
 
 	if (adapter_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Adapter module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Adapter module uninitialized");
 		return;
 	}
 
@@ -424,7 +424,7 @@ eth_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version, size_t fw_size
 static int
 promiscuous_enable(struct rte_eth_dev __rte_unused(*dev))
 {
-	NT_LOG(DBG, NTHW, "The device always run promiscuous mode.");
+	NT_LOG(DBG, NTHW, "The device always run promiscuous mode");
 	return 0;
 }
 
@@ -451,14 +451,14 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	const struct port_ops *port_ops = get_port_ops();
 
 	if (port_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Link management module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Link management module uninitialized");
 		return -1;
 	}
 
 	const struct adapter_ops *adapter_ops = get_adapter_ops();
 
 	if (adapter_ops == NULL) {
-		NT_LOG(ERR, NTNIC, "Adapter module uninitialized\n");
+		NT_LOG(ERR, NTNIC, "Adapter module uninitialized");
 		return -1;
 	}
 
@@ -472,7 +472,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	int n_phy_ports;
 	struct port_link_speed pls_mbps[NUM_ADAPTER_PORTS_MAX] = { 0 };
 	int num_port_speeds = 0;
-	NT_LOG_DBGX(DEBUG, NTNIC, "Dev %s PF #%i Init : %02x:%02x:%i\n", pci_dev->name,
+	NT_LOG_DBGX(DBG, NTNIC, "Dev %s PF #%i Init : %02x:%02x:%i", pci_dev->name,
 		pci_dev->addr.function, pci_dev->addr.bus, pci_dev->addr.devid,
 		pci_dev->addr.function);
 
@@ -482,7 +482,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 			pci_dev->device.numa_node);
 
 	if (!p_drv) {
-		NT_LOG_DBGX(ERR, NTNIC, "%s: error %d\n",
+		NT_LOG_DBGX(ERR, NTNIC, "%s: error %d",
 			(pci_dev->name[0] ? pci_dev->name : "NA"), -1);
 		return -1;
 	}
@@ -491,7 +491,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	int vfio = nt_vfio_setup(pci_dev);
 
 	if (vfio < 0) {
-		NT_LOG_DBGX(ERR, TNIC, "%s: vfio_setup error %d\n",
+		NT_LOG_DBGX(ERR, NTNIC, "%s: vfio_setup error %d",
 			(pci_dev->name[0] ? pci_dev->name : "NA"), -1);
 		rte_free(p_drv);
 		return -1;
@@ -522,7 +522,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	p_nt_drv->adapter_info.hw_info.pci_sub_vendor_id = pci_dev->id.subsystem_vendor_id;
 	p_nt_drv->adapter_info.hw_info.pci_sub_device_id = pci_dev->id.subsystem_device_id;
 
-	NT_LOG(DBG, NTNIC, "%s: " PCIIDENT_PRINT_STR " %04X:%04X: %04X:%04X:\n",
+	NT_LOG(DBG, NTNIC, "%s: " PCIIDENT_PRINT_STR " %04X:%04X: %04X:%04X:",
 		p_nt_drv->adapter_info.mp_adapter_id_str, PCIIDENT_TO_DOMAIN(p_nt_drv->pciident),
 		PCIIDENT_TO_BUSNR(p_nt_drv->pciident), PCIIDENT_TO_DEVNR(p_nt_drv->pciident),
 		PCIIDENT_TO_FUNCNR(p_nt_drv->pciident),
@@ -547,7 +547,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	int err = adapter_ops->init(&p_nt_drv->adapter_info);
 
 	if (err != 0) {
-		NT_LOG(ERR, NTNIC, "%s: Cannot initialize the adapter instance\n",
+		NT_LOG(ERR, NTNIC, "%s: Cannot initialize the adapter instance",
 			p_nt_drv->adapter_info.mp_adapter_id_str);
 		return -1;
 	}
@@ -558,7 +558,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		const char *const p_adapter_id_str = p_nt_drv->adapter_info.mp_adapter_id_str;
 		(void)p_adapter_id_str;
 		NT_LOG(DBG, NTNIC,
-			"%s: %s: AdapterPCI=" PCIIDENT_PRINT_STR " Hw=0x%02X_rev%d PhyPorts=%d\n",
+			"%s: %s: AdapterPCI=" PCIIDENT_PRINT_STR " Hw=0x%02X_rev%d PhyPorts=%d",
 			(pci_dev->name[0] ? pci_dev->name : "NA"), p_adapter_id_str,
 			PCIIDENT_TO_DOMAIN(p_nt_drv->adapter_info.fpga_info.pciident),
 			PCIIDENT_TO_BUSNR(p_nt_drv->adapter_info.fpga_info.pciident),
@@ -568,7 +568,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 			fpga_info->n_phy_ports);
 
 	} else {
-		NT_LOG_DBGX(ERR, NTNIC, "%s: error=%d\n",
+		NT_LOG_DBGX(ERR, NTNIC, "%s: error=%d",
 			(pci_dev->name[0] ? pci_dev->name : "NA"), err);
 		return -1;
 	}
@@ -583,21 +583,21 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		char name[32];
 
 		if ((1 << n_intf_no) & ~n_port_mask) {
-			NT_LOG_DBGX(DEBUG, NTNIC,
-				"%s: interface #%d: skipping due to portmask 0x%02X\n",
+			NT_LOG_DBGX(DBG, NTNIC,
+				"%s: interface #%d: skipping due to portmask 0x%02X",
 				p_port_id_str, n_intf_no, n_port_mask);
 			continue;
 		}
 
 		snprintf(name, sizeof(name), "ntnic%d", n_intf_no);
-		NT_LOG_DBGX(DEBUG, NTNIC, "%s: interface #%d: %s: '%s'\n", p_port_id_str,
+		NT_LOG_DBGX(DBG, NTNIC, "%s: interface #%d: %s: '%s'", p_port_id_str,
 			n_intf_no, (pci_dev->name[0] ? pci_dev->name : "NA"), name);
 
 		internals = rte_zmalloc_socket(name, sizeof(struct pmd_internals),
 				RTE_CACHE_LINE_SIZE, pci_dev->device.numa_node);
 
 		if (!internals) {
-			NT_LOG_DBGX(ERR, NTNIC, "%s: %s: error=%d\n",
+			NT_LOG_DBGX(ERR, NTNIC, "%s: %s: error=%d",
 				(pci_dev->name[0] ? pci_dev->name : "NA"), name, -1);
 			return -1;
 		}
@@ -612,13 +612,13 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		/* Setup queue_ids */
 		if (nb_rx_queues > 1) {
 			NT_LOG(DBG, NTNIC,
-				"(%i) NTNIC configured with Rx multi queues. %i queues\n",
+				"(%i) NTNIC configured with Rx multi queues. %i queues",
 				internals->n_intf_no, nb_rx_queues);
 		}
 
 		if (nb_tx_queues > 1) {
 			NT_LOG(DBG, NTNIC,
-				"(%i) NTNIC configured with Tx multi queues. %i queues\n",
+				"(%i) NTNIC configured with Tx multi queues. %i queues",
 				internals->n_intf_no, nb_tx_queues);
 		}
 
@@ -637,7 +637,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		eth_dev = rte_eth_dev_allocate(name);
 
 		if (!eth_dev) {
-			NT_LOG_DBGX(ERR, NTNIC, "%s: %s: error=%d\n",
+			NT_LOG_DBGX(ERR, NTNIC, "%s: %s: error=%d",
 				(pci_dev->name[0] ? pci_dev->name : "NA"), name, -1);
 			return -1;
 		}
@@ -674,7 +674,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 static int
 nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 {
-	NT_LOG_DBGX(DEBUG, NTNIC, "PCI device deinitialization\n");
+	NT_LOG_DBGX(DBG, NTNIC, "PCI device deinitialization");
 
 	int i;
 	char name[32];
@@ -701,31 +701,31 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	int ret;
 
-	NT_LOG_DBGX(DEBUG, NTNIC, "pcidev: name: '%s'\n", pci_dev->name);
-	NT_LOG_DBGX(DEBUG, NTNIC, "devargs: name: '%s'\n", pci_dev->device.name);
+	NT_LOG_DBGX(DBG, NTNIC, "pcidev: name: '%s'", pci_dev->name);
+	NT_LOG_DBGX(DBG, NTNIC, "devargs: name: '%s'", pci_dev->device.name);
 
 	if (pci_dev->device.devargs) {
-		NT_LOG_DBGX(DEBUG, NTNIC, "devargs: args: '%s'\n",
+		NT_LOG_DBGX(DBG, NTNIC, "devargs: args: '%s'",
 			(pci_dev->device.devargs->args ? pci_dev->device.devargs->args : "NULL"));
-		NT_LOG_DBGX(DEBUG, NTNIC, "devargs: data: '%s'\n",
+		NT_LOG_DBGX(DBG, NTNIC, "devargs: data: '%s'",
 			(pci_dev->device.devargs->data ? pci_dev->device.devargs->data : "NULL"));
 	}
 
 	const int n_rte_vfio_no_io_mmu_enabled = rte_vfio_noiommu_is_enabled();
-	NT_LOG(DBG, NTNIC, "vfio_no_iommu_enabled=%d\n", n_rte_vfio_no_io_mmu_enabled);
+	NT_LOG(DBG, NTNIC, "vfio_no_iommu_enabled=%d", n_rte_vfio_no_io_mmu_enabled);
 
 	if (n_rte_vfio_no_io_mmu_enabled) {
-		NT_LOG(ERR, NTNIC, "vfio_no_iommu_enabled=%d: this PMD needs VFIO IOMMU\n",
+		NT_LOG(ERR, NTNIC, "vfio_no_iommu_enabled=%d: this PMD needs VFIO IOMMU",
 			n_rte_vfio_no_io_mmu_enabled);
 		return -1;
 	}
 
 	const enum rte_iova_mode n_rte_io_va_mode = rte_eal_iova_mode();
-	NT_LOG(DBG, NTNIC, "iova mode=%d\n", n_rte_io_va_mode);
+	NT_LOG(DBG, NTNIC, "iova mode=%d", n_rte_io_va_mode);
 
 	NT_LOG(DBG, NTNIC,
 		"busid=" PCI_PRI_FMT
-		" pciid=%04x:%04x_%04x:%04x locstr=%s @ numanode=%d: drv=%s drvalias=%s\n",
+		" pciid=%04x:%04x_%04x:%04x locstr=%s @ numanode=%d: drv=%s drvalias=%s",
 		pci_dev->addr.domain, pci_dev->addr.bus, pci_dev->addr.devid,
 		pci_dev->addr.function, pci_dev->id.vendor_id, pci_dev->id.device_id,
 		pci_dev->id.subsystem_vendor_id, pci_dev->id.subsystem_device_id,
@@ -737,14 +737,14 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	ret = nthw_pci_dev_init(pci_dev);
 
-	NT_LOG_DBGX(DEBUG, NTNIC, "leave: ret=%d\n", ret);
+	NT_LOG_DBGX(DBG, NTNIC, "leave: ret=%d", ret);
 	return ret;
 }
 
 static int
 nthw_pci_remove(struct rte_pci_device *pci_dev)
 {
-	NT_LOG_DBGX(DEBUG, NTNIC);
+	NT_LOG_DBGX(DBG, NTNIC);
 
 	struct drv_s *p_drv = get_pdrv_from_pci(pci_dev->addr);
 	drv_deinit(p_drv);
@@ -762,3 +762,8 @@ static struct rte_pci_driver rte_nthw_pmd = {
 RTE_PMD_REGISTER_PCI(net_ntnic, rte_nthw_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ntnic, nthw_pci_id_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ntnic, "* vfio-pci");
+
+RTE_LOG_REGISTER_SUFFIX(nt_log_general, general, INFO);
+RTE_LOG_REGISTER_SUFFIX(nt_log_nthw, nthw, INFO);
+RTE_LOG_REGISTER_SUFFIX(nt_log_filter, filter, INFO);
+RTE_LOG_REGISTER_SUFFIX(nt_log_ntnic, ntnic, INFO);

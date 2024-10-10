@@ -161,7 +161,7 @@ int nthw_iic_init(nthw_iic_t *p, nthw_fpga_t *p_fpga, int n_iic_instance,
 		return mod == NULL ? -1 : 0;
 
 	if (mod == NULL) {
-		NT_LOG(ERR, NTHW, "%s: I2C %d: no such instance\n", p_adapter_id_str,
+		NT_LOG(ERR, NTHW, "%s: I2C %d: no such instance", p_adapter_id_str,
 			n_iic_instance);
 		return -1;
 	}
@@ -239,7 +239,7 @@ int nthw_iic_init(nthw_iic_t *p, nthw_fpga_t *p_fpga, int n_iic_instance,
 
 	/* Setup controller timing */
 	if (p->mn_iic_cycle_time) {
-		NT_LOG(DBG, NTHW, "%s: I2C%d: cycletime=%d\n", p_adapter_id_str,
+		NT_LOG(DBG, NTHW, "%s: I2C%d: cycletime=%d", p_adapter_id_str,
 			p->mn_iic_instance, p->mn_iic_cycle_time);
 		nthw_iic_reg_set_timing(p, p->mn_iic_cycle_time);
 	}
@@ -284,7 +284,7 @@ int nthw_iic_read_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint
 	int retry = (p->mn_read_data_retry >= 0 ? p->mn_read_data_retry : 10);
 
 	if (n_debug_mode == 0xff) {
-		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d\n", p_adapter_id_str, dev_addr,
+		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d", p_adapter_id_str, dev_addr,
 			a_reg_addr, data_len);
 	}
 
@@ -293,18 +293,18 @@ int nthw_iic_read_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint
 
 		if (retry <= 0) {
 			NT_LOG(ERR, NTHW,
-				"%s: I2C%d: Read retry exhausted (dev_addr=%d a_reg_addr=%d)\n",
+				"%s: I2C%d: Read retry exhausted (dev_addr=%d a_reg_addr=%d)",
 				p_adapter_id_str, p->mn_iic_instance, dev_addr, a_reg_addr);
 			return -1;
 
 		} else {
-			NT_LOG(DBG, NTHW, "%s: I2C%d: Read retry=%d (dev_addr=%d a_reg_addr=%d)\n",
+			NT_LOG(DBG, NTHW, "%s: I2C%d: Read retry=%d (dev_addr=%d a_reg_addr=%d)",
 				p_adapter_id_str, p->mn_iic_instance, retry, dev_addr, a_reg_addr);
 		}
 	}
 
 	if (n_debug_mode == 0xff) {
-		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d, retries remaining: %d\n",
+		NT_LOG(DBG, NTHW, "%s: adr=0x%2.2x, reg=%d, len=%d, retries remaining: %d",
 			p_adapter_id_str, dev_addr, a_reg_addr, data_len, retry);
 	}
 
@@ -331,7 +331,7 @@ int nthw_iic_readbyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8
 		nthw_iic_reg_tx_fifo_write(p, a_reg_addr, 0, 1);
 
 		if (!nthw_iic_bus_ready(p)) {
-			NT_LOG_DBGX(ERR, NTHW, "%s: error:\n", p_adapter_id_str);
+			NT_LOG_DBGX(ERR, NTHW, "%s: error:", p_adapter_id_str);
 			return -1;
 		}
 
@@ -355,7 +355,7 @@ int nthw_iic_readbyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint8
 		return 0;
 
 	} else {
-		NT_LOG_DBGX(ERR, NTHW, "%s: error\n", p_adapter_id_str);
+		NT_LOG_DBGX(ERR, NTHW, "%s: error", p_adapter_id_str);
 		return -1;
 	}
 
@@ -374,13 +374,13 @@ int nthw_iic_write_data(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uin
 
 		if (retry <= 0) {
 			NT_LOG(ERR, NTHW,
-				"%s: I2C%d: Write retry exhausted (dev_addr=%d a_reg_addr=%d)\n",
+				"%s: I2C%d: Write retry exhausted (dev_addr=%d a_reg_addr=%d)",
 				p_adapter_id_str, p->mn_iic_instance, dev_addr, a_reg_addr);
 			return -1;
 
 		} else {
 			NT_LOG(DBG, NTHW,
-				"%s: I2C%d: Write retry=%d (dev_addr=%d a_reg_addr=%d)\n",
+				"%s: I2C%d: Write retry=%d (dev_addr=%d a_reg_addr=%d)",
 				p_adapter_id_str, p->mn_iic_instance, retry, dev_addr, a_reg_addr);
 		}
 	}
@@ -422,11 +422,11 @@ int nthw_iic_writebyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint
 		nthw_iic_reg_tx_fifo_write(p, *p_byte, 0, 1);
 
 		if (!nthw_iic_bus_ready(p)) {
-			NT_LOG_DBGX(WARNING, NTHW, "%s: warn: !busReady\n", p_adapter_id_str);
+			NT_LOG_DBGX(WRN, NTHW, "%s: warn: !busReady", p_adapter_id_str);
 
 			while (true)
 				if (nthw_iic_bus_ready(p)) {
-					NT_LOG_DBGX(DEBUG, NTHW, "%s: info: busReady\n",
+					NT_LOG_DBGX(DBG, NTHW, "%s: info: busReady",
 					p_adapter_id_str);
 					break;
 				}
@@ -435,7 +435,7 @@ int nthw_iic_writebyte(nthw_iic_t *p, uint8_t dev_addr, uint8_t a_reg_addr, uint
 		return 0;
 
 	} else {
-		NT_LOG_DBGX(WARNING, NTHW, "%s\n", p_adapter_id_str);
+		NT_LOG_DBGX(WRN, NTHW, "%s", p_adapter_id_str);
 		return -1;
 	}
 }
@@ -508,7 +508,7 @@ int nthw_iic_scan_dev_addr(nthw_iic_t *p, int n_dev_addr, int n_reg_addr)
 
 	if (res == 0) {
 		NT_LOG(DBG, NTHW,
-			"%s: I2C%d: devaddr=0x%02X (%03d) regaddr=%02X val=%02X (%03d) res=%d\n",
+			"%s: I2C%d: devaddr=0x%02X (%03d) regaddr=%02X val=%02X (%03d) res=%d",
 			p_adapter_id_str, p->mn_iic_instance, n_dev_addr, n_dev_addr, n_reg_addr,
 			data_val, data_val, res);
 	}

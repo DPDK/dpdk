@@ -238,7 +238,7 @@ nthw_fpga_t *nthw_fpga_mgr_query_fpga(nthw_fpga_mgr_t *p_fpga_mgr, uint64_t n_fp
 
 	if (p_fpga) {
 	} else {
-		NT_LOG(ERR, NTHW, "FPGA Id 0x%" PRIX64 ": %04d: %d.%d: no match found\n",
+		NT_LOG(ERR, NTHW, "FPGA Id 0x%" PRIX64 ": %04d: %d.%d: no match found",
 			n_fpga_id, n_fpga_prod_id, n_fpga_ver, n_fpga_rev);
 	}
 
@@ -250,12 +250,12 @@ void nthw_fpga_mgr_log_dump(nthw_fpga_mgr_t *p)
 {
 	int i;
 
-	NT_LOG_DBGX(DEBUG, NTHW, "fpgas=%d\n", p->mn_fpgas);
+	NT_LOG_DBGX(DBG, NTHW, "fpgas=%d", p->mn_fpgas);
 
 	for (i = 0; i < p->mn_fpgas; i++) {
 		nthw_fpga_prod_init_s *p_init = p->mpa_fpga_prod_init[i];
 		(void)p_init;
-		NT_LOG_DBGX(DEBUG, NTHW, "fpga=%d/%d: %04d-%02d-%02d\n", i, p->mn_fpgas,
+		NT_LOG_DBGX(DBG, NTHW, "fpga=%d/%d: %04d-%02d-%02d", i, p->mn_fpgas,
 			p_init->fpga_product_id, p_init->fpga_version, p_init->fpga_revision);
 	}
 }
@@ -496,14 +496,14 @@ nthw_register_t *nthw_module_get_register(nthw_module_t *p, nthw_id_t id)
 	nthw_register_t *p_register;
 
 	if (p == NULL) {
-		NT_LOG(ERR, NTHW, "Illegal module context for register %u\n", id);
+		NT_LOG(ERR, NTHW, "Illegal module context for register %u", id);
 		return NULL;
 	}
 
 	p_register = nthw_module_lookup_register(p, id);
 
 	if (!p_register) {
-		NT_LOG(ERR, NTHW, "Register %u not found in module: %s (%u)\n", id,
+		NT_LOG(ERR, NTHW, "Register %u not found in module: %s (%u)", id,
 			nthw_fpga_mod_id_to_str(p->mn_mod_id), p->mn_mod_id);
 	}
 
@@ -634,14 +634,14 @@ nthw_field_t *nthw_register_get_field(const nthw_register_t *p, nthw_id_t id)
 	nthw_field_t *p_field;
 
 	if (p == NULL) {
-		NT_LOG(ERR, NTHW, "Illegal register context for field %u\n", id);
+		NT_LOG(ERR, NTHW, "Illegal register context for field %u", id);
 		return NULL;
 	}
 
 	p_field = nthw_register_lookup_field(p, id);
 
 	if (!p_field) {
-		NT_LOG(ERR, NTHW, "Field %u not found in module: %s (%u)\n", id,
+		NT_LOG(ERR, NTHW, "Field %u not found in module: %s (%u)", id,
 			nthw_fpga_mod_id_to_str(p->mp_owner->mn_mod_id), p->mp_owner->mn_mod_id);
 	}
 
@@ -846,7 +846,7 @@ void nthw_register_flush(const nthw_register_t *p, uint32_t cnt)
 		rc = nthw_register_write_data(p, cnt);
 
 		if (rc)
-			NT_LOG(ERR, NTHW, "Register write error %d\n", rc);
+			NT_LOG(ERR, NTHW, "Register write error %d", rc);
 
 		for (i = 0; i < cnt; i++)
 			p->mp_dirty[i] = false;
@@ -903,8 +903,8 @@ void nthw_field_init(nthw_field_t *p, nthw_register_t *p_reg, const nthw_fpga_fi
 		p->mn_tail_mask = (1 << bits_remaining) - 1;
 
 		if (p->mn_debug_mode >= 0x100) {
-			NT_LOG_DBGX(DEBUG, NTHW,
-				"fldid=%08d: [%08d:%08d] %08d/%08d: (%08d,%08d) (0x%08X,%08d,0x%08X)\n",
+			NT_LOG_DBGX(DBG, NTHW,
+				"fldid=%08d: [%08d:%08d] %08d/%08d: (%08d,%08d) (0x%08X,%08d,0x%08X)",
 				p_init->id, p_init->low, (p_init->low + p_init->bw),
 				p_init->bw, ((p_init->bw + 31) / 32), p->mn_first_word,
 				p->mn_first_bit, p->mn_front_mask, p->mn_body_length,
@@ -1143,7 +1143,7 @@ static int nthw_field_wait_cond32(const nthw_field_t *p, enum nthw_field_match e
 		(void)n_reg_mask;
 
 		NT_LOG(DBG, NTHW,
-			"Register::Field::wait%s32(Dev: %s, Bus: %s, Addr: 0x%08X, Mask: 0x%08X, Iterations: %d, Interval: %d)\n",
+			"Register::Field::wait%s32(Dev: %s, Bus: %s, Addr: 0x%08X, Mask: 0x%08X, Iterations: %d, Interval: %d)",
 			p_cond_name, p_dev_name, p_bus_name, n_reg_addr, n_reg_mask,
 			n_poll_iterations, n_poll_interval);
 	}

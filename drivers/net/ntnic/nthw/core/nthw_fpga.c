@@ -145,7 +145,7 @@ int nthw_fpga_silabs_detect(nthw_fpga_t *p_fpga, const int n_instance_no, const 
 		}
 	}
 
-	NT_LOG(DBG, NTHW, "%s: %016" PRIX64 ": %d\n", p_adapter_id_str, ident, res);
+	NT_LOG(DBG, NTHW, "%s: %016" PRIX64 ": %d", p_adapter_id_str, ident, res);
 	return res;
 }
 
@@ -210,7 +210,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 			"%04d-%04d-%02d-%02d", n_fpga_type_id, n_fpga_prod_id, n_fpga_ver_id,
 			n_fpga_rev_id);
 
-		NT_LOG(INF, NTHW, "%s: FPGA %s (%" PRIX64 ") [%08X]\n", p_adapter_id_str,
+		NT_LOG(INF, NTHW, "%s: FPGA %s (%" PRIX64 ") [%08X]", p_adapter_id_str,
 			s_fpga_prod_ver_rev_str, n_fpga_ident, n_fpga_build_time);
 	}
 
@@ -225,7 +225,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 		p_fpga_info->mp_fpga = p_fpga;
 
 		if (p_fpga == NULL) {
-			NT_LOG(ERR, NTHW, "%s: Unsupported FPGA: %s (%08X)\n", p_adapter_id_str,
+			NT_LOG(ERR, NTHW, "%s: Unsupported FPGA: %s (%08X)", p_adapter_id_str,
 				s_fpga_prod_ver_rev_str, p_fpga_info->n_fpga_build_time);
 			return -1;
 		}
@@ -238,20 +238,20 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	nthw_fpga_get_param_info(p_fpga_info, p_fpga);
 
 	/* debug: report params */
-	NT_LOG(DBG, NTHW, "%s: NT_NIMS=%d\n", p_adapter_id_str, p_fpga_info->n_nims);
-	NT_LOG(DBG, NTHW, "%s: NT_PHY_PORTS=%d\n", p_adapter_id_str, p_fpga_info->n_phy_ports);
-	NT_LOG(DBG, NTHW, "%s: NT_PHY_QUADS=%d\n", p_adapter_id_str, p_fpga_info->n_phy_quads);
-	NT_LOG(DBG, NTHW, "%s: NT_RX_PORTS=%d\n", p_adapter_id_str, p_fpga_info->n_rx_ports);
-	NT_LOG(DBG, NTHW, "%s: NT_TX_PORTS=%d\n", p_adapter_id_str, p_fpga_info->n_tx_ports);
-	NT_LOG(DBG, NTHW, "%s: nProfile=%d\n", p_adapter_id_str, (int)p_fpga_info->profile);
-	NT_LOG(DBG, NTHW, "%s: bHasMcu=%d\n", p_adapter_id_str, p_mcu_info->mb_has_mcu);
-	NT_LOG(DBG, NTHW, "%s: McuType=%d\n", p_adapter_id_str, p_mcu_info->mn_mcu_type);
-	NT_LOG(DBG, NTHW, "%s: McuDramSize=%d\n", p_adapter_id_str, p_mcu_info->mn_mcu_dram_size);
+	NT_LOG(DBG, NTHW, "%s: NT_NIMS=%d", p_adapter_id_str, p_fpga_info->n_nims);
+	NT_LOG(DBG, NTHW, "%s: NT_PHY_PORTS=%d", p_adapter_id_str, p_fpga_info->n_phy_ports);
+	NT_LOG(DBG, NTHW, "%s: NT_PHY_QUADS=%d", p_adapter_id_str, p_fpga_info->n_phy_quads);
+	NT_LOG(DBG, NTHW, "%s: NT_RX_PORTS=%d", p_adapter_id_str, p_fpga_info->n_rx_ports);
+	NT_LOG(DBG, NTHW, "%s: NT_TX_PORTS=%d", p_adapter_id_str, p_fpga_info->n_tx_ports);
+	NT_LOG(DBG, NTHW, "%s: nProfile=%d", p_adapter_id_str, (int)p_fpga_info->profile);
+	NT_LOG(DBG, NTHW, "%s: bHasMcu=%d", p_adapter_id_str, p_mcu_info->mb_has_mcu);
+	NT_LOG(DBG, NTHW, "%s: McuType=%d", p_adapter_id_str, p_mcu_info->mn_mcu_type);
+	NT_LOG(DBG, NTHW, "%s: McuDramSize=%d", p_adapter_id_str, p_mcu_info->mn_mcu_dram_size);
 
 	p_nthw_rac = nthw_rac_new();
 
 	if (p_nthw_rac == NULL) {
-		NT_LOG(ERR, NTHW, "%s: Unsupported FPGA: RAC is not found: %s (%08X)\n",
+		NT_LOG(ERR, NTHW, "%s: Unsupported FPGA: RAC is not found: %s (%08X)",
 			p_adapter_id_str, s_fpga_prod_ver_rev_str, p_fpga_info->n_fpga_build_time);
 		return -1;
 	}
@@ -273,20 +273,20 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 
 		break;
 	default:
-		NT_LOG(ERR, NTHW, "%s: Unsupported HW product id: %d\n", p_adapter_id_str,
+		NT_LOG(ERR, NTHW, "%s: Unsupported HW product id: %d", p_adapter_id_str,
 			p_fpga_info->n_nthw_adapter_id);
 		res = -1;
 		break;
 	}
 
 	if (!included) {
-		NT_LOG(ERR, NTHW, "%s: NOT INCLUDED HW product: %d\n", p_adapter_id_str,
+		NT_LOG(ERR, NTHW, "%s: NOT INCLUDED HW product: %d", p_adapter_id_str,
 			p_fpga_info->n_nthw_adapter_id);
 		res = -1;
 	}
 
 	if (res) {
-		NT_LOG(ERR, NTHW, "%s: status: 0x%08X\n", p_adapter_id_str, res);
+		NT_LOG(ERR, NTHW, "%s: status: 0x%08X", p_adapter_id_str, res);
 		return res;
 	}
 
@@ -299,7 +299,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 			res = nthw_pcie3_init(p_nthw_pcie3, p_fpga, 0);
 
 			if (res == 0) {
-				NT_LOG(DBG, NTHW, "%s: Pcie3 module found\n", p_adapter_id_str);
+				NT_LOG(DBG, NTHW, "%s: Pcie3 module found", p_adapter_id_str);
 				nthw_pcie3_trigger_sample_time(p_nthw_pcie3);
 
 			} else {
@@ -318,7 +318,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 			res = nthw_hif_init(p_nthw_hif, p_fpga, 0);
 
 			if (res == 0) {
-				NT_LOG(DBG, NTHW, "%s: Hif module found\n", p_adapter_id_str);
+				NT_LOG(DBG, NTHW, "%s: Hif module found", p_adapter_id_str);
 				nthw_hif_trigger_sample_time(p_nthw_hif);
 
 			} else {
