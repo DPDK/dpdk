@@ -22,6 +22,7 @@
 
 uint64_t nt_os_get_time_monotonic_counter(void);
 void nt_os_wait_usec(int val);
+void nt_os_wait_usec_poll(int val);
 
 static inline int min(int a, int b)
 {

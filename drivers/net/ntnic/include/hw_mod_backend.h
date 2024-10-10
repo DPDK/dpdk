@@ -10,6 +10,7 @@
 
 #include "hw_mod_cat_v18.h"
 #include "hw_mod_cat_v21.h"
+#include "hw_mod_flm_v25.h"
 #include "hw_mod_km_v7.h"
 
 #define MAX_PHYS_ADAPTERS 8
@@ -55,6 +56,22 @@ struct km_func_s {
 	uint32_t nb_km_rcp_mask_b_word_size;
 	union {
 		struct hw_mod_km_v7_s v7;
+	};
+};
+
+struct flm_func_s {
+	COMMON_FUNC_INFO_S;
+	uint32_t nb_categories;
+	uint32_t nb_size_mb;
+	uint32_t nb_entry_size;
+	uint32_t nb_variant;
+	uint32_t nb_prios;
+	uint32_t nb_pst_profiles;
+	uint32_t nb_scrub_profiles;
+	uint32_t nb_rpp_clock_in_ps;
+	uint32_t nb_load_aps_max;
+	union {
+		struct hw_mod_flm_v25_s v25;
 	};
 };
 
@@ -140,6 +157,29 @@ struct flow_api_backend_ops {
 		int cnt);
 	int (*km_tci_flush)(void *dev, const struct km_func_s *km, int bank, int record, int cnt);
 	int (*km_tcq_flush)(void *dev, const struct km_func_s *km, int bank, int record, int cnt);
+
+	/* FLM */
+	bool (*get_flm_present)(void *dev);
+	uint32_t (*get_flm_version)(void *dev);
+	int (*flm_control_flush)(void *dev, const struct flm_func_s *flm);
+	int (*flm_status_flush)(void *dev, const struct flm_func_s *flm);
+	int (*flm_status_update)(void *dev, const struct flm_func_s *flm);
+	int (*flm_scan_flush)(void *dev, const struct flm_func_s *flm);
+	int (*flm_load_bin_flush)(void *dev, const struct flm_func_s *flm);
+	int (*flm_prio_flush)(void *dev, const struct flm_func_s *flm);
+	int (*flm_pst_flush)(void *dev, const struct flm_func_s *flm, int index, int cnt);
+	int (*flm_rcp_flush)(void *dev, const struct flm_func_s *flm, int index, int cnt);
+	int (*flm_scrub_flush)(void *dev, const struct flm_func_s *flm, int index, int cnt);
+	int (*flm_buf_ctrl_update)(void *dev, const struct flm_func_s *flm);
+	int (*flm_stat_update)(void *dev, const struct flm_func_s *flm);
+	int (*flm_lrn_data_flush)(void *be_dev, const struct flm_func_s *flm,
+		const uint32_t *lrn_data, uint32_t records,
+		uint32_t *handled_records, uint32_t words_per_record,
+		uint32_t *inf_word_cnt, uint32_t *sta_word_cnt);
+	int (*flm_inf_sta_data_update)(void *be_dev, const struct flm_func_s *flm,
+		uint32_t *inf_data, uint32_t inf_size,
+		uint32_t *inf_word_cnt, uint32_t *sta_data,
+		uint32_t sta_size, uint32_t *sta_word_cnt);
 };
 
 struct flow_api_backend_s {

@@ -23,6 +23,12 @@ void nt_os_wait_usec(int val)
 	rte_delay_us_sleep(val);
 }
 
+/* spins in a waiting loop calling pause asm instruction uses RDTSC - precise wait */
+void nt_os_wait_usec_poll(int val)
+{
+	rte_delay_us(val);
+}
+
 uint64_t nt_os_get_time_monotonic_counter(void)
 {
 	return rte_get_timer_cycles();

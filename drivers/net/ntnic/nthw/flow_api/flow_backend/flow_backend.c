@@ -8,6 +8,7 @@
 #include "flow_nthw_info.h"
 #include "flow_nthw_cat.h"
 #include "flow_nthw_km.h"
+#include "flow_nthw_flm.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -25,6 +26,7 @@ static struct backend_dev_s {
 	struct info_nthw *p_info_nthw;
 	struct cat_nthw *p_cat_nthw;
 	struct km_nthw *p_km_nthw;
+	struct flm_nthw *p_flm_nthw;
 } be_devs[MAX_PHYS_ADAPTERS];
 
 #define CHECK_DEBUG_ON(be, mod, inst)                                                             \
@@ -908,6 +910,355 @@ static int km_tcq_flush(void *be_dev, const struct km_func_s *km, int bank, int 
 }
 
 /*
+ * FLM
+ */
+
+static bool flm_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_flm_nthw != NULL;
+}
+
+static uint32_t flm_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return (uint32_t)((nthw_module_get_major_version(be->p_flm_nthw->m_flm) << 16) |
+			(nthw_module_get_minor_version(be->p_flm_nthw->m_flm) & 0xffff));
+}
+
+static int flm_control_flush(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_control_enable(be->p_flm_nthw, flm->v25.control->enable);
+		flm_nthw_control_init(be->p_flm_nthw, flm->v25.control->init);
+		flm_nthw_control_lds(be->p_flm_nthw, flm->v25.control->lds);
+		flm_nthw_control_lfs(be->p_flm_nthw, flm->v25.control->lfs);
+		flm_nthw_control_lis(be->p_flm_nthw, flm->v25.control->lis);
+		flm_nthw_control_uds(be->p_flm_nthw, flm->v25.control->uds);
+		flm_nthw_control_uis(be->p_flm_nthw, flm->v25.control->uis);
+		flm_nthw_control_rds(be->p_flm_nthw, flm->v25.control->rds);
+		flm_nthw_control_ris(be->p_flm_nthw, flm->v25.control->ris);
+		flm_nthw_control_pds(be->p_flm_nthw, flm->v25.control->pds);
+		flm_nthw_control_pis(be->p_flm_nthw, flm->v25.control->pis);
+		flm_nthw_control_crcwr(be->p_flm_nthw, flm->v25.control->crcwr);
+		flm_nthw_control_crcrd(be->p_flm_nthw, flm->v25.control->crcrd);
+		flm_nthw_control_rbl(be->p_flm_nthw, flm->v25.control->rbl);
+		flm_nthw_control_eab(be->p_flm_nthw, flm->v25.control->eab);
+		flm_nthw_control_split_sdram_usage(be->p_flm_nthw,
+			flm->v25.control->split_sdram_usage);
+		flm_nthw_control_flush(be->p_flm_nthw);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_status_flush(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		/* CALIBDONE, INITDONE, IDLE, and EFT_BP is read only */
+		flm_nthw_status_critical(be->p_flm_nthw, &flm->v25.status->critical, 0);
+		flm_nthw_status_panic(be->p_flm_nthw, &flm->v25.status->panic, 0);
+		flm_nthw_status_crcerr(be->p_flm_nthw, &flm->v25.status->crcerr, 0);
+		flm_nthw_status_cache_buf_crit(be->p_flm_nthw,
+			&flm->v25.status->cache_buf_critical, 0);
+		flm_nthw_status_flush(be->p_flm_nthw);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_status_update(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_status_update(be->p_flm_nthw);
+		flm_nthw_status_calib_success(be->p_flm_nthw, &flm->v25.status->calib_success, 1);
+		flm_nthw_status_calib_fail(be->p_flm_nthw, &flm->v25.status->calib_fail, 1);
+		flm_nthw_status_initdone(be->p_flm_nthw, &flm->v25.status->initdone, 1);
+		flm_nthw_status_idle(be->p_flm_nthw, &flm->v25.status->idle, 1);
+		flm_nthw_status_critical(be->p_flm_nthw, &flm->v25.status->critical, 1);
+		flm_nthw_status_panic(be->p_flm_nthw, &flm->v25.status->panic, 1);
+		flm_nthw_status_crcerr(be->p_flm_nthw, &flm->v25.status->crcerr, 1);
+		flm_nthw_status_eft_bp(be->p_flm_nthw, &flm->v25.status->eft_bp, 1);
+		flm_nthw_status_cache_buf_crit(be->p_flm_nthw,
+			&flm->v25.status->cache_buf_critical, 1);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_scan_flush(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_scan_i(be->p_flm_nthw, flm->v25.scan->i);
+		flm_nthw_scan_flush(be->p_flm_nthw);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_load_bin_flush(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_load_bin(be->p_flm_nthw, flm->v25.load_bin->bin);
+		flm_nthw_load_bin_flush(be->p_flm_nthw);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_prio_flush(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_prio_limit0(be->p_flm_nthw, flm->v25.prio->limit0);
+		flm_nthw_prio_ft0(be->p_flm_nthw, flm->v25.prio->ft0);
+		flm_nthw_prio_limit1(be->p_flm_nthw, flm->v25.prio->limit1);
+		flm_nthw_prio_ft1(be->p_flm_nthw, flm->v25.prio->ft1);
+		flm_nthw_prio_limit2(be->p_flm_nthw, flm->v25.prio->limit2);
+		flm_nthw_prio_ft2(be->p_flm_nthw, flm->v25.prio->ft2);
+		flm_nthw_prio_limit3(be->p_flm_nthw, flm->v25.prio->limit3);
+		flm_nthw_prio_ft3(be->p_flm_nthw, flm->v25.prio->ft3);
+		flm_nthw_prio_flush(be->p_flm_nthw);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_pst_flush(void *be_dev, const struct flm_func_s *flm, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_pst_cnt(be->p_flm_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			flm_nthw_pst_select(be->p_flm_nthw, index + i);
+			flm_nthw_pst_bp(be->p_flm_nthw, flm->v25.pst[index + i].bp);
+			flm_nthw_pst_pp(be->p_flm_nthw, flm->v25.pst[index + i].pp);
+			flm_nthw_pst_tp(be->p_flm_nthw, flm->v25.pst[index + i].tp);
+			flm_nthw_pst_flush(be->p_flm_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_rcp_flush(void *be_dev, const struct flm_func_s *flm, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_rcp_cnt(be->p_flm_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			flm_nthw_rcp_select(be->p_flm_nthw, index + i);
+			flm_nthw_rcp_lookup(be->p_flm_nthw, flm->v25.rcp[index + i].lookup);
+			flm_nthw_rcp_qw0_dyn(be->p_flm_nthw, flm->v25.rcp[index + i].qw0_dyn);
+			flm_nthw_rcp_qw0_ofs(be->p_flm_nthw, flm->v25.rcp[index + i].qw0_ofs);
+			flm_nthw_rcp_qw0_sel(be->p_flm_nthw, flm->v25.rcp[index + i].qw0_sel);
+			flm_nthw_rcp_qw4_dyn(be->p_flm_nthw, flm->v25.rcp[index + i].qw4_dyn);
+			flm_nthw_rcp_qw4_ofs(be->p_flm_nthw, flm->v25.rcp[index + i].qw4_ofs);
+			flm_nthw_rcp_sw8_dyn(be->p_flm_nthw, flm->v25.rcp[index + i].sw8_dyn);
+			flm_nthw_rcp_sw8_ofs(be->p_flm_nthw, flm->v25.rcp[index + i].sw8_ofs);
+			flm_nthw_rcp_sw8_sel(be->p_flm_nthw, flm->v25.rcp[index + i].sw8_sel);
+			flm_nthw_rcp_sw9_dyn(be->p_flm_nthw, flm->v25.rcp[index + i].sw9_dyn);
+			flm_nthw_rcp_sw9_ofs(be->p_flm_nthw, flm->v25.rcp[index + i].sw9_ofs);
+			flm_nthw_rcp_mask(be->p_flm_nthw, flm->v25.rcp[index + i].mask);
+			flm_nthw_rcp_kid(be->p_flm_nthw, flm->v25.rcp[index + i].kid);
+			flm_nthw_rcp_opn(be->p_flm_nthw, flm->v25.rcp[index + i].opn);
+			flm_nthw_rcp_ipn(be->p_flm_nthw, flm->v25.rcp[index + i].ipn);
+			flm_nthw_rcp_byt_dyn(be->p_flm_nthw, flm->v25.rcp[index + i].byt_dyn);
+			flm_nthw_rcp_byt_ofs(be->p_flm_nthw, flm->v25.rcp[index + i].byt_ofs);
+			flm_nthw_rcp_txplm(be->p_flm_nthw, flm->v25.rcp[index + i].txplm);
+			flm_nthw_rcp_auto_ipv4_mask(be->p_flm_nthw,
+				flm->v25.rcp[index + i].auto_ipv4_mask);
+			flm_nthw_rcp_flush(be->p_flm_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_scrub_flush(void *be_dev, const struct flm_func_s *flm, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_scrub_cnt(be->p_flm_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			flm_nthw_scrub_select(be->p_flm_nthw, index + i);
+			flm_nthw_scrub_t(be->p_flm_nthw, flm->v25.scrub[index + i].t);
+			flm_nthw_scrub_r(be->p_flm_nthw, flm->v25.scrub[index + i].r);
+			flm_nthw_scrub_del(be->p_flm_nthw, flm->v25.scrub[index + i].del);
+			flm_nthw_scrub_inf(be->p_flm_nthw, flm->v25.scrub[index + i].inf);
+			flm_nthw_scrub_flush(be->p_flm_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_buf_ctrl_update(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_buf_ctrl_update(be->p_flm_nthw,
+			&flm->v25.buf_ctrl->lrn_free,
+			&flm->v25.buf_ctrl->inf_avail,
+			&flm->v25.buf_ctrl->sta_avail);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_stat_update(void *be_dev, const struct flm_func_s *flm)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	if (flm->ver >= 25) {
+		flm_nthw_stat_lrn_done_update(be->p_flm_nthw);
+		flm_nthw_stat_lrn_ignore_update(be->p_flm_nthw);
+		flm_nthw_stat_lrn_fail_update(be->p_flm_nthw);
+		flm_nthw_stat_unl_done_update(be->p_flm_nthw);
+		flm_nthw_stat_unl_ignore_update(be->p_flm_nthw);
+		flm_nthw_stat_rel_done_update(be->p_flm_nthw);
+		flm_nthw_stat_rel_ignore_update(be->p_flm_nthw);
+		flm_nthw_stat_aul_done_update(be->p_flm_nthw);
+		flm_nthw_stat_aul_ignore_update(be->p_flm_nthw);
+		flm_nthw_stat_aul_fail_update(be->p_flm_nthw);
+		flm_nthw_stat_tul_done_update(be->p_flm_nthw);
+		flm_nthw_stat_flows_update(be->p_flm_nthw);
+		flm_nthw_load_lps_update(be->p_flm_nthw);
+		flm_nthw_load_aps_update(be->p_flm_nthw);
+
+		flm_nthw_stat_lrn_done_cnt(be->p_flm_nthw, &flm->v25.lrn_done->cnt, 1);
+		flm_nthw_stat_lrn_ignore_cnt(be->p_flm_nthw, &flm->v25.lrn_ignore->cnt, 1);
+		flm_nthw_stat_lrn_fail_cnt(be->p_flm_nthw, &flm->v25.lrn_fail->cnt, 1);
+		flm_nthw_stat_unl_done_cnt(be->p_flm_nthw, &flm->v25.unl_done->cnt, 1);
+		flm_nthw_stat_unl_ignore_cnt(be->p_flm_nthw, &flm->v25.unl_ignore->cnt, 1);
+		flm_nthw_stat_rel_done_cnt(be->p_flm_nthw, &flm->v25.rel_done->cnt, 1);
+		flm_nthw_stat_rel_ignore_cnt(be->p_flm_nthw, &flm->v25.rel_ignore->cnt, 1);
+		flm_nthw_stat_aul_done_cnt(be->p_flm_nthw, &flm->v25.aul_done->cnt, 1);
+		flm_nthw_stat_aul_ignore_cnt(be->p_flm_nthw, &flm->v25.aul_ignore->cnt, 1);
+		flm_nthw_stat_aul_fail_cnt(be->p_flm_nthw, &flm->v25.aul_fail->cnt, 1);
+		flm_nthw_stat_tul_done_cnt(be->p_flm_nthw, &flm->v25.tul_done->cnt, 1);
+		flm_nthw_stat_flows_cnt(be->p_flm_nthw, &flm->v25.flows->cnt, 1);
+
+		flm_nthw_stat_prb_done_update(be->p_flm_nthw);
+		flm_nthw_stat_prb_ignore_update(be->p_flm_nthw);
+		flm_nthw_stat_prb_done_cnt(be->p_flm_nthw, &flm->v25.prb_done->cnt, 1);
+		flm_nthw_stat_prb_ignore_cnt(be->p_flm_nthw, &flm->v25.prb_ignore->cnt, 1);
+
+		flm_nthw_load_lps_cnt(be->p_flm_nthw, &flm->v25.load_lps->lps, 1);
+		flm_nthw_load_aps_cnt(be->p_flm_nthw, &flm->v25.load_aps->aps, 1);
+	}
+
+	if (flm->ver >= 25) {
+		flm_nthw_stat_sta_done_update(be->p_flm_nthw);
+		flm_nthw_stat_inf_done_update(be->p_flm_nthw);
+		flm_nthw_stat_inf_skip_update(be->p_flm_nthw);
+		flm_nthw_stat_pck_hit_update(be->p_flm_nthw);
+		flm_nthw_stat_pck_miss_update(be->p_flm_nthw);
+		flm_nthw_stat_pck_unh_update(be->p_flm_nthw);
+		flm_nthw_stat_pck_dis_update(be->p_flm_nthw);
+		flm_nthw_stat_csh_hit_update(be->p_flm_nthw);
+		flm_nthw_stat_csh_miss_update(be->p_flm_nthw);
+		flm_nthw_stat_csh_unh_update(be->p_flm_nthw);
+		flm_nthw_stat_cuc_start_update(be->p_flm_nthw);
+		flm_nthw_stat_cuc_move_update(be->p_flm_nthw);
+
+		flm_nthw_stat_sta_done_cnt(be->p_flm_nthw, &flm->v25.sta_done->cnt, 1);
+		flm_nthw_stat_inf_done_cnt(be->p_flm_nthw, &flm->v25.inf_done->cnt, 1);
+		flm_nthw_stat_inf_skip_cnt(be->p_flm_nthw, &flm->v25.inf_skip->cnt, 1);
+		flm_nthw_stat_pck_hit_cnt(be->p_flm_nthw, &flm->v25.pck_hit->cnt, 1);
+		flm_nthw_stat_pck_miss_cnt(be->p_flm_nthw, &flm->v25.pck_miss->cnt, 1);
+		flm_nthw_stat_pck_unh_cnt(be->p_flm_nthw, &flm->v25.pck_unh->cnt, 1);
+		flm_nthw_stat_pck_dis_cnt(be->p_flm_nthw, &flm->v25.pck_dis->cnt, 1);
+		flm_nthw_stat_csh_hit_cnt(be->p_flm_nthw, &flm->v25.csh_hit->cnt, 1);
+		flm_nthw_stat_csh_miss_cnt(be->p_flm_nthw, &flm->v25.csh_miss->cnt, 1);
+		flm_nthw_stat_csh_unh_cnt(be->p_flm_nthw, &flm->v25.csh_unh->cnt, 1);
+		flm_nthw_stat_cuc_start_cnt(be->p_flm_nthw, &flm->v25.cuc_start->cnt, 1);
+		flm_nthw_stat_cuc_move_cnt(be->p_flm_nthw, &flm->v25.cuc_move->cnt, 1);
+	}
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return 0;
+}
+
+static int flm_lrn_data_flush(void *be_dev, const struct flm_func_s *flm, const uint32_t *lrn_data,
+	uint32_t records, uint32_t *handled_records,
+	uint32_t words_per_record, uint32_t *inf_word_cnt,
+	uint32_t *sta_word_cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	int ret = flm_nthw_lrn_data_flush(be->p_flm_nthw, lrn_data, records, words_per_record,
+			handled_records, &flm->v25.buf_ctrl->lrn_free,
+			&flm->v25.buf_ctrl->inf_avail,
+			&flm->v25.buf_ctrl->sta_avail);
+
+	*inf_word_cnt = flm->v25.buf_ctrl->inf_avail;
+	*sta_word_cnt = flm->v25.buf_ctrl->sta_avail;
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return ret;
+}
+
+static int flm_inf_sta_data_update(void *be_dev, const struct flm_func_s *flm, uint32_t *inf_data,
+	uint32_t inf_size, uint32_t *inf_word_cnt, uint32_t *sta_data,
+	uint32_t sta_size, uint32_t *sta_word_cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, flm, be->p_flm_nthw);
+
+	int ret = flm_nthw_inf_sta_data_update(be->p_flm_nthw, inf_data, inf_size, sta_data,
+			sta_size, &flm->v25.buf_ctrl->lrn_free,
+			&flm->v25.buf_ctrl->inf_avail,
+			&flm->v25.buf_ctrl->sta_avail);
+
+	*inf_word_cnt = flm->v25.buf_ctrl->inf_avail;
+	*sta_word_cnt = flm->v25.buf_ctrl->sta_avail;
+
+	CHECK_DEBUG_OFF(flm, be->p_flm_nthw);
+	return ret;
+}
+
+/*
  * DBS
  */
 
@@ -1000,6 +1351,22 @@ const struct flow_api_backend_ops flow_be_iface = {
 	km_tcam_flush,
 	km_tci_flush,
 	km_tcq_flush,
+
+	flm_get_present,
+	flm_get_version,
+	flm_control_flush,
+	flm_status_flush,
+	flm_status_update,
+	flm_scan_flush,
+	flm_load_bin_flush,
+	flm_prio_flush,
+	flm_pst_flush,
+	flm_rcp_flush,
+	flm_scrub_flush,
+	flm_buf_ctrl_update,
+	flm_stat_update,
+	flm_lrn_data_flush,
+	flm_inf_sta_data_update,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
@@ -1030,6 +1397,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_km_nthw = NULL;
 	}
 
+	/* Init nthw FLM */
+	if (flm_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct flm_nthw *pflmnthw = flm_nthw_new();
+		flm_nthw_init(pflmnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_flm_nthw = pflmnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_flm_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1042,6 +1419,7 @@ static void bin_flow_backend_done(void *dev)
 	info_nthw_delete(be_dev->p_info_nthw);
 	cat_nthw_delete(be_dev->p_cat_nthw);
 	km_nthw_delete(be_dev->p_km_nthw);
+	flm_nthw_delete(be_dev->p_flm_nthw);
 }
 
 static const struct flow_backend_ops ops = {
