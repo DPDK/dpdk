@@ -28,6 +28,7 @@
 
 /* Structs: */
 struct nthw_memory_descriptor {
+	void *phys_addr;
 	void *virt_addr;
 	uint32_t len;
 };

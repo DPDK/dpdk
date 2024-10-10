@@ -34,6 +34,8 @@
 /* Max RSS queues */
 #define MAX_QUEUES 125
 
+#define ONE_G_SIZE  0x40000000
+
 #define ETH_DEV_NTNIC_HELP_ARG "help"
 #define ETH_DEV_NTHW_RXQUEUES_ARG "rxqs"
 #define ETH_DEV_NTHW_TXQUEUES_ARG "txqs"
@@ -193,16 +195,38 @@ static void release_hw_virtio_queues(struct hwq_s *hwq)
 	hwq->vf_num = 0;
 }
 
+static int deallocate_hw_virtio_queues(struct hwq_s *hwq)
+{
+	int vf_num = hwq->vf_num;
+
+	void *virt = hwq->virt_queues_ctrl.virt_addr;
+
+	int res = nt_vfio_dma_unmap(vf_num, hwq->virt_queues_ctrl.virt_addr,
+			(uint64_t)hwq->virt_queues_ctrl.phys_addr, ONE_G_SIZE);
+
+	if (res != 0) {
+		NT_LOG(ERR, NTNIC, "VFIO UNMMAP FAILED! res %i, vf_num %i", res, vf_num);
+		return -1;
+	}
+
+	release_hw_virtio_queues(hwq);
+	rte_free(hwq->pkt_buffers);
+	rte_free(virt);
+	return 0;
+}
+
 static void eth_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
-	(void)eth_dev;
-	(void)queue_id;
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct ntnic_tx_queue *tx_q = &internals->txq_scg[queue_id];
+	deallocate_hw_virtio_queues(&tx_q->hwq);
 }
 
 static void eth_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
-	(void)eth_dev;
-	(void)queue_id;
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[queue_id];
+	deallocate_hw_virtio_queues(&rx_q->hwq);
 }
 
 static int num_queues_alloced;
