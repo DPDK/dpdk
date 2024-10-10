@@ -144,6 +144,14 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 	/* delete all created flows from this device */
 	pthread_mutex_lock(&ndev->mtx);
 
+	/*
+	 * remove unmatched queue if setup in QSL
+	 * remove exception queue setting in QSL UNM
+	 */
+	hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_DEST_QUEUE, eth_dev->port, 0);
+	hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 0);
+	hw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1);
+
 #ifdef FLOW_DEBUG
 	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
 #endif
@@ -291,6 +299,12 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 		goto err_exit;
 
 	if (init_resource_elements(ndev, RES_HSH_RCP, ndev->be.hsh.nb_rcp))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_QSL_RCP, ndev->be.qsl.nb_rcp_categories))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_QSL_QST, ndev->be.qsl.nb_qst_entries))
 		goto err_exit;
 
 	if (init_resource_elements(ndev, RES_SLC_LR_RCP, ndev->be.max_categories))

@@ -540,6 +540,42 @@ struct qsl_func_s {
 		struct hw_mod_qsl_v7_s v7;
 	};
 };
+enum hw_qsl_e {
+	/* functions */
+	HW_QSL_RCP_PRESET_ALL = 0,
+	HW_QSL_RCP_COMPARE,
+	HW_QSL_RCP_FIND,
+	HW_QSL_QST_PRESET_ALL,
+	/* fields */
+	HW_QSL_RCP_DISCARD = FIELD_START_INDEX,
+	HW_QSL_RCP_DROP,
+	HW_QSL_RCP_TBL_LO,
+	HW_QSL_RCP_TBL_HI,
+	HW_QSL_RCP_TBL_IDX,
+	HW_QSL_RCP_TBL_MSK,
+	HW_QSL_RCP_LR,
+	HW_QSL_RCP_TSA,
+	HW_QSL_RCP_VLI,
+	HW_QSL_QST_QUEUE,
+	HW_QSL_QST_EN,	/* Alias: HW_QSL_QST_QEN */
+	HW_QSL_QST_TX_PORT,
+	HW_QSL_QST_LRE,
+	HW_QSL_QST_TCI,
+	HW_QSL_QST_VEN,
+	HW_QSL_QEN_EN,
+	HW_QSL_UNMQ_DEST_QUEUE,
+	HW_QSL_UNMQ_EN,
+};
+bool hw_mod_qsl_present(struct flow_api_backend_s *be);
+int hw_mod_qsl_alloc(struct flow_api_backend_s *be);
+void hw_mod_qsl_free(struct flow_api_backend_s *be);
+int hw_mod_qsl_reset(struct flow_api_backend_s *be);
+int hw_mod_qsl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_qst_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_qen_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_unmq_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_unmq_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value);
 
 struct slc_lr_func_s {
 	COMMON_FUNC_INFO_S;
@@ -724,6 +760,7 @@ struct flow_api_backend_s {
 	struct km_func_s km;
 	struct flm_func_s flm;
 	struct hsh_func_s hsh;
+	struct qsl_func_s qsl;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;
