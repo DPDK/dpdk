@@ -54,6 +54,7 @@ sources = files(
         'nthw/flow_api/hw_mod/hw_mod_hsh.c',
         'nthw/flow_api/hw_mod/hw_mod_km.c',
         'nthw/flow_api/hw_mod/hw_mod_qsl.c',
+        'nthw/flow_api/hw_mod/hw_mod_slc_lr.c',
         'nthw/flow_filter/flow_nthw_cat.c',
         'nthw/flow_filter/flow_nthw_csu.c',
         'nthw/flow_filter/flow_nthw_flm.c',
