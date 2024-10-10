@@ -45,6 +45,9 @@ struct __rte_aligned(8) virtq_desc {
 	uint16_t next;
 };
 
+/* additional packed ring flags */
+#define VIRTQ_DESC_F_AVAIL     (1 << 7)
+
 /* descr phys address must be 16 byte aligned */
 struct __rte_aligned(16) pvirtq_desc {
 	/* Buffer Address. */
@@ -55,6 +58,30 @@ struct __rte_aligned(16) pvirtq_desc {
 	uint16_t id;
 	/* The flags depending on descriptor type. */
 	uint16_t flags;
+};
+
+/* Disable events */
+#define RING_EVENT_FLAGS_DISABLE 0x1
+
+struct __rte_aligned(16) pvirtq_event_suppress {
+	union {
+		struct {
+			/* Descriptor Ring Change Event Offset */
+			uint16_t desc_event_off : 15;
+			/* Descriptor Ring Change Event Wrap Counter */
+			uint16_t desc_event_wrap : 1;
+		};
+		/* If desc_event_flags set to RING_EVENT_FLAGS_DESC */
+		uint16_t desc;
+	};
+
+	union {
+		struct {
+			uint16_t desc_event_flags : 2;	/* Descriptor Ring Change Event Flags */
+			uint16_t reserved : 14;	/* Reserved, set to 0 */
+		};
+		uint16_t flags;
+	};
 };
 
 /*
