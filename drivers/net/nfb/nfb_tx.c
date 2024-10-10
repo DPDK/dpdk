@@ -108,7 +108,7 @@ nfb_eth_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 	if (txq->queue != NULL) {
 		ndp_close_tx_queue(txq->queue);
-		rte_free(txq);
 		txq->queue = NULL;
+		rte_free(txq);
 	}
 }
