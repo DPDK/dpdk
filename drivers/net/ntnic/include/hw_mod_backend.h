@@ -612,6 +612,39 @@ struct pdb_func_s {
 		struct hw_mod_pdb_v9_s v9;
 	};
 };
+enum hw_pdb_e {
+	/* functions */
+	HW_PDB_RCP_PRESET_ALL = 0,
+	HW_PDB_RCP_COMPARE,
+	HW_PDB_RCP_FIND,
+	/* fields */
+	HW_PDB_RCP_DESCRIPTOR = FIELD_START_INDEX,
+	HW_PDB_RCP_DESC_LEN,
+	HW_PDB_RCP_TX_PORT,
+	HW_PDB_RCP_TX_IGNORE,
+	HW_PDB_RCP_TX_NOW,
+	HW_PDB_RCP_CRC_OVERWRITE,
+	HW_PDB_RCP_ALIGN,
+	HW_PDB_RCP_OFS0_DYN,
+	HW_PDB_RCP_OFS0_REL,
+	HW_PDB_RCP_OFS1_DYN,
+	HW_PDB_RCP_OFS1_REL,
+	HW_PDB_RCP_OFS2_DYN,
+	HW_PDB_RCP_OFS2_REL,
+	HW_PDB_RCP_IP_PROT_TNL,
+	HW_PDB_RCP_PPC_HSH,
+	HW_PDB_RCP_DUPLICATE_EN,
+	HW_PDB_RCP_DUPLICATE_BIT,
+	HW_PDB_RCP_PCAP_KEEP_FCS,
+	HW_PDB_CONFIG_TS_FORMAT,
+	HW_PDB_CONFIG_PORT_OFS,
+};
+bool hw_mod_pdb_present(struct flow_api_backend_s *be);
+int hw_mod_pdb_alloc(struct flow_api_backend_s *be);
+void hw_mod_pdb_free(struct flow_api_backend_s *be);
+int hw_mod_pdb_reset(struct flow_api_backend_s *be);
+int hw_mod_pdb_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_pdb_config_flush(struct flow_api_backend_s *be);
 
 struct tpe_func_s {
 	COMMON_FUNC_INFO_S;
@@ -782,6 +815,7 @@ struct flow_api_backend_s {
 	struct hsh_func_s hsh;
 	struct qsl_func_s qsl;
 	struct slc_lr_func_s slc_lr;
+	struct pdb_func_s pdb;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;

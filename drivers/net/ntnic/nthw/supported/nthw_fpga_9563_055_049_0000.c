@@ -1297,6 +1297,43 @@ static nthw_fpga_register_init_s pci_wr_tg_registers[] = {
 	{ PCI_WR_TG_TG_WR_RUN, 4, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1, pci_wr_tg_tg_wr_run_fields },
 };
 
+static nthw_fpga_field_init_s pdb_config_fields[] = {
+	{ PDB_CONFIG_PORT_OFS, 6, 3, 0 },
+	{ PDB_CONFIG_TS_FORMAT, 3, 0, 0 },
+};
+
+static nthw_fpga_field_init_s pdb_rcp_ctrl_fields[] = {
+	{ PDB_RCP_CTRL_ADR, 4, 0, 0x0000 },
+	{ PDB_RCP_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s pdb_rcp_data_fields[] = {
+	{ PDB_RCP_DATA_ALIGN, 1, 17, 0x0000 },
+	{ PDB_RCP_DATA_CRC_OVERWRITE, 1, 16, 0x0000 },
+	{ PDB_RCP_DATA_DESCRIPTOR, 4, 0, 0x0000 },
+	{ PDB_RCP_DATA_DESC_LEN, 5, 4, 0 },
+	{ PDB_RCP_DATA_DUPLICATE_BIT, 5, 61, 0x0000 },
+	{ PDB_RCP_DATA_DUPLICATE_EN, 1, 60, 0x0000 },
+	{ PDB_RCP_DATA_IP_PROT_TNL, 1, 57, 0x0000 },
+	{ PDB_RCP_DATA_OFS0_DYN, 5, 18, 0x0000 },
+	{ PDB_RCP_DATA_OFS0_REL, 8, 23, 0x0000 },
+	{ PDB_RCP_DATA_OFS1_DYN, 5, 31, 0x0000 },
+	{ PDB_RCP_DATA_OFS1_REL, 8, 36, 0x0000 },
+	{ PDB_RCP_DATA_OFS2_DYN, 5, 44, 0x0000 },
+	{ PDB_RCP_DATA_OFS2_REL, 8, 49, 0x0000 },
+	{ PDB_RCP_DATA_PCAP_KEEP_FCS, 1, 66, 0x0000 },
+	{ PDB_RCP_DATA_PPC_HSH, 2, 58, 0x0000 },
+	{ PDB_RCP_DATA_TX_IGNORE, 1, 14, 0x0000 },
+	{ PDB_RCP_DATA_TX_NOW, 1, 15, 0x0000 },
+	{ PDB_RCP_DATA_TX_PORT, 5, 9, 0x0000 },
+};
+
+static nthw_fpga_register_init_s pdb_registers[] = {
+	{ PDB_CONFIG, 2, 10, NTHW_FPGA_REG_TYPE_WO, 0, 2, pdb_config_fields },
+	{ PDB_RCP_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, pdb_rcp_ctrl_fields },
+	{ PDB_RCP_DATA, 1, 67, NTHW_FPGA_REG_TYPE_WO, 0, 18, pdb_rcp_data_fields },
+};
+
 static nthw_fpga_field_init_s qsl_qen_ctrl_fields[] = {
 	{ QSL_QEN_CTRL_ADR, 5, 0, 0x0000 },
 	{ QSL_QEN_CTRL_CNT, 16, 16, 0x0000 },
@@ -1510,6 +1547,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 		MOD_PCI_WR_TG, 0, MOD_PCI_WR_TG, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 2304, 7,
 		pci_wr_tg_registers
 	},
+	{ MOD_PDB, 0, MOD_PDB, 0, 9, NTHW_FPGA_BUS_TYPE_RAB1, 2560, 3, pdb_registers },
 	{ MOD_QSL, 0, MOD_QSL, 0, 7, NTHW_FPGA_BUS_TYPE_RAB1, 1792, 8, qsl_registers },
 	{ MOD_RAC, 0, MOD_RAC, 3, 0, NTHW_FPGA_BUS_TYPE_PCI, 8192, 14, rac_registers },
 	{ MOD_RST9563, 0, MOD_RST9563, 0, 5, NTHW_FPGA_BUS_TYPE_RAB0, 1024, 5, rst9563_registers },
@@ -1672,5 +1710,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 19, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 20, fpga_modules,
 };

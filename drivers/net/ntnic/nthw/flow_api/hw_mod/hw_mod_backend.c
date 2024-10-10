@@ -26,6 +26,7 @@ static const struct {
 		"SLC LR", hw_mod_slc_lr_alloc, hw_mod_slc_lr_free, hw_mod_slc_lr_reset,
 		hw_mod_slc_lr_present
 	},
+	{ "PDB", hw_mod_pdb_alloc, hw_mod_pdb_free, hw_mod_pdb_reset, hw_mod_pdb_present },
 };
 #define MOD_COUNT (ARRAY_SIZE(module))
 

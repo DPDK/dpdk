@@ -301,6 +301,9 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	if (init_resource_elements(ndev, RES_HSH_RCP, ndev->be.hsh.nb_rcp))
 		goto err_exit;
 
+	if (init_resource_elements(ndev, RES_PDB_RCP, ndev->be.pdb.nb_pdb_rcp_categories))
+		goto err_exit;
+
 	if (init_resource_elements(ndev, RES_QSL_RCP, ndev->be.qsl.nb_rcp_categories))
 		goto err_exit;
 
