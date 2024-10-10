@@ -18,7 +18,7 @@
 
 struct nfp_flower_service {
 	/** Flower service is enabled */
-	bool enabled;
+	bool service_enabled;
 	/** Flower service info */
 	struct nfp_service_info info;
 	/** Store flower cards' information */
@@ -41,7 +41,7 @@ nfp_flower_service_func(void *arg)
 	struct nfp_flower_service *service_handle;
 
 	service_handle = arg;
-	if (!service_handle->enabled)
+	if (!service_handle->service_enabled)
 		return 0;
 
 	rte_spinlock_lock(&service_handle->spinlock);
@@ -73,7 +73,7 @@ nfp_flower_service_enable(struct nfp_flower_service *service_handle)
 		return ret;
 
 	rte_spinlock_init(&service_handle->spinlock);
-	service_handle->enabled = true;
+	service_handle->service_enabled = true;
 
 	return 0;
 }
@@ -109,7 +109,7 @@ nfp_flower_service_start(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	/* Enable flower service when driver initializes the first NIC */
-	if (!service_handle->enabled) {
+	if (!service_handle->service_enabled) {
 		ret = nfp_flower_service_enable(service_handle);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Could not enable flower service");
