@@ -5,6 +5,7 @@
 
 #include "nfp_flower_service.h"
 
+#include <rte_alarm.h>
 #include <rte_spinlock.h>
 
 #include "nfp_flower_ctrl.h"
@@ -16,9 +17,13 @@
 /* Driver limitation, PMD can enlarge it if need. */
 #define MAX_FLOWER_SERVICE_SLOT 8
 
+#define FLOWER_ALARM_INTERVAL 3000
+
 struct nfp_flower_service {
 	/** Flower service is enabled */
 	bool service_enabled;
+	/** Flower alarm is enabled */
+	bool alarm_enabled;
 	/** Flower service info */
 	struct nfp_service_info info;
 	/** Store flower cards' information */
@@ -31,6 +36,52 @@ static struct nfp_flower_service *
 nfp_flower_service_handle_get(struct nfp_net_hw_priv *hw_priv)
 {
 	return hw_priv->pf_dev->process_share.fl_service;
+}
+
+static void
+nfp_flower_service_alarm_func(void *arg)
+{
+	int ret;
+	uint16_t slot;
+	struct nfp_net_hw_priv *hw_priv;
+	struct nfp_flower_service *service_handle;
+
+	service_handle = arg;
+	if (!service_handle->alarm_enabled)
+		goto alarm_set;
+
+	rte_spinlock_lock(&service_handle->spinlock);
+	for (slot = 0; slot < MAX_FLOWER_SERVICE_SLOT; slot++) {
+		hw_priv = service_handle->slots[slot];
+		if (hw_priv == NULL)
+			continue;
+
+		nfp_flower_ctrl_vnic_process(hw_priv);
+	}
+	rte_spinlock_unlock(&service_handle->spinlock);
+
+alarm_set:
+	ret = rte_eal_alarm_set(FLOWER_ALARM_INTERVAL, nfp_flower_service_alarm_func, arg);
+	if (ret < 0)
+		PMD_DRV_LOG(ERR, "Set flower service alarm failed.");
+}
+
+static int
+nfp_flower_service_alarm_enable(struct nfp_flower_service *service_handle)
+{
+	int ret;
+
+	ret = rte_eal_alarm_set(FLOWER_ALARM_INTERVAL, nfp_flower_service_alarm_func,
+			(void *)service_handle);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Flower service alarm initialization failed.");
+		return ret;
+	}
+
+	rte_spinlock_init(&service_handle->spinlock);
+	service_handle->alarm_enabled = true;
+
+	return 0;
 }
 
 static int
@@ -109,11 +160,15 @@ nfp_flower_service_start(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	/* Enable flower service when driver initializes the first NIC */
-	if (!service_handle->service_enabled) {
+	if (!service_handle->service_enabled && !service_handle->alarm_enabled) {
 		ret = nfp_flower_service_enable(service_handle);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Could not enable flower service");
-			return -ESRCH;
+			PMD_DRV_LOG(INFO, "Could not enable flower service.");
+			ret = nfp_flower_service_alarm_enable(service_handle);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Could not set flower service alarm.");
+				return ret;
+			}
 		}
 	}
 
@@ -157,8 +212,13 @@ nfp_flower_service_stop(struct nfp_net_hw_priv *hw_priv)
 	if (count > 1)
 		return;
 
-	if (nfp_service_disable(&service_handle->info) != 0)
-		PMD_DRV_LOG(ERR, "Could not disable service");
+	if (service_handle->service_enabled) {
+		if (nfp_service_disable(&service_handle->info) != 0)
+			PMD_DRV_LOG(ERR, "Could not disable service.");
+	} else if (service_handle->alarm_enabled) {
+		rte_eal_alarm_cancel(nfp_flower_service_alarm_func,
+				(void *)service_handle);
+	}
 }
 
 int
