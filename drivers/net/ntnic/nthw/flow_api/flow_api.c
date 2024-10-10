@@ -3,10 +3,255 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
+#include "flow_api_engine.h"
 #include "flow_api_nic_setup.h"
 #include "ntnic_mod_reg.h"
 
 #include "flow_filter.h"
+
+const char *dbg_res_descr[] = {
+	/* RES_QUEUE */ "RES_QUEUE",
+	/* RES_CAT_CFN */ "RES_CAT_CFN",
+	/* RES_CAT_COT */ "RES_CAT_COT",
+	/* RES_CAT_EXO */ "RES_CAT_EXO",
+	/* RES_CAT_LEN */ "RES_CAT_LEN",
+	/* RES_KM_FLOW_TYPE */ "RES_KM_FLOW_TYPE",
+	/* RES_KM_CATEGORY */ "RES_KM_CATEGORY",
+	/* RES_HSH_RCP */ "RES_HSH_RCP",
+	/* RES_PDB_RCP */ "RES_PDB_RCP",
+	/* RES_QSL_RCP */ "RES_QSL_RCP",
+	/* RES_QSL_LTX */ "RES_QSL_LTX",
+	/* RES_QSL_QST */ "RES_QSL_QST",
+	/* RES_SLC_LR_RCP */ "RES_SLC_LR_RCP",
+	/* RES_FLM_FLOW_TYPE */ "RES_FLM_FLOW_TYPE",
+	/* RES_FLM_RCP */ "RES_FLM_RCP",
+	/* RES_TPE_RCP */ "RES_TPE_RCP",
+	/* RES_TPE_EXT */ "RES_TPE_EXT",
+	/* RES_TPE_RPL */ "RES_TPE_RPL",
+	/* RES_COUNT */ "RES_COUNT",
+	/* RES_INVALID */ "RES_INVALID"
+};
+
+static struct flow_nic_dev *dev_base;
+static pthread_mutex_t base_mtx = PTHREAD_MUTEX_INITIALIZER;
+
+void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx)
+{
+	flow_nic_mark_resource_unused(ndev, res_type, idx);
+}
+
+int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
+{
+	NT_LOG(DBG, FILTER, "De-reference resource %s idx %i (before ref cnt %i)",
+		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
+	assert(flow_nic_is_resource_used(ndev, res_type, index));
+	assert(ndev->res[res_type].ref[index]);
+	/* deref */
+	ndev->res[res_type].ref[index]--;
+
+	if (!ndev->res[res_type].ref[index])
+		flow_nic_free_resource(ndev, res_type, index);
+
+	return !!ndev->res[res_type].ref[index];/* if 0 resource has been freed */
+}
+
+/*
+ * Device Management API
+ */
+
+static int nic_remove_eth_port_dev(struct flow_nic_dev *ndev, struct flow_eth_dev *eth_dev)
+{
+	struct flow_eth_dev *dev = ndev->eth_base, *prev = NULL;
+
+	while (dev) {
+		if (dev == eth_dev) {
+			if (prev)
+				prev->next = dev->next;
+
+			else
+				ndev->eth_base = dev->next;
+
+			return 0;
+		}
+
+		prev = dev;
+		dev = dev->next;
+	}
+
+	return -1;
+}
+
+static void flow_ndev_reset(struct flow_nic_dev *ndev)
+{
+	/* Delete all eth-port devices created on this NIC device */
+	while (ndev->eth_base)
+		flow_delete_eth_dev(ndev->eth_base);
+
+	km_free_ndev_resource_management(&ndev->km_res_handle);
+	kcc_free_ndev_resource_management(&ndev->kcc_res_handle);
+
+	ndev->flow_unique_id_counter = 0;
+
+#ifdef FLOW_DEBUG
+	/*
+	 * free all resources default allocated, initially for this NIC DEV
+	 * Is not really needed since the bitmap will be freed in a sec. Therefore
+	 * only in debug mode
+	 */
+
+	/* Check if all resources has been released */
+	NT_LOG(DBG, FILTER, "Delete NIC DEV Adaptor %i", ndev->adapter_no);
+
+	for (unsigned int i = 0; i < RES_COUNT; i++) {
+		int err = 0;
+#if defined(FLOW_DEBUG)
+		NT_LOG(DBG, FILTER, "RES state for: %s", dbg_res_descr[i]);
+#endif
+
+		for (unsigned int ii = 0; ii < ndev->res[i].resource_count; ii++) {
+			int ref = ndev->res[i].ref[ii];
+			int used = flow_nic_is_resource_used(ndev, i, ii);
+
+			if (ref || used) {
+				NT_LOG(DBG, FILTER, "  [%i]: ref cnt %i, used %i", ii, ref,
+					used);
+				err = 1;
+			}
+		}
+
+		if (err)
+			NT_LOG(DBG, FILTER, "ERROR - some resources not freed");
+	}
+
+#endif
+}
+
+int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
+{
+	struct flow_nic_dev *ndev = eth_dev->ndev;
+
+	if (!ndev) {
+		/* Error invalid nic device */
+		return -1;
+	}
+
+	NT_LOG(DBG, FILTER, "Delete eth-port device %p, port %i", eth_dev, eth_dev->port);
+
+#ifdef FLOW_DEBUG
+	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_WRITE);
+#endif
+
+	/* delete all created flows from this device */
+	pthread_mutex_lock(&ndev->mtx);
+
+#ifdef FLOW_DEBUG
+	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
+#endif
+
+#ifndef SCATTER_GATHER
+
+	/* free rx queues */
+	for (int i = 0; i < eth_dev->num_queues; i++) {
+		ndev->be.iface->free_rx_queue(ndev->be.be_dev, eth_dev->rx_queue[i].hw_id);
+		flow_nic_deref_resource(ndev, RES_QUEUE, eth_dev->rx_queue[i].id);
+	}
+
+#endif
+
+	/* take eth_dev out of ndev list */
+	if (nic_remove_eth_port_dev(ndev, eth_dev) != 0)
+		NT_LOG(ERR, FILTER, "ERROR : eth_dev %p not found", eth_dev);
+
+	pthread_mutex_unlock(&ndev->mtx);
+
+	/* free eth_dev */
+	free(eth_dev);
+
+	return 0;
+}
+
+/*
+ * Flow API NIC Setup
+ * Flow backend creation function - register and initialize common backend API to FPA modules
+ */
+
+static void done_resource_elements(struct flow_nic_dev *ndev, enum res_type_e res_type)
+{
+	assert(ndev);
+
+	if (ndev->res[res_type].alloc_bm)
+		free(ndev->res[res_type].alloc_bm);
+}
+
+static int list_remove_flow_nic(struct flow_nic_dev *ndev)
+{
+	pthread_mutex_lock(&base_mtx);
+	struct flow_nic_dev *nic_dev = dev_base, *prev = NULL;
+
+	while (nic_dev) {
+		if (nic_dev == ndev) {
+			if (prev)
+				prev->next = nic_dev->next;
+
+			else
+				dev_base = nic_dev->next;
+
+			pthread_mutex_unlock(&base_mtx);
+			return 0;
+		}
+
+		prev = nic_dev;
+		nic_dev = nic_dev->next;
+	}
+
+	pthread_mutex_unlock(&base_mtx);
+	return -1;
+}
+
+struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_backend_ops *be_if,
+	void *be_dev)
+{
+	(void)adapter_no;
+
+	if (!be_if || be_if->version != 1) {
+		NT_LOG(DBG, FILTER, "ERR: %s", __func__);
+		return NULL;
+	}
+
+	struct flow_nic_dev *ndev = calloc(1, sizeof(struct flow_nic_dev));
+
+	if (!ndev) {
+		NT_LOG(ERR, FILTER, "ERROR: calloc failed");
+		return NULL;
+	}
+
+	/*
+	 * To dump module initialization writes use
+	 * FLOW_BACKEND_DEBUG_MODE_WRITE
+	 * then remember to set it ...NONE afterwards again
+	 */
+	be_if->set_debug_mode(be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
+
+	return ndev;
+}
+
+int flow_api_done(struct flow_nic_dev *ndev)
+{
+	NT_LOG(DBG, FILTER, "FLOW API DONE");
+
+	if (ndev) {
+		flow_ndev_reset(ndev);
+
+		/* delete resource management allocations for this ndev */
+		for (int i = 0; i < RES_COUNT; i++)
+			done_resource_elements(ndev, i);
+
+		list_remove_flow_nic(ndev);
+		free(ndev);
+	}
+
+	return 0;
+}
 
 void *flow_api_get_be_dev(struct flow_nic_dev *ndev)
 {

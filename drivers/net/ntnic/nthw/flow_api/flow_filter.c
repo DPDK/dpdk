@@ -9,10 +9,8 @@
 
 int flow_filter_init(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device, int adapter_no)
 {
-	(void)p_flow_device;
-	(void)adapter_no;
-
 	void *be_dev = NULL;
+	struct flow_nic_dev *flow_nic;
 
 	const struct flow_backend_ops *flow_backend_ops = get_flow_backend_ops();
 
@@ -22,8 +20,17 @@ int flow_filter_init(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device, i
 	}
 
 	NT_LOG(DBG, FILTER, "Initializing flow filter api");
-	flow_backend_ops->bin_flow_backend_init(p_fpga, &be_dev);
+	const struct flow_api_backend_ops *iface =
+		flow_backend_ops->bin_flow_backend_init(p_fpga, &be_dev);
 
+	flow_nic = flow_api_create((uint8_t)adapter_no, iface, be_dev);
+
+	if (!flow_nic) {
+		*p_flow_device = NULL;
+		return -1;
+	}
+
+	*p_flow_device = flow_nic;
 	return 0;
 }
 
@@ -31,7 +38,7 @@ int flow_filter_done(struct flow_nic_dev *dev)
 {
 	void *be_dev = flow_api_get_be_dev(dev);
 
-	int res = 0;
+	int res = flow_api_done(dev);
 
 	if (be_dev) {
 		const struct flow_backend_ops *flow_backend_ops = get_flow_backend_ops();
