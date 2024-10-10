@@ -40,6 +40,7 @@
 #define MOD_SLC_LR (0x969fc50bUL)
 #define MOD_TX_CPY (0x60acf217UL)
 #define MOD_TX_INS (0x59afa100UL)
+#define MOD_TX_RPL (0x1095dfbbUL)
 #define MOD_IDX_COUNT (14)
 
 /* aliases - only aliases go below this point */

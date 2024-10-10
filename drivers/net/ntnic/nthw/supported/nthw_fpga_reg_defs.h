@@ -35,6 +35,7 @@
 #include "nthw_fpga_reg_defs_pdb.h"
 #include "nthw_fpga_reg_defs_qsl.h"
 #include "nthw_fpga_reg_defs_rac.h"
+#include "nthw_fpga_reg_defs_rpl.h"
 #include "nthw_fpga_reg_defs_rpp_lr.h"
 #include "nthw_fpga_reg_defs_rst9563.h"
 #include "nthw_fpga_reg_defs_sdc.h"
@@ -42,6 +43,7 @@
 #include "nthw_fpga_reg_defs_slc_lr.h"
 #include "nthw_fpga_reg_defs_tx_cpy.h"
 #include "nthw_fpga_reg_defs_tx_ins.h"
+#include "nthw_fpga_reg_defs_tx_rpl.h"
 
 /* aliases */
 
