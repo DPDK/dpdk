@@ -1067,6 +1067,45 @@ port_eeprom_display(portid_t port_id)
 }
 
 void
+port_eeprom_set(portid_t port_id,
+		uint32_t magic,
+		uint32_t offset,
+		uint32_t length,
+		uint8_t *value)
+{
+	struct rte_dev_eeprom_info einfo;
+	int len_eeprom;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		print_valid_ports();
+		return;
+	}
+
+	len_eeprom = rte_eth_dev_get_eeprom_length(port_id);
+	if (len_eeprom < 0) {
+		fprintf(stderr, "Unable to get EEPROM length: %s\n",
+			rte_strerror(-len_eeprom));
+		return;
+	}
+
+	einfo.data = value;
+	einfo.magic = magic;
+	einfo.length = length;
+	einfo.offset = offset;
+
+	if (einfo.offset + einfo.length > (uint32_t)(len_eeprom)) {
+		fprintf(stderr, "offset and length exceed capabilities of EEPROM length: %d\n",
+			len_eeprom);
+		return;
+	}
+
+	ret = rte_eth_dev_set_eeprom(port_id, &einfo);
+	if (ret != 0)
+		fprintf(stderr, "Unable to set EEPROM: %s\n", rte_strerror(-ret));
+}
+
+void
 port_module_eeprom_display(portid_t port_id)
 {
 	struct rte_eth_dev_module_info minfo;

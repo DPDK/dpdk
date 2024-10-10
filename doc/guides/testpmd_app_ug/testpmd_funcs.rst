@@ -223,6 +223,25 @@ Display the EEPROM information of a port::
 
    testpmd> show port (port_id) (module_eeprom|eeprom)
 
+set eeprom
+~~~~~~~~~~
+
+Write a value to the device EEPROM of a port at a specific offset::
+
+   testpmd> set port (port_id) eeprom (accept_risk) magic (magic_num) value (value) \
+            offset (offset)
+
+Value should be given in the form of a hex-as-string, with no leading ``0x``.
+The offset field here is optional,
+if not specified then the offset will default to 0.
+
+.. note::
+
+   This is a high-risk command
+   and its misuse may result in unexpected behaviour from the NIC.
+   By inserting "accept_risk" into the command,
+   the user is acknowledging and taking responsibility for this risk.
+
 show port rss reta
 ~~~~~~~~~~~~~~~~~~
 

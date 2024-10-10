@@ -170,6 +170,15 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port port_id (module_eeprom|eeprom)\n"
 			"    Display the module EEPROM or EEPROM information for port_id.\n\n"
 
+			"set port (port_id) eeprom (accept_risk) magic (magic_num)"
+			" value (value) offset (offset)\n"
+			"    Set the device eeprom for certain port.\nNote:\n"
+			"    This is a high-risk command and its misuse may"
+			" result in unexpected behaviour from the NIC.\n"
+			"    By inserting \"accept_risk\" into the command, the"
+			" user is acknowledging and taking responsibility for"
+			" this risk.\n\n"
+
 			"show port X rss reta (size) (mask0,mask1,...)\n"
 			"    Display the rss redirection table entry indicated"
 			" by masks on port X. size is used to indicate the"
@@ -7462,6 +7471,123 @@ static cmdline_parse_inst_t cmd_showeeprom = {
 	},
 };
 
+/* *** SET PORT EEPROM *** */
+struct cmd_seteeprom_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t port;
+	uint16_t portnum;
+	cmdline_fixed_string_t eeprom;
+	cmdline_fixed_string_t confirm_str;
+	cmdline_fixed_string_t magic_str;
+	uint32_t magic;
+	cmdline_fixed_string_t value;
+	cmdline_multi_string_t token_str;
+};
+
+static void cmd_seteeprom_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_seteeprom_result *res = parsed_result;
+	uint32_t offset = 0;
+	uint32_t length;
+	uint8_t *value;
+	char *token_str;
+	char *token;
+
+	token_str = res->token_str;
+	token = strtok_r(token_str, " \f\n\r\t\v", &token_str);
+
+	/* Parse Hex string to Byte data */
+	if (strlen(token) % 2 != 0) {
+		fprintf(stderr, "Bad Argument: %s\nHex string must be in multiples of 2 Bytes\n",
+			token);
+		return;
+	}
+
+	length = strlen(token) / 2;
+	value = calloc(length, sizeof(uint8_t));
+	for (int count = 0; count < (int)(length); count++) {
+		if (sscanf(token, "%2hhx", &value[count]) != 1) {
+			fprintf(stderr, "Bad Argument: %s\nValue must be a hex string\n",
+				token - (count + 1));
+			goto out;
+		}
+		token += 2;
+	}
+
+	/* Second token: offset string */
+	token = strtok_r(token_str, " \f\n\r\t\v", &token_str);
+	if (token != NULL) {
+		if (strcmp(token, "offset") == 0) {
+			/* Third token: offset */
+			token = strtok_r(token_str, " \f\n\r\t\v", &token_str);
+			if (token == NULL) {
+				fprintf(stderr, "No offset specified\n");
+				goto out;
+			}
+
+			char *end;
+			offset = strtoul(token, &end, 10);
+			if (offset == 0 && strcmp(end, "") != 0) {
+				fprintf(stderr, "Bad Argument: %s\n", token);
+				goto out;
+			}
+		} else {
+			fprintf(stderr, "Bad Argument: %s\n", token);
+			goto out;
+		}
+	}
+
+	port_eeprom_set(res->portnum, res->magic, offset, length, value);
+
+out:
+	free(value);
+}
+
+static cmdline_parse_token_string_t cmd_seteeprom_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, set, "set");
+static cmdline_parse_token_string_t cmd_seteeprom_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, port, "port");
+static cmdline_parse_token_num_t cmd_seteeprom_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_seteeprom_result, portnum, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_seteeprom_eeprom =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, eeprom, "eeprom");
+static cmdline_parse_token_string_t cmd_seteeprom_confirm_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, confirm_str, "accept_risk");
+static cmdline_parse_token_string_t cmd_seteeprom_magic_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, magic_str, "magic");
+static cmdline_parse_token_num_t cmd_seteeprom_magic =
+	TOKEN_NUM_INITIALIZER(struct cmd_seteeprom_result, magic, RTE_UINT32);
+static cmdline_parse_token_string_t cmd_seteeprom_value =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, value, "value");
+static cmdline_parse_token_string_t cmd_seteeprom_token_str =
+	TOKEN_STRING_INITIALIZER(struct cmd_seteeprom_result, token_str, TOKEN_STRING_MULTI);
+
+static cmdline_parse_inst_t cmd_seteeprom = {
+	.f = cmd_seteeprom_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> eeprom <accept_risk> magic <magic_num> "
+		"value <value> offset <offset>: Set eeprom value for port_id.\n"
+		"Note:\n"
+		"This is a high-risk command and its misuse may result in "
+		"unexpected behaviour from the NIC.\n"
+		"By inserting \"accept_risk\" into the command, the user is "
+		"acknowledging and taking responsibility for this risk.",
+	.tokens = {
+		(void *)&cmd_seteeprom_set,
+		(void *)&cmd_seteeprom_port,
+		(void *)&cmd_seteeprom_portnum,
+		(void *)&cmd_seteeprom_eeprom,
+		(void *)&cmd_seteeprom_confirm_str,
+		(void *)&cmd_seteeprom_magic_str,
+		(void *)&cmd_seteeprom_magic,
+		(void *)&cmd_seteeprom_value,
+		(void *)&cmd_seteeprom_token_str,
+		NULL,
+	},
+};
+
 /* *** SHOW QUEUE INFO *** */
 struct cmd_showqueue_result {
 	cmdline_fixed_string_t show;
@@ -13397,6 +13523,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_showport,
 	&cmd_showqueue,
 	&cmd_showeeprom,
+	&cmd_seteeprom,
 	&cmd_showportall,
 	&cmd_representor_info,
 	&cmd_showdevice,
