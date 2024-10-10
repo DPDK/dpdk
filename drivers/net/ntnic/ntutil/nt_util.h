@@ -57,4 +57,6 @@ uint32_t nt_link_speed_capa_to_eth_speed_capa(int nt_link_speed_capa);
 nt_link_speed_t convert_link_speed(int link_speed_mbps);
 int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex);
 
+int string_to_u32(const char *key_str __rte_unused, const char *value_str, void *extra_args);
+
 #endif	/* NTOSS_SYSTEM_NT_UTIL_H */

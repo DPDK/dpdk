@@ -234,3 +234,13 @@ int nt_link_duplex_to_eth_duplex(enum nt_link_duplex_e nt_link_duplex)
 
 	return eth_link_duplex;
 }
+
+int string_to_u32(const char *key_str __rte_unused, const char *value_str, void *extra_args)
+{
+	if (!value_str || !extra_args)
+		return -1;
+
+	const uint32_t value = strtol(value_str, NULL, 0);
+	*(uint32_t *)extra_args = value;
+	return 0;
+}

@@ -3,12 +3,17 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
+#include <stdint.h>
+
 #include <rte_eal.h>
 #include <rte_dev.h>
 #include <rte_vfio.h>
 #include <rte_ethdev.h>
 #include <rte_bus_pci.h>
 #include <ethdev_pci.h>
+#include <rte_kvargs.h>
+
+#include <sys/queue.h>
 
 #include "ntlog.h"
 #include "ntdrv_4ga.h"
@@ -23,6 +28,23 @@
 #define MAX_MTU (HW_MAX_PKT_LEN - RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN)
 
 #define EXCEPTION_PATH_HID 0
+
+#define MAX_TOTAL_QUEUES       128
+
+/* Max RSS queues */
+#define MAX_QUEUES 125
+
+#define ETH_DEV_NTNIC_HELP_ARG "help"
+#define ETH_DEV_NTHW_RXQUEUES_ARG "rxqs"
+#define ETH_DEV_NTHW_TXQUEUES_ARG "txqs"
+
+static const char *const valid_arguments[] = {
+	ETH_DEV_NTNIC_HELP_ARG,
+	ETH_DEV_NTHW_RXQUEUES_ARG,
+	ETH_DEV_NTHW_TXQUEUES_ARG,
+	NULL,
+};
+
 
 static const struct rte_pci_id nthw_pci_id_map[] = {
 	{ RTE_PCI_DEVICE(NT_HW_PCI_VENDOR_ID, NT_HW_PCI_DEVICE_ID_NT200A02) },
@@ -161,6 +183,58 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	return 0;
 }
 
+static void eth_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	(void)eth_dev;
+	(void)queue_id;
+}
+
+static void eth_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	(void)eth_dev;
+	(void)queue_id;
+}
+
+static int num_queues_alloced;
+
+/* Returns num queue starting at returned queue num or -1 on fail */
+static int allocate_queue(int num)
+{
+	int next_free = num_queues_alloced;
+	NT_LOG_DBGX(DBG, NTNIC, "num_queues_alloced=%u, New queues=%u, Max queues=%u",
+		num_queues_alloced, num, MAX_TOTAL_QUEUES);
+
+	if (num_queues_alloced + num > MAX_TOTAL_QUEUES)
+		return -1;
+
+	num_queues_alloced += num;
+	return next_free;
+}
+
+static int eth_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
+}
+
+static int eth_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
+static int eth_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	eth_dev->data->tx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
+	return 0;
+}
+
+static int eth_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	eth_dev->data->tx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
 static int
 eth_mac_addr_add(struct rte_eth_dev *eth_dev,
 	struct rte_ether_addr *mac_addr,
@@ -247,6 +321,15 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 
 	NT_LOG_DBGX(DBG, NTNIC, "Port %u", internals->n_intf_no);
 
+	/* Start queues */
+	uint q;
+
+	for (q = 0; q < internals->nb_rx_queues; q++)
+		eth_rx_queue_start(eth_dev, q);
+
+	for (q = 0; q < internals->nb_tx_queues; q++)
+		eth_tx_queue_start(eth_dev, q);
+
 	if (internals->type == PORT_TYPE_VIRTUAL || internals->type == PORT_TYPE_OVERRIDE) {
 		eth_dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
@@ -295,6 +378,16 @@ eth_dev_stop(struct rte_eth_dev *eth_dev)
 	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
 
 	NT_LOG_DBGX(DBG, NTNIC, "Port %u", internals->n_intf_no);
+
+	if (internals->type != PORT_TYPE_VIRTUAL) {
+		uint q;
+
+		for (q = 0; q < internals->nb_rx_queues; q++)
+			eth_rx_queue_stop(eth_dev, q);
+
+		for (q = 0; q < internals->nb_tx_queues; q++)
+			eth_tx_queue_stop(eth_dev, q);
+	}
 
 	eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	return 0;
@@ -438,6 +531,12 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.link_update = eth_link_update,
 	.dev_infos_get = eth_dev_infos_get,
 	.fw_version_get = eth_fw_version_get,
+	.rx_queue_start = eth_rx_queue_start,
+	.rx_queue_stop = eth_rx_queue_stop,
+	.rx_queue_release = eth_rx_queue_release,
+	.tx_queue_start = eth_tx_queue_start,
+	.tx_queue_stop = eth_tx_queue_stop,
+	.tx_queue_release = eth_tx_queue_release,
 	.mac_addr_add = eth_mac_addr_add,
 	.mac_addr_set = eth_mac_addr_set,
 	.set_mc_addr_list = eth_set_mc_addr_list,
@@ -462,6 +561,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		return -1;
 	}
 
+	int res;
 	struct drv_s *p_drv;
 	ntdrv_4ga_t *p_nt_drv;
 	hw_info_t *p_hw_info;
@@ -469,12 +569,88 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	uint32_t n_port_mask = -1;	/* All ports enabled by default */
 	uint32_t nb_rx_queues = 1;
 	uint32_t nb_tx_queues = 1;
+	struct flow_queue_id_s queue_ids[MAX_QUEUES];
 	int n_phy_ports;
 	struct port_link_speed pls_mbps[NUM_ADAPTER_PORTS_MAX] = { 0 };
 	int num_port_speeds = 0;
 	NT_LOG_DBGX(DBG, NTNIC, "Dev %s PF #%i Init : %02x:%02x:%i", pci_dev->name,
 		pci_dev->addr.function, pci_dev->addr.bus, pci_dev->addr.devid,
 		pci_dev->addr.function);
+
+	/*
+	 * Process options/arguments
+	 */
+	if (pci_dev->device.devargs && pci_dev->device.devargs->args) {
+		int kvargs_count;
+		struct rte_kvargs *kvlist =
+			rte_kvargs_parse(pci_dev->device.devargs->args, valid_arguments);
+
+		if (kvlist == NULL)
+			return -1;
+
+		/*
+		 * Argument: help
+		 * NOTE: this argument/option check should be the first as it will stop
+		 * execution after producing its output
+		 */
+		{
+			if (rte_kvargs_get(kvlist, ETH_DEV_NTNIC_HELP_ARG)) {
+				size_t i;
+
+				for (i = 0; i < RTE_DIM(valid_arguments); i++)
+					if (valid_arguments[i] == NULL)
+						break;
+
+				exit(0);
+			}
+		}
+
+		/*
+		 * rxq option/argument
+		 * The number of rxq (hostbuffers) allocated in memory.
+		 * Default is 32 RX Hostbuffers
+		 */
+		kvargs_count = rte_kvargs_count(kvlist, ETH_DEV_NTHW_RXQUEUES_ARG);
+
+		if (kvargs_count != 0) {
+			assert(kvargs_count == 1);
+			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_RXQUEUES_ARG, &string_to_u32,
+					&nb_rx_queues);
+
+			if (res < 0) {
+				NT_LOG_DBGX(ERR, NTNIC,
+					"problem with command line arguments: res=%d",
+					res);
+				return -1;
+			}
+
+			NT_LOG_DBGX(DBG, NTNIC, "devargs: %s=%u",
+				ETH_DEV_NTHW_RXQUEUES_ARG, nb_rx_queues);
+		}
+
+		/*
+		 * txq option/argument
+		 * The number of txq (hostbuffers) allocated in memory.
+		 * Default is 32 TX Hostbuffers
+		 */
+		kvargs_count = rte_kvargs_count(kvlist, ETH_DEV_NTHW_TXQUEUES_ARG);
+
+		if (kvargs_count != 0) {
+			assert(kvargs_count == 1);
+			res = rte_kvargs_process(kvlist, ETH_DEV_NTHW_TXQUEUES_ARG, &string_to_u32,
+					&nb_tx_queues);
+
+			if (res < 0) {
+				NT_LOG_DBGX(ERR, NTNIC,
+					"problem with command line arguments: res=%d",
+					res);
+				return -1;
+			}
+
+			NT_LOG_DBGX(DBG, NTNIC, "devargs: %s=%u",
+				ETH_DEV_NTHW_TXQUEUES_ARG, nb_tx_queues);
+		}
+	}
 
 
 	/* alloc */
@@ -581,6 +757,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		struct pmd_internals *internals = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
 		char name[32];
+		int i;
 
 		if ((1 << n_intf_no) & ~n_port_mask) {
 			NT_LOG_DBGX(DBG, NTNIC,
@@ -608,6 +785,10 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		internals->nb_rx_queues = nb_rx_queues;
 		internals->nb_tx_queues = nb_tx_queues;
 
+		/* Not used queue index as dest port in bypass - use 0x80 + port nr */
+		for (i = 0; i < MAX_QUEUES; i++)
+			internals->vpq[i].hw_id = -1;
+
 
 		/* Setup queue_ids */
 		if (nb_rx_queues > 1) {
@@ -620,6 +801,33 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 			NT_LOG(DBG, NTNIC,
 				"(%i) NTNIC configured with Tx multi queues. %i queues",
 				internals->n_intf_no, nb_tx_queues);
+		}
+
+		int max_num_queues = (nb_rx_queues > nb_tx_queues) ? nb_rx_queues : nb_tx_queues;
+		int start_queue = allocate_queue(max_num_queues);
+
+		if (start_queue < 0)
+			return -1;
+
+		for (i = 0; i < (int)max_num_queues; i++) {
+			queue_ids[i].id = i;
+			queue_ids[i].hw_id = start_queue + i;
+
+			internals->rxq_scg[i].queue = queue_ids[i];
+			/* use same index in Rx and Tx rings */
+			internals->txq_scg[i].queue = queue_ids[i];
+			internals->rxq_scg[i].enabled = 0;
+			internals->txq_scg[i].type = internals->type;
+			internals->rxq_scg[i].type = internals->type;
+			internals->rxq_scg[i].port = internals->port;
+		}
+
+		/* no tx queues - tx data goes out on phy */
+		internals->vpq_nb_vq = 0;
+
+		for (i = 0; i < (int)nb_tx_queues; i++) {
+			internals->txq_scg[i].port = internals->port;
+			internals->txq_scg[i].enabled = 0;
 		}
 
 		/* Set MAC address (but only if the MAC address is permitted) */
