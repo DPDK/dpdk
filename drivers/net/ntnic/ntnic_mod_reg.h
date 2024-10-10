@@ -121,6 +121,7 @@ void rst9563_ops_init(void);
 struct flow_backend_ops {
 	const struct flow_api_backend_ops *(*bin_flow_backend_init)(nthw_fpga_t *p_fpga,
 		void **be_dev);
+	void (*bin_flow_backend_done)(void *be_dev);
 };
 
 const struct flow_backend_ops *get_flow_backend_ops(void);

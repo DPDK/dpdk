@@ -8,7 +8,12 @@
 
 #include "ntlog.h"
 
+#include "hw_mod_backend.h"
+
 /* registered NIC backends */
-struct flow_nic_dev;
+struct flow_nic_dev {
+	/* NIC backend API */
+	struct flow_api_backend_s be;
+};
 
 #endif
