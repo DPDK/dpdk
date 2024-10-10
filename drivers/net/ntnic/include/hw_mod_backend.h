@@ -13,6 +13,7 @@
 #include "hw_mod_flm_v25.h"
 #include "hw_mod_km_v7.h"
 #include "hw_mod_qsl_v7.h"
+#include "hw_mod_pdb_v9.h"
 #include "hw_mod_slc_lr_v2.h"
 #include "hw_mod_hsh_v5.h"
 
@@ -101,6 +102,15 @@ struct slc_lr_func_s {
 	COMMON_FUNC_INFO_S;
 	union {
 		struct hw_mod_slc_lr_v2_s v2;
+	};
+};
+
+struct pdb_func_s {
+	COMMON_FUNC_INFO_S;
+	uint32_t nb_pdb_rcp_categories;
+
+	union {
+		struct hw_mod_pdb_v9_s v9;
 	};
 };
 
@@ -228,6 +238,12 @@ struct flow_api_backend_ops {
 	uint32_t (*get_slc_lr_version)(void *dev);
 	int (*slc_lr_rcp_flush)(void *dev, const struct slc_lr_func_s *slc_lr, int category,
 		int cnt);
+
+	/* PDB */
+	bool (*get_pdb_present)(void *dev);
+	uint32_t (*get_pdb_version)(void *dev);
+	int (*pdb_rcp_flush)(void *dev, const struct pdb_func_s *pdb, int category, int cnt);
+	int (*pdb_config_flush)(void *dev, const struct pdb_func_s *pdb);
 };
 
 struct flow_api_backend_s {
