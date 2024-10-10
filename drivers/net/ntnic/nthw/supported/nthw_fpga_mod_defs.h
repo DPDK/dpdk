@@ -16,6 +16,7 @@
 #define MOD_UNKNOWN (0L)/* Unknown/uninitialized - keep this as the first element */
 #define MOD_CAT (0x30b447c2UL)
 #define MOD_CSU (0x3f470787UL)
+#define MOD_DBS (0x80b29727UL)
 #define MOD_FLM (0xe7ba53a4UL)
 #define MOD_GFG (0xfc423807UL)
 #define MOD_GMF (0x68b1d15aUL)

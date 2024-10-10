@@ -105,7 +105,9 @@ struct sg_ops_s {
 	int (*nthw_virt_queue_init)(struct fpga_info_s *p_fpga_info);
 };
 
+void register_sg_ops(struct sg_ops_s *ops);
 const struct sg_ops_s *get_sg_ops(void);
+void sg_init(void);
 
 struct link_ops_s {
 	int (*link_init)(struct adapter_info_s *p_adapter_info, nthw_fpga_t *p_fpga);

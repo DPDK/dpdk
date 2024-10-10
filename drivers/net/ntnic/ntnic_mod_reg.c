@@ -5,9 +5,18 @@
 
 #include "ntnic_mod_reg.h"
 
+static struct sg_ops_s *sg_ops;
+
+void register_sg_ops(struct sg_ops_s *ops)
+{
+	sg_ops = ops;
+}
+
 const struct sg_ops_s *get_sg_ops(void)
 {
-	return NULL;
+	if (sg_ops == NULL)
+		sg_init();
+	return sg_ops;
 }
 
 static struct link_ops_s *link_100g_ops;
