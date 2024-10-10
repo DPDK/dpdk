@@ -46,6 +46,9 @@ struct flow_eth_dev {
 
 /* registered NIC backends */
 struct flow_nic_dev {
+	uint8_t adapter_no;     /* physical adapter no in the host system */
+	uint16_t ports; /* number of in-ports addressable on this NIC */
+
 	struct hw_mod_resource_s res[RES_COUNT];/* raw NIC resource allocation table */
 	void *km_res_handle;
 	void *kcc_res_handle;

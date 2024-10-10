@@ -278,6 +278,18 @@ struct flow_api_backend_ops {
 struct flow_api_backend_s {
 	void *be_dev;
 	const struct flow_api_backend_ops *iface;
+
+	/* NIC attributes */
+	unsigned int num_phy_ports;
+	unsigned int num_rx_ports;
+
+	/* flow filter resource capacities */
+	unsigned int max_categories;
+	unsigned int max_queues;
 };
+
+int flow_api_backend_init(struct flow_api_backend_s *dev, const struct flow_api_backend_ops *iface,
+	void *be_dev);
+int flow_api_backend_done(struct flow_api_backend_s *dev);
 
 #endif  /* _HW_MOD_BACKEND_H_ */

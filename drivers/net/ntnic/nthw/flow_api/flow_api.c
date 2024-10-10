@@ -175,12 +175,38 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
  * Flow backend creation function - register and initialize common backend API to FPA modules
  */
 
+static int init_resource_elements(struct flow_nic_dev *ndev, enum res_type_e res_type,
+	uint32_t count)
+{
+	assert(ndev->res[res_type].alloc_bm == NULL);
+	/* allocate bitmap and ref counter */
+	ndev->res[res_type].alloc_bm =
+		calloc(1, BIT_CONTAINER_8_ALIGN(count) + count * sizeof(uint32_t));
+
+	if (ndev->res[res_type].alloc_bm) {
+		ndev->res[res_type].ref =
+			(uint32_t *)&ndev->res[res_type].alloc_bm[BIT_CONTAINER_8_ALIGN(count)];
+		ndev->res[res_type].resource_count = count;
+		return 0;
+	}
+
+	return -1;
+}
+
 static void done_resource_elements(struct flow_nic_dev *ndev, enum res_type_e res_type)
 {
 	assert(ndev);
 
 	if (ndev->res[res_type].alloc_bm)
 		free(ndev->res[res_type].alloc_bm);
+}
+
+static void list_insert_flow_nic(struct flow_nic_dev *ndev)
+{
+	pthread_mutex_lock(&base_mtx);
+	ndev->next = dev_base;
+	dev_base = ndev;
+	pthread_mutex_unlock(&base_mtx);
 }
 
 static int list_remove_flow_nic(struct flow_nic_dev *ndev)
@@ -232,7 +258,44 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	 */
 	be_if->set_debug_mode(be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
 
+	if (flow_api_backend_init(&ndev->be, be_if, be_dev) != 0)
+		goto err_exit;
+
+	ndev->adapter_no = adapter_no;
+
+	ndev->ports = (uint16_t)((ndev->be.num_rx_ports > 256) ? 256 : ndev->be.num_rx_ports);
+
+	/*
+	 * Free resources in NIC must be managed by this module
+	 * Get resource sizes and create resource manager elements
+	 */
+	if (init_resource_elements(ndev, RES_QUEUE, ndev->be.max_queues))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_CAT_COT, ndev->be.max_categories))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_SLC_LR_RCP, ndev->be.max_categories))
+		goto err_exit;
+
+	/* may need IPF, COR */
+
+	/* check all defined has been initialized */
+	for (int i = 0; i < RES_COUNT; i++)
+		assert(ndev->res[i].alloc_bm);
+
+	pthread_mutex_init(&ndev->mtx, NULL);
+	list_insert_flow_nic(ndev);
+
 	return ndev;
+
+err_exit:
+
+	if (ndev)
+		flow_api_done(ndev);
+
+	NT_LOG(DBG, FILTER, "ERR: %s", __func__);
+	return NULL;
 }
 
 int flow_api_done(struct flow_nic_dev *ndev)
@@ -246,6 +309,7 @@ int flow_api_done(struct flow_nic_dev *ndev)
 		for (int i = 0; i < RES_COUNT; i++)
 			done_resource_elements(ndev, i);
 
+		flow_api_backend_done(&ndev->be);
 		list_remove_flow_nic(ndev);
 		free(ndev);
 	}
