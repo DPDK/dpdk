@@ -12,6 +12,11 @@
 
 #include "flow_nthw_hfu.h"
 
+void hfu_nthw_set_debug_mode(struct hfu_nthw *p, unsigned int n_debug_mode)
+{
+	nthw_module_set_debug_mode(p->m_hfu, n_debug_mode);
+}
+
 struct hfu_nthw *hfu_nthw_new(void)
 {
 	struct hfu_nthw *p = malloc(sizeof(struct hfu_nthw));
@@ -96,4 +101,130 @@ int hfu_nthw_init(struct hfu_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 		nthw_register_get_field(p->mp_rcp_data, HFU_RCP_DATA_TTL_POS_OFS);
 
 	return 0;
+}
+
+void hfu_nthw_rcp_select(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_addr, val);
+}
+
+void hfu_nthw_rcp_cnt(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_cnt, val);
+}
+
+void hfu_nthw_rcp_len_a_wr(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_wr, val);
+}
+
+void hfu_nthw_rcp_len_a_ol4len(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_ol4len, val);
+}
+
+void hfu_nthw_rcp_len_a_pos_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_pos_dyn, val);
+}
+
+void hfu_nthw_rcp_len_a_pos_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_pos_ofs, val);
+}
+
+void hfu_nthw_rcp_len_a_add_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_add_dyn, val);
+}
+
+void hfu_nthw_rcp_len_a_add_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_add_ofs, val);
+}
+
+void hfu_nthw_rcp_len_a_sub_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_a_sub_dyn, val);
+}
+
+void hfu_nthw_rcp_len_b_wr(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_b_wr, val);
+}
+
+void hfu_nthw_rcp_len_b_pos_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_b_pos_dyn, val);
+}
+
+void hfu_nthw_rcp_len_b_pos_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_b_pos_ofs, val);
+}
+
+void hfu_nthw_rcp_len_b_add_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_b_add_dyn, val);
+}
+
+void hfu_nthw_rcp_len_b_add_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_b_add_ofs, val);
+}
+
+void hfu_nthw_rcp_len_b_sub_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_b_sub_dyn, val);
+}
+
+void hfu_nthw_rcp_len_c_wr(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_c_wr, val);
+}
+
+void hfu_nthw_rcp_len_c_pos_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_c_pos_dyn, val);
+}
+
+void hfu_nthw_rcp_len_c_pos_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_c_pos_ofs, val);
+}
+
+void hfu_nthw_rcp_len_c_add_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_c_add_dyn, val);
+}
+
+void hfu_nthw_rcp_len_c_add_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_c_add_ofs, val);
+}
+
+void hfu_nthw_rcp_len_c_sub_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_len_c_sub_dyn, val);
+}
+
+void hfu_nthw_rcp_ttl_wr(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_ttl_wr, val);
+}
+
+void hfu_nthw_rcp_ttl_pos_dyn(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_ttl_pos_dyn, val);
+}
+
+void hfu_nthw_rcp_ttl_pos_ofs(const struct hfu_nthw *p, uint32_t val)
+{
+	nthw_field_set_val32(p->mp_rcp_data_ttl_pos_ofs, val);
+}
+
+void hfu_nthw_rcp_flush(const struct hfu_nthw *p)
+{
+	nthw_register_flush(p->mp_rcp_ctrl, 1);
+	nthw_register_flush(p->mp_rcp_data, 1);
 }

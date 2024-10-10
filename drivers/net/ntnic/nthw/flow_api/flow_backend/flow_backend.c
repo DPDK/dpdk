@@ -1577,6 +1577,357 @@ static int pdb_config_flush(void *be_dev, const struct pdb_func_s *pdb)
 }
 
 /*
+ * TPE
+ */
+
+static bool tpe_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_csu_nthw != NULL && be->p_hfu_nthw != NULL && be->p_rpp_lr_nthw != NULL &&
+		be->p_tx_cpy_nthw != NULL && be->p_tx_ins_nthw != NULL &&
+		be->p_tx_rpl_nthw != NULL;
+}
+
+static uint32_t tpe_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+
+	const uint32_t csu_version =
+		(uint32_t)((nthw_module_get_major_version(be->p_csu_nthw->m_csu) << 16) |
+			(nthw_module_get_minor_version(be->p_csu_nthw->m_csu) & 0xffff));
+
+	const uint32_t hfu_version =
+		(uint32_t)((nthw_module_get_major_version(be->p_hfu_nthw->m_hfu) << 16) |
+			(nthw_module_get_minor_version(be->p_hfu_nthw->m_hfu) & 0xffff));
+
+	const uint32_t rpp_lr_version =
+		(uint32_t)((nthw_module_get_major_version(be->p_rpp_lr_nthw->m_rpp_lr) << 16) |
+			(nthw_module_get_minor_version(be->p_rpp_lr_nthw->m_rpp_lr) & 0xffff));
+
+	const uint32_t tx_cpy_version =
+		(uint32_t)((nthw_module_get_major_version(be->p_tx_cpy_nthw->m_tx_cpy) << 16) |
+			(nthw_module_get_minor_version(be->p_tx_cpy_nthw->m_tx_cpy) & 0xffff));
+
+	const uint32_t tx_ins_version =
+		(uint32_t)((nthw_module_get_major_version(be->p_tx_ins_nthw->m_tx_ins) << 16) |
+			(nthw_module_get_minor_version(be->p_tx_ins_nthw->m_tx_ins) & 0xffff));
+
+	const uint32_t tx_rpl_version =
+		(uint32_t)((nthw_module_get_major_version(be->p_tx_rpl_nthw->m_tx_rpl) << 16) |
+			(nthw_module_get_minor_version(be->p_tx_rpl_nthw->m_tx_rpl) & 0xffff));
+
+	/*
+	 * we have to support 9563-55-28 and 9563-55-30
+	 * so check for INS ver 0.1 and RPL ver 0.2 or for INS ver 0.2 and RPL ver 0.4
+	 */
+	if (csu_version == 0 && hfu_version == 2 && rpp_lr_version >= 1 && tx_cpy_version == 2 &&
+		((tx_ins_version == 1 && tx_rpl_version == 2) ||
+			(tx_ins_version == 2 && tx_rpl_version == 4))) {
+		return 3;
+	}
+
+	if (csu_version == 0 && hfu_version == 2 && rpp_lr_version >= 1 && tx_cpy_version == 4 &&
+		((tx_ins_version == 1 && tx_rpl_version == 2) ||
+			(tx_ins_version == 2 && tx_rpl_version == 4))) {
+		return 3;
+	}
+
+	assert(false);
+	return 0;
+}
+
+static int tpe_rpp_rcp_flush(void *be_dev, const struct tpe_func_s *rpp_lr, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, rpp_lr, be->p_rpp_lr_nthw);
+
+	if (rpp_lr->ver >= 1) {
+		rpp_lr_nthw_rcp_cnt(be->p_rpp_lr_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			rpp_lr_nthw_rcp_select(be->p_rpp_lr_nthw, index + i);
+			rpp_lr_nthw_rcp_exp(be->p_rpp_lr_nthw, rpp_lr->v3.rpp_rcp[index + i].exp);
+			rpp_lr_nthw_rcp_flush(be->p_rpp_lr_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(rpp_lr, be->p_rpp_lr_nthw);
+	return 0;
+}
+
+static int tpe_rpp_ifr_rcp_flush(void *be_dev, const struct tpe_func_s *rpp_lr, int index, int cnt)
+{
+	int res = 0;
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, rpp_lr, be->p_rpp_lr_nthw);
+
+	if (rpp_lr->ver >= 2) {
+		rpp_lr_nthw_ifr_rcp_cnt(be->p_rpp_lr_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			rpp_lr_nthw_ifr_rcp_select(be->p_rpp_lr_nthw, index + i);
+			rpp_lr_nthw_ifr_rcp_ipv4_en(be->p_rpp_lr_nthw,
+				rpp_lr->v3.rpp_ifr_rcp[index + i].ipv4_en);
+			rpp_lr_nthw_ifr_rcp_ipv4_df_drop(be->p_rpp_lr_nthw,
+				rpp_lr->v3.rpp_ifr_rcp[index + i]
+				.ipv4_df_drop);
+			rpp_lr_nthw_ifr_rcp_ipv6_en(be->p_rpp_lr_nthw,
+				rpp_lr->v3.rpp_ifr_rcp[index + i].ipv6_en);
+			rpp_lr_nthw_ifr_rcp_ipv6_drop(be->p_rpp_lr_nthw,
+				rpp_lr->v3.rpp_ifr_rcp[index + i].ipv6_drop);
+			rpp_lr_nthw_ifr_rcp_mtu(be->p_rpp_lr_nthw,
+				rpp_lr->v3.rpp_ifr_rcp[index + i].mtu);
+			rpp_lr_nthw_ifr_rcp_flush(be->p_rpp_lr_nthw);
+		}
+
+	} else {
+		res = -1;
+	}
+
+	CHECK_DEBUG_OFF(rpp_lr, be->p_rpp_lr_nthw);
+	return res;
+}
+
+static int tpe_ifr_rcp_flush(void *be_dev, const struct tpe_func_s *ifr, int index, int cnt)
+{
+	int res = 0;
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, ifr, be->p_ifr_nthw);
+
+	if (ifr->ver >= 2) {
+		ifr_nthw_rcp_cnt(be->p_ifr_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			ifr_nthw_rcp_select(be->p_ifr_nthw, index + i);
+			ifr_nthw_rcp_ipv4_en(be->p_ifr_nthw, ifr->v3.ifr_rcp[index + i].ipv4_en);
+			ifr_nthw_rcp_ipv4_df_drop(be->p_ifr_nthw,
+				ifr->v3.ifr_rcp[index + i].ipv4_df_drop);
+			ifr_nthw_rcp_ipv6_en(be->p_ifr_nthw, ifr->v3.ifr_rcp[index + i].ipv6_en);
+			ifr_nthw_rcp_ipv6_drop(be->p_ifr_nthw,
+				ifr->v3.ifr_rcp[index + i].ipv6_drop);
+			ifr_nthw_rcp_mtu(be->p_ifr_nthw, ifr->v3.ifr_rcp[index + i].mtu);
+			ifr_nthw_rcp_flush(be->p_ifr_nthw);
+		}
+
+	} else {
+		res = -1;
+	}
+
+	CHECK_DEBUG_OFF(ifr, be->p_ifr_nthw);
+	return res;
+}
+
+static int tpe_ins_rcp_flush(void *be_dev, const struct tpe_func_s *tx_ins, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, tx_ins, be->p_tx_ins_nthw);
+
+	if (tx_ins->ver >= 1) {
+		tx_ins_nthw_rcp_cnt(be->p_tx_ins_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			tx_ins_nthw_rcp_select(be->p_tx_ins_nthw, index + i);
+			tx_ins_nthw_rcp_dyn(be->p_tx_ins_nthw, tx_ins->v3.ins_rcp[index + i].dyn);
+			tx_ins_nthw_rcp_ofs(be->p_tx_ins_nthw, tx_ins->v3.ins_rcp[index + i].ofs);
+			tx_ins_nthw_rcp_len(be->p_tx_ins_nthw, tx_ins->v3.ins_rcp[index + i].len);
+			tx_ins_nthw_rcp_flush(be->p_tx_ins_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(tx_ins, be->p_tx_ins_nthw);
+	return 0;
+}
+
+static int tpe_rpl_rcp_flush(void *be_dev, const struct tpe_func_s *tx_rpl, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, tx_rpl, be->p_tx_rpl_nthw);
+
+	if (tx_rpl->ver >= 1) {
+		tx_rpl_nthw_rcp_cnt(be->p_tx_rpl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			tx_rpl_nthw_rcp_select(be->p_tx_rpl_nthw, index + i);
+			tx_rpl_nthw_rcp_dyn(be->p_tx_rpl_nthw, tx_rpl->v3.rpl_rcp[index + i].dyn);
+			tx_rpl_nthw_rcp_ofs(be->p_tx_rpl_nthw, tx_rpl->v3.rpl_rcp[index + i].ofs);
+			tx_rpl_nthw_rcp_len(be->p_tx_rpl_nthw, tx_rpl->v3.rpl_rcp[index + i].len);
+			tx_rpl_nthw_rcp_rpl_ptr(be->p_tx_rpl_nthw,
+				tx_rpl->v3.rpl_rcp[index + i].rpl_ptr);
+			tx_rpl_nthw_rcp_ext_prio(be->p_tx_rpl_nthw,
+				tx_rpl->v3.rpl_rcp[index + i].ext_prio);
+
+			if (tx_rpl->ver >= 3) {
+				tx_rpl_nthw_rcp_eth_type_wr(be->p_tx_rpl_nthw,
+					tx_rpl->v3.rpl_rcp[index + i]
+					.eth_type_wr);
+			}
+
+			tx_rpl_nthw_rcp_flush(be->p_tx_rpl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(tx_rpl, be->p_tx_rpl_nthw);
+	return 0;
+}
+
+static int tpe_rpl_ext_flush(void *be_dev, const struct tpe_func_s *tx_rpl, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, tx_rpl, be->p_tx_rpl_nthw);
+
+	if (tx_rpl->ver >= 1) {
+		tx_rpl_nthw_ext_cnt(be->p_tx_rpl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			tx_rpl_nthw_ext_select(be->p_tx_rpl_nthw, index + i);
+			tx_rpl_nthw_ext_rpl_ptr(be->p_tx_rpl_nthw,
+				tx_rpl->v3.rpl_ext[index + i].rpl_ptr);
+			tx_rpl_nthw_ext_flush(be->p_tx_rpl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(tx_rpl, be->p_tx_rpl_nthw);
+	return 0;
+}
+
+static int tpe_rpl_rpl_flush(void *be_dev, const struct tpe_func_s *tx_rpl, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, tx_rpl, be->p_tx_rpl_nthw);
+
+	if (tx_rpl->ver >= 1) {
+		tx_rpl_nthw_rpl_cnt(be->p_tx_rpl_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			tx_rpl_nthw_rpl_select(be->p_tx_rpl_nthw, index + i);
+			tx_rpl_nthw_rpl_value(be->p_tx_rpl_nthw,
+				tx_rpl->v3.rpl_rpl[index + i].value);
+			tx_rpl_nthw_rpl_flush(be->p_tx_rpl_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(tx_rpl, be->p_tx_rpl_nthw);
+	return 0;
+}
+
+static int tpe_cpy_rcp_flush(void *be_dev, const struct tpe_func_s *tx_cpy, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	unsigned int wr_index = -1;
+
+	CHECK_DEBUG_ON(be, tx_cpy, be->p_tx_cpy_nthw);
+
+	if (tx_cpy->ver >= 1) {
+		for (int i = 0; i < cnt; i++) {
+			if (wr_index != (index + i) / tx_cpy->nb_rcp_categories) {
+				wr_index = (index + i) / tx_cpy->nb_rcp_categories;
+				tx_cpy_nthw_writer_cnt(be->p_tx_cpy_nthw, wr_index, 1);
+			}
+
+			tx_cpy_nthw_writer_select(be->p_tx_cpy_nthw, wr_index,
+				(index + i) % tx_cpy->nb_rcp_categories);
+			tx_cpy_nthw_writer_reader_select(be->p_tx_cpy_nthw, wr_index,
+				tx_cpy->v3.cpy_rcp[index + i]
+				.reader_select);
+			tx_cpy_nthw_writer_dyn(be->p_tx_cpy_nthw, wr_index,
+				tx_cpy->v3.cpy_rcp[index + i].dyn);
+			tx_cpy_nthw_writer_ofs(be->p_tx_cpy_nthw, wr_index,
+				tx_cpy->v3.cpy_rcp[index + i].ofs);
+			tx_cpy_nthw_writer_len(be->p_tx_cpy_nthw, wr_index,
+				tx_cpy->v3.cpy_rcp[index + i].len);
+			tx_cpy_nthw_writer_flush(be->p_tx_cpy_nthw, wr_index);
+		}
+	}
+
+	CHECK_DEBUG_OFF(tx_cpy, be->p_tx_cpy_nthw);
+	return 0;
+}
+
+static int tpe_hfu_rcp_flush(void *be_dev, const struct tpe_func_s *hfu, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, hfu, be->p_hfu_nthw);
+
+	if (hfu->ver >= 1) {
+		hfu_nthw_rcp_cnt(be->p_hfu_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			hfu_nthw_rcp_select(be->p_hfu_nthw, index + i);
+			hfu_nthw_rcp_len_a_wr(be->p_hfu_nthw, hfu->v3.hfu_rcp[index + i].len_a_wr);
+			hfu_nthw_rcp_len_a_ol4len(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_a_outer_l4_len);
+			hfu_nthw_rcp_len_a_pos_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_a_pos_dyn);
+			hfu_nthw_rcp_len_a_pos_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_a_pos_ofs);
+			hfu_nthw_rcp_len_a_add_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_a_add_dyn);
+			hfu_nthw_rcp_len_a_add_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_a_add_ofs);
+			hfu_nthw_rcp_len_a_sub_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_a_sub_dyn);
+			hfu_nthw_rcp_len_b_wr(be->p_hfu_nthw, hfu->v3.hfu_rcp[index + i].len_b_wr);
+			hfu_nthw_rcp_len_b_pos_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_b_pos_dyn);
+			hfu_nthw_rcp_len_b_pos_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_b_pos_ofs);
+			hfu_nthw_rcp_len_b_add_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_b_add_dyn);
+			hfu_nthw_rcp_len_b_add_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_b_add_ofs);
+			hfu_nthw_rcp_len_b_sub_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_b_sub_dyn);
+			hfu_nthw_rcp_len_c_wr(be->p_hfu_nthw, hfu->v3.hfu_rcp[index + i].len_c_wr);
+			hfu_nthw_rcp_len_c_pos_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_c_pos_dyn);
+			hfu_nthw_rcp_len_c_pos_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_c_pos_ofs);
+			hfu_nthw_rcp_len_c_add_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_c_add_dyn);
+			hfu_nthw_rcp_len_c_add_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_c_add_ofs);
+			hfu_nthw_rcp_len_c_sub_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].len_c_sub_dyn);
+			hfu_nthw_rcp_ttl_wr(be->p_hfu_nthw, hfu->v3.hfu_rcp[index + i].ttl_wr);
+			hfu_nthw_rcp_ttl_pos_dyn(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].ttl_pos_dyn);
+			hfu_nthw_rcp_ttl_pos_ofs(be->p_hfu_nthw,
+				hfu->v3.hfu_rcp[index + i].ttl_pos_ofs);
+			hfu_nthw_rcp_flush(be->p_hfu_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(hfu, be->p_hfu_nthw);
+	return 0;
+}
+
+static int tpe_csu_rcp_flush(void *be_dev, const struct tpe_func_s *csu, int index, int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, csu, be->p_csu_nthw);
+
+	if (csu->ver >= 1) {
+		csu_nthw_rcp_cnt(be->p_csu_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			csu_nthw_rcp_select(be->p_csu_nthw, index + i);
+			csu_nthw_rcp_outer_l3_cmd(be->p_csu_nthw,
+				csu->v3.csu_rcp[index + i].ol3_cmd);
+			csu_nthw_rcp_outer_l4_cmd(be->p_csu_nthw,
+				csu->v3.csu_rcp[index + i].ol4_cmd);
+			csu_nthw_rcp_inner_l3_cmd(be->p_csu_nthw,
+				csu->v3.csu_rcp[index + i].il3_cmd);
+			csu_nthw_rcp_inner_l4_cmd(be->p_csu_nthw,
+				csu->v3.csu_rcp[index + i].il4_cmd);
+			csu_nthw_rcp_flush(be->p_csu_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(csu, be->p_csu_nthw);
+	return 0;
+}
+
+/*
  * DBS
  */
 
@@ -1705,6 +2056,19 @@ const struct flow_api_backend_ops flow_be_iface = {
 	pdb_get_version,
 	pdb_rcp_flush,
 	pdb_config_flush,
+
+	tpe_get_present,
+	tpe_get_version,
+	tpe_rpp_rcp_flush,
+	tpe_rpp_ifr_rcp_flush,
+	tpe_ifr_rcp_flush,
+	tpe_ins_rcp_flush,
+	tpe_rpl_rcp_flush,
+	tpe_rpl_ext_flush,
+	tpe_rpl_rpl_flush,
+	tpe_cpy_rcp_flush,
+	tpe_hfu_rcp_flush,
+	tpe_csu_rcp_flush,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)

@@ -12,6 +12,11 @@
 
 #include "flow_nthw_rpp_lr.h"
 
+void rpp_lr_nthw_set_debug_mode(struct rpp_lr_nthw *p, unsigned int n_debug_mode)
+{
+	nthw_module_set_debug_mode(p->m_rpp_lr, n_debug_mode);
+}
+
 struct rpp_lr_nthw *rpp_lr_nthw_new(void)
 {
 	struct rpp_lr_nthw *p = malloc(sizeof(struct rpp_lr_nthw));
@@ -73,4 +78,80 @@ int rpp_lr_nthw_init(struct rpp_lr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 		nthw_register_query_field(p->mp_ifr_rcp_data, RPP_LR_IFR_RCP_DATA_IPV6_DROP);
 
 	return 0;
+}
+
+void rpp_lr_nthw_rcp_select(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	assert(p->mp_rcp_addr);
+	nthw_field_set_val32(p->mp_rcp_addr, val);
+}
+
+void rpp_lr_nthw_rcp_cnt(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	assert(p->mp_rcp_cnt);
+	nthw_field_set_val32(p->mp_rcp_cnt, val);
+}
+
+void rpp_lr_nthw_rcp_exp(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	assert(p->mp_rcp_data_exp);
+	nthw_field_set_val32(p->mp_rcp_data_exp, val);
+}
+
+void rpp_lr_nthw_rcp_flush(const struct rpp_lr_nthw *p)
+{
+	assert(p->mp_rcp_ctrl);
+	assert(p->mp_rcp_data);
+	nthw_register_flush(p->mp_rcp_ctrl, 1);
+	nthw_register_flush(p->mp_rcp_data, 1);
+}
+
+void rpp_lr_nthw_ifr_rcp_select(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	assert(p->mp_ifr_rcp_addr);
+	nthw_field_set_val32(p->mp_ifr_rcp_addr, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_cnt(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	assert(p->mp_ifr_rcp_cnt);
+	nthw_field_set_val32(p->mp_ifr_rcp_cnt, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_ipv4_en(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	if (p->mp_ifr_rcp_data_ipv4_en)
+		nthw_field_set_val32(p->mp_ifr_rcp_data_ipv4_en, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_ipv4_df_drop(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	if (p->mp_ifr_rcp_data_ipv4_df_drop)
+		nthw_field_set_val32(p->mp_ifr_rcp_data_ipv4_df_drop, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_ipv6_en(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	if (p->mp_ifr_rcp_data_ipv6_en)
+		nthw_field_set_val32(p->mp_ifr_rcp_data_ipv6_en, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_ipv6_drop(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	if (p->mp_ifr_rcp_data_ipv6_drop)
+		nthw_field_set_val32(p->mp_ifr_rcp_data_ipv6_drop, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_mtu(const struct rpp_lr_nthw *p, uint32_t val)
+{
+	assert(p->mp_ifr_rcp_data_mtu);
+	nthw_field_set_val32(p->mp_ifr_rcp_data_mtu, val);
+}
+
+void rpp_lr_nthw_ifr_rcp_flush(const struct rpp_lr_nthw *p)
+{
+	assert(p->mp_ifr_rcp_ctrl);
+	assert(p->mp_ifr_rcp_data);
+	nthw_register_flush(p->mp_ifr_rcp_ctrl, 1);
+	nthw_register_flush(p->mp_ifr_rcp_data, 1);
 }

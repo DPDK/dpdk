@@ -39,5 +39,16 @@ struct ifr_nthw *ifr_nthw_new(void);
 int ifr_nthw_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance);
 
 int ifr_nthw_setup(struct ifr_nthw *p, int n_idx, int n_idx_cnt);
+void ifr_nthw_set_debug_mode(struct ifr_nthw *p, unsigned int n_debug_mode);
+
+/* IFR */
+void ifr_nthw_rcp_select(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_cnt(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_ipv4_en(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_ipv4_df_drop(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_ipv6_en(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_ipv6_drop(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_mtu(const struct ifr_nthw *p, uint32_t val);
+void ifr_nthw_rcp_flush(const struct ifr_nthw *p);
 
 #endif	/* __FLOW_NTHW_IFR_H__ */
