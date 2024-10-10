@@ -32,6 +32,7 @@ void *callocate_mod(struct common_func_s *mod, int sets, ...);
 void zero_module_cache(struct common_func_s *mod);
 
 #define ALL_ENTRIES -1000
+#define ALL_BANK_ENTRIES -1001
 
 #define INDEX_TOO_LARGE (-2)
 #define INDEX_TOO_LARGE_LOG NT_LOG(INF, FILTER, "ERROR:%s: Index too large", __func__)
@@ -270,6 +271,89 @@ struct km_func_s {
 		struct hw_mod_km_v7_s v7;
 	};
 };
+enum hw_km_e {
+	/* functions */
+	HW_KM_RCP_PRESET_ALL = 0,
+	HW_KM_CAM_PRESET_ALL,
+	/* to sync and reset hw with cache - force write all entries in a bank */
+	HW_KM_TCAM_BANK_RESET,
+	/* fields */
+	HW_KM_RCP_QW0_DYN = FIELD_START_INDEX,
+	HW_KM_RCP_QW0_OFS,
+	HW_KM_RCP_QW0_SEL_A,
+	HW_KM_RCP_QW0_SEL_B,
+	HW_KM_RCP_QW4_DYN,
+	HW_KM_RCP_QW4_OFS,
+	HW_KM_RCP_QW4_SEL_A,
+	HW_KM_RCP_QW4_SEL_B,
+	HW_KM_RCP_DW8_DYN,
+	HW_KM_RCP_DW8_OFS,
+	HW_KM_RCP_DW8_SEL_A,
+	HW_KM_RCP_DW8_SEL_B,
+	HW_KM_RCP_DW10_DYN,
+	HW_KM_RCP_DW10_OFS,
+	HW_KM_RCP_DW10_SEL_A,
+	HW_KM_RCP_DW10_SEL_B,
+	HW_KM_RCP_SWX_CCH,
+	HW_KM_RCP_SWX_SEL_A,
+	HW_KM_RCP_SWX_SEL_B,
+	HW_KM_RCP_MASK_A,
+	HW_KM_RCP_MASK_B,
+	HW_KM_RCP_DUAL,
+	HW_KM_RCP_PAIRED,
+	HW_KM_RCP_EL_A,
+	HW_KM_RCP_EL_B,
+	HW_KM_RCP_INFO_A,
+	HW_KM_RCP_INFO_B,
+	HW_KM_RCP_FTM_A,
+	HW_KM_RCP_FTM_B,
+	HW_KM_RCP_BANK_A,
+	HW_KM_RCP_BANK_B,
+	HW_KM_RCP_KL_A,
+	HW_KM_RCP_KL_B,
+	HW_KM_RCP_KEYWAY_A,
+	HW_KM_RCP_KEYWAY_B,
+	HW_KM_RCP_SYNERGY_MODE,
+	HW_KM_RCP_DW0_B_DYN,
+	HW_KM_RCP_DW0_B_OFS,
+	HW_KM_RCP_DW2_B_DYN,
+	HW_KM_RCP_DW2_B_OFS,
+	HW_KM_RCP_SW4_B_DYN,
+	HW_KM_RCP_SW4_B_OFS,
+	HW_KM_RCP_SW5_B_DYN,
+	HW_KM_RCP_SW5_B_OFS,
+	HW_KM_CAM_W0,
+	HW_KM_CAM_W1,
+	HW_KM_CAM_W2,
+	HW_KM_CAM_W3,
+	HW_KM_CAM_W4,
+	HW_KM_CAM_W5,
+	HW_KM_CAM_FT0,
+	HW_KM_CAM_FT1,
+	HW_KM_CAM_FT2,
+	HW_KM_CAM_FT3,
+	HW_KM_CAM_FT4,
+	HW_KM_CAM_FT5,
+	HW_KM_TCAM_T,
+	HW_KM_TCI_COLOR,
+	HW_KM_TCI_FT,
+	HW_KM_TCQ_BANK_MASK,
+	HW_KM_TCQ_QUAL
+};
+bool hw_mod_km_present(struct flow_api_backend_s *be);
+int hw_mod_km_alloc(struct flow_api_backend_s *be);
+void hw_mod_km_free(struct flow_api_backend_s *be);
+int hw_mod_km_reset(struct flow_api_backend_s *be);
+int hw_mod_km_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_km_cam_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
+	int count);
+int hw_mod_km_tcam_flush(struct flow_api_backend_s *be, int start_bank, int count);
+int hw_mod_km_tcam_set(struct flow_api_backend_s *be, enum hw_km_e field, int bank, int byte,
+	int byte_val, uint32_t *value_set);
+int hw_mod_km_tci_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
+	int count);
+int hw_mod_km_tcq_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
+	int count);
 
 struct flm_func_s {
 	COMMON_FUNC_INFO_S;
@@ -486,6 +570,7 @@ struct flow_api_backend_s {
 
 	/* flow filter FPGA modules */
 	struct cat_func_s cat;
+	struct km_func_s km;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;
