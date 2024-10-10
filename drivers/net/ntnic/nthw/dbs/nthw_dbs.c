@@ -11,6 +11,27 @@
 
 static void set_shadow_tx_qp_data(nthw_dbs_t *p, uint32_t index, uint32_t virtual_port);
 static void flush_tx_qp_data(nthw_dbs_t *p, uint32_t index);
+static void set_shadow_tx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk,
+	uint32_t in_order);
+static void flush_tx_uw_data(nthw_dbs_t *p, uint32_t index);
+static void set_shadow_rx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk);
+static void flush_rx_uw_data(nthw_dbs_t *p, uint32_t index);
 static void set_shadow_rx_am_data(nthw_dbs_t *p,
 	uint32_t index,
 	uint64_t guest_physical_address,
@@ -199,6 +220,52 @@ int dbs_init(nthw_dbs_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	p->mp_fld_tx_avail_monitor_data_int =
 		nthw_register_query_field(p->mp_reg_tx_avail_monitor_data, DBS_TX_AM_DATA_INT);
 
+	p->mp_reg_rx_used_writer_control = nthw_module_get_register(p->mp_mod_dbs, DBS_RX_UW_CTRL);
+	p->mp_fld_rx_used_writer_control_adr =
+		nthw_register_get_field(p->mp_reg_rx_used_writer_control, DBS_RX_UW_CTRL_ADR);
+	p->mp_fld_rx_used_writer_control_cnt =
+		nthw_register_get_field(p->mp_reg_rx_used_writer_control, DBS_RX_UW_CTRL_CNT);
+
+	p->mp_reg_rx_used_writer_data = nthw_module_get_register(p->mp_mod_dbs, DBS_RX_UW_DATA);
+	p->mp_fld_rx_used_writer_data_guest_physical_address =
+		nthw_register_get_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_GPA);
+	p->mp_fld_rx_used_writer_data_host_id =
+		nthw_register_get_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_HID);
+	p->mp_fld_rx_used_writer_data_queue_size =
+		nthw_register_get_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_QS);
+	p->mp_fld_rx_used_writer_data_packed =
+		nthw_register_query_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_PCKED);
+	p->mp_fld_rx_used_writer_data_int =
+		nthw_register_query_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_INT);
+	p->mp_fld_rx_used_writer_data_vec =
+		nthw_register_query_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_VEC);
+	p->mp_fld_rx_used_writer_data_istk =
+		nthw_register_query_field(p->mp_reg_rx_used_writer_data, DBS_RX_UW_DATA_ISTK);
+
+	p->mp_reg_tx_used_writer_control = nthw_module_get_register(p->mp_mod_dbs, DBS_TX_UW_CTRL);
+	p->mp_fld_tx_used_writer_control_adr =
+		nthw_register_get_field(p->mp_reg_tx_used_writer_control, DBS_TX_UW_CTRL_ADR);
+	p->mp_fld_tx_used_writer_control_cnt =
+		nthw_register_get_field(p->mp_reg_tx_used_writer_control, DBS_TX_UW_CTRL_CNT);
+
+	p->mp_reg_tx_used_writer_data = nthw_module_get_register(p->mp_mod_dbs, DBS_TX_UW_DATA);
+	p->mp_fld_tx_used_writer_data_guest_physical_address =
+		nthw_register_get_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_GPA);
+	p->mp_fld_tx_used_writer_data_host_id =
+		nthw_register_get_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_HID);
+	p->mp_fld_tx_used_writer_data_queue_size =
+		nthw_register_get_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_QS);
+	p->mp_fld_tx_used_writer_data_packed =
+		nthw_register_query_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_PCKED);
+	p->mp_fld_tx_used_writer_data_int =
+		nthw_register_query_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_INT);
+	p->mp_fld_tx_used_writer_data_vec =
+		nthw_register_query_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_VEC);
+	p->mp_fld_tx_used_writer_data_istk =
+		nthw_register_query_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_ISTK);
+	p->mp_fld_tx_used_writer_data_in_order =
+		nthw_register_query_field(p->mp_reg_tx_used_writer_data, DBS_TX_UW_DATA_INO);
+
 	p->mp_reg_tx_queue_property_control =
 		nthw_module_get_register(p->mp_mod_dbs, DBS_TX_QP_CTRL);
 	p->mp_fld_tx_queue_property_control_adr =
@@ -247,12 +314,18 @@ void dbs_reset(nthw_dbs_t *p)
 	for (i = 0; i < NT_DBS_RX_QUEUES_MAX; ++i) {
 		set_shadow_rx_am_data(p, i, 0, 0, 0, 0, 0);
 		flush_rx_am_data(p, i);
+
+		set_shadow_rx_uw_data(p, i, 0, 0, 0, 0, 0, 0, 0);
+		flush_rx_uw_data(p, i);
 	}
 
 	/* Reset TX memory banks and shado */
 	for (i = 0; i < NT_DBS_TX_QUEUES_MAX; ++i) {
 		set_shadow_tx_am_data(p, i, 0, 0, 0, 0, 0);
 		flush_tx_am_data(p, i);
+
+		set_shadow_tx_uw_data(p, i, 0, 0, 0, 0, 0, 0, 0, 0);
+		flush_tx_uw_data(p, i);
 
 		set_shadow_tx_qp_data(p, i, 0);
 		flush_tx_qp_data(p, i);
@@ -488,6 +561,249 @@ int set_tx_am_data(nthw_dbs_t *p,
 	set_shadow_tx_am_data(p, index, guest_physical_address, enable, host_id, packed,
 		int_enable);
 	flush_tx_am_data(p, index);
+	return 0;
+}
+
+static void set_rx_uw_data_index(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val32(p->mp_fld_rx_used_writer_control_adr, index);
+	nthw_field_set_val32(p->mp_fld_rx_used_writer_control_cnt, 1);
+	nthw_register_flush(p->mp_reg_rx_used_writer_control, 1);
+}
+
+static void set_shadow_rx_uw_data_guest_physical_address(nthw_dbs_t *p, uint32_t index,
+	uint64_t guest_physical_address)
+{
+	p->m_rx_uw_shadow[index].guest_physical_address = guest_physical_address;
+}
+
+static void set_shadow_rx_uw_data_host_id(nthw_dbs_t *p, uint32_t index, uint32_t host_id)
+{
+	p->m_rx_uw_shadow[index].host_id = host_id;
+}
+
+static void set_shadow_rx_uw_data_queue_size(nthw_dbs_t *p, uint32_t index, uint32_t queue_size)
+{
+	p->m_rx_uw_shadow[index].queue_size = queue_size;
+}
+
+static void set_shadow_rx_uw_data_packed(nthw_dbs_t *p, uint32_t index, uint32_t packed)
+{
+	p->m_rx_uw_shadow[index].packed = packed;
+}
+
+static void set_shadow_rx_uw_data_int_enable(nthw_dbs_t *p, uint32_t index, uint32_t int_enable)
+{
+	p->m_rx_uw_shadow[index].int_enable = int_enable;
+}
+
+static void set_shadow_rx_uw_data_vec(nthw_dbs_t *p, uint32_t index, uint32_t vec)
+{
+	p->m_rx_uw_shadow[index].vec = vec;
+}
+
+static void set_shadow_rx_uw_data_istk(nthw_dbs_t *p, uint32_t index, uint32_t istk)
+{
+	p->m_rx_uw_shadow[index].istk = istk;
+}
+
+static void set_shadow_rx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk)
+{
+	set_shadow_rx_uw_data_guest_physical_address(p, index, guest_physical_address);
+	set_shadow_rx_uw_data_host_id(p, index, host_id);
+	set_shadow_rx_uw_data_queue_size(p, index, queue_size);
+	set_shadow_rx_uw_data_packed(p, index, packed);
+	set_shadow_rx_uw_data_int_enable(p, index, int_enable);
+	set_shadow_rx_uw_data_vec(p, index, vec);
+	set_shadow_rx_uw_data_istk(p, index, istk);
+}
+
+static void flush_rx_uw_data(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val(p->mp_fld_rx_used_writer_data_guest_physical_address,
+		(uint32_t *)&p->m_rx_uw_shadow[index].guest_physical_address, 2);
+	nthw_field_set_val32(p->mp_fld_rx_used_writer_data_host_id,
+		p->m_rx_uw_shadow[index].host_id);
+
+	if (nthw_module_is_version_newer(p->mp_mod_dbs, 0, 8)) {
+		nthw_field_set_val32(p->mp_fld_rx_used_writer_data_queue_size,
+			(1U << p->m_rx_uw_shadow[index].queue_size) - 1U);
+
+	} else {
+		nthw_field_set_val32(p->mp_fld_rx_used_writer_data_queue_size,
+			p->m_rx_uw_shadow[index].queue_size);
+	}
+
+	if (p->mp_fld_rx_used_writer_data_packed) {
+		nthw_field_set_val32(p->mp_fld_rx_used_writer_data_packed,
+			p->m_rx_uw_shadow[index].packed);
+	}
+
+	if (p->mp_fld_rx_used_writer_data_int) {
+		nthw_field_set_val32(p->mp_fld_rx_used_writer_data_int,
+			p->m_rx_uw_shadow[index].int_enable);
+		nthw_field_set_val32(p->mp_fld_rx_used_writer_data_vec,
+			p->m_rx_uw_shadow[index].vec);
+		nthw_field_set_val32(p->mp_fld_rx_used_writer_data_istk,
+			p->m_rx_uw_shadow[index].istk);
+	}
+
+	set_rx_uw_data_index(p, index);
+	nthw_register_flush(p->mp_reg_rx_used_writer_data, 1);
+}
+
+int set_rx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk)
+{
+	if (!p->mp_reg_rx_used_writer_data)
+		return -ENOTSUP;
+
+	set_shadow_rx_uw_data(p, index, guest_physical_address, host_id, queue_size, packed,
+		int_enable, vec, istk);
+	flush_rx_uw_data(p, index);
+	return 0;
+}
+
+static void set_tx_uw_data_index(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val32(p->mp_fld_tx_used_writer_control_adr, index);
+	nthw_field_set_val32(p->mp_fld_tx_used_writer_control_cnt, 1);
+	nthw_register_flush(p->mp_reg_tx_used_writer_control, 1);
+}
+
+static void set_shadow_tx_uw_data_guest_physical_address(nthw_dbs_t *p, uint32_t index,
+	uint64_t guest_physical_address)
+{
+	p->m_tx_uw_shadow[index].guest_physical_address = guest_physical_address;
+}
+
+static void set_shadow_tx_uw_data_host_id(nthw_dbs_t *p, uint32_t index, uint32_t host_id)
+{
+	p->m_tx_uw_shadow[index].host_id = host_id;
+}
+
+static void set_shadow_tx_uw_data_queue_size(nthw_dbs_t *p, uint32_t index, uint32_t queue_size)
+{
+	p->m_tx_uw_shadow[index].queue_size = queue_size;
+}
+
+static void set_shadow_tx_uw_data_packed(nthw_dbs_t *p, uint32_t index, uint32_t packed)
+{
+	p->m_tx_uw_shadow[index].packed = packed;
+}
+
+static void set_shadow_tx_uw_data_int_enable(nthw_dbs_t *p, uint32_t index, uint32_t int_enable)
+{
+	p->m_tx_uw_shadow[index].int_enable = int_enable;
+}
+
+static void set_shadow_tx_uw_data_vec(nthw_dbs_t *p, uint32_t index, uint32_t vec)
+{
+	p->m_tx_uw_shadow[index].vec = vec;
+}
+
+static void set_shadow_tx_uw_data_istk(nthw_dbs_t *p, uint32_t index, uint32_t istk)
+{
+	p->m_tx_uw_shadow[index].istk = istk;
+}
+
+static void set_shadow_tx_uw_data_in_order(nthw_dbs_t *p, uint32_t index, uint32_t in_order)
+{
+	p->m_tx_uw_shadow[index].in_order = in_order;
+}
+
+static void set_shadow_tx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk,
+	uint32_t in_order)
+{
+	set_shadow_tx_uw_data_guest_physical_address(p, index, guest_physical_address);
+	set_shadow_tx_uw_data_host_id(p, index, host_id);
+	set_shadow_tx_uw_data_queue_size(p, index, queue_size);
+	set_shadow_tx_uw_data_packed(p, index, packed);
+	set_shadow_tx_uw_data_int_enable(p, index, int_enable);
+	set_shadow_tx_uw_data_vec(p, index, vec);
+	set_shadow_tx_uw_data_istk(p, index, istk);
+	set_shadow_tx_uw_data_in_order(p, index, in_order);
+}
+
+static void flush_tx_uw_data(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val(p->mp_fld_tx_used_writer_data_guest_physical_address,
+		(uint32_t *)&p->m_tx_uw_shadow[index].guest_physical_address, 2);
+	nthw_field_set_val32(p->mp_fld_tx_used_writer_data_host_id,
+		p->m_tx_uw_shadow[index].host_id);
+
+	if (nthw_module_is_version_newer(p->mp_mod_dbs, 0, 8)) {
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_queue_size,
+			(1U << p->m_tx_uw_shadow[index].queue_size) - 1U);
+
+	} else {
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_queue_size,
+			p->m_tx_uw_shadow[index].queue_size);
+	}
+
+	if (p->mp_fld_tx_used_writer_data_packed) {
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_packed,
+			p->m_tx_uw_shadow[index].packed);
+	}
+
+	if (p->mp_fld_tx_used_writer_data_int) {
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_int,
+			p->m_tx_uw_shadow[index].int_enable);
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_vec,
+			p->m_tx_uw_shadow[index].vec);
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_istk,
+			p->m_tx_uw_shadow[index].istk);
+	}
+
+	if (p->mp_fld_tx_used_writer_data_in_order) {
+		nthw_field_set_val32(p->mp_fld_tx_used_writer_data_in_order,
+			p->m_tx_uw_shadow[index].in_order);
+	}
+
+	set_tx_uw_data_index(p, index);
+	nthw_register_flush(p->mp_reg_tx_used_writer_data, 1);
+}
+
+int set_tx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk,
+	uint32_t in_order)
+{
+	if (!p->mp_reg_tx_used_writer_data)
+		return -ENOTSUP;
+
+	set_shadow_tx_uw_data(p, index, guest_physical_address, host_id, queue_size, packed,
+		int_enable, vec, istk, in_order);
+	flush_tx_uw_data(p, index);
 	return 0;
 }
 

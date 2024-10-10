@@ -33,6 +33,29 @@ struct nthw_dbs_tx_am_data_s {
 	uint32_t int_enable;
 };
 
+/* DBS_RX_UW_DATA */
+struct nthw_dbs_rx_uw_data_s {
+	uint64_t guest_physical_address;
+	uint32_t host_id;
+	uint32_t queue_size;
+	uint32_t packed;
+	uint32_t int_enable;
+	uint32_t vec;
+	uint32_t istk;
+};
+
+/* DBS_TX_UW_DATA */
+struct nthw_dbs_tx_uw_data_s {
+	uint64_t guest_physical_address;
+	uint32_t host_id;
+	uint32_t queue_size;
+	uint32_t packed;
+	uint32_t int_enable;
+	uint32_t vec;
+	uint32_t istk;
+	uint32_t in_order;
+};
+
 /* DBS_TX_QP_DATA */
 struct nthw_dbs_tx_qp_data_s {
 	uint32_t virtual_port;
@@ -121,6 +144,33 @@ struct nthw_dbs_s {
 	nthw_field_t *mp_fld_tx_avail_monitor_data_packed;
 	nthw_field_t *mp_fld_tx_avail_monitor_data_int;
 
+	nthw_register_t *mp_reg_rx_used_writer_control;
+	nthw_field_t *mp_fld_rx_used_writer_control_adr;
+	nthw_field_t *mp_fld_rx_used_writer_control_cnt;
+
+	nthw_register_t *mp_reg_rx_used_writer_data;
+	nthw_field_t *mp_fld_rx_used_writer_data_guest_physical_address;
+	nthw_field_t *mp_fld_rx_used_writer_data_host_id;
+	nthw_field_t *mp_fld_rx_used_writer_data_queue_size;
+	nthw_field_t *mp_fld_rx_used_writer_data_packed;
+	nthw_field_t *mp_fld_rx_used_writer_data_int;
+	nthw_field_t *mp_fld_rx_used_writer_data_vec;
+	nthw_field_t *mp_fld_rx_used_writer_data_istk;
+
+	nthw_register_t *mp_reg_tx_used_writer_control;
+	nthw_field_t *mp_fld_tx_used_writer_control_adr;
+	nthw_field_t *mp_fld_tx_used_writer_control_cnt;
+
+	nthw_register_t *mp_reg_tx_used_writer_data;
+	nthw_field_t *mp_fld_tx_used_writer_data_guest_physical_address;
+	nthw_field_t *mp_fld_tx_used_writer_data_host_id;
+	nthw_field_t *mp_fld_tx_used_writer_data_queue_size;
+	nthw_field_t *mp_fld_tx_used_writer_data_packed;
+	nthw_field_t *mp_fld_tx_used_writer_data_int;
+	nthw_field_t *mp_fld_tx_used_writer_data_vec;
+	nthw_field_t *mp_fld_tx_used_writer_data_istk;
+	nthw_field_t *mp_fld_tx_used_writer_data_in_order;
+
 	nthw_register_t *mp_reg_tx_queue_property_control;
 	nthw_field_t *mp_fld_tx_queue_property_control_adr;
 	nthw_field_t *mp_fld_tx_queue_property_control_cnt;
@@ -129,8 +179,10 @@ struct nthw_dbs_s {
 	nthw_field_t *mp_fld_tx_queue_property_data_v_port;
 
 	struct nthw_dbs_rx_am_data_s m_rx_am_shadow[NT_DBS_RX_QUEUES_MAX];
+	struct nthw_dbs_rx_uw_data_s m_rx_uw_shadow[NT_DBS_RX_QUEUES_MAX];
 
 	struct nthw_dbs_tx_am_data_s m_tx_am_shadow[NT_DBS_TX_QUEUES_MAX];
+	struct nthw_dbs_tx_uw_data_s m_tx_uw_shadow[NT_DBS_TX_QUEUES_MAX];
 	struct nthw_dbs_tx_qp_data_s m_tx_qp_shadow[NT_DBS_TX_QUEUES_MAX];
 };
 
@@ -174,6 +226,25 @@ int set_tx_am_data(nthw_dbs_t *p,
 	uint32_t host_id,
 	uint32_t packed,
 	uint32_t int_enable);
+int set_rx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk);
+int set_tx_uw_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t host_id,
+	uint32_t queue_size,
+	uint32_t packed,
+	uint32_t int_enable,
+	uint32_t vec,
+	uint32_t istk,
+	uint32_t in_order);
 int nthw_dbs_set_tx_qp_data(nthw_dbs_t *p, uint32_t index, uint32_t virtual_port);
 
 #endif	/* _NTNIC_DBS_H_ */
