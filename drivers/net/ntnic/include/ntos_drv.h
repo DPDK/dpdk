@@ -27,6 +27,20 @@
 #define MAX_QUEUES       125
 
 /* Structs: */
+#define SG_HDR_SIZE    12
+
+struct _pkt_hdr_rx {
+	uint32_t cap_len:14;
+	uint32_t fid:10;
+	uint32_t ofs1:8;
+	uint32_t ip_prot:8;
+	uint32_t port:13;
+	uint32_t descr:8;
+	uint32_t descr_12b:1;
+	uint32_t color_type:2;
+	uint32_t color:32;
+};
+
 struct nthw_memory_descriptor {
 	void *phys_addr;
 	void *virt_addr;

@@ -39,8 +39,28 @@
 /* Max RSS queues */
 #define MAX_QUEUES 125
 
+#define NUM_VQ_SEGS(_data_size_)                                                                  \
+	({                                                                                        \
+		size_t _size = (_data_size_);                                                     \
+		size_t _segment_count = ((_size + SG_HDR_SIZE) > SG_HW_TX_PKT_BUFFER_SIZE)        \
+			? (((_size + SG_HDR_SIZE) + SG_HW_TX_PKT_BUFFER_SIZE - 1) /               \
+			   SG_HW_TX_PKT_BUFFER_SIZE)                                              \
+			: 1;                                                                      \
+		_segment_count;                                                                   \
+	})
+
+#define VIRTQ_DESCR_IDX(_tx_pkt_idx_)                                                             \
+	(((_tx_pkt_idx_) + first_vq_descr_idx) % SG_NB_HW_TX_DESCRIPTORS)
+
+#define VIRTQ_DESCR_IDX_NEXT(_vq_descr_idx_) (((_vq_descr_idx_) + 1) % SG_NB_HW_TX_DESCRIPTORS)
+
 #define ONE_G_SIZE  0x40000000
 #define ONE_G_MASK  (ONE_G_SIZE - 1)
+
+#define MAX_RX_PACKETS   128
+#define MAX_TX_PACKETS   128
+
+int kill_pmd;
 
 #define ETH_DEV_NTNIC_HELP_ARG "help"
 #define ETH_DEV_NTHW_RXQUEUES_ARG "rxqs"
@@ -191,6 +211,423 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	}
 
 	return 0;
+}
+
+static __rte_always_inline int copy_virtqueue_to_mbuf(struct rte_mbuf *mbuf,
+	struct rte_mempool *mb_pool,
+	struct nthw_received_packets *hw_recv,
+	int max_segs,
+	uint16_t data_len)
+{
+	int src_pkt = 0;
+	/*
+	 * 1. virtqueue packets may be segmented
+	 * 2. the mbuf size may be too small and may need to be segmented
+	 */
+	char *data = (char *)hw_recv->addr + SG_HDR_SIZE;
+	char *dst = (char *)mbuf->buf_addr + RTE_PKTMBUF_HEADROOM;
+
+	/* set packet length */
+	mbuf->pkt_len = data_len - SG_HDR_SIZE;
+
+	int remain = mbuf->pkt_len;
+	/* First cpy_size is without header */
+	int cpy_size = (data_len > SG_HW_RX_PKT_BUFFER_SIZE)
+		? SG_HW_RX_PKT_BUFFER_SIZE - SG_HDR_SIZE
+		: remain;
+
+	struct rte_mbuf *m = mbuf;	/* if mbuf segmentation is needed */
+
+	while (++src_pkt <= max_segs) {
+		/* keep track of space in dst */
+		int cpto_size = rte_pktmbuf_tailroom(m);
+
+		if (cpy_size > cpto_size) {
+			int new_cpy_size = cpto_size;
+
+			rte_memcpy((void *)dst, (void *)data, new_cpy_size);
+			m->data_len += new_cpy_size;
+			remain -= new_cpy_size;
+			cpy_size -= new_cpy_size;
+
+			data += new_cpy_size;
+
+			/*
+			 * loop if remaining data from this virtqueue seg
+			 * cannot fit in one extra mbuf
+			 */
+			do {
+				m->next = rte_pktmbuf_alloc(mb_pool);
+
+				if (unlikely(!m->next))
+					return -1;
+
+				m = m->next;
+
+				/* Headroom is not needed in chained mbufs */
+				rte_pktmbuf_prepend(m, rte_pktmbuf_headroom(m));
+				dst = (char *)m->buf_addr;
+				m->data_len = 0;
+				m->pkt_len = 0;
+
+				cpto_size = rte_pktmbuf_tailroom(m);
+
+				int actual_cpy_size =
+					(cpy_size > cpto_size) ? cpto_size : cpy_size;
+
+				rte_memcpy((void *)dst, (void *)data, actual_cpy_size);
+				m->pkt_len += actual_cpy_size;
+				m->data_len += actual_cpy_size;
+
+				remain -= actual_cpy_size;
+				cpy_size -= actual_cpy_size;
+
+				data += actual_cpy_size;
+
+				mbuf->nb_segs++;
+
+			} while (cpy_size && remain);
+
+		} else {
+			/* all data from this virtqueue segment can fit in current mbuf */
+			rte_memcpy((void *)dst, (void *)data, cpy_size);
+			m->data_len += cpy_size;
+
+			if (mbuf->nb_segs > 1)
+				m->pkt_len += cpy_size;
+
+			remain -= cpy_size;
+		}
+
+		/* packet complete - all data from current virtqueue packet has been copied */
+		if (remain == 0)
+			break;
+
+		/* increment dst to data end */
+		dst = rte_pktmbuf_mtod_offset(m, char *, m->data_len);
+		/* prepare for next virtqueue segment */
+		data = (char *)hw_recv[src_pkt].addr;	/* following packets are full data */
+
+		cpy_size = (remain > SG_HW_RX_PKT_BUFFER_SIZE) ? SG_HW_RX_PKT_BUFFER_SIZE : remain;
+	};
+
+	if (src_pkt > max_segs) {
+		NT_LOG(ERR, NTNIC,
+			"Did not receive correct number of segment for a whole packet");
+		return -1;
+	}
+
+	return src_pkt;
+}
+
+static uint16_t eth_dev_rx_scg(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	unsigned int i;
+	struct rte_mbuf *mbuf;
+	struct ntnic_rx_queue *rx_q = queue;
+	uint16_t num_rx = 0;
+
+	struct nthw_received_packets hw_recv[MAX_RX_PACKETS];
+
+	if (kill_pmd)
+		return 0;
+
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	if (nb_pkts > MAX_RX_PACKETS)
+		nb_pkts = MAX_RX_PACKETS;
+
+	uint16_t whole_pkts = 0;
+	uint16_t hw_recv_pkt_segs = 0;
+
+	if (sg_ops != NULL) {
+		hw_recv_pkt_segs =
+			sg_ops->nthw_get_rx_packets(rx_q->vq, nb_pkts, hw_recv, &whole_pkts);
+
+		if (!hw_recv_pkt_segs)
+			return 0;
+	}
+
+	nb_pkts = whole_pkts;
+
+	int src_pkt = 0;/* from 0 to hw_recv_pkt_segs */
+
+	for (i = 0; i < nb_pkts; i++) {
+		bufs[i] = rte_pktmbuf_alloc(rx_q->mb_pool);
+
+		if (!bufs[i]) {
+			NT_LOG(ERR, NTNIC, "ERROR - no more buffers mbuf in mempool");
+			goto err_exit;
+		}
+
+		mbuf = bufs[i];
+
+		struct _pkt_hdr_rx *phdr = (struct _pkt_hdr_rx *)hw_recv[src_pkt].addr;
+
+		if (phdr->cap_len < SG_HDR_SIZE) {
+			NT_LOG(ERR, NTNIC,
+				"Pkt len of zero received. No header!! - dropping packets");
+			rte_pktmbuf_free(mbuf);
+			goto err_exit;
+		}
+
+		{
+			if (phdr->cap_len <= SG_HW_RX_PKT_BUFFER_SIZE &&
+				(phdr->cap_len - SG_HDR_SIZE) <= rte_pktmbuf_tailroom(mbuf)) {
+				mbuf->data_len = phdr->cap_len - SG_HDR_SIZE;
+				rte_memcpy(rte_pktmbuf_mtod(mbuf, char *),
+					(char *)hw_recv[src_pkt].addr + SG_HDR_SIZE,
+					mbuf->data_len);
+
+				mbuf->pkt_len = mbuf->data_len;
+				src_pkt++;
+
+			} else {
+				int cpy_segs = copy_virtqueue_to_mbuf(mbuf, rx_q->mb_pool,
+						&hw_recv[src_pkt],
+						hw_recv_pkt_segs - src_pkt,
+						phdr->cap_len);
+
+				if (cpy_segs < 0) {
+					/* Error */
+					rte_pktmbuf_free(mbuf);
+					goto err_exit;
+				}
+
+				src_pkt += cpy_segs;
+			}
+
+			num_rx++;
+
+			mbuf->ol_flags &= ~(RTE_MBUF_F_RX_FDIR_ID | RTE_MBUF_F_RX_FDIR);
+			mbuf->port = (uint16_t)-1;
+		}
+	}
+
+err_exit:
+
+	if (sg_ops != NULL)
+		sg_ops->nthw_release_rx_packets(rx_q->vq, hw_recv_pkt_segs);
+
+	return num_rx;
+}
+
+static int copy_mbuf_to_virtqueue(struct nthw_cvirtq_desc *cvq_desc,
+	uint16_t vq_descr_idx,
+	struct nthw_memory_descriptor *vq_bufs,
+	int max_segs,
+	struct rte_mbuf *mbuf)
+{
+	/*
+	 * 1. mbuf packet may be segmented
+	 * 2. the virtqueue buffer size may be too small and may need to be segmented
+	 */
+
+	char *data = rte_pktmbuf_mtod(mbuf, char *);
+	char *dst = (char *)vq_bufs[vq_descr_idx].virt_addr + SG_HDR_SIZE;
+
+	int remain = mbuf->pkt_len;
+	int cpy_size = mbuf->data_len;
+
+	struct rte_mbuf *m = mbuf;
+	int cpto_size = SG_HW_TX_PKT_BUFFER_SIZE - SG_HDR_SIZE;
+
+	cvq_desc->b[vq_descr_idx].len = SG_HDR_SIZE;
+
+	int cur_seg_num = 0;	/* start from 0 */
+
+	while (m) {
+		/* Can all data in current src segment be in current dest segment */
+		if (cpy_size > cpto_size) {
+			int new_cpy_size = cpto_size;
+
+			rte_memcpy((void *)dst, (void *)data, new_cpy_size);
+
+			cvq_desc->b[vq_descr_idx].len += new_cpy_size;
+
+			remain -= new_cpy_size;
+			cpy_size -= new_cpy_size;
+
+			data += new_cpy_size;
+
+			/*
+			 * Loop if remaining data from this virtqueue seg cannot fit in one extra
+			 * mbuf
+			 */
+			do {
+				vq_add_flags(cvq_desc, vq_descr_idx, VIRTQ_DESC_F_NEXT);
+
+				int next_vq_descr_idx = VIRTQ_DESCR_IDX_NEXT(vq_descr_idx);
+
+				vq_set_next(cvq_desc, vq_descr_idx, next_vq_descr_idx);
+
+				vq_descr_idx = next_vq_descr_idx;
+
+				vq_set_flags(cvq_desc, vq_descr_idx, 0);
+				vq_set_next(cvq_desc, vq_descr_idx, 0);
+
+				if (++cur_seg_num > max_segs)
+					break;
+
+				dst = (char *)vq_bufs[vq_descr_idx].virt_addr;
+				cpto_size = SG_HW_TX_PKT_BUFFER_SIZE;
+
+				int actual_cpy_size =
+					(cpy_size > cpto_size) ? cpto_size : cpy_size;
+				rte_memcpy((void *)dst, (void *)data, actual_cpy_size);
+
+				cvq_desc->b[vq_descr_idx].len = actual_cpy_size;
+
+				remain -= actual_cpy_size;
+				cpy_size -= actual_cpy_size;
+				cpto_size -= actual_cpy_size;
+
+				data += actual_cpy_size;
+
+			} while (cpy_size && remain);
+
+		} else {
+			/* All data from this segment can fit in current virtqueue buffer */
+			rte_memcpy((void *)dst, (void *)data, cpy_size);
+
+			cvq_desc->b[vq_descr_idx].len += cpy_size;
+
+			remain -= cpy_size;
+			cpto_size -= cpy_size;
+		}
+
+		/* Packet complete - all segments from current mbuf has been copied */
+		if (remain == 0)
+			break;
+
+		/* increment dst to data end */
+		dst = (char *)vq_bufs[vq_descr_idx].virt_addr + cvq_desc->b[vq_descr_idx].len;
+
+		m = m->next;
+
+		if (!m) {
+			NT_LOG(ERR, NTNIC, "ERROR: invalid packet size");
+			break;
+		}
+
+		/* Prepare for next mbuf segment */
+		data = rte_pktmbuf_mtod(m, char *);
+		cpy_size = m->data_len;
+	};
+
+	cur_seg_num++;
+
+	if (cur_seg_num > max_segs) {
+		NT_LOG(ERR, NTNIC,
+			"Did not receive correct number of segment for a whole packet");
+		return -1;
+	}
+
+	return cur_seg_num;
+}
+
+static uint16_t eth_dev_tx_scg(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	uint16_t pkt;
+	uint16_t first_vq_descr_idx = 0;
+
+	struct nthw_cvirtq_desc cvq_desc;
+
+	struct nthw_memory_descriptor *vq_bufs;
+
+	struct ntnic_tx_queue *tx_q = queue;
+
+	int nb_segs = 0, i;
+	int pkts_sent = 0;
+	uint16_t nb_segs_arr[MAX_TX_PACKETS];
+
+	if (kill_pmd)
+		return 0;
+
+	if (nb_pkts > MAX_TX_PACKETS)
+		nb_pkts = MAX_TX_PACKETS;
+
+	/*
+	 * count all segments needed to contain all packets in vq buffers
+	 */
+	for (i = 0; i < nb_pkts; i++) {
+		/* build the num segments array for segmentation control and release function */
+		int vq_segs = NUM_VQ_SEGS(bufs[i]->pkt_len);
+		nb_segs_arr[i] = vq_segs;
+		nb_segs += vq_segs;
+	}
+
+	if (!nb_segs)
+		goto exit_out;
+
+	if (sg_ops == NULL)
+		goto exit_out;
+
+	int got_nb_segs = sg_ops->nthw_get_tx_packets(tx_q->vq, nb_segs, &first_vq_descr_idx,
+			&cvq_desc /*&vq_descr,*/, &vq_bufs);
+
+	if (!got_nb_segs)
+		goto exit_out;
+
+	/*
+	 * we may get less vq buffers than we have asked for
+	 * calculate last whole packet that can fit into what
+	 * we have got
+	 */
+	while (got_nb_segs < nb_segs) {
+		if (!--nb_pkts)
+			goto exit_out;
+
+		nb_segs -= NUM_VQ_SEGS(bufs[nb_pkts]->pkt_len);
+
+		if (nb_segs <= 0)
+			goto exit_out;
+	}
+
+	/*
+	 * nb_pkts & nb_segs, got it all, ready to copy
+	 */
+	int seg_idx = 0;
+	int last_seg_idx = seg_idx;
+
+	for (pkt = 0; pkt < nb_pkts; ++pkt) {
+		uint16_t vq_descr_idx = VIRTQ_DESCR_IDX(seg_idx);
+
+		vq_set_flags(&cvq_desc, vq_descr_idx, 0);
+		vq_set_next(&cvq_desc, vq_descr_idx, 0);
+
+		if (bufs[pkt]->nb_segs == 1 && nb_segs_arr[pkt] == 1) {
+			rte_memcpy((void *)((char *)vq_bufs[vq_descr_idx].virt_addr + SG_HDR_SIZE),
+				rte_pktmbuf_mtod(bufs[pkt], void *), bufs[pkt]->pkt_len);
+
+			cvq_desc.b[vq_descr_idx].len = bufs[pkt]->pkt_len + SG_HDR_SIZE;
+
+			seg_idx++;
+
+		} else {
+			int cpy_segs = copy_mbuf_to_virtqueue(&cvq_desc, vq_descr_idx, vq_bufs,
+					nb_segs - last_seg_idx, bufs[pkt]);
+
+			if (cpy_segs < 0)
+				break;
+
+			seg_idx += cpy_segs;
+		}
+
+		last_seg_idx = seg_idx;
+		rte_pktmbuf_free(bufs[pkt]);
+		pkts_sent++;
+	}
+
+exit_out:
+
+	if (sg_ops != NULL) {
+		if (pkts_sent)
+			sg_ops->nthw_release_tx_packets(tx_q->vq, pkts_sent, nb_segs_arr);
+	}
+
+	return pkts_sent;
 }
 
 static int allocate_hw_virtio_queues(struct rte_eth_dev *eth_dev, int vf_num, struct hwq_s *hwq,
@@ -1252,6 +1689,10 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		rte_memcpy(&eth_dev->data->mac_addrs[0],
 					&internals->eth_addrs[0], RTE_ETHER_ADDR_LEN);
 
+		NT_LOG_DBGX(DBG, NTNIC, "Setting up RX functions for SCG");
+		eth_dev->rx_pkt_burst = eth_dev_rx_scg;
+		eth_dev->tx_pkt_burst = eth_dev_tx_scg;
+		eth_dev->tx_pkt_prepare = NULL;
 
 		struct rte_eth_link pmd_link;
 		pmd_link.link_speed = RTE_ETH_SPEED_NUM_NONE;
