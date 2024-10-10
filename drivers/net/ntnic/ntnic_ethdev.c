@@ -31,10 +31,16 @@
 
 #define MAX_TOTAL_QUEUES       128
 
+#define SG_NB_HW_RX_DESCRIPTORS 1024
+#define SG_NB_HW_TX_DESCRIPTORS 1024
+#define SG_HW_RX_PKT_BUFFER_SIZE (1024 << 1)
+#define SG_HW_TX_PKT_BUFFER_SIZE (1024 << 1)
+
 /* Max RSS queues */
 #define MAX_QUEUES 125
 
 #define ONE_G_SIZE  0x40000000
+#define ONE_G_MASK  (ONE_G_SIZE - 1)
 
 #define ETH_DEV_NTNIC_HELP_ARG "help"
 #define ETH_DEV_NTHW_RXQUEUES_ARG "rxqs"
@@ -187,6 +193,157 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	return 0;
 }
 
+static int allocate_hw_virtio_queues(struct rte_eth_dev *eth_dev, int vf_num, struct hwq_s *hwq,
+	int num_descr, int buf_size)
+{
+	int i, res;
+	uint32_t size;
+	uint64_t iova_addr;
+
+	NT_LOG(DBG, NTNIC, "***** Configure IOMMU for HW queues on VF %i *****", vf_num);
+
+	/* Just allocate 1MB to hold all combined descr rings */
+	uint64_t tot_alloc_size = 0x100000 + buf_size * num_descr;
+
+	void *virt =
+		rte_malloc_socket("VirtQDescr", tot_alloc_size, nt_util_align_size(tot_alloc_size),
+			eth_dev->data->numa_node);
+
+	if (!virt)
+		return -1;
+
+	uint64_t gp_offset = (uint64_t)virt & ONE_G_MASK;
+	rte_iova_t hpa = rte_malloc_virt2iova(virt);
+
+	NT_LOG(DBG, NTNIC, "Allocated virtio descr rings : virt "
+		"%p [0x%" PRIX64 "],hpa %" PRIX64 " [0x%" PRIX64 "]",
+		virt, gp_offset, hpa, hpa & ONE_G_MASK);
+
+	/*
+	 * Same offset on both HPA and IOVA
+	 * Make sure 1G boundary is never crossed
+	 */
+	if (((hpa & ONE_G_MASK) != gp_offset) ||
+		(((uint64_t)virt + tot_alloc_size) & ~ONE_G_MASK) !=
+		((uint64_t)virt & ~ONE_G_MASK)) {
+		NT_LOG(ERR, NTNIC, "*********************************************************");
+		NT_LOG(ERR, NTNIC, "ERROR, no optimal IOMMU mapping available hpa: %016" PRIX64
+			"(%016" PRIX64 "), gp_offset: %016" PRIX64 " size: %" PRIu64,
+			hpa, hpa & ONE_G_MASK, gp_offset, tot_alloc_size);
+		NT_LOG(ERR, NTNIC, "*********************************************************");
+
+		rte_free(virt);
+
+		/* Just allocate 1MB to hold all combined descr rings */
+		size = 0x100000;
+		void *virt = rte_malloc_socket("VirtQDescr", size, 4096, eth_dev->data->numa_node);
+
+		if (!virt)
+			return -1;
+
+		res = nt_vfio_dma_map(vf_num, virt, &iova_addr, size);
+
+		NT_LOG(DBG, NTNIC, "VFIO MMAP res %i, vf_num %i", res, vf_num);
+
+		if (res != 0)
+			return -1;
+
+		hwq->vf_num = vf_num;
+		hwq->virt_queues_ctrl.virt_addr = virt;
+		hwq->virt_queues_ctrl.phys_addr = (void *)iova_addr;
+		hwq->virt_queues_ctrl.len = size;
+
+		NT_LOG(DBG, NTNIC,
+			"Allocated for virtio descr rings combined 1MB : %p, IOVA %016" PRIX64 "",
+			virt, iova_addr);
+
+		size = num_descr * sizeof(struct nthw_memory_descriptor);
+		hwq->pkt_buffers =
+			rte_zmalloc_socket("rx_pkt_buffers", size, 64, eth_dev->data->numa_node);
+
+		if (!hwq->pkt_buffers) {
+			NT_LOG(ERR, NTNIC,
+				"Failed to allocated buffer array for hw-queue %p, total size %i, elements %i",
+				hwq->pkt_buffers, size, num_descr);
+			rte_free(virt);
+			return -1;
+		}
+
+		size = buf_size * num_descr;
+		void *virt_addr =
+			rte_malloc_socket("pkt_buffer_pkts", size, 4096, eth_dev->data->numa_node);
+
+		if (!virt_addr) {
+			NT_LOG(ERR, NTNIC,
+				"Failed allocate packet buffers for hw-queue %p, buf size %i, elements %i",
+				hwq->pkt_buffers, buf_size, num_descr);
+			rte_free(hwq->pkt_buffers);
+			rte_free(virt);
+			return -1;
+		}
+
+		res = nt_vfio_dma_map(vf_num, virt_addr, &iova_addr, size);
+
+		NT_LOG(DBG, NTNIC,
+			"VFIO MMAP res %i, virt %p, iova %016" PRIX64 ", vf_num %i, num pkt bufs %i, tot size %i",
+			res, virt_addr, iova_addr, vf_num, num_descr, size);
+
+		if (res != 0)
+			return -1;
+
+		for (i = 0; i < num_descr; i++) {
+			hwq->pkt_buffers[i].virt_addr =
+				(void *)((char *)virt_addr + ((uint64_t)(i) * buf_size));
+			hwq->pkt_buffers[i].phys_addr =
+				(void *)(iova_addr + ((uint64_t)(i) * buf_size));
+			hwq->pkt_buffers[i].len = buf_size;
+		}
+
+		return 0;
+	}	/* End of: no optimal IOMMU mapping available */
+
+	res = nt_vfio_dma_map(vf_num, virt, &iova_addr, ONE_G_SIZE);
+
+	if (res != 0) {
+		NT_LOG(ERR, NTNIC, "VFIO MMAP FAILED! res %i, vf_num %i", res, vf_num);
+		return -1;
+	}
+
+	hwq->vf_num = vf_num;
+	hwq->virt_queues_ctrl.virt_addr = virt;
+	hwq->virt_queues_ctrl.phys_addr = (void *)(iova_addr);
+	hwq->virt_queues_ctrl.len = 0x100000;
+	iova_addr += 0x100000;
+
+	NT_LOG(DBG, NTNIC,
+		"VFIO MMAP: virt_addr=%p phys_addr=%p size=%" PRIX32 " hpa=%" PRIX64 "",
+		hwq->virt_queues_ctrl.virt_addr, hwq->virt_queues_ctrl.phys_addr,
+		hwq->virt_queues_ctrl.len, rte_malloc_virt2iova(hwq->virt_queues_ctrl.virt_addr));
+
+	size = num_descr * sizeof(struct nthw_memory_descriptor);
+	hwq->pkt_buffers =
+		rte_zmalloc_socket("rx_pkt_buffers", size, 64, eth_dev->data->numa_node);
+
+	if (!hwq->pkt_buffers) {
+		NT_LOG(ERR, NTNIC,
+			"Failed to allocated buffer array for hw-queue %p, total size %i, elements %i",
+			hwq->pkt_buffers, size, num_descr);
+		rte_free(virt);
+		return -1;
+	}
+
+	void *virt_addr = (void *)((uint64_t)virt + 0x100000);
+
+	for (i = 0; i < num_descr; i++) {
+		hwq->pkt_buffers[i].virt_addr =
+			(void *)((char *)virt_addr + ((uint64_t)(i) * buf_size));
+		hwq->pkt_buffers[i].phys_addr = (void *)(iova_addr + ((uint64_t)(i) * buf_size));
+		hwq->pkt_buffers[i].len = buf_size;
+	}
+
+	return 0;
+}
+
 static void release_hw_virtio_queues(struct hwq_s *hwq)
 {
 	if (!hwq || hwq->vf_num == 0)
@@ -243,6 +400,170 @@ static int allocate_queue(int num)
 
 	num_queues_alloced += num;
 	return next_free;
+}
+
+static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
+	uint16_t rx_queue_id,
+	uint16_t nb_rx_desc __rte_unused,
+	unsigned int socket_id __rte_unused,
+	const struct rte_eth_rxconf *rx_conf __rte_unused,
+	struct rte_mempool *mb_pool)
+{
+	NT_LOG_DBGX(DBG, NTNIC, "Rx queue setup");
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[rx_queue_id];
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+
+	if (sg_ops == NULL) {
+		NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		return 0;
+	}
+
+	if (internals->type == PORT_TYPE_OVERRIDE) {
+		rx_q->mb_pool = mb_pool;
+		eth_dev->data->rx_queues[rx_queue_id] = rx_q;
+		mbp_priv = rte_mempool_get_priv(rx_q->mb_pool);
+		rx_q->buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM);
+		rx_q->enabled = 1;
+		return 0;
+	}
+
+	NT_LOG(DBG, NTNIC, "(%i) NTNIC RX OVS-SW queue setup: queue id %i, hw queue index %i",
+		internals->port, rx_queue_id, rx_q->queue.hw_id);
+
+	rx_q->mb_pool = mb_pool;
+
+	eth_dev->data->rx_queues[rx_queue_id] = rx_q;
+
+	mbp_priv = rte_mempool_get_priv(rx_q->mb_pool);
+	rx_q->buf_size = (uint16_t)(mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM);
+	rx_q->enabled = 1;
+
+	if (allocate_hw_virtio_queues(eth_dev, EXCEPTION_PATH_HID, &rx_q->hwq,
+			SG_NB_HW_RX_DESCRIPTORS, SG_HW_RX_PKT_BUFFER_SIZE) < 0)
+		return -1;
+
+	rx_q->nb_hw_rx_descr = SG_NB_HW_RX_DESCRIPTORS;
+
+	rx_q->profile = p_drv->ntdrv.adapter_info.fpga_info.profile;
+
+	rx_q->vq =
+		sg_ops->nthw_setup_mngd_rx_virt_queue(p_nt_drv->adapter_info.fpga_info.mp_nthw_dbs,
+			rx_q->queue.hw_id,	/* index */
+			rx_q->nb_hw_rx_descr,
+			EXCEPTION_PATH_HID,	/* host_id */
+			1,	/* header NT DVIO header for exception path */
+			&rx_q->hwq.virt_queues_ctrl,
+			rx_q->hwq.pkt_buffers,
+			SPLIT_RING,
+			-1);
+
+	NT_LOG(DBG, NTNIC, "(%i) NTNIC RX OVS-SW queues successfully setup", internals->port);
+
+	return 0;
+}
+
+static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
+	uint16_t tx_queue_id,
+	uint16_t nb_tx_desc __rte_unused,
+	unsigned int socket_id __rte_unused,
+	const struct rte_eth_txconf *tx_conf __rte_unused)
+{
+	const struct port_ops *port_ops = get_port_ops();
+
+	if (port_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "Link management module uninitialized");
+		return -1;
+	}
+
+	NT_LOG_DBGX(DBG, NTNIC, "Tx queue setup");
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	struct ntnic_tx_queue *tx_q = &internals->txq_scg[tx_queue_id];
+
+	if (internals->type == PORT_TYPE_OVERRIDE) {
+		eth_dev->data->tx_queues[tx_queue_id] = tx_q;
+		return 0;
+	}
+
+	if (sg_ops == NULL) {
+		NT_LOG_DBGX(DBG, NTNIC, "SG module is not initialized");
+		return 0;
+	}
+
+	NT_LOG(DBG, NTNIC, "(%i) NTNIC TX OVS-SW queue setup: queue id %i, hw queue index %i",
+		tx_q->port, tx_queue_id, tx_q->queue.hw_id);
+
+	if (tx_queue_id > internals->nb_tx_queues) {
+		NT_LOG(ERR, NTNIC, "Error invalid tx queue id");
+		return -1;
+	}
+
+	eth_dev->data->tx_queues[tx_queue_id] = tx_q;
+
+	/* Calculate target ID for HW  - to be used in NTDVIO0 header bypass_port */
+	if (tx_q->rss_target_id >= 0) {
+		/* bypass to a multiqueue port - qsl-hsh index */
+		tx_q->target_id = tx_q->rss_target_id + 0x90;
+
+	} else if (internals->vpq[tx_queue_id].hw_id > -1) {
+		/* virtual port - queue index */
+		tx_q->target_id = internals->vpq[tx_queue_id].hw_id;
+
+	} else {
+		/* Phy port - phy port identifier */
+		/* output/bypass to MAC */
+		tx_q->target_id = (int)(tx_q->port + 0x80);
+	}
+
+	if (allocate_hw_virtio_queues(eth_dev, EXCEPTION_PATH_HID, &tx_q->hwq,
+			SG_NB_HW_TX_DESCRIPTORS, SG_HW_TX_PKT_BUFFER_SIZE) < 0) {
+		return -1;
+	}
+
+	tx_q->nb_hw_tx_descr = SG_NB_HW_TX_DESCRIPTORS;
+
+	tx_q->profile = p_drv->ntdrv.adapter_info.fpga_info.profile;
+
+	uint32_t port, header;
+	port = tx_q->port;	/* transmit port */
+	header = 0;	/* header type VirtIO-Net */
+
+	tx_q->vq =
+		sg_ops->nthw_setup_mngd_tx_virt_queue(p_nt_drv->adapter_info.fpga_info.mp_nthw_dbs,
+			tx_q->queue.hw_id,	/* index */
+			tx_q->nb_hw_tx_descr,	/* queue size */
+			EXCEPTION_PATH_HID,	/* host_id always VF4 */
+			port,
+			/*
+			 * in_port - in vswitch mode has
+			 * to move tx port from OVS excep.
+			 * away from VM tx port,
+			 * because of QoS is matched by port id!
+			 */
+			tx_q->port + 128,
+			header,
+			&tx_q->hwq.virt_queues_ctrl,
+			tx_q->hwq.pkt_buffers,
+			SPLIT_RING,
+			-1,
+			IN_ORDER);
+
+	tx_q->enabled = 1;
+
+	NT_LOG(DBG, NTNIC, "(%i) NTNIC TX OVS-SW queues successfully setup", internals->port);
+
+	if (internals->type == PORT_TYPE_PHYSICAL) {
+		struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
+		NT_LOG(DBG, NTNIC, "Port %i is ready for data. Enable port",
+			internals->n_intf_no);
+		port_ops->set_adm_state(p_adapter_info, internals->n_intf_no, true);
+	}
+
+	return 0;
 }
 
 static int eth_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
@@ -580,9 +901,11 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.link_update = eth_link_update,
 	.dev_infos_get = eth_dev_infos_get,
 	.fw_version_get = eth_fw_version_get,
+	.rx_queue_setup = eth_rx_scg_queue_setup,
 	.rx_queue_start = eth_rx_queue_start,
 	.rx_queue_stop = eth_rx_queue_stop,
 	.rx_queue_release = eth_rx_queue_release,
+	.tx_queue_setup = eth_tx_scg_queue_setup,
 	.tx_queue_start = eth_tx_queue_start,
 	.tx_queue_stop = eth_tx_queue_stop,
 	.tx_queue_release = eth_tx_queue_release,
