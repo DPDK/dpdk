@@ -1856,6 +1856,13 @@ during the flow rule creation::
 
 Otherwise the default index ``0`` is used.
 
+set port led
+~~~~~~~~~~~~
+
+Set a controllable LED associated with a certain port on or off::
+
+   testpmd> set port (port_id) led (on|off)
+
 Port Functions
 --------------
 
