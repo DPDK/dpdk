@@ -12,6 +12,7 @@
 #include "hw_mod_cat_v21.h"
 #include "hw_mod_flm_v25.h"
 #include "hw_mod_km_v7.h"
+#include "hw_mod_qsl_v7.h"
 #include "hw_mod_hsh_v5.h"
 
 #define MAX_PHYS_ADAPTERS 8
@@ -83,6 +84,15 @@ struct hsh_func_s {
 	uint32_t toeplitz;
 	union {
 		struct hw_mod_hsh_v5_s v5;
+	};
+};
+
+struct qsl_func_s {
+	COMMON_FUNC_INFO_S;
+	uint32_t nb_rcp_categories;
+	uint32_t nb_qst_entries;
+	union {
+		struct hw_mod_qsl_v7_s v7;
 	};
 };
 
@@ -196,6 +206,14 @@ struct flow_api_backend_ops {
 	bool (*get_hsh_present)(void *dev);
 	uint32_t (*get_hsh_version)(void *dev);
 	int (*hsh_rcp_flush)(void *dev, const struct hsh_func_s *hsh, int category, int cnt);
+
+	/* QSL */
+	bool (*get_qsl_present)(void *dev);
+	uint32_t (*get_qsl_version)(void *dev);
+	int (*qsl_rcp_flush)(void *dev, const struct qsl_func_s *qsl, int category, int cnt);
+	int (*qsl_qst_flush)(void *dev, const struct qsl_func_s *qsl, int entry, int cnt);
+	int (*qsl_qen_flush)(void *dev, const struct qsl_func_s *qsl, int entry, int cnt);
+	int (*qsl_unmq_flush)(void *dev, const struct qsl_func_s *qsl, int entry, int cnt);
 };
 
 struct flow_api_backend_s {
