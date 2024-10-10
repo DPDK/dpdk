@@ -138,6 +138,7 @@ New Features
   * Added NT flow filter init API
   * Added NT flow backend initialization API
   * Added initialization of FPGA modules related to flow HW offload
+  * Added basic handling of the virtual queues
 
 * **Added cryptodev queue pair reset support.**
 
