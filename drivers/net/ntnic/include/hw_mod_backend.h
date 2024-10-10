@@ -657,6 +657,85 @@ struct tpe_func_s {
 		struct hw_mod_tpe_v3_s v3;
 	};
 };
+enum hw_tpe_e {
+	/* functions */
+	HW_TPE_PRESET_ALL = 0,
+	HW_TPE_FIND,
+	HW_TPE_COMPARE,
+	/* Control fields */
+	HW_TPE_RPP_RCP_EXP = FIELD_START_INDEX,
+	HW_TPE_IFR_RCP_IPV4_EN,
+	HW_TPE_IFR_RCP_IPV4_DF_DROP,
+	HW_TPE_IFR_RCP_IPV6_EN,
+	HW_TPE_IFR_RCP_IPV6_DROP,
+	HW_TPE_IFR_RCP_MTU,
+	HW_TPE_INS_RCP_DYN,
+	HW_TPE_INS_RCP_OFS,
+	HW_TPE_INS_RCP_LEN,
+	HW_TPE_RPL_RCP_DYN,
+	HW_TPE_RPL_RCP_OFS,
+	HW_TPE_RPL_RCP_LEN,
+	HW_TPE_RPL_RCP_RPL_PTR,
+	HW_TPE_RPL_RCP_EXT_PRIO,
+	HW_TPE_RPL_RCP_ETH_TYPE_WR,
+	HW_TPE_RPL_EXT_RPL_PTR,
+	HW_TPE_RPL_EXT_META_RPL_LEN,	/* SW only */
+	HW_TPE_RPL_RPL_VALUE,
+	HW_TPE_CPY_RCP_READER_SELECT,
+	HW_TPE_CPY_RCP_DYN,
+	HW_TPE_CPY_RCP_OFS,
+	HW_TPE_CPY_RCP_LEN,
+	HW_TPE_HFU_RCP_LEN_A_WR,
+	HW_TPE_HFU_RCP_LEN_A_OUTER_L4_LEN,
+	HW_TPE_HFU_RCP_LEN_A_POS_DYN,
+	HW_TPE_HFU_RCP_LEN_A_POS_OFS,
+	HW_TPE_HFU_RCP_LEN_A_ADD_DYN,
+	HW_TPE_HFU_RCP_LEN_A_ADD_OFS,
+	HW_TPE_HFU_RCP_LEN_A_SUB_DYN,
+	HW_TPE_HFU_RCP_LEN_B_WR,
+	HW_TPE_HFU_RCP_LEN_B_POS_DYN,
+	HW_TPE_HFU_RCP_LEN_B_POS_OFS,
+	HW_TPE_HFU_RCP_LEN_B_ADD_DYN,
+	HW_TPE_HFU_RCP_LEN_B_ADD_OFS,
+	HW_TPE_HFU_RCP_LEN_B_SUB_DYN,
+	HW_TPE_HFU_RCP_LEN_C_WR,
+	HW_TPE_HFU_RCP_LEN_C_POS_DYN,
+	HW_TPE_HFU_RCP_LEN_C_POS_OFS,
+	HW_TPE_HFU_RCP_LEN_C_ADD_DYN,
+	HW_TPE_HFU_RCP_LEN_C_ADD_OFS,
+	HW_TPE_HFU_RCP_LEN_C_SUB_DYN,
+	HW_TPE_HFU_RCP_TTL_WR,
+	HW_TPE_HFU_RCP_TTL_POS_DYN,
+	HW_TPE_HFU_RCP_TTL_POS_OFS,
+	HW_TPE_CSU_RCP_OUTER_L3_CMD,
+	HW_TPE_CSU_RCP_OUTER_L4_CMD,
+	HW_TPE_CSU_RCP_INNER_L3_CMD,
+	HW_TPE_CSU_RCP_INNER_L4_CMD,
+};
+bool hw_mod_tpe_present(struct flow_api_backend_s *be);
+int hw_mod_tpe_alloc(struct flow_api_backend_s *be);
+void hw_mod_tpe_free(struct flow_api_backend_s *be);
+int hw_mod_tpe_reset(struct flow_api_backend_s *be);
+
+int hw_mod_tpe_rpp_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_rpp_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_ins_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_rpl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_rpl_ext_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_rpl_rpl_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_cpy_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_hfu_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_tpe_csu_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 enum debug_mode_e {
 	FLOW_BACKEND_DEBUG_MODE_NONE = 0x0000,
@@ -816,6 +895,7 @@ struct flow_api_backend_s {
 	struct qsl_func_s qsl;
 	struct slc_lr_func_s slc_lr;
 	struct pdb_func_s pdb;
+	struct tpe_func_s tpe;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;

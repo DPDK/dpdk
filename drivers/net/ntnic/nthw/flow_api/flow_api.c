@@ -319,6 +319,15 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	if (init_resource_elements(ndev, RES_FLM_RCP, ndev->be.flm.nb_categories))
 		goto err_exit;
 
+	if (init_resource_elements(ndev, RES_TPE_RCP, ndev->be.tpe.nb_rcp_categories))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_TPE_EXT, ndev->be.tpe.nb_rpl_ext_categories))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_TPE_RPL, ndev->be.tpe.nb_rpl_depth))
+		goto err_exit;
+
 	if (init_resource_elements(ndev, RES_SCRUB_RCP, ndev->be.flm.nb_scrub_profiles))
 		goto err_exit;
 
