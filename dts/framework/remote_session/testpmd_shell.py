@@ -1551,11 +1551,12 @@ class TestPmdShell(DPDKShell):
                 fails to update.
         """
         set_fwd_output = self.send_command(f"set fwd {mode.value}")
-        if f"Set {mode.value} packet forwarding mode" not in set_fwd_output:
-            self._logger.debug(f"Failed to set fwd mode to {mode.value}:\n{set_fwd_output}")
-            raise InteractiveCommandExecutionError(
-                f"Test pmd failed to set fwd mode to {mode.value}"
-            )
+        if verify:
+            if f"Set {mode.value} packet forwarding mode" not in set_fwd_output:
+                self._logger.debug(f"Failed to set fwd mode to {mode.value}:\n{set_fwd_output}")
+                raise InteractiveCommandExecutionError(
+                    f"Test pmd failed to set fwd mode to {mode.value}"
+                )
 
     def stop_all_ports(self, verify: bool = True) -> None:
         """Stops all the ports.
