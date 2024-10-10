@@ -1468,6 +1468,32 @@ static nthw_fpga_register_init_s rac_registers[] = {
 	{ RAC_RAB_OB_DATA, 4168, 32, NTHW_FPGA_REG_TYPE_RC1, 0, 1, rac_rab_ob_data_fields },
 };
 
+static nthw_fpga_field_init_s rmc_ctrl_fields[] = {
+	{ RMC_CTRL_BLOCK_KEEPA, 1, 1, 1 }, { RMC_CTRL_BLOCK_MAC_PORT, 2, 8, 3 },
+	{ RMC_CTRL_BLOCK_RPP_SLICE, 8, 10, 0 }, { RMC_CTRL_BLOCK_STATT, 1, 0, 1 },
+	{ RMC_CTRL_LAG_PHY_ODD_EVEN, 1, 24, 0 },
+};
+
+static nthw_fpga_field_init_s rmc_dbg_fields[] = {
+	{ RMC_DBG_MERGE, 31, 0, 0 },
+};
+
+static nthw_fpga_field_init_s rmc_mac_if_fields[] = {
+	{ RMC_MAC_IF_ERR, 31, 0, 0 },
+};
+
+static nthw_fpga_field_init_s rmc_status_fields[] = {
+	{ RMC_STATUS_DESCR_FIFO_OF, 1, 16, 0 },
+	{ RMC_STATUS_SF_RAM_OF, 1, 0, 0 },
+};
+
+static nthw_fpga_register_init_s rmc_registers[] = {
+	{ RMC_CTRL, 0, 25, NTHW_FPGA_REG_TYPE_RW, 771, 5, rmc_ctrl_fields },
+	{ RMC_DBG, 2, 31, NTHW_FPGA_REG_TYPE_RO, 0, 1, rmc_dbg_fields },
+	{ RMC_MAC_IF, 3, 31, NTHW_FPGA_REG_TYPE_RO, 0, 1, rmc_mac_if_fields },
+	{ RMC_STATUS, 1, 17, NTHW_FPGA_REG_TYPE_RO, 0, 2, rmc_status_fields },
+};
+
 static nthw_fpga_field_init_s rst9563_ctrl_fields[] = {
 	{ RST9563_CTRL_PTP_MMCM_CLKSEL, 1, 2, 1 },
 	{ RST9563_CTRL_TS_CLKSEL, 1, 1, 1 },
@@ -1550,6 +1576,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_PDB, 0, MOD_PDB, 0, 9, NTHW_FPGA_BUS_TYPE_RAB1, 2560, 3, pdb_registers },
 	{ MOD_QSL, 0, MOD_QSL, 0, 7, NTHW_FPGA_BUS_TYPE_RAB1, 1792, 8, qsl_registers },
 	{ MOD_RAC, 0, MOD_RAC, 3, 0, NTHW_FPGA_BUS_TYPE_PCI, 8192, 14, rac_registers },
+	{ MOD_RMC, 0, MOD_RMC, 1, 3, NTHW_FPGA_BUS_TYPE_RAB0, 12288, 4, rmc_registers },
 	{ MOD_RST9563, 0, MOD_RST9563, 0, 5, NTHW_FPGA_BUS_TYPE_RAB0, 1024, 5, rst9563_registers },
 };
 
@@ -1710,5 +1737,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 20, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 21, fpga_modules,
 };
