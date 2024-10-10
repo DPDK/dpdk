@@ -15,6 +15,7 @@
 #include "flow_nthw_qsl.h"
 #include "flow_nthw_slc_lr.h"
 #include "flow_nthw_pdb.h"
+#include "flow_nthw_rpp_lr.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -38,6 +39,7 @@ static struct backend_dev_s {
 	struct slc_lr_nthw *p_slc_lr_nthw;
 	struct pdb_nthw *p_pdb_nthw;
 	struct hfu_nthw *p_hfu_nthw;    /* TPE module */
+	struct rpp_lr_nthw *p_rpp_lr_nthw;      /* TPE module */
 	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
@@ -1795,6 +1797,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_hfu_nthw = NULL;
 	}
 
+	/* Init nthw RPP_LR */
+	if (rpp_lr_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct rpp_lr_nthw *ptr = rpp_lr_nthw_new();
+		rpp_lr_nthw_init(ptr, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_rpp_lr_nthw = ptr;
+
+	} else {
+		be_devs[physical_adapter_no].p_rpp_lr_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1813,6 +1825,7 @@ static void bin_flow_backend_done(void *dev)
 	slc_lr_nthw_delete(be_dev->p_slc_lr_nthw);
 	pdb_nthw_delete(be_dev->p_pdb_nthw);
 	hfu_nthw_delete(be_dev->p_hfu_nthw);
+	rpp_lr_nthw_delete(be_dev->p_rpp_lr_nthw);
 }
 
 static const struct flow_backend_ops ops = {
