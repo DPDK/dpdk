@@ -23,6 +23,11 @@
 uint64_t nt_os_get_time_monotonic_counter(void);
 void nt_os_wait_usec(int val);
 
+static inline int min(int a, int b)
+{
+	return (a < b) ? a : b;
+}
+
 uint64_t nt_util_align_size(uint64_t size);
 
 struct nt_dma_s {

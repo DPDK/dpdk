@@ -91,8 +91,16 @@ struct rst9563_ops *get_rst9563_ops(void)
 
 static const struct flow_backend_ops *flow_backend_ops;
 
+void register_flow_backend_ops(const struct flow_backend_ops *ops)
+{
+	flow_backend_ops = ops;
+}
+
 const struct flow_backend_ops *get_flow_backend_ops(void)
 {
+	if (flow_backend_ops == NULL)
+		flow_backend_init();
+
 	return flow_backend_ops;
 }
 
