@@ -103,11 +103,7 @@ struct nthw_virt_queue {
 	 *   0: VirtIO-Net header (12 bytes).
 	 *   1: Napatech DVIO0 descriptor (12 bytes).
 	 */
-};
-
-struct pvirtq_struct_layout_s {
-	size_t driver_event_offset;
-	size_t device_event_offset;
+	void *avail_struct_phys_addr;
 };
 
 static struct nthw_virt_queue rxvq[MAX_VIRT_QUEUES];
@@ -304,15 +300,37 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 {
 	(void)header;
 	(void)desc_struct_phys_addr;
-	(void)avail_struct_phys_addr;
 	(void)used_struct_phys_addr;
 
+	/*
+	 * 2. Configure the DBS.RX_AM_DATA memory and enable the queues you plan to use;
+	 *  good idea to initialize all DBS_RX_QUEUES entries.
+	 *  Notice: We do this only for queues that don't require interrupts (i.e. if
+	 *    irq_vector < 0). Queues that require interrupts will have RX_AM_DATA enabled
+	 *    at a later time (after we have enabled vfio interrupts in the kernel).
+	 */
+	if (irq_vector < 0) {
+		if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
+				RX_AM_DISABLE, host_id, 0,
+				irq_vector >= 0 ? 1 : 0) != 0) {
+			return NULL;
+		}
+	}
 
 	/*
 	 * 5. Initialize all RX queues (all DBS_RX_QUEUES of them) using the
 	 *   DBS.RX_INIT register.
 	 */
 	dbs_init_rx_queue(p_nthw_dbs, index, start_idx, start_ptr);
+
+	/*
+	 * 2. Configure the DBS.RX_AM_DATA memory and enable the queues you plan to use;
+	 *  good idea to initialize all DBS_RX_QUEUES entries.
+	 */
+	if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr, RX_AM_ENABLE,
+			host_id, 0, irq_vector >= 0 ? 1 : 0) != 0) {
+		return NULL;
+	}
 
 	/* Save queue state */
 	rxvq[index].usage = NTHW_VIRTQ_UNMANAGED;
@@ -321,6 +339,7 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	rxvq[index].queue_size = queue_size;
 	rxvq[index].am_enable = (irq_vector < 0) ? RX_AM_ENABLE : RX_AM_DISABLE;
 	rxvq[index].host_id = host_id;
+	rxvq[index].avail_struct_phys_addr = avail_struct_phys_addr;
 	rxvq[index].vq_type = vq_type;
 	rxvq[index].in_order = 0;	/* not used */
 	rxvq[index].irq_vector = irq_vector;
@@ -347,14 +366,41 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 {
 	(void)header;
 	(void)desc_struct_phys_addr;
-	(void)avail_struct_phys_addr;
 	(void)used_struct_phys_addr;
+
+	/*
+	 * 2. Configure the DBS.TX_AM_DATA memory and enable the queues you plan to use;
+	 *    good idea to initialize all DBS_TX_QUEUES entries.
+	 */
+	if (set_tx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr, TX_AM_DISABLE,
+			host_id, 0, irq_vector >= 0 ? 1 : 0) != 0) {
+		return NULL;
+	}
 
 	/*
 	 * 5. Initialize all TX queues (all DBS_TX_QUEUES of them) using the
 	 *    DBS.TX_INIT register.
 	 */
 	dbs_init_tx_queue(p_nthw_dbs, index, start_idx, start_ptr);
+
+	if (nthw_dbs_set_tx_qp_data(p_nthw_dbs, index, virtual_port) != 0)
+		return NULL;
+
+	/*
+	 * 2. Configure the DBS.TX_AM_DATA memory and enable the queues you plan to use;
+	 *    good idea to initialize all DBS_TX_QUEUES entries.
+	 *    Notice: We do this only for queues that don't require interrupts (i.e. if
+	 *            irq_vector < 0). Queues that require interrupts will have TX_AM_DATA
+	 *            enabled at a later time (after we have enabled vfio interrupts in the
+	 *            kernel).
+	 */
+	if (irq_vector < 0) {
+		if (set_tx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
+				TX_AM_ENABLE, host_id, 0,
+				irq_vector >= 0 ? 1 : 0) != 0) {
+			return NULL;
+		}
+	}
 
 	/* Save queue state */
 	txvq[index].usage = NTHW_VIRTQ_UNMANAGED;
@@ -365,6 +411,7 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	txvq[index].host_id = host_id;
 	txvq[index].port = port;
 	txvq[index].virtual_port = virtual_port;
+	txvq[index].avail_struct_phys_addr = avail_struct_phys_addr;
 	txvq[index].vq_type = vq_type;
 	txvq[index].in_order = in_order;
 	txvq[index].irq_vector = irq_vector;

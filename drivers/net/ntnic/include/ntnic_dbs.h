@@ -15,6 +15,29 @@
  * Struct for implementation of memory bank shadows
  */
 
+/* DBS_RX_AM_DATA */
+struct nthw_dbs_rx_am_data_s {
+	uint64_t guest_physical_address;
+	uint32_t enable;
+	uint32_t host_id;
+	uint32_t packed;
+	uint32_t int_enable;
+};
+
+/* DBS_TX_AM_DATA */
+struct nthw_dbs_tx_am_data_s {
+	uint64_t guest_physical_address;
+	uint32_t enable;
+	uint32_t host_id;
+	uint32_t packed;
+	uint32_t int_enable;
+};
+
+/* DBS_TX_QP_DATA */
+struct nthw_dbs_tx_qp_data_s {
+	uint32_t virtual_port;
+};
+
 struct nthw_dbs_s {
 	nthw_fpga_t *mp_fpga;
 	nthw_module_t *mp_mod_dbs;
@@ -75,6 +98,40 @@ struct nthw_dbs_s {
 	nthw_field_t *mp_fld_tx_idle_idle;
 	nthw_field_t *mp_fld_tx_idle_queue;
 	nthw_field_t *mp_fld_tx_idle_busy;
+
+	nthw_register_t *mp_reg_rx_avail_monitor_control;
+	nthw_field_t *mp_fld_rx_avail_monitor_control_adr;
+	nthw_field_t *mp_fld_rx_avail_monitor_control_cnt;
+
+	nthw_register_t *mp_reg_rx_avail_monitor_data;
+	nthw_field_t *mp_fld_rx_avail_monitor_data_guest_physical_address;
+	nthw_field_t *mp_fld_rx_avail_monitor_data_enable;
+	nthw_field_t *mp_fld_rx_avail_monitor_data_host_id;
+	nthw_field_t *mp_fld_rx_avail_monitor_data_packed;
+	nthw_field_t *mp_fld_rx_avail_monitor_data_int;
+
+	nthw_register_t *mp_reg_tx_avail_monitor_control;
+	nthw_field_t *mp_fld_tx_avail_monitor_control_adr;
+	nthw_field_t *mp_fld_tx_avail_monitor_control_cnt;
+
+	nthw_register_t *mp_reg_tx_avail_monitor_data;
+	nthw_field_t *mp_fld_tx_avail_monitor_data_guest_physical_address;
+	nthw_field_t *mp_fld_tx_avail_monitor_data_enable;
+	nthw_field_t *mp_fld_tx_avail_monitor_data_host_id;
+	nthw_field_t *mp_fld_tx_avail_monitor_data_packed;
+	nthw_field_t *mp_fld_tx_avail_monitor_data_int;
+
+	nthw_register_t *mp_reg_tx_queue_property_control;
+	nthw_field_t *mp_fld_tx_queue_property_control_adr;
+	nthw_field_t *mp_fld_tx_queue_property_control_cnt;
+
+	nthw_register_t *mp_reg_tx_queue_property_data;
+	nthw_field_t *mp_fld_tx_queue_property_data_v_port;
+
+	struct nthw_dbs_rx_am_data_s m_rx_am_shadow[NT_DBS_RX_QUEUES_MAX];
+
+	struct nthw_dbs_tx_am_data_s m_tx_am_shadow[NT_DBS_TX_QUEUES_MAX];
+	struct nthw_dbs_tx_qp_data_s m_tx_qp_shadow[NT_DBS_TX_QUEUES_MAX];
 };
 
 typedef struct nthw_dbs_s nthw_dbs_t;
@@ -103,5 +160,20 @@ int get_rx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
 int set_tx_init(nthw_dbs_t *p, uint32_t start_idx, uint32_t start_ptr, uint32_t init,
 	uint32_t queue);
 int get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy);
+int set_rx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable);
+int set_tx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable);
+int nthw_dbs_set_tx_qp_data(nthw_dbs_t *p, uint32_t index, uint32_t virtual_port);
 
 #endif	/* _NTNIC_DBS_H_ */
