@@ -66,6 +66,47 @@ uint8_t cryptodev_driver_id;
 uint8_t dpaa2_sec_dp_dump = DPAA2_SEC_DP_ERR_DUMP;
 
 static inline void
+dpaa2_sec_dp_fd_dump(const struct qbman_fd *fd, uint16_t bpid,
+		     struct rte_mbuf *mbuf, bool tx)
+{
+#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
+	char debug_str[1024];
+	int offset;
+
+	if (tx) {
+		offset = sprintf(debug_str,
+			"CIPHER SG: fdaddr =%" PRIx64 ", from %s pool ",
+			DPAA2_GET_FD_ADDR(fd),
+			bpid < MAX_BPID ? "SW" : "BMAN");
+		if (bpid < MAX_BPID) {
+			offset += sprintf(&debug_str[offset],
+				"bpid = %d ", bpid);
+		}
+	} else {
+		offset = sprintf(debug_str, "Mbuf %p from %s pool ",
+				 mbuf, DPAA2_GET_FD_IVP(fd) ? "SW" : "BMAN");
+		if (!DPAA2_GET_FD_IVP(fd)) {
+			offset += sprintf(&debug_str[offset], "bpid = %d ",
+					  DPAA2_GET_FD_BPID(fd));
+		}
+	}
+	offset += sprintf(&debug_str[offset],
+		"private size = %d ",
+		mbuf->pool->private_data_size);
+	offset += sprintf(&debug_str[offset],
+		"addr %p, fdaddr =%" PRIx64 ", off =%d, len =%d",
+		mbuf->buf_addr, DPAA2_GET_FD_ADDR(fd),
+		DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_LEN(fd));
+	DPAA2_SEC_DP_DEBUG("%s", debug_str);
+#else
+	RTE_SET_USED(bpid);
+	RTE_SET_USED(tx);
+	RTE_SET_USED(mbuf);
+	RTE_SET_USED(fd);
+#endif
+}
+
+static inline void
 free_fle(const struct qbman_fd *fd, struct dpaa2_sec_qp *qp)
 {
 	struct qbman_fle *fle;
@@ -1107,10 +1148,6 @@ build_cipher_sg_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	struct rte_mbuf *mbuf;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
-#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
-	char debug_str[1024];
-	int offset;
-#endif
 
 	data_len = sym_op->cipher.data.length;
 	data_offset = sym_op->cipher.data.offset;
@@ -1215,26 +1252,7 @@ build_cipher_sg_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	DPAA2_SET_FD_LEN(fd, ip_fle->length);
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
-
-#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
-	offset = sprintf(debug_str,
-		"CIPHER SG: fdaddr =%" PRIx64 ", from %s pool ",
-		DPAA2_GET_FD_ADDR(fd),
-		bpid < MAX_BPID ? "SW" : "BMAN");
-	if (bpid < MAX_BPID) {
-		offset += sprintf(&debug_str[offset],
-			"bpid = %d ", bpid);
-	}
-	offset += sprintf(&debug_str[offset],
-		"private size = %d ",
-		mbuf->pool->private_data_size);
-	offset += sprintf(&debug_str[offset],
-		"off =%d, len =%d",
-		DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_LEN(fd));
-	DPAA2_SEC_DP_DEBUG("%s", debug_str);
-#else
-	RTE_SET_USED(bpid);
-#endif
+	dpaa2_sec_dp_fd_dump(fd, bpid, mbuf, true);
 
 	return 0;
 }
@@ -1251,10 +1269,6 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
 	struct rte_mbuf *dst;
-#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
-	char debug_str[1024];
-	int offset;
-#endif
 
 	data_len = sym_op->cipher.data.length;
 	data_offset = sym_op->cipher.data.offset;
@@ -1345,24 +1359,7 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	sge->length = data_len;
 	DPAA2_SET_FLE_FIN(sge);
 	DPAA2_SET_FLE_FIN(fle);
-
-#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
-	offset = sprintf(debug_str,
-		"CIPHER: fdaddr =%" PRIx64 ", from %s pool ",
-		DPAA2_GET_FD_ADDR(fd),
-		bpid < MAX_BPID ? "SW" : "BMAN");
-	if (bpid < MAX_BPID) {
-		offset += sprintf(&debug_str[offset],
-			"bpid = %d ", bpid);
-	}
-	offset += sprintf(&debug_str[offset],
-			"private size = %d ",
-			dst->pool->private_data_size);
-	offset += sprintf(&debug_str[offset],
-			"off =%d, len =%d",
-			DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_LEN(fd));
-	DPAA2_SEC_DP_DEBUG("%s", debug_str);
-#endif
+	dpaa2_sec_dp_fd_dump(fd, bpid, dst, true);
 
 	return 0;
 }
@@ -1595,10 +1592,6 @@ sec_fd_to_mbuf(const struct qbman_fd *fd, struct dpaa2_sec_qp *qp)
 	struct qbman_fle *fle;
 	struct rte_crypto_op *op;
 	struct rte_mbuf *dst, *src;
-#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
-	char debug_str[1024];
-	int offset;
-#endif
 
 	if (DPAA2_FD_GET_FORMAT(fd) == qbman_fd_single)
 		return sec_simple_fd_to_mbuf(fd);
@@ -1636,22 +1629,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd, struct dpaa2_sec_qp *qp)
 		}
 		dst->data_len = len;
 	}
-
-#if (RTE_LOG_DEBUG <= RTE_LOG_DP_LEVEL)
-	offset = sprintf(debug_str, "Mbuf %p from %s pool ",
-			dst, DPAA2_GET_FD_IVP(fd) ? "SW" : "BMAN");
-	if (!DPAA2_GET_FD_IVP(fd)) {
-		offset += sprintf(&debug_str[offset], "bpid = %d ",
-				DPAA2_GET_FD_BPID(fd));
-	}
-	offset += sprintf(&debug_str[offset],
-			"private size = %d ", dst->pool->private_data_size);
-	offset += sprintf(&debug_str[offset],
-			"addr %p, fdaddr =%" PRIx64 ", off =%d, len =%d",
-			dst->buf_addr, DPAA2_GET_FD_ADDR(fd),
-			DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_LEN(fd));
-	DPAA2_SEC_DP_DEBUG("%s", debug_str);
-#endif
+	dpaa2_sec_dp_fd_dump(fd, 0, dst, false);
 
 	/* free the fle memory */
 	if (likely(rte_pktmbuf_is_contiguous(src))) {
