@@ -58,6 +58,15 @@
 		}                                                                                 \
 	} while (0)
 
+#define inc_used(vq, num) do { \
+	struct nthw_virt_queue *temp_vq = (vq); \
+	temp_vq->next_used += (num); \
+	if (temp_vq->next_used >= temp_vq->queue_size) { \
+		temp_vq->next_used -= temp_vq->queue_size; \
+		temp_vq->used_wrap_count ^= 1; \
+	} \
+} while (0)
+
 struct __rte_aligned(8) virtq_avail {
 	uint16_t flags;
 	uint16_t idx;
@@ -107,6 +116,10 @@ struct nthw_virt_queue {
 			struct pvirtq_event_suppress *driver_event;
 			struct pvirtq_event_suppress *device_event;
 			struct pvirtq_desc *desc;
+			struct {
+				uint16_t next;
+				uint16_t num;
+			} outs;
 			/*
 			 * when in-order release used Tx packets from FPGA it may collapse
 			 * into a batch. When getting new Tx buffers we may only need
@@ -1097,6 +1110,107 @@ nthw_setup_mngd_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	return NULL;
 }
 
+static uint16_t nthw_get_rx_packets(struct nthw_virt_queue *rxvq,
+	uint16_t n,
+	struct nthw_received_packets *rp,
+	uint16_t *nb_pkts)
+{
+	uint16_t segs = 0;
+	uint16_t pkts = 0;
+
+	if (rxvq->vq_type == SPLIT_RING) {
+		uint16_t i;
+		uint16_t entries_ready = (uint16_t)(rxvq->cached_idx - rxvq->used_idx);
+
+		if (entries_ready < n) {
+			/* Look for more packets */
+			rxvq->cached_idx = rxvq->p_used->idx;
+			entries_ready = (uint16_t)(rxvq->cached_idx - rxvq->used_idx);
+
+			if (entries_ready == 0) {
+				*nb_pkts = 0;
+				return 0;
+			}
+
+			if (n > entries_ready)
+				n = entries_ready;
+		}
+
+		/*
+		 * Give packets - make sure all packets are whole packets.
+		 * Valid because queue_size is always 2^n
+		 */
+		const uint16_t queue_mask = (uint16_t)(rxvq->queue_size - 1);
+		const uint32_t buf_len = rxvq->p_desc[0].len;
+
+		uint16_t used = rxvq->used_idx;
+
+		for (i = 0; i < n; ++i) {
+			uint32_t id = rxvq->p_used->ring[used & queue_mask].id;
+			rp[i].addr = rxvq->p_virtual_addr[id].virt_addr;
+			rp[i].len = rxvq->p_used->ring[used & queue_mask].len;
+
+			uint32_t pkt_len = ((struct _pkt_hdr_rx *)rp[i].addr)->cap_len;
+
+			if (pkt_len > buf_len) {
+				/* segmented */
+				int nbsegs = (pkt_len + buf_len - 1) / buf_len;
+
+				if (((int)i + nbsegs) > n) {
+					/* don't have enough segments - break out */
+					break;
+				}
+
+				int ii;
+
+				for (ii = 1; ii < nbsegs; ii++) {
+					++i;
+					id = rxvq->p_used->ring[(used + ii) & queue_mask].id;
+					rp[i].addr = rxvq->p_virtual_addr[id].virt_addr;
+					rp[i].len =
+						rxvq->p_used->ring[(used + ii) & queue_mask].len;
+				}
+
+				used += nbsegs;
+
+			} else {
+				++used;
+			}
+
+			pkts++;
+			segs = i + 1;
+		}
+
+		rxvq->used_idx = used;
+
+	} else if (rxvq->vq_type == PACKED_RING) {
+		/* This requires in-order behavior from FPGA */
+		int i;
+
+		for (i = 0; i < n; i++) {
+			struct pvirtq_desc *desc = &rxvq->desc[rxvq->next_used];
+
+			uint16_t flags = desc->flags;
+			uint8_t avail = !!(flags & VIRTQ_DESC_F_AVAIL);
+			uint8_t used = !!(flags & VIRTQ_DESC_F_USED);
+
+			if (avail != rxvq->used_wrap_count || used != rxvq->used_wrap_count)
+				break;
+
+			rp[pkts].addr = rxvq->p_virtual_addr[desc->id].virt_addr;
+			rp[pkts].len = desc->len;
+			pkts++;
+
+			inc_used(rxvq, 1);
+		}
+
+		segs = pkts;
+	}
+
+	*nb_pkts = pkts;
+	return segs;
+}
+
 /*
  * Put buffers back into Avail Ring
  */
@@ -1137,6 +1251,106 @@ static void nthw_release_rx_packets(struct nthw_virt_queue *rxvq, uint16_t n)
 		rte_rmb();
 		first_desc->flags = first_flags;
 	}
+}
+
+static uint16_t nthw_get_tx_packets(struct nthw_virt_queue *txvq,
+	uint16_t n,
+	uint16_t *first_idx,
+	struct nthw_cvirtq_desc *cvq,
+	struct nthw_memory_descriptor **p_virt_addr)
+{
+	int m = 0;
+	uint16_t queue_mask =
+		(uint16_t)(txvq->queue_size - 1);	/* Valid because queue_size is always 2^n */
+	*p_virt_addr = txvq->p_virtual_addr;
+
+	if (txvq->vq_type == SPLIT_RING) {
+		cvq->s = txvq->p_desc;
+		cvq->vq_type = SPLIT_RING;
+
+		*first_idx = txvq->tx_descr_avail_idx;
+
+		uint16_t entries_used =
+			(uint16_t)((txvq->tx_descr_avail_idx - txvq->cached_idx) & queue_mask);
+		uint16_t entries_ready = (uint16_t)(txvq->queue_size - 1 - entries_used);
+
+		vq_log_arg(txvq,
+			"ask %i: descrAvail %i, cachedidx %i, used: %i, ready %i used->idx %i",
+			n, txvq->tx_descr_avail_idx, txvq->cached_idx, entries_used, entries_ready,
+			txvq->p_used->idx);
+
+		if (entries_ready < n) {
+			/*
+			 * Look for more packets.
+			 * Using the used_idx in the avail ring since they are held synchronous
+			 * because of in-order
+			 */
+			txvq->cached_idx =
+				txvq->p_avail->ring[(txvq->p_used->idx - 1) & queue_mask];
+
+			vq_log_arg(txvq, "Update: get cachedidx %i (used_idx-1 %i)",
+				txvq->cached_idx, (txvq->p_used->idx - 1) & queue_mask);
+			entries_used =
+				(uint16_t)((txvq->tx_descr_avail_idx - txvq->cached_idx)
+				& queue_mask);
+			entries_ready = (uint16_t)(txvq->queue_size - 1 - entries_used);
+			vq_log_arg(txvq, "new used: %i, ready %i", entries_used, entries_ready);
+
+			if (n > entries_ready)
+				n = entries_ready;
+		}
+
+	} else if (txvq->vq_type == PACKED_RING) {
+		int i;
+
+		cvq->p = txvq->desc;
+		cvq->vq_type = PACKED_RING;
+
+		if (txvq->outs.num) {
+			*first_idx = txvq->outs.next;
+			uint16_t num = min(n, txvq->outs.num);
+			txvq->outs.next = (txvq->outs.next + num) & queue_mask;
+			txvq->outs.num -= num;
+
+			if (n == num)
+				return n;
+
+			m = num;
+			n -= num;
+
+		} else {
+			*first_idx = txvq->next_used;
+		}
+
+		/* iterate the ring - this requires in-order behavior from FPGA */
+		for (i = 0; i < n; i++) {
+			struct pvirtq_desc *desc = &txvq->desc[txvq->next_used];
+
+			uint16_t flags = desc->flags;
+			uint8_t avail = !!(flags & VIRTQ_DESC_F_AVAIL);
+			uint8_t used = !!(flags & VIRTQ_DESC_F_USED);
+
+			if (avail != txvq->used_wrap_count || used != txvq->used_wrap_count) {
+				n = i;
+				break;
+			}
+
+			uint16_t incr = (desc->id - txvq->next_used) & queue_mask;
+			i += incr;
+			inc_used(txvq, incr + 1);
+		}
+
+		if (i > n) {
+			int outs_num = i - n;
+			txvq->outs.next = (txvq->next_used - outs_num) & queue_mask;
+			txvq->outs.num = outs_num;
+		}
+
+	} else {
+		return 0;
+	}
+
+	return m + n;
 }
 
 static void nthw_release_tx_packets(struct nthw_virt_queue *txvq, uint16_t n, uint16_t n_segs[])
@@ -1200,7 +1414,9 @@ static struct sg_ops_s sg_ops = {
 	.nthw_release_mngd_rx_virt_queue = nthw_release_mngd_rx_virt_queue,
 	.nthw_setup_mngd_tx_virt_queue = nthw_setup_mngd_tx_virt_queue,
 	.nthw_release_mngd_tx_virt_queue = nthw_release_mngd_tx_virt_queue,
+	.nthw_get_rx_packets = nthw_get_rx_packets,
 	.nthw_release_rx_packets = nthw_release_rx_packets,
+	.nthw_get_tx_packets = nthw_get_tx_packets,
 	.nthw_release_tx_packets = nthw_release_tx_packets,
 	.nthw_virt_queue_init = nthw_virt_queue_init
 };

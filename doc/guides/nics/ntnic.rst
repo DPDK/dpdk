@@ -30,6 +30,7 @@ Supported NICs
 All information about NT200A02 can be found by link below:
 https://www.napatech.com/products/nt200a02-smartnic-inline/
 
+
 Features
 --------
 
@@ -49,6 +50,48 @@ which is required for the PMD to use vfio-pci on the PF.
 This support has been back-ported to older Linux distributions
 and they are also supported.
 If vfio-pci is not required, kernel version 4.18 is supported.
+
+
+Configuration
+-------------
+
+Command line arguments
+~~~~~~~~~~~~~~~~~~~~~~
+
+Following standard DPDK command line arguments are used by the PMD:
+
+``-a``
+   Used to specifically define the NT adapter by PCI ID.
+
+``--iova-mode``
+   Must be set to ``pa`` for Physical Address mode.
+
+NTNIC specific arguments can be passed to the PMD in the PCI device parameter list::
+
+   <application> ... -a 0000:03:00.0[{,<NTNIC specific argument>}]
+
+The NTNIC specific argument format is::
+
+   <object>.<attribute>=[<object-ids>:]<value>
+
+Multiple arguments for the same device are separated by ‘,’ comma.
+<object-ids> can be a single value or a range.
+
+``rxqs`` parameter [int]
+
+   Specify number of Rx queues to use::
+
+      -a <domain>:<bus>:00.0,rxqs=4,txqs=4
+
+   By default, the value is set to 1.
+
+``txqs`` parameter [int]
+
+   Specify number of Tx queues to use::
+
+      -a <domain>:<bus>:00.0,rxqs=4,txqs=4
+
+   By default, the value is set to 1.
 
 
 Logging and Debugging
