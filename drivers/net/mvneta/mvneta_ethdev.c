@@ -91,6 +91,12 @@ mvneta_ifnames_get(const char *key __rte_unused, const char *value,
 {
 	struct mvneta_ifnames *ifnames = extra_args;
 
+	if (ifnames->idx >= NETA_NUM_ETH_PPIO) {
+		MVNETA_LOG(ERR, "Too many ifnames specified (max %u)",
+			   NETA_NUM_ETH_PPIO);
+		return -EINVAL;
+	}
+
 	ifnames->names[ifnames->idx++] = value;
 
 	return 0;
