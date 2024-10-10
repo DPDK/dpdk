@@ -32,6 +32,8 @@
 #include "nthw_fpga_reg_defs_rac.h"
 #include "nthw_fpga_reg_defs_rst9563.h"
 #include "nthw_fpga_reg_defs_sdc.h"
+#include "nthw_fpga_reg_defs_slc.h"
+#include "nthw_fpga_reg_defs_slc_lr.h"
 
 /* aliases */
 
