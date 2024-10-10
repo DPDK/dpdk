@@ -104,6 +104,8 @@ struct nthw_virt_queue {
 	 *   1: Napatech DVIO0 descriptor (12 bytes).
 	 */
 	void *avail_struct_phys_addr;
+	void *used_struct_phys_addr;
+	void *desc_struct_phys_addr;
 };
 
 static struct nthw_virt_queue rxvq[MAX_VIRT_QUEUES];
@@ -311,12 +313,20 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	uint32_t vq_type,
 	int irq_vector)
 {
-	(void)header;
-	(void)desc_struct_phys_addr;
 	uint32_t qs = dbs_qsize_log2(queue_size);
 	uint32_t int_enable;
 	uint32_t vec;
 	uint32_t istk;
+
+	/*
+	 * Setup DBS module - DSF00094
+	 * 3. Configure the DBS.RX_DR_DATA memory; good idea to initialize all
+	 * DBS_RX_QUEUES entries.
+	 */
+	if (set_rx_dr_data(p_nthw_dbs, index, (uint64_t)desc_struct_phys_addr, host_id, qs, header,
+			0) != 0) {
+		return NULL;
+	}
 
 	/*
 	 * 4. Configure the DBS.RX_UW_DATA memory; good idea to initialize all
@@ -375,6 +385,8 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	rxvq[index].am_enable = (irq_vector < 0) ? RX_AM_ENABLE : RX_AM_DISABLE;
 	rxvq[index].host_id = host_id;
 	rxvq[index].avail_struct_phys_addr = avail_struct_phys_addr;
+	rxvq[index].used_struct_phys_addr = used_struct_phys_addr;
+	rxvq[index].desc_struct_phys_addr = desc_struct_phys_addr;
 	rxvq[index].vq_type = vq_type;
 	rxvq[index].in_order = 0;	/* not used */
 	rxvq[index].irq_vector = irq_vector;
@@ -399,12 +411,20 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	int irq_vector,
 	uint32_t in_order)
 {
-	(void)header;
-	(void)desc_struct_phys_addr;
 	uint32_t int_enable;
 	uint32_t vec;
 	uint32_t istk;
 	uint32_t qs = dbs_qsize_log2(queue_size);
+
+	/*
+	 * Setup DBS module - DSF00094
+	 * 3. Configure the DBS.TX_DR_DATA memory; good idea to initialize all
+	 *    DBS_TX_QUEUES entries.
+	 */
+	if (set_tx_dr_data(p_nthw_dbs, index, (uint64_t)desc_struct_phys_addr, host_id, qs, port,
+			header, 0) != 0) {
+		return NULL;
+	}
 
 	/*
 	 * 4. Configure the DBS.TX_UW_DATA memory; good idea to initialize all
@@ -468,6 +488,8 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	txvq[index].port = port;
 	txvq[index].virtual_port = virtual_port;
 	txvq[index].avail_struct_phys_addr = avail_struct_phys_addr;
+	txvq[index].used_struct_phys_addr = used_struct_phys_addr;
+	txvq[index].desc_struct_phys_addr = desc_struct_phys_addr;
 	txvq[index].vq_type = vq_type;
 	txvq[index].in_order = in_order;
 	txvq[index].irq_vector = irq_vector;
