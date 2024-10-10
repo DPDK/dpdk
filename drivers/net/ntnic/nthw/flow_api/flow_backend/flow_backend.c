@@ -12,6 +12,7 @@
 #include "flow_nthw_flm.h"
 #include "flow_nthw_hsh.h"
 #include "flow_nthw_qsl.h"
+#include "flow_nthw_slc_lr.h"
 #include "ntnic_mod_reg.h"
 #include "nthw_fpga_model.h"
 #include "hw_mod_backend.h"
@@ -32,6 +33,7 @@ static struct backend_dev_s {
 	struct flm_nthw *p_flm_nthw;
 	struct hsh_nthw *p_hsh_nthw;
 	struct qsl_nthw *p_qsl_nthw;
+	struct slc_lr_nthw *p_slc_lr_nthw;
 	struct ifr_nthw *p_ifr_nthw;    /* TPE module */
 } be_devs[MAX_PHYS_ADAPTERS];
 
@@ -1437,6 +1439,55 @@ static int qsl_unmq_flush(void *be_dev, const struct qsl_func_s *qsl, int entry,
 }
 
 /*
+ * SLC LR
+ */
+
+static bool slc_lr_get_present(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return be->p_slc_lr_nthw != NULL;
+}
+
+static uint32_t slc_lr_get_version(void *be_dev)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	return (uint32_t)((nthw_module_get_major_version(be->p_slc_lr_nthw->m_slc_lr) << 16) |
+			(nthw_module_get_minor_version(be->p_slc_lr_nthw->m_slc_lr) & 0xffff));
+}
+
+static int slc_lr_rcp_flush(void *be_dev, const struct slc_lr_func_s *slc_lr, int category,
+	int cnt)
+{
+	struct backend_dev_s *be = (struct backend_dev_s *)be_dev;
+	CHECK_DEBUG_ON(be, slc_lr, be->p_slc_lr_nthw);
+
+	if (slc_lr->ver == 2) {
+		slc_lr_nthw_rcp_cnt(be->p_slc_lr_nthw, 1);
+
+		for (int i = 0; i < cnt; i++) {
+			slc_lr_nthw_rcp_select(be->p_slc_lr_nthw, category + i);
+			slc_lr_nthw_rcp_head_slc_en(be->p_slc_lr_nthw,
+				slc_lr->v2.rcp[category + i].head_slc_en);
+			slc_lr_nthw_rcp_head_dyn(be->p_slc_lr_nthw,
+				slc_lr->v2.rcp[category + i].head_dyn);
+			slc_lr_nthw_rcp_head_ofs(be->p_slc_lr_nthw,
+				slc_lr->v2.rcp[category + i].head_ofs);
+			slc_lr_nthw_rcp_tail_slc_en(be->p_slc_lr_nthw,
+				slc_lr->v2.rcp[category + i].tail_slc_en);
+			slc_lr_nthw_rcp_tail_dyn(be->p_slc_lr_nthw,
+				slc_lr->v2.rcp[category + i].tail_dyn);
+			slc_lr_nthw_rcp_tail_ofs(be->p_slc_lr_nthw,
+				slc_lr->v2.rcp[category + i].tail_ofs);
+			slc_lr_nthw_rcp_pcap(be->p_slc_lr_nthw, slc_lr->v2.rcp[category + i].pcap);
+			slc_lr_nthw_rcp_flush(be->p_slc_lr_nthw);
+		}
+	}
+
+	CHECK_DEBUG_OFF(slc_lr, be->p_slc_lr_nthw);
+	return 0;
+}
+
+/*
  * DBS
  */
 
@@ -1556,6 +1607,10 @@ const struct flow_api_backend_ops flow_be_iface = {
 	qsl_qst_flush,
 	qsl_qen_flush,
 	qsl_unmq_flush,
+
+	slc_lr_get_present,
+	slc_lr_get_version,
+	slc_lr_rcp_flush,
 };
 
 const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, void **dev)
@@ -1626,6 +1681,16 @@ const struct flow_api_backend_ops *bin_flow_backend_init(nthw_fpga_t *p_fpga, vo
 		be_devs[physical_adapter_no].p_qsl_nthw = NULL;
 	}
 
+	/* Init nthw SLC LR */
+	if (slc_lr_nthw_init(NULL, p_fpga, physical_adapter_no) == 0) {
+		struct slc_lr_nthw *pslclrnthw = slc_lr_nthw_new();
+		slc_lr_nthw_init(pslclrnthw, p_fpga, physical_adapter_no);
+		be_devs[physical_adapter_no].p_slc_lr_nthw = pslclrnthw;
+
+	} else {
+		be_devs[physical_adapter_no].p_slc_lr_nthw = NULL;
+	}
+
 	be_devs[physical_adapter_no].adapter_no = physical_adapter_no;
 	*dev = (void *)&be_devs[physical_adapter_no];
 
@@ -1641,6 +1706,7 @@ static void bin_flow_backend_done(void *dev)
 	flm_nthw_delete(be_dev->p_flm_nthw);
 	hsh_nthw_delete(be_dev->p_hsh_nthw);
 	qsl_nthw_delete(be_dev->p_qsl_nthw);
+	slc_lr_nthw_delete(be_dev->p_slc_lr_nthw);
 }
 
 static const struct flow_backend_ops ops = {
