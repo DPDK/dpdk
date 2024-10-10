@@ -143,6 +143,7 @@ New Features
   * Updated supported version of the FPGA to 9563.55.49.
   * Extended and fixed logging.
   * Added NT flow filter initialization.
+  * Added NT flow backend initialization.
 
 * **Added cryptodev queue pair reset support.**
 

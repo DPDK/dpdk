@@ -42,6 +42,8 @@ sources = files(
         'nthw/core/nthw_pcie3.c',
         'nthw/core/nthw_sdc.c',
         'nthw/core/nthw_si5340.c',
+        'nthw/flow_api/flow_api.c',
+        'nthw/flow_api/flow_filter.c',
         'nthw/model/nthw_fpga_model.c',
         'nthw/nthw_platform.c',
         'nthw/nthw_rac.c',
