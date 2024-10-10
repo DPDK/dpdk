@@ -9,6 +9,25 @@
 #include "nthw_drv.h"
 #include "nthw_register.h"
 
+static void set_shadow_tx_qp_data(nthw_dbs_t *p, uint32_t index, uint32_t virtual_port);
+static void flush_tx_qp_data(nthw_dbs_t *p, uint32_t index);
+static void set_shadow_rx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable);
+static void flush_rx_am_data(nthw_dbs_t *p, uint32_t index);
+static void set_shadow_tx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable);
+static void flush_tx_am_data(nthw_dbs_t *p, uint32_t index);
+
 nthw_dbs_t *nthw_dbs_new(void)
 {
 	nthw_dbs_t *p = malloc(sizeof(nthw_dbs_t));
@@ -142,6 +161,55 @@ int dbs_init(nthw_dbs_t *p, nthw_fpga_t *p_fpga, int n_instance)
 			nthw_register_query_field(p->mp_reg_tx_idle, DBS_TX_IDLE_BUSY);
 	}
 
+	p->mp_reg_rx_avail_monitor_control =
+		nthw_module_get_register(p->mp_mod_dbs, DBS_RX_AM_CTRL);
+	p->mp_fld_rx_avail_monitor_control_adr =
+		nthw_register_get_field(p->mp_reg_rx_avail_monitor_control, DBS_RX_AM_CTRL_ADR);
+	p->mp_fld_rx_avail_monitor_control_cnt =
+		nthw_register_get_field(p->mp_reg_rx_avail_monitor_control, DBS_RX_AM_CTRL_CNT);
+
+	p->mp_reg_rx_avail_monitor_data = nthw_module_get_register(p->mp_mod_dbs, DBS_RX_AM_DATA);
+	p->mp_fld_rx_avail_monitor_data_guest_physical_address =
+		nthw_register_get_field(p->mp_reg_rx_avail_monitor_data, DBS_RX_AM_DATA_GPA);
+	p->mp_fld_rx_avail_monitor_data_enable =
+		nthw_register_get_field(p->mp_reg_rx_avail_monitor_data, DBS_RX_AM_DATA_ENABLE);
+	p->mp_fld_rx_avail_monitor_data_host_id =
+		nthw_register_get_field(p->mp_reg_rx_avail_monitor_data, DBS_RX_AM_DATA_HID);
+	p->mp_fld_rx_avail_monitor_data_packed =
+		nthw_register_query_field(p->mp_reg_rx_avail_monitor_data, DBS_RX_AM_DATA_PCKED);
+	p->mp_fld_rx_avail_monitor_data_int =
+		nthw_register_query_field(p->mp_reg_rx_avail_monitor_data, DBS_RX_AM_DATA_INT);
+
+	p->mp_reg_tx_avail_monitor_control =
+		nthw_module_get_register(p->mp_mod_dbs, DBS_TX_AM_CTRL);
+	p->mp_fld_tx_avail_monitor_control_adr =
+		nthw_register_get_field(p->mp_reg_tx_avail_monitor_control, DBS_TX_AM_CTRL_ADR);
+	p->mp_fld_tx_avail_monitor_control_cnt =
+		nthw_register_get_field(p->mp_reg_tx_avail_monitor_control, DBS_TX_AM_CTRL_CNT);
+
+	p->mp_reg_tx_avail_monitor_data = nthw_module_get_register(p->mp_mod_dbs, DBS_TX_AM_DATA);
+	p->mp_fld_tx_avail_monitor_data_guest_physical_address =
+		nthw_register_get_field(p->mp_reg_tx_avail_monitor_data, DBS_TX_AM_DATA_GPA);
+	p->mp_fld_tx_avail_monitor_data_enable =
+		nthw_register_get_field(p->mp_reg_tx_avail_monitor_data, DBS_TX_AM_DATA_ENABLE);
+	p->mp_fld_tx_avail_monitor_data_host_id =
+		nthw_register_get_field(p->mp_reg_tx_avail_monitor_data, DBS_TX_AM_DATA_HID);
+	p->mp_fld_tx_avail_monitor_data_packed =
+		nthw_register_query_field(p->mp_reg_tx_avail_monitor_data, DBS_TX_AM_DATA_PCKED);
+	p->mp_fld_tx_avail_monitor_data_int =
+		nthw_register_query_field(p->mp_reg_tx_avail_monitor_data, DBS_TX_AM_DATA_INT);
+
+	p->mp_reg_tx_queue_property_control =
+		nthw_module_get_register(p->mp_mod_dbs, DBS_TX_QP_CTRL);
+	p->mp_fld_tx_queue_property_control_adr =
+		nthw_register_get_field(p->mp_reg_tx_queue_property_control, DBS_TX_QP_CTRL_ADR);
+	p->mp_fld_tx_queue_property_control_cnt =
+		nthw_register_get_field(p->mp_reg_tx_queue_property_control, DBS_TX_QP_CTRL_CNT);
+
+	p->mp_reg_tx_queue_property_data = nthw_module_get_register(p->mp_mod_dbs, DBS_TX_QP_DATA);
+	p->mp_fld_tx_queue_property_data_v_port =
+		nthw_register_get_field(p->mp_reg_tx_queue_property_data, DBS_TX_QP_DATA_VPORT);
+
 	return 0;
 }
 
@@ -171,8 +239,24 @@ static int dbs_reset_tx_control(nthw_dbs_t *p)
 
 void dbs_reset(nthw_dbs_t *p)
 {
+	int i;
 	dbs_reset_rx_control(p);
 	dbs_reset_tx_control(p);
+
+	/* Reset RX memory banks and shado */
+	for (i = 0; i < NT_DBS_RX_QUEUES_MAX; ++i) {
+		set_shadow_rx_am_data(p, i, 0, 0, 0, 0, 0);
+		flush_rx_am_data(p, i);
+	}
+
+	/* Reset TX memory banks and shado */
+	for (i = 0; i < NT_DBS_TX_QUEUES_MAX; ++i) {
+		set_shadow_tx_am_data(p, i, 0, 0, 0, 0, 0);
+		flush_tx_am_data(p, i);
+
+		set_shadow_tx_qp_data(p, i, 0);
+		flush_tx_qp_data(p, i);
+	}
 }
 
 int set_rx_control(nthw_dbs_t *p,
@@ -254,5 +338,192 @@ int get_tx_init(nthw_dbs_t *p, uint32_t *init, uint32_t *queue, uint32_t *busy)
 	*init = nthw_field_get_val32(p->mp_fld_tx_init_init);
 	*queue = nthw_field_get_val32(p->mp_fld_tx_init_queue);
 	*busy = nthw_field_get_val32(p->mp_fld_tx_init_busy);
+	return 0;
+}
+
+static void set_rx_am_data_index(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val32(p->mp_fld_rx_avail_monitor_control_adr, index);
+	nthw_field_set_val32(p->mp_fld_rx_avail_monitor_control_cnt, 1);
+	nthw_register_flush(p->mp_reg_rx_avail_monitor_control, 1);
+}
+
+static void set_shadow_rx_am_data_guest_physical_address(nthw_dbs_t *p, uint32_t index,
+	uint64_t guest_physical_address)
+{
+	p->m_rx_am_shadow[index].guest_physical_address = guest_physical_address;
+}
+
+static void nthw_dbs_set_shadow_rx_am_data_enable(nthw_dbs_t *p, uint32_t index, uint32_t enable)
+{
+	p->m_rx_am_shadow[index].enable = enable;
+}
+
+static void set_shadow_rx_am_data_host_id(nthw_dbs_t *p, uint32_t index, uint32_t host_id)
+{
+	p->m_rx_am_shadow[index].host_id = host_id;
+}
+
+static void set_shadow_rx_am_data_packed(nthw_dbs_t *p, uint32_t index, uint32_t packed)
+{
+	p->m_rx_am_shadow[index].packed = packed;
+}
+
+static void set_shadow_rx_am_data_int_enable(nthw_dbs_t *p, uint32_t index, uint32_t int_enable)
+{
+	p->m_rx_am_shadow[index].int_enable = int_enable;
+}
+
+static void set_shadow_rx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable)
+{
+	set_shadow_rx_am_data_guest_physical_address(p, index, guest_physical_address);
+	nthw_dbs_set_shadow_rx_am_data_enable(p, index, enable);
+	set_shadow_rx_am_data_host_id(p, index, host_id);
+	set_shadow_rx_am_data_packed(p, index, packed);
+	set_shadow_rx_am_data_int_enable(p, index, int_enable);
+}
+
+static void flush_rx_am_data(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val(p->mp_fld_rx_avail_monitor_data_guest_physical_address,
+		(uint32_t *)&p->m_rx_am_shadow[index].guest_physical_address, 2);
+	nthw_field_set_val32(p->mp_fld_rx_avail_monitor_data_enable,
+		p->m_rx_am_shadow[index].enable);
+	nthw_field_set_val32(p->mp_fld_rx_avail_monitor_data_host_id,
+		p->m_rx_am_shadow[index].host_id);
+
+	if (p->mp_fld_rx_avail_monitor_data_packed) {
+		nthw_field_set_val32(p->mp_fld_rx_avail_monitor_data_packed,
+			p->m_rx_am_shadow[index].packed);
+	}
+
+	if (p->mp_fld_rx_avail_monitor_data_int) {
+		nthw_field_set_val32(p->mp_fld_rx_avail_monitor_data_int,
+			p->m_rx_am_shadow[index].int_enable);
+	}
+
+	set_rx_am_data_index(p, index);
+	nthw_register_flush(p->mp_reg_rx_avail_monitor_data, 1);
+}
+
+int set_rx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable)
+{
+	if (!p->mp_reg_rx_avail_monitor_data)
+		return -ENOTSUP;
+
+	set_shadow_rx_am_data(p, index, guest_physical_address, enable, host_id, packed,
+		int_enable);
+	flush_rx_am_data(p, index);
+	return 0;
+}
+
+static void set_tx_am_data_index(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val32(p->mp_fld_tx_avail_monitor_control_adr, index);
+	nthw_field_set_val32(p->mp_fld_tx_avail_monitor_control_cnt, 1);
+	nthw_register_flush(p->mp_reg_tx_avail_monitor_control, 1);
+}
+
+static void set_shadow_tx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable)
+{
+	p->m_tx_am_shadow[index].guest_physical_address = guest_physical_address;
+	p->m_tx_am_shadow[index].enable = enable;
+	p->m_tx_am_shadow[index].host_id = host_id;
+	p->m_tx_am_shadow[index].packed = packed;
+	p->m_tx_am_shadow[index].int_enable = int_enable;
+}
+
+static void flush_tx_am_data(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val(p->mp_fld_tx_avail_monitor_data_guest_physical_address,
+		(uint32_t *)&p->m_tx_am_shadow[index].guest_physical_address, 2);
+	nthw_field_set_val32(p->mp_fld_tx_avail_monitor_data_enable,
+		p->m_tx_am_shadow[index].enable);
+	nthw_field_set_val32(p->mp_fld_tx_avail_monitor_data_host_id,
+		p->m_tx_am_shadow[index].host_id);
+
+	if (p->mp_fld_tx_avail_monitor_data_packed) {
+		nthw_field_set_val32(p->mp_fld_tx_avail_monitor_data_packed,
+			p->m_tx_am_shadow[index].packed);
+	}
+
+	if (p->mp_fld_tx_avail_monitor_data_int) {
+		nthw_field_set_val32(p->mp_fld_tx_avail_monitor_data_int,
+			p->m_tx_am_shadow[index].int_enable);
+	}
+
+	set_tx_am_data_index(p, index);
+	nthw_register_flush(p->mp_reg_tx_avail_monitor_data, 1);
+}
+
+int set_tx_am_data(nthw_dbs_t *p,
+	uint32_t index,
+	uint64_t guest_physical_address,
+	uint32_t enable,
+	uint32_t host_id,
+	uint32_t packed,
+	uint32_t int_enable)
+{
+	if (!p->mp_reg_tx_avail_monitor_data)
+		return -ENOTSUP;
+
+	set_shadow_tx_am_data(p, index, guest_physical_address, enable, host_id, packed,
+		int_enable);
+	flush_tx_am_data(p, index);
+	return 0;
+}
+
+static void set_tx_qp_data_index(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val32(p->mp_fld_tx_queue_property_control_adr, index);
+	nthw_field_set_val32(p->mp_fld_tx_queue_property_control_cnt, 1);
+	nthw_register_flush(p->mp_reg_tx_queue_property_control, 1);
+}
+
+static void set_shadow_tx_qp_data_virtual_port(nthw_dbs_t *p, uint32_t index,
+	uint32_t virtual_port)
+{
+	p->m_tx_qp_shadow[index].virtual_port = virtual_port;
+}
+
+static void set_shadow_tx_qp_data(nthw_dbs_t *p, uint32_t index, uint32_t virtual_port)
+{
+	set_shadow_tx_qp_data_virtual_port(p, index, virtual_port);
+}
+
+static void flush_tx_qp_data(nthw_dbs_t *p, uint32_t index)
+{
+	nthw_field_set_val32(p->mp_fld_tx_queue_property_data_v_port,
+		p->m_tx_qp_shadow[index].virtual_port);
+
+	set_tx_qp_data_index(p, index);
+	nthw_register_flush(p->mp_reg_tx_queue_property_data, 1);
+}
+
+int nthw_dbs_set_tx_qp_data(nthw_dbs_t *p, uint32_t index, uint32_t virtual_port)
+{
+	if (!p->mp_reg_tx_queue_property_data)
+		return -ENOTSUP;
+
+	set_shadow_tx_qp_data(p, index, virtual_port);
+	flush_tx_qp_data(p, index);
 	return 0;
 }
