@@ -272,10 +272,25 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	if (init_resource_elements(ndev, RES_QUEUE, ndev->be.max_queues))
 		goto err_exit;
 
+	if (init_resource_elements(ndev, RES_CAT_CFN, ndev->be.cat.nb_cat_funcs))
+		goto err_exit;
+
 	if (init_resource_elements(ndev, RES_CAT_COT, ndev->be.max_categories))
 		goto err_exit;
 
+	if (init_resource_elements(ndev, RES_CAT_EXO, ndev->be.cat.nb_pm_ext))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_CAT_LEN, ndev->be.cat.nb_len))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_KM_FLOW_TYPE, ndev->be.cat.nb_flow_types))
+		goto err_exit;
+
 	if (init_resource_elements(ndev, RES_SLC_LR_RCP, ndev->be.max_categories))
+		goto err_exit;
+
+	if (init_resource_elements(ndev, RES_FLM_FLOW_TYPE, ndev->be.cat.nb_flow_types))
 		goto err_exit;
 
 	/* may need IPF, COR */

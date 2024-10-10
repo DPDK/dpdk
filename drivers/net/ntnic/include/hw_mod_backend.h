@@ -22,11 +22,118 @@
 
 #define MAX_PHYS_ADAPTERS 8
 
+#define VER_MAJOR(ver) (((ver) >> 16) & 0xffff)
+#define VER_MINOR(ver) ((ver) & 0xffff)
+
+struct flow_api_backend_s;
+struct common_func_s;
+
+void *callocate_mod(struct common_func_s *mod, int sets, ...);
+void zero_module_cache(struct common_func_s *mod);
+
+#define ALL_ENTRIES -1000
+
+#define INDEX_TOO_LARGE (-2)
+#define INDEX_TOO_LARGE_LOG NT_LOG(INF, FILTER, "ERROR:%s: Index too large", __func__)
+
+#define WORD_OFF_TOO_LARGE (-3)
+#define WORD_OFF_TOO_LARGE_LOG NT_LOG(INF, FILTER, "ERROR:%s: Word offset too large", __func__)
+
+#define UNSUP_FIELD (-5)
+#define UNSUP_FIELD_LOG                                                         \
+	NT_LOG(INF, FILTER, "ERROR:%s: Unsupported field in NIC module", __func__)
+
+#define UNSUP_VER (-4)
+#define UNSUP_VER_LOG                                                                       \
+	NT_LOG(INF, FILTER, "ERROR:%s: Unsupported NIC module: %s ver %i.%i", __func__, _MOD_, \
+		VER_MAJOR(_VER_), VER_MINOR(_VER_))
+
+#define COUNT_ERROR (-4)
+#define COUNT_ERROR_LOG(_RESOURCE_)                                                         \
+	NT_LOG(INF, FILTER,                                                                      \
+		"ERROR:%s: Insufficient resource [ %s ] : NIC module: %s ver %i.%i", __func__,  \
+		#_RESOURCE_, _MOD_, VER_MAJOR(_VER_), VER_MINOR(_VER_))                          \
+
+#define NOT_FOUND 0xffffffff
+
+enum {
+	EXTRA_INDEXES
+};
+
+#define GET(cached_val, val) ({ *(val) = *(cached_val); })
+
+#define SET(cached_val, val) ({ *(cached_val) = *(val); })
+
+#define GET_SET(cached_val, val)                                                                  \
+	do {                                                                                      \
+		uint32_t *temp_val = (val);                                                       \
+		typeof(cached_val) *temp_cached_val = &(cached_val);                          \
+		if (get)                                                                          \
+			GET(temp_cached_val, temp_val);                                           \
+		else                                                                              \
+			SET(temp_cached_val, temp_val);                                           \
+	} while (0)
+
+#define GET_SIGNED(cached_val, val) ({ *(val) = (uint32_t)(*(cached_val)); })
+
+#define SET_SIGNED(cached_val, val) ({ *(cached_val) = (int32_t)(*(val)); })
+
+#define GET_SET_SIGNED(cached_val, val)                                                           \
+	do {                                                                                      \
+		uint32_t *temp_val = (val);                                                       \
+		typeof(cached_val) *temp_cached_val = &(cached_val);                          \
+		if (get)                                                                          \
+			GET_SIGNED(temp_cached_val, temp_val);                                    \
+		else                                                                              \
+			SET_SIGNED(temp_cached_val, temp_val);                                    \
+	} while (0)
+
+#define FIND_EQUAL_INDEX(be_module_reg, type, idx, start, nb_elements)                            \
+	do {                                                                                      \
+		typeof(be_module_reg) *temp_be_module =                                       \
+			(typeof(be_module_reg) *)be_module_reg;                               \
+		typeof(idx) tmp_idx = (idx);                                                  \
+		typeof(nb_elements) tmp_nb_elements = (nb_elements);                          \
+		unsigned int start_idx = (unsigned int)(start);                                   \
+		*value = NOT_FOUND;                                                               \
+		for (unsigned int i = start_idx; i < tmp_nb_elements; i++) {                      \
+			if ((unsigned int)(tmp_idx) == i)                                         \
+				continue;                                                         \
+			if (memcmp(&temp_be_module[tmp_idx], &temp_be_module[i], sizeof(type)) == \
+			    0) {                                                                  \
+				*value = i;                                                       \
+				break;                                                            \
+			}                                                                         \
+		}                                                                                 \
+	} while (0)
+
+#define DO_COMPARE_INDEXS(be_module_reg, type, idx, cmp_idx)                                      \
+	do {                                                                                      \
+		typeof(be_module_reg) *temp_be_module = &(be_module_reg);                     \
+		typeof(idx) tmp_idx = (idx);                                                  \
+		typeof(cmp_idx) tmp_cmp_idx = (cmp_idx);                                      \
+		if ((unsigned int)(tmp_idx) != (unsigned int)(tmp_cmp_idx)) {                     \
+			(void)memcmp(temp_be_module + tmp_idx, &temp_be_module[tmp_cmp_idx],      \
+				     sizeof(type));                                               \
+		}                                                                                 \
+	} while (0)
+
+enum km_flm_if_select_e {
+	KM_FLM_IF_FIRST = 0,
+	KM_FLM_IF_SECOND = 1
+};
+
+#define FIELD_START_INDEX 100
+
 #define COMMON_FUNC_INFO_S                                                                        \
 	int ver;                                                                                  \
 	void *base;                                                                               \
 	unsigned int alloced_size;                                                                \
 	int debug
+
+struct common_func_s {
+	COMMON_FUNC_INFO_S;
+};
 
 struct cat_func_s {
 	COMMON_FUNC_INFO_S;
@@ -48,6 +155,104 @@ struct cat_func_s {
 		struct hw_mod_cat_v21_s v21;
 	};
 };
+enum hw_cat_e {
+	/*
+	 * functions initial CAT v18
+	 */
+	/* 00 */ HW_CAT_CFN_SET_ALL_DEFAULTS = 0,
+	/* 01 */ HW_CAT_CFN_PRESET_ALL,
+	/* 02 */ HW_CAT_CFN_COMPARE,
+	/* 03 */ HW_CAT_CFN_FIND,
+	/* 04 */ HW_CAT_CFN_COPY_FROM,
+	/* 05 */ HW_CAT_COT_PRESET_ALL,
+	/* 06 */ HW_CAT_COT_COMPARE,
+	/* 07 */ HW_CAT_COT_FIND,
+	/* 08 */ HW_CAT_COT_COPY_FROM,
+	/* fields */
+	/* 00 */ HW_CAT_CFN_ENABLE = FIELD_START_INDEX,
+	/* 01 */ HW_CAT_CFN_INV,
+	/* 02 */ HW_CAT_CFN_PTC_INV,
+	/* 03 */ HW_CAT_CFN_PTC_ISL,
+	/* 04 */ HW_CAT_CFN_PTC_CFP,
+	/* 05 */ HW_CAT_CFN_PTC_MAC,
+	/* 06 */ HW_CAT_CFN_PTC_L2,
+	/* 07 */ HW_CAT_CFN_PTC_VNTAG,
+	/* 08 */ HW_CAT_CFN_PTC_VLAN,
+	/* 09 */ HW_CAT_CFN_PTC_MPLS,
+	/* 10 */ HW_CAT_CFN_PTC_L3,
+	/* 11 */ HW_CAT_CFN_PTC_FRAG,
+	/* 12 */ HW_CAT_CFN_PTC_IP_PROT,
+	/* 13 */ HW_CAT_CFN_PTC_L4,
+	/* 14 */ HW_CAT_CFN_PTC_TUNNEL,
+	/* 15 */ HW_CAT_CFN_PTC_TNL_L2,
+	/* 16 */ HW_CAT_CFN_PTC_TNL_VLAN,
+	/* 17 */ HW_CAT_CFN_PTC_TNL_MPLS,
+	/* 18 */ HW_CAT_CFN_PTC_TNL_L3,
+	/* 19 */ HW_CAT_CFN_PTC_TNL_FRAG,
+	/* 20 */ HW_CAT_CFN_PTC_TNL_IP_PROT,
+	/* 21 */ HW_CAT_CFN_PTC_TNL_L4,
+	/* 22 */ HW_CAT_CFN_ERR_INV,
+	/* 23 */ HW_CAT_CFN_ERR_CV,
+	/* 24 */ HW_CAT_CFN_ERR_FCS,
+	/* 25 */ HW_CAT_CFN_ERR_TRUNC,
+	/* 26 */ HW_CAT_CFN_ERR_L3_CS,
+	/* 27 */ HW_CAT_CFN_ERR_L4_CS,
+	/* 28 */ HW_CAT_CFN_MAC_PORT,
+	/* 29 */ HW_CAT_CFN_PM_CMP,
+	/* 30 */ HW_CAT_CFN_PM_DCT,
+	/* 31 */ HW_CAT_CFN_PM_EXT_INV,
+	/* 32 */ HW_CAT_CFN_PM_CMB,
+	/* 33 */ HW_CAT_CFN_PM_AND_INV,
+	/* 34 */ HW_CAT_CFN_PM_OR_INV,
+	/* 35 */ HW_CAT_CFN_PM_INV,
+	/* 36 */ HW_CAT_CFN_LC,
+	/* 37 */ HW_CAT_CFN_LC_INV,
+	/* 38 */ HW_CAT_CFN_KM0_OR,
+	/* 39 */ HW_CAT_CFN_KM1_OR,
+	/* 40 */ HW_CAT_KCE_ENABLE_BM,
+	/* 41 */ HW_CAT_KCS_CATEGORY,
+	/* 42 */ HW_CAT_FTE_ENABLE_BM,
+	/* 43 */ HW_CAT_CTE_ENABLE_BM,
+	/* 44 */ HW_CAT_CTS_CAT_A,
+	/* 45 */ HW_CAT_CTS_CAT_B,
+	/* 46 */ HW_CAT_COT_COLOR,
+	/* 47 */ HW_CAT_COT_KM,
+	/* 48 */ HW_CAT_CCT_COLOR,
+	/* 49 */ HW_CAT_CCT_KM,
+	/* 50 */ HW_CAT_KCC_KEY,
+	/* 51 */ HW_CAT_KCC_CATEGORY,
+	/* 52 */ HW_CAT_KCC_ID,
+	/* 53 */ HW_CAT_EXO_DYN,
+	/* 54 */ HW_CAT_EXO_OFS,
+	/* 55 */ HW_CAT_RCK_DATA,
+	/* 56 */ HW_CAT_LEN_LOWER,
+	/* 57 */ HW_CAT_LEN_UPPER,
+	/* 58 */ HW_CAT_LEN_DYN1,
+	/* 59 */ HW_CAT_LEN_DYN2,
+	/* 60 */ HW_CAT_LEN_INV,
+	/* 61 */ HW_CAT_CFN_ERR_TNL_L3_CS,
+	/* 62 */ HW_CAT_CFN_ERR_TNL_L4_CS,
+	/* 63 */ HW_CAT_CFN_ERR_TTL_EXP,
+	/* 64 */ HW_CAT_CFN_ERR_TNL_TTL_EXP,
+};
+
+bool hw_mod_cat_present(struct flow_api_backend_s *be);
+int hw_mod_cat_alloc(struct flow_api_backend_s *be);
+void hw_mod_cat_free(struct flow_api_backend_s *be);
+int hw_mod_cat_reset(struct flow_api_backend_s *be);
+int hw_mod_cat_cfn_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cfn_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index, int word_off,
+	uint32_t value);
+
+int hw_mod_cat_cte_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cts_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cot_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cct_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_kcc_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
+int hw_mod_cat_exo_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_rck_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_len_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 struct km_func_s {
 	COMMON_FUNC_INFO_S;
@@ -278,6 +483,9 @@ struct flow_api_backend_ops {
 struct flow_api_backend_s {
 	void *be_dev;
 	const struct flow_api_backend_ops *iface;
+
+	/* flow filter FPGA modules */
+	struct cat_func_s cat;
 
 	/* NIC attributes */
 	unsigned int num_phy_ports;

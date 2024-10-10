@@ -9,6 +9,267 @@
 
 #include "nthw_register.h"
 
+static nthw_fpga_field_init_s cat_cct_ctrl_fields[] = {
+	{ CAT_CCT_CTRL_ADR, 8, 0, 0x0000 },
+	{ CAT_CCT_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cct_data_fields[] = {
+	{ CAT_CCT_DATA_COLOR, 32, 0, 0x0000 },
+	{ CAT_CCT_DATA_KM, 4, 32, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cfn_ctrl_fields[] = {
+	{ CAT_CFN_CTRL_ADR, 6, 0, 0x0000 },
+	{ CAT_CFN_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cfn_data_fields[] = {
+	{ CAT_CFN_DATA_ENABLE, 1, 0, 0x0000 },
+	{ CAT_CFN_DATA_ERR_CV, 2, 99, 0x0000 },
+	{ CAT_CFN_DATA_ERR_FCS, 2, 101, 0x0000 },
+	{ CAT_CFN_DATA_ERR_INV, 1, 98, 0x0000 },
+	{ CAT_CFN_DATA_ERR_L3_CS, 2, 105, 0x0000 },
+	{ CAT_CFN_DATA_ERR_L4_CS, 2, 107, 0x0000 },
+	{ CAT_CFN_DATA_ERR_TNL_L3_CS, 2, 109, 0x0000 },
+	{ CAT_CFN_DATA_ERR_TNL_L4_CS, 2, 111, 0x0000 },
+	{ CAT_CFN_DATA_ERR_TNL_TTL_EXP, 2, 115, 0x0000 },
+	{ CAT_CFN_DATA_ERR_TRUNC, 2, 103, 0x0000 },
+	{ CAT_CFN_DATA_ERR_TTL_EXP, 2, 113, 0x0000 },
+	{ CAT_CFN_DATA_INV, 1, 1, 0x0000 },
+	{ CAT_CFN_DATA_KM0_OR, 3, 173, 0x0000 },
+	{ CAT_CFN_DATA_KM1_OR, 3, 176, 0x0000 },
+	{ CAT_CFN_DATA_LC, 8, 164, 0x0000 },
+	{ CAT_CFN_DATA_LC_INV, 1, 172, 0x0000 },
+	{ CAT_CFN_DATA_MAC_PORT, 2, 117, 0x0000 },
+	{ CAT_CFN_DATA_PM_AND_INV, 1, 161, 0x0000 },
+	{ CAT_CFN_DATA_PM_CMB, 4, 157, 0x0000 },
+	{ CAT_CFN_DATA_PM_CMP, 32, 119, 0x0000 },
+	{ CAT_CFN_DATA_PM_DCT, 2, 151, 0x0000 },
+	{ CAT_CFN_DATA_PM_EXT_INV, 4, 153, 0x0000 },
+	{ CAT_CFN_DATA_PM_INV, 1, 163, 0x0000 },
+	{ CAT_CFN_DATA_PM_OR_INV, 1, 162, 0x0000 },
+	{ CAT_CFN_DATA_PTC_CFP, 2, 5, 0x0000 },
+	{ CAT_CFN_DATA_PTC_FRAG, 4, 36, 0x0000 },
+	{ CAT_CFN_DATA_PTC_INV, 1, 2, 0x0000 },
+	{ CAT_CFN_DATA_PTC_IP_PROT, 8, 40, 0x0000 },
+	{ CAT_CFN_DATA_PTC_ISL, 2, 3, 0x0000 },
+	{ CAT_CFN_DATA_PTC_L2, 7, 12, 0x0000 },
+	{ CAT_CFN_DATA_PTC_L3, 3, 33, 0x0000 },
+	{ CAT_CFN_DATA_PTC_L4, 5, 48, 0x0000 },
+	{ CAT_CFN_DATA_PTC_MAC, 5, 7, 0x0000 },
+	{ CAT_CFN_DATA_PTC_MPLS, 8, 25, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_FRAG, 4, 81, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_IP_PROT, 8, 85, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_L2, 2, 64, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_L3, 3, 78, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_L4, 5, 93, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_MPLS, 8, 70, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TNL_VLAN, 4, 66, 0x0000 },
+	{ CAT_CFN_DATA_PTC_TUNNEL, 11, 53, 0x0000 },
+	{ CAT_CFN_DATA_PTC_VLAN, 4, 21, 0x0000 },
+	{ CAT_CFN_DATA_PTC_VNTAG, 2, 19, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cot_ctrl_fields[] = {
+	{ CAT_COT_CTRL_ADR, 6, 0, 0x0000 },
+	{ CAT_COT_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cot_data_fields[] = {
+	{ CAT_COT_DATA_COLOR, 32, 0, 0x0000 },
+	{ CAT_COT_DATA_KM, 4, 32, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cte_ctrl_fields[] = {
+	{ CAT_CTE_CTRL_ADR, 6, 0, 0x0000 },
+	{ CAT_CTE_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cte_data_fields[] = {
+	{ CAT_CTE_DATA_COL_ENABLE, 1, 0, 0x0000 }, { CAT_CTE_DATA_COR_ENABLE, 1, 1, 0x0000 },
+	{ CAT_CTE_DATA_EPP_ENABLE, 1, 9, 0x0000 }, { CAT_CTE_DATA_HSH_ENABLE, 1, 2, 0x0000 },
+	{ CAT_CTE_DATA_HST_ENABLE, 1, 8, 0x0000 }, { CAT_CTE_DATA_IPF_ENABLE, 1, 4, 0x0000 },
+	{ CAT_CTE_DATA_MSK_ENABLE, 1, 7, 0x0000 }, { CAT_CTE_DATA_PDB_ENABLE, 1, 6, 0x0000 },
+	{ CAT_CTE_DATA_QSL_ENABLE, 1, 3, 0x0000 }, { CAT_CTE_DATA_SLC_ENABLE, 1, 5, 0x0000 },
+	{ CAT_CTE_DATA_TPE_ENABLE, 1, 10, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cts_ctrl_fields[] = {
+	{ CAT_CTS_CTRL_ADR, 9, 0, 0x0000 },
+	{ CAT_CTS_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_cts_data_fields[] = {
+	{ CAT_CTS_DATA_CAT_A, 6, 0, 0x0000 },
+	{ CAT_CTS_DATA_CAT_B, 6, 6, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_dct_ctrl_fields[] = {
+	{ CAT_DCT_CTRL_ADR, 13, 0, 0x0000 },
+	{ CAT_DCT_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_dct_data_fields[] = {
+	{ CAT_DCT_DATA_RES, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_dct_sel_fields[] = {
+	{ CAT_DCT_SEL_LU, 2, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_exo_ctrl_fields[] = {
+	{ CAT_EXO_CTRL_ADR, 2, 0, 0x0000 },
+	{ CAT_EXO_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_exo_data_fields[] = {
+	{ CAT_EXO_DATA_DYN, 5, 0, 0x0000 },
+	{ CAT_EXO_DATA_OFS, 11, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_fte0_ctrl_fields[] = {
+	{ CAT_FTE0_CTRL_ADR, 9, 0, 0x0000 },
+	{ CAT_FTE0_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_fte0_data_fields[] = {
+	{ CAT_FTE0_DATA_ENABLE, 8, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_fte1_ctrl_fields[] = {
+	{ CAT_FTE1_CTRL_ADR, 9, 0, 0x0000 },
+	{ CAT_FTE1_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_fte1_data_fields[] = {
+	{ CAT_FTE1_DATA_ENABLE, 8, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_join_fields[] = {
+	{ CAT_JOIN_J1, 2, 0, 0x0000 },
+	{ CAT_JOIN_J2, 1, 8, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kcc_ctrl_fields[] = {
+	{ CAT_KCC_CTRL_ADR, 11, 0, 0x0000 },
+	{ CAT_KCC_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kcc_data_fields[] = {
+	{ CAT_KCC_DATA_CATEGORY, 8, 64, 0x0000 },
+	{ CAT_KCC_DATA_ID, 12, 72, 0x0000 },
+	{ CAT_KCC_DATA_KEY, 64, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kce0_ctrl_fields[] = {
+	{ CAT_KCE0_CTRL_ADR, 3, 0, 0x0000 },
+	{ CAT_KCE0_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kce0_data_fields[] = {
+	{ CAT_KCE0_DATA_ENABLE, 8, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kce1_ctrl_fields[] = {
+	{ CAT_KCE1_CTRL_ADR, 3, 0, 0x0000 },
+	{ CAT_KCE1_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kce1_data_fields[] = {
+	{ CAT_KCE1_DATA_ENABLE, 8, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kcs0_ctrl_fields[] = {
+	{ CAT_KCS0_CTRL_ADR, 6, 0, 0x0000 },
+	{ CAT_KCS0_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kcs0_data_fields[] = {
+	{ CAT_KCS0_DATA_CATEGORY, 6, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kcs1_ctrl_fields[] = {
+	{ CAT_KCS1_CTRL_ADR, 6, 0, 0x0000 },
+	{ CAT_KCS1_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_kcs1_data_fields[] = {
+	{ CAT_KCS1_DATA_CATEGORY, 6, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_len_ctrl_fields[] = {
+	{ CAT_LEN_CTRL_ADR, 3, 0, 0x0000 },
+	{ CAT_LEN_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_len_data_fields[] = {
+	{ CAT_LEN_DATA_DYN1, 5, 28, 0x0000 }, { CAT_LEN_DATA_DYN2, 5, 33, 0x0000 },
+	{ CAT_LEN_DATA_INV, 1, 38, 0x0000 }, { CAT_LEN_DATA_LOWER, 14, 0, 0x0000 },
+	{ CAT_LEN_DATA_UPPER, 14, 14, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_rck_ctrl_fields[] = {
+	{ CAT_RCK_CTRL_ADR, 8, 0, 0x0000 },
+	{ CAT_RCK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cat_rck_data_fields[] = {
+	{ CAT_RCK_DATA_CM0U, 1, 1, 0x0000 }, { CAT_RCK_DATA_CM1U, 1, 5, 0x0000 },
+	{ CAT_RCK_DATA_CM2U, 1, 9, 0x0000 }, { CAT_RCK_DATA_CM3U, 1, 13, 0x0000 },
+	{ CAT_RCK_DATA_CM4U, 1, 17, 0x0000 }, { CAT_RCK_DATA_CM5U, 1, 21, 0x0000 },
+	{ CAT_RCK_DATA_CM6U, 1, 25, 0x0000 }, { CAT_RCK_DATA_CM7U, 1, 29, 0x0000 },
+	{ CAT_RCK_DATA_CML0, 1, 0, 0x0000 }, { CAT_RCK_DATA_CML1, 1, 4, 0x0000 },
+	{ CAT_RCK_DATA_CML2, 1, 8, 0x0000 }, { CAT_RCK_DATA_CML3, 1, 12, 0x0000 },
+	{ CAT_RCK_DATA_CML4, 1, 16, 0x0000 }, { CAT_RCK_DATA_CML5, 1, 20, 0x0000 },
+	{ CAT_RCK_DATA_CML6, 1, 24, 0x0000 }, { CAT_RCK_DATA_CML7, 1, 28, 0x0000 },
+	{ CAT_RCK_DATA_SEL0, 1, 2, 0x0000 }, { CAT_RCK_DATA_SEL1, 1, 6, 0x0000 },
+	{ CAT_RCK_DATA_SEL2, 1, 10, 0x0000 }, { CAT_RCK_DATA_SEL3, 1, 14, 0x0000 },
+	{ CAT_RCK_DATA_SEL4, 1, 18, 0x0000 }, { CAT_RCK_DATA_SEL5, 1, 22, 0x0000 },
+	{ CAT_RCK_DATA_SEL6, 1, 26, 0x0000 }, { CAT_RCK_DATA_SEL7, 1, 30, 0x0000 },
+	{ CAT_RCK_DATA_SEU0, 1, 3, 0x0000 }, { CAT_RCK_DATA_SEU1, 1, 7, 0x0000 },
+	{ CAT_RCK_DATA_SEU2, 1, 11, 0x0000 }, { CAT_RCK_DATA_SEU3, 1, 15, 0x0000 },
+	{ CAT_RCK_DATA_SEU4, 1, 19, 0x0000 }, { CAT_RCK_DATA_SEU5, 1, 23, 0x0000 },
+	{ CAT_RCK_DATA_SEU6, 1, 27, 0x0000 }, { CAT_RCK_DATA_SEU7, 1, 31, 0x0000 },
+};
+
+static nthw_fpga_register_init_s cat_registers[] = {
+	{ CAT_CCT_CTRL, 30, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cct_ctrl_fields },
+	{ CAT_CCT_DATA, 31, 36, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cct_data_fields },
+	{ CAT_CFN_CTRL, 10, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cfn_ctrl_fields },
+	{ CAT_CFN_DATA, 11, 179, NTHW_FPGA_REG_TYPE_WO, 0, 44, cat_cfn_data_fields },
+	{ CAT_COT_CTRL, 28, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cot_ctrl_fields },
+	{ CAT_COT_DATA, 29, 36, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cot_data_fields },
+	{ CAT_CTE_CTRL, 24, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cte_ctrl_fields },
+	{ CAT_CTE_DATA, 25, 11, NTHW_FPGA_REG_TYPE_WO, 0, 11, cat_cte_data_fields },
+	{ CAT_CTS_CTRL, 26, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cts_ctrl_fields },
+	{ CAT_CTS_DATA, 27, 12, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_cts_data_fields },
+	{ CAT_DCT_CTRL, 6, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_dct_ctrl_fields },
+	{ CAT_DCT_DATA, 7, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_dct_data_fields },
+	{ CAT_DCT_SEL, 4, 2, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_dct_sel_fields },
+	{ CAT_EXO_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_exo_ctrl_fields },
+	{ CAT_EXO_DATA, 1, 27, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_exo_data_fields },
+	{ CAT_FTE0_CTRL, 16, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_fte0_ctrl_fields },
+	{ CAT_FTE0_DATA, 17, 8, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_fte0_data_fields },
+	{ CAT_FTE1_CTRL, 22, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_fte1_ctrl_fields },
+	{ CAT_FTE1_DATA, 23, 8, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_fte1_data_fields },
+	{ CAT_JOIN, 5, 9, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_join_fields },
+	{ CAT_KCC_CTRL, 32, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_kcc_ctrl_fields },
+	{ CAT_KCC_DATA, 33, 84, NTHW_FPGA_REG_TYPE_WO, 0, 3, cat_kcc_data_fields },
+	{ CAT_KCE0_CTRL, 12, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_kce0_ctrl_fields },
+	{ CAT_KCE0_DATA, 13, 8, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_kce0_data_fields },
+	{ CAT_KCE1_CTRL, 18, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_kce1_ctrl_fields },
+	{ CAT_KCE1_DATA, 19, 8, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_kce1_data_fields },
+	{ CAT_KCS0_CTRL, 14, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_kcs0_ctrl_fields },
+	{ CAT_KCS0_DATA, 15, 6, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_kcs0_data_fields },
+	{ CAT_KCS1_CTRL, 20, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_kcs1_ctrl_fields },
+	{ CAT_KCS1_DATA, 21, 6, NTHW_FPGA_REG_TYPE_WO, 0, 1, cat_kcs1_data_fields },
+	{ CAT_LEN_CTRL, 8, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_len_ctrl_fields },
+	{ CAT_LEN_DATA, 9, 39, NTHW_FPGA_REG_TYPE_WO, 0, 5, cat_len_data_fields },
+	{ CAT_RCK_CTRL, 2, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cat_rck_ctrl_fields },
+	{ CAT_RCK_DATA, 3, 32, NTHW_FPGA_REG_TYPE_WO, 0, 32, cat_rck_data_fields },
+};
+
 static nthw_fpga_field_init_s gfg_burstsize0_fields[] = {
 	{ GFG_BURSTSIZE0_VAL, 24, 0, 0 },
 };
@@ -1037,6 +1298,7 @@ static nthw_fpga_register_init_s rst9563_registers[] = {
 };
 
 static nthw_fpga_module_init_s fpga_modules[] = {
+	{ MOD_CAT, 0, MOD_CAT, 0, 21, NTHW_FPGA_BUS_TYPE_RAB1, 768, 34, cat_registers },
 	{ MOD_GFG, 0, MOD_GFG, 1, 1, NTHW_FPGA_BUS_TYPE_RAB2, 8704, 10, gfg_registers },
 	{ MOD_GMF, 0, MOD_GMF, 2, 5, NTHW_FPGA_BUS_TYPE_RAB2, 9216, 12, gmf_registers },
 	{ MOD_GMF, 1, MOD_GMF, 2, 5, NTHW_FPGA_BUS_TYPE_RAB2, 9728, 12, gmf_registers },
@@ -1226,5 +1488,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 15, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 16, fpga_modules,
 };
