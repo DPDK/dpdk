@@ -1297,6 +1297,60 @@ static nthw_fpga_register_init_s pci_wr_tg_registers[] = {
 	{ PCI_WR_TG_TG_WR_RUN, 4, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1, pci_wr_tg_tg_wr_run_fields },
 };
 
+static nthw_fpga_field_init_s qsl_qen_ctrl_fields[] = {
+	{ QSL_QEN_CTRL_ADR, 5, 0, 0x0000 },
+	{ QSL_QEN_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_qen_data_fields[] = {
+	{ QSL_QEN_DATA_EN, 4, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_qst_ctrl_fields[] = {
+	{ QSL_QST_CTRL_ADR, 12, 0, 0x0000 },
+	{ QSL_QST_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_qst_data_fields[] = {
+	{ QSL_QST_DATA_LRE, 1, 9, 0x0000 }, { QSL_QST_DATA_QEN, 1, 7, 0x0000 },
+	{ QSL_QST_DATA_QUEUE, 7, 0, 0x0000 }, { QSL_QST_DATA_TCI, 16, 10, 0x0000 },
+	{ QSL_QST_DATA_TX_PORT, 1, 8, 0x0000 }, { QSL_QST_DATA_VEN, 1, 26, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_rcp_ctrl_fields[] = {
+	{ QSL_RCP_CTRL_ADR, 5, 0, 0x0000 },
+	{ QSL_RCP_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_rcp_data_fields[] = {
+	{ QSL_RCP_DATA_DISCARD, 1, 0, 0x0000 }, { QSL_RCP_DATA_DROP, 2, 1, 0x0000 },
+	{ QSL_RCP_DATA_LR, 2, 51, 0x0000 }, { QSL_RCP_DATA_TBL_HI, 12, 15, 0x0000 },
+	{ QSL_RCP_DATA_TBL_IDX, 12, 27, 0x0000 }, { QSL_RCP_DATA_TBL_LO, 12, 3, 0x0000 },
+	{ QSL_RCP_DATA_TBL_MSK, 12, 39, 0x0000 }, { QSL_RCP_DATA_TSA, 1, 53, 0x0000 },
+	{ QSL_RCP_DATA_VLI, 2, 54, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_unmq_ctrl_fields[] = {
+	{ QSL_UNMQ_CTRL_ADR, 1, 0, 0x0000 },
+	{ QSL_UNMQ_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s qsl_unmq_data_fields[] = {
+	{ QSL_UNMQ_DATA_DEST_QUEUE, 7, 0, 0x0000 },
+	{ QSL_UNMQ_DATA_EN, 1, 7, 0x0000 },
+};
+
+static nthw_fpga_register_init_s qsl_registers[] = {
+	{ QSL_QEN_CTRL, 4, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, qsl_qen_ctrl_fields },
+	{ QSL_QEN_DATA, 5, 4, NTHW_FPGA_REG_TYPE_WO, 0, 1, qsl_qen_data_fields },
+	{ QSL_QST_CTRL, 2, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, qsl_qst_ctrl_fields },
+	{ QSL_QST_DATA, 3, 27, NTHW_FPGA_REG_TYPE_WO, 0, 6, qsl_qst_data_fields },
+	{ QSL_RCP_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, qsl_rcp_ctrl_fields },
+	{ QSL_RCP_DATA, 1, 56, NTHW_FPGA_REG_TYPE_WO, 0, 9, qsl_rcp_data_fields },
+	{ QSL_UNMQ_CTRL, 6, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, qsl_unmq_ctrl_fields },
+	{ QSL_UNMQ_DATA, 7, 8, NTHW_FPGA_REG_TYPE_WO, 0, 2, qsl_unmq_data_fields },
+};
+
 static nthw_fpga_field_init_s rac_dbg_ctrl_fields[] = {
 	{ RAC_DBG_CTRL_C, 32, 0, 0x0000 },
 };
@@ -1456,6 +1510,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 		MOD_PCI_WR_TG, 0, MOD_PCI_WR_TG, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 2304, 7,
 		pci_wr_tg_registers
 	},
+	{ MOD_QSL, 0, MOD_QSL, 0, 7, NTHW_FPGA_BUS_TYPE_RAB1, 1792, 8, qsl_registers },
 	{ MOD_RAC, 0, MOD_RAC, 3, 0, NTHW_FPGA_BUS_TYPE_PCI, 8192, 14, rac_registers },
 	{ MOD_RST9563, 0, MOD_RST9563, 0, 5, NTHW_FPGA_BUS_TYPE_RAB0, 1024, 5, rst9563_registers },
 };
@@ -1617,5 +1672,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 18, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 19, fpga_modules,
 };
