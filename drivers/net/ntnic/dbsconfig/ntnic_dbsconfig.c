@@ -285,6 +285,19 @@ dbs_initialize_virt_queue_structs(void *avail_struct_addr, void *used_struct_add
 		flgs);
 }
 
+static uint16_t dbs_qsize_log2(uint16_t qsize)
+{
+	uint32_t qs = 0;
+
+	while (qsize) {
+		qsize = qsize >> 1;
+		++qs;
+	}
+
+	--qs;
+	return qs;
+}
+
 static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	uint32_t index,
 	uint16_t start_idx,
@@ -300,7 +313,29 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 {
 	(void)header;
 	(void)desc_struct_phys_addr;
-	(void)used_struct_phys_addr;
+	uint32_t qs = dbs_qsize_log2(queue_size);
+	uint32_t int_enable;
+	uint32_t vec;
+	uint32_t istk;
+
+	/*
+	 * 4. Configure the DBS.RX_UW_DATA memory; good idea to initialize all
+	 *   DBS_RX_QUEUES entries.
+	 *   Notice: We always start out with interrupts disabled (by setting the
+	 *     "irq_vector" argument to -1). Queues that require interrupts will have
+	 *     it enabled at a later time (after we have enabled vfio interrupts in
+	 *     the kernel).
+	 */
+	int_enable = 0;
+	vec = 0;
+	istk = 0;
+	NT_LOG_DBGX(DBG, NTNIC, "set_rx_uw_data int=0 irq_vector=%u", irq_vector);
+
+	if (set_rx_uw_data(p_nthw_dbs, index,
+			(uint64_t)used_struct_phys_addr,
+			host_id, qs, 0, int_enable, vec, istk) != 0) {
+		return NULL;
+	}
 
 	/*
 	 * 2. Configure the DBS.RX_AM_DATA memory and enable the queues you plan to use;
@@ -366,7 +401,28 @@ static struct nthw_virt_queue *nthw_setup_tx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 {
 	(void)header;
 	(void)desc_struct_phys_addr;
-	(void)used_struct_phys_addr;
+	uint32_t int_enable;
+	uint32_t vec;
+	uint32_t istk;
+	uint32_t qs = dbs_qsize_log2(queue_size);
+
+	/*
+	 * 4. Configure the DBS.TX_UW_DATA memory; good idea to initialize all
+	 *    DBS_TX_QUEUES entries.
+	 *    Notice: We always start out with interrupts disabled (by setting the
+	 *            "irq_vector" argument to -1). Queues that require interrupts will have
+	 *             it enabled at a later time (after we have enabled vfio interrupts in the
+	 *             kernel).
+	 */
+	int_enable = 0;
+	vec = 0;
+	istk = 0;
+
+	if (set_tx_uw_data(p_nthw_dbs, index,
+			(uint64_t)used_struct_phys_addr,
+			host_id, qs, 0, int_enable, vec, istk, in_order) != 0) {
+		return NULL;
+	}
 
 	/*
 	 * 2. Configure the DBS.TX_AM_DATA memory and enable the queues you plan to use;
