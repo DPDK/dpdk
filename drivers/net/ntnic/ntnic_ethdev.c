@@ -383,7 +383,6 @@ eth_dev_close(struct rte_eth_dev *eth_dev)
 
 	internals->p_drv = NULL;
 
-	rte_eth_dev_release_port(eth_dev);
 	if (p_drv) {
 		/* decrease initialized ethernet devices */
 		p_drv->n_eth_dev_init_count--;
