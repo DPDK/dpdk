@@ -1323,6 +1323,48 @@ typedef int (*eth_map_aggr_tx_affinity_t)(struct rte_eth_dev *dev, uint16_t tx_q
 					  uint8_t affinity);
 
 /**
+ * @internal
+ * Defines types of operations which can be executed by the application.
+ */
+enum rte_eth_dev_operation {
+	RTE_ETH_START,
+};
+
+/**@{@name Restore flags
+ * Flags returned by get_restore_flags() callback.
+ * They indicate to ethdev layer which configuration is required to be restored.
+ */
+/** If set, ethdev layer will forcefully restore default and any other added MAC addresses. */
+#define RTE_ETH_RESTORE_MAC_ADDR RTE_BIT64(0)
+/** If set, ethdev layer will forcefully restore current promiscuous mode setting. */
+#define RTE_ETH_RESTORE_PROMISC  RTE_BIT64(1)
+/** If set, ethdev layer will forcefully restore current all multicast mode setting. */
+#define RTE_ETH_RESTORE_ALLMULTI RTE_BIT64(2)
+/**@}*/
+
+/** All configuration which can be restored by ethdev layer. */
+#define RTE_ETH_RESTORE_ALL (RTE_ETH_RESTORE_MAC_ADDR | \
+			     RTE_ETH_RESTORE_PROMISC | \
+			     RTE_ETH_RESTORE_ALLMULTI)
+
+/**
+ * @internal
+ * Fetch from the driver what kind of configuration must be restored by ethdev layer,
+ * after certain operations are performed by the application (such as rte_eth_dev_start()).
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ * @param op
+ *   Type of operation executed by the application.
+ *
+ * @return
+ *   ORed restore flags indicating which configuration should be restored by ethdev.
+ *   0 if no restore is required by the driver.
+ */
+typedef uint64_t (*eth_get_restore_flags_t)(struct rte_eth_dev *dev,
+					    enum rte_eth_dev_operation op);
+
+/**
  * @internal A structure containing the functions exported by an Ethernet driver.
  */
 struct eth_dev_ops {
@@ -1565,6 +1607,9 @@ struct eth_dev_ops {
 	eth_count_aggr_ports_t count_aggr_ports;
 	/** Map a Tx queue with an aggregated port of the DPDK port */
 	eth_map_aggr_tx_affinity_t map_aggr_tx_affinity;
+
+	/** Get configuration which ethdev should restore */
+	eth_get_restore_flags_t get_restore_flags;
 };
 
 /**
@@ -2221,6 +2266,27 @@ struct rte_eth_fdir_conf {
 	/** Flex payload configuration. */
 	struct rte_eth_fdir_flex_conf flex_conf;
 };
+
+/**
+ * @internal
+ * Fetch from the driver what kind of configuration must be restored by ethdev layer,
+ * using get_restore_flags() callback.
+ *
+ * If callback is not defined, it is assumed that all supported configuration must be restored.
+ *
+ * @param dev
+ *   Port (ethdev) handle.
+ * @param op
+ *   Type of operation executed by the application.
+ *
+ * @return
+ *   ORed restore flags indicating which configuration should be restored by ethdev.
+ *   0 if no restore is required by the driver.
+ */
+__rte_internal
+uint64_t
+rte_eth_get_restore_flags(struct rte_eth_dev *dev,
+			  enum rte_eth_dev_operation op);
 
 #ifdef __cplusplus
 }
