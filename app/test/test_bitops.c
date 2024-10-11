@@ -13,6 +13,17 @@
 #include <rte_random.h>
 #include "test.h"
 
+static unsigned int
+get_worker_lcore(void)
+{
+	unsigned int lcore_id = rte_get_next_lcore(-1, 1, 0);
+
+	/* avoid checkers (like Coverity) false positives */
+	RTE_VERIFY(lcore_id < RTE_MAX_LCORE);
+
+	return lcore_id;
+}
+
 #define GEN_TEST_BIT_ACCESS(test_name, set_fun, clear_fun, assign_fun, flip_fun, test_fun, size, \
 		mod) \
 static int \
@@ -158,7 +169,7 @@ test_bit_atomic_parallel_assign ## size(void) \
 		printf("Need multiple cores to run parallel test.\n"); \
 		return TEST_SKIPPED; \
 	} \
-	worker_lcore_id = rte_get_next_lcore(-1, 1, 0); \
+	worker_lcore_id = get_worker_lcore(); \
 	lmain.bit = rte_rand_max(size); \
 	do { \
 		lworker.bit = rte_rand_max(size); \
@@ -217,7 +228,7 @@ test_bit_atomic_parallel_test_and_modify ## size(void) \
 		printf("Need multiple cores to run parallel test.\n"); \
 		return TEST_SKIPPED; \
 	} \
-	worker_lcore_id = rte_get_next_lcore(-1, 1, 0); \
+	worker_lcore_id = get_worker_lcore(); \
 	int rc = rte_eal_remote_launch(run_parallel_test_and_modify ## size, &lworker, \
 		worker_lcore_id); \
 	TEST_ASSERT(rc == 0, "Worker thread launch failed"); \
@@ -266,7 +277,7 @@ test_bit_atomic_parallel_flip ## size(void) \
 		printf("Need multiple cores to run parallel test.\n"); \
 		return TEST_SKIPPED; \
 	} \
-	worker_lcore_id = rte_get_next_lcore(-1, 1, 0); \
+	worker_lcore_id = get_worker_lcore(); \
 	int rc = rte_eal_remote_launch(run_parallel_flip ## size, &lworker, worker_lcore_id); \
 	TEST_ASSERT(rc == 0, "Worker thread launch failed"); \
 	run_parallel_flip ## size(&lmain); \
