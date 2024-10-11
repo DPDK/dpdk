@@ -3066,7 +3066,9 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			else if (ol_flags & RTE_MBUF_F_TX_IEEE1588_TMST)
 				cd_type_cmd_tso_mss |=
 					((uint64_t)ICE_TX_CTX_DESC_TSYN <<
-					ICE_TXD_CTX_QW1_CMD_S);
+					ICE_TXD_CTX_QW1_CMD_S) |
+					 (((uint64_t)txq->vsi->adapter->ptp_tx_index <<
+					 ICE_TXD_CTX_QW1_TSYN_S) & ICE_TXD_CTX_QW1_TSYN_M);
 
 			ctx_txd->tunneling_params =
 				rte_cpu_to_le_32(cd_tunneling_params);
