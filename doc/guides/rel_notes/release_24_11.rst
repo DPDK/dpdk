@@ -108,6 +108,11 @@ New Features
 
   Added functions to query or force the link lanes configuration.
 
+* **Added Ethernet device clock frequency adjustment.**
+
+  Added the function ``rte_eth_timesync_adjust_freq``
+  to adjust the clock frequency for Ethernet devices.
+
 * **Extended flow table index features.**
 
   * Extended the flow table insertion type enum with
