@@ -97,7 +97,8 @@ crypto_cipher_algorithm_strings[] = {
 	[RTE_CRYPTO_CIPHER_SM4_CBC]	= "sm4-cbc",
 	[RTE_CRYPTO_CIPHER_SM4_CTR]	= "sm4-ctr",
 	[RTE_CRYPTO_CIPHER_SM4_CFB]	= "sm4-cfb",
-	[RTE_CRYPTO_CIPHER_SM4_OFB]	= "sm4-ofb"
+	[RTE_CRYPTO_CIPHER_SM4_OFB]	= "sm4-ofb",
+	[RTE_CRYPTO_CIPHER_SM4_XTS]	= "sm4-xts"
 };
 
 /**

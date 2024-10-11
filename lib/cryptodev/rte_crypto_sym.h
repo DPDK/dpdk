@@ -176,8 +176,10 @@ enum rte_crypto_cipher_algorithm {
 	/**< ShangMi 4 (SM4) algorithm in CTR mode */
 	RTE_CRYPTO_CIPHER_SM4_OFB,
 	/**< ShangMi 4 (SM4) algorithm in OFB mode */
-	RTE_CRYPTO_CIPHER_SM4_CFB
+	RTE_CRYPTO_CIPHER_SM4_CFB,
 	/**< ShangMi 4 (SM4) algorithm in CFB mode */
+	RTE_CRYPTO_CIPHER_SM4_XTS
+	/**< ShangMi 4 (SM4) algorithm in XTS mode */
 };
 
 /** Symmetric Cipher Direction */

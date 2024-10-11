@@ -100,6 +100,10 @@ New Features
   Added asymmetric EdDSA as referenced in `RFC 8032
   <https://datatracker.ietf.org/doc/html/rfc8032>`_.
 
+* **Added cryptodev SM4-XTS support.**
+
+  Added symmetric cipher algorithm ShangMi 4 (SM4) in XTS mode.
+
 * **Updated IPsec_MB crypto driver.**
 
   * Added support for SM3 algorithm.

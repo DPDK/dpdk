@@ -1175,7 +1175,8 @@ sm4_cipheronly_setup(void)
 		RTE_CRYPTO_CIPHER_SM4_ECB,
 		RTE_CRYPTO_CIPHER_SM4_CTR,
 		RTE_CRYPTO_CIPHER_SM4_OFB,
-		RTE_CRYPTO_CIPHER_SM4_CFB
+		RTE_CRYPTO_CIPHER_SM4_CFB,
+		RTE_CRYPTO_CIPHER_SM4_XTS
 	};
 
 	rte_cryptodev_info_get(dev_id, &dev_info);
