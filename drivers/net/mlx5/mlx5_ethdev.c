@@ -796,3 +796,21 @@ mlx5_hairpin_cap_get(struct rte_eth_dev *dev, struct rte_eth_hairpin_cap *cap)
 	cap->tx_cap.rte_memory = hca_attr->hairpin_sq_wq_in_host_mem;
 	return 0;
 }
+
+/**
+ * Indicate to ethdev layer, what configuration must be restored.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device structure.
+ * @param[in] op
+ *   Type of operation which might require.
+ * @param[out] flags
+ *   Restore flags will be stored here.
+ */
+uint64_t
+mlx5_get_restore_flags(__rte_unused struct rte_eth_dev *dev,
+		       __rte_unused enum rte_eth_dev_operation op)
+{
+	/* mlx5 PMD does not require any configuration restore. */
+	return 0;
+}

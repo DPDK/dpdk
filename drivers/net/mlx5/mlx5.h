@@ -2228,6 +2228,8 @@ eth_rx_burst_t mlx5_select_rx_function(struct rte_eth_dev *dev);
 struct mlx5_priv *mlx5_port_to_eswitch_info(uint16_t port, bool valid);
 struct mlx5_priv *mlx5_dev_to_eswitch_info(struct rte_eth_dev *dev);
 int mlx5_dev_configure_rss_reta(struct rte_eth_dev *dev);
+uint64_t mlx5_get_restore_flags(struct rte_eth_dev *dev,
+				enum rte_eth_dev_operation op);
 
 /* mlx5_ethdev_os.c */
 
