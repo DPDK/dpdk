@@ -8,8 +8,10 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "rte_cpuid.h"
+#include "rte_atomic.h"
 
 /**
  * Struct to hold a processor feature entry
@@ -21,12 +23,14 @@ struct feature_entry {
 	uint32_t bit;				/**< cpuid register bit */
 #define CPU_FLAG_NAME_MAX_LEN 64
 	char name[CPU_FLAG_NAME_MAX_LEN];       /**< String for printing */
+	bool has_value;
+	bool value;
 };
 
 #define FEAT_DEF(name, leaf, subleaf, reg, bit) \
 	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name },
 
-const struct feature_entry rte_cpu_feature_table[] = {
+struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SSE3, 0x00000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(PCLMULQDQ, 0x00000001, 0, RTE_REG_ECX,  1)
 	FEAT_DEF(DTES64, 0x00000001, 0, RTE_REG_ECX,  2)
@@ -147,7 +151,7 @@ const struct feature_entry rte_cpu_feature_table[] = {
 int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 {
-	const struct feature_entry *feat;
+	struct feature_entry *feat;
 	cpuid_registers_t regs;
 	unsigned int maxleaf;
 
@@ -156,6 +160,8 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 		return -ENOENT;
 
 	feat = &rte_cpu_feature_table[feature];
+	if (feat->has_value)
+		return feat->value;
 
 	if (!feat->leaf)
 		/* This entry in the table wasn't filled out! */
@@ -163,8 +169,10 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 
 	maxleaf = __get_cpuid_max(feat->leaf & 0x80000000, NULL);
 
-	if (maxleaf < feat->leaf)
-		return 0;
+	if (maxleaf < feat->leaf) {
+		feat->value = 0;
+		goto out;
+	}
 
 #ifdef RTE_TOOLCHAIN_MSVC
 	__cpuidex(regs, feat->leaf, feat->subleaf);
@@ -175,7 +183,11 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 #endif
 
 	/* check if the feature is enabled */
-	return (regs[feat->reg] >> feat->bit) & 1;
+	feat->value = (regs[feat->reg] >> feat->bit) & 1;
+out:
+	rte_compiler_barrier();
+	feat->has_value = true;
+	return feat->value;
 }
 
 const char *
