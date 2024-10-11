@@ -14,7 +14,7 @@ sources = files(
 
 deps = ['bus_vdev', 'gso', 'hash']
 
-max_queues = '-DTAP_MAX_QUEUES=16'
+max_queues = '-DTAP_MAX_QUEUES=64'
 cflags += max_queues
 
 require_iova_in_mbuf = false
