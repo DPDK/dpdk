@@ -35,6 +35,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u16(dev_info->max_sges);
 	rte_trace_point_emit_i16(dev_info->numa_node);
 	rte_trace_point_emit_u16(dev_info->nb_vchans);
+	rte_trace_point_emit_u16(dev_info->nb_priorities);
 )
 
 RTE_TRACE_POINT(
@@ -48,6 +49,7 @@ RTE_TRACE_POINT(
 	int enable_silent = (int)dev_conf->enable_silent;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(dev_conf->nb_vchans);
+	rte_trace_point_emit_u16(dev_conf->priority);
 	rte_trace_point_emit_int(enable_silent);
 	rte_trace_point_emit_int(ret);
 )

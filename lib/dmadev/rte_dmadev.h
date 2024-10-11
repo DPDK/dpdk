@@ -258,6 +258,13 @@ int16_t rte_dma_next_dev(int16_t start_dev_id);
  * rte_dma_vchan_setup() will fail.
  */
 #define RTE_DMA_CAPA_M2D_AUTO_FREE      RTE_BIT64(7)
+/** Support strict priority scheduling.
+ *
+ * Application could assign fixed priority to the DMA device using 'priority'
+ * field in struct rte_dma_conf. Number of supported priority levels will be
+ * known from 'nb_priorities' field in struct rte_dma_info.
+ */
+#define RTE_DMA_CAPA_PRI_POLICY_SP	RTE_BIT64(8)
 
 /** Support copy operation.
  * This capability start with index of 32, so that it could leave gap between
@@ -297,6 +304,10 @@ struct rte_dma_info {
 	int16_t numa_node;
 	/** Number of virtual DMA channel configured. */
 	uint16_t nb_vchans;
+	/** Number of priority levels (must be > 1) if priority scheduling is supported,
+	 * 0 otherwise.
+	 */
+	uint16_t nb_priorities;
 };
 
 /**
@@ -332,6 +343,14 @@ struct rte_dma_conf {
 	 * @see RTE_DMA_CAPA_SILENT
 	 */
 	bool enable_silent;
+	/* The priority of the DMA device.
+	 * This value should be lower than the field 'nb_priorities' of struct
+	 * rte_dma_info which get from rte_dma_info_get(). If the DMA device
+	 * does not support priority scheduling, this value should be zero.
+	 *
+	 * Lowest value indicates higher priority and vice-versa.
+	 */
+	uint16_t priority;
 };
 
 /**

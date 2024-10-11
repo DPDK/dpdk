@@ -185,6 +185,12 @@ New Features
   New functions were added to enable
   providing sequence number to be used for the IPsec operation.
 
+* **Added strict priority capability for dmadev.**
+
+  Added new capability flag ``RTE_DMA_CAPA_PRI_POLICY_SP``
+  to check if the DMA device supports assigning fixed priority,
+  allowing for better control over resource allocation and scheduling.
+
 * **Added event device pre-scheduling support.**
 
   Added support for pre-scheduling of events to event ports
@@ -320,6 +326,11 @@ ABI Changes
 
 * bbdev: The structure ``rte_bbdev_stats`` was updated to add a new parameter
   to optionally report the number of enqueue batch available ``enqueue_depth_avail``.
+
+* dmadev: Added ``nb_priorities`` field to ``rte_dma_info`` structure
+  and ``priority`` field to ``rte_dma_conf`` structure
+  to get device supported priority levels
+  and configure required priority from the application.
 
 * eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
