@@ -34,15 +34,14 @@ static void cmd_set_bonding_mode_parsed(void *parsed_result,
 	 * of device changed.
 	 */
 	if (port->port_status != RTE_PORT_STOPPED) {
-		fprintf(stderr,
-			"\t Error: Can't set bonding mode when port %d is not stopped\n",
+		TESTPMD_LOG(ERR, "Error: Can't set bonding mode when port %d is not stopped\n",
 			port_id);
 		return;
 	}
 
 	/* Set the bonding mode for the relevant port. */
 	if (rte_eth_bond_mode_set(port_id, res->value) != 0)
-		fprintf(stderr, "\t Failed to set bonding mode for port = %d.\n",
+		TESTPMD_LOG(ERR, "Failed to set bonding mode for port = %d.\n",
 			port_id);
 }
 
@@ -98,24 +97,26 @@ static void cmd_set_bonding_lacp_dedicated_queues_parsed(void *parsed_result,
 
 	/** Check if the port is not started **/
 	if (port->port_status != RTE_PORT_STOPPED) {
-		fprintf(stderr, "Please stop port %d first\n", port_id);
+		TESTPMD_LOG(ERR, "Please stop port %d first\n", port_id);
 		return;
 	}
 
 	if (!strcmp(res->mode, "enable")) {
 		if (rte_eth_bond_8023ad_dedicated_queues_enable(port_id) == 0)
-			printf("Dedicate queues for LACP control packets"
-					" enabled\n");
+			TESTPMD_LOG(INFO,
+				"Dedicate queues for LACP control packets enabled\n");
 		else
-			printf("Enabling dedicate queues for LACP control "
-					"packets on port %d failed\n", port_id);
+			TESTPMD_LOG(ERR,
+				"Enabling dedicate queues for LACP control "
+				"packets on port %d failed\n", port_id);
 	} else if (!strcmp(res->mode, "disable")) {
 		if (rte_eth_bond_8023ad_dedicated_queues_disable(port_id) == 0)
-			printf("Dedicated queues for LACP control packets "
-					"disabled\n");
+			TESTPMD_LOG(INFO,
+				"Dedicated queues for LACP control packets disabled\n");
 		else
-			printf("Disabling dedicated queues for LACP control "
-					"traffic on port %d failed\n", port_id);
+			TESTPMD_LOG(ERR,
+				"Disabling dedicated queues for LACP control "
+				"traffic on port %d failed\n", port_id);
 	}
 }
 
@@ -178,14 +179,13 @@ static void cmd_set_bonding_balance_xmit_policy_parsed(void *parsed_result,
 	} else if (!strcmp(res->policy, "l34")) {
 		policy = BALANCE_XMIT_POLICY_LAYER34;
 	} else {
-		fprintf(stderr, "\t Invalid xmit policy selection");
+		TESTPMD_LOG(ERR, "Invalid xmit policy selection\n");
 		return;
 	}
 
 	/* Set the bonding mode for the relevant port. */
 	if (rte_eth_bond_xmit_policy_set(port_id, policy) != 0) {
-		fprintf(stderr,
-			"\t Failed to set bonding balance xmit policy for port = %d.\n",
+		TESTPMD_LOG(ERR, "Failed to set bonding balance xmit policy for port = %d.\n",
 			port_id);
 	}
 }
@@ -239,7 +239,7 @@ static void cmd_show_bonding_config_parsed(void *parsed_result,
 
 	bonding_mode = rte_eth_bond_mode_get(port_id);
 	if (bonding_mode < 0) {
-		fprintf(stderr, "\tFailed to get bonding mode for port = %d\n",
+		TESTPMD_LOG(ERR, "Failed to get bonding mode for port = %d\n",
 			port_id);
 		return;
 	}
@@ -292,7 +292,7 @@ static void cmd_set_bonding_primary_parsed(void *parsed_result,
 
 	/* Set the primary member for a bonding device. */
 	if (rte_eth_bond_primary_set(main_port_id, member_port_id) != 0) {
-		fprintf(stderr, "\t Failed to set primary member for port = %d.\n",
+		TESTPMD_LOG(ERR, "Failed to set primary member for port = %d.\n",
 			main_port_id);
 		return;
 	}
@@ -348,8 +348,7 @@ static void cmd_add_bonding_member_parsed(void *parsed_result,
 
 	/* add the member for a bonding device. */
 	if (rte_eth_bond_member_add(main_port_id, member_port_id) != 0) {
-		fprintf(stderr,
-			"\t Failed to add member %d to main port = %d.\n",
+		TESTPMD_LOG(ERR, "Failed to add member %d to main port = %d.\n",
 			member_port_id, main_port_id);
 		return;
 	}
@@ -407,8 +406,7 @@ static void cmd_remove_bonding_member_parsed(void *parsed_result,
 
 	/* remove the member from a bonding device. */
 	if (rte_eth_bond_member_remove(main_port_id, member_port_id) != 0) {
-		fprintf(stderr,
-			"\t Failed to remove member %d from main port = %d.\n",
+		TESTPMD_LOG(ERR, "Failed to remove member %d from main port = %d.\n",
 			member_port_id, main_port_id);
 		return;
 	}
@@ -467,7 +465,7 @@ static void cmd_create_bonding_device_parsed(void *parsed_result,
 	int ret;
 
 	if (test_done == 0) {
-		fprintf(stderr, "Please stop forwarding first\n");
+		TESTPMD_LOG(ERR, "Please stop forwarding first\n");
 		return;
 	}
 
@@ -477,10 +475,10 @@ static void cmd_create_bonding_device_parsed(void *parsed_result,
 	/* Create a new bonding device. */
 	port_id = rte_eth_bond_create(ethdev_name, res->mode, res->socket);
 	if (port_id < 0) {
-		fprintf(stderr, "\t Failed to create bonding device.\n");
+		TESTPMD_LOG(ERR, "Failed to create bonding device.\n");
 		return;
 	}
-	printf("Created new bonding device %s on (port %d).\n", ethdev_name,
+	TESTPMD_LOG(INFO, "Created new bonding device %s on (port %d).\n", ethdev_name,
 		port_id);
 
 	/* Update number of ports */
@@ -488,7 +486,7 @@ static void cmd_create_bonding_device_parsed(void *parsed_result,
 	reconfig(port_id, res->socket);
 	ret = rte_eth_promiscuous_enable(port_id);
 	if (ret != 0)
-		fprintf(stderr, "Failed to enable promiscuous mode for port %u: %s - ignore\n",
+		TESTPMD_LOG(NOTICE, "Failed to enable promiscuous mode for port %u: %s - ignore\n",
 			port_id, rte_strerror(-ret));
 
 	ports[port_id].update_conf = 1;
@@ -550,7 +548,7 @@ static void cmd_set_bond_mac_addr_parsed(void *parsed_result,
 
 	/* check the return value and print it if is < 0 */
 	if (ret < 0)
-		fprintf(stderr, "set_bond_mac_addr error: (%s)\n",
+		TESTPMD_LOG(ERR, "set_bond_mac_addr error: (%s)\n",
 			strerror(-ret));
 }
 
@@ -603,7 +601,7 @@ static void cmd_set_bond_mon_period_parsed(void *parsed_result,
 
 	/* check the return value and print it if is < 0 */
 	if (ret < 0)
-		fprintf(stderr, "set_bond_mac_addr error: (%s)\n",
+		TESTPMD_LOG(ERR, "set_bond_mac_addr error: (%s)\n",
 			strerror(-ret));
 }
 
