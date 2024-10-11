@@ -2393,9 +2393,10 @@ tap_mp_sync_queues(const struct rte_mp_msg *request, const void *peer)
 	/* Fill file descriptors for all queues */
 	reply.num_fds = 0;
 	reply_param->rxq_count = 0;
-	if (dev->data->nb_rx_queues + dev->data->nb_tx_queues >
-			RTE_MP_MAX_FD_NUM){
-		TAP_LOG(ERR, "Number of rx/tx queues exceeds max number of fds");
+
+	if (dev->data->nb_rx_queues > RTE_PMD_TAP_MAX_QUEUES) {
+		TAP_LOG(ERR, "Number of rx/tx queues %u exceeds max number of fds %u",
+			dev->data->nb_rx_queues, RTE_PMD_TAP_MAX_QUEUES);
 		return -1;
 	}
 
