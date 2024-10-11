@@ -1648,13 +1648,9 @@ eth_dev_mac_restore(struct rte_eth_dev *dev,
 }
 
 static int
-eth_dev_config_restore(struct rte_eth_dev *dev,
-		struct rte_eth_dev_info *dev_info, uint16_t port_id)
+eth_dev_promiscuous_restore(struct rte_eth_dev *dev, uint16_t port_id)
 {
 	int ret;
-
-	if (!(*dev_info->dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR))
-		eth_dev_mac_restore(dev, dev_info);
 
 	/* replay promiscuous configuration */
 	/*
@@ -1683,6 +1679,14 @@ eth_dev_config_restore(struct rte_eth_dev *dev,
 		}
 	}
 
+	return 0;
+}
+
+static int
+eth_dev_allmulticast_restore(struct rte_eth_dev *dev, uint16_t port_id)
+{
+	int ret;
+
 	/* replay all multicast configuration */
 	/*
 	 * use callbacks directly since we don't need port_id check and
@@ -1709,6 +1713,26 @@ eth_dev_config_restore(struct rte_eth_dev *dev,
 			return ret;
 		}
 	}
+
+	return 0;
+}
+
+static int
+eth_dev_config_restore(struct rte_eth_dev *dev,
+		struct rte_eth_dev_info *dev_info, uint16_t port_id)
+{
+	int ret;
+
+	if (!(*dev_info->dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR))
+		eth_dev_mac_restore(dev, dev_info);
+
+	ret = eth_dev_promiscuous_restore(dev, port_id);
+	if (ret != 0)
+		return ret;
+
+	ret = eth_dev_allmulticast_restore(dev, port_id);
+	if (ret != 0)
+		return ret;
 
 	return 0;
 }
