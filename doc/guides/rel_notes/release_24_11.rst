@@ -196,6 +196,11 @@ New Features
   Applications should use ``RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ`` to enable
   the feature if the capability ``RTE_EVENT_DEV_CAP_INDEPENDENT_ENQ`` exists.
 
+* **Added Ethernet device clock frequency adjustment.**
+
+  Added new function ``rte_eth_timesync_adjust_freq`` to adjust the clock
+  frequency for Ethernet devices.
+
 * **Updated DLB2 event driver.**
 
   * Added independent enqueue feature.
