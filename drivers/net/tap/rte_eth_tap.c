@@ -20,6 +20,7 @@
 #include <rte_errno.h>
 #include <rte_cycles.h>
 
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -70,6 +71,8 @@
 /* IPC key for queue fds sync */
 #define TAP_MP_KEY "tap_mp_sync_queues"
 #define TAP_MP_REQ_START_RXTX "tap_mp_req_start_rxtx"
+
+static_assert(RTE_PMD_TAP_MAX_QUEUES <= RTE_MP_MAX_FD_NUM, "TAP max queues exceeds MP fd limit");
 
 #define TAP_IOV_DEFAULT_MAX 1024
 
