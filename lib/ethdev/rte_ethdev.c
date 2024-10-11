@@ -1719,20 +1719,27 @@ eth_dev_allmulticast_restore(struct rte_eth_dev *dev, uint16_t port_id)
 
 static int
 eth_dev_config_restore(struct rte_eth_dev *dev,
-		struct rte_eth_dev_info *dev_info, uint16_t port_id)
+		struct rte_eth_dev_info *dev_info,
+		uint64_t restore_flags,
+		uint16_t port_id)
 {
 	int ret;
 
-	if (!(*dev_info->dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR))
+	if (!(*dev_info->dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR) &&
+	    (restore_flags & RTE_ETH_RESTORE_MAC_ADDR))
 		eth_dev_mac_restore(dev, dev_info);
 
-	ret = eth_dev_promiscuous_restore(dev, port_id);
-	if (ret != 0)
-		return ret;
+	if (restore_flags & RTE_ETH_RESTORE_PROMISC) {
+		ret = eth_dev_promiscuous_restore(dev, port_id);
+		if (ret != 0)
+			return ret;
+	}
 
-	ret = eth_dev_allmulticast_restore(dev, port_id);
-	if (ret != 0)
-		return ret;
+	if (restore_flags & RTE_ETH_RESTORE_ALLMULTI) {
+		ret = eth_dev_allmulticast_restore(dev, port_id);
+		if (ret != 0)
+			return ret;
+	}
 
 	return 0;
 }
@@ -1742,6 +1749,7 @@ rte_eth_dev_start(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	uint64_t restore_flags;
 	int diag;
 	int ret, ret_stop;
 
@@ -1769,8 +1777,11 @@ rte_eth_dev_start(uint16_t port_id)
 	if (ret != 0)
 		return ret;
 
+	restore_flags = rte_eth_get_restore_flags(dev, RTE_ETH_START);
+
 	/* Lets restore MAC now if device does not support live change */
-	if (*dev_info.dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR)
+	if ((*dev_info.dev_flags & RTE_ETH_DEV_NOLIVE_MAC_ADDR) &&
+	    (restore_flags & RTE_ETH_RESTORE_MAC_ADDR))
 		eth_dev_mac_restore(dev, &dev_info);
 
 	diag = (*dev->dev_ops->dev_start)(dev);
@@ -1779,7 +1790,7 @@ rte_eth_dev_start(uint16_t port_id)
 	else
 		return eth_err(port_id, diag);
 
-	ret = eth_dev_config_restore(dev, &dev_info, port_id);
+	ret = eth_dev_config_restore(dev, &dev_info, restore_flags, port_id);
 	if (ret != 0) {
 		RTE_ETHDEV_LOG_LINE(ERR,
 			"Error during restoring configuration for device (port %u): %s",
