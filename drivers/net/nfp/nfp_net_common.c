@@ -14,6 +14,7 @@
 #include "nfdk/nfp_nfdk.h"
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_nsp.h"
+#include "nfpcore/nfp_rtsym.h"
 #include "nfp_logs.h"
 #include "nfp_net_meta.h"
 
@@ -2724,12 +2725,31 @@ nfp_net_fec_set(struct rte_eth_dev *dev,
 }
 
 uint32_t
-nfp_net_get_port_num(struct nfp_pf_dev *pf_dev)
+nfp_net_get_phyports_from_nsp(struct nfp_pf_dev *pf_dev)
 {
 	if (pf_dev->multi_pf.enabled)
 		return 1;
 	else
 		return pf_dev->nfp_eth_table->count;
+}
+
+uint32_t
+nfp_net_get_phyports_from_fw(struct nfp_pf_dev *pf_dev)
+{
+	int ret = 0;
+	uint8_t total_phyports;
+	char pf_name[RTE_ETH_NAME_MAX_LEN];
+
+	/* Read the number of vNIC's created for the PF */
+	snprintf(pf_name, sizeof(pf_name), "nfd_cfg_pf%u_num_ports",
+			pf_dev->multi_pf.function_id);
+	total_phyports = nfp_rtsym_read_le(pf_dev->sym_tbl, pf_name, &ret);
+	if (ret != 0 || total_phyports == 0 || total_phyports > 8) {
+		PMD_INIT_LOG(ERR, "%s symbol with wrong value", pf_name);
+		return 0;
+	}
+
+	return total_phyports;
 }
 
 uint8_t
