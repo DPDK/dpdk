@@ -322,12 +322,13 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	net_hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
-			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
+	net_hw->eth_xstats_base = rte_calloc("rte_eth_xstat",
+			nfp_net_xstats_size(eth_dev), sizeof(struct rte_eth_xstat), 0);
 	if (net_hw->eth_xstats_base == NULL) {
 		PMD_INIT_LOG(ERR, "No memory for xstats base values on device %s!",
 				pci_dev->device.name);
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto hw_priv_free;
 	}
 
 	/* Work out where in the BAR the queues start. */
