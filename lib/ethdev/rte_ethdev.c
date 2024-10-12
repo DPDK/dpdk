@@ -2823,6 +2823,12 @@ rte_eth_tx_done_cleanup(uint16_t port_id, uint16_t queue_id, uint32_t free_cnt)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
+#ifdef RTE_ETHDEV_DEBUG_TX
+	ret = eth_dev_validate_tx_queue(dev, queue_id);
+	if (ret != 0)
+		return ret;
+#endif
+
 	if (*dev->dev_ops->tx_done_cleanup == NULL)
 		return -ENOTSUP;
 
