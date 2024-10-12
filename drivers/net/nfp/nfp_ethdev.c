@@ -1764,19 +1764,9 @@ end:
 static bool
 nfp_app_fw_nic_total_phyports_check(struct nfp_pf_dev *pf_dev)
 {
-	int ret;
-	uint8_t id;
 	uint8_t total_phyports;
-	char vnic_name[RTE_ETH_NAME_MAX_LEN];
 
-	/* Read the number of vNIC's created for the PF */
-	id = nfp_function_id_get(pf_dev, 0);
-	snprintf(vnic_name, sizeof(vnic_name), "nfd_cfg_pf%u_num_ports", id);
-	total_phyports = nfp_rtsym_read_le(pf_dev->sym_tbl, vnic_name, &ret);
-	if (ret != 0 || total_phyports == 0 || total_phyports > 8) {
-		PMD_INIT_LOG(ERR, "%s symbol with wrong value", vnic_name);
-		return false;
-	}
+	total_phyports = nfp_net_get_phyports_from_fw(pf_dev);
 
 	if (pf_dev->multi_pf.enabled) {
 		if (!nfp_check_multi_pf_from_fw(total_phyports)) {
@@ -1795,6 +1785,20 @@ nfp_app_fw_nic_total_phyports_check(struct nfp_pf_dev *pf_dev)
 	}
 
 	return true;
+}
+
+static void
+nfp_port_name_generate(char *port_name,
+		size_t length,
+		int port_id,
+		struct nfp_pf_dev *pf_dev)
+{
+	const char *name = pf_dev->pci_dev->device.name;
+
+	if (pf_dev->multi_pf.enabled)
+		snprintf(port_name, length, "%s", name);
+	else
+		snprintf(port_name, length, "%s_port%u", name, port_id);
 }
 
 static int
@@ -1849,12 +1853,7 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 
 	/* Loop through all physical ports on PF */
 	for (i = 0; i < pf_dev->total_phyports; i++) {
-		if (pf_dev->multi_pf.enabled)
-			snprintf(port_name, sizeof(port_name), "%s",
-					pf_dev->pci_dev->device.name);
-		else
-			snprintf(port_name, sizeof(port_name), "%s_port%u",
-					pf_dev->pci_dev->device.name, i);
+		nfp_port_name_generate(port_name, sizeof(port_name), i, pf_dev);
 
 		id = nfp_function_id_get(pf_dev, i);
 		hw_init.idx = id;
@@ -1870,15 +1869,10 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	return 0;
 
 port_cleanup:
-	for (i = 0; i < pf_dev->total_phyports; i++) {
+	for (uint32_t j = 0; j < i; j++) {
 		struct rte_eth_dev *eth_dev;
 
-		if (pf_dev->multi_pf.enabled)
-			snprintf(port_name, sizeof(port_name), "%s",
-					pf_dev->pci_dev->device.name);
-		else
-			snprintf(port_name, sizeof(port_name), "%s_port%u",
-					pf_dev->pci_dev->device.name, i);
+		nfp_port_name_generate(port_name, sizeof(port_name), j, pf_dev);
 		eth_dev = rte_eth_dev_get_by_name(port_name);
 		if (eth_dev != NULL)
 			rte_eth_dev_destroy(eth_dev, nfp_net_uninit);
@@ -2369,7 +2363,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->nfp_eth_table = nfp_eth_table;
 	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
 	pf_dev->multi_pf.function_id = function_id;
-	pf_dev->total_phyports = nfp_net_get_port_num(pf_dev);
+	pf_dev->total_phyports = nfp_net_get_phyports_from_nsp(pf_dev);
 
 	ret = nfp_net_force_port_down(pf_dev);
 	if (ret != 0) {
@@ -2547,40 +2541,35 @@ static int
 nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 {
 	uint32_t i;
-	int err = 0;
 	int ret = 0;
-	uint8_t function_id;
 	uint32_t total_vnics;
-	char pf_name[RTE_ETH_NAME_MAX_LEN];
+	char port_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
-	/* Read the number of vNIC's created for the PF */
-	function_id = (pf_dev->pci_dev->addr.function) & 0x07;
-	snprintf(pf_name, sizeof(pf_name), "nfd_cfg_pf%u_num_ports", function_id);
-	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, pf_name, &err);
-	if (err != 0 || total_vnics == 0 || total_vnics > 8) {
-		PMD_INIT_LOG(ERR, "%s symbol with wrong value", pf_name);
-		return -ENODEV;
-	}
+	total_vnics = nfp_net_get_phyports_from_fw(pf_dev);
 
 	for (i = 0; i < total_vnics; i++) {
-		char port_name[RTE_ETH_NAME_MAX_LEN];
-
-		if (nfp_check_multi_pf_from_fw(total_vnics))
-			snprintf(port_name, sizeof(port_name), "%s",
-					pf_dev->pci_dev->device.name);
-		else
-			snprintf(port_name, sizeof(port_name), "%s_port%u",
-					pf_dev->pci_dev->device.name, i);
+		nfp_port_name_generate(port_name, sizeof(port_name), i, pf_dev);
 
 		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
 		ret = rte_eth_dev_create(&pf_dev->pci_dev->device, port_name, 0,
 				NULL, NULL, nfp_secondary_net_init, hw_priv);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Secondary process attach to port %s failed", port_name);
-			ret = -ENODEV;
-			break;
+			goto port_cleanup;
 		}
+	}
+
+	return 0;
+
+port_cleanup:
+	for (uint32_t j = 0; j < i; j++) {
+		struct rte_eth_dev *eth_dev;
+
+		nfp_port_name_generate(port_name, sizeof(port_name), j, pf_dev);
+		eth_dev = rte_eth_dev_get_by_name(port_name);
+		if (eth_dev != NULL)
+			rte_eth_dev_destroy(eth_dev, NULL);
 	}
 
 	return ret;
@@ -2659,6 +2648,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Allocate memory for the PF "device" */
+	function_id = pci_dev->addr.function & 0x7;
 	snprintf(name, sizeof(name), "nfp_pf%d", 0);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (pf_dev == NULL) {
@@ -2713,8 +2703,12 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 
 	pf_dev->sym_tbl = sym_tbl;
 
+	/* Read the number of physical ports from firmware */
+	pf_dev->multi_pf.function_id = function_id;
+	pf_dev->total_phyports = nfp_net_get_phyports_from_fw(pf_dev);
+	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_fw(pf_dev->total_phyports);
+
 	/* Read the app ID of the firmware loaded */
-	function_id = pci_dev->addr.function & 0x7;
 	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
 	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
 	if (ret != 0) {
