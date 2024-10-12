@@ -527,26 +527,36 @@ error:
 static int
 nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
+	int ret;
 	struct nfp_net_hw *hw;
 	struct nfp_net_hw_priv *hw_priv;
 
 	hw = dev->data->dev_private;
 	hw_priv = dev->process_private;
 
-	return nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 1);
+	ret = nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 1);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 /* Set the link down. */
 static int
 nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
+	int ret;
 	struct nfp_net_hw *hw;
 	struct nfp_net_hw_priv *hw_priv;
 
 	hw = dev->data->dev_private;
 	hw_priv = dev->process_private;
 
-	return nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
+	ret = nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 static void
