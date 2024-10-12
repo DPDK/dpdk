@@ -374,8 +374,7 @@ void nfp_net_get_fw_version(struct nfp_cpp *cpp,
 		uint32_t *fw_version);
 int nfp_net_txrwb_alloc(struct rte_eth_dev *eth_dev);
 void nfp_net_txrwb_free(struct rte_eth_dev *eth_dev);
-uint32_t nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
-		struct nfp_eth_table *nfp_eth_table);
+uint32_t nfp_net_get_port_num(struct nfp_pf_dev *pf_dev);
 uint8_t nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
 		uint8_t port_id);
 int nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,

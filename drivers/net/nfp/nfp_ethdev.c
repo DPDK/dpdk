@@ -1160,14 +1160,15 @@ ipsec_exit:
 }
 
 static int
-nfp_net_device_activate(struct nfp_cpp *cpp,
-		struct nfp_multi_pf *multi_pf)
+nfp_net_device_activate(struct nfp_pf_dev *pf_dev)
 {
 	int ret;
 	struct nfp_nsp *nsp;
+	struct nfp_multi_pf *multi_pf;
 
+	multi_pf = &pf_dev->multi_pf;
 	if (multi_pf->enabled && multi_pf->function_id != 0) {
-		nsp = nfp_nsp_open(cpp);
+		nsp = nfp_nsp_open(pf_dev->cpp);
 		if (nsp == NULL) {
 			PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle");
 			return -EIO;
@@ -1185,10 +1186,7 @@ nfp_net_device_activate(struct nfp_cpp *cpp,
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
 
 static int
-nfp_fw_get_name(struct rte_pci_device *dev,
-		struct nfp_cpp *cpp,
-		struct nfp_eth_table *nfp_eth_table,
-		struct nfp_hwinfo *hwinfo,
+nfp_fw_get_name(struct nfp_pf_dev *pf_dev,
 		char *fw_name,
 		size_t fw_size)
 {
@@ -1199,11 +1197,11 @@ nfp_fw_get_name(struct rte_pci_device *dev,
 	const char *nfp_fw_model;
 	const uint8_t *cpp_serial;
 
-	cpp_serial_len = nfp_cpp_serial(cpp, &cpp_serial);
+	cpp_serial_len = nfp_cpp_serial(pf_dev->cpp, &cpp_serial);
 	if (cpp_serial_len != NFP_SERIAL_LEN)
 		return -ERANGE;
 
-	interface = nfp_cpp_interface(cpp);
+	interface = nfp_cpp_interface(pf_dev->cpp);
 
 	/* Looking for firmware file in order of priority */
 
@@ -1220,15 +1218,15 @@ nfp_fw_get_name(struct rte_pci_device *dev,
 
 	/* Then try the PCI name */
 	snprintf(fw_name, fw_size, "%s/pci-%s.nffw", DEFAULT_FW_PATH,
-			dev->name);
+			pf_dev->pci_dev->name);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	if (access(fw_name, F_OK) == 0)
 		return 0;
 
-	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "nffw.partno");
+	nfp_fw_model = nfp_hwinfo_lookup(pf_dev->hwinfo, "nffw.partno");
 	if (nfp_fw_model == NULL) {
-		nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
+		nfp_fw_model = nfp_hwinfo_lookup(pf_dev->hwinfo, "assembly.partno");
 		if (nfp_fw_model == NULL) {
 			PMD_DRV_LOG(ERR, "firmware model NOT found");
 			return -EIO;
@@ -1244,8 +1242,8 @@ nfp_fw_get_name(struct rte_pci_device *dev,
 
 	/* Finally try the card type and media */
 	snprintf(card_desc, sizeof(card_desc), "nic_%s_%dx%d.nffw",
-			nfp_fw_model, nfp_eth_table->count,
-			nfp_eth_table->ports[0].speed / 1000);
+			nfp_fw_model, pf_dev->nfp_eth_table->count,
+			pf_dev->nfp_eth_table->ports[0].speed / 1000);
 	snprintf(fw_name, fw_size, "%s/%s", DEFAULT_FW_PATH, card_desc);
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	if (access(fw_name, F_OK) == 0)
@@ -1433,15 +1431,15 @@ nfp_fw_reload_from_flash(struct nfp_nsp *nsp)
 static int
 nfp_fw_reload_for_single_pf_from_disk(struct nfp_nsp *nsp,
 		char *fw_name,
-		struct nfp_cpp *cpp,
-		bool force_reload_fw,
+		struct nfp_pf_dev *pf_dev,
 		int reset)
 {
 	int ret;
 	bool fw_changed = true;
 
-	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) && !force_reload_fw) {
-		ret = nfp_fw_check_change(cpp, fw_name, &fw_changed);
+	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) &&
+			!pf_dev->devargs.force_reload_fw) {
+		ret = nfp_fw_check_change(pf_dev->cpp, fw_name, &fw_changed);
 		if (ret != 0)
 			return ret;
 	}
@@ -1459,8 +1457,7 @@ nfp_fw_reload_for_single_pf_from_disk(struct nfp_nsp *nsp,
 static int
 nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 		char *fw_name,
-		struct nfp_cpp *cpp,
-		bool force_reload_fw,
+		struct nfp_pf_dev *pf_dev,
 		int reset,
 		int policy)
 {
@@ -1473,8 +1470,7 @@ nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 			return ret;
 		}
 	} else if (fw_name[0] != 0) {
-		ret = nfp_fw_reload_for_single_pf_from_disk(nsp, fw_name, cpp,
-				force_reload_fw, reset);
+		ret = nfp_fw_reload_for_single_pf_from_disk(nsp, fw_name, pf_dev, reset);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Load single PF firmware from disk failed.");
 			return ret;
@@ -1490,25 +1486,23 @@ nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 static int
 nfp_fw_reload_for_multi_pf_from_disk(struct nfp_nsp *nsp,
 		char *fw_name,
-		struct nfp_cpp *cpp,
 		const struct nfp_dev_info *dev_info,
-		struct nfp_multi_pf *multi_pf,
-		bool force_reload_fw,
+		struct nfp_pf_dev *pf_dev,
 		int reset)
 {
 	int err;
 	bool fw_changed = true;
 	bool skip_load_fw = false;
-	bool reload_fw = force_reload_fw;
+	bool reload_fw = pf_dev->devargs.force_reload_fw;
 
 	if (nfp_nsp_has_fw_loaded(nsp) && nfp_nsp_fw_loaded(nsp) && !reload_fw) {
-		err = nfp_fw_check_change(cpp, fw_name, &fw_changed);
+		err = nfp_fw_check_change(pf_dev->cpp, fw_name, &fw_changed);
 		if (err != 0)
 			return err;
 	}
 
 	if (!fw_changed || reload_fw)
-		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf, &reload_fw);
+		skip_load_fw = nfp_fw_skip_load(dev_info, &pf_dev->multi_pf, &reload_fw);
 
 	if (skip_load_fw && !reload_fw)
 		return 0;
@@ -1523,16 +1517,17 @@ nfp_fw_reload_for_multi_pf_from_disk(struct nfp_nsp *nsp,
 static int
 nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		char *fw_name,
-		struct nfp_cpp *cpp,
 		const struct nfp_dev_info *dev_info,
-		struct nfp_multi_pf *multi_pf,
-		bool force_reload_fw,
+		struct nfp_pf_dev *pf_dev,
 		int reset,
 		int policy)
 {
 	int err;
+	struct nfp_multi_pf *multi_pf;
 
-	err = nfp_net_keepalive_init(cpp, multi_pf);
+	multi_pf = &pf_dev->multi_pf;
+
+	err = nfp_net_keepalive_init(pf_dev->cpp, multi_pf);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "NFP init beat failed");
 		return err;
@@ -1551,8 +1546,8 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 			goto keepalive_stop;
 		}
 	} else if (fw_name[0] != 0) {
-		err = nfp_fw_reload_for_multi_pf_from_disk(nsp, fw_name, cpp,
-				dev_info, multi_pf, force_reload_fw, reset);
+		err = nfp_fw_reload_for_multi_pf_from_disk(nsp, fw_name, dev_info,
+				pf_dev, reset);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Load multi PF firmware from disk failed.");
 			goto keepalive_stop;
@@ -1627,13 +1622,8 @@ nfp_fw_policy_value_get(struct nfp_nsp *nsp,
 }
 
 static int
-nfp_fw_setup(struct rte_pci_device *dev,
-		struct nfp_cpp *cpp,
-		struct nfp_eth_table *nfp_eth_table,
-		struct nfp_hwinfo *hwinfo,
-		const struct nfp_dev_info *dev_info,
-		struct nfp_multi_pf *multi_pf,
-		bool force_reload_fw)
+nfp_fw_setup(struct nfp_pf_dev *pf_dev,
+		const struct nfp_dev_info *dev_info)
 {
 	int err;
 	int reset;
@@ -1641,7 +1631,7 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	char fw_name[125];
 	struct nfp_nsp *nsp;
 
-	nsp = nfp_nsp_open(cpp);
+	nsp = nfp_nsp_open(pf_dev->cpp);
 	if (nsp == NULL) {
 		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle");
 		return -EIO;
@@ -1665,20 +1655,19 @@ nfp_fw_setup(struct rte_pci_device *dev,
 
 	fw_name[0] = 0;
 	if (policy != NFP_NSP_APP_FW_LOAD_FLASH) {
-		err = nfp_fw_get_name(dev, cpp, nfp_eth_table, hwinfo, fw_name,
-				sizeof(fw_name));
+		err = nfp_fw_get_name(pf_dev, fw_name, sizeof(fw_name));
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
 			goto close_nsp;
 		}
 	}
 
-	if (multi_pf->enabled)
-		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, cpp, dev_info,
-				multi_pf, force_reload_fw, reset, policy);
+	if (pf_dev->multi_pf.enabled)
+		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, dev_info,
+				pf_dev, reset, policy);
 	else
-		err = nfp_fw_reload_for_single_pf(nsp, fw_name, cpp,
-				force_reload_fw, reset, policy);
+		err = nfp_fw_reload_for_single_pf(nsp, fw_name, pf_dev,
+				reset, policy);
 
 close_nsp:
 	nfp_nsp_close(nsp);
@@ -2063,7 +2052,7 @@ nfp_net_speed_cap_get(struct nfp_pf_dev *pf_dev)
 	uint32_t id;
 	uint32_t count;
 
-	count = nfp_net_get_port_num(pf_dev, pf_dev->nfp_eth_table);
+	count = pf_dev->total_phyports;
 	for (i = 0; i < count; i++) {
 		id = nfp_function_id_get(pf_dev, i);
 		ret = nfp_net_speed_cap_get_one(pf_dev, id);
@@ -2078,9 +2067,7 @@ nfp_net_speed_cap_get(struct nfp_pf_dev *pf_dev)
 
 /* Force the physical port down to clear the possible DMA error */
 static int
-nfp_net_force_port_down(struct nfp_pf_dev *pf_dev,
-		struct nfp_eth_table *nfp_eth_table,
-		struct nfp_cpp *cpp)
+nfp_net_force_port_down(struct nfp_pf_dev *pf_dev)
 {
 	int ret;
 	uint32_t i;
@@ -2088,11 +2075,11 @@ nfp_net_force_port_down(struct nfp_pf_dev *pf_dev,
 	uint32_t index;
 	uint32_t count;
 
-	count = nfp_net_get_port_num(pf_dev, nfp_eth_table);
+	count = pf_dev->total_phyports;
 	for (i = 0; i < count; i++) {
 		id = nfp_function_id_get(pf_dev, i);
-		index = nfp_eth_table->ports[id].index;
-		ret = nfp_eth_set_configured(cpp, index, 0);
+		index = pf_dev->nfp_eth_table->ports[id].index;
+		ret = nfp_eth_set_configured(pf_dev->cpp, index, 0);
 		if (ret < 0)
 			return ret;
 	}
@@ -2322,12 +2309,17 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto hw_priv_free;
 	}
 
+	hw_priv->dev_info = dev_info;
+	hw_priv->pf_dev = pf_dev;
+
 	sync = nfp_sync_alloc();
 	if (sync == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to alloc sync zone.");
 		ret = -ENOMEM;
 		goto pf_cleanup;
 	}
+
+	pf_dev->sync = sync;
 
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
@@ -2347,12 +2339,17 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto sync_free;
 	}
 
+	pf_dev->cpp = cpp;
+	pf_dev->pci_dev = pci_dev;
+
 	hwinfo = nfp_hwinfo_read(cpp);
 	if (hwinfo == NULL) {
 		PMD_INIT_LOG(ERR, "Error reading hwinfo table");
 		ret = -EIO;
 		goto cpp_cleanup;
 	}
+
+	pf_dev->hwinfo = hwinfo;
 
 	/* Read the number of physical ports from hardware */
 	nfp_eth_table = nfp_eth_read_ports(cpp);
@@ -2369,10 +2366,12 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto eth_table_cleanup;
 	}
 
+	pf_dev->nfp_eth_table = nfp_eth_table;
 	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
 	pf_dev->multi_pf.function_id = function_id;
+	pf_dev->total_phyports = nfp_net_get_port_num(pf_dev);
 
-	ret = nfp_net_force_port_down(pf_dev, nfp_eth_table, cpp);
+	ret = nfp_net_force_port_down(pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to force port down");
 		ret = -EIO;
@@ -2386,15 +2385,15 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto eth_table_cleanup;
 	}
 
-	ret = nfp_net_device_activate(cpp, &pf_dev->multi_pf);
+	ret = nfp_net_device_activate(pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to activate the NFP device");
 		ret = -EIO;
 		goto eth_table_cleanup;
 	}
 
-	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo,
-			dev_info, &pf_dev->multi_pf, pf_dev->devargs.force_reload_fw) != 0) {
+	ret = nfp_fw_setup(pf_dev, dev_info);
+	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Error when uploading firmware");
 		ret = -EIO;
 		goto eth_table_cleanup;
@@ -2408,6 +2407,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto fw_cleanup;
 	}
 
+	pf_dev->sym_tbl = sym_tbl;
+
 	/* Read the app ID of the firmware loaded */
 	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
 	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
@@ -2417,6 +2418,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto sym_tbl_cleanup;
 	}
 
+	pf_dev->app_fw_id = app_fw_id;
+
 	/* Write sp_indiff to hw_info */
 	ret = nfp_net_hwinfo_set(function_id, sym_tbl, cpp, app_fw_id);
 	if (ret != 0) {
@@ -2424,17 +2427,6 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
-
-	/* Populate the newly created PF device */
-	pf_dev->app_fw_id = app_fw_id;
-	pf_dev->cpp = cpp;
-	pf_dev->hwinfo = hwinfo;
-	pf_dev->sym_tbl = sym_tbl;
-	pf_dev->pci_dev = pci_dev;
-	pf_dev->nfp_eth_table = nfp_eth_table;
-	pf_dev->sync = sync;
-	pf_dev->total_phyports = nfp_net_get_port_num(pf_dev, nfp_eth_table);
-	pf_dev->speed_updated = false;
 
 	ret = nfp_net_speed_cap_get(pf_dev);
 	if (ret != 0) {
@@ -2484,8 +2476,6 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	hw_priv->is_pf = true;
-	hw_priv->pf_dev = pf_dev;
-	hw_priv->dev_info = dev_info;
 
 	/*
 	 * PF initialization has been done at this point. Call app specific
@@ -2677,12 +2667,17 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		goto hw_priv_free;
 	}
 
+	hw_priv->pf_dev = pf_dev;
+	hw_priv->dev_info = dev_info;
+
 	sync = nfp_sync_alloc();
 	if (sync == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to alloc sync zone.");
 		ret = -ENOMEM;
 		goto pf_cleanup;
 	}
+
+	pf_dev->sync = sync;
 
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
@@ -2702,6 +2697,9 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		goto sync_free;
 	}
 
+	pf_dev->cpp = cpp;
+	pf_dev->pci_dev = pci_dev;
+
 	/*
 	 * We don't have access to the PF created in the primary process
 	 * here so we have to read the number of ports from firmware.
@@ -2713,6 +2711,8 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		goto cpp_cleanup;
 	}
 
+	pf_dev->sym_tbl = sym_tbl;
+
 	/* Read the app ID of the firmware loaded */
 	function_id = pci_dev->addr.function & 0x7;
 	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
@@ -2723,16 +2723,9 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		goto sym_tbl_cleanup;
 	}
 
-	/* Populate the newly created PF device */
 	pf_dev->app_fw_id = app_fw_id;
-	pf_dev->cpp = cpp;
-	pf_dev->sym_tbl = sym_tbl;
-	pf_dev->pci_dev = pci_dev;
-	pf_dev->sync = sync;
 
 	hw_priv->is_pf = true;
-	hw_priv->pf_dev = pf_dev;
-	hw_priv->dev_info = dev_info;
 
 	/* Call app specific init code now */
 	ret = nfp_fw_app_secondary_init(hw_priv);
