@@ -2692,6 +2692,7 @@ int
 nfp_net_fec_set(struct rte_eth_dev *dev,
 		uint32_t fec_capa)
 {
+	int ret;
 	uint8_t idx;
 	enum nfp_eth_fec fec;
 	uint32_t supported_fec;
@@ -2724,7 +2725,13 @@ nfp_net_fec_set(struct rte_eth_dev *dev,
 		return -EIO;
 	}
 
-	return nfp_eth_set_fec(hw_priv->pf_dev->cpp, eth_port->index, fec);
+	ret = nfp_eth_set_fec(hw_priv->pf_dev->cpp, eth_port->index, fec);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "NFP set FEC mode failed.");
+		return ret;
+	}
+
+	return 0;
 }
 
 uint32_t
