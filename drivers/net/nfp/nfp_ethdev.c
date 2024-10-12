@@ -495,7 +495,9 @@ nfp_net_start(struct rte_eth_dev *dev)
 	}
 
 	/* Configure the physical port up */
-	nfp_eth_set_configured(pf_dev->cpp, net_hw->nfp_idx, 1);
+	ret = nfp_eth_set_configured(pf_dev->cpp, net_hw->nfp_idx, 1);
+	if (ret < 0)
+		goto error;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;

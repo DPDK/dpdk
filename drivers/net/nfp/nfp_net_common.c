@@ -2427,6 +2427,7 @@ nfp_net_ctrl_bar_size_set(struct nfp_pf_dev *pf_dev)
 int
 nfp_net_stop(struct rte_eth_dev *dev)
 {
+	int ret;
 	struct nfp_net_hw *hw;
 	struct nfp_net_hw_priv *hw_priv;
 
@@ -2439,7 +2440,9 @@ nfp_net_stop(struct rte_eth_dev *dev)
 	nfp_net_stop_tx_queue(dev);
 	nfp_net_stop_rx_queue(dev);
 
-	nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
+	ret = nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
