@@ -2306,7 +2306,7 @@ nfp_net_get_mip_name(struct nfp_net_hw_priv *hw_priv,
 	if (mip == NULL)
 		return;
 
-	snprintf(mip_name, FW_VER_LEN, "%s", nfp_mip_name(mip));
+	strlcpy(mip_name, nfp_mip_name(mip), FW_VER_LEN);
 
 	nfp_mip_close(mip);
 }
@@ -2317,13 +2317,13 @@ nfp_net_get_app_name(struct nfp_net_hw_priv *hw_priv,
 {
 	switch (hw_priv->pf_dev->app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
-		snprintf(app_name, FW_VER_LEN, "%s", "nic");
+		strlcpy(app_name, "nic", FW_VER_LEN);
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
-		snprintf(app_name, FW_VER_LEN, "%s", "flower");
+		strlcpy(app_name, "flower", FW_VER_LEN);
 		break;
 	default:
-		snprintf(app_name, FW_VER_LEN, "%s", "unknown");
+		strlcpy(app_name, "unknown", FW_VER_LEN);
 		break;
 	}
 }
