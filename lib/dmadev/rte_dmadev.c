@@ -741,7 +741,7 @@ rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *
 {
 	struct rte_dma_dev *dev = &rte_dma_devices[dev_id];
 
-	if (!rte_dma_is_valid(dev_id))
+	if (!rte_dma_is_valid(dev_id) || status == NULL)
 		return -EINVAL;
 
 	if (vchan >= dev->data->dev_conf.nb_vchans) {
