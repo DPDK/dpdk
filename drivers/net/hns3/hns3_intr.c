@@ -2237,6 +2237,12 @@ hns3_handle_module_error_data(struct hns3_hw *hw, uint32_t *buf,
 	sum_err_info = (struct hns3_sum_err_info *)&buf[offset++];
 	mod_num = sum_err_info->mod_num;
 	reset_type = sum_err_info->reset_type;
+
+	if (reset_type >= HNS3_MAX_RESET) {
+		hns3_err(hw, "invalid reset type = %u", reset_type);
+		return;
+	}
+
 	if (reset_type && reset_type != HNS3_NONE_RESET)
 		hns3_atomic_set_bit(reset_type, &hw->reset.request);
 
