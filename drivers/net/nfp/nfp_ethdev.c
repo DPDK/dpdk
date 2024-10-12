@@ -216,6 +216,7 @@ error:
 static int
 nfp_net_stop(struct rte_eth_dev *dev)
 {
+	int ret;
 	int i;
 	struct nfp_net_hw *hw;
 	struct nfp_net_txq *this_tx_q;
@@ -240,10 +241,12 @@ nfp_net_stop(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
+		ret = nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
 	else
-		nfp_eth_set_configured(dev->process_private,
+		ret = nfp_eth_set_configured(dev->process_private,
 				       hw->nfp_idx, 0);
+	if (ret < 0)
+		return ret;
 
 	return 0;
 }
@@ -252,6 +255,7 @@ nfp_net_stop(struct rte_eth_dev *dev)
 static int
 nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
+	int ret;
 	struct nfp_net_hw *hw;
 
 	PMD_DRV_LOG(DEBUG, "Set link up");
@@ -260,16 +264,21 @@ nfp_net_set_link_up(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 1);
+		ret = nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 1);
 	else
-		return nfp_eth_set_configured(dev->process_private,
+		ret = nfp_eth_set_configured(dev->process_private,
 					      hw->nfp_idx, 1);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 /* Set the link down. */
 static int
 nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
+	int ret;
 	struct nfp_net_hw *hw;
 
 	PMD_DRV_LOG(DEBUG, "Set link down");
@@ -278,10 +287,14 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
+		ret = nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
 	else
-		return nfp_eth_set_configured(dev->process_private,
+		ret = nfp_eth_set_configured(dev->process_private,
 					      hw->nfp_idx, 0);
+	if (ret < 0)
+		return ret;
+
+	return 0;
 }
 
 /* Reset and stop device. The device can not be restarted. */
