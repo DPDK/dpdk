@@ -951,22 +951,6 @@ tap_dev_configure(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 
-	if (dev->data->nb_rx_queues > RTE_PMD_TAP_MAX_QUEUES) {
-		TAP_LOG(ERR,
-			"%s: number of rx queues %d exceeds max num of queues %d",
-			dev->device->name,
-			dev->data->nb_rx_queues,
-			RTE_PMD_TAP_MAX_QUEUES);
-		return -1;
-	}
-	if (dev->data->nb_tx_queues > RTE_PMD_TAP_MAX_QUEUES) {
-		TAP_LOG(ERR,
-			"%s: number of tx queues %d exceeds max num of queues %d",
-			dev->device->name,
-			dev->data->nb_tx_queues,
-			RTE_PMD_TAP_MAX_QUEUES);
-		return -1;
-	}
 	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
 		TAP_LOG(ERR,
 			"%s: number of rx queues %d must be equal to number of tx queues %d",
