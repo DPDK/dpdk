@@ -2520,7 +2520,7 @@ nfp_net_pause_frame_set(struct nfp_net_hw_priv *hw_priv,
 	}
 
 	err = nfp_eth_config_commit_end(nsp);
-	if (err != 0) {
+	if (err < 0) {
 		PMD_DRV_LOG(ERR, "Failed to configure pause frame.");
 		return err;
 	}
