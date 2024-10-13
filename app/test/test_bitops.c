@@ -227,7 +227,7 @@ test_bit_atomic_parallel_test_and_modify ## size(void) \
 	bool expected_value = total_flips % 2; \
 	TEST_ASSERT(expected_value == rte_bit_test(&word, bit), \
 		"After %"PRId64" flips, the bit value should be %d", total_flips, expected_value); \
-	uint64_t expected_word = 0; \
+	uint ## size ## _t expected_word = 0; \
 	rte_bit_assign(&expected_word, bit, expected_value); \
 	TEST_ASSERT(expected_word == word, "Untouched bits have changed value"); \
 	return TEST_SUCCESS; \
@@ -275,7 +275,7 @@ test_bit_atomic_parallel_flip ## size(void) \
 	bool expected_value = total_flips % 2; \
 	TEST_ASSERT(expected_value == rte_bit_test(&word, bit), \
 		"After %"PRId64" flips, the bit value should be %d", total_flips, expected_value); \
-	uint64_t expected_word = 0; \
+	uint ## size ## _t expected_word = 0; \
 	rte_bit_assign(&expected_word, bit, expected_value); \
 	TEST_ASSERT(expected_word == word, "Untouched bits have changed value"); \
 	return TEST_SUCCESS; \
