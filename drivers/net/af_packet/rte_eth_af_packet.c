@@ -691,7 +691,7 @@ open_packet_iface(const char *key __rte_unused,
 	int *sockfd = extra_args;
 
 	/* Open an AF_PACKET socket... */
-	*sockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	*sockfd = socket(AF_PACKET, SOCK_RAW, 0);
 	if (*sockfd == -1) {
 		PMD_LOG(ERR, "Could not open AF_PACKET socket");
 		return -1;
@@ -819,7 +819,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 	for (q = 0; q < nb_queues; q++) {
 		/* Open an AF_PACKET socket for this queue... */
-		qsockfd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+		qsockfd = socket(AF_PACKET, SOCK_RAW, 0);
 		if (qsockfd == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not open AF_PACKET socket",
