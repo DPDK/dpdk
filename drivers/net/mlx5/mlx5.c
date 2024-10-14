@@ -2242,6 +2242,7 @@ int
 mlx5_proc_priv_init(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	struct mlx5_proc_priv *ppriv;
 	size_t ppriv_size;
 
@@ -2262,6 +2263,9 @@ mlx5_proc_priv_init(struct rte_eth_dev *dev)
 	dev->process_private = ppriv;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		priv->sh->pppriv = ppriv;
+	/* Check and try to map HCA PCI BAR to allow reading real time. */
+	if (sh->dev_cap.rt_timestamp && mlx5_dev_is_pci(dev->device))
+		mlx5_txpp_map_hca_bar(dev);
 	return 0;
 }
 
