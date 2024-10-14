@@ -2360,6 +2360,12 @@ Steps to enable Tx datapath tracing:
 
    The parameter of the script is the trace data folder.
 
+   The optional parameter ``-a`` forces to dump incomplete bursts.
+
+   The optional parameter ``-v [level]`` forces to dump raw records data
+   for the specified level and below.
+   Level 0 dumps bursts, level 1 dumps WQEs, level 2 dumps mbufs.
+
    .. code-block:: console
 
       mlx5_trace.py /var/log/rte-2023-01-23-AM-11-52-39
