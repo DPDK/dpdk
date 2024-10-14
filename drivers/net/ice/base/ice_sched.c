@@ -200,6 +200,7 @@ ice_sched_add_node(struct ice_port_info *pi, u8 layer,
 	node->in_use = true;
 	node->parent = parent;
 	node->tx_sched_layer = layer;
+	node->vsi_handle = parent->vsi_handle;
 	parent->children[parent->num_children++] = node;
 	node->info = elem;
 	return 0;
@@ -1575,7 +1576,7 @@ ice_sched_get_free_qparent(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
 		/* make sure the qgroup node is part of the VSI subtree */
 		if (ice_sched_find_node_in_subtree(pi->hw, vsi_node, qgrp_node))
 			if (qgrp_node->num_children < max_children &&
-			    qgrp_node->owner == owner)
+			    qgrp_node->owner == owner && qgrp_node->vsi_handle == vsi_handle)
 				break;
 		qgrp_node = qgrp_node->sibling;
 	}
