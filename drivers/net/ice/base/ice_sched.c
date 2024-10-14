@@ -1550,7 +1550,6 @@ ice_sched_get_free_qparent(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
 	u16 max_children;
 
 	qgrp_layer = ice_sched_get_qgrp_layer(pi->hw);
-	vsi_layer = ice_sched_get_vsi_layer(pi->hw);
 	max_children = pi->hw->max_children[qgrp_layer];
 
 	vsi_ctx = ice_get_vsi_ctx(pi->hw, vsi_handle);
@@ -1560,6 +1559,7 @@ ice_sched_get_free_qparent(struct ice_port_info *pi, u16 vsi_handle, u8 tc,
 	/* validate invalid VSI ID */
 	if (!vsi_node)
 		return NULL;
+	vsi_layer = vsi_node->tx_sched_layer;
 
 	/* If the queue group and vsi layer are same then queues
 	 * are all attached directly to VSI
