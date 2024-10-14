@@ -1056,20 +1056,9 @@ nfp_ipsec_msg_build(struct rte_eth_dev *eth_dev,
 
 		break;
 	case RTE_SECURITY_IPSEC_SA_MODE_TRANSPORT:
-		type = conf->ipsec.tunnel.type;
 		cfg->ctrl_word.mode = NFP_IPSEC_MODE_TRANSPORT;
-		if (type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
-			memset(&cfg->src_ip, 0, sizeof(cfg->src_ip));
-			memset(&cfg->dst_ip, 0, sizeof(cfg->dst_ip));
-			cfg->ipv6 = 0;
-		} else if (type == RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
-			memset(&cfg->src_ip, 0, sizeof(cfg->src_ip));
-			memset(&cfg->dst_ip, 0, sizeof(cfg->dst_ip));
-			cfg->ipv6 = 1;
-		} else {
-			PMD_DRV_LOG(ERR, "Unsupported address family!");
-			return -EINVAL;
-		}
+		memset(&cfg->src_ip, 0, sizeof(cfg->src_ip));
+		memset(&cfg->dst_ip, 0, sizeof(cfg->dst_ip));
 
 		break;
 	default:
