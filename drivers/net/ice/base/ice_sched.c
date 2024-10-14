@@ -293,6 +293,10 @@ struct ice_sched_node *ice_sched_get_tc_node(struct ice_port_info *pi, u8 tc)
 
 	if (!pi || !pi->root)
 		return NULL;
+	/* if no TC nodes, use root as TC node 0 */
+	if (!pi->has_tc)
+		return tc == 0 ? pi->root : NULL;
+
 	for (i = 0; i < pi->root->num_children; i++)
 		if (pi->root->children[i]->tc_num == tc)
 			return pi->root->children[i];
@@ -1306,7 +1310,9 @@ int ice_sched_init_port(struct ice_port_info *pi)
 			if (buf[0].generic[j].data.elem_type ==
 			    ICE_AQC_ELEM_TYPE_ENTRY_POINT)
 				hw->sw_entry_point_layer = j;
-
+			else if (buf[0].generic[j].data.elem_type ==
+			    ICE_AQC_ELEM_TYPE_TC)
+				pi->has_tc = 1;
 			status = ice_sched_add_node(pi, j, &buf[i].generic[j], NULL);
 			if (status)
 				goto err_init_port;
