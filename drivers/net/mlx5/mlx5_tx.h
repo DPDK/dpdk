@@ -370,6 +370,38 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 }
 
 /**
+ * Read real time clock counter directly from the device PCI BAR area.
+ * The PCI BAR must be mapped to the process memory space at initialization.
+ *
+ * @param dev
+ *   Device to read clock counter from
+ *
+ * @return
+ *   0 - if HCA BAR is not supported or not mapped.
+ *   !=0 - read 64-bit value of real-time in UTC formatv (nanoseconds)
+ */
+static __rte_always_inline uint64_t mlx5_read_pcibar_clock(struct rte_eth_dev *dev)
+{
+	struct mlx5_proc_priv *ppriv = dev->process_private;
+
+	if (ppriv && ppriv->hca_bar) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		struct mlx5_dev_ctx_shared *sh = priv->sh;
+		uint64_t *hca_ptr = (uint64_t *)(ppriv->hca_bar) +
+				  __mlx5_64_off(initial_seg, real_time);
+		uint64_t __rte_atomic *ts_addr;
+		uint64_t ts;
+
+		ts_addr = (uint64_t __rte_atomic *)hca_ptr;
+		ts = rte_atomic_load_explicit(ts_addr, rte_memory_order_seq_cst);
+		ts = rte_be_to_cpu_64(ts);
+		ts = mlx5_txpp_convert_rx_ts(sh, ts);
+		return ts;
+	}
+	return 0;
+}
+
+/**
  * Set Software Parser flags and offsets in Ethernet Segment of WQE.
  * Flags must be preliminary initialized to zero.
  *
@@ -819,7 +851,7 @@ mlx5_tx_cseg_init(struct mlx5_txq_data *__rte_restrict txq,
 		cs->flags = RTE_BE32(MLX5_COMP_ONLY_FIRST_ERR <<
 				     MLX5_COMP_MODE_OFFSET);
 	cs->misc = RTE_BE32(0);
-	if (__rte_trace_point_fp_is_enabled() && !loc->pkts_sent)
+	if (__rte_trace_point_fp_is_enabled())
 		rte_pmd_mlx5_trace_tx_entry(txq->port_id, txq->idx);
 	rte_pmd_mlx5_trace_tx_wqe((txq->wqe_ci << 8) | opcode);
 }
