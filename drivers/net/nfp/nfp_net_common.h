@@ -282,6 +282,8 @@ int nfp_net_flow_ctrl_set(struct rte_eth_dev *dev,
 void nfp_pf_uninit(struct nfp_pf_dev *pf_dev);
 uint32_t nfp_net_get_port_num(struct nfp_pf_dev *pf_dev,
 		struct nfp_eth_table *nfp_eth_table);
+void nfp_net_notify_port_speed(struct nfp_net_hw *hw,
+		struct rte_eth_link *link);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

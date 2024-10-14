@@ -166,7 +166,7 @@ nfp_net_link_speed_rte2nfp(uint32_t speed)
 	return NFP_NET_CFG_STS_LINK_RATE_UNKNOWN;
 }
 
-static void
+void
 nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 		struct rte_eth_link *link)
 {

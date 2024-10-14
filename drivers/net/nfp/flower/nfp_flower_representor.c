@@ -33,6 +33,9 @@ nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 	pf_hw = repr->app_fw_flower->pf_hw;
 	ret = nfp_net_link_update_common(dev, pf_hw, link, link->link_status);
 
+	if (repr->repr_type == NFP_REPR_TYPE_PF)
+		nfp_net_notify_port_speed(repr->app_fw_flower->pf_hw, link);
+
 	return ret;
 }
 
