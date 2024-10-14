@@ -1006,7 +1006,7 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	case RTE_BBDEV_OP_FFT:
 		fcw_len = ACC_FCW_FFT_BLEN;
 		if (q->d->device_variant == VRB2_VARIANT)
-			fcw_len = ACC_FCW_FFT_BLEN_3;
+			fcw_len = ACC_FCW_FFT_BLEN_VRB2;
 		break;
 	case RTE_BBDEV_OP_MLDTS:
 		fcw_len = ACC_FCW_MLDTS_BLEN;
@@ -1402,7 +1402,11 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 						RTE_BBDEV_FFT_FP16_INPUT |
 						RTE_BBDEV_FFT_FP16_OUTPUT |
 						RTE_BBDEV_FFT_POWER_MEAS |
-						RTE_BBDEV_FFT_WINDOWING_BYPASS,
+						RTE_BBDEV_FFT_WINDOWING_BYPASS |
+						RTE_BBDEV_FFT_TIMING_OFFSET_PER_CS |
+						RTE_BBDEV_FFT_TIMING_ERROR |
+						RTE_BBDEV_FFT_DEWINDOWING |
+						RTE_BBDEV_FFT_FREQ_RESAMPLING,
 				.num_buffers_src = 1,
 				.num_buffers_dst = 1,
 				.fft_windows_num = ACC_MAX_FFT_WIN,
@@ -3725,6 +3729,8 @@ vrb1_fcw_fft_fill(struct rte_bbdev_fft_op *op, struct acc_fcw_fft *fcw)
 static inline void
 vrb2_fcw_fft_fill(struct rte_bbdev_fft_op *op, struct acc_fcw_fft_3 *fcw)
 {
+	uint8_t cs;
+
 	fcw->in_frame_size = op->fft.input_sequence_size;
 	fcw->leading_pad_size = op->fft.input_leading_padding;
 	fcw->out_frame_size = op->fft.output_sequence_size;
@@ -3760,6 +3766,16 @@ vrb2_fcw_fft_fill(struct rte_bbdev_fft_op *op, struct acc_fcw_fft_3 *fcw)
 		fcw->bypass = 3;
 	else
 		fcw->bypass = 0;
+
+	fcw->enable_dewin = check_bit(op->fft.op_flags, RTE_BBDEV_FFT_DEWINDOWING);
+	fcw->freq_resample_mode = op->fft.freq_resample_mode;
+	fcw->depad_output_size = fcw->freq_resample_mode == 0 ?
+			op->fft.output_sequence_size : op->fft.output_depadded_size;
+	for (cs = 0; cs < RTE_BBDEV_MAX_CS; cs++) {
+		fcw->cs_theta_0[cs] = op->fft.cs_theta_0[cs];
+		fcw->cs_theta_d[cs] = op->fft.cs_theta_d[cs];
+		fcw->cs_time_offset[cs] = op->fft.time_offset[cs];
+	}
 }
 
 static inline int
@@ -3782,8 +3798,14 @@ vrb_dma_desc_fft_fill(struct rte_bbdev_fft_op *op,
 	/* FCW already done */
 	acc_header_init(desc);
 
-	RTE_SET_USED(win_input);
-	RTE_SET_USED(win_offset);
+	if (win_en && win_input) {
+		desc->data_ptrs[bd_idx].address = rte_pktmbuf_iova_offset(win_input, *win_offset);
+		desc->data_ptrs[bd_idx].blen = op->fft.output_depadded_size * 2;
+		desc->data_ptrs[bd_idx].blkid = ACC_DMA_BLKID_DEWIN_IN;
+		desc->data_ptrs[bd_idx].last = 0;
+		desc->data_ptrs[bd_idx].dma_ext = 0;
+		bd_idx++;
+	}
 
 	desc->data_ptrs[bd_idx].address = rte_pktmbuf_iova_offset(input, *in_offset);
 	desc->data_ptrs[bd_idx].blen = op->fft.input_sequence_size * ACC_IQ_SIZE;
