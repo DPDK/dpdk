@@ -2384,38 +2384,6 @@ int ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 		return status;
 	}
 
-	/* Is default topology already applied ? */
-	if (!(flags & ICE_AQC_TX_TOPO_FLAGS_LOAD_NEW) &&
-	    hw->num_tx_sched_layers == 9) {
-		ice_debug(hw, ICE_DBG_INIT, "Loaded default topology\n");
-		/* Already default topology is loaded */
-		return ICE_ERR_ALREADY_EXISTS;
-	}
-
-	/* Is new topology already applied ? */
-	if ((flags & ICE_AQC_TX_TOPO_FLAGS_LOAD_NEW) &&
-	    hw->num_tx_sched_layers == 5) {
-		ice_debug(hw, ICE_DBG_INIT, "Loaded new topology\n");
-		/* Already new topology is loaded */
-		return ICE_ERR_ALREADY_EXISTS;
-	}
-
-	/* Is set topology issued already ? */
-	if (flags & ICE_AQC_TX_TOPO_FLAGS_ISSUED) {
-		ice_debug(hw, ICE_DBG_INIT, "Update tx topology was done by another PF\n");
-		/* add a small delay before exiting */
-		for (i = 0; i < 20; i++)
-			ice_msec_delay(100, true);
-		return ICE_ERR_ALREADY_EXISTS;
-	}
-
-	/* Change the topology from new to default (5 to 9) */
-	if (!(flags & ICE_AQC_TX_TOPO_FLAGS_LOAD_NEW) &&
-	    hw->num_tx_sched_layers == 5) {
-		ice_debug(hw, ICE_DBG_INIT, "Change topology from 5 to 9 layers\n");
-		goto update_topo;
-	}
-
 	pkg_hdr = (struct ice_pkg_hdr *)buf;
 	state = ice_verify_pkg(pkg_hdr, len);
 	if (state) {
@@ -2462,7 +2430,6 @@ int ice_cfg_tx_topo(struct ice_hw *hw, u8 *buf, u32 len)
 	/* Get the new topology buffer */
 	new_topo = ((u8 *)section) + offset;
 
-update_topo:
 	/* acquire global lock to make sure that set topology issued
 	 * by one PF
 	 */
