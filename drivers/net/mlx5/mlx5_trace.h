@@ -22,21 +22,24 @@ extern "C" {
 /* TX burst subroutines trace points. */
 RTE_TRACE_POINT_FP(
 	rte_pmd_mlx5_trace_tx_entry,
-	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id),
+	RTE_TRACE_POINT_ARGS(uint64_t real_time, uint16_t port_id, uint16_t queue_id),
+	rte_trace_point_emit_u64(real_time);
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u16(queue_id);
 )
 
 RTE_TRACE_POINT_FP(
 	rte_pmd_mlx5_trace_tx_exit,
-	RTE_TRACE_POINT_ARGS(uint16_t nb_sent, uint16_t nb_req),
+	RTE_TRACE_POINT_ARGS(uint64_t real_time, uint16_t nb_sent, uint16_t nb_req),
+	rte_trace_point_emit_u64(real_time);
 	rte_trace_point_emit_u16(nb_sent);
 	rte_trace_point_emit_u16(nb_req);
 )
 
 RTE_TRACE_POINT_FP(
 	rte_pmd_mlx5_trace_tx_wqe,
-	RTE_TRACE_POINT_ARGS(uint32_t opcode),
+	RTE_TRACE_POINT_ARGS(uint64_t real_time, uint32_t opcode),
+	rte_trace_point_emit_u64(real_time);
 	rte_trace_point_emit_u32(opcode);
 )
 

@@ -174,7 +174,9 @@ def do_tx_entry(msg, trace):
         return
     # allocate the new burst and append to the queue
     burst = MlxBurst()
-    burst.call_ts = msg.default_clock_snapshot.ns_from_origin
+    burst.call_ts = event["real_time"]
+    if burst.call_ts == 0:
+        burst.call_ts = msg.default_clock_snapshot.ns_from_origin
     trace.tx_blst[cpu_id] = burst
     pq_id = event["port_id"] << 16 | event["queue_id"]
     queue = trace.tx_qlst.get(pq_id)
@@ -194,7 +196,9 @@ def do_tx_exit(msg, trace):
     burst = trace.tx_blst.get(cpu_id)
     if burst is None:
         return
-    burst.done_ts = msg.default_clock_snapshot.ns_from_origin
+    burst.done_ts = event["real_time"]
+    if burst.done_ts == 0:
+        burst.done_ts = msg.default_clock_snapshot.ns_from_origin
     burst.req = event["nb_req"]
     burst.done = event["nb_sent"]
     trace.tx_blst.pop(cpu_id)
@@ -210,7 +214,9 @@ def do_tx_wqe(msg, trace):
     wqe = MlxWqe()
     wqe.wait_ts = trace.tx_wlst.get(cpu_id)
     if wqe.wait_ts is None:
-        wqe.wait_ts = msg.default_clock_snapshot.ns_from_origin
+        wqe.wait_ts = event["real_time"]
+        if wqe.wait_ts == 0:
+            wqe.wait_ts = msg.default_clock_snapshot.ns_from_origin
     wqe.opcode = event["opcode"]
     burst.wqes.append(wqe)
 
