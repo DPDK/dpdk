@@ -73,6 +73,10 @@ enum rte_fib_lookup_type {
 	/**< Vector implementation using AVX512 */
 };
 
+/** If set, fib lookup is expecting IPv4 address in network byte order */
+#define RTE_FIB_F_NETWORK_ORDER	1
+#define RTE_FIB_ALLOWED_FLAGS	(RTE_FIB_F_NETWORK_ORDER)
+
 /** FIB configuration structure */
 struct rte_fib_conf {
 	enum rte_fib_type type; /**< Type of FIB struct */
@@ -87,6 +91,7 @@ struct rte_fib_conf {
 			uint32_t	num_tbl8;
 		} dir24_8;
 	};
+	unsigned int flags; /**< Optional feature flags from RTE_FIB_F_* **/
 };
 
 /**

@@ -320,7 +320,7 @@ static int
 test_fib_perf(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 
 	config.max_routes = 2000000;
 	config.rib_ext_sz = 0;

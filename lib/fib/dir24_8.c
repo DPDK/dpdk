@@ -26,67 +26,76 @@
 #define ROUNDUP(x, y)	 RTE_ALIGN_CEIL(x, (1 << (32 - y)))
 
 static inline rte_fib_lookup_fn_t
-get_scalar_fn(enum rte_fib_dir24_8_nh_sz nh_sz)
+get_scalar_fn(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 {
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
-		return dir24_8_lookup_bulk_1b;
+		return be_addr ? dir24_8_lookup_bulk_1b_be : dir24_8_lookup_bulk_1b;
 	case RTE_FIB_DIR24_8_2B:
-		return dir24_8_lookup_bulk_2b;
+		return be_addr ? dir24_8_lookup_bulk_2b_be : dir24_8_lookup_bulk_2b;
 	case RTE_FIB_DIR24_8_4B:
-		return dir24_8_lookup_bulk_4b;
+		return be_addr ? dir24_8_lookup_bulk_4b_be : dir24_8_lookup_bulk_4b;
 	case RTE_FIB_DIR24_8_8B:
-		return dir24_8_lookup_bulk_8b;
+		return be_addr ? dir24_8_lookup_bulk_8b_be : dir24_8_lookup_bulk_8b;
 	default:
 		return NULL;
 	}
 }
 
 static inline rte_fib_lookup_fn_t
-get_scalar_fn_inlined(enum rte_fib_dir24_8_nh_sz nh_sz)
+get_scalar_fn_inlined(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 {
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
-		return dir24_8_lookup_bulk_0;
+		return be_addr ? dir24_8_lookup_bulk_0_be : dir24_8_lookup_bulk_0;
 	case RTE_FIB_DIR24_8_2B:
-		return dir24_8_lookup_bulk_1;
+		return be_addr ? dir24_8_lookup_bulk_1_be : dir24_8_lookup_bulk_1;
 	case RTE_FIB_DIR24_8_4B:
-		return dir24_8_lookup_bulk_2;
+		return be_addr ? dir24_8_lookup_bulk_2_be : dir24_8_lookup_bulk_2;
 	case RTE_FIB_DIR24_8_8B:
-		return dir24_8_lookup_bulk_3;
+		return be_addr ? dir24_8_lookup_bulk_3_be : dir24_8_lookup_bulk_3;
 	default:
 		return NULL;
 	}
 }
 
 static inline rte_fib_lookup_fn_t
-get_vector_fn(enum rte_fib_dir24_8_nh_sz nh_sz)
+get_vector_fn(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 {
 #ifdef CC_DIR24_8_AVX512_SUPPORT
-	if ((rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0) ||
-			(rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) <= 0 ||
+			rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512DQ) <= 0 ||
+			rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_512)
+		return NULL;
+
+	if (be_addr && rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512BW) <= 0)
 		return NULL;
 
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
-		return rte_dir24_8_vec_lookup_bulk_1b;
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_1b_be :
+			rte_dir24_8_vec_lookup_bulk_1b;
 	case RTE_FIB_DIR24_8_2B:
-		return rte_dir24_8_vec_lookup_bulk_2b;
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_2b_be :
+			rte_dir24_8_vec_lookup_bulk_2b;
 	case RTE_FIB_DIR24_8_4B:
-		return rte_dir24_8_vec_lookup_bulk_4b;
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_4b_be :
+			rte_dir24_8_vec_lookup_bulk_4b;
 	case RTE_FIB_DIR24_8_8B:
-		return rte_dir24_8_vec_lookup_bulk_8b;
+		return be_addr ? rte_dir24_8_vec_lookup_bulk_8b_be :
+			rte_dir24_8_vec_lookup_bulk_8b;
 	default:
 		return NULL;
 	}
 #else
 	RTE_SET_USED(nh_sz);
+	RTE_SET_USED(be_addr);
 #endif
 	return NULL;
 }
 
 rte_fib_lookup_fn_t
-dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type)
+dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type, bool be_addr)
 {
 	enum rte_fib_dir24_8_nh_sz nh_sz;
 	rte_fib_lookup_fn_t ret_fn;
@@ -99,16 +108,16 @@ dir24_8_get_lookup_fn(void *p, enum rte_fib_lookup_type type)
 
 	switch (type) {
 	case RTE_FIB_LOOKUP_DIR24_8_SCALAR_MACRO:
-		return get_scalar_fn(nh_sz);
+		return get_scalar_fn(nh_sz, be_addr);
 	case RTE_FIB_LOOKUP_DIR24_8_SCALAR_INLINE:
-		return get_scalar_fn_inlined(nh_sz);
+		return get_scalar_fn_inlined(nh_sz, be_addr);
 	case RTE_FIB_LOOKUP_DIR24_8_SCALAR_UNI:
-		return dir24_8_lookup_bulk_uni;
+		return be_addr ? dir24_8_lookup_bulk_uni_be : dir24_8_lookup_bulk_uni;
 	case RTE_FIB_LOOKUP_DIR24_8_VECTOR_AVX512:
-		return get_vector_fn(nh_sz);
+		return get_vector_fn(nh_sz, be_addr);
 	case RTE_FIB_LOOKUP_DEFAULT:
-		ret_fn = get_vector_fn(nh_sz);
-		return (ret_fn != NULL) ? ret_fn : get_scalar_fn(nh_sz);
+		ret_fn = get_vector_fn(nh_sz, be_addr);
+		return ret_fn != NULL ? ret_fn : get_scalar_fn(nh_sz, be_addr);
 	default:
 		return NULL;
 	}

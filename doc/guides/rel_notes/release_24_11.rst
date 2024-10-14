@@ -172,6 +172,12 @@ New Features
 
   * Added independent enqueue feature.
 
+* **Added IPv4 network order lookup in the FIB library.**
+
+  A new flag field is introduced in ``rte_fib_conf`` structure.
+  This field is used to pass an extra configuration settings such as ability
+  to lookup IPv4 addresses in network byte order.
+
 
 Removed Items
 -------------

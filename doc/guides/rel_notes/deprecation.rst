@@ -166,9 +166,6 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* fib: A new flag field will be introduced in ``rte_fib_conf`` structure
-  in DPDK 24.11. This field will be used to pass extra configuration settings.
-
 * cryptodev: The Intel IPsec Multi-Buffer version will be bumped
   to a minimum version of v1.4.
   This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY

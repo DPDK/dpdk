@@ -33,7 +33,7 @@ int32_t
 test_create_invalid(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 
 	config.max_routes = MAX_ROUTES;
 	config.rib_ext_sz = 0;
@@ -92,7 +92,7 @@ int32_t
 test_multiple_create(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 	int32_t i;
 
 	config.rib_ext_sz = 0;
@@ -119,7 +119,7 @@ int32_t
 test_free_null(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 
 	config.max_routes = MAX_ROUTES;
 	config.rib_ext_sz = 0;
@@ -142,7 +142,7 @@ int32_t
 test_add_del_invalid(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 	uint64_t nh = 100;
 	uint32_t ip = RTE_IPV4(0, 0, 0, 0);
 	int ret;
@@ -319,7 +319,7 @@ int32_t
 test_lookup(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 	uint64_t def_nh = 100;
 	int ret;
 
