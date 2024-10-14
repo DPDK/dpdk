@@ -1395,45 +1395,76 @@ out:
 	return ret;
 }
 
+static int eth_dev_telemetry_do(const char *cmd, const char *params, void *arg,
+		struct rte_tel_data *d)
+{
+	telemetry_cb fn = arg;
+	int ret;
+
+	/* Protect against port removal while invoking callback, calling ethdev API. */
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+	ret = fn(cmd, params, d);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
+
+	return ret;
+}
+
 RTE_INIT(ethdev_init_telemetry)
 {
-	rte_telemetry_register_cmd("/ethdev/list", eth_dev_handle_port_list,
+	rte_telemetry_register_cmd_arg("/ethdev/list",
+			eth_dev_telemetry_do, eth_dev_handle_port_list,
 			"Returns list of available ethdev ports. Takes no parameters");
-	rte_telemetry_register_cmd("/ethdev/stats", eth_dev_handle_port_stats,
+	rte_telemetry_register_cmd_arg("/ethdev/stats",
+			eth_dev_telemetry_do, eth_dev_handle_port_stats,
 			"Returns the common stats for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/xstats", eth_dev_handle_port_xstats,
+	rte_telemetry_register_cmd_arg("/ethdev/xstats",
+			eth_dev_telemetry_do, eth_dev_handle_port_xstats,
 			"Returns the extended stats for a port. Parameters: int port_id,hide_zero=true|false(Optional for indicates hide zero xstats)");
 #ifndef RTE_EXEC_ENV_WINDOWS
-	rte_telemetry_register_cmd("/ethdev/dump_priv", eth_dev_handle_port_dump_priv,
+	rte_telemetry_register_cmd_arg("/ethdev/dump_priv",
+			eth_dev_telemetry_do, eth_dev_handle_port_dump_priv,
 			"Returns dump private information for a port. Parameters: int port_id");
 #endif
-	rte_telemetry_register_cmd("/ethdev/link_status",
-			eth_dev_handle_port_link_status,
+	rte_telemetry_register_cmd_arg("/ethdev/link_status",
+			eth_dev_telemetry_do, eth_dev_handle_port_link_status,
 			"Returns the link status for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/info", eth_dev_handle_port_info,
+	rte_telemetry_register_cmd_arg("/ethdev/info",
+			eth_dev_telemetry_do, eth_dev_handle_port_info,
 			"Returns the device info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/module_eeprom", eth_dev_handle_port_module_eeprom,
+	rte_telemetry_register_cmd_arg("/ethdev/module_eeprom",
+			eth_dev_telemetry_do, eth_dev_handle_port_module_eeprom,
 			"Returns module EEPROM info with SFF specs. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/macs", eth_dev_handle_port_macs,
+	rte_telemetry_register_cmd_arg("/ethdev/macs",
+			eth_dev_telemetry_do, eth_dev_handle_port_macs,
 			"Returns the MAC addresses for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/flow_ctrl", eth_dev_handle_port_flow_ctrl,
+	rte_telemetry_register_cmd_arg("/ethdev/flow_ctrl",
+			eth_dev_telemetry_do, eth_dev_handle_port_flow_ctrl,
 			"Returns flow ctrl info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/rx_queue", eth_dev_handle_port_rxq,
+	rte_telemetry_register_cmd_arg("/ethdev/rx_queue",
+			eth_dev_telemetry_do, eth_dev_handle_port_rxq,
 			"Returns Rx queue info for a port. Parameters: int port_id, int queue_id (Optional if only one queue)");
-	rte_telemetry_register_cmd("/ethdev/tx_queue", eth_dev_handle_port_txq,
+	rte_telemetry_register_cmd_arg("/ethdev/tx_queue",
+			eth_dev_telemetry_do, eth_dev_handle_port_txq,
 			"Returns Tx queue info for a port. Parameters: int port_id, int queue_id (Optional if only one queue)");
-	rte_telemetry_register_cmd("/ethdev/dcb", eth_dev_handle_port_dcb,
+	rte_telemetry_register_cmd_arg("/ethdev/dcb",
+			eth_dev_telemetry_do, eth_dev_handle_port_dcb,
 			"Returns DCB info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/rss_info", eth_dev_handle_port_rss_info,
+	rte_telemetry_register_cmd_arg("/ethdev/rss_info",
+			eth_dev_telemetry_do, eth_dev_handle_port_rss_info,
 			"Returns RSS info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/fec", eth_dev_handle_port_fec,
+	rte_telemetry_register_cmd_arg("/ethdev/fec",
+			eth_dev_telemetry_do, eth_dev_handle_port_fec,
 			"Returns FEC info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/vlan", eth_dev_handle_port_vlan,
+	rte_telemetry_register_cmd_arg("/ethdev/vlan",
+			eth_dev_telemetry_do, eth_dev_handle_port_vlan,
 			"Returns VLAN info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/tm_capability", eth_dev_handle_port_tm_caps,
+	rte_telemetry_register_cmd_arg("/ethdev/tm_capability",
+			eth_dev_telemetry_do, eth_dev_handle_port_tm_caps,
 			"Returns TM Capabilities info for a port. Parameters: int port_id");
-	rte_telemetry_register_cmd("/ethdev/tm_level_capability", eth_dev_handle_port_tm_level_caps,
+	rte_telemetry_register_cmd_arg("/ethdev/tm_level_capability",
+			eth_dev_telemetry_do, eth_dev_handle_port_tm_level_caps,
 			"Returns TM Level Capabilities info for a port. Parameters: int port_id, int level_id (see tm_capability for the max)");
-	rte_telemetry_register_cmd("/ethdev/tm_node_capability", eth_dev_handle_port_tm_node_caps,
+	rte_telemetry_register_cmd_arg("/ethdev/tm_node_capability",
+			eth_dev_telemetry_do, eth_dev_handle_port_tm_node_caps,
 			"Returns TM Node Capabilities info for a port. Parameters: int port_id, int node_id (see tm_capability for the max)");
 }
