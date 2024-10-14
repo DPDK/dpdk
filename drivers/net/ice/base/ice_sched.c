@@ -1464,25 +1464,16 @@ void ice_sched_get_psm_clk_freq(struct ice_hw *hw)
  * subtree or not
  */
 bool
-ice_sched_find_node_in_subtree(struct ice_hw *hw, struct ice_sched_node *base,
+ice_sched_find_node_in_subtree(struct ice_hw __ALWAYS_UNUSED *hw,
+			       struct ice_sched_node *base,
 			       struct ice_sched_node *node)
 {
-	u8 i;
-
-	for (i = 0; i < base->num_children; i++) {
-		struct ice_sched_node *child = base->children[i];
-
-		if (node == child)
+	if (base == node)
+		return true;
+	while (node->tx_sched_layer != 0 && node->parent != NULL) {
+		if (node->parent == base)
 			return true;
-
-		if (child->tx_sched_layer > node->tx_sched_layer)
-			return false;
-
-		/* this recursion is intentional, and wouldn't
-		 * go more than 8 calls
-		 */
-		if (ice_sched_find_node_in_subtree(hw, child, node))
-			return true;
+		node = node->parent;
 	}
 	return false;
 }
