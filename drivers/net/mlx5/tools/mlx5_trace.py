@@ -258,13 +258,14 @@ def do_tx_complete(msg, trace):
         if burst.comp(wqe_id, wqe_ts) == 0:
             break
         rmv += 1
-    # mode completed burst to done list
+    # move completed burst(s) to done list
     if rmv != 0:
         idx = 0
         while idx < rmv:
+            burst = queue.wait_burst[idx]
             queue.done_burst.append(burst)
             idx += 1
-        del queue.wait_burst[0:rmv]
+        queue.wait_burst = queue.wait_burst[rmv:]
 
 
 def do_tx(msg, trace):
