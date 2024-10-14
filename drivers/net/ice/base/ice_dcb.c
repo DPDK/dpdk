@@ -1585,7 +1585,8 @@ ice_update_port_tc_tree_cfg(struct ice_port_info *pi,
 	struct ice_aqc_txsched_elem_data elem;
 	u32 teid1, teid2;
 	int status = 0;
-	u8 i, j;
+	u16 i;
+	u8 j;
 
 	if (!pi)
 		return ICE_ERR_PARAM;

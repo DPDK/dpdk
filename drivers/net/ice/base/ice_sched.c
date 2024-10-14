@@ -288,7 +288,7 @@ ice_sched_get_first_node(struct ice_port_info *pi,
  */
 struct ice_sched_node *ice_sched_get_tc_node(struct ice_port_info *pi, u8 tc)
 {
-	u8 i;
+	u16 i;
 
 	if (!pi || !pi->root)
 		return NULL;
@@ -311,7 +311,7 @@ void ice_free_sched_node(struct ice_port_info *pi, struct ice_sched_node *node)
 {
 	struct ice_sched_node *parent;
 	struct ice_hw *hw = pi->hw;
-	u8 i, j;
+	u16 i, j;
 
 	/* Free the children before freeing up the parent node
 	 * The parent array is updated below and that shifts the nodes
@@ -1503,7 +1503,7 @@ ice_sched_get_free_qgrp(struct ice_port_info *pi,
 			struct ice_sched_node *qgrp_node, u8 owner)
 {
 	struct ice_sched_node *min_qgrp;
-	u8 min_children;
+	u16 min_children;
 
 	if (!qgrp_node)
 		return qgrp_node;
@@ -2063,7 +2063,7 @@ static void ice_sched_rm_agg_vsi_info(struct ice_port_info *pi, u16 vsi_handle)
  */
 static bool ice_sched_is_leaf_node_present(struct ice_sched_node *node)
 {
-	u8 i;
+	u16 i;
 
 	for (i = 0; i < node->num_children; i++)
 		if (ice_sched_is_leaf_node_present(node->children[i]))
@@ -2098,7 +2098,7 @@ ice_sched_rm_vsi_cfg(struct ice_port_info *pi, u16 vsi_handle, u8 owner)
 
 	ice_for_each_traffic_class(i) {
 		struct ice_sched_node *vsi_node, *tc_node;
-		u8 j = 0;
+		u16 j = 0;
 
 		tc_node = ice_sched_get_tc_node(pi, i);
 		if (!tc_node)
@@ -2166,7 +2166,7 @@ int ice_rm_vsi_lan_cfg(struct ice_port_info *pi, u16 vsi_handle)
  */
 bool ice_sched_is_tree_balanced(struct ice_hw *hw, struct ice_sched_node *node)
 {
-	u8 i;
+	u16 i;
 
 	/* start from the leaf node */
 	for (i = 0; i < node->num_children; i++)
@@ -2240,7 +2240,8 @@ ice_sched_get_free_vsi_parent(struct ice_hw *hw, struct ice_sched_node *node,
 			      u16 *num_nodes)
 {
 	u8 l = node->tx_sched_layer;
-	u8 vsil, i;
+	u8 vsil;
+	u16 i;
 
 	vsil = ice_sched_get_vsi_layer(hw);
 
@@ -2282,7 +2283,7 @@ ice_sched_update_parent(struct ice_sched_node *new_parent,
 			struct ice_sched_node *node)
 {
 	struct ice_sched_node *old_parent;
-	u8 i, j;
+	u16 i, j;
 
 	old_parent = node->parent;
 
@@ -2382,8 +2383,9 @@ ice_sched_move_vsi_to_agg(struct ice_port_info *pi, u16 vsi_handle, u32 agg_id,
 	u16 num_nodes[ICE_AQC_TOPO_MAX_LEVEL_NUM] = { 0 };
 	u32 first_node_teid, vsi_teid;
 	u16 num_nodes_added;
-	u8 aggl, vsil, i;
+	u8 aggl, vsil;
 	int status;
+	u16 i;
 
 	tc_node = ice_sched_get_tc_node(pi, tc);
 	if (!tc_node)
@@ -2498,7 +2500,8 @@ ice_move_all_vsi_to_dflt_agg(struct ice_port_info *pi,
 static bool
 ice_sched_is_agg_inuse(struct ice_port_info *pi, struct ice_sched_node *node)
 {
-	u8 vsil, i;
+	u8 vsil;
+	u16 i;
 
 	vsil = ice_sched_get_vsi_layer(pi->hw);
 	if (node->tx_sched_layer < vsil - 1) {

@@ -1030,9 +1030,9 @@ struct ice_sched_node {
 	struct ice_aqc_txsched_elem_data info;
 	u32 agg_id;			/* aggregator group ID */
 	u16 vsi_handle;
+	u16 num_children;
 	u8 in_use;			/* suspended or in use */
 	u8 tx_sched_layer;		/* Logical Layer (1-9) */
-	u8 num_children;
 	u8 tc_num;
 	u8 owner;
 #define ICE_SCHED_NODE_OWNER_LAN	0
