@@ -337,6 +337,30 @@ typedef int (*telemetry_cb)(const char *cmd, const char *params,
 		struct rte_tel_data *info);
 
 /**
+ * This telemetry callback is used when registering a telemetry command with
+ * rte_telemetry_register_cmd_arg().
+ *
+ * It handles getting and formatting information to be returned to telemetry
+ * when requested.
+ *
+ * @param cmd
+ *   The cmd that was requested by the client.
+ * @param params
+ *   Contains data required by the callback function.
+ * @param arg
+ *   The opaque value that was passed to rte_telemetry_register_cmd_arg().
+ * @param info
+ *   The information to be returned to the caller.
+ *
+ * @return
+ *   Length of buffer used on success.
+ * @return
+ *   Negative integer on error.
+ */
+typedef int (*telemetry_arg_cb)(const char *cmd, const char *params, void *arg,
+		struct rte_tel_data *info);
+
+/**
  * Used for handling data received over a telemetry socket.
  *
  * @param sock_id
@@ -367,6 +391,28 @@ typedef void * (*handler)(void *sock_id);
 int
 rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help);
 
+/**
+ * Used when registering a command and callback function with telemetry.
+ *
+ * @param cmd
+ *   The command to register with telemetry.
+ * @param fn
+ *   Callback function to be called when the command is requested.
+ * @param arg
+ *   An opaque value that will be passed to the callback function.
+ * @param help
+ *   Help text for the command.
+ *
+ * @return
+ *   0 on success.
+ * @return
+ *   -EINVAL for invalid parameters failure.
+ * @return
+ *   -ENOMEM for mem allocation failure.
+ */
+__rte_experimental
+int
+rte_telemetry_register_cmd_arg(const char *cmd, telemetry_arg_cb fn, void *arg, const char *help);
 
 /**
  * Get a pointer to a container with memory allocated. The container is to be

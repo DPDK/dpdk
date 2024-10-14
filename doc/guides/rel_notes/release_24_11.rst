@@ -178,6 +178,11 @@ New Features
   This field is used to pass an extra configuration settings such as ability
   to lookup IPv4 addresses in network byte order.
 
+* **Added new API to register telemetry endpoint callbacks with private arguments.**
+
+  A new ``rte_telemetry_register_cmd_arg`` function is available to pass an opaque value to
+  telemetry endpoint callback.
+
 
 Removed Items
 -------------

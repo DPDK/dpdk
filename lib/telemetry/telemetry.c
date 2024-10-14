@@ -37,6 +37,8 @@ client_handler(void *socket);
 struct cmd_callback {
 	char cmd[MAX_CMD_LEN];
 	telemetry_cb fn;
+	telemetry_arg_cb fn_arg;
+	void *arg;
 	char help[RTE_TEL_MAX_STRING_LEN];
 };
 
@@ -68,14 +70,15 @@ static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
 static RTE_ATOMIC(uint16_t) v2_clients;
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-int
-rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
+static int
+register_cmd(const char *cmd, const char *help,
+	     telemetry_cb fn, telemetry_arg_cb fn_arg, void *arg)
 {
 	struct cmd_callback *new_callbacks;
 	const char *cmdp = cmd;
 	int i = 0;
 
-	if (strlen(cmd) >= MAX_CMD_LEN || fn == NULL || cmd[0] != '/'
+	if (strlen(cmd) >= MAX_CMD_LEN || (fn == NULL && fn_arg == NULL) || cmd[0] != '/'
 			|| strlen(help) >= RTE_TEL_MAX_STRING_LEN)
 		return -EINVAL;
 
@@ -102,11 +105,25 @@ rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
 
 	strlcpy(callbacks[i].cmd, cmd, MAX_CMD_LEN);
 	callbacks[i].fn = fn;
+	callbacks[i].fn_arg = fn_arg;
+	callbacks[i].arg = arg;
 	strlcpy(callbacks[i].help, help, RTE_TEL_MAX_STRING_LEN);
 	num_callbacks++;
 	rte_spinlock_unlock(&callback_sl);
 
 	return 0;
+}
+
+int
+rte_telemetry_register_cmd(const char *cmd, telemetry_cb fn, const char *help)
+{
+	return register_cmd(cmd, help, fn, NULL, NULL);
+}
+
+int
+rte_telemetry_register_cmd_arg(const char *cmd, telemetry_arg_cb fn, void *arg, const char *help)
+{
+	return register_cmd(cmd, help, NULL, fn, arg);
 }
 
 #ifndef RTE_EXEC_ENV_WINDOWS
@@ -349,11 +366,16 @@ output_json(const char *cmd, const struct rte_tel_data *d, int s)
 }
 
 static void
-perform_command(telemetry_cb fn, const char *cmd, const char *param, int s)
+perform_command(const struct cmd_callback *cb, const char *cmd, const char *param, int s)
 {
 	struct rte_tel_data data = {0};
+	int ret;
 
-	int ret = fn(cmd, param, &data);
+	if (cb->fn_arg != NULL)
+		ret = cb->fn_arg(cmd, param, cb->arg, &data);
+	else
+		ret = cb->fn(cmd, param, &data);
+
 	if (ret < 0) {
 		char out_buf[MAX_CMD_LEN + 10];
 		int used = snprintf(out_buf, sizeof(out_buf), "{\"%.*s\":null}",
@@ -392,19 +414,19 @@ client_handler(void *sock_id)
 		buffer[bytes] = 0;
 		const char *cmd = strtok(buffer, ",");
 		const char *param = strtok(NULL, "\0");
-		telemetry_cb fn = unknown_command;
+		struct cmd_callback cb = {.fn = unknown_command};
 		int i;
 
 		if (cmd && strlen(cmd) < MAX_CMD_LEN) {
 			rte_spinlock_lock(&callback_sl);
 			for (i = 0; i < num_callbacks; i++)
 				if (strcmp(cmd, callbacks[i].cmd) == 0) {
-					fn = callbacks[i].fn;
+					cb = callbacks[i];
 					break;
 				}
 			rte_spinlock_unlock(&callback_sl);
 		}
-		perform_command(fn, cmd, param, s);
+		perform_command(&cb, cmd, param, s);
 
 		bytes = read(s, buffer, sizeof(buffer) - 1);
 	}

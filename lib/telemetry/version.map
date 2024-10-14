@@ -28,6 +28,9 @@ EXPERIMENTAL {
 	rte_tel_data_add_array_uint_hex;
 	rte_tel_data_add_dict_uint_hex;
 
+	# added in 24.11
+	rte_telemetry_register_cmd_arg;
+
 	local: *;
 };
 
