@@ -347,12 +347,15 @@ nfp_eth_config_start(struct nfp_cpp *cpp,
 	union eth_table_entry *entries;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
-	if (entries == NULL)
+	if (entries == NULL) {
+		PMD_DRV_LOG(ERR, "Malloc entries failed.");
 		return NULL;
+	}
 
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "NSP open failed.");
 		free(entries);
 		return nsp;
 	}

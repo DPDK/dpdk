@@ -161,8 +161,10 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 	struct nfp_cpp_mutex *dev_mutex;
 
 	res = malloc(sizeof(*res));
-	if (res == NULL)
+	if (res == NULL) {
+		PMD_DRV_LOG(ERR, "RESOURCE - Malloc NSP memory failed.");
 		return NULL;
+	}
 
 	memset(res, 0, sizeof(*res));
 

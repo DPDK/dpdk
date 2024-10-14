@@ -252,6 +252,7 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 
 	state = malloc(sizeof(*state));
 	if (state == NULL) {
+		PMD_DRV_LOG(ERR, "NSP - failed to malloc name %s", NFP_RESOURCE_NSP);
 		nfp_resource_release(res);
 		return NULL;
 	}
@@ -369,8 +370,10 @@ nfp_nsp_command_real(struct nfp_nsp *state,
 	}
 
 	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_buffer, arg->buf);
-	if (err < 0)
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "CPP write buffer failed. err %d", err);
 		return err;
+	}
 
 	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_command,
 			FIELD_PREP(NSP_COMMAND_OPTION, arg->option) |
@@ -378,8 +381,10 @@ nfp_nsp_command_real(struct nfp_nsp *state,
 			FIELD_PREP(NSP_COMMAND_CODE, arg->code) |
 			FIELD_PREP(NSP_COMMAND_DMA_BUF, arg->dma) |
 			FIELD_PREP(NSP_COMMAND_START, 1));
-	if (err < 0)
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "CPP write command failed. err %d", err);
 		return err;
+	}
 
 	/* Wait for NSP_COMMAND_START to go to 0 */
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_command,
@@ -400,15 +405,17 @@ nfp_nsp_command_real(struct nfp_nsp *state,
 	}
 
 	err = nfp_cpp_readq(cpp, nsp_cpp, nsp_command, &ret_val);
-	if (err < 0)
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "CPP read return value failed. err %d", err);
 		return err;
+	}
 
 	ret_val = FIELD_GET(NSP_COMMAND_OPTION, ret_val);
 
 	err = FIELD_GET(NSP_STATUS_RESULT, reg);
 	if (err != 0) {
 		if (!arg->error_quiet)
-			PMD_DRV_LOG(WARNING, "Result (error) code set: %d (%d) command: %d",
+			PMD_DRV_LOG(ERR, "Result (error) code set: %d (%d) command: %d",
 					-err, (int)ret_val, arg->code);
 
 		if (arg->error_cb != 0)

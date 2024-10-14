@@ -1297,13 +1297,17 @@ nfp_fw_upload(struct nfp_nsp *nsp,
 static void
 nfp_fw_unload(struct nfp_cpp *cpp)
 {
+	int err;
 	struct nfp_nsp *nsp;
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL)
 		return;
 
-	nfp_nsp_device_soft_reset(nsp);
+	err = nfp_nsp_device_soft_reset(nsp);
+	if (err != 0)
+		PMD_DRV_LOG(WARNING, "Failed to do soft reset when nfp fw unload.");
+
 	nfp_nsp_close(nsp);
 }
 
