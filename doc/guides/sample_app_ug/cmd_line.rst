@@ -13,7 +13,7 @@ Overview
 The Command Line sample application is a simple application that
 demonstrates the use of the command line interface in the DPDK.
 This application is a readline-like interface that can be used
-to debug a DPDK application, in a Linux* application environment.
+to debug a DPDK application in a Linux* application environment.
 
 .. note::
 
@@ -22,10 +22,13 @@ to debug a DPDK application, in a Linux* application environment.
     See also the "rte_cmdline library should not be used in production code due to limited testing" item
     in the "Known Issues" section of the Release Notes.
 
-The Command Line sample application supports some of the features of the GNU readline library such as, completion,
-cut/paste and some other special bindings that make configuration and debug faster and easier.
+The Command Line sample application supports some of the features of the GNU readline library
+such as completion, cut/paste and other special bindings
+that make configuration and debug faster and easier.
 
-The application shows how the rte_cmdline application can be extended to handle a list of objects.
+The application shows how the ``cmdline`` library can be extended
+to handle a list of objects.
+
 There are three simple commands:
 
 *   add obj_name IP: Add a new object with an IP/IPv6 address associated to it.
@@ -48,7 +51,7 @@ The application is located in the ``cmd_line`` sub-directory.
 Running the Application
 -----------------------
 
-To run the application in linux environment, issue the following command:
+To run the application in a Linux environment, issue the following command:
 
 .. code-block:: console
 
@@ -60,7 +63,7 @@ and the Environment Abstraction Layer (EAL) options.
 Explanation
 -----------
 
-The following sections provide some explanation of the code.
+The following sections provide explanation of the code.
 
 EAL Initialization and cmdline Start
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -73,7 +76,7 @@ This is achieved as follows:
     :start-after: Initialization of the Environment Abstraction Layer (EAL). 8<
     :end-before: >8 End of initialization of Environment Abstraction Layer (EAL).
 
-Then, a new command line object is created and started to interact with the user through the console:
+Then, a new command line object is created and starts to interact with the user through the console:
 
 .. literalinclude:: ../../../examples/cmdline/main.c
     :language: c
@@ -81,13 +84,14 @@ Then, a new command line object is created and started to interact with the user
     :end-before: >8 End of creating a new command line object.
     :dedent: 1
 
-The cmd line_interact() function returns when the user types **Ctrl-d** and in this case,
-the application exits.
+The ``cmdline_interact()`` function returns when the user types **Ctrl-d** and,
+in this case, the application exits.
 
 Defining a cmdline Context
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A cmdline context is a list of commands that are listed in a NULL-terminated table, for example:
+A cmdline context is a list of commands that are listed in a NULL-terminated table.
+For example:
 
 .. literalinclude:: ../../../examples/cmdline/commands.c
     :language: c

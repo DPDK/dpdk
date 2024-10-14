@@ -5,7 +5,7 @@ Server-Node EFD Sample Application
 ==================================
 
 This sample application demonstrates the use of EFD library as a flow-level
-load balancer, for more information about the EFD Library please refer to the
+load balancer. For more information about the EFD Library, please refer to the
 DPDK programmer's guide.
 
 This sample application is a variant of the :doc:`multi_process`
@@ -55,12 +55,12 @@ then the pair of <key,target> is inserted into the flow distribution table.
 
 The main loop of the server process receives a burst of packets, then for
 each packet, a flow key (IP destination address) is extracted. The flow
-distributor table is looked up and the target node id is returned.  Packets are
+distributor table is looked up and the target node id is returned. Packets are
 then enqueued to the specified target node id.
 
-It should be noted that flow distributor table is not a membership test table.
-I.e. if the key has already been inserted the target node id will be correct,
-but for new keys the flow distributor table will return a value (which can be
+It should be noted that flow distributor table is not a membership test table,
+i.e. if the key has already been inserted the target node id will be correct.
+But for new keys, the flow distributor table will return a value (which can be
 valid).
 
 Backend Worker Nodes
@@ -80,7 +80,7 @@ that this is a new flow, which is dropped.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``server_node_efd`` sub-directory.
 

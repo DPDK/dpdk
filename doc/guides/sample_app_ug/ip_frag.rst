@@ -25,17 +25,18 @@ There are three key differences from the L2 Forwarding sample application:
 *   The third difference is that the application differentiates between
     IP and non-IP traffic by means of offload flags.
 
-The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table is used to store/lookup an outgoing port number,
-associated with that IP address.
+The Longest Prefix Match (LPM for IPv4, LPM6 for IPv6) table
+is used to store/lookup an outgoing port number associated with that IP address.
 Any unmatched packets are forwarded to the originating port.
 
 By default, input frame sizes up to 9.5 KB are supported.
-Before forwarding, the input IP packet is fragmented to fit into the "standard" Ethernet* v2 MTU (1500 bytes).
+Before forwarding, the input IP packet is fragmented
+to fit into the "standard" Ethernet* v2 MTU (1500 bytes).
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``ip_fragmentation`` sub-directory.
 
@@ -46,7 +47,7 @@ The LPM object is created and loaded with the pre-configured entries read from
 global l3fwd_ipv4_route_array and l3fwd_ipv6_route_array tables.
 For each input packet, the packet forwarding decision
 (that is, the identification of the output interface for the packet) is taken as a result of LPM lookup.
-If the IP packet size is greater than default output MTU,
+If the IP packet size is greater than the default output MTU,
 then the input packet is fragmented and several fragments are sent via the output interface.
 
 Application usage:

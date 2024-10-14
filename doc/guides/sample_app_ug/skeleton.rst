@@ -7,14 +7,16 @@ Basic Forwarding Sample Application
 The Basic Forwarding sample application is a simple *skeleton* example of a
 forwarding application.
 
-It is intended as a demonstration of the basic components of a DPDK forwarding
-application. For more detailed implementations see the L2 and L3 forwarding
-sample applications.
+Overview
+--------
+
+This application demonstrates the basic components of a DPDK forwarding application.
+For more detailed implementations, see the L2 and L3 forwarding sample applications.
 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``skeleton`` sub-directory.
 
@@ -28,7 +30,7 @@ To run the example in a ``linux`` environment:
     ./<build_dir>/examples/dpdk-skeleton -l 1 -n 4
 
 Refer to *DPDK Getting Started Guide* for general information on running
-applications and the Environment Abstraction Layer (EAL) options.
+applications and Environment Abstraction Layer (EAL) options.
 
 
 Explanation
@@ -47,8 +49,8 @@ The Main Function
 The ``main()`` function performs the initialization and calls the execution
 threads for each lcore.
 
-The first task is to initialize the Environment Abstraction Layer (EAL).  The
-``argc`` and ``argv`` arguments are provided to the ``rte_eal_init()``
+The first task is to initialize the Environment Abstraction Layer (EAL).
+The ``argc`` and ``argv`` arguments are provided to the ``rte_eal_init()``
 function. The value returned is the number of parsed arguments:
 
 .. literalinclude:: ../../../examples/skeleton/basicfwd.c
@@ -80,8 +82,8 @@ The ``main()`` function also initializes all the ports using the user defined
     :dedent: 1
 
 Once the initialization is complete, the application is ready to launch a
-function on an lcore. In this example ``lcore_main()`` is called on a single
-lcore.
+function on an lcore.
+In this example, ``lcore_main()`` is called on a single lcore.
 
 
 .. literalinclude:: ../../../examples/skeleton/basicfwd.c
@@ -93,9 +95,8 @@ lcore.
 The ``lcore_main()`` function is explained below.
 
 
-
-The Port Initialization  Function
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The Port Initialization Function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The main functional part of the port initialization used in the Basic
 Forwarding application is shown below:
@@ -108,7 +109,7 @@ Forwarding application is shown below:
 The Ethernet ports are configured with default settings using the
 ``rte_eth_dev_configure()`` function.
 
-For this example the ports are set up with 1 RX and 1 TX queue using the
+In this example, the ports are set up with 1 Rx and 1 Tx queue using the
 ``rte_eth_rx_queue_setup()`` and ``rte_eth_tx_queue_setup()`` functions.
 
 The Ethernet port is then started:
@@ -119,8 +120,7 @@ The Ethernet port is then started:
         :end-before: >8 End of starting of ethernet port.
         :dedent: 1
 
-
-Finally the RX port is set in promiscuous mode:
+Finally, the Rx port is set in promiscuous mode:
 
 .. literalinclude:: ../../../examples/skeleton/basicfwd.c
         :language: c
@@ -132,8 +132,9 @@ Finally the RX port is set in promiscuous mode:
 The Lcores Main
 ~~~~~~~~~~~~~~~
 
-As we saw above the ``main()`` function calls an application function on the
-available lcores. For the Basic Forwarding application the lcore function
+As we saw above, the ``main()`` function calls an application function
+on the available lcores.
+For the basic forwarding application, the lcore function
 looks like the following:
 
 .. literalinclude:: ../../../examples/skeleton/basicfwd.c

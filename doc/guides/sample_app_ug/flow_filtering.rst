@@ -4,6 +4,9 @@
 Flow Filtering Sample Application
 =================================
 
+Overview
+--------
+
 The flow filtering sample application provides a simple example of creating flow rules.
 
 It serves as a demonstration of the fundamental components of flow rules.
@@ -14,7 +17,7 @@ It demonstrates how to create rules and configure them, using both template and 
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``flow_filtering`` sub-directory.
 

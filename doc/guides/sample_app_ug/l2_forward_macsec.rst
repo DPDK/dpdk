@@ -4,8 +4,8 @@
 L2 Forwarding MACsec Sample Application
 =======================================
 
-The L2 forwarding MACsec application is a simple example of packet processing
-using the Data Plane Development Kit (DPDK) which encrypt/decrypt packets
+The L2 forwarding MACsec application is an example of packet processing
+using the Data Plane Development Kit (DPDK) to encrypt/decrypt packets
 based on rte_security MACsec sessions.
 
 Overview
@@ -15,7 +15,7 @@ The L2 forwarding MACsec application performs L2 forwarding for each packet
 that is received on an Rx port after encrypting/decrypting the packets
 based on rte_security sessions using inline protocol mode.
 
-The destination port is the adjacent port from the enabled portmask, that is,
+The destination port is the adjacent port from the enabled portmask
 if the first four ports are enabled (portmask ``0xf``),
 ports 1 and 2 forward into each other, and ports 3 and 4 forward into each other.
 
@@ -24,7 +24,7 @@ This application can be used to benchmark performance using a traffic-generator.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l2fwd-macsec`` sub-directory.
 

@@ -4,9 +4,10 @@
 L3 Forwarding Graph Sample Application
 ======================================
 
-The L3 Forwarding Graph application is a simple example of packet processing
-using the DPDK Graph framework. The application performs L3 forwarding using
-Graph framework and nodes written for graph framework.
+The L3 forwarding graph application is an example of packet processing
+using the DPDK Graph framework.
+The application performs L3 forwarding using graph framework,
+and nodes written for graph framework.
 
 Overview
 --------
@@ -22,7 +23,7 @@ and configuration per lcore.
 Run-time path is main thing that differs from L3 forwarding sample application.
 Difference is that forwarding logic starting from Rx, followed by LPM lookup,
 TTL update and finally Tx is implemented inside graph nodes. These nodes are
-interconnected in graph framework. Application main loop needs to walk over
+interconnected in graph framework. The application main loop needs to walk over
 graph using ``rte_graph_walk()`` with graph objects created one per worker lcore.
 
 The lookup method is as per implementation of ``ip4_lookup``/``ip6_lookup`` graph node.
@@ -38,7 +39,7 @@ In the sample application, IPv4 and IPv6 forwarding is supported.
 Compiling the Application
 -------------------------
 
-To compile the sample application see :doc:`compiling`.
+To compile the sample application, see :doc:`compiling`.
 
 The application is located in the ``l3fwd-graph`` sub-directory.
 
@@ -181,7 +182,7 @@ specific graph object.
 Graph Initialization
 ~~~~~~~~~~~~~~~~~~~~
 
-Now a graph needs to be created with a specific set of nodes for every lcore.
+Now, a graph needs to be created with a specific set of nodes for every lcore.
 A graph object returned after graph creation is a per lcore object and
 cannot be shared between lcores. Since ``ethdev_tx-X`` node is per port node,
 it can be associated with all the graphs created as all the lcores should have
@@ -226,8 +227,8 @@ Packet Forwarding using Graph Walk
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now that all the device configurations are done, graph creations are done and
-forwarding data is updated with nodes, worker lcores will be launched with graph
-main loop. Graph main loop is very simple in the sense that it needs to
+forwarding data is updated with nodes, worker lcores will be launched with the graph
+main loop.The graph main loop is very simple in the sense that it needs to
 continuously call a non-blocking API ``rte_graph_walk()`` with it's lcore
 specific graph object that was already created.
 
