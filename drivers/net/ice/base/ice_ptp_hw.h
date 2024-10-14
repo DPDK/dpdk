@@ -277,7 +277,7 @@ ice_phy_get_speed_and_fec_e822(struct ice_hw *hw, u8 port,
 void ice_phy_cfg_lane_e822(struct ice_hw *hw, u8 port);
 int
 ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset);
-int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port);
+int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass);
 int ice_phy_cfg_tx_offset_e822(struct ice_hw *hw, u8 port);
 int ice_phy_cfg_rx_offset_e822(struct ice_hw *hw, u8 port);
 int

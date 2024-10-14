@@ -2573,7 +2573,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ice_ptp_init_info(dev);
 
 	if (hw->phy_model == ICE_PHY_E822) {
-		ret = ice_start_phy_timer_e822(hw, hw->pf_id);
+		ret = ice_start_phy_timer_e822(hw, hw->pf_id, true);
 		if (ret)
 			PMD_INIT_LOG(ERR, "Failed to start phy timer");
 	}

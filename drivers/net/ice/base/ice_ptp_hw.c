@@ -4469,17 +4469,102 @@ ice_stop_phy_timer_e822(struct ice_hw *hw, u8 port, bool soft_reset)
 }
 
 /**
+ * ice_phy_cfg_fixed_tx_offset_e822 - Configure Tx offset for bypass mode
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * Calculate and program the fixed Tx offset, and indicate that the offset is
+ * ready. This can be used when operating in bypass mode.
+ */
+static int ice_phy_cfg_fixed_tx_offset_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	u64 total_offset;
+	int err;
+
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
+
+	total_offset = ice_calc_fixed_tx_offset_e822(hw, link_spd);
+
+	/* Program the fixed Tx offset into the P_REG_TOTAL_TX_OFFSET_L
+	 * register, then indicate that the Tx offset is ready. After this,
+	 * timestamps will be enabled.
+	 *
+	 * Note that this skips including the more precise offsets generated
+	 * by the Vernier calibration.
+	 */
+
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_TX_OFFSET_L,
+					 total_offset);
+	if (err)
+		return err;
+
+	err = ice_write_phy_reg_e822(hw, port, P_REG_TX_OR, 1);
+	if (err)
+		return err;
+
+	return ICE_SUCCESS;
+}
+
+/**
+ * ice_phy_cfg_rx_offset_e822 - Configure fixed Rx offset for bypass mode
+ * @hw: pointer to the HW struct
+ * @port: the PHY port to configure
+ *
+ * Calculate and program the fixed Rx offset, and indicate that the offset is
+ * ready. This can be used when operating in bypass mode.
+ */
+static int ice_phy_cfg_fixed_rx_offset_e822(struct ice_hw *hw, u8 port)
+{
+	enum ice_ptp_link_spd link_spd;
+	enum ice_ptp_fec_mode fec_mode;
+	u64 total_offset;
+	int err;
+
+	err = ice_phy_get_speed_and_fec_e822(hw, port, &link_spd, &fec_mode);
+	if (err)
+		return err;
+
+	total_offset = ice_calc_fixed_rx_offset_e822(hw, link_spd);
+
+	/* Program the fixed Rx offset into the P_REG_TOTAL_RX_OFFSET_L
+	 * register, then indicate that the Rx offset is ready. After this,
+	 * timestamps will be enabled.
+	 *
+	 * Note that this skips including the more precise offsets generated
+	 * by Vernier calibration.
+	 */
+	err = ice_write_64b_phy_reg_e822(hw, port, P_REG_TOTAL_RX_OFFSET_L,
+					 total_offset);
+	if (err)
+		return err;
+
+	err = ice_write_phy_reg_e822(hw, port, P_REG_RX_OR, 1);
+	if (err)
+		return err;
+
+	return ICE_SUCCESS;
+}
+
+/**
  * ice_start_phy_timer_e822 - Start the PHY clock timer
  * @hw: pointer to the HW struct
  * @port: the PHY port to start
+ * @bypass: if true, start the PHY in bypass mode
  *
  * Start the clock of a PHY port. This must be done as part of the flow to
  * re-calibrate Tx and Rx timestamping offsets whenever the clock time is
  * initialized or when link speed changes.
  *
- * Hardware will take Vernier measurements on Tx or Rx of packets.
+ * Bypass mode enables timestamps immediately without waiting for Vernier
+ * calibration to complete. Hardware will still continue taking Vernier
+ * measurements on Tx or Rx of packets, but they will not be applied to
+ * timestamps.
  */
-int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port)
+int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port, bool bypass)
 {
 	u32 lo, hi, val;
 	u64 incval;
@@ -4544,15 +4629,35 @@ int ice_start_phy_timer_e822(struct ice_hw *hw, u8 port)
 
 	ice_ptp_exec_tmr_cmd(hw);
 
+	if (bypass) {
+		/* Enter BYPASS mode, enabling timestamps immediately. */
+		val |= P_REG_PS_BYPASS_MODE_M;
+		err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+		if (err)
+			return err;
+	}
+
 	val |= P_REG_PS_ENA_CLK_M;
 	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
 	if (err)
 		return err;
 
-	val |= P_REG_PS_LOAD_OFFSET_M;
-	err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
-	if (err)
-		return err;
+	if (bypass) {
+		/* Program the fixed Tx offset */
+		err = ice_phy_cfg_fixed_tx_offset_e822(hw, port);
+		if (err)
+			return err;
+
+		/* Program the fixed Rx offset */
+		err = ice_phy_cfg_fixed_rx_offset_e822(hw, port);
+		if (err)
+			return err;
+	} else {
+		val |= P_REG_PS_LOAD_OFFSET_M;
+		err = ice_write_phy_reg_e822(hw, port, P_REG_PS, val);
+		if (err)
+			return err;
+	}
 
 	ice_ptp_exec_tmr_cmd(hw);
 
