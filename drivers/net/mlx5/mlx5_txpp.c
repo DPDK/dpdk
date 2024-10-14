@@ -971,7 +971,6 @@ mlx5_txpp_read_clock(struct rte_eth_dev *dev, uint64_t *timestamp)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
-	struct mlx5_proc_priv *ppriv;
 	uint64_t ts;
 	int ret;
 
@@ -997,15 +996,9 @@ mlx5_txpp_read_clock(struct rte_eth_dev *dev, uint64_t *timestamp)
 		*timestamp = ts;
 		return 0;
 	}
-	/* Check and try to map HCA PIC BAR to allow reading real time. */
-	ppriv = dev->process_private;
-	if (ppriv && !ppriv->hca_bar &&
-	    sh->dev_cap.rt_timestamp && mlx5_dev_is_pci(dev->device))
-		mlx5_txpp_map_hca_bar(dev);
 	/* Check if we can read timestamp directly from hardware. */
-	if (ppriv && ppriv->hca_bar) {
-		ts = MLX5_GET64(initial_seg, ppriv->hca_bar, real_time);
-		ts = mlx5_txpp_convert_rx_ts(sh, ts);
+	ts = mlx5_read_pcibar_clock(dev);
+	if (ts != 0) {
 		*timestamp = ts;
 		return 0;
 	}
