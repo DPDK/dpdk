@@ -184,23 +184,37 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	if (params == NULL) {
+		rte_errno = EINVAL;
 		HASH_LOG(ERR, "%s has no parameters", __func__);
 		return NULL;
 	}
 
 	/* Check for valid parameters */
 	if ((params->entries > RTE_HASH_ENTRIES_MAX) ||
-			(params->entries < RTE_HASH_BUCKET_ENTRIES) ||
-			(params->name == NULL) ||
-			(params->key_len == 0)) {
+			(params->entries < RTE_HASH_BUCKET_ENTRIES)) {
 		rte_errno = EINVAL;
-		HASH_LOG(ERR, "%s has invalid parameters", __func__);
+		HASH_LOG(ERR, "%s() entries (%u) must be in range [%d, %d] inclusive",
+			__func__, params->entries, RTE_HASH_BUCKET_ENTRIES,
+			RTE_HASH_ENTRIES_MAX);
+		return NULL;
+	}
+
+	if (params->key_len == 0) {
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s() key_len must be greater than 0", __func__);
 		return NULL;
 	}
 
 	if (params->extra_flag & ~RTE_HASH_EXTRA_FLAGS_MASK) {
 		rte_errno = EINVAL;
 		HASH_LOG(ERR, "%s: unsupported extra flags", __func__);
+		return NULL;
+	}
+
+	if (params->name == NULL) {
+		rte_errno = EINVAL;
+		HASH_LOG(ERR, "%s() has invalid parameters, name can't be NULL",
+			__func__);
 		return NULL;
 	}
 
