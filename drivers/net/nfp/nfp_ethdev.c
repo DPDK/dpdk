@@ -1338,9 +1338,37 @@ nfp_fw_check_change(struct nfp_cpp *cpp,
 	return 0;
 }
 
+static void
+nfp_pcie_reg32_write_clear(struct rte_pci_device *pci_dev,
+		int position)
+{
+	int ret;
+	uint32_t capability;
+
+	ret = rte_pci_read_config(pci_dev, &capability, 4, position);
+	if (ret < 0)
+		capability = 0xffffffff;
+
+	(void)rte_pci_write_config(pci_dev, &capability, 4, position);
+}
+
+static void
+nfp_pcie_aer_clear(struct rte_pci_device *pci_dev)
+{
+	int pos;
+
+	pos = rte_pci_find_ext_capability(pci_dev, RTE_PCI_EXT_CAP_ID_ERR);
+	if (pos <= 0)
+		return;
+
+	nfp_pcie_reg32_write_clear(pci_dev, pos + RTE_PCI_ERR_UNCOR_STATUS);
+	nfp_pcie_reg32_write_clear(pci_dev, pos + RTE_PCI_ERR_COR_STATUS);
+}
+
 static int
 nfp_fw_reload(struct nfp_nsp *nsp,
 		char *fw_name,
+		struct rte_pci_device *pci_dev,
 		int reset)
 {
 	int err;
@@ -1356,6 +1384,14 @@ nfp_fw_reload(struct nfp_nsp *nsp,
 			return err;
 		}
 	}
+
+	/*
+	 * Accessing device memory during soft reset may result in some
+	 * errors being recorded in PCIE's AER register, which is normal.
+	 * Therefore, after the soft reset is completed, these errors
+	 * should be cleared.
+	 */
+	nfp_pcie_aer_clear(pci_dev);
 
 	err = nfp_fw_upload(nsp, fw_name);
 	if (err != 0) {
@@ -1463,7 +1499,7 @@ nfp_fw_reload_for_single_pf_from_disk(struct nfp_nsp *nsp,
 	if (!fw_changed)
 		return 0;
 
-	ret = nfp_fw_reload(nsp, fw_name, reset);
+	ret = nfp_fw_reload(nsp, fw_name, pf_dev->pci_dev, reset);
 	if (ret != 0)
 		return ret;
 
@@ -1523,7 +1559,7 @@ nfp_fw_reload_for_multi_pf_from_disk(struct nfp_nsp *nsp,
 	if (skip_load_fw && !reload_fw)
 		return 0;
 
-	err = nfp_fw_reload(nsp, fw_name, reset);
+	err = nfp_fw_reload(nsp, fw_name, pf_dev->pci_dev, reset);
 	if (err != 0)
 		return err;
 
