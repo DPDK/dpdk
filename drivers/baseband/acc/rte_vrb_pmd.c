@@ -1799,6 +1799,9 @@ vrb_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->hcout_offset = 0;
 	}
 
+	/* Force saturation to 6 bits LLR. */
+	fcw->saturate_input = 1;
+
 	fcw->tb_crc_select = 0;
 	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK))
 		fcw->tb_crc_select = 2;
