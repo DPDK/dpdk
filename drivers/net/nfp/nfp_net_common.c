@@ -184,7 +184,7 @@ nfp_net_link_speed_nfp2rte_check(uint32_t speed)
 	return RTE_ETH_SPEED_NUM_NONE;
 }
 
-static void
+void
 nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 		struct rte_eth_link *link)
 {

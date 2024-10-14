@@ -383,6 +383,8 @@ int nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
 bool nfp_net_version_check(struct nfp_hw *hw,
 		struct nfp_pf_dev *pf_dev);
 void nfp_net_ctrl_bar_size_set(struct nfp_pf_dev *pf_dev);
+void nfp_net_notify_port_speed(struct nfp_net_hw *hw,
+		struct rte_eth_link *link);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)
