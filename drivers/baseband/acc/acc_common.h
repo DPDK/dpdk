@@ -106,7 +106,7 @@
 #define ACC_MAX_FCW_SIZE              128
 #define ACC_IQ_SIZE                    4
 
-#define ACC_FCW_FFT_BLEN_3             28
+#define ACC_FCW_FFT_BLEN_VRB2         128
 
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define ACC_N_ZC_1 66 /* N = 66 Zc for BG 1 */
