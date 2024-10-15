@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2023 NXP
+ * Copyright 2018-2024 NXP
  */
 
 #ifndef _DPAA2_QDMA_H_
@@ -12,16 +12,7 @@
 #define DPAA2_QDMA_MIN_DESC		1
 #define DPAA2_QDMA_MAX_VHANS		64
 
-#define DPAA2_QDMA_VQ_FD_SHORT_FORMAT		(1ULL << 0)
-#define DPAA2_QDMA_VQ_FD_SG_FORMAT		(1ULL << 1)
-#define DPAA2_QDMA_VQ_NO_RESPONSE		(1ULL << 2)
-
 #define DPAA2_DPDMAI_MAX_QUEUES	16
-
-#define QDMA_JOB_HW_CNTX_IDX (RTE_DPAA2_QDMA_JOB_USR_CNTX_IDX + 1)
-
-/** FLE pool cache size */
-#define QDMA_FLE_CACHE_SIZE(_num) (_num/(RTE_MAX_LCORE * 2))
 
 /** Notification by FQD_CTX[fqid] */
 #define QDMA_SER_CTX (1 << 8)
@@ -40,9 +31,14 @@
 #define DPAA2_LX2_COHERENT_ALLOCATE_CACHE	0xb
 
 /** Maximum possible H/W Queues on each core */
-#define MAX_HW_QUEUE_PER_CORE		64
+#define MAX_HW_QUEUE_PER_CORE 64
 
-#define QDMA_RBP_UPPER_ADDRESS_MASK (0xfff0000000000)
+#define DPAA2_QDMA_FD_FLUSH_FORMAT 0x0
+#define DPAA2_QDMA_FD_LONG_FORMAT 0x1
+#define DPAA2_QDMA_FD_SHORT_FORMAT 0x3
+
+#define DPAA2_QDMA_BMT_ENABLE 0x1
+#define DPAA2_QDMA_BMT_DISABLE 0x0
 
 /** Source/Destination Descriptor */
 struct qdma_sdd {
@@ -99,8 +95,8 @@ struct qdma_sdd {
 #define QDMA_SG_SL_SHORT	0x1 /* short length */
 #define QDMA_SG_SL_LONG	0x0 /* long length */
 #define QDMA_SG_F	0x1 /* last sg entry */
-#define QDMA_SG_BMT_ENABLE 0x1
-#define QDMA_SG_BMT_DISABLE 0x0
+#define QDMA_SG_BMT_ENABLE DPAA2_QDMA_BMT_ENABLE
+#define QDMA_SG_BMT_DISABLE DPAA2_QDMA_BMT_DISABLE
 
 struct qdma_sg_entry {
 	uint32_t addr_lo;		/* address 0:31 */
@@ -166,6 +162,40 @@ struct dpaa2_qdma_rbp {
 	uint32_t rsv:2;
 };
 
+enum dpaa2_qdma_fd_type {
+	DPAA2_QDMA_FD_SHORT = 1,
+	DPAA2_QDMA_FD_LONG = 2,
+	DPAA2_QDMA_FD_SG = 3
+};
+
+#define DPAA2_QDMA_FD_ATT_TYPE_OFFSET 13
+#define DPAA2_QDMA_FD_ATT_TYPE(att) \
+	(att >> DPAA2_QDMA_FD_ATT_TYPE_OFFSET)
+#define DPAA2_QDMA_FD_ATT_CNTX(att) \
+	(att & ((1 << DPAA2_QDMA_FD_ATT_TYPE_OFFSET) - 1))
+
+static inline void
+dpaa2_qdma_fd_set_addr(struct qbman_fd *fd,
+	uint64_t addr)
+{
+	fd->simple_ddr.saddr_lo = lower_32_bits(addr);
+	fd->simple_ddr.saddr_hi = upper_32_bits(addr);
+}
+
+static inline void
+dpaa2_qdma_fd_save_att(struct qbman_fd *fd,
+	uint16_t job_idx, enum dpaa2_qdma_fd_type type)
+{
+	fd->simple_ddr.rsv1_att = job_idx |
+		(type << DPAA2_QDMA_FD_ATT_TYPE_OFFSET);
+}
+
+static inline uint16_t
+dpaa2_qdma_fd_get_att(const struct qbman_fd *fd)
+{
+	return fd->simple_ddr.rsv1_att;
+}
+
 enum {
 	DPAA2_QDMA_SDD_FLE,
 	DPAA2_QDMA_SRC_FLE,
@@ -190,12 +220,6 @@ struct qdma_cntx_sg {
 	struct qdma_sg_entry sg_dst_entry[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
 	uint16_t cntx_idx[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
 	uint16_t job_nb;
-	uint16_t rsv[3];
-} __rte_packed;
-
-struct qdma_cntx_long {
-	struct qdma_cntx_fle_sdd fle_sdd;
-	uint16_t cntx_idx;
 	uint16_t rsv[3];
 } __rte_packed;
 
@@ -241,6 +265,7 @@ struct qdma_virt_queue {
 	struct dpaa2_dpdmai_dev *dpdmai_dev;
 	/** FLE pool for the queue */
 	struct rte_mempool *fle_pool;
+	uint64_t fle_iova2va_offset;
 	void **fle_elem;
 	/** Route by port */
 	struct dpaa2_qdma_rbp rbp;
@@ -252,6 +277,7 @@ struct qdma_virt_queue {
 	uint64_t num_enqueues;
 	/* Total number of dequeues from this VQ */
 	uint64_t num_dequeues;
+	uint64_t copy_num;
 
 	uint16_t vq_id;
 	uint32_t flags;
@@ -261,10 +287,11 @@ struct qdma_virt_queue {
 
 	/**Used for silent enabled*/
 	struct qdma_cntx_sg *cntx_sg[DPAA2_QDMA_MAX_DESC];
-	struct qdma_cntx_long *cntx_long[DPAA2_QDMA_MAX_DESC];
+	struct qdma_cntx_fle_sdd *cntx_fle_sdd[DPAA2_QDMA_MAX_DESC];
 	uint16_t silent_idx;
 
 	int num_valid_jobs;
+	int using_short_fd;
 
 	struct rte_dma_stats stats;
 };

@@ -84,3 +84,7 @@ Device Arguments
 ``desc_debug=1``
   Enable descriptor debugs.
   Usage example: ``fslmc:dpdmai.1,desc_debug=1``
+
+``short_fd=1``
+  Enable short FDs.
+  Usage example: ``fslmc:dpdmai.1,short_fd=1``
