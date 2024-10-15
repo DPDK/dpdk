@@ -499,9 +499,22 @@ eth_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
-eth_link_update(struct rte_eth_dev *dev __rte_unused,
+eth_link_update(struct rte_eth_dev *dev,
                 int wait_to_complete __rte_unused)
 {
+	const struct pmd_internals *internals = dev->data->dev_private;
+	struct rte_eth_link *dev_link = &dev->data->dev_link;
+	int sockfd = internals->rx_queue[0].sockfd;
+	struct ifreq ifr = { };
+
+	if (sockfd == -1)
+		return 0;
+
+	strlcpy(ifr.ifr_name, internals->if_name, IFNAMSIZ);
+	if (ioctl(sockfd, SIOCGIFFLAGS, &ifr) < 0)
+		return -errno;
+	dev_link->link_status = (ifr.ifr_flags & IFF_RUNNING) ?
+		RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
 	return 0;
 }
 
