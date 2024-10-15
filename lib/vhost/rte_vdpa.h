@@ -109,23 +109,6 @@ int
 rte_vdpa_get_protocol_features(struct rte_vdpa_device *dev, uint64_t *features);
 
 /**
- * Synchronize the used ring from mediated ring to guest, log dirty
- * page for each writeable buffer, caller should handle the used
- * ring logging before device stop.
- *
- * @param vid
- *  vhost device id
- * @param qid
- *  vhost queue id
- * @param vring_m
- *  mediated virtio ring pointer
- * @return
- *  number of synced used entries on success, -1 on failure
- */
-int
-rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m);
-
-/**
  * Retrieve names of statistics of a vDPA device.
  *
  * There is an assumption that 'stat_names' and 'stats' arrays are matched
