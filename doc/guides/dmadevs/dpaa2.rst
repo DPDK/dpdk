@@ -73,3 +73,14 @@ Platform Requirement
 
 DPAA2 drivers for DPDK can only work on NXP SoCs as listed in the
 ``Supported DPAA2 SoCs``.
+
+Device Arguments
+----------------
+
+``fle_pre_populate=1``
+  Pre-populate all DMA descriptors with pre-initialized values.
+  Usage example: ``fslmc:dpdmai.1,fle_pre_populate=1``
+
+``desc_debug=1``
+  Enable descriptor debugs.
+  Usage example: ``fslmc:dpdmai.1,desc_debug=1``

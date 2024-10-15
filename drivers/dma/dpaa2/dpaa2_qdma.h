@@ -1,11 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2022 NXP
+ * Copyright 2018-2023 NXP
  */
 
 #ifndef _DPAA2_QDMA_H_
 #define _DPAA2_QDMA_H_
 
-#define DPAA2_QDMA_MAX_DESC		1024
+#include "portal/dpaa2_hw_pvt.h"
+#include "portal/dpaa2_hw_dpio.h"
+
+#define DPAA2_QDMA_MAX_DESC		4096
 #define DPAA2_QDMA_MIN_DESC		1
 #define DPAA2_QDMA_MAX_VHANS		64
 
@@ -13,48 +16,9 @@
 #define DPAA2_QDMA_VQ_FD_SG_FORMAT		(1ULL << 1)
 #define DPAA2_QDMA_VQ_NO_RESPONSE		(1ULL << 2)
 
-#define DPAA2_QDMA_MAX_FLE 3
-#define DPAA2_QDMA_MAX_SDD 2
+#define DPAA2_DPDMAI_MAX_QUEUES	16
 
-#define DPAA2_QDMA_MAX_SG_NB 64
-
-#define DPAA2_DPDMAI_MAX_QUEUES	1
-
-/** FLE single job pool size: job pointer(uint64_t) +
- * 3 Frame list + 2 source/destination descriptor.
- */
-#define QDMA_FLE_SINGLE_POOL_SIZE (sizeof(uint64_t) + \
-			sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
-			sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
-
-/** FLE sg jobs pool size: job number(uint64_t) +
- * 3 Frame list + 2 source/destination descriptor  +
- * 64 (src + dst) sg entries + 64 jobs pointers.
- */
-#define QDMA_FLE_SG_POOL_SIZE (sizeof(uint64_t) + \
-		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE + \
-		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD + \
-		sizeof(struct qdma_sg_entry) * (DPAA2_QDMA_MAX_SG_NB * 2) + \
-		sizeof(struct rte_qdma_job *) * DPAA2_QDMA_MAX_SG_NB)
-
-#define QDMA_FLE_JOB_NB_OFFSET 0
-
-#define QDMA_FLE_SINGLE_JOB_OFFSET 0
-
-#define QDMA_FLE_FLE_OFFSET \
-		(QDMA_FLE_JOB_NB_OFFSET + sizeof(uint64_t))
-
-#define QDMA_FLE_SDD_OFFSET \
-		(QDMA_FLE_FLE_OFFSET + \
-		sizeof(struct qbman_fle) * DPAA2_QDMA_MAX_FLE)
-
-#define QDMA_FLE_SG_ENTRY_OFFSET \
-		(QDMA_FLE_SDD_OFFSET + \
-		sizeof(struct qdma_sdd) * DPAA2_QDMA_MAX_SDD)
-
-#define QDMA_FLE_SG_JOBS_OFFSET \
-		(QDMA_FLE_SG_ENTRY_OFFSET + \
-		sizeof(struct qdma_sg_entry) * DPAA2_QDMA_MAX_SG_NB * 2)
+#define QDMA_JOB_HW_CNTX_IDX (RTE_DPAA2_QDMA_JOB_USR_CNTX_IDX + 1)
 
 /** FLE pool cache size */
 #define QDMA_FLE_CACHE_SIZE(_num) (_num/(RTE_MAX_LCORE * 2))
@@ -202,12 +166,49 @@ struct dpaa2_qdma_rbp {
 	uint32_t rsv:2;
 };
 
+enum {
+	DPAA2_QDMA_SDD_FLE,
+	DPAA2_QDMA_SRC_FLE,
+	DPAA2_QDMA_DST_FLE,
+	DPAA2_QDMA_MAX_FLE
+};
+
+enum {
+	DPAA2_QDMA_SRC_SDD,
+	DPAA2_QDMA_DST_SDD,
+	DPAA2_QDMA_MAX_SDD
+};
+
+struct qdma_cntx_fle_sdd {
+	struct qbman_fle fle[DPAA2_QDMA_MAX_FLE];
+	struct qdma_sdd sdd[DPAA2_QDMA_MAX_SDD];
+} __rte_packed;
+
+struct qdma_cntx_sg {
+	struct qdma_cntx_fle_sdd fle_sdd;
+	struct qdma_sg_entry sg_src_entry[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
+	struct qdma_sg_entry sg_dst_entry[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
+	uint16_t cntx_idx[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
+	uint16_t job_nb;
+	uint16_t rsv[3];
+} __rte_packed;
+
+struct qdma_cntx_long {
+	struct qdma_cntx_fle_sdd fle_sdd;
+	uint16_t cntx_idx;
+	uint16_t rsv[3];
+} __rte_packed;
+
+#define DPAA2_QDMA_IDXADDR_FROM_SG_FLAG(flag) \
+	((void *)(uintptr_t)((flag) - ((flag) & RTE_DPAA2_QDMA_SG_IDX_ADDR_MASK)))
+
+#define DPAA2_QDMA_IDX_FROM_FLAG(flag) \
+	((flag) >> RTE_DPAA2_QDMA_COPY_IDX_OFFSET)
+
 /** Represents a DPDMAI device */
 struct dpaa2_dpdmai_dev {
 	/** Pointer to Next device instance */
 	TAILQ_ENTRY(dpaa2_qdma_device) next;
-	/** handle to DPDMAI object */
-	struct fsl_mc_io dpdmai;
 	/** HW ID for DPDMAI object */
 	uint32_t dpdmai_id;
 	/** Tocken of this device */
@@ -221,42 +222,30 @@ struct dpaa2_dpdmai_dev {
 	struct qdma_device *qdma_dev;
 };
 
-struct qdma_virt_queue;
+#define QDMA_CNTX_IDX_RING_EXTRA_SPACE 64
+#define QDMA_CNTX_IDX_RING_MAX_FREE \
+	(DPAA2_QDMA_MAX_DESC - QDMA_CNTX_IDX_RING_EXTRA_SPACE)
+struct qdma_cntx_idx_ring {
+	uint16_t cntx_idx_ring[DPAA2_QDMA_MAX_DESC];
+	uint16_t start;
+	uint16_t tail;
+	uint16_t free_space;
+	uint16_t nb_in_ring;
+};
 
-typedef uint16_t (qdma_get_job_t)(struct qdma_virt_queue *qdma_vq,
-					const struct qbman_fd *fd,
-					struct rte_dpaa2_qdma_job **job,
-					uint16_t *nb_jobs);
-typedef int (qdma_set_fd_t)(struct qdma_virt_queue *qdma_vq,
-					struct qbman_fd *fd,
-					struct rte_dpaa2_qdma_job **job,
-					uint16_t nb_jobs);
-
-typedef int (qdma_dequeue_multijob_t)(
-				struct qdma_virt_queue *qdma_vq,
-				uint16_t *vq_id,
-				struct rte_dpaa2_qdma_job **job,
-				uint16_t nb_jobs);
-
-typedef int (qdma_enqueue_multijob_t)(
-			struct qdma_virt_queue *qdma_vq,
-			struct rte_dpaa2_qdma_job **job,
-			uint16_t nb_jobs);
+#define DPAA2_QDMA_DESC_DEBUG_FLAG (1 << 0)
 
 /** Represents a QDMA virtual queue */
 struct qdma_virt_queue {
-	/** Status ring of the virtual queue */
-	struct rte_ring *status_ring;
 	/** Associated hw queue */
 	struct dpaa2_dpdmai_dev *dpdmai_dev;
 	/** FLE pool for the queue */
 	struct rte_mempool *fle_pool;
+	void **fle_elem;
 	/** Route by port */
 	struct dpaa2_qdma_rbp rbp;
 	/** States if this vq is in use or not */
-	uint8_t in_use;
-	/** States if this vq has exclusively associated hw queue */
-	uint8_t exclusive_hw_queue;
+	uint8_t fle_pre_populate;
 	/** Number of descriptor for the virtual DMA channel */
 	uint16_t nb_desc;
 	/* Total number of enqueues on this VQ */
@@ -266,18 +255,18 @@ struct qdma_virt_queue {
 
 	uint16_t vq_id;
 	uint32_t flags;
+	struct qbman_fd fd[DPAA2_QDMA_MAX_DESC];
+	uint16_t fd_idx;
+	struct qdma_cntx_idx_ring *ring_cntx_idx;
 
-	struct rte_dpaa2_qdma_job *job_list[DPAA2_QDMA_MAX_DESC];
-	struct rte_mempool *job_pool;
+	/**Used for silent enabled*/
+	struct qdma_cntx_sg *cntx_sg[DPAA2_QDMA_MAX_DESC];
+	struct qdma_cntx_long *cntx_long[DPAA2_QDMA_MAX_DESC];
+	uint16_t silent_idx;
+
 	int num_valid_jobs;
 
 	struct rte_dma_stats stats;
-
-	qdma_set_fd_t *set_fd;
-	qdma_get_job_t *get_job;
-
-	qdma_dequeue_multijob_t *dequeue_job;
-	qdma_enqueue_multijob_t *enqueue_job;
 };
 
 /** Represents a QDMA device. */
@@ -286,8 +275,7 @@ struct qdma_device {
 	struct qdma_virt_queue *vqs;
 	/** Total number of VQ's */
 	uint16_t num_vqs;
-	/** Device state - started or stopped */
-	uint8_t state;
+	uint8_t is_silent;
 };
 
 #endif /* _DPAA2_QDMA_H_ */

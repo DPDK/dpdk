@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2021-2022 NXP
+ * Copyright 2021-2023 NXP
  */
 
 #ifndef _RTE_PMD_DPAA2_QDMA_H_
@@ -7,118 +7,30 @@
 
 #include <rte_compat.h>
 
-/** States if the source addresses is physical. */
-#define RTE_DPAA2_QDMA_JOB_SRC_PHY		(1ULL << 30)
+#define RTE_DPAA2_QDMA_IDX_SHIFT_POS 20
+#define RTE_DPAA2_QDMA_LEN_MASK \
+	(~((~0u) << RTE_DPAA2_QDMA_IDX_SHIFT_POS))
 
-/** States if the destination addresses is physical. */
-#define RTE_DPAA2_QDMA_JOB_DEST_PHY		(1ULL << 31)
+#define RTE_DPAA2_QDMA_IDX_LEN(idx, len) \
+	((uint32_t)((idx << RTE_DPAA2_QDMA_IDX_SHIFT_POS) | (len & RTE_DPAA2_QDMA_LEN_MASK)))
 
-/** Determines a QDMA job */
-struct rte_dpaa2_qdma_job {
-	/** Source Address from where DMA is (to be) performed */
-	uint64_t src;
-	/** Destination Address where DMA is (to be) done */
-	uint64_t dest;
-	/** Length of the DMA operation in bytes. */
-	uint32_t len;
-	/** See RTE_QDMA_JOB_ flags */
-	uint32_t flags;
-	/**
-	 * Status of the transaction.
-	 * This is filled in the dequeue operation by the driver.
-	 * upper 8bits acc_err for route by port.
-	 * lower 8bits fd error
-	 */
-	uint16_t status;
-	uint16_t vq_id;
-	uint64_t cnxt;
-	/**
-	 * FLE pool element maintained by user, in case no qDMA response.
-	 * Note: the address must be allocated from DPDK memory pool.
-	 */
-	void *usr_elem;
-};
+#define RTE_DPAA2_QDMA_IDX_FROM_LENGTH(length) \
+	((uint16_t)((length) >> RTE_DPAA2_QDMA_IDX_SHIFT_POS))
 
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
- * Enable FD in Ultra Short format on a channel. This API should be
- * called before calling 'rte_dma_vchan_setup()' API.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param vchan
- *   The identifier of virtual DMA channel.
- */
-__rte_experimental
-void rte_dpaa2_qdma_vchan_fd_us_enable(int16_t dev_id, uint16_t vchan);
+#define RTE_DPAA2_QDMA_LEN_FROM_LENGTH(length) \
+	((length) & RTE_DPAA2_QDMA_LEN_MASK)
 
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
- * Enable internal SG processing on a channel. This API should be
- * called before calling 'rte_dma_vchan_setup()' API.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param vchan
- *   The identifier of virtual DMA channel.
- */
-__rte_experimental
-void rte_dpaa2_qdma_vchan_internal_sg_enable(int16_t dev_id, uint16_t vchan);
+#define RTE_DPAA2_QDMA_COPY_IDX_OFFSET 8
+#define RTE_DPAA2_QDMA_SG_IDX_ADDR_ALIGN \
+	RTE_BIT64(RTE_DPAA2_QDMA_COPY_IDX_OFFSET)
+#define RTE_DPAA2_QDMA_SG_IDX_ADDR_MASK \
+	(RTE_DPAA2_QDMA_SG_IDX_ADDR_ALIGN - 1)
+#define RTE_DPAA2_QDMA_SG_SUBMIT(idx_addr, flag) \
+	(((uint64_t)idx_addr) | (flag))
 
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
- * Enqueue a copy operation onto the virtual DMA channel for silent mode,
- * when dequeue is not required.
- *
- * This queues up a copy operation to be performed by hardware, if the 'flags'
- * parameter contains RTE_DMA_OP_FLAG_SUBMIT then trigger doorbell to begin
- * this operation, otherwise do not trigger doorbell.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param vchan
- *   The identifier of virtual DMA channel.
- * @param jobs
- *   Jobs to be submitted to QDMA.
- * @param nb_cpls
- *   Number of DMA jobs.
- *
- * @return
- *   - >= 0..Number of enqueued job.
- *   - -ENOSPC: if no space left to enqueue.
- *   - other values < 0 on failure.
- */
-__rte_experimental
-int rte_dpaa2_qdma_copy_multi(int16_t dev_id, uint16_t vchan,
-		struct rte_dpaa2_qdma_job **jobs, uint16_t nb_cpls);
+#define RTE_DPAA2_QDMA_COPY_SUBMIT(idx, flag) \
+	((idx << RTE_DPAA2_QDMA_COPY_IDX_OFFSET) | (flag))
 
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
- * Return the number of operations that have been successfully completed.
- *
- * @param dev_id
- *   The identifier of the device.
- * @param vchan
- *   The identifier of virtual DMA channel.
- * @param jobs
- *   Jobs completed by QDMA.
- * @param nb_cpls
- *   Number of completed DMA jobs.
- *
- * @return
- *   The number of operations that successfully completed. This return value
- *   must be less than or equal to the value of nb_cpls.
- */
-__rte_experimental
-uint16_t rte_dpaa2_qdma_completed_multi(int16_t dev_id, uint16_t vchan,
-		struct rte_dpaa2_qdma_job **jobs, uint16_t nb_cpls);
-
+#define RTE_DPAA2_QDMA_JOB_SUBMIT_MAX (32 + 8)
+#define RTE_DMA_CAPA_DPAA2_QDMA_FLAGS_INDEX RTE_BIT64(63)
 #endif /* _RTE_PMD_DPAA2_QDMA_H_ */
