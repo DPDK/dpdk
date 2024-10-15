@@ -167,6 +167,9 @@ fsl_qdma_pre_comp_sd_desc(struct fsl_qdma_queue *queue)
 
 		/* Descriptor Buffer */
 		sdf->srttype = FSL_QDMA_CMD_RWTTYPE;
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050265
+		sdf->prefetch = 1;
+#endif
 		ddf->dwttype = FSL_QDMA_CMD_RWTTYPE;
 		ddf->lwc = FSL_QDMA_CMD_LWC;
 
@@ -711,6 +714,9 @@ fsl_qdma_enqueue_desc_single(struct fsl_qdma_queue *fsl_queue,
 #ifdef RTE_DMA_DPAA_ERRATA_ERR050757
 	sdf = &ft->df.sdf;
 	sdf->srttype = FSL_QDMA_CMD_RWTTYPE;
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050265
+	sdf->prefetch = 1;
+#endif
 	if (len > FSL_QDMA_CMD_SS_ERR050757_LEN) {
 		sdf->ssen = 1;
 		sdf->sss = FSL_QDMA_CMD_SS_ERR050757_LEN;
@@ -824,6 +830,9 @@ eq_sg:
 #ifdef RTE_DMA_DPAA_ERRATA_ERR050757
 	sdf = &ft->df.sdf;
 	sdf->srttype = FSL_QDMA_CMD_RWTTYPE;
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050265
+	sdf->prefetch = 1;
+#endif
 	if (total_len > FSL_QDMA_CMD_SS_ERR050757_LEN) {
 		sdf->ssen = 1;
 		sdf->sss = FSL_QDMA_CMD_SS_ERR050757_LEN;

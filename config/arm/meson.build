@@ -490,6 +490,7 @@ soc_dpaa = {
         ['RTE_MAX_LCORE', 16],
         ['RTE_MAX_NUMA_NODES', 1],
         ['RTE_DMA_DPAA_ERRATA_ERR050757', true],
+        ['RTE_DMA_DPAA_ERRATA_ERR050265', true],
     ],
     'numa': false
 }

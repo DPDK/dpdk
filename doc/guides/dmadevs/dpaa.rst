@@ -44,6 +44,8 @@ target platform is dpaa-based. No additional compilation steps are necessary.
 
 ``RTE_DMA_DPAA_ERRATA_ERR050757``
   Enable software workaround for Errata-A050757
+``RTE_DMA_DPAA_ERRATA_ERR050265``
+  Enable software workaround for Errata-A050265
 
 Initialization
 --------------
