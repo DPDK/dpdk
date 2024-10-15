@@ -1,7 +1,7 @@
 /* * SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2021 NXP
+ *   Copyright 2016-2024 NXP
  *
  */
 
@@ -366,7 +366,7 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	uint8_t num_rxqueue_per_tc;
 	struct dpaa2_queue *mc_q, *mcq;
 	uint32_t tot_queues;
-	int i;
+	int i, ret = 0;
 	struct dpaa2_queue *dpaa2_q;
 
 	PMD_INIT_FUNC_TRACE();
@@ -386,16 +386,10 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < priv->nb_rx_queues; i++) {
 		mc_q->eth_data = dev->data;
 		priv->rx_vq[i] = mc_q++;
-		dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
-		dpaa2_q->q_storage = rte_malloc("dq_storage",
-					sizeof(struct queue_storage_info_t),
-					RTE_CACHE_LINE_SIZE);
-		if (!dpaa2_q->q_storage)
-			goto fail;
-
-		memset(dpaa2_q->q_storage, 0,
-		       sizeof(struct queue_storage_info_t));
-		if (dpaa2_alloc_dq_storage(dpaa2_q->q_storage))
+		dpaa2_q = priv->rx_vq[i];
+		ret = dpaa2_queue_storage_alloc(dpaa2_q,
+			RTE_MAX_LCORE);
+		if (ret)
 			goto fail;
 	}
 
@@ -405,19 +399,11 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 		if (!priv->rx_err_vq)
 			goto fail;
 
-		dpaa2_q = (struct dpaa2_queue *)priv->rx_err_vq;
-		dpaa2_q->q_storage = rte_malloc("err_dq_storage",
-					sizeof(struct queue_storage_info_t) *
-					RTE_MAX_LCORE,
-					RTE_CACHE_LINE_SIZE);
-		if (!dpaa2_q->q_storage)
+		dpaa2_q = priv->rx_err_vq;
+		ret = dpaa2_queue_storage_alloc(dpaa2_q,
+			RTE_MAX_LCORE);
+		if (ret)
 			goto fail;
-
-		memset(dpaa2_q->q_storage, 0,
-		       sizeof(struct queue_storage_info_t));
-		for (i = 0; i < RTE_MAX_LCORE; i++)
-			if (dpaa2_alloc_dq_storage(&dpaa2_q->q_storage[i]))
-				goto fail;
 	}
 
 	for (i = 0; i < priv->nb_tx_queues; i++) {
@@ -438,24 +424,17 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 			mc_q->tc_index = i;
 			mc_q->flow_id = 0;
 			priv->tx_conf_vq[i] = mc_q++;
-			dpaa2_q = (struct dpaa2_queue *)priv->tx_conf_vq[i];
-			dpaa2_q->q_storage =
-				rte_malloc("dq_storage",
-					sizeof(struct queue_storage_info_t),
-					RTE_CACHE_LINE_SIZE);
-			if (!dpaa2_q->q_storage)
-				goto fail_tx_conf;
-
-			memset(dpaa2_q->q_storage, 0,
-			       sizeof(struct queue_storage_info_t));
-			if (dpaa2_alloc_dq_storage(dpaa2_q->q_storage))
+			dpaa2_q = priv->tx_conf_vq[i];
+			ret = dpaa2_queue_storage_alloc(dpaa2_q,
+					RTE_MAX_LCORE);
+			if (ret)
 				goto fail_tx_conf;
 		}
 	}
 
 	vq_id = 0;
 	for (dist_idx = 0; dist_idx < priv->nb_rx_queues; dist_idx++) {
-		mcq = (struct dpaa2_queue *)priv->rx_vq[vq_id];
+		mcq = priv->rx_vq[vq_id];
 		mcq->tc_index = dist_idx / num_rxqueue_per_tc;
 		mcq->flow_id = dist_idx % num_rxqueue_per_tc;
 		vq_id++;
@@ -465,15 +444,15 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 fail_tx_conf:
 	i -= 1;
 	while (i >= 0) {
-		dpaa2_q = (struct dpaa2_queue *)priv->tx_conf_vq[i];
-		rte_free(dpaa2_q->q_storage);
+		dpaa2_q = priv->tx_conf_vq[i];
+		dpaa2_queue_storage_free(dpaa2_q, RTE_MAX_LCORE);
 		priv->tx_conf_vq[i--] = NULL;
 	}
 	i = priv->nb_tx_queues;
 fail_tx:
 	i -= 1;
 	while (i >= 0) {
-		dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
+		dpaa2_q = priv->tx_vq[i];
 		rte_free(dpaa2_q->cscn);
 		priv->tx_vq[i--] = NULL;
 	}
@@ -482,17 +461,14 @@ fail:
 	i -= 1;
 	mc_q = priv->rx_vq[0];
 	while (i >= 0) {
-		dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
-		dpaa2_free_dq_storage(dpaa2_q->q_storage);
-		rte_free(dpaa2_q->q_storage);
+		dpaa2_q = priv->rx_vq[i];
+		dpaa2_queue_storage_free(dpaa2_q, RTE_MAX_LCORE);
 		priv->rx_vq[i--] = NULL;
 	}
 
 	if (dpaa2_enable_err_queue) {
-		dpaa2_q = (struct dpaa2_queue *)priv->rx_err_vq;
-		if (dpaa2_q->q_storage)
-			dpaa2_free_dq_storage(dpaa2_q->q_storage);
-		rte_free(dpaa2_q->q_storage);
+		dpaa2_q = priv->rx_err_vq;
+		dpaa2_queue_storage_free(dpaa2_q, RTE_MAX_LCORE);
 	}
 
 	rte_free(mc_q);
@@ -512,20 +488,21 @@ dpaa2_free_rx_tx_queues(struct rte_eth_dev *dev)
 	if (priv->rx_vq[0]) {
 		/* cleaning up queue storage */
 		for (i = 0; i < priv->nb_rx_queues; i++) {
-			dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
-			rte_free(dpaa2_q->q_storage);
+			dpaa2_q = priv->rx_vq[i];
+			dpaa2_queue_storage_free(dpaa2_q,
+				RTE_MAX_LCORE);
 		}
 		/* cleanup tx queue cscn */
 		for (i = 0; i < priv->nb_tx_queues; i++) {
-			dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
+			dpaa2_q = priv->tx_vq[i];
 			rte_free(dpaa2_q->cscn);
 		}
 		if (priv->flags & DPAA2_TX_CONF_ENABLE) {
 			/* cleanup tx conf queue storage */
 			for (i = 0; i < priv->nb_tx_queues; i++) {
-				dpaa2_q = (struct dpaa2_queue *)
-						priv->tx_conf_vq[i];
-				rte_free(dpaa2_q->q_storage);
+				dpaa2_q = priv->tx_conf_vq[i];
+				dpaa2_queue_storage_free(dpaa2_q,
+					RTE_MAX_LCORE);
 			}
 		}
 		/*free memory for all queues (RX+TX) */

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2019, 2024 NXP
  */
 
 #include <stdio.h>
@@ -142,7 +142,7 @@ dpaa2_cmdif_dequeue_bufs(struct rte_rawdev *dev,
 
 	cmdif_rcv_cnxt = (struct rte_dpaa2_cmdif_context *)(context);
 	rxq = &(cidev->rx_queue[cmdif_rcv_cnxt->priority]);
-	dq_storage = rxq->q_storage->dq_storage[0];
+	dq_storage = rxq->q_storage[0]->dq_storage[0];
 
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_fq(&pulldesc, rxq->fqid);

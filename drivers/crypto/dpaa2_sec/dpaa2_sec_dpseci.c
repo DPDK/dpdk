@@ -1932,7 +1932,7 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		}
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
-	dq_storage = dpaa2_qp->rx_vq.q_storage->dq_storage[0];
+	dq_storage = dpaa2_qp->rx_vq.q_storage[0]->dq_storage[0];
 
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_numframes(&pulldesc,
@@ -2023,10 +2023,7 @@ dpaa2_sec_queue_pair_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (qp->rx_vq.q_storage) {
-		dpaa2_free_dq_storage(qp->rx_vq.q_storage);
-		rte_free(qp->rx_vq.q_storage);
-	}
+	dpaa2_queue_storage_free(&qp->rx_vq, 1);
 	rte_mempool_free(qp->fle_pool);
 	rte_free(qp);
 
@@ -2077,18 +2074,10 @@ dpaa2_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->rx_vq.crypto_data = dev->data;
 	qp->tx_vq.crypto_data = dev->data;
-	qp->rx_vq.q_storage = rte_malloc("sec dq storage",
-		sizeof(struct queue_storage_info_t),
-		RTE_CACHE_LINE_SIZE);
-	if (!qp->rx_vq.q_storage) {
-		DPAA2_SEC_ERR("malloc failed for q_storage");
-		return -ENOMEM;
-	}
-	memset(qp->rx_vq.q_storage, 0, sizeof(struct queue_storage_info_t));
-
-	if (dpaa2_alloc_dq_storage(qp->rx_vq.q_storage)) {
-		DPAA2_SEC_ERR("Unable to allocate dequeue storage");
-		return -ENOMEM;
+	retcode = dpaa2_queue_storage_alloc((&qp->rx_vq), 1);
+	if (retcode) {
+		dpaa2_queue_storage_free((&qp->rx_vq), 1);
+		return retcode;
 	}
 
 	dev->data->queue_pairs[qp_id] = qp;

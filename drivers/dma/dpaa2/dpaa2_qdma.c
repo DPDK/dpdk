@@ -854,7 +854,7 @@ dpaa2_qdma_dequeue(void *dev_private,
 		dpaa2_dqrr_size : nb_cpls;
 	rxq = &(dpdmai_dev->rx_queue[qdma_vq->vq_id]);
 	fqid = rxq->fqid;
-	q_storage = rxq->q_storage;
+	q_storage = rxq->q_storage[0];
 
 	if (unlikely(!q_storage->active_dqs)) {
 		q_storage->toggle = 0;
@@ -1062,13 +1062,7 @@ dpaa2_qdma_configure(struct rte_dma_dev *dev,
 				qdma_dev->vqs[i].ring_cntx_idx = NULL;
 			}
 			rxq = &dpdmai_dev->rx_queue[i];
-			if (rxq->q_storage) {
-				DPAA2_QDMA_DEBUG("%s rxq[%d] re-configure",
-					dev->data->dev_name, i);
-				dpaa2_free_dq_storage(rxq->q_storage);
-				rte_free(rxq->q_storage);
-				rxq->q_storage = NULL;
-			}
+			dpaa2_queue_storage_free(rxq, 1);
 		}
 		rte_free(qdma_dev->vqs);
 		qdma_dev->vqs = NULL;
@@ -1124,24 +1118,9 @@ dpaa2_qdma_configure(struct rte_dma_dev *dev,
 		qdma_dev->vqs[i].vq_id = i;
 		rxq = &dpdmai_dev->rx_queue[i];
 		/* Allocate DQ storage for the DPDMAI Rx queues */
-		rxq->q_storage = rte_zmalloc(NULL,
-			sizeof(struct queue_storage_info_t),
-			RTE_CACHE_LINE_SIZE);
-		if (!rxq->q_storage) {
-			DPAA2_QDMA_ERR("%s Q[%d] storage alloc failed",
-				dev->data->dev_name, i);
-			ret = -ENOMEM;
+		ret = dpaa2_queue_storage_alloc(rxq, 1);
+		if (ret)
 			goto alloc_failed;
-		}
-
-		memset(rxq->q_storage, 0, sizeof(struct queue_storage_info_t));
-		ret = dpaa2_alloc_dq_storage(rxq->q_storage);
-		if (ret) {
-			DPAA2_QDMA_ERR("%s Q[%d] dq storage alloc failed",
-				dev->data->dev_name, i);
-			ret = -ENOMEM;
-			goto alloc_failed;
-		}
 	}
 
 	qdma_dev->num_vqs = dev_conf->nb_vchans;
@@ -1152,11 +1131,7 @@ dpaa2_qdma_configure(struct rte_dma_dev *dev,
 alloc_failed:
 	for (i = 0; i < dev_conf->nb_vchans; i++) {
 		rxq = &dpdmai_dev->rx_queue[i];
-		if (rxq->q_storage) {
-			dpaa2_free_dq_storage(rxq->q_storage);
-			rte_free(rxq->q_storage);
-			rxq->q_storage = NULL;
-		}
+		dpaa2_queue_storage_free(rxq, 1);
 	}
 
 	rte_free(qdma_dev->vqs);
@@ -1350,11 +1325,7 @@ dpaa2_qdma_close(struct rte_dma_dev *dev)
 	/* Free RXQ storages */
 	for (i = 0; i < qdma_dev->num_vqs; i++) {
 		rxq = &dpdmai_dev->rx_queue[i];
-		if (rxq->q_storage) {
-			dpaa2_free_dq_storage(rxq->q_storage);
-			rte_free(rxq->q_storage);
-			rxq->q_storage = NULL;
-		}
+		dpaa2_queue_storage_free(rxq, 1);
 	}
 
 	if (qdma_dev->vqs) {

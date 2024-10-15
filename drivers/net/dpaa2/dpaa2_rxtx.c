@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2021 NXP
+ *   Copyright 2016-2024 NXP
  *
  */
 
@@ -647,7 +647,7 @@ dump_err_pkts(struct dpaa2_queue *dpaa2_q)
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
 
-	dq_storage = dpaa2_q->q_storage[lcore_id].dq_storage[0];
+	dq_storage = dpaa2_q->q_storage[lcore_id]->dq_storage[0];
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_fq(&pulldesc, fqid);
 	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
@@ -716,7 +716,7 @@ uint16_t
 dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	/* Function receive frames for a given device and VQ*/
-	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct dpaa2_queue *dpaa2_q = queue;
 	struct qbman_result *dq_storage, *dq_storage1 = NULL;
 	uint32_t fqid = dpaa2_q->fqid;
 	int ret, num_rx = 0, pull_size;
@@ -724,9 +724,11 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct qbman_swp *swp;
 	const struct qbman_fd *fd;
 	struct qbman_pull_desc pulldesc;
-	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
+	struct queue_storage_info_t *q_storage;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
 	struct dpaa2_dev_priv *priv = eth_data->dev_private;
+
+	q_storage = dpaa2_q->q_storage[rte_lcore_id()];
 
 	if (unlikely(dpaa2_enable_err_queue))
 		dump_err_pkts(priv->rx_err_vq);
@@ -958,7 +960,7 @@ uint16_t
 dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	/* Function receive frames for a given device and VQ */
-	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct dpaa2_queue *dpaa2_q = queue;
 	struct qbman_result *dq_storage;
 	uint32_t fqid = dpaa2_q->fqid;
 	int ret, num_rx = 0, next_pull = nb_pkts, num_pulled;
@@ -984,7 +986,7 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	swp = DPAA2_PER_LCORE_PORTAL;
 
 	do {
-		dq_storage = dpaa2_q->q_storage->dq_storage[0];
+		dq_storage = dpaa2_q->q_storage[0]->dq_storage[0];
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_fq(&pulldesc, fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
@@ -1115,7 +1117,7 @@ uint16_t dpaa2_dev_tx_conf(void *queue)
 	swp = DPAA2_PER_LCORE_PORTAL;
 
 	do {
-		dq_storage = dpaa2_q->q_storage->dq_storage[0];
+		dq_storage = dpaa2_q->q_storage[0]->dq_storage[0];
 		qbman_pull_desc_clear(&pulldesc);
 		qbman_pull_desc_set_fq(&pulldesc, fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
@@ -1954,12 +1956,13 @@ dpaa2_dev_loopback_rx(void *queue,
 	struct qbman_fd *fd[DPAA2_LX2_DQRR_RING_SIZE];
 	struct qbman_pull_desc pulldesc;
 	struct qbman_eq_desc eqdesc;
-	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
+	struct queue_storage_info_t *q_storage;
 	struct rte_eth_dev_data *eth_data = dpaa2_q->eth_data;
 	struct dpaa2_dev_priv *priv = eth_data->dev_private;
 	struct dpaa2_queue *tx_q = priv->tx_vq[0];
 	/* todo - currently we are using 1st TX queue only for loopback*/
 
+	q_storage = dpaa2_q->q_storage[rte_lcore_id()];
 	if (unlikely(!DPAA2_PER_LCORE_ETHRX_DPIO)) {
 		ret = dpaa2_affine_qbman_ethrx_swp();
 		if (ret) {

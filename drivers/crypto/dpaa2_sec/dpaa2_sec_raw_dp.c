@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2021-2022 NXP
+ * Copyright 2021-2022, 2024 NXP
  */
 
 #include <cryptodev_pmd.h>
@@ -853,7 +853,7 @@ dpaa2_sec_raw_dequeue_burst(void *qp_data, uint8_t *drv_ctx,
 		}
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
-	dq_storage = dpaa2_qp->rx_vq.q_storage->dq_storage[0];
+	dq_storage = dpaa2_qp->rx_vq.q_storage[0]->dq_storage[0];
 
 	qbman_pull_desc_clear(&pulldesc);
 	qbman_pull_desc_set_numframes(&pulldesc,
