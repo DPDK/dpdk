@@ -22,7 +22,7 @@ uint32_t dpaa2_coherent_alloc_cache;
 static inline int
 qdma_populate_fd_pci(phys_addr_t src, phys_addr_t dest,
 		     uint32_t len, struct qbman_fd *fd,
-		     struct rte_dpaa2_qdma_rbp *rbp, int ser)
+		     struct dpaa2_qdma_rbp *rbp, int ser)
 {
 	fd->simple_pci.saddr_lo = lower_32_bits((uint64_t) (src));
 	fd->simple_pci.saddr_hi = upper_32_bits((uint64_t) (src));
@@ -93,7 +93,7 @@ qdma_populate_fd_ddr(phys_addr_t src, phys_addr_t dest,
 static void
 dpaa2_qdma_populate_fle(struct qbman_fle *fle,
 			uint64_t fle_iova,
-			struct rte_dpaa2_qdma_rbp *rbp,
+			struct dpaa2_qdma_rbp *rbp,
 			uint64_t src, uint64_t dest,
 			size_t len, uint32_t flags, uint32_t fmt)
 {
@@ -114,7 +114,6 @@ dpaa2_qdma_populate_fle(struct qbman_fle *fle,
 		/* source */
 		sdd->read_cmd.portid = rbp->sportid;
 		sdd->rbpcmd_simple.pfid = rbp->spfid;
-		sdd->rbpcmd_simple.vfa = rbp->vfa;
 		sdd->rbpcmd_simple.vfid = rbp->svfid;
 
 		if (rbp->srbp) {
@@ -127,7 +126,6 @@ dpaa2_qdma_populate_fle(struct qbman_fle *fle,
 		/* destination */
 		sdd->write_cmd.portid = rbp->dportid;
 		sdd->rbpcmd_simple.pfid = rbp->dpfid;
-		sdd->rbpcmd_simple.vfa = rbp->vfa;
 		sdd->rbpcmd_simple.vfid = rbp->dvfid;
 
 		if (rbp->drbp) {
@@ -178,7 +176,7 @@ dpdmai_dev_set_fd_us(struct qdma_virt_queue *qdma_vq,
 		     struct rte_dpaa2_qdma_job **job,
 		     uint16_t nb_jobs)
 {
-	struct rte_dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
+	struct dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
 	struct rte_dpaa2_qdma_job **ppjob;
 	size_t iova;
 	int ret = 0, loop;
@@ -276,7 +274,7 @@ dpdmai_dev_set_multi_fd_lf_no_rsp(struct qdma_virt_queue *qdma_vq,
 				  struct rte_dpaa2_qdma_job **job,
 				  uint16_t nb_jobs)
 {
-	struct rte_dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
+	struct dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
 	struct rte_dpaa2_qdma_job **ppjob;
 	uint16_t i;
 	void *elem;
@@ -322,7 +320,7 @@ dpdmai_dev_set_multi_fd_lf(struct qdma_virt_queue *qdma_vq,
 			   struct rte_dpaa2_qdma_job **job,
 			   uint16_t nb_jobs)
 {
-	struct rte_dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
+	struct dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
 	struct rte_dpaa2_qdma_job **ppjob;
 	uint16_t i;
 	int ret;
@@ -375,7 +373,7 @@ dpdmai_dev_set_sg_fd_lf(struct qdma_virt_queue *qdma_vq,
 			struct rte_dpaa2_qdma_job **job,
 			uint16_t nb_jobs)
 {
-	struct rte_dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
+	struct dpaa2_qdma_rbp *rbp = &qdma_vq->rbp;
 	struct rte_dpaa2_qdma_job **ppjob;
 	void *elem;
 	struct qbman_fle *fle;
@@ -1223,17 +1221,38 @@ rte_dpaa2_qdma_vchan_internal_sg_enable(int16_t dev_id, uint16_t vchan)
 	qdma_dev->vqs[vchan].flags |= DPAA2_QDMA_VQ_FD_SG_FORMAT;
 }
 
-/* Enable RBP */
-void
-rte_dpaa2_qdma_vchan_rbp_enable(int16_t dev_id, uint16_t vchan,
-				struct rte_dpaa2_qdma_rbp *rbp_config)
+static int
+dpaa2_qdma_vchan_rbp_set(struct qdma_virt_queue *vq,
+	const struct rte_dma_vchan_conf *conf)
 {
-	struct rte_dma_fp_object *obj = &rte_dma_fp_objs[dev_id];
-	struct dpaa2_dpdmai_dev *dpdmai_dev = obj->dev_private;
-	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+	if (conf->direction == RTE_DMA_DIR_MEM_TO_DEV ||
+		conf->direction == RTE_DMA_DIR_DEV_TO_DEV) {
+		if (conf->dst_port.port_type != RTE_DMA_PORT_PCIE)
+			return -EINVAL;
+		vq->rbp.enable = 1;
+		vq->rbp.dportid = conf->dst_port.pcie.coreid;
+		vq->rbp.dpfid = conf->dst_port.pcie.pfid;
+		if (conf->dst_port.pcie.vfen) {
+			vq->rbp.dvfa = 1;
+			vq->rbp.dvfid = conf->dst_port.pcie.vfid;
+		}
+		vq->rbp.drbp = 1;
+	}
+	if (conf->direction == RTE_DMA_DIR_DEV_TO_MEM ||
+		conf->direction == RTE_DMA_DIR_DEV_TO_DEV) {
+		if (conf->src_port.port_type != RTE_DMA_PORT_PCIE)
+			return -EINVAL;
+		vq->rbp.enable = 1;
+		vq->rbp.sportid = conf->src_port.pcie.coreid;
+		vq->rbp.spfid = conf->src_port.pcie.pfid;
+		if (conf->src_port.pcie.vfen) {
+			vq->rbp.svfa = 1;
+			vq->rbp.dvfid = conf->src_port.pcie.vfid;
+		}
+		vq->rbp.srbp = 1;
+	}
 
-	memcpy(&qdma_dev->vqs[vchan].rbp, rbp_config,
-			sizeof(struct rte_dpaa2_qdma_rbp));
+	return 0;
 }
 
 static int
@@ -1247,11 +1266,15 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	char ring_name[32];
 	char pool_name[64];
 	int fd_long_format = 1;
-	int sg_enable = 0;
+	int sg_enable = 0, ret;
 
 	DPAA2_QDMA_FUNC_TRACE();
 
 	RTE_SET_USED(conf_sz);
+
+	ret = dpaa2_qdma_vchan_rbp_set(&qdma_dev->vqs[vchan], conf);
+	if (ret)
+		return ret;
 
 	if (qdma_dev->vqs[vchan].flags & DPAA2_QDMA_VQ_FD_SG_FORMAT)
 		sg_enable = 1;

@@ -166,6 +166,42 @@ struct qdma_sg_entry {
 	};
 } __rte_packed;
 
+struct dpaa2_qdma_rbp {
+	uint32_t use_ultrashort:1;
+	uint32_t enable:1;
+	/**
+	 * dportid:
+	 * 0000 PCI-Express 1
+	 * 0001 PCI-Express 2
+	 * 0010 PCI-Express 3
+	 * 0011 PCI-Express 4
+	 * 0100 PCI-Express 5
+	 * 0101 PCI-Express 6
+	 */
+	uint32_t dportid:4;
+	uint32_t dpfid:2;
+	uint32_t dvfid:6;
+	uint32_t dvfa:1;
+	/*using route by port for destination */
+	uint32_t drbp:1;
+	/**
+	 * sportid:
+	 * 0000 PCI-Express 1
+	 * 0001 PCI-Express 2
+	 * 0010 PCI-Express 3
+	 * 0011 PCI-Express 4
+	 * 0100 PCI-Express 5
+	 * 0101 PCI-Express 6
+	 */
+	uint32_t sportid:4;
+	uint32_t spfid:2;
+	uint32_t svfid:6;
+	uint32_t svfa:1;
+	/* using route by port for source */
+	uint32_t srbp:1;
+	uint32_t rsv:2;
+};
+
 /** Represents a DPDMAI device */
 struct dpaa2_dpdmai_dev {
 	/** Pointer to Next device instance */
@@ -216,7 +252,7 @@ struct qdma_virt_queue {
 	/** FLE pool for the queue */
 	struct rte_mempool *fle_pool;
 	/** Route by port */
-	struct rte_dpaa2_qdma_rbp rbp;
+	struct dpaa2_qdma_rbp rbp;
 	/** States if this vq is in use or not */
 	uint8_t in_use;
 	/** States if this vq has exclusively associated hw queue */

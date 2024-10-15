@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014 Freescale Semiconductor, Inc.
- * Copyright 2017-2019 NXP
+ * Copyright 2017-2024 NXP
  *
  */
 #ifndef _FSL_QBMAN_BASE_H
@@ -141,12 +141,23 @@ struct qbman_fd {
 			uint32_t saddr_hi;
 
 			uint32_t len_sl:18;
-			uint32_t rsv1:14;
-
+			uint32_t rsv13:2;
+			uint32_t svfid:6;
+			uint32_t rsv12:2;
+			uint32_t spfid:2;
+			uint32_t rsv1:2;
 			uint32_t sportid:4;
-			uint32_t rsv2:22;
+			uint32_t rsv2:1;
+			uint32_t sca:1;
+			uint32_t sat:2;
+			uint32_t sattr:3;
+			uint32_t svfa:1;
+			uint32_t stc:3;
 			uint32_t bmt:1;
-			uint32_t rsv3:1;
+			uint32_t dvfid:6;
+			uint32_t rsv3:2;
+			uint32_t dpfid:2;
+			uint32_t rsv31:2;
 			uint32_t fmt:2;
 			uint32_t sl:1;
 			uint32_t rsv4:1;
@@ -154,12 +165,14 @@ struct qbman_fd {
 			uint32_t acc_err:4;
 			uint32_t rsv5:4;
 			uint32_t ser:1;
-			uint32_t rsv6:3;
+			uint32_t rsv6:2;
+			uint32_t wns:1;
 			uint32_t wrttype:4;
 			uint32_t dqos:3;
 			uint32_t drbp:1;
 			uint32_t dlwc:2;
-			uint32_t rsv7:2;
+			uint32_t rsv7:1;
+			uint32_t rns:1;
 			uint32_t rdttype:4;
 			uint32_t sqos:3;
 			uint32_t srbp:1;
@@ -182,7 +195,7 @@ struct qbman_fd {
 			uint32_t saddr_lo;
 
 			uint32_t saddr_hi:17;
-			uint32_t rsv1:15;
+			uint32_t rsv1_att:15;
 
 			uint32_t len;
 
