@@ -42,6 +42,9 @@ Compilation
 For builds using ``meson`` and ``ninja``, the driver will be built when the
 target platform is dpaa-based. No additional compilation steps are necessary.
 
+``RTE_DMA_DPAA_ERRATA_ERR050757``
+  Enable software workaround for Errata-A050757
+
 Initialization
 --------------
 

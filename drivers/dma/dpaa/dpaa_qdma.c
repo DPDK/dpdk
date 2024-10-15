@@ -62,6 +62,12 @@ ilog2_qsize(uint32_t q_size)
 }
 
 static inline int
+ilog2_qthld(uint32_t q_thld)
+{
+    return (ilog2(q_thld) - ilog2(16));
+}
+
+static inline int
 fsl_qdma_queue_bd_in_hw(struct fsl_qdma_queue *fsl_queue)
 {
 	struct rte_dma_stats *stats = &fsl_queue->stats;
@@ -161,7 +167,6 @@ fsl_qdma_pre_comp_sd_desc(struct fsl_qdma_queue *queue)
 
 		/* Descriptor Buffer */
 		sdf->srttype = FSL_QDMA_CMD_RWTTYPE;
-
 		ddf->dwttype = FSL_QDMA_CMD_RWTTYPE;
 		ddf->lwc = FSL_QDMA_CMD_LWC;
 
@@ -443,8 +448,9 @@ fsl_qdma_reg_init(struct fsl_qdma_engine *fsl_qdma)
 
 			/* Initialize the queue mode. */
 			reg = FSL_QDMA_BCQMR_EN;
-			reg |= FSL_QDMA_BCQMR_CD_THLD(ilog2(temp->n_cq) - 4);
-			reg |= FSL_QDMA_BCQMR_CQ_SIZE(ilog2(temp->n_cq) - 6);
+			reg |= FSL_QDMA_BCQMR_CD_THLD(ilog2_qthld(temp->n_cq));
+			reg |= FSL_QDMA_BCQMR_CQ_SIZE(ilog2_qsize(temp->n_cq));
+			temp->le_cqmr = reg;
 			qdma_writel(reg, block + FSL_QDMA_BCQMR(i));
 		}
 
@@ -692,6 +698,9 @@ fsl_qdma_enqueue_desc_single(struct fsl_qdma_queue *fsl_queue,
 	struct fsl_qdma_comp_sg_desc *csgf_src, *csgf_dest;
 	struct fsl_qdma_cmpd_ft *ft;
 	int ret;
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050757
+	struct fsl_qdma_sdf *sdf;
+#endif
 
 	ret = fsl_qdma_enqueue_overflow(fsl_queue);
 	if (unlikely(ret))
@@ -699,6 +708,19 @@ fsl_qdma_enqueue_desc_single(struct fsl_qdma_queue *fsl_queue,
 
 	ft = fsl_queue->ft[fsl_queue->ci];
 
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050757
+	sdf = &ft->df.sdf;
+	sdf->srttype = FSL_QDMA_CMD_RWTTYPE;
+	if (len > FSL_QDMA_CMD_SS_ERR050757_LEN) {
+		sdf->ssen = 1;
+		sdf->sss = FSL_QDMA_CMD_SS_ERR050757_LEN;
+		sdf->ssd = FSL_QDMA_CMD_SS_ERR050757_LEN;
+	} else {
+		sdf->ssen = 0;
+		sdf->sss = 0;
+		sdf->ssd = 0;
+	}
+#endif
 	csgf_src = &ft->desc_sbuf;
 	csgf_dest = &ft->desc_dbuf;
 	qdma_desc_sge_addr_set64(csgf_src, src);
@@ -731,6 +753,9 @@ fsl_qdma_enqueue_desc_sg(struct fsl_qdma_queue *fsl_queue)
 	uint32_t total_len;
 	uint16_t start, idx, num, i, next_idx;
 	int ret;
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050757
+	struct fsl_qdma_sdf *sdf;
+#endif
 
 eq_sg:
 	total_len = 0;
@@ -796,6 +821,19 @@ eq_sg:
 	ft->desc_dsge[num - 1].final = 1;
 	csgf_src->length = total_len;
 	csgf_dest->length = total_len;
+#ifdef RTE_DMA_DPAA_ERRATA_ERR050757
+	sdf = &ft->df.sdf;
+	sdf->srttype = FSL_QDMA_CMD_RWTTYPE;
+	if (total_len > FSL_QDMA_CMD_SS_ERR050757_LEN) {
+		sdf->ssen = 1;
+		sdf->sss = FSL_QDMA_CMD_SS_ERR050757_LEN;
+		sdf->ssd = FSL_QDMA_CMD_SS_ERR050757_LEN;
+	} else {
+		sdf->ssen = 0;
+		sdf->sss = 0;
+		sdf->ssd = 0;
+	}
+#endif
 	ret = fsl_qdma_enqueue_desc_to_ring(fsl_queue, num);
 	if (ret)
 		return ret;
