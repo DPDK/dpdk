@@ -636,6 +636,11 @@ dpaa2_qdma_copy_sg(void *dev_private,
 		return -ENOTSUP;
 	}
 
+	if (unlikely(!nb_src)) {
+		DPAA2_QDMA_ERR("No SG entry specified");
+		return -EINVAL;
+	}
+
 	if (unlikely(nb_src > RTE_DPAA2_QDMA_JOB_SUBMIT_MAX)) {
 		DPAA2_QDMA_ERR("SG entry number(%d) > MAX(%d)",
 			nb_src, RTE_DPAA2_QDMA_JOB_SUBMIT_MAX);
@@ -712,10 +717,13 @@ dpaa2_qdma_copy_sg(void *dev_private,
 	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
 		expected = qdma_vq->fd_idx;
 		ret = dpaa2_qdma_multi_eq(qdma_vq);
-		if (likely(ret == expected))
-			return 0;
+		if (likely(ret == expected)) {
+			qdma_vq->copy_num += nb_src;
+			return (qdma_vq->copy_num - 1) & UINT16_MAX;
+		}
 	} else {
-		return 0;
+		qdma_vq->copy_num += nb_src;
+		return (qdma_vq->copy_num - 1) & UINT16_MAX;
 	}
 
 	return ret;
