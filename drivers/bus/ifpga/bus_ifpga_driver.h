@@ -11,15 +11,15 @@
  * RTE Intel FPGA Bus Interface
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif /* __cplusplus */
-
 #include <rte_compat.h>
 #include <dev_driver.h>
 #include <rte_pci.h>
 #include <rte_interrupts.h>
 #include <rte_spinlock.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
 
 #define IFPGA_BUS_NAME ifpga
 
