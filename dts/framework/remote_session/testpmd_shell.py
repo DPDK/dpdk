@@ -127,6 +127,23 @@ class VLANOffloadFlag(Flag):
         )
 
 
+class ChecksumOffloadOptions(Flag):
+    """Flag representing checksum hardware offload layer options."""
+
+    #:
+    ip = auto()
+    #:
+    udp = auto()
+    #:
+    tcp = auto()
+    #:
+    sctp = auto()
+    #:
+    outer_ip = auto()
+    #:
+    outer_udp = auto()
+
+
 class RSSOffloadTypesFlag(Flag):
     """Flag representing the RSS offload flow types supported by the NIC port."""
 
@@ -1777,6 +1794,47 @@ class TestPmdShell(DPDKShell):
             raise InteractiveCommandExecutionError("invalid port given")
 
         return TestPmdPortStats.parse(output)
+
+    @requires_stopped_ports
+    def csum_set_hw(
+        self, layers: ChecksumOffloadOptions, port_id: int, verify: bool = True
+    ) -> None:
+        """Enables hardware checksum offloading on the specified layer.
+
+        Args:
+            layers: The layer/layers that checksum offloading should be enabled on.
+            port_id: The port number to enable checksum offloading on, should be within 0-32.
+            verify: If :data:`True` the output of the command will be scanned in an attempt to
+                verify that checksum offloading was enabled on the port.
+
+        Raises:
+            InteractiveCommandExecutionError: If checksum offload is not enabled successfully.
+        """
+        for name, offload in ChecksumOffloadOptions.__members__.items():
+            if offload in layers:
+                name = name.replace("_", "-")
+                csum_output = self.send_command(f"csum set {name} hw {port_id}")
+                if verify:
+                    if (
+                        "Bad arguments" in csum_output
+                        or f"Please stop port {port_id} first" in csum_output
+                        or f"checksum offload is not supported by port {port_id}" in csum_output
+                    ):
+                        self._logger.debug(f"Csum set hw error:\n{csum_output}")
+                        raise InteractiveCommandExecutionError(
+                            f"Failed to set csum hw {name} mode on port {port_id}"
+                        )
+                success = False
+                if f"{name} checksum offload is hw" in csum_output.lower():
+                    success = True
+                if not success and verify:
+                    self._logger.debug(
+                        f"Failed to set csum hw mode on port {port_id}:\n{csum_output}"
+                    )
+                    raise InteractiveCommandExecutionError(
+                        f"""Failed to set csum hw mode on port
+                                                           {port_id}:\n{csum_output}"""
+                    )
 
     @requires_stopped_ports
     def set_port_mtu(self, port_id: int, mtu: int, verify: bool = True) -> None:
