@@ -257,6 +257,7 @@ struct fsl_qdma_engine {
 	struct fsl_qdma_queue *chan[QDMA_BLOCKS * QDMA_QUEUES];
 	uint32_t num_blocks;
 	int block_offset;
+	int is_silent;
 };
 
 #endif /* _DPAA_QDMA_H_ */

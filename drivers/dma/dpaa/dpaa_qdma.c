@@ -113,6 +113,7 @@ dma_pool_alloc(char *nm, int size, int aligned, dma_addr_t *phy_addr)
 static int
 fsl_qdma_pre_comp_sd_desc(struct fsl_qdma_queue *queue)
 {
+	struct fsl_qdma_engine *fsl_qdma = queue->engine;
 	struct fsl_qdma_sdf *sdf;
 	struct fsl_qdma_ddf *ddf;
 	struct fsl_qdma_comp_cmd_desc *ccdf;
@@ -167,7 +168,8 @@ fsl_qdma_pre_comp_sd_desc(struct fsl_qdma_queue *queue)
 		ccdf = &queue->cq[i];
 		qdma_desc_addr_set64(ccdf, phy_ft);
 		ccdf->format = FSL_QDMA_COMP_SG_FORMAT;
-
+		if (!fsl_qdma->is_silent)
+			ccdf->ser = 1;
 		ccdf->queue = queue->queue_id;
 	}
 	queue->ci = 0;
@@ -573,9 +575,12 @@ static int
 fsl_qdma_enqueue_desc_to_ring(struct fsl_qdma_queue *fsl_queue,
 	uint16_t num)
 {
+	struct fsl_qdma_engine *fsl_qdma = fsl_queue->engine;
 	uint16_t i, idx, start, dq;
 	int ret, dq_cnt;
 
+	if (fsl_qdma->is_silent)
+		return 0;
 
 	fsl_queue->desc_in_hw[fsl_queue->ci] = num;
 eq_again:
@@ -620,17 +625,34 @@ static int
 fsl_qdma_enqueue_overflow(struct fsl_qdma_queue *fsl_queue)
 {
 	int overflow = 0;
+	uint32_t reg;
 	uint16_t blk_drain, check_num, drain_num;
+	uint8_t *block = fsl_queue->block_vir;
 	const struct rte_dma_stats *st = &fsl_queue->stats;
 	struct fsl_qdma_engine *fsl_qdma = fsl_queue->engine;
 
 	check_num = 0;
 overflow_check:
-	overflow = (fsl_qdma_queue_bd_in_hw(fsl_queue) >=
+	if (fsl_qdma->is_silent) {
+		reg = qdma_readl_be(block +
+			 FSL_QDMA_BCQSR(fsl_queue->queue_id));
+		overflow = (reg & FSL_QDMA_BCQSR_QF_XOFF_BE) ?
+			1 : 0;
+	} else {
+		overflow = (fsl_qdma_queue_bd_in_hw(fsl_queue) >=
 			QDMA_QUEUE_CR_WM) ? 1 : 0;
+	}
 
-	if (likely(!overflow))
+	if (likely(!overflow)) {
 		return 0;
+	} else if (fsl_qdma->is_silent) {
+		check_num++;
+		if (check_num >= 10000) {
+			DPAA_QDMA_WARN("Waiting for HW complete in silent mode");
+			check_num = 0;
+		}
+		goto overflow_check;
+	}
 
 	DPAA_QDMA_DP_DEBUG("TC%d/Q%d submitted(%"PRIu64")-completed(%"PRIu64") >= %d",
 		fsl_queue->block_id, fsl_queue->queue_id,
@@ -875,10 +897,13 @@ queue_found:
 }
 
 static int
-dpaa_qdma_configure(__rte_unused struct rte_dma_dev *dmadev,
-	__rte_unused const struct rte_dma_conf *dev_conf,
+dpaa_qdma_configure(struct rte_dma_dev *dmadev,
+	const struct rte_dma_conf *dev_conf,
 	__rte_unused uint32_t conf_sz)
 {
+	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
+
+	fsl_qdma->is_silent = dev_conf->enable_silent;
 	return 0;
 }
 
@@ -964,6 +989,12 @@ dpaa_qdma_dequeue_status(void *dev_private, uint16_t vchan,
 	struct fsl_qdma_desc *desc_complete[nb_cpls];
 	uint16_t i, dq_num;
 
+	if (unlikely(fsl_qdma->is_silent)) {
+		DPAA_QDMA_WARN("Can't dq in silent mode");
+
+		return 0;
+	}
+
 	dq_num = dpaa_qdma_block_dequeue(fsl_qdma,
 			fsl_queue->block_id);
 	DPAA_QDMA_DP_DEBUG("%s: block dq(%d)",
@@ -993,6 +1024,11 @@ dpaa_qdma_dequeue(void *dev_private,
 	struct fsl_qdma_desc *desc_complete[nb_cpls];
 	uint16_t i, dq_num;
 
+	if (unlikely(fsl_qdma->is_silent)) {
+		DPAA_QDMA_WARN("Can't dq in silent mode");
+
+		return 0;
+	}
 
 	*has_error = false;
 	dq_num = dpaa_qdma_block_dequeue(fsl_qdma,
