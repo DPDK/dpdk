@@ -12,6 +12,8 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 
+#include <rte_graph_worker_common.h>
+
 extern int rte_node_logtype;
 #define RTE_LOGTYPE_NODE rte_node_logtype
 
@@ -87,5 +89,11 @@ node_mbuf_priv2(struct rte_mbuf *m)
 {
 	return (struct node_mbuf_priv2 *)rte_mbuf_to_priv(m);
 }
+
+#define NODE_INCREMENT_XSTAT_ID(node, id, cond, cnt) \
+do { \
+	if (unlikely(rte_graph_has_stats_feature() && (cond))) \
+		((uint64_t *)RTE_PTR_ADD(node, node->xstat_off))[id] += (cnt); \
+} while (0)
 
 #endif /* __NODE_PRIVATE_H__ */

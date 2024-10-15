@@ -120,6 +120,7 @@ ip4_reassembly_node_process(struct rte_graph *graph, struct rte_node *node, void
 		rte_node_next_stream_put(graph, node, RTE_NODE_IP4_REASSEMBLY_NEXT_PKT_DROP,
 					 dr->cnt);
 		idx += dr->cnt;
+		NODE_INCREMENT_XSTAT_ID(node, 0, dr->cnt, dr->cnt);
 		dr->cnt = 0;
 	}
 
@@ -165,11 +166,19 @@ ip4_reassembly_node_init(const struct rte_graph *graph, struct rte_node *node)
 	return 0;
 }
 
+static struct rte_node_xstats ip4_reassembly_xstats = {
+	.nb_xstats = 1,
+	.xstat_desc = {
+		[0] = "ip4_reassembly_error",
+	},
+};
+
 static struct rte_node_register ip4_reassembly_node = {
 	.process = ip4_reassembly_node_process,
 	.name = "ip4_reassembly",
 
 	.init = ip4_reassembly_node_init,
+	.xstats = &ip4_reassembly_xstats,
 
 	.nb_edges = RTE_NODE_IP4_REASSEMBLY_NEXT_PKT_DROP + 1,
 	.next_nodes = {

@@ -86,6 +86,7 @@ ip4_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 		rc = rte_lpm_lookup(lpm, rte_be_to_cpu_32(ipv4_hdr->dst_addr),
 				    &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
+		NODE_INCREMENT_XSTAT_ID(node, 0, rc != 0, 1);
 
 		node_mbuf_priv1(mbuf, dyn)->nh = (uint16_t)next_hop;
 		next_hop = next_hop >> 16;
@@ -219,11 +220,19 @@ ip4_lookup_node_init(const struct rte_graph *graph, struct rte_node *node)
 	return 0;
 }
 
+static struct rte_node_xstats ip4_lookup_xstats = {
+	.nb_xstats = 1,
+	.xstat_desc = {
+		[0] = "ip4_lookup_error",
+	},
+};
+
 static struct rte_node_register ip4_lookup_node = {
 	.process = ip4_lookup_node_process_scalar,
 	.name = "ip4_lookup",
 
 	.init = ip4_lookup_node_init,
+	.xstats = &ip4_lookup_xstats,
 
 	.nb_edges = RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP + 1,
 	.next_nodes = {
