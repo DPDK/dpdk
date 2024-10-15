@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2008-2012 Freescale Semiconductor Inc.
- * Copyright 2017-2020 NXP
+ * Copyright 2017-2024 NXP
  */
 
 #ifndef __FM_EXT_H
@@ -15,8 +15,23 @@
 #define MODULE_FM		0x00010000
 #define __ERR_MODULE__		MODULE_FM
 
-#define _fml_dbg(...)
-#define _fm_ioctl_dbg(...)
+/* #define FM_LIB_DBG */
+
+#if defined(FM_LIB_DBG)
+#define _fml_dbg(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAA_PMD, "%s: ", __func__, __VA_ARGS__)
+#else
+	#define _fml_dbg(arg...)
+#endif
+
+/*#define FM_IOCTL_DBG*/
+
+#if defined(FM_IOCTL_DBG)
+	#define _fm_ioctl_dbg(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAA_PMD, "%s: ", __func__, __VA_ARGS__)
+#else
+	#define _fm_ioctl_dbg(arg...)
+#endif
 
 /*
  * @Group	lnx_ioctl_ncsw_grp	NetCommSw Linux User-Space (IOCTL) API
