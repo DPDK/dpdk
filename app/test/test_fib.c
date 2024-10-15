@@ -389,7 +389,7 @@ int32_t
 test_invalid_rcu(void)
 {
 	struct rte_fib *fib = NULL;
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 	size_t sz;
 	struct rte_rcu_qsbr *qsv;
 	struct rte_rcu_qsbr *qsv2;
@@ -503,7 +503,7 @@ test_fib_rcu_qsbr_reader(void *arg)
 int32_t
 test_fib_rcu_sync_rw(void)
 {
-	struct rte_fib_conf config;
+	struct rte_fib_conf config = { 0 };
 	size_t sz;
 	int32_t status;
 	uint32_t i, next_hop;
