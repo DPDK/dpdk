@@ -8,8 +8,6 @@
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
 
-#define DPAA2_QDMA_MAX_DESC		4096
-#define DPAA2_QDMA_MIN_DESC		1
 #define DPAA2_QDMA_MAX_VHANS		64
 
 #define DPAA2_DPDMAI_MAX_QUEUES	16
@@ -169,10 +167,15 @@ enum dpaa2_qdma_fd_type {
 };
 
 #define DPAA2_QDMA_FD_ATT_TYPE_OFFSET 13
+#define DPAA2_QDMA_FD_ATT_MAX_IDX \
+	((1 << DPAA2_QDMA_FD_ATT_TYPE_OFFSET) - 1)
 #define DPAA2_QDMA_FD_ATT_TYPE(att) \
 	(att >> DPAA2_QDMA_FD_ATT_TYPE_OFFSET)
 #define DPAA2_QDMA_FD_ATT_CNTX(att) \
-	(att & ((1 << DPAA2_QDMA_FD_ATT_TYPE_OFFSET) - 1))
+	(att & DPAA2_QDMA_FD_ATT_MAX_IDX)
+
+#define DPAA2_QDMA_MAX_DESC ((DPAA2_QDMA_FD_ATT_MAX_IDX + 1) / 2)
+#define DPAA2_QDMA_MIN_DESC 1
 
 static inline void
 dpaa2_qdma_fd_set_addr(struct qbman_fd *fd,
@@ -186,6 +189,7 @@ static inline void
 dpaa2_qdma_fd_save_att(struct qbman_fd *fd,
 	uint16_t job_idx, enum dpaa2_qdma_fd_type type)
 {
+	RTE_ASSERT(job_idx <= DPAA2_QDMA_FD_ATT_MAX_IDX);
 	fd->simple_ddr.rsv1_att = job_idx |
 		(type << DPAA2_QDMA_FD_ATT_TYPE_OFFSET);
 }
