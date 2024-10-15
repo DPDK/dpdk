@@ -4,11 +4,15 @@
 
 #include <bus_dpaa_driver.h>
 #include <rte_dmadev_pmd.h>
+#include <rte_kvargs.h>
 
 #include "dpaa_qdma.h"
 #include "dpaa_qdma_logs.h"
 
 static uint32_t s_sg_max_entry_sz = 2000;
+static bool s_hw_err_check;
+
+#define DPAA_DMA_ERROR_CHECK "dpaa_dma_err_check"
 
 static inline void
 qdma_desc_addr_set64(struct fsl_qdma_comp_cmd_desc *ccdf, u64 addr)
@@ -642,7 +646,7 @@ fsl_qdma_enqueue_overflow(struct fsl_qdma_queue *fsl_queue)
 
 	check_num = 0;
 overflow_check:
-	if (fsl_qdma->is_silent) {
+	if (fsl_qdma->is_silent || unlikely(s_hw_err_check)) {
 		reg = qdma_readl_be(block +
 			 FSL_QDMA_BCQSR(fsl_queue->queue_id));
 		overflow = (reg & FSL_QDMA_BCQSR_QF_XOFF_BE) ?
@@ -1080,13 +1084,81 @@ dpaa_qdma_copy_sg(void *dev_private,
 	return ret;
 }
 
+static int
+dpaa_qdma_err_handle(struct fsl_qdma_err_reg *reg)
+{
+	struct fsl_qdma_err_reg local;
+	size_t i, offset = 0;
+	char err_msg[512];
+
+	local.dedr_be = rte_read32(&reg->dedr_be);
+	if (!local.dedr_be)
+		return 0;
+	offset = sprintf(err_msg, "ERR detected:");
+	if (local.dedr.ere) {
+		offset += sprintf(&err_msg[offset],
+			" ere(Enqueue rejection error)");
+	}
+	if (local.dedr.dde) {
+		offset += sprintf(&err_msg[offset],
+			" dde(Destination descriptor error)");
+	}
+	if (local.dedr.sde) {
+		offset += sprintf(&err_msg[offset],
+			" sde(Source descriptor error)");
+	}
+	if (local.dedr.cde) {
+		offset += sprintf(&err_msg[offset],
+			" cde(Command descriptor error)");
+	}
+	if (local.dedr.wte) {
+		offset += sprintf(&err_msg[offset],
+			" wte(Write transaction error)");
+	}
+	if (local.dedr.rte) {
+		offset += sprintf(&err_msg[offset],
+			" rte(Read transaction error)");
+	}
+	if (local.dedr.me) {
+		offset += sprintf(&err_msg[offset],
+			" me(Multiple errors of the same type)");
+	}
+	DPAA_QDMA_ERR("%s", err_msg);
+	for (i = 0; i < FSL_QDMA_DECCD_ERR_NUM; i++) {
+		local.deccd_le[FSL_QDMA_DECCD_ERR_NUM - 1 - i] =
+			QDMA_IN(&reg->deccd_le[i]);
+	}
+	local.deccqidr_be = rte_read32(&reg->deccqidr_be);
+	local.decbr = rte_read32(&reg->decbr);
+
+	offset = sprintf(err_msg, "ERR command:");
+	offset += sprintf(&err_msg[offset],
+		" status: %02x, ser: %d, offset:%d, fmt: %02x",
+		local.err_cmd.status, local.err_cmd.ser,
+		local.err_cmd.offset, local.err_cmd.format);
+	offset += sprintf(&err_msg[offset],
+		" address: 0x%"PRIx64", queue: %d, dd: %02x",
+		(uint64_t)local.err_cmd.addr_hi << 32 |
+		local.err_cmd.addr_lo,
+		local.err_cmd.queue, local.err_cmd.dd);
+	DPAA_QDMA_ERR("%s", err_msg);
+	DPAA_QDMA_ERR("ERR command block: %d, queue: %d",
+		local.deccqidr.block, local.deccqidr.queue);
+
+	rte_write32(local.dedr_be, &reg->dedr_be);
+
+	return -EIO;
+}
+
 static uint16_t
 dpaa_qdma_dequeue_status(void *dev_private, uint16_t vchan,
 	const uint16_t nb_cpls, uint16_t *last_idx,
 	enum rte_dma_status_code *st)
 {
 	struct fsl_qdma_engine *fsl_qdma = dev_private;
+	int err;
 	struct fsl_qdma_queue *fsl_queue = fsl_qdma->chan[vchan];
+	void *status = fsl_qdma->status_base;
 	struct fsl_qdma_desc *desc_complete[nb_cpls];
 	uint16_t i, dq_num;
 
@@ -1111,6 +1183,12 @@ dpaa_qdma_dequeue_status(void *dev_private, uint16_t vchan,
 			st[i] = RTE_DMA_STATUS_SUCCESSFUL;
 	}
 
+	if (s_hw_err_check) {
+		err = dpaa_qdma_err_handle(status +
+			FSL_QDMA_ERR_REG_STATUS_OFFSET);
+		if (err)
+			fsl_queue->stats.errors++;
+	}
 
 	return dq_num;
 }
@@ -1121,7 +1199,9 @@ dpaa_qdma_dequeue(void *dev_private,
 	uint16_t *last_idx, bool *has_error)
 {
 	struct fsl_qdma_engine *fsl_qdma = dev_private;
+	int err;
 	struct fsl_qdma_queue *fsl_queue = fsl_qdma->chan[vchan];
+	void *status = fsl_qdma->status_base;
 	struct fsl_qdma_desc *desc_complete[nb_cpls];
 	uint16_t i, dq_num;
 
@@ -1141,6 +1221,16 @@ dpaa_qdma_dequeue(void *dev_private,
 			(void **)desc_complete, nb_cpls, NULL);
 	for (i = 0; i < dq_num; i++)
 		last_idx[i] = desc_complete[i]->flag;
+
+	if (s_hw_err_check) {
+		err = dpaa_qdma_err_handle(status +
+			FSL_QDMA_ERR_REG_STATUS_OFFSET);
+		if (err) {
+			if (has_error)
+				*has_error = true;
+			fsl_queue->stats.errors++;
+		}
+	}
 
 	return dq_num;
 }
@@ -1194,6 +1284,43 @@ static struct rte_dma_dev_ops dpaa_qdma_ops = {
 };
 
 static int
+check_devargs_handler(__rte_unused const char *key, const char *value,
+		      __rte_unused void *opaque)
+{
+	if (strcmp(value, "1"))
+		return -1;
+
+	return 0;
+}
+
+static int
+dpaa_get_devargs(struct rte_devargs *devargs, const char *key)
+{
+	struct rte_kvargs *kvlist;
+
+	if (!devargs)
+		return 0;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (!kvlist)
+		return 0;
+
+	if (!rte_kvargs_count(kvlist, key)) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+
+	if (rte_kvargs_process(kvlist, key,
+			       check_devargs_handler, NULL) < 0) {
+		rte_kvargs_free(kvlist);
+		return 0;
+	}
+	rte_kvargs_free(kvlist);
+
+	return 1;
+}
+
+static int
 dpaa_qdma_init(struct rte_dma_dev *dmadev)
 {
 	struct fsl_qdma_engine *fsl_qdma = dmadev->data->dev_private;
@@ -1202,6 +1329,11 @@ dpaa_qdma_init(struct rte_dma_dev *dmadev)
 	int regs_size;
 	int ret;
 	uint32_t i, j, k;
+
+	if (dpaa_get_devargs(dmadev->device->devargs, DPAA_DMA_ERROR_CHECK)) {
+		s_hw_err_check = true;
+		DPAA_QDMA_INFO("Enable DMA error checks");
+	}
 
 	fsl_qdma->n_queues = QDMA_QUEUES * QDMA_BLOCKS;
 	fsl_qdma->num_blocks = QDMA_BLOCKS;
@@ -1344,4 +1476,5 @@ static struct rte_dpaa_driver rte_dpaa_qdma_pmd = {
 };
 
 RTE_PMD_REGISTER_DPAA(dpaa_qdma, rte_dpaa_qdma_pmd);
+RTE_PMD_REGISTER_PARAM_STRING(dpaa_qdma, DPAA_DMA_ERROR_CHECK "=<int>");
 RTE_LOG_REGISTER_DEFAULT(dpaa_qdma_logtype, INFO);

@@ -199,6 +199,48 @@ struct fsl_qdma_cmpd_ft {
 	uint64_t phy_df;
 } __rte_packed;
 
+#define FSL_QDMA_ERR_REG_STATUS_OFFSET 0xe00
+
+struct fsl_qdma_dedr_reg {
+	uint32_t me:1;
+	uint32_t rsv0:1;
+	uint32_t rte:1;
+	uint32_t wte:1;
+	uint32_t cde:1;
+	uint32_t sde:1;
+	uint32_t dde:1;
+	uint32_t ere:1;
+	uint32_t rsv1:24;
+};
+
+struct fsl_qdma_deccqidr_reg {
+	uint32_t rsv:27;
+	uint32_t block:2;
+	uint32_t queue:3;
+};
+
+#define FSL_QDMA_DECCD_ERR_NUM \
+	(sizeof(struct fsl_qdma_comp_cmd_desc) / sizeof(uint32_t))
+
+struct fsl_qdma_err_reg {
+	uint32_t deier;
+	union {
+		rte_be32_t dedr_be;
+		struct fsl_qdma_dedr_reg dedr;
+	};
+	uint32_t rsv0[2];
+	union {
+		rte_le32_t deccd_le[FSL_QDMA_DECCD_ERR_NUM];
+		struct fsl_qdma_comp_cmd_desc err_cmd;
+	};
+	uint32_t rsv1[4];
+	union {
+		rte_be32_t deccqidr_be;
+		struct fsl_qdma_deccqidr_reg deccqidr;
+	};
+	rte_be32_t decbr;
+};
+
 #define DPAA_QDMA_IDXADDR_FROM_SG_FLAG(flag) \
 	((void *)(uintptr_t)((flag) - ((flag) & DPAA_QDMA_SG_IDX_ADDR_MASK)))
 

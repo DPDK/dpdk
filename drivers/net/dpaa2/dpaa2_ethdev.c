@@ -2685,7 +2685,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (dpaa2_get_devargs(dev->devargs, DRIVER_ERROR_QUEUE)) {
 		dpaa2_enable_err_queue = 1;
-		DPAA2_PMD_INFO("Enable error queue");
+		DPAA2_PMD_INFO("Enable DMA error checks");
 	}
 
 	/* Allocate memory for hardware structure for queues */

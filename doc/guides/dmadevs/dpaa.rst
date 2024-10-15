@@ -71,3 +71,10 @@ Platform Requirement
 
 DPAA DMA driver for DPDK can only work on NXP SoCs
 as listed in the `Supported DPAA SoCs`_.
+
+Device Arguments
+----------------
+
+``dpaa_dma_err_check=1``
+  Check DMA errors at driver level.
+  Usage example: ``dpaa_bus:dpaa_qdma-1,dpaa_dma_err_check=1``
