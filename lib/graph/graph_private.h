@@ -61,6 +61,7 @@ struct node {
 	rte_node_t id;		      /**< Allocated identifier for the node. */
 	rte_node_t parent_id;	      /**< Parent node identifier. */
 	rte_edge_t nb_edges;	      /**< Number of edges from this node. */
+	struct rte_node_xstats *xstats;	      /**< Node specific xstats. */
 	char next_nodes[][RTE_NODE_NAMESIZE]; /**< Names of next nodes. */
 };
 
@@ -102,6 +103,8 @@ struct graph {
 	/**< Memzone to store graph data. */
 	rte_graph_off_t nodes_start;
 	/**< Node memory start offset in graph reel. */
+	rte_graph_off_t xstats_start;
+	/**< Node xstats memory start offset in graph reel. */
 	rte_node_t src_node_count;
 	/**< Number of source nodes in a graph. */
 	struct rte_graph *graph;

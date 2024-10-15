@@ -29,6 +29,7 @@ extern "C" {
 
 #define RTE_GRAPH_NAMESIZE 64 /**< Max length of graph name. */
 #define RTE_NODE_NAMESIZE 64  /**< Max length of node name. */
+#define RTE_NODE_XSTAT_DESC_SIZE 64  /**< Max length of node xstat description. */
 #define RTE_GRAPH_PCAP_FILE_SZ 64 /**< Max length of pcap file name. */
 #define RTE_GRAPH_OFF_INVALID UINT32_MAX /**< Invalid graph offset. */
 #define RTE_NODE_ID_INVALID UINT32_MAX   /**< Invalid node id. */
@@ -221,6 +222,10 @@ struct __rte_cache_aligned rte_graph_cluster_node_stats {
 	};
 
 	uint64_t realloc_count; /**< Realloc count. */
+
+	uint8_t xstat_cntrs;			      /**< Number of Node xstat counters. */
+	char (*xstat_desc)[RTE_NODE_XSTAT_DESC_SIZE]; /**< Names of the Node xstat counters. */
+	uint64_t *xstat_count;			      /**< Total stat count per each xstat. */
 
 	rte_node_t id;	/**< Node identifier of stats. */
 	uint64_t hz;	/**< Cycles per seconds. */
@@ -461,6 +466,15 @@ void rte_graph_cluster_stats_get(struct rte_graph_cluster_stats *stat,
 void rte_graph_cluster_stats_reset(struct rte_graph_cluster_stats *stat);
 
 /**
+ * Structure defines the number of xstats a given node has and each xstat
+ * description.
+ */
+struct rte_node_xstats {
+	uint16_t nb_xstats;			     /**< Number of xstats. */
+	char xstat_desc[][RTE_NODE_XSTAT_DESC_SIZE]; /**< Names of xstats. */
+};
+
+/**
  * Structure defines the node registration parameters.
  *
  * @see __rte_node_register(), RTE_NODE_REGISTER()
@@ -472,6 +486,7 @@ struct rte_node_register {
 	rte_node_process_t process; /**< Node process function. */
 	rte_node_init_t init;       /**< Node init function. */
 	rte_node_fini_t fini;       /**< Node fini function. */
+	struct rte_node_xstats *xstats; /**< Node specific xstats. */
 	rte_node_t id;		    /**< Node Identifier. */
 	rte_node_t parent_id;       /**< Identifier of parent node. */
 	rte_edge_t nb_edges;        /**< Number of edges from this node. */

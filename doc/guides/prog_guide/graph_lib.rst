@@ -21,6 +21,7 @@ Features of the Graph library are:
 - Nodes as plugins.
 - Support for out of tree nodes.
 - Inbuilt nodes for packet processing.
+- Node specific xstat counts.
 - Multi-process support.
 - Low overhead graph walk and node enqueue.
 - Low overhead statistics collection infrastructure.
@@ -124,6 +125,17 @@ Source nodes are static nodes created using ``RTE_NODE_REGISTER`` by passing
 While performing the graph walk, the ``process()`` function of all the source
 nodes will be called first. So that these nodes can be used as input nodes for a graph.
 
+nb_xstats:
+^^^^^^^^^^
+
+The number of xstats that this node can report.
+The ``xstat_desc[]`` stores the xstat descriptions which will later be propagated to stats.
+
+xstat_desc[]:
+^^^^^^^^^^^^^
+
+The dynamic array to store the xstat descriptions that will be reported by this node.
+
 Node creation and registration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * Node implementer creates the node by implementing ops and attributes of
@@ -141,13 +153,13 @@ Link the Nodes to create the graph topology
    Topology after linking the nodes
 
 Once nodes are available to the program, Application or node public API
-functions can links them together to create a complex packet processing graph.
+functions can link them together to create a complex packet processing graph.
 
 There are multiple different types of strategies to link the nodes.
 
 Method (a):
 ^^^^^^^^^^^
-Provide the ``next_nodes[]`` at the node registration time. See  ``struct rte_node_register::nb_edges``.
+Provide the ``next_nodes[]`` at the node registration time. See ``struct rte_node_register::nb_edges``.
 This is a use case to address the static node scheme where one knows upfront the
 ``next_nodes[]`` of the node.
 
@@ -384,9 +396,9 @@ Graph object memory layout
 Understanding the memory layout helps to debug the graph library and
 improve the performance if needed.
 
-Graph object consists of a header, circular buffer to store the pending
-stream when walking over the graph, and variable-length memory to store
-the ``rte_node`` objects.
+Graph object consists of a header, circular buffer to store the pending stream
+when walking over the graph, variable-length memory to store the ``rte_node`` objects,
+and variable-length memory to store the xstat reported by each ``rte_node``.
 
 The graph_nodes_mem_create() creates and populate this memory. The functions
 such as ``rte_graph_walk()`` and ``rte_node_enqueue_*`` use this memory

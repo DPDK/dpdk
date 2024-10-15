@@ -183,6 +183,11 @@ New Features
   A new ``rte_telemetry_register_cmd_arg`` function is available to pass an opaque value to
   telemetry endpoint callback.
 
+* **Added node specific statistics.**
+
+  Added ability for node to advertise and update multiple xstat counters,
+  that can be retrieved using ``rte_graph_cluster_stats_get``.
+
 
 Removed Items
 -------------
@@ -264,6 +269,11 @@ ABI Changes
   to optionally report the number of enqueue batch available ``enqueue_depth_avail``.
 
 * eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
+
+* graph: To accommodate node specific xstats counters, added ``xstat_cntrs``,
+  ``xstat_desc`` and ``xstat_count`` to ``rte_graph_cluster_node_stats``,
+  added new structure ``rte_node_xstats`` to ``rte_node_register`` and
+  added ``xstat_off`` to ``rte_node``.
 
 
 Known Issues

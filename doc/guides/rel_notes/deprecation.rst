@@ -193,9 +193,3 @@ Deprecation Notices
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new port library API (functions rte_swx_port_*)
   will gradually transition from experimental to stable status.
-
-* graph: The graph library data structures will be modified
-  to support node specific errors.
-  The structures ``rte_node``, ``rte_node_register``
-  and ``rte_graph_cluster_node_stats`` will be extended
-  to include node error counters and error description.
