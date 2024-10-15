@@ -10,7 +10,7 @@
 
 #include <mc/fsl_dpdmai.h>
 
-#include "rte_pmd_dpaa2_qdma.h"
+#include <rte_pmd_dpaax_qdma.h>
 #include "dpaa2_qdma.h"
 #include "dpaa2_qdma_logs.h"
 
@@ -243,16 +243,16 @@ fle_sdd_pre_populate(struct qdma_cntx_fle_sdd *fle_sdd,
 	}
 	/* source frame list to source buffer */
 	DPAA2_SET_FLE_ADDR(&fle[DPAA2_QDMA_SRC_FLE], src);
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_SRC_FLE]);
-#endif
+	/** IOMMU is always on for either VA or PA mode,
+	 * so Bypass Memory Translation should be disabled.
+	 *
+	 * DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_SRC_FLE]);
+	 * DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_DST_FLE]);
+	 */
 	fle[DPAA2_QDMA_SRC_FLE].word4.fmt = fmt;
 
 	/* destination frame list to destination buffer */
 	DPAA2_SET_FLE_ADDR(&fle[DPAA2_QDMA_DST_FLE], dest);
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_DST_FLE]);
-#endif
 	fle[DPAA2_QDMA_DST_FLE].word4.fmt = fmt;
 
 	/* Final bit: 1, for last frame list */
@@ -266,23 +266,21 @@ sg_entry_pre_populate(struct qdma_cntx_sg *sg_cntx)
 	struct qdma_sg_entry *src_sge = sg_cntx->sg_src_entry;
 	struct qdma_sg_entry *dst_sge = sg_cntx->sg_dst_entry;
 
-	for (i = 0; i < RTE_DPAA2_QDMA_JOB_SUBMIT_MAX; i++) {
+	for (i = 0; i < RTE_DPAAX_QDMA_JOB_SUBMIT_MAX; i++) {
 		/* source SG */
 		src_sge[i].ctrl.sl = QDMA_SG_SL_LONG;
 		src_sge[i].ctrl.fmt = QDMA_SG_FMT_SDB;
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		src_sge[i].ctrl.bmt = QDMA_SG_BMT_ENABLE;
-#else
+		/** IOMMU is always on for either VA or PA mode,
+		 * so Bypass Memory Translation should be disabled.
+		 */
 		src_sge[i].ctrl.bmt = QDMA_SG_BMT_DISABLE;
-#endif
 		/* destination SG */
 		dst_sge[i].ctrl.sl = QDMA_SG_SL_LONG;
 		dst_sge[i].ctrl.fmt = QDMA_SG_FMT_SDB;
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		dst_sge[i].ctrl.bmt = QDMA_SG_BMT_ENABLE;
-#else
+		/** IOMMU is always on for either VA or PA mode,
+		 * so Bypass Memory Translation should be disabled.
+		 */
 		dst_sge[i].ctrl.bmt = QDMA_SG_BMT_DISABLE;
-#endif
 	}
 }
 
@@ -381,21 +379,19 @@ sg_entry_populate(const struct rte_dma_sge *src,
 		src_sge->data_len.data_len_sl0 = src[i].length;
 		src_sge->ctrl.sl = QDMA_SG_SL_LONG;
 		src_sge->ctrl.fmt = QDMA_SG_FMT_SDB;
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		src_sge->ctrl.bmt = QDMA_SG_BMT_ENABLE;
-#else
+		/** IOMMU is always on for either VA or PA mode,
+		 * so Bypass Memory Translation should be disabled.
+		 */
 		src_sge->ctrl.bmt = QDMA_SG_BMT_DISABLE;
-#endif
 		dst_sge->addr_lo = (uint32_t)dst[i].addr;
 		dst_sge->addr_hi = (dst[i].addr >> 32);
 		dst_sge->data_len.data_len_sl0 = dst[i].length;
 		dst_sge->ctrl.sl = QDMA_SG_SL_LONG;
 		dst_sge->ctrl.fmt = QDMA_SG_FMT_SDB;
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-		dst_sge->ctrl.bmt = QDMA_SG_BMT_ENABLE;
-#else
+		/** IOMMU is always on for either VA or PA mode,
+		 * so Bypass Memory Translation should be disabled.
+		 */
 		dst_sge->ctrl.bmt = QDMA_SG_BMT_DISABLE;
-#endif
 		total_len += src[i].length;
 
 		if (i == (nb_sge - 1)) {
@@ -475,17 +471,16 @@ fle_populate(struct qbman_fle fle[],
 	}
 	/* source frame list to source buffer */
 	DPAA2_SET_FLE_ADDR(&fle[DPAA2_QDMA_SRC_FLE], src_iova);
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_SRC_FLE]);
-#endif
+	/** IOMMU is always on for either VA or PA mode,
+	 * so Bypass Memory Translation should be disabled.
+	 * DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_SRC_FLE]);
+	 * DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_DST_FLE]);
+	 */
 	fle[DPAA2_QDMA_SRC_FLE].word4.fmt = fmt;
 	DPAA2_SET_FLE_LEN(&fle[DPAA2_QDMA_SRC_FLE], len);
 
 	/* destination frame list to destination buffer */
 	DPAA2_SET_FLE_ADDR(&fle[DPAA2_QDMA_DST_FLE], dst_iova);
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	DPAA2_SET_FLE_BMT(&fle[DPAA2_QDMA_DST_FLE]);
-#endif
 	fle[DPAA2_QDMA_DST_FLE].word4.fmt = fmt;
 	DPAA2_SET_FLE_LEN(&fle[DPAA2_QDMA_DST_FLE], len);
 
@@ -591,7 +586,7 @@ dpaa2_qdma_long_fmt_dump(const struct qbman_fle *fle)
 		DPAA2_QDMA_INFO("long format/SG format, job number:%d",
 			cntx_sg->job_nb);
 		if (!cntx_sg->job_nb ||
-			cntx_sg->job_nb > RTE_DPAA2_QDMA_JOB_SUBMIT_MAX) {
+			cntx_sg->job_nb > RTE_DPAAX_QDMA_JOB_SUBMIT_MAX) {
 			DPAA2_QDMA_ERR("Invalid SG job number:%d",
 				cntx_sg->job_nb);
 			return;
@@ -641,9 +636,9 @@ dpaa2_qdma_copy_sg(void *dev_private,
 		return -EINVAL;
 	}
 
-	if (unlikely(nb_src > RTE_DPAA2_QDMA_JOB_SUBMIT_MAX)) {
+	if (unlikely(nb_src > RTE_DPAAX_QDMA_JOB_SUBMIT_MAX)) {
 		DPAA2_QDMA_ERR("SG entry number(%d) > MAX(%d)",
-			nb_src, RTE_DPAA2_QDMA_JOB_SUBMIT_MAX);
+			nb_src, RTE_DPAAX_QDMA_JOB_SUBMIT_MAX);
 		return -EINVAL;
 	}
 
@@ -662,11 +657,7 @@ dpaa2_qdma_copy_sg(void *dev_private,
 			cntx_sg->cntx_idx[i] = idx_addr[i];
 	}
 
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	cntx_iova = rte_mempool_virt2iova(cntx_sg);
-#else
-	cntx_iova = DPAA2_VADDR_TO_IOVA(cntx_sg);
-#endif
+	cntx_iova = (uint64_t)cntx_sg - qdma_vq->fle_iova2va_offset;
 
 	fle = cntx_sg->fle_sdd.fle;
 	fle_iova = cntx_iova +
@@ -698,8 +689,7 @@ dpaa2_qdma_copy_sg(void *dev_private,
 			offsetof(struct qdma_cntx_sg, sg_src_entry);
 		dst_sge_iova = cntx_iova +
 			offsetof(struct qdma_cntx_sg, sg_dst_entry);
-		len = sg_entry_populate(src, dst,
-			cntx_sg, nb_src);
+		len = sg_entry_populate(src, dst, cntx_sg, nb_src);
 
 		fle_populate(fle, sdd, sdd_iova,
 			&qdma_vq->rbp, src_sge_iova, dst_sge_iova, len,
@@ -1042,7 +1032,7 @@ dpaa2_qdma_dequeue(void *dev_private,
 			q_storage->last_num_pkts);
 		qbman_pull_desc_set_fq(&pulldesc, fqid);
 		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
-			(size_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
+			DPAA2_VADDR_TO_IOVA(dq_storage), 1);
 		if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
 			while (!qbman_check_command_complete(
 			       get_swp_active_dqs(
@@ -1077,7 +1067,7 @@ dpaa2_qdma_dequeue(void *dev_private,
 	qbman_pull_desc_set_numframes(&pulldesc, pull_size);
 	qbman_pull_desc_set_fq(&pulldesc, fqid);
 	qbman_pull_desc_set_storage(&pulldesc, dq_storage1,
-		(size_t)(DPAA2_VADDR_TO_IOVA(dq_storage1)), 1);
+		DPAA2_VADDR_TO_IOVA(dq_storage1), 1);
 
 	/* Check if the previous issued command is completed.
 	 * Also seems like the SWP is shared between the Ethernet Driver
@@ -1109,7 +1099,7 @@ dpaa2_qdma_dequeue(void *dev_private,
 		}
 		fd = qbman_result_DQ_fd(dq_storage);
 		ret = dpaa2_qdma_dq_fd(fd, qdma_vq, &free_space, &fle_elem_nb);
-		if (ret || free_space < RTE_DPAA2_QDMA_JOB_SUBMIT_MAX)
+		if (ret || free_space < RTE_DPAAX_QDMA_JOB_SUBMIT_MAX)
 			pending = 0;
 
 		dq_storage++;
@@ -1162,11 +1152,11 @@ dpaa2_qdma_info_get(const struct rte_dma_dev *dev,
 		RTE_DMA_CAPA_SILENT |
 		RTE_DMA_CAPA_OPS_COPY |
 		RTE_DMA_CAPA_OPS_COPY_SG;
-	dev_info->dev_capa |= RTE_DMA_CAPA_DPAA2_QDMA_FLAGS_INDEX;
+	dev_info->dev_capa |= RTE_DMA_CAPA_DPAAX_QDMA_FLAGS_INDEX;
 	dev_info->max_vchans = dpdmai_dev->num_queues;
 	dev_info->max_desc = DPAA2_QDMA_MAX_DESC;
 	dev_info->min_desc = DPAA2_QDMA_MIN_DESC;
-	dev_info->max_sges = RTE_DPAA2_QDMA_JOB_SUBMIT_MAX;
+	dev_info->max_sges = RTE_DPAAX_QDMA_JOB_SUBMIT_MAX;
 	dev_info->dev_name = dev->device->name;
 	if (dpdmai_dev->qdma_dev)
 		dev_info->nb_vchans = dpdmai_dev->qdma_dev->num_vqs;
@@ -1347,6 +1337,7 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	uint32_t pool_size;
 	char pool_name[64];
 	int ret;
+	uint64_t iova, va;
 
 	DPAA2_QDMA_FUNC_TRACE();
 
@@ -1382,6 +1373,9 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		DPAA2_QDMA_ERR("%s create failed", pool_name);
 		return -ENOMEM;
 	}
+	iova = qdma_dev->vqs[vchan].fle_pool->mz->iova;
+	va = qdma_dev->vqs[vchan].fle_pool->mz->addr_64;
+	qdma_dev->vqs[vchan].fle_iova2va_offset = va - iova;
 
 	if (qdma_dev->is_silent) {
 		ret = rte_mempool_get_bulk(qdma_dev->vqs[vchan].fle_pool,

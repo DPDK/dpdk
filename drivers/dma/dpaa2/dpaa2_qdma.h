@@ -220,18 +220,18 @@ struct qdma_cntx_fle_sdd {
 
 struct qdma_cntx_sg {
 	struct qdma_cntx_fle_sdd fle_sdd;
-	struct qdma_sg_entry sg_src_entry[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
-	struct qdma_sg_entry sg_dst_entry[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
-	uint16_t cntx_idx[RTE_DPAA2_QDMA_JOB_SUBMIT_MAX];
+	struct qdma_sg_entry sg_src_entry[RTE_DPAAX_QDMA_JOB_SUBMIT_MAX];
+	struct qdma_sg_entry sg_dst_entry[RTE_DPAAX_QDMA_JOB_SUBMIT_MAX];
+	uint16_t cntx_idx[RTE_DPAAX_QDMA_JOB_SUBMIT_MAX];
 	uint16_t job_nb;
 	uint16_t rsv[3];
 } __rte_packed;
 
 #define DPAA2_QDMA_IDXADDR_FROM_SG_FLAG(flag) \
-	((void *)(uintptr_t)((flag) - ((flag) & RTE_DPAA2_QDMA_SG_IDX_ADDR_MASK)))
+	((void *)(uintptr_t)((flag) - ((flag) & RTE_DPAAX_QDMA_SG_IDX_ADDR_MASK)))
 
 #define DPAA2_QDMA_IDX_FROM_FLAG(flag) \
-	((flag) >> RTE_DPAA2_QDMA_COPY_IDX_OFFSET)
+	((flag) >> RTE_DPAAX_QDMA_COPY_IDX_OFFSET)
 
 /** Represents a DPDMAI device */
 struct dpaa2_dpdmai_dev {

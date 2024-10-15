@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright(c) 2018 NXP
+# Copyright 2018, 2024 NXP
 
 if not is_linux
     build = false
@@ -16,3 +16,4 @@ endif
 if cc.has_argument('-Wno-pointer-arith')
     cflags += '-Wno-pointer-arith'
 endif
+headers = files('rte_pmd_dpaax_qdma.h')
