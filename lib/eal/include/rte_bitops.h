@@ -525,8 +525,10 @@ __rte_bit_ ## variant ## flip ## size(qualifier uint ## size ## _t *addr, unsign
 	__RTE_GEN_BIT_OPS(,, size) \
 	__RTE_GEN_BIT_OPS(v_, volatile, size)
 
+#ifdef ALLOW_EXPERIMENTAL_API
 __RTE_GEN_BIT_OPS_SIZE(32)
 __RTE_GEN_BIT_OPS_SIZE(64)
+#endif
 
 #define __RTE_GEN_BIT_ATOMIC_TEST(variant, qualifier, size) \
 __rte_experimental \
@@ -651,8 +653,10 @@ __rte_bit_atomic_ ## variant ## test_and_assign ## size( \
 	__RTE_GEN_BIT_ATOMIC_OPS(,, size) \
 	__RTE_GEN_BIT_ATOMIC_OPS(v_, volatile, size)
 
+#ifdef ALLOW_EXPERIMENTAL_API
 __RTE_GEN_BIT_ATOMIC_OPS_SIZE(32)
 __RTE_GEN_BIT_ATOMIC_OPS_SIZE(64)
+#endif
 
 /*------------------------ 32-bit relaxed operations ------------------------*/
 
@@ -1481,6 +1485,7 @@ rte_bit_ ## family ## fun(qualifier uint ## size ## _t *addr, arg1_type arg1_nam
 	__RTE_BIT_OVERLOAD_SZ_4R(family, fun, qualifier, 64, ret_type, arg1_type, arg1_name, \
 		arg2_type, arg2_name, arg3_type, arg3_name)
 
+#ifdef ALLOW_EXPERIMENTAL_API
 __RTE_BIT_OVERLOAD_2R(, test, const, bool, unsigned int, nr)
 __RTE_BIT_OVERLOAD_2(, set,, unsigned int, nr)
 __RTE_BIT_OVERLOAD_2(, clear,, unsigned int, nr)
@@ -1496,6 +1501,7 @@ __RTE_BIT_OVERLOAD_3R(atomic_, test_and_set,, bool, unsigned int, nr, int, memor
 __RTE_BIT_OVERLOAD_3R(atomic_, test_and_clear,, bool, unsigned int, nr, int, memory_order)
 __RTE_BIT_OVERLOAD_4R(atomic_, test_and_assign,, bool, unsigned int, nr, bool, value,
 	int, memory_order)
+#endif
 
 #endif
 
