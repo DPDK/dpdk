@@ -849,7 +849,7 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 		otx_ep_info("Using pkind %d.", otx_epvf->pkind);
 	} else {
 		otx_ep_err("Invalid chip id");
-		return -EINVAL;
+		ret = -EINVAL;
 		goto exit;
 	}
 
