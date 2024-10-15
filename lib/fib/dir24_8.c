@@ -617,15 +617,11 @@ dir24_8_rcu_qsbr_add(struct dir24_8_tbl *dp, struct rte_fib_rcu_config *cfg,
 	struct rte_rcu_qsbr_dq_parameters params = {0};
 	char rcu_dq_name[RTE_RCU_QSBR_DQ_NAMESIZE];
 
-	if (dp == NULL || cfg == NULL) {
-		rte_errno = EINVAL;
-		return 1;
-	}
+	if (dp == NULL || cfg == NULL)
+		return -EINVAL;
 
-	if (dp->v != NULL) {
-		rte_errno = EEXIST;
-		return 1;
-	}
+	if (dp->v != NULL)
+		return -EEXIST;
 
 	if (cfg->mode == RTE_FIB_QSBR_MODE_SYNC) {
 		/* No other things to do. */
@@ -648,12 +644,12 @@ dir24_8_rcu_qsbr_add(struct dir24_8_tbl *dp, struct rte_fib_rcu_config *cfg,
 		dp->dq = rte_rcu_qsbr_dq_create(&params);
 		if (dp->dq == NULL) {
 			FIB_LOG(ERR, "LPM defer queue creation failed");
-			return 1;
+			return -rte_errno;
 		}
 	} else {
-		rte_errno = EINVAL;
-		return 1;
+		return -EINVAL;
 	}
+
 	dp->rcu_mode = cfg->mode;
 	dp->v = cfg->v;
 

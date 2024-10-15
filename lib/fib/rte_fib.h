@@ -266,13 +266,13 @@ rte_fib_select_lookup(struct rte_fib *fib, enum rte_fib_lookup_type type);
  * @param cfg
  *   RCU QSBR configuration
  * @return
- *   On success - 0
- *   On error - 1 with error code set in rte_errno.
- *   Possible rte_errno codes are:
- *   - EINVAL - invalid pointer
- *   - EEXIST - already added QSBR
- *   - ENOMEM - memory allocation failure
- *   - ENOTSUP - not supported by configured dataplane algorithm
+ *   0 on success
+ *   Negative otherwise
+ *   Possible error codes are:
+ *   - -EINVAL - invalid parameters
+ *   - -EEXIST - already added QSBR
+ *   - -ENOMEM - memory allocation failure
+ *   - -ENOTSUP - not supported by configured dataplane algorithm
  */
 __rte_experimental
 int
