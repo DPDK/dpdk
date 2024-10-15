@@ -1037,6 +1037,15 @@ dpaa_qdma_stats_reset(struct rte_dma_dev *dmadev, uint16_t vchan)
 	return 0;
 }
 
+static uint16_t
+dpaa_qdma_burst_capacity(const void *dev_private, uint16_t vchan)
+{
+	const struct fsl_qdma_engine *fsl_qdma = dev_private;
+	struct fsl_qdma_queue *fsl_queue = fsl_qdma->chan[vchan];
+
+	return fsl_queue->pending_max - fsl_queue->pending_num;
+}
+
 static struct rte_dma_dev_ops dpaa_qdma_ops = {
 	.dev_info_get		  = dpaa_qdma_info_get,
 	.dev_configure            = dpaa_qdma_configure,
@@ -1150,6 +1159,7 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 	dmadev->fp_obj->submit = dpaa_qdma_submit;
 	dmadev->fp_obj->completed = dpaa_qdma_dequeue;
 	dmadev->fp_obj->completed_status = dpaa_qdma_dequeue_status;
+	dmadev->fp_obj->burst_capacity = dpaa_qdma_burst_capacity;
 
 	/* Invoke PMD device initialization function */
 	ret = dpaa_qdma_init(dmadev);
