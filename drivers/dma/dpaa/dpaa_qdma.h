@@ -24,8 +24,13 @@
 #define QDMA_STATUS_REGION_OFFSET \
 	(QDMA_CTRL_REGION_OFFSET + QDMA_CTRL_REGION_SIZE)
 #define QDMA_STATUS_REGION_SIZE 0x10000
-#define DPAA_QDMA_COPY_IDX_OFFSET 8
+
 #define DPAA_QDMA_FLAGS_INDEX RTE_BIT64(63)
+#define DPAA_QDMA_COPY_IDX_OFFSET 8
+#define DPAA_QDMA_SG_IDX_ADDR_ALIGN \
+	RTE_BIT64(DPAA_QDMA_COPY_IDX_OFFSET)
+#define DPAA_QDMA_SG_IDX_ADDR_MASK \
+	(DPAA_QDMA_SG_IDX_ADDR_ALIGN - 1)
 
 #define FSL_QDMA_DMR			0x0
 #define FSL_QDMA_DSR			0x4
@@ -193,6 +198,9 @@ struct fsl_qdma_cmpd_ft {
 	uint64_t phy_dsge;
 	uint64_t phy_df;
 } __rte_packed;
+
+#define DPAA_QDMA_IDXADDR_FROM_SG_FLAG(flag) \
+	((void *)(uintptr_t)((flag) - ((flag) & DPAA_QDMA_SG_IDX_ADDR_MASK)))
 
 #define DPAA_QDMA_IDX_FROM_FLAG(flag) \
 	((flag) >> DPAA_QDMA_COPY_IDX_OFFSET)

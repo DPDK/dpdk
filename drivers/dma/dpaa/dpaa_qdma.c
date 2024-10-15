@@ -1025,6 +1025,60 @@ dpaa_qdma_enqueue(void *dev_private, uint16_t vchan,
 	return ret;
 }
 
+static int
+dpaa_qdma_copy_sg(void *dev_private,
+	uint16_t vchan,
+	const struct rte_dma_sge *src,
+	const struct rte_dma_sge *dst,
+	uint16_t nb_src, uint16_t nb_dst,
+	uint64_t flags)
+{
+	int ret;
+	uint16_t i, start, idx;
+	struct fsl_qdma_engine *fsl_qdma = dev_private;
+	struct fsl_qdma_queue *fsl_queue = fsl_qdma->chan[vchan];
+	const uint16_t *idx_addr = NULL;
+
+	if (unlikely(nb_src != nb_dst)) {
+		DPAA_QDMA_ERR("%s: nb_src(%d) != nb_dst(%d) on  queue%d",
+			__func__, nb_src, nb_dst, vchan);
+		return -EINVAL;
+	}
+
+	if ((fsl_queue->pending_num + nb_src) > FSL_QDMA_SG_MAX_ENTRY) {
+		DPAA_QDMA_ERR("Too many pending jobs on queue%d",
+			vchan);
+		return -ENOSPC;
+	}
+	start = fsl_queue->pending_start + fsl_queue->pending_num;
+	start = start & (fsl_queue->pending_max - 1);
+	idx = start;
+
+	idx_addr = DPAA_QDMA_IDXADDR_FROM_SG_FLAG(flags);
+
+	for (i = 0; i < nb_src; i++) {
+		if (unlikely(src[i].length != dst[i].length)) {
+			DPAA_QDMA_ERR("src.len(%d) != dst.len(%d)",
+				src[i].length, dst[i].length);
+			return -EINVAL;
+		}
+		idx = (start + i) & (fsl_queue->pending_max - 1);
+		fsl_queue->pending_desc[idx].src = src[i].addr;
+		fsl_queue->pending_desc[idx].dst = dst[i].addr;
+		fsl_queue->pending_desc[idx].len = dst[i].length;
+		fsl_queue->pending_desc[idx].flag = idx_addr[i];
+	}
+	fsl_queue->pending_num += nb_src;
+
+	if (!(flags & RTE_DMA_OP_FLAG_SUBMIT))
+		return idx;
+
+	ret = fsl_qdma_enqueue_desc(fsl_queue);
+	if (!ret)
+		return fsl_queue->pending_start;
+
+	return ret;
+}
 
 static uint16_t
 dpaa_qdma_dequeue_status(void *dev_private, uint16_t vchan,
@@ -1239,6 +1293,7 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 	dmadev->device = &dpaa_dev->device;
 	dmadev->fp_obj->dev_private = dmadev->data->dev_private;
 	dmadev->fp_obj->copy = dpaa_qdma_enqueue;
+	dmadev->fp_obj->copy_sg = dpaa_qdma_copy_sg;
 	dmadev->fp_obj->submit = dpaa_qdma_submit;
 	dmadev->fp_obj->completed = dpaa_qdma_dequeue;
 	dmadev->fp_obj->completed_status = dpaa_qdma_dequeue_status;
