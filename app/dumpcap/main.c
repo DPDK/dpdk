@@ -24,6 +24,7 @@
 #include <unistd.h>
 
 #include <rte_alarm.h>
+#include <rte_bitops.h>
 #include <rte_bpf.h>
 #include <rte_config.h>
 #include <rte_debug.h>
@@ -677,7 +678,7 @@ static struct rte_ring *create_ring(void)
 
 	/* Find next power of 2 >= size. */
 	size = ring_size;
-	log2 = sizeof(size) * 8 - __builtin_clzl(size - 1);
+	log2 = sizeof(size) * 8 - rte_clz64(size - 1);
 	size = 1u << log2;
 
 	if (size != ring_size) {
