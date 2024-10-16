@@ -1665,6 +1665,65 @@ class TestPmdShell(DPDKShell):
                 for existing_port in self._ports
             ]
 
+    def set_mac_addr(self, port_id: int, mac_address: str, add: bool, verify: bool = True) -> None:
+        """Add or remove a mac address on a given port's Allowlist.
+
+        Args:
+            port_id: The port ID the mac address is set on.
+            mac_address: The mac address to be added to or removed from the specified port.
+            add: If :data:`True`, add the specified mac address. If :data:`False`, remove specified
+                mac address.
+            verify: If :data:'True', assert that the 'mac_addr' operation was successful. If
+                :data:'False', run the command and skip this assertion.
+
+        Raises:
+            InteractiveCommandExecutionError: If the set mac address operation fails.
+        """
+        mac_cmd = "add" if add else "remove"
+        output = self.send_command(f"mac_addr {mac_cmd} {port_id} {mac_address}")
+        if "Bad arguments" in output:
+            self._logger.debug("Invalid argument provided to mac_addr")
+            raise InteractiveCommandExecutionError("Invalid argument provided")
+
+        if verify:
+            if "mac_addr_cmd error:" in output:
+                self._logger.debug(f"Failed to {mac_cmd} {mac_address} on port {port_id}")
+                raise InteractiveCommandExecutionError(
+                    f"Failed to {mac_cmd} {mac_address} on port {port_id} \n{output}"
+                )
+
+    def set_multicast_mac_addr(
+        self, port_id: int, multi_addr: str, add: bool, verify: bool = True
+    ) -> None:
+        """Add or remove multicast mac address to a specified port's allow list.
+
+        Args:
+            port_id: The port ID the multicast address is set on.
+            multi_addr: The multicast address to be added or removed from the filter.
+            add: If :data:'True', add the specified multicast address to the port filter.
+                If :data:'False', remove the specified multicast address from the port filter.
+            verify: If :data:'True', assert that the 'mcast_addr' operations was successful.
+                If :data:'False', execute the 'mcast_addr' operation and skip the assertion.
+
+        Raises:
+            InteractiveCommandExecutionError: If either the 'add' or 'remove' operations fails.
+        """
+        mcast_cmd = "add" if add else "remove"
+        output = self.send_command(f"mcast_addr {mcast_cmd} {port_id} {multi_addr}")
+        if "Bad arguments" in output:
+            self._logger.debug("Invalid arguments provided to mcast_addr")
+            raise InteractiveCommandExecutionError("Invalid argument provided")
+
+        if verify:
+            if (
+                "Invalid multicast_addr" in output
+                or f'multicast address {"already" if add else "not"} filtered by port' in output
+            ):
+                self._logger.debug(f"Failed to {mcast_cmd} {multi_addr} on port {port_id}")
+                raise InteractiveCommandExecutionError(
+                    f"Failed to {mcast_cmd} {multi_addr} on port {port_id} \n{output}"
+                )
+
     def show_port_stats_all(self) -> list[TestPmdPortStats]:
         """Returns the statistics of all the ports.
 
