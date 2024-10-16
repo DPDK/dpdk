@@ -591,6 +591,20 @@ nfp_net_reset_rx_queue(struct nfp_net_rxq *rxq)
 	rxq->nb_rx_hold = 0;
 }
 
+static void
+nfp_rx_queue_setup_flbufsz(struct nfp_net_hw *hw,
+		struct nfp_net_rxq *rxq)
+{
+	if (!hw->flbufsz_set_flag) {
+		hw->flbufsz_set_flag = true;
+		hw->flbufsz = rxq->mbuf_size;
+		return;
+	}
+
+	if (hw->flbufsz < rxq->mbuf_size)
+		hw->flbufsz = rxq->mbuf_size;
+}
+
 int
 nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t queue_idx,
@@ -649,7 +663,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mem_pool = mp;
 	rxq->mbuf_size = rxq->mem_pool->elt_size;
 	rxq->mbuf_size -= (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM);
-	hw->flbufsz = rxq->mbuf_size;
+	nfp_rx_queue_setup_flbufsz(hw, rxq);
 
 	rxq->rx_count = nb_desc;
 	rxq->port_id = dev->data->port_id;

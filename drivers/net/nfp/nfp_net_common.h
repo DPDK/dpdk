@@ -239,6 +239,7 @@ struct nfp_net_hw {
 	uint32_t max_tx_queues;
 	uint32_t max_rx_queues;
 	uint16_t flbufsz;
+	bool flbufsz_set_flag;
 	uint16_t device_id;
 	uint16_t vendor_id;
 	uint16_t subsystem_device_id;
