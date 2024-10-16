@@ -2154,9 +2154,9 @@ nfp_net_close_tx_queue(struct rte_eth_dev *dev)
 int
 nfp_net_set_vxlan_port(struct nfp_net_hw *net_hw,
 		size_t idx,
-		uint16_t port)
+		uint16_t port,
+		uint32_t ctrl)
 {
-	int ret;
 	uint32_t i;
 	struct nfp_hw *hw = &net_hw->super;
 
@@ -2172,16 +2172,7 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *net_hw,
 				(net_hw->vxlan_ports[i + 1] << 16) | net_hw->vxlan_ports[i]);
 	}
 
-	rte_spinlock_lock(&hw->reconfig_lock);
-
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_VXLAN);
-	rte_wmb();
-
-	ret = nfp_reconfig_real(hw, NFP_NET_CFG_UPDATE_VXLAN);
-
-	rte_spinlock_unlock(&hw->reconfig_lock);
-
-	return ret;
+	return nfp_reconfig(hw, ctrl, NFP_NET_CFG_UPDATE_VXLAN);
 }
 
 /*
