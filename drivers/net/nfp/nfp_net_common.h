@@ -345,7 +345,10 @@ void nfp_net_stop_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_stop_tx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_tx_queue(struct rte_eth_dev *dev);
-int nfp_net_set_vxlan_port(struct nfp_net_hw *hw, size_t idx, uint16_t port);
+int nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
+		size_t idx,
+		uint16_t port,
+		uint32_t ctrl);
 void nfp_net_rx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 		uint16_t *min_rx_desc,
 		uint16_t *max_rx_desc);
