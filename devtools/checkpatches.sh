@@ -179,7 +179,7 @@ check_forbidden_additions() { # <patch>
 
 	# forbid use of non abstracted bit count operations
 	awk -v FOLDERS="lib drivers app examples" \
-		-v EXPRESSIONS='\\<__builtin_(clz|clzll|ctz|ctzll|popcount|popcountll)\\>' \
+		-v EXPRESSIONS='\\<__builtin_(clz|ctz|ffs|popcount)(ll)?\\>' \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Using __builtin helpers for bit count operations' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
