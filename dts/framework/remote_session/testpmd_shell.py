@@ -2088,6 +2088,27 @@ class TestPmdShell(DPDKShell):
             self.ports[0].device_capabilities,
         )
 
+    def get_capabilities_mcast_filtering(
+        self,
+        supported_capabilities: MutableSet["NicCapability"],
+        unsupported_capabilities: MutableSet["NicCapability"],
+    ) -> None:
+        """Get multicast filtering capability from mcast_addr add and check for testpmd error code.
+
+        Args:
+            supported_capabilities: Supported capabilities will be added to this set.
+            unsupported_capabilities: Unsupported capabilities will be added to this set.
+        """
+        self._logger.debug("Getting mcast filter capabilities.")
+        command = f"mcast_addr add {self.ports[0].id} 01:00:5E:00:00:00"
+        output = self.send_command(command)
+        if "diag=-95" in output:
+            unsupported_capabilities.add(NicCapability.MCAST_FILTERING)
+        else:
+            supported_capabilities.add(NicCapability.MCAST_FILTERING)
+            command = str.replace(command, "add", "remove", 1)
+            self.send_command(command)
+
 
 class NicCapability(NoAliasEnum):
     """A mapping between capability names and the associated :class:`TestPmdShell` methods.
@@ -2218,6 +2239,10 @@ class NicCapability(NoAliasEnum):
     #: Device supports keeping shared flow objects across restart.
     FLOW_SHARED_OBJECT_KEEP: TestPmdShellCapabilityMethod = functools.partial(
         TestPmdShell.get_capabilities_show_port_info
+    )
+    #: Device supports multicast address filtering.
+    MCAST_FILTERING: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_mcast_filtering
     )
 
     def __call__(
