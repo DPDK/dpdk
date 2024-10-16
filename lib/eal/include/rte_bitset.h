@@ -601,7 +601,6 @@ __rte_bitset_find_nowrap(const uint64_t *bitset, size_t __rte_unused size, size_
 
 	while (word_idx <= __RTE_BITSET_WORD_IDX(end_bit - 1)) {
 		uint64_t word;
-		int word_ffs;
 
 		word = bitset[word_idx];
 		if (find_clear)
@@ -609,16 +608,14 @@ __rte_bitset_find_nowrap(const uint64_t *bitset, size_t __rte_unused size, size_
 
 		word >>= offset;
 
-		word_ffs = __builtin_ffsll(word);
-
-		if (word_ffs != 0) {
-			ssize_t ffs = start_bit + word_ffs - 1;
+		if (word != 0) {
+			size_t ffs = start_bit + rte_bsf64(word);
 
 			/*
 			 * Check if set bit were among the last,
 			 * unused bits, in the last word.
 			 */
-			if (unlikely(ffs >= (ssize_t)end_bit))
+			if (unlikely(ffs >= end_bit))
 				return -1;
 
 			return ffs;
