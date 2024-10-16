@@ -443,13 +443,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
 	txmode = &dev->data->dev_conf.txmode;
-	/* Enable vxlan */
-	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
-		if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0) {
-			new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
-			update |= NFP_NET_CFG_UPDATE_VXLAN;
-		}
-	}
 
 	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
@@ -854,11 +847,13 @@ nfp_udp_tunnel_port_add(struct rte_eth_dev *dev,
 {
 	int ret;
 	uint32_t idx;
+	uint32_t ctrl;
+	struct nfp_hw *hw;
 	uint16_t vxlan_port;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	enum rte_eth_tunnel_type tnl_type;
 
-	hw = dev->data->dev_private;
+	net_hw = dev->data->dev_private;
 	vxlan_port = tunnel_udp->udp_port;
 	tnl_type   = tunnel_udp->prot_type;
 
@@ -867,21 +862,26 @@ nfp_udp_tunnel_port_add(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
-	ret = nfp_net_find_vxlan_idx(hw, vxlan_port, &idx);
+	ret = nfp_net_find_vxlan_idx(net_hw, vxlan_port, &idx);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed find valid vxlan idx");
 		return -EINVAL;
 	}
 
-	if (hw->vxlan_usecnt[idx] == 0) {
-		ret = nfp_net_set_vxlan_port(hw, idx, vxlan_port);
+	if (net_hw->vxlan_usecnt[idx] == 0) {
+		hw = &net_hw->super;
+		ctrl = hw->ctrl | NFP_NET_CFG_CTRL_VXLAN;
+
+		ret = nfp_net_set_vxlan_port(net_hw, idx, vxlan_port, ctrl);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Failed set vxlan port");
 			return -EINVAL;
 		}
+
+		hw->ctrl = ctrl;
 	}
 
-	hw->vxlan_usecnt[idx]++;
+	net_hw->vxlan_usecnt[idx]++;
 
 	return 0;
 }
@@ -892,11 +892,13 @@ nfp_udp_tunnel_port_del(struct rte_eth_dev *dev,
 {
 	int ret;
 	uint32_t idx;
+	uint32_t ctrl;
+	struct nfp_hw *hw;
 	uint16_t vxlan_port;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	enum rte_eth_tunnel_type tnl_type;
 
-	hw = dev->data->dev_private;
+	net_hw = dev->data->dev_private;
 	vxlan_port = tunnel_udp->udp_port;
 	tnl_type   = tunnel_udp->prot_type;
 
@@ -905,20 +907,25 @@ nfp_udp_tunnel_port_del(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
-	ret = nfp_net_find_vxlan_idx(hw, vxlan_port, &idx);
-	if (ret != 0 || hw->vxlan_usecnt[idx] == 0) {
+	ret = nfp_net_find_vxlan_idx(net_hw, vxlan_port, &idx);
+	if (ret != 0 || net_hw->vxlan_usecnt[idx] == 0) {
 		PMD_DRV_LOG(ERR, "Failed find valid vxlan idx");
 		return -EINVAL;
 	}
 
-	hw->vxlan_usecnt[idx]--;
+	net_hw->vxlan_usecnt[idx]--;
 
-	if (hw->vxlan_usecnt[idx] == 0) {
-		ret = nfp_net_set_vxlan_port(hw, idx, 0);
+	if (net_hw->vxlan_usecnt[idx] == 0) {
+		hw = &net_hw->super;
+		ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_VXLAN;
+
+		ret = nfp_net_set_vxlan_port(net_hw, idx, 0, ctrl);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Failed set vxlan port");
 			return -EINVAL;
 		}
+
+		hw->ctrl = ctrl;
 	}
 
 	return 0;
