@@ -677,7 +677,7 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		else
 			return -EINVAL;
 
-		rte_memcpy(algo_name, algo, strlen(algo) + 1);
+		strlcpy(algo_name, algo, sizeof(algo_name));
 		params[0] = OSSL_PARAM_construct_utf8_string(
 				OSSL_MAC_PARAM_CIPHER, algo_name, 0);
 		params[1] = OSSL_PARAM_construct_end();
