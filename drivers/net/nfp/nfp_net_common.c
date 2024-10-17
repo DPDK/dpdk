@@ -779,7 +779,7 @@ nfp_net_pf_speed_update(struct rte_eth_dev *dev,
 	if (pf_dev->speed_updated || aneg == NFP_ANEG_AUTO) {
 		nfp_eth_table = nfp_eth_read_ports(pf_dev->cpp);
 		if (nfp_eth_table == NULL) {
-			PMD_DRV_LOG(WARNING, "Failed to update port speed.");
+			PMD_DRV_LOG(DEBUG, "Failed to get nfp_eth_table.");
 		} else {
 			pf_dev->nfp_eth_table->ports[idx] = nfp_eth_table->ports[idx];
 			free(nfp_eth_table);
