@@ -823,7 +823,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
 	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, pf_dev);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Cloud not send mac repr cmsgs.");
+		PMD_INIT_LOG(ERR, "Could not send mac repr cmsgs.");
 		return ret;
 	}
 
@@ -878,7 +878,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 				sizeof(struct nfp_flower_representor),
 				NULL, NULL, nfp_flower_repr_init, &repr_init);
 		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr.");
+			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
 			break;
 		}
 	}
@@ -909,7 +909,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 				sizeof(struct nfp_flower_representor),
 				NULL, NULL, nfp_flower_repr_init, &repr_init);
 		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr.");
+			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
 			break;
 		}
 	}
