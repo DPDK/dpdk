@@ -694,7 +694,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, bar_name,
 			pf_dev->ctrl_bar_size, &pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
-		PMD_INIT_LOG(ERR, "Cloud not map the PF vNIC ctrl bar.");
+		PMD_INIT_LOG(ERR, "Could not map the PF vNIC ctrl bar.");
 		ret = -ENODEV;
 		goto vnic_cleanup;
 	}
@@ -739,7 +739,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	ctrl_hw->super.ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, ctrl_name,
 			pf_dev->ctrl_bar_size, &ctrl_hw->ctrl_area);
 	if (ctrl_hw->super.ctrl_bar == NULL) {
-		PMD_INIT_LOG(ERR, "Cloud not map the ctrl vNIC ctrl bar.");
+		PMD_INIT_LOG(ERR, "Could not map the ctrl vNIC ctrl bar.");
 		ret = -ENODEV;
 		goto pf_cpp_area_cleanup;
 	}
