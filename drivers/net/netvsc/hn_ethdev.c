@@ -313,6 +313,15 @@ static int hn_rss_reta_update(struct rte_eth_dev *dev,
 
 		if (reta_conf[idx].mask & mask)
 			hv->rss_ind[i] = reta_conf[idx].reta[shift];
+
+		/*
+		 * Ensure we don't allow config that directs traffic to an Rx
+		 * queue that we aren't going to poll
+		 */
+		if (hv->rss_ind[i] >=  dev->data->nb_rx_queues) {
+			PMD_DRV_LOG(ERR, "RSS distributing traffic to invalid Rx queue");
+			return -EINVAL;
+		}
 	}
 
 	err = hn_rndis_conf_rss(hv, NDIS_RSS_FLAG_DISABLE);
