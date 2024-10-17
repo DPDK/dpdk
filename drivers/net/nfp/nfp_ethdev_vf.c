@@ -277,7 +277,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR, "hw->super.ctrl_bar is NULL. BAR0 not configured");
+		PMD_DRV_LOG(ERR, "The hw->super.ctrl_bar is NULL. BAR0 not configured");
 		return -ENODEV;
 	}
 
@@ -298,7 +298,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	/* Set the ctrl bar size */
 	nfp_net_ctrl_bar_size_set(pf_dev);
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "Ctrl bar: %p", hw->ctrl_bar);
 
 	err = nfp_net_common_init(pf_dev, net_hw);
 	if (err != 0)
@@ -340,7 +340,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	net_hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
 	net_hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
-	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
+	PMD_INIT_LOG(DEBUG, "The ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
 			hw->ctrl_bar, net_hw->tx_bar, net_hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(net_hw);
@@ -379,7 +379,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	PMD_INIT_LOG(INFO, "port %hu VendorID=%#x DeviceID=%#x "
+	PMD_INIT_LOG(INFO, "Port %hu VendorID=%#x DeviceID=%#x "
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
 			port, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,

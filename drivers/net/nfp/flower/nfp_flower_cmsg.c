@@ -29,7 +29,7 @@ nfp_flower_cmsg_init(struct nfp_app_fw_flower *app_fw_flower,
 	struct nfp_flower_cmsg_hdr *hdr;
 
 	pkt = rte_pktmbuf_mtod(m, char *);
-	PMD_DRV_LOG(DEBUG, "flower_cmsg_init using pkt at %p", pkt);
+	PMD_DRV_LOG(DEBUG, "The flower_cmsg_init using pkt at %p", pkt);
 
 	new_size += nfp_flower_pkt_add_metadata(app_fw_flower, m, NFP_NET_META_PORT_ID_CTRL);
 
@@ -131,7 +131,7 @@ nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "alloc mbuf for repr reify failed");
+		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr reify failed");
 		return -ENOMEM;
 	}
 
@@ -161,7 +161,7 @@ nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "alloc mbuf for repr portmod failed");
+		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr portmod failed");
 		return -ENOMEM;
 	}
 

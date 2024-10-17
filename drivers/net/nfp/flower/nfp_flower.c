@@ -312,7 +312,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 			sizeof(eth_dev->data->rx_queues[0]) * n_rxq,
 			RTE_CACHE_LINE_SIZE);
 	if (eth_dev->data->rx_queues == NULL) {
-		PMD_INIT_LOG(ERR, "rte_zmalloc failed for ctrl vNIC rx queues");
+		PMD_INIT_LOG(ERR, "The rte_zmalloc failed for ctrl vNIC rx queues");
 		ret = -ENOMEM;
 		goto mempool_cleanup;
 	}
@@ -321,7 +321,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 			sizeof(eth_dev->data->tx_queues[0]) * n_txq,
 			RTE_CACHE_LINE_SIZE);
 	if (eth_dev->data->tx_queues == NULL) {
-		PMD_INIT_LOG(ERR, "rte_zmalloc failed for ctrl vNIC tx queues");
+		PMD_INIT_LOG(ERR, "The rte_zmalloc failed for ctrl vNIC tx queues");
 		ret = -ENOMEM;
 		goto rx_queue_free;
 	}
@@ -670,7 +670,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 
 	ret = nfp_flow_priv_init(pf_dev);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "init flow priv failed");
+		PMD_INIT_LOG(ERR, "Init flow priv failed");
 		goto app_cleanup;
 	}
 

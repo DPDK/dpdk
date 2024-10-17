@@ -46,7 +46,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	while (avail < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
-			PMD_RX_LOG(ERR, "rxb does not exist!");
+			PMD_RX_LOG(ERR, "The rxb does not exist!");
 			break;
 		}
 
@@ -90,7 +90,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error.
 			 */
-			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
+			PMD_RX_LOG(ERR, "The mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
 			break;
 		}
@@ -133,7 +133,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold >= rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -165,7 +165,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_TX_LOG(ERR, "ctrl dev TX Bad queue");
+		PMD_TX_LOG(ERR, "Ctrl dev TX Bad queue");
 		goto xmit_end;
 	}
 
@@ -180,7 +180,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	free_descs = nfp_net_nfd3_free_tx_desc(txq);
 	if (unlikely(free_descs == 0)) {
-		PMD_TX_LOG(ERR, "ctrl dev no free descs");
+		PMD_TX_LOG(ERR, "Ctrl dev no free descs");
 		goto xmit_end;
 	}
 
@@ -246,7 +246,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	free_descs = nfp_net_nfdk_free_tx_desc(txq);
 	if (unlikely(free_descs < NFDK_TX_DESC_PER_SIMPLE_PKT)) {
-		PMD_TX_LOG(ERR, "ctrl dev no free descs");
+		PMD_TX_LOG(ERR, "Ctrl dev no free descs");
 		return 0;
 	}
 
@@ -442,7 +442,7 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 			repr = app_fw_flower->pf_repr;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "ctrl msg for unknown port %#x", port);
+		PMD_DRV_LOG(ERR, "Ctrl msg for unknown port %#x", port);
 		return -EINVAL;
 	}
 

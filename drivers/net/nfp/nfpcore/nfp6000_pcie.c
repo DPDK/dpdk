@@ -704,7 +704,7 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 
 	/* Unaligned? Translate to an explicit access */
 	if (((priv->offset + offset) & (width - 1)) != 0) {
-		PMD_DRV_LOG(ERR, "aread_read unaligned!!!");
+		PMD_DRV_LOG(ERR, "The aread_read unaligned!!!");
 		return -EINVAL;
 	}
 
@@ -868,7 +868,7 @@ nfp6000_get_dsn(struct rte_pci_device *pci_dev,
 	len = sizeof(tmp);
 
 	if (rte_pci_read_config(pci_dev, &tmp, len, pos) < 0) {
-		PMD_DRV_LOG(ERR, "nfp get device serial number failed");
+		PMD_DRV_LOG(ERR, "NFP get device serial number failed");
 		return -ENOENT;
 	}
 

@@ -432,7 +432,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw,
 			cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER      ? "FLOW_STEER "      : "",
 			cap_ext & NFP_NET_CFG_CTRL_IN_ORDER        ? "VIRTIO_IN_ORDER " : "");
 
-	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
+	PMD_INIT_LOG(INFO, "The max_rx_queues: %u, max_tx_queues: %u",
 			hw->max_rx_queues, hw->max_tx_queues);
 }
 
@@ -1065,7 +1065,7 @@ nfp_net_xstats_info(const struct rte_eth_dev *dev,
 		uint32_t index)
 {
 	if (index >= nfp_net_xstats_size(dev)) {
-		PMD_DRV_LOG(ERR, "xstat index out of bounds");
+		PMD_DRV_LOG(ERR, "The xstat index out of bounds");
 		return NULL;
 	}
 
@@ -1690,7 +1690,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev,
 
 	/* MTU setting is forbidden if port is started */
 	if (dev->data->dev_started) {
-		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
+		PMD_DRV_LOG(ERR, "Port %d must be stopped before configuration",
 				dev->data->port_id);
 		return -EBUSY;
 	}

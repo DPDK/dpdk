@@ -96,7 +96,7 @@ nfp_reconfig(struct nfp_hw *hw,
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error nfp reconfig: ctrl=%#08x update=%#08x",
+		PMD_DRV_LOG(ERR, "Error NFP reconfig: ctrl=%#08x update=%#08x",
 				ctrl, update);
 		return -EIO;
 	}
@@ -140,7 +140,7 @@ nfp_ext_reconfig(struct nfp_hw *hw,
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error nfp ext reconfig: ctrl_ext=%#08x update=%#08x",
+		PMD_DRV_LOG(ERR, "Error NFP ext reconfig: ctrl_ext=%#08x update=%#08x",
 				ctrl_ext, update);
 		return -EIO;
 	}

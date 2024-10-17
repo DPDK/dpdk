@@ -536,7 +536,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
 	 * codes were initially not populated correctly.
 	 */
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 17) {
-		PMD_DRV_LOG(ERR, "set operations not supported, please update flash");
+		PMD_DRV_LOG(ERR, "Set operations not supported, please update flash");
 		return -EOPNOTSUPP;
 	}
 

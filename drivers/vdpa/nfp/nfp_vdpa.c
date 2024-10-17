@@ -134,7 +134,7 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	if (device->vfio_group_fd < 0)
 		goto container_destroy;
 
-	DRV_VDPA_LOG(DEBUG, "container_fd=%d, group_fd=%d,",
+	DRV_VDPA_LOG(DEBUG, "The container_fd=%d, group_fd=%d,",
 			device->vfio_container_fd, device->vfio_group_fd);
 
 	ret = rte_pci_map_device(pci_dev);
@@ -225,7 +225,7 @@ nfp_vdpa_dma_map(struct nfp_vdpa_dev *device,
 	}
 
 	vfio_container_fd = device->vfio_container_fd;
-	DRV_VDPA_LOG(DEBUG, "vfio_container_fd %d", vfio_container_fd);
+	DRV_VDPA_LOG(DEBUG, "The vfio_container_fd %d", vfio_container_fd);
 
 	if (do_map)
 		ret = nfp_vdpa_dma_do_map(mem, mem->nregions, vfio_container_fd);
@@ -659,7 +659,7 @@ nfp_vdpa_notify_relay(void *arg)
 
 	epoll_fd = epoll_create(NFP_VDPA_MAX_QUEUES * 2);
 	if (epoll_fd < 0) {
-		DRV_VDPA_LOG(ERR, "failed to create epoll instance.");
+		DRV_VDPA_LOG(ERR, "Failed to create epoll instance.");
 		return 1;
 	}
 
