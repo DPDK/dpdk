@@ -1,5 +1,10 @@
 # ignore hidden files
 .*
+# except the tracked ones and derivatives
+!.ci/
+!.github/
+!.gitignore*
+!.mailmap*
 
 # ignore generated documentation tables
 doc/guides/nics/overview_table.txt
