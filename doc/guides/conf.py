@@ -16,13 +16,12 @@ import configparser
 
 try:
     import sphinx_rtd_theme
-
     html_theme = "sphinx_rtd_theme"
-except:
+except ImportError:
     print('Install the sphinx ReadTheDocs theme for improved html documentation '
           'layout: https://sphinx-rtd-theme.readthedocs.io/',
           file=stderr)
-    pass
+    html_theme = "default"
 
 stop_on_error = ('-W' in argv)
 
@@ -85,10 +84,11 @@ if environ.get('DTS_DOC_BUILD'):
     toc_object_entries = True
     toc_object_entries_show_parents = 'hide'
     # DTS Sidebar config.
-    html_theme_options = {
-        'collapse_navigation': False,
-        'navigation_depth': -1,  # unlimited depth
-    }
+    if html_theme == "sphinx_rtd_theme":
+        html_theme_options = {
+            'collapse_navigation': False,
+            'navigation_depth': -1,  # unlimited depth
+        }
 
     # Add path to DTS sources so that Sphinx can find them.
     dpdk_root = dirname(dirname(dirname(__file__)))
