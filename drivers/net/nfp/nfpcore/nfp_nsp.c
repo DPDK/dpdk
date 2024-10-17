@@ -210,7 +210,7 @@ nfp_nsp_check(struct nfp_nsp *state)
 	}
 
 	if (FIELD_GET(NSP_STATUS_MAGIC, reg) != NSP_MAGIC) {
-		PMD_DRV_LOG(ERR, "Cannot detect NFP Service Processor");
+		PMD_DRV_LOG(ERR, "Can not detect NFP Service Processor");
 		return -ENODEV;
 	}
 

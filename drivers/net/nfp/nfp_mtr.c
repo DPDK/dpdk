@@ -861,7 +861,7 @@ nfp_mtr_disable(struct rte_eth_dev *dev,
 	if (mtr->ref_cnt > 0) {
 		return -rte_mtr_error_set(error, EINVAL,
 				RTE_MTR_ERROR_TYPE_MTR_ID,
-				NULL, "Can't disable a used meter");
+				NULL, "Can not disable a used meter");
 	}
 
 	mtr->enable = false;

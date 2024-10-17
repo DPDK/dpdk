@@ -210,7 +210,7 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 			*item_type = RTE_FLOW_ITEM_TYPE_IPV6;
 			return 0;
 		default:
-			PMD_DRV_LOG(ERR, "Can't calculate match length");
+			PMD_DRV_LOG(ERR, "Can not calculate match length");
 			*match_len = 0;
 			return -ENOTSUP;
 		}

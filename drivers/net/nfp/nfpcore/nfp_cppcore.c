@@ -967,7 +967,7 @@ nfp_cpp_alloc(struct rte_pci_device *pci_dev,
 		xpb_addr = 0x000a0000 + (target * 4);
 		err = nfp_xpb_readl(cpp, xpb_addr, &cpp->imb_cat_table[target]);
 		if (err < 0) {
-			PMD_DRV_LOG(ERR, "Can't read CPP mapping from device");
+			PMD_DRV_LOG(ERR, "Can not read CPP mapping from device");
 			free(cpp);
 			return NULL;
 		}
@@ -975,7 +975,7 @@ nfp_cpp_alloc(struct rte_pci_device *pci_dev,
 
 	err = nfp_cpp_set_mu_locality_lsb(cpp);
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "Can't calculate MU locality bit offset");
+		PMD_DRV_LOG(ERR, "Can not calculate MU locality bit offset");
 		free(cpp);
 		return NULL;
 	}

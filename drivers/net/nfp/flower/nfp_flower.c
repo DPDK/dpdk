@@ -703,7 +703,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	ext_features = nfp_rtsym_read_le(pf_dev->sym_tbl, "_abi_flower_extra_features",
 			&err);
 	if (err != 0) {
-		PMD_INIT_LOG(ERR, "Couldn't read extra features from fw");
+		PMD_INIT_LOG(ERR, "Could not read extra features from fw");
 		ret = -EIO;
 		goto pf_cpp_area_cleanup;
 	}
