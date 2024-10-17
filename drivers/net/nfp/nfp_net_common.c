@@ -717,7 +717,7 @@ nfp_net_set_allmulticast_mode(struct rte_eth_dev *dev,
 
 	cap_extend = hw->cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_MCAST_FILTER) == 0) {
-		PMD_DRV_LOG(ERR, "Allmulticast mode not supported");
+		PMD_DRV_LOG(DEBUG, "Allmulticast mode not supported");
 		return -ENOTSUP;
 	}
 
@@ -2805,7 +2805,7 @@ nfp_net_vf_queues_config(struct nfp_net_hw *net_hw,
 	ret = nfp_net_sriov_check(pf_dev, NFP_NET_VF_CFG_MB_CAP_QUEUE_CONFIG);
 	if (ret != 0) {
 		if (ret == -ENOTSUP) {
-			PMD_INIT_LOG(WARNING, "Set VF max queue not supported");
+			PMD_INIT_LOG(DEBUG, "Set VF max queue not supported");
 			return 0;
 		}
 
@@ -2835,7 +2835,7 @@ nfp_net_sriov_init(struct nfp_net_hw *net_hw,
 	ret = nfp_net_sriov_check(pf_dev, NFP_NET_VF_CFG_MB_CAP_SPLIT);
 	if (ret != 0) {
 		if (ret == -ENOTSUP) {
-			PMD_INIT_LOG(WARNING, "Set VF split not supported");
+			PMD_INIT_LOG(DEBUG, "Set VF split not supported");
 			return 0;
 		}
 
