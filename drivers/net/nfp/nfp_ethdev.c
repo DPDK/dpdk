@@ -1814,7 +1814,13 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 	net_hw.tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	nfp_net_cfg_queue_setup(&net_hw);
 	rte_spinlock_init(&hw->reconfig_lock);
-	nfp_ext_reconfig(&net_hw.super, NFP_NET_CFG_CTRL_MULTI_PF, NFP_NET_CFG_UPDATE_GEN);
+	err = nfp_ext_reconfig(&net_hw.super, NFP_NET_CFG_CTRL_MULTI_PF,
+			NFP_NET_CFG_UPDATE_GEN);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Configure multiple PF failed.");
+		goto end;
+	}
+
 end:
 	nfp_cpp_area_release_free(area);
 	return err;
