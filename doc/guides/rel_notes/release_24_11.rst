@@ -104,6 +104,10 @@ New Features
 
   * Added mempool driver support for CN20K SoC.
 
+* **Added more ICMP message types and codes.**
+
+  New ICMP message types and codes from RFC 792 were added in ``rte_icmp.h``.
+
 * **Added link speed lanes API.**
 
   Added functions to query or force the link lanes configuration.
@@ -277,6 +281,10 @@ API Changes
   * ``rte_kvargs_process_opt`` has been added to behave as ``rte_kvargs_process`` in previous
     releases: it handles key=value and only-key cases.
   * Both ``rte_kvargs_process`` and ``rte_kvargs_process_opt`` reject a NULL ``kvlist`` parameter.
+
+* net: The ICMP message types ``RTE_IP_ICMP_ECHO_REPLY`` and ``RTE_IP_ICMP_ECHO_REQUEST``
+  are marked as deprecated, and are replaced
+  by ``RTE_ICMP_TYPE_ECHO_REPLY`` and ``RTE_ICMP_TYPE_ECHO_REQUEST``.
 
 * drivers/net/ena: Removed ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
   and replaced it with a new shared devarg ``llq_policy`` that keeps the same logic.
