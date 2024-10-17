@@ -1777,7 +1777,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured (%hu)"
-				" doesn't match hardware can supported (%d)",
+				" does not match hardware can supported (%d)",
 				reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
 		return -EINVAL;
 	}
@@ -1869,7 +1869,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured (%d)"
-				" doesn't match hardware can supported (%d)",
+				" does not match hardware can supported (%d)",
 				reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
 		return -EINVAL;
 	}
@@ -2185,7 +2185,7 @@ nfp_net_check_dma_mask(struct nfp_pf_dev *pf_dev,
 {
 	if (pf_dev->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3 &&
 			rte_mem_check_dma_mask(40) != 0) {
-		PMD_DRV_LOG(ERR, "Device %s can't be used: restricted dma mask to 40 bits!",
+		PMD_DRV_LOG(ERR, "Device %s can not be used: restricted dma mask to 40 bits!",
 				name);
 		return -ENODEV;
 	}

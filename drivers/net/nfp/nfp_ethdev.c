@@ -418,7 +418,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	/* Checking MTU set */
 	if (dev->data->mtu > net_hw->flbufsz) {
-		PMD_INIT_LOG(ERR, "MTU (%u) can't be larger than the current NFP_FRAME_SIZE (%u)",
+		PMD_INIT_LOG(ERR, "MTU (%u) can not be larger than the current NFP_FRAME_SIZE (%u)",
 				dev->data->mtu, net_hw->flbufsz);
 		return -ERANGE;
 	}
@@ -1716,7 +1716,7 @@ nfp_fw_setup(struct nfp_pf_dev *pf_dev,
 	if (policy != NFP_NSP_APP_FW_LOAD_FLASH) {
 		err = nfp_fw_get_name(pf_dev, fw_name, sizeof(fw_name));
 		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
+			PMD_DRV_LOG(ERR, "Can not find suitable firmware.");
 			goto close_nsp;
 		}
 	}
@@ -1805,7 +1805,7 @@ nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
 
 	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
 	if ((cap_extend & NFP_NET_CFG_CTRL_MULTI_PF) == 0) {
-		PMD_INIT_LOG(ERR, "Loaded firmware doesn't support multiple PF");
+		PMD_INIT_LOG(ERR, "Loaded firmware does not support multiple PF");
 		err = -EINVAL;
 		goto end;
 	}
@@ -2077,7 +2077,7 @@ nfp_net_speed_cap_get_one(struct nfp_pf_dev *pf_dev,
 
 	nsp = nfp_nsp_open(pf_dev->cpp);
 	if (nsp == NULL) {
-		PMD_DRV_LOG(ERR, "Couldn't get NSP.");
+		PMD_DRV_LOG(ERR, "Could not get NSP.");
 		return -EIO;
 	}
 
@@ -2357,7 +2357,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	snprintf(name, sizeof(name), "nfp_pf%u", function_id);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (pf_dev == NULL) {
-		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
+		PMD_INIT_LOG(ERR, "Can not allocate memory for the PF device");
 		ret = -ENOMEM;
 		goto hw_priv_free;
 	}
@@ -2466,7 +2466,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
 	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Couldn't read %s from firmware", app_name);
+		PMD_INIT_LOG(ERR, "Could not read %s from firmware", app_name);
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
@@ -2711,7 +2711,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	snprintf(name, sizeof(name), "nfp_pf%d", 0);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (pf_dev == NULL) {
-		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
+		PMD_INIT_LOG(ERR, "Can not allocate memory for the PF device");
 		ret = -ENOMEM;
 		goto hw_priv_free;
 	}
@@ -2771,7 +2771,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
 	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Couldn't read %s from fw", app_name);
+		PMD_INIT_LOG(ERR, "Could not read %s from fw", app_name);
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}

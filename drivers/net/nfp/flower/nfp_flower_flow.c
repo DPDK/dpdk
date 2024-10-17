@@ -517,7 +517,7 @@ nfp_flow_table_delete_merge(struct nfp_flow_priv *priv,
 
 	flow_find = nfp_flow_table_search(priv, nfp_flow);
 	if (flow_find == NULL) {
-		PMD_DRV_LOG(ERR, "Can't delete a non-existing flow.");
+		PMD_DRV_LOG(ERR, "Can not delete a non-existing flow.");
 		return -EINVAL;
 	}
 
@@ -1485,7 +1485,7 @@ nfp_flow_action_check_modify(struct nfp_action_calculate_param *param)
 	dst_width = nfp_flow_field_width(dst_data->field, 0);
 	src_width = nfp_flow_field_width(src_data->field, dst_width);
 	if (width > dst_width || width > src_width) {
-		PMD_DRV_LOG(ERR, "Cannot modify more bits than the width of a field");
+		PMD_DRV_LOG(ERR, "Can not modify more bits than the width of a field");
 		return -EINVAL;
 	}
 
@@ -3497,7 +3497,7 @@ nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	if (!flag) {
-		PMD_DRV_LOG(DEBUG, "Can't find nn entry in the nn list");
+		PMD_DRV_LOG(DEBUG, "Can not find nn entry in the nn list");
 		return -EINVAL;
 	}
 
@@ -4154,7 +4154,7 @@ nfp_flow_action_meter(struct nfp_flower_representor *representor,
 	}
 
 	if (!mtr->shared && mtr->ref_cnt > 0) {
-		PMD_DRV_LOG(ERR, "Can't use a used unshared meter");
+		PMD_DRV_LOG(ERR, "Can not use a used unshared meter");
 		return -EINVAL;
 	}
 
