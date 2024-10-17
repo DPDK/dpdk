@@ -880,7 +880,7 @@ nfp_ct_zone_entry_init(struct nfp_ct_zone_entry *ze,
 	ct_merge_hash_params.hash_func_init_val = priv->hash_seed;
 	ze->ct_merge_table = rte_hash_create(&ct_merge_hash_params);
 	if (ze->ct_merge_table == NULL) {
-		PMD_DRV_LOG(ERR, "ct merge table creation failed");
+		PMD_DRV_LOG(ERR, "CT merge table creation failed");
 		return false;
 	}
 
@@ -1715,7 +1715,7 @@ nfp_ct_flow_setup(struct rte_eth_dev *dev,
 					validate_flag, cookie, false, false);
 		}
 
-		PMD_DRV_LOG(ERR, "Handle nfp post ct flow failed.");
+		PMD_DRV_LOG(ERR, "Handle NFP post ct flow failed.");
 		return NULL;
 	}
 
@@ -1726,7 +1726,7 @@ nfp_ct_flow_setup(struct rte_eth_dev *dev,
 					validate_flag, cookie, false, false);
 		}
 
-		PMD_DRV_LOG(ERR, "Handle nfp pre ct flow failed.");
+		PMD_DRV_LOG(ERR, "Handle NFP pre ct flow failed.");
 		return NULL;
 	}
 

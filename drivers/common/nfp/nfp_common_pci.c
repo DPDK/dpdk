@@ -206,7 +206,7 @@ nfp_common_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	enum nfp_class class;
 	struct rte_device *eal_dev = &pci_dev->device;
 
-	PMD_DRV_LOG(INFO, "probe device %s.", eal_dev->name);
+	PMD_DRV_LOG(INFO, "Probe device %s.", eal_dev->name);
 
 	class = nfp_parse_class_options(eal_dev->devargs);
 	if (class == NFP_CLASS_INVALID) {

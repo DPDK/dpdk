@@ -167,7 +167,7 @@ nfp_flower_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	repr->ring[rx_queue_id] = rte_ring_create(ring_name, nb_rx_desc,
 			rte_socket_id(), 0);
 	if (repr->ring[rx_queue_id] == NULL) {
-		PMD_DRV_LOG(ERR, "rte_ring_create failed for rx queue %u", rx_queue_id);
+		PMD_DRV_LOG(ERR, "The rte_ring_create failed for rx queue %u", rx_queue_id);
 		rte_free(rxq);
 		return -ENOMEM;
 	}
@@ -267,7 +267,7 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 	repr = dev->data->dev_private;
 	if (unlikely(repr->ring == NULL) ||
 			unlikely(repr->ring[rxq->qidx] == NULL)) {
-		PMD_RX_LOG(ERR, "representor %s has no ring configured!",
+		PMD_RX_LOG(ERR, "Representor %s has no ring configured!",
 				repr->name);
 		return 0;
 	}
@@ -944,13 +944,13 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	/* Allocate a switch domain for the flower app */
 	ret = rte_eth_switch_domain_alloc(&app_fw_flower->switch_domain_id);
 	if (ret != 0)
-		PMD_INIT_LOG(WARNING, "failed to allocate switch domain for device");
+		PMD_INIT_LOG(WARNING, "Failed to allocate switch domain for device");
 
 	/* Now parse PCI device args passed for representor info */
 	if (pci_dev->device.devargs != NULL) {
 		ret = rte_eth_devargs_parse(pci_dev->device.devargs->args, &eth_da, 1);
 		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "devarg parse failed");
+			PMD_INIT_LOG(ERR, "Devarg parse failed");
 			return -EINVAL;
 		}
 	}
@@ -987,7 +987,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 
 	ret = nfp_flower_repr_alloc(app_fw_flower, hw_priv);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "representors allocation failed");
+		PMD_INIT_LOG(ERR, "Representors allocation failed");
 		ret = -EINVAL;
 		goto domain_free;
 	}
@@ -996,7 +996,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 
 domain_free:
 	if (rte_eth_switch_domain_free(app_fw_flower->switch_domain_id) != 0)
-		PMD_INIT_LOG(WARNING, "failed to free switch domain for device");
+		PMD_INIT_LOG(WARNING, "Failed to free switch domain for device");
 
 	return ret;
 }

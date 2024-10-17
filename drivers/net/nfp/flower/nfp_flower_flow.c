@@ -316,7 +316,7 @@ nfp_mask_table_add(struct nfp_app_fw_flower *app_fw_flower,
 	mask_entry->mask_id  = mask_id;
 	mask_entry->hash_key = hash_key;
 	mask_entry->ref_cnt  = 1;
-	PMD_DRV_LOG(DEBUG, "hash_key=%#x id=%u ref=%u", hash_key,
+	PMD_DRV_LOG(DEBUG, "The hash_key=%#x id=%u ref=%u", hash_key,
 			mask_id, mask_entry->ref_cnt);
 
 	ret = rte_hash_add_key_data(priv->mask_table, &hash_key, mask_entry);
@@ -1831,26 +1831,26 @@ nfp_flow_key_layers_calculate(struct rte_eth_dev *dev,
 
 	ret = nfp_flow_key_layers_check_items(items, &param);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "flow items check failed");
+		PMD_DRV_LOG(ERR, "Flow items check failed");
 		return ret;
 	}
 
 	memset(param.flag, 0, sizeof(struct nfp_item_flag));
 	ret = nfp_flow_key_layers_calculate_items(items, &param);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "flow items calculate failed");
+		PMD_DRV_LOG(ERR, "Flow items calculate failed");
 		return ret;
 	}
 
 	ret = nfp_flow_key_layers_check_actions(dev, actions);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "flow actions check failed");
+		PMD_DRV_LOG(ERR, "Flow actions check failed");
 		return ret;
 	}
 
 	ret = nfp_flow_key_layers_calculate_actions(dev, actions, key_ls);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "flow actions check failed");
+		PMD_DRV_LOG(ERR, "Flow actions check failed");
 		return ret;
 	}
 
@@ -1893,7 +1893,7 @@ nfp_flow_merge_eth(struct nfp_flow_merge_param *param)
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge eth: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge eth: no item->spec!");
 		goto eth_end;
 	}
 
@@ -1941,7 +1941,7 @@ nfp_flow_merge_vlan(struct nfp_flow_merge_param *param)
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge vlan: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge vlan: no item->spec!");
 		return 0;
 	}
 
@@ -1979,7 +1979,7 @@ nfp_flow_merge_ipv4(struct nfp_flow_merge_param *param)
 
 	if (param->is_outer_layer && nfp_flow_is_tunnel(param->nfp_flow)) {
 		if (spec == NULL) {
-			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
+			PMD_DRV_LOG(DEBUG, "NFP flow merge ipv4: no item->spec!");
 			return 0;
 		}
 
@@ -2010,7 +2010,7 @@ nfp_flow_merge_ipv4(struct nfp_flow_merge_param *param)
 			*param->mbuf_off += sizeof(struct nfp_flower_tp_ports);
 
 		if (spec == NULL) {
-			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
+			PMD_DRV_LOG(DEBUG, "NFP flow merge ipv4: no item->spec!");
 			goto ipv4_end;
 		}
 
@@ -2053,7 +2053,7 @@ nfp_flow_merge_ipv6(struct nfp_flow_merge_param *param)
 
 	if (param->is_outer_layer && nfp_flow_is_tunnel(param->nfp_flow)) {
 		if (spec == NULL) {
-			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
+			PMD_DRV_LOG(DEBUG, "NFP flow merge ipv6: no item->spec!");
 			return 0;
 		}
 
@@ -2089,7 +2089,7 @@ nfp_flow_merge_ipv6(struct nfp_flow_merge_param *param)
 			*param->mbuf_off += sizeof(struct nfp_flower_tp_ports);
 
 		if (spec == NULL) {
-			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
+			PMD_DRV_LOG(DEBUG, "NFP flow merge ipv6: no item->spec!");
 			goto ipv6_end;
 		}
 
@@ -2142,14 +2142,14 @@ nfp_flow_merge_tcp(struct nfp_flow_merge_param *param)
 		ports = (struct nfp_flower_tp_ports *)
 				((char *)ipv6 - sizeof(struct nfp_flower_tp_ports));
 	} else {
-		PMD_DRV_LOG(ERR, "nfp flow merge tcp: no L3 layer!");
+		PMD_DRV_LOG(ERR, "NFP flow merge tcp: no L3 layer!");
 		return -EINVAL;
 	}
 
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge tcp: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge tcp: no item->spec!");
 		return 0;
 	}
 
@@ -2228,14 +2228,14 @@ nfp_flow_merge_udp(struct nfp_flow_merge_param *param)
 		ports = (struct nfp_flower_tp_ports *)
 				((char *)ipv6 - sizeof(struct nfp_flower_tp_ports));
 	} else {
-		PMD_DRV_LOG(ERR, "nfp flow merge udp: no L3 layer!");
+		PMD_DRV_LOG(ERR, "NFP flow merge udp: no L3 layer!");
 		return -EINVAL;
 	}
 
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge udp: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge udp: no item->spec!");
 		return 0;
 	}
 
@@ -2282,14 +2282,14 @@ nfp_flow_merge_sctp(struct nfp_flow_merge_param *param)
 		ports = (struct nfp_flower_tp_ports *)
 				((char *)ipv6 - sizeof(struct nfp_flower_tp_ports));
 	} else {
-		PMD_DRV_LOG(ERR, "nfp flow merge sctp: no L3 layer!");
+		PMD_DRV_LOG(ERR, "NFP flow merge sctp: no L3 layer!");
 		return -EINVAL;
 	}
 
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge sctp: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge sctp: no item->spec!");
 		return 0;
 	}
 
@@ -2325,7 +2325,7 @@ nfp_flow_merge_vxlan(struct nfp_flow_merge_param *param)
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge vxlan: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge vxlan: no item->spec!");
 		goto vxlan_end;
 	}
 
@@ -2375,7 +2375,7 @@ nfp_flow_merge_geneve(struct nfp_flow_merge_param *param)
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge geneve: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge geneve: no item->spec!");
 		goto geneve_end;
 	}
 
@@ -2457,7 +2457,7 @@ nfp_flow_merge_gre_key(struct nfp_flow_merge_param *param)
 	item = param->item;
 	spec = item->spec;
 	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge gre key: no item->spec!");
+		PMD_DRV_LOG(DEBUG, "NFP flow merge gre key: no item->spec!");
 		goto gre_key_end;
 	}
 
@@ -2652,7 +2652,7 @@ nfp_flow_item_check(const struct rte_flow_item *item,
 	/* item->last and item->mask cannot exist without item->spec. */
 	if (item->spec == NULL) {
 		if (item->mask || item->last) {
-			PMD_DRV_LOG(ERR, "'mask' or 'last' field provided"
+			PMD_DRV_LOG(ERR, "The 'mask' or 'last' field provided"
 					" without a corresponding 'spec'.");
 			return -EINVAL;
 		}
@@ -2772,13 +2772,13 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		/* Perform basic sanity checks */
 		ret = nfp_flow_item_check(item, proc);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "nfp flow item %d check failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d check failed", item->type);
 			ret = -EINVAL;
 			break;
 		}
 
 		if (proc->merge == NULL) {
-			PMD_DRV_LOG(ERR, "nfp flow item %d no proc function", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
@@ -2796,7 +2796,7 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		param.is_mask = false;
 		ret = proc->merge(&param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "nfp flow item %d exact merge failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed", item->type);
 			break;
 		}
 
@@ -2805,7 +2805,7 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		param.is_mask = true;
 		ret = proc->merge(&param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "nfp flow item %d mask merge failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d mask merge failed", item->type);
 			break;
 		}
 
@@ -2853,7 +2853,7 @@ nfp_flow_compile_items(struct nfp_flower_representor *representor,
 	ret = nfp_flow_compile_item_proc(representor, loop_item, nfp_flow,
 			&mbuf_off_exact, &mbuf_off_mask, is_outer_layer);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "nfp flow item compile failed.");
+		PMD_DRV_LOG(ERR, "NFP flow item compile failed.");
 		return -EINVAL;
 	}
 
@@ -2862,7 +2862,7 @@ nfp_flow_compile_items(struct nfp_flower_representor *representor,
 		ret = nfp_flow_compile_item_proc(representor, items, nfp_flow,
 				&mbuf_off_exact, &mbuf_off_mask, true);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "nfp flow outer item compile failed.");
+			PMD_DRV_LOG(ERR, "NFP flow outer item compile failed.");
 			return -EINVAL;
 		}
 	}
@@ -4888,7 +4888,7 @@ nfp_flow_process(struct rte_eth_dev *dev,
 
 	ret = nfp_stats_id_alloc(representor->app_fw_flower, &stats_ctx);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "nfp stats id alloc failed.");
+		PMD_DRV_LOG(ERR, "NFP stats id alloc failed.");
 		return NULL;
 	}
 
@@ -4906,13 +4906,13 @@ nfp_flow_process(struct rte_eth_dev *dev,
 
 	ret = nfp_flow_compile_items(representor, items, nfp_flow);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "nfp flow item process failed.");
+		PMD_DRV_LOG(ERR, "NFP flow item process failed.");
 		goto free_flow;
 	}
 
 	ret = nfp_flow_compile_action(representor, actions, nfp_flow);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "nfp flow action process failed.");
+		PMD_DRV_LOG(ERR, "NFP flow action process failed.");
 		goto free_flow;
 	}
 
@@ -4921,7 +4921,7 @@ nfp_flow_process(struct rte_eth_dev *dev,
 	mask_len = key_layer.key_size;
 	if (!nfp_check_mask_add(representor->app_fw_flower, mask_data, mask_len,
 			&nfp_flow_meta->flags, &new_mask_id)) {
-		PMD_DRV_LOG(ERR, "nfp mask add check failed.");
+		PMD_DRV_LOG(ERR, "NFP mask add check failed.");
 		goto free_flow;
 	}
 
@@ -4938,7 +4938,7 @@ nfp_flow_process(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "This flow is already exist.");
 		if (!nfp_check_mask_remove(representor->app_fw_flower, mask_data, mask_len,
 				&nfp_flow_meta->flags)) {
-			PMD_DRV_LOG(ERR, "nfp mask del check failed.");
+			PMD_DRV_LOG(ERR, "NFP mask del check failed.");
 		}
 		goto free_flow;
 	}
@@ -5011,7 +5011,7 @@ nfp_flow_teardown(struct nfp_app_fw_flower *app_fw_flower,
 	nfp_flow_meta->flags &= ~NFP_FL_META_FLAG_MANAGE_MASK;
 	if (!nfp_check_mask_remove(app_fw_flower, mask_data, mask_len,
 			&nfp_flow_meta->flags)) {
-		PMD_DRV_LOG(ERR, "nfp mask del check failed.");
+		PMD_DRV_LOG(ERR, "NFP mask del check failed.");
 		return -EINVAL;
 	}
 
@@ -5523,7 +5523,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 
 	priv = rte_zmalloc("nfp_app_flow_priv", sizeof(struct nfp_flow_priv), 0);
 	if (priv == NULL) {
-		PMD_INIT_LOG(ERR, "nfp app flow priv creation failed");
+		PMD_INIT_LOG(ERR, "NFP app flow priv creation failed");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -5541,7 +5541,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		priv->mask_ids.free_list.buf = rte_zmalloc("nfp_app_mask_ids",
 				NFP_FLOWER_MASK_ENTRY_RS * NFP_FLOWER_MASK_ELEMENT_RS, 0);
 		if (priv->mask_ids.free_list.buf == NULL) {
-			PMD_INIT_LOG(ERR, "mask id free list creation failed");
+			PMD_INIT_LOG(ERR, "Mask id free list creation failed");
 			ret = -ENOMEM;
 			goto free_priv;
 		}
@@ -5551,7 +5551,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		priv->stats_ids.free_list.buf = rte_zmalloc("nfp_app_stats_ids",
 				priv->stats_ring_size * NFP_FL_STATS_ELEM_RS, 0);
 		if (priv->stats_ids.free_list.buf == NULL) {
-			PMD_INIT_LOG(ERR, "stats id free list creation failed");
+			PMD_INIT_LOG(ERR, "Stats id free list creation failed");
 			ret = -ENOMEM;
 			goto free_mask_id;
 		}
@@ -5561,12 +5561,12 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	rte_spinlock_init(&priv->stats_lock);
 	stats_size = (ctx_count & NFP_FL_STAT_ID_STAT) |
 			((ctx_split - 1) & NFP_FL_STAT_ID_MU_NUM);
-	PMD_INIT_LOG(INFO, "ctx_count:%0lx, ctx_split:%0lx, stats_size:%0lx ",
+	PMD_INIT_LOG(INFO, "The ctx_count:%0lx, ctx_split:%0lx, stats_size:%0lx ",
 			ctx_count, ctx_split, stats_size);
 	priv->stats = rte_zmalloc("nfp_flow_stats",
 			stats_size * sizeof(struct nfp_fl_stats), 0);
 	if (priv->stats == NULL) {
-		PMD_INIT_LOG(ERR, "flow stats creation failed");
+		PMD_INIT_LOG(ERR, "Flow stats creation failed");
 		ret = -ENOMEM;
 		goto free_stats_id;
 	}
@@ -5575,7 +5575,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	mask_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->mask_table = rte_hash_create(&mask_hash_params);
 	if (priv->mask_table == NULL) {
-		PMD_INIT_LOG(ERR, "mask hash table creation failed");
+		PMD_INIT_LOG(ERR, "Mask hash table creation failed");
 		ret = -ENOMEM;
 		goto free_stats;
 	}
@@ -5585,7 +5585,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	flow_hash_params.entries = ctx_count;
 	priv->flow_table = rte_hash_create(&flow_hash_params);
 	if (priv->flow_table == NULL) {
-		PMD_INIT_LOG(ERR, "flow hash table creation failed");
+		PMD_INIT_LOG(ERR, "Flow hash table creation failed");
 		ret = -ENOMEM;
 		goto free_mask_table;
 	}
@@ -5604,7 +5604,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	ct_zone_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->ct_zone_table = rte_hash_create(&ct_zone_hash_params);
 	if (priv->ct_zone_table == NULL) {
-		PMD_INIT_LOG(ERR, "ct zone table creation failed");
+		PMD_INIT_LOG(ERR, "CT zone table creation failed");
 		ret = -ENOMEM;
 		goto free_pre_tnl_table;
 	}
@@ -5614,7 +5614,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	ct_map_hash_params.entries = ctx_count;
 	priv->ct_map_table = rte_hash_create(&ct_map_hash_params);
 	if (priv->ct_map_table == NULL) {
-		PMD_INIT_LOG(ERR, "ct map table creation failed");
+		PMD_INIT_LOG(ERR, "CT map table creation failed");
 		ret = -ENOMEM;
 		goto free_ct_zone_table;
 	}

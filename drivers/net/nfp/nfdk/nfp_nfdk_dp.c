@@ -236,7 +236,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 	txq = tx_queue;
 	hw = txq->hw;
 
-	PMD_TX_LOG(DEBUG, "working for queue %hu at pos %d and %hu packets",
+	PMD_TX_LOG(DEBUG, "Working for queue %hu at pos %d and %hu packets",
 			txq->qidx, txq->wr_p, nb_pkts);
 
 	if (nfp_net_nfdk_free_tx_desc(txq) < NFDK_TX_DESC_PER_SIMPLE_PKT * nb_pkts ||
@@ -247,7 +247,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 	if (unlikely(free_descs == 0))
 		return 0;
 
-	PMD_TX_LOG(DEBUG, "queue: %hu. Sending %hu packets", txq->qidx, nb_pkts);
+	PMD_TX_LOG(DEBUG, "Queue: %hu. Sending %hu packets", txq->qidx, nb_pkts);
 
 	/* Sending packets */
 	while (npkts < nb_pkts && free_descs > 0) {
@@ -439,7 +439,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_free_thresh == 0)
 		tx_free_thresh = DEFAULT_TX_FREE_THRESH;
 	if (tx_free_thresh > nb_desc) {
-		PMD_DRV_LOG(ERR, "tx_free_thresh must be less than the number of TX "
+		PMD_DRV_LOG(ERR, "The tx_free_thresh must be less than the number of TX "
 				"descriptors. (tx_free_thresh=%u port=%d queue=%d)",
 				tx_free_thresh, dev->data->port_id, queue_idx);
 		return -EINVAL;

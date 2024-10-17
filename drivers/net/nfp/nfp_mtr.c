@@ -1097,7 +1097,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 
 	priv = rte_zmalloc("nfp_app_mtr_priv", sizeof(struct nfp_mtr_priv), 0);
 	if (priv == NULL) {
-		PMD_INIT_LOG(ERR, "nfp app mtr priv creation failed");
+		PMD_INIT_LOG(ERR, "NFP app mtr priv creation failed");
 		return -ENOMEM;
 	}
 
@@ -1107,7 +1107,7 @@ nfp_mtr_priv_init(struct nfp_pf_dev *pf_dev)
 	ret = rte_eal_alarm_set(NFP_METER_STATS_INTERVAL, nfp_mtr_stats_request,
 			(void *)app_fw_flower);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "nfp mtr timer init failed.");
+		PMD_INIT_LOG(ERR, "NFP mtr timer init failed.");
 		rte_free(priv);
 		return ret;
 	}

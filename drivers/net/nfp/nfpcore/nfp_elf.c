@@ -1066,7 +1066,7 @@ nfp_elf_get_fw_version(uint32_t *fw_version,
 	struct nfp_elf *elf;
 
 	if (rte_firmware_read(fw_name, &fw_buf, &fsize) != 0) {
-		PMD_DRV_LOG(ERR, "firmware %s not found!", fw_name);
+		PMD_DRV_LOG(ERR, "Firmware %s not found!", fw_name);
 		return -ENOENT;
 	}
 

@@ -435,7 +435,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	while (avail + avail_multiplexed < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
-			PMD_RX_LOG(ERR, "rxb does not exist!");
+			PMD_RX_LOG(ERR, "The rxb does not exist!");
 			break;
 		}
 
@@ -482,7 +482,7 @@ nfp_net_recv_pkts(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error.
 			 */
-			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
+			PMD_RX_LOG(ERR, "The mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
 			break;
 		}
@@ -543,7 +543,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -748,14 +748,14 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	uint32_t todo;
 	uint32_t qcp_rd_p;
 
-	PMD_TX_LOG(DEBUG, "queue %hu. Check for descriptor with a complete"
+	PMD_TX_LOG(DEBUG, "Queue %hu. Check for descriptor with a complete"
 			" status", txq->qidx);
 
 	/* Work out how many packets have been sent */
 	qcp_rd_p = nfp_net_read_tx_free_qcp(txq);
 
 	if (qcp_rd_p == txq->rd_p) {
-		PMD_TX_LOG(DEBUG, "queue %hu: It seems harrier is not sending "
+		PMD_TX_LOG(DEBUG, "Queue %hu: It seems harrier is not sending "
 				"packets (%u, %u)", txq->qidx,
 				qcp_rd_p, txq->rd_p);
 		return 0;
@@ -766,7 +766,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	else
 		todo = qcp_rd_p + txq->tx_count - txq->rd_p;
 
-	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u",
+	PMD_TX_LOG(DEBUG, "The qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u",
 			qcp_rd_p, txq->rd_p, txq->rd_p);
 
 	if (todo == 0)

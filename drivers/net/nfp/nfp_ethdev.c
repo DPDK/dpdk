@@ -1049,7 +1049,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	net_hw->mac_stats = pf_dev->mac_stats_bar +
 				(net_hw->nfp_idx * NFP_MAC_STATS_SIZE);
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "Ctrl bar: %p", hw->ctrl_bar);
 	PMD_INIT_LOG(DEBUG, "MAC stats: %p", net_hw->mac_stats);
 
 	err = nfp_net_common_init(pf_dev, net_hw);
@@ -1073,7 +1073,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	net_hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *
 			nfp_net_xstats_size(eth_dev), 0);
 	if (net_hw->eth_xstats_base == NULL) {
-		PMD_INIT_LOG(ERR, "no memory for xstats base values on device %s!",
+		PMD_INIT_LOG(ERR, "No memory for xstats base values on device %s!",
 				pci_dev->device.name);
 		err = -ENOMEM;
 		goto ipsec_exit;
@@ -1086,7 +1086,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 	net_hw->tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	net_hw->rx_bar = pf_dev->qc_bar + rx_base * NFP_QCP_QUEUE_ADDR_SZ;
 
-	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
+	PMD_INIT_LOG(DEBUG, "The ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
 			hw->ctrl_bar, net_hw->tx_bar, net_hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(net_hw);
@@ -1141,7 +1141,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev,
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	PMD_INIT_LOG(INFO, "port %d VendorID=%#x DeviceID=%#x "
+	PMD_INIT_LOG(INFO, "Port %d VendorID=%#x DeviceID=%#x "
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,
@@ -1247,7 +1247,7 @@ nfp_fw_get_name(struct nfp_pf_dev *pf_dev,
 	if (nfp_fw_model == NULL) {
 		nfp_fw_model = nfp_hwinfo_lookup(pf_dev->hwinfo, "assembly.partno");
 		if (nfp_fw_model == NULL) {
-			PMD_DRV_LOG(ERR, "firmware model NOT found");
+			PMD_DRV_LOG(ERR, "Firmware model NOT found");
 			return -EIO;
 		}
 	}
@@ -1281,7 +1281,7 @@ nfp_fw_upload(struct nfp_nsp *nsp,
 
 	err = rte_firmware_read(fw_name, &fw_buf, &fsize);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "firmware %s not found!", fw_name);
+		PMD_DRV_LOG(ERR, "Firmware %s not found!", fw_name);
 		return -ENOENT;
 	}
 
@@ -1903,12 +1903,12 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 			pf_dev->total_phyports * pf_dev->ctrl_bar_size,
 			&pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
-		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for %s", bar_name);
+		PMD_INIT_LOG(ERR, "The nfp_rtsym_map fails for %s", bar_name);
 		ret = -EIO;
 		goto app_cleanup;
 	}
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", pf_dev->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "Ctrl bar: %p", pf_dev->ctrl_bar);
 
 	/* Loop through all physical ports on PF */
 	for (i = 0; i < pf_dev->total_phyports; i++) {
@@ -2503,18 +2503,18 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->qc_bar = nfp_cpp_map_area(pf_dev->cpp, cpp_id,
 			addr, dev_info->qc_area_sz, &pf_dev->qc_area);
 	if (pf_dev->qc_bar == NULL) {
-		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for net.qc");
+		PMD_INIT_LOG(ERR, "The nfp_rtsym_map fails for net.qc");
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
 
-	PMD_INIT_LOG(DEBUG, "qc_bar address: %p", pf_dev->qc_bar);
+	PMD_INIT_LOG(DEBUG, "The qc_bar address: %p", pf_dev->qc_bar);
 
 	pf_dev->mac_stats_bar = nfp_rtsym_map(sym_tbl, "_mac_stats",
 			NFP_MAC_STATS_SIZE * nfp_eth_table->max_index,
 			&pf_dev->mac_stats_area);
 	if (pf_dev->mac_stats_bar == NULL) {
-		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _mac_stats");
+		PMD_INIT_LOG(ERR, "The nfp_rtsym_map fails for _mac_stats");
 		goto hwqueues_cleanup;
 	}
 

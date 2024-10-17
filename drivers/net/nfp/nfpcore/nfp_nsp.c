@@ -188,7 +188,7 @@ nfp_nsp_print_extended_error(uint32_t ret_val)
 
 	for (i = 0; i < RTE_DIM(nsp_errors); i++)
 		if (ret_val == nsp_errors[i].code)
-			PMD_DRV_LOG(ERR, "err msg: %s", nsp_errors[i].msg);
+			PMD_DRV_LOG(ERR, "Err msg: %s", nsp_errors[i].msg);
 }
 
 static int
