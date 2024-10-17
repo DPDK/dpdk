@@ -25,7 +25,7 @@ nfp_reconfig_real(struct nfp_hw *hw,
 			hw->qcp_cfg);
 
 	if (hw->qcp_cfg == NULL) {
-		PMD_DRV_LOG(ERR, "Bad configuration queue pointer");
+		PMD_DRV_LOG(ERR, "Bad configuration queue pointer.");
 		return -ENXIO;
 	}
 
@@ -43,12 +43,12 @@ nfp_reconfig_real(struct nfp_hw *hw,
 			break;
 
 		if ((new & NFP_NET_CFG_UPDATE_ERR) != 0) {
-			PMD_DRV_LOG(ERR, "Reconfig error: %#08x", new);
+			PMD_DRV_LOG(ERR, "Reconfig error: %#08x.", new);
 			return -1;
 		}
 
 		if (cnt >= NFP_NET_POLL_TIMEOUT) {
-			PMD_DRV_LOG(ERR, "Reconfig timeout for %#08x after %u ms",
+			PMD_DRV_LOG(ERR, "Reconfig timeout for %#08x after %u ms.",
 					update, cnt);
 			return -EIO;
 		}
@@ -56,7 +56,7 @@ nfp_reconfig_real(struct nfp_hw *hw,
 		nanosleep(&wait, 0); /* waiting for a 1ms */
 	}
 
-	PMD_DRV_LOG(DEBUG, "Ack DONE");
+	PMD_DRV_LOG(DEBUG, "Ack DONE.");
 	return 0;
 }
 
@@ -96,7 +96,7 @@ nfp_reconfig(struct nfp_hw *hw,
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error NFP reconfig: ctrl=%#08x update=%#08x",
+		PMD_DRV_LOG(ERR, "Error NFP reconfig: ctrl=%#08x update=%#08x.",
 				ctrl, update);
 		return -EIO;
 	}
@@ -140,7 +140,7 @@ nfp_ext_reconfig(struct nfp_hw *hw,
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error NFP ext reconfig: ctrl_ext=%#08x update=%#08x",
+		PMD_DRV_LOG(ERR, "Error NFP ext reconfig: ctrl_ext=%#08x update=%#08x.",
 				ctrl_ext, update);
 		return -EIO;
 	}

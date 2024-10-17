@@ -177,7 +177,7 @@ nfp_net_meta_parse_qinq(const struct nfp_net_meta_parsed *meta,
 		mb->vlan_tci = rte_cpu_to_le_16(meta->vlan[0].tci);
 
 	mb->vlan_tci_outer = rte_cpu_to_le_16(meta->vlan[1].tci);
-	PMD_RX_LOG(DEBUG, "Received outer vlan TCI is %u inner vlan TCI is %u",
+	PMD_RX_LOG(DEBUG, "Received outer vlan TCI is %u inner vlan TCI is %u.",
 			mb->vlan_tci_outer, mb->vlan_tci);
 	mb->ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 }

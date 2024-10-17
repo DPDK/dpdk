@@ -29,7 +29,7 @@ nfp_flower_cmsg_init(struct nfp_app_fw_flower *app_fw_flower,
 	struct nfp_flower_cmsg_hdr *hdr;
 
 	pkt = rte_pktmbuf_mtod(m, char *);
-	PMD_DRV_LOG(DEBUG, "The flower_cmsg_init using pkt at %p", pkt);
+	PMD_DRV_LOG(DEBUG, "The flower_cmsg_init using pkt at %p.", pkt);
 
 	new_size += nfp_flower_pkt_add_metadata(app_fw_flower, m, NFP_NET_META_PORT_ID_CTRL);
 
@@ -94,7 +94,7 @@ nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(ERR, "Could not allocate mac repr cmsg");
+		PMD_DRV_LOG(ERR, "Could not allocate mac repr cmsg.");
 		return -ENOMEM;
 	}
 
@@ -131,7 +131,7 @@ nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr reify failed");
+		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr reify failed.");
 		return -ENOMEM;
 	}
 
@@ -161,7 +161,7 @@ nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr portmod failed");
+		PMD_DRV_LOG(DEBUG, "Alloc mbuf for repr portmod failed.");
 		return -ENOMEM;
 	}
 
@@ -263,7 +263,7 @@ nfp_flower_cmsg_tun_neigh_v4_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun neigh");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun neigh.");
 		return -ENOMEM;
 	}
 
@@ -295,7 +295,7 @@ nfp_flower_cmsg_tun_neigh_v6_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun neigh");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun neigh.");
 		return -ENOMEM;
 	}
 
@@ -328,7 +328,7 @@ nfp_flower_cmsg_tun_off_v4(struct nfp_app_fw_flower *app_fw_flower)
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun addr");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v4 tun addr.");
 		return -ENOMEM;
 	}
 
@@ -371,7 +371,7 @@ nfp_flower_cmsg_tun_off_v6(struct nfp_app_fw_flower *app_fw_flower)
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun addr");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for v6 tun addr.");
 		return -ENOMEM;
 	}
 
@@ -415,7 +415,7 @@ nfp_flower_cmsg_pre_tunnel_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for pre tunnel rule");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for pre tunnel rule.");
 		return -ENOMEM;
 	}
 
@@ -457,7 +457,7 @@ nfp_flower_cmsg_tun_mac_rule(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for tunnel mac");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for tunnel mac.");
 		return -ENOMEM;
 	}
 
@@ -491,7 +491,7 @@ nfp_flower_cmsg_qos_add(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos add");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos add.");
 		return -ENOMEM;
 	}
 
@@ -521,7 +521,7 @@ nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos delete");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos delete.");
 		return -ENOMEM;
 	}
 
@@ -551,7 +551,7 @@ nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
-		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos stats");
+		PMD_DRV_LOG(DEBUG, "Failed to alloc mbuf for qos stats.");
 		return -ENOMEM;
 	}
 

@@ -191,7 +191,7 @@ nfp_drivers_probe(struct rte_pci_device *pci_dev,
 
 		ret = driver->probe(pci_dev);
 		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "Failed to load driver %s", driver->name);
+			PMD_DRV_LOG(ERR, "Failed to load driver %s.", driver->name);
 			return ret;
 		}
 	}
@@ -210,7 +210,7 @@ nfp_common_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	class = nfp_parse_class_options(eal_dev->devargs);
 	if (class == NFP_CLASS_INVALID) {
-		PMD_DRV_LOG(ERR, "Unsupported nfp class type: %s",
+		PMD_DRV_LOG(ERR, "Unsupported nfp class type: %s.",
 				eal_dev->devargs->args);
 		return -ENOTSUP;
 	}

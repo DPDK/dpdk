@@ -155,7 +155,7 @@ nfp_flower_service_start(struct nfp_net_hw_priv *hw_priv)
 
 	service_handle = nfp_flower_service_handle_get(hw_priv);
 	if (service_handle == NULL) {
-		PMD_DRV_LOG(ERR, "Can not get service handle");
+		PMD_DRV_LOG(ERR, "Can not get service handle.");
 		return -EINVAL;
 	}
 
@@ -175,7 +175,7 @@ nfp_flower_service_start(struct nfp_net_hw_priv *hw_priv)
 	/* Insert the NIC to flower service slot */
 	ret = nfp_flower_service_insert(hw_priv, service_handle);
 	if (ret == MAX_FLOWER_SERVICE_SLOT) {
-		PMD_DRV_LOG(ERR, "Flower ctrl vnic service slot over %u",
+		PMD_DRV_LOG(ERR, "Flower ctrl vnic service slot over %u.",
 				MAX_FLOWER_SERVICE_SLOT);
 		return -ENOSPC;
 	}
@@ -192,7 +192,7 @@ nfp_flower_service_stop(struct nfp_net_hw_priv *hw_priv)
 
 	service_handle = nfp_flower_service_handle_get(hw_priv);
 	if (service_handle == NULL) {
-		PMD_DRV_LOG(ERR, "Can not get service handle");
+		PMD_DRV_LOG(ERR, "Can not get service handle.");
 		return;
 	}
 

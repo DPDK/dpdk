@@ -38,7 +38,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_RX_LOG(ERR, "RX Bad queue");
+		PMD_RX_LOG(ERR, "RX Bad queue.");
 		return 0;
 	}
 
@@ -66,7 +66,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			PMD_RX_LOG(ERR, "RX mbuf alloc failed port_id=%u queue_id=%hu",
+			PMD_RX_LOG(ERR, "RX mbuf alloc failed port_id=%u queue_id=%hu.",
 					rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -133,7 +133,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold >= rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu.",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -165,7 +165,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_TX_LOG(ERR, "Ctrl dev TX Bad queue");
+		PMD_TX_LOG(ERR, "Ctrl dev TX Bad queue.");
 		goto xmit_end;
 	}
 
@@ -180,7 +180,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	free_descs = nfp_net_nfd3_free_tx_desc(txq);
 	if (unlikely(free_descs == 0)) {
-		PMD_TX_LOG(ERR, "Ctrl dev no free descs");
+		PMD_TX_LOG(ERR, "Ctrl dev no free descs.");
 		goto xmit_end;
 	}
 
@@ -236,7 +236,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	txq = ctrl_dev->data->tx_queues[0];
 
 	if (unlikely(mbuf->nb_segs > 1)) {
-		PMD_TX_LOG(ERR, "Multisegment packet not supported");
+		PMD_TX_LOG(ERR, "Multisegment packet not supported.");
 		return 0;
 	}
 
@@ -246,7 +246,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	free_descs = nfp_net_nfdk_free_tx_desc(txq);
 	if (unlikely(free_descs < NFDK_TX_DESC_PER_SIMPLE_PKT)) {
-		PMD_TX_LOG(ERR, "Ctrl dev no free descs");
+		PMD_TX_LOG(ERR, "Ctrl dev no free descs.");
 		return 0;
 	}
 
@@ -323,7 +323,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	used_descs = ktxds - txq->ktxds - txq->wr_p;
 	if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
 			RTE_ALIGN_FLOOR(txq->wr_p + used_descs - 1, NFDK_TX_DESC_BLOCK_CNT)) {
-		PMD_TX_LOG(INFO, "Used descs cross block boundary");
+		PMD_TX_LOG(INFO, "Used descs cross block boundary.");
 		return 0;
 	}
 
@@ -442,12 +442,12 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 			repr = app_fw_flower->pf_repr;
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "Ctrl msg for unknown port %#x", port);
+		PMD_DRV_LOG(ERR, "Ctrl msg for unknown port %#x.", port);
 		return -EINVAL;
 	}
 
 	if (repr == NULL) {
-		PMD_DRV_LOG(ERR, "Can not get 'repr' for port %#x", port);
+		PMD_DRV_LOG(ERR, "Can not get 'repr' for port %#x.", port);
 		return -EINVAL;
 	}
 

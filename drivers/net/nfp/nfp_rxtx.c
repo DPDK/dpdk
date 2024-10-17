@@ -151,7 +151,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	uint64_t dma_addr;
 	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
 
-	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %hu descriptors",
+	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %hu descriptors.",
 			rxq->rx_count);
 
 	for (i = 0; i < rxq->rx_count; i++) {
@@ -159,7 +159,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		struct rte_mbuf *mbuf = rte_pktmbuf_alloc(rxq->mem_pool);
 
 		if (mbuf == NULL) {
-			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%hu",
+			PMD_DRV_LOG(ERR, "RX mbuf alloc failed queue_id=%hu.",
 				rxq->qidx);
 			return -ENOMEM;
 		}
@@ -178,7 +178,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	rte_wmb();
 
 	/* Not advertising the whole ring as the firmware gets confused if so */
-	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %hu", rxq->rx_count - 1);
+	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %hu.", rxq->rx_count - 1);
 
 	nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, rxq->rx_count - 1);
 
@@ -260,7 +260,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= RTE_PTYPE_L3_IPV6;
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp outer layer 3 packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp outer layer 3 packet type: %u.",
 				nfp_ptype->outer_l3_ptype);
 		break;
 	}
@@ -278,7 +278,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L4_UDP;
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp tunnel packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp tunnel packet type: %u.",
 				nfp_tunnel_ptype);
 		break;
 	}
@@ -305,7 +305,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L4_SCTP);
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 4 packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 4 packet type: %u.",
 				nfp_ptype->l4_ptype);
 		break;
 	}
@@ -332,7 +332,7 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 		mbuf_ptype |= NFP_PTYPE2RTE(nfp_tunnel_ptype, L3_IPV6_EXT_UNKNOWN);
 		break;
 	default:
-		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 3 packet type: %u",
+		PMD_RX_LOG(DEBUG, "Unrecognized nfp layer 3 packet type: %u.",
 				nfp_ptype->l3_ptype);
 		break;
 	}
@@ -426,7 +426,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		 * DPDK just checks the queue is lower than max queues
 		 * enabled. But the queue needs to be configured.
 		 */
-		PMD_RX_LOG(ERR, "RX Bad queue");
+		PMD_RX_LOG(ERR, "RX Bad queue.");
 		return 0;
 	}
 
@@ -455,7 +455,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu",
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu.",
 					rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -468,7 +468,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
 
-		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u",
+		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u.",
 				rxds->rxd.data_len, rxq->mbuf_size);
 
 		/* Size of this segment */
@@ -532,7 +532,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	if (nb_hold == 0)
 		return nb_hold;
 
-	PMD_RX_LOG(DEBUG, "RX  port_id=%hu queue_id=%hu, %hu packets received",
+	PMD_RX_LOG(DEBUG, "RX  port_id=%hu queue_id=%hu, %hu packets received.",
 			rxq->port_id, rxq->qidx, avail);
 
 	nb_hold += rxq->nb_rx_hold;
@@ -543,7 +543,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu.",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
@@ -630,7 +630,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);
 	if (rx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
 			nb_desc > max_rx_desc || nb_desc < min_rx_desc) {
-		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
+		PMD_DRV_LOG(ERR, "Wrong nb_desc value.");
 		return -EINVAL;
 	}
 
@@ -678,7 +678,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 			sizeof(struct nfp_net_rx_desc) * max_rx_desc,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating rx dma");
+		PMD_DRV_LOG(ERR, "Error allocating rx dma.");
 		nfp_net_rx_queue_release(dev, queue_idx);
 		dev->data->rx_queues[queue_idx] = NULL;
 		return -ENOMEM;
@@ -749,14 +749,14 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	uint32_t qcp_rd_p;
 
 	PMD_TX_LOG(DEBUG, "Queue %hu. Check for descriptor with a complete"
-			" status", txq->qidx);
+			" status.", txq->qidx);
 
 	/* Work out how many packets have been sent */
 	qcp_rd_p = nfp_net_read_tx_free_qcp(txq);
 
 	if (qcp_rd_p == txq->rd_p) {
 		PMD_TX_LOG(DEBUG, "Queue %hu: It seems harrier is not sending "
-				"packets (%u, %u)", txq->qidx,
+				"packets (%u, %u).", txq->qidx,
 				qcp_rd_p, txq->rd_p);
 		return 0;
 	}
@@ -766,7 +766,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	else
 		todo = qcp_rd_p + txq->tx_count - txq->rd_p;
 
-	PMD_TX_LOG(DEBUG, "The qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u",
+	PMD_TX_LOG(DEBUG, "The qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u.",
 			qcp_rd_p, txq->rd_p, txq->rd_p);
 
 	if (todo == 0)

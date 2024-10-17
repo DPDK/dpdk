@@ -51,7 +51,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 			if (dev->data->nb_rx_queues > 1) {
 				PMD_INIT_LOG(ERR, "PMD rx interrupt only "
-						"supports 1 queue with UIO");
+						"supports 1 queue with UIO.");
 				return -EIO;
 			}
 		}
@@ -268,7 +268,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
 	if (dev_info == NULL) {
-		PMD_INIT_LOG(ERR, "Not supported device ID");
+		PMD_INIT_LOG(ERR, "Not supported device ID.");
 		return -ENODEV;
 	}
 
@@ -277,7 +277,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR, "The hw->super.ctrl_bar is NULL. BAR0 not configured");
+		PMD_DRV_LOG(ERR, "The hw->super.ctrl_bar is NULL. BAR0 not configured.");
 		return -ENODEV;
 	}
 
@@ -298,7 +298,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	/* Set the ctrl bar size */
 	nfp_net_ctrl_bar_size_set(pf_dev);
 
-	PMD_INIT_LOG(DEBUG, "Ctrl bar: %p", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "Ctrl bar: %p.", hw->ctrl_bar);
 
 	err = nfp_net_common_init(pf_dev, net_hw);
 	if (err != 0)
@@ -308,7 +308,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw_priv = rte_zmalloc(NULL, sizeof(*hw_priv), 0);
 	if (hw_priv == NULL) {
-		PMD_INIT_LOG(ERR, "Can not alloc memory for hw priv data");
+		PMD_INIT_LOG(ERR, "Can not alloc memory for hw priv data.");
 		err = -ENOMEM;
 		goto hw_priv_free;
 	}
@@ -340,7 +340,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	net_hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
 	net_hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
-	PMD_INIT_LOG(DEBUG, "The ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
+	PMD_INIT_LOG(DEBUG, "The ctrl_bar: %p, tx_bar: %p, rx_bar: %p.",
 			hw->ctrl_bar, net_hw->tx_bar, net_hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(net_hw);
@@ -358,14 +358,14 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
+		PMD_INIT_LOG(ERR, "Failed to space for MAC address.");
 		err = -ENOMEM;
 		goto free_xstats;
 	}
 
 	nfp_read_mac(hw);
 	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
-		PMD_INIT_LOG(INFO, "Using random mac address for port %hu", port);
+		PMD_INIT_LOG(INFO, "Using random mac address for port %hu.", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
 		nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);

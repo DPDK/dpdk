@@ -80,7 +80,7 @@ nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 		notify_base += NFP_VDPA_NOTIFY_ADDR_INTERVAL;
 
 		vdpa_hw->notify_region = queue;
-		DRV_CORE_LOG(DEBUG, "The notify_addr[%d] at %p, notify_addr[%d] at %p",
+		DRV_CORE_LOG(DEBUG, "The notify_addr[%d] at %p, notify_addr[%d] at %p.",
 				idx, vdpa_hw->notify_addr[idx],
 				idx + 1, vdpa_hw->notify_addr[idx + 1]);
 	}

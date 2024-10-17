@@ -194,23 +194,23 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		switch (item->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected.");
 			*match_len = sizeof(struct nfp_net_cmsg_match_eth);
 			*item_type = RTE_FLOW_ITEM_TYPE_ETH;
 			ret = 0;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected.");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v4);
 			*item_type = RTE_FLOW_ITEM_TYPE_IPV4;
 			return 0;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected.");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v6);
 			*item_type = RTE_FLOW_ITEM_TYPE_IPV6;
 			return 0;
 		default:
-			PMD_DRV_LOG(ERR, "Can not calculate match length");
+			PMD_DRV_LOG(ERR, "Can not calculate match length.");
 			*match_len = 0;
 			return -ENOTSUP;
 		}
@@ -523,7 +523,7 @@ nfp_net_flow_compile_items(const struct rte_flow_item items[],
 		}
 
 		if (proc == NULL) {
-			PMD_DRV_LOG(ERR, "No next item provided for %d", item->type);
+			PMD_DRV_LOG(ERR, "No next item provided for %d.", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
@@ -531,20 +531,20 @@ nfp_net_flow_compile_items(const struct rte_flow_item items[],
 		/* Perform basic sanity checks */
 		ret = nfp_net_flow_item_check(item, proc);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d check failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d check failed.", item->type);
 			ret = -EINVAL;
 			break;
 		}
 
 		if (proc->merge == NULL) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function.", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
 
 		ret = proc->merge(nfp_flow, item, proc);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed.", item->type);
 			break;
 		}
 
@@ -590,7 +590,7 @@ nfp_net_flow_action_queue(struct rte_eth_dev *dev,
 	queue = action->conf;
 	if (queue->index >= dev->data->nb_rx_queues ||
 			dev->data->rx_queues[queue->index] == NULL) {
-		PMD_DRV_LOG(ERR, "Queue index is illegal");
+		PMD_DRV_LOG(ERR, "Queue index is illegal.");
 		return -EINVAL;
 	}
 
@@ -611,19 +611,19 @@ nfp_net_flow_compile_actions(struct rte_eth_dev *dev,
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		switch (action->type) {
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP.");
 			nfp_net_flow_action_drop(nfp_flow);
 			return 0;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK");
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK.");
 			nfp_net_flow_action_mark(nfp_flow, action);
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_QUEUE");
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_QUEUE.");
 			ret = nfp_net_flow_action_queue(dev, nfp_flow, action);
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
+			PMD_DRV_LOG(ERR, "Unsupported action type: %d.", action->type);
 			return -ENOTSUP;
 		}
 	}
@@ -1089,7 +1089,7 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 
 	priv = rte_zmalloc("nfp_app_nic_priv", sizeof(struct nfp_net_priv), 0);
 	if (priv == NULL) {
-		PMD_INIT_LOG(ERR, "NFP app nic priv creation failed");
+		PMD_INIT_LOG(ERR, "NFP app nic priv creation failed.");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -1120,7 +1120,7 @@ nfp_net_flow_priv_init(struct nfp_pf_dev *pf_dev,
 	flow_hash_params.entries = priv->flow_limit * NFP_NET_HASH_REDUNDANCE;
 	priv->flow_table = rte_hash_create(&flow_hash_params);
 	if (priv->flow_table == NULL) {
-		PMD_INIT_LOG(ERR, "Flow hash table creation failed");
+		PMD_INIT_LOG(ERR, "Flow hash table creation failed.");
 		ret = -ENOMEM;
 		goto free_flow_position;
 	}

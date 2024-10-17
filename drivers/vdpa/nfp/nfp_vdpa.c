@@ -134,7 +134,7 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	if (device->vfio_group_fd < 0)
 		goto container_destroy;
 
-	DRV_VDPA_LOG(DEBUG, "The container_fd=%d, group_fd=%d,",
+	DRV_VDPA_LOG(DEBUG, "The container_fd=%d, group_fd=%d.",
 			device->vfio_container_fd, device->vfio_group_fd);
 
 	ret = rte_pci_map_device(pci_dev);
@@ -178,7 +178,7 @@ nfp_vdpa_dma_do_unmap(struct rte_vhost_memory *mem,
 				region->size);
 		if (ret < 0) {
 			/* Here should not return, even error happened. */
-			DRV_VDPA_LOG(ERR, "DMA unmap failed. Times: %u", i);
+			DRV_VDPA_LOG(ERR, "DMA unmap failed. Times: %u.", i);
 		}
 	}
 
@@ -225,7 +225,7 @@ nfp_vdpa_dma_map(struct nfp_vdpa_dev *device,
 	}
 
 	vfio_container_fd = device->vfio_container_fd;
-	DRV_VDPA_LOG(DEBUG, "The vfio_container_fd %d", vfio_container_fd);
+	DRV_VDPA_LOG(DEBUG, "The vfio_container_fd %d.", vfio_container_fd);
 
 	if (do_map)
 		ret = nfp_vdpa_dma_do_map(mem, mem->nregions, vfio_container_fd);
@@ -533,7 +533,7 @@ nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device,
 		for (i = 0; i < nr_vring; i += 2) {
 			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 			if (fd < 0) {
-				DRV_VDPA_LOG(ERR, "Can't setup eventfd");
+				DRV_VDPA_LOG(ERR, "Can't setup eventfd.");
 				return -EINVAL;
 			}
 
@@ -587,7 +587,7 @@ nfp_vdpa_read_kickfd(int kickfd)
 
 		if (errno != EINTR && errno != EWOULDBLOCK &&
 				errno != EAGAIN) {
-			DRV_VDPA_LOG(ERR, "Error reading kickfd");
+			DRV_VDPA_LOG(ERR, "Error reading kickfd.");
 			break;
 		}
 	}
@@ -609,7 +609,7 @@ nfp_vdpa_notify_epoll_ctl(uint32_t queue_num,
 		ev.data.u64 = qid | (uint64_t)vring.kickfd << 32;
 		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD, vring.kickfd, &ev);
 		if (ret < 0) {
-			DRV_VDPA_LOG(ERR, "Epoll add error for queue %d", qid);
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %d.", qid);
 			return ret;
 		}
 	}
@@ -633,7 +633,7 @@ nfp_vdpa_notify_epoll_wait(uint32_t queue_num,
 			if (errno == EINTR)
 				continue;
 
-			DRV_VDPA_LOG(ERR, "Epoll wait fail");
+			DRV_VDPA_LOG(ERR, "Epoll wait fail.");
 			return -EACCES;
 		}
 
@@ -794,7 +794,7 @@ nfp_vdpa_vring_epoll_ctl(uint32_t queue_num,
 		ev.data.u64 = qid << 1 | (uint64_t)vring.kickfd << 32;
 		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD, vring.kickfd, &ev);
 		if (ret < 0) {
-			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u", qid);
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u.", qid);
 			return ret;
 		}
 	}
@@ -808,7 +808,7 @@ nfp_vdpa_vring_epoll_ctl(uint32_t queue_num,
 		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD,
 				device->intr_fd[qid], &ev);
 		if (ret < 0) {
-			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u", qid);
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %u.", qid);
 			return ret;
 		}
 
@@ -834,7 +834,7 @@ nfp_vdpa_vring_epoll_wait(uint32_t queue_num,
 			if (errno == EINTR)
 				continue;
 
-			DRV_VDPA_LOG(ERR, "Epoll wait fail");
+			DRV_VDPA_LOG(ERR, "Epoll wait fail.");
 			return -EACCES;
 		}
 
@@ -966,7 +966,7 @@ nfp_vdpa_dev_config(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -993,7 +993,7 @@ nfp_vdpa_dev_close(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -1032,7 +1032,7 @@ nfp_vdpa_get_vfio_group_fd(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -1048,7 +1048,7 @@ nfp_vdpa_get_vfio_device_fd(int vid)
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -1099,7 +1099,7 @@ nfp_vdpa_get_queue_num(struct rte_vdpa_device *vdev,
 
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -1147,12 +1147,12 @@ nfp_vdpa_set_features(int32_t vid)
 	struct rte_vdpa_device *vdev;
 	struct nfp_vdpa_dev_node *node;
 
-	DRV_VDPA_LOG(DEBUG, "Start vid=%d", vid);
+	DRV_VDPA_LOG(DEBUG, "Start vid=%d.", vid);
 
 	vdev = rte_vhost_get_vdpa_device(vid);
 	node = nfp_vdpa_find_node_by_vdev(vdev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p.", vdev);
 		return -ENODEV;
 	}
 
@@ -1165,7 +1165,7 @@ nfp_vdpa_set_features(int32_t vid)
 	if (device->hw.sw_lm) {
 		ret = nfp_vdpa_sw_fallback(device);
 		if (ret != 0) {
-			DRV_VDPA_LOG(ERR, "Software fallback start failed");
+			DRV_VDPA_LOG(ERR, "Software fallback start failed.");
 			return -1;
 		}
 	}
@@ -1178,7 +1178,7 @@ nfp_vdpa_set_vring_state(int vid,
 		int vring,
 		int state)
 {
-	DRV_VDPA_LOG(DEBUG, "Start vid=%d, vring=%d, state=%d", vid, vring, state);
+	DRV_VDPA_LOG(DEBUG, "Start vid=%d, vring=%d, state=%d.", vid, vring, state);
 	return 0;
 }
 
@@ -1227,7 +1227,7 @@ nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 
 	device->vdev = rte_vdpa_register_device(&pci_dev->device, &nfp_vdpa_ops);
 	if (device->vdev == NULL) {
-		DRV_VDPA_LOG(ERR, "Failed to register device %s", pci_dev->name);
+		DRV_VDPA_LOG(ERR, "Failed to register device %s.", pci_dev->name);
 		goto vfio_teardown;
 	}
 
@@ -1263,7 +1263,7 @@ nfp_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 
 	node = nfp_vdpa_find_node_by_pdev(pci_dev);
 	if (node == NULL) {
-		DRV_VDPA_LOG(ERR, "Invalid device: %s", pci_dev->name);
+		DRV_VDPA_LOG(ERR, "Invalid device: %s.", pci_dev->name);
 		return -ENODEV;
 	}
 
