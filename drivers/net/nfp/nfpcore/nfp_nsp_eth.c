@@ -223,7 +223,7 @@ nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 
 			if (table->ports[i].label_subport ==
 					table->ports[j].label_subport)
-				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
+				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate.",
 						table->ports[i].label_port,
 						table->ports[i].label_subport);
 
@@ -267,7 +267,7 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d.", ret);
 		goto err;
 	}
 
@@ -281,7 +281,7 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 	 * above.
 	 */
 	if (ret != 0 && ret != cnt) {
-		PMD_DRV_LOG(ERR, "Table entry count (%d) unmatch entries present (%d)",
+		PMD_DRV_LOG(ERR, "Table entry count (%d) unmatch entries present (%d).",
 				ret, cnt);
 		goto err;
 	}
@@ -362,12 +362,12 @@ nfp_eth_config_start(struct nfp_cpp *cpp,
 
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d.", ret);
 		goto err;
 	}
 
 	if ((entries[idx].port & NSP_ETH_PORT_LANES_MASK) == 0) {
-		PMD_DRV_LOG(ERR, "Trying to set port state on disabled port %d", idx);
+		PMD_DRV_LOG(ERR, "Trying to set port state on disabled port %d.", idx);
 		goto err;
 	}
 
@@ -536,7 +536,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
 	 * codes were initially not populated correctly.
 	 */
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 17) {
-		PMD_DRV_LOG(ERR, "Set operations not supported, please update flash");
+		PMD_DRV_LOG(ERR, "Set operations not supported, please update flash.");
 		return -EOPNOTSUPP;
 	}
 
@@ -661,7 +661,7 @@ nfp_eth_set_speed(struct nfp_nsp *nsp,
 
 	rate = nfp_eth_speed2rate(speed);
 	if (rate == RATE_INVALID) {
-		PMD_DRV_LOG(ERR, "Could not find matching lane rate for speed %u", speed);
+		PMD_DRV_LOG(ERR, "Could not find matching lane rate for speed %u.", speed);
 		return -EINVAL;
 	}
 

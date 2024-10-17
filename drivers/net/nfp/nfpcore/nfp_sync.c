@@ -91,11 +91,11 @@ nfp_sync_free(struct nfp_sync *sync)
 	}
 
 	if (sync->process.avail != NFP_SYNC_ELEMENT_MAX)
-		PMD_DRV_LOG(ERR, "Sync process handle residue");
+		PMD_DRV_LOG(ERR, "Sync process handle residue.");
 
 	for (i = 0; i < NFP_SYNC_PCI_MAX; i++) {
 		if (sync->pci[i].avail != NFP_SYNC_ELEMENT_MAX)
-			PMD_DRV_LOG(ERR, "Sync %s pci handle residue",
+			PMD_DRV_LOG(ERR, "Sync %s pci handle residue.",
 					sync->pci[i].pci_name);
 	}
 
@@ -206,7 +206,7 @@ nfp_sync_process_inner_handle_alloc(struct nfp_sync *sync,
 
 	handle = nfp_sync_common_handle_alloc(&sync->process, magic, size);
 	if (handle == NULL)
-		PMD_DRV_LOG(ERR, "Process handle alloc failed");
+		PMD_DRV_LOG(ERR, "Process handle alloc failed.");
 
 	rte_spinlock_unlock(&sync->spinlock);
 
@@ -280,7 +280,7 @@ common_alloc:
 	handle = nfp_sync_common_handle_alloc(&sync->pci[pci_avail_id],
 			magic, size);
 	if (handle == NULL)
-		PMD_DRV_LOG(ERR, "PCI handle alloc failed");
+		PMD_DRV_LOG(ERR, "PCI handle alloc failed.");
 
 	rte_spinlock_unlock(&sync->spinlock);
 

@@ -195,7 +195,7 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 			ipsec_layer++;
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "The metadata type not supported");
+			PMD_DRV_LOG(ERR, "The metadata type not supported.");
 			return -ENOTSUP;
 		}
 
@@ -236,7 +236,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 	txq = tx_queue;
 	hw = txq->hw;
 
-	PMD_TX_LOG(DEBUG, "Working for queue %hu at pos %d and %hu packets",
+	PMD_TX_LOG(DEBUG, "Working for queue %hu at pos %d and %hu packets.",
 			txq->qidx, txq->wr_p, nb_pkts);
 
 	if (nfp_net_nfdk_free_tx_desc(txq) < NFDK_TX_DESC_PER_SIMPLE_PKT * nb_pkts ||
@@ -247,7 +247,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 	if (unlikely(free_descs == 0))
 		return 0;
 
-	PMD_TX_LOG(DEBUG, "Queue: %hu. Sending %hu packets", txq->qidx, nb_pkts);
+	PMD_TX_LOG(DEBUG, "Queue: %hu. Sending %hu packets.", txq->qidx, nb_pkts);
 
 	/* Sending packets */
 	while (npkts < nb_pkts && free_descs > 0) {
@@ -289,7 +289,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 
 		if (unlikely(pkt->nb_segs > 1 &&
 				(hw->super.ctrl & NFP_NET_CFG_CTRL_GATHER) == 0)) {
-			PMD_TX_LOG(ERR, "Multisegment packet not supported");
+			PMD_TX_LOG(ERR, "Multisegment packet not supported.");
 			goto xmit_end;
 		}
 
@@ -381,7 +381,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		if (RTE_ALIGN_FLOOR(txq->wr_p, NFDK_TX_DESC_BLOCK_CNT) !=
 				RTE_ALIGN_FLOOR(txq->wr_p + used_descs - 1,
 						NFDK_TX_DESC_BLOCK_CNT)) {
-			PMD_TX_LOG(INFO, "Used descs cross block boundary");
+			PMD_TX_LOG(INFO, "Used descs cross block boundary.");
 			goto xmit_end;
 		}
 
@@ -431,7 +431,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	if ((NFDK_TX_DESC_PER_SIMPLE_PKT * tx_desc_sz) % NFP_ALIGN_RING_DESC != 0 ||
 			(NFDK_TX_DESC_PER_SIMPLE_PKT * nb_desc) % NFDK_TX_DESC_BLOCK_CNT != 0 ||
 			nb_desc > max_tx_desc || nb_desc < min_tx_desc) {
-		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
+		PMD_DRV_LOG(ERR, "Wrong nb_desc value.");
 		return -EINVAL;
 	}
 
@@ -450,7 +450,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	 * calling nfp_net_stop().
 	 */
 	if (dev->data->tx_queues[queue_idx] != NULL) {
-		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d",
+		PMD_TX_LOG(DEBUG, "Freeing memory prior to re-allocation %d.",
 				queue_idx);
 		nfp_net_tx_queue_release(dev, queue_idx);
 		dev->data->tx_queues[queue_idx] = NULL;
@@ -460,7 +460,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct nfp_net_txq),
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating tx dma");
+		PMD_DRV_LOG(ERR, "Error allocating tx dma.");
 		return -ENOMEM;
 	}
 
@@ -474,7 +474,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, size,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating tx dma");
+		PMD_DRV_LOG(ERR, "Error allocating tx dma.");
 		nfp_net_tx_queue_release(dev, queue_idx);
 		return -ENOMEM;
 	}

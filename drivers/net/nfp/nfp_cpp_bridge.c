@@ -38,7 +38,7 @@ nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev)
 
 	ret = nfp_service_enable(&cpp_service, &pf_dev->cpp_service_info);
 	if (ret != 0) {
-		PMD_INIT_LOG(DEBUG, "Could not enable service %s", cpp_service.name);
+		PMD_INIT_LOG(DEBUG, "Could not enable service %s.", cpp_service.name);
 		return ret;
 	}
 
@@ -71,7 +71,7 @@ nfp_cpp_bridge_serve_write(int sockfd,
 	uint32_t tmpbuf[16];
 	struct nfp_cpp_area *area;
 
-	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu.", __func__,
 			sizeof(off_t), sizeof(size_t));
 
 	/* Reading the count param */
@@ -90,9 +90,9 @@ nfp_cpp_bridge_serve_write(int sockfd,
 	cpp_id = (offset >> 40) << 8;
 	nfp_offset = offset & ((1ull << 40) - 1);
 
-	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd", __func__, count,
+	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd.", __func__, count,
 			offset);
-	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd.", __func__,
 			cpp_id, nfp_offset);
 
 	/* Adjust length if not aligned */
@@ -107,14 +107,14 @@ nfp_cpp_bridge_serve_write(int sockfd,
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
 				nfp_offset, curlen);
 		if (area == NULL) {
-			PMD_CPP_LOG(ERR, "Area alloc fail");
+			PMD_CPP_LOG(ERR, "Area alloc fail.");
 			return -EIO;
 		}
 
 		/* Mapping the target */
 		err = nfp_cpp_area_acquire(area);
 		if (err < 0) {
-			PMD_CPP_LOG(ERR, "Area acquire failed");
+			PMD_CPP_LOG(ERR, "Area acquire failed.");
 			nfp_cpp_area_free(area);
 			return -EIO;
 		}
@@ -124,11 +124,11 @@ nfp_cpp_bridge_serve_write(int sockfd,
 			if (len > sizeof(tmpbuf))
 				len = sizeof(tmpbuf);
 
-			PMD_CPP_LOG(DEBUG, "%s: Receive %u of %zu", __func__,
+			PMD_CPP_LOG(DEBUG, "%s: Receive %u of %zu.", __func__,
 					len, count);
 			err = recv(sockfd, tmpbuf, len, MSG_WAITALL);
 			if (err != (int)len) {
-				PMD_CPP_LOG(ERR, "Error when receiving, %d of %zu",
+				PMD_CPP_LOG(ERR, "Error when receiving, %d of %zu.",
 						err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
@@ -137,7 +137,7 @@ nfp_cpp_bridge_serve_write(int sockfd,
 
 			err = nfp_cpp_area_write(area, pos, tmpbuf, len);
 			if (err < 0) {
-				PMD_CPP_LOG(ERR, "The nfp_cpp_area_write error");
+				PMD_CPP_LOG(ERR, "The nfp_cpp_area_write error.");
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
@@ -177,7 +177,7 @@ nfp_cpp_bridge_serve_read(int sockfd,
 	uint32_t tmpbuf[16];
 	struct nfp_cpp_area *area;
 
-	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu.", __func__,
 			sizeof(off_t), sizeof(size_t));
 
 	/* Reading the count param */
@@ -196,9 +196,9 @@ nfp_cpp_bridge_serve_read(int sockfd,
 	cpp_id = (offset >> 40) << 8;
 	nfp_offset = offset & ((1ull << 40) - 1);
 
-	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd", __func__, count,
+	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd.", __func__, count,
 			offset);
-	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd", __func__,
+	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd.", __func__,
 			cpp_id, nfp_offset);
 
 	/* Adjust length if not aligned */
@@ -212,13 +212,13 @@ nfp_cpp_bridge_serve_read(int sockfd,
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
 				nfp_offset, curlen);
 		if (area == NULL) {
-			PMD_CPP_LOG(ERR, "Area alloc failed");
+			PMD_CPP_LOG(ERR, "Area alloc failed.");
 			return -EIO;
 		}
 
 		err = nfp_cpp_area_acquire(area);
 		if (err < 0) {
-			PMD_CPP_LOG(ERR, "Area acquire failed");
+			PMD_CPP_LOG(ERR, "Area acquire failed.");
 			nfp_cpp_area_free(area);
 			return -EIO;
 		}
@@ -230,17 +230,17 @@ nfp_cpp_bridge_serve_read(int sockfd,
 
 			err = nfp_cpp_area_read(area, pos, tmpbuf, len);
 			if (err < 0) {
-				PMD_CPP_LOG(ERR, "The nfp_cpp_area_read error");
+				PMD_CPP_LOG(ERR, "The nfp_cpp_area_read error.");
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
 			}
-			PMD_CPP_LOG(DEBUG, "%s: sending %u of %zu", __func__,
+			PMD_CPP_LOG(DEBUG, "%s: sending %u of %zu.", __func__,
 					len, count);
 
 			err = send(sockfd, tmpbuf, len, 0);
 			if (err != (int)len) {
-				PMD_CPP_LOG(ERR, "Error when sending: %d of %zu",
+				PMD_CPP_LOG(ERR, "Error when sending: %d of %zu.",
 						err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
@@ -278,39 +278,39 @@ nfp_cpp_bridge_serve_ioctl(int sockfd,
 	/* Reading now the IOCTL command */
 	err = recv(sockfd, &cmd, 4, 0);
 	if (err != 4) {
-		PMD_CPP_LOG(ERR, "Read error from socket");
+		PMD_CPP_LOG(ERR, "Read error from socket.");
 		return -EIO;
 	}
 
 	/* Only supporting NFP_IOCTL_CPP_IDENTIFICATION */
 	if (cmd != NFP_IOCTL_CPP_IDENTIFICATION) {
-		PMD_CPP_LOG(ERR, "Unknown cmd %d", cmd);
+		PMD_CPP_LOG(ERR, "Unknown cmd %d.", cmd);
 		return -EINVAL;
 	}
 
 	err = recv(sockfd, &ident_size, 4, 0);
 	if (err != 4) {
-		PMD_CPP_LOG(ERR, "Read error from socket");
+		PMD_CPP_LOG(ERR, "Read error from socket.");
 		return -EIO;
 	}
 
 	tmp = nfp_cpp_model(cpp);
 
-	PMD_CPP_LOG(DEBUG, "%s: sending NFP model %08x", __func__, tmp);
+	PMD_CPP_LOG(DEBUG, "%s: sending NFP model %08x.", __func__, tmp);
 
 	err = send(sockfd, &tmp, 4, 0);
 	if (err != 4) {
-		PMD_CPP_LOG(ERR, "Error writing to socket");
+		PMD_CPP_LOG(ERR, "Error writing to socket.");
 		return -EIO;
 	}
 
 	tmp = nfp_cpp_interface(cpp);
 
-	PMD_CPP_LOG(DEBUG, "%s: sending NFP interface %08x", __func__, tmp);
+	PMD_CPP_LOG(DEBUG, "%s: sending NFP interface %08x.", __func__, tmp);
 
 	err = send(sockfd, &tmp, 4, 0);
 	if (err != 4) {
-		PMD_CPP_LOG(ERR, "Error writing to socket");
+		PMD_CPP_LOG(ERR, "Error writing to socket.");
 		return -EIO;
 	}
 
@@ -347,7 +347,7 @@ nfp_cpp_bridge_service_func(void *args)
 	unlink(socket_handle);
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd < 0) {
-		PMD_CPP_LOG(ERR, "Socket creation error. Service failed");
+		PMD_CPP_LOG(ERR, "Socket creation error. Service failed.");
 		return -EIO;
 	}
 
@@ -361,14 +361,14 @@ nfp_cpp_bridge_service_func(void *args)
 	ret = bind(sockfd, (const struct sockaddr *)&address,
 			sizeof(struct sockaddr));
 	if (ret < 0) {
-		PMD_CPP_LOG(ERR, "Bind error (%d). Service failed", errno);
+		PMD_CPP_LOG(ERR, "Bind error (%d). Service failed.", errno);
 		close(sockfd);
 		return ret;
 	}
 
 	ret = listen(sockfd, 20);
 	if (ret < 0) {
-		PMD_CPP_LOG(ERR, "Listen error(%d). Service failed", errno);
+		PMD_CPP_LOG(ERR, "Listen error(%d). Service failed.", errno);
 		close(sockfd);
 		return ret;
 	}
@@ -380,8 +380,8 @@ nfp_cpp_bridge_service_func(void *args)
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				continue;
 
-			PMD_CPP_LOG(ERR, "Accept call error (%d)", errno);
-			PMD_CPP_LOG(ERR, "Service failed");
+			PMD_CPP_LOG(ERR, "Accept call error (%d).", errno);
+			PMD_CPP_LOG(ERR, "Service failed.");
 			close(sockfd);
 			return -EIO;
 		}
@@ -389,11 +389,11 @@ nfp_cpp_bridge_service_func(void *args)
 		for (;;) {
 			ret = recv(datafd, &op, 4, 0);
 			if (ret <= 0) {
-				PMD_CPP_LOG(DEBUG, "%s: socket close", __func__);
+				PMD_CPP_LOG(DEBUG, "%s: socket close.", __func__);
 				break;
 			}
 
-			PMD_CPP_LOG(DEBUG, "%s: getting op %u", __func__, op);
+			PMD_CPP_LOG(DEBUG, "%s: getting op %u.", __func__, op);
 
 			if (op == NFP_BRIDGE_OP_READ)
 				nfp_cpp_bridge_serve_read(datafd, cpp);

@@ -272,7 +272,7 @@ nfp_rtsym_size(const struct nfp_rtsym *sym)
 {
 	switch (sym->type) {
 	case NFP_RTSYM_TYPE_NONE:
-		PMD_DRV_LOG(ERR, "The type of rtsym '%s' is NONE", sym->name);
+		PMD_DRV_LOG(ERR, "The type of rtsym '%s' is NONE.", sym->name);
 		return 0;
 	case NFP_RTSYM_TYPE_OBJECT:
 		/* FALLTHROUGH */
@@ -281,7 +281,7 @@ nfp_rtsym_size(const struct nfp_rtsym *sym)
 	case NFP_RTSYM_TYPE_ABS:
 		return sizeof(uint64_t);
 	default:
-		PMD_DRV_LOG(ERR, "Unknown RTSYM type %u", sym->type);
+		PMD_DRV_LOG(ERR, "Unknown RTSYM type %u.", sym->type);
 		return 0;
 	}
 }
@@ -296,7 +296,7 @@ nfp_rtsym_to_dest(struct nfp_cpp *cpp,
 		uint64_t *addr)
 {
 	if (sym->type != NFP_RTSYM_TYPE_OBJECT) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s': direct access to non-object rtsym",
+		PMD_DRV_LOG(ERR, "RTSYM '%s': direct access to non-object rtsym.",
 				sym->name);
 		return -EINVAL;
 	}
@@ -314,7 +314,7 @@ nfp_rtsym_to_dest(struct nfp_cpp *cpp,
 		*cpp_id = NFP_CPP_ISLAND_ID(NFP_CPP_TARGET_MU, action, token,
 				sym->domain);
 	} else {
-		PMD_DRV_LOG(ERR, "RTSYM '%s': unhandled target encoding: %d",
+		PMD_DRV_LOG(ERR, "RTSYM '%s': unhandled target encoding: %d.",
 				sym->name, sym->target);
 		return -EINVAL;
 	}
@@ -338,7 +338,7 @@ nfp_rtsym_read_real(struct nfp_cpp *cpp,
 	uint64_t sym_size = nfp_rtsym_size(sym);
 
 	if (offset >= sym_size) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s' read out of bounds", sym->name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s' read out of bounds.", sym->name);
 		return -ENXIO;
 	}
 
@@ -387,7 +387,7 @@ nfp_rtsym_readl_real(struct nfp_cpp *cpp,
 	uint32_t cpp_id;
 
 	if (offset + 4 > nfp_rtsym_size(sym)) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s': readl out of bounds", sym->name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s': readl out of bounds.", sym->name);
 		return -ENXIO;
 	}
 
@@ -420,7 +420,7 @@ nfp_rtsym_readq_real(struct nfp_cpp *cpp,
 	uint32_t cpp_id;
 
 	if (offset + 8 > nfp_rtsym_size(sym)) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s': readq out of bounds", sym->name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s': readq out of bounds.", sym->name);
 		return -ENXIO;
 	}
 
@@ -461,7 +461,7 @@ nfp_rtsym_write_real(struct nfp_cpp *cpp,
 	uint64_t sym_size = nfp_rtsym_size(sym);
 
 	if (offset > sym_size) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s' write out of bounds", sym->name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s' write out of bounds.", sym->name);
 		return -ENXIO;
 	}
 
@@ -498,7 +498,7 @@ nfp_rtsym_writel_real(struct nfp_cpp *cpp,
 	uint32_t cpp_id;
 
 	if (offset + 4 > nfp_rtsym_size(sym)) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s' write out of bounds", sym->name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s' write out of bounds.", sym->name);
 		return -ENXIO;
 	}
 
@@ -531,7 +531,7 @@ nfp_rtsym_writeq_real(struct nfp_cpp *cpp,
 	uint32_t cpp_id;
 
 	if (offset + 8 > nfp_rtsym_size(sym)) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s' write out of bounds", sym->name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s' write out of bounds.", sym->name);
 		return -ENXIO;
 	}
 
@@ -593,7 +593,7 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,
 		err = nfp_rtsym_readq(rtbl->cpp, sym, 0, &val);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "RTSYM '%s' unsupported size: %#lx",
+		PMD_DRV_LOG(ERR, "RTSYM '%s' unsupported size: %#lx.",
 				name, sym->size);
 		err = -EINVAL;
 		break;
@@ -648,7 +648,7 @@ nfp_rtsym_write_le(struct nfp_rtsym_table *rtbl,
 		err = nfp_rtsym_writeq(rtbl->cpp, sym, 0, value);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "RTSYM '%s' unsupported size: %#lx",
+		PMD_DRV_LOG(ERR, "RTSYM '%s' unsupported size: %#lx.",
 				name, sym_size);
 		err = -EINVAL;
 		break;
@@ -672,26 +672,26 @@ nfp_rtsym_map_offset(struct nfp_rtsym_table *rtbl,
 
 	sym = nfp_rtsym_lookup(rtbl, name);
 	if (sym == NULL) {
-		PMD_DRV_LOG(ERR, "Symbol lookup fails for %s", name);
+		PMD_DRV_LOG(ERR, "Symbol lookup fails for %s.", name);
 		return NULL;
 	}
 
 	ret = nfp_rtsym_to_dest(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0,
 			&cpp_id, &addr);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "RTSYM '%s': mapping failed", name);
+		PMD_DRV_LOG(ERR, "RTSYM '%s': mapping failed.", name);
 		return NULL;
 	}
 
 	if (sym->size < min_size) {
-		PMD_DRV_LOG(ERR, "Symbol %s too small (%" PRIu64 " < %u)", name,
+		PMD_DRV_LOG(ERR, "Symbol %s too small (%" PRIu64 " < %u).", name,
 				sym->size, min_size);
 		return NULL;
 	}
 
 	mem = nfp_cpp_map_area(rtbl->cpp, cpp_id, addr + offset, sym->size, area);
 	if (mem == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to map symbol %s", name);
+		PMD_DRV_LOG(ERR, "Failed to map symbol %s.", name);
 		return NULL;
 	}
 
@@ -741,13 +741,13 @@ nfp_rtsym_readl_indirect(struct nfp_rtsym_table *rtbl,
 
 	aux_sym = nfp_rtsym_lookup(rtbl, aux_name);
 	if (aux_sym == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to find symbol %s", aux_name);
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s.", aux_name);
 		return -ENOENT;
 	}
 
 	sym = nfp_rtsym_lookup(rtbl, name);
 	if (sym == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to find symbol %s", name);
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s.", name);
 		return -ENOENT;
 	}
 
@@ -791,13 +791,13 @@ nfp_rtsym_writel_indirect(struct nfp_rtsym_table *rtbl,
 
 	aux_sym = nfp_rtsym_lookup(rtbl, aux_name);
 	if (aux_sym == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to find symbol %s", aux_name);
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s.", aux_name);
 		return -ENOENT;
 	}
 
 	sym = nfp_rtsym_lookup(rtbl, name);
 	if (sym == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to find symbol %s", name);
+		PMD_DRV_LOG(ERR, "Failed to find symbol %s.", name);
 		return -ENOENT;
 	}
 

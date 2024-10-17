@@ -167,7 +167,7 @@ nfp_flower_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	repr->ring[rx_queue_id] = rte_ring_create(ring_name, nb_rx_desc,
 			rte_socket_id(), 0);
 	if (repr->ring[rx_queue_id] == NULL) {
-		PMD_DRV_LOG(ERR, "The rte_ring_create failed for rx queue %u", rx_queue_id);
+		PMD_DRV_LOG(ERR, "The rte_ring_create failed for rx queue %u.", rx_queue_id);
 		rte_free(rxq);
 		return -ENOMEM;
 	}
@@ -259,7 +259,7 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 
 	rxq = rx_queue;
 	if (unlikely(rxq == NULL)) {
-		PMD_RX_LOG(ERR, "RX Bad queue");
+		PMD_RX_LOG(ERR, "RX Bad queue.");
 		return 0;
 	}
 
@@ -275,7 +275,7 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 	total_dequeue = rte_ring_dequeue_burst(repr->ring[rxq->qidx],
 			(void *)rx_pkts, nb_pkts, &available);
 	if (total_dequeue != 0) {
-		PMD_RX_LOG(DEBUG, "Port: %#x, queue: %hu received: %u, available: %u",
+		PMD_RX_LOG(DEBUG, "Port: %#x, queue: %hu received: %u, available: %u.",
 				repr->port_id, rxq->qidx, total_dequeue, available);
 
 		data_len = 0;
@@ -306,7 +306,7 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 
 	txq = tx_queue;
 	if (unlikely(txq == NULL)) {
-		PMD_TX_LOG(ERR, "TX Bad queue");
+		PMD_TX_LOG(ERR, "TX Bad queue.");
 		return 0;
 	}
 
@@ -324,7 +324,7 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	pf_tx_queue = dev->data->tx_queues[txq->qidx];
 	sent = nfp_flower_pf_xmit_pkts(pf_tx_queue, tx_pkts, nb_pkts);
 	if (sent != 0) {
-		PMD_TX_LOG(DEBUG, "Port: %#x transmitted: %hu queue: %u",
+		PMD_TX_LOG(DEBUG, "Port: %#x transmitted: %hu queue: %u.",
 				repr->port_id, sent, txq->qidx);
 
 		data_len = 0;
@@ -603,7 +603,7 @@ nfp_flower_pf_repr_init(struct rte_eth_dev *eth_dev,
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate memory for repr MAC");
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for repr MAC.");
 		return -ENOMEM;
 	}
 
@@ -650,7 +650,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 			sizeof(struct rte_ring *) * app_fw_flower->pf_hw->max_rx_queues,
 			RTE_CACHE_LINE_SIZE, numa_node);
 	if (repr->ring == NULL) {
-		PMD_DRV_LOG(ERR, "Ring create failed for %s", ring_name);
+		PMD_DRV_LOG(ERR, "Ring create failed for %s.", ring_name);
 		return -ENOMEM;
 	}
 
@@ -683,7 +683,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate memory for repr MAC");
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for repr MAC.");
 		ret = -ENOMEM;
 		goto ring_cleanup;
 	}
@@ -694,7 +694,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	/* Send reify message to hardware to inform it about the new repr */
 	ret = nfp_flower_cmsg_repr_reify(app_fw_flower, repr);
 	if (ret != 0) {
-		PMD_INIT_LOG(WARNING, "Failed to send repr reify message");
+		PMD_INIT_LOG(WARNING, "Failed to send repr reify message.");
 		goto mac_cleanup;
 	}
 
@@ -823,7 +823,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
 	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, pf_dev);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Cloud not send mac repr cmsgs");
+		PMD_INIT_LOG(ERR, "Cloud not send mac repr cmsgs.");
 		return ret;
 	}
 
@@ -850,7 +850,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 			sizeof(struct nfp_flower_representor),
 			NULL, NULL, nfp_flower_pf_repr_init, &flower_repr);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to init the pf repr");
+		PMD_INIT_LOG(ERR, "Failed to init the pf repr.");
 		return -EINVAL;
 	}
 
@@ -878,7 +878,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 				sizeof(struct nfp_flower_representor),
 				NULL, NULL, nfp_flower_repr_init, &repr_init);
 		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr");
+			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr.");
 			break;
 		}
 	}
@@ -909,7 +909,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 				sizeof(struct nfp_flower_representor),
 				NULL, NULL, nfp_flower_repr_init, &repr_init);
 		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr");
+			PMD_INIT_LOG(ERR, "Cloud not create eth_dev for repr.");
 			break;
 		}
 	}
@@ -944,13 +944,13 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	/* Allocate a switch domain for the flower app */
 	ret = rte_eth_switch_domain_alloc(&app_fw_flower->switch_domain_id);
 	if (ret != 0)
-		PMD_INIT_LOG(WARNING, "Failed to allocate switch domain for device");
+		PMD_INIT_LOG(WARNING, "Failed to allocate switch domain for device.");
 
 	/* Now parse PCI device args passed for representor info */
 	if (pci_dev->device.devargs != NULL) {
 		ret = rte_eth_devargs_parse(pci_dev->device.devargs->args, &eth_da, 1);
 		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "Devarg parse failed");
+			PMD_INIT_LOG(ERR, "Devarg parse failed.");
 			return -EINVAL;
 		}
 	}
@@ -968,7 +968,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 
 	/* Only support VF representor creation via the command line */
 	if (eth_da.type != RTE_ETH_REPRESENTOR_VF) {
-		PMD_INIT_LOG(ERR, "Unsupported representor type: %d", eth_da.type);
+		PMD_INIT_LOG(ERR, "Unsupported representor type: %d.", eth_da.type);
 		return -ENOTSUP;
 	}
 
@@ -977,17 +977,17 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	app_fw_flower->num_vf_reprs = eth_da.nb_representor_ports -
 			pf_dev->total_phyports - 1;
 	if (pf_dev->max_vfs != 0 && pf_dev->sriov_vf < app_fw_flower->num_vf_reprs) {
-		PMD_INIT_LOG(ERR, "The VF repr nums %d is bigger than VF nums %d",
+		PMD_INIT_LOG(ERR, "The VF repr nums %d is bigger than VF nums %d.",
 				app_fw_flower->num_vf_reprs, pf_dev->sriov_vf);
 		return -ERANGE;
 	}
 
-	PMD_INIT_LOG(INFO, "%d number of VF reprs", app_fw_flower->num_vf_reprs);
-	PMD_INIT_LOG(INFO, "%d number of phyport reprs", app_fw_flower->num_phyport_reprs);
+	PMD_INIT_LOG(INFO, "%d number of VF reprs.", app_fw_flower->num_vf_reprs);
+	PMD_INIT_LOG(INFO, "%d number of phyport reprs.", app_fw_flower->num_phyport_reprs);
 
 	ret = nfp_flower_repr_alloc(app_fw_flower, hw_priv);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Representors allocation failed");
+		PMD_INIT_LOG(ERR, "Representors allocation failed.");
 		ret = -EINVAL;
 		goto domain_free;
 	}
@@ -996,7 +996,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 
 domain_free:
 	if (rte_eth_switch_domain_free(app_fw_flower->switch_domain_id) != 0)
-		PMD_INIT_LOG(WARNING, "Failed to free switch domain for device");
+		PMD_INIT_LOG(WARNING, "Failed to free switch domain for device.");
 
 	return ret;
 }

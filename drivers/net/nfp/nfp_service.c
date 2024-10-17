@@ -27,14 +27,14 @@ nfp_service_enable(const struct rte_service_spec *service_spec,
 	/* Register the service */
 	ret = rte_service_component_register(service_spec, &info->id);
 	if (ret != 0) {
-		PMD_DRV_LOG(DEBUG, "Could not register %s", service_spec->name);
+		PMD_DRV_LOG(DEBUG, "Could not register %s.", service_spec->name);
 		return -EINVAL;
 	}
 
 	/* Set the NFP service runstate of a component. */
 	rte_service_component_runstate_set(info->id, 1);
 
-	PMD_DRV_LOG(DEBUG, "Enable service %s successfully", service_spec->name);
+	PMD_DRV_LOG(DEBUG, "Enable service %s successfully.", service_spec->name);
 
 	return 0;
 }
@@ -47,7 +47,7 @@ nfp_service_disable(struct nfp_service_info *info)
 
 	service_name = rte_service_get_name(info->id);
 	if (service_name == NULL) {
-		PMD_DRV_LOG(ERR, "Could not find service %u", info->id);
+		PMD_DRV_LOG(ERR, "Could not find service %u.", info->id);
 		return -EINVAL;
 	}
 
@@ -60,7 +60,7 @@ nfp_service_disable(struct nfp_service_info *info)
 	}
 
 	if (i == NFP_SERVICE_DISABLE_WAIT_COUNT)
-		PMD_DRV_LOG(ERR, "Could not stop service %s", service_name);
+		PMD_DRV_LOG(ERR, "Could not stop service %s.", service_name);
 
 	rte_service_component_unregister(info->id);
 

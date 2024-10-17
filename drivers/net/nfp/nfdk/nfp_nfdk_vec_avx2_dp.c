@@ -152,7 +152,7 @@ nfp_net_nfdk_vec_avx2_xmit_simple_pkts(struct nfp_net_txq *txq,
 	struct rte_mbuf **lmbuf;
 	struct nfp_net_nfdk_tx_desc *ktxds;
 
-	PMD_TX_LOG(DEBUG, "Working for queue %hu at pos %u and %hu packets",
+	PMD_TX_LOG(DEBUG, "Working for queue %hu at pos %u and %hu packets.",
 			txq->qidx, txq->wr_p, nb_pkts);
 
 	need_txds = nb_pkts << 1;
@@ -167,7 +167,7 @@ nfp_net_nfdk_vec_avx2_xmit_simple_pkts(struct nfp_net_txq *txq,
 		return 0;
 	}
 
-	PMD_TX_LOG(DEBUG, "Queue: %hu. Sending %hu packets", txq->qidx, nb_pkts);
+	PMD_TX_LOG(DEBUG, "Queue: %hu. Sending %hu packets.", txq->qidx, nb_pkts);
 
 	/* Sending packets */
 	while (npkts < nb_pkts && free_descs >= NFDK_TX_DESC_PER_SIMPLE_PKT) {

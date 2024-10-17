@@ -316,7 +316,7 @@ nfp_mask_table_add(struct nfp_app_fw_flower *app_fw_flower,
 	mask_entry->mask_id  = mask_id;
 	mask_entry->hash_key = hash_key;
 	mask_entry->ref_cnt  = 1;
-	PMD_DRV_LOG(DEBUG, "The hash_key=%#x id=%u ref=%u", hash_key,
+	PMD_DRV_LOG(DEBUG, "The hash_key=%#x id=%u ref=%u.", hash_key,
 			mask_id, mask_entry->ref_cnt);
 
 	ret = rte_hash_add_key_data(priv->mask_table, &hash_key, mask_entry);
@@ -1058,7 +1058,7 @@ nfp_flow_key_layers_check_items(const struct rte_flow_item items[],
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		if (item->type >= RTE_DIM(check_item_fns)) {
-			PMD_DRV_LOG(ERR, "Flow item %d unsupported", item->type);
+			PMD_DRV_LOG(ERR, "Flow item %d unsupported.", item->type);
 			return -ERANGE;
 		}
 
@@ -1068,7 +1068,7 @@ nfp_flow_key_layers_check_items(const struct rte_flow_item items[],
 		param->item = item;
 		ret = check_item_fns[item->type](param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Flow item %d check fail", item->type);
+			PMD_DRV_LOG(ERR, "Flow item %d check fail.", item->type);
 			return ret;
 		}
 
@@ -1264,7 +1264,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		if (item->type >= RTE_DIM(item_fns) || item_fns[item->type] == NULL) {
-			PMD_DRV_LOG(ERR, "Flow item %d unsupported", item->type);
+			PMD_DRV_LOG(ERR, "Flow item %d unsupported.", item->type);
 			return -ERANGE;
 		}
 
@@ -1432,22 +1432,22 @@ nfp_flow_is_validate_field_data(const struct rte_flow_field_data *data,
 		uint32_t data_width)
 {
 	if (data->level != 0) {
-		PMD_DRV_LOG(ERR, "The 'level' is not support");
+		PMD_DRV_LOG(ERR, "The 'level' is not support.");
 		return false;
 	}
 
 	if (data->tag_index != 0) {
-		PMD_DRV_LOG(ERR, "The 'tag_index' is not support");
+		PMD_DRV_LOG(ERR, "The 'tag_index' is not support.");
 		return false;
 	}
 
 	if (data->class_id != 0) {
-		PMD_DRV_LOG(ERR, "The 'class_id' is not support");
+		PMD_DRV_LOG(ERR, "The 'class_id' is not support.");
 		return false;
 	}
 
 	if (data->offset + conf_width > data_width) {
-		PMD_DRV_LOG(ERR, "The 'offset' value is too big");
+		PMD_DRV_LOG(ERR, "The 'offset' value is too big.");
 		return false;
 	}
 
@@ -1472,25 +1472,25 @@ nfp_flow_action_check_modify(struct nfp_action_calculate_param *param)
 	src_data = &conf->src;
 	if (!nfp_flow_field_id_dst_support(dst_data->field) ||
 			!nfp_flow_field_id_src_support(src_data->field)) {
-		PMD_DRV_LOG(ERR, "Not supported field id");
+		PMD_DRV_LOG(ERR, "Not supported field id.");
 		return -EINVAL;
 	}
 
 	width = conf->width;
 	if (width == 0) {
-		PMD_DRV_LOG(ERR, "No bits are required to modify");
+		PMD_DRV_LOG(ERR, "No bits are required to modify.");
 		return -EINVAL;
 	}
 
 	dst_width = nfp_flow_field_width(dst_data->field, 0);
 	src_width = nfp_flow_field_width(src_data->field, dst_width);
 	if (width > dst_width || width > src_width) {
-		PMD_DRV_LOG(ERR, "Can not modify more bits than the width of a field");
+		PMD_DRV_LOG(ERR, "Can not modify more bits than the width of a field.");
 		return -EINVAL;
 	}
 
 	if (!nfp_flow_is_validate_field_data(dst_data, width, dst_width)) {
-		PMD_DRV_LOG(ERR, "The dest field data has problem");
+		PMD_DRV_LOG(ERR, "The dest field data has problem.");
 		return -EINVAL;
 	}
 
@@ -1505,14 +1505,14 @@ nfp_flow_action_check_queue(struct nfp_action_calculate_param *param)
 
 	repr = param->dev->data->dev_private;
 	if (!nfp_flow_support_partial(repr)) {
-		PMD_DRV_LOG(ERR, "Queue action not supported");
+		PMD_DRV_LOG(ERR, "Queue action not supported.");
 		return -ENOTSUP;
 	}
 
 	queue = param->action->conf;
 	if (queue->index >= param->dev->data->nb_rx_queues ||
 			param->dev->data->rx_queues[queue->index] == NULL) {
-		PMD_DRV_LOG(ERR, "Queue index is illegal");
+		PMD_DRV_LOG(ERR, "Queue index is illegal.");
 		return -EINVAL;
 	}
 
@@ -1541,7 +1541,7 @@ nfp_flow_key_layers_check_actions(struct rte_eth_dev *dev,
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		if (action->type >= RTE_DIM(check_action_fns)) {
-			PMD_DRV_LOG(ERR, "Flow action %d unsupported", action->type);
+			PMD_DRV_LOG(ERR, "Flow action %d unsupported.", action->type);
 			return -ERANGE;
 		}
 
@@ -1551,7 +1551,7 @@ nfp_flow_key_layers_check_actions(struct rte_eth_dev *dev,
 		param.action = action;
 		ret = check_action_fns[action->type](&param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Flow action %d calculate fail", action->type);
+			PMD_DRV_LOG(ERR, "Flow action %d calculate fail.", action->type);
 			return ret;
 		}
 	}
@@ -1790,7 +1790,7 @@ nfp_flow_key_layers_calculate_actions(struct rte_eth_dev *dev,
 		}
 
 		if (action->type >= RTE_DIM(action_fns) || action_fns[action->type] == NULL) {
-			PMD_DRV_LOG(ERR, "Flow action %d unsupported", action->type);
+			PMD_DRV_LOG(ERR, "Flow action %d unsupported.", action->type);
 			return -ERANGE;
 		}
 
@@ -1800,7 +1800,7 @@ nfp_flow_key_layers_calculate_actions(struct rte_eth_dev *dev,
 
 	if (param.flag->partial_both_flag &&
 			key_ls->act_size != sizeof(struct nfp_fl_act_partial)) {
-		PMD_DRV_LOG(ERR, "Mark and Queue can not be offloaded with other actions");
+		PMD_DRV_LOG(ERR, "Mark and Queue can not be offloaded with other actions.");
 		return -ENOTSUP;
 	}
 
@@ -1831,26 +1831,26 @@ nfp_flow_key_layers_calculate(struct rte_eth_dev *dev,
 
 	ret = nfp_flow_key_layers_check_items(items, &param);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Flow items check failed");
+		PMD_DRV_LOG(ERR, "Flow items check failed.");
 		return ret;
 	}
 
 	memset(param.flag, 0, sizeof(struct nfp_item_flag));
 	ret = nfp_flow_key_layers_calculate_items(items, &param);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Flow items calculate failed");
+		PMD_DRV_LOG(ERR, "Flow items calculate failed.");
 		return ret;
 	}
 
 	ret = nfp_flow_key_layers_check_actions(dev, actions);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Flow actions check failed");
+		PMD_DRV_LOG(ERR, "Flow actions check failed.");
 		return ret;
 	}
 
 	ret = nfp_flow_key_layers_calculate_actions(dev, actions, key_ls);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Flow actions check failed");
+		PMD_DRV_LOG(ERR, "Flow actions check failed.");
 		return ret;
 	}
 
@@ -2764,7 +2764,7 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		}
 
 		if (proc == NULL) {
-			PMD_DRV_LOG(ERR, "No next item provided for %d", item->type);
+			PMD_DRV_LOG(ERR, "No next item provided for %d.", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
@@ -2772,13 +2772,13 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		/* Perform basic sanity checks */
 		ret = nfp_flow_item_check(item, proc);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d check failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d check failed.", item->type);
 			ret = -EINVAL;
 			break;
 		}
 
 		if (proc->merge == NULL) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function.", item->type);
 			ret = -ENOTSUP;
 			break;
 		}
@@ -2796,7 +2796,7 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		param.is_mask = false;
 		ret = proc->merge(&param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed.", item->type);
 			break;
 		}
 
@@ -2805,7 +2805,7 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		param.is_mask = true;
 		ret = proc->merge(&param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "NFP flow item %d mask merge failed", item->type);
+			PMD_DRV_LOG(ERR, "NFP flow item %d mask merge failed.", item->type);
 			break;
 		}
 
@@ -3497,7 +3497,7 @@ nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	if (!flag) {
-		PMD_DRV_LOG(DEBUG, "Can not find nn entry in the nn list");
+		PMD_DRV_LOG(DEBUG, "Can not find nn entry in the nn list.");
 		return -EINVAL;
 	}
 
@@ -3542,7 +3542,7 @@ nfp_flower_del_tun_neigh(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	if (ret != 0) {
-		PMD_DRV_LOG(DEBUG, "Failed to send the nn entry");
+		PMD_DRV_LOG(DEBUG, "Failed to send the nn entry.");
 		return -EINVAL;
 	}
 
@@ -3678,7 +3678,7 @@ nfp_pre_tun_table_search(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(hash_data, hash_len, priv->hash_seed);
 	index = rte_hash_lookup_data(priv->pre_tun_table, &hash_key, (void **)&mac_index);
 	if (index < 0) {
-		PMD_DRV_LOG(DEBUG, "Data NOT found in the hash table");
+		PMD_DRV_LOG(DEBUG, "Data NOT found in the hash table.");
 		return NULL;
 	}
 
@@ -3696,7 +3696,7 @@ nfp_pre_tun_table_add(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(hash_data, hash_len, priv->hash_seed);
 	ret = rte_hash_add_key_data(priv->pre_tun_table, &hash_key, hash_data);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Add to pre tunnel table failed");
+		PMD_DRV_LOG(ERR, "Add to pre tunnel table failed.");
 		return false;
 	}
 
@@ -3714,7 +3714,7 @@ nfp_pre_tun_table_delete(struct nfp_flow_priv *priv,
 	hash_key = rte_jhash(hash_data, hash_len, priv->hash_seed);
 	ret = rte_hash_del_key(priv->pre_tun_table, &hash_key);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "Delete from pre tunnel table failed");
+		PMD_DRV_LOG(ERR, "Delete from pre tunnel table failed.");
 		return false;
 	}
 
@@ -3734,14 +3734,14 @@ nfp_pre_tun_table_check_add(struct nfp_flower_representor *repr,
 
 	priv = repr->app_fw_flower->flow_priv;
 	if (priv->pre_tun_cnt >= NFP_TUN_PRE_TUN_RULE_LIMIT) {
-		PMD_DRV_LOG(ERR, "Pre tunnel table has full");
+		PMD_DRV_LOG(ERR, "Pre tunnel table has full.");
 		return -EINVAL;
 	}
 
 	entry_size = sizeof(struct nfp_pre_tun_entry);
 	entry = rte_zmalloc("nfp_pre_tun", entry_size, 0);
 	if (entry == NULL) {
-		PMD_DRV_LOG(ERR, "Memory alloc failed for pre tunnel table");
+		PMD_DRV_LOG(ERR, "Memory alloc failed for pre tunnel table.");
 		return -ENOMEM;
 	}
 
@@ -3803,7 +3803,7 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 	entry_size = sizeof(struct nfp_pre_tun_entry);
 	entry = rte_zmalloc("nfp_pre_tun", entry_size, 0);
 	if (entry == NULL) {
-		PMD_DRV_LOG(ERR, "Memory alloc failed for pre tunnel table");
+		PMD_DRV_LOG(ERR, "Memory alloc failed for pre tunnel table.");
 		return -ENOMEM;
 	}
 
@@ -3837,7 +3837,7 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 	ret = nfp_flower_cmsg_tun_mac_rule(repr->app_fw_flower, &repr->mac_addr,
 			nfp_mac_idx, true);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Send tunnel mac rule failed");
+		PMD_DRV_LOG(ERR, "Send tunnel mac rule failed.");
 		ret = -EINVAL;
 		goto free_entry;
 	}
@@ -3846,7 +3846,7 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 		ret = nfp_flower_cmsg_pre_tunnel_rule(repr->app_fw_flower, nfp_flow_meta,
 				nfp_mac_idx, true);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
+			PMD_DRV_LOG(ERR, "Send pre tunnel rule failed.");
 			ret = -EINVAL;
 			goto free_entry;
 		}
@@ -3854,7 +3854,7 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 
 	find_entry->ref_cnt = 1U;
 	if (!nfp_pre_tun_table_delete(priv, (char *)find_entry, entry_size)) {
-		PMD_DRV_LOG(ERR, "Delete entry from pre tunnel table failed");
+		PMD_DRV_LOG(ERR, "Delete entry from pre tunnel table failed.");
 		ret = -EINVAL;
 		goto free_entry;
 	}
@@ -3881,7 +3881,7 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 
 	ret = nfp_pre_tun_table_check_add(repr, &nfp_mac_idx);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Pre tunnel table add failed");
+		PMD_DRV_LOG(ERR, "Pre tunnel table add failed.");
 		return -EINVAL;
 	}
 
@@ -3895,7 +3895,7 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 	ret = nfp_flower_cmsg_tun_mac_rule(app_fw_flower, &repr->mac_addr,
 			nfp_mac_idx, false);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Send tunnel mac rule failed");
+		PMD_DRV_LOG(ERR, "Send tunnel mac rule failed.");
 		return -EINVAL;
 	}
 
@@ -3903,7 +3903,7 @@ nfp_flow_action_tunnel_decap(struct nfp_flower_representor *repr,
 		ret = nfp_flower_cmsg_pre_tunnel_rule(app_fw_flower, nfp_flow_meta,
 				nfp_mac_idx, false);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Send pre tunnel rule failed");
+			PMD_DRV_LOG(ERR, "Send pre tunnel rule failed.");
 			return -EINVAL;
 		}
 	}
@@ -4144,17 +4144,17 @@ nfp_flow_action_meter(struct nfp_flower_representor *representor,
 
 	mtr = nfp_mtr_find_by_mtr_id(app_fw_flower->mtr_priv, meter->mtr_id);
 	if (mtr == NULL) {
-		PMD_DRV_LOG(ERR, "Meter id not exist");
+		PMD_DRV_LOG(ERR, "Meter id not exist.");
 		return -EINVAL;
 	}
 
 	if (!mtr->enable) {
-		PMD_DRV_LOG(ERR, "Requested meter disable");
+		PMD_DRV_LOG(ERR, "Requested meter disable.");
 		return -EINVAL;
 	}
 
 	if (!mtr->shared && mtr->ref_cnt > 0) {
-		PMD_DRV_LOG(ERR, "Can not use a used unshared meter");
+		PMD_DRV_LOG(ERR, "Can not use a used unshared meter.");
 		return -EINVAL;
 	}
 
@@ -4349,7 +4349,7 @@ nfp_flow_action_compile_output(struct nfp_action_compile_param *param)
 	ret = nfp_flow_action_output(param->position, param->action,
 			param->nfp_flow_meta, output_cnt);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process output action");
+		PMD_DRV_LOG(ERR, "Failed process output action.");
 		return ret;
 	}
 
@@ -4400,7 +4400,7 @@ nfp_flow_action_compile_push_vlan(struct nfp_action_compile_param *param)
 
 	ret = nfp_flow_action_push_vlan(param->position, param->action);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN");
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN.");
 		return ret;
 	}
 
@@ -4539,7 +4539,7 @@ nfp_flow_action_compile_vxlan_encap(struct nfp_action_compile_param *param)
 			param->position, param->action_data, param->action,
 			param->nfp_flow_meta, &param->nfp_flow->tun);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP");
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP.");
 		return ret;
 	}
 
@@ -4559,7 +4559,7 @@ nfp_flow_action_compile_raw_encap(struct nfp_action_compile_param *param)
 			param->position, param->action_data, param->action,
 			param->nfp_flow_meta, &param->nfp_flow->tun);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_RAW_ENCAP");
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_RAW_ENCAP.");
 		return ret;
 	}
 
@@ -4578,7 +4578,7 @@ nfp_flow_action_compile_tnl_decap(struct nfp_action_compile_param *param)
 	ret = nfp_flow_action_tunnel_decap(param->repr, param->action,
 			param->nfp_flow_meta, param->nfp_flow);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process tunnel decap");
+		PMD_DRV_LOG(ERR, "Failed process tunnel decap.");
 		return ret;
 	}
 
@@ -4598,7 +4598,7 @@ nfp_flow_action_compile_meter(struct nfp_action_compile_param *param)
 	ret = nfp_flow_action_meter(param->repr, param->action,
 			param->position, &param->nfp_flow->mtr_id);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_METER");
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_METER.");
 		return -EINVAL;
 	}
 
@@ -4683,7 +4683,7 @@ nfp_flow_action_compile_rss(struct nfp_action_compile_param *param)
 	ret = nfp_flow_action_rss_add(param->repr, param->action,
 			&param->nfp_flow->rss);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_RSS");
+		PMD_DRV_LOG(ERR, "Failed process RTE_FLOW_ACTION_TYPE_RSS.");
 		return ret;
 	}
 
@@ -4747,7 +4747,7 @@ nfp_flow_action_compile_modify(struct nfp_action_compile_param *param)
 	} else if (conf->src.field == RTE_FLOW_FIELD_VALUE) {
 		action.conf = (void *)(uintptr_t)&conf->src.value;
 	} else {
-		PMD_DRV_LOG(ERR, "The SRC field of flow modify is not right");
+		PMD_DRV_LOG(ERR, "The SRC field of flow modify is not right.");
 		return -EINVAL;
 	}
 
@@ -4757,7 +4757,7 @@ nfp_flow_action_compile_modify(struct nfp_action_compile_param *param)
 	param->action = &action;
 	ret = nfp_flow_action_compile_modify_dispatch(param, conf->dst.field);
 	if (ret != 0)
-		PMD_DRV_LOG(ERR, "Something wrong when modify dispatch");
+		PMD_DRV_LOG(ERR, "Something wrong when modify dispatch.");
 
 	/* Reload the old action pointer */
 	param->action = action_old;
@@ -4825,14 +4825,14 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
 		if (action->type >= RTE_DIM(action_compile_fns) ||
 				action_compile_fns[action->type] == NULL) {
-			PMD_DRV_LOG(ERR, "Flow action %d unsupported", action->type);
+			PMD_DRV_LOG(ERR, "Flow action %d unsupported.", action->type);
 			return -ERANGE;
 		}
 
 		param.action = action;
 		ret = action_compile_fns[action->type](&param);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Flow action %d compile fail", action->type);
+			PMD_DRV_LOG(ERR, "Flow action %d compile fail.", action->type);
 			return ret;
 		}
 
@@ -4840,7 +4840,7 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	}
 
 	if (nfp_flow->install_flag && total_actions == 0) {
-		PMD_DRV_LOG(ERR, "The action list is empty");
+		PMD_DRV_LOG(ERR, "The action list is empty.");
 		return -ENOTSUP;
 	}
 
@@ -5510,20 +5510,20 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	ctx_count = nfp_rtsym_read_le(pf_dev->sym_tbl,
 			"CONFIG_FC_HOST_CTX_COUNT", &ret);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Read CTX_COUNT from symbol table failed");
+		PMD_INIT_LOG(ERR, "Read CTX_COUNT from symbol table failed.");
 		goto exit;
 	}
 
 	ctx_split = nfp_rtsym_read_le(pf_dev->sym_tbl,
 			"CONFIG_FC_HOST_CTX_SPLIT", &ret);
 	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Read CTX_SPLIT from symbol table failed");
+		PMD_INIT_LOG(ERR, "Read CTX_SPLIT from symbol table failed.");
 		goto exit;
 	}
 
 	priv = rte_zmalloc("nfp_app_flow_priv", sizeof(struct nfp_flow_priv), 0);
 	if (priv == NULL) {
-		PMD_INIT_LOG(ERR, "NFP app flow priv creation failed");
+		PMD_INIT_LOG(ERR, "NFP app flow priv creation failed.");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -5541,7 +5541,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		priv->mask_ids.free_list.buf = rte_zmalloc("nfp_app_mask_ids",
 				NFP_FLOWER_MASK_ENTRY_RS * NFP_FLOWER_MASK_ELEMENT_RS, 0);
 		if (priv->mask_ids.free_list.buf == NULL) {
-			PMD_INIT_LOG(ERR, "Mask id free list creation failed");
+			PMD_INIT_LOG(ERR, "Mask id free list creation failed.");
 			ret = -ENOMEM;
 			goto free_priv;
 		}
@@ -5551,7 +5551,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		priv->stats_ids.free_list.buf = rte_zmalloc("nfp_app_stats_ids",
 				priv->stats_ring_size * NFP_FL_STATS_ELEM_RS, 0);
 		if (priv->stats_ids.free_list.buf == NULL) {
-			PMD_INIT_LOG(ERR, "Stats id free list creation failed");
+			PMD_INIT_LOG(ERR, "Stats id free list creation failed.");
 			ret = -ENOMEM;
 			goto free_mask_id;
 		}
@@ -5561,12 +5561,12 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	rte_spinlock_init(&priv->stats_lock);
 	stats_size = (ctx_count & NFP_FL_STAT_ID_STAT) |
 			((ctx_split - 1) & NFP_FL_STAT_ID_MU_NUM);
-	PMD_INIT_LOG(INFO, "The ctx_count:%0lx, ctx_split:%0lx, stats_size:%0lx ",
+	PMD_INIT_LOG(INFO, "The ctx_count:%0lx, ctx_split:%0lx, stats_size:%0lx .",
 			ctx_count, ctx_split, stats_size);
 	priv->stats = rte_zmalloc("nfp_flow_stats",
 			stats_size * sizeof(struct nfp_fl_stats), 0);
 	if (priv->stats == NULL) {
-		PMD_INIT_LOG(ERR, "Flow stats creation failed");
+		PMD_INIT_LOG(ERR, "Flow stats creation failed.");
 		ret = -ENOMEM;
 		goto free_stats_id;
 	}
@@ -5575,7 +5575,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	mask_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->mask_table = rte_hash_create(&mask_hash_params);
 	if (priv->mask_table == NULL) {
-		PMD_INIT_LOG(ERR, "Mask hash table creation failed");
+		PMD_INIT_LOG(ERR, "Mask hash table creation failed.");
 		ret = -ENOMEM;
 		goto free_stats;
 	}
@@ -5585,7 +5585,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	flow_hash_params.entries = ctx_count;
 	priv->flow_table = rte_hash_create(&flow_hash_params);
 	if (priv->flow_table == NULL) {
-		PMD_INIT_LOG(ERR, "Flow hash table creation failed");
+		PMD_INIT_LOG(ERR, "Flow hash table creation failed.");
 		ret = -ENOMEM;
 		goto free_mask_table;
 	}
@@ -5595,7 +5595,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	pre_tun_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->pre_tun_table = rte_hash_create(&pre_tun_hash_params);
 	if (priv->pre_tun_table == NULL) {
-		PMD_INIT_LOG(ERR, "Pre tunnel table creation failed");
+		PMD_INIT_LOG(ERR, "Pre tunnel table creation failed.");
 		ret = -ENOMEM;
 		goto free_flow_table;
 	}
@@ -5604,7 +5604,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	ct_zone_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->ct_zone_table = rte_hash_create(&ct_zone_hash_params);
 	if (priv->ct_zone_table == NULL) {
-		PMD_INIT_LOG(ERR, "CT zone table creation failed");
+		PMD_INIT_LOG(ERR, "CT zone table creation failed.");
 		ret = -ENOMEM;
 		goto free_pre_tnl_table;
 	}
@@ -5614,7 +5614,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	ct_map_hash_params.entries = ctx_count;
 	priv->ct_map_table = rte_hash_create(&ct_map_hash_params);
 	if (priv->ct_map_table == NULL) {
-		PMD_INIT_LOG(ERR, "CT map table creation failed");
+		PMD_INIT_LOG(ERR, "CT map table creation failed.");
 		ret = -ENOMEM;
 		goto free_ct_zone_table;
 	}

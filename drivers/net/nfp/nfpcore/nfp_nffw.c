@@ -175,7 +175,7 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 
 	state->res = nfp_resource_acquire(cpp, NFP_RESOURCE_NFP_NFFW);
 	if (state->res == NULL) {
-		PMD_DRV_LOG(ERR, "NFFW - acquire resource failed");
+		PMD_DRV_LOG(ERR, "NFFW - acquire resource failed.");
 		goto err_free;
 	}
 
@@ -188,7 +188,7 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 			nfp_resource_address(state->res),
 			fwinf, sizeof(*fwinf));
 	if (err < (int)sizeof(*fwinf)) {
-		PMD_DRV_LOG(ERR, "NFFW - CPP read error %d", err);
+		PMD_DRV_LOG(ERR, "NFFW - CPP read error %d.", err);
 		goto err_release;
 	}
 

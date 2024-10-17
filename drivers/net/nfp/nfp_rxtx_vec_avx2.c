@@ -125,7 +125,7 @@ nfp_vec_avx2_recv1(struct nfp_net_rxq *rxq,
 {
 	/* Allocate a new mbuf into the software ring. */
 	if (rte_pktmbuf_alloc_bulk(rxq->mem_pool, rxb, 1) < 0) {
-		PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu",
+		PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu.",
 				rxq->port_id, rxq->qidx);
 		nfp_net_mbuf_alloc_failed(rxq);
 		return -ENOMEM;
@@ -146,7 +146,7 @@ nfp_vec_avx2_recv4(struct nfp_net_rxq *rxq,
 {
 	/* Allocate 4 new mbufs into the software ring. */
 	if (rte_pktmbuf_alloc_bulk(rxq->mem_pool, rxb, 4) < 0) {
-		PMD_RX_LOG(DEBUG, "RX mbuf bulk alloc failed port_id=%u queue_id=%hu",
+		PMD_RX_LOG(DEBUG, "RX mbuf bulk alloc failed port_id=%u queue_id=%hu.",
 				rxq->port_id, rxq->qidx);
 		return -ENOMEM;
 	}
@@ -188,7 +188,7 @@ nfp_net_vec_avx2_recv_pkts(void *rx_queue,
 	struct nfp_net_rxq *rxq = rx_queue;
 
 	if (unlikely(rxq == NULL)) {
-		PMD_RX_LOG(ERR, "RX Bad queue");
+		PMD_RX_LOG(ERR, "RX Bad queue.");
 		return 0;
 	}
 
@@ -262,7 +262,7 @@ recv_end:
 	if (nb_hold == 0)
 		return nb_hold;
 
-	PMD_RX_LOG(DEBUG, "RX port_id=%u queue_id=%u, %d packets received",
+	PMD_RX_LOG(DEBUG, "RX port_id=%u queue_id=%u, %d packets received.",
 			rxq->port_id, (unsigned int)rxq->qidx, nb_hold);
 
 	nb_hold += rxq->nb_rx_hold;
@@ -273,7 +273,7 @@ recv_end:
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
-		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu",
+		PMD_RX_LOG(DEBUG, "The port=%hu queue=%hu nb_hold=%hu avail=%hu.",
 				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
