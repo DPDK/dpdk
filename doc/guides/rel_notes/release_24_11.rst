@@ -108,6 +108,11 @@ New Features
 
   New ICMP message types and codes from RFC 792 were added in ``rte_icmp.h``.
 
+* **Added IPv6 address structure and related utilities.**
+
+  A new IPv6 address structure is now available in ``rte_ip6.h``.
+  It comes with a set of helper functions and macros.
+
 * **Added link speed lanes API.**
 
   Added functions to query or force the link lanes configuration.
