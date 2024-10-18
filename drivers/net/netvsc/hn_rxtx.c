@@ -1557,13 +1557,31 @@ hn_xmit_pkts(void *ptxq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		struct rte_mbuf *m = tx_pkts[nb_tx];
-		uint32_t pkt_size = m->pkt_len + HN_RNDIS_PKT_LEN;
 		struct rndis_packet_msg *pkt;
 		struct hn_txdesc *txd;
+		uint32_t pkt_size;
 
 		txd = hn_txd_get(txq);
 		if (txd == NULL)
 			break;
+
+		if (!(m->ol_flags & RTE_MBUF_F_TX_VLAN)) {
+			struct rte_ether_hdr *eh =
+				rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
+			struct rte_vlan_hdr *vh;
+
+			/* Force TX vlan offloading for 801.2Q packet */
+			if (eh->ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN)) {
+				vh = (struct rte_vlan_hdr *)(eh + 1);
+				m->ol_flags |= RTE_MBUF_F_TX_VLAN;
+				m->vlan_tci = rte_be_to_cpu_16(vh->vlan_tci);
+
+				/* Copy ether header over */
+				memmove(rte_pktmbuf_adj(m, sizeof(struct rte_vlan_hdr)),
+					eh, 2 * RTE_ETHER_ADDR_LEN);
+			}
+		}
+		pkt_size = m->pkt_len + HN_RNDIS_PKT_LEN;
 
 		/* For small packets aggregate them in chimney buffer */
 		if (m->pkt_len <= hv->tx_copybreak &&
