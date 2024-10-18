@@ -314,6 +314,17 @@ API Changes
   table
     - ``struct rte_table_lpm_ipv6_key``
     - ``RTE_LPM_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
+  rib
+    - ``rte_rib6_get_ip()``
+    - ``rte_rib6_get_nxt()``
+    - ``rte_rib6_insert()``
+    - ``rte_rib6_lookup()``
+    - ``rte_rib6_lookup_exact()``
+    - ``rte_rib6_remove()``
+    - ``RTE_RIB6_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
+    - ``get_msk_part()`` (deprecated)
+    - ``rte_rib6_copy_addr()`` (deprecated, replaced with direct structure assignments)
+    - ``rte_rib6_is_equal()`` (deprecated, replaced with ``rte_ipv6_addr_eq()``)
 
 * drivers/net/ena: Removed ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
   and replaced it with a new shared devarg ``llq_policy`` that keeps the same logic.

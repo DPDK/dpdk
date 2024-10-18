@@ -468,13 +468,13 @@ modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 
 	ledge = *ip;
 	do {
-		tmp = rte_rib6_get_nxt(rib, ip->a, depth, tmp,
+		tmp = rte_rib6_get_nxt(rib, ip, depth, tmp,
 			RTE_RIB6_GET_NXT_COVER);
 		if (tmp != NULL) {
 			rte_rib6_get_depth(tmp, &tmp_depth);
 			if (tmp_depth == depth)
 				continue;
-			rte_rib6_get_ip(tmp, redge.a);
+			rte_rib6_get_ip(tmp, &redge);
 			if (rte_ipv6_addr_eq(&ledge, &redge)) {
 				get_nxt_net(&ledge, tmp_depth);
 				continue;
@@ -532,11 +532,11 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	rte_ipv6_addr_mask(&ip_masked, depth);
 
 	if (depth > 24) {
-		tmp = rte_rib6_get_nxt(rib, ip_masked.a,
+		tmp = rte_rib6_get_nxt(rib, &ip_masked,
 			RTE_ALIGN_FLOOR(depth, 8), NULL,
 			RTE_RIB6_GET_NXT_COVER);
 		if (tmp == NULL) {
-			tmp = rte_rib6_lookup(rib, ip->a);
+			tmp = rte_rib6_lookup(rib, ip);
 			if (tmp != NULL) {
 				rte_rib6_get_depth(tmp, &tmp_depth);
 				parent_depth = RTE_MAX(tmp_depth, 24);
@@ -546,7 +546,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 			depth_diff = depth_diff >> 3;
 		}
 	}
-	node = rte_rib6_lookup_exact(rib, ip_masked.a, depth);
+	node = rte_rib6_lookup_exact(rib, &ip_masked, depth);
 	switch (op) {
 	case RTE_FIB6_ADD:
 		if (node != NULL) {
@@ -563,7 +563,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 				dp->number_tbl8s - depth_diff))
 			return -ENOSPC;
 
-		node = rte_rib6_insert(rib, ip_masked.a, depth);
+		node = rte_rib6_insert(rib, &ip_masked, depth);
 		if (node == NULL)
 			return -rte_errno;
 		rte_rib6_set_nh(node, next_hop);
@@ -575,7 +575,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 		}
 		ret = modify_dp(dp, rib, &ip_masked, depth, next_hop);
 		if (ret != 0) {
-			rte_rib6_remove(rib, ip_masked.a, depth);
+			rte_rib6_remove(rib, &ip_masked, depth);
 			return ret;
 		}
 
@@ -597,7 +597,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 
 		if (ret != 0)
 			return ret;
-		rte_rib6_remove(rib, ip->a, depth);
+		rte_rib6_remove(rib, ip, depth);
 
 		dp->rsvd_tbl8s -= depth_diff;
 		return 0;

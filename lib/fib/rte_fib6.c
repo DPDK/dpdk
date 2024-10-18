@@ -58,7 +58,7 @@ dummy_lookup(void *fib_p, const struct rte_ipv6_addr *ips,
 	struct rte_rib6_node *node;
 
 	for (i = 0; i < n; i++) {
-		node = rte_rib6_lookup(fib->rib, ips[i].a);
+		node = rte_rib6_lookup(fib->rib, &ips[i]);
 		if (node != NULL)
 			rte_rib6_get_nh(node, &next_hops[i]);
 		else
@@ -74,19 +74,19 @@ dummy_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	if ((fib == NULL) || (depth > RTE_IPV6_MAX_DEPTH))
 		return -EINVAL;
 
-	node = rte_rib6_lookup_exact(fib->rib, ip->a, depth);
+	node = rte_rib6_lookup_exact(fib->rib, ip, depth);
 
 	switch (op) {
 	case RTE_FIB6_ADD:
 		if (node == NULL)
-			node = rte_rib6_insert(fib->rib, ip->a, depth);
+			node = rte_rib6_insert(fib->rib, ip, depth);
 		if (node == NULL)
 			return -rte_errno;
 		return rte_rib6_set_nh(node, next_hop);
 	case RTE_FIB6_DEL:
 		if (node == NULL)
 			return -ENOENT;
-		rte_rib6_remove(fib->rib, ip->a, depth);
+		rte_rib6_remove(fib->rib, ip, depth);
 		return 0;
 	}
 	return -EINVAL;

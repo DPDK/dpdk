@@ -80,13 +80,6 @@ Deprecation Notices
     - ``rte_node_ip6_route_add()``
   pipeline
     - ``struct rte_table_action_ipv6_header``
-  rib
-    - ``rte_rib6_lookup()``
-    - ``rte_rib6_lookup_exact()``
-    - ``rte_rib6_get_nxt()``
-    - ``rte_rib6_insert()``
-    - ``rte_rib6_remove()``
-    - ``rte_rib6_get_ip()``
 
 * net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
   is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
