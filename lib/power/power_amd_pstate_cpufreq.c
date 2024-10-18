@@ -382,7 +382,11 @@ power_amd_pstate_cpufreq_init(unsigned int lcore_id)
 		return -1;
 	}
 
-	pi->lcore_id = lcore_id;
+	if (power_get_lcore_mapped_cpu_id(lcore_id, &pi->lcore_id) < 0) {
+		POWER_LOG(ERR, "Cannot get CPU ID mapped for lcore %u", lcore_id);
+		return -1;
+	}
+
 	/* Check and set the governor */
 	if (power_set_governor_userspace(pi) < 0) {
 		POWER_LOG(ERR, "Cannot set governor of lcore %u to "

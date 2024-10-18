@@ -31,5 +31,6 @@ int open_core_sysfs_file(FILE **f, const char *mode, const char *format, ...)
 int read_core_sysfs_u32(FILE *f, uint32_t *val);
 int read_core_sysfs_s(FILE *f, char *buf, unsigned int len);
 int write_core_sysfs_s(FILE *f, const char *str);
+int power_get_lcore_mapped_cpu_id(uint32_t lcore_id, uint32_t *cpu_id);
 
 #endif /* _POWER_COMMON_H_ */

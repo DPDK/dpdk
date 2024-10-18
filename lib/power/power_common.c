@@ -9,6 +9,7 @@
 
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include <rte_lcore.h>
 
 #include "power_common.h"
 
@@ -203,4 +204,26 @@ out:
 		fclose(f_governor);
 
 	return ret;
+}
+
+int power_get_lcore_mapped_cpu_id(uint32_t lcore_id, uint32_t *cpu_id)
+{
+	rte_cpuset_t lcore_cpus;
+	uint32_t cpu;
+
+	lcore_cpus = rte_lcore_cpuset(lcore_id);
+	if (CPU_COUNT(&lcore_cpus) != 1) {
+		POWER_LOG(ERR,
+			"Power library does not support lcore %u mapping to %u CPUs",
+			lcore_id, CPU_COUNT(&lcore_cpus));
+		return -1;
+	}
+
+	for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+		if (CPU_ISSET(cpu, &lcore_cpus))
+			break;
+	}
+	*cpu_id = cpu;
+
+	return 0;
 }
