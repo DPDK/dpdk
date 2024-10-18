@@ -2409,10 +2409,8 @@ match_convert(struct table_rule_match *mh,
 			}
 		else
 			if (add) {
-				uint32_t *sa32 =
-					(uint32_t *) mh->match.acl.ipv6.sa;
-				uint32_t *da32 =
-					(uint32_t *) mh->match.acl.ipv6.da;
+				uint32_t *sa32 = (uint32_t *)&mh->match.acl.ipv6.sa;
+				uint32_t *da32 = (uint32_t *)&mh->match.acl.ipv6.da;
 				uint32_t sa32_depth[4], da32_depth[4];
 				int status;
 
@@ -2480,10 +2478,8 @@ match_convert(struct table_rule_match *mh,
 				ml->acl_add.priority =
 					(int32_t) mh->match.acl.priority;
 			} else {
-				uint32_t *sa32 =
-					(uint32_t *) mh->match.acl.ipv6.sa;
-				uint32_t *da32 =
-					(uint32_t *) mh->match.acl.ipv6.da;
+				uint32_t *sa32 = (uint32_t *)&mh->match.acl.ipv6.sa;
+				uint32_t *da32 = (uint32_t *)&mh->match.acl.ipv6.da;
 				uint32_t sa32_depth[4], da32_depth[4];
 				int status;
 
@@ -2563,8 +2559,7 @@ match_convert(struct table_rule_match *mh,
 			ml->lpm_ipv4.ip = mh->match.lpm.ipv4;
 			ml->lpm_ipv4.depth = mh->match.lpm.depth;
 		} else {
-			memcpy(&ml->lpm_ipv6.ip,
-				mh->match.lpm.ipv6, sizeof(ml->lpm_ipv6.ip));
+			ml->lpm_ipv6.ip = mh->match.lpm.ipv6;
 			ml->lpm_ipv6.depth = mh->match.lpm.depth;
 		}
 

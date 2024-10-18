@@ -1320,14 +1320,14 @@ rte_swx_ipsec_sa_read(struct rte_swx_ipsec *ipsec __rte_unused,
 			CHECK(!strcmp(t[2], "srcaddr"), "Missing \"srcaddr\" keyword");
 
 			status = hex_string_parse(t[3],
-						  p->encap.tunnel.ipv6.src_addr.s6_addr,
+						  p->encap.tunnel.ipv6.src_addr.a,
 						  16);
 			CHECK(!status, "Tunnel IPv6 source address invalid format");
 
 			CHECK(!strcmp(t[4], "dstaddr"), "Missing \"dstaddr\" keyword");
 
 			status = hex_string_parse(t[5],
-						  p->encap.tunnel.ipv6.dst_addr.s6_addr,
+						  p->encap.tunnel.ipv6.dst_addr.a,
 						  16);
 			CHECK(!status, "Tunnel IPv6 destination address invalid format");
 
@@ -1386,11 +1386,11 @@ tunnel_ipv6_header_set(struct rte_ipv6_hdr *h, struct rte_swx_ipsec_sa_params *p
 		.payload_len = 0, /* Cannot be pre-computed. */
 		.proto = IPPROTO_ESP,
 		.hop_limits = 64,
+		.src_addr = p->encap.tunnel.ipv6.src_addr,
+		.dst_addr = p->encap.tunnel.ipv6.dst_addr,
 	};
 
 	memcpy(h, &ipv6_hdr, sizeof(ipv6_hdr));
-	memcpy(&h->src_addr, p->encap.tunnel.ipv6.src_addr.s6_addr, 16);
-	memcpy(&h->dst_addr, p->encap.tunnel.ipv6.dst_addr.s6_addr, 16);
 }
 
 /* IPsec library SA parameters. */
@@ -1579,8 +1579,12 @@ ipsec_xform_get(struct rte_swx_ipsec_sa_params *p,
 			ipsec_xform->tunnel.ipv4.df = 0;
 			ipsec_xform->tunnel.ipv4.ttl = 64;
 		} else {
-			ipsec_xform->tunnel.ipv6.src_addr = p->encap.tunnel.ipv6.src_addr;
-			ipsec_xform->tunnel.ipv6.dst_addr = p->encap.tunnel.ipv6.dst_addr;
+			memcpy(&ipsec_xform->tunnel.ipv6.src_addr,
+				&p->encap.tunnel.ipv6.src_addr,
+				sizeof(ipsec_xform->tunnel.ipv6.src_addr));
+			memcpy(&ipsec_xform->tunnel.ipv6.dst_addr,
+				&p->encap.tunnel.ipv6.dst_addr,
+				sizeof(ipsec_xform->tunnel.ipv6.dst_addr));
 			ipsec_xform->tunnel.ipv6.dscp = 0;
 			ipsec_xform->tunnel.ipv6.flabel = 0;
 			ipsec_xform->tunnel.ipv6.hlimit = 64;

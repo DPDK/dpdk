@@ -315,6 +315,10 @@ API Changes
     - ``struct rte_ipv6_hdr``
   node
     - ``rte_node_ip6_route_add()``
+  pipeline
+    - ``struct rte_swx_ipsec_sa_encap_params``
+    - ``struct rte_table_action_ipv6_header``
+    - ``struct rte_table_action_nat_params``
   table
     - ``struct rte_table_lpm_ipv6_key``
     - ``RTE_LPM_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)

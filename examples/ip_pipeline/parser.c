@@ -387,7 +387,7 @@ parse_ipv4_addr(const char *token, struct in_addr *ipv4)
 }
 
 int
-parse_ipv6_addr(const char *token, struct in6_addr *ipv6)
+parse_ipv6_addr(const char *token, struct rte_ipv6_addr *ipv6)
 {
 	if (strlen(token) >= INET6_ADDRSTRLEN)
 		return -EINVAL;

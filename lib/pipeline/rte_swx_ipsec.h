@@ -48,6 +48,7 @@
 
 #include <rte_compat.h>
 #include <rte_crypto_sym.h>
+#include <rte_ip6.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -248,10 +249,10 @@ struct rte_swx_ipsec_sa_encap_params {
 		/** IPv6 header. */
 		struct {
 			/** Source address. */
-			struct in6_addr src_addr;
+			struct rte_ipv6_addr src_addr;
 
 			/** Destination address. */
-			struct in6_addr dst_addr;
+			struct rte_ipv6_addr dst_addr;
 		} ipv6;
 	} tunnel;
 };
