@@ -2,6 +2,7 @@
 # Copyright(c) 2017-2020 Intel Corporation
 
 headers = files(
+        'rte_cksum.h',
         'rte_ip.h',
         'rte_tcp.h',
         'rte_udp.h',

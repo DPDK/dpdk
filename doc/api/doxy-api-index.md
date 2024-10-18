@@ -221,6 +221,7 @@ The public API headers are grouped by topics:
   [bitops](@ref rte_bitops.h),
   [approx fraction](@ref rte_approx.h),
   [random](@ref rte_random.h),
+  [checksum](@ref rte_cksum.h),
   [config file](@ref rte_cfgfile.h),
   [key/value args](@ref rte_kvargs.h),
   [argument parsing](@ref rte_argparse.h),
