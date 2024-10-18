@@ -92,7 +92,7 @@ sources += files('cnxk_telemetry_bphy.c',
 )
 
 if meson.is_cross_build()
-    soc_type = meson.get_cross_property('platform', '')
+    soc_type = meson.get_external_property('platform', '')
 else
     soc_type = platform
 endif
