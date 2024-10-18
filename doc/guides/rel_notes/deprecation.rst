@@ -70,8 +70,6 @@ Deprecation Notices
     - ``struct rte_flow_item_icmp6_nd_na``
     - ``struct rte_flow_action_set_ipv6``
     - ``struct rte_flow_tunnel``
-  gro
-    - ``struct tcp6_flow_key``
 
 * net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
   is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
