@@ -256,8 +256,8 @@ struct rte_ipv6_hdr {
 	rte_be16_t payload_len;	/**< IP payload size, including ext. headers */
 	uint8_t  proto;		/**< Protocol, next header. */
 	uint8_t  hop_limits;	/**< Hop limits. */
-	uint8_t  src_addr[16];	/**< IP address of source host. */
-	uint8_t  dst_addr[16];	/**< IP address of destination host(s). */
+	struct rte_ipv6_addr src_addr;	/**< IP address of source host. */
+	struct rte_ipv6_addr dst_addr;	/**< IP address of destination host(s). */
 } __rte_packed;
 
 /* IPv6 routing extension type definition. */
@@ -325,7 +325,7 @@ rte_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 	else
 		psd_hdr.len = ipv6_hdr->payload_len;
 
-	sum = __rte_raw_cksum(ipv6_hdr->src_addr,
+	sum = __rte_raw_cksum(&ipv6_hdr->src_addr,
 		sizeof(ipv6_hdr->src_addr) + sizeof(ipv6_hdr->dst_addr),
 		0);
 	sum = __rte_raw_cksum(&psd_hdr, sizeof(psd_hdr), sum);

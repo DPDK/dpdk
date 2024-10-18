@@ -209,10 +209,8 @@ static const struct tap_flow_items tap_flow_items[] = {
 			       RTE_FLOW_ITEM_TYPE_TCP),
 		.mask = &(const struct rte_flow_item_ipv6){
 			.hdr = {
-				.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-				.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.src_addr = RTE_IPV6_MASK_FULL,
+				.dst_addr = RTE_IPV6_MASK_FULL,
 				.proto = -1,
 			},
 		},
@@ -613,13 +611,13 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
 		info->eth_type = htons(ETH_P_IPV6);
 	if (!spec)
 		return 0;
-	if (memcmp(mask->hdr.dst_addr, empty_addr, 16)) {
+	if (memcmp(&mask->hdr.dst_addr, empty_addr, 16)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST,
 			   sizeof(spec->hdr.dst_addr), &spec->hdr.dst_addr);
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_DST_MASK,
 			   sizeof(mask->hdr.dst_addr), &mask->hdr.dst_addr);
 	}
-	if (memcmp(mask->hdr.src_addr, empty_addr, 16)) {
+	if (memcmp(&mask->hdr.src_addr, empty_addr, 16)) {
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC,
 			   sizeof(spec->hdr.src_addr), &spec->hdr.src_addr);
 		tap_nlattr_add(&msg->nh, TCA_FLOWER_KEY_IPV6_SRC_MASK,

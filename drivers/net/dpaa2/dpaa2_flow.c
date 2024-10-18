@@ -117,10 +117,8 @@ static const struct rte_flow_item_ipv4 dpaa2_flow_item_ipv4_mask = {
 
 static const struct rte_flow_item_ipv6 dpaa2_flow_item_ipv6_mask = {
 	.hdr = {
-		.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-		.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+		.src_addr = RTE_IPV6_MASK_FULL,
+		.dst_addr = RTE_IPV6_MASK_FULL,
 		.proto = 0xff
 	},
 };
@@ -1478,16 +1476,16 @@ dpaa2_configure_flow_generic_ip(
 		mask_ipv4->hdr.dst_addr)) {
 		flow->ipaddr_rule.ipaddr_type = FLOW_IPV4_ADDR;
 	} else if (mask_ipv6 &&
-		(memcmp((const char *)mask_ipv6->hdr.src_addr,
+		(memcmp(&mask_ipv6->hdr.src_addr,
 				zero_cmp, NH_FLD_IPV6_ADDR_SIZE) ||
-		memcmp((const char *)mask_ipv6->hdr.dst_addr,
+		memcmp(&mask_ipv6->hdr.dst_addr,
 				zero_cmp, NH_FLD_IPV6_ADDR_SIZE))) {
 		flow->ipaddr_rule.ipaddr_type = FLOW_IPV6_ADDR;
 	}
 
 	if ((mask_ipv4 && mask_ipv4->hdr.src_addr) ||
 		(mask_ipv6 &&
-			memcmp((const char *)mask_ipv6->hdr.src_addr,
+			memcmp(&mask_ipv6->hdr.src_addr,
 				zero_cmp, NH_FLD_IPV6_ADDR_SIZE))) {
 		index = dpaa2_flow_extract_search(
 				&priv->extract.qos_key_extract.dpkg,
@@ -1526,13 +1524,13 @@ dpaa2_configure_flow_generic_ip(
 		if (spec_ipv4)
 			key = &spec_ipv4->hdr.src_addr;
 		else
-			key = &spec_ipv6->hdr.src_addr[0];
+			key = &spec_ipv6->hdr.src_addr;
 		if (mask_ipv4) {
 			mask = &mask_ipv4->hdr.src_addr;
 			size = NH_FLD_IPV4_ADDR_SIZE;
 			prot = NET_PROT_IPV4;
 		} else {
-			mask = &mask_ipv6->hdr.src_addr[0];
+			mask = &mask_ipv6->hdr.src_addr;
 			size = NH_FLD_IPV6_ADDR_SIZE;
 			prot = NET_PROT_IPV6;
 		}
@@ -1569,7 +1567,7 @@ dpaa2_configure_flow_generic_ip(
 
 	if ((mask_ipv4 && mask_ipv4->hdr.dst_addr) ||
 		(mask_ipv6 &&
-			memcmp((const char *)mask_ipv6->hdr.dst_addr,
+			memcmp(&mask_ipv6->hdr.dst_addr,
 				zero_cmp, NH_FLD_IPV6_ADDR_SIZE))) {
 		index = dpaa2_flow_extract_search(
 				&priv->extract.qos_key_extract.dpkg,
@@ -1616,13 +1614,13 @@ dpaa2_configure_flow_generic_ip(
 		if (spec_ipv4)
 			key = &spec_ipv4->hdr.dst_addr;
 		else
-			key = spec_ipv6->hdr.dst_addr;
+			key = &spec_ipv6->hdr.dst_addr;
 		if (mask_ipv4) {
 			mask = &mask_ipv4->hdr.dst_addr;
 			size = NH_FLD_IPV4_ADDR_SIZE;
 			prot = NET_PROT_IPV4;
 		} else {
-			mask = &mask_ipv6->hdr.dst_addr[0];
+			mask = &mask_ipv6->hdr.dst_addr;
 			size = NH_FLD_IPV6_ADDR_SIZE;
 			prot = NET_PROT_IPV6;
 		}

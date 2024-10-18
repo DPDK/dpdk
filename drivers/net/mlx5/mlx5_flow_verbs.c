@@ -600,13 +600,13 @@ flow_verbs_translate_item_ipv6(struct mlx5_flow *dev_flow,
 		uint32_t vtc_flow_val;
 		uint32_t vtc_flow_mask;
 
-		memcpy(&ipv6.val.src_ip, spec->hdr.src_addr,
+		memcpy(&ipv6.val.src_ip, &spec->hdr.src_addr,
 		       RTE_DIM(ipv6.val.src_ip));
-		memcpy(&ipv6.val.dst_ip, spec->hdr.dst_addr,
+		memcpy(&ipv6.val.dst_ip, &spec->hdr.dst_addr,
 		       RTE_DIM(ipv6.val.dst_ip));
-		memcpy(&ipv6.mask.src_ip, mask->hdr.src_addr,
+		memcpy(&ipv6.mask.src_ip, &mask->hdr.src_addr,
 		       RTE_DIM(ipv6.mask.src_ip));
-		memcpy(&ipv6.mask.dst_ip, mask->hdr.dst_addr,
+		memcpy(&ipv6.mask.dst_ip, &mask->hdr.dst_addr,
 		       RTE_DIM(ipv6.mask.dst_ip));
 		vtc_flow_val = rte_be_to_cpu_32(spec->hdr.vtc_flow);
 		vtc_flow_mask = rte_be_to_cpu_32(mask->hdr.vtc_flow);

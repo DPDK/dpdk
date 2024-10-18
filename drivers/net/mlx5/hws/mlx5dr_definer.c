@@ -176,14 +176,14 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
 	X(SET,		ipv6_routing_hdr,	IPPROTO_ROUTING,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_hop_limits,	v->hdr.hop_limits,	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_src_addr_127_96,	&v->hdr.src_addr[0],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_src_addr_95_64,	&v->hdr.src_addr[4],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_src_addr_63_32,	&v->hdr.src_addr[8],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_src_addr_31_0,	&v->hdr.src_addr[12],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_dst_addr_127_96,	&v->hdr.dst_addr[0],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_dst_addr_95_64,	&v->hdr.dst_addr[4],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_dst_addr_63_32,	&v->hdr.dst_addr[8],	rte_flow_item_ipv6) \
-	X(SET_BE32P,	ipv6_dst_addr_31_0,	&v->hdr.dst_addr[12],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_src_addr_127_96,	&v->hdr.src_addr.a[0],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_src_addr_95_64,	&v->hdr.src_addr.a[4],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_src_addr_63_32,	&v->hdr.src_addr.a[8],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_src_addr_31_0,	&v->hdr.src_addr.a[12],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_dst_addr_127_96,	&v->hdr.dst_addr.a[0],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_dst_addr_95_64,	&v->hdr.dst_addr.a[4],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_dst_addr_63_32,	&v->hdr.dst_addr.a[8],	rte_flow_item_ipv6) \
+	X(SET_BE32P,	ipv6_dst_addr_31_0,	&v->hdr.dst_addr.a[12],	rte_flow_item_ipv6) \
 	X(SET,		ipv6_version,		STE_IPV6,		rte_flow_item_ipv6) \
 	X(SET,		ipv6_frag,		v->has_frag_ext,	rte_flow_item_ipv6) \
 	X(SET,		icmp_protocol,		STE_ICMP,		rte_flow_item_icmp) \
@@ -1161,8 +1161,8 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 	    m->has_esp_ext || m->has_dest_ext || m->has_mobil_ext ||
 	    m->has_hip_ext || m->has_shim6_ext ||
 	    (l && (l->has_frag_ext || l->hdr.vtc_flow || l->hdr.proto ||
-		   !is_mem_zero(l->hdr.src_addr, 16) ||
-		   !is_mem_zero(l->hdr.dst_addr, 16)))) {
+		   !is_mem_zero(l->hdr.src_addr.a, 16) ||
+		   !is_mem_zero(l->hdr.dst_addr.a, 16)))) {
 		rte_errno = ENOTSUP;
 		return rte_errno;
 	}
@@ -1219,56 +1219,56 @@ mlx5dr_definer_conv_item_ipv6(struct mlx5dr_definer_conv_data *cd,
 		DR_CALC_SET(fc, eth_l3, time_to_live_hop_limit, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.src_addr, 4)) {
+	if (!is_mem_zero(m->hdr.src_addr.a, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_SRC_127_96, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_src_addr_127_96_set;
 		DR_CALC_SET(fc, ipv6_src, ipv6_address_127_96, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.src_addr + 4, 4)) {
+	if (!is_mem_zero(m->hdr.src_addr.a + 4, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_SRC_95_64, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_src_addr_95_64_set;
 		DR_CALC_SET(fc, ipv6_src, ipv6_address_95_64, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.src_addr + 8, 4)) {
+	if (!is_mem_zero(m->hdr.src_addr.a + 8, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_SRC_63_32, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_src_addr_63_32_set;
 		DR_CALC_SET(fc, ipv6_src, ipv6_address_63_32, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.src_addr + 12, 4)) {
+	if (!is_mem_zero(m->hdr.src_addr.a + 12, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_SRC_31_0, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_src_addr_31_0_set;
 		DR_CALC_SET(fc, ipv6_src, ipv6_address_31_0, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.dst_addr, 4)) {
+	if (!is_mem_zero(m->hdr.dst_addr.a, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_DST_127_96, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_dst_addr_127_96_set;
 		DR_CALC_SET(fc, ipv6_dst, ipv6_address_127_96, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.dst_addr + 4, 4)) {
+	if (!is_mem_zero(m->hdr.dst_addr.a + 4, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_DST_95_64, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_dst_addr_95_64_set;
 		DR_CALC_SET(fc, ipv6_dst, ipv6_address_95_64, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.dst_addr + 8, 4)) {
+	if (!is_mem_zero(m->hdr.dst_addr.a + 8, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_DST_63_32, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_dst_addr_63_32_set;
 		DR_CALC_SET(fc, ipv6_dst, ipv6_address_63_32, inner);
 	}
 
-	if (!is_mem_zero(m->hdr.dst_addr + 12, 4)) {
+	if (!is_mem_zero(m->hdr.dst_addr.a + 12, 4)) {
 		fc = &cd->fc[DR_CALC_FNAME(IPV6_DST_31_0, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv6_dst_addr_31_0_set;

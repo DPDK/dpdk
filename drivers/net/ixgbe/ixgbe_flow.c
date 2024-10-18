@@ -1917,9 +1917,9 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		/* check src addr mask */
 		for (j = 0; j < 16; j++) {
-			if (ipv6_mask->hdr.src_addr[j] == 0) {
+			if (ipv6_mask->hdr.src_addr.a[j] == 0) {
 				rule->mask.src_ipv6_mask &= ~(1 << j);
-			} else if (ipv6_mask->hdr.src_addr[j] != UINT8_MAX) {
+			} else if (ipv6_mask->hdr.src_addr.a[j] != UINT8_MAX) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1930,9 +1930,9 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 
 		/* check dst addr mask */
 		for (j = 0; j < 16; j++) {
-			if (ipv6_mask->hdr.dst_addr[j] == 0) {
+			if (ipv6_mask->hdr.dst_addr.a[j] == 0) {
 				rule->mask.dst_ipv6_mask &= ~(1 << j);
-			} else if (ipv6_mask->hdr.dst_addr[j] != UINT8_MAX) {
+			} else if (ipv6_mask->hdr.dst_addr.a[j] != UINT8_MAX) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1945,9 +1945,9 @@ ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
 			rule->b_spec = TRUE;
 			ipv6_spec = item->spec;
 			rte_memcpy(rule->ixgbe_fdir.formatted.src_ip,
-				   ipv6_spec->hdr.src_addr, 16);
+				   &ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(rule->ixgbe_fdir.formatted.dst_ip,
-				   ipv6_spec->hdr.dst_addr, 16);
+				   &ipv6_spec->hdr.dst_addr, 16);
 		}
 
 		/**

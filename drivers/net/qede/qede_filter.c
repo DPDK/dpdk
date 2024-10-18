@@ -794,9 +794,9 @@ qede_flow_parse_pattern(__rte_unused struct rte_eth_dev *dev,
 
 				spec = pattern->spec;
 				memcpy(flow->entry.tuple.src_ipv6,
-				       spec->hdr.src_addr, IPV6_ADDR_LEN);
+				       &spec->hdr.src_addr, IPV6_ADDR_LEN);
 				memcpy(flow->entry.tuple.dst_ipv6,
-				       spec->hdr.dst_addr, IPV6_ADDR_LEN);
+				       &spec->hdr.dst_addr, IPV6_ADDR_LEN);
 				flow->entry.tuple.eth_proto =
 					RTE_ETHER_TYPE_IPV6;
 			}

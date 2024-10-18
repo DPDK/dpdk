@@ -822,10 +822,10 @@ hns3_parse_ipv6(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 						  "Only support src & dst ip,proto in IPV6");
 		}
 		net_addr_to_host(rule->key_conf.mask.src_ip,
-				 (const rte_be32_t *)ipv6_mask->hdr.src_addr,
+				 (const rte_be32_t *)&ipv6_mask->hdr.src_addr,
 				 IP_ADDR_LEN);
 		net_addr_to_host(rule->key_conf.mask.dst_ip,
-				 (const rte_be32_t *)ipv6_mask->hdr.dst_addr,
+				 (const rte_be32_t *)&ipv6_mask->hdr.dst_addr,
 				 IP_ADDR_LEN);
 		rule->key_conf.mask.ip_proto = ipv6_mask->hdr.proto;
 		if (rule->key_conf.mask.src_ip[IP_ADDR_KEY_ID])
@@ -838,10 +838,10 @@ hns3_parse_ipv6(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 
 	ipv6_spec = item->spec;
 	net_addr_to_host(rule->key_conf.spec.src_ip,
-			 (const rte_be32_t *)ipv6_spec->hdr.src_addr,
+			 (const rte_be32_t *)&ipv6_spec->hdr.src_addr,
 			 IP_ADDR_LEN);
 	net_addr_to_host(rule->key_conf.spec.dst_ip,
-			 (const rte_be32_t *)ipv6_spec->hdr.dst_addr,
+			 (const rte_be32_t *)&ipv6_spec->hdr.dst_addr,
 			 IP_ADDR_LEN);
 	rule->key_conf.spec.ip_proto = ipv6_spec->hdr.proto;
 

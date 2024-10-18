@@ -435,8 +435,8 @@ igc_parse_pattern_ipv6(const struct rte_flow_item *item,
 	if (mask->hdr.vtc_flow ||
 		mask->hdr.payload_len ||
 		mask->hdr.hop_limits ||
-		!igc_is_zero_ipv6_addr(mask->hdr.src_addr) ||
-		!igc_is_zero_ipv6_addr(mask->hdr.dst_addr))
+		!igc_is_zero_ipv6_addr(&mask->hdr.src_addr) ||
+		!igc_is_zero_ipv6_addr(&mask->hdr.dst_addr))
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"IPv6 only support protocol");

@@ -78,8 +78,8 @@ add_ipv6(struct rte_flow_item *items,
 	for (i = 0; i < 16; i++) {
 		/* Currently src_ip is limited to 32 bit */
 		if (i < 4)
-			ipv6_specs[ti].hdr.src_addr[15 - i] = para.src_ip >> (i * 8);
-		ipv6_masks[ti].hdr.src_addr[15 - i] = 0xff;
+			ipv6_specs[ti].hdr.src_addr.a[15 - i] = para.src_ip >> (i * 8);
+		ipv6_masks[ti].hdr.src_addr.a[15 - i] = 0xff;
 	}
 
 	items[items_counter].type = RTE_FLOW_ITEM_TYPE_IPV6;

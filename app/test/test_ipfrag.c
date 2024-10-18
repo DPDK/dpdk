@@ -238,8 +238,8 @@ v6_allocate_packet_of(struct rte_mbuf *b, int fill, size_t s, uint8_t ttl,
 	hdr->proto = proto;
 	hdr->hop_limits = ttl;
 
-	memset(hdr->src_addr, 0x08, sizeof(hdr->src_addr));
-	memset(hdr->dst_addr, 0x04, sizeof(hdr->src_addr));
+	memset(&hdr->src_addr, 0x08, sizeof(hdr->src_addr));
+	memset(&hdr->dst_addr, 0x04, sizeof(hdr->src_addr));
 }
 
 static inline void

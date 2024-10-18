@@ -2066,18 +2066,18 @@ nfp_flow_merge_ipv6(struct nfp_flow_merge_param *param)
 
 			ipv6_gre_tun->ip_ext.tos = vtc_flow >> RTE_IPV6_HDR_TC_SHIFT;
 			ipv6_gre_tun->ip_ext.ttl = hdr->hop_limits;
-			memcpy(ipv6_gre_tun->ipv6.ipv6_src, hdr->src_addr,
+			memcpy(ipv6_gre_tun->ipv6.ipv6_src, &hdr->src_addr,
 					sizeof(ipv6_gre_tun->ipv6.ipv6_src));
-			memcpy(ipv6_gre_tun->ipv6.ipv6_dst, hdr->dst_addr,
+			memcpy(ipv6_gre_tun->ipv6.ipv6_dst, &hdr->dst_addr,
 					sizeof(ipv6_gre_tun->ipv6.ipv6_dst));
 		} else {
 			ipv6_udp_tun = (struct nfp_flower_ipv6_udp_tun *)(*param->mbuf_off);
 
 			ipv6_udp_tun->ip_ext.tos = vtc_flow >> RTE_IPV6_HDR_TC_SHIFT;
 			ipv6_udp_tun->ip_ext.ttl = hdr->hop_limits;
-			memcpy(ipv6_udp_tun->ipv6.ipv6_src, hdr->src_addr,
+			memcpy(ipv6_udp_tun->ipv6.ipv6_src, &hdr->src_addr,
 					sizeof(ipv6_udp_tun->ipv6.ipv6_src));
-			memcpy(ipv6_udp_tun->ipv6.ipv6_dst, hdr->dst_addr,
+			memcpy(ipv6_udp_tun->ipv6.ipv6_dst, &hdr->dst_addr,
 					sizeof(ipv6_udp_tun->ipv6.ipv6_dst));
 		}
 	} else {
@@ -2100,8 +2100,8 @@ nfp_flow_merge_ipv6(struct nfp_flow_merge_param *param)
 		ipv6->ip_ext.tos   = vtc_flow >> RTE_IPV6_HDR_TC_SHIFT;
 		ipv6->ip_ext.proto = hdr->proto;
 		ipv6->ip_ext.ttl   = hdr->hop_limits;
-		memcpy(ipv6->ipv6_src, hdr->src_addr, sizeof(ipv6->ipv6_src));
-		memcpy(ipv6->ipv6_dst, hdr->dst_addr, sizeof(ipv6->ipv6_dst));
+		memcpy(ipv6->ipv6_src, &hdr->src_addr, sizeof(ipv6->ipv6_src));
+		memcpy(ipv6->ipv6_dst, &hdr->dst_addr, sizeof(ipv6->ipv6_dst));
 
 ipv6_end:
 		*param->mbuf_off += sizeof(struct nfp_flower_ipv6);
@@ -2557,10 +2557,8 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 				.vtc_flow   = RTE_BE32(0x0ff00000),
 				.proto      = 0xff,
 				.hop_limits = 0xff,
-				.src_addr   = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-						0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-				.dst_addr   = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-						0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.src_addr   = RTE_IPV6_MASK_FULL,
+				.dst_addr   = RTE_IPV6_MASK_FULL,
 			},
 			.has_frag_ext = 1,
 		},
@@ -3363,8 +3361,8 @@ nfp_flower_add_tun_neigh_v6_encap(struct nfp_app_fw_flower *app_fw_flower,
 	struct nfp_flower_cmsg_tun_neigh_v6 payload;
 
 	tun->payload.v6_flag = 1;
-	memcpy(tun->payload.dst.dst_ipv6, ipv6->hdr.dst_addr, sizeof(tun->payload.dst.dst_ipv6));
-	memcpy(tun->payload.src.src_ipv6, ipv6->hdr.src_addr, sizeof(tun->payload.src.src_ipv6));
+	memcpy(tun->payload.dst.dst_ipv6, &ipv6->hdr.dst_addr, sizeof(tun->payload.dst.dst_ipv6));
+	memcpy(tun->payload.src.src_ipv6, &ipv6->hdr.src_addr, sizeof(tun->payload.src.src_ipv6));
 	memcpy(tun->payload.dst_addr, eth->dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 	memcpy(tun->payload.src_addr, eth->src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 
@@ -3384,8 +3382,8 @@ nfp_flower_add_tun_neigh_v6_encap(struct nfp_app_fw_flower *app_fw_flower,
 			sizeof(struct nfp_flower_meta_tci));
 
 	memset(&payload, 0, sizeof(struct nfp_flower_cmsg_tun_neigh_v6));
-	memcpy(payload.dst_ipv6, ipv6->hdr.dst_addr, sizeof(payload.dst_ipv6));
-	memcpy(payload.src_ipv6, ipv6->hdr.src_addr, sizeof(payload.src_ipv6));
+	memcpy(payload.dst_ipv6, &ipv6->hdr.dst_addr, sizeof(payload.dst_ipv6));
+	memcpy(payload.src_ipv6, &ipv6->hdr.src_addr, sizeof(payload.src_ipv6));
 	memcpy(payload.common.dst_mac, eth->dst_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 	memcpy(payload.common.src_mac, eth->src_addr.addr_bytes, RTE_ETHER_ADDR_LEN);
 	payload.common.port_id = port->in_port;
@@ -3612,7 +3610,7 @@ nfp_flow_action_vxlan_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 
 	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
 	memset(pre_tun, 0, act_pre_size);
-	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr);
+	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr.a);
 
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
@@ -3982,7 +3980,7 @@ nfp_flow_action_geneve_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 
 	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
 	memset(pre_tun, 0, act_pre_size);
-	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr);
+	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr.a);
 
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);
@@ -4059,7 +4057,7 @@ nfp_flow_action_nvgre_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 
 	pre_tun = (struct nfp_fl_act_pre_tun *)actions;
 	memset(pre_tun, 0, act_pre_size);
-	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr);
+	nfp_flow_pre_tun_v6_process(pre_tun, ipv6->hdr.dst_addr.a);
 
 	set_tun = (struct nfp_fl_act_set_tun *)(act_data + act_pre_size);
 	memset(set_tun, 0, act_set_size);

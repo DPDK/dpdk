@@ -665,13 +665,13 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 				}
 
 				for (j = 0; j < ICE_IPV6_ADDR_LENGTH; j++) {
-					if (ipv6_mask->hdr.src_addr[j]) {
+					if (ipv6_mask->hdr.src_addr.a[j]) {
 						*input |= ICE_INSET_IPV6_SRC;
 						break;
 					}
 				}
 				for (j = 0; j < ICE_IPV6_ADDR_LENGTH; j++) {
-					if (ipv6_mask->hdr.dst_addr[j]) {
+					if (ipv6_mask->hdr.dst_addr.a[j]) {
 						*input |= ICE_INSET_IPV6_DST;
 						break;
 					}
@@ -691,18 +691,18 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 				f = &list[t].h_u.ipv6_hdr;
 				s = &list[t].m_u.ipv6_hdr;
 				for (j = 0; j < ICE_IPV6_ADDR_LENGTH; j++) {
-					if (ipv6_mask->hdr.src_addr[j]) {
+					if (ipv6_mask->hdr.src_addr.a[j]) {
 						f->src_addr[j] =
-						ipv6_spec->hdr.src_addr[j];
+						ipv6_spec->hdr.src_addr.a[j];
 						s->src_addr[j] =
-						ipv6_mask->hdr.src_addr[j];
+						ipv6_mask->hdr.src_addr.a[j];
 						input_set_byte++;
 					}
-					if (ipv6_mask->hdr.dst_addr[j]) {
+					if (ipv6_mask->hdr.dst_addr.a[j]) {
 						f->dst_addr[j] =
-						ipv6_spec->hdr.dst_addr[j];
+						ipv6_spec->hdr.dst_addr.a[j];
 						s->dst_addr[j] =
-						ipv6_mask->hdr.dst_addr[j];
+						ipv6_mask->hdr.dst_addr.a[j];
 						input_set_byte++;
 					}
 				}

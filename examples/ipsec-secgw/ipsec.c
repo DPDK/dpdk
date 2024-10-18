@@ -529,9 +529,9 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sa->pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV6;
 			sa->pattern[1].spec = &sa->ipv6_spec;
 
-			memcpy(sa->ipv6_spec.hdr.dst_addr,
+			memcpy(&sa->ipv6_spec.hdr.dst_addr,
 				sa->dst.ip.ip6.ip6_b, 16);
-			memcpy(sa->ipv6_spec.hdr.src_addr,
+			memcpy(&sa->ipv6_spec.hdr.src_addr,
 			       sa->src.ip.ip6.ip6_b, 16);
 		} else if (IS_IP4(sa->flags)) {
 			sa->pattern[1].mask = &rte_flow_item_ipv4_mask;
@@ -735,9 +735,9 @@ create_ipsec_esp_flow(struct ipsec_sa *sa)
 		sa->pattern[1].mask = &rte_flow_item_ipv6_mask;
 		sa->pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV6;
 		sa->pattern[1].spec = &sa->ipv6_spec;
-		memcpy(sa->ipv6_spec.hdr.dst_addr,
+		memcpy(&sa->ipv6_spec.hdr.dst_addr,
 			sa->dst.ip.ip6.ip6_b, sizeof(sa->dst.ip.ip6.ip6_b));
-		memcpy(sa->ipv6_spec.hdr.src_addr,
+		memcpy(&sa->ipv6_spec.hdr.src_addr,
 			sa->src.ip.ip6.ip6_b, sizeof(sa->src.ip.ip6.ip6_b));
 		sa->pattern[2].type = RTE_FLOW_ITEM_TYPE_ESP;
 		sa->pattern[2].spec = &sa->esp_spec;

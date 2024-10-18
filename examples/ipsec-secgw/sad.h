@@ -5,6 +5,7 @@
 #ifndef __SAD_H__
 #define __SAD_H__
 
+#include <rte_ip.h>
 #include <rte_ipsec_sad.h>
 
 #define SA_CACHE_SZ	128
@@ -37,8 +38,8 @@ cmp_sa_key(struct ipsec_sa *sa, int is_v4, struct rte_ipv4_hdr *ipv4,
 			(sa->dst.ip.ip4 == ipv4->dst_addr)) ||
 			/* IPv6 check */
 			(!is_v4 && (sa_type == IP6_TUNNEL) &&
-			(!memcmp(sa->src.ip.ip6.ip6, ipv6->src_addr, 16)) &&
-			(!memcmp(sa->dst.ip.ip6.ip6, ipv6->dst_addr, 16))))
+			(!memcmp(sa->src.ip.ip6.ip6, &ipv6->src_addr, 16)) &&
+			(!memcmp(sa->dst.ip.ip6.ip6, &ipv6->dst_addr, 16))))
 		return 1;
 
 	return 0;
@@ -128,9 +129,9 @@ sad_lookup(struct ipsec_sad *sad, struct rte_mbuf *pkts[],
 				}
 			}
 			v6[nb_v6].spi = esp->spi;
-			memcpy(v6[nb_v6].dip, ipv6->dst_addr,
+			memcpy(v6[nb_v6].dip, &ipv6->dst_addr,
 					sizeof(ipv6->dst_addr));
-			memcpy(v6[nb_v6].sip, ipv6->src_addr,
+			memcpy(v6[nb_v6].sip, &ipv6->src_addr,
 					sizeof(ipv6->src_addr));
 			keys_v6[nb_v6] = (const union rte_ipsec_sad_key *)
 						&v6[nb_v6];

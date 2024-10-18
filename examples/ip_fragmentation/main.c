@@ -311,7 +311,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		ip_hdr = rte_pktmbuf_mtod(m, struct rte_ipv6_hdr *);
 
 		/* Find destination port */
-		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr,
+		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr.a,
 						&next_hop) == 0 &&
 				(enabled_port_mask & 1 << next_hop) != 0) {
 			port_out = next_hop;

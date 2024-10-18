@@ -962,7 +962,7 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 
 		/* check ipv6 src addr mask, ipv6 src addr is 16 bytes */
 		for (i = 0; i < 16; i++) {
-			if (ipv6_mask->hdr.src_addr[i] == UINT8_MAX) {
+			if (ipv6_mask->hdr.src_addr.a[i] == UINT8_MAX) {
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
 					"Not supported by fdir filter, do not support src ipv6");
@@ -978,13 +978,13 @@ static int hinic_normal_item_check_ip(const struct rte_flow_item **in_out_item,
 		}
 
 		for (i = 0; i < 16; i++) {
-			if (ipv6_mask->hdr.dst_addr[i] == UINT8_MAX)
+			if (ipv6_mask->hdr.dst_addr.a[i] == UINT8_MAX)
 				rule->mask.dst_ipv6_mask |= 1 << i;
 		}
 
 		ipv6_spec = (const struct rte_flow_item_ipv6 *)item->spec;
 		rte_memcpy(rule->hinic_fdir.dst_ipv6,
-			   ipv6_spec->hdr.dst_addr, 16);
+			   &ipv6_spec->hdr.dst_addr, 16);
 
 		/*
 		 * Check if the next not void item is TCP or UDP or ICMP.

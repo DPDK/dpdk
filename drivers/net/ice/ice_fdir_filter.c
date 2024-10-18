@@ -2097,11 +2097,11 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				return -rte_errno;
 			}
 
-			if (!memcmp(ipv6_mask->hdr.src_addr, ipv6_addr_mask,
-				    RTE_DIM(ipv6_mask->hdr.src_addr)))
+			if (!memcmp(&ipv6_mask->hdr.src_addr, ipv6_addr_mask,
+				    sizeof(ipv6_mask->hdr.src_addr)))
 				*input_set |= ICE_INSET_IPV6_SRC;
-			if (!memcmp(ipv6_mask->hdr.dst_addr, ipv6_addr_mask,
-				    RTE_DIM(ipv6_mask->hdr.dst_addr)))
+			if (!memcmp(&ipv6_mask->hdr.dst_addr, ipv6_addr_mask,
+				    sizeof(ipv6_mask->hdr.dst_addr)))
 				*input_set |= ICE_INSET_IPV6_DST;
 
 			if ((ipv6_mask->hdr.vtc_flow &
@@ -2113,8 +2113,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
 				*input_set |= ICE_INSET_IPV6_HOP_LIMIT;
 
-			rte_memcpy(&p_v6->dst_ip, ipv6_spec->hdr.dst_addr, 16);
-			rte_memcpy(&p_v6->src_ip, ipv6_spec->hdr.src_addr, 16);
+			rte_memcpy(&p_v6->dst_ip, &ipv6_spec->hdr.dst_addr, 16);
+			rte_memcpy(&p_v6->src_ip, &ipv6_spec->hdr.src_addr, 16);
 			vtc_flow_cpu = rte_be_to_cpu_32(ipv6_spec->hdr.vtc_flow);
 			p_v6->tc = (uint8_t)(vtc_flow_cpu >> ICE_FDIR_IPV6_TC_OFFSET);
 			p_v6->proto = ipv6_spec->hdr.proto;

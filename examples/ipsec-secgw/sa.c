@@ -1571,8 +1571,8 @@ ipsec_sa_init(struct ipsec_sa *lsa, struct rte_ipsec_sa *sa, uint32_t sa_size,
 	};
 
 	if (IS_IP6_TUNNEL(lsa->flags)) {
-		memcpy(v6.src_addr, lsa->src.ip.ip6.ip6_b, sizeof(v6.src_addr));
-		memcpy(v6.dst_addr, lsa->dst.ip.ip6.ip6_b, sizeof(v6.dst_addr));
+		memcpy(&v6.src_addr, lsa->src.ip.ip6.ip6_b, sizeof(v6.src_addr));
+		memcpy(&v6.dst_addr, lsa->dst.ip.ip6.ip6_b, sizeof(v6.dst_addr));
 	}
 
 	rc = fill_ipsec_sa_prm(&prm, lsa, &v4, &v6);

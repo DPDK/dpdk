@@ -148,8 +148,8 @@ initialize_ipv6_header(struct rte_ipv6_hdr *ip_hdr, uint8_t *src_addr,
 	ip_hdr->proto = IPPROTO_UDP;
 	ip_hdr->hop_limits = IP_DEFTTL;
 
-	rte_memcpy(ip_hdr->src_addr, src_addr, sizeof(ip_hdr->src_addr));
-	rte_memcpy(ip_hdr->dst_addr, dst_addr, sizeof(ip_hdr->dst_addr));
+	rte_memcpy(&ip_hdr->src_addr, src_addr, sizeof(ip_hdr->src_addr));
+	rte_memcpy(&ip_hdr->dst_addr, dst_addr, sizeof(ip_hdr->dst_addr));
 
 	return (uint16_t) (pkt_data_len + sizeof(struct rte_ipv6_hdr));
 }

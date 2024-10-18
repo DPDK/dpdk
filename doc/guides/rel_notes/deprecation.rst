@@ -87,8 +87,6 @@ Deprecation Notices
     - ``rte_lpm6_delete_bulk_func()``
     - ``rte_lpm6_lookup()``
     - ``rte_lpm6_lookup_bulk_func()``
-  net
-    - ``struct rte_ipv6_hdr``
   node
     - ``rte_node_ip6_route_add()``
   pipeline

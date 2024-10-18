@@ -145,10 +145,10 @@ test_toeplitz_hash_calc(void)
 	}
 	for (i = 0; i < RTE_DIM(v6_tbl); i++) {
 		/*Fill ipv6 hdr*/
-		for (j = 0; j < RTE_DIM(ipv6_hdr.src_addr); j++)
-			ipv6_hdr.src_addr[j] = v6_tbl[i].src_ip[j];
-		for (j = 0; j < RTE_DIM(ipv6_hdr.dst_addr); j++)
-			ipv6_hdr.dst_addr[j] = v6_tbl[i].dst_ip[j];
+		for (j = 0; j < RTE_DIM(ipv6_hdr.src_addr.a); j++)
+			ipv6_hdr.src_addr.a[j] = v6_tbl[i].src_ip[j];
+		for (j = 0; j < RTE_DIM(ipv6_hdr.dst_addr.a); j++)
+			ipv6_hdr.dst_addr.a[j] = v6_tbl[i].dst_ip[j];
 		/*Load and convert ipv6 address into tuple*/
 		rte_thash_load_v6_addrs(&ipv6_hdr, &tuple);
 		tuple.v6.sport = v6_tbl[i].src_port;

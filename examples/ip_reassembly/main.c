@@ -400,7 +400,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 		}
 
 		/* Find destination port */
-		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr,
+		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr.a,
 						&next_hop) == 0 &&
 				(enabled_port_mask & 1 << next_hop) != 0) {
 			dst_port = next_hop;

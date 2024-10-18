@@ -424,22 +424,22 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 					EM_FLOW_ALLOC_INPUT_EN_DST_IPADDR;
 
 			rte_memcpy(filter->src_ipaddr,
-				   ipv6_spec->hdr.src_addr, 16);
+				   &ipv6_spec->hdr.src_addr, 16);
 			rte_memcpy(filter->dst_ipaddr,
-				   ipv6_spec->hdr.dst_addr, 16);
+				   &ipv6_spec->hdr.dst_addr, 16);
 
-			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.src_addr,
+			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.src_addr.a,
 						   16)) {
 				rte_memcpy(filter->src_ipaddr_mask,
-					   ipv6_mask->hdr.src_addr, 16);
+					   &ipv6_mask->hdr.src_addr, 16);
 				en |= !use_ntuple ? 0 :
 				    NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
 			}
 
-			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.dst_addr,
+			if (!bnxt_check_zero_bytes(ipv6_mask->hdr.dst_addr.a,
 						   16)) {
 				rte_memcpy(filter->dst_ipaddr_mask,
-					   ipv6_mask->hdr.dst_addr, 16);
+					   &ipv6_mask->hdr.dst_addr, 16);
 				en |= !use_ntuple ? 0 :
 				     NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
 			}

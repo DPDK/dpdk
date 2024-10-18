@@ -65,7 +65,7 @@ fib_parse_packet(struct rte_mbuf *mbuf,
 	/* IPv6 */
 	else {
 		ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
-		rte_mov16(ipv6, (const uint8_t *)ipv6_hdr->dst_addr);
+		rte_mov16(ipv6, ipv6_hdr->dst_addr.a);
 		*ip_type = 0;
 		(*ipv6_cnt)++;
 	}

@@ -1048,14 +1048,14 @@ iavf_fdir_parse_pattern(__rte_unused struct iavf_adapter *ad,
 								 HOP_LIMIT);
 			}
 
-			if (!memcmp(ipv6_mask->hdr.src_addr, ipv6_addr_mask,
-				    RTE_DIM(ipv6_mask->hdr.src_addr))) {
+			if (!memcmp(&ipv6_mask->hdr.src_addr, ipv6_addr_mask,
+				    sizeof(ipv6_mask->hdr.src_addr))) {
 				input_set |= IAVF_INSET_IPV6_SRC;
 				VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, IPV6,
 								 SRC);
 			}
-			if (!memcmp(ipv6_mask->hdr.dst_addr, ipv6_addr_mask,
-				    RTE_DIM(ipv6_mask->hdr.dst_addr))) {
+			if (!memcmp(&ipv6_mask->hdr.dst_addr, ipv6_addr_mask,
+				    sizeof(ipv6_mask->hdr.dst_addr))) {
 				input_set |= IAVF_INSET_IPV6_DST;
 				VIRTCHNL_ADD_PROTO_HDR_FIELD_BIT(hdr, IPV6,
 								 DST);

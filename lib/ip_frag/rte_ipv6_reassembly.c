@@ -143,8 +143,8 @@ rte_ipv6_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	int32_t ip_len;
 	int32_t trim;
 
-	rte_memcpy(&key.src_dst[0], ip_hdr->src_addr, 16);
-	rte_memcpy(&key.src_dst[2], ip_hdr->dst_addr, 16);
+	rte_memcpy(&key.src_dst[0], &ip_hdr->src_addr, 16);
+	rte_memcpy(&key.src_dst[2], &ip_hdr->dst_addr, 16);
 
 	key.id = frag_hdr->id;
 	key.key_len = IPV6_KEYLEN;

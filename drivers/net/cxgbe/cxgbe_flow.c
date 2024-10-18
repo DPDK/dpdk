@@ -411,15 +411,15 @@ ch_rte_parsetype_ipv6(const void *dmask, const struct rte_flow_item *item,
 			      RTE_IPV6_HDR_TC_SHIFT,
 			      tos);
 
-	if (memcmp(val->hdr.dst_addr, z, sizeof(val->hdr.dst_addr)) ||
+	if (memcmp(&val->hdr.dst_addr, z, sizeof(val->hdr.dst_addr)) ||
 	    (umask &&
-	     memcmp(umask->hdr.dst_addr, z, sizeof(umask->hdr.dst_addr))))
+	     memcmp(&umask->hdr.dst_addr, z, sizeof(umask->hdr.dst_addr))))
 		CXGBE_FILL_FS_MEMCPY(val->hdr.dst_addr, mask->hdr.dst_addr,
 				     lip);
 
-	if (memcmp(val->hdr.src_addr, z, sizeof(val->hdr.src_addr)) ||
+	if (memcmp(&val->hdr.src_addr, z, sizeof(val->hdr.src_addr)) ||
 	    (umask &&
-	     memcmp(umask->hdr.src_addr, z, sizeof(umask->hdr.src_addr))))
+	     memcmp(&umask->hdr.src_addr, z, sizeof(umask->hdr.src_addr))))
 		CXGBE_FILL_FS_MEMCPY(val->hdr.src_addr, mask->hdr.src_addr,
 				     fip);
 
@@ -918,10 +918,8 @@ static struct chrte_fparse parseitem[] = {
 		.fptr  = ch_rte_parsetype_ipv6,
 		.dmask = &(const struct rte_flow_item_ipv6) {
 			.hdr = {
-				.src_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
-				.dst_addr = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-					      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
+				.src_addr = RTE_IPV6_MASK_FULL,
+				.dst_addr = RTE_IPV6_MASK_FULL,
 				.vtc_flow = RTE_BE32(0xff000000),
 			},
 		},

@@ -1386,13 +1386,11 @@ tunnel_ipv6_header_set(struct rte_ipv6_hdr *h, struct rte_swx_ipsec_sa_params *p
 		.payload_len = 0, /* Cannot be pre-computed. */
 		.proto = IPPROTO_ESP,
 		.hop_limits = 64,
-		.src_addr = {0},
-		.dst_addr = {0},
 	};
 
 	memcpy(h, &ipv6_hdr, sizeof(ipv6_hdr));
-	memcpy(h->src_addr, p->encap.tunnel.ipv6.src_addr.s6_addr, 16);
-	memcpy(h->dst_addr, p->encap.tunnel.ipv6.dst_addr.s6_addr, 16);
+	memcpy(&h->src_addr, p->encap.tunnel.ipv6.src_addr.s6_addr, 16);
+	memcpy(&h->dst_addr, p->encap.tunnel.ipv6.dst_addr.s6_addr, 16);
 }
 
 /* IPsec library SA parameters. */

@@ -743,7 +743,7 @@ hinic_ipv6_phdr_cksum(const struct rte_ipv6_hdr *ipv6_hdr, uint64_t ol_flags)
 	else
 		psd_hdr.len = ipv6_hdr->payload_len;
 
-	sum = __rte_raw_cksum(ipv6_hdr->src_addr,
+	sum = __rte_raw_cksum(&ipv6_hdr->src_addr,
 		sizeof(ipv6_hdr->src_addr) + sizeof(ipv6_hdr->dst_addr), 0);
 	sum = __rte_raw_cksum(&psd_hdr, sizeof(psd_hdr), sum);
 	return __rte_raw_cksum_reduce(sum);

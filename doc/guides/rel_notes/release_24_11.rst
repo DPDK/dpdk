@@ -291,6 +291,12 @@ API Changes
   are marked as deprecated, and are replaced
   by ``RTE_ICMP_TYPE_ECHO_REPLY`` and ``RTE_ICMP_TYPE_ECHO_REQUEST``.
 
+* net: A new IPv6 address structure was introduced to replace ad-hoc ``uint8_t[16]`` arrays.
+  The following libraries and symbols were modified:
+
+  net
+    - ``struct rte_ipv6_hdr``
+
 * drivers/net/ena: Removed ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
   and replaced it with a new shared devarg ``llq_policy`` that keeps the same logic.
 

@@ -112,28 +112,28 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[0], ipv6_hdr->dst_addr, 16);
+		rte_memcpy(ip_batch[0], &ipv6_hdr->dst_addr, 16);
 
 		/* Extract DIP of mbuf1 */
 		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf1, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf1, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[1], ipv6_hdr->dst_addr, 16);
+		rte_memcpy(ip_batch[1], &ipv6_hdr->dst_addr, 16);
 
 		/* Extract DIP of mbuf2 */
 		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf2, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf2, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[2], ipv6_hdr->dst_addr, 16);
+		rte_memcpy(ip_batch[2], &ipv6_hdr->dst_addr, 16);
 
 		/* Extract DIP of mbuf3 */
 		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf3, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf3, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[3], ipv6_hdr->dst_addr, 16);
+		rte_memcpy(ip_batch[3], &ipv6_hdr->dst_addr, 16);
 
 		rte_lpm6_lookup_bulk_func(lpm6, ip_batch, next_hop, 4);
 
@@ -223,7 +223,7 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 		/* Extract TTL as IPv6 hdr is in cache */
 		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv6_hdr->hop_limits;
 
-		rc = rte_lpm6_lookup(lpm6, ipv6_hdr->dst_addr, &next_hop);
+		rc = rte_lpm6_lookup(lpm6, ipv6_hdr->dst_addr.a, &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
 
 		node_mbuf_priv1(mbuf0, dyn)->nh = (uint16_t)next_hop;

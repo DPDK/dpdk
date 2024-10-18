@@ -575,14 +575,8 @@ sfc_flow_parse_ipv6(const struct rte_flow_item *item,
 	const uint16_t ether_type_ipv6 = rte_cpu_to_le_16(EFX_ETHER_TYPE_IPV6);
 	const struct rte_flow_item_ipv6 supp_mask = {
 		.hdr = {
-			.src_addr = { 0xff, 0xff, 0xff, 0xff,
-				      0xff, 0xff, 0xff, 0xff,
-				      0xff, 0xff, 0xff, 0xff,
-				      0xff, 0xff, 0xff, 0xff },
-			.dst_addr = { 0xff, 0xff, 0xff, 0xff,
-				      0xff, 0xff, 0xff, 0xff,
-				      0xff, 0xff, 0xff, 0xff,
-				      0xff, 0xff, 0xff, 0xff },
+			.src_addr = RTE_IPV6_MASK_FULL,
+			.dst_addr = RTE_IPV6_MASK_FULL,
 			.proto = 0xff,
 		}
 	};
@@ -618,28 +612,28 @@ sfc_flow_parse_ipv6(const struct rte_flow_item *item,
 	 * IPv6 addresses are in big-endian byte order in item and in
 	 * efx_spec
 	 */
-	if (memcmp(mask->hdr.src_addr, supp_mask.hdr.src_addr,
+	if (memcmp(&mask->hdr.src_addr, &supp_mask.hdr.src_addr,
 		   sizeof(mask->hdr.src_addr)) == 0) {
 		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_REM_HOST;
 
 		RTE_BUILD_BUG_ON(sizeof(efx_spec->efs_rem_host) !=
 				 sizeof(spec->hdr.src_addr));
-		rte_memcpy(&efx_spec->efs_rem_host, spec->hdr.src_addr,
+		rte_memcpy(&efx_spec->efs_rem_host, &spec->hdr.src_addr,
 			   sizeof(efx_spec->efs_rem_host));
-	} else if (!sfc_flow_is_zero(mask->hdr.src_addr,
+	} else if (!sfc_flow_is_zero(mask->hdr.src_addr.a,
 				     sizeof(mask->hdr.src_addr))) {
 		goto fail_bad_mask;
 	}
 
-	if (memcmp(mask->hdr.dst_addr, supp_mask.hdr.dst_addr,
+	if (memcmp(&mask->hdr.dst_addr, &supp_mask.hdr.dst_addr,
 		   sizeof(mask->hdr.dst_addr)) == 0) {
 		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_LOC_HOST;
 
 		RTE_BUILD_BUG_ON(sizeof(efx_spec->efs_loc_host) !=
 				 sizeof(spec->hdr.dst_addr));
-		rte_memcpy(&efx_spec->efs_loc_host, spec->hdr.dst_addr,
+		rte_memcpy(&efx_spec->efs_loc_host, &spec->hdr.dst_addr,
 			   sizeof(efx_spec->efs_loc_host));
-	} else if (!sfc_flow_is_zero(mask->hdr.dst_addr,
+	} else if (!sfc_flow_is_zero(mask->hdr.dst_addr.a,
 				     sizeof(mask->hdr.dst_addr))) {
 		goto fail_bad_mask;
 	}

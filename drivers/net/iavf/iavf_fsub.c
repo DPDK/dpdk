@@ -354,23 +354,23 @@ iavf_fsub_parse_pattern(const struct rte_flow_item pattern[],
 				}
 
 				for (j = 0; j < IAVF_IPV6_ADDR_LENGTH; j++) {
-					if (ipv6_mask->hdr.src_addr[j]) {
+					if (ipv6_mask->hdr.src_addr.a[j]) {
 						*input |= IAVF_INSET_IPV6_SRC;
 						break;
 					}
 				}
 				for (j = 0; j < IAVF_IPV6_ADDR_LENGTH; j++) {
-					if (ipv6_mask->hdr.dst_addr[j]) {
+					if (ipv6_mask->hdr.dst_addr.a[j]) {
 						*input |= IAVF_INSET_IPV6_DST;
 						break;
 					}
 				}
 
 				for (j = 0; j < IAVF_IPV6_ADDR_LENGTH; j++) {
-					if (ipv6_mask->hdr.src_addr[j])
+					if (ipv6_mask->hdr.src_addr.a[j])
 						input_set_byte++;
 
-					if (ipv6_mask->hdr.dst_addr[j])
+					if (ipv6_mask->hdr.dst_addr.a[j])
 						input_set_byte++;
 				}
 

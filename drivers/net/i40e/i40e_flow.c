@@ -1953,13 +1953,13 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					return -rte_errno;
 				}
 
-				if (!memcmp(ipv6_mask->hdr.src_addr,
+				if (!memcmp(&ipv6_mask->hdr.src_addr,
 					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.src_addr)))
+					    sizeof(ipv6_mask->hdr.src_addr)))
 					input_set |= I40E_INSET_IPV6_SRC;
-				if (!memcmp(ipv6_mask->hdr.dst_addr,
+				if (!memcmp(&ipv6_mask->hdr.dst_addr,
 					    ipv6_addr_mask,
-					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
+					    sizeof(ipv6_mask->hdr.dst_addr)))
 					input_set |= I40E_INSET_IPV6_DST;
 
 				if ((ipv6_mask->hdr.vtc_flow &
@@ -1987,9 +1987,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					I40E_FDIR_IPTYPE_IPV6;
 
 				rte_memcpy(filter->input.flow.ipv6_flow.src_ip,
-					   ipv6_spec->hdr.src_addr, 16);
+					   &ipv6_spec->hdr.src_addr, 16);
 				rte_memcpy(filter->input.flow.ipv6_flow.dst_ip,
-					   ipv6_spec->hdr.dst_addr, 16);
+					   &ipv6_spec->hdr.dst_addr, 16);
 
 				/* Check if it is fragment. */
 				if (ipv6_spec->hdr.proto ==
