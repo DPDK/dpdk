@@ -117,6 +117,7 @@ extern struct acl_algorithms acl_alg[];
 extern uint32_t max_pkt_len;
 
 extern uint32_t nb_pkt_per_burst;
+extern uint32_t mb_mempool_cache_size;
 
 /* Send burst of packets on an output interface */
 static inline int

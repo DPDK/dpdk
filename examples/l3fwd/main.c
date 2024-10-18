@@ -58,6 +58,7 @@ static_assert(MEMPOOL_CACHE_SIZE >= MAX_PKT_BURST, "MAX_PKT_BURST should be at m
 uint16_t nb_rxd = RX_DESC_DEFAULT;
 uint16_t nb_txd = TX_DESC_DEFAULT;
 uint32_t nb_pkt_per_burst = DEFAULT_PKT_BURST;
+uint32_t mb_mempool_cache_size = MEMPOOL_CACHE_SIZE;
 
 /**< Ports set in promiscuous mode off by default. */
 static int promiscuous_on;
@@ -399,6 +400,7 @@ print_usage(const char *prgname)
 		" [--rx-queue-size NPKTS]"
 		" [--tx-queue-size NPKTS]"
 		" [--burst NPKTS]"
+		" [--mbcache CACHESZ]"
 		" [--eth-dest=X,MM:MM:MM:MM:MM:MM]"
 		" [--max-pkt-len PKTLEN]"
 		" [--no-numa]"
@@ -425,6 +427,8 @@ print_usage(const char *prgname)
 		"  --tx-queue-size NPKTS: Tx queue size in decimal\n"
 		"            Default: %d\n"
 		"  --burst NPKTS: Burst size in decimal\n"
+		"            Default: %d\n"
+		"  --mbcache CACHESZ: Mbuf cache size in decimal\n"
 		"            Default: %d\n"
 		"  --eth-dest=X,MM:MM:MM:MM:MM:MM: Ethernet destination for port X\n"
 		"  --max-pkt-len PKTLEN: maximum packet length in decimal (64-9600)\n"
@@ -455,7 +459,7 @@ print_usage(const char *prgname)
 		"                    another is route entry at while line leads with character '%c'.\n"
 		"  --rule_ipv6=FILE: Specify the ipv6 rules entries file.\n"
 		"  --alg: ACL classify method to use, one of: %s.\n\n",
-		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT, DEFAULT_PKT_BURST,
+		prgname, RX_DESC_DEFAULT, TX_DESC_DEFAULT, DEFAULT_PKT_BURST, MEMPOOL_CACHE_SIZE,
 		ACL_LEAD_CHAR, ROUTE_LEAD_CHAR, alg);
 }
 
@@ -674,6 +678,22 @@ parse_lookup(const char *optarg)
 }
 
 static void
+parse_mbcache_size(const char *optarg)
+{
+	unsigned long mb_cache_size;
+	char *end = NULL;
+
+	mb_cache_size = strtoul(optarg, &end, 10);
+	if ((optarg[0] == '\0') || (end == NULL) || (*end != '\0'))
+		return;
+	if (mb_cache_size <= RTE_MEMPOOL_CACHE_MAX_SIZE)
+		mb_mempool_cache_size = (uint32_t)mb_cache_size;
+	else
+		rte_exit(EXIT_FAILURE, "mbcache must be >= 0 and <= %d\n",
+			 RTE_MEMPOOL_CACHE_MAX_SIZE);
+}
+
+static void
 parse_pkt_burst(const char *optarg)
 {
 	struct rte_eth_dev_info dev_info;
@@ -748,6 +768,7 @@ static const char short_options[] =
 #define CMD_LINE_OPT_RULE_IPV6 "rule_ipv6"
 #define CMD_LINE_OPT_ALG "alg"
 #define CMD_LINE_OPT_PKT_BURST "burst"
+#define CMD_LINE_OPT_MB_CACHE_SIZE "mbcache"
 
 enum {
 	/* long options mapped to a short option */
@@ -778,6 +799,7 @@ enum {
 	CMD_LINE_OPT_VECTOR_SIZE_NUM,
 	CMD_LINE_OPT_VECTOR_TMO_NS_NUM,
 	CMD_LINE_OPT_PKT_BURST_NUM,
+	CMD_LINE_OPT_MB_CACHE_SIZE_NUM,
 };
 
 static const struct option lgopts[] = {
@@ -805,6 +827,7 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_RULE_IPV6,   1, 0, CMD_LINE_OPT_RULE_IPV6_NUM},
 	{CMD_LINE_OPT_ALG,   1, 0, CMD_LINE_OPT_ALG_NUM},
 	{CMD_LINE_OPT_PKT_BURST,   1, 0, CMD_LINE_OPT_PKT_BURST_NUM},
+	{CMD_LINE_OPT_MB_CACHE_SIZE,   1, 0, CMD_LINE_OPT_MB_CACHE_SIZE_NUM},
 	{NULL, 0, 0, 0}
 };
 
@@ -895,6 +918,10 @@ parse_args(int argc, char **argv)
 
 		case CMD_LINE_OPT_PKT_BURST_NUM:
 			parse_pkt_burst(optarg);
+			break;
+
+		case CMD_LINE_OPT_MB_CACHE_SIZE_NUM:
+			parse_mbcache_size(optarg);
 			break;
 
 		case CMD_LINE_OPT_ETH_DEST_NUM:
@@ -1089,7 +1116,7 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 				 portid, socketid);
 			pktmbuf_pool[portid][socketid] =
 				rte_pktmbuf_pool_create(s, nb_mbuf,
-					MEMPOOL_CACHE_SIZE, 0,
+					mb_mempool_cache_size, 0,
 					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
 			if (pktmbuf_pool[portid][socketid] == NULL)
 				rte_exit(EXIT_FAILURE,
