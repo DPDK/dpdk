@@ -308,7 +308,7 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 			   &hns3_parse_mbx_time_limit, &mbx_time_limit_ms);
 	if (!hns->is_vf)
 		(void)rte_kvargs_process(kvlist,
-					 HNS3_DEVARG_FDIR_VALN_MATCH_MODE,
+					 HNS3_DEVARG_FDIR_VLAN_MATCH_MODE,
 					 &hns3_parse_vlan_match_mode,
 					 &hns->pf.fdir.vlan_match_mode);
 
