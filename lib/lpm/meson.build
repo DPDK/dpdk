@@ -20,3 +20,4 @@ indirect_headers += files(
 )
 deps += ['hash']
 deps += ['rcu']
+deps += ['net']

@@ -525,10 +525,10 @@ test_table_lpm_ipv6(void)
 	/* Add */
 	struct rte_table_lpm_ipv6_key lpm_key;
 
-	lpm_key.ip[0] = 0xad;
-	lpm_key.ip[1] = 0xad;
-	lpm_key.ip[2] = 0xad;
-	lpm_key.ip[3] = 0xad;
+	lpm_key.ip.a[0] = 0xad;
+	lpm_key.ip.a[1] = 0xad;
+	lpm_key.ip.a[2] = 0xad;
+	lpm_key.ip.a[3] = 0xad;
 
 	table = rte_table_lpm_ipv6_ops.f_create(&lpm_params, 0, entry_size);
 	if (table == NULL)

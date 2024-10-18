@@ -294,8 +294,20 @@ API Changes
 * net: A new IPv6 address structure was introduced to replace ad-hoc ``uint8_t[16]`` arrays.
   The following libraries and symbols were modified:
 
+  lpm
+    - ``rte_lpm6_add()``
+    - ``rte_lpm6_delete()``
+    - ``rte_lpm6_delete_bulk_func()``
+    - ``rte_lpm6_is_rule_present()``
+    - ``rte_lpm6_lookup()``
+    - ``rte_lpm6_lookup_bulk_func()``
+    - ``RTE_LPM6_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
+    - ``RTE_LPM6_MAX_DEPTH`` (deprecated, replaced with ``RTE_IPV6_MAX_DEPTH``)
   net
     - ``struct rte_ipv6_hdr``
+  table
+    - ``struct rte_table_lpm_ipv6_key``
+    - ``RTE_LPM_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
 
 * drivers/net/ena: Removed ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
   and replaced it with a new shared devarg ``llq_policy`` that keeps the same logic.

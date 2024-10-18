@@ -151,7 +151,7 @@ struct ipv4_l3fwd_lpm_route {
 };
 
 struct ipv6_l3fwd_lpm_route {
-	uint8_t ip[RTE_LPM6_IPV6_ADDR_SIZE];
+	uint8_t ip[RTE_IPV6_ADDR_SIZE];
 	uint8_t depth;
 	uint8_t if_out;
 };
@@ -1371,7 +1371,7 @@ main(int argc, char **argv)
 
 		dst_port = ipv6_l3fwd_lpm_route_array[i].if_out;
 
-		memcpy(in6.s6_addr, ipv6_l3fwd_lpm_route_array[i].ip, RTE_LPM6_IPV6_ADDR_SIZE);
+		memcpy(in6.s6_addr, ipv6_l3fwd_lpm_route_array[i].ip, RTE_IPV6_ADDR_SIZE);
 		snprintf(route_str, sizeof(route_str), "%s / %d (%d)",
 			 inet_ntop(AF_INET6, &in6, abuf, sizeof(abuf)),
 			 ipv6_l3fwd_lpm_route_array[i].depth,

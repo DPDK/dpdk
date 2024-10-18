@@ -62,7 +62,7 @@ lpm_get_ipv6_dst_port(const struct rte_ipv6_hdr *ipv6_hdr,
 		      uint16_t portid,
 		      struct rte_lpm6 *ipv6_l3fwd_lookup_struct)
 {
-	const uint8_t *dst_ip = ipv6_hdr->dst_addr.a;
+	const struct rte_ipv6_addr *dst_ip = &ipv6_hdr->dst_addr;
 	uint32_t next_hop;
 
 	if (rte_lpm6_lookup(ipv6_l3fwd_lookup_struct, dst_ip, &next_hop) == 0)
@@ -122,7 +122,7 @@ lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		ipv6_hdr = (struct rte_ipv6_hdr *)(eth_hdr + 1);
 
 		return (uint16_t) ((rte_lpm6_lookup(qconf->ipv6_lookup_struct,
-				ipv6_hdr->dst_addr.a, &next_hop) == 0)
+				&ipv6_hdr->dst_addr, &next_hop) == 0)
 				? next_hop : portid);
 
 	}
@@ -635,7 +635,7 @@ setup_lpm(const int socketid)
 		rte_eth_dev_info_get(route_base_v6[i].if_out,
 				     &dev_info);
 		ret = rte_lpm6_add(ipv6_l3fwd_lpm_lookup_struct[socketid],
-			route_base_v6[i].ip_8,
+			&route_base_v6[i].ip6,
 			route_base_v6[i].depth,
 			route_base_v6[i].if_out);
 
@@ -647,7 +647,7 @@ setup_lpm(const int socketid)
 		}
 
 		printf("LPM: Adding route %s / %d (%d) [%s]\n",
-		       inet_ntop(AF_INET6, route_base_v6[i].ip_8, abuf,
+		       inet_ntop(AF_INET6, &route_base_v6[i].ip6, abuf,
 				 sizeof(abuf)),
 		       route_base_v6[i].depth,
 		       route_base_v6[i].if_out, rte_dev_name(dev_info.device));

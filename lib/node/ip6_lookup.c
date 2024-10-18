@@ -74,7 +74,7 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 	/* Get stream for the speculated next node */
 	to_next = rte_node_next_stream_get(graph, node, next_index, nb_objs);
 	while (n_left_from >= 4) {
-		uint8_t ip_batch[4][16];
+		struct rte_ipv6_addr ip_batch[4];
 		int32_t next_hop[4];
 		uint16_t next[4];
 
@@ -112,28 +112,28 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[0], &ipv6_hdr->dst_addr, 16);
+		ip_batch[0] = ipv6_hdr->dst_addr;
 
 		/* Extract DIP of mbuf1 */
 		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf1, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf1, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[1], &ipv6_hdr->dst_addr, 16);
+		ip_batch[1] = ipv6_hdr->dst_addr;
 
 		/* Extract DIP of mbuf2 */
 		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf2, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf2, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[2], &ipv6_hdr->dst_addr, 16);
+		ip_batch[2] = ipv6_hdr->dst_addr;
 
 		/* Extract DIP of mbuf3 */
 		ipv6_hdr = rte_pktmbuf_mtod_offset(mbuf3, struct rte_ipv6_hdr *,
 				sizeof(struct rte_ether_hdr));
 		/* Extract hop_limits as ipv6 hdr is in cache */
 		node_mbuf_priv1(mbuf3, dyn)->ttl = ipv6_hdr->hop_limits;
-		rte_memcpy(ip_batch[3], &ipv6_hdr->dst_addr, 16);
+		ip_batch[3] = ipv6_hdr->dst_addr;
 
 		rte_lpm6_lookup_bulk_func(lpm6, ip_batch, next_hop, 4);
 
@@ -223,7 +223,7 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 		/* Extract TTL as IPv6 hdr is in cache */
 		node_mbuf_priv1(mbuf0, dyn)->ttl = ipv6_hdr->hop_limits;
 
-		rc = rte_lpm6_lookup(lpm6, ipv6_hdr->dst_addr.a, &next_hop);
+		rc = rte_lpm6_lookup(lpm6, &ipv6_hdr->dst_addr, &next_hop);
 		next_hop = (rc == 0) ? next_hop : drop_nh;
 
 		node_mbuf_priv1(mbuf0, dyn)->nh = (uint16_t)next_hop;
@@ -267,7 +267,7 @@ rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
 	uint32_t val;
 	int ret;
 
-	memcpy(in6.s6_addr, ip, RTE_LPM6_IPV6_ADDR_SIZE);
+	memcpy(in6.s6_addr, ip, RTE_IPV6_ADDR_SIZE);
 	inet_ntop(AF_INET6, &in6, abuf, sizeof(abuf));
 	/* Embedded next node id into 24 bit next hop */
 	val = ((next_node << 16) | next_hop) & ((1ull << 24) - 1);
@@ -278,8 +278,8 @@ rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
 		if (!ip6_lookup_nm.lpm_tbl[socket])
 			continue;
 
-		ret = rte_lpm6_add(ip6_lookup_nm.lpm_tbl[socket], ip, depth,
-				   val);
+		ret = rte_lpm6_add(ip6_lookup_nm.lpm_tbl[socket],
+				   (const struct rte_ipv6_addr *)ip, depth, val);
 		if (ret < 0) {
 			node_err("ip6_lookup",
 				 "Unable to add entry %s / %d nh (%x) to LPM "

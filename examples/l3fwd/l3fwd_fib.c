@@ -732,7 +732,7 @@ setup_fib(const int socketid)
 		rte_eth_dev_info_get(route_base_v6[i].if_out,
 				     &dev_info);
 		ret = rte_fib6_add(ipv6_l3fwd_fib_lookup_struct[socketid],
-			route_base_v6[i].ip_8,
+			route_base_v6[i].ip6.a,
 			route_base_v6[i].depth,
 			route_base_v6[i].if_out);
 
@@ -744,7 +744,7 @@ setup_fib(const int socketid)
 					i, socketid);
 		}
 
-		if (inet_ntop(AF_INET6, route_base_v6[i].ip_8,
+		if (inet_ntop(AF_INET6, route_base_v6[i].ip6.a,
 				abuf, sizeof(abuf)) != NULL) {
 			printf("FIB: Adding route %s / %d (%d) [%s]\n", abuf,
 			       route_base_v6[i].depth,

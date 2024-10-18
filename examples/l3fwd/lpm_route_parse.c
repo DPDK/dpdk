@@ -40,7 +40,7 @@ is_bypass_line(const char *buff)
 }
 
 static int
-parse_ipv6_addr_mask(char *token, uint32_t *ipv6, uint8_t *mask)
+parse_ipv6_addr_mask(char *token, struct rte_ipv6_addr *ipv6, uint8_t *mask)
 {
 	char *sa, *sm, *sv;
 	const char *dlm =  "/";
@@ -83,7 +83,7 @@ parse_ipv4_addr_mask(char *token, uint32_t *ipv4, uint8_t *mask)
 }
 
 static int
-lpm_parse_v6_net(char *in, uint32_t *v, uint8_t *mask_len)
+lpm_parse_v6_net(char *in, struct rte_ipv6_addr *v, uint8_t *mask_len)
 {
 	int32_t rc;
 
@@ -108,7 +108,7 @@ lpm_parse_v6_rule(char *str, struct lpm_route_rule *v)
 			return -EINVAL;
 	}
 
-	rc = lpm_parse_v6_net(in[CB_FLD_DST_ADDR], v->ip_32, &v->depth);
+	rc = lpm_parse_v6_net(in[CB_FLD_DST_ADDR], &v->ip6, &v->depth);
 
 	GET_CB_FIELD(in[CB_FLD_IF_OUT], v->if_out, 0, UINT8_MAX, 0);
 
@@ -164,8 +164,7 @@ lpm_add_default_v6_rules(void)
 	route_base_v6 = calloc(route_num_v6, rule_size);
 
 	for (i = 0; i < (unsigned int)route_num_v6; i++) {
-		memcpy(route_base_v6[i].ip_8, ipv6_l3fwd_route_array[i].ip,
-			   sizeof(route_base_v6[i].ip_8));
+		route_base_v6[i].ip6 = ipv6_l3fwd_route_array[i].ip;
 		route_base_v6[i].depth = ipv6_l3fwd_route_array[i].depth;
 		route_base_v6[i].if_out = ipv6_l3fwd_route_array[i].if_out;
 	}

@@ -205,21 +205,20 @@ struct l3fwd_ipv4_route l3fwd_ipv4_route_array[] = {
  */
 
 struct l3fwd_ipv6_route {
-	uint8_t ip[IPV6_ADDR_LEN];
+	struct rte_ipv6_addr ip;
 	uint8_t depth;
 	uint8_t if_out;
 };
 
 /* Default l3fwd_ipv6_route_array table. 8< */
 static struct l3fwd_ipv6_route l3fwd_ipv6_route_array[] = {
-	{{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 0},
-	{{2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 1},
-	{{3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 2},
-	{{4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 3},
-	{{5,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 4},
-	{{6,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 5},
-	{{7,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 6},
-	{{8,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}, 48, 7},
+	{RTE_IPV6(0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 0},
+	{RTE_IPV6(0x0201, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 1},
+	{RTE_IPV6(0x0301, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 2},
+	{RTE_IPV6(0x0401, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 3},
+	{RTE_IPV6(0x0501, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 4},
+	{RTE_IPV6(0x0601, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 5},
+	{RTE_IPV6(0x0701, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101, 0x0101), 48, 6}
 };
 /* >8 End of default l3fwd_ipv6_route_array table. */
 
@@ -400,7 +399,7 @@ reassemble(struct rte_mbuf *m, uint16_t portid, uint32_t queue,
 		}
 
 		/* Find destination port */
-		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr.a,
+		if (rte_lpm6_lookup(rxq->lpm6, &ip_hdr->dst_addr,
 						&next_hop) == 0 &&
 				(enabled_port_mask & 1 << next_hop) != 0) {
 			dst_port = next_hop;
@@ -797,7 +796,7 @@ init_routing_table(void)
 			/* populate the LPM6 table */
 			for (i = 0; i < RTE_DIM(l3fwd_ipv6_route_array); i++) {
 				ret = rte_lpm6_add(lpm6,
-					l3fwd_ipv6_route_array[i].ip,
+					&l3fwd_ipv6_route_array[i].ip,
 					l3fwd_ipv6_route_array[i].depth,
 					l3fwd_ipv6_route_array[i].if_out);
 
@@ -810,7 +809,7 @@ init_routing_table(void)
 				RTE_LOG(INFO, IP_RSMBL, "Socket %i: adding route " IPv6_BYTES_FMT
 						"/%d (port %d)\n",
 					socket,
-					IPv6_BYTES(l3fwd_ipv6_route_array[i].ip),
+					IPv6_BYTES(l3fwd_ipv6_route_array[i].ip.a),
 					l3fwd_ipv6_route_array[i].depth,
 					l3fwd_ipv6_route_array[i].if_out);
 			}

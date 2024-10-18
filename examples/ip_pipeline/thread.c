@@ -2563,7 +2563,7 @@ match_convert(struct table_rule_match *mh,
 			ml->lpm_ipv4.ip = mh->match.lpm.ipv4;
 			ml->lpm_ipv4.depth = mh->match.lpm.depth;
 		} else {
-			memcpy(ml->lpm_ipv6.ip,
+			memcpy(&ml->lpm_ipv6.ip,
 				mh->match.lpm.ipv6, sizeof(ml->lpm_ipv6.ip));
 			ml->lpm_ipv6.depth = mh->match.lpm.depth;
 		}

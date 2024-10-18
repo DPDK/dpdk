@@ -362,7 +362,7 @@ test_table_lpm_ipv6_combined(void)
 	struct rte_table_lpm_ipv6_key lpm_ipv6_key = {
 		.depth = 16,
 	};
-	memset(lpm_ipv6_key.ip, 0xad, 16);
+	memset(&lpm_ipv6_key.ip, 0xad, 16);
 
 	struct table_packets table_packets;
 

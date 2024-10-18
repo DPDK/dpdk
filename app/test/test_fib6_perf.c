@@ -101,7 +101,7 @@ test_fib6_perf(void)
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
 		next_hop_add = (i & ((1 << 14) - 1)) + 1;
-		if (rte_fib6_add(fib, large_route_table[i].ip,
+		if (rte_fib6_add(fib, large_route_table[i].ip.a,
 				large_route_table[i].depth, next_hop_add) == 0)
 			status++;
 	}
@@ -117,7 +117,7 @@ test_fib6_perf(void)
 	count = 0;
 
 	for (i = 0; i < NUM_IPS_ENTRIES; i++)
-		memcpy(ip_batch[i], large_ips_table[i].ip, 16);
+		memcpy(ip_batch[i], &large_ips_table[i].ip, 16);
 
 	for (i = 0; i < ITERATIONS; i++) {
 
@@ -140,7 +140,7 @@ test_fib6_perf(void)
 
 	for (i = 0; i < NUM_ROUTE_ENTRIES; i++) {
 		/* rte_fib_delete(fib, ip, depth) */
-		status += rte_fib6_delete(fib, large_route_table[i].ip,
+		status += rte_fib6_delete(fib, large_route_table[i].ip.a,
 				large_route_table[i].depth);
 	}
 

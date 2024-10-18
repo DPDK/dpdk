@@ -62,25 +62,6 @@ enum {
 	(unsigned)((unsigned char *)&addr)[2],	\
 	(unsigned)((unsigned char *)&addr)[1],	\
 	(unsigned)((unsigned char *)&addr)[0]
-
-#define NIPQUAD6_FMT "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x"
-#define NIPQUAD6(addr)				\
-	((uint8_t *)addr)[0] << 8 |	\
-	((uint8_t *)addr)[1],		\
-	((uint8_t *)addr)[2] << 8 |	\
-	((uint8_t *)addr)[3],		\
-	((uint8_t *)addr)[4] << 8 |	\
-	((uint8_t *)addr)[5],		\
-	((uint8_t *)addr)[6] << 8 |	\
-	((uint8_t *)addr)[7],		\
-	((uint8_t *)addr)[8] << 8 |	\
-	((uint8_t *)addr)[9],		\
-	((uint8_t *)addr)[10] << 8 |	\
-	((uint8_t *)addr)[11],		\
-	((uint8_t *)addr)[12] << 8 |	\
-	((uint8_t *)addr)[13],		\
-	((uint8_t *)addr)[14] << 8 |	\
-	((uint8_t *)addr)[15]
 #endif
 
 static struct {
@@ -123,7 +104,7 @@ struct rt_rule_4 {
 };
 
 struct rt_rule_6 {
-	uint8_t		addr[16];
+	struct rte_ipv6_addr addr;
 	uint8_t		depth;
 	uint64_t	nh;
 };
@@ -306,15 +287,15 @@ shuffle_rt_6(struct rt_rule_6 *rt, int n)
 
 	for (i = 0; i < n; i++) {
 		j = rte_rand() % n;
-		memcpy(tmp.addr, rt[i].addr, 16);
+		tmp.addr = rt[i].addr;
 		tmp.depth = rt[i].depth;
 		tmp.nh = rt[i].nh;
 
-		memcpy(rt[i].addr, rt[j].addr, 16);
+		rt[i].addr = rt[j].addr;
 		rt[i].depth = rt[j].depth;
 		rt[i].nh = rt[j].nh;
 
-		memcpy(rt[j].addr, tmp.addr, 16);
+		rt[j].addr = tmp.addr;
 		rt[j].depth = tmp.depth;
 		rt[j].nh = tmp.nh;
 	}
@@ -364,7 +345,7 @@ gen_random_rt_6(struct rt_rule_6 *rt, int nh_sz)
 	uint32_t a, i, j, k = 0;
 
 	if (config.nb_routes_per_depth[0] != 0) {
-		memset(rt[k].addr, 0, 16);
+		memset(&rt[k].addr, 0, 16);
 		rt[k].depth = 0;
 		rt[k++].nh = rte_rand() & get_max_nh(nh_sz);
 	}
@@ -380,7 +361,7 @@ gen_random_rt_6(struct rt_rule_6 *rt, int nh_sz)
 				uint64_t rnd_val = get_rnd_rng((uint64_t)edge,
 					(uint64_t)(edge + step));
 				rnd = rte_cpu_to_be_32(rnd_val << (32 - i));
-				complete_v6_addr((uint32_t *)rt[k].addr,
+				complete_v6_addr((uint32_t *)&rt[k].addr,
 					rnd, a);
 				rt[k].depth = (a * 32) + i;
 				rt[k].nh = rte_rand() & get_max_nh(nh_sz);
@@ -390,19 +371,19 @@ gen_random_rt_6(struct rt_rule_6 *rt, int nh_sz)
 }
 
 static inline void
-set_rnd_ipv6(uint8_t *addr, uint8_t *route, int depth)
+set_rnd_ipv6(struct rte_ipv6_addr *addr, struct rte_ipv6_addr *route, int depth)
 {
 	int i;
 
 	for (i = 0; i < 16; i++)
-		addr[i] = rte_rand();
+		addr->a[i] = rte_rand();
 
 	for (i = 0; i < 16; i++) {
 		if (depth >= 8)
-			addr[i] = route[i];
+			addr->a[i] = route->a[i];
 		else if (depth > 0) {
-			addr[i] &= (uint16_t)UINT8_MAX >> depth;
-			addr[i] |= route[i] & UINT8_MAX << (8 - depth);
+			addr->a[i] &= (uint16_t)UINT8_MAX >> depth;
+			addr->a[i] |= route->a[i] & UINT8_MAX << (8 - depth);
 		} else
 			return;
 		depth -= 8;
@@ -413,7 +394,7 @@ static void
 gen_rnd_lookup_tbl(int af)
 {
 	uint32_t *tbl4 = config.lookup_tbl;
-	uint8_t *tbl6 = config.lookup_tbl;
+	struct rte_ipv6_addr *tbl6 = config.lookup_tbl;
 	struct rt_rule_4 *rt4 = (struct rt_rule_4 *)config.rt;
 	struct rt_rule_6 *rt6 = (struct rt_rule_6 *)config.rt;
 	uint32_t i, j;
@@ -432,11 +413,10 @@ gen_rnd_lookup_tbl(int af)
 		for (i = 0, j = 0; i < config.nb_lookup_ips;
 				i++, j = (j + 1) % config.nb_routes) {
 			if ((rte_rand() % 100) < config.rnd_lookup_ips_ratio) {
-				set_rnd_ipv6(&tbl6[i * 16], rt6[j].addr, 0);
+				set_rnd_ipv6(&tbl6[i], &rt6[j].addr, 0);
 				config.nb_lookup_ips_rnd++;
 			} else {
-				set_rnd_ipv6(&tbl6[i * 16], rt6[j].addr,
-					rt6[j].depth);
+				set_rnd_ipv6(&tbl6[i], &rt6[j].addr, rt6[j].depth);
 			}
 		}
 	}
@@ -522,7 +502,7 @@ parse_rt_6(FILE *f)
 			s = NULL;
 		}
 
-		ret = _inet_net_pton(AF_INET6, in[RT_PREFIX], rt[j].addr);
+		ret = _inet_net_pton(AF_INET6, in[RT_PREFIX], &rt[j].addr);
 		if (ret < 0)
 			return ret;
 
@@ -561,7 +541,7 @@ dump_lookup(int af)
 {
 	FILE *f;
 	uint32_t *tbl4 = config.lookup_tbl;
-	uint8_t *tbl6 = config.lookup_tbl;
+	struct rte_ipv6_addr *tbl6 = config.lookup_tbl;
 	uint32_t i;
 
 	f = fopen(config.lookup_ips_file_s, "w");
@@ -575,7 +555,7 @@ dump_lookup(int af)
 			fprintf(f, NIPQUAD_FMT"\n", NIPQUAD(tbl4[i]));
 	} else {
 		for (i = 0; i < config.nb_lookup_ips; i++)
-			fprintf(f, NIPQUAD6_FMT"\n", NIPQUAD6(&tbl6[i * 16]));
+			fprintf(f, RTE_IPV6_ADDR_FMT"\n", RTE_IPV6_ADDR_SPLIT(&tbl6[i * 16]));
 	}
 	fclose(f);
 	return 0;
@@ -1023,7 +1003,7 @@ dump_rt_6(struct rt_rule_6 *rt)
 	}
 
 	for (i = 0; i < config.nb_routes; i++) {
-		fprintf(f, NIPQUAD6_FMT"/%d %"PRIu64"\n", NIPQUAD6(rt[i].addr),
+		fprintf(f, RTE_IPV6_ADDR_FMT"/%d %"PRIu64"\n", RTE_IPV6_ADDR_SPLIT(&rt[i].addr),
 			rt[i].depth, rt[i].nh);
 
 	}
@@ -1043,7 +1023,7 @@ run_v6(void)
 	int ret = 0;
 	struct rte_lpm6	*lpm = NULL;
 	struct rte_lpm6_config lpm_conf;
-	uint8_t *tbl6;
+	struct rte_ipv6_addr *tbl6;
 	uint64_t fib_nh[BURST_SZ];
 	int32_t lpm_nh[BURST_SZ];
 
@@ -1094,7 +1074,7 @@ run_v6(void)
 	for (k = config.print_fract, i = 0; k > 0; k--) {
 		start = rte_rdtsc_precise();
 		for (j = 0; j < (config.nb_routes - i) / k; j++) {
-			ret = rte_fib6_add(fib, rt[i + j].addr,
+			ret = rte_fib6_add(fib, rt[i + j].addr.a,
 				rt[i + j].depth, rt[i + j].nh);
 			if (unlikely(ret != 0)) {
 				printf("Can not add a route to FIB, err %d\n",
@@ -1120,7 +1100,7 @@ run_v6(void)
 		for (k = config.print_fract, i = 0; k > 0; k--) {
 			start = rte_rdtsc_precise();
 			for (j = 0; j < (config.nb_routes - i) / k; j++) {
-				ret = rte_lpm6_add(lpm, rt[i + j].addr,
+				ret = rte_lpm6_add(lpm, &rt[i + j].addr,
 					rt[i + j].depth, rt[i + j].nh);
 				if (ret != 0) {
 					if (rt[i + j].depth == 0)
@@ -1139,7 +1119,7 @@ run_v6(void)
 	acc = 0;
 	for (i = 0; i < config.nb_lookup_ips; i += BURST_SZ) {
 		start = rte_rdtsc_precise();
-		ret = rte_fib6_lookup_bulk(fib, (uint8_t (*)[16])(tbl6 + i*16),
+		ret = rte_fib6_lookup_bulk(fib, &tbl6[i].a,
 			fib_nh, BURST_SZ);
 		acc += rte_rdtsc_precise() - start;
 		if (ret != 0) {
@@ -1154,7 +1134,7 @@ run_v6(void)
 		for (i = 0; i < config.nb_lookup_ips; i += BURST_SZ) {
 			start = rte_rdtsc_precise();
 			ret = rte_lpm6_lookup_bulk_func(lpm,
-				(uint8_t (*)[16])(tbl6 + i*16),
+				&tbl6[i],
 				lpm_nh, BURST_SZ);
 			acc += rte_rdtsc_precise() - start;
 			if (ret != 0) {
@@ -1166,10 +1146,10 @@ run_v6(void)
 
 		for (i = 0; i < config.nb_lookup_ips; i += BURST_SZ) {
 			rte_fib6_lookup_bulk(fib,
-				(uint8_t (*)[16])(tbl6 + i*16),
+				&tbl6[i].a,
 				fib_nh, BURST_SZ);
 			rte_lpm6_lookup_bulk_func(lpm,
-				(uint8_t (*)[16])(tbl6 + i*16),
+				&tbl6[i],
 				lpm_nh, BURST_SZ);
 			for (j = 0; j < BURST_SZ; j++) {
 				if ((fib_nh[j] != (uint32_t)lpm_nh[j]) &&
@@ -1186,7 +1166,7 @@ run_v6(void)
 	for (k = config.print_fract, i = 0; k > 0; k--) {
 		start = rte_rdtsc_precise();
 		for (j = 0; j < (config.nb_routes - i) / k; j++)
-			rte_fib6_delete(fib, rt[i + j].addr, rt[i + j].depth);
+			rte_fib6_delete(fib, rt[i + j].addr.a, rt[i + j].depth);
 
 		printf("AVG FIB delete %"PRIu64"\n",
 			(rte_rdtsc_precise() - start) / j);
@@ -1197,7 +1177,7 @@ run_v6(void)
 		for (k = config.print_fract, i = 0; k > 0; k--) {
 			start = rte_rdtsc_precise();
 			for (j = 0; j < (config.nb_routes - i) / k; j++)
-				rte_lpm6_delete(lpm, rt[i + j].addr,
+				rte_lpm6_delete(lpm, &rt[i + j].addr,
 					rt[i + j].depth);
 
 			printf("AVG LPM delete %"PRIu64"\n",
