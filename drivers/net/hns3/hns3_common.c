@@ -272,6 +272,24 @@ hns3_parse_vlan_match_mode(const char *key, const char *value, void *args)
 	return 0;
 }
 
+static int
+hns3_parse_fdir_tuple_config(const char *key, const char *value, void *args)
+{
+	enum hns3_fdir_tuple_config tuple_cfg;
+
+	tuple_cfg = hns3_parse_tuple_config(value);
+	if (tuple_cfg == HNS3_FDIR_TUPLE_CONFIG_DEFAULT ||
+	    tuple_cfg == HNS3_FDIR_TUPLE_CONFIG_BUTT) {
+		PMD_INIT_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\"",
+			     value, key);
+		return -1;
+	}
+
+	*(enum hns3_fdir_tuple_config *)args = tuple_cfg;
+
+	return 0;
+}
+
 void
 hns3_parse_devargs(struct rte_eth_dev *dev)
 {
@@ -306,11 +324,16 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 			   &hns3_parse_dev_caps_mask, &dev_caps_mask);
 	(void)rte_kvargs_process(kvlist, HNS3_DEVARG_MBX_TIME_LIMIT_MS,
 			   &hns3_parse_mbx_time_limit, &mbx_time_limit_ms);
-	if (!hns->is_vf)
+	if (!hns->is_vf) {
 		(void)rte_kvargs_process(kvlist,
 					 HNS3_DEVARG_FDIR_VLAN_MATCH_MODE,
 					 &hns3_parse_vlan_match_mode,
 					 &hns->pf.fdir.vlan_match_mode);
+		(void)rte_kvargs_process(kvlist,
+					 HNS3_DEVARG_FDIR_TUPLE_CONFIG,
+					 &hns3_parse_fdir_tuple_config,
+					 &hns->pf.fdir.tuple_cfg);
+	}
 
 	rte_kvargs_free(kvlist);
 

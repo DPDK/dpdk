@@ -300,6 +300,58 @@ static int hns3_set_fd_key_config(struct hns3_adapter *hns)
 	return ret;
 }
 
+static void hns3_set_tuple_config(struct hns3_adapter *hns,
+				  struct hns3_fd_key_cfg *key_cfg)
+{
+	enum hns3_fdir_tuple_config tuple_cfg = hns->pf.fdir.tuple_cfg;
+
+	if (tuple_cfg == HNS3_FDIR_TUPLE_CONFIG_DEFAULT)
+		return;
+
+	if (hns->pf.fdir.fd_cfg.max_key_length != MAX_KEY_LENGTH) {
+		hns3_warn(&hns->hw, "fdir tuple config only valid with 400bit key!");
+		return;
+	}
+
+	switch (tuple_cfg) {
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSMAC:
+		key_cfg->tuple_active &= ~BIT(INNER_SRC_MAC);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDMAC:
+		key_cfg->tuple_active &= ~BIT(INNER_DST_MAC);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSIP:
+		key_cfg->tuple_active &= ~BIT(INNER_SRC_IP);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDIP:
+		key_cfg->tuple_active &= ~BIT(INNER_DST_IP);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_SCTPTAG:
+		key_cfg->tuple_active &= ~BIT(INNER_SCTP_TAG);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	case HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_TUNVNI:
+		key_cfg->tuple_active &= ~BIT(OUTER_TUN_VNI);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_FST);
+		key_cfg->tuple_active |= BIT(OUTER_VLAN_TAG_SEC);
+		break;
+	default:
+		hns3_err(&hns->hw, "invalid fdir tuple config %u!", tuple_cfg);
+		return;
+	}
+
+	hns3_info(&hns->hw, "fdir tuple config %s!", hns3_tuple_config_name(tuple_cfg));
+}
+
 int hns3_init_fd_config(struct hns3_adapter *hns)
 {
 	struct hns3_pf *pf = &hns->pf;
@@ -351,6 +403,8 @@ int hns3_init_fd_config(struct hns3_adapter *hns)
 			 "vlan_tag2 sctp_tag> outer<eth_type ip_proto "
 			 "l4_src_port l4_dst_port tun_vni tun_flow_id>");
 	}
+
+	hns3_set_tuple_config(hns, key_cfg);
 
 	/* roce_type is used to filter roce frames
 	 * dst_vport is used to specify the rule
@@ -500,6 +554,14 @@ static void hns3_fd_convert_int16(uint32_t tuple, struct hns3_fdir_rule *rule,
 	uint16_t key;
 
 	switch (tuple) {
+	case OUTER_VLAN_TAG_FST:
+		key = rule->key_conf.spec.outer_vlan_tag1;
+		mask = rule->key_conf.mask.outer_vlan_tag1;
+		break;
+	case OUTER_VLAN_TAG_SEC:
+		key = rule->key_conf.spec.outer_vlan_tag2;
+		mask = rule->key_conf.mask.outer_vlan_tag2;
+		break;
 	case OUTER_SRC_PORT:
 		key = rule->key_conf.spec.outer_src_port;
 		mask = rule->key_conf.mask.outer_src_port;
@@ -575,6 +637,8 @@ static bool hns3_fd_convert_tuple(struct hns3_hw *hw,
 		hns3_fd_convert_mac(key_conf->spec.src_mac,
 				    key_conf->mask.src_mac, key_x, key_y);
 		break;
+	case OUTER_VLAN_TAG_FST:
+	case OUTER_VLAN_TAG_SEC:
 	case OUTER_SRC_PORT:
 	case OUTER_DST_PORT:
 	case OUTER_ETH_TYPE:
@@ -1127,4 +1191,43 @@ int hns3_fd_get_count(struct hns3_hw *hw, uint32_t id, uint64_t *value)
 	*value = req->value;
 
 	return ret;
+}
+
+static struct {
+	enum hns3_fdir_tuple_config tuple_cfg;
+	const char *name;
+} tuple_config_map[] = {
+	{ HNS3_FDIR_TUPLE_CONFIG_DEFAULT,          "default"          },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSMAC,  "+outvlan-insmac"  },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDMAC,  "+outvlan-indmac"  },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INSIP,   "+outvlan-insip"   },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_INDIP,   "+outvlan-indip"   },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_SCTPTAG, "+outvlan-sctptag" },
+	{ HNS3_FDIR_TUPLE_OUTVLAN_REPLACE_TUNVNI,  "+outvlan-tunvni"  }
+};
+
+enum hns3_fdir_tuple_config
+hns3_parse_tuple_config(const char *name)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(tuple_config_map); i++) {
+		if (!strcmp(name, tuple_config_map[i].name))
+			return tuple_config_map[i].tuple_cfg;
+	}
+
+	return HNS3_FDIR_TUPLE_CONFIG_BUTT;
+}
+
+const char *
+hns3_tuple_config_name(enum hns3_fdir_tuple_config tuple_cfg)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(tuple_config_map); i++) {
+		if (tuple_cfg == tuple_config_map[i].tuple_cfg)
+			return tuple_config_map[i].name;
+	}
+
+	return "unknown";
 }

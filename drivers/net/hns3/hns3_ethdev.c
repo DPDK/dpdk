@@ -6672,6 +6672,9 @@ RTE_PMD_REGISTER_PARAM_STRING(net_hns3,
 		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> "
 		HNS3_DEVARG_MBX_TIME_LIMIT_MS "=<uint16> "
 		HNS3_DEVARG_FDIR_VLAN_MATCH_MODE "=strict|nostrict "
+		HNS3_DEVARG_FDIR_TUPLE_CONFIG "=+outvlan-insmac|+outvlan-indmac|"
+					      "+outvlan-insip|+outvlan-indip"
+					      "+outvlan-sctptag|+outvlan-tunvni ");
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX

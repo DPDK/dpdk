@@ -183,6 +183,16 @@ Runtime Configuration
 
     -a 0000:7d:00.0,fdir_vlan_match_mode=nostrict
 
+- ``fdir_tuple_config`` (default ``none``)
+
+  Used to customize the flow director tuples. Current supported options are follows:
+  ``+outvlan-insmac``: means disable inner src mac tuple, and enable outer vlan tuple.
+  ``+outvlan-indmac``: means disable inner dst mac tuple, and enable outer vlan tuple.
+  ``+outvlan-insip``: means disable inner src ip tuple, and enable outer vlan tuple.
+  ``+outvlan-indip``: means disable inner dst ip tuple, and enable outer vlan tuple.
+  ``+outvlan-sctptag``: means disable sctp tag tuple, and enable outer vlan tuple.
+  ``+outvlan-tunvni``: means disable tunnel vni tuple, and enable outer vlan tuple.
+
 Driver compilation and testing
 ------------------------------
 

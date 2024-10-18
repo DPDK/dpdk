@@ -609,6 +609,59 @@ hns3_check_attr(const struct rte_flow_attr *attr, struct rte_flow_error *error)
 }
 
 static int
+hns3_check_tuple(const struct rte_eth_dev *dev, const struct hns3_fdir_rule *rule,
+		 struct rte_flow_error *error)
+{
+	const char * const err_msg[] = {
+		"Not support outer dst mac",
+		"Not support outer src mac",
+		"Not support outer vlan1 tag",
+		"Not support outer vlan2 tag",
+		"Not support outer eth type",
+		"Not support outer l2 rsv",
+		"Not support outer ip tos",
+		"Not support outer ip proto",
+		"Not support outer src ip",
+		"Not support outer dst ip",
+		"Not support outer l3 rsv",
+		"Not support outer src port",
+		"Not support outer dst port",
+		"Not support outer l4 rsv",
+		"Not support outer tun vni",
+		"Not support outer tun flow id",
+		"Not support inner dst mac",
+		"Not support inner src mac",
+		"Not support inner vlan tag1",
+		"Not support inner vlan tag2",
+		"Not support inner eth type",
+		"Not support inner l2 rsv",
+		"Not support inner ip tos",
+		"Not support inner ip proto",
+		"Not support inner src ip",
+		"Not support inner dst ip",
+		"Not support inner l3 rsv",
+		"Not support inner src port",
+		"Not support inner dst port",
+		"Not support inner sctp tag",
+	};
+	struct hns3_adapter *hns = dev->data->dev_private;
+	uint32_t tuple_active = hns->pf.fdir.fd_cfg.key_cfg[HNS3_FD_STAGE_1].tuple_active;
+	uint32_t i;
+
+	for (i = 0; i < MAX_TUPLE; i++) {
+		if ((rule->input_set & BIT(i)) == 0)
+			continue;
+		if (tuple_active & BIT(i))
+			continue;
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM,
+					  NULL, err_msg[i]);
+	}
+
+	return 0;
+}
+
+static int
 hns3_parse_eth(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 	       struct rte_flow_error *error __rte_unused)
 {
@@ -1029,12 +1082,22 @@ hns3_handle_tunnel(const struct rte_flow_item *item,
 		rule->key_conf.mask.ether_type = 0;
 	}
 
-	/* check vlan config */
-	if (rule->input_set & (BIT(INNER_VLAN_TAG1) | BIT(INNER_VLAN_TAG2)))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM,
-					  item,
-					  "Outer vlan tags is unsupported");
+	if (rule->input_set & BIT(INNER_VLAN_TAG1)) {
+		hns3_set_bit(rule->input_set, OUTER_VLAN_TAG_FST, 1);
+		hns3_set_bit(rule->input_set, INNER_VLAN_TAG1, 0);
+		rule->key_conf.spec.outer_vlan_tag1 = rule->key_conf.spec.vlan_tag1;
+		rule->key_conf.mask.outer_vlan_tag1 = rule->key_conf.mask.vlan_tag1;
+		rule->key_conf.spec.vlan_tag1 = 0;
+		rule->key_conf.mask.vlan_tag1 = 0;
+	}
+	if (rule->input_set & BIT(INNER_VLAN_TAG2)) {
+		hns3_set_bit(rule->input_set, OUTER_VLAN_TAG_SEC, 1);
+		hns3_set_bit(rule->input_set, INNER_VLAN_TAG2, 0);
+		rule->key_conf.spec.outer_vlan_tag2 = rule->key_conf.spec.vlan_tag2;
+		rule->key_conf.mask.outer_vlan_tag2 = rule->key_conf.mask.vlan_tag2;
+		rule->key_conf.spec.vlan_tag2 = 0;
+		rule->key_conf.mask.vlan_tag2 = 0;
+	}
 
 	/* clear vlan_num for inner vlan select */
 	rule->key_conf.outer_vlan_num = rule->key_conf.vlan_num;
@@ -1443,6 +1506,10 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 				return ret;
 		}
 	}
+
+	ret = hns3_check_tuple(dev, rule, error);
+	if (ret)
+		return ret;
 
 	return hns3_handle_actions(dev, actions, rule, error);
 }
