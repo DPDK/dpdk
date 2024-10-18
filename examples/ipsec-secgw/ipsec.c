@@ -41,8 +41,8 @@ set_ipsec_conf(struct ipsec_sa *sa, struct rte_security_ipsec_xform *ipsec)
 			tunnel->ipv6.hlimit = IPDEFTTL;
 			tunnel->ipv6.dscp = 0;
 			tunnel->ipv6.flabel = 0;
-			memcpy(&tunnel->ipv6.src_addr, &sa->src.ip.ip6, 16);
-			memcpy(&tunnel->ipv6.dst_addr, &sa->dst.ip.ip6, 16);
+			tunnel->ipv6.src_addr = sa->src.ip.ip6;
+			tunnel->ipv6.dst_addr = sa->dst.ip.ip6;
 		}
 		/* TODO support for Transport */
 	}
@@ -446,8 +446,8 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sess_conf.ipsec.tunnel.type =
 				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
 
-			memcpy(&sess_conf.ipsec.tunnel.ipv6.src_addr, &sa->src.ip.ip6, 16);
-			memcpy(&sess_conf.ipsec.tunnel.ipv6.dst_addr, &sa->dst.ip.ip6, 16);
+			sess_conf.ipsec.tunnel.ipv6.src_addr = sa->src.ip.ip6;
+			sess_conf.ipsec.tunnel.ipv6.dst_addr = sa->dst.ip.ip6;
 		}
 	} else if (IS_TUNNEL(sa->flags)) {
 		sess_conf.ipsec.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL;
@@ -464,8 +464,8 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 			sess_conf.ipsec.tunnel.type =
 				RTE_SECURITY_IPSEC_TUNNEL_IPV6;
 
-			memcpy(&sess_conf.ipsec.tunnel.ipv6.src_addr, &sa->src.ip.ip6, 16);
-			memcpy(&sess_conf.ipsec.tunnel.ipv6.dst_addr, &sa->dst.ip.ip6, 16);
+			sess_conf.ipsec.tunnel.ipv6.src_addr = sa->src.ip.ip6;
+			sess_conf.ipsec.tunnel.ipv6.dst_addr = sa->dst.ip.ip6;
 		} else {
 			RTE_LOG(ERR, IPSEC, "invalid tunnel type\n");
 			return -1;

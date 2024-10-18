@@ -85,9 +85,9 @@ struct rte_security_ipsec_tunnel_param {
 		} ipv4;
 		/**< IPv4 header parameters */
 		struct {
-			struct in6_addr src_addr;
+			struct rte_ipv6_addr src_addr;
 			/**< IPv6 source address */
-			struct in6_addr dst_addr;
+			struct rte_ipv6_addr dst_addr;
 			/**< IPv6 destination address */
 			uint8_t dscp;
 			/**< IPv6 Differentiated Services Code Point */

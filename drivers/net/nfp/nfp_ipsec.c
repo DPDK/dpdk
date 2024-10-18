@@ -1042,8 +1042,8 @@ nfp_ipsec_msg_build(struct rte_eth_dev *eth_dev,
 			cfg->dst_ip[0] = rte_be_to_cpu_32(dst_ip[0]);
 			cfg->ipv6 = 0;
 		} else if (type == RTE_SECURITY_IPSEC_TUNNEL_IPV6) {
-			src_ip = (rte_be32_t *)conf->ipsec.tunnel.ipv6.src_addr.s6_addr;
-			dst_ip = (rte_be32_t *)conf->ipsec.tunnel.ipv6.dst_addr.s6_addr;
+			src_ip = (rte_be32_t *)&conf->ipsec.tunnel.ipv6.src_addr;
+			dst_ip = (rte_be32_t *)&conf->ipsec.tunnel.ipv6.dst_addr;
 			for (i = 0; i < 4; i++) {
 				cfg->src_ip[i] = rte_be_to_cpu_32(src_ip[i]);
 				cfg->dst_ip[i] = rte_be_to_cpu_32(dst_ip[i]);

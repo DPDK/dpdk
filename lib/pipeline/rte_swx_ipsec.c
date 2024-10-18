@@ -1579,12 +1579,8 @@ ipsec_xform_get(struct rte_swx_ipsec_sa_params *p,
 			ipsec_xform->tunnel.ipv4.df = 0;
 			ipsec_xform->tunnel.ipv4.ttl = 64;
 		} else {
-			memcpy(&ipsec_xform->tunnel.ipv6.src_addr,
-				&p->encap.tunnel.ipv6.src_addr,
-				sizeof(ipsec_xform->tunnel.ipv6.src_addr));
-			memcpy(&ipsec_xform->tunnel.ipv6.dst_addr,
-				&p->encap.tunnel.ipv6.dst_addr,
-				sizeof(ipsec_xform->tunnel.ipv6.dst_addr));
+			ipsec_xform->tunnel.ipv6.src_addr = p->encap.tunnel.ipv6.src_addr;
+			ipsec_xform->tunnel.ipv6.dst_addr = p->encap.tunnel.ipv6.dst_addr;
 			ipsec_xform->tunnel.ipv6.dscp = 0;
 			ipsec_xform->tunnel.ipv6.flabel = 0;
 			ipsec_xform->tunnel.ipv6.hlimit = 64;

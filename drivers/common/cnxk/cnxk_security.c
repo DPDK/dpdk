@@ -271,9 +271,9 @@ ot_ipsec_inb_tunnel_hdr_fill(struct roc_ot_ipsec_inb_sa *sa,
 	case RTE_SECURITY_IPSEC_TUNNEL_IPV6:
 		sa->w2.s.outer_ip_ver = ROC_IE_SA_IP_VERSION_6;
 		memcpy(&sa->outer_hdr.ipv6.src_addr, &tunnel->ipv6.src_addr,
-		       sizeof(struct in6_addr));
+		       sizeof(sa->outer_hdr.ipv6.src_addr));
 		memcpy(&sa->outer_hdr.ipv6.dst_addr, &tunnel->ipv6.dst_addr,
-		       sizeof(struct in6_addr));
+		       sizeof(sa->outer_hdr.ipv6.dst_addr));
 
 		/* IP Source and Dest are in LE/CPU endian */
 		ot_ipsec_update_ipv6_addr_endianness((uint64_t *)&sa->outer_hdr.ipv6.src_addr);
@@ -472,9 +472,9 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 	case RTE_SECURITY_IPSEC_TUNNEL_IPV6:
 		sa->w2.s.outer_ip_ver = ROC_IE_SA_IP_VERSION_6;
 		memcpy(&sa->outer_hdr.ipv6.src_addr, &tunnel->ipv6.src_addr,
-		       sizeof(struct in6_addr));
+		       sizeof(sa->outer_hdr.ipv6.src_addr));
 		memcpy(&sa->outer_hdr.ipv6.dst_addr, &tunnel->ipv6.dst_addr,
-		       sizeof(struct in6_addr));
+		       sizeof(sa->outer_hdr.ipv6.dst_addr));
 
 		/* IP Source and Dest are in LE/CPU endian */
 		ot_ipsec_update_ipv6_addr_endianness((uint64_t *)&sa->outer_hdr.ipv6.src_addr);
@@ -1087,10 +1087,8 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 			ip6->hop_limits = ipsec->tunnel.ipv6.hlimit ?
 						  ipsec->tunnel.ipv6.hlimit :
 						  0x40;
-			memcpy(&ip6->src_addr, &ipsec->tunnel.ipv6.src_addr,
-			       sizeof(struct in6_addr));
-			memcpy(&ip6->dst_addr, &ipsec->tunnel.ipv6.dst_addr,
-			       sizeof(struct in6_addr));
+			ip6->src_addr = ipsec->tunnel.ipv6.src_addr;
+			ip6->dst_addr = ipsec->tunnel.ipv6.dst_addr;
 		}
 	} else
 		ctx_len += sizeof(template->ip4);
