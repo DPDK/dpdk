@@ -6669,7 +6669,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_hns3,
 		HNS3_DEVARG_RX_FUNC_HINT "=vec|sve|simple|common "
 		HNS3_DEVARG_TX_FUNC_HINT "=vec|sve|simple|common "
 		HNS3_DEVARG_DEV_CAPS_MASK "=<1-65535> "
-		HNS3_DEVARG_MBX_TIME_LIMIT_MS "=<uint16> ");
+		HNS3_DEVARG_MBX_TIME_LIMIT_MS "=<uint16> "
+		HNS3_DEVARG_FDIR_VLAN_MATCH_MODE "=strict|nostrict ");
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX
