@@ -155,13 +155,15 @@ static enum rte_flow_item_type first_items[] = {
 	RTE_FLOW_ITEM_TYPE_NVGRE,
 	RTE_FLOW_ITEM_TYPE_VXLAN,
 	RTE_FLOW_ITEM_TYPE_GENEVE,
-	RTE_FLOW_ITEM_TYPE_VXLAN_GPE
+	RTE_FLOW_ITEM_TYPE_VXLAN_GPE,
+	RTE_FLOW_ITEM_TYPE_PTYPE
 };
 
 static enum rte_flow_item_type L2_next_items[] = {
 	RTE_FLOW_ITEM_TYPE_VLAN,
 	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_IPV6
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_PTYPE
 };
 
 static enum rte_flow_item_type L3_next_items[] = {
@@ -169,7 +171,8 @@ static enum rte_flow_item_type L3_next_items[] = {
 	RTE_FLOW_ITEM_TYPE_UDP,
 	RTE_FLOW_ITEM_TYPE_SCTP,
 	RTE_FLOW_ITEM_TYPE_NVGRE,
-	RTE_FLOW_ITEM_TYPE_ICMP
+	RTE_FLOW_ITEM_TYPE_ICMP,
+	RTE_FLOW_ITEM_TYPE_PTYPE
 };
 
 static enum rte_flow_item_type L4_next_items[] = {
@@ -1205,6 +1208,32 @@ hns3_parse_geneve(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 }
 
 static int
+hns3_parse_ptype(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
+		  struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ptype *spec = item->spec;
+	const struct rte_flow_item_ptype *mask = item->mask;
+
+	if (spec == NULL || mask == NULL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "PTYPE must set spec and mask at the same time!");
+
+	if (spec->packet_type != RTE_PTYPE_TUNNEL_MASK ||
+	    (mask->packet_type & RTE_PTYPE_TUNNEL_MASK) != RTE_PTYPE_TUNNEL_MASK)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, item,
+					  "PTYPE only support general tunnel!");
+
+	/*
+	 * Set tunnel_type to non-zero, so that meta-data's tunnel packet bit
+	 * will be set, then hardware will match tunnel packet.
+	 */
+	rule->key_conf.spec.tunnel_type = 1;
+	return 0;
+}
+
+static int
 hns3_parse_tunnel(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		  struct rte_flow_error *error)
 {
@@ -1236,6 +1265,9 @@ hns3_parse_tunnel(const struct rte_flow_item *item, struct hns3_fdir_rule *rule,
 		break;
 	case RTE_FLOW_ITEM_TYPE_GENEVE:
 		ret = hns3_parse_geneve(item, rule, error);
+		break;
+	case RTE_FLOW_ITEM_TYPE_PTYPE:
+		ret = hns3_parse_ptype(item, rule, error);
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
@@ -1336,7 +1368,12 @@ is_tunnel_packet(enum rte_flow_item_type type)
 	if (type == RTE_FLOW_ITEM_TYPE_VXLAN_GPE ||
 	    type == RTE_FLOW_ITEM_TYPE_VXLAN ||
 	    type == RTE_FLOW_ITEM_TYPE_NVGRE ||
-	    type == RTE_FLOW_ITEM_TYPE_GENEVE)
+	    type == RTE_FLOW_ITEM_TYPE_GENEVE ||
+	    /*
+	     * Here treat PTYPE as tunnel type because driver only support PTYPE_TUNNEL,
+	     * other PTYPE will return error in hns3_parse_ptype() later.
+	     */
+	    type == RTE_FLOW_ITEM_TYPE_PTYPE)
 		return true;
 	return false;
 }
