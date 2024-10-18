@@ -72,8 +72,6 @@ Deprecation Notices
     - ``struct rte_flow_tunnel``
   gro
     - ``struct tcp6_flow_key``
-  hash
-    - ``struct rte_ipv6_tuple``
 
 * net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
   is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
