@@ -17,14 +17,16 @@
 
 #include <stdint.h>
 
+#include <rte_common.h>
+#include <rte_ip6.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define RTE_FIB6_IPV6_ADDR_SIZE		16
+#define RTE_FIB6_IPV6_ADDR_SIZE (RTE_DEPRECATED(RTE_FIB6_IPV6_ADDR_SIZE) RTE_IPV6_ADDR_SIZE)
 /** Maximum depth value possible for IPv6 FIB. */
-#define RTE_FIB6_MAXDEPTH       128
+#define RTE_FIB6_MAXDEPTH (RTE_DEPRECATED(RTE_FIB6_MAXDEPTH) RTE_IPV6_MAX_DEPTH)
 
 struct rte_fib6;
 struct rte_rib6;
@@ -37,11 +39,11 @@ enum rte_fib6_type {
 
 /** Modify FIB function */
 typedef int (*rte_fib6_modify_fn_t)(struct rte_fib6 *fib,
-	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE], uint8_t depth,
+	const struct rte_ipv6_addr *ip, uint8_t depth,
 	uint64_t next_hop, int op);
 /** FIB bulk lookup function */
 typedef void (*rte_fib6_lookup_fn_t)(void *fib,
-	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, const unsigned int n);
 
 enum rte_fib6_op {
@@ -134,7 +136,7 @@ rte_fib6_free(struct rte_fib6 *fib);
  *   0 on success, negative value otherwise
  */
 int
-rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+rte_fib6_add(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop);
 
 /**
@@ -151,7 +153,7 @@ rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
  */
 int
 rte_fib6_delete(struct rte_fib6 *fib,
-	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE], uint8_t depth);
+	const struct rte_ipv6_addr *ip, uint8_t depth);
 
 /**
  * Lookup multiple IP addresses in the FIB.
@@ -172,7 +174,7 @@ rte_fib6_delete(struct rte_fib6 *fib,
  */
 int
 rte_fib6_lookup_bulk(struct rte_fib6 *fib,
-	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, int n);
 
 /**

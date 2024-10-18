@@ -14,6 +14,7 @@
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
 
+#include <rte_ip6.h>
 #include <rte_rib6.h>
 #include <rte_fib6.h>
 
@@ -49,7 +50,7 @@ struct rte_fib6 {
 };
 
 static void
-dummy_lookup(void *fib_p, uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+dummy_lookup(void *fib_p, const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, const unsigned int n)
 {
 	unsigned int i;
@@ -57,7 +58,7 @@ dummy_lookup(void *fib_p, uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
 	struct rte_rib6_node *node;
 
 	for (i = 0; i < n; i++) {
-		node = rte_rib6_lookup(fib->rib, ips[i]);
+		node = rte_rib6_lookup(fib->rib, ips[i].a);
 		if (node != NULL)
 			rte_rib6_get_nh(node, &next_hops[i]);
 		else
@@ -66,26 +67,26 @@ dummy_lookup(void *fib_p, uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
 }
 
 static int
-dummy_modify(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+dummy_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop, int op)
 {
 	struct rte_rib6_node *node;
-	if ((fib == NULL) || (depth > RTE_FIB6_MAXDEPTH))
+	if ((fib == NULL) || (depth > RTE_IPV6_MAX_DEPTH))
 		return -EINVAL;
 
-	node = rte_rib6_lookup_exact(fib->rib, ip, depth);
+	node = rte_rib6_lookup_exact(fib->rib, ip->a, depth);
 
 	switch (op) {
 	case RTE_FIB6_ADD:
 		if (node == NULL)
-			node = rte_rib6_insert(fib->rib, ip, depth);
+			node = rte_rib6_insert(fib->rib, ip->a, depth);
 		if (node == NULL)
 			return -rte_errno;
 		return rte_rib6_set_nh(node, next_hop);
 	case RTE_FIB6_DEL:
 		if (node == NULL)
 			return -ENOENT;
-		rte_rib6_remove(fib->rib, ip, depth);
+		rte_rib6_remove(fib->rib, ip->a, depth);
 		return 0;
 	}
 	return -EINVAL;
@@ -118,28 +119,28 @@ init_dataplane(struct rte_fib6 *fib, __rte_unused int socket_id,
 }
 
 int
-rte_fib6_add(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+rte_fib6_add(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth, uint64_t next_hop)
 {
 	if ((fib == NULL) || (ip == NULL) || (fib->modify == NULL) ||
-			(depth > RTE_FIB6_MAXDEPTH))
+			(depth > RTE_IPV6_MAX_DEPTH))
 		return -EINVAL;
 	return fib->modify(fib, ip, depth, next_hop, RTE_FIB6_ADD);
 }
 
 int
-rte_fib6_delete(struct rte_fib6 *fib, const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
+rte_fib6_delete(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 	uint8_t depth)
 {
 	if ((fib == NULL) || (ip == NULL) || (fib->modify == NULL) ||
-			(depth > RTE_FIB6_MAXDEPTH))
+			(depth > RTE_IPV6_MAX_DEPTH))
 		return -EINVAL;
 	return fib->modify(fib, ip, depth, 0, RTE_FIB6_DEL);
 }
 
 int
 rte_fib6_lookup_bulk(struct rte_fib6 *fib,
-	uint8_t ips[][RTE_FIB6_IPV6_ADDR_SIZE],
+	const struct rte_ipv6_addr *ips,
 	uint64_t *next_hops, int n)
 {
 	FIB6_RETURN_IF_TRUE((fib == NULL) || (ips == NULL) ||

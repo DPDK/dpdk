@@ -294,6 +294,12 @@ API Changes
 * net: A new IPv6 address structure was introduced to replace ad-hoc ``uint8_t[16]`` arrays.
   The following libraries and symbols were modified:
 
+  fib
+    - ``rte_fib6_add()``
+    - ``rte_fib6_delete()``
+    - ``rte_fib6_lookup_bulk()``
+    - ``RTE_FIB6_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
+    - ``RTE_FIB6_MAXDEPTH`` (deprecated, replaced with ``RTE_IPV6_MAX_DEPTH``)
   lpm
     - ``rte_lpm6_add()``
     - ``rte_lpm6_delete()``

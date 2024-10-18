@@ -70,10 +70,6 @@ Deprecation Notices
     - ``struct rte_flow_item_icmp6_nd_na``
     - ``struct rte_flow_action_set_ipv6``
     - ``struct rte_flow_tunnel``
-  fib
-    - ``rte_fib6_add()``
-    - ``rte_fib6_delete()``
-    - ``rte_fib6_lookup_bulk()``
   gro
     - ``struct tcp6_flow_key``
   hash

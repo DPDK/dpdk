@@ -1074,7 +1074,7 @@ run_v6(void)
 	for (k = config.print_fract, i = 0; k > 0; k--) {
 		start = rte_rdtsc_precise();
 		for (j = 0; j < (config.nb_routes - i) / k; j++) {
-			ret = rte_fib6_add(fib, rt[i + j].addr.a,
+			ret = rte_fib6_add(fib, &rt[i + j].addr,
 				rt[i + j].depth, rt[i + j].nh);
 			if (unlikely(ret != 0)) {
 				printf("Can not add a route to FIB, err %d\n",
@@ -1119,7 +1119,7 @@ run_v6(void)
 	acc = 0;
 	for (i = 0; i < config.nb_lookup_ips; i += BURST_SZ) {
 		start = rte_rdtsc_precise();
-		ret = rte_fib6_lookup_bulk(fib, &tbl6[i].a,
+		ret = rte_fib6_lookup_bulk(fib, &tbl6[i],
 			fib_nh, BURST_SZ);
 		acc += rte_rdtsc_precise() - start;
 		if (ret != 0) {
@@ -1146,7 +1146,7 @@ run_v6(void)
 
 		for (i = 0; i < config.nb_lookup_ips; i += BURST_SZ) {
 			rte_fib6_lookup_bulk(fib,
-				&tbl6[i].a,
+				&tbl6[i],
 				fib_nh, BURST_SZ);
 			rte_lpm6_lookup_bulk_func(lpm,
 				&tbl6[i],
@@ -1166,7 +1166,7 @@ run_v6(void)
 	for (k = config.print_fract, i = 0; k > 0; k--) {
 		start = rte_rdtsc_precise();
 		for (j = 0; j < (config.nb_routes - i) / k; j++)
-			rte_fib6_delete(fib, rt[i + j].addr.a, rt[i + j].depth);
+			rte_fib6_delete(fib, &rt[i + j].addr, rt[i + j].depth);
 
 		printf("AVG FIB delete %"PRIu64"\n",
 			(rte_rdtsc_precise() - start) / j);
