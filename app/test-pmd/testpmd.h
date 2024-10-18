@@ -712,8 +712,8 @@ struct vxlan_encap_conf {
 	rte_be16_t udp_dst;
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t ip_tos;
 	uint8_t ip_ttl;
@@ -730,8 +730,8 @@ struct nvgre_encap_conf {
 	uint8_t tni[3];
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -762,8 +762,8 @@ struct mplsogre_encap_conf {
 	uint8_t label[3];
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];
@@ -786,8 +786,8 @@ struct mplsoudp_encap_conf {
 	rte_be16_t udp_dst;
 	rte_be32_t ipv4_src;
 	rte_be32_t ipv4_dst;
-	uint8_t ipv6_src[16];
-	uint8_t ipv6_dst[16];
+	struct rte_ipv6_addr ipv6_src;
+	struct rte_ipv6_addr ipv6_dst;
 	rte_be16_t vlan_tci;
 	uint8_t eth_src[RTE_ETHER_ADDR_LEN];
 	uint8_t eth_dst[RTE_ETHER_ADDR_LEN];

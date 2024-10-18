@@ -266,7 +266,7 @@ cmd_neigh_add_ipv6_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
 	uint64_t mac;
 
 	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		ip[i] = res->ip.addr.ipv6.s6_addr[i];
+		ip[i] = res->ip.addr.ipv6.a[i];
 
 	if (parser_mac_read(&mac, res->mac)) {
 		printf(MSG_ARG_INVALID, "mac");

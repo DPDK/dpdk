@@ -33,28 +33,6 @@ struct object_list global_obj_list;
 	(unsigned)((unsigned char *)&addr)[3]
 #endif
 
-#ifndef NIP6
-#define NIP6_FMT "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x"
-#define NIP6(addr)					\
-	(unsigned)((addr).s6_addr[0]),			\
-	(unsigned)((addr).s6_addr[1]),			\
-	(unsigned)((addr).s6_addr[2]),			\
-	(unsigned)((addr).s6_addr[3]),			\
-	(unsigned)((addr).s6_addr[4]),			\
-	(unsigned)((addr).s6_addr[5]),			\
-	(unsigned)((addr).s6_addr[6]),			\
-	(unsigned)((addr).s6_addr[7]),			\
-	(unsigned)((addr).s6_addr[8]),			\
-	(unsigned)((addr).s6_addr[9]),			\
-	(unsigned)((addr).s6_addr[10]),			\
-	(unsigned)((addr).s6_addr[11]),			\
-	(unsigned)((addr).s6_addr[12]),			\
-	(unsigned)((addr).s6_addr[13]),			\
-	(unsigned)((addr).s6_addr[14]),			\
-	(unsigned)((addr).s6_addr[15])
-#endif
-
-
 /**********************************************************/
 
 /* Show or delete tokens. 8< */
@@ -74,8 +52,8 @@ static void cmd_obj_del_show_parsed(void *parsed_result,
 		snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
 			 NIPQUAD(res->obj->ip.addr.ipv4));
 	else
-		snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
-			 NIP6(res->obj->ip.addr.ipv6));
+		snprintf(ip_str, sizeof(ip_str), RTE_IPV6_ADDR_FMT,
+			 RTE_IPV6_ADDR_SPLIT(&res->obj->ip.addr.ipv6));
 
 	if (strcmp(res->action, "del") == 0) {
 		SLIST_REMOVE(&global_obj_list, res->obj, object, next);
@@ -145,8 +123,8 @@ static void cmd_obj_add_parsed(void *parsed_result,
 		snprintf(ip_str, sizeof(ip_str), NIPQUAD_FMT,
 			 NIPQUAD(o->ip.addr.ipv4));
 	else
-		snprintf(ip_str, sizeof(ip_str), NIP6_FMT,
-			 NIP6(o->ip.addr.ipv6));
+		snprintf(ip_str, sizeof(ip_str), RTE_IPV6_ADDR_FMT,
+			 RTE_IPV6_ADDR_SPLIT(&o->ip.addr.ipv6));
 
 	cmdline_printf(cl, "Object %s added, ip=%s\n",
 		       o->name, ip_str);

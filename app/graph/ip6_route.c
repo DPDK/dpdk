@@ -157,13 +157,13 @@ cmd_ipv6_lookup_route_add_ipv6_parsed(void *parsed_result, __rte_unused struct c
 	int rc = -EINVAL, i;
 
 	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.ip[i] = res->ip.addr.ipv6.s6_addr[i];
+		config.ip[i] = res->ip.addr.ipv6.a[i];
 
 	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.mask[i] = res->mask.addr.ipv6.s6_addr[i];
+		config.mask[i] = res->mask.addr.ipv6.a[i];
 
 	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.gateway[i] = res->via_ip.addr.ipv6.s6_addr[i];
+		config.gateway[i] = res->via_ip.addr.ipv6.a[i];
 
 	rc = route_ip6_add(&config);
 	if (rc)

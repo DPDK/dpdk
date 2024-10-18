@@ -8977,9 +8977,7 @@ do { \
 #define IPV6_ADDR_TO_ARRAY(ip_addr, ip) \
 do { \
 	if ((ip_addr).family == AF_INET6) \
-		rte_memcpy(&(ip), \
-				 &((ip_addr).addr.ipv6), \
-				 sizeof(struct in6_addr)); \
+		ip = ip_addr.addr.ipv6; \
 	else { \
 		fprintf(stderr, "invalid parameter.\n"); \
 		return; \

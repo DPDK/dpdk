@@ -627,10 +627,10 @@ cmd_ethdev_dev_ip6_addr_add_parsed(void *parsed_result, __rte_unused struct cmdl
 	int rc = -EINVAL, i;
 
 	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.ip[i] = res->ip.addr.ipv6.s6_addr[i];
+		config.ip[i] = res->ip.addr.ipv6.a[i];
 
 	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
-		config.mask[i] = res->mask.addr.ipv6.s6_addr[i];
+		config.mask[i] = res->mask.addr.ipv6.a[i];
 
 	rc = ethdev_ip6_addr_add(res->dev, &config);
 	if (rc < 0)

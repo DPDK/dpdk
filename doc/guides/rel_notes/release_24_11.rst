@@ -294,6 +294,8 @@ API Changes
 * net: A new IPv6 address structure was introduced to replace ad-hoc ``uint8_t[16]`` arrays.
   The following libraries and symbols were modified:
 
+  cmdline
+    - ``cmdline_ipaddr_t``
   fib
     - ``rte_fib6_add()``
     - ``rte_fib6_delete()``
