@@ -5,6 +5,8 @@
 #ifndef APP_GRAPH_NEIGH_PRIV_H
 #define APP_GRAPH_NEIGH_PRIV_H
 
+#include <rte_ip6.h>
+
 #define MAX_NEIGH_ENTRIES 32
 
 struct neigh_ipv4_config {
@@ -18,7 +20,7 @@ TAILQ_HEAD(neigh4_head, neigh_ipv4_config);
 
 struct neigh_ipv6_config {
 	TAILQ_ENTRY(neigh_ipv6_config) next;
-	uint8_t ip[16];
+	struct rte_ipv6_addr ip;
 	uint64_t mac;
 	bool is_used;
 };

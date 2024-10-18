@@ -17,6 +17,7 @@
  */
 #include <rte_common.h>
 #include <rte_compat.h>
+#include <rte_ip6.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,7 +49,7 @@ enum rte_node_ip6_lookup_next {
  *   0 on success, negative otherwise.
  */
 __rte_experimental
-int rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
+int rte_node_ip6_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16_t next_hop,
 			   enum rte_node_ip6_lookup_next next_node);
 
 /**

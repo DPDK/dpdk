@@ -76,8 +76,6 @@ Deprecation Notices
     - ``struct rte_ipv6_tuple``
   ipsec
     - ``struct rte_ipsec_sadv6_key``
-  node
-    - ``rte_node_ip6_route_add()``
   pipeline
     - ``struct rte_table_action_ipv6_header``
 

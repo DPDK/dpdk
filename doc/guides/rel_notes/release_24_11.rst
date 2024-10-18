@@ -313,6 +313,8 @@ API Changes
     - ``RTE_LPM6_MAX_DEPTH`` (deprecated, replaced with ``RTE_IPV6_MAX_DEPTH``)
   net
     - ``struct rte_ipv6_hdr``
+  node
+    - ``rte_node_ip6_route_add()``
   table
     - ``struct rte_table_lpm_ipv6_key``
     - ``RTE_LPM_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)

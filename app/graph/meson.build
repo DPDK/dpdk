@@ -9,7 +9,7 @@ if not build
     subdir_done()
 endif
 
-deps += ['graph', 'eal', 'lpm', 'ethdev', 'node', 'cmdline']
+deps += ['graph', 'eal', 'lpm', 'ethdev', 'node', 'cmdline', 'net']
 sources = files(
         'cli.c',
         'conn.c',

@@ -258,17 +258,15 @@ ip6_lookup_node_process_scalar(struct rte_graph *graph, struct rte_node *node,
 }
 
 int
-rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
+rte_node_ip6_route_add(const struct rte_ipv6_addr *ip, uint8_t depth, uint16_t next_hop,
 		       enum rte_node_ip6_lookup_next next_node)
 {
 	char abuf[INET6_ADDRSTRLEN];
-	struct in6_addr in6;
 	uint8_t socket;
 	uint32_t val;
 	int ret;
 
-	memcpy(in6.s6_addr, ip, RTE_IPV6_ADDR_SIZE);
-	inet_ntop(AF_INET6, &in6, abuf, sizeof(abuf));
+	inet_ntop(AF_INET6, ip, abuf, sizeof(abuf));
 	/* Embedded next node id into 24 bit next hop */
 	val = ((next_node << 16) | next_hop) & ((1ull << 24) - 1);
 	node_dbg("ip6_lookup", "LPM: Adding route %s / %d nh (0x%x)", abuf,
@@ -278,8 +276,7 @@ rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
 		if (!ip6_lookup_nm.lpm_tbl[socket])
 			continue;
 
-		ret = rte_lpm6_add(ip6_lookup_nm.lpm_tbl[socket],
-				   (const struct rte_ipv6_addr *)ip, depth, val);
+		ret = rte_lpm6_add(ip6_lookup_nm.lpm_tbl[socket], ip, depth, val);
 		if (ret < 0) {
 			node_err("ip6_lookup",
 				 "Unable to add entry %s / %d nh (%x) to LPM "
