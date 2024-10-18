@@ -469,6 +469,22 @@ struct rte_ipv6_hdr {
 	struct rte_ipv6_addr dst_addr;	/**< IP address of destination host(s). */
 } __rte_packed;
 
+/**
+ * Check that the IPv6 header version field is valid according to RFC 8200 section 3.
+ *
+ * @param ip
+ *   The IPv6 header.
+ * @return
+ *   @c 0 if the version field is valid. @c -EINVAL otherwise.
+ */
+static inline int rte_ipv6_check_version(const struct rte_ipv6_hdr *ip)
+{
+	uint8_t version = ((const uint8_t *)ip)[0];
+	if ((version & 0xf0) != 0x60)
+		return -EINVAL;
+	return 0;
+}
+
 /* IPv6 routing extension type definition. */
 #define RTE_IPV6_SRCRT_TYPE_4 4
 
