@@ -680,7 +680,7 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 						  "found.");
 
 		ipv6 = (const struct rte_flow_action_set_ipv6 *)a->conf;
-		memcpy(fs->nat_fip, ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
+		memcpy(fs->nat_fip, &ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
 		*nmode |= 1 << 0;
 		break;
 	case RTE_FLOW_ACTION_TYPE_SET_IPV6_DST:
@@ -693,7 +693,7 @@ ch_rte_parse_atype_switch(const struct rte_flow_action *a,
 						  "found.");
 
 		ipv6 = (const struct rte_flow_action_set_ipv6 *)a->conf;
-		memcpy(fs->nat_lip, ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
+		memcpy(fs->nat_lip, &ipv6->ipv6_addr, sizeof(ipv6->ipv6_addr));
 		*nmode |= 1 << 1;
 		break;
 	case RTE_FLOW_ACTION_TYPE_SET_TP_SRC:

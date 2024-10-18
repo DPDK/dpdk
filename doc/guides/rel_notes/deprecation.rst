@@ -61,16 +61,6 @@ Deprecation Notices
   us extending existing enum/define.
   One solution can be using a fixed size array instead of ``.*MAX.*`` value.
 
-* net: A new IPv6 address structure will be introduced in DPDK 24.11.
-  It will replace all ad-hoc ``uint8_t[16]`` arrays in all public APIs and structures.
-  The following libraries and symbols are expected to be affected:
-
-  ethdev
-    - ``struct rte_flow_item_icmp6_nd_ns``
-    - ``struct rte_flow_item_icmp6_nd_na``
-    - ``struct rte_flow_action_set_ipv6``
-    - ``struct rte_flow_tunnel``
-
 * net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
   is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.
   The struct ``rte_flow_item_vxlan_gpe`` and its mask ``rte_flow_item_vxlan_gpe_mask``

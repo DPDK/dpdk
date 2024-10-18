@@ -304,7 +304,7 @@ add_set_src_ipv6(struct rte_flow_action *actions,
 
 	/* IPv6 value to set is random each time */
 	for (i = 0; i < 16; i++) {
-		set_ipv6[para.core_idx].ipv6_addr[i] = ipv6 & 0xff;
+		set_ipv6[para.core_idx].ipv6_addr.a[i] = ipv6 & 0xff;
 		ipv6 = ipv6 >> 8;
 	}
 
@@ -327,7 +327,7 @@ add_set_dst_ipv6(struct rte_flow_action *actions,
 
 	/* IPv6 value to set is random each time */
 	for (i = 0; i < 16; i++) {
-		set_ipv6[para.core_idx].ipv6_addr[i] = ipv6 & 0xff;
+		set_ipv6[para.core_idx].ipv6_addr.a[i] = ipv6 & 0xff;
 		ipv6 = ipv6 >> 8;
 	}
 

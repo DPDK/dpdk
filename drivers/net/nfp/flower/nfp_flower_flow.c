@@ -3011,7 +3011,7 @@ nfp_flow_action_set_ipv6(char *act_data,
 	set_ip->reserved = 0;
 
 	for (i = 0; i < 4; i++) {
-		rte_memcpy(&tmp, &set_ipv6->ipv6_addr[i * 4], 4);
+		rte_memcpy(&tmp, &set_ipv6->ipv6_addr.a[i * 4], 4);
 		set_ip->ipv6[i].exact = tmp;
 		set_ip->ipv6[i].mask = RTE_BE32(0xffffffff);
 	}
