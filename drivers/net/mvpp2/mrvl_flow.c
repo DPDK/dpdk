@@ -1031,7 +1031,6 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 	       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_ipv6 *spec = NULL, *mask = NULL;
-	struct rte_ipv6_hdr zero;
 	uint32_t flow_mask;
 	int ret;
 
@@ -1043,8 +1042,6 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 	if (ret)
 		return ret;
 
-	memset(&zero, 0, sizeof(zero));
-
 	if (mask->hdr.payload_len ||
 	    mask->hdr.hop_limits) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1052,15 +1049,13 @@ mrvl_parse_ip6(const struct rte_flow_item *item,
 		return -rte_errno;
 	}
 
-	if (memcmp(mask->hdr.src_addr,
-		   zero.src_addr, sizeof(mask->hdr.src_addr))) {
+	if (!rte_ipv6_addr_is_unspec(&mask->hdr.src_addr)) {
 		ret = mrvl_parse_ip6_sip(spec, mask, flow);
 		if (ret)
 			goto out;
 	}
 
-	if (memcmp(mask->hdr.dst_addr,
-		   zero.dst_addr, sizeof(mask->hdr.dst_addr))) {
+	if (!rte_ipv6_addr_is_unspec(&mask->hdr.dst_addr)) {
 		ret = mrvl_parse_ip6_dip(spec, mask, flow);
 		if (ret)
 			goto out;
