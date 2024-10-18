@@ -275,8 +275,8 @@ and v6 is a tuple for IPv6:
 
     struct rte_ipsec_sadv6_key {
         uint32_t spi;
-        uint8_t dip[16];
-        uint8_t sip[16];
+        struct rte_ipv6_addr dip;
+        struct rte_ipv6_addr sip;
     };
 
 As an example, lookup related code could look like that:

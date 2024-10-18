@@ -74,8 +74,6 @@ Deprecation Notices
     - ``struct tcp6_flow_key``
   hash
     - ``struct rte_ipv6_tuple``
-  ipsec
-    - ``struct rte_ipsec_sadv6_key``
 
 * net, ethdev: The flow item ``RTE_FLOW_ITEM_TYPE_VXLAN_GPE``
   is replaced with ``RTE_FLOW_ITEM_TYPE_VXLAN``.

@@ -248,8 +248,8 @@ get_random_rules(struct rule *tbl, uint32_t nb_rules, int rule_tbl)
 						(uint64_t)(edge + step));
 			if (config.ipv6) {
 				for (j = 0; j < 16; j++) {
-					tbl[i].tuple.v6.dip[j] = rte_rand();
-					tbl[i].tuple.v6.sip[j] = rte_rand();
+					tbl[i].tuple.v6.dip.a[j] = rte_rand();
+					tbl[i].tuple.v6.sip.a[j] = rte_rand();
 				}
 			} else {
 				tbl[i].tuple.v4.dip = rte_rand();
@@ -274,9 +274,9 @@ get_random_rules(struct rule *tbl, uint32_t nb_rules, int rule_tbl)
 					(uint64_t)(edge + step));
 				if (config.ipv6) {
 					for (j = 0; j < 16; j++) {
-						tbl[i].tuple.v6.dip[j] =
+						tbl[i].tuple.v6.dip.a[j] =
 								rte_rand();
-						tbl[i].tuple.v6.sip[j] =
+						tbl[i].tuple.v6.sip.a[j] =
 								rte_rand();
 					}
 				} else {
@@ -289,12 +289,8 @@ get_random_rules(struct rule *tbl, uint32_t nb_rules, int rule_tbl)
 					config.nb_rules].tuple.v4.spi;
 				if (config.ipv6) {
 					int r_idx = i % config.nb_rules;
-					memcpy(tbl[i].tuple.v6.dip,
-						rules_tbl[r_idx].tuple.v6.dip,
-						sizeof(tbl[i].tuple.v6.dip));
-					memcpy(tbl[i].tuple.v6.sip,
-						rules_tbl[r_idx].tuple.v6.sip,
-						sizeof(tbl[i].tuple.v6.sip));
+					tbl[i].tuple.v6.dip = rules_tbl[r_idx].tuple.v6.dip;
+					tbl[i].tuple.v6.sip = rules_tbl[r_idx].tuple.v6.sip;
 				} else {
 					tbl[i].tuple.v4.dip = rules_tbl[i %
 						config.nb_rules].tuple.v4.dip;
@@ -472,8 +468,8 @@ print_result(const union rte_ipsec_sad_key *key, void *res)
 	v4 = &key->v4;
 	v6 = &key->v6;
 	spi = (config.ipv6 == 0) ? v4->spi : v6->spi;
-	dip = (config.ipv6 == 0) ? &v4->dip : (const void *)v6->dip;
-	sip = (config.ipv6 == 0) ? &v4->sip : (const void *)v6->sip;
+	dip = (config.ipv6 == 0) ? &v4->dip : (const void *)&v6->dip;
+	sip = (config.ipv6 == 0) ? &v4->sip : (const void *)&v6->sip;
 
 	if (res == NULL) {
 		printf("TUPLE: ");
@@ -500,8 +496,8 @@ print_result(const union rte_ipsec_sad_key *key, void *res)
 	v4 = &rule->tuple.v4;
 	v6 = &rule->tuple.v6;
 	spi = (config.ipv6 == 0) ? v4->spi : v6->spi;
-	dip = (config.ipv6 == 0) ? &v4->dip : (const void *)v6->dip;
-	sip = (config.ipv6 == 0) ? &v4->sip : (const void *)v6->sip;
+	dip = (config.ipv6 == 0) ? &v4->dip : (const void *)&v6->dip;
+	sip = (config.ipv6 == 0) ? &v4->sip : (const void *)&v6->sip;
 	printf("\n\tpoints to RULE ID %zu ",
 		RTE_PTR_DIFF(res, rules_tbl)/sizeof(struct rule));
 	print_tuple(af, spi, dip, sip);

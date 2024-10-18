@@ -89,7 +89,7 @@ parse_rt_tokens(char **tokens, uint32_t n_tokens,
 					(uint32_t)ip.s_addr);
 				route_ipv4->depth = (uint8_t)depth;
 			} else {
-				struct in6_addr ip;
+				struct rte_ipv6_addr ip;
 				uint32_t depth;
 
 				APP_CHECK(parse_ipv6_addr(tokens[ti],
@@ -99,7 +99,7 @@ parse_rt_tokens(char **tokens, uint32_t n_tokens,
 					tokens[ti]);
 				if (status->status < 0)
 					return;
-				memcpy(&route_ipv6->ip, ip.s6_addr, 16);
+				route_ipv6->ip = ip;
 				route_ipv6->depth = (uint8_t)depth;
 			}
 		}

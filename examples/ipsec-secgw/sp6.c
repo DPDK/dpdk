@@ -17,36 +17,6 @@
 
 #define INIT_ACL_RULE_NUM	128
 
-#define IPV6_FROM_SP(acr, fidx_low, fidx_high) \
-		(((uint64_t)(acr).field[(fidx_high)].value.u32 << 32) | \
-		(acr).field[(fidx_low)].value.u32)
-
-#define IPV6_DST_FROM_SP(addr, acr) do {\
-		(addr).ip.ip6.ip6[0] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
-						IP6_DST1, IP6_DST0));\
-		(addr).ip.ip6.ip6[1] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
-						IP6_DST3, IP6_DST2));\
-		} while (0)
-
-#define IPV6_SRC_FROM_SP(addr, acr) do {\
-		(addr).ip.ip6.ip6[0] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
-							IP6_SRC1, IP6_SRC0));\
-		(addr).ip.ip6.ip6[1] = rte_cpu_to_be_64(IPV6_FROM_SP((acr), \
-							IP6_SRC3, IP6_SRC2));\
-		} while (0)
-
-#define IPV6_DST_MASK_FROM_SP(mask, acr) \
-		((mask) = (acr).field[IP6_DST0].mask_range.u32 + \
-			(acr).field[IP6_DST1].mask_range.u32 + \
-			(acr).field[IP6_DST2].mask_range.u32 + \
-			(acr).field[IP6_DST3].mask_range.u32)
-
-#define IPV6_SRC_MASK_FROM_SP(mask, acr) \
-		((mask) = (acr).field[IP6_SRC0].mask_range.u32 + \
-			(acr).field[IP6_SRC1].mask_range.u32 + \
-			(acr).field[IP6_SRC2].mask_range.u32 + \
-			(acr).field[IP6_SRC3].mask_range.u32)
-
 enum {
 	IP6_PROTO,
 	IP6_SRC0,
@@ -61,8 +31,6 @@ enum {
 	IP6_DSTP,
 	IP6_NUM
 };
-
-#define IP6_ADDR_SIZE 16
 
 static struct rte_acl_field_def ip6_defs[IP6_NUM] = {
 	{
@@ -153,6 +121,52 @@ static uint32_t sp_out_sz;
 static struct acl6_rules *acl6_rules_in;
 static uint32_t nb_acl6_rules_in;
 static uint32_t sp_in_sz;
+
+static struct rte_ipv6_addr
+ipv6_src_from_sp(const struct acl6_rules *rule)
+{
+	struct rte_ipv6_addr alignas(alignof(rte_be64_t)) addr = RTE_IPV6_ADDR_UNSPEC;
+	rte_be64_t *values = (rte_be64_t *)&addr;
+
+	values[0] = rte_cpu_to_be_64((uint64_t)rule->field[IP6_SRC0].value.u32 << 32 |
+		rule->field[IP6_SRC1].value.u32);
+	values[1] = rte_cpu_to_be_64((uint64_t)rule->field[IP6_SRC2].value.u32 << 32 |
+		rule->field[IP6_SRC3].value.u32);
+
+	return addr;
+}
+
+static struct rte_ipv6_addr
+ipv6_dst_from_sp(const struct acl6_rules *rule)
+{
+	struct rte_ipv6_addr alignas(alignof(rte_be64_t)) addr = RTE_IPV6_ADDR_UNSPEC;
+	rte_be64_t *values = (rte_be64_t *)&addr;
+
+	values[0] = rte_cpu_to_be_64((uint64_t)rule->field[IP6_DST0].value.u32 << 32 |
+		rule->field[IP6_DST1].value.u32);
+	values[1] = rte_cpu_to_be_64((uint64_t)rule->field[IP6_DST2].value.u32 << 32 |
+		rule->field[IP6_DST3].value.u32);
+
+	return addr;
+}
+
+static uint32_t
+ipv6_src_mask_from_sp(const struct acl6_rules *rule)
+{
+	return rule->field[IP6_SRC0].mask_range.u32 +
+		rule->field[IP6_SRC1].mask_range.u32 +
+		rule->field[IP6_SRC2].mask_range.u32 +
+		rule->field[IP6_SRC3].mask_range.u32;
+}
+
+static uint32_t
+ipv6_dst_mask_from_sp(const struct acl6_rules *rule)
+{
+	return rule->field[IP6_DST0].mask_range.u32 +
+		rule->field[IP6_DST1].mask_range.u32 +
+		rule->field[IP6_DST2].mask_range.u32 +
+		rule->field[IP6_DST3].mask_range.u32;
+}
 
 static int
 extend_sp_arr(struct acl6_rules **sp_tbl, uint32_t cur_cnt, uint32_t *cur_sz)
@@ -329,7 +343,7 @@ parse_sp6_tokens(char **tokens, uint32_t n_tokens,
 		}
 
 		if (strcmp(tokens[ti], "src") == 0) {
-			struct in6_addr ip;
+			struct rte_ipv6_addr ip;
 			uint32_t depth;
 
 			APP_CHECK_PRESENCE(src_p, tokens[ti], status);
@@ -347,34 +361,34 @@ parse_sp6_tokens(char **tokens, uint32_t n_tokens,
 				return;
 
 			rule_ipv6->field[1].value.u32 =
-				(uint32_t)ip.s6_addr[0] << 24 |
-				(uint32_t)ip.s6_addr[1] << 16 |
-				(uint32_t)ip.s6_addr[2] << 8 |
-				(uint32_t)ip.s6_addr[3];
+				(uint32_t)ip.a[0] << 24 |
+				(uint32_t)ip.a[1] << 16 |
+				(uint32_t)ip.a[2] << 8 |
+				(uint32_t)ip.a[3];
 			rule_ipv6->field[1].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 			depth = (depth > 32) ? (depth - 32) : 0;
 			rule_ipv6->field[2].value.u32 =
-				(uint32_t)ip.s6_addr[4] << 24 |
-				(uint32_t)ip.s6_addr[5] << 16 |
-				(uint32_t)ip.s6_addr[6] << 8 |
-				(uint32_t)ip.s6_addr[7];
+				(uint32_t)ip.a[4] << 24 |
+				(uint32_t)ip.a[5] << 16 |
+				(uint32_t)ip.a[6] << 8 |
+				(uint32_t)ip.a[7];
 			rule_ipv6->field[2].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 			depth = (depth > 32) ? (depth - 32) : 0;
 			rule_ipv6->field[3].value.u32 =
-				(uint32_t)ip.s6_addr[8] << 24 |
-				(uint32_t)ip.s6_addr[9] << 16 |
-				(uint32_t)ip.s6_addr[10] << 8 |
-				(uint32_t)ip.s6_addr[11];
+				(uint32_t)ip.a[8] << 24 |
+				(uint32_t)ip.a[9] << 16 |
+				(uint32_t)ip.a[10] << 8 |
+				(uint32_t)ip.a[11];
 			rule_ipv6->field[3].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 			depth = (depth > 32) ? (depth - 32) : 0;
 			rule_ipv6->field[4].value.u32 =
-				(uint32_t)ip.s6_addr[12] << 24 |
-				(uint32_t)ip.s6_addr[13] << 16 |
-				(uint32_t)ip.s6_addr[14] << 8 |
-				(uint32_t)ip.s6_addr[15];
+				(uint32_t)ip.a[12] << 24 |
+				(uint32_t)ip.a[13] << 16 |
+				(uint32_t)ip.a[14] << 8 |
+				(uint32_t)ip.a[15];
 			rule_ipv6->field[4].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 
@@ -383,7 +397,7 @@ parse_sp6_tokens(char **tokens, uint32_t n_tokens,
 		}
 
 		if (strcmp(tokens[ti], "dst") == 0) {
-			struct in6_addr ip;
+			struct rte_ipv6_addr ip;
 			uint32_t depth;
 
 			APP_CHECK_PRESENCE(dst_p, tokens[ti], status);
@@ -401,34 +415,34 @@ parse_sp6_tokens(char **tokens, uint32_t n_tokens,
 				return;
 
 			rule_ipv6->field[5].value.u32 =
-				(uint32_t)ip.s6_addr[0] << 24 |
-				(uint32_t)ip.s6_addr[1] << 16 |
-				(uint32_t)ip.s6_addr[2] << 8 |
-				(uint32_t)ip.s6_addr[3];
+				(uint32_t)ip.a[0] << 24 |
+				(uint32_t)ip.a[1] << 16 |
+				(uint32_t)ip.a[2] << 8 |
+				(uint32_t)ip.a[3];
 			rule_ipv6->field[5].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 			depth = (depth > 32) ? (depth - 32) : 0;
 			rule_ipv6->field[6].value.u32 =
-				(uint32_t)ip.s6_addr[4] << 24 |
-				(uint32_t)ip.s6_addr[5] << 16 |
-				(uint32_t)ip.s6_addr[6] << 8 |
-				(uint32_t)ip.s6_addr[7];
+				(uint32_t)ip.a[4] << 24 |
+				(uint32_t)ip.a[5] << 16 |
+				(uint32_t)ip.a[6] << 8 |
+				(uint32_t)ip.a[7];
 			rule_ipv6->field[6].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 			depth = (depth > 32) ? (depth - 32) : 0;
 			rule_ipv6->field[7].value.u32 =
-				(uint32_t)ip.s6_addr[8] << 24 |
-				(uint32_t)ip.s6_addr[9] << 16 |
-				(uint32_t)ip.s6_addr[10] << 8 |
-				(uint32_t)ip.s6_addr[11];
+				(uint32_t)ip.a[8] << 24 |
+				(uint32_t)ip.a[9] << 16 |
+				(uint32_t)ip.a[10] << 8 |
+				(uint32_t)ip.a[11];
 			rule_ipv6->field[7].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 			depth = (depth > 32) ? (depth - 32) : 0;
 			rule_ipv6->field[8].value.u32 =
-				(uint32_t)ip.s6_addr[12] << 24 |
-				(uint32_t)ip.s6_addr[13] << 16 |
-				(uint32_t)ip.s6_addr[14] << 8 |
-				(uint32_t)ip.s6_addr[15];
+				(uint32_t)ip.a[12] << 24 |
+				(uint32_t)ip.a[13] << 16 |
+				(uint32_t)ip.a[14] << 8 |
+				(uint32_t)ip.a[15];
 			rule_ipv6->field[8].mask_range.u32 =
 				(depth > 32) ? 32 : depth;
 
@@ -757,10 +771,10 @@ sp6_spi_present(uint32_t spi, int inbound, struct ip_addr ip_addr[2],
 	rule = bsearch(&tmpl, acr, num, sizeof(struct acl6_rules), sp_cmp);
 	if (rule != NULL) {
 		if (NULL != ip_addr && NULL != mask) {
-			IPV6_SRC_FROM_SP(ip_addr[0], *rule);
-			IPV6_DST_FROM_SP(ip_addr[1], *rule);
-			IPV6_SRC_MASK_FROM_SP(mask[0], *rule);
-			IPV6_DST_MASK_FROM_SP(mask[1], *rule);
+			ip_addr[0].ip.ip6 = ipv6_src_from_sp(rule);
+			ip_addr[1].ip.ip6 = ipv6_dst_from_sp(rule);
+			mask[0] = ipv6_src_mask_from_sp(rule);
+			mask[1] = ipv6_dst_mask_from_sp(rule);
 		}
 		return RTE_PTR_DIFF(rule, acr) / sizeof(struct acl6_rules);
 	}

@@ -88,10 +88,10 @@ ipv6_hdr_print(struct rte_ipv6_hdr *hdr)
 }
 
 static int
-ipv6_addr_cpy(uint8_t *spec, uint8_t *mask, char *token,
+ipv6_addr_cpy(struct rte_ipv6_addr *spec, struct rte_ipv6_addr *mask, char *token,
 	      struct parse_status *status)
 {
-	struct in6_addr ip;
+	struct rte_ipv6_addr ip;
 	uint32_t depth, i;
 
 	APP_CHECK(parse_ipv6_addr(token, &ip, &depth) == 0, status,
@@ -99,11 +99,11 @@ ipv6_addr_cpy(uint8_t *spec, uint8_t *mask, char *token,
 	if (status->status < 0)
 		return -1;
 
-	memcpy(mask, &rte_flow_item_ipv6_mask.hdr.src_addr, sizeof(ip));
-	memcpy(spec, ip.s6_addr, sizeof(struct in6_addr));
+	*mask = rte_flow_item_ipv6_mask.hdr.src_addr;
+	*spec = ip;
 
-	for (i = 0; i < depth && (i%8 <= sizeof(struct in6_addr)); i++)
-		mask[i/8] &= ~(1 << (7-i%8));
+	for (i = 0; i < depth && (i%8 <= sizeof(*mask)); i++)
+		mask->a[i/8] &= ~(1 << (7-i%8));
 
 	return 0;
 }
@@ -175,8 +175,8 @@ parse_flow_tokens(char **tokens, uint32_t n_tokens,
 				INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
 				if (status->status < 0)
 					return;
-				if (ipv6_addr_cpy(rule->ipv6.spec.hdr.src_addr.a,
-						  rule->ipv6.mask.hdr.src_addr.a,
+				if (ipv6_addr_cpy(&rule->ipv6.spec.hdr.src_addr,
+						  &rule->ipv6.mask.hdr.src_addr,
 						  tokens[ti], status))
 					return;
 			}
@@ -184,8 +184,8 @@ parse_flow_tokens(char **tokens, uint32_t n_tokens,
 				INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
 				if (status->status < 0)
 					return;
-				if (ipv6_addr_cpy(rule->ipv6.spec.hdr.dst_addr.a,
-						  rule->ipv6.mask.hdr.dst_addr.a,
+				if (ipv6_addr_cpy(&rule->ipv6.spec.hdr.dst_addr,
+						  &rule->ipv6.mask.hdr.dst_addr,
 						  tokens[ti], status))
 					return;
 			}

@@ -65,10 +65,7 @@ typedef int32_t (*ipsec_xform_fn)(struct rte_mbuf *m, struct ipsec_sa *sa,
 struct ip_addr {
 	union {
 		uint32_t ip4;
-		union {
-			uint64_t ip6[2];
-			uint8_t ip6_b[16];
-		} ip6;
+		struct rte_ipv6_addr ip6;
 	} ip;
 };
 
