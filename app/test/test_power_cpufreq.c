@@ -9,6 +9,7 @@
 #include <string.h>
 #include <inttypes.h>
 #include <rte_cycles.h>
+#include <rte_lcore.h>
 
 #include "test.h"
 
@@ -46,9 +47,10 @@ test_power_caps(void)
 
 static uint32_t total_freq_num;
 static uint32_t freqs[TEST_POWER_FREQS_NUM_MAX];
+static uint32_t cpu_id;
 
 static int
-check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
+check_cur_freq(__rte_unused unsigned int lcore_id, uint32_t idx, bool turbo)
 {
 #define TEST_POWER_CONVERT_TO_DECIMAL 10
 #define MAX_LOOP 100
@@ -62,13 +64,13 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 	int i;
 
 	if (snprintf(fullpath, sizeof(fullpath),
-		TEST_POWER_SYSFILE_CPUINFO_FREQ, lcore_id) < 0) {
+		TEST_POWER_SYSFILE_CPUINFO_FREQ, cpu_id) < 0) {
 		return 0;
 	}
 	f = fopen(fullpath, "r");
 	if (f == NULL) {
 		if (snprintf(fullpath, sizeof(fullpath),
-			TEST_POWER_SYSFILE_SCALING_FREQ, lcore_id) < 0) {
+			TEST_POWER_SYSFILE_SCALING_FREQ, cpu_id) < 0) {
 			return 0;
 		}
 		f = fopen(fullpath, "r");
@@ -497,6 +499,19 @@ test_power_cpufreq(void)
 {
 	int ret = -1;
 	enum power_management_env env;
+	rte_cpuset_t lcore_cpus;
+
+	lcore_cpus = rte_lcore_cpuset(TEST_POWER_LCORE_ID);
+	if (CPU_COUNT(&lcore_cpus) != 1) {
+		printf("Power management doesn't support lcore %u mapping to %u CPUs\n",
+				TEST_POWER_LCORE_ID,
+				CPU_COUNT(&lcore_cpus));
+		return TEST_SKIPPED;
+	}
+	for (cpu_id = 0; cpu_id < CPU_SETSIZE; cpu_id++) {
+		if (CPU_ISSET(cpu_id, &lcore_cpus))
+			break;
+	}
 
 	/* Test initialisation of a valid lcore */
 	ret = rte_power_init(TEST_POWER_LCORE_ID);
