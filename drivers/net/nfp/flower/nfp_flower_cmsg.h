@@ -1045,4 +1045,11 @@ int nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 int nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_cfg_head *head);
 
+static inline bool
+nfp_flower_port_is_phy_port(uint32_t port_id)
+{
+	return (NFP_FLOWER_CMSG_PORT_TYPE(port_id) ==
+			NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT);
+}
+
 #endif /* __NFP_CMSG_H__ */

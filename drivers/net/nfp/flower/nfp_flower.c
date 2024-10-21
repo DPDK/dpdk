@@ -215,6 +215,76 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 	return app_fw_flower->nfd_func.pf_xmit_t(tx_queue, tx_pkts, nb_pkts);
 }
 
+uint16_t
+nfp_flower_multiple_pf_recv_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
+{
+	int i;
+	uint16_t recv;
+	uint32_t data_len;
+	struct nfp_net_rxq *rxq;
+	struct rte_eth_dev *repr_dev;
+	struct nfp_flower_representor *repr;
+
+	recv = nfp_net_recv_pkts(rx_queue, rx_pkts, nb_pkts);
+	if (recv != 0) {
+		/* Grab a handle to the representor struct */
+		rxq = rx_queue;
+		repr_dev = &rte_eth_devices[rxq->port_id];
+		repr = repr_dev->data->dev_private;
+
+		data_len = 0;
+		for (i = 0; i < recv; i++)
+			data_len += rx_pkts[i]->data_len;
+
+		repr->repr_stats.ipackets += recv;
+		repr->repr_stats.q_ipackets[rxq->qidx] += recv;
+		repr->repr_stats.q_ibytes[rxq->qidx] += data_len;
+	}
+
+	return recv;
+}
+
+uint16_t
+nfp_flower_multiple_pf_xmit_pkts(void *tx_queue,
+		struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	int i;
+	uint16_t sent;
+	uint32_t data_len;
+	struct nfp_net_txq *txq;
+	struct rte_eth_dev *repr_dev;
+	struct nfp_flower_representor *repr;
+
+	txq = tx_queue;
+	if (unlikely(txq == NULL)) {
+		PMD_TX_LOG(ERR, "TX Bad queue.");
+		return 0;
+	}
+
+	/* Grab a handle to the representor struct */
+	repr_dev = &rte_eth_devices[txq->port_id];
+	repr = repr_dev->data->dev_private;
+	for (i = 0; i < nb_pkts; i++)
+		nfp_flower_pkt_add_metadata(repr->app_fw_flower,
+				tx_pkts[i], repr->port_id);
+
+	sent = nfp_flower_pf_xmit_pkts(tx_queue, tx_pkts, nb_pkts);
+	if (sent != 0) {
+		data_len = 0;
+		for (i = 0; i < sent; i++)
+			data_len += tx_pkts[i]->data_len;
+
+		repr->repr_stats.opackets += sent;
+		repr->repr_stats.q_opackets[txq->qidx] += sent;
+		repr->repr_stats.q_obytes[txq->qidx] += data_len;
+	}
+
+	return sent;
+}
+
 static int
 nfp_flower_init_vnic_common(struct nfp_net_hw_priv *hw_priv,
 		struct nfp_net_hw *hw,

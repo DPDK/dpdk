@@ -9,6 +9,7 @@
 
 #include <rte_alarm.h>
 
+#include "flower/nfp_flower_cmsg.h"
 #include "flower/nfp_flower_representor.h"
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
@@ -2876,4 +2877,51 @@ nfp_net_vf_config_app_init(struct nfp_net_hw *net_hw,
 	}
 
 	return 0;
+}
+
+static inline bool
+nfp_net_meta_has_no_port_type(__rte_unused struct nfp_net_meta_parsed *meta)
+{
+	return true;
+}
+
+static inline bool
+nfp_net_meta_is_not_pf_port(__rte_unused struct nfp_net_meta_parsed *meta)
+{
+	return false;
+}
+
+static inline bool
+nfp_net_meta_is_pf_port(struct nfp_net_meta_parsed *meta)
+{
+	return nfp_flower_port_is_phy_port(meta->port_id);
+}
+
+bool
+nfp_net_recv_pkt_meta_check_register(struct nfp_net_hw_priv *hw_priv)
+{
+	struct nfp_pf_dev *pf_dev;
+
+	pf_dev = hw_priv->pf_dev;
+	if (!hw_priv->is_pf) {
+		pf_dev->recv_pkt_meta_check_t = nfp_net_meta_has_no_port_type;
+		return true;
+	}
+
+	switch (pf_dev->app_fw_id) {
+	case NFP_APP_FW_CORE_NIC:
+		pf_dev->recv_pkt_meta_check_t = nfp_net_meta_has_no_port_type;
+		break;
+	case NFP_APP_FW_FLOWER_NIC:
+		if (pf_dev->multi_pf.enabled)
+			pf_dev->recv_pkt_meta_check_t = nfp_net_meta_is_pf_port;
+		else
+			pf_dev->recv_pkt_meta_check_t = nfp_net_meta_is_not_pf_port;
+		break;
+	default:
+		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded.");
+		return false;
+	}
+
+	return true;
 }

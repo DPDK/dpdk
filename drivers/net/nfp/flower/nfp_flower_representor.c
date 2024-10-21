@@ -815,8 +815,8 @@ nfp_flower_multiple_pf_repr_init(struct rte_eth_dev *eth_dev,
 	hw_priv = repr_init->hw_priv;
 
 	eth_dev->dev_ops = &nfp_flower_multiple_pf_repr_dev_ops;
-	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
-	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
+	eth_dev->rx_pkt_burst = nfp_flower_multiple_pf_recv_pkts;
+	eth_dev->tx_pkt_burst = nfp_flower_multiple_pf_xmit_pkts;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
 			RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 

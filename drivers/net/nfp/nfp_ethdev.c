@@ -2536,6 +2536,12 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	hw_priv->is_pf = true;
 
+	if (!nfp_net_recv_pkt_meta_check_register(hw_priv)) {
+		PMD_INIT_LOG(ERR, "PF register meta check function failed.");
+		ret = -EIO;
+		goto hw_priv_free;
+	}
+
 	/*
 	 * PF initialization has been done at this point. Call app specific
 	 * init code now.

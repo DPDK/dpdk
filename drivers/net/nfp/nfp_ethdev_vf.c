@@ -316,6 +316,12 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	hw_priv->dev_info = dev_info;
 	hw_priv->pf_dev = pf_dev;
 
+	if (!nfp_net_recv_pkt_meta_check_register(hw_priv)) {
+		PMD_INIT_LOG(ERR, "VF register meta check function failed.");
+		err = -EINVAL;
+		goto hw_priv_free;
+	}
+
 	eth_dev->process_private = hw_priv;
 
 	/* For secondary processes, the primary has done all the work */
