@@ -24,6 +24,20 @@
 #define CTRL_VNIC_NB_DESC 512
 
 int
+nfp_flower_pf_stop(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw_priv *hw_priv;
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	hw_priv = dev->process_private;
+	nfp_flower_cmsg_port_mod(repr->app_fw_flower, repr->port_id, false);
+	(void)nfp_eth_set_configured(hw_priv->pf_dev->cpp, repr->nfp_idx, 0);
+
+	return nfp_net_stop(dev);
+}
+
+int
 nfp_flower_pf_start(struct rte_eth_dev *dev)
 {
 	int ret;
@@ -34,6 +48,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
@@ -82,6 +97,12 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Error with flower PF vNIC freelist setup.");
 		return -EIO;
+	}
+
+	hw_priv = dev->process_private;
+	if (hw_priv->pf_dev->multi_pf.enabled) {
+		(void)nfp_eth_set_configured(hw_priv->pf_dev->cpp, repr->nfp_idx, 1);
+		nfp_flower_cmsg_port_mod(repr->app_fw_flower, repr->port_id, true);
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)

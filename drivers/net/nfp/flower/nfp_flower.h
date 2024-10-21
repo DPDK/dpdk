@@ -116,6 +116,7 @@ bool nfp_flower_pf_dispatch_pkts(struct nfp_net_rxq *rxq,
 uint16_t nfp_flower_pf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts);
 int nfp_flower_pf_start(struct rte_eth_dev *dev);
+int nfp_flower_pf_stop(struct rte_eth_dev *dev);
 uint32_t nfp_flower_pkt_add_metadata(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf, uint32_t port_id);
 
