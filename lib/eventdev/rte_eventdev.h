@@ -2596,14 +2596,8 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 	}
 #endif
 	rte_eventdev_trace_enq_burst(dev_id, port_id, ev, nb_events, (void *)fn);
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (fp_ops->enqueue)(port, ev);
-	else
-		return fn(port, ev, nb_events);
+
+	return fn(port, ev, nb_events);
 }
 
 /**
@@ -2852,15 +2846,8 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 	}
 #endif
 	rte_eventdev_trace_deq_burst(dev_id, port_id, ev, nb_events);
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (fp_ops->dequeue)(port, ev, timeout_ticks);
-	else
-		return (fp_ops->dequeue_burst)(port, ev, nb_events,
-					       timeout_ticks);
+
+	return (fp_ops->dequeue_burst)(port, ev, nb_events, timeout_ticks);
 }
 
 #define RTE_EVENT_DEV_MAINT_OP_FLUSH          (1 << 0)

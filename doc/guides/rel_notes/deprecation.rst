@@ -129,14 +129,6 @@ Deprecation Notices
   This will effect the KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY
   SW PMDs.
 
-* eventdev: The single-event (non-burst) enqueue and dequeue operations,
-  used by static inline burst enqueue and dequeue functions in ``rte_eventdev.h``,
-  will be removed in DPDK 23.11.
-  This simplification includes changing the layout and potentially also
-  the size of the public ``rte_event_fp_ops`` struct, breaking the ABI.
-  Since these functions are not called directly by the application,
-  the API remains unaffected.
-
 * pipeline: The pipeline library legacy API (functions rte_pipeline_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.
   Before this, the new pipeline library API (functions rte_swx_pipeline_*)

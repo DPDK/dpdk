@@ -405,6 +405,9 @@ ABI Changes
 
 * eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
+* eventdev: Removed the single-event enqueue and dequeue function pointers
+  from ``rte_event_fp_fps``.
+
 * graph: To accommodate node specific xstats counters, added ``xstat_cntrs``,
   ``xstat_desc`` and ``xstat_count`` to ``rte_graph_cluster_node_stats``,
   added new structure ``rte_node_xstats`` to ``rte_node_register`` and
