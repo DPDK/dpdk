@@ -1009,6 +1009,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_net_hw_priv *hw_priv)
 {
 	int ret;
+	uint8_t num_pf_reprs;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
 	struct rte_eth_devargs eth_da = {
@@ -1037,8 +1038,13 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 		return 0;
 	}
 
-	/* There always exist phy repr */
-	if (eth_da.nb_representor_ports < pf_dev->total_phyports + 1) {
+	/* Calculate the number of pf repr */
+	if (pf_dev->multi_pf.enabled)
+		num_pf_reprs = 0;
+	else
+		num_pf_reprs = 1;
+
+	if (eth_da.nb_representor_ports < pf_dev->total_phyports + num_pf_reprs) {
 		PMD_INIT_LOG(ERR, "Should also create repr port for phy port and PF vNIC.");
 		return -ERANGE;
 	}
@@ -1052,7 +1058,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 	/* Fill in flower app with repr counts */
 	app_fw_flower->num_phyport_reprs = pf_dev->total_phyports;
 	app_fw_flower->num_vf_reprs = eth_da.nb_representor_ports -
-			pf_dev->total_phyports - 1;
+			pf_dev->total_phyports - num_pf_reprs;
 	if (pf_dev->max_vfs != 0 && pf_dev->sriov_vf < app_fw_flower->num_vf_reprs) {
 		PMD_INIT_LOG(ERR, "The VF repr nums %d is bigger than VF nums %d.",
 				app_fw_flower->num_vf_reprs, pf_dev->sriov_vf);
