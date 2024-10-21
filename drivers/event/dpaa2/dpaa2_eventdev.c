@@ -202,12 +202,6 @@ err:
 
 }
 
-static uint16_t
-dpaa2_eventdev_enqueue(void *port, const struct rte_event *ev)
-{
-	return dpaa2_eventdev_enqueue_burst(port, ev, 1);
-}
-
 static void dpaa2_eventdev_dequeue_wait(uint64_t timeout_ticks)
 {
 	struct epoll_event epoll_ev;
@@ -361,13 +355,6 @@ err:
 						evq_info->dpcon->dpcon_id);
 	}
 	return 0;
-}
-
-static uint16_t
-dpaa2_eventdev_dequeue(void *port, struct rte_event *ev,
-		       uint64_t timeout_ticks)
-{
-	return dpaa2_eventdev_dequeue_burst(port, ev, 1, timeout_ticks);
 }
 
 static void
@@ -1105,11 +1092,9 @@ dpaa2_eventdev_create(const char *name, struct rte_vdev_device *vdev)
 	}
 
 	eventdev->dev_ops       = &dpaa2_eventdev_ops;
-	eventdev->enqueue       = dpaa2_eventdev_enqueue;
 	eventdev->enqueue_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->enqueue_new_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->enqueue_forward_burst = dpaa2_eventdev_enqueue_burst;
-	eventdev->dequeue       = dpaa2_eventdev_dequeue;
 	eventdev->dequeue_burst = dpaa2_eventdev_dequeue_burst;
 	eventdev->txa_enqueue	= dpaa2_eventdev_txa_enqueue;
 	eventdev->txa_enqueue_same_dest	= dpaa2_eventdev_txa_enqueue_same_dest;
