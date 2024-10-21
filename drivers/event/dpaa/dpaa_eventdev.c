@@ -113,12 +113,6 @@ dpaa_event_enqueue_burst(void *port, const struct rte_event ev[],
 	return nb_events;
 }
 
-static uint16_t
-dpaa_event_enqueue(void *port, const struct rte_event *ev)
-{
-	return dpaa_event_enqueue_burst(port, ev, 1);
-}
-
 static void drain_4_bytes(int fd, fd_set *fdset)
 {
 	if (FD_ISSET(fd, fdset)) {
@@ -234,12 +228,6 @@ dpaa_event_dequeue_burst(void *port, struct rte_event ev[],
 }
 
 static uint16_t
-dpaa_event_dequeue(void *port, struct rte_event *ev, uint64_t timeout_ticks)
-{
-	return dpaa_event_dequeue_burst(port, ev, 1, timeout_ticks);
-}
-
-static uint16_t
 dpaa_event_dequeue_burst_intr(void *port, struct rte_event ev[],
 			      uint16_t nb_events, uint64_t timeout_ticks)
 {
@@ -309,14 +297,6 @@ dpaa_event_dequeue_burst_intr(void *port, struct rte_event ev[],
 	} while (cur_ticks < wait_time_ticks);
 
 	return num_frames;
-}
-
-static uint16_t
-dpaa_event_dequeue_intr(void *port,
-			struct rte_event *ev,
-			uint64_t timeout_ticks)
-{
-	return dpaa_event_dequeue_burst_intr(port, ev, 1, timeout_ticks);
 }
 
 static void
@@ -1012,17 +992,14 @@ dpaa_event_dev_create(const char *name, const char *params, struct rte_vdev_devi
 	priv = eventdev->data->dev_private;
 
 	eventdev->dev_ops       = &dpaa_eventdev_ops;
-	eventdev->enqueue       = dpaa_event_enqueue;
 	eventdev->enqueue_burst = dpaa_event_enqueue_burst;
 
-	if (dpaa_event_check_flags(params)) {
-		eventdev->dequeue	= dpaa_event_dequeue;
+	if (dpaa_event_check_flags(params))
 		eventdev->dequeue_burst = dpaa_event_dequeue_burst;
-	} else {
+	else {
 		priv->intr_mode = 1;
 		eventdev->dev_ops->timeout_ticks =
 				dpaa_event_dequeue_timeout_ticks_intr;
-		eventdev->dequeue	= dpaa_event_dequeue_intr;
 		eventdev->dequeue_burst = dpaa_event_dequeue_burst_intr;
 	}
 	eventdev->txa_enqueue = dpaa_eventdev_txa_enqueue;
