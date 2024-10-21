@@ -718,11 +718,9 @@ opdl_probe(struct rte_vdev_device *vdev)
 
 	dev->dev_ops = &evdev_opdl_ops;
 
-	dev->enqueue = opdl_event_enqueue;
 	dev->enqueue_burst = opdl_event_enqueue_burst;
 	dev->enqueue_new_burst = opdl_event_enqueue_burst;
 	dev->enqueue_forward_burst = opdl_event_enqueue_burst;
-	dev->dequeue = opdl_event_dequeue;
 	dev->dequeue_burst = opdl_event_dequeue_burst;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
