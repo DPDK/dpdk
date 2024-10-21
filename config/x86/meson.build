@@ -96,6 +96,7 @@ dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
 dpdk_conf.set('RTE_MAX_LCORE', 128)
 
 epyc_zen_cores = {
+    '__znver5__':768,
     '__znver4__':512,
     '__znver3__':256,
     '__znver2__':256,
