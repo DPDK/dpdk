@@ -26,18 +26,6 @@
 /**< Skeleton event device PMD name */
 
 static uint16_t
-skeleton_eventdev_enqueue(void *port, const struct rte_event *ev)
-{
-	struct skeleton_port *sp = port;
-
-	RTE_SET_USED(sp);
-	RTE_SET_USED(ev);
-	RTE_SET_USED(port);
-
-	return 0;
-}
-
-static uint16_t
 skeleton_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 			uint16_t nb_events)
 {
@@ -47,19 +35,6 @@ skeleton_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 	RTE_SET_USED(ev);
 	RTE_SET_USED(port);
 	RTE_SET_USED(nb_events);
-
-	return 0;
-}
-
-static uint16_t
-skeleton_eventdev_dequeue(void *port, struct rte_event *ev,
-				uint64_t timeout_ticks)
-{
-	struct skeleton_port *sp = port;
-
-	RTE_SET_USED(sp);
-	RTE_SET_USED(ev);
-	RTE_SET_USED(timeout_ticks);
 
 	return 0;
 }
@@ -350,9 +325,7 @@ skeleton_eventdev_init(struct rte_eventdev *eventdev)
 	PMD_DRV_FUNC_TRACE();
 
 	eventdev->dev_ops       = &skeleton_eventdev_ops;
-	eventdev->enqueue       = skeleton_eventdev_enqueue;
 	eventdev->enqueue_burst = skeleton_eventdev_enqueue_burst;
-	eventdev->dequeue       = skeleton_eventdev_dequeue;
 	eventdev->dequeue_burst = skeleton_eventdev_dequeue_burst;
 
 	/* For secondary processes, the primary has done all the work */
@@ -440,9 +413,7 @@ skeleton_eventdev_create(const char *name, int socket_id, struct rte_vdev_device
 	}
 
 	eventdev->dev_ops       = &skeleton_eventdev_ops;
-	eventdev->enqueue       = skeleton_eventdev_enqueue;
 	eventdev->enqueue_burst = skeleton_eventdev_enqueue_burst;
-	eventdev->dequeue       = skeleton_eventdev_dequeue;
 	eventdev->dequeue_burst = skeleton_eventdev_dequeue_burst;
 
 	event_dev_probing_finish(eventdev);
