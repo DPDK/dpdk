@@ -436,10 +436,14 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 		break;
 	case NFP_FLOWER_CMSG_PORT_TYPE_PCIE_PORT:
 		index = NFP_FLOWER_CMSG_PORT_VNIC_OFFSET(port, hw_priv->pf_dev->vf_base_id);
-		if (NFP_FLOWER_CMSG_PORT_VNIC_TYPE(port) == NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF)
-			repr =  app_fw_flower->vf_reprs[index];
-		else
+		if (NFP_FLOWER_CMSG_PORT_VNIC_TYPE(port) == NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF) {
+			repr = app_fw_flower->vf_reprs[index];
+		} else {
+			if (hw_priv->pf_dev->multi_pf.enabled)
+				return 0;
+
 			repr = app_fw_flower->pf_repr;
+		}
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Ctrl msg for unknown port %#x.", port);
