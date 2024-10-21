@@ -453,11 +453,9 @@ dsw_probe(struct rte_vdev_device *vdev)
 		return -EFAULT;
 
 	dev->dev_ops = &dsw_evdev_ops;
-	dev->enqueue = dsw_event_enqueue;
 	dev->enqueue_burst = dsw_event_enqueue_burst;
 	dev->enqueue_new_burst = dsw_event_enqueue_new_burst;
 	dev->enqueue_forward_burst = dsw_event_enqueue_forward_burst;
-	dev->dequeue = dsw_event_dequeue;
 	dev->dequeue_burst = dsw_event_dequeue_burst;
 	dev->maintain = dsw_event_maintain;
 

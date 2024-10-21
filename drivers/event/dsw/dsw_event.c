@@ -1323,12 +1323,6 @@ dsw_port_flush_out_buffers(struct dsw_evdev *dsw, struct dsw_port *source_port)
 		dsw_port_transmit_buffered(dsw, source_port, dest_port_id);
 }
 
-uint16_t
-dsw_event_enqueue(void *port, const struct rte_event *ev)
-{
-	return dsw_event_enqueue_burst(port, ev, unlikely(ev == NULL) ? 0 : 1);
-}
-
 static __rte_always_inline uint16_t
 dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 				const struct rte_event events[],
@@ -1460,12 +1454,6 @@ dsw_event_enqueue_forward_burst(void *port, const struct rte_event events[],
 	return dsw_event_enqueue_burst_generic(source_port, events,
 					       events_len, true, 0,
 					       events_len, 0);
-}
-
-uint16_t
-dsw_event_dequeue(void *port, struct rte_event *events, uint64_t wait)
-{
-	return dsw_event_dequeue_burst(port, events, 1, wait);
 }
 
 static void
