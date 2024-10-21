@@ -373,9 +373,15 @@ static void
 nfp_flower_repr_close_queue(struct rte_eth_dev *eth_dev,
 		enum nfp_repr_type repr_type)
 {
+	struct nfp_net_hw_priv *hw_priv;
+
 	switch (repr_type) {
 	case NFP_REPR_TYPE_PHYS_PORT:
-		nfp_flower_repr_free_queue(eth_dev);
+		hw_priv = eth_dev->process_private;
+		if (hw_priv->pf_dev->multi_pf.enabled)
+			nfp_flower_pf_repr_close_queue(eth_dev);
+		else
+			nfp_flower_repr_free_queue(eth_dev);
 		break;
 	case NFP_REPR_TYPE_PF:
 		nfp_flower_pf_repr_close_queue(eth_dev);
@@ -757,6 +763,51 @@ ring_cleanup:
 	return ret;
 }
 
+static int
+nfp_flower_multiple_pf_repr_init(struct rte_eth_dev *eth_dev,
+		void *init_params)
+{
+	int ret;
+	uint16_t index;
+	struct nfp_repr_init *repr_init;
+	struct nfp_net_hw_priv *hw_priv;
+	struct nfp_flower_representor *repr;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	/* Cast the input representor data to the correct struct here */
+	repr_init = init_params;
+	app_fw_flower = repr_init->flower_repr->app_fw_flower;
+
+	/* Memory has been allocated in the eth_dev_create() function */
+	repr = eth_dev->data->dev_private;
+	hw_priv = repr_init->hw_priv;
+
+	eth_dev->dev_ops = &nfp_flower_pf_repr_dev_ops;
+	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
+	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
+			RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
+
+	ret = nfp_flower_repr_base_init(eth_dev, repr, repr_init);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Flower multiple PF repr base init failed.");
+		return -ENOMEM;
+	}
+
+	eth_dev->data->representor_id = repr->vf_id;
+
+	/* Add repr to correct array */
+	index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(repr->port_id);
+	app_fw_flower->phy_reprs[index] = repr;
+
+	repr->mac_stats = hw_priv->pf_dev->mac_stats_bar +
+			(repr->nfp_idx * NFP_MAC_STATS_SIZE);
+
+	app_fw_flower->pf_ethdev = eth_dev;
+
+	return 0;
+}
+
 static void
 nfp_flower_repr_free_all(struct nfp_app_fw_flower *app_fw_flower)
 {
@@ -833,6 +884,7 @@ nfp_flower_phy_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 	int ret;
 	uint8_t id;
 	struct nfp_pf_dev *pf_dev;
+	ethdev_init_t ethdev_init;
 	struct nfp_repr_init repr_init;
 	struct nfp_eth_table_port *eth_port;
 	struct nfp_app_fw_flower *app_fw_flower;
@@ -846,21 +898,29 @@ nfp_flower_phy_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 		flower_repr->repr_type = NFP_REPR_TYPE_PHYS_PORT;
 		flower_repr->port_id = nfp_flower_get_phys_port_id(eth_port->index);
 		flower_repr->nfp_idx = eth_port->index;
-		flower_repr->vf_id = i + 1;
 
 		/* Copy the real mac of the interface to the representor struct */
 		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr->mac_addr);
-		snprintf(flower_repr->name, sizeof(flower_repr->name),
-				"%s_repr_p%d", pci_name, id);
 
 		/*
 		 * Create a eth_dev for this representor.
 		 * This will also allocate private memory for the device.
 		 */
 		repr_init.flower_repr = flower_repr;
+		if (pf_dev->multi_pf.enabled) {
+			repr_init.flower_repr->vf_id = i;
+			snprintf(flower_repr->name, sizeof(flower_repr->name),
+					"%s_repr_p", pci_name);
+			ethdev_init = nfp_flower_multiple_pf_repr_init;
+		} else {
+			repr_init.flower_repr->vf_id = i + 1;
+			snprintf(flower_repr->name, sizeof(flower_repr->name),
+					"%s_repr_p%d", pci_name, id);
+			ethdev_init = nfp_flower_repr_init;
+		}
 		ret = rte_eth_dev_create(&pf_dev->pci_dev->device, flower_repr->name,
 				sizeof(struct nfp_flower_representor),
-				NULL, NULL, nfp_flower_repr_init, &repr_init);
+				NULL, NULL, ethdev_init, &repr_init);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
 			break;
@@ -925,6 +985,8 @@ nfp_flower_pf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 	struct nfp_pf_dev *pf_dev;
 
 	pf_dev = hw_priv->pf_dev;
+	if (pf_dev->multi_pf.enabled)
+		return 0;
 
 	/* Create a rte_eth_dev for PF vNIC representor */
 	flower_repr->repr_type = NFP_REPR_TYPE_PF;
@@ -932,12 +994,8 @@ nfp_flower_pf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 	/* PF vNIC reprs get a random MAC address */
 	rte_eth_random_addr(flower_repr->mac_addr.addr_bytes);
 
-	if (pf_dev->multi_pf.enabled)
-		snprintf(flower_repr->name, sizeof(flower_repr->name),
-				"%s_repr_pf%d", pci_name, pf_dev->multi_pf.function_id);
-	else
-		snprintf(flower_repr->name, sizeof(flower_repr->name),
-				"%s_repr_pf", pci_name);
+	snprintf(flower_repr->name, sizeof(flower_repr->name),
+			"%s_repr_pf", pci_name);
 
 	/* Create a eth_dev for this representor */
 	ret = rte_eth_dev_create(&pf_dev->pci_dev->device, flower_repr->name,
