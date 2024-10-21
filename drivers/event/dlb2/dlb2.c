@@ -1484,10 +1484,6 @@ error_exit:
 }
 
 static inline uint16_t
-dlb2_event_enqueue_delayed(void *event_port,
-			   const struct rte_event events[]);
-
-static inline uint16_t
 dlb2_event_enqueue_burst_delayed(void *event_port,
 				 const struct rte_event events[],
 				 uint16_t num);
@@ -1662,7 +1658,6 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	 * performance reasons.
 	 */
 	if (qm_port->token_pop_mode == DELAYED_POP) {
-		dlb2->event_dev->enqueue = dlb2_event_enqueue_delayed;
 		dlb2->event_dev->enqueue_burst =
 			dlb2_event_enqueue_burst_delayed;
 		dlb2->event_dev->enqueue_new_burst =
@@ -3304,20 +3299,6 @@ dlb2_event_enqueue_burst_delayed(void *event_port,
 	return __dlb2_event_enqueue_burst(event_port, events, num, true);
 }
 
-static inline uint16_t
-dlb2_event_enqueue(void *event_port,
-		   const struct rte_event events[])
-{
-	return __dlb2_event_enqueue_burst(event_port, events, 1, false);
-}
-
-static inline uint16_t
-dlb2_event_enqueue_delayed(void *event_port,
-			   const struct rte_event events[])
-{
-	return __dlb2_event_enqueue_burst(event_port, events, 1, true);
-}
-
 static uint16_t
 dlb2_event_enqueue_new_burst(void *event_port,
 			     const struct rte_event events[],
@@ -4313,12 +4294,6 @@ dlb2_event_dequeue_burst(void *event_port, struct rte_event *ev, uint16_t num,
 }
 
 static uint16_t
-dlb2_event_dequeue(void *event_port, struct rte_event *ev, uint64_t wait)
-{
-	return dlb2_event_dequeue_burst(event_port, ev, 1, wait);
-}
-
-static uint16_t
 dlb2_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 				uint16_t num, uint64_t wait)
 {
@@ -4373,13 +4348,6 @@ dlb2_event_dequeue_burst_sparse(void *event_port, struct rte_event *ev,
 	DLB2_INC_STAT(ev_port->stats.traffic.total_polls, 1);
 	DLB2_INC_STAT(ev_port->stats.traffic.zero_polls, ((cnt == 0) ? 1 : 0));
 	return cnt;
-}
-
-static uint16_t
-dlb2_event_dequeue_sparse(void *event_port, struct rte_event *ev,
-			  uint64_t wait)
-{
-	return dlb2_event_dequeue_burst_sparse(event_port, ev, 1, wait);
 }
 
 static void
@@ -4693,19 +4661,15 @@ dlb2_entry_points_init(struct rte_eventdev *dev)
 	/* Expose PMD's eventdev interface */
 
 	dev->dev_ops = &dlb2_eventdev_entry_ops;
-	dev->enqueue = dlb2_event_enqueue;
 	dev->enqueue_burst = dlb2_event_enqueue_burst;
 	dev->enqueue_new_burst = dlb2_event_enqueue_new_burst;
 	dev->enqueue_forward_burst = dlb2_event_enqueue_forward_burst;
 
 	dlb2 = dev->data->dev_private;
-	if (dlb2->poll_mode == DLB2_CQ_POLL_MODE_SPARSE) {
-		dev->dequeue = dlb2_event_dequeue_sparse;
+	if (dlb2->poll_mode == DLB2_CQ_POLL_MODE_SPARSE)
 		dev->dequeue_burst = dlb2_event_dequeue_burst_sparse;
-	} else {
-		dev->dequeue = dlb2_event_dequeue;
+	else
 		dev->dequeue_burst = dlb2_event_dequeue_burst;
-	}
 }
 
 int
