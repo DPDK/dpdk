@@ -1039,7 +1039,7 @@ nfp_net_xstats_size(const struct rte_eth_dev *dev)
 
 	if (rte_eth_dev_is_repr(dev)) {
 		repr = dev->data->dev_private;
-		if (repr->mac_stats == NULL)
+		if (nfp_flower_repr_is_vf(repr))
 			vf_flag = true;
 	} else {
 		hw = dev->data->dev_private;

@@ -389,6 +389,12 @@ nfp_flower_repr_close_queue(struct rte_eth_dev *eth_dev,
 	}
 }
 
+static void
+nfp_flower_repr_base_uninit(struct nfp_flower_representor *repr)
+{
+	rte_free(repr->repr_xstats_base);
+}
+
 static int
 nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 {
@@ -396,7 +402,7 @@ nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 	struct nfp_flower_representor *repr;
 
 	repr = eth_dev->data->dev_private;
-	rte_free(repr->repr_xstats_base);
+	nfp_flower_repr_base_uninit(repr);
 	rte_free(repr->ring);
 
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
@@ -617,6 +623,63 @@ nfp_flower_pf_repr_init(struct rte_eth_dev *eth_dev,
 }
 
 static int
+nfp_flower_repr_base_init(struct rte_eth_dev *eth_dev,
+		struct nfp_flower_representor *repr,
+		struct nfp_repr_init *repr_init)
+{
+	int ret;
+	struct nfp_flower_representor *init_repr_data;
+
+	/* Cast the input representor data to the correct struct here */
+	init_repr_data = repr_init->flower_repr;
+
+	/* Copy data here from the input representor template */
+	repr->vf_id            = init_repr_data->vf_id;
+	repr->switch_domain_id = init_repr_data->switch_domain_id;
+	repr->port_id          = init_repr_data->port_id;
+	repr->nfp_idx          = init_repr_data->nfp_idx;
+	repr->repr_type        = init_repr_data->repr_type;
+	repr->app_fw_flower    = init_repr_data->app_fw_flower;
+
+	snprintf(repr->name, sizeof(repr->name), "%s", init_repr_data->name);
+
+	/* This backer port is that of the eth_device created for the PF vNIC */
+	eth_dev->data->backer_port_id = 0;
+
+	/* Allocating memory for mac addr */
+	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate memory for repr MAC.");
+		return -ENOMEM;
+	}
+
+	rte_ether_addr_copy(&init_repr_data->mac_addr, &repr->mac_addr);
+	rte_ether_addr_copy(&init_repr_data->mac_addr, eth_dev->data->mac_addrs);
+
+	/* Send reify message to hardware to inform it about the new repr */
+	ret = nfp_flower_cmsg_repr_reify(init_repr_data->app_fw_flower, repr);
+	if (ret != 0) {
+		PMD_INIT_LOG(WARNING, "Failed to send repr reify message.");
+		goto mac_cleanup;
+	}
+
+	/* Allocate memory for extended statistics counters */
+	repr->repr_xstats_base = rte_zmalloc("rte_eth_xstat",
+			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
+	if (repr->repr_xstats_base == NULL) {
+		PMD_INIT_LOG(ERR, "No memory for xstats base on device %s!", repr->name);
+		ret = -ENOMEM;
+		goto mac_cleanup;
+	}
+
+	return 0;
+
+mac_cleanup:
+	rte_free(eth_dev->data->mac_addrs);
+	return ret;
+}
+
+static int
 nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		void *init_params)
 {
@@ -654,49 +717,23 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		return -ENOMEM;
 	}
 
-	/* Copy data here from the input representor template */
-	repr->idx              = init_repr_data->idx;
-	repr->vf_id            = init_repr_data->vf_id;
-	repr->switch_domain_id = init_repr_data->switch_domain_id;
-	repr->port_id          = init_repr_data->port_id;
-	repr->nfp_idx          = init_repr_data->nfp_idx;
-	repr->repr_type        = init_repr_data->repr_type;
-	repr->app_fw_flower    = init_repr_data->app_fw_flower;
-
-	strlcpy(repr->name, init_repr_data->name, sizeof(repr->name));
-
 	eth_dev->dev_ops = &nfp_flower_repr_dev_ops;
 	eth_dev->rx_pkt_burst = nfp_flower_repr_rx_burst;
 	eth_dev->tx_pkt_burst = nfp_flower_repr_tx_burst;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
 			RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
+	ret = nfp_flower_repr_base_init(eth_dev, repr, repr_init);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Flower repr base init failed.");
+		goto ring_cleanup;
+	}
+
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
 		eth_dev->data->representor_id = repr->vf_id;
 	else
 		eth_dev->data->representor_id = repr->vf_id +
 				app_fw_flower->num_phyport_reprs + 1;
-
-	/* This backer port is that of the eth_device created for the PF vNIC */
-	eth_dev->data->backer_port_id = 0;
-
-	/* Allocating memory for mac addr */
-	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
-	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate memory for repr MAC.");
-		ret = -ENOMEM;
-		goto ring_cleanup;
-	}
-
-	rte_ether_addr_copy(&init_repr_data->mac_addr, &repr->mac_addr);
-	rte_ether_addr_copy(&init_repr_data->mac_addr, eth_dev->data->mac_addrs);
-
-	/* Send reify message to hardware to inform it about the new repr */
-	ret = nfp_flower_cmsg_repr_reify(app_fw_flower, repr);
-	if (ret != 0) {
-		PMD_INIT_LOG(WARNING, "Failed to send repr reify message.");
-		goto mac_cleanup;
-	}
 
 	/* Add repr to correct array */
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
@@ -712,19 +749,8 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 				(repr->nfp_idx * NFP_MAC_STATS_SIZE);
 	}
 
-	/* Allocate memory for extended statistics counters */
-	repr->repr_xstats_base = rte_zmalloc("rte_eth_xstat",
-			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
-	if (repr->repr_xstats_base == NULL) {
-		PMD_INIT_LOG(ERR, "No memory for xstats base on device %s!", repr->name);
-		ret = -ENOMEM;
-		goto mac_cleanup;
-	}
-
 	return 0;
 
-mac_cleanup:
-	rte_free(eth_dev->data->mac_addrs);
 ring_cleanup:
 	rte_free(repr->ring);
 
