@@ -107,32 +107,6 @@ retry:
 	}
 }
 
-uint16_t __rte_hot
-cn10k_sso_hws_enq(void *port, const struct rte_event *ev)
-{
-	struct cn10k_sso_hws *ws = port;
-
-	switch (ev->op) {
-	case RTE_EVENT_OP_NEW:
-		return cn10k_sso_hws_new_event(ws, ev);
-	case RTE_EVENT_OP_FORWARD:
-		cn10k_sso_hws_forward_event(ws, ev);
-		break;
-	case RTE_EVENT_OP_RELEASE:
-		if (ws->swtag_req) {
-			cnxk_sso_hws_desched(ev->u64, ws->base);
-			ws->swtag_req = 0;
-			break;
-		}
-		cnxk_sso_hws_swtag_flush(ws->base);
-		break;
-	default:
-		return 0;
-	}
-
-	return 1;
-}
-
 #define VECTOR_SIZE_BITS	     0xFFFFFFFFFFF80000ULL
 #define VECTOR_GET_LINE_OFFSET(line) (19 + (3 * line))
 
@@ -384,8 +358,29 @@ uint16_t __rte_hot
 cn10k_sso_hws_enq_burst(void *port, const struct rte_event ev[],
 			uint16_t nb_events)
 {
+	struct cn10k_sso_hws *ws = port;
+
 	RTE_SET_USED(nb_events);
-	return cn10k_sso_hws_enq(port, ev);
+
+	switch (ev->op) {
+	case RTE_EVENT_OP_NEW:
+		return cn10k_sso_hws_new_event(ws, ev);
+	case RTE_EVENT_OP_FORWARD:
+		cn10k_sso_hws_forward_event(ws, ev);
+		break;
+	case RTE_EVENT_OP_RELEASE:
+		if (ws->swtag_req) {
+			cnxk_sso_hws_desched(ev->u64, ws->base);
+			ws->swtag_req = 0;
+			break;
+		}
+		cnxk_sso_hws_swtag_flush(ws->base);
+		break;
+	default:
+		return 0;
+	}
+
+	return 1;
 }
 
 uint16_t __rte_hot

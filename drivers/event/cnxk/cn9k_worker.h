@@ -359,7 +359,6 @@ cn9k_sso_hws_get_work_empty(uint64_t base, struct rte_event *ev,
 }
 
 /* CN9K Fastpath functions. */
-uint16_t __rte_hot cn9k_sso_hws_enq(void *port, const struct rte_event *ev);
 uint16_t __rte_hot cn9k_sso_hws_enq_burst(void *port,
 					  const struct rte_event ev[],
 					  uint16_t nb_events);
@@ -371,8 +370,6 @@ uint16_t __rte_hot cn9k_sso_hws_enq_fwd_burst(void *port,
 					      uint16_t nb_events);
 int __rte_hot cn9k_sso_hws_profile_switch(void *port, uint8_t profile);
 
-uint16_t __rte_hot cn9k_sso_hws_dual_enq(void *port,
-					 const struct rte_event *ev);
 uint16_t __rte_hot cn9k_sso_hws_dual_enq_burst(void *port,
 					       const struct rte_event ev[],
 					       uint16_t nb_events);
@@ -389,23 +386,15 @@ uint16_t __rte_hot cn9k_sso_hws_dual_ca_enq(void *port, struct rte_event ev[],
 int __rte_hot cn9k_sso_hws_dual_profile_switch(void *port, uint8_t profile);
 
 #define R(name, flags)                                                         \
-	uint16_t __rte_hot cn9k_sso_hws_deq_##name(                            \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn9k_sso_hws_deq_burst_##name(                      \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);                                       \
-	uint16_t __rte_hot cn9k_sso_hws_deq_tmo_##name(                        \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn9k_sso_hws_deq_tmo_burst_##name(                  \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);                                       \
-	uint16_t __rte_hot cn9k_sso_hws_deq_seg_##name(                        \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn9k_sso_hws_deq_seg_burst_##name(                  \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);                                       \
-	uint16_t __rte_hot cn9k_sso_hws_deq_tmo_seg_##name(                    \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
 	uint16_t __rte_hot cn9k_sso_hws_deq_tmo_seg_burst_##name(              \
 		void *port, struct rte_event ev[], uint16_t nb_events,         \
 		uint64_t timeout_ticks);
@@ -413,118 +402,113 @@ int __rte_hot cn9k_sso_hws_dual_profile_switch(void *port, uint8_t profile);
 NIX_RX_FASTPATH_MODES
 #undef R
 
-#define SSO_DEQ(fn, flags)                                                     \
-	uint16_t __rte_hot fn(void *port, struct rte_event *ev,                \
-			      uint64_t timeout_ticks)                          \
-	{                                                                      \
-		struct cn9k_sso_hws *ws = port;                                \
-		RTE_SET_USED(timeout_ticks);                                   \
-		if (ws->swtag_req) {                                           \
-			ws->swtag_req = 0;                                     \
-			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_TAG);   \
-			return 1;                                              \
-		}                                                              \
-		return cn9k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);   \
+#define SSO_DEQ(fn, flags)                                                                         \
+	static __rte_always_inline uint16_t fn(void *port, struct rte_event *ev,                   \
+					       uint64_t timeout_ticks)                             \
+	{                                                                                          \
+		struct cn9k_sso_hws *ws = port;                                                    \
+		RTE_SET_USED(timeout_ticks);                                                       \
+		if (ws->swtag_req) {                                                               \
+			ws->swtag_req = 0;                                                         \
+			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_TAG);                       \
+			return 1;                                                                  \
+		}                                                                                  \
+		return cn9k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);                       \
 	}
 
 #define SSO_DEQ_SEG(fn, flags)	  SSO_DEQ(fn, flags | NIX_RX_MULTI_SEG_F)
 
-#define SSO_DEQ_TMO(fn, flags)                                                 \
-	uint16_t __rte_hot fn(void *port, struct rte_event *ev,                \
-			      uint64_t timeout_ticks)                          \
-	{                                                                      \
-		struct cn9k_sso_hws *ws = port;                                \
-		uint16_t ret = 1;                                              \
-		uint64_t iter;                                                 \
-		if (ws->swtag_req) {                                           \
-			ws->swtag_req = 0;                                     \
-			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_TAG);   \
-			return ret;                                            \
-		}                                                              \
-		ret = cn9k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);    \
-		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)     \
-			ret = cn9k_sso_hws_get_work(ws, ev, flags,             \
-						    ws->lookup_mem);           \
-		return ret;                                                    \
+#define SSO_DEQ_TMO(fn, flags)                                                                     \
+	static __rte_always_inline uint16_t fn(void *port, struct rte_event *ev,                   \
+					       uint64_t timeout_ticks)                             \
+	{                                                                                          \
+		struct cn9k_sso_hws *ws = port;                                                    \
+		uint16_t ret = 1;                                                                  \
+		uint64_t iter;                                                                     \
+		if (ws->swtag_req) {                                                               \
+			ws->swtag_req = 0;                                                         \
+			cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_TAG);                       \
+			return ret;                                                                \
+		}                                                                                  \
+		ret = cn9k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);                        \
+		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)                         \
+			ret = cn9k_sso_hws_get_work(ws, ev, flags, ws->lookup_mem);                \
+		return ret;                                                                        \
 	}
 
 #define SSO_DEQ_TMO_SEG(fn, flags)    SSO_DEQ_TMO(fn, flags | NIX_RX_MULTI_SEG_F)
 
-#define R(name, flags)                                                         \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_##name(                       \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_burst_##name(                 \
-		void *port, struct rte_event ev[], uint16_t nb_events,         \
-		uint64_t timeout_ticks);                                       \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_tmo_##name(                   \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_tmo_burst_##name(             \
-		void *port, struct rte_event ev[], uint16_t nb_events,         \
-		uint64_t timeout_ticks);                                       \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_seg_##name(                   \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_seg_burst_##name(             \
-		void *port, struct rte_event ev[], uint16_t nb_events,         \
-		uint64_t timeout_ticks);                                       \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_tmo_seg_##name(               \
-		void *port, struct rte_event *ev, uint64_t timeout_ticks);     \
-	uint16_t __rte_hot cn9k_sso_hws_dual_deq_tmo_seg_burst_##name(         \
-		void *port, struct rte_event ev[], uint16_t nb_events,         \
-		uint64_t timeout_ticks);
+#define R(name, flags)                                                                             \
+	uint16_t __rte_hot cn9k_sso_hws_dual_deq_burst_##name(                                     \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn9k_sso_hws_dual_deq_tmo_burst_##name(                                 \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn9k_sso_hws_dual_deq_seg_burst_##name(                                 \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn9k_sso_hws_dual_deq_tmo_seg_burst_##name(                             \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);
 
 NIX_RX_FASTPATH_MODES
 #undef R
 
-#define SSO_DUAL_DEQ(fn, flags)                                                \
-	uint16_t __rte_hot fn(void *port, struct rte_event *ev,                \
-			      uint64_t timeout_ticks)                          \
-	{                                                                      \
-		struct cn9k_sso_hws_dual *dws = port;                          \
-		uint16_t gw;                                                   \
-		RTE_SET_USED(timeout_ticks);                                   \
-		if (dws->swtag_req) {                                          \
-			dws->swtag_req = 0;                                    \
-			cnxk_sso_hws_swtag_wait(dws->base[!dws->vws] +         \
-						SSOW_LF_GWS_TAG);              \
-			return 1;                                              \
-		}                                                              \
-		gw = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],           \
-						dws->base[!dws->vws], ev,      \
-						flags, dws);                   \
-		dws->vws = !dws->vws;                                          \
-		return gw;                                                     \
+#define SSO_DUAL_DEQ(fn, flags)                                                                    \
+	static __rte_always_inline uint16_t fn(void *port, struct rte_event *ev,                   \
+					       uint64_t timeout_ticks)                             \
+	{                                                                                          \
+		struct cn9k_sso_hws_dual *dws = port;                                              \
+		uint16_t gw;                                                                       \
+		RTE_SET_USED(timeout_ticks);                                                       \
+		if (dws->swtag_req) {                                                              \
+			dws->swtag_req = 0;                                                        \
+			cnxk_sso_hws_swtag_wait(dws->base[!dws->vws] + SSOW_LF_GWS_TAG);           \
+			return 1;                                                                  \
+		}                                                                                  \
+		gw = cn9k_sso_hws_dual_get_work(dws->base[dws->vws], dws->base[!dws->vws], ev,     \
+						flags, dws);                                       \
+		dws->vws = !dws->vws;                                                              \
+		return gw;                                                                         \
 	}
 
 #define SSO_DUAL_DEQ_SEG(fn, flags) SSO_DUAL_DEQ(fn, flags | NIX_RX_MULTI_SEG_F)
 
-#define SSO_DUAL_DEQ_TMO(fn, flags)                                            \
-	uint16_t __rte_hot fn(void *port, struct rte_event *ev,                \
-			      uint64_t timeout_ticks)                          \
-	{                                                                      \
-		struct cn9k_sso_hws_dual *dws = port;                          \
-		uint16_t ret = 1;                                              \
-		uint64_t iter;                                                 \
-		if (dws->swtag_req) {                                          \
-			dws->swtag_req = 0;                                    \
-			cnxk_sso_hws_swtag_wait(dws->base[!dws->vws] +         \
-						SSOW_LF_GWS_TAG);              \
-			return ret;                                            \
-		}                                                              \
-		ret = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],          \
-						 dws->base[!dws->vws], ev,     \
-						 flags, dws);                  \
-		dws->vws = !dws->vws;                                          \
-		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++) {   \
-			ret = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],  \
-							 dws->base[!dws->vws], \
-							 ev, flags, dws);      \
-			dws->vws = !dws->vws;                                  \
-		}                                                              \
-		return ret;                                                    \
+#define SSO_DUAL_DEQ_TMO(fn, flags)                                                                \
+	static __rte_always_inline uint16_t fn(void *port, struct rte_event *ev,                   \
+					       uint64_t timeout_ticks)                             \
+	{                                                                                          \
+		struct cn9k_sso_hws_dual *dws = port;                                              \
+		uint16_t ret = 1;                                                                  \
+		uint64_t iter;                                                                     \
+		if (dws->swtag_req) {                                                              \
+			dws->swtag_req = 0;                                                        \
+			cnxk_sso_hws_swtag_wait(dws->base[!dws->vws] + SSOW_LF_GWS_TAG);           \
+			return ret;                                                                \
+		}                                                                                  \
+		ret = cn9k_sso_hws_dual_get_work(dws->base[dws->vws], dws->base[!dws->vws], ev,    \
+						 flags, dws);                                      \
+		dws->vws = !dws->vws;                                                              \
+		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++) {                       \
+			ret = cn9k_sso_hws_dual_get_work(dws->base[dws->vws],                      \
+							 dws->base[!dws->vws], ev, flags, dws);    \
+			dws->vws = !dws->vws;                                                      \
+		}                                                                                  \
+		return ret;                                                                        \
 	}
 
 #define SSO_DUAL_DEQ_TMO_SEG(fn, flags)                                        \
 	SSO_DUAL_DEQ_TMO(fn, flags | NIX_RX_MULTI_SEG_F)
+
+#define R(name, flags)                                                                             \
+	SSO_DEQ(cn9k_sso_hws_deq_##name, flags)                                                    \
+	SSO_DEQ(cn9k_sso_hws_dual_deq_##name, flags)                                               \
+	SSO_DEQ_SEG(cn9k_sso_hws_deq_seg_##name, flags)                                            \
+	SSO_DEQ_SEG(cn9k_sso_hws_dual_deq_seg_##name, flags)                                       \
+	SSO_DEQ_TMO(cn9k_sso_hws_deq_tmo_##name, flags)                                            \
+	SSO_DEQ_TMO(cn9k_sso_hws_dual_deq_tmo_##name, flags)                                       \
+	SSO_DEQ_TMO_SEG(cn9k_sso_hws_deq_tmo_seg_##name, flags)                                    \
+	SSO_DEQ_TMO_SEG(cn9k_sso_hws_dual_deq_tmo_seg_##name, flags)
+
+NIX_RX_FASTPATH_MODES
+#undef R
 
 #define SSO_CMN_DEQ_BURST(fnb, fn, flags)                                      \
 	uint16_t __rte_hot fnb(void *port, struct rte_event ev[],              \
@@ -542,24 +526,12 @@ NIX_RX_FASTPATH_MODES
 		return fn(port, ev, timeout_ticks);                            \
 	}
 
-uint16_t __rte_hot cn9k_sso_hws_deq_all_offload(void *port, struct rte_event *ev,
-						uint64_t timeout_ticks);
-
-uint16_t __rte_hot cn9k_sso_hws_deq_dual_all_offload(void *port, struct rte_event *ev,
-						     uint64_t timeout_ticks);
-
 uint16_t __rte_hot cn9k_sso_hws_deq_burst_all_offload(void *port, struct rte_event ev[],
 						      uint16_t nb_events, uint64_t timeout_ticks);
 
 uint16_t __rte_hot cn9k_sso_hws_deq_dual_burst_all_offload(void *port, struct rte_event ev[],
 							   uint16_t nb_events,
 							   uint64_t timeout_ticks);
-
-uint16_t __rte_hot cn9k_sso_hws_deq_all_offload_tst(void *port, struct rte_event *ev,
-						    uint64_t timeout_ticks);
-
-uint16_t __rte_hot cn9k_sso_hws_deq_dual_all_offload_tst(void *port, struct rte_event *ev,
-							 uint64_t timeout_ticks);
 
 uint16_t __rte_hot cn9k_sso_hws_deq_burst_all_offload_tst(void *port, struct rte_event ev[],
 							  uint16_t nb_events,

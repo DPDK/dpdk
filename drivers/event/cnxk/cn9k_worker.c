@@ -8,9 +8,12 @@
 #include "cn9k_cryptodev_ops.h"
 
 uint16_t __rte_hot
-cn9k_sso_hws_enq(void *port, const struct rte_event *ev)
+cn9k_sso_hws_enq_burst(void *port, const struct rte_event ev[],
+		       uint16_t nb_events)
 {
 	struct cn9k_sso_hws *ws = port;
+
+	RTE_SET_USED(nb_events);
 
 	switch (ev->op) {
 	case RTE_EVENT_OP_NEW:
@@ -31,14 +34,6 @@ cn9k_sso_hws_enq(void *port, const struct rte_event *ev)
 	}
 
 	return 1;
-}
-
-uint16_t __rte_hot
-cn9k_sso_hws_enq_burst(void *port, const struct rte_event ev[],
-		       uint16_t nb_events)
-{
-	RTE_SET_USED(nb_events);
-	return cn9k_sso_hws_enq(port, ev);
 }
 
 uint16_t __rte_hot
@@ -80,10 +75,13 @@ cn9k_sso_hws_profile_switch(void *port, uint8_t profile)
 /* Dual ws ops. */
 
 uint16_t __rte_hot
-cn9k_sso_hws_dual_enq(void *port, const struct rte_event *ev)
+cn9k_sso_hws_dual_enq_burst(void *port, const struct rte_event ev[],
+			    uint16_t nb_events)
 {
 	struct cn9k_sso_hws_dual *dws = port;
 	uint64_t base;
+
+	RTE_SET_USED(nb_events);
 
 	base = dws->base[!dws->vws];
 	switch (ev->op) {
@@ -105,14 +103,6 @@ cn9k_sso_hws_dual_enq(void *port, const struct rte_event *ev)
 	}
 
 	return 1;
-}
-
-uint16_t __rte_hot
-cn9k_sso_hws_dual_enq_burst(void *port, const struct rte_event ev[],
-			    uint16_t nb_events)
-{
-	RTE_SET_USED(nb_events);
-	return cn9k_sso_hws_dual_enq(port, ev);
 }
 
 uint16_t __rte_hot
