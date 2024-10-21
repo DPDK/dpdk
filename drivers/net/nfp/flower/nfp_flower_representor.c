@@ -799,25 +799,70 @@ nfp_flower_repr_priv_init(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
+nfp_flower_phy_repr_alloc(struct nfp_net_hw_priv *hw_priv,
+		struct nfp_flower_representor *flower_repr,
+		const char *pci_name)
+{
+	int i;
+	int ret;
+	uint8_t id;
+	struct nfp_pf_dev *pf_dev;
+	struct nfp_repr_init repr_init;
+	struct nfp_eth_table_port *eth_port;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	pf_dev = hw_priv->pf_dev;
+	repr_init.hw_priv = hw_priv;
+	app_fw_flower = flower_repr->app_fw_flower;
+	for (i = 0; i < app_fw_flower->num_phyport_reprs; i++) {
+		id = nfp_function_id_get(pf_dev, i);
+		eth_port = &pf_dev->nfp_eth_table->ports[id];
+		flower_repr->repr_type = NFP_REPR_TYPE_PHYS_PORT;
+		flower_repr->port_id = nfp_flower_get_phys_port_id(eth_port->index);
+		flower_repr->nfp_idx = eth_port->index;
+		flower_repr->vf_id = i + 1;
+
+		/* Copy the real mac of the interface to the representor struct */
+		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr->mac_addr);
+		snprintf(flower_repr->name, sizeof(flower_repr->name),
+				"%s_repr_p%d", pci_name, id);
+
+		/*
+		 * Create a eth_dev for this representor.
+		 * This will also allocate private memory for the device.
+		 */
+		repr_init.flower_repr = flower_repr;
+		ret = rte_eth_dev_create(&pf_dev->pci_dev->device, flower_repr->name,
+				sizeof(struct nfp_flower_representor),
+				NULL, NULL, nfp_flower_repr_init, &repr_init);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
+			break;
+		}
+	}
+
+	if (i < app_fw_flower->num_phyport_reprs)
+		return -EIO;
+
+	return 0;
+}
+
+static int
 nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_net_hw_priv *hw_priv)
 {
 	int i;
 	int ret;
-	uint8_t id;
 	const char *pci_name;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
 	struct nfp_repr_init repr_init;
-	struct nfp_eth_table *nfp_eth_table;
-	struct nfp_eth_table_port *eth_port;
 	struct nfp_flower_representor flower_repr = {
 		.switch_domain_id = app_fw_flower->switch_domain_id,
 		.app_fw_flower    = app_fw_flower,
 	};
 
 	pf_dev = hw_priv->pf_dev;
-	nfp_eth_table = pf_dev->nfp_eth_table;
 	repr_init.hw_priv = hw_priv;
 
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
@@ -855,36 +900,11 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	/* Create a rte_eth_dev for every phyport representor */
-	for (i = 0; i < app_fw_flower->num_phyport_reprs; i++) {
-		id = nfp_function_id_get(pf_dev, i);
-		eth_port = &nfp_eth_table->ports[id];
-		flower_repr.repr_type = NFP_REPR_TYPE_PHYS_PORT;
-		flower_repr.port_id = nfp_flower_get_phys_port_id(eth_port->index);
-		flower_repr.nfp_idx = eth_port->index;
-		flower_repr.vf_id = i + 1;
-		flower_repr.idx = id;
-
-		/* Copy the real mac of the interface to the representor struct */
-		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr.mac_addr);
-		snprintf(flower_repr.name, sizeof(flower_repr.name),
-				"%s_repr_p%d", pci_name, id);
-
-		/*
-		 * Create a eth_dev for this representor.
-		 * This will also allocate private memory for the device.
-		 */
-		repr_init.flower_repr = &flower_repr;
-		ret = rte_eth_dev_create(&pci_dev->device, flower_repr.name,
-				sizeof(struct nfp_flower_representor),
-				NULL, NULL, nfp_flower_repr_init, &repr_init);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
-			break;
-		}
-	}
-
-	if (i < app_fw_flower->num_phyport_reprs)
+	ret = nfp_flower_phy_repr_alloc(hw_priv, &flower_repr, pci_name);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init the phy repr.");
 		goto repr_free;
+	}
 
 	/*
 	 * Now allocate eth_dev's for VF representors.
