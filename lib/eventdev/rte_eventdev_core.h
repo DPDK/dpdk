@@ -12,17 +12,10 @@
 extern "C" {
 #endif
 
-typedef uint16_t (*event_enqueue_t)(void *port, const struct rte_event *ev);
-/**< @internal Enqueue event on port of a device */
-
 typedef uint16_t (*event_enqueue_burst_t)(void *port,
 					  const struct rte_event ev[],
 					  uint16_t nb_events);
 /**< @internal Enqueue burst of events on port of a device */
-
-typedef uint16_t (*event_dequeue_t)(void *port, struct rte_event *ev,
-				    uint64_t timeout_ticks);
-/**< @internal Dequeue event from port of a device */
 
 typedef uint16_t (*event_dequeue_burst_t)(void *port, struct rte_event ev[],
 					  uint16_t nb_events,
@@ -60,16 +53,12 @@ typedef void (*event_preschedule_t)(void *port,
 struct __rte_cache_aligned rte_event_fp_ops {
 	void **data;
 	/**< points to array of internal port data pointers */
-	event_enqueue_t enqueue;
-	/**< PMD enqueue function. */
 	event_enqueue_burst_t enqueue_burst;
 	/**< PMD enqueue burst function. */
 	event_enqueue_burst_t enqueue_new_burst;
 	/**< PMD enqueue burst new function. */
 	event_enqueue_burst_t enqueue_forward_burst;
 	/**< PMD enqueue burst fwd function. */
-	event_dequeue_t dequeue;
-	/**< PMD dequeue function. */
 	event_dequeue_burst_t dequeue_burst;
 	/**< PMD dequeue burst function. */
 	event_maintain_t maintain;
