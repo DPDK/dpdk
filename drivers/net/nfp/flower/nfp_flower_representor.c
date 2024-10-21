@@ -874,6 +874,41 @@ nfp_flower_phy_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 }
 
 static int
+nfp_flower_pf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
+		struct nfp_flower_representor *flower_repr,
+		const char *pci_name)
+{
+	int ret;
+	struct nfp_pf_dev *pf_dev;
+
+	pf_dev = hw_priv->pf_dev;
+
+	/* Create a rte_eth_dev for PF vNIC representor */
+	flower_repr->repr_type = NFP_REPR_TYPE_PF;
+
+	/* PF vNIC reprs get a random MAC address */
+	rte_eth_random_addr(flower_repr->mac_addr.addr_bytes);
+
+	if (pf_dev->multi_pf.enabled)
+		snprintf(flower_repr->name, sizeof(flower_repr->name),
+				"%s_repr_pf%d", pci_name, pf_dev->multi_pf.function_id);
+	else
+		snprintf(flower_repr->name, sizeof(flower_repr->name),
+				"%s_repr_pf", pci_name);
+
+	/* Create a eth_dev for this representor */
+	ret = rte_eth_dev_create(&pf_dev->pci_dev->device, flower_repr->name,
+			sizeof(struct nfp_flower_representor),
+			NULL, NULL, nfp_flower_pf_repr_init, flower_repr);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init the pf repr.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_net_hw_priv *hw_priv)
 {
@@ -898,31 +933,14 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		return ret;
 	}
 
-	/* Create a rte_eth_dev for PF vNIC representor */
-	flower_repr.repr_type = NFP_REPR_TYPE_PF;
-	flower_repr.idx = 0;
-
-	/* PF vNIC reprs get a random MAC address */
-	rte_eth_random_addr(flower_repr.mac_addr.addr_bytes);
-
 	pci_dev = pf_dev->pci_dev;
 
 	pci_name = strchr(pci_dev->name, ':') + 1;
 
-	if (pf_dev->multi_pf.enabled)
-		snprintf(flower_repr.name, sizeof(flower_repr.name),
-			"%s_repr_pf%d", pci_name, pf_dev->multi_pf.function_id);
-	else
-		snprintf(flower_repr.name, sizeof(flower_repr.name),
-			"%s_repr_pf", pci_name);
-
-	/* Create a eth_dev for this representor */
-	ret = rte_eth_dev_create(&pci_dev->device, flower_repr.name,
-			sizeof(struct nfp_flower_representor),
-			NULL, NULL, nfp_flower_pf_repr_init, &flower_repr);
+	ret = nfp_flower_pf_repr_alloc(hw_priv, &flower_repr, pci_name);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Failed to init the pf repr.");
-		return -EINVAL;
+		PMD_INIT_LOG(ERR, "Could not alloc pf repr.");
+		return ret;
 	}
 
 	/* Create a rte_eth_dev for every phyport representor */
