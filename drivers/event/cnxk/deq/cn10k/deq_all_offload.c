@@ -11,7 +11,8 @@
 #if defined(CNXK_DIS_TMPLT_FUNC)
 
 uint16_t __rte_hot
-cn10k_sso_hws_deq_all_offload(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+cn10k_sso_hws_deq_burst_all_offload(void *port, struct rte_event ev[], uint16_t nb_events,
+				    uint64_t timeout_ticks)
 {
 	const uint32_t flags = (NIX_RX_OFFLOAD_RSS_F | NIX_RX_OFFLOAD_PTYPE_F |
 				NIX_RX_OFFLOAD_CHECKSUM_F | NIX_RX_OFFLOAD_MARK_UPDATE_F |
@@ -21,6 +22,7 @@ cn10k_sso_hws_deq_all_offload(void *port, struct rte_event *ev, uint64_t timeout
 	uint16_t ret = 1;
 	uint64_t iter;
 
+	RTE_SET_USED(nb_events);
 	if (ws->swtag_req) {
 		ws->swtag_req = 0;
 		ws->gw_rdata = cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);
@@ -35,7 +37,8 @@ cn10k_sso_hws_deq_all_offload(void *port, struct rte_event *ev, uint64_t timeout
 }
 
 uint16_t __rte_hot
-cn10k_sso_hws_deq_all_offload_tst(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+cn10k_sso_hws_deq_burst_all_offload_tst(void *port, struct rte_event ev[], uint16_t nb_events,
+					uint64_t timeout_ticks)
 {
 	const uint32_t flags = (NIX_RX_OFFLOAD_RSS_F | NIX_RX_OFFLOAD_PTYPE_F |
 				NIX_RX_OFFLOAD_CHECKSUM_F | NIX_RX_OFFLOAD_MARK_UPDATE_F |
@@ -45,6 +48,7 @@ cn10k_sso_hws_deq_all_offload_tst(void *port, struct rte_event *ev, uint64_t tim
 	uint16_t ret = 1;
 	uint64_t iter;
 
+	RTE_SET_USED(nb_events);
 	if (ws->swtag_req) {
 		ws->swtag_req = 0;
 		ws->gw_rdata = cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);
@@ -56,22 +60,6 @@ cn10k_sso_hws_deq_all_offload_tst(void *port, struct rte_event *ev, uint64_t tim
 		ret = cn10k_sso_hws_get_work(ws, ev, flags);
 
 	return ret;
-}
-
-uint16_t __rte_hot
-cn10k_sso_hws_deq_burst_all_offload(void *port, struct rte_event ev[], uint16_t nb_events,
-				    uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-	return cn10k_sso_hws_deq_all_offload(port, ev, timeout_ticks);
-}
-
-uint16_t __rte_hot
-cn10k_sso_hws_deq_burst_all_offload_tst(void *port, struct rte_event ev[], uint16_t nb_events,
-				    uint64_t timeout_ticks)
-{
-	RTE_SET_USED(nb_events);
-	return cn10k_sso_hws_deq_all_offload_tst(port, ev, timeout_ticks);
 }
 
 #endif

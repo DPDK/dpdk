@@ -314,20 +314,8 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 #if !defined(CNXK_DIS_TMPLT_FUNC)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	/* Single WS modes */
-	const event_dequeue_t sso_hws_deq[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_deq_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_deq_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn9k_sso_hws_deq_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_deq_tmo[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_deq_tmo_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -338,20 +326,8 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
-	const event_dequeue_t sso_hws_deq_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_deq_seg_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn9k_sso_hws_deq_seg_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_deq_tmo_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_deq_tmo_seg_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -363,20 +339,8 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 	};
 
 	/* Dual WS modes */
-	const event_dequeue_t sso_hws_dual_deq[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_dual_deq_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_dual_deq_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn9k_sso_hws_dual_deq_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_dual_deq_tmo[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_dual_deq_tmo_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -387,20 +351,8 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
-	const event_dequeue_t sso_hws_dual_deq_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_dual_deq_seg_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
 	const event_dequeue_burst_t sso_hws_dual_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn9k_sso_hws_dual_deq_seg_burst_##name,
-		NIX_RX_FASTPATH_MODES
-#undef R
-	};
-
-	const event_dequeue_t sso_hws_dual_deq_tmo_seg[NIX_RX_OFFLOAD_MAX] = {
-#define R(name, flags)[flags] = cn9k_sso_hws_dual_deq_tmo_seg_##name,
 		NIX_RX_FASTPATH_MODES
 #undef R
 	};
@@ -436,31 +388,22 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 #undef T
 	};
 
-	event_dev->enqueue = cn9k_sso_hws_enq;
 	event_dev->enqueue_burst = cn9k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn9k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn9k_sso_hws_enq_fwd_burst;
 	event_dev->profile_switch = cn9k_sso_hws_profile_switch;
 	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
-		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_seg);
 		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 				      sso_hws_deq_seg_burst);
-		if (dev->is_timeout_deq) {
-			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					      sso_hws_deq_tmo_seg);
+		if (dev->is_timeout_deq)
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					      sso_hws_deq_tmo_seg_burst);
-		}
 	} else {
-		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq);
 		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 				      sso_hws_deq_burst);
-		if (dev->is_timeout_deq) {
-			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					      sso_hws_deq_tmo);
+		if (dev->is_timeout_deq)
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					      sso_hws_deq_tmo_burst);
-		}
 	}
 	event_dev->ca_enqueue = cn9k_sso_hws_ca_enq;
 	event_dev->dma_enqueue = cn9k_dma_adapter_enqueue;
@@ -473,7 +416,6 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 				      sso_hws_tx_adptr_enq);
 
 	if (dev->dual_ws) {
-		event_dev->enqueue = cn9k_sso_hws_dual_enq;
 		event_dev->enqueue_burst = cn9k_sso_hws_dual_enq_burst;
 		event_dev->enqueue_new_burst = cn9k_sso_hws_dual_enq_new_burst;
 		event_dev->enqueue_forward_burst =
@@ -483,25 +425,17 @@ cn9k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 		event_dev->profile_switch = cn9k_sso_hws_dual_profile_switch;
 
 		if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
-			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					      sso_hws_dual_deq_seg);
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					      sso_hws_dual_deq_seg_burst);
 			if (dev->is_timeout_deq) {
-				CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-						      sso_hws_dual_deq_tmo_seg);
 				CN9K_SET_EVDEV_DEQ_OP(
 					dev, event_dev->dequeue_burst,
 					sso_hws_dual_deq_tmo_seg_burst);
 			}
 		} else {
-			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-					      sso_hws_dual_deq);
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
 					      sso_hws_dual_deq_burst);
 			if (dev->is_timeout_deq) {
-				CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
-						      sso_hws_dual_deq_tmo);
 				CN9K_SET_EVDEV_DEQ_OP(
 					dev, event_dev->dequeue_burst,
 					sso_hws_dual_deq_tmo_burst);
@@ -531,12 +465,9 @@ cn9k_sso_fp_blk_fns_set(struct rte_eventdev *event_dev)
 #if defined(CNXK_DIS_TMPLT_FUNC)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 
-	event_dev->dequeue = cn9k_sso_hws_deq_all_offload;
 	event_dev->dequeue_burst = cn9k_sso_hws_deq_burst_all_offload;
-	if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F) {
-		event_dev->dequeue = cn9k_sso_hws_deq_all_offload_tst;
+	if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)
 		event_dev->dequeue_burst = cn9k_sso_hws_deq_burst_all_offload_tst;
-	}
 	event_dev->txa_enqueue = cn9k_sso_hws_tx_adptr_enq_seg_all_offload;
 	event_dev->txa_enqueue_same_dest = cn9k_sso_hws_tx_adptr_enq_seg_all_offload;
 	if (dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F) {
@@ -544,12 +475,9 @@ cn9k_sso_fp_blk_fns_set(struct rte_eventdev *event_dev)
 		event_dev->txa_enqueue_same_dest = cn9k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
 	}
 	if (dev->dual_ws) {
-		event_dev->dequeue = cn9k_sso_hws_deq_dual_all_offload;
 		event_dev->dequeue_burst = cn9k_sso_hws_deq_dual_burst_all_offload;
-		if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F) {
-			event_dev->dequeue = cn9k_sso_hws_deq_dual_all_offload_tst;
+		if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)
 			event_dev->dequeue_burst = cn9k_sso_hws_deq_dual_burst_all_offload_tst;
-		}
 		event_dev->txa_enqueue = cn9k_sso_hws_tx_adptr_enq_dual_seg_all_offload;
 		event_dev->txa_enqueue_same_dest = cn9k_sso_hws_tx_adptr_enq_dual_seg_all_offload;
 		if (dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F) {
@@ -573,7 +501,6 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	cn9k_sso_fp_blk_fns_set(event_dev);
 	cn9k_sso_fp_tmplt_fns_set(event_dev);
 
-	event_dev->enqueue = cn9k_sso_hws_enq;
 	event_dev->enqueue_burst = cn9k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn9k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn9k_sso_hws_enq_fwd_burst;
@@ -581,7 +508,6 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	event_dev->profile_switch = cn9k_sso_hws_profile_switch;
 
 	if (dev->dual_ws) {
-		event_dev->enqueue = cn9k_sso_hws_dual_enq;
 		event_dev->enqueue_burst = cn9k_sso_hws_dual_enq_burst;
 		event_dev->enqueue_new_burst = cn9k_sso_hws_dual_enq_new_burst;
 		event_dev->enqueue_forward_burst = cn9k_sso_hws_dual_enq_fwd_burst;
@@ -917,7 +843,6 @@ eventdev_fops_tstamp_update(struct rte_eventdev *event_dev)
 	struct rte_event_fp_ops *fp_op =
 		rte_event_fp_ops + event_dev->data->dev_id;
 
-	fp_op->dequeue = event_dev->dequeue;
 	fp_op->dequeue_burst = event_dev->dequeue_burst;
 }
 
