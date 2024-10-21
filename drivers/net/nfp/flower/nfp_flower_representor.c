@@ -874,6 +874,49 @@ nfp_flower_phy_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 }
 
 static int
+nfp_flower_vf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
+		struct nfp_flower_representor *flower_repr,
+		const char *pci_name)
+{
+	int i;
+	int ret;
+	struct nfp_pf_dev *pf_dev;
+	struct nfp_repr_init repr_init;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	pf_dev = hw_priv->pf_dev;
+	repr_init.hw_priv = hw_priv;
+	app_fw_flower = flower_repr->app_fw_flower;
+	for (i = 0; i < app_fw_flower->num_vf_reprs; i++) {
+		flower_repr->repr_type = NFP_REPR_TYPE_VF;
+		flower_repr->port_id = nfp_get_pcie_port_id(pf_dev->cpp,
+				NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF, i + pf_dev->vf_base_id, 0);
+		flower_repr->nfp_idx = 0;
+		flower_repr->vf_id = i;
+
+		/* VF reprs get a random MAC address */
+		rte_eth_random_addr(flower_repr->mac_addr.addr_bytes);
+		snprintf(flower_repr->name, sizeof(flower_repr->name),
+				"%s_repr_vf%d", pci_name, i);
+
+		repr_init.flower_repr = flower_repr;
+		/* This will also allocate private memory for the device */
+		ret = rte_eth_dev_create(&pf_dev->pci_dev->device, flower_repr->name,
+				sizeof(struct nfp_flower_representor),
+				NULL, NULL, nfp_flower_repr_init, &repr_init);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
+			break;
+		}
+	}
+
+	if (i < app_fw_flower->num_vf_reprs)
+		return -EIO;
+
+	return 0;
+}
+
+static int
 nfp_flower_pf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 		struct nfp_flower_representor *flower_repr,
 		const char *pci_name)
@@ -912,30 +955,21 @@ static int
 nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_net_hw_priv *hw_priv)
 {
-	int i;
 	int ret;
 	const char *pci_name;
-	struct nfp_pf_dev *pf_dev;
-	struct rte_pci_device *pci_dev;
-	struct nfp_repr_init repr_init;
 	struct nfp_flower_representor flower_repr = {
 		.switch_domain_id = app_fw_flower->switch_domain_id,
 		.app_fw_flower    = app_fw_flower,
 	};
 
-	pf_dev = hw_priv->pf_dev;
-	repr_init.hw_priv = hw_priv;
-
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
-	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, pf_dev);
+	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, hw_priv->pf_dev);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not send mac repr cmsgs.");
 		return ret;
 	}
 
-	pci_dev = pf_dev->pci_dev;
-
-	pci_name = strchr(pci_dev->name, ':') + 1;
+	pci_name = strchr(hw_priv->pf_dev->pci_dev->name, ':') + 1;
 
 	ret = nfp_flower_pf_repr_alloc(hw_priv, &flower_repr, pci_name);
 	if (ret != 0) {
@@ -954,32 +988,11 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
 	 * Now allocate eth_dev's for VF representors.
 	 * Also send reify messages.
 	 */
-	for (i = 0; i < app_fw_flower->num_vf_reprs; i++) {
-		flower_repr.repr_type = NFP_REPR_TYPE_VF;
-		flower_repr.port_id = nfp_get_pcie_port_id(pf_dev->cpp,
-				NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF, i + pf_dev->vf_base_id, 0);
-		flower_repr.nfp_idx = 0;
-		flower_repr.vf_id = i;
-		flower_repr.idx = 0;
-
-		/* VF reprs get a random MAC address */
-		rte_eth_random_addr(flower_repr.mac_addr.addr_bytes);
-		snprintf(flower_repr.name, sizeof(flower_repr.name),
-				"%s_repr_vf%d", pci_name, i);
-
-		repr_init.flower_repr = &flower_repr;
-		/* This will also allocate private memory for the device */
-		ret = rte_eth_dev_create(&pci_dev->device, flower_repr.name,
-				sizeof(struct nfp_flower_representor),
-				NULL, NULL, nfp_flower_repr_init, &repr_init);
-		if (ret != 0) {
-			PMD_INIT_LOG(ERR, "Could not create eth_dev for repr.");
-			break;
-		}
-	}
-
-	if (i < app_fw_flower->num_vf_reprs)
+	ret = nfp_flower_vf_repr_alloc(hw_priv, &flower_repr, pci_name);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init the vf repr.");
 		goto repr_free;
+	}
 
 	nfp_flower_repr_priv_init(app_fw_flower, hw_priv);
 
