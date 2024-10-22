@@ -1831,6 +1831,17 @@ struct mlx5_hw_ctrl_flow_info {
 	};
 };
 
+/** Returns true if a control flow rule with unicast DMAC match on given address was created. */
+bool mlx5_ctrl_flow_uc_dmac_exists(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
+
+/**
+ * Returns true if a control flow rule with unicast DMAC and VLAN match
+ * on given values was created.
+ */
+bool mlx5_ctrl_flow_uc_dmac_vlan_exists(struct rte_eth_dev *dev,
+					const struct rte_ether_addr *addr,
+					const uint16_t vid);
+
 /** Entry for tracking control flow rules in HWS. */
 struct mlx5_hw_ctrl_flow {
 	LIST_ENTRY(mlx5_hw_ctrl_flow) next;
