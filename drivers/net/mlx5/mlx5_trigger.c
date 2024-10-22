@@ -20,6 +20,8 @@
 #include "mlx5_utils.h"
 #include "rte_pmd_mlx5.h"
 
+static void mlx5_traffic_disable_legacy(struct rte_eth_dev *dev);
+
 /**
  * Stop traffic on Tx queues.
  *
@@ -1736,11 +1738,31 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 	return 0;
 error:
 	ret = rte_errno; /* Save rte_errno before cleanup. */
-	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+	mlx5_traffic_disable_legacy(dev);
 	rte_errno = ret; /* Restore rte_errno. */
 	return -rte_errno;
 }
 
+static void
+mlx5_traffic_disable_legacy(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ctrl_flow_entry *entry;
+	struct mlx5_ctrl_flow_entry *tmp;
+
+	/*
+	 * Free registered control flow rules first,
+	 * to free the memory allocated for list entries
+	 */
+	entry = LIST_FIRST(&priv->hw_ctrl_flows);
+	while (entry != NULL) {
+		tmp = LIST_NEXT(entry, next);
+		mlx5_legacy_ctrl_flow_destroy(dev, entry);
+		entry = tmp;
+	}
+
+	mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+}
 
 /**
  * Disable traffic flows configured by control plane
@@ -1758,7 +1780,7 @@ mlx5_traffic_disable(struct rte_eth_dev *dev)
 		mlx5_flow_hw_flush_ctrl_flows(dev);
 	else
 #endif
-		mlx5_flow_list_flush(dev, MLX5_FLOW_TYPE_CTL, false);
+		mlx5_traffic_disable_legacy(dev);
 }
 
 /**
