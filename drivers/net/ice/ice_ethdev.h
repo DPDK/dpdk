@@ -569,6 +569,7 @@ struct ice_devargs {
 	/* Name of the field. */
 	char xtr_field_name[RTE_MBUF_DYN_NAMESIZE];
 	uint64_t mbuf_check;
+	const char *ddp_filename;
 };
 
 /**
