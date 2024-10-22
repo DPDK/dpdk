@@ -138,6 +138,15 @@ Runtime Configuration
 
     -a 80:00.0,default-mac-disable=1
 
+- ``DDP Package File``
+
+  Rather than have the driver search for the DDP package to load,
+  or to override what package is used,
+  the ``ddp_pkg_file`` option can be used to provide the path to a specific package file.
+  For example::
+
+    -a 80:00.0,ddp_pkg_file=/path/to/ice-version.pkg
+
 - ``Protocol extraction for per queue``
 
   Configure the RX queues to do protocol extraction into mbuf for protocol
