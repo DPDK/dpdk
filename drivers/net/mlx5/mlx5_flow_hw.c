@@ -16210,12 +16210,84 @@ mlx5_flow_hw_ctrl_flow_dmac(struct rte_eth_dev *dev,
 }
 
 int
+mlx5_flow_hw_ctrl_flow_dmac_destroy(struct rte_eth_dev *dev,
+				    const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_ctrl_flow *entry;
+	struct mlx5_hw_ctrl_flow *tmp;
+	int ret;
+
+	/*
+	 * HWS does not have automatic RSS flow expansion,
+	 * so each variant of the control flow rule is a separate entry in the list.
+	 * In that case, the whole list must be traversed.
+	 */
+	entry = LIST_FIRST(&priv->hw_ctrl_flows);
+	while (entry != NULL) {
+		tmp = LIST_NEXT(entry, next);
+
+		if (entry->info.type != MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC ||
+		    !rte_is_same_ether_addr(addr, &entry->info.uc.dmac)) {
+			entry = tmp;
+			continue;
+		}
+
+		ret = flow_hw_destroy_ctrl_flow(dev, entry->flow);
+		LIST_REMOVE(entry, next);
+		mlx5_free(entry);
+		if (ret)
+			return ret;
+
+		entry = tmp;
+	}
+	return 0;
+}
+
+int
 mlx5_flow_hw_ctrl_flow_dmac_vlan(struct rte_eth_dev *dev,
 				 const struct rte_ether_addr *addr,
 				 const uint16_t vlan)
 {
 	return mlx5_flow_hw_ctrl_flow_single(dev, MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN,
 					     addr, vlan);
+}
+
+int
+mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(struct rte_eth_dev *dev,
+					 const struct rte_ether_addr *addr,
+					 const uint16_t vlan)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_ctrl_flow *entry;
+	struct mlx5_hw_ctrl_flow *tmp;
+	int ret;
+
+	/*
+	 * HWS does not have automatic RSS flow expansion,
+	 * so each variant of the control flow rule is a separate entry in the list.
+	 * In that case, the whole list must be traversed.
+	 */
+	entry = LIST_FIRST(&priv->hw_ctrl_flows);
+	while (entry != NULL) {
+		tmp = LIST_NEXT(entry, next);
+
+		if (entry->info.type != MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN ||
+		    !rte_is_same_ether_addr(addr, &entry->info.uc.dmac) ||
+		    vlan != entry->info.uc.vlan) {
+			entry = tmp;
+			continue;
+		}
+
+		ret = flow_hw_destroy_ctrl_flow(dev, entry->flow);
+		LIST_REMOVE(entry, next);
+		mlx5_free(entry);
+		if (ret)
+			return ret;
+
+		entry = tmp;
+	}
+	return 0;
 }
 
 static __rte_always_inline uint32_t
