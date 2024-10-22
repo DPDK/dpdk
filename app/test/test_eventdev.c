@@ -1450,7 +1450,7 @@ static struct unit_test_suite eventdev_common_testsuite  = {
 			test_eventdev_start_stop),
 		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
 			test_eventdev_profile_switch),
-		TEST_CASE_ST(eventdev_configure_setup, NULL,
+		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
 			test_eventdev_preschedule_configure),
 		TEST_CASE_ST(eventdev_configure_setup, eventdev_stop_device,
 			test_eventdev_preschedule_modify),
