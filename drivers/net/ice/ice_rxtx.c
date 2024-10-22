@@ -1044,6 +1044,10 @@ ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			    tx_queue_id);
 		return -EINVAL;
 	}
+	if (txq->qtx_tail == NULL) {
+		PMD_DRV_LOG(INFO, "TX queue %u not started", tx_queue_id);
+		return 0;
+	}
 	vsi = txq->vsi;
 
 	q_ids[0] = txq->reg_idx;
@@ -1058,6 +1062,7 @@ ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq->tx_rel_mbufs(txq);
+	txq->qtx_tail = NULL;
 
 	return 0;
 }
