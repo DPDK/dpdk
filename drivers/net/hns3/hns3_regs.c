@@ -1178,9 +1178,9 @@ hns3_direct_access_tqp_regs_help(struct hns3_hw *hw, struct rte_dev_reg_info *re
 				 uint32_t modules, enum hns3_reg_modules idx)
 {
 	const struct hns3_dirt_reg_entry *reg_list;
-	uint16_t tqp_num, reg_offset;
+	uint32_t reg_num, i, j, reg_offset;
 	uint32_t *data = regs->data;
-	uint32_t reg_num, i, j;
+	uint16_t tqp_num;
 
 	if ((modules & HNS3_MODULE_MASK(idx)) == 0)
 		return;
