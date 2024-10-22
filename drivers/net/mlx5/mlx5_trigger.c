@@ -1804,3 +1804,239 @@ mlx5_traffic_restart(struct rte_eth_dev *dev)
 	}
 	return 0;
 }
+
+static bool
+mac_flows_update_needed(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!dev->data->dev_started)
+		return false;
+	if (dev->data->promiscuous)
+		return false;
+	if (priv->isolated)
+		return false;
+
+	return true;
+}
+
+static int
+traffic_dmac_create(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac(dev, addr);
+	else
+		return mlx5_legacy_dmac_flow_create(dev, addr);
+}
+
+static int
+traffic_dmac_destroy(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac_destroy(dev, addr);
+	else
+		return mlx5_legacy_dmac_flow_destroy(dev, addr);
+}
+
+static int
+traffic_dmac_vlan_create(struct rte_eth_dev *dev,
+			 const struct rte_ether_addr *addr,
+			 const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac_vlan(dev, addr, vid);
+	else
+		return mlx5_legacy_dmac_vlan_flow_create(dev, addr, vid);
+}
+
+static int
+traffic_dmac_vlan_destroy(struct rte_eth_dev *dev,
+			 const struct rte_ether_addr *addr,
+			 const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->sh->config.dv_flow_en == 2)
+		return mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(dev, addr, vid);
+	else
+		return mlx5_legacy_dmac_vlan_flow_destroy(dev, addr, vid);
+}
+
+/**
+ * Adjust Rx control flow rules to allow traffic on provided MAC address.
+ */
+int
+mlx5_traffic_mac_add(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	if (priv->vlan_filter_n > 0) {
+		unsigned int i;
+
+		for (i = 0; i < priv->vlan_filter_n; ++i) {
+			uint16_t vlan = priv->vlan_filter[i];
+			int ret;
+
+			if (mlx5_ctrl_flow_uc_dmac_vlan_exists(dev, addr, vlan))
+				continue;
+
+			ret = traffic_dmac_vlan_create(dev, addr, vlan);
+			if (ret != 0)
+				return ret;
+		}
+
+		return 0;
+	}
+
+	if (mlx5_ctrl_flow_uc_dmac_exists(dev, addr))
+		return 0;
+
+	return traffic_dmac_create(dev, addr);
+}
+
+/**
+ * Adjust Rx control flow rules to disallow traffic with removed MAC address.
+ */
+int
+mlx5_traffic_mac_remove(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	if (priv->vlan_filter_n > 0) {
+		unsigned int i;
+
+		for (i = 0; i < priv->vlan_filter_n; ++i) {
+			uint16_t vlan = priv->vlan_filter[i];
+			int ret;
+
+			if (!mlx5_ctrl_flow_uc_dmac_vlan_exists(dev, addr, vlan))
+				continue;
+
+			ret = traffic_dmac_vlan_destroy(dev, addr, vlan);
+			if (ret != 0)
+				return ret;
+		}
+
+		return 0;
+	}
+
+	if (!mlx5_ctrl_flow_uc_dmac_exists(dev, addr))
+		return 0;
+
+	return traffic_dmac_destroy(dev, addr);
+}
+
+/**
+ * Adjust Rx control flow rules to allow traffic on provided VLAN.
+ *
+ * Assumptions:
+ * - Called when VLAN is added.
+ * - At least one VLAN is enabled before function call.
+ *
+ * This functions assumes that VLAN is new and was not included in
+ * Rx control flow rules set up before calling it.
+ */
+int
+mlx5_traffic_vlan_add(struct rte_eth_dev *dev, const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	int ret;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	/* Add all unicast DMAC flow rules with new VLAN attached. */
+	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (rte_is_zero_ether_addr(mac))
+			continue;
+
+		ret = traffic_dmac_vlan_create(dev, mac, vid);
+		if (ret != 0)
+			return ret;
+	}
+
+	if (priv->vlan_filter_n == 1) {
+		/*
+		 * Adding first VLAN. Need to remove unicast DMAC rules before adding new rules.
+		 * Removing after creating VLAN rules so that traffic "gap" is not introduced.
+		 */
+
+		for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+			struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+			if (rte_is_zero_ether_addr(mac))
+				continue;
+
+			ret = traffic_dmac_destroy(dev, mac);
+			if (ret != 0)
+				return ret;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Adjust Rx control flow rules to disallow traffic with removed VLAN.
+ *
+ * Assumptions:
+ *
+ * - VLAN was really removed.
+ */
+int
+mlx5_traffic_vlan_remove(struct rte_eth_dev *dev, const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	int ret;
+
+	if (!mac_flows_update_needed(dev))
+		return 0;
+
+	if (priv->vlan_filter_n == 0) {
+		/*
+		 * If there are no VLANs as a result, unicast DMAC flow rules must be recreated.
+		 * Recreating first to ensure no traffic "gap".
+		 */
+
+		for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+			struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+			if (rte_is_zero_ether_addr(mac))
+				continue;
+
+			ret = traffic_dmac_create(dev, mac);
+			if (ret != 0)
+				return ret;
+		}
+	}
+
+	/* Remove all unicast DMAC flow rules with this VLAN. */
+	for (i = 0; i != MLX5_MAX_MAC_ADDRESSES; ++i) {
+		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
+
+		if (rte_is_zero_ether_addr(mac))
+			continue;
+
+		ret = traffic_dmac_vlan_destroy(dev, mac, vid);
+		if (ret != 0)
+			return ret;
+	}
+
+	return 0;
+}

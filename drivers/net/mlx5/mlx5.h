@@ -2372,6 +2372,10 @@ int mlx5_hairpin_bind(struct rte_eth_dev *dev, uint16_t rx_port);
 int mlx5_hairpin_unbind(struct rte_eth_dev *dev, uint16_t rx_port);
 int mlx5_hairpin_get_peer_ports(struct rte_eth_dev *dev, uint16_t *peer_ports,
 				size_t len, uint32_t direction);
+int mlx5_traffic_mac_add(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
+int mlx5_traffic_mac_remove(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
+int mlx5_traffic_vlan_add(struct rte_eth_dev *dev, const uint16_t vid);
+int mlx5_traffic_vlan_remove(struct rte_eth_dev *dev, const uint16_t vid);
 
 /* mlx5_flow.c */
 
