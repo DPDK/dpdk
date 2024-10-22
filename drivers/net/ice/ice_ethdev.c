@@ -915,7 +915,7 @@ ice_vsi_config_default_rss(struct ice_aqc_vsi_props *info)
 }
 
 static int
-ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
+ice_vsi_config_tc_queue_mapping(struct ice_hw *hw, struct ice_vsi *vsi,
 				struct ice_aqc_vsi_props *info,
 				uint8_t enabled_tcmap)
 {
@@ -931,12 +931,27 @@ ice_vsi_config_tc_queue_mapping(struct ice_vsi *vsi,
 	}
 
 	/* vector 0 is reserved and 1 vector for ctrl vsi */
-	if (vsi->adapter->hw.func_caps.common_cap.num_msix_vectors < 2)
+	if (vsi->adapter->hw.func_caps.common_cap.num_msix_vectors < 2) {
 		vsi->nb_qps = 0;
-	else
+	} else {
 		vsi->nb_qps = RTE_MIN
 			((uint16_t)vsi->adapter->hw.func_caps.common_cap.num_msix_vectors - 2,
 			RTE_MIN(vsi->nb_qps, ICE_MAX_Q_PER_TC));
+
+		/* cap max QPs to what the HW reports as num-children for each layer.
+		 * Multiply num_children for each layer from the entry_point layer to
+		 * the qgroup, or second-last layer.
+		 * Avoid any potential overflow by using uint32_t type and breaking loop
+		 * once we have a number greater than the already configured max.
+		 */
+		uint32_t max_sched_vsi_nodes = 1;
+		for (uint8_t i = hw->sw_entry_point_layer; i < hw->num_tx_sched_layers - 1; i++) {
+			max_sched_vsi_nodes *= hw->max_children[i];
+			if (max_sched_vsi_nodes >= vsi->nb_qps)
+				break;
+		}
+		vsi->nb_qps = RTE_MIN(vsi->nb_qps, max_sched_vsi_nodes);
+	}
 
 	/* nb_qps(hex)  -> fls */
 	/* 0000		-> 0 */
@@ -1709,7 +1724,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 			rte_cpu_to_le_16(hw->func_caps.fd_fltr_best_effort);
 
 		/* Enable VLAN/UP trip */
-		ret = ice_vsi_config_tc_queue_mapping(vsi,
+		ret = ice_vsi_config_tc_queue_mapping(hw, vsi,
 						      &vsi_ctx.info,
 						      ICE_DEFAULT_TCMAP);
 		if (ret) {
@@ -1733,7 +1748,7 @@ ice_setup_vsi(struct ice_pf *pf, enum ice_vsi_type type)
 		vsi_ctx.info.fd_options = rte_cpu_to_le_16(cfg);
 		vsi_ctx.info.sw_id = hw->port_info->sw_id;
 		vsi_ctx.info.sw_flags2 = ICE_AQ_VSI_SW_FLAG_LAN_ENA;
-		ret = ice_vsi_config_tc_queue_mapping(vsi,
+		ret = ice_vsi_config_tc_queue_mapping(hw, vsi,
 						      &vsi_ctx.info,
 						      ICE_DEFAULT_TCMAP);
 		if (ret) {
