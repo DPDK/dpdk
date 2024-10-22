@@ -8493,8 +8493,9 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
-	uint32_t flow_idx;
+	uintptr_t flow_idx;
 	struct rte_flow_error error;
+	struct mlx5_ctrl_flow_entry *entry;
 	unsigned int i;
 
 	if (!priv->reta_idx_n || !priv->rxqs_n) {
@@ -8504,11 +8505,36 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 		action_rss.types = 0;
 	for (i = 0; i != priv->reta_idx_n; ++i)
 		queue[i] = (*priv->reta_idx)[i];
+
+	entry = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*entry), alignof(typeof(*entry)), SOCKET_ID_ANY);
+	if (entry == NULL) {
+		rte_errno = ENOMEM;
+		goto err;
+	}
+
+	entry->owner_dev = dev;
+	if (vlan_spec == NULL) {
+		entry->info.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC;
+	} else {
+		entry->info.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN;
+		entry->info.uc.vlan = rte_be_to_cpu_16(vlan_spec->hdr.vlan_tci);
+	}
+	entry->info.uc.dmac = eth_spec->hdr.dst_addr;
+
 	flow_idx = mlx5_flow_list_create(dev, MLX5_FLOW_TYPE_CTL,
 				    &attr, items, actions, false, &error);
-	if (!flow_idx)
-		return -rte_errno;
+	if (!flow_idx) {
+		mlx5_free(entry);
+		goto err;
+	}
+
+	entry->flow = (struct rte_flow *)flow_idx;
+	LIST_INSERT_HEAD(&priv->hw_ctrl_flows, entry, next);
+
 	return 0;
+
+err:
+	return -rte_errno;
 }
 
 /**
