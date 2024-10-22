@@ -2994,10 +2994,18 @@ int mlx5_flow_hw_ctrl_flows(struct rte_eth_dev *dev, uint32_t flags);
 /** Create a control flow rule for matching unicast DMAC (HWS). */
 int mlx5_flow_hw_ctrl_flow_dmac(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
 
+/** Destroy a control flow rule for matching unicast DMAC (HWS). */
+int mlx5_flow_hw_ctrl_flow_dmac_destroy(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
+
 /** Create a control flow rule for matching unicast DMAC with VLAN (HWS). */
 int mlx5_flow_hw_ctrl_flow_dmac_vlan(struct rte_eth_dev *dev,
 				     const struct rte_ether_addr *addr,
 				     const uint16_t vlan);
+
+/** Destroy a control flow rule for matching unicast DMAC with VLAN (HWS). */
+int mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(struct rte_eth_dev *dev,
+					     const struct rte_ether_addr *addr,
+					     const uint16_t vlan);
 
 void mlx5_flow_hw_cleanup_ctrl_rx_templates(struct rte_eth_dev *dev);
 
