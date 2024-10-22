@@ -1274,6 +1274,7 @@ hns3_get_dfx_regs(struct hns3_hw *hw, struct rte_dev_reg_info *regs, uint32_t mo
 	if (cmd_descs == NULL)
 		return -ENOMEM;
 
+	data += regs->length;
 	for (i = 0; i < opcode_num; i++) {
 		opcode = hns3_dfx_reg_opcode_list[i];
 		bd_num = bd_num_list[i];
@@ -1285,7 +1286,6 @@ hns3_get_dfx_regs(struct hns3_hw *hw, struct rte_dev_reg_info *regs, uint32_t mo
 		if (ret)
 			break;
 
-		data += regs->length;
 		regs_num = hns3_dfx_reg_fetch_data(cmd_descs, bd_num, data);
 		if (regs_num !=  hns3_reg_lists[i].entry_num) {
 			hns3_err(hw, "Query register number differ from the list for module %s!",
@@ -1294,6 +1294,7 @@ hns3_get_dfx_regs(struct hns3_hw *hw, struct rte_dev_reg_info *regs, uint32_t mo
 		}
 		hns3_fill_dfx_regs_name(hw, regs, hns3_reg_lists[i].reg_list, regs_num);
 		regs->length += regs_num;
+		data += regs_num;
 	}
 	rte_free(cmd_descs);
 
