@@ -600,6 +600,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	}
 	mlx5_flow_counter_mode_config(eth_dev);
 	mlx5_queue_counter_id_prepare(eth_dev);
+	rte_spinlock_init(&priv->hw_ctrl_lock);
+	LIST_INIT(&priv->hw_ctrl_flows);
+	LIST_INIT(&priv->hw_ext_ctrl_flows);
 	return eth_dev;
 error:
 	if (priv) {

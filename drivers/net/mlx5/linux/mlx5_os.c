@@ -1701,6 +1701,9 @@ err_secondary:
 		    (sh->config.dv_flow_en == 1 && mlx5_flow_discover_ipv6_tc_support(eth_dev)))
 			sh->phdev->config.ipv6_tc_fallback = MLX5_IPV6_TC_FALLBACK;
 	}
+	rte_spinlock_init(&priv->hw_ctrl_lock);
+	LIST_INIT(&priv->hw_ctrl_flows);
+	LIST_INIT(&priv->hw_ext_ctrl_flows);
 	if (priv->sh->config.dv_flow_en == 2) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (priv->sh->config.dv_esw_en) {
