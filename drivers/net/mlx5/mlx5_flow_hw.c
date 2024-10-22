@@ -11830,9 +11830,6 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	if (!priv->dr_ctx)
 		goto err;
 	priv->nb_queue = nb_q_updated;
-	rte_spinlock_init(&priv->hw_ctrl_lock);
-	LIST_INIT(&priv->hw_ctrl_flows);
-	LIST_INIT(&priv->hw_ext_ctrl_flows);
 	ret = flow_hw_action_template_drop_init(dev, error);
 	if (ret)
 		goto err;
