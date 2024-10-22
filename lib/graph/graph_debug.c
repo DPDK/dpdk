@@ -35,8 +35,17 @@ node_dump(FILE *f, struct node *n)
 	fprintf(f, "  flags=0x%" PRIx64 "\n", n->flags);
 	fprintf(f, "  addr=%p\n", n);
 	fprintf(f, "  process=%p\n", n->process);
+	if (n->parent_id == RTE_NODE_ID_INVALID)
+		fprintf(f, "  parent_id=RTE_NODE_ID_INVALID\n");
+	else
+		fprintf(f, "  parent_id=%" PRIu32 "\n", n->parent_id);
+	fprintf(f, "  init=%p\n", n->init);
+	fprintf(f, "  fini=%p\n", n->fini);
+	fprintf(f, "  xstats=%p\n", n->xstats);
+	fprintf(f, "  next node addr=%p\n", STAILQ_NEXT(n, next));
+	if (STAILQ_NEXT(n, next))
+		fprintf(f, "  next node name=%s\n", STAILQ_NEXT(n, next)->name);
 	fprintf(f, "  nb_edges=%d\n", n->nb_edges);
-
 	for (i = 0; i < n->nb_edges; i++)
 		fprintf(f, "     edge[%d] <%s>\n", i, n->next_nodes[i]);
 }
