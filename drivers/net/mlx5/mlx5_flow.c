@@ -12178,3 +12178,40 @@ rte_pmd_mlx5_destroy_geneve_tlv_parser(void *handle)
 	return -rte_errno;
 #endif
 }
+
+bool
+mlx5_ctrl_flow_uc_dmac_exists(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_ctrl_flow *entry;
+	bool exists = false;
+
+	LIST_FOREACH(entry, &priv->hw_ctrl_flows, next) {
+		if (entry->info.type == MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC &&
+		    rte_is_same_ether_addr(addr, &entry->info.uc.dmac)) {
+			exists = true;
+			break;
+		}
+	}
+	return exists;
+}
+
+bool
+mlx5_ctrl_flow_uc_dmac_vlan_exists(struct rte_eth_dev *dev,
+				   const struct rte_ether_addr *addr,
+				   const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_ctrl_flow *entry;
+	bool exists = false;
+
+	LIST_FOREACH(entry, &priv->hw_ctrl_flows, next) {
+		if (entry->info.type == MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN &&
+		    rte_is_same_ether_addr(addr, &entry->info.uc.dmac) &&
+		    vid == entry->info.uc.vlan) {
+			exists = true;
+			break;
+		}
+	}
+	return exists;
+}
