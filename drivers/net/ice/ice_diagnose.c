@@ -510,7 +510,7 @@ int rte_pmd_ice_dump_switch(uint16_t port, uint8_t **buff, uint32_t *size)
 	return ice_dump_switch(dev, buff, size);
 }
 
-static void print_rl_profile(struct ice_aqc_rl_profile_elem *prof,
+static void print_rl_profile(const struct ice_aqc_rl_profile_elem *prof,
 			     FILE *stream)
 {
 	fprintf(stream, "\t\t\t\t\t<td>\n");
@@ -545,29 +545,15 @@ static void print_rl_profile(struct ice_aqc_rl_profile_elem *prof,
 	fprintf(stream, "\t\t\t\t\t</td>\n");
 }
 
-static
-void print_elem_type(FILE *stream, u8 type)
+static const char *
+get_elem_type(u8 type)
 {
-	switch (type) {
-	case 1:
-		fprintf(stream, "root");
-		break;
-	case 2:
-		fprintf(stream, "tc");
-		break;
-	case 3:
-		fprintf(stream, "se_generic");
-		break;
-	case 4:
-		fprintf(stream, "entry_point");
-		break;
-	case 5:
-		fprintf(stream, "leaf");
-		break;
-	default:
-		fprintf(stream, "%d", type);
-		break;
-	}
+	static const char * const ice_sched_node_types[] = {
+			"Undefined", "Root", "TC", "SE Generic", "SW Entry", "Leaf"
+	};
+	if (type < RTE_DIM(ice_sched_node_types))
+		return ice_sched_node_types[type];
+	return "*UNKNOWN*";
 }
 
 static
@@ -602,10 +588,11 @@ void print_priority_mode(FILE *stream, bool flag)
 }
 
 static
-void print_node(struct ice_aqc_txsched_elem_data *data,
-		struct ice_aqc_rl_profile_elem *cir_prof,
-		struct ice_aqc_rl_profile_elem *eir_prof,
-		struct ice_aqc_rl_profile_elem *shared_prof,
+void print_node(const struct rte_eth_dev_data *ethdata,
+		const struct ice_aqc_txsched_elem_data *data,
+		const struct ice_aqc_rl_profile_elem *cir_prof,
+		const struct ice_aqc_rl_profile_elem *eir_prof,
+		const struct ice_aqc_rl_profile_elem *shared_prof,
 		bool detail, FILE *stream)
 {
 	fprintf(stream, "\tNODE_%d [\n", data->node_teid);
@@ -613,17 +600,18 @@ void print_node(struct ice_aqc_txsched_elem_data *data,
 
 	fprintf(stream, "\t\t\t<table>\n");
 
-	fprintf(stream, "\t\t\t\t<tr>\n");
-	fprintf(stream, "\t\t\t\t\t<td> teid </td>\n");
-	fprintf(stream, "\t\t\t\t\t<td> %d </td>\n", data->node_teid);
-	fprintf(stream, "\t\t\t\t</tr>\n");
-
-	fprintf(stream, "\t\t\t\t<tr>\n");
-	fprintf(stream, "\t\t\t\t\t<td> type </td>\n");
-	fprintf(stream, "\t\t\t\t\t<td>");
-	print_elem_type(stream, data->data.elem_type);
-	fprintf(stream, "</td>\n");
-	fprintf(stream, "\t\t\t\t</tr>\n");
+	fprintf(stream, "\t\t\t\t<tr><td>teid</td><td>%d</td></tr>\n", data->node_teid);
+	fprintf(stream, "\t\t\t\t<tr><td>type</td><td>%s</td></tr>\n",
+			get_elem_type(data->data.elem_type));
+	if (data->data.elem_type == ICE_AQC_ELEM_TYPE_LEAF) {
+		for (uint16_t i = 0; i < ethdata->nb_tx_queues; i++) {
+			struct ice_tx_queue *q = ethdata->tx_queues[i];
+			if (q->q_teid == data->node_teid) {
+				fprintf(stream, "\t\t\t\t<tr><td>TXQ</td><td>%u</td></tr>\n", i);
+				break;
+			}
+		}
+	}
 
 	if (!detail)
 		goto brief;
@@ -705,8 +693,6 @@ brief:
 	fprintf(stream, "\t\tshape=plain\n");
 	fprintf(stream, "\t]\n");
 
-	if (data->parent_teid != 0xFFFFFFFF)
-		fprintf(stream, "\tNODE_%d -> NODE_%d\n", data->parent_teid, data->node_teid);
 }
 
 static
@@ -731,112 +717,92 @@ int query_rl_profile(struct ice_hw *hw,
 	return 0;
 }
 
-static
-int query_node(struct ice_hw *hw, uint32_t child, uint32_t *parent,
-	       uint8_t level, bool detail, FILE *stream)
+static int
+query_node(struct ice_hw *hw, struct rte_eth_dev_data *ethdata,
+		struct ice_sched_node *node, bool detail, FILE *stream)
 {
-	struct ice_aqc_txsched_elem_data data;
+	struct ice_aqc_txsched_elem_data *data = &node->info;
 	struct ice_aqc_rl_profile_elem cir_prof;
 	struct ice_aqc_rl_profile_elem eir_prof;
 	struct ice_aqc_rl_profile_elem shared_prof;
 	struct ice_aqc_rl_profile_elem *cp = NULL;
 	struct ice_aqc_rl_profile_elem *ep = NULL;
 	struct ice_aqc_rl_profile_elem *sp = NULL;
-	int status, ret;
+	u8 level = node->tx_sched_layer;
+	int ret;
 
-	status = ice_sched_query_elem(hw, child, &data);
-	if (status != ICE_SUCCESS) {
-		if (level == hw->num_tx_sched_layers) {
-			/* ignore the error when a queue has been stopped. */
-			PMD_DRV_LOG(WARNING, "Failed to query queue node %d.", child);
-			*parent = 0xffffffff;
-			return 0;
-		}
-		PMD_DRV_LOG(ERR, "Failed to query scheduling node %d.", child);
-		return -EINVAL;
-	}
-
-	*parent = data.parent_teid;
-
-	if (data.data.cir_bw.bw_profile_idx != 0) {
-		ret = query_rl_profile(hw, level, 0, data.data.cir_bw.bw_profile_idx, &cir_prof);
+	if (data->data.cir_bw.bw_profile_idx != 0) {
+		ret = query_rl_profile(hw, level, 0, data->data.cir_bw.bw_profile_idx, &cir_prof);
 
 		if (ret)
 			return ret;
 		cp = &cir_prof;
 	}
 
-	if (data.data.eir_bw.bw_profile_idx != 0) {
-		ret = query_rl_profile(hw, level, 1, data.data.eir_bw.bw_profile_idx, &eir_prof);
+	if (data->data.eir_bw.bw_profile_idx != 0) {
+		ret = query_rl_profile(hw, level, 1, data->data.eir_bw.bw_profile_idx, &eir_prof);
 
 		if (ret)
 			return ret;
 		ep = &eir_prof;
 	}
 
-	if (data.data.srl_id != 0) {
-		ret = query_rl_profile(hw, level, 2, data.data.srl_id, &shared_prof);
+	if (data->data.srl_id != 0) {
+		ret = query_rl_profile(hw, level, 2, data->data.srl_id, &shared_prof);
 
 		if (ret)
 			return ret;
 		sp = &shared_prof;
 	}
 
-	print_node(&data, cp, ep, sp, detail, stream);
+	print_node(ethdata, data, cp, ep, sp, detail, stream);
 
 	return 0;
 }
 
-static
-int query_nodes(struct ice_hw *hw,
-		uint32_t *children, int child_num,
-		uint32_t *parents, int *parent_num,
-		uint8_t level, bool detail,
-		FILE *stream)
+static int
+query_node_recursive(struct ice_hw *hw, struct rte_eth_dev_data *ethdata,
+		struct ice_sched_node *node, bool detail, FILE *stream)
 {
-	uint32_t parent;
-	int i;
-	int j;
-
-	*parent_num = 0;
-	for (i = 0; i < child_num; i++) {
-		bool exist = false;
-		int ret;
-
-		ret = query_node(hw, children[i], &parent, level, detail, stream);
-		if (ret)
-			return -EINVAL;
-
-		for (j = 0; j < *parent_num; j++) {
-			if (parents[j] == parent) {
-				exist = true;
-				break;
-			}
-		}
-
-		if (!exist && parent != 0xFFFFFFFF)
-			parents[(*parent_num)++] = parent;
+	bool close = false;
+	if (node->parent != NULL && node->vsi_handle != node->parent->vsi_handle) {
+		fprintf(stream, "subgraph cluster_%u {\n", node->vsi_handle);
+		fprintf(stream, "\tlabel = \"VSI %u\";\n", node->vsi_handle);
+		close = true;
 	}
 
+	int ret = query_node(hw, ethdata, node, detail, stream);
+	if (ret != 0)
+		return ret;
+
+	for (uint16_t i = 0; i < node->num_children; i++) {
+		ret = query_node_recursive(hw, ethdata, node->children[i], detail, stream);
+		if (ret != 0)
+			return ret;
+		/* if we have a lot of nodes, skip a bunch in the middle */
+		if (node->num_children > 16 && i == 2) {
+			uint16_t inc = node->num_children - 5;
+			fprintf(stream, "\tn%d_children [label=\"... +%d child nodes ...\"];\n",
+					node->info.node_teid, inc);
+			fprintf(stream, "\tNODE_%d -> n%d_children;\n",
+					node->info.node_teid, node->info.node_teid);
+			i += inc;
+		}
+	}
+	if (close)
+		fprintf(stream, "}\n");
+	if (node->info.parent_teid != 0xFFFFFFFF)
+		fprintf(stream, "\tNODE_%d -> NODE_%d\n",
+				node->info.parent_teid, node->info.node_teid);
+
 	return 0;
 }
 
-int rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream)
+int
+rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream)
 {
 	struct rte_eth_dev *dev;
 	struct ice_hw *hw;
-	struct ice_pf *pf;
-	struct ice_q_ctx *q_ctx;
-	uint16_t q_num;
-	uint16_t i;
-	struct ice_tx_queue *txq;
-	uint32_t buf1[256];
-	uint32_t buf2[256];
-	uint32_t *children = buf1;
-	uint32_t *parents = buf2;
-	int child_num = 0;
-	int parent_num = 0;
-	uint8_t level;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -846,35 +812,9 @@ int rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream)
 
 	dev = &rte_eth_devices[port];
 	hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	level = hw->num_tx_sched_layers;
-
-	q_num = dev->data->nb_tx_queues;
-
-	/* main vsi */
-	for (i = 0; i < q_num; i++) {
-		txq = dev->data->tx_queues[i];
-		q_ctx = ice_get_lan_q_ctx(hw, txq->vsi->idx, 0, i);
-		children[child_num++] = q_ctx->q_teid;
-	}
-
-	/* fdir vsi */
-	q_ctx = ice_get_lan_q_ctx(hw, pf->fdir.fdir_vsi->idx, 0, 0);
-	children[child_num++] = q_ctx->q_teid;
 
 	fprintf(stream, "digraph tx_sched {\n");
-	while (child_num > 0) {
-		int ret;
-		ret = query_nodes(hw, children, child_num,
-				  parents, &parent_num,
-				  level, detail, stream);
-		if (ret)
-			return ret;
-
-		children = parents;
-		child_num = parent_num;
-		level--;
-	}
+	query_node_recursive(hw, dev->data, hw->port_info->root, detail, stream);
 	fprintf(stream, "}\n");
 
 	return 0;
