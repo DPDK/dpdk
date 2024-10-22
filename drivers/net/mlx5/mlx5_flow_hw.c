@@ -15084,7 +15084,7 @@ flow_hw_create_ctrl_flow(struct rte_eth_dev *owner_dev,
 			 uint8_t item_template_idx,
 			 struct rte_flow_action actions[],
 			 uint8_t action_template_idx,
-			 struct mlx5_hw_ctrl_flow_info *info,
+			 struct mlx5_ctrl_flow_info *info,
 			 bool external)
 {
 	struct mlx5_priv *priv = proxy_dev->data->dev_private;
@@ -15093,7 +15093,7 @@ flow_hw_create_ctrl_flow(struct rte_eth_dev *owner_dev,
 		.postpone = 0,
 	};
 	struct rte_flow *flow = NULL;
-	struct mlx5_hw_ctrl_flow *entry = NULL;
+	struct mlx5_ctrl_flow_entry *entry = NULL;
 	int ret;
 
 	rte_spinlock_lock(&priv->hw_ctrl_lock);
@@ -15129,7 +15129,7 @@ flow_hw_create_ctrl_flow(struct rte_eth_dev *owner_dev,
 	if (info)
 		entry->info = *info;
 	else
-		entry->info.type = MLX5_HW_CTRL_FLOW_TYPE_GENERAL;
+		entry->info.type = MLX5_CTRL_FLOW_TYPE_GENERAL;
 	if (external)
 		LIST_INSERT_HEAD(&priv->hw_ext_ctrl_flows, entry, next);
 	else
@@ -15206,8 +15206,8 @@ static int
 flow_hw_flush_ctrl_flows_owned_by(struct rte_eth_dev *dev, struct rte_eth_dev *owner)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hw_ctrl_flow *cf;
-	struct mlx5_hw_ctrl_flow *cf_next;
+	struct mlx5_ctrl_flow_entry *cf;
+	struct mlx5_ctrl_flow_entry *cf_next;
 	int ret;
 
 	cf = LIST_FIRST(&priv->hw_ctrl_flows);
@@ -15285,8 +15285,8 @@ static int
 flow_hw_flush_all_ctrl_flows(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hw_ctrl_flow *cf;
-	struct mlx5_hw_ctrl_flow *cf_next;
+	struct mlx5_ctrl_flow_entry *cf;
+	struct mlx5_ctrl_flow_entry *cf_next;
 	int ret;
 
 	cf = LIST_FIRST(&priv->hw_ctrl_flows);
@@ -15342,8 +15342,8 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool
 	};
 	struct rte_flow_item items[3] = { { 0 } };
 	struct rte_flow_action actions[3] = { { 0 } };
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
 		.esw_mgr_sq = sqn,
 	};
 	struct rte_eth_dev *proxy_dev;
@@ -15432,7 +15432,7 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool
 	actions[1] = (struct rte_flow_action){
 		.type = RTE_FLOW_ACTION_TYPE_END,
 	};
-	flow_info.type = MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS;
+	flow_info.type = MLX5_CTRL_FLOW_TYPE_SQ_MISS;
 	ret = flow_hw_create_ctrl_flow(dev, proxy_dev,
 				       proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_tbl,
 				       items, 0, actions, 0, &flow_info, external);
@@ -15445,15 +15445,15 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool
 }
 
 static bool
-flow_hw_is_matching_sq_miss_flow(struct mlx5_hw_ctrl_flow *cf,
+flow_hw_is_matching_sq_miss_flow(struct mlx5_ctrl_flow_entry *cf,
 				 struct rte_eth_dev *dev,
 				 uint32_t sqn)
 {
 	if (cf->owner_dev != dev)
 		return false;
-	if (cf->info.type == MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS_ROOT && cf->info.esw_mgr_sq == sqn)
+	if (cf->info.type == MLX5_CTRL_FLOW_TYPE_SQ_MISS_ROOT && cf->info.esw_mgr_sq == sqn)
 		return true;
-	if (cf->info.type == MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS && cf->info.esw_mgr_sq == sqn)
+	if (cf->info.type == MLX5_CTRL_FLOW_TYPE_SQ_MISS && cf->info.esw_mgr_sq == sqn)
 		return true;
 	return false;
 }
@@ -15465,8 +15465,8 @@ mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	uint16_t proxy_port_id = dev->data->port_id;
 	struct rte_eth_dev *proxy_dev;
 	struct mlx5_priv *proxy_priv;
-	struct mlx5_hw_ctrl_flow *cf;
-	struct mlx5_hw_ctrl_flow *cf_next;
+	struct mlx5_ctrl_flow_entry *cf;
+	struct mlx5_ctrl_flow_entry *cf_next;
 	int ret;
 
 	ret = rte_flow_pick_transfer_proxy(port_id, &proxy_port_id, NULL);
@@ -15527,8 +15527,8 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		}
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_JUMP,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_JUMP,
 	};
 	struct rte_eth_dev *proxy_dev;
 	struct mlx5_priv *proxy_priv;
@@ -15608,8 +15608,8 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_TX_META_COPY,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_TX_META_COPY,
 	};
 
 	MLX5_ASSERT(priv->master);
@@ -15648,8 +15648,8 @@ mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool e
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_TX_REPR_MATCH,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_TX_REPR_MATCH,
 		.tx_repr_sq = sqn,
 	};
 
@@ -15706,8 +15706,8 @@ mlx5_flow_hw_lacp_rx_flow(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_LACP_RX,
 	};
 
 	if (!priv->dr_ctx || !priv->hw_ctrl_fdb || !priv->hw_ctrl_fdb->hw_lacp_rx_tbl)
@@ -15829,8 +15829,8 @@ __flow_hw_ctrl_flows_single(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 
 	if (!eth_spec)
@@ -15861,8 +15861,8 @@ __flow_hw_ctrl_flows_single_vlan(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 	unsigned int i;
 
@@ -15907,8 +15907,8 @@ __flow_hw_ctrl_flows_unicast_create(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
 		.uc = {
 			.dmac = *addr,
 		},
@@ -15969,8 +15969,8 @@ __flow_hw_ctrl_flows_unicast_vlan_create(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
-	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
+	struct mlx5_ctrl_flow_info flow_info = {
+		.type = MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
 		.uc = {
 			.dmac = *addr,
 			.vlan = vid,
@@ -16214,8 +16214,8 @@ mlx5_flow_hw_ctrl_flow_dmac_destroy(struct rte_eth_dev *dev,
 				    const struct rte_ether_addr *addr)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hw_ctrl_flow *entry;
-	struct mlx5_hw_ctrl_flow *tmp;
+	struct mlx5_ctrl_flow_entry *entry;
+	struct mlx5_ctrl_flow_entry *tmp;
 	int ret;
 
 	/*
@@ -16227,7 +16227,7 @@ mlx5_flow_hw_ctrl_flow_dmac_destroy(struct rte_eth_dev *dev,
 	while (entry != NULL) {
 		tmp = LIST_NEXT(entry, next);
 
-		if (entry->info.type != MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC ||
+		if (entry->info.type != MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC ||
 		    !rte_is_same_ether_addr(addr, &entry->info.uc.dmac)) {
 			entry = tmp;
 			continue;
@@ -16259,8 +16259,8 @@ mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(struct rte_eth_dev *dev,
 					 const uint16_t vlan)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hw_ctrl_flow *entry;
-	struct mlx5_hw_ctrl_flow *tmp;
+	struct mlx5_ctrl_flow_entry *entry;
+	struct mlx5_ctrl_flow_entry *tmp;
 	int ret;
 
 	/*
@@ -16272,7 +16272,7 @@ mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(struct rte_eth_dev *dev,
 	while (entry != NULL) {
 		tmp = LIST_NEXT(entry, next);
 
-		if (entry->info.type != MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN ||
+		if (entry->info.type != MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN ||
 		    !rte_is_same_ether_addr(addr, &entry->info.uc.dmac) ||
 		    vlan != entry->info.uc.vlan) {
 			entry = tmp;

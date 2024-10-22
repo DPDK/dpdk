@@ -1787,23 +1787,23 @@ struct mlx5_obj_ops {
 
 #define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
 
-enum mlx5_hw_ctrl_flow_type {
-	MLX5_HW_CTRL_FLOW_TYPE_GENERAL,
-	MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
-	MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS,
-	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_JUMP,
-	MLX5_HW_CTRL_FLOW_TYPE_TX_META_COPY,
-	MLX5_HW_CTRL_FLOW_TYPE_TX_REPR_MATCH,
-	MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
-	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
-	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
-	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
+enum mlx5_ctrl_flow_type {
+	MLX5_CTRL_FLOW_TYPE_GENERAL,
+	MLX5_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
+	MLX5_CTRL_FLOW_TYPE_SQ_MISS,
+	MLX5_CTRL_FLOW_TYPE_DEFAULT_JUMP,
+	MLX5_CTRL_FLOW_TYPE_TX_META_COPY,
+	MLX5_CTRL_FLOW_TYPE_TX_REPR_MATCH,
+	MLX5_CTRL_FLOW_TYPE_LACP_RX,
+	MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+	MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
+	MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
 };
 
 /** Additional info about control flow rule. */
-struct mlx5_hw_ctrl_flow_info {
+struct mlx5_ctrl_flow_info {
 	/** Determines the kind of control flow rule. */
-	enum mlx5_hw_ctrl_flow_type type;
+	enum mlx5_ctrl_flow_type type;
 	union {
 		/**
 		 * If control flow is a SQ miss flow (root or not),
@@ -1843,8 +1843,8 @@ bool mlx5_ctrl_flow_uc_dmac_vlan_exists(struct rte_eth_dev *dev,
 					const uint16_t vid);
 
 /** Entry for tracking control flow rules in HWS. */
-struct mlx5_hw_ctrl_flow {
-	LIST_ENTRY(mlx5_hw_ctrl_flow) next;
+struct mlx5_ctrl_flow_entry {
+	LIST_ENTRY(mlx5_ctrl_flow_entry) next;
 	/**
 	 * Owner device is a port on behalf of which flow rule was created.
 	 *
@@ -1856,7 +1856,7 @@ struct mlx5_hw_ctrl_flow {
 	/** Pointer to flow rule handle. */
 	struct rte_flow *flow;
 	/** Additional information about the control flow rule. */
-	struct mlx5_hw_ctrl_flow_info info;
+	struct mlx5_ctrl_flow_info info;
 };
 
 /* HW Steering port configuration passed to rte_flow_configure(). */
@@ -1965,8 +1965,8 @@ struct mlx5_priv {
 	struct mlx5_drop drop_queue; /* Flow drop queues. */
 	void *root_drop_action; /* Pointer to root drop action. */
 	rte_spinlock_t hw_ctrl_lock;
-	LIST_HEAD(hw_ctrl_flow, mlx5_hw_ctrl_flow) hw_ctrl_flows;
-	LIST_HEAD(hw_ext_ctrl_flow, mlx5_hw_ctrl_flow) hw_ext_ctrl_flows;
+	LIST_HEAD(hw_ctrl_flow, mlx5_ctrl_flow_entry) hw_ctrl_flows;
+	LIST_HEAD(hw_ext_ctrl_flow, mlx5_ctrl_flow_entry) hw_ext_ctrl_flows;
 	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
 	struct rte_flow_pattern_template *hw_tx_repr_tagging_pt;
 	struct rte_flow_actions_template *hw_tx_repr_tagging_at;
