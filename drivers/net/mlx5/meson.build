@@ -56,6 +56,13 @@ if is_linux
     )
 endif
 
+if is_windows or (mlx5_config.get('HAVE_INFINIBAND_VERBS_H', false) and
+        not mlx5_config.get('HAVE_IBV_FLOW_DV_SUPPORT', false))
+    sources += files(
+            'mlx5_flow_hw_stubs.c',
+    )
+endif
+
 if is_linux and (dpdk_conf.has('RTE_ARCH_X86_64')
               or dpdk_conf.has('RTE_ARCH_ARM64')
               or dpdk_conf.has('RTE_ARCH_PPC_64'))

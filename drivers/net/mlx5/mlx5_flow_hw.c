@@ -15894,12 +15894,14 @@ __flow_hw_ctrl_flows_single_vlan(struct rte_eth_dev *dev,
 }
 
 static int
-__flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
-			     struct rte_flow_template_table *tbl,
-			     const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
-			     const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+__flow_hw_ctrl_flows_unicast_create(struct rte_eth_dev *dev,
+				    struct rte_flow_template_table *tbl,
+				    const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type,
+				    const struct rte_ether_addr *addr)
 {
-	struct rte_flow_item_eth eth_spec;
+	struct rte_flow_item_eth eth_spec = {
+		.hdr.dst_addr = *addr,
+	};
 	struct rte_flow_item items[5];
 	struct rte_flow_action actions[] = {
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
@@ -15907,15 +15909,11 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 	};
 	struct mlx5_hw_ctrl_flow_info flow_info = {
 		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
+		.uc = {
+			.dmac = *addr,
+		},
 	};
-	const struct rte_ether_addr cmp = {
-		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-	};
-	unsigned int i;
 
-	RTE_SET_USED(pattern_type);
-
-	memset(&eth_spec, 0, sizeof(eth_spec));
 	memset(items, 0, sizeof(items));
 	items[0] = (struct rte_flow_item){
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
@@ -15925,28 +15923,47 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 	items[2] = flow_hw_get_ctrl_rx_l3_item(rss_type);
 	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
 	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
+
+	if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0, &flow_info, false))
+		return -rte_errno;
+
+	return 0;
+}
+
+static int
+__flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
+			     struct rte_flow_template_table *tbl,
+			     const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	unsigned int i;
+	int ret;
+
 	for (i = 0; i < MLX5_MAX_MAC_ADDRESSES; ++i) {
 		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
 
-		if (!memcmp(mac, &cmp, sizeof(*mac)))
+		if (rte_is_zero_ether_addr(mac))
 			continue;
-		eth_spec.hdr.dst_addr = *mac;
-		flow_info.uc.dmac = *mac;
-		if (flow_hw_create_ctrl_flow(dev, dev,
-					     tbl, items, 0, actions, 0, &flow_info, false))
-			return -rte_errno;
+
+		ret = __flow_hw_ctrl_flows_unicast_create(dev, tbl, rss_type, mac);
+		if (ret < 0)
+			return ret;
 	}
 	return 0;
 }
 
 static int
-__flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
-				  struct rte_flow_template_table *tbl,
-				  const enum mlx5_flow_ctrl_rx_eth_pattern_type pattern_type,
-				  const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+__flow_hw_ctrl_flows_unicast_vlan_create(struct rte_eth_dev *dev,
+					 struct rte_flow_template_table *tbl,
+					 const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type,
+					 const struct rte_ether_addr *addr,
+					 const uint16_t vid)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_item_eth eth_spec;
+	struct rte_flow_item_eth eth_spec = {
+		.hdr.dst_addr = *addr,
+	};
+	struct rte_flow_item_vlan vlan_spec = {
+		.tci = rte_cpu_to_be_16(vid),
+	};
 	struct rte_flow_item items[5];
 	struct rte_flow_action actions[] = {
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
@@ -15954,43 +15971,54 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 	};
 	struct mlx5_hw_ctrl_flow_info flow_info = {
 		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
+		.uc = {
+			.dmac = *addr,
+			.vlan = vid,
+		},
 	};
-	const struct rte_ether_addr cmp = {
-		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-	};
-	unsigned int i;
-	unsigned int j;
 
-	RTE_SET_USED(pattern_type);
-
-	memset(&eth_spec, 0, sizeof(eth_spec));
 	memset(items, 0, sizeof(items));
 	items[0] = (struct rte_flow_item){
 		.type = RTE_FLOW_ITEM_TYPE_ETH,
 		.spec = &eth_spec,
 	};
-	items[1] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_VLAN };
+	items[1] = (struct rte_flow_item){
+		.type = RTE_FLOW_ITEM_TYPE_VLAN,
+		.spec = &vlan_spec,
+	};
 	items[2] = flow_hw_get_ctrl_rx_l3_item(rss_type);
 	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
 	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
+
+	if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0, &flow_info, false))
+		return -rte_errno;
+
+	return 0;
+}
+
+static int
+__flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
+				  struct rte_flow_template_table *tbl,
+				  const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+	unsigned int j;
+
 	for (i = 0; i < MLX5_MAX_MAC_ADDRESSES; ++i) {
 		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
 
-		if (!memcmp(mac, &cmp, sizeof(*mac)))
+		if (rte_is_zero_ether_addr(mac))
 			continue;
-		eth_spec.hdr.dst_addr = *mac;
-		flow_info.uc.dmac = *mac;
+
 		for (j = 0; j < priv->vlan_filter_n; ++j) {
 			uint16_t vlan = priv->vlan_filter[j];
-			struct rte_flow_item_vlan vlan_spec = {
-				.hdr.vlan_tci = rte_cpu_to_be_16(vlan),
-			};
+			int ret;
 
-			flow_info.uc.vlan = vlan;
-			items[1].spec = &vlan_spec;
-			if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0,
-						     &flow_info, false))
-				return -rte_errno;
+			ret = __flow_hw_ctrl_flows_unicast_vlan_create(dev, tbl, rss_type,
+								       mac, vlan);
+			if (ret < 0)
+				return ret;
 		}
 	}
 	return 0;
@@ -16014,9 +16042,9 @@ __flow_hw_ctrl_flows(struct rte_eth_dev *dev,
 	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
 		return __flow_hw_ctrl_flows_single_vlan(dev, tbl, pattern_type, rss_type);
 	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC:
-		return __flow_hw_ctrl_flows_unicast(dev, tbl, pattern_type, rss_type);
+		return __flow_hw_ctrl_flows_unicast(dev, tbl, rss_type);
 	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
-		return __flow_hw_ctrl_flows_unicast_vlan(dev, tbl, pattern_type, rss_type);
+		return __flow_hw_ctrl_flows_unicast_vlan(dev, tbl, rss_type);
 	default:
 		/* Should not reach here. */
 		MLX5_ASSERT(false);
@@ -16095,6 +16123,99 @@ mlx5_flow_hw_ctrl_flows(struct rte_eth_dev *dev, uint32_t flags)
 		}
 	}
 	return 0;
+}
+
+static int
+mlx5_flow_hw_ctrl_flow_single(struct rte_eth_dev *dev,
+			      const enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type,
+			      const struct rte_ether_addr *addr,
+			      const uint16_t vlan)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
+	unsigned int j;
+	int ret = 0;
+
+	if (!priv->dr_ctx) {
+		DRV_LOG(DEBUG, "port %u Control flow rules will not be created. "
+			       "HWS needs to be configured beforehand.",
+			       dev->data->port_id);
+		return 0;
+	}
+	if (!priv->hw_ctrl_rx) {
+		DRV_LOG(ERR, "port %u Control flow rules templates were not created.",
+			dev->data->port_id);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	hw_ctrl_rx = priv->hw_ctrl_rx;
+
+	/* TODO: this part should be somehow refactored. It's common with common flow creation. */
+	for (j = 0; j < MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX; ++j) {
+		const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type = j;
+		const unsigned int pti = eth_pattern_type;
+		struct rte_flow_actions_template *at;
+		struct mlx5_flow_hw_ctrl_rx_table *tmpls = &hw_ctrl_rx->tables[pti][j];
+		const struct mlx5_flow_template_table_cfg cfg = {
+			.attr = tmpls->attr,
+			.external = 0,
+		};
+
+		if (!hw_ctrl_rx->rss[rss_type]) {
+			at = flow_hw_create_ctrl_rx_rss_template(dev, rss_type);
+			if (!at)
+				return -rte_errno;
+			hw_ctrl_rx->rss[rss_type] = at;
+		} else {
+			at = hw_ctrl_rx->rss[rss_type];
+		}
+		if (!rss_type_is_requested(priv, rss_type))
+			continue;
+		if (!tmpls->tbl) {
+			tmpls->tbl = flow_hw_table_create(dev, &cfg,
+							  &tmpls->pt, 1, &at, 1, NULL);
+			if (!tmpls->tbl) {
+				DRV_LOG(ERR, "port %u Failed to create template table "
+					     "for control flow rules. Unable to create "
+					     "control flow rules.",
+					     dev->data->port_id);
+				return -rte_errno;
+			}
+		}
+
+		MLX5_ASSERT(eth_pattern_type == MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC ||
+			    eth_pattern_type == MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN);
+
+		if (eth_pattern_type == MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC)
+			ret = __flow_hw_ctrl_flows_unicast_create(dev, tmpls->tbl, rss_type, addr);
+		else
+			ret = __flow_hw_ctrl_flows_unicast_vlan_create(dev, tmpls->tbl, rss_type,
+								       addr, vlan);
+		if (ret) {
+			DRV_LOG(ERR, "port %u Failed to create unicast control flow rule.",
+				dev->data->port_id);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int
+mlx5_flow_hw_ctrl_flow_dmac(struct rte_eth_dev *dev,
+			    const struct rte_ether_addr *addr)
+{
+	return mlx5_flow_hw_ctrl_flow_single(dev, MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC,
+					     addr, 0);
+}
+
+int
+mlx5_flow_hw_ctrl_flow_dmac_vlan(struct rte_eth_dev *dev,
+				 const struct rte_ether_addr *addr,
+				 const uint16_t vlan)
+{
+	return mlx5_flow_hw_ctrl_flow_single(dev, MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN,
+					     addr, vlan);
 }
 
 static __rte_always_inline uint32_t
