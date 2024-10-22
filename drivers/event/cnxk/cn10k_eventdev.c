@@ -98,6 +98,7 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	ws->xaq_lmt = dev->xaq_lmt;
 	ws->fc_cache_space = dev->fc_cache_space;
 	ws->aw_lmt = ws->lmt_base;
+	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
 
 	/* Set get_work timeout for HWS */
 	val = NSEC2USEC(dev->deq_tmo_ns);
