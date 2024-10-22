@@ -15906,7 +15906,7 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
 	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
 	};
 	const struct rte_ether_addr cmp = {
 		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
@@ -15930,7 +15930,8 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 
 		if (!memcmp(mac, &cmp, sizeof(*mac)))
 			continue;
-		memcpy(&eth_spec.hdr.dst_addr.addr_bytes, mac->addr_bytes, RTE_ETHER_ADDR_LEN);
+		eth_spec.hdr.dst_addr = *mac;
+		flow_info.uc.dmac = *mac;
 		if (flow_hw_create_ctrl_flow(dev, dev,
 					     tbl, items, 0, actions, 0, &flow_info, false))
 			return -rte_errno;
@@ -15952,7 +15953,7 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
 	struct mlx5_hw_ctrl_flow_info flow_info = {
-		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
 	};
 	const struct rte_ether_addr cmp = {
 		.addr_bytes = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
@@ -15977,13 +15978,15 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 
 		if (!memcmp(mac, &cmp, sizeof(*mac)))
 			continue;
-		memcpy(&eth_spec.hdr.dst_addr.addr_bytes, mac->addr_bytes, RTE_ETHER_ADDR_LEN);
+		eth_spec.hdr.dst_addr = *mac;
+		flow_info.uc.dmac = *mac;
 		for (j = 0; j < priv->vlan_filter_n; ++j) {
 			uint16_t vlan = priv->vlan_filter[j];
 			struct rte_flow_item_vlan vlan_spec = {
 				.hdr.vlan_tci = rte_cpu_to_be_16(vlan),
 			};
 
+			flow_info.uc.vlan = vlan;
 			items[1].spec = &vlan_spec;
 			if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0,
 						     &flow_info, false))

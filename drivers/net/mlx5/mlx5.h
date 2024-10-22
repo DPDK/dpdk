@@ -1796,6 +1796,8 @@ enum mlx5_hw_ctrl_flow_type {
 	MLX5_HW_CTRL_FLOW_TYPE_TX_REPR_MATCH,
 	MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
 	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC,
+	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN,
 };
 
 /** Additional info about control flow rule. */
@@ -1813,6 +1815,19 @@ struct mlx5_hw_ctrl_flow_info {
 		 * then fields contains matching SQ number.
 		 */
 		uint32_t tx_repr_sq;
+		/** Contains data relevant for unicast control flow rules. */
+		struct {
+			/**
+			 * If control flow is a unicast DMAC (or with VLAN) flow rule,
+			 * then this field contains DMAC.
+			 */
+			struct rte_ether_addr dmac;
+			/**
+			 * If control flow is a unicast DMAC with VLAN flow rule,
+			 * then this field contains VLAN ID.
+			 */
+			uint16_t vlan;
+		} uc;
 	};
 };
 
