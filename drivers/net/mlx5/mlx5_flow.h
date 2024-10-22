@@ -2991,6 +2991,25 @@ struct mlx5_flow_hw_ctrl_fdb {
 
 int mlx5_flow_hw_ctrl_flows(struct rte_eth_dev *dev, uint32_t flags);
 
+/** Create a control flow rule for matching unicast DMAC with VLAN (Verbs and DV). */
+int mlx5_legacy_dmac_flow_create(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
+
+/** Destroy a control flow rule for matching unicast DMAC with VLAN (Verbs and DV). */
+int mlx5_legacy_dmac_flow_destroy(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
+
+/** Create a control flow rule for matching unicast DMAC with VLAN (Verbs and DV). */
+int mlx5_legacy_dmac_vlan_flow_create(struct rte_eth_dev *dev,
+				      const struct rte_ether_addr *addr,
+				      const uint16_t vid);
+
+/** Destroy a control flow rule for matching unicast DMAC with VLAN (Verbs and DV). */
+int mlx5_legacy_dmac_vlan_flow_destroy(struct rte_eth_dev *dev,
+				      const struct rte_ether_addr *addr,
+				      const uint16_t vid);
+
+/** Destroy a control flow rule registered on port level control flow rule type. */
+void mlx5_legacy_ctrl_flow_destroy(struct rte_eth_dev *dev, struct mlx5_ctrl_flow_entry *entry);
+
 /** Create a control flow rule for matching unicast DMAC (HWS). */
 int mlx5_flow_hw_ctrl_flow_dmac(struct rte_eth_dev *dev, const struct rte_ether_addr *addr);
 

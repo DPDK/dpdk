@@ -8532,6 +8532,86 @@ mlx5_ctrl_flow(struct rte_eth_dev *dev,
 	return mlx5_ctrl_flow_vlan(dev, eth_spec, eth_mask, NULL, NULL);
 }
 
+int
+mlx5_legacy_dmac_flow_create(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct rte_flow_item_eth unicast = {
+		.hdr.dst_addr = *addr,
+	};
+	struct rte_flow_item_eth unicast_mask = {
+		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	};
+
+	return mlx5_ctrl_flow(dev, &unicast, &unicast_mask);
+}
+
+int
+mlx5_legacy_dmac_vlan_flow_create(struct rte_eth_dev *dev,
+				  const struct rte_ether_addr *addr,
+				  const uint16_t vid)
+{
+	struct rte_flow_item_eth unicast_spec = {
+		.hdr.dst_addr = *addr,
+	};
+	struct rte_flow_item_eth unicast_mask = {
+		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	};
+	struct rte_flow_item_vlan vlan_spec = {
+		.hdr.vlan_tci = rte_cpu_to_be_16(vid),
+	};
+	struct rte_flow_item_vlan vlan_mask = rte_flow_item_vlan_mask;
+
+	return mlx5_ctrl_flow_vlan(dev, &unicast_spec, &unicast_mask, &vlan_spec, &vlan_mask);
+}
+
+void
+mlx5_legacy_ctrl_flow_destroy(struct rte_eth_dev *dev, struct mlx5_ctrl_flow_entry *entry)
+{
+	uintptr_t flow_idx;
+
+	flow_idx = (uintptr_t)entry->flow;
+	mlx5_flow_list_destroy(dev, MLX5_FLOW_TYPE_CTL, flow_idx);
+	LIST_REMOVE(entry, next);
+	mlx5_free(entry);
+}
+
+int
+mlx5_legacy_dmac_flow_destroy(struct rte_eth_dev *dev, const struct rte_ether_addr *addr)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ctrl_flow_entry *entry;
+
+	LIST_FOREACH(entry, &priv->hw_ctrl_flows, next) {
+		if (entry->info.type != MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC ||
+		    !rte_is_same_ether_addr(addr, &entry->info.uc.dmac))
+			continue;
+
+		mlx5_legacy_ctrl_flow_destroy(dev, entry);
+		return 0;
+	}
+	return 0;
+}
+
+int
+mlx5_legacy_dmac_vlan_flow_destroy(struct rte_eth_dev *dev,
+				   const struct rte_ether_addr *addr,
+				   const uint16_t vid)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_ctrl_flow_entry *entry;
+
+	LIST_FOREACH(entry, &priv->hw_ctrl_flows, next) {
+		if (entry->info.type != MLX5_CTRL_FLOW_TYPE_DEFAULT_RX_RSS_UNICAST_DMAC_VLAN ||
+		    !rte_is_same_ether_addr(addr, &entry->info.uc.dmac) ||
+		    vid != entry->info.uc.vlan)
+			continue;
+
+		mlx5_legacy_ctrl_flow_destroy(dev, entry);
+		return 0;
+	}
+	return 0;
+}
+
 /**
  * Create default miss flow rule matching lacp traffic
  *
