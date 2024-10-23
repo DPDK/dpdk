@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2020,2022 NXP
  */
 
 #include "compat.h"
@@ -37,6 +37,7 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 		   struct qbman_bp_query_rslt *r)
 {
 	struct qbman_bp_query_desc *p;
+	struct qbman_bp_query_rslt *bp_query_rslt;
 
 	/* Start the management command */
 	p = (struct qbman_bp_query_desc *)qbman_swp_mc_start(s);
@@ -47,13 +48,15 @@ int qbman_bp_query(struct qbman_swp *s, uint32_t bpid,
 	p->bpid = bpid;
 
 	/* Complete the management command */
-	*r = *(struct qbman_bp_query_rslt *)qbman_swp_mc_complete(s, p,
-						 QBMAN_BP_QUERY);
-	if (!r) {
+	bp_query_rslt = (struct qbman_bp_query_rslt *)qbman_swp_mc_complete(s,
+						p, QBMAN_BP_QUERY);
+	if (!bp_query_rslt) {
 		pr_err("qbman: Query BPID %d failed, no response\n",
 			bpid);
 		return -EIO;
 	}
+
+	*r = *bp_query_rslt;
 
 	/* Decode the outcome */
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_BP_QUERY);
@@ -202,19 +205,22 @@ int qbman_fq_query(struct qbman_swp *s, uint32_t fqid,
 		   struct qbman_fq_query_rslt *r)
 {
 	struct qbman_fq_query_desc *p;
+	struct qbman_fq_query_rslt *fq_query_rslt;
 
 	p = (struct qbman_fq_query_desc *)qbman_swp_mc_start(s);
 	if (!p)
 		return -EBUSY;
 
 	p->fqid = fqid;
-	*r = *(struct qbman_fq_query_rslt *)qbman_swp_mc_complete(s, p,
-					  QBMAN_FQ_QUERY);
-	if (!r) {
+	fq_query_rslt = (struct qbman_fq_query_rslt *)qbman_swp_mc_complete(s,
+					p, QBMAN_FQ_QUERY);
+	if (!fq_query_rslt) {
 		pr_err("qbman: Query FQID %d failed, no response\n",
 			fqid);
 		return -EIO;
 	}
+
+	*r = *fq_query_rslt;
 
 	/* Decode the outcome */
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_FQ_QUERY);
@@ -398,19 +404,22 @@ int qbman_cgr_query(struct qbman_swp *s, uint32_t cgid,
 		    struct qbman_cgr_query_rslt *r)
 {
 	struct qbman_cgr_query_desc *p;
+	struct qbman_cgr_query_rslt *cgr_query_rslt;
 
 	p = (struct qbman_cgr_query_desc *)qbman_swp_mc_start(s);
 	if (!p)
 		return -EBUSY;
 
 	p->cgid = cgid;
-	*r = *(struct qbman_cgr_query_rslt *)qbman_swp_mc_complete(s, p,
-							QBMAN_CGR_QUERY);
-	if (!r) {
+	cgr_query_rslt = (struct qbman_cgr_query_rslt *)qbman_swp_mc_complete(s,
+					p, QBMAN_CGR_QUERY);
+	if (!cgr_query_rslt) {
 		pr_err("qbman: Query CGID %d failed, no response\n",
 			cgid);
 		return -EIO;
 	}
+
+	*r = *cgr_query_rslt;
 
 	/* Decode the outcome */
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_CGR_QUERY);
@@ -473,19 +482,22 @@ int qbman_cgr_wred_query(struct qbman_swp *s, uint32_t cgid,
 			struct qbman_wred_query_rslt *r)
 {
 	struct qbman_cgr_query_desc *p;
+	struct qbman_wred_query_rslt *wred_query_rslt;
 
 	p = (struct qbman_cgr_query_desc *)qbman_swp_mc_start(s);
 	if (!p)
 		return -EBUSY;
 
 	p->cgid = cgid;
-	*r = *(struct qbman_wred_query_rslt *)qbman_swp_mc_complete(s, p,
-							QBMAN_WRED_QUERY);
-	if (!r) {
+	wred_query_rslt = (struct qbman_wred_query_rslt *)qbman_swp_mc_complete(
+					s, p, QBMAN_WRED_QUERY);
+	if (!wred_query_rslt) {
 		pr_err("qbman: Query CGID WRED %d failed, no response\n",
 			cgid);
 		return -EIO;
 	}
+
+	*r = *wred_query_rslt;
 
 	/* Decode the outcome */
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WRED_QUERY);
@@ -527,7 +539,7 @@ void qbman_cgr_attr_wred_dp_decompose(uint32_t dp, uint64_t *minth,
 	if (mn == 0)
 		*maxth = ma;
 	else
-		*maxth = ((ma+256) * (1<<(mn-1)));
+		*maxth = ((uint64_t)(ma+256) * (1<<(mn-1)));
 
 	if (step_s == 0)
 		*minth = *maxth - step_i;
@@ -630,6 +642,7 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 		       struct qbman_wqchan_query_rslt *r)
 {
 	struct qbman_wqchan_query_desc *p;
+	struct qbman_wqchan_query_rslt *wqchan_query_rslt;
 
 	/* Start the management command */
 	p = (struct qbman_wqchan_query_desc *)qbman_swp_mc_start(s);
@@ -640,13 +653,15 @@ int qbman_wqchan_query(struct qbman_swp *s, uint16_t chanid,
 	p->chid = chanid;
 
 	/* Complete the management command */
-	*r = *(struct qbman_wqchan_query_rslt *)qbman_swp_mc_complete(s, p,
-							QBMAN_WQ_QUERY);
-	if (!r) {
+	wqchan_query_rslt = (struct qbman_wqchan_query_rslt *)qbman_swp_mc_complete(
+						s, p, QBMAN_WQ_QUERY);
+	if (!wqchan_query_rslt) {
 		pr_err("qbman: Query WQ Channel %d failed, no response\n",
 			chanid);
 		return -EIO;
 	}
+
+	*r = *wqchan_query_rslt;
 
 	/* Decode the outcome */
 	QBMAN_BUG_ON((r->verb & QBMAN_RESPONSE_VERB_MASK) != QBMAN_WQ_QUERY);
