@@ -120,10 +120,6 @@ Runtime Configuration
 
      3 - Enforce large LLQ policy.
 
-   * **normal_llq_hdr** (default 0)
-
-     Enforce normal LLQ policy.
-
    * **miss_txc_to** (default 5)
 
      Number of seconds after which the Tx packet will be considered missing.
