@@ -1008,9 +1008,9 @@ static int qbman_swp_enqueue_multiple_direct(struct qbman_swp *s,
 				QBMAN_CENA_SWP_EQCR(eqcr_pi & half_mask));
 		p[0] = cl[0] | s->eqcr.pi_vb;
 		if (flags && (flags[i] & QBMAN_ENQUEUE_FLAG_DCA)) {
-			struct qbman_eq_desc *d = (struct qbman_eq_desc *)p;
+			struct qbman_eq_desc *desc = (struct qbman_eq_desc *)p;
 
-			d->eq.dca = (1 << QB_ENQUEUE_CMD_DCA_EN_SHIFT) |
+			desc->eq.dca = (1 << QB_ENQUEUE_CMD_DCA_EN_SHIFT) |
 				((flags[i]) & QBMAN_EQCR_DCA_IDXMASK);
 		}
 		eqcr_pi++;
