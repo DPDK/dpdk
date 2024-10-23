@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017,2020 NXP
+ *   Copyright 2017, 2020, 2023 NXP
  *
  */
 
@@ -45,12 +45,12 @@ static struct dpaa2_dpcon_dev *get_dpcon_from_id(uint32_t dpcon_id)
 
 static int
 rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
-			      struct vfio_device_info *obj_info __rte_unused,
-			      int dpcon_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpcon_dev *dpcon_node;
 	struct dpcon_attr attr;
-	int ret;
+	int ret, dpcon_id = obj->object_id;
 
 	/* Allocate DPAA2 dpcon handle */
 	dpcon_node = rte_malloc(NULL, sizeof(struct dpaa2_dpcon_dev), 0);

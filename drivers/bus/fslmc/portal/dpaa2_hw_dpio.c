@@ -399,14 +399,14 @@ dpaa2_close_dpio_device(int object_id)
 
 static int
 dpaa2_create_dpio_device(int vdev_fd,
-			 struct vfio_device_info *obj_info,
-			 int object_id)
+	struct vfio_device_info *obj_info,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpio_dev *dpio_dev = NULL;
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info)};
 	struct qbman_swp_desc p_des;
 	struct dpio_attr attr;
-	int ret;
+	int ret, object_id = obj->object_id;
 
 	if (obj_info->num_regions < NUM_DPIO_REGIONS) {
 		DPAA2_BUS_ERR("Not sufficient number of DPIO regions");

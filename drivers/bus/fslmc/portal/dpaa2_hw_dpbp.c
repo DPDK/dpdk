@@ -47,11 +47,11 @@ static struct dpaa2_dpbp_dev *get_dpbp_from_id(uint32_t dpbp_id)
 
 static int
 dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
-			 struct vfio_device_info *obj_info __rte_unused,
-			 int dpbp_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpbp_dev *dpbp_node;
-	int ret;
+	int ret, dpbp_id = obj->object_id;
 	static int register_once;
 
 	/* Allocate DPAA2 dpbp handle */

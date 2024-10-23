@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017,2020 NXP
+ *   Copyright 2017, 2020, 2023 NXP
  *
  */
 
@@ -45,15 +45,15 @@ static struct dpaa2_dpci_dev *get_dpci_from_id(uint32_t dpci_id)
 
 static int
 rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
-			     struct vfio_device_info *obj_info __rte_unused,
-			     int dpci_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpci_dev *dpci_node;
 	struct dpci_attr attr;
 	struct dpci_rx_queue_cfg rx_queue_cfg;
 	struct dpci_rx_queue_attr rx_attr;
 	struct dpci_tx_queue_attr tx_attr;
-	int ret, i;
+	int ret, i, dpci_id = obj->object_id;
 
 	/* Allocate DPAA2 dpci handle */
 	dpci_node = rte_malloc(NULL, sizeof(struct dpaa2_dpci_dev), 0);

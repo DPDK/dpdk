@@ -374,12 +374,12 @@ rte_pmd_dpaa2_mux_dump_counter(FILE *f, uint32_t dpdmux_id, int num_if)
 
 static int
 dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
-			   struct vfio_device_info *obj_info __rte_unused,
-			   int dpdmux_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dpaa2_dpdmux_dev *dpdmux_dev;
 	struct dpdmux_attr attr;
-	int ret;
+	int ret, dpdmux_id = obj->object_id;
 	uint16_t maj_ver;
 	uint16_t min_ver;
 	uint8_t skip_reset_flags;

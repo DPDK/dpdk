@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2019 NXP
+ * Copyright 2019, 2023 NXP
  */
 
 #include <sys/queue.h>
@@ -134,11 +134,11 @@ int dpaa2_timesync_read_rx_timestamp(struct rte_eth_dev *dev,
 #if defined(RTE_LIBRTE_IEEE1588)
 static int
 dpaa2_create_dprtc_device(int vdev_fd __rte_unused,
-			   struct vfio_device_info *obj_info __rte_unused,
-			   int dprtc_id)
+	struct vfio_device_info *obj_info __rte_unused,
+	struct rte_dpaa2_device *obj)
 {
 	struct dprtc_attr attr;
-	int ret;
+	int ret, dprtc_id = obj->object_id;
 
 	PMD_INIT_FUNC_TRACE();
 
