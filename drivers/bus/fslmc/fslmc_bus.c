@@ -318,6 +318,7 @@ rte_fslmc_scan(void)
 	struct dirent *entry;
 	static int process_once;
 	int groupid;
+	char *group_name;
 
 	if (process_once) {
 		DPAA2_BUS_DEBUG("Fslmc bus already scanned. Not rescanning");
@@ -325,12 +326,19 @@ rte_fslmc_scan(void)
 	}
 	process_once = 1;
 
-	ret = fslmc_get_container_group(&groupid);
+	/* Now we only support single group per process.*/
+	group_name = getenv("DPRC");
+	if (!group_name) {
+		DPAA2_BUS_DEBUG("DPAA2: DPRC not available");
+		return -EINVAL;
+	}
+
+	ret = fslmc_get_container_group(group_name, &groupid);
 	if (ret != 0)
 		goto scan_fail;
 
 	/* Scan devices on the group */
-	sprintf(fslmc_dirpath, "%s/%s", SYSFS_FSL_MC_DEVICES, fslmc_container);
+	sprintf(fslmc_dirpath, "%s/%s", SYSFS_FSL_MC_DEVICES, group_name);
 	dir = opendir(fslmc_dirpath);
 	if (!dir) {
 		DPAA2_BUS_ERR("Unable to open VFIO group directory");
@@ -338,7 +346,7 @@ rte_fslmc_scan(void)
 	}
 
 	/* Scan the DPRC container object */
-	ret = scan_one_fslmc_device(fslmc_container);
+	ret = scan_one_fslmc_device(group_name);
 	if (ret != 0) {
 		/* Error in parsing directory - exit gracefully */
 		goto scan_fail_cleanup;

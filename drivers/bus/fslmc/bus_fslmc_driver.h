@@ -149,6 +149,10 @@ struct rte_dpaa2_driver {
 	rte_dpaa2_remove_t remove;
 };
 
+__rte_internal
+int
+rte_fslmc_vfio_mem_dmaunmap(uint64_t iova, uint64_t size);
+
 /**
  * Register a DPAA2 driver.
  *
