@@ -19,6 +19,7 @@ EXPERIMENTAL {
 	# added in 24.11
 	rte_pmd_dpaa2_set_one_step_ts;
 	rte_pmd_dpaa2_get_one_step_ts;
+	rte_pmd_dpaa2_mux_dump_counter;
 };
 
 INTERNAL {
