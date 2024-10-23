@@ -2064,7 +2064,7 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	int ret = -EINVAL;
 	struct dpaa2_dev_priv *priv;
 	struct fsl_mc_io *dpni;
-	struct dpni_link_state state = {0};
+	struct dpni_link_cfg cfg = {0};
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2076,14 +2076,14 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return ret;
 	}
 
-	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
+	ret = dpni_get_link_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
-		DPAA2_PMD_ERR("error: dpni_get_link_state %d", ret);
+		DPAA2_PMD_ERR("error: dpni_get_link_cfg %d", ret);
 		return ret;
 	}
 
 	memset(fc_conf, 0, sizeof(struct rte_eth_fc_conf));
-	if (state.options & DPNI_LINK_OPT_PAUSE) {
+	if (cfg.options & DPNI_LINK_OPT_PAUSE) {
 		/* DPNI_LINK_OPT_PAUSE set
 		 *  if ASYM_PAUSE not set,
 		 *	RX Side flow control (handle received Pause frame)
@@ -2092,7 +2092,7 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		 *	RX Side flow control (handle received Pause frame)
 		 *	No TX side flow control (send Pause frame disabled)
 		 */
-		if (!(state.options & DPNI_LINK_OPT_ASYM_PAUSE))
+		if (!(cfg.options & DPNI_LINK_OPT_ASYM_PAUSE))
 			fc_conf->mode = RTE_ETH_FC_FULL;
 		else
 			fc_conf->mode = RTE_ETH_FC_RX_PAUSE;
@@ -2104,7 +2104,7 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		 *  if ASYM_PAUSE not set,
 		 *	Flow control disabled
 		 */
-		if (state.options & DPNI_LINK_OPT_ASYM_PAUSE)
+		if (cfg.options & DPNI_LINK_OPT_ASYM_PAUSE)
 			fc_conf->mode = RTE_ETH_FC_TX_PAUSE;
 		else
 			fc_conf->mode = RTE_ETH_FC_NONE;
@@ -2119,7 +2119,6 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	int ret = -EINVAL;
 	struct dpaa2_dev_priv *priv;
 	struct fsl_mc_io *dpni;
-	struct dpni_link_state state = {0};
 	struct dpni_link_cfg cfg = {0};
 
 	PMD_INIT_FUNC_TRACE();
@@ -2132,22 +2131,18 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		return ret;
 	}
 
-	/* It is necessary to obtain the current state before setting fc_conf
+	/* It is necessary to obtain the current cfg before setting fc_conf
 	 * as MC would return error in case rate, autoneg or duplex values are
 	 * different.
 	 */
-	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
+	ret = dpni_get_link_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
-		DPAA2_PMD_ERR("Unable to get link state (err=%d)", ret);
+		DPAA2_PMD_ERR("Unable to get link cfg (err=%d)", ret);
 		return -1;
 	}
 
 	/* Disable link before setting configuration */
 	dpaa2_dev_set_link_down(dev);
-
-	/* Based on fc_conf, update cfg */
-	cfg.rate = state.rate;
-	cfg.options = state.options;
 
 	/* update cfg with fc_conf */
 	switch (fc_conf->mode) {
