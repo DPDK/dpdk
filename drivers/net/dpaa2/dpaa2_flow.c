@@ -58,6 +58,11 @@ struct dpaa2_dev_flow {
 	struct dpni_fs_action_cfg fs_action_cfg;
 };
 
+struct rte_dpaa2_flow_item {
+	struct rte_flow_item generic_item;
+	int in_tunnel;
+};
+
 static const
 enum rte_flow_item_type dpaa2_supported_pattern_type[] = {
 	RTE_FLOW_ITEM_TYPE_END,
@@ -1928,10 +1933,203 @@ rule_configure:
 }
 
 static int
-dpaa2_configure_flow_eth(struct dpaa2_dev_flow *flow,
+dpaa2_configure_flow_tunnel_eth(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
 	const struct rte_flow_item *pattern,
+	int *device_configured)
+{
+	int ret, local_cfg = 0;
+	uint32_t group;
+	const struct rte_flow_item_eth *spec, *mask;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const char zero_cmp[RTE_ETHER_ADDR_LEN] = {0};
+
+	group = attr->group;
+
+	/* Parse pattern list to get the matching parameters */
+	spec = pattern->spec;
+	mask = pattern->mask ?
+			pattern->mask : &dpaa2_flow_item_eth_mask;
+
+	/* Get traffic class index and flow id to be configured */
+	flow->tc_id = group;
+	flow->tc_index = attr->priority;
+
+	if (!spec)
+		return 0;
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_ETH)) {
+		DPAA2_PMD_WARN("Extract field(s) of ethernet failed");
+
+		return -EINVAL;
+	}
+
+	if (memcmp((const char *)&mask->src,
+		zero_cmp, RTE_ETHER_ADDR_LEN)) {
+		/*SRC[0:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR0_OFFSET,
+			1, &spec->src.addr_bytes[0],
+			&mask->src.addr_bytes[0],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		/*SRC[1:2]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR1_OFFSET,
+			2, &spec->src.addr_bytes[1],
+			&mask->src.addr_bytes[1],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		/*SRC[3:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR3_OFFSET,
+			1, &spec->src.addr_bytes[3],
+			&mask->src.addr_bytes[3],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		/*SRC[4:2]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR4_OFFSET,
+			2, &spec->src.addr_bytes[4],
+			&mask->src.addr_bytes[4],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+
+		/*SRC[0:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR0_OFFSET,
+			1, &spec->src.addr_bytes[0],
+			&mask->src.addr_bytes[0],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+		/*SRC[1:2]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR1_OFFSET,
+			2, &spec->src.addr_bytes[1],
+			&mask->src.addr_bytes[1],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+		/*SRC[3:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR3_OFFSET,
+			1, &spec->src.addr_bytes[3],
+			&mask->src.addr_bytes[3],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+		/*SRC[4:2]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_SADDR4_OFFSET,
+			2, &spec->src.addr_bytes[4],
+			&mask->src.addr_bytes[4],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+	}
+
+	if (memcmp((const char *)&mask->dst,
+		zero_cmp, RTE_ETHER_ADDR_LEN)) {
+		/*DST[0:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR0_OFFSET,
+			1, &spec->dst.addr_bytes[0],
+			&mask->dst.addr_bytes[0],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		/*DST[1:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR1_OFFSET,
+			1, &spec->dst.addr_bytes[1],
+			&mask->dst.addr_bytes[1],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		/*DST[2:3]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR2_OFFSET,
+			3, &spec->dst.addr_bytes[2],
+			&mask->dst.addr_bytes[2],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		/*DST[5:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR5_OFFSET,
+			1, &spec->dst.addr_bytes[5],
+			&mask->dst.addr_bytes[5],
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+
+		/*DST[0:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR0_OFFSET,
+			1, &spec->dst.addr_bytes[0],
+			&mask->dst.addr_bytes[0],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+		/*DST[1:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR1_OFFSET,
+			1, &spec->dst.addr_bytes[1],
+			&mask->dst.addr_bytes[1],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+		/*DST[2:3]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR2_OFFSET,
+			3, &spec->dst.addr_bytes[2],
+			&mask->dst.addr_bytes[2],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+		/*DST[5:1]*/
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_DADDR5_OFFSET,
+			1, &spec->dst.addr_bytes[5],
+			&mask->dst.addr_bytes[5],
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+	}
+
+	if (memcmp((const char *)&mask->type,
+		zero_cmp, sizeof(rte_be16_t))) {
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_TYPE_OFFSET,
+			sizeof(rte_be16_t), &spec->type, &mask->type,
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_TYPE_OFFSET,
+			sizeof(rte_be16_t), &spec->type, &mask->type,
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+	}
+
+	(*device_configured) |= local_cfg;
+
+	return 0;
+}
+
+static int
+dpaa2_configure_flow_eth(struct dpaa2_dev_flow *flow,
+	struct rte_eth_dev *dev,
+	const struct rte_flow_attr *attr,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -1941,6 +2139,13 @@ dpaa2_configure_flow_eth(struct dpaa2_dev_flow *flow,
 	const struct rte_flow_item_eth *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	const char zero_cmp[RTE_ETHER_ADDR_LEN] = {0};
+	const struct rte_flow_item *pattern =
+		&dpaa2_pattern->generic_item;
+
+	if (dpaa2_pattern->in_tunnel) {
+		return dpaa2_configure_flow_tunnel_eth(flow,
+				dev, attr, pattern, device_configured);
+	}
 
 	group = attr->group;
 
@@ -2034,10 +2239,81 @@ dpaa2_configure_flow_eth(struct dpaa2_dev_flow *flow,
 }
 
 static int
-dpaa2_configure_flow_vlan(struct dpaa2_dev_flow *flow,
+dpaa2_configure_flow_tunnel_vlan(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
 	const struct rte_flow_item *pattern,
+	int *device_configured)
+{
+	int ret, local_cfg = 0;
+	uint32_t group;
+	const struct rte_flow_item_vlan *spec, *mask;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+
+	group = attr->group;
+
+	/* Parse pattern list to get the matching parameters */
+	spec = pattern->spec;
+	mask = pattern->mask ?
+		pattern->mask : &dpaa2_flow_item_vlan_mask;
+
+	/* Get traffic class index and flow id to be configured */
+	flow->tc_id = group;
+	flow->tc_index = attr->priority;
+
+	if (!spec) {
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAFE_VXLAN_IN_VLAN_FRAM,
+				DPAA2_FLOW_QOS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAFE_VXLAN_IN_VLAN_FRAM,
+				DPAA2_FLOW_FS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		(*device_configured) |= local_cfg;
+		return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_VLAN)) {
+		DPAA2_PMD_WARN("Extract field(s) of vlan not support.");
+
+		return -EINVAL;
+	}
+
+	if (!mask->tci)
+		return 0;
+
+	ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_TCI_OFFSET,
+			sizeof(rte_be16_t), &spec->tci, &mask->tci,
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+	if (ret)
+		return ret;
+
+	ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_IN_TCI_OFFSET,
+			sizeof(rte_be16_t), &spec->tci, &mask->tci,
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+	if (ret)
+		return ret;
+
+	(*device_configured) |= local_cfg;
+
+	return 0;
+}
+
+static int
+dpaa2_configure_flow_vlan(struct dpaa2_dev_flow *flow,
+	struct rte_eth_dev *dev,
+	const struct rte_flow_attr *attr,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2046,6 +2322,13 @@ dpaa2_configure_flow_vlan(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_vlan *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern =
+		&dpaa2_pattern->generic_item;
+
+	if (dpaa2_pattern->in_tunnel) {
+		return dpaa2_configure_flow_tunnel_vlan(flow,
+				dev, attr, pattern, device_configured);
+	}
 
 	group = attr->group;
 
@@ -2105,7 +2388,7 @@ dpaa2_configure_flow_vlan(struct dpaa2_dev_flow *flow,
 static int
 dpaa2_configure_flow_ipv4(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 			  const struct rte_flow_attr *attr,
-			  const struct rte_flow_item *pattern,
+			  const struct rte_dpaa2_flow_item *dpaa2_pattern,
 			  const struct rte_flow_action actions[] __rte_unused,
 			  struct rte_flow_error *error __rte_unused,
 			  int *device_configured)
@@ -2116,6 +2399,7 @@ dpaa2_configure_flow_ipv4(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	const void *key, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	int size;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2123,6 +2407,26 @@ dpaa2_configure_flow_ipv4(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	spec_ipv4 = pattern->spec;
 	mask_ipv4 = pattern->mask ?
 		    pattern->mask : &dpaa2_flow_item_ipv4_mask;
+
+	if (dpaa2_pattern->in_tunnel) {
+		if (spec_ipv4) {
+			DPAA2_PMD_ERR("Tunnel-IPv4 distribution not support");
+			return -ENOTSUP;
+		}
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_IPV4_FRAM,
+						 DPAA2_FLOW_QOS_TYPE, group,
+						 &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_IPV4_FRAM,
+						 DPAA2_FLOW_FS_TYPE, group,
+						 &local_cfg);
+		return ret;
+	}
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
@@ -2222,7 +2526,7 @@ dpaa2_configure_flow_ipv4(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 static int
 dpaa2_configure_flow_ipv6(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 			  const struct rte_flow_attr *attr,
-			  const struct rte_flow_item *pattern,
+			  const struct rte_dpaa2_flow_item *dpaa2_pattern,
 			  const struct rte_flow_action actions[] __rte_unused,
 			  struct rte_flow_error *error __rte_unused,
 			  int *device_configured)
@@ -2234,6 +2538,7 @@ dpaa2_configure_flow_ipv6(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	const char zero_cmp[NH_FLD_IPV6_ADDR_SIZE] = {0};
 	int size;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2244,6 +2549,26 @@ dpaa2_configure_flow_ipv6(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		if (spec_ipv6) {
+			DPAA2_PMD_ERR("Tunnel-IPv6 distribution not support");
+			return -ENOTSUP;
+		}
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_IPV6_FRAM,
+						 DPAA2_FLOW_QOS_TYPE, group,
+						 &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_IPV6_FRAM,
+						 DPAA2_FLOW_FS_TYPE, group,
+						 &local_cfg);
+		return ret;
+	}
 
 	ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_IPV6_FRAM,
 					 DPAA2_FLOW_QOS_TYPE, group,
@@ -2341,7 +2666,7 @@ static int
 dpaa2_configure_flow_icmp(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2350,6 +2675,7 @@ dpaa2_configure_flow_icmp(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_icmp *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2361,6 +2687,11 @@ dpaa2_configure_flow_icmp(struct dpaa2_dev_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		DPAA2_PMD_ERR("Tunnel-ICMP distribution not support");
+		return -ENOTSUP;
+	}
 
 	if (!spec) {
 		ret = dpaa2_flow_identify_by_faf(priv, flow,
@@ -2427,7 +2758,7 @@ static int
 dpaa2_configure_flow_udp(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2436,6 +2767,7 @@ dpaa2_configure_flow_udp(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_udp *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2447,6 +2779,26 @@ dpaa2_configure_flow_udp(struct dpaa2_dev_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		if (spec) {
+			DPAA2_PMD_ERR("Tunnel-UDP distribution not support");
+			return -ENOTSUP;
+		}
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_UDP_FRAM,
+						 DPAA2_FLOW_QOS_TYPE, group,
+						 &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_UDP_FRAM,
+						 DPAA2_FLOW_FS_TYPE, group,
+						 &local_cfg);
+		return ret;
+	}
 
 	ret = dpaa2_flow_identify_by_faf(priv, flow,
 			FAF_UDP_FRAM, DPAA2_FLOW_QOS_TYPE,
@@ -2513,7 +2865,7 @@ static int
 dpaa2_configure_flow_tcp(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2522,6 +2874,7 @@ dpaa2_configure_flow_tcp(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_tcp *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2533,6 +2886,26 @@ dpaa2_configure_flow_tcp(struct dpaa2_dev_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		if (spec) {
+			DPAA2_PMD_ERR("Tunnel-TCP distribution not support");
+			return -ENOTSUP;
+		}
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_TCP_FRAM,
+						 DPAA2_FLOW_QOS_TYPE, group,
+						 &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+						 FAFE_VXLAN_IN_TCP_FRAM,
+						 DPAA2_FLOW_FS_TYPE, group,
+						 &local_cfg);
+		return ret;
+	}
 
 	ret = dpaa2_flow_identify_by_faf(priv, flow,
 			FAF_TCP_FRAM, DPAA2_FLOW_QOS_TYPE,
@@ -2599,7 +2972,7 @@ static int
 dpaa2_configure_flow_sctp(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2608,6 +2981,7 @@ dpaa2_configure_flow_sctp(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_sctp *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2619,6 +2993,11 @@ dpaa2_configure_flow_sctp(struct dpaa2_dev_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		DPAA2_PMD_ERR("Tunnel-SCTP distribution not support");
+		return -ENOTSUP;
+	}
 
 	ret = dpaa2_flow_identify_by_faf(priv, flow,
 			FAF_SCTP_FRAM, DPAA2_FLOW_QOS_TYPE,
@@ -2685,7 +3064,7 @@ static int
 dpaa2_configure_flow_gre(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2694,6 +3073,7 @@ dpaa2_configure_flow_gre(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_gre *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2705,6 +3085,11 @@ dpaa2_configure_flow_gre(struct dpaa2_dev_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		DPAA2_PMD_ERR("Tunnel-GRE distribution not support");
+		return -ENOTSUP;
+	}
 
 	if (!spec) {
 		ret = dpaa2_flow_identify_by_faf(priv, flow,
@@ -2756,7 +3141,7 @@ static int
 dpaa2_configure_flow_vxlan(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
@@ -2765,6 +3150,7 @@ dpaa2_configure_flow_vxlan(struct dpaa2_dev_flow *flow,
 	uint32_t group;
 	const struct rte_flow_item_vxlan *spec, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
 
 	group = attr->group;
 
@@ -2776,6 +3162,11 @@ dpaa2_configure_flow_vxlan(struct dpaa2_dev_flow *flow,
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		DPAA2_PMD_ERR("Tunnel-VXLAN distribution not support");
+		return -ENOTSUP;
+	}
 
 	if (!spec) {
 		ret = dpaa2_flow_identify_by_faf(priv, flow,
@@ -2840,18 +3231,19 @@ static int
 dpaa2_configure_flow_raw(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
-	const struct rte_flow_item *pattern,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
 	const struct rte_flow_action actions[] __rte_unused,
 	struct rte_flow_error *error __rte_unused,
 	int *device_configured)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
-	const struct rte_flow_item_raw *spec = pattern->spec;
-	const struct rte_flow_item_raw *mask = pattern->mask;
 	int local_cfg = 0, ret;
 	uint32_t group;
 	struct dpaa2_key_extract *qos_key_extract;
 	struct dpaa2_key_extract *tc_key_extract;
+	const struct rte_flow_item *pattern = &dpaa2_pattern->generic_item;
+	const struct rte_flow_item_raw *spec = pattern->spec;
+	const struct rte_flow_item_raw *mask = pattern->mask;
 
 	/* Need both spec and mask */
 	if (!spec || !mask) {
@@ -3281,6 +3673,45 @@ dpaa2_configure_qos_table(struct dpaa2_dev_priv *priv,
 }
 
 static int
+dpaa2_flow_item_convert(const struct rte_flow_item pattern[],
+			struct rte_dpaa2_flow_item **dpaa2_pattern)
+{
+	struct rte_dpaa2_flow_item *new_pattern;
+	int num = 0, tunnel_start = 0;
+
+	while (1) {
+		num++;
+		if (pattern[num].type == RTE_FLOW_ITEM_TYPE_END)
+			break;
+	}
+
+	new_pattern = rte_malloc(NULL, sizeof(struct rte_dpaa2_flow_item) * num,
+				 RTE_CACHE_LINE_SIZE);
+	if (!new_pattern) {
+		DPAA2_PMD_ERR("Failed to alloc %d flow items", num);
+		return -ENOMEM;
+	}
+
+	num = 0;
+	while (pattern[num].type != RTE_FLOW_ITEM_TYPE_END) {
+		memcpy(&new_pattern[num].generic_item, &pattern[num],
+		       sizeof(struct rte_flow_item));
+		new_pattern[num].in_tunnel = 0;
+
+		if (pattern[num].type == RTE_FLOW_ITEM_TYPE_VXLAN)
+			tunnel_start = 1;
+		else if (tunnel_start)
+			new_pattern[num].in_tunnel = 1;
+		num++;
+	}
+
+	new_pattern[num].generic_item.type = RTE_FLOW_ITEM_TYPE_END;
+	*dpaa2_pattern = new_pattern;
+
+	return 0;
+}
+
+static int
 dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
@@ -3296,6 +3727,7 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 	uint16_t dist_size, key_size;
 	struct dpaa2_key_extract *qos_key_extract;
 	struct dpaa2_key_extract *tc_key_extract;
+	struct rte_dpaa2_flow_item *dpaa2_pattern = NULL;
 
 	ret = dpaa2_flow_verify_attr(priv, attr);
 	if (ret)
@@ -3305,107 +3737,121 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 	if (ret)
 		return ret;
 
+	ret = dpaa2_flow_item_convert(pattern, &dpaa2_pattern);
+	if (ret)
+		return ret;
+
 	/* Parse pattern list to get the matching parameters */
 	while (!end_of_list) {
 		switch (pattern[i].type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			ret = dpaa2_configure_flow_eth(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_eth(flow, dev, attr,
+						       &dpaa2_pattern[i],
+						       actions, error,
+						       &is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("ETH flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			ret = dpaa2_configure_flow_vlan(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_vlan(flow, dev, attr,
+							&dpaa2_pattern[i],
+							actions, error,
+							&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("vLan flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			ret = dpaa2_configure_flow_ipv4(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_ipv4(flow, dev, attr,
+							&dpaa2_pattern[i],
+							actions, error,
+							&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("IPV4 flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ret = dpaa2_configure_flow_ipv6(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_ipv6(flow, dev, attr,
+							&dpaa2_pattern[i],
+							actions, error,
+							&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("IPV6 flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP:
-			ret = dpaa2_configure_flow_icmp(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_icmp(flow, dev, attr,
+							&dpaa2_pattern[i],
+							actions, error,
+							&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("ICMP flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			ret = dpaa2_configure_flow_udp(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_udp(flow, dev, attr,
+						       &dpaa2_pattern[i],
+						       actions, error,
+						       &is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("UDP flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
-			ret = dpaa2_configure_flow_tcp(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_tcp(flow, dev, attr,
+						       &dpaa2_pattern[i],
+						       actions, error,
+						       &is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("TCP flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_SCTP:
-			ret = dpaa2_configure_flow_sctp(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_sctp(flow, dev, attr,
+							&dpaa2_pattern[i],
+							actions, error,
+							&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("SCTP flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			ret = dpaa2_configure_flow_gre(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_gre(flow, dev, attr,
+						       &dpaa2_pattern[i],
+						       actions, error,
+						       &is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("GRE flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
-			ret = dpaa2_configure_flow_vxlan(flow,
-					dev, attr, &pattern[i], actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_vxlan(flow, dev, attr,
+							 &dpaa2_pattern[i],
+							 actions, error,
+							 &is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("VXLAN flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_RAW:
-			ret = dpaa2_configure_flow_raw(flow,
-					dev, attr, &pattern[i],
-					actions, error,
-					&is_keycfg_configured);
+			ret = dpaa2_configure_flow_raw(flow, dev, attr,
+						       &dpaa2_pattern[i],
+						       actions, error,
+						       &is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("RAW flow config failed!");
-				return ret;
+				goto end_flow_set;
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_END:
@@ -3437,7 +3883,7 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			ret = dpaa2_configure_flow_fs_action(priv, flow,
 							     &actions[j]);
 			if (ret)
-				return ret;
+				goto end_flow_set;
 
 			/* Configure FS table first*/
 			dist_size = priv->nb_rx_queues / priv->num_rx_tc;
@@ -3447,20 +3893,20 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 								   dist_size,
 								   false);
 				if (ret)
-					return ret;
+					goto end_flow_set;
 			}
 
 			/* Configure QoS table then.*/
 			if (is_keycfg_configured & DPAA2_FLOW_QOS_TYPE) {
 				ret = dpaa2_configure_qos_table(priv, false);
 				if (ret)
-					return ret;
+					goto end_flow_set;
 			}
 
 			if (priv->num_rx_tc > 1) {
 				ret = dpaa2_flow_add_qos_rule(priv, flow);
 				if (ret)
-					return ret;
+					goto end_flow_set;
 			}
 
 			if (flow->tc_index >= priv->fs_entries) {
@@ -3471,7 +3917,7 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 
 			ret = dpaa2_flow_add_fs_rule(priv, flow);
 			if (ret)
-				return ret;
+				goto end_flow_set;
 
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
@@ -3483,7 +3929,7 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			if (ret < 0) {
 				DPAA2_PMD_ERR("TC[%d] distset RSS failed",
 					      flow->tc_id);
-				return ret;
+				goto end_flow_set;
 			}
 
 			dist_size = rss_conf->queue_num;
@@ -3493,22 +3939,22 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 								   dist_size,
 								   true);
 				if (ret)
-					return ret;
+					goto end_flow_set;
 			}
 
 			if (is_keycfg_configured & DPAA2_FLOW_QOS_TYPE) {
 				ret = dpaa2_configure_qos_table(priv, true);
 				if (ret)
-					return ret;
+					goto end_flow_set;
 			}
 
 			ret = dpaa2_flow_add_qos_rule(priv, flow);
 			if (ret)
-				return ret;
+				goto end_flow_set;
 
 			ret = dpaa2_flow_add_fs_rule(priv, flow);
 			if (ret)
-				return ret;
+				goto end_flow_set;
 
 			break;
 		case RTE_FLOW_ACTION_TYPE_PF:
@@ -3525,6 +3971,7 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 		j++;
 	}
 
+end_flow_set:
 	if (!ret) {
 		/* New rules are inserted. */
 		if (!curr) {
@@ -3535,6 +3982,10 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			LIST_INSERT_AFTER(curr, flow, next);
 		}
 	}
+
+	if (dpaa2_pattern)
+		rte_free(dpaa2_pattern);
+
 	return ret;
 }
 
