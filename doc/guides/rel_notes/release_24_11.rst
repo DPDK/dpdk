@@ -172,6 +172,7 @@ New Features
   * Modified the PMD API that controls the LLQ header policy.
   * Replaced ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
     with a new shared devarg ``llq_policy`` that keeps the same logic.
+  * Added validation check for Rx packet descriptor consistency.
 
 * **Updated Cisco enic driver.**
 

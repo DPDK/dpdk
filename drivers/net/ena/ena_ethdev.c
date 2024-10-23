@@ -162,6 +162,8 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 	ENA_STAT_RX_ENTRY(mbuf_alloc_fail),
 	ENA_STAT_RX_ENTRY(bad_desc_num),
 	ENA_STAT_RX_ENTRY(bad_req_id),
+	ENA_STAT_RX_ENTRY(bad_desc),
+	ENA_STAT_RX_ENTRY(unknown_error),
 };
 
 #define ENA_STATS_ARRAY_GLOBAL	ARRAY_SIZE(ena_stats_global_strings)
@@ -1262,7 +1264,9 @@ static int ena_stats_get(struct rte_eth_dev *dev,
 		stats->q_ibytes[i] = rx_stats->bytes;
 		stats->q_ipackets[i] = rx_stats->cnt;
 		stats->q_errors[i] = rx_stats->bad_desc_num +
-			rx_stats->bad_req_id;
+			rx_stats->bad_req_id +
+			rx_stats->bad_desc +
+			rx_stats->unknown_error;
 	}
 
 	max_rings_stats = RTE_MIN(dev->data->nb_tx_queues,
@@ -2772,6 +2776,7 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct ena_ring *rx_ring = (struct ena_ring *)(rx_queue);
 	unsigned int free_queue_entries;
 	uint16_t next_to_clean = rx_ring->next_to_clean;
+	enum ena_regs_reset_reason_types reset_reason;
 	uint16_t descs_in_use;
 	struct rte_mbuf *mbuf;
 	uint16_t completed;
@@ -2804,15 +2809,25 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			PMD_RX_LOG_LINE(ERR,
 				"Failed to get the packet from the device, rc: %d",
 				rc);
-			if (rc == ENA_COM_NO_SPACE) {
+			switch (rc) {
+			case ENA_COM_NO_SPACE:
 				++rx_ring->rx_stats.bad_desc_num;
-				ena_trigger_reset(rx_ring->adapter,
-					ENA_REGS_RESET_TOO_MANY_RX_DESCS);
-			} else {
+				reset_reason = ENA_REGS_RESET_TOO_MANY_RX_DESCS;
+				break;
+			case ENA_COM_FAULT:
+				++rx_ring->rx_stats.bad_desc;
+				reset_reason = ENA_REGS_RESET_RX_DESCRIPTOR_MALFORMED;
+				break;
+			case ENA_COM_EIO:
 				++rx_ring->rx_stats.bad_req_id;
-				ena_trigger_reset(rx_ring->adapter,
-					ENA_REGS_RESET_INV_RX_REQ_ID);
+				reset_reason = ENA_REGS_RESET_INV_RX_REQ_ID;
+				break;
+			default:
+				++rx_ring->rx_stats.unknown_error;
+				reset_reason = ENA_REGS_RESET_DRIVER_INVALID_STATE;
+				break;
 			}
+			ena_trigger_reset(rx_ring->adapter, reset_reason);
 			return 0;
 		}
 

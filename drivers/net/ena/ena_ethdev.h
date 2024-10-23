@@ -140,6 +140,8 @@ struct ena_stats_rx {
 	u64 mbuf_alloc_fail;
 	u64 bad_desc_num;
 	u64 bad_req_id;
+	u64 bad_desc;
+	u64 unknown_error;
 };
 
 struct __rte_cache_aligned ena_ring {
