@@ -66,7 +66,7 @@ struct rte_dpaa2_flow_item {
 };
 
 static const
-enum rte_flow_item_type dpaa2_supported_pattern_type[] = {
+enum rte_flow_item_type dpaa2_hp_supported_pattern_type[] = {
 	RTE_FLOW_ITEM_TYPE_END,
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_VLAN,
@@ -77,7 +77,14 @@ enum rte_flow_item_type dpaa2_supported_pattern_type[] = {
 	RTE_FLOW_ITEM_TYPE_TCP,
 	RTE_FLOW_ITEM_TYPE_SCTP,
 	RTE_FLOW_ITEM_TYPE_GRE,
-	RTE_FLOW_ITEM_TYPE_GTP
+	RTE_FLOW_ITEM_TYPE_GTP,
+	RTE_FLOW_ITEM_TYPE_RAW
+};
+
+static const
+enum rte_flow_item_type dpaa2_sp_supported_pattern_type[] = {
+	RTE_FLOW_ITEM_TYPE_VXLAN,
+	RTE_FLOW_ITEM_TYPE_ECPRI
 };
 
 static const
@@ -4534,16 +4541,17 @@ dpaa2_dev_verify_attr(struct dpni_attr *dpni_attr,
 	int ret = 0;
 
 	if (unlikely(attr->group >= dpni_attr->num_rx_tcs)) {
-		DPAA2_PMD_ERR("Priority group is out of range");
+		DPAA2_PMD_ERR("Group/TC(%d) is out of range(%d)",
+			attr->group, dpni_attr->num_rx_tcs);
 		ret = -ENOTSUP;
 	}
 	if (unlikely(attr->priority >= dpni_attr->fs_entries)) {
-		DPAA2_PMD_ERR("Priority within the group is out of range");
+		DPAA2_PMD_ERR("Priority(%d) within group is out of range(%d)",
+			attr->priority, dpni_attr->fs_entries);
 		ret = -ENOTSUP;
 	}
 	if (unlikely(attr->egress)) {
-		DPAA2_PMD_ERR(
-			"Flow configuration is not supported on egress side");
+		DPAA2_PMD_ERR("Egress flow configuration is not supported");
 		ret = -ENOTSUP;
 	}
 	if (unlikely(!attr->ingress)) {
@@ -4558,24 +4566,38 @@ dpaa2_dev_verify_patterns(const struct rte_flow_item pattern[])
 {
 	unsigned int i, j, is_found = 0;
 	int ret = 0;
+	const enum rte_flow_item_type *hp_supported;
+	const enum rte_flow_item_type *sp_supported;
+	uint64_t hp_supported_num, sp_supported_num;
+
+	hp_supported = dpaa2_hp_supported_pattern_type;
+	hp_supported_num = RTE_DIM(dpaa2_hp_supported_pattern_type);
+
+	sp_supported = dpaa2_sp_supported_pattern_type;
+	sp_supported_num = RTE_DIM(dpaa2_sp_supported_pattern_type);
 
 	for (j = 0; pattern[j].type != RTE_FLOW_ITEM_TYPE_END; j++) {
-		for (i = 0; i < RTE_DIM(dpaa2_supported_pattern_type); i++) {
-			if (dpaa2_supported_pattern_type[i]
-					== pattern[j].type) {
+		is_found = 0;
+		for (i = 0; i < hp_supported_num; i++) {
+			if (hp_supported[i] == pattern[j].type) {
 				is_found = 1;
 				break;
 			}
 		}
-		if (!is_found) {
-			ret = -ENOTSUP;
-			break;
+		if (is_found)
+			continue;
+		if (dpaa2_sp_loaded > 0) {
+			for (i = 0; i < sp_supported_num; i++) {
+				if (sp_supported[i] == pattern[j].type) {
+					is_found = 1;
+					break;
+				}
+			}
 		}
-	}
-	/* Lets verify other combinations of given pattern rules */
-	for (j = 0; pattern[j].type != RTE_FLOW_ITEM_TYPE_END; j++) {
-		if (!pattern[j].spec) {
-			ret = -EINVAL;
+		if (!is_found) {
+			DPAA2_PMD_WARN("Flow type(%d) not supported",
+				pattern[j].type);
+			ret = -ENOTSUP;
 			break;
 		}
 	}
@@ -4625,43 +4647,39 @@ dpaa2_flow_validate(struct rte_eth_dev *dev,
 	memset(&dpni_attr, 0, sizeof(struct dpni_attr));
 	ret = dpni_get_attributes(dpni, CMD_PRI_LOW, token, &dpni_attr);
 	if (ret < 0) {
-		DPAA2_PMD_ERR(
-			"Failure to get dpni@%p attribute, err code  %d",
-			dpni, ret);
+		DPAA2_PMD_ERR("Get dpni@%d attribute failed(%d)",
+			priv->hw_id, ret);
 		rte_flow_error_set(error, EPERM,
-			   RTE_FLOW_ERROR_TYPE_ATTR,
-			   flow_attr, "invalid");
+			RTE_FLOW_ERROR_TYPE_ATTR,
+			flow_attr, "invalid");
 		return ret;
 	}
 
 	/* Verify input attributes */
 	ret = dpaa2_dev_verify_attr(&dpni_attr, flow_attr);
 	if (ret < 0) {
-		DPAA2_PMD_ERR(
-			"Invalid attributes are given");
+		DPAA2_PMD_ERR("Invalid attributes are given");
 		rte_flow_error_set(error, EPERM,
-			   RTE_FLOW_ERROR_TYPE_ATTR,
-			   flow_attr, "invalid");
+			RTE_FLOW_ERROR_TYPE_ATTR,
+			flow_attr, "invalid");
 		goto not_valid_params;
 	}
 	/* Verify input pattern list */
 	ret = dpaa2_dev_verify_patterns(pattern);
 	if (ret < 0) {
-		DPAA2_PMD_ERR(
-			"Invalid pattern list is given");
+		DPAA2_PMD_ERR("Invalid pattern list is given");
 		rte_flow_error_set(error, EPERM,
-			   RTE_FLOW_ERROR_TYPE_ITEM,
-			   pattern, "invalid");
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			pattern, "invalid");
 		goto not_valid_params;
 	}
 	/* Verify input action list */
 	ret = dpaa2_dev_verify_actions(actions);
 	if (ret < 0) {
-		DPAA2_PMD_ERR(
-			"Invalid action list is given");
+		DPAA2_PMD_ERR("Invalid action list is given");
 		rte_flow_error_set(error, EPERM,
-			   RTE_FLOW_ERROR_TYPE_ACTION,
-			   actions, "invalid");
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			actions, "invalid");
 		goto not_valid_params;
 	}
 not_valid_params:
