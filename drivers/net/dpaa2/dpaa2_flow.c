@@ -38,6 +38,8 @@ enum dpaa2_flow_dist_type {
 #define DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT	16
 #define DPAA2_FLOW_MAX_KEY_SIZE			16
 
+#define VXLAN_HF_VNI 0x08
+
 struct dpaa2_dev_flow {
 	LIST_ENTRY(dpaa2_dev_flow) next;
 	struct dpni_rule_cfg qos_rule;
@@ -132,6 +134,11 @@ static const struct rte_flow_item_sctp dpaa2_flow_item_sctp_mask = {
 
 static const struct rte_flow_item_gre dpaa2_flow_item_gre_mask = {
 	.protocol = RTE_BE16(0xffff),
+};
+
+static const struct rte_flow_item_vxlan dpaa2_flow_item_vxlan_mask = {
+	.flags = 0xff,
+	.vni = "\xff\xff\xff",
 };
 #endif
 
@@ -681,6 +688,68 @@ dpaa2_flow_faf_advance(struct dpaa2_dev_priv *priv,
 	return pos;
 }
 
+static int
+dpaa2_flow_pr_advance(struct dpaa2_dev_priv *priv,
+	uint32_t pr_offset, uint32_t pr_size,
+	enum dpaa2_flow_dist_type dist_type, int tc_id,
+	int *insert_offset)
+{
+	int offset, ret;
+	struct dpaa2_key_profile *key_profile;
+	int num, pos;
+
+	if (dist_type == DPAA2_FLOW_QOS_TYPE)
+		key_profile = &priv->extract.qos_key_extract.key_profile;
+	else
+		key_profile = &priv->extract.tc_key_extract[tc_id].key_profile;
+
+	num = key_profile->num;
+
+	if (num >= DPKG_MAX_NUM_OF_EXTRACTS) {
+		DPAA2_PMD_ERR("Number of extracts overflows");
+		return -EINVAL;
+	}
+
+	if (key_profile->ip_addr_type != IP_NONE_ADDR_EXTRACT) {
+		offset = key_profile->ip_addr_extract_off;
+		pos = key_profile->ip_addr_extract_pos;
+		key_profile->ip_addr_extract_pos++;
+		key_profile->ip_addr_extract_off += pr_size;
+		if (dist_type == DPAA2_FLOW_QOS_TYPE) {
+			ret = dpaa2_flow_qos_rule_insert_hole(priv,
+					offset, pr_size);
+		} else {
+			ret = dpaa2_flow_fs_rule_insert_hole(priv,
+				offset, pr_size, tc_id);
+		}
+		if (ret)
+			return ret;
+	} else {
+		pos = num;
+	}
+
+	if (pos > 0) {
+		key_profile->key_offset[pos] =
+			key_profile->key_offset[pos - 1] +
+			key_profile->key_size[pos - 1];
+	} else {
+		key_profile->key_offset[pos] = 0;
+	}
+
+	key_profile->key_size[pos] = pr_size;
+	key_profile->prot_field[pos].type = DPAA2_PR_KEY;
+	key_profile->prot_field[pos].key_field =
+		(pr_offset << 16) | pr_size;
+	key_profile->num++;
+
+	if (insert_offset)
+		*insert_offset = key_profile->key_offset[pos];
+
+	key_profile->key_max_size += pr_size;
+
+	return pos;
+}
+
 /* Move IPv4/IPv6 addresses to fill new extract previous IP address.
  * Current MC/WRIOP only support generic IP extract but IP address
  * is not fixed, so we have to put them at end of extracts, otherwise,
@@ -809,6 +878,59 @@ dpaa2_flow_faf_add_hdr(int faf_byte,
 	extracts[pos].type = DPKG_EXTRACT_FROM_PARSE;
 	extracts[pos].extract.from_parse.offset = offset;
 	extracts[pos].extract.from_parse.size = 1;
+
+	dpkg->num_extracts++;
+
+	return 0;
+}
+
+static int
+dpaa2_flow_pr_add_hdr(uint32_t pr_offset,
+	uint32_t pr_size, struct dpaa2_dev_priv *priv,
+	enum dpaa2_flow_dist_type dist_type, int tc_id,
+	int *insert_offset)
+{
+	int pos, i;
+	struct dpaa2_key_extract *key_extract;
+	struct dpkg_profile_cfg *dpkg;
+	struct dpkg_extract *extracts;
+
+	if ((pr_offset + pr_size) > DPAA2_FAPR_SIZE) {
+		DPAA2_PMD_ERR("PR extracts(%d:%d) overflow",
+			pr_offset, pr_size);
+		return -EINVAL;
+	}
+
+	if (dist_type == DPAA2_FLOW_QOS_TYPE)
+		key_extract = &priv->extract.qos_key_extract;
+	else
+		key_extract = &priv->extract.tc_key_extract[tc_id];
+
+	dpkg = &key_extract->dpkg;
+	extracts = dpkg->extracts;
+
+	if (dpkg->num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
+		DPAA2_PMD_ERR("Number of extracts overflows");
+		return -EINVAL;
+	}
+
+	pos = dpaa2_flow_pr_advance(priv,
+			pr_offset, pr_size, dist_type, tc_id,
+			insert_offset);
+	if (pos < 0)
+		return pos;
+
+	if (pos != dpkg->num_extracts) {
+		/* Not the last pos, must have IP address extract.*/
+		for (i = dpkg->num_extracts - 1; i >= pos; i--) {
+			memcpy(&extracts[i + 1],
+				&extracts[i], sizeof(struct dpkg_extract));
+		}
+	}
+
+	extracts[pos].type = DPKG_EXTRACT_FROM_PARSE;
+	extracts[pos].extract.from_parse.offset = pr_offset;
+	extracts[pos].extract.from_parse.size = pr_size;
 
 	dpkg->num_extracts++;
 
@@ -1163,6 +1285,10 @@ dpaa2_flow_extract_search(struct dpaa2_key_profile *key_profile,
 			prot_field[pos].key_field == key_field &&
 			prot_field[pos].type == type)
 			return pos;
+		else if (type == DPAA2_PR_KEY &&
+			prot_field[pos].key_field == key_field &&
+			prot_field[pos].type == type)
+			return pos;
 	}
 
 	if (type == DPAA2_NET_PROT_KEY &&
@@ -1249,6 +1375,41 @@ dpaa2_flow_faf_add_rule(struct dpaa2_dev_priv *priv,
 
 		*key_addr |=  (1 << faf_bit_in_byte);
 		*mask_addr |=  (1 << faf_bit_in_byte);
+	}
+
+	return 0;
+}
+
+static inline int
+dpaa2_flow_pr_rule_data_set(struct dpaa2_dev_flow *flow,
+	struct dpaa2_key_profile *key_profile,
+	uint32_t pr_offset, uint32_t pr_size,
+	const void *key, const void *mask,
+	enum dpaa2_flow_dist_type dist_type)
+{
+	int offset;
+	uint32_t pr_field = pr_offset << 16 | pr_size;
+
+	offset = dpaa2_flow_extract_key_offset(key_profile,
+			DPAA2_PR_KEY, NET_PROT_NONE, pr_field);
+	if (offset < 0) {
+		DPAA2_PMD_ERR("PR off(%d)/size(%d) does not exist!",
+			pr_offset, pr_size);
+		return -EINVAL;
+	}
+
+	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+		memcpy((flow->qos_key_addr + offset), key, pr_size);
+		memcpy((flow->qos_mask_addr + offset), mask, pr_size);
+		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
+			flow->qos_rule_size = offset + pr_size;
+	}
+
+	if (dist_type & DPAA2_FLOW_FS_TYPE) {
+		memcpy((flow->fs_key_addr + offset), key, pr_size);
+		memcpy((flow->fs_mask_addr + offset), mask, pr_size);
+		if (key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
+			flow->fs_rule_size = offset + pr_size;
 	}
 
 	return 0;
@@ -1375,6 +1536,10 @@ dpaa2_flow_extract_support(const uint8_t *mask_src,
 		mask_support = (const char *)&dpaa2_flow_item_gre_mask;
 		size = sizeof(struct rte_flow_item_gre);
 		break;
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		mask_support = (const char *)&dpaa2_flow_item_vxlan_mask;
+		size = sizeof(struct rte_flow_item_vxlan);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1454,6 +1619,55 @@ dpaa2_flow_identify_by_faf(struct dpaa2_dev_priv *priv,
 				group);
 			return -EINVAL;
 		}
+	}
+
+	if (recfg)
+		*recfg |= local_cfg;
+
+	return 0;
+}
+
+static int
+dpaa2_flow_add_pr_extract_rule(struct dpaa2_dev_flow *flow,
+	uint32_t pr_offset, uint32_t pr_size,
+	const void *key, const void *mask,
+	struct dpaa2_dev_priv *priv, int tc_id, int *recfg,
+	enum dpaa2_flow_dist_type dist_type)
+{
+	int index, ret, local_cfg = 0;
+	struct dpaa2_key_extract *key_extract;
+	struct dpaa2_key_profile *key_profile;
+	uint32_t pr_field = pr_offset << 16 | pr_size;
+
+	if (dist_type == DPAA2_FLOW_QOS_TYPE)
+		key_extract = &priv->extract.qos_key_extract;
+	else
+		key_extract = &priv->extract.tc_key_extract[tc_id];
+
+	key_profile = &key_extract->key_profile;
+
+	index = dpaa2_flow_extract_search(key_profile,
+			DPAA2_PR_KEY, NET_PROT_NONE, pr_field);
+	if (index < 0) {
+		ret = dpaa2_flow_pr_add_hdr(pr_offset,
+				pr_size, priv,
+				dist_type, tc_id, NULL);
+		if (ret) {
+			DPAA2_PMD_ERR("PR add off(%d)/size(%d) failed",
+				pr_offset, pr_size);
+
+			return ret;
+		}
+		local_cfg |= dist_type;
+	}
+
+	ret = dpaa2_flow_pr_rule_data_set(flow, key_profile,
+			pr_offset, pr_size, key, mask, dist_type);
+	if (ret) {
+		DPAA2_PMD_ERR("PR off(%d)/size(%d) rule data set failed",
+			pr_offset, pr_size);
+
+		return ret;
 	}
 
 	if (recfg)
@@ -2539,6 +2753,90 @@ dpaa2_configure_flow_gre(struct dpaa2_dev_flow *flow,
 }
 
 static int
+dpaa2_configure_flow_vxlan(struct dpaa2_dev_flow *flow,
+	struct rte_eth_dev *dev,
+	const struct rte_flow_attr *attr,
+	const struct rte_flow_item *pattern,
+	const struct rte_flow_action actions[] __rte_unused,
+	struct rte_flow_error *error __rte_unused,
+	int *device_configured)
+{
+	int ret, local_cfg = 0;
+	uint32_t group;
+	const struct rte_flow_item_vxlan *spec, *mask;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+
+	group = attr->group;
+
+	/* Parse pattern list to get the matching parameters */
+	spec = pattern->spec;
+	mask = pattern->mask ?
+		pattern->mask : &dpaa2_flow_item_vxlan_mask;
+
+	/* Get traffic class index and flow id to be configured */
+	flow->tc_id = group;
+	flow->tc_index = attr->priority;
+
+	if (!spec) {
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_VXLAN_FRAM, DPAA2_FLOW_QOS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_VXLAN_FRAM, DPAA2_FLOW_FS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		(*device_configured) |= local_cfg;
+		return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_VXLAN)) {
+		DPAA2_PMD_WARN("Extract field(s) of VXLAN not support.");
+
+		return -1;
+	}
+
+	if (mask->flags) {
+		if (spec->flags != VXLAN_HF_VNI) {
+			DPAA2_PMD_ERR("vxlan flag(0x%02x) must be 0x%02x.",
+				spec->flags, VXLAN_HF_VNI);
+			return -EINVAL;
+		}
+		if (mask->flags != 0xff) {
+			DPAA2_PMD_ERR("Not support to extract vxlan flag.");
+			return -EINVAL;
+		}
+	}
+
+	if (mask->vni[0] || mask->vni[1] || mask->vni[2]) {
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_VNI_OFFSET,
+			sizeof(mask->vni), spec->vni,
+			mask->vni,
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_add_pr_extract_rule(flow,
+			DPAA2_VXLAN_VNI_OFFSET,
+			sizeof(mask->vni), spec->vni,
+			mask->vni,
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+		if (ret)
+			return ret;
+	}
+
+	(*device_configured) |= local_cfg;
+
+	return 0;
+}
+
+static int
 dpaa2_configure_flow_raw(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
@@ -2738,6 +3036,9 @@ dpaa2_flow_verify_action(struct dpaa2_dev_priv *priv,
 				}
 			}
 
+			break;
+		case RTE_FLOW_ACTION_TYPE_PF:
+			/* Skip this action, have to add for vxlan */
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			end_of_list = 1;
@@ -3088,6 +3389,15 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 				return ret;
 			}
 			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			ret = dpaa2_configure_flow_vxlan(flow,
+					dev, attr, &pattern[i], actions, error,
+					&is_keycfg_configured);
+			if (ret) {
+				DPAA2_PMD_ERR("VXLAN flow config failed!");
+				return ret;
+			}
+			break;
 		case RTE_FLOW_ITEM_TYPE_RAW:
 			ret = dpaa2_configure_flow_raw(flow,
 					dev, attr, &pattern[i],
@@ -3200,6 +3510,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			if (ret)
 				return ret;
 
+			break;
+		case RTE_FLOW_ACTION_TYPE_PF:
+			/* Skip this action, have to add for vxlan */
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			end_of_list = 1;

@@ -282,8 +282,12 @@ enum ip_addr_extract_type {
 };
 
 enum key_prot_type {
+	/* HW extracts from standard protocol fields*/
 	DPAA2_NET_PROT_KEY,
-	DPAA2_FAF_KEY
+	/* HW extracts from FAF of PR*/
+	DPAA2_FAF_KEY,
+	/* HW extracts from PR other than FAF*/
+	DPAA2_PR_KEY
 };
 
 struct key_prot_field {
