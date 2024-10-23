@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2021,2023 NXP
  */
 
 #include <sys/queue.h>
@@ -448,12 +448,11 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 		struct dpdmux_error_cfg mux_err_cfg;
 
 		memset(&mux_err_cfg, 0, sizeof(mux_err_cfg));
+		/* Note: Discarded flag(DPDMUX_ERROR_DISC) has effect only when
+		 * ERROR_ACTION is set to DPNI_ERROR_ACTION_SEND_TO_ERROR_QUEUE.
+		 */
+		mux_err_cfg.errors = DPDMUX_ALL_ERRORS;
 		mux_err_cfg.error_action = DPDMUX_ERROR_ACTION_CONTINUE;
-
-		if (attr.method != DPDMUX_METHOD_C_VLAN_MAC)
-			mux_err_cfg.errors = DPDMUX_ERROR_DISC;
-		else
-			mux_err_cfg.errors = DPDMUX_ALL_ERRORS;
 
 		ret = dpdmux_if_set_errors_behavior(&dpdmux_dev->dpdmux,
 				CMD_PRI_LOW,
