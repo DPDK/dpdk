@@ -897,7 +897,7 @@ hns3_get_name_by_module(enum hns3_reg_modules module)
 	size_t i;
 
 	for (i = 0; i < RTE_DIM(hns3_module_name_map); i++) {
-		if (hns3_module_name_map[i].module && HNS3_MODULE_MASK(module) != 0)
+		if ((hns3_module_name_map[i].module & HNS3_MODULE_MASK(module)) != 0)
 			return hns3_module_name_map[i].name;
 	}
 	return "unknown";
