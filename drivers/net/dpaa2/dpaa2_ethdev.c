@@ -1965,7 +1965,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	if (ret) {
 		/* Unable to obtain dpni status; Not continuing */
 		DPAA2_PMD_ERR("Interface Link UP failed (%d)", ret);
-		return -EINVAL;
+		return ret;
 	}
 
 	/* Enable link if not already enabled */
@@ -1973,13 +1973,13 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 		ret = dpni_enable(dpni, CMD_PRI_LOW, priv->token);
 		if (ret) {
 			DPAA2_PMD_ERR("Interface Link UP failed (%d)", ret);
-			return -EINVAL;
+			return ret;
 		}
 	}
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret < 0) {
 		DPAA2_PMD_DEBUG("Unable to get link state (%d)", ret);
-		return -1;
+		return ret;
 	}
 
 	/* changing tx burst function to start enqueues */
@@ -1987,10 +1987,15 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	dev->data->dev_link.link_status = state.up;
 	dev->data->dev_link.link_speed = state.rate;
 
-	if (state.up)
-		DPAA2_PMD_INFO("Port %d Link is Up", dev->data->port_id);
+	if (state.options & DPNI_LINK_OPT_HALF_DUPLEX)
+		dev->data->dev_link.link_duplex = RTE_ETH_LINK_HALF_DUPLEX;
 	else
-		DPAA2_PMD_INFO("Port %d Link is Down", dev->data->port_id);
+		dev->data->dev_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+
+	if (state.up)
+		DPAA2_PMD_DEBUG("Port %d Link is Up", dev->data->port_id);
+	else
+		DPAA2_PMD_DEBUG("Port %d Link is Down", dev->data->port_id);
 	return ret;
 }
 
