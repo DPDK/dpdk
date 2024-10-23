@@ -343,8 +343,10 @@ add_vfio_group:
 	} else {
 		ret = fslmc_vfio_add_group(vfio_group_fd, iommu_group_num,
 			group_name);
-		if (ret)
+		if (ret) {
+			close(vfio_group_fd);
 			return ret;
+		}
 	}
 
 	return vfio_group_fd;
