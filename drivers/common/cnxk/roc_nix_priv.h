@@ -488,4 +488,12 @@ int nix_tel_node_add_rq(struct roc_nix_rq *rq);
 int nix_tel_node_add_cq(struct roc_nix_cq *cq);
 int nix_tel_node_add_sq(struct roc_nix_sq *sq);
 
+/*
+ * RSS
+ */
+int nix_rss_reta_pffunc_set(struct roc_nix *roc_nix, uint8_t group,
+			    uint16_t reta[ROC_NIX_RSS_RETA_MAX], uint16_t pf_func);
+int nix_rss_flowkey_pffunc_set(struct roc_nix *roc_nix, uint8_t *alg_idx, uint32_t flowkey,
+			       uint8_t group, int mcam_index, uint16_t pf_func);
+
 #endif /* _ROC_NIX_PRIV_H_ */

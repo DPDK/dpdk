@@ -387,3 +387,14 @@ exit:
 	mbox_put(mbox);
 	return rc;
 }
+
+int
+roc_eswitch_is_repte_pfs_vf(uint16_t rep_pffunc, uint16_t pf_pffunc)
+{
+	uint16_t rep_pf = dev_get_pf(rep_pffunc);
+
+	if (roc_model_is_cn20k())
+		return ((rep_pf << RVU_PFVF_PF_SHIFT_CN20K) == pf_pffunc);
+	else
+		return ((rep_pf << RVU_PFVF_PF_SHIFT) == pf_pffunc);
+}

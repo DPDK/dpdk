@@ -90,6 +90,7 @@ INTERNAL {
 	roc_dpi_enable;
 	roc_dpi_wait_queue_idle;
 	roc_error_msg_get;
+	roc_eswitch_is_repte_pfs_vf;
 	roc_eswitch_nix_process_repte_notify_cb_register;
 	roc_eswitch_nix_process_repte_notify_cb_unregister;
 	roc_eswitch_nix_repte_stats;

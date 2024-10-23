@@ -203,6 +203,7 @@ enum roc_npc_action_type {
 struct roc_npc_action {
 	enum roc_npc_action_type type; /**< Action type. */
 	const void *conf;	       /**< Pointer to action configuration object. */
+	uint16_t rss_repte_pf_func;    /**< Per flow tmp var for rss representee pffunc */
 };
 
 struct roc_npc_action_sample {

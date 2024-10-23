@@ -43,6 +43,9 @@ struct roc_eswitch_repte_notify_msg {
 typedef int (*process_repte_notify_t)(void *roc_nix,
 				      struct roc_eswitch_repte_notify_msg *notify_msg);
 
+/* Generic */
+int __roc_api roc_eswitch_is_repte_pfs_vf(uint16_t rep_pffunc, uint16_t pf_pffunc);
+
 /* NPC */
 int __roc_api roc_eswitch_npc_mcam_rx_rule(struct roc_npc *roc_npc, struct roc_npc_flow *flow,
 					   uint16_t pcifunc, uint16_t vlan_tci,

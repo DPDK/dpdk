@@ -484,7 +484,8 @@ int npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 				const struct roc_npc_flow_item_ipv6 *ipv6_mask,
 				struct npc_parse_state *pst, uint8_t type);
 int npc_rss_action_configure(struct roc_npc *roc_npc, const struct roc_npc_action_rss *rss,
-			     uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id);
+			     uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id,
+			     uint16_t rss_repte_pf_func);
 int npc_rss_action_program(struct roc_npc *roc_npc, const struct roc_npc_action actions[],
 			   struct roc_npc_flow *flow);
 int npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow);
