@@ -118,6 +118,26 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	}
 	break;
 
+	case RTE_FLOW_ITEM_TYPE_VLAN:
+	{
+		const struct rte_flow_item_vlan *spec;
+
+		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
+		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_VLAN;
+		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_VLAN_TCI;
+		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FROM_FIELD;
+		kg_cfg.extracts[0].extract.from_hdr.offset = 1;
+		kg_cfg.extracts[0].extract.from_hdr.size = 1;
+		kg_cfg.num_extracts = 1;
+
+		spec = (const struct rte_flow_item_vlan *)pattern[0]->spec;
+		memcpy((void *)key_iova, (const void *)(&spec->hdr.vlan_tci),
+			sizeof(uint16_t));
+		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));
+		key_size = sizeof(uint16_t);
+	}
+	break;
+
 	case RTE_FLOW_ITEM_TYPE_UDP:
 	{
 		const struct rte_flow_item_udp *spec;
