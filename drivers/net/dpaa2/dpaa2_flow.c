@@ -37,7 +37,7 @@ enum dpaa2_flow_dist_type {
 
 #define DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT	16
 #define DPAA2_FLOW_MAX_KEY_SIZE			16
-
+#define DPAA2_PROT_FIELD_STRING_SIZE		16
 #define VXLAN_HF_VNI 0x08
 
 struct dpaa2_dev_flow {
@@ -75,6 +75,7 @@ enum rte_flow_item_type dpaa2_supported_pattern_type[] = {
 	RTE_FLOW_ITEM_TYPE_TCP,
 	RTE_FLOW_ITEM_TYPE_SCTP,
 	RTE_FLOW_ITEM_TYPE_GRE,
+	RTE_FLOW_ITEM_TYPE_GTP
 };
 
 static const
@@ -152,6 +153,11 @@ static const struct rte_flow_item_ecpri dpaa2_flow_item_ecpri_mask = {
 	.hdr.dummy[1] = RTE_BE32(0xffffffff),
 	.hdr.dummy[2] = RTE_BE32(0xffffffff),
 };
+
+static const struct rte_flow_item_gtp dpaa2_flow_item_gtp_mask = {
+	.teid = RTE_BE32(0xffffffff),
+};
+
 #endif
 
 #define DPAA2_FLOW_DUMP printf
@@ -225,6 +231,12 @@ dpaa2_prot_field_string(uint32_t prot, uint32_t field,
 		strcpy(string, "gre");
 		if (field == NH_FLD_GRE_TYPE)
 			strcat(string, ".type");
+		else
+			strcat(string, ".unknown field");
+	} else if (prot == NET_PROT_GTP) {
+		rte_strscpy(string, "gtp", DPAA2_PROT_FIELD_STRING_SIZE);
+		if (field == NH_FLD_GTP_TEID)
+			strcat(string, ".teid");
 		else
 			strcat(string, ".unknown field");
 	} else {
@@ -1555,6 +1567,10 @@ dpaa2_flow_extract_support(const uint8_t *mask_src,
 	case RTE_FLOW_ITEM_TYPE_ECPRI:
 		mask_support = (const char *)&dpaa2_flow_item_ecpri_mask;
 		size = sizeof(struct rte_flow_item_ecpri);
+		break;
+	case RTE_FLOW_ITEM_TYPE_GTP:
+		mask_support = (const char *)&dpaa2_flow_item_gtp_mask;
+		size = sizeof(struct rte_flow_item_gtp);
 		break;
 	default:
 		return -EINVAL;
@@ -3563,6 +3579,84 @@ dpaa2_configure_flow_ecpri(struct dpaa2_dev_flow *flow,
 }
 
 static int
+dpaa2_configure_flow_gtp(struct dpaa2_dev_flow *flow,
+	struct rte_eth_dev *dev,
+	const struct rte_flow_attr *attr,
+	const struct rte_dpaa2_flow_item *dpaa2_pattern,
+	const struct rte_flow_action actions[] __rte_unused,
+	struct rte_flow_error *error __rte_unused,
+	int *device_configured)
+{
+	int ret, local_cfg = 0;
+	uint32_t group;
+	const struct rte_flow_item_gtp *spec, *mask;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	const struct rte_flow_item *pattern =
+		&dpaa2_pattern->generic_item;
+
+	group = attr->group;
+
+	/* Parse pattern list to get the matching parameters */
+	spec = pattern->spec;
+	mask = pattern->mask ?
+		pattern->mask : &dpaa2_flow_item_gtp_mask;
+
+	/* Get traffic class index and flow id to be configured */
+	flow->tc_id = group;
+	flow->tc_index = attr->priority;
+
+	if (dpaa2_pattern->in_tunnel) {
+		DPAA2_PMD_ERR("Tunnel-GTP distribution not support");
+		return -ENOTSUP;
+	}
+
+	if (!spec) {
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_GTP_FRAM, DPAA2_FLOW_QOS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_GTP_FRAM, DPAA2_FLOW_FS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		(*device_configured) |= local_cfg;
+		return 0;
+	}
+
+	if (dpaa2_flow_extract_support((const uint8_t *)mask,
+		RTE_FLOW_ITEM_TYPE_GTP)) {
+		DPAA2_PMD_WARN("Extract field(s) of GTP not support.");
+
+		return -1;
+	}
+
+	if (!mask->teid)
+		return 0;
+
+	ret = dpaa2_flow_add_hdr_extract_rule(flow, NET_PROT_GTP,
+			NH_FLD_GTP_TEID, &spec->teid,
+			&mask->teid, sizeof(rte_be32_t),
+			priv, group, &local_cfg, DPAA2_FLOW_QOS_TYPE);
+	if (ret)
+		return ret;
+
+	ret = dpaa2_flow_add_hdr_extract_rule(flow, NET_PROT_GTP,
+			NH_FLD_GTP_TEID, &spec->teid,
+			&mask->teid, sizeof(rte_be32_t),
+			priv, group, &local_cfg, DPAA2_FLOW_FS_TYPE);
+	if (ret)
+		return ret;
+
+	(*device_configured) |= local_cfg;
+
+	return 0;
+}
+
+static int
 dpaa2_configure_flow_raw(struct dpaa2_dev_flow *flow,
 	struct rte_eth_dev *dev,
 	const struct rte_flow_attr *attr,
@@ -4081,9 +4175,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 		switch (pattern[i].type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			ret = dpaa2_configure_flow_eth(flow, dev, attr,
-						       &dpaa2_pattern[i],
-						       actions, error,
-						       &is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("ETH flow config failed!");
 				goto end_flow_set;
@@ -4091,9 +4185,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
 			ret = dpaa2_configure_flow_vlan(flow, dev, attr,
-							&dpaa2_pattern[i],
-							actions, error,
-							&is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("vLan flow config failed!");
 				goto end_flow_set;
@@ -4101,9 +4195,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = dpaa2_configure_flow_ipv4(flow, dev, attr,
-							&dpaa2_pattern[i],
-							actions, error,
-							&is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("IPV4 flow config failed!");
 				goto end_flow_set;
@@ -4111,9 +4205,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			ret = dpaa2_configure_flow_ipv6(flow, dev, attr,
-							&dpaa2_pattern[i],
-							actions, error,
-							&is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("IPV6 flow config failed!");
 				goto end_flow_set;
@@ -4121,9 +4215,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP:
 			ret = dpaa2_configure_flow_icmp(flow, dev, attr,
-							&dpaa2_pattern[i],
-							actions, error,
-							&is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("ICMP flow config failed!");
 				goto end_flow_set;
@@ -4131,9 +4225,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = dpaa2_configure_flow_udp(flow, dev, attr,
-						       &dpaa2_pattern[i],
-						       actions, error,
-						       &is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("UDP flow config failed!");
 				goto end_flow_set;
@@ -4141,9 +4235,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = dpaa2_configure_flow_tcp(flow, dev, attr,
-						       &dpaa2_pattern[i],
-						       actions, error,
-						       &is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("TCP flow config failed!");
 				goto end_flow_set;
@@ -4151,9 +4245,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_SCTP:
 			ret = dpaa2_configure_flow_sctp(flow, dev, attr,
-							&dpaa2_pattern[i],
-							actions, error,
-							&is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("SCTP flow config failed!");
 				goto end_flow_set;
@@ -4161,9 +4255,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
 			ret = dpaa2_configure_flow_gre(flow, dev, attr,
-						       &dpaa2_pattern[i],
-						       actions, error,
-						       &is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("GRE flow config failed!");
 				goto end_flow_set;
@@ -4171,9 +4265,9 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = dpaa2_configure_flow_vxlan(flow, dev, attr,
-							 &dpaa2_pattern[i],
-							 actions, error,
-							 &is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("VXLAN flow config failed!");
 				goto end_flow_set;
@@ -4189,11 +4283,21 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 				goto end_flow_set;
 			}
 			break;
+		case RTE_FLOW_ITEM_TYPE_GTP:
+			ret = dpaa2_configure_flow_gtp(flow,
+					dev, attr, &dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
+			if (ret) {
+				DPAA2_PMD_ERR("GTP flow config failed!");
+				goto end_flow_set;
+			}
+			break;
 		case RTE_FLOW_ITEM_TYPE_RAW:
 			ret = dpaa2_configure_flow_raw(flow, dev, attr,
-						       &dpaa2_pattern[i],
-						       actions, error,
-						       &is_keycfg_configured);
+					&dpaa2_pattern[i],
+					actions, error,
+					&is_keycfg_configured);
 			if (ret) {
 				DPAA2_PMD_ERR("RAW flow config failed!");
 				goto end_flow_set;
