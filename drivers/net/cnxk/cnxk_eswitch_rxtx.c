@@ -120,6 +120,7 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 {
 	struct roc_nix_sq *sq = &eswitch_dev->txq[qid].sqs;
 	struct roc_nix_rq *rq = &eswitch_dev->rxq[qid].rqs;
+	uint64_t cmd[6 + CNXK_NIX_TX_MSEG_SG_DWORDS - 2];
 	uint16_t lmt_id, pkt = 0, nb_tx = 0;
 	struct nix_send_ext_s *send_hdr_ext;
 	struct nix_send_hdr_s *send_hdr;
@@ -128,11 +129,9 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 	union nix_send_sg_s *sg;
 	uintptr_t lmt_base, pa;
 	int64_t fc_pkts, dw_m1;
-	uint64_t cmd_cn9k[16];
 	struct rte_mbuf *m;
 	rte_iova_t io_addr;
 	uint16_t segdw;
-	uint64_t *cmd;
 	uint64_t len;
 	uint8_t off;
 
@@ -149,12 +148,7 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 	/* 2(HDR) + 2(EXT_HDR) + 1(SG) + 1(IOVA) = 6/2 - 1 = 2 */
 	dw_m1 = cn10k_nix_tx_ext_subs(flags) + 1;
 
-	if (roc_model_is_cn9k()) {
-		memset(cmd_cn9k, 0, sizeof(cmd_cn9k));
-		cmd = &cmd_cn9k[0];
-	} else {
-		cmd = (uint64_t *)lmt_base;
-	}
+	memset(cmd, 0, sizeof(cmd));
 
 	send_hdr = (struct nix_send_hdr_s *)&cmd[0];
 	send_hdr->w0.sq = sq->qid;
@@ -204,6 +198,7 @@ cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
 		if (roc_model_is_cn9k()) {
 			nix_cn9k_xmit_one(cmd, sq->lmt_addr, sq->io_addr, segdw);
 		} else {
+			cn10k_nix_xmit_mv_lmt_base(lmt_base, cmd, flags);
 			/* PA<6:4> = LMTST size-1 in units of 128 bits. Size of the first LMTST in
 			 * burst.
 			 */
