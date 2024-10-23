@@ -24,7 +24,6 @@ INTERNAL {
 	dpaa2_seqn_dynfield_offset;
 	dpaa2_seqn;
 	dpaa2_svr_family;
-	dpaa2_virt_mode;
 	dpbp_disable;
 	dpbp_enable;
 	dpbp_get_attributes;
@@ -119,6 +118,12 @@ INTERNAL {
 	rte_fslmc_object_register;
 	rte_global_active_dqs_list;
 	rte_fslmc_vfio_mem_dmaunmap;
+	rte_fslmc_cold_mem_vaddr_to_iova;
+	rte_fslmc_cold_mem_iova_to_vaddr;
+	rte_fslmc_mem_vaddr_to_iova;
+	rte_fslmc_mem_iova_to_vaddr;
+	rte_fslmc_io_vaddr_to_iova;
+	rte_fslmc_io_iova_to_vaddr;
 
 	local: *;
 };

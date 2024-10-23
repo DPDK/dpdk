@@ -19,6 +19,7 @@
 #include <libgen.h>
 #include <dirent.h>
 #include <sys/eventfd.h>
+#include <ctype.h>
 
 #include <eal_filesystem.h>
 #include <rte_mbuf.h>
@@ -47,9 +48,41 @@
  */
 static struct fslmc_vfio_container s_vfio_container;
 /* Currently we only support single group/process. */
-const char *fslmc_group; /* dprc.x*/
+static const char *fslmc_group; /* dprc.x*/
 static uint32_t *msi_intr_vaddr;
-void *(*rte_mcp_ptr_list);
+static void *(*rte_mcp_ptr_list);
+
+struct fslmc_dmaseg {
+	uint64_t vaddr;
+	uint64_t iova;
+	uint64_t size;
+
+	TAILQ_ENTRY(fslmc_dmaseg) next;
+};
+
+TAILQ_HEAD(fslmc_dmaseg_list, fslmc_dmaseg);
+
+struct fslmc_dmaseg_list fslmc_memsegs =
+		TAILQ_HEAD_INITIALIZER(fslmc_memsegs);
+struct fslmc_dmaseg_list fslmc_iosegs =
+		TAILQ_HEAD_INITIALIZER(fslmc_iosegs);
+
+static uint64_t fslmc_mem_va2iova = RTE_BAD_IOVA;
+static int fslmc_mem_map_num;
+
+struct fslmc_mem_param {
+	struct vfio_mp_param mp_param;
+	struct fslmc_dmaseg_list memsegs;
+	struct fslmc_dmaseg_list iosegs;
+	uint64_t mem_va2iova;
+	int mem_map_num;
+};
+
+enum {
+	FSLMC_VFIO_SOCKET_REQ_CONTAINER = 0x100,
+	FSLMC_VFIO_SOCKET_REQ_GROUP,
+	FSLMC_VFIO_SOCKET_REQ_MEM
+};
 
 void *
 dpaa2_get_mcp_ptr(int portal_idx)
@@ -62,6 +95,64 @@ dpaa2_get_mcp_ptr(int portal_idx)
 
 static struct rte_dpaa2_object_list dpaa2_obj_list =
 	TAILQ_HEAD_INITIALIZER(dpaa2_obj_list);
+
+static uint64_t
+fslmc_io_virt2phy(const void *virtaddr)
+{
+	FILE *fp = fopen("/proc/self/maps", "r");
+	char *line = NULL;
+	size_t linesz;
+	uint64_t start, end, phy;
+	const uint64_t va = (const uint64_t)virtaddr;
+	char tmp[1024];
+	int ret;
+
+	if (!fp)
+		return RTE_BAD_IOVA;
+	while (getdelim(&line, &linesz, '\n', fp) > 0) {
+		char *ptr = line;
+		int n;
+
+		/** Parse virtual address range.*/
+		n = 0;
+		while (*ptr && !isspace(*ptr)) {
+			tmp[n] = *ptr;
+			ptr++;
+			n++;
+		}
+		tmp[n] = 0;
+		ret = sscanf(tmp, "%" SCNx64 "-%" SCNx64, &start, &end);
+		if (ret != 2)
+			continue;
+		if (va < start || va >= end)
+			continue;
+
+		/** This virtual address is in this segment.*/
+		while (*ptr == ' ' || *ptr == 'r' ||
+			*ptr == 'w' || *ptr == 's' ||
+			*ptr == 'p' || *ptr == 'x' ||
+			*ptr == '-')
+			ptr++;
+
+		/** Extract phy address*/
+		n = 0;
+		while (*ptr && !isspace(*ptr)) {
+			tmp[n] = *ptr;
+			ptr++;
+			n++;
+		}
+		tmp[n] = 0;
+		phy = strtoul(tmp, 0, 16);
+		if (!phy)
+			continue;
+
+		fclose(fp);
+		return phy + va - start;
+	}
+
+	fclose(fp);
+	return RTE_BAD_IOVA;
+}
 
 /*register a fslmc bus based dpaa2 driver */
 void
@@ -269,7 +360,7 @@ fslmc_get_group_id(const char *group_name,
 	ret = rte_vfio_get_group_num(SYSFS_FSL_MC_DEVICES,
 			group_name, groupid);
 	if (ret <= 0) {
-		DPAA2_BUS_ERR("Unable to find %s IOMMU group", group_name);
+		DPAA2_BUS_ERR("Find %s IOMMU group", group_name);
 		if (ret < 0)
 			return ret;
 
@@ -312,7 +403,7 @@ fslmc_vfio_open_group_fd(const char *group_name)
 	/* if we're in a secondary process, request group fd from the primary
 	 * process via mp channel.
 	 */
-	p->req = SOCKET_REQ_GROUP;
+	p->req = FSLMC_VFIO_SOCKET_REQ_GROUP;
 	p->group_num = iommu_group_num;
 	rte_strscpy(mp_req.name, FSLMC_VFIO_MP, sizeof(mp_req.name));
 	mp_req.len_param = sizeof(*p);
@@ -404,7 +495,7 @@ fslmc_vfio_open_container_fd(void)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
-			DPAA2_BUS_ERR("Cannot open VFIO container(%s), err(%d)",
+			DPAA2_BUS_ERR("Open VFIO container(%s), err(%d)",
 				VFIO_CONTAINER_PATH, vfio_container_fd);
 			ret = vfio_container_fd;
 			goto err_exit;
@@ -413,7 +504,7 @@ fslmc_vfio_open_container_fd(void)
 		/* check VFIO API version */
 		ret = ioctl(vfio_container_fd, VFIO_GET_API_VERSION);
 		if (ret < 0) {
-			DPAA2_BUS_ERR("Could not get VFIO API version(%d)",
+			DPAA2_BUS_ERR("Get VFIO API version(%d)",
 				ret);
 		} else if (ret != VFIO_API_VERSION) {
 			DPAA2_BUS_ERR("Unsupported VFIO API version(%d)",
@@ -427,7 +518,7 @@ fslmc_vfio_open_container_fd(void)
 
 		ret = fslmc_vfio_check_extensions(vfio_container_fd);
 		if (ret) {
-			DPAA2_BUS_ERR("No supported IOMMU extensions found(%d)",
+			DPAA2_BUS_ERR("Unsupported IOMMU extensions found(%d)",
 				ret);
 			close(vfio_container_fd);
 			goto err_exit;
@@ -439,7 +530,7 @@ fslmc_vfio_open_container_fd(void)
 	 * if we're in a secondary process, request container fd from the
 	 * primary process via mp channel
 	 */
-	p->req = SOCKET_REQ_CONTAINER;
+	p->req = FSLMC_VFIO_SOCKET_REQ_CONTAINER;
 	rte_strscpy(mp_req.name, FSLMC_VFIO_MP, sizeof(mp_req.name));
 	mp_req.len_param = sizeof(*p);
 	mp_req.num_fds = 0;
@@ -469,7 +560,7 @@ success_exit:
 err_exit:
 	if (mp_reply.msgs)
 		free(mp_reply.msgs);
-	DPAA2_BUS_ERR("Cannot request container fd err(%d)", ret);
+	DPAA2_BUS_ERR("Open container fd err(%d)", ret);
 	return ret;
 }
 
@@ -502,17 +593,19 @@ fslmc_vfio_mp_primary(const struct rte_mp_msg *msg,
 	struct rte_mp_msg reply;
 	struct vfio_mp_param *r = (void *)reply.param;
 	const struct vfio_mp_param *m = (const void *)msg->param;
+	struct fslmc_mem_param *map;
 
 	if (msg->len_param != sizeof(*m)) {
-		DPAA2_BUS_ERR("fslmc vfio received invalid message!");
+		DPAA2_BUS_ERR("Invalid msg size(%d) for req(%d)",
+			msg->len_param, m->req);
 		return -EINVAL;
 	}
 
 	memset(&reply, 0, sizeof(reply));
 
 	switch (m->req) {
-	case SOCKET_REQ_GROUP:
-		r->req = SOCKET_REQ_GROUP;
+	case FSLMC_VFIO_SOCKET_REQ_GROUP:
+		r->req = FSLMC_VFIO_SOCKET_REQ_GROUP;
 		r->group_num = m->group_num;
 		fd = fslmc_vfio_group_fd_by_id(m->group_num);
 		if (fd < 0) {
@@ -526,9 +619,10 @@ fslmc_vfio_mp_primary(const struct rte_mp_msg *msg,
 			reply.num_fds = 1;
 			reply.fds[0] = fd;
 		}
+		reply.len_param = sizeof(*r);
 		break;
-	case SOCKET_REQ_CONTAINER:
-		r->req = SOCKET_REQ_CONTAINER;
+	case FSLMC_VFIO_SOCKET_REQ_CONTAINER:
+		r->req = FSLMC_VFIO_SOCKET_REQ_CONTAINER;
 		fd = fslmc_vfio_container_fd();
 		if (fd <= 0) {
 			r->result = SOCKET_ERR;
@@ -537,16 +631,62 @@ fslmc_vfio_mp_primary(const struct rte_mp_msg *msg,
 			reply.num_fds = 1;
 			reply.fds[0] = fd;
 		}
+		reply.len_param = sizeof(*r);
+		break;
+	case FSLMC_VFIO_SOCKET_REQ_MEM:
+		map = (void *)reply.param;
+		r = &map->mp_param;
+		r->req = FSLMC_VFIO_SOCKET_REQ_MEM;
+		r->result = SOCKET_OK;
+		map->memsegs = fslmc_memsegs;
+		map->iosegs = fslmc_iosegs;
+		map->mem_va2iova = fslmc_mem_va2iova;
+		map->mem_map_num = fslmc_mem_map_num;
+		reply.len_param = sizeof(struct fslmc_mem_param);
 		break;
 	default:
-		DPAA2_BUS_ERR("fslmc vfio received invalid message(%08x)",
+		DPAA2_BUS_ERR("VFIO received invalid message(%08x)",
 			m->req);
 		return -ENOTSUP;
 	}
 
 	rte_strscpy(reply.name, FSLMC_VFIO_MP, sizeof(reply.name));
-	reply.len_param = sizeof(*r);
 	ret = rte_mp_reply(&reply, peer);
+
+	return ret;
+}
+
+static int
+fslmc_vfio_mp_sync_mem_req(void)
+{
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply = {0};
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	int ret = 0;
+	struct vfio_mp_param *mp_param;
+	struct fslmc_mem_param *mem_rsp;
+
+	mp_param = (void *)mp_req.param;
+	memset(&mp_req, 0, sizeof(struct rte_mp_msg));
+	mp_param->req = FSLMC_VFIO_SOCKET_REQ_MEM;
+	rte_strscpy(mp_req.name, FSLMC_VFIO_MP, sizeof(mp_req.name));
+	mp_req.len_param = sizeof(struct vfio_mp_param);
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+		mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		mem_rsp = (struct fslmc_mem_param *)mp_rep->param;
+		if (mem_rsp->mp_param.result == SOCKET_OK) {
+			fslmc_memsegs = mem_rsp->memsegs;
+			fslmc_mem_va2iova = mem_rsp->mem_va2iova;
+			fslmc_mem_map_num = mem_rsp->mem_map_num;
+		} else {
+			DPAA2_BUS_ERR("Bad MEM SEG");
+			ret = -EINVAL;
+		}
+	} else {
+		ret = -EINVAL;
+	}
+	free(mp_reply.msgs);
 
 	return ret;
 }
@@ -560,6 +700,10 @@ fslmc_vfio_mp_sync_setup(void)
 		ret = rte_mp_action_register(FSLMC_VFIO_MP,
 			fslmc_vfio_mp_primary);
 		if (ret && rte_errno != ENOTSUP)
+			return ret;
+	} else {
+		ret = fslmc_vfio_mp_sync_mem_req();
+		if (ret)
 			return ret;
 	}
 
@@ -581,30 +725,34 @@ vfio_connect_container(int vfio_container_fd,
 
 	iommu_type = fslmc_vfio_iommu_type(vfio_group_fd);
 	if (iommu_type < 0) {
-		DPAA2_BUS_ERR("Failed to get iommu type(%d)",
-			iommu_type);
+		DPAA2_BUS_ERR("Get iommu type(%d)", iommu_type);
 
 		return iommu_type;
 	}
 
 	/* Check whether support for SMMU type IOMMU present or not */
-	if (ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION, iommu_type)) {
-		/* Connect group to container */
-		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
-			&vfio_container_fd);
-		if (ret) {
-			DPAA2_BUS_ERR("Failed to setup group container");
-			return -errno;
-		}
-
-		ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU, iommu_type);
-		if (ret) {
-			DPAA2_BUS_ERR("Failed to setup VFIO iommu");
-			return -errno;
-		}
-	} else {
-		DPAA2_BUS_ERR("No supported IOMMU available");
+	ret = ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION, iommu_type);
+	if (ret <= 0) {
+		DPAA2_BUS_ERR("Unsupported IOMMU type(%d) ret(%d), err(%d)",
+			iommu_type, ret, -errno);
 		return -EINVAL;
+	}
+
+	ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
+			&vfio_container_fd);
+	if (ret) {
+		DPAA2_BUS_ERR("Set group container ret(%d), err(%d)",
+			ret, -errno);
+
+		return ret;
+	}
+
+	ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU, iommu_type);
+	if (ret) {
+		DPAA2_BUS_ERR("Set iommu ret(%d), err(%d)",
+			ret, -errno);
+
+		return ret;
 	}
 
 	return fslmc_vfio_connect_container(vfio_group_fd);
@@ -625,11 +773,11 @@ static int vfio_map_irq_region(void)
 
 	fd = fslmc_vfio_group_fd_by_name(group_name);
 	if (fd <= 0) {
-		DPAA2_BUS_ERR("%s failed to open group fd(%d)",
-			__func__, fd);
+		DPAA2_BUS_ERR("%s: Get fd by name(%s) failed(%d)",
+			__func__, group_name, fd);
 		if (fd < 0)
 			return fd;
-		return -rte_errno;
+		return -EIO;
 	}
 	if (!fslmc_vfio_container_connected(fd)) {
 		DPAA2_BUS_ERR("Container is not connected");
@@ -639,8 +787,8 @@ static int vfio_map_irq_region(void)
 	vaddr = (unsigned long *)mmap(NULL, 0x1000, PROT_WRITE |
 		PROT_READ, MAP_SHARED, fd, 0x6030000);
 	if (vaddr == MAP_FAILED) {
-		DPAA2_BUS_INFO("Unable to map region (errno = %d)", errno);
-		return -errno;
+		DPAA2_BUS_ERR("Unable to map region (errno = %d)", errno);
+		return -ENOMEM;
 	}
 
 	msi_intr_vaddr = (uint32_t *)((char *)(vaddr) + 64);
@@ -650,11 +798,318 @@ static int vfio_map_irq_region(void)
 		return 0;
 
 	DPAA2_BUS_ERR("Unable to map DMA address (errno = %d)", errno);
-	return -errno;
+	return ret;
 }
 
-static int fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len);
-static int fslmc_unmap_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len);
+static int
+fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len)
+{
+	struct vfio_iommu_type1_dma_map dma_map = {
+		.argsz = sizeof(struct vfio_iommu_type1_dma_map),
+		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
+	};
+	int ret, fd, is_io = 0;
+	const char *group_name = fslmc_vfio_get_group_name();
+	struct fslmc_dmaseg *dmaseg = NULL;
+	uint64_t phy = 0;
+
+	if (rte_eal_iova_mode() == RTE_IOVA_VA) {
+		if (vaddr != iovaddr) {
+			DPAA2_BUS_ERR("IOVA:VA(%" PRIx64 " : %" PRIx64 ") %s",
+				iovaddr, vaddr,
+				"should be 1:1 for VA mode");
+
+			return -EINVAL;
+		}
+	}
+
+	phy = rte_mem_virt2phy((const void *)(uintptr_t)vaddr);
+	if (phy == RTE_BAD_IOVA) {
+		phy = fslmc_io_virt2phy((const void *)(uintptr_t)vaddr);
+		if (phy == RTE_BAD_IOVA)
+			return -ENOMEM;
+		is_io = 1;
+	} else if (fslmc_mem_va2iova != RTE_BAD_IOVA &&
+		fslmc_mem_va2iova != (iovaddr - vaddr)) {
+		DPAA2_BUS_WARN("Multiple MEM PA<->VA conversions.");
+	}
+	DPAA2_BUS_DEBUG("%s(%zu): VA(%" PRIx64 "):IOVA(%" PRIx64 "):PHY(%" PRIx64 ")",
+		is_io ? "DMA IO map size" : "DMA MEM map size",
+		len, vaddr, iovaddr, phy);
+
+	if (is_io)
+		goto io_mapping_check;
+
+	TAILQ_FOREACH(dmaseg, &fslmc_memsegs, next) {
+		if (!((vaddr + len) <= dmaseg->vaddr ||
+			(dmaseg->vaddr + dmaseg->size) <= vaddr)) {
+			DPAA2_BUS_ERR("MEM: New VA Range(%" PRIx64 " ~ %" PRIx64 ")",
+				vaddr, vaddr + len);
+			DPAA2_BUS_ERR("MEM: Overlap with (%" PRIx64 " ~ %" PRIx64 ")",
+				dmaseg->vaddr,
+				dmaseg->vaddr + dmaseg->size);
+			return -EEXIST;
+		}
+		if (!((iovaddr + len) <= dmaseg->iova ||
+			(dmaseg->iova + dmaseg->size) <= iovaddr)) {
+			DPAA2_BUS_ERR("MEM: New IOVA Range(%" PRIx64 " ~ %" PRIx64 ")",
+				iovaddr, iovaddr + len);
+			DPAA2_BUS_ERR("MEM: Overlap with (%" PRIx64 " ~ %" PRIx64 ")",
+				dmaseg->iova,
+				dmaseg->iova + dmaseg->size);
+			return -EEXIST;
+		}
+	}
+	goto start_mapping;
+
+io_mapping_check:
+	TAILQ_FOREACH(dmaseg, &fslmc_iosegs, next) {
+		if (!((vaddr + len) <= dmaseg->vaddr ||
+			(dmaseg->vaddr + dmaseg->size) <= vaddr)) {
+			DPAA2_BUS_ERR("IO: New VA Range (%" PRIx64 " ~ %" PRIx64 ")",
+				vaddr, vaddr + len);
+			DPAA2_BUS_ERR("IO: Overlap with (%" PRIx64 " ~ %" PRIx64 ")",
+				dmaseg->vaddr,
+				dmaseg->vaddr + dmaseg->size);
+			return -EEXIST;
+		}
+		if (!((iovaddr + len) <= dmaseg->iova ||
+			(dmaseg->iova + dmaseg->size) <= iovaddr)) {
+			DPAA2_BUS_ERR("IO: New IOVA Range(%" PRIx64 " ~ %" PRIx64 ")",
+				iovaddr, iovaddr + len);
+			DPAA2_BUS_ERR("IO: Overlap with (%" PRIx64 " ~ %" PRIx64 ")",
+				dmaseg->iova,
+				dmaseg->iova + dmaseg->size);
+			return -EEXIST;
+		}
+	}
+
+start_mapping:
+	fd = fslmc_vfio_group_fd_by_name(group_name);
+	if (fd <= 0) {
+		DPAA2_BUS_ERR("%s: Get fd by name(%s) failed(%d)",
+			__func__, group_name, fd);
+		if (fd < 0)
+			return fd;
+		return -EIO;
+	}
+	if (fslmc_vfio_iommu_type(fd) == RTE_VFIO_NOIOMMU) {
+		DPAA2_BUS_DEBUG("Running in NOIOMMU mode");
+		if (phy != iovaddr) {
+			DPAA2_BUS_ERR("IOVA should support with IOMMU");
+			return -EIO;
+		}
+		goto end_mapping;
+	}
+
+	dma_map.size = len;
+	dma_map.vaddr = vaddr;
+	dma_map.iova = iovaddr;
+
+	/* SET DMA MAP for IOMMU */
+	if (!fslmc_vfio_container_connected(fd)) {
+		DPAA2_BUS_ERR("Container is not connected");
+		return -EIO;
+	}
+
+	ret = ioctl(fslmc_vfio_container_fd(), VFIO_IOMMU_MAP_DMA,
+		&dma_map);
+	if (ret) {
+		DPAA2_BUS_ERR("%s(%d) VA(%" PRIx64 "):IOVA(%" PRIx64 "):PHY(%" PRIx64 ")",
+			is_io ? "DMA IO map err" : "DMA MEM map err",
+			errno, vaddr, iovaddr, phy);
+		return ret;
+	}
+
+end_mapping:
+	dmaseg = malloc(sizeof(struct fslmc_dmaseg));
+	if (!dmaseg) {
+		DPAA2_BUS_ERR("DMA segment malloc failed!");
+		return -ENOMEM;
+	}
+	dmaseg->vaddr = vaddr;
+	dmaseg->iova = iovaddr;
+	dmaseg->size = len;
+	if (is_io) {
+		TAILQ_INSERT_TAIL(&fslmc_iosegs, dmaseg, next);
+	} else {
+		fslmc_mem_map_num++;
+		if (fslmc_mem_map_num == 1)
+			fslmc_mem_va2iova = iovaddr - vaddr;
+		else
+			fslmc_mem_va2iova = RTE_BAD_IOVA;
+		TAILQ_INSERT_TAIL(&fslmc_memsegs, dmaseg, next);
+	}
+	DPAA2_BUS_LOG(NOTICE,
+		"%s(%zx): VA(%" PRIx64 "):IOVA(%" PRIx64 "):PHY(%" PRIx64 ")",
+		is_io ? "DMA I/O map size" : "DMA MEM map size",
+		len, vaddr, iovaddr, phy);
+
+	return 0;
+}
+
+static int
+fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr, size_t len)
+{
+	struct vfio_iommu_type1_dma_unmap dma_unmap = {
+		.argsz = sizeof(struct vfio_iommu_type1_dma_unmap),
+		.flags = 0,
+	};
+	int ret, fd, is_io = 0;
+	const char *group_name = fslmc_vfio_get_group_name();
+	struct fslmc_dmaseg *dmaseg = NULL;
+
+	TAILQ_FOREACH(dmaseg, &fslmc_memsegs, next) {
+		if (((vaddr && dmaseg->vaddr == vaddr) || !vaddr) &&
+			dmaseg->iova == iovaddr &&
+			dmaseg->size == len) {
+			is_io = 0;
+			break;
+		}
+	}
+
+	if (!dmaseg) {
+		TAILQ_FOREACH(dmaseg, &fslmc_iosegs, next) {
+			if (((vaddr && dmaseg->vaddr == vaddr) || !vaddr) &&
+				dmaseg->iova == iovaddr &&
+				dmaseg->size == len) {
+				is_io = 1;
+				break;
+			}
+		}
+	}
+
+	if (!dmaseg) {
+		DPAA2_BUS_ERR("IOVA(%" PRIx64 ") with length(%zx) not mapped",
+			iovaddr, len);
+		return 0;
+	}
+
+	fd = fslmc_vfio_group_fd_by_name(group_name);
+	if (fd <= 0) {
+		DPAA2_BUS_ERR("%s: Get fd by name(%s) failed(%d)",
+			__func__, group_name, fd);
+		if (fd < 0)
+			return fd;
+		return -EIO;
+	}
+	if (fslmc_vfio_iommu_type(fd) == RTE_VFIO_NOIOMMU) {
+		DPAA2_BUS_DEBUG("Running in NOIOMMU mode");
+		return 0;
+	}
+
+	dma_unmap.size = len;
+	dma_unmap.iova = iovaddr;
+
+	/* SET DMA MAP for IOMMU */
+	if (!fslmc_vfio_container_connected(fd)) {
+		DPAA2_BUS_ERR("Container is not connected ");
+		return -EIO;
+	}
+
+	ret = ioctl(fslmc_vfio_container_fd(), VFIO_IOMMU_UNMAP_DMA,
+		&dma_unmap);
+	if (ret) {
+		DPAA2_BUS_ERR("DMA un-map IOVA(%" PRIx64 " ~ %" PRIx64 ") err(%d)",
+			iovaddr, iovaddr + len, errno);
+		return ret;
+	}
+
+	if (is_io) {
+		TAILQ_REMOVE(&fslmc_iosegs, dmaseg, next);
+	} else {
+		TAILQ_REMOVE(&fslmc_memsegs, dmaseg, next);
+		fslmc_mem_map_num--;
+		if (TAILQ_EMPTY(&fslmc_memsegs))
+			fslmc_mem_va2iova = RTE_BAD_IOVA;
+	}
+
+	free(dmaseg);
+
+	return 0;
+}
+
+uint64_t
+rte_fslmc_cold_mem_vaddr_to_iova(void *vaddr,
+	uint64_t size)
+{
+	struct fslmc_dmaseg *dmaseg;
+	uint64_t va;
+
+	va = (uint64_t)vaddr;
+	TAILQ_FOREACH(dmaseg, &fslmc_memsegs, next) {
+		if (va >= dmaseg->vaddr &&
+			(va + size) < (dmaseg->vaddr + dmaseg->size)) {
+			return dmaseg->iova + va - dmaseg->vaddr;
+		}
+	}
+
+	return RTE_BAD_IOVA;
+}
+
+void *
+rte_fslmc_cold_mem_iova_to_vaddr(uint64_t iova,
+	uint64_t size)
+{
+	struct fslmc_dmaseg *dmaseg;
+
+	TAILQ_FOREACH(dmaseg, &fslmc_memsegs, next) {
+		if (iova >= dmaseg->iova &&
+			(iova + size) < (dmaseg->iova + dmaseg->size))
+			return (void *)((uintptr_t)dmaseg->vaddr
+				+ (uintptr_t)(iova - dmaseg->iova));
+	}
+
+	return NULL;
+}
+
+__rte_hot uint64_t
+rte_fslmc_mem_vaddr_to_iova(void *vaddr)
+{
+	if (likely(fslmc_mem_va2iova != RTE_BAD_IOVA))
+		return (uint64_t)vaddr + fslmc_mem_va2iova;
+
+	return rte_fslmc_cold_mem_vaddr_to_iova(vaddr, 0);
+}
+
+__rte_hot void *
+rte_fslmc_mem_iova_to_vaddr(uint64_t iova)
+{
+	if (likely(fslmc_mem_va2iova != RTE_BAD_IOVA))
+		return (void *)((uintptr_t)iova - (uintptr_t)fslmc_mem_va2iova);
+
+	return rte_fslmc_cold_mem_iova_to_vaddr(iova, 0);
+}
+
+uint64_t
+rte_fslmc_io_vaddr_to_iova(void *vaddr)
+{
+	struct fslmc_dmaseg *dmaseg = NULL;
+	uint64_t va = (uint64_t)vaddr;
+
+	TAILQ_FOREACH(dmaseg, &fslmc_iosegs, next) {
+		if ((va >= dmaseg->vaddr) &&
+			va < dmaseg->vaddr + dmaseg->size)
+			return dmaseg->iova + va - dmaseg->vaddr;
+	}
+
+	return RTE_BAD_IOVA;
+}
+
+void *
+rte_fslmc_io_iova_to_vaddr(uint64_t iova)
+{
+	struct fslmc_dmaseg *dmaseg = NULL;
+
+	TAILQ_FOREACH(dmaseg, &fslmc_iosegs, next) {
+		if ((iova >= dmaseg->iova) &&
+			iova < dmaseg->iova + dmaseg->size)
+			return (void *)((uintptr_t)dmaseg->vaddr
+				+ (uintptr_t)(iova - dmaseg->iova));
+	}
+
+	return NULL;
+}
 
 static void
 fslmc_memevent_cb(enum rte_mem_event type, const void *addr,
@@ -677,12 +1132,9 @@ fslmc_memevent_cb(enum rte_mem_event type, const void *addr,
 		virt_addr = ms->addr_64;
 		map_len = ms->len;
 
-		DPAA2_BUS_DEBUG("Request for %s, va=%p, "
-				"virt_addr=0x%" PRIx64 ", "
-				"iova=0x%" PRIx64 ", map_len=%zu",
-				type == RTE_MEM_EVENT_ALLOC ?
-					"alloc" : "dealloc",
-				va, virt_addr, iova_addr, map_len);
+		DPAA2_BUS_DEBUG("%s, va=%p, virt=%" PRIx64 ", iova=%" PRIx64 ", len=%zu",
+			type == RTE_MEM_EVENT_ALLOC ? "alloc" : "dealloc",
+			va, virt_addr, iova_addr, map_len);
 
 		/* iova_addr may be set to RTE_BAD_IOVA */
 		if (iova_addr == RTE_BAD_IOVA) {
@@ -697,120 +1149,20 @@ fslmc_memevent_cb(enum rte_mem_event type, const void *addr,
 			ret = fslmc_unmap_dma(virt_addr, iova_addr, map_len);
 
 		if (ret != 0) {
-			DPAA2_BUS_ERR("DMA Mapping/Unmapping failed. "
-					"Map=%d, addr=%p, len=%zu, err:(%d)",
-					type, va, map_len, ret);
+			DPAA2_BUS_ERR("%s: Map=%d, addr=%p, len=%zu, err:(%d)",
+				type == RTE_MEM_EVENT_ALLOC ?
+				"DMA Mapping failed. " :
+				"DMA Unmapping failed. ",
+				type, va, map_len, ret);
 			return;
 		}
 
 		cur_len += map_len;
 	}
 
-	if (type == RTE_MEM_EVENT_ALLOC)
-		DPAA2_BUS_DEBUG("Total Mapped: addr=%p, len=%zu",
-				addr, len);
-	else
-		DPAA2_BUS_DEBUG("Total Unmapped: addr=%p, len=%zu",
-				addr, len);
-}
-
-static int
-fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr,
-	size_t len)
-{
-	struct vfio_iommu_type1_dma_map dma_map = {
-		.argsz = sizeof(struct vfio_iommu_type1_dma_map),
-		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
-	};
-	int ret, fd;
-	const char *group_name = fslmc_vfio_get_group_name();
-
-	fd = fslmc_vfio_group_fd_by_name(group_name);
-	if (fd <= 0) {
-		DPAA2_BUS_ERR("%s failed to open group fd(%d)",
-			__func__, fd);
-		if (fd < 0)
-			return fd;
-		return -rte_errno;
-	}
-	if (fslmc_vfio_iommu_type(fd) == RTE_VFIO_NOIOMMU) {
-		DPAA2_BUS_DEBUG("Running in NOIOMMU mode");
-		return 0;
-	}
-
-	dma_map.size = len;
-	dma_map.vaddr = vaddr;
-	dma_map.iova = iovaddr;
-
-#ifndef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	if (vaddr != iovaddr) {
-		DPAA2_BUS_WARN("vaddr(0x%"PRIx64") != iovaddr(0x%"PRIx64")",
-			vaddr, iovaddr);
-	}
-#endif
-
-	/* SET DMA MAP for IOMMU */
-	if (!fslmc_vfio_container_connected(fd)) {
-		DPAA2_BUS_ERR("Container is not connected ");
-		return -EIO;
-	}
-
-	DPAA2_BUS_DEBUG("--> Map address: 0x%"PRIx64", size: %"PRIu64"",
-			(uint64_t)dma_map.vaddr, (uint64_t)dma_map.size);
-	ret = ioctl(fslmc_vfio_container_fd(), VFIO_IOMMU_MAP_DMA,
-		&dma_map);
-	if (ret) {
-		DPAA2_BUS_ERR("VFIO_IOMMU_MAP_DMA API(errno = %d)",
-				errno);
-		return ret;
-	}
-
-	return 0;
-}
-
-static int
-fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr __rte_unused, size_t len)
-{
-	struct vfio_iommu_type1_dma_unmap dma_unmap = {
-		.argsz = sizeof(struct vfio_iommu_type1_dma_unmap),
-		.flags = 0,
-	};
-	int ret, fd;
-	const char *group_name = fslmc_vfio_get_group_name();
-
-	fd = fslmc_vfio_group_fd_by_name(group_name);
-	if (fd <= 0) {
-		DPAA2_BUS_ERR("%s failed to open group fd(%d)",
-			__func__, fd);
-		if (fd < 0)
-			return fd;
-		return -rte_errno;
-	}
-	if (fslmc_vfio_iommu_type(fd) == RTE_VFIO_NOIOMMU) {
-		DPAA2_BUS_DEBUG("Running in NOIOMMU mode");
-		return 0;
-	}
-
-	dma_unmap.size = len;
-	dma_unmap.iova = vaddr;
-
-	/* SET DMA MAP for IOMMU */
-	if (!fslmc_vfio_container_connected(fd)) {
-		DPAA2_BUS_ERR("Container is not connected ");
-		return -EIO;
-	}
-
-	DPAA2_BUS_DEBUG("--> Unmap address: 0x%"PRIx64", size: %"PRIu64"",
-			(uint64_t)dma_unmap.iova, (uint64_t)dma_unmap.size);
-	ret = ioctl(fslmc_vfio_container_fd(), VFIO_IOMMU_UNMAP_DMA,
-		&dma_unmap);
-	if (ret) {
-		DPAA2_BUS_ERR("VFIO_IOMMU_UNMAP_DMA API(errno = %d)",
-				errno);
-		return -1;
-	}
-
-	return 0;
+	DPAA2_BUS_DEBUG("Total %s: addr=%p, len=%zu",
+		type == RTE_MEM_EVENT_ALLOC ? "Mapped" : "Unmapped",
+		addr, len);
 }
 
 static int
@@ -843,7 +1195,7 @@ rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size)
 int
 rte_fslmc_vfio_mem_dmaunmap(uint64_t iova, uint64_t size)
 {
-	return fslmc_unmap_dma(iova, 0, size);
+	return fslmc_unmap_dma(0, iova, size);
 }
 
 int rte_fslmc_vfio_dmamap(void)
@@ -853,9 +1205,10 @@ int rte_fslmc_vfio_dmamap(void)
 	/* Lock before parsing and registering callback to memory subsystem */
 	rte_mcfg_mem_read_lock();
 
-	if (rte_memseg_walk(fslmc_dmamap_seg, &i) < 0) {
+	ret = rte_memseg_walk(fslmc_dmamap_seg, &i);
+	if (ret) {
 		rte_mcfg_mem_read_unlock();
-		return -1;
+		return ret;
 	}
 
 	ret = rte_mem_event_callback_register("fslmc_memevent_clb",
@@ -894,6 +1247,14 @@ fslmc_vfio_setup_device(const char *dev_addr,
 	const char *group_name = fslmc_vfio_get_group_name();
 
 	vfio_group_fd = fslmc_vfio_group_fd_by_name(group_name);
+	if (vfio_group_fd <= 0) {
+		DPAA2_BUS_ERR("%s: Get fd by name(%s) failed(%d)",
+			__func__, group_name, vfio_group_fd);
+		if (vfio_group_fd < 0)
+			return vfio_group_fd;
+		return -EIO;
+	}
+
 	if (!fslmc_vfio_container_connected(vfio_group_fd)) {
 		DPAA2_BUS_ERR("Container is not connected");
 		return -EIO;
@@ -1002,8 +1363,7 @@ int rte_dpaa2_intr_disable(struct rte_intr_handle *intr_handle, int index)
 	vfio_dev_fd = rte_intr_dev_fd_get(intr_handle);
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (ret)
-		DPAA2_BUS_ERR(
-			"Error disabling dpaa2 interrupts for fd %d",
+		DPAA2_BUS_ERR("Error disabling dpaa2 interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 
 	return ret;
@@ -1028,7 +1388,7 @@ rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 		if (ret < 0) {
 			DPAA2_BUS_ERR("Cannot get IRQ(%d) info, error %i (%s)",
 				      i, errno, strerror(errno));
-			return -1;
+			return ret;
 		}
 
 		/* if this vector cannot be used with eventfd,
@@ -1042,8 +1402,8 @@ rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 		fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 		if (fd < 0) {
 			DPAA2_BUS_ERR("Cannot set up eventfd, error %i (%s)",
-				      errno, strerror(errno));
-			return -1;
+				errno, strerror(errno));
+			return fd;
 		}
 
 		if (rte_intr_fd_set(intr_handle, fd))
@@ -1059,7 +1419,7 @@ rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 	}
 
 	/* if we're here, we haven't found a suitable interrupt vector */
-	return -1;
+	return -EIO;
 }
 
 static void
@@ -1233,6 +1593,13 @@ fslmc_vfio_close_group(void)
 	const char *group_name = fslmc_vfio_get_group_name();
 
 	vfio_group_fd = fslmc_vfio_group_fd_by_name(group_name);
+	if (vfio_group_fd <= 0) {
+		DPAA2_BUS_INFO("%s: Get fd by name(%s) failed(%d)",
+			__func__, group_name, vfio_group_fd);
+		if (vfio_group_fd < 0)
+			return vfio_group_fd;
+		return -EIO;
+	}
 
 	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
 		if (dev->device.devargs &&
@@ -1324,7 +1691,7 @@ fslmc_vfio_process_group(void)
 				ret = fslmc_process_mcp(dev);
 				if (ret) {
 					DPAA2_BUS_ERR("Unable to map MC Portal");
-					return -1;
+					return ret;
 				}
 				found_mportal = 1;
 			}
@@ -1341,7 +1708,7 @@ fslmc_vfio_process_group(void)
 	/* Cannot continue if there is not even a single mportal */
 	if (!found_mportal) {
 		DPAA2_BUS_ERR("No MC Portal device found. Not continuing");
-		return -1;
+		return -EIO;
 	}
 
 	/* Search for DPRC device next as it updates endpoint of
@@ -1353,7 +1720,7 @@ fslmc_vfio_process_group(void)
 			ret = fslmc_process_iodevices(dev);
 			if (ret) {
 				DPAA2_BUS_ERR("Unable to process dprc");
-				return -1;
+				return ret;
 			}
 			TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
 		}
@@ -1410,7 +1777,7 @@ fslmc_vfio_process_group(void)
 			if (ret) {
 				DPAA2_BUS_DEBUG("Dev (%s) init failed",
 						dev->device.name);
-				return -1;
+				return ret;
 			}
 
 			break;
@@ -1434,7 +1801,7 @@ fslmc_vfio_process_group(void)
 			if (ret) {
 				DPAA2_BUS_DEBUG("Dev (%s) init failed",
 						dev->device.name);
-				return -1;
+				return ret;
 			}
 
 			break;

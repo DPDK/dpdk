@@ -33,9 +33,6 @@
 
 #include <fslmc_vfio.h>
 
-#include "portal/dpaa2_hw_pvt.h"
-#include "portal/dpaa2_hw_dpio.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -149,9 +146,31 @@ struct rte_dpaa2_driver {
 	rte_dpaa2_remove_t remove;
 };
 
+int
+rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size);
 __rte_internal
 int
 rte_fslmc_vfio_mem_dmaunmap(uint64_t iova, uint64_t size);
+__rte_internal
+uint64_t
+rte_fslmc_cold_mem_vaddr_to_iova(void *vaddr,
+	uint64_t size);
+__rte_internal
+void *
+rte_fslmc_cold_mem_iova_to_vaddr(uint64_t iova,
+	uint64_t size);
+__rte_internal
+__rte_hot uint64_t
+rte_fslmc_mem_vaddr_to_iova(void *vaddr);
+__rte_internal
+__rte_hot void *
+rte_fslmc_mem_iova_to_vaddr(uint64_t iova);
+__rte_internal
+uint64_t
+rte_fslmc_io_vaddr_to_iova(void *vaddr);
+__rte_internal
+void *
+rte_fslmc_io_iova_to_vaddr(uint64_t iova);
 
 /**
  * Register a DPAA2 driver.

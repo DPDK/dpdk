@@ -27,7 +27,6 @@
 #define FSLMC_BUS_NAME	fslmc
 
 struct rte_fslmc_bus rte_fslmc_bus;
-uint8_t dpaa2_virt_mode;
 
 #define DPAA2_SEQN_DYNFIELD_NAME "dpaa2_seqn_dynfield"
 int dpaa2_seqn_dynfield_offset = -1;
@@ -457,22 +456,6 @@ rte_fslmc_probe(void)
 
 	probe_all = rte_fslmc_bus.bus.conf.scan_mode != RTE_BUS_SCAN_ALLOWLIST;
 
-	/* In case of PA, the FD addresses returned by qbman APIs are physical
-	 * addresses, which need conversion into equivalent VA address for
-	 * rte_mbuf. For that, a table (a serial array, in memory) is used to
-	 * increase translation efficiency.
-	 * This has to be done before probe as some device initialization
-	 * (during) probe allocate memory (dpaa2_sec) which needs to be pinned
-	 * to this table.
-	 *
-	 * Error is ignored as relevant logs are handled within dpaax and
-	 * handling for unavailable dpaax table too is transparent to caller.
-	 *
-	 * And, the IOVA table is only applicable in case of PA mode.
-	 */
-	if (rte_eal_iova_mode() == RTE_IOVA_PA)
-		dpaax_iova_table_populate();
-
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
 		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
 			ret = rte_fslmc_match(drv, dev);
@@ -506,9 +489,6 @@ rte_fslmc_probe(void)
 			break;
 		}
 	}
-
-	if (rte_eal_iova_mode() == RTE_IOVA_VA)
-		dpaa2_virt_mode = 1;
 
 	return 0;
 }
@@ -558,12 +538,6 @@ rte_fslmc_driver_register(struct rte_dpaa2_driver *driver)
 void
 rte_fslmc_driver_unregister(struct rte_dpaa2_driver *driver)
 {
-	/* Cleanup the PA->VA Translation table; From wherever this function
-	 * is called from.
-	 */
-	if (rte_eal_iova_mode() == RTE_IOVA_PA)
-		dpaax_iova_table_depopulate();
-
 	TAILQ_REMOVE(&rte_fslmc_bus.driver_list, driver, next);
 }
 
@@ -599,12 +573,11 @@ rte_dpaa2_get_iommu_class(void)
 	bool is_vfio_noiommu_enabled = 1;
 	bool has_iova_va;
 
+	if (rte_eal_iova_mode() == RTE_IOVA_PA)
+		return RTE_IOVA_PA;
+
 	if (TAILQ_EMPTY(&rte_fslmc_bus.device_list))
 		return RTE_IOVA_DC;
-
-#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
-	return RTE_IOVA_PA;
-#endif
 
 	/* check if all devices on the bus support Virtual addressing or not */
 	has_iova_va = fslmc_all_device_support_iova();
