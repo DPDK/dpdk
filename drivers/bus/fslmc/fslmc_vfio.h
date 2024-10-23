@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016,2019 NXP
+ *   Copyright 2016,2019-2020 NXP
  *
  */
 
@@ -55,6 +55,7 @@ int rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
+int fslmc_vfio_close_group(void);
 char *fslmc_get_container(void);
 int fslmc_get_container_group(int *gropuid);
 int rte_fslmc_vfio_dmamap(void);

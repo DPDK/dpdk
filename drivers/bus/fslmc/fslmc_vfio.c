@@ -702,6 +702,54 @@ rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
 	return -1;
 }
 
+static void
+fslmc_close_iodevices(struct rte_dpaa2_device *dev)
+{
+	struct rte_dpaa2_object *object = NULL;
+	struct rte_dpaa2_driver *drv;
+	int ret, probe_all;
+
+	switch (dev->dev_type) {
+	case DPAA2_IO:
+	case DPAA2_CON:
+	case DPAA2_CI:
+	case DPAA2_BPOOL:
+	case DPAA2_MUX:
+		TAILQ_FOREACH(object, &dpaa2_obj_list, next) {
+			if (dev->dev_type == object->dev_type)
+				object->close(dev->object_id);
+			else
+				continue;
+		}
+		break;
+	case DPAA2_ETH:
+	case DPAA2_CRYPTO:
+	case DPAA2_QDMA:
+		probe_all = rte_fslmc_bus.bus.conf.scan_mode !=
+			    RTE_BUS_SCAN_ALLOWLIST;
+		TAILQ_FOREACH(drv, &rte_fslmc_bus.driver_list, next) {
+			if (drv->drv_type != dev->dev_type)
+				continue;
+			if (rte_dev_is_probed(&dev->device))
+				continue;
+			if (probe_all ||
+			    (dev->device.devargs &&
+			     dev->device.devargs->policy ==
+			     RTE_DEV_ALLOWED)) {
+				ret = drv->remove(dev);
+				if (ret)
+					DPAA2_BUS_ERR("Unable to remove");
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	DPAA2_BUS_LOG(DEBUG, "Device (%s) Closed",
+		      dev->device.name);
+}
+
 /*
  * fslmc_process_iodevices for processing only IO (ETH, CRYPTO, and possibly
  * EVENT) devices.
@@ -805,6 +853,45 @@ cleanup:
 	}
 
 	return ret;
+}
+
+int
+fslmc_vfio_close_group(void)
+{
+	struct rte_dpaa2_device *dev, *dev_temp;
+
+	RTE_TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, dev_temp) {
+		if (dev->device.devargs &&
+		    dev->device.devargs->policy == RTE_DEV_BLOCKED) {
+			DPAA2_BUS_LOG(DEBUG, "%s Blacklisted, skipping",
+				      dev->device.name);
+			TAILQ_REMOVE(&rte_fslmc_bus.device_list, dev, next);
+				continue;
+		}
+		switch (dev->dev_type) {
+		case DPAA2_ETH:
+		case DPAA2_CRYPTO:
+		case DPAA2_QDMA:
+		case DPAA2_IO:
+			fslmc_close_iodevices(dev);
+			break;
+		case DPAA2_CON:
+		case DPAA2_CI:
+		case DPAA2_BPOOL:
+		case DPAA2_MUX:
+			if (rte_eal_process_type() == RTE_PROC_SECONDARY)
+				continue;
+
+			fslmc_close_iodevices(dev);
+			break;
+		case DPAA2_DPRTC:
+		default:
+			DPAA2_BUS_DEBUG("Device cannot be closed: Not supported (%s)",
+					dev->device.name);
+		}
+	}
+
+	return 0;
 }
 
 int

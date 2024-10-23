@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017 NXP
+ *   Copyright 2017,2020 NXP
  *
  */
 
@@ -29,6 +29,19 @@
 TAILQ_HEAD(dpcon_dev_list, dpaa2_dpcon_dev);
 static struct dpcon_dev_list dpcon_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpcon_dev_list); /*!< DPCON device list */
+
+static struct dpaa2_dpcon_dev *get_dpcon_from_id(uint32_t dpcon_id)
+{
+	struct dpaa2_dpcon_dev *dpcon_dev = NULL;
+
+	/* Get DPCONC dev handle from list using index */
+	TAILQ_FOREACH(dpcon_dev, &dpcon_dev_list, next) {
+		if (dpcon_dev->dpcon_id == dpcon_id)
+			break;
+	}
+
+	return dpcon_dev;
+}
 
 static int
 rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
@@ -105,9 +118,26 @@ void rte_dpaa2_free_dpcon_dev(struct dpaa2_dpcon_dev *dpcon)
 	}
 }
 
+
+static void
+rte_dpaa2_close_dpcon_device(int object_id)
+{
+	struct dpaa2_dpcon_dev *dpcon_dev = NULL;
+
+	dpcon_dev = get_dpcon_from_id((uint32_t)object_id);
+
+	if (dpcon_dev) {
+		rte_dpaa2_free_dpcon_dev(dpcon_dev);
+		dpcon_close(&dpcon_dev->dpcon, CMD_PRI_LOW, dpcon_dev->token);
+		TAILQ_REMOVE(&dpcon_dev_list, dpcon_dev, next);
+		rte_free(dpcon_dev);
+	}
+}
+
 static struct rte_dpaa2_object rte_dpaa2_dpcon_obj = {
 	.dev_type = DPAA2_CON,
 	.create = rte_dpaa2_create_dpcon_device,
+	.close = rte_dpaa2_close_dpcon_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpcon, rte_dpaa2_dpcon_obj);

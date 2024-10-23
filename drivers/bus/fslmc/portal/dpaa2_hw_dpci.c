@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
- *   Copyright 2017 NXP
+ *   Copyright 2017,2020 NXP
  *
  */
 
@@ -29,6 +29,19 @@
 TAILQ_HEAD(dpci_dev_list, dpaa2_dpci_dev);
 static struct dpci_dev_list dpci_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpci_dev_list); /*!< DPCI device list */
+
+static struct dpaa2_dpci_dev *get_dpci_from_id(uint32_t dpci_id)
+{
+	struct dpaa2_dpci_dev *dpci_dev = NULL;
+
+	/* Get DPCI dev handle from list using index */
+	TAILQ_FOREACH(dpci_dev, &dpci_dev_list, next) {
+		if (dpci_dev->dpci_id == dpci_id)
+			break;
+	}
+
+	return dpci_dev;
+}
 
 static int
 rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
@@ -164,9 +177,26 @@ void rte_dpaa2_free_dpci_dev(struct dpaa2_dpci_dev *dpci)
 	}
 }
 
+
+static void
+rte_dpaa2_close_dpci_device(int object_id)
+{
+	struct dpaa2_dpci_dev *dpci_dev = NULL;
+
+	dpci_dev = get_dpci_from_id((uint32_t)object_id);
+
+	if (dpci_dev) {
+		rte_dpaa2_free_dpci_dev(dpci_dev);
+		dpci_close(&dpci_dev->dpci, CMD_PRI_LOW, dpci_dev->token);
+		TAILQ_REMOVE(&dpci_dev_list, dpci_dev, next);
+		rte_free(dpci_dev);
+	}
+}
+
 static struct rte_dpaa2_object rte_dpaa2_dpci_obj = {
 	.dev_type = DPAA2_CI,
 	.create = rte_dpaa2_create_dpci_device,
+	.close = rte_dpaa2_close_dpci_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpci, rte_dpaa2_dpci_obj);

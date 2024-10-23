@@ -86,6 +86,19 @@ static int dpaa2_cluster_sz = 2;
  * Cluster 4 (ID = x07) : CPU14, CPU15;
  */
 
+static struct dpaa2_dpio_dev *get_dpio_dev_from_id(int32_t dpio_id)
+{
+	struct dpaa2_dpio_dev *dpio_dev = NULL;
+
+	/* Get DPIO dev handle from list using index */
+	TAILQ_FOREACH(dpio_dev, &dpio_dev_list, next) {
+		if (dpio_dev->hw_id == dpio_id)
+			break;
+	}
+
+	return dpio_dev;
+}
+
 static int
 dpaa2_get_core_id(void)
 {
@@ -364,6 +377,26 @@ static void dpaa2_portal_finish(void *arg)
 	dpaa2_put_qbman_swp(RTE_PER_LCORE(_dpaa2_io).ethrx_dpio_dev);
 
 	pthread_setspecific(dpaa2_portal_key, NULL);
+}
+
+static void
+dpaa2_close_dpio_device(int object_id)
+{
+	struct dpaa2_dpio_dev *dpio_dev = NULL;
+
+	dpio_dev = get_dpio_dev_from_id((int32_t)object_id);
+
+	if (dpio_dev) {
+		if (dpio_dev->dpio) {
+			dpio_disable(dpio_dev->dpio, CMD_PRI_LOW,
+				     dpio_dev->token);
+			dpio_close(dpio_dev->dpio, CMD_PRI_LOW,
+				   dpio_dev->token);
+			rte_free(dpio_dev->dpio);
+		}
+		TAILQ_REMOVE(&dpio_dev_list, dpio_dev, next);
+		rte_free(dpio_dev);
+	}
 }
 
 static int
@@ -646,6 +679,7 @@ dpaa2_free_eq_descriptors(void)
 static struct rte_dpaa2_object rte_dpaa2_dpio_obj = {
 	.dev_type = DPAA2_IO,
 	.create = dpaa2_create_dpio_device,
+	.close = dpaa2_close_dpio_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpio, rte_dpaa2_dpio_obj);

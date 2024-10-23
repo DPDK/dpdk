@@ -44,7 +44,7 @@ static struct dpaa2_dpdmux_dev *get_dpdmux_from_id(uint32_t dpdmux_id)
 {
 	struct dpaa2_dpdmux_dev *dpdmux_dev = NULL;
 
-	/* Get DPBP dev handle from list using index */
+	/* Get DPDMUX dev handle from list using index */
 	TAILQ_FOREACH(dpdmux_dev, &dpdmux_dev_list, next) {
 		if (dpdmux_dev->dpdmux_id == dpdmux_id)
 			break;
@@ -442,9 +442,25 @@ init_err:
 	return -1;
 }
 
+static void
+dpaa2_close_dpdmux_device(int object_id)
+{
+	struct dpaa2_dpdmux_dev *dpdmux_dev;
+
+	dpdmux_dev = get_dpdmux_from_id((uint32_t)object_id);
+
+	if (dpdmux_dev) {
+		dpdmux_close(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
+			     dpdmux_dev->token);
+		TAILQ_REMOVE(&dpdmux_dev_list, dpdmux_dev, next);
+		rte_free(dpdmux_dev);
+	}
+}
+
 static struct rte_dpaa2_object rte_dpaa2_dpdmux_obj = {
 	.dev_type = DPAA2_MUX,
 	.create = dpaa2_create_dpdmux_device,
+	.close = dpaa2_close_dpdmux_device,
 };
 
 RTE_PMD_REGISTER_DPAA2_OBJECT(dpdmux, rte_dpaa2_dpdmux_obj);

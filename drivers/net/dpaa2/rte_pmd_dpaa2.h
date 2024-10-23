@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2024 NXP
  */
 
 #ifndef _RTE_PMD_DPAA2_H
@@ -32,6 +32,9 @@ struct rte_flow *
 rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 			      struct rte_flow_item *pattern[],
 			      struct rte_flow_action *actions[]);
+int
+rte_pmd_dpaa2_mux_flow_destroy(uint32_t dpdmux_id,
+	uint16_t entry_index);
 
 /**
  * @warning
