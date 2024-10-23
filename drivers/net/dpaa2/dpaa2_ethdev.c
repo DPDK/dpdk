@@ -2880,6 +2880,30 @@ rte_pmd_dpaa2_dev_is_dpaa2(uint32_t eth_id)
 	return dev->device->driver == &rte_dpaa2_pmd.driver;
 }
 
+const char *
+rte_pmd_dpaa2_ep_name(uint32_t eth_id)
+{
+	struct rte_eth_dev *dev;
+	struct dpaa2_dev_priv *priv;
+
+	if (eth_id >= RTE_MAX_ETHPORTS)
+		return NULL;
+
+	if (!rte_pmd_dpaa2_dev_is_dpaa2(eth_id))
+		return NULL;
+
+	dev = &rte_eth_devices[eth_id];
+	if (!dev->data)
+		return NULL;
+
+	if (!dev->data->dev_private)
+		return NULL;
+
+	priv = dev->data->dev_private;
+
+	return priv->ep_name;
+}
+
 #if defined(RTE_LIBRTE_IEEE1588)
 int
 rte_pmd_dpaa2_get_one_step_ts(uint16_t port_id, bool mc_query)

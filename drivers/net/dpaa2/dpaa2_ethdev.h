@@ -385,6 +385,10 @@ struct dpaa2_dev_priv {
 	uint8_t max_cgs;
 	uint8_t cgid_in_use[MAX_RX_QUEUES];
 
+	enum rte_dpaa2_dev_type ep_dev_type;   /**< Endpoint Device Type */
+	uint16_t ep_object_id;                 /**< Endpoint DPAA2 Object ID */
+	char ep_name[RTE_DEV_NAME_MAX_LEN];
+
 	struct extract_s extract;
 
 	uint16_t ss_offset;

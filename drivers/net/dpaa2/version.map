@@ -18,6 +18,7 @@ EXPERIMENTAL {
 	rte_pmd_dpaa2_get_tlu_hash;
 	# added in 24.11
 	rte_pmd_dpaa2_dev_is_dpaa2;
+	rte_pmd_dpaa2_ep_name;
 	rte_pmd_dpaa2_set_one_step_ts;
 	rte_pmd_dpaa2_get_one_step_ts;
 	rte_pmd_dpaa2_mux_dump_counter;
