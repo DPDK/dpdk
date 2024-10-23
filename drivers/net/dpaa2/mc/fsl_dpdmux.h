@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2018-2021 NXP
+ * Copyright 2018-2022 NXP
  *
  */
 #ifndef __FSL_DPDMUX_H
@@ -548,6 +548,22 @@ int dpdmux_get_api_version(struct fsl_mc_io *mc_io,
  * L4 checksum error
  */
 #define DPDMUX__ERROR_L4CE			0x00000001
+
+#define DPDMUX_ALL_ERRORS	(DPDMUX__ERROR_L4CE | \
+				 DPDMUX__ERROR_L4CV | \
+				 DPDMUX__ERROR_L3CE | \
+				 DPDMUX__ERROR_L3CV | \
+				 DPDMUX_ERROR_BLE | \
+				 DPDMUX_ERROR_PHE | \
+				 DPDMUX_ERROR_ISP | \
+				 DPDMUX_ERROR_PTE | \
+				 DPDMUX_ERROR_FPE | \
+				 DPDMUX_ERROR_FLE | \
+				 DPDMUX_ERROR_PIEE | \
+				 DPDMUX_ERROR_TIDE | \
+				 DPDMUX_ERROR_MNLE | \
+				 DPDMUX_ERROR_EOFHE | \
+				 DPDMUX_ERROR_KSE)
 
 enum dpdmux_error_action {
 	DPDMUX_ERROR_ACTION_DISCARD = 0,
