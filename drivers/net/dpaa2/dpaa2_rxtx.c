@@ -25,6 +25,7 @@
 #include "dpaa2_pmd_logs.h"
 #include "dpaa2_ethdev.h"
 #include "base/dpaa2_hw_dpni_annot.h"
+#include "dpaa2_parse_dump.h"
 
 static inline uint32_t __rte_hot
 dpaa2_dev_rx_parse_slow(struct rte_mbuf *mbuf,
@@ -56,6 +57,9 @@ dpaa2_dev_rx_parse_new(struct rte_mbuf *m, const struct qbman_fd *fd,
 	uint16_t frc = DPAA2_GET_FD_FRC_PARSE_SUM(fd);
 	struct dpaa2_annot_hdr *annotation =
 			(struct dpaa2_annot_hdr *)hw_annot_addr;
+
+	if (unlikely(dpaa2_print_parser_result))
+		dpaa2_print_parse_result(annotation);
 
 	m->packet_type = RTE_PTYPE_UNKNOWN;
 	switch (frc) {
@@ -251,6 +255,9 @@ dpaa2_dev_rx_parse(struct rte_mbuf *mbuf, void *hw_annot_addr)
 		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
 	else
 		mbuf->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+
+	if (unlikely(dpaa2_print_parser_result))
+		dpaa2_print_parse_result(annotation);
 
 	if (dpaa2_enable_ts[mbuf->port]) {
 		*dpaa2_timestamp_dynfield(mbuf) = annotation->word2;

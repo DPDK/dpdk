@@ -19,6 +19,8 @@
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
 
+#include "base/dpaa2_hw_dpni_annot.h"
+
 #define DPAA2_MIN_RX_BUF_SIZE 512
 #define DPAA2_MAX_RX_PKT_LEN  10240 /*WRIOP support*/
 #define NET_DPAA2_PMD_DRIVER_NAME net_dpaa2
@@ -152,6 +154,88 @@ extern const struct rte_tm_ops dpaa2_tm_ops;
 
 extern bool dpaa2_enable_err_queue;
 
+extern bool dpaa2_print_parser_result;
+
+#define DPAA2_FAPR_SIZE \
+	(sizeof(struct dpaa2_annot_hdr) - \
+	offsetof(struct dpaa2_annot_hdr, word3))
+
+#define DPAA2_PR_NXTHDR_OFFSET 0
+
+#define DPAA2_FAFE_PSR_OFFSET 2
+#define DPAA2_FAFE_PSR_SIZE 2
+
+#define DPAA2_FAF_PSR_OFFSET 4
+#define DPAA2_FAF_PSR_SIZE 12
+
+#define DPAA2_FAF_TOTAL_SIZE \
+	(DPAA2_FAFE_PSR_SIZE + DPAA2_FAF_PSR_SIZE)
+
+/* Just most popular Frame attribute flags (FAF) here.*/
+enum dpaa2_rx_faf_offset {
+	/* Set by SP start*/
+	FAFE_VXLAN_IN_VLAN_FRAM = 0,
+	FAFE_VXLAN_IN_IPV4_FRAM = 1,
+	FAFE_VXLAN_IN_IPV6_FRAM = 2,
+	FAFE_VXLAN_IN_UDP_FRAM = 3,
+	FAFE_VXLAN_IN_TCP_FRAM = 4,
+	/* Set by SP end*/
+
+	FAF_GTP_PRIMED_FRAM = 1 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_PTP_FRAM = 3 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_VXLAN_FRAM = 4 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_ETH_FRAM = 10 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_LLC_SNAP_FRAM = 18 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_VLAN_FRAM = 21 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_PPPOE_PPP_FRAM = 25 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_MPLS_FRAM = 27 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_ARP_FRAM = 30 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IPV4_FRAM = 34 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IPV6_FRAM = 42 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IP_FRAM = 48 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_ICMP_FRAM = 57 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IGMP_FRAM = 58 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_GRE_FRAM = 65 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_UDP_FRAM = 70 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_TCP_FRAM = 72 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IPSEC_FRAM = 77 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IPSEC_ESP_FRAM = 78 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_IPSEC_AH_FRAM = 79 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_SCTP_FRAM = 81 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_DCCP_FRAM = 83 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_GTP_FRAM = 87 + DPAA2_FAFE_PSR_SIZE * 8,
+	FAF_ESP_FRAM = 89 + DPAA2_FAFE_PSR_SIZE * 8,
+};
+
+#define DPAA2_PR_ETH_OFF_OFFSET 19
+#define DPAA2_PR_TCI_OFF_OFFSET 21
+#define DPAA2_PR_LAST_ETYPE_OFFSET 23
+#define DPAA2_PR_L3_OFF_OFFSET 27
+#define DPAA2_PR_L4_OFF_OFFSET 30
+#define DPAA2_PR_L5_OFF_OFFSET 31
+#define DPAA2_PR_NXTHDR_OFF_OFFSET 34
+
+/* Set by SP for vxlan distribution start*/
+#define DPAA2_VXLAN_IN_TCI_OFFSET 16
+
+#define DPAA2_VXLAN_IN_DADDR0_OFFSET 20
+#define DPAA2_VXLAN_IN_DADDR1_OFFSET 22
+#define DPAA2_VXLAN_IN_DADDR2_OFFSET 24
+#define DPAA2_VXLAN_IN_DADDR3_OFFSET 25
+#define DPAA2_VXLAN_IN_DADDR4_OFFSET 26
+#define DPAA2_VXLAN_IN_DADDR5_OFFSET 28
+
+#define DPAA2_VXLAN_IN_SADDR0_OFFSET 29
+#define DPAA2_VXLAN_IN_SADDR1_OFFSET 32
+#define DPAA2_VXLAN_IN_SADDR2_OFFSET 33
+#define DPAA2_VXLAN_IN_SADDR3_OFFSET 35
+#define DPAA2_VXLAN_IN_SADDR4_OFFSET 41
+#define DPAA2_VXLAN_IN_SADDR5_OFFSET 42
+
+#define DPAA2_VXLAN_VNI_OFFSET 43
+#define DPAA2_VXLAN_IN_TYPE_OFFSET 46
+/* Set by SP for vxlan distribution end*/
+
 struct ipv4_sd_addr_extract_rule {
 	uint32_t ipv4_src;
 	uint32_t ipv4_dst;
@@ -197,7 +281,13 @@ enum ip_addr_extract_type {
 	IP_DST_SRC_EXTRACT
 };
 
+enum key_prot_type {
+	DPAA2_NET_PROT_KEY,
+	DPAA2_FAF_KEY
+};
+
 struct key_prot_field {
+	enum key_prot_type type;
 	enum net_prot prot;
 	uint32_t key_field;
 };
