@@ -2785,39 +2785,20 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	/* Init fields w.r.t. classification */
 	memset(&priv->extract.qos_key_extract, 0,
 		sizeof(struct dpaa2_key_extract));
-	priv->extract.qos_extract_param = (size_t)rte_malloc(NULL, 256, 64);
+	priv->extract.qos_extract_param = rte_malloc(NULL, 256, 64);
 	if (!priv->extract.qos_extract_param) {
-		DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow "
-			    " classification ", ret);
+		DPAA2_PMD_ERR("Memory alloc failed");
 		goto init_err;
 	}
-	priv->extract.qos_key_extract.key_info.ipv4_src_offset =
-		IP_ADDRESS_OFFSET_INVALID;
-	priv->extract.qos_key_extract.key_info.ipv4_dst_offset =
-		IP_ADDRESS_OFFSET_INVALID;
-	priv->extract.qos_key_extract.key_info.ipv6_src_offset =
-		IP_ADDRESS_OFFSET_INVALID;
-	priv->extract.qos_key_extract.key_info.ipv6_dst_offset =
-		IP_ADDRESS_OFFSET_INVALID;
 
 	for (i = 0; i < MAX_TCS; i++) {
 		memset(&priv->extract.tc_key_extract[i], 0,
 			sizeof(struct dpaa2_key_extract));
-		priv->extract.tc_extract_param[i] =
-			(size_t)rte_malloc(NULL, 256, 64);
+		priv->extract.tc_extract_param[i] = rte_malloc(NULL, 256, 64);
 		if (!priv->extract.tc_extract_param[i]) {
-			DPAA2_PMD_ERR(" Error(%d) in allocation resources for flow classification",
-				     ret);
+			DPAA2_PMD_ERR("Memory alloc failed");
 			goto init_err;
 		}
-		priv->extract.tc_key_extract[i].key_info.ipv4_src_offset =
-			IP_ADDRESS_OFFSET_INVALID;
-		priv->extract.tc_key_extract[i].key_info.ipv4_dst_offset =
-			IP_ADDRESS_OFFSET_INVALID;
-		priv->extract.tc_key_extract[i].key_info.ipv6_src_offset =
-			IP_ADDRESS_OFFSET_INVALID;
-		priv->extract.tc_key_extract[i].key_info.ipv6_dst_offset =
-			IP_ADDRESS_OFFSET_INVALID;
 	}
 
 	ret = dpni_set_max_frame_length(dpni_dev, CMD_PRI_LOW, priv->token,

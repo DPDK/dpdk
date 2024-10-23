@@ -145,14 +145,6 @@ extern bool dpaa2_enable_ts[];
 extern uint64_t dpaa2_timestamp_rx_dynflag;
 extern int dpaa2_timestamp_dynfield_offset;
 
-#define DPAA2_QOS_TABLE_RECONFIGURE	1
-#define DPAA2_FS_TABLE_RECONFIGURE	2
-
-#define DPAA2_QOS_TABLE_IPADDR_EXTRACT 4
-#define DPAA2_FS_TABLE_IPADDR_EXTRACT 8
-
-#define DPAA2_FLOW_MAX_KEY_SIZE		16
-
 /* Externally defined */
 extern const struct rte_flow_ops dpaa2_flow_ops;
 
@@ -160,29 +152,85 @@ extern const struct rte_tm_ops dpaa2_tm_ops;
 
 extern bool dpaa2_enable_err_queue;
 
-#define IP_ADDRESS_OFFSET_INVALID (-1)
+struct ipv4_sd_addr_extract_rule {
+	uint32_t ipv4_src;
+	uint32_t ipv4_dst;
+};
 
-struct dpaa2_key_info {
+struct ipv6_sd_addr_extract_rule {
+	uint8_t ipv6_src[NH_FLD_IPV6_ADDR_SIZE];
+	uint8_t ipv6_dst[NH_FLD_IPV6_ADDR_SIZE];
+};
+
+struct ipv4_ds_addr_extract_rule {
+	uint32_t ipv4_dst;
+	uint32_t ipv4_src;
+};
+
+struct ipv6_ds_addr_extract_rule {
+	uint8_t ipv6_dst[NH_FLD_IPV6_ADDR_SIZE];
+	uint8_t ipv6_src[NH_FLD_IPV6_ADDR_SIZE];
+};
+
+union ip_addr_extract_rule {
+	struct ipv4_sd_addr_extract_rule ipv4_sd_addr;
+	struct ipv6_sd_addr_extract_rule ipv6_sd_addr;
+	struct ipv4_ds_addr_extract_rule ipv4_ds_addr;
+	struct ipv6_ds_addr_extract_rule ipv6_ds_addr;
+};
+
+union ip_src_addr_extract_rule {
+	uint32_t ipv4_src;
+	uint8_t ipv6_src[NH_FLD_IPV6_ADDR_SIZE];
+};
+
+union ip_dst_addr_extract_rule {
+	uint32_t ipv4_dst;
+	uint8_t ipv6_dst[NH_FLD_IPV6_ADDR_SIZE];
+};
+
+enum ip_addr_extract_type {
+	IP_NONE_ADDR_EXTRACT,
+	IP_SRC_EXTRACT,
+	IP_DST_EXTRACT,
+	IP_SRC_DST_EXTRACT,
+	IP_DST_SRC_EXTRACT
+};
+
+struct key_prot_field {
+	enum net_prot prot;
+	uint32_t key_field;
+};
+
+struct dpaa2_key_profile {
+	uint8_t num;
 	uint8_t key_offset[DPKG_MAX_NUM_OF_EXTRACTS];
 	uint8_t key_size[DPKG_MAX_NUM_OF_EXTRACTS];
-	/* Special for IP address. */
-	int ipv4_src_offset;
-	int ipv4_dst_offset;
-	int ipv6_src_offset;
-	int ipv6_dst_offset;
-	uint8_t key_total_size;
+
+	enum ip_addr_extract_type ip_addr_type;
+	uint8_t ip_addr_extract_pos;
+	uint8_t ip_addr_extract_off;
+
+	uint8_t l4_src_port_present;
+	uint8_t l4_src_port_pos;
+	uint8_t l4_src_port_offset;
+	uint8_t l4_dst_port_present;
+	uint8_t l4_dst_port_pos;
+	uint8_t l4_dst_port_offset;
+	struct key_prot_field prot_field[DPKG_MAX_NUM_OF_EXTRACTS];
+	uint16_t key_max_size;
 };
 
 struct dpaa2_key_extract {
 	struct dpkg_profile_cfg dpkg;
-	struct dpaa2_key_info key_info;
+	struct dpaa2_key_profile key_profile;
 };
 
 struct extract_s {
 	struct dpaa2_key_extract qos_key_extract;
 	struct dpaa2_key_extract tc_key_extract[MAX_TCS];
-	uint64_t qos_extract_param;
-	uint64_t tc_extract_param[MAX_TCS];
+	uint8_t *qos_extract_param;
+	uint8_t *tc_extract_param[MAX_TCS];
 };
 
 struct dpaa2_dev_priv {
@@ -233,7 +281,8 @@ struct dpaa2_dev_priv {
 	/* Stores correction offset for one step timestamping */
 	uint16_t ptp_correction_offset;
 
-	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
+	struct dpaa2_dev_flow *curr;
+	LIST_HEAD(, dpaa2_dev_flow) flows;
 	LIST_HEAD(nodes, dpaa2_tm_node) nodes;
 	LIST_HEAD(shaper_profiles, dpaa2_tm_shaper_profile) shaper_profiles;
 };
@@ -292,7 +341,6 @@ uint16_t dpaa2_dev_tx_multi_txq_ordered(void **queue,
 void dpaa2_dev_free_eqresp_buf(uint16_t eqresp_ci, struct dpaa2_queue *dpaa2_q);
 void dpaa2_flow_clean(struct rte_eth_dev *dev);
 uint16_t dpaa2_dev_tx_conf(void *queue)  __rte_unused;
-int dpaa2_dev_is_dpaa2(struct rte_eth_dev *dev);
 
 int dpaa2_timesync_enable(struct rte_eth_dev *dev);
 int dpaa2_timesync_disable(struct rte_eth_dev *dev);
