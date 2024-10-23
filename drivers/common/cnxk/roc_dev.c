@@ -543,16 +543,16 @@ pf_vf_mbox_send_up_msg(struct dev *dev, void *rec_msg)
 }
 
 static int
-mbox_up_handler_rep_repte_notify(struct dev *dev, struct rep_repte_req *req, struct msg_rsp *rsp)
+mbox_up_handler_rep_event_up_notify(struct dev *dev, struct rep_event *req, struct msg_rsp *rsp)
 {
 	struct roc_eswitch_repte_notify_msg *notify_msg;
 	int rc = 0;
 
+	plt_base_dbg("mbox_up_handler_rep_event_up_notify");
 	plt_base_dbg("pf:%d/vf:%d msg id 0x%x (%s) from: pf:%d/vf:%d", dev_get_pf(dev->pf_func),
 		     dev_get_vf(dev->pf_func), req->hdr.id, mbox_id2name(req->hdr.id),
 		     dev_get_pf(req->hdr.pcifunc), dev_get_vf(req->hdr.pcifunc));
 
-	plt_base_dbg("repte pcifunc %x, enable %d", req->repte_pcifunc, req->enable);
 	if (dev->ops && dev->ops->repte_notify) {
 		notify_msg = plt_zmalloc(sizeof(struct roc_eswitch_repte_notify_msg), 0);
 		if (!notify_msg) {
@@ -560,49 +560,39 @@ mbox_up_handler_rep_repte_notify(struct dev *dev, struct rep_repte_req *req, str
 			rc = -ENOMEM;
 			goto fail;
 		}
-		notify_msg->type = ROC_ESWITCH_REPTE_STATE;
-		notify_msg->state.hw_func = req->repte_pcifunc;
-		notify_msg->state.enable = req->enable;
 
-		rc = dev->ops->repte_notify(dev->roc_nix, (void *)notify_msg);
-		if (rc < 0)
-			plt_err("Failed to sent new representee %x notification to %s",
-				req->repte_pcifunc, (req->enable == true) ? "enable" : "disable");
-
-		plt_free(notify_msg);
-	}
-fail:
-	rsp->hdr.rc = rc;
-	return rc;
-}
-
-static int
-mbox_up_handler_rep_set_mtu(struct dev *dev, struct rep_mtu *req, struct msg_rsp *rsp)
-{
-	struct roc_eswitch_repte_notify_msg *notify_msg;
-	int rc = 0;
-
-	plt_base_dbg("pf:%d/vf:%d msg id 0x%x (%s) from: pf:%d/vf:%d", dev_get_pf(dev->pf_func),
-		     dev_get_vf(dev->pf_func), req->hdr.id, mbox_id2name(req->hdr.id),
-		     dev_get_pf(req->hdr.pcifunc), dev_get_vf(req->hdr.pcifunc));
-
-	plt_base_dbg("rep pcifunc %x, rep id %d mtu %d", req->rep_pcifunc, req->rep_id, req->mtu);
-	if (dev->ops && dev->ops->repte_notify) {
-		notify_msg = plt_zmalloc(sizeof(struct roc_eswitch_repte_notify_msg), 0);
-		if (!notify_msg) {
-			plt_err("Failed to allocate memory");
-			rc = -ENOMEM;
+		switch (req->event) {
+		case RVU_EVENT_PORT_STATE:
+			plt_base_dbg("pcifunc %x, port_state %d", req->pcifunc,
+				     req->evt_data.port_state);
+			notify_msg->type = ROC_ESWITCH_LINK_STATE;
+			notify_msg->link.hw_func = req->pcifunc;
+			notify_msg->link.enable = req->evt_data.port_state;
+			break;
+		case RVU_EVENT_PFVF_STATE:
+			plt_base_dbg("pcifunc %x, repte_state %d", req->pcifunc,
+				     req->evt_data.vf_state);
+			notify_msg->type = ROC_ESWITCH_REPTE_STATE;
+			notify_msg->state.hw_func = req->pcifunc;
+			notify_msg->state.enable = req->evt_data.vf_state;
+			break;
+		case RVU_EVENT_MTU_CHANGE:
+			plt_base_dbg("pcifunc %x, mtu val %d", req->pcifunc, req->evt_data.mtu);
+			notify_msg->type = ROC_ESWITCH_REPTE_MTU;
+			notify_msg->mtu.hw_func = req->pcifunc;
+			notify_msg->mtu.mtu = req->evt_data.mtu;
+			break;
+		default:
+			plt_err("Unknown event type %u", req->event);
+			plt_free(notify_msg);
+			rc = -EINVAL;
 			goto fail;
 		}
-		notify_msg->type = ROC_ESWITCH_REPTE_MTU;
-		notify_msg->mtu.hw_func = req->rep_pcifunc;
-		notify_msg->mtu.rep_id = req->rep_id;
-		notify_msg->mtu.mtu = req->mtu;
 
 		rc = dev->ops->repte_notify(dev->roc_nix, (void *)notify_msg);
 		if (rc < 0)
-			plt_err("Failed to send new mtu notification for representee %x ",
-				req->rep_pcifunc);
+			plt_err("Failed to send notification type %x for representee %x",
+				notify_msg->type, notify_msg->state.hw_func);
 
 		plt_free(notify_msg);
 	}

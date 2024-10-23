@@ -361,9 +361,7 @@ struct mbox_msghdr {
 
 #define MBOX_UP_MCS_MESSAGES M(MCS_INTR_NOTIFY, 0xE00, mcs_intr_notify, mcs_intr_info, msg_rsp)
 
-#define MBOX_UP_REP_MESSAGES						       \
-M(REP_REPTE_NOTIFY, 0xEF1, rep_repte_notify, rep_repte_req, msg_rsp)           \
-M(REP_SET_MTU, 0xEF2, rep_set_mtu, rep_mtu, msg_rsp)
+#define MBOX_UP_REP_MESSAGES M(REP_EVENT_UP_NOTIFY, 0xEF0, rep_event_up_notify, rep_event, msg_rsp)
 
 enum {
 #define M(_name, _id, _1, _2, _3) MBOX_MSG_##_name = _id,
@@ -2919,16 +2917,24 @@ struct nix_spi_to_sa_delete_req {
 	uint8_t __io way;
 };
 
-struct rep_repte_req {
-	struct mbox_msghdr hdr;
-	uint16_t __io repte_pcifunc;
-	bool __io enable;
+struct rep_evt_data {
+	uint8_t __io port_state;
+	uint8_t __io vf_state;
+	uint16_t __io rx_mode;
+	uint16_t __io rx_flags;
+	uint16_t __io mtu;
+	uint64_t __io rsvd[5];
 };
 
-struct rep_mtu {
+struct rep_event {
 	struct mbox_msghdr hdr;
-	uint16_t __io rep_pcifunc;
-	uint16_t __io rep_id;
-	uint16_t __io mtu;
+	uint16_t __io pcifunc;
+#define RVU_EVENT_PORT_STATE	 BIT_ULL(0)
+#define RVU_EVENT_PFVF_STATE	 BIT_ULL(1)
+#define RVU_EVENT_MTU_CHANGE	 BIT_ULL(2)
+#define RVU_EVENT_RX_MODE_CHANGE BIT_ULL(3)
+	uint16_t __io event;
+	struct rep_evt_data evt_data;
 };
+
 #endif /* __ROC_MBOX_H__ */

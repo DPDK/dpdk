@@ -10,10 +10,16 @@
 
 typedef enum roc_eswitch_repte_notify_msg_type {
 	ROC_ESWITCH_REPTE_STATE = 0,
+	ROC_ESWITCH_LINK_STATE,
 	ROC_ESWITCH_REPTE_MTU,
 } roc_eswitch_repte_notify_msg_type_t;
 
 struct roc_eswitch_repte_state {
+	bool enable;
+	uint16_t hw_func;
+};
+
+struct roc_eswitch_link_state {
 	bool enable;
 	uint16_t hw_func;
 };
@@ -28,6 +34,7 @@ struct roc_eswitch_repte_notify_msg {
 	roc_eswitch_repte_notify_msg_type_t type;
 	union {
 		struct roc_eswitch_repte_state state;
+		struct roc_eswitch_link_state link;
 		struct roc_eswitch_repte_mtu mtu;
 	};
 };
