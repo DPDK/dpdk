@@ -30,8 +30,7 @@
 int mc_l4_port_identification;
 
 static char *dpaa2_flow_control_log;
-static uint16_t dpaa2_flow_miss_flow_id =
-	DPNI_FS_MISS_DROP;
+static uint16_t dpaa2_flow_miss_flow_id; /* Default miss flow id is 0. */
 
 #define FIXED_ENTRY_SIZE DPNI_MAX_KEY_SIZE
 
@@ -3990,7 +3989,7 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 		struct dpaa2_dev_priv *priv = dev->data->dev_private;
 
 		dpaa2_flow_miss_flow_id =
-			atoi(getenv("DPAA2_FLOW_CONTROL_MISS_FLOW"));
+			(uint16_t)atoi(getenv("DPAA2_FLOW_CONTROL_MISS_FLOW"));
 		if (dpaa2_flow_miss_flow_id >= priv->dist_queues) {
 			DPAA2_PMD_ERR(
 				"The missed flow ID %d exceeds the max flow ID %d",
