@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2018-2019 NXP
+ * Copyright 2018-2023 NXP
  */
 
 #include <rte_mbuf.h>
@@ -170,7 +170,14 @@ int dpaa2_eth_load_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 	}
 
 	memcpy(addr, sp_param.byte_code, sp_param.size);
-	cfg.ss_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(addr));
+	cfg.ss_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(addr, sp_param.size);
+	if (cfg.ss_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("No IOMMU map for soft sequence(%p), size=%d",
+			addr, sp_param.size);
+		rte_free(addr);
+
+		return -ENOBUFS;
+	}
 
 	ret = dpni_load_sw_sequence(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
@@ -179,7 +186,7 @@ int dpaa2_eth_load_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 		return ret;
 	}
 
-	priv->ss_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(addr));
+	priv->ss_iova = cfg.ss_iova;
 	priv->ss_offset += sp_param.size;
 	DPAA2_PMD_INFO("Soft parser loaded for dpni@%d", priv->hw_id);
 
@@ -219,7 +226,15 @@ int dpaa2_eth_enable_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 		}
 
 		memcpy(param_addr, sp_param.param_array, cfg.param_size);
-		cfg.param_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(param_addr));
+		cfg.param_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(param_addr,
+			cfg.param_size);
+		if (cfg.param_iova == RTE_BAD_IOVA) {
+			DPAA2_PMD_ERR("%s: No IOMMU map for %p, size=%d",
+				__func__, param_addr, cfg.param_size);
+			rte_free(param_addr);
+
+			return -ENOBUFS;
+		}
 		priv->ss_param_iova = cfg.param_iova;
 	} else {
 		cfg.param_iova = 0;
@@ -227,7 +242,7 @@ int dpaa2_eth_enable_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 
 	ret = dpni_enable_sw_sequence(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
-		DPAA2_PMD_ERR("dpni_enable_sw_sequence failed for dpni%d",
+		DPAA2_PMD_ERR("Soft parser enabled for dpni@%d failed",
 			priv->hw_id);
 		rte_free(param_addr);
 		return ret;

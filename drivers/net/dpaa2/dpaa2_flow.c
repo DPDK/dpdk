@@ -4296,7 +4296,14 @@ dpaa2_configure_fs_rss_table(struct dpaa2_dev_priv *priv,
 
 	tc_extract = &priv->extract.tc_key_extract[tc_id];
 	key_cfg_buf = priv->extract.tc_extract_param[tc_id];
-	key_cfg_iova = DPAA2_VADDR_TO_IOVA(key_cfg_buf);
+	key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(key_cfg_buf,
+		DPAA2_EXTRACT_PARAM_MAX_SIZE);
+	if (key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, key_cfg_buf);
+
+		return -ENOBUFS;
+	}
 
 	key_max_size = tc_extract->key_profile.key_max_size;
 	entry_size = dpaa2_flow_entry_size(key_max_size);
@@ -4380,7 +4387,14 @@ dpaa2_configure_qos_table(struct dpaa2_dev_priv *priv,
 
 	qos_extract = &priv->extract.qos_key_extract;
 	key_cfg_buf = priv->extract.qos_extract_param;
-	key_cfg_iova = DPAA2_VADDR_TO_IOVA(key_cfg_buf);
+	key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(key_cfg_buf,
+		DPAA2_EXTRACT_PARAM_MAX_SIZE);
+	if (key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, key_cfg_buf);
+
+		return -ENOBUFS;
+	}
 
 	key_max_size = qos_extract->key_profile.key_max_size;
 	entry_size = dpaa2_flow_entry_size(key_max_size);
@@ -4937,6 +4951,7 @@ dpaa2_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	struct dpaa2_dev_flow *flow = NULL;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	int ret;
+	uint64_t iova;
 
 	dpaa2_flow_control_log =
 		getenv("DPAA2_FLOW_CONTROL_LOG");
@@ -4960,34 +4975,66 @@ dpaa2_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	}
 
 	/* Allocate DMA'ble memory to write the qos rules */
-	flow->qos_key_addr = rte_zmalloc(NULL, 256, 64);
+	flow->qos_key_addr = rte_zmalloc(NULL,
+		DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!flow->qos_key_addr) {
 		DPAA2_PMD_ERR("Memory allocation failed");
 		goto mem_failure;
 	}
-	flow->qos_rule.key_iova = DPAA2_VADDR_TO_IOVA(flow->qos_key_addr);
+	iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(flow->qos_key_addr,
+			DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE);
+	if (iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for qos key(%p)",
+			__func__, flow->qos_key_addr);
+		goto mem_failure;
+	}
+	flow->qos_rule.key_iova = iova;
 
-	flow->qos_mask_addr = rte_zmalloc(NULL, 256, 64);
+	flow->qos_mask_addr = rte_zmalloc(NULL,
+		DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!flow->qos_mask_addr) {
 		DPAA2_PMD_ERR("Memory allocation failed");
 		goto mem_failure;
 	}
-	flow->qos_rule.mask_iova = DPAA2_VADDR_TO_IOVA(flow->qos_mask_addr);
+	iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(flow->qos_mask_addr,
+			DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE);
+	if (iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for qos mask(%p)",
+			__func__, flow->qos_mask_addr);
+		goto mem_failure;
+	}
+	flow->qos_rule.mask_iova = iova;
 
 	/* Allocate DMA'ble memory to write the FS rules */
-	flow->fs_key_addr = rte_zmalloc(NULL, 256, 64);
+	flow->fs_key_addr = rte_zmalloc(NULL,
+		DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!flow->fs_key_addr) {
 		DPAA2_PMD_ERR("Memory allocation failed");
 		goto mem_failure;
 	}
-	flow->fs_rule.key_iova = DPAA2_VADDR_TO_IOVA(flow->fs_key_addr);
+	iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(flow->fs_key_addr,
+			DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE);
+	if (iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for fs key(%p)",
+			__func__, flow->fs_key_addr);
+		goto mem_failure;
+	}
+	flow->fs_rule.key_iova = iova;
 
-	flow->fs_mask_addr = rte_zmalloc(NULL, 256, 64);
+	flow->fs_mask_addr = rte_zmalloc(NULL,
+		DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!flow->fs_mask_addr) {
 		DPAA2_PMD_ERR("Memory allocation failed");
 		goto mem_failure;
 	}
-	flow->fs_rule.mask_iova = DPAA2_VADDR_TO_IOVA(flow->fs_mask_addr);
+	iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(flow->fs_mask_addr,
+		DPAA2_EXTRACT_ALLOC_KEY_MAX_SIZE);
+	if (iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for fs mask(%p)",
+			__func__, flow->fs_mask_addr);
+		goto mem_failure;
+	}
+	flow->fs_rule.mask_iova = iova;
 
 	priv->curr = flow;
 

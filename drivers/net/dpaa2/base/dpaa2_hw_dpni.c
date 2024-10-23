@@ -30,8 +30,7 @@ dpaa2_distset_to_dpkg_profile_cfg(
 
 int
 rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
-			      uint16_t offset,
-			      uint8_t size)
+	uint16_t offset, uint8_t size)
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
@@ -52,8 +51,8 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 		return -EINVAL;
 	}
 
-	p_params = rte_zmalloc(
-		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	p_params = rte_zmalloc(NULL,
+		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
@@ -73,17 +72,23 @@ rte_pmd_dpaa2_set_custom_hash(uint16_t port_id,
 	}
 
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
-	tc_cfg.key_cfg_iova = (size_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(p_params,
+		DIST_PARAM_IOVA_SIZE);
+	if (tc_cfg.key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, p_params);
+		rte_free(p_params);
+		return -ENOBUFS;
+	}
+
 	tc_cfg.dist_size = eth_dev->data->nb_rx_queues;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 
 	ret = dpni_set_rx_tc_dist(dpni, CMD_PRI_LOW, priv->token, tc_index,
-				  &tc_cfg);
+			&tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		DPAA2_PMD_ERR(
-			     "Setting distribution for Rx failed with err: %d",
-			     ret);
+		DPAA2_PMD_ERR("Set RX TC dist failed(err=%d)", ret);
 		return ret;
 	}
 
@@ -115,8 +120,8 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	if (tc_dist_queues > priv->dist_queues)
 		tc_dist_queues = priv->dist_queues;
 
-	p_params = rte_malloc(
-		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	p_params = rte_malloc(NULL,
+		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
@@ -133,7 +138,15 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 		return ret;
 	}
 
-	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(p_params,
+		DIST_PARAM_IOVA_SIZE);
+	if (tc_cfg.key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, p_params);
+		rte_free(p_params);
+		return -ENOBUFS;
+	}
+
 	tc_cfg.dist_size = tc_dist_queues;
 	tc_cfg.enable = true;
 	tc_cfg.tc = tc_index;
@@ -148,17 +161,15 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	ret = dpni_set_rx_hash_dist(dpni, CMD_PRI_LOW, priv->token, &tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		DPAA2_PMD_ERR(
-			     "Setting distribution for Rx failed with err: %d",
-			     ret);
+		DPAA2_PMD_ERR("RX Hash dist for failed(err=%d)", ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-int dpaa2_remove_flow_dist(
-	struct rte_eth_dev *eth_dev,
+int
+dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 	uint8_t tc_index)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
@@ -168,8 +179,8 @@ int dpaa2_remove_flow_dist(
 	void *p_params;
 	int ret;
 
-	p_params = rte_malloc(
-		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
+	p_params = rte_malloc(NULL,
+		DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
 		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
 		return -ENOMEM;
@@ -177,7 +188,15 @@ int dpaa2_remove_flow_dist(
 
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_dist_cfg));
 	tc_cfg.dist_size = 0;
-	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
+	tc_cfg.key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(p_params,
+		DIST_PARAM_IOVA_SIZE);
+	if (tc_cfg.key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, p_params);
+		rte_free(p_params);
+		return -ENOBUFS;
+	}
+
 	tc_cfg.enable = true;
 	tc_cfg.tc = tc_index;
 
@@ -194,9 +213,7 @@ int dpaa2_remove_flow_dist(
 			&tc_cfg);
 	rte_free(p_params);
 	if (ret)
-		DPAA2_PMD_ERR(
-			     "Setting distribution for Rx failed with err: %d",
-			     ret);
+		DPAA2_PMD_ERR("RX hash dist failed(err=%d)", ret);
 	return ret;
 }
 
