@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2017 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #include <fsl_mc_sys.h>
@@ -372,6 +372,98 @@ int dpio_get_stashing_destination(struct fsl_mc_io *mc_io,
 	/* retrieve response parameters */
 	rsp_params = (struct dpio_stashing_dest *)cmd.params;
 	*sdest = rsp_params->sdest;
+
+	return 0;
+}
+
+/**
+ * dpio_set_stashing_destination_by_core_id() - Set the stashing destination source
+ * using the core id.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @core_id:	Core id stashing destination
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpio_set_stashing_destination_by_core_id(struct fsl_mc_io *mc_io,
+					uint32_t cmd_flags,
+					uint16_t token,
+					uint8_t core_id)
+{
+	struct dpio_stashing_dest_by_core_id *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_SET_STASHING_DEST_BY_CORE_ID,
+										cmd_flags,
+										token);
+	cmd_params = (struct dpio_stashing_dest_by_core_id  *)cmd.params;
+	cmd_params->core_id = core_id;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpio_set_stashing_destination_source() - Set the stashing destination source.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @ss:		Stashing destination source (0 manual/1 automatic)
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpio_set_stashing_destination_source(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t ss)
+{
+	struct dpio_stashing_dest_source *cmd_params;
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_SET_STASHING_DEST_SOURCE,
+					  cmd_flags,
+					  token);
+	cmd_params = (struct dpio_stashing_dest_source *)cmd.params;
+	cmd_params->ss = ss;
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+/**
+ * dpio_get_stashing_destination_source() - Get the stashing destination source.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @ss:		Returns the stashing destination source (0 manual/1 automatic)
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpio_get_stashing_destination_source(struct fsl_mc_io *mc_io,
+				  uint32_t cmd_flags,
+				  uint16_t token,
+				  uint8_t *ss)
+{
+	struct dpio_stashing_dest_source *rsp_params;
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_GET_STASHING_DEST_SOURCE,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	rsp_params = (struct dpio_stashing_dest_source *)cmd.params;
+	*ss = rsp_params->ss;
 
 	return 0;
 }

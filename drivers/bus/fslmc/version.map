@@ -37,6 +37,9 @@ INTERNAL {
 	dpcon_get_attributes;
 	dpcon_open;
 	dpcon_close;
+	dpcon_reset;
+	dpcon_enable;
+	dpcon_disable;
 	dpdmai_close;
 	dpdmai_disable;
 	dpdmai_enable;
@@ -53,7 +56,11 @@ INTERNAL {
 	dpio_open;
 	dpio_remove_static_dequeue_channel;
 	dpio_reset;
+	dpio_get_stashing_destination;
+	dpio_get_stashing_destination_source;
 	dpio_set_stashing_destination;
+	dpio_set_stashing_destination_by_core_id;
+	dpio_set_stashing_destination_source;
 	mc_get_soc_version;
 	mc_get_version;
 	mc_send_command;

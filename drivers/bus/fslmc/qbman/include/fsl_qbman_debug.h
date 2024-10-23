@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (C) 2015 Freescale Semiconductor, Inc.
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2023 NXP
  */
 #ifndef _FSL_QBMAN_DEBUG_H
 #define _FSL_QBMAN_DEBUG_H
@@ -104,16 +104,6 @@ int qbman_fq_attr_get_pl(struct qbman_fq_query_rslt *r);
 uint32_t qbman_fq_attr_get_vfqid(struct qbman_fq_query_rslt *r);
 uint32_t qbman_fq_attr_get_erfqid(struct qbman_fq_query_rslt *r);
 uint16_t qbman_fq_attr_get_opridsz(struct qbman_fq_query_rslt *r);
-
-/* FQ query command for non-programmable fields*/
-enum qbman_fq_schedstate_e {
-	qbman_fq_schedstate_oos = 0,
-	qbman_fq_schedstate_retired,
-	qbman_fq_schedstate_tentatively_scheduled,
-	qbman_fq_schedstate_truly_scheduled,
-	qbman_fq_schedstate_parked,
-	qbman_fq_schedstate_held_active,
-};
 
 struct qbman_fq_query_np_rslt {
 uint8_t verb;

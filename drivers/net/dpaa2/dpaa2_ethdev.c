@@ -876,6 +876,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct dpni_queue tx_conf_cfg;
 	struct dpni_queue tx_flow_cfg;
 	uint8_t options = 0, flow_id;
+	uint8_t ceetm_ch_idx;
 	uint16_t channel_id;
 	struct dpni_queue_id qid;
 	uint32_t tc_id;
@@ -902,20 +903,27 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
 
-	if (tx_queue_id == 0) {
-		/*Set tx-conf and error configuration*/
-		if (priv->flags & DPAA2_TX_CONF_ENABLE)
-			ret = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
-							    priv->token,
-							    DPNI_CONF_AFFINE);
-		else
-			ret = dpni_set_tx_confirmation_mode(dpni, CMD_PRI_LOW,
-							    priv->token,
-							    DPNI_CONF_DISABLE);
-		if (ret) {
-			DPAA2_PMD_ERR("Error in set tx conf mode settings: "
-				      "err=%d", ret);
-			return -1;
+	if (!tx_queue_id) {
+		for (ceetm_ch_idx = 0;
+			ceetm_ch_idx <= (priv->num_channels - 1);
+			ceetm_ch_idx++) {
+			/*Set tx-conf and error configuration*/
+			if (priv->flags & DPAA2_TX_CONF_ENABLE) {
+				ret = dpni_set_tx_confirmation_mode(dpni,
+						CMD_PRI_LOW, priv->token,
+						ceetm_ch_idx,
+						DPNI_CONF_AFFINE);
+			} else {
+				ret = dpni_set_tx_confirmation_mode(dpni,
+						CMD_PRI_LOW, priv->token,
+						ceetm_ch_idx,
+						DPNI_CONF_DISABLE);
+			}
+			if (ret) {
+				DPAA2_PMD_ERR("Error(%d) in tx conf setting",
+					ret);
+				return ret;
+			}
 		}
 	}
 

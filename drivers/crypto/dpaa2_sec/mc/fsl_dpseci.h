@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2020 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #ifndef __FSL_DPSECI_H
@@ -428,5 +428,50 @@ int dpseci_get_congestion_notification(
 			uint32_t cmd_flags,
 			uint16_t token,
 			struct dpseci_congestion_notification_cfg *cfg);
+
+/* Available FQ's scheduling states */
+enum qbman_fq_schedstate_e {
+	qbman_fq_schedstate_oos = 0,
+	qbman_fq_schedstate_retired,
+	qbman_fq_schedstate_tentatively_scheduled,
+	qbman_fq_schedstate_truly_scheduled,
+	qbman_fq_schedstate_parked,
+	qbman_fq_schedstate_held_active,
+};
+
+/* FQ's force eligible pending bit */
+#define DPSECI_FQ_STATE_FORCE_ELIGIBLE			0x00000001
+/* FQ's XON/XOFF state, 0: XON, 1: XOFF */
+#define DPSECI_FQ_STATE_XOFF					0x00000002
+/* FQ's retirement pending bit */
+#define DPSECI_FQ_STATE_RETIREMENT_PENDING		0x00000004
+/* FQ's overflow error bit */
+#define DPSECI_FQ_STATE_OVERFLOW_ERROR			0x00000008
+
+struct dpseci_queue_status {
+	uint32_t fqid;
+	/* FQ's scheduling states
+	 * (available scheduling states are defined in qbman_fq_schedstate_e)
+	 */
+	enum qbman_fq_schedstate_e schedstate;
+	/* FQ's state flags (available flags are defined above) */
+	uint16_t state_flags;
+	/* FQ's frame count */
+	uint32_t frame_count;
+	/* FQ's byte count */
+	uint32_t byte_count;
+};
+
+int dpseci_get_rx_queue_status(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				uint32_t queue_index,
+				struct dpseci_queue_status *attr);
+
+int dpseci_get_tx_queue_status(struct fsl_mc_io *mc_io,
+				uint32_t cmd_flags,
+				uint16_t token,
+				uint32_t queue_index,
+				struct dpseci_queue_status *attr);
 
 #endif /* __FSL_DPSECI_H */

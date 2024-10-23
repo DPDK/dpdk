@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016-2019 NXP
+ * Copyright 2016-2023 NXP
  *
  */
 #ifndef _FSL_DPIO_CMD_H
@@ -40,6 +40,9 @@
 #define DPIO_CMDID_GET_STASHING_DEST			DPIO_CMD(0x121)
 #define DPIO_CMDID_ADD_STATIC_DEQUEUE_CHANNEL		DPIO_CMD(0x122)
 #define DPIO_CMDID_REMOVE_STATIC_DEQUEUE_CHANNEL	DPIO_CMD(0x123)
+#define DPIO_CMDID_SET_STASHING_DEST_SOURCE		DPIO_CMD(0x124)
+#define DPIO_CMDID_GET_STASHING_DEST_SOURCE		DPIO_CMD(0x125)
+#define DPIO_CMDID_SET_STASHING_DEST_BY_CORE_ID		DPIO_CMD(0x126)
 
 /* Macros for accessing command fields smaller than 1byte */
 #define DPIO_MASK(field)        \
@@ -96,6 +99,14 @@ struct dpio_rsp_get_attr {
 
 struct dpio_stashing_dest {
 	uint8_t sdest;
+};
+
+struct dpio_stashing_dest_source {
+	uint8_t ss;
+};
+
+struct dpio_stashing_dest_by_core_id {
+	uint8_t core_id;
 };
 
 struct dpio_cmd_static_dequeue_channel {

@@ -1,16 +1,18 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
- * Copyright 2017-2021 NXP
+ * Copyright 2017-2021, 2023 NXP
  *
  */
 #include <fsl_mc_sys.h>
 #include <fsl_mc_cmd.h>
 #include <fsl_dpkg.h>
+#include <string.h>
 
 /**
  * dpkg_prepare_key_cfg() - function prepare extract parameters
  * @cfg: defining a full Key Generation profile (rule)
- * @key_cfg_buf: Zeroed 256 bytes of memory before mapping it to DMA
+ * @key_cfg_buf: Zeroed memory whose size is sizeo of
+ *		"struct dpni_ext_set_rx_tc_dist" before mapping it to DMA
  *
  * This function has to be called before the following functions:
  *	- dpni_set_rx_tc_dist()
@@ -18,7 +20,8 @@
  *	- dpkg_prepare_key_cfg()
  */
 int
-dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg, uint8_t *key_cfg_buf)
+dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg,
+	void *key_cfg_buf)
 {
 	int i, j;
 	struct dpni_ext_set_rx_tc_dist *dpni_ext;
@@ -27,11 +30,12 @@ dpkg_prepare_key_cfg(const struct dpkg_profile_cfg *cfg, uint8_t *key_cfg_buf)
 	if (cfg->num_extracts > DPKG_MAX_NUM_OF_EXTRACTS)
 		return -EINVAL;
 
-	dpni_ext = (struct dpni_ext_set_rx_tc_dist *)key_cfg_buf;
+	dpni_ext = key_cfg_buf;
 	dpni_ext->num_extracts = cfg->num_extracts;
 
 	for (i = 0; i < cfg->num_extracts; i++) {
 		extr = &dpni_ext->extracts[i];
+		memset(extr, 0, sizeof(struct dpni_dist_extract));
 
 		switch (cfg->extracts[i].type) {
 		case DPKG_EXTRACT_FROM_HDR:
