@@ -2847,6 +2847,35 @@ int dpaa2_dev_is_dpaa2(struct rte_eth_dev *dev)
 	return dev->device->driver == &rte_dpaa2_pmd.driver;
 }
 
+static int dpaa2_tx_sg_pool_init(void)
+{
+	char name[RTE_MEMZONE_NAMESIZE];
+
+	if (dpaa2_tx_sg_pool)
+		return 0;
+
+	sprintf(name, "dpaa2_mbuf_tx_sg_pool");
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		dpaa2_tx_sg_pool = rte_pktmbuf_pool_create(name,
+			DPAA2_POOL_SIZE,
+			DPAA2_POOL_CACHE_SIZE, 0,
+			DPAA2_MAX_SGS * sizeof(struct qbman_sge),
+			rte_socket_id());
+		if (!dpaa2_tx_sg_pool) {
+			DPAA2_PMD_ERR("SG pool creation failed");
+			return -ENOMEM;
+		}
+	} else {
+		dpaa2_tx_sg_pool = rte_mempool_lookup(name);
+		if (!dpaa2_tx_sg_pool) {
+			DPAA2_PMD_ERR("SG pool lookup failed");
+			return -ENOMEM;
+		}
+	}
+
+	return 0;
+}
+
 static int
 rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		struct rte_dpaa2_device *dpaa2_dev)
@@ -2901,19 +2930,10 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 
 	/* Invoke PMD device initialization function */
 	diag = dpaa2_dev_init(eth_dev);
-	if (diag == 0) {
-		if (!dpaa2_tx_sg_pool) {
-			dpaa2_tx_sg_pool =
-				rte_pktmbuf_pool_create("dpaa2_mbuf_tx_sg_pool",
-				DPAA2_POOL_SIZE,
-				DPAA2_POOL_CACHE_SIZE, 0,
-				DPAA2_MAX_SGS * sizeof(struct qbman_sge),
-				rte_socket_id());
-			if (dpaa2_tx_sg_pool == NULL) {
-				DPAA2_PMD_ERR("SG pool creation failed");
-				return -ENOMEM;
-			}
-		}
+	if (!diag) {
+		diag = dpaa2_tx_sg_pool_init();
+		if (diag)
+			return diag;
 		rte_eth_dev_probing_finish(eth_dev);
 		dpaa2_valid_dev++;
 		return 0;
