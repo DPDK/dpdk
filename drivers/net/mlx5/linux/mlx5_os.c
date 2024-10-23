@@ -1662,9 +1662,11 @@ err_secondary:
 	priv->ctrl_flows = 0;
 	rte_spinlock_init(&priv->flow_list_lock);
 	TAILQ_INIT(&priv->flow_meters);
-	priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);
-	if (!priv->mtr_profile_tbl)
-		goto error;
+	if (priv->mtr_en) {
+		priv->mtr_profile_tbl = mlx5_l3t_create(MLX5_L3T_TYPE_PTR);
+		if (!priv->mtr_profile_tbl)
+			goto error;
+	}
 	/* Bring Ethernet device up. */
 	DRV_LOG(DEBUG, "port %u forcing Ethernet interface up",
 		eth_dev->data->port_id);

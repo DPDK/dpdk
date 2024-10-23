@@ -98,8 +98,8 @@ mlx5_flow_meter_profile_find(struct mlx5_priv *priv, uint32_t meter_profile_id)
 	union mlx5_l3t_data data;
 	int32_t ret;
 
-	if (mlx5_l3t_get_entry(priv->mtr_profile_tbl,
-			       meter_profile_id, &data) || !data.ptr)
+	if (!priv->mtr_profile_tbl ||
+	    mlx5_l3t_get_entry(priv->mtr_profile_tbl, meter_profile_id, &data) || !data.ptr)
 		return NULL;
 	fmp = data.ptr;
 	/* Remove reference taken by the mlx5_l3t_get_entry. */
