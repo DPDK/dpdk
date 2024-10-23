@@ -22,13 +22,6 @@
 #include <dpaa2_ethdev.h>
 #include <dpaa2_pmd_logs.h>
 
-/* Workaround to discriminate the UDP/TCP/SCTP
- * with next protocol of l3.
- * MC/WRIOP are not able to identify
- * the l4 protocol with l4 ports.
- */
-static int mc_l4_port_identification;
-
 static char *dpaa2_flow_control_log;
 static uint16_t dpaa2_flow_miss_flow_id; /* Default miss flow id is 0. */
 
@@ -249,6 +242,10 @@ dpaa2_flow_qos_extracts_log(const struct dpaa2_dev_priv *priv)
 			sprintf(string, "raw offset/len: %d/%d",
 				extract->extract.from_data.offset,
 				extract->extract.from_data.size);
+		} else if (type == DPKG_EXTRACT_FROM_PARSE) {
+			sprintf(string, "parse offset/len: %d/%d",
+				extract->extract.from_parse.offset,
+				extract->extract.from_parse.size);
 		}
 		DPAA2_FLOW_DUMP("%s", string);
 		if ((idx + 1) < dpkg->num_extracts)
@@ -287,6 +284,10 @@ dpaa2_flow_fs_extracts_log(const struct dpaa2_dev_priv *priv,
 			sprintf(string, "raw offset/len: %d/%d",
 				extract->extract.from_data.offset,
 				extract->extract.from_data.size);
+		} else if (type == DPKG_EXTRACT_FROM_PARSE) {
+			sprintf(string, "parse offset/len: %d/%d",
+				extract->extract.from_parse.offset,
+				extract->extract.from_parse.size);
 		}
 		DPAA2_FLOW_DUMP("%s", string);
 		if ((idx + 1) < dpkg->num_extracts)
@@ -620,6 +621,66 @@ dpaa2_flow_fs_rule_insert_hole(struct dpaa2_dev_priv *priv,
 	return 0;
 }
 
+static int
+dpaa2_flow_faf_advance(struct dpaa2_dev_priv *priv,
+	int faf_byte, enum dpaa2_flow_dist_type dist_type, int tc_id,
+	int *insert_offset)
+{
+	int offset, ret;
+	struct dpaa2_key_profile *key_profile;
+	int num, pos;
+
+	if (dist_type == DPAA2_FLOW_QOS_TYPE)
+		key_profile = &priv->extract.qos_key_extract.key_profile;
+	else
+		key_profile = &priv->extract.tc_key_extract[tc_id].key_profile;
+
+	num = key_profile->num;
+
+	if (num >= DPKG_MAX_NUM_OF_EXTRACTS) {
+		DPAA2_PMD_ERR("Number of extracts overflows");
+		return -EINVAL;
+	}
+
+	if (key_profile->ip_addr_type != IP_NONE_ADDR_EXTRACT) {
+		offset = key_profile->ip_addr_extract_off;
+		pos = key_profile->ip_addr_extract_pos;
+		key_profile->ip_addr_extract_pos++;
+		key_profile->ip_addr_extract_off++;
+		if (dist_type == DPAA2_FLOW_QOS_TYPE) {
+			ret = dpaa2_flow_qos_rule_insert_hole(priv,
+					offset, 1);
+		} else {
+			ret = dpaa2_flow_fs_rule_insert_hole(priv,
+				offset, 1, tc_id);
+		}
+		if (ret)
+			return ret;
+	} else {
+		pos = num;
+	}
+
+	if (pos > 0) {
+		key_profile->key_offset[pos] =
+			key_profile->key_offset[pos - 1] +
+			key_profile->key_size[pos - 1];
+	} else {
+		key_profile->key_offset[pos] = 0;
+	}
+
+	key_profile->key_size[pos] = 1;
+	key_profile->prot_field[pos].type = DPAA2_FAF_KEY;
+	key_profile->prot_field[pos].key_field = faf_byte;
+	key_profile->num++;
+
+	if (insert_offset)
+		*insert_offset = key_profile->key_offset[pos];
+
+	key_profile->key_max_size++;
+
+	return pos;
+}
+
 /* Move IPv4/IPv6 addresses to fill new extract previous IP address.
  * Current MC/WRIOP only support generic IP extract but IP address
  * is not fixed, so we have to put them at end of extracts, otherwise,
@@ -681,6 +742,7 @@ dpaa2_flow_key_profile_advance(enum net_prot prot,
 	}
 
 	key_profile->key_size[pos] = field_size;
+	key_profile->prot_field[pos].type = DPAA2_NET_PROT_KEY;
 	key_profile->prot_field[pos].prot = prot;
 	key_profile->prot_field[pos].key_field = field;
 	key_profile->num++;
@@ -702,6 +764,55 @@ dpaa2_flow_key_profile_advance(enum net_prot prot,
 	key_profile->key_max_size += field_size;
 
 	return pos;
+}
+
+static int
+dpaa2_flow_faf_add_hdr(int faf_byte,
+	struct dpaa2_dev_priv *priv,
+	enum dpaa2_flow_dist_type dist_type, int tc_id,
+	int *insert_offset)
+{
+	int pos, i, offset;
+	struct dpaa2_key_extract *key_extract;
+	struct dpkg_profile_cfg *dpkg;
+	struct dpkg_extract *extracts;
+
+	if (dist_type == DPAA2_FLOW_QOS_TYPE)
+		key_extract = &priv->extract.qos_key_extract;
+	else
+		key_extract = &priv->extract.tc_key_extract[tc_id];
+
+	dpkg = &key_extract->dpkg;
+	extracts = dpkg->extracts;
+
+	if (dpkg->num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
+		DPAA2_PMD_ERR("Number of extracts overflows");
+		return -EINVAL;
+	}
+
+	pos = dpaa2_flow_faf_advance(priv,
+			faf_byte, dist_type, tc_id,
+			insert_offset);
+	if (pos < 0)
+		return pos;
+
+	if (pos != dpkg->num_extracts) {
+		/* Not the last pos, must have IP address extract.*/
+		for (i = dpkg->num_extracts - 1; i >= pos; i--) {
+			memcpy(&extracts[i + 1],
+				&extracts[i], sizeof(struct dpkg_extract));
+		}
+	}
+
+	offset = DPAA2_FAFE_PSR_OFFSET + faf_byte;
+
+	extracts[pos].type = DPKG_EXTRACT_FROM_PARSE;
+	extracts[pos].extract.from_parse.offset = offset;
+	extracts[pos].extract.from_parse.size = 1;
+
+	dpkg->num_extracts++;
+
+	return 0;
 }
 
 static int
@@ -990,6 +1101,7 @@ dpaa2_flow_extract_add_raw(struct dpaa2_dev_priv *priv,
 			key_profile->key_offset[pos] = 0;
 		}
 		key_profile->key_size[pos] = item_size;
+		key_profile->prot_field[pos].type = DPAA2_NET_PROT_KEY;
 		key_profile->prot_field[pos].prot = NET_PROT_PAYLOAD;
 		key_profile->prot_field[pos].key_field = field;
 
@@ -1029,7 +1141,7 @@ dpaa2_flow_extract_add_raw(struct dpaa2_dev_priv *priv,
 
 static inline int
 dpaa2_flow_extract_search(struct dpaa2_key_profile *key_profile,
-	enum net_prot prot, uint32_t key_field)
+	enum key_prot_type type, enum net_prot prot, uint32_t key_field)
 {
 	int pos;
 	struct key_prot_field *prot_field;
@@ -1042,16 +1154,23 @@ dpaa2_flow_extract_search(struct dpaa2_key_profile *key_profile,
 
 	prot_field = key_profile->prot_field;
 	for (pos = 0; pos < key_profile->num; pos++) {
-		if (prot_field[pos].prot == prot &&
-			prot_field[pos].key_field == key_field) {
+		if (type == DPAA2_NET_PROT_KEY &&
+			prot_field[pos].prot == prot &&
+			prot_field[pos].key_field == key_field &&
+			prot_field[pos].type == type)
 			return pos;
-		}
+		else if (type == DPAA2_FAF_KEY &&
+			prot_field[pos].key_field == key_field &&
+			prot_field[pos].type == type)
+			return pos;
 	}
 
-	if (dpaa2_flow_l4_src_port_extract(prot, key_field)) {
+	if (type == DPAA2_NET_PROT_KEY &&
+		dpaa2_flow_l4_src_port_extract(prot, key_field)) {
 		if (key_profile->l4_src_port_present)
 			return key_profile->l4_src_port_pos;
-	} else if (dpaa2_flow_l4_dst_port_extract(prot, key_field)) {
+	} else if (type == DPAA2_NET_PROT_KEY &&
+		dpaa2_flow_l4_dst_port_extract(prot, key_field)) {
 		if (key_profile->l4_dst_port_present)
 			return key_profile->l4_dst_port_pos;
 	}
@@ -1061,80 +1180,53 @@ dpaa2_flow_extract_search(struct dpaa2_key_profile *key_profile,
 
 static inline int
 dpaa2_flow_extract_key_offset(struct dpaa2_key_profile *key_profile,
-	enum net_prot prot, uint32_t key_field)
+	enum key_prot_type type, enum net_prot prot, uint32_t key_field)
 {
 	int i;
 
-	i = dpaa2_flow_extract_search(key_profile, prot, key_field);
+	i = dpaa2_flow_extract_search(key_profile, type, prot, key_field);
 	if (i >= 0)
 		return key_profile->key_offset[i];
 	else
 		return i;
 }
 
-struct prev_proto_field_id {
-	enum net_prot prot;
-	union {
-		rte_be16_t eth_type;
-		uint8_t ip_proto;
-	};
-};
-
 static int
-dpaa2_flow_prev_proto_rule(struct dpaa2_dev_priv *priv,
+dpaa2_flow_faf_add_rule(struct dpaa2_dev_priv *priv,
 	struct dpaa2_dev_flow *flow,
-	const struct prev_proto_field_id *prev_proto,
+	enum dpaa2_rx_faf_offset faf_bit_off,
 	int group,
 	enum dpaa2_flow_dist_type dist_type)
 {
 	int offset;
 	uint8_t *key_addr;
 	uint8_t *mask_addr;
-	uint32_t field = 0;
-	rte_be16_t eth_type;
-	uint8_t ip_proto;
 	struct dpaa2_key_extract *key_extract;
 	struct dpaa2_key_profile *key_profile;
+	uint8_t faf_byte = faf_bit_off / 8;
+	uint8_t faf_bit_in_byte = faf_bit_off % 8;
 
-	if (prev_proto->prot == NET_PROT_ETH) {
-		field = NH_FLD_ETH_TYPE;
-	} else if (prev_proto->prot == NET_PROT_IP) {
-		field = NH_FLD_IP_PROTO;
-	} else {
-		DPAA2_PMD_ERR("Prev proto(%d) not support!",
-			prev_proto->prot);
-		return -EINVAL;
-	}
+	faf_bit_in_byte = 7 - faf_bit_in_byte;
 
 	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
 		key_extract = &priv->extract.qos_key_extract;
 		key_profile = &key_extract->key_profile;
 
 		offset = dpaa2_flow_extract_key_offset(key_profile,
-				prev_proto->prot, field);
+				DPAA2_FAF_KEY, NET_PROT_NONE, faf_byte);
 		if (offset < 0) {
 			DPAA2_PMD_ERR("%s QoS key extract failed", __func__);
 			return -EINVAL;
 		}
 		key_addr = flow->qos_key_addr + offset;
 		mask_addr = flow->qos_mask_addr + offset;
-		if (prev_proto->prot == NET_PROT_ETH) {
-			eth_type = prev_proto->eth_type;
-			memcpy(key_addr, &eth_type, sizeof(rte_be16_t));
-			eth_type = 0xffff;
-			memcpy(mask_addr, &eth_type, sizeof(rte_be16_t));
-			flow->qos_rule_size += sizeof(rte_be16_t);
-		} else if (prev_proto->prot == NET_PROT_IP) {
-			ip_proto = prev_proto->ip_proto;
-			memcpy(key_addr, &ip_proto, sizeof(uint8_t));
-			ip_proto = 0xff;
-			memcpy(mask_addr, &ip_proto, sizeof(uint8_t));
-			flow->qos_rule_size += sizeof(uint8_t);
-		} else {
-			DPAA2_PMD_ERR("Invalid Prev proto(%d)",
-				prev_proto->prot);
-			return -EINVAL;
-		}
+
+		if (!(*key_addr) &&
+			key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
+			flow->qos_rule_size++;
+
+		*key_addr |=  (1 << faf_bit_in_byte);
+		*mask_addr |=  (1 << faf_bit_in_byte);
 	}
 
 	if (dist_type & DPAA2_FLOW_FS_TYPE) {
@@ -1142,7 +1234,7 @@ dpaa2_flow_prev_proto_rule(struct dpaa2_dev_priv *priv,
 		key_profile = &key_extract->key_profile;
 
 		offset = dpaa2_flow_extract_key_offset(key_profile,
-				prev_proto->prot, field);
+				DPAA2_FAF_KEY, NET_PROT_NONE, faf_byte);
 		if (offset < 0) {
 			DPAA2_PMD_ERR("%s TC[%d] key extract failed",
 				__func__, group);
@@ -1151,23 +1243,12 @@ dpaa2_flow_prev_proto_rule(struct dpaa2_dev_priv *priv,
 		key_addr = flow->fs_key_addr + offset;
 		mask_addr = flow->fs_mask_addr + offset;
 
-		if (prev_proto->prot == NET_PROT_ETH) {
-			eth_type = prev_proto->eth_type;
-			memcpy(key_addr, &eth_type, sizeof(rte_be16_t));
-			eth_type = 0xffff;
-			memcpy(mask_addr, &eth_type, sizeof(rte_be16_t));
-			flow->fs_rule_size += sizeof(rte_be16_t);
-		} else if (prev_proto->prot == NET_PROT_IP) {
-			ip_proto = prev_proto->ip_proto;
-			memcpy(key_addr, &ip_proto, sizeof(uint8_t));
-			ip_proto = 0xff;
-			memcpy(mask_addr, &ip_proto, sizeof(uint8_t));
-			flow->fs_rule_size += sizeof(uint8_t);
-		} else {
-			DPAA2_PMD_ERR("Invalid Prev proto(%d)",
-				prev_proto->prot);
-			return -EINVAL;
-		}
+		if (!(*key_addr) &&
+			key_profile->ip_addr_type == IP_NONE_ADDR_EXTRACT)
+			flow->fs_rule_size++;
+
+		*key_addr |=  (1 << faf_bit_in_byte);
+		*mask_addr |=  (1 << faf_bit_in_byte);
 	}
 
 	return 0;
@@ -1189,7 +1270,7 @@ dpaa2_flow_hdr_rule_data_set(struct dpaa2_dev_flow *flow,
 	}
 
 	offset = dpaa2_flow_extract_key_offset(key_profile,
-			prot, field);
+			DPAA2_NET_PROT_KEY, prot, field);
 	if (offset < 0) {
 		DPAA2_PMD_ERR("P(%d)/F(%d) does not exist!",
 			prot, field);
@@ -1227,7 +1308,7 @@ dpaa2_flow_raw_rule_data_set(struct dpaa2_dev_flow *flow,
 	field = extract_offset << DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT;
 	field |= extract_size;
 	offset = dpaa2_flow_extract_key_offset(key_profile,
-			NET_PROT_PAYLOAD, field);
+			DPAA2_NET_PROT_KEY, NET_PROT_PAYLOAD, field);
 	if (offset < 0) {
 		DPAA2_PMD_ERR("offset(%d)/size(%d) raw extract failed",
 			extract_offset, size);
@@ -1310,60 +1391,39 @@ dpaa2_flow_extract_support(const uint8_t *mask_src,
 }
 
 static int
-dpaa2_flow_identify_by_prev_prot(struct dpaa2_dev_priv *priv,
+dpaa2_flow_identify_by_faf(struct dpaa2_dev_priv *priv,
 	struct dpaa2_dev_flow *flow,
-	const struct prev_proto_field_id *prev_prot,
+	enum dpaa2_rx_faf_offset faf_off,
 	enum dpaa2_flow_dist_type dist_type,
 	int group, int *recfg)
 {
-	int ret, index, local_cfg = 0, size = 0;
+	int ret, index, local_cfg = 0;
 	struct dpaa2_key_extract *extract;
 	struct dpaa2_key_profile *key_profile;
-	enum net_prot prot = prev_prot->prot;
-	uint32_t key_field = 0;
-
-	if (prot == NET_PROT_ETH) {
-		key_field = NH_FLD_ETH_TYPE;
-		size = sizeof(rte_be16_t);
-	} else if (prot == NET_PROT_IP) {
-		key_field = NH_FLD_IP_PROTO;
-		size = sizeof(uint8_t);
-	} else if (prot == NET_PROT_IPV4) {
-		prot = NET_PROT_IP;
-		key_field = NH_FLD_IP_PROTO;
-		size = sizeof(uint8_t);
-	} else if (prot == NET_PROT_IPV6) {
-		prot = NET_PROT_IP;
-		key_field = NH_FLD_IP_PROTO;
-		size = sizeof(uint8_t);
-	} else {
-		DPAA2_PMD_ERR("Invalid Prev prot(%d)", prot);
-		return -EINVAL;
-	}
+	uint8_t faf_byte = faf_off / 8;
 
 	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
 		extract = &priv->extract.qos_key_extract;
 		key_profile = &extract->key_profile;
 
 		index = dpaa2_flow_extract_search(key_profile,
-				prot, key_field);
+				DPAA2_FAF_KEY, NET_PROT_NONE, faf_byte);
 		if (index < 0) {
-			ret = dpaa2_flow_extract_add_hdr(prot,
-					key_field, size, priv,
-					DPAA2_FLOW_QOS_TYPE, group,
+			ret = dpaa2_flow_faf_add_hdr(faf_byte,
+					priv, DPAA2_FLOW_QOS_TYPE, group,
 					NULL);
 			if (ret) {
-				DPAA2_PMD_ERR("QOS prev extract add failed");
+				DPAA2_PMD_ERR("QOS faf extract add failed");
 
 				return -EINVAL;
 			}
 			local_cfg |= DPAA2_FLOW_QOS_TYPE;
 		}
 
-		ret = dpaa2_flow_prev_proto_rule(priv, flow, prev_prot, group,
+		ret = dpaa2_flow_faf_add_rule(priv, flow, faf_off, group,
 				DPAA2_FLOW_QOS_TYPE);
 		if (ret) {
-			DPAA2_PMD_ERR("QoS prev rule set failed");
+			DPAA2_PMD_ERR("QoS faf rule set failed");
 			return -EINVAL;
 		}
 	}
@@ -1373,14 +1433,13 @@ dpaa2_flow_identify_by_prev_prot(struct dpaa2_dev_priv *priv,
 		key_profile = &extract->key_profile;
 
 		index = dpaa2_flow_extract_search(key_profile,
-				prot, key_field);
+				DPAA2_FAF_KEY, NET_PROT_NONE, faf_byte);
 		if (index < 0) {
-			ret = dpaa2_flow_extract_add_hdr(prot,
-					key_field, size, priv,
-					DPAA2_FLOW_FS_TYPE, group,
+			ret = dpaa2_flow_faf_add_hdr(faf_byte,
+					priv, DPAA2_FLOW_FS_TYPE, group,
 					NULL);
 			if (ret) {
-				DPAA2_PMD_ERR("FS[%d] prev extract add failed",
+				DPAA2_PMD_ERR("FS[%d] faf extract add failed",
 					group);
 
 				return -EINVAL;
@@ -1388,17 +1447,17 @@ dpaa2_flow_identify_by_prev_prot(struct dpaa2_dev_priv *priv,
 			local_cfg |= DPAA2_FLOW_FS_TYPE;
 		}
 
-		ret = dpaa2_flow_prev_proto_rule(priv, flow, prev_prot, group,
+		ret = dpaa2_flow_faf_add_rule(priv, flow, faf_off, group,
 				DPAA2_FLOW_FS_TYPE);
 		if (ret) {
-			DPAA2_PMD_ERR("FS[%d] prev rule set failed",
+			DPAA2_PMD_ERR("FS[%d] faf rule set failed",
 				group);
 			return -EINVAL;
 		}
 	}
 
 	if (recfg)
-		*recfg = local_cfg;
+		*recfg |= local_cfg;
 
 	return 0;
 }
@@ -1425,7 +1484,7 @@ dpaa2_flow_add_hdr_extract_rule(struct dpaa2_dev_flow *flow,
 	key_profile = &key_extract->key_profile;
 
 	index = dpaa2_flow_extract_search(key_profile,
-			prot, field);
+			DPAA2_NET_PROT_KEY, prot, field);
 	if (index < 0) {
 		ret = dpaa2_flow_extract_add_hdr(prot,
 				field, size, priv,
@@ -1564,6 +1623,7 @@ dpaa2_flow_add_ipaddr_extract_rule(struct dpaa2_dev_flow *flow,
 		key_profile->key_max_size += NH_FLD_IPV6_ADDR_SIZE;
 	}
 	key_profile->num++;
+	key_profile->prot_field[num].type = DPAA2_NET_PROT_KEY;
 
 	dpkg->extracts[num].extract.from_hdr.prot = prot;
 	dpkg->extracts[num].extract.from_hdr.field = field;
@@ -1674,14 +1734,27 @@ dpaa2_configure_flow_eth(struct dpaa2_dev_flow *flow,
 	spec = pattern->spec;
 	mask = pattern->mask ?
 			pattern->mask : &dpaa2_flow_item_eth_mask;
-	if (!spec) {
-		DPAA2_PMD_WARN("No pattern spec for Eth flow");
-		return -EINVAL;
-	}
 
 	/* Get traffic class index and flow id to be configured */
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
+
+	if (!spec) {
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_ETH_FRAM, DPAA2_FLOW_QOS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_ETH_FRAM, DPAA2_FLOW_FS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
+
+		(*device_configured) |= local_cfg;
+		return 0;
+	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask,
 		RTE_FLOW_ITEM_TYPE_ETH)) {
@@ -1771,15 +1844,18 @@ dpaa2_configure_flow_vlan(struct dpaa2_dev_flow *flow,
 	flow->tc_index = attr->priority;
 
 	if (!spec) {
-		struct prev_proto_field_id prev_proto;
-
-		prev_proto.prot = NET_PROT_ETH;
-		prev_proto.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN);
-		ret = dpaa2_flow_identify_by_prev_prot(priv, flow, &prev_proto,
-				DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
-				group, &local_cfg);
+		ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_VLAN_FRAM,
+						 DPAA2_FLOW_QOS_TYPE, group,
+						 &local_cfg);
 		if (ret)
 			return ret;
+
+		ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_VLAN_FRAM,
+						 DPAA2_FLOW_FS_TYPE, group,
+						 &local_cfg);
+		if (ret)
+			return ret;
+
 		(*device_configured) |= local_cfg;
 		return 0;
 	}
@@ -1826,7 +1902,6 @@ dpaa2_configure_flow_ipv4(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	const void *key, *mask;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	int size;
-	struct prev_proto_field_id prev_prot;
 
 	group = attr->group;
 
@@ -1839,19 +1914,21 @@ dpaa2_configure_flow_ipv4(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	prev_prot.prot = NET_PROT_ETH;
-	prev_prot.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
-
-	ret = dpaa2_flow_identify_by_prev_prot(priv, flow, &prev_prot,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE, group,
-			&local_cfg);
-	if (ret) {
-		DPAA2_PMD_ERR("IPv4 identification failed!");
+	ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_IPV4_FRAM,
+					 DPAA2_FLOW_QOS_TYPE, group,
+					 &local_cfg);
+	if (ret)
 		return ret;
-	}
 
-	if (!spec_ipv4)
+	ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_IPV4_FRAM,
+					 DPAA2_FLOW_FS_TYPE, group, &local_cfg);
+	if (ret)
+		return ret;
+
+	if (!spec_ipv4) {
+		(*device_configured) |= local_cfg;
 		return 0;
+	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask_ipv4,
 				       RTE_FLOW_ITEM_TYPE_IPV4)) {
@@ -1943,7 +2020,6 @@ dpaa2_configure_flow_ipv6(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	const char zero_cmp[NH_FLD_IPV6_ADDR_SIZE] = {0};
 	int size;
-	struct prev_proto_field_id prev_prot;
 
 	group = attr->group;
 
@@ -1955,19 +2031,21 @@ dpaa2_configure_flow_ipv6(struct dpaa2_dev_flow *flow, struct rte_eth_dev *dev,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	prev_prot.prot = NET_PROT_ETH;
-	prev_prot.eth_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6);
-
-	ret = dpaa2_flow_identify_by_prev_prot(priv, flow, &prev_prot,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
-			group, &local_cfg);
-	if (ret) {
-		DPAA2_PMD_ERR("IPv6 identification failed!");
+	ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_IPV6_FRAM,
+					 DPAA2_FLOW_QOS_TYPE, group,
+					 &local_cfg);
+	if (ret)
 		return ret;
-	}
 
-	if (!spec_ipv6)
+	ret = dpaa2_flow_identify_by_faf(priv, flow, FAF_IPV6_FRAM,
+					 DPAA2_FLOW_FS_TYPE, group, &local_cfg);
+	if (ret)
+		return ret;
+
+	if (!spec_ipv6) {
+		(*device_configured) |= local_cfg;
 		return 0;
+	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask_ipv6,
 				       RTE_FLOW_ITEM_TYPE_IPV6)) {
@@ -2071,18 +2149,15 @@ dpaa2_configure_flow_icmp(struct dpaa2_dev_flow *flow,
 	flow->tc_index = attr->priority;
 
 	if (!spec) {
-		/* Next proto of Generical IP is actually used
-		 * for ICMP identification.
-		 * Example: flow create 0 ingress pattern icmp
-		 */
-		struct prev_proto_field_id prev_proto;
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_ICMP_FRAM, DPAA2_FLOW_QOS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
 
-		prev_proto.prot = NET_PROT_IP;
-		prev_proto.ip_proto = IPPROTO_ICMP;
-		ret = dpaa2_flow_identify_by_prev_prot(priv,
-			flow, &prev_proto,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
-			group, &local_cfg);
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_ICMP_FRAM, DPAA2_FLOW_FS_TYPE,
+				group, &local_cfg);
 		if (ret)
 			return ret;
 
@@ -2159,22 +2234,21 @@ dpaa2_configure_flow_udp(struct dpaa2_dev_flow *flow,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	if (!spec || !mc_l4_port_identification) {
-		struct prev_proto_field_id prev_proto;
-
-		prev_proto.prot = NET_PROT_IP;
-		prev_proto.ip_proto = IPPROTO_UDP;
-		ret = dpaa2_flow_identify_by_prev_prot(priv,
-			flow, &prev_proto,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
+	ret = dpaa2_flow_identify_by_faf(priv, flow,
+			FAF_UDP_FRAM, DPAA2_FLOW_QOS_TYPE,
 			group, &local_cfg);
-		if (ret)
-			return ret;
+	if (ret)
+		return ret;
 
+	ret = dpaa2_flow_identify_by_faf(priv, flow,
+			FAF_UDP_FRAM, DPAA2_FLOW_FS_TYPE,
+			group, &local_cfg);
+	if (ret)
+		return ret;
+
+	if (!spec) {
 		(*device_configured) |= local_cfg;
-
-		if (!spec)
-			return 0;
+		return 0;
 	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask,
@@ -2246,22 +2320,21 @@ dpaa2_configure_flow_tcp(struct dpaa2_dev_flow *flow,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	if (!spec || !mc_l4_port_identification) {
-		struct prev_proto_field_id prev_proto;
-
-		prev_proto.prot = NET_PROT_IP;
-		prev_proto.ip_proto = IPPROTO_TCP;
-		ret = dpaa2_flow_identify_by_prev_prot(priv,
-			flow, &prev_proto,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
+	ret = dpaa2_flow_identify_by_faf(priv, flow,
+			FAF_TCP_FRAM, DPAA2_FLOW_QOS_TYPE,
 			group, &local_cfg);
-		if (ret)
-			return ret;
+	if (ret)
+		return ret;
 
+	ret = dpaa2_flow_identify_by_faf(priv, flow,
+			FAF_TCP_FRAM, DPAA2_FLOW_FS_TYPE,
+			group, &local_cfg);
+	if (ret)
+		return ret;
+
+	if (!spec) {
 		(*device_configured) |= local_cfg;
-
-		if (!spec)
-			return 0;
+		return 0;
 	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask,
@@ -2333,22 +2406,21 @@ dpaa2_configure_flow_sctp(struct dpaa2_dev_flow *flow,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	if (!spec || !mc_l4_port_identification) {
-		struct prev_proto_field_id prev_proto;
-
-		prev_proto.prot = NET_PROT_IP;
-		prev_proto.ip_proto = IPPROTO_SCTP;
-		ret = dpaa2_flow_identify_by_prev_prot(priv,
-			flow, &prev_proto,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
+	ret = dpaa2_flow_identify_by_faf(priv, flow,
+			FAF_SCTP_FRAM, DPAA2_FLOW_QOS_TYPE,
 			group, &local_cfg);
-		if (ret)
-			return ret;
+	if (ret)
+		return ret;
 
+	ret = dpaa2_flow_identify_by_faf(priv, flow,
+			FAF_SCTP_FRAM, DPAA2_FLOW_FS_TYPE,
+			group, &local_cfg);
+	if (ret)
+		return ret;
+
+	if (!spec) {
 		(*device_configured) |= local_cfg;
-
-		if (!spec)
-			return 0;
+		return 0;
 	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask,
@@ -2421,21 +2493,20 @@ dpaa2_configure_flow_gre(struct dpaa2_dev_flow *flow,
 	flow->tc_index = attr->priority;
 
 	if (!spec) {
-		struct prev_proto_field_id prev_proto;
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_GRE_FRAM, DPAA2_FLOW_QOS_TYPE,
+				group, &local_cfg);
+		if (ret)
+			return ret;
 
-		prev_proto.prot = NET_PROT_IP;
-		prev_proto.ip_proto = IPPROTO_GRE;
-		ret = dpaa2_flow_identify_by_prev_prot(priv,
-			flow, &prev_proto,
-			DPAA2_FLOW_QOS_TYPE | DPAA2_FLOW_FS_TYPE,
-			group, &local_cfg);
+		ret = dpaa2_flow_identify_by_faf(priv, flow,
+				FAF_GRE_FRAM, DPAA2_FLOW_FS_TYPE,
+				group, &local_cfg);
 		if (ret)
 			return ret;
 
 		(*device_configured) |= local_cfg;
-
-		if (!spec)
-			return 0;
+		return 0;
 	}
 
 	if (dpaa2_flow_extract_support((const uint8_t *)mask,
