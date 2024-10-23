@@ -230,6 +230,9 @@ struct dpaa2_dev_priv {
 	rte_spinlock_t lpbk_qp_lock;
 
 	uint8_t channel_inuse;
+	/* Stores correction offset for one step timestamping */
+	uint16_t ptp_correction_offset;
+
 	LIST_HEAD(, rte_flow) flows; /**< Configured flow rule handles. */
 	LIST_HEAD(nodes, dpaa2_tm_node) nodes;
 	LIST_HEAD(shaper_profiles, dpaa2_tm_shaper_profile) shaper_profiles;

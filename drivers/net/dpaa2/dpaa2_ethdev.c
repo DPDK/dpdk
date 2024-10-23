@@ -525,6 +525,9 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 	int tx_l4_csum_offload = false;
 	int ret, tc_index;
 	uint32_t max_rx_pktlen;
+#if defined(RTE_LIBRTE_IEEE1588)
+	uint16_t ptp_correction_offset;
+#endif
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -609,6 +612,11 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		dpaa2_enable_ts[dev->data->port_id] = true;
 	}
 
+#if defined(RTE_LIBRTE_IEEE1588)
+	/* By default setting ptp correction offset for Ethernet SYNC packets */
+	ptp_correction_offset = RTE_ETHER_HDR_LEN + 8;
+	rte_pmd_dpaa2_set_one_step_ts(dev->data->port_id, ptp_correction_offset, 0);
+#endif
 	if (tx_offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM)
 		tx_l3_csum_offload = true;
 
@@ -2846,6 +2854,59 @@ int dpaa2_dev_is_dpaa2(struct rte_eth_dev *dev)
 {
 	return dev->device->driver == &rte_dpaa2_pmd.driver;
 }
+
+#if defined(RTE_LIBRTE_IEEE1588)
+int
+rte_pmd_dpaa2_get_one_step_ts(uint16_t port_id, bool mc_query)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->eth_dev->process_private;
+	struct dpni_single_step_cfg ptp_cfg;
+	int err;
+
+	if (!mc_query)
+		return priv->ptp_correction_offset;
+
+	err = dpni_get_single_step_cfg(dpni, CMD_PRI_LOW, priv->token, &ptp_cfg);
+	if (err) {
+		DPAA2_PMD_ERR("Failed to retrieve onestep configuration");
+		return err;
+	}
+
+	if (!ptp_cfg.ptp_onestep_reg_base) {
+		DPAA2_PMD_ERR("1588 onestep reg not available");
+		return -1;
+	}
+
+	priv->ptp_correction_offset = ptp_cfg.offset;
+
+	return priv->ptp_correction_offset;
+}
+
+int
+rte_pmd_dpaa2_set_one_step_ts(uint16_t port_id, uint16_t offset, uint8_t ch_update)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = dev->process_private;
+	struct dpni_single_step_cfg cfg;
+	int err;
+
+	cfg.en = 1;
+	cfg.ch_update = ch_update;
+	cfg.offset = offset;
+	cfg.peer_delay = 0;
+
+	err = dpni_set_single_step_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
+	if (err)
+		return err;
+
+	priv->ptp_correction_offset = offset;
+
+	return 0;
+}
+#endif
 
 static int dpaa2_tx_sg_pool_init(void)
 {
