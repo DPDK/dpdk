@@ -2838,6 +2838,10 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 			return ret;
 		}
 	}
+
+	ret = dpaa2_soft_parser_loaded();
+	if (ret > 0)
+		DPAA2_PMD_INFO("soft parser is loaded");
 	DPAA2_PMD_INFO("%s: netdev created, connected to %s",
 		eth_dev->data->name, dpaa2_dev->ep_name);
 

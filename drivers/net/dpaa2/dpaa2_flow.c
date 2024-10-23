@@ -9,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <sys/mman.h>
 
 #include <rte_ethdev.h>
 #include <rte_log.h>
@@ -24,6 +25,7 @@
 
 static char *dpaa2_flow_control_log;
 static uint16_t dpaa2_flow_miss_flow_id; /* Default miss flow id is 0. */
+static int dpaa2_sp_loaded = -1;
 
 enum dpaa2_flow_entry_size {
 	DPAA2_FLOW_ENTRY_MIN_SIZE = (DPNI_MAX_KEY_SIZE / 2),
@@ -388,6 +390,92 @@ dpaa2_flow_fs_entry_log(const char *log_info,
 	for (idx = 0; idx < flow->fs_rule_size; idx++)
 		DPAA2_FLOW_DUMP("%02x ", mask[idx]);
 	DPAA2_FLOW_DUMP("\r\n");
+}
+
+/** For LX2160A, LS2088A and LS1088A*/
+#define WRIOP_CCSR_BASE 0x8b80000
+#define WRIOP_CCSR_CTLU_OFFSET 0
+#define WRIOP_CCSR_CTLU_PARSER_OFFSET 0
+#define WRIOP_CCSR_CTLU_PARSER_INGRESS_OFFSET 0
+
+#define WRIOP_INGRESS_PARSER_PHY \
+	(WRIOP_CCSR_BASE + WRIOP_CCSR_CTLU_OFFSET + \
+	WRIOP_CCSR_CTLU_PARSER_OFFSET + \
+	WRIOP_CCSR_CTLU_PARSER_INGRESS_OFFSET)
+
+struct dpaa2_parser_ccsr {
+	uint32_t psr_cfg;
+	uint32_t psr_idle;
+	uint32_t psr_pclm;
+	uint8_t psr_ver_min;
+	uint8_t psr_ver_maj;
+	uint8_t psr_id1_l;
+	uint8_t psr_id1_h;
+	uint32_t psr_rev2;
+	uint8_t rsv[0x2c];
+	uint8_t sp_ins[4032];
+};
+
+int
+dpaa2_soft_parser_loaded(void)
+{
+	int fd, i, ret = 0;
+	struct dpaa2_parser_ccsr *parser_ccsr = NULL;
+
+	dpaa2_flow_control_log = getenv("DPAA2_FLOW_CONTROL_LOG");
+
+	if (dpaa2_sp_loaded >= 0)
+		return dpaa2_sp_loaded;
+
+	fd = open("/dev/mem", O_RDWR | O_SYNC);
+	if (fd < 0) {
+		DPAA2_PMD_ERR("open \"/dev/mem\" ERROR(%d)", fd);
+		ret = fd;
+		goto exit;
+	}
+
+	parser_ccsr = mmap(NULL, sizeof(struct dpaa2_parser_ccsr),
+		PROT_READ | PROT_WRITE, MAP_SHARED, fd,
+		WRIOP_INGRESS_PARSER_PHY);
+	if (!parser_ccsr) {
+		DPAA2_PMD_ERR("Map 0x%" PRIx64 "(size=0x%x) failed",
+			(uint64_t)WRIOP_INGRESS_PARSER_PHY,
+			(uint32_t)sizeof(struct dpaa2_parser_ccsr));
+		ret = -ENOBUFS;
+		goto exit;
+	}
+
+	DPAA2_PMD_INFO("Parser ID:0x%02x%02x, Rev:major(%02x), minor(%02x)",
+		parser_ccsr->psr_id1_h, parser_ccsr->psr_id1_l,
+		parser_ccsr->psr_ver_maj, parser_ccsr->psr_ver_min);
+
+	if (dpaa2_flow_control_log) {
+		for (i = 0; i < 64; i++) {
+			DPAA2_FLOW_DUMP("%02x ",
+				parser_ccsr->sp_ins[i]);
+			if (!((i + 1) % 16))
+				DPAA2_FLOW_DUMP("\r\n");
+		}
+	}
+
+	for (i = 0; i < 16; i++) {
+		if (parser_ccsr->sp_ins[i]) {
+			dpaa2_sp_loaded = 1;
+			break;
+		}
+	}
+	if (dpaa2_sp_loaded < 0)
+		dpaa2_sp_loaded = 0;
+
+	ret = dpaa2_sp_loaded;
+
+exit:
+	if (parser_ccsr)
+		munmap(parser_ccsr, sizeof(struct dpaa2_parser_ccsr));
+	if (fd >= 0)
+		close(fd);
+
+	return ret;
 }
 
 static int
