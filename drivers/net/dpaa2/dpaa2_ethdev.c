@@ -2138,7 +2138,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	ret = dpni_get_link_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
 		DPAA2_PMD_ERR("Unable to get link cfg (err=%d)", ret);
-		return -1;
+		return ret;
 	}
 
 	/* Disable link before setting configuration */
@@ -2180,7 +2180,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	default:
 		DPAA2_PMD_ERR("Incorrect Flow control flag (%d)",
 			      fc_conf->mode);
-		return -1;
+		return -EINVAL;
 	}
 
 	ret = dpni_set_link_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
@@ -2862,8 +2862,18 @@ init_err:
 	return ret;
 }
 
-int dpaa2_dev_is_dpaa2(struct rte_eth_dev *dev)
+int
+rte_pmd_dpaa2_dev_is_dpaa2(uint32_t eth_id)
 {
+	struct rte_eth_dev *dev;
+
+	if (eth_id >= RTE_MAX_ETHPORTS)
+		return false;
+
+	dev = &rte_eth_devices[eth_id];
+	if (!dev->device)
+		return false;
+
 	return dev->device->driver == &rte_dpaa2_pmd.driver;
 }
 

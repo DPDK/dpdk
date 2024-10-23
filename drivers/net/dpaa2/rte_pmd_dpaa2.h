@@ -127,6 +127,10 @@ __rte_experimental
 uint32_t
 rte_pmd_dpaa2_get_tlu_hash(uint8_t *key, int size);
 
+__rte_experimental
+int
+rte_pmd_dpaa2_dev_is_dpaa2(uint32_t eth_id);
+
 #if defined(RTE_LIBRTE_IEEE1588)
 __rte_experimental
 int

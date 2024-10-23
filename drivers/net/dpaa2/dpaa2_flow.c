@@ -3296,13 +3296,12 @@ dpaa2_flow_redirect_dev(struct dpaa2_dev_priv *priv,
 	if (idx >= 0) {
 		if (!rte_eth_dev_is_valid_port(idx))
 			return NULL;
+		if (!rte_pmd_dpaa2_dev_is_dpaa2(idx))
+			return NULL;
 		dest_dev = &rte_eth_devices[idx];
 	} else {
 		dest_dev = priv->eth_dev;
 	}
-
-	if (!dpaa2_dev_is_dpaa2(dest_dev))
-		return NULL;
 
 	return dest_dev;
 }
