@@ -32,8 +32,9 @@ struct dpaa2_dpdmux_dev {
 	uint8_t num_ifs;   /* Number of interfaces in DPDMUX */
 };
 
-struct rte_flow {
-	struct dpdmux_rule_cfg rule;
+#define DPAA2_MUX_FLOW_MAX_RULE_NUM 8
+struct dpaa2_mux_flow {
+	struct dpdmux_rule_cfg rule[DPAA2_MUX_FLOW_MAX_RULE_NUM];
 };
 
 TAILQ_HEAD(dpdmux_dev_list, dpaa2_dpdmux_dev);
@@ -53,204 +54,287 @@ static struct dpaa2_dpdmux_dev *get_dpdmux_from_id(uint32_t dpdmux_id)
 	return dpdmux_dev;
 }
 
-struct rte_flow *
+int
 rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
-			      struct rte_flow_item *pattern[],
-			      struct rte_flow_action *actions[])
+	struct rte_flow_item pattern[],
+	struct rte_flow_action actions[])
 {
 	struct dpaa2_dpdmux_dev *dpdmux_dev;
+	static struct dpkg_profile_cfg s_kg_cfg;
 	struct dpkg_profile_cfg kg_cfg;
 	const struct rte_flow_action_vf *vf_conf;
 	struct dpdmux_cls_action dpdmux_action;
-	struct rte_flow *flow = NULL;
-	void *key_iova, *mask_iova, *key_cfg_iova = NULL;
+	uint8_t *key_va = NULL, *mask_va = NULL;
+	void *key_cfg_va = NULL;
+	uint64_t key_iova, mask_iova, key_cfg_iova;
 	uint8_t key_size = 0;
-	int ret;
-	static int i;
+	int ret = 0, loop = 0;
+	static int s_i;
+	struct dpkg_extract *extract;
+	struct dpdmux_rule_cfg rule;
 
-	if (!pattern || !actions || !pattern[0] || !actions[0])
-		return NULL;
+	memset(&kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 
 	/* Find the DPDMUX from dpdmux_id in our list */
 	dpdmux_dev = get_dpdmux_from_id(dpdmux_id);
 	if (!dpdmux_dev) {
 		DPAA2_PMD_ERR("Invalid dpdmux_id: %d", dpdmux_id);
-		return NULL;
-	}
-
-	key_cfg_iova = rte_zmalloc(NULL, DIST_PARAM_IOVA_SIZE,
-				   RTE_CACHE_LINE_SIZE);
-	if (!key_cfg_iova) {
-		DPAA2_PMD_ERR("Unable to allocate flow-dist parameters");
-		return NULL;
-	}
-	flow = rte_zmalloc(NULL, sizeof(struct rte_flow) +
-			   (2 * DIST_PARAM_IOVA_SIZE), RTE_CACHE_LINE_SIZE);
-	if (!flow) {
-		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configuration");
+		ret = -ENODEV;
 		goto creation_error;
 	}
-	key_iova = (void *)((size_t)flow + sizeof(struct rte_flow));
-	mask_iova = (void *)((size_t)key_iova + DIST_PARAM_IOVA_SIZE);
+
+	key_cfg_va = rte_zmalloc(NULL, DIST_PARAM_IOVA_SIZE,
+				RTE_CACHE_LINE_SIZE);
+	if (!key_cfg_va) {
+		DPAA2_PMD_ERR("Unable to allocate key configure buffer");
+		ret = -ENOMEM;
+		goto creation_error;
+	}
+
+	key_cfg_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(key_cfg_va,
+		DIST_PARAM_IOVA_SIZE);
+	if (key_cfg_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU map for key cfg(%p)",
+			__func__, key_cfg_va);
+		ret = -ENOBUFS;
+		goto creation_error;
+	}
+
+	key_va = rte_zmalloc(NULL, (2 * DIST_PARAM_IOVA_SIZE),
+		RTE_CACHE_LINE_SIZE);
+	if (!key_va) {
+		DPAA2_PMD_ERR("Unable to allocate flow dist parameter");
+		ret = -ENOMEM;
+		goto creation_error;
+	}
+
+	key_iova = DPAA2_VADDR_TO_IOVA_AND_CHECK(key_va,
+		(2 * DIST_PARAM_IOVA_SIZE));
+	if (key_iova == RTE_BAD_IOVA) {
+		DPAA2_PMD_ERR("%s: No IOMMU mapping for address(%p)",
+			__func__, key_va);
+		ret = -ENOBUFS;
+		goto creation_error;
+	}
+
+	mask_va = key_va + DIST_PARAM_IOVA_SIZE;
+	mask_iova = key_iova + DIST_PARAM_IOVA_SIZE;
 
 	/* Currently taking only IP protocol as an extract type.
 	 * This can be extended to other fields using pattern->type.
 	 */
 	memset(&kg_cfg, 0, sizeof(struct dpkg_profile_cfg));
 
-	switch (pattern[0]->type) {
-	case RTE_FLOW_ITEM_TYPE_IPV4:
-	{
-		const struct rte_flow_item_ipv4 *spec;
+	while (pattern[loop].type != RTE_FLOW_ITEM_TYPE_END) {
+		if (kg_cfg.num_extracts >= DPKG_MAX_NUM_OF_EXTRACTS) {
+			DPAA2_PMD_ERR("Too many extracts(%d)",
+				kg_cfg.num_extracts);
+			ret = -ENOTSUP;
+			goto creation_error;
+		}
+		switch (pattern[loop].type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+		{
+			const struct rte_flow_item_ipv4 *spec;
+			const struct rte_flow_item_ipv4 *mask;
 
-		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_IP;
-		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_IP_PROTO;
-		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
-		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
-		kg_cfg.num_extracts = 1;
+			extract = &kg_cfg.extracts[kg_cfg.num_extracts];
+			extract->type = DPKG_EXTRACT_FROM_HDR;
+			extract->extract.from_hdr.prot = NET_PROT_IP;
+			extract->extract.from_hdr.field = NH_FLD_IP_PROTO;
+			extract->extract.from_hdr.type = DPKG_FULL_FIELD;
 
-		spec = (const struct rte_flow_item_ipv4 *)pattern[0]->spec;
-		memcpy(key_iova, (const void *)(&spec->hdr.next_proto_id),
-			sizeof(uint8_t));
-		memcpy(mask_iova, pattern[0]->mask, sizeof(uint8_t));
-		key_size = sizeof(uint8_t);
+			kg_cfg.num_extracts++;
+
+			spec = pattern[loop].spec;
+			mask = pattern[loop].mask;
+			rte_memcpy(&key_va[key_size],
+				&spec->hdr.next_proto_id, sizeof(uint8_t));
+			if (mask) {
+				rte_memcpy(&mask_va[key_size],
+					&mask->hdr.next_proto_id,
+					sizeof(uint8_t));
+			} else {
+				mask_va[key_size] = 0xff;
+			}
+			key_size += sizeof(uint8_t);
+		}
+		break;
+
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+		{
+			const struct rte_flow_item_vlan *spec;
+			const struct rte_flow_item_vlan *mask;
+
+			extract = &kg_cfg.extracts[kg_cfg.num_extracts];
+			extract->type = DPKG_EXTRACT_FROM_HDR;
+			extract->extract.from_hdr.prot = NET_PROT_VLAN;
+			extract->extract.from_hdr.field = NH_FLD_VLAN_TCI;
+			extract->extract.from_hdr.type = DPKG_FULL_FIELD;
+
+			kg_cfg.num_extracts++;
+
+			spec = pattern[loop].spec;
+			mask = pattern[loop].mask;
+			rte_memcpy(&key_va[key_size],
+				&spec->tci, sizeof(uint16_t));
+			if (mask) {
+				rte_memcpy(&mask_va[key_size],
+					&mask->tci, sizeof(uint16_t));
+			} else {
+				memset(&mask_va[key_size], 0xff,
+					sizeof(rte_be16_t));
+			}
+			key_size += sizeof(uint16_t);
+		}
+		break;
+
+		case RTE_FLOW_ITEM_TYPE_UDP:
+		{
+			const struct rte_flow_item_udp *spec;
+			const struct rte_flow_item_udp *mask;
+
+			extract = &kg_cfg.extracts[kg_cfg.num_extracts];
+			extract->type = DPKG_EXTRACT_FROM_HDR;
+			extract->extract.from_hdr.prot = NET_PROT_UDP;
+			extract->extract.from_hdr.type = DPKG_FULL_FIELD;
+			extract->extract.from_hdr.field = NH_FLD_UDP_PORT_DST;
+			kg_cfg.num_extracts++;
+
+			spec = pattern[loop].spec;
+			mask = pattern[loop].mask;
+			rte_memcpy(&key_va[key_size],
+				&spec->hdr.dst_port, sizeof(rte_be16_t));
+			if (mask) {
+				rte_memcpy(&mask_va[key_size],
+					&mask->hdr.dst_port,
+					sizeof(rte_be16_t));
+			} else {
+				memset(&mask_va[key_size], 0xff,
+					sizeof(rte_be16_t));
+			}
+			key_size += sizeof(rte_be16_t);
+		}
+		break;
+
+		case RTE_FLOW_ITEM_TYPE_ETH:
+		{
+			const struct rte_flow_item_eth *spec;
+			const struct rte_flow_item_eth *mask;
+
+			extract = &kg_cfg.extracts[kg_cfg.num_extracts];
+			extract->type = DPKG_EXTRACT_FROM_HDR;
+			extract->extract.from_hdr.prot = NET_PROT_ETH;
+			extract->extract.from_hdr.type = DPKG_FULL_FIELD;
+			extract->extract.from_hdr.field = NH_FLD_ETH_TYPE;
+			kg_cfg.num_extracts++;
+
+			spec = pattern[loop].spec;
+			mask = pattern[loop].mask;
+			rte_memcpy(&key_va[key_size],
+				&spec->type, sizeof(rte_be16_t));
+			if (mask) {
+				rte_memcpy(&mask_va[key_size],
+					&mask->type, sizeof(rte_be16_t));
+			} else {
+				memset(&mask_va[key_size], 0xff,
+					sizeof(rte_be16_t));
+			}
+			key_size += sizeof(rte_be16_t);
+		}
+		break;
+
+		case RTE_FLOW_ITEM_TYPE_RAW:
+		{
+			const struct rte_flow_item_raw *spec;
+			const struct rte_flow_item_raw *mask;
+
+			spec = pattern[loop].spec;
+			mask = pattern[loop].mask;
+			extract = &kg_cfg.extracts[kg_cfg.num_extracts];
+			extract->type = DPKG_EXTRACT_FROM_DATA;
+			extract->extract.from_data.offset = spec->offset;
+			extract->extract.from_data.size = spec->length;
+			kg_cfg.num_extracts++;
+
+			rte_memcpy(&key_va[key_size],
+				spec->pattern, spec->length);
+			if (mask && mask->pattern) {
+				rte_memcpy(&mask_va[key_size],
+					mask->pattern, spec->length);
+			} else {
+				memset(&mask_va[key_size], 0xff, spec->length);
+			}
+
+			key_size += spec->length;
+		}
+		break;
+
+		default:
+			DPAA2_PMD_ERR("Not supported pattern[%d] type: %d",
+				loop, pattern[loop].type);
+			ret = -ENOTSUP;
+			goto creation_error;
+		}
+		loop++;
 	}
-	break;
 
-	case RTE_FLOW_ITEM_TYPE_VLAN:
-	{
-		const struct rte_flow_item_vlan *spec;
-
-		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
-		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_VLAN;
-		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_VLAN_TCI;
-		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FROM_FIELD;
-		kg_cfg.extracts[0].extract.from_hdr.offset = 1;
-		kg_cfg.extracts[0].extract.from_hdr.size = 1;
-		kg_cfg.num_extracts = 1;
-
-		spec = (const struct rte_flow_item_vlan *)pattern[0]->spec;
-		memcpy((void *)key_iova, (const void *)(&spec->hdr.vlan_tci),
-			sizeof(uint16_t));
-		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));
-		key_size = sizeof(uint16_t);
-	}
-	break;
-
-	case RTE_FLOW_ITEM_TYPE_UDP:
-	{
-		const struct rte_flow_item_udp *spec;
-		uint16_t udp_dst_port;
-
-		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_UDP;
-		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_UDP_PORT_DST;
-		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
-		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
-		kg_cfg.num_extracts = 1;
-
-		spec = (const struct rte_flow_item_udp *)pattern[0]->spec;
-		udp_dst_port = rte_constant_bswap16(spec->hdr.dst_port);
-		memcpy((void *)key_iova, (const void *)&udp_dst_port,
-							sizeof(rte_be16_t));
-		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));
-		key_size = sizeof(uint16_t);
-	}
-	break;
-
-	case RTE_FLOW_ITEM_TYPE_ETH:
-	{
-		const struct rte_flow_item_eth *spec;
-		uint16_t eth_type;
-
-		kg_cfg.extracts[0].extract.from_hdr.prot = NET_PROT_ETH;
-		kg_cfg.extracts[0].extract.from_hdr.field = NH_FLD_ETH_TYPE;
-		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_HDR;
-		kg_cfg.extracts[0].extract.from_hdr.type = DPKG_FULL_FIELD;
-		kg_cfg.num_extracts = 1;
-
-		spec = (const struct rte_flow_item_eth *)pattern[0]->spec;
-		eth_type = rte_constant_bswap16(spec->hdr.ether_type);
-		memcpy((void *)key_iova, (const void *)&eth_type,
-							sizeof(rte_be16_t));
-		memcpy(mask_iova, pattern[0]->mask, sizeof(uint16_t));
-		key_size = sizeof(uint16_t);
-	}
-	break;
-
-	case RTE_FLOW_ITEM_TYPE_RAW:
-	{
-		const struct rte_flow_item_raw *spec;
-
-		spec = (const struct rte_flow_item_raw *)pattern[0]->spec;
-		kg_cfg.extracts[0].extract.from_data.offset = spec->offset;
-		kg_cfg.extracts[0].extract.from_data.size = spec->length;
-		kg_cfg.extracts[0].type = DPKG_EXTRACT_FROM_DATA;
-		kg_cfg.num_extracts = 1;
-		memcpy((void *)key_iova, (const void *)spec->pattern,
-							spec->length);
-		memcpy(mask_iova, pattern[0]->mask, spec->length);
-
-		key_size = spec->length;
-	}
-	break;
-
-	default:
-		DPAA2_PMD_ERR("Not supported pattern type: %d",
-				pattern[0]->type);
-		goto creation_error;
-	}
-
-	ret = dpkg_prepare_key_cfg(&kg_cfg, key_cfg_iova);
+	ret = dpkg_prepare_key_cfg(&kg_cfg, key_cfg_va);
 	if (ret) {
 		DPAA2_PMD_ERR("dpkg_prepare_key_cfg failed: err(%d)", ret);
 		goto creation_error;
 	}
 
-	/* Multiple rules with same DPKG extracts (kg_cfg.extracts) like same
-	 * offset and length values in raw is supported right now. Different
-	 * values of kg_cfg may not work.
-	 */
-	if (i == 0) {
-		ret = dpdmux_set_custom_key(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
-					    dpdmux_dev->token,
-				(uint64_t)(DPAA2_VADDR_TO_IOVA(key_cfg_iova)));
+	if (!s_i) {
+		ret = dpdmux_set_custom_key(&dpdmux_dev->dpdmux,
+				CMD_PRI_LOW, dpdmux_dev->token, key_cfg_iova);
 		if (ret) {
 			DPAA2_PMD_ERR("dpdmux_set_custom_key failed: err(%d)",
-					ret);
+				ret);
+			goto creation_error;
+		}
+		rte_memcpy(&s_kg_cfg, &kg_cfg, sizeof(struct dpkg_profile_cfg));
+	} else {
+		if (memcmp(&s_kg_cfg, &kg_cfg,
+			sizeof(struct dpkg_profile_cfg))) {
+			DPAA2_PMD_ERR("%s: Single flow support only.",
+				__func__);
+			ret = -ENOTSUP;
 			goto creation_error;
 		}
 	}
-	/* As now our key extract parameters are set, let us configure
-	 * the rule.
-	 */
-	flow->rule.key_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(key_iova));
-	flow->rule.mask_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(mask_iova));
-	flow->rule.key_size = key_size;
-	flow->rule.entry_index = i++;
 
-	vf_conf = (const struct rte_flow_action_vf *)(actions[0]->conf);
+	vf_conf = actions[0].conf;
 	if (vf_conf->id == 0 || vf_conf->id > dpdmux_dev->num_ifs) {
-		DPAA2_PMD_ERR("Invalid destination id");
+		DPAA2_PMD_ERR("Invalid destination id(%d)", vf_conf->id);
 		goto creation_error;
 	}
 	dpdmux_action.dest_if = vf_conf->id;
 
-	ret = dpdmux_add_custom_cls_entry(&dpdmux_dev->dpdmux, CMD_PRI_LOW,
-					  dpdmux_dev->token, &flow->rule,
-					  &dpdmux_action);
+	rule.key_iova = key_iova;
+	rule.mask_iova = mask_iova;
+	rule.key_size = key_size;
+	rule.entry_index = s_i;
+	s_i++;
+
+	/* As now our key extract parameters are set, let us configure
+	 * the rule.
+	 */
+	ret = dpdmux_add_custom_cls_entry(&dpdmux_dev->dpdmux,
+			CMD_PRI_LOW, dpdmux_dev->token,
+			&rule, &dpdmux_action);
 	if (ret) {
-		DPAA2_PMD_ERR("dpdmux_add_custom_cls_entry failed: err(%d)",
-			      ret);
+		DPAA2_PMD_ERR("Add classification entry failed:err(%d)", ret);
 		goto creation_error;
 	}
 
-	return flow;
-
 creation_error:
-	rte_free((void *)key_cfg_iova);
-	rte_free((void *)flow);
-	return NULL;
+	if (key_cfg_va)
+		rte_free(key_cfg_va);
+	if (key_va)
+		rte_free(key_va);
+
+	return ret;
 }
 
 int
@@ -407,10 +491,11 @@ dpaa2_create_dpdmux_device(int vdev_fd __rte_unused,
 	PMD_INIT_FUNC_TRACE();
 
 	/* Allocate DPAA2 dpdmux handle */
-	dpdmux_dev = rte_malloc(NULL, sizeof(struct dpaa2_dpdmux_dev), 0);
+	dpdmux_dev = rte_zmalloc(NULL,
+		sizeof(struct dpaa2_dpdmux_dev), RTE_CACHE_LINE_SIZE);
 	if (!dpdmux_dev) {
 		DPAA2_PMD_ERR("Memory allocation failed for DPDMUX Device");
-		return -1;
+		return -ENOMEM;
 	}
 
 	/* Open the dpdmux object */

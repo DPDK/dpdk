@@ -105,6 +105,8 @@ dpaa2_print_faf(struct dpaa2_fapr_array *fapr)
 			faf_bits[i].name = "IPv4 1 Present";
 		else if (i == FAF_IPV6_FRAM)
 			faf_bits[i].name = "IPv6 1 Present";
+		else if (i == FAF_IP_FRAG_FRAM)
+			faf_bits[i].name = "IP fragment Present";
 		else if (i == FAF_UDP_FRAM)
 			faf_bits[i].name = "UDP Present";
 		else if (i == FAF_TCP_FRAM)
