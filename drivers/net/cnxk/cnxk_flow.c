@@ -5,6 +5,9 @@
 #include <cnxk_rep.h>
 
 #define IS_REP_BIT 7
+
+#define TNL_DCP_MATCH_ID 5
+#define NRML_MATCH_ID	 1
 const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH, sizeof(struct rte_flow_item_eth)},
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {ROC_NPC_ITEM_TYPE_VLAN, sizeof(struct rte_flow_item_vlan)},
@@ -188,11 +191,42 @@ roc_npc_parse_sample_subaction(struct rte_eth_dev *eth_dev, const struct rte_flo
 }
 
 static int
+append_mark_action(struct roc_npc_action *in_actions, uint8_t has_tunnel_pattern,
+		   uint64_t *free_allocs, int *act_cnt)
+{
+	struct rte_flow_action_mark *act_mark;
+	int i = *act_cnt, j = 0;
+
+	/* Add Mark action */
+	i++;
+	act_mark = plt_zmalloc(sizeof(struct rte_flow_action_mark), 0);
+	if (!act_mark) {
+		plt_err("Error allocation memory");
+		return -ENOMEM;
+	}
+
+	while (free_allocs[j] != 0)
+		j++;
+	free_allocs[j] = (uint64_t)act_mark;
+	/* Mark ID format: (tunnel type - VxLAN, Geneve << 6) | Tunnel decap */
+	act_mark->id =
+		has_tunnel_pattern ? ((has_tunnel_pattern << 6) | TNL_DCP_MATCH_ID) : NRML_MATCH_ID;
+	in_actions[i].type = ROC_NPC_ACTION_TYPE_MARK;
+	in_actions[i].conf = (struct rte_flow_action_mark *)act_mark;
+
+	plt_rep_dbg("Assigned mark ID %x", act_mark->id);
+
+	*act_cnt = i;
+
+	return 0;
+}
+
+static int
 representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_dev *eth_dev,
 			      struct rte_eth_dev *portid_eth_dev,
 			      enum rte_flow_action_type act_type, uint8_t rep_pattern,
-			      uint16_t *dst_pf_func, bool is_rep, uint64_t *free_allocs,
-			      int *act_cnt)
+			      uint16_t *dst_pf_func, bool is_rep, uint8_t has_tunnel_pattern,
+			      uint64_t *free_allocs, int *act_cnt)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev *rep_eth_dev = portid_eth_dev;
@@ -203,7 +237,7 @@ representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_
 	struct cnxk_rep_dev *rep_dev;
 	struct roc_npc *npc;
 	uint16_t vlan_tci;
-	int j = 0;
+	int j = 0, rc;
 
 	/* For inserting an action in the list */
 	int i = *act_cnt;
@@ -322,6 +356,11 @@ representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_PORT_ID;
 			npc->rep_act_pf_func = rep_dev->hw_func;
 			*dst_pf_func = rep_dev->hw_func;
+
+			/* Append a mark action - needed to identify the flow */
+			rc = append_mark_action(in_actions, has_tunnel_pattern, free_allocs, &i);
+			if (rc)
+				return rc;
 		}
 	}
 done:
@@ -336,34 +375,21 @@ representor_portid_action(struct roc_npc_action *in_actions, struct rte_eth_dev 
 			  int *act_cnt)
 {
 	struct rte_eth_dev *rep_eth_dev = portid_eth_dev;
-	struct rte_flow_action_mark *act_mark;
 	struct cnxk_rep_dev *rep_dev;
 	/* For inserting an action in the list */
-	int i = *act_cnt, j = 0;
+	int i = *act_cnt, rc;
 
 	rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
 
 	*dst_pf_func = rep_dev->hw_func;
 
-	/* Add Mark action */
-	i++;
-	act_mark = plt_zmalloc(sizeof(struct rte_flow_action_mark), 0);
-	if (!act_mark) {
-		plt_err("Error allocation memory");
-		return -ENOMEM;
-	}
-
-	while (free_allocs[j] != 0)
-		j++;
-	free_allocs[j] = (uint64_t)act_mark;
-	/* Mark ID format: (tunnel type - VxLAN, Geneve << 6) | Tunnel decap */
-	act_mark->id = has_tunnel_pattern ? ((has_tunnel_pattern << 6) | 5) : 1;
-	in_actions[i].type = ROC_NPC_ACTION_TYPE_MARK;
-	in_actions[i].conf = (struct rte_flow_action_mark *)act_mark;
+	rc = append_mark_action(in_actions, has_tunnel_pattern, free_allocs, &i);
+	if (rc)
+		return rc;
 
 	*act_cnt = i;
-	plt_rep_dbg("Rep port %d ID %d mark ID is %d rep_dev->hw_func 0x%x", rep_dev->port_id,
-		    rep_dev->rep_id, act_mark->id, rep_dev->hw_func);
+	plt_rep_dbg("Rep port %d ID %d rep_dev->hw_func 0x%x", rep_dev->port_id, rep_dev->rep_id,
+		    rep_dev->hw_func);
 
 	return 0;
 }
@@ -441,7 +467,8 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				if (representor_rep_portid_action(in_actions, eth_dev,
 								  portid_eth_dev, actions->type,
 								  rep_pattern, dst_pf_func, is_rep,
-								  free_allocs, &i)) {
+								  has_tunnel_pattern, free_allocs,
+								  &i)) {
 					plt_err("Representor port action set failed");
 					goto err_exit;
 				}
