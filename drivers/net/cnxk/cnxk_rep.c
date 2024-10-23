@@ -253,12 +253,30 @@ fail:
 
 static int
 cnxk_representee_mtu_msg_process(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func,
-				 uint16_t rep_id, uint16_t mtu)
+				 uint16_t mtu)
 {
+	struct cnxk_eswitch_devargs *esw_da;
 	struct cnxk_rep_dev *rep_dev = NULL;
 	struct rte_eth_dev *rep_eth_dev;
+	uint16_t rep_id = UINT16_MAX;
 	int rc = 0;
-	int i;
+	int i, j;
+
+	/* Traversing the initialized represented list */
+	for (i = 0; i < eswitch_dev->nb_esw_da; i++) {
+		esw_da = &eswitch_dev->esw_da[i];
+		for (j = 0; j < esw_da->nb_repr_ports; j++) {
+			if (esw_da->repr_hw_info[j].hw_func == hw_func) {
+				rep_id = esw_da->repr_hw_info[j].rep_id;
+				break;
+			}
+		}
+		if (rep_id != UINT16_MAX)
+			break;
+	}
+	/* No action on PF func for which representor has not been created */
+	if (rep_id == UINT16_MAX)
+		goto done;
 
 	for (i = 0; i < eswitch_dev->repr_cnt.nb_repr_probed; i++) {
 		rep_eth_dev = eswitch_dev->rep_info[i].rep_eth_dev;
@@ -289,17 +307,20 @@ cnxk_representee_msg_process(struct cnxk_eswitch_dev *eswitch_dev,
 
 	switch (notify_msg->type) {
 	case ROC_ESWITCH_REPTE_STATE:
-		plt_rep_dbg("	   type %d: hw_func %x action %s", notify_msg->type,
-			    notify_msg->state.hw_func,
+		plt_rep_dbg("	  REPTE STATE: hw_func %x action %s", notify_msg->state.hw_func,
 			    notify_msg->state.enable ? "enable" : "disable");
 		rc = cnxk_representee_state_msg_process(eswitch_dev, notify_msg->state.hw_func,
 							notify_msg->state.enable);
 		break;
+	case ROC_ESWITCH_LINK_STATE:
+		plt_rep_dbg("	  LINK STATE: hw_func %x action %s", notify_msg->link.hw_func,
+			    notify_msg->link.enable ? "enable" : "disable");
+		break;
 	case ROC_ESWITCH_REPTE_MTU:
-		plt_rep_dbg("	   type %d: hw_func %x rep_id %d mtu %d", notify_msg->type,
-			    notify_msg->mtu.hw_func, notify_msg->mtu.rep_id, notify_msg->mtu.mtu);
+		plt_rep_dbg("	   REPTE MTU: hw_func %x rep_id %d mtu %d", notify_msg->mtu.hw_func,
+			    notify_msg->mtu.rep_id, notify_msg->mtu.mtu);
 		rc = cnxk_representee_mtu_msg_process(eswitch_dev, notify_msg->mtu.hw_func,
-						      notify_msg->mtu.rep_id, notify_msg->mtu.mtu);
+						      notify_msg->mtu.mtu);
 		break;
 	default:
 		plt_err("Invalid notification msg received %d", notify_msg->type);
