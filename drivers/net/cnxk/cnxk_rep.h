@@ -62,7 +62,10 @@ struct cnxk_rep_dev {
 	uint16_t rep_id;
 	uint16_t switch_domain_id;
 	struct cnxk_eswitch_dev *parent_dev;
+	/* Representee HW func */
 	uint16_t hw_func;
+	/* No of queues configured at representee */
+	uint16_t nb_rxq;
 	bool is_vf_active;
 	bool native_repte;
 	struct cnxk_rep_rxq *rxq;
@@ -130,7 +133,7 @@ int cnxk_rep_dev_close(struct rte_eth_dev *eth_dev);
 int cnxk_rep_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats);
 int cnxk_rep_stats_reset(struct rte_eth_dev *eth_dev);
 int cnxk_rep_flow_ops_get(struct rte_eth_dev *ethdev, const struct rte_flow_ops **ops);
-int cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func, uint16_t *rep_id);
+int cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint32_t state, uint16_t *rep_id);
 int cnxk_rep_promiscuous_enable(struct rte_eth_dev *ethdev);
 int cnxk_rep_promiscuous_disable(struct rte_eth_dev *ethdev);
 int cnxk_rep_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr);

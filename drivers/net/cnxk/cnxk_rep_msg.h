@@ -86,7 +86,7 @@ typedef struct cnxk_rep_msg_ack_data1 {
 typedef struct cnxk_rep_msg_ready_data {
 	uint8_t val;
 	uint16_t nb_ports;
-	uint16_t data[];
+	uint32_t data[];
 } __rte_packed cnxk_rep_msg_ready_data_t;
 
 /* Exit msg */

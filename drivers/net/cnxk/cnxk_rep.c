@@ -29,12 +29,15 @@ switch_domain_id_allocate(struct cnxk_eswitch_dev *eswitch_dev, uint16_t pf)
 }
 
 int
-cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func, uint16_t *rep_id)
+cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint32_t state, uint16_t *rep_id)
 {
 	struct cnxk_rep_dev *rep_dev = NULL;
 	struct rte_eth_dev *rep_eth_dev;
+	uint16_t hw_func, nb_rxq;
 	int i, rc = 0;
 
+	nb_rxq = state & 0xFFFF;
+	hw_func = (state >> 16) & 0xFFFF;
 	/* Delete the individual PFVF flows as common eswitch VF rule will be used. */
 	rc = cnxk_eswitch_flow_rules_delete(eswitch_dev, hw_func);
 	if (rc) {
@@ -61,8 +64,10 @@ cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func, ui
 		}
 
 		rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
-		if (rep_dev->hw_func == hw_func && rep_dev->is_vf_active)
+		if (rep_dev->hw_func == hw_func && rep_dev->is_vf_active) {
 			rep_dev->native_repte = false;
+			rep_dev->nb_rxq = nb_rxq;
+		}
 	}
 
 	return 0;

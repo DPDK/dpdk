@@ -222,11 +222,64 @@ append_mark_action(struct roc_npc_action *in_actions, uint8_t has_tunnel_pattern
 }
 
 static int
+append_rss_action(struct cnxk_eth_dev *dev, struct roc_npc_action *in_actions, uint16_t nb_rxq,
+		  uint32_t *flowkey_cfg, uint64_t *free_allocs, uint16_t rss_repte_pf_func,
+		  int *act_cnt)
+{
+	struct roc_npc_action_rss *rss_conf;
+	int i = *act_cnt, j = 0, l, rc = 0;
+	uint16_t *queue_arr;
+
+	rss_conf = plt_zmalloc(sizeof(struct roc_npc_action_rss), 0);
+	if (!rss_conf) {
+		plt_err("Failed to allocate memory for rss conf");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	/* Add RSS action */
+	rss_conf->queue_num = nb_rxq;
+	queue_arr = calloc(1, rss_conf->queue_num * sizeof(uint16_t));
+	if (!queue_arr) {
+		plt_err("Failed to allocate memory for rss queue");
+		rc = -ENOMEM;
+		goto free_rss;
+	}
+
+	for (l = 0; l < nb_rxq; l++)
+		queue_arr[l] = l;
+	rss_conf->queue = queue_arr;
+	rss_conf->key = NULL;
+	rss_conf->types = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP;
+
+	i++;
+
+	in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
+	in_actions[i].conf = (struct roc_npc_action_rss *)rss_conf;
+	in_actions[i].rss_repte_pf_func = rss_repte_pf_func;
+
+	npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg,
+			    RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP);
+
+	*act_cnt = i;
+
+	while (free_allocs[j] != 0)
+		j++;
+	free_allocs[j] = (uint64_t)rss_conf;
+
+	return 0;
+free_rss:
+	rte_free(rss_conf);
+fail:
+	return rc;
+}
+
+static int
 representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_dev *eth_dev,
 			      struct rte_eth_dev *portid_eth_dev,
 			      enum rte_flow_action_type act_type, uint8_t rep_pattern,
 			      uint16_t *dst_pf_func, bool is_rep, uint8_t has_tunnel_pattern,
-			      uint64_t *free_allocs, int *act_cnt)
+			      uint64_t *free_allocs, int *act_cnt, uint32_t *flowkey_cfg)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev *rep_eth_dev = portid_eth_dev;
@@ -361,6 +414,19 @@ representor_rep_portid_action(struct roc_npc_action *in_actions, struct rte_eth_
 			rc = append_mark_action(in_actions, has_tunnel_pattern, free_allocs, &i);
 			if (rc)
 				return rc;
+			/* Append RSS action if representee has RSS enabled */
+			if (rep_dev->nb_rxq > 1) {
+				/* PF can install rule for only its VF acting as representee */
+				if (rep_dev->hw_func &&
+				    roc_eswitch_is_repte_pfs_vf(rep_dev->hw_func,
+							roc_nix_get_pf_func(npc->roc_nix))) {
+					rc = append_rss_action(dev, in_actions, rep_dev->nb_rxq,
+							       flowkey_cfg, free_allocs,
+							       rep_dev->hw_func, &i);
+					if (rc)
+						return rc;
+				}
+			}
 		}
 	}
 done:
@@ -465,10 +531,9 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				    eth_dev->data->port_id, if_name, act_ethdev->port_id);
 			if (cnxk_ethdev_is_representor(if_name)) {
 				if (representor_rep_portid_action(in_actions, eth_dev,
-								  portid_eth_dev, actions->type,
-								  rep_pattern, dst_pf_func, is_rep,
-								  has_tunnel_pattern, free_allocs,
-								  &i)) {
+					    portid_eth_dev, actions->type, rep_pattern,
+					    dst_pf_func, is_rep, has_tunnel_pattern,
+					    free_allocs, &i, flowkey_cfg)) {
 					plt_err("Representor port action set failed");
 					goto err_exit;
 				}
@@ -536,6 +601,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			rc = npc_rss_action_validate(eth_dev, attr, actions);
 			if (rc)
 				goto err_exit;
+
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
 			in_actions[i].conf = actions->conf;
 			npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg,
@@ -856,8 +922,8 @@ cnxk_flow_create_common(struct rte_eth_dev *eth_dev, const struct rte_flow_attr 
 			const struct rte_flow_action actions[], struct rte_flow_error *error,
 			bool is_rep)
 {
-	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1];
-	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT];
+	struct roc_npc_item_info in_pattern[ROC_NPC_ITEM_TYPE_END + 1] = {0};
+	struct roc_npc_action in_actions[ROC_NPC_MAX_ACTION_COUNT] = {0};
 	struct roc_npc_action_sample in_sample_action;
 	struct cnxk_rep_dev *rep_dev = NULL;
 	struct roc_npc_flow *flow = NULL;
