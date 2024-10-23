@@ -1094,11 +1094,8 @@ cnxk_flow_dev_dump_common(struct rte_eth_dev *eth_dev, struct rte_flow *flow, FI
 	}
 
 	if (flow != NULL) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL,
-				   "Invalid argument");
-		return -EINVAL;
+		roc_npc_flow_mcam_dump(file, npc, (struct roc_npc_flow *)flow);
+		return 0;
 	}
 
 	roc_npc_flow_dump(file, npc, -1);
