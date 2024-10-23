@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2021 NXP
+ *   Copyright 2016-2023 NXP
  *
  */
 
@@ -30,6 +30,7 @@
 #include <rte_kvargs.h>
 #include <dev_driver.h>
 #include <rte_eal_memconfig.h>
+#include <eal_vfio.h>
 
 #include "private.h"
 #include "fslmc_vfio.h"
@@ -441,6 +442,59 @@ int rte_fslmc_vfio_dmamap(void)
 }
 
 static int
+fslmc_vfio_open_group_fd(int iommu_group_num)
+{
+	int vfio_group_fd;
+	char filename[PATH_MAX];
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply = {0};
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+
+	/* if primary, try to open the group */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		/* try regular group format */
+		snprintf(filename, sizeof(filename),
+			VFIO_GROUP_FMT, iommu_group_num);
+		vfio_group_fd = open(filename, O_RDWR);
+		if (vfio_group_fd <= 0) {
+			DPAA2_BUS_ERR("Open VFIO group(%s) failed(%d)",
+				filename, vfio_group_fd);
+		}
+
+		return vfio_group_fd;
+	}
+	/* if we're in a secondary process, request group fd from the primary
+	 * process via mp channel.
+	 */
+	p->req = SOCKET_REQ_GROUP;
+	p->group_num = iommu_group_num;
+	rte_strscpy(mp_req.name, EAL_VFIO_MP, sizeof(mp_req.name));
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
+
+	vfio_group_fd = -1;
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 &&
+	    mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
+			vfio_group_fd = mp_rep->fds[0];
+		} else if (p->result == SOCKET_NO_FD) {
+			DPAA2_BUS_ERR("Bad VFIO group fd");
+			vfio_group_fd = 0;
+		}
+	}
+
+	free(mp_reply.msgs);
+	if (vfio_group_fd < 0) {
+		DPAA2_BUS_ERR("Cannot request group fd(%d)",
+			vfio_group_fd);
+	}
+	return vfio_group_fd;
+}
+
+static int
 fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info)
 {
@@ -455,7 +509,7 @@ fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		return -1;
 
 	/* get the actual group fd */
-	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_no);
+	vfio_group_fd = vfio_group.fd;
 	if (vfio_group_fd < 0 && vfio_group_fd != -ENOENT)
 		return -1;
 
@@ -891,6 +945,11 @@ fslmc_vfio_close_group(void)
 		}
 	}
 
+	if (vfio_group.fd > 0) {
+		close(vfio_group.fd);
+		vfio_group.fd = 0;
+	}
+
 	return 0;
 }
 
@@ -1081,7 +1140,6 @@ fslmc_vfio_setup_group(void)
 {
 	int groupid;
 	int ret;
-	int vfio_container_fd;
 	struct vfio_group_status status = { .argsz = sizeof(status) };
 
 	/* if already done once */
@@ -1100,16 +1158,9 @@ fslmc_vfio_setup_group(void)
 		return 0;
 	}
 
-	ret = rte_vfio_container_create();
-	if (ret < 0) {
-		DPAA2_BUS_ERR("Failed to open VFIO container");
-		return ret;
-	}
-	vfio_container_fd = ret;
-
 	/* Get the actual group fd */
-	ret = rte_vfio_container_group_bind(vfio_container_fd, groupid);
-	if (ret < 0)
+	ret = fslmc_vfio_open_group_fd(groupid);
+	if (ret <= 0)
 		return ret;
 	vfio_group.fd = ret;
 
@@ -1118,14 +1169,14 @@ fslmc_vfio_setup_group(void)
 	if (ret) {
 		DPAA2_BUS_ERR("VFIO error getting group status");
 		close(vfio_group.fd);
-		rte_vfio_clear_group(vfio_group.fd);
+		vfio_group.fd = 0;
 		return ret;
 	}
 
 	if (!(status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
 		DPAA2_BUS_ERR("VFIO group not viable");
 		close(vfio_group.fd);
-		rte_vfio_clear_group(vfio_group.fd);
+		vfio_group.fd = 0;
 		return -EPERM;
 	}
 	/* Since Group is VIABLE, Store the groupid */
@@ -1136,11 +1187,10 @@ fslmc_vfio_setup_group(void)
 		/* Now connect this IOMMU group to given container */
 		ret = vfio_connect_container();
 		if (ret) {
-			DPAA2_BUS_ERR(
-				"Error connecting container with groupid %d",
-				groupid);
+			DPAA2_BUS_ERR("vfio group(%d) connect failed(%d)",
+				groupid, ret);
 			close(vfio_group.fd);
-			rte_vfio_clear_group(vfio_group.fd);
+			vfio_group.fd = 0;
 			return ret;
 		}
 	}
@@ -1151,7 +1201,7 @@ fslmc_vfio_setup_group(void)
 		DPAA2_BUS_ERR("Error getting device %s fd from group %d",
 			      fslmc_container, vfio_group.groupid);
 		close(vfio_group.fd);
-		rte_vfio_clear_group(vfio_group.fd);
+		vfio_group.fd = 0;
 		return ret;
 	}
 	container_device_fd = ret;
