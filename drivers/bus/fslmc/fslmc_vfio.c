@@ -49,7 +49,6 @@
 static struct fslmc_vfio_container s_vfio_container;
 /* Currently we only support single group/process. */
 static const char *fslmc_group; /* dprc.x*/
-static uint32_t *msi_intr_vaddr;
 static void *(*rte_mcp_ptr_list);
 
 struct fslmc_dmaseg {
@@ -758,49 +757,6 @@ vfio_connect_container(int vfio_container_fd,
 	return fslmc_vfio_connect_container(vfio_group_fd);
 }
 
-static int vfio_map_irq_region(void)
-{
-	int ret, fd;
-	unsigned long *vaddr = NULL;
-	struct vfio_iommu_type1_dma_map map = {
-		.argsz = sizeof(map),
-		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
-		.vaddr = 0x6030000,
-		.iova = 0x6030000,
-		.size = 0x1000,
-	};
-	const char *group_name = fslmc_vfio_get_group_name();
-
-	fd = fslmc_vfio_group_fd_by_name(group_name);
-	if (fd <= 0) {
-		DPAA2_BUS_ERR("%s: Get fd by name(%s) failed(%d)",
-			__func__, group_name, fd);
-		if (fd < 0)
-			return fd;
-		return -EIO;
-	}
-	if (!fslmc_vfio_container_connected(fd)) {
-		DPAA2_BUS_ERR("Container is not connected");
-		return -EIO;
-	}
-
-	vaddr = (unsigned long *)mmap(NULL, 0x1000, PROT_WRITE |
-		PROT_READ, MAP_SHARED, fd, 0x6030000);
-	if (vaddr == MAP_FAILED) {
-		DPAA2_BUS_ERR("Unable to map region (errno = %d)", errno);
-		return -ENOMEM;
-	}
-
-	msi_intr_vaddr = (uint32_t *)((char *)(vaddr) + 64);
-	map.vaddr = (unsigned long)vaddr;
-	ret = ioctl(fslmc_vfio_container_fd(), VFIO_IOMMU_MAP_DMA, &map);
-	if (!ret)
-		return 0;
-
-	DPAA2_BUS_ERR("Unable to map DMA address (errno = %d)", errno);
-	return ret;
-}
-
 static int
 fslmc_map_dma(uint64_t vaddr, rte_iova_t iovaddr, size_t len)
 {
@@ -1221,12 +1177,6 @@ int rte_fslmc_vfio_dmamap(void)
 		DPAA2_BUS_DEBUG("Installed memory callback handler");
 
 	DPAA2_BUS_DEBUG("Total %d segments found.", i);
-
-	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
-	 * the interrupt region to SMMU. This should be removed once the
-	 * support is added in the Kernel.
-	 */
-	vfio_map_irq_region();
 
 	/* Existing segments have been mapped and memory callback for hotplug
 	 * has been installed.
