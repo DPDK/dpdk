@@ -179,6 +179,8 @@ enum dpaa2_rx_faf_offset {
 	FAFE_VXLAN_IN_IPV6_FRAM = 2,
 	FAFE_VXLAN_IN_UDP_FRAM = 3,
 	FAFE_VXLAN_IN_TCP_FRAM = 4,
+
+	FAFE_ECPRI_FRAM = 7,
 	/* Set by SP end*/
 
 	FAF_GTP_PRIMED_FRAM = 1 + DPAA2_FAFE_PSR_SIZE * 8,
@@ -205,6 +207,17 @@ enum dpaa2_rx_faf_offset {
 	FAF_DCCP_FRAM = 83 + DPAA2_FAFE_PSR_SIZE * 8,
 	FAF_GTP_FRAM = 87 + DPAA2_FAFE_PSR_SIZE * 8,
 	FAF_ESP_FRAM = 89 + DPAA2_FAFE_PSR_SIZE * 8,
+};
+
+enum dpaa2_ecpri_fafe_type {
+	ECPRI_FAFE_TYPE_0 = (8 - FAFE_ECPRI_FRAM),
+	ECPRI_FAFE_TYPE_1 = (8 - FAFE_ECPRI_FRAM) | (1 << 1),
+	ECPRI_FAFE_TYPE_2 = (8 - FAFE_ECPRI_FRAM) | (2 << 1),
+	ECPRI_FAFE_TYPE_3 = (8 - FAFE_ECPRI_FRAM) | (3 << 1),
+	ECPRI_FAFE_TYPE_4 = (8 - FAFE_ECPRI_FRAM) | (4 << 1),
+	ECPRI_FAFE_TYPE_5 = (8 - FAFE_ECPRI_FRAM) | (5 << 1),
+	ECPRI_FAFE_TYPE_6 = (8 - FAFE_ECPRI_FRAM) | (6 << 1),
+	ECPRI_FAFE_TYPE_7 = (8 - FAFE_ECPRI_FRAM) | (7 << 1)
 };
 
 #define DPAA2_PR_ETH_OFF_OFFSET 19
@@ -235,6 +248,11 @@ enum dpaa2_rx_faf_offset {
 #define DPAA2_VXLAN_VNI_OFFSET 43
 #define DPAA2_VXLAN_IN_TYPE_OFFSET 46
 /* Set by SP for vxlan distribution end*/
+
+/* ECPRI shares SP context with VXLAN*/
+#define DPAA2_ECPRI_MSG_OFFSET DPAA2_VXLAN_VNI_OFFSET
+
+#define DPAA2_ECPRI_MAX_EXTRACT_NB 8
 
 struct ipv4_sd_addr_extract_rule {
 	uint32_t ipv4_src;
