@@ -761,40 +761,270 @@ dpaa2_flow_extract_add_hdr(enum net_prot prot,
 }
 
 static int
-dpaa2_flow_extract_add_raw(struct dpaa2_key_extract *key_extract,
-	int size)
+dpaa2_flow_extract_new_raw(struct dpaa2_dev_priv *priv,
+	int offset, int size,
+	enum dpaa2_flow_dist_type dist_type, int tc_id)
 {
-	struct dpkg_profile_cfg *dpkg = &key_extract->dpkg;
-	struct dpaa2_key_profile *key_info = &key_extract->key_profile;
-	int last_extract_size, index;
+	struct dpaa2_key_extract *key_extract;
+	struct dpkg_profile_cfg *dpkg;
+	struct dpaa2_key_profile *key_profile;
+	int last_extract_size, index, pos, item_size;
+	uint8_t num_extracts;
+	uint32_t field;
 
-	if (dpkg->num_extracts != 0 && dpkg->extracts[0].type !=
-	    DPKG_EXTRACT_FROM_DATA) {
-		DPAA2_PMD_WARN("RAW extract cannot be combined with others");
-		return -1;
-	}
+	if (dist_type == DPAA2_FLOW_QOS_TYPE)
+		key_extract = &priv->extract.qos_key_extract;
+	else
+		key_extract = &priv->extract.tc_key_extract[tc_id];
+
+	dpkg = &key_extract->dpkg;
+	key_profile = &key_extract->key_profile;
+
+	key_profile->raw_region.raw_start = 0;
+	key_profile->raw_region.raw_size = 0;
 
 	last_extract_size = (size % DPAA2_FLOW_MAX_KEY_SIZE);
-	dpkg->num_extracts = (size / DPAA2_FLOW_MAX_KEY_SIZE);
+	num_extracts = (size / DPAA2_FLOW_MAX_KEY_SIZE);
 	if (last_extract_size)
-		dpkg->num_extracts++;
+		num_extracts++;
 	else
 		last_extract_size = DPAA2_FLOW_MAX_KEY_SIZE;
 
-	for (index = 0; index < dpkg->num_extracts; index++) {
-		dpkg->extracts[index].type = DPKG_EXTRACT_FROM_DATA;
-		if (index == dpkg->num_extracts - 1)
-			dpkg->extracts[index].extract.from_data.size =
-				last_extract_size;
+	for (index = 0; index < num_extracts; index++) {
+		if (index == num_extracts - 1)
+			item_size = last_extract_size;
 		else
-			dpkg->extracts[index].extract.from_data.size =
-				DPAA2_FLOW_MAX_KEY_SIZE;
-		dpkg->extracts[index].extract.from_data.offset =
-			DPAA2_FLOW_MAX_KEY_SIZE * index;
+			item_size = DPAA2_FLOW_MAX_KEY_SIZE;
+		field = offset << DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT;
+		field |= item_size;
+
+		pos = dpaa2_flow_key_profile_advance(NET_PROT_PAYLOAD,
+				field, item_size, priv, dist_type,
+				tc_id, NULL);
+		if (pos < 0)
+			return pos;
+
+		dpkg->extracts[pos].type = DPKG_EXTRACT_FROM_DATA;
+		dpkg->extracts[pos].extract.from_data.size = item_size;
+		dpkg->extracts[pos].extract.from_data.offset = offset;
+
+		if (index == 0) {
+			key_profile->raw_extract_pos = pos;
+			key_profile->raw_extract_off =
+				key_profile->key_offset[pos];
+			key_profile->raw_region.raw_start = offset;
+		}
+		key_profile->raw_extract_num++;
+		key_profile->raw_region.raw_size +=
+			key_profile->key_size[pos];
+
+		offset += item_size;
+		dpkg->num_extracts++;
 	}
 
-	key_info->key_max_size = size;
 	return 0;
+}
+
+static int
+dpaa2_flow_extract_add_raw(struct dpaa2_dev_priv *priv,
+	int offset, int size, enum dpaa2_flow_dist_type dist_type,
+	int tc_id, int *recfg)
+{
+	struct dpaa2_key_profile *key_profile;
+	struct dpaa2_raw_region *raw_region;
+	int end = offset + size, ret = 0, extract_extended, sz_extend;
+	int start_cmp, end_cmp, new_size, index, pos, end_pos;
+	int last_extract_size, item_size, num_extracts, bk_num = 0;
+	struct dpkg_extract extract_bk[DPKG_MAX_NUM_OF_EXTRACTS];
+	uint8_t key_offset_bk[DPKG_MAX_NUM_OF_EXTRACTS];
+	uint8_t key_size_bk[DPKG_MAX_NUM_OF_EXTRACTS];
+	struct key_prot_field prot_field_bk[DPKG_MAX_NUM_OF_EXTRACTS];
+	struct dpaa2_raw_region raw_hole;
+	struct dpkg_profile_cfg *dpkg;
+	enum net_prot prot;
+	uint32_t field;
+
+	if (dist_type == DPAA2_FLOW_QOS_TYPE) {
+		key_profile = &priv->extract.qos_key_extract.key_profile;
+		dpkg = &priv->extract.qos_key_extract.dpkg;
+	} else {
+		key_profile = &priv->extract.tc_key_extract[tc_id].key_profile;
+		dpkg = &priv->extract.tc_key_extract[tc_id].dpkg;
+	}
+
+	raw_region = &key_profile->raw_region;
+	if (!raw_region->raw_size) {
+		/* New RAW region*/
+		ret = dpaa2_flow_extract_new_raw(priv, offset, size,
+			dist_type, tc_id);
+		if (!ret && recfg)
+			(*recfg) |= dist_type;
+
+		return ret;
+	}
+	start_cmp = raw_region->raw_start;
+	end_cmp = raw_region->raw_start + raw_region->raw_size;
+
+	if (offset >= start_cmp && end <= end_cmp)
+		return 0;
+
+	sz_extend = 0;
+	new_size = raw_region->raw_size;
+	if (offset < start_cmp) {
+		sz_extend += start_cmp - offset;
+		new_size += (start_cmp - offset);
+	}
+	if (end > end_cmp) {
+		sz_extend += end - end_cmp;
+		new_size += (end - end_cmp);
+	}
+
+	last_extract_size = (new_size % DPAA2_FLOW_MAX_KEY_SIZE);
+	num_extracts = (new_size / DPAA2_FLOW_MAX_KEY_SIZE);
+	if (last_extract_size)
+		num_extracts++;
+	else
+		last_extract_size = DPAA2_FLOW_MAX_KEY_SIZE;
+
+	if ((key_profile->num + num_extracts -
+		key_profile->raw_extract_num) >=
+		DPKG_MAX_NUM_OF_EXTRACTS) {
+		DPAA2_PMD_ERR("%s Failed to expand raw extracts",
+			__func__);
+		return -EINVAL;
+	}
+
+	if (offset < start_cmp) {
+		raw_hole.raw_start = key_profile->raw_extract_off;
+		raw_hole.raw_size = start_cmp - offset;
+		raw_region->raw_start = offset;
+		raw_region->raw_size += start_cmp - offset;
+
+		if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+			ret = dpaa2_flow_qos_rule_insert_hole(priv,
+					raw_hole.raw_start,
+					raw_hole.raw_size);
+			if (ret)
+				return ret;
+		}
+		if (dist_type & DPAA2_FLOW_FS_TYPE) {
+			ret = dpaa2_flow_fs_rule_insert_hole(priv,
+					raw_hole.raw_start,
+					raw_hole.raw_size, tc_id);
+			if (ret)
+				return ret;
+		}
+	}
+
+	if (end > end_cmp) {
+		raw_hole.raw_start =
+			key_profile->raw_extract_off +
+			raw_region->raw_size;
+		raw_hole.raw_size = end - end_cmp;
+		raw_region->raw_size += end - end_cmp;
+
+		if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+			ret = dpaa2_flow_qos_rule_insert_hole(priv,
+					raw_hole.raw_start,
+					raw_hole.raw_size);
+			if (ret)
+				return ret;
+		}
+		if (dist_type & DPAA2_FLOW_FS_TYPE) {
+			ret = dpaa2_flow_fs_rule_insert_hole(priv,
+					raw_hole.raw_start,
+					raw_hole.raw_size, tc_id);
+			if (ret)
+				return ret;
+		}
+	}
+
+	end_pos = key_profile->raw_extract_pos +
+		key_profile->raw_extract_num;
+	if (key_profile->num > end_pos) {
+		bk_num = key_profile->num - end_pos;
+		memcpy(extract_bk, &dpkg->extracts[end_pos],
+			bk_num * sizeof(struct dpkg_extract));
+		memcpy(key_offset_bk, &key_profile->key_offset[end_pos],
+			bk_num * sizeof(uint8_t));
+		memcpy(key_size_bk, &key_profile->key_size[end_pos],
+			bk_num * sizeof(uint8_t));
+		memcpy(prot_field_bk, &key_profile->prot_field[end_pos],
+			bk_num * sizeof(struct key_prot_field));
+
+		for (index = 0; index < bk_num; index++) {
+			key_offset_bk[index] += sz_extend;
+			prot = prot_field_bk[index].prot;
+			field = prot_field_bk[index].key_field;
+			if (dpaa2_flow_l4_src_port_extract(prot,
+				field)) {
+				key_profile->l4_src_port_present = 1;
+				key_profile->l4_src_port_pos = end_pos + index;
+				key_profile->l4_src_port_offset =
+					key_offset_bk[index];
+			} else if (dpaa2_flow_l4_dst_port_extract(prot,
+				field)) {
+				key_profile->l4_dst_port_present = 1;
+				key_profile->l4_dst_port_pos = end_pos + index;
+				key_profile->l4_dst_port_offset =
+					key_offset_bk[index];
+			}
+		}
+	}
+
+	pos = key_profile->raw_extract_pos;
+
+	for (index = 0; index < num_extracts; index++) {
+		if (index == num_extracts - 1)
+			item_size = last_extract_size;
+		else
+			item_size = DPAA2_FLOW_MAX_KEY_SIZE;
+		field = offset << DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT;
+		field |= item_size;
+
+		if (pos > 0) {
+			key_profile->key_offset[pos] =
+				key_profile->key_offset[pos - 1] +
+				key_profile->key_size[pos - 1];
+		} else {
+			key_profile->key_offset[pos] = 0;
+		}
+		key_profile->key_size[pos] = item_size;
+		key_profile->prot_field[pos].prot = NET_PROT_PAYLOAD;
+		key_profile->prot_field[pos].key_field = field;
+
+		dpkg->extracts[pos].type = DPKG_EXTRACT_FROM_DATA;
+		dpkg->extracts[pos].extract.from_data.size = item_size;
+		dpkg->extracts[pos].extract.from_data.offset = offset;
+		offset += item_size;
+		pos++;
+	}
+
+	if (bk_num) {
+		memcpy(&dpkg->extracts[pos], extract_bk,
+			bk_num * sizeof(struct dpkg_extract));
+		memcpy(&key_profile->key_offset[end_pos],
+			key_offset_bk, bk_num * sizeof(uint8_t));
+		memcpy(&key_profile->key_size[end_pos],
+			key_size_bk, bk_num * sizeof(uint8_t));
+		memcpy(&key_profile->prot_field[end_pos],
+			prot_field_bk, bk_num * sizeof(struct key_prot_field));
+	}
+
+	extract_extended = num_extracts - key_profile->raw_extract_num;
+	if (key_profile->ip_addr_type != IP_NONE_ADDR_EXTRACT) {
+		key_profile->ip_addr_extract_pos += extract_extended;
+		key_profile->ip_addr_extract_off += sz_extend;
+	}
+	key_profile->raw_extract_num = num_extracts;
+	key_profile->num += extract_extended;
+	key_profile->key_max_size += sz_extend;
+
+	dpkg->num_extracts += extract_extended;
+	if (!ret && recfg)
+		(*recfg) |= dist_type;
+
+	return ret;
 }
 
 static inline int
@@ -836,7 +1066,6 @@ dpaa2_flow_extract_key_offset(struct dpaa2_key_profile *key_profile,
 	int i;
 
 	i = dpaa2_flow_extract_search(key_profile, prot, key_field);
-
 	if (i >= 0)
 		return key_profile->key_offset[i];
 	else
@@ -985,13 +1214,37 @@ dpaa2_flow_hdr_rule_data_set(struct dpaa2_dev_flow *flow,
 }
 
 static inline int
-dpaa2_flow_rule_data_set_raw(struct dpni_rule_cfg *rule,
-			     const void *key, const void *mask, int size)
+dpaa2_flow_raw_rule_data_set(struct dpaa2_dev_flow *flow,
+	struct dpaa2_key_profile *key_profile,
+	uint32_t extract_offset, int size,
+	const void *key, const void *mask,
+	enum dpaa2_flow_dist_type dist_type)
 {
-	int offset = 0;
+	int extract_size = size > DPAA2_FLOW_MAX_KEY_SIZE ?
+		DPAA2_FLOW_MAX_KEY_SIZE : size;
+	int offset, field;
 
-	memcpy((void *)(size_t)(rule->key_iova + offset), key, size);
-	memcpy((void *)(size_t)(rule->mask_iova + offset), mask, size);
+	field = extract_offset << DPAA2_FLOW_RAW_OFFSET_FIELD_SHIFT;
+	field |= extract_size;
+	offset = dpaa2_flow_extract_key_offset(key_profile,
+			NET_PROT_PAYLOAD, field);
+	if (offset < 0) {
+		DPAA2_PMD_ERR("offset(%d)/size(%d) raw extract failed",
+			extract_offset, size);
+		return -EINVAL;
+	}
+
+	if (dist_type & DPAA2_FLOW_QOS_TYPE) {
+		memcpy((flow->qos_key_addr + offset), key, size);
+		memcpy((flow->qos_mask_addr + offset), mask, size);
+		flow->qos_rule_size = offset + size;
+	}
+
+	if (dist_type & DPAA2_FLOW_FS_TYPE) {
+		memcpy((flow->fs_key_addr + offset), key, size);
+		memcpy((flow->fs_mask_addr + offset), mask, size);
+		flow->fs_rule_size = offset + size;
+	}
 
 	return 0;
 }
@@ -2226,22 +2479,36 @@ dpaa2_configure_flow_raw(struct dpaa2_dev_flow *flow,
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	const struct rte_flow_item_raw *spec = pattern->spec;
 	const struct rte_flow_item_raw *mask = pattern->mask;
-	int prev_key_size =
-		priv->extract.qos_key_extract.key_profile.key_max_size;
 	int local_cfg = 0, ret;
 	uint32_t group;
+	struct dpaa2_key_extract *qos_key_extract;
+	struct dpaa2_key_extract *tc_key_extract;
 
 	/* Need both spec and mask */
 	if (!spec || !mask) {
 		DPAA2_PMD_ERR("spec or mask not present.");
 		return -EINVAL;
 	}
-	/* Only supports non-relative with offset 0 */
-	if (spec->relative || spec->offset != 0 ||
-	    spec->search || spec->limit) {
-		DPAA2_PMD_ERR("relative and non zero offset not supported.");
+
+	if (spec->relative) {
+		/* TBD: relative offset support.
+		 * To support relative offset of previous L3 protocol item,
+		 * extracts should be expanded to identify if the frame is:
+		 * vlan or none-vlan.
+		 *
+		 * To support relative offset of previous L4 protocol item,
+		 * extracts should be expanded to identify if the frame is:
+		 * vlan/IPv4 or vlan/IPv6 or none-vlan/IPv4 or none-vlan/IPv6.
+		 */
+		DPAA2_PMD_ERR("relative not supported.");
 		return -EINVAL;
 	}
+
+	if (spec->search) {
+		DPAA2_PMD_ERR("search not supported.");
+		return -EINVAL;
+	}
+
 	/* Spec len and mask len should be same */
 	if (spec->length != mask->length) {
 		DPAA2_PMD_ERR("Spec len and mask len mismatch.");
@@ -2253,36 +2520,44 @@ dpaa2_configure_flow_raw(struct dpaa2_dev_flow *flow,
 	flow->tc_id = group;
 	flow->tc_index = attr->priority;
 
-	if (prev_key_size <= spec->length) {
-		ret = dpaa2_flow_extract_add_raw(&priv->extract.qos_key_extract,
-						 spec->length);
-		if (ret) {
-			DPAA2_PMD_ERR("QoS Extract RAW add failed.");
-			return -1;
-		}
-		local_cfg |= DPAA2_FLOW_QOS_TYPE;
+	qos_key_extract = &priv->extract.qos_key_extract;
+	tc_key_extract = &priv->extract.tc_key_extract[group];
 
-		ret = dpaa2_flow_extract_add_raw(&priv->extract.tc_key_extract[group],
-					spec->length);
-		if (ret) {
-			DPAA2_PMD_ERR("FS Extract RAW add failed.");
-			return -1;
-		}
-		local_cfg |= DPAA2_FLOW_FS_TYPE;
+	ret = dpaa2_flow_extract_add_raw(priv,
+			spec->offset, spec->length,
+			DPAA2_FLOW_QOS_TYPE, 0, &local_cfg);
+	if (ret) {
+		DPAA2_PMD_ERR("QoS Extract RAW add failed.");
+		return -EINVAL;
 	}
 
-	ret = dpaa2_flow_rule_data_set_raw(&flow->qos_rule, spec->pattern,
-					   mask->pattern, spec->length);
+	ret = dpaa2_flow_extract_add_raw(priv,
+			spec->offset, spec->length,
+			DPAA2_FLOW_FS_TYPE, group, &local_cfg);
+	if (ret) {
+		DPAA2_PMD_ERR("FS[%d] Extract RAW add failed.",
+			group);
+		return -EINVAL;
+	}
+
+	ret = dpaa2_flow_raw_rule_data_set(flow,
+			&qos_key_extract->key_profile,
+			spec->offset, spec->length,
+			spec->pattern, mask->pattern,
+			DPAA2_FLOW_QOS_TYPE);
 	if (ret) {
 		DPAA2_PMD_ERR("QoS RAW rule data set failed");
-		return -1;
+		return -EINVAL;
 	}
 
-	ret = dpaa2_flow_rule_data_set_raw(&flow->fs_rule, spec->pattern,
-					   mask->pattern, spec->length);
+	ret = dpaa2_flow_raw_rule_data_set(flow,
+			&tc_key_extract->key_profile,
+			spec->offset, spec->length,
+			spec->pattern, mask->pattern,
+			DPAA2_FLOW_FS_TYPE);
 	if (ret) {
 		DPAA2_PMD_ERR("FS RAW rule data set failed");
-		return -1;
+		return -EINVAL;
 	}
 
 	(*device_configured) |= local_cfg;
