@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
- * Copyright 2018-2020 NXP
+ * Copyright 2018-2020,2023-2024 NXP
  *
  */
 
@@ -41,6 +41,8 @@
 
 /* opaque token for static dequeues */
 #define QMAN_SDQCR_TOKEN    0xbb
+
+#define BMAN_VALID_RSLT_NUM_MASK 0x7
 
 enum qbman_sdqcr_dct {
 	qbman_sdqcr_dct_null = 0,
@@ -2628,7 +2630,7 @@ struct qbman_acquire_rslt {
 	uint16_t reserved;
 	uint8_t num;
 	uint8_t reserved2[3];
-	uint64_t buf[7];
+	uint64_t buf[BMAN_VALID_RSLT_NUM_MASK];
 };
 
 static int qbman_swp_acquire_direct(struct qbman_swp *s, uint16_t bpid,
@@ -2636,8 +2638,9 @@ static int qbman_swp_acquire_direct(struct qbman_swp *s, uint16_t bpid,
 {
 	struct qbman_acquire_desc *p;
 	struct qbman_acquire_rslt *r;
+	int num;
 
-	if (!num_buffers || (num_buffers > 7))
+	if (!num_buffers || (num_buffers > BMAN_VALID_RSLT_NUM_MASK))
 		return -EINVAL;
 
 	/* Start the management command */
@@ -2668,12 +2671,13 @@ static int qbman_swp_acquire_direct(struct qbman_swp *s, uint16_t bpid,
 		return -EIO;
 	}
 
-	QBMAN_BUG_ON(r->num > num_buffers);
+	num = r->num & BMAN_VALID_RSLT_NUM_MASK;
+	QBMAN_BUG_ON(num > num_buffers);
 
 	/* Copy the acquired buffers to the caller's array */
-	u64_from_le32_copy(buffers, &r->buf[0], r->num);
+	u64_from_le32_copy(buffers, &r->buf[0], num);
 
-	return (int)r->num;
+	return num;
 }
 
 static int qbman_swp_acquire_cinh_direct(struct qbman_swp *s, uint16_t bpid,
@@ -2681,8 +2685,9 @@ static int qbman_swp_acquire_cinh_direct(struct qbman_swp *s, uint16_t bpid,
 {
 	struct qbman_acquire_desc *p;
 	struct qbman_acquire_rslt *r;
+	int num;
 
-	if (!num_buffers || (num_buffers > 7))
+	if (!num_buffers || (num_buffers > BMAN_VALID_RSLT_NUM_MASK))
 		return -EINVAL;
 
 	/* Start the management command */
@@ -2713,12 +2718,13 @@ static int qbman_swp_acquire_cinh_direct(struct qbman_swp *s, uint16_t bpid,
 		return -EIO;
 	}
 
-	QBMAN_BUG_ON(r->num > num_buffers);
+	num = r->num & BMAN_VALID_RSLT_NUM_MASK;
+	QBMAN_BUG_ON(num > num_buffers);
 
 	/* Copy the acquired buffers to the caller's array */
-	u64_from_le32_copy(buffers, &r->buf[0], r->num);
+	u64_from_le32_copy(buffers, &r->buf[0], num);
 
-	return (int)r->num;
+	return num;
 }
 
 int qbman_swp_acquire(struct qbman_swp *s, uint16_t bpid, uint64_t *buffers,
