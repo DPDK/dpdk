@@ -36,6 +36,7 @@ INTERNAL {
 	dpci_set_rx_queue;
 	dpcon_get_attributes;
 	dpcon_open;
+	dpcon_close;
 	dpdmai_close;
 	dpdmai_disable;
 	dpdmai_enable;
