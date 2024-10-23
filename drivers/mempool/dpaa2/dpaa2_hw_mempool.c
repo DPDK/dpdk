@@ -23,7 +23,7 @@
 #include <dev_driver.h>
 #include "rte_dpaa2_mempool.h"
 
-#include "fslmc_vfio.h"
+#include <bus_fslmc_driver.h>
 #include <fslmc_logs.h>
 #include <mc/fsl_dpbp.h>
 #include <portal/dpaa2_hw_pvt.h>

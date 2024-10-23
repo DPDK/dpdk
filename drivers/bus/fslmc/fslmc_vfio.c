@@ -1154,7 +1154,8 @@ rte_fslmc_vfio_mem_dmaunmap(uint64_t iova, uint64_t size)
 	return fslmc_unmap_dma(0, iova, size);
 }
 
-int rte_fslmc_vfio_dmamap(void)
+int
+fslmc_vfio_dmamap(void)
 {
 	int i = 0, ret;
 

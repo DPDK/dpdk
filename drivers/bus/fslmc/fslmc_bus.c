@@ -438,7 +438,7 @@ rte_fslmc_probe(void)
 	 * install callback handler.
 	 */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		ret = rte_fslmc_vfio_dmamap();
+		ret = fslmc_vfio_dmamap();
 		if (ret) {
 			DPAA2_BUS_ERR("Unable to DMA map existing VAs: (%d)",
 				      ret);
