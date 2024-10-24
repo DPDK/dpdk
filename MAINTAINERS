@@ -37,6 +37,7 @@ M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 
 Next-net-intel Tree
+M: Bruce Richardson <bruce.richardson@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
 Next-net-mrvl Tree
