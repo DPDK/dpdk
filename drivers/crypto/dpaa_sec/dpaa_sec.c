@@ -3011,9 +3011,17 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 			PDBHMO_ESP_SNR;
 		if (ipsec_xform->options.dec_ttl)
 			session->encap_pdb.options |= PDBHMO_ESP_ENCAP_DTTL;
-		if (ipsec_xform->options.esn)
-			session->encap_pdb.options |= PDBOPTS_ESP_ESN;
 		session->encap_pdb.spi = ipsec_xform->spi;
+		/* Initializing the sequence number to 1, Security
+		 * engine will choose this sequence number for first packet
+		 * Refer: RFC4303 section: 3.3.3.Sequence Number Generation
+		 */
+		session->encap_pdb.seq_num = 1;
+		if (ipsec_xform->options.esn) {
+			session->encap_pdb.options |= PDBOPTS_ESP_ESN;
+			session->encap_pdb.seq_num_ext_hi = conf->ipsec.esn.hi;
+			session->encap_pdb.seq_num = conf->ipsec.esn.low;
+		}
 
 	} else if (ipsec_xform->direction ==
 			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
@@ -3022,8 +3030,11 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 		else
 			session->decap_pdb.options =
 					sizeof(struct rte_ipv6_hdr) << 16;
-		if (ipsec_xform->options.esn)
+		if (ipsec_xform->options.esn) {
 			session->decap_pdb.options |= PDBOPTS_ESP_ESN;
+			session->decap_pdb.seq_num_ext_hi = conf->ipsec.esn.hi;
+			session->decap_pdb.seq_num = conf->ipsec.esn.low;
+		}
 		if (ipsec_xform->replay_win_sz) {
 			uint32_t win_sz;
 			win_sz = rte_align32pow2(ipsec_xform->replay_win_sz);
