@@ -770,6 +770,8 @@ F: doc/guides/nics/features/e1000.ini
 F: doc/guides/nics/features/igb*.ini
 
 Intel ixgbe
+M: Anatoly Burakov <anatoly.burakov@intel.com>
+M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ixgbe/
 F: doc/guides/nics/ixgbe.rst
@@ -777,6 +779,8 @@ F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/ixgbe*.ini
 
 Intel i40e
+M: Ian Stokes <ian.stokes@intel.com>
+M: Bruce Richardson <bruce.richardson@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/i40e/
 F: doc/guides/nics/i40e.rst
@@ -790,13 +794,16 @@ F: doc/guides/nics/fm10k.rst
 F: doc/guides/nics/features/fm10k*.ini
 
 Intel iavf
-M: Jingjing Wu <jingjing.wu@intel.com>
+M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
+M: Ian Stokes <ian.stokes@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/iavf/
 F: drivers/common/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
 Intel ice
+M: Bruce Richardson <bruce.richardson@intel.com>
+M: Anatoly Burakov <anatoly.burakov@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ice/
 F: doc/guides/nics/ice.rst
