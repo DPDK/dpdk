@@ -546,7 +546,8 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	else
 		total_queues += 1; /* Includes ctrl queue */
 
-	if (access(path, F_OK) == 0) {
+	dev_fd = open(path, O_RDWR);
+	if (dev_fd >= 0) {
 		VHOST_CONFIG_LOG(name, INFO, "Device already exists, reconnecting...");
 		reconnect = true;
 
@@ -559,7 +560,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 				VHOST_CONFIG_LOG(name, ERR, "Failed to open reconnect file %s (%s)",
 						reconnect_file, strerror(errno));
 			ret = -1;
-			goto out_ctrl_close;
+			goto out_dev_close;
 		}
 
 		reconnect_log = mmap(NULL, sizeof(*reconnect_log), PROT_READ | PROT_WRITE,
@@ -569,7 +570,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 			VHOST_CONFIG_LOG(name, ERR, "Failed to mmap reconnect file %s (%s)",
 					reconnect_file, strerror(errno));
 			ret = -1;
-			goto out_ctrl_close;
+			goto out_dev_close;
 		}
 
 		if (reconnect_log->version != VHOST_RECONNECT_VERSION) {
@@ -593,7 +594,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 			ret = -1;
 			goto out_log_unmap;
 		}
-	} else {
+	} else if (errno == ENOENT) {
 		struct vduse_dev_config *dev_config;
 
 		reco_fd = open(reconnect_file, O_CREAT | O_EXCL | O_RDWR, 0600);
@@ -660,34 +661,39 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 		memcpy(&reconnect_log->config, &vnet_config, sizeof(vnet_config));
 		reconnect_log->nr_vrings = total_queues;
-	}
 
-	dev_fd = open(path, O_RDWR);
-	if (dev_fd < 0) {
+		dev_fd = open(path, O_RDWR);
+		if (dev_fd < 0) {
+			VHOST_CONFIG_LOG(name, ERR, "Failed to open newly created device %s: %s",
+					path, strerror(errno));
+			ret = -1;
+			goto out_log_unmap;
+		}
+	} else {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to open device %s: %s",
 				path, strerror(errno));
 		ret = -1;
-		goto out_dev_close;
+		goto out_ctrl_close;
 	}
 
 	ret = fcntl(dev_fd, F_SETFL, O_NONBLOCK);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to set chardev as non-blocking: %s",
 				strerror(errno));
-		goto out_dev_close;
+		goto out_log_unmap;
 	}
 
 	vid = vhost_new_device(&vduse_backend_ops);
 	if (vid < 0) {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to create new Vhost device");
 		ret = -1;
-		goto out_dev_close;
+		goto out_log_unmap;
 	}
 
 	dev = get_device(vid);
 	if (!dev) {
 		ret = -1;
-		goto out_dev_close;
+		goto out_dev_destroy;
 	}
 
 	strncpy(dev->ifname, path, IF_NAME_SZ - 1);
@@ -766,13 +772,13 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 out_dev_destroy:
 	vhost_destroy_device(vid);
+out_log_unmap:
+	if (reconnect_log != MAP_FAILED)
+		munmap(reconnect_log, sizeof(*reconnect_log));
 out_dev_close:
 	if (dev_fd >= 0)
 		close(dev_fd);
 	ioctl(control_fd, VDUSE_DESTROY_DEV, name);
-out_log_unmap:
-	if (reconnect_log != MAP_FAILED)
-		munmap(reconnect_log, sizeof(*reconnect_log));
 out_ctrl_close:
 	close(control_fd);
 
