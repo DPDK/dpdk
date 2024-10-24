@@ -59,4 +59,5 @@ INTERNAL {
 
 	rte_thash_gfni_stub;
 	rte_thash_gfni_bulk_stub;
+	thash_get_rand_poly;
 };

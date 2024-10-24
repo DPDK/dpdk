@@ -108,6 +108,19 @@ union rte_thash_tuple {
 	struct rte_ipv6_tuple	v6;
 };
 
+/** @internal
+ *  @brief Generates a random polynomial
+ *
+ * @param poly_degree
+ *   degree of the polynomial
+ *
+ * @return
+ *   random polynomial
+ */
+__rte_internal
+uint32_t
+thash_get_rand_poly(uint32_t poly_degree);
+
 /**
  * Prepare special converted key to use with rte_softrss_be()
  * @param orig

@@ -31,33 +31,6 @@ static struct rte_tailq_elem rte_thash_tailq = {
 };
 EAL_REGISTER_TAILQ(rte_thash_tailq)
 
-/**
- * Table of some irreducible polinomials over GF(2).
- * For lfsr they are represented in BE bit order, and
- * x^0 is masked out.
- * For example, poly x^5 + x^2 + 1 will be represented
- * as (101001b & 11111b) = 01001b = 0x9
- */
-static const uint32_t irreducible_poly_table[][4] = {
-	{0, 0, 0, 0},	/** < degree 0 */
-	{1, 1, 1, 1},	/** < degree 1 */
-	{0x3, 0x3, 0x3, 0x3},	/** < degree 2 and so on... */
-	{0x5, 0x3, 0x5, 0x3},
-	{0x9, 0x3, 0x9, 0x3},
-	{0x9, 0x1b, 0xf, 0x5},
-	{0x21, 0x33, 0x1b, 0x2d},
-	{0x41, 0x11, 0x71, 0x9},
-	{0x71, 0xa9, 0xf5, 0x8d},
-	{0x21, 0xd1, 0x69, 0x1d9},
-	{0x81, 0x2c1, 0x3b1, 0x185},
-	{0x201, 0x541, 0x341, 0x461},
-	{0x941, 0x609, 0xe19, 0x45d},
-	{0x1601, 0x1f51, 0x1171, 0x359},
-	{0x2141, 0x2111, 0x2db1, 0x2109},
-	{0x4001, 0x801, 0x101, 0x7301},
-	{0x7781, 0xa011, 0x4211, 0x86d9},
-};
-
 struct thash_lfsr {
 	uint32_t	ref_cnt;
 	uint32_t	poly;
@@ -160,13 +133,6 @@ get_rev_bit_lfsr(struct thash_lfsr *lfsr)
 }
 
 static inline uint32_t
-thash_get_rand_poly(uint32_t poly_degree)
-{
-	return irreducible_poly_table[poly_degree][rte_rand() %
-		RTE_DIM(irreducible_poly_table[poly_degree])];
-}
-
-static inline uint32_t
 get_rev_poly(uint32_t poly, int degree)
 {
 	int i;
@@ -191,19 +157,19 @@ get_rev_poly(uint32_t poly, int degree)
 }
 
 static struct thash_lfsr *
-alloc_lfsr(struct rte_thash_ctx *ctx)
+alloc_lfsr(uint32_t poly_degree)
 {
 	struct thash_lfsr *lfsr;
 	uint32_t i;
 
-	if (ctx == NULL)
+	if ((poly_degree > 32) || (poly_degree == 0))
 		return NULL;
 
 	lfsr = rte_zmalloc(NULL, sizeof(struct thash_lfsr), 0);
 	if (lfsr == NULL)
 		return NULL;
 
-	lfsr->deg = ctx->reta_sz_log;
+	lfsr->deg = poly_degree;
 	lfsr->poly = thash_get_rand_poly(lfsr->deg);
 	do {
 		lfsr->state = rte_rand() & ((1 << lfsr->deg) - 1);
@@ -484,7 +450,7 @@ insert_before(struct rte_thash_ctx *ctx,
 	int ret;
 
 	if (end < cur_ent->offset) {
-		ent->lfsr = alloc_lfsr(ctx);
+		ent->lfsr = alloc_lfsr(ctx->reta_sz_log);
 		if (ent->lfsr == NULL) {
 			rte_free(ent);
 			return -ENOMEM;
@@ -637,7 +603,7 @@ rte_thash_add_helper(struct rte_thash_ctx *ctx, const char *name, uint32_t len,
 		continue;
 	}
 
-	ent->lfsr = alloc_lfsr(ctx);
+	ent->lfsr = alloc_lfsr(ctx->reta_sz_log);
 	if (ent->lfsr == NULL) {
 		rte_free(ent);
 		return -ENOMEM;
