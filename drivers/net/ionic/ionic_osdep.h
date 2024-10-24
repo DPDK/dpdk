@@ -30,14 +30,28 @@
 
 #define __iomem
 
-typedef uint8_t	 u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
+#ifndef u8
+#define u8 uint8_t
+#endif
+#ifndef u16
+#define u16 uint16_t
+#endif
+#ifndef u32
+#define u32 uint32_t
+#endif
+#ifndef u64
+#define u64 uint64_t
+#endif
 
-typedef uint16_t __le16;
-typedef uint32_t __le32;
-typedef uint64_t __le64;
+#ifndef __le16
+#define __le16 rte_le16_t
+#endif
+#ifndef __le32
+#define __le32 rte_le32_t
+#endif
+#ifndef __le64
+#define __le64 rte_le64_t
+#endif
 
 #define ioread8(reg)		rte_read8(reg)
 #define ioread32(reg)		rte_read32(rte_le_to_cpu_32(reg))
