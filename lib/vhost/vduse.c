@@ -431,6 +431,9 @@ vduse_reconnect_path_init(void)
 	const char *directory;
 	int ret;
 
+	if (vduse_reconnect_path_set == true)
+		return 0;
+
 	/* from RuntimeDirectory= see systemd.exec */
 	directory = getenv("RUNTIME_DIRECTORY");
 	if (directory == NULL) {
@@ -462,7 +465,72 @@ vduse_reconnect_path_init(void)
 	VHOST_CONFIG_LOG("vduse", INFO, "Created VDUSE reconnect directory in %s",
 			vduse_reconnect_dir);
 
+	vduse_reconnect_path_set = true;
+
 	return 0;
+}
+
+static int
+vduse_reconnect_log_map(const char *dev_name, struct vhost_reconnect_data **reco_log, bool create)
+{
+	char reco_file[PATH_MAX];
+	int fd, ret;
+
+	if (vduse_reconnect_path_init() < 0) {
+		VHOST_CONFIG_LOG(dev_name, ERR, "Failed to initialize reconnect path");
+		return -1;
+	}
+
+	ret = snprintf(reco_file, sizeof(reco_file), "%s/%s", vduse_reconnect_dir, dev_name);
+	if (ret < 0 || ret == sizeof(reco_file)) {
+		VHOST_CONFIG_LOG(dev_name, ERR, "Failed to create vduse reconnect path name");
+		return -1;
+	}
+
+	if (create) {
+		fd = open(reco_file, O_CREAT | O_EXCL | O_RDWR, 0600);
+		if (fd < 0) {
+			if (errno == EEXIST) {
+				VHOST_CONFIG_LOG(dev_name, ERR, "Reconnect file %s exists but not the device",
+						reco_file);
+			} else {
+				VHOST_CONFIG_LOG(dev_name, ERR, "Failed to open reconnect file %s (%s)",
+						reco_file, strerror(errno));
+			}
+			return -1;
+		}
+
+		ret = ftruncate(fd, sizeof(**reco_log));
+		if (ret < 0) {
+			VHOST_CONFIG_LOG(dev_name, ERR, "Failed to truncate reconnect file %s (%s)",
+					reco_file, strerror(errno));
+			goto out_close;
+		}
+	} else {
+		fd = open(reco_file, O_RDWR, 0600);
+		if (fd < 0) {
+			if (errno == ENOENT)
+				VHOST_CONFIG_LOG(dev_name, ERR, "Missing reconnect file (%s)", reco_file);
+			else
+				VHOST_CONFIG_LOG(dev_name, ERR, "Failed to open reconnect file %s (%s)",
+						reco_file, strerror(errno));
+			return -1;
+		}
+	}
+
+	*reco_log = mmap(NULL, sizeof(**reco_log), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	if (*reco_log == MAP_FAILED) {
+		VHOST_CONFIG_LOG(dev_name, ERR, "Failed to mmap reconnect file %s (%s)",
+				reco_file, strerror(errno));
+		ret = -1;
+		goto out_close;
+	}
+	ret = 0;
+
+out_close:
+	close(fd);
+
+	return ret;
 }
 
 static void
@@ -519,14 +587,13 @@ out_err:
 int
 vduse_device_create(const char *path, bool compliant_ol_flags)
 {
-	int control_fd, dev_fd, vid, ret, reco_fd;
+	int control_fd, dev_fd, vid, ret;
 	uint32_t i, max_queue_pairs, total_queues;
 	struct virtio_net *dev;
 	struct virtio_net_config vnet_config = {{ 0 }};
 	uint64_t ver = VHOST_VDUSE_API_VERSION;
 	uint64_t features;
 	const char *name = path + strlen("/dev/vduse/");
-	char reconnect_file[PATH_MAX];
 	struct vhost_reconnect_data *reconnect_log = MAP_FAILED;
 	bool reconnect = false;
 
@@ -536,20 +603,6 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 			VHOST_CONFIG_LOG(path, ERR, "failed to init VDUSE fdset");
 			return -1;
 		}
-	}
-
-	if (vduse_reconnect_path_set == false) {
-		if (vduse_reconnect_path_init() < 0) {
-			VHOST_CONFIG_LOG(path, ERR, "failed to initialize reconnect path");
-			return -1;
-		}
-		vduse_reconnect_path_set = true;
-	}
-
-	ret = snprintf(reconnect_file, sizeof(reconnect_file), "%s/%s", vduse_reconnect_dir, name);
-	if (ret < 0 || ret == sizeof(reconnect_file)) {
-		VHOST_CONFIG_LOG(name, ERR, "Failed to create vduse reconnect path name");
-		return -1;
 	}
 
 	control_fd = open(VDUSE_CTRL_PATH, O_RDWR);
@@ -591,27 +644,9 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		VHOST_CONFIG_LOG(name, INFO, "Device already exists, reconnecting...");
 		reconnect = true;
 
-		reco_fd = open(reconnect_file, O_RDWR, 0600);
-		if (reco_fd < 0) {
-			if (errno == ENOENT)
-				VHOST_CONFIG_LOG(name, ERR, "Missing reconnect file (%s)",
-						reconnect_file);
-			else
-				VHOST_CONFIG_LOG(name, ERR, "Failed to open reconnect file %s (%s)",
-						reconnect_file, strerror(errno));
-			ret = -1;
+		ret = vduse_reconnect_log_map(name, &reconnect_log, false);
+		if (ret < 0)
 			goto out_dev_close;
-		}
-
-		reconnect_log = mmap(NULL, sizeof(*reconnect_log), PROT_READ | PROT_WRITE,
-				MAP_SHARED, reco_fd, 0);
-		close(reco_fd);
-		if (reconnect_log == MAP_FAILED) {
-			VHOST_CONFIG_LOG(name, ERR, "Failed to mmap reconnect file %s (%s)",
-					reconnect_file, strerror(errno));
-			ret = -1;
-			goto out_dev_close;
-		}
 
 		if (reconnect_log->version != VHOST_RECONNECT_VERSION) {
 			VHOST_CONFIG_LOG(name, ERR,
@@ -637,36 +672,9 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	} else if (errno == ENOENT) {
 		struct vduse_dev_config *dev_config;
 
-		reco_fd = open(reconnect_file, O_CREAT | O_EXCL | O_RDWR, 0600);
-		if (reco_fd < 0) {
-			if (errno == EEXIST) {
-				VHOST_CONFIG_LOG(name, ERR, "Reconnect file %s exists but not the device",
-						reconnect_file);
-			} else {
-				VHOST_CONFIG_LOG(name, ERR, "Failed to open reconnect file %s (%s)",
-						reconnect_file, strerror(errno));
-			}
-			ret = -1;
+		ret = vduse_reconnect_log_map(name, &reconnect_log, true);
+		if (ret < 0)
 			goto out_ctrl_close;
-		}
-
-		ret = ftruncate(reco_fd, sizeof(*reconnect_log));
-		if (ret < 0) {
-			VHOST_CONFIG_LOG(name, ERR, "Failed to truncate reconnect file %s (%s)",
-					reconnect_file, strerror(errno));
-			close(reco_fd);
-			goto out_ctrl_close;
-		}
-
-		reconnect_log = mmap(NULL, sizeof(*reconnect_log), PROT_READ | PROT_WRITE,
-					MAP_SHARED, reco_fd, 0);
-		close(reco_fd);
-		if (reconnect_log == MAP_FAILED) {
-			VHOST_CONFIG_LOG(name, ERR, "Failed to mmap reconnect file %s (%s)",
-					reconnect_file, strerror(errno));
-			ret = -1;
-			goto out_ctrl_close;
-		}
 
 		reconnect_log->version = VHOST_RECONNECT_VERSION;
 
