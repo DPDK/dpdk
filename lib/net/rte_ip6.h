@@ -84,8 +84,8 @@ static inline void
 rte_ipv6_addr_mask(struct rte_ipv6_addr *ip, uint8_t depth)
 {
 	if (depth < RTE_IPV6_MAX_DEPTH) {
-		uint8_t d = depth / 8;
-		uint8_t mask = ~(UINT8_MAX >> (depth % 8));
+		unsigned int d = depth / CHAR_BIT;
+		uint8_t mask = ~(UINT8_MAX >> (depth % CHAR_BIT));
 		ip->a[d] &= mask;
 		d++;
 		memset(&ip->a[d], 0, sizeof(*ip) - d);
@@ -108,8 +108,8 @@ static inline bool
 rte_ipv6_addr_eq_prefix(const struct rte_ipv6_addr *a, const struct rte_ipv6_addr *b, uint8_t depth)
 {
 	if (depth < RTE_IPV6_MAX_DEPTH) {
-		uint8_t d = depth / 8;
-		uint8_t mask = ~(UINT8_MAX >> (depth % 8));
+		unsigned int d = depth / CHAR_BIT;
+		uint8_t mask = ~(UINT8_MAX >> (depth % CHAR_BIT));
 
 		if ((a->a[d] ^ b->a[d]) & mask)
 			return false;
