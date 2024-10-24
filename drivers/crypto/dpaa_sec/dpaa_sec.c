@@ -3023,18 +3023,28 @@ dpaa_sec_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 			session->encap_pdb.seq_num = conf->ipsec.esn.low;
 		}
 
+		if (ipsec_xform->options.ecn)
+			session->encap_pdb.options |= PDBOPTS_ESP_TECN;
 	} else if (ipsec_xform->direction ==
 			RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
-		if (ipsec_xform->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4)
+		if (ipsec_xform->tunnel.type == RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
 			session->decap_pdb.options = sizeof(struct ip) << 16;
-		else
+			if (ipsec_xform->options.copy_df)
+				session->decap_pdb.options |= PDBHMO_ESP_DFV;
+		} else {
 			session->decap_pdb.options =
 					sizeof(struct rte_ipv6_hdr) << 16;
+		}
 		if (ipsec_xform->options.esn) {
 			session->decap_pdb.options |= PDBOPTS_ESP_ESN;
 			session->decap_pdb.seq_num_ext_hi = conf->ipsec.esn.hi;
 			session->decap_pdb.seq_num = conf->ipsec.esn.low;
 		}
+		if (ipsec_xform->options.copy_dscp)
+			session->decap_pdb.options |= PDBHMO_ESP_DIFFSERV;
+		if (ipsec_xform->options.ecn)
+			session->decap_pdb.options |= PDBOPTS_ESP_TECN;
+
 		if (ipsec_xform->replay_win_sz) {
 			uint32_t win_sz;
 			win_sz = rte_align32pow2(ipsec_xform->replay_win_sz);

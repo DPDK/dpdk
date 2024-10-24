@@ -990,6 +990,10 @@ static const struct rte_security_capability dpaa_sec_security_cap[] = {
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_EGRESS,
 			.options = {
+				.copy_df = 1,
+				.copy_dscp = 1,
+				.dec_ttl = 1,
+				.ecn = 1,
 				.esn = 1,
 			},
 			.replay_win_sz_max = 128
@@ -1004,6 +1008,10 @@ static const struct rte_security_capability dpaa_sec_security_cap[] = {
 			.mode = RTE_SECURITY_IPSEC_SA_MODE_TUNNEL,
 			.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS,
 			.options = {
+				.copy_df = 1,
+				.copy_dscp = 1,
+				.dec_ttl = 1,
+				.ecn = 1,
 				.esn = 1,
 			},
 			.replay_win_sz_max = 128
