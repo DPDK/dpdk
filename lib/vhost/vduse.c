@@ -533,6 +533,35 @@ out_close:
 	return ret;
 }
 
+static int
+vduse_reconnect_log_check(struct vhost_reconnect_data *reco_log,
+			  const char *dev_name,
+			  uint64_t features, uint32_t total_queues)
+{
+	if (reco_log->version != VHOST_RECONNECT_VERSION) {
+		VHOST_CONFIG_LOG(dev_name, ERR,
+				"Version mismatch between backend (0x%x) & reconnection file (0x%x)",
+				VHOST_RECONNECT_VERSION, reco_log->version);
+		return -1;
+	}
+
+	if ((reco_log->features & features) != reco_log->features) {
+		VHOST_CONFIG_LOG(dev_name, ERR,
+				"Features mismatch between backend (0x%" PRIx64 ") & reconnection file (0x%" PRIx64 ")",
+				features, reco_log->features);
+		return -1;
+	}
+
+	if (reco_log->nr_vrings != total_queues) {
+		VHOST_CONFIG_LOG(dev_name, ERR,
+				"Queues number mismatch between backend (%u) and reconnection file (%u)",
+				total_queues, reco_log->nr_vrings);
+		return -1;
+	}
+
+	return 0;
+}
+
 static void
 vduse_reconnect_handler(int fd, void *arg, int *remove)
 {
@@ -648,27 +677,9 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		if (ret < 0)
 			goto out_dev_close;
 
-		if (reconnect_log->version != VHOST_RECONNECT_VERSION) {
-			VHOST_CONFIG_LOG(name, ERR,
-					"Version mismatch between backend (0x%x) & reconnection file (0x%x)",
-					VHOST_RECONNECT_VERSION, reconnect_log->version);
-		}
-
-		if ((reconnect_log->features & features) != reconnect_log->features) {
-			VHOST_CONFIG_LOG(name, ERR,
-					"Features mismatch between backend (0x%" PRIx64 ") & reconnection file (0x%" PRIx64 ")",
-					features, reconnect_log->features);
-			ret = -1;
+		ret = vduse_reconnect_log_check(reconnect_log, name, features, total_queues);
+		if (ret < 0)
 			goto out_log_unmap;
-		}
-
-		if (reconnect_log->nr_vrings != total_queues) {
-			VHOST_CONFIG_LOG(name, ERR,
-					"Queues number mismatch between backend (%u) and reconnection file (%u)",
-					total_queues, reconnect_log->nr_vrings);
-			ret = -1;
-			goto out_log_unmap;
-		}
 	} else if (errno == ENOENT) {
 		struct vduse_dev_config *dev_config;
 
