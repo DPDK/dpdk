@@ -38,6 +38,8 @@ typedef union dpi_mbox_msg_t {
 		uint64_t wqecs : 1;
 		/* WQE queue DMA completion status offset */
 		uint64_t wqecsoff : 8;
+		/* Priority */
+		uint64_t pri : 1;
 	} s;
 } dpi_mbox_msg_t;
 

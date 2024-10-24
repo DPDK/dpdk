@@ -20,6 +20,10 @@ cnxk_dmadev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_inf
 			     RTE_DMA_CAPA_DEV_TO_MEM | RTE_DMA_CAPA_DEV_TO_DEV |
 			     RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG |
 			     RTE_DMA_CAPA_M2D_AUTO_FREE;
+	if (roc_feature_dpi_has_priority()) {
+		dev_info->dev_capa |= RTE_DMA_CAPA_PRI_POLICY_SP;
+		dev_info->nb_priorities = CN10K_DPI_MAX_PRI;
+	}
 	dev_info->max_desc = CNXK_DPI_MAX_DESC;
 	dev_info->min_desc = CNXK_DPI_MIN_DESC;
 	dev_info->max_sges = CNXK_DPI_MAX_POINTER;
@@ -107,6 +111,8 @@ cnxk_dmadev_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf, 
 	 */
 	cnxk_dmadev_vchan_free(dpivf, RTE_DMA_ALL_VCHAN);
 	dpivf->num_vchans = conf->nb_vchans;
+	if (roc_feature_dpi_has_priority())
+		dpivf->rdpi.priority = conf->priority;
 
 	return 0;
 }

@@ -95,6 +95,7 @@ roc_dpi_configure(struct roc_dpi *roc_dpi, uint32_t chunk_sz, uint64_t aura, uin
 	mbox_msg.u[1] = 0;
 	/* DPI PF driver expects vfid starts from index 0 */
 	mbox_msg.s.vfid = roc_dpi->vfid;
+	mbox_msg.s.pri = roc_dpi->priority;
 	mbox_msg.s.cmd = DPI_QUEUE_OPEN;
 	mbox_msg.s.csize = chunk_sz;
 	mbox_msg.s.aura = aura;
@@ -137,6 +138,7 @@ roc_dpi_configure_v2(struct roc_dpi *roc_dpi, uint32_t chunk_sz, uint64_t aura, 
 	mbox_msg.u[1] = 0;
 	/* DPI PF driver expects vfid starts from index 0 */
 	mbox_msg.s.vfid = roc_dpi->vfid;
+	mbox_msg.s.pri = roc_dpi->priority;
 	mbox_msg.s.cmd = DPI_QUEUE_OPEN_V2;
 	mbox_msg.s.csize = chunk_sz / 8;
 	mbox_msg.s.aura = aura;

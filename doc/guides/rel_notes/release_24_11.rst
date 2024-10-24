@@ -200,6 +200,10 @@ New Features
   to check if the DMA device supports assigning fixed priority,
   allowing for better control over resource allocation and scheduling.
 
+* **Updated Marvell cnxk DMA driver.**
+
+  * Added support for DMA queue priority configuration.
+
 * **Added event device pre-scheduling support.**
 
   Added support for pre-scheduling of events to event ports
