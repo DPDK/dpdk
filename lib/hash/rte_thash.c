@@ -822,3 +822,29 @@ rte_thash_adjust_tuple(struct rte_thash_ctx *ctx,
 
 	return ret;
 }
+
+int
+rte_thash_gen_key(uint8_t *key, size_t key_len, size_t reta_sz_log,
+	uint32_t entropy_start, size_t entropy_sz)
+{
+	size_t i, end, start;
+
+	/* define lfsr sequence range*/
+	end = entropy_start + entropy_sz + TOEPLITZ_HASH_LEN - 1;
+	start = end - (entropy_sz + reta_sz_log - 1);
+
+	if ((key == NULL) || (key_len * CHAR_BIT < entropy_start + entropy_sz) ||
+			(entropy_sz < reta_sz_log) || (reta_sz_log > TOEPLITZ_HASH_LEN))
+		return -EINVAL;
+
+	struct thash_lfsr *lfsr = alloc_lfsr(reta_sz_log);
+	if (lfsr == NULL)
+		return -ENOMEM;
+
+	for (i = start; i < end; i++)
+		set_bit(key, get_bit_lfsr(lfsr), i);
+
+	free_lfsr(lfsr);
+
+	return 0;
+}

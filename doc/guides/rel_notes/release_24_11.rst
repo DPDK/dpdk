@@ -276,6 +276,11 @@ New Features
   This field is used to pass an extra configuration settings such as ability
   to lookup IPv4 addresses in network byte order.
 
+* **Added RSS hash key generating API.**
+
+  A new function ``rte_thash_gen_key`` is provided to modify the RSS hash key
+  to achieve better traffic distribution with RSS.
+
 * **Added per-CPU power management QoS interface.**
 
   Added per-CPU PM QoS interface to lower the resume latency
