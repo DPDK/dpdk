@@ -476,6 +476,46 @@ vduse_reconnect_handler(int fd, void *arg, int *remove)
 	*remove = 1;
 }
 
+static int
+vduse_reconnect_start_device(struct virtio_net *dev)
+{
+	int fd, ret;
+
+	/*
+	 * Make vduse_device_start() being executed in the same
+	 * context for both reconnection and fresh startup.
+	 */
+	fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+	if (fd < 0) {
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to create reconnect efd: %s",
+				strerror(errno));
+		ret = -1;
+		goto out_err;
+	}
+
+	ret = fdset_add(vduse.fdset, fd, vduse_reconnect_handler, NULL, dev);
+	if (ret) {
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to add reconnect efd %d to vduse fdset",
+				fd);
+		goto out_err_close;
+	}
+
+	ret = eventfd_write(fd, (eventfd_t)1);
+	if (ret < 0) {
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to write to reconnect eventfd");
+		goto out_err_fdset;
+	}
+
+	return 0;
+
+out_err_fdset:
+	fdset_del(vduse.fdset, fd);
+out_err_close:
+	close(fd);
+out_err:
+	return ret;
+}
+
 int
 vduse_device_create(const char *path, bool compliant_ol_flags)
 {
@@ -742,30 +782,9 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	}
 
 	if (reconnect && dev->status & VIRTIO_DEVICE_STATUS_DRIVER_OK)  {
-		/*
-		 * Make vduse_device_start() being executed in the same
-		 * context for both reconnection and fresh startup.
-		 */
-		reco_fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-		if (reco_fd < 0) {
-			VHOST_CONFIG_LOG(name, ERR, "Failed to create reco_fd: %s",
-					strerror(errno));
-			ret = -1;
+		ret = vduse_reconnect_start_device(dev);
+		if (ret)
 			goto out_dev_destroy;
-		}
-
-		ret = fdset_add(vduse.fdset, reco_fd, vduse_reconnect_handler, NULL, dev);
-		if (ret) {
-			VHOST_CONFIG_LOG(name, ERR, "Failed to add reconnect fd %d to vduse fdset",
-					reco_fd);
-			goto out_dev_destroy;
-		}
-
-		ret = eventfd_write(reco_fd, (eventfd_t)1);
-		if (ret < 0) {
-			VHOST_CONFIG_LOG(name, ERR, "Failed to write to reconnect eventfd");
-			goto out_dev_destroy;
-		}
 	}
 
 	return 0;
