@@ -5162,6 +5162,8 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	matcher_attr.optimize_using_rule_idx = true;
 	matcher_attr.mode = MLX5DR_MATCHER_RESOURCE_MODE_RULE;
 	matcher_attr.insert_mode = flow_hw_matcher_insert_mode_get(attr->insertion_type);
+	if (matcher_attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX)
+		matcher_attr.match_mode = MLX5DR_MATCHER_MATCH_MODE_ALWAYS_HIT;
 	if (attr->hash_func == RTE_FLOW_TABLE_HASH_FUNC_CRC16) {
 		DRV_LOG(ERR, "16-bit checksum hash type is not supported");
 		rte_errno = ENOTSUP;

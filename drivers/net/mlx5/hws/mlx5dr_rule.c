@@ -539,7 +539,7 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 			 * will always match and perform the specified actions, which
 			 * makes the tag irrelevant.
 			 */
-			if (likely(!mlx5dr_matcher_is_insert_by_idx(matcher) && !is_update))
+			if (likely(!mlx5dr_matcher_is_always_hit(matcher) && !is_update))
 				mlx5dr_definer_create_tag(items, mt->fc, mt->fc_sz,
 							  (uint8_t *)dep_wqe->wqe_data.action);
 			else if (unlikely(is_update))

@@ -28,6 +28,7 @@ enum mlx5dr_matcher_flags {
 	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 2,
 	MLX5DR_MATCHER_FLAGS_RESIZABLE		= 1 << 3,
 	MLX5DR_MATCHER_FLAGS_COMPARE		= 1 << 4,
+	MLX5DR_MATCHER_FLAGS_STE_ARRAY		= 1 << 5,
 };
 
 struct mlx5dr_match_template {
@@ -144,6 +145,11 @@ int mlx5dr_matcher_create_aliased_obj(struct mlx5dr_context *ctx,
 static inline bool mlx5dr_matcher_is_insert_by_idx(struct mlx5dr_matcher *matcher)
 {
 	return matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX;
+}
+
+static inline bool mlx5dr_matcher_is_always_hit(struct mlx5dr_matcher *matcher)
+{
+	return matcher->attr.match_mode == MLX5DR_MATCHER_MATCH_MODE_ALWAYS_HIT;
 }
 
 int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,

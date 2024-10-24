@@ -198,6 +198,18 @@ static int mlx5dr_matcher_connect(struct mlx5dr_matcher *matcher)
 	struct mlx5dr_matcher *tmp_matcher;
 	int ret;
 
+	if (matcher->attr.isolated) {
+		LIST_INSERT_HEAD(&tbl->isolated_matchers, matcher, next);
+		ret = mlx5dr_table_connect_src_ft_to_miss_table(tbl, matcher->end_ft,
+								tbl->default_miss.miss_tbl);
+		if (ret) {
+			DR_LOG(ERR, "Failed to connect the new matcher to the miss_tbl");
+			goto remove_from_list;
+		}
+
+		return 0;
+	}
+
 	/* Find location in matcher list */
 	if (LIST_EMPTY(&tbl->head)) {
 		LIST_INSERT_HEAD(&tbl->head, matcher, next);
@@ -230,7 +242,7 @@ connect:
 		}
 	} else {
 		/* Connect last matcher to next miss_tbl if exists */
-		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl);
+		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl, true);
 		if (ret) {
 			DR_LOG(ERR, "Failed connect new matcher to miss_tbl");
 			goto remove_from_list;
@@ -284,6 +296,11 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 	struct mlx5dr_matcher *next;
 	int ret;
 
+	if (matcher->attr.isolated) {
+		LIST_REMOVE(matcher, next);
+		return 0;
+	}
+
 	prev_ft = tbl->ft;
 	prev_matcher = LIST_FIRST(&tbl->head);
 	LIST_FOREACH(tmp_matcher, &tbl->head, next) {
@@ -309,7 +326,7 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 			goto matcher_reconnect;
 		}
 	} else {
-		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl);
+		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl, true);
 		if (ret) {
 			DR_LOG(ERR, "Failed to disconnect last matcher");
 			goto matcher_reconnect;
@@ -518,14 +535,17 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 			}
 		} else if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX) {
 			rtc_attr.update_index_mode = MLX5_IFC_RTC_STE_UPDATE_MODE_BY_OFFSET;
-			rtc_attr.num_hash_definer = 1;
 
 			if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
 				/* Hash Split Table */
+				if (mlx5dr_matcher_is_always_hit(matcher))
+					rtc_attr.num_hash_definer = 1;
+
 				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_BY_HASH;
 				rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
 			} else if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR) {
 				/* Linear Lookup Table */
+				rtc_attr.num_hash_definer = 1;
 				rtc_attr.access_index_mode = MLX5_IFC_RTC_STE_ACCESS_MODE_LINEAR;
 				rtc_attr.match_definer_0 = ctx->caps->linear_match_definer;
 			}
@@ -973,8 +993,15 @@ mlx5dr_matcher_validate_insert_mode(struct mlx5dr_cmd_query_caps *caps,
 
 		if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
 			/* Hash Split Table */
-			if (!caps->rtc_hash_split_table) {
+			if (attr->match_mode == MLX5DR_MATCHER_MATCH_MODE_ALWAYS_HIT &&
+			    !caps->rtc_hash_split_table) {
 				DR_LOG(ERR, "FW doesn't support insert by index and hash distribute");
+				goto not_supported;
+			}
+
+			if (attr->match_mode == MLX5DR_MATCHER_MATCH_MODE_DEFAULT &&
+			    !attr->isolated) {
+				DR_LOG(ERR, "STE array matcher supported only as an isolated matcher");
 				goto not_supported;
 			}
 		} else if (attr->distribute_mode == MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR) {
@@ -989,6 +1016,12 @@ mlx5dr_matcher_validate_insert_mode(struct mlx5dr_cmd_query_caps *caps,
 			if (attr->table.sz_row_log > MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX) {
 				DR_LOG(ERR, "Matcher with linear distribute: rows exceed limit %d",
 				       MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX);
+				goto not_supported;
+			}
+
+			if (attr->match_mode != MLX5DR_MATCHER_MATCH_MODE_ALWAYS_HIT) {
+				DR_LOG(ERR, "Linear lookup tables will always hit, given match mode is not supported %d\n",
+				       attr->match_mode);
 				goto not_supported;
 			}
 		} else {
@@ -1032,6 +1065,11 @@ mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
 			DR_LOG(ERR, "Root matcher does not support resizing");
 			goto not_supported;
 		}
+		if (attr->isolated) {
+			DR_LOG(ERR, "Root matcher can not be isolated");
+			goto not_supported;
+		}
+
 		return 0;
 	}
 
@@ -1044,6 +1082,18 @@ mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
 	if (attr->mode == MLX5DR_MATCHER_RESOURCE_MODE_RULE &&
 	    attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH)
 		attr->table.sz_col_log = mlx5dr_matcher_rules_to_tbl_depth(attr->rule.num_log);
+
+	if (attr->isolated) {
+		if (attr->insert_mode != MLX5DR_MATCHER_INSERT_BY_INDEX ||
+		    attr->distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH ||
+		    attr->match_mode != MLX5DR_MATCHER_MATCH_MODE_DEFAULT) {
+			DR_LOG(ERR, "Isolated matcher only supported for STE array matcher");
+			goto not_supported;
+		}
+
+		/* We reach here only in case of STE array */
+		matcher->flags |= MLX5DR_MATCHER_FLAGS_STE_ARRAY;
+	}
 
 	matcher->flags |= attr->resizable ? MLX5DR_MATCHER_FLAGS_RESIZABLE : 0;
 

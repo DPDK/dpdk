@@ -23,6 +23,7 @@ struct mlx5dr_table {
 	uint32_t fw_ft_type;
 	uint32_t level;
 	LIST_HEAD(matcher_head, mlx5dr_matcher) head;
+	LIST_HEAD(isolated_matchers_head, mlx5dr_matcher) isolated_matchers;
 	LIST_ENTRY(mlx5dr_table) next;
 	struct mlx5dr_default_miss default_miss;
 };
@@ -54,7 +55,8 @@ void mlx5dr_table_destroy_default_ft(struct mlx5dr_table *tbl,
 				     struct mlx5dr_devx_obj *ft_obj);
 
 int mlx5dr_table_connect_to_miss_table(struct mlx5dr_table *src_tbl,
-				       struct mlx5dr_table *dst_tbl);
+				       struct mlx5dr_table *dst_tbl,
+				       bool only_update_last_ft);
 
 int mlx5dr_table_update_connected_miss_tables(struct mlx5dr_table *dst_tbl);
 
@@ -65,5 +67,9 @@ int mlx5dr_table_ft_set_next_rtc(struct mlx5dr_devx_obj *ft,
 				 uint32_t fw_ft_type,
 				 struct mlx5dr_devx_obj *rtc_0,
 				 struct mlx5dr_devx_obj *rtc_1);
+
+int mlx5dr_table_connect_src_ft_to_miss_table(struct mlx5dr_table *src_tbl,
+					      struct mlx5dr_devx_obj *ft,
+					      struct mlx5dr_table *dst_tbl);
 
 #endif /* MLX5DR_TABLE_H_ */

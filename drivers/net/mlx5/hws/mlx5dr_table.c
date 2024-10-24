@@ -429,7 +429,7 @@ int mlx5dr_table_destroy(struct mlx5dr_table *tbl)
 {
 	struct mlx5dr_context *ctx = tbl->ctx;
 	pthread_spin_lock(&ctx->ctrl_lock);
-	if (!LIST_EMPTY(&tbl->head)) {
+	if (!LIST_EMPTY(&tbl->head) || !LIST_EMPTY(&tbl->isolated_matchers)) {
 		DR_LOG(ERR, "Cannot destroy table containing matchers");
 		rte_errno = EBUSY;
 		goto unlock_err;
@@ -531,7 +531,7 @@ int mlx5dr_table_update_connected_miss_tables(struct mlx5dr_table *dst_tbl)
 		return 0;
 
 	LIST_FOREACH(src_tbl, &dst_tbl->default_miss.head, default_miss.next) {
-		ret = mlx5dr_table_connect_to_miss_table(src_tbl, dst_tbl);
+		ret = mlx5dr_table_connect_to_miss_table(src_tbl, dst_tbl, false);
 		if (ret) {
 			DR_LOG(ERR, "Failed to update source miss table, unexpected behavior");
 			return ret;
@@ -541,34 +541,32 @@ int mlx5dr_table_update_connected_miss_tables(struct mlx5dr_table *dst_tbl)
 	return 0;
 }
 
-int mlx5dr_table_connect_to_miss_table(struct mlx5dr_table *src_tbl,
-				       struct mlx5dr_table *dst_tbl)
+int mlx5dr_table_connect_src_ft_to_miss_table(struct mlx5dr_table *src_tbl,
+					      struct mlx5dr_devx_obj *ft,
+					      struct mlx5dr_table *dst_tbl)
 {
-	struct mlx5dr_devx_obj *last_ft;
 	struct mlx5dr_matcher *matcher;
 	int ret;
 
-	last_ft = mlx5dr_table_get_last_ft(src_tbl);
-
 	if (dst_tbl) {
 		if (LIST_EMPTY(&dst_tbl->head)) {
-			/* Connect src_tbl last_ft to dst_tbl start anchor */
-			ret = mlx5dr_table_ft_set_next_ft(last_ft,
+			/* Connect src_tbl ft to dst_tbl start anchor */
+			ret = mlx5dr_table_ft_set_next_ft(ft,
 							  src_tbl->fw_ft_type,
 							  dst_tbl->ft->id);
 			if (ret)
 				return ret;
 
-			/* Reset last_ft RTC to default RTC */
-			ret = mlx5dr_table_ft_set_next_rtc(last_ft,
+			/* Reset ft RTC to default RTC */
+			ret = mlx5dr_table_ft_set_next_rtc(ft,
 							   src_tbl->fw_ft_type,
 							   NULL, NULL);
 			if (ret)
 				return ret;
 		} else {
-			/* Connect src_tbl last_ft to first matcher RTC */
+			/* Connect src_tbl ft to first matcher RTC */
 			matcher = LIST_FIRST(&dst_tbl->head);
-			ret = mlx5dr_table_ft_set_next_rtc(last_ft,
+			ret = mlx5dr_table_ft_set_next_rtc(ft,
 							   src_tbl->fw_ft_type,
 							   matcher->match_ste.rtc_0,
 							   matcher->match_ste.rtc_1);
@@ -576,22 +574,49 @@ int mlx5dr_table_connect_to_miss_table(struct mlx5dr_table *src_tbl,
 				return ret;
 
 			/* Reset next miss FT to default */
-			ret = mlx5dr_table_ft_set_default_next_ft(src_tbl, last_ft);
+			ret = mlx5dr_table_ft_set_default_next_ft(src_tbl, ft);
 			if (ret)
 				return ret;
 		}
 	} else {
 		/* Reset next miss FT to default */
-		ret = mlx5dr_table_ft_set_default_next_ft(src_tbl, last_ft);
+		ret = mlx5dr_table_ft_set_default_next_ft(src_tbl, ft);
 		if (ret)
 			return ret;
 
-		/* Reset last_ft RTC to default RTC */
-		ret = mlx5dr_table_ft_set_next_rtc(last_ft,
+		/* Reset ft RTC to default RTC */
+		ret = mlx5dr_table_ft_set_next_rtc(ft,
 						   src_tbl->fw_ft_type,
 						   NULL, NULL);
 		if (ret)
 			return ret;
+	}
+
+	return 0;
+}
+
+int mlx5dr_table_connect_to_miss_table(struct mlx5dr_table *src_tbl,
+				       struct mlx5dr_table *dst_tbl,
+				       bool only_update_last_ft)
+{
+	struct mlx5dr_matcher *matcher;
+	struct mlx5dr_devx_obj *ft;
+	int ret;
+
+	/* Connect last FT in the src_tbl matchers chain */
+	ft = mlx5dr_table_get_last_ft(src_tbl);
+	ret = mlx5dr_table_connect_src_ft_to_miss_table(src_tbl, ft, dst_tbl);
+	if (ret)
+		return ret;
+
+	if (!only_update_last_ft) {
+		/* Connect isolated matchers FT */
+		LIST_FOREACH(matcher, &src_tbl->isolated_matchers, next) {
+			ft = matcher->end_ft;
+			ret = mlx5dr_table_connect_src_ft_to_miss_table(src_tbl, ft, dst_tbl);
+			if (ret)
+				return ret;
+		}
 	}
 
 	src_tbl->default_miss.miss_tbl = dst_tbl;
@@ -633,7 +658,7 @@ int mlx5dr_table_set_default_miss(struct mlx5dr_table *tbl,
 
 	pthread_spin_lock(&ctx->ctrl_lock);
 	old_miss_tbl = tbl->default_miss.miss_tbl;
-	ret = mlx5dr_table_connect_to_miss_table(tbl, miss_tbl);
+	ret = mlx5dr_table_connect_to_miss_table(tbl, miss_tbl, false);
 	if (ret)
 		goto out;
 
