@@ -1820,6 +1820,31 @@ flows to loop between groups.
    | ``group`` | Group to redirect packets to |
    +-----------+------------------------------+
 
+Action: ``JUMP_TO_TABLE_INDEX``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Redirects packets to a particular index in a flow table.
+
+Bypassing a hierarchy of groups,
+this action redirects the matched flow to the specified index
+in the particular template table on the device.
+
+If a matched flow is redirected to a non-existing template table
+or the table which doesn't contain a rule at the specified index,
+then the behavior is undefined and the resulting behavior is up to driver.
+
+.. _table_rte_flow_action_jump_to_table_index:
+
+.. table:: JUMP_TO_TABLE_INDEX
+
+   +-----------+-------------------------------------------+
+   | Field     | Value                                     |
+   +===========+===========================================+
+   | ``table`` | Template table to redirect packets to     |
+   +-----------+-------------------------------------------+
+   | ``index`` | Index in the table to redirect packets to |
+   +-----------+-------------------------------------------+
+
 Action: ``MARK``
 ^^^^^^^^^^^^^^^^
 

@@ -734,6 +734,9 @@ meter:
 		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
 			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
 			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+			action_flags |= MLX5_FLOW_ACTION_JUMP_TO_TABLE_INDEX;
+			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 		case RTE_FLOW_ACTION_TYPE_END:
 			break;
@@ -2930,6 +2933,34 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 								     src_pos, dr_pos))
 				goto err;
 			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+			if (masks->conf &&
+			    ((const struct rte_flow_action_jump_to_table_index *)
+			     masks->conf)->table) {
+				struct rte_flow_template_table *jump_table =
+					((const struct rte_flow_action_jump_to_table_index *)
+					actions->conf)->table;
+				acts->rule_acts[dr_pos].jump_to_matcher.offset =
+					((const struct rte_flow_action_jump_to_table_index *)
+					actions->conf)->index;
+				if (likely(!rte_flow_template_table_resizable(dev->data->port_id,
+									&jump_table->cfg.attr))) {
+					acts->rule_acts[dr_pos].action =
+						jump_table->matcher_info[0].jump;
+				} else {
+					uint32_t selector;
+					rte_rwlock_read_lock(&jump_table->matcher_replace_rwlk);
+					selector = jump_table->matcher_selector;
+					acts->rule_acts[dr_pos].action =
+						jump_table->matcher_info[selector].jump;
+					rte_rwlock_read_unlock(&jump_table->matcher_replace_rwlk);
+				}
+			} else if (__flow_hw_act_data_general_append
+					(priv, acts, actions->type,
+					 src_pos, dr_pos)){
+				goto err;
+			}
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
@@ -3532,6 +3563,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		cnt_id_t cnt_id;
 		uint32_t *cnt_queue;
 		uint32_t mtr_id;
+		struct rte_flow_template_table *jump_table;
 
 		action = &actions[act_data->action_src];
 		/*
@@ -3763,6 +3795,25 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			nat64_c = action->conf;
 			rule_acts[act_data->action_dst].action =
 				priv->action_nat64[table->type][nat64_c->type];
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+			jump_table = ((const struct rte_flow_action_jump_to_table_index *)
+						action->conf)->table;
+			if (likely(!rte_flow_template_table_resizable(dev->data->port_id,
+								      &table->cfg.attr))) {
+				rule_acts[act_data->action_dst].action =
+					jump_table->matcher_info[0].jump;
+			} else {
+				uint32_t selector;
+				rte_rwlock_read_lock(&table->matcher_replace_rwlk);
+				selector = table->matcher_selector;
+				rule_acts[act_data->action_dst].action =
+					jump_table->matcher_info[selector].jump;
+				rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
+			}
+			rule_acts[act_data->action_dst].jump_to_matcher.offset =
+				((const struct rte_flow_action_jump_to_table_index *)
+				action->conf)->index;
 			break;
 		default:
 			break;
@@ -4968,6 +5019,10 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5dr_matcher_attr matcher_attr = {0};
+	struct mlx5dr_action_jump_to_matcher_attr jump_attr = {
+		.type = MLX5DR_ACTION_JUMP_TO_MATCHER_BY_INDEX,
+		.matcher = NULL,
+	};
 	struct rte_flow_template_table *tbl = NULL;
 	struct mlx5_flow_group *grp;
 	struct mlx5dr_match_template *mt[MLX5_HW_TBL_MAX_ITEM_TEMPLATE];
@@ -5158,6 +5213,13 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	tbl->type = attr->flow_attr.transfer ? MLX5DR_TABLE_TYPE_FDB :
 		    (attr->flow_attr.egress ? MLX5DR_TABLE_TYPE_NIC_TX :
 		    MLX5DR_TABLE_TYPE_NIC_RX);
+	if (matcher_attr.isolated) {
+		jump_attr.matcher = tbl->matcher_info[0].matcher;
+		tbl->matcher_info[0].jump = mlx5dr_action_create_jump_to_matcher(priv->dr_ctx,
+				&jump_attr, mlx5_hw_act_flag[!!attr->flow_attr.group][tbl->type]);
+		if (!tbl->matcher_info[0].jump)
+			goto jtm_error;
+	}
 	/*
 	 * Only the matcher supports update and needs more than 1 WQE, an additional
 	 * index is needed. Or else the flow index can be reused.
@@ -5180,6 +5242,9 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	rte_rwlock_init(&tbl->matcher_replace_rwlk);
 	return tbl;
 res_error:
+	if (tbl->matcher_info[0].jump)
+		mlx5dr_action_destroy(tbl->matcher_info[0].jump);
+jtm_error:
 	if (tbl->matcher_info[0].matcher)
 		(void)mlx5dr_matcher_destroy(tbl->matcher_info[0].matcher);
 at_error:
@@ -5444,8 +5509,12 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 				   1, rte_memory_order_relaxed);
 	}
 	flow_hw_destroy_table_multi_pattern_ctx(table);
+	if (table->matcher_info[0].jump)
+		mlx5dr_action_destroy(table->matcher_info[0].jump);
 	if (table->matcher_info[0].matcher)
 		mlx5dr_matcher_destroy(table->matcher_info[0].matcher);
+	if (table->matcher_info[1].jump)
+		mlx5dr_action_destroy(table->matcher_info[1].jump);
 	if (table->matcher_info[1].matcher)
 		mlx5dr_matcher_destroy(table->matcher_info[1].matcher);
 	mlx5_hlist_unregister(priv->sh->groups, &table->grp->entry);
@@ -6550,6 +6619,7 @@ flow_hw_template_expand_modify_field(struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_DROP:
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 		case RTE_FLOW_ACTION_TYPE_JUMP:
+		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
@@ -6763,6 +6833,43 @@ flow_hw_validate_action_jump(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "Unsupported action - jump to root table");
+	return 0;
+}
+
+static int
+mlx5_flow_validate_action_jump_to_table_index(const struct rte_flow_action *action,
+			     const struct rte_flow_action *mask,
+			     struct rte_flow_error *error)
+{
+	const struct rte_flow_action_jump_to_table_index *m = mask->conf;
+	const struct rte_flow_action_jump_to_table_index *v = action->conf;
+	struct mlx5dr_action *jump_action;
+	uint32_t t_group = 0;
+
+	if (!m || !m->table)
+		return 0;
+	if (!v)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Invalid jump to matcher action configuration");
+	t_group = v->table->grp->group_id;
+	if (t_group == 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Unsupported action - jump to root table");
+	if (likely(!rte_flow_template_table_resizable(0, &v->table->cfg.attr))) {
+		jump_action = v->table->matcher_info[0].jump;
+	} else {
+		uint32_t selector;
+		rte_rwlock_read_lock(&v->table->matcher_replace_rwlk);
+		selector = v->table->matcher_selector;
+		jump_action = v->table->matcher_info[selector].jump;
+		rte_rwlock_read_unlock(&v->table->matcher_replace_rwlk);
+	}
+	if (jump_action == NULL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Unsupported action - table is not an rule array");
 	return 0;
 }
 
@@ -7247,6 +7354,12 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
 			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+			ret = mlx5_flow_validate_action_jump_to_table_index(action, mask, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_JUMP_TO_TABLE_INDEX;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -7291,6 +7404,7 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH] = MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT,
 	[RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE] = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT,
 	[RTE_FLOW_ACTION_TYPE_NAT64] = MLX5DR_ACTION_TYP_NAT64,
+	[RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX] = MLX5DR_ACTION_TYP_JUMP_TO_MATCHER,
 };
 
 static inline void
@@ -7517,6 +7631,11 @@ flow_hw_parse_flow_actions_to_dr_actions(struct rte_eth_dev *dev,
 		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
 			at->dr_off[i] = curr_off;
 			action_types[curr_off++] = MLX5DR_ACTION_TYP_MISS;
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
+			*tmpl_flags |= MLX5DR_ACTION_TEMPLATE_FLAG_RELAXED_ORDER;
+			at->dr_off[i] = curr_off;
+			action_types[curr_off++] = MLX5DR_ACTION_TYP_JUMP_TO_MATCHER;
 			break;
 		default:
 			type = mlx5_hw_dr_action_types[at->actions[i].type];
@@ -13968,6 +14087,7 @@ mlx5_mirror_destroy_clone(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_JUMP:
 		flow_hw_jump_release(dev, clone->action_ctx);
 		break;
+	case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
@@ -14001,6 +14121,7 @@ mlx5_mirror_terminal_action(const struct rte_flow_action *action)
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+	case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
 		return true;
 	default:
 		break;
@@ -14042,6 +14163,8 @@ mlx5_mirror_validate_sample_action(struct rte_eth_dev *dev,
 		if (action[0].type == RTE_FLOW_ACTION_TYPE_RAW_DECAP &&
 		    action[1].type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP)
 			return false;
+		break;
+	case RTE_FLOW_ACTION_TYPE_JUMP_TO_TABLE_INDEX:
 		break;
 	default:
 		return false;
@@ -14777,8 +14900,14 @@ flow_hw_table_resize(struct rte_eth_dev *dev,
 	struct mlx5dr_action_template *at[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
 	struct mlx5dr_match_template *mt[MLX5_HW_TBL_MAX_ITEM_TEMPLATE];
 	struct mlx5dr_matcher_attr matcher_attr = table->matcher_attr;
+	struct mlx5dr_action_jump_to_matcher_attr jump_attr = {
+		.type = MLX5DR_ACTION_JUMP_TO_MATCHER_BY_INDEX,
+		.matcher = NULL,
+	};
 	struct mlx5_multi_pattern_segment *segment = NULL;
 	struct mlx5dr_matcher *matcher = NULL;
+	struct mlx5dr_action *jump = NULL;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t i, selector = table->matcher_selector;
 	uint32_t other_selector = (selector + 1) & 1;
 	int ret;
@@ -14826,6 +14955,17 @@ flow_hw_table_resize(struct rte_eth_dev *dev,
 					 table, "failed to create new matcher");
 		goto error;
 	}
+	if (matcher_attr.isolated) {
+		jump_attr.matcher = matcher;
+		jump = mlx5dr_action_create_jump_to_matcher(priv->dr_ctx, &jump_attr,
+			mlx5_hw_act_flag[!!table->cfg.attr.flow_attr.group][table->type]);
+		if (!jump) {
+			ret = rte_flow_error_set(error, rte_errno,
+						RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						table, "failed to create jump to matcher action");
+			goto error;
+		}
+	}
 	rte_rwlock_write_lock(&table->matcher_replace_rwlk);
 	ret = mlx5dr_matcher_resize_set_target
 			(table->matcher_info[selector].matcher, matcher);
@@ -14838,6 +14978,7 @@ flow_hw_table_resize(struct rte_eth_dev *dev,
 	}
 	table->cfg.attr.nb_flows = nb_flows;
 	table->matcher_info[other_selector].matcher = matcher;
+	table->matcher_info[other_selector].jump = jump;
 	table->matcher_selector = other_selector;
 	rte_atomic_store_explicit(&table->matcher_info[other_selector].refcnt,
 				  0, rte_memory_order_relaxed);
@@ -14846,6 +14987,8 @@ flow_hw_table_resize(struct rte_eth_dev *dev,
 error:
 	if (segment)
 		mlx5_destroy_multi_pattern_segment(segment);
+	if (jump)
+		mlx5dr_action_destroy(jump);
 	if (matcher) {
 		ret = mlx5dr_matcher_destroy(matcher);
 		return rte_flow_error_set(error, rte_errno,
@@ -14876,6 +15019,8 @@ flow_hw_table_resize_complete(__rte_unused struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  table, "cannot complete table resize");
+	if (matcher_info->jump)
+		mlx5dr_action_destroy(matcher_info->jump);
 	ret = mlx5dr_matcher_destroy(matcher_info->matcher);
 	if (ret)
 		return rte_flow_error_set(error, rte_errno,

@@ -164,6 +164,7 @@ New Features
 * **Updated NVIDIA mlx5 net driver.**
 
   * Added ``rte_flow_async_create_by_index_with_pattern()`` support.
+  * Added jump to flow table index support.
 
 * **Added cryptodev queue pair reset support.**
 
