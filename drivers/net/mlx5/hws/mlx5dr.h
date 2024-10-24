@@ -52,6 +52,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT,
 	MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT,
 	MLX5DR_ACTION_TYP_NAT64,
+	MLX5DR_ACTION_TYP_JUMP_TO_MATCHER,
 	MLX5DR_ACTION_TYP_MAX,
 };
 
@@ -287,6 +288,10 @@ struct mlx5dr_rule_action {
 			uint32_t offset;
 			enum mlx5dr_action_aso_ct_flags direction;
 		} aso_ct;
+
+		struct {
+			uint32_t offset;
+		} jump_to_matcher;
 	};
 };
 
@@ -302,6 +307,15 @@ struct mlx5dr_action_dest_attr {
 		size_t reformat_data_sz;
 		void *reformat_data;
 	} reformat;
+};
+
+enum mlx5dr_action_jump_to_matcher_type {
+	MLX5DR_ACTION_JUMP_TO_MATCHER_BY_INDEX,
+};
+
+struct mlx5dr_action_jump_to_matcher_attr {
+	enum mlx5dr_action_jump_to_matcher_type type;
+	struct mlx5dr_matcher *matcher;
 };
 
 union mlx5dr_crc_encap_entropy_hash_ip_field {
@@ -937,6 +951,21 @@ struct mlx5dr_action *
 mlx5dr_action_create_nat64(struct mlx5dr_context *ctx,
 			   struct mlx5dr_action_nat64_attr *attr,
 			   uint32_t flags);
+
+/* Create direct rule jump to matcher action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] attr
+ *	The relevant attribute of the action.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_jump_to_matcher(struct mlx5dr_context *ctx,
+				     struct mlx5dr_action_jump_to_matcher_attr *attr,
+				     uint32_t flags);
 
 /* Destroy direct rule action.
  *

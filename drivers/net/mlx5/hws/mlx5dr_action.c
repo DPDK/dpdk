@@ -42,7 +42,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_TIR) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
 		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY),
+		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY) |
+		BIT(MLX5DR_ACTION_TYP_JUMP_TO_MATCHER),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_NIC_TX] = {
@@ -62,7 +63,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_TBL) |
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
+		BIT(MLX5DR_ACTION_TYP_JUMP_TO_MATCHER),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_FDB] = {
@@ -88,7 +90,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_VPORT) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
 		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY),
+		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY) |
+		BIT(MLX5DR_ACTION_TYP_JUMP_TO_MATCHER),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 };
@@ -1091,6 +1094,13 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		}
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
 		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
+		break;
+	case MLX5DR_ACTION_TYP_JUMP_TO_MATCHER:
+		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE;
+		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
+		attr->ste_table.ste = action->jump_to_matcher.matcher->match_ste.ste;
+		attr->ste_table.ste_pool = action->jump_to_matcher.matcher->match_ste.pool;
+		attr->ste_table.match_definer_id = action->ctx->caps->trivial_match_definer;
 		break;
 	default:
 		DR_LOG(ERR, "Invalid action type %d", action->type);
@@ -3079,6 +3089,57 @@ free_action:
 	return NULL;
 }
 
+struct mlx5dr_action *
+mlx5dr_action_create_jump_to_matcher(struct mlx5dr_context *ctx,
+				     struct mlx5dr_action_jump_to_matcher_attr *attr,
+				     uint32_t flags)
+{
+	struct mlx5dr_matcher *matcher = attr->matcher;
+	struct mlx5dr_matcher_attr *m_attr;
+	struct mlx5dr_action *action;
+
+	if (attr->type != MLX5DR_ACTION_JUMP_TO_MATCHER_BY_INDEX) {
+		DR_LOG(ERR, "Only jump to matcher by index is supported");
+		goto enotsup;
+	}
+
+	if (mlx5dr_action_is_root_flags(flags)) {
+		DR_LOG(ERR, "Action flags must be only non root (HWS)");
+		goto enotsup;
+	}
+
+	if (mlx5dr_table_is_root(matcher->tbl)) {
+		DR_LOG(ERR, "Root matcher cannot be set as destination");
+		goto enotsup;
+	}
+
+	m_attr = &matcher->attr;
+
+	if (!(matcher->flags & MLX5DR_MATCHER_FLAGS_STE_ARRAY) &&
+	    (m_attr->resizable || m_attr->table.sz_col_log || m_attr->table.sz_row_log)) {
+		DR_LOG(ERR, "Only STE array or matcher of size 1 can be set as destination");
+		goto enotsup;
+	}
+
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_JUMP_TO_MATCHER);
+	if (!action)
+		return NULL;
+
+	action->jump_to_matcher.matcher = matcher;
+
+	if (mlx5dr_action_create_stcs(action, NULL)) {
+		DR_LOG(ERR, "Failed to create action jump to matcher STC");
+		simple_free(action);
+		return NULL;
+	}
+
+	return action;
+
+enotsup:
+	rte_errno = ENOTSUP;
+	return NULL;
+}
+
 static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 {
 	struct mlx5dr_devx_obj *obj = NULL;
@@ -3101,6 +3162,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
 	case MLX5DR_ACTION_TYP_REMOVE_HEADER:
 	case MLX5DR_ACTION_TYP_VPORT:
+	case MLX5DR_ACTION_TYP_JUMP_TO_MATCHER:
 		mlx5dr_action_destroy_stcs(action);
 		break;
 	case MLX5DR_ACTION_TYP_DEST_ROOT:
@@ -3620,6 +3682,19 @@ mlx5dr_action_setter_default_hit(struct mlx5dr_actions_apply_data *apply,
 }
 
 static void
+mlx5dr_action_setter_hit_matcher(struct mlx5dr_actions_apply_data *apply,
+				 struct mlx5dr_actions_wqe_setter *setter)
+{
+	struct mlx5dr_rule_action *rule_action;
+
+	rule_action = &apply->rule_action[setter->idx_hit];
+
+	apply->wqe_data[MLX5DR_ACTION_OFFSET_HIT_LSB] =
+		htobe32(rule_action->jump_to_matcher.offset << 6);
+	mlx5dr_action_apply_stc(apply, MLX5DR_ACTION_STC_IDX_HIT, setter->idx_hit);
+}
+
+static void
 mlx5dr_action_setter_hit_next_action(struct mlx5dr_actions_apply_data *apply,
 				     __rte_unused struct mlx5dr_actions_wqe_setter *setter)
 {
@@ -3964,6 +4039,12 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 				/* The stage indicates which modify-header to push */
 				setter->stage_idx = j;
 			}
+			break;
+
+		case MLX5DR_ACTION_TYP_JUMP_TO_MATCHER:
+			last_setter->flags |= ASF_HIT;
+			last_setter->set_hit = &mlx5dr_action_setter_hit_matcher;
+			last_setter->idx_hit = i;
 			break;
 
 		default:

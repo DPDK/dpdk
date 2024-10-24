@@ -223,6 +223,9 @@ struct mlx5dr_action {
 				struct {
 					struct mlx5dr_action *stages[MLX5DR_ACTION_NAT64_STAGES];
 				} nat64;
+				struct {
+					struct mlx5dr_matcher *matcher;
+				} jump_to_matcher;
 			};
 		};
 
