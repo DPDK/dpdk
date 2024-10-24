@@ -161,6 +161,10 @@ New Features
   * Added initialization of FPGA modules related to flow HW offload.
   * Added basic handling of the virtual queues.
 
+* **Updated NVIDIA mlx5 net driver.**
+
+  * Added ``rte_flow_async_create_by_index_with_pattern()`` support.
+
 * **Added cryptodev queue pair reset support.**
 
   A new API ``rte_cryptodev_queue_pair_reset`` is added

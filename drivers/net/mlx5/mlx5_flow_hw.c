@@ -340,18 +340,13 @@ static __rte_always_inline uint32_t flow_hw_tx_tag_regc_value(struct rte_eth_dev
 static int flow_hw_async_create_validate(struct rte_eth_dev *dev,
 					 const uint32_t queue,
 					 const struct rte_flow_template_table *table,
+					 enum rte_flow_table_insertion_type insertion_type,
+					 const uint32_t rule_index,
 					 const struct rte_flow_item items[],
 					 const uint8_t pattern_template_index,
 					 const struct rte_flow_action actions[],
 					 const uint8_t action_template_index,
 					 struct rte_flow_error *error);
-static int flow_hw_async_create_by_index_validate(struct rte_eth_dev *dev,
-						  const uint32_t queue,
-						  const struct rte_flow_template_table *table,
-						  const uint32_t rule_index,
-						  const struct rte_flow_action actions[],
-						  const uint8_t action_template_index,
-						  struct rte_flow_error *error);
 static int flow_hw_async_update_validate(struct rte_eth_dev *dev,
 					 const uint32_t queue,
 					 const struct rte_flow_hw *flow,
@@ -3889,6 +3884,12 @@ flow_hw_get_rule_items(struct rte_eth_dev *dev,
  *   The queue to create the flow.
  * @param[in] attr
  *   Pointer to the flow operation attributes.
+ * @param[in] table
+ *   Pointer to the template table.
+ * @param[in] insertion_type
+ *   Insertion type for flow rules.
+ * @param[in] rule_index
+ *   The item pattern flow follows from the table.
  * @param[in] items
  *   Items with flow spec value.
  * @param[in] pattern_template_index
@@ -3905,17 +3906,19 @@ flow_hw_get_rule_items(struct rte_eth_dev *dev,
  * @return
  *    Flow pointer on success, NULL otherwise and rte_errno is set.
  */
-static struct rte_flow *
-flow_hw_async_flow_create(struct rte_eth_dev *dev,
-			  uint32_t queue,
-			  const struct rte_flow_op_attr *attr,
-			  struct rte_flow_template_table *table,
-			  const struct rte_flow_item items[],
-			  uint8_t pattern_template_index,
-			  const struct rte_flow_action actions[],
-			  uint8_t action_template_index,
-			  void *user_data,
-			  struct rte_flow_error *error)
+static __rte_always_inline struct rte_flow *
+flow_hw_async_flow_create_generic(struct rte_eth_dev *dev,
+				  uint32_t queue,
+				  const struct rte_flow_op_attr *attr,
+				  struct rte_flow_template_table *table,
+				  enum rte_flow_table_insertion_type insertion_type,
+				  uint32_t rule_index,
+				  const struct rte_flow_item items[],
+				  uint8_t pattern_template_index,
+				  const struct rte_flow_action actions[],
+				  uint8_t action_template_index,
+				  void *user_data,
+				  struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5dr_rule_attr rule_attr = {
@@ -3933,8 +3936,8 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	int ret;
 
 	if (mlx5_fp_debug_enabled()) {
-		if (flow_hw_async_create_validate(dev, queue, table, items, pattern_template_index,
-						  actions, action_template_index, error))
+		if (flow_hw_async_create_validate(dev, queue, table, insertion_type, rule_index,
+			items, pattern_template_index, actions, action_template_index, error))
 			return NULL;
 	}
 	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
@@ -3972,7 +3975,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	 * Indexed pool returns 1-based indices, but mlx5dr expects 0-based indices
 	 * for rule insertion hints.
 	 */
-	flow->rule_idx = flow->res_idx - 1;
+	flow->rule_idx = (rule_index == UINT32_MAX) ? flow->res_idx - 1 : rule_index;
 	rule_attr.rule_idx = flow->rule_idx;
 	/*
 	 * Construct the flow actions based on the input actions.
@@ -4028,33 +4031,26 @@ error:
 	return NULL;
 }
 
-/**
- * Enqueue HW steering flow creation by index.
- *
- * The flow will be applied to the HW only if the postpone bit is not set or
- * the extra push function is called.
- * The flow creation status should be checked from dequeue result.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev structure.
- * @param[in] queue
- *   The queue to create the flow.
- * @param[in] attr
- *   Pointer to the flow operation attributes.
- * @param[in] rule_index
- *   The item pattern flow follows from the table.
- * @param[in] actions
- *   Action with flow spec value.
- * @param[in] action_template_index
- *   The action pattern flow follows from the table.
- * @param[in] user_data
- *   Pointer to the user_data.
- * @param[out] error
- *   Pointer to error structure.
- *
- * @return
- *    Flow pointer on success, NULL otherwise and rte_errno is set.
- */
+static struct rte_flow *
+flow_hw_async_flow_create(struct rte_eth_dev *dev,
+			  uint32_t queue,
+			  const struct rte_flow_op_attr *attr,
+			  struct rte_flow_template_table *table,
+			  const struct rte_flow_item items[],
+			  uint8_t pattern_template_index,
+			  const struct rte_flow_action actions[],
+			  uint8_t action_template_index,
+			  void *user_data,
+			  struct rte_flow_error *error)
+{
+	uint32_t rule_index = UINT32_MAX;
+
+	return flow_hw_async_flow_create_generic(dev, queue, attr, table,
+		RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN, rule_index,
+		items, pattern_template_index, actions, action_template_index,
+		user_data, error);
+}
+
 static struct rte_flow *
 flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 			  uint32_t queue,
@@ -4067,105 +4063,31 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 			  struct rte_flow_error *error)
 {
 	struct rte_flow_item items[] = {{.type = RTE_FLOW_ITEM_TYPE_END,}};
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5dr_rule_attr rule_attr = {
-		.queue_id = queue,
-		.user_data = user_data,
-		.burst = attr->postpone,
-	};
-	struct mlx5dr_rule_action *rule_acts;
-	struct mlx5_flow_hw_action_params ap;
-	struct rte_flow_hw *flow = NULL;
-	uint32_t flow_idx = 0;
-	uint32_t res_idx = 0;
-	int ret;
+	uint8_t pattern_template_index = 0;
 
-	if (mlx5_fp_debug_enabled()) {
-		if (flow_hw_async_create_by_index_validate(dev, queue, table, rule_index,
-							   actions, action_template_index, error))
-			return NULL;
-	}
-	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
-	if (!flow) {
-		rte_errno = ENOMEM;
-		goto error;
-	}
-	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
-	/*
-	 * Set the table here in order to know the destination table
-	 * when free the flow afterwards.
-	 */
-	flow->table = table;
-	flow->mt_idx = 0;
-	flow->idx = flow_idx;
-	if (table->resource) {
-		mlx5_ipool_malloc(table->resource, &res_idx);
-		if (!res_idx) {
-			rte_errno = ENOMEM;
-			goto error;
-		}
-		flow->res_idx = res_idx;
-	} else {
-		flow->res_idx = flow_idx;
-	}
-	flow->flags = 0;
-	/*
-	 * Set the flow operation type here in order to know if the flow memory
-	 * should be freed or not when get the result from dequeue.
-	 */
-	flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_CREATE;
-	flow->user_data = user_data;
-	rule_attr.user_data = flow;
-	/* Set the rule index. */
-	flow->rule_idx = rule_index;
-	rule_attr.rule_idx = flow->rule_idx;
-	/*
-	 * Construct the flow actions based on the input actions.
-	 * The implicitly appended action is always fixed, like metadata
-	 * copy action from FDB to NIC Rx.
-	 * No need to copy and contrust a new "actions" list based on the
-	 * user's input, in order to save the cost.
-	 */
-	if (flow_hw_actions_construct(dev, flow, &ap,
-				      &table->ats[action_template_index],
-				      table->its[0]->item_flags, table,
-				      actions, rule_acts, queue, error)) {
-		rte_errno = EINVAL;
-		goto error;
-	}
-	if (likely(!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))) {
-		ret = mlx5dr_rule_create(table->matcher_info[0].matcher,
-					 0, items, action_template_index,
-					 rule_acts, &rule_attr,
-					 (struct mlx5dr_rule *)flow->rule);
-	} else {
-		struct rte_flow_hw_aux *aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
-		uint32_t selector;
+	return flow_hw_async_flow_create_generic(dev, queue, attr, table,
+		RTE_FLOW_TABLE_INSERTION_TYPE_INDEX, rule_index,
+		items, pattern_template_index, actions, action_template_index,
+		user_data, error);
+}
 
-		flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE;
-		rte_rwlock_read_lock(&table->matcher_replace_rwlk);
-		selector = table->matcher_selector;
-		ret = mlx5dr_rule_create(table->matcher_info[selector].matcher,
-					 0, items, action_template_index,
-					 rule_acts, &rule_attr,
-					 (struct mlx5dr_rule *)flow->rule);
-		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
-		aux->matcher_selector = selector;
-		flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR;
-	}
-	if (likely(!ret)) {
-		flow_hw_q_inc_flow_ops(priv, queue);
-		return (struct rte_flow *)flow;
-	}
-error:
-	if (table->resource && res_idx)
-		mlx5_ipool_free(table->resource, res_idx);
-	if (flow_idx)
-		mlx5_ipool_free(table->flow, flow_idx);
-	rte_flow_error_set(error, rte_errno,
-			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			   "fail to create rte flow");
-	return NULL;
+static struct rte_flow *
+flow_hw_async_flow_create_by_index_with_pattern(struct rte_eth_dev *dev,
+						uint32_t queue,
+						const struct rte_flow_op_attr *attr,
+						struct rte_flow_template_table *table,
+						uint32_t rule_index,
+						const struct rte_flow_item items[],
+						uint8_t pattern_template_index,
+						const struct rte_flow_action actions[],
+						uint8_t action_template_index,
+						void *user_data,
+						struct rte_flow_error *error)
+{
+	return flow_hw_async_flow_create_generic(dev, queue, attr, table,
+		RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN, rule_index,
+		items, pattern_template_index, actions, action_template_index,
+		user_data, error);
 }
 
 /**
@@ -16794,6 +16716,8 @@ flow_hw_async_op_validate(struct rte_eth_dev *dev,
  *   The queue to create the flow.
  * @param[in] table
  *   Pointer to template table.
+ * @param[in] rule_index
+ *   The item pattern flow follows from the table.
  * @param[in] items
  *   Items with flow spec value.
  * @param[in] pattern_template_index
@@ -16813,6 +16737,8 @@ static int
 flow_hw_async_create_validate(struct rte_eth_dev *dev,
 			      const uint32_t queue,
 			      const struct rte_flow_template_table *table,
+			      enum rte_flow_table_insertion_type insertion_type,
+			      uint32_t rule_index,
 			      const struct rte_flow_item items[],
 			      const uint8_t pattern_template_index,
 			      const struct rte_flow_action actions[],
@@ -16822,70 +16748,24 @@ flow_hw_async_create_validate(struct rte_eth_dev *dev,
 	if (flow_hw_async_op_validate(dev, queue, table, error))
 		return -rte_errno;
 
+	if (insertion_type != table->cfg.attr.insertion_type)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Flow rule insertion type mismatch with table configuration");
+
 	if (table->cfg.attr.insertion_type != RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN)
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Only pattern insertion is allowed on this table");
-
-	if (flow_hw_validate_rule_pattern(dev, table, pattern_template_index, items, error))
-		return -rte_errno;
-
-	if (flow_hw_validate_rule_actions(dev, table, action_template_index, actions, error))
-		return -rte_errno;
-
-	return 0;
-}
-
-/**
- * Validate user input for rte_flow_async_create_by_index() implementation.
- *
- * If RTE_LIBRTE_MLX5_DEBUG macro is not defined, this function is a no-op.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev structure.
- * @param[in] queue
- *   The queue to create the flow.
- * @param[in] table
- *   Pointer to template table.
- * @param[in] rule_index
- *   Rule index in the table.
- *   Inserting a rule to already occupied index results in undefined behavior.
- * @param[in] actions
- *   Action with flow spec value.
- * @param[in] action_template_index
- *   The action pattern flow follows from the table.
- * @param[out] error
- *   Pointer to error structure.
- *
- * @return
- *    0 if user input is valid.
- *    Negative errno otherwise, rte_errno and error struct is set.
- */
-static int
-flow_hw_async_create_by_index_validate(struct rte_eth_dev *dev,
-				       const uint32_t queue,
-				       const struct rte_flow_template_table *table,
-				       const uint32_t rule_index,
-				       const struct rte_flow_action actions[],
-				       const uint8_t action_template_index,
-				       struct rte_flow_error *error)
-{
-	if (flow_hw_async_op_validate(dev, queue, table, error))
-		return -rte_errno;
+		if (rule_index >= table->cfg.attr.nb_flows)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "Flow rule index exceeds table size");
 
 	if (table->cfg.attr.insertion_type != RTE_FLOW_TABLE_INSERTION_TYPE_INDEX)
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Only index insertion is allowed on this table");
-
-	if (rule_index >= table->cfg.attr.nb_flows)
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "Flow rule index exceeds table size");
+		if (flow_hw_validate_rule_pattern(dev, table, pattern_template_index, items, error))
+			return -rte_errno;
 
 	if (flow_hw_validate_rule_actions(dev, table, action_template_index, actions, error))
 		return -rte_errno;
 
 	return 0;
 }
-
 
 /**
  * Validate user input for rte_flow_async_update() implementation.
@@ -16959,6 +16839,7 @@ flow_hw_async_destroy_validate(struct rte_eth_dev *dev,
 static struct rte_flow_fp_ops mlx5_flow_hw_fp_ops = {
 	.async_create = flow_hw_async_flow_create,
 	.async_create_by_index = flow_hw_async_flow_create_by_index,
+	.async_create_by_index_with_pattern = flow_hw_async_flow_create_by_index_with_pattern,
 	.async_actions_update = flow_hw_async_flow_update,
 	.async_destroy = flow_hw_async_flow_destroy,
 	.push = flow_hw_push,
