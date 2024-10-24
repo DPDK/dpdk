@@ -485,10 +485,9 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	struct virtio_net_config vnet_config = {{ 0 }};
 	uint64_t ver = VHOST_VDUSE_API_VERSION;
 	uint64_t features;
-	struct vduse_dev_config *dev_config = NULL;
 	const char *name = path + strlen("/dev/vduse/");
 	char reconnect_file[PATH_MAX];
-	struct vhost_reconnect_data *reconnect_log = NULL;
+	struct vhost_reconnect_data *reconnect_log = MAP_FAILED;
 	bool reconnect = false;
 
 	if (vduse.fdset == NULL) {
@@ -530,13 +529,13 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	ret = rte_vhost_driver_get_features(path, &features);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to get backend features");
-		goto out_free;
+		goto out_ctrl_close;
 	}
 
 	ret = rte_vhost_driver_get_queue_num(path, &max_queue_pairs);
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(name, ERR, "Failed to get max queue pairs");
-		goto out_free;
+		goto out_ctrl_close;
 	}
 
 	VHOST_CONFIG_LOG(path, INFO, "VDUSE max queue pairs: %u", max_queue_pairs);
@@ -584,7 +583,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 					"Features mismatch between backend (0x%" PRIx64 ") & reconnection file (0x%" PRIx64 ")",
 					features, reconnect_log->features);
 			ret = -1;
-			goto out_ctrl_close;
+			goto out_log_unmap;
 		}
 
 		if (reconnect_log->nr_vrings != total_queues) {
@@ -592,9 +591,11 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 					"Queues number mismatch between backend (%u) and reconnection file (%u)",
 					total_queues, reconnect_log->nr_vrings);
 			ret = -1;
-			goto out_ctrl_close;
+			goto out_log_unmap;
 		}
 	} else {
+		struct vduse_dev_config *dev_config;
+
 		reco_fd = open(reconnect_file, O_CREAT | O_EXCL | O_RDWR, 0600);
 		if (reco_fd < 0) {
 			if (errno == EEXIST) {
@@ -633,7 +634,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		if (!dev_config) {
 			VHOST_CONFIG_LOG(name, ERR, "Failed to allocate VDUSE config");
 			ret = -1;
-			goto out_ctrl_close;
+			goto out_log_unmap;
 		}
 
 		vnet_config.max_virtqueue_pairs = max_queue_pairs;
@@ -649,16 +650,16 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		memcpy(dev_config->config, &vnet_config, sizeof(vnet_config));
 
 		ret = ioctl(control_fd, VDUSE_CREATE_DEV, dev_config);
+		free(dev_config);
+		dev_config = NULL;
 		if (ret < 0) {
 			VHOST_CONFIG_LOG(name, ERR, "Failed to create VDUSE device: %s",
 					strerror(errno));
-			goto out_free;
+			goto out_log_unmap;
 		}
 
 		memcpy(&reconnect_log->config, &vnet_config, sizeof(vnet_config));
 		reconnect_log->nr_vrings = total_queues;
-		free(dev_config);
-		dev_config = NULL;
 	}
 
 	dev_fd = open(path, O_RDWR);
@@ -693,6 +694,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	dev->vduse_ctrl_fd = control_fd;
 	dev->vduse_dev_fd = dev_fd;
 	dev->reconnect_log = reconnect_log;
+	reconnect_log = MAP_FAILED;
 	if (reconnect)
 		dev->status = dev->reconnect_log->status;
 
@@ -768,8 +770,9 @@ out_dev_close:
 	if (dev_fd >= 0)
 		close(dev_fd);
 	ioctl(control_fd, VDUSE_DESTROY_DEV, name);
-out_free:
-	free(dev_config);
+out_log_unmap:
+	if (reconnect_log != MAP_FAILED)
+		munmap(reconnect_log, sizeof(*reconnect_log));
 out_ctrl_close:
 	close(control_fd);
 
