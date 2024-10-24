@@ -88,7 +88,8 @@ rte_ipv6_addr_mask(struct rte_ipv6_addr *ip, uint8_t depth)
 		uint8_t mask = ~(UINT8_MAX >> (depth % CHAR_BIT));
 		ip->a[d] &= mask;
 		d++;
-		memset(&ip->a[d], 0, sizeof(*ip) - d);
+		while (d < sizeof(*ip))
+			ip->a[d++] = 0;
 	}
 }
 
