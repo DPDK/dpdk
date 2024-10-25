@@ -51,6 +51,7 @@ static d_close_t        contigmem_close;
 
 static int              contigmem_num_buffers = RTE_CONTIGMEM_DEFAULT_NUM_BUFS;
 static int64_t          contigmem_buffer_size = RTE_CONTIGMEM_DEFAULT_BUF_SIZE;
+static bool             contigmem_coredump_enable;
 
 static eventhandler_tag contigmem_eh_tag;
 static struct contigmem_buffer contigmem_buffers[RTE_CONTIGMEM_MAX_NUM_BUFS];
@@ -59,6 +60,7 @@ static int              contigmem_refcnt;
 
 TUNABLE_INT("hw.contigmem.num_buffers", &contigmem_num_buffers);
 TUNABLE_QUAD("hw.contigmem.buffer_size", &contigmem_buffer_size);
+TUNABLE_BOOL("hw.contigmem.coredump_enable", &contigmem_coredump_enable);
 
 static SYSCTL_NODE(_hw, OID_AUTO, contigmem, CTLFLAG_RD, 0, "contigmem");
 
@@ -68,6 +70,8 @@ SYSCTL_QUAD(_hw_contigmem, OID_AUTO, buffer_size, CTLFLAG_RD,
 	&contigmem_buffer_size, 0, "Size of each contiguous buffer");
 SYSCTL_INT(_hw_contigmem, OID_AUTO, num_references, CTLFLAG_RD,
 	&contigmem_refcnt, 0, "Number of references to contigmem");
+SYSCTL_BOOL(_hw_contigmem, OID_AUTO, coredump_enable, CTLFLAG_RD,
+	&contigmem_coredump_enable, 0, "Include mapped buffers in core dump");
 
 static SYSCTL_NODE(_hw_contigmem, OID_AUTO, physaddr, CTLFLAG_RD, 0,
 	"physaddr");
@@ -356,6 +360,10 @@ contigmem_mmap_single(struct cdev *cdev, vm_ooffset_t *offset, vm_size_t size,
 	*offset = (vm_ooffset_t)vtophys(contigmem_buffers[buffer_index].addr);
 	*obj = cdev_pager_allocate(vmh, OBJT_DEVICE, &contigmem_cdev_pager_ops,
 			size, nprot, *offset, curthread->td_ucred);
+
+	/* Mappings backed by OBJ_FICTITIOUS are excluded from core dump. */
+	if (contigmem_coredump_enable)
+		(*obj)->flags &= ~OBJ_FICTITIOUS;
 
 	return 0;
 }
