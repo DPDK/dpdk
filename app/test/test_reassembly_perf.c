@@ -136,9 +136,7 @@ ipv4_frag_fill_data(struct rte_mbuf **mbuf, uint8_t nb_frags, uint32_t flow_id,
 	for (i = 0; i < nb_frags; i++) {
 		struct rte_mbuf *frag = mbuf[i];
 		uint16_t frag_offset = 0;
-		uint32_t ip_cksum;
 		uint16_t pkt_len;
-		uint16_t *ptr16;
 
 		frag_offset = i * (frag_len / 8);
 
@@ -189,32 +187,7 @@ ipv4_frag_fill_data(struct rte_mbuf **mbuf, uint8_t nb_frags, uint32_t flow_id,
 		ip_hdr->src_addr = rte_cpu_to_be_32(IP_SRC_ADDR(flow_id));
 		ip_hdr->dst_addr = rte_cpu_to_be_32(IP_DST_ADDR(flow_id));
 
-		/*
-		 * Compute IP header checksum.
-		 */
-		ptr16 = (unaligned_uint16_t *)ip_hdr;
-		ip_cksum = 0;
-		ip_cksum += ptr16[0];
-		ip_cksum += ptr16[1];
-		ip_cksum += ptr16[2];
-		ip_cksum += ptr16[3];
-		ip_cksum += ptr16[4];
-		ip_cksum += ptr16[6];
-		ip_cksum += ptr16[7];
-		ip_cksum += ptr16[8];
-		ip_cksum += ptr16[9];
-
-		/*
-		 * Reduce 32 bit checksum to 16 bits and complement it.
-		 */
-		ip_cksum = ((ip_cksum & 0xFFFF0000) >> 16) +
-			   (ip_cksum & 0x0000FFFF);
-		if (ip_cksum > 65535)
-			ip_cksum -= 65535;
-		ip_cksum = (~ip_cksum) & 0x0000FFFF;
-		if (ip_cksum == 0)
-			ip_cksum = 0xFFFF;
-		ip_hdr->hdr_checksum = (uint16_t)ip_cksum;
+		ip_hdr->hdr_checksum = (uint16_t)rte_ipv4_cksum_simple(ip_hdr);
 
 		frag->data_len = sizeof(struct rte_ether_hdr) + pkt_len;
 		frag->pkt_len = frag->data_len;

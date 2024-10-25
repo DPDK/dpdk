@@ -241,27 +241,6 @@ ipv4_addr_dump(const char *what, uint32_t be_ipv4_addr)
 	printf("%s", buf);
 }
 
-static uint16_t
-ipv4_hdr_cksum(struct rte_ipv4_hdr *ip_h)
-{
-	uint16_t *v16_h;
-	uint32_t ip_cksum;
-
-	/*
-	 * Compute the sum of successive 16-bit words of the IPv4 header,
-	 * skipping the checksum field of the header.
-	 */
-	v16_h = (unaligned_uint16_t *) ip_h;
-	ip_cksum = v16_h[0] + v16_h[1] + v16_h[2] + v16_h[3] +
-		v16_h[4] + v16_h[6] + v16_h[7] + v16_h[8] + v16_h[9];
-
-	/* reduce 32 bit checksum to 16 bits and complement it */
-	ip_cksum = (ip_cksum & 0xffff) + (ip_cksum >> 16);
-	ip_cksum = (ip_cksum & 0xffff) + (ip_cksum >> 16);
-	ip_cksum = (~ip_cksum) & 0x0000FFFF;
-	return (ip_cksum == 0) ? 0xFFFF : (uint16_t) ip_cksum;
-}
-
 #define is_multicast_ipv4_addr(ipv4_addr) \
 	(((rte_be_to_cpu_32((ipv4_addr)) >> 24) & 0x000000FF) == 0xE0)
 
@@ -458,7 +437,7 @@ reply_to_icmp_echo_rqsts(struct fwd_stream *fs)
 				ip_src = (ip_src & 0xFFFFFFFC) | 0x00000001;
 			ip_h->src_addr = rte_cpu_to_be_32(ip_src);
 			ip_h->dst_addr = ip_addr;
-			ip_h->hdr_checksum = ipv4_hdr_cksum(ip_h);
+			ip_h->hdr_checksum = rte_ipv4_cksum_simple(ip_h);
 		} else {
 			ip_h->src_addr = ip_h->dst_addr;
 			ip_h->dst_addr = ip_addr;
