@@ -101,7 +101,6 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 {
 	struct ip_frag_pkt *fp;
 	struct ip_frag_key key;
-	const unaligned_uint64_t *psd;
 	uint16_t flag_offset, ip_ofs, ip_flag;
 	int32_t ip_len;
 	int32_t trim;
@@ -110,9 +109,8 @@ rte_ipv4_frag_reassemble_packet(struct rte_ip_frag_tbl *tbl,
 	ip_ofs = (uint16_t)(flag_offset & RTE_IPV4_HDR_OFFSET_MASK);
 	ip_flag = (uint16_t)(flag_offset & RTE_IPV4_HDR_MF_FLAG);
 
-	psd = (unaligned_uint64_t *)&ip_hdr->src_addr;
 	/* use first 8 bytes only */
-	key.src_dst[0] = psd[0];
+	memcpy(&key.src_dst[0], &ip_hdr->src_addr, 8);
 	key.id = ip_hdr->packet_id;
 	key.key_len = IPV4_KEYLEN;
 
