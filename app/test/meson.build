@@ -104,6 +104,7 @@ source_file_deps = {
     'test_ipsec_sad.c': ['ipsec'],
     'test_kvargs.c': ['kvargs'],
     'test_latencystats.c': ['ethdev', 'latencystats', 'metrics'] + sample_packet_forward_deps,
+    'test_lcore_var.c': [],
     'test_lcores.c': [],
     'test_link_bonding.c': ['ethdev', 'net_bond',
         'net'] + packet_burst_generator_deps + virtual_pmd_deps,
