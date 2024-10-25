@@ -13625,6 +13625,10 @@ test_enq_callback_setup(void)
 	uint16_t qp_id = 0;
 	int j = 0;
 
+	/* Skip test if synchronous API is used */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
+
 	/* Verify the crypto capabilities for which enqueue/dequeue is done. */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_NULL;
@@ -13745,6 +13749,10 @@ test_deq_callback_setup(void)
 	struct rte_cryptodev_cb *cb;
 	uint16_t qp_id = 0;
 	int j = 0;
+
+	/* Skip test if synchronous API is used */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
 
 	/* Verify the crypto capabilities for which enqueue/dequeue is done. */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
