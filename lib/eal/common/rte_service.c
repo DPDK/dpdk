@@ -11,6 +11,7 @@
 
 #include <eal_trace_internal.h>
 #include <rte_lcore.h>
+#include <rte_lcore_var.h>
 #include <rte_bitset.h>
 #include <rte_branch_prediction.h>
 #include <rte_common.h>
@@ -78,7 +79,7 @@ struct __rte_cache_aligned core_state {
 
 static uint32_t rte_service_count;
 static struct rte_service_spec_impl *rte_services;
-static struct core_state *lcore_states;
+static RTE_LCORE_VAR_HANDLE(struct core_state, lcore_states);
 static uint32_t rte_service_library_initialized;
 
 int32_t
@@ -99,12 +100,8 @@ rte_service_init(void)
 		goto fail_mem;
 	}
 
-	lcore_states = rte_calloc("rte_service_core_states", RTE_MAX_LCORE,
-			sizeof(struct core_state), RTE_CACHE_LINE_SIZE);
-	if (!lcore_states) {
-		EAL_LOG(ERR, "error allocating core states array");
-		goto fail_mem;
-	}
+	if (lcore_states == NULL)
+		RTE_LCORE_VAR_ALLOC(lcore_states);
 
 	int i;
 	struct rte_config *cfg = rte_eal_get_configuration();
@@ -120,7 +117,6 @@ rte_service_init(void)
 	return 0;
 fail_mem:
 	rte_free(rte_services);
-	rte_free(lcore_states);
 	return -ENOMEM;
 }
 
@@ -134,7 +130,6 @@ rte_service_finalize(void)
 	rte_eal_mp_wait_lcore();
 
 	rte_free(rte_services);
-	rte_free(lcore_states);
 
 	rte_service_library_initialized = 0;
 }
@@ -284,7 +279,6 @@ rte_service_component_register(const struct rte_service_spec *spec,
 int32_t
 rte_service_component_unregister(uint32_t id)
 {
-	uint32_t i;
 	struct rte_service_spec_impl *s;
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 
@@ -292,9 +286,11 @@ rte_service_component_unregister(uint32_t id)
 
 	s->internal_flags &= ~(SERVICE_F_REGISTERED);
 
+	unsigned int lcore_id;
+	struct core_state *cs;
 	/* clear the run-bit in all cores */
-	for (i = 0; i < RTE_MAX_LCORE; i++)
-		rte_bitset_clear(lcore_states[i].mapped_services, id);
+	RTE_LCORE_VAR_FOREACH(lcore_id, cs, lcore_states)
+		rte_bitset_clear(cs->mapped_services, id);
 
 	memset(&rte_services[id], 0, sizeof(struct rte_service_spec_impl));
 
@@ -463,7 +459,10 @@ rte_service_may_be_active(uint32_t id)
 		return -EINVAL;
 
 	for (i = 0; i < lcore_count; i++) {
-		if (rte_bitset_test(lcore_states[ids[i]].service_active_on_lcore, id))
+		struct core_state *cs =
+			RTE_LCORE_VAR_LCORE(ids[i], lcore_states);
+
+		if (rte_bitset_test(cs->service_active_on_lcore, id))
 			return 1;
 	}
 
@@ -473,7 +472,7 @@ rte_service_may_be_active(uint32_t id)
 int32_t
 rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 {
-	struct core_state *cs = &lcore_states[rte_lcore_id()];
+	struct core_state *cs =	RTE_LCORE_VAR(lcore_states);
 	struct rte_service_spec_impl *s;
 
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
@@ -496,8 +495,7 @@ static int32_t
 service_runner_func(void *arg)
 {
 	RTE_SET_USED(arg);
-	const int lcore = rte_lcore_id();
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs = RTE_LCORE_VAR(lcore_states);
 
 	rte_atomic_store_explicit(&cs->thread_active, 1, rte_memory_order_seq_cst);
 
@@ -533,13 +531,15 @@ service_runner_func(void *arg)
 int32_t
 rte_service_lcore_may_be_active(uint32_t lcore)
 {
-	if (lcore >= RTE_MAX_LCORE || !lcore_states[lcore].is_service_core)
+	struct core_state *cs = RTE_LCORE_VAR_LCORE(lcore, lcore_states);
+
+	if (lcore >= RTE_MAX_LCORE || !cs->is_service_core)
 		return -EINVAL;
 
 	/* Load thread_active using ACQUIRE to avoid instructions dependent on
 	 * the result being re-ordered before this load completes.
 	 */
-	return rte_atomic_load_explicit(&lcore_states[lcore].thread_active,
+	return rte_atomic_load_explicit(&cs->thread_active,
 			       rte_memory_order_acquire);
 }
 
@@ -547,9 +547,12 @@ int32_t
 rte_service_lcore_count(void)
 {
 	int32_t count = 0;
-	uint32_t i;
-	for (i = 0; i < RTE_MAX_LCORE; i++)
-		count += lcore_states[i].is_service_core;
+
+	unsigned int lcore_id;
+	struct core_state *cs;
+	RTE_LCORE_VAR_FOREACH(lcore_id, cs, lcore_states)
+		count += cs->is_service_core;
+
 	return count;
 }
 
@@ -566,7 +569,8 @@ rte_service_lcore_list(uint32_t array[], uint32_t n)
 	uint32_t i;
 	uint32_t idx = 0;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		struct core_state *cs = &lcore_states[i];
+		struct core_state *cs =
+			RTE_LCORE_VAR_LCORE(i, lcore_states);
 		if (cs->is_service_core) {
 			array[idx] = i;
 			idx++;
@@ -582,7 +586,7 @@ rte_service_lcore_count_services(uint32_t lcore)
 	if (lcore >= RTE_MAX_LCORE)
 		return -EINVAL;
 
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs = RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 	if (!cs->is_service_core)
 		return -ENOTSUP;
 
@@ -634,28 +638,30 @@ rte_service_start_with_defaults(void)
 static int32_t
 service_update(uint32_t sid, uint32_t lcore, uint32_t *set, uint32_t *enabled)
 {
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
+
 	/* validate ID, or return error value */
 	if (!service_valid(sid) || lcore >= RTE_MAX_LCORE ||
-			!lcore_states[lcore].is_service_core)
+			!cs->is_service_core)
 		return -EINVAL;
 
 	if (set) {
-		uint64_t lcore_mapped = rte_bitset_test(lcore_states[lcore].mapped_services, sid);
+		bool lcore_mapped = rte_bitset_test(cs->mapped_services, sid);
 
 		if (*set && !lcore_mapped) {
-			rte_bitset_set(lcore_states[lcore].mapped_services, sid);
+			rte_bitset_set(cs->mapped_services, sid);
 			rte_atomic_fetch_add_explicit(&rte_services[sid].num_mapped_cores,
 				1, rte_memory_order_relaxed);
 		}
 		if (!*set && lcore_mapped) {
-			rte_bitset_clear(lcore_states[lcore].mapped_services, sid);
+			rte_bitset_clear(cs->mapped_services, sid);
 			rte_atomic_fetch_sub_explicit(&rte_services[sid].num_mapped_cores,
 				1, rte_memory_order_relaxed);
 		}
 	}
 
 	if (enabled)
-		*enabled = rte_bitset_test(lcore_states[lcore].mapped_services, sid);
+		*enabled = rte_bitset_test(cs->mapped_services, sid);
 
 	return 0;
 }
@@ -683,13 +689,14 @@ set_lcore_state(uint32_t lcore, int32_t state)
 {
 	/* mark core state in hugepage backed config */
 	struct rte_config *cfg = rte_eal_get_configuration();
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 	cfg->lcore_role[lcore] = state;
 
 	/* mark state in process local lcore_config */
 	lcore_config[lcore].core_role = state;
 
 	/* update per-lcore optimized state tracking */
-	lcore_states[lcore].is_service_core = (state == ROLE_SERVICE);
+	cs->is_service_core = (state == ROLE_SERVICE);
 
 	rte_eal_trace_service_lcore_state_change(lcore, state);
 }
@@ -700,14 +707,16 @@ rte_service_lcore_reset_all(void)
 	/* loop over cores, reset all mapped services */
 	uint32_t i;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		if (lcore_states[i].is_service_core) {
-			rte_bitset_clear_all(lcore_states[i].mapped_services, RTE_SERVICE_NUM_MAX);
+		struct core_state *cs =	RTE_LCORE_VAR_LCORE(i, lcore_states);
+
+		if (cs->is_service_core) {
+			rte_bitset_clear_all(cs->mapped_services, RTE_SERVICE_NUM_MAX);
 			set_lcore_state(i, ROLE_RTE);
 			/* runstate act as guard variable Use
 			 * store-release memory order here to synchronize
 			 * with load-acquire in runstate read functions.
 			 */
-			rte_atomic_store_explicit(&lcore_states[i].runstate,
+			rte_atomic_store_explicit(&cs->runstate,
 				RUNSTATE_STOPPED, rte_memory_order_release);
 		}
 	}
@@ -723,17 +732,19 @@ rte_service_lcore_add(uint32_t lcore)
 {
 	if (lcore >= RTE_MAX_LCORE)
 		return -EINVAL;
-	if (lcore_states[lcore].is_service_core)
+
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
+	if (cs->is_service_core)
 		return -EALREADY;
 
 	set_lcore_state(lcore, ROLE_SERVICE);
 
 	/* ensure that after adding a core the mask and state are defaults */
-	rte_bitset_clear_all(lcore_states[lcore].mapped_services, RTE_SERVICE_NUM_MAX);
+	rte_bitset_clear_all(cs->mapped_services, RTE_SERVICE_NUM_MAX);
 	/* Use store-release memory order here to synchronize with
 	 * load-acquire in runstate read functions.
 	 */
-	rte_atomic_store_explicit(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
+	rte_atomic_store_explicit(&cs->runstate, RUNSTATE_STOPPED,
 		rte_memory_order_release);
 
 	return rte_eal_wait_lcore(lcore);
@@ -745,7 +756,7 @@ rte_service_lcore_del(uint32_t lcore)
 	if (lcore >= RTE_MAX_LCORE)
 		return -EINVAL;
 
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 	if (!cs->is_service_core)
 		return -EINVAL;
 
@@ -769,7 +780,7 @@ rte_service_lcore_start(uint32_t lcore)
 	if (lcore >= RTE_MAX_LCORE)
 		return -EINVAL;
 
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 	if (!cs->is_service_core)
 		return -EINVAL;
 
@@ -799,6 +810,8 @@ rte_service_lcore_start(uint32_t lcore)
 int32_t
 rte_service_lcore_stop(uint32_t lcore)
 {
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
+
 	if (lcore >= RTE_MAX_LCORE)
 		return -EINVAL;
 
@@ -806,12 +819,11 @@ rte_service_lcore_stop(uint32_t lcore)
 	 * memory order here to synchronize with store-release
 	 * in runstate update functions.
 	 */
-	if (rte_atomic_load_explicit(&lcore_states[lcore].runstate, rte_memory_order_acquire) ==
+	if (rte_atomic_load_explicit(&cs->runstate, rte_memory_order_acquire) ==
 			RUNSTATE_STOPPED)
 		return -EALREADY;
 
 	uint32_t i;
-	struct core_state *cs = &lcore_states[lcore];
 
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		bool enabled = rte_bitset_test(cs->mapped_services, i);
@@ -831,7 +843,7 @@ rte_service_lcore_stop(uint32_t lcore)
 	/* Use store-release memory order here to synchronize with
 	 * load-acquire in runstate read functions.
 	 */
-	rte_atomic_store_explicit(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
+	rte_atomic_store_explicit(&cs->runstate, RUNSTATE_STOPPED,
 		rte_memory_order_release);
 
 	rte_eal_trace_service_lcore_stop(lcore);
@@ -842,7 +854,7 @@ rte_service_lcore_stop(uint32_t lcore)
 static uint64_t
 lcore_attr_get_loops(unsigned int lcore)
 {
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	return rte_atomic_load_explicit(&cs->loops, rte_memory_order_relaxed);
 }
@@ -850,7 +862,7 @@ lcore_attr_get_loops(unsigned int lcore)
 static uint64_t
 lcore_attr_get_cycles(unsigned int lcore)
 {
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	return rte_atomic_load_explicit(&cs->cycles, rte_memory_order_relaxed);
 }
@@ -858,7 +870,7 @@ lcore_attr_get_cycles(unsigned int lcore)
 static uint64_t
 lcore_attr_get_service_calls(uint32_t service_id, unsigned int lcore)
 {
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	return rte_atomic_load_explicit(&cs->service_stats[service_id].calls,
 		rte_memory_order_relaxed);
@@ -885,7 +897,7 @@ lcore_attr_get_service_error_calls(uint32_t service_id, unsigned int lcore)
 static uint64_t
 lcore_attr_get_service_cycles(uint32_t service_id, unsigned int lcore)
 {
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	return rte_atomic_load_explicit(&cs->service_stats[service_id].cycles,
 		rte_memory_order_relaxed);
@@ -901,7 +913,10 @@ attr_get(uint32_t id, lcore_attr_get_fun lcore_attr_get)
 	uint64_t sum = 0;
 
 	for (lcore = 0; lcore < RTE_MAX_LCORE; lcore++) {
-		if (lcore_states[lcore].is_service_core)
+		struct core_state *cs =
+			RTE_LCORE_VAR_LCORE(lcore, lcore_states);
+
+		if (cs->is_service_core)
 			sum += lcore_attr_get(id, lcore);
 	}
 
@@ -963,12 +978,11 @@ int32_t
 rte_service_lcore_attr_get(uint32_t lcore, uint32_t attr_id,
 			   uint64_t *attr_value)
 {
-	struct core_state *cs;
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	if (lcore >= RTE_MAX_LCORE || !attr_value)
 		return -EINVAL;
 
-	cs = &lcore_states[lcore];
 	if (!cs->is_service_core)
 		return -ENOTSUP;
 
@@ -993,7 +1007,8 @@ rte_service_attr_reset_all(uint32_t id)
 		return -EINVAL;
 
 	for (lcore = 0; lcore < RTE_MAX_LCORE; lcore++) {
-		struct core_state *cs = &lcore_states[lcore];
+		struct core_state *cs =
+			RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 		cs->service_stats[id] = (struct service_stats) {};
 	}
@@ -1004,12 +1019,11 @@ rte_service_attr_reset_all(uint32_t id)
 int32_t
 rte_service_lcore_attr_reset_all(uint32_t lcore)
 {
-	struct core_state *cs;
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	if (lcore >= RTE_MAX_LCORE)
 		return -EINVAL;
 
-	cs = &lcore_states[lcore];
 	if (!cs->is_service_core)
 		return -ENOTSUP;
 
@@ -1044,7 +1058,7 @@ static void
 service_dump_calls_per_lcore(FILE *f, uint32_t lcore)
 {
 	uint32_t i;
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	fprintf(f, "%02d\t", lcore);
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
