@@ -2,6 +2,8 @@
  * Copyright (c) 2022 NVIDIA Corporation & Affiliates
  */
 
+#include <rte_bitops.h>
+
 #include "mlx5dr_internal.h"
 
 #define GTP_PDU_SC	0x85
@@ -1548,7 +1550,7 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 		fc->tag_set = &mlx5dr_definer_vport_set;
 		fc->tag_mask_set = &mlx5dr_definer_ones_set;
 		DR_CALC_SET_HDR(fc, registers, register_c_0);
-		fc->bit_off = __builtin_ctz(caps->wire_regc_mask);
+		fc->bit_off = rte_ctz32(caps->wire_regc_mask);
 		fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
 		fc->dr_ctx = cd->ctx;
 	} else {
@@ -2666,8 +2668,8 @@ mlx5dr_definer_conv_item_geneve_opt(struct mlx5dr_definer_conv_data *cd,
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ones_set;
 		fc->byte_off = hl_ok_bit->dw_offset * DW_SIZE +
-				__builtin_clz(hl_ok_bit->dw_mask) / 8;
-		fc->bit_off = __builtin_ctz(hl_ok_bit->dw_mask);
+				rte_clz32(hl_ok_bit->dw_mask) / 8;
+		fc->bit_off = rte_ctz32(hl_ok_bit->dw_mask);
 		fc->bit_mask = 0x1;
 	}
 

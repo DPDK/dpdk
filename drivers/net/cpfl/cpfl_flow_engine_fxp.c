@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <math.h>
+
+#include <rte_bitops.h>
 #include <rte_debug.h>
 #include <rte_ether.h>
 #include <rte_log.h>
@@ -20,6 +22,7 @@
 #include <rte_flow.h>
 #include <rte_bitmap.h>
 #include <ethdev_driver.h>
+
 #include "cpfl_rules.h"
 #include "cpfl_logs.h"
 #include "cpfl_ethdev.h"
@@ -608,7 +611,7 @@ cpfl_fxp_mod_idx_alloc(struct cpfl_adapter_ext *ad)
 	if (!rte_bitmap_scan(ad->mod_bm, &pos, &slab))
 		return CPFL_MAX_MOD_CONTENT_INDEX;
 
-	pos += __builtin_ffsll(slab) - 1;
+	pos += rte_bsf64(slab);
 	rte_bitmap_clear(ad->mod_bm, pos);
 
 	return pos;

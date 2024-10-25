@@ -619,7 +619,7 @@ mlx5_select_tx_function(struct rte_eth_dev *dev)
 		 * Check whether it has minimal amount
 		 * of not requested offloads.
 		 */
-		tmp = __builtin_popcountl(tmp & ~olx);
+		tmp = rte_popcount64(tmp & ~olx);
 		if (m >= RTE_DIM(txoff_func) || tmp < diff) {
 			/* First or better match, save and continue. */
 			m = i;

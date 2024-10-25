@@ -4,7 +4,9 @@
  */
 
 #include <stdint.h>
+
 #include <ethdev_driver.h>
+#include <rte_bitops.h>
 #include <rte_malloc.h>
 #include <rte_vect.h>
 
@@ -558,7 +560,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 		if (unlikely(stat == 0)) {
 			nb_pkts_recd += RTE_I40E_DESCS_PER_LOOP;
 		} else {
-			nb_pkts_recd += __builtin_ctzl(stat) / I40E_UINT16_BIT;
+			nb_pkts_recd += rte_ctz64(stat) / I40E_UINT16_BIT;
 			break;
 		}
 	}

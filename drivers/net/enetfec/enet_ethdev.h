@@ -125,12 +125,6 @@ bufdesc *enet_get_nextdesc(struct bufdesc *bdp, struct bufdesc_prop *bd)
 		: (struct bufdesc *)(((uintptr_t)bdp) + bd->d_size);
 }
 
-static inline int
-fls64(unsigned long word)
-{
-	return (64 - __builtin_clzl(word)) - 1;
-}
-
 static inline struct
 bufdesc *enet_get_prevdesc(struct bufdesc *bdp, struct bufdesc_prop *bd)
 {

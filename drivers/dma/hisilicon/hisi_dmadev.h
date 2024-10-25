@@ -5,6 +5,7 @@
 #ifndef HISI_DMADEV_H
 #define HISI_DMADEV_H
 
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_memzone.h>
@@ -14,7 +15,7 @@
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
 #define GENMASK(h, l) \
 		(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
-#define BF_SHF(x) (__builtin_ffsll(x) - 1)
+#define BF_SHF(x) rte_bsf64(x)
 #define FIELD_GET(mask, reg) \
 		((typeof(mask))(((reg) & (mask)) >> BF_SHF(mask)))
 

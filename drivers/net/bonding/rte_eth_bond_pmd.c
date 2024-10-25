@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <netinet/in.h>
 
+#include <rte_bitops.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <ethdev_driver.h>
@@ -3982,7 +3983,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		 * Two '1' in binary of 'link_speeds': bit0 and a unique
 		 * speed bit.
 		 */
-		if (__builtin_popcountl(link_speeds) != 2) {
+		if (rte_popcount64(link_speeds) != 2) {
 			RTE_BOND_LOG(ERR, "please set a unique speed.");
 			return -EINVAL;
 		}

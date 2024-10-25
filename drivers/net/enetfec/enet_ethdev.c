@@ -6,6 +6,7 @@
 
 #include <ethdev_vdev.h>
 #include <ethdev_driver.h>
+#include <rte_bitops.h>
 #include <rte_io.h>
 
 #include "enet_pmd_logs.h"
@@ -374,7 +375,7 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int size;
 	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
 		sizeof(struct bufdesc);
-	unsigned int dsize_log2 = fls64(dsize);
+	unsigned int dsize_log2 = rte_fls_u64(dsize) - 1;
 
 	/* Tx deferred start is not supported */
 	if (tx_conf->tx_deferred_start) {
@@ -453,7 +454,7 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int size;
 	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
 			sizeof(struct bufdesc);
-	unsigned int dsize_log2 = fls64(dsize);
+	unsigned int dsize_log2 = rte_fls_u64(dsize) - 1;
 
 	/* Rx deferred start is not supported */
 	if (rx_conf->rx_deferred_start) {

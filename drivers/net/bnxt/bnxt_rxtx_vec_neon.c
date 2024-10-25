@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#include <rte_bitmap.h>
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
@@ -290,7 +290,7 @@ recv_burst_vec_neon(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (valid == 0)
 			num_valid = 4;
 		else
-			num_valid = __builtin_ctzl(valid) / 16;
+			num_valid = rte_ctz64(valid) / 16;
 
 		if (num_valid == 0)
 			break;

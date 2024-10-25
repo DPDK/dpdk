@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <arm_neon.h>
 
+#include <rte_bitops.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
@@ -620,7 +621,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 
 	/*
 	 * Note that vectors have reverse order - {v3, v2, v1, v0}, because
-	 * there's no instruction to count trailing zeros. __builtin_clzl() is
+	 * there's no instruction to count trailing zeros. rte_clz64() is
 	 * used instead.
 	 *
 	 * A. copy 4 mbuf pointers from elts ring to returning pkts.
@@ -808,13 +809,12 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		/* E.2 mask out invalid entries. */
 		comp_mask = vbic_u16(comp_mask, invalid_mask);
 		/* E.3 get the first compressed CQE. */
-		comp_idx = __builtin_clzl(vget_lane_u64(vreinterpret_u64_u16(
-					  comp_mask), 0)) /
-					  (sizeof(uint16_t) * 8);
+		comp_idx = rte_clz64(vget_lane_u64(vreinterpret_u64_u16(comp_mask), 0)) /
+			(sizeof(uint16_t) * 8);
 		invalid_mask = vorr_u16(invalid_mask, comp_mask);
 		/* D.7 count non-compressed valid CQEs. */
-		n = __builtin_clzl(vget_lane_u64(vreinterpret_u64_u16(
-				   invalid_mask), 0)) / (sizeof(uint16_t) * 8);
+		n = rte_clz64(vget_lane_u64(vreinterpret_u64_u16(invalid_mask), 0)) /
+			(sizeof(uint16_t) * 8);
 		nocmp_n += n;
 		/*
 		 * D.2 mask out entries after the compressed CQE.

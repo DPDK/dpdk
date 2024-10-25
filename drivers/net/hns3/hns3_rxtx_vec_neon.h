@@ -5,6 +5,8 @@
 #ifndef HNS3_RXTX_VEC_NEON_H
 #define HNS3_RXTX_VEC_NEON_H
 
+#include <rte_bitops.h>
+
 #include <arm_neon.h>
 
 #pragma GCC diagnostic ignored "-Wcast-qual"
@@ -189,7 +191,7 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		if (likely(stat == 0))
 			bd_valid_num = HNS3_DEFAULT_DESCS_PER_LOOP;
 		else
-			bd_valid_num = __builtin_ctzl(stat) / HNS3_UINT16_BIT;
+			bd_valid_num = rte_ctz64(stat) / HNS3_UINT16_BIT;
 		if (bd_valid_num == 0)
 			break;
 

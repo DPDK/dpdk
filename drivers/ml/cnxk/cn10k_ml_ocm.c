@@ -2,6 +2,7 @@
  * Copyright (c) 2022 Marvell.
  */
 
+#include <rte_bitops.h>
 #include <rte_mldev_pmd.h>
 
 #include <roc_api.h>
@@ -203,11 +204,11 @@ cn10k_ml_ocm_tilecount(uint64_t tilemask, int *start, int *end)
 
 	PLT_ASSERT(tilemask != 0);
 
-	*start = __builtin_ctzl(tilemask);
-	*end = 64 - __builtin_clzl(tilemask) - 1;
+	*start = rte_ctz64(tilemask);
+	*end = 64 - rte_clz64(tilemask) - 1;
 	count = *end - *start + 1;
 
-	PLT_ASSERT(count == __builtin_popcountl(tilemask));
+	PLT_ASSERT(count == rte_popcount64(tilemask));
 	return count;
 }
 

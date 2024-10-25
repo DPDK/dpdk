@@ -3,7 +3,9 @@
  * All rights reserved.
  */
 
+#include <rte_bitops.h>
 #include <rte_malloc.h>
+
 #include "bnxt.h"
 #include "bnxt_tf_common.h"
 #include "ulp_utils.h"
@@ -938,7 +940,7 @@ ulp_flow_db_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
 		 */
 		if (s_idx == idx)
 			bs &= (-1UL >> mod_fid);
-		lfid = (idx * ULP_INDEX_BITMAP_SIZE) + __builtin_clzl(bs);
+		lfid = (idx * ULP_INDEX_BITMAP_SIZE) + rte_clz64(bs);
 		if (*fid >= lfid) {
 			BNXT_TF_DBG(ERR, "Flow Database is corrupt\n");
 			return -ENOENT;
@@ -1480,7 +1482,7 @@ ulp_flow_db_parent_child_flow_next_entry_get(struct bnxt_ulp_flow_db *flow_db,
 		 */
 		if (s_idx == idx)
 			bs &= (-1UL >> mod_fid);
-		next_fid = (idx * ULP_INDEX_BITMAP_SIZE) + __builtin_clzl(bs);
+		next_fid = (idx * ULP_INDEX_BITMAP_SIZE) + rte_clz64(bs);
 		if (*child_fid >= next_fid) {
 			BNXT_TF_DBG(ERR, "Parent Child Database is corrupt\n");
 			return -ENOENT;

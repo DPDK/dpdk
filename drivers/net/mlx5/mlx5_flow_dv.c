@@ -8,6 +8,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
@@ -9068,7 +9069,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		    !(non_shared_age && count) &&
 		    (attr->group || (attr->transfer && priv->fdb_def_rule)) &&
 		    priv->sh->flow_hit_aso_en);
-	if (__builtin_popcountl(aso_mask) > 1)
+	if (rte_popcount64(aso_mask) > 1)
 		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL, "unsupported combining AGE, METER, CT ASO actions in a single rule");
 	/*

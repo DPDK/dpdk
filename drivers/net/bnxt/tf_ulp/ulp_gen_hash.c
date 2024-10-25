@@ -3,8 +3,10 @@
  * All rights reserved.
  */
 
+#include <rte_bitops.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+
 #include "bnxt_tf_common.h"
 #include "ulp_gen_hash.h"
 #include "ulp_utils.h"
@@ -25,7 +27,7 @@ int32_t ulp_bit_alloc_list_alloc(struct bit_alloc_list *blist,
 
 	if (idx <= bsize_64) {
 		if (bentry)
-			jdx = __builtin_clzl(~bentry);
+			jdx = rte_clz64(~bentry);
 		*index = ((idx - 1) * ULP_INDEX_BITMAP_SIZE) + jdx;
 		ULP_INDEX_BITMAP_SET(blist->bdata[(idx - 1)], jdx);
 		return 0;
