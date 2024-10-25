@@ -177,11 +177,12 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
-	# forbid use of non abstracted bit count operations
+	# forbid use of compiler __builtin_*
 	awk -v FOLDERS="lib drivers app examples" \
-		-v EXPRESSIONS='\\<__builtin_(clz|ctz|ffs|popcount)(ll)?\\>' \
+		-v SKIP_FILES='lib/eal/ drivers/.*/base/ drivers/.*osdep.h$' \
+		-v EXPRESSIONS='\\<__builtin_' \
 		-v RET_ON_FAIL=1 \
-		-v MESSAGE='Using __builtin helpers for bit count operations' \
+		-v MESSAGE='Using __builtin helpers, prefer EAL macros' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
