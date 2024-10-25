@@ -2,6 +2,7 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
+#include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
@@ -98,22 +99,6 @@ digest_name_get(enum rte_crypto_auth_algorithm algo)
 #endif
 
 static int cryptodev_openssl_remove(struct rte_vdev_device *vdev);
-
-/*----------------------------------------------------------------------------*/
-
-/**
- * Increment counter by 1
- * Counter is 64 bit array, big-endian
- */
-static void
-ctr_inc(uint8_t *ctr)
-{
-	uint64_t *ctr64 = (uint64_t *)ctr;
-
-	*ctr64 = __builtin_bswap64(*ctr64);
-	(*ctr64)++;
-	*ctr64 = __builtin_bswap64(*ctr64);
-}
 
 /*
  *------------------------------------------------------------------------------
@@ -1192,7 +1177,8 @@ static int
 process_openssl_cipher_des3ctr(struct rte_mbuf *mbuf_src, uint8_t *dst,
 		int offset, uint8_t *iv, int srclen, EVP_CIPHER_CTX *ctx)
 {
-	uint8_t ebuf[8], ctr[8];
+	uint8_t ebuf[8];
+	uint64_t ctr;
 	int unused, n;
 	struct rte_mbuf *m;
 	uint8_t *src;
@@ -1208,15 +1194,19 @@ process_openssl_cipher_des3ctr(struct rte_mbuf *mbuf_src, uint8_t *dst,
 	src = rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
 	l = rte_pktmbuf_data_len(m) - offset;
 
-	memcpy(ctr, iv, 8);
+	memcpy(&ctr, iv, 8);
 
 	for (n = 0; n < srclen; n++) {
 		if (n % 8 == 0) {
+			uint64_t cpu_ctr;
+
 			if (EVP_EncryptUpdate(ctx,
 					(unsigned char *)&ebuf, &unused,
 					(const unsigned char *)&ctr, 8) <= 0)
 				goto process_cipher_des3ctr_err;
-			ctr_inc(ctr);
+			cpu_ctr = rte_be_to_cpu_64(ctr);
+			cpu_ctr++;
+			ctr = rte_cpu_to_be_64(cpu_ctr);
 		}
 		dst[n] = *(src++) ^ ebuf[n % 8];
 
