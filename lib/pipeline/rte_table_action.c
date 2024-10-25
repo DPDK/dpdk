@@ -109,7 +109,7 @@ mtr_cfg_check(struct rte_table_action_mtr_config *mtr)
 struct mtr_trtcm_data {
 	struct rte_meter_trtcm trtcm;
 	uint64_t stats[RTE_COLORS];
-} __rte_packed;
+};
 
 #define MTR_TRTCM_DATA_METER_PROFILE_ID_GET(data)          \
 	(((data)->stats[RTE_COLOR_GREEN] & 0xF8LLU) >> 3)
