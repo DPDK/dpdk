@@ -119,11 +119,13 @@ extern "C" {
  * @param handle
  *   The lcore variable handle.
  */
+/* access function 8< */
 static inline void *
 rte_lcore_var_lcore(unsigned int lcore_id, void *handle)
 {
 	return RTE_PTR_ADD(handle, lcore_id * RTE_MAX_LCORE_VAR);
 }
+/* >8 end of access function */
 
 /**
  * Get pointer to lcore variable instance with the specified lcore id.

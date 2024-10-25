@@ -24,6 +24,7 @@ Memory Management
     :maxdepth: 1
     :numbered:
 
+    lcore_var
     mempool_lib
     mbuf_lib
     multi_proc_support

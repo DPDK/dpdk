@@ -232,6 +232,7 @@ M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
 F: lib/eal/include/rte_lcore_var.h
 F: lib/eal/common/eal_common_lcore_var.c
 F: app/test/test_lcore_var*
+F: doc/guides/prog_guide/lcore_var.rst
 
 Interrupt Subsystem
 M: Harman Kalra <hkalra@marvell.com>

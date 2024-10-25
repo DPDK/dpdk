@@ -23,15 +23,19 @@
  * of the lcore variables implementation.
  */
 
+/* base unit */
 struct lcore_var_buffer {
 	char data[RTE_MAX_LCORE_VAR * RTE_MAX_LCORE];
 	struct lcore_var_buffer *prev;
 };
 
+/* last allocated unit */
 static struct lcore_var_buffer *current_buffer;
 
 /* initialized to trigger buffer allocation on first allocation */
 static size_t offset = RTE_MAX_LCORE_VAR;
+
+/* >8 end of documented variables */
 
 static void *
 lcore_var_alloc(size_t size, size_t align)

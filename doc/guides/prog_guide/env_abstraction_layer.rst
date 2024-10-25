@@ -434,7 +434,7 @@ and other types of memory are shared by all DPDK threads.
 
 An application, a DPDK library, or a PMD may opt to keep per-thread state.
 
-Per-thread data can be maintained using either *lcore variables* (see ``rte_lcore_var.h``),
+Per-thread data can be maintained using either :doc:`lcore variables <lcore_var>`,
 *thread-local storage (TLS)* (see ``rte_per_lcore.h``),
 or a static array of ``RTE_MAX_LCORE`` elements, indexed by ``rte_lcore_id()``.
 These methods allow per-lcore data to be largely internal to the module
@@ -466,7 +466,8 @@ and include an ``RTE_CACHE_GUARD``.
 This extensive use of padding causes internal fragmentation (i.e., unused space)
 and reduces cache hit rates.
 
-For more discussions on per-lcore state, refer to the ``rte_lcore_var.h`` API documentation.
+For more discussions on per-lcore state,
+refer to the :doc:`lcore variables documentation <lcore_var>`.
 
 Logs
 ~~~~
