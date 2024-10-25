@@ -25,6 +25,9 @@ srcfiles = []
 for root, dirs, files in os.walk(src):
     srcfiles.extend([join(root, f) for f in files])
 
+# create destination path if not already present
+os.makedirs(dst, exist_ok=True)
+
 # run sphinx, putting the html output in a "html" directory
 with open(join(dst, 'sphinx_html.out'), 'w') as out:
     process = run(sphinx_cmd + ['-b', 'html', src, join(dst, 'html')],

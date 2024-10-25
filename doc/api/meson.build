@@ -4,9 +4,6 @@
 doxygen = find_program('doxygen', required: get_option('enable_docs'))
 
 if not doxygen.found()
-  # process DTS API doc build even if DPDK API doc build can't be done
-  cdata = configuration_data()
-  subdir('dts')
   subdir_done()
 endif
 
@@ -40,6 +37,7 @@ cdata.set('OUTPUT', join_paths(dpdk_build_root, 'doc', 'api'))
 cdata.set('TOPDIR', dpdk_source_root)
 cdata.set('STRIP_FROM_PATH', ' '.join([dpdk_source_root, join_paths(dpdk_build_root, 'doc', 'api')]))
 cdata.set('WARN_AS_ERROR', 'NO')
+cdata.set('DTS_API_MAIN_PAGE', join_paths('.', 'dts', 'html', 'index.html'))
 if get_option('werror')
     cdata.set('WARN_AS_ERROR', 'YES')
 endif
@@ -103,5 +101,8 @@ mandb = find_program('mandb', required: false)
 if mandb.found() and get_option('enable_docs')
     meson.add_install_script(mandb)
 endif
+
+# used by DTS to place its files into
+api_build_dir = meson.current_build_dir()
 
 subdir('dts')

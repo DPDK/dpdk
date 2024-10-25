@@ -11,21 +11,19 @@ if python_ver_satisfied != 0
     subdir_done()
 endif
 
-cdata.set('DTS_API_MAIN_PAGE', join_paths('..', 'dts', 'html', 'index.html'))
-
 extra_sphinx_args = ['-E', '-c', join_paths(doc_source_dir, 'guides')]
 if get_option('werror')
     extra_sphinx_args += '-W'
 endif
 
-htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk', 'dts')
+# DTS docs are generated inside main Doxygen docs build directory
+# DTS docs relies on main docs to install it so does not define install dir
 dts_api_html = custom_target('dts_api_html',
+        depends: doxy_html_build,
         output: 'html',
         command: [sphinx_wrapper, sphinx, meson.project_version(),
-            meson.current_source_dir(), meson.current_build_dir(), extra_sphinx_args],
-        build_by_default: get_option('enable_docs'),
-        install: get_option('enable_docs'),
-        install_dir: htmldir)
+            meson.current_source_dir(), join_paths(api_build_dir, 'html', 'dts'), extra_sphinx_args],
+        build_by_default: get_option('enable_docs'))
 
 doc_targets += dts_api_html
 doc_target_names += 'DTS_API_HTML'
