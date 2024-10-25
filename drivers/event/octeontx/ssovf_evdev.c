@@ -717,10 +717,20 @@ ssovf_close(struct rte_eventdev *dev)
 }
 
 static int
-ssovf_parsekv(const char *key __rte_unused, const char *value, void *opaque)
+ssovf_parsekv(const char *key, const char *value, void *opaque)
 {
-	int *flag = opaque;
-	*flag = !!atoi(value);
+	uint8_t *flag = opaque;
+	uint64_t v;
+	char *end;
+
+	errno = 0;
+	v = strtoul(value, &end, 0);
+	if ((errno != 0) || (value == end) || *end != '\0' || v > 1) {
+		ssovf_log_err("invalid %s value %s", key, value);
+		return -EINVAL;
+	}
+
+	*flag = !!v;
 	return 0;
 }
 
