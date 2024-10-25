@@ -397,6 +397,7 @@ EXPERIMENTAL {
 
 	# added in 24.11
 	rte_bitset_to_str;
+	rte_lcore_var_alloc;
 };
 
 INTERNAL {

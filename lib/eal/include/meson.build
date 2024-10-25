@@ -28,6 +28,7 @@ headers += files(
         'rte_keepalive.h',
         'rte_launch.h',
         'rte_lcore.h',
+        'rte_lcore_var.h',
         'rte_lock_annotations.h',
         'rte_malloc.h',
         'rte_mcslock.h',

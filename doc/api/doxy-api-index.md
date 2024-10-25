@@ -63,6 +63,8 @@ The public API headers are grouped by topics:
   [ifpga](@ref rte_pmd_ifpga.h)
 
 - **memory**:
+  [per-lcore](@ref rte_per_lcore.h),
+  [lcore variables](@ref rte_lcore_var.h),
   [memseg](@ref rte_memory.h),
   [memzone](@ref rte_memzone.h),
   [mempool](@ref rte_mempool.h),
@@ -99,7 +101,6 @@ The public API headers are grouped by topics:
   [interrupts](@ref rte_interrupts.h),
   [launch](@ref rte_launch.h),
   [lcore](@ref rte_lcore.h),
-  [per-lcore](@ref rte_per_lcore.h),
   [service cores](@ref rte_service.h),
   [keepalive](@ref rte_keepalive.h),
   [power/freq](@ref rte_power.h),
