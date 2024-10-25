@@ -2496,7 +2496,8 @@ test_queue_pair_descriptor_count(void)
 	int qp_depth = 0;
 	int i;
 
-	RTE_VERIFY(gbl_action_type != RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO);
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
 
 	/* Verify if the queue pair depth API is supported by driver */
 	qp_depth = rte_cryptodev_qp_depth_used(ts_params->valid_devs[0], 0);
@@ -15135,6 +15136,10 @@ test_enq_callback_setup(void)
 	uint16_t qp_id = 0;
 	int j = 0;
 
+	/* Skip test if synchronous API is used */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
+
 	/* Verify the crypto capabilities for which enqueue/dequeue is done. */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	cap_idx.algo.auth = RTE_CRYPTO_AUTH_NULL;
@@ -15255,6 +15260,10 @@ test_deq_callback_setup(void)
 	struct rte_cryptodev_cb *cb;
 	uint16_t qp_id = 0;
 	int j = 0;
+
+	/* Skip test if synchronous API is used */
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
 
 	/* Verify the crypto capabilities for which enqueue/dequeue is done. */
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
