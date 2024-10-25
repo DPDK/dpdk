@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <dirent.h>
 #include <inttypes.h>
+
 #include <rte_byteorder.h>
 #include <rte_atomic.h>
 #include <rte_spinlock.h>
@@ -37,6 +38,7 @@
 #include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
+#include <rte_prefetch.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
@@ -142,8 +144,8 @@ static inline void out_be32(volatile void *__p, u32 val)
 #define hwsync() rte_rmb()
 #define lwsync() rte_wmb()
 
-#define dcbt_ro(p) __builtin_prefetch(p, 0)
-#define dcbt_rw(p) __builtin_prefetch(p, 1)
+#define dcbt_ro(p) rte_prefetch0(p)
+#define dcbt_rw(p) rte_prefetch0_write(p)
 
 #if defined(RTE_ARCH_ARM)
 #if defined(RTE_ARCH_64)
