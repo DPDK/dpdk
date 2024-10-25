@@ -1309,6 +1309,7 @@ hns3_start_tqps(struct hns3_hw *hw)
 	hns3_enable_all_queues(hw, true);
 
 	for (i = 0; i < hw->data->nb_tx_queues; i++) {
+		__rte_assume(i < RTE_MAX_QUEUES_PER_PORT);
 		txq = hw->data->tx_queues[i];
 		if (txq->enabled)
 			hw->data->tx_queue_state[i] =
@@ -1316,6 +1317,7 @@ hns3_start_tqps(struct hns3_hw *hw)
 	}
 
 	for (i = 0; i < hw->data->nb_rx_queues; i++) {
+		__rte_assume(i < RTE_MAX_QUEUES_PER_PORT);
 		rxq = hw->data->rx_queues[i];
 		if (rxq->enabled)
 			hw->data->rx_queue_state[i] =

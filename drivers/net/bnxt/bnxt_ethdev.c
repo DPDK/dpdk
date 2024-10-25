@@ -910,6 +910,7 @@ skip_cosq_cfg:
 		struct bnxt_rx_queue *rxq = bp->rx_queues[j];
 
 		if (!rxq->rx_deferred_start) {
+			__rte_assume(j < RTE_MAX_QUEUES_PER_PORT);
 			bp->eth_dev->data->rx_queue_state[j] =
 				RTE_ETH_QUEUE_STATE_STARTED;
 			rxq->rx_started = true;
@@ -930,6 +931,7 @@ skip_cosq_cfg:
 		struct bnxt_tx_queue *txq = bp->tx_queues[j];
 
 		if (!txq->tx_deferred_start) {
+			__rte_assume(j < RTE_MAX_QUEUES_PER_PORT);
 			bp->eth_dev->data->tx_queue_state[j] =
 				RTE_ETH_QUEUE_STATE_STARTED;
 			txq->tx_started = true;
