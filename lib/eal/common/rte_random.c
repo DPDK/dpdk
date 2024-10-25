@@ -11,6 +11,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
 #include <rte_lcore.h>
+#include <rte_lcore_var.h>
 #include <rte_random.h>
 
 struct __rte_cache_aligned rte_rand_state {
@@ -19,14 +20,12 @@ struct __rte_cache_aligned rte_rand_state {
 	uint64_t z3;
 	uint64_t z4;
 	uint64_t z5;
-	RTE_CACHE_GUARD;
 };
 
-/* One instance each for every lcore id-equipped thread, and one
- * additional instance to be shared by all others threads (i.e., all
- * unregistered non-EAL threads).
- */
-static struct rte_rand_state rand_states[RTE_MAX_LCORE + 1];
+RTE_LCORE_VAR_HANDLE(struct rte_rand_state, rand_state);
+
+/* instance to be shared by all unregistered non-EAL threads */
+static struct rte_rand_state unregistered_rand_state;
 
 static uint32_t
 __rte_rand_lcg32(uint32_t *seed)
@@ -85,8 +84,14 @@ rte_srand(uint64_t seed)
 	unsigned int lcore_id;
 
 	/* add lcore_id to seed to avoid having the same sequence */
-	for (lcore_id = 0; lcore_id < RTE_DIM(rand_states); lcore_id++)
-		__rte_srand_lfsr258(seed + lcore_id, &rand_states[lcore_id]);
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		struct rte_rand_state *lcore_state =
+			RTE_LCORE_VAR_LCORE(lcore_id, rand_state);
+
+		__rte_srand_lfsr258(seed + lcore_id, lcore_state);
+	}
+
+	__rte_srand_lfsr258(seed + lcore_id, &unregistered_rand_state);
 }
 
 static __rte_always_inline uint64_t
@@ -124,11 +129,10 @@ struct rte_rand_state *__rte_rand_get_state(void)
 
 	idx = rte_lcore_id();
 
-	/* last instance reserved for unregistered non-EAL threads */
 	if (unlikely(idx == LCORE_ID_ANY))
-		idx = RTE_MAX_LCORE;
+		return &unregistered_rand_state;
 
-	return &rand_states[idx];
+	return RTE_LCORE_VAR(rand_state);
 }
 
 uint64_t
@@ -227,6 +231,8 @@ __rte_random_initial_seed(void)
 RTE_INIT(rte_rand_init)
 {
 	uint64_t seed;
+
+	RTE_LCORE_VAR_ALLOC(rand_state);
 
 	seed = __rte_random_initial_seed();
 
