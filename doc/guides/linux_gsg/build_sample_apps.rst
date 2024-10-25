@@ -180,6 +180,25 @@ Similarly, on a four socket system, to allocate 1 GB memory on each of sockets 0
 No memory will be reserved on any CPU socket that is not explicitly referenced, for example, socket 3 in this case.
 If the DPDK cannot allocate enough memory on each socket, the EAL initialization fails.
 
+Whether hugepages are included in core dump is controlled by ``/proc/<pid>/coredump_filter``.
+It is ``33`` (hexadecimal) by default, which means that hugepages are excluded from core dump.
+This setting is per-process and is inherited.
+Refer to ``core(5)`` for details.
+To include mapped hugepages in core dump, set bit 6 (``0x40``) in the parent process
+or shell before running a DPDK application:
+
+.. code-block:: shell
+
+   echo 0x73 > /proc/self/coredump_filter
+   ./dpdk-application ...
+
+.. note::
+
+   Including hugepages in core dump file increases its size,
+   which may fill the storage or overload the transport.
+   Hugepages typically hold data processed by the application,
+   like network packets, which may contain sensitive information.
+
 Additional Sample Applications
 ------------------------------
 
