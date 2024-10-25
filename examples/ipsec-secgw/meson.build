@@ -23,3 +23,9 @@ sources = files(
         'sp4.c',
         'sp6.c',
 )
+app_cflags = ['-Wno-address-of-packed-member']
+foreach flag:app_cflags
+    if cc.has_argument(flag)
+        cflags += flag
+    endif
+endforeach

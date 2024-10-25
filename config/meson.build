@@ -325,7 +325,6 @@ warning_flags = [
         '-Wwrite-strings',
 
         # globally disabled warnings
-        '-Wno-address-of-packed-member',
         '-Wno-packed-not-aligned',
         '-Wno-missing-field-initializers',
 ]

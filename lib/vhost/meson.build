@@ -16,7 +16,10 @@ elif (toolchain == 'icc' and cc.version().version_compare('>=16.0.0'))
     cflags += '-DVHOST_ICC_UNROLL_PRAGMA'
 endif
 dpdk_conf.set('RTE_LIBRTE_VHOST_POSTCOPY', cc.has_header('linux/userfaultfd.h'))
-cflags += '-fno-strict-aliasing'
+cflags += [
+        '-fno-strict-aliasing',
+        '-Wno-address-of-packed-member',
+]
 
 sources = files(
         'fd_man.c',
