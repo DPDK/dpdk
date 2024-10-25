@@ -10,6 +10,7 @@
 BEGIN {
 	split(FOLDERS,deny_folders," ");
 	split(EXPRESSIONS,deny_expr," ");
+	split(SKIP_FILES,skip_files," ");
 	in_file=0;
 	in_comment=0;
 	count=0;
@@ -56,14 +57,22 @@ BEGIN {
 	}
 	count = 0
 	for (i in deny_folders) {
-		re = "^\\+\\+\\+ b/" deny_folders[i];
-		if ($0 ~ re) {
-			# Check only if the files are not part of SKIP_FILES
-			if (!(length(SKIP_FILES) && ($re ~ SKIP_FILES))) {
-				in_file = 1
-				last_file = $0
-			}
+		if (!($0 ~ "^\\+\\+\\+ b/" deny_folders[i])) {
+			continue
 		}
+		skip = 0
+		for (j in skip_files) {
+			if (!($0 ~ "^\\+\\+\\+ b/" skip_files[j])) {
+				continue
+			}
+			skip = 1
+			break
+		}
+		if (skip == 0) {
+			in_file = 1
+			last_file = $0
+		}
+		break
 	}
 }
 END {
