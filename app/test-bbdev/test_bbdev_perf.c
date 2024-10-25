@@ -3535,6 +3535,10 @@ throughput_intr_lcore_ldpc_dec(void *arg)
 			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
 
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
+
 	return TEST_SUCCESS;
 }
 
@@ -3629,6 +3633,10 @@ throughput_intr_lcore_dec(void *arg)
 			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
 
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
+
 	return TEST_SUCCESS;
 }
 
@@ -3717,6 +3725,10 @@ throughput_intr_lcore_enc(void *arg)
 		if (j != TEST_REPETITIONS - 1)
 			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
@@ -3810,6 +3822,10 @@ throughput_intr_lcore_ldpc_enc(void *arg)
 			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
 
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
+
 	return TEST_SUCCESS;
 }
 
@@ -3901,6 +3917,10 @@ throughput_intr_lcore_fft(void *arg)
 			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
 
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
+
 	return TEST_SUCCESS;
 }
 
@@ -3985,6 +4005,10 @@ throughput_intr_lcore_mldts(void *arg)
 		if (j != TEST_REPETITIONS - 1)
 			rte_atomic_store_explicit(&tp->nb_dequeued, 0, rte_memory_order_relaxed);
 	}
+
+	TEST_ASSERT_SUCCESS(rte_bbdev_queue_intr_disable(tp->dev_id, queue_id),
+			"Failed to disable interrupts for dev: %u, queue_id: %u",
+			tp->dev_id, queue_id);
 
 	return TEST_SUCCESS;
 }
