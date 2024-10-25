@@ -16,17 +16,15 @@
 #include <malloc.h>
 #include <unistd.h>
 #include <linux/types.h>
+
 #include <rte_atomic.h>
+#include <rte_branch_prediction.h>
 
 /* The following definitions are primarily to allow the single-source driver
  * interfaces to be included by arbitrary program code. Ie. for interfaces that
  * are also available in kernel-space, these definitions provide compatibility
  * with certain attributes and types used in those interfaces.
  */
-
-/* Required compiler attributes */
-#define likely(x)	__builtin_expect(!!(x), 1)
-#define unlikely(x)	__builtin_expect(!!(x), 0)
 
 /* Required types */
 typedef uint64_t	dma_addr_t;
