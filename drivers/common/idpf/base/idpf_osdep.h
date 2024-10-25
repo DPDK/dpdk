@@ -349,10 +349,16 @@ idpf_hweight32(u32 num)
 #define LIST_ENTRY_TYPE(type)	   LIST_ENTRY(type)
 #endif
 
+#ifndef LIST_FOREACH_SAFE
+#define LIST_FOREACH_SAFE(var, head, field, tvar)			\
+	for ((var) = LIST_FIRST((head));				\
+	    (var) && ((tvar) = LIST_NEXT((var), field), 1);		\
+	    (var) = (tvar))
+#endif
+
 #ifndef LIST_FOR_EACH_ENTRY_SAFE
 #define LIST_FOR_EACH_ENTRY_SAFE(pos, temp, head, entry_type, list)	\
-	LIST_FOREACH(pos, head, list)
-
+	LIST_FOREACH_SAFE(pos, head, list, temp)
 #endif
 
 #ifndef LIST_FOR_EACH_ENTRY
