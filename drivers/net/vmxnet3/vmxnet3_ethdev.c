@@ -403,6 +403,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->adapter_stopped = TRUE;
 	hw->hw_addr0 = (void *)pci_dev->mem_resource[0].addr;
 	hw->hw_addr1 = (void *)pci_dev->mem_resource[1].addr;
 
