@@ -545,9 +545,7 @@ hns3_set_dcb_capability(struct hns3_hw *hw)
 	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
 	    device_id == HNS3_DEV_ID_50GE_RDMA ||
 	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC ||
-	    device_id == HNS3_DEV_ID_200G_RDMA ||
-	    device_id == HNS3_DEV_ID_100G_ROH ||
-	    device_id == HNS3_DEV_ID_200G_ROH)
+	    device_id == HNS3_DEV_ID_200G_RDMA)
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 }
 
