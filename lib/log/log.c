@@ -505,18 +505,25 @@ rte_log(uint32_t level, uint32_t logtype, const char *format, ...)
 void
 eal_log_init(const char *id)
 {
-	FILE *logf = NULL;
+	/* If user has already set a log stream, then use it. */
+	if (rte_logs.file == NULL) {
+		FILE *logf = NULL;
 
-	if (log_syslog_enabled())
-		logf = log_syslog_open(id);
+		/* if stderr is associated with systemd environment */
+		if (log_journal_enabled())
+			logf = log_journal_open(id);
+		/* If --syslog option was passed */
+		else if (log_syslog_enabled())
+			logf = log_syslog_open(id);
 
-	if (logf)
-		rte_openlog_stream(logf);
-
-	if (log_timestamp_enabled())
-		rte_logs.print_func = log_print_with_timestamp;
-	else
-		rte_logs.print_func = vfprintf;
+		/* if either syslog or journal is used, then no special handling */
+		if (logf)
+			rte_openlog_stream(logf);
+		else if (log_timestamp_enabled())
+			rte_logs.print_func = log_print_with_timestamp;
+		else
+			rte_logs.print_func = vfprintf;
+	}
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	RTE_LOG(NOTICE, EAL,

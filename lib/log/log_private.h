@@ -24,6 +24,22 @@ bool log_syslog_enabled(void);
 FILE *log_syslog_open(const char *id);
 #endif
 
+#ifdef RTE_EXEC_ENV_LINUX
+bool log_journal_enabled(void);
+FILE *log_journal_open(const char *id);
+#else
+static inline bool
+log_journal_enabled(void)
+{
+	return false;
+}
+static inline FILE *
+log_journal_open(const char *id __rte_unused)
+{
+	return NULL;
+}
+#endif /* !RTE_EXEC_ENV_LINUX */
+
 bool log_timestamp_enabled(void);
 ssize_t log_timestamp(char *tsbuf, size_t tsbuflen);
 

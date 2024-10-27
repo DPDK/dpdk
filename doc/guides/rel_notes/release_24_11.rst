@@ -118,6 +118,10 @@ New Features
 
   * The log subsystem is initialized earlier in startup so all messages go through the library.
 
+  * If the application is a systemd service and the log output is being sent to standard error
+    then DPDK will switch to journal native protocol.
+    This allows the more data such as severity to be sent.
+
   * The syslog option has changed.
     By default, messages are no longer sent to syslog unless the ``--syslog`` option is specified.
     Syslog is also supported on FreeBSD (but not on Windows).

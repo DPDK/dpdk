@@ -11,4 +11,8 @@ if not is_windows
     sources += files('log_syslog.c')
 endif
 
+if is_linux
+    sources += files('log_journal.c')
+endif
+
 headers = files('rte_log.h')
