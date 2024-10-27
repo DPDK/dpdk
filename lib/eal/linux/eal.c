@@ -831,8 +831,7 @@ rte_eal_iopl_init(void)
 
 static void rte_eal_init_alert(const char *msg)
 {
-	fprintf(stderr, "EAL: FATAL: %s\n", msg);
-	EAL_LOG(ERR, "%s", msg);
+	EAL_LOG(ALERT, "%s", msg);
 }
 
 /*

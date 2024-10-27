@@ -182,8 +182,7 @@ sync_func(void *arg __rte_unused)
 static void
 rte_eal_init_alert(const char *msg)
 {
-	fprintf(stderr, "EAL: FATAL: %s\n", msg);
-	EAL_LOG(ERR, "%s", msg);
+	EAL_LOG(ALERT, "%s", msg);
 }
 
 /* Stubs to enable EAL trace point compilation
