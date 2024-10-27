@@ -53,6 +53,7 @@
 #include "eal_options.h"
 #include "eal_memcfg.h"
 #include "eal_trace.h"
+#include "log_internal.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -547,6 +548,15 @@ rte_eal_init(int argc, char **argv)
 	bool has_phys_addr;
 	enum rte_iova_mode iova_mode;
 
+	/* setup log as early as possible */
+	if (eal_parse_log_options(argc, argv) < 0) {
+		rte_eal_init_alert("invalid log arguments.");
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	eal_log_init(getprogname());
+
 	/* checks if the machine is adequate */
 	if (!rte_cpu_is_supported()) {
 		rte_eal_init_alert("unsupported cpu type.");
@@ -572,9 +582,6 @@ rte_eal_init(int argc, char **argv)
 
 	/* clone argv to report out later in telemetry */
 	eal_save_args(argc, argv);
-
-	/* parse log options as early as possible */
-	eal_parse_log_options(argc, argv);
 
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");

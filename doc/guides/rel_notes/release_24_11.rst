@@ -116,6 +116,8 @@ New Features
 
 * **Updated logging library**
 
+  * The log subsystem is initialized earlier in startup so all messages go through the library.
+
   * The syslog option has changed.
     By default, messages are no longer sent to syslog unless the ``--syslog`` option is specified.
     Syslog is also supported on FreeBSD (but not on Windows).

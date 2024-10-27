@@ -927,6 +927,15 @@ rte_eal_init(int argc, char **argv)
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
+	/* setup log as early as possible */
+	if (eal_parse_log_options(argc, argv) < 0) {
+		rte_eal_init_alert("invalid log arguments.");
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	eal_log_init(program_invocation_short_name);
+
 	/* checks if the machine is adequate */
 	if (!rte_cpu_is_supported()) {
 		rte_eal_init_alert("unsupported cpu type.");
@@ -949,9 +958,6 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	eal_reset_internal_config(internal_conf);
-
-	/* parse log options as early as possible */
-	eal_parse_log_options(argc, argv);
 
 	/* clone argv to report out later in telemetry */
 	eal_save_args(argc, argv);
@@ -1103,8 +1109,6 @@ rte_eal_init(int argc, char **argv)
 				"RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT is not set");
 #endif
 	}
-
-	eal_log_init(program_invocation_short_name);
 
 #ifdef VFIO_PRESENT
 	if (rte_vfio_enable("vfio")) {
