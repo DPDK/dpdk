@@ -193,6 +193,7 @@ F: app/test/test_threads.c
 F: app/test/test_version.c
 
 Logging
+M: Stephen Hemminger <stephen@networkplumber.org>
 F: lib/log/
 F: doc/guides/prog_guide/log_lib.rst
 F: app/test/test_logs.c
