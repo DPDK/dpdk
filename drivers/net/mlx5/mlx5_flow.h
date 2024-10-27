@@ -974,7 +974,7 @@ struct mlx5_flow_verbs_workspace {
 #define MLX5_SCALE_JUMP_FLOW_GROUP_BIT 1
 
 /** Maximal number of device sub-flows supported. */
-#define MLX5_NUM_MAX_DEV_FLOWS 32
+#define MLX5_NUM_MAX_DEV_FLOWS 64
 
 /**
  * tunnel offload rules type
