@@ -3221,6 +3221,7 @@ mlx5dr_definer_matcher_range_init(struct mlx5dr_context *ctx,
 
 		if (i && ((is_range && !has_range) || (!is_range && has_range))) {
 			DR_LOG(ERR, "Using range and non range templates is not allowed");
+			rte_errno = EINVAL;
 			goto free_definers;
 		}
 
