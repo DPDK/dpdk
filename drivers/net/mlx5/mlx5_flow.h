@@ -168,6 +168,9 @@ struct mlx5_flow_action_copy_mreg {
 /* Matches on source queue. */
 struct mlx5_rte_flow_item_sq {
 	uint32_t queue; /* DevX SQ number */
+#ifdef RTE_ARCH_64
+	uint32_t reserved;
+#endif
 };
 
 /* Map from registers to modify fields. */
