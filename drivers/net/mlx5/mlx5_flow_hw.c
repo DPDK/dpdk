@@ -6526,8 +6526,7 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	uint32_t expand_mf_num = 0;
 	uint16_t src_off[MLX5_HW_MAX_ACTS] = {0, };
 
-	if (mlx5_flow_hw_actions_validate(dev, attr, actions, masks,
-					  &action_flags, error))
+	if (mlx5_flow_hw_actions_validate(dev, attr, actions, masks, &action_flags, error))
 		return NULL;
 	for (i = 0; ra[i].type != RTE_FLOW_ACTION_TYPE_END; ++i) {
 		switch (ra[i].type) {
