@@ -4,6 +4,7 @@
 includes += global_inc
 sources = files(
         'log.c',
+        'log_color.c',
         'log_timestamp.c',
 )
 

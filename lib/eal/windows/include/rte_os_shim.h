@@ -30,6 +30,8 @@
 #define write(fd, buf, n) _write(fd, buf, n)
 #define close(fd) _close(fd)
 #define unlink(path) _unlink(path)
+#define fileno(f) _fileno(f)
+#define isatty(fd) _isatty(fd)
 
 #define IPVERSION	4
 

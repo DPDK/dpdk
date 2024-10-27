@@ -33,6 +33,8 @@ enum {
 	OPT_HUGE_UNLINK_NUM,
 #define OPT_LCORES            "lcores"
 	OPT_LCORES_NUM,
+#define OPT_LOG_COLOR	      "log-color"
+	OPT_LOG_COLOR_NUM,
 #define OPT_LOG_LEVEL         "log-level"
 	OPT_LOG_LEVEL_NUM,
 #define OPT_LOG_TIMESTAMP     "log-timestamp"

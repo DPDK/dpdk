@@ -50,5 +50,10 @@ void rte_eal_log_cleanup(void);
 __rte_internal
 int eal_log_timestamp(const char *fmt);
 
+/*
+ * Enable or disable color in log messages
+ */
+__rte_internal
+int eal_log_color(const char *mode);
 
 #endif /* LOG_INTERNAL_H */

@@ -25,6 +25,7 @@ DPDK_25 {
 INTERNAL {
 	global:
 
+	eal_log_color;
 	eal_log_init;
 	eal_log_journal; # WINDOWS_NO_EXPORT
 	eal_log_level2str;

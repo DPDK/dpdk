@@ -59,6 +59,7 @@ For example::
 
 Within an application, the same result can be got using the ``rte_log_set_level_pattern()`` or ``rte_log_set_level_regex()`` APIs.
 
+
 Using Logging APIs to Generate Log Messages
 -------------------------------------------
 
@@ -138,3 +139,26 @@ To prefix all console messages with ISO format time the syntax is::
 
    Timestamp option has no effect if using syslog
    because the ``syslog()`` service already does timestamping internally.
+
+
+Color output
+~~~~~~~~~~~~
+
+The log library will highlight important messages.
+This is controlled by the ``--log-color`` option.
+The optional argument describes when color is enabled:
+
+:never: Do not enable color. This is the default behavior.
+
+:auto: Enable color only when printing to a terminal.
+       This is the same as ``--log-color`` with no argument.
+
+:always: Always print color.
+
+For example to enable color in logs if using terminal::
+
+	/path/to/app --log-color
+
+.. note::
+
+   Color output is never used for syslog or systemd journal logging.

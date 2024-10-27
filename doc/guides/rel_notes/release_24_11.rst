@@ -128,6 +128,8 @@ New Features
 
   * Log messages can be timestamped with ``--log-timestamp`` option.
 
+  * Log messages can be colorized with the ``--log-color`` option.
+
 * **Updated Marvell cnxk mempool driver.**
 
   * Added mempool driver support for CN20K SoC.

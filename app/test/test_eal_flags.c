@@ -1067,6 +1067,18 @@ test_misc_flags(void)
 	const char * const argv25[] = {prgname, prefix, mp_flag,
 				       "--log-timestamp=invalid" };
 
+	/* Try running with --log-color */
+	const char * const argv26[] = {prgname, prefix, mp_flag,
+				       "--log-color" };
+
+	/* Try running with --log-color=never */
+	const char * const argv27[] = {prgname, prefix, mp_flag,
+				       "--log-color=never" };
+
+	/* Try running with --log-color=invalid */
+	const char * const argv28[] = {prgname, prefix, mp_flag,
+				       "--log-color=invalid" };
+
 	/* run all tests also applicable to FreeBSD first */
 
 	if (launch_proc(argv0) == 0) {
@@ -1183,6 +1195,18 @@ test_misc_flags(void)
 		goto fail;
 	}
 	if (launch_proc(argv25) == 0) {
+		printf("Error - process did run ok with --log-timestamp=invalid parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv26) != 0) {
+		printf("Error - process did not run ok with --log-color parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv27) != 0) {
+		printf("Error - process did not run ok with --log-color=never parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv28) == 0) {
 		printf("Error - process did run ok with --log-timestamp=invalid parameter\n");
 		goto fail;
 	}
