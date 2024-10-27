@@ -9830,22 +9830,23 @@ flow_dv_translate_item_gre(void *key, const struct rte_flow_item *item,
 	} gre_crks_rsvd0_ver_m, gre_crks_rsvd0_ver_v;
 	uint16_t protocol_m, protocol_v;
 
-	if (key_type & MLX5_SET_MATCHER_M)
+	if (key_type & MLX5_SET_MATCHER_M) {
 		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol, 0xff);
-	else
-		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
-			 IPPROTO_GRE);
-	if (!gre_v) {
-		gre_v = &empty_gre;
-		gre_m = &empty_gre;
-	} else {
 		if (!gre_m)
 			gre_m = &rte_flow_item_gre_mask;
-	}
-	if (key_type & MLX5_SET_MATCHER_M)
 		gre_v = gre_m;
-	else if (key_type == MLX5_SET_MATCHER_HS_V)
-		gre_m = gre_v;
+	} else {
+		MLX5_SET(fte_match_set_lyr_2_4, headers_v, ip_protocol,
+			 IPPROTO_GRE);
+		if (!gre_v) {
+			gre_v = &empty_gre;
+			gre_m = &empty_gre;
+		} else if (!gre_m) {
+			gre_m = &rte_flow_item_gre_mask;
+		}
+		if (key_type == MLX5_SET_MATCHER_HS_V)
+			gre_m = gre_v;
+	}
 	gre_crks_rsvd0_ver_m.value = rte_be_to_cpu_16(gre_m->c_rsvd0_ver);
 	gre_crks_rsvd0_ver_v.value = rte_be_to_cpu_16(gre_v->c_rsvd0_ver);
 	MLX5_SET(fte_match_set_misc, misc_v, gre_c_present,
