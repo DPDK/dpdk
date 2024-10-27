@@ -11669,6 +11669,7 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 	uint32_t action_flags;
 	bool strict_queue = false;
 
+	error->type = RTE_FLOW_ERROR_TYPE_NONE;
 	if (mlx5dr_rule_get_handle_size() != MLX5_DR_RULE_SIZE) {
 		rte_errno = EINVAL;
 		goto err;
@@ -11906,9 +11907,11 @@ __flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 	}
 	if (port_attr->nb_counters || (host_priv && host_priv->hws_cpool)) {
-		if (mlx5_hws_cnt_pool_create(dev, port_attr->nb_counters,
-						nb_queue,
-						(host_priv ? host_priv->hws_cpool : NULL)))
+		struct mlx5_hws_cnt_pool *hws_cpool = host_priv ? host_priv->hws_cpool : NULL;
+
+		ret = mlx5_hws_cnt_pool_create(dev, port_attr->nb_counters,
+					       nb_queue, hws_cpool, error);
+		if (ret)
 			goto err;
 	}
 	if (port_attr->nb_aging_objects) {
@@ -11957,7 +11960,7 @@ err:
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
 	/* Do not overwrite the internal errno information. */
-	if (ret)
+	if (ret && error->type != RTE_FLOW_ERROR_TYPE_NONE)
 		return ret;
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -11988,6 +11991,10 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		  const struct rte_flow_queue_attr *queue_attr[],
 		  struct rte_flow_error *error)
 {
+	struct rte_flow_error shadow_error = {0, };
+
+	if (!error)
+		error = &shadow_error;
 	return __flow_hw_configure(dev, port_attr, nb_queue, queue_attr, false, error);
 }
 
@@ -12852,6 +12859,10 @@ flow_hw_action_validate(struct rte_eth_dev *dev,
 			const struct rte_flow_action *action,
 			struct rte_flow_error *err)
 {
+	struct rte_flow_error shadow_error = {0, };
+
+	if (!err)
+		err = &shadow_error;
 	return flow_hw_action_handle_validate(dev, MLX5_HW_INV_QUEUE, NULL,
 					      conf, action, NULL, err);
 }
@@ -13606,6 +13617,7 @@ flow_hw_allocate_actions(struct rte_eth_dev *dev,
 	int ret;
 	uint obj_num;
 
+	error->type = RTE_FLOW_ERROR_TYPE_NONE;
 	if (action_flags & MLX5_FLOW_ACTION_AGE) {
 		/* If no age objects were previously allocated. */
 		if (!priv->hws_age_req) {
@@ -13613,7 +13625,8 @@ flow_hw_allocate_actions(struct rte_eth_dev *dev,
 			if (!priv->hws_cpool) {
 				obj_num = MLX5_CNT_NT_MAX(priv);
 				ret = mlx5_hws_cnt_pool_create(dev, obj_num,
-							       priv->nb_queue, NULL);
+							       priv->nb_queue,
+							       NULL, error);
 				if (ret)
 					goto err;
 			}
@@ -13629,7 +13642,8 @@ flow_hw_allocate_actions(struct rte_eth_dev *dev,
 		if (!priv->hws_cpool) {
 			obj_num = MLX5_CNT_NT_MAX(priv);
 			ret = mlx5_hws_cnt_pool_create(dev, obj_num,
-						       priv->nb_queue, NULL);
+						       priv->nb_queue, NULL,
+						       error);
 			if (ret)
 				goto err;
 		}
@@ -13655,6 +13669,8 @@ flow_hw_allocate_actions(struct rte_eth_dev *dev,
 	}
 	return 0;
 err:
+	if (ret && error->type != RTE_FLOW_ERROR_TYPE_NONE)
+		return ret;
 	return rte_flow_error_set(error, ret,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "fail to allocate actions");
@@ -13927,6 +13943,7 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 			.actions = actions,
 		},
 	};
+	struct rte_flow_error shadow_error = {0, };
 
 	/*
 	 * TODO: add a call to flow_hw_validate function once it exist.
@@ -13934,6 +13951,8 @@ static uintptr_t flow_hw_list_create(struct rte_eth_dev *dev,
 	 */
 
 	RTE_SET_USED(encap_idx);
+	if (!error)
+		error = &shadow_error;
 	split = mlx5_flow_nta_split_metadata(dev, attr, actions, qrss, action_flags,
 					     actions_n, external, &resource, error);
 	if (split < 0)

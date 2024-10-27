@@ -1160,11 +1160,17 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 	DRV_LOG(DEBUG, "port %u starting device", dev->data->port_id);
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2) {
+		struct rte_flow_error error = { 0, };
+
 		/*If previous configuration does not exist. */
 		if (!(priv->dr_ctx)) {
-			ret = flow_hw_init(dev, NULL);
-			if (ret)
+			ret = flow_hw_init(dev, &error);
+			if (ret) {
+				DRV_LOG(ERR, "Failed to start port %u %s: %s",
+					dev->data->port_id, dev->data->name,
+					error.message);
 				return ret;
+			}
 		}
 		/* If there is no E-Switch, then there are no start/stop order limitations. */
 		if (!priv->sh->config.dv_esw_en)

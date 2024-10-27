@@ -258,7 +258,8 @@ mlx5_hws_cnt_raw_data_free(struct mlx5_dev_ctx_shared *sh,
 
 __rte_unused
 static struct mlx5_hws_cnt_raw_data_mng *
-mlx5_hws_cnt_raw_data_alloc(struct mlx5_dev_ctx_shared *sh, uint32_t n)
+mlx5_hws_cnt_raw_data_alloc(struct mlx5_dev_ctx_shared *sh, uint32_t n,
+			    struct rte_flow_error *error)
 {
 	struct mlx5_hws_cnt_raw_data_mng *mng = NULL;
 	int ret;
@@ -268,16 +269,26 @@ mlx5_hws_cnt_raw_data_alloc(struct mlx5_dev_ctx_shared *sh, uint32_t n)
 	MLX5_ASSERT(pgsz > 0);
 	mng = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO, sizeof(*mng), 0,
 			SOCKET_ID_ANY);
-	if (mng == NULL)
+	if (mng == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "failed to allocate counters memory manager");
 		goto error;
+	}
 	mng->raw = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO, sz, pgsz,
 			SOCKET_ID_ANY);
-	if (mng->raw == NULL)
+	if (mng->raw == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "failed to allocate raw counters memory");
 		goto error;
+	}
 	ret = sh->cdev->mr_scache.reg_mr_cb(sh->cdev->pd, mng->raw, sz,
 					    &mng->mr);
 	if (ret) {
-		rte_errno = errno;
+		rte_flow_error_set(error, errno,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "failed to register counters memory region");
 		goto error;
 	}
 	return mng;
@@ -391,7 +402,8 @@ error:
 static struct mlx5_hws_cnt_pool *
 mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 		       const struct mlx5_hws_cnt_pool_cfg *pcfg,
-		       const struct mlx5_hws_cache_param *ccfg)
+		       const struct mlx5_hws_cache_param *ccfg,
+		       struct rte_flow_error *error)
 {
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	struct mlx5_hws_cnt_pool *cntp;
@@ -401,8 +413,12 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 	MLX5_ASSERT(ccfg);
 	cntp = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO, sizeof(*cntp), 0,
 			   SOCKET_ID_ANY);
-	if (cntp == NULL)
+	if (cntp == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate counter pool context");
 		return NULL;
+	}
 
 	cntp->cfg = *pcfg;
 	if (cntp->cfg.host_cpool)
@@ -411,12 +427,18 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 		DRV_LOG(ERR, "Counter number %u "
 			"is greater than the maximum supported (%u).",
 			pcfg->request_num, sh->hws_max_nb_counters);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "requested counters number exceeds supported capacity");
 		goto error;
 	}
 	cnt_num = pcfg->request_num * (100 + pcfg->alloc_factor) / 100;
 	if (cnt_num > UINT32_MAX) {
 		DRV_LOG(ERR, "counter number %"PRIu64" is out of 32bit range",
 			cnt_num);
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "counters number must fit in 32 bits");
 		goto error;
 	}
 	/*
@@ -427,15 +449,21 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 	cntp->pool = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO,
 				 sizeof(struct mlx5_hws_cnt) * cnt_num,
 				 0, SOCKET_ID_ANY);
-	if (cntp->pool == NULL)
+	if (cntp->pool == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate counter pool context");
 		goto error;
+	}
 	snprintf(mz_name, sizeof(mz_name), "%s_F_RING", pcfg->name);
 	cntp->free_list = rte_ring_create_elem(mz_name, sizeof(cnt_id_t),
 				(uint32_t)cnt_num, SOCKET_ID_ANY,
 				RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ |
 				RING_F_EXACT_SZ);
 	if (cntp->free_list == NULL) {
-		DRV_LOG(ERR, "failed to create free list ring");
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate free counters ring");
 		goto error;
 	}
 	snprintf(mz_name, sizeof(mz_name), "%s_R_RING", pcfg->name);
@@ -443,7 +471,9 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 			(uint32_t)cnt_num, SOCKET_ID_ANY,
 			RING_F_MP_HTS_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
 	if (cntp->wait_reset_list == NULL) {
-		DRV_LOG(ERR, "failed to create wait reset list ring");
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate counters wait reset ring");
 		goto error;
 	}
 	snprintf(mz_name, sizeof(mz_name), "%s_U_RING", pcfg->name);
@@ -451,14 +481,20 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 			(uint32_t)cnt_num, SOCKET_ID_ANY,
 			RING_F_MP_HTS_ENQ | RING_F_MC_HTS_DEQ | RING_F_EXACT_SZ);
 	if (cntp->reuse_list == NULL) {
-		DRV_LOG(ERR, "failed to create reuse list ring");
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate counters reuse ring");
 		goto error;
 	}
 	/* Allocate counter cache only if needed. */
 	if (mlx5_hws_cnt_should_enable_cache(pcfg, ccfg)) {
 		cntp->cache = mlx5_hws_cnt_cache_init(pcfg, ccfg);
-		if (cntp->cache == NULL)
+		if (cntp->cache == NULL) {
+			rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					   "failed to allocate counters cache");
 			goto error;
+		}
 	}
 	/* Initialize the time for aging-out calculation. */
 	cntp->time_of_last_age_check = MLX5_CURR_TIME_SEC;
@@ -506,7 +542,8 @@ mlx5_hws_cnt_service_thread_destroy(struct mlx5_dev_ctx_shared *sh)
 
 static int
 mlx5_hws_cnt_pool_dcs_alloc(struct mlx5_dev_ctx_shared *sh,
-			    struct mlx5_hws_cnt_pool *cpool)
+			    struct mlx5_hws_cnt_pool *cpool,
+			    struct rte_flow_error *error)
 {
 	struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
 	uint32_t max_log_bulk_sz = sh->hws_max_log_bulk_sz;
@@ -517,10 +554,10 @@ mlx5_hws_cnt_pool_dcs_alloc(struct mlx5_dev_ctx_shared *sh,
 	struct mlx5_devx_obj *dcs;
 
 	MLX5_ASSERT(cpool->cfg.host_cpool == NULL);
-	if (hca_attr->flow_counter_bulk_log_max_alloc == 0) {
-		DRV_LOG(ERR, "Fw doesn't support bulk log max alloc");
-		return -1;
-	}
+	if (hca_attr->flow_counter_bulk_log_max_alloc == 0)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "FW doesn't support bulk log max alloc");
 	cnt_num = RTE_ALIGN_CEIL(cnt_num, 4); /* minimal 4 counter in bulk. */
 	log_bulk_sz = RTE_MIN(max_log_bulk_sz, rte_log2_u32(cnt_num));
 	attr.pd = sh->cdev->pdn;
@@ -529,8 +566,12 @@ mlx5_hws_cnt_pool_dcs_alloc(struct mlx5_dev_ctx_shared *sh,
 	attr.flow_counter_bulk_log_size = log_bulk_sz;
 	idx = 0;
 	dcs = mlx5_devx_cmd_flow_counter_alloc_general(sh->cdev->ctx, &attr);
-	if (dcs == NULL)
+	if (dcs == NULL) {
+		rte_flow_error_set(error, rte_errno,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "FW failed to allocate counters");
 		goto error;
+	}
 	cpool->dcs_mng.dcs[idx].obj = dcs;
 	cpool->dcs_mng.dcs[idx].batch_sz = (1 << log_bulk_sz);
 	cpool->dcs_mng.batch_total++;
@@ -545,8 +586,12 @@ mlx5_hws_cnt_pool_dcs_alloc(struct mlx5_dev_ctx_shared *sh,
 				continue;
 			dcs = mlx5_devx_cmd_flow_counter_alloc_general
 				(sh->cdev->ctx, &attr);
-			if (dcs == NULL)
+			if (dcs == NULL) {
+				rte_flow_error_set(error, rte_errno,
+						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						   NULL, "FW failed to allocate counters");
 				goto error;
+			}
 			cpool->dcs_mng.dcs[idx].obj = dcs;
 			cpool->dcs_mng.dcs[idx].batch_sz = alloc_candidate;
 			cpool->dcs_mng.dcs[idx].iidx = alloced;
@@ -633,15 +678,16 @@ mlx5_hws_cnt_pool_action_create(struct mlx5_priv *priv,
 
 int
 mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
-		uint32_t nb_counters, uint16_t nb_queue,
-		struct mlx5_hws_cnt_pool *chost)
+			 uint32_t nb_counters, uint16_t nb_queue,
+			 struct mlx5_hws_cnt_pool *chost,
+			 struct rte_flow_error *error)
 {
 	struct mlx5_hws_cnt_pool *cpool = NULL;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hws_cache_param cparam = {0};
 	struct mlx5_hws_cnt_pool_cfg pcfg = {0};
 	char *mp_name;
-	int ret = -1;
+	int ret = 0;
 	size_t sz;
 
 	mp_name = mlx5_malloc(MLX5_MEM_ZERO, RTE_MEMZONE_NAMESIZE, 0, SOCKET_ID_ANY);
@@ -653,17 +699,21 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	pcfg.alloc_factor = HWS_CNT_ALLOC_FACTOR_DEFAULT;
 	if (chost) {
 		pcfg.host_cpool = chost;
-		cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam);
+		cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam, error);
 		if (cpool == NULL)
 			goto error;
 		ret = mlx5_hws_cnt_pool_action_create(priv, cpool);
-		if (ret != 0)
+		if (ret != 0) {
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "failed to allocate counter actions on guest port");
 			goto error;
+		}
 		goto success;
 	}
 	/* init cnt service if not. */
 	if (priv->sh->cnt_svc == NULL) {
-		ret = mlx5_hws_cnt_svc_init(priv->sh);
+		ret = mlx5_hws_cnt_svc_init(priv->sh, error);
 		if (ret)
 			return ret;
 	}
@@ -672,14 +722,14 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	cparam.q_num = nb_queue;
 	cparam.threshold = HWS_CNT_CACHE_THRESHOLD_DEFAULT;
 	cparam.size = HWS_CNT_CACHE_SZ_DEFAULT;
-	cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam);
+	cpool = mlx5_hws_cnt_pool_init(priv->sh, &pcfg, &cparam, error);
 	if (cpool == NULL)
 		goto error;
-	ret = mlx5_hws_cnt_pool_dcs_alloc(priv->sh, cpool);
+	ret = mlx5_hws_cnt_pool_dcs_alloc(priv->sh, cpool, error);
 	if (ret != 0)
 		goto error;
 	sz = RTE_ALIGN_CEIL(mlx5_hws_cnt_pool_get_size(cpool), 4);
-	cpool->raw_mng = mlx5_hws_cnt_raw_data_alloc(priv->sh, sz);
+	cpool->raw_mng = mlx5_hws_cnt_raw_data_alloc(priv->sh, sz, error);
 	if (cpool->raw_mng == NULL)
 		goto error;
 	__hws_cnt_id_load(cpool);
@@ -691,8 +741,12 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	 */
 	cpool->query_gen = 1;
 	ret = mlx5_hws_cnt_pool_action_create(priv, cpool);
-	if (ret != 0)
+	if (ret != 0) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "failed to allocate counter actions");
 		goto error;
+	}
 	priv->sh->cnt_svc->refcnt++;
 	cpool->priv = priv;
 	rte_spinlock_lock(&priv->sh->cpool_lock);
@@ -702,6 +756,7 @@ success:
 	priv->hws_cpool = cpool;
 	return 0;
 error:
+	MLX5_ASSERT(ret);
 	mlx5_hws_cnt_pool_destroy(priv->sh, cpool);
 	priv->hws_cpool = NULL;
 	return ret;
@@ -736,21 +791,22 @@ mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 }
 
 int
-mlx5_hws_cnt_svc_init(struct mlx5_dev_ctx_shared *sh)
+mlx5_hws_cnt_svc_init(struct mlx5_dev_ctx_shared *sh,
+		      struct rte_flow_error *error)
 {
 	int ret;
 
 	sh->cnt_svc = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO,
 			sizeof(*sh->cnt_svc), 0, SOCKET_ID_ANY);
 	if (sh->cnt_svc == NULL)
-		return -1;
+		goto err;
 	sh->cnt_svc->query_interval = sh->config.cnt_svc.cycle_time;
 	sh->cnt_svc->service_core = sh->config.cnt_svc.service_core;
 	ret = mlx5_aso_cnt_queue_init(sh);
 	if (ret != 0) {
 		mlx5_free(sh->cnt_svc);
 		sh->cnt_svc = NULL;
-		return -1;
+		goto err;
 	}
 	ret = mlx5_hws_cnt_service_thread_create(sh);
 	if (ret != 0) {
@@ -759,6 +815,11 @@ mlx5_hws_cnt_svc_init(struct mlx5_dev_ctx_shared *sh)
 		sh->cnt_svc = NULL;
 	}
 	return 0;
+err:
+	return rte_flow_error_set(error, ENOMEM,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				  NULL, "failed to init counters service");
+
 }
 
 void

@@ -715,14 +715,15 @@ mlx5_hws_cnt_service_thread_destroy(struct mlx5_dev_ctx_shared *sh);
 int
 mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 		uint32_t nb_counters, uint16_t nb_queue,
-		struct mlx5_hws_cnt_pool *chost);
+		struct mlx5_hws_cnt_pool *chost, struct rte_flow_error *error);
 
 void
 mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 		struct mlx5_hws_cnt_pool *cpool);
 
 int
-mlx5_hws_cnt_svc_init(struct mlx5_dev_ctx_shared *sh);
+mlx5_hws_cnt_svc_init(struct mlx5_dev_ctx_shared *sh,
+		      struct rte_flow_error *error);
 
 void
 mlx5_hws_cnt_svc_deinit(struct mlx5_dev_ctx_shared *sh);
