@@ -884,9 +884,9 @@ Signal Safety
   Other functions are not signal safe because they use one or more
   library routines that are not themselves signal safe.
   For example, calling ``rte_panic()`` is not safe in a signal handler
-  because it uses ``rte_log()`` and ``rte_log()`` calls the
-  ``syslog()`` library function which is in the list of
-  signal safe functions in
+  because it uses ``rte_log()`` and ``rte_log()`` may call ``vfprintf()`` or
+  ``syslog()`` library functions which are not in the list of
+  signal safe functions
   `Signal-Safety manual page <https://man7.org/linux/man-pages/man7/signal-safety.7.html>`_.
 
   The set of functions that are expected to be async-signal-safe in DPDK

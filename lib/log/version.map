@@ -29,6 +29,6 @@ INTERNAL {
 	eal_log_level2str;
 	eal_log_save_pattern;
 	eal_log_save_regexp;
-	eal_log_set_default;
+	eal_log_syslog; # WINDOWS_NO_EXPORT
 	rte_eal_log_cleanup;
 };

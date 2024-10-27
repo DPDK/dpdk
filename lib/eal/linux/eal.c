@@ -1104,13 +1104,7 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	if (eal_log_init(program_invocation_short_name,
-			 internal_conf->syslog_facility) < 0) {
-		rte_eal_init_alert("Cannot init logging.");
-		rte_errno = ENOMEM;
-		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
-		return -1;
-	}
+	eal_log_init(program_invocation_short_name);
 
 #ifdef VFIO_PRESENT
 	if (rte_vfio_enable("vfio")) {

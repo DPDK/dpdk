@@ -251,7 +251,7 @@ rte_eal_init(int argc, char **argv)
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_THREAD_NAME_SIZE];
 
-	eal_log_init(NULL, 0);
+	eal_log_init(NULL);
 
 	/* parse log options as early as possible */
 	eal_parse_log_options(argc, argv);

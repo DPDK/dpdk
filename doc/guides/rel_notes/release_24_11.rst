@@ -114,6 +114,12 @@ New Features
   (and vice versa); freeing the same pointer twice in the same routine;
   freeing an object that was not created by allocation; etc.
 
+* **Updated logging library**
+
+  * The syslog option has changed.
+    By default, messages are no longer sent to syslog unless the ``--syslog`` option is specified.
+    Syslog is also supported on FreeBSD (but not on Windows).
+
 * **Updated Marvell cnxk mempool driver.**
 
   * Added mempool driver support for CN20K SoC.

@@ -985,12 +985,12 @@ test_misc_flags(void)
 	/* With -v */
 	const char *argv2[] = {prgname, prefix, mp_flag, "-v"};
 	/* With valid --syslog */
-	const char *argv3[] = {prgname, prefix, mp_flag,
-			"--syslog", "syslog"};
-	/* With empty --syslog (should fail) */
+	const char *argv3[] = {prgname, prefix, mp_flag, "--syslog=user"};
+	/* With empty --syslog (now defaults) */
 	const char *argv4[] = {prgname, prefix, mp_flag, "--syslog"};
 	/* With invalid --syslog */
-	const char *argv5[] = {prgname, prefix, mp_flag, "--syslog", "error"};
+	const char *argv5[] = {prgname, prefix, mp_flag, "--syslog=invalid"};
+
 	/* With no-sh-conf, also use no-huge to ensure this test runs on BSD */
 	const char *argv6[] = {prgname, "-m", DEFAULT_MEM_SIZE,
 			no_shconf, nosh_prefix, no_huge};
@@ -1080,15 +1080,15 @@ test_misc_flags(void)
 #endif
 
 	if (launch_proc(argv3) != 0) {
+		printf("Error - process did not run ok with --syslog=user flag\n");
+		goto fail;
+	}
+	if (launch_proc(argv4) != 0) {
 		printf("Error - process did not run ok with --syslog flag\n");
 		goto fail;
 	}
-	if (launch_proc(argv4) == 0) {
-		printf("Error - process run ok with empty --syslog flag\n");
-		goto fail;
-	}
 	if (launch_proc(argv5) == 0) {
-		printf("Error - process run ok with invalid --syslog flag\n");
+		printf("Error - process run ok with --syslog=invalid flag\n");
 		goto fail;
 	}
 	if (launch_proc(argv7) != 0) {

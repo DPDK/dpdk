@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#ifndef RTE_EXEC_ENV_WINDOWS
-#include <syslog.h>
-#endif
 #include <ctype.h>
 #include <limits.h>
 #include <errno.h>
@@ -93,7 +90,9 @@ eal_long_options[] = {
 	{OPT_PROC_TYPE,         1, NULL, OPT_PROC_TYPE_NUM        },
 	{OPT_SOCKET_MEM,        1, NULL, OPT_SOCKET_MEM_NUM       },
 	{OPT_SOCKET_LIMIT,      1, NULL, OPT_SOCKET_LIMIT_NUM     },
-	{OPT_SYSLOG,            1, NULL, OPT_SYSLOG_NUM           },
+#ifndef RTE_EXEC_ENV_WINDOWS
+	{OPT_SYSLOG,            2, NULL, OPT_SYSLOG_NUM           },
+#endif
 	{OPT_VDEV,              1, NULL, OPT_VDEV_NUM             },
 	{OPT_VFIO_INTR,         1, NULL, OPT_VFIO_INTR_NUM        },
 	{OPT_VFIO_VF_TOKEN,     1, NULL, OPT_VFIO_VF_TOKEN_NUM    },
@@ -348,10 +347,6 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 		internal_cfg->hugepage_info[i].lock_descriptor = -1;
 	}
 	internal_cfg->base_virtaddr = 0;
-
-#ifdef LOG_DAEMON
-	internal_cfg->syslog_facility = LOG_DAEMON;
-#endif
 
 	/* if set to NONE, interrupt mode is determined automatically */
 	internal_cfg->vfio_intr_mode = RTE_INTR_MODE_NONE;
@@ -1297,47 +1292,6 @@ err:
 	return ret;
 }
 
-#ifndef RTE_EXEC_ENV_WINDOWS
-static int
-eal_parse_syslog(const char *facility, struct internal_config *conf)
-{
-	int i;
-	static const struct {
-		const char *name;
-		int value;
-	} map[] = {
-		{ "auth", LOG_AUTH },
-		{ "cron", LOG_CRON },
-		{ "daemon", LOG_DAEMON },
-		{ "ftp", LOG_FTP },
-		{ "kern", LOG_KERN },
-		{ "lpr", LOG_LPR },
-		{ "mail", LOG_MAIL },
-		{ "news", LOG_NEWS },
-		{ "syslog", LOG_SYSLOG },
-		{ "user", LOG_USER },
-		{ "uucp", LOG_UUCP },
-		{ "local0", LOG_LOCAL0 },
-		{ "local1", LOG_LOCAL1 },
-		{ "local2", LOG_LOCAL2 },
-		{ "local3", LOG_LOCAL3 },
-		{ "local4", LOG_LOCAL4 },
-		{ "local5", LOG_LOCAL5 },
-		{ "local6", LOG_LOCAL6 },
-		{ "local7", LOG_LOCAL7 },
-		{ NULL, 0 }
-	};
-
-	for (i = 0; map[i].name; i++) {
-		if (!strcmp(facility, map[i].name)) {
-			conf->syslog_facility = map[i].value;
-			return 0;
-		}
-	}
-	return -1;
-}
-#endif
-
 static void
 eal_log_usage(void)
 {
@@ -1645,6 +1599,7 @@ eal_option_is_log(int opt)
 {
 	switch (opt) {
 	case OPT_LOG_LEVEL_NUM:
+	case OPT_SYSLOG_NUM:
 		return true;
 	default:
 		return false;
@@ -1887,7 +1842,7 @@ eal_parse_common_option(int opt, const char *optarg,
 
 #ifndef RTE_EXEC_ENV_WINDOWS
 	case OPT_SYSLOG_NUM:
-		if (eal_parse_syslog(optarg, conf) < 0) {
+		if (eal_log_syslog(optarg) < 0) {
 			EAL_LOG(ERR, "invalid parameters for --"
 					OPT_SYSLOG);
 			return -1;
@@ -2264,7 +2219,7 @@ eal_common_usage(void)
 	       "  --"OPT_VMWARE_TSC_MAP"    Use VMware TSC map instead of native RDTSC\n"
 	       "  --"OPT_PROC_TYPE"         Type of this process (primary|secondary|auto)\n"
 #ifndef RTE_EXEC_ENV_WINDOWS
-	       "  --"OPT_SYSLOG"            Set syslog facility\n"
+	       "  --"OPT_SYSLOG"[=<facility>] Enable use of syslog (and optionally set facility)\n"
 #endif
 	       "  --"OPT_LOG_LEVEL"=<level> Set global log level\n"
 	       "  --"OPT_LOG_LEVEL"=<type-match>:<level>\n"

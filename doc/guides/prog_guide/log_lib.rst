@@ -5,9 +5,9 @@ Log Library
 ===========
 
 The DPDK Log library provides the logging functionality for other DPDK libraries and drivers.
-By default, in a Linux application, logs are sent to syslog and also to the console.
-On FreeBSD and Windows applications, logs are sent only to the console.
-However, the log function can be overridden by the user to use a different logging mechanism.
+By default, logs are sent only to standard error output of the process.
+The syslog EAL option can be used to redirect to the stystem logger on Linux and FreeBSD.
+In addition, the log can be redirected to a different stdio file stream.
 
 Log Levels
 ----------
