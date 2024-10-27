@@ -44,7 +44,7 @@
 
 
 /** argument to current option, or NULL if it has none */
-extern const char *optarg;
+extern char *optarg;
 /** Current position in arg string.  Starts from 1.
  * Setting to 0 resets state.
  */
@@ -80,14 +80,14 @@ struct option {
 };
 
 /** Compat: getopt */
-int getopt(int argc, char *argv[], const char *options);
+int getopt(int argc, char *const argv[], const char *options);
 
 /** Compat: getopt_long */
-int getopt_long(int argc, char *argv[], const char *options,
+int getopt_long(int argc, char *const argv[], const char *options,
 		const struct option *longopts, int *longindex);
 
 /** Compat: getopt_long_only */
-int getopt_long_only(int nargc, char *argv[], const char *options,
+int getopt_long_only(int nargc, char *const argv[], const char *options,
 		     const struct option *long_options, int *idx);
 
 
