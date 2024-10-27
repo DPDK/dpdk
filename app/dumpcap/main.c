@@ -801,9 +801,10 @@ static dumpcap_out_t create_output(void)
 		free(os);
 
 		TAILQ_FOREACH(intf, &interfaces, next) {
-			rte_pcapng_add_interface(ret.pcapng, intf->port,
-						 intf->ifname, intf->ifdescr,
-						 intf->opts.filter);
+			if (rte_pcapng_add_interface(ret.pcapng, intf->port, intf->ifname,
+						     intf->ifdescr, intf->opts.filter) < 0)
+				rte_exit(EXIT_FAILURE, "rte_pcapng_add_interface %u failed\n",
+					intf->port);
 		}
 	} else {
 		pcap_t *pcap;
