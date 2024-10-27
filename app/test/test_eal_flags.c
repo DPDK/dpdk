@@ -1055,6 +1055,18 @@ test_misc_flags(void)
 	const char * const argv22[] = {prgname, prefix, mp_flag,
 				       "--huge-worker-stack=512"};
 
+	/* Try running with --log-timestamp */
+	const char * const argv23[] = {prgname, prefix, mp_flag,
+				       "--log-timestamp" };
+
+	/* Try running with --log-timestamp=iso */
+	const char * const argv24[] = {prgname, prefix, mp_flag,
+				       "--log-timestamp=iso" };
+
+	/* Try running with invalid timestamp */
+	const char * const argv25[] = {prgname, prefix, mp_flag,
+				       "--log-timestamp=invalid" };
+
 	/* run all tests also applicable to FreeBSD first */
 
 	if (launch_proc(argv0) == 0) {
@@ -1160,6 +1172,18 @@ test_misc_flags(void)
 	}
 	if (launch_proc(argv22) != 0) {
 		printf("Error - process did not run ok with --huge-worker-stack=size parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv23) != 0) {
+		printf("Error - process did not run ok with --log-timestamp parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv24) != 0) {
+		printf("Error - process did not run ok with --log-timestamp=iso parameter\n");
+		goto fail;
+	}
+	if (launch_proc(argv25) == 0) {
+		printf("Error - process did run ok with --log-timestamp=invalid parameter\n");
 		goto fail;
 	}
 

@@ -122,6 +122,8 @@ New Features
     By default, messages are no longer sent to syslog unless the ``--syslog`` option is specified.
     Syslog is also supported on FreeBSD (but not on Windows).
 
+  * Log messages can be timestamped with ``--log-timestamp`` option.
+
 * **Updated Marvell cnxk mempool driver.**
 
   * Added mempool driver support for CN20K SoC.

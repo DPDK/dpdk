@@ -17,12 +17,12 @@
 #include <rte_log.h>
 #include <rte_per_lcore.h>
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+#include <rte_os_shim.h>
+#endif
+
 #include "log_internal.h"
 #include "log_private.h"
-
-#ifdef RTE_EXEC_ENV_WINDOWS
-#define strdup _strdup
-#endif
 
 struct rte_log_dynamic_type {
 	const char *name;
@@ -512,6 +512,11 @@ eal_log_init(const char *id)
 
 	if (logf)
 		rte_openlog_stream(logf);
+
+	if (log_timestamp_enabled())
+		rte_logs.print_func = log_print_with_timestamp;
+	else
+		rte_logs.print_func = vfprintf;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	RTE_LOG(NOTICE, EAL,

@@ -4,6 +4,7 @@
 includes += global_inc
 sources = files(
         'log.c',
+        'log_timestamp.c',
 )
 
 if not is_windows

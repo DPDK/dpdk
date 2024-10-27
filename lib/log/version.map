@@ -30,5 +30,6 @@ INTERNAL {
 	eal_log_save_pattern;
 	eal_log_save_regexp;
 	eal_log_syslog; # WINDOWS_NO_EXPORT
+	eal_log_timestamp;
 	rte_eal_log_cleanup;
 };

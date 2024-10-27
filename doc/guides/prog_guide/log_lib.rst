@@ -110,3 +110,31 @@ Throughout the cfgfile library, all logging calls are therefore of the form:
 
 	CFG_LOG(ERR, "invalid comment characters %c",
 	       params->comment_character);
+
+Log timestamp
+~~~~~~~~~~~~~
+
+An optional timestamp can be added before each message by adding the ``--log-timestamp`` option.
+For example::
+
+	/path/to/app --log-level=lib.*:debug --log-timestamp
+
+Multiple alternative timestamp formats are available:
+
+.. csv-table:: Log time stamp format
+   :header: "Format", "Description", "Example"
+   :widths: 6, 30, 32
+
+   "ctime", "Unix ctime", "``[Wed Mar 20 07:26:12 2024]``"
+   "delta", "Offset since last", "``[<    3.162373>]``"
+   "reltime", "Seconds since last or time if minute changed", "``[  +3.001791]`` or ``[Mar20 07:26:12]``"
+   "iso", "ISO-8601", "``[2024-03-20T07:26:12−07:00]``"
+
+To prefix all console messages with ISO format time the syntax is::
+
+	/path/to/app --log-timestamp=iso
+
+.. note::
+
+   Timestamp option has no effect if using syslog
+   because the ``syslog()`` service already does timestamping internally.

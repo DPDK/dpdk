@@ -5,8 +5,10 @@
 #ifndef LOG_INTERNAL_H
 #define LOG_INTERNAL_H
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <time.h>
 
 #include <rte_compat.h>
 
@@ -38,5 +40,12 @@ const char *eal_log_level2str(uint32_t level);
  */
 __rte_internal
 void rte_eal_log_cleanup(void);
+
+/*
+ * Add timestamp to console logs
+ */
+__rte_internal
+int eal_log_timestamp(const char *fmt);
+
 
 #endif /* LOG_INTERNAL_H */
