@@ -1640,6 +1640,46 @@ eal_parse_huge_unlink(const char *arg, struct hugepage_file_discipline *out)
 	return -1;
 }
 
+/* Parse the arguments for --log-level only */
+int
+eal_log_level_parse(int argc, char * const argv[])
+{
+	struct internal_config *internal_conf = eal_get_internal_configuration();
+	int option_index, opt;
+	const int old_optind = optind;
+	const int old_optopt = optopt;
+	const int old_opterr = opterr;
+	char *old_optarg = optarg;
+#ifdef RTE_EXEC_ENV_FREEBSD
+	const int old_optreset = optreset;
+	optreset = 1;
+#endif
+
+	optind = 1;
+	opterr = 0;
+
+	while ((opt = getopt_long(argc, argv, eal_short_options,
+				  eal_long_options, &option_index)) != EOF) {
+
+		switch (opt) {
+		case OPT_LOG_LEVEL_NUM:
+			if (eal_parse_common_option(opt, optarg, internal_conf) < 0)
+				return -1;
+			break;
+		}
+	}
+
+	/* restore getopt lib */
+	optind = old_optind;
+	optopt = old_optopt;
+	optarg = old_optarg;
+	opterr = old_opterr;
+#ifdef RTE_EXEC_ENV_FREEBSD
+	optreset = old_optreset;
+#endif
+	return 0;
+}
+
 int
 eal_parse_common_option(int opt, const char *optarg,
 			struct internal_config *conf)
