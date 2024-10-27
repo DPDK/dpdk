@@ -617,7 +617,8 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 	MLX5_SET(copy_action_in, action_ptr, src_field,
 		 attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
 	MLX5_SET(copy_action_in, action_ptr, dst_field, tos_field);
-	MLX5_SET(copy_action_in, action_ptr, src_offset, 24);
+	MLX5_SET(copy_action_in, action_ptr, src_offset, 24 + (ecn ?
+							       MLX5DR_ACTION_NAT64_ECN_SIZE : 0));
 	MLX5_SET(copy_action_in, action_ptr, length, tos_size);
 	action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 
@@ -629,7 +630,7 @@ mlx5dr_action_create_nat64_copy_back_state(struct mlx5dr_context *ctx,
 		MLX5_SET(copy_action_in, action_ptr, src_field,
 			attr->registers[MLX5DR_ACTION_NAT64_REG_CONTROL]);
 		MLX5_SET(copy_action_in, action_ptr, dst_field, ecn);
-		MLX5_SET(copy_action_in, action_ptr, src_offset, 24 + tos_size);
+		MLX5_SET(copy_action_in, action_ptr, src_offset, 24);
 		MLX5_SET(copy_action_in, action_ptr, length, MLX5DR_ACTION_NAT64_ECN_SIZE);
 		action_ptr += MLX5DR_ACTION_DOUBLE_SIZE;
 	}
