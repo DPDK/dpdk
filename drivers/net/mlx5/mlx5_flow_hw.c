@@ -208,7 +208,12 @@ mlx5_destroy_multi_pattern_segment(struct mlx5_multi_pattern_segment *segment);
 static __rte_always_inline enum mlx5_indirect_list_type
 flow_hw_inlist_type_get(const struct rte_flow_action *actions);
 
-static bool
+static int
+flow_hw_allocate_actions(struct rte_eth_dev *dev,
+			 uint64_t action_flags,
+			 struct rte_flow_error *error);
+
+bool
 mlx5_hw_ctx_validate(const struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;

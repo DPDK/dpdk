@@ -2682,4 +2682,22 @@ int mlx5_quota_query(struct rte_eth_dev *dev, uint32_t queue,
 int mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev);
 
 void mlx5_free_srh_flex_parser(struct rte_eth_dev *dev);
+
+/* mlx5_flow_hw.c */
+struct rte_pmd_mlx5_host_action;
+
+struct mlx5dr_action *
+mlx5_flow_hw_get_dr_action(struct rte_eth_dev *dev,
+			   struct rte_pmd_mlx5_host_action *action,
+			   void **release_data);
+
+void
+mlx5_flow_hw_put_dr_action(struct rte_eth_dev *dev,
+			   enum rte_flow_action_type type,
+			   void *release_data);
+
+bool
+mlx5_hw_ctx_validate(const struct rte_eth_dev *dev,
+		     struct rte_flow_error *error);
+
 #endif /* RTE_PMD_MLX5_H_ */

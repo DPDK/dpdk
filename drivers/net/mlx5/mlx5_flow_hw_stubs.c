@@ -66,3 +66,15 @@ mlx5_flow_hw_ctrl_flow_dmac_vlan_destroy(struct rte_eth_dev *dev __rte_unused,
 	rte_errno = ENOTSUP;
 	return -rte_errno;
 }
+
+/*
+ * This is a stub for the real implementation of this function in mlx5_flow_hw.c in case:
+ * - PMD is compiled on Windows or
+ * - available rdma-core does not support HWS.
+ */
+bool
+mlx5_hw_ctx_validate(__rte_unused const struct rte_eth_dev *dev,
+		     __rte_unused struct rte_flow_error *error)
+{
+	return false;
+}
