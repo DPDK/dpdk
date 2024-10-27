@@ -7873,8 +7873,8 @@ __flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	uint32_t tmpl_flags = 0;
 	int ret;
 
-	if (mlx5_flow_hw_actions_validate(dev, attr, actions, masks,
-					  &action_flags, error))
+	if (!nt_mode && mlx5_flow_hw_actions_validate(dev, attr, actions, masks,
+						      &action_flags, error))
 		return NULL;
 	for (i = 0; ra[i].type != RTE_FLOW_ACTION_TYPE_END; ++i) {
 		switch (ra[i].type) {
