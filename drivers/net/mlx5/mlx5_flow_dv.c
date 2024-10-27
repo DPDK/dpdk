@@ -4047,10 +4047,19 @@ mlx5_flow_dv_validate_action_raw_encap_decap
 	const struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (encap && (!encap->size || !encap->data))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "raw encap data cannot be empty");
+	if (encap) {
+		if (!mlx5_hws_active(dev)) {
+			if (!encap->size || !encap->data)
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ACTION, NULL, "raw encap data cannot be empty");
+		} else {
+			if (!encap->size)
+				return rte_flow_error_set
+					(error, EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ACTION, NULL, "raw encap size cannot be 0");
+		}
+	}
 	if (decap && encap) {
 		if (decap->size <= MLX5_ENCAPSULATION_DECISION_SIZE &&
 		    encap->size > MLX5_ENCAPSULATION_DECISION_SIZE)
