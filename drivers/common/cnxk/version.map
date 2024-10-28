@@ -533,6 +533,7 @@ INTERNAL {
 	roc_tim_lf_alloc;
 	roc_tim_lf_base_get;
 	roc_tim_lf_config;
+	roc_tim_lf_config_hwwqe;
 	roc_tim_lf_disable;
 	roc_tim_lf_enable;
 	roc_tim_lf_free;

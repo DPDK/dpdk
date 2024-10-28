@@ -16,11 +16,6 @@
 #include <rte_memzone.h>
 #include <rte_reciprocal.h>
 
-#include "hw/tim.h"
-
-#include "roc_model.h"
-#include "roc_tim.h"
-
 #define NSECPERSEC		 1E9
 #define USECPERSEC		 1E6
 #define TICK2NSEC(__tck, __freq) (((__tck)*NSECPERSEC) / (__freq))
