@@ -130,54 +130,34 @@ class TrafficGeneratorType(str, Enum):
 
 
 class HugepageConfiguration(FrozenModel):
-    r"""The hugepage configuration of :class:`~framework.testbed_model.node.Node`\s.
+    r"""The hugepage configuration of :class:`~framework.testbed_model.node.Node`\s."""
 
-    Attributes:
-        number_of: The number of hugepages to allocate.
-        force_first_numa: If :data:`True`, the hugepages will be configured on the first NUMA node.
-    """
-
+    #: The number of hugepages to allocate.
     number_of: int
+    #: If :data:`True`, the hugepages will be configured on the first NUMA node.
     force_first_numa: bool
 
 
 class PortConfig(FrozenModel):
-    r"""The port configuration of :class:`~framework.testbed_model.node.Node`\s.
+    r"""The port configuration of :class:`~framework.testbed_model.node.Node`\s."""
 
-    Attributes:
-        pci: The PCI address of the port.
-        os_driver_for_dpdk: The operating system driver name for use with DPDK.
-        os_driver: The operating system driver name when the operating system controls the port.
-        peer_node: The :class:`~framework.testbed_model.node.Node` of the port
-            connected to this port.
-        peer_pci: The PCI address of the port connected to this port.
-    """
-
-    pci: str = Field(
-        description="The local PCI address of the port.", pattern=REGEX_FOR_PCI_ADDRESS
-    )
-    os_driver_for_dpdk: str = Field(
-        description="The driver that the kernel should bind this device to for DPDK to use it.",
-        examples=["vfio-pci", "mlx5_core"],
-    )
-    os_driver: str = Field(
-        description="The driver normally used by this port", examples=["i40e", "ice", "mlx5_core"]
-    )
-    peer_node: str = Field(description="The name of the peer node this port is connected to.")
-    peer_pci: str = Field(
-        description="The PCI address of the peer port this port is connected to.",
-        pattern=REGEX_FOR_PCI_ADDRESS,
-    )
+    #: The PCI address of the port.
+    pci: str = Field(pattern=REGEX_FOR_PCI_ADDRESS)
+    #: The driver that the kernel should bind this device to for DPDK to use it.
+    os_driver_for_dpdk: str = Field(examples=["vfio-pci", "mlx5_core"])
+    #: The operating system driver name when the operating system controls the port.
+    os_driver: str = Field(examples=["i40e", "ice", "mlx5_core"])
+    #: The name of the peer node this port is connected to.
+    peer_node: str
+    #: The PCI address of the peer port connected to this port.
+    peer_pci: str = Field(pattern=REGEX_FOR_PCI_ADDRESS)
 
 
 class TrafficGeneratorConfig(FrozenModel):
-    """A protocol required to define traffic generator types.
+    """A protocol required to define traffic generator types."""
 
-    Attributes:
-        type: The traffic generator type, the child class is required to define to be distinguished
-            among others.
-    """
-
+    #: The traffic generator type the child class is required to define to be distinguished among
+    #: others.
     type: TrafficGeneratorType
 
 
@@ -190,13 +170,10 @@ class ScapyTrafficGeneratorConfig(TrafficGeneratorConfig):
 #: A union type discriminating traffic generators by the `type` field.
 TrafficGeneratorConfigTypes = Annotated[ScapyTrafficGeneratorConfig, Field(discriminator="type")]
 
-
-#: A field representing logical core ranges.
+#: Comma-separated list of logical cores to use. An empty string means use all lcores.
 LogicalCores = Annotated[
     str,
     Field(
-        description="Comma-separated list of logical cores to use. "
-        "An empty string means use all lcores.",
         examples=["1,2,3,4,5,18-22", "10-15"],
         pattern=r"^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$",
     ),
@@ -204,61 +181,41 @@ LogicalCores = Annotated[
 
 
 class NodeConfiguration(FrozenModel):
-    r"""The configuration of :class:`~framework.testbed_model.node.Node`\s.
+    r"""The configuration of :class:`~framework.testbed_model.node.Node`\s."""
 
-    Attributes:
-        name: The name of the :class:`~framework.testbed_model.node.Node`.
-        hostname: The hostname of the :class:`~framework.testbed_model.node.Node`.
-            Can be an IP or a domain name.
-        user: The name of the user used to connect to
-            the :class:`~framework.testbed_model.node.Node`.
-        password: The password of the user. The use of passwords is heavily discouraged.
-            Please use keys instead.
-        arch: The architecture of the :class:`~framework.testbed_model.node.Node`.
-        os: The operating system of the :class:`~framework.testbed_model.node.Node`.
-        lcores: A comma delimited list of logical cores to use when running DPDK.
-        use_first_core: If :data:`True`, the first logical core won't be used.
-        hugepages: An optional hugepage configuration.
-        ports: The ports that can be used in testing.
-    """
-
-    name: str = Field(description="A unique identifier for this node.")
-    hostname: str = Field(description="The hostname or IP address of the node.")
-    user: str = Field(description="The login user to use to connect to this node.")
-    password: str | None = Field(
-        default=None,
-        description="The login password to use to connect to this node. "
-        "SSH keys are STRONGLY preferred, use only as last resort.",
-    )
+    #: The name of the :class:`~framework.testbed_model.node.Node`.
+    name: str
+    #: The hostname of the :class:`~framework.testbed_model.node.Node`. Can also be an IP address.
+    hostname: str
+    #: The name of the user used to connect to the :class:`~framework.testbed_model.node.Node`.
+    user: str
+    #: The password of the user. The use of passwords is heavily discouraged, please use SSH keys.
+    password: str | None = None
+    #: The architecture of the :class:`~framework.testbed_model.node.Node`.
     arch: Architecture
+    #: The operating system of the :class:`~framework.testbed_model.node.Node`.
     os: OS
+    #: A comma delimited list of logical cores to use when running DPDK.
     lcores: LogicalCores = "1"
-    use_first_core: bool = Field(
-        default=False, description="DPDK won't use the first physical core if set to False."
-    )
+    #: If :data:`True`, the first logical core won't be used.
+    use_first_core: bool = False
+    #: An optional hugepage configuration.
     hugepages: HugepageConfiguration | None = Field(None, alias="hugepages_2mb")
+    #: The ports that can be used in testing.
     ports: list[PortConfig] = Field(min_length=1)
 
 
 class SutNodeConfiguration(NodeConfiguration):
-    """:class:`~framework.testbed_model.sut_node.SutNode` specific configuration.
+    """:class:`~framework.testbed_model.sut_node.SutNode` specific configuration."""
 
-    Attributes:
-        memory_channels: The number of memory channels to use when running DPDK.
-    """
-
-    memory_channels: int = Field(
-        default=1, description="Number of memory channels to use when running DPDK."
-    )
+    #: The number of memory channels to use when running DPDK.
+    memory_channels: int = 1
 
 
 class TGNodeConfiguration(NodeConfiguration):
-    """:class:`~framework.testbed_model.tg_node.TGNode` specific configuration.
+    """:class:`~framework.testbed_model.tg_node.TGNode` specific configuration."""
 
-    Attributes:
-        traffic_generator: The configuration of the traffic generator present on the TG node.
-    """
-
+    #: The configuration of the traffic generator present on the TG node.
     traffic_generator: TrafficGeneratorConfigTypes
 
 
@@ -272,20 +229,18 @@ def resolve_path(path: Path) -> Path:
 
 
 class BaseDPDKLocation(FrozenModel):
-    """DPDK location.
+    """DPDK location base class.
 
-    The path to the DPDK sources, build dir and type of location.
-
-    Attributes:
-        remote: Optional, defaults to :data:`False`. If :data:`True`, `dpdk_tree` or `tarball` is
-            located on the SUT node, instead of the execution host.
+    The path to the DPDK sources and type of location.
     """
 
+    #: Specifies whether to find DPDK on the SUT node or on the local host. Which are respectively
+    #: represented by :class:`RemoteDPDKLocation` and :class:`LocalDPDKTreeLocation`.
     remote: bool = False
 
 
 class LocalDPDKLocation(BaseDPDKLocation):
-    """Local DPDK location parent class.
+    """Local DPDK location base class.
 
     This class is meant to represent any location that is present only locally.
     """
@@ -298,14 +253,12 @@ class LocalDPDKTreeLocation(LocalDPDKLocation):
 
     This class makes a distinction from :class:`RemoteDPDKTreeLocation` by enforcing on the fly
     validation.
-
-    Attributes:
-        dpdk_tree: The path to the DPDK source tree directory.
     """
 
+    #: The path to the DPDK source tree directory on the local host passed as string.
     dpdk_tree: Path
 
-    #: Resolve the local DPDK tree path
+    #: Resolve the local DPDK tree path.
     resolve_dpdk_tree_path = field_validator("dpdk_tree")(resolve_path)
 
     @model_validator(mode="after")
@@ -321,14 +274,12 @@ class LocalDPDKTarballLocation(LocalDPDKLocation):
 
     This class makes a distinction from :class:`RemoteDPDKTarballLocation` by enforcing on the fly
     validation.
-
-    Attributes:
-        tarball: The path to the DPDK tarball.
     """
 
+    #: The path to the DPDK tarball on the local host passed as string.
     tarball: Path
 
-    #: Resolve the local tarball path
+    #: Resolve the local tarball path.
     resolve_tarball_path = field_validator("tarball")(resolve_path)
 
     @model_validator(mode="after")
@@ -340,7 +291,7 @@ class LocalDPDKTarballLocation(LocalDPDKLocation):
 
 
 class RemoteDPDKLocation(BaseDPDKLocation):
-    """Remote DPDK location parent class.
+    """Remote DPDK location base class.
 
     This class is meant to represent any location that is present only remotely.
     """
@@ -352,11 +303,9 @@ class RemoteDPDKTreeLocation(RemoteDPDKLocation):
     """Remote DPDK tree location.
 
     This class is distinct from :class:`LocalDPDKTreeLocation` which enforces on the fly validation.
-
-    Attributes:
-        dpdk_tree: The path to the DPDK source tree directory.
     """
 
+    #: The path to the DPDK source tree directory on the remote node passed as string.
     dpdk_tree: PurePath
 
 
@@ -365,11 +314,9 @@ class RemoteDPDKTarballLocation(RemoteDPDKLocation):
 
     This class is distinct from :class:`LocalDPDKTarballLocation` which enforces on the fly
     validation.
-
-    Attributes:
-        tarball: The path to the DPDK tarball.
     """
 
+    #: The path to the DPDK tarball on the remote node passed as string.
     tarball: PurePath
 
 
@@ -386,23 +333,17 @@ class BaseDPDKBuildConfiguration(FrozenModel):
     """The base configuration for different types of build.
 
     The configuration contain the location of the DPDK and configuration used for building it.
-
-    Attributes:
-        dpdk_location: The location of the DPDK tree.
     """
 
+    #: The location of the DPDK tree.
     dpdk_location: DPDKLocation
 
 
 class DPDKPrecompiledBuildConfiguration(BaseDPDKBuildConfiguration):
-    """DPDK precompiled build configuration.
+    """DPDK precompiled build configuration."""
 
-    Attributes:
-        precompiled_build_dir: If it's defined, DPDK has been pre-compiled and the build directory
-            is located in a subdirectory of `dpdk_tree` or `tarball` root directory. Otherwise, will
-            be using `dpdk_build_config` from configuration to build the DPDK from source.
-    """
-
+    #: If it's defined, DPDK has been pre-compiled and the build directory is located in a
+    #: subdirectory of `~dpdk_location.dpdk_tree` or `~dpdk_location.tarball` root directory.
     precompiled_build_dir: str = Field(min_length=1)
 
 
@@ -410,20 +351,18 @@ class DPDKBuildOptionsConfiguration(FrozenModel):
     """DPDK build options configuration.
 
     The build options used for building DPDK.
-
-    Attributes:
-        arch: The target architecture to build for.
-        os: The target os to build for.
-        cpu: The target CPU to build for.
-        compiler: The compiler executable to use.
-        compiler_wrapper: This string will be put in front of the compiler when executing the build.
-            Useful for adding wrapper commands, such as ``ccache``.
     """
 
+    #: The target architecture to build for.
     arch: Architecture
+    #: The target OS to build for.
     os: OS
+    #: The target CPU to build for.
     cpu: CPUType
+    #: The compiler executable to use.
     compiler: Compiler
+    #: This string will be put in front of the compiler when executing the build. Useful for adding
+    #: wrapper commands, such as ``ccache``.
     compiler_wrapper: str = ""
 
     @cached_property
@@ -433,12 +372,9 @@ class DPDKBuildOptionsConfiguration(FrozenModel):
 
 
 class DPDKUncompiledBuildConfiguration(BaseDPDKBuildConfiguration):
-    """DPDK uncompiled build configuration.
+    """DPDK uncompiled build configuration."""
 
-    Attributes:
-        build_options: The build options to compile DPDK.
-    """
-
+    #: The build options to compiled DPDK with.
     build_options: DPDKBuildOptionsConfiguration
 
 
@@ -462,24 +398,13 @@ class TestSuiteConfig(FrozenModel):
             # or as model fields:
             - test_suite: hello_world
               test_cases: [hello_world_single_core] # without this field all test cases are run
-
-    Attributes:
-        test_suite_name: The name of the test suite module without the starting ``TestSuite_``.
-        test_cases_names: The names of test cases from this test suite to execute.
-            If empty, all test cases will be executed.
     """
 
-    test_suite_name: str = Field(
-        title="Test suite name",
-        description="The identifying module name of the test suite without the prefix.",
-        alias="test_suite",
-    )
-    test_cases_names: list[str] = Field(
-        default_factory=list,
-        title="Test cases by name",
-        description="The identifying name of the test cases of the test suite.",
-        alias="test_cases",
-    )
+    #: The name of the test suite module without the starting ``TestSuite_``.
+    test_suite_name: str = Field(alias="test_suite")
+    #: The names of test cases from this test suite to execute. If empty, all test cases will be
+    #: executed.
+    test_cases_names: list[str] = Field(default_factory=list, alias="test_cases")
 
     @cached_property
     def test_suite_spec(self) -> "TestSuiteSpec":
@@ -521,14 +446,11 @@ class TestSuiteConfig(FrozenModel):
 
 
 class TestRunSUTNodeConfiguration(FrozenModel):
-    """The SUT node configuration of a test run.
+    """The SUT node configuration of a test run."""
 
-    Attributes:
-        node_name: The SUT node to use in this test run.
-        vdevs: The names of virtual devices to test.
-    """
-
+    #: The SUT node to use in this test run.
     node_name: str
+    #: The names of virtual devices to test.
     vdevs: list[str] = Field(default_factory=list)
 
 
@@ -537,25 +459,23 @@ class TestRunConfiguration(FrozenModel):
 
     The configuration contains testbed information, what tests to execute
     and with what DPDK build.
-
-    Attributes:
-        dpdk_config: The DPDK configuration used to test.
-        perf: Whether to run performance tests.
-        func: Whether to run functional tests.
-        skip_smoke_tests: Whether to skip smoke tests.
-        test_suites: The names of test suites and/or test cases to execute.
-        system_under_test_node: The SUT node configuration to use in this test run.
-        traffic_generator_node: The TG node name to use in this test run.
-        random_seed: The seed to use for pseudo-random generation.
     """
 
+    #: The DPDK configuration used to test.
     dpdk_config: DPDKBuildConfiguration = Field(alias="dpdk_build")
-    perf: bool = Field(description="Enable performance testing.")
-    func: bool = Field(description="Enable functional testing.")
+    #: Whether to run performance tests.
+    perf: bool
+    #: Whether to run functional tests.
+    func: bool
+    #: Whether to skip smoke tests.
     skip_smoke_tests: bool = False
+    #: The names of test suites and/or test cases to execute.
     test_suites: list[TestSuiteConfig] = Field(min_length=1)
+    #: The SUT node configuration to use in this test run.
     system_under_test_node: TestRunSUTNodeConfiguration
+    #: The TG node name to use in this test run.
     traffic_generator_node: str
+    #: The seed to use for pseudo-random generation.
     random_seed: int | None = None
 
 
@@ -571,14 +491,11 @@ class TestRunWithNodesConfiguration(NamedTuple):
 
 
 class Configuration(FrozenModel):
-    """DTS testbed and test configuration.
+    """DTS testbed and test configuration."""
 
-    Attributes:
-        test_runs: Test run configurations.
-        nodes: Node configurations.
-    """
-
+    #: Test run configurations.
     test_runs: list[TestRunConfiguration] = Field(min_length=1)
+    #: Node configurations.
     nodes: list[NodeConfigurationTypes] = Field(min_length=1)
 
     @cached_property

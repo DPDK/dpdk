@@ -1,5 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
+    Copyright(c) 2024 Arm Limited
 
 DPDK Test Suite
 ===============
@@ -329,8 +330,8 @@ where we deviate or where some additional clarification is helpful:
    * The ``dataclass.dataclass`` decorator changes how the attributes are processed.
      The dataclass attributes which result in instance variables/attributes
      should also be recorded in the ``Attributes:`` section.
-   * Class variables/attributes, on the other hand, should be documented with ``#:``
-     above the type annotated line.
+   * Class variables/attributes and Pydantic model fields, on the other hand,
+     should be documented with ``#:`` above the type annotated line.
      The description may be omitted if the meaning is obvious.
    * The ``Enum`` and ``TypedDict`` also process the attributes in particular ways
      and should be documented with ``#:`` as well.
