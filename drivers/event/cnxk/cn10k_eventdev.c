@@ -94,9 +94,9 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	uint64_t val;
 
 	ws->grp_base = grp_base;
-	ws->fc_mem = (int64_t *)dev->fc_iova;
+	ws->fc_mem = (int64_t __rte_atomic *)dev->fc_iova;
 	ws->xaq_lmt = dev->xaq_lmt;
-	ws->fc_cache_space = dev->fc_cache_space;
+	ws->fc_cache_space = (int64_t __rte_atomic *)dev->fc_cache_space;
 	ws->aw_lmt = ws->lmt_base;
 	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
 
@@ -768,7 +768,7 @@ cn10k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 	for (i = 0; i < dev->nb_event_ports; i++) {
 		struct cn10k_sso_hws *ws = event_dev->data->ports[i];
 		ws->xaq_lmt = dev->xaq_lmt;
-		ws->fc_mem = (int64_t *)dev->fc_iova;
+		ws->fc_mem = (int64_t __rte_atomic *)dev->fc_iova;
 		ws->tstamp = dev->tstamp;
 		if (lookup_mem)
 			ws->lookup_mem = lookup_mem;

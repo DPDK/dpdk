@@ -136,7 +136,7 @@ struct __rte_cache_aligned cn9k_sso_hws {
 	struct cnxk_timesync_info **tstamp;
 	/* Add Work Fastpath data */
 	alignas(RTE_CACHE_LINE_SIZE) uint64_t xaq_lmt;
-	uint64_t *fc_mem;
+	uint64_t __rte_atomic *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
 	alignas(RTE_CACHE_LINE_SIZE) uint64_t lso_tun_fmt;
@@ -154,7 +154,7 @@ struct __rte_cache_aligned cn9k_sso_hws_dual {
 	struct cnxk_timesync_info **tstamp;
 	/* Add Work Fastpath data */
 	alignas(RTE_CACHE_LINE_SIZE) uint64_t xaq_lmt;
-	uint64_t *fc_mem;
+	uint64_t __rte_atomic *fc_mem;
 	uintptr_t grp_base;
 	/* Tx Fastpath data */
 	alignas(RTE_CACHE_LINE_SIZE) uint64_t lso_tun_fmt;

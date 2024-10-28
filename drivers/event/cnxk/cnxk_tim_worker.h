@@ -23,19 +23,19 @@ cnxk_tim_bkt_fetch_rem(uint64_t w1)
 static inline int16_t
 cnxk_tim_bkt_get_rem(struct cnxk_tim_bkt *bktp)
 {
-	return __atomic_load_n(&bktp->chunk_remainder, __ATOMIC_ACQUIRE);
+	return rte_atomic_load_explicit(&bktp->chunk_remainder, rte_memory_order_acquire);
 }
 
 static inline void
 cnxk_tim_bkt_set_rem(struct cnxk_tim_bkt *bktp, uint16_t v)
 {
-	__atomic_store_n(&bktp->chunk_remainder, v, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&bktp->chunk_remainder, v, rte_memory_order_relaxed);
 }
 
 static inline void
 cnxk_tim_bkt_sub_rem(struct cnxk_tim_bkt *bktp, uint16_t v)
 {
-	__atomic_fetch_sub(&bktp->chunk_remainder, v, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&bktp->chunk_remainder, v, rte_memory_order_relaxed);
 }
 
 static inline uint8_t
@@ -56,20 +56,20 @@ cnxk_tim_bkt_clr_bsk(struct cnxk_tim_bkt *bktp)
 	/* Clear everything except lock. */
 	const uint64_t v = TIM_BUCKET_W1_M_LOCK << TIM_BUCKET_W1_S_LOCK;
 
-	return __atomic_fetch_and(&bktp->w1, v, __ATOMIC_ACQ_REL);
+	return rte_atomic_fetch_and_explicit(&bktp->w1, v, rte_memory_order_acq_rel);
 }
 
 static inline uint64_t
 cnxk_tim_bkt_fetch_sema_lock(struct cnxk_tim_bkt *bktp)
 {
-	return __atomic_fetch_add(&bktp->w1, TIM_BUCKET_SEMA_WLOCK,
-				  __ATOMIC_ACQUIRE);
+	return rte_atomic_fetch_add_explicit(&bktp->w1, TIM_BUCKET_SEMA_WLOCK,
+					     rte_memory_order_acquire);
 }
 
 static inline uint64_t
 cnxk_tim_bkt_fetch_sema(struct cnxk_tim_bkt *bktp)
 {
-	return __atomic_fetch_add(&bktp->w1, TIM_BUCKET_SEMA, __ATOMIC_RELAXED);
+	return rte_atomic_fetch_add_explicit(&bktp->w1, TIM_BUCKET_SEMA, rte_memory_order_relaxed);
 }
 
 static inline uint64_t
@@ -77,19 +77,19 @@ cnxk_tim_bkt_inc_lock(struct cnxk_tim_bkt *bktp)
 {
 	const uint64_t v = 1ull << TIM_BUCKET_W1_S_LOCK;
 
-	return __atomic_fetch_add(&bktp->w1, v, __ATOMIC_ACQUIRE);
+	return rte_atomic_fetch_add_explicit(&bktp->w1, v, rte_memory_order_acquire);
 }
 
 static inline void
 cnxk_tim_bkt_dec_lock(struct cnxk_tim_bkt *bktp)
 {
-	__atomic_fetch_sub(&bktp->lock, 1, __ATOMIC_RELEASE);
+	rte_atomic_fetch_sub_explicit(&bktp->lock, 1, rte_memory_order_release);
 }
 
 static inline void
 cnxk_tim_bkt_dec_lock_relaxed(struct cnxk_tim_bkt *bktp)
 {
-	__atomic_fetch_sub(&bktp->lock, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&bktp->lock, 1, rte_memory_order_relaxed);
 }
 
 static inline uint32_t
@@ -102,19 +102,19 @@ cnxk_tim_bkt_get_nent(uint64_t w1)
 static inline void
 cnxk_tim_bkt_inc_nent(struct cnxk_tim_bkt *bktp)
 {
-	__atomic_fetch_add(&bktp->nb_entry, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&bktp->nb_entry, 1, rte_memory_order_relaxed);
 }
 
 static inline void
 cnxk_tim_bkt_add_nent_relaxed(struct cnxk_tim_bkt *bktp, uint32_t v)
 {
-	__atomic_fetch_add(&bktp->nb_entry, v, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&bktp->nb_entry, v, rte_memory_order_relaxed);
 }
 
 static inline void
 cnxk_tim_bkt_add_nent(struct cnxk_tim_bkt *bktp, uint32_t v)
 {
-	__atomic_fetch_add(&bktp->nb_entry, v, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit(&bktp->nb_entry, v, rte_memory_order_release);
 }
 
 static inline uint64_t
@@ -123,7 +123,7 @@ cnxk_tim_bkt_clr_nent(struct cnxk_tim_bkt *bktp)
 	const uint64_t v =
 		~(TIM_BUCKET_W1_M_NUM_ENTRIES << TIM_BUCKET_W1_S_NUM_ENTRIES);
 
-	return __atomic_fetch_and(&bktp->w1, v, __ATOMIC_ACQ_REL) & v;
+	return rte_atomic_fetch_and_explicit(&bktp->w1, v, rte_memory_order_acq_rel) & v;
 }
 
 static inline uint64_t
@@ -273,8 +273,8 @@ __retry:
 				     : "memory");
 #else
 			do {
-				hbt_state = __atomic_load_n(&bkt->w1,
-							    __ATOMIC_RELAXED);
+				hbt_state = rte_atomic_load_explicit(&bkt->w1,
+								     rte_memory_order_relaxed);
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
@@ -356,8 +356,8 @@ __retry:
 				     : "memory");
 #else
 			do {
-				hbt_state = __atomic_load_n(&bkt->w1,
-							    __ATOMIC_RELAXED);
+				hbt_state = rte_atomic_load_explicit(&bkt->w1,
+								     rte_memory_order_relaxed);
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
@@ -385,8 +385,8 @@ __retry:
 			     : [crem] "r"(&bkt->w1)
 			     : "memory");
 #else
-		while (__atomic_load_n((int64_t *)&bkt->w1, __ATOMIC_RELAXED) <
-		       0)
+		while (rte_atomic_load_explicit((int64_t __rte_atomic *)&bkt->w1,
+						rte_memory_order_relaxed) < 0)
 			;
 #endif
 		goto __retry;
@@ -408,15 +408,14 @@ __retry:
 		*chunk = *pent;
 		if (cnxk_tim_bkt_fetch_lock(lock_sema)) {
 			do {
-				lock_sema = __atomic_load_n(&bkt->w1,
-							    __ATOMIC_RELAXED);
+				lock_sema = rte_atomic_load_explicit(&bkt->w1,
+								     rte_memory_order_relaxed);
 			} while (cnxk_tim_bkt_fetch_lock(lock_sema) - 1);
 		}
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 		mirr_bkt->current_chunk = (uintptr_t)chunk;
-		__atomic_store_n(&bkt->chunk_remainder,
-				 tim_ring->nb_chunk_slots - 1,
-				 __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&bkt->chunk_remainder, tim_ring->nb_chunk_slots - 1,
+					  rte_memory_order_release);
 	} else {
 		chunk = (struct cnxk_tim_ent *)mirr_bkt->current_chunk;
 		chunk += tim_ring->nb_chunk_slots - rem;
@@ -489,8 +488,8 @@ __retry:
 				     : "memory");
 #else
 			do {
-				hbt_state = __atomic_load_n(&bkt->w1,
-							    __ATOMIC_RELAXED);
+				hbt_state = rte_atomic_load_explicit(&bkt->w1,
+								     rte_memory_order_relaxed);
 			} while (hbt_state & BIT_ULL(33));
 #endif
 
@@ -521,7 +520,7 @@ __retry:
 			     : [lock] "r"(&bkt->lock)
 			     : "memory");
 #else
-		while (__atomic_load_n(&bkt->lock, __ATOMIC_RELAXED))
+		while (rte_atomic_load_explicit(&bkt->lock, rte_memory_order_relaxed))
 			;
 #endif
 		goto __retry;

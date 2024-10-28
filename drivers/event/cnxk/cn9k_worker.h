@@ -28,7 +28,7 @@ cn9k_sso_hws_new_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 	const uint64_t event_ptr = ev->u64;
 	const uint16_t grp = ev->queue_id;
 
-	rte_atomic_thread_fence(__ATOMIC_ACQ_REL);
+	rte_atomic_thread_fence(rte_memory_order_acq_rel);
 	if (ws->xaq_lmt <= *ws->fc_mem)
 		return 0;
 
@@ -71,7 +71,7 @@ cn9k_sso_hws_new_event_wait(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 	const uint64_t event_ptr = ev->u64;
 	const uint16_t grp = ev->queue_id;
 
-	while (ws->xaq_lmt <= __atomic_load_n(ws->fc_mem, __ATOMIC_RELAXED))
+	while (ws->xaq_lmt <= rte_atomic_load_explicit(ws->fc_mem, rte_memory_order_relaxed))
 		;
 
 	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
@@ -93,7 +93,7 @@ cn9k_sso_hws_forward_event(struct cn9k_sso_hws *ws, const struct rte_event *ev)
 		 * Use add_work operation to transfer the event to
 		 * new group/core
 		 */
-		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		roc_sso_hws_head_wait(ws->base);
 		cn9k_sso_hws_new_event_wait(ws, ev);
 	}
@@ -110,7 +110,7 @@ cn9k_sso_hws_dual_new_event(struct cn9k_sso_hws_dual *dws,
 	const uint64_t event_ptr = ev->u64;
 	const uint16_t grp = ev->queue_id;
 
-	rte_atomic_thread_fence(__ATOMIC_ACQ_REL);
+	rte_atomic_thread_fence(rte_memory_order_acq_rel);
 	if (dws->xaq_lmt <= *dws->fc_mem)
 		return 0;
 
@@ -128,7 +128,7 @@ cn9k_sso_hws_dual_new_event_wait(struct cn9k_sso_hws_dual *dws,
 	const uint64_t event_ptr = ev->u64;
 	const uint16_t grp = ev->queue_id;
 
-	while (dws->xaq_lmt <= __atomic_load_n(dws->fc_mem, __ATOMIC_RELAXED))
+	while (dws->xaq_lmt <= rte_atomic_load_explicit(dws->fc_mem, rte_memory_order_relaxed))
 		;
 
 	cnxk_sso_hws_add_work(event_ptr, tag, new_tt,
@@ -151,7 +151,7 @@ cn9k_sso_hws_dual_forward_event(struct cn9k_sso_hws_dual *dws, uint64_t base,
 		 * Use add_work operation to transfer the event to
 		 * new group/core
 		 */
-		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		roc_sso_hws_head_wait(base);
 		cn9k_sso_hws_dual_new_event_wait(dws, ev);
 	}
@@ -571,7 +571,9 @@ cn9k_sso_txq_fc_wait(const struct cn9k_eth_txq *txq)
 		     : "memory");
 #else
 	do {
-		avail = txq->nb_sqb_bufs_adj - __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+		avail = txq->nb_sqb_bufs_adj -
+			rte_atomic_load_explicit((uint64_t __rte_atomic *)txq->fc_mem,
+						 rte_memory_order_relaxed);
 	} while (((avail << txq->sqes_per_sqb_log2) - avail) <= 0);
 #endif
 }
@@ -740,7 +742,8 @@ static __rte_always_inline int32_t
 cn9k_sso_sq_depth(const struct cn9k_eth_txq *txq)
 {
 	int32_t avail = (int32_t)txq->nb_sqb_bufs_adj -
-			(int32_t)__atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+			(int32_t)rte_atomic_load_explicit((uint64_t __rte_atomic *)txq->fc_mem,
+							  rte_memory_order_relaxed);
 	return (avail << txq->sqes_per_sqb_log2) - avail;
 }
 

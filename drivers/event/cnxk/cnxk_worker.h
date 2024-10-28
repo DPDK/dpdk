@@ -33,7 +33,8 @@ cnxk_sso_hws_swtag_desched(uint32_t tag, uint8_t new_tt, uint16_t grp,
 	uint64_t val;
 
 	val = tag | ((uint64_t)(new_tt & 0x3) << 32) | ((uint64_t)grp << 34);
-	__atomic_store_n((uint64_t *)swtag_desched_op, val, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit((uint64_t __rte_atomic *)swtag_desched_op, val,
+				  rte_memory_order_release);
 }
 
 static __rte_always_inline void

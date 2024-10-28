@@ -311,7 +311,7 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		roc_load_pair(gw.u64[0], gw.u64[1],
 			      ws->base + SSOW_LF_GWS_WQE0);
 	} while (gw.u64[0] & BIT_ULL(63));
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 #endif
 	ws->gw_rdata = gw.u64[0];
 	if (gw.u64[1])

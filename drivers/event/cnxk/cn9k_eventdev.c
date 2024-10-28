@@ -74,7 +74,7 @@ cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	if (dev->dual_ws) {
 		dws = hws;
 		dws->grp_base = grp_base;
-		dws->fc_mem = (uint64_t *)dev->fc_iova;
+		dws->fc_mem = (uint64_t __rte_atomic *)dev->fc_iova;
 		dws->xaq_lmt = dev->xaq_lmt;
 
 		plt_write64(val, dws->base[0] + SSOW_LF_GWS_NW_TIM);
@@ -82,7 +82,7 @@ cn9k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	} else {
 		ws = hws;
 		ws->grp_base = grp_base;
-		ws->fc_mem = (uint64_t *)dev->fc_iova;
+		ws->fc_mem = (uint64_t __rte_atomic *)dev->fc_iova;
 		ws->xaq_lmt = dev->xaq_lmt;
 
 		plt_write64(val, ws->base + SSOW_LF_GWS_NW_TIM);
@@ -822,14 +822,14 @@ cn9k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
 			struct cn9k_sso_hws_dual *dws =
 				event_dev->data->ports[i];
 			dws->xaq_lmt = dev->xaq_lmt;
-			dws->fc_mem = (uint64_t *)dev->fc_iova;
+			dws->fc_mem = (uint64_t __rte_atomic *)dev->fc_iova;
 			dws->tstamp = dev->tstamp;
 			if (lookup_mem)
 				dws->lookup_mem = lookup_mem;
 		} else {
 			struct cn9k_sso_hws *ws = event_dev->data->ports[i];
 			ws->xaq_lmt = dev->xaq_lmt;
-			ws->fc_mem = (uint64_t *)dev->fc_iova;
+			ws->fc_mem = (uint64_t __rte_atomic *)dev->fc_iova;
 			ws->tstamp = dev->tstamp;
 			if (lookup_mem)
 				ws->lookup_mem = lookup_mem;

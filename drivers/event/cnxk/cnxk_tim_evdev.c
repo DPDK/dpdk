@@ -358,7 +358,7 @@ cnxk_tim_stats_get(const struct rte_event_timer_adapter *adapter,
 		tim_ring->tick_fn(tim_ring->tbase) - tim_ring->ring_start_cyc;
 
 	stats->evtim_exp_count =
-		__atomic_load_n(&tim_ring->arm_cnt, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&tim_ring->arm_cnt, rte_memory_order_relaxed);
 	stats->ev_enq_count = stats->evtim_exp_count;
 	stats->adapter_tick_count =
 		rte_reciprocal_divide_u64(bkt_cyc, &tim_ring->fast_div);
@@ -370,7 +370,7 @@ cnxk_tim_stats_reset(const struct rte_event_timer_adapter *adapter)
 {
 	struct cnxk_tim_ring *tim_ring = adapter->data->adapter_priv;
 
-	__atomic_store_n(&tim_ring->arm_cnt, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tim_ring->arm_cnt, 0, rte_memory_order_relaxed);
 	return 0;
 }
 

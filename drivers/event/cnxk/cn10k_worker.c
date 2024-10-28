@@ -16,7 +16,7 @@ cn10k_sso_hws_new_event(struct cn10k_sso_hws *ws, const struct rte_event *ev)
 	const uint64_t event_ptr = ev->u64;
 	const uint16_t grp = ev->queue_id;
 
-	rte_atomic_thread_fence(__ATOMIC_ACQ_REL);
+	rte_atomic_thread_fence(rte_memory_order_acq_rel);
 	if (ws->xaq_lmt <= *ws->fc_mem)
 		return 0;
 
@@ -80,7 +80,7 @@ cn10k_sso_hws_forward_event(struct cn10k_sso_hws *ws,
 static inline int32_t
 sso_read_xaq_space(struct cn10k_sso_hws *ws)
 {
-	return (ws->xaq_lmt - __atomic_load_n(ws->fc_mem, __ATOMIC_RELAXED)) *
+	return (ws->xaq_lmt - rte_atomic_load_explicit(ws->fc_mem, rte_memory_order_relaxed)) *
 	       ROC_SSO_XAE_PER_XAQ;
 }
 
@@ -90,19 +90,20 @@ sso_lmt_aw_wait_fc(struct cn10k_sso_hws *ws, int64_t req)
 	int64_t cached, refill;
 
 retry:
-	while (__atomic_load_n(ws->fc_cache_space, __ATOMIC_RELAXED) < 0)
+	while (rte_atomic_load_explicit(ws->fc_cache_space, rte_memory_order_relaxed) < 0)
 		;
 
-	cached = __atomic_fetch_sub(ws->fc_cache_space, req, __ATOMIC_ACQUIRE) - req;
+	cached = rte_atomic_fetch_sub_explicit(ws->fc_cache_space, req, rte_memory_order_acquire) -
+		 req;
 	/* Check if there is enough space, else update and retry. */
 	if (cached < 0) {
 		/* Check if we have space else retry. */
 		do {
 			refill = sso_read_xaq_space(ws);
 		} while (refill <= 0);
-		__atomic_compare_exchange(ws->fc_cache_space, &cached, &refill,
-					  0, __ATOMIC_RELEASE,
-					  __ATOMIC_RELAXED);
+		rte_atomic_compare_exchange_strong_explicit(ws->fc_cache_space, &cached, refill,
+							    rte_memory_order_release,
+							    rte_memory_order_relaxed);
 		goto retry;
 	}
 }

@@ -70,7 +70,7 @@ cnxk_tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 	}
 
 	if (flags & CNXK_TIM_ENA_STATS)
-		__atomic_fetch_add(&tim_ring->arm_cnt, index, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&tim_ring->arm_cnt, index, rte_memory_order_relaxed);
 
 	return index;
 }
@@ -124,8 +124,8 @@ cnxk_tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 	}
 
 	if (flags & CNXK_TIM_ENA_STATS)
-		__atomic_fetch_add(&tim_ring->arm_cnt, set_timers,
-				   __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&tim_ring->arm_cnt, set_timers,
+					      rte_memory_order_relaxed);
 
 	return set_timers;
 }
@@ -151,7 +151,7 @@ cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 	int ret;
 
 	RTE_SET_USED(adptr);
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 	for (index = 0; index < nb_timers; index++) {
 		if (tim[index]->state == RTE_EVENT_TIMER_CANCELED) {
 			rte_errno = EALREADY;
@@ -193,7 +193,7 @@ cnxk_tim_remaining_ticks_get(const struct rte_event_timer_adapter *adapter,
 		return -ENOENT;
 
 	bkt = (struct cnxk_tim_bkt *)evtim->impl_opaque[1];
-	sema = __atomic_load_n(&bkt->w1, rte_memory_order_acquire);
+	sema = rte_atomic_load_explicit(&bkt->w1, rte_memory_order_acquire);
 	if (cnxk_tim_bkt_get_hbt(sema) || !cnxk_tim_bkt_get_nent(sema))
 		return -ENOENT;
 
