@@ -6,6 +6,7 @@
 
 #include "cn20k_ethdev.h"
 #include "cn20k_eventdev.h"
+#include "cn20k_tx_worker.h"
 #include "cn20k_worker.h"
 #include "cnxk_common.h"
 #include "cnxk_eventdev.h"
@@ -166,6 +167,35 @@ cn20k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 
 	nb_tim_lfs = tim_dev ? tim_dev->nb_rings : 0;
 	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp, nb_tim_lfs);
+}
+
+static int
+cn20k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	int i;
+
+	if (dev->tx_adptr_data == NULL)
+		return 0;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		struct cn20k_sso_hws *ws = event_dev->data->ports[i];
+		void *ws_cookie;
+
+		ws_cookie = cnxk_sso_hws_get_cookie(ws);
+		ws_cookie = rte_realloc_socket(ws_cookie,
+					       sizeof(struct cnxk_sso_hws_cookie) +
+						       sizeof(struct cn20k_sso_hws) +
+						       dev->tx_adptr_data_sz,
+					       RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+		if (ws_cookie == NULL)
+			return -ENOMEM;
+		ws = RTE_PTR_ADD(ws_cookie, sizeof(struct cnxk_sso_hws_cookie));
+		memcpy(&ws->tx_adptr_data, dev->tx_adptr_data, dev->tx_adptr_data_sz);
+		event_dev->data->ports[i] = ws;
+	}
+
+	return 0;
 }
 
 #if defined(RTE_ARCH_ARM64)
@@ -634,6 +664,95 @@ cn20k_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 	return cnxk_sso_rx_adapter_queue_del(event_dev, eth_dev, rx_queue_id);
 }
 
+static int
+cn20k_sso_tx_adapter_caps_get(const struct rte_eventdev *dev, const struct rte_eth_dev *eth_dev,
+			      uint32_t *caps)
+{
+	int ret;
+
+	RTE_SET_USED(dev);
+	ret = strncmp(eth_dev->device->driver->name, "net_cn20k", 8);
+	if (ret)
+		*caps = 0;
+	else
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+
+	return 0;
+}
+
+static void
+cn20k_sso_txq_fc_update(const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cn20k_eth_txq *txq;
+	struct roc_nix_sq *sq;
+	int i;
+
+	if (tx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+			cn20k_sso_txq_fc_update(eth_dev, i);
+	} else {
+		uint16_t sqes_per_sqb;
+
+		sq = &cnxk_eth_dev->sqs[tx_queue_id];
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		sqes_per_sqb = 1U << txq->sqes_per_sqb_log2;
+		if (cnxk_eth_dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
+			sq->nb_sqb_bufs_adj -= (cnxk_eth_dev->outb.nb_desc / sqes_per_sqb);
+		txq->nb_sqb_bufs_adj = sq->nb_sqb_bufs_adj;
+	}
+}
+
+static int
+cn20k_sso_tx_adapter_queue_add(uint8_t id, const struct rte_eventdev *event_dev,
+			       const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint64_t tx_offloads;
+	int rc;
+
+	RTE_SET_USED(id);
+	rc = cnxk_sso_tx_adapter_queue_add(event_dev, eth_dev, tx_queue_id);
+	if (rc < 0)
+		return rc;
+
+	/* Can't enable tstamp if all the ports don't have it enabled. */
+	tx_offloads = cnxk_eth_dev->tx_offload_flags;
+	if (dev->tx_adptr_configured) {
+		uint8_t tstmp_req = !!(tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F);
+		uint8_t tstmp_ena = !!(dev->tx_offloads & NIX_TX_OFFLOAD_TSTAMP_F);
+
+		if (tstmp_ena && !tstmp_req)
+			dev->tx_offloads &= ~(NIX_TX_OFFLOAD_TSTAMP_F);
+		else if (!tstmp_ena && tstmp_req)
+			tx_offloads &= ~(NIX_TX_OFFLOAD_TSTAMP_F);
+	}
+
+	dev->tx_offloads |= tx_offloads;
+	cn20k_sso_txq_fc_update(eth_dev, tx_queue_id);
+	rc = cn20k_sso_updt_tx_adptr_data(event_dev);
+	if (rc < 0)
+		return rc;
+	cn20k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	dev->tx_adptr_configured = 1;
+
+	return 0;
+}
+
+static int
+cn20k_sso_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *event_dev,
+			       const struct rte_eth_dev *eth_dev, int32_t tx_queue_id)
+{
+	int rc;
+
+	RTE_SET_USED(id);
+	rc = cnxk_sso_tx_adapter_queue_del(event_dev, eth_dev, tx_queue_id);
+	if (rc < 0)
+		return rc;
+	return cn20k_sso_updt_tx_adptr_data(event_dev);
+}
+
 static struct eventdev_ops cn20k_sso_dev_ops = {
 	.dev_infos_get = cn20k_sso_info_get,
 	.dev_configure = cn20k_sso_dev_configure,
@@ -658,6 +777,13 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.eth_rx_adapter_queue_del = cn20k_sso_rx_adapter_queue_del,
 	.eth_rx_adapter_start = cnxk_sso_rx_adapter_start,
 	.eth_rx_adapter_stop = cnxk_sso_rx_adapter_stop,
+
+	.eth_tx_adapter_caps_get = cn20k_sso_tx_adapter_caps_get,
+	.eth_tx_adapter_queue_add = cn20k_sso_tx_adapter_queue_add,
+	.eth_tx_adapter_queue_del = cn20k_sso_tx_adapter_queue_del,
+	.eth_tx_adapter_start = cnxk_sso_tx_adapter_start,
+	.eth_tx_adapter_stop = cnxk_sso_tx_adapter_stop,
+	.eth_tx_adapter_free = cnxk_sso_tx_adapter_free,
 
 	.xstats_get = cnxk_sso_xstats_get,
 	.xstats_reset = cnxk_sso_xstats_reset,

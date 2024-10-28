@@ -25,6 +25,10 @@ struct __rte_cache_aligned cn20k_sso_hws {
 	uintptr_t grp_base;
 	uint16_t xae_waes;
 	int32_t xaq_lmt;
+	/* Tx Fastpath data */
+	alignas(RTE_CACHE_LINE_SIZE) uintptr_t lmt_base;
+	uint64_t lso_tun_fmt;
+	uint8_t tx_adptr_data[];
 };
 
 #endif /* __CN20K_EVENTDEV_H__ */
