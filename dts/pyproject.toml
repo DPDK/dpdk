@@ -44,6 +44,7 @@ optional = true
 sphinx = "<=7"
 sphinx-rtd-theme = ">=1.2.2"
 pyelftools = "^0.31"
+autodoc-pydantic = "^2.2.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

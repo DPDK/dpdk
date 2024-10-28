@@ -205,9 +205,11 @@ and then run the tests with the newly built binaries.
 Configuring DTS
 ~~~~~~~~~~~~~~~
 
-DTS configuration is split into nodes and test runs and build targets within test runs,
-and follows a defined schema as described in `Configuration Schema`_.
-By default, DTS will try to use the ``dts/conf.yaml`` :ref:`config file <configuration_schema_example>`,
+DTS configuration is split into nodes and test runs,
+and must respect the model definitions
+as documented in the DTS API docs under the ``config`` page.
+The root of the configuration is represented by the ``Configuration`` model.
+By default, DTS will try to use the ``dts/conf.yaml`` :ref:`config file <configuration_example>`,
 which is a template that illustrates what can be configured in DTS.
 
 The user must have :ref:`administrator privileges <sut_admin_user>`
@@ -471,184 +473,10 @@ The output is generated in ``build/doc/api/dts/html``.
 
    Make sure to fix any Sphinx warnings when adding or updating docstrings.
 
+.. _configuration_example:
 
-Configuration Schema
---------------------
-
-Definitions
-~~~~~~~~~~~
-
-_`Node name`
-   *string* – A unique identifier for a node.
-   **Examples**: ``SUT1``, ``TG1``.
-
-_`ARCH`
-   *string* – The CPU architecture.
-   **Supported values**: ``x86_64``, ``arm64``, ``ppc64le``.
-
-_`CPU`
-   *string* – The CPU microarchitecture. Use ``native`` for x86.
-   **Supported values**: ``native``, ``armv8a``, ``dpaa2``, ``thunderx``, ``xgene1``.
-
-_`OS`
-   *string* – The operating system. **Supported values**: ``linux``.
-
-_`Compiler`
-   *string* – The compiler used for building DPDK.
-   **Supported values**: ``gcc``, ``clang``, ``icc``, ``mscv``.
-
-_`Build target`
-   *mapping* – Build targets supported by DTS for building DPDK, described as:
-
-   ==================== =================================================================
-   ``arch``             See `ARCH`_
-   ``os``               See `OS`_
-   ``cpu``              See `CPU`_
-   ``compiler``         See `Compiler`_
-   ``compiler_wrapper`` *string* – Value prepended to the CC variable for the DPDK build.
-
-                        **Example**: ``ccache``
-   ==================== =================================================================
-
-_`hugepages_2mb`
-   *mapping* – hugepages_2mb described as:
-
-   ==================== ================================================================
-   ``number_of``        *integer* – The number of 2MB hugepages to configure.
-
-                        Hugepage size will be the system default.
-   ``force_first_numa`` (*optional*, defaults to ``false``) – If ``true``, it forces the
-
-                        configuration of hugepages on the first NUMA node.
-   ==================== ================================================================
-
-_`Network port`
-   *mapping* – the NIC port described as:
-
-   ====================== =================================================================================
-   ``pci``                *string* – the local PCI address of the port. **Example**: ``0000:00:08.0``
-   ``os_driver_for_dpdk`` | *string* – this port's device driver when using with DPDK
-                          | When setting up the SUT, DTS will bind the network device to this driver
-                          | for compatibility with DPDK.
-
-                          **Examples**: ``vfio-pci``, ``mlx5_core``
-   ``os_driver``          | *string* – this port's device driver when **not** using with DPDK
-                          | When tearing down the tests on the SUT, DTS will bind the network device
-                          | *back* to this driver. This driver is meant to be the one that the SUT would
-                          | normally use for this device, or whichever driver it is preferred to leave the
-                          | device bound to after testing.
-                          | This also represents the driver that is used in conjunction with the traffic
-                          | generator software.
-
-                          **Examples**: ``i40e``, ``mlx5_core``
-   ``peer_node``          *string* – the name of the peer node connected to this port.
-   ``peer_pci``           *string* – the PCI address of the peer node port. **Example**: ``000a:01:00.1``
-   ====================== =================================================================================
-
-_`Test suite`
-   *string* – name of the test suite to run. **Examples**: ``hello_world``, ``os_udp``
-
-_`Test target`
-   *mapping* – selects specific test cases to run from a test suite. Mapping is described as follows:
-
-   ========= ===============================================================================================
-   ``suite`` See `Test suite`_
-   ``cases`` (*optional*) *sequence* of *string* – list of the selected test cases in the test suite to run.
-
-             Unknown test cases will be silently ignored.
-   ========= ===============================================================================================
-
-
-Properties
-~~~~~~~~~~
-
-The configuration requires listing all the test run environments and nodes
-involved in the testing. These can be defined with the following mappings:
-
-``test runs``
-   `sequence <https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range>`_ listing
-   the test run environments. Each entry is described as per the following
-   `mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`_:
-
-   +----------------------------+-------------------------------------------------------------------+
-   | ``build_targets``          | *sequence* of `Build target`_                                     |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``perf``                   | *boolean* – Enable performance testing.                           |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``func``                   | *boolean* – Enable functional testing.                            |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``test_suites``            | *sequence* of **one of** `Test suite`_ **or** `Test target`_      |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``skip_smoke_tests``       | (*optional*) *boolean* – Allows you to skip smoke testing         |
-   |                            | if ``true``.                                                      |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``system_under_test_node`` | System under test node specified with:                            |
-   |                            +---------------+---------------------------------------------------+
-   |                            | ``node_name`` | See `Node name`_                                  |
-   |                            +---------------+---------------------------------------------------+
-   |                            | ``vdevs``     | (*optional*) *sequence* of *string*               |
-   |                            |               |                                                   |
-   |                            |               | List of virtual devices passed with the ``--vdev``|
-   |                            |               | argument to DPDK. **Example**: ``crypto_openssl`` |
-   +----------------------------+---------------+---------------------------------------------------+
-   | ``traffic_generator_node`` | Node name for the traffic generator node.                         |
-   +----------------------------+-------------------------------------------------------------------+
-   | ``random_seed``            | (*optional*) *int* – Set a seed for pseudo-random generation.     |
-   +----------------------------+-------------------------------------------------------------------+
-
-``nodes``
-   `sequence <https://docs.python.org/3/library/stdtypes.html#sequence-types-list-tuple-range>`_ listing
-   the nodes. Each entry is described as per the following
-   `mapping <https://docs.python.org/3/library/stdtypes.html#mapping-types-dict>`_:
-
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``name``              | See `Node name`_                                                                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``hostname``          | *string* – The network hostname or IP address of this node.                           |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``user``              | *string* – The SSH user credential to use to login to this node.                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``password``          | (*optional*) *string* – The SSH password credential for this node.                    |
-   |                       |                                                                                       |
-   |                       | **NB**: Use only as last resort. SSH keys are **strongly** preferred.                 |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``arch``              | The architecture of this node. See `ARCH`_ for supported values.                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``os``                | The operating system of this node. See `OS`_ for supported values.                    |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``lcores``            | | (*optional*, defaults to 1) *string* – Comma-separated list of logical              |
-   |                       | | cores to use. An empty string means use all lcores.                                 |
-   |                       |                                                                                       |
-   |                       | **Example**: ``1,2,3,4,5,18-22``                                                      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``use_first_core``    | (*optional*, defaults to ``false``) *boolean*                                         |
-   |                       |                                                                                       |
-   |                       | Indicates whether DPDK should use only the first physical core or not.                |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``memory_channels``   | (*optional*, defaults to 1) *integer*                                                 |
-   |                       |                                                                                       |
-   |                       | The number of the memory channels to use.                                             |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``hugepages_2mb``     | (*optional*) See `hugepages_2mb`_. If unset, 2MB hugepages won't be configured        |
-   |                       |                                                                                       |
-   |                       | in favour of the system configuration.                                                |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``ports``             | | *sequence* of `Network port`_ – Describe ports that are **directly** paired with    |
-   |                       | | other nodes used in conjunction with this one. Both ends of the links must be       |
-   |                       | | described. If there any inconsistencies DTS won't run.                              |
-   |                       |                                                                                       |
-   |                       | **Example**: port 1 of node ``SUT1`` is connected to port 1 of node ``TG1`` etc.      |
-   +-----------------------+---------------------------------------------------------------------------------------+
-   | ``traffic_generator`` | (*optional*) Traffic generator, if any, setup on this node described as:              |
-   |                       +----------+----------------------------------------------------------------------------+
-   |                       | ``type`` | *string* – **Supported values**: *SCAPY*                                   |
-   +-----------------------+----------+----------------------------------------------------------------------------+
-
-
-.. _configuration_schema_example:
-
-Example
-~~~~~~~
+Configuration Example
+---------------------
 
 The following example (which can be found in ``dts/conf.yaml``) sets up two nodes:
 
