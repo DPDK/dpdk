@@ -62,7 +62,7 @@ roc_rvu_lf_dev_fini(struct roc_rvu_lf *roc_rvu_lf)
 	return dev_fini(&rvu->dev, rvu->pci_dev);
 }
 
-static uint16_t
+uint16_t
 roc_rvu_lf_pf_func_get(struct roc_rvu_lf *roc_rvu_lf)
 {
 	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);

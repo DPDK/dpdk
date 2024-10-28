@@ -559,6 +559,7 @@ INTERNAL {
 	roc_rvu_lf_msg_id_range_check;
 	roc_rvu_lf_msg_id_range_set;
 	roc_rvu_lf_msg_process;
+	roc_rvu_lf_pf_func_get;
 
 	local: *;
 };

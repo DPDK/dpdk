@@ -43,6 +43,18 @@ __rte_internal
 uint16_t rte_pmd_rvu_lf_sso_pf_func_get(void);
 
 /**
+ * Obtain RVU LF device PF func
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ *
+ * @return
+ *   Returns RVU LF pf_func on success, 0 in case of invalid pf_func.
+ */
+__rte_internal
+uint16_t rte_pmd_rvu_lf_pf_func_get(uint8_t dev_id);
+
+/**
  * Signature of callback function called when an interrupt is received on RVU LF device.
  *
  * @param cb_arg

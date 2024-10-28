@@ -115,6 +115,21 @@ rte_pmd_rvu_lf_sso_pf_func_get(void)
 	return roc_sso_pf_func_get();
 }
 
+uint16_t
+rte_pmd_rvu_lf_pf_func_get(uint8_t dev_id)
+{
+	struct roc_rvu_lf *roc_rvu_lf;
+	struct rte_rawdev *rawdev;
+
+	rawdev = rte_rawdev_pmd_get_dev(dev_id);
+	if (rawdev == NULL)
+		return 0;
+
+	roc_rvu_lf = (struct roc_rvu_lf *)rawdev->dev_private;
+
+	return roc_rvu_lf_pf_func_get(roc_rvu_lf);
+}
+
 static const struct rte_rawdev_ops rvu_lf_rawdev_ops = {
 	.dev_selftest = NULL,
 };

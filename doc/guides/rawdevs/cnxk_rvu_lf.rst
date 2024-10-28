@@ -17,6 +17,7 @@ Features
 The RVU LF device implements following features in the rawdev API:
 
 - Get PF FUNC of associated NPA and SSO devices.
+- Get PF FUNC for RVU LF device.
 - Register/unregister interrupt handlers.
 - Register/unregister mailbox callbacks for the other side to process mailboxes.
 - Set mailbox message ID range to be used by the driver.
@@ -47,6 +48,11 @@ Get NPA and SSO PF FUNC
 API functions ``rte_pmd_rvu_lf_npa_pf_func_get()`` and ``rte_pmd_rvu_lf_sso_pf_func_get()``
 can be used to get the cnxk NPA PF func and SSO PF func
 which application can use for NPA/SSO specific configuration.
+
+Get RVU LF PF FUNC
+------------------
+
+API function ``rte_pmd_rvu_lf_pf_func_get()`` gets the RVU LF device PF FUNC.
 
 Register or remove interrupt handler
 ------------------------------------
