@@ -24,7 +24,7 @@
 
 #define MULTIQ_MAJOR_HANDLE (1 << 16)
 
-void tc_init_msg(struct nlmsg *msg, unsigned int ifindex, uint16_t type,
+void tc_init_msg(struct tap_nlmsg *msg, unsigned int ifindex, uint16_t type,
 		 uint16_t flags);
 int qdisc_list(int nlsk_fd, unsigned int ifindex);
 int qdisc_flush(int nlsk_fd, unsigned int ifindex);

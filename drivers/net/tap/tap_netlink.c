@@ -368,7 +368,7 @@ tap_nlattr_add32(struct nlmsghdr *nh, unsigned short type, uint32_t data)
  *   -1 if adding a nested netlink attribute failed, 0 otherwise.
  */
 int
-tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type)
+tap_nlattr_nested_start(struct tap_nlmsg *msg, uint16_t type)
 {
 	struct nested_tail *tail;
 
@@ -400,7 +400,7 @@ tap_nlattr_nested_start(struct nlmsg *msg, uint16_t type)
  *   The netlink message where to edit the nested_tails metadata.
  */
 void
-tap_nlattr_nested_finish(struct nlmsg *msg)
+tap_nlattr_nested_finish(struct tap_nlmsg *msg)
 {
 	struct nested_tail *tail = msg->nested_tails;
 

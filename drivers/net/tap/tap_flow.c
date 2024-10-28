@@ -35,7 +35,7 @@
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /* Pointer to the next rte_flow structure */
 	struct rte_flow *remote_flow; /* associated remote flow */
-	struct nlmsg msg;
+	struct tap_nlmsg msg;
 };
 
 struct convert_data {
@@ -423,7 +423,7 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
 	struct rte_flow *flow = info->flow;
-	struct nlmsg *msg;
+	struct tap_nlmsg *msg;
 
 	/* use default mask if none provided */
 	if (!mask)
@@ -477,7 +477,7 @@ tap_flow_create_vlan(const struct rte_flow_item *item, void *data)
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	struct rte_flow *flow = info->flow;
-	struct nlmsg *msg;
+	struct tap_nlmsg *msg;
 
 	/* use default mask if none provided */
 	if (!mask)
@@ -537,7 +537,7 @@ tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct rte_flow *flow = info->flow;
-	struct nlmsg *msg;
+	struct tap_nlmsg *msg;
 
 	/* use default mask if none provided */
 	if (!mask)
@@ -593,7 +593,7 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
 	const struct rte_flow_item_ipv6 *mask = item->mask;
 	struct rte_flow *flow = info->flow;
 	uint8_t empty_addr[16] = { 0 };
-	struct nlmsg *msg;
+	struct tap_nlmsg *msg;
 
 	/* use default mask if none provided */
 	if (!mask)
@@ -648,7 +648,7 @@ tap_flow_create_udp(const struct rte_flow_item *item, void *data)
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
 	struct rte_flow *flow = info->flow;
-	struct nlmsg *msg;
+	struct tap_nlmsg *msg;
 
 	/* use default mask if none provided */
 	if (!mask)
@@ -694,7 +694,7 @@ tap_flow_create_tcp(const struct rte_flow_item *item, void *data)
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
 	struct rte_flow *flow = info->flow;
-	struct nlmsg *msg;
+	struct tap_nlmsg *msg;
 
 	/* use default mask if none provided */
 	if (!mask)
@@ -820,7 +820,7 @@ tap_flow_item_validate(const struct rte_flow_item *item,
 static int
 add_action(struct rte_flow *flow, size_t *act_index, struct action_data *adata)
 {
-	struct nlmsg *msg = &flow->msg;
+	struct tap_nlmsg *msg = &flow->msg;
 
 	if (tap_nlattr_nested_start(msg, (*act_index)++) < 0)
 		return -1;
@@ -891,7 +891,7 @@ static int
 add_actions(struct rte_flow *flow, int nb_actions, struct action_data *data,
 	    int classifier_action)
 {
-	struct nlmsg *msg = &flow->msg;
+	struct tap_nlmsg *msg = &flow->msg;
 	size_t act_index = 1;
 	int i;
 
@@ -1274,7 +1274,7 @@ tap_flow_create(struct rte_eth_dev *dev,
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct rte_flow *remote_flow = NULL;
 	struct rte_flow *flow = NULL;
-	struct nlmsg *msg = NULL;
+	struct tap_nlmsg *msg = NULL;
 	int err;
 
 	if (!pmd->if_index) {
@@ -1593,7 +1593,7 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 	struct rte_flow_item_eth eth_local = { .hdr.ether_type = 0 };
 	unsigned int if_index = pmd->remote_if_index;
 	struct rte_flow *remote_flow = NULL;
-	struct nlmsg *msg = NULL;
+	struct tap_nlmsg *msg = NULL;
 	int err = 0;
 	struct rte_flow_item items_local[2] = {
 		[0] = {
