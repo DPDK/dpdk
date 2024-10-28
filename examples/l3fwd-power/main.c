@@ -440,8 +440,7 @@ power_timer_cb(__rte_unused struct rte_timer *tim,
 	 * check whether need to scale down frequency a step if it sleep a lot.
 	 */
 	if (sleep_time_ratio >= SCALING_DOWN_TIME_RATIO_THRESHOLD) {
-		if (rte_power_freq_down)
-			rte_power_freq_down(lcore_id);
+		rte_power_freq_down(lcore_id);
 	}
 	else if ( (unsigned)(stats[lcore_id].nb_rx_processed /
 		stats[lcore_id].nb_iteration_looped) < MAX_PKT_BURST) {
@@ -449,8 +448,7 @@ power_timer_cb(__rte_unused struct rte_timer *tim,
 		 * scale down a step if average packet per iteration less
 		 * than expectation.
 		 */
-		if (rte_power_freq_down)
-			rte_power_freq_down(lcore_id);
+		rte_power_freq_down(lcore_id);
 	}
 
 	/**
@@ -1344,11 +1342,9 @@ start_rx:
 			}
 
 			if (lcore_scaleup_hint == FREQ_HIGHEST) {
-				if (rte_power_freq_max)
-					rte_power_freq_max(lcore_id);
+				rte_power_freq_max(lcore_id);
 			} else if (lcore_scaleup_hint == FREQ_HIGHER) {
-				if (rte_power_freq_up)
-					rte_power_freq_up(lcore_id);
+				rte_power_freq_up(lcore_id);
 			}
 		} else {
 			/**

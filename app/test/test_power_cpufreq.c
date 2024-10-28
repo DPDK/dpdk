@@ -534,58 +534,6 @@ test_power_cpufreq(void)
 		goto fail_all;
 	}
 
-	/* verify that function pointers are not NULL */
-	if (rte_power_freqs == NULL) {
-		printf("rte_power_freqs should not be NULL, environment has not been "
-				"initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_get_freq == NULL) {
-		printf("rte_power_get_freq should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_set_freq == NULL) {
-		printf("rte_power_set_freq should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_up == NULL) {
-		printf("rte_power_freq_up should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_down == NULL) {
-		printf("rte_power_freq_down should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_max == NULL) {
-		printf("rte_power_freq_max should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_min == NULL) {
-		printf("rte_power_freq_min should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_turbo_status == NULL) {
-		printf("rte_power_turbo_status should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_enable_turbo == NULL) {
-		printf("rte_power_freq_enable_turbo should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-	if (rte_power_freq_disable_turbo == NULL) {
-		printf("rte_power_freq_disable_turbo should not be NULL, environment has not "
-				"been initialised\n");
-		goto fail_all;
-	}
-
 	ret = rte_power_exit(TEST_POWER_LCORE_ID);
 	if (ret < 0) {
 		printf("Cannot exit power management for lcore %u\n",
