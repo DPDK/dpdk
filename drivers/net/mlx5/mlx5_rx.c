@@ -459,7 +459,7 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
 			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	union {
 		volatile struct mlx5_cqe *cqe;
-		volatile struct mlx5_err_cqe *err_cqe;
+		volatile struct mlx5_error_cqe *err_cqe;
 	} u = {
 		.cqe = &(*rxq->cqes)[(rxq->cq_ci - vec) & cqe_mask],
 	};
