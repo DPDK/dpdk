@@ -460,9 +460,6 @@ soc_cn9k = {
     'implementer': '0x43',
     'part_number': '0xb2',
     'numa': false,
-    'flags': [
-        ['RTE_IOVA_IN_MBUF', 0]
-    ]
 }
 
 soc_cn10k = {
@@ -472,7 +469,6 @@ soc_cn10k = {
         ['RTE_MAX_LCORE', 24],
         ['RTE_MAX_NUMA_NODES', 1],
         ['RTE_MEMPOOL_ALIGN', 128],
-        ['RTE_IOVA_IN_MBUF', 0]
     ],
     'part_number': '0xd49',
     'extra_march_features': ['crypto'],
