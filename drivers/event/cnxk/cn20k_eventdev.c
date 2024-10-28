@@ -4,6 +4,7 @@
 
 #include "roc_api.h"
 
+#include "cn20k_ethdev.h"
 #include "cn20k_eventdev.h"
 #include "cn20k_worker.h"
 #include "cnxk_common.h"
@@ -414,6 +415,117 @@ cn20k_sso_selftest(void)
 	return cnxk_sso_selftest(RTE_STR(event_cn20k));
 }
 
+static int
+cn20k_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
+			      const struct rte_eth_dev *eth_dev, uint32_t *caps)
+{
+	int rc;
+
+	RTE_SET_USED(event_dev);
+	rc = strncmp(eth_dev->device->driver->name, "net_cn20k", 9);
+	if (rc)
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_SW_CAP;
+	else
+		*caps = RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT |
+			RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ |
+			RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID;
+
+	return 0;
+}
+
+static void
+cn20k_sso_set_priv_mem(const struct rte_eventdev *event_dev, void *lookup_mem)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	int i;
+
+	for (i = 0; i < dev->nb_event_ports; i++) {
+		struct cn20k_sso_hws *ws = event_dev->data->ports[i];
+		ws->xaq_lmt = dev->xaq_lmt;
+		ws->fc_mem = (int64_t __rte_atomic *)dev->fc_iova;
+		ws->tstamp = dev->tstamp;
+		if (lookup_mem)
+			ws->lookup_mem = lookup_mem;
+	}
+}
+
+static void
+eventdev_fops_tstamp_update(struct rte_eventdev *event_dev)
+{
+	struct rte_event_fp_ops *fp_op = rte_event_fp_ops + event_dev->data->dev_id;
+
+	fp_op->dequeue_burst = event_dev->dequeue_burst;
+}
+
+static void
+cn20k_sso_tstamp_hdl_update(uint16_t port_id, uint16_t flags, bool ptp_en)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct cnxk_eth_dev *cnxk_eth_dev = dev->data->dev_private;
+	struct rte_eventdev *event_dev = cnxk_eth_dev->evdev_priv;
+	struct cnxk_sso_evdev *evdev = cnxk_sso_pmd_priv(event_dev);
+
+	evdev->rx_offloads |= flags;
+	if (ptp_en)
+		evdev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
+	else
+		evdev->tstamp[port_id] = NULL;
+	cn20k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	eventdev_fops_tstamp_update(event_dev);
+}
+
+static int
+cn20k_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
+			       const struct rte_eth_dev *eth_dev, int32_t rx_queue_id,
+			       const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct roc_sso_hwgrp_stash stash;
+	struct cn20k_eth_rxq *rxq;
+	void *lookup_mem;
+	int rc;
+
+	rc = strncmp(eth_dev->device->driver->name, "net_cn20k", 8);
+	if (rc)
+		return -EINVAL;
+
+	rc = cnxk_sso_rx_adapter_queue_add(event_dev, eth_dev, rx_queue_id, queue_conf);
+	if (rc)
+		return -EINVAL;
+
+	cnxk_eth_dev->cnxk_sso_ptp_tstamp_cb = cn20k_sso_tstamp_hdl_update;
+	cnxk_eth_dev->evdev_priv = (struct rte_eventdev *)(uintptr_t)event_dev;
+
+	rxq = eth_dev->data->rx_queues[0];
+	lookup_mem = rxq->lookup_mem;
+	cn20k_sso_set_priv_mem(event_dev, lookup_mem);
+	cn20k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+	if (roc_feature_sso_has_stash() && dev->nb_event_ports > 1) {
+		stash.hwgrp = queue_conf->ev.queue_id;
+		stash.stash_offset = CN20K_SSO_DEFAULT_STASH_OFFSET;
+		stash.stash_count = CN20K_SSO_DEFAULT_STASH_LENGTH;
+		rc = roc_sso_hwgrp_stash_config(&dev->sso, &stash, 1);
+		if (rc < 0)
+			plt_warn("failed to configure HWGRP WQE stashing rc = %d", rc);
+	}
+
+	return 0;
+}
+
+static int
+cn20k_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
+			       const struct rte_eth_dev *eth_dev, int32_t rx_queue_id)
+{
+	int rc;
+
+	rc = strncmp(eth_dev->device->driver->name, "net_cn20k", 8);
+	if (rc)
+		return -EINVAL;
+
+	return cnxk_sso_rx_adapter_queue_del(event_dev, eth_dev, rx_queue_id);
+}
+
 static struct eventdev_ops cn20k_sso_dev_ops = {
 	.dev_infos_get = cn20k_sso_info_get,
 	.dev_configure = cn20k_sso_dev_configure,
@@ -432,6 +544,12 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.port_link_profile = cn20k_sso_port_link_profile,
 	.port_unlink_profile = cn20k_sso_port_unlink_profile,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
+
+	.eth_rx_adapter_caps_get = cn20k_sso_rx_adapter_caps_get,
+	.eth_rx_adapter_queue_add = cn20k_sso_rx_adapter_queue_add,
+	.eth_rx_adapter_queue_del = cn20k_sso_rx_adapter_queue_del,
+	.eth_rx_adapter_start = cnxk_sso_rx_adapter_start,
+	.eth_rx_adapter_stop = cnxk_sso_rx_adapter_stop,
 
 	.xstats_get = cnxk_sso_xstats_get,
 	.xstats_reset = cnxk_sso_xstats_reset,
@@ -509,4 +627,5 @@ RTE_PMD_REGISTER_KMOD_DEP(event_cn20k, "vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(event_cn20k,
 			      CNXK_SSO_XAE_CNT "=<int>"
 			      CNXK_SSO_GGRP_QOS "=<string>"
-			      CNXK_SSO_STASH "=<string>");
+			      CNXK_SSO_STASH "=<string>"
+			      CNXK_SSO_FORCE_BP "=1");
