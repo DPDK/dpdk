@@ -22,8 +22,15 @@ int __roc_api roc_rvu_lf_dev_init(struct roc_rvu_lf *roc_rvu_lf);
 int __roc_api roc_rvu_lf_dev_fini(struct roc_rvu_lf *roc_rvu_lf);
 
 typedef void (*roc_rvu_lf_intr_cb_fn)(void *cb_arg);
+typedef int (*roc_rvu_lf_msg_handler_cb_fn)(uint16_t vf, uint16_t msg_id,
+					    void *req, uint16_t req_len,
+					    void **rsp, uint16_t *rsp_len);
+
 int __roc_api roc_rvu_lf_irq_register(struct roc_rvu_lf *roc_rvu_lf, unsigned int irq,
 				      roc_rvu_lf_intr_cb_fn cb, void *cb_arg);
 int __roc_api roc_rvu_lf_irq_unregister(struct roc_rvu_lf *roc_rvu_lf, unsigned int irq,
 					roc_rvu_lf_intr_cb_fn cb, void *cb_arg);
+int __roc_api roc_rvu_lf_msg_handler_register(struct roc_rvu_lf *roc_rvu_lf,
+					      roc_rvu_lf_msg_handler_cb_fn cb);
+int __roc_api roc_rvu_lf_msg_handler_unregister(struct roc_rvu_lf *roc_rvu_lf);
 #endif /* _ROC_RVU_LF_H_ */

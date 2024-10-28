@@ -554,5 +554,7 @@ INTERNAL {
 	roc_rvu_lf_dev_init;
 	roc_rvu_lf_irq_register;
 	roc_rvu_lf_irq_unregister;
+	roc_rvu_lf_msg_handler_register;
+	roc_rvu_lf_msg_handler_unregister;
 	local: *;
 };

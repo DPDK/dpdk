@@ -87,3 +87,28 @@ roc_rvu_lf_irq_unregister(struct roc_rvu_lf *roc_rvu_lf, unsigned int irq,
 
 	return 0;
 }
+
+int
+roc_rvu_lf_msg_handler_register(struct roc_rvu_lf *roc_rvu_lf, roc_rvu_lf_msg_handler_cb_fn cb)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+	struct dev *dev = &rvu->dev;
+
+	if (cb == NULL)
+		return -EINVAL;
+
+	dev->ops->msg_process_cb = (msg_process_cb_t)cb;
+
+	return 0;
+}
+
+int
+roc_rvu_lf_msg_handler_unregister(struct roc_rvu_lf *roc_rvu_lf)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+	struct dev *dev = &rvu->dev;
+
+	dev->ops->msg_process_cb = NULL;
+
+	return 0;
+}

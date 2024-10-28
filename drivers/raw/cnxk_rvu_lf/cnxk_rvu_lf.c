@@ -17,6 +17,34 @@
 #include "cnxk_rvu_lf_driver.h"
 
 int
+rte_pmd_rvu_lf_msg_handler_register(uint8_t dev_id, rte_pmd_rvu_lf_msg_handler_cb_fn cb)
+{
+	struct rte_rawdev *rawdev = rte_rawdev_pmd_get_dev(dev_id);
+	struct roc_rvu_lf *roc_rvu_lf;
+
+	if (rawdev == NULL)
+		return -EINVAL;
+
+	roc_rvu_lf = (struct roc_rvu_lf *)rawdev->dev_private;
+
+	return roc_rvu_lf_msg_handler_register(roc_rvu_lf, (roc_rvu_lf_msg_handler_cb_fn)cb);
+}
+
+int
+rte_pmd_rvu_lf_msg_handler_unregister(uint8_t dev_id)
+{
+	struct rte_rawdev *rawdev = rte_rawdev_pmd_get_dev(dev_id);
+	struct roc_rvu_lf *roc_rvu_lf;
+
+	if (rawdev == NULL)
+		return -EINVAL;
+
+	roc_rvu_lf = (struct roc_rvu_lf *)rawdev->dev_private;
+
+	return roc_rvu_lf_msg_handler_unregister(roc_rvu_lf);
+}
+
+int
 rte_pmd_rvu_lf_irq_register(uint8_t dev_id, unsigned int irq,
 			    rte_pmd_rvu_lf_intr_callback_fn cb, void *data)
 {

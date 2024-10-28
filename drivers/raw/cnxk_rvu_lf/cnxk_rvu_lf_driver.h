@@ -88,6 +88,55 @@ __rte_internal
 int rte_pmd_rvu_lf_irq_unregister(uint8_t dev_id, unsigned int irq,
 				  rte_pmd_rvu_lf_intr_callback_fn cb, void *cb_arg);
 
+/**
+ * Signature of callback function called when a message process handler is called
+ * on RVU LF device.
+ *
+ * @param vf
+ *   VF number(0 to N) from which message is received (ignored in case of PF)
+ * @param msg_id
+ *   message id
+ * @param req
+ *   pointer to message request
+ * @param req_len
+ *   pointer to message request
+ * @param[out] rsp
+ *   pointer to message response
+ * @param[out] rsp_len
+ *   length of message response
+ *
+ * @return 0 when response is set, negative value otherwise
+ */
+typedef int (*rte_pmd_rvu_lf_msg_handler_cb_fn)(uint16_t vf, uint16_t msg_id,
+					    void *req, uint16_t req_len,
+					    void **rsp, uint16_t *rsp_len);
+
+/**
+ * Register message handler callback
+ *
+ * Registers message handler callback to be executed when the message is received from peer.
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ * @param cb
+ *   callback function to be executed
+ *
+ * @return 0 on success, negative value otherwise
+ */
+__rte_internal
+int rte_pmd_rvu_lf_msg_handler_register(uint8_t dev_id, rte_pmd_rvu_lf_msg_handler_cb_fn cb);
+
+/**
+ * Unregister message handler callback
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ *
+ * @return 0 on success, negative value otherwise
+ */
+__rte_internal
+int rte_pmd_rvu_lf_msg_handler_unregister(uint8_t dev_id);
+
 #ifdef __cplusplus
 }
 #endif

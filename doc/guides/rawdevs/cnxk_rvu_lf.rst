@@ -18,6 +18,7 @@ The RVU LF device implements following features in the rawdev API:
 
 - Get PF FUNC of associated NPA and SSO devices.
 - Register/unregister interrupt handlers.
+- Register/unregister mailbox callbacks for the other side to process mailboxes.
 
 Limitations
 -----------
@@ -52,3 +53,13 @@ Out-of-tree drivers can register interrupt handlers using ``rte_pmd_rvu_lf_irq_r
 or remove interrupt handler using ``rte_pmd_rvu_lf_irq_unregister()``.
 The IRQ numbers for which the interrupts are registered
 is negotiated separately and is not in scope of the driver.
+
+RVU LF raw message processing
+-----------------------------
+
+For processing of mailboxes received on RVU PF/VF application,
+out-of-tree drivers can register/unregister callbacks
+using ``rte_pmd_rvu_lf_msg_handler_register()``
+and ``rte_pmd_rvu_lf_msg_handler_unregister()``.
+Required responses as per the request and message id received
+can be filled in the callbacks.
