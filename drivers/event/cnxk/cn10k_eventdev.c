@@ -2,44 +2,22 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <rte_dmadev_pmd.h>
+
+#include "cn10k_cryptodev_ops.h"
+#include "cn10k_ethdev.h"
 #include "cn10k_tx_worker.h"
 #include "cn10k_worker.h"
-#include "cn10k_ethdev.h"
-#include "cn10k_cryptodev_ops.h"
+#include "cnxk_common.h"
+#include "cnxk_dma_event_dp.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
-#include "cnxk_dma_event_dp.h"
-
-#include <rte_dmadev_pmd.h>
 
 #define CN10K_SET_EVDEV_DEQ_OP(dev, deq_op, deq_ops)                           \
 	deq_op = deq_ops[dev->rx_offloads & (NIX_RX_OFFLOAD_MAX - 1)]
 
 #define CN10K_SET_EVDEV_ENQ_OP(dev, enq_op, enq_ops)                           \
 	enq_op = enq_ops[dev->tx_offloads & (NIX_TX_OFFLOAD_MAX - 1)]
-
-static uint32_t
-cn10k_sso_gw_mode_wdata(struct cnxk_sso_evdev *dev)
-{
-	uint32_t wdata = 1;
-
-	if (dev->deq_tmo_ns)
-		wdata |= BIT(16);
-
-	switch (dev->gw_mode) {
-	case CN10K_GW_MODE_NONE:
-	default:
-		break;
-	case CN10K_GW_MODE_PREF:
-		wdata |= BIT(19);
-		break;
-	case CN10K_GW_MODE_PREF_WFE:
-		wdata |= BIT(20) | BIT(19);
-		break;
-	}
-
-	return wdata;
-}
 
 static void *
 cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
@@ -61,7 +39,7 @@ cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
 	ws->base = roc_sso_hws_base_get(&dev->sso, port_id);
 	ws->hws_id = port_id;
 	ws->swtag_req = 0;
-	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
+	ws->gw_wdata = cnxk_sso_hws_prf_wdata(dev);
 	ws->gw_rdata = SSO_TT_EMPTY << 32;
 	ws->lmt_base = dev->sso.lmt_base;
 	ws->xae_waes = dev->sso.feat.xaq_wq_entries;
@@ -99,7 +77,7 @@ cn10k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	ws->xaq_lmt = dev->xaq_lmt;
 	ws->fc_cache_space = (int64_t __rte_atomic *)dev->fc_cache_space;
 	ws->aw_lmt = ws->lmt_base;
-	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
+	ws->gw_wdata = cnxk_sso_hws_prf_wdata(dev);
 
 	/* Set get_work timeout for HWS */
 	val = NSEC2USEC(dev->deq_tmo_ns);
@@ -220,12 +198,12 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 	} while (pend_state & (BIT_ULL(58) | BIT_ULL(56)));
 
 	switch (dev->gw_mode) {
-	case CN10K_GW_MODE_PREF:
-	case CN10K_GW_MODE_PREF_WFE:
+	case CNXK_GW_MODE_PREF:
+	case CNXK_GW_MODE_PREF_WFE:
 		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) & BIT_ULL(63))
 			;
 		break;
-	case CN10K_GW_MODE_NONE:
+	case CNXK_GW_MODE_NONE:
 	default:
 		break;
 	}
@@ -504,18 +482,7 @@ cn10k_sso_dev_configure(const struct rte_eventdev *event_dev)
 	if (rc < 0)
 		goto cnxk_rsrc_fini;
 
-	switch (event_dev->data->dev_conf.preschedule_type) {
-	default:
-	case RTE_EVENT_PRESCHEDULE_NONE:
-		dev->gw_mode = CN10K_GW_MODE_NONE;
-		break;
-	case RTE_EVENT_PRESCHEDULE:
-		dev->gw_mode = CN10K_GW_MODE_PREF;
-		break;
-	case RTE_EVENT_PRESCHEDULE_ADAPTIVE:
-		dev->gw_mode = CN10K_GW_MODE_PREF_WFE;
-		break;
-	}
+	dev->gw_mode = cnxk_sso_hws_preschedule_get(event_dev->data->dev_conf.preschedule_type);
 
 	rc = cnxk_setup_event_ports(event_dev, cn10k_sso_init_hws_mem,
 				    cn10k_sso_hws_setup);
@@ -598,13 +565,13 @@ cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 
 	/* Check if we have work in PRF_WQE0, if so extract it. */
 	switch (dev->gw_mode) {
-	case CN10K_GW_MODE_PREF:
-	case CN10K_GW_MODE_PREF_WFE:
+	case CNXK_GW_MODE_PREF:
+	case CNXK_GW_MODE_PREF_WFE:
 		while (plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0) &
 		       BIT_ULL(63))
 			;
 		break;
-	case CN10K_GW_MODE_NONE:
+	case CNXK_GW_MODE_NONE:
 	default:
 		break;
 	}
