@@ -155,83 +155,6 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 }
 
 static void
-cn10k_sso_hws_reset(void *arg, void *hws)
-{
-	struct cnxk_sso_evdev *dev = arg;
-	struct cn10k_sso_hws *ws = hws;
-	uintptr_t base = ws->base;
-	uint64_t pend_state;
-	union {
-		__uint128_t wdata;
-		uint64_t u64[2];
-	} gw;
-	uint8_t pend_tt;
-	bool is_pend;
-
-	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
-	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
-	/* Wait till getwork/swtp/waitw/desched completes. */
-	is_pend = false;
-	/* Work in WQE0 is always consumed, unless its a SWTAG. */
-	pend_state = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
-	if (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(54)) ||
-	    ws->swtag_req)
-		is_pend = true;
-
-	do {
-		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
-	} while (pend_state & (BIT_ULL(63) | BIT_ULL(62) | BIT_ULL(58) |
-			       BIT_ULL(56) | BIT_ULL(54)));
-	pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
-	if (is_pend && pend_tt != SSO_TT_EMPTY) { /* Work was pending */
-		if (pend_tt == SSO_TT_ATOMIC || pend_tt == SSO_TT_ORDERED)
-			cnxk_sso_hws_swtag_untag(base +
-						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
-		plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
-	} else if (pend_tt != SSO_TT_EMPTY) {
-		plt_write64(0, base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
-	}
-
-	/* Wait for desched to complete. */
-	do {
-		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
-	} while (pend_state & (BIT_ULL(58) | BIT_ULL(56)));
-
-	switch (dev->gw_mode) {
-	case CNXK_GW_MODE_PREF:
-	case CNXK_GW_MODE_PREF_WFE:
-		while (plt_read64(base + SSOW_LF_GWS_PRF_WQE0) & BIT_ULL(63))
-			;
-		break;
-	case CNXK_GW_MODE_NONE:
-	default:
-		break;
-	}
-
-	if (CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_PRF_WQE0)) !=
-	    SSO_TT_EMPTY) {
-		plt_write64(BIT_ULL(16) | 1,
-			    ws->base + SSOW_LF_GWS_OP_GET_WORK0);
-		do {
-			roc_load_pair(gw.u64[0], gw.u64[1],
-				      ws->base + SSOW_LF_GWS_WQE0);
-		} while (gw.u64[0] & BIT_ULL(63));
-		pend_tt = CNXK_TT_FROM_TAG(plt_read64(base + SSOW_LF_GWS_WQE0));
-		if (pend_tt != SSO_TT_EMPTY) { /* Work was pending */
-			if (pend_tt == SSO_TT_ATOMIC ||
-			    pend_tt == SSO_TT_ORDERED)
-				cnxk_sso_hws_swtag_untag(
-					base + SSOW_LF_GWS_OP_SWTAG_UNTAG);
-			plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
-		}
-	}
-
-	plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
-	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
-	rte_mb();
-}
-
-static void
 cn10k_sso_set_rsrc(void *arg)
 {
 	struct cnxk_sso_evdev *dev = arg;
@@ -640,24 +563,6 @@ cn10k_sso_port_unlink(struct rte_eventdev *event_dev, void *port, uint8_t queues
 	return cn10k_sso_port_unlink_profile(event_dev, port, queues, nb_unlinks, 0);
 }
 
-static void
-cn10k_sso_configure_queue_stash(struct rte_eventdev *event_dev)
-{
-	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-	struct roc_sso_hwgrp_stash stash[dev->stash_cnt];
-	int i, rc;
-
-	plt_sso_dbg();
-	for (i = 0; i < dev->stash_cnt; i++) {
-		stash[i].hwgrp = dev->stash_parse_data[i].queue;
-		stash[i].stash_offset = dev->stash_parse_data[i].stash_offset;
-		stash[i].stash_count = dev->stash_parse_data[i].stash_length;
-	}
-	rc = roc_sso_hwgrp_stash_config(&dev->sso, stash, dev->stash_cnt);
-	if (rc < 0)
-		plt_warn("failed to configure HWGRP WQE stashing rc = %d", rc);
-}
-
 static int
 cn10k_sso_start(struct rte_eventdev *event_dev)
 {
@@ -669,9 +574,8 @@ cn10k_sso_start(struct rte_eventdev *event_dev)
 	if (rc < 0)
 		return rc;
 
-	cn10k_sso_configure_queue_stash(event_dev);
-	rc = cnxk_sso_start(event_dev, cn10k_sso_hws_reset,
-			    cn10k_sso_hws_flush_events);
+	cnxk_sso_configure_queue_stash(event_dev);
+	rc = cnxk_sso_start(event_dev, cnxk_sso_hws_reset, cn10k_sso_hws_flush_events);
 	if (rc < 0)
 		return rc;
 	cn10k_sso_fp_fns_set(event_dev);
@@ -692,8 +596,7 @@ cn10k_sso_stop(struct rte_eventdev *event_dev)
 	for (i = 0; i < event_dev->data->nb_ports; i++)
 		hws[i] = i;
 	roc_sso_hws_gwc_invalidate(&dev->sso, hws, event_dev->data->nb_ports);
-	cnxk_sso_stop(event_dev, cn10k_sso_hws_reset,
-		      cn10k_sso_hws_flush_events);
+	cnxk_sso_stop(event_dev, cnxk_sso_hws_reset, cn10k_sso_hws_flush_events);
 }
 
 static int

@@ -87,6 +87,61 @@ cn20k_sso_hws_release(void *arg, void *hws)
 	memset(ws, 0, sizeof(*ws));
 }
 
+static int
+cn20k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base, cnxk_handle_event_t fn,
+			   void *arg)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(arg);
+	uint64_t retry = CNXK_SSO_FLUSH_RETRY_MAX;
+	struct cn20k_sso_hws *ws = hws;
+	uint64_t cq_ds_cnt = 1;
+	uint64_t aq_cnt = 1;
+	uint64_t ds_cnt = 1;
+	struct rte_event ev;
+	uint64_t val, req;
+
+	plt_write64(0, base + SSO_LF_GGRP_QCTL);
+
+	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
+	req = queue_id;	    /* GGRP ID */
+	req |= BIT_ULL(18); /* Grouped */
+	req |= BIT_ULL(16); /* WAIT */
+
+	aq_cnt = plt_read64(base + SSO_LF_GGRP_AQ_CNT);
+	ds_cnt = plt_read64(base + SSO_LF_GGRP_MISC_CNT);
+	cq_ds_cnt = plt_read64(base + SSO_LF_GGRP_INT_CNT);
+	cq_ds_cnt &= 0x3FFF3FFF0000;
+
+	while (aq_cnt || cq_ds_cnt || ds_cnt) {
+		plt_write64(req, ws->base + SSOW_LF_GWS_OP_GET_WORK0);
+		cn20k_sso_hws_get_work_empty(ws, &ev, 0);
+		if (fn != NULL && ev.u64 != 0)
+			fn(arg, ev);
+		if (ev.sched_type != SSO_TT_EMPTY)
+			cnxk_sso_hws_swtag_flush(ws->base);
+		else if (retry-- == 0)
+			break;
+		do {
+			val = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+		} while (val & BIT_ULL(56));
+		aq_cnt = plt_read64(base + SSO_LF_GGRP_AQ_CNT);
+		ds_cnt = plt_read64(base + SSO_LF_GGRP_MISC_CNT);
+		cq_ds_cnt = plt_read64(base + SSO_LF_GGRP_INT_CNT);
+		/* Extract cq and ds count */
+		cq_ds_cnt &= 0x3FFF3FFF0000;
+	}
+
+	if (aq_cnt || cq_ds_cnt || ds_cnt)
+		return -EAGAIN;
+
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
+	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
+	rte_mb();
+
+	return 0;
+}
+
 static void
 cn20k_sso_set_rsrc(void *arg)
 {
@@ -315,6 +370,25 @@ cn20k_sso_port_unlink(struct rte_eventdev *event_dev, void *port, uint8_t queues
 	return cn20k_sso_port_unlink_profile(event_dev, port, queues, nb_unlinks, 0);
 }
 
+static int
+cn20k_sso_start(struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint8_t hws[RTE_EVENT_MAX_PORTS_PER_DEV];
+	int rc, i;
+
+	cnxk_sso_configure_queue_stash(event_dev);
+	rc = cnxk_sso_start(event_dev, cnxk_sso_hws_reset, cn20k_sso_hws_flush_events);
+	if (rc < 0)
+		return rc;
+	cn20k_sso_fp_fns_set(event_dev);
+	for (i = 0; i < event_dev->data->nb_ports; i++)
+		hws[i] = i;
+	roc_sso_hws_gwc_invalidate(&dev->sso, hws, event_dev->data->nb_ports);
+
+	return rc;
+}
+
 static struct eventdev_ops cn20k_sso_dev_ops = {
 	.dev_infos_get = cn20k_sso_info_get,
 	.dev_configure = cn20k_sso_dev_configure,
@@ -333,6 +407,8 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.port_link_profile = cn20k_sso_port_link_profile,
 	.port_unlink_profile = cn20k_sso_port_unlink_profile,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
+
+	.dev_start = cn20k_sso_start,
 };
 
 static int
