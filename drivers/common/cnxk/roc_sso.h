@@ -103,6 +103,9 @@ int __roc_api roc_sso_hwgrp_stash_config(struct roc_sso *roc_sso,
 void __roc_api roc_sso_hws_gwc_invalidate(struct roc_sso *roc_sso, uint8_t *hws,
 					  uint8_t nb_hws);
 
+/* Utility function */
+uint16_t __roc_api roc_sso_pf_func_get(void);
+
 /* Debug */
 void __roc_api roc_sso_dump(struct roc_sso *roc_sso, uint8_t nb_hws,
 			    uint16_t hwgrp, FILE *f);

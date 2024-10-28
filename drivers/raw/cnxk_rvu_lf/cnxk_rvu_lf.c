@@ -14,6 +14,19 @@
 #include <roc_api.h>
 
 #include "cnxk_rvu_lf.h"
+#include "cnxk_rvu_lf_driver.h"
+
+uint16_t
+rte_pmd_rvu_lf_npa_pf_func_get(void)
+{
+	return roc_npa_pf_func_get();
+}
+
+uint16_t
+rte_pmd_rvu_lf_sso_pf_func_get(void)
+{
+	return roc_sso_pf_func_get();
+}
 
 static const struct rte_rawdev_ops rvu_lf_rawdev_ops = {
 	.dev_selftest = NULL,

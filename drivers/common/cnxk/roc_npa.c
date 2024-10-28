@@ -17,6 +17,12 @@ roc_npa_lf_init_cb_register(roc_npa_lf_init_cb_t cb)
 	return 0;
 }
 
+uint16_t
+roc_npa_pf_func_get(void)
+{
+	return idev_npa_pffunc_get();
+}
+
 void
 roc_npa_pool_op_range_set(uint64_t aura_handle, uint64_t start_iova,
 			  uint64_t end_iova)

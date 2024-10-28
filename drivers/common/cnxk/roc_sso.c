@@ -319,6 +319,12 @@ roc_sso_hwgrp_base_get(struct roc_sso *roc_sso, uint16_t hwgrp)
 	return dev->bar2 + (RVU_BLOCK_ADDR_SSO << 20 | hwgrp << 12);
 }
 
+uint16_t
+roc_sso_pf_func_get(void)
+{
+	return idev_sso_pffunc_get();
+}
+
 uint64_t
 roc_sso_ns_to_gw(uint64_t base, uint64_t ns)
 {

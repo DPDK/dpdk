@@ -820,6 +820,9 @@ int __roc_api roc_npa_aura_bp_configure(uint64_t aura_id, uint16_t bpid, uint8_t
 typedef int (*roc_npa_lf_init_cb_t)(struct plt_pci_device *pci_dev);
 int __roc_api roc_npa_lf_init_cb_register(roc_npa_lf_init_cb_t cb);
 
+/* Utility functions */
+uint16_t __roc_api roc_npa_pf_func_get(void);
+
 /* Debug */
 int __roc_api roc_npa_ctx_dump(void);
 int __roc_api roc_npa_dump(void);

@@ -11,6 +11,13 @@ Hence, a new raw device driver is added for such RVU LF devices.
 These devices can map to a RVU PF or a RVU VF
 which can send mailboxes to each other.
 
+Features
+--------
+
+The RVU LF device implements following features in the rawdev API:
+
+- Get PF FUNC of associated NPA and SSO devices.
+
 Limitations
 -----------
 
@@ -29,3 +36,10 @@ When querying the status of the devices,
 they will appear under the category of "Misc (rawdev) devices",
 i.e. the command ``dpdk-devbind.py --status-dev misc``
 can be used to see the state of those devices alone.
+
+Get NPA and SSO PF FUNC
+-----------------------
+
+API functions ``rte_pmd_rvu_lf_npa_pf_func_get()`` and ``rte_pmd_rvu_lf_sso_pf_func_get()``
+can be used to get the cnxk NPA PF func and SSO PF func
+which application can use for NPA/SSO specific configuration.
