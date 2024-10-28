@@ -20,6 +20,7 @@ The RVU LF device implements following features in the rawdev API:
 - Register/unregister interrupt handlers.
 - Register/unregister mailbox callbacks for the other side to process mailboxes.
 - Set mailbox message ID range to be used by the driver.
+- Process mailbox messages.
 
 Limitations
 -----------
@@ -67,3 +68,10 @@ can be filled in the callbacks.
 
 Once a RVU LF raw device is probed, a range of message ids can be configured
 for which mailboxes will be sent using the API ``rte_pmd_rvu_lf_msg_id_range_set()``.
+
+The out-of-tree driver can call ``rte_pmd_rvu_lf_msg_process()`` to send a request
+and receive corresponding response from the other side (PF/VF).
+It accepts an opaque pointer of a request and its size which can be defined by user
+and provides an opaque pointer for a response and its length.
+PF and VF out-of-tree driver can define its own request and response
+based on the message id of the mailbox.

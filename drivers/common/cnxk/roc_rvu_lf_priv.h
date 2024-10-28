@@ -17,6 +17,11 @@ struct rvu_lf {
 	uint16_t msg_id_to;
 };
 
+struct rvu_lf_msg {
+	struct mbox_msghdr hdr;
+	uint8_t data[];
+};
+
 static inline struct rvu_lf *
 roc_rvu_lf_to_rvu_priv(struct roc_rvu_lf *roc_rvu_lf)
 {

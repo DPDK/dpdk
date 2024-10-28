@@ -31,6 +31,21 @@ rte_pmd_rvu_lf_msg_id_range_set(uint8_t dev_id, uint16_t from, uint16_t to)
 }
 
 int
+rte_pmd_rvu_lf_msg_process(uint8_t dev_id, uint16_t vf, uint16_t msg_id,
+			void *req, uint16_t req_len, void *rsp, uint16_t rsp_len)
+{
+	struct rte_rawdev *rawdev = rte_rawdev_pmd_get_dev(dev_id);
+	struct roc_rvu_lf *roc_rvu_lf;
+
+	if (rawdev == NULL)
+		return -EINVAL;
+
+	roc_rvu_lf = (struct roc_rvu_lf *)rawdev->dev_private;
+
+	return roc_rvu_lf_msg_process(roc_rvu_lf, vf, msg_id, req, req_len, rsp, rsp_len);
+}
+
+int
 rte_pmd_rvu_lf_msg_handler_register(uint8_t dev_id, rte_pmd_rvu_lf_msg_handler_cb_fn cb)
 {
 	struct rte_rawdev *rawdev = rte_rawdev_pmd_get_dev(dev_id);

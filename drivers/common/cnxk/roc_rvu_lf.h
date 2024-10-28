@@ -21,6 +21,11 @@ TAILQ_HEAD(roc_rvu_lf_head, roc_rvu_lf);
 int __roc_api roc_rvu_lf_dev_init(struct roc_rvu_lf *roc_rvu_lf);
 int __roc_api roc_rvu_lf_dev_fini(struct roc_rvu_lf *roc_rvu_lf);
 
+int __roc_api roc_rvu_lf_msg_process(struct roc_rvu_lf *roc_rvu_lf,
+				     uint16_t vf, uint16_t msg_id,
+				     void *req_data, uint16_t req_len,
+				     void *rsp_data, uint16_t rsp_len);
+
 int __roc_api roc_rvu_lf_msg_id_range_set(struct roc_rvu_lf *roc_rvu_lf,
 					  uint16_t from, uint16_t to);
 bool  __roc_api roc_rvu_lf_msg_id_range_check(struct roc_rvu_lf *roc_rvu_lf, uint16_t msg_id);

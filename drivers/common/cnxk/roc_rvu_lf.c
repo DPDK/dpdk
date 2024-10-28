@@ -62,6 +62,15 @@ roc_rvu_lf_dev_fini(struct roc_rvu_lf *roc_rvu_lf)
 	return dev_fini(&rvu->dev, rvu->pci_dev);
 }
 
+static uint16_t
+roc_rvu_lf_pf_func_get(struct roc_rvu_lf *roc_rvu_lf)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+	struct dev *dev = &rvu->dev;
+
+	return dev->pf_func;
+}
+
 int
 roc_rvu_lf_msg_id_range_set(struct roc_rvu_lf *roc_rvu_lf, uint16_t from, uint16_t to)
 {
@@ -90,6 +99,55 @@ roc_rvu_lf_msg_id_range_check(struct roc_rvu_lf *roc_rvu_lf, uint16_t msg_id)
 		return 1;
 
 	return 0;
+}
+
+int
+roc_rvu_lf_msg_process(struct roc_rvu_lf *roc_rvu_lf, uint16_t vf, uint16_t msg_id,
+		       void *req_data, uint16_t req_len, void *rsp_data, uint16_t rsp_len)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+	struct mbox *mbox;
+	struct rvu_lf_msg *req;
+	struct rvu_lf_msg *rsp;
+	int rc = -ENOSPC;
+	int devid = 0;
+
+	if (rvu->dev.vf == -1 && roc_rvu_lf_msg_id_range_check(roc_rvu_lf, msg_id)) {
+		/* This is PF context */
+		if (vf >= rvu->dev.maxvf)
+			return -EINVAL;
+		devid = vf;
+		mbox = mbox_get(&rvu->dev.mbox_vfpf_up);
+	} else {
+		/* This is VF context */
+		devid = 0; /* VF send all message to PF */
+		mbox = mbox_get(rvu->dev.mbox);
+	}
+	req = (struct rvu_lf_msg *)mbox_alloc_msg_rsp(mbox, devid,
+						      req_len + sizeof(struct rvu_lf_msg),
+						      rsp_len + sizeof(struct rvu_lf_msg));
+	if (!req)
+		goto fail;
+	mbox_memcpy(req->data, req_data, req_len);
+	req->hdr.sig = MBOX_REQ_SIG;
+	req->hdr.id = msg_id;
+	req->hdr.pcifunc = roc_rvu_lf_pf_func_get(roc_rvu_lf);
+
+	if (rvu->dev.vf == -1) {
+		mbox_msg_send_up(mbox, devid);
+		rc = mbox_get_rsp(mbox, devid, (void *)&rsp);
+		if (rc)
+			goto fail;
+	} else {
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto fail;
+	}
+	if (rsp_len && rsp_data != NULL)
+		mbox_memcpy(rsp_data, rsp->data, rsp_len);
+fail:
+	mbox_put(mbox);
+	return rc;
 }
 
 int

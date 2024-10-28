@@ -152,6 +152,35 @@ int rte_pmd_rvu_lf_msg_handler_unregister(uint8_t dev_id);
 __rte_internal
 int rte_pmd_rvu_lf_msg_id_range_set(uint8_t dev_id, uint16_t from, uint16_t to);
 
+/**
+ * Process a RVU mailbox message.
+ *
+ * Message request and response to be sent/received,
+ * need to be allocated/deallocated by application
+ * before/after processing the message.
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ * @param vf
+ *   VF number(0 to N) in case of PF->VF message. 0 is valid as VF0.
+ *   (For VF->PF message, this field is ignored)
+ * @param msg_id
+ *   message id
+ * @param req
+ *   pointer to message request data to be sent
+ * @param req_len
+ *   length of request data
+ * @param rsp
+ *   pointer to message response expected to be received, NULL if no response
+ * @param rsp_len
+ *   length of message response expected, 0 if no response
+ *
+ * @return 0 on success, negative value otherwise
+ */
+__rte_internal
+int rte_pmd_rvu_lf_msg_process(uint8_t dev_id, uint16_t vf, uint16_t msg_id,
+			       void *req, uint16_t req_len, void *rsp, uint16_t rsp_len);
+
 #ifdef __cplusplus
 }
 #endif

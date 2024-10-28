@@ -254,6 +254,13 @@ New Features
 
   * Added support for DMA queue priority configuration.
 
+* **Added Marvell cnxk RVU LF rawdev driver.**
+
+  Added a new raw device driver for Marvell cnxk based devices
+  to allow out-of-tree driver to manage RVU LF device.
+  It enables operations such as sending/receiving mailbox,
+  register and notify the interrupts, etc.
+
 * **Added event device pre-scheduling support.**
 
   Added support for pre-scheduling of events to event ports

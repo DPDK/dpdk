@@ -558,5 +558,7 @@ INTERNAL {
 	roc_rvu_lf_msg_handler_unregister;
 	roc_rvu_lf_msg_id_range_check;
 	roc_rvu_lf_msg_id_range_set;
+	roc_rvu_lf_msg_process;
+
 	local: *;
 };
