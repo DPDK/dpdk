@@ -74,12 +74,12 @@ struct action_data {
 	};
 };
 
-static int tap_flow_create_eth(const struct rte_flow_item *item, void *data);
-static int tap_flow_create_vlan(const struct rte_flow_item *item, void *data);
-static int tap_flow_create_ipv4(const struct rte_flow_item *item, void *data);
-static int tap_flow_create_ipv6(const struct rte_flow_item *item, void *data);
-static int tap_flow_create_udp(const struct rte_flow_item *item, void *data);
-static int tap_flow_create_tcp(const struct rte_flow_item *item, void *data);
+static int tap_flow_create_eth(const struct rte_flow_item *item, struct convert_data *info);
+static int tap_flow_create_vlan(const struct rte_flow_item *item, struct convert_data *info);
+static int tap_flow_create_ipv4(const struct rte_flow_item *item, struct convert_data *info);
+static int tap_flow_create_ipv6(const struct rte_flow_item *item, struct convert_data *info);
+static int tap_flow_create_udp(const struct rte_flow_item *item, struct convert_data *info);
+static int tap_flow_create_tcp(const struct rte_flow_item *item, struct convert_data *info);
 static int
 tap_flow_validate(struct rte_eth_dev *dev,
 		  const struct rte_flow_attr *attr,
@@ -139,19 +139,10 @@ struct tap_flow_items {
 	 * along with the item.
 	 */
 	const void *default_mask;
-	/**
-	 * Conversion function from rte_flow to netlink attributes.
-	 *
-	 * @param item
-	 *   rte_flow item to convert.
-	 * @param data
-	 *   Internal structure to store the conversion.
-	 *
-	 * @return
-	 *   0 on success, negative value otherwise.
-	 */
-	int (*convert)(const struct rte_flow_item *item, void *data);
-	/** List of possible following items.  */
+	/* Conversion function from rte_flow to netlink attributes. */
+	int (*convert)(const struct rte_flow_item *item, struct convert_data *info);
+
+	/* List of possible following items.  */
 	const enum rte_flow_item_type *const items;
 };
 
@@ -417,9 +408,8 @@ static struct remote_rule implicit_rte_flows[TAP_REMOTE_MAX_IDX] = {
  *   0 if checks are alright, -1 otherwise.
  */
 static int
-tap_flow_create_eth(const struct rte_flow_item *item, void *data)
+tap_flow_create_eth(const struct rte_flow_item *item, struct convert_data *info)
 {
-	struct convert_data *info = (struct convert_data *)data;
 	const struct rte_flow_item_eth *spec = item->spec;
 	const struct rte_flow_item_eth *mask = item->mask;
 	struct rte_flow *flow = info->flow;
@@ -471,9 +461,8 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
  *   0 if checks are alright, -1 otherwise.
  */
 static int
-tap_flow_create_vlan(const struct rte_flow_item *item, void *data)
+tap_flow_create_vlan(const struct rte_flow_item *item, struct convert_data *info)
 {
-	struct convert_data *info = (struct convert_data *)data;
 	const struct rte_flow_item_vlan *spec = item->spec;
 	const struct rte_flow_item_vlan *mask = item->mask;
 	struct rte_flow *flow = info->flow;
@@ -531,9 +520,8 @@ tap_flow_create_vlan(const struct rte_flow_item *item, void *data)
  *   0 if checks are alright, -1 otherwise.
  */
 static int
-tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
+tap_flow_create_ipv4(const struct rte_flow_item *item, struct convert_data *info)
 {
-	struct convert_data *info = (struct convert_data *)data;
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct rte_flow *flow = info->flow;
@@ -586,9 +574,8 @@ tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
  *   0 if checks are alright, -1 otherwise.
  */
 static int
-tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
+tap_flow_create_ipv6(const struct rte_flow_item *item, struct convert_data *info)
 {
-	struct convert_data *info = (struct convert_data *)data;
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
 	struct rte_flow *flow = info->flow;
@@ -642,9 +629,8 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
  *   0 if checks are alright, -1 otherwise.
  */
 static int
-tap_flow_create_udp(const struct rte_flow_item *item, void *data)
+tap_flow_create_udp(const struct rte_flow_item *item, struct convert_data *info)
 {
-	struct convert_data *info = (struct convert_data *)data;
 	const struct rte_flow_item_udp *spec = item->spec;
 	const struct rte_flow_item_udp *mask = item->mask;
 	struct rte_flow *flow = info->flow;
@@ -688,9 +674,8 @@ tap_flow_create_udp(const struct rte_flow_item *item, void *data)
  *   0 if checks are alright, -1 otherwise.
  */
 static int
-tap_flow_create_tcp(const struct rte_flow_item *item, void *data)
+tap_flow_create_tcp(const struct rte_flow_item *item, struct convert_data *info)
 {
-	struct convert_data *info = (struct convert_data *)data;
 	const struct rte_flow_item_tcp *spec = item->spec;
 	const struct rte_flow_item_tcp *mask = item->mask;
 	struct rte_flow *flow = info->flow;
