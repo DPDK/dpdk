@@ -17,6 +17,7 @@
 #include <rte_memcpy.h>
 #include <ethdev_driver.h>
 #include <rte_mbuf_dyn.h>
+#include <rte_vfio.h>
 
 #include "private.h"
 #include <fslmc_vfio.h>

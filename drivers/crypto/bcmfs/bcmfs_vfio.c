@@ -7,6 +7,8 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 
+#include <linux/vfio.h>
+
 #include <rte_vfio.h>
 
 #include "bcmfs_device.h"

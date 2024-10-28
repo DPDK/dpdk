@@ -9,7 +9,6 @@
 #define _FSLMC_VFIO_H_
 
 #include <rte_compat.h>
-#include <rte_vfio.h>
 
 /* Pathname of FSL-MC devices directory. */
 #define SYSFS_FSL_MC_DEVICES	"/sys/bus/fsl-mc/devices"

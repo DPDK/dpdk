@@ -17,6 +17,9 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+
+#include <linux/vfio.h>
+
 #include <eal_export.h>
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>

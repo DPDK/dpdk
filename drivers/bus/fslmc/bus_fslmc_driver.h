@@ -20,7 +20,6 @@
 #include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
-#include <linux/vfio.h>
 
 #include <rte_compat.h>
 #include <rte_debug.h>
@@ -36,6 +35,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct vfio_device_info;
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 

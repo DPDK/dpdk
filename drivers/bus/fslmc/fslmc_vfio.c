@@ -20,6 +20,7 @@
 #include <dirent.h>
 #include <sys/eventfd.h>
 #include <ctype.h>
+#include <linux/vfio.h>
 
 #include <eal_export.h>
 #include <eal_filesystem.h>
@@ -32,6 +33,7 @@
 #include <rte_kvargs.h>
 #include <dev_driver.h>
 #include <rte_eal_memconfig.h>
+#include <rte_vfio.h>
 #include <eal_vfio.h>
 
 #include "private.h"

@@ -21,8 +21,6 @@ extern "C" {
 
 #ifdef RTE_EXEC_ENV_LINUX
 
-#include <linux/vfio.h>
-
 #define RTE_VFIO_DIR "/dev/vfio"
 #define RTE_VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define RTE_VFIO_GROUP_FMT "/dev/vfio/%u"
@@ -30,12 +28,10 @@ extern "C" {
 #define RTE_VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
 
-#else /* ! RTE_EXEC_ENV_LINUX */
+#endif /* RTE_EXEC_ENV_LINUX */
 
 /* we don't need an actual definition, only pointer is used */
 struct vfio_device_info;
-
-#endif /* RTE_EXEC_ENV_LINUX */
 
 #define RTE_VFIO_DEFAULT_CONTAINER_FD (-1)
 

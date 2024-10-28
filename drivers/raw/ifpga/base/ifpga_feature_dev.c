@@ -3,7 +3,7 @@
  */
 
 #include <sys/ioctl.h>
-#include <rte_vfio.h>
+#include <linux/vfio.h>
 
 #include "ifpga_feature_dev.h"
 

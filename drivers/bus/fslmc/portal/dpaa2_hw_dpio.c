@@ -22,6 +22,7 @@
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 #include <sys/syscall.h>
+#include <linux/vfio.h>
 
 #include <eal_export.h>
 #include <rte_mbuf.h>
