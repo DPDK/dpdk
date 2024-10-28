@@ -383,6 +383,17 @@ cn20k_sso_hws_enq_fwd_burst(void *port, const struct rte_event ev[], uint16_t nb
 	return 1;
 }
 
+int __rte_hot
+cn20k_sso_hws_profile_switch(void *port, uint8_t profile)
+{
+	struct cn20k_sso_hws *ws = port;
+
+	ws->gw_wdata &= ~(0xFFUL);
+	ws->gw_wdata |= (profile + 1);
+
+	return 0;
+}
+
 uint16_t __rte_hot
 cn20k_sso_hws_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 {
