@@ -2,8 +2,9 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <sys/ioctl.h>
-#include <linux/vfio.h>
 
 #include "ifpga_feature_dev.h"
 

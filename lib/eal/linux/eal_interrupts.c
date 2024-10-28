@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,8 +16,6 @@
 #include <sys/eventfd.h>
 #include <assert.h>
 #include <stdbool.h>
-
-#include <linux/vfio.h>
 
 #include <eal_export.h>
 #include <eal_trace_internal.h>

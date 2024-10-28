@@ -2,6 +2,8 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -12,8 +14,6 @@
 #include <poll.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
-
-#include <linux/vfio.h>
 
 #include <rte_eal.h>
 #include <rte_malloc.h>

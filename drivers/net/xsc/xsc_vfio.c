@@ -2,11 +2,12 @@
  * Copyright 2025 Yunsilicon Technology Co., Ltd.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <linux/vfio.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
 

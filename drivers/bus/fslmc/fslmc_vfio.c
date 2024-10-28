@@ -5,6 +5,8 @@
  *
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -20,7 +22,6 @@
 #include <dirent.h>
 #include <sys/eventfd.h>
 #include <ctype.h>
-#include <linux/vfio.h>
 
 #include <eal_export.h>
 #include <eal_filesystem.h>

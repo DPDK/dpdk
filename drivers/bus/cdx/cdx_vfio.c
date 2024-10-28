@@ -11,14 +11,14 @@
  *
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-
-#include <linux/vfio.h>
 
 #include <eal_export.h>
 #include <rte_eal_paging.h>
@@ -616,33 +616,6 @@ rte_cdx_vfio_intr_disable(const struct rte_intr_handle *intr_handle)
 	return ret;
 }
 
-/* VFIO_DEVICE_FEATURE is defined for kernel version 5.7 and newer. */
-#ifdef	VFIO_DEVICE_FEATURE
-#define	RTE_VFIO_DEVICE_FEATURE	VFIO_DEVICE_FEATURE
-#else
-#define	RTE_VFIO_DEVICE_FEATURE	_IO(VFIO_TYPE, VFIO_BASE + 17)
-struct vfio_device_feature {
-	__u32	argsz;
-	__u32	flags;
-#define	VFIO_DEVICE_FEATURE_MASK	(0xffff) /* 16-bit feature index */
-#define	VFIO_DEVICE_FEATURE_GET		(1 << 16) /* Get feature into data[] */
-#define	VFIO_DEVICE_FEATURE_SET		(1 << 17) /* Set feature from data[] */
-#define	VFIO_DEVICE_FEATURE_PROBE	(1 << 18) /* Probe feature support */
-	__u8	data[];
-};
-#endif
-
-#ifdef	VFIO_DEVICE_FEATURE_BUS_MASTER
-#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	VFIO_DEVICE_FEATURE_BUS_MASTER
-#else
-#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	10
-struct vfio_device_feature_bus_master {
-	__u32 op;
-#define	VFIO_DEVICE_FEATURE_CLEAR_MASTER	0	/* Clear Bus Master */
-#define	VFIO_DEVICE_FEATURE_SET_MASTER		1	/* Set Bus Master */
-};
-#endif
-
 /* Enable Bus Mastering */
 RTE_EXPORT_INTERNAL_SYMBOL(rte_cdx_vfio_bm_enable)
 int
@@ -668,9 +641,9 @@ rte_cdx_vfio_bm_enable(struct rte_cdx_device *dev)
 
 	feature->argsz = argsz;
 
-	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_PROBE;
+	feature->flags = VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_PROBE;
 	feature->flags |= VFIO_DEVICE_FEATURE_SET;
-	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_FEATURE, feature);
 	if (ret) {
 		CDX_BUS_ERR("Bus Master configuring not supported for device: %s, error: %d (%s)",
 			dev->name, errno, strerror(errno));
@@ -678,9 +651,9 @@ rte_cdx_vfio_bm_enable(struct rte_cdx_device *dev)
 		return ret;
 	}
 
-	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_SET;
+	feature->flags = VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_SET;
 	vfio_bm_feature->op = VFIO_DEVICE_FEATURE_SET_MASTER;
-	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_FEATURE, feature);
 	if (ret < 0)
 		CDX_BUS_ERR("BM Enable Error for device: %s, Error: %d (%s)",
 			dev->name, errno, strerror(errno));
@@ -713,9 +686,9 @@ rte_cdx_vfio_bm_disable(struct rte_cdx_device *dev)
 
 	feature->argsz = argsz;
 
-	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_PROBE;
+	feature->flags = VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_PROBE;
 	feature->flags |= VFIO_DEVICE_FEATURE_SET;
-	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_FEATURE, feature);
 	if (ret) {
 		CDX_BUS_ERR("Bus Master configuring not supported for device: %s, Error: %d (%s)",
 			dev->name, errno, strerror(errno));
@@ -723,9 +696,9 @@ rte_cdx_vfio_bm_disable(struct rte_cdx_device *dev)
 		return ret;
 	}
 
-	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_SET;
+	feature->flags = VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_SET;
 	vfio_bm_feature->op = VFIO_DEVICE_FEATURE_CLEAR_MASTER;
-	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_FEATURE, feature);
 	if (ret < 0)
 		CDX_BUS_ERR("BM Disable Error for device: %s, Error: %d (%s)",
 			dev->name, errno, strerror(errno));

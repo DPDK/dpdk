@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <eal_export.h>
 #include <rte_log.h>
 
@@ -11,7 +13,6 @@
 #if defined(__linux__)
 
 #include <inttypes.h>
-#include <linux/vfio.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
 #include <unistd.h>

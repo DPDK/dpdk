@@ -2,6 +2,8 @@
  * Copyright(C) 2023 Marvell.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <dirent.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -10,8 +12,6 @@
 #include <sys/mman.h>
 #include <sys/queue.h>
 #include <unistd.h>
-
-#include <linux/vfio.h>
 
 #include <bus_driver.h>
 #include <bus_platform_driver.h>

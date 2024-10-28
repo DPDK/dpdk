@@ -3,11 +3,11 @@
  * All rights reserved.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <errno.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-
-#include <linux/vfio.h>
 
 #include <rte_vfio.h>
 

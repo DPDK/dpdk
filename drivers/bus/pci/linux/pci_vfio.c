@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
@@ -10,8 +12,6 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <stdbool.h>
-
-#include <linux/vfio.h>
 
 #include <rte_log.h>
 #include <rte_pci.h>

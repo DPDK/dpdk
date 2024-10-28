@@ -2,13 +2,14 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <inttypes.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <dirent.h>
-#include <linux/vfio.h>
 
 #include <rte_errno.h>
 #include <rte_log.h>

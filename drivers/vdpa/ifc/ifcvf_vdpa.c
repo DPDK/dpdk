@@ -2,6 +2,8 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <unistd.h>
 #include <pthread.h>
 #include <fcntl.h>
@@ -10,8 +12,6 @@
 #include <sys/epoll.h>
 #include <linux/virtio_net.h>
 #include <stdbool.h>
-
-#include <linux/vfio.h>
 
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>

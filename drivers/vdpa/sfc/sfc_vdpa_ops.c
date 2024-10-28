@@ -2,11 +2,11 @@
  * Copyright(c) 2020-2021 Xilinx, Inc.
  */
 
+#include <uapi/linux/vfio.h>
+
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-
-#include <linux/vfio.h>
 
 #include <rte_errno.h>
 #include <rte_malloc.h>
