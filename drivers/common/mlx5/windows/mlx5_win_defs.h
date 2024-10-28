@@ -219,18 +219,6 @@ struct mlx5_action {
 	} dest_tir;
 };
 
-struct mlx5_err_cqe {
-	uint8_t		rsvd0[32];
-	uint32_t	srqn;
-	uint8_t		rsvd1[18];
-	uint8_t		vendor_err_synd;
-	uint8_t		syndrome;
-	uint32_t	s_wqe_opcode_qpn;
-	uint16_t	wqe_counter;
-	uint8_t		signature;
-	uint8_t		op_own;
-};
-
 struct mlx5_wqe_srq_next_seg {
 	uint8_t			rsvd0[2];
 	rte_be16_t		next_wqe_index;
