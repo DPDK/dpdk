@@ -208,6 +208,65 @@ free:
 	rte_free(gws_cookie);
 }
 
+static void
+cn20k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
+		       rte_eventdev_port_flush_t flush_cb, void *args)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct cn20k_sso_hws *ws = port;
+	struct rte_event ev;
+	uint64_t ptag;
+	bool is_pend;
+
+	is_pend = false;
+	/* Work in WQE0 is always consumed, unless its a SWTAG. */
+	ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	if (ptag & (BIT_ULL(62) | BIT_ULL(54)) || ws->swtag_req)
+		is_pend = true;
+	do {
+		ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	} while (ptag & (BIT_ULL(62) | BIT_ULL(58) | BIT_ULL(56) | BIT_ULL(54)));
+
+	cn20k_sso_hws_get_work_empty(ws, &ev, 0);
+	if (is_pend && ev.u64)
+		if (flush_cb)
+			flush_cb(event_dev->data->dev_id, ev, args);
+	ptag = (plt_read64(ws->base + SSOW_LF_GWS_TAG) >> 32) & SSO_TT_EMPTY;
+	if (ptag != SSO_TT_EMPTY)
+		cnxk_sso_hws_swtag_flush(ws->base);
+
+	do {
+		ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	} while (ptag & BIT_ULL(56));
+
+	/* Check if we have work in PRF_WQE0, if so extract it. */
+	switch (dev->gw_mode) {
+	case CNXK_GW_MODE_PREF:
+	case CNXK_GW_MODE_PREF_WFE:
+		while (plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0) & BIT_ULL(63))
+			;
+		break;
+	case CNXK_GW_MODE_NONE:
+	default:
+		break;
+	}
+
+	if (CNXK_TT_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0)) != SSO_TT_EMPTY) {
+		plt_write64(BIT_ULL(16) | 1, ws->base + SSOW_LF_GWS_OP_GET_WORK0);
+		cn20k_sso_hws_get_work_empty(ws, &ev, 0);
+		if (ev.u64) {
+			if (flush_cb)
+				flush_cb(event_dev->data->dev_id, ev, args);
+		}
+		cnxk_sso_hws_swtag_flush(ws->base);
+		do {
+			ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+		} while (ptag & BIT_ULL(56));
+	}
+	ws->swtag_req = 0;
+	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
+}
+
 static int
 cn20k_sso_port_link_profile(struct rte_eventdev *event_dev, void *port, const uint8_t queues[],
 			    const uint8_t priorities[], uint16_t nb_links, uint8_t profile)
@@ -265,6 +324,7 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.port_def_conf = cnxk_sso_port_def_conf,
 	.port_setup = cn20k_sso_port_setup,
 	.port_release = cn20k_sso_port_release,
+	.port_quiesce = cn20k_sso_port_quiesce,
 	.port_link = cn20k_sso_port_link,
 	.port_unlink = cn20k_sso_port_unlink,
 	.port_link_profile = cn20k_sso_port_link_profile,
