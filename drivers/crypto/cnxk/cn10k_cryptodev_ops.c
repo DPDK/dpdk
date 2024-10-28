@@ -11,10 +11,7 @@
 
 #include <ethdev_driver.h>
 
-#include "roc_cpt.h"
-#include "roc_idev.h"
-#include "roc_sso.h"
-#include "roc_sso_dp.h"
+#include "roc_api.h"
 
 #include "cn10k_cryptodev.h"
 #include "cn10k_cryptodev_event_dp.h"

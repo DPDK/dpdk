@@ -64,6 +64,7 @@ cn10k_sso_init_hws_mem(void *arg, uint8_t port_id)
 	ws->gw_wdata = cn10k_sso_gw_mode_wdata(dev);
 	ws->gw_rdata = SSO_TT_EMPTY << 32;
 	ws->lmt_base = dev->sso.lmt_base;
+	ws->xae_waes = dev->sso.feat.xaq_wq_entries;
 
 	return ws;
 }

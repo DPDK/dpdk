@@ -6,9 +6,7 @@
 #include <rte_pmd_cnxk_eventdev.h>
 #include <rte_eventdev.h>
 
-#include "roc_platform.h"
-#include "roc_sso.h"
-#include "roc_sso_dp.h"
+#include "roc_api.h"
 
 struct pwords {
 	uint64_t u[5];

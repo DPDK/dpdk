@@ -2,6 +2,8 @@
  * Copyright(C) 2021 Marvell.
  */
 
+#include "roc_api.h"
+
 #include "cn10k_worker.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
@@ -81,7 +83,7 @@ static inline int32_t
 sso_read_xaq_space(struct cn10k_sso_hws *ws)
 {
 	return (ws->xaq_lmt - rte_atomic_load_explicit(ws->fc_mem, rte_memory_order_relaxed)) *
-	       ROC_SSO_XAE_PER_XAQ;
+		ws->xae_waes;
 }
 
 static inline void
@@ -394,7 +396,7 @@ cn10k_sso_hws_enq_new_burst(void *port, const struct rte_event ev[],
 	int32_t space;
 
 	/* Do a common back-pressure check and return */
-	space = sso_read_xaq_space(ws) - ROC_SSO_XAE_PER_XAQ;
+	space = sso_read_xaq_space(ws) - ws->xae_waes;
 	if (space <= 0)
 		return 0;
 	nb_events = space < nb_events ? space : nb_events;

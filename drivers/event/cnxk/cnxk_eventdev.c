@@ -2,7 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include "roc_npa.h"
+#include "roc_api.h"
 
 #include "cnxk_eventdev.h"
 #include "cnxk_eventdev_dp.h"
@@ -47,7 +47,7 @@ cnxk_sso_xaq_allocate(struct cnxk_sso_evdev *dev)
 	if (dev->num_events > 0)
 		xae_cnt = dev->num_events;
 	else
-		xae_cnt = dev->sso.iue;
+		xae_cnt = dev->sso.feat.iue;
 
 	if (dev->xae_cnt)
 		xae_cnt += dev->xae_cnt;

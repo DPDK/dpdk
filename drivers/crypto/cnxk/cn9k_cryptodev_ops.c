@@ -8,14 +8,7 @@
 #include <rte_ip.h>
 #include <rte_vect.h>
 
-#include "roc_cpt.h"
-#if defined(__aarch64__)
-#include "roc_io.h"
-#else
-#include "roc_io_generic.h"
-#endif
-#include "roc_sso.h"
-#include "roc_sso_dp.h"
+#include "roc_api.h"
 
 #include "cn9k_cryptodev.h"
 #include "cn9k_cryptodev_ops.h"

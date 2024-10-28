@@ -191,8 +191,39 @@ sso_rsrc_get(struct roc_sso *roc_sso)
 		goto exit;
 	}
 
-	roc_sso->max_hwgrp = rsrc_cnt->sso;
+	roc_sso->max_hwgrp = PLT_MIN(rsrc_cnt->sso, roc_sso->feat.hwgrps_per_pf);
 	roc_sso->max_hws = rsrc_cnt->ssow;
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+static int
+sso_hw_info_get(struct roc_sso *roc_sso)
+{
+	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct sso_hw_info *rsp;
+	int rc;
+
+	mbox_alloc_msg_sso_get_hw_info(mbox);
+	rc = mbox_process_msg(mbox, (void **)&rsp);
+	if (rc && rc != MBOX_MSG_INVALID) {
+		plt_err("Failed to get SSO HW info");
+		rc = -EIO;
+		goto exit;
+	}
+
+	if (rc == MBOX_MSG_INVALID) {
+		roc_sso->feat.hwgrps_per_pf = ROC_SSO_MAX_HWGRP_PER_PF;
+	} else {
+		mbox_memcpy(&roc_sso->feat, &rsp->feat, sizeof(roc_sso->feat));
+
+		if (!roc_sso->feat.hwgrps_per_pf)
+			roc_sso->feat.hwgrps_per_pf = ROC_SSO_MAX_HWGRP_PER_PF;
+	}
 
 	rc = 0;
 exit:
@@ -676,9 +707,8 @@ roc_sso_hwgrp_init_xaq_aura(struct roc_sso *roc_sso, uint32_t nb_xae)
 	struct dev *dev = &sso->dev;
 	int rc;
 
-	rc = sso_hwgrp_init_xaq_aura(dev, &roc_sso->xaq, nb_xae,
-				     roc_sso->xae_waes, roc_sso->xaq_buf_size,
-				     roc_sso->nb_hwgrp);
+	rc = sso_hwgrp_init_xaq_aura(dev, &roc_sso->xaq, nb_xae, roc_sso->feat.xaq_wq_entries,
+				     roc_sso->feat.xaq_buf_size, roc_sso->nb_hwgrp);
 	return rc;
 }
 
@@ -959,9 +989,11 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp, ui
 		goto hwgrp_alloc_fail;
 	}
 
-	roc_sso->xaq_buf_size = rsp_hwgrp->xaq_buf_size;
-	roc_sso->xae_waes = rsp_hwgrp->xaq_wq_entries;
-	roc_sso->iue = rsp_hwgrp->in_unit_entries;
+	if (!roc_sso->feat.xaq_buf_size || !roc_sso->feat.xaq_wq_entries || !roc_sso->feat.iue) {
+		roc_sso->feat.xaq_buf_size = rsp_hwgrp->xaq_buf_size;
+		roc_sso->feat.xaq_wq_entries = rsp_hwgrp->xaq_wq_entries;
+		roc_sso->feat.iue = rsp_hwgrp->in_unit_entries;
+	}
 
 	rc = sso_msix_fill(roc_sso, nb_hws, nb_hwgrp);
 	if (rc < 0) {
@@ -1062,6 +1094,12 @@ roc_sso_dev_init(struct roc_sso *roc_sso)
 	rc = dev_init(&sso->dev, pci_dev);
 	if (rc < 0) {
 		plt_err("Failed to init roc device");
+		goto fail;
+	}
+
+	rc = sso_hw_info_get(roc_sso);
+	if (rc < 0) {
+		plt_err("Failed to get SSO HW info");
 		goto fail;
 	}
 

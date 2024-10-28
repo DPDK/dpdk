@@ -18,6 +18,8 @@
 #include <rte_random.h>
 #include <rte_test.h>
 
+#include "roc_api.h"
+
 #include "cnxk_eventdev.h"
 #include "cnxk_eventdev_dp.h"
 

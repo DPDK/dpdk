@@ -8,7 +8,7 @@
 #include "hw/ssow.h"
 
 #define ROC_SSO_AW_PER_LMT_LINE_LOG2 3
-#define ROC_SSO_XAE_PER_XAQ	     352
+#define ROC_SSO_MAX_HWGRP_PER_PF     256
 
 struct roc_sso_hwgrp_qos {
 	uint16_t hwgrp;
@@ -57,9 +57,7 @@ struct roc_sso {
 	uintptr_t lmt_base;
 	struct roc_sso_xaq_data xaq;
 	/* HW Const. */
-	uint32_t xae_waes;
-	uint32_t xaq_buf_size;
-	uint32_t iue;
+	struct sso_feat_info feat;
 	/* Private data. */
 #define ROC_SSO_MEM_SZ (16 * 1024)
 	uint8_t reserved[ROC_SSO_MEM_SZ] __plt_cache_aligned;

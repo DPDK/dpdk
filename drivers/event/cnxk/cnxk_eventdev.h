@@ -21,9 +21,6 @@
 
 #include "cnxk_eventdev_dp.h"
 
-#include "roc_platform.h"
-#include "roc_sso.h"
-
 #include "cnxk_tim_evdev.h"
 
 #define CNXK_SSO_XAE_CNT   "xae_cnt"
