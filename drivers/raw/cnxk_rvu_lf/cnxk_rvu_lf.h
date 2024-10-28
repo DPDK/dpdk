@@ -21,4 +21,6 @@ extern int cnxk_logtype_rvu_lf;
 #define CNXK_RVU_LF_LOG(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, CNXK_RVU_LF, "%s(): ", __func__, __VA_ARGS__)
 
+int rvu_lf_rawdev_selftest(uint16_t dev_id);
+
 #endif /* _CNXK_RVU_LF_H_ */

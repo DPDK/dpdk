@@ -155,7 +155,7 @@ rte_pmd_rvu_lf_pf_func_get(uint8_t dev_id)
 }
 
 static const struct rte_rawdev_ops rvu_lf_rawdev_ops = {
-	.dev_selftest = NULL,
+	.dev_selftest = rvu_lf_rawdev_selftest,
 };
 
 static void
