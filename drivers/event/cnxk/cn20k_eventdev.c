@@ -5,6 +5,7 @@
 #include "roc_api.h"
 
 #include "cn20k_eventdev.h"
+#include "cn20k_worker.h"
 #include "cnxk_common.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
@@ -106,6 +107,21 @@ cn20k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 
 	nb_tim_lfs = tim_dev ? tim_dev->nb_rings : 0;
 	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp, nb_tim_lfs);
+}
+
+
+static void
+cn20k_sso_fp_fns_set(struct rte_eventdev *event_dev)
+{
+#if defined(RTE_ARCH_ARM64)
+
+	event_dev->enqueue_burst = cn20k_sso_hws_enq_burst;
+	event_dev->enqueue_new_burst = cn20k_sso_hws_enq_new_burst;
+	event_dev->enqueue_forward_burst = cn20k_sso_hws_enq_fwd_burst;
+
+#else
+	RTE_SET_USED(event_dev);
+#endif
 }
 
 static void
@@ -265,8 +281,10 @@ cn20k_sso_init(struct rte_eventdev *event_dev)
 
 	event_dev->dev_ops = &cn20k_sso_dev_ops;
 	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		cn20k_sso_fp_fns_set(event_dev);
 		return 0;
+	}
 
 	rc = cnxk_sso_init(event_dev);
 	if (rc < 0)

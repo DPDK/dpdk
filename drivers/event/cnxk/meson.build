@@ -232,6 +232,7 @@ endif
 if soc_type == 'cn20k' or soc_type == 'all'
 sources += files(
         'cn20k_eventdev.c',
+        'cn20k_worker.c',
 )
 endif
 
