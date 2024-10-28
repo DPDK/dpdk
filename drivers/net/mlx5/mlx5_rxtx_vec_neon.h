@@ -835,13 +835,13 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		rxq_cq_to_ptype_oflags_v(rxq, ptype_info, flow_tag,
 					 opcode, &elts[pos]);
 		if (unlikely(rxq->shared)) {
-			elts[pos]->port = container_of(p0, struct mlx5_cqe,
+			pkts[pos]->port = container_of(p0, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
-			elts[pos + 1]->port = container_of(p1, struct mlx5_cqe,
+			pkts[pos + 1]->port = container_of(p1, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
-			elts[pos + 2]->port = container_of(p2, struct mlx5_cqe,
+			pkts[pos + 2]->port = container_of(p2, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
-			elts[pos + 3]->port = container_of(p3, struct mlx5_cqe,
+			pkts[pos + 3]->port = container_of(p3, struct mlx5_cqe,
 					      pkt_info)->user_index_low;
 		}
 		if (unlikely(rxq->hw_timestamp)) {
@@ -853,34 +853,34 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 				ts = rte_be_to_cpu_64
 					(container_of(p0, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos], offset,
+				mlx5_timestamp_set(pkts[pos], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p1, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos + 1], offset,
+				mlx5_timestamp_set(pkts[pos + 1], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p2, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos + 2], offset,
+				mlx5_timestamp_set(pkts[pos + 2], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 				ts = rte_be_to_cpu_64
 					(container_of(p3, struct mlx5_cqe,
 						      pkt_info)->timestamp);
-				mlx5_timestamp_set(elts[pos + 3], offset,
+				mlx5_timestamp_set(pkts[pos + 3], offset,
 					mlx5_txpp_convert_rx_ts(sh, ts));
 			} else {
-				mlx5_timestamp_set(elts[pos], offset,
+				mlx5_timestamp_set(pkts[pos], offset,
 					rte_be_to_cpu_64(container_of(p0,
 					struct mlx5_cqe, pkt_info)->timestamp));
-				mlx5_timestamp_set(elts[pos + 1], offset,
+				mlx5_timestamp_set(pkts[pos + 1], offset,
 					rte_be_to_cpu_64(container_of(p1,
 					struct mlx5_cqe, pkt_info)->timestamp));
-				mlx5_timestamp_set(elts[pos + 2], offset,
+				mlx5_timestamp_set(pkts[pos + 2], offset,
 					rte_be_to_cpu_64(container_of(p2,
 					struct mlx5_cqe, pkt_info)->timestamp));
-				mlx5_timestamp_set(elts[pos + 3], offset,
+				mlx5_timestamp_set(pkts[pos + 3], offset,
 					rte_be_to_cpu_64(container_of(p3,
 					struct mlx5_cqe, pkt_info)->timestamp));
 			}
