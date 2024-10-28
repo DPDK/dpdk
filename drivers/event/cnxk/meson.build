@@ -14,7 +14,7 @@ else
         soc_type = platform
 endif
 
-if soc_type != 'cn9k' and soc_type != 'cn10k'
+if soc_type != 'cn9k' and soc_type != 'cn10k' and soc_type != 'cn20k'
         soc_type = 'all'
 endif
 
@@ -227,6 +227,12 @@ sources += files(
         'tx/cn10k/tx_all_offload.c',
 )
 endif
+endif
+
+if soc_type == 'cn20k' or soc_type == 'all'
+sources += files(
+        'cn20k_eventdev.c',
+)
 endif
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']

@@ -16,6 +16,7 @@ Supported OCTEON cnxk SoCs
 
 - CN9XX
 - CN10XX
+- CN20XX
 
 Features
 --------
@@ -36,7 +37,7 @@ Features of the OCTEON cnxk SSO PMD are:
   DRAM
 - HW accelerated dequeue timeout support to enable power management
 - HW managed event timers support through TIM, with high precision and
-  time granularity of 2.5us on CN9K and 1us on CN10K.
+  time granularity of 2.5us on CN9K and 1us on CN10K/CN20K.
 - Up to 256 TIM rings a.k.a event timer adapters.
 - Up to 8 rings traversed in parallel.
 - HW managed packets enqueued from ethdev to eventdev exposed through event eth
@@ -45,8 +46,8 @@ Features of the OCTEON cnxk SSO PMD are:
 - Lockfree Tx from event eth Tx adapter using ``RTE_ETH_TX_OFFLOAD_MT_LOCKFREE``
   capability while maintaining receive packet order.
 - Full Rx/Tx offload support defined through ethdev queue configuration.
-- HW managed event vectorization on CN10K for packets enqueued from ethdev to
-  eventdev configurable per each Rx queue in Rx adapter.
+- HW managed event vectorization on CN10K/CN20K for packets enqueued from ethdev
+  to eventdev configurable per each Rx queue in Rx adapter.
 - Event vector transmission via Tx adapter.
 - Up to 2 event link profiles.
 
@@ -93,9 +94,9 @@ Runtime Config Options
 
     -a 0002:0e:00.0,qos=[1-50-50]
 
-- ``CN10K WQE stashing support``
+- ``CN10K/CN20K WQE stashing support``
 
-  CN10K supports stashing the scheduled WQE carried by `rte_event` to the
+  CN10K/CN20K supports stashing the scheduled WQE carried by `rte_event` to the
   cores L2 Dcache. The number of cache lines to be stashed and the offset
   is configurable per HWGRP i.e. event queue. The dictionary format is as
   follows `[Qx|stash_offset|stash_length]` here the stash offset can be
@@ -188,8 +189,8 @@ Runtime Config Options
 
     -a 0002:0e:00.0,tim_eclk_freq=122880000-1000000000-0
 
-Power Saving on CN10K
----------------------
+Power Saving on CN10K/CN20K
+---------------------------
 
 ARM cores can additionally use WFE when polling for transactions on SSO bus
 to save power i.e., in the event dequeue call ARM core can enter WFE and exit

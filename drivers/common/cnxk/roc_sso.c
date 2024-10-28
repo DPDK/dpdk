@@ -870,7 +870,10 @@ sso_update_msix_vec_count(struct roc_sso *roc_sso, uint16_t sso_vec_cnt)
 	if (idev == NULL)
 		return -ENODEV;
 
-	mbox_vec_cnt = RVU_PF_INT_VEC_AFPF_MBOX + 1;
+	if (roc_model_is_cn20k())
+		mbox_vec_cnt = RVU_MBOX_PF_INT_VEC_AFPF_MBOX + 1;
+	else
+		mbox_vec_cnt = RVU_PF_INT_VEC_AFPF_MBOX + 1;
 
 	/* Allocating vectors for the first time */
 	if (plt_intr_max_intr_get(pci_dev->intr_handle) == 0) {
@@ -1017,7 +1020,10 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp, ui
 	}
 
 	/* 2 error interrupt per TIM LF */
-	sso_vec_cnt += 2 * nb_tim_lfs;
+	if (roc_model_is_cn20k())
+		sso_vec_cnt += 3 * nb_tim_lfs;
+	else
+		sso_vec_cnt += 2 * nb_tim_lfs;
 
 	rc = sso_update_msix_vec_count(roc_sso, sso_vec_cnt);
 	if (rc < 0) {

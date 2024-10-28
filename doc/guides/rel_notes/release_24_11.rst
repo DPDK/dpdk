@@ -294,6 +294,10 @@ New Features
 
   * Added independent enqueue feature.
 
+* **Updated Marvell cnxk event device driver.**
+
+  * Added eventdev driver support for CN20K SoC.
+
 * **Added IPv4 network order lookup in the FIB library.**
 
   A new flag field is introduced in ``rte_fib_conf`` structure.
