@@ -3552,7 +3552,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				    (int)action->type == act_data->type);
 		switch ((int)act_data->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
-			act_data->indirect_list_cb(dev, act_data, actions,
+			act_data->indirect_list_cb(dev, act_data, action,
 						   &rule_acts[act_data->action_dst]);
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
