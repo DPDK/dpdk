@@ -30,11 +30,13 @@ from typing import Union
 
 from framework.testbed_model.capability import Capability
 
-from .config import DPDKBuildInfo, NodeInfo, TestRunConfiguration, TestSuiteConfig
+from .config import TestRunConfiguration, TestSuiteConfig
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLogger
 from .settings import SETTINGS
 from .test_suite import TestCase, TestSuite
+from .testbed_model.os_session import OSSessionInfo
+from .testbed_model.sut_node import DPDKBuildInfo
 
 
 @dataclass(slots=True, frozen=True)
@@ -421,7 +423,7 @@ class TestRunResult(BaseResult):
             )
         self._test_suites_with_cases = test_suites_with_cases
 
-    def add_sut_info(self, sut_info: NodeInfo) -> None:
+    def add_sut_info(self, sut_info: OSSessionInfo) -> None:
         """Add SUT information gathered at runtime.
 
         Args:

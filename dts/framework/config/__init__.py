@@ -319,24 +319,6 @@ class TGNodeConfiguration(NodeConfiguration):
 
 
 @dataclass(slots=True, frozen=True)
-class NodeInfo:
-    """Supplemental node information.
-
-    Attributes:
-        os_name: The name of the running operating system of
-            the :class:`~framework.testbed_model.node.Node`.
-        os_version: The version of the running operating system of
-            the :class:`~framework.testbed_model.node.Node`.
-        kernel_version: The kernel version of the running operating system of
-            the :class:`~framework.testbed_model.node.Node`.
-    """
-
-    os_name: str
-    os_version: str
-    kernel_version: str
-
-
-@dataclass(slots=True, frozen=True)
 class DPDKBuildConfiguration:
     """DPDK build configuration.
 
@@ -491,19 +473,6 @@ class DPDKConfiguration:
                 else None
             ),
         )
-
-
-@dataclass(slots=True, frozen=True)
-class DPDKBuildInfo:
-    """Various versions and other information about a DPDK build.
-
-    Attributes:
-        dpdk_version: The DPDK version that was built.
-        compiler_version: The version of the compiler used to build DPDK.
-    """
-
-    dpdk_version: str | None
-    compiler_version: str | None
 
 
 @dataclass(slots=True, frozen=True)

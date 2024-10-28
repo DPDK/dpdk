@@ -15,7 +15,7 @@ import re
 from collections.abc import Iterable
 from pathlib import Path, PurePath, PurePosixPath
 
-from framework.config import Architecture, NodeInfo
+from framework.config import Architecture
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
 from framework.settings import SETTINGS
 from framework.utils import (
@@ -26,7 +26,7 @@ from framework.utils import (
     extract_tarball,
 )
 
-from .os_session import OSSession
+from .os_session import OSSession, OSSessionInfo
 
 
 class PosixSession(OSSession):
@@ -386,11 +386,11 @@ class PosixSession(OSSession):
             case _:
                 raise ValueError(f"Unknown compiler {compiler_name}")
 
-    def get_node_info(self) -> NodeInfo:
+    def get_node_info(self) -> OSSessionInfo:
         """Overrides :meth:`~.os_session.OSSession.get_node_info`."""
         os_release_info = self.send_command(
             "awk -F= '$1 ~ /^NAME$|^VERSION$/ {print $2}' /etc/os-release",
             SETTINGS.timeout,
         ).stdout.split("\n")
         kernel_version = self.send_command("uname -r", SETTINGS.timeout).stdout
-        return NodeInfo(os_release_info[0].strip(), os_release_info[1].strip(), kernel_version)
+        return OSSessionInfo(os_release_info[0].strip(), os_release_info[1].strip(), kernel_version)

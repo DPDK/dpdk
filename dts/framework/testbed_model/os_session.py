@@ -24,11 +24,12 @@ Example:
 """
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from dataclasses import dataclass
 from ipaddress import IPv4Interface, IPv6Interface
 from pathlib import Path, PurePath, PurePosixPath
 from typing import Union
 
-from framework.config import Architecture, NodeConfiguration, NodeInfo
+from framework.config import Architecture, NodeConfiguration
 from framework.logger import DTSLogger
 from framework.remote_session import (
     InteractiveRemoteSession,
@@ -42,6 +43,24 @@ from framework.utils import MesonArgs, TarCompressionFormat
 
 from .cpu import LogicalCore
 from .port import Port
+
+
+@dataclass(slots=True, frozen=True)
+class OSSessionInfo:
+    """Supplemental OS session information.
+
+    Attributes:
+        os_name: The name of the running operating system of
+            the :class:`~framework.testbed_model.node.Node`.
+        os_version: The version of the running operating system of
+            the :class:`~framework.testbed_model.node.Node`.
+        kernel_version: The kernel version of the running operating system of
+            the :class:`~framework.testbed_model.node.Node`.
+    """
+
+    os_name: str
+    os_version: str
+    kernel_version: str
 
 
 class OSSession(ABC):
@@ -482,7 +501,7 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def get_node_info(self) -> NodeInfo:
+    def get_node_info(self) -> OSSessionInfo:
         """Collect additional information about the node.
 
         Returns:

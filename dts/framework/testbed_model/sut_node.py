@@ -14,13 +14,12 @@ An SUT node is where this SUT runs.
 
 import os
 import time
+from dataclasses import dataclass
 from pathlib import PurePath
 
 from framework.config import (
     DPDKBuildConfiguration,
-    DPDKBuildInfo,
     DPDKLocation,
-    NodeInfo,
     SutNodeConfiguration,
     TestRunConfiguration,
 )
@@ -30,8 +29,21 @@ from framework.remote_session.remote_session import CommandResult
 from framework.utils import MesonArgs, TarCompressionFormat
 
 from .node import Node
-from .os_session import OSSession
+from .os_session import OSSession, OSSessionInfo
 from .virtual_device import VirtualDevice
+
+
+@dataclass(slots=True, frozen=True)
+class DPDKBuildInfo:
+    """Various versions and other information about a DPDK build.
+
+    Attributes:
+        dpdk_version: The DPDK version that was built.
+        compiler_version: The version of the compiler used to build DPDK.
+    """
+
+    dpdk_version: str | None
+    compiler_version: str | None
 
 
 class SutNode(Node):
@@ -63,7 +75,7 @@ class SutNode(Node):
     _app_compile_timeout: float
     _dpdk_kill_session: OSSession | None
     _dpdk_version: str | None
-    _node_info: NodeInfo | None
+    _node_info: OSSessionInfo | None
     _compiler_version: str | None
     _path_to_devbind_script: PurePath | None
     _ports_bound_to_dpdk: bool
@@ -125,7 +137,7 @@ class SutNode(Node):
         return self._dpdk_version
 
     @property
-    def node_info(self) -> NodeInfo:
+    def node_info(self) -> OSSessionInfo:
         """Additional node information."""
         if self._node_info is None:
             self._node_info = self.main_session.get_node_info()
