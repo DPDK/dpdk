@@ -877,7 +877,7 @@ mlx5_crypto_gcm_cqe_err_handle(struct mlx5_crypto_qp *qp, struct rte_crypto_op *
 {
 	uint8_t op_code;
 	const uint32_t idx = qp->cq_ci & (qp->entries_n - 1);
-	volatile struct mlx5_err_cqe *cqe = (volatile struct mlx5_err_cqe *)
+	volatile struct mlx5_error_cqe *cqe = (volatile struct mlx5_error_cqe *)
 							&qp->cq_obj.cqes[idx];
 
 	op_code = rte_be_to_cpu_32(cqe->s_wqe_opcode_qpn) >> MLX5_CQ_INDEX_WIDTH;

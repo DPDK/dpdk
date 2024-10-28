@@ -268,8 +268,12 @@
 /* Maximum number of DS in WQE. Limited by 6-bit field. */
 #define MLX5_DSEG_MAX 63
 
-/* The 32 bit syndrome offset in struct mlx5_err_cqe. */
+/* The 32 bit syndrome offset in struct mlx5_error_cqe. */
+#if (RTE_CACHE_LINE_SIZE == 128)
+#define MLX5_ERROR_CQE_SYNDROME_OFFSET 116
+#else
 #define MLX5_ERROR_CQE_SYNDROME_OFFSET 52
+#endif
 
 /* The completion mode offset in the WQE control segment line 2. */
 #define MLX5_COMP_MODE_OFFSET 2
@@ -414,6 +418,29 @@ struct mlx5_wqe_mprq {
 #define MLX5_MPRQ_FILLER_SHIFT 31
 
 #define MLX5_MPRQ_STRIDE_SHIFT_BYTE 2
+
+struct mlx5_error_cqe {
+#if (RTE_CACHE_LINE_SIZE == 128)
+	uint8_t padding[64];
+#endif
+	uint8_t rsvd0[2];
+	uint16_t eth_wqe_id;
+	uint8_t	rsvd1[16];
+	uint16_t ib_stride_index;
+	uint8_t	rsvd2[10];
+	uint32_t srqn;
+	uint8_t	rsvd3[8];
+	uint32_t byte_cnt;
+	uint8_t	rsvd4[4];
+	uint8_t	hw_err_synd;
+	uint8_t	hw_synd_type;
+	uint8_t	vendor_err_synd;
+	uint8_t	syndrome;
+	uint32_t s_wqe_opcode_qpn;
+	uint16_t wqe_counter;
+	uint8_t	signature;
+	uint8_t	op_own;
+};
 
 /* CQ element structure - should be equal to the cache line size */
 struct mlx5_cqe {

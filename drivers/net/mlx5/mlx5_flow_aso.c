@@ -489,7 +489,7 @@ mlx5_aso_dump_err_objs(volatile uint32_t *cqe, volatile uint32_t *wqe)
 	int i;
 
 	DRV_LOG(ERR, "Error cqe:");
-	for (i = 0; i < 16; i += 4)
+	for (i = 0; i < (int)sizeof(struct mlx5_error_cqe) / 4; i += 4)
 		DRV_LOG(ERR, "%08X %08X %08X %08X", cqe[i], cqe[i + 1],
 			cqe[i + 2], cqe[i + 3]);
 	DRV_LOG(ERR, "\nError wqe:");
@@ -509,8 +509,8 @@ mlx5_aso_cqe_err_handle(struct mlx5_aso_sq *sq)
 {
 	struct mlx5_aso_cq *cq = &sq->cq;
 	uint32_t idx = cq->cq_ci & ((1 << cq->log_desc_n) - 1);
-	volatile struct mlx5_err_cqe *cqe =
-			(volatile struct mlx5_err_cqe *)&cq->cq_obj.cqes[idx];
+	volatile struct mlx5_error_cqe *cqe =
+			(volatile struct mlx5_error_cqe *)&cq->cq_obj.cqes[idx];
 
 	cq->errors++;
 	idx = rte_be_to_cpu_16(cqe->wqe_counter) & (1u << sq->log_desc_n);

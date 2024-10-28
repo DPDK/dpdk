@@ -599,7 +599,7 @@ static void mlx5dr_send_engine_poll_cq(struct mlx5dr_send_engine *queue,
 		return;
 
 	if (unlikely(cqe_opcode != MLX5_CQE_REQ)) {
-		struct mlx5_err_cqe *err_cqe = (struct mlx5_err_cqe *)cqe;
+		struct mlx5_error_cqe *err_cqe = (struct mlx5_error_cqe *)cqe;
 
 		DR_LOG(ERR, "CQE ERR:0x%x, Vendor_ERR:0x%x, OP:0x%x, QPN:0x%x, WQE_CNT:0x%x",
 			err_cqe->syndrome, err_cqe->vendor_err_synd, cqe_opcode,
