@@ -8,7 +8,7 @@
 #include <fcntl.h>
 
 
-#include <linux/vduse.h>
+#include <uapi/linux/vduse.h>
 #include <linux/virtio_net.h>
 
 #include <sys/ioctl.h>
