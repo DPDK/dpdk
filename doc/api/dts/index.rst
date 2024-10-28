@@ -14,6 +14,7 @@ Packages
    :includehidden:
    :maxdepth: 1
 
+   tests
    framework.testbed_model
    framework.remote_session
    framework.params
