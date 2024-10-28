@@ -81,6 +81,14 @@ mbuf1_prepare(struct dummy_mbuf *dm, uint32_t plen)
 
 	rte_eth_random_addr(pkt.eth.src_addr.addr_bytes);
 	memcpy(rte_pktmbuf_mtod(dm->mb, void *), &pkt, RTE_MIN(sizeof(pkt), plen));
+
+	/* Idea here is to create mbuf chain big enough that after mbuf deep copy they won't be
+	 * compressed into single mbuf to properly test store of chained mbufs
+	 */
+	dummy_mbuf_prep(&dm->mb[1], dm->buf[1], sizeof(dm->buf[1]), pkt_len);
+	dummy_mbuf_prep(&dm->mb[2], dm->buf[2], sizeof(dm->buf[2]), pkt_len);
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[1]);
+	rte_pktmbuf_chain(&dm->mb[0], &dm->mb[2]);
 }
 
 static int
@@ -138,7 +146,7 @@ test_write_packets(void)
 	for (i = 0; i < NUM_PACKETS; i++) {
 		struct rte_mbuf *mc;
 
-		mc = rte_pcapng_copy(port_id, 0, orig, mp, pkt_len,
+		mc = rte_pcapng_copy(port_id, 0, orig, mp, rte_pktmbuf_pkt_len(orig),
 				rte_get_tsc_cycles(), 0);
 		if (mc == NULL) {
 			fprintf(stderr, "Cannot copy packet\n");
