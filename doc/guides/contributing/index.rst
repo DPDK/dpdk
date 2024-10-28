@@ -17,6 +17,7 @@ Contributor's Guidelines
     new_library
     new_driver
     patches
+    linux_uapi
     vulnerability
     stable
     cheatsheet

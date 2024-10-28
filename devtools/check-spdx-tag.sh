@@ -24,6 +24,7 @@ check_spdx() {
 	':^README' ':^MAINTAINERS' ':^VERSION' ':^ABI_VERSION' \
 	':^*/Kbuild' ':^*/README*' \
 	':^license/' ':^config/' ':^buildtools/' ':^*/poetry.lock' \
+	':^kernel/linux/uapi/.gitignore' ':^kernel/linux/uapi/version' \
 	':^*.cocci' ':^*.abignore' \
 	':^*.map' ':^*.ini' ':^*.data' ':^*.json' ':^*.cfg' ':^*.txt' \
 	':^*.svg' ':^*.png' \

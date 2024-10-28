@@ -64,15 +64,19 @@ endif
 # configure the build, and make sure configs here and in config folder are
 # able to be included in any file. We also store a global array of include dirs
 # for passing to pmdinfogen scripts
-global_inc = include_directories('.', 'config',
+global_inc = [include_directories('.', 'config',
     'lib/eal/include',
     'lib/eal/@0@/include'.format(host_machine.system()),
     'lib/eal/@0@/include'.format(arch_subdir),
-)
+)]
 
 # do configuration and get tool paths
 subdir('buildtools')
 subdir('config')
+
+if is_linux
+    global_inc += include_directories('kernel/linux')
+endif
 
 # build libs and drivers
 subdir('lib')

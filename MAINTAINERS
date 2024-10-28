@@ -113,6 +113,12 @@ F: license/
 F: .editorconfig
 F: .mailmap
 
+Linux kernel uAPI headers
+M: Maxime Coquelin <maxime.coquelin@redhat.com>
+F: devtools/linux-uapi.sh
+F: doc/guides/contributing/linux_uapi.rst
+F: kernel/linux/uapi/
+
 Build System
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: Makefile
