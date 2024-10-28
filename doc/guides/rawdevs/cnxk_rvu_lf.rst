@@ -22,6 +22,7 @@ The RVU LF device implements following features in the rawdev API:
 - Register/unregister mailbox callbacks for the other side to process mailboxes.
 - Set mailbox message ID range to be used by the driver.
 - Process mailbox messages.
+- Get BAR Addresses for the out-of-tree drivers to configure registers.
 
 Limitations
 -----------
@@ -81,3 +82,10 @@ It accepts an opaque pointer of a request and its size which can be defined by u
 and provides an opaque pointer for a response and its length.
 PF and VF out-of-tree driver can define its own request and response
 based on the message id of the mailbox.
+
+Get BAR addresses
+-----------------
+
+Out-of-tree drivers can retrieve PCI BAR addresses of the device
+using the API function ``rte_pmd_rvu_lf_bar_get()``.
+This helps PF/VF drivers to configure the registers of the hardware device.

@@ -103,6 +103,30 @@ rte_pmd_rvu_lf_irq_unregister(uint8_t dev_id, unsigned int irq,
 	return roc_rvu_lf_irq_unregister(roc_rvu_lf, irq, (roc_rvu_lf_intr_cb_fn)cb, data);
 }
 
+int
+rte_pmd_rvu_lf_bar_get(uint8_t dev_id, uint8_t bar_num, size_t *va, size_t *mask)
+{
+	struct roc_rvu_lf *roc_rvu_lf;
+	struct rte_rawdev *rawdev;
+
+	rawdev = rte_rawdev_pmd_get_dev(dev_id);
+	if (rawdev == NULL)
+		return -EINVAL;
+
+	roc_rvu_lf = (struct roc_rvu_lf *)rawdev->dev_private;
+
+	if (bar_num > PCI_MAX_RESOURCE ||
+			(roc_rvu_lf->pci_dev->mem_resource[bar_num].addr == NULL)) {
+		*va = 0;
+		*mask = 0;
+		return -ENOTSUP;
+	}
+	*va = (size_t)(roc_rvu_lf->pci_dev->mem_resource[bar_num].addr);
+	*mask = (size_t)(roc_rvu_lf->pci_dev->mem_resource[bar_num].len - 1);
+
+	return 0;
+}
+
 uint16_t
 rte_pmd_rvu_lf_npa_pf_func_get(void)
 {

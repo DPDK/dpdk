@@ -1,6 +1,7 @@
 INTERNAL {
 	global:
 
+	rte_pmd_rvu_lf_bar_get;
 	rte_pmd_rvu_lf_irq_register;
 	rte_pmd_rvu_lf_irq_unregister;
 	rte_pmd_rvu_lf_msg_handler_register;
