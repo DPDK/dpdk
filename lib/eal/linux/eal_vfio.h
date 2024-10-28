@@ -69,9 +69,6 @@ struct vfio_iommu_spapr_tce_info {
 #define RTE_VFIO_SPAPR VFIO_SPAPR_TCE_v2_IOMMU
 #endif
 
-#define VFIO_MAX_GROUPS RTE_MAX_VFIO_GROUPS
-#define VFIO_MAX_CONTAINERS RTE_MAX_VFIO_CONTAINERS
-
 /*
  * we don't need to store device fd's anywhere since they can be obtained from
  * the group fd via an ioctl() call.
