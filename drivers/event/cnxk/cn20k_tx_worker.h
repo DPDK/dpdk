@@ -13,4 +13,180 @@
 #include "cnxk_eventdev_dp.h"
 #include <rte_event_eth_tx_adapter.h>
 
+/* CN20K Tx event fastpath */
+
+static __rte_always_inline struct cn20k_eth_txq *
+cn20k_sso_hws_xtract_meta(struct rte_mbuf *m, const uint64_t *txq_data)
+{
+	return (struct cn20k_eth_txq *)(txq_data[(txq_data[m->port] >> 48) +
+						 rte_event_eth_tx_adapter_txq_get(m)] &
+					(BIT_ULL(48) - 1));
+}
+
+static __rte_always_inline void
+cn20k_sso_txq_fc_wait(const struct cn20k_eth_txq *txq)
+{
+	int64_t avail;
+
+#ifdef RTE_ARCH_ARM64
+	int64_t val;
+
+	asm volatile(PLT_CPU_FEATURE_PREAMBLE
+		     "		ldxr %[val], [%[addr]]			\n"
+		     "		sub %[val], %[adj], %[val]		\n"
+		     "		lsl %[refill], %[val], %[shft]		\n"
+		     "		sub %[refill], %[refill], %[val]	\n"
+		     "		cmp %[refill], #0x0			\n"
+		     "		b.gt .Ldne%=				\n"
+		     "		sevl					\n"
+		     ".Lrty%=:	wfe					\n"
+		     "		ldxr %[val], [%[addr]]			\n"
+		     "		sub %[val], %[adj], %[val]		\n"
+		     "		lsl %[refill], %[val], %[shft]		\n"
+		     "		sub %[refill], %[refill], %[val]	\n"
+		     "		cmp %[refill], #0x0			\n"
+		     "		b.le .Lrty%=				\n"
+		     ".Ldne%=:						\n"
+		     : [refill] "=&r"(avail), [val] "=&r" (val)
+		     : [addr] "r" (txq->fc_mem), [adj] "r" (txq->nb_sqb_bufs_adj),
+		       [shft] "r" (txq->sqes_per_sqb_log2)
+		     : "memory");
+#else
+	do {
+		avail = txq->nb_sqb_bufs_adj -
+			rte_atomic_load_explicit((uint64_t __rte_atomic *)txq->fc_mem,
+						 rte_memory_order_relaxed);
+	} while (((avail << txq->sqes_per_sqb_log2) - avail) <= 0);
+#endif
+}
+
+static __rte_always_inline int32_t
+cn20k_sso_sq_depth(const struct cn20k_eth_txq *txq)
+{
+	int32_t avail = (int32_t)txq->nb_sqb_bufs_adj -
+			(int32_t)rte_atomic_load_explicit((uint64_t __rte_atomic *)txq->fc_mem,
+							  rte_memory_order_relaxed);
+	return (avail << txq->sqes_per_sqb_log2) - avail;
+}
+
+static __rte_always_inline uint16_t
+cn20k_sso_tx_one(struct cn20k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd, uint16_t lmt_id,
+		 uintptr_t lmt_addr, uint8_t sched_type, const uint64_t *txq_data,
+		 const uint32_t flags)
+{
+	uint8_t lnum = 0, loff = 0, shft = 0;
+	struct rte_mbuf *extm = NULL;
+	struct cn20k_eth_txq *txq;
+	uintptr_t laddr;
+	uint16_t segdw;
+	uintptr_t pa;
+	bool sec;
+
+	txq = cn20k_sso_hws_xtract_meta(m, txq_data);
+	if (cn20k_sso_sq_depth(txq) <= 0)
+		return 0;
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && txq->tx_compl.ena)
+		handle_tx_completion_pkts(txq, 1);
+
+	cn20k_nix_tx_skeleton(txq, cmd, flags, 0);
+	/* Perform header writes before barrier
+	 * for TSO
+	 */
+	if (flags & NIX_TX_OFFLOAD_TSO_F)
+		cn20k_nix_xmit_prepare_tso(m, flags);
+
+	cn20k_nix_xmit_prepare(txq, m, &extm, cmd, flags, txq->lso_tun_fmt, &sec, txq->mark_flag,
+			       txq->mark_fmt);
+
+	laddr = lmt_addr;
+	/* Prepare CPT instruction and get nixtx addr if
+	 * it is for CPT on same lmtline.
+	 */
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		cn20k_nix_prep_sec(m, cmd, &laddr, lmt_addr, &lnum, &loff, &shft, txq->sa_base,
+				   flags);
+
+	/* Move NIX desc to LMT/NIXTX area */
+	cn20k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
+
+	if (flags & NIX_TX_MULTI_SEG_F)
+		segdw = cn20k_nix_prepare_mseg(txq, m, &extm, (uint64_t *)laddr, flags);
+	else
+		segdw = cn20k_nix_tx_ext_subs(flags) + 2;
+
+	cn20k_nix_xmit_prepare_tstamp(txq, laddr, m->ol_flags, segdw, flags);
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		pa = txq->cpt_io_addr | 3 << 4;
+	else
+		pa = txq->io_addr | ((segdw - 1) << 4);
+
+	if (!CNXK_TAG_IS_HEAD(ws->gw_rdata) && !sched_type)
+		ws->gw_rdata = roc_sso_hws_head_wait(ws->base);
+
+	cn20k_sso_txq_fc_wait(txq);
+	if (flags & NIX_TX_OFFLOAD_SECURITY_F && sec)
+		cn20k_nix_sec_fc_wait_one(txq);
+
+	roc_lmt_submit_steorl(lmt_id, pa);
+
+	/* Memory barrier to make sure lmtst store completes */
+	rte_io_wmb();
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && !txq->tx_compl.ena)
+		cn20k_nix_free_extmbuf(extm);
+
+	return 1;
+}
+
+static __rte_always_inline uint16_t
+cn20k_sso_hws_event_tx(struct cn20k_sso_hws *ws, struct rte_event *ev, uint64_t *cmd,
+		       const uint64_t *txq_data, const uint32_t flags)
+{
+	struct rte_mbuf *m;
+	uintptr_t lmt_addr;
+	uint16_t lmt_id;
+
+	lmt_addr = ws->lmt_base;
+	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+
+	m = ev->mbuf;
+	return cn20k_sso_tx_one(ws, m, cmd, lmt_id, lmt_addr, ev->sched_type, txq_data, flags);
+}
+
+#define T(name, sz, flags)                                                                         \
+	uint16_t __rte_hot cn20k_sso_hws_tx_adptr_enq_##name(void *port, struct rte_event ev[],    \
+							     uint16_t nb_events);                  \
+	uint16_t __rte_hot cn20k_sso_hws_tx_adptr_enq_seg_##name(                                  \
+		void *port, struct rte_event ev[], uint16_t nb_events);
+
+NIX_TX_FASTPATH_MODES
+#undef T
+
+#define SSO_TX(fn, sz, flags)                                                                      \
+	uint16_t __rte_hot fn(void *port, struct rte_event ev[], uint16_t nb_events)               \
+	{                                                                                          \
+		struct cn20k_sso_hws *ws = port;                                                   \
+		uint64_t cmd[sz];                                                                  \
+		RTE_SET_USED(nb_events);                                                           \
+		return cn20k_sso_hws_event_tx(ws, &ev[0], cmd,                                     \
+					      (const uint64_t *)ws->tx_adptr_data, flags);         \
+	}
+
+#define SSO_TX_SEG(fn, sz, flags)                                                                  \
+	uint16_t __rte_hot fn(void *port, struct rte_event ev[], uint16_t nb_events)               \
+	{                                                                                          \
+		uint64_t cmd[(sz) + CNXK_NIX_TX_MSEG_SG_DWORDS - 2];                               \
+		struct cn20k_sso_hws *ws = port;                                                   \
+		RTE_SET_USED(nb_events);                                                           \
+		return cn20k_sso_hws_event_tx(ws, &ev[0], cmd,                                     \
+					      (const uint64_t *)ws->tx_adptr_data,                 \
+					      (flags) | NIX_TX_MULTI_SEG_F);                       \
+	}
+
+uint16_t __rte_hot cn20k_sso_hws_tx_adptr_enq_seg_all_offload(void *port, struct rte_event ev[],
+							      uint16_t nb_events);
+uint16_t __rte_hot cn20k_sso_hws_tx_adptr_enq_seg_all_offload_tst(void *port, struct rte_event ev[],
+								  uint16_t nb_events);
+
 #endif

@@ -15,6 +15,9 @@
 #define CN20K_SET_EVDEV_DEQ_OP(dev, deq_op, deq_ops)                                               \
 	deq_op = deq_ops[dev->rx_offloads & (NIX_RX_OFFLOAD_MAX - 1)]
 
+#define CN20K_SET_EVDEV_ENQ_OP(dev, enq_op, enq_ops)                                               \
+	enq_op = enq_ops[dev->tx_offloads & (NIX_TX_OFFLOAD_MAX - 1)]
+
 static void *
 cn20k_sso_init_hws_mem(void *arg, uint8_t port_id)
 {
@@ -253,6 +256,19 @@ cn20k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 #undef R
 	};
 
+	/* Tx modes */
+	const event_tx_adapter_enqueue_t sso_hws_tx_adptr_enq[NIX_TX_OFFLOAD_MAX] = {
+#define T(name, sz, flags) [flags] = cn20k_sso_hws_tx_adptr_enq_##name,
+		NIX_TX_FASTPATH_MODES
+#undef T
+	};
+
+	const event_tx_adapter_enqueue_t sso_hws_tx_adptr_enq_seg[NIX_TX_OFFLOAD_MAX] = {
+#define T(name, sz, flags) [flags] = cn20k_sso_hws_tx_adptr_enq_seg_##name,
+		NIX_TX_FASTPATH_MODES
+#undef T
+	};
+
 	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
 		if (dev->rx_offloads & NIX_RX_REAS_F) {
 			CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
@@ -285,6 +301,12 @@ cn20k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
 		}
 	}
 
+	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
+		CN20K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
+	else
+		CN20K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq);
+
+	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 #else
 	RTE_SET_USED(event_dev);
 #endif
@@ -299,6 +321,13 @@ cn20k_sso_fp_blk_fns_set(struct rte_eventdev *event_dev)
 	event_dev->dequeue_burst = cn20k_sso_hws_deq_burst_all_offload;
 	if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)
 		event_dev->dequeue_burst = cn20k_sso_hws_deq_burst_all_offload_tst;
+	event_dev->txa_enqueue = cn20k_sso_hws_tx_adptr_enq_seg_all_offload;
+	event_dev->txa_enqueue_same_dest = cn20k_sso_hws_tx_adptr_enq_seg_all_offload;
+	if (dev->tx_offloads & (NIX_TX_OFFLOAD_OL3_OL4_CSUM_F | NIX_TX_OFFLOAD_VLAN_QINQ_F |
+				NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_TSTAMP_F)) {
+		event_dev->txa_enqueue = cn20k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
+		event_dev->txa_enqueue_same_dest = cn20k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
+	}
 #else
 	RTE_SET_USED(event_dev);
 #endif
