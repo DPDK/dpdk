@@ -17,6 +17,7 @@ Features
 The RVU LF device implements following features in the rawdev API:
 
 - Get PF FUNC of associated NPA and SSO devices.
+- Register/unregister interrupt handlers.
 
 Limitations
 -----------
@@ -43,3 +44,11 @@ Get NPA and SSO PF FUNC
 API functions ``rte_pmd_rvu_lf_npa_pf_func_get()`` and ``rte_pmd_rvu_lf_sso_pf_func_get()``
 can be used to get the cnxk NPA PF func and SSO PF func
 which application can use for NPA/SSO specific configuration.
+
+Register or remove interrupt handler
+------------------------------------
+
+Out-of-tree drivers can register interrupt handlers using ``rte_pmd_rvu_lf_irq_register()``
+or remove interrupt handler using ``rte_pmd_rvu_lf_irq_unregister()``.
+The IRQ numbers for which the interrupts are registered
+is negotiated separately and is not in scope of the driver.

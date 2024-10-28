@@ -61,3 +61,29 @@ roc_rvu_lf_dev_fini(struct roc_rvu_lf *roc_rvu_lf)
 
 	return dev_fini(&rvu->dev, rvu->pci_dev);
 }
+
+int
+roc_rvu_lf_irq_register(struct roc_rvu_lf *roc_rvu_lf, unsigned int irq,
+			roc_rvu_lf_intr_cb_fn cb, void *data)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+	struct plt_intr_handle *handle;
+
+	handle = rvu->pci_dev->intr_handle;
+
+	return dev_irq_register(handle, (plt_intr_callback_fn)cb, data, irq);
+}
+
+int
+roc_rvu_lf_irq_unregister(struct roc_rvu_lf *roc_rvu_lf, unsigned int irq,
+			  roc_rvu_lf_intr_cb_fn cb, void *data)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+	struct plt_intr_handle *handle;
+
+	handle = rvu->pci_dev->intr_handle;
+
+	dev_irq_unregister(handle, (plt_intr_callback_fn)cb, data, irq);
+
+	return 0;
+}

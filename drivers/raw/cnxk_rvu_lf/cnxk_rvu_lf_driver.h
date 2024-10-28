@@ -42,6 +42,52 @@ uint16_t rte_pmd_rvu_lf_npa_pf_func_get(void);
 __rte_internal
 uint16_t rte_pmd_rvu_lf_sso_pf_func_get(void);
 
+/**
+ * Signature of callback function called when an interrupt is received on RVU LF device.
+ *
+ * @param cb_arg
+ *   pointer to the information received on an interrupt
+ */
+typedef void (*rte_pmd_rvu_lf_intr_callback_fn)(void *cb_arg);
+
+/**
+ * Register interrupt callback
+ *
+ * Registers an interrupt callback to be executed when interrupt is raised.
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ * @param irq
+ *   interrupt number for which interrupt will be raised
+ * @param cb
+ *   callback function to be executed
+ * @param cb_arg
+ *   argument to be passed to callback function
+ *
+ * @return 0 on success, negative value otherwise
+ */
+__rte_internal
+int rte_pmd_rvu_lf_irq_register(uint8_t dev_id, unsigned int irq,
+				rte_pmd_rvu_lf_intr_callback_fn cb, void *cb_arg);
+
+/**
+ * Unregister interrupt callback
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ * @param irq
+ *   interrupt number
+ * @param cb
+ *   callback function registered
+ * @param cb_arg
+ *   argument to be passed to callback function
+ *
+ * @return 0 on success, negative value otherwise
+ */
+__rte_internal
+int rte_pmd_rvu_lf_irq_unregister(uint8_t dev_id, unsigned int irq,
+				  rte_pmd_rvu_lf_intr_callback_fn cb, void *cb_arg);
+
 #ifdef __cplusplus
 }
 #endif

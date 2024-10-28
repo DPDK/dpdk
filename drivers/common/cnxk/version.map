@@ -552,5 +552,7 @@ INTERNAL {
 	roc_ree_rule_db_prog;
 	roc_rvu_lf_dev_fini;
 	roc_rvu_lf_dev_init;
+	roc_rvu_lf_irq_register;
+	roc_rvu_lf_irq_unregister;
 	local: *;
 };
