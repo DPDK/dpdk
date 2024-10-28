@@ -10,7 +10,7 @@
 #include <rte_stdatomic.h>
 #include <rte_string_fns.h>
 
-#include "power_acpi_cpufreq.h"
+#include "acpi_cpufreq.h"
 #include "power_common.h"
 
 #define STR_SIZE     1024
@@ -587,3 +587,23 @@ int power_acpi_get_capabilities(unsigned int lcore_id,
 
 	return 0;
 }
+
+static struct rte_power_cpufreq_ops acpi_ops = {
+	.name = "acpi",
+	.init = power_acpi_cpufreq_init,
+	.exit = power_acpi_cpufreq_exit,
+	.check_env_support = power_acpi_cpufreq_check_supported,
+	.get_avail_freqs = power_acpi_cpufreq_freqs,
+	.get_freq = power_acpi_cpufreq_get_freq,
+	.set_freq = power_acpi_cpufreq_set_freq,
+	.freq_down = power_acpi_cpufreq_freq_down,
+	.freq_up = power_acpi_cpufreq_freq_up,
+	.freq_max = power_acpi_cpufreq_freq_max,
+	.freq_min = power_acpi_cpufreq_freq_min,
+	.turbo_status = power_acpi_turbo_status,
+	.enable_turbo = power_acpi_enable_turbo,
+	.disable_turbo = power_acpi_disable_turbo,
+	.get_caps = power_acpi_get_capabilities
+};
+
+RTE_POWER_REGISTER_CPUFREQ_OPS(acpi_ops);

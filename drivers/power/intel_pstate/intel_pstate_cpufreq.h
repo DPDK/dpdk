@@ -2,15 +2,15 @@
  * Copyright(c) 2018 Intel Corporation
  */
 
-#ifndef _POWER_PSTATE_CPUFREQ_H
-#define _POWER_PSTATE_CPUFREQ_H
+#ifndef INTEL_PSTATE_CPUFREQ_H
+#define INTEL_PSTATE_CPUFREQ_H
 
 /**
  * @file
- * RTE Power Management via Intel Pstate driver
+ * Power Management via Intel Pstate driver
  */
 
-#include "rte_power.h"
+#include "power_cpufreq.h"
 
 /**
  * Check if pstate power management is supported.
@@ -214,4 +214,4 @@ int power_pstate_disable_turbo(unsigned int lcore_id);
 int power_pstate_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
 
-#endif
+#endif /* INTEL_PSTATE_CPUFREQ_H */

@@ -9,7 +9,7 @@
 #include "rte_power_guest_channel.h"
 #include "guest_channel.h"
 #include "power_common.h"
-#include "power_kvm_vm.h"
+#include "kvm_vm.h"
 
 #define FD_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"
 
@@ -137,3 +137,23 @@ int power_kvm_vm_get_capabilities(__rte_unused unsigned int lcore_id,
 	POWER_LOG(ERR, "rte_power_get_capabilities is not implemented for Virtual Machine Power Management");
 	return -ENOTSUP;
 }
+
+static struct rte_power_cpufreq_ops kvm_vm_ops = {
+	.name = "kvm-vm",
+	.init = power_kvm_vm_init,
+	.exit = power_kvm_vm_exit,
+	.check_env_support = power_kvm_vm_check_supported,
+	.get_avail_freqs = power_kvm_vm_freqs,
+	.get_freq = power_kvm_vm_get_freq,
+	.set_freq = power_kvm_vm_set_freq,
+	.freq_down = power_kvm_vm_freq_down,
+	.freq_up = power_kvm_vm_freq_up,
+	.freq_max = power_kvm_vm_freq_max,
+	.freq_min = power_kvm_vm_freq_min,
+	.turbo_status = power_kvm_vm_turbo_status,
+	.enable_turbo = power_kvm_vm_enable_turbo,
+	.disable_turbo = power_kvm_vm_disable_turbo,
+	.get_caps = power_kvm_vm_get_capabilities
+};
+
+RTE_POWER_REGISTER_CPUFREQ_OPS(kvm_vm_ops);

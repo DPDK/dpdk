@@ -2,15 +2,15 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#ifndef _POWER_KVM_VM_H
-#define _POWER_KVM_VM_H
+#ifndef KVM_VM_H
+#define KVM_VM_H
 
 /**
  * @file
- * RTE Power Management KVM VM
+ * Power Management KVM VM
  */
 
-#include "rte_power.h"
+#include "power_cpufreq.h"
 
 /**
  * Check if KVM power management is supported.
@@ -196,4 +196,4 @@ int power_kvm_vm_disable_turbo(unsigned int lcore_id);
 int power_kvm_vm_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
 
-#endif
+#endif /* KVM_VM_H */

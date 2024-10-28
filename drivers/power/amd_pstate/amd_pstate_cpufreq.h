@@ -1,27 +1,28 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2021 Intel Corporation
  * Copyright(c) 2021 Arm Limited
+ * Copyright(c) 2024 Advanced Micro Devices, Inc.
  */
 
-#ifndef _POWER_CPPC_CPUFREQ_H
-#define _POWER_CPPC_CPUFREQ_H
+#ifndef AMD_PSTATE_CPUFREQ_H
+#define AMD_PSTATE_CPUFREQ_H
 
 /**
  * @file
- * RTE Power Management via userspace CPPC cpufreq
+ * Power Management via userspace AMD pstate cpufreq
  */
 
-#include "rte_power.h"
+#include "power_cpufreq.h"
 
 /**
- * Check if CPPC power management is supported.
+ * Check if amd p-state power management is supported.
  *
  * @return
  *   - 1 if supported
  *   - 0 if unsupported
  *   - -1 if error, with rte_errno indicating reason for error.
  */
-int power_cppc_cpufreq_check_supported(void);
+int power_amd_pstate_cpufreq_check_supported(void);
 
 /**
  * Initialize power management for a specific lcore. It will check and set the
@@ -35,7 +36,7 @@ int power_cppc_cpufreq_check_supported(void);
  *  - 0 on success.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_init(unsigned int lcore_id);
+int power_amd_pstate_cpufreq_init(unsigned int lcore_id);
 
 /**
  * Exit power management on a specific lcore. It will set the governor to which
@@ -48,7 +49,7 @@ int power_cppc_cpufreq_init(unsigned int lcore_id);
  *  - 0 on success.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_exit(unsigned int lcore_id);
+int power_amd_pstate_cpufreq_exit(unsigned int lcore_id);
 
 /**
  * Get the available frequencies of a specific lcore. The return value will be
@@ -67,7 +68,7 @@ int power_cppc_cpufreq_exit(unsigned int lcore_id);
  * @return
  *  The number of available frequencies.
  */
-uint32_t power_cppc_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs,
+uint32_t power_amd_pstate_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs,
 		uint32_t num);
 
 /**
@@ -81,7 +82,7 @@ uint32_t power_cppc_cpufreq_freqs(unsigned int lcore_id, uint32_t *freqs,
  * @return
  *  The current index of available frequencies.
  */
-uint32_t power_cppc_cpufreq_get_freq(unsigned int lcore_id);
+uint32_t power_amd_pstate_cpufreq_get_freq(unsigned int lcore_id);
 
 /**
  * Set the new frequency for a specific lcore by indicating the index of
@@ -98,7 +99,7 @@ uint32_t power_cppc_cpufreq_get_freq(unsigned int lcore_id);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_set_freq(unsigned int lcore_id, uint32_t index);
+int power_amd_pstate_cpufreq_set_freq(unsigned int lcore_id, uint32_t index);
 
 /**
  * Scale up the frequency of a specific lcore according to the available
@@ -113,7 +114,7 @@ int power_cppc_cpufreq_set_freq(unsigned int lcore_id, uint32_t index);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_freq_up(unsigned int lcore_id);
+int power_amd_pstate_cpufreq_freq_up(unsigned int lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore according to the available
@@ -128,7 +129,7 @@ int power_cppc_cpufreq_freq_up(unsigned int lcore_id);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_freq_down(unsigned int lcore_id);
+int power_amd_pstate_cpufreq_freq_down(unsigned int lcore_id);
 
 /**
  * Scale up the frequency of a specific lcore to the highest according to the
@@ -143,7 +144,7 @@ int power_cppc_cpufreq_freq_down(unsigned int lcore_id);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_freq_max(unsigned int lcore_id);
+int power_amd_pstate_cpufreq_freq_max(unsigned int lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore to the lowest according to the
@@ -158,7 +159,7 @@ int power_cppc_cpufreq_freq_max(unsigned int lcore_id);
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-int power_cppc_cpufreq_freq_min(unsigned int lcore_id);
+int power_amd_pstate_cpufreq_freq_min(unsigned int lcore_id);
 
 /**
  * Get the turbo status of a specific lcore.
@@ -172,7 +173,7 @@ int power_cppc_cpufreq_freq_min(unsigned int lcore_id);
  *  - 0 Turbo Boost is disabled on this lcore.
  *  - Negative on error.
  */
-int power_cppc_turbo_status(unsigned int lcore_id);
+int power_amd_pstate_turbo_status(unsigned int lcore_id);
 
 /**
  * Enable Turbo Boost on a specific lcore.
@@ -185,7 +186,7 @@ int power_cppc_turbo_status(unsigned int lcore_id);
  *  - 0 Turbo Boost is enabled successfully on this lcore.
  *  - Negative on error.
  */
-int power_cppc_enable_turbo(unsigned int lcore_id);
+int power_amd_pstate_enable_turbo(unsigned int lcore_id);
 
 /**
  * Disable Turbo Boost on a specific lcore.
@@ -198,7 +199,7 @@ int power_cppc_enable_turbo(unsigned int lcore_id);
  *  - 0 Turbo Boost disabled successfully on this lcore.
  *  - Negative on error.
  */
-int power_cppc_disable_turbo(unsigned int lcore_id);
+int power_amd_pstate_disable_turbo(unsigned int lcore_id);
 
 /**
  * Returns power capabilities for a specific lcore.
@@ -212,7 +213,7 @@ int power_cppc_disable_turbo(unsigned int lcore_id);
  *  - 0 on success.
  *  - Negative on error.
  */
-int power_cppc_get_capabilities(unsigned int lcore_id,
+int power_amd_pstate_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
 
-#endif /* _POWER_CPPC_CPUFREQ_H */
+#endif /* AMD_PSTATE_CPUFREQ_H */

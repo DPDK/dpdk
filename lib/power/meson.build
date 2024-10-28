@@ -12,19 +12,14 @@ if not is_linux
     reason = 'only supported on Linux'
 endif
 sources = files(
-        'guest_channel.c',
-        'power_acpi_cpufreq.c',
-        'power_amd_pstate_cpufreq.c',
         'power_common.c',
-        'power_cppc_cpufreq.c',
-        'power_kvm_vm.c',
         'power_intel_uncore.c',
-        'power_pstate_cpufreq.c',
         'rte_power.c',
         'rte_power_uncore.c',
         'rte_power_pmd_mgmt.c',
 )
 headers = files(
+        'power_cpufreq.h',
         'rte_power.h',
         'rte_power_guest_channel.h',
         'rte_power_pmd_mgmt.h',

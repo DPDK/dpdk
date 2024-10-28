@@ -13,7 +13,7 @@
 
 
 #include <rte_log.h>
-#include <rte_power.h>
+#include <rte_power_guest_channel.h>
 
 #include "guest_channel.h"
 

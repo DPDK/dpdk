@@ -2,15 +2,15 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#ifndef _POWER_ACPI_CPUFREQ_H
-#define _POWER_ACPI_CPUFREQ_H
+#ifndef ACPI_CPUFREQ_H
+#define ACPI_CPUFREQ_H
 
 /**
  * @file
- * RTE Power Management via userspace ACPI cpufreq
+ * Power Management via userspace ACPI cpufreq
  */
 
-#include "rte_power.h"
+#include "power_cpufreq.h"
 
 /**
  * Check if ACPI power management is supported.
@@ -214,4 +214,4 @@ int power_acpi_disable_turbo(unsigned int lcore_id);
 int power_acpi_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
 
-#endif
+#endif /* ACPI_CPUFREQ_H */

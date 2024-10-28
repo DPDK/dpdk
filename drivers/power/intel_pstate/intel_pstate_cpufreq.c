@@ -15,7 +15,7 @@
 #include <rte_stdatomic.h>
 
 #include "rte_power_pmd_mgmt.h"
-#include "power_pstate_cpufreq.h"
+#include "intel_pstate_cpufreq.h"
 #include "power_common.h"
 
 /* macros used for rounding frequency to nearest 100000 */
@@ -898,3 +898,23 @@ int power_pstate_get_capabilities(unsigned int lcore_id,
 
 	return 0;
 }
+
+static struct rte_power_cpufreq_ops pstate_ops = {
+	.name = "intel-pstate",
+	.init = power_pstate_cpufreq_init,
+	.exit = power_pstate_cpufreq_exit,
+	.check_env_support = power_pstate_cpufreq_check_supported,
+	.get_avail_freqs = power_pstate_cpufreq_freqs,
+	.get_freq = power_pstate_cpufreq_get_freq,
+	.set_freq = power_pstate_cpufreq_set_freq,
+	.freq_down = power_pstate_cpufreq_freq_down,
+	.freq_up = power_pstate_cpufreq_freq_up,
+	.freq_max = power_pstate_cpufreq_freq_max,
+	.freq_min = power_pstate_cpufreq_freq_min,
+	.turbo_status = power_pstate_turbo_status,
+	.enable_turbo = power_pstate_enable_turbo,
+	.disable_turbo = power_pstate_disable_turbo,
+	.get_caps = power_pstate_get_capabilities
+};
+
+RTE_POWER_REGISTER_CPUFREQ_OPS(pstate_ops);

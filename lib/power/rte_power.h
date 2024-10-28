@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
+ * Copyright(c) 2024 Advanced Micro Devices, Inc.
  */
 
 #ifndef _RTE_POWER_H
@@ -14,14 +15,21 @@
 #include <rte_log.h>
 #include <rte_power_guest_channel.h>
 
+#include "power_cpufreq.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Power Management Environment State */
-enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM,
-		PM_ENV_PSTATE_CPUFREQ, PM_ENV_CPPC_CPUFREQ,
-		PM_ENV_AMD_PSTATE_CPUFREQ};
+enum power_management_env {
+	PM_ENV_NOT_SET = 0,
+	PM_ENV_ACPI_CPUFREQ,
+	PM_ENV_KVM_VM,
+	PM_ENV_PSTATE_CPUFREQ,
+	PM_ENV_CPPC_CPUFREQ,
+	PM_ENV_AMD_PSTATE_CPUFREQ
+};
 
 /**
  * Check if a specific power management environment type is supported on a
@@ -108,10 +116,7 @@ int rte_power_exit(unsigned int lcore_id);
  * @return
  *  The number of available frequencies.
  */
-typedef uint32_t (*rte_power_freqs_t)(unsigned int lcore_id, uint32_t *freqs,
-		uint32_t num);
-
-extern rte_power_freqs_t rte_power_freqs;
+uint32_t rte_power_freqs(unsigned int lcore_id, uint32_t *freqs, uint32_t num);
 
 /**
  * Return the current index of available frequencies of a specific lcore.
@@ -124,9 +129,7 @@ extern rte_power_freqs_t rte_power_freqs;
  * @return
  *  The current index of available frequencies.
  */
-typedef uint32_t (*rte_power_get_freq_t)(unsigned int lcore_id);
-
-extern rte_power_get_freq_t rte_power_get_freq;
+uint32_t rte_power_get_freq(unsigned int lcore_id);
 
 /**
  * Set the new frequency for a specific lcore by indicating the index of
@@ -144,13 +147,12 @@ extern rte_power_get_freq_t rte_power_get_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_set_freq_t)(unsigned int lcore_id, uint32_t index);
-
-extern rte_power_set_freq_t rte_power_set_freq;
+uint32_t rte_power_set_freq(unsigned int lcore_id, uint32_t index);
 
 /**
- * Function pointer definition for generic frequency change functions. Review
- * each environments specific documentation for usage.
+ * Scale up the frequency of a specific lcore according to the available
+ * frequencies.
+ * Review each environments specific documentation for usage.
  *
  * @param lcore_id
  *  lcore id.
@@ -160,66 +162,92 @@ extern rte_power_set_freq_t rte_power_set_freq;
  *  - 0 on success without frequency changed.
  *  - Negative on error.
  */
-typedef int (*rte_power_freq_change_t)(unsigned int lcore_id);
-
-/**
- * Scale up the frequency of a specific lcore according to the available
- * frequencies.
- * Review each environments specific documentation for usage.
- */
-extern rte_power_freq_change_t rte_power_freq_up;
+int rte_power_freq_up(unsigned int lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore according to the available
  * frequencies.
  * Review each environments specific documentation for usage.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 on success with frequency changed.
+ *  - 0 on success without frequency changed.
+ *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_down;
+int rte_power_freq_down(unsigned int lcore_id);
 
 /**
  * Scale up the frequency of a specific lcore to the highest according to the
  * available frequencies.
  * Review each environments specific documentation for usage.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 on success with frequency changed.
+ *  - 0 on success without frequency changed.
+ *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_max;
+int rte_power_freq_max(unsigned int lcore_id);
 
 /**
  * Scale down the frequency of a specific lcore to the lowest according to the
  * available frequencies.
  * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 on success with frequency changed.
+ *  - 0 on success without frequency changed.
+ *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_min;
+int rte_power_freq_min(unsigned int lcore_id);
 
 /**
  * Query the Turbo Boost status of a specific lcore.
  * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 turbo boost enabled.
+ *  - 0 turbo boost disabled.
+ *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_turbo_status;
+int rte_power_turbo_status(unsigned int lcore_id);
 
 /**
  * Enable Turbo Boost for this lcore.
  * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_enable_turbo;
+int rte_power_freq_enable_turbo(unsigned int lcore_id);
 
 /**
  * Disable Turbo Boost for this lcore.
  * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
  */
-extern rte_power_freq_change_t rte_power_freq_disable_turbo;
-
-/**
- * Power capabilities summary.
- */
-struct rte_power_core_capabilities {
-	union {
-		uint64_t capabilities;
-		struct {
-			uint64_t turbo:1;	/**< Turbo can be enabled. */
-			uint64_t priority:1;	/**< SST-BF high freq core */
-		};
-	};
-};
+int rte_power_freq_disable_turbo(unsigned int lcore_id);
 
 /**
  * Returns power capabilities for a specific lcore.
@@ -235,10 +263,8 @@ struct rte_power_core_capabilities {
  *  - 0 on success.
  *  - Negative on error.
  */
-typedef int (*rte_power_get_capabilities_t)(unsigned int lcore_id,
+int rte_power_get_capabilities(unsigned int lcore_id,
 		struct rte_power_core_capabilities *caps);
-
-extern rte_power_get_capabilities_t rte_power_get_capabilities;
 
 #ifdef __cplusplus
 }

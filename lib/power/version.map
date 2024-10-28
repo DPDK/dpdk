@@ -52,3 +52,17 @@ EXPERIMENTAL {
 	rte_power_uncore_freqs;
 	rte_power_unset_uncore_env;
 };
+
+INTERNAL {
+	global:
+
+	rte_power_register_cpufreq_ops;
+	rte_power_logtype;
+	cpufreq_check_scaling_driver;
+	power_get_lcore_mapped_cpu_id;
+	power_set_governor;
+	open_core_sysfs_file;
+	read_core_sysfs_u32;
+	read_core_sysfs_s;
+	write_core_sysfs_s;
+};

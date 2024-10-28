@@ -13,7 +13,7 @@
 
 #include "power_common.h"
 
-RTE_LOG_REGISTER_DEFAULT(power_logtype, INFO);
+RTE_LOG_REGISTER_DEFAULT(rte_power_logtype, INFO);
 
 #define POWER_SYSFILE_SCALING_DRIVER   \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_driver"

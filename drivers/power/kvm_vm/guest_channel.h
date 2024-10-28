@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2014 Intel Corporation
  */
-#ifndef _GUEST_CHANNEL_H
-#define _GUEST_CHANNEL_H
+
+#ifndef GUEST_CHANNEL_H
+#define GUEST_CHANNEL_H
 
 /**
  * Check if any Virtio-Serial VM end-points exist in path.
@@ -81,4 +82,4 @@ int power_guest_channel_read_msg(void *pkt,
 		size_t pkt_len,
 		unsigned int lcore_id);
 
-#endif
+#endif /* GUEST_CHANNEL_H */
