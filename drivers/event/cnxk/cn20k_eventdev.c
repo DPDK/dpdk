@@ -114,10 +114,15 @@ static void
 cn20k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 {
 #if defined(RTE_ARCH_ARM64)
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 
 	event_dev->enqueue_burst = cn20k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn20k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn20k_sso_hws_enq_fwd_burst;
+
+	event_dev->dequeue_burst = cn20k_sso_hws_deq_burst;
+	if (dev->deq_tmo_ns)
+		event_dev->dequeue_burst = cn20k_sso_hws_tmo_deq_burst;
 
 #else
 	RTE_SET_USED(event_dev);
