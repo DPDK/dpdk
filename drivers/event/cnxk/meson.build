@@ -234,6 +234,49 @@ sources += files(
         'cn20k_eventdev.c',
         'cn20k_worker.c',
 )
+
+if host_machine.cpu_family().startswith('aarch') and not disable_template
+sources += files(
+        'deq/cn20k/deq_0_15_burst.c',
+        'deq/cn20k/deq_16_31_burst.c',
+        'deq/cn20k/deq_32_47_burst.c',
+        'deq/cn20k/deq_48_63_burst.c',
+        'deq/cn20k/deq_64_79_burst.c',
+        'deq/cn20k/deq_80_95_burst.c',
+        'deq/cn20k/deq_96_111_burst.c',
+        'deq/cn20k/deq_112_127_burst.c',
+        'deq/cn20k/deq_0_15_seg_burst.c',
+        'deq/cn20k/deq_16_31_seg_burst.c',
+        'deq/cn20k/deq_32_47_seg_burst.c',
+        'deq/cn20k/deq_48_63_seg_burst.c',
+        'deq/cn20k/deq_64_79_seg_burst.c',
+        'deq/cn20k/deq_80_95_seg_burst.c',
+        'deq/cn20k/deq_96_111_seg_burst.c',
+        'deq/cn20k/deq_112_127_seg_burst.c',
+        'deq/cn20k/deq_0_15_tmo_burst.c',
+        'deq/cn20k/deq_16_31_tmo_burst.c',
+        'deq/cn20k/deq_32_47_tmo_burst.c',
+        'deq/cn20k/deq_48_63_tmo_burst.c',
+        'deq/cn20k/deq_64_79_tmo_burst.c',
+        'deq/cn20k/deq_80_95_tmo_burst.c',
+        'deq/cn20k/deq_96_111_tmo_burst.c',
+        'deq/cn20k/deq_112_127_tmo_burst.c',
+        'deq/cn20k/deq_0_15_tmo_seg_burst.c',
+        'deq/cn20k/deq_16_31_tmo_seg_burst.c',
+        'deq/cn20k/deq_32_47_tmo_seg_burst.c',
+        'deq/cn20k/deq_48_63_tmo_seg_burst.c',
+        'deq/cn20k/deq_64_79_tmo_seg_burst.c',
+        'deq/cn20k/deq_80_95_tmo_seg_burst.c',
+        'deq/cn20k/deq_96_111_tmo_seg_burst.c',
+        'deq/cn20k/deq_112_127_tmo_seg_burst.c',
+        'deq/cn20k/deq_all_offload.c',
+)
+
+else
+sources += files(
+        'deq/cn20k/deq_all_offload.c',
+)
+endif
 endif
 
 extra_flags = ['-flax-vector-conversions', '-Wno-strict-aliasing']

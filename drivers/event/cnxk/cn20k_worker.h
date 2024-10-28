@@ -8,16 +8,64 @@
 #include <rte_eventdev.h>
 
 #include "cn20k_eventdev.h"
+#include "cn20k_rx.h"
 #include "cnxk_worker.h"
+
+/* CN20K Rx event fastpath */
+
+static __rte_always_inline void
+cn20k_wqe_to_mbuf(uint64_t wqe, const uint64_t __mbuf, uint8_t port_id, const uint32_t tag,
+		  const uint32_t flags, const void *const lookup_mem, uintptr_t cpth,
+		  uintptr_t sa_base)
+{
+	const uint64_t mbuf_init =
+		0x100010000ULL | RTE_PKTMBUF_HEADROOM | (flags & NIX_RX_OFFLOAD_TSTAMP_F ? 8 : 0);
+	struct rte_mbuf *mbuf = (struct rte_mbuf *)__mbuf;
+
+	cn20k_nix_cqe_to_mbuf((struct nix_cqe_hdr_s *)wqe, tag, (struct rte_mbuf *)mbuf, lookup_mem,
+			      mbuf_init | ((uint64_t)port_id) << 48, cpth, sa_base, flags);
+}
+
+static void
+cn20k_sso_process_tstamp(uint64_t u64, uint64_t mbuf, struct cnxk_timesync_info *tstamp)
+{
+	uint64_t tstamp_ptr;
+	uint8_t laptr;
+
+	laptr = (uint8_t)*(uint64_t *)(u64 + (CNXK_SSO_WQE_LAYR_PTR * sizeof(uint64_t)));
+	if (laptr == sizeof(uint64_t)) {
+		/* Extracting tstamp, if PTP enabled*/
+		tstamp_ptr = *(uint64_t *)(((struct nix_wqe_hdr_s *)u64) + CNXK_SSO_WQE_SG_PTR);
+		cn20k_nix_mbuf_to_tstamp((struct rte_mbuf *)mbuf, tstamp, true,
+					 (uint64_t *)tstamp_ptr);
+	}
+}
 
 static __rte_always_inline void
 cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32_t flags)
 {
-	RTE_SET_USED(ws);
-	RTE_SET_USED(flags);
+	uintptr_t sa_base = 0;
 
 	u64[0] = (u64[0] & (0x3ull << 32)) << 6 | (u64[0] & (0x3FFull << 36)) << 4 |
 		 (u64[0] & 0xffffffff);
+	if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV) {
+		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
+		uintptr_t cpth = 0;
+		uint64_t mbuf;
+
+		mbuf = u64[1] - sizeof(struct rte_mbuf);
+		rte_prefetch0((void *)mbuf);
+
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(((struct rte_mbuf *)mbuf)->pool, (void **)&mbuf, 1, 1);
+
+		u64[0] = CNXK_CLR_SUB_EVENT(u64[0]);
+		cn20k_wqe_to_mbuf(u64[1], mbuf, port, u64[0] & 0xFFFFF, flags, ws->lookup_mem, cpth,
+				  sa_base);
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
+			cn20k_sso_process_tstamp(u64[1], mbuf, ws->tstamp[port]);
+		u64[1] = mbuf;
+	}
 }
 
 static __rte_always_inline uint16_t
@@ -150,11 +198,112 @@ int __rte_hot cn20k_sso_hws_preschedule_modify(void *port,
 					       enum rte_event_dev_preschedule_type type);
 void __rte_hot cn20k_sso_hws_preschedule(void *port, enum rte_event_dev_preschedule_type type);
 
-uint16_t __rte_hot cn20k_sso_hws_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks);
-uint16_t __rte_hot cn20k_sso_hws_deq_burst(void *port, struct rte_event ev[], uint16_t nb_events,
-					   uint64_t timeout_ticks);
-uint16_t __rte_hot cn20k_sso_hws_tmo_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks);
-uint16_t __rte_hot cn20k_sso_hws_tmo_deq_burst(void *port, struct rte_event ev[],
-					       uint16_t nb_events, uint64_t timeout_ticks);
+#define R(name, flags)                                                                             \
+	uint16_t __rte_hot cn20k_sso_hws_deq_burst_##name(                                         \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_tmo_burst_##name(                                     \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_ca_burst_##name(                                      \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_tmo_ca_burst_##name(                                  \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_seg_burst_##name(                                     \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_tmo_seg_burst_##name(                                 \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_ca_seg_burst_##name(                                  \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_deq_tmo_ca_seg_burst_##name(                              \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_burst_##name(                                    \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_tmo_burst_##name(                                \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_ca_burst_##name(                                 \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_tmo_ca_burst_##name(                             \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_seg_burst_##name(                                \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_tmo_seg_burst_##name(                            \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_ca_seg_burst_##name(                             \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);    \
+	uint16_t __rte_hot cn20k_sso_hws_reas_deq_tmo_ca_seg_burst_##name(                         \
+		void *port, struct rte_event ev[], uint16_t nb_events, uint64_t timeout_ticks);
+
+NIX_RX_FASTPATH_MODES
+#undef R
+
+#define SSO_DEQ(fn, flags)                                                                         \
+	static __rte_always_inline uint16_t fn(void *port, struct rte_event *ev,                   \
+					       uint64_t timeout_ticks)                             \
+	{                                                                                          \
+		struct cn20k_sso_hws *ws = port;                                                   \
+		RTE_SET_USED(timeout_ticks);                                                       \
+		if (ws->swtag_req) {                                                               \
+			ws->swtag_req = 0;                                                         \
+			ws->gw_rdata = cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);       \
+			return 1;                                                                  \
+		}                                                                                  \
+		return cn20k_sso_hws_get_work(ws, ev, flags);                                      \
+	}
+
+#define SSO_DEQ_SEG(fn, flags) SSO_DEQ(fn, flags | NIX_RX_MULTI_SEG_F)
+
+#define SSO_DEQ_TMO(fn, flags)                                                                     \
+	static __rte_always_inline uint16_t fn(void *port, struct rte_event *ev,                   \
+					       uint64_t timeout_ticks)                             \
+	{                                                                                          \
+		struct cn20k_sso_hws *ws = port;                                                   \
+		uint16_t ret = 1;                                                                  \
+		uint64_t iter;                                                                     \
+		if (ws->swtag_req) {                                                               \
+			ws->swtag_req = 0;                                                         \
+			ws->gw_rdata = cnxk_sso_hws_swtag_wait(ws->base + SSOW_LF_GWS_WQE0);       \
+			return ret;                                                                \
+		}                                                                                  \
+		ret = cn20k_sso_hws_get_work(ws, ev, flags);                                       \
+		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)                         \
+			ret = cn20k_sso_hws_get_work(ws, ev, flags);                               \
+		return ret;                                                                        \
+	}
+
+#define SSO_DEQ_TMO_SEG(fn, flags) SSO_DEQ_TMO(fn, flags | NIX_RX_MULTI_SEG_F)
+
+#define R(name, flags)                                                                             \
+	SSO_DEQ(cn20k_sso_hws_deq_##name, flags)                                                   \
+	SSO_DEQ(cn20k_sso_hws_reas_deq_##name, flags | NIX_RX_REAS_F)                              \
+	SSO_DEQ_SEG(cn20k_sso_hws_deq_seg_##name, flags)                                           \
+	SSO_DEQ_SEG(cn20k_sso_hws_reas_deq_seg_##name, flags | NIX_RX_REAS_F)                      \
+	SSO_DEQ_TMO(cn20k_sso_hws_deq_tmo_##name, flags)                                           \
+	SSO_DEQ_TMO(cn20k_sso_hws_reas_deq_tmo_##name, flags | NIX_RX_REAS_F)                      \
+	SSO_DEQ_TMO_SEG(cn20k_sso_hws_deq_tmo_seg_##name, flags)                                   \
+	SSO_DEQ_TMO_SEG(cn20k_sso_hws_reas_deq_tmo_seg_##name, flags | NIX_RX_REAS_F)
+
+NIX_RX_FASTPATH_MODES
+#undef R
+
+#define SSO_CMN_DEQ_BURST(fnb, fn, flags)                                                          \
+	uint16_t __rte_hot fnb(void *port, struct rte_event ev[], uint16_t nb_events,              \
+			       uint64_t timeout_ticks)                                             \
+	{                                                                                          \
+		RTE_SET_USED(nb_events);                                                           \
+		return fn(port, ev, timeout_ticks);                                                \
+	}
+
+#define SSO_CMN_DEQ_SEG_BURST(fnb, fn, flags)                                                      \
+	uint16_t __rte_hot fnb(void *port, struct rte_event ev[], uint16_t nb_events,              \
+			       uint64_t timeout_ticks)                                             \
+	{                                                                                          \
+		RTE_SET_USED(nb_events);                                                           \
+		return fn(port, ev, timeout_ticks);                                                \
+	}
+
+uint16_t __rte_hot cn20k_sso_hws_deq_burst_all_offload(void *port, struct rte_event ev[],
+						       uint16_t nb_events, uint64_t timeout_ticks);
+uint16_t __rte_hot cn20k_sso_hws_deq_burst_all_offload_tst(void *port, struct rte_event ev[],
+							   uint16_t nb_events,
+							   uint64_t timeout_ticks);
 
 #endif

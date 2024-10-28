@@ -11,6 +11,9 @@
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
 
+#define CN20K_SET_EVDEV_DEQ_OP(dev, deq_op, deq_ops)                                               \
+	deq_op = deq_ops[dev->rx_offloads & (NIX_RX_OFFLOAD_MAX - 1)]
+
 static void *
 cn20k_sso_init_hws_mem(void *arg, uint8_t port_id)
 {
@@ -165,20 +168,123 @@ cn20k_sso_rsrc_init(void *arg, uint8_t hws, uint8_t hwgrp)
 	return roc_sso_rsrc_init(&dev->sso, hws, hwgrp, nb_tim_lfs);
 }
 
+#if defined(RTE_ARCH_ARM64)
+static inline void
+cn20k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
+{
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	const event_dequeue_burst_t sso_hws_deq_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_deq_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_deq_tmo_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_deq_tmo_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_deq_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_deq_tmo_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_deq_tmo_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_reas_deq_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_tmo_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_reas_deq_tmo_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_reas_deq_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	const event_dequeue_burst_t sso_hws_reas_deq_tmo_seg_burst[NIX_RX_OFFLOAD_MAX] = {
+#define R(name, flags) [flags] = cn20k_sso_hws_reas_deq_tmo_seg_burst_##name,
+		NIX_RX_FASTPATH_MODES
+#undef R
+	};
+
+	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
+		if (dev->rx_offloads & NIX_RX_REAS_F) {
+			CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+					       sso_hws_reas_deq_seg_burst);
+			if (dev->is_timeout_deq)
+				CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_tmo_seg_burst);
+		} else {
+			CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+					       sso_hws_deq_seg_burst);
+
+			if (dev->is_timeout_deq)
+				CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_tmo_seg_burst);
+		}
+	} else {
+		if (dev->rx_offloads & NIX_RX_REAS_F) {
+			CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+					       sso_hws_reas_deq_burst);
+
+			if (dev->is_timeout_deq)
+				CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_reas_deq_tmo_burst);
+		} else {
+			CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst, sso_hws_deq_burst);
+
+			if (dev->is_timeout_deq)
+				CN20K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
+						       sso_hws_deq_tmo_burst);
+		}
+	}
+
+#else
+	RTE_SET_USED(event_dev);
+#endif
+}
+
+static inline void
+cn20k_sso_fp_blk_fns_set(struct rte_eventdev *event_dev)
+{
+#if defined(CNXK_DIS_TMPLT_FUNC)
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	event_dev->dequeue_burst = cn20k_sso_hws_deq_burst_all_offload;
+	if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F)
+		event_dev->dequeue_burst = cn20k_sso_hws_deq_burst_all_offload_tst;
+#else
+	RTE_SET_USED(event_dev);
+#endif
+}
+#endif
 
 static void
 cn20k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 {
 #if defined(RTE_ARCH_ARM64)
-	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	cn20k_sso_fp_blk_fns_set(event_dev);
+	cn20k_sso_fp_tmplt_fns_set(event_dev);
 
 	event_dev->enqueue_burst = cn20k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn20k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn20k_sso_hws_enq_fwd_burst;
-
-	event_dev->dequeue_burst = cn20k_sso_hws_deq_burst;
-	if (dev->deq_tmo_ns)
-		event_dev->dequeue_burst = cn20k_sso_hws_tmo_deq_burst;
 
 	event_dev->profile_switch = cn20k_sso_hws_profile_switch;
 	event_dev->preschedule_modify = cn20k_sso_hws_preschedule_modify;
@@ -286,7 +392,8 @@ cn20k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 		ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
 	} while (ptag & (BIT_ULL(62) | BIT_ULL(58) | BIT_ULL(56) | BIT_ULL(54)));
 
-	cn20k_sso_hws_get_work_empty(ws, &ev, 0);
+	cn20k_sso_hws_get_work_empty(ws, &ev,
+				     (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F | NIX_RX_MULTI_SEG_F);
 	if (is_pend && ev.u64)
 		if (flush_cb)
 			flush_cb(event_dev->data->dev_id, ev, args);
@@ -312,7 +419,8 @@ cn20k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 
 	if (CNXK_TT_FROM_TAG(plt_read64(ws->base + SSOW_LF_GWS_PRF_WQE0)) != SSO_TT_EMPTY) {
 		plt_write64(BIT_ULL(16) | 1, ws->base + SSOW_LF_GWS_OP_GET_WORK0);
-		cn20k_sso_hws_get_work_empty(ws, &ev, 0);
+		cn20k_sso_hws_get_work_empty(
+			ws, &ev, (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F | NIX_RX_MULTI_SEG_F);
 		if (ev.u64) {
 			if (flush_cb)
 				flush_cb(event_dev->data->dev_id, ev, args);
