@@ -389,6 +389,25 @@ cn20k_sso_start(struct rte_eventdev *event_dev)
 	return rc;
 }
 
+static void
+cn20k_sso_stop(struct rte_eventdev *event_dev)
+{
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint8_t hws[RTE_EVENT_MAX_PORTS_PER_DEV];
+	int i;
+
+	for (i = 0; i < event_dev->data->nb_ports; i++)
+		hws[i] = i;
+	roc_sso_hws_gwc_invalidate(&dev->sso, hws, event_dev->data->nb_ports);
+	cnxk_sso_stop(event_dev, cnxk_sso_hws_reset, cn20k_sso_hws_flush_events);
+}
+
+static int
+cn20k_sso_close(struct rte_eventdev *event_dev)
+{
+	return cnxk_sso_close(event_dev, cn20k_sso_hws_unlink);
+}
+
 static struct eventdev_ops cn20k_sso_dev_ops = {
 	.dev_infos_get = cn20k_sso_info_get,
 	.dev_configure = cn20k_sso_dev_configure,
@@ -409,6 +428,8 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.timeout_ticks = cnxk_sso_timeout_ticks,
 
 	.dev_start = cn20k_sso_start,
+	.dev_stop = cn20k_sso_stop,
+	.dev_close = cn20k_sso_close,
 };
 
 static int
