@@ -75,6 +75,7 @@ cn20k_sso_hws_setup(void *arg, void *hws, uintptr_t grp_base)
 	ws->fc_cache_space = (int64_t __rte_atomic *)dev->fc_cache_space;
 	ws->aw_lmt = dev->sso.lmt_base;
 	ws->gw_wdata = cnxk_sso_hws_prf_wdata(dev);
+	ws->lmt_base = dev->sso.lmt_base;
 
 	/* Set get_work timeout for HWS */
 	val = NSEC2USEC(dev->deq_tmo_ns);
@@ -595,7 +596,8 @@ cn20k_sso_rx_adapter_caps_get(const struct rte_eventdev *event_dev,
 	else
 		*caps = RTE_EVENT_ETH_RX_ADAPTER_CAP_INTERNAL_PORT |
 			RTE_EVENT_ETH_RX_ADAPTER_CAP_MULTI_EVENTQ |
-			RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID;
+			RTE_EVENT_ETH_RX_ADAPTER_CAP_OVERRIDE_FLOW_ID |
+			RTE_EVENT_ETH_RX_ADAPTER_CAP_EVENT_VECTOR;
 
 	return 0;
 }
@@ -642,6 +644,156 @@ cn20k_sso_tstamp_hdl_update(uint16_t port_id, uint16_t flags, bool ptp_en)
 }
 
 static int
+cn20k_sso_rxq_enable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id, uint16_t port_id,
+		     const struct rte_event_eth_rx_adapter_queue_conf *queue_conf, int agq)
+{
+	struct roc_nix_rq *rq;
+	uint32_t tag_mask;
+	uint16_t wqe_skip;
+	uint8_t tt;
+	int rc;
+
+	rq = &cnxk_eth_dev->rqs[rq_id];
+	if (queue_conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+		tag_mask = agq;
+		tt = SSO_TT_AGG;
+		rq->flow_tag_width = 0;
+	} else {
+		tag_mask = (port_id & 0xFF) << 20;
+		tag_mask |= (RTE_EVENT_TYPE_ETHDEV << 28);
+		tt = queue_conf->ev.sched_type;
+		rq->flow_tag_width = 20;
+		if (queue_conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID) {
+			rq->flow_tag_width = 0;
+			tag_mask |= queue_conf->ev.flow_id;
+		}
+	}
+
+	rq->tag_mask = tag_mask;
+	rq->sso_ena = 1;
+	rq->tt = tt;
+	rq->hwgrp = queue_conf->ev.queue_id;
+	wqe_skip = RTE_ALIGN_CEIL(sizeof(struct rte_mbuf), ROC_CACHE_LINE_SZ);
+	wqe_skip = wqe_skip / ROC_CACHE_LINE_SZ;
+	rq->wqe_skip = wqe_skip;
+
+	rc = roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
+	return rc;
+}
+
+static int
+cn20k_sso_rx_adapter_vwqe_enable(struct cnxk_sso_evdev *dev, uint16_t port_id, uint16_t rq_id,
+				 const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	uint32_t agq, tag_mask, stag_mask;
+	struct roc_sso_agq_data data;
+	int rc;
+
+	tag_mask = (port_id & 0xff) << 20;
+	if (queue_conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_FLOW_ID_VALID)
+		tag_mask |= queue_conf->ev.flow_id;
+	else
+		tag_mask |= rq_id;
+
+	stag_mask = tag_mask;
+	tag_mask |= RTE_EVENT_TYPE_ETHDEV_VECTOR << 28;
+	stag_mask |= RTE_EVENT_TYPE_ETHDEV << 28;
+
+	memset(&data, 0, sizeof(struct roc_sso_agq_data));
+	data.tag = tag_mask;
+	data.tt = queue_conf->ev.sched_type;
+	data.stag = stag_mask;
+	data.vwqe_aura = roc_npa_aura_handle_to_aura(queue_conf->vector_mp->pool_id);
+	data.vwqe_max_sz_exp = rte_log2_u32(queue_conf->vector_sz);
+	data.vwqe_wait_tmo = queue_conf->vector_timeout_ns / ((SSO_AGGR_DEF_TMO + 1) * 100);
+	data.xqe_type = 0;
+
+	rc = roc_sso_hwgrp_agq_alloc(&dev->sso, queue_conf->ev.queue_id, &data);
+	if (rc < 0)
+		return rc;
+
+	agq = roc_sso_hwgrp_agq_from_tag(&dev->sso, queue_conf->ev.queue_id, tag_mask, 0);
+	return agq;
+}
+
+static int
+cn20k_rx_adapter_queue_add(const struct rte_eventdev *event_dev, const struct rte_eth_dev *eth_dev,
+			   int32_t rx_queue_id,
+			   const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint16_t port = eth_dev->data->port_id;
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	int i, rc = 0, agq = 0;
+
+	if (rx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+			rc |= cn20k_rx_adapter_queue_add(event_dev, eth_dev, i, queue_conf);
+	} else {
+		rxq_sp = cnxk_eth_rxq_to_sp(eth_dev->data->rx_queues[rx_queue_id]);
+		cnxk_sso_updt_xae_cnt(dev, rxq_sp, RTE_EVENT_TYPE_ETHDEV);
+		rc = cnxk_sso_xae_reconfigure((struct rte_eventdev *)(uintptr_t)event_dev);
+		if (queue_conf->rx_queue_flags & RTE_EVENT_ETH_RX_ADAPTER_QUEUE_EVENT_VECTOR) {
+			cnxk_sso_updt_xae_cnt(dev, queue_conf->vector_mp,
+					      RTE_EVENT_TYPE_ETHDEV_VECTOR);
+			rc = cnxk_sso_xae_reconfigure((struct rte_eventdev *)(uintptr_t)event_dev);
+			if (rc < 0)
+				return rc;
+
+			rc = cn20k_sso_rx_adapter_vwqe_enable(dev, port, rx_queue_id, queue_conf);
+			if (rc < 0)
+				return rc;
+			agq = rc;
+		}
+
+		rc = cn20k_sso_rxq_enable(cnxk_eth_dev, (uint16_t)rx_queue_id, port, queue_conf,
+					  agq);
+
+		/* Propagate force bp devarg */
+		cnxk_eth_dev->nix.force_rx_aura_bp = dev->force_ena_bp;
+		cnxk_sso_tstamp_cfg(port, eth_dev, dev);
+		cnxk_eth_dev->nb_rxq_sso++;
+	}
+
+	if (rc < 0) {
+		plt_err("Failed to configure Rx adapter port=%d, q=%d", port,
+			queue_conf->ev.queue_id);
+		return rc;
+	}
+
+	dev->rx_offloads |= cnxk_eth_dev->rx_offload_flags;
+	return 0;
+}
+
+static int
+cn20k_rx_adapter_queue_del(const struct rte_eventdev *event_dev, const struct rte_eth_dev *eth_dev,
+			   int32_t rx_queue_id)
+{
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	struct roc_nix_rq *rxq;
+	int i, rc = 0;
+
+	RTE_SET_USED(event_dev);
+	if (rx_queue_id < 0) {
+		for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+			cn20k_rx_adapter_queue_del(event_dev, eth_dev, i);
+	} else {
+		rxq = &cnxk_eth_dev->rqs[rx_queue_id];
+		if (rxq->tt == SSO_TT_AGG)
+			roc_sso_hwgrp_agq_free(&dev->sso, rxq->hwgrp, rxq->tag_mask);
+		rc = cnxk_sso_rxq_disable(eth_dev, (uint16_t)rx_queue_id);
+		cnxk_eth_dev->nb_rxq_sso--;
+	}
+
+	if (rc < 0)
+		plt_err("Failed to clear Rx adapter config port=%d, q=%d", eth_dev->data->port_id,
+			rx_queue_id);
+	return rc;
+}
+
+static int
 cn20k_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 			       const struct rte_eth_dev *eth_dev, int32_t rx_queue_id,
 			       const struct rte_event_eth_rx_adapter_queue_conf *queue_conf)
@@ -657,7 +809,7 @@ cn20k_sso_rx_adapter_queue_add(const struct rte_eventdev *event_dev,
 	if (rc)
 		return -EINVAL;
 
-	rc = cnxk_sso_rx_adapter_queue_add(event_dev, eth_dev, rx_queue_id, queue_conf);
+	rc = cn20k_rx_adapter_queue_add(event_dev, eth_dev, rx_queue_id, queue_conf);
 	if (rc)
 		return -EINVAL;
 
@@ -690,7 +842,29 @@ cn20k_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 	if (rc)
 		return -EINVAL;
 
-	return cnxk_sso_rx_adapter_queue_del(event_dev, eth_dev, rx_queue_id);
+	return cn20k_rx_adapter_queue_del(event_dev, eth_dev, rx_queue_id);
+}
+
+static int
+cn20k_sso_rx_adapter_vector_limits(const struct rte_eventdev *dev,
+				   const struct rte_eth_dev *eth_dev,
+				   struct rte_event_eth_rx_adapter_vector_limits *limits)
+{
+	int ret;
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(eth_dev);
+	ret = strncmp(eth_dev->device->driver->name, "net_cn20k", 8);
+	if (ret)
+		return -ENOTSUP;
+
+	limits->log2_sz = true;
+	limits->min_sz = 1 << ROC_NIX_VWQE_MIN_SIZE_LOG2;
+	limits->max_sz = 1 << ROC_NIX_VWQE_MAX_SIZE_LOG2;
+	limits->min_timeout_ns = (SSO_AGGR_DEF_TMO + 1) * 100;
+	limits->max_timeout_ns = (BITMASK_ULL(11, 0) + 1) * limits->min_timeout_ns;
+
+	return 0;
 }
 
 static int
@@ -704,7 +878,8 @@ cn20k_sso_tx_adapter_caps_get(const struct rte_eventdev *dev, const struct rte_e
 	if (ret)
 		*caps = 0;
 	else
-		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT;
+		*caps = RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT |
+			RTE_EVENT_ETH_TX_ADAPTER_CAP_EVENT_VECTOR;
 
 	return 0;
 }
@@ -806,6 +981,8 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.eth_rx_adapter_queue_del = cn20k_sso_rx_adapter_queue_del,
 	.eth_rx_adapter_start = cnxk_sso_rx_adapter_start,
 	.eth_rx_adapter_stop = cnxk_sso_rx_adapter_stop,
+
+	.eth_rx_adapter_vector_limits_get = cn20k_sso_rx_adapter_vector_limits,
 
 	.eth_tx_adapter_caps_get = cn20k_sso_tx_adapter_caps_get,
 	.eth_tx_adapter_queue_add = cn20k_sso_tx_adapter_queue_add,

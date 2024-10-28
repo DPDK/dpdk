@@ -42,6 +42,58 @@ cn20k_sso_process_tstamp(uint64_t u64, uint64_t mbuf, struct cnxk_timesync_info 
 }
 
 static __rte_always_inline void
+cn20k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struct cn20k_sso_hws *ws)
+{
+	uint64_t mbuf_init = 0x100010000ULL | RTE_PKTMBUF_HEADROOM;
+	struct cnxk_timesync_info *tstamp = ws->tstamp[port_id];
+	void *lookup_mem = ws->lookup_mem;
+	uintptr_t lbase = ws->lmt_base;
+	struct rte_event_vector *vec;
+	uint16_t nb_mbufs, non_vec;
+	struct rte_mbuf **wqe;
+	struct rte_mbuf *mbuf;
+	uint64_t sa_base = 0;
+	uintptr_t cpth = 0;
+	int i;
+
+	mbuf_init |= ((uint64_t)port_id) << 48;
+	vec = (struct rte_event_vector *)vwqe;
+	wqe = vec->mbufs;
+
+	rte_prefetch0(&vec->ptrs[0]);
+#define OBJS_PER_CLINE (RTE_CACHE_LINE_SIZE / sizeof(void *))
+	for (i = OBJS_PER_CLINE; i < vec->nb_elem; i += OBJS_PER_CLINE)
+		rte_prefetch0(&vec->ptrs[i]);
+
+	if (flags & NIX_RX_OFFLOAD_TSTAMP_F && tstamp)
+		mbuf_init |= 8;
+
+	nb_mbufs = RTE_ALIGN_FLOOR(vec->nb_elem, NIX_DESCS_PER_LOOP);
+	nb_mbufs = cn20k_nix_recv_pkts_vector(&mbuf_init, wqe, nb_mbufs, flags | NIX_RX_VWQE_F,
+					      lookup_mem, tstamp, lbase, 0);
+	wqe += nb_mbufs;
+	non_vec = vec->nb_elem - nb_mbufs;
+
+	while (non_vec) {
+		struct nix_cqe_hdr_s *cqe = (struct nix_cqe_hdr_s *)wqe[0];
+
+		mbuf = (struct rte_mbuf *)((char *)cqe - sizeof(struct rte_mbuf));
+
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
+
+		cn20k_nix_cqe_to_mbuf(cqe, cqe->tag, mbuf, lookup_mem, mbuf_init, cpth, sa_base,
+				      flags);
+
+		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
+			cn20k_sso_process_tstamp((uint64_t)wqe[0], (uint64_t)mbuf, tstamp);
+		wqe[0] = (struct rte_mbuf *)mbuf;
+		non_vec--;
+		wqe++;
+	}
+}
+
+static __rte_always_inline void
 cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32_t flags)
 {
 	uintptr_t sa_base = 0;
@@ -65,6 +117,17 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 		if (flags & NIX_RX_OFFLOAD_TSTAMP_F)
 			cn20k_sso_process_tstamp(u64[1], mbuf, ws->tstamp[port]);
 		u64[1] = mbuf;
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_ETHDEV_VECTOR) {
+		uint8_t port = CNXK_SUB_EVENT_FROM_TAG(u64[0]);
+		__uint128_t vwqe_hdr = *(__uint128_t *)u64[1];
+
+		vwqe_hdr = ((vwqe_hdr >> 64) & 0xFFF) | BIT_ULL(31) | ((vwqe_hdr & 0xFFFF) << 48) |
+			   ((uint64_t)port << 32);
+		*(uint64_t *)u64[1] = (uint64_t)vwqe_hdr;
+		cn20k_process_vwqe(u64[1], port, flags, ws);
+		/* Mark vector mempool object as get */
+		RTE_MEMPOOL_CHECK_COOKIES(rte_mempool_from_obj((void *)u64[1]), (void **)&u64[1], 1,
+					  1);
 	}
 }
 

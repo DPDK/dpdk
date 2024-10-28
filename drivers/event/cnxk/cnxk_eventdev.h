@@ -266,6 +266,9 @@ int cnxk_sso_rx_adapter_start(const struct rte_eventdev *event_dev,
 			      const struct rte_eth_dev *eth_dev);
 int cnxk_sso_rx_adapter_stop(const struct rte_eventdev *event_dev,
 			     const struct rte_eth_dev *eth_dev);
+void cnxk_sso_tstamp_cfg(uint16_t port_id, const struct rte_eth_dev *eth_dev,
+			 struct cnxk_sso_evdev *dev);
+int cnxk_sso_rxq_disable(const struct rte_eth_dev *eth_dev, uint16_t rq_id);
 int cnxk_sso_tx_adapter_queue_add(const struct rte_eventdev *event_dev,
 				  const struct rte_eth_dev *eth_dev,
 				  int32_t tx_queue_id);

@@ -140,15 +140,99 @@ cn20k_sso_tx_one(struct cn20k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd, ui
 }
 
 static __rte_always_inline uint16_t
+cn20k_sso_vwqe_split_tx(struct cn20k_sso_hws *ws, struct rte_mbuf **mbufs, uint16_t nb_mbufs,
+			uint64_t *cmd, const uint64_t *txq_data, const uint32_t flags)
+{
+	uint16_t count = 0, port, queue, ret = 0, last_idx = 0;
+	struct cn20k_eth_txq *txq;
+	int32_t space;
+	int i;
+
+	port = mbufs[0]->port;
+	queue = rte_event_eth_tx_adapter_txq_get(mbufs[0]);
+	for (i = 0; i < nb_mbufs; i++) {
+		if (port != mbufs[i]->port || queue != rte_event_eth_tx_adapter_txq_get(mbufs[i])) {
+			if (count) {
+				txq = (struct cn20k_eth_txq
+					       *)(txq_data[(txq_data[port] >> 48) + queue] &
+						  (BIT_ULL(48) - 1));
+				/* Transmit based on queue depth */
+				space = cn20k_sso_sq_depth(txq);
+				if (space < count)
+					goto done;
+				cn20k_nix_xmit_pkts_vector(txq, (uint64_t *)ws, &mbufs[last_idx],
+							   count, cmd, flags | NIX_TX_VWQE_F);
+				ret += count;
+				count = 0;
+			}
+			port = mbufs[i]->port;
+			queue = rte_event_eth_tx_adapter_txq_get(mbufs[i]);
+			last_idx = i;
+		}
+		count++;
+	}
+	if (count) {
+		txq = (struct cn20k_eth_txq *)(txq_data[(txq_data[port] >> 48) + queue] &
+					       (BIT_ULL(48) - 1));
+		/* Transmit based on queue depth */
+		space = cn20k_sso_sq_depth(txq);
+		if (space < count)
+			goto done;
+		cn20k_nix_xmit_pkts_vector(txq, (uint64_t *)ws, &mbufs[last_idx], count, cmd,
+					   flags | NIX_TX_VWQE_F);
+		ret += count;
+	}
+done:
+	return ret;
+}
+
+static __rte_always_inline uint16_t
 cn20k_sso_hws_event_tx(struct cn20k_sso_hws *ws, struct rte_event *ev, uint64_t *cmd,
 		       const uint64_t *txq_data, const uint32_t flags)
 {
+	struct cn20k_eth_txq *txq;
 	struct rte_mbuf *m;
 	uintptr_t lmt_addr;
 	uint16_t lmt_id;
 
 	lmt_addr = ws->lmt_base;
 	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+
+	if (ev->event_type & RTE_EVENT_TYPE_VECTOR) {
+		struct rte_mbuf **mbufs = ev->vec->mbufs;
+		uint64_t meta = *(uint64_t *)ev->vec;
+		uint16_t offset, nb_pkts, left;
+		int32_t space;
+
+		nb_pkts = meta & 0xFFFF;
+		offset = (meta >> 16) & 0xFFF;
+		if (meta & BIT(31)) {
+			txq = (struct cn20k_eth_txq
+				       *)(txq_data[(txq_data[meta >> 32] >> 48) + (meta >> 48)] &
+					  (BIT_ULL(48) - 1));
+
+			/* Transmit based on queue depth */
+			space = cn20k_sso_sq_depth(txq);
+			if (space <= 0)
+				return 0;
+			nb_pkts = nb_pkts < space ? nb_pkts : (uint16_t)space;
+			cn20k_nix_xmit_pkts_vector(txq, (uint64_t *)ws, mbufs + offset, nb_pkts,
+						   cmd, flags | NIX_TX_VWQE_F);
+		} else {
+			nb_pkts = cn20k_sso_vwqe_split_tx(ws, mbufs + offset, nb_pkts, cmd,
+							  txq_data, flags);
+		}
+		left = (meta & 0xFFFF) - nb_pkts;
+
+		if (!left) {
+			rte_mempool_put(rte_mempool_from_obj(ev->vec), ev->vec);
+		} else {
+			*(uint64_t *)ev->vec =
+				(meta & ~0xFFFFFFFUL) | (((uint32_t)nb_pkts + offset) << 16) | left;
+		}
+		rte_prefetch0(ws);
+		return !left;
+	}
 
 	m = ev->mbuf;
 	return cn20k_sso_tx_one(ws, m, cmd, lmt_id, lmt_addr, ev->sched_type, txq_data, flags);

@@ -167,9 +167,10 @@ cnxk_sso_rxq_enable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id,
 	return rc;
 }
 
-static int
-cnxk_sso_rxq_disable(struct cnxk_eth_dev *cnxk_eth_dev, uint16_t rq_id)
+int
+cnxk_sso_rxq_disable(const struct rte_eth_dev *eth_dev, uint16_t rq_id)
 {
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
 	struct roc_nix_rq *rq;
 
 	rq = &cnxk_eth_dev->rqs[rq_id];
@@ -209,10 +210,11 @@ cnxk_sso_rx_adapter_vwqe_enable(struct cnxk_eth_dev *cnxk_eth_dev,
 	return roc_nix_rq_modify(&cnxk_eth_dev->nix, rq, 0);
 }
 
-static void
-cnxk_sso_tstamp_cfg(uint16_t port_id, struct cnxk_eth_dev *cnxk_eth_dev,
-		    struct cnxk_sso_evdev *dev)
+void
+cnxk_sso_tstamp_cfg(uint16_t port_id, const struct rte_eth_dev *eth_dev, struct cnxk_sso_evdev *dev)
 {
+	struct cnxk_eth_dev *cnxk_eth_dev = eth_dev->data->dev_private;
+
 	if (cnxk_eth_dev->rx_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP || cnxk_eth_dev->ptp_en)
 		dev->tstamp[port_id] = &cnxk_eth_dev->tstamp;
 }
@@ -263,7 +265,7 @@ cnxk_sso_rx_adapter_queue_add(
 
 		/* Propagate force bp devarg */
 		cnxk_eth_dev->nix.force_rx_aura_bp = dev->force_ena_bp;
-		cnxk_sso_tstamp_cfg(eth_dev->data->port_id, cnxk_eth_dev, dev);
+		cnxk_sso_tstamp_cfg(eth_dev->data->port_id, eth_dev, dev);
 		cnxk_eth_dev->nb_rxq_sso++;
 	}
 
@@ -290,7 +292,7 @@ cnxk_sso_rx_adapter_queue_del(const struct rte_eventdev *event_dev,
 		for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
 			cnxk_sso_rx_adapter_queue_del(event_dev, eth_dev, i);
 	} else {
-		rc = cnxk_sso_rxq_disable(cnxk_eth_dev, (uint16_t)rx_queue_id);
+		rc = cnxk_sso_rxq_disable(eth_dev, (uint16_t)rx_queue_id);
 		cnxk_eth_dev->nb_rxq_sso--;
 
 		/* Enable drop_re if it was disabled earlier */
