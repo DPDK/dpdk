@@ -1534,6 +1534,12 @@ T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: doc/guides/rawdevs/cnxk_gpio.rst
 F: drivers/raw/cnxk_gpio/
 
+Marvell CNXK RVU LF
+M: Akhil Goyal <gakhil@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
+F: drivers/raw/cnxk_rvu_lf/
+F: doc/guides/rawdevs/cnxk_rvu_lf.rst
+
 NTB
 M: Jingjing Wu <jingjing.wu@intel.com>
 F: drivers/raw/ntb/

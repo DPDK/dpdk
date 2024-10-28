@@ -120,6 +120,9 @@ INTERNAL {
 	roc_idev_nix_rx_chan_set;
 	roc_idev_nix_rx_inject_get;
 	roc_idev_nix_rx_inject_set;
+	roc_idev_rvu_lf_free;
+	roc_idev_rvu_lf_get;
+	roc_idev_rvu_lf_set;
 	roc_ml_reg_read64;
 	roc_ml_reg_write64;
 	roc_ml_reg_read32;
@@ -545,5 +548,7 @@ INTERNAL {
 	roc_ree_rule_db_get;
 	roc_ree_rule_db_len_get;
 	roc_ree_rule_db_prog;
+	roc_rvu_lf_dev_fini;
+	roc_rvu_lf_dev_init;
 	local: *;
 };

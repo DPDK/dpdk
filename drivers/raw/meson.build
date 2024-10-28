@@ -8,6 +8,7 @@ endif
 drivers = [
         'cnxk_bphy',
         'cnxk_gpio',
+        'cnxk_rvu_lf',
         'dpaa2_cmdif',
         'ifpga',
         'ntb',

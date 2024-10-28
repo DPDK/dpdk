@@ -71,6 +71,7 @@ sources = files(
         'roc_tim_irq.c',
         'roc_utils.c',
         'roc_ree.c',
+        'roc_rvu_lf.c',
 )
 
 # Security common code

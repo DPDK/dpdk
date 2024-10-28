@@ -141,6 +141,7 @@ struct dev {
 	void *roc_cpt;
 	void *roc_tim;
 	void *roc_ml;
+	void *roc_rvu_lf;
 	bool disable_shared_lmt; /* false(default): shared lmt mode enabled */
 	const struct plt_memzone *lmt_mz;
 	struct mbox_sync sync;

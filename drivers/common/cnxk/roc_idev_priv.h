@@ -36,6 +36,7 @@ struct idev_cfg {
 	struct roc_bphy *bphy;
 	struct roc_cpt *cpt;
 	struct roc_sso *sso;
+	struct roc_rvu_lf_head rvu_lf_list;
 	struct roc_mcs_head mcs_list;
 	struct nix_inl_dev *nix_inl_dev;
 	struct idev_nix_inl_cfg inl_cfg;

@@ -29,4 +29,8 @@ uint16_t *__roc_api roc_idev_nix_rx_chan_base_get(void);
 void __roc_api roc_idev_nix_rx_chan_set(uint16_t port, uint16_t chan);
 
 uint16_t __roc_api roc_idev_nix_inl_dev_pffunc_get(void);
+
+struct roc_rvu_lf *__roc_api roc_idev_rvu_lf_get(uint8_t rvu_lf_idx);
+void __roc_api roc_idev_rvu_lf_set(struct roc_rvu_lf *rvu);
+void __roc_api roc_idev_rvu_lf_free(struct roc_rvu_lf *rvu);
 #endif /* _ROC_IDEV_H_ */
