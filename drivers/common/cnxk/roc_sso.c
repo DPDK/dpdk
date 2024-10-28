@@ -500,9 +500,231 @@ roc_sso_hws_gwc_invalidate(struct roc_sso *roc_sso, uint8_t *hws,
 	mbox_put(mbox);
 }
 
+static void
+sso_agq_op_wait(struct roc_sso *roc_sso, uint16_t hwgrp)
+{
+	uint64_t reg;
+
+	reg = plt_read64(roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	while (reg & BIT_ULL(2)) {
+		plt_delay_us(100);
+		reg = plt_read64(roc_sso_hwgrp_base_get(roc_sso, hwgrp) +
+				 SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	}
+}
+
 int
-roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
-			struct roc_sso_hwgrp_stats *stats)
+roc_sso_hwgrp_agq_alloc(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_agq_data *data)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_aggr_setconfig *req;
+	struct sso_agq_ctx *ctx;
+	uint32_t cnt, off;
+	struct mbox *mbox;
+	uintptr_t ptr;
+	uint64_t reg;
+	int rc;
+
+	if (sso->agg_mem[hwgrp] == 0) {
+		mbox = mbox_get(sso->dev.mbox);
+		req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+		if (req == NULL) {
+			mbox_process(mbox);
+			req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+			if (req == NULL) {
+				plt_err("Failed to allocate AGQ config mbox.");
+				mbox_put(mbox);
+				return -EIO;
+			}
+		}
+
+		req->hwgrp = hwgrp;
+		req->npa_pf_func = idev_npa_pffunc_get();
+		rc = mbox_process(mbox);
+		if (rc < 0) {
+			plt_err("Failed to set HWGRP AGQ config rc=%d", rc);
+			mbox_put(mbox);
+			return rc;
+		}
+
+		mbox_put(mbox);
+
+		sso->agg_mem[hwgrp] =
+			(uintptr_t)plt_zmalloc(SSO_AGGR_MIN_CTX * sizeof(struct sso_agq_ctx),
+					       roc_model_optimal_align_sz());
+		if (sso->agg_mem[hwgrp] == 0)
+			return -ENOMEM;
+		sso->agg_cnt[hwgrp] = SSO_AGGR_MIN_CTX;
+		sso->agg_used[hwgrp] = 0;
+		plt_wmb();
+		plt_write64(sso->agg_mem[hwgrp],
+			    roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_BASE);
+		reg = (plt_log2_u32(SSO_AGGR_MIN_CTX) - 6) << 16;
+		reg |= (SSO_AGGR_DEF_TMO << 4) | 1;
+		plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+	}
+
+	if (sso->agg_cnt[hwgrp] >= SSO_AGGR_MAX_CTX)
+		return -ENOSPC;
+
+	if (sso->agg_cnt[hwgrp] == sso->agg_used[hwgrp]) {
+		ptr = sso->agg_mem[hwgrp];
+		cnt = sso->agg_cnt[hwgrp] << 1;
+		sso->agg_mem[hwgrp] = (uintptr_t)plt_zmalloc(cnt * sizeof(struct sso_agq_ctx),
+							     roc_model_optimal_align_sz());
+		if (sso->agg_mem[hwgrp] == 0) {
+			sso->agg_mem[hwgrp] = ptr;
+			return -ENOMEM;
+		}
+
+		memcpy((void *)sso->agg_mem[hwgrp], (void *)ptr,
+		       sso->agg_cnt[hwgrp] * sizeof(struct sso_agq_ctx));
+		plt_wmb();
+		sso_agq_op_wait(roc_sso, hwgrp);
+		/* Base address has changed, evict old entries. */
+		plt_write64(sso->agg_mem[hwgrp],
+			    roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_BASE);
+		reg = plt_read64(roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+		reg &= ~GENMASK_ULL(19, 16);
+		reg |= (uint64_t)(plt_log2_u32(cnt) - 6) << 16;
+		plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+		reg = SSO_LF_AGGR_INSTOP_GLOBAL_EVICT << 4;
+		plt_write64(reg,
+			    roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+		sso_agq_op_wait(roc_sso, hwgrp);
+		plt_free((void *)ptr);
+
+		sso->agg_cnt[hwgrp] = cnt;
+		off = sso->agg_used[hwgrp];
+	} else {
+		ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+		for (cnt = 0; cnt < sso->agg_cnt[hwgrp]; cnt++) {
+			if (!ctx[cnt].ena)
+				break;
+		}
+		if (cnt == sso->agg_cnt[hwgrp])
+			return -EINVAL;
+		off = cnt;
+	}
+
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	ctx += off;
+	ctx->ena = 1;
+	ctx->tt = data->tt;
+	ctx->tag = data->tag;
+	ctx->swqe_tag = data->stag;
+	ctx->cnt_ena = data->cnt_ena;
+	ctx->xqe_type = data->xqe_type;
+	ctx->vtimewait = data->vwqe_wait_tmo;
+	ctx->vwqe_aura = data->vwqe_aura;
+	ctx->max_vsize_exp = data->vwqe_max_sz_exp - 2;
+
+	plt_wmb();
+	sso->agg_used[hwgrp]++;
+
+	return 0;
+}
+
+void
+roc_sso_hwgrp_agq_free(struct roc_sso *roc_sso, uint16_t hwgrp, uint32_t agq_id)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_agq_ctx *ctx;
+	uint64_t reg;
+
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	ctx += agq_id;
+
+	if (!ctx->ena)
+		return;
+
+	reg = SSO_LF_AGGR_INSTOP_FLUSH << 4;
+	reg |= (uint64_t)(agq_id << 8);
+
+	plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	sso_agq_op_wait(roc_sso, hwgrp);
+
+	memset(ctx, 0, sizeof(struct sso_agq_ctx));
+	plt_wmb();
+	sso->agg_used[hwgrp]--;
+
+	/* Flush the context from CTX Cache */
+	reg = SSO_LF_AGGR_INSTOP_EVICT << 4;
+	reg |= (uint64_t)(agq_id << 8);
+
+	plt_write64(reg, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_INSTOP);
+	sso_agq_op_wait(roc_sso, hwgrp);
+}
+
+void
+roc_sso_hwgrp_agq_release(struct roc_sso *roc_sso, uint16_t hwgrp)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_aggr_setconfig *req;
+	struct sso_agq_ctx *ctx;
+	struct mbox *mbox;
+	uint32_t cnt;
+	int rc;
+
+	if (!roc_sso->feat.eva_present)
+		return;
+
+	plt_write64(0, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CFG);
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	for (cnt = 0; cnt < sso->agg_cnt[hwgrp]; cnt++) {
+		if (!ctx[cnt].ena)
+			continue;
+		roc_sso_hwgrp_agq_free(roc_sso, hwgrp, cnt);
+	}
+
+	plt_write64(0, roc_sso_hwgrp_base_get(roc_sso, hwgrp) + SSO_LF_GGRP_AGGR_CTX_BASE);
+	plt_free((void *)sso->agg_mem[hwgrp]);
+	sso->agg_mem[hwgrp] = 0;
+	sso->agg_cnt[hwgrp] = 0;
+	sso->agg_used[hwgrp] = 0;
+
+	mbox = mbox_get(sso->dev.mbox);
+	req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+	if (req == NULL) {
+		mbox_process(mbox);
+		req = mbox_alloc_msg_sso_aggr_setconfig(mbox);
+		if (req == NULL) {
+			plt_err("Failed to allocate AGQ config mbox.");
+			mbox_put(mbox);
+			return;
+		}
+	}
+
+	req->hwgrp = hwgrp;
+	req->npa_pf_func = 0;
+	rc = mbox_process(mbox);
+	if (rc < 0)
+		plt_err("Failed to set HWGRP AGQ config rc=%d", rc);
+	mbox_put(mbox);
+}
+
+uint32_t
+roc_sso_hwgrp_agq_from_tag(struct roc_sso *roc_sso, uint16_t hwgrp, uint32_t tag_mask,
+			   uint8_t xqe_type)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct sso_agq_ctx *ctx;
+	uint32_t i;
+
+	plt_rmb();
+	ctx = (struct sso_agq_ctx *)sso->agg_mem[hwgrp];
+	for (i = 0; i < sso->agg_used[hwgrp]; i++) {
+		if (!ctx[i].ena)
+			continue;
+		if (ctx[i].tag == tag_mask && ctx[i].xqe_type == xqe_type)
+			return i;
+	}
+
+	return UINT32_MAX;
+}
+
+int
+roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint16_t hwgrp, struct roc_sso_hwgrp_stats *stats)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct sso_grp_stats *req_rsp;
@@ -1058,9 +1280,13 @@ void
 roc_sso_rsrc_fini(struct roc_sso *roc_sso)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	uint32_t cnt;
 
 	if (!roc_sso->nb_hws && !roc_sso->nb_hwgrp)
 		return;
+
+	for (cnt = 0; cnt < roc_sso->nb_hwgrp; cnt++)
+		roc_sso_hwgrp_agq_release(roc_sso, cnt);
 
 	sso_unregister_irqs_priv(roc_sso, sso->pci_dev->intr_handle,
 				 roc_sso->nb_hws, roc_sso->nb_hwgrp);

@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "roc_bits.h"
+#include "roc_constants.h"
 
 extern struct roc_model *roc_model;
 
@@ -155,6 +156,18 @@ roc_model_is_cn20k(void)
 	return 0;
 #endif
 	return roc_model_runtime_is_cn20k();
+}
+
+static inline uint16_t
+roc_model_optimal_align_sz(void)
+{
+	if (roc_model_is_cn9k())
+		return ROC_ALIGN;
+	if (roc_model_is_cn10k())
+		return ROC_ALIGN;
+	if (roc_model_is_cn20k())
+		return ROC_ALIGN << 1;
+	return 128;
 }
 
 static inline uint64_t

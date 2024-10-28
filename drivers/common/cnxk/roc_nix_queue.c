@@ -794,9 +794,6 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg, boo
 		aq->rq.good_utag = rq->tag_mask >> 24;
 		aq->rq.bad_utag = rq->tag_mask >> 24;
 		aq->rq.ltag = rq->tag_mask & BITMASK_ULL(24, 0);
-
-		if (rq->vwqe_ena)
-			aq->rq.wqe_aura = roc_npa_aura_handle_to_aura(rq->vwqe_aura_handle);
 	} else {
 		/* CQ mode */
 		aq->rq.sso_ena = 0;
@@ -881,8 +878,6 @@ nix_rq_cfg(struct dev *dev, struct roc_nix_rq *rq, uint16_t qints, bool cfg, boo
 			aq->rq_mask.good_utag = ~aq->rq_mask.good_utag;
 			aq->rq_mask.bad_utag = ~aq->rq_mask.bad_utag;
 			aq->rq_mask.ltag = ~aq->rq_mask.ltag;
-			if (rq->vwqe_ena)
-				aq->rq_mask.wqe_aura = ~aq->rq_mask.wqe_aura;
 		} else {
 			/* CQ mode */
 			aq->rq_mask.sso_ena = ~aq->rq_mask.sso_ena;

@@ -505,6 +505,10 @@ INTERNAL {
 	roc_sso_dev_fini;
 	roc_sso_dev_init;
 	roc_sso_dump;
+	roc_sso_hwgrp_agq_alloc;
+	roc_sso_hwgrp_agq_free;
+	roc_sso_hwgrp_agq_from_tag;
+	roc_sso_hwgrp_agq_release;
 	roc_sso_hwgrp_alloc_xaq;
 	roc_sso_hwgrp_base_get;
 	roc_sso_hwgrp_free_xaq_aura;

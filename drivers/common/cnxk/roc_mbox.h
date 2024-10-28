@@ -149,6 +149,10 @@ struct mbox_msghdr {
 	  msg_rsp)                                                             \
 	M(SSO_GRP_STASH_CONFIG, 0x614, sso_grp_stash_config,                   \
 	  sso_grp_stash_cfg, msg_rsp)                                          \
+	M(SSO_AGGR_SET_CONFIG, 0x615, sso_aggr_setconfig, sso_aggr_setconfig,  \
+	  msg_rsp)                                                             \
+	M(SSO_AGGR_GET_STATS, 0x616, sso_aggr_get_stats, sso_info_req,         \
+	  sso_aggr_stats)                                                      \
 	M(SSO_GET_HW_INFO, 0x617, sso_get_hw_info, msg_req, sso_hw_info)       \
 	/* TIM mbox IDs (range 0x800 - 0x9FF) */                               \
 	M(TIM_LF_ALLOC, 0x800, tim_lf_alloc, tim_lf_alloc_req,                 \
@@ -2191,6 +2195,13 @@ struct sso_grp_stash_cfg {
 	uint8_t __io num_linesm1 : 4;
 };
 
+struct sso_aggr_setconfig {
+	struct mbox_msghdr hdr;
+	uint16_t __io npa_pf_func;
+	uint16_t __io hwgrp;
+	uint64_t __io rsvd[2];
+};
+
 struct sso_grp_stats {
 	struct mbox_msghdr hdr;
 	uint16_t __io grp;
@@ -2208,6 +2219,16 @@ struct sso_hws_stats {
 	struct mbox_msghdr hdr;
 	uint16_t __io hws;
 	uint64_t __io arbitration;
+};
+
+struct sso_aggr_stats {
+	struct mbox_msghdr hdr;
+	uint16_t __io grp;
+	uint64_t __io flushed;
+	uint64_t __io completed;
+	uint64_t __io npa_fail;
+	uint64_t __io timeout;
+	uint64_t __io rsvd[4];
 };
 
 /* CPT mailbox error codes
