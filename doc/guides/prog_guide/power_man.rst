@@ -203,6 +203,9 @@ to achieve high performance: L3 cache, on-die memory controller, etc.
 Significant power savings can be achieved by reducing the uncore frequency
 to its lowest value.
 
+Intel Uncore
+~~~~~~~~~~~~
+
 The Linux kernel provides the driver "intel-uncore-frequency"
 to control the uncore frequency limits for x86 platform.
 The driver is available from kernel version 5.6 and above.
@@ -210,6 +213,19 @@ Also CONFIG_INTEL_UNCORE_FREQ_CONTROL will need to be enabled in the kernel,
 which was added in 5.6.
 This manipulates the context of MSR 0x620,
 which sets min/max of the uncore for the SKU.
+
+AMD EPYC Uncore
+~~~~~~~~~~~~~~~
+
+On AMD EPYC platforms, the Host System Management Port (HSMP) kernel module
+facilitates user-level access to HSMP mailboxes,
+which are implemented by the firmware in the System Management Unit (SMU).
+The AMD HSMP driver is available starting from kernel version 5.18.
+Please ensure that ``CONFIG_AMD_HSMP`` is enabled in your kernel configuration.
+
+Additionally, the EPYC System Management Interface In-band Library for Linux
+offers essential API, enabling user-space software
+to effectively manage system functions.
 
 Uncore API Overview
 ~~~~~~~~~~~~~~~~~~~

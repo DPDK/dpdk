@@ -4,6 +4,7 @@
 drivers = [
         'acpi',
         'amd_pstate',
+        'amd_uncore',
         'cppc',
         'intel_pstate',
         'intel_uncore',
