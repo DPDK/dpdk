@@ -41,7 +41,7 @@
 #include <rte_udp.h>
 #include <rte_string_fns.h>
 #include <rte_timer.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 #include <rte_spinlock.h>
 #include <rte_metrics.h>
 #include <rte_telemetry.h>

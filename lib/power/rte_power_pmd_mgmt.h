@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #include <rte_log.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -3,12 +3,12 @@
  * Copyright(c) 2024 Advanced Micro Devices, Inc.
  */
 
-#ifndef _RTE_POWER_H
-#define _RTE_POWER_H
+#ifndef RTE_POWER_CPUFREQ_H
+#define RTE_POWER_CPUFREQ_H
 
 /**
  * @file
- * RTE Power Management
+ * CPU Frequency Management
  */
 
 #include <rte_common.h>
@@ -270,4 +270,4 @@ int rte_power_get_capabilities(unsigned int lcore_id,
 }
 #endif
 
-#endif
+#endif /* RTE_POWER_CPUFREQ_H */

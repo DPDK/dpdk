@@ -30,7 +30,7 @@ test_power_caps(void)
 }
 
 #else
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 #define TEST_POWER_LCORE_ID      2U
 #define TEST_POWER_LCORE_INVALID ((unsigned)RTE_MAX_LCORE)

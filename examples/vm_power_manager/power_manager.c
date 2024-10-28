@@ -15,7 +15,7 @@
 #include <sys/types.h>
 
 #include <rte_log.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 #include <rte_spinlock.h>
 
 #include "channel_manager.h"

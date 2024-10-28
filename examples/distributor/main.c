@@ -17,7 +17,7 @@
 #include <rte_prefetch.h>
 #include <rte_distributor.h>
 #include <rte_pause.h>
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024

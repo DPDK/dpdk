@@ -22,7 +22,7 @@ test_power(void)
 
 #else
 
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 static int
 test_power(void)

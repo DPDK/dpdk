@@ -31,7 +31,7 @@
 #ifdef RTE_NET_I40E
 #include <rte_pmd_i40e.h>
 #endif
-#include <rte_power.h>
+#include <rte_power_cpufreq.h>
 
 #include <libvirt/libvirt.h>
 #include "channel_monitor.h"
