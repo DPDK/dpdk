@@ -191,8 +191,8 @@ API Overview for Ethernet PMD Power Management
 * **Set Scaling Max Freq**: Set the maximum frequency (kHz) to be used in Frequency
   Scaling mode.
 
-Intel Uncore API
-----------------
+Uncore API
+----------
 
 Abstract
 ~~~~~~~~
@@ -211,10 +211,10 @@ which was added in 5.6.
 This manipulates the context of MSR 0x620,
 which sets min/max of the uncore for the SKU.
 
-API Overview for Intel Uncore
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Uncore API Overview
+~~~~~~~~~~~~~~~~~~~
 
-Overview of each function in the Intel Uncore API,
+Overview of each function in the Uncore API,
 with explanation of what they do.
 Each function should not be called in the fast path.
 

@@ -57,6 +57,7 @@ INTERNAL {
 	global:
 
 	rte_power_register_cpufreq_ops;
+	rte_power_register_uncore_ops;
 	rte_power_logtype;
 	cpufreq_check_scaling_driver;
 	power_get_lcore_mapped_cpu_id;

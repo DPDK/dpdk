@@ -2,20 +2,15 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
-#ifndef POWER_INTEL_UNCORE_H
-#define POWER_INTEL_UNCORE_H
+#ifndef INTEL_UNCORE_H
+#define INTEL_UNCORE_H
 
 /**
  * @file
- * RTE Intel Uncore Frequency Management
+ * Intel Uncore Frequency Management
  */
 
-#include "rte_power.h"
-#include "rte_power_uncore.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "power_uncore_ops.h"
 
 /**
  * Initialize uncore frequency management for specific die on a package.
@@ -219,8 +214,4 @@ power_intel_uncore_get_num_pkgs(void);
 unsigned int
 power_intel_uncore_get_num_dies(unsigned int pkg);
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* POWER_INTEL_UNCORE_H */
+#endif /* INTEL_UNCORE_H */

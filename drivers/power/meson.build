@@ -6,6 +6,7 @@ drivers = [
         'amd_pstate',
         'cppc',
         'intel_pstate',
+        'intel_uncore',
         'kvm_vm',
 ]
 

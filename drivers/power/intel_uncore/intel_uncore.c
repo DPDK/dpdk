@@ -8,7 +8,7 @@
 
 #include <rte_memcpy.h>
 
-#include "power_intel_uncore.h"
+#include "intel_uncore.h"
 #include "power_common.h"
 
 #define MAX_NUMA_DIE 8
@@ -475,3 +475,19 @@ power_intel_uncore_get_num_dies(unsigned int pkg)
 
 	return count;
 }
+
+static struct rte_power_uncore_ops intel_uncore_ops = {
+	.name = "intel-uncore",
+	.init = power_intel_uncore_init,
+	.exit = power_intel_uncore_exit,
+	.get_avail_freqs = power_intel_uncore_freqs,
+	.get_num_pkgs = power_intel_uncore_get_num_pkgs,
+	.get_num_dies = power_intel_uncore_get_num_dies,
+	.get_num_freqs = power_intel_uncore_get_num_freqs,
+	.get_freq = power_get_intel_uncore_freq,
+	.set_freq = power_set_intel_uncore_freq,
+	.freq_max = power_intel_uncore_freq_max,
+	.freq_min = power_intel_uncore_freq_min,
+};
+
+RTE_POWER_REGISTER_UNCORE_OPS(intel_uncore_ops);
