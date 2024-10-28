@@ -32,15 +32,6 @@ fail:
 	return -EINVAL;
 }
 
-static inline void
-cnxk_tim_format_event(const struct rte_event_timer *const tim,
-		      struct cnxk_tim_ent *const entry)
-{
-	entry->w0 = (tim->ev.event & 0xFFC000000000) >> 6 |
-		    (tim->ev.event & 0xFFFFFFFFF);
-	entry->wqe = tim->ev.u64;
-}
-
 static __rte_always_inline uint16_t
 cnxk_tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 			 struct rte_event_timer **tim, const uint16_t nb_timers,
@@ -73,6 +64,24 @@ cnxk_tim_timer_arm_burst(const struct rte_event_timer_adapter *adptr,
 
 	if (flags & CNXK_TIM_ENA_STATS)
 		rte_atomic_fetch_add_explicit(&tim_ring->arm_cnt, index, rte_memory_order_relaxed);
+
+	return index;
+}
+
+uint16_t
+cnxk_tim_arm_burst_hwwqe(const struct rte_event_timer_adapter *adptr, struct rte_event_timer **tim,
+			 const uint16_t nb_timers)
+{
+	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
+	uint16_t index;
+
+	for (index = 0; index < nb_timers; index++) {
+		if (cnxk_tim_arm_checks(tim_ring, tim[index]))
+			break;
+
+		if (cnxk_tim_add_entry_hwwqe(tim_ring, tim[index]))
+			break;
+	}
 
 	return index;
 }
@@ -132,6 +141,29 @@ cnxk_tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 	return set_timers;
 }
 
+uint16_t
+cnxk_tim_arm_tmo_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+			     struct rte_event_timer **tim, const uint64_t timeout_tick,
+			     const uint16_t nb_timers)
+{
+	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
+	uint16_t idx;
+
+	if (unlikely(!timeout_tick || timeout_tick > tim_ring->nb_bkts)) {
+		const enum rte_event_timer_state state = timeout_tick ?
+								 RTE_EVENT_TIMER_ERROR_TOOLATE :
+								 RTE_EVENT_TIMER_ERROR_TOOEARLY;
+		for (idx = 0; idx < nb_timers; idx++)
+			tim[idx]->state = state;
+
+		rte_errno = EINVAL;
+		return 0;
+	}
+
+	return cnxk_tim_add_entry_tmo_hwwqe(tim_ring, tim, timeout_tick * tim_ring->tck_int,
+					    nb_timers);
+}
+
 #define FP(_name, _f2, _f1, _flags)                                            \
 	uint16_t __rte_noinline cnxk_tim_arm_tmo_tick_burst_##_name(           \
 		const struct rte_event_timer_adapter *adptr,                   \
@@ -172,6 +204,38 @@ cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 	}
 
 	return index;
+}
+
+uint16_t
+cnxk_tim_timer_cancel_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+				  struct rte_event_timer **tim, const uint16_t nb_timers)
+{
+	uint64_t __rte_atomic *status;
+	uint16_t i;
+
+	RTE_SET_USED(adptr);
+	for (i = 0; i < nb_timers; i++) {
+		if (tim[i]->state == RTE_EVENT_TIMER_CANCELED) {
+			rte_errno = EALREADY;
+			break;
+		}
+
+		if (tim[i]->state != RTE_EVENT_TIMER_ARMED) {
+			rte_errno = EINVAL;
+			break;
+		}
+
+		status = (uint64_t __rte_atomic *)&tim[i]->impl_opaque[1];
+		if (!rte_atomic_compare_exchange_strong_explicit(status, (uint64_t *)&tim[i], 0,
+								 rte_memory_order_release,
+								 rte_memory_order_relaxed)) {
+			rte_errno = ENOENT;
+			break;
+		}
+		tim[i]->state = RTE_EVENT_TIMER_CANCELED;
+	}
+
+	return i;
 }
 
 int

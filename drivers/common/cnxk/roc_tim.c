@@ -409,7 +409,7 @@ tim_hw_info_get(struct roc_tim *roc_tim)
 	mbox_alloc_msg_tim_get_hw_info(mbox);
 	rc = mbox_process_msg(mbox, (void **)&rsp);
 	if (rc && rc != MBOX_MSG_INVALID) {
-		plt_err("Failed to get SSO HW info");
+		plt_err("Failed to get TIM HW info");
 		rc = -EIO;
 		goto exit;
 	}
@@ -443,6 +443,10 @@ roc_tim_init(struct roc_tim *roc_tim)
 	nb_lfs = roc_tim->nb_lfs;
 
 	rc = tim_hw_info_get(roc_tim);
+	if (rc) {
+		plt_tim_dbg("Failed to get TIM HW info");
+		return 0;
+	}
 
 	rc = tim_free_lf_count_get(dev, &nb_free_lfs);
 	if (rc) {

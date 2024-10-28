@@ -15,6 +15,7 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_reciprocal.h>
+#include <rte_vect.h>
 
 #define NSECPERSEC		 1E9
 #define USECPERSEC		 1E6
@@ -29,6 +30,8 @@
 #define CNXK_TIM_MIN_CHUNK_SLOTS    (0x1)
 #define CNXK_TIM_MAX_CHUNK_SLOTS    (0x1FFE)
 #define CNXK_TIM_MAX_POOL_CACHE_SZ  (16)
+#define CNXK_TIM_HWWQE_RES_OFFSET_B (24)
+#define CNXK_TIM_ENT_PER_LMT	    (7)
 
 #define CN9K_TIM_MIN_TMO_TKS (256)
 
@@ -124,6 +127,7 @@ struct __rte_cache_aligned cnxk_tim_ring {
 	uintptr_t tbase;
 	uint64_t (*tick_fn)(uint64_t tbase);
 	uint64_t ring_start_cyc;
+	uint64_t lmt_base;
 	struct cnxk_tim_bkt *bkt;
 	struct rte_mempool *chunk_pool;
 	struct rte_reciprocal_u64 fast_div;
@@ -310,10 +314,20 @@ TIM_ARM_FASTPATH_MODES
 TIM_ARM_TMO_FASTPATH_MODES
 #undef FP
 
+uint16_t cnxk_tim_arm_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+				  struct rte_event_timer **tim, const uint16_t nb_timers);
+
+uint16_t cnxk_tim_arm_tmo_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+				      struct rte_event_timer **tim, const uint64_t timeout_tick,
+				      const uint16_t nb_timers);
+
 uint16_t
 cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 			    struct rte_event_timer **tim,
 			    const uint16_t nb_timers);
+
+uint16_t cnxk_tim_timer_cancel_burst_hwwqe(const struct rte_event_timer_adapter *adptr,
+					   struct rte_event_timer **tim, const uint16_t nb_timers);
 
 int cnxk_tim_remaining_ticks_get(const struct rte_event_timer_adapter *adapter,
 				 const struct rte_event_timer *evtim, uint64_t *ticks_remaining);

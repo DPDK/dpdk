@@ -5,6 +5,7 @@
 #ifndef __CN20K_WORKER_H__
 #define __CN20K_WORKER_H__
 
+#include <rte_event_timer_adapter.h>
 #include <rte_eventdev.h>
 
 #include "cn20k_eventdev.h"
@@ -128,6 +129,11 @@ cn20k_sso_hws_post_process(struct cn20k_sso_hws *ws, uint64_t *u64, const uint32
 		/* Mark vector mempool object as get */
 		RTE_MEMPOOL_CHECK_COOKIES(rte_mempool_from_obj((void *)u64[1]), (void **)&u64[1], 1,
 					  1);
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_TIMER) {
+		struct rte_event_timer *tev = (struct rte_event_timer *)u64[1];
+
+		tev->state = RTE_EVENT_TIMER_NOT_ARMED;
+		u64[1] = tev->ev.u64;
 	}
 }
 

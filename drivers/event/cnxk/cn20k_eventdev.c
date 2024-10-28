@@ -957,6 +957,13 @@ cn20k_sso_tx_adapter_queue_del(uint8_t id, const struct rte_eventdev *event_dev,
 	return cn20k_sso_updt_tx_adptr_data(event_dev);
 }
 
+static int
+cn20k_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags, uint32_t *caps,
+		   const struct event_timer_adapter_ops **ops)
+{
+	return cnxk_tim_caps_get(evdev, flags, caps, ops, cn20k_sso_set_priv_mem);
+}
+
 static struct eventdev_ops cn20k_sso_dev_ops = {
 	.dev_infos_get = cn20k_sso_info_get,
 	.dev_configure = cn20k_sso_dev_configure,
@@ -990,6 +997,8 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.eth_tx_adapter_start = cnxk_sso_tx_adapter_start,
 	.eth_tx_adapter_stop = cnxk_sso_tx_adapter_stop,
 	.eth_tx_adapter_free = cnxk_sso_tx_adapter_free,
+
+	.timer_adapter_caps_get = cn20k_tim_caps_get,
 
 	.xstats_get = cnxk_sso_xstats_get,
 	.xstats_reset = cnxk_sso_xstats_reset,
@@ -1068,4 +1077,9 @@ RTE_PMD_REGISTER_PARAM_STRING(event_cn20k,
 			      CNXK_SSO_XAE_CNT "=<int>"
 			      CNXK_SSO_GGRP_QOS "=<string>"
 			      CNXK_SSO_STASH "=<string>"
-			      CNXK_SSO_FORCE_BP "=1");
+			      CNXK_SSO_FORCE_BP "=1"
+			      CNXK_TIM_DISABLE_NPA "=1"
+			      CNXK_TIM_CHNK_SLOTS "=<int>"
+			      CNXK_TIM_RINGS_LMT "=<int>"
+			      CNXK_TIM_STATS_ENA "=1"
+			      CNXK_TIM_EXT_CLK "=<string>");

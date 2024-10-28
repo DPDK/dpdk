@@ -132,6 +132,13 @@ cnxk_tim_bkt_fast_mod(uint64_t n, uint64_t d, struct rte_reciprocal_u64 R)
 	return (n - (d * rte_reciprocal_divide_u64(n, &R)));
 }
 
+static inline void
+cnxk_tim_format_event(const struct rte_event_timer *const tim, struct cnxk_tim_ent *const entry)
+{
+	entry->w0 = (tim->ev.event & 0xFFC000000000) >> 6 | (tim->ev.event & 0xFFFFFFFFF);
+	entry->wqe = tim->ev.u64;
+}
+
 static __rte_always_inline void
 cnxk_tim_get_target_bucket(struct cnxk_tim_ring *const tim_ring,
 			   const uint32_t rel_bkt, struct cnxk_tim_bkt **bkt,
@@ -571,6 +578,200 @@ __retry:
 	cnxk_tim_bkt_dec_lock_relaxed(bkt);
 
 	return nb_timers;
+}
+
+static int
+cnxk_tim_add_entry_hwwqe(struct cnxk_tim_ring *const tim_ring, struct rte_event_timer *const tim)
+{
+	uint64_t __rte_atomic *status;
+	uint64_t wdata, pa;
+	uintptr_t lmt_addr;
+	uint16_t lmt_id;
+	uint64_t *lmt;
+	uint64_t rsp;
+	int rc = 0;
+
+	status = (uint64_t __rte_atomic *)&tim->impl_opaque[0];
+	status[0] = 0;
+	status[1] = 0;
+
+	lmt_addr = tim_ring->lmt_base;
+	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+	lmt = (uint64_t *)lmt_addr;
+
+	lmt[0] = tim->timeout_ticks * tim_ring->tck_int;
+	lmt[1] = 0x1;
+	lmt[2] = (tim->ev.event & 0xFFC000000000) >> 6 | (tim->ev.event & 0xFFFFFFFFF);
+	lmt[3] = (uint64_t)tim;
+
+	/* One LMT line is used, CNTM1 is 0 and SIZE_VEC is not included. */
+	wdata = lmt_id;
+	/* SIZEM1 is 0 */
+	pa = (tim_ring->tbase & ~0xFF) + TIM_LF_SCHED_TIMER0;
+	pa |= (1UL << 4);
+	roc_lmt_submit_steorl(wdata, pa);
+
+	do {
+		rsp = rte_atomic_load_explicit(status, rte_memory_order_relaxed);
+		rsp &= 0xF0UL;
+	} while (!rsp);
+
+	rsp >>= 4;
+	switch (rsp) {
+	case 0x3:
+		tim->state = RTE_EVENT_TIMER_ERROR_TOOEARLY;
+		rc = !rc;
+		break;
+	case 0x4:
+		tim->state = RTE_EVENT_TIMER_ERROR_TOOLATE;
+		rc = !rc;
+		break;
+	case 0x1:
+		tim->state = RTE_EVENT_TIMER_ARMED;
+		break;
+	default:
+		tim->state = RTE_EVENT_TIMER_ERROR;
+		rc = !rc;
+		break;
+	}
+
+	return rc;
+}
+
+static int
+cnxk_tim_add_entry_tmo_hwwqe(struct cnxk_tim_ring *const tim_ring,
+			     struct rte_event_timer **const tim, uint64_t intvl, uint16_t nb_timers)
+{
+	uint64_t __rte_atomic *status;
+	uint16_t cnt, i, j, done;
+	uint64_t wdata, pa;
+	uintptr_t lmt_addr;
+	uint16_t lmt_id;
+	uint64_t *lmt;
+	uint64_t rsp;
+
+	/* We have 32 LMTLINES per core, but use only 1 line as we need to check status */
+	lmt_addr = tim_ring->lmt_base;
+	ROC_LMT_BASE_ID_GET(lmt_addr, lmt_id);
+
+	done = 0;
+	lmt = (uint64_t *)lmt_addr;
+	/* We can do up to 7 timers per LMTLINE */
+	cnt = nb_timers / CNXK_TIM_ENT_PER_LMT;
+
+	lmt[0] = intvl;
+	lmt[1] = 0x1; /* Always relative */
+	/* One LMT line is used, CNTM1 is 0 and SIZE_VEC is not included. */
+	wdata = lmt_id;
+	/* SIZEM1 is 0 */
+	pa = (tim_ring->tbase & ~0xFF) + TIM_LF_SCHED_TIMER0;
+	pa |= (uint64_t)(CNXK_TIM_ENT_PER_LMT << 4);
+	for (i = 0; i < cnt; i++) {
+		status = (uint64_t __rte_atomic *)&tim[i * CNXK_TIM_ENT_PER_LMT]->impl_opaque[0];
+
+		for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++) {
+			cnxk_tim_format_event(tim[(i * CNXK_TIM_ENT_PER_LMT) + j],
+					      (struct cnxk_tim_ent *)&lmt[(j << 1) + 2]);
+			tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->impl_opaque[0] = 0;
+			tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->impl_opaque[1] = 0;
+			tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state = RTE_EVENT_TIMER_ARMED;
+		}
+
+		roc_lmt_submit_steorl(wdata, pa);
+		do {
+			rsp = rte_atomic_load_explicit(status, rte_memory_order_relaxed);
+			rsp &= 0xFUL;
+		} while (!rsp);
+
+		done += CNXK_TIM_ENT_PER_LMT;
+		rsp &= 0xF;
+		if (rsp != 0x1) {
+			switch (rsp) {
+			case 0x3:
+				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++)
+					tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
+						RTE_EVENT_TIMER_ERROR_TOOEARLY;
+				done -= CNXK_TIM_ENT_PER_LMT;
+				break;
+			case 0x4:
+				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++)
+					tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
+						RTE_EVENT_TIMER_ERROR_TOOLATE;
+				done -= CNXK_TIM_ENT_PER_LMT;
+				break;
+			case 0x2:
+			default:
+				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++) {
+					if ((rte_atomic_load_explicit(
+						     (uint64_t __rte_atomic
+							      *)&tim[(i * CNXK_TIM_ENT_PER_LMT) + j]
+							     ->impl_opaque[0],
+						     rte_memory_order_relaxed) &
+					     0xF0) != 0x10) {
+						tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
+							RTE_EVENT_TIMER_ERROR;
+						done--;
+					}
+				}
+				break;
+			}
+			goto done;
+		}
+	}
+
+	/* SIZEM1 is 0 */
+	pa = (tim_ring->tbase & ~0xFF) + TIM_LF_SCHED_TIMER0;
+	pa |= (uint64_t)((nb_timers - cnt) << 4);
+	if (nb_timers - cnt) {
+		status = (uint64_t __rte_atomic *)&tim[cnt]->impl_opaque[0];
+
+		for (i = 0; i < nb_timers - cnt; i++) {
+			cnxk_tim_format_event(tim[cnt + i],
+					      (struct cnxk_tim_ent *)&lmt[(i << 1) + 2]);
+			tim[cnt + i]->impl_opaque[0] = 0;
+			tim[cnt + i]->impl_opaque[1] = 0;
+			tim[cnt + i]->state = RTE_EVENT_TIMER_ARMED;
+		}
+
+		roc_lmt_submit_steorl(wdata, pa);
+		do {
+			rsp = rte_atomic_load_explicit(status, rte_memory_order_relaxed);
+			rsp &= 0xFUL;
+		} while (!rsp);
+
+		done += (nb_timers - cnt);
+		rsp &= 0xF;
+		if (rsp != 0x1) {
+			switch (rsp) {
+			case 0x3:
+				for (j = 0; j < nb_timers - cnt; j++)
+					tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR_TOOEARLY;
+				done -= (nb_timers - cnt);
+				break;
+			case 0x4:
+				for (j = 0; j < nb_timers - cnt; j++)
+					tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR_TOOLATE;
+				done -= (nb_timers - cnt);
+				break;
+			case 0x2:
+			default:
+				for (j = 0; j < nb_timers - cnt; j++) {
+					if ((rte_atomic_load_explicit(
+						     (uint64_t __rte_atomic *)&tim[cnt + j]
+							     ->impl_opaque[0],
+						     rte_memory_order_relaxed) &
+					     0xF0) != 0x10) {
+						tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR;
+						done--;
+					}
+				}
+				break;
+			}
+		}
+	}
+
+done:
+	return done;
 }
 
 static int
