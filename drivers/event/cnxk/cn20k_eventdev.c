@@ -56,6 +56,12 @@ cn20k_sso_dev_configure(const struct rte_eventdev *event_dev)
 		return -ENODEV;
 	}
 
+	rc = cnxk_sso_xaq_allocate(dev);
+	if (rc < 0)
+		goto cnxk_rsrc_fini;
+
+cnxk_rsrc_fini:
+	roc_sso_rsrc_fini(&dev->sso);
 	return rc;
 }
 
@@ -64,6 +70,10 @@ static struct eventdev_ops cn20k_sso_dev_ops = {
 	.dev_configure = cn20k_sso_dev_configure,
 
 	.queue_def_conf = cnxk_sso_queue_def_conf,
+	.queue_setup = cnxk_sso_queue_setup,
+	.queue_release = cnxk_sso_queue_release,
+	.queue_attr_set = cnxk_sso_queue_attribute_set,
+
 	.port_def_conf = cnxk_sso_port_def_conf,
 };
 
@@ -127,3 +137,7 @@ static struct rte_pci_driver cn20k_pci_sso = {
 RTE_PMD_REGISTER_PCI(event_cn20k, cn20k_pci_sso);
 RTE_PMD_REGISTER_PCI_TABLE(event_cn20k, cn20k_pci_sso_map);
 RTE_PMD_REGISTER_KMOD_DEP(event_cn20k, "vfio-pci");
+RTE_PMD_REGISTER_PARAM_STRING(event_cn20k,
+			      CNXK_SSO_XAE_CNT "=<int>"
+			      CNXK_SSO_GGRP_QOS "=<string>"
+			      CNXK_SSO_STASH "=<string>");
