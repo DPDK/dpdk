@@ -1566,16 +1566,16 @@ cnxk_sso_selftest(const char *dev_name)
 			return rc;
 	}
 
-	if (roc_model_runtime_is_cn10k()) {
-		printf("Verifying CN10K workslot getwork mode none\n");
+	if (roc_model_runtime_is_cn10k() || roc_model_runtime_is_cn20k()) {
+		printf("Verifying %s workslot getwork mode none\n", dev_name);
 		dev->gw_mode = CNXK_GW_MODE_NONE;
 		if (cnxk_sso_testsuite_run(dev_name))
 			return rc;
-		printf("Verifying CN10K workslot getwork mode prefetch\n");
+		printf("Verifying %s workslot getwork mode prefetch\n", dev_name);
 		dev->gw_mode = CNXK_GW_MODE_PREF;
 		if (cnxk_sso_testsuite_run(dev_name))
 			return rc;
-		printf("Verifying CN10K workslot getwork mode smart prefetch\n");
+		printf("Verifying %s workslot getwork mode smart prefetch\n", dev_name);
 		dev->gw_mode = CNXK_GW_MODE_PREF_WFE;
 		if (cnxk_sso_testsuite_run(dev_name))
 			return rc;
