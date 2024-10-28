@@ -63,6 +63,36 @@ roc_rvu_lf_dev_fini(struct roc_rvu_lf *roc_rvu_lf)
 }
 
 int
+roc_rvu_lf_msg_id_range_set(struct roc_rvu_lf *roc_rvu_lf, uint16_t from, uint16_t to)
+{
+	struct rvu_lf *rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+
+	if (from <= MBOX_MSG_GENERIC_MAX_ID || from > to)
+		return -EINVAL;
+
+	rvu->msg_id_from = from;
+	rvu->msg_id_to = to;
+
+	return 0;
+}
+
+bool
+roc_rvu_lf_msg_id_range_check(struct roc_rvu_lf *roc_rvu_lf, uint16_t msg_id)
+{
+	struct rvu_lf *rvu;
+
+	if (roc_rvu_lf == NULL)
+		return 0;
+
+	rvu = roc_rvu_lf_to_rvu_priv(roc_rvu_lf);
+
+	if (msg_id > rvu->msg_id_from && msg_id < rvu->msg_id_to)
+		return 1;
+
+	return 0;
+}
+
+int
 roc_rvu_lf_irq_register(struct roc_rvu_lf *roc_rvu_lf, unsigned int irq,
 			roc_rvu_lf_intr_cb_fn cb, void *data)
 {

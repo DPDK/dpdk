@@ -19,6 +19,7 @@ The RVU LF device implements following features in the rawdev API:
 - Get PF FUNC of associated NPA and SSO devices.
 - Register/unregister interrupt handlers.
 - Register/unregister mailbox callbacks for the other side to process mailboxes.
+- Set mailbox message ID range to be used by the driver.
 
 Limitations
 -----------
@@ -63,3 +64,6 @@ using ``rte_pmd_rvu_lf_msg_handler_register()``
 and ``rte_pmd_rvu_lf_msg_handler_unregister()``.
 Required responses as per the request and message id received
 can be filled in the callbacks.
+
+Once a RVU LF raw device is probed, a range of message ids can be configured
+for which mailboxes will be sent using the API ``rte_pmd_rvu_lf_msg_id_range_set()``.

@@ -137,6 +137,21 @@ int rte_pmd_rvu_lf_msg_handler_register(uint8_t dev_id, rte_pmd_rvu_lf_msg_handl
 __rte_internal
 int rte_pmd_rvu_lf_msg_handler_unregister(uint8_t dev_id);
 
+/**
+ * Set RVU mailbox message id range.
+ *
+ * @param dev_id
+ *   device id of RVU LF device
+ * @param from
+ *   starting message id for RVU mailbox (> 0x1FF)
+ * @param to
+ *   last message id for RVU mailbox (< 0xFFFF)
+ *
+ * @return 0 on success, -EINVAL for invalid range
+ */
+__rte_internal
+int rte_pmd_rvu_lf_msg_id_range_set(uint8_t dev_id, uint16_t from, uint16_t to);
+
 #ifdef __cplusplus
 }
 #endif
