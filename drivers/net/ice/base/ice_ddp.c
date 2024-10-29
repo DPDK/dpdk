@@ -1333,7 +1333,7 @@ ice_fill_hw_ptype(struct ice_hw *hw)
  * ice_copy_and_init_pkg() instead of directly calling ice_init_pkg() in this
  * case.
  */
-enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
+enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len, bool load_sched)
 {
 	bool already_loaded = false;
 	enum ice_ddp_state state;
@@ -1349,6 +1349,20 @@ enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
 		ice_debug(hw, ICE_DBG_INIT, "failed to verify pkg (err: %d)\n",
 			  state);
 		return state;
+	}
+
+	if (load_sched) {
+		enum ice_status res = ice_cfg_tx_topo(hw, buf, len);
+		if (res != ICE_SUCCESS) {
+			ice_debug(hw, ICE_DBG_INIT,
+				  "failed to apply sched topology  (err: %d)\n",
+				  res);
+			return ICE_DDP_PKG_ERR;
+		}
+		ice_debug(hw, ICE_DBG_INIT,
+			  "Topology download successful, reinitializing device\n");
+		ice_deinit_hw(hw);
+		ice_init_hw(hw);
 	}
 
 	/* initialize package info */
@@ -1423,7 +1437,7 @@ enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buf, u32 len)
  * related routines.
  */
 enum ice_ddp_state
-ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len)
+ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len, bool load_sched)
 {
 	enum ice_ddp_state state;
 	u8 *buf_copy;
@@ -1433,7 +1447,7 @@ ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len)
 
 	buf_copy = (u8 *)ice_memdup(hw, buf, len, ICE_NONDMA_TO_NONDMA);
 
-	state = ice_init_pkg(hw, buf_copy, len);
+	state = ice_init_pkg(hw, buf_copy, len, load_sched);
 	if (!ice_is_init_pkg_successful(state)) {
 		/* Free the copy, since we failed to initialize the package */
 		ice_free(hw, buf_copy);

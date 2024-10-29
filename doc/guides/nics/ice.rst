@@ -298,6 +298,21 @@ Runtime Configuration
   As a trade-off, this configuration may cause the packet processing performance
   degradation due to the PCI bandwidth limitation.
 
+- ``Tx Scheduler Topology Download``
+
+  The default Tx scheduler topology exposed by the NIC,
+  generally a 9-level topology of which 8 levels are SW configurable,
+  may be updated by a new topology loaded from a DDP package file.
+  The ``ddp_load_sched_topo`` option can be used to specify that the scheduler topology,
+  if any, in the DDP package file being used should be loaded into the NIC.
+  For example::
+
+    -a 0000:88:00.0,ddp_load_sched_topo=1
+
+  or::
+
+    -a 0000:88:00.0,ddp_pkg_file=/path/to/pkg.file,ddp_load_sched_topo=1
+
 - ``Tx diagnostics`` (default ``not enabled``)
 
   Set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.

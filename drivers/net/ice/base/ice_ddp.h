@@ -454,9 +454,9 @@ ice_pkg_enum_entry(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
 void *
 ice_pkg_enum_section(struct ice_seg *ice_seg, struct ice_pkg_enum *state,
 		     u32 sect_type);
-enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buff, u32 len);
+enum ice_ddp_state ice_init_pkg(struct ice_hw *hw, u8 *buff, u32 len, bool load_sched);
 enum ice_ddp_state
-ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len);
+ice_copy_and_init_pkg(struct ice_hw *hw, const u8 *buf, u32 len, bool load_sched);
 bool ice_is_init_pkg_successful(enum ice_ddp_state state);
 void ice_free_seg(struct ice_hw *hw);
 
