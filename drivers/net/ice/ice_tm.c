@@ -836,15 +836,30 @@ ice_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 struct rte_tm_error *error)
 {
-	RTE_SET_USED(error);
-	/* commit should only be done to topology before start! */
-	if (dev->data->dev_started)
-		return -1;
+	bool restart = false;
+
+	/* commit should only be done to topology before start
+	 * If port is already started, stop it and then restart when done.
+	 */
+	if (dev->data->dev_started) {
+		if (rte_eth_dev_stop(dev->data->port_id) != 0) {
+			error->message = "Device failed to Stop";
+			return -1;
+		}
+		restart = true;
+	}
 
 	int ret = commit_new_hierarchy(dev);
 	if (ret < 0 && clear_on_fail) {
 		ice_tm_conf_uninit(dev);
 		ice_tm_conf_init(dev);
+	}
+
+	if (restart) {
+		if (rte_eth_dev_start(dev->data->port_id) != 0) {
+			error->message = "Device failed to Start";
+			return -1;
+		}
 	}
 	return ret;
 }
