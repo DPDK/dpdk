@@ -95,8 +95,10 @@ struct mlx5dr_context_attr {
 	uint16_t queues;
 	uint16_t queue_size;
 	size_t initial_log_ste_memory; /* Currently not in use */
-	/* Optional PD used for allocating res ources */
+	/* Optional PD used for allocating resources */
 	struct ibv_pd *pd;
+	/* Optional the STC array size for that context */
+	size_t initial_log_stc_memory;
 };
 
 struct mlx5dr_table_attr {

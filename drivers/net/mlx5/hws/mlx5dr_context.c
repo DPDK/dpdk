@@ -4,7 +4,8 @@
 
 #include "mlx5dr_internal.h"
 
-static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx)
+static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx,
+				     struct mlx5dr_context_attr *attr)
 {
 	struct mlx5dr_pool_attr pool_attr = {0};
 	uint8_t max_log_sz;
@@ -16,7 +17,9 @@ static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx)
 	/* Create an STC pool per FT type */
 	pool_attr.pool_type = MLX5DR_POOL_TYPE_STC;
 	pool_attr.flags = MLX5DR_POOL_FLAGS_FOR_STC_POOL;
-	max_log_sz = RTE_MIN(MLX5DR_POOL_STC_LOG_SZ, ctx->caps->stc_alloc_log_max);
+	if (!attr->initial_log_stc_memory)
+		attr->initial_log_stc_memory = MLX5DR_POOL_STC_LOG_SZ;
+	max_log_sz = RTE_MIN(attr->initial_log_stc_memory, ctx->caps->stc_alloc_log_max);
 	pool_attr.alloc_log_sz = RTE_MAX(max_log_sz, ctx->caps->stc_alloc_log_gran);
 
 	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
@@ -151,7 +154,7 @@ static int mlx5dr_context_init_hws(struct mlx5dr_context *ctx,
 	if (ret)
 		return ret;
 
-	ret = mlx5dr_context_pools_init(ctx);
+	ret = mlx5dr_context_pools_init(ctx, attr);
 	if (ret)
 		goto uninit_pd;
 
