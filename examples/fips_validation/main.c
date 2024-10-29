@@ -1940,7 +1940,8 @@ fips_run_test(void)
 		return fips_run_asym_test();
 	}
 
-	if (info.algo == FIPS_TEST_ALGO_ECDSA) {
+	if (info.algo == FIPS_TEST_ALGO_ECDSA ||
+	    info.algo == FIPS_TEST_ALGO_RSA) {
 		vec.cipher_auth.digest.len =
 			parse_test_sha_hash_size(info.interim_info.ecdsa_data.auth);
 		test_ops.prepare_sym_xform = prepare_sha_xform;
