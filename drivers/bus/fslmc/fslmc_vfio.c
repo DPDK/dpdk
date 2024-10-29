@@ -190,7 +190,7 @@ fslmc_vfio_add_group(int vfio_group_fd,
 	group->groupid = iommu_group_num;
 	rte_strscpy(group->group_name, group_name, sizeof(group->group_name));
 	if (rte_vfio_noiommu_is_enabled() > 0)
-		group->iommu_type = RTE_VFIO_NOIOMMU;
+		group->iommu_type = VFIO_NOIOMMU_IOMMU;
 	else
 		group->iommu_type = VFIO_TYPE1_IOMMU;
 	LIST_INSERT_HEAD(&s_vfio_container.groups, group, next);
@@ -396,8 +396,7 @@ fslmc_vfio_open_group_fd(const char *group_name)
 	/* if primary, try to open the group */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* try regular group format */
-		snprintf(filename, sizeof(filename),
-			VFIO_GROUP_FMT, iommu_group_num);
+		snprintf(filename, sizeof(filename), RTE_VFIO_GROUP_FMT, iommu_group_num);
 		vfio_group_fd = open(filename, O_RDWR);
 
 		goto add_vfio_group;
@@ -451,7 +450,7 @@ fslmc_vfio_check_extensions(int vfio_container_fd)
 	int ret;
 	uint32_t idx, n_extensions = 0;
 	static const int type_id[] = {RTE_VFIO_TYPE1, RTE_VFIO_SPAPR,
-		RTE_VFIO_NOIOMMU};
+		VFIO_NOIOMMU_IOMMU};
 	static const char * const type_id_nm[] = {"Type 1",
 		"sPAPR", "No-IOMMU"};
 
@@ -495,10 +494,10 @@ fslmc_vfio_open_container_fd(void)
 
 	/* if we're in a primary process, try to open the container */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR);
+		vfio_container_fd = open(RTE_VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
 			DPAA2_BUS_ERR("Open VFIO container(%s), err(%d)",
-				VFIO_CONTAINER_PATH, vfio_container_fd);
+				RTE_VFIO_CONTAINER_PATH, vfio_container_fd);
 			ret = vfio_container_fd;
 			goto err_exit;
 		}
@@ -851,7 +850,7 @@ start_mapping:
 			return fd;
 		return -EIO;
 	}
-	if (fslmc_vfio_iommu_type(fd) == RTE_VFIO_NOIOMMU) {
+	if (fslmc_vfio_iommu_type(fd) == VFIO_NOIOMMU_IOMMU) {
 		DPAA2_BUS_DEBUG("Running in NOIOMMU mode");
 		if (phy != iovaddr) {
 			DPAA2_BUS_ERR("IOVA should support with IOMMU");
@@ -951,7 +950,7 @@ fslmc_unmap_dma(uint64_t vaddr, uint64_t iovaddr, size_t len)
 			return fd;
 		return -EIO;
 	}
-	if (fslmc_vfio_iommu_type(fd) == RTE_VFIO_NOIOMMU) {
+	if (fslmc_vfio_iommu_type(fd) == VFIO_NOIOMMU_IOMMU) {
 		DPAA2_BUS_DEBUG("Running in NOIOMMU mode");
 		return 0;
 	}

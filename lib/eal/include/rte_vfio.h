@@ -21,78 +21,14 @@ extern "C" {
 
 #ifdef RTE_EXEC_ENV_LINUX
 
-#include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 0, 0)
-#define HAVE_VFIO_DEV_REQ_INTERFACE
-#endif /* kernel version >= 4.0.0 */
-
 #include <linux/vfio.h>
 
-#define VFIO_DIR "/dev/vfio"
-#define VFIO_CONTAINER_PATH "/dev/vfio/vfio"
-#define VFIO_GROUP_FMT "/dev/vfio/%u"
-#define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
-#define VFIO_GET_REGION_IDX(x) (x >> 40)
-#define VFIO_NOIOMMU_MODE      \
+#define RTE_VFIO_DIR "/dev/vfio"
+#define RTE_VFIO_CONTAINER_PATH "/dev/vfio/vfio"
+#define RTE_VFIO_GROUP_FMT "/dev/vfio/%u"
+#define RTE_VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
+#define RTE_VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
-
-/* NOIOMMU is defined from kernel version 4.5 onwards */
-#ifdef VFIO_NOIOMMU_IOMMU
-#define RTE_VFIO_NOIOMMU VFIO_NOIOMMU_IOMMU
-#else
-#define RTE_VFIO_NOIOMMU 8
-#endif
-
-/*
- * capabilities are only supported on kernel 4.6+. there were also some API
- * changes as well, so add a macro to get cap offset.
- */
-#ifdef VFIO_REGION_INFO_FLAG_CAPS
-#define RTE_VFIO_INFO_FLAG_CAPS VFIO_REGION_INFO_FLAG_CAPS
-#define VFIO_CAP_OFFSET(x) (x->cap_offset)
-#else
-#define RTE_VFIO_INFO_FLAG_CAPS (1 << 3)
-#define VFIO_CAP_OFFSET(x) (x->resv)
-struct vfio_info_cap_header {
-	uint16_t id;
-	uint16_t version;
-	uint32_t next;
-};
-#endif
-
-/* kernels 4.16+ can map BAR containing MSI-X table */
-#ifdef VFIO_REGION_INFO_CAP_MSIX_MAPPABLE
-#define RTE_VFIO_CAP_MSIX_MAPPABLE VFIO_REGION_INFO_CAP_MSIX_MAPPABLE
-#else
-#define RTE_VFIO_CAP_MSIX_MAPPABLE 3
-#endif
-
-/* VFIO_DEVICE_FEATURE is defined for kernel version 5.7 and newer. */
-#ifdef	VFIO_DEVICE_FEATURE
-#define	RTE_VFIO_DEVICE_FEATURE	VFIO_DEVICE_FEATURE
-#else
-#define	RTE_VFIO_DEVICE_FEATURE	_IO(VFIO_TYPE, VFIO_BASE + 17)
-struct vfio_device_feature {
-	__u32	argsz;
-	__u32	flags;
-#define	VFIO_DEVICE_FEATURE_MASK	(0xffff) /* 16-bit feature index */
-#define	VFIO_DEVICE_FEATURE_GET		(1 << 16) /* Get feature into data[] */
-#define	VFIO_DEVICE_FEATURE_SET		(1 << 17) /* Set feature from data[] */
-#define	VFIO_DEVICE_FEATURE_PROBE	(1 << 18) /* Probe feature support */
-	__u8	data[];
-};
-#endif
-
-#ifdef	VFIO_DEVICE_FEATURE_BUS_MASTER
-#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	VFIO_DEVICE_FEATURE_BUS_MASTER
-#else
-#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	10
-struct vfio_device_feature_bus_master {
-	__u32 op;
-#define	VFIO_DEVICE_FEATURE_CLEAR_MASTER	0	/* Clear Bus Master */
-#define	VFIO_DEVICE_FEATURE_SET_MASTER		1	/* Set Bus Master */
-};
-#endif
 
 #else /* ! RTE_EXEC_ENV_LINUX */
 

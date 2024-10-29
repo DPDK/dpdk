@@ -85,7 +85,7 @@ static const struct vfio_iommu_type iommu_types[] = {
 	},
 	/* IOMMU-less mode */
 	{
-		.type_id = RTE_VFIO_NOIOMMU,
+		.type_id = VFIO_NOIOMMU_IOMMU,
 		.name = "No-IOMMU",
 		.partial_unmap = true,
 		.dma_map_func = &vfio_noiommu_dma_map,
@@ -363,8 +363,7 @@ vfio_open_group_fd(int iommu_group_num)
 	/* if primary, try to open the group */
 	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
 		/* try regular group format */
-		snprintf(filename, sizeof(filename),
-				 VFIO_GROUP_FMT, iommu_group_num);
+		snprintf(filename, sizeof(filename), RTE_VFIO_GROUP_FMT, iommu_group_num);
 		vfio_group_fd = open(filename, O_RDWR);
 		if (vfio_group_fd < 0) {
 			/* if file not found, it's not an error */
@@ -375,9 +374,8 @@ vfio_open_group_fd(int iommu_group_num)
 			}
 
 			/* special case: try no-IOMMU path as well */
-			snprintf(filename, sizeof(filename),
-					VFIO_NOIOMMU_GROUP_FMT,
-					iommu_group_num);
+			snprintf(filename, sizeof(filename), RTE_VFIO_NOIOMMU_GROUP_FMT,
+				iommu_group_num);
 			vfio_group_fd = open(filename, O_RDWR);
 			if (vfio_group_fd < 0) {
 				if (errno != ENOENT) {
@@ -1128,7 +1126,7 @@ rte_vfio_enable(const char *modname)
 	}
 
 	/* VFIO directory might not exist (e.g., unprivileged containers) */
-	dir = opendir(VFIO_DIR);
+	dir = opendir(RTE_VFIO_DIR);
 	if (dir == NULL) {
 		EAL_LOG(DEBUG,
 			"VFIO directory does not exist, skipping VFIO support...");
@@ -1315,15 +1313,12 @@ rte_vfio_get_container_fd(void)
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
-
 	/* if we're in a primary process, try to open the container */
 	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
-		vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR);
+		vfio_container_fd = open(RTE_VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
-			EAL_LOG(ERR,
-					"Cannot open VFIO container %s, error "
-					"%i (%s)", VFIO_CONTAINER_PATH,
-					errno, strerror(errno));
+			EAL_LOG(ERR, "Cannot open VFIO container %s, error %i (%s)",
+				RTE_VFIO_CONTAINER_PATH, errno, strerror(errno));
 			return -1;
 		}
 
@@ -2053,7 +2048,7 @@ rte_vfio_noiommu_is_enabled(void)
 	ssize_t cnt;
 	char c;
 
-	fd = open(VFIO_NOIOMMU_MODE, O_RDONLY);
+	fd = open(RTE_VFIO_NOIOMMU_MODE, O_RDONLY);
 	if (fd < 0) {
 		if (errno != ENOENT) {
 			EAL_LOG(ERR, "Cannot open VFIO noiommu file "
