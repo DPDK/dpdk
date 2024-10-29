@@ -3011,6 +3011,9 @@ flow_hw_get_ipv6_route_ext_mod_id_from_ctx(void *dr_ctx, uint8_t idx)
 void
 mlx5_indirect_list_handles_release(struct rte_eth_dev *dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
+
+#define MLX5_REPR_STC_MEMORY_LOG 11
+
 struct mlx5_mirror;
 void
 mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror);
