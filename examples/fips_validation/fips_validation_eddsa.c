@@ -48,8 +48,8 @@ struct {
 	uint8_t curve_len;
 	const char *desc;
 } eddsa_curve_len[] = {
-	{32, "ED-25519"},
-	{64, "ED-448"},
+	{64, "ED-25519"},
+	{114, "ED-448"},
 };
 
 #ifdef USE_OPENSSL
