@@ -40,6 +40,7 @@
 #define ICE_MBUF_CHECK_ARG       "mbuf_check"
 #define ICE_DDP_FILENAME_ARG      "ddp_pkg_file"
 #define ICE_DDP_LOAD_SCHED_ARG    "ddp_load_sched_topo"
+#define ICE_TM_LEVELS_ARG         "tm_sched_levels"
 
 #define ICE_CYCLECOUNTER_MASK  0xffffffffffffffffULL
 
@@ -58,6 +59,7 @@ static const char * const ice_valid_args[] = {
 	ICE_MBUF_CHECK_ARG,
 	ICE_DDP_FILENAME_ARG,
 	ICE_DDP_LOAD_SCHED_ARG,
+	ICE_TM_LEVELS_ARG,
 	NULL
 };
 
@@ -1854,6 +1856,7 @@ ice_send_driver_ver(struct ice_hw *hw)
 static int
 ice_pf_setup(struct ice_pf *pf)
 {
+	struct ice_adapter *ad = ICE_PF_TO_ADAPTER(pf);
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_vsi *vsi;
 	uint16_t unused;
@@ -1876,6 +1879,28 @@ ice_pf_setup(struct ice_pf *pf)
 	if (!vsi) {
 		PMD_INIT_LOG(ERR, "Failed to add vsi for PF");
 		return -EINVAL;
+	}
+
+	/* set the number of hidden Tx scheduler layers. If no devargs parameter to
+	 * set the number of exposed levels, the default is to expose all levels,
+	 * except the TC layer.
+	 *
+	 * If the number of exposed levels is set, we check that it's not greater
+	 * than the HW can provide (in which case we do nothing except log a warning),
+	 * and then set the hidden layers to be the total number of levels minus the
+	 * requested visible number.
+	 */
+	pf->tm_conf.hidden_layers = hw->port_info->has_tc;
+	if (ad->devargs.tm_exposed_levels != 0) {
+		const uint8_t avail_layers = hw->num_tx_sched_layers - hw->port_info->has_tc;
+		const uint8_t req_layers = ad->devargs.tm_exposed_levels;
+		if (req_layers > avail_layers) {
+			PMD_INIT_LOG(WARNING, "The number of TM scheduler exposed levels exceeds the number of supported levels (%u)",
+					avail_layers);
+			PMD_INIT_LOG(WARNING, "Setting scheduler layers to %u", avail_layers);
+		} else {
+			pf->tm_conf.hidden_layers = hw->num_tx_sched_layers - req_layers;
+		}
 	}
 
 	pf->main_vsi = vsi;
@@ -2058,6 +2083,32 @@ parse_u64(const char *key, const char *value, void *args)
 	if (errno) {
 		PMD_DRV_LOG(WARNING, "%s: \"%s\" is not a valid u64",
 			    key, value);
+		return -1;
+	}
+
+	*num = tmp;
+
+	return 0;
+}
+
+static int
+parse_tx_sched_levels(const char *key, const char *value, void *args)
+{
+	uint8_t *num = args;
+	long tmp;
+	char *endptr;
+
+	errno = 0;
+	tmp = strtol(value, &endptr, 0);
+	/* the value needs two stage validation, since the actual number of available
+	 * levels is not known at this point. Initially just validate that it is in
+	 * the correct range, between 3 and 8. Later validation will check that the
+	 * available layers on a particular port is higher than the value specified here.
+	 */
+	if (errno || *endptr != '\0' ||
+			tmp < (ICE_VSI_LAYER_OFFSET - 1) || tmp >= ICE_TM_MAX_LAYERS) {
+		PMD_DRV_LOG(WARNING, "%s: Invalid value \"%s\", should be in range [%d, %d]",
+			    key, value, ICE_VSI_LAYER_OFFSET - 1, ICE_TM_MAX_LAYERS - 1);
 		return -1;
 	}
 
@@ -2312,6 +2363,12 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 				 &parse_bool, &ad->devargs.ddp_load_sched);
 	if (ret)
 		goto bail;
+
+	ret = rte_kvargs_process(kvlist, ICE_TM_LEVELS_ARG,
+				 &parse_tx_sched_levels, &ad->devargs.tm_exposed_levels);
+	if (ret)
+		goto bail;
+
 bail:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -7182,6 +7239,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ice,
 			      ICE_DEFAULT_MAC_DISABLE "=<0|1>"
 			      ICE_DDP_FILENAME_ARG "=</path/to/file>"
 			      ICE_DDP_LOAD_SCHED_ARG "=<0|1>"
+			      ICE_TM_LEVELS_ARG "=<N>"
 			      ICE_RX_LOW_LATENCY_ARG "=<0|1>");
 
 RTE_LOG_REGISTER_SUFFIX(ice_logtype_init, init, NOTICE);

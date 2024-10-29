@@ -147,6 +147,17 @@ Runtime Configuration
 
     -a 80:00.0,ddp_pkg_file=/path/to/ice-version.pkg
 
+- ``Traffic Management Scheduling Levels``
+
+  The DPDK Traffic Management (rte_tm) APIs can be used to configure the Tx scheduler on the NIC.
+  From 24.11 release, all available hardware layers are available to software.
+  Earlier versions of DPDK only supported 3 levels in the scheduling hierarchy.
+  To help with backward compatibility the ``tm_sched_levels`` parameter
+  can be used to limit the scheduler levels to the provided value.
+  The provided value must be between 3 and 8.
+  If the value provided is greater than the number of levels provided by the HW,
+  SW will use the hardware maximum value.
+
 - ``Protocol extraction for per queue``
 
   Configure the RX queues to do protocol extraction into mbuf for protocol
@@ -450,7 +461,7 @@ The ice PMD provides support for the Traffic Management API (RTE_TM),
 enabling users to configure and manage the traffic shaping and scheduling of transmitted packets.
 By default, all available transmit scheduler layers are available for configuration,
 allowing up to 2000 queues to be configured in a hierarchy of up to 8 levels.
-The number of levels in the hierarchy can be adjusted via driver parameter:
+The number of levels in the hierarchy can be adjusted via driver parameters:
 
 * the default 9-level topology (8 levels usable) can be replaced by a new topology downloaded from a DDP file,
   using the driver parameter ``ddp_load_sched_topo=1``.
@@ -460,6 +471,11 @@ The number of levels in the hierarchy can be adjusted via driver parameter:
   Released DDP package files contain a 5-level hierarchy (4-levels usable),
   with increased fan-out at the lower 3 levels
   e.g. 64 at levels 2 and 3, and 256 or more at the leaf-node level.
+
+* the number of levels can be reduced
+  by setting the driver parameter ``tm_sched_levels`` to a lower value.
+  This scheme will reduce in software the number of editable levels,
+  but will not affect the fan-out from each level.
 
 For more details on how to configure a Tx scheduling hierarchy,
 please refer to the ``rte_tm`` `API documentation <https://doc.dpdk.org/api/rte__tm_8h.html>`_.

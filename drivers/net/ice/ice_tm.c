@@ -198,9 +198,10 @@ find_node(struct ice_tm_node *root, uint32_t id)
 }
 
 static inline uint8_t
-ice_get_leaf_level(struct ice_hw *hw)
+ice_get_leaf_level(const struct ice_pf *pf)
 {
-	return hw->num_tx_sched_layers - 1 - hw->port_info->has_tc;
+	const struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	return hw->num_tx_sched_layers - pf->tm_conf.hidden_layers - 1;
 }
 
 static int
@@ -208,7 +209,6 @@ ice_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
 		   int *is_leaf, struct rte_tm_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_tm_node *tm_node;
 
 	if (!is_leaf || !error)
@@ -228,7 +228,7 @@ ice_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
 		return -EINVAL;
 	}
 
-	if (tm_node->level == ice_get_leaf_level(hw))
+	if (tm_node->level == ice_get_leaf_level(pf))
 		*is_leaf = true;
 	else
 		*is_leaf = false;
@@ -408,6 +408,7 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	struct ice_tm_shaper_profile *shaper_profile = NULL;
 	struct ice_tm_node *tm_node;
 	struct ice_tm_node *parent_node = NULL;
+	uint8_t layer_offset = pf->tm_conf.hidden_layers;
 	int ret;
 
 	if (!params || !error)
@@ -446,7 +447,7 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		/* add the root node */
 		tm_node = rte_zmalloc(NULL,
 				sizeof(struct ice_tm_node) +
-				sizeof(struct ice_tm_node *) * hw->max_children[0],
+				sizeof(struct ice_tm_node *) * hw->max_children[layer_offset],
 				0);
 		if (!tm_node)
 			return -ENOMEM;
@@ -478,7 +479,7 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	}
 
 	ret = ice_node_param_check(node_id, priority, weight,
-			params, level_id == ice_get_leaf_level(hw), error);
+			params, level_id == ice_get_leaf_level(pf), error);
 	if (ret)
 		return ret;
 
@@ -506,7 +507,7 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 
 	tm_node = rte_zmalloc(NULL,
 			sizeof(struct ice_tm_node) +
-			sizeof(struct ice_tm_node *) * hw->max_children[level_id],
+			sizeof(struct ice_tm_node *) * hw->max_children[level_id + layer_offset],
 			0);
 	if (!tm_node)
 		return -ENOMEM;
@@ -753,8 +754,8 @@ free_sched_node_recursive(struct ice_port_info *pi, const struct ice_sched_node 
 }
 
 static int
-create_sched_node_recursive(struct ice_port_info *pi, struct ice_tm_node *sw_node,
-		struct ice_sched_node *hw_root, uint16_t *created)
+create_sched_node_recursive(struct ice_pf *pf, struct ice_port_info *pi,
+		 struct ice_tm_node *sw_node, struct ice_sched_node *hw_root, uint16_t *created)
 {
 	struct ice_sched_node *parent = sw_node->sched_node;
 	uint32_t teid;
@@ -786,14 +787,14 @@ create_sched_node_recursive(struct ice_port_info *pi, struct ice_tm_node *sw_nod
 	 * then just return, rather than trying to create leaf nodes.
 	 * That is done later at queue start.
 	 */
-	if (sw_node->level + 2 == ice_get_leaf_level(pi->hw))
+	if (sw_node->level + 2 == ice_get_leaf_level(pf))
 		return 0;
 
 	for (uint16_t i = 0; i < sw_node->reference_count; i++) {
 		if (sw_node->children[i]->reference_count == 0)
 			continue;
 
-		if (create_sched_node_recursive(pi, sw_node->children[i], hw_root, created) < 0)
+		if (create_sched_node_recursive(pf, pi, sw_node->children[i], hw_root, created) < 0)
 			return -1;
 	}
 	return 0;
@@ -806,16 +807,20 @@ commit_new_hierarchy(struct rte_eth_dev *dev)
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_port_info *pi = hw->port_info;
 	struct ice_tm_node *sw_root = pf->tm_conf.root;
-	struct ice_sched_node *new_vsi_root = (pi->has_tc) ? pi->root->children[0] : pi->root;
+	const uint16_t new_root_level = pf->tm_conf.hidden_layers;
 	/* count nodes per hw level, not per logical */
 	uint16_t nodes_created_per_level[ICE_TM_MAX_LAYERS] = {0};
-	uint8_t q_lvl = ice_get_leaf_level(hw);
+	uint8_t q_lvl = ice_get_leaf_level(pf);
 	uint8_t qg_lvl = q_lvl - 1;
+
+	struct ice_sched_node *new_vsi_root = hw->vsi_ctx[pf->main_vsi->idx]->sched.vsi_node[0];
+	while (new_vsi_root->tx_sched_layer > new_root_level)
+		new_vsi_root = new_vsi_root->parent;
 
 	free_sched_node_recursive(pi, new_vsi_root, new_vsi_root, new_vsi_root->vsi_handle);
 
 	sw_root->sched_node = new_vsi_root;
-	if (create_sched_node_recursive(pi, sw_root, new_vsi_root, nodes_created_per_level) < 0)
+	if (create_sched_node_recursive(pf, pi, sw_root, new_vsi_root, nodes_created_per_level) < 0)
 		return -1;
 	for (uint16_t i = 0; i < RTE_DIM(nodes_created_per_level); i++)
 		PMD_DRV_LOG(DEBUG, "Created %u nodes at level %u",

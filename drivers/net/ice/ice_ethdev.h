@@ -486,6 +486,7 @@ struct ice_tm_node {
 struct ice_tm_conf {
 	struct ice_shaper_profile_list shaper_profile_list;
 	struct ice_tm_node *root; /* root node - port */
+	uint8_t hidden_layers;    /* the number of hierarchy layers hidden from app */
 	bool committed;
 	bool clear_on_fail;
 };
@@ -559,6 +560,7 @@ struct ice_devargs {
 	uint8_t pin_idx;
 	uint8_t pps_out_ena;
 	uint8_t ddp_load_sched;
+	uint8_t tm_exposed_levels;
 	int xtr_field_offs;
 	uint8_t xtr_flag_offs[PROTO_XTR_MAX];
 	/* Name of the field. */
@@ -662,7 +664,7 @@ struct ice_vsi_vlan_pvid_info {
 
 /* ICE_PF_TO */
 #define ICE_PF_TO_HW(pf) \
-	(&(((struct ice_pf *)pf)->adapter->hw))
+	(&((pf)->adapter->hw))
 #define ICE_PF_TO_ADAPTER(pf) \
 	((struct ice_adapter *)(pf)->adapter)
 #define ICE_PF_TO_ETH_DEV(pf) \
