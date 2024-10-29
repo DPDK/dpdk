@@ -458,6 +458,8 @@ struct ice_acl_info {
 TAILQ_HEAD(ice_shaper_profile_list, ice_tm_shaper_profile);
 TAILQ_HEAD(ice_tm_node_list, ice_tm_node);
 
+#define ICE_TM_MAX_LAYERS ICE_SCHED_9_LAYERS
+
 struct ice_tm_shaper_profile {
 	TAILQ_ENTRY(ice_tm_shaper_profile) node;
 	uint32_t shaper_profile_id;
@@ -478,14 +480,6 @@ struct ice_tm_node {
 	struct ice_tm_shaper_profile *shaper_profile;
 	struct rte_tm_node_params params;
 	struct ice_sched_node *sched_node;
-};
-
-/* node type of Traffic Manager */
-enum ice_tm_node_type {
-	ICE_TM_NODE_TYPE_PORT,
-	ICE_TM_NODE_TYPE_QGROUP,
-	ICE_TM_NODE_TYPE_QUEUE,
-	ICE_TM_NODE_TYPE_MAX,
 };
 
 /* Struct to store all the Traffic Manager configuration. */
@@ -690,9 +684,6 @@ int ice_rem_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 			 struct ice_rss_hash_cfg *cfg);
 void ice_tm_conf_init(struct rte_eth_dev *dev);
 void ice_tm_conf_uninit(struct rte_eth_dev *dev);
-int ice_do_hierarchy_commit(struct rte_eth_dev *dev,
-			    int clear_on_fail,
-			    struct rte_tm_error *error);
 extern const struct rte_tm_ops ice_tm_ops;
 
 static inline int
@@ -750,4 +741,8 @@ int rte_pmd_ice_dump_switch(uint16_t port, uint8_t **buff, uint32_t *size);
 
 __rte_experimental
 int rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream);
+
+int
+ice_tm_setup_txq_node(struct ice_pf *pf, struct ice_hw *hw, uint16_t qid, uint32_t node_teid);
+
 #endif /* _ICE_ETHDEV_H_ */

@@ -3906,7 +3906,6 @@ ice_dev_start(struct rte_eth_dev *dev)
 	int mask, ret;
 	uint8_t timer = hw->func_caps.ts_func_info.tmr_index_owned;
 	uint32_t pin_idx = ad->devargs.pin_idx;
-	struct rte_tm_error tm_err;
 	ice_declare_bitmap(pmask, ICE_PROMISC_MAX);
 	ice_zero_bitmap(pmask, ICE_PROMISC_MAX);
 
@@ -3934,14 +3933,6 @@ ice_dev_start(struct rte_eth_dev *dev)
 		ret = ice_rx_queue_start(dev, nb_rxq);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "fail to start Rx queue %u", nb_rxq);
-			goto rx_err;
-		}
-	}
-
-	if (pf->tm_conf.committed) {
-		ret = ice_do_hierarchy_commit(dev, pf->tm_conf.clear_on_fail, &tm_err);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "fail to commit Tx scheduler");
 			goto rx_err;
 		}
 	}

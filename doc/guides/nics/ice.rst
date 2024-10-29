@@ -447,21 +447,22 @@ Traffic Management Support
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ice PMD provides support for the Traffic Management API (RTE_TM),
-allow users to offload a 3-layers Tx scheduler on the E810 NIC:
+enabling users to configure and manage the traffic shaping and scheduling of transmitted packets.
+By default, all available transmit scheduler layers are available for configuration,
+allowing up to 2000 queues to be configured in a hierarchy of up to 8 levels.
+The number of levels in the hierarchy can be adjusted via driver parameter:
 
-- ``Port Layer``
+* the default 9-level topology (8 levels usable) can be replaced by a new topology downloaded from a DDP file,
+  using the driver parameter ``ddp_load_sched_topo=1``.
+  Using this mechanism, if the number of levels is reduced,
+  the possible fan-out of child-nodes from each level may be increased.
+  The default topology is a 9-level tree with a fan-out of 8 at each level.
+  Released DDP package files contain a 5-level hierarchy (4-levels usable),
+  with increased fan-out at the lower 3 levels
+  e.g. 64 at levels 2 and 3, and 256 or more at the leaf-node level.
 
-  This is the root layer, support peak bandwidth configuration,
-  max to 32 children.
-
-- ``Queue Group Layer``
-
-  The middle layer, support peak / committed bandwidth, weight, priority configurations,
-  max to 8 children.
-
-- ``Queue Layer``
-
-  The leaf layer, support peak / committed bandwidth, weight, priority configurations.
+For more details on how to configure a Tx scheduling hierarchy,
+please refer to the ``rte_tm`` `API documentation <https://doc.dpdk.org/api/rte__tm_8h.html>`_.
 
 Additional Options
 ++++++++++++++++++
