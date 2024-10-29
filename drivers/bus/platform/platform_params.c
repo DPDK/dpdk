@@ -10,12 +10,9 @@
 #include <rte_dev.h>
 #include <rte_errno.h>
 #include <rte_kvargs.h>
-#include <rte_vfio.h>
 
 #include "bus_platform_driver.h"
 #include "private.h"
-
-#ifdef VFIO_PRESENT
 
 enum platform_params {
 	RTE_PLATFORM_PARAM_NAME,
@@ -73,5 +70,3 @@ platform_bus_dev_iterate(const void *start, const char *str,
 
 	return dev;
 }
-
-#endif /* VFIO_PRESENT */

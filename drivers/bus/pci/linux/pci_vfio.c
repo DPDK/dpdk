@@ -27,17 +27,6 @@
 #include "pci_init.h"
 #include "private.h"
 
-/**
- * @file
- * PCI probing using Linux VFIO.
- *
- * This code tries to determine if the PCI device is bound to VFIO driver,
- * and initialize it (map BARs, set up interrupts) if that's the case.
- *
- */
-
-#ifdef VFIO_PRESENT
-
 static struct rte_tailq_elem rte_vfio_tailq = {
 	.name = "VFIO_RESOURCE_LIST",
 };
@@ -1327,4 +1316,3 @@ pci_vfio_is_enabled(void)
 	}
 	return status;
 }
-#endif

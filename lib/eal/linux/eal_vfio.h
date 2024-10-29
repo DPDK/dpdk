@@ -7,20 +7,6 @@
 
 #include <rte_common.h>
 
-/*
- * determine if VFIO is present on the system
- */
-#if !defined(VFIO_PRESENT) && defined(RTE_EAL_VFIO)
-#include <linux/version.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0)
-#define VFIO_PRESENT
-#else
-#pragma message("VFIO configured but not supported by this kernel, disabling.")
-#endif /* kernel version >= 3.6.0 */
-#endif /* RTE_EAL_VFIO */
-
-#ifdef VFIO_PRESENT
-
 #include <stdint.h>
 #include <linux/vfio.h>
 
@@ -153,7 +139,5 @@ struct vfio_mp_param {
 		int iommu_type_id;
 	};
 };
-
-#endif /* VFIO_PRESENT */
 
 #endif /* EAL_VFIO_H_ */

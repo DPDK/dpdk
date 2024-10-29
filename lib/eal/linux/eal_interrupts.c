@@ -57,9 +57,7 @@ union intr_pipefds{
  */
 union rte_intr_read_buffer {
 	int uio_intr_count;              /* for uio device */
-#ifdef VFIO_PRESENT
 	uint64_t vfio_intr_count;        /* for vfio device */
-#endif
 	uint64_t timerfd_num;            /* for timerfd */
 	char charbuf[16];                /* for others */
 };
@@ -95,8 +93,6 @@ static struct rte_intr_source_list intr_sources;
 static rte_thread_t intr_thread;
 
 /* VFIO interrupts */
-#ifdef VFIO_PRESENT
-
 #define IRQ_SET_BUF_LEN  (sizeof(struct vfio_irq_set) + sizeof(int))
 /* irq set buffer length for queue interrupts and LSC interrupt */
 #define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
@@ -400,7 +396,6 @@ vfio_disable_req(const struct rte_intr_handle *intr_handle)
 
 	return ret;
 }
-#endif
 #endif
 
 static int
@@ -734,7 +729,6 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 	case RTE_INTR_HANDLE_ALARM:
 		rc = -1;
 		break;
-#ifdef VFIO_PRESENT
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 		if (vfio_enable_msix(intr_handle))
 			rc = -1;
@@ -752,7 +746,6 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 		if (vfio_enable_req(intr_handle))
 			rc = -1;
 		break;
-#endif
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
@@ -807,7 +800,6 @@ rte_intr_ack(const struct rte_intr_handle *intr_handle)
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_ALARM:
 		return -1;
-#ifdef VFIO_PRESENT
 	/* VFIO MSI* is implicitly acked unlike INTx, nothing to do */
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 	case RTE_INTR_HANDLE_VFIO_MSI:
@@ -819,7 +811,6 @@ rte_intr_ack(const struct rte_intr_handle *intr_handle)
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
 	case RTE_INTR_HANDLE_VFIO_REQ:
 		return -1;
-#endif
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
@@ -868,7 +859,6 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 	case RTE_INTR_HANDLE_ALARM:
 		rc = -1;
 		break;
-#ifdef VFIO_PRESENT
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 		if (vfio_disable_msix(intr_handle))
 			rc = -1;
@@ -886,7 +876,6 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 		if (vfio_disable_req(intr_handle))
 			rc = -1;
 		break;
-#endif
 #endif
 	/* not used at this moment */
 	case RTE_INTR_HANDLE_DEV_EVENT:
@@ -948,7 +937,6 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		case RTE_INTR_HANDLE_ALARM:
 			bytes_read = sizeof(buf.timerfd_num);
 			break;
-#ifdef VFIO_PRESENT
 #ifdef HAVE_VFIO_DEV_REQ_INTERFACE
 		case RTE_INTR_HANDLE_VFIO_REQ:
 #endif
@@ -957,7 +945,6 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		case RTE_INTR_HANDLE_VFIO_LEGACY:
 			bytes_read = sizeof(buf.vfio_intr_count);
 			break;
-#endif
 		case RTE_INTR_HANDLE_VDEV:
 		case RTE_INTR_HANDLE_EXT:
 			bytes_read = 0;
@@ -1221,13 +1208,11 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 	case RTE_INTR_HANDLE_UIO_INTX:
 		bytes_read = sizeof(buf.uio_intr_count);
 		break;
-#ifdef VFIO_PRESENT
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 	case RTE_INTR_HANDLE_VFIO_MSI:
 	case RTE_INTR_HANDLE_VFIO_LEGACY:
 		bytes_read = sizeof(buf.vfio_intr_count);
 		break;
-#endif
 	case RTE_INTR_HANDLE_VDEV:
 		bytes_read = rte_intr_efd_counter_size_get(intr_handle);
 		/* For vdev, number of bytes to read is set by driver */

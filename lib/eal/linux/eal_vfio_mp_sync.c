@@ -14,15 +14,6 @@
 #include "eal_private.h"
 #include "eal_vfio.h"
 
-/**
- * @file
- * VFIO socket for communication between primary and secondary processes.
- *
- * This file is only compiled if RTE_EAL_VFIO is set.
- */
-
-#ifdef VFIO_PRESENT
-
 static int
 vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 {
@@ -129,4 +120,3 @@ vfio_mp_sync_cleanup(void)
 
 	rte_mp_action_unregister(EAL_VFIO_MP);
 }
-#endif

@@ -5,8 +5,6 @@
 #ifndef EAL_PCI_INIT_H_
 #define EAL_PCI_INIT_H_
 
-#include <rte_vfio.h>
-
 #include "private.h"
 
 /** IO resource type: */
@@ -50,8 +48,6 @@ void pci_uio_ioport_write(struct rte_pci_ioport *p,
 			  const void *data, size_t len, off_t offset);
 int pci_uio_ioport_unmap(struct rte_pci_ioport *p);
 
-#ifdef VFIO_PRESENT
-
 /* access config space */
 int pci_vfio_read_config(const struct rte_pci_device *dev,
 			 void *buf, size_t len, off_t offs);
@@ -76,7 +72,5 @@ int pci_vfio_map_resource(struct rte_pci_device *dev);
 int pci_vfio_unmap_resource(struct rte_pci_device *dev);
 
 int pci_vfio_is_enabled(void);
-
-#endif
 
 #endif /* EAL_PCI_INIT_H_ */

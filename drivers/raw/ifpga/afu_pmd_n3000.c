@@ -1473,7 +1473,6 @@ static struct rte_pci_device *n3000_afu_get_pci_dev(struct afu_rawdev *dev)
 	return RTE_DEV_TO_PCI(afudev->rawdev->device);
 }
 
-#ifdef VFIO_PRESENT
 static int dma_afu_set_irqs(struct afu_rawdev *dev, uint32_t vec_start,
 	uint32_t count, int *efds)
 {
@@ -1511,7 +1510,6 @@ static int dma_afu_set_irqs(struct afu_rawdev *dev, uint32_t vec_start,
 	rte_free(irq_set);
 	return ret;
 }
-#endif
 
 static void *n3000_afu_get_port_addr(struct afu_rawdev *dev)
 {
@@ -1724,10 +1722,8 @@ static int dma_afu_ctx_init(struct afu_rawdev *dev, int index, uint8_t *addr)
 			IFPGA_RAWDEV_PMD_ERR("eventfd create failed");
 			return -EBADF;
 		}
-#ifdef VFIO_PRESENT
 		if (dma_afu_set_irqs(dev, vec_start, 1, efds))
 			IFPGA_RAWDEV_PMD_ERR("DMA interrupt setup failed");
-#endif
 	}
 	ctx->event_fd = efds[0];
 

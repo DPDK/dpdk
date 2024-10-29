@@ -92,7 +92,6 @@ FILE_PATTERNS           = rte_*.h \
 PREDEFINED              = __DOXYGEN__ \
                           RTE_ATOMIC \
                           RTE_HAS_CPUSET \
-                          VFIO_PRESENT \
                           __rte_lockable= \
                           __rte_guarded_by(x)= \
                           __rte_exclusive_locks_required(x)= \
