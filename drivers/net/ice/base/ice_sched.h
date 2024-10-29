@@ -270,4 +270,7 @@ int ice_sched_replay_q_bw(struct ice_port_info *pi, struct ice_q_ctx *q_ctx);
 int
 ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
 			    enum ice_rl_type rl_type, u16 bw_alloc);
+
+int
+ice_alloc_lan_q_ctx(struct ice_hw *hw, u16 vsi_handle, u8 tc, u16 new_numqs);
 #endif /* _ICE_SCHED_H_ */
