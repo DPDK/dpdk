@@ -3,6 +3,7 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
+#include <rte_common.h>
 #include <unistd.h>
 
 #include "ntos_drv.h"
@@ -67,20 +68,20 @@
 	} \
 } while (0)
 
-struct __rte_aligned(8) virtq_avail {
+struct __rte_packed virtq_avail {
 	uint16_t flags;
 	uint16_t idx;
 	uint16_t ring[];	/* Queue Size */
 };
 
-struct __rte_aligned(8) virtq_used_elem {
+struct __rte_packed virtq_used_elem {
 	/* Index of start of used descriptor chain. */
 	uint32_t id;
 	/* Total length of the descriptor chain which was used (written to) */
 	uint32_t len;
 };
 
-struct __rte_aligned(8) virtq_used {
+struct __rte_packed virtq_used {
 	uint16_t flags;
 	uint16_t idx;
 	struct virtq_used_elem ring[];	/* Queue Size */
