@@ -52,6 +52,8 @@ Features
 - Encapsulation and decapsulation of GTP data.
 - RX VLAN stripping via raw decap.
 - TX VLAN insertion via raw encap.
+- CAM and TCAM based matching.
+- Exact match of 140 million flows and policies.
 
 Limitations
 ~~~~~~~~~~~

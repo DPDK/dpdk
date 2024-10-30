@@ -32,6 +32,10 @@ struct hw_db_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_action_set_idx {
+	HW_DB_IDX;
+};
+
 struct hw_db_cot_idx {
 	HW_DB_IDX;
 };
@@ -48,12 +52,22 @@ struct hw_db_slc_lr_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_km_idx {
+	HW_DB_IDX;
+};
+
+struct hw_db_km_ft {
+	HW_DB_IDX;
+};
+
 enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_NONE = 0,
 	HW_DB_IDX_TYPE_COT,
 	HW_DB_IDX_TYPE_CAT,
 	HW_DB_IDX_TYPE_QSL,
 	HW_DB_IDX_TYPE_SLC_LR,
+	HW_DB_IDX_TYPE_KM_RCP,
+	HW_DB_IDX_TYPE_KM_FT,
 };
 
 /* Functionality data types */
@@ -123,6 +137,16 @@ struct hw_db_inline_action_set_data {
 	};
 };
 
+struct hw_db_inline_km_rcp_data {
+	uint32_t rcp;
+};
+
+struct hw_db_inline_km_ft_data {
+	struct hw_db_cat_idx cat;
+	struct hw_db_km_idx km;
+	struct hw_db_action_set_idx action_set;
+};
+
 /**/
 
 int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle);
@@ -130,6 +154,8 @@ void hw_db_inline_destroy(void *db_handle);
 
 void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_idx *idxs,
 	uint32_t size);
+const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
+	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size);
 
 /**/
 struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_handle,
@@ -155,6 +181,18 @@ struct hw_db_cat_idx hw_db_inline_cat_add(struct flow_nic_dev *ndev, void *db_ha
 	const struct hw_db_inline_cat_data *data);
 void hw_db_inline_cat_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cat_idx idx);
 void hw_db_inline_cat_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cat_idx idx);
+
+/**/
+
+struct hw_db_km_idx hw_db_inline_km_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_km_rcp_data *data);
+void hw_db_inline_km_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx);
+void hw_db_inline_km_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx);
+
+struct hw_db_km_ft hw_db_inline_km_ft_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_km_ft_data *data);
+void hw_db_inline_km_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx);
+void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx);
 
 /**/
 

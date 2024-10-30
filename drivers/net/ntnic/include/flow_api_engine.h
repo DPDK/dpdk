@@ -52,34 +52,32 @@ enum res_type_e {
  */
 #define MAX_OUTPUT_DEST (128)
 
+#define MAX_WORD_NUM 24
+#define MAX_BANKS 6
+
+#define MAX_TCAM_START_OFFSETS 4
+
 #define MAX_CPY_WRITERS_SUPPORTED 8
 
 #define MAX_MATCH_FIELDS 16
 
 /*
- * Tunnel encapsulation header definition
+ *          128      128     32     32    32
+ * Have  |  QW0  ||  QW4  || SW8 || SW9 | SWX   in FPGA
+ *
+ * Each word may start at any offset, though
+ * they are combined in chronological order, with all enabled to
+ * build the extracted match data, thus that is how the match key
+ * must be build
  */
-#define MAX_TUN_HDR_SIZE 128
-struct tunnel_header_s {
-	union {
-		uint8_t hdr8[MAX_TUN_HDR_SIZE];
-		uint32_t hdr32[(MAX_TUN_HDR_SIZE + 3) / 4];
-	} d;
-	uint32_t user_port_id;
-	uint8_t len;
-
-	uint8_t nb_vlans;
-
-	uint8_t ip_version;	/* 4: v4, 6: v6 */
-	uint16_t ip_csum_precalc;
-
-	uint8_t new_outer;
-	uint8_t l2_len;
-	uint8_t l3_len;
-	uint8_t l4_len;
+enum extractor_e {
+	KM_USE_EXTRACTOR_UNDEF,
+	KM_USE_EXTRACTOR_QWORD,
+	KM_USE_EXTRACTOR_SWORD,
 };
 
 struct match_elem_s {
+	enum extractor_e extr;
 	int masked_for_tcam;	/* if potentially selected for TCAM */
 	uint32_t e_word[4];
 	uint32_t e_mask[4];
@@ -89,16 +87,76 @@ struct match_elem_s {
 	uint32_t word_len;
 };
 
+enum cam_tech_use_e {
+	KM_CAM,
+	KM_TCAM,
+	KM_SYNERGY
+};
+
 struct km_flow_def_s {
 	struct flow_api_backend_s *be;
 
+	/* For keeping track of identical entries */
+	struct km_flow_def_s *reference;
+	struct km_flow_def_s *root;
+
 	/* For collect flow elements and sorting */
 	struct match_elem_s match[MAX_MATCH_FIELDS];
+	struct match_elem_s *match_map[MAX_MATCH_FIELDS];
 	int num_ftype_elem;
+
+	/* Finally formatted CAM/TCAM entry */
+	enum cam_tech_use_e target;
+	uint32_t entry_word[MAX_WORD_NUM];
+	uint32_t entry_mask[MAX_WORD_NUM];
+	int key_word_size;
+
+	/* TCAM calculated possible bank start offsets */
+	int start_offsets[MAX_TCAM_START_OFFSETS];
+	int num_start_offsets;
 
 	/* Flow information */
 	/* HW input port ID needed for compare. In port must be identical on flow types */
 	uint32_t port_id;
+	uint32_t info;	/* used for color (actions) */
+	int info_set;
+	int flow_type;	/* 0 is illegal and used as unset */
+	int flushed_to_target;	/* if this km entry has been finally programmed into NIC hw */
+
+	/* CAM specific bank management */
+	int cam_paired;
+	int record_indexes[MAX_BANKS];
+	int bank_used;
+	uint32_t *cuckoo_moves;	/* for CAM statistics only */
+	struct cam_distrib_s *cam_dist;
+
+	/* TCAM specific bank management */
+	struct tcam_distrib_s *tcam_dist;
+	int tcam_start_bank;
+	int tcam_record;
+};
+
+/*
+ * Tunnel encapsulation header definition
+ */
+#define MAX_TUN_HDR_SIZE 128
+
+struct tunnel_header_s {
+	union {
+		uint8_t hdr8[MAX_TUN_HDR_SIZE];
+		uint32_t hdr32[(MAX_TUN_HDR_SIZE + 3) / 4];
+	} d;
+
+	uint8_t len;
+
+	uint8_t nb_vlans;
+
+	uint8_t ip_version;	/* 4: v4, 6: v6 */
+
+	uint8_t new_outer;
+	uint8_t l2_len;
+	uint8_t l3_len;
+	uint8_t l4_len;
 };
 
 enum flow_port_type_e {
@@ -247,10 +305,24 @@ struct flow_handle {
 	};
 };
 
+void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle);
 void km_free_ndev_resource_management(void **handle);
 
 int km_add_match_elem(struct km_flow_def_s *km, uint32_t e_word[4], uint32_t e_mask[4],
 	uint32_t word_len, enum frame_offs_e start, int8_t offset);
+
+int km_key_create(struct km_flow_def_s *km, uint32_t port_id);
+/*
+ * Compares 2 KM key definitions after first collect validate and optimization.
+ * km is compared against an existing km1.
+ * if identical, km1 flow_type is returned
+ */
+int km_key_compare(struct km_flow_def_s *km, struct km_flow_def_s *km1);
+
+int km_rcp_set(struct km_flow_def_s *km, int index);
+
+int km_write_data_match_entry(struct km_flow_def_s *km, uint32_t color);
+int km_clear_data_match_entry(struct km_flow_def_s *km);
 
 void kcc_free_ndev_resource_management(void **handle);
 

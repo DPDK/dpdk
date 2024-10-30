@@ -40,7 +40,19 @@ struct hw_db_inline_resource_db {
 		int ref;
 	} *cat;
 
+	struct hw_db_inline_resource_db_km_rcp {
+		struct hw_db_inline_km_rcp_data data;
+		int ref;
+
+		struct hw_db_inline_resource_db_km_ft {
+			struct hw_db_inline_km_ft_data data;
+			int ref;
+		} *ft;
+	} *km;
+
 	uint32_t nb_cat;
+	uint32_t nb_km_ft;
+	uint32_t nb_km_rcp;
 
 	/* Hardware */
 
@@ -91,6 +103,25 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 		return -1;
 	}
 
+	db->nb_km_ft = ndev->be.cat.nb_flow_types;
+	db->nb_km_rcp = ndev->be.km.nb_categories;
+	db->km = calloc(db->nb_km_rcp, sizeof(struct hw_db_inline_resource_db_km_rcp));
+
+	if (db->km == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
+	for (uint32_t i = 0; i < db->nb_km_rcp; ++i) {
+		db->km[i].ft = calloc(db->nb_km_ft * db->nb_cat,
+			sizeof(struct hw_db_inline_resource_db_km_ft));
+
+		if (db->km[i].ft == NULL) {
+			hw_db_inline_destroy(db);
+			return -1;
+		}
+	}
+
 	*db_handle = db;
 	return 0;
 }
@@ -103,6 +134,13 @@ void hw_db_inline_destroy(void *db_handle)
 	free(db->qsl);
 	free(db->slc_lr);
 	free(db->cat);
+
+	if (db->km) {
+		for (uint32_t i = 0; i < db->nb_km_rcp; ++i)
+			free(db->km[i].ft);
+
+		free(db->km);
+	}
 
 	free(db->cfn);
 
@@ -134,10 +172,59 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 				*(struct hw_db_slc_lr_idx *)&idxs[i]);
 			break;
 
+		case HW_DB_IDX_TYPE_KM_RCP:
+			hw_db_inline_km_deref(ndev, db_handle, *(struct hw_db_km_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_KM_FT:
+			hw_db_inline_km_ft_deref(ndev, db_handle, *(struct hw_db_km_ft *)&idxs[i]);
+			break;
+
 		default:
 			break;
 		}
 	}
+}
+
+
+const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
+	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	for (uint32_t i = 0; i < size; ++i) {
+		if (idxs[i].type != type)
+			continue;
+
+		switch (type) {
+		case HW_DB_IDX_TYPE_NONE:
+			return NULL;
+
+		case HW_DB_IDX_TYPE_CAT:
+			return &db->cat[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_QSL:
+			return &db->qsl[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_COT:
+			return &db->cot[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_SLC_LR:
+			return &db->slc_lr[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_KM_RCP:
+			return &db->km[idxs[i].id1].data;
+
+		case HW_DB_IDX_TYPE_KM_FT:
+			return NULL;	/* FTs can't be easily looked up */
+
+		default:
+			return NULL;
+		}
+	}
+
+	return NULL;
 }
 
 /******************************************************************************/
@@ -612,5 +699,152 @@ void hw_db_inline_cat_deref(struct flow_nic_dev *ndev, void *db_handle, struct h
 	if (db->cat[idx.ids].ref <= 0) {
 		memset(&db->cat[idx.ids].data, 0x0, sizeof(struct hw_db_inline_cat_data));
 		db->cat[idx.ids].ref = 0;
+	}
+}
+
+/******************************************************************************/
+/* KM RCP                                                                     */
+/******************************************************************************/
+
+static int hw_db_inline_km_compare(const struct hw_db_inline_km_rcp_data *data1,
+	const struct hw_db_inline_km_rcp_data *data2)
+{
+	return data1->rcp == data2->rcp;
+}
+
+struct hw_db_km_idx hw_db_inline_km_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_km_rcp_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_km_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_KM_RCP;
+
+	for (uint32_t i = 0; i < db->nb_km_rcp; ++i) {
+		if (!found && db->km[i].ref <= 0) {
+			found = 1;
+			idx.id1 = i;
+		}
+
+		if (db->km[i].ref > 0 && hw_db_inline_km_compare(data, &db->km[i].data)) {
+			idx.id1 = i;
+			hw_db_inline_km_ref(ndev, db, idx);
+			return idx;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	memcpy(&db->km[idx.id1].data, data, sizeof(struct hw_db_inline_km_rcp_data));
+	db->km[idx.id1].ref = 1;
+
+	return idx;
+}
+
+void hw_db_inline_km_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->km[idx.id1].ref += 1;
+}
+
+void hw_db_inline_km_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx)
+{
+	(void)ndev;
+	(void)db_handle;
+
+	if (idx.error)
+		return;
+}
+
+/******************************************************************************/
+/* KM FT                                                                      */
+/******************************************************************************/
+
+static int hw_db_inline_km_ft_compare(const struct hw_db_inline_km_ft_data *data1,
+	const struct hw_db_inline_km_ft_data *data2)
+{
+	return data1->cat.raw == data2->cat.raw && data1->km.raw == data2->km.raw &&
+		data1->action_set.raw == data2->action_set.raw;
+}
+
+struct hw_db_km_ft hw_db_inline_km_ft_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_km_ft_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_km_rcp *km_rcp = &db->km[data->km.id1];
+	struct hw_db_km_ft idx = { .raw = 0 };
+	uint32_t cat_offset = data->cat.ids * db->nb_cat;
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_KM_FT;
+	idx.id2 = data->km.id1;
+	idx.id3 = data->cat.ids;
+
+	if (km_rcp->data.rcp == 0) {
+		idx.id1 = 0;
+		return idx;
+	}
+
+	for (uint32_t i = 1; i < db->nb_km_ft; ++i) {
+		const struct hw_db_inline_resource_db_km_ft *km_ft = &km_rcp->ft[cat_offset + i];
+
+		if (!found && km_ft->ref <= 0) {
+			found = 1;
+			idx.id1 = i;
+		}
+
+		if (km_ft->ref > 0 && hw_db_inline_km_ft_compare(data, &km_ft->data)) {
+			idx.id1 = i;
+			hw_db_inline_km_ft_ref(ndev, db, idx);
+			return idx;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	memcpy(&km_rcp->ft[cat_offset + idx.id1].data, data,
+		sizeof(struct hw_db_inline_km_ft_data));
+	km_rcp->ft[cat_offset + idx.id1].ref = 1;
+
+	return idx;
+}
+
+void hw_db_inline_km_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error) {
+		uint32_t cat_offset = idx.id3 * db->nb_cat;
+		db->km[idx.id2].ft[cat_offset + idx.id1].ref += 1;
+	}
+}
+
+void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_km_rcp *km_rcp = &db->km[idx.id2];
+	uint32_t cat_offset = idx.id3 * db->nb_cat;
+
+	if (idx.error)
+		return;
+
+	km_rcp->ft[cat_offset + idx.id1].ref -= 1;
+
+	if (km_rcp->ft[cat_offset + idx.id1].ref <= 0) {
+		memset(&km_rcp->ft[cat_offset + idx.id1].data, 0x0,
+			sizeof(struct hw_db_inline_km_ft_data));
+		km_rcp->ft[cat_offset + idx.id1].ref = 0;
 	}
 }

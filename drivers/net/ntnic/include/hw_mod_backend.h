@@ -132,18 +132,8 @@ static inline int is_non_zero(const void *addr, size_t n)
 	return 0;
 }
 
-enum frame_offs_e {
-	DYN_L2 = 1,
-	DYN_FIRST_VLAN = 2,
-	DYN_L3 = 4,
-	DYN_L4 = 7,
-	DYN_L4_PAYLOAD = 8,
-	DYN_TUN_L3 = 13,
-	DYN_TUN_L4 = 16,
-	DYN_TUN_L4_PAYLOAD = 17,
-};
-
 /* Sideband info bit indicator */
+#define SWX_INFO (1 << 6)
 
 enum km_flm_if_select_e {
 	KM_FLM_IF_FIRST = 0,
@@ -157,6 +147,49 @@ enum km_flm_if_select_e {
 	void *base;                                                                               \
 	unsigned int alloced_size;                                                                \
 	int debug
+
+enum frame_offs_e {
+	DYN_L2 = 1,
+	DYN_FIRST_VLAN = 2,
+	DYN_L3 = 4,
+	DYN_L4 = 7,
+	DYN_L4_PAYLOAD = 8,
+	DYN_TUN_L3 = 13,
+	DYN_TUN_L4 = 16,
+	DYN_TUN_L4_PAYLOAD = 17,
+	SB_VNI = SWX_INFO | 1,
+	SB_MAC_PORT = SWX_INFO | 2,
+	SB_KCC_ID = SWX_INFO | 3
+};
+
+enum {
+	QW0_SEL_EXCLUDE = 0,
+	QW0_SEL_FIRST32 = 1,
+	QW0_SEL_FIRST64 = 3,
+	QW0_SEL_ALL128 = 4,
+};
+
+enum {
+	QW4_SEL_EXCLUDE = 0,
+	QW4_SEL_FIRST32 = 1,
+	QW4_SEL_FIRST64 = 2,
+	QW4_SEL_ALL128 = 3,
+};
+
+enum {
+	DW8_SEL_EXCLUDE = 0,
+	DW8_SEL_FIRST32 = 3,
+};
+
+enum {
+	DW10_SEL_EXCLUDE = 0,
+	DW10_SEL_FIRST32 = 2,
+};
+
+enum {
+	SWX_SEL_EXCLUDE = 0,
+	SWX_SEL_ALL32 = 1,
+};
 
 enum {
 	PROT_OTHER = 0,
@@ -440,13 +473,24 @@ int hw_mod_km_alloc(struct flow_api_backend_s *be);
 void hw_mod_km_free(struct flow_api_backend_s *be);
 int hw_mod_km_reset(struct flow_api_backend_s *be);
 int hw_mod_km_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_km_rcp_set(struct flow_api_backend_s *be, enum hw_km_e field, int index, int word_off,
+	uint32_t value);
+int hw_mod_km_rcp_get(struct flow_api_backend_s *be, enum hw_km_e field, int index, int word_off,
+	uint32_t *value);
 int hw_mod_km_cam_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
 	int count);
+int hw_mod_km_cam_set(struct flow_api_backend_s *be, enum hw_km_e field, int bank, int record,
+	uint32_t value);
+
 int hw_mod_km_tcam_flush(struct flow_api_backend_s *be, int start_bank, int count);
 int hw_mod_km_tcam_set(struct flow_api_backend_s *be, enum hw_km_e field, int bank, int byte,
 	int byte_val, uint32_t *value_set);
+int hw_mod_km_tcam_get(struct flow_api_backend_s *be, enum hw_km_e field, int bank, int byte,
+	int byte_val, uint32_t *value_set);
 int hw_mod_km_tci_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
 	int count);
+int hw_mod_km_tci_set(struct flow_api_backend_s *be, enum hw_km_e field, int bank, int record,
+	uint32_t value);
 int hw_mod_km_tcq_flush(struct flow_api_backend_s *be, int start_bank, int start_record,
 	int count);
 

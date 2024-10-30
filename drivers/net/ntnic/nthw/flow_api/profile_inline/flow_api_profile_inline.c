@@ -2334,6 +2334,23 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	uint32_t *flm_scrub __rte_unused,
 	struct rte_flow_error *error)
 {
+	const bool empty_pattern = fd_has_empty_pattern(fd);
+
+	/* Setup COT */
+	struct hw_db_inline_cot_data cot_data = {
+		.matcher_color_contrib = empty_pattern ? 0x0 : 0x4,	/* FT key C */
+		.frag_rcp = 0,
+	};
+	struct hw_db_cot_idx cot_idx =
+		hw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle, &cot_data);
+	local_idxs[(*local_idx_counter)++] = cot_idx.raw;
+
+	if (cot_idx.error) {
+		NT_LOG(ERR, FILTER, "Could not reference COT resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		return -1;
+	}
+
 	/* Finalize QSL */
 	struct hw_db_qsl_idx qsl_idx =
 		hw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle, qsl_data);
@@ -2428,6 +2445,8 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		/*
 		 * Flow for group 0
 		 */
+		int identical_km_entry_ft = -1;
+
 		struct hw_db_inline_action_set_data action_set_data = { 0 };
 		(void)action_set_data;
 
@@ -2500,6 +2519,130 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			NT_LOG(ERR, FILTER, "Could not reference CAT resource");
 			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 			goto error_out;
+		}
+
+		/* Setup KM RCP */
+		struct hw_db_inline_km_rcp_data km_rcp_data = { .rcp = 0 };
+
+		if (fd->km.num_ftype_elem) {
+			struct flow_handle *flow = dev->ndev->flow_base, *found_flow = NULL;
+
+			if (km_key_create(&fd->km, fh->port_id)) {
+				NT_LOG(ERR, FILTER, "KM creation failed");
+				flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
+				goto error_out;
+			}
+
+			fd->km.be = &dev->ndev->be;
+
+			/* Look for existing KM RCPs */
+			while (flow) {
+				if (flow->type == FLOW_HANDLE_TYPE_FLOW &&
+					flow->fd->km.flow_type) {
+					int res = km_key_compare(&fd->km, &flow->fd->km);
+
+					if (res < 0) {
+						/* Flow rcp and match data is identical */
+						identical_km_entry_ft = flow->fd->km.flow_type;
+						found_flow = flow;
+						break;
+					}
+
+					if (res > 0) {
+						/* Flow rcp found and match data is different */
+						found_flow = flow;
+					}
+				}
+
+				flow = flow->next;
+			}
+
+			km_attach_ndev_resource_management(&fd->km, &dev->ndev->km_res_handle);
+
+			if (found_flow != NULL) {
+				/* Reuse existing KM RCP */
+				const struct hw_db_inline_km_rcp_data *other_km_rcp_data =
+					hw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
+					HW_DB_IDX_TYPE_KM_RCP,
+					(struct hw_db_idx *)
+					found_flow->flm_db_idxs,
+					found_flow->flm_db_idx_counter);
+
+				if (other_km_rcp_data == NULL ||
+					flow_nic_ref_resource(dev->ndev, RES_KM_CATEGORY,
+					other_km_rcp_data->rcp)) {
+					NT_LOG(ERR, FILTER,
+						"Could not reference existing KM RCP resource");
+					flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+					goto error_out;
+				}
+
+				km_rcp_data.rcp = other_km_rcp_data->rcp;
+			} else {
+				/* Alloc new KM RCP */
+				int rcp = flow_nic_alloc_resource(dev->ndev, RES_KM_CATEGORY, 1);
+
+				if (rcp < 0) {
+					NT_LOG(ERR, FILTER,
+						"Could not reference KM RCP resource (flow_nic_alloc)");
+					flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+					goto error_out;
+				}
+
+				km_rcp_set(&fd->km, rcp);
+				km_rcp_data.rcp = (uint32_t)rcp;
+			}
+		}
+
+		struct hw_db_km_idx km_idx =
+			hw_db_inline_km_add(dev->ndev, dev->ndev->hw_db_handle, &km_rcp_data);
+
+		fh->db_idxs[fh->db_idx_counter++] = km_idx.raw;
+
+		if (km_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference KM RCP resource (db_inline)");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
+		/* Setup KM FT */
+		struct hw_db_inline_km_ft_data km_ft_data = {
+			.cat = cat_idx,
+			.km = km_idx,
+		};
+		struct hw_db_km_ft km_ft_idx =
+			hw_db_inline_km_ft_add(dev->ndev, dev->ndev->hw_db_handle, &km_ft_data);
+		fh->db_idxs[fh->db_idx_counter++] = km_ft_idx.raw;
+
+		if (km_ft_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference KM FT resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
+		/* Finalize KM RCP */
+		if (fd->km.num_ftype_elem) {
+			if (identical_km_entry_ft >= 0 && identical_km_entry_ft != km_ft_idx.id1) {
+				NT_LOG(ERR, FILTER,
+					"Identical KM matches cannot have different KM FTs");
+				flow_nic_set_error(ERR_MATCH_FAILED_BY_HW_LIMITS, error);
+				goto error_out;
+			}
+
+			fd->km.flow_type = km_ft_idx.id1;
+
+			if (fd->km.target == KM_CAM) {
+				uint32_t ft_a_mask = 0;
+				hw_mod_km_rcp_get(&dev->ndev->be, HW_KM_RCP_FTM_A,
+					(int)km_rcp_data.rcp, 0, &ft_a_mask);
+				hw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_FTM_A,
+					(int)km_rcp_data.rcp, 0,
+					ft_a_mask | (1 << fd->km.flow_type));
+			}
+
+			hw_mod_km_rcp_flush(&dev->ndev->be, (int)km_rcp_data.rcp, 1);
+
+			km_write_data_match_entry(&fd->km, 0);
 		}
 
 		nic_insert_flow(dev->ndev, fh);
@@ -2781,6 +2924,25 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 
 	} else {
 		NT_LOG(DBG, FILTER, "removing flow :%p", fh);
+
+		if (fh->fd->km.num_ftype_elem) {
+			km_clear_data_match_entry(&fh->fd->km);
+
+			const struct hw_db_inline_km_rcp_data *other_km_rcp_data =
+				hw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
+				HW_DB_IDX_TYPE_KM_RCP,
+				(struct hw_db_idx *)fh->flm_db_idxs,
+				fh->flm_db_idx_counter);
+
+			if (other_km_rcp_data != NULL &&
+				flow_nic_deref_resource(dev->ndev, RES_KM_CATEGORY,
+				(int)other_km_rcp_data->rcp) == 0) {
+				hw_mod_km_rcp_set(&dev->ndev->be, HW_KM_RCP_PRESET_ALL,
+					(int)other_km_rcp_data->rcp, 0, 0);
+				hw_mod_km_rcp_flush(&dev->ndev->be, (int)other_km_rcp_data->rcp,
+					1);
+			}
+		}
 
 		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)fh->db_idxs, fh->db_idx_counter);
