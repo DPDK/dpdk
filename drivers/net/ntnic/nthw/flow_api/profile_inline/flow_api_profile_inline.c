@@ -603,6 +603,49 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_RSS", dev);
+
+			if (action[aidx].conf) {
+				struct rte_flow_action_rss rss_tmp;
+				const struct rte_flow_action_rss *rss =
+					memcpy_mask_if(&rss_tmp, action[aidx].conf,
+					action_mask ? action_mask[aidx].conf : NULL,
+					sizeof(struct rte_flow_action_rss));
+
+				if (rss->key_len > MAX_RSS_KEY_LEN) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: RSS hash key length %u exceeds maximum value %u",
+						rss->key_len, MAX_RSS_KEY_LEN);
+					flow_nic_set_error(ERR_RSS_TOO_LONG_KEY, error);
+					return -1;
+				}
+
+				for (uint32_t i = 0; i < rss->queue_num; ++i) {
+					int hw_id = rx_queue_idx_to_hw_id(dev, rss->queue[i]);
+
+					fd->dst_id[fd->dst_num_avail].owning_port_id = dev->port;
+					fd->dst_id[fd->dst_num_avail].id = hw_id;
+					fd->dst_id[fd->dst_num_avail].type = PORT_VIRT;
+					fd->dst_id[fd->dst_num_avail].active = 1;
+					fd->dst_num_avail++;
+				}
+
+				fd->hsh.func = rss->func;
+				fd->hsh.types = rss->types;
+				fd->hsh.key = rss->key;
+				fd->hsh.key_len = rss->key_len;
+
+				NT_LOG(DBG, FILTER,
+					"Dev:%p: RSS func: %d, types: 0x%" PRIX64 ", key_len: %d",
+					dev, rss->func, rss->types, rss->key_len);
+
+				fd->full_offload = 0;
+				*num_queues += rss->queue_num;
+			}
+
+			break;
+
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_MARK", dev);
 

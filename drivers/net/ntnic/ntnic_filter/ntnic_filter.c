@@ -330,6 +330,79 @@ int create_action_elements_inline(struct cnv_action_s *action,
 			 * Non-compatible actions handled here
 			 */
 			switch (type) {
+			case RTE_FLOW_ACTION_TYPE_RSS: {
+				const struct rte_flow_action_rss *rss =
+					(const struct rte_flow_action_rss *)actions[aidx].conf;
+
+				switch (rss->func) {
+				case RTE_ETH_HASH_FUNCTION_DEFAULT:
+					action->flow_rss.func =
+						(enum rte_eth_hash_function)
+						RTE_ETH_HASH_FUNCTION_DEFAULT;
+					break;
+
+				case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
+					action->flow_rss.func =
+						(enum rte_eth_hash_function)
+						RTE_ETH_HASH_FUNCTION_TOEPLITZ;
+
+					if (rte_is_power_of_2(rss->queue_num) == 0) {
+						NT_LOG(ERR, FILTER,
+							"RTE ACTION RSS - for Toeplitz the number of queues must be power of two");
+						return -1;
+					}
+
+					break;
+
+				case RTE_ETH_HASH_FUNCTION_SIMPLE_XOR:
+				case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ:
+				case RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT:
+				case RTE_ETH_HASH_FUNCTION_MAX:
+				default:
+					NT_LOG(ERR, FILTER,
+						"RTE ACTION RSS - unsupported function: %u",
+						rss->func);
+					return -1;
+				}
+
+				uint64_t tmp_rss_types = 0;
+
+				switch (rss->level) {
+				case 1:
+					/* clear/override level mask specified at types */
+					tmp_rss_types = rss->types & (~RTE_ETH_RSS_LEVEL_MASK);
+					action->flow_rss.types =
+						tmp_rss_types | RTE_ETH_RSS_LEVEL_OUTERMOST;
+					break;
+
+				case 2:
+					/* clear/override level mask specified at types */
+					tmp_rss_types = rss->types & (~RTE_ETH_RSS_LEVEL_MASK);
+					action->flow_rss.types =
+						tmp_rss_types | RTE_ETH_RSS_LEVEL_INNERMOST;
+					break;
+
+				case 0:
+					/* keep level mask specified at types */
+					action->flow_rss.types = rss->types;
+					break;
+
+				default:
+					NT_LOG(ERR, FILTER,
+						"RTE ACTION RSS - unsupported level: %u",
+						rss->level);
+					return -1;
+				}
+
+				action->flow_rss.level = 0;
+				action->flow_rss.key_len = rss->key_len;
+				action->flow_rss.queue_num = rss->queue_num;
+				action->flow_rss.key = rss->key;
+				action->flow_rss.queue = rss->queue;
+				action->flow_actions[aidx].conf = &action->flow_rss;
+			}
+			break;
+
 			case RTE_FLOW_ACTION_TYPE_RAW_DECAP: {
 				const struct rte_flow_action_raw_decap *decap =
 					(const struct rte_flow_action_raw_decap *)actions[aidx]

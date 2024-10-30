@@ -316,6 +316,13 @@ struct flow_filter_ops {
 
 	int (*flow_flush)(struct flow_eth_dev *dev, uint16_t caller_id,
 		struct rte_flow_error *error);
+
+	/*
+	 * Other
+	 */
+	int (*flow_nic_set_hasher_fields)(struct flow_nic_dev *ndev, int hsh_idx,
+		struct nt_eth_rss_conf rss_conf);
+	int (*hw_mod_hsh_rcp_flush)(struct flow_api_backend_s *be, int start_idx, int count);
 };
 
 void register_dev_flow_ops(const struct rte_flow_ops *ops);

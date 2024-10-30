@@ -114,6 +114,8 @@ struct flow_nic_dev {
 	struct flow_eth_dev *eth_base;
 	pthread_mutex_t mtx;
 
+	/* RSS hashing configuration */
+	struct nt_eth_rss_conf rss_conf;
 	/* next NIC linked list */
 	struct flow_nic_dev *next;
 };

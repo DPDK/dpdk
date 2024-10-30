@@ -214,6 +214,14 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	dev_info->max_rx_pktlen = HW_MAX_PKT_LEN;
 	dev_info->max_mtu = MAX_MTU;
 
+	if (p_adapter_info->fpga_info.profile == FPGA_INFO_PROFILE_INLINE) {
+		dev_info->flow_type_rss_offloads = NT_ETH_RSS_OFFLOAD_MASK;
+		dev_info->hash_key_size = MAX_RSS_KEY_LEN;
+
+		dev_info->rss_algo_capa = RTE_ETH_HASH_ALGO_CAPA_MASK(DEFAULT) |
+			RTE_ETH_HASH_ALGO_CAPA_MASK(TOEPLITZ);
+	}
+
 	if (internals->p_drv) {
 		dev_info->max_rx_queues = internals->nb_rx_queues;
 		dev_info->max_tx_queues = internals->nb_tx_queues;
@@ -1372,6 +1380,71 @@ promiscuous_enable(struct rte_eth_dev __rte_unused(*dev))
 	return 0;
 }
 
+static int eth_dev_rss_hash_update(struct rte_eth_dev *eth_dev, struct rte_eth_rss_conf *rss_conf)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	struct flow_nic_dev *ndev = internals->flw_dev->ndev;
+	struct nt_eth_rss_conf tmp_rss_conf = { 0 };
+	const int hsh_idx = 0;	/* hsh index 0 means the default receipt in HSH module */
+
+	if (rss_conf->rss_key != NULL) {
+		if (rss_conf->rss_key_len > MAX_RSS_KEY_LEN) {
+			NT_LOG(ERR, NTNIC,
+				"ERROR: - RSS hash key length %u exceeds maximum value %u",
+				rss_conf->rss_key_len, MAX_RSS_KEY_LEN);
+			return -1;
+		}
+
+		rte_memcpy(&tmp_rss_conf.rss_key, rss_conf->rss_key, rss_conf->rss_key_len);
+	}
+
+	tmp_rss_conf.algorithm = rss_conf->algorithm;
+
+	tmp_rss_conf.rss_hf = rss_conf->rss_hf;
+	int res = flow_filter_ops->flow_nic_set_hasher_fields(ndev, hsh_idx, tmp_rss_conf);
+
+	if (res == 0) {
+		flow_filter_ops->hw_mod_hsh_rcp_flush(&ndev->be, hsh_idx, 1);
+		rte_memcpy(&ndev->rss_conf, &tmp_rss_conf, sizeof(struct nt_eth_rss_conf));
+
+	} else {
+		NT_LOG(ERR, NTNIC, "ERROR: - RSS hash update failed with error %i", res);
+	}
+
+	return res;
+}
+
+static int rss_hash_conf_get(struct rte_eth_dev *eth_dev, struct rte_eth_rss_conf *rss_conf)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct flow_nic_dev *ndev = internals->flw_dev->ndev;
+
+	rss_conf->algorithm = (enum rte_eth_hash_function)ndev->rss_conf.algorithm;
+
+	rss_conf->rss_hf = ndev->rss_conf.rss_hf;
+
+	/*
+	 * copy full stored key into rss_key and pad it with
+	 * zeros up to rss_key_len / MAX_RSS_KEY_LEN
+	 */
+	if (rss_conf->rss_key != NULL) {
+		int key_len = RTE_MIN(rss_conf->rss_key_len, MAX_RSS_KEY_LEN);
+		memset(rss_conf->rss_key, 0, rss_conf->rss_key_len);
+		rte_memcpy(rss_conf->rss_key, &ndev->rss_conf.rss_key, key_len);
+		rss_conf->rss_key_len = key_len;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.dev_configure = eth_dev_configure,
 	.dev_start = eth_dev_start,
@@ -1395,6 +1468,8 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.set_mc_addr_list = eth_set_mc_addr_list,
 	.flow_ops_get = dev_flow_ops_get,
 	.promiscuous_enable = promiscuous_enable,
+	.rss_hash_update = eth_dev_rss_hash_update,
+	.rss_hash_conf_get = rss_hash_conf_get,
 };
 
 /*

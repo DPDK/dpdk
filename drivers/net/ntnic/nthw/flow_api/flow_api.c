@@ -1027,6 +1027,12 @@ static const struct flow_filter_ops ops = {
 	.flow_destroy = flow_destroy,
 	.flow_flush = flow_flush,
 	.flow_dev_dump = flow_dev_dump,
+
+	/*
+	 * Other
+	 */
+	 .hw_mod_hsh_rcp_flush = hw_mod_hsh_rcp_flush,
+	 .flow_nic_set_hasher_fields = flow_nic_set_hasher_fields,
 };
 
 void init_flow_filter(void)

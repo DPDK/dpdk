@@ -27,6 +27,7 @@ struct cnv_attr_s {
 
 struct cnv_action_s {
 	struct rte_flow_action flow_actions[MAX_ACTIONS];
+	struct rte_flow_action_rss flow_rss;
 	struct flow_action_raw_encap encap;
 	struct flow_action_raw_decap decap;
 	struct rte_flow_action_queue queue;
