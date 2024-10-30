@@ -29,6 +29,7 @@
 #define MOD_IIC (0x7629cddbUL)
 #define MOD_KM (0xcfbd9dbeUL)
 #define MOD_MAC_PCS (0x7abe24c7UL)
+#define MOD_MAC_RX (0x6347b490UL)
 #define MOD_PCIE3 (0xfbc48c18UL)
 #define MOD_PCI_RD_TG (0x9ad9eed2UL)
 #define MOD_PCI_WR_TG (0x274b69e1UL)
@@ -43,7 +44,7 @@
 #define MOD_TX_CPY (0x60acf217UL)
 #define MOD_TX_INS (0x59afa100UL)
 #define MOD_TX_RPL (0x1095dfbbUL)
-#define MOD_IDX_COUNT (14)
+#define MOD_IDX_COUNT (31)
 
 /* aliases - only aliases go below this point */
 #endif	/* _NTHW_FPGA_MOD_DEFS_H_ */

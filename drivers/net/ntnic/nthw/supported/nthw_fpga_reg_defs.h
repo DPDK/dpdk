@@ -30,6 +30,7 @@
 #include "nthw_fpga_reg_defs_ins.h"
 #include "nthw_fpga_reg_defs_km.h"
 #include "nthw_fpga_reg_defs_mac_pcs.h"
+#include "nthw_fpga_reg_defs_mac_rx.h"
 #include "nthw_fpga_reg_defs_pcie3.h"
 #include "nthw_fpga_reg_defs_pci_rd_tg.h"
 #include "nthw_fpga_reg_defs_pci_wr_tg.h"

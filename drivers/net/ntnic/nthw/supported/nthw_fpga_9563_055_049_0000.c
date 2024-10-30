@@ -1774,6 +1774,63 @@ static nthw_fpga_register_init_s mac_pcs_registers[] = {
 	},
 };
 
+static nthw_fpga_field_init_s mac_rx_bad_fcs_fields[] = {
+	{ MAC_RX_BAD_FCS_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_fragment_fields[] = {
+	{ MAC_RX_FRAGMENT_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_packet_bad_fcs_fields[] = {
+	{ MAC_RX_PACKET_BAD_FCS_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_packet_small_fields[] = {
+	{ MAC_RX_PACKET_SMALL_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_total_bytes_fields[] = {
+	{ MAC_RX_TOTAL_BYTES_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_total_good_bytes_fields[] = {
+	{ MAC_RX_TOTAL_GOOD_BYTES_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_total_good_packets_fields[] = {
+	{ MAC_RX_TOTAL_GOOD_PACKETS_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_total_packets_fields[] = {
+	{ MAC_RX_TOTAL_PACKETS_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s mac_rx_undersize_fields[] = {
+	{ MAC_RX_UNDERSIZE_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_register_init_s mac_rx_registers[] = {
+	{ MAC_RX_BAD_FCS, 0, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, mac_rx_bad_fcs_fields },
+	{ MAC_RX_FRAGMENT, 6, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, mac_rx_fragment_fields },
+	{
+		MAC_RX_PACKET_BAD_FCS, 7, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		mac_rx_packet_bad_fcs_fields
+	},
+	{ MAC_RX_PACKET_SMALL, 3, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, mac_rx_packet_small_fields },
+	{ MAC_RX_TOTAL_BYTES, 4, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, mac_rx_total_bytes_fields },
+	{
+		MAC_RX_TOTAL_GOOD_BYTES, 5, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		mac_rx_total_good_bytes_fields
+	},
+	{
+		MAC_RX_TOTAL_GOOD_PACKETS, 2, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		mac_rx_total_good_packets_fields
+	},
+	{ MAC_RX_TOTAL_PACKETS, 1, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, mac_rx_total_packets_fields },
+	{ MAC_RX_UNDERSIZE, 8, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, mac_rx_undersize_fields },
+};
+
 static nthw_fpga_field_init_s pci_rd_tg_tg_ctrl_fields[] = {
 	{ PCI_RD_TG_TG_CTRL_TG_RD_RDY, 1, 0, 0 },
 };
@@ -2123,6 +2180,8 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 		MOD_MAC_PCS, 1, MOD_MAC_PCS, 0, 2, NTHW_FPGA_BUS_TYPE_RAB2, 11776, 44,
 		mac_pcs_registers
 	},
+	{ MOD_MAC_RX, 0, MOD_MAC_RX, 0, 0, NTHW_FPGA_BUS_TYPE_RAB2, 10752, 9, mac_rx_registers },
+	{ MOD_MAC_RX, 1, MOD_MAC_RX, 0, 0, NTHW_FPGA_BUS_TYPE_RAB2, 12288, 9, mac_rx_registers },
 	{
 		MOD_PCI_RD_TG, 0, MOD_PCI_RD_TG, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 2320, 6,
 		pci_rd_tg_registers
@@ -2294,5 +2353,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 26, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 28, fpga_modules,
 };
