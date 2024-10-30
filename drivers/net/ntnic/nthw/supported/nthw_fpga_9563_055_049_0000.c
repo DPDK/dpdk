@@ -270,6 +270,187 @@ static nthw_fpga_register_init_s cat_registers[] = {
 	{ CAT_RCK_DATA, 3, 32, NTHW_FPGA_REG_TYPE_WO, 0, 32, cat_rck_data_fields },
 };
 
+static nthw_fpga_field_init_s dbs_rx_am_ctrl_fields[] = {
+	{ DBS_RX_AM_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_RX_AM_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_am_data_fields[] = {
+	{ DBS_RX_AM_DATA_ENABLE, 1, 72, 0x0000 }, { DBS_RX_AM_DATA_GPA, 64, 0, 0x0000 },
+	{ DBS_RX_AM_DATA_HID, 8, 64, 0x0000 }, { DBS_RX_AM_DATA_INT, 1, 74, 0x0000 },
+	{ DBS_RX_AM_DATA_PCKED, 1, 73, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_control_fields[] = {
+	{ DBS_RX_CONTROL_AME, 1, 7, 0 }, { DBS_RX_CONTROL_AMS, 4, 8, 8 },
+	{ DBS_RX_CONTROL_LQ, 7, 0, 0 }, { DBS_RX_CONTROL_QE, 1, 17, 0 },
+	{ DBS_RX_CONTROL_UWE, 1, 12, 0 }, { DBS_RX_CONTROL_UWS, 4, 13, 5 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_dr_ctrl_fields[] = {
+	{ DBS_RX_DR_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_RX_DR_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_dr_data_fields[] = {
+	{ DBS_RX_DR_DATA_GPA, 64, 0, 0x0000 }, { DBS_RX_DR_DATA_HDR, 1, 88, 0x0000 },
+	{ DBS_RX_DR_DATA_HID, 8, 64, 0x0000 }, { DBS_RX_DR_DATA_PCKED, 1, 87, 0x0000 },
+	{ DBS_RX_DR_DATA_QS, 15, 72, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_idle_fields[] = {
+	{ DBS_RX_IDLE_BUSY, 1, 8, 0 },
+	{ DBS_RX_IDLE_IDLE, 1, 0, 0x0000 },
+	{ DBS_RX_IDLE_QUEUE, 7, 1, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_init_fields[] = {
+	{ DBS_RX_INIT_BUSY, 1, 8, 0 },
+	{ DBS_RX_INIT_INIT, 1, 0, 0x0000 },
+	{ DBS_RX_INIT_QUEUE, 7, 1, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_init_val_fields[] = {
+	{ DBS_RX_INIT_VAL_IDX, 16, 0, 0x0000 },
+	{ DBS_RX_INIT_VAL_PTR, 15, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_ptr_fields[] = {
+	{ DBS_RX_PTR_PTR, 16, 0, 0x0000 },
+	{ DBS_RX_PTR_QUEUE, 7, 16, 0x0000 },
+	{ DBS_RX_PTR_VALID, 1, 23, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_uw_ctrl_fields[] = {
+	{ DBS_RX_UW_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_RX_UW_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_rx_uw_data_fields[] = {
+	{ DBS_RX_UW_DATA_GPA, 64, 0, 0x0000 }, { DBS_RX_UW_DATA_HID, 8, 64, 0x0000 },
+	{ DBS_RX_UW_DATA_INT, 1, 88, 0x0000 }, { DBS_RX_UW_DATA_ISTK, 1, 92, 0x0000 },
+	{ DBS_RX_UW_DATA_PCKED, 1, 87, 0x0000 }, { DBS_RX_UW_DATA_QS, 15, 72, 0x0000 },
+	{ DBS_RX_UW_DATA_VEC, 3, 89, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_am_ctrl_fields[] = {
+	{ DBS_TX_AM_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_TX_AM_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_am_data_fields[] = {
+	{ DBS_TX_AM_DATA_ENABLE, 1, 72, 0x0000 }, { DBS_TX_AM_DATA_GPA, 64, 0, 0x0000 },
+	{ DBS_TX_AM_DATA_HID, 8, 64, 0x0000 }, { DBS_TX_AM_DATA_INT, 1, 74, 0x0000 },
+	{ DBS_TX_AM_DATA_PCKED, 1, 73, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_control_fields[] = {
+	{ DBS_TX_CONTROL_AME, 1, 7, 0 }, { DBS_TX_CONTROL_AMS, 4, 8, 5 },
+	{ DBS_TX_CONTROL_LQ, 7, 0, 0 }, { DBS_TX_CONTROL_QE, 1, 17, 0 },
+	{ DBS_TX_CONTROL_UWE, 1, 12, 0 }, { DBS_TX_CONTROL_UWS, 4, 13, 8 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_dr_ctrl_fields[] = {
+	{ DBS_TX_DR_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_TX_DR_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_dr_data_fields[] = {
+	{ DBS_TX_DR_DATA_GPA, 64, 0, 0x0000 }, { DBS_TX_DR_DATA_HDR, 1, 88, 0x0000 },
+	{ DBS_TX_DR_DATA_HID, 8, 64, 0x0000 }, { DBS_TX_DR_DATA_PCKED, 1, 87, 0x0000 },
+	{ DBS_TX_DR_DATA_PORT, 1, 89, 0x0000 }, { DBS_TX_DR_DATA_QS, 15, 72, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_idle_fields[] = {
+	{ DBS_TX_IDLE_BUSY, 1, 8, 0 },
+	{ DBS_TX_IDLE_IDLE, 1, 0, 0x0000 },
+	{ DBS_TX_IDLE_QUEUE, 7, 1, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_init_fields[] = {
+	{ DBS_TX_INIT_BUSY, 1, 8, 0 },
+	{ DBS_TX_INIT_INIT, 1, 0, 0x0000 },
+	{ DBS_TX_INIT_QUEUE, 7, 1, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_init_val_fields[] = {
+	{ DBS_TX_INIT_VAL_IDX, 16, 0, 0x0000 },
+	{ DBS_TX_INIT_VAL_PTR, 15, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_ptr_fields[] = {
+	{ DBS_TX_PTR_PTR, 16, 0, 0x0000 },
+	{ DBS_TX_PTR_QUEUE, 7, 16, 0x0000 },
+	{ DBS_TX_PTR_VALID, 1, 23, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_qos_ctrl_fields[] = {
+	{ DBS_TX_QOS_CTRL_ADR, 1, 0, 0x0000 },
+	{ DBS_TX_QOS_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_qos_data_fields[] = {
+	{ DBS_TX_QOS_DATA_BS, 27, 17, 0x0000 },
+	{ DBS_TX_QOS_DATA_EN, 1, 0, 0x0000 },
+	{ DBS_TX_QOS_DATA_IR, 16, 1, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_qos_rate_fields[] = {
+	{ DBS_TX_QOS_RATE_DIV, 19, 16, 2 },
+	{ DBS_TX_QOS_RATE_MUL, 16, 0, 1 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_qp_ctrl_fields[] = {
+	{ DBS_TX_QP_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_TX_QP_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_qp_data_fields[] = {
+	{ DBS_TX_QP_DATA_VPORT, 1, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_uw_ctrl_fields[] = {
+	{ DBS_TX_UW_CTRL_ADR, 7, 0, 0x0000 },
+	{ DBS_TX_UW_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s dbs_tx_uw_data_fields[] = {
+	{ DBS_TX_UW_DATA_GPA, 64, 0, 0x0000 }, { DBS_TX_UW_DATA_HID, 8, 64, 0x0000 },
+	{ DBS_TX_UW_DATA_INO, 1, 93, 0x0000 }, { DBS_TX_UW_DATA_INT, 1, 88, 0x0000 },
+	{ DBS_TX_UW_DATA_ISTK, 1, 92, 0x0000 }, { DBS_TX_UW_DATA_PCKED, 1, 87, 0x0000 },
+	{ DBS_TX_UW_DATA_QS, 15, 72, 0x0000 }, { DBS_TX_UW_DATA_VEC, 3, 89, 0x0000 },
+};
+
+static nthw_fpga_register_init_s dbs_registers[] = {
+	{ DBS_RX_AM_CTRL, 10, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_am_ctrl_fields },
+	{ DBS_RX_AM_DATA, 11, 75, NTHW_FPGA_REG_TYPE_WO, 0, 5, dbs_rx_am_data_fields },
+	{ DBS_RX_CONTROL, 0, 18, NTHW_FPGA_REG_TYPE_RW, 43008, 6, dbs_rx_control_fields },
+	{ DBS_RX_DR_CTRL, 18, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_dr_ctrl_fields },
+	{ DBS_RX_DR_DATA, 19, 89, NTHW_FPGA_REG_TYPE_WO, 0, 5, dbs_rx_dr_data_fields },
+	{ DBS_RX_IDLE, 8, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_rx_idle_fields },
+	{ DBS_RX_INIT, 2, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_rx_init_fields },
+	{ DBS_RX_INIT_VAL, 3, 31, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_init_val_fields },
+	{ DBS_RX_PTR, 4, 24, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_rx_ptr_fields },
+	{ DBS_RX_UW_CTRL, 14, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_uw_ctrl_fields },
+	{ DBS_RX_UW_DATA, 15, 93, NTHW_FPGA_REG_TYPE_WO, 0, 7, dbs_rx_uw_data_fields },
+	{ DBS_TX_AM_CTRL, 12, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_am_ctrl_fields },
+	{ DBS_TX_AM_DATA, 13, 75, NTHW_FPGA_REG_TYPE_WO, 0, 5, dbs_tx_am_data_fields },
+	{ DBS_TX_CONTROL, 1, 18, NTHW_FPGA_REG_TYPE_RW, 66816, 6, dbs_tx_control_fields },
+	{ DBS_TX_DR_CTRL, 20, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_dr_ctrl_fields },
+	{ DBS_TX_DR_DATA, 21, 90, NTHW_FPGA_REG_TYPE_WO, 0, 6, dbs_tx_dr_data_fields },
+	{ DBS_TX_IDLE, 9, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_tx_idle_fields },
+	{ DBS_TX_INIT, 5, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_tx_init_fields },
+	{ DBS_TX_INIT_VAL, 6, 31, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_init_val_fields },
+	{ DBS_TX_PTR, 7, 24, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_tx_ptr_fields },
+	{ DBS_TX_QOS_CTRL, 24, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_qos_ctrl_fields },
+	{ DBS_TX_QOS_DATA, 25, 44, NTHW_FPGA_REG_TYPE_WO, 0, 3, dbs_tx_qos_data_fields },
+	{ DBS_TX_QOS_RATE, 26, 35, NTHW_FPGA_REG_TYPE_RW, 131073, 2, dbs_tx_qos_rate_fields },
+	{ DBS_TX_QP_CTRL, 22, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_qp_ctrl_fields },
+	{ DBS_TX_QP_DATA, 23, 1, NTHW_FPGA_REG_TYPE_WO, 0, 1, dbs_tx_qp_data_fields },
+	{ DBS_TX_UW_CTRL, 16, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_uw_ctrl_fields },
+	{ DBS_TX_UW_DATA, 17, 94, NTHW_FPGA_REG_TYPE_WO, 0, 8, dbs_tx_uw_data_fields },
+};
+
 static nthw_fpga_field_init_s gfg_burstsize0_fields[] = {
 	{ GFG_BURSTSIZE0_VAL, 24, 0, 0 },
 };
@@ -1541,192 +1722,11 @@ static nthw_fpga_register_init_s rst9563_registers[] = {
 	{ RST9563_STICKY, 3, 6, NTHW_FPGA_REG_TYPE_RC1, 0, 6, rst9563_sticky_fields },
 };
 
-static nthw_fpga_field_init_s dbs_rx_am_ctrl_fields[] = {
-	{ DBS_RX_AM_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_RX_AM_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_am_data_fields[] = {
-	{ DBS_RX_AM_DATA_ENABLE, 1, 72, 0x0000 }, { DBS_RX_AM_DATA_GPA, 64, 0, 0x0000 },
-	{ DBS_RX_AM_DATA_HID, 8, 64, 0x0000 }, { DBS_RX_AM_DATA_INT, 1, 74, 0x0000 },
-	{ DBS_RX_AM_DATA_PCKED, 1, 73, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_control_fields[] = {
-	{ DBS_RX_CONTROL_AME, 1, 7, 0 }, { DBS_RX_CONTROL_AMS, 4, 8, 8 },
-	{ DBS_RX_CONTROL_LQ, 7, 0, 0 }, { DBS_RX_CONTROL_QE, 1, 17, 0 },
-	{ DBS_RX_CONTROL_UWE, 1, 12, 0 }, { DBS_RX_CONTROL_UWS, 4, 13, 5 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_dr_ctrl_fields[] = {
-	{ DBS_RX_DR_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_RX_DR_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_dr_data_fields[] = {
-	{ DBS_RX_DR_DATA_GPA, 64, 0, 0x0000 }, { DBS_RX_DR_DATA_HDR, 1, 88, 0x0000 },
-	{ DBS_RX_DR_DATA_HID, 8, 64, 0x0000 }, { DBS_RX_DR_DATA_PCKED, 1, 87, 0x0000 },
-	{ DBS_RX_DR_DATA_QS, 15, 72, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_idle_fields[] = {
-	{ DBS_RX_IDLE_BUSY, 1, 8, 0 },
-	{ DBS_RX_IDLE_IDLE, 1, 0, 0x0000 },
-	{ DBS_RX_IDLE_QUEUE, 7, 1, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_init_fields[] = {
-	{ DBS_RX_INIT_BUSY, 1, 8, 0 },
-	{ DBS_RX_INIT_INIT, 1, 0, 0x0000 },
-	{ DBS_RX_INIT_QUEUE, 7, 1, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_init_val_fields[] = {
-	{ DBS_RX_INIT_VAL_IDX, 16, 0, 0x0000 },
-	{ DBS_RX_INIT_VAL_PTR, 15, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_ptr_fields[] = {
-	{ DBS_RX_PTR_PTR, 16, 0, 0x0000 },
-	{ DBS_RX_PTR_QUEUE, 7, 16, 0x0000 },
-	{ DBS_RX_PTR_VALID, 1, 23, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_uw_ctrl_fields[] = {
-	{ DBS_RX_UW_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_RX_UW_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_rx_uw_data_fields[] = {
-	{ DBS_RX_UW_DATA_GPA, 64, 0, 0x0000 }, { DBS_RX_UW_DATA_HID, 8, 64, 0x0000 },
-	{ DBS_RX_UW_DATA_INT, 1, 88, 0x0000 }, { DBS_RX_UW_DATA_ISTK, 1, 92, 0x0000 },
-	{ DBS_RX_UW_DATA_PCKED, 1, 87, 0x0000 }, { DBS_RX_UW_DATA_QS, 15, 72, 0x0000 },
-	{ DBS_RX_UW_DATA_VEC, 3, 89, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_am_ctrl_fields[] = {
-	{ DBS_TX_AM_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_TX_AM_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_am_data_fields[] = {
-	{ DBS_TX_AM_DATA_ENABLE, 1, 72, 0x0000 }, { DBS_TX_AM_DATA_GPA, 64, 0, 0x0000 },
-	{ DBS_TX_AM_DATA_HID, 8, 64, 0x0000 }, { DBS_TX_AM_DATA_INT, 1, 74, 0x0000 },
-	{ DBS_TX_AM_DATA_PCKED, 1, 73, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_control_fields[] = {
-	{ DBS_TX_CONTROL_AME, 1, 7, 0 }, { DBS_TX_CONTROL_AMS, 4, 8, 5 },
-	{ DBS_TX_CONTROL_LQ, 7, 0, 0 }, { DBS_TX_CONTROL_QE, 1, 17, 0 },
-	{ DBS_TX_CONTROL_UWE, 1, 12, 0 }, { DBS_TX_CONTROL_UWS, 4, 13, 8 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_dr_ctrl_fields[] = {
-	{ DBS_TX_DR_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_TX_DR_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_dr_data_fields[] = {
-	{ DBS_TX_DR_DATA_GPA, 64, 0, 0x0000 }, { DBS_TX_DR_DATA_HDR, 1, 88, 0x0000 },
-	{ DBS_TX_DR_DATA_HID, 8, 64, 0x0000 }, { DBS_TX_DR_DATA_PCKED, 1, 87, 0x0000 },
-	{ DBS_TX_DR_DATA_PORT, 1, 89, 0x0000 }, { DBS_TX_DR_DATA_QS, 15, 72, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_idle_fields[] = {
-	{ DBS_TX_IDLE_BUSY, 1, 8, 0 },
-	{ DBS_TX_IDLE_IDLE, 1, 0, 0x0000 },
-	{ DBS_TX_IDLE_QUEUE, 7, 1, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_init_fields[] = {
-	{ DBS_TX_INIT_BUSY, 1, 8, 0 },
-	{ DBS_TX_INIT_INIT, 1, 0, 0x0000 },
-	{ DBS_TX_INIT_QUEUE, 7, 1, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_init_val_fields[] = {
-	{ DBS_TX_INIT_VAL_IDX, 16, 0, 0x0000 },
-	{ DBS_TX_INIT_VAL_PTR, 15, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_ptr_fields[] = {
-	{ DBS_TX_PTR_PTR, 16, 0, 0x0000 },
-	{ DBS_TX_PTR_QUEUE, 7, 16, 0x0000 },
-	{ DBS_TX_PTR_VALID, 1, 23, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_qos_ctrl_fields[] = {
-	{ DBS_TX_QOS_CTRL_ADR, 1, 0, 0x0000 },
-	{ DBS_TX_QOS_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_qos_data_fields[] = {
-	{ DBS_TX_QOS_DATA_BS, 27, 17, 0x0000 },
-	{ DBS_TX_QOS_DATA_EN, 1, 0, 0x0000 },
-	{ DBS_TX_QOS_DATA_IR, 16, 1, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_qos_rate_fields[] = {
-	{ DBS_TX_QOS_RATE_DIV, 19, 16, 2 },
-	{ DBS_TX_QOS_RATE_MUL, 16, 0, 1 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_qp_ctrl_fields[] = {
-	{ DBS_TX_QP_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_TX_QP_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_qp_data_fields[] = {
-	{ DBS_TX_QP_DATA_VPORT, 1, 0, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_uw_ctrl_fields[] = {
-	{ DBS_TX_UW_CTRL_ADR, 7, 0, 0x0000 },
-	{ DBS_TX_UW_CTRL_CNT, 16, 16, 0x0000 },
-};
-
-static nthw_fpga_field_init_s dbs_tx_uw_data_fields[] = {
-	{ DBS_TX_UW_DATA_GPA, 64, 0, 0x0000 }, { DBS_TX_UW_DATA_HID, 8, 64, 0x0000 },
-	{ DBS_TX_UW_DATA_INO, 1, 93, 0x0000 }, { DBS_TX_UW_DATA_INT, 1, 88, 0x0000 },
-	{ DBS_TX_UW_DATA_ISTK, 1, 92, 0x0000 }, { DBS_TX_UW_DATA_PCKED, 1, 87, 0x0000 },
-	{ DBS_TX_UW_DATA_QS, 15, 72, 0x0000 }, { DBS_TX_UW_DATA_VEC, 3, 89, 0x0000 },
-};
-
-static nthw_fpga_register_init_s dbs_registers[] = {
-	{ DBS_RX_AM_CTRL, 10, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_am_ctrl_fields },
-	{ DBS_RX_AM_DATA, 11, 75, NTHW_FPGA_REG_TYPE_WO, 0, 5, dbs_rx_am_data_fields },
-	{ DBS_RX_CONTROL, 0, 18, NTHW_FPGA_REG_TYPE_RW, 43008, 6, dbs_rx_control_fields },
-	{ DBS_RX_DR_CTRL, 18, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_dr_ctrl_fields },
-	{ DBS_RX_DR_DATA, 19, 89, NTHW_FPGA_REG_TYPE_WO, 0, 5, dbs_rx_dr_data_fields },
-	{ DBS_RX_IDLE, 8, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_rx_idle_fields },
-	{ DBS_RX_INIT, 2, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_rx_init_fields },
-	{ DBS_RX_INIT_VAL, 3, 31, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_init_val_fields },
-	{ DBS_RX_PTR, 4, 24, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_rx_ptr_fields },
-	{ DBS_RX_UW_CTRL, 14, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_rx_uw_ctrl_fields },
-	{ DBS_RX_UW_DATA, 15, 93, NTHW_FPGA_REG_TYPE_WO, 0, 7, dbs_rx_uw_data_fields },
-	{ DBS_TX_AM_CTRL, 12, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_am_ctrl_fields },
-	{ DBS_TX_AM_DATA, 13, 75, NTHW_FPGA_REG_TYPE_WO, 0, 5, dbs_tx_am_data_fields },
-	{ DBS_TX_CONTROL, 1, 18, NTHW_FPGA_REG_TYPE_RW, 66816, 6, dbs_tx_control_fields },
-	{ DBS_TX_DR_CTRL, 20, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_dr_ctrl_fields },
-	{ DBS_TX_DR_DATA, 21, 90, NTHW_FPGA_REG_TYPE_WO, 0, 6, dbs_tx_dr_data_fields },
-	{ DBS_TX_IDLE, 9, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_tx_idle_fields },
-	{ DBS_TX_INIT, 5, 9, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_tx_init_fields },
-	{ DBS_TX_INIT_VAL, 6, 31, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_init_val_fields },
-	{ DBS_TX_PTR, 7, 24, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, dbs_tx_ptr_fields },
-	{ DBS_TX_QOS_CTRL, 24, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_qos_ctrl_fields },
-	{ DBS_TX_QOS_DATA, 25, 44, NTHW_FPGA_REG_TYPE_WO, 0, 3, dbs_tx_qos_data_fields },
-	{ DBS_TX_QOS_RATE, 26, 35, NTHW_FPGA_REG_TYPE_RW, 131073, 2, dbs_tx_qos_rate_fields },
-	{ DBS_TX_QP_CTRL, 22, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_qp_ctrl_fields },
-	{ DBS_TX_QP_DATA, 23, 1, NTHW_FPGA_REG_TYPE_WO, 0, 1, dbs_tx_qp_data_fields },
-	{ DBS_TX_UW_CTRL, 16, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, dbs_tx_uw_ctrl_fields },
-	{ DBS_TX_UW_DATA, 17, 94, NTHW_FPGA_REG_TYPE_WO, 0, 8, dbs_tx_uw_data_fields },
-};
-
 static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_CAT, 0, MOD_CAT, 0, 21, NTHW_FPGA_BUS_TYPE_RAB1, 768, 34, cat_registers },
+	{ MOD_DBS, 0, MOD_DBS, 0, 11, NTHW_FPGA_BUS_TYPE_RAB2, 12832, 27, dbs_registers },
 	{ MOD_GFG, 0, MOD_GFG, 1, 1, NTHW_FPGA_BUS_TYPE_RAB2, 8704, 10, gfg_registers },
 	{ MOD_GMF, 0, MOD_GMF, 2, 5, NTHW_FPGA_BUS_TYPE_RAB2, 9216, 12, gmf_registers },
-	{ MOD_DBS, 0, MOD_DBS, 0, 11, NTHW_FPGA_BUS_TYPE_RAB2, 12832, 27, dbs_registers},
 	{ MOD_GMF, 1, MOD_GMF, 2, 5, NTHW_FPGA_BUS_TYPE_RAB2, 9728, 12, gmf_registers },
 	{
 		MOD_GPIO_PHY, 0, MOD_GPIO_PHY, 1, 0, NTHW_FPGA_BUS_TYPE_RAB0, 16386, 2,
