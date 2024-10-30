@@ -386,6 +386,22 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_MARK", dev);
+
+			if (action[aidx].conf) {
+				struct rte_flow_action_mark mark_tmp;
+				const struct rte_flow_action_mark *mark =
+					memcpy_mask_if(&mark_tmp, action[aidx].conf,
+					action_mask ? action_mask[aidx].conf : NULL,
+					sizeof(struct rte_flow_action_mark));
+
+				fd->mark = mark->id;
+				NT_LOG(DBG, FILTER, "Mark: %i", mark->id);
+			}
+
+			break;
+
 		default:
 			NT_LOG(ERR, FILTER, "Invalid or unsupported flow action received - %i",
 				action[aidx].type);
