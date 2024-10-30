@@ -56,26 +56,29 @@ __mlx5_hws_cnt_svc(struct mlx5_dev_ctx_shared *sh,
 	uint32_t ret __rte_unused;
 
 	reset_cnt_num = rte_ring_count(reset_list);
-	do {
-		cpool->query_gen++;
-		mlx5_aso_cnt_query(sh, cpool);
-		zcdr.n1 = 0;
-		zcdu.n1 = 0;
-		ret = rte_ring_enqueue_zc_burst_elem_start(reuse_list,
-							   sizeof(cnt_id_t),
-							   reset_cnt_num, &zcdu,
-							   NULL);
-		MLX5_ASSERT(ret == reset_cnt_num);
-		ret = rte_ring_dequeue_zc_burst_elem_start(reset_list,
-							   sizeof(cnt_id_t),
-							   reset_cnt_num, &zcdr,
-							   NULL);
-		MLX5_ASSERT(ret == reset_cnt_num);
-		__hws_cnt_r2rcpy(&zcdu, &zcdr, reset_cnt_num);
-		rte_ring_dequeue_zc_elem_finish(reset_list, reset_cnt_num);
-		rte_ring_enqueue_zc_elem_finish(reuse_list, reset_cnt_num);
+	cpool->query_gen++;
+	mlx5_aso_cnt_query(sh, cpool);
+	zcdr.n1 = 0;
+	zcdu.n1 = 0;
+	ret = rte_ring_enqueue_zc_burst_elem_start(reuse_list,
+						   sizeof(cnt_id_t),
+						   reset_cnt_num, &zcdu,
+						   NULL);
+	MLX5_ASSERT(ret == reset_cnt_num);
+	ret = rte_ring_dequeue_zc_burst_elem_start(reset_list,
+						   sizeof(cnt_id_t),
+						   reset_cnt_num, &zcdr,
+						   NULL);
+	MLX5_ASSERT(ret == reset_cnt_num);
+	__hws_cnt_r2rcpy(&zcdu, &zcdr, reset_cnt_num);
+	rte_ring_dequeue_zc_elem_finish(reset_list, reset_cnt_num);
+	rte_ring_enqueue_zc_elem_finish(reuse_list, reset_cnt_num);
+
+	if (rte_log_can_log(mlx5_logtype, RTE_LOG_DEBUG)) {
 		reset_cnt_num = rte_ring_count(reset_list);
-	} while (reset_cnt_num > 0);
+		DRV_LOG(DEBUG, "ibdev %s cpool %p wait_reset_cnt=%" PRIu32,
+			       sh->ibdev_name, (void *)cpool, reset_cnt_num);
+	}
 }
 
 /**
@@ -325,6 +328,11 @@ mlx5_hws_cnt_svc(void *opaque)
 		rte_spinlock_unlock(&sh->cpool_lock);
 		query_us = query_cycle / (rte_get_timer_hz() / US_PER_S);
 		sleep_us = interval - query_us;
+		DRV_LOG(DEBUG, "ibdev %s counter service thread: "
+			       "interval_us=%" PRIu64 " query_us=%" PRIu64 " "
+			       "sleep_us=%" PRIu64,
+			sh->ibdev_name, interval, query_us,
+			interval > query_us ? sleep_us : 0);
 		if (interval > query_us)
 			rte_delay_us_sleep(sleep_us);
 	}
