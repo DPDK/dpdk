@@ -16,6 +16,14 @@
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
 #endif
 
+/*
+ * Windows size in seconds for measuring FLM load
+ * and Port load.
+ * The windows size must max be 3 min in order to
+ * prevent overflow.
+ */
+#define FLM_LOAD_WINDOWS_SIZE 2ULL
+
 #define PCIIDENT_TO_DOMAIN(pci_ident) ((uint16_t)(((unsigned int)(pci_ident) >> 16) & 0xFFFFU))
 #define PCIIDENT_TO_BUSNR(pci_ident) ((uint8_t)(((unsigned int)(pci_ident) >> 8) & 0xFFU))
 #define PCIIDENT_TO_DEVNR(pci_ident) ((uint8_t)(((unsigned int)(pci_ident) >> 3) & 0x1FU))

@@ -32,6 +32,10 @@ struct hw_db_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_match_set_idx {
+	HW_DB_IDX;
+};
+
 struct hw_db_action_set_idx {
 	HW_DB_IDX;
 };
@@ -106,6 +110,13 @@ struct hw_db_tpe_ext_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_flm_idx {
+	HW_DB_IDX;
+};
+struct hw_db_flm_ft {
+	HW_DB_IDX;
+};
+
 struct hw_db_km_idx {
 	HW_DB_IDX;
 };
@@ -128,6 +139,7 @@ enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_TPE_EXT,
 
 	HW_DB_IDX_TYPE_KM_RCP,
+	HW_DB_IDX_TYPE_FLM_FT,
 	HW_DB_IDX_TYPE_KM_FT,
 	HW_DB_IDX_TYPE_HSH,
 };
@@ -211,6 +223,17 @@ struct hw_db_inline_km_ft_data {
 	struct hw_db_action_set_idx action_set;
 };
 
+struct hw_db_inline_flm_ft_data {
+	/* Group zero flows should set jump. */
+	/* Group nonzero flows should set group. */
+	int is_group_zero;
+	union {
+		int jump;
+		int group;
+	};
+	struct hw_db_action_set_idx action_set;
+};
+
 /**/
 
 int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle);
@@ -276,6 +299,16 @@ void hw_db_inline_km_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct h
 void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_ft idx);
 
 /**/
+
+void hw_db_inline_flm_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx);
+
+struct hw_db_flm_ft hw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_flm_ft_data *data);
+struct hw_db_flm_ft hw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_flm_ft_data *data);
+void hw_db_inline_flm_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_ft idx);
+void hw_db_inline_flm_ft_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_ft idx);
 
 int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id, uint32_t ft,
 	uint32_t qsl_hw_id);

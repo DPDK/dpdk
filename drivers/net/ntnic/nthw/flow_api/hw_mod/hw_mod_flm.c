@@ -293,9 +293,266 @@ int hw_mod_flm_control_set(struct flow_api_backend_s *be, enum hw_flm_e field, u
 	return hw_mod_flm_control_mod(be, field, &value, 0);
 }
 
+int hw_mod_flm_status_update(struct flow_api_backend_s *be)
+{
+	return be->iface->flm_status_update(be->be_dev, &be->flm);
+}
+
+static int hw_mod_flm_status_mod(struct flow_api_backend_s *be, enum hw_flm_e field,
+	uint32_t *value, int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_STATUS_CALIB_SUCCESS:
+			GET_SET(be->flm.v25.status->calib_success, value);
+			break;
+
+		case HW_FLM_STATUS_CALIB_FAIL:
+			GET_SET(be->flm.v25.status->calib_fail, value);
+			break;
+
+		case HW_FLM_STATUS_INITDONE:
+			GET_SET(be->flm.v25.status->initdone, value);
+			break;
+
+		case HW_FLM_STATUS_IDLE:
+			GET_SET(be->flm.v25.status->idle, value);
+			break;
+
+		case HW_FLM_STATUS_CRITICAL:
+			GET_SET(be->flm.v25.status->critical, value);
+			break;
+
+		case HW_FLM_STATUS_PANIC:
+			GET_SET(be->flm.v25.status->panic, value);
+			break;
+
+		case HW_FLM_STATUS_CRCERR:
+			GET_SET(be->flm.v25.status->crcerr, value);
+			break;
+
+		case HW_FLM_STATUS_EFT_BP:
+			GET_SET(be->flm.v25.status->eft_bp, value);
+			break;
+
+		case HW_FLM_STATUS_CACHE_BUFFER_CRITICAL:
+			GET_SET(be->flm.v25.status->cache_buf_critical, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_status_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
+{
+	return hw_mod_flm_status_mod(be, field, value, 1);
+}
+
 int hw_mod_flm_scan_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_scan_flush(be->be_dev, &be->flm);
+}
+
+static int hw_mod_flm_scan_mod(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value,
+	int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_SCAN_I:
+			GET_SET(be->flm.v25.scan->i, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_scan_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+{
+	return hw_mod_flm_scan_mod(be, field, &value, 0);
+}
+
+int hw_mod_flm_load_bin_flush(struct flow_api_backend_s *be)
+{
+	return be->iface->flm_load_bin_flush(be->be_dev, &be->flm);
+}
+
+static int hw_mod_flm_load_bin_mod(struct flow_api_backend_s *be, enum hw_flm_e field,
+	uint32_t *value, int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_LOAD_BIN:
+			GET_SET(be->flm.v25.load_bin->bin, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_load_bin_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+{
+	return hw_mod_flm_load_bin_mod(be, field, &value, 0);
+}
+
+int hw_mod_flm_prio_flush(struct flow_api_backend_s *be)
+{
+	return be->iface->flm_prio_flush(be->be_dev, &be->flm);
+}
+
+static int hw_mod_flm_prio_mod(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value,
+	int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_PRIO_LIMIT0:
+			GET_SET(be->flm.v25.prio->limit0, value);
+			break;
+
+		case HW_FLM_PRIO_FT0:
+			GET_SET(be->flm.v25.prio->ft0, value);
+			break;
+
+		case HW_FLM_PRIO_LIMIT1:
+			GET_SET(be->flm.v25.prio->limit1, value);
+			break;
+
+		case HW_FLM_PRIO_FT1:
+			GET_SET(be->flm.v25.prio->ft1, value);
+			break;
+
+		case HW_FLM_PRIO_LIMIT2:
+			GET_SET(be->flm.v25.prio->limit2, value);
+			break;
+
+		case HW_FLM_PRIO_FT2:
+			GET_SET(be->flm.v25.prio->ft2, value);
+			break;
+
+		case HW_FLM_PRIO_LIMIT3:
+			GET_SET(be->flm.v25.prio->limit3, value);
+			break;
+
+		case HW_FLM_PRIO_FT3:
+			GET_SET(be->flm.v25.prio->ft3, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_prio_set(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t value)
+{
+	return hw_mod_flm_prio_mod(be, field, &value, 0);
+}
+
+int hw_mod_flm_pst_flush(struct flow_api_backend_s *be, int start_idx, int count)
+{
+	if (count == ALL_ENTRIES)
+		count = be->flm.nb_pst_profiles;
+
+	if ((unsigned int)(start_idx + count) > be->flm.nb_pst_profiles) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	return be->iface->flm_pst_flush(be->be_dev, &be->flm, start_idx, count);
+}
+
+static int hw_mod_flm_pst_mod(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t *value, int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_PST_PRESET_ALL:
+			if (get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			memset(&be->flm.v25.pst[index], (uint8_t)*value,
+				sizeof(struct flm_v25_pst_s));
+			break;
+
+		case HW_FLM_PST_BP:
+			GET_SET(be->flm.v25.pst[index].bp, value);
+			break;
+
+		case HW_FLM_PST_PP:
+			GET_SET(be->flm.v25.pst[index].pp, value);
+			break;
+
+		case HW_FLM_PST_TP:
+			GET_SET(be->flm.v25.pst[index].tp, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_pst_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t value)
+{
+	return hw_mod_flm_pst_mod(be, field, index, &value, 0);
 }
 
 int hw_mod_flm_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count)

@@ -11,6 +11,7 @@
 #include "flow_api.h"
 #include "flow_api_engine.h"
 #include "flow_api_hw_db_inline.h"
+#include "flow_api_profile_inline_config.h"
 #include "flow_id_table.h"
 #include "stream_binary_flow_api.h"
 
@@ -46,6 +47,128 @@ static int rx_queue_idx_to_hw_id(const struct flow_eth_dev *dev, int id)
 
 	return -1;
 }
+
+/*
+ * Flow Matcher functionality
+ */
+
+static int flm_sdram_calibrate(struct flow_nic_dev *ndev)
+{
+	int success = 0;
+	uint32_t fail_value = 0;
+	uint32_t value = 0;
+
+	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_PRESET_ALL, 0x0);
+	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_SPLIT_SDRAM_USAGE, 0x10);
+	hw_mod_flm_control_flush(&ndev->be);
+
+	/* Wait for ddr4 calibration/init done */
+	for (uint32_t i = 0; i < 1000000; ++i) {
+		hw_mod_flm_status_update(&ndev->be);
+		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_CALIB_SUCCESS, &value);
+		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_CALIB_FAIL, &fail_value);
+
+		if (value & 0x80000000) {
+			success = 1;
+			break;
+		}
+
+		if (fail_value != 0)
+			break;
+
+		nt_os_wait_usec(1);
+	}
+
+	if (!success) {
+		NT_LOG(ERR, FILTER, "FLM initialization failed - SDRAM calibration failed");
+		NT_LOG(ERR, FILTER,
+			"Calibration status: success 0x%08" PRIx32 " - fail 0x%08" PRIx32,
+			value, fail_value);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
+{
+	int success = 0;
+
+	/*
+	 * Make sure no lookup is performed during init, i.e.
+	 * disable every category and disable FLM
+	 */
+	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, 0x0);
+	hw_mod_flm_control_flush(&ndev->be);
+
+	/* Wait for FLM to enter Idle state */
+	for (uint32_t i = 0; i < 1000000; ++i) {
+		uint32_t value = 0;
+		hw_mod_flm_status_update(&ndev->be);
+		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_IDLE, &value);
+
+		if (value) {
+			success = 1;
+			break;
+		}
+
+		nt_os_wait_usec(1);
+	}
+
+	if (!success) {
+		NT_LOG(ERR, FILTER, "FLM initialization failed - Never idle");
+		return -1;
+	}
+
+	success = 0;
+
+	/* Start SDRAM initialization */
+	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_INIT, 0x1);
+	hw_mod_flm_control_flush(&ndev->be);
+
+	for (uint32_t i = 0; i < 1000000; ++i) {
+		uint32_t value = 0;
+		hw_mod_flm_status_update(&ndev->be);
+		hw_mod_flm_status_get(&ndev->be, HW_FLM_STATUS_INITDONE, &value);
+
+		if (value) {
+			success = 1;
+			break;
+		}
+
+		nt_os_wait_usec(1);
+	}
+
+	if (!success) {
+		NT_LOG(ERR, FILTER,
+			"FLM initialization failed - SDRAM initialization incomplete");
+		return -1;
+	}
+
+	/* Set the INIT value back to zero to clear the bit in the SW register cache */
+	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_INIT, 0x0);
+	hw_mod_flm_control_flush(&ndev->be);
+
+	/* Enable FLM */
+	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, enable);
+	hw_mod_flm_control_flush(&ndev->be);
+
+	int nb_rpp_per_ps = ndev->be.flm.nb_rpp_clock_in_ps;
+	int nb_load_aps_max = ndev->be.flm.nb_load_aps_max;
+	uint32_t scan_i_value = 0;
+
+	if (NTNIC_SCANNER_LOAD > 0) {
+		scan_i_value = (1 / (nb_rpp_per_ps * 0.000000000001)) /
+			(nb_load_aps_max * NTNIC_SCANNER_LOAD);
+	}
+
+	hw_mod_flm_scan_set(&ndev->be, HW_FLM_SCAN_I, scan_i_value);
+	hw_mod_flm_scan_flush(&ndev->be);
+
+	return 0;
+}
+
+
 
 struct flm_flow_key_def_s {
 	union {
@@ -2354,11 +2477,11 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	const struct nic_flow_def *fd,
 	const struct hw_db_inline_qsl_data *qsl_data,
 	const struct hw_db_inline_hsh_data *hsh_data,
-	uint32_t group __rte_unused,
+	uint32_t group,
 	uint32_t local_idxs[],
 	uint32_t *local_idx_counter,
-	uint16_t *flm_rpl_ext_ptr __rte_unused,
-	uint32_t *flm_ft __rte_unused,
+	uint16_t *flm_rpl_ext_ptr,
+	uint32_t *flm_ft,
 	uint32_t *flm_scrub __rte_unused,
 	struct rte_flow_error *error)
 {
@@ -2507,6 +2630,25 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		return -1;
 	}
 
+	/* Setup FLM FT */
+	struct hw_db_inline_flm_ft_data flm_ft_data = {
+		.is_group_zero = 0,
+		.group = group,
+	};
+	struct hw_db_flm_ft flm_ft_idx = empty_pattern
+		? hw_db_inline_flm_ft_default(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data)
+		: hw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);
+	local_idxs[(*local_idx_counter)++] = flm_ft_idx.raw;
+
+	if (flm_ft_idx.error) {
+		NT_LOG(ERR, FILTER, "Could not reference FLM FT resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		return -1;
+	}
+
+	if (flm_ft)
+		*flm_ft = flm_ft_idx.id1;
+
 	return 0;
 }
 
@@ -2514,7 +2656,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 	const struct rte_flow_attr *attr,
 	uint16_t forced_vlan_vid __rte_unused, uint16_t caller_id,
 	struct rte_flow_error *error, uint32_t port_id,
-	uint32_t num_dest_port __rte_unused, uint32_t num_queues __rte_unused,
+	uint32_t num_dest_port, uint32_t num_queues,
 	uint32_t *packet_data, uint32_t *packet_mask __rte_unused,
 	struct flm_flow_key_def_s *key_def __rte_unused)
 {
@@ -2808,6 +2950,21 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			km_write_data_match_entry(&fd->km, 0);
 		}
 
+		/* Setup FLM FT */
+		struct hw_db_inline_flm_ft_data flm_ft_data = {
+			.is_group_zero = 1,
+			.jump = fd->jump_to_group != UINT32_MAX ? fd->jump_to_group : 0,
+		};
+		struct hw_db_flm_ft flm_ft_idx =
+			hw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);
+		fh->db_idxs[fh->db_idx_counter++] = flm_ft_idx.raw;
+
+		if (flm_ft_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference FLM FT resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
 		nic_insert_flow(dev->ndev, fh);
 	}
 
@@ -3024,6 +3181,63 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 			NT_VIOLATING_MBR_QSL) < 0)
 			goto err_exit0;
 
+		/* FLM */
+		if (flm_sdram_calibrate(ndev) < 0)
+			goto err_exit0;
+
+		if (flm_sdram_reset(ndev, 1) < 0)
+			goto err_exit0;
+
+		/* Learn done status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LDS, 0);
+		/* Learn fail status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LFS, 1);
+		/* Learn ignore status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_LIS, 1);
+		/* Unlearn done status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_UDS, 0);
+		/* Unlearn ignore status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_UIS, 0);
+		/* Relearn done status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RDS, 0);
+		/* Relearn ignore status */
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RIS, 0);
+		hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_RBL, 4);
+		hw_mod_flm_control_flush(&ndev->be);
+
+		/* Set the sliding windows size for flm load */
+		uint32_t bin = (uint32_t)(((FLM_LOAD_WINDOWS_SIZE * 1000000000000ULL) /
+			(32ULL * ndev->be.flm.nb_rpp_clock_in_ps)) -
+			1ULL);
+		hw_mod_flm_load_bin_set(&ndev->be, HW_FLM_LOAD_BIN, bin);
+		hw_mod_flm_load_bin_flush(&ndev->be);
+
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT0,
+			0);	/* Drop at 100% FIFO fill level */
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT0, 1);
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT1,
+			14);	/* Drop at 87,5% FIFO fill level */
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT1, 1);
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT2,
+			10);	/* Drop at 62,5% FIFO fill level */
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT2, 1);
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_LIMIT3,
+			6);	/* Drop at 37,5% FIFO fill level */
+		hw_mod_flm_prio_set(&ndev->be, HW_FLM_PRIO_FT3, 1);
+		hw_mod_flm_prio_flush(&ndev->be);
+
+		/* TODO How to set and use these limits */
+		for (uint32_t i = 0; i < ndev->be.flm.nb_pst_profiles; ++i) {
+			hw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_BP, i,
+				NTNIC_FLOW_PERIODIC_STATS_BYTE_LIMIT);
+			hw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_PP, i,
+				NTNIC_FLOW_PERIODIC_STATS_PKT_LIMIT);
+			hw_mod_flm_pst_set(&ndev->be, HW_FLM_PST_TP, i,
+				NTNIC_FLOW_PERIODIC_STATS_BYTE_TIMEOUT);
+		}
+
+		hw_mod_flm_pst_flush(&ndev->be, 0, ALL_ENTRIES);
+
 		ndev->id_table_handle = ntnic_id_table_create();
 
 		if (ndev->id_table_handle == NULL)
@@ -3052,6 +3266,8 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 #endif
 
 	if (ndev->flow_mgnt_prepared) {
+		flm_sdram_reset(ndev, 0);
+
 		flow_nic_free_resource(ndev, RES_KM_FLOW_TYPE, 0);
 		flow_nic_free_resource(ndev, RES_KM_CATEGORY, 0);
 

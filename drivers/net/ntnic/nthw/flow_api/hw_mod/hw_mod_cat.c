@@ -902,6 +902,95 @@ static int hw_mod_cat_kce_flush(struct flow_api_backend_s *be, enum km_flm_if_se
 	return be->iface->cat_kce_flush(be->be_dev, &be->cat, km_if_idx, start_idx, count);
 }
 
+int hw_mod_cat_kce_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+	int start_idx, int count)
+{
+	return hw_mod_cat_kce_flush(be, if_num, 0, start_idx, count);
+}
+
+int hw_mod_cat_kce_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+	int start_idx, int count)
+{
+	return hw_mod_cat_kce_flush(be, if_num, 1, start_idx, count);
+}
+
+static int hw_mod_cat_kce_mod(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int km_if_id, int index,
+	uint32_t *value, int get)
+{
+	if ((unsigned int)index >= (be->cat.nb_cat_funcs / 8)) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	/* find KM module */
+	int km_if_idx = find_km_flm_module_interface_index(be, if_num, km_if_id);
+
+	if (km_if_idx < 0)
+		return km_if_idx;
+
+	switch (_VER_) {
+	case 18:
+		switch (field) {
+		case HW_CAT_KCE_ENABLE_BM:
+			GET_SET(be->cat.v18.kce[index].enable_bm, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 18 */
+	case 21:
+		switch (field) {
+		case HW_CAT_KCE_ENABLE_BM:
+			GET_SET(be->cat.v21.kce[index].enable_bm[km_if_idx], value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 21 */
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_cat_kce_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t value)
+{
+	return hw_mod_cat_kce_mod(be, field, if_num, 0, index, &value, 0);
+}
+
+int hw_mod_cat_kce_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t *value)
+{
+	return hw_mod_cat_kce_mod(be, field, if_num, 0, index, value, 1);
+}
+
+int hw_mod_cat_kce_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t value)
+{
+	return hw_mod_cat_kce_mod(be, field, if_num, 1, index, &value, 0);
+}
+
+int hw_mod_cat_kce_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t *value)
+{
+	return hw_mod_cat_kce_mod(be, field, if_num, 1, index, value, 1);
+}
+
 /*
  * KCS
  */
@@ -923,6 +1012,95 @@ static int hw_mod_cat_kcs_flush(struct flow_api_backend_s *be, enum km_flm_if_se
 		return km_if_idx;
 
 	return be->iface->cat_kcs_flush(be->be_dev, &be->cat, km_if_idx, start_idx, count);
+}
+
+int hw_mod_cat_kcs_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+	int start_idx, int count)
+{
+	return hw_mod_cat_kcs_flush(be, if_num, 0, start_idx, count);
+}
+
+int hw_mod_cat_kcs_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+	int start_idx, int count)
+{
+	return hw_mod_cat_kcs_flush(be, if_num, 1, start_idx, count);
+}
+
+static int hw_mod_cat_kcs_mod(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int km_if_id, int index,
+	uint32_t *value, int get)
+{
+	if ((unsigned int)index >= be->cat.nb_cat_funcs) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	/* find KM module */
+	int km_if_idx = find_km_flm_module_interface_index(be, if_num, km_if_id);
+
+	if (km_if_idx < 0)
+		return km_if_idx;
+
+	switch (_VER_) {
+	case 18:
+		switch (field) {
+		case HW_CAT_KCS_CATEGORY:
+			GET_SET(be->cat.v18.kcs[index].category, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 18 */
+	case 21:
+		switch (field) {
+		case HW_CAT_KCS_CATEGORY:
+			GET_SET(be->cat.v21.kcs[index].category[km_if_idx], value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 21 */
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_cat_kcs_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t value)
+{
+	return hw_mod_cat_kcs_mod(be, field, if_num, 0, index, &value, 0);
+}
+
+int hw_mod_cat_kcs_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t *value)
+{
+	return hw_mod_cat_kcs_mod(be, field, if_num, 0, index, value, 1);
+}
+
+int hw_mod_cat_kcs_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t value)
+{
+	return hw_mod_cat_kcs_mod(be, field, if_num, 1, index, &value, 0);
+}
+
+int hw_mod_cat_kcs_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t *value)
+{
+	return hw_mod_cat_kcs_mod(be, field, if_num, 1, index, value, 1);
 }
 
 /*
@@ -1094,6 +1272,12 @@ int hw_mod_cat_cte_set(struct flow_api_backend_s *be, enum hw_cat_e field, int i
 	return hw_mod_cat_cte_mod(be, field, index, &value, 0);
 }
 
+int hw_mod_cat_cte_get(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+	uint32_t *value)
+{
+	return hw_mod_cat_cte_mod(be, field, index, value, 1);
+}
+
 int hw_mod_cat_cts_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	int addr_size = (_VER_ < 15) ? 8 : ((be->cat.cts_num + 1) / 2);
@@ -1152,6 +1336,12 @@ int hw_mod_cat_cts_set(struct flow_api_backend_s *be, enum hw_cat_e field, int i
 	uint32_t value)
 {
 	return hw_mod_cat_cts_mod(be, field, index, &value, 0);
+}
+
+int hw_mod_cat_cts_get(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+	uint32_t *value)
+{
+	return hw_mod_cat_cts_mod(be, field, index, value, 1);
 }
 
 int hw_mod_cat_cot_flush(struct flow_api_backend_s *be, int start_idx, int count)

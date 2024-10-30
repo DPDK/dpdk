@@ -9,6 +9,14 @@
 #include "flow_api_hw_db_inline.h"
 #include "rte_common.h"
 
+#define HW_DB_FT_LOOKUP_KEY_A 0
+
+#define HW_DB_FT_TYPE_KM 1
+#define HW_DB_FT_LOOKUP_KEY_A 0
+#define HW_DB_FT_LOOKUP_KEY_C 2
+
+#define HW_DB_FT_TYPE_FLM 0
+#define HW_DB_FT_TYPE_KM 1
 /******************************************************************************/
 /* Handle                                                                     */
 /******************************************************************************/
@@ -59,6 +67,23 @@ struct hw_db_inline_resource_db {
 		int ref;
 	} *cat;
 
+	struct hw_db_inline_resource_db_flm_rcp {
+		struct hw_db_inline_resource_db_flm_ft {
+			struct hw_db_inline_flm_ft_data data;
+			struct hw_db_flm_ft idx;
+			int ref;
+		} *ft;
+
+		struct hw_db_inline_resource_db_flm_match_set {
+			struct hw_db_match_set_idx idx;
+			int ref;
+		} *match_set;
+
+		struct hw_db_inline_resource_db_flm_cfn_map {
+			int cfn_idx;
+		} *cfn_map;
+	} *flm;
+
 	struct hw_db_inline_resource_db_km_rcp {
 		struct hw_db_inline_km_rcp_data data;
 		int ref;
@@ -70,6 +95,7 @@ struct hw_db_inline_resource_db {
 	} *km;
 
 	uint32_t nb_cat;
+	uint32_t nb_flm_ft;
 	uint32_t nb_km_ft;
 	uint32_t nb_km_rcp;
 
@@ -173,6 +199,13 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 	}
 
 	*db_handle = db;
+
+	/* Preset data */
+
+	db->flm[0].ft[1].idx.type = HW_DB_IDX_TYPE_FLM_FT;
+	db->flm[0].ft[1].idx.id1 = 1;
+	db->flm[0].ft[1].ref = 1;
+
 	return 0;
 }
 
@@ -235,6 +268,11 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 				*(struct hw_db_tpe_ext_idx *)&idxs[i]);
 			break;
 
+		case HW_DB_IDX_TYPE_FLM_FT:
+			hw_db_inline_flm_ft_deref(ndev, db_handle,
+				*(struct hw_db_flm_ft *)&idxs[i]);
+			break;
+
 		case HW_DB_IDX_TYPE_KM_RCP:
 			hw_db_inline_km_deref(ndev, db_handle, *(struct hw_db_km_idx *)&idxs[i]);
 			break;
@@ -286,6 +324,9 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 		case HW_DB_IDX_TYPE_TPE_EXT:
 			return &db->tpe_ext[idxs[i].ids].data;
 
+		case HW_DB_IDX_TYPE_FLM_FT:
+			return NULL;	/* FTs can't be easily looked up */
+
 		case HW_DB_IDX_TYPE_KM_RCP:
 			return &db->km[idxs[i].id1].data;
 
@@ -306,6 +347,61 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 /******************************************************************************/
 /* Filter                                                                     */
 /******************************************************************************/
+
+/*
+ * lookup refers to key A/B/C/D, and can have values 0, 1, 2, and 3.
+ */
+static void hw_db_set_ft(struct flow_nic_dev *ndev, int type, int cfn_index, int lookup,
+	int flow_type, int enable)
+{
+	(void)type;
+	(void)enable;
+
+	const int max_lookups = 4;
+	const int cat_funcs = (int)ndev->be.cat.nb_cat_funcs / 8;
+
+	int fte_index = (8 * flow_type + cfn_index / cat_funcs) * max_lookups + lookup;
+	int fte_field = cfn_index % cat_funcs;
+
+	uint32_t current_bm = 0;
+	uint32_t fte_field_bm = 1 << fte_field;
+
+	switch (type) {
+	case HW_DB_FT_TYPE_FLM:
+		hw_mod_cat_fte_flm_get(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST, fte_index,
+			&current_bm);
+		break;
+
+	case HW_DB_FT_TYPE_KM:
+		hw_mod_cat_fte_km_get(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST, fte_index,
+			&current_bm);
+		break;
+
+	default:
+		break;
+	}
+
+	uint32_t final_bm = enable ? (fte_field_bm | current_bm) : (~fte_field_bm & current_bm);
+
+	if (current_bm != final_bm) {
+		switch (type) {
+		case HW_DB_FT_TYPE_FLM:
+			hw_mod_cat_fte_flm_set(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+				fte_index, final_bm);
+			hw_mod_cat_fte_flm_flush(&ndev->be, KM_FLM_IF_FIRST, fte_index, 1);
+			break;
+
+		case HW_DB_FT_TYPE_KM:
+			hw_mod_cat_fte_km_set(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+				fte_index, final_bm);
+			hw_mod_cat_fte_km_flush(&ndev->be, KM_FLM_IF_FIRST, fte_index, 1);
+			break;
+
+		default:
+			break;
+		}
+	}
+}
 
 /*
  * Setup a filter to match:
@@ -347,6 +443,17 @@ int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id,
 
 	if (hw_mod_cat_cte_flush(&ndev->be, cat_hw_id, 1))
 		return -1;
+
+	/* KM: Match all FTs for look-up A */
+	for (int i = 0; i < 16; ++i)
+		hw_db_set_ft(ndev, HW_DB_FT_TYPE_KM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_A, i, 1);
+
+	/* FLM: Match all FTs for look-up A */
+	for (int i = 0; i < 16; ++i)
+		hw_db_set_ft(ndev, HW_DB_FT_TYPE_FLM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_A, i, 1);
+
+	/* FLM: Match FT=ft_argument for look-up C */
+	hw_db_set_ft(ndev, HW_DB_FT_TYPE_FLM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_C, ft, 1);
 
 	/* Make all CFN checks TRUE */
 	if (hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_SET_ALL_DEFAULTS, cat_hw_id, 0, 0))
@@ -1251,6 +1358,133 @@ void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct
 			sizeof(struct hw_db_inline_km_ft_data));
 		km_rcp->ft[cat_offset + idx.id1].ref = 0;
 	}
+}
+/******************************************************************************/
+/* FLM FT                                                                     */
+/******************************************************************************/
+
+static int hw_db_inline_flm_ft_compare(const struct hw_db_inline_flm_ft_data *data1,
+	const struct hw_db_inline_flm_ft_data *data2)
+{
+	return data1->is_group_zero == data2->is_group_zero && data1->jump == data2->jump &&
+		data1->action_set.raw == data2->action_set.raw;
+}
+
+struct hw_db_flm_ft hw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_flm_ft_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_flm_rcp *flm_rcp = &db->flm[data->jump];
+	struct hw_db_flm_ft idx = { .raw = 0 };
+
+	idx.type = HW_DB_IDX_TYPE_FLM_FT;
+	idx.id1 = 0;
+	idx.id2 = data->group & 0xff;
+
+	if (data->is_group_zero) {
+		idx.error = 1;
+		return idx;
+	}
+
+	if (flm_rcp->ft[idx.id1].ref > 0) {
+		if (!hw_db_inline_flm_ft_compare(data, &flm_rcp->ft[idx.id1].data)) {
+			idx.error = 1;
+			return idx;
+		}
+
+		hw_db_inline_flm_ft_ref(ndev, db, idx);
+		return idx;
+	}
+
+	memcpy(&flm_rcp->ft[idx.id1].data, data, sizeof(struct hw_db_inline_flm_ft_data));
+	flm_rcp->ft[idx.id1].idx.raw = idx.raw;
+	flm_rcp->ft[idx.id1].ref = 1;
+
+	return idx;
+}
+
+struct hw_db_flm_ft hw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_flm_ft_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_flm_rcp *flm_rcp = &db->flm[data->group];
+	struct hw_db_flm_ft idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_FLM_FT;
+	idx.id1 = 0;
+	idx.id2 = data->group & 0xff;
+
+	/* RCP 0 always uses FT 1; i.e. use unhandled FT for disabled RCP */
+	if (data->group == 0) {
+		idx.id1 = 1;
+		return idx;
+	}
+
+	if (data->is_group_zero) {
+		idx.id3 = 1;
+		return idx;
+	}
+
+	/* FLM_FT records 0, 1 and last (15) are reserved */
+	/* NOTE: RES_FLM_FLOW_TYPE resource is global and it cannot be used in _add() and _deref()
+	 * to track usage of FLM_FT recipes which are group specific.
+	 */
+	for (uint32_t i = 2; i < db->nb_flm_ft; ++i) {
+		if (!found && flm_rcp->ft[i].ref <= 0 &&
+			!flow_nic_is_resource_used(ndev, RES_FLM_FLOW_TYPE, i)) {
+			found = 1;
+			idx.id1 = i;
+		}
+
+		if (flm_rcp->ft[i].ref > 0 &&
+			hw_db_inline_flm_ft_compare(data, &flm_rcp->ft[i].data)) {
+			idx.id1 = i;
+			hw_db_inline_flm_ft_ref(ndev, db, idx);
+			return idx;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	memcpy(&flm_rcp->ft[idx.id1].data, data, sizeof(struct hw_db_inline_flm_ft_data));
+	flm_rcp->ft[idx.id1].idx.raw = idx.raw;
+	flm_rcp->ft[idx.id1].ref = 1;
+
+	return idx;
+}
+
+void hw_db_inline_flm_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_ft idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error && idx.id3 == 0)
+		db->flm[idx.id2].ft[idx.id1].ref += 1;
+}
+
+void hw_db_inline_flm_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_ft idx)
+{
+	(void)ndev;
+	(void)db_handle;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_flm_rcp *flm_rcp;
+
+	if (idx.error || idx.id2 == 0 || idx.id3 > 0)
+		return;
+
+	flm_rcp = &db->flm[idx.id2];
+
+	flm_rcp->ft[idx.id1].ref -= 1;
+
+	if (flm_rcp->ft[idx.id1].ref > 0)
+		return;
+
+	flm_rcp->ft[idx.id1].ref = 0;
+	memset(&flm_rcp->ft[idx.id1], 0x0, sizeof(struct hw_db_inline_resource_db_flm_ft));
 }
 
 /******************************************************************************/
