@@ -179,3 +179,7 @@ foreach drv:dpdk_drvs_disabled
     output_message += drv + ':\t' + reason + '\n\t'
 endforeach
 message(output_message + '\n')
+
+message('DPDK build config complete:\n' +
+        '  source path = "' + dpdk_source_root + '"\n' +
+        '  build path  = "' + dpdk_build_root + '"')
