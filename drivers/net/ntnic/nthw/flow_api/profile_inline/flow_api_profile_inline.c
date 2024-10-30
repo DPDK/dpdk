@@ -23,6 +23,15 @@
 
 static void *flm_lrn_queue_arr;
 
+static int rx_queue_idx_to_hw_id(const struct flow_eth_dev *dev, int id)
+{
+	for (int i = 0; i < dev->num_queues; ++i)
+		if (dev->rx_queue[i].id == id)
+			return dev->rx_queue[i].hw_id;
+
+	return -1;
+}
+
 struct flm_flow_key_def_s {
 	union {
 		struct {
@@ -345,6 +354,34 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				*num_dest_port += 1;
 
 				NT_LOG(DBG, FILTER, "Phy port ID: %i", (int)port);
+			}
+
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_QUEUE", dev);
+
+			if (action[aidx].conf) {
+				struct rte_flow_action_queue queue_tmp;
+				const struct rte_flow_action_queue *queue =
+					memcpy_mask_if(&queue_tmp, action[aidx].conf,
+					action_mask ? action_mask[aidx].conf : NULL,
+					sizeof(struct rte_flow_action_queue));
+
+				int hw_id = rx_queue_idx_to_hw_id(dev, queue->index);
+
+				fd->dst_id[fd->dst_num_avail].owning_port_id = dev->port;
+				fd->dst_id[fd->dst_num_avail].id = hw_id;
+				fd->dst_id[fd->dst_num_avail].type = PORT_VIRT;
+				fd->dst_id[fd->dst_num_avail].active = 1;
+				fd->dst_num_avail++;
+
+				NT_LOG(DBG, FILTER,
+					"Dev:%p: RTE_FLOW_ACTION_TYPE_QUEUE port %u, queue index: %u, hw id %u",
+					dev, dev->port, queue->index, hw_id);
+
+				fd->full_offload = 0;
+				*num_queues += 1;
 			}
 
 			break;

@@ -42,6 +42,10 @@ Features
 - Promiscuous mode (Enable only. The device always run promiscuous mode)
 - Flow API support.
 - Support for multiple rte_flow groups.
+- Multiple TX and RX queues.
+- Scattered and gather for TX and RX.
+- Jumbo frame support.
+- Traffic mirroring.
 
 Limitations
 ~~~~~~~~~~~
