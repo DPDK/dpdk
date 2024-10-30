@@ -42,6 +42,11 @@ int flow_flush_profile_inline(struct flow_eth_dev *dev,
 	uint16_t caller_id,
 	struct rte_flow_error *error);
 
+int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
+	struct flow_handle *flow,
+	const struct rte_flow_action action[],
+	struct rte_flow_error *error);
+
 int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *flow,
 	uint16_t caller_id,

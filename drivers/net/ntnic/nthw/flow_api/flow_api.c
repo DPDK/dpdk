@@ -263,6 +263,21 @@ static int flow_flush(struct flow_eth_dev *dev, uint16_t caller_id, struct rte_f
 	return profile_inline_ops->flow_flush_profile_inline(dev, caller_id, error);
 }
 
+static int flow_actions_update(struct flow_eth_dev *dev,
+	struct flow_handle *flow,
+	const struct rte_flow_action action[],
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return profile_inline_ops->flow_actions_update_profile_inline(dev, flow, action, error);
+}
+
 /*
  * Device Management API
  */
@@ -1092,6 +1107,7 @@ static const struct flow_filter_ops ops = {
 	.flow_create = flow_create,
 	.flow_destroy = flow_destroy,
 	.flow_flush = flow_flush,
+	.flow_actions_update = flow_actions_update,
 	.flow_dev_dump = flow_dev_dump,
 	.flow_get_flm_stats = flow_get_flm_stats,
 	.flow_get_aged_flows = flow_get_aged_flows,
