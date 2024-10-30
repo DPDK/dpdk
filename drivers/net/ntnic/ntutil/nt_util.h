@@ -9,6 +9,9 @@
 #include <stdint.h>
 #include "nt4ga_link.h"
 
+/* Total max VDPA ports */
+#define MAX_VDPA_PORTS 128UL
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
 #endif
