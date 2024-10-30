@@ -19,6 +19,21 @@ const struct sg_ops_s *get_sg_ops(void)
 	return sg_ops;
 }
 
+static const struct ntnic_filter_ops *ntnic_filter_ops;
+
+void register_ntnic_filter_ops(const struct ntnic_filter_ops *ops)
+{
+	ntnic_filter_ops = ops;
+}
+
+const struct ntnic_filter_ops *get_ntnic_filter_ops(void)
+{
+	if (ntnic_filter_ops == NULL)
+		ntnic_filter_init();
+
+	return ntnic_filter_ops;
+}
+
 static struct link_ops_s *link_100g_ops;
 
 void register_100g_link_ops(struct link_ops_s *ops)
@@ -45,6 +60,21 @@ const struct port_ops *get_port_ops(void)
 	if (port_ops == NULL)
 		port_init();
 	return port_ops;
+}
+
+static const struct nt4ga_stat_ops *nt4ga_stat_ops;
+
+void register_nt4ga_stat_ops(const struct nt4ga_stat_ops *ops)
+{
+	nt4ga_stat_ops = ops;
+}
+
+const struct nt4ga_stat_ops *get_nt4ga_stat_ops(void)
+{
+	if (nt4ga_stat_ops == NULL)
+		nt4ga_stat_ops_init();
+
+	return nt4ga_stat_ops;
 }
 
 static const struct adapter_ops *adapter_ops;

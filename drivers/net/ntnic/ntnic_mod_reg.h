@@ -111,6 +111,14 @@ void register_sg_ops(struct sg_ops_s *ops);
 const struct sg_ops_s *get_sg_ops(void);
 void sg_init(void);
 
+struct ntnic_filter_ops {
+	int (*poll_statistics)(struct pmd_internals *internals);
+};
+
+void register_ntnic_filter_ops(const struct ntnic_filter_ops *ops);
+const struct ntnic_filter_ops *get_ntnic_filter_ops(void);
+void ntnic_filter_init(void);
+
 struct link_ops_s {
 	int (*link_init)(struct adapter_info_s *p_adapter_info, nthw_fpga_t *p_fpga);
 };
@@ -174,6 +182,15 @@ struct port_ops {
 void register_port_ops(const struct port_ops *ops);
 const struct port_ops *get_port_ops(void);
 void port_init(void);
+
+struct nt4ga_stat_ops {
+	int (*nt4ga_stat_init)(struct adapter_info_s *p_adapter_info);
+	int (*nt4ga_stat_setup)(struct adapter_info_s *p_adapter_info);
+};
+
+void register_nt4ga_stat_ops(const struct nt4ga_stat_ops *ops);
+const struct nt4ga_stat_ops *get_nt4ga_stat_ops(void);
+void nt4ga_stat_ops_init(void);
 
 struct adapter_ops {
 	int (*init)(struct adapter_info_s *p_adapter_info);

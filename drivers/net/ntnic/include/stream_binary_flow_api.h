@@ -6,6 +6,7 @@
 #ifndef _STREAM_BINARY_FLOW_API_H_
 #define _STREAM_BINARY_FLOW_API_H_
 
+#include <rte_ether.h>
 #include "rte_flow.h"
 #include "rte_flow_driver.h"
 
@@ -44,6 +45,10 @@
 #define FLOW_MAX_QUEUES 128
 
 #define RAW_ENCAP_DECAP_ELEMS_MAX 16
+
+extern uint64_t rte_tsc_freq;
+extern rte_spinlock_t hwlock;
+
 /*
  * Flow eth dev profile determines how the FPGA module resources are
  * managed and what features are available

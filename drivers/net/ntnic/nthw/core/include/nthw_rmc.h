@@ -44,6 +44,7 @@ typedef struct nthw_rmc nthw_rmc;
 nthw_rmc_t *nthw_rmc_new(void);
 int nthw_rmc_init(nthw_rmc_t *p, nthw_fpga_t *p_fpga, int n_instance);
 
+void nthw_rmc_block(nthw_rmc_t *p);
 void nthw_rmc_unblock(nthw_rmc_t *p, bool b_is_secondary);
 
 #endif	/* NTHW_RMC_H_ */

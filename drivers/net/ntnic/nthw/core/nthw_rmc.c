@@ -77,6 +77,16 @@ int nthw_rmc_init(nthw_rmc_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
+void nthw_rmc_block(nthw_rmc_t *p)
+{
+	/* BLOCK_STATT(0)=1 BLOCK_KEEPA(1)=1 BLOCK_MAC_PORT(8:11)=~0 */
+	if (!p->mb_administrative_block) {
+		nthw_field_set_flush(p->mp_fld_ctrl_block_stat_drop);
+		nthw_field_set_flush(p->mp_fld_ctrl_block_keep_alive);
+		nthw_field_set_flush(p->mp_fld_ctrl_block_mac_port);
+	}
+}
+
 void nthw_rmc_unblock(nthw_rmc_t *p, bool b_is_secondary)
 {
 	uint32_t n_block_mask = ~0U << (b_is_secondary ? p->mn_nims : p->mn_ports);

@@ -25,10 +25,12 @@ includes = [
 # all sources
 sources = files(
         'adapter/nt4ga_adapter.c',
+        'adapter/nt4ga_stat/nt4ga_stat.c',
         'dbsconfig/ntnic_dbsconfig.c',
         'link_mgmt/link_100g/nt4ga_link_100g.c',
         'link_mgmt/nt4ga_link.c',
         'nim/i2c_nim.c',
+        'ntnic_filter/ntnic_filter.c',
         'nthw/dbs/nthw_dbs.c',
         'nthw/supported/nthw_fpga_9563_055_049_0000.c',
         'nthw/supported/nthw_fpga_instances.c',
@@ -48,6 +50,7 @@ sources = files(
         'nthw/core/nthw_rmc.c',
         'nthw/core/nthw_sdc.c',
         'nthw/core/nthw_si5340.c',
+        'nthw/stat/nthw_stat.c',
         'nthw/flow_api/flow_api.c',
         'nthw/flow_api/flow_group.c',
         'nthw/flow_api/flow_id_table.c',

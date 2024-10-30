@@ -212,19 +212,26 @@ static int nt4ga_adapter_init(struct adapter_info_s *p_adapter_info)
 		}
 	}
 
-	nthw_rmc_t *p_nthw_rmc = nthw_rmc_new();
-	if (p_nthw_rmc == NULL) {
-		NT_LOG(ERR, NTNIC, "Failed to allocate memory for RMC module");
-		return -1;
-	}
+	const struct nt4ga_stat_ops *nt4ga_stat_ops = get_nt4ga_stat_ops();
 
-	res = nthw_rmc_init(p_nthw_rmc, p_fpga, 0);
-	if (res) {
-		NT_LOG(ERR, NTNIC, "Failed to initialize RMC module");
-		return -1;
-	}
+	if (nt4ga_stat_ops != NULL) {
+		/* Nt4ga Stat init/setup */
+		res = nt4ga_stat_ops->nt4ga_stat_init(p_adapter_info);
 
-	nthw_rmc_unblock(p_nthw_rmc, false);
+		if (res != 0) {
+			NT_LOG(ERR, NTNIC, "%s: Cannot initialize the statistics module",
+				p_adapter_id_str);
+			return res;
+		}
+
+		res = nt4ga_stat_ops->nt4ga_stat_setup(p_adapter_info);
+
+		if (res != 0) {
+			NT_LOG(ERR, NTNIC, "%s: Cannot setup the statistics module",
+				p_adapter_id_str);
+			return res;
+		}
+	}
 
 	return 0;
 }

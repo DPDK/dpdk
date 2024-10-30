@@ -6,6 +6,7 @@
 #ifndef _NT4GA_ADAPTER_H_
 #define _NT4GA_ADAPTER_H_
 
+#include "ntnic_stat.h"
 #include "nt4ga_link.h"
 
 typedef struct hw_info_s {
@@ -27,9 +28,9 @@ typedef struct hw_info_s {
  * Services provided by the adapter module
  */
 #include "nt4ga_filter.h"
-#include "ntnic_stat.h"
 
 typedef struct adapter_info_s {
+	struct nt4ga_stat_s nt4ga_stat;
 	struct nt4ga_filter_s nt4ga_filter;
 	struct nt4ga_link_s nt4ga_link;
 

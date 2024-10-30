@@ -22,6 +22,7 @@
  * The windows size must max be 3 min in order to
  * prevent overflow.
  */
+#define PORT_LOAD_WINDOWS_SIZE 2ULL
 #define FLM_LOAD_WINDOWS_SIZE 2ULL
 
 #define PCIIDENT_TO_DOMAIN(pci_ident) ((uint16_t)(((unsigned int)(pci_ident) >> 16) & 0xFFFFU))

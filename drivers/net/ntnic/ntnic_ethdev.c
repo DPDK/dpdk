@@ -65,6 +65,8 @@ const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL }
 #define MAX_RX_PACKETS   128
 #define MAX_TX_PACKETS   128
 
+uint64_t rte_tsc_freq;
+
 int kill_pmd;
 
 #define ETH_DEV_NTNIC_HELP_ARG "help"
@@ -88,7 +90,7 @@ static const struct rte_pci_id nthw_pci_id_map[] = {
 
 static const struct sg_ops_s *sg_ops;
 
-static rte_spinlock_t hwlock = RTE_SPINLOCK_INITIALIZER;
+rte_spinlock_t hwlock = RTE_SPINLOCK_INITIALIZER;
 
 /*
  * Store and get adapter info
@@ -156,6 +158,102 @@ get_pdrv_from_pci(struct rte_pci_addr addr)
 	return p_drv;
 }
 
+static int dpdk_stats_collect(struct pmd_internals *internals, struct rte_eth_stats *stats)
+{
+	const struct ntnic_filter_ops *ntnic_filter_ops = get_ntnic_filter_ops();
+
+	if (ntnic_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "ntnic_filter_ops uninitialized");
+		return -1;
+	}
+
+	unsigned int i;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
+	const int if_index = internals->n_intf_no;
+	uint64_t rx_total = 0;
+	uint64_t rx_total_b = 0;
+	uint64_t tx_total = 0;
+	uint64_t tx_total_b = 0;
+	uint64_t tx_err_total = 0;
+
+	if (!p_nthw_stat || !p_nt4ga_stat || !stats || if_index < 0 ||
+		if_index > NUM_ADAPTER_PORTS_MAX) {
+		NT_LOG_DBGX(WRN, NTNIC, "error exit");
+		return -1;
+	}
+
+	/*
+	 * Pull the latest port statistic numbers (Rx/Tx pkts and bytes)
+	 * Return values are in the "internals->rxq_scg[]" and "internals->txq_scg[]" arrays
+	 */
+	ntnic_filter_ops->poll_statistics(internals);
+
+	memset(stats, 0, sizeof(*stats));
+
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < internals->nb_rx_queues; i++) {
+		stats->q_ipackets[i] = internals->rxq_scg[i].rx_pkts;
+		stats->q_ibytes[i] = internals->rxq_scg[i].rx_bytes;
+		rx_total += stats->q_ipackets[i];
+		rx_total_b += stats->q_ibytes[i];
+	}
+
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS && i < internals->nb_tx_queues; i++) {
+		stats->q_opackets[i] = internals->txq_scg[i].tx_pkts;
+		stats->q_obytes[i] = internals->txq_scg[i].tx_bytes;
+		stats->q_errors[i] = internals->txq_scg[i].err_pkts;
+		tx_total += stats->q_opackets[i];
+		tx_total_b += stats->q_obytes[i];
+		tx_err_total += stats->q_errors[i];
+	}
+
+	stats->imissed = internals->rx_missed;
+	stats->ipackets = rx_total;
+	stats->ibytes = rx_total_b;
+	stats->opackets = tx_total;
+	stats->obytes = tx_total_b;
+	stats->oerrors = tx_err_total;
+
+	return 0;
+}
+
+static int dpdk_stats_reset(struct pmd_internals *internals, struct ntdrv_4ga_s *p_nt_drv,
+	int n_intf_no)
+{
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
+	unsigned int i;
+
+	if (!p_nthw_stat || !p_nt4ga_stat || n_intf_no < 0 || n_intf_no > NUM_ADAPTER_PORTS_MAX)
+		return -1;
+
+	pthread_mutex_lock(&p_nt_drv->stat_lck);
+
+	/* Rx */
+	for (i = 0; i < internals->nb_rx_queues; i++) {
+		internals->rxq_scg[i].rx_pkts = 0;
+		internals->rxq_scg[i].rx_bytes = 0;
+		internals->rxq_scg[i].err_pkts = 0;
+	}
+
+	internals->rx_missed = 0;
+
+	/* Tx */
+	for (i = 0; i < internals->nb_tx_queues; i++) {
+		internals->txq_scg[i].tx_pkts = 0;
+		internals->txq_scg[i].tx_bytes = 0;
+		internals->txq_scg[i].err_pkts = 0;
+	}
+
+	p_nt4ga_stat->n_totals_reset_timestamp = time(NULL);
+
+	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+
+	return 0;
+}
+
 static int
 eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 {
@@ -191,6 +289,23 @@ eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 		eth_dev->data->dev_link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 	}
 
+	return 0;
+}
+
+static int eth_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	dpdk_stats_collect(internals, stats);
+	return 0;
+}
+
+static int eth_stats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	const int if_index = internals->n_intf_no;
+	dpdk_stats_reset(internals, p_nt_drv, if_index);
 	return 0;
 }
 
@@ -1453,6 +1568,8 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.dev_set_link_down = eth_dev_set_link_down,
 	.dev_close = eth_dev_close,
 	.link_update = eth_link_update,
+	.stats_get = eth_stats_get,
+	.stats_reset = eth_stats_reset,
 	.dev_infos_get = eth_dev_infos_get,
 	.fw_version_get = eth_fw_version_get,
 	.rx_queue_setup = eth_rx_scg_queue_setup,

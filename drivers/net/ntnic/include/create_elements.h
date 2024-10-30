@@ -46,6 +46,10 @@ struct rte_flow {
 
 	uint32_t flow_stat_id;
 
+	uint64_t stat_pkts;
+	uint64_t stat_bytes;
+	uint8_t stat_tcp_flags;
+
 	uint16_t caller_id;
 };
 

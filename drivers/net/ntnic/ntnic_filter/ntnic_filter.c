@@ -8,10 +8,18 @@
 #include "create_elements.h"
 #include "ntnic_mod_reg.h"
 #include "ntos_system.h"
+#include "ntos_drv.h"
 
 #define MAX_RTE_FLOWS 8192
 
+#define MAX_COLOR_FLOW_STATS 0x400
 #define NT_MAX_COLOR_FLOW_STATS 0x400
+
+#if (MAX_COLOR_FLOW_STATS != NT_MAX_COLOR_FLOW_STATS)
+#error Difference in COLOR_FLOW_STATS. Please synchronize the defines.
+#endif
+
+static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 
 rte_spinlock_t flow_lock = RTE_SPINLOCK_INITIALIZER;
 static struct rte_flow nt_flows[MAX_RTE_FLOWS];
@@ -681,6 +689,9 @@ static int eth_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *er
 				/* Cleanup recorded flows */
 				nt_flows[flow].used = 0;
 				nt_flows[flow].caller_id = 0;
+				nt_flows[flow].stat_bytes = 0UL;
+				nt_flows[flow].stat_pkts = 0UL;
+				nt_flows[flow].stat_tcp_flags = 0;
 			}
 		}
 
@@ -718,6 +729,127 @@ static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 
 	convert_error(error, &flow_error);
 	return res;
+}
+
+static int poll_statistics(struct pmd_internals *internals)
+{
+	int flow;
+	struct drv_s *p_drv = internals->p_drv;
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	const int if_index = internals->n_intf_no;
+	uint64_t last_stat_rtc = 0;
+
+	if (!p_nt4ga_stat || if_index < 0 || if_index > NUM_ADAPTER_PORTS_MAX)
+		return -1;
+
+	assert(rte_tsc_freq > 0);
+
+	rte_spinlock_lock(&hwlock);
+
+	uint64_t now_rtc = rte_get_tsc_cycles();
+
+	/*
+	 * Check per port max once a second
+	 * if more than a second since last stat read, do a new one
+	 */
+	if ((now_rtc - internals->last_stat_rtc) < rte_tsc_freq) {
+		rte_spinlock_unlock(&hwlock);
+		return 0;
+	}
+
+	internals->last_stat_rtc = now_rtc;
+
+	pthread_mutex_lock(&p_nt_drv->stat_lck);
+
+	/*
+	 * Add the RX statistics increments since last time we polled.
+	 * (No difference if physical or virtual port)
+	 */
+	internals->rxq_scg[0].rx_pkts += p_nt4ga_stat->a_port_rx_packets_total[if_index] -
+		p_nt4ga_stat->a_port_rx_packets_base[if_index];
+	internals->rxq_scg[0].rx_bytes += p_nt4ga_stat->a_port_rx_octets_total[if_index] -
+		p_nt4ga_stat->a_port_rx_octets_base[if_index];
+	internals->rxq_scg[0].err_pkts += 0;
+	internals->rx_missed += p_nt4ga_stat->a_port_rx_drops_total[if_index] -
+		p_nt4ga_stat->a_port_rx_drops_base[if_index];
+
+	/* Update the increment bases */
+	p_nt4ga_stat->a_port_rx_packets_base[if_index] =
+		p_nt4ga_stat->a_port_rx_packets_total[if_index];
+	p_nt4ga_stat->a_port_rx_octets_base[if_index] =
+		p_nt4ga_stat->a_port_rx_octets_total[if_index];
+	p_nt4ga_stat->a_port_rx_drops_base[if_index] =
+		p_nt4ga_stat->a_port_rx_drops_total[if_index];
+
+	/* Tx (here we must distinguish between physical and virtual ports) */
+	if (internals->type == PORT_TYPE_PHYSICAL) {
+		/* Add the statistics increments since last time we polled */
+		internals->txq_scg[0].tx_pkts += p_nt4ga_stat->a_port_tx_packets_total[if_index] -
+			p_nt4ga_stat->a_port_tx_packets_base[if_index];
+		internals->txq_scg[0].tx_bytes += p_nt4ga_stat->a_port_tx_octets_total[if_index] -
+			p_nt4ga_stat->a_port_tx_octets_base[if_index];
+		internals->txq_scg[0].err_pkts += 0;
+
+		/* Update the increment bases */
+		p_nt4ga_stat->a_port_tx_packets_base[if_index] =
+			p_nt4ga_stat->a_port_tx_packets_total[if_index];
+		p_nt4ga_stat->a_port_tx_octets_base[if_index] =
+			p_nt4ga_stat->a_port_tx_octets_total[if_index];
+	}
+
+	/* Globally only once a second */
+	if ((now_rtc - last_stat_rtc) < rte_tsc_freq) {
+		rte_spinlock_unlock(&hwlock);
+		pthread_mutex_unlock(&p_nt_drv->stat_lck);
+		return 0;
+	}
+
+	last_stat_rtc = now_rtc;
+
+	/* All color counter are global, therefore only 1 pmd must update them */
+	const struct color_counters *p_color_counters = p_nt4ga_stat->mp_stat_structs_color;
+	struct color_counters *p_color_counters_base = p_nt4ga_stat->a_stat_structs_color_base;
+	uint64_t color_packets_accumulated, color_bytes_accumulated;
+
+	for (flow = 0; flow < MAX_RTE_FLOWS; flow++) {
+		if (nt_flows[flow].used) {
+			unsigned int color = nt_flows[flow].flow_stat_id;
+
+			if (color < NT_MAX_COLOR_FLOW_STATS) {
+				color_packets_accumulated = p_color_counters[color].color_packets;
+				nt_flows[flow].stat_pkts +=
+					(color_packets_accumulated -
+						p_color_counters_base[color].color_packets);
+
+				nt_flows[flow].stat_tcp_flags |= p_color_counters[color].tcp_flags;
+
+				color_bytes_accumulated = p_color_counters[color].color_bytes;
+				nt_flows[flow].stat_bytes +=
+					(color_bytes_accumulated -
+						p_color_counters_base[color].color_bytes);
+
+				/* Update the counter bases */
+				p_color_counters_base[color].color_packets =
+					color_packets_accumulated;
+				p_color_counters_base[color].color_bytes = color_bytes_accumulated;
+			}
+		}
+	}
+
+	rte_spinlock_unlock(&hwlock);
+	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+
+	return 0;
+}
+
+static const struct ntnic_filter_ops ntnic_filter_ops = {
+	.poll_statistics = poll_statistics,
+};
+
+void ntnic_filter_init(void)
+{
+	register_ntnic_filter_ops(&ntnic_filter_ops);
 }
 
 static const struct rte_flow_ops dev_flow_ops = {

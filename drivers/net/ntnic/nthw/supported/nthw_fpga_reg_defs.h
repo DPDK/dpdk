@@ -45,6 +45,7 @@
 #include "nthw_fpga_reg_defs_sdc.h"
 #include "nthw_fpga_reg_defs_slc.h"
 #include "nthw_fpga_reg_defs_slc_lr.h"
+#include "nthw_fpga_reg_defs_sta.h"
 #include "nthw_fpga_reg_defs_tx_cpy.h"
 #include "nthw_fpga_reg_defs_tx_ins.h"
 #include "nthw_fpga_reg_defs_tx_rpl.h"
