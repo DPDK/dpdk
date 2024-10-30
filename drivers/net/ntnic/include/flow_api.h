@@ -74,6 +74,21 @@ struct flow_nic_dev {
 	struct flow_nic_dev *next;
 };
 
+enum flow_nic_err_msg_e {
+	ERR_SUCCESS = 0,
+	ERR_FAILED = 1,
+	ERR_OUTPUT_TOO_MANY = 3,
+	ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM = 12,
+	ERR_MATCH_RESOURCE_EXHAUSTION = 14,
+	ERR_ACTION_UNSUPPORTED = 28,
+	ERR_REMOVE_FLOW_FAILED = 29,
+	ERR_OUTPUT_INVALID = 33,
+	ERR_ACTION_MULTIPLE_PORT_ID_UNSUPPORTED = 40,
+	ERR_MSG_NO_MSG
+};
+
+void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error);
+
 /*
  * Resources
  */

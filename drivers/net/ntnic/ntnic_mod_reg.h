@@ -225,7 +225,30 @@ void register_flow_backend_ops(const struct flow_backend_ops *ops);
 const struct flow_backend_ops *get_flow_backend_ops(void);
 void flow_backend_init(void);
 
+struct profile_inline_ops {
+	/*
+	 * Flow functionality
+	 */
+	int (*flow_destroy_locked_profile_inline)(struct flow_eth_dev *dev,
+		struct flow_handle *fh,
+		struct rte_flow_error *error);
+
+	struct flow_handle *(*flow_create_profile_inline)(struct flow_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		uint16_t forced_vlan_vid,
+		uint16_t caller_id,
+		const struct rte_flow_item elem[],
+		const struct rte_flow_action action[],
+		struct rte_flow_error *error);
+
+	int (*flow_destroy_profile_inline)(struct flow_eth_dev *dev,
+		struct flow_handle *flow,
+		struct rte_flow_error *error);
+};
+
+void register_profile_inline_ops(const struct profile_inline_ops *ops);
 const struct profile_inline_ops *get_profile_inline_ops(void);
+void profile_inline_init(void);
 
 struct flow_filter_ops {
 	int (*flow_filter_init)(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device,

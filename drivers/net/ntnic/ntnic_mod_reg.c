@@ -118,9 +118,19 @@ const struct flow_backend_ops *get_flow_backend_ops(void)
 	return flow_backend_ops;
 }
 
+static const struct profile_inline_ops *profile_inline_ops;
+
+void register_profile_inline_ops(const struct profile_inline_ops *ops)
+{
+	profile_inline_ops = ops;
+}
+
 const struct profile_inline_ops *get_profile_inline_ops(void)
 {
-	return NULL;
+	if (profile_inline_ops == NULL)
+		profile_inline_init();
+
+	return profile_inline_ops;
 }
 
 static const struct flow_filter_ops *flow_filter_ops;

@@ -47,6 +47,7 @@ sources = files(
         'nthw/core/nthw_sdc.c',
         'nthw/core/nthw_si5340.c',
         'nthw/flow_api/flow_api.c',
+        'nthw/flow_api/profile_inline/flow_api_profile_inline.c',
         'nthw/flow_api/flow_backend/flow_backend.c',
         'nthw/flow_api/flow_filter.c',
         'nthw/flow_api/flow_kcc.c',
