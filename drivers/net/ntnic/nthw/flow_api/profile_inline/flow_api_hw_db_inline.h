@@ -276,6 +276,9 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 	uint32_t size);
 const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size);
+void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct hw_db_idx *idxs,
+	uint32_t size, FILE *file);
+void hw_db_inline_dump_cfn(struct flow_nic_dev *ndev, void *db_handle, FILE *file);
 
 /**/
 

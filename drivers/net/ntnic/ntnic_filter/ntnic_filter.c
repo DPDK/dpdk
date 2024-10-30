@@ -582,9 +582,38 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 	return flow;
 }
 
+static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
+	struct rte_flow *flow,
+	FILE *file,
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG(ERR, NTNIC, "%s: flow_filter module uninitialized", __func__);
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE, .message = "none" };
+
+	uint16_t caller_id = get_caller_id(eth_dev->data->port_id);
+
+	int res = flow_filter_ops->flow_dev_dump(internals->flw_dev,
+			is_flow_handle_typecast(flow) ? (void *)flow
+			: flow->flw_hdl,
+			caller_id, file, &flow_error);
+
+	convert_error(error, &flow_error);
+	return res;
+}
+
 static const struct rte_flow_ops dev_flow_ops = {
 	.create = eth_flow_create,
 	.destroy = eth_flow_destroy,
+	.dev_dump = eth_flow_dev_dump,
 };
 
 void dev_flow_init(void)

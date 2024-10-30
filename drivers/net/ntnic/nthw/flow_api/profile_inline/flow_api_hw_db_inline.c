@@ -372,6 +372,270 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 	}
 }
 
+void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct hw_db_idx *idxs,
+	uint32_t size, FILE *file)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	char str_buffer[4096];
+	uint16_t rss_buffer_len = sizeof(str_buffer);
+
+	for (uint32_t i = 0; i < size; ++i) {
+		switch (idxs[i].type) {
+		case HW_DB_IDX_TYPE_NONE:
+			break;
+
+		case HW_DB_IDX_TYPE_MATCH_SET: {
+			const struct hw_db_inline_match_set_data *data =
+					&db->match_set[idxs[i].ids].data;
+			fprintf(file, "  MATCH_SET %d, priority %d\n", idxs[i].ids,
+				(int)data->priority);
+			fprintf(file, "    CAT id %d, KM id %d, KM_FT id %d, ACTION_SET id %d\n",
+				data->cat.ids, data->km.id1, data->km_ft.id1,
+				data->action_set.ids);
+
+			if (data->jump)
+				fprintf(file, "    Jumps to %d\n", data->jump);
+
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_ACTION_SET: {
+			const struct hw_db_inline_action_set_data *data =
+					&db->action_set[idxs[i].ids].data;
+			fprintf(file, "  ACTION_SET %d\n", idxs[i].ids);
+
+			if (data->contains_jump)
+				fprintf(file, "    Jumps to %d\n", data->jump);
+
+			else
+				fprintf(file,
+					"    COT id %d, QSL id %d, SLC_LR id %d, TPE id %d, HSH id %d\n",
+					data->cot.ids, data->qsl.ids, data->slc_lr.ids,
+					data->tpe.ids, data->hsh.ids);
+
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_CAT: {
+			const struct hw_db_inline_cat_data *data = &db->cat[idxs[i].ids].data;
+			fprintf(file, "  CAT %d\n", idxs[i].ids);
+			fprintf(file, "    Port msk 0x%02x, VLAN msk 0x%02x\n",
+				(int)data->mac_port_mask, (int)data->vlan_mask);
+			fprintf(file,
+				"    Proto msks: Frag 0x%02x, l2 0x%02x, l3 0x%02x, l4 0x%02x, l3t 0x%02x, l4t 0x%02x\n",
+				(int)data->ptc_mask_frag, (int)data->ptc_mask_l2,
+				(int)data->ptc_mask_l3, (int)data->ptc_mask_l4,
+				(int)data->ptc_mask_l3_tunnel, (int)data->ptc_mask_l4_tunnel);
+			fprintf(file, "    IP protocol: pn %u pnt %u\n", data->ip_prot,
+				data->ip_prot_tunnel);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_QSL: {
+			const struct hw_db_inline_qsl_data *data = &db->qsl[idxs[i].ids].data;
+			fprintf(file, "  QSL %d\n", idxs[i].ids);
+
+			if (data->discard) {
+				fprintf(file, "    Discard\n");
+				break;
+			}
+
+			if (data->drop) {
+				fprintf(file, "    Drop\n");
+				break;
+			}
+
+			fprintf(file, "    Table size %d\n", data->table_size);
+
+			for (uint32_t i = 0;
+				i < data->table_size && i < HW_DB_INLINE_MAX_QST_PER_QSL; ++i) {
+				fprintf(file, "      %u: Queue %d, TX port %d\n", i,
+					(data->table[i].queue_en ? (int)data->table[i].queue : -1),
+					(data->table[i].tx_port_en ? (int)data->table[i].tx_port
+						: -1));
+			}
+
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_COT: {
+			const struct hw_db_inline_cot_data *data = &db->cot[idxs[i].ids].data;
+			fprintf(file, "  COT %d\n", idxs[i].ids);
+			fprintf(file, "    Color contrib %d, frag rcp %d\n",
+				(int)data->matcher_color_contrib, (int)data->frag_rcp);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_SLC_LR: {
+			const struct hw_db_inline_slc_lr_data *data =
+					&db->slc_lr[idxs[i].ids].data;
+			fprintf(file, "  SLC_LR %d\n", idxs[i].ids);
+			fprintf(file, "    Enable %u, dyn %u, ofs %u\n", data->head_slice_en,
+				data->head_slice_dyn, data->head_slice_ofs);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_TPE: {
+			const struct hw_db_inline_tpe_data *data = &db->tpe[idxs[i].ids].data;
+			fprintf(file, "  TPE %d\n", idxs[i].ids);
+			fprintf(file, "    Insert len %u, new outer %u, calc eth %u\n",
+				data->insert_len, data->new_outer,
+				data->calc_eth_type_from_inner_ip);
+			fprintf(file, "    TTL enable %u, dyn %u, ofs %u\n", data->ttl_en,
+				data->ttl_dyn, data->ttl_ofs);
+			fprintf(file,
+				"    Len A enable %u, pos dyn %u, pos ofs %u, add dyn %u, add ofs %u, sub dyn %u\n",
+				data->len_a_en, data->len_a_pos_dyn, data->len_a_pos_ofs,
+				data->len_a_add_dyn, data->len_a_add_ofs, data->len_a_sub_dyn);
+			fprintf(file,
+				"    Len B enable %u, pos dyn %u, pos ofs %u, add dyn %u, add ofs %u, sub dyn %u\n",
+				data->len_b_en, data->len_b_pos_dyn, data->len_b_pos_ofs,
+				data->len_b_add_dyn, data->len_b_add_ofs, data->len_b_sub_dyn);
+			fprintf(file,
+				"    Len C enable %u, pos dyn %u, pos ofs %u, add dyn %u, add ofs %u, sub dyn %u\n",
+				data->len_c_en, data->len_c_pos_dyn, data->len_c_pos_ofs,
+				data->len_c_add_dyn, data->len_c_add_ofs, data->len_c_sub_dyn);
+
+			for (uint32_t i = 0; i < 6; ++i)
+				if (data->writer[i].en)
+					fprintf(file,
+						"    Writer %i: Reader %u, dyn %u, ofs %u, len %u\n",
+						i, data->writer[i].reader_select,
+						data->writer[i].dyn, data->writer[i].ofs,
+						data->writer[i].len);
+
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_TPE_EXT: {
+			const struct hw_db_inline_tpe_ext_data *data =
+					&db->tpe_ext[idxs[i].ids].data;
+			const int rpl_rpl_length = ((int)data->size + 15) / 16;
+			fprintf(file, "  TPE_EXT %d\n", idxs[i].ids);
+			fprintf(file, "    Encap data, size %u\n", data->size);
+
+			for (int i = 0; i < rpl_rpl_length; ++i) {
+				fprintf(file, "   ");
+
+				for (int n = 15; n >= 0; --n)
+					fprintf(file, " %02x%s", data->hdr8[i * 16 + n],
+						n == 8 ? " " : "");
+
+				fprintf(file, "\n");
+			}
+
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_FLM_RCP: {
+			const struct hw_db_inline_flm_rcp_data *data = &db->flm[idxs[i].id1].data;
+			fprintf(file, "  FLM_RCP %d\n", idxs[i].id1);
+			fprintf(file, "    QW0 dyn %u, ofs %u, QW4 dyn %u, ofs %u\n",
+				data->qw0_dyn, data->qw0_ofs, data->qw4_dyn, data->qw4_ofs);
+			fprintf(file, "    SW8 dyn %u, ofs %u, SW9 dyn %u, ofs %u\n",
+				data->sw8_dyn, data->sw8_ofs, data->sw9_dyn, data->sw9_ofs);
+			fprintf(file, "    Outer prot %u, inner prot  %u\n", data->outer_prot,
+				data->inner_prot);
+			fprintf(file, "    Mask:\n");
+			fprintf(file, "      %08x %08x %08x %08x %08x\n", data->mask[0],
+				data->mask[1], data->mask[2], data->mask[3], data->mask[4]);
+			fprintf(file, "      %08x %08x %08x %08x %08x\n", data->mask[5],
+				data->mask[6], data->mask[7], data->mask[8], data->mask[9]);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_FLM_FT: {
+			const struct hw_db_inline_flm_ft_data *data =
+					&db->flm[idxs[i].id2].ft[idxs[i].id1].data;
+			fprintf(file, "  FLM_FT %d\n", idxs[i].id1);
+
+			if (data->is_group_zero)
+				fprintf(file, "    Jump to %d\n", data->jump);
+
+			else
+				fprintf(file, "    Group %d\n", data->group);
+
+			fprintf(file, "    ACTION_SET id %d\n", data->action_set.ids);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_KM_RCP: {
+			const struct hw_db_inline_km_rcp_data *data = &db->km[idxs[i].id1].data;
+			fprintf(file, "  KM_RCP %d\n", idxs[i].id1);
+			fprintf(file, "    HW id %u\n", data->rcp);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_KM_FT: {
+			const struct hw_db_inline_km_ft_data *data =
+					&db->km[idxs[i].id2].ft[idxs[i].id1].data;
+			fprintf(file, "  KM_FT %d\n", idxs[i].id1);
+			fprintf(file, "    ACTION_SET id %d\n", data->action_set.ids);
+			fprintf(file, "    KM_RCP id %d\n", data->km.ids);
+			fprintf(file, "    CAT id %d\n", data->cat.ids);
+			break;
+		}
+
+		case HW_DB_IDX_TYPE_HSH: {
+			const struct hw_db_inline_hsh_data *data = &db->hsh[idxs[i].ids].data;
+			fprintf(file, "  HSH %d\n", idxs[i].ids);
+
+			switch (data->func) {
+			case RTE_ETH_HASH_FUNCTION_DEFAULT:
+				fprintf(file, "    Func: NTH10\n");
+				break;
+
+			case RTE_ETH_HASH_FUNCTION_TOEPLITZ:
+				fprintf(file, "    Func: Toeplitz\n");
+				fprintf(file, "    Key:");
+
+				for (uint8_t i = 0; i < MAX_RSS_KEY_LEN; i++) {
+					if (i % 10 == 0)
+						fprintf(file, "\n     ");
+
+					fprintf(file, " %02x", data->key[i]);
+				}
+
+				fprintf(file, "\n");
+				break;
+
+			default:
+				fprintf(file, "    Func: %u\n", data->func);
+			}
+
+			fprintf(file, "    Hash mask hex:\n");
+			fprintf(file, "      %016lx\n", data->hash_mask);
+
+			/* convert hash mask to human readable RTE_ETH_RSS_* form if possible */
+			if (sprint_nt_rss_mask(str_buffer, rss_buffer_len, "\n      ",
+					data->hash_mask) == 0) {
+				fprintf(file, "    Hash mask flags:%s\n", str_buffer);
+			}
+
+			break;
+		}
+
+		default: {
+			fprintf(file, "  Unknown item. Type %u\n", idxs[i].type);
+			break;
+		}
+		}
+	}
+}
+
+void hw_db_inline_dump_cfn(struct flow_nic_dev *ndev, void *db_handle, FILE *file)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	fprintf(file, "CFN status:\n");
+
+	for (uint32_t id = 0; id < db->nb_cat; ++id)
+		if (db->cfn[id].cfn_hw)
+			fprintf(file, "  ID %d, HW id %d, priority 0x%" PRIx64 "\n", (int)id,
+				db->cfn[id].cfn_hw, db->cfn[id].priority);
+}
 
 const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size)

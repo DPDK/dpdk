@@ -972,6 +972,22 @@ int flow_nic_set_hasher(struct flow_nic_dev *ndev, int hsh_idx, enum flow_nic_ha
 	return 0;
 }
 
+static int flow_dev_dump(struct flow_eth_dev *dev,
+	struct flow_handle *flow,
+	uint16_t caller_id,
+	FILE *file,
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return -1;
+	}
+
+	return profile_inline_ops->flow_dev_dump_profile_inline(dev, flow, caller_id, file, error);
+}
+
 int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
 	struct nt_eth_rss_conf rss_conf)
 {
@@ -997,6 +1013,7 @@ static const struct flow_filter_ops ops = {
 	 */
 	.flow_create = flow_create,
 	.flow_destroy = flow_destroy,
+	.flow_dev_dump = flow_dev_dump,
 };
 
 void init_flow_filter(void)

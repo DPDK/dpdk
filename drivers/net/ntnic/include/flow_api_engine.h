@@ -281,6 +281,8 @@ struct flow_handle {
 	struct flow_handle *next;
 	struct flow_handle *prev;
 
+	/* Flow specific pointer to application data stored during action creation. */
+	void *context;
 	void *user_data;
 
 	union {

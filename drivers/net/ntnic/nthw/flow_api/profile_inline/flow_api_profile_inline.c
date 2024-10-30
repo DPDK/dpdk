@@ -4296,6 +4296,86 @@ int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev, int hsh_idx,
 	return res;
 }
 
+static void dump_flm_data(const uint32_t *data, FILE *file)
+{
+	for (unsigned int i = 0; i < 10; ++i) {
+		fprintf(file, "%s%02X %02X %02X %02X%s", i % 2 ? "" : "    ",
+			(data[i] >> 24) & 0xff, (data[i] >> 16) & 0xff, (data[i] >> 8) & 0xff,
+			data[i] & 0xff, i % 2 ? "\n" : " ");
+	}
+}
+
+int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
+	struct flow_handle *flow,
+	uint16_t caller_id,
+	FILE *file,
+	struct rte_flow_error *error)
+{
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	pthread_mutex_lock(&dev->ndev->mtx);
+
+	if (flow != NULL) {
+		if (flow->type == FLOW_HANDLE_TYPE_FLM) {
+			fprintf(file, "Port %d, caller %d, flow type FLM\n", (int)dev->port_id,
+				(int)flow->caller_id);
+			fprintf(file, "  FLM_DATA:\n");
+			dump_flm_data(flow->flm_data, file);
+			hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+				(struct hw_db_idx *)flow->flm_db_idxs,
+				flow->flm_db_idx_counter, file);
+			fprintf(file, "  Context: %p\n", flow->context);
+
+		} else {
+			fprintf(file, "Port %d, caller %d, flow type FLOW\n", (int)dev->port_id,
+				(int)flow->caller_id);
+			hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+				(struct hw_db_idx *)flow->db_idxs, flow->db_idx_counter,
+				file);
+		}
+
+	} else {
+		int max_flm_count = 1000;
+
+		hw_db_inline_dump_cfn(dev->ndev, dev->ndev->hw_db_handle, file);
+
+		flow = dev->ndev->flow_base;
+
+		while (flow) {
+			if (flow->caller_id == caller_id) {
+				fprintf(file, "Port %d, caller %d, flow type FLOW\n",
+					(int)dev->port_id, (int)flow->caller_id);
+				hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+					(struct hw_db_idx *)flow->db_idxs,
+					flow->db_idx_counter, file);
+			}
+
+			flow = flow->next;
+		}
+
+		flow = dev->ndev->flow_base_flm;
+
+		while (flow && max_flm_count >= 0) {
+			if (flow->caller_id == caller_id) {
+				fprintf(file, "Port %d, caller %d, flow type FLM\n",
+					(int)dev->port_id, (int)flow->caller_id);
+				fprintf(file, "  FLM_DATA:\n");
+				dump_flm_data(flow->flm_data, file);
+				hw_db_inline_dump(dev->ndev, dev->ndev->hw_db_handle,
+					(struct hw_db_idx *)flow->flm_db_idxs,
+					flow->flm_db_idx_counter, file);
+				fprintf(file, "  Context: %p\n", flow->context);
+				max_flm_count -= 1;
+			}
+
+			flow = flow->next;
+		}
+	}
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	return 0;
+}
 
 static const struct profile_inline_ops ops = {
 	/*
@@ -4304,6 +4384,7 @@ static const struct profile_inline_ops ops = {
 	.done_flow_management_of_ndev_profile_inline = done_flow_management_of_ndev_profile_inline,
 	.initialize_flow_management_of_ndev_profile_inline =
 		initialize_flow_management_of_ndev_profile_inline,
+	.flow_dev_dump_profile_inline = flow_dev_dump_profile_inline,
 	/*
 	 * Flow functionality
 	 */

@@ -38,6 +38,12 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *flow,
 	struct rte_flow_error *error);
 
+int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
+	struct flow_handle *flow,
+	uint16_t caller_id,
+	FILE *file,
+	struct rte_flow_error *error);
+
 int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev,
 	int hsh_idx,
 	struct nt_eth_rss_conf rss_conf);
