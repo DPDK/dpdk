@@ -169,6 +169,39 @@ struct port_counters_v2 {
 };
 
 struct flm_counters_v1 {
+	/* FLM 0.17 */
+	uint64_t current;
+	uint64_t learn_done;
+	uint64_t learn_ignore;
+	uint64_t learn_fail;
+	uint64_t unlearn_done;
+	uint64_t unlearn_ignore;
+	uint64_t auto_unlearn_done;
+	uint64_t auto_unlearn_ignore;
+	uint64_t auto_unlearn_fail;
+	uint64_t timeout_unlearn_done;
+	uint64_t rel_done;
+	uint64_t rel_ignore;
+	/* FLM 0.20 */
+	uint64_t prb_done;
+	uint64_t prb_ignore;
+	uint64_t sta_done;
+	uint64_t inf_done;
+	uint64_t inf_skip;
+	uint64_t pck_hit;
+	uint64_t pck_miss;
+	uint64_t pck_unh;
+	uint64_t pck_dis;
+	uint64_t csh_hit;
+	uint64_t csh_miss;
+	uint64_t csh_unh;
+	uint64_t cuc_start;
+	uint64_t cuc_move;
+	/* FLM 0.17 Load */
+	uint64_t load_lps;
+	uint64_t load_aps;
+	uint64_t max_lps;
+	uint64_t max_aps;
 };
 
 struct nt4ga_stat_s {
@@ -199,6 +232,9 @@ struct nt4ga_stat_s {
 
 	struct host_buffer_counters *mp_stat_structs_hb;
 	struct port_load_counters *mp_port_load;
+
+	int flm_stat_ver;
+	struct flm_counters_v1 *mp_stat_structs_flm;
 
 	/* Rx/Tx totals: */
 	uint64_t n_totals_reset_timestamp;	/* timestamp for last totals reset */

@@ -31,6 +31,7 @@ sources = files(
         'link_mgmt/nt4ga_link.c',
         'nim/i2c_nim.c',
         'ntnic_filter/ntnic_filter.c',
+        'ntnic_xstats/ntnic_xstats.c',
         'nthw/dbs/nthw_dbs.c',
         'nthw/supported/nthw_fpga_9563_055_049_0000.c',
         'nthw/supported/nthw_fpga_instances.c',

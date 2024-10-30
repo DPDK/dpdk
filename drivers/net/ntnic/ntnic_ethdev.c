@@ -1496,6 +1496,113 @@ static int dev_flow_ops_get(struct rte_eth_dev *dev __rte_unused, const struct r
 	return 0;
 }
 
+static int eth_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *stats, unsigned int n)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	int if_index = internals->n_intf_no;
+	int nb_xstats;
+
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+
+	if (ntnic_xstats_ops == NULL) {
+		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
+		return -1;
+	}
+
+	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	nb_xstats = ntnic_xstats_ops->nthw_xstats_get(p_nt4ga_stat, stats, n, if_index);
+	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	return nb_xstats;
+}
+
+static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
+	const uint64_t *ids,
+	uint64_t *values,
+	unsigned int n)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	int if_index = internals->n_intf_no;
+	int nb_xstats;
+
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+
+	if (ntnic_xstats_ops == NULL) {
+		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
+		return -1;
+	}
+
+	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	nb_xstats =
+		ntnic_xstats_ops->nthw_xstats_get_by_id(p_nt4ga_stat, ids, values, n, if_index);
+	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	return nb_xstats;
+}
+
+static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	int if_index = internals->n_intf_no;
+
+	struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+
+	if (ntnic_xstats_ops == NULL) {
+		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
+		return -1;
+	}
+
+	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	ntnic_xstats_ops->nthw_xstats_reset(p_nt4ga_stat, if_index);
+	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	return dpdk_stats_reset(internals, p_nt_drv, if_index);
+}
+
+static int eth_xstats_get_names(struct rte_eth_dev *eth_dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned int size)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+
+	if (ntnic_xstats_ops == NULL) {
+		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
+		return -1;
+	}
+
+	return ntnic_xstats_ops->nthw_xstats_get_names(p_nt4ga_stat, xstats_names, size);
+}
+
+static int eth_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
+	const uint64_t *ids,
+	struct rte_eth_xstat_name *xstats_names,
+	unsigned int size)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct drv_s *p_drv = internals->p_drv;
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	const struct ntnic_xstats_ops *ntnic_xstats_ops = get_ntnic_xstats_ops();
+
+	if (ntnic_xstats_ops == NULL) {
+		NT_LOG(INF, NTNIC, "ntnic_xstats module not included");
+		return -1;
+	}
+
+	return ntnic_xstats_ops->nthw_xstats_get_names_by_id(p_nt4ga_stat, xstats_names, ids,
+			size);
+}
+
 static int
 promiscuous_enable(struct rte_eth_dev __rte_unused(*dev))
 {
@@ -1592,6 +1699,11 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.mac_addr_set = eth_mac_addr_set,
 	.set_mc_addr_list = eth_set_mc_addr_list,
 	.flow_ops_get = dev_flow_ops_get,
+	.xstats_get = eth_xstats_get,
+	.xstats_get_names = eth_xstats_get_names,
+	.xstats_reset = eth_xstats_reset,
+	.xstats_get_by_id = eth_xstats_get_by_id,
+	.xstats_get_names_by_id = eth_xstats_get_names_by_id,
 	.promiscuous_enable = promiscuous_enable,
 	.rss_hash_update = eth_dev_rss_hash_update,
 	.rss_hash_conf_get = rss_hash_conf_get,

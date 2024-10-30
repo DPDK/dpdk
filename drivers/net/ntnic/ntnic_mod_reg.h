@@ -7,6 +7,10 @@
 #define __NTNIC_MOD_REG_H__
 
 #include <stdint.h>
+
+#include "rte_ethdev.h"
+#include "rte_flow_driver.h"
+
 #include "flow_api.h"
 #include "stream_binary_flow_api.h"
 #include "nthw_fpga_model.h"
@@ -353,5 +357,29 @@ void dev_flow_init(void);
 void register_flow_filter_ops(const struct flow_filter_ops *ops);
 const struct flow_filter_ops *get_flow_filter_ops(void);
 void init_flow_filter(void);
+
+struct ntnic_xstats_ops {
+	int (*nthw_xstats_get_names)(nt4ga_stat_t *p_nt4ga_stat,
+		struct rte_eth_xstat_name *xstats_names,
+		unsigned int size);
+	int (*nthw_xstats_get)(nt4ga_stat_t *p_nt4ga_stat,
+		struct rte_eth_xstat *stats,
+		unsigned int n,
+		uint8_t port);
+	void (*nthw_xstats_reset)(nt4ga_stat_t *p_nt4ga_stat, uint8_t port);
+	int (*nthw_xstats_get_names_by_id)(nt4ga_stat_t *p_nt4ga_stat,
+		struct rte_eth_xstat_name *xstats_names,
+		const uint64_t *ids,
+		unsigned int size);
+	int (*nthw_xstats_get_by_id)(nt4ga_stat_t *p_nt4ga_stat,
+		const uint64_t *ids,
+		uint64_t *values,
+		unsigned int n,
+		uint8_t port);
+};
+
+void register_ntnic_xstats_ops(struct ntnic_xstats_ops *ops);
+struct ntnic_xstats_ops *get_ntnic_xstats_ops(void);
+void ntnic_xstats_ops_init(void);
 
 #endif	/* __NTNIC_MOD_REG_H__ */

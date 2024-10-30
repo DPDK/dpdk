@@ -63,6 +63,8 @@ Features
 - Several RSS hash keys, one for each flow type.
 - Default RSS operation with no hash key specification.
 - Port and queue statistics.
+- RMON statistics in extended stats.
+- Link state information.
 
 Limitations
 ~~~~~~~~~~~

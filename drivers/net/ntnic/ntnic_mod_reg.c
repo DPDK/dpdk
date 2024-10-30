@@ -192,3 +192,18 @@ const struct rte_flow_ops *get_dev_flow_ops(void)
 
 	return dev_flow_ops;
 }
+
+static struct ntnic_xstats_ops *ntnic_xstats_ops;
+
+void register_ntnic_xstats_ops(struct ntnic_xstats_ops *ops)
+{
+	ntnic_xstats_ops = ops;
+}
+
+struct ntnic_xstats_ops *get_ntnic_xstats_ops(void)
+{
+	if (ntnic_xstats_ops == NULL)
+		ntnic_xstats_ops_init();
+
+	return ntnic_xstats_ops;
+}
