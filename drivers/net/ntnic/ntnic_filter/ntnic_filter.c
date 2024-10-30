@@ -4,7 +4,10 @@
  */
 
 #include <rte_flow_driver.h>
+#include <rte_pci.h>
+#include <rte_version.h>
 
+#include "ntlog.h"
 #include "nt_util.h"
 #include "create_elements.h"
 #include "ntnic_mod_reg.h"
@@ -881,6 +884,96 @@ static int eth_flow_configure(struct rte_eth_dev *dev, const struct rte_flow_por
 	return res;
 }
 
+static struct rte_flow *eth_flow_async_create(struct rte_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr,
+	struct rte_flow_template_table *template_table, const struct rte_flow_item pattern[],
+	uint8_t pattern_template_index, const struct rte_flow_action actions[],
+	uint8_t actions_template_index, void *user_data, struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return NULL;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	struct cnv_action_s action = { 0 };
+	struct cnv_match_s match = { 0 };
+
+	if (create_match_elements(&match, pattern, MAX_ELEMENTS) != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			"Error in pattern");
+		return NULL;
+	}
+
+	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
+		uint32_t queue_offset = 0;
+
+		if (internals->type == PORT_TYPE_OVERRIDE && internals->vpq_nb_vq > 0)
+			queue_offset = internals->vpq[0].id;
+
+		if (create_action_elements_inline(&action, actions, MAX_ACTIONS, queue_offset) !=
+			0) {
+			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Error in actions");
+			return NULL;
+		}
+
+	} else {
+		rte_flow_error_set(error, EPERM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Unsupported adapter profile");
+		return NULL;
+	}
+
+	struct flow_handle *res =
+		flow_filter_ops->flow_async_create(internals->flw_dev,
+			queue_id,
+			(const struct rte_flow_op_attr *)op_attr,
+			(struct flow_template_table *)template_table,
+			match.rte_flow_item,
+			pattern_template_index,
+			action.flow_actions,
+			actions_template_index,
+			user_data,
+			&rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return (struct rte_flow *)res;
+}
+
+static int eth_flow_async_destroy(struct rte_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr, struct rte_flow *flow,
+	void *user_data, struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	int res = flow_filter_ops->flow_async_destroy(internals->flw_dev,
+			queue_id,
+			(const struct rte_flow_op_attr *)op_attr,
+			(struct flow_handle *)flow,
+			user_data,
+			&rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return res;
+}
+
 static int poll_statistics(struct pmd_internals *internals)
 {
 	int flow;
@@ -1016,4 +1109,14 @@ static const struct rte_flow_ops dev_flow_ops = {
 void dev_flow_init(void)
 {
 	register_dev_flow_ops(&dev_flow_ops);
+}
+
+static struct rte_flow_fp_ops async_dev_flow_ops = {
+	.async_create = eth_flow_async_create,
+	.async_destroy = eth_flow_async_destroy,
+};
+
+void dev_fp_flow_init(void)
+{
+	register_dev_fp_flow_ops(&async_dev_flow_ops);
 }

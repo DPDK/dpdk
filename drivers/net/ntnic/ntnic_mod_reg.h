@@ -7,6 +7,7 @@
 #define __NTNIC_MOD_REG_H__
 
 #include <stdint.h>
+#include <rte_flow.h>
 
 #include "rte_ethdev.h"
 #include "rte_flow_driver.h"
@@ -426,6 +427,19 @@ struct flow_filter_ops {
 		uint32_t nb_contexts,
 		struct rte_flow_error *error);
 
+	/*
+	 * RTE flow asynchronous operations functions
+	 */
+	struct flow_handle *(*flow_async_create)(struct flow_eth_dev *dev, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		struct flow_template_table *template_table, const struct rte_flow_item pattern[],
+		uint8_t pattern_template_index, const struct rte_flow_action actions[],
+		uint8_t actions_template_index, void *user_data, struct rte_flow_error *error);
+
+	int (*flow_async_destroy)(struct flow_eth_dev *dev, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
+		void *user_data, struct rte_flow_error *error);
+
 	int (*flow_info_get)(struct flow_eth_dev *dev, uint8_t caller_id,
 		struct rte_flow_port_info *port_info, struct rte_flow_queue_info *queue_info,
 		struct rte_flow_error *error);
@@ -435,6 +449,10 @@ struct flow_filter_ops {
 		const struct rte_flow_queue_attr *queue_attr[],
 		struct rte_flow_error *error);
 };
+
+void register_dev_fp_flow_ops(const struct rte_flow_fp_ops *ops);
+const struct rte_flow_fp_ops *get_dev_fp_flow_ops(void);
+void dev_fp_flow_init(void);
 
 void register_dev_flow_ops(const struct rte_flow_ops *ops);
 const struct rte_flow_ops *get_dev_flow_ops(void);

@@ -199,6 +199,21 @@ const struct flow_filter_ops *get_flow_filter_ops(void)
 	return flow_filter_ops;
 }
 
+static const struct rte_flow_fp_ops *dev_fp_flow_ops;
+
+void register_dev_fp_flow_ops(const struct rte_flow_fp_ops *ops)
+{
+	dev_fp_flow_ops = ops;
+}
+
+const struct rte_flow_fp_ops *get_dev_fp_flow_ops(void)
+{
+	if (dev_fp_flow_ops == NULL)
+		dev_fp_flow_init();
+
+	return dev_fp_flow_ops;
+}
+
 static const struct rte_flow_ops *dev_flow_ops;
 
 void register_dev_flow_ops(const struct rte_flow_ops *ops)

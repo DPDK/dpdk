@@ -1252,6 +1252,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
+	eth_dev->flow_fp_ops = get_dev_fp_flow_ops();
 	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	const int n_intf_no = internals->n_intf_no;

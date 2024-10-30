@@ -343,6 +343,14 @@ struct flow_handle {
 	};
 };
 
+struct flow_pattern_template {
+};
+
+struct flow_actions_template {
+};
+struct flow_template_table {
+};
+
 void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle);
 void km_free_ndev_resource_management(void **handle);
 
