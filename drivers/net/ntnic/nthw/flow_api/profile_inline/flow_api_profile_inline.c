@@ -664,6 +664,169 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_IPV4",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_flow_item_ipv4 *ipv4_spec =
+					(const struct rte_flow_item_ipv4 *)elem[eidx].spec;
+				const struct rte_flow_item_ipv4 *ipv4_mask =
+					(const struct rte_flow_item_ipv4 *)elem[eidx].mask;
+
+				if (ipv4_spec == NULL || ipv4_mask == NULL) {
+					if (any_count > 0 || fd->l3_prot != -1)
+						fd->tunnel_l3_prot = PROT_TUN_L3_IPV4;
+					else
+						fd->l3_prot = PROT_L3_IPV4;
+					break;
+				}
+
+				if (ipv4_mask->hdr.version_ihl != 0 ||
+					ipv4_mask->hdr.type_of_service != 0 ||
+					ipv4_mask->hdr.total_length != 0 ||
+					ipv4_mask->hdr.packet_id != 0 ||
+					(ipv4_mask->hdr.fragment_offset != 0 &&
+					(ipv4_spec->hdr.fragment_offset != 0xffff ||
+					ipv4_mask->hdr.fragment_offset != 0xffff)) ||
+					ipv4_mask->hdr.time_to_live != 0 ||
+					ipv4_mask->hdr.hdr_checksum != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested IPv4 field not support by running SW version.");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (ipv4_spec->hdr.fragment_offset == 0xffff &&
+					ipv4_mask->hdr.fragment_offset == 0xffff) {
+					fd->fragmentation = 0xfe;
+				}
+
+				int match_cnt = (ipv4_mask->hdr.src_addr != 0) +
+					(ipv4_mask->hdr.dst_addr != 0) +
+					(ipv4_mask->hdr.next_proto_id != 0);
+
+				if (match_cnt <= 0) {
+					if (any_count > 0 || fd->l3_prot != -1)
+						fd->tunnel_l3_prot = PROT_TUN_L3_IPV4;
+					else
+						fd->l3_prot = PROT_L3_IPV4;
+					break;
+				}
+
+				if (qw_free > 0 &&
+					(match_cnt >= 2 ||
+					(match_cnt == 1 && sw_counter >= 2))) {
+					if (qw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of QW resources.");
+						flow_nic_set_error(ERR_FAILED,
+							error);
+						return -1;
+					}
+
+					uint32_t *qw_data = &packet_data[2 + 4 - qw_counter * 4];
+					uint32_t *qw_mask = &packet_mask[2 + 4 - qw_counter * 4];
+
+					qw_mask[0] = 0;
+					qw_data[0] = 0;
+
+					qw_mask[1] = ipv4_mask->hdr.next_proto_id << 16;
+					qw_data[1] = ipv4_spec->hdr.next_proto_id
+						<< 16 & qw_mask[1];
+
+					qw_mask[2] = ntohl(ipv4_mask->hdr.src_addr);
+					qw_mask[3] = ntohl(ipv4_mask->hdr.dst_addr);
+
+					qw_data[2] = ntohl(ipv4_spec->hdr.src_addr) & qw_mask[2];
+					qw_data[3] = ntohl(ipv4_spec->hdr.dst_addr) & qw_mask[3];
+
+					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 4);
+					set_key_def_qw(key_def, qw_counter, any_count > 0
+						? DYN_TUN_L3 : DYN_L3, 4);
+					qw_counter += 1;
+					qw_free -= 1;
+
+					if (any_count > 0 || fd->l3_prot != -1)
+						fd->tunnel_l3_prot = PROT_TUN_L3_IPV4;
+					else
+						fd->l3_prot = PROT_L3_IPV4;
+					break;
+				}
+
+				if (ipv4_mask->hdr.src_addr) {
+					if (sw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *sw_data = &packet_data[1 - sw_counter];
+					uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+					sw_mask[0] = ntohl(ipv4_mask->hdr.src_addr);
+					sw_data[0] = ntohl(ipv4_spec->hdr.src_addr) & sw_mask[0];
+
+					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 12);
+					set_key_def_sw(key_def, sw_counter, any_count > 0
+						? DYN_TUN_L3 : DYN_L3, 12);
+					sw_counter += 1;
+				}
+
+				if (ipv4_mask->hdr.dst_addr) {
+					if (sw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *sw_data = &packet_data[1 - sw_counter];
+					uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+					sw_mask[0] = ntohl(ipv4_mask->hdr.dst_addr);
+					sw_data[0] = ntohl(ipv4_spec->hdr.dst_addr) & sw_mask[0];
+
+					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 16);
+					set_key_def_sw(key_def, sw_counter, any_count > 0
+						? DYN_TUN_L3 : DYN_L3, 16);
+					sw_counter += 1;
+				}
+
+				if (ipv4_mask->hdr.next_proto_id) {
+					if (sw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *sw_data = &packet_data[1 - sw_counter];
+					uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+					sw_mask[0] = ipv4_mask->hdr.next_proto_id << 16;
+					sw_data[0] = ipv4_spec->hdr.next_proto_id
+						<< 16 & sw_mask[0];
+
+					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 8);
+					set_key_def_sw(key_def, sw_counter, any_count > 0
+						? DYN_TUN_L3 : DYN_L3, 8);
+					sw_counter += 1;
+				}
+
+				if (any_count > 0 || fd->l3_prot != -1)
+					fd->tunnel_l3_prot = PROT_TUN_L3_IPV4;
+
+				else
+					fd->l3_prot = PROT_L3_IPV4;
+			}
+
+			break;
+
 		default:
 			NT_LOG(ERR, FILTER, "Invalid or unsupported flow request: %d",
 				(int)elem[eidx].type);
