@@ -9,7 +9,7 @@
 
 #define ICE_ALIGN_RING_DESC  32
 #define ICE_MIN_RING_DESC    64
-#define ICE_MAX_RING_DESC    4096
+#define ICE_MAX_RING_DESC    (8192 - 32)
 #define ICE_DMA_MEM_ALIGN    4096
 #define ICE_RING_BASE_ALIGN  128
 
