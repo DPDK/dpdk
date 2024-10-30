@@ -2276,9 +2276,55 @@ static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_d
 	return 0;
 }
 
+
+static void setup_db_qsl_data(struct nic_flow_def *fd, struct hw_db_inline_qsl_data *qsl_data,
+	uint32_t num_dest_port, uint32_t num_queues)
+{
+	memset(qsl_data, 0x0, sizeof(struct hw_db_inline_qsl_data));
+
+	if (fd->dst_num_avail <= 0) {
+		qsl_data->drop = 1;
+
+	} else {
+		assert(fd->dst_num_avail < HW_DB_INLINE_MAX_QST_PER_QSL);
+
+		uint32_t ports[fd->dst_num_avail];
+		uint32_t queues[fd->dst_num_avail];
+
+		uint32_t port_index = 0;
+		uint32_t queue_index = 0;
+		uint32_t max = num_dest_port > num_queues ? num_dest_port : num_queues;
+
+		memset(ports, 0, fd->dst_num_avail);
+		memset(queues, 0, fd->dst_num_avail);
+
+		qsl_data->table_size = max;
+		qsl_data->retransmit = num_dest_port > 0 ? 1 : 0;
+
+		for (int i = 0; i < fd->dst_num_avail; ++i)
+			if (fd->dst_id[i].type == PORT_PHY)
+				ports[port_index++] = fd->dst_id[i].id;
+
+			else if (fd->dst_id[i].type == PORT_VIRT)
+				queues[queue_index++] = fd->dst_id[i].id;
+
+		for (uint32_t i = 0; i < max; ++i) {
+			if (num_dest_port > 0) {
+				qsl_data->table[i].tx_port = ports[i % num_dest_port];
+				qsl_data->table[i].tx_port_en = 1;
+			}
+
+			if (num_queues > 0) {
+				qsl_data->table[i].queue = queues[i % num_queues];
+				qsl_data->table[i].queue_en = 1;
+			}
+		}
+	}
+}
+
 static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	const struct nic_flow_def *fd,
-	const struct hw_db_inline_qsl_data *qsl_data __rte_unused,
+	const struct hw_db_inline_qsl_data *qsl_data,
 	const struct hw_db_inline_hsh_data *hsh_data __rte_unused,
 	uint32_t group __rte_unused,
 	uint32_t local_idxs[],
@@ -2288,6 +2334,17 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	uint32_t *flm_scrub __rte_unused,
 	struct rte_flow_error *error)
 {
+	/* Finalize QSL */
+	struct hw_db_qsl_idx qsl_idx =
+		hw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle, qsl_data);
+	local_idxs[(*local_idx_counter)++] = qsl_idx.raw;
+
+	if (qsl_idx.error) {
+		NT_LOG(ERR, FILTER, "Could not reference QSL resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		return -1;
+	}
+
 	/* Setup SLC LR */
 	struct hw_db_slc_lr_idx slc_lr_idx = { .raw = 0 };
 
@@ -2328,6 +2385,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 	fh->caller_id = caller_id;
 
 	struct hw_db_inline_qsl_data qsl_data;
+	setup_db_qsl_data(fd, &qsl_data, num_dest_port, num_queues);
 
 	struct hw_db_inline_hsh_data hsh_data;
 
@@ -2395,6 +2453,19 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 
 			if (cot_idx.error) {
 				NT_LOG(ERR, FILTER, "Could not reference COT resource");
+				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				goto error_out;
+			}
+
+			/* Finalize QSL */
+			struct hw_db_qsl_idx qsl_idx =
+				hw_db_inline_qsl_add(dev->ndev, dev->ndev->hw_db_handle,
+				&qsl_data);
+			fh->db_idxs[fh->db_idx_counter++] = qsl_idx.raw;
+			action_set_data.qsl = qsl_idx;
+
+			if (qsl_idx.error) {
+				NT_LOG(ERR, FILTER, "Could not reference QSL resource");
 				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 				goto error_out;
 			}
@@ -2469,6 +2540,24 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		if (hw_mod_cat_cot_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
+		/* Initialize QSL with unmatched recipe index 0 - discard */
+		if (hw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_DISCARD, 0, 0x1) < 0)
+			goto err_exit0;
+
+		if (hw_mod_qsl_rcp_flush(&ndev->be, 0, 1) < 0)
+			goto err_exit0;
+
+		flow_nic_mark_resource_used(ndev, RES_QSL_RCP, 0);
+
+		/* Initialize QST with default index 0 */
+		if (hw_mod_qsl_qst_set(&ndev->be, HW_QSL_QST_PRESET_ALL, 0, 0x0) < 0)
+			goto err_exit0;
+
+		if (hw_mod_qsl_qst_flush(&ndev->be, 0, 1) < 0)
+			goto err_exit0;
+
+		flow_nic_mark_resource_used(ndev, RES_QSL_QST, 0);
+
 		/* SLC LR index 0 is reserved */
 		flow_nic_mark_resource_used(ndev, RES_SLC_LR_RCP, 0);
 
@@ -2487,6 +2576,7 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		/* Setup filter using matching all packets violating traffic policing parameters */
 		flow_nic_mark_resource_used(ndev, RES_CAT_CFN, NT_VIOLATING_MBR_CFN);
+		flow_nic_mark_resource_used(ndev, RES_QSL_RCP, NT_VIOLATING_MBR_QSL);
 
 		if (hw_db_inline_setup_mbr_filter(ndev, NT_VIOLATING_MBR_CFN,
 			NT_FLM_VIOLATING_MBR_FLOW_TYPE,
@@ -2532,6 +2622,10 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
 		hw_mod_cat_cot_flush(&ndev->be, 0, 1);
 		flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
+
+		hw_mod_qsl_rcp_set(&ndev->be, HW_QSL_RCP_PRESET_ALL, 0, 0);
+		hw_mod_qsl_rcp_flush(&ndev->be, 0, 1);
+		flow_nic_free_resource(ndev, RES_QSL_RCP, 0);
 
 		hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_PRESET_ALL, 0, 0);
 		hw_mod_slc_lr_rcp_flush(&ndev->be, 0, 1);

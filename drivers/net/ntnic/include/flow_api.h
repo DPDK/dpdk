@@ -184,8 +184,11 @@ extern const char *dbg_res_descr[];
 int flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	uint32_t alignment);
 
+int flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e res_type,
+	unsigned int num, uint32_t alignment);
 void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx);
 
+int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
 int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
 
 #endif

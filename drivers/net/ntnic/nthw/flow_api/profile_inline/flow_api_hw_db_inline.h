@@ -36,6 +36,10 @@ struct hw_db_cot_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_qsl_idx {
+	HW_DB_IDX;
+};
+
 struct hw_db_cat_idx {
 	HW_DB_IDX;
 };
@@ -48,6 +52,7 @@ enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_NONE = 0,
 	HW_DB_IDX_TYPE_COT,
 	HW_DB_IDX_TYPE_CAT,
+	HW_DB_IDX_TYPE_QSL,
 	HW_DB_IDX_TYPE_SLC_LR,
 };
 
@@ -113,6 +118,7 @@ struct hw_db_inline_action_set_data {
 		int jump;
 		struct {
 			struct hw_db_cot_idx cot;
+			struct hw_db_qsl_idx qsl;
 		};
 	};
 };
@@ -130,6 +136,11 @@ struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_ha
 	const struct hw_db_inline_cot_data *data);
 void hw_db_inline_cot_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);
 void hw_db_inline_cot_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);
+
+struct hw_db_qsl_idx hw_db_inline_qsl_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_qsl_data *data);
+void hw_db_inline_qsl_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_qsl_idx idx);
+void hw_db_inline_qsl_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_qsl_idx idx);
 
 struct hw_db_slc_lr_idx hw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_slc_lr_data *data);

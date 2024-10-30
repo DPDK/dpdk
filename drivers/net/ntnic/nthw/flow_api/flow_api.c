@@ -104,9 +104,50 @@ int flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 	return -1;
 }
 
+int flow_nic_alloc_resource_config(struct flow_nic_dev *ndev, enum res_type_e res_type,
+	unsigned int num, uint32_t alignment)
+{
+	unsigned int idx_offs;
+
+	for (unsigned int res_idx = 0; res_idx < ndev->res[res_type].resource_count - (num - 1);
+		res_idx += alignment) {
+		if (!flow_nic_is_resource_used(ndev, res_type, res_idx)) {
+			for (idx_offs = 1; idx_offs < num; idx_offs++)
+				if (flow_nic_is_resource_used(ndev, res_type, res_idx + idx_offs))
+					break;
+
+			if (idx_offs < num)
+				continue;
+
+			/* found a contiguous number of "num" res_type elements - allocate them */
+			for (idx_offs = 0; idx_offs < num; idx_offs++) {
+				flow_nic_mark_resource_used(ndev, res_type, res_idx + idx_offs);
+				ndev->res[res_type].ref[res_idx + idx_offs] = 1;
+			}
+
+			return res_idx;
+		}
+	}
+
+	return -1;
+}
+
 void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx)
 {
 	flow_nic_mark_resource_unused(ndev, res_type, idx);
+}
+
+int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
+{
+	NT_LOG(DBG, FILTER, "Reference resource %s idx %i (before ref cnt %i)",
+		dbg_res_descr[res_type], index, ndev->res[res_type].ref[index]);
+	assert(flow_nic_is_resource_used(ndev, res_type, index));
+
+	if (ndev->res[res_type].ref[index] == (uint32_t)-1)
+		return -1;
+
+	ndev->res[res_type].ref[index]++;
+	return 0;
 }
 
 int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index)
@@ -346,6 +387,18 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 	hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 0);
 	hw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1);
 
+	if (ndev->flow_profile == FLOW_ETH_DEV_PROFILE_INLINE) {
+		for (int i = 0; i < eth_dev->num_queues; ++i) {
+			uint32_t qen_value = 0;
+			uint32_t queue_id = (uint32_t)eth_dev->rx_queue[i].hw_id;
+
+			hw_mod_qsl_qen_get(&ndev->be, HW_QSL_QEN_EN, queue_id / 4, &qen_value);
+			hw_mod_qsl_qen_set(&ndev->be, HW_QSL_QEN_EN, queue_id / 4,
+				qen_value & ~(1U << (queue_id % 4)));
+			hw_mod_qsl_qen_flush(&ndev->be, queue_id / 4, 1);
+		}
+	}
+
 #ifdef FLOW_DEBUG
 	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
 #endif
@@ -545,6 +598,18 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 	}
 
 	eth_dev->rss_target_id = -1;
+
+	if (flow_profile == FLOW_ETH_DEV_PROFILE_INLINE) {
+		for (i = 0; i < eth_dev->num_queues; i++) {
+			uint32_t qen_value = 0;
+			uint32_t queue_id = (uint32_t)eth_dev->rx_queue[i].hw_id;
+
+			hw_mod_qsl_qen_get(&ndev->be, HW_QSL_QEN_EN, queue_id / 4, &qen_value);
+			hw_mod_qsl_qen_set(&ndev->be, HW_QSL_QEN_EN, queue_id / 4,
+				qen_value | (1 << (queue_id % 4)));
+			hw_mod_qsl_qen_flush(&ndev->be, queue_id / 4, 1);
+		}
+	}
 
 	*rss_target_id = eth_dev->rss_target_id;
 

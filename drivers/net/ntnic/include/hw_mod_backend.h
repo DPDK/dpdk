@@ -666,8 +666,16 @@ int hw_mod_qsl_alloc(struct flow_api_backend_s *be);
 void hw_mod_qsl_free(struct flow_api_backend_s *be);
 int hw_mod_qsl_reset(struct flow_api_backend_s *be);
 int hw_mod_qsl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_rcp_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value);
 int hw_mod_qsl_qst_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_qst_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value);
 int hw_mod_qsl_qen_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_qsl_qen_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value);
+int hw_mod_qsl_qen_get(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t *value);
 int hw_mod_qsl_unmq_flush(struct flow_api_backend_s *be, int start_idx, int count);
 int hw_mod_qsl_unmq_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
 	uint32_t value);

@@ -104,6 +104,114 @@ int hw_mod_qsl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->qsl_rcp_flush(be->be_dev, &be->qsl, start_idx, count);
 }
 
+static int hw_mod_qsl_rcp_mod(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t *value, int get)
+{
+	if (index >= be->qsl.nb_rcp_categories) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	switch (_VER_) {
+	case 7:
+		switch (field) {
+		case HW_QSL_RCP_PRESET_ALL:
+			if (get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			memset(&be->qsl.v7.rcp[index], (uint8_t)*value,
+				sizeof(struct qsl_v7_rcp_s));
+			break;
+
+		case HW_QSL_RCP_FIND:
+			if (!get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			if (*value >= be->qsl.nb_rcp_categories) {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
+
+			FIND_EQUAL_INDEX(be->qsl.v7.rcp, struct qsl_v7_rcp_s, index, *value,
+				be->qsl.nb_rcp_categories);
+			break;
+
+		case HW_QSL_RCP_COMPARE:
+			if (!get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			if (*value >= be->qsl.nb_rcp_categories) {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
+
+			DO_COMPARE_INDEXS(be->qsl.v7.rcp, struct qsl_v7_rcp_s, index, *value);
+			break;
+
+		case HW_QSL_RCP_DISCARD:
+			GET_SET(be->qsl.v7.rcp[index].discard, value);
+			break;
+
+		case HW_QSL_RCP_DROP:
+			GET_SET(be->qsl.v7.rcp[index].drop, value);
+			break;
+
+		case HW_QSL_RCP_TBL_LO:
+			GET_SET(be->qsl.v7.rcp[index].tbl_lo, value);
+			break;
+
+		case HW_QSL_RCP_TBL_HI:
+			GET_SET(be->qsl.v7.rcp[index].tbl_hi, value);
+			break;
+
+		case HW_QSL_RCP_TBL_IDX:
+			GET_SET(be->qsl.v7.rcp[index].tbl_idx, value);
+			break;
+
+		case HW_QSL_RCP_TBL_MSK:
+			GET_SET(be->qsl.v7.rcp[index].tbl_msk, value);
+			break;
+
+		case HW_QSL_RCP_LR:
+			GET_SET(be->qsl.v7.rcp[index].lr, value);
+			break;
+
+		case HW_QSL_RCP_TSA:
+			GET_SET(be->qsl.v7.rcp[index].tsa, value);
+			break;
+
+		case HW_QSL_RCP_VLI:
+			GET_SET(be->qsl.v7.rcp[index].vli, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 7 */
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_qsl_rcp_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value)
+{
+	return hw_mod_qsl_rcp_mod(be, field, index, &value, 0);
+}
+
 int hw_mod_qsl_qst_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
@@ -117,6 +225,73 @@ int hw_mod_qsl_qst_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->qsl_qst_flush(be->be_dev, &be->qsl, start_idx, count);
 }
 
+static int hw_mod_qsl_qst_mod(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t *value, int get)
+{
+	if (index >= be->qsl.nb_qst_entries) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	switch (_VER_) {
+	case 7:
+		switch (field) {
+		case HW_QSL_QST_PRESET_ALL:
+			if (get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			memset(&be->qsl.v7.qst[index], (uint8_t)*value,
+				sizeof(struct qsl_v7_qst_s));
+			break;
+
+		case HW_QSL_QST_QUEUE:
+			GET_SET(be->qsl.v7.qst[index].queue, value);
+			break;
+
+		case HW_QSL_QST_EN:
+			GET_SET(be->qsl.v7.qst[index].en, value);
+			break;
+
+		case HW_QSL_QST_TX_PORT:
+			GET_SET(be->qsl.v7.qst[index].tx_port, value);
+			break;
+
+		case HW_QSL_QST_LRE:
+			GET_SET(be->qsl.v7.qst[index].lre, value);
+			break;
+
+		case HW_QSL_QST_TCI:
+			GET_SET(be->qsl.v7.qst[index].tci, value);
+			break;
+
+		case HW_QSL_QST_VEN:
+			GET_SET(be->qsl.v7.qst[index].ven, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 7 */
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_qsl_qst_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value)
+{
+	return hw_mod_qsl_qst_mod(be, field, index, &value, 0);
+}
+
 int hw_mod_qsl_qen_flush(struct flow_api_backend_s *be, int start_idx, int count)
 {
 	if (count == ALL_ENTRIES)
@@ -128,6 +303,49 @@ int hw_mod_qsl_qen_flush(struct flow_api_backend_s *be, int start_idx, int count
 	}
 
 	return be->iface->qsl_qen_flush(be->be_dev, &be->qsl, start_idx, count);
+}
+
+static int hw_mod_qsl_qen_mod(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t *value, int get)
+{
+	if (index >= QSL_QEN_ENTRIES) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	switch (_VER_) {
+	case 7:
+		switch (field) {
+		case HW_QSL_QEN_EN:
+			GET_SET(be->qsl.v7.qen[index].en, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 7 */
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_qsl_qen_set(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t value)
+{
+	return hw_mod_qsl_qen_mod(be, field, index, &value, 0);
+}
+
+int hw_mod_qsl_qen_get(struct flow_api_backend_s *be, enum hw_qsl_e field, uint32_t index,
+	uint32_t *value)
+{
+	return hw_mod_qsl_qen_mod(be, field, index, value, 1);
 }
 
 int hw_mod_qsl_unmq_flush(struct flow_api_backend_s *be, int start_idx, int count)
