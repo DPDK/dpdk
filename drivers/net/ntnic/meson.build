@@ -79,6 +79,7 @@ sources = files(
         'nthw/nthw_platform.c',
         'nthw/nthw_rac.c',
         'ntlog/ntlog.c',
+        'ntnic_filter/ntnic_filter.c',
         'ntutil/nt_util.c',
         'ntnic_mod_reg.c',
         'ntnic_vfio.c',

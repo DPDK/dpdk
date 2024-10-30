@@ -1321,6 +1321,12 @@ eth_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version, size_t fw_size
 	}
 }
 
+static int dev_flow_ops_get(struct rte_eth_dev *dev __rte_unused, const struct rte_flow_ops **ops)
+{
+	*ops = get_dev_flow_ops();
+	return 0;
+}
+
 static int
 promiscuous_enable(struct rte_eth_dev __rte_unused(*dev))
 {
@@ -1349,6 +1355,7 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.mac_addr_add = eth_mac_addr_add,
 	.mac_addr_set = eth_mac_addr_set,
 	.set_mc_addr_list = eth_set_mc_addr_list,
+	.flow_ops_get = dev_flow_ops_get,
 	.promiscuous_enable = promiscuous_enable,
 };
 

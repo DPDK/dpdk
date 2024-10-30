@@ -137,3 +137,18 @@ const struct flow_filter_ops *get_flow_filter_ops(void)
 
 	return flow_filter_ops;
 }
+
+static const struct rte_flow_ops *dev_flow_ops;
+
+void register_dev_flow_ops(const struct rte_flow_ops *ops)
+{
+	dev_flow_ops = ops;
+}
+
+const struct rte_flow_ops *get_dev_flow_ops(void)
+{
+	if (dev_flow_ops == NULL)
+		dev_flow_init();
+
+	return dev_flow_ops;
+}

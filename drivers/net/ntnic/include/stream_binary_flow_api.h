@@ -6,6 +6,8 @@
 #ifndef _STREAM_BINARY_FLOW_API_H_
 #define _STREAM_BINARY_FLOW_API_H_
 
+#include "rte_flow.h"
+#include "rte_flow_driver.h"
 /*
  * Flow frontend for binary programming interface
  */

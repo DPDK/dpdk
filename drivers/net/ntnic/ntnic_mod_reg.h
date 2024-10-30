@@ -15,6 +15,7 @@
 #include "nt4ga_adapter.h"
 #include "ntnic_nthw_fpga_rst_nt200a0x.h"
 #include "ntnic_virt_queue.h"
+#include "create_elements.h"
 
 /* sg ops section */
 struct sg_ops_s {
@@ -242,6 +243,10 @@ struct flow_filter_ops {
 		enum flow_eth_dev_profile flow_profile,
 		uint32_t exception_path);
 };
+
+void register_dev_flow_ops(const struct rte_flow_ops *ops);
+const struct rte_flow_ops *get_dev_flow_ops(void);
+void dev_flow_init(void);
 
 void register_flow_filter_ops(const struct flow_filter_ops *ops);
 const struct flow_filter_ops *get_flow_filter_ops(void);
