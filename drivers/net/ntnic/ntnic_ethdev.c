@@ -1682,7 +1682,7 @@ static int rss_hash_conf_get(struct rte_eth_dev *eth_dev, struct rte_eth_rss_con
 	return 0;
 }
 
-static const struct eth_dev_ops nthw_eth_dev_ops = {
+static struct eth_dev_ops nthw_eth_dev_ops = {
 	.dev_configure = eth_dev_configure,
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
@@ -1705,6 +1705,7 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.mac_addr_add = eth_mac_addr_add,
 	.mac_addr_set = eth_mac_addr_set,
 	.set_mc_addr_list = eth_set_mc_addr_list,
+	.mtr_ops_get = NULL,
 	.flow_ops_get = dev_flow_ops_get,
 	.xstats_get = eth_xstats_get,
 	.xstats_get_names = eth_xstats_get_names,
@@ -2167,6 +2168,14 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 			p_nt_drv->adapter_info.mp_adapter_id_str);
 		return -1;
 	}
+
+	const struct meter_ops_s *meter_ops = get_meter_ops();
+
+	if (meter_ops != NULL)
+		nthw_eth_dev_ops.mtr_ops_get = meter_ops->eth_mtr_ops_get;
+
+	else
+		NT_LOG(DBG, NTNIC, "Meter module is not initialized");
 
 	/* Initialize the queue system */
 	if (err == 0) {

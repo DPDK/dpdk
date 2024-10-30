@@ -12,6 +12,7 @@
 #include <inttypes.h>
 
 #include <rte_ether.h>
+#include "rte_mtr.h"
 
 #include "stream_binary_flow_api.h"
 #include "nthw_drv.h"
@@ -88,6 +89,19 @@ struct __rte_cache_aligned ntnic_tx_queue {
 	unsigned long err_pkts;	/* Tx error packet stat */
 	int  enabled;  /* Enabling/disabling of this queue */
 	enum fpga_info_profile profile;  /* Inline / Capture */
+};
+
+struct nt_mtr_profile {
+	LIST_ENTRY(nt_mtr_profile) next;
+	uint32_t profile_id;
+	struct rte_mtr_meter_profile profile;
+};
+
+struct nt_mtr {
+	LIST_ENTRY(nt_mtr) next;
+	uint32_t mtr_id;
+	int shared;
+	struct nt_mtr_profile *profile;
 };
 
 struct pmd_internals {

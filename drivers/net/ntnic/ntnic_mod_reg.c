@@ -19,6 +19,27 @@ const struct sg_ops_s *get_sg_ops(void)
 	return sg_ops;
 }
 
+/*
+ *
+ */
+static struct meter_ops_s *meter_ops;
+
+void register_meter_ops(struct meter_ops_s *ops)
+{
+	meter_ops = ops;
+}
+
+const struct meter_ops_s *get_meter_ops(void)
+{
+	if (meter_ops == NULL)
+		meter_init();
+
+	return meter_ops;
+}
+
+/*
+ *
+ */
 static const struct ntnic_filter_ops *ntnic_filter_ops;
 
 void register_ntnic_filter_ops(const struct ntnic_filter_ops *ops)

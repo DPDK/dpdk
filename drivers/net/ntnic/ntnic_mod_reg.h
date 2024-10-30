@@ -115,6 +115,18 @@ void register_sg_ops(struct sg_ops_s *ops);
 const struct sg_ops_s *get_sg_ops(void);
 void sg_init(void);
 
+/* Meter ops section */
+struct meter_ops_s {
+	int (*eth_mtr_ops_get)(struct rte_eth_dev *eth_dev, void *ops);
+};
+
+void register_meter_ops(struct meter_ops_s *ops);
+const struct meter_ops_s *get_meter_ops(void);
+void meter_init(void);
+
+/*
+ *
+ */
 struct ntnic_filter_ops {
 	int (*poll_statistics)(struct pmd_internals *internals);
 };
