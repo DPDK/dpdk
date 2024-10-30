@@ -270,6 +270,207 @@ static nthw_fpga_register_init_s cat_registers[] = {
 	{ CAT_RCK_DATA, 3, 32, NTHW_FPGA_REG_TYPE_WO, 0, 32, cat_rck_data_fields },
 };
 
+static nthw_fpga_field_init_s cpy_packet_reader0_ctrl_fields[] = {
+	{ CPY_PACKET_READER0_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_PACKET_READER0_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_packet_reader0_data_fields[] = {
+	{ CPY_PACKET_READER0_DATA_DYN, 5, 10, 0x0000 },
+	{ CPY_PACKET_READER0_DATA_OFS, 10, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer0_ctrl_fields[] = {
+	{ CPY_WRITER0_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER0_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer0_data_fields[] = {
+	{ CPY_WRITER0_DATA_DYN, 5, 17, 0x0000 }, { CPY_WRITER0_DATA_LEN, 5, 22, 0x0000 },
+	{ CPY_WRITER0_DATA_MASK_POINTER, 4, 27, 0x0000 }, { CPY_WRITER0_DATA_OFS, 14, 3, 0x0000 },
+	{ CPY_WRITER0_DATA_READER_SELECT, 3, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer0_mask_ctrl_fields[] = {
+	{ CPY_WRITER0_MASK_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER0_MASK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer0_mask_data_fields[] = {
+	{ CPY_WRITER0_MASK_DATA_BYTE_MASK, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer1_ctrl_fields[] = {
+	{ CPY_WRITER1_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER1_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer1_data_fields[] = {
+	{ CPY_WRITER1_DATA_DYN, 5, 17, 0x0000 }, { CPY_WRITER1_DATA_LEN, 5, 22, 0x0000 },
+	{ CPY_WRITER1_DATA_MASK_POINTER, 4, 27, 0x0000 }, { CPY_WRITER1_DATA_OFS, 14, 3, 0x0000 },
+	{ CPY_WRITER1_DATA_READER_SELECT, 3, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer1_mask_ctrl_fields[] = {
+	{ CPY_WRITER1_MASK_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER1_MASK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer1_mask_data_fields[] = {
+	{ CPY_WRITER1_MASK_DATA_BYTE_MASK, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer2_ctrl_fields[] = {
+	{ CPY_WRITER2_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER2_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer2_data_fields[] = {
+	{ CPY_WRITER2_DATA_DYN, 5, 17, 0x0000 }, { CPY_WRITER2_DATA_LEN, 5, 22, 0x0000 },
+	{ CPY_WRITER2_DATA_MASK_POINTER, 4, 27, 0x0000 }, { CPY_WRITER2_DATA_OFS, 14, 3, 0x0000 },
+	{ CPY_WRITER2_DATA_READER_SELECT, 3, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer2_mask_ctrl_fields[] = {
+	{ CPY_WRITER2_MASK_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER2_MASK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer2_mask_data_fields[] = {
+	{ CPY_WRITER2_MASK_DATA_BYTE_MASK, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer3_ctrl_fields[] = {
+	{ CPY_WRITER3_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER3_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer3_data_fields[] = {
+	{ CPY_WRITER3_DATA_DYN, 5, 17, 0x0000 }, { CPY_WRITER3_DATA_LEN, 5, 22, 0x0000 },
+	{ CPY_WRITER3_DATA_MASK_POINTER, 4, 27, 0x0000 }, { CPY_WRITER3_DATA_OFS, 14, 3, 0x0000 },
+	{ CPY_WRITER3_DATA_READER_SELECT, 3, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer3_mask_ctrl_fields[] = {
+	{ CPY_WRITER3_MASK_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER3_MASK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer3_mask_data_fields[] = {
+	{ CPY_WRITER3_MASK_DATA_BYTE_MASK, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer4_ctrl_fields[] = {
+	{ CPY_WRITER4_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER4_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer4_data_fields[] = {
+	{ CPY_WRITER4_DATA_DYN, 5, 17, 0x0000 }, { CPY_WRITER4_DATA_LEN, 5, 22, 0x0000 },
+	{ CPY_WRITER4_DATA_MASK_POINTER, 4, 27, 0x0000 }, { CPY_WRITER4_DATA_OFS, 14, 3, 0x0000 },
+	{ CPY_WRITER4_DATA_READER_SELECT, 3, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer4_mask_ctrl_fields[] = {
+	{ CPY_WRITER4_MASK_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER4_MASK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer4_mask_data_fields[] = {
+	{ CPY_WRITER4_MASK_DATA_BYTE_MASK, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer5_ctrl_fields[] = {
+	{ CPY_WRITER5_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER5_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer5_data_fields[] = {
+	{ CPY_WRITER5_DATA_DYN, 5, 17, 0x0000 }, { CPY_WRITER5_DATA_LEN, 5, 22, 0x0000 },
+	{ CPY_WRITER5_DATA_MASK_POINTER, 4, 27, 0x0000 }, { CPY_WRITER5_DATA_OFS, 14, 3, 0x0000 },
+	{ CPY_WRITER5_DATA_READER_SELECT, 3, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer5_mask_ctrl_fields[] = {
+	{ CPY_WRITER5_MASK_CTRL_ADR, 4, 0, 0x0000 },
+	{ CPY_WRITER5_MASK_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s cpy_writer5_mask_data_fields[] = {
+	{ CPY_WRITER5_MASK_DATA_BYTE_MASK, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_register_init_s cpy_registers[] = {
+	{
+		CPY_PACKET_READER0_CTRL, 24, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_packet_reader0_ctrl_fields
+	},
+	{
+		CPY_PACKET_READER0_DATA, 25, 15, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_packet_reader0_data_fields
+	},
+	{ CPY_WRITER0_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cpy_writer0_ctrl_fields },
+	{ CPY_WRITER0_DATA, 1, 31, NTHW_FPGA_REG_TYPE_WO, 0, 5, cpy_writer0_data_fields },
+	{
+		CPY_WRITER0_MASK_CTRL, 2, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_writer0_mask_ctrl_fields
+	},
+	{
+		CPY_WRITER0_MASK_DATA, 3, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1,
+		cpy_writer0_mask_data_fields
+	},
+	{ CPY_WRITER1_CTRL, 4, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cpy_writer1_ctrl_fields },
+	{ CPY_WRITER1_DATA, 5, 31, NTHW_FPGA_REG_TYPE_WO, 0, 5, cpy_writer1_data_fields },
+	{
+		CPY_WRITER1_MASK_CTRL, 6, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_writer1_mask_ctrl_fields
+	},
+	{
+		CPY_WRITER1_MASK_DATA, 7, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1,
+		cpy_writer1_mask_data_fields
+	},
+	{ CPY_WRITER2_CTRL, 8, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cpy_writer2_ctrl_fields },
+	{ CPY_WRITER2_DATA, 9, 31, NTHW_FPGA_REG_TYPE_WO, 0, 5, cpy_writer2_data_fields },
+	{
+		CPY_WRITER2_MASK_CTRL, 10, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_writer2_mask_ctrl_fields
+	},
+	{
+		CPY_WRITER2_MASK_DATA, 11, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1,
+		cpy_writer2_mask_data_fields
+	},
+	{ CPY_WRITER3_CTRL, 12, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cpy_writer3_ctrl_fields },
+	{ CPY_WRITER3_DATA, 13, 31, NTHW_FPGA_REG_TYPE_WO, 0, 5, cpy_writer3_data_fields },
+	{
+		CPY_WRITER3_MASK_CTRL, 14, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_writer3_mask_ctrl_fields
+	},
+	{
+		CPY_WRITER3_MASK_DATA, 15, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1,
+		cpy_writer3_mask_data_fields
+	},
+	{ CPY_WRITER4_CTRL, 16, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cpy_writer4_ctrl_fields },
+	{ CPY_WRITER4_DATA, 17, 31, NTHW_FPGA_REG_TYPE_WO, 0, 5, cpy_writer4_data_fields },
+	{
+		CPY_WRITER4_MASK_CTRL, 18, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_writer4_mask_ctrl_fields
+	},
+	{
+		CPY_WRITER4_MASK_DATA, 19, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1,
+		cpy_writer4_mask_data_fields
+	},
+	{ CPY_WRITER5_CTRL, 20, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, cpy_writer5_ctrl_fields },
+	{ CPY_WRITER5_DATA, 21, 31, NTHW_FPGA_REG_TYPE_WO, 0, 5, cpy_writer5_data_fields },
+	{
+		CPY_WRITER5_MASK_CTRL, 22, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2,
+		cpy_writer5_mask_ctrl_fields
+	},
+	{
+		CPY_WRITER5_MASK_DATA, 23, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1,
+		cpy_writer5_mask_data_fields
+	},
+};
+
 static nthw_fpga_field_init_s csu_rcp_ctrl_fields[] = {
 	{ CSU_RCP_CTRL_ADR, 4, 0, 0x0000 },
 	{ CSU_RCP_CTRL_CNT, 16, 16, 0x0000 },
@@ -2279,6 +2480,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_RPP_LR, 0, MOD_RPP_LR, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 2304, 4, rpp_lr_registers },
 	{ MOD_RST9563, 0, MOD_RST9563, 0, 5, NTHW_FPGA_BUS_TYPE_RAB0, 1024, 5, rst9563_registers },
 	{ MOD_SLC_LR, 0, MOD_SLC, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 2048, 2, slc_registers },
+	{ MOD_TX_CPY, 0, MOD_CPY, 0, 4, NTHW_FPGA_BUS_TYPE_RAB1, 9216, 26, cpy_registers },
 };
 
 static nthw_fpga_prod_param_s product_parameters[] = {
@@ -2437,5 +2639,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 32, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 33, fpga_modules,
 };

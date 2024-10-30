@@ -15,6 +15,7 @@
 
 #define MOD_UNKNOWN (0L)/* Unknown/uninitialized - keep this as the first element */
 #define MOD_CAT (0x30b447c2UL)
+#define MOD_CPY (0x1ddc186fUL)
 #define MOD_CSU (0x3f470787UL)
 #define MOD_DBS (0x80b29727UL)
 #define MOD_FLM (0xe7ba53a4UL)
@@ -46,7 +47,7 @@
 #define MOD_TX_CPY (0x60acf217UL)
 #define MOD_TX_INS (0x59afa100UL)
 #define MOD_TX_RPL (0x1095dfbbUL)
-#define MOD_IDX_COUNT (33)
+#define MOD_IDX_COUNT (34)
 
 /* aliases - only aliases go below this point */
 #endif	/* _NTHW_FPGA_MOD_DEFS_H_ */
