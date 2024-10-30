@@ -13,6 +13,8 @@
 #include "nthw_fpga_instances.h"
 #include "nthw_fpga_mod_str_map.h"
 
+#include "nthw_tsm.h"
+
 #include <arpa/inet.h>
 
 int nthw_fpga_get_param_info(struct fpga_info_s *p_fpga_info, nthw_fpga_t *p_fpga)
@@ -179,6 +181,7 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 	nthw_hif_t *p_nthw_hif = NULL;
 	nthw_pcie3_t *p_nthw_pcie3 = NULL;
 	nthw_rac_t *p_nthw_rac = NULL;
+	nthw_tsm_t *p_nthw_tsm = NULL;
 
 	mcu_info_t *p_mcu_info = &p_fpga_info->mcu_info;
 	uint64_t n_fpga_ident = 0;
@@ -330,6 +333,50 @@ int nthw_fpga_init(struct fpga_info_s *p_fpga_info)
 
 	p_fpga_info->mp_nthw_hif = p_nthw_hif;
 
+
+	p_nthw_tsm = nthw_tsm_new();
+
+	if (p_nthw_tsm) {
+		nthw_tsm_init(p_nthw_tsm, p_fpga, 0);
+
+		nthw_tsm_set_config_ts_format(p_nthw_tsm, 1);	/* 1 = TSM: TS format native */
+
+		/* Timer T0 - stat toggle timer */
+		nthw_tsm_set_timer_t0_enable(p_nthw_tsm, false);
+		nthw_tsm_set_timer_t0_max_count(p_nthw_tsm, 50 * 1000 * 1000);	/* ns */
+		nthw_tsm_set_timer_t0_enable(p_nthw_tsm, true);
+
+		/* Timer T1 - keep alive timer */
+		nthw_tsm_set_timer_t1_enable(p_nthw_tsm, false);
+		nthw_tsm_set_timer_t1_max_count(p_nthw_tsm, 100 * 1000 * 1000);	/* ns */
+		nthw_tsm_set_timer_t1_enable(p_nthw_tsm, true);
+	}
+
+	p_fpga_info->mp_nthw_tsm = p_nthw_tsm;
+
+	/* TSM sample triggering: test validation... */
+#if defined(DEBUG) && (1)
+	{
+		uint64_t n_time, n_ts;
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			if (p_nthw_hif)
+				nthw_hif_trigger_sample_time(p_nthw_hif);
+
+			else if (p_nthw_pcie3)
+				nthw_pcie3_trigger_sample_time(p_nthw_pcie3);
+
+			nthw_tsm_get_time(p_nthw_tsm, &n_time);
+			nthw_tsm_get_ts(p_nthw_tsm, &n_ts);
+
+			NT_LOG(DBG, NTHW, "%s: TSM time: %016" PRIX64 " %016" PRIX64 "\n",
+				p_adapter_id_str, n_time, n_ts);
+
+			nt_os_wait_usec(1000);
+		}
+	}
+#endif
 
 	return res;
 }

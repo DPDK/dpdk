@@ -41,6 +41,7 @@ sources = files(
         'nthw/core/nt200a0x/reset/nthw_fpga_rst_nt200a0x.c',
         'nthw/core/nthw_fpga.c',
         'nthw/core/nthw_gmf.c',
+        'nthw/core/nthw_tsm.c',
         'nthw/core/nthw_gpio_phy.c',
         'nthw/core/nthw_hif.c',
         'nthw/core/nthw_i2cm.c',

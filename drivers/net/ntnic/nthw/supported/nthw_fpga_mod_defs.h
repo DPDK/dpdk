@@ -48,6 +48,7 @@
 #define MOD_SLC (0x1aef1f38UL)
 #define MOD_SLC_LR (0x969fc50bUL)
 #define MOD_STA (0x76fae64dUL)
+#define MOD_TSM (0x35422a24UL)
 #define MOD_TX_CPY (0x60acf217UL)
 #define MOD_TX_INS (0x59afa100UL)
 #define MOD_TX_RPL (0x1095dfbbUL)
