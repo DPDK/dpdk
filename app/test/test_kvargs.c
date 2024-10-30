@@ -11,14 +11,20 @@
 
 #include "test.h"
 
+typedef int (*f_kvargs_process)(const struct rte_kvargs *kvlist,
+				const char *key_match, arg_handler_t handler,
+				void *opaque_arg);
+
+static bool use_kvargs_process_opt[] = { false, true };
+
 /* incremented in handler, to check it is properly called once per
  * key/value association */
 static unsigned count;
 
 /* this handler increment the "count" variable at each call and check
  * that the key is "check" and the value is "value%d" */
-static int check_handler(const char *key, const char *value,
-	__rte_unused void *opaque)
+static int
+check_handler(const char *key, const char *value, __rte_unused void *opaque)
 {
 	char buf[16];
 
@@ -32,6 +38,18 @@ static int check_handler(const char *key, const char *value,
 		return -1;
 
 	count ++;
+	return 0;
+}
+
+static int
+check_only_handler(const char *key, const char *value, __rte_unused void *opaque)
+{
+	if (strcmp(key, "check"))
+		return -1;
+
+	if (value != NULL)
+		return -1;
+
 	return 0;
 }
 
@@ -80,8 +98,11 @@ test_basic_token_count(void)
 }
 
 static int
-test_parse_without_valid_keys(void)
+test_parse_without_valid_keys(const void *params)
 {
+	const bool use_opt = *(const bool *)params;
+	f_kvargs_process proc_func = use_opt ? rte_kvargs_process_opt : rte_kvargs_process;
+	const char *proc_name = use_opt ? "rte_kvargs_process_opt" : "rte_kvargs_process";
 	const char *args = "foo=1234,check=value0,check=value1";
 	struct rte_kvargs *kvlist;
 
@@ -93,28 +114,28 @@ test_parse_without_valid_keys(void)
 
 	/* call check_handler() for all entries with key="check" */
 	count = 0;
-	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) < 0) {
-		printf("rte_kvargs_process(check) error\n");
+	if (proc_func(kvlist, "check", check_handler, NULL) < 0) {
+		printf("%s(check) error\n", proc_name);
 		rte_kvargs_free(kvlist);
 		return -1;
 	}
 	if (count != 2) {
-		printf("invalid count value %u after rte_kvargs_process(check)\n",
-			count);
+		printf("invalid count value %u after %s(check)\n",
+			count, proc_name);
 		rte_kvargs_free(kvlist);
 		return -1;
 	}
 
 	/* call check_handler() for all entries with key="nonexistent_key" */
 	count = 0;
-	if (rte_kvargs_process(kvlist, "nonexistent_key", check_handler, NULL) < 0) {
-		printf("rte_kvargs_process(nonexistent_key) error\n");
+	if (proc_func(kvlist, "nonexistent_key", check_handler, NULL) < 0) {
+		printf("%s(nonexistent_key) error\n", proc_name);
 		rte_kvargs_free(kvlist);
 		return -1;
 	}
 	if (count != 0) {
-		printf("invalid count value %d after rte_kvargs_process(nonexistent_key)\n",
-			count);
+		printf("invalid count value %d after %s(nonexistent_key)\n",
+			count, proc_name);
 		rte_kvargs_free(kvlist);
 		return -1;
 	}
@@ -142,8 +163,11 @@ test_parse_without_valid_keys(void)
 }
 
 static int
-test_parse_with_valid_keys(void)
+test_parse_with_valid_keys(const void *params)
 {
+	const bool use_opt = *(const bool *)params;
+	f_kvargs_process proc_func = use_opt ? rte_kvargs_process_opt : rte_kvargs_process;
+	const char *proc_name = use_opt ? "rte_kvargs_process_opt" : "rte_kvargs_process";
 	const char *args = "foo=droids,check=value0,check=value1,check=wrong_value";
 	const char *valid_keys[] = { "foo", "check", NULL };
 	struct rte_kvargs *kvlist;
@@ -158,8 +182,8 @@ test_parse_with_valid_keys(void)
 	 * should fail as the value is not recognized by the handler
 	 */
 	count = 0;
-	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) == 0 || count != 2) {
-		printf("rte_kvargs_process(check) is success but should not\n");
+	if (proc_func(kvlist, "check", check_handler, NULL) == 0 || count != 2) {
+		printf("%s(check) is success but should not\n", proc_name);
 		rte_kvargs_free(kvlist);
 		return -1;
 	}
@@ -218,6 +242,13 @@ test_parse_empty_elements(void)
 		return -1;
 	}
 
+	count = kvlist->count;
+	if (count != 2) {
+		printf("invalid count value %u\n", count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
 	if (rte_kvargs_count(kvlist, "foo") != 1) {
 		printf("invalid count value for 'foo'\n");
 		rte_kvargs_free(kvlist);
@@ -226,6 +257,34 @@ test_parse_empty_elements(void)
 
 	if (rte_kvargs_count(kvlist, "check") != 1) {
 		printf("invalid count value for 'check'\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
+static int
+test_parse_with_only_key(void)
+{
+	const char *args = "foo,check";
+	struct rte_kvargs *kvlist;
+
+	kvlist = rte_kvargs_parse(args, NULL);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error\n");
+		return -1;
+	}
+
+	if (rte_kvargs_process(kvlist, "check", check_only_handler, NULL) == 0) {
+		printf("rte_kvargs_process(check) error\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	if (rte_kvargs_process_opt(kvlist, "check", check_only_handler, NULL) != 0) {
+		printf("rte_kvargs_process_opt(check) error\n");
 		rte_kvargs_free(kvlist);
 		return -1;
 	}
@@ -275,10 +334,25 @@ static struct unit_test_suite kvargs_test_suite  = {
 	.teardown = NULL,
 	.unit_test_cases = {
 		TEST_CASE(test_basic_token_count),
-		TEST_CASE(test_parse_without_valid_keys),
-		TEST_CASE(test_parse_with_valid_keys),
+		TEST_CASE_NAMED_WITH_DATA("test_parse_without_valid_keys_no_opt",
+					  NULL, NULL,
+					  test_parse_without_valid_keys,
+					  &use_kvargs_process_opt[0]),
+		TEST_CASE_NAMED_WITH_DATA("test_parse_without_valid_keys_with_opt",
+					  NULL, NULL,
+					  test_parse_without_valid_keys,
+					  &use_kvargs_process_opt[1]),
+		TEST_CASE_NAMED_WITH_DATA("test_parse_with_valid_keys_no_opt",
+					  NULL, NULL,
+					  test_parse_with_valid_keys,
+					  &use_kvargs_process_opt[0]),
+		TEST_CASE_NAMED_WITH_DATA("test_parse_with_valid_keys_with_opt",
+					  NULL, NULL,
+					  test_parse_with_valid_keys,
+					  &use_kvargs_process_opt[1]),
 		TEST_CASE(test_parse_list_value),
 		TEST_CASE(test_parse_empty_elements),
+		TEST_CASE(test_parse_with_only_key),
 		TEST_CASE(test_invalid_kvargs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
