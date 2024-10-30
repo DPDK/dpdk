@@ -3978,8 +3978,6 @@ flow_hw_async_flow_create_generic(struct rte_eth_dev *dev,
 		.burst = attr->postpone,
 	};
 	struct mlx5dr_rule_action *rule_acts;
-	struct mlx5_flow_hw_action_params ap;
-	struct mlx5_flow_hw_pattern_params pp;
 	struct rte_flow_hw *flow = NULL;
 	const struct rte_flow_item *rule_items;
 	uint32_t flow_idx = 0;
@@ -4035,14 +4033,14 @@ flow_hw_async_flow_create_generic(struct rte_eth_dev *dev,
 	 * No need to copy and contrust a new "actions" list based on the
 	 * user's input, in order to save the cost.
 	 */
-	if (flow_hw_actions_construct(dev, flow, &ap,
+	if (flow_hw_actions_construct(dev, flow, &priv->hw_q[queue].ap,
 				      &table->ats[action_template_index],
 				      table->its[pattern_template_index]->item_flags,
 				      flow->table, actions,
 				      rule_acts, queue, error))
 		goto error;
 	rule_items = flow_hw_get_rule_items(dev, table, items,
-					    pattern_template_index, &pp);
+					    pattern_template_index, &priv->hw_q[queue].pp);
 	if (!rule_items)
 		goto error;
 	if (likely(!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))) {
@@ -4185,7 +4183,6 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		.burst = attr->postpone,
 	};
 	struct mlx5dr_rule_action *rule_acts;
-	struct mlx5_flow_hw_action_params ap;
 	struct rte_flow_hw *of = (struct rte_flow_hw *)flow;
 	struct rte_flow_hw *nf;
 	struct rte_flow_hw_aux *aux;
@@ -4236,7 +4233,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	 * No need to copy and contrust a new "actions" list based on the
 	 * user's input, in order to save the cost.
 	 */
-	if (flow_hw_actions_construct(dev, nf, &ap,
+	if (flow_hw_actions_construct(dev, nf, &priv->hw_q[queue].ap,
 				      &table->ats[action_template_index],
 				      table->its[nf->mt_idx]->item_flags,
 				      table, actions,
