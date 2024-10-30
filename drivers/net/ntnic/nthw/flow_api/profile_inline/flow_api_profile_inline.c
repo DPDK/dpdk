@@ -419,6 +419,18 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_DROP", dev);
+
+			if (action[aidx].conf) {
+				fd->dst_id[fd->dst_num_avail].owning_port_id = 0;
+				fd->dst_id[fd->dst_num_avail].id = 0;
+				fd->dst_id[fd->dst_num_avail].type = PORT_NONE;
+				fd->dst_num_avail++;
+			}
+
+			break;
+
 		default:
 			NT_LOG(ERR, FILTER, "Invalid or unsupported flow action received - %i",
 				action[aidx].type);
