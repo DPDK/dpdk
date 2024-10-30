@@ -339,6 +339,12 @@ struct flow_handle {
 			uint8_t flm_rqi;
 			uint8_t flm_qfi;
 			uint8_t flm_scrub_prof;
+
+			/* Flow specific pointer to application template table cell stored during
+			 * flow create.
+			 */
+			struct flow_template_table_cell *template_table_cell;
+			bool flm_async;
 		};
 	};
 };
@@ -347,8 +353,38 @@ struct flow_pattern_template {
 };
 
 struct flow_actions_template {
+	struct nic_flow_def *fd;
+
+	uint32_t num_dest_port;
+	uint32_t num_queues;
 };
+
+struct flow_template_table_cell {
+	atomic_int status;
+	atomic_int counter;
+
+	uint32_t flm_db_idx_counter;
+	uint32_t flm_db_idxs[RES_COUNT];
+
+	uint32_t flm_key_id;
+	uint32_t flm_ft;
+
+	uint16_t flm_rpl_ext_ptr;
+	uint8_t  flm_scrub_prof;
+};
+
 struct flow_template_table {
+	struct flow_pattern_template **pattern_templates;
+	uint8_t nb_pattern_templates;
+
+	struct flow_actions_template **actions_templates;
+	uint8_t nb_actions_templates;
+
+	struct flow_template_table_cell *pattern_action_pairs;
+
+	struct rte_flow_attr attr;
+	uint16_t forced_vlan_vid;
+	uint16_t caller_id;
 };
 
 void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle);

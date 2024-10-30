@@ -1076,6 +1076,43 @@ static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
 			nb_queue, queue_attr, error);
 }
 
+/*
+ * Flow Asynchronous operation API
+ */
+
+static struct flow_handle *
+flow_async_create(struct flow_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr, struct flow_template_table *template_table,
+	const struct rte_flow_item pattern[], uint8_t pattern_template_index,
+	const struct rte_flow_action actions[], uint8_t actions_template_index, void *user_data,
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return NULL;
+	}
+
+	return profile_inline_ops->flow_async_create_profile_inline(dev, queue_id, op_attr,
+			template_table, pattern, pattern_template_index, actions,
+			actions_template_index, user_data, error);
+}
+
+static int flow_async_destroy(struct flow_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
+	void *user_data, struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return profile_inline_ops->flow_async_destroy_profile_inline(dev, queue_id, op_attr, flow,
+			user_data, error);
+}
 int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
@@ -1112,6 +1149,8 @@ static const struct flow_filter_ops ops = {
 	 */
 	.flow_info_get = flow_info_get,
 	.flow_configure = flow_configure,
+	.flow_async_create = flow_async_create,
+	.flow_async_destroy = flow_async_destroy,
 
 	/*
 	 * Other

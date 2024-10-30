@@ -69,6 +69,20 @@ int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev,
 
 int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
 
+/*
+ * RTE flow asynchronous operations functions
+ */
+
+struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr,
+	struct flow_template_table *template_table, const struct rte_flow_item pattern[],
+	uint8_t pattern_template_index, const struct rte_flow_action actions[],
+	uint8_t actions_template_index, void *user_data, struct rte_flow_error *error);
+
+int flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
+	void *user_data, struct rte_flow_error *error);
+
 int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	struct rte_flow_port_info *port_info,
 	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error);

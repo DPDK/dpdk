@@ -393,6 +393,19 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 	}
 }
 
+struct hw_db_idx *hw_db_inline_find_idx(struct flow_nic_dev *ndev, void *db_handle,
+	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size)
+{
+	(void)ndev;
+	(void)db_handle;
+	for (uint32_t i = 0; i < size; ++i) {
+		if (idxs[i].type == type)
+			return &idxs[i];
+	}
+
+	return NULL;
+}
+
 void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct hw_db_idx *idxs,
 	uint32_t size, FILE *file)
 {

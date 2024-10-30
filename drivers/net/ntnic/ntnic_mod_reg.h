@@ -310,6 +310,21 @@ struct profile_inline_ops {
 		uint32_t nb_contexts,
 		struct rte_flow_error *error);
 
+	/*
+	 * RTE flow asynchronous operations functions
+	 */
+
+	struct flow_handle *(*flow_async_create_profile_inline)(struct flow_eth_dev *dev,
+		uint32_t queue_id, const struct rte_flow_op_attr *op_attr,
+		struct flow_template_table *template_table, const struct rte_flow_item pattern[],
+		uint8_t rte_pattern_template_index, const struct rte_flow_action actions[],
+		uint8_t rte_actions_template_index, void *user_data, struct rte_flow_error *error);
+
+	int (*flow_async_destroy_profile_inline)(struct flow_eth_dev *dev, uint32_t queue_id,
+		const struct rte_flow_op_attr *op_attr,
+		struct flow_handle *flow, void *user_data,
+		struct rte_flow_error *error);
+
 	int (*flow_nic_set_hasher_fields_inline)(struct flow_nic_dev *ndev,
 		int hsh_idx,
 		struct nt_eth_rss_conf rss_conf);

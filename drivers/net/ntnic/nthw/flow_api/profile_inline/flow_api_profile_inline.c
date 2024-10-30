@@ -3,7 +3,6 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
-#include "generic/rte_spinlock.h"
 #include "ntlog.h"
 #include "nt_util.h"
 
@@ -63,6 +62,11 @@
 
 #define POLICING_PARAMETER_OFFSET 4096
 #define SIZE_CONVERTER 1099.511627776
+
+#define CELL_STATUS_UNINITIALIZED 0
+#define CELL_STATUS_INITIALIZING 1
+#define CELL_STATUS_INITIALIZED_TYPE_FLOW 2
+#define CELL_STATUS_INITIALIZED_TYPE_FLM 3
 
 struct flm_mtr_stat_s {
 	struct dual_buckets_s *buckets;
@@ -1032,6 +1036,17 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 
 	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 	return 0;
+}
+
+static inline const void *memcpy_or(void *dest, const void *src, size_t count)
+{
+	unsigned char *dest_ptr = (unsigned char *)dest;
+	const unsigned char *src_ptr = (const unsigned char *)src;
+
+	for (size_t i = 0; i < count; ++i)
+		dest_ptr[i] |= src_ptr[i];
+
+	return dest;
 }
 
 /*
@@ -4341,6 +4356,9 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *fl
 {
 	int err = 0;
 
+	if (flow && flow->type == FLOW_HANDLE_TYPE_FLM && flow->flm_async)
+		return flow_async_destroy_profile_inline(dev, 0, NULL, flow, NULL, error);
+
 	flow_nic_set_error(ERR_SUCCESS, error);
 
 	if (flow) {
@@ -5485,6 +5503,232 @@ error_out:
 	return -1;
 }
 
+struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
+	uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr,
+	struct flow_template_table *template_table,
+	const struct rte_flow_item pattern[],
+	uint8_t pattern_template_index,
+	const struct rte_flow_action actions[],
+	uint8_t actions_template_index,
+	void *user_data,
+	struct rte_flow_error *error)
+{
+	(void)queue_id;
+	(void)op_attr;
+	struct flow_handle *fh = NULL;
+	int res, status;
+
+	const uint32_t pattern_action_index =
+		(uint32_t)template_table->nb_actions_templates * pattern_template_index +
+		actions_template_index;
+	struct flow_template_table_cell *pattern_action_pair =
+			&template_table->pattern_action_pairs[pattern_action_index];
+
+	uint32_t num_dest_port =
+		template_table->actions_templates[actions_template_index]->num_dest_port;
+	uint32_t num_queues =
+		template_table->actions_templates[actions_template_index]->num_queues;
+
+	uint32_t port_id = UINT32_MAX;
+	uint32_t packet_data[10];
+	uint32_t packet_mask[10];
+	struct flm_flow_key_def_s key_def;
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	struct nic_flow_def *fd = malloc(sizeof(struct nic_flow_def));
+
+	if (fd == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate flow_def";
+		goto err_exit;
+	}
+
+	memcpy(fd, template_table->actions_templates[actions_template_index]->fd,
+		sizeof(struct nic_flow_def));
+
+	res = interpret_flow_elements(dev, pattern, fd, error,
+			template_table->forced_vlan_vid, &port_id, packet_data,
+			packet_mask, &key_def);
+
+	if (res)
+		goto err_exit;
+
+	if (port_id == UINT32_MAX)
+		port_id = dev->port_id;
+
+	{
+		uint32_t num_dest_port_tmp = 0;
+		uint32_t num_queues_tmp = 0;
+
+		struct nic_flow_def action_fd = { 0 };
+		prepare_nic_flow_def(&action_fd);
+
+		res = interpret_flow_actions(dev, actions, NULL, &action_fd, error,
+				&num_dest_port_tmp, &num_queues_tmp);
+
+		if (res)
+			goto err_exit;
+
+		/* Copy FLM unique actions: modify_field, meter, encap/decap and age */
+		memcpy_or(fd->mtr_ids, action_fd.mtr_ids, sizeof(action_fd.mtr_ids));
+		memcpy_or(&fd->tun_hdr, &action_fd.tun_hdr, sizeof(struct tunnel_header_s));
+		memcpy_or(fd->modify_field, action_fd.modify_field,
+			sizeof(action_fd.modify_field));
+		fd->modify_field_count = action_fd.modify_field_count;
+		memcpy_or(&fd->age, &action_fd.age, sizeof(struct rte_flow_action_age));
+	}
+
+	status = atomic_load(&pattern_action_pair->status);
+
+	/* Initializing template entry */
+	if (status < CELL_STATUS_INITIALIZED_TYPE_FLOW) {
+		if (status == CELL_STATUS_UNINITIALIZED &&
+			atomic_compare_exchange_strong(&pattern_action_pair->status, &status,
+				CELL_STATUS_INITIALIZING)) {
+			rte_spinlock_lock(&dev->ndev->mtx);
+
+			fh = create_flow_filter(dev, fd, &template_table->attr,
+				template_table->forced_vlan_vid, template_table->caller_id,
+					error, port_id, num_dest_port, num_queues, packet_data,
+					packet_mask, &key_def);
+
+			rte_spinlock_unlock(&dev->ndev->mtx);
+
+			if (fh == NULL) {
+				/* reset status to CELL_STATUS_UNINITIALIZED to avoid a deadlock */
+				atomic_store(&pattern_action_pair->status,
+					CELL_STATUS_UNINITIALIZED);
+				goto err_exit;
+			}
+
+			if (fh->type == FLOW_HANDLE_TYPE_FLM) {
+				rte_spinlock_lock(&dev->ndev->mtx);
+
+				struct hw_db_idx *flm_ft_idx =
+					hw_db_inline_find_idx(dev->ndev, dev->ndev->hw_db_handle,
+						HW_DB_IDX_TYPE_FLM_FT,
+						(struct hw_db_idx *)fh->flm_db_idxs,
+						fh->flm_db_idx_counter);
+
+				rte_spinlock_unlock(&dev->ndev->mtx);
+
+				pattern_action_pair->flm_db_idx_counter = fh->flm_db_idx_counter;
+				memcpy(pattern_action_pair->flm_db_idxs, fh->flm_db_idxs,
+					sizeof(struct hw_db_idx) * fh->flm_db_idx_counter);
+
+				pattern_action_pair->flm_key_id = fh->flm_kid;
+				pattern_action_pair->flm_ft = flm_ft_idx->id1;
+
+				pattern_action_pair->flm_rpl_ext_ptr = fh->flm_rpl_ext_ptr;
+				pattern_action_pair->flm_scrub_prof = fh->flm_scrub_prof;
+
+				atomic_store(&pattern_action_pair->status,
+					CELL_STATUS_INITIALIZED_TYPE_FLM);
+
+				/* increment template table cell reference */
+				atomic_fetch_add(&pattern_action_pair->counter, 1);
+				fh->template_table_cell = pattern_action_pair;
+				fh->flm_async = true;
+
+			} else {
+				atomic_store(&pattern_action_pair->status,
+					CELL_STATUS_INITIALIZED_TYPE_FLOW);
+			}
+
+		} else {
+			do {
+				nt_os_wait_usec(1);
+				status = atomic_load(&pattern_action_pair->status);
+			} while (status == CELL_STATUS_INITIALIZING);
+
+			/* error handling in case that create_flow_filter() will fail in the other
+			 * thread
+			 */
+			if (status == CELL_STATUS_UNINITIALIZED)
+				goto err_exit;
+		}
+	}
+
+	/* FLM learn */
+	if (fh == NULL && status == CELL_STATUS_INITIALIZED_TYPE_FLM) {
+		fh = calloc(1, sizeof(struct flow_handle));
+
+		fh->type = FLOW_HANDLE_TYPE_FLM;
+		fh->dev = dev;
+		fh->caller_id = template_table->caller_id;
+		fh->user_data = user_data;
+
+		copy_fd_to_fh_flm(fh, fd, packet_data, pattern_action_pair->flm_key_id,
+			pattern_action_pair->flm_ft,
+			pattern_action_pair->flm_rpl_ext_ptr,
+			pattern_action_pair->flm_scrub_prof,
+			template_table->attr.priority & 0x3);
+
+		free(fd);
+
+		flm_flow_programming(fh, NT_FLM_OP_LEARN);
+
+		nic_insert_flow_flm(dev->ndev, fh);
+
+		/* increment template table cell reference */
+		atomic_fetch_add(&pattern_action_pair->counter, 1);
+		fh->template_table_cell = pattern_action_pair;
+		fh->flm_async = true;
+
+	} else if (fh == NULL) {
+		rte_spinlock_lock(&dev->ndev->mtx);
+
+		fh = create_flow_filter(dev, fd, &template_table->attr,
+			template_table->forced_vlan_vid, template_table->caller_id,
+				error, port_id, num_dest_port, num_queues, packet_data,
+				packet_mask, &key_def);
+
+		rte_spinlock_unlock(&dev->ndev->mtx);
+
+		if (fh == NULL)
+			goto err_exit;
+	}
+
+	if (fh) {
+		fh->caller_id = template_table->caller_id;
+		fh->user_data = user_data;
+	}
+
+	return fh;
+
+err_exit:
+	free(fd);
+	free(fh);
+
+	return NULL;
+}
+
+int flow_async_destroy_profile_inline(struct flow_eth_dev *dev, uint32_t queue_id,
+	const struct rte_flow_op_attr *op_attr, struct flow_handle *flow,
+	void *user_data, struct rte_flow_error *error)
+{
+	(void)queue_id;
+	(void)op_attr;
+	(void)user_data;
+
+	if (flow->type == FLOW_HANDLE_TYPE_FLOW)
+		return flow_destroy_profile_inline(dev, flow, error);
+
+	if (flm_flow_programming(flow, NT_FLM_OP_UNLEARN)) {
+		NT_LOG(ERR, FILTER, "FAILED to destroy flow: %p", flow);
+		flow_nic_set_error(ERR_REMOVE_FLOW_FAILED, error);
+		return -1;
+	}
+
+	nic_remove_flow_flm(dev->ndev, flow);
+
+	free(flow);
+
+	return 0;
+}
+
 static const struct profile_inline_ops ops = {
 	/*
 	 * Management
@@ -5509,6 +5753,8 @@ static const struct profile_inline_ops ops = {
 	.flow_get_flm_stats_profile_inline = flow_get_flm_stats_profile_inline,
 	.flow_info_get_profile_inline = flow_info_get_profile_inline,
 	.flow_configure_profile_inline = flow_configure_profile_inline,
+	.flow_async_create_profile_inline = flow_async_create_profile_inline,
+	.flow_async_destroy_profile_inline = flow_async_destroy_profile_inline,
 	/*
 	 * NT Flow FLM Meter API
 	 */
