@@ -504,6 +504,20 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 		return -1;
 	}
 
+	if (implicit_vlan_vid > 0) {
+		uint32_t *sw_data = &packet_data[1 - sw_counter];
+		uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+		sw_mask[0] = 0x0fff;
+		sw_data[0] = implicit_vlan_vid & sw_mask[0];
+
+		km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1, DYN_FIRST_VLAN, 0);
+		set_key_def_sw(key_def, sw_counter, DYN_FIRST_VLAN, 0);
+		sw_counter += 1;
+
+		fd->vlans += 1;
+	}
+
 	int qw_reserved_mac = 0;
 	int qw_reserved_ipv6 = 0;
 
@@ -660,6 +674,87 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				}
 
 				fd->l2_prot = PROT_L2_ETH2;
+			}
+
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_VLAN",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_vlan_hdr *vlan_spec =
+					(const struct rte_vlan_hdr *)elem[eidx].spec;
+				const struct rte_vlan_hdr *vlan_mask =
+					(const struct rte_vlan_hdr *)elem[eidx].mask;
+
+				if (vlan_spec == NULL || vlan_mask == NULL) {
+					fd->vlans += 1;
+					break;
+				}
+
+				if (!vlan_mask->vlan_tci && !vlan_mask->eth_proto)
+					break;
+
+				if (implicit_vlan_vid > 0) {
+					NT_LOG(ERR, FILTER,
+						"Multiple VLANs not supported for implicit VLAN patterns.");
+					flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM,
+						error);
+					return -1;
+				}
+
+				if (sw_counter < 2) {
+					uint32_t *sw_data = &packet_data[1 - sw_counter];
+					uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+					sw_mask[0] = ntohs(vlan_mask->vlan_tci) << 16 |
+						ntohs(vlan_mask->eth_proto);
+					sw_data[0] = ntohs(vlan_spec->vlan_tci) << 16 |
+						ntohs(vlan_spec->eth_proto);
+					sw_data[0] &= sw_mask[0];
+
+					km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0], 1,
+						DYN_FIRST_VLAN, 2 + 4 * fd->vlans);
+					set_key_def_sw(key_def, sw_counter, DYN_FIRST_VLAN,
+						2 + 4 * fd->vlans);
+					sw_counter += 1;
+
+				} else if (qw_counter < 2 && qw_free > 0) {
+					uint32_t *qw_data = &packet_data[2 + 4 - qw_counter * 4];
+					uint32_t *qw_mask = &packet_mask[2 + 4 - qw_counter * 4];
+
+					qw_data[0] = ntohs(vlan_spec->vlan_tci) << 16 |
+						ntohs(vlan_spec->eth_proto);
+					qw_data[1] = 0;
+					qw_data[2] = 0;
+					qw_data[3] = 0;
+
+					qw_mask[0] = ntohs(vlan_mask->vlan_tci) << 16 |
+						ntohs(vlan_mask->eth_proto);
+					qw_mask[1] = 0;
+					qw_mask[2] = 0;
+					qw_mask[3] = 0;
+
+					qw_data[0] &= qw_mask[0];
+					qw_data[1] &= qw_mask[1];
+					qw_data[2] &= qw_mask[2];
+					qw_data[3] &= qw_mask[3];
+
+					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+						DYN_FIRST_VLAN, 2 + 4 * fd->vlans);
+					set_key_def_qw(key_def, qw_counter, DYN_FIRST_VLAN,
+						2 + 4 * fd->vlans);
+					qw_counter += 1;
+					qw_free -= 1;
+
+				} else {
+					NT_LOG(ERR, FILTER,
+						"Key size too big. Out of SW-QW resources.");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				fd->vlans += 1;
 			}
 
 			break;

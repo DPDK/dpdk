@@ -134,6 +134,7 @@ static inline int is_non_zero(const void *addr, size_t n)
 
 enum frame_offs_e {
 	DYN_L2 = 1,
+	DYN_FIRST_VLAN = 2,
 	DYN_L3 = 4,
 	DYN_L4 = 7,
 	DYN_L4_PAYLOAD = 8,

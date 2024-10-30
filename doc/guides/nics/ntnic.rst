@@ -46,6 +46,7 @@ Features
 - Scattered and gather for TX and RX.
 - Jumbo frame support.
 - Traffic mirroring.
+- VLAN filtering.
 
 Limitations
 ~~~~~~~~~~~
