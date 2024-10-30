@@ -140,6 +140,7 @@ enum frame_offs_e {
 	DYN_L4_PAYLOAD = 8,
 	DYN_TUN_L3 = 13,
 	DYN_TUN_L4 = 16,
+	DYN_TUN_L4_PAYLOAD = 17,
 };
 
 /* Sideband info bit indicator */

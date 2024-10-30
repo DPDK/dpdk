@@ -323,6 +323,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 {
 	unsigned int encap_decap_order = 0;
 
+	uint64_t modify_field_use_flags = 0x0;
+
 	*num_dest_port = 0;
 	*num_queues = 0;
 
@@ -457,6 +459,185 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				fd->dst_id[fd->dst_num_avail].id = 0;
 				fd->dst_id[fd->dst_num_avail].type = PORT_NONE;
 				fd->dst_num_avail++;
+			}
+
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_MODIFY_FIELD", dev);
+			{
+				/* Note: This copy method will not work for FLOW_FIELD_POINTER */
+				struct rte_flow_action_modify_field modify_field_tmp;
+				const struct rte_flow_action_modify_field *modify_field =
+					memcpy_mask_if(&modify_field_tmp, action[aidx].conf,
+					action_mask ? action_mask[aidx].conf : NULL,
+					sizeof(struct rte_flow_action_modify_field));
+
+				uint64_t modify_field_use_flag = 0;
+
+				if (modify_field->src.field != RTE_FLOW_FIELD_VALUE) {
+					NT_LOG(ERR, FILTER,
+						"MODIFY_FIELD only src type VALUE is supported.");
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				if (modify_field->dst.level > 2) {
+					NT_LOG(ERR, FILTER,
+						"MODIFY_FIELD only dst level 0, 1, and 2 is supported.");
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				if (modify_field->dst.field == RTE_FLOW_FIELD_IPV4_TTL ||
+					modify_field->dst.field == RTE_FLOW_FIELD_IPV6_HOPLIMIT) {
+					if (modify_field->operation != RTE_FLOW_MODIFY_SUB) {
+						NT_LOG(ERR, FILTER,
+							"MODIFY_FIELD only operation SUB is supported for TTL/HOPLIMIT.");
+						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						return -1;
+					}
+
+					if (fd->ttl_sub_enable) {
+						NT_LOG(ERR, FILTER,
+							"MODIFY_FIELD TTL/HOPLIMIT resource already in use.");
+						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						return -1;
+					}
+
+					fd->ttl_sub_enable = 1;
+					fd->ttl_sub_ipv4 =
+						(modify_field->dst.field == RTE_FLOW_FIELD_IPV4_TTL)
+						? 1
+						: 0;
+					fd->ttl_sub_outer = (modify_field->dst.level <= 1) ? 1 : 0;
+
+				} else {
+					if (modify_field->operation != RTE_FLOW_MODIFY_SET) {
+						NT_LOG(ERR, FILTER,
+							"MODIFY_FIELD only operation SET is supported in general.");
+						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						return -1;
+					}
+
+					if (fd->modify_field_count >=
+						dev->ndev->be.tpe.nb_cpy_writers) {
+						NT_LOG(ERR, FILTER,
+							"MODIFY_FIELD exceeded maximum of %u MODIFY_FIELD actions.",
+							dev->ndev->be.tpe.nb_cpy_writers);
+						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						return -1;
+					}
+
+					int mod_outer = modify_field->dst.level <= 1;
+
+					switch (modify_field->dst.field) {
+					case RTE_FLOW_FIELD_IPV4_DSCP:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_DSCP_IPV4;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L3 : DYN_TUN_L3;
+						fd->modify_field[fd->modify_field_count].ofs = 1;
+						fd->modify_field[fd->modify_field_count].len = 1;
+						break;
+
+					case RTE_FLOW_FIELD_IPV6_DSCP:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_DSCP_IPV6;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L3 : DYN_TUN_L3;
+						fd->modify_field[fd->modify_field_count].ofs = 0;
+						/*
+						 * len=2 is needed because
+						 * IPv6 DSCP overlaps 2 bytes.
+						 */
+						fd->modify_field[fd->modify_field_count].len = 2;
+						break;
+
+					case RTE_FLOW_FIELD_GTP_PSC_QFI:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_RQI_QFI;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L4_PAYLOAD
+							: DYN_TUN_L4_PAYLOAD;
+						fd->modify_field[fd->modify_field_count].ofs = 14;
+						fd->modify_field[fd->modify_field_count].len = 1;
+						break;
+
+					case RTE_FLOW_FIELD_IPV4_SRC:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_IPV4;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L3 : DYN_TUN_L3;
+						fd->modify_field[fd->modify_field_count].ofs = 12;
+						fd->modify_field[fd->modify_field_count].len = 4;
+						break;
+
+					case RTE_FLOW_FIELD_IPV4_DST:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_IPV4;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L3 : DYN_TUN_L3;
+						fd->modify_field[fd->modify_field_count].ofs = 16;
+						fd->modify_field[fd->modify_field_count].len = 4;
+						break;
+
+					case RTE_FLOW_FIELD_TCP_PORT_SRC:
+					case RTE_FLOW_FIELD_UDP_PORT_SRC:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_PORT;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L4 : DYN_TUN_L4;
+						fd->modify_field[fd->modify_field_count].ofs = 0;
+						fd->modify_field[fd->modify_field_count].len = 2;
+						break;
+
+					case RTE_FLOW_FIELD_TCP_PORT_DST:
+					case RTE_FLOW_FIELD_UDP_PORT_DST:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_PORT;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L4 : DYN_TUN_L4;
+						fd->modify_field[fd->modify_field_count].ofs = 2;
+						fd->modify_field[fd->modify_field_count].len = 2;
+						break;
+
+					case RTE_FLOW_FIELD_GTP_TEID:
+						fd->modify_field[fd->modify_field_count].select =
+							CPY_SELECT_TEID;
+						fd->modify_field[fd->modify_field_count].dyn =
+							mod_outer ? DYN_L4_PAYLOAD
+							: DYN_TUN_L4_PAYLOAD;
+						fd->modify_field[fd->modify_field_count].ofs = 4;
+						fd->modify_field[fd->modify_field_count].len = 4;
+						break;
+
+					default:
+						NT_LOG(ERR, FILTER,
+							"MODIFY_FIELD dst type is not supported.");
+						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						return -1;
+					}
+
+					modify_field_use_flag = 1
+						<< fd->modify_field[fd->modify_field_count].select;
+
+					if (modify_field_use_flag & modify_field_use_flags) {
+						NT_LOG(ERR, FILTER,
+							"MODIFY_FIELD dst type hardware resource already used.");
+						flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+						return -1;
+					}
+
+					memcpy(fd->modify_field[fd->modify_field_count].value8,
+						modify_field->src.value, 16);
+
+					fd->modify_field[fd->modify_field_count].level =
+						modify_field->dst.level;
+
+					modify_field_use_flags |= modify_field_use_flag;
+					fd->modify_field_count += 1;
+				}
 			}
 
 			break;

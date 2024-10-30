@@ -129,6 +129,10 @@ struct nic_flow_def {
 	 */
 	struct {
 		uint32_t select;
+		uint32_t dyn;
+		uint32_t ofs;
+		uint32_t len;
+		uint32_t level;
 		union {
 			uint8_t value8[16];
 			uint16_t value16[8];
@@ -137,6 +141,9 @@ struct nic_flow_def {
 	} modify_field[MAX_CPY_WRITERS_SUPPORTED];
 
 	uint32_t modify_field_count;
+	uint8_t ttl_sub_enable;
+	uint8_t ttl_sub_ipv4;
+	uint8_t ttl_sub_outer;
 
 	/*
 	 * Key Matcher flow definitions

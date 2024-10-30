@@ -47,6 +47,7 @@ Features
 - Jumbo frame support.
 - Traffic mirroring.
 - VLAN filtering.
+- Packet modification: NAT, TTL decrement, DSCP tagging
 
 Limitations
 ~~~~~~~~~~~
