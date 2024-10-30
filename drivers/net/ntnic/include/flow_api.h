@@ -55,6 +55,7 @@ struct flow_nic_dev {
 	uint16_t ports; /* number of in-ports addressable on this NIC */
 	/* flow profile this NIC is initially prepared for */
 	enum flow_eth_dev_profile flow_profile;
+	int flow_mgnt_prepared;
 
 	struct hw_mod_resource_s res[RES_COUNT];/* raw NIC resource allocation table */
 	void *km_res_handle;

@@ -8,6 +8,20 @@
 #include "flow_api_profile_inline.h"
 #include "ntnic_mod_reg.h"
 
+/*
+ * Public functions
+ */
+
+int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev __rte_unused)
+{
+	return -1;
+}
+
+int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev __rte_unused)
+{
+	return 0;
+}
+
 struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_unused,
 	const struct rte_flow_attr *attr __rte_unused,
 	uint16_t forced_vlan_vid __rte_unused,
@@ -51,6 +65,12 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *fl
 }
 
 static const struct profile_inline_ops ops = {
+	/*
+	 * Management
+	 */
+	.done_flow_management_of_ndev_profile_inline = done_flow_management_of_ndev_profile_inline,
+	.initialize_flow_management_of_ndev_profile_inline =
+		initialize_flow_management_of_ndev_profile_inline,
 	/*
 	 * Flow functionality
 	 */

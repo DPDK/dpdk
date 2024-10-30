@@ -210,9 +210,28 @@ static int nic_remove_eth_port_dev(struct flow_nic_dev *ndev, struct flow_eth_de
 
 static void flow_ndev_reset(struct flow_nic_dev *ndev)
 {
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return;
+	}
+
 	/* Delete all eth-port devices created on this NIC device */
 	while (ndev->eth_base)
 		flow_delete_eth_dev(ndev->eth_base);
+
+	/* Error check */
+	while (ndev->flow_base) {
+		NT_LOG(ERR, FILTER,
+			"ERROR : Flows still defined but all eth-ports deleted. Flow %p",
+			ndev->flow_base);
+
+		profile_inline_ops->flow_destroy_profile_inline(ndev->flow_base->dev,
+			ndev->flow_base, NULL);
+	}
+
+	profile_inline_ops->done_flow_management_of_ndev_profile_inline(ndev);
 
 	km_free_ndev_resource_management(&ndev->km_res_handle);
 	kcc_free_ndev_resource_management(&ndev->kcc_res_handle);
@@ -255,6 +274,13 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 {
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return -1;
+	}
+
 	struct flow_nic_dev *ndev = eth_dev->ndev;
 
 	if (!ndev) {
@@ -270,6 +296,20 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 
 	/* delete all created flows from this device */
 	pthread_mutex_lock(&ndev->mtx);
+
+	struct flow_handle *flow = ndev->flow_base;
+
+	while (flow) {
+		if (flow->dev == eth_dev) {
+			struct flow_handle *flow_next = flow->next;
+			profile_inline_ops->flow_destroy_locked_profile_inline(eth_dev, flow,
+				NULL);
+			flow = flow_next;
+
+		} else {
+			flow = flow->next;
+		}
+	}
 
 	/*
 	 * remove unmatched queue if setup in QSL
@@ -434,6 +474,24 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 	eth_dev->ndev = ndev;
 	eth_dev->port = port_no;
 	eth_dev->port_id = port_id;
+
+	/* First time then NIC is initialized */
+	if (!ndev->flow_mgnt_prepared) {
+		ndev->flow_profile = flow_profile;
+
+		/* Initialize modules if needed - recipe 0 is used as no-match and must be setup */
+		if (profile_inline_ops != NULL &&
+			profile_inline_ops->initialize_flow_management_of_ndev_profile_inline(ndev))
+			goto err_exit0;
+
+	} else {
+		/* check if same flow type is requested, otherwise fail */
+		if (ndev->flow_profile != flow_profile) {
+			NT_LOG(ERR, FILTER,
+				"ERROR: Different flow types requested on same NIC device. Not supported.");
+			goto err_exit0;
+		}
+	}
 
 	/* Allocate the requested queues in HW for this dev */
 

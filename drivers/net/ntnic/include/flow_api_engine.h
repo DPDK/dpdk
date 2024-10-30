@@ -46,6 +46,11 @@ enum res_type_e {
  */
 #define MAX_OUTPUT_DEST (128)
 
+struct flow_handle {
+	struct flow_eth_dev *dev;
+	struct flow_handle *next;
+};
+
 void km_free_ndev_resource_management(void **handle);
 
 void kcc_free_ndev_resource_management(void **handle);

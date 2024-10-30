@@ -227,6 +227,14 @@ void flow_backend_init(void);
 
 struct profile_inline_ops {
 	/*
+	 * Management
+	 */
+
+	int (*done_flow_management_of_ndev_profile_inline)(struct flow_nic_dev *ndev);
+
+	int (*initialize_flow_management_of_ndev_profile_inline)(struct flow_nic_dev *ndev);
+
+	/*
 	 * Flow functionality
 	 */
 	int (*flow_destroy_locked_profile_inline)(struct flow_eth_dev *dev,
