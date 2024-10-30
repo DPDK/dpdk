@@ -10,10 +10,10 @@ sources = [
         'fm10k_vf.c',
 ]
 
-error_cflags = ['-Wno-unused-parameter', '-Wno-unused-value',
-    '-Wno-strict-aliasing', '-Wno-format-extra-args',
-    '-Wno-unused-variable',
-    '-Wno-implicit-fallthrough'
+error_cflags = [
+        '-Wno-unused-parameter',
+        '-Wno-unused-value',
+        '-Wno-implicit-fallthrough',
 ]
 c_args = cflags
 foreach flag: error_cflags
