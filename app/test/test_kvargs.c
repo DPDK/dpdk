@@ -43,58 +43,6 @@ static int test_valid_kvargs(void)
 	const char *valid_keys_list[] = { "foo", "check", NULL };
 	const char **valid_keys;
 
-	/* first test without valid_keys */
-	args = "foo=1234,check=value0,check=value1";
-	valid_keys = NULL;
-	kvlist = rte_kvargs_parse(args, valid_keys);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error");
-		goto fail;
-	}
-	/* call check_handler() for all entries with key="check" */
-	count = 0;
-	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) < 0) {
-		printf("rte_kvargs_process() error\n");
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	if (count != 2) {
-		printf("invalid count value %d after rte_kvargs_process(check)\n",
-			count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	count = 0;
-	/* call check_handler() for all entries with key="nonexistent_key" */
-	if (rte_kvargs_process(kvlist, "nonexistent_key", check_handler, NULL) < 0) {
-		printf("rte_kvargs_process() error\n");
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	if (count != 0) {
-		printf("invalid count value %d after rte_kvargs_process(nonexistent_key)\n",
-			count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	/* count all entries with key="foo" */
-	count = rte_kvargs_count(kvlist, "foo");
-	if (count != 1) {
-		printf("invalid count value %d after rte_kvargs_count(foo)\n",
-			count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	/* count all entries with key="nonexistent_key" */
-	count = rte_kvargs_count(kvlist, "nonexistent_key");
-	if (count != 0) {
-		printf("invalid count value %d after rte_kvargs_count(nonexistent_key)\n",
-			count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	rte_kvargs_free(kvlist);
-
 	/* second test using valid_keys */
 	args = "foo=droids,check=value0,check=value1,check=wrong_value";
 	valid_keys = valid_keys_list;
@@ -214,6 +162,68 @@ test_basic_token_count(void)
 	return 0;
 }
 
+static int
+test_parse_without_valid_keys(void)
+{
+	const char *args = "foo=1234,check=value0,check=value1";
+	struct rte_kvargs *kvlist;
+
+	kvlist = rte_kvargs_parse(args, NULL);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error\n");
+		return -1;
+	}
+
+	/* call check_handler() for all entries with key="check" */
+	count = 0;
+	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) < 0) {
+		printf("rte_kvargs_process(check) error\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+	if (count != 2) {
+		printf("invalid count value %u after rte_kvargs_process(check)\n",
+			count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	/* call check_handler() for all entries with key="nonexistent_key" */
+	count = 0;
+	if (rte_kvargs_process(kvlist, "nonexistent_key", check_handler, NULL) < 0) {
+		printf("rte_kvargs_process(nonexistent_key) error\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+	if (count != 0) {
+		printf("invalid count value %d after rte_kvargs_process(nonexistent_key)\n",
+			count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	/* count all entries with key="foo" */
+	count = rte_kvargs_count(kvlist, "foo");
+	if (count != 1) {
+		printf("invalid count value %d after rte_kvargs_count(foo)\n",
+			count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	/* count all entries with key="nonexistent_key" */
+	count = rte_kvargs_count(kvlist, "nonexistent_key");
+	if (count != 0) {
+		printf("invalid count value %d after rte_kvargs_count(nonexistent_key)\n",
+			count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 /* test several error cases */
 static int test_invalid_kvargs(void)
 {
@@ -256,6 +266,7 @@ static struct unit_test_suite kvargs_test_suite  = {
 	.unit_test_cases = {
 		TEST_CASE(test_valid_kvargs),
 		TEST_CASE(test_basic_token_count),
+		TEST_CASE(test_parse_without_valid_keys),
 		TEST_CASE(test_invalid_kvargs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
