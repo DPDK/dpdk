@@ -55,6 +55,36 @@ struct flm_flow_key_def_s {
 /*
  * Flow Matcher functionality
  */
+static inline void set_key_def_qw(struct flm_flow_key_def_s *key_def, unsigned int qw,
+	unsigned int dyn, unsigned int ofs)
+{
+	assert(qw < 2);
+
+	if (qw == 0) {
+		key_def->qw0_dyn = dyn & 0x7f;
+		key_def->qw0_ofs = ofs & 0xff;
+
+	} else {
+		key_def->qw4_dyn = dyn & 0x7f;
+		key_def->qw4_ofs = ofs & 0xff;
+	}
+}
+
+static inline void set_key_def_sw(struct flm_flow_key_def_s *key_def, unsigned int sw,
+	unsigned int dyn, unsigned int ofs)
+{
+	assert(sw < 2);
+
+	if (sw == 0) {
+		key_def->sw8_dyn = dyn & 0x7f;
+		key_def->sw8_ofs = ofs & 0xff;
+
+	} else {
+		key_def->sw9_dyn = dyn & 0x7f;
+		key_def->sw9_ofs = ofs & 0xff;
+	}
+}
+
 static uint8_t get_port_from_port_id(const struct flow_nic_dev *ndev, uint32_t port_id)
 {
 	struct flow_eth_dev *dev = ndev->eth_base;
@@ -457,6 +487,11 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 	uint32_t *packet_mask,
 	struct flm_flow_key_def_s *key_def)
 {
+	uint32_t any_count = 0;
+
+	unsigned int qw_counter = 0;
+	unsigned int sw_counter = 0;
+
 	*in_port_id = UINT32_MAX;
 
 	memset(packet_data, 0x0, sizeof(uint32_t) * 10);
@@ -472,6 +507,28 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 	int qw_reserved_mac = 0;
 	int qw_reserved_ipv6 = 0;
 
+	for (int eidx = 0; elem[eidx].type != RTE_FLOW_ITEM_TYPE_END; ++eidx) {
+		switch (elem[eidx].type) {
+		case RTE_FLOW_ITEM_TYPE_ETH: {
+			const struct rte_ether_hdr *eth_spec =
+				(const struct rte_ether_hdr *)elem[eidx].spec;
+			const struct rte_ether_hdr *eth_mask =
+				(const struct rte_ether_hdr *)elem[eidx].mask;
+
+			if (eth_spec != NULL && eth_mask != NULL) {
+				if (is_non_zero(eth_mask->dst_addr.addr_bytes, 6) ||
+					is_non_zero(eth_mask->src_addr.addr_bytes, 6)) {
+					qw_reserved_mac += 1;
+				}
+			}
+		}
+		break;
+
+		default:
+			break;
+		}
+	}
+
 	int qw_free = 2 - qw_reserved_mac - qw_reserved_ipv6;
 
 	if (qw_free < 0) {
@@ -485,6 +542,126 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ANY:
 			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_ANY",
 				dev->ndev->adapter_no, dev->port);
+			any_count += 1;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_ETH",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_ether_hdr *eth_spec =
+					(const struct rte_ether_hdr *)elem[eidx].spec;
+				const struct rte_ether_hdr *eth_mask =
+					(const struct rte_ether_hdr *)elem[eidx].mask;
+
+				if (any_count > 0) {
+					NT_LOG(ERR, FILTER,
+						"Tunneled L2 ethernet not supported");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (eth_spec == NULL || eth_mask == NULL) {
+					fd->l2_prot = PROT_L2_ETH2;
+					break;
+				}
+
+				int non_zero = is_non_zero(eth_mask->dst_addr.addr_bytes, 6) ||
+					is_non_zero(eth_mask->src_addr.addr_bytes, 6);
+
+				if (non_zero ||
+					(eth_mask->ether_type != 0 && sw_counter >= 2)) {
+					if (qw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *qw_data =
+						&packet_data[2 + 4 - qw_counter * 4];
+					uint32_t *qw_mask =
+						&packet_mask[2 + 4 - qw_counter * 4];
+
+					qw_data[0] = ((eth_spec->dst_addr.addr_bytes[0] &
+						eth_mask->dst_addr.addr_bytes[0]) << 24) +
+						((eth_spec->dst_addr.addr_bytes[1] &
+						eth_mask->dst_addr.addr_bytes[1]) << 16) +
+						((eth_spec->dst_addr.addr_bytes[2] &
+						eth_mask->dst_addr.addr_bytes[2]) << 8) +
+						(eth_spec->dst_addr.addr_bytes[3] &
+						eth_mask->dst_addr.addr_bytes[3]);
+
+					qw_data[1] = ((eth_spec->dst_addr.addr_bytes[4] &
+						eth_mask->dst_addr.addr_bytes[4]) << 24) +
+						((eth_spec->dst_addr.addr_bytes[5] &
+						eth_mask->dst_addr.addr_bytes[5]) << 16) +
+						((eth_spec->src_addr.addr_bytes[0] &
+						eth_mask->src_addr.addr_bytes[0]) << 8) +
+						(eth_spec->src_addr.addr_bytes[1] &
+						eth_mask->src_addr.addr_bytes[1]);
+
+					qw_data[2] = ((eth_spec->src_addr.addr_bytes[2] &
+						eth_mask->src_addr.addr_bytes[2]) << 24) +
+						((eth_spec->src_addr.addr_bytes[3] &
+						eth_mask->src_addr.addr_bytes[3]) << 16) +
+						((eth_spec->src_addr.addr_bytes[4] &
+						eth_mask->src_addr.addr_bytes[4]) << 8) +
+						(eth_spec->src_addr.addr_bytes[5] &
+						eth_mask->src_addr.addr_bytes[5]);
+
+					qw_data[3] = ntohs(eth_spec->ether_type &
+						eth_mask->ether_type) << 16;
+
+					qw_mask[0] = (eth_mask->dst_addr.addr_bytes[0] << 24) +
+						(eth_mask->dst_addr.addr_bytes[1] << 16) +
+						(eth_mask->dst_addr.addr_bytes[2] << 8) +
+						eth_mask->dst_addr.addr_bytes[3];
+
+					qw_mask[1] = (eth_mask->dst_addr.addr_bytes[4] << 24) +
+						(eth_mask->dst_addr.addr_bytes[5] << 16) +
+						(eth_mask->src_addr.addr_bytes[0] << 8) +
+						eth_mask->src_addr.addr_bytes[1];
+
+					qw_mask[2] = (eth_mask->src_addr.addr_bytes[2] << 24) +
+						(eth_mask->src_addr.addr_bytes[3] << 16) +
+						(eth_mask->src_addr.addr_bytes[4] << 8) +
+						eth_mask->src_addr.addr_bytes[5];
+
+					qw_mask[3] = ntohs(eth_mask->ether_type) << 16;
+
+					km_add_match_elem(&fd->km,
+						&qw_data[(size_t)(qw_counter * 4)],
+						&qw_mask[(size_t)(qw_counter * 4)], 4, DYN_L2, 0);
+					set_key_def_qw(key_def, qw_counter, DYN_L2, 0);
+					qw_counter += 1;
+
+					if (!non_zero)
+						qw_free -= 1;
+
+				} else if (eth_mask->ether_type != 0) {
+					if (sw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *sw_data = &packet_data[1 - sw_counter];
+					uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+					sw_mask[0] = ntohs(eth_mask->ether_type) << 16;
+					sw_data[0] = ntohs(eth_spec->ether_type) << 16 & sw_mask[0];
+
+					km_add_match_elem(&fd->km, &sw_data[0],
+						&sw_mask[0], 1, DYN_L2, 12);
+					set_key_def_sw(key_def, sw_counter, DYN_L2, 12);
+					sw_counter += 1;
+				}
+
+				fd->l2_prot = PROT_L2_ETH2;
+			}
+
 			break;
 
 		default:

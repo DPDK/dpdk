@@ -120,6 +120,18 @@ enum {
 		}                                                                                 \
 	} while (0)
 
+static inline int is_non_zero(const void *addr, size_t n)
+{
+	size_t i = 0;
+	const uint8_t *p = (const uint8_t *)addr;
+
+	for (i = 0; i < n; i++)
+		if (p[i] != 0)
+			return 1;
+
+	return 0;
+}
+
 enum frame_offs_e {
 	DYN_L2 = 1,
 	DYN_L3 = 4,
