@@ -827,6 +827,101 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_UDP",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_flow_item_udp *udp_spec =
+					(const struct rte_flow_item_udp *)elem[eidx].spec;
+				const struct rte_flow_item_udp *udp_mask =
+					(const struct rte_flow_item_udp *)elem[eidx].mask;
+
+				if (udp_spec == NULL || udp_mask == NULL) {
+					if (any_count > 0 || fd->l4_prot != -1) {
+						fd->tunnel_l4_prot = PROT_TUN_L4_UDP;
+						key_def->inner_proto = 1;
+					} else {
+						fd->l4_prot = PROT_L4_UDP;
+						key_def->outer_proto = 1;
+					}
+					break;
+				}
+
+				if (udp_mask->hdr.dgram_len != 0 ||
+					udp_mask->hdr.dgram_cksum != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested UDP field not support by running SW version");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (udp_mask->hdr.src_port || udp_mask->hdr.dst_port) {
+					if (sw_counter < 2) {
+						uint32_t *sw_data = &packet_data[1 - sw_counter];
+						uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+						sw_mask[0] = (ntohs(udp_mask->hdr.src_port) << 16) |
+							ntohs(udp_mask->hdr.dst_port);
+						sw_data[0] = ((ntohs(udp_spec->hdr.src_port)
+							<< 16) | ntohs(udp_spec->hdr.dst_port)) &
+							sw_mask[0];
+
+						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
+							1, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						set_key_def_sw(key_def, sw_counter, any_count > 0
+							? DYN_TUN_L4 : DYN_L4, 0);
+						sw_counter += 1;
+
+					} else if (qw_counter < 2 && qw_free > 0) {
+						uint32_t *qw_data =
+							&packet_data[2 + 4 - qw_counter * 4];
+						uint32_t *qw_mask =
+							&packet_mask[2 + 4 - qw_counter * 4];
+
+						qw_data[0] = (ntohs(udp_spec->hdr.src_port)
+							<< 16) | ntohs(udp_spec->hdr.dst_port);
+						qw_data[1] = 0;
+						qw_data[2] = 0;
+						qw_data[3] = 0;
+
+						qw_mask[0] = (ntohs(udp_mask->hdr.src_port)
+							<< 16) | ntohs(udp_mask->hdr.dst_port);
+						qw_mask[1] = 0;
+						qw_mask[2] = 0;
+						qw_mask[3] = 0;
+
+						qw_data[0] &= qw_mask[0];
+						qw_data[1] &= qw_mask[1];
+						qw_data[2] &= qw_mask[2];
+						qw_data[3] &= qw_mask[3];
+
+						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
+							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						set_key_def_qw(key_def, qw_counter, any_count > 0
+							? DYN_TUN_L4 : DYN_L4, 0);
+						qw_counter += 1;
+						qw_free -= 1;
+
+					} else {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+				}
+
+				if (any_count > 0 || fd->l4_prot != -1) {
+					fd->tunnel_l4_prot = PROT_TUN_L4_UDP;
+					key_def->inner_proto = 1;
+
+				} else {
+					fd->l4_prot = PROT_L4_UDP;
+					key_def->outer_proto = 1;
+				}
+			}
+
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_ICMP:
 			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_ICMP",
 				dev->ndev->adapter_no, dev->port);
@@ -960,12 +1055,20 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 	uint16_t rpl_ext_ptr, uint32_t flm_scrub __rte_unused, uint32_t priority)
 {
 	switch (fd->l4_prot) {
+	case PROT_L4_UDP:
+		fh->flm_prot = 17;
+		break;
+
 	case PROT_L4_ICMP:
 		fh->flm_prot = fd->ip_prot;
 		break;
 
 	default:
 		switch (fd->tunnel_l4_prot) {
+		case PROT_TUN_L4_UDP:
+			fh->flm_prot = 17;
+			break;
+
 		case PROT_TUN_L4_ICMP:
 			fh->flm_prot = fd->tunnel_ip_prot;
 			break;
