@@ -688,6 +688,9 @@ int hw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, 
 int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
 	uint32_t value);
 
+int hw_mod_flm_stat_update(struct flow_api_backend_s *be);
+int hw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value);
+
 int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e field,
 	const uint32_t *value, uint32_t records,
 	uint32_t *handled_records, uint32_t *inf_word_cnt,

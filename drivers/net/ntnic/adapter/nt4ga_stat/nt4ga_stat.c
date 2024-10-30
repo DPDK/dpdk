@@ -189,6 +189,24 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 		return -1;
 	}
 
+	if (get_flow_filter_ops() != NULL) {
+		struct flow_nic_dev *ndev = p_adapter_info->nt4ga_filter.mp_flow_device;
+		p_nt4ga_stat->flm_stat_ver = ndev->be.flm.ver;
+		p_nt4ga_stat->mp_stat_structs_flm = calloc(1, sizeof(struct flm_counters_v1));
+
+		if (!p_nt4ga_stat->mp_stat_structs_flm) {
+			NT_LOG_DBGX(ERR, GENERAL, "Cannot allocate mem.");
+			return -1;
+		}
+
+		p_nt4ga_stat->mp_stat_structs_flm->max_aps =
+			nthw_fpga_get_product_param(p_adapter_info->fpga_info.mp_fpga,
+				NT_FLM_LOAD_APS_MAX, 0);
+		p_nt4ga_stat->mp_stat_structs_flm->max_lps =
+			nthw_fpga_get_product_param(p_adapter_info->fpga_info.mp_fpga,
+				NT_FLM_LOAD_LPS_MAX, 0);
+	}
+
 	p_nt4ga_stat->mp_port_load =
 		calloc(NUM_ADAPTER_PORTS_MAX, sizeof(struct port_load_counters));
 
@@ -236,6 +254,7 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 		return -1;
 
 	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
+	struct flow_nic_dev *ndev = p_adapter_info->nt4ga_filter.mp_flow_device;
 
 	const int n_rx_ports = p_nt4ga_stat->mn_rx_ports;
 	const int n_tx_ports = p_nt4ga_stat->mn_tx_ports;
@@ -542,6 +561,27 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 			(uint64_t)(((__uint128_t)val * 32ULL) / PORT_LOAD_WINDOWS_SIZE);
 	}
 
+	/* Update and get FLM stats */
+	flow_filter_ops->flow_get_flm_stats(ndev, (uint64_t *)p_nt4ga_stat->mp_stat_structs_flm,
+		sizeof(struct flm_counters_v1) / sizeof(uint64_t));
+
+	/*
+	 * Calculate correct load values:
+	 * rpp = nthw_fpga_get_product_param(p_fpga, NT_RPP_PER_PS, 0);
+	 * bin = (uint32_t)(((FLM_LOAD_WINDOWS_SIZE * 1000000000000ULL) / (32ULL * rpp)) - 1ULL);
+	 * load_aps = ((uint64_t)load_aps * 1000000000000ULL) / (uint64_t)((bin+1) * rpp);
+	 * load_lps = ((uint64_t)load_lps * 1000000000000ULL) / (uint64_t)((bin+1) * rpp);
+	 *
+	 * Simplified it gives:
+	 *
+	 * load_lps = (load_lps * 32ULL) / FLM_LOAD_WINDOWS_SIZE
+	 * load_aps = (load_aps * 32ULL) / FLM_LOAD_WINDOWS_SIZE
+	 */
+
+	p_nt4ga_stat->mp_stat_structs_flm->load_aps =
+		(p_nt4ga_stat->mp_stat_structs_flm->load_aps * 32ULL) / FLM_LOAD_WINDOWS_SIZE;
+	p_nt4ga_stat->mp_stat_structs_flm->load_lps =
+		(p_nt4ga_stat->mp_stat_structs_flm->load_lps * 32ULL) / FLM_LOAD_WINDOWS_SIZE;
 	return 0;
 }
 

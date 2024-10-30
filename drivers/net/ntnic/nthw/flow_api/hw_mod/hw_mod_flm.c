@@ -712,6 +712,148 @@ int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int i
 
 	return hw_mod_flm_rcp_mod(be, field, index, &value, 0);
 }
+int hw_mod_flm_stat_update(struct flow_api_backend_s *be)
+{
+	return be->iface->flm_stat_update(be->be_dev, &be->flm);
+}
+
+int hw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_STAT_LRN_DONE:
+			*value = be->flm.v25.lrn_done->cnt;
+			break;
+
+		case HW_FLM_STAT_LRN_IGNORE:
+			*value = be->flm.v25.lrn_ignore->cnt;
+			break;
+
+		case HW_FLM_STAT_LRN_FAIL:
+			*value = be->flm.v25.lrn_fail->cnt;
+			break;
+
+		case HW_FLM_STAT_UNL_DONE:
+			*value = be->flm.v25.unl_done->cnt;
+			break;
+
+		case HW_FLM_STAT_UNL_IGNORE:
+			*value = be->flm.v25.unl_ignore->cnt;
+			break;
+
+		case HW_FLM_STAT_REL_DONE:
+			*value = be->flm.v25.rel_done->cnt;
+			break;
+
+		case HW_FLM_STAT_REL_IGNORE:
+			*value = be->flm.v25.rel_ignore->cnt;
+			break;
+
+		case HW_FLM_STAT_PRB_DONE:
+			*value = be->flm.v25.prb_done->cnt;
+			break;
+
+		case HW_FLM_STAT_PRB_IGNORE:
+			*value = be->flm.v25.prb_ignore->cnt;
+			break;
+
+		case HW_FLM_STAT_AUL_DONE:
+			*value = be->flm.v25.aul_done->cnt;
+			break;
+
+		case HW_FLM_STAT_AUL_IGNORE:
+			*value = be->flm.v25.aul_ignore->cnt;
+			break;
+
+		case HW_FLM_STAT_AUL_FAIL:
+			*value = be->flm.v25.aul_fail->cnt;
+			break;
+
+		case HW_FLM_STAT_TUL_DONE:
+			*value = be->flm.v25.tul_done->cnt;
+			break;
+
+		case HW_FLM_STAT_FLOWS:
+			*value = be->flm.v25.flows->cnt;
+			break;
+
+		case HW_FLM_LOAD_LPS:
+			*value = be->flm.v25.load_lps->lps;
+			break;
+
+		case HW_FLM_LOAD_APS:
+			*value = be->flm.v25.load_aps->aps;
+			break;
+
+		default: {
+			if (_VER_ < 18)
+				return UNSUP_FIELD;
+
+			switch (field) {
+			case HW_FLM_STAT_STA_DONE:
+				*value = be->flm.v25.sta_done->cnt;
+				break;
+
+			case HW_FLM_STAT_INF_DONE:
+				*value = be->flm.v25.inf_done->cnt;
+				break;
+
+			case HW_FLM_STAT_INF_SKIP:
+				*value = be->flm.v25.inf_skip->cnt;
+				break;
+
+			case HW_FLM_STAT_PCK_HIT:
+				*value = be->flm.v25.pck_hit->cnt;
+				break;
+
+			case HW_FLM_STAT_PCK_MISS:
+				*value = be->flm.v25.pck_miss->cnt;
+				break;
+
+			case HW_FLM_STAT_PCK_UNH:
+				*value = be->flm.v25.pck_unh->cnt;
+				break;
+
+			case HW_FLM_STAT_PCK_DIS:
+				*value = be->flm.v25.pck_dis->cnt;
+				break;
+
+			case HW_FLM_STAT_CSH_HIT:
+				*value = be->flm.v25.csh_hit->cnt;
+				break;
+
+			case HW_FLM_STAT_CSH_MISS:
+				*value = be->flm.v25.csh_miss->cnt;
+				break;
+
+			case HW_FLM_STAT_CSH_UNH:
+				*value = be->flm.v25.csh_unh->cnt;
+				break;
+
+			case HW_FLM_STAT_CUC_START:
+				*value = be->flm.v25.cuc_start->cnt;
+				break;
+
+			case HW_FLM_STAT_CUC_MOVE:
+				*value = be->flm.v25.cuc_move->cnt;
+				break;
+
+			default:
+				return UNSUP_FIELD;
+			}
+		}
+		break;
+		}
+
+		break;
+
+	default:
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
 
 int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e field,
 	const uint32_t *value, uint32_t records,

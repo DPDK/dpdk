@@ -26,6 +26,8 @@
 #include "ntnic_vfio.h"
 #include "ntnic_mod_reg.h"
 #include "nt_util.h"
+#include "profile_inline/flm_evt_queue.h"
+#include "rte_pmd_ntnic.h"
 
 const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL };
 #define THREAD_CREATE(a, b, c) rte_thread_create(a, &thread_attr, b, c)
@@ -1419,6 +1421,7 @@ drv_deinit(struct drv_s *p_drv)
 	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
 		THREAD_JOIN(p_nt_drv->flm_thread);
 		profile_inline_ops->flm_free_queues();
+		THREAD_JOIN(p_nt_drv->port_event_thread);
 	}
 
 	/* stop adapter */
@@ -1708,6 +1711,123 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.rss_hash_update = eth_dev_rss_hash_update,
 	.rss_hash_conf_get = rss_hash_conf_get,
 };
+
+/*
+ * Port event thread
+ */
+THREAD_FUNC port_event_thread_fn(void *context)
+{
+	struct pmd_internals *internals = (struct pmd_internals *)context;
+	struct drv_s *p_drv = internals->p_drv;
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	struct adapter_info_s *p_adapter_info = &p_nt_drv->adapter_info;
+	struct flow_nic_dev *ndev = p_adapter_info->nt4ga_filter.mp_flow_device;
+
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[internals->port_id];
+	uint8_t port_no = internals->port;
+
+	ntnic_flm_load_t flmdata;
+	ntnic_port_load_t portdata;
+
+	memset(&flmdata, 0, sizeof(flmdata));
+	memset(&portdata, 0, sizeof(portdata));
+
+	while (ndev != NULL && ndev->eth_base == NULL)
+		nt_os_wait_usec(1 * 1000 * 1000);
+
+	while (!p_drv->ntdrv.b_shutdown) {
+		/*
+		 * FLM load measurement
+		 * Do only send event, if there has been a change
+		 */
+		if (p_nt4ga_stat->flm_stat_ver > 22 && p_nt4ga_stat->mp_stat_structs_flm) {
+			if (flmdata.lookup != p_nt4ga_stat->mp_stat_structs_flm->load_lps ||
+				flmdata.access != p_nt4ga_stat->mp_stat_structs_flm->load_aps) {
+				pthread_mutex_lock(&p_nt_drv->stat_lck);
+				flmdata.lookup = p_nt4ga_stat->mp_stat_structs_flm->load_lps;
+				flmdata.access = p_nt4ga_stat->mp_stat_structs_flm->load_aps;
+				flmdata.lookup_maximum =
+					p_nt4ga_stat->mp_stat_structs_flm->max_lps;
+				flmdata.access_maximum =
+					p_nt4ga_stat->mp_stat_structs_flm->max_aps;
+				pthread_mutex_unlock(&p_nt_drv->stat_lck);
+
+				if (eth_dev && eth_dev->data && eth_dev->data->dev_private) {
+					rte_eth_dev_callback_process(eth_dev,
+						(enum rte_eth_event_type)RTE_NTNIC_FLM_LOAD_EVENT,
+						&flmdata);
+				}
+			}
+		}
+
+		/*
+		 * Port load measurement
+		 * Do only send event, if there has been a change.
+		 */
+		if (p_nt4ga_stat->mp_port_load) {
+			if (portdata.rx_bps != p_nt4ga_stat->mp_port_load[port_no].rx_bps ||
+				portdata.tx_bps != p_nt4ga_stat->mp_port_load[port_no].tx_bps) {
+				pthread_mutex_lock(&p_nt_drv->stat_lck);
+				portdata.rx_bps = p_nt4ga_stat->mp_port_load[port_no].rx_bps;
+				portdata.tx_bps = p_nt4ga_stat->mp_port_load[port_no].tx_bps;
+				portdata.rx_pps = p_nt4ga_stat->mp_port_load[port_no].rx_pps;
+				portdata.tx_pps = p_nt4ga_stat->mp_port_load[port_no].tx_pps;
+				portdata.rx_pps_maximum =
+					p_nt4ga_stat->mp_port_load[port_no].rx_pps_max;
+				portdata.tx_pps_maximum =
+					p_nt4ga_stat->mp_port_load[port_no].tx_pps_max;
+				portdata.rx_bps_maximum =
+					p_nt4ga_stat->mp_port_load[port_no].rx_bps_max;
+				portdata.tx_bps_maximum =
+					p_nt4ga_stat->mp_port_load[port_no].tx_bps_max;
+				pthread_mutex_unlock(&p_nt_drv->stat_lck);
+
+				if (eth_dev && eth_dev->data && eth_dev->data->dev_private) {
+					rte_eth_dev_callback_process(eth_dev,
+						(enum rte_eth_event_type)RTE_NTNIC_PORT_LOAD_EVENT,
+						&portdata);
+				}
+			}
+		}
+
+		/* Process events */
+		{
+			int count = 0;
+			bool do_wait = true;
+
+			while (count < 5000) {
+				/* Local FLM statistic events */
+				struct flm_info_event_s data;
+
+				if (flm_inf_queue_get(port_no, FLM_INFO_LOCAL, &data) == 0) {
+					if (eth_dev && eth_dev->data &&
+						eth_dev->data->dev_private) {
+						struct ntnic_flm_statistic_s event_data;
+						event_data.bytes = data.bytes;
+						event_data.packets = data.packets;
+						event_data.cause = data.cause;
+						event_data.id = data.id;
+						event_data.timestamp = data.timestamp;
+						rte_eth_dev_callback_process(eth_dev,
+							(enum rte_eth_event_type)
+							RTE_NTNIC_FLM_STATS_EVENT,
+							&event_data);
+						do_wait = false;
+					}
+				}
+
+				if (do_wait)
+					nt_os_wait_usec(10);
+
+				count++;
+				do_wait = true;
+			}
+		}
+	}
+
+	return THREAD_RETURN;
+}
 
 /*
  * Adapter flm stat thread
@@ -2235,6 +2355,18 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 		/* increase initialized ethernet devices - PF */
 		p_drv->n_eth_dev_init_count++;
+
+		/* Port event thread */
+		if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
+			res = THREAD_CTRL_CREATE(&p_nt_drv->port_event_thread, "nt_port_event_thr",
+					port_event_thread_fn, (void *)internals);
+
+			if (res) {
+				NT_LOG(ERR, NTNIC, "%s: error=%d",
+					(pci_dev->name[0] ? pci_dev->name : "NA"), res);
+				return -1;
+			}
+		}
 	}
 
 	return 0;

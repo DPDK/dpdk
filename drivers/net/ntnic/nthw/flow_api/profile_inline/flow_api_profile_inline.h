@@ -52,4 +52,10 @@ int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev,
 	int hsh_idx,
 	struct nt_eth_rss_conf rss_conf);
 
+/*
+ * Stats
+ */
+
+int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
+
 #endif	/* _FLOW_API_PROFILE_INLINE_H_ */

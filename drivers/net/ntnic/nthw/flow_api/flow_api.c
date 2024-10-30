@@ -1015,11 +1015,14 @@ int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
 
 int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
-	(void)ndev;
-	(void)data;
-	(void)size;
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
-	NT_LOG_DBGX(DBG, FILTER, "Not implemented yet");
+	if (profile_inline_ops == NULL)
+		return -1;
+
+	if (ndev->flow_profile == FLOW_ETH_DEV_PROFILE_INLINE)
+		return profile_inline_ops->flow_get_flm_stats_profile_inline(ndev, data, size);
+
 	return -1;
 }
 

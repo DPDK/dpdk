@@ -4462,6 +4462,48 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	return 0;
 }
 
+int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
+{
+	const enum hw_flm_e fields[] = {
+		HW_FLM_STAT_FLOWS, HW_FLM_STAT_LRN_DONE, HW_FLM_STAT_LRN_IGNORE,
+		HW_FLM_STAT_LRN_FAIL, HW_FLM_STAT_UNL_DONE, HW_FLM_STAT_UNL_IGNORE,
+		HW_FLM_STAT_AUL_DONE, HW_FLM_STAT_AUL_IGNORE, HW_FLM_STAT_AUL_FAIL,
+		HW_FLM_STAT_TUL_DONE, HW_FLM_STAT_REL_DONE, HW_FLM_STAT_REL_IGNORE,
+		HW_FLM_STAT_PRB_DONE, HW_FLM_STAT_PRB_IGNORE,
+
+		HW_FLM_STAT_STA_DONE, HW_FLM_STAT_INF_DONE, HW_FLM_STAT_INF_SKIP,
+		HW_FLM_STAT_PCK_HIT, HW_FLM_STAT_PCK_MISS, HW_FLM_STAT_PCK_UNH,
+		HW_FLM_STAT_PCK_DIS, HW_FLM_STAT_CSH_HIT, HW_FLM_STAT_CSH_MISS,
+		HW_FLM_STAT_CSH_UNH, HW_FLM_STAT_CUC_START, HW_FLM_STAT_CUC_MOVE,
+
+		HW_FLM_LOAD_LPS, HW_FLM_LOAD_APS,
+	};
+
+	const uint64_t fields_cnt = sizeof(fields) / sizeof(enum hw_flm_e);
+
+	if (!ndev->flow_mgnt_prepared)
+		return 0;
+
+	if (size < fields_cnt)
+		return -1;
+
+	hw_mod_flm_stat_update(&ndev->be);
+
+	for (uint64_t i = 0; i < fields_cnt; ++i) {
+		uint32_t value = 0;
+		hw_mod_flm_stat_get(&ndev->be, fields[i], &value);
+		data[i] = (fields[i] == HW_FLM_STAT_FLOWS || fields[i] == HW_FLM_LOAD_LPS ||
+				fields[i] == HW_FLM_LOAD_APS)
+			? value
+			: data[i] + value;
+
+		if (ndev->be.flm.ver < 18 && fields[i] == HW_FLM_STAT_PRB_IGNORE)
+			break;
+	}
+
+	return 0;
+}
+
 static const struct profile_inline_ops ops = {
 	/*
 	 * Management
@@ -4478,6 +4520,10 @@ static const struct profile_inline_ops ops = {
 	.flow_destroy_profile_inline = flow_destroy_profile_inline,
 	.flow_flush_profile_inline = flow_flush_profile_inline,
 	.flow_nic_set_hasher_fields_inline = flow_nic_set_hasher_fields_inline,
+	/*
+	 * Stats
+	 */
+	.flow_get_flm_stats_profile_inline = flow_get_flm_stats_profile_inline,
 	/*
 	 * NT Flow FLM Meter API
 	 */

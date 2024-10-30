@@ -291,6 +291,13 @@ struct profile_inline_ops {
 		struct nt_eth_rss_conf rss_conf);
 
 	/*
+	 * Stats
+	 */
+	int (*flow_get_flm_stats_profile_inline)(struct flow_nic_dev *ndev,
+		uint64_t *data,
+		uint64_t size);
+
+	/*
 	 * NT Flow FLM queue API
 	 */
 	void (*flm_setup_queues)(void);
