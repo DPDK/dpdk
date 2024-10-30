@@ -8,6 +8,7 @@
 
 #include "hw_mod_backend.h"
 #include "flm_age_queue.h"
+#include "flm_evt_queue.h"
 #include "flm_lrn_queue.h"
 #include "flow_api.h"
 #include "flow_api_engine.h"
@@ -19,6 +20,13 @@
 #include "flow_api_profile_inline.h"
 #include "ntnic_mod_reg.h"
 #include <rte_common.h>
+
+#define DMA_BLOCK_SIZE 256
+#define DMA_OVERHEAD 20
+#define WORDS_PER_STA_DATA (sizeof(struct flm_v25_sta_data_s) / sizeof(uint32_t))
+#define MAX_STA_DATA_RECORDS_PER_READ ((DMA_BLOCK_SIZE - DMA_OVERHEAD) / WORDS_PER_STA_DATA)
+#define WORDS_PER_INF_DATA (sizeof(struct flm_v25_inf_data_s) / sizeof(uint32_t))
+#define MAX_INF_DATA_RECORDS_PER_READ ((DMA_BLOCK_SIZE - DMA_OVERHEAD) / WORDS_PER_INF_DATA)
 
 #define NT_FLM_MISS_FLOW_TYPE 0
 #define NT_FLM_UNHANDLED_FLOW_TYPE 1
@@ -71,13 +79,126 @@ static uint32_t flm_lrn_update(struct flow_eth_dev *dev, uint32_t *inf_word_cnt,
 	return r.num;
 }
 
+static inline bool is_remote_caller(uint8_t caller_id, uint8_t *port)
+{
+	if (caller_id < MAX_VDPA_PORTS + 1) {
+		*port = caller_id;
+		return true;
+	}
+
+	*port = caller_id - MAX_VDPA_PORTS - 1;
+	return false;
+}
+
+static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, uint32_t records)
+{
+	for (uint32_t i = 0; i < records; ++i) {
+		struct flm_v25_inf_data_s *inf_data =
+			(struct flm_v25_inf_data_s *)&data[i * WORDS_PER_INF_DATA];
+		uint8_t caller_id;
+		uint8_t type;
+		union flm_handles flm_h;
+		ntnic_id_table_find(dev->ndev->id_table_handle, inf_data->id, &flm_h, &caller_id,
+			&type);
+
+		/* Check that received record hold valid meter statistics */
+	if (type == 1) {
+		switch (inf_data->cause) {
+		case INF_DATA_CAUSE_TIMEOUT_FLOW_DELETED:
+		case INF_DATA_CAUSE_TIMEOUT_FLOW_KEPT: {
+			struct flow_handle *fh = (struct flow_handle *)flm_h.p;
+			struct flm_age_event_s age_event;
+			uint8_t port;
+
+			age_event.context = fh->context;
+
+			is_remote_caller(caller_id, &port);
+
+			flm_age_queue_put(caller_id, &age_event);
+			flm_age_event_set(port);
+		}
+		break;
+
+		case INF_DATA_CAUSE_SW_UNLEARN:
+		case INF_DATA_CAUSE_NA:
+		case INF_DATA_CAUSE_PERIODIC_FLOW_INFO:
+		case INF_DATA_CAUSE_SW_PROBE:
+		default:
+			break;
+			}
+		}
+	}
+}
+
+static void flm_mtr_read_sta_records(struct flow_eth_dev *dev, uint32_t *data, uint32_t records)
+{
+	for (uint32_t i = 0; i < records; ++i) {
+		struct flm_v25_sta_data_s *sta_data =
+			(struct flm_v25_sta_data_s *)&data[i * WORDS_PER_STA_DATA];
+		uint8_t caller_id;
+		uint8_t type;
+		union flm_handles flm_h;
+		ntnic_id_table_find(dev->ndev->id_table_handle, sta_data->id, &flm_h, &caller_id,
+			&type);
+
+		if (type == 1) {
+			uint8_t port;
+			bool remote_caller = is_remote_caller(caller_id, &port);
+
+			pthread_mutex_lock(&dev->ndev->mtx);
+			((struct flow_handle *)flm_h.p)->learn_ignored = 1;
+			pthread_mutex_unlock(&dev->ndev->mtx);
+			struct flm_status_event_s data = {
+				.flow = flm_h.p,
+				.learn_ignore = sta_data->lis,
+				.learn_failed = sta_data->lfs,
+			};
+
+			flm_sta_queue_put(port, remote_caller, &data);
+		}
+	}
+}
+
 static uint32_t flm_update(struct flow_eth_dev *dev)
 {
 	static uint32_t inf_word_cnt;
 	static uint32_t sta_word_cnt;
 
+	uint32_t inf_data[DMA_BLOCK_SIZE];
+	uint32_t sta_data[DMA_BLOCK_SIZE];
+
+	if (inf_word_cnt >= WORDS_PER_INF_DATA || sta_word_cnt >= WORDS_PER_STA_DATA) {
+		uint32_t inf_records = inf_word_cnt / WORDS_PER_INF_DATA;
+
+		if (inf_records > MAX_INF_DATA_RECORDS_PER_READ)
+			inf_records = MAX_INF_DATA_RECORDS_PER_READ;
+
+		uint32_t sta_records = sta_word_cnt / WORDS_PER_STA_DATA;
+
+		if (sta_records > MAX_STA_DATA_RECORDS_PER_READ)
+			sta_records = MAX_STA_DATA_RECORDS_PER_READ;
+
+		hw_mod_flm_inf_sta_data_update_get(&dev->ndev->be, HW_FLM_FLOW_INF_STA_DATA,
+			inf_data, inf_records * WORDS_PER_INF_DATA,
+			&inf_word_cnt, sta_data,
+			sta_records * WORDS_PER_STA_DATA,
+			&sta_word_cnt);
+
+		if (inf_records > 0)
+			flm_mtr_read_inf_records(dev, inf_data, inf_records);
+
+		if (sta_records > 0)
+			flm_mtr_read_sta_records(dev, sta_data, sta_records);
+
+		return 1;
+	}
+
 	if (flm_lrn_update(dev, &inf_word_cnt, &sta_word_cnt) != 0)
 		return 1;
+
+	hw_mod_flm_buf_ctrl_update(&dev->ndev->be);
+	hw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_INF_AVAIL, &inf_word_cnt);
+	hw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_STA_AVAIL, &sta_word_cnt);
 
 	return inf_word_cnt + sta_word_cnt;
 }
@@ -1063,6 +1184,25 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 					modify_field_use_flags |= modify_field_use_flag;
 					fd->modify_field_count += 1;
 				}
+			}
+
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_AGE:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_AGE", dev);
+
+			if (action[aidx].conf) {
+				struct rte_flow_action_age age_tmp;
+				const struct rte_flow_action_age *age =
+					memcpy_mask_if(&age_tmp, action[aidx].conf,
+					action_mask ? action_mask[aidx].conf : NULL,
+					sizeof(struct rte_flow_action_age));
+				fd->age.timeout = hw_mod_flm_scrub_timeout_encode(age->timeout);
+				fd->age.context = age->context;
+				NT_LOG(DBG, FILTER,
+					"normalized timeout: %u, original timeout: %u, context: %p",
+					hw_mod_flm_scrub_timeout_decode(fd->age.timeout),
+					age->timeout, fd->age.context);
 			}
 
 			break;
@@ -2466,6 +2606,7 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 			break;
 		}
 	}
+	fh->context = fd->age.context;
 }
 
 static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_data,
@@ -2722,6 +2863,21 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		return -1;
 	}
 
+	/* Setup SCRUB profile */
+	struct hw_db_inline_scrub_data scrub_data = { .timeout = fd->age.timeout };
+	struct hw_db_flm_scrub_idx scrub_idx =
+		hw_db_inline_scrub_add(dev->ndev, dev->ndev->hw_db_handle, &scrub_data);
+	local_idxs[(*local_idx_counter)++] = scrub_idx.raw;
+
+	if (scrub_idx.error) {
+		NT_LOG(ERR, FILTER, "Could not reference FLM SCRUB resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		return -1;
+	}
+
+	if (flm_scrub)
+		*flm_scrub = scrub_idx.ids;
+
 	/* Setup Action Set */
 	struct hw_db_inline_action_set_data action_set_data = {
 		.contains_jump = 0,
@@ -2730,6 +2886,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		.slc_lr = slc_lr_idx,
 		.tpe = tpe_idx,
 		.hsh = hsh_idx,
+		.scrub = scrub_idx,
 	};
 	struct hw_db_action_set_idx action_set_idx =
 		hw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle, &action_set_data);
@@ -2796,6 +2953,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			goto error_out;
 		}
 
+		fh->context = fd->age.context;
 		nic_insert_flow(dev->ndev, fh);
 
 	} else if (attr->group > 0) {
@@ -2852,6 +3010,18 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		 */
 		int identical_km_entry_ft = -1;
 
+		/* Setup Action Set */
+
+		/* SCRUB/AGE action is not supported for group 0 */
+		if (fd->age.timeout != 0 || fd->age.context != NULL) {
+			NT_LOG(ERR, FILTER, "Action AGE is not supported for flow in group 0");
+			flow_nic_set_error(ERR_ACTION_AGE_UNSUPPORTED_GROUP_0, error);
+			goto error_out;
+		}
+
+		/* NOTE: SCRUB record 0 is used by default with timeout 0, i.e. flow will never
+		 * AGE-out
+		 */
 		struct hw_db_inline_action_set_data action_set_data = { 0 };
 		(void)action_set_data;
 
@@ -3344,6 +3514,15 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		flow_nic_mark_resource_used(ndev, RES_HSH_RCP, 0);
 
+		/* Initialize SCRUB with default index 0, i.e. flow will never AGE-out */
+		if (hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0) < 0)
+			goto err_exit0;
+
+		if (hw_mod_flm_scrub_flush(&ndev->be, 0, 1) < 0)
+			goto err_exit0;
+
+		flow_nic_mark_resource_used(ndev, RES_SCRUB_RCP, 0);
+
 		/* Setup filter using matching all packets violating traffic policing parameters */
 		flow_nic_mark_resource_used(ndev, RES_CAT_CFN, NT_VIOLATING_MBR_CFN);
 		flow_nic_mark_resource_used(ndev, RES_QSL_RCP, NT_VIOLATING_MBR_QSL);
@@ -3478,6 +3657,10 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, 0, 0, 0);
 		hw_mod_hsh_rcp_flush(&ndev->be, 0, 1);
 		flow_nic_free_resource(ndev, RES_HSH_RCP, 0);
+
+		hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_PRESET_ALL, 0, 0);
+		hw_mod_flm_scrub_flush(&ndev->be, 0, 1);
+		flow_nic_free_resource(ndev, RES_SCRUB_RCP, 0);
 
 		hw_db_inline_destroy(ndev->hw_db_handle);
 

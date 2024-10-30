@@ -117,6 +117,10 @@ struct hw_db_flm_ft {
 	HW_DB_IDX;
 };
 
+struct hw_db_flm_scrub_idx {
+	HW_DB_IDX;
+};
+
 struct hw_db_km_idx {
 	HW_DB_IDX;
 };
@@ -145,6 +149,7 @@ enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_FLM_RCP,
 	HW_DB_IDX_TYPE_KM_RCP,
 	HW_DB_IDX_TYPE_FLM_FT,
+	HW_DB_IDX_TYPE_FLM_SCRUB,
 	HW_DB_IDX_TYPE_KM_FT,
 	HW_DB_IDX_TYPE_HSH,
 };
@@ -158,6 +163,43 @@ struct hw_db_inline_match_set_data {
 	int jump;
 
 	uint8_t priority;
+};
+
+struct hw_db_inline_action_set_data {
+	int contains_jump;
+	union {
+		int jump;
+		struct {
+			struct hw_db_cot_idx cot;
+			struct hw_db_qsl_idx qsl;
+			struct hw_db_slc_lr_idx slc_lr;
+			struct hw_db_tpe_idx tpe;
+			struct hw_db_hsh_idx hsh;
+			struct hw_db_flm_scrub_idx scrub;
+		};
+	};
+};
+
+struct hw_db_inline_km_rcp_data {
+	uint32_t rcp;
+};
+
+struct hw_db_inline_km_ft_data {
+	struct hw_db_cat_idx cat;
+	struct hw_db_km_idx km;
+	struct hw_db_action_set_idx action_set;
+};
+
+struct hw_db_inline_flm_ft_data {
+	/* Group zero flows should set jump. */
+	/* Group nonzero flows should set group. */
+	int is_group_zero;
+	union {
+		int jump;
+		int group;
+	};
+
+	struct hw_db_action_set_idx action_set;
 };
 
 /* Functionality data types */
@@ -232,39 +274,8 @@ struct hw_db_inline_hsh_data {
 	uint8_t key[MAX_RSS_KEY_LEN];
 };
 
-struct hw_db_inline_action_set_data {
-	int contains_jump;
-	union {
-		int jump;
-		struct {
-			struct hw_db_cot_idx cot;
-			struct hw_db_qsl_idx qsl;
-			struct hw_db_slc_lr_idx slc_lr;
-			struct hw_db_tpe_idx tpe;
-			struct hw_db_hsh_idx hsh;
-		};
-	};
-};
-
-struct hw_db_inline_km_rcp_data {
-	uint32_t rcp;
-};
-
-struct hw_db_inline_km_ft_data {
-	struct hw_db_cat_idx cat;
-	struct hw_db_km_idx km;
-	struct hw_db_action_set_idx action_set;
-};
-
-struct hw_db_inline_flm_ft_data {
-	/* Group zero flows should set jump. */
-	/* Group nonzero flows should set group. */
-	int is_group_zero;
-	union {
-		int jump;
-		int group;
-	};
-	struct hw_db_action_set_idx action_set;
+struct hw_db_inline_scrub_data {
+	uint32_t timeout;
 };
 
 /**/
@@ -367,6 +378,13 @@ struct hw_db_flm_ft hw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_
 void hw_db_inline_flm_ft_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_ft idx);
 void hw_db_inline_flm_ft_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_flm_ft idx);
+
+struct hw_db_flm_scrub_idx hw_db_inline_scrub_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_scrub_data *data);
+void hw_db_inline_scrub_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_scrub_idx idx);
+void hw_db_inline_scrub_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_scrub_idx idx);
 
 int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id, uint32_t ft,
 	uint32_t qsl_hw_id);

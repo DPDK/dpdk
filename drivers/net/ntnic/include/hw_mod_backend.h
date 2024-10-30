@@ -688,6 +688,9 @@ int hw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, 
 int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
 	uint32_t value);
 
+int hw_mod_flm_buf_ctrl_update(struct flow_api_backend_s *be);
+int hw_mod_flm_buf_ctrl_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value);
+
 int hw_mod_flm_stat_update(struct flow_api_backend_s *be);
 int hw_mod_flm_stat_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value);
 
@@ -695,8 +698,16 @@ int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e f
 	const uint32_t *value, uint32_t records,
 	uint32_t *handled_records, uint32_t *inf_word_cnt,
 	uint32_t *sta_word_cnt);
+int hw_mod_flm_inf_sta_data_update_get(struct flow_api_backend_s *be, enum hw_flm_e field,
+	uint32_t *inf_value, uint32_t inf_size,
+	uint32_t *inf_word_cnt, uint32_t *sta_value,
+	uint32_t sta_size, uint32_t *sta_word_cnt);
 
+uint32_t hw_mod_flm_scrub_timeout_decode(uint32_t t_enc);
+uint32_t hw_mod_flm_scrub_timeout_encode(uint32_t t);
 int hw_mod_flm_scrub_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_flm_scrub_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t value);
 
 struct hsh_func_s {
 	COMMON_FUNC_INFO_S;

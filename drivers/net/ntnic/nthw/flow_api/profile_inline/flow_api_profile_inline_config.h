@@ -55,4 +55,23 @@
  */
 #define NTNIC_SCANNER_LOAD 0.01
 
-#endif  /* _FLOW_API_PROFILE_INLINE_CONFIG_H_ */
+/*
+ * This define sets the timeout resolution of aged flow scanner (scrubber).
+ *
+ * The timeout resolution feature is provided in order to reduce the number of
+ * write-back operations for flows without attached meter. If the resolution
+ * is disabled (set to 0) and flow timeout is enabled via age action, then a write-back
+ * occurs every the flow is evicted from the flow cache, essentially causing the
+ * lookup performance to drop to that of a flow with meter. By setting the timeout
+ * resolution (>0), write-back for flows happens only when the difference between
+ * the last recorded time for the flow and the current time exceeds the chosen resolution.
+ *
+ * The parameter value is a power of 2 in units of 2^28 nanoseconds. It means that value 8 sets
+ * the timeout resolution to: 2^8 * 2^28 / 1e9 = 68,7 seconds
+ *
+ * NOTE: This parameter has a significant impact on flow lookup performance, especially
+ * if full scanner timeout resolution (=0) is configured.
+ */
+#define NTNIC_SCANNER_TIMEOUT_RESOLUTION 8
+
+#endif	/* _FLOW_API_PROFILE_INLINE_CONFIG_H_ */

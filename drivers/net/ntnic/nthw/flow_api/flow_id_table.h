@@ -20,4 +20,7 @@ uint32_t ntnic_id_table_get_id(void *id_table, union flm_handles flm_h, uint8_t 
 	uint8_t type);
 void ntnic_id_table_free_id(void *id_table, uint32_t id);
 
+void ntnic_id_table_find(void *id_table, uint32_t id, union flm_handles *flm_h, uint8_t *caller_id,
+	uint8_t *type);
+
 #endif	/* FLOW_ID_TABLE_H_ */

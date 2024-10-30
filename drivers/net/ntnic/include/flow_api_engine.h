@@ -149,6 +149,14 @@ struct hsh_def_s {
 };
 
 /*
+ * AGE configuration, see struct rte_flow_action_age
+ */
+struct age_def_s {
+	uint32_t timeout;
+	void *context;
+};
+
+/*
  * Tunnel encapsulation header definition
  */
 #define MAX_TUN_HDR_SIZE 128
@@ -264,6 +272,11 @@ struct nic_flow_def {
 	 * Hash module RSS definitions
 	 */
 	struct hsh_def_s hsh;
+
+	/*
+	 * AGE action timeout
+	 */
+	struct age_def_s age;
 };
 
 enum flow_handle_type {

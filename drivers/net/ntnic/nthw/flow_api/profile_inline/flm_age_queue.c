@@ -13,6 +13,21 @@
 static struct rte_ring *age_queue[MAX_EVT_AGE_QUEUES];
 static RTE_ATOMIC(uint16_t) age_event[MAX_EVT_AGE_PORTS];
 
+__rte_always_inline int flm_age_event_get(uint8_t port)
+{
+	return  rte_atomic_load_explicit(&age_event[port], rte_memory_order_seq_cst);
+}
+
+__rte_always_inline void flm_age_event_set(uint8_t port)
+{
+	rte_atomic_store_explicit(&age_event[port], 1, rte_memory_order_seq_cst);
+}
+
+__rte_always_inline void flm_age_event_clear(uint8_t port)
+{
+	rte_atomic_store_explicit(&age_event[port], 0, rte_memory_order_seq_cst);
+}
+
 void flm_age_queue_free(uint8_t port, uint16_t caller_id)
 {
 	struct rte_ring *q = NULL;
@@ -86,6 +101,19 @@ struct rte_ring *flm_age_queue_create(uint8_t port, uint16_t caller_id, unsigned
 	age_queue[caller_id] = q;
 
 	return q;
+}
+
+void flm_age_queue_put(uint16_t caller_id, struct flm_age_event_s *obj)
+{
+	int ret;
+
+	/* If queues is not created, then ignore and return */
+	if (caller_id < MAX_EVT_AGE_QUEUES && age_queue[caller_id] != NULL) {
+		ret = rte_ring_sp_enqueue_elem(age_queue[caller_id], obj, FLM_AGE_ELEM_SIZE);
+
+		if (ret != 0)
+			NT_LOG(DBG, FILTER, "FLM aged event queue full");
+	}
 }
 
 int flm_age_queue_get(uint16_t caller_id, struct flm_age_event_s *obj)

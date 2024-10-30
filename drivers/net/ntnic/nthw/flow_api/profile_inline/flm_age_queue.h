@@ -12,6 +12,14 @@ struct flm_age_event_s {
 	void *context;
 };
 
+/* Indicates why the flow info record was generated */
+#define INF_DATA_CAUSE_SW_UNLEARN 0
+#define INF_DATA_CAUSE_TIMEOUT_FLOW_DELETED 1
+#define INF_DATA_CAUSE_NA 2
+#define INF_DATA_CAUSE_PERIODIC_FLOW_INFO 3
+#define INF_DATA_CAUSE_SW_PROBE 4
+#define INF_DATA_CAUSE_TIMEOUT_FLOW_KEPT 5
+
 /* Max number of event queues */
 #define MAX_EVT_AGE_QUEUES 256
 
@@ -20,8 +28,12 @@ struct flm_age_event_s {
 
 #define FLM_AGE_ELEM_SIZE sizeof(struct flm_age_event_s)
 
+int flm_age_event_get(uint8_t port);
+void flm_age_event_set(uint8_t port);
+void flm_age_event_clear(uint8_t port);
 void flm_age_queue_free(uint8_t port, uint16_t caller_id);
 struct rte_ring *flm_age_queue_create(uint8_t port, uint16_t caller_id, unsigned int count);
+void flm_age_queue_put(uint16_t caller_id, struct flm_age_event_s *obj);
 int flm_age_queue_get(uint16_t caller_id, struct flm_age_event_s *obj);
 unsigned int flm_age_queue_count(uint16_t caller_id);
 unsigned int flm_age_queue_get_size(uint16_t caller_id);

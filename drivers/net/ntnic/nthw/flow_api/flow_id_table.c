@@ -129,3 +129,19 @@ void ntnic_id_table_free_id(void *id_table, uint32_t id)
 
 	pthread_mutex_unlock(&handle->mtx);
 }
+
+void ntnic_id_table_find(void *id_table, uint32_t id, union flm_handles *flm_h, uint8_t *caller_id,
+	uint8_t *type)
+{
+	struct ntnic_id_table_data *handle = id_table;
+
+	pthread_mutex_lock(&handle->mtx);
+
+	struct ntnic_id_table_element *element = ntnic_id_table_array_find_element(handle, id);
+
+	*caller_id = element->caller_id;
+	*type = element->type;
+	memcpy(flm_h, &element->handle, sizeof(union flm_handles));
+
+	pthread_mutex_unlock(&handle->mtx);
+}

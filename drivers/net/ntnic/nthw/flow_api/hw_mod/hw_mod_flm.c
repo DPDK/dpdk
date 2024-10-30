@@ -712,6 +712,52 @@ int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int i
 
 	return hw_mod_flm_rcp_mod(be, field, index, &value, 0);
 }
+
+int hw_mod_flm_buf_ctrl_update(struct flow_api_backend_s *be)
+{
+	return be->iface->flm_buf_ctrl_update(be->be_dev, &be->flm);
+}
+
+static int hw_mod_flm_buf_ctrl_mod_get(struct flow_api_backend_s *be, enum hw_flm_e field,
+	uint32_t *value)
+{
+	int get = 1;	/* Only get supported */
+
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_BUF_CTRL_LRN_FREE:
+			GET_SET(be->flm.v25.buf_ctrl->lrn_free, value);
+			break;
+
+		case HW_FLM_BUF_CTRL_INF_AVAIL:
+			GET_SET(be->flm.v25.buf_ctrl->inf_avail, value);
+			break;
+
+		case HW_FLM_BUF_CTRL_STA_AVAIL:
+			GET_SET(be->flm.v25.buf_ctrl->sta_avail, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_buf_ctrl_get(struct flow_api_backend_s *be, enum hw_flm_e field, uint32_t *value)
+{
+	return hw_mod_flm_buf_ctrl_mod_get(be, field, value);
+}
+
 int hw_mod_flm_stat_update(struct flow_api_backend_s *be)
 {
 	return be->iface->flm_stat_update(be->be_dev, &be->flm);
@@ -886,4 +932,116 @@ int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e f
 	}
 
 	return ret;
+}
+
+int hw_mod_flm_inf_sta_data_update_get(struct flow_api_backend_s *be, enum hw_flm_e field,
+	uint32_t *inf_value, uint32_t inf_size,
+	uint32_t *inf_word_cnt, uint32_t *sta_value,
+	uint32_t sta_size, uint32_t *sta_word_cnt)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_FLOW_INF_STA_DATA:
+			be->iface->flm_inf_sta_data_update(be->be_dev, &be->flm, inf_value,
+				inf_size, inf_word_cnt, sta_value,
+				sta_size, sta_word_cnt);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+/*
+ * SCRUB timeout support functions to encode users' input into FPGA 8-bit time format:
+ * Timeout in seconds (2^30 nanoseconds); zero means disabled. Value is:
+ *
+ * (T[7:3] != 0) ? ((8 + T[2:0]) shift-left (T[7:3] - 1)) : T[2:0]
+ *
+ * The maximum allowed value is 0xEF (127 years).
+ *
+ * Note that this represents a lower bound on the timeout, depending on the flow
+ * scanner interval and overall load, the timeout can be substantially longer.
+ */
+uint32_t hw_mod_flm_scrub_timeout_decode(uint32_t t_enc)
+{
+	uint8_t t_bits_2_0 = t_enc & 0x07;
+	uint8_t t_bits_7_3 = (t_enc >> 3) & 0x1F;
+	return t_bits_7_3 != 0 ? ((8 + t_bits_2_0) << (t_bits_7_3 - 1)) : t_bits_2_0;
+}
+
+uint32_t hw_mod_flm_scrub_timeout_encode(uint32_t t)
+{
+	uint32_t t_enc = 0;
+
+	if (t > 0) {
+		uint32_t t_dec = 0;
+
+		do {
+			t_enc++;
+			t_dec = hw_mod_flm_scrub_timeout_decode(t_enc);
+		} while (t_enc <= 0xEF && t_dec < t);
+	}
+
+	return t_enc;
+}
+
+static int hw_mod_flm_scrub_mod(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t *value, int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_SCRUB_PRESET_ALL:
+			if (get)
+				return UNSUP_FIELD;
+
+			memset(&be->flm.v25.scrub[index], (uint8_t)*value,
+				sizeof(struct flm_v25_scrub_s));
+			break;
+
+		case HW_FLM_SCRUB_T:
+			GET_SET(be->flm.v25.scrub[index].t, value);
+			break;
+
+		case HW_FLM_SCRUB_R:
+			GET_SET(be->flm.v25.scrub[index].r, value);
+			break;
+
+		case HW_FLM_SCRUB_DEL:
+			GET_SET(be->flm.v25.scrub[index].del, value);
+			break;
+
+		case HW_FLM_SCRUB_INF:
+			GET_SET(be->flm.v25.scrub[index].inf, value);
+			break;
+
+		default:
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_scrub_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t value)
+{
+	return hw_mod_flm_scrub_mod(be, field, index, &value, 0);
 }

@@ -7,6 +7,7 @@
 #include "flow_api_engine.h"
 
 #include "flow_api_hw_db_inline.h"
+#include "flow_api_profile_inline_config.h"
 #include "rte_common.h"
 
 #define HW_DB_INLINE_ACTION_SET_NB 512
@@ -57,12 +58,18 @@ struct hw_db_inline_resource_db {
 		int ref;
 	} *hsh;
 
+	struct hw_db_inline_resource_db_scrub {
+		struct hw_db_inline_scrub_data data;
+		int ref;
+	} *scrub;
+
 	uint32_t nb_cot;
 	uint32_t nb_qsl;
 	uint32_t nb_slc_lr;
 	uint32_t nb_tpe;
 	uint32_t nb_tpe_ext;
 	uint32_t nb_hsh;
+	uint32_t nb_scrub;
 
 	/* Items */
 	struct hw_db_inline_resource_db_cat {
@@ -255,6 +262,14 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 		return -1;
 	}
 
+	db->nb_scrub = ndev->be.flm.nb_scrub_profiles;
+	db->scrub = calloc(db->nb_scrub, sizeof(struct hw_db_inline_resource_db_scrub));
+
+	if (db->scrub == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
 	*db_handle = db;
 
 	/* Preset data */
@@ -276,6 +291,7 @@ void hw_db_inline_destroy(void *db_handle)
 	free(db->tpe);
 	free(db->tpe_ext);
 	free(db->hsh);
+	free(db->scrub);
 
 	free(db->cat);
 
@@ -366,6 +382,11 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 			hw_db_inline_hsh_deref(ndev, db_handle, *(struct hw_db_hsh_idx *)&idxs[i]);
 			break;
 
+		case HW_DB_IDX_TYPE_FLM_SCRUB:
+			hw_db_inline_scrub_deref(ndev, db_handle,
+				*(struct hw_db_flm_scrub_idx *)&idxs[i]);
+			break;
+
 		default:
 			break;
 		}
@@ -410,9 +431,9 @@ void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct 
 
 			else
 				fprintf(file,
-					"    COT id %d, QSL id %d, SLC_LR id %d, TPE id %d, HSH id %d\n",
+					"    COT id %d, QSL id %d, SLC_LR id %d, TPE id %d, HSH id %d, SCRUB id %d\n",
 					data->cot.ids, data->qsl.ids, data->slc_lr.ids,
-					data->tpe.ids, data->hsh.ids);
+					data->tpe.ids, data->hsh.ids, data->scrub.ids);
 
 			break;
 		}
@@ -577,6 +598,15 @@ void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct 
 			break;
 		}
 
+		case HW_DB_IDX_TYPE_FLM_SCRUB: {
+			const struct hw_db_inline_scrub_data *data = &db->scrub[idxs[i].ids].data;
+			fprintf(file, "  FLM_RCP %d\n", idxs[i].id1);
+			fprintf(file, "  SCRUB %d\n", idxs[i].ids);
+			fprintf(file, "    Timeout: %d, encoded timeout: %d\n",
+				hw_mod_flm_scrub_timeout_decode(data->timeout), data->timeout);
+			break;
+		}
+
 		case HW_DB_IDX_TYPE_HSH: {
 			const struct hw_db_inline_hsh_data *data = &db->hsh[idxs[i].ids].data;
 			fprintf(file, "  HSH %d\n", idxs[i].ids);
@@ -689,6 +719,9 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 
 		case HW_DB_IDX_TYPE_HSH:
 			return &db->hsh[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_FLM_SCRUB:
+			return &db->scrub[idxs[i].ids].data;
 
 		default:
 			return NULL;
@@ -1540,7 +1573,7 @@ static int hw_db_inline_action_set_compare(const struct hw_db_inline_action_set_
 
 	return data1->cot.raw == data2->cot.raw && data1->qsl.raw == data2->qsl.raw &&
 		data1->slc_lr.raw == data2->slc_lr.raw && data1->tpe.raw == data2->tpe.raw &&
-		data1->hsh.raw == data2->hsh.raw;
+		data1->hsh.raw == data2->hsh.raw && data1->scrub.raw == data2->scrub.raw;
 }
 
 struct hw_db_action_set_idx
@@ -2847,5 +2880,108 @@ void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle, struct h
 		}
 
 		db->hsh[idx.ids].ref = 0;
+	}
+}
+
+/******************************************************************************/
+/* FML SCRUB                                                                  */
+/******************************************************************************/
+
+static int hw_db_inline_scrub_compare(const struct hw_db_inline_scrub_data *data1,
+	const struct hw_db_inline_scrub_data *data2)
+{
+	return data1->timeout == data2->timeout;
+}
+
+struct hw_db_flm_scrub_idx hw_db_inline_scrub_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_scrub_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_flm_scrub_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_FLM_SCRUB;
+
+	/* NOTE: scrub id 0 is reserved for "default" timeout 0, i.e. flow will never AGE-out */
+	if (data->timeout == 0) {
+		idx.ids = 0;
+		hw_db_inline_scrub_ref(ndev, db, idx);
+		return idx;
+	}
+
+	for (uint32_t i = 1; i < db->nb_scrub; ++i) {
+		int ref = db->scrub[i].ref;
+
+		if (ref > 0 && hw_db_inline_scrub_compare(data, &db->scrub[i].data)) {
+			idx.ids = i;
+			hw_db_inline_scrub_ref(ndev, db, idx);
+			return idx;
+		}
+
+		if (!found && ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	int res = hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_T, idx.ids, data->timeout);
+	res |= hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_R, idx.ids,
+		NTNIC_SCANNER_TIMEOUT_RESOLUTION);
+	res |= hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_DEL, idx.ids, SCRUB_DEL);
+	res |= hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_INF, idx.ids, SCRUB_INF);
+
+	if (res != 0) {
+		idx.error = 1;
+		return idx;
+	}
+
+	db->scrub[idx.ids].ref = 1;
+	memcpy(&db->scrub[idx.ids].data, data, sizeof(struct hw_db_inline_scrub_data));
+	flow_nic_mark_resource_used(ndev, RES_SCRUB_RCP, idx.ids);
+
+	hw_mod_flm_scrub_flush(&ndev->be, idx.ids, 1);
+
+	return idx;
+}
+
+void hw_db_inline_scrub_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_scrub_idx idx)
+{
+	(void)ndev;
+
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->scrub[idx.ids].ref += 1;
+}
+
+void hw_db_inline_scrub_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_flm_scrub_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	db->scrub[idx.ids].ref -= 1;
+
+	if (db->scrub[idx.ids].ref <= 0) {
+		/* NOTE: scrub id 0 is reserved for "default" timeout 0, which shall not be removed
+		 */
+		if (idx.ids > 0) {
+			hw_mod_flm_scrub_set(&ndev->be, HW_FLM_SCRUB_T, idx.ids, 0);
+			hw_mod_flm_scrub_flush(&ndev->be, idx.ids, 1);
+
+			memset(&db->scrub[idx.ids].data, 0x0,
+				sizeof(struct hw_db_inline_scrub_data));
+			flow_nic_free_resource(ndev, RES_SCRUB_RCP, idx.ids);
+		}
+
+		db->scrub[idx.ids].ref = 0;
 	}
 }

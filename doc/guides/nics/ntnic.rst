@@ -66,6 +66,7 @@ Features
 - RMON statistics in extended stats.
 - Link state information.
 - Flow statistics
+- Flow aging support
 
 Limitations
 ~~~~~~~~~~~
@@ -144,3 +145,33 @@ FILTER
 To enable logging on all levels use wildcard in the following way::
 
    --log-level=pmd.net.ntnic.*,8
+
+Flow Scanner
+------------
+
+Flow Scanner is DPDK mechanism that constantly and periodically scans
+the flow tables to check for aged-out flows.
+When flow timeout is reached,
+i.e. no packets were matched by the flow within timeout period,
+``RTE_ETH_EVENT_FLOW_AGED`` event is reported, and flow is marked as aged-out.
+
+Therefore, flow scanner functionality is closely connected to the flows' age action.
+
+There are list of characteristics that age timeout action has:
+
+- functions only in group > 0;
+- flow timeout is specified in seconds;
+- flow scanner checks flows age timeout once in 1-480 seconds,
+  therefore, flows may not age-out immediately,
+  depending on how big are intervals of flow scanner mechanism checks;
+- aging counters can display maximum of **n - 1** aged flows
+  when aging counters are set to **n**;
+- overall 15 different timeouts can be specified for the flows at the same time
+  (note that this limit is combined for all actions, therefore,
+  15 different actions can be created at the same time,
+  maximum limit of 15 can be reached only across different groups -
+  when 5 flows with different timeouts are created per one group,
+  otherwise the limit within one group is 14 distinct flows);
+- after flow is aged-out it's not automatically deleted;
+- aged-out flow can be updated with ``flow update`` command,
+  and its aged-out status will be reverted;

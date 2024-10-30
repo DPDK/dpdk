@@ -26,6 +26,7 @@
 #include "ntnic_vfio.h"
 #include "ntnic_mod_reg.h"
 #include "nt_util.h"
+#include "profile_inline/flm_age_queue.h"
 #include "profile_inline/flm_evt_queue.h"
 #include "rte_pmd_ntnic.h"
 
@@ -1812,6 +1813,21 @@ THREAD_FUNC port_event_thread_fn(void *context)
 							&event_data);
 						do_wait = false;
 					}
+				}
+
+				/* AGED event */
+				/* Note: RTE_FLOW_PORT_FLAG_STRICT_QUEUE flag is not supported so
+				 * event is always generated
+				 */
+				int aged_event_count = flm_age_event_get(port_no);
+
+				if (aged_event_count > 0 && eth_dev && eth_dev->data &&
+					eth_dev->data->dev_private) {
+					rte_eth_dev_callback_process(eth_dev,
+						RTE_ETH_EVENT_FLOW_AGED,
+						NULL);
+					flm_age_event_clear(port_no);
+					do_wait = false;
 				}
 
 				if (do_wait)
