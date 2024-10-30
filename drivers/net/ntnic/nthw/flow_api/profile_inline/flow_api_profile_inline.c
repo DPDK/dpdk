@@ -4,6 +4,9 @@
  */
 
 #include "ntlog.h"
+#include "flow_api_engine.h"
+#include "flow_api_hw_db_inline.h"
+#include "flow_id_table.h"
 
 #include "flow_api_profile_inline.h"
 #include "ntnic_mod_reg.h"
@@ -12,13 +15,62 @@
  * Public functions
  */
 
-int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev __rte_unused)
+int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 {
+	if (!ndev->flow_mgnt_prepared) {
+		/* Check static arrays are big enough */
+		assert(ndev->be.tpe.nb_cpy_writers <= MAX_CPY_WRITERS_SUPPORTED);
+
+		ndev->id_table_handle = ntnic_id_table_create();
+
+		if (ndev->id_table_handle == NULL)
+			goto err_exit0;
+
+		if (flow_group_handle_create(&ndev->group_handle, ndev->be.flm.nb_categories))
+			goto err_exit0;
+
+		if (hw_db_inline_create(ndev, &ndev->hw_db_handle))
+			goto err_exit0;
+
+		ndev->flow_mgnt_prepared = 1;
+	}
+
+	return 0;
+
+err_exit0:
+	done_flow_management_of_ndev_profile_inline(ndev);
 	return -1;
 }
 
-int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev __rte_unused)
+int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 {
+#ifdef FLOW_DEBUG
+	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_WRITE);
+#endif
+
+	if (ndev->flow_mgnt_prepared) {
+		flow_nic_free_resource(ndev, RES_KM_FLOW_TYPE, 0);
+		flow_nic_free_resource(ndev, RES_KM_CATEGORY, 0);
+
+		flow_group_handle_destroy(&ndev->group_handle);
+		ntnic_id_table_destroy(ndev->id_table_handle);
+
+		flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
+
+		hw_mod_tpe_reset(&ndev->be);
+		flow_nic_free_resource(ndev, RES_TPE_RCP, 0);
+		flow_nic_free_resource(ndev, RES_TPE_EXT, 0);
+		flow_nic_free_resource(ndev, RES_TPE_RPL, 0);
+
+		hw_db_inline_destroy(ndev->hw_db_handle);
+
+#ifdef FLOW_DEBUG
+		ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
+#endif
+
+		ndev->flow_mgnt_prepared = 0;
+	}
+
 	return 0;
 }
 

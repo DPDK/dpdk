@@ -6,6 +6,8 @@
 #ifndef _FLOW_API_ENGINE_H_
 #define _FLOW_API_ENGINE_H_
 
+#include <stdint.h>
+
 /*
  * Resource management
  */
@@ -46,6 +48,9 @@ enum res_type_e {
  */
 #define MAX_OUTPUT_DEST (128)
 
+#define MAX_CPY_WRITERS_SUPPORTED 8
+
+
 struct flow_handle {
 	struct flow_eth_dev *dev;
 	struct flow_handle *next;
@@ -55,4 +60,9 @@ void km_free_ndev_resource_management(void **handle);
 
 void kcc_free_ndev_resource_management(void **handle);
 
+/*
+ * Group management
+ */
+int flow_group_handle_create(void **handle, uint32_t group_count);
+int flow_group_handle_destroy(void **handle);
 #endif  /* _FLOW_API_ENGINE_H_ */

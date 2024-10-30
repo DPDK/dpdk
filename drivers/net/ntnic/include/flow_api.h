@@ -61,6 +61,10 @@ struct flow_nic_dev {
 	void *km_res_handle;
 	void *kcc_res_handle;
 
+	void *group_handle;
+	void *hw_db_handle;
+	void *id_table_handle;
+
 	uint32_t flow_unique_id_counter;
 	/* linked list of all flows created on this NIC */
 	struct flow_handle *flow_base;

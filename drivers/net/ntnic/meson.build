@@ -18,6 +18,7 @@ includes = [
         include_directories('nthw/supported'),
         include_directories('nthw/model'),
         include_directories('nthw/flow_filter'),
+        include_directories('nthw/flow_api'),
         include_directories('nim/'),
 ]
 
@@ -47,7 +48,10 @@ sources = files(
         'nthw/core/nthw_sdc.c',
         'nthw/core/nthw_si5340.c',
         'nthw/flow_api/flow_api.c',
+        'nthw/flow_api/flow_group.c',
+        'nthw/flow_api/flow_id_table.c',
         'nthw/flow_api/profile_inline/flow_api_profile_inline.c',
+        'nthw/flow_api/profile_inline/flow_api_hw_db_inline.c',
         'nthw/flow_api/flow_backend/flow_backend.c',
         'nthw/flow_api/flow_filter.c',
         'nthw/flow_api/flow_kcc.c',
