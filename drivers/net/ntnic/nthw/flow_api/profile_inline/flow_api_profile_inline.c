@@ -7,6 +7,7 @@
 #include "nt_util.h"
 
 #include "hw_mod_backend.h"
+#include "flm_age_queue.h"
 #include "flm_lrn_queue.h"
 #include "flow_api.h"
 #include "flow_api_engine.h"
@@ -4390,6 +4391,55 @@ static void dump_flm_data(const uint32_t *data, FILE *file)
 	}
 }
 
+int flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
+	uint16_t caller_id,
+	void **context,
+	uint32_t nb_contexts,
+	struct rte_flow_error *error)
+{
+	(void)dev;
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	unsigned int queue_size = flm_age_queue_get_size(caller_id);
+
+	if (queue_size == 0) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Aged queue size is not configured";
+		return -1;
+	}
+
+	unsigned int queue_count = flm_age_queue_count(caller_id);
+
+	if (context == NULL)
+		return queue_count;
+
+	if (queue_count < nb_contexts) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Aged queue size contains fewer records than the expected output";
+		return -1;
+	}
+
+	if (queue_size < nb_contexts) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Defined aged queue size is smaller than the expected output";
+		return -1;
+	}
+
+	uint32_t idx;
+
+	for (idx = 0; idx < nb_contexts; ++idx) {
+		struct flm_age_event_s obj;
+		int ret = flm_age_queue_get(caller_id, &obj);
+
+		if (ret != 0)
+			break;
+
+		context[idx] = obj.context;
+	}
+
+	return idx;
+}
+
 int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *flow,
 	uint16_t caller_id,
@@ -4520,6 +4570,7 @@ static const struct profile_inline_ops ops = {
 	.flow_destroy_profile_inline = flow_destroy_profile_inline,
 	.flow_flush_profile_inline = flow_flush_profile_inline,
 	.flow_nic_set_hasher_fields_inline = flow_nic_set_hasher_fields_inline,
+	.flow_get_aged_flows_profile_inline = flow_get_aged_flows_profile_inline,
 	/*
 	 * Stats
 	 */
