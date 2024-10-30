@@ -3186,8 +3186,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
 			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, cnt_queue, &cnt_id, age_idx);
-			if (ret != 0)
+			if (ret != 0) {
+				rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_ACTION,
+						action, "Failed to allocate flow counter");
 				goto error;
+			}
 			ret = mlx5_hws_cnt_pool_get_action_offset
 				(priv->hws_cpool,
 				 cnt_id,
@@ -3381,6 +3384,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow_hw *flow = NULL;
 	struct mlx5_hw_q_job *job = NULL;
 	const struct rte_flow_item *rule_items;
+	struct rte_flow_error sub_error = { 0 };
 	uint32_t flow_idx = 0;
 	uint32_t res_idx = 0;
 	int ret;
@@ -3429,7 +3433,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	if (flow_hw_actions_construct(dev, job,
 				      &table->ats[action_template_index],
 				      pattern_template_index, actions,
-				      rule_acts, queue, error))
+				      rule_acts, queue, &sub_error))
 		goto error;
 	rule_items = flow_hw_get_rule_items(dev, table, items,
 					    pattern_template_index, job);
@@ -3448,9 +3452,12 @@ error:
 		mlx5_ipool_free(table->flow, flow_idx);
 	if (res_idx)
 		mlx5_ipool_free(table->resource, res_idx);
-	rte_flow_error_set(error, rte_errno,
-			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			   "fail to create rte flow");
+	if (sub_error.cause != RTE_FLOW_ERROR_TYPE_NONE && error != NULL)
+		*error = sub_error;
+	else
+		rte_flow_error_set(error, rte_errno,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "fail to create rte flow");
 	return NULL;
 }
 
