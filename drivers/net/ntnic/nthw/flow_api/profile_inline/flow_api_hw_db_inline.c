@@ -30,6 +30,17 @@ struct hw_db_inline_resource_db {
 		int ref;
 	} *slc_lr;
 
+	struct hw_db_inline_resource_db_tpe {
+		struct hw_db_inline_tpe_data data;
+		int ref;
+	} *tpe;
+
+	struct hw_db_inline_resource_db_tpe_ext {
+		struct hw_db_inline_tpe_ext_data data;
+		int replace_ram_idx;
+		int ref;
+	} *tpe_ext;
+
 	struct hw_db_inline_resource_db_hsh {
 		struct hw_db_inline_hsh_data data;
 		int ref;
@@ -38,6 +49,8 @@ struct hw_db_inline_resource_db {
 	uint32_t nb_cot;
 	uint32_t nb_qsl;
 	uint32_t nb_slc_lr;
+	uint32_t nb_tpe;
+	uint32_t nb_tpe_ext;
 	uint32_t nb_hsh;
 
 	/* Items */
@@ -101,6 +114,22 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 		return -1;
 	}
 
+	db->nb_tpe = ndev->be.tpe.nb_rcp_categories;
+	db->tpe = calloc(db->nb_tpe, sizeof(struct hw_db_inline_resource_db_tpe));
+
+	if (db->tpe == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
+	db->nb_tpe_ext = ndev->be.tpe.nb_rpl_ext_categories;
+	db->tpe_ext = calloc(db->nb_tpe_ext, sizeof(struct hw_db_inline_resource_db_tpe_ext));
+
+	if (db->tpe_ext == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
 	db->nb_cat = ndev->be.cat.nb_cat_funcs;
 	db->cat = calloc(db->nb_cat, sizeof(struct hw_db_inline_resource_db_cat));
 
@@ -154,6 +183,8 @@ void hw_db_inline_destroy(void *db_handle)
 	free(db->cot);
 	free(db->qsl);
 	free(db->slc_lr);
+	free(db->tpe);
+	free(db->tpe_ext);
 	free(db->hsh);
 
 	free(db->cat);
@@ -193,6 +224,15 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 		case HW_DB_IDX_TYPE_SLC_LR:
 			hw_db_inline_slc_lr_deref(ndev, db_handle,
 				*(struct hw_db_slc_lr_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_TPE:
+			hw_db_inline_tpe_deref(ndev, db_handle, *(struct hw_db_tpe_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_TPE_EXT:
+			hw_db_inline_tpe_ext_deref(ndev, db_handle,
+				*(struct hw_db_tpe_ext_idx *)&idxs[i]);
 			break;
 
 		case HW_DB_IDX_TYPE_KM_RCP:
@@ -239,6 +279,12 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 
 		case HW_DB_IDX_TYPE_SLC_LR:
 			return &db->slc_lr[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_TPE:
+			return &db->tpe[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_TPE_EXT:
+			return &db->tpe_ext[idxs[i].ids].data;
 
 		case HW_DB_IDX_TYPE_KM_RCP:
 			return &db->km[idxs[i].id1].data;
@@ -651,6 +697,333 @@ void hw_db_inline_slc_lr_deref(struct flow_nic_dev *ndev, void *db_handle,
 		db->slc_lr[idx.ids].ref = 0;
 	}
 }
+
+/******************************************************************************/
+/* TPE                                                                        */
+/******************************************************************************/
+
+static int hw_db_inline_tpe_compare(const struct hw_db_inline_tpe_data *data1,
+	const struct hw_db_inline_tpe_data *data2)
+{
+	for (int i = 0; i < 6; ++i)
+		if (data1->writer[i].en != data2->writer[i].en ||
+			data1->writer[i].reader_select != data2->writer[i].reader_select ||
+			data1->writer[i].dyn != data2->writer[i].dyn ||
+			data1->writer[i].ofs != data2->writer[i].ofs ||
+			data1->writer[i].len != data2->writer[i].len)
+			return 0;
+
+	return data1->insert_len == data2->insert_len && data1->new_outer == data2->new_outer &&
+		data1->calc_eth_type_from_inner_ip == data2->calc_eth_type_from_inner_ip &&
+		data1->ttl_en == data2->ttl_en && data1->ttl_dyn == data2->ttl_dyn &&
+		data1->ttl_ofs == data2->ttl_ofs && data1->len_a_en == data2->len_a_en &&
+		data1->len_a_pos_dyn == data2->len_a_pos_dyn &&
+		data1->len_a_pos_ofs == data2->len_a_pos_ofs &&
+		data1->len_a_add_dyn == data2->len_a_add_dyn &&
+		data1->len_a_add_ofs == data2->len_a_add_ofs &&
+		data1->len_a_sub_dyn == data2->len_a_sub_dyn &&
+		data1->len_b_en == data2->len_b_en &&
+		data1->len_b_pos_dyn == data2->len_b_pos_dyn &&
+		data1->len_b_pos_ofs == data2->len_b_pos_ofs &&
+		data1->len_b_add_dyn == data2->len_b_add_dyn &&
+		data1->len_b_add_ofs == data2->len_b_add_ofs &&
+		data1->len_b_sub_dyn == data2->len_b_sub_dyn &&
+		data1->len_c_en == data2->len_c_en &&
+		data1->len_c_pos_dyn == data2->len_c_pos_dyn &&
+		data1->len_c_pos_ofs == data2->len_c_pos_ofs &&
+		data1->len_c_add_dyn == data2->len_c_add_dyn &&
+		data1->len_c_add_ofs == data2->len_c_add_ofs &&
+		data1->len_c_sub_dyn == data2->len_c_sub_dyn;
+}
+
+struct hw_db_tpe_idx hw_db_inline_tpe_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_tpe_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_tpe_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_TPE;
+
+	for (uint32_t i = 1; i < db->nb_tpe; ++i) {
+		int ref = db->tpe[i].ref;
+
+		if (ref > 0 && hw_db_inline_tpe_compare(data, &db->tpe[i].data)) {
+			idx.ids = i;
+			hw_db_inline_tpe_ref(ndev, db, idx);
+			return idx;
+		}
+
+		if (!found && ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	db->tpe[idx.ids].ref = 1;
+	memcpy(&db->tpe[idx.ids].data, data, sizeof(struct hw_db_inline_tpe_data));
+
+	if (data->insert_len > 0) {
+		hw_mod_tpe_rpp_rcp_set(&ndev->be, HW_TPE_RPP_RCP_EXP, idx.ids, data->insert_len);
+		hw_mod_tpe_rpp_rcp_flush(&ndev->be, idx.ids, 1);
+
+		hw_mod_tpe_ins_rcp_set(&ndev->be, HW_TPE_INS_RCP_DYN, idx.ids, 1);
+		hw_mod_tpe_ins_rcp_set(&ndev->be, HW_TPE_INS_RCP_OFS, idx.ids, 0);
+		hw_mod_tpe_ins_rcp_set(&ndev->be, HW_TPE_INS_RCP_LEN, idx.ids, data->insert_len);
+		hw_mod_tpe_ins_rcp_flush(&ndev->be, idx.ids, 1);
+
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_RPL_RCP_DYN, idx.ids, 1);
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_RPL_RCP_OFS, idx.ids, 0);
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_RPL_RCP_LEN, idx.ids, data->insert_len);
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_RPL_RCP_RPL_PTR, idx.ids, 0);
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_RPL_RCP_EXT_PRIO, idx.ids, 1);
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_RPL_RCP_ETH_TYPE_WR, idx.ids,
+			data->calc_eth_type_from_inner_ip);
+		hw_mod_tpe_rpl_rcp_flush(&ndev->be, idx.ids, 1);
+	}
+
+	for (uint32_t i = 0; i < 6; ++i) {
+		if (data->writer[i].en) {
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_READER_SELECT,
+				idx.ids + db->nb_tpe * i,
+				data->writer[i].reader_select);
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_DYN,
+				idx.ids + db->nb_tpe * i, data->writer[i].dyn);
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_OFS,
+				idx.ids + db->nb_tpe * i, data->writer[i].ofs);
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_LEN,
+				idx.ids + db->nb_tpe * i, data->writer[i].len);
+
+		} else {
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_READER_SELECT,
+				idx.ids + db->nb_tpe * i, 0);
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_DYN,
+				idx.ids + db->nb_tpe * i, 0);
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_OFS,
+				idx.ids + db->nb_tpe * i, 0);
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_CPY_RCP_LEN,
+				idx.ids + db->nb_tpe * i, 0);
+		}
+
+		hw_mod_tpe_cpy_rcp_flush(&ndev->be, idx.ids + db->nb_tpe * i, 1);
+	}
+
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_WR, idx.ids, data->len_a_en);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_OUTER_L4_LEN, idx.ids,
+		data->new_outer);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_POS_DYN, idx.ids,
+		data->len_a_pos_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_POS_OFS, idx.ids,
+		data->len_a_pos_ofs);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_ADD_DYN, idx.ids,
+		data->len_a_add_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_ADD_OFS, idx.ids,
+		data->len_a_add_ofs);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_A_SUB_DYN, idx.ids,
+		data->len_a_sub_dyn);
+
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_B_WR, idx.ids, data->len_b_en);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_B_POS_DYN, idx.ids,
+		data->len_b_pos_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_B_POS_OFS, idx.ids,
+		data->len_b_pos_ofs);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_B_ADD_DYN, idx.ids,
+		data->len_b_add_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_B_ADD_OFS, idx.ids,
+		data->len_b_add_ofs);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_B_SUB_DYN, idx.ids,
+		data->len_b_sub_dyn);
+
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_C_WR, idx.ids, data->len_c_en);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_C_POS_DYN, idx.ids,
+		data->len_c_pos_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_C_POS_OFS, idx.ids,
+		data->len_c_pos_ofs);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_C_ADD_DYN, idx.ids,
+		data->len_c_add_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_C_ADD_OFS, idx.ids,
+		data->len_c_add_ofs);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_LEN_C_SUB_DYN, idx.ids,
+		data->len_c_sub_dyn);
+
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_TTL_WR, idx.ids, data->ttl_en);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_TTL_POS_DYN, idx.ids, data->ttl_dyn);
+	hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_HFU_RCP_TTL_POS_OFS, idx.ids, data->ttl_ofs);
+	hw_mod_tpe_hfu_rcp_flush(&ndev->be, idx.ids, 1);
+
+	hw_mod_tpe_csu_rcp_set(&ndev->be, HW_TPE_CSU_RCP_OUTER_L3_CMD, idx.ids, 3);
+	hw_mod_tpe_csu_rcp_set(&ndev->be, HW_TPE_CSU_RCP_OUTER_L4_CMD, idx.ids, 3);
+	hw_mod_tpe_csu_rcp_set(&ndev->be, HW_TPE_CSU_RCP_INNER_L3_CMD, idx.ids, 3);
+	hw_mod_tpe_csu_rcp_set(&ndev->be, HW_TPE_CSU_RCP_INNER_L4_CMD, idx.ids, 3);
+	hw_mod_tpe_csu_rcp_flush(&ndev->be, idx.ids, 1);
+
+	return idx;
+}
+
+void hw_db_inline_tpe_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_tpe_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->tpe[idx.ids].ref += 1;
+}
+
+void hw_db_inline_tpe_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_tpe_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	db->tpe[idx.ids].ref -= 1;
+
+	if (db->tpe[idx.ids].ref <= 0) {
+		for (uint32_t i = 0; i < 6; ++i) {
+			hw_mod_tpe_cpy_rcp_set(&ndev->be, HW_TPE_PRESET_ALL,
+				idx.ids + db->nb_tpe * i, 0);
+			hw_mod_tpe_cpy_rcp_flush(&ndev->be, idx.ids + db->nb_tpe * i, 1);
+		}
+
+		hw_mod_tpe_rpp_rcp_set(&ndev->be, HW_TPE_PRESET_ALL, idx.ids, 0);
+		hw_mod_tpe_rpp_rcp_flush(&ndev->be, idx.ids, 1);
+
+		hw_mod_tpe_ins_rcp_set(&ndev->be, HW_TPE_PRESET_ALL, idx.ids, 0);
+		hw_mod_tpe_ins_rcp_flush(&ndev->be, idx.ids, 1);
+
+		hw_mod_tpe_rpl_rcp_set(&ndev->be, HW_TPE_PRESET_ALL, idx.ids, 0);
+		hw_mod_tpe_rpl_rcp_flush(&ndev->be, idx.ids, 1);
+
+		hw_mod_tpe_hfu_rcp_set(&ndev->be, HW_TPE_PRESET_ALL, idx.ids, 0);
+		hw_mod_tpe_hfu_rcp_flush(&ndev->be, idx.ids, 1);
+
+		hw_mod_tpe_csu_rcp_set(&ndev->be, HW_TPE_PRESET_ALL, idx.ids, 0);
+		hw_mod_tpe_csu_rcp_flush(&ndev->be, idx.ids, 1);
+
+		memset(&db->tpe[idx.ids].data, 0x0, sizeof(struct hw_db_inline_tpe_data));
+		db->tpe[idx.ids].ref = 0;
+	}
+}
+
+/******************************************************************************/
+/* TPE_EXT                                                                    */
+/******************************************************************************/
+
+static int hw_db_inline_tpe_ext_compare(const struct hw_db_inline_tpe_ext_data *data1,
+	const struct hw_db_inline_tpe_ext_data *data2)
+{
+	return data1->size == data2->size &&
+		memcmp(data1->hdr8, data2->hdr8, HW_DB_INLINE_MAX_ENCAP_SIZE) == 0;
+}
+
+struct hw_db_tpe_ext_idx hw_db_inline_tpe_ext_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_tpe_ext_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_tpe_ext_idx idx = { .raw = 0 };
+	int rpl_rpl_length = ((int)data->size + 15) / 16;
+	int found = 0, rpl_rpl_index = 0;
+
+	idx.type = HW_DB_IDX_TYPE_TPE_EXT;
+
+	if (data->size > HW_DB_INLINE_MAX_ENCAP_SIZE) {
+		idx.error = 1;
+		return idx;
+	}
+
+	for (uint32_t i = 1; i < db->nb_tpe_ext; ++i) {
+		int ref = db->tpe_ext[i].ref;
+
+		if (ref > 0 && hw_db_inline_tpe_ext_compare(data, &db->tpe_ext[i].data)) {
+			idx.ids = i;
+			hw_db_inline_tpe_ext_ref(ndev, db, idx);
+			return idx;
+		}
+
+		if (!found && ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	rpl_rpl_index = flow_nic_alloc_resource_config(ndev, RES_TPE_RPL, rpl_rpl_length, 1);
+
+	if (rpl_rpl_index < 0) {
+		idx.error = 1;
+		return idx;
+	}
+
+	db->tpe_ext[idx.ids].ref = 1;
+	db->tpe_ext[idx.ids].replace_ram_idx = rpl_rpl_index;
+	memcpy(&db->tpe_ext[idx.ids].data, data, sizeof(struct hw_db_inline_tpe_ext_data));
+
+	hw_mod_tpe_rpl_ext_set(&ndev->be, HW_TPE_RPL_EXT_RPL_PTR, idx.ids, rpl_rpl_index);
+	hw_mod_tpe_rpl_ext_set(&ndev->be, HW_TPE_RPL_EXT_META_RPL_LEN, idx.ids, data->size);
+	hw_mod_tpe_rpl_ext_flush(&ndev->be, idx.ids, 1);
+
+	for (int i = 0; i < rpl_rpl_length; ++i) {
+		uint32_t rpl_data[4];
+		memcpy(rpl_data, data->hdr32 + i * 4, sizeof(rpl_data));
+		hw_mod_tpe_rpl_rpl_set(&ndev->be, HW_TPE_RPL_RPL_VALUE, rpl_rpl_index + i,
+			rpl_data);
+	}
+
+	hw_mod_tpe_rpl_rpl_flush(&ndev->be, rpl_rpl_index, rpl_rpl_length);
+
+	return idx;
+}
+
+void hw_db_inline_tpe_ext_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_tpe_ext_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->tpe_ext[idx.ids].ref += 1;
+}
+
+void hw_db_inline_tpe_ext_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_tpe_ext_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	db->tpe_ext[idx.ids].ref -= 1;
+
+	if (db->tpe_ext[idx.ids].ref <= 0) {
+		const int rpl_rpl_length = ((int)db->tpe_ext[idx.ids].data.size + 15) / 16;
+		const int rpl_rpl_index = db->tpe_ext[idx.ids].replace_ram_idx;
+
+		hw_mod_tpe_rpl_ext_set(&ndev->be, HW_TPE_PRESET_ALL, idx.ids, 0);
+		hw_mod_tpe_rpl_ext_flush(&ndev->be, idx.ids, 1);
+
+		for (int i = 0; i < rpl_rpl_length; ++i) {
+			uint32_t rpl_zero[] = { 0, 0, 0, 0 };
+			hw_mod_tpe_rpl_rpl_set(&ndev->be, HW_TPE_RPL_RPL_VALUE, rpl_rpl_index + i,
+				rpl_zero);
+			flow_nic_free_resource(ndev, RES_TPE_RPL, rpl_rpl_index + i);
+		}
+
+		hw_mod_tpe_rpl_rpl_flush(&ndev->be, rpl_rpl_index, rpl_rpl_length);
+
+		memset(&db->tpe_ext[idx.ids].data, 0x0, sizeof(struct hw_db_inline_tpe_ext_data));
+		db->tpe_ext[idx.ids].ref = 0;
+	}
+}
+
 
 /******************************************************************************/
 /* CAT                                                                        */

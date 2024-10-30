@@ -889,24 +889,40 @@ void hw_mod_tpe_free(struct flow_api_backend_s *be);
 int hw_mod_tpe_reset(struct flow_api_backend_s *be);
 
 int hw_mod_tpe_rpp_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_rpp_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 int hw_mod_tpe_rpp_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 int hw_mod_tpe_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 int hw_mod_tpe_ins_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_ins_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 int hw_mod_tpe_rpl_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_rpl_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 int hw_mod_tpe_rpl_ext_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_rpl_ext_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 int hw_mod_tpe_rpl_rpl_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_rpl_rpl_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t *value);
 
 int hw_mod_tpe_cpy_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_cpy_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 int hw_mod_tpe_hfu_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_hfu_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 int hw_mod_tpe_csu_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_csu_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
 
 enum debug_mode_e {
 	FLOW_BACKEND_DEBUG_MODE_NONE = 0x0000,

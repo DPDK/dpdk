@@ -18,6 +18,8 @@
 #include "ntnic_mod_reg.h"
 #include <rte_common.h>
 
+#define NT_FLM_MISS_FLOW_TYPE 0
+#define NT_FLM_UNHANDLED_FLOW_TYPE 1
 #define NT_FLM_OP_UNLEARN 0
 #define NT_FLM_OP_LEARN 1
 
@@ -2419,6 +2421,92 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		}
 	}
 
+	/* Setup TPE EXT */
+	if (fd->tun_hdr.len > 0) {
+		assert(fd->tun_hdr.len <= HW_DB_INLINE_MAX_ENCAP_SIZE);
+
+		struct hw_db_inline_tpe_ext_data tpe_ext_data = {
+			.size = fd->tun_hdr.len,
+		};
+
+		memset(tpe_ext_data.hdr8, 0x0, HW_DB_INLINE_MAX_ENCAP_SIZE);
+		memcpy(tpe_ext_data.hdr8, fd->tun_hdr.d.hdr8, (fd->tun_hdr.len + 15) & ~15);
+
+		struct hw_db_tpe_ext_idx tpe_ext_idx =
+			hw_db_inline_tpe_ext_add(dev->ndev, dev->ndev->hw_db_handle,
+			&tpe_ext_data);
+		local_idxs[(*local_idx_counter)++] = tpe_ext_idx.raw;
+
+		if (tpe_ext_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference TPE EXT resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			return -1;
+		}
+
+		if (flm_rpl_ext_ptr)
+			*flm_rpl_ext_ptr = tpe_ext_idx.ids;
+	}
+
+	/* Setup TPE */
+	assert(fd->modify_field_count <= 6);
+
+	struct hw_db_inline_tpe_data tpe_data = {
+		.insert_len = fd->tun_hdr.len,
+		.new_outer = fd->tun_hdr.new_outer,
+		.calc_eth_type_from_inner_ip =
+			!fd->tun_hdr.new_outer && fd->header_strip_end_dyn == DYN_TUN_L3,
+		.ttl_en = fd->ttl_sub_enable,
+		.ttl_dyn = fd->ttl_sub_outer ? DYN_L3 : DYN_TUN_L3,
+		.ttl_ofs = fd->ttl_sub_ipv4 ? 8 : 7,
+	};
+
+	for (unsigned int i = 0; i < fd->modify_field_count; ++i) {
+		tpe_data.writer[i].en = 1;
+		tpe_data.writer[i].reader_select = fd->modify_field[i].select;
+		tpe_data.writer[i].dyn = fd->modify_field[i].dyn;
+		tpe_data.writer[i].ofs = fd->modify_field[i].ofs;
+		tpe_data.writer[i].len = fd->modify_field[i].len;
+	}
+
+	if (fd->tun_hdr.new_outer) {
+		const int fcs_length = 4;
+
+		/* L4 length */
+		tpe_data.len_a_en = 1;
+		tpe_data.len_a_pos_dyn = DYN_L4;
+		tpe_data.len_a_pos_ofs = 4;
+		tpe_data.len_a_add_dyn = 18;
+		tpe_data.len_a_add_ofs = (uint32_t)(-fcs_length) & 0xff;
+		tpe_data.len_a_sub_dyn = DYN_L4;
+
+		/* L3 length */
+		tpe_data.len_b_en = 1;
+		tpe_data.len_b_pos_dyn = DYN_L3;
+		tpe_data.len_b_pos_ofs = fd->tun_hdr.ip_version == 4 ? 2 : 4;
+		tpe_data.len_b_add_dyn = 18;
+		tpe_data.len_b_add_ofs = (uint32_t)(-fcs_length) & 0xff;
+		tpe_data.len_b_sub_dyn = DYN_L3;
+
+		/* GTP length */
+		tpe_data.len_c_en = 1;
+		tpe_data.len_c_pos_dyn = DYN_L4_PAYLOAD;
+		tpe_data.len_c_pos_ofs = 2;
+		tpe_data.len_c_add_dyn = 18;
+		tpe_data.len_c_add_ofs = (uint32_t)(-8 - fcs_length) & 0xff;
+		tpe_data.len_c_sub_dyn = DYN_L4_PAYLOAD;
+	}
+
+	struct hw_db_tpe_idx tpe_idx =
+		hw_db_inline_tpe_add(dev->ndev, dev->ndev->hw_db_handle, &tpe_data);
+
+	local_idxs[(*local_idx_counter)++] = tpe_idx.raw;
+
+	if (tpe_idx.error) {
+		NT_LOG(ERR, FILTER, "Could not reference TPE resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -2538,6 +2626,30 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 				NT_LOG(ERR, FILTER, "Could not reference HSH resource");
 				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
 				goto error_out;
+			}
+
+			/* Setup TPE */
+			if (fd->ttl_sub_enable) {
+				struct hw_db_inline_tpe_data tpe_data = {
+					.insert_len = fd->tun_hdr.len,
+					.new_outer = fd->tun_hdr.new_outer,
+					.calc_eth_type_from_inner_ip = !fd->tun_hdr.new_outer &&
+						fd->header_strip_end_dyn == DYN_TUN_L3,
+					.ttl_en = fd->ttl_sub_enable,
+					.ttl_dyn = fd->ttl_sub_outer ? DYN_L3 : DYN_TUN_L3,
+					.ttl_ofs = fd->ttl_sub_ipv4 ? 8 : 7,
+				};
+				struct hw_db_tpe_idx tpe_idx =
+					hw_db_inline_tpe_add(dev->ndev, dev->ndev->hw_db_handle,
+					&tpe_data);
+				fh->db_idxs[fh->db_idx_counter++] = tpe_idx.raw;
+				action_set_data.tpe = tpe_idx;
+
+				if (tpe_idx.error) {
+					NT_LOG(ERR, FILTER, "Could not reference TPE resource");
+					flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+					goto error_out;
+				}
 			}
 		}
 
@@ -2843,6 +2955,16 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 	if (!ndev->flow_mgnt_prepared) {
 		/* Check static arrays are big enough */
 		assert(ndev->be.tpe.nb_cpy_writers <= MAX_CPY_WRITERS_SUPPORTED);
+		/* KM Flow Type 0 is reserved */
+		flow_nic_mark_resource_used(ndev, RES_KM_FLOW_TYPE, 0);
+		flow_nic_mark_resource_used(ndev, RES_KM_CATEGORY, 0);
+
+		/* Reserved FLM Flow Types */
+		flow_nic_mark_resource_used(ndev, RES_FLM_FLOW_TYPE, NT_FLM_MISS_FLOW_TYPE);
+		flow_nic_mark_resource_used(ndev, RES_FLM_FLOW_TYPE, NT_FLM_UNHANDLED_FLOW_TYPE);
+		flow_nic_mark_resource_used(ndev, RES_FLM_FLOW_TYPE,
+			NT_FLM_VIOLATING_MBR_FLOW_TYPE);
+		flow_nic_mark_resource_used(ndev, RES_FLM_RCP, 0);
 
 		/* COT is locked to CFN. Don't set color for CFN 0 */
 		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
@@ -2868,8 +2990,11 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		flow_nic_mark_resource_used(ndev, RES_QSL_QST, 0);
 
-		/* SLC LR index 0 is reserved */
+		/* SLC LR & TPE index 0 were reserved */
 		flow_nic_mark_resource_used(ndev, RES_SLC_LR_RCP, 0);
+		flow_nic_mark_resource_used(ndev, RES_TPE_RCP, 0);
+		flow_nic_mark_resource_used(ndev, RES_TPE_EXT, 0);
+		flow_nic_mark_resource_used(ndev, RES_TPE_RPL, 0);
 
 		/* PDB setup Direct Virtio Scatter-Gather descriptor of 12 bytes for its recipe 0
 		 */
