@@ -24,6 +24,11 @@
 #include "ntnic_mod_reg.h"
 #include "nt_util.h"
 
+const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL };
+#define THREAD_CTRL_CREATE(a, b, c, d) rte_thread_create_internal_control(a, b, c, d)
+#define THREAD_JOIN(a) rte_thread_join(a, NULL)
+#define THREAD_FUNC static uint32_t
+#define THREAD_RETURN (0)
 #define HW_MAX_PKT_LEN (10000)
 #define MAX_MTU (HW_MAX_PKT_LEN - RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN)
 
@@ -117,6 +122,16 @@ store_pdrv(struct drv_s *p_drv)
 
 	rte_spinlock_lock(&hwlock);
 	_g_p_drv[p_drv->adapter_no] = p_drv;
+	rte_spinlock_unlock(&hwlock);
+}
+
+static void clear_pdrv(struct drv_s *p_drv)
+{
+	if (p_drv->adapter_no > NUM_ADAPTER_MAX)
+		return;
+
+	rte_spinlock_lock(&hwlock);
+	_g_p_drv[p_drv->adapter_no] = NULL;
 	rte_spinlock_unlock(&hwlock);
 }
 
@@ -1240,6 +1255,13 @@ eth_dev_set_link_down(struct rte_eth_dev *eth_dev)
 static void
 drv_deinit(struct drv_s *p_drv)
 {
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "profile_inline module uninitialized");
+		return;
+	}
+
 	const struct adapter_ops *adapter_ops = get_adapter_ops();
 
 	if (adapter_ops == NULL) {
@@ -1251,6 +1273,22 @@ drv_deinit(struct drv_s *p_drv)
 		return;
 
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	fpga_info_t *fpga_info = &p_nt_drv->adapter_info.fpga_info;
+
+	/*
+	 * Mark the global pdrv for cleared. Used by some threads to terminate.
+	 * 1 second to give the threads a chance to see the termonation.
+	 */
+	clear_pdrv(p_drv);
+	nt_os_wait_usec(1000000);
+
+	/* stop statistics threads */
+	p_drv->ntdrv.b_shutdown = true;
+
+	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
+		THREAD_JOIN(p_nt_drv->flm_thread);
+		profile_inline_ops->flm_free_queues();
+	}
 
 	/* stop adapter */
 	adapter_ops->deinit(&p_nt_drv->adapter_info);
@@ -1359,6 +1397,43 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 	.promiscuous_enable = promiscuous_enable,
 };
 
+/*
+ * Adapter flm stat thread
+ */
+THREAD_FUNC adapter_flm_update_thread_fn(void *context)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, NTNIC, "%s: profile_inline module uninitialized", __func__);
+		return THREAD_RETURN;
+	}
+
+	struct drv_s *p_drv = context;
+
+	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
+	struct adapter_info_s *p_adapter_info = &p_nt_drv->adapter_info;
+	struct nt4ga_filter_s *p_nt4ga_filter = &p_adapter_info->nt4ga_filter;
+	struct flow_nic_dev *p_flow_nic_dev = p_nt4ga_filter->mp_flow_device;
+
+	NT_LOG(DBG, NTNIC, "%s: %s: waiting for port configuration",
+		p_adapter_info->mp_adapter_id_str, __func__);
+
+	while (p_flow_nic_dev->eth_base == NULL)
+		nt_os_wait_usec(1 * 1000 * 1000);
+
+	struct flow_eth_dev *dev = p_flow_nic_dev->eth_base;
+
+	NT_LOG(DBG, NTNIC, "%s: %s: begin", p_adapter_info->mp_adapter_id_str, __func__);
+
+	while (!p_drv->ntdrv.b_shutdown)
+		if (profile_inline_ops->flm_update(dev) == 0)
+			nt_os_wait_usec(10);
+
+	NT_LOG(DBG, NTNIC, "%s: %s: end", p_adapter_info->mp_adapter_id_str, __func__);
+	return THREAD_RETURN;
+}
+
 static int
 nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 {
@@ -1366,6 +1441,13 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 	if (flow_filter_ops == NULL) {
 		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
+		/* Return statement is not necessary here to allow traffic processing by SW  */
+	}
+
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "profile_inline module uninitialized");
 		/* Return statement is not necessary here to allow traffic processing by SW  */
 	}
 
@@ -1595,6 +1677,18 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		NT_LOG_DBGX(ERR, NTNIC, "%s: error=%d",
 			(pci_dev->name[0] ? pci_dev->name : "NA"), err);
 		return -1;
+	}
+
+	if (profile_inline_ops != NULL && fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
+		profile_inline_ops->flm_setup_queues();
+		res = THREAD_CTRL_CREATE(&p_nt_drv->flm_thread, "ntnic-nt_flm_update_thr",
+			adapter_flm_update_thread_fn, (void *)p_drv);
+
+		if (res) {
+			NT_LOG_DBGX(ERR, NTNIC, "%s: error=%d",
+				(pci_dev->name[0] ? pci_dev->name : "NA"), res);
+			return -1;
+		}
 	}
 
 	n_phy_ports = fpga_info->n_phy_ports;

@@ -256,6 +256,13 @@ struct profile_inline_ops {
 	int (*flow_nic_set_hasher_fields_inline)(struct flow_nic_dev *ndev,
 		int hsh_idx,
 		struct nt_eth_rss_conf rss_conf);
+
+	/*
+	 * NT Flow FLM queue API
+	 */
+	void (*flm_setup_queues)(void);
+	void (*flm_free_queues)(void);
+	uint32_t (*flm_update)(struct flow_eth_dev *dev);
 };
 
 void register_profile_inline_ops(const struct profile_inline_ops *ops);

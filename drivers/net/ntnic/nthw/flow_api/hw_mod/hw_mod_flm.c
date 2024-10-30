@@ -712,3 +712,36 @@ int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int i
 
 	return hw_mod_flm_rcp_mod(be, field, index, &value, 0);
 }
+
+int hw_mod_flm_lrn_data_set_flush(struct flow_api_backend_s *be, enum hw_flm_e field,
+	const uint32_t *value, uint32_t records,
+	uint32_t *handled_records, uint32_t *inf_word_cnt,
+	uint32_t *sta_word_cnt)
+{
+	int ret = 0;
+
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_FLOW_LRN_DATA:
+			ret = be->iface->flm_lrn_data_flush(be->be_dev, &be->flm, value, records,
+					handled_records,
+					(sizeof(struct flm_v25_lrn_data_s) /
+						sizeof(uint32_t)),
+					inf_word_cnt, sta_word_cnt);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return ret;
+}

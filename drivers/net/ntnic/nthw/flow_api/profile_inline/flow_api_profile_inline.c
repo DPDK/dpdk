@@ -39,6 +39,48 @@
 
 static void *flm_lrn_queue_arr;
 
+static void flm_setup_queues(void)
+{
+	flm_lrn_queue_arr = flm_lrn_queue_create();
+	assert(flm_lrn_queue_arr != NULL);
+}
+
+static void flm_free_queues(void)
+{
+	flm_lrn_queue_free(flm_lrn_queue_arr);
+}
+
+static uint32_t flm_lrn_update(struct flow_eth_dev *dev, uint32_t *inf_word_cnt,
+	uint32_t *sta_word_cnt)
+{
+	read_record r = flm_lrn_queue_get_read_buffer(flm_lrn_queue_arr);
+
+	if (r.num) {
+		uint32_t handled_records = 0;
+
+		if (hw_mod_flm_lrn_data_set_flush(&dev->ndev->be, HW_FLM_FLOW_LRN_DATA, r.p, r.num,
+			&handled_records, inf_word_cnt, sta_word_cnt)) {
+			NT_LOG(ERR, FILTER, "Flow programming failed");
+
+		} else if (handled_records > 0) {
+			flm_lrn_queue_release_read_buffer(flm_lrn_queue_arr, handled_records);
+		}
+	}
+
+	return r.num;
+}
+
+static uint32_t flm_update(struct flow_eth_dev *dev)
+{
+	static uint32_t inf_word_cnt;
+	static uint32_t sta_word_cnt;
+
+	if (flm_lrn_update(dev, &inf_word_cnt, &sta_word_cnt) != 0)
+		return 1;
+
+	return inf_word_cnt + sta_word_cnt;
+}
+
 static int rx_queue_idx_to_hw_id(const struct flow_eth_dev *dev, int id)
 {
 	for (int i = 0; i < dev->num_queues; ++i)
@@ -4214,6 +4256,12 @@ static const struct profile_inline_ops ops = {
 	.flow_create_profile_inline = flow_create_profile_inline,
 	.flow_destroy_profile_inline = flow_destroy_profile_inline,
 	.flow_nic_set_hasher_fields_inline = flow_nic_set_hasher_fields_inline,
+	/*
+	 * NT Flow FLM Meter API
+	 */
+	.flm_setup_queues = flm_setup_queues,
+	.flm_free_queues = flm_free_queues,
+	.flm_update = flm_update,
 };
 
 void profile_inline_init(void)
