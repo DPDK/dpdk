@@ -100,6 +100,7 @@ struct flow_nic_dev {
 	void *km_res_handle;
 	void *kcc_res_handle;
 
+	void *flm_mtr_handle;
 	void *group_handle;
 	void *hw_db_handle;
 	void *id_table_handle;

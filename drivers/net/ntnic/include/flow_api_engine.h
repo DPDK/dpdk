@@ -57,6 +57,7 @@ enum res_type_e {
 
 #define MAX_TCAM_START_OFFSETS 4
 
+#define MAX_FLM_MTRS_SUPPORTED 4
 #define MAX_CPY_WRITERS_SUPPORTED 8
 
 #define MAX_MATCH_FIELDS 16
@@ -223,6 +224,8 @@ struct nic_flow_def {
 
 	uint32_t jump_to_group;
 
+	uint32_t mtr_ids[MAX_FLM_MTRS_SUPPORTED];
+
 	int full_offload;
 
 	/*
@@ -319,6 +322,8 @@ struct flow_handle {
 		struct {
 			uint32_t flm_db_idx_counter;
 			uint32_t flm_db_idxs[RES_COUNT];
+
+			uint32_t flm_mtr_ids[MAX_FLM_MTRS_SUPPORTED];
 
 			uint32_t flm_data[10];
 			uint8_t flm_prot;

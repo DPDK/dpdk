@@ -21,6 +21,10 @@
 #include "ntnic_mod_reg.h"
 #include <rte_common.h>
 
+#define FLM_MTR_PROFILE_SIZE 0x100000
+#define FLM_MTR_STAT_SIZE 0x1000000
+#define UINT64_MSB ((uint64_t)1 << 63)
+
 #define DMA_BLOCK_SIZE 256
 #define DMA_OVERHEAD 20
 #define WORDS_PER_STA_DATA (sizeof(struct flm_v25_sta_data_s) / sizeof(uint32_t))
@@ -46,7 +50,335 @@
 #define NT_FLM_OP_UNLEARN 0
 #define NT_FLM_OP_LEARN 1
 
+#define NT_FLM_MISS_FLOW_TYPE 0
+#define NT_FLM_UNHANDLED_FLOW_TYPE 1
+#define NT_FLM_VIOLATING_MBR_FLOW_TYPE 15
+
+#define NT_VIOLATING_MBR_CFN 0
+#define NT_VIOLATING_MBR_QSL 1
+
+#define POLICING_PARAMETER_OFFSET 4096
+#define SIZE_CONVERTER 1099.511627776
+
+struct flm_mtr_stat_s {
+	struct dual_buckets_s *buckets;
+	atomic_uint_fast64_t n_pkt;
+	atomic_uint_fast64_t n_bytes;
+	uint64_t n_pkt_base;
+	uint64_t n_bytes_base;
+	atomic_uint_fast64_t stats_mask;
+	uint32_t flm_id;
+};
+
+struct flm_mtr_shared_stats_s {
+	struct flm_mtr_stat_s *stats;
+	uint32_t size;
+	int shared;
+};
+
+struct flm_flow_mtr_handle_s {
+	struct dual_buckets_s {
+		uint16_t rate_a;
+		uint16_t rate_b;
+		uint16_t size_a;
+		uint16_t size_b;
+	} dual_buckets[FLM_MTR_PROFILE_SIZE];
+
+	struct flm_mtr_shared_stats_s *port_stats[UINT8_MAX];
+};
+
 static void *flm_lrn_queue_arr;
+
+static int flow_mtr_supported(struct flow_eth_dev *dev)
+{
+	return hw_mod_flm_present(&dev->ndev->be) && dev->ndev->be.flm.nb_variant == 2;
+}
+
+static uint64_t flow_mtr_meter_policy_n_max(void)
+{
+	return FLM_MTR_PROFILE_SIZE;
+}
+
+static inline uint64_t convert_policing_parameter(uint64_t value)
+{
+	uint64_t limit = POLICING_PARAMETER_OFFSET;
+	uint64_t shift = 0;
+	uint64_t res = value;
+
+	while (shift < 15 && value >= limit) {
+		limit <<= 1;
+		++shift;
+	}
+
+	if (shift != 0) {
+		uint64_t tmp = POLICING_PARAMETER_OFFSET * (1 << (shift - 1));
+
+		if (tmp > value) {
+			res = 0;
+
+		} else {
+			tmp = value - tmp;
+			res = tmp >> (shift - 1);
+		}
+
+		if (res >= POLICING_PARAMETER_OFFSET)
+			res = POLICING_PARAMETER_OFFSET - 1;
+
+		res = res | (shift << 12);
+	}
+
+	return res;
+}
+
+static int flow_mtr_set_profile(struct flow_eth_dev *dev, uint32_t profile_id,
+	uint64_t bucket_rate_a, uint64_t bucket_size_a, uint64_t bucket_rate_b,
+	uint64_t bucket_size_b)
+{
+	struct flow_nic_dev *ndev = dev->ndev;
+	struct flm_flow_mtr_handle_s *handle =
+		(struct flm_flow_mtr_handle_s *)ndev->flm_mtr_handle;
+	struct dual_buckets_s *buckets = &handle->dual_buckets[profile_id];
+
+	/* Round rates up to nearest 128 bytes/sec and shift to 128 bytes/sec units */
+	bucket_rate_a = (bucket_rate_a + 127) >> 7;
+	bucket_rate_b = (bucket_rate_b + 127) >> 7;
+
+	buckets->rate_a = convert_policing_parameter(bucket_rate_a);
+	buckets->rate_b = convert_policing_parameter(bucket_rate_b);
+
+	/* Round size down to 38-bit int */
+	if (bucket_size_a > 0x3fffffffff)
+		bucket_size_a = 0x3fffffffff;
+
+	if (bucket_size_b > 0x3fffffffff)
+		bucket_size_b = 0x3fffffffff;
+
+	/* Convert size to units of 2^40 / 10^9. Output is a 28-bit int. */
+	bucket_size_a = bucket_size_a / SIZE_CONVERTER;
+	bucket_size_b = bucket_size_b / SIZE_CONVERTER;
+
+	buckets->size_a = convert_policing_parameter(bucket_size_a);
+	buckets->size_b = convert_policing_parameter(bucket_size_b);
+
+	return 0;
+}
+
+static int flow_mtr_set_policy(struct flow_eth_dev *dev, uint32_t policy_id, int drop)
+{
+	(void)dev;
+	(void)policy_id;
+	(void)drop;
+	return 0;
+}
+
+static uint32_t flow_mtr_meters_supported(struct flow_eth_dev *dev, uint8_t caller_id)
+{
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+	return handle->port_stats[caller_id]->size;
+}
+
+static int flow_mtr_create_meter(struct flow_eth_dev *dev,
+	uint8_t caller_id,
+	uint32_t mtr_id,
+	uint32_t profile_id,
+	uint32_t policy_id,
+	uint64_t stats_mask)
+{
+	(void)policy_id;
+	struct flm_v25_lrn_data_s *learn_record = NULL;
+
+	pthread_mutex_lock(&dev->ndev->mtx);
+
+	learn_record =
+		(struct flm_v25_lrn_data_s *)
+			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+
+	while (learn_record == NULL) {
+		nt_os_wait_usec(1);
+		learn_record =
+			(struct flm_v25_lrn_data_s *)
+				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+	}
+
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+
+	struct dual_buckets_s *buckets = &handle->dual_buckets[profile_id];
+
+	memset(learn_record, 0x0, sizeof(struct flm_v25_lrn_data_s));
+
+	union flm_handles flm_h;
+	flm_h.idx = mtr_id;
+	uint32_t flm_id = ntnic_id_table_get_id(dev->ndev->id_table_handle, flm_h, caller_id, 2);
+
+	learn_record->sw9 = flm_id;
+	learn_record->kid = 1;
+
+	learn_record->rate = buckets->rate_a;
+	learn_record->size = buckets->size_a;
+	learn_record->fill = buckets->size_a;
+
+	learn_record->ft_mbr =
+		NT_FLM_VIOLATING_MBR_FLOW_TYPE;	/* FT to assign if MBR has been exceeded */
+
+	learn_record->ent = 1;
+	learn_record->op = 1;
+	learn_record->eor = 1;
+
+	learn_record->id = flm_id;
+
+	if (stats_mask)
+		learn_record->vol_idx = 1;
+
+	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+
+	struct flm_mtr_stat_s *mtr_stat = handle->port_stats[caller_id]->stats;
+	mtr_stat[mtr_id].buckets = buckets;
+	mtr_stat[mtr_id].flm_id = flm_id;
+	atomic_store(&mtr_stat[mtr_id].stats_mask, stats_mask);
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	return 0;
+}
+
+static int flow_mtr_probe_meter(struct flow_eth_dev *dev, uint8_t caller_id, uint32_t mtr_id)
+{
+	struct flm_v25_lrn_data_s *learn_record = NULL;
+
+	pthread_mutex_lock(&dev->ndev->mtx);
+
+	learn_record =
+		(struct flm_v25_lrn_data_s *)
+			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+
+	while (learn_record == NULL) {
+		nt_os_wait_usec(1);
+		learn_record =
+			(struct flm_v25_lrn_data_s *)
+				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+	}
+
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+
+	struct flm_mtr_stat_s *mtr_stat = handle->port_stats[caller_id]->stats;
+	uint32_t flm_id = mtr_stat[mtr_id].flm_id;
+
+	memset(learn_record, 0x0, sizeof(struct flm_v25_lrn_data_s));
+
+	learn_record->sw9 = flm_id;
+	learn_record->kid = 1;
+
+	learn_record->ent = 1;
+	learn_record->op = 3;
+	learn_record->eor = 1;
+
+	learn_record->id = flm_id;
+
+	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	return 0;
+}
+
+static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, uint32_t mtr_id)
+{
+	struct flm_v25_lrn_data_s *learn_record = NULL;
+
+	pthread_mutex_lock(&dev->ndev->mtx);
+
+	learn_record =
+		(struct flm_v25_lrn_data_s *)
+			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+
+	while (learn_record == NULL) {
+		nt_os_wait_usec(1);
+		learn_record =
+			(struct flm_v25_lrn_data_s *)
+				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+	}
+
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+
+	struct flm_mtr_stat_s *mtr_stat = handle->port_stats[caller_id]->stats;
+	uint32_t flm_id = mtr_stat[mtr_id].flm_id;
+
+	memset(learn_record, 0x0, sizeof(struct flm_v25_lrn_data_s));
+
+	learn_record->sw9 = flm_id;
+	learn_record->kid = 1;
+
+	learn_record->ent = 1;
+	learn_record->op = 0;
+	/* Suppress generation of statistics INF_DATA */
+	learn_record->nofi = 1;
+	learn_record->eor = 1;
+
+	learn_record->id = flm_id;
+
+	/* Clear statistics so stats_mask prevents updates of counters on deleted meters */
+	atomic_store(&mtr_stat[mtr_id].stats_mask, 0);
+	atomic_store(&mtr_stat[mtr_id].n_bytes, 0);
+	atomic_store(&mtr_stat[mtr_id].n_pkt, 0);
+	mtr_stat[mtr_id].n_bytes_base = 0;
+	mtr_stat[mtr_id].n_pkt_base = 0;
+	mtr_stat[mtr_id].buckets = NULL;
+
+	ntnic_id_table_free_id(dev->ndev->id_table_handle, flm_id);
+
+	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	return 0;
+}
+
+static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uint32_t mtr_id,
+	uint32_t adjust_value)
+{
+	struct flm_v25_lrn_data_s *learn_record = NULL;
+
+	pthread_mutex_lock(&dev->ndev->mtx);
+
+	learn_record =
+		(struct flm_v25_lrn_data_s *)
+			flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+
+	while (learn_record == NULL) {
+		nt_os_wait_usec(1);
+		learn_record =
+			(struct flm_v25_lrn_data_s *)
+				flm_lrn_queue_get_write_buffer(flm_lrn_queue_arr);
+	}
+
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+
+	struct flm_mtr_stat_s *mtr_stat = &handle->port_stats[caller_id]->stats[mtr_id];
+
+	memset(learn_record, 0x0, sizeof(struct flm_v25_lrn_data_s));
+
+	learn_record->sw9 = mtr_stat->flm_id;
+	learn_record->kid = 1;
+
+	learn_record->rate = mtr_stat->buckets->rate_a;
+	learn_record->size = mtr_stat->buckets->size_a;
+	learn_record->adj = adjust_value;
+
+	learn_record->ft_mbr = NT_FLM_VIOLATING_MBR_FLOW_TYPE;
+
+	learn_record->ent = 1;
+	learn_record->op = 2;
+	learn_record->eor = 1;
+
+	if (atomic_load(&mtr_stat->stats_mask))
+		learn_record->vol_idx = 1;
+
+	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	return 0;
+}
 
 static void flm_setup_queues(void)
 {
@@ -92,6 +424,8 @@ static inline bool is_remote_caller(uint8_t caller_id, uint8_t *port)
 
 static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, uint32_t records)
 {
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+
 	for (uint32_t i = 0; i < records; ++i) {
 		struct flm_v25_inf_data_s *inf_data =
 			(struct flm_v25_inf_data_s *)&data[i * WORDS_PER_INF_DATA];
@@ -102,29 +436,62 @@ static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, u
 			&type);
 
 		/* Check that received record hold valid meter statistics */
-	if (type == 1) {
-		switch (inf_data->cause) {
-		case INF_DATA_CAUSE_TIMEOUT_FLOW_DELETED:
-		case INF_DATA_CAUSE_TIMEOUT_FLOW_KEPT: {
-			struct flow_handle *fh = (struct flow_handle *)flm_h.p;
-			struct flm_age_event_s age_event;
-			uint8_t port;
+		if (type == 2) {
+			uint64_t mtr_id = flm_h.idx;
 
-			age_event.context = fh->context;
+			if (mtr_id < handle->port_stats[caller_id]->size) {
+				struct flm_mtr_stat_s *mtr_stat =
+						handle->port_stats[caller_id]->stats;
 
-			is_remote_caller(caller_id, &port);
+				/* Don't update a deleted meter */
+				uint64_t stats_mask = atomic_load(&mtr_stat[mtr_id].stats_mask);
 
-			flm_age_queue_put(caller_id, &age_event);
-			flm_age_event_set(port);
-		}
-		break;
+				if (stats_mask) {
+					atomic_store(&mtr_stat[mtr_id].n_pkt,
+						inf_data->packets | UINT64_MSB);
+					atomic_store(&mtr_stat[mtr_id].n_bytes, inf_data->bytes);
+					atomic_store(&mtr_stat[mtr_id].n_pkt, inf_data->packets);
+					struct flm_info_event_s stat_data;
+					bool remote_caller;
+					uint8_t port;
 
-		case INF_DATA_CAUSE_SW_UNLEARN:
-		case INF_DATA_CAUSE_NA:
-		case INF_DATA_CAUSE_PERIODIC_FLOW_INFO:
-		case INF_DATA_CAUSE_SW_PROBE:
-		default:
+					remote_caller = is_remote_caller(caller_id, &port);
+
+					/* Save stat data to flm stat queue */
+					stat_data.bytes = inf_data->bytes;
+					stat_data.packets = inf_data->packets;
+					stat_data.id = mtr_id;
+					stat_data.timestamp = inf_data->ts;
+					stat_data.cause = inf_data->cause;
+					flm_inf_queue_put(port, remote_caller, &stat_data);
+				}
+			}
+
+			/* Check that received record hold valid flow data */
+
+		} else if (type == 1) {
+			switch (inf_data->cause) {
+			case INF_DATA_CAUSE_TIMEOUT_FLOW_DELETED:
+			case INF_DATA_CAUSE_TIMEOUT_FLOW_KEPT: {
+				struct flow_handle *fh = (struct flow_handle *)flm_h.p;
+				struct flm_age_event_s age_event;
+				uint8_t port;
+
+				age_event.context = fh->context;
+
+				is_remote_caller(caller_id, &port);
+
+				flm_age_queue_put(caller_id, &age_event);
+				flm_age_event_set(port);
+			}
 			break;
+
+			case INF_DATA_CAUSE_SW_UNLEARN:
+			case INF_DATA_CAUSE_NA:
+			case INF_DATA_CAUSE_PERIODIC_FLOW_INFO:
+			case INF_DATA_CAUSE_SW_PROBE:
+			default:
+				break;
 			}
 		}
 	}
@@ -201,6 +568,42 @@ static uint32_t flm_update(struct flow_eth_dev *dev)
 	hw_mod_flm_buf_ctrl_get(&dev->ndev->be, HW_FLM_BUF_CTRL_STA_AVAIL, &sta_word_cnt);
 
 	return inf_word_cnt + sta_word_cnt;
+}
+
+static void flm_mtr_read_stats(struct flow_eth_dev *dev,
+	uint8_t caller_id,
+	uint32_t id,
+	uint64_t *stats_mask,
+	uint64_t *green_pkt,
+	uint64_t *green_bytes,
+	int clear)
+{
+	struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+	struct flm_mtr_stat_s *mtr_stat = handle->port_stats[caller_id]->stats;
+	*stats_mask = atomic_load(&mtr_stat[id].stats_mask);
+
+	if (*stats_mask) {
+		uint64_t pkt_1;
+		uint64_t pkt_2;
+		uint64_t nb;
+
+		do {
+			do {
+				pkt_1 = atomic_load(&mtr_stat[id].n_pkt);
+			} while (pkt_1 & UINT64_MSB);
+
+			nb = atomic_load(&mtr_stat[id].n_bytes);
+			pkt_2 = atomic_load(&mtr_stat[id].n_pkt);
+		} while (pkt_1 != pkt_2);
+
+		*green_pkt = pkt_1 - mtr_stat[id].n_pkt_base;
+		*green_bytes = nb - mtr_stat[id].n_bytes_base;
+
+		if (clear) {
+			mtr_stat[id].n_pkt_base = pkt_1;
+			mtr_stat[id].n_bytes_base = nb;
+		}
+	}
 }
 
 static int rx_queue_idx_to_hw_id(const struct flow_eth_dev *dev, int id)
@@ -492,6 +895,8 @@ static inline struct nic_flow_def *prepare_nic_flow_def(struct nic_flow_def *fd)
 		fd->mark = UINT32_MAX;
 		fd->jump_to_group = UINT32_MAX;
 
+		memset(fd->mtr_ids, 0xff, sizeof(uint32_t) * MAX_FLM_MTRS_SUPPORTED);
+
 		fd->l2_prot = -1;
 		fd->l3_prot = -1;
 		fd->l4_prot = -1;
@@ -587,8 +992,16 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 	learn_record->sw9 = fh->flm_data[0];
 	learn_record->prot = fh->flm_prot;
 
+	learn_record->mbr_idx1 = fh->flm_mtr_ids[0];
+	learn_record->mbr_idx2 = fh->flm_mtr_ids[1];
+	learn_record->mbr_idx3 = fh->flm_mtr_ids[2];
+	learn_record->mbr_idx4 = fh->flm_mtr_ids[3];
+
 	/* Last non-zero mtr is used for statistics */
 	uint8_t mbrs = 0;
+
+	while (mbrs < MAX_FLM_MTRS_SUPPORTED && fh->flm_mtr_ids[mbrs] != 0)
+		++mbrs;
 
 	learn_record->vol_idx = mbrs;
 
@@ -628,6 +1041,8 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 	uint32_t *num_dest_port,
 	uint32_t *num_queues)
 {
+	int mtr_count = 0;
+
 	unsigned int encap_decap_order = 0;
 
 	uint64_t modify_field_use_flags = 0x0;
@@ -809,6 +1224,29 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				fd->dst_id[fd->dst_num_avail].id = 0;
 				fd->dst_id[fd->dst_num_avail].type = PORT_NONE;
 				fd->dst_num_avail++;
+			}
+
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_METER:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_METER", dev);
+
+			if (action[aidx].conf) {
+				struct rte_flow_action_meter meter_tmp;
+				const struct rte_flow_action_meter *meter =
+					memcpy_mask_if(&meter_tmp, action[aidx].conf,
+					action_mask ? action_mask[aidx].conf : NULL,
+					sizeof(struct rte_flow_action_meter));
+
+				if (mtr_count >= MAX_FLM_MTRS_SUPPORTED) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: - Number of METER actions exceeds %d.",
+						MAX_FLM_MTRS_SUPPORTED);
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				fd->mtr_ids[mtr_count++] = meter->mtr_id;
 			}
 
 			break;
@@ -2529,6 +2967,13 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 	const uint32_t *packet_data, uint32_t flm_key_id, uint32_t flm_ft,
 	uint16_t rpl_ext_ptr, uint32_t flm_scrub __rte_unused, uint32_t priority)
 {
+	for (int i = 0; i < MAX_FLM_MTRS_SUPPORTED; ++i) {
+		struct flm_flow_mtr_handle_s *handle = fh->dev->ndev->flm_mtr_handle;
+		struct flm_mtr_stat_s *mtr_stat = handle->port_stats[fh->caller_id]->stats;
+		fh->flm_mtr_ids[i] =
+			fd->mtr_ids[i] == UINT32_MAX ? 0 : mtr_stat[fd->mtr_ids[i]].flm_id;
+	}
+
 	switch (fd->l4_prot) {
 	case PROT_L4_TCP:
 		fh->flm_prot = 6;
@@ -3594,6 +4039,29 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		if (ndev->id_table_handle == NULL)
 			goto err_exit0;
 
+		ndev->flm_mtr_handle = calloc(1, sizeof(struct flm_flow_mtr_handle_s));
+		struct flm_mtr_shared_stats_s *flm_shared_stats =
+			calloc(1, sizeof(struct flm_mtr_shared_stats_s));
+		struct flm_mtr_stat_s *flm_stats =
+			calloc(FLM_MTR_STAT_SIZE, sizeof(struct flm_mtr_stat_s));
+
+		if (ndev->flm_mtr_handle == NULL || flm_shared_stats == NULL ||
+			flm_stats == NULL) {
+			free(ndev->flm_mtr_handle);
+			free(flm_shared_stats);
+			free(flm_stats);
+			goto err_exit0;
+		}
+
+		for (uint32_t i = 0; i < UINT8_MAX; ++i) {
+			((struct flm_flow_mtr_handle_s *)ndev->flm_mtr_handle)->port_stats[i] =
+				flm_shared_stats;
+		}
+
+		flm_shared_stats->stats = flm_stats;
+		flm_shared_stats->size = FLM_MTR_STAT_SIZE;
+		flm_shared_stats->shared = UINT8_MAX;
+
 		if (flow_group_handle_create(&ndev->group_handle, ndev->be.flm.nb_categories))
 			goto err_exit0;
 
@@ -3627,6 +4095,18 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 0);
 		flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 1);
 		flow_nic_free_resource(ndev, RES_FLM_RCP, 0);
+
+		for (uint32_t i = 0; i < UINT8_MAX; ++i) {
+			struct flm_flow_mtr_handle_s *handle = ndev->flm_mtr_handle;
+			handle->port_stats[i]->shared -= 1;
+
+			if (handle->port_stats[i]->shared == 0) {
+				free(handle->port_stats[i]->stats);
+				free(handle->port_stats[i]);
+			}
+		}
+
+		free(ndev->flm_mtr_handle);
 
 		flow_group_handle_destroy(&ndev->group_handle);
 		ntnic_id_table_destroy(ndev->id_table_handle);
@@ -4751,6 +5231,11 @@ int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 
 	port_info->max_nb_aging_objects = dev->nb_aging_objects;
 
+	struct flm_flow_mtr_handle_s *mtr_handle = dev->ndev->flm_mtr_handle;
+
+	if (mtr_handle)
+		port_info->max_nb_meters = mtr_handle->port_stats[caller_id]->size;
+
 	return res;
 }
 
@@ -4780,6 +5265,35 @@ int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 		}
 
 		dev->nb_aging_objects = port_attr->nb_aging_objects;
+	}
+
+	if (port_attr->nb_meters > 0) {
+		struct flm_flow_mtr_handle_s *mtr_handle = dev->ndev->flm_mtr_handle;
+
+		if (mtr_handle->port_stats[caller_id]->shared == 1) {
+			res = realloc(mtr_handle->port_stats[caller_id]->stats,
+					port_attr->nb_meters) == NULL
+				? -1
+				: 0;
+			mtr_handle->port_stats[caller_id]->size = port_attr->nb_meters;
+
+		} else {
+			mtr_handle->port_stats[caller_id] =
+				calloc(1, sizeof(struct flm_mtr_shared_stats_s));
+			struct flm_mtr_stat_s *stats =
+				calloc(port_attr->nb_meters, sizeof(struct flm_mtr_stat_s));
+
+			if (mtr_handle->port_stats[caller_id] == NULL || stats == NULL) {
+				free(mtr_handle->port_stats[caller_id]);
+				free(stats);
+				error->message = "Failed to allocate meter actions";
+				goto error_out;
+			}
+
+			mtr_handle->port_stats[caller_id]->stats = stats;
+			mtr_handle->port_stats[caller_id]->size = port_attr->nb_meters;
+			mtr_handle->port_stats[caller_id]->shared = 1;
+		}
 	}
 
 	return res;
@@ -4821,8 +5335,18 @@ static const struct profile_inline_ops ops = {
 	/*
 	 * NT Flow FLM Meter API
 	 */
+	.flow_mtr_supported = flow_mtr_supported,
+	.flow_mtr_meter_policy_n_max = flow_mtr_meter_policy_n_max,
+	.flow_mtr_set_profile = flow_mtr_set_profile,
+	.flow_mtr_set_policy = flow_mtr_set_policy,
+	.flow_mtr_create_meter = flow_mtr_create_meter,
+	.flow_mtr_probe_meter = flow_mtr_probe_meter,
+	.flow_mtr_destroy_meter = flow_mtr_destroy_meter,
+	.flm_mtr_adjust_stats = flm_mtr_adjust_stats,
+	.flow_mtr_meters_supported = flow_mtr_meters_supported,
 	.flm_setup_queues = flm_setup_queues,
 	.flm_free_queues = flm_free_queues,
+	.flm_mtr_read_stats = flm_mtr_read_stats,
 	.flm_update = flm_update,
 };
 

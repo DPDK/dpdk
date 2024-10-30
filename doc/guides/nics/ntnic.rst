@@ -67,6 +67,7 @@ Features
 - Link state information.
 - Flow statistics
 - Flow aging support
+- Flow metering, including meter policy API.
 
 Limitations
 ~~~~~~~~~~~

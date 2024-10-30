@@ -234,6 +234,27 @@ int flm_sta_queue_put(uint8_t port, bool remote, struct flm_status_event_s *obj)
 	return 0;
 }
 
+void flm_inf_queue_put(uint8_t port, bool remote, struct flm_info_event_s *obj)
+{
+	int ret;
+
+	/* If queues is not created, then ignore and return */
+	if (!remote) {
+		if (port < MAX_INFO_LCL_QUEUES && info_q_local[port] != NULL) {
+			ret = rte_ring_sp_enqueue_elem(info_q_local[port], obj, FLM_EVT_ELEM_SIZE);
+
+			if (ret != 0)
+				NT_LOG(DBG, FILTER, "FLM local info queue full");
+		}
+
+	} else if (port < MAX_INFO_RMT_QUEUES && info_q_remote[port] != NULL) {
+		ret = rte_ring_sp_enqueue_elem(info_q_remote[port], obj, FLM_EVT_ELEM_SIZE);
+
+		if (ret != 0)
+			NT_LOG(DBG, FILTER, "FLM remote info queue full");
+	}
+}
+
 int flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *obj)
 {
 	int ret;
