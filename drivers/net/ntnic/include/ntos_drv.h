@@ -86,6 +86,7 @@ struct __rte_cache_aligned ntnic_tx_queue {
 
 struct pmd_internals {
 	const struct rte_pci_device *pci_dev;
+	struct flow_eth_dev *flw_dev;
 	char name[20];
 	int n_intf_no;
 	int lpbk_mode;

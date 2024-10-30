@@ -118,6 +118,11 @@ const struct flow_backend_ops *get_flow_backend_ops(void)
 	return flow_backend_ops;
 }
 
+const struct profile_inline_ops *get_profile_inline_ops(void)
+{
+	return NULL;
+}
+
 static const struct flow_filter_ops *flow_filter_ops;
 
 void register_flow_filter_ops(const struct flow_filter_ops *ops)

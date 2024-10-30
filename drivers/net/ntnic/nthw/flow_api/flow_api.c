@@ -7,6 +7,7 @@
 #include "flow_api_nic_setup.h"
 #include "ntnic_mod_reg.h"
 
+#include "flow_api.h"
 #include "flow_filter.h"
 
 const char *dbg_res_descr[] = {
@@ -35,6 +36,24 @@ const char *dbg_res_descr[] = {
 static struct flow_nic_dev *dev_base;
 static pthread_mutex_t base_mtx = PTHREAD_MUTEX_INITIALIZER;
 
+/*
+ * Resources
+ */
+
+int flow_nic_alloc_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
+	uint32_t alignment)
+{
+	for (unsigned int i = 0; i < ndev->res[res_type].resource_count; i += alignment) {
+		if (!flow_nic_is_resource_used(ndev, res_type, i)) {
+			flow_nic_mark_resource_used(ndev, res_type, i);
+			ndev->res[res_type].ref[i] = 1;
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int idx)
 {
 	flow_nic_mark_resource_unused(ndev, res_type, idx);
@@ -56,8 +75,58 @@ int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 }
 
 /*
+ * Nic port/adapter lookup
+ */
+
+static struct flow_eth_dev *nic_and_port_to_eth_dev(uint8_t adapter_no, uint8_t port)
+{
+	struct flow_nic_dev *nic_dev = dev_base;
+
+	while (nic_dev) {
+		if (nic_dev->adapter_no == adapter_no)
+			break;
+
+		nic_dev = nic_dev->next;
+	}
+
+	if (!nic_dev)
+		return NULL;
+
+	struct flow_eth_dev *dev = nic_dev->eth_base;
+
+	while (dev) {
+		if (port == dev->port)
+			return dev;
+
+		dev = dev->next;
+	}
+
+	return NULL;
+}
+
+static struct flow_nic_dev *get_nic_dev_from_adapter_no(uint8_t adapter_no)
+{
+	struct flow_nic_dev *ndev = dev_base;
+
+	while (ndev) {
+		if (adapter_no == ndev->adapter_no)
+			break;
+
+		ndev = ndev->next;
+	}
+
+	return ndev;
+}
+
+/*
  * Device Management API
  */
+
+static void nic_insert_eth_port_dev(struct flow_nic_dev *ndev, struct flow_eth_dev *dev)
+{
+	dev->next = ndev->eth_base;
+	ndev->eth_base = dev;
+}
 
 static int nic_remove_eth_port_dev(struct flow_nic_dev *ndev, struct flow_eth_dev *eth_dev)
 {
@@ -156,16 +225,6 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
 #endif
 
-#ifndef SCATTER_GATHER
-
-	/* free rx queues */
-	for (int i = 0; i < eth_dev->num_queues; i++) {
-		ndev->be.iface->free_rx_queue(ndev->be.be_dev, eth_dev->rx_queue[i].hw_id);
-		flow_nic_deref_resource(ndev, RES_QUEUE, eth_dev->rx_queue[i].id);
-	}
-
-#endif
-
 	/* take eth_dev out of ndev list */
 	if (nic_remove_eth_port_dev(ndev, eth_dev) != 0)
 		NT_LOG(ERR, FILTER, "ERROR : eth_dev %p not found", eth_dev);
@@ -240,6 +299,132 @@ static int list_remove_flow_nic(struct flow_nic_dev *ndev)
 
 	pthread_mutex_unlock(&base_mtx);
 	return -1;
+}
+
+/*
+ * adapter_no       physical adapter no
+ * port_no          local port no
+ * alloc_rx_queues  number of rx-queues to allocate for this eth_dev
+ */
+static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no, uint32_t port_id,
+	int alloc_rx_queues, struct flow_queue_id_s queue_ids[],
+	int *rss_target_id, enum flow_eth_dev_profile flow_profile,
+	uint32_t exception_path)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL)
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+
+	int i;
+	struct flow_eth_dev *eth_dev = NULL;
+
+	NT_LOG(DBG, FILTER,
+		"Get eth-port adapter %i, port %i, port_id %u, rx queues %i, profile %i",
+		adapter_no, port_no, port_id, alloc_rx_queues, flow_profile);
+
+	if (MAX_OUTPUT_DEST < FLOW_MAX_QUEUES) {
+		assert(0);
+		NT_LOG(ERR, FILTER,
+			"ERROR: Internal array for multiple queues too small for API");
+	}
+
+	pthread_mutex_lock(&base_mtx);
+	struct flow_nic_dev *ndev = get_nic_dev_from_adapter_no(adapter_no);
+
+	if (!ndev) {
+		/* Error - no flow api found on specified adapter */
+		NT_LOG(ERR, FILTER, "ERROR: no flow interface registered for adapter %d",
+			adapter_no);
+		pthread_mutex_unlock(&base_mtx);
+		return NULL;
+	}
+
+	if (ndev->ports < ((uint16_t)port_no + 1)) {
+		NT_LOG(ERR, FILTER, "ERROR: port exceeds supported port range for adapter");
+		pthread_mutex_unlock(&base_mtx);
+		return NULL;
+	}
+
+	if ((alloc_rx_queues - 1) > FLOW_MAX_QUEUES) {	/* 0th is exception so +1 */
+		NT_LOG(ERR, FILTER,
+			"ERROR: Exceeds supported number of rx queues per eth device");
+		pthread_mutex_unlock(&base_mtx);
+		return NULL;
+	}
+
+	/* don't accept multiple eth_dev's on same NIC and same port */
+	eth_dev = nic_and_port_to_eth_dev(adapter_no, port_no);
+
+	if (eth_dev) {
+		NT_LOG(DBG, FILTER, "Re-opening existing NIC port device: NIC DEV: %i Port %i",
+			adapter_no, port_no);
+		pthread_mutex_unlock(&base_mtx);
+		flow_delete_eth_dev(eth_dev);
+		eth_dev = NULL;
+	}
+
+	eth_dev = calloc(1, sizeof(struct flow_eth_dev));
+
+	if (!eth_dev) {
+		NT_LOG(ERR, FILTER, "ERROR: calloc failed");
+		goto err_exit1;
+	}
+
+	pthread_mutex_lock(&ndev->mtx);
+
+	eth_dev->ndev = ndev;
+	eth_dev->port = port_no;
+	eth_dev->port_id = port_id;
+
+	/* Allocate the requested queues in HW for this dev */
+
+	for (i = 0; i < alloc_rx_queues; i++) {
+		eth_dev->rx_queue[i] = queue_ids[i];
+
+		if (i == 0 && (flow_profile == FLOW_ETH_DEV_PROFILE_INLINE && exception_path)) {
+			/*
+			 * Init QSL UNM - unmatched - redirects otherwise discarded
+			 * packets in QSL
+			 */
+			if (hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_DEST_QUEUE, eth_dev->port,
+				eth_dev->rx_queue[0].hw_id) < 0)
+				goto err_exit0;
+
+			if (hw_mod_qsl_unmq_set(&ndev->be, HW_QSL_UNMQ_EN, eth_dev->port, 1) < 0)
+				goto err_exit0;
+
+			if (hw_mod_qsl_unmq_flush(&ndev->be, eth_dev->port, 1) < 0)
+				goto err_exit0;
+		}
+
+		eth_dev->num_queues++;
+	}
+
+	eth_dev->rss_target_id = -1;
+
+	*rss_target_id = eth_dev->rss_target_id;
+
+	nic_insert_eth_port_dev(ndev, eth_dev);
+
+	pthread_mutex_unlock(&ndev->mtx);
+	pthread_mutex_unlock(&base_mtx);
+	return eth_dev;
+
+err_exit0:
+	pthread_mutex_unlock(&ndev->mtx);
+	pthread_mutex_unlock(&base_mtx);
+
+err_exit1:
+	if (eth_dev)
+		free(eth_dev);
+
+#ifdef FLOW_DEBUG
+	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
+#endif
+
+	NT_LOG(DBG, FILTER, "ERR in %s", __func__);
+	return NULL;	/* Error exit */
 }
 
 struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_backend_ops *be_if,
@@ -383,6 +568,10 @@ void *flow_api_get_be_dev(struct flow_nic_dev *ndev)
 static const struct flow_filter_ops ops = {
 	.flow_filter_init = flow_filter_init,
 	.flow_filter_done = flow_filter_done,
+	/*
+	 * Device Management API
+	 */
+	.flow_get_eth_dev = flow_get_eth_dev,
 };
 
 void init_flow_filter(void)

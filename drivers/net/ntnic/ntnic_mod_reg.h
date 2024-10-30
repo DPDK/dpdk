@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include "flow_api.h"
+#include "stream_binary_flow_api.h"
 #include "nthw_fpga_model.h"
 #include "nthw_platform_drv.h"
 #include "nthw_drv.h"
@@ -223,10 +224,23 @@ void register_flow_backend_ops(const struct flow_backend_ops *ops);
 const struct flow_backend_ops *get_flow_backend_ops(void);
 void flow_backend_init(void);
 
+const struct profile_inline_ops *get_profile_inline_ops(void);
+
 struct flow_filter_ops {
 	int (*flow_filter_init)(nthw_fpga_t *p_fpga, struct flow_nic_dev **p_flow_device,
 		int adapter_no);
 	int (*flow_filter_done)(struct flow_nic_dev *dev);
+	/*
+	 * Device Management API
+	 */
+	struct flow_eth_dev *(*flow_get_eth_dev)(uint8_t adapter_no,
+		uint8_t hw_port_no,
+		uint32_t port_id,
+		int alloc_rx_queues,
+		struct flow_queue_id_s queue_ids[],
+		int *rss_target_id,
+		enum flow_eth_dev_profile flow_profile,
+		uint32_t exception_path);
 };
 
 void register_flow_filter_ops(const struct flow_filter_ops *ops);

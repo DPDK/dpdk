@@ -1355,6 +1355,13 @@ static const struct eth_dev_ops nthw_eth_dev_ops = {
 static int
 nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 {
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
+		/* Return statement is not necessary here to allow traffic processing by SW  */
+	}
+
 	nt_vfio_init();
 	const struct port_ops *port_ops = get_port_ops();
 
@@ -1378,10 +1385,13 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	uint32_t n_port_mask = -1;	/* All ports enabled by default */
 	uint32_t nb_rx_queues = 1;
 	uint32_t nb_tx_queues = 1;
+	uint32_t exception_path = 0;
 	struct flow_queue_id_s queue_ids[MAX_QUEUES];
 	int n_phy_ports;
 	struct port_link_speed pls_mbps[NUM_ADAPTER_PORTS_MAX] = { 0 };
 	int num_port_speeds = 0;
+	enum flow_eth_dev_profile profile = FLOW_ETH_DEV_PROFILE_INLINE;
+
 	NT_LOG_DBGX(DBG, NTNIC, "Dev %s PF #%i Init : %02x:%02x:%i", pci_dev->name,
 		pci_dev->addr.function, pci_dev->addr.bus, pci_dev->addr.devid,
 		pci_dev->addr.function);
@@ -1679,6 +1689,18 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 			NT_LOG_DBGX(ERR, NTNIC, "%s: %s: error=%d",
 				(pci_dev->name[0] ? pci_dev->name : "NA"), name, -1);
 			return -1;
+		}
+
+		if (flow_filter_ops != NULL) {
+			internals->flw_dev = flow_filter_ops->flow_get_eth_dev(0, n_intf_no,
+				eth_dev->data->port_id, nb_rx_queues, queue_ids,
+				&internals->txq_scg[0].rss_target_id, profile, exception_path);
+
+			if (!internals->flw_dev) {
+				NT_LOG(ERR, NTNIC,
+					"Error creating port. Resource exhaustion in HW");
+				return -1;
+			}
 		}
 
 		/* connect structs */

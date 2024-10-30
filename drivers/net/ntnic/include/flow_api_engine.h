@@ -41,6 +41,11 @@ enum res_type_e {
 	RES_INVALID
 };
 
+/*
+ * Flow NIC offload management
+ */
+#define MAX_OUTPUT_DEST (128)
+
 void km_free_ndev_resource_management(void **handle);
 
 void kcc_free_ndev_resource_management(void **handle);
