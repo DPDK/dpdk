@@ -1420,6 +1420,12 @@ drv_deinit(struct drv_s *p_drv)
 		THREAD_JOIN(p_nt_drv->flm_thread);
 		profile_inline_ops->flm_free_queues();
 		THREAD_JOIN(p_nt_drv->port_event_thread);
+		/* Free all local flm event queues */
+		flm_inf_sta_queue_free_all(FLM_INFO_LOCAL);
+		/* Free all remote flm event queues */
+		flm_inf_sta_queue_free_all(FLM_INFO_REMOTE);
+		/* Free all aged flow event queues */
+		flm_age_queue_free_all();
 	}
 
 	/* stop adapter */

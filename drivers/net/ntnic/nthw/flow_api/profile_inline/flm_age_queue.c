@@ -44,6 +44,16 @@ void flm_age_queue_free(uint8_t port, uint16_t caller_id)
 		rte_ring_free(q);
 }
 
+void flm_age_queue_free_all(void)
+{
+	int i;
+	int j;
+
+	for (i = 0; i < MAX_EVT_AGE_PORTS; i++)
+		for (j = 0; j < MAX_EVT_AGE_QUEUES; j++)
+			flm_age_queue_free(i, j);
+}
+
 struct rte_ring *flm_age_queue_create(uint8_t port, uint16_t caller_id, unsigned int count)
 {
 	char name[20];

@@ -25,6 +25,82 @@ static struct rte_ring *stat_q_local[MAX_STAT_LCL_QUEUES];
 /* Remote queues for flm status records */
 static struct rte_ring *stat_q_remote[MAX_STAT_RMT_QUEUES];
 
+static void flm_inf_sta_queue_free(uint8_t port, uint8_t caller)
+{
+	struct rte_ring *q = NULL;
+
+	/* If queues is not created, then ignore and return */
+	switch (caller) {
+	case FLM_INFO_LOCAL:
+		if (port < MAX_INFO_LCL_QUEUES && info_q_local[port] != NULL) {
+			q = info_q_local[port];
+			info_q_local[port] = NULL;
+		}
+
+		break;
+
+	case FLM_INFO_REMOTE:
+		if (port < MAX_INFO_RMT_QUEUES && info_q_remote[port] != NULL) {
+			q = info_q_remote[port];
+			info_q_remote[port] = NULL;
+		}
+
+		break;
+
+	case FLM_STAT_LOCAL:
+		if (port < MAX_STAT_LCL_QUEUES && stat_q_local[port] != NULL) {
+			q = stat_q_local[port];
+			stat_q_local[port] = NULL;
+		}
+
+		break;
+
+	case FLM_STAT_REMOTE:
+		if (port < MAX_STAT_RMT_QUEUES && stat_q_remote[port] != NULL) {
+			q = stat_q_remote[port];
+			stat_q_remote[port] = NULL;
+		}
+
+		break;
+
+	default:
+		NT_LOG(ERR, FILTER, "FLM queue free illegal caller: %u", caller);
+		break;
+	}
+
+	if (q)
+		rte_ring_free(q);
+}
+
+void flm_inf_sta_queue_free_all(uint8_t caller)
+{
+	int count = 0;
+
+	switch (caller) {
+	case FLM_INFO_LOCAL:
+		count = MAX_INFO_LCL_QUEUES;
+		break;
+
+	case FLM_INFO_REMOTE:
+		count = MAX_INFO_RMT_QUEUES;
+		break;
+
+	case FLM_STAT_LOCAL:
+		count = MAX_STAT_LCL_QUEUES;
+		break;
+
+	case FLM_STAT_REMOTE:
+		count = MAX_STAT_RMT_QUEUES;
+		break;
+
+	default:
+		NT_LOG(ERR, FILTER, "FLM queue free illegal caller: %u", caller);
+		return;
+	}
+
+	for (int i = 0; i < count; i++)
+		flm_inf_sta_queue_free(i, caller);
+}
 
 static struct rte_ring *flm_evt_queue_create(uint8_t port, uint8_t caller)
 {

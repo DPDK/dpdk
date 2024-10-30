@@ -47,6 +47,7 @@ enum {
 #define FLM_EVT_ELEM_SIZE sizeof(struct flm_info_event_s)
 #define FLM_STAT_ELEM_SIZE sizeof(struct flm_status_event_s)
 
+void flm_inf_sta_queue_free_all(uint8_t caller);
 int flm_inf_queue_get(uint8_t port, bool remote, struct flm_info_event_s *obj);
 int flm_sta_queue_put(uint8_t port, bool remote, struct flm_status_event_s *obj);
 
