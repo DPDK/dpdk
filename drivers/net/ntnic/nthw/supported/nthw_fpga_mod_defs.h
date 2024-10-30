@@ -40,6 +40,7 @@
 #define MOD_QSL (0x448ed859UL)
 #define MOD_RAC (0xae830b42UL)
 #define MOD_RMC (0x236444eUL)
+#define MOD_RPL (0x6de535c3UL)
 #define MOD_RPP_LR (0xba7f945cUL)
 #define MOD_RST9563 (0x385d6d1dUL)
 #define MOD_SDC (0xd2369530UL)
@@ -48,7 +49,7 @@
 #define MOD_TX_CPY (0x60acf217UL)
 #define MOD_TX_INS (0x59afa100UL)
 #define MOD_TX_RPL (0x1095dfbbUL)
-#define MOD_IDX_COUNT (35)
+#define MOD_IDX_COUNT (36)
 
 /* aliases - only aliases go below this point */
 #endif	/* _NTHW_FPGA_MOD_DEFS_H_ */
