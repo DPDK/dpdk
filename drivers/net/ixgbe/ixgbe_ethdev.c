@@ -73,7 +73,7 @@
 
 #define IXGBE_MMW_SIZE_DEFAULT        0x4
 #define IXGBE_MMW_SIZE_JUMBO_FRAME    0x14
-#define IXGBE_MAX_RING_DESC           4096 /* replicate define from rxtx */
+#define IXGBE_MAX_RING_DESC           8192 /* replicate define from rxtx */
 
 /*
  *  Default values for RX/TX configuration

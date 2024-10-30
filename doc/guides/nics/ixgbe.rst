@@ -76,7 +76,7 @@ Scattered packets are not supported in this mode.
 If an incoming packet is greater than the maximum acceptable length of one "mbuf" data size (by default, the size is 2 KB),
 vPMD for RX would be disabled.
 
-By default, IXGBE_MAX_RING_DESC is set to 4096 and RTE_PMD_IXGBE_RX_MAX_BURST is set to 32.
+By default, IXGBE_MAX_RING_DESC is set to 8192 and RTE_PMD_IXGBE_RX_MAX_BURST is set to 32.
 
 Windows Prerequisites and Pre-conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
