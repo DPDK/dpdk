@@ -416,10 +416,67 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 	return 0;
 }
 
-static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_data __rte_unused,
-	uint32_t flm_key_id __rte_unused, uint32_t flm_ft __rte_unused,
-	uint16_t rpl_ext_ptr __rte_unused, uint32_t flm_scrub __rte_unused,
-	uint32_t priority __rte_unused)
+static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def *fd,
+	const uint32_t *packet_data, uint32_t flm_key_id, uint32_t flm_ft,
+	uint16_t rpl_ext_ptr, uint32_t flm_scrub __rte_unused, uint32_t priority)
+{
+	switch (fd->l4_prot) {
+	case PROT_L4_ICMP:
+		fh->flm_prot = fd->ip_prot;
+		break;
+
+	default:
+		switch (fd->tunnel_l4_prot) {
+		case PROT_TUN_L4_ICMP:
+			fh->flm_prot = fd->tunnel_ip_prot;
+			break;
+
+		default:
+			fh->flm_prot = 0;
+			break;
+		}
+
+		break;
+	}
+
+	memcpy(fh->flm_data, packet_data, sizeof(uint32_t) * 10);
+
+	fh->flm_kid = flm_key_id;
+	fh->flm_rpl_ext_ptr = rpl_ext_ptr;
+	fh->flm_prio = (uint8_t)priority;
+	fh->flm_ft = (uint8_t)flm_ft;
+
+	for (unsigned int i = 0; i < fd->modify_field_count; ++i) {
+		switch (fd->modify_field[i].select) {
+		case CPY_SELECT_DSCP_IPV4:
+		case CPY_SELECT_RQI_QFI:
+			fh->flm_rqi = (fd->modify_field[i].value8[0] >> 6) & 0x1;
+			fh->flm_qfi = fd->modify_field[i].value8[0] & 0x3f;
+			break;
+
+		case CPY_SELECT_IPV4:
+			fh->flm_nat_ipv4 = ntohl(fd->modify_field[i].value32[0]);
+			break;
+
+		case CPY_SELECT_PORT:
+			fh->flm_nat_port = ntohs(fd->modify_field[i].value16[0]);
+			break;
+
+		case CPY_SELECT_TEID:
+			fh->flm_teid = ntohl(fd->modify_field[i].value32[0]);
+			break;
+
+		default:
+			NT_LOG(DBG, FILTER, "Unknown modify field: %d",
+				fd->modify_field[i].select);
+			break;
+		}
+	}
+}
+
+static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_data,
+	uint32_t flm_key_id, uint32_t flm_ft, uint16_t rpl_ext_ptr,
+	uint32_t flm_scrub, uint32_t priority)
 {
 	struct nic_flow_def *fd;
 	struct flow_handle fh_copy;
@@ -442,6 +499,9 @@ static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_d
 
 	for (int i = 0; i < RES_COUNT; ++i)
 		fh->flm_db_idxs[i] = fh_copy.db_idxs[i];
+
+	copy_fd_to_fh_flm(fh, fd, packet_data, flm_key_id, flm_ft, rpl_ext_ptr, flm_scrub,
+		priority);
 
 	free(fd);
 

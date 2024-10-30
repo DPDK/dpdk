@@ -54,6 +54,30 @@ enum res_type_e {
 
 #define MAX_CPY_WRITERS_SUPPORTED 8
 
+#define MAX_MATCH_FIELDS 16
+
+struct match_elem_s {
+	int masked_for_tcam;	/* if potentially selected for TCAM */
+	uint32_t e_word[4];
+	uint32_t e_mask[4];
+
+	int extr_start_offs_id;
+	int8_t rel_offs;
+	uint32_t word_len;
+};
+
+struct km_flow_def_s {
+	struct flow_api_backend_s *be;
+
+	/* For collect flow elements and sorting */
+	struct match_elem_s match[MAX_MATCH_FIELDS];
+	int num_ftype_elem;
+
+	/* Flow information */
+	/* HW input port ID needed for compare. In port must be identical on flow types */
+	uint32_t port_id;
+};
+
 enum flow_port_type_e {
 	PORT_NONE,	/* not defined or drop */
 	PORT_INTERNAL,	/* no queues attached */
@@ -99,6 +123,25 @@ struct nic_flow_def {
 	uint32_t jump_to_group;
 
 	int full_offload;
+
+	/*
+	 * Modify field
+	 */
+	struct {
+		uint32_t select;
+		union {
+			uint8_t value8[16];
+			uint16_t value16[8];
+			uint32_t value32[4];
+		};
+	} modify_field[MAX_CPY_WRITERS_SUPPORTED];
+
+	uint32_t modify_field_count;
+
+	/*
+	 * Key Matcher flow definitions
+	 */
+	struct km_flow_def_s km;
 };
 
 enum flow_handle_type {
@@ -158,6 +201,9 @@ struct flow_handle {
 };
 
 void km_free_ndev_resource_management(void **handle);
+
+int km_add_match_elem(struct km_flow_def_s *km, uint32_t e_word[4], uint32_t e_mask[4],
+	uint32_t word_len, enum frame_offs_e start, int8_t offset);
 
 void kcc_free_ndev_resource_management(void **handle);
 
