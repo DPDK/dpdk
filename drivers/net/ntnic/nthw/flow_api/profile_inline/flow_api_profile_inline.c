@@ -803,6 +803,11 @@ static inline void set_key_def_sw(struct flm_flow_key_def_s *key_def, unsigned i
 	}
 }
 
+static inline uint8_t convert_port_to_ifr_mtu_recipe(uint32_t port)
+{
+	return port + 1;
+}
+
 static uint8_t get_port_from_port_id(const struct flow_nic_dev *ndev, uint32_t port_id)
 {
 	struct flow_eth_dev *dev = ndev->eth_base;
@@ -1023,6 +1028,8 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 	learn_record->rqi = fh->flm_rqi;
 	/* Lower 10 bits used for RPL EXT PTR */
 	learn_record->color = fh->flm_rpl_ext_ptr & 0x3ff;
+	/* Bit [13:10] used for MTU recipe */
+	learn_record->color |= (fh->flm_mtu_fragmentation_recipe & 0xf) << 10;
 
 	learn_record->ent = 0;
 	learn_record->op = flm_op & 0xf;
@@ -1120,6 +1127,9 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 				fd->dst_id[fd->dst_num_avail].id = (int)port;
 				fd->dst_id[fd->dst_num_avail].active = 1;
 				fd->dst_num_avail++;
+
+				fd->flm_mtu_fragmentation_recipe =
+					convert_port_to_ifr_mtu_recipe(port);
 
 				if (fd->full_offload < 0)
 					fd->full_offload = 1;
@@ -3070,6 +3080,8 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 			break;
 		}
 	}
+
+	fh->flm_mtu_fragmentation_recipe = fd->flm_mtu_fragmentation_recipe;
 	fh->context = fd->age.context;
 }
 
@@ -3187,7 +3199,7 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 	/* Setup COT */
 	struct hw_db_inline_cot_data cot_data = {
 		.matcher_color_contrib = empty_pattern ? 0x0 : 0x4,	/* FT key C */
-		.frag_rcp = 0,
+		.frag_rcp = empty_pattern ? fd->flm_mtu_fragmentation_recipe : 0,
 	};
 	struct hw_db_cot_idx cot_idx =
 		hw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle, &cot_data);
@@ -3501,7 +3513,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			/* Setup COT */
 			struct hw_db_inline_cot_data cot_data = {
 				.matcher_color_contrib = 0,
-				.frag_rcp = 0,
+				.frag_rcp = fd->flm_mtu_fragmentation_recipe,
 			};
 			struct hw_db_cot_idx cot_idx =
 				hw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle,
@@ -5412,6 +5424,67 @@ int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	return 0;
 }
 
+int flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu)
+{
+	if (port >= 255)
+		return -1;
+
+	uint32_t ipv4_en_frag;
+	uint32_t ipv4_action;
+	uint32_t ipv6_en_frag;
+	uint32_t ipv6_action;
+
+	if (port == 0) {
+		ipv4_en_frag = PORT_0_IPV4_FRAGMENTATION;
+		ipv4_action = PORT_0_IPV4_DF_ACTION;
+		ipv6_en_frag = PORT_0_IPV6_FRAGMENTATION;
+		ipv6_action = PORT_0_IPV6_ACTION;
+
+	} else if (port == 1) {
+		ipv4_en_frag = PORT_1_IPV4_FRAGMENTATION;
+		ipv4_action = PORT_1_IPV4_DF_ACTION;
+		ipv6_en_frag = PORT_1_IPV6_FRAGMENTATION;
+		ipv6_action = PORT_1_IPV6_ACTION;
+
+	} else {
+		ipv4_en_frag = DISABLE_FRAGMENTATION;
+		ipv4_action = IPV4_DF_DROP;
+		ipv6_en_frag = DISABLE_FRAGMENTATION;
+		ipv6_action = IPV6_DROP;
+	}
+
+	int err = 0;
+	uint8_t ifr_mtu_recipe = convert_port_to_ifr_mtu_recipe(port);
+	struct flow_nic_dev *ndev = dev->ndev;
+
+	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_EN, ifr_mtu_recipe,
+			ipv4_en_frag);
+	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_EN, ifr_mtu_recipe,
+			ipv6_en_frag);
+	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_MTU, ifr_mtu_recipe, mtu);
+	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_DF_DROP, ifr_mtu_recipe,
+			ipv4_action);
+	err |= hw_mod_tpe_rpp_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_DROP, ifr_mtu_recipe,
+			ipv6_action);
+
+	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_EN, ifr_mtu_recipe,
+			ipv4_en_frag);
+	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_EN, ifr_mtu_recipe,
+			ipv6_en_frag);
+	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_MTU, ifr_mtu_recipe, mtu);
+	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV4_DF_DROP, ifr_mtu_recipe,
+			ipv4_action);
+	err |= hw_mod_tpe_ifr_rcp_set(&ndev->be, HW_TPE_IFR_RCP_IPV6_DROP, ifr_mtu_recipe,
+			ipv6_action);
+
+	if (err == 0) {
+		err |= hw_mod_tpe_rpp_ifr_rcp_flush(&ndev->be, ifr_mtu_recipe, 1);
+		err |= hw_mod_tpe_ifr_rcp_flush(&ndev->be, ifr_mtu_recipe, 1);
+	}
+
+	return err;
+}
+
 int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	struct rte_flow_port_info *port_info,
 	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error)
@@ -5996,6 +6069,11 @@ static const struct profile_inline_ops ops = {
 	.flm_free_queues = flm_free_queues,
 	.flm_mtr_read_stats = flm_mtr_read_stats,
 	.flm_update = flm_update,
+
+	/*
+	 * Config API
+	 */
+	.flow_set_mtu_inline = flow_set_mtu_inline,
 };
 
 void profile_inline_init(void)

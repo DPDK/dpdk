@@ -408,6 +408,11 @@ struct profile_inline_ops {
 	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
 	const struct rte_flow_queue_attr *queue_attr[],
 	struct rte_flow_error *error);
+
+	/*
+	 * Config API
+	 */
+	int (*flow_set_mtu_inline)(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu);
 };
 
 void register_profile_inline_ops(const struct profile_inline_ops *ops);

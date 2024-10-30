@@ -7,6 +7,56 @@
 #define _FLOW_API_PROFILE_INLINE_CONFIG_H_
 
 /*
+ * Per port configuration for IPv4 fragmentation and DF flag handling
+ *
+ * ||-------------------------------------||-------------------------||----------||
+ * ||              Configuration          || Egress packet type      ||          ||
+ * ||-------------------------------------||-------------------------|| Action   ||
+ * || IPV4_FRAGMENTATION | IPV4_DF_ACTION || Exceeding MTU | DF flag ||          ||
+ * ||-------------------------------------||-------------------------||----------||
+ * ||   DISABLE          |    -           ||      -       |    -     || Forward  ||
+ * ||-------------------------------------||-------------------------||----------||
+ * ||   ENABLE           |    DF_DROP     ||      no      |    -     || Forward  ||
+ * ||                    |                ||      yes     |    0     || Fragment ||
+ * ||                    |                ||      yes     |    1     || Drop     ||
+ * ||-------------------------------------||-------------------------||----------||
+ * ||   ENABLE           |    DF_FORWARD  ||      no      |    -     || Forward  ||
+ * ||                    |                ||      yes     |    0     || Fragment ||
+ * ||                    |                ||      yes     |    1     || Forward  ||
+ * ||-------------------------------------||-------------------------||----------||
+ */
+
+#define PORT_0_IPV4_FRAGMENTATION DISABLE_FRAGMENTATION
+#define PORT_0_IPV4_DF_ACTION IPV4_DF_DROP
+
+#define PORT_1_IPV4_FRAGMENTATION DISABLE_FRAGMENTATION
+#define PORT_1_IPV4_DF_ACTION IPV4_DF_DROP
+
+/*
+ * Per port configuration for IPv6 fragmentation
+ *
+ * ||-------------------------------------||-------------------------||----------||
+ * ||              Configuration          || Egress packet type      ||          ||
+ * ||-------------------------------------||-------------------------|| Action   ||
+ * || IPV6_FRAGMENTATION | IPV6_ACTION    || Exceeding MTU           ||          ||
+ * ||-------------------------------------||-------------------------||----------||
+ * ||   DISABLE          |    -           ||      -                  || Forward  ||
+ * ||-------------------------------------||-------------------------||----------||
+ * ||   ENABLE           |    DROP        ||      no                 || Forward  ||
+ * ||                    |                ||      yes                || Drop     ||
+ * ||-------------------------------------||-------------------------||----------||
+ * ||   ENABLE           |    FRAGMENT    ||      no                 || Forward  ||
+ * ||                    |                ||      yes                || Fragment ||
+ * ||-------------------------------------||-------------------------||----------||
+ */
+
+#define PORT_0_IPV6_FRAGMENTATION DISABLE_FRAGMENTATION
+#define PORT_0_IPV6_ACTION IPV6_DROP
+
+#define PORT_1_IPV6_FRAGMENTATION DISABLE_FRAGMENTATION
+#define PORT_1_IPV6_ACTION IPV6_DROP
+
+/*
  * Statistics are generated each time the byte counter crosses a limit.
  * If BYTE_LIMIT is zero then the byte counter does not trigger statistics
  * generation.

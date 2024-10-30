@@ -39,6 +39,7 @@ const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL }
 #define THREAD_RETURN (0)
 #define HW_MAX_PKT_LEN (10000)
 #define MAX_MTU (HW_MAX_PKT_LEN - RTE_ETHER_HDR_LEN - RTE_ETHER_CRC_LEN)
+#define MIN_MTU_INLINE 512
 
 #define EXCEPTION_PATH_HID 0
 
@@ -69,6 +70,8 @@ const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL }
 
 #define MAX_RX_PACKETS   128
 #define MAX_TX_PACKETS   128
+
+#define MTUINITVAL 1500
 
 uint64_t rte_tsc_freq;
 
@@ -338,6 +341,7 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 	dev_info->max_mtu = MAX_MTU;
 
 	if (p_adapter_info->fpga_info.profile == FPGA_INFO_PROFILE_INLINE) {
+		dev_info->min_mtu = MIN_MTU_INLINE;
 		dev_info->flow_type_rss_offloads = NT_ETH_RSS_OFFLOAD_MASK;
 		dev_info->hash_key_size = MAX_RSS_KEY_LEN;
 
@@ -1149,6 +1153,26 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static int dev_set_mtu_inline(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	struct flow_eth_dev *flw_dev = internals->flw_dev;
+	int ret = -1;
+
+	if (internals->type == PORT_TYPE_PHYSICAL && mtu >= MIN_MTU_INLINE && mtu <= MAX_MTU)
+		ret = profile_inline_ops->flow_set_mtu_inline(flw_dev, internals->port, mtu);
+
+	return ret ? -EINVAL : 0;
+}
+
 static int eth_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
 	eth_dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -1714,6 +1738,7 @@ static struct eth_dev_ops nthw_eth_dev_ops = {
 	.xstats_reset = eth_xstats_reset,
 	.xstats_get_by_id = eth_xstats_get_by_id,
 	.xstats_get_names_by_id = eth_xstats_get_names_by_id,
+	.mtu_set = NULL,
 	.promiscuous_enable = promiscuous_enable,
 	.rss_hash_update = eth_dev_rss_hash_update,
 	.rss_hash_conf_get = rss_hash_conf_get,
@@ -2277,6 +2302,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		internals->pci_dev = pci_dev;
 		internals->n_intf_no = n_intf_no;
 		internals->type = PORT_TYPE_PHYSICAL;
+		internals->port = n_intf_no;
 		internals->nb_rx_queues = nb_rx_queues;
 		internals->nb_tx_queues = nb_tx_queues;
 
@@ -2385,6 +2411,21 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 		/* increase initialized ethernet devices - PF */
 		p_drv->n_eth_dev_init_count++;
+
+		if (get_flow_filter_ops() != NULL) {
+			if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE &&
+				internals->flw_dev->ndev->be.tpe.ver >= 2) {
+				assert(nthw_eth_dev_ops.mtu_set == dev_set_mtu_inline ||
+					nthw_eth_dev_ops.mtu_set == NULL);
+				nthw_eth_dev_ops.mtu_set = dev_set_mtu_inline;
+				dev_set_mtu_inline(eth_dev, MTUINITVAL);
+				NT_LOG_DBGX(DBG, NTNIC, "INLINE MTU supported, tpe version %d",
+					internals->flw_dev->ndev->be.tpe.ver);
+
+			} else {
+				NT_LOG(DBG, NTNIC, "INLINE MTU not supported");
+			}
+		}
 
 		/* Port event thread */
 		if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {

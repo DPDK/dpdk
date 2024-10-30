@@ -152,6 +152,54 @@ int hw_mod_tpe_rpp_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, i
 	return be->iface->tpe_rpp_ifr_rcp_flush(be->be_dev, &be->tpe, start_idx, count);
 }
 
+static int hw_mod_tpe_rpp_ifr_rcp_mod(struct flow_api_backend_s *be, enum hw_tpe_e field,
+	uint32_t index, uint32_t *value, int get)
+{
+	if (index >= be->tpe.nb_ifr_categories)
+		return INDEX_TOO_LARGE;
+
+	switch (_VER_) {
+	case 3:
+		switch (field) {
+		case HW_TPE_IFR_RCP_IPV4_EN:
+			GET_SET(be->tpe.v3.rpp_ifr_rcp[index].ipv4_en, value);
+			break;
+
+		case HW_TPE_IFR_RCP_IPV4_DF_DROP:
+			GET_SET(be->tpe.v3.rpp_ifr_rcp[index].ipv4_df_drop, value);
+			break;
+
+		case HW_TPE_IFR_RCP_IPV6_EN:
+			GET_SET(be->tpe.v3.rpp_ifr_rcp[index].ipv6_en, value);
+			break;
+
+		case HW_TPE_IFR_RCP_IPV6_DROP:
+			GET_SET(be->tpe.v3.rpp_ifr_rcp[index].ipv6_drop, value);
+			break;
+
+		case HW_TPE_IFR_RCP_MTU:
+			GET_SET(be->tpe.v3.rpp_ifr_rcp[index].mtu, value);
+			break;
+
+		default:
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_tpe_rpp_ifr_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value)
+{
+	return hw_mod_tpe_rpp_ifr_rcp_mod(be, field, index, &value, 0);
+}
+
 /*
  * RPP_RCP
  */
@@ -260,6 +308,54 @@ int hw_mod_tpe_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int c
 	}
 
 	return be->iface->tpe_ifr_rcp_flush(be->be_dev, &be->tpe, start_idx, count);
+}
+
+static int hw_mod_tpe_ifr_rcp_mod(struct flow_api_backend_s *be, enum hw_tpe_e field,
+	uint32_t index, uint32_t *value, int get)
+{
+	if (index >= be->tpe.nb_ifr_categories)
+		return INDEX_TOO_LARGE;
+
+	switch (_VER_) {
+	case 3:
+		switch (field) {
+		case HW_TPE_IFR_RCP_IPV4_EN:
+			GET_SET(be->tpe.v3.ifr_rcp[index].ipv4_en, value);
+			break;
+
+		case HW_TPE_IFR_RCP_IPV4_DF_DROP:
+			GET_SET(be->tpe.v3.ifr_rcp[index].ipv4_df_drop, value);
+			break;
+
+		case HW_TPE_IFR_RCP_IPV6_EN:
+			GET_SET(be->tpe.v3.ifr_rcp[index].ipv6_en, value);
+			break;
+
+		case HW_TPE_IFR_RCP_IPV6_DROP:
+			GET_SET(be->tpe.v3.ifr_rcp[index].ipv6_drop, value);
+			break;
+
+		case HW_TPE_IFR_RCP_MTU:
+			GET_SET(be->tpe.v3.ifr_rcp[index].mtu, value);
+			break;
+
+		default:
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_tpe_ifr_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value)
+{
+	return hw_mod_tpe_ifr_rcp_mod(be, field, index, &value, 0);
 }
 
 /*

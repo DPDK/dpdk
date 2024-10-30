@@ -11,6 +11,10 @@
 #include "flow_api.h"
 #include "stream_binary_flow_api.h"
 
+#define DISABLE_FRAGMENTATION 0
+#define IPV4_DF_DROP 1
+#define IPV6_DROP 1
+
 /*
  * Management
  */
@@ -119,5 +123,10 @@ int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
 	const struct rte_flow_queue_attr *queue_attr[],
 	struct rte_flow_error *error);
+
+/*
+ * Config API
+ */
+int flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu);
 
 #endif	/* _FLOW_API_PROFILE_INLINE_H_ */

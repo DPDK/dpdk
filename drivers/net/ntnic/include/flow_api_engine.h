@@ -280,6 +280,11 @@ struct nic_flow_def {
 	 * AGE action timeout
 	 */
 	struct age_def_s age;
+
+	/*
+	 * TX fragmentation IFR/RPP_LR MTU recipe
+	 */
+	uint8_t flm_mtu_fragmentation_recipe;
 };
 
 enum flow_handle_type {
@@ -339,6 +344,8 @@ struct flow_handle {
 			uint8_t flm_rqi;
 			uint8_t flm_qfi;
 			uint8_t flm_scrub_prof;
+
+			uint8_t flm_mtu_fragmentation_recipe;
 
 			/* Flow specific pointer to application template table cell stored during
 			 * flow create.
