@@ -6,8 +6,11 @@ sources += files(
         'idpf_controlq_setup.c',
 )
 
-cflags += ['-Wno-unused-value']
-cflags += ['-Wno-unused-variable']
-cflags += ['-Wno-unused-parameter']
-cflags += ['-Wno-implicit-fallthrough']
-cflags += ['-Wno-strict-aliasing']
+error_cflags = [
+        '-Wno-unused-variable',
+]
+foreach flag: error_cflags
+    if cc.has_argument(flag)
+        cflags += flag
+    endif
+endforeach
