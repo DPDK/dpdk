@@ -131,6 +131,10 @@ struct hw_db_hsh_idx {
 
 enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_NONE = 0,
+
+	HW_DB_IDX_TYPE_MATCH_SET,
+	HW_DB_IDX_TYPE_ACTION_SET,
+
 	HW_DB_IDX_TYPE_COT,
 	HW_DB_IDX_TYPE_CAT,
 	HW_DB_IDX_TYPE_QSL,
@@ -143,6 +147,17 @@ enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_FLM_FT,
 	HW_DB_IDX_TYPE_KM_FT,
 	HW_DB_IDX_TYPE_HSH,
+};
+
+/* Container types */
+struct hw_db_inline_match_set_data {
+	struct hw_db_cat_idx cat;
+	struct hw_db_km_idx km;
+	struct hw_db_km_ft km_ft;
+	struct hw_db_action_set_idx action_set;
+	int jump;
+
+	uint8_t priority;
 };
 
 /* Functionality data types */
@@ -224,6 +239,7 @@ struct hw_db_inline_action_set_data {
 		struct {
 			struct hw_db_cot_idx cot;
 			struct hw_db_qsl_idx qsl;
+			struct hw_db_slc_lr_idx slc_lr;
 			struct hw_db_tpe_idx tpe;
 			struct hw_db_hsh_idx hsh;
 		};
@@ -262,6 +278,25 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 	enum hw_db_idx_type type, struct hw_db_idx *idxs, uint32_t size);
 
 /**/
+
+struct hw_db_match_set_idx
+hw_db_inline_match_set_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_match_set_data *data);
+void hw_db_inline_match_set_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_match_set_idx idx);
+void hw_db_inline_match_set_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_match_set_idx idx);
+
+struct hw_db_action_set_idx
+hw_db_inline_action_set_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_action_set_data *data);
+void hw_db_inline_action_set_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_action_set_idx idx);
+void hw_db_inline_action_set_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_action_set_idx idx);
+
+/**/
+
 struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_cot_data *data);
 void hw_db_inline_cot_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);

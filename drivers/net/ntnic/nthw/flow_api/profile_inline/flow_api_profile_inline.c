@@ -2677,10 +2677,30 @@ static int setup_flow_flm_actions(struct flow_eth_dev *dev,
 		return -1;
 	}
 
+	/* Setup Action Set */
+	struct hw_db_inline_action_set_data action_set_data = {
+		.contains_jump = 0,
+		.cot = cot_idx,
+		.qsl = qsl_idx,
+		.slc_lr = slc_lr_idx,
+		.tpe = tpe_idx,
+		.hsh = hsh_idx,
+	};
+	struct hw_db_action_set_idx action_set_idx =
+		hw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle, &action_set_data);
+	local_idxs[(*local_idx_counter)++] = action_set_idx.raw;
+
+	if (action_set_idx.error) {
+		NT_LOG(ERR, FILTER, "Could not reference Action Set resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		return -1;
+	}
+
 	/* Setup FLM FT */
 	struct hw_db_inline_flm_ft_data flm_ft_data = {
 		.is_group_zero = 0,
 		.group = group,
+		.action_set = action_set_idx,
 	};
 	struct hw_db_flm_ft flm_ft_idx = empty_pattern
 		? hw_db_inline_flm_ft_default(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data)
@@ -2867,6 +2887,18 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			}
 		}
 
+		struct hw_db_action_set_idx action_set_idx =
+			hw_db_inline_action_set_add(dev->ndev, dev->ndev->hw_db_handle,
+			&action_set_data);
+
+		fh->db_idxs[fh->db_idx_counter++] = action_set_idx.raw;
+
+		if (action_set_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference Action Set resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
 		/* Setup CAT */
 		struct hw_db_inline_cat_data cat_data = {
 			.vlan_mask = (0xf << fd->vlans) & 0xf,
@@ -2986,6 +3018,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		struct hw_db_inline_km_ft_data km_ft_data = {
 			.cat = cat_idx,
 			.km = km_idx,
+			.action_set = action_set_idx,
 		};
 		struct hw_db_km_ft km_ft_idx =
 			hw_db_inline_km_ft_add(dev->ndev, dev->ndev->hw_db_handle, &km_ft_data);
@@ -3022,10 +3055,32 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 			km_write_data_match_entry(&fd->km, 0);
 		}
 
+		/* Setup Match Set */
+		struct hw_db_inline_match_set_data match_set_data = {
+			.cat = cat_idx,
+			.km = km_idx,
+			.km_ft = km_ft_idx,
+			.action_set = action_set_idx,
+			.jump = fd->jump_to_group != UINT32_MAX ? fd->jump_to_group : 0,
+			.priority = attr->priority & 0xff,
+		};
+		struct hw_db_match_set_idx match_set_idx =
+			hw_db_inline_match_set_add(dev->ndev, dev->ndev->hw_db_handle,
+			&match_set_data);
+		fh->db_idxs[fh->db_idx_counter++] = match_set_idx.raw;
+
+		if (match_set_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference Match Set resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
 		/* Setup FLM FT */
 		struct hw_db_inline_flm_ft_data flm_ft_data = {
 			.is_group_zero = 1,
 			.jump = fd->jump_to_group != UINT32_MAX ? fd->jump_to_group : 0,
+			.action_set = action_set_idx,
+
 		};
 		struct hw_db_flm_ft flm_ft_idx =
 			hw_db_inline_flm_ft_add(dev->ndev, dev->ndev->hw_db_handle, &flm_ft_data);

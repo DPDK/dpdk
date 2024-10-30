@@ -9,6 +9,9 @@
 #include "flow_api_hw_db_inline.h"
 #include "rte_common.h"
 
+#define HW_DB_INLINE_ACTION_SET_NB 512
+#define HW_DB_INLINE_MATCH_SET_NB 512
+
 #define HW_DB_FT_LOOKUP_KEY_A 0
 
 #define HW_DB_FT_TYPE_KM 1
@@ -110,6 +113,20 @@ struct hw_db_inline_resource_db {
 		int cfn_hw;
 		int ref;
 	} *cfn;
+
+	uint32_t cfn_priority_counter;
+	uint32_t set_priority_counter;
+
+	struct hw_db_inline_resource_db_action_set {
+		struct hw_db_inline_action_set_data data;
+		int ref;
+	} action_set[HW_DB_INLINE_ACTION_SET_NB];
+
+	struct hw_db_inline_resource_db_match_set {
+		struct hw_db_inline_match_set_data data;
+		int ref;
+		uint32_t set_priority;
+	} match_set[HW_DB_INLINE_MATCH_SET_NB];
 };
 
 int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
@@ -292,6 +309,16 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 		case HW_DB_IDX_TYPE_NONE:
 			break;
 
+		case HW_DB_IDX_TYPE_MATCH_SET:
+			hw_db_inline_match_set_deref(ndev, db_handle,
+				*(struct hw_db_match_set_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_ACTION_SET:
+			hw_db_inline_action_set_deref(ndev, db_handle,
+				*(struct hw_db_action_set_idx *)&idxs[i]);
+			break;
+
 		case HW_DB_IDX_TYPE_CAT:
 			hw_db_inline_cat_deref(ndev, db_handle, *(struct hw_db_cat_idx *)&idxs[i]);
 			break;
@@ -359,6 +386,12 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 		switch (type) {
 		case HW_DB_IDX_TYPE_NONE:
 			return NULL;
+
+		case HW_DB_IDX_TYPE_MATCH_SET:
+			return &db->match_set[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_ACTION_SET:
+			return &db->action_set[idxs[i].ids].data;
 
 		case HW_DB_IDX_TYPE_CAT:
 			return &db->cat[idxs[i].ids].data;
@@ -551,6 +584,763 @@ static void hw_db_inline_setup_default_flm_rcp(struct flow_nic_dev *ndev, int fl
 	hw_mod_flm_rcp_flush(&ndev->be, flm_rcp, 1);
 }
 
+
+static void hw_db_copy_ft(struct flow_nic_dev *ndev, int type, int cfn_dst, int cfn_src,
+	int lookup, int flow_type)
+{
+	const int max_lookups = 4;
+	const int cat_funcs = (int)ndev->be.cat.nb_cat_funcs / 8;
+
+	int fte_index_dst = (8 * flow_type + cfn_dst / cat_funcs) * max_lookups + lookup;
+	int fte_field_dst = cfn_dst % cat_funcs;
+
+	int fte_index_src = (8 * flow_type + cfn_src / cat_funcs) * max_lookups + lookup;
+	int fte_field_src = cfn_src % cat_funcs;
+
+	uint32_t current_bm_dst = 0;
+	uint32_t current_bm_src = 0;
+	uint32_t fte_field_bm_dst = 1 << fte_field_dst;
+	uint32_t fte_field_bm_src = 1 << fte_field_src;
+
+	switch (type) {
+	case HW_DB_FT_TYPE_FLM:
+		hw_mod_cat_fte_flm_get(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+			fte_index_dst, &current_bm_dst);
+		hw_mod_cat_fte_flm_get(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+			fte_index_src, &current_bm_src);
+		break;
+
+	case HW_DB_FT_TYPE_KM:
+		hw_mod_cat_fte_km_get(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+			fte_index_dst, &current_bm_dst);
+		hw_mod_cat_fte_km_get(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+			fte_index_src, &current_bm_src);
+		break;
+
+	default:
+		break;
+	}
+
+	uint32_t enable = current_bm_src & fte_field_bm_src;
+	uint32_t final_bm_dst = enable ? (fte_field_bm_dst | current_bm_dst)
+		: (~fte_field_bm_dst & current_bm_dst);
+
+	if (current_bm_dst != final_bm_dst) {
+		switch (type) {
+		case HW_DB_FT_TYPE_FLM:
+			hw_mod_cat_fte_flm_set(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+				fte_index_dst, final_bm_dst);
+			hw_mod_cat_fte_flm_flush(&ndev->be, KM_FLM_IF_FIRST, fte_index_dst, 1);
+			break;
+
+		case HW_DB_FT_TYPE_KM:
+			hw_mod_cat_fte_km_set(&ndev->be, HW_CAT_FTE_ENABLE_BM, KM_FLM_IF_FIRST,
+				fte_index_dst, final_bm_dst);
+			hw_mod_cat_fte_km_flush(&ndev->be, KM_FLM_IF_FIRST, fte_index_dst, 1);
+			break;
+
+		default:
+			break;
+		}
+	}
+}
+
+
+static int hw_db_inline_filter_apply(struct flow_nic_dev *ndev,
+	struct hw_db_inline_resource_db *db,
+	int cat_hw_id,
+	struct hw_db_match_set_idx match_set_idx,
+	struct hw_db_flm_ft flm_ft_idx,
+	struct hw_db_action_set_idx action_set_idx)
+{
+	(void)match_set_idx;
+	(void)flm_ft_idx;
+
+	const struct hw_db_inline_match_set_data *match_set =
+			&db->match_set[match_set_idx.ids].data;
+	const struct hw_db_inline_cat_data *cat = &db->cat[match_set->cat.ids].data;
+
+	const int km_ft = match_set->km_ft.id1;
+	const int km_rcp = (int)db->km[match_set->km.id1].data.rcp;
+
+	const int flm_ft = flm_ft_idx.id1;
+	const int flm_rcp = flm_ft_idx.id2;
+
+	const struct hw_db_inline_action_set_data *action_set =
+			&db->action_set[action_set_idx.ids].data;
+	const struct hw_db_inline_cot_data *cot = &db->cot[action_set->cot.ids].data;
+
+	const int qsl_hw_id = action_set->qsl.ids;
+	const int slc_lr_hw_id = action_set->slc_lr.ids;
+	const int tpe_hw_id = action_set->tpe.ids;
+	const int hsh_hw_id = action_set->hsh.ids;
+
+	/* Setup default FLM RCP if needed */
+	if (flm_rcp > 0 && db->flm[flm_rcp].ref <= 0)
+		hw_db_inline_setup_default_flm_rcp(ndev, flm_rcp);
+
+	/* Setup CAT.CFN */
+	{
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_SET_ALL_DEFAULTS, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ENABLE, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_INV, cat_hw_id, 0, 0x0);
+
+		/* Protocol checks */
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_INV, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_ISL, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_CFP, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_MAC, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_L2, cat_hw_id, 0, cat->ptc_mask_l2);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_VNTAG, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_VLAN, cat_hw_id, 0, cat->vlan_mask);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_MPLS, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_L3, cat_hw_id, 0, cat->ptc_mask_l3);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_FRAG, cat_hw_id, 0,
+			cat->ptc_mask_frag);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_IP_PROT, cat_hw_id, 0, cat->ip_prot);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_L4, cat_hw_id, 0, cat->ptc_mask_l4);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TUNNEL, cat_hw_id, 0,
+			cat->ptc_mask_tunnel);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_L2, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_VLAN, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_MPLS, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_L3, cat_hw_id, 0,
+			cat->ptc_mask_l3_tunnel);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_FRAG, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_IP_PROT, cat_hw_id, 0,
+			cat->ip_prot_tunnel);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PTC_TNL_L4, cat_hw_id, 0,
+			cat->ptc_mask_l4_tunnel);
+
+		/* Error checks */
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_INV, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_CV, cat_hw_id, 0, 0x1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_FCS, cat_hw_id, 0, 0x1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_TRUNC, cat_hw_id, 0, 0x1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_L3_CS, cat_hw_id, 0, 0x1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_L4_CS, cat_hw_id, 0, 0x1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_TNL_L3_CS, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_TNL_L4_CS, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_TTL_EXP, cat_hw_id, 0,
+			cat->err_mask_ttl);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ERR_TNL_TTL_EXP, cat_hw_id, 0,
+			cat->err_mask_ttl_tunnel);
+
+		/* MAC port check */
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_MAC_PORT, cat_hw_id, 0,
+			cat->mac_port_mask);
+
+		/* Pattern match checks */
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_CMP, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_DCT, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_EXT_INV, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_CMB, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_AND_INV, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_OR_INV, cat_hw_id, 0, -1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PM_INV, cat_hw_id, 0, -1);
+
+		/* Length checks */
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_LC, cat_hw_id, 0, 0x0);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_LC_INV, cat_hw_id, 0, -1);
+
+		/* KM and FLM */
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_KM0_OR, cat_hw_id, 0, 0x1);
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_KM1_OR, cat_hw_id, 0, 0x3);
+
+		hw_mod_cat_cfn_flush(&ndev->be, cat_hw_id, 1);
+	}
+
+	/* Setup CAT.CTS */
+	{
+		const int offset = ((int)ndev->be.cat.cts_num + 1) / 2;
+
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + 0, cat_hw_id);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + 0, 0);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + 1, hsh_hw_id);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + 1, qsl_hw_id);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + 2, 0);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + 2,
+			slc_lr_hw_id);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + 3, 0);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + 3, 0);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + 4, 0);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + 4, 0);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + 5, tpe_hw_id);
+		hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + 5, 0);
+
+		hw_mod_cat_cts_flush(&ndev->be, offset * cat_hw_id, 6);
+	}
+
+	/* Setup CAT.CTE */
+	{
+		hw_mod_cat_cte_set(&ndev->be, HW_CAT_CTE_ENABLE_BM, cat_hw_id,
+			0x001 | 0x004 | (qsl_hw_id ? 0x008 : 0) |
+			(slc_lr_hw_id ? 0x020 : 0) | 0x040 |
+			(tpe_hw_id ? 0x400 : 0));
+		hw_mod_cat_cte_flush(&ndev->be, cat_hw_id, 1);
+	}
+
+	/* Setup CAT.KM */
+	{
+		uint32_t bm = 0;
+
+		hw_mod_cat_kcs_km_set(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cat_hw_id,
+			km_rcp);
+		hw_mod_cat_kcs_km_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id, 1);
+
+		hw_mod_cat_kce_km_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, &bm);
+		hw_mod_cat_kce_km_set(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, bm | (1 << (cat_hw_id % 8)));
+		hw_mod_cat_kce_km_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id / 8, 1);
+
+		hw_db_set_ft(ndev, HW_DB_FT_TYPE_KM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_A, km_ft, 1);
+	}
+
+	/* Setup CAT.FLM */
+	{
+		uint32_t bm = 0;
+
+		hw_mod_cat_kcs_flm_set(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cat_hw_id,
+			flm_rcp);
+		hw_mod_cat_kcs_flm_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id, 1);
+
+		hw_mod_cat_kce_flm_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, &bm);
+		hw_mod_cat_kce_flm_set(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, bm | (1 << (cat_hw_id % 8)));
+		hw_mod_cat_kce_flm_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id / 8, 1);
+
+		hw_db_set_ft(ndev, HW_DB_FT_TYPE_FLM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_A, km_ft, 1);
+		hw_db_set_ft(ndev, HW_DB_FT_TYPE_FLM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_C, flm_ft, 1);
+	}
+
+	/* Setup CAT.COT */
+	{
+		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, cat_hw_id, 0);
+		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_COLOR, cat_hw_id, cot->frag_rcp << 10);
+		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_KM, cat_hw_id,
+			cot->matcher_color_contrib);
+		hw_mod_cat_cot_flush(&ndev->be, cat_hw_id, 1);
+	}
+
+	hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ENABLE, cat_hw_id, 0, 0x1);
+	hw_mod_cat_cfn_flush(&ndev->be, cat_hw_id, 1);
+
+	return 0;
+}
+
+static void hw_db_inline_filter_clear(struct flow_nic_dev *ndev,
+	struct hw_db_inline_resource_db *db,
+	int cat_hw_id)
+{
+	/* Setup CAT.CFN */
+	hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_SET_ALL_DEFAULTS, cat_hw_id, 0, 0x0);
+	hw_mod_cat_cfn_flush(&ndev->be, cat_hw_id, 1);
+
+	/* Setup CAT.CTS */
+	{
+		const int offset = ((int)ndev->be.cat.cts_num + 1) / 2;
+
+		for (int i = 0; i < 6; ++i) {
+			hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cat_hw_id + i, 0);
+			hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cat_hw_id + i, 0);
+		}
+
+		hw_mod_cat_cts_flush(&ndev->be, offset * cat_hw_id, 6);
+	}
+
+	/* Setup CAT.CTE */
+	{
+		hw_mod_cat_cte_set(&ndev->be, HW_CAT_CTE_ENABLE_BM, cat_hw_id, 0);
+		hw_mod_cat_cte_flush(&ndev->be, cat_hw_id, 1);
+	}
+
+	/* Setup CAT.KM */
+	{
+		uint32_t bm = 0;
+
+		hw_mod_cat_kcs_km_set(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cat_hw_id,
+			0);
+		hw_mod_cat_kcs_km_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id, 1);
+
+		hw_mod_cat_kce_km_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, &bm);
+		hw_mod_cat_kce_km_set(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, bm & ~(1 << (cat_hw_id % 8)));
+		hw_mod_cat_kce_km_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id / 8, 1);
+
+		for (int ft = 0; ft < (int)db->nb_km_ft; ++ft) {
+			hw_db_set_ft(ndev, HW_DB_FT_TYPE_KM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_A, ft,
+				0);
+		}
+	}
+
+	/* Setup CAT.FLM */
+	{
+		uint32_t bm = 0;
+
+		hw_mod_cat_kcs_flm_set(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cat_hw_id,
+			0);
+		hw_mod_cat_kcs_flm_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id, 1);
+
+		hw_mod_cat_kce_flm_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, &bm);
+		hw_mod_cat_kce_flm_set(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cat_hw_id / 8, bm & ~(1 << (cat_hw_id % 8)));
+		hw_mod_cat_kce_flm_flush(&ndev->be, KM_FLM_IF_FIRST, cat_hw_id / 8, 1);
+
+		for (int ft = 0; ft < (int)db->nb_flm_ft; ++ft) {
+			hw_db_set_ft(ndev, HW_DB_FT_TYPE_FLM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_A, ft,
+				0);
+			hw_db_set_ft(ndev, HW_DB_FT_TYPE_FLM, cat_hw_id, HW_DB_FT_LOOKUP_KEY_C, ft,
+				0);
+		}
+	}
+
+	hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, cat_hw_id, 0);
+	hw_mod_cat_cot_flush(&ndev->be, cat_hw_id, 1);
+}
+
+static void hw_db_inline_filter_copy(struct flow_nic_dev *ndev,
+	struct hw_db_inline_resource_db *db, int cfn_dst, int cfn_src)
+{
+	uint32_t val = 0;
+
+	hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_COPY_FROM, cfn_dst, 0, cfn_src);
+	hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ENABLE, cfn_dst, 0, 0x0);
+	hw_mod_cat_cfn_flush(&ndev->be, cfn_dst, 1);
+
+	/* Setup CAT.CTS */
+	{
+		const int offset = ((int)ndev->be.cat.cts_num + 1) / 2;
+
+		for (int i = 0; i < offset; ++i) {
+			hw_mod_cat_cts_get(&ndev->be, HW_CAT_CTS_CAT_A, offset * cfn_src + i,
+				&val);
+			hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_A, offset * cfn_dst + i, val);
+			hw_mod_cat_cts_get(&ndev->be, HW_CAT_CTS_CAT_B, offset * cfn_src + i,
+				&val);
+			hw_mod_cat_cts_set(&ndev->be, HW_CAT_CTS_CAT_B, offset * cfn_dst + i, val);
+		}
+
+		hw_mod_cat_cts_flush(&ndev->be, offset * cfn_dst, offset);
+	}
+
+	/* Setup CAT.CTE */
+	{
+		hw_mod_cat_cte_get(&ndev->be, HW_CAT_CTE_ENABLE_BM, cfn_src, &val);
+		hw_mod_cat_cte_set(&ndev->be, HW_CAT_CTE_ENABLE_BM, cfn_dst, val);
+		hw_mod_cat_cte_flush(&ndev->be, cfn_dst, 1);
+	}
+
+	/* Setup CAT.KM */
+	{
+		uint32_t bit_src = 0;
+
+		hw_mod_cat_kcs_km_get(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cfn_src,
+			&val);
+		hw_mod_cat_kcs_km_set(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cfn_dst,
+			val);
+		hw_mod_cat_kcs_km_flush(&ndev->be, KM_FLM_IF_FIRST, cfn_dst, 1);
+
+		hw_mod_cat_kce_km_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cfn_src / 8, &val);
+		bit_src = (val >> (cfn_src % 8)) & 0x1;
+
+		hw_mod_cat_kce_km_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cfn_dst / 8, &val);
+		val &= ~(1 << (cfn_dst % 8));
+
+		hw_mod_cat_kce_km_set(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cfn_dst / 8, val | (bit_src << (cfn_dst % 8)));
+		hw_mod_cat_kce_km_flush(&ndev->be, KM_FLM_IF_FIRST, cfn_dst / 8, 1);
+
+		for (int ft = 0; ft < (int)db->nb_km_ft; ++ft) {
+			hw_db_copy_ft(ndev, HW_DB_FT_TYPE_KM, cfn_dst, cfn_src,
+				HW_DB_FT_LOOKUP_KEY_A, ft);
+		}
+	}
+
+	/* Setup CAT.FLM */
+	{
+		uint32_t bit_src = 0;
+
+		hw_mod_cat_kcs_flm_get(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cfn_src,
+			&val);
+		hw_mod_cat_kcs_flm_set(&ndev->be, HW_CAT_KCS_CATEGORY, KM_FLM_IF_FIRST, cfn_dst,
+			val);
+		hw_mod_cat_kcs_flm_flush(&ndev->be, KM_FLM_IF_FIRST, cfn_dst, 1);
+
+		hw_mod_cat_kce_flm_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cfn_src / 8, &val);
+		bit_src = (val >> (cfn_src % 8)) & 0x1;
+
+		hw_mod_cat_kce_flm_get(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cfn_dst / 8, &val);
+		val &= ~(1 << (cfn_dst % 8));
+
+		hw_mod_cat_kce_flm_set(&ndev->be, HW_CAT_KCE_ENABLE_BM, KM_FLM_IF_FIRST,
+			cfn_dst / 8, val | (bit_src << (cfn_dst % 8)));
+		hw_mod_cat_kce_flm_flush(&ndev->be, KM_FLM_IF_FIRST, cfn_dst / 8, 1);
+
+		for (int ft = 0; ft < (int)db->nb_flm_ft; ++ft) {
+			hw_db_copy_ft(ndev, HW_DB_FT_TYPE_FLM, cfn_dst, cfn_src,
+				HW_DB_FT_LOOKUP_KEY_A, ft);
+			hw_db_copy_ft(ndev, HW_DB_FT_TYPE_FLM, cfn_dst, cfn_src,
+				HW_DB_FT_LOOKUP_KEY_C, ft);
+		}
+	}
+
+	/* Setup CAT.COT */
+	{
+		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_COPY_FROM, cfn_dst, cfn_src);
+		hw_mod_cat_cot_flush(&ndev->be, cfn_dst, 1);
+	}
+
+	hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_ENABLE, cfn_dst, 0, 0x1);
+	hw_mod_cat_cfn_flush(&ndev->be, cfn_dst, 1);
+}
+
+/*
+ * Algorithm for moving CFN entries to make space with respect of priority.
+ * The algorithm will make the fewest possible moves to fit a new CFN entry.
+ */
+static int hw_db_inline_alloc_prioritized_cfn(struct flow_nic_dev *ndev,
+	struct hw_db_inline_resource_db *db,
+	struct hw_db_match_set_idx match_set_idx)
+{
+	const struct hw_db_inline_resource_db_match_set *match_set =
+			&db->match_set[match_set_idx.ids];
+
+	uint64_t priority = ((uint64_t)(match_set->data.priority & 0xff) << 56) |
+		((uint64_t)(0xffffff - (match_set->set_priority & 0xffffff)) << 32) |
+		(0xffffffff - ++db->cfn_priority_counter);
+
+	int db_cfn_idx = -1;
+
+	struct {
+		uint64_t priority;
+		uint32_t idx;
+	} sorted_priority[db->nb_cat];
+
+	memset(sorted_priority, 0x0, sizeof(sorted_priority));
+
+	uint32_t in_use_count = 0;
+
+	for (uint32_t i = 1; i < db->nb_cat; ++i) {
+		if (db->cfn[i].ref > 0) {
+			sorted_priority[db->cfn[i].cfn_hw].priority = db->cfn[i].priority;
+			sorted_priority[db->cfn[i].cfn_hw].idx = i;
+			in_use_count += 1;
+
+		} else if (db_cfn_idx == -1) {
+			db_cfn_idx = (int)i;
+		}
+	}
+
+	if (in_use_count >= db->nb_cat - 1)
+		return -1;
+
+	if (in_use_count == 0) {
+		db->cfn[db_cfn_idx].ref = 1;
+		db->cfn[db_cfn_idx].cfn_hw = 1;
+		db->cfn[db_cfn_idx].priority = priority;
+		return db_cfn_idx;
+	}
+
+	int goal = 1;
+	int free_before = -1000000;
+	int free_after = 1000000;
+	int found_smaller = 0;
+
+	for (int i = 1; i < (int)db->nb_cat; ++i) {
+		if (sorted_priority[i].priority > priority) {	/* Bigger */
+			goal = i + 1;
+
+		} else if (sorted_priority[i].priority == 0) {	/* Not set */
+			if (found_smaller) {
+				if (free_after > i)
+					free_after = i;
+
+			} else {
+				free_before = i;
+			}
+
+		} else {/* Smaller */
+			found_smaller = 1;
+		}
+	}
+
+	int diff_before = goal - free_before - 1;
+	int diff_after = free_after - goal;
+
+	if (goal < (int)db->nb_cat && sorted_priority[goal].priority == 0) {
+		db->cfn[db_cfn_idx].ref = 1;
+		db->cfn[db_cfn_idx].cfn_hw = goal;
+		db->cfn[db_cfn_idx].priority = priority;
+		return db_cfn_idx;
+	}
+
+	if (diff_after <= diff_before) {
+		for (int i = free_after; i > goal; --i) {
+			int *cfn_hw = &db->cfn[sorted_priority[i - 1].idx].cfn_hw;
+			hw_db_inline_filter_copy(ndev, db, i, *cfn_hw);
+			hw_db_inline_filter_clear(ndev, db, *cfn_hw);
+			*cfn_hw = i;
+		}
+
+	} else {
+		goal -= 1;
+
+		for (int i = free_before; i < goal; ++i) {
+			int *cfn_hw = &db->cfn[sorted_priority[i + 1].idx].cfn_hw;
+			hw_db_inline_filter_copy(ndev, db, i, *cfn_hw);
+			hw_db_inline_filter_clear(ndev, db, *cfn_hw);
+			*cfn_hw = i;
+		}
+	}
+
+	db->cfn[db_cfn_idx].ref = 1;
+	db->cfn[db_cfn_idx].cfn_hw = goal;
+	db->cfn[db_cfn_idx].priority = priority;
+
+	return db_cfn_idx;
+}
+
+static void hw_db_inline_free_prioritized_cfn(struct hw_db_inline_resource_db *db, int cfn_hw)
+{
+	for (uint32_t i = 0; i < db->nb_cat; ++i) {
+		if (db->cfn[i].cfn_hw == cfn_hw) {
+			memset(&db->cfn[i], 0x0, sizeof(struct hw_db_inline_resource_db_cfn));
+			break;
+		}
+	}
+}
+
+static void hw_db_inline_update_active_filters(struct flow_nic_dev *ndev, void *db_handle,
+	int group)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_flm_rcp *flm_rcp = &db->flm[group];
+	struct hw_db_inline_resource_db_flm_cfn_map *cell;
+
+	for (uint32_t match_set_idx = 0; match_set_idx < db->nb_cat; ++match_set_idx) {
+		for (uint32_t ft_idx = 0; ft_idx < db->nb_flm_ft; ++ft_idx) {
+			int active = flm_rcp->ft[ft_idx].ref > 0 &&
+				flm_rcp->match_set[match_set_idx].ref > 0;
+			cell = &flm_rcp->cfn_map[match_set_idx * db->nb_flm_ft + ft_idx];
+
+			if (active && cell->cfn_idx == 0) {
+				/* Setup filter */
+				cell->cfn_idx = hw_db_inline_alloc_prioritized_cfn(ndev, db,
+					flm_rcp->match_set[match_set_idx].idx);
+				hw_db_inline_filter_apply(ndev, db, db->cfn[cell->cfn_idx].cfn_hw,
+					flm_rcp->match_set[match_set_idx].idx,
+					flm_rcp->ft[ft_idx].idx,
+					group == 0
+					? db->match_set[flm_rcp->match_set[match_set_idx]
+					.idx.ids]
+					.data.action_set
+					: flm_rcp->ft[ft_idx].data.action_set);
+			}
+
+			if (!active && cell->cfn_idx > 0) {
+				/* Teardown filter */
+				hw_db_inline_filter_clear(ndev, db, db->cfn[cell->cfn_idx].cfn_hw);
+				hw_db_inline_free_prioritized_cfn(db,
+					db->cfn[cell->cfn_idx].cfn_hw);
+				cell->cfn_idx = 0;
+			}
+		}
+	}
+}
+
+
+/******************************************************************************/
+/* Match set                                                                  */
+/******************************************************************************/
+
+static int hw_db_inline_match_set_compare(const struct hw_db_inline_match_set_data *data1,
+	const struct hw_db_inline_match_set_data *data2)
+{
+	return data1->cat.raw == data2->cat.raw && data1->km.raw == data2->km.raw &&
+		data1->km_ft.raw == data2->km_ft.raw && data1->jump == data2->jump;
+}
+
+struct hw_db_match_set_idx
+hw_db_inline_match_set_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_match_set_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_flm_rcp *flm_rcp = &db->flm[data->jump];
+	struct hw_db_match_set_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_MATCH_SET;
+
+	for (uint32_t i = 0; i < HW_DB_INLINE_MATCH_SET_NB; ++i) {
+		if (!found && db->match_set[i].ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+
+		if (db->match_set[i].ref > 0 &&
+			hw_db_inline_match_set_compare(data, &db->match_set[i].data)) {
+			idx.ids = i;
+			hw_db_inline_match_set_ref(ndev, db, idx);
+			return idx;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	found = 0;
+
+	for (uint32_t i = 0; i < db->nb_cat; ++i) {
+		if (flm_rcp->match_set[i].ref <= 0) {
+			found = 1;
+			flm_rcp->match_set[i].ref = 1;
+			flm_rcp->match_set[i].idx.raw = idx.raw;
+			break;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	memcpy(&db->match_set[idx.ids].data, data, sizeof(struct hw_db_inline_match_set_data));
+	db->match_set[idx.ids].ref = 1;
+	db->match_set[idx.ids].set_priority = ++db->set_priority_counter;
+
+	hw_db_inline_update_active_filters(ndev, db, data->jump);
+
+	return idx;
+}
+
+void hw_db_inline_match_set_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_match_set_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->match_set[idx.ids].ref += 1;
+}
+
+void hw_db_inline_match_set_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_match_set_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_inline_resource_db_flm_rcp *flm_rcp;
+	int jump;
+
+	if (idx.error)
+		return;
+
+	db->match_set[idx.ids].ref -= 1;
+
+	if (db->match_set[idx.ids].ref > 0)
+		return;
+
+	jump = db->match_set[idx.ids].data.jump;
+	flm_rcp = &db->flm[jump];
+
+	for (uint32_t i = 0; i < db->nb_cat; ++i) {
+		if (flm_rcp->match_set[i].idx.raw == idx.raw) {
+			flm_rcp->match_set[i].ref = 0;
+			hw_db_inline_update_active_filters(ndev, db, jump);
+			memset(&flm_rcp->match_set[i], 0x0,
+				sizeof(struct hw_db_inline_resource_db_flm_match_set));
+		}
+	}
+
+	memset(&db->match_set[idx.ids].data, 0x0, sizeof(struct hw_db_inline_match_set_data));
+	db->match_set[idx.ids].ref = 0;
+}
+
+/******************************************************************************/
+/* Action set                                                                 */
+/******************************************************************************/
+
+static int hw_db_inline_action_set_compare(const struct hw_db_inline_action_set_data *data1,
+	const struct hw_db_inline_action_set_data *data2)
+{
+	if (data1->contains_jump)
+		return data2->contains_jump && data1->jump == data2->jump;
+
+	return data1->cot.raw == data2->cot.raw && data1->qsl.raw == data2->qsl.raw &&
+		data1->slc_lr.raw == data2->slc_lr.raw && data1->tpe.raw == data2->tpe.raw &&
+		data1->hsh.raw == data2->hsh.raw;
+}
+
+struct hw_db_action_set_idx
+hw_db_inline_action_set_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_action_set_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_action_set_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_ACTION_SET;
+
+	for (uint32_t i = 0; i < HW_DB_INLINE_ACTION_SET_NB; ++i) {
+		if (!found && db->action_set[i].ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+
+		if (db->action_set[i].ref > 0 &&
+			hw_db_inline_action_set_compare(data, &db->action_set[i].data)) {
+			idx.ids = i;
+			hw_db_inline_action_set_ref(ndev, db, idx);
+			return idx;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	memcpy(&db->action_set[idx.ids].data, data, sizeof(struct hw_db_inline_action_set_data));
+	db->action_set[idx.ids].ref = 1;
+
+	return idx;
+}
+
+void hw_db_inline_action_set_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_action_set_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->action_set[idx.ids].ref += 1;
+}
+
+void hw_db_inline_action_set_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_action_set_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	db->action_set[idx.ids].ref -= 1;
+
+	if (db->action_set[idx.ids].ref <= 0) {
+		memset(&db->action_set[idx.ids].data, 0x0,
+			sizeof(struct hw_db_inline_action_set_data));
+		db->action_set[idx.ids].ref = 0;
+	}
+}
 
 /******************************************************************************/
 /* COT                                                                        */
@@ -1593,6 +2383,8 @@ struct hw_db_flm_ft hw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void 
 	flm_rcp->ft[idx.id1].idx.raw = idx.raw;
 	flm_rcp->ft[idx.id1].ref = 1;
 
+	hw_db_inline_update_active_filters(ndev, db, data->jump);
+
 	return idx;
 }
 
@@ -1647,6 +2439,8 @@ struct hw_db_flm_ft hw_db_inline_flm_ft_add(struct flow_nic_dev *ndev, void *db_
 	flm_rcp->ft[idx.id1].idx.raw = idx.raw;
 	flm_rcp->ft[idx.id1].ref = 1;
 
+	hw_db_inline_update_active_filters(ndev, db, data->group);
+
 	return idx;
 }
 
@@ -1677,6 +2471,7 @@ void hw_db_inline_flm_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struc
 		return;
 
 	flm_rcp->ft[idx.id1].ref = 0;
+	hw_db_inline_update_active_filters(ndev, db, idx.id2);
 	memset(&flm_rcp->ft[idx.id1], 0x0, sizeof(struct hw_db_inline_resource_db_flm_ft));
 }
 
