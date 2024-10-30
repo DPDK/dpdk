@@ -164,6 +164,7 @@ enum {
 
 enum {
 	PROT_L3_IPV4 = 1,
+	PROT_L3_IPV6 = 2
 };
 
 enum {
@@ -176,6 +177,7 @@ enum {
 enum {
 	PROT_TUN_L3_OTHER = 0,
 	PROT_TUN_L3_IPV4 = 1,
+	PROT_TUN_L3_IPV6 = 2
 };
 
 enum {

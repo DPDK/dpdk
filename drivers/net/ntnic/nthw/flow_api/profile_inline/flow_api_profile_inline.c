@@ -538,6 +538,22 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 		}
 		break;
 
+		case RTE_FLOW_ITEM_TYPE_IPV6: {
+			const struct rte_flow_item_ipv6 *ipv6_spec =
+				(const struct rte_flow_item_ipv6 *)elem[eidx].spec;
+			const struct rte_flow_item_ipv6 *ipv6_mask =
+				(const struct rte_flow_item_ipv6 *)elem[eidx].mask;
+
+			if (ipv6_spec != NULL && ipv6_mask != NULL) {
+				if (is_non_zero(&ipv6_spec->hdr.src_addr, 16))
+					qw_reserved_ipv6 += 1;
+
+				if (is_non_zero(&ipv6_spec->hdr.dst_addr, 16))
+					qw_reserved_ipv6 += 1;
+			}
+		}
+		break;
+
 		default:
 			break;
 		}
@@ -922,6 +938,163 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_IPV6",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_flow_item_ipv6 *ipv6_spec =
+					(const struct rte_flow_item_ipv6 *)elem[eidx].spec;
+				const struct rte_flow_item_ipv6 *ipv6_mask =
+					(const struct rte_flow_item_ipv6 *)elem[eidx].mask;
+
+				if (ipv6_spec == NULL || ipv6_mask == NULL) {
+					if (any_count > 0 || fd->l3_prot != -1)
+						fd->tunnel_l3_prot = PROT_TUN_L3_IPV6;
+					else
+						fd->l3_prot = PROT_L3_IPV6;
+					break;
+				}
+
+				if (ipv6_mask->hdr.vtc_flow != 0 ||
+					ipv6_mask->hdr.payload_len != 0 ||
+					ipv6_mask->hdr.hop_limits != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested IPv6 field not support by running SW version");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (is_non_zero(&ipv6_spec->hdr.src_addr, 16)) {
+					if (qw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *qw_data = &packet_data[2 + 4 - qw_counter * 4];
+					uint32_t *qw_mask = &packet_mask[2 + 4 - qw_counter * 4];
+
+					memcpy(&qw_data[0], &ipv6_spec->hdr.src_addr, 16);
+					memcpy(&qw_mask[0], &ipv6_mask->hdr.src_addr, 16);
+
+					qw_data[0] = ntohl(qw_data[0]);
+					qw_data[1] = ntohl(qw_data[1]);
+					qw_data[2] = ntohl(qw_data[2]);
+					qw_data[3] = ntohl(qw_data[3]);
+
+					qw_mask[0] = ntohl(qw_mask[0]);
+					qw_mask[1] = ntohl(qw_mask[1]);
+					qw_mask[2] = ntohl(qw_mask[2]);
+					qw_mask[3] = ntohl(qw_mask[3]);
+
+					qw_data[0] &= qw_mask[0];
+					qw_data[1] &= qw_mask[1];
+					qw_data[2] &= qw_mask[2];
+					qw_data[3] &= qw_mask[3];
+
+					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 8);
+					set_key_def_qw(key_def, qw_counter, any_count > 0
+						? DYN_TUN_L3 : DYN_L3, 8);
+					qw_counter += 1;
+				}
+
+				if (is_non_zero(&ipv6_spec->hdr.dst_addr, 16)) {
+					if (qw_counter >= 2) {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+
+					uint32_t *qw_data = &packet_data[2 + 4 - qw_counter * 4];
+					uint32_t *qw_mask = &packet_mask[2 + 4 - qw_counter * 4];
+
+					memcpy(&qw_data[0], &ipv6_spec->hdr.dst_addr, 16);
+					memcpy(&qw_mask[0], &ipv6_mask->hdr.dst_addr, 16);
+
+					qw_data[0] = ntohl(qw_data[0]);
+					qw_data[1] = ntohl(qw_data[1]);
+					qw_data[2] = ntohl(qw_data[2]);
+					qw_data[3] = ntohl(qw_data[3]);
+
+					qw_mask[0] = ntohl(qw_mask[0]);
+					qw_mask[1] = ntohl(qw_mask[1]);
+					qw_mask[2] = ntohl(qw_mask[2]);
+					qw_mask[3] = ntohl(qw_mask[3]);
+
+					qw_data[0] &= qw_mask[0];
+					qw_data[1] &= qw_mask[1];
+					qw_data[2] &= qw_mask[2];
+					qw_data[3] &= qw_mask[3];
+
+					km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0], 4,
+						any_count > 0 ? DYN_TUN_L3 : DYN_L3, 24);
+					set_key_def_qw(key_def, qw_counter, any_count > 0
+						? DYN_TUN_L3 : DYN_L3, 24);
+					qw_counter += 1;
+				}
+
+				if (ipv6_mask->hdr.proto != 0) {
+					if (sw_counter < 2) {
+						uint32_t *sw_data = &packet_data[1 - sw_counter];
+						uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+						sw_mask[0] = ipv6_mask->hdr.proto << 8;
+						sw_data[0] = ipv6_spec->hdr.proto << 8 & sw_mask[0];
+
+						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
+							1, any_count > 0 ? DYN_TUN_L3 : DYN_L3, 4);
+						set_key_def_sw(key_def, sw_counter, any_count > 0
+							? DYN_TUN_L3 : DYN_L3, 4);
+						sw_counter += 1;
+
+					} else if (qw_counter < 2 && qw_free > 0) {
+						uint32_t *qw_data =
+							&packet_data[2 + 4 - qw_counter * 4];
+						uint32_t *qw_mask =
+							&packet_mask[2 + 4 - qw_counter * 4];
+
+						qw_data[0] = 0;
+						qw_data[1] = ipv6_mask->hdr.proto << 8;
+						qw_data[2] = 0;
+						qw_data[3] = 0;
+
+						qw_mask[0] = 0;
+						qw_mask[1] = ipv6_spec->hdr.proto << 8;
+						qw_mask[2] = 0;
+						qw_mask[3] = 0;
+
+						qw_data[0] &= qw_mask[0];
+						qw_data[1] &= qw_mask[1];
+						qw_data[2] &= qw_mask[2];
+						qw_data[3] &= qw_mask[3];
+
+						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
+							4, any_count > 0 ? DYN_TUN_L3 : DYN_L3, 0);
+						set_key_def_qw(key_def, qw_counter, any_count > 0
+							? DYN_TUN_L3 : DYN_L3, 0);
+						qw_counter += 1;
+						qw_free -= 1;
+
+					} else {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+				}
+
+				if (any_count > 0 || fd->l3_prot != -1)
+					fd->tunnel_l3_prot = PROT_TUN_L3_IPV6;
+
+				else
+					fd->l3_prot = PROT_L3_IPV6;
+			}
+
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_UDP",
 				dev->ndev->adapter_no, dev->port);
@@ -1206,6 +1379,105 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 				} else {
 					fd->l4_prot = PROT_L4_ICMP;
 					fd->ip_prot = 1;
+					key_def->outer_proto = 1;
+				}
+			}
+
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_ICMP6:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_ICMP6",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_flow_item_icmp6 *icmp_spec =
+					(const struct rte_flow_item_icmp6 *)elem[eidx].spec;
+				const struct rte_flow_item_icmp6 *icmp_mask =
+					(const struct rte_flow_item_icmp6 *)elem[eidx].mask;
+
+				if (icmp_spec == NULL || icmp_mask == NULL) {
+					if (any_count > 0 || fd->l4_prot != -1) {
+						fd->tunnel_l4_prot = PROT_TUN_L4_ICMP;
+						fd->tunnel_ip_prot = 58;
+						key_def->inner_proto = 1;
+					} else {
+						fd->l4_prot = PROT_L4_ICMP;
+						fd->ip_prot = 58;
+						key_def->outer_proto = 1;
+					}
+					break;
+				}
+
+				if (icmp_mask->checksum != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested ICMP6 field not supported by running SW version");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (icmp_mask->type || icmp_mask->code) {
+					if (sw_counter < 2) {
+						uint32_t *sw_data = &packet_data[1 - sw_counter];
+						uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+						sw_mask[0] = icmp_mask->type << 24 |
+							icmp_mask->code << 16;
+						sw_data[0] = icmp_spec->type << 24 |
+							icmp_spec->code << 16;
+						sw_data[0] &= sw_mask[0];
+
+						km_add_match_elem(&fd->km, &sw_data[0], &sw_mask[0],
+							1, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+
+						set_key_def_sw(key_def, sw_counter, any_count > 0
+							? DYN_TUN_L4 : DYN_L4, 0);
+						sw_counter += 1;
+
+					} else if (qw_counter < 2 && qw_free > 0) {
+						uint32_t *qw_data =
+							&packet_data[2 + 4 - qw_counter * 4];
+						uint32_t *qw_mask =
+							&packet_mask[2 + 4 - qw_counter * 4];
+
+						qw_data[0] = icmp_spec->type << 24 |
+							icmp_spec->code << 16;
+						qw_data[1] = 0;
+						qw_data[2] = 0;
+						qw_data[3] = 0;
+
+						qw_mask[0] = icmp_mask->type << 24 |
+							icmp_mask->code << 16;
+						qw_mask[1] = 0;
+						qw_mask[2] = 0;
+						qw_mask[3] = 0;
+
+						qw_data[0] &= qw_mask[0];
+						qw_data[1] &= qw_mask[1];
+						qw_data[2] &= qw_mask[2];
+						qw_data[3] &= qw_mask[3];
+
+						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
+							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						set_key_def_qw(key_def, qw_counter, any_count > 0
+							? DYN_TUN_L4 : DYN_L4, 0);
+						qw_counter += 1;
+						qw_free -= 1;
+
+					} else {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+				}
+
+				if (any_count > 0 || fd->l4_prot != -1) {
+					fd->tunnel_l4_prot = PROT_TUN_L4_ICMP;
+					fd->tunnel_ip_prot = 58;
+					key_def->inner_proto = 1;
+
+				} else {
+					fd->l4_prot = PROT_L4_ICMP;
+					fd->ip_prot = 58;
 					key_def->outer_proto = 1;
 				}
 			}
