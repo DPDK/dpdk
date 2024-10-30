@@ -43,30 +43,6 @@ static int test_valid_kvargs(void)
 	const char *valid_keys_list[] = { "foo", "check", NULL };
 	const char **valid_keys;
 
-	/* second test using valid_keys */
-	args = "foo=droids,check=value0,check=value1,check=wrong_value";
-	valid_keys = valid_keys_list;
-	kvlist = rte_kvargs_parse(args, valid_keys);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error");
-		goto fail;
-	}
-	/* call check_handler() on all entries with key="check", it
-	 * should fail as the value is not recognized by the handler */
-	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) == 0) {
-		printf("rte_kvargs_process() is success but should not\n");
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	count = rte_kvargs_count(kvlist, "check");
-	if (count != 3) {
-		printf("invalid count value %d after rte_kvargs_count(check)\n",
-			count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	rte_kvargs_free(kvlist);
-
 	/* third test using list as value */
 	args = "foo=[0,1],check=value2";
 	valid_keys = valid_keys_list;
@@ -224,6 +200,41 @@ test_parse_without_valid_keys(void)
 	return 0;
 }
 
+static int
+test_parse_with_valid_keys(void)
+{
+	const char *args = "foo=droids,check=value0,check=value1,check=wrong_value";
+	const char *valid_keys[] = { "foo", "check", NULL };
+	struct rte_kvargs *kvlist;
+
+	kvlist = rte_kvargs_parse(args, valid_keys);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error\n");
+		return -1;
+	}
+
+	/* call check_handler() on all entries with key="check", it
+	 * should fail as the value is not recognized by the handler
+	 */
+	count = 0;
+	if (rte_kvargs_process(kvlist, "check", check_handler, NULL) == 0 || count != 2) {
+		printf("rte_kvargs_process(check) is success but should not\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	count = rte_kvargs_count(kvlist, "check");
+	if (count != 3) {
+		printf("invalid count value %u after rte_kvargs_count(check)\n",
+			count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 /* test several error cases */
 static int test_invalid_kvargs(void)
 {
@@ -267,6 +278,7 @@ static struct unit_test_suite kvargs_test_suite  = {
 		TEST_CASE(test_valid_kvargs),
 		TEST_CASE(test_basic_token_count),
 		TEST_CASE(test_parse_without_valid_keys),
+		TEST_CASE(test_parse_with_valid_keys),
 		TEST_CASE(test_invalid_kvargs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
