@@ -2486,6 +2486,95 @@ static nthw_fpga_register_init_s slc_registers[] = {
 	{ SLC_RCP_DATA, 1, 36, NTHW_FPGA_REG_TYPE_WO, 0, 7, slc_rcp_data_fields },
 };
 
+static nthw_fpga_field_init_s sta_byte_fields[] = {
+	{ STA_BYTE_CNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_cfg_fields[] = {
+	{ STA_CFG_CNT_CLEAR, 1, 1, 0 },
+	{ STA_CFG_DMA_ENA, 1, 0, 0 },
+};
+
+static nthw_fpga_field_init_s sta_cv_err_fields[] = {
+	{ STA_CV_ERR_CNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_fcs_err_fields[] = {
+	{ STA_FCS_ERR_CNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_host_adr_lsb_fields[] = {
+	{ STA_HOST_ADR_LSB_LSB, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s sta_host_adr_msb_fields[] = {
+	{ STA_HOST_ADR_MSB_MSB, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s sta_load_bin_fields[] = {
+	{ STA_LOAD_BIN_BIN, 32, 0, 8388607 },
+};
+
+static nthw_fpga_field_init_s sta_load_bps_rx_0_fields[] = {
+	{ STA_LOAD_BPS_RX_0_BPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_bps_rx_1_fields[] = {
+	{ STA_LOAD_BPS_RX_1_BPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_bps_tx_0_fields[] = {
+	{ STA_LOAD_BPS_TX_0_BPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_bps_tx_1_fields[] = {
+	{ STA_LOAD_BPS_TX_1_BPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_pps_rx_0_fields[] = {
+	{ STA_LOAD_PPS_RX_0_PPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_pps_rx_1_fields[] = {
+	{ STA_LOAD_PPS_RX_1_PPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_pps_tx_0_fields[] = {
+	{ STA_LOAD_PPS_TX_0_PPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_load_pps_tx_1_fields[] = {
+	{ STA_LOAD_PPS_TX_1_PPS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_pckt_fields[] = {
+	{ STA_PCKT_CNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s sta_status_fields[] = {
+	{ STA_STATUS_STAT_TOGGLE_MISSED, 1, 0, 0x0000 },
+};
+
+static nthw_fpga_register_init_s sta_registers[] = {
+	{ STA_BYTE, 4, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_byte_fields },
+	{ STA_CFG, 0, 2, NTHW_FPGA_REG_TYPE_RW, 0, 2, sta_cfg_fields },
+	{ STA_CV_ERR, 5, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_cv_err_fields },
+	{ STA_FCS_ERR, 6, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_fcs_err_fields },
+	{ STA_HOST_ADR_LSB, 1, 32, NTHW_FPGA_REG_TYPE_WO, 0, 1, sta_host_adr_lsb_fields },
+	{ STA_HOST_ADR_MSB, 2, 32, NTHW_FPGA_REG_TYPE_WO, 0, 1, sta_host_adr_msb_fields },
+	{ STA_LOAD_BIN, 8, 32, NTHW_FPGA_REG_TYPE_WO, 8388607, 1, sta_load_bin_fields },
+	{ STA_LOAD_BPS_RX_0, 11, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_bps_rx_0_fields },
+	{ STA_LOAD_BPS_RX_1, 13, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_bps_rx_1_fields },
+	{ STA_LOAD_BPS_TX_0, 15, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_bps_tx_0_fields },
+	{ STA_LOAD_BPS_TX_1, 17, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_bps_tx_1_fields },
+	{ STA_LOAD_PPS_RX_0, 10, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_pps_rx_0_fields },
+	{ STA_LOAD_PPS_RX_1, 12, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_pps_rx_1_fields },
+	{ STA_LOAD_PPS_TX_0, 14, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_pps_tx_0_fields },
+	{ STA_LOAD_PPS_TX_1, 16, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_load_pps_tx_1_fields },
+	{ STA_PCKT, 3, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, sta_pckt_fields },
+	{ STA_STATUS, 7, 1, NTHW_FPGA_REG_TYPE_RC1, 0, 1, sta_status_fields },
+};
+
 static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_CAT, 0, MOD_CAT, 0, 21, NTHW_FPGA_BUS_TYPE_RAB1, 768, 34, cat_registers },
 	{ MOD_CSU, 0, MOD_CSU, 0, 0, NTHW_FPGA_BUS_TYPE_RAB1, 9728, 2, csu_registers },
@@ -2537,6 +2626,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_TX_CPY, 0, MOD_CPY, 0, 4, NTHW_FPGA_BUS_TYPE_RAB1, 9216, 26, cpy_registers },
 	{ MOD_TX_INS, 0, MOD_INS, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 8704, 2, ins_registers },
 	{ MOD_TX_RPL, 0, MOD_RPL, 0, 4, NTHW_FPGA_BUS_TYPE_RAB1, 8960, 6, rpl_registers },
+	{ MOD_STA, 0, MOD_STA, 0, 9, NTHW_FPGA_BUS_TYPE_RAB0, 2048, 17, sta_registers },
 };
 
 static nthw_fpga_prod_param_s product_parameters[] = {
@@ -2695,5 +2785,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 35, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 36, fpga_modules,
 };
