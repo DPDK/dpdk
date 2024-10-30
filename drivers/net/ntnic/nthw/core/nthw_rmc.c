@@ -77,6 +77,26 @@ int nthw_rmc_init(nthw_rmc_t *p, nthw_fpga_t *p_fpga, int n_instance)
 	return 0;
 }
 
+uint32_t nthw_rmc_get_status_sf_ram_of(nthw_rmc_t *p)
+{
+	return (p->mp_reg_status) ? nthw_field_get_updated(p->mp_fld_sf_ram_of) : 0xffffffff;
+}
+
+uint32_t nthw_rmc_get_status_descr_fifo_of(nthw_rmc_t *p)
+{
+	return (p->mp_reg_status) ? nthw_field_get_updated(p->mp_fld_descr_fifo_of) : 0xffffffff;
+}
+
+uint32_t nthw_rmc_get_dbg_merge(nthw_rmc_t *p)
+{
+	return (p->mp_reg_dbg) ? nthw_field_get_updated(p->mp_fld_dbg_merge) : 0xffffffff;
+}
+
+uint32_t nthw_rmc_get_mac_if_err(nthw_rmc_t *p)
+{
+	return (p->mp_reg_mac_if) ? nthw_field_get_updated(p->mp_fld_mac_if_err) : 0xffffffff;
+}
+
 void nthw_rmc_block(nthw_rmc_t *p)
 {
 	/* BLOCK_STATT(0)=1 BLOCK_KEEPA(1)=1 BLOCK_MAC_PORT(8:11)=~0 */

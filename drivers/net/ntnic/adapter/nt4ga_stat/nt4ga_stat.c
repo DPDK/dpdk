@@ -16,6 +16,27 @@
 
 #define DEFAULT_MAX_BPS_SPEED 100e9
 
+/* Inline timestamp format s pcap 32:32 bits. Convert to nsecs */
+static inline uint64_t timestamp2ns(uint64_t ts)
+{
+	return ((ts) >> 32) * 1000000000 + ((ts) & 0xffffffff);
+}
+
+static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info,
+	nt4ga_stat_t *p_nt4ga_stat,
+	uint32_t *p_stat_dma_virtual);
+
+static int nt4ga_stat_collect(struct adapter_info_s *p_adapter_info, nt4ga_stat_t *p_nt4ga_stat)
+{
+	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
+
+	p_nt4ga_stat->last_timestamp = timestamp2ns(*p_nthw_stat->mp_timestamp);
+	nt4ga_stat_collect_cap_v1_stats(p_adapter_info, p_nt4ga_stat,
+		p_nt4ga_stat->p_stat_dma_virtual);
+
+	return 0;
+}
+
 static int nt4ga_stat_init(struct adapter_info_s *p_adapter_info)
 {
 	const char *const p_adapter_id_str = p_adapter_info->mp_adapter_id_str;
@@ -203,9 +224,331 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 	return 0;
 }
 
+/* Called with stat mutex locked */
+static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info,
+	nt4ga_stat_t *p_nt4ga_stat,
+	uint32_t *p_stat_dma_virtual)
+{
+	(void)p_adapter_info;
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL)
+		return -1;
+
+	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
+
+	const int n_rx_ports = p_nt4ga_stat->mn_rx_ports;
+	const int n_tx_ports = p_nt4ga_stat->mn_tx_ports;
+	int c, h, p;
+
+	if (!p_nthw_stat || !p_nt4ga_stat)
+		return -1;
+
+	if (p_nthw_stat->mn_stat_layout_version < 6) {
+		NT_LOG(ERR, NTNIC, "HW STA module version not supported");
+		return -1;
+	}
+
+	/* RX ports */
+	for (c = 0; c < p_nthw_stat->m_nb_color_counters / 2; c++) {
+		p_nt4ga_stat->mp_stat_structs_color[c].color_packets += p_stat_dma_virtual[c * 2];
+		p_nt4ga_stat->mp_stat_structs_color[c].color_bytes +=
+			p_stat_dma_virtual[c * 2 + 1];
+	}
+
+	/* Move to Host buffer counters */
+	p_stat_dma_virtual += p_nthw_stat->m_nb_color_counters;
+
+	for (h = 0; h < p_nthw_stat->m_nb_rx_host_buffers; h++) {
+		p_nt4ga_stat->mp_stat_structs_hb[h].flush_packets += p_stat_dma_virtual[h * 8];
+		p_nt4ga_stat->mp_stat_structs_hb[h].drop_packets += p_stat_dma_virtual[h * 8 + 1];
+		p_nt4ga_stat->mp_stat_structs_hb[h].fwd_packets += p_stat_dma_virtual[h * 8 + 2];
+		p_nt4ga_stat->mp_stat_structs_hb[h].dbs_drop_packets +=
+			p_stat_dma_virtual[h * 8 + 3];
+		p_nt4ga_stat->mp_stat_structs_hb[h].flush_bytes += p_stat_dma_virtual[h * 8 + 4];
+		p_nt4ga_stat->mp_stat_structs_hb[h].drop_bytes += p_stat_dma_virtual[h * 8 + 5];
+		p_nt4ga_stat->mp_stat_structs_hb[h].fwd_bytes += p_stat_dma_virtual[h * 8 + 6];
+		p_nt4ga_stat->mp_stat_structs_hb[h].dbs_drop_bytes +=
+			p_stat_dma_virtual[h * 8 + 7];
+	}
+
+	/* Move to Rx Port counters */
+	p_stat_dma_virtual += p_nthw_stat->m_nb_rx_hb_counters;
+
+	/* RX ports */
+	for (p = 0; p < n_rx_ports; p++) {
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 0];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].broadcast_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 1];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].multicast_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 2];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].unicast_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 3];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_alignment +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 4];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_code_violation +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 5];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_crc +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 6];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].undersize_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 7];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].oversize_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 8];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].fragments +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 9];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].jabbers_not_truncated +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 10];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].jabbers_truncated +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 11];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_64_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 12];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_65_to_127_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 13];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_128_to_255_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 14];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_256_to_511_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 15];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_512_to_1023_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 16];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_1024_to_1518_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 17];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_1519_to_2047_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 18];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_2048_to_4095_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 19];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_4096_to_8191_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 20];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_8192_to_max_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 21];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].mac_drop_events +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 22];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_lr +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 23];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].duplicate +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 24];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_ip_chksum_error +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 25];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_udp_chksum_error +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 26];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_tcp_chksum_error +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 27];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_giant_undersize +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 28];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_baby_giant +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 29];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_not_isl_vlan_mpls +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 30];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_isl +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 31];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_vlan +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 32];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_isl_vlan +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 33];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_mpls +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 34];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_isl_mpls +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 35];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_vlan_mpls +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 36];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_isl_vlan_mpls +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 37];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_no_filter +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 38];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_dedup_drop +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 39];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_filter_drop +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 40];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_overflow +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 41];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts_dbs_drop +=
+			p_nthw_stat->m_dbs_present
+			? p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 42]
+			: 0;
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].octets_no_filter +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 43];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].octets_dedup_drop +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 44];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].octets_filter_drop +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 45];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].octets_overflow +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 46];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].octets_dbs_drop +=
+			p_nthw_stat->m_dbs_present
+			? p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 47]
+			: 0;
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].ipft_first_hit +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 48];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].ipft_first_not_hit +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 49];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].ipft_mid_hit +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 50];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].ipft_mid_not_hit +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 51];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].ipft_last_hit +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 52];
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].ipft_last_not_hit +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 53];
+
+		/* Rx totals */
+		uint64_t new_drop_events_sum =
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 22] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 38] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 39] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 40] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 41] +
+			(p_nthw_stat->m_dbs_present
+				? p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 42]
+				: 0);
+
+		uint64_t new_packets_sum =
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 7] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 8] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 9] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 10] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 11] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 12] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 13] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 14] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 15] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 16] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 17] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 18] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 19] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 20] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 21];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].drop_events += new_drop_events_sum;
+		p_nt4ga_stat->cap.mp_stat_structs_port_rx[p].pkts += new_packets_sum;
+
+		p_nt4ga_stat->a_port_rx_octets_total[p] +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_rx_port_counters + 0];
+		p_nt4ga_stat->a_port_rx_packets_total[p] += new_packets_sum;
+		p_nt4ga_stat->a_port_rx_drops_total[p] += new_drop_events_sum;
+	}
+
+	/* Move to Tx Port counters */
+	p_stat_dma_virtual += n_rx_ports * p_nthw_stat->m_nb_rx_port_counters;
+
+	for (p = 0; p < n_tx_ports; p++) {
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 0];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].broadcast_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 1];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].multicast_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 2];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].unicast_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 3];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_alignment +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 4];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_code_violation +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 5];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_crc +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 6];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].undersize_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 7];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].oversize_pkts +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 8];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].fragments +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 9];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].jabbers_not_truncated +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 10];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].jabbers_truncated +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 11];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_64_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 12];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_65_to_127_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 13];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_128_to_255_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 14];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_256_to_511_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 15];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_512_to_1023_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 16];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_1024_to_1518_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 17];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_1519_to_2047_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 18];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_2048_to_4095_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 19];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_4096_to_8191_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 20];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_8192_to_max_octets +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 21];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].mac_drop_events +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 22];
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts_lr +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 23];
+
+		/* Tx totals */
+		uint64_t new_drop_events_sum =
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 22];
+
+		uint64_t new_packets_sum =
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 7] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 8] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 9] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 10] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 11] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 12] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 13] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 14] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 15] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 16] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 17] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 18] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 19] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 20] +
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 21];
+
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].drop_events += new_drop_events_sum;
+		p_nt4ga_stat->cap.mp_stat_structs_port_tx[p].pkts += new_packets_sum;
+
+		p_nt4ga_stat->a_port_tx_octets_total[p] +=
+			p_stat_dma_virtual[p * p_nthw_stat->m_nb_tx_port_counters + 0];
+		p_nt4ga_stat->a_port_tx_packets_total[p] += new_packets_sum;
+		p_nt4ga_stat->a_port_tx_drops_total[p] += new_drop_events_sum;
+	}
+
+	/* Update and get port load counters */
+	for (p = 0; p < n_rx_ports; p++) {
+		uint32_t val;
+		nthw_stat_get_load_bps_rx(p_nthw_stat, p, &val);
+		p_nt4ga_stat->mp_port_load[p].rx_bps =
+			(uint64_t)(((__uint128_t)val * 32ULL * 64ULL * 8ULL) /
+				PORT_LOAD_WINDOWS_SIZE);
+		nthw_stat_get_load_pps_rx(p_nthw_stat, p, &val);
+		p_nt4ga_stat->mp_port_load[p].rx_pps =
+			(uint64_t)(((__uint128_t)val * 32ULL) / PORT_LOAD_WINDOWS_SIZE);
+	}
+
+	for (p = 0; p < n_tx_ports; p++) {
+		uint32_t val;
+		nthw_stat_get_load_bps_tx(p_nthw_stat, p, &val);
+		p_nt4ga_stat->mp_port_load[p].tx_bps =
+			(uint64_t)(((__uint128_t)val * 32ULL * 64ULL * 8ULL) /
+				PORT_LOAD_WINDOWS_SIZE);
+		nthw_stat_get_load_pps_tx(p_nthw_stat, p, &val);
+		p_nt4ga_stat->mp_port_load[p].tx_pps =
+			(uint64_t)(((__uint128_t)val * 32ULL) / PORT_LOAD_WINDOWS_SIZE);
+	}
+
+	return 0;
+}
+
 static struct nt4ga_stat_ops ops = {
 	.nt4ga_stat_init = nt4ga_stat_init,
 	.nt4ga_stat_setup = nt4ga_stat_setup,
+	.nt4ga_stat_collect = nt4ga_stat_collect
 };
 
 void nt4ga_stat_ops_init(void)

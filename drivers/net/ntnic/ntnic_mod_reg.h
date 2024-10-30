@@ -186,6 +186,8 @@ void port_init(void);
 struct nt4ga_stat_ops {
 	int (*nt4ga_stat_init)(struct adapter_info_s *p_adapter_info);
 	int (*nt4ga_stat_setup)(struct adapter_info_s *p_adapter_info);
+	int (*nt4ga_stat_collect)(struct adapter_info_s *p_adapter_info,
+		nt4ga_stat_t *p_nt4ga_stat);
 };
 
 void register_nt4ga_stat_ops(const struct nt4ga_stat_ops *ops);

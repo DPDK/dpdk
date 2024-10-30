@@ -368,3 +368,131 @@ int nthw_stat_trigger(nthw_stat_t *p)
 
 	return 0;
 }
+
+int nthw_stat_get_load_bps_rx(nthw_stat_t *p, uint8_t port, uint32_t *val)
+{
+	switch (port) {
+	case 0:
+		if (p->mp_fld_load_bps_rx0) {
+			*val = nthw_field_get_updated(p->mp_fld_load_bps_rx0);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	case 1:
+		if (p->mp_fld_load_bps_rx1) {
+			*val = nthw_field_get_updated(p->mp_fld_load_bps_rx1);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	default:
+		return -1;
+	}
+}
+
+int nthw_stat_get_load_bps_tx(nthw_stat_t *p, uint8_t port, uint32_t *val)
+{
+	switch (port) {
+	case 0:
+		if (p->mp_fld_load_bps_tx0) {
+			*val = nthw_field_get_updated(p->mp_fld_load_bps_tx0);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	case 1:
+		if (p->mp_fld_load_bps_tx1) {
+			*val = nthw_field_get_updated(p->mp_fld_load_bps_tx1);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	default:
+		return -1;
+	}
+}
+
+int nthw_stat_get_load_pps_rx(nthw_stat_t *p, uint8_t port, uint32_t *val)
+{
+	switch (port) {
+	case 0:
+		if (p->mp_fld_load_pps_rx0) {
+			*val = nthw_field_get_updated(p->mp_fld_load_pps_rx0);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	case 1:
+		if (p->mp_fld_load_pps_rx1) {
+			*val = nthw_field_get_updated(p->mp_fld_load_pps_rx1);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	default:
+		return -1;
+	}
+}
+
+int nthw_stat_get_load_pps_tx(nthw_stat_t *p, uint8_t port, uint32_t *val)
+{
+	switch (port) {
+	case 0:
+		if (p->mp_fld_load_pps_tx0) {
+			*val = nthw_field_get_updated(p->mp_fld_load_pps_tx0);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	case 1:
+		if (p->mp_fld_load_pps_tx1) {
+			*val = nthw_field_get_updated(p->mp_fld_load_pps_tx1);
+			return 0;
+
+		} else {
+			*val = 0;
+			return -1;
+		}
+
+		break;
+
+	default:
+		return -1;
+	}
+}

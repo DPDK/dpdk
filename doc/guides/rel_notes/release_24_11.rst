@@ -192,6 +192,7 @@ New Features
   * Added initialization of FPGA modules related to flow HW offload.
   * Added basic handling of the virtual queues.
   * Added flow handling support.
+  * Added statistics support.
 
 * **Updated NVIDIA mlx5 net driver.**
 

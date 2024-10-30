@@ -4,6 +4,9 @@
  */
 
 #include <stdint.h>
+#include <stdarg.h>
+
+#include <signal.h>
 
 #include <rte_eal.h>
 #include <rte_dev.h>
@@ -25,6 +28,7 @@
 #include "nt_util.h"
 
 const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL };
+#define THREAD_CREATE(a, b, c) rte_thread_create(a, &thread_attr, b, c)
 #define THREAD_CTRL_CREATE(a, b, c, d) rte_thread_create_internal_control(a, b, c, d)
 #define THREAD_JOIN(a) rte_thread_join(a, NULL)
 #define THREAD_FUNC static uint32_t
@@ -66,6 +70,9 @@ const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL }
 #define MAX_TX_PACKETS   128
 
 uint64_t rte_tsc_freq;
+
+static void (*previous_handler)(int sig);
+static rte_thread_t shutdown_tid;
 
 int kill_pmd;
 
@@ -1407,6 +1414,7 @@ drv_deinit(struct drv_s *p_drv)
 
 	/* stop statistics threads */
 	p_drv->ntdrv.b_shutdown = true;
+	THREAD_JOIN(p_nt_drv->stat_thread);
 
 	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
 		THREAD_JOIN(p_nt_drv->flm_thread);
@@ -1623,6 +1631,87 @@ THREAD_FUNC adapter_flm_update_thread_fn(void *context)
 			nt_os_wait_usec(10);
 
 	NT_LOG(DBG, NTNIC, "%s: %s: end", p_adapter_info->mp_adapter_id_str, __func__);
+	return THREAD_RETURN;
+}
+
+/*
+ * Adapter stat thread
+ */
+THREAD_FUNC adapter_stat_thread_fn(void *context)
+{
+	const struct nt4ga_stat_ops *nt4ga_stat_ops = get_nt4ga_stat_ops();
+
+	if (nt4ga_stat_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "Statistics module uninitialized");
+		return THREAD_RETURN;
+	}
+
+	struct drv_s *p_drv = context;
+
+	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
+	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
+	nthw_stat_t *p_nthw_stat = p_nt4ga_stat->mp_nthw_stat;
+	const char *const p_adapter_id_str = p_nt_drv->adapter_info.mp_adapter_id_str;
+	(void)p_adapter_id_str;
+
+	if (!p_nthw_stat)
+		return THREAD_RETURN;
+
+	NT_LOG_DBGX(DBG, NTNIC, "%s: begin", p_adapter_id_str);
+
+	assert(p_nthw_stat);
+
+	while (!p_drv->ntdrv.b_shutdown) {
+		nt_os_wait_usec(10 * 1000);
+
+		nthw_stat_trigger(p_nthw_stat);
+
+		uint32_t loop = 0;
+
+		while ((!p_drv->ntdrv.b_shutdown) &&
+			(*p_nthw_stat->mp_timestamp == (uint64_t)-1)) {
+			nt_os_wait_usec(1 * 100);
+
+			if (rte_log_get_level(nt_log_ntnic) == RTE_LOG_DEBUG &&
+				(++loop & 0x3fff) == 0) {
+				if (p_nt4ga_stat->mp_nthw_rpf) {
+					NT_LOG(ERR, NTNIC, "Statistics DMA frozen");
+
+				} else if (p_nt4ga_stat->mp_nthw_rmc) {
+					uint32_t sf_ram_of =
+						nthw_rmc_get_status_sf_ram_of(p_nt4ga_stat
+							->mp_nthw_rmc);
+					uint32_t descr_fifo_of =
+						nthw_rmc_get_status_descr_fifo_of(p_nt4ga_stat
+							->mp_nthw_rmc);
+
+					uint32_t dbg_merge =
+						nthw_rmc_get_dbg_merge(p_nt4ga_stat->mp_nthw_rmc);
+					uint32_t mac_if_err =
+						nthw_rmc_get_mac_if_err(p_nt4ga_stat->mp_nthw_rmc);
+
+					NT_LOG(ERR, NTNIC, "Statistics DMA frozen");
+					NT_LOG(ERR, NTNIC, "SF RAM Overflow     : %08x",
+						sf_ram_of);
+					NT_LOG(ERR, NTNIC, "Descr Fifo Overflow : %08x",
+						descr_fifo_of);
+					NT_LOG(ERR, NTNIC, "DBG Merge           : %08x",
+						dbg_merge);
+					NT_LOG(ERR, NTNIC, "MAC If Errors       : %08x",
+						mac_if_err);
+				}
+			}
+		}
+
+		/* Check then collect */
+		{
+			pthread_mutex_lock(&p_nt_drv->stat_lck);
+			nt4ga_stat_ops->nt4ga_stat_collect(&p_nt_drv->adapter_info, p_nt4ga_stat);
+			pthread_mutex_unlock(&p_nt_drv->stat_lck);
+		}
+	}
+
+	NT_LOG_DBGX(DBG, NTNIC, "%s: end", p_adapter_id_str);
 	return THREAD_RETURN;
 }
 
@@ -1883,6 +1972,16 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		}
 	}
 
+	pthread_mutex_init(&p_nt_drv->stat_lck, NULL);
+	res = THREAD_CTRL_CREATE(&p_nt_drv->stat_thread, "nt4ga_stat_thr", adapter_stat_thread_fn,
+			(void *)p_drv);
+
+	if (res) {
+		NT_LOG(ERR, NTNIC, "%s: error=%d",
+			(pci_dev->name[0] ? pci_dev->name : "NA"), res);
+		return -1;
+	}
+
 	n_phy_ports = fpga_info->n_phy_ports;
 
 	for (int n_intf_no = 0; n_intf_no < n_phy_ports; n_intf_no++) {
@@ -2073,6 +2172,48 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 	return 0;
 }
 
+static void signal_handler_func_int(int sig)
+{
+	if (sig != SIGINT) {
+		signal(sig, previous_handler);
+		raise(sig);
+		return;
+	}
+
+	kill_pmd = 1;
+}
+
+THREAD_FUNC shutdown_thread(void *arg __rte_unused)
+{
+	while (!kill_pmd)
+		nt_os_wait_usec(100 * 1000);
+
+	NT_LOG_DBGX(DBG, NTNIC, "Shutting down because of ctrl+C");
+
+	signal(SIGINT, previous_handler);
+	raise(SIGINT);
+
+	return THREAD_RETURN;
+}
+
+static int init_shutdown(void)
+{
+	NT_LOG(DBG, NTNIC, "Starting shutdown handler");
+	kill_pmd = 0;
+	previous_handler = signal(SIGINT, signal_handler_func_int);
+	THREAD_CREATE(&shutdown_tid, shutdown_thread, NULL);
+
+	/*
+	 * 1 time calculation of 1 sec stat update rtc cycles to prevent stat poll
+	 * flooding by OVS from multiple virtual port threads - no need to be precise
+	 */
+	uint64_t now_rtc = rte_get_tsc_cycles();
+	nt_os_wait_usec(10 * 1000);
+	rte_tsc_freq = 100 * (rte_get_tsc_cycles() - now_rtc);
+
+	return 0;
+}
+
 static int
 nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
@@ -2114,6 +2255,8 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 
 	ret = nthw_pci_dev_init(pci_dev);
+
+	init_shutdown();
 
 	NT_LOG_DBGX(DBG, NTNIC, "leave: ret=%d", ret);
 	return ret;

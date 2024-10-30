@@ -85,16 +85,87 @@ struct color_counters {
 };
 
 struct host_buffer_counters {
+	uint64_t flush_packets;
+	uint64_t drop_packets;
+	uint64_t fwd_packets;
+	uint64_t dbs_drop_packets;
+	uint64_t flush_bytes;
+	uint64_t drop_bytes;
+	uint64_t fwd_bytes;
+	uint64_t dbs_drop_bytes;
 };
 
 struct port_load_counters {
+	uint64_t rx_pps;
 	uint64_t rx_pps_max;
+	uint64_t tx_pps;
 	uint64_t tx_pps_max;
+	uint64_t rx_bps;
 	uint64_t rx_bps_max;
+	uint64_t tx_bps;
 	uint64_t tx_bps_max;
 };
 
 struct port_counters_v2 {
+	/* Rx/Tx common port counters */
+	uint64_t drop_events;
+	uint64_t pkts;
+	/* FPGA counters */
+	uint64_t octets;
+	uint64_t broadcast_pkts;
+	uint64_t multicast_pkts;
+	uint64_t unicast_pkts;
+	uint64_t pkts_alignment;
+	uint64_t pkts_code_violation;
+	uint64_t pkts_crc;
+	uint64_t undersize_pkts;
+	uint64_t oversize_pkts;
+	uint64_t fragments;
+	uint64_t jabbers_not_truncated;
+	uint64_t jabbers_truncated;
+	uint64_t pkts_64_octets;
+	uint64_t pkts_65_to_127_octets;
+	uint64_t pkts_128_to_255_octets;
+	uint64_t pkts_256_to_511_octets;
+	uint64_t pkts_512_to_1023_octets;
+	uint64_t pkts_1024_to_1518_octets;
+	uint64_t pkts_1519_to_2047_octets;
+	uint64_t pkts_2048_to_4095_octets;
+	uint64_t pkts_4096_to_8191_octets;
+	uint64_t pkts_8192_to_max_octets;
+	uint64_t mac_drop_events;
+	uint64_t pkts_lr;
+	/* Rx only port counters */
+	uint64_t duplicate;
+	uint64_t pkts_ip_chksum_error;
+	uint64_t pkts_udp_chksum_error;
+	uint64_t pkts_tcp_chksum_error;
+	uint64_t pkts_giant_undersize;
+	uint64_t pkts_baby_giant;
+	uint64_t pkts_not_isl_vlan_mpls;
+	uint64_t pkts_isl;
+	uint64_t pkts_vlan;
+	uint64_t pkts_isl_vlan;
+	uint64_t pkts_mpls;
+	uint64_t pkts_isl_mpls;
+	uint64_t pkts_vlan_mpls;
+	uint64_t pkts_isl_vlan_mpls;
+	uint64_t pkts_no_filter;
+	uint64_t pkts_dedup_drop;
+	uint64_t pkts_filter_drop;
+	uint64_t pkts_overflow;
+	uint64_t pkts_dbs_drop;
+	uint64_t octets_no_filter;
+	uint64_t octets_dedup_drop;
+	uint64_t octets_filter_drop;
+	uint64_t octets_overflow;
+	uint64_t octets_dbs_drop;
+	uint64_t ipft_first_hit;
+	uint64_t ipft_first_not_hit;
+	uint64_t ipft_mid_hit;
+	uint64_t ipft_mid_not_hit;
+	uint64_t ipft_last_hit;
+	uint64_t ipft_last_not_hit;
 };
 
 struct flm_counters_v1 {
@@ -147,6 +218,8 @@ struct nt4ga_stat_s {
 
 	uint64_t a_port_tx_packets_base[NUM_ADAPTER_PORTS_MAX];
 	uint64_t a_port_tx_packets_total[NUM_ADAPTER_PORTS_MAX];
+
+	uint64_t a_port_tx_drops_total[NUM_ADAPTER_PORTS_MAX];
 };
 
 typedef struct nt4ga_stat_s nt4ga_stat_t;
@@ -158,5 +231,10 @@ void nthw_stat_delete(nthw_stat_t *p);
 int nthw_stat_set_dma_address(nthw_stat_t *p, uint64_t stat_dma_physical,
 	uint32_t *p_stat_dma_virtual);
 int nthw_stat_trigger(nthw_stat_t *p);
+
+int nthw_stat_get_load_bps_rx(nthw_stat_t *p, uint8_t port, uint32_t *val);
+int nthw_stat_get_load_bps_tx(nthw_stat_t *p, uint8_t port, uint32_t *val);
+int nthw_stat_get_load_pps_rx(nthw_stat_t *p, uint8_t port, uint32_t *val);
+int nthw_stat_get_load_pps_tx(nthw_stat_t *p, uint8_t port, uint32_t *val);
 
 #endif  /* NTNIC_STAT_H_ */
