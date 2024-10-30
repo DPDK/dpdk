@@ -1080,6 +1080,104 @@ static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
  * Flow Asynchronous operation API
  */
 
+static struct flow_pattern_template *
+flow_pattern_template_create(struct flow_eth_dev *dev,
+	const struct rte_flow_pattern_template_attr *template_attr, uint16_t caller_id,
+	const struct rte_flow_item pattern[], struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+			return NULL;
+	}
+
+	return profile_inline_ops->flow_pattern_template_create_profile_inline(dev, template_attr,
+		caller_id, pattern, error);
+}
+
+static int flow_pattern_template_destroy(struct flow_eth_dev *dev,
+	struct flow_pattern_template *pattern_template,
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return profile_inline_ops->flow_pattern_template_destroy_profile_inline(dev,
+			pattern_template,
+			error);
+}
+
+static struct flow_actions_template *
+flow_actions_template_create(struct flow_eth_dev *dev,
+	const struct rte_flow_actions_template_attr *template_attr, uint16_t caller_id,
+	const struct rte_flow_action actions[], const struct rte_flow_action masks[],
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return NULL;
+	}
+
+	return profile_inline_ops->flow_actions_template_create_profile_inline(dev, template_attr,
+		caller_id, actions, masks, error);
+}
+
+static int flow_actions_template_destroy(struct flow_eth_dev *dev,
+	struct flow_actions_template *actions_template,
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return profile_inline_ops->flow_actions_template_destroy_profile_inline(dev,
+			actions_template,
+			error);
+}
+
+static struct flow_template_table *flow_template_table_create(struct flow_eth_dev *dev,
+	const struct rte_flow_template_table_attr *table_attr, uint16_t forced_vlan_vid,
+	uint16_t caller_id, struct flow_pattern_template *pattern_templates[],
+	uint8_t nb_pattern_templates, struct flow_actions_template *actions_templates[],
+	uint8_t nb_actions_templates, struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return NULL;
+	}
+
+	return profile_inline_ops->flow_template_table_create_profile_inline(dev, table_attr,
+		forced_vlan_vid, caller_id, pattern_templates, nb_pattern_templates,
+		actions_templates, nb_actions_templates, error);
+}
+
+static int flow_template_table_destroy(struct flow_eth_dev *dev,
+	struct flow_template_table *template_table,
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return profile_inline_ops->flow_template_table_destroy_profile_inline(dev, template_table,
+			error);
+}
+
 static struct flow_handle *
 flow_async_create(struct flow_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr, struct flow_template_table *template_table,
@@ -1149,6 +1247,12 @@ static const struct flow_filter_ops ops = {
 	 */
 	.flow_info_get = flow_info_get,
 	.flow_configure = flow_configure,
+	.flow_pattern_template_create = flow_pattern_template_create,
+	.flow_pattern_template_destroy = flow_pattern_template_destroy,
+	.flow_actions_template_create = flow_actions_template_create,
+	.flow_actions_template_destroy = flow_actions_template_destroy,
+	.flow_template_table_create = flow_template_table_create,
+	.flow_template_table_destroy = flow_template_table_destroy,
 	.flow_async_create = flow_async_create,
 	.flow_async_destroy = flow_async_destroy,
 

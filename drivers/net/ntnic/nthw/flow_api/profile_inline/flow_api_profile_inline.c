@@ -5503,6 +5503,223 @@ error_out:
 	return -1;
 }
 
+struct flow_pattern_template *flow_pattern_template_create_profile_inline(struct flow_eth_dev *dev,
+	const struct rte_flow_pattern_template_attr *template_attr, uint16_t caller_id,
+	const struct rte_flow_item pattern[], struct rte_flow_error *error)
+{
+	(void)template_attr;
+	(void)caller_id;
+	uint32_t port_id = 0;
+	uint32_t packet_data[10];
+	uint32_t packet_mask[10];
+	struct flm_flow_key_def_s key_def;
+
+	struct nic_flow_def *fd = allocate_nic_flow_def();
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	if (fd == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate flow_def";
+		return NULL;
+	}
+
+	/* Note that forced_vlan_vid is unavailable at this point in time */
+	int res = interpret_flow_elements(dev, pattern, fd, error, 0, &port_id, packet_data,
+			packet_mask, &key_def);
+
+	if (res) {
+		free(fd);
+		return NULL;
+	}
+
+	struct flow_pattern_template *template = calloc(1, sizeof(struct flow_pattern_template));
+
+	template->fd = fd;
+
+	return template;
+}
+
+int flow_pattern_template_destroy_profile_inline(struct flow_eth_dev *dev,
+	struct flow_pattern_template *pattern_template,
+	struct rte_flow_error *error)
+{
+	(void)dev;
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	free(pattern_template->fd);
+	free(pattern_template);
+
+	return 0;
+}
+
+struct flow_actions_template *
+flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
+	const struct rte_flow_actions_template_attr *template_attr, uint16_t caller_id,
+	const struct rte_flow_action actions[],
+	const struct rte_flow_action masks[],
+	struct rte_flow_error *error)
+{
+	(void)template_attr;
+	int res;
+
+	uint32_t num_dest_port = 0;
+	uint32_t num_queues = 0;
+
+	struct nic_flow_def *fd = allocate_nic_flow_def();
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	if (fd == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate flow_def";
+		return NULL;
+	}
+
+	res = interpret_flow_actions(dev, actions, masks, fd, error, &num_dest_port, &num_queues);
+
+	if (res) {
+		free(fd);
+		return NULL;
+	}
+
+	/* Translate group IDs */
+	if (fd->jump_to_group != UINT32_MAX) {
+		rte_spinlock_lock(&dev->ndev->mtx);
+		res = flow_group_translate_get(dev->ndev->group_handle, caller_id,
+				dev->port, fd->jump_to_group, &fd->jump_to_group);
+		rte_spinlock_unlock(&dev->ndev->mtx);
+
+		if (res) {
+			NT_LOG(ERR, FILTER, "ERROR: Could not get group resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			free(fd);
+			return NULL;
+		}
+	}
+
+	struct flow_actions_template *template = calloc(1, sizeof(struct flow_actions_template));
+
+	template->fd = fd;
+	template->num_dest_port = num_dest_port;
+	template->num_queues = num_queues;
+
+	return template;
+}
+
+int flow_actions_template_destroy_profile_inline(struct flow_eth_dev *dev,
+	struct flow_actions_template *actions_template,
+	struct rte_flow_error *error)
+{
+	(void)dev;
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	free(actions_template->fd);
+	free(actions_template);
+
+	return 0;
+}
+
+struct flow_template_table *flow_template_table_create_profile_inline(struct flow_eth_dev *dev,
+	const struct rte_flow_template_table_attr *table_attr, uint16_t forced_vlan_vid,
+	uint16_t caller_id,
+	struct flow_pattern_template *pattern_templates[], uint8_t nb_pattern_templates,
+	struct flow_actions_template *actions_templates[], uint8_t nb_actions_templates,
+	struct rte_flow_error *error)
+{
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	struct flow_template_table *template_table = calloc(1, sizeof(struct flow_template_table));
+
+	if (template_table == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate template_table";
+		goto error_out;
+	}
+
+	template_table->pattern_templates =
+		malloc(sizeof(struct flow_pattern_template *) * nb_pattern_templates);
+	template_table->actions_templates =
+		malloc(sizeof(struct flow_actions_template *) * nb_actions_templates);
+	template_table->pattern_action_pairs =
+		calloc((uint32_t)nb_pattern_templates * nb_actions_templates,
+			sizeof(struct flow_template_table_cell));
+
+	if (template_table->pattern_templates == NULL ||
+		template_table->actions_templates == NULL ||
+		template_table->pattern_action_pairs == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate template_table variables";
+		goto error_out;
+	}
+
+	template_table->attr.priority = table_attr->flow_attr.priority;
+	template_table->attr.group = table_attr->flow_attr.group;
+	template_table->forced_vlan_vid = forced_vlan_vid;
+	template_table->caller_id = caller_id;
+
+	template_table->nb_pattern_templates = nb_pattern_templates;
+	template_table->nb_actions_templates = nb_actions_templates;
+
+	memcpy(template_table->pattern_templates, pattern_templates,
+		sizeof(struct flow_pattern_template *) * nb_pattern_templates);
+	memcpy(template_table->actions_templates, actions_templates,
+		sizeof(struct rte_flow_actions_template *) * nb_actions_templates);
+
+	rte_spinlock_lock(&dev->ndev->mtx);
+	int res =
+		flow_group_translate_get(dev->ndev->group_handle, caller_id, dev->port,
+			template_table->attr.group, &template_table->attr.group);
+	rte_spinlock_unlock(&dev->ndev->mtx);
+
+	/* Translate group IDs */
+	if (res) {
+		NT_LOG(ERR, FILTER, "ERROR: Could not get group resource");
+		flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+		goto error_out;
+	}
+
+	return template_table;
+
+error_out:
+
+	if (template_table) {
+		free(template_table->pattern_templates);
+		free(template_table->actions_templates);
+		free(template_table->pattern_action_pairs);
+		free(template_table);
+	}
+
+	return NULL;
+}
+
+int flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
+	struct flow_template_table *template_table,
+	struct rte_flow_error *error)
+{
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	const uint32_t nb_cells =
+		template_table->nb_pattern_templates * template_table->nb_actions_templates;
+
+	for (uint32_t i = 0; i < nb_cells; ++i) {
+		struct flow_template_table_cell *cell = &template_table->pattern_action_pairs[i];
+
+		if (cell->flm_db_idx_counter > 0) {
+			hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+				(struct hw_db_idx *)cell->flm_db_idxs,
+				cell->flm_db_idx_counter);
+		}
+	}
+
+	free(template_table->pattern_templates);
+	free(template_table->actions_templates);
+	free(template_table->pattern_action_pairs);
+	free(template_table);
+
+	return 0;
+}
+
 struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
 	uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr,
@@ -5753,6 +5970,14 @@ static const struct profile_inline_ops ops = {
 	.flow_get_flm_stats_profile_inline = flow_get_flm_stats_profile_inline,
 	.flow_info_get_profile_inline = flow_info_get_profile_inline,
 	.flow_configure_profile_inline = flow_configure_profile_inline,
+	.flow_pattern_template_create_profile_inline = flow_pattern_template_create_profile_inline,
+	.flow_pattern_template_destroy_profile_inline =
+		flow_pattern_template_destroy_profile_inline,
+	.flow_actions_template_create_profile_inline = flow_actions_template_create_profile_inline,
+	.flow_actions_template_destroy_profile_inline =
+		flow_actions_template_destroy_profile_inline,
+	.flow_template_table_create_profile_inline = flow_template_table_create_profile_inline,
+	.flow_template_table_destroy_profile_inline = flow_template_table_destroy_profile_inline,
 	.flow_async_create_profile_inline = flow_async_create_profile_inline,
 	.flow_async_destroy_profile_inline = flow_async_destroy_profile_inline,
 	/*

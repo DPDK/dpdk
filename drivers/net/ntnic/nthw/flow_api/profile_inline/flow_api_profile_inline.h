@@ -73,6 +73,34 @@ int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
  * RTE flow asynchronous operations functions
  */
 
+struct flow_pattern_template *flow_pattern_template_create_profile_inline(struct flow_eth_dev *dev,
+	const struct rte_flow_pattern_template_attr *template_attr, uint16_t caller_id,
+	const struct rte_flow_item pattern[], struct rte_flow_error *error);
+
+int flow_pattern_template_destroy_profile_inline(struct flow_eth_dev *dev,
+	struct flow_pattern_template *pattern_template,
+	struct rte_flow_error *error);
+
+struct flow_actions_template *flow_actions_template_create_profile_inline(struct flow_eth_dev *dev,
+	const struct rte_flow_actions_template_attr *template_attr, uint16_t caller_id,
+	const struct rte_flow_action actions[], const struct rte_flow_action masks[],
+	struct rte_flow_error *error);
+
+int flow_actions_template_destroy_profile_inline(struct flow_eth_dev *dev,
+	struct flow_actions_template *actions_template,
+	struct rte_flow_error *error);
+
+struct flow_template_table *flow_template_table_create_profile_inline(struct flow_eth_dev *dev,
+	const struct rte_flow_template_table_attr *table_attr, uint16_t forced_vlan_vid,
+	uint16_t caller_id,
+	struct flow_pattern_template *pattern_templates[], uint8_t nb_pattern_templates,
+	struct flow_actions_template *actions_templates[], uint8_t nb_actions_templates,
+	struct rte_flow_error *error);
+
+int flow_template_table_destroy_profile_inline(struct flow_eth_dev *dev,
+	struct flow_template_table *template_table,
+	struct rte_flow_error *error);
+
 struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr,
 	struct flow_template_table *template_table, const struct rte_flow_item pattern[],

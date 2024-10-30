@@ -350,6 +350,7 @@ struct flow_handle {
 };
 
 struct flow_pattern_template {
+	struct nic_flow_def *fd;
 };
 
 struct flow_actions_template {
