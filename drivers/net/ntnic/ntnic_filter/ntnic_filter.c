@@ -731,6 +731,91 @@ static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 	return res;
 }
 
+static int eth_flow_get_aged_flows(struct rte_eth_dev *eth_dev,
+	void **context,
+	uint32_t nb_contexts,
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	uint16_t caller_id = get_caller_id(eth_dev->data->port_id);
+
+	int res = flow_filter_ops->flow_get_aged_flows(internals->flw_dev, caller_id, context,
+			nb_contexts, &flow_error);
+
+	convert_error(error, &flow_error);
+	return res;
+}
+
+/*
+ * NT Flow asynchronous operations API
+ */
+
+static int eth_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
+	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	int res = flow_filter_ops->flow_info_get(internals->flw_dev,
+			get_caller_id(dev->data->port_id),
+			(struct rte_flow_port_info *)port_info,
+			(struct rte_flow_queue_info *)queue_info,
+			&flow_error);
+
+	convert_error(error, &flow_error);
+	return res;
+}
+
+static int eth_flow_configure(struct rte_eth_dev *dev, const struct rte_flow_port_attr *port_attr,
+	uint16_t nb_queue, const struct rte_flow_queue_attr *queue_attr[],
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	int res = flow_filter_ops->flow_configure(internals->flw_dev,
+			get_caller_id(dev->data->port_id),
+			(const struct rte_flow_port_attr *)port_attr,
+			nb_queue,
+			(const struct rte_flow_queue_attr **)queue_attr,
+			&flow_error);
+
+	convert_error(error, &flow_error);
+	return res;
+}
+
 static int poll_statistics(struct pmd_internals *internals)
 {
 	int flow;
@@ -857,6 +942,9 @@ static const struct rte_flow_ops dev_flow_ops = {
 	.destroy = eth_flow_destroy,
 	.flush = eth_flow_flush,
 	.dev_dump = eth_flow_dev_dump,
+	.get_aged_flows = eth_flow_get_aged_flows,
+	.info_get = eth_flow_info_get,
+	.configure = eth_flow_configure,
 };
 
 void dev_flow_init(void)

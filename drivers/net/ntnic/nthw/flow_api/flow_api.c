@@ -1013,6 +1013,70 @@ int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
 	return profile_inline_ops->flow_nic_set_hasher_fields_inline(ndev, hsh_idx, rss_conf);
 }
 
+static int flow_get_aged_flows(struct flow_eth_dev *dev,
+	uint16_t caller_id,
+	void **context,
+	uint32_t nb_contexts,
+	struct rte_flow_error *error)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline_ops uninitialized");
+		return -1;
+	}
+
+	if (nb_contexts > 0 && !context) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "rte_flow_get_aged_flows - empty context";
+		return -1;
+	}
+
+	return profile_inline_ops->flow_get_aged_flows_profile_inline(dev, caller_id, context,
+			nb_contexts, error);
+}
+
+static int flow_info_get(struct flow_eth_dev *dev, uint8_t caller_id,
+	struct rte_flow_port_info *port_info, struct rte_flow_queue_info *queue_info,
+	struct rte_flow_error *error)
+{
+	(void)dev;
+	(void)caller_id;
+	(void)port_info;
+	(void)queue_info;
+	(void)error;
+
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
+	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
+	const struct rte_flow_queue_attr *queue_attr[], struct rte_flow_error *error)
+{
+	(void)dev;
+	(void)caller_id;
+	(void)port_attr;
+	(void)queue_attr;
+	(void)nb_queue;
+	(void)error;
+
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "profile_inline module uninitialized");
+		return -1;
+	}
+
+	return 0;
+}
+
 int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 {
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
@@ -1041,6 +1105,13 @@ static const struct flow_filter_ops ops = {
 	.flow_flush = flow_flush,
 	.flow_dev_dump = flow_dev_dump,
 	.flow_get_flm_stats = flow_get_flm_stats,
+	.flow_get_aged_flows = flow_get_aged_flows,
+
+	/*
+	 * NT Flow asynchronous operations API
+	 */
+	.flow_info_get = flow_info_get,
+	.flow_configure = flow_configure,
 
 	/*
 	 * Other

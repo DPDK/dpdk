@@ -286,6 +286,12 @@ struct profile_inline_ops {
 		FILE *file,
 		struct rte_flow_error *error);
 
+	int (*flow_get_aged_flows_profile_inline)(struct flow_eth_dev *dev,
+		uint16_t caller_id,
+		void **context,
+		uint32_t nb_contexts,
+		struct rte_flow_error *error);
+
 	int (*flow_nic_set_hasher_fields_inline)(struct flow_nic_dev *ndev,
 		int hsh_idx,
 		struct nt_eth_rss_conf rss_conf);
@@ -355,6 +361,21 @@ struct flow_filter_ops {
 	int (*flow_nic_set_hasher_fields)(struct flow_nic_dev *ndev, int hsh_idx,
 		struct nt_eth_rss_conf rss_conf);
 	int (*hw_mod_hsh_rcp_flush)(struct flow_api_backend_s *be, int start_idx, int count);
+
+	int (*flow_get_aged_flows)(struct flow_eth_dev *dev,
+		uint16_t caller_id,
+		void **context,
+		uint32_t nb_contexts,
+		struct rte_flow_error *error);
+
+	int (*flow_info_get)(struct flow_eth_dev *dev, uint8_t caller_id,
+		struct rte_flow_port_info *port_info, struct rte_flow_queue_info *queue_info,
+		struct rte_flow_error *error);
+
+	int (*flow_configure)(struct flow_eth_dev *dev, uint8_t caller_id,
+		const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
+		const struct rte_flow_queue_attr *queue_attr[],
+		struct rte_flow_error *error);
 };
 
 void register_dev_flow_ops(const struct rte_flow_ops *ops);
