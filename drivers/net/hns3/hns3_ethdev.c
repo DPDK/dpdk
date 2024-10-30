@@ -6672,7 +6672,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_hns3,
 		HNS3_DEVARG_FDIR_VLAN_MATCH_MODE "=strict|nostrict "
 		HNS3_DEVARG_FDIR_TUPLE_CONFIG "=+outvlan-insmac|+outvlan-indmac|"
 					      "+outvlan-insip|+outvlan-indip"
-					      "+outvlan-sctptag|+outvlan-tunvni ");
+					      "+outvlan-sctptag|+outvlan-tunvni "
+		HNS3_DEVARG_FDIR_INDEX_CONFIG "=hash|priority ");
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(hns3_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX

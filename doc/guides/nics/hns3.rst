@@ -193,6 +193,16 @@ Runtime Configuration
   ``+outvlan-sctptag``: means disable sctp tag tuple, and enable outer vlan tuple.
   ``+outvlan-tunvni``: means disable tunnel vni tuple, and enable outer vlan tuple.
 
+- ``fdir_index_config`` (default ``hash``)
+
+  Used to select flow director index strategy,
+  the flow director index is the index position in the hardware flow director table.
+  Lower index denotes higher priority
+  (it means when a packet matches multiple indexes, the smaller index wins).
+  Current supported options are as follows:
+  ``hash``: The driver generates a flow index based on the hash of the rte_flow key.
+  ``priority``: the driver uses the rte_flow priority field as the flow director index.
+
 Driver compilation and testing
 ------------------------------
 
@@ -321,6 +331,9 @@ Generic flow API
   and hash algorithm. But hash key, queues and hash algorithm are the global
   configuration for hardware which will affect other rules.
   The rule just setting input tuple is completely independent.
+
+  In addition, if the rule priority level is set, no error is reported,
+  but the rule priority level does not take effect.
 
   Run ``testpmd``:
 

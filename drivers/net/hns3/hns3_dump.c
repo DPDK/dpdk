@@ -169,6 +169,7 @@ hns3_get_fdir_basic_info(FILE *file, struct hns3_pf *pf)
 		"\t  -- mode=%u max_key_len=%u rule_num:%u cnt_num:%u\n"
 		"\t  -- key_sel=%u tuple_active=0x%x meta_data_active=0x%x\n"
 		"\t  -- ipv6_word_en: in_s=%u in_d=%u out_s=%u out_d=%u\n"
+		"\t  -- index_cfg: %s\n"
 		"\t  -- tuple_config: %s\n"
 		"\t  -- active_tuples:\n",
 		fdcfg->fd_mode, fdcfg->max_key_length,
@@ -181,6 +182,7 @@ hns3_get_fdir_basic_info(FILE *file, struct hns3_pf *pf)
 		fdcfg->key_cfg[HNS3_FD_STAGE_1].inner_dipv6_word_en,
 		fdcfg->key_cfg[HNS3_FD_STAGE_1].outer_sipv6_word_en,
 		fdcfg->key_cfg[HNS3_FD_STAGE_1].outer_dipv6_word_en,
+		hns3_fdir_index_config_name(pf->fdir.index_cfg),
 		hns3_tuple_config_name(pf->fdir.tuple_cfg));
 
 	for (i = 0; i < MAX_TUPLE; i++) {

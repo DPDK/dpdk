@@ -29,6 +29,7 @@ enum {
 
 #define HNS3_DEVARG_FDIR_VLAN_MATCH_MODE	"fdir_vlan_match_mode"
 #define HNS3_DEVARG_FDIR_TUPLE_CONFIG	"fdir_tuple_config"
+#define HNS3_DEVARG_FDIR_INDEX_CONFIG	"fdir_index_config"
 
 #define MSEC_PER_SEC              1000L
 #define USEC_PER_MSEC             1000L

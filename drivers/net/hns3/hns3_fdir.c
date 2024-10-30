@@ -981,39 +981,44 @@ static int hns3_insert_fdir_filter(struct hns3_hw *hw,
 {
 	struct hns3_fdir_key_conf *key;
 	hash_sig_t sig;
-	int ret;
+	int index;
 
 	key = &fdir_filter->fdir_conf.key_conf;
 	sig = rte_hash_crc(key, sizeof(*key), 0);
-	ret = rte_hash_add_key_with_hash(fdir_info->hash_handle, key, sig);
-	if (ret < 0) {
-		hns3_err(hw, "Hash table full? err:%d!", ret);
-		return ret;
+	index = rte_hash_add_key_with_hash(fdir_info->hash_handle, key, sig);
+	if (index < 0) {
+		hns3_err(hw, "Hash table full? err:%d!", index);
+		return index;
 	}
 
-	fdir_info->hash_map[ret] = fdir_filter;
+	if (fdir_info->index_cfg == HNS3_FDIR_INDEX_CONFIG_PRIORITY)
+		index = fdir_filter->fdir_conf.location;
+
+	fdir_info->hash_map[index] = fdir_filter;
 	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, fdir_filter, entries);
 
-	return ret;
+	return index;
 }
 
 static int hns3_remove_fdir_filter(struct hns3_hw *hw,
 				   struct hns3_fdir_info *fdir_info,
-				   struct hns3_fdir_key_conf *key)
+				   struct hns3_fdir_rule *rule)
 {
 	struct hns3_fdir_rule_ele *fdir_filter;
 	hash_sig_t sig;
-	int ret;
+	int index;
 
-	sig = rte_hash_crc(key, sizeof(*key), 0);
-	ret = rte_hash_del_key_with_hash(fdir_info->hash_handle, key, sig);
-	if (ret < 0) {
-		hns3_err(hw, "Delete hash key fail ret=%d", ret);
-		return ret;
+	sig = rte_hash_crc(&rule->key_conf, sizeof(rule->key_conf), 0);
+	index = rte_hash_del_key_with_hash(fdir_info->hash_handle, &rule->key_conf, sig);
+	if (index < 0) {
+		hns3_err(hw, "Delete hash key fail ret=%d", index);
+		return index;
 	}
 
-	fdir_filter = fdir_info->hash_map[ret];
-	fdir_info->hash_map[ret] = NULL;
+	if (fdir_info->index_cfg == HNS3_FDIR_INDEX_CONFIG_PRIORITY)
+		index = rule->location;
+	fdir_filter = fdir_info->hash_map[index];
+	fdir_info->hash_map[index] = NULL;
 	TAILQ_REMOVE(&fdir_info->fdir_list, fdir_filter, entries);
 
 	rte_free(fdir_filter);
@@ -1042,7 +1047,7 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 				 rule->key_conf.spec.src_port,
 				 rule->key_conf.spec.dst_port, ret);
 		else
-			ret = hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
+			ret = hns3_remove_fdir_filter(hw, fdir_info, rule);
 
 		return ret;
 	}
@@ -1080,7 +1085,7 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 			 rule->key_conf.spec.dst_ip[IP_ADDR_KEY_ID],
 			 rule->key_conf.spec.src_port,
 			 rule->key_conf.spec.dst_port, ret);
-		(void)hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
+		(void)hns3_remove_fdir_filter(hw, fdir_info, rule);
 	}
 
 	return ret;
@@ -1227,6 +1232,27 @@ hns3_tuple_config_name(enum hns3_fdir_tuple_config tuple_cfg)
 	for (i = 0; i < RTE_DIM(tuple_config_map); i++) {
 		if (tuple_cfg == tuple_config_map[i].tuple_cfg)
 			return tuple_config_map[i].name;
+	}
+
+	return "unknown";
+}
+
+static struct {
+	enum hns3_fdir_index_config cfg;
+	const char *name;
+} index_cfg_map[] = {
+	{ HNS3_FDIR_INDEX_CONFIG_HASH, "hash"},
+	{ HNS3_FDIR_INDEX_CONFIG_PRIORITY, "priority"},
+};
+
+const char *
+hns3_fdir_index_config_name(enum hns3_fdir_index_config cfg)
+{
+	uint32_t i;
+
+	for (i = 0; i < RTE_DIM(index_cfg_map); i++) {
+		if (cfg == index_cfg_map[i].cfg)
+			return index_cfg_map[i].name;
 	}
 
 	return "unknown";

@@ -597,10 +597,6 @@ hns3_check_attr(const struct rte_flow_attr *attr, struct rte_flow_error *error)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
 					  attr, "No support for transfer");
-	if (attr->priority)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-					  attr, "Not support priority");
 	if (attr->group)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
@@ -1441,6 +1437,40 @@ is_tunnel_packet(enum rte_flow_item_type type)
 	return false;
 }
 
+static int
+hns3_handle_attributes(struct rte_eth_dev *dev,
+		       const struct rte_flow_attr *attr,
+		       struct hns3_fdir_rule *rule,
+		       struct rte_flow_error *error)
+{
+	struct hns3_pf *pf = HNS3_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct hns3_fdir_info fdir = pf->fdir;
+	uint32_t rule_num;
+
+	if (fdir.index_cfg != HNS3_FDIR_INDEX_CONFIG_PRIORITY) {
+		if (attr->priority == 0)
+			return 0;
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					  attr, "Not support priority");
+	}
+
+	rule_num = fdir.fd_cfg.rule_num[HNS3_FD_STAGE_1];
+	if (attr->priority >= rule_num)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					  attr, "Priority out of range");
+
+	if (fdir.hash_map[attr->priority] != NULL)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+					  attr, "Priority already exists");
+
+	rule->location = attr->priority;
+
+	return 0;
+}
+
 /*
  * Parse the flow director rule.
  * The supported PATTERN:
@@ -1468,6 +1498,7 @@ is_tunnel_packet(enum rte_flow_item_type type)
  */
 static int
 hns3_parse_fdir_filter(struct rte_eth_dev *dev,
+		       const struct rte_flow_attr *attr,
 		       const struct rte_flow_item pattern[],
 		       const struct rte_flow_action actions[],
 		       struct hns3_fdir_rule *rule,
@@ -1483,6 +1514,10 @@ hns3_parse_fdir_filter(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					  "Fdir not supported in VF");
+
+	ret = hns3_handle_attributes(dev, attr, rule, error);
+	if (ret)
+		return ret;
 
 	step_mngr.items = first_items;
 	step_mngr.count = RTE_DIM(first_items);
@@ -2248,7 +2283,7 @@ hns3_flow_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		return hns3_parse_rss_filter(dev, pattern, actions,
 					     &conf->rss_conf, error);
 
-	return hns3_parse_fdir_filter(dev, pattern, actions,
+	return hns3_parse_fdir_filter(dev, attr, pattern, actions,
 				      &conf->fdir_conf, error);
 }
 

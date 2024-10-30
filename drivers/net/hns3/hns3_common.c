@@ -290,6 +290,27 @@ hns3_parse_fdir_tuple_config(const char *key, const char *value, void *args)
 	return 0;
 }
 
+static int
+hns3_parse_fdir_index_config(const char *key, const char *value, void *args)
+{
+	enum hns3_fdir_index_config cfg;
+
+	if (strcmp(value, "hash") == 0) {
+		cfg  = HNS3_FDIR_INDEX_CONFIG_HASH;
+	} else if (strcmp(value, "priority") == 0) {
+		cfg  = HNS3_FDIR_INDEX_CONFIG_PRIORITY;
+	} else {
+		PMD_INIT_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\", "
+			"value must be 'hash' or 'priority'",
+			value, key);
+		return -1;
+	}
+
+	*(enum hns3_fdir_index_config *)args = cfg;
+
+	return 0;
+}
+
 void
 hns3_parse_devargs(struct rte_eth_dev *dev)
 {
@@ -333,6 +354,10 @@ hns3_parse_devargs(struct rte_eth_dev *dev)
 					 HNS3_DEVARG_FDIR_TUPLE_CONFIG,
 					 &hns3_parse_fdir_tuple_config,
 					 &hns->pf.fdir.tuple_cfg);
+		(void)rte_kvargs_process(kvlist,
+					 HNS3_DEVARG_FDIR_INDEX_CONFIG,
+					 &hns3_parse_fdir_index_config,
+					 &hns->pf.fdir.index_cfg);
 	}
 
 	rte_kvargs_free(kvlist);

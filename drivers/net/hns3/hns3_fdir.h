@@ -228,6 +228,14 @@ enum hns3_fdir_tuple_config {
 	HNS3_FDIR_TUPLE_CONFIG_BUTT
 };
 
+enum hns3_fdir_index_config {
+	/* Generate the hardware flow director index based on rte_hash (Default) */
+	HNS3_FDIR_INDEX_CONFIG_HASH,
+
+	/* Use the rte_flow priority field as the hardware flow director index. */
+	HNS3_FDIR_INDEX_CONFIG_PRIORITY
+};
+
 /*
  *  A structure used to define fields of a FDIR related info.
  */
@@ -238,6 +246,7 @@ struct hns3_fdir_info {
 	struct hns3_fd_cfg fd_cfg;
 	uint8_t vlan_match_mode;
 	enum hns3_fdir_tuple_config tuple_cfg;
+	enum hns3_fdir_index_config index_cfg;
 };
 
 struct hns3_adapter;
@@ -254,5 +263,6 @@ int hns3_restore_all_fdir_filter(struct hns3_adapter *hns);
 
 enum hns3_fdir_tuple_config hns3_parse_tuple_config(const char *name);
 const char *hns3_tuple_config_name(enum hns3_fdir_tuple_config tuple_cfg);
+const char *hns3_fdir_index_config_name(enum hns3_fdir_index_config cfg);
 
 #endif /* HNS3_FDIR_H */
