@@ -64,4 +64,13 @@ int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev,
 
 int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
 
+int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
+	struct rte_flow_port_info *port_info,
+	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error);
+
+int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
+	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
+	const struct rte_flow_queue_attr *queue_attr[],
+	struct rte_flow_error *error);
+
 #endif	/* _FLOW_API_PROFILE_INLINE_H_ */

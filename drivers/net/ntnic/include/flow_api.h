@@ -77,6 +77,9 @@ struct flow_eth_dev {
 	/* QSL_HSH index if RSS needed QSL v6+ */
 	int rss_target_id;
 
+	/* The size of buffer for aged out flow list */
+	uint32_t nb_aging_objects;
+
 	struct flow_eth_dev *next;
 };
 

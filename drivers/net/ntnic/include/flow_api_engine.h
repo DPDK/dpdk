@@ -320,6 +320,7 @@ struct flow_handle {
 			uint32_t flm_teid;
 			uint8_t flm_rqi;
 			uint8_t flm_qfi;
+			uint8_t flm_scrub_prof;
 		};
 	};
 };

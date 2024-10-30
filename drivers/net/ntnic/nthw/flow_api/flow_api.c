@@ -1040,12 +1040,6 @@ static int flow_info_get(struct flow_eth_dev *dev, uint8_t caller_id,
 	struct rte_flow_port_info *port_info, struct rte_flow_queue_info *queue_info,
 	struct rte_flow_error *error)
 {
-	(void)dev;
-	(void)caller_id;
-	(void)port_info;
-	(void)queue_info;
-	(void)error;
-
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
@@ -1053,20 +1047,14 @@ static int flow_info_get(struct flow_eth_dev *dev, uint8_t caller_id,
 		return -1;
 	}
 
-	return 0;
+	return profile_inline_ops->flow_info_get_profile_inline(dev, caller_id, port_info,
+			queue_info, error);
 }
 
 static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
 	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
 	const struct rte_flow_queue_attr *queue_attr[], struct rte_flow_error *error)
 {
-	(void)dev;
-	(void)caller_id;
-	(void)port_attr;
-	(void)queue_attr;
-	(void)nb_queue;
-	(void)error;
-
 	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
 
 	if (profile_inline_ops == NULL) {
@@ -1074,7 +1062,8 @@ static int flow_configure(struct flow_eth_dev *dev, uint8_t caller_id,
 		return -1;
 	}
 
-	return 0;
+	return profile_inline_ops->flow_configure_profile_inline(dev, caller_id, port_attr,
+			nb_queue, queue_attr, error);
 }
 
 int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)

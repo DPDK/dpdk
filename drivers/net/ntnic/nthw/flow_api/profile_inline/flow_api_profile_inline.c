@@ -490,7 +490,7 @@ static int flm_flow_programming(struct flow_handle *fh, uint32_t flm_op)
 	learn_record->ft = fh->flm_ft;
 	learn_record->kid = fh->flm_kid;
 	learn_record->eor = 1;
-	learn_record->scrub_prof = 0;
+	learn_record->scrub_prof = fh->flm_scrub_prof;
 
 	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 	return 0;
@@ -2438,6 +2438,7 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 	fh->flm_rpl_ext_ptr = rpl_ext_ptr;
 	fh->flm_prio = (uint8_t)priority;
 	fh->flm_ft = (uint8_t)flm_ft;
+	fh->flm_scrub_prof = (uint8_t)flm_scrub;
 
 	for (unsigned int i = 0; i < fd->modify_field_count; ++i) {
 		switch (fd->modify_field[i].select) {
@@ -4554,6 +4555,63 @@ int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	return 0;
 }
 
+int flow_info_get_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
+	struct rte_flow_port_info *port_info,
+	struct rte_flow_queue_info *queue_info, struct rte_flow_error *error)
+{
+	(void)queue_info;
+	(void)caller_id;
+	int res = 0;
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+	memset(port_info, 0, sizeof(struct rte_flow_port_info));
+
+	port_info->max_nb_aging_objects = dev->nb_aging_objects;
+
+	return res;
+}
+
+int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
+	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
+	const struct rte_flow_queue_attr *queue_attr[],
+	struct rte_flow_error *error)
+{
+	(void)nb_queue;
+	(void)queue_attr;
+	int res = 0;
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	if (port_attr->nb_aging_objects > 0) {
+		if (dev->nb_aging_objects > 0) {
+			flm_age_queue_free(dev->port_id, caller_id);
+			dev->nb_aging_objects = 0;
+		}
+
+		struct rte_ring *age_queue =
+			flm_age_queue_create(dev->port_id, caller_id, port_attr->nb_aging_objects);
+
+		if (age_queue == NULL) {
+			error->message = "Failed to allocate aging objects";
+			goto error_out;
+		}
+
+		dev->nb_aging_objects = port_attr->nb_aging_objects;
+	}
+
+	return res;
+
+error_out:
+	error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+
+	if (port_attr->nb_aging_objects > 0) {
+		flm_age_queue_free(dev->port_id, caller_id);
+		dev->nb_aging_objects = 0;
+	}
+
+	return -1;
+}
+
 static const struct profile_inline_ops ops = {
 	/*
 	 * Management
@@ -4575,6 +4633,8 @@ static const struct profile_inline_ops ops = {
 	 * Stats
 	 */
 	.flow_get_flm_stats_profile_inline = flow_get_flm_stats_profile_inline,
+	.flow_info_get_profile_inline = flow_info_get_profile_inline,
+	.flow_configure_profile_inline = flow_configure_profile_inline,
 	/*
 	 * NT Flow FLM Meter API
 	 */

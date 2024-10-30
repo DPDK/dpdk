@@ -309,6 +309,15 @@ struct profile_inline_ops {
 	void (*flm_setup_queues)(void);
 	void (*flm_free_queues)(void);
 	uint32_t (*flm_update)(struct flow_eth_dev *dev);
+
+	int (*flow_info_get_profile_inline)(struct flow_eth_dev *dev, uint8_t caller_id,
+		struct rte_flow_port_info *port_info, struct rte_flow_queue_info *queue_info,
+		struct rte_flow_error *error);
+
+	int (*flow_configure_profile_inline)(struct flow_eth_dev *dev, uint8_t caller_id,
+	const struct rte_flow_port_attr *port_attr, uint16_t nb_queue,
+	const struct rte_flow_queue_attr *queue_attr[],
+	struct rte_flow_error *error);
 };
 
 void register_profile_inline_ops(const struct profile_inline_ops *ops);
