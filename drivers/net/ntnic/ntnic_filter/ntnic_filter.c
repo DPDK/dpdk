@@ -582,6 +582,43 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 	return flow;
 }
 
+static int eth_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE, .message = "none" };
+	int res = 0;
+	/* Main application caller_id is port_id shifted above VDPA ports */
+	uint16_t caller_id = get_caller_id(eth_dev->data->port_id);
+
+	if (internals->flw_dev) {
+		res = flow_filter_ops->flow_flush(internals->flw_dev, caller_id, &flow_error);
+		rte_spinlock_lock(&flow_lock);
+
+		for (int flow = 0; flow < MAX_RTE_FLOWS; flow++) {
+			if (nt_flows[flow].used && nt_flows[flow].caller_id == caller_id) {
+				/* Cleanup recorded flows */
+				nt_flows[flow].used = 0;
+				nt_flows[flow].caller_id = 0;
+			}
+		}
+
+		rte_spinlock_unlock(&flow_lock);
+	}
+
+	convert_error(error, &flow_error);
+
+	return res;
+}
+
 static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 	struct rte_flow *flow,
 	FILE *file,
@@ -613,6 +650,7 @@ static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 static const struct rte_flow_ops dev_flow_ops = {
 	.create = eth_flow_create,
 	.destroy = eth_flow_destroy,
+	.flush = eth_flow_flush,
 	.dev_dump = eth_flow_dev_dump,
 };
 

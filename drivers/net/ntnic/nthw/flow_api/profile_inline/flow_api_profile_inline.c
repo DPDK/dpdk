@@ -3631,6 +3631,48 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *fl
 	return err;
 }
 
+int flow_flush_profile_inline(struct flow_eth_dev *dev,
+	uint16_t caller_id,
+	struct rte_flow_error *error)
+{
+	int err = 0;
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	/*
+	 * Delete all created FLM flows from this eth device.
+	 * FLM flows must be deleted first because normal flows are their parents.
+	 */
+	struct flow_handle *flow = dev->ndev->flow_base_flm;
+
+	while (flow && !err) {
+		if (flow->dev == dev && flow->caller_id == caller_id) {
+			struct flow_handle *flow_next = flow->next;
+			err = flow_destroy_profile_inline(dev, flow, error);
+			flow = flow_next;
+
+		} else {
+			flow = flow->next;
+		}
+	}
+
+	/* Delete all created flows from this eth device */
+	flow = dev->ndev->flow_base;
+
+	while (flow && !err) {
+		if (flow->dev == dev && flow->caller_id == caller_id) {
+			struct flow_handle *flow_next = flow->next;
+			err = flow_destroy_profile_inline(dev, flow, error);
+			flow = flow_next;
+
+		} else {
+			flow = flow->next;
+		}
+	}
+
+	return err;
+}
+
 static __rte_always_inline bool all_bits_enabled(uint64_t hash_mask, uint64_t hash_bits)
 {
 	return (hash_mask & hash_bits) == hash_bits;
@@ -4391,6 +4433,7 @@ static const struct profile_inline_ops ops = {
 	.flow_destroy_locked_profile_inline = flow_destroy_locked_profile_inline,
 	.flow_create_profile_inline = flow_create_profile_inline,
 	.flow_destroy_profile_inline = flow_destroy_profile_inline,
+	.flow_flush_profile_inline = flow_flush_profile_inline,
 	.flow_nic_set_hasher_fields_inline = flow_nic_set_hasher_fields_inline,
 	/*
 	 * NT Flow FLM Meter API
