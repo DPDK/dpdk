@@ -11,12 +11,17 @@ DPDK_25 {
 	rte_eth_bond_8023ad_ext_distrib;
 	rte_eth_bond_8023ad_ext_distrib_get;
 	rte_eth_bond_8023ad_ext_slowtx;
+	rte_eth_bond_8023ad_member_info;
 	rte_eth_bond_8023ad_setup;
+	rte_eth_bond_active_members_get;
 	rte_eth_bond_create;
 	rte_eth_bond_free;
 	rte_eth_bond_link_monitoring_set;
 	rte_eth_bond_mac_address_reset;
 	rte_eth_bond_mac_address_set;
+	rte_eth_bond_member_add;
+	rte_eth_bond_member_remove;
+	rte_eth_bond_members_get;
 	rte_eth_bond_mode_get;
 	rte_eth_bond_mode_set;
 	rte_eth_bond_primary_get;
@@ -25,14 +30,4 @@ DPDK_25 {
 	rte_eth_bond_xmit_policy_set;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	# added in 23.11
-	global:
-	rte_eth_bond_8023ad_member_info;
-	rte_eth_bond_active_members_get;
-	rte_eth_bond_member_add;
-	rte_eth_bond_member_remove;
-	rte_eth_bond_members_get;
 };

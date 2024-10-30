@@ -193,7 +193,6 @@ rte_eth_bond_8023ad_setup(uint16_t port_id,
  *   -EINVAL if conf is NULL or member id is invalid (not a member of given
  *       bonding device or is not inactive).
  */
-__rte_experimental
 int
 rte_eth_bond_8023ad_member_info(uint16_t port_id, uint16_t member_id,
 		struct rte_eth_bond_8023ad_member_info *conf);

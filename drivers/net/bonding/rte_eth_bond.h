@@ -125,7 +125,6 @@ rte_eth_bond_free(const char *name);
  * @return
  *	0 on success, negative value otherwise
  */
-__rte_experimental
 int
 rte_eth_bond_member_add(uint16_t bonding_port_id, uint16_t member_port_id);
 
@@ -138,7 +137,6 @@ rte_eth_bond_member_add(uint16_t bonding_port_id, uint16_t member_port_id);
  * @return
  *	0 on success, negative value otherwise
  */
-__rte_experimental
 int
 rte_eth_bond_member_remove(uint16_t bonding_port_id, uint16_t member_port_id);
 
@@ -199,7 +197,6 @@ rte_eth_bond_primary_get(uint16_t bonding_port_id);
  *	Number of members associated with bonding device on success,
  *	negative value otherwise
  */
-__rte_experimental
 int
 rte_eth_bond_members_get(uint16_t bonding_port_id, uint16_t members[],
 		uint16_t len);
@@ -216,7 +213,6 @@ rte_eth_bond_members_get(uint16_t bonding_port_id, uint16_t members[],
  *	Number of active members associated with bonding device on success,
  *	negative value otherwise
  */
-__rte_experimental
 int
 rte_eth_bond_active_members_get(uint16_t bonding_port_id, uint16_t members[],
 		uint16_t len);
