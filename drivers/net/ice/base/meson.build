@@ -32,7 +32,6 @@ sources = [
 ]
 
 error_cflags = [
-        '-Wno-unused-value',
         '-Wno-unused-but-set-variable',
         '-Wno-unused-variable',
         '-Wno-unused-parameter',
