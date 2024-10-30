@@ -491,7 +491,7 @@ static int convert_flow(struct rte_eth_dev *eth_dev,
 	struct cnv_action_s *action,
 	struct rte_flow_error *error)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
 
 	static struct rte_flow_error flow_error = {
@@ -554,7 +554,7 @@ eth_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *flow, struct rte_
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	static struct rte_flow_error flow_error = {
 		.type = RTE_FLOW_ERROR_TYPE_NONE, .message = "none" };
@@ -595,7 +595,7 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 		return NULL;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
 
@@ -673,7 +673,7 @@ static int eth_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *er
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	static struct rte_flow_error flow_error = {
 		.type = RTE_FLOW_ERROR_TYPE_NONE, .message = "none" };
@@ -716,7 +716,7 @@ static int eth_flow_actions_update(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	static struct rte_flow_error flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
 		.message = "none" };
@@ -724,7 +724,7 @@ static int eth_flow_actions_update(struct rte_eth_dev *eth_dev,
 
 	if (internals->flw_dev) {
 		struct pmd_internals *dev_private =
-			(struct pmd_internals *)eth_dev->data->dev_private;
+			eth_dev->data->dev_private;
 		struct fpga_info_s *fpga_info = &dev_private->p_drv->ntdrv.adapter_info.fpga_info;
 		struct cnv_action_s action = { 0 };
 
@@ -780,7 +780,7 @@ static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	static struct rte_flow_error flow_error = {
 		.type = RTE_FLOW_ERROR_TYPE_NONE, .message = "none" };
@@ -808,7 +808,7 @@ static int eth_flow_get_aged_flows(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	static struct rte_flow_error flow_error = {
 		.type = RTE_FLOW_ERROR_TYPE_NONE,

@@ -42,7 +42,7 @@ static int eth_mtr_capabilities_get_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	uint8_t caller_id = get_caller_id(eth_dev->data->port_id);
 
@@ -110,7 +110,7 @@ static int eth_mtr_meter_profile_add_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	if (meter_profile_id >= profile_inline_ops->flow_mtr_meter_policy_n_max())
 		return -rte_mtr_error_set(error, EINVAL, RTE_MTR_ERROR_TYPE_METER_PROFILE_ID, NULL,
@@ -161,7 +161,7 @@ static int eth_mtr_meter_profile_delete_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	if (meter_profile_id >= profile_inline_ops->flow_mtr_meter_policy_n_max())
 		return -rte_mtr_error_set(error, EINVAL, RTE_MTR_ERROR_TYPE_METER_PROFILE_ID, NULL,
@@ -184,7 +184,7 @@ static int eth_mtr_meter_policy_add_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	if (policy_id >= profile_inline_ops->flow_mtr_meter_policy_n_max())
 		return -rte_mtr_error_set(error, EINVAL, RTE_MTR_ERROR_TYPE_METER_POLICY_ID, NULL,
@@ -250,7 +250,7 @@ static int eth_mtr_create_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	uint8_t caller_id = get_caller_id(eth_dev->data->port_id);
 
@@ -316,7 +316,7 @@ static int eth_mtr_destroy_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	uint8_t caller_id = get_caller_id(eth_dev->data->port_id);
 
@@ -348,7 +348,7 @@ static int eth_mtr_stats_adjust_inline(struct rte_eth_dev *eth_dev,
 
 	const uint64_t adjust_bit = 1ULL << 63;
 	const uint64_t probe_bit = 1ULL << 62;
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	uint8_t caller_id = get_caller_id(eth_dev->data->port_id);
 
 	if (mtr_id >=
@@ -409,7 +409,7 @@ static int eth_mtr_stats_read_inline(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	uint8_t caller_id = get_caller_id(eth_dev->data->port_id);
 
@@ -445,7 +445,7 @@ static const struct rte_mtr_ops mtr_ops_inline = {
 
 static int eth_mtr_ops_get(struct rte_eth_dev *eth_dev, void *ops)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	ntdrv_4ga_t *p_nt_drv = &internals->p_drv->ntdrv;
 	enum fpga_info_profile profile = p_nt_drv->adapter_info.fpga_info.profile;
 

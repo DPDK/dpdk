@@ -272,7 +272,7 @@ eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	const int n_intf_no = internals->n_intf_no;
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
@@ -302,14 +302,14 @@ eth_link_update(struct rte_eth_dev *eth_dev, int wait_to_complete __rte_unused)
 
 static int eth_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	dpdk_stats_collect(internals, stats);
 	return 0;
 }
 
 static int eth_stats_reset(struct rte_eth_dev *eth_dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
 	const int if_index = internals->n_intf_no;
@@ -327,7 +327,7 @@ eth_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *dev_info
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	const int n_intf_no = internals->n_intf_no;
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
@@ -957,14 +957,14 @@ static int deallocate_hw_virtio_queues(struct hwq_s *hwq)
 
 static void eth_tx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct ntnic_tx_queue *tx_q = &internals->txq_scg[queue_id];
 	deallocate_hw_virtio_queues(&tx_q->hwq);
 }
 
 static void eth_rx_queue_release(struct rte_eth_dev *eth_dev, uint16_t queue_id)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[queue_id];
 	deallocate_hw_virtio_queues(&rx_q->hwq);
 }
@@ -994,7 +994,7 @@ static int eth_rx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 {
 	NT_LOG_DBGX(DBG, NTNIC, "Rx queue setup");
 	struct rte_pktmbuf_pool_private *mbp_priv;
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct ntnic_rx_queue *rx_q = &internals->rxq_scg[rx_queue_id];
 	struct drv_s *p_drv = internals->p_drv;
 	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
@@ -1062,7 +1062,7 @@ static int eth_tx_scg_queue_setup(struct rte_eth_dev *eth_dev,
 	}
 
 	NT_LOG_DBGX(DBG, NTNIC, "Tx queue setup");
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	struct ntdrv_4ga_s *p_nt_drv = &p_drv->ntdrv;
 	struct ntnic_tx_queue *tx_q = &internals->txq_scg[tx_queue_id];
@@ -1185,7 +1185,7 @@ eth_mac_addr_add(struct rte_eth_dev *eth_dev,
 
 	if (index >= NUM_MAC_ADDRS_PER_PORT) {
 		const struct pmd_internals *const internals =
-			(struct pmd_internals *)eth_dev->data->dev_private;
+			eth_dev->data->dev_private;
 		NT_LOG_DBGX(DBG, NTNIC, "Port %i: illegal index %u (>= %u)",
 			internals->n_intf_no, index, NUM_MAC_ADDRS_PER_PORT);
 		return -1;
@@ -1211,7 +1211,7 @@ eth_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	struct rte_ether_addr *mc_addr_set,
 	uint32_t nb_mc_addr)
 {
-	struct pmd_internals *const internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *const internals = eth_dev->data->dev_private;
 	struct rte_ether_addr *const mc_addrs = internals->mc_addrs;
 	size_t i;
 
@@ -1252,7 +1252,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	const int n_intf_no = internals->n_intf_no;
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
@@ -1313,7 +1313,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 static int
 eth_dev_stop(struct rte_eth_dev *eth_dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	NT_LOG_DBGX(DBG, NTNIC, "Port %u", internals->n_intf_no);
 
@@ -1341,7 +1341,7 @@ eth_dev_set_link_up(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	struct pmd_internals *const internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *const internals = eth_dev->data->dev_private;
 
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
 	const int port = internals->n_intf_no;
@@ -1367,7 +1367,7 @@ eth_dev_set_link_down(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	struct pmd_internals *const internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *const internals = eth_dev->data->dev_private;
 
 	struct adapter_info_s *p_adapter_info = &internals->p_drv->ntdrv.adapter_info;
 	const int port = internals->n_intf_no;
@@ -1440,7 +1440,7 @@ drv_deinit(struct drv_s *p_drv)
 static int
 eth_dev_close(struct rte_eth_dev *eth_dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 
 	if (internals->type != PORT_TYPE_VIRTUAL) {
@@ -1478,7 +1478,7 @@ eth_dev_close(struct rte_eth_dev *eth_dev)
 static int
 eth_fw_version_get(struct rte_eth_dev *eth_dev, char *fw_version, size_t fw_size)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	if (internals->type == PORT_TYPE_VIRTUAL || internals->type == PORT_TYPE_OVERRIDE)
 		return 0;
@@ -1506,7 +1506,7 @@ static int dev_flow_ops_get(struct rte_eth_dev *dev __rte_unused, const struct r
 
 static int eth_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *stats, unsigned int n)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
@@ -1531,7 +1531,7 @@ static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 	uint64_t *values,
 	unsigned int n)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
@@ -1554,7 +1554,7 @@ static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 
 static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
@@ -1576,7 +1576,7 @@ static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
 static int eth_xstats_get_names(struct rte_eth_dev *eth_dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned int size)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
@@ -1596,7 +1596,7 @@ static int eth_xstats_get_names_by_id(struct rte_eth_dev *eth_dev,
 	struct rte_eth_xstat_name *xstats_names,
 	unsigned int size)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	nt4ga_stat_t *p_nt4ga_stat = &p_nt_drv->adapter_info.nt4ga_stat;
@@ -1627,7 +1627,7 @@ static int eth_dev_rss_hash_update(struct rte_eth_dev *eth_dev, struct rte_eth_r
 		return -1;
 	}
 
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 
 	struct flow_nic_dev *ndev = internals->flw_dev->ndev;
 	struct nt_eth_rss_conf tmp_rss_conf = { 0 };
@@ -1662,7 +1662,7 @@ static int eth_dev_rss_hash_update(struct rte_eth_dev *eth_dev, struct rte_eth_r
 
 static int rss_hash_conf_get(struct rte_eth_dev *eth_dev, struct rte_eth_rss_conf *rss_conf)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+	struct pmd_internals *internals = eth_dev->data->dev_private;
 	struct flow_nic_dev *ndev = internals->flw_dev->ndev;
 
 	rss_conf->algorithm = (enum rte_eth_hash_function)ndev->rss_conf.algorithm;
@@ -1723,7 +1723,7 @@ static struct eth_dev_ops nthw_eth_dev_ops = {
  */
 THREAD_FUNC port_event_thread_fn(void *context)
 {
-	struct pmd_internals *internals = (struct pmd_internals *)context;
+	struct pmd_internals *internals = context;
 	struct drv_s *p_drv = internals->p_drv;
 	ntdrv_4ga_t *p_nt_drv = &p_drv->ntdrv;
 	struct adapter_info_s *p_adapter_info = &p_nt_drv->adapter_info;

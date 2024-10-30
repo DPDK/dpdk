@@ -341,7 +341,6 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 	ndev->flow_unique_id_counter = 0;
 
-#ifdef FLOW_DEBUG
 	/*
 	 * free all resources default allocated, initially for this NIC DEV
 	 * Is not really needed since the bitmap will be freed in a sec. Therefore
@@ -353,9 +352,7 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 
 	for (unsigned int i = 0; i < RES_COUNT; i++) {
 		int err = 0;
-#if defined(FLOW_DEBUG)
 		NT_LOG(DBG, FILTER, "RES state for: %s", dbg_res_descr[i]);
-#endif
 
 		for (unsigned int ii = 0; ii < ndev->res[i].resource_count; ii++) {
 			int ref = ndev->res[i].ref[ii];
@@ -372,7 +369,6 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 			NT_LOG(DBG, FILTER, "ERROR - some resources not freed");
 	}
 
-#endif
 }
 
 int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
