@@ -50,6 +50,8 @@ sources = files(
         'nthw/flow_api/flow_api.c',
         'nthw/flow_api/flow_group.c',
         'nthw/flow_api/flow_id_table.c',
+        'nthw/flow_api/hw_mod/hw_mod_backend.c',
+        'nthw/flow_api/profile_inline/flm_lrn_queue.c',
         'nthw/flow_api/profile_inline/flow_api_profile_inline.c',
         'nthw/flow_api/profile_inline/flow_api_hw_db_inline.c',
         'nthw/flow_api/flow_backend/flow_backend.c',

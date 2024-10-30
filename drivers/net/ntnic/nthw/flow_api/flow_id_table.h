@@ -16,4 +16,8 @@ union flm_handles {
 void *ntnic_id_table_create(void);
 void ntnic_id_table_destroy(void *id_table);
 
+uint32_t ntnic_id_table_get_id(void *id_table, union flm_handles flm_h, uint8_t caller_id,
+	uint8_t type);
+void ntnic_id_table_free_id(void *id_table, uint32_t id);
+
 #endif	/* FLOW_ID_TABLE_H_ */

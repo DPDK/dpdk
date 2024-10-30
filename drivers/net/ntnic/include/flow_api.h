@@ -68,6 +68,9 @@ struct flow_nic_dev {
 	uint32_t flow_unique_id_counter;
 	/* linked list of all flows created on this NIC */
 	struct flow_handle *flow_base;
+	/* linked list of all FLM flows created on this NIC */
+	struct flow_handle *flow_base_flm;
+	pthread_mutex_t flow_mtx;
 
 	/* NIC backend API */
 	struct flow_api_backend_s be;

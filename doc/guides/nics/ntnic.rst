@@ -40,6 +40,8 @@ Features
 - Unicast MAC filter
 - Multicast MAC filter
 - Promiscuous mode (Enable only. The device always run promiscuous mode)
+- Flow API support.
+- Support for multiple rte_flow groups.
 
 Limitations
 ~~~~~~~~~~~

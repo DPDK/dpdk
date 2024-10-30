@@ -8,6 +8,10 @@
 
 #include "rte_flow.h"
 #include "rte_flow_driver.h"
+
+/* Max RSS hash key length in bytes */
+#define MAX_RSS_KEY_LEN 40
+
 /*
  * Flow frontend for binary programming interface
  */
