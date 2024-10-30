@@ -2214,6 +2214,23 @@ static nthw_fpga_register_init_s rst9563_registers[] = {
 	{ RST9563_STICKY, 3, 6, NTHW_FPGA_REG_TYPE_RC1, 0, 6, rst9563_sticky_fields },
 };
 
+static nthw_fpga_field_init_s slc_rcp_ctrl_fields[] = {
+	{ SLC_RCP_CTRL_ADR, 6, 0, 0x0000 },
+	{ SLC_RCP_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s slc_rcp_data_fields[] = {
+	{ SLC_RCP_DATA_HEAD_DYN, 5, 1, 0x0000 }, { SLC_RCP_DATA_HEAD_OFS, 8, 6, 0x0000 },
+	{ SLC_RCP_DATA_HEAD_SLC_EN, 1, 0, 0x0000 }, { SLC_RCP_DATA_PCAP, 1, 35, 0x0000 },
+	{ SLC_RCP_DATA_TAIL_DYN, 5, 15, 0x0000 }, { SLC_RCP_DATA_TAIL_OFS, 15, 20, 0x0000 },
+	{ SLC_RCP_DATA_TAIL_SLC_EN, 1, 14, 0x0000 },
+};
+
+static nthw_fpga_register_init_s slc_registers[] = {
+	{ SLC_RCP_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, slc_rcp_ctrl_fields },
+	{ SLC_RCP_DATA, 1, 36, NTHW_FPGA_REG_TYPE_WO, 0, 7, slc_rcp_data_fields },
+};
+
 static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_CAT, 0, MOD_CAT, 0, 21, NTHW_FPGA_BUS_TYPE_RAB1, 768, 34, cat_registers },
 	{ MOD_CSU, 0, MOD_CSU, 0, 0, NTHW_FPGA_BUS_TYPE_RAB1, 9728, 2, csu_registers },
@@ -2261,6 +2278,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_RMC, 0, MOD_RMC, 1, 3, NTHW_FPGA_BUS_TYPE_RAB0, 12288, 4, rmc_registers },
 	{ MOD_RPP_LR, 0, MOD_RPP_LR, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 2304, 4, rpp_lr_registers },
 	{ MOD_RST9563, 0, MOD_RST9563, 0, 5, NTHW_FPGA_BUS_TYPE_RAB0, 1024, 5, rst9563_registers },
+	{ MOD_SLC_LR, 0, MOD_SLC, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 2048, 2, slc_registers },
 };
 
 static nthw_fpga_prod_param_s product_parameters[] = {
@@ -2419,5 +2437,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 31, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 32, fpga_modules,
 };
