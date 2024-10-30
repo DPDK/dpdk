@@ -4,6 +4,7 @@
  */
 
 #include <rte_flow_driver.h>
+
 #include "nt_util.h"
 #include "create_elements.h"
 #include "ntnic_mod_reg.h"
@@ -703,6 +704,70 @@ static int eth_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *er
 	return res;
 }
 
+static int eth_flow_actions_update(struct rte_eth_dev *eth_dev,
+	struct rte_flow *flow,
+	const struct rte_flow_action actions[],
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+	int res = -1;
+
+	if (internals->flw_dev) {
+		struct pmd_internals *dev_private =
+			(struct pmd_internals *)eth_dev->data->dev_private;
+		struct fpga_info_s *fpga_info = &dev_private->p_drv->ntdrv.adapter_info.fpga_info;
+		struct cnv_action_s action = { 0 };
+
+		if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
+			uint32_t queue_offset = 0;
+
+			if (dev_private->type == PORT_TYPE_OVERRIDE &&
+				dev_private->vpq_nb_vq > 0) {
+				/*
+				 * The queues coming from the main PMD will always start from 0
+				 * When the port is a the VF/vDPA port the queues must be changed
+				 * to match the queues allocated for VF/vDPA.
+				 */
+				queue_offset = dev_private->vpq[0].id;
+			}
+
+			if (create_action_elements_inline(&action, actions, MAX_ACTIONS,
+					queue_offset) != 0) {
+				rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"Error in actions");
+				return -1;
+			}
+		}
+
+		if (is_flow_handle_typecast(flow)) {
+			res = flow_filter_ops->flow_actions_update(internals->flw_dev,
+					(void *)flow,
+					action.flow_actions,
+					&flow_error);
+
+		} else {
+			res = flow_filter_ops->flow_actions_update(internals->flw_dev,
+					flow->flw_hdl,
+					action.flow_actions,
+					&flow_error);
+		}
+	}
+
+	convert_error(error, &flow_error);
+
+	return res;
+}
+
 static int eth_flow_dev_dump(struct rte_eth_dev *eth_dev,
 	struct rte_flow *flow,
 	FILE *file,
@@ -941,6 +1006,7 @@ static const struct rte_flow_ops dev_flow_ops = {
 	.create = eth_flow_create,
 	.destroy = eth_flow_destroy,
 	.flush = eth_flow_flush,
+	.actions_update = eth_flow_actions_update,
 	.dev_dump = eth_flow_dev_dump,
 	.get_aged_flows = eth_flow_get_aged_flows,
 	.info_get = eth_flow_info_get,
