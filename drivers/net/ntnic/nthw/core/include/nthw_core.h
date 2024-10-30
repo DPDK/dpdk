@@ -17,6 +17,7 @@
 #include "nthw_iic.h"
 #include "nthw_i2cm.h"
 
+#include "nthw_gmf.h"
 #include "nthw_gpio_phy.h"
 #include "nthw_mac_pcs.h"
 #include "nthw_sdc.h"

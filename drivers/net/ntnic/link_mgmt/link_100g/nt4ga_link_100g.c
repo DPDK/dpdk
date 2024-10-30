@@ -404,6 +404,14 @@ static int _port_init(adapter_info_t *drv, nthw_fpga_t *fpga, int port)
 	_enable_tx(drv, mac_pcs);
 	_reset_rx(drv, mac_pcs);
 
+	/* 2.2) Nt4gaPort::setup() */
+	if (nthw_gmf_init(NULL, fpga, port) == 0) {
+		nthw_gmf_t gmf;
+
+		if (nthw_gmf_init(&gmf, fpga, port) == 0)
+			nthw_gmf_set_enable(&gmf, true);
+	}
+
 	/* Phase 3. Link state machine steps */
 
 	/* 3.1) Create NIM, ::createNim() */
