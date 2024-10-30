@@ -7,7 +7,7 @@
 #define __NTHW_II2CM_H__
 
 #include "nthw_fpga_model.h"
-#include "pthread.h"
+#include "rte_spinlock.h"
 
 struct nt_i2cm {
 	nthw_fpga_t *mp_fpga;
@@ -39,7 +39,7 @@ struct nt_i2cm {
 	nthw_field_t *mp_fld_io_exp_rst;
 	nthw_field_t *mp_fld_io_exp_int_b;
 
-	pthread_mutex_t i2cmmutex;
+	rte_spinlock_t i2cmmutex;
 };
 
 typedef struct nt_i2cm nthw_i2cm_t;

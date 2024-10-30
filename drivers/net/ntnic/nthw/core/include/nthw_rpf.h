@@ -6,8 +6,10 @@
 #ifndef NTHW_RPF_HPP_
 #define NTHW_RPF_HPP_
 
+#include <rte_spinlock.h>
+
 #include "nthw_fpga_model.h"
-#include "pthread.h"
+
 struct nthw_rpf {
 	nthw_fpga_t *mp_fpga;
 
@@ -28,7 +30,7 @@ struct nthw_rpf {
 	int m_default_maturing_delay;
 	bool m_administrative_block;	/* used to enforce license expiry */
 
-	pthread_mutex_t rpf_mutex;
+	rte_spinlock_t rpf_mutex;
 };
 
 typedef struct nthw_rpf nthw_rpf_t;

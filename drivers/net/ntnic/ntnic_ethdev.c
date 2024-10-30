@@ -18,6 +18,7 @@
 
 #include <sys/queue.h>
 
+#include "rte_spinlock.h"
 #include "ntlog.h"
 #include "ntdrv_4ga.h"
 #include "ntos_drv.h"
@@ -236,7 +237,7 @@ static int dpdk_stats_reset(struct pmd_internals *internals, struct ntdrv_4ga_s 
 	if (!p_nthw_stat || !p_nt4ga_stat || n_intf_no < 0 || n_intf_no > NUM_ADAPTER_PORTS_MAX)
 		return -1;
 
-	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	rte_spinlock_lock(&p_nt_drv->stat_lck);
 
 	/* Rx */
 	for (i = 0; i < internals->nb_rx_queues; i++) {
@@ -256,7 +257,7 @@ static int dpdk_stats_reset(struct pmd_internals *internals, struct ntdrv_4ga_s 
 
 	p_nt4ga_stat->n_totals_reset_timestamp = time(NULL);
 
-	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 
 	return 0;
 }
@@ -1519,9 +1520,9 @@ static int eth_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *sta
 		return -1;
 	}
 
-	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	rte_spinlock_lock(&p_nt_drv->stat_lck);
 	nb_xstats = ntnic_xstats_ops->nthw_xstats_get(p_nt4ga_stat, stats, n, if_index);
-	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 	return nb_xstats;
 }
 
@@ -1544,10 +1545,10 @@ static int eth_xstats_get_by_id(struct rte_eth_dev *eth_dev,
 		return -1;
 	}
 
-	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	rte_spinlock_lock(&p_nt_drv->stat_lck);
 	nb_xstats =
 		ntnic_xstats_ops->nthw_xstats_get_by_id(p_nt4ga_stat, ids, values, n, if_index);
-	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 	return nb_xstats;
 }
 
@@ -1566,9 +1567,9 @@ static int eth_xstats_reset(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
-	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	rte_spinlock_lock(&p_nt_drv->stat_lck);
 	ntnic_xstats_ops->nthw_xstats_reset(p_nt4ga_stat, if_index);
-	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 	return dpdk_stats_reset(internals, p_nt_drv, if_index);
 }
 
@@ -1749,14 +1750,14 @@ THREAD_FUNC port_event_thread_fn(void *context)
 		if (p_nt4ga_stat->flm_stat_ver > 22 && p_nt4ga_stat->mp_stat_structs_flm) {
 			if (flmdata.lookup != p_nt4ga_stat->mp_stat_structs_flm->load_lps ||
 				flmdata.access != p_nt4ga_stat->mp_stat_structs_flm->load_aps) {
-				pthread_mutex_lock(&p_nt_drv->stat_lck);
+				rte_spinlock_lock(&p_nt_drv->stat_lck);
 				flmdata.lookup = p_nt4ga_stat->mp_stat_structs_flm->load_lps;
 				flmdata.access = p_nt4ga_stat->mp_stat_structs_flm->load_aps;
 				flmdata.lookup_maximum =
 					p_nt4ga_stat->mp_stat_structs_flm->max_lps;
 				flmdata.access_maximum =
 					p_nt4ga_stat->mp_stat_structs_flm->max_aps;
-				pthread_mutex_unlock(&p_nt_drv->stat_lck);
+				rte_spinlock_unlock(&p_nt_drv->stat_lck);
 
 				if (eth_dev && eth_dev->data && eth_dev->data->dev_private) {
 					rte_eth_dev_callback_process(eth_dev,
@@ -1773,7 +1774,7 @@ THREAD_FUNC port_event_thread_fn(void *context)
 		if (p_nt4ga_stat->mp_port_load) {
 			if (portdata.rx_bps != p_nt4ga_stat->mp_port_load[port_no].rx_bps ||
 				portdata.tx_bps != p_nt4ga_stat->mp_port_load[port_no].tx_bps) {
-				pthread_mutex_lock(&p_nt_drv->stat_lck);
+				rte_spinlock_lock(&p_nt_drv->stat_lck);
 				portdata.rx_bps = p_nt4ga_stat->mp_port_load[port_no].rx_bps;
 				portdata.tx_bps = p_nt4ga_stat->mp_port_load[port_no].tx_bps;
 				portdata.rx_pps = p_nt4ga_stat->mp_port_load[port_no].rx_pps;
@@ -1786,7 +1787,7 @@ THREAD_FUNC port_event_thread_fn(void *context)
 					p_nt4ga_stat->mp_port_load[port_no].rx_bps_max;
 				portdata.tx_bps_maximum =
 					p_nt4ga_stat->mp_port_load[port_no].tx_bps_max;
-				pthread_mutex_unlock(&p_nt_drv->stat_lck);
+				rte_spinlock_unlock(&p_nt_drv->stat_lck);
 
 				if (eth_dev && eth_dev->data && eth_dev->data->dev_private) {
 					rte_eth_dev_callback_process(eth_dev,
@@ -1957,9 +1958,9 @@ THREAD_FUNC adapter_stat_thread_fn(void *context)
 
 		/* Check then collect */
 		{
-			pthread_mutex_lock(&p_nt_drv->stat_lck);
+			rte_spinlock_lock(&p_nt_drv->stat_lck);
 			nt4ga_stat_ops->nt4ga_stat_collect(&p_nt_drv->adapter_info, p_nt4ga_stat);
-			pthread_mutex_unlock(&p_nt_drv->stat_lck);
+			rte_spinlock_unlock(&p_nt_drv->stat_lck);
 		}
 	}
 
@@ -2232,7 +2233,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 		}
 	}
 
-	pthread_mutex_init(&p_nt_drv->stat_lck, NULL);
+	rte_spinlock_init(&p_nt_drv->stat_lck);
 	res = THREAD_CTRL_CREATE(&p_nt_drv->stat_thread, "nt4ga_stat_thr", adapter_stat_thread_fn,
 			(void *)p_drv);
 

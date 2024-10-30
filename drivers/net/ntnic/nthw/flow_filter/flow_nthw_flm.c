@@ -678,11 +678,13 @@ int flm_nthw_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint3
 	uint32_t address_bufctrl = nthw_register_get_address(p->mp_buf_ctrl);
 	nthw_rab_bus_id_t bus_id = 1;
 	struct dma_buf_ptr bc_buf;
-	ret = nthw_rac_rab_dma_begin(rac);
+	rte_spinlock_lock(&rac->m_mutex);
+	ret = !rac->m_dma_active ? nthw_rac_rab_dma_begin(rac) : -1;
 
 	if (ret == 0) {
 		nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
-		ret = nthw_rac_rab_dma_commit(rac);
+		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : (assert(0), -1);
+		rte_spinlock_unlock(&rac->m_mutex);
 
 		if (ret != 0)
 			return ret;
@@ -692,6 +694,13 @@ int flm_nthw_buf_ctrl_update(const struct flm_nthw *p, uint32_t *lrn_free, uint3
 		*lrn_free = bc_buf.base[bc_index & bc_mask] & 0xffff;
 		*inf_avail = (bc_buf.base[bc_index & bc_mask] >> 16) & 0xffff;
 		*sta_avail = bc_buf.base[(bc_index + 1) & bc_mask] & 0xffff;
+	} else {
+		rte_spinlock_unlock(&rac->m_mutex);
+		const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+		const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+		NT_LOG(ERR, NTHW,
+				"%s: DMA begin requested, but a DMA transaction is already active",
+				p_adapter_id_str);
 	}
 
 	return ret;
@@ -716,8 +725,10 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 	*handled_records = 0;
 	int max_tries = 10000;
 
-	while (*inf_avail == 0 && *sta_avail == 0 && records != 0 && --max_tries > 0)
-		if (nthw_rac_rab_dma_begin(rac) == 0) {
+	while (*inf_avail == 0 && *sta_avail == 0 && records != 0 && --max_tries > 0) {
+		rte_spinlock_lock(&rac->m_mutex);
+		int ret = !rac->m_dma_active ? nthw_rac_rab_dma_begin(rac) : -1;
+		if (ret == 0) {
 			uint32_t dma_free = nthw_rac_rab_get_free(rac);
 
 			if (dma_free != RAB_DMA_BUF_CNT) {
@@ -770,7 +781,11 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 			/* Read buf ctrl */
 			nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
 
-			if (nthw_rac_rab_dma_commit(rac) != 0)
+			int ret = rac->m_dma_active ?
+				nthw_rac_rab_dma_commit(rac) :
+				(assert(0), -1);
+			rte_spinlock_unlock(&rac->m_mutex);
+			if (ret != 0)
 				return -1;
 
 			uint32_t bc_mask = bc_buf.size - 1;
@@ -778,8 +793,15 @@ int flm_nthw_lrn_data_flush(const struct flm_nthw *p, const uint32_t *data, uint
 			*lrn_free = bc_buf.base[bc_index & bc_mask] & 0xffff;
 			*inf_avail = (bc_buf.base[bc_index & bc_mask] >> 16) & 0xffff;
 			*sta_avail = bc_buf.base[(bc_index + 1) & bc_mask] & 0xffff;
+		} else {
+			rte_spinlock_unlock(&rac->m_mutex);
+			const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+			const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+			NT_LOG(ERR, NTHW,
+					"%s: DMA begin requested, but a DMA transaction is already active",
+					p_adapter_id_str);
 		}
-
+	}
 	return 0;
 }
 
@@ -801,7 +823,8 @@ int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 	uint32_t mask;
 	uint32_t index;
 
-	ret = nthw_rac_rab_dma_begin(rac);
+	rte_spinlock_lock(&rac->m_mutex);
+	ret = !rac->m_dma_active ? nthw_rac_rab_dma_begin(rac) : -1;
 
 	if (ret == 0) {
 		/* Announce the number of words to read from INF_DATA */
@@ -821,7 +844,8 @@ int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 		}
 
 		nthw_rac_rab_read32_dma(rac, bus_id, address_bufctrl, 2, &bc_buf);
-		ret = nthw_rac_rab_dma_commit(rac);
+		ret = rac->m_dma_active ? nthw_rac_rab_dma_commit(rac) : (assert(0), -1);
+		rte_spinlock_unlock(&rac->m_mutex);
 
 		if (ret != 0)
 			return ret;
@@ -847,6 +871,13 @@ int flm_nthw_inf_sta_data_update(const struct flm_nthw *p, uint32_t *inf_data,
 		*lrn_free = bc_buf.base[index & mask] & 0xffff;
 		*inf_avail = (bc_buf.base[index & mask] >> 16) & 0xffff;
 		*sta_avail = bc_buf.base[(index + 1) & mask] & 0xffff;
+	} else {
+		rte_spinlock_unlock(&rac->m_mutex);
+		const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
+		const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
+		NT_LOG(ERR, NTHW,
+				"%s: DMA begin requested, but a DMA transaction is already active",
+				p_adapter_id_str);
 	}
 
 	return ret;

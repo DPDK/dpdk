@@ -3,6 +3,7 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
+#include "generic/rte_spinlock.h"
 #include "ntlog.h"
 #include "nt_util.h"
 
@@ -20,6 +21,7 @@
 
 #include "flow_api_profile_inline.h"
 #include "ntnic_mod_reg.h"
+#include <rte_spinlock.h>
 #include <rte_common.h>
 
 #define FLM_MTR_PROFILE_SIZE 0x100000
@@ -189,7 +191,7 @@ static int flow_mtr_create_meter(struct flow_eth_dev *dev,
 	(void)policy_id;
 	struct flm_v25_lrn_data_s *learn_record = NULL;
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
@@ -238,7 +240,7 @@ static int flow_mtr_create_meter(struct flow_eth_dev *dev,
 	mtr_stat[mtr_id].flm_id = flm_id;
 	atomic_store(&mtr_stat[mtr_id].stats_mask, stats_mask);
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	return 0;
 }
@@ -247,7 +249,7 @@ static int flow_mtr_probe_meter(struct flow_eth_dev *dev, uint8_t caller_id, uin
 {
 	struct flm_v25_lrn_data_s *learn_record = NULL;
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
@@ -278,7 +280,7 @@ static int flow_mtr_probe_meter(struct flow_eth_dev *dev, uint8_t caller_id, uin
 
 	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	return 0;
 }
@@ -287,7 +289,7 @@ static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, u
 {
 	struct flm_v25_lrn_data_s *learn_record = NULL;
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
@@ -330,7 +332,7 @@ static int flow_mtr_destroy_meter(struct flow_eth_dev *dev, uint8_t caller_id, u
 
 	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	return 0;
 }
@@ -340,7 +342,7 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 {
 	struct flm_v25_lrn_data_s *learn_record = NULL;
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	learn_record =
 		(struct flm_v25_lrn_data_s *)
@@ -377,7 +379,7 @@ static int flm_mtr_adjust_stats(struct flow_eth_dev *dev, uint8_t caller_id, uin
 
 	flm_lrn_queue_release_write_buffer(flm_lrn_queue_arr);
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	return 0;
 }
@@ -514,9 +516,9 @@ static void flm_mtr_read_sta_records(struct flow_eth_dev *dev, uint32_t *data, u
 			uint8_t port;
 			bool remote_caller = is_remote_caller(caller_id, &port);
 
-			pthread_mutex_lock(&dev->ndev->mtx);
+			rte_spinlock_lock(&dev->ndev->mtx);
 			((struct flow_handle *)flm_h.p)->learn_ignored = 1;
-			pthread_mutex_unlock(&dev->ndev->mtx);
+			rte_spinlock_unlock(&dev->ndev->mtx);
 			struct flm_status_event_s data = {
 				.flow = flm_h.p,
 				.learn_ignore = sta_data->lis,
@@ -813,7 +815,7 @@ static uint8_t get_port_from_port_id(const struct flow_nic_dev *ndev, uint32_t p
 
 static void nic_insert_flow(struct flow_nic_dev *ndev, struct flow_handle *fh)
 {
-	pthread_mutex_lock(&ndev->flow_mtx);
+	rte_spinlock_lock(&ndev->flow_mtx);
 
 	if (ndev->flow_base)
 		ndev->flow_base->prev = fh;
@@ -822,7 +824,7 @@ static void nic_insert_flow(struct flow_nic_dev *ndev, struct flow_handle *fh)
 	fh->prev = NULL;
 	ndev->flow_base = fh;
 
-	pthread_mutex_unlock(&ndev->flow_mtx);
+	rte_spinlock_unlock(&ndev->flow_mtx);
 }
 
 static void nic_remove_flow(struct flow_nic_dev *ndev, struct flow_handle *fh)
@@ -830,7 +832,7 @@ static void nic_remove_flow(struct flow_nic_dev *ndev, struct flow_handle *fh)
 	struct flow_handle *next = fh->next;
 	struct flow_handle *prev = fh->prev;
 
-	pthread_mutex_lock(&ndev->flow_mtx);
+	rte_spinlock_lock(&ndev->flow_mtx);
 
 	if (next && prev) {
 		prev->next = next;
@@ -847,12 +849,12 @@ static void nic_remove_flow(struct flow_nic_dev *ndev, struct flow_handle *fh)
 		ndev->flow_base = NULL;
 	}
 
-	pthread_mutex_unlock(&ndev->flow_mtx);
+	rte_spinlock_unlock(&ndev->flow_mtx);
 }
 
 static void nic_insert_flow_flm(struct flow_nic_dev *ndev, struct flow_handle *fh)
 {
-	pthread_mutex_lock(&ndev->flow_mtx);
+	rte_spinlock_lock(&ndev->flow_mtx);
 
 	if (ndev->flow_base_flm)
 		ndev->flow_base_flm->prev = fh;
@@ -861,7 +863,7 @@ static void nic_insert_flow_flm(struct flow_nic_dev *ndev, struct flow_handle *f
 	fh->prev = NULL;
 	ndev->flow_base_flm = fh;
 
-	pthread_mutex_unlock(&ndev->flow_mtx);
+	rte_spinlock_unlock(&ndev->flow_mtx);
 }
 
 static void nic_remove_flow_flm(struct flow_nic_dev *ndev, struct flow_handle *fh_flm)
@@ -869,7 +871,7 @@ static void nic_remove_flow_flm(struct flow_nic_dev *ndev, struct flow_handle *f
 	struct flow_handle *next = fh_flm->next;
 	struct flow_handle *prev = fh_flm->prev;
 
-	pthread_mutex_lock(&ndev->flow_mtx);
+	rte_spinlock_lock(&ndev->flow_mtx);
 
 	if (next && prev) {
 		prev->next = next;
@@ -886,7 +888,7 @@ static void nic_remove_flow_flm(struct flow_nic_dev *ndev, struct flow_handle *f
 		ndev->flow_base_flm = NULL;
 	}
 
-	pthread_mutex_unlock(&ndev->flow_mtx);
+	rte_spinlock_unlock(&ndev->flow_mtx);
 }
 
 static inline struct nic_flow_def *prepare_nic_flow_def(struct nic_flow_def *fd)
@@ -4188,20 +4190,20 @@ struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_un
 	struct nic_flow_def *fd = allocate_nic_flow_def();
 
 	if (fd == NULL)
-		goto err_exit;
+		goto err_exit0;
 
 	res = interpret_flow_actions(dev, action, NULL, fd, error, &num_dest_port, &num_queues);
 
 	if (res)
-		goto err_exit;
+		goto err_exit0;
 
 	res = interpret_flow_elements(dev, elem, fd, error, forced_vlan_vid_local, &port_id,
 		packet_data, packet_mask, &key_def);
 
 	if (res)
-		goto err_exit;
+		goto err_exit0;
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	/* Translate group IDs */
 	if (fd->jump_to_group != UINT32_MAX &&
@@ -4235,19 +4237,27 @@ struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_un
 	NT_LOG(DBG, FILTER, ">>>>> [Dev %p] Nic %i, Port %i: fh %p fd %p - implementation <<<<<",
 		dev, dev->ndev->adapter_no, dev->port, fh, fd);
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	return fh;
 
 err_exit:
 
-	if (fh)
+	if (fh) {
 		flow_destroy_locked_profile_inline(dev, fh, NULL);
-
-	else
+		fh = NULL;
+	} else {
 		free(fd);
+		fd = NULL;
+	}
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
+
+err_exit0:
+	if (fd) {
+		free(fd);
+		fd = NULL;
+	}
 
 	NT_LOG(ERR, FILTER, "ERR: %s", __func__);
 	return NULL;
@@ -4308,6 +4318,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
 			(struct hw_db_idx *)fh->db_idxs, fh->db_idx_counter);
 		free(fh->fd);
+		fh->fd = NULL;
 	}
 
 	if (err) {
@@ -4316,6 +4327,7 @@ int flow_destroy_locked_profile_inline(struct flow_eth_dev *dev,
 	}
 
 	free(fh);
+	fh = NULL;
 
 #ifdef FLOW_DEBUG
 	dev->ndev->be.iface->set_debug_mode(dev->ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);
@@ -4333,9 +4345,9 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev, struct flow_handle *fl
 
 	if (flow) {
 		/* Delete this flow */
-		pthread_mutex_lock(&dev->ndev->mtx);
+		rte_spinlock_lock(&dev->ndev->mtx);
 		err = flow_destroy_locked_profile_inline(dev, flow, error);
-		pthread_mutex_unlock(&dev->ndev->mtx);
+		rte_spinlock_unlock(&dev->ndev->mtx);
 	}
 
 	return err;
@@ -4423,7 +4435,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 		return -1;
 	}
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	/* Setup new actions */
 	uint32_t local_idx_counter = 0;
@@ -4530,7 +4542,7 @@ int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
 			flow->flm_db_idxs[i] = local_idxs[i];
 	}
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	free(fd);
 	return 0;
@@ -4539,7 +4551,7 @@ error_out:
 	hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle, (struct hw_db_idx *)local_idxs,
 		local_idx_counter);
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	free(fd);
 	return -1;
@@ -5276,7 +5288,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 {
 	flow_nic_set_error(ERR_SUCCESS, error);
 
-	pthread_mutex_lock(&dev->ndev->mtx);
+	rte_spinlock_lock(&dev->ndev->mtx);
 
 	if (flow != NULL) {
 		if (flow->type == FLOW_HANDLE_TYPE_FLM) {
@@ -5335,7 +5347,7 @@ int flow_dev_dump_profile_inline(struct flow_eth_dev *dev,
 		}
 	}
 
-	pthread_mutex_unlock(&dev->ndev->mtx);
+	rte_spinlock_unlock(&dev->ndev->mtx);
 
 	return 0;
 }

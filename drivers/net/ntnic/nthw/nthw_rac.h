@@ -16,7 +16,7 @@ struct nthw_rac {
 	nthw_fpga_t *mp_fpga;
 	nthw_module_t *mp_mod_rac;
 
-	pthread_mutex_t m_mutex;
+	rte_spinlock_t m_mutex;
 
 	int mn_param_rac_rab_interfaces;
 	int mn_param_rac_rab_ob_update;

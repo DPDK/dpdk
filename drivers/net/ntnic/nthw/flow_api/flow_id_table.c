@@ -3,12 +3,12 @@
  * Copyright(c) 2024 Napatech A/S
  */
 
-#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "flow_id_table.h"
+#include "rte_spinlock.h"
 
 #define NTNIC_ARRAY_BITS 14
 #define NTNIC_ARRAY_SIZE (1 << NTNIC_ARRAY_BITS)
@@ -25,7 +25,7 @@ struct ntnic_id_table_element {
 
 struct ntnic_id_table_data {
 	struct ntnic_id_table_element *arrays[NTNIC_ARRAY_SIZE];
-	pthread_mutex_t mtx;
+	rte_spinlock_t mtx;
 
 	uint32_t next_id;
 
@@ -68,7 +68,7 @@ void *ntnic_id_table_create(void)
 {
 	struct ntnic_id_table_data *handle = calloc(1, sizeof(struct ntnic_id_table_data));
 
-	pthread_mutex_init(&handle->mtx, NULL);
+	rte_spinlock_init(&handle->mtx);
 	handle->next_id = 1;
 
 	return handle;
@@ -81,8 +81,6 @@ void ntnic_id_table_destroy(void *id_table)
 	for (uint32_t i = 0; i < NTNIC_ARRAY_SIZE; ++i)
 		free(handle->arrays[i]);
 
-	pthread_mutex_destroy(&handle->mtx);
-
 	free(id_table);
 }
 
@@ -91,7 +89,7 @@ uint32_t ntnic_id_table_get_id(void *id_table, union flm_handles flm_h, uint8_t 
 {
 	struct ntnic_id_table_data *handle = id_table;
 
-	pthread_mutex_lock(&handle->mtx);
+	rte_spinlock_lock(&handle->mtx);
 
 	uint32_t new_id = ntnic_id_table_array_pop_free_id(handle);
 
@@ -103,7 +101,7 @@ uint32_t ntnic_id_table_get_id(void *id_table, union flm_handles flm_h, uint8_t 
 	element->type = type;
 	memcpy(&element->handle, &flm_h, sizeof(union flm_handles));
 
-	pthread_mutex_unlock(&handle->mtx);
+	rte_spinlock_unlock(&handle->mtx);
 
 	return new_id;
 }
@@ -112,7 +110,7 @@ void ntnic_id_table_free_id(void *id_table, uint32_t id)
 {
 	struct ntnic_id_table_data *handle = id_table;
 
-	pthread_mutex_lock(&handle->mtx);
+	rte_spinlock_lock(&handle->mtx);
 
 	struct ntnic_id_table_element *current_element =
 		ntnic_id_table_array_find_element(handle, id);
@@ -127,7 +125,7 @@ void ntnic_id_table_free_id(void *id_table, uint32_t id)
 	if (handle->free_tail == 0)
 		handle->free_tail = handle->free_head;
 
-	pthread_mutex_unlock(&handle->mtx);
+	rte_spinlock_unlock(&handle->mtx);
 }
 
 void ntnic_id_table_find(void *id_table, uint32_t id, union flm_handles *flm_h, uint8_t *caller_id,
@@ -135,7 +133,7 @@ void ntnic_id_table_find(void *id_table, uint32_t id, union flm_handles *flm_h, 
 {
 	struct ntnic_id_table_data *handle = id_table;
 
-	pthread_mutex_lock(&handle->mtx);
+	rte_spinlock_lock(&handle->mtx);
 
 	struct ntnic_id_table_element *element = ntnic_id_table_array_find_element(handle, id);
 
@@ -143,5 +141,5 @@ void ntnic_id_table_find(void *id_table, uint32_t id, union flm_handles *flm_h, 
 	*type = element->type;
 	memcpy(flm_h, &element->handle, sizeof(union flm_handles));
 
-	pthread_mutex_unlock(&handle->mtx);
+	rte_spinlock_unlock(&handle->mtx);
 }

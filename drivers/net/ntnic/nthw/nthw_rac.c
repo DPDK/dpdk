@@ -3,14 +3,13 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
+#include "rte_spinlock.h"
 #include "nt_util.h"
 #include "ntlog.h"
 
 #include "nthw_drv.h"
 #include "nthw_register.h"
 #include "nthw_rac.h"
-
-#include <pthread.h>
 
 #define RAB_DMA_WAIT (1000000)
 
@@ -217,7 +216,7 @@ int nthw_rac_init(nthw_rac_t *p, nthw_fpga_t *p_fpga, struct fpga_info_s *p_fpga
 		}
 	}
 
-	pthread_mutex_init(&p->m_mutex, NULL);
+	rte_spinlock_init(&p->m_mutex);
 
 	return 0;
 }
@@ -389,19 +388,6 @@ void nthw_rac_bar0_write32(const struct fpga_info_s *p_fpga_info, uint32_t reg_a
 
 int nthw_rac_rab_dma_begin(nthw_rac_t *p)
 {
-	const struct fpga_info_s *const p_fpga_info = p->mp_fpga->p_fpga_info;
-	const char *const p_adapter_id_str = p_fpga_info->mp_adapter_id_str;
-
-	pthread_mutex_lock(&p->m_mutex);
-
-	if (p->m_dma_active) {
-		pthread_mutex_unlock(&p->m_mutex);
-		NT_LOG(ERR, NTHW,
-			"%s: DMA begin requested, but a DMA transaction is already active",
-			p_adapter_id_str);
-		return -1;
-	}
-
 	p->m_dma_active = true;
 
 	return 0;
@@ -454,18 +440,10 @@ int nthw_rac_rab_dma_commit(nthw_rac_t *p)
 {
 	int ret;
 
-	if (!p->m_dma_active) {
-		/* Expecting mutex not to be locked! */
-		assert(0);      /* alert developer that something is wrong */
-		return -1;
-	}
-
 	nthw_rac_rab_dma_activate(p);
 	ret = nthw_rac_rab_dma_wait(p);
 
 	p->m_dma_active = false;
-
-	pthread_mutex_unlock(&p->m_mutex);
 
 	return ret;
 }
@@ -602,7 +580,7 @@ int nthw_rac_rab_write32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint
 		return -1;
 	}
 
-	pthread_mutex_lock(&p->m_mutex);
+	rte_spinlock_lock(&p->m_mutex);
 
 	if (p->m_dma_active) {
 		NT_LOG(ERR, NTHW, "%s: RAB: Illegal operation: DMA enabled", p_adapter_id_str);
@@ -748,7 +726,7 @@ int nthw_rac_rab_write32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint
 	}
 
 exit_unlock_res:
-	pthread_mutex_unlock(&p->m_mutex);
+	rte_spinlock_unlock(&p->m_mutex);
 	return res;
 }
 
@@ -763,7 +741,7 @@ int nthw_rac_rab_read32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint3
 	uint32_t out_buf_free;
 	int res = 0;
 
-	pthread_mutex_lock(&p->m_mutex);
+	rte_spinlock_lock(&p->m_mutex);
 
 	if (address > (1 << RAB_ADDR_BW)) {
 		NT_LOG(ERR, NTHW, "%s: RAB: Illegal address: value too large %d - max %d",
@@ -923,7 +901,7 @@ int nthw_rac_rab_read32(nthw_rac_t *p, bool trc, nthw_rab_bus_id_t bus_id, uint3
 	}
 
 exit_unlock_res:
-	pthread_mutex_unlock(&p->m_mutex);
+	rte_spinlock_unlock(&p->m_mutex);
 	return res;
 }
 
@@ -935,7 +913,7 @@ int nthw_rac_rab_flush(nthw_rac_t *p)
 	uint32_t retry;
 	int res = 0;
 
-	pthread_mutex_lock(&p->m_mutex);
+	rte_spinlock_lock(&p->m_mutex);
 
 	/* Set the flush bit */
 	nthw_rac_reg_write32(p_fpga_info, p->RAC_RAB_BUF_USED_ADDR,
@@ -960,6 +938,6 @@ int nthw_rac_rab_flush(nthw_rac_t *p)
 	/* Clear flush bit when done */
 	nthw_rac_reg_write32(p_fpga_info, p->RAC_RAB_BUF_USED_ADDR, 0x0);
 
-	pthread_mutex_unlock(&p->m_mutex);
+	rte_spinlock_unlock(&p->m_mutex);
 	return res;
 }

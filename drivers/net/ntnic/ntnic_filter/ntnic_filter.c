@@ -910,7 +910,7 @@ static int poll_statistics(struct pmd_internals *internals)
 
 	internals->last_stat_rtc = now_rtc;
 
-	pthread_mutex_lock(&p_nt_drv->stat_lck);
+	rte_spinlock_lock(&p_nt_drv->stat_lck);
 
 	/*
 	 * Add the RX statistics increments since last time we polled.
@@ -951,7 +951,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	/* Globally only once a second */
 	if ((now_rtc - last_stat_rtc) < rte_tsc_freq) {
 		rte_spinlock_unlock(&hwlock);
-		pthread_mutex_unlock(&p_nt_drv->stat_lck);
+		rte_spinlock_unlock(&p_nt_drv->stat_lck);
 		return 0;
 	}
 
@@ -988,7 +988,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	}
 
 	rte_spinlock_unlock(&hwlock);
-	pthread_mutex_unlock(&p_nt_drv->stat_lck);
+	rte_spinlock_unlock(&p_nt_drv->stat_lck);
 
 	return 0;
 }

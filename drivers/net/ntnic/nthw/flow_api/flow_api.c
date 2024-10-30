@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2023 Napatech A/S
  */
+#include "rte_spinlock.h"
 #include "ntlog.h"
 #include "nt_util.h"
 
@@ -41,7 +42,7 @@ const char *dbg_res_descr[] = {
 };
 
 static struct flow_nic_dev *dev_base;
-static pthread_mutex_t base_mtx = PTHREAD_MUTEX_INITIALIZER;
+static rte_spinlock_t base_mtx = RTE_SPINLOCK_INITIALIZER;
 
 /*
  * Error handling
@@ -397,7 +398,7 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 #endif
 
 	/* delete all created flows from this device */
-	pthread_mutex_lock(&ndev->mtx);
+	rte_spinlock_lock(&ndev->mtx);
 
 	struct flow_handle *flow = ndev->flow_base;
 
@@ -441,7 +442,7 @@ int flow_delete_eth_dev(struct flow_eth_dev *eth_dev)
 	if (nic_remove_eth_port_dev(ndev, eth_dev) != 0)
 		NT_LOG(ERR, FILTER, "ERROR : eth_dev %p not found", eth_dev);
 
-	pthread_mutex_unlock(&ndev->mtx);
+	rte_spinlock_unlock(&ndev->mtx);
 
 	/* free eth_dev */
 	free(eth_dev);
@@ -482,15 +483,15 @@ static void done_resource_elements(struct flow_nic_dev *ndev, enum res_type_e re
 
 static void list_insert_flow_nic(struct flow_nic_dev *ndev)
 {
-	pthread_mutex_lock(&base_mtx);
+	rte_spinlock_lock(&base_mtx);
 	ndev->next = dev_base;
 	dev_base = ndev;
-	pthread_mutex_unlock(&base_mtx);
+	rte_spinlock_unlock(&base_mtx);
 }
 
 static int list_remove_flow_nic(struct flow_nic_dev *ndev)
 {
-	pthread_mutex_lock(&base_mtx);
+	rte_spinlock_lock(&base_mtx);
 	struct flow_nic_dev *nic_dev = dev_base, *prev = NULL;
 
 	while (nic_dev) {
@@ -501,7 +502,7 @@ static int list_remove_flow_nic(struct flow_nic_dev *ndev)
 			else
 				dev_base = nic_dev->next;
 
-			pthread_mutex_unlock(&base_mtx);
+			rte_spinlock_unlock(&base_mtx);
 			return 0;
 		}
 
@@ -509,7 +510,7 @@ static int list_remove_flow_nic(struct flow_nic_dev *ndev)
 		nic_dev = nic_dev->next;
 	}
 
-	pthread_mutex_unlock(&base_mtx);
+	rte_spinlock_unlock(&base_mtx);
 	return -1;
 }
 
@@ -541,27 +542,27 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 			"ERROR: Internal array for multiple queues too small for API");
 	}
 
-	pthread_mutex_lock(&base_mtx);
+	rte_spinlock_lock(&base_mtx);
 	struct flow_nic_dev *ndev = get_nic_dev_from_adapter_no(adapter_no);
 
 	if (!ndev) {
 		/* Error - no flow api found on specified adapter */
 		NT_LOG(ERR, FILTER, "ERROR: no flow interface registered for adapter %d",
 			adapter_no);
-		pthread_mutex_unlock(&base_mtx);
+		rte_spinlock_unlock(&base_mtx);
 		return NULL;
 	}
 
 	if (ndev->ports < ((uint16_t)port_no + 1)) {
 		NT_LOG(ERR, FILTER, "ERROR: port exceeds supported port range for adapter");
-		pthread_mutex_unlock(&base_mtx);
+		rte_spinlock_unlock(&base_mtx);
 		return NULL;
 	}
 
 	if ((alloc_rx_queues - 1) > FLOW_MAX_QUEUES) {	/* 0th is exception so +1 */
 		NT_LOG(ERR, FILTER,
 			"ERROR: Exceeds supported number of rx queues per eth device");
-		pthread_mutex_unlock(&base_mtx);
+		rte_spinlock_unlock(&base_mtx);
 		return NULL;
 	}
 
@@ -571,19 +572,18 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 	if (eth_dev) {
 		NT_LOG(DBG, FILTER, "Re-opening existing NIC port device: NIC DEV: %i Port %i",
 			adapter_no, port_no);
-		pthread_mutex_unlock(&base_mtx);
 		flow_delete_eth_dev(eth_dev);
 		eth_dev = NULL;
 	}
+
+	rte_spinlock_lock(&ndev->mtx);
 
 	eth_dev = calloc(1, sizeof(struct flow_eth_dev));
 
 	if (!eth_dev) {
 		NT_LOG(ERR, FILTER, "ERROR: calloc failed");
-		goto err_exit1;
+		goto err_exit0;
 	}
-
-	pthread_mutex_lock(&ndev->mtx);
 
 	eth_dev->ndev = ndev;
 	eth_dev->port = port_no;
@@ -649,15 +649,14 @@ static struct flow_eth_dev *flow_get_eth_dev(uint8_t adapter_no, uint8_t port_no
 
 	nic_insert_eth_port_dev(ndev, eth_dev);
 
-	pthread_mutex_unlock(&ndev->mtx);
-	pthread_mutex_unlock(&base_mtx);
+	rte_spinlock_unlock(&ndev->mtx);
+	rte_spinlock_unlock(&base_mtx);
 	return eth_dev;
 
 err_exit0:
-	pthread_mutex_unlock(&ndev->mtx);
-	pthread_mutex_unlock(&base_mtx);
+	rte_spinlock_unlock(&ndev->mtx);
+	rte_spinlock_unlock(&base_mtx);
 
-err_exit1:
 	if (eth_dev)
 		free(eth_dev);
 
@@ -764,7 +763,7 @@ struct flow_nic_dev *flow_api_create(uint8_t adapter_no, const struct flow_api_b
 	for (int i = 0; i < RES_COUNT; i++)
 		assert(ndev->res[i].alloc_bm);
 
-	pthread_mutex_init(&ndev->mtx, NULL);
+	rte_spinlock_init(&ndev->mtx);
 	list_insert_flow_nic(ndev);
 
 	return ndev;

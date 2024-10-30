@@ -8,6 +8,7 @@
 #include "nthw_drv.h"
 #include "nthw_register.h"
 #include "nthw_rpf.h"
+#include "rte_spinlock.h"
 
 nthw_rpf_t *nthw_rpf_new(void)
 {
@@ -65,7 +66,7 @@ int nthw_rpf_init(nthw_rpf_t *p, nthw_fpga_t *p_fpga, int n_instance)
 		nthw_fpga_get_product_param(p_fpga, NT_RPF_MATURING_DEL_DEFAULT, 0);
 
 	/* Initialize mutex */
-	pthread_mutex_init(&p->rpf_mutex, NULL);
+	rte_spinlock_init(&p->rpf_mutex);
 	return 0;
 }
 

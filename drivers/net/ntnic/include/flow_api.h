@@ -6,7 +6,7 @@
 #ifndef _FLOW_API_H_
 #define _FLOW_API_H_
 
-#include <pthread.h>
+#include <rte_spinlock.h>
 
 #include "ntlog.h"
 
@@ -110,13 +110,13 @@ struct flow_nic_dev {
 	struct flow_handle *flow_base;
 	/* linked list of all FLM flows created on this NIC */
 	struct flow_handle *flow_base_flm;
-	pthread_mutex_t flow_mtx;
+	rte_spinlock_t flow_mtx;
 
 	/* NIC backend API */
 	struct flow_api_backend_s be;
 	/* linked list of created eth-port devices on this NIC */
 	struct flow_eth_dev *eth_base;
-	pthread_mutex_t mtx;
+	rte_spinlock_t mtx;
 
 	/* RSS hashing configuration */
 	struct nt_eth_rss_conf rss_conf;
