@@ -579,3 +579,136 @@ int hw_mod_flm_scrub_flush(struct flow_api_backend_s *be, int start_idx, int cou
 	}
 	return be->iface->flm_scrub_flush(be->be_dev, &be->flm, start_idx, count);
 }
+
+static int hw_mod_flm_rcp_mod(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t *value, int get)
+{
+	switch (_VER_) {
+	case 25:
+		switch (field) {
+		case HW_FLM_RCP_PRESET_ALL:
+			if (get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			memset(&be->flm.v25.rcp[index], (uint8_t)*value,
+				sizeof(struct flm_v25_rcp_s));
+			break;
+
+		case HW_FLM_RCP_LOOKUP:
+			GET_SET(be->flm.v25.rcp[index].lookup, value);
+			break;
+
+		case HW_FLM_RCP_QW0_DYN:
+			GET_SET(be->flm.v25.rcp[index].qw0_dyn, value);
+			break;
+
+		case HW_FLM_RCP_QW0_OFS:
+			GET_SET(be->flm.v25.rcp[index].qw0_ofs, value);
+			break;
+
+		case HW_FLM_RCP_QW0_SEL:
+			GET_SET(be->flm.v25.rcp[index].qw0_sel, value);
+			break;
+
+		case HW_FLM_RCP_QW4_DYN:
+			GET_SET(be->flm.v25.rcp[index].qw4_dyn, value);
+			break;
+
+		case HW_FLM_RCP_QW4_OFS:
+			GET_SET(be->flm.v25.rcp[index].qw4_ofs, value);
+			break;
+
+		case HW_FLM_RCP_SW8_DYN:
+			GET_SET(be->flm.v25.rcp[index].sw8_dyn, value);
+			break;
+
+		case HW_FLM_RCP_SW8_OFS:
+			GET_SET(be->flm.v25.rcp[index].sw8_ofs, value);
+			break;
+
+		case HW_FLM_RCP_SW8_SEL:
+			GET_SET(be->flm.v25.rcp[index].sw8_sel, value);
+			break;
+
+		case HW_FLM_RCP_SW9_DYN:
+			GET_SET(be->flm.v25.rcp[index].sw9_dyn, value);
+			break;
+
+		case HW_FLM_RCP_SW9_OFS:
+			GET_SET(be->flm.v25.rcp[index].sw9_ofs, value);
+			break;
+
+		case HW_FLM_RCP_MASK:
+			if (get) {
+				memcpy(value, be->flm.v25.rcp[index].mask,
+					sizeof(((struct flm_v25_rcp_s *)0)->mask));
+
+			} else {
+				memcpy(be->flm.v25.rcp[index].mask, value,
+					sizeof(((struct flm_v25_rcp_s *)0)->mask));
+			}
+
+			break;
+
+		case HW_FLM_RCP_KID:
+			GET_SET(be->flm.v25.rcp[index].kid, value);
+			break;
+
+		case HW_FLM_RCP_OPN:
+			GET_SET(be->flm.v25.rcp[index].opn, value);
+			break;
+
+		case HW_FLM_RCP_IPN:
+			GET_SET(be->flm.v25.rcp[index].ipn, value);
+			break;
+
+		case HW_FLM_RCP_BYT_DYN:
+			GET_SET(be->flm.v25.rcp[index].byt_dyn, value);
+			break;
+
+		case HW_FLM_RCP_BYT_OFS:
+			GET_SET(be->flm.v25.rcp[index].byt_ofs, value);
+			break;
+
+		case HW_FLM_RCP_TXPLM:
+			GET_SET(be->flm.v25.rcp[index].txplm, value);
+			break;
+
+		case HW_FLM_RCP_AUTO_IPV4_MASK:
+			GET_SET(be->flm.v25.rcp[index].auto_ipv4_mask, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t *value)
+{
+	if (field != HW_FLM_RCP_MASK)
+		return UNSUP_VER;
+
+	return hw_mod_flm_rcp_mod(be, field, index, value, 0);
+}
+
+int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t value)
+{
+	if (field == HW_FLM_RCP_MASK)
+		return UNSUP_VER;
+
+	return hw_mod_flm_rcp_mod(be, field, index, &value, 0);
+}

@@ -683,6 +683,10 @@ int hw_mod_flm_pst_set(struct flow_api_backend_s *be, enum hw_flm_e field, int i
 	uint32_t value);
 
 int hw_mod_flm_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_flm_rcp_set_mask(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t *value);
+int hw_mod_flm_rcp_set(struct flow_api_backend_s *be, enum hw_flm_e field, int index,
+	uint32_t value);
 
 int hw_mod_flm_scrub_flush(struct flow_api_backend_s *be, int start_idx, int count);
 

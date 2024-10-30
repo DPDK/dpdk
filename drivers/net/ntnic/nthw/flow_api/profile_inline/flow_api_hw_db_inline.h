@@ -138,6 +138,7 @@ enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_TPE,
 	HW_DB_IDX_TYPE_TPE_EXT,
 
+	HW_DB_IDX_TYPE_FLM_RCP,
 	HW_DB_IDX_TYPE_KM_RCP,
 	HW_DB_IDX_TYPE_FLM_FT,
 	HW_DB_IDX_TYPE_KM_FT,
@@ -163,6 +164,22 @@ struct hw_db_inline_cat_data {
 
 	uint8_t ip_prot;
 	uint8_t ip_prot_tunnel;
+};
+
+struct hw_db_inline_flm_rcp_data {
+	uint64_t qw0_dyn : 5;
+	uint64_t qw0_ofs : 8;
+	uint64_t qw4_dyn : 5;
+	uint64_t qw4_ofs : 8;
+	uint64_t sw8_dyn : 5;
+	uint64_t sw8_ofs : 8;
+	uint64_t sw9_dyn : 5;
+	uint64_t sw9_ofs : 8;
+	uint64_t outer_prot : 1;
+	uint64_t inner_prot : 1;
+	uint64_t padding : 10;
+
+	uint32_t mask[10];
 };
 
 struct hw_db_inline_qsl_data {
@@ -300,7 +317,10 @@ void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct
 
 /**/
 
+struct hw_db_flm_idx hw_db_inline_flm_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_flm_rcp_data *data, int group);
 void hw_db_inline_flm_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx);
+void hw_db_inline_flm_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx);
 
 struct hw_db_flm_ft hw_db_inline_flm_ft_default(struct flow_nic_dev *ndev, void *db_handle,
 	const struct hw_db_inline_flm_ft_data *data);

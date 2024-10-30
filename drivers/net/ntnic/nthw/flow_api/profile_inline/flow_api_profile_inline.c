@@ -101,6 +101,11 @@ static int flm_sdram_reset(struct flow_nic_dev *ndev, int enable)
 	hw_mod_flm_control_set(&ndev->be, HW_FLM_CONTROL_ENABLE, 0x0);
 	hw_mod_flm_control_flush(&ndev->be);
 
+	for (uint32_t i = 1; i < ndev->be.flm.nb_categories; ++i)
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, i, 0x0);
+
+	hw_mod_flm_rcp_flush(&ndev->be, 1, ndev->be.flm.nb_categories - 1);
+
 	/* Wait for FLM to enter Idle state */
 	for (uint32_t i = 0; i < 1000000; ++i) {
 		uint32_t value = 0;
@@ -2657,8 +2662,8 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 	uint16_t forced_vlan_vid __rte_unused, uint16_t caller_id,
 	struct rte_flow_error *error, uint32_t port_id,
 	uint32_t num_dest_port, uint32_t num_queues,
-	uint32_t *packet_data, uint32_t *packet_mask __rte_unused,
-	struct flm_flow_key_def_s *key_def __rte_unused)
+	uint32_t *packet_data, uint32_t *packet_mask,
+	struct flm_flow_key_def_s *key_def)
 {
 	struct flow_handle *fh = calloc(1, sizeof(struct flow_handle));
 
@@ -2691,6 +2696,31 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		 * Flow for group 1..32
 		 */
 
+		/* Setup FLM RCP */
+		struct hw_db_inline_flm_rcp_data flm_data = {
+			.qw0_dyn = key_def->qw0_dyn,
+			.qw0_ofs = key_def->qw0_ofs,
+			.qw4_dyn = key_def->qw4_dyn,
+			.qw4_ofs = key_def->qw4_ofs,
+			.sw8_dyn = key_def->sw8_dyn,
+			.sw8_ofs = key_def->sw8_ofs,
+			.sw9_dyn = key_def->sw9_dyn,
+			.sw9_ofs = key_def->sw9_ofs,
+			.outer_prot = key_def->outer_proto,
+			.inner_prot = key_def->inner_proto,
+		};
+		memcpy(flm_data.mask, packet_mask, sizeof(uint32_t) * 10);
+		struct hw_db_flm_idx flm_idx =
+			hw_db_inline_flm_add(dev->ndev, dev->ndev->hw_db_handle, &flm_data,
+			attr->group);
+		fh->db_idxs[fh->db_idx_counter++] = flm_idx.raw;
+
+		if (flm_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference FLM RPC resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
 		/* Setup Actions */
 		uint16_t flm_rpl_ext_ptr = 0;
 		uint32_t flm_ft = 0;
@@ -2703,7 +2733,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		}
 
 		/* Program flow */
-		convert_fh_to_fh_flm(fh, packet_data, 2, flm_ft, flm_rpl_ext_ptr,
+		convert_fh_to_fh_flm(fh, packet_data, flm_idx.id1 + 2, flm_ft, flm_rpl_ext_ptr,
 			flm_scrub, attr->priority & 0x3);
 		flm_flow_programming(fh, NT_FLM_OP_LEARN);
 
@@ -3270,6 +3300,12 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 
 		flow_nic_free_resource(ndev, RES_KM_FLOW_TYPE, 0);
 		flow_nic_free_resource(ndev, RES_KM_CATEGORY, 0);
+
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, 0, 0);
+		hw_mod_flm_rcp_flush(&ndev->be, 0, 1);
+		flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 0);
+		flow_nic_free_resource(ndev, RES_FLM_FLOW_TYPE, 1);
+		flow_nic_free_resource(ndev, RES_FLM_RCP, 0);
 
 		flow_group_handle_destroy(&ndev->group_handle);
 		ntnic_id_table_destroy(ndev->id_table_handle);

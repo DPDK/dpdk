@@ -68,6 +68,9 @@ struct hw_db_inline_resource_db {
 	} *cat;
 
 	struct hw_db_inline_resource_db_flm_rcp {
+		struct hw_db_inline_flm_rcp_data data;
+		int ref;
+
 		struct hw_db_inline_resource_db_flm_ft {
 			struct hw_db_inline_flm_ft_data data;
 			struct hw_db_flm_ft idx;
@@ -96,6 +99,7 @@ struct hw_db_inline_resource_db {
 
 	uint32_t nb_cat;
 	uint32_t nb_flm_ft;
+	uint32_t nb_flm_rcp;
 	uint32_t nb_km_ft;
 	uint32_t nb_km_rcp;
 
@@ -164,6 +168,42 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 		return -1;
 	}
 
+
+	db->nb_flm_ft = ndev->be.cat.nb_flow_types;
+	db->nb_flm_rcp = ndev->be.flm.nb_categories;
+	db->flm = calloc(db->nb_flm_rcp, sizeof(struct hw_db_inline_resource_db_flm_rcp));
+
+	if (db->flm == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
+	for (uint32_t i = 0; i < db->nb_flm_rcp; ++i) {
+		db->flm[i].ft =
+			calloc(db->nb_flm_ft, sizeof(struct hw_db_inline_resource_db_flm_ft));
+
+		if (db->flm[i].ft == NULL) {
+			hw_db_inline_destroy(db);
+			return -1;
+		}
+
+		db->flm[i].match_set =
+			calloc(db->nb_cat, sizeof(struct hw_db_inline_resource_db_flm_match_set));
+
+		if (db->flm[i].match_set == NULL) {
+			hw_db_inline_destroy(db);
+			return -1;
+		}
+
+		db->flm[i].cfn_map = calloc(db->nb_cat * db->nb_flm_ft,
+			sizeof(struct hw_db_inline_resource_db_flm_cfn_map));
+
+		if (db->flm[i].cfn_map == NULL) {
+			hw_db_inline_destroy(db);
+			return -1;
+		}
+	}
+
 	db->nb_km_ft = ndev->be.cat.nb_flow_types;
 	db->nb_km_rcp = ndev->be.km.nb_categories;
 	db->km = calloc(db->nb_km_rcp, sizeof(struct hw_db_inline_resource_db_km_rcp));
@@ -222,6 +262,16 @@ void hw_db_inline_destroy(void *db_handle)
 
 	free(db->cat);
 
+	if (db->flm) {
+		for (uint32_t i = 0; i < db->nb_flm_rcp; ++i) {
+			free(db->flm[i].ft);
+			free(db->flm[i].match_set);
+			free(db->flm[i].cfn_map);
+		}
+
+		free(db->flm);
+	}
+
 	if (db->km) {
 		for (uint32_t i = 0; i < db->nb_km_rcp; ++i)
 			free(db->km[i].ft);
@@ -266,6 +316,10 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 		case HW_DB_IDX_TYPE_TPE_EXT:
 			hw_db_inline_tpe_ext_deref(ndev, db_handle,
 				*(struct hw_db_tpe_ext_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_FLM_RCP:
+			hw_db_inline_flm_deref(ndev, db_handle, *(struct hw_db_flm_idx *)&idxs[i]);
 			break;
 
 		case HW_DB_IDX_TYPE_FLM_FT:
@@ -323,6 +377,9 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 
 		case HW_DB_IDX_TYPE_TPE_EXT:
 			return &db->tpe_ext[idxs[i].ids].data;
+
+		case HW_DB_IDX_TYPE_FLM_RCP:
+			return &db->flm[idxs[i].id1].data;
 
 		case HW_DB_IDX_TYPE_FLM_FT:
 			return NULL;	/* FTs can't be easily looked up */
@@ -480,6 +537,20 @@ int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id,
 
 	return 0;
 }
+
+static void hw_db_inline_setup_default_flm_rcp(struct flow_nic_dev *ndev, int flm_rcp)
+{
+	uint32_t flm_mask[10];
+	memset(flm_mask, 0xff, sizeof(flm_mask));
+
+	hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, flm_rcp, 0x0);
+	hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_LOOKUP, flm_rcp, 1);
+	hw_mod_flm_rcp_set_mask(&ndev->be, HW_FLM_RCP_MASK, flm_rcp, flm_mask);
+	hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_KID, flm_rcp, flm_rcp + 2);
+
+	hw_mod_flm_rcp_flush(&ndev->be, flm_rcp, 1);
+}
+
 
 /******************************************************************************/
 /* COT                                                                        */
@@ -1268,10 +1339,17 @@ void hw_db_inline_km_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_d
 void hw_db_inline_km_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_km_idx idx)
 {
 	(void)ndev;
-	(void)db_handle;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
 
 	if (idx.error)
 		return;
+
+	db->flm[idx.id1].ref -= 1;
+
+	if (db->flm[idx.id1].ref <= 0) {
+		memset(&db->flm[idx.id1].data, 0x0, sizeof(struct hw_db_inline_km_rcp_data));
+		db->flm[idx.id1].ref = 0;
+	}
 }
 
 /******************************************************************************/
@@ -1359,6 +1437,121 @@ void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct
 		km_rcp->ft[cat_offset + idx.id1].ref = 0;
 	}
 }
+
+/******************************************************************************/
+/* FLM RCP                                                                    */
+/******************************************************************************/
+
+static int hw_db_inline_flm_compare(const struct hw_db_inline_flm_rcp_data *data1,
+	const struct hw_db_inline_flm_rcp_data *data2)
+{
+	if (data1->qw0_dyn != data2->qw0_dyn || data1->qw0_ofs != data2->qw0_ofs ||
+		data1->qw4_dyn != data2->qw4_dyn || data1->qw4_ofs != data2->qw4_ofs ||
+		data1->sw8_dyn != data2->sw8_dyn || data1->sw8_ofs != data2->sw8_ofs ||
+		data1->sw9_dyn != data2->sw9_dyn || data1->sw9_ofs != data2->sw9_ofs ||
+		data1->outer_prot != data2->outer_prot || data1->inner_prot != data2->inner_prot) {
+		return 0;
+	}
+
+	for (int i = 0; i < 10; ++i)
+		if (data1->mask[i] != data2->mask[i])
+			return 0;
+
+	return 1;
+}
+
+struct hw_db_flm_idx hw_db_inline_flm_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_flm_rcp_data *data, int group)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_flm_idx idx = { .raw = 0 };
+
+	idx.type = HW_DB_IDX_TYPE_FLM_RCP;
+	idx.id1 = group;
+
+	if (group == 0)
+		return idx;
+
+	if (db->flm[idx.id1].ref > 0) {
+		if (!hw_db_inline_flm_compare(data, &db->flm[idx.id1].data)) {
+			idx.error = 1;
+			return idx;
+		}
+
+		hw_db_inline_flm_ref(ndev, db, idx);
+		return idx;
+	}
+
+	db->flm[idx.id1].ref = 1;
+	memcpy(&db->flm[idx.id1].data, data, sizeof(struct hw_db_inline_flm_rcp_data));
+
+	{
+		uint32_t flm_mask[10] = {
+			data->mask[0],	/* SW9 */
+			data->mask[1],	/* SW8 */
+			data->mask[5], data->mask[4], data->mask[3], data->mask[2],	/* QW4 */
+			data->mask[9], data->mask[8], data->mask[7], data->mask[6],	/* QW0 */
+		};
+
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_PRESET_ALL, idx.id1, 0x0);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_LOOKUP, idx.id1, 1);
+
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_QW0_DYN, idx.id1, data->qw0_dyn);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_QW0_OFS, idx.id1, data->qw0_ofs);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_QW0_SEL, idx.id1, 0);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_QW4_DYN, idx.id1, data->qw4_dyn);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_QW4_OFS, idx.id1, data->qw4_ofs);
+
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_SW8_DYN, idx.id1, data->sw8_dyn);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_SW8_OFS, idx.id1, data->sw8_ofs);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_SW8_SEL, idx.id1, 0);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_SW9_DYN, idx.id1, data->sw9_dyn);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_SW9_OFS, idx.id1, data->sw9_ofs);
+
+		hw_mod_flm_rcp_set_mask(&ndev->be, HW_FLM_RCP_MASK, idx.id1, flm_mask);
+
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_KID, idx.id1, idx.id1 + 2);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_OPN, idx.id1, data->outer_prot ? 1 : 0);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_IPN, idx.id1, data->inner_prot ? 1 : 0);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_BYT_DYN, idx.id1, 0);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_BYT_OFS, idx.id1, -20);
+		hw_mod_flm_rcp_set(&ndev->be, HW_FLM_RCP_TXPLM, idx.id1, UINT32_MAX);
+
+		hw_mod_flm_rcp_flush(&ndev->be, idx.id1, 1);
+	}
+
+	return idx;
+}
+
+void hw_db_inline_flm_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->flm[idx.id1].ref += 1;
+}
+
+void hw_db_inline_flm_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_flm_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	if (idx.id1 > 0) {
+		db->flm[idx.id1].ref -= 1;
+
+		if (db->flm[idx.id1].ref <= 0) {
+			memset(&db->flm[idx.id1].data, 0x0,
+				sizeof(struct hw_db_inline_flm_rcp_data));
+			db->flm[idx.id1].ref = 0;
+
+			hw_db_inline_setup_default_flm_rcp(ndev, idx.id1);
+		}
+	}
+}
+
 /******************************************************************************/
 /* FLM FT                                                                     */
 /******************************************************************************/
