@@ -56,6 +56,29 @@ enum res_type_e {
 
 #define MAX_MATCH_FIELDS 16
 
+/*
+ * Tunnel encapsulation header definition
+ */
+#define MAX_TUN_HDR_SIZE 128
+struct tunnel_header_s {
+	union {
+		uint8_t hdr8[MAX_TUN_HDR_SIZE];
+		uint32_t hdr32[(MAX_TUN_HDR_SIZE + 3) / 4];
+	} d;
+	uint32_t user_port_id;
+	uint8_t len;
+
+	uint8_t nb_vlans;
+
+	uint8_t ip_version;	/* 4: v4, 6: v6 */
+	uint16_t ip_csum_precalc;
+
+	uint8_t new_outer;
+	uint8_t l2_len;
+	uint8_t l3_len;
+	uint8_t l4_len;
+};
+
 struct match_elem_s {
 	int masked_for_tcam;	/* if potentially selected for TCAM */
 	uint32_t e_word[4];
@@ -123,6 +146,23 @@ struct nic_flow_def {
 	uint32_t jump_to_group;
 
 	int full_offload;
+
+	/*
+	 * Action push tunnel
+	 */
+	struct tunnel_header_s tun_hdr;
+
+	/*
+	 * If DPDK RTE tunnel helper API used
+	 * this holds the tunnel if used in flow
+	 */
+	struct tunnel_s *tnl;
+
+	/*
+	 * Header Stripper
+	 */
+	int header_strip_end_dyn;
+	int header_strip_end_ofs;
 
 	/*
 	 * Modify field

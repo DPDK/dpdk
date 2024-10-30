@@ -16,6 +16,224 @@
 rte_spinlock_t flow_lock = RTE_SPINLOCK_INITIALIZER;
 static struct rte_flow nt_flows[MAX_RTE_FLOWS];
 
+int interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_flow_item *out)
+{
+	int hdri = 0;
+	int pkti = 0;
+
+	/* Ethernet */
+	if (size - pkti == 0)
+		goto interpret_end;
+
+	if (size - pkti < (int)sizeof(struct rte_ether_hdr))
+		return -1;
+
+	out[hdri].type = RTE_FLOW_ITEM_TYPE_ETH;
+	out[hdri].spec = &data[pkti];
+	out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+	rte_be16_t ether_type = ((struct rte_ether_hdr *)&data[pkti])->ether_type;
+
+	hdri += 1;
+	pkti += sizeof(struct rte_ether_hdr);
+
+	if (size - pkti == 0)
+		goto interpret_end;
+
+	/* VLAN */
+	while (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ||
+		ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ) ||
+		ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_QINQ1)) {
+		if (size - pkti == 0)
+			goto interpret_end;
+
+		if (size - pkti < (int)sizeof(struct rte_vlan_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_VLAN;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		ether_type = ((struct rte_vlan_hdr *)&data[pkti])->eth_proto;
+
+		hdri += 1;
+		pkti += sizeof(struct rte_vlan_hdr);
+	}
+
+	if (size - pkti == 0)
+		goto interpret_end;
+
+	/* Layer 3 */
+	uint8_t next_header = 0;
+
+	if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) && (data[pkti] & 0xF0) == 0x40) {
+		if (size - pkti < (int)sizeof(struct rte_ipv4_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_IPV4;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		next_header = data[pkti + 9];
+
+		hdri += 1;
+		pkti += sizeof(struct rte_ipv4_hdr);
+
+	} else if (ether_type == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV6) &&
+			(data[pkti] & 0xF0) == 0x60) {
+		if (size - pkti < (int)sizeof(struct rte_ipv6_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_IPV6;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		next_header = data[pkti + 6];
+
+		hdri += 1;
+		pkti += sizeof(struct rte_ipv6_hdr);
+	} else {
+		return -1;
+	}
+
+	if (size - pkti == 0)
+		goto interpret_end;
+
+	/* Layer 4 */
+	int gtpu_encap = 0;
+
+	if (next_header == 1) {	/* ICMP */
+		if (size - pkti < (int)sizeof(struct rte_icmp_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_ICMP;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		hdri += 1;
+		pkti += sizeof(struct rte_icmp_hdr);
+
+	} else if (next_header == 58) {	/* ICMP6 */
+		if (size - pkti < (int)sizeof(struct rte_flow_item_icmp6))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_ICMP6;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		hdri += 1;
+		pkti += sizeof(struct rte_icmp_hdr);
+
+	} else if (next_header == 6) {	/* TCP */
+		if (size - pkti < (int)sizeof(struct rte_tcp_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_TCP;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		hdri += 1;
+		pkti += sizeof(struct rte_tcp_hdr);
+
+	} else if (next_header == 17) {	/* UDP */
+		if (size - pkti < (int)sizeof(struct rte_udp_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_UDP;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		gtpu_encap = ((struct rte_udp_hdr *)&data[pkti])->dst_port ==
+			rte_cpu_to_be_16(RTE_GTPU_UDP_PORT);
+
+		hdri += 1;
+		pkti += sizeof(struct rte_udp_hdr);
+
+	} else if (next_header == 132) {/* SCTP */
+		if (size - pkti < (int)sizeof(struct rte_sctp_hdr))
+			return -1;
+
+		out[hdri].type = RTE_FLOW_ITEM_TYPE_SCTP;
+		out[hdri].spec = &data[pkti];
+		out[hdri].mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		hdri += 1;
+		pkti += sizeof(struct rte_sctp_hdr);
+
+	} else {
+		return -1;
+	}
+
+	if (size - pkti == 0)
+		goto interpret_end;
+
+	/* GTPv1-U */
+	if (gtpu_encap) {
+		if (size - pkti < (int)sizeof(struct rte_gtp_hdr))
+			return -1;
+
+		out[hdri]
+		.type = RTE_FLOW_ITEM_TYPE_GTP;
+		out[hdri]
+		.spec = &data[pkti];
+		out[hdri]
+		.mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+		int extension_present_bit = ((struct rte_gtp_hdr *)&data[pkti])
+			->e;
+
+		hdri += 1;
+		pkti += sizeof(struct rte_gtp_hdr);
+
+		if (extension_present_bit) {
+			if (size - pkti < (int)sizeof(struct rte_gtp_hdr_ext_word))
+				return -1;
+
+			out[hdri]
+			.type = RTE_FLOW_ITEM_TYPE_GTP;
+			out[hdri]
+			.spec = &data[pkti];
+			out[hdri]
+			.mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+			uint8_t next_ext = ((struct rte_gtp_hdr_ext_word *)&data[pkti])
+				->next_ext;
+
+			hdri += 1;
+			pkti += sizeof(struct rte_gtp_hdr_ext_word);
+
+			while (next_ext) {
+				size_t ext_len = data[pkti] * 4;
+
+				if (size - pkti < (int)ext_len)
+					return -1;
+
+				out[hdri]
+				.type = RTE_FLOW_ITEM_TYPE_GTP;
+				out[hdri]
+				.spec = &data[pkti];
+				out[hdri]
+				.mask = (preserve != NULL) ? &preserve[pkti] : NULL;
+
+				next_ext = data[pkti + ext_len - 1];
+
+				hdri += 1;
+				pkti += ext_len;
+			}
+		}
+	}
+
+	if (size - pkti != 0)
+		return -1;
+
+interpret_end:
+	out[hdri].type = RTE_FLOW_ITEM_TYPE_END;
+	out[hdri].spec = NULL;
+	out[hdri].mask = NULL;
+
+	return hdri + 1;
+}
+
 int convert_error(struct rte_flow_error *error, struct rte_flow_error *rte_flow_error)
 {
 	if (error) {
@@ -95,12 +313,77 @@ int create_match_elements(struct cnv_match_s *match, const struct rte_flow_item 
 	return (type >= 0) ? 0 : -1;
 }
 
-int create_action_elements_inline(struct cnv_action_s *action __rte_unused,
-	const struct rte_flow_action actions[] __rte_unused,
-	int max_elem __rte_unused,
-	uint32_t queue_offset __rte_unused)
+int create_action_elements_inline(struct cnv_action_s *action,
+	const struct rte_flow_action actions[],
+	int max_elem,
+	uint32_t queue_offset)
 {
+	int aidx = 0;
 	int type = -1;
+
+	do {
+		type = actions[aidx].type;
+		if (type >= 0) {
+			action->flow_actions[aidx].type = type;
+
+			/*
+			 * Non-compatible actions handled here
+			 */
+			switch (type) {
+			case RTE_FLOW_ACTION_TYPE_RAW_DECAP: {
+				const struct rte_flow_action_raw_decap *decap =
+					(const struct rte_flow_action_raw_decap *)actions[aidx]
+					.conf;
+				int item_count = interpret_raw_data(decap->data, NULL, decap->size,
+					action->decap.items);
+
+				if (item_count < 0)
+					return item_count;
+				action->decap.data = decap->data;
+				action->decap.size = decap->size;
+				action->decap.item_count = item_count;
+				action->flow_actions[aidx].conf = &action->decap;
+			}
+			break;
+
+			case RTE_FLOW_ACTION_TYPE_RAW_ENCAP: {
+				const struct rte_flow_action_raw_encap *encap =
+					(const struct rte_flow_action_raw_encap *)actions[aidx]
+					.conf;
+				int item_count = interpret_raw_data(encap->data, encap->preserve,
+					encap->size, action->encap.items);
+
+				if (item_count < 0)
+					return item_count;
+				action->encap.data = encap->data;
+				action->encap.preserve = encap->preserve;
+				action->encap.size = encap->size;
+				action->encap.item_count = item_count;
+				action->flow_actions[aidx].conf = &action->encap;
+			}
+			break;
+
+			case RTE_FLOW_ACTION_TYPE_QUEUE: {
+				const struct rte_flow_action_queue *queue =
+					(const struct rte_flow_action_queue *)actions[aidx].conf;
+				action->queue.index = queue->index + queue_offset;
+				action->flow_actions[aidx].conf = &action->queue;
+			}
+			break;
+
+			default: {
+				action->flow_actions[aidx].conf = actions[aidx].conf;
+			}
+			break;
+			}
+
+			aidx++;
+
+			if (aidx == max_elem)
+				return -1;
+		}
+
+	} while (type >= 0 && type != RTE_FLOW_ITEM_TYPE_END);
 
 	return (type >= 0) ? 0 : -1;
 }

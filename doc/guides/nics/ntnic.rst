@@ -48,6 +48,10 @@ Features
 - Traffic mirroring.
 - VLAN filtering.
 - Packet modification: NAT, TTL decrement, DSCP tagging
+- Tunnel types: GTP.
+- Encapsulation and decapsulation of GTP data.
+- RX VLAN stripping via raw decap.
+- TX VLAN insertion via raw encap.
 
 Limitations
 ~~~~~~~~~~~

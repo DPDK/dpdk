@@ -176,6 +176,10 @@ enum {
 };
 
 enum {
+	PROT_TUN_GTPV1U = 6,
+};
+
+enum {
 	PROT_TUN_L3_OTHER = 0,
 	PROT_TUN_L3_IPV4 = 1,
 	PROT_TUN_L3_IPV6 = 2

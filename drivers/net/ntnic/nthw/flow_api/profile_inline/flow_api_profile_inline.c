@@ -463,6 +463,202 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_RAW_ENCAP", dev);
+
+			if (action[aidx].conf) {
+				const struct flow_action_raw_encap *encap =
+					(const struct flow_action_raw_encap *)action[aidx].conf;
+				const struct flow_action_raw_encap *encap_mask = action_mask
+					? (const struct flow_action_raw_encap *)action_mask[aidx]
+					.conf
+					: NULL;
+				const struct rte_flow_item *items = encap->items;
+
+				if (encap_decap_order != 1) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: - RAW_ENCAP must follow RAW_DECAP.");
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				if (encap->size == 0 || encap->size > 255 ||
+					encap->item_count < 2) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: - RAW_ENCAP data/size invalid.");
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				encap_decap_order = 2;
+
+				fd->tun_hdr.len = (uint8_t)encap->size;
+
+				if (encap_mask) {
+					memcpy_mask_if(fd->tun_hdr.d.hdr8, encap->data,
+						encap_mask->data, fd->tun_hdr.len);
+
+				} else {
+					memcpy(fd->tun_hdr.d.hdr8, encap->data, fd->tun_hdr.len);
+				}
+
+				while (items->type != RTE_FLOW_ITEM_TYPE_END) {
+					switch (items->type) {
+					case RTE_FLOW_ITEM_TYPE_ETH:
+						fd->tun_hdr.l2_len = 14;
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_VLAN:
+						fd->tun_hdr.nb_vlans += 1;
+						fd->tun_hdr.l2_len += 4;
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_IPV4:
+						fd->tun_hdr.ip_version = 4;
+						fd->tun_hdr.l3_len = sizeof(struct rte_ipv4_hdr);
+						fd->tun_hdr.new_outer = 1;
+
+						/* Patch length */
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len + 2] = 0x07;
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len + 3] = 0xfd;
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_IPV6:
+						fd->tun_hdr.ip_version = 6;
+						fd->tun_hdr.l3_len = sizeof(struct rte_ipv6_hdr);
+						fd->tun_hdr.new_outer = 1;
+
+						/* Patch length */
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len + 4] = 0x07;
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len + 5] = 0xfd;
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_SCTP:
+						fd->tun_hdr.l4_len = sizeof(struct rte_sctp_hdr);
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_TCP:
+						fd->tun_hdr.l4_len = sizeof(struct rte_tcp_hdr);
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_UDP:
+						fd->tun_hdr.l4_len = sizeof(struct rte_udp_hdr);
+
+						/* Patch length */
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len +
+							fd->tun_hdr.l3_len + 4] = 0x07;
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len +
+							fd->tun_hdr.l3_len + 5] = 0xfd;
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_ICMP:
+						fd->tun_hdr.l4_len = sizeof(struct rte_icmp_hdr);
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_ICMP6:
+						fd->tun_hdr.l4_len =
+							sizeof(struct rte_flow_item_icmp6);
+						break;
+
+					case RTE_FLOW_ITEM_TYPE_GTP:
+						/* Patch length */
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len +
+							fd->tun_hdr.l3_len +
+							fd->tun_hdr.l4_len + 2] = 0x07;
+						fd->tun_hdr.d.hdr8[fd->tun_hdr.l2_len +
+							fd->tun_hdr.l3_len +
+							fd->tun_hdr.l4_len + 3] = 0xfd;
+						break;
+
+					default:
+						break;
+					}
+
+					items++;
+				}
+
+				if (fd->tun_hdr.nb_vlans > 3) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: - Encapsulation with %d vlans not supported.",
+						(int)fd->tun_hdr.nb_vlans);
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				/* Convert encap data to 128-bit little endian */
+				for (size_t i = 0; i < (encap->size + 15) / 16; ++i) {
+					uint8_t *data = fd->tun_hdr.d.hdr8 + i * 16;
+
+					for (unsigned int j = 0; j < 8; ++j) {
+						uint8_t t = data[j];
+						data[j] = data[15 - j];
+						data[15 - j] = t;
+					}
+				}
+			}
+
+			break;
+
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_RAW_DECAP", dev);
+
+			if (action[aidx].conf) {
+				/* Mask is N/A for RAW_DECAP */
+				const struct flow_action_raw_decap *decap =
+					(const struct flow_action_raw_decap *)action[aidx].conf;
+
+				if (encap_decap_order != 0) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: - RAW_ENCAP must follow RAW_DECAP.");
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				if (decap->item_count < 2) {
+					NT_LOG(ERR, FILTER,
+						"ERROR: - RAW_DECAP must decap something.");
+					flow_nic_set_error(ERR_ACTION_UNSUPPORTED, error);
+					return -1;
+				}
+
+				encap_decap_order = 1;
+
+				switch (decap->items[decap->item_count - 2].type) {
+				case RTE_FLOW_ITEM_TYPE_ETH:
+				case RTE_FLOW_ITEM_TYPE_VLAN:
+					fd->header_strip_end_dyn = DYN_L3;
+					fd->header_strip_end_ofs = 0;
+					break;
+
+				case RTE_FLOW_ITEM_TYPE_IPV4:
+				case RTE_FLOW_ITEM_TYPE_IPV6:
+					fd->header_strip_end_dyn = DYN_L4;
+					fd->header_strip_end_ofs = 0;
+					break;
+
+				case RTE_FLOW_ITEM_TYPE_SCTP:
+				case RTE_FLOW_ITEM_TYPE_TCP:
+				case RTE_FLOW_ITEM_TYPE_UDP:
+				case RTE_FLOW_ITEM_TYPE_ICMP:
+				case RTE_FLOW_ITEM_TYPE_ICMP6:
+					fd->header_strip_end_dyn = DYN_L4_PAYLOAD;
+					fd->header_strip_end_ofs = 0;
+					break;
+
+				case RTE_FLOW_ITEM_TYPE_GTP:
+					fd->header_strip_end_dyn = DYN_TUN_L3;
+					fd->header_strip_end_ofs = 0;
+					break;
+
+				default:
+					fd->header_strip_end_dyn = DYN_L2;
+					fd->header_strip_end_ofs = 0;
+					break;
+				}
+			}
+
+			break;
+
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			NT_LOG(DBG, FILTER, "Dev:%p: RTE_FLOW_ACTION_TYPE_MODIFY_FIELD", dev);
 			{
@@ -1765,6 +1961,174 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_GTP:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_GTP",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_gtp_hdr *gtp_spec =
+					(const struct rte_gtp_hdr *)elem[eidx].spec;
+				const struct rte_gtp_hdr *gtp_mask =
+					(const struct rte_gtp_hdr *)elem[eidx].mask;
+
+				if (gtp_spec == NULL || gtp_mask == NULL) {
+					fd->tunnel_prot = PROT_TUN_GTPV1U;
+					break;
+				}
+
+				if (gtp_mask->gtp_hdr_info != 0 ||
+					gtp_mask->msg_type != 0 || gtp_mask->plen != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested GTP field not support by running SW version");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (gtp_mask->teid) {
+					if (sw_counter < 2) {
+						uint32_t *sw_data =
+							&packet_data[1 - sw_counter];
+						uint32_t *sw_mask =
+							&packet_mask[1 - sw_counter];
+
+						sw_mask[0] = ntohl(gtp_mask->teid);
+						sw_data[0] =
+							ntohl(gtp_spec->teid) & sw_mask[0];
+
+						km_add_match_elem(&fd->km, &sw_data[0],
+							&sw_mask[0], 1,
+							DYN_L4_PAYLOAD, 4);
+						set_key_def_sw(key_def, sw_counter,
+							DYN_L4_PAYLOAD, 4);
+						sw_counter += 1;
+
+					} else if (qw_counter < 2 && qw_free > 0) {
+						uint32_t *qw_data =
+							&packet_data[2 + 4 -
+							qw_counter * 4];
+						uint32_t *qw_mask =
+							&packet_mask[2 + 4 -
+							qw_counter * 4];
+
+						qw_data[0] = ntohl(gtp_spec->teid);
+						qw_data[1] = 0;
+						qw_data[2] = 0;
+						qw_data[3] = 0;
+
+						qw_mask[0] = ntohl(gtp_mask->teid);
+						qw_mask[1] = 0;
+						qw_mask[2] = 0;
+						qw_mask[3] = 0;
+
+						qw_data[0] &= qw_mask[0];
+						qw_data[1] &= qw_mask[1];
+						qw_data[2] &= qw_mask[2];
+						qw_data[3] &= qw_mask[3];
+
+						km_add_match_elem(&fd->km, &qw_data[0],
+							&qw_mask[0], 4,
+							DYN_L4_PAYLOAD, 4);
+						set_key_def_qw(key_def, qw_counter,
+							DYN_L4_PAYLOAD, 4);
+						qw_counter += 1;
+						qw_free -= 1;
+
+					} else {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+				}
+
+				fd->tunnel_prot = PROT_TUN_GTPV1U;
+			}
+
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_GTP_PSC",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_gtp_psc_generic_hdr *gtp_psc_spec =
+					(const struct rte_gtp_psc_generic_hdr *)elem[eidx].spec;
+				const struct rte_gtp_psc_generic_hdr *gtp_psc_mask =
+					(const struct rte_gtp_psc_generic_hdr *)elem[eidx].mask;
+
+				if (gtp_psc_spec == NULL || gtp_psc_mask == NULL) {
+					fd->tunnel_prot = PROT_TUN_GTPV1U;
+					break;
+				}
+
+				if (gtp_psc_mask->type != 0 ||
+					gtp_psc_mask->ext_hdr_len != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested GTP PSC field is not supported by running SW version");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (gtp_psc_mask->qfi) {
+					if (sw_counter < 2) {
+						uint32_t *sw_data =
+							&packet_data[1 - sw_counter];
+						uint32_t *sw_mask =
+							&packet_mask[1 - sw_counter];
+
+						sw_mask[0] = ntohl(gtp_psc_mask->qfi);
+						sw_data[0] = ntohl(gtp_psc_spec->qfi) &
+							sw_mask[0];
+
+						km_add_match_elem(&fd->km, &sw_data[0],
+							&sw_mask[0], 1,
+							DYN_L4_PAYLOAD, 14);
+						set_key_def_sw(key_def, sw_counter,
+							DYN_L4_PAYLOAD, 14);
+						sw_counter += 1;
+
+					} else if (qw_counter < 2 && qw_free > 0) {
+						uint32_t *qw_data =
+							&packet_data[2 + 4 -
+							qw_counter * 4];
+						uint32_t *qw_mask =
+							&packet_mask[2 + 4 -
+							qw_counter * 4];
+
+						qw_data[0] = ntohl(gtp_psc_spec->qfi);
+						qw_data[1] = 0;
+						qw_data[2] = 0;
+						qw_data[3] = 0;
+
+						qw_mask[0] = ntohl(gtp_psc_mask->qfi);
+						qw_mask[1] = 0;
+						qw_mask[2] = 0;
+						qw_mask[3] = 0;
+
+						qw_data[0] &= qw_mask[0];
+						qw_data[1] &= qw_mask[1];
+						qw_data[2] &= qw_mask[2];
+						qw_data[3] &= qw_mask[3];
+
+						km_add_match_elem(&fd->km, &qw_data[0],
+							&qw_mask[0], 4,
+							DYN_L4_PAYLOAD, 14);
+						set_key_def_qw(key_def, qw_counter,
+							DYN_L4_PAYLOAD, 14);
+						qw_counter += 1;
+						qw_free -= 1;
+
+					} else {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+				}
+
+				fd->tunnel_prot = PROT_TUN_GTPV1U;
+			}
+
+			break;
+
 		case RTE_FLOW_ITEM_TYPE_PORT_ID:
 			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_PORT_ID",
 				dev->ndev->adapter_no, dev->port);
@@ -1928,7 +2292,7 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 	uint16_t forced_vlan_vid __rte_unused, uint16_t caller_id,
 	struct rte_flow_error *error, uint32_t port_id,
 	uint32_t num_dest_port __rte_unused, uint32_t num_queues __rte_unused,
-	uint32_t *packet_data __rte_unused, uint32_t *packet_mask __rte_unused,
+	uint32_t *packet_data, uint32_t *packet_mask __rte_unused,
 	struct flm_flow_key_def_s *key_def __rte_unused)
 {
 	struct flow_handle *fh = calloc(1, sizeof(struct flow_handle));

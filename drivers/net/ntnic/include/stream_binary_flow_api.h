@@ -18,6 +18,7 @@
 
 #define FLOW_MAX_QUEUES 128
 
+#define RAW_ENCAP_DECAP_ELEMS_MAX 16
 /*
  * Flow eth dev profile determines how the FPGA module resources are
  * managed and what features are available
@@ -29,6 +30,27 @@ enum flow_eth_dev_profile {
 struct flow_queue_id_s {
 	int id;
 	int hw_id;
+};
+
+/*
+ * RTE_FLOW_ACTION_TYPE_RAW_ENCAP
+ */
+struct flow_action_raw_encap {
+	uint8_t *data;
+	uint8_t *preserve;
+	size_t size;
+	struct rte_flow_item items[RAW_ENCAP_DECAP_ELEMS_MAX];
+	int item_count;
+};
+
+/*
+ * RTE_FLOW_ACTION_TYPE_RAW_DECAP
+ */
+struct flow_action_raw_decap {
+	uint8_t *data;
+	size_t size;
+	struct rte_flow_item items[RAW_ENCAP_DECAP_ELEMS_MAX];
+	int item_count;
 };
 
 struct flow_eth_dev;             /* port device */
