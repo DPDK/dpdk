@@ -85,6 +85,150 @@ int hw_mod_pdb_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count
 	return be->iface->pdb_rcp_flush(be->be_dev, &be->pdb, start_idx, count);
 }
 
+static int hw_mod_pdb_rcp_mod(struct flow_api_backend_s *be, enum hw_pdb_e field, uint32_t index,
+	uint32_t *value, int get)
+{
+	if (index >= be->pdb.nb_pdb_rcp_categories) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	switch (_VER_) {
+	case 9:
+		switch (field) {
+		case HW_PDB_RCP_PRESET_ALL:
+			if (get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			memset(&be->pdb.v9.rcp[index], (uint8_t)*value,
+				sizeof(struct pdb_v9_rcp_s));
+			break;
+
+		case HW_PDB_RCP_FIND:
+			if (!get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			if (*value >= be->pdb.nb_pdb_rcp_categories) {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
+
+			FIND_EQUAL_INDEX(be->pdb.v9.rcp, struct pdb_v9_rcp_s, index, *value,
+				be->pdb.nb_pdb_rcp_categories);
+			break;
+
+		case HW_PDB_RCP_COMPARE:
+			if (!get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			if (*value >= be->pdb.nb_pdb_rcp_categories) {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
+
+			DO_COMPARE_INDEXS(be->pdb.v9.rcp, struct pdb_v9_rcp_s, index, *value);
+			break;
+
+		case HW_PDB_RCP_DESCRIPTOR:
+			GET_SET(be->pdb.v9.rcp[index].descriptor, value);
+			break;
+
+		case HW_PDB_RCP_DESC_LEN:
+			GET_SET(be->pdb.v9.rcp[index].desc_len, value);
+			break;
+
+		case HW_PDB_RCP_TX_PORT:
+			GET_SET(be->pdb.v9.rcp[index].tx_port, value);
+			break;
+
+		case HW_PDB_RCP_TX_IGNORE:
+			GET_SET(be->pdb.v9.rcp[index].tx_ignore, value);
+			break;
+
+		case HW_PDB_RCP_TX_NOW:
+			GET_SET(be->pdb.v9.rcp[index].tx_now, value);
+			break;
+
+		case HW_PDB_RCP_CRC_OVERWRITE:
+			GET_SET(be->pdb.v9.rcp[index].crc_overwrite, value);
+			break;
+
+		case HW_PDB_RCP_ALIGN:
+			GET_SET(be->pdb.v9.rcp[index].align, value);
+			break;
+
+		case HW_PDB_RCP_OFS0_DYN:
+			GET_SET(be->pdb.v9.rcp[index].ofs0_dyn, value);
+			break;
+
+		case HW_PDB_RCP_OFS0_REL:
+			GET_SET_SIGNED(be->pdb.v9.rcp[index].ofs0_rel, value);
+			break;
+
+		case HW_PDB_RCP_OFS1_DYN:
+			GET_SET(be->pdb.v9.rcp[index].ofs1_dyn, value);
+			break;
+
+		case HW_PDB_RCP_OFS1_REL:
+			GET_SET_SIGNED(be->pdb.v9.rcp[index].ofs1_rel, value);
+			break;
+
+		case HW_PDB_RCP_OFS2_DYN:
+			GET_SET(be->pdb.v9.rcp[index].ofs2_dyn, value);
+			break;
+
+		case HW_PDB_RCP_OFS2_REL:
+			GET_SET_SIGNED(be->pdb.v9.rcp[index].ofs2_rel, value);
+			break;
+
+		case HW_PDB_RCP_IP_PROT_TNL:
+			GET_SET(be->pdb.v9.rcp[index].ip_prot_tnl, value);
+			break;
+
+		case HW_PDB_RCP_PPC_HSH:
+			GET_SET(be->pdb.v9.rcp[index].ppc_hsh, value);
+			break;
+
+		case HW_PDB_RCP_DUPLICATE_EN:
+			GET_SET(be->pdb.v9.rcp[index].duplicate_en, value);
+			break;
+
+		case HW_PDB_RCP_DUPLICATE_BIT:
+			GET_SET(be->pdb.v9.rcp[index].duplicate_bit, value);
+			break;
+
+		case HW_PDB_RCP_PCAP_KEEP_FCS:
+			GET_SET(be->pdb.v9.rcp[index].pcap_keep_fcs, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 9 */
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_pdb_rcp_set(struct flow_api_backend_s *be, enum hw_pdb_e field, uint32_t index,
+	uint32_t value)
+{
+	return hw_mod_pdb_rcp_mod(be, field, index, &value, 0);
+}
+
 int hw_mod_pdb_config_flush(struct flow_api_backend_s *be)
 {
 	return be->iface->pdb_config_flush(be->be_dev, &be->pdb);

@@ -740,6 +740,9 @@ int hw_mod_pdb_alloc(struct flow_api_backend_s *be);
 void hw_mod_pdb_free(struct flow_api_backend_s *be);
 int hw_mod_pdb_reset(struct flow_api_backend_s *be);
 int hw_mod_pdb_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_pdb_rcp_set(struct flow_api_backend_s *be, enum hw_pdb_e field, uint32_t index,
+	uint32_t value);
+
 int hw_mod_pdb_config_flush(struct flow_api_backend_s *be);
 
 struct tpe_func_s {
