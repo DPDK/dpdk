@@ -129,11 +129,23 @@ struct km_flow_def_s {
 	int bank_used;
 	uint32_t *cuckoo_moves;	/* for CAM statistics only */
 	struct cam_distrib_s *cam_dist;
+	struct hasher_s *hsh;
 
 	/* TCAM specific bank management */
 	struct tcam_distrib_s *tcam_dist;
 	int tcam_start_bank;
 	int tcam_record;
+};
+
+/*
+ * RSS configuration, see struct rte_flow_action_rss
+ */
+struct hsh_def_s {
+	enum rte_eth_hash_function func;	/* RSS hash function to apply */
+	/* RSS hash types, see definition of RTE_ETH_RSS_* for hash calculation options */
+	uint64_t types;
+	uint32_t key_len;	/* Hash key length in bytes. */
+	const uint8_t *key;	/* Hash key. */
 };
 
 /*
@@ -247,6 +259,11 @@ struct nic_flow_def {
 	 * Key Matcher flow definitions
 	 */
 	struct km_flow_def_s km;
+
+	/*
+	 * Hash module RSS definitions
+	 */
+	struct hsh_def_s hsh;
 };
 
 enum flow_handle_type {

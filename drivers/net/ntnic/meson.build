@@ -56,6 +56,7 @@ sources = files(
         'nthw/flow_api/profile_inline/flow_api_hw_db_inline.c',
         'nthw/flow_api/flow_backend/flow_backend.c',
         'nthw/flow_api/flow_filter.c',
+        'nthw/flow_api/flow_hasher.c',
         'nthw/flow_api/flow_kcc.c',
         'nthw/flow_api/flow_km.c',
         'nthw/flow_api/hw_mod/hw_mod_backend.c',

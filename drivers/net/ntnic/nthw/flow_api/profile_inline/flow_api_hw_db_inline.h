@@ -60,6 +60,10 @@ struct hw_db_km_ft {
 	HW_DB_IDX;
 };
 
+struct hw_db_hsh_idx {
+	HW_DB_IDX;
+};
+
 enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_NONE = 0,
 	HW_DB_IDX_TYPE_COT,
@@ -68,6 +72,7 @@ enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_SLC_LR,
 	HW_DB_IDX_TYPE_KM_RCP,
 	HW_DB_IDX_TYPE_KM_FT,
+	HW_DB_IDX_TYPE_HSH,
 };
 
 /* Functionality data types */
@@ -133,6 +138,7 @@ struct hw_db_inline_action_set_data {
 		struct {
 			struct hw_db_cot_idx cot;
 			struct hw_db_qsl_idx qsl;
+			struct hw_db_hsh_idx hsh;
 		};
 	};
 };
@@ -174,6 +180,11 @@ void hw_db_inline_slc_lr_ref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_slc_lr_idx idx);
 void hw_db_inline_slc_lr_deref(struct flow_nic_dev *ndev, void *db_handle,
 	struct hw_db_slc_lr_idx idx);
+
+struct hw_db_hsh_idx hw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_hsh_data *data);
+void hw_db_inline_hsh_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_hsh_idx idx);
+void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_hsh_idx idx);
 
 /**/
 

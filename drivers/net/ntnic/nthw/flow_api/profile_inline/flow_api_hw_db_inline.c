@@ -30,9 +30,15 @@ struct hw_db_inline_resource_db {
 		int ref;
 	} *slc_lr;
 
+	struct hw_db_inline_resource_db_hsh {
+		struct hw_db_inline_hsh_data data;
+		int ref;
+	} *hsh;
+
 	uint32_t nb_cot;
 	uint32_t nb_qsl;
 	uint32_t nb_slc_lr;
+	uint32_t nb_hsh;
 
 	/* Items */
 	struct hw_db_inline_resource_db_cat {
@@ -122,6 +128,21 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 		}
 	}
 
+	db->cfn = calloc(db->nb_cat, sizeof(struct hw_db_inline_resource_db_cfn));
+
+	if (db->cfn == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
+	db->nb_hsh = ndev->be.hsh.nb_rcp;
+	db->hsh = calloc(db->nb_hsh, sizeof(struct hw_db_inline_resource_db_hsh));
+
+	if (db->hsh == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
 	*db_handle = db;
 	return 0;
 }
@@ -133,6 +154,8 @@ void hw_db_inline_destroy(void *db_handle)
 	free(db->cot);
 	free(db->qsl);
 	free(db->slc_lr);
+	free(db->hsh);
+
 	free(db->cat);
 
 	if (db->km) {
@@ -180,6 +203,10 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 			hw_db_inline_km_ft_deref(ndev, db_handle, *(struct hw_db_km_ft *)&idxs[i]);
 			break;
 
+		case HW_DB_IDX_TYPE_HSH:
+			hw_db_inline_hsh_deref(ndev, db_handle, *(struct hw_db_hsh_idx *)&idxs[i]);
+			break;
+
 		default:
 			break;
 		}
@@ -219,6 +246,9 @@ const void *hw_db_inline_find_data(struct flow_nic_dev *ndev, void *db_handle,
 		case HW_DB_IDX_TYPE_KM_FT:
 			return NULL;	/* FTs can't be easily looked up */
 
+		case HW_DB_IDX_TYPE_HSH:
+			return &db->hsh[idxs[i].ids].data;
+
 		default:
 			return NULL;
 		}
@@ -247,6 +277,7 @@ int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id,
 {
 	(void)ft;
 	(void)qsl_hw_id;
+	(void)ft;
 
 	const int offset = ((int)ndev->be.cat.cts_num + 1) / 2;
 	(void)offset;
@@ -846,5 +877,116 @@ void hw_db_inline_km_ft_deref(struct flow_nic_dev *ndev, void *db_handle, struct
 		memset(&km_rcp->ft[cat_offset + idx.id1].data, 0x0,
 			sizeof(struct hw_db_inline_km_ft_data));
 		km_rcp->ft[cat_offset + idx.id1].ref = 0;
+	}
+}
+
+/******************************************************************************/
+/* HSH                                                                        */
+/******************************************************************************/
+
+static int hw_db_inline_hsh_compare(const struct hw_db_inline_hsh_data *data1,
+	const struct hw_db_inline_hsh_data *data2)
+{
+	for (uint32_t i = 0; i < MAX_RSS_KEY_LEN; ++i)
+		if (data1->key[i] != data2->key[i])
+			return 0;
+
+	return data1->func == data2->func && data1->hash_mask == data2->hash_mask;
+}
+
+struct hw_db_hsh_idx hw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_hsh_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_hsh_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_HSH;
+
+	/* check if default hash configuration shall be used, i.e. rss_hf is not set */
+	/*
+	 * NOTE: hsh id 0 is reserved for "default"
+	 * HSH used by port configuration; All ports share the same default hash settings.
+	 */
+	if (data->hash_mask == 0) {
+		idx.ids = 0;
+		hw_db_inline_hsh_ref(ndev, db, idx);
+		return idx;
+	}
+
+	for (uint32_t i = 1; i < db->nb_hsh; ++i) {
+		int ref = db->hsh[i].ref;
+
+		if (ref > 0 && hw_db_inline_hsh_compare(data, &db->hsh[i].data)) {
+			idx.ids = i;
+			hw_db_inline_hsh_ref(ndev, db, idx);
+			return idx;
+		}
+
+		if (!found && ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	struct nt_eth_rss_conf tmp_rss_conf;
+
+	tmp_rss_conf.rss_hf = data->hash_mask;
+	memcpy(tmp_rss_conf.rss_key, data->key, MAX_RSS_KEY_LEN);
+	tmp_rss_conf.algorithm = data->func;
+	int res = flow_nic_set_hasher_fields(ndev, idx.ids, tmp_rss_conf);
+
+	if (res != 0) {
+		idx.error = 1;
+		return idx;
+	}
+
+	db->hsh[idx.ids].ref = 1;
+	memcpy(&db->hsh[idx.ids].data, data, sizeof(struct hw_db_inline_hsh_data));
+	flow_nic_mark_resource_used(ndev, RES_HSH_RCP, idx.ids);
+
+	hw_mod_hsh_rcp_flush(&ndev->be, idx.ids, 1);
+
+	return idx;
+}
+
+void hw_db_inline_hsh_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_hsh_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->hsh[idx.ids].ref += 1;
+}
+
+void hw_db_inline_hsh_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_hsh_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	db->hsh[idx.ids].ref -= 1;
+
+	if (db->hsh[idx.ids].ref <= 0) {
+		/*
+		 * NOTE: hsh id 0 is reserved for "default" HSH used by
+		 * port configuration, so we shall keep it even if
+		 * it is not used by any flow
+		 */
+		if (idx.ids > 0) {
+			hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, idx.ids, 0, 0x0);
+			hw_mod_hsh_rcp_flush(&ndev->be, idx.ids, 1);
+
+			memset(&db->hsh[idx.ids].data, 0x0, sizeof(struct hw_db_inline_hsh_data));
+			flow_nic_free_resource(ndev, RES_HSH_RCP, idx.ids);
+		}
+
+		db->hsh[idx.ids].ref = 0;
 	}
 }

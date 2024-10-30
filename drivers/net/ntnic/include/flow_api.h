@@ -29,6 +29,37 @@ struct hw_mod_resource_s {
  */
 int flow_delete_eth_dev(struct flow_eth_dev *eth_dev);
 
+/**
+ * A structure used to configure the Receive Side Scaling (RSS) feature
+ * of an Ethernet port.
+ */
+struct nt_eth_rss_conf {
+	/**
+	 * In rte_eth_dev_rss_hash_conf_get(), the *rss_key_len* should be
+	 * greater than or equal to the *hash_key_size* which get from
+	 * rte_eth_dev_info_get() API. And the *rss_key* should contain at least
+	 * *hash_key_size* bytes. If not meet these requirements, the query
+	 * result is unreliable even if the operation returns success.
+	 *
+	 * In rte_eth_dev_rss_hash_update() or rte_eth_dev_configure(), if
+	 * *rss_key* is not NULL, the *rss_key_len* indicates the length of the
+	 * *rss_key* in bytes and it should be equal to *hash_key_size*.
+	 * If *rss_key* is NULL, drivers are free to use a random or a default key.
+	 */
+	uint8_t rss_key[MAX_RSS_KEY_LEN];
+	/**
+	 * Indicates the type of packets or the specific part of packets to
+	 * which RSS hashing is to be applied.
+	 */
+	uint64_t rss_hf;
+	/**
+	 * Hash algorithm.
+	 */
+	enum rte_eth_hash_function algorithm;
+};
+
+int sprint_nt_rss_mask(char *str, uint16_t str_len, const char *prefix, uint64_t hash_mask);
+
 struct flow_eth_dev {
 	/* NIC that owns this port device */
 	struct flow_nic_dev *ndev;
@@ -47,6 +78,11 @@ struct flow_eth_dev {
 	int rss_target_id;
 
 	struct flow_eth_dev *next;
+};
+
+enum flow_nic_hash_e {
+	HASH_ALGO_ROUND_ROBIN = 0,
+	HASH_ALGO_5TUPLE,
 };
 
 /* registered NIC backends */
@@ -190,5 +226,9 @@ void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 
 int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
 int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
+
+int flow_nic_set_hasher(struct flow_nic_dev *ndev, int hsh_idx, enum flow_nic_hash_e algorithm);
+int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
+	struct nt_eth_rss_conf rss_conf);
 
 #endif

@@ -89,3 +89,182 @@ int hw_mod_hsh_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count
 
 	return be->iface->hsh_rcp_flush(be->be_dev, &be->hsh, start_idx, count);
 }
+
+static int hw_mod_hsh_rcp_mod(struct flow_api_backend_s *be, enum hw_hsh_e field, uint32_t index,
+	uint32_t word_off, uint32_t *value, int get)
+{
+	if (index >= be->hsh.nb_rcp) {
+		INDEX_TOO_LARGE_LOG;
+		return INDEX_TOO_LARGE;
+	}
+
+	switch (_VER_) {
+	case 5:
+		switch (field) {
+		case HW_HSH_RCP_PRESET_ALL:
+			if (get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			memset(&be->hsh.v5.rcp[index], (uint8_t)*value,
+				sizeof(struct hsh_v5_rcp_s));
+			break;
+
+		case HW_HSH_RCP_COMPARE:
+			if (!get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			if ((unsigned int)word_off >= be->hsh.nb_rcp) {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
+
+			DO_COMPARE_INDEXS(be->hsh.v5.rcp, struct hsh_v5_rcp_s, index, word_off);
+			break;
+
+		case HW_HSH_RCP_FIND:
+			if (!get) {
+				UNSUP_FIELD_LOG;
+				return UNSUP_FIELD;
+			}
+
+			if ((unsigned int)word_off >= be->hsh.nb_rcp) {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
+
+			FIND_EQUAL_INDEX(be->hsh.v5.rcp, struct hsh_v5_rcp_s, index, word_off,
+				be->hsh.nb_rcp);
+			break;
+
+		case HW_HSH_RCP_LOAD_DIST_TYPE:
+			GET_SET(be->hsh.v5.rcp[index].load_dist_type, value);
+			break;
+
+		case HW_HSH_RCP_MAC_PORT_MASK:
+			if (word_off > HSH_RCP_MAC_PORT_MASK_SIZE) {
+				WORD_OFF_TOO_LARGE_LOG;
+				return WORD_OFF_TOO_LARGE;
+			}
+
+			GET_SET(be->hsh.v5.rcp[index].mac_port_mask[word_off], value);
+			break;
+
+		case HW_HSH_RCP_SORT:
+			GET_SET(be->hsh.v5.rcp[index].sort, value);
+			break;
+
+		case HW_HSH_RCP_QW0_PE:
+			GET_SET(be->hsh.v5.rcp[index].qw0_pe, value);
+			break;
+
+		case HW_HSH_RCP_QW0_OFS:
+			GET_SET_SIGNED(be->hsh.v5.rcp[index].qw0_ofs, value);
+			break;
+
+		case HW_HSH_RCP_QW4_PE:
+			GET_SET(be->hsh.v5.rcp[index].qw4_pe, value);
+			break;
+
+		case HW_HSH_RCP_QW4_OFS:
+			GET_SET_SIGNED(be->hsh.v5.rcp[index].qw4_ofs, value);
+			break;
+
+		case HW_HSH_RCP_W8_PE:
+			GET_SET(be->hsh.v5.rcp[index].w8_pe, value);
+			break;
+
+		case HW_HSH_RCP_W8_OFS:
+			GET_SET_SIGNED(be->hsh.v5.rcp[index].w8_ofs, value);
+			break;
+
+		case HW_HSH_RCP_W8_SORT:
+			GET_SET(be->hsh.v5.rcp[index].w8_sort, value);
+			break;
+
+		case HW_HSH_RCP_W9_PE:
+			GET_SET(be->hsh.v5.rcp[index].w9_pe, value);
+			break;
+
+		case HW_HSH_RCP_W9_OFS:
+			GET_SET_SIGNED(be->hsh.v5.rcp[index].w9_ofs, value);
+			break;
+
+		case HW_HSH_RCP_W9_SORT:
+			GET_SET(be->hsh.v5.rcp[index].w9_sort, value);
+			break;
+
+		case HW_HSH_RCP_W9_P:
+			GET_SET(be->hsh.v5.rcp[index].w9_p, value);
+			break;
+
+		case HW_HSH_RCP_P_MASK:
+			GET_SET(be->hsh.v5.rcp[index].p_mask, value);
+			break;
+
+		case HW_HSH_RCP_WORD_MASK:
+			if (word_off > HSH_RCP_WORD_MASK_SIZE) {
+				WORD_OFF_TOO_LARGE_LOG;
+				return WORD_OFF_TOO_LARGE;
+			}
+
+			GET_SET(be->hsh.v5.rcp[index].word_mask[word_off], value);
+			break;
+
+		case HW_HSH_RCP_SEED:
+			GET_SET(be->hsh.v5.rcp[index].seed, value);
+			break;
+
+		case HW_HSH_RCP_TNL_P:
+			GET_SET(be->hsh.v5.rcp[index].tnl_p, value);
+			break;
+
+		case HW_HSH_RCP_HSH_VALID:
+			GET_SET(be->hsh.v5.rcp[index].hsh_valid, value);
+			break;
+
+		case HW_HSH_RCP_HSH_TYPE:
+			GET_SET(be->hsh.v5.rcp[index].hsh_type, value);
+			break;
+
+		case HW_HSH_RCP_TOEPLITZ:
+			GET_SET(be->hsh.v5.rcp[index].toeplitz, value);
+			break;
+
+		case HW_HSH_RCP_K:
+			if (word_off > HSH_RCP_KEY_SIZE) {
+				WORD_OFF_TOO_LARGE_LOG;
+				return WORD_OFF_TOO_LARGE;
+			}
+
+			GET_SET(be->hsh.v5.rcp[index].k[word_off], value);
+			break;
+
+		case HW_HSH_RCP_AUTO_IPV4_MASK:
+			GET_SET(be->hsh.v5.rcp[index].auto_ipv4_mask, value);
+			break;
+
+		default:
+			UNSUP_FIELD_LOG;
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	/* end case 5 */
+	default:
+		UNSUP_VER_LOG;
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_hsh_rcp_set(struct flow_api_backend_s *be, enum hw_hsh_e field, uint32_t index,
+	uint32_t word_off, uint32_t value)
+{
+	return hw_mod_hsh_rcp_mod(be, field, index, word_off, &value, 0);
+}

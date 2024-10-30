@@ -9,6 +9,7 @@
 #include "hw_mod_backend.h"
 #include "flow_api_engine.h"
 #include "nt_util.h"
+#include "flow_hasher.h"
 
 #define MAX_QWORDS 2
 #define MAX_SWORDS 2
@@ -75,10 +76,25 @@ static int tcam_find_mapping(struct km_flow_def_s *km);
 
 void km_attach_ndev_resource_management(struct km_flow_def_s *km, void **handle)
 {
+	/*
+	 * KM entries occupied in CAM - to manage the cuckoo shuffling
+	 * and manage CAM population and usage
+	 * KM entries occupied in TCAM - to manage population and usage
+	 */
+	if (!*handle) {
+		*handle = calloc(1,
+			(size_t)CAM_ENTRIES + sizeof(uint32_t) + (size_t)TCAM_ENTRIES +
+			sizeof(struct hasher_s));
+		NT_LOG(DBG, FILTER, "Allocate NIC DEV CAM and TCAM record manager");
+	}
+
 	km->cam_dist = (struct cam_distrib_s *)*handle;
 	km->cuckoo_moves = (uint32_t *)((char *)km->cam_dist + CAM_ENTRIES);
 	km->tcam_dist =
 		(struct tcam_distrib_s *)((char *)km->cam_dist + CAM_ENTRIES + sizeof(uint32_t));
+
+	km->hsh = (struct hasher_s *)((char *)km->tcam_dist + TCAM_ENTRIES);
+	init_hasher(km->hsh, km->be->km.nb_cam_banks, km->be->km.nb_cam_records);
 }
 
 void km_free_ndev_resource_management(void **handle)
@@ -839,8 +855,17 @@ static int move_cuckoo_index_level(struct km_flow_def_s *km_parent, int bank_idx
 static int km_write_data_to_cam(struct km_flow_def_s *km)
 {
 	int res = 0;
+	int val[MAX_BANKS];
 	assert(km->be->km.nb_cam_banks <= MAX_BANKS);
 	assert(km->cam_dist);
+
+	/* word list without info set */
+	gethash(km->hsh, km->entry_word, val);
+
+	for (uint32_t i = 0; i < km->be->km.nb_cam_banks; i++) {
+		/* if paired we start always on an even address - reset bit 0 */
+		km->record_indexes[i] = (km->cam_paired) ? val[i] & ~1 : val[i];
+	}
 
 	NT_LOG(DBG, FILTER, "KM HASH [%03X, %03X, %03X]", km->record_indexes[0],
 		km->record_indexes[1], km->record_indexes[2]);

@@ -2,6 +2,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2023 Napatech A/S
  */
+#include "ntlog.h"
+#include "nt_util.h"
 
 #include "flow_api_engine.h"
 #include "flow_api_nic_setup.h"
@@ -9,6 +11,11 @@
 
 #include "flow_api.h"
 #include "flow_filter.h"
+
+#define RSS_TO_STRING(name) \
+	{                \
+		name, #name   \
+	}
 
 const char *dbg_res_descr[] = {
 	/* RES_QUEUE */ "RES_QUEUE",
@@ -771,6 +778,211 @@ void *flow_api_get_be_dev(struct flow_nic_dev *ndev)
 	}
 
 	return ndev->be.be_dev;
+}
+
+/* Information for a given RSS type. */
+struct rss_type_info {
+	uint64_t rss_type;
+	const char *str;
+};
+
+static struct rss_type_info rss_to_string[] = {
+	/* RTE_BIT64(2)   IPv4 dst + IPv4 src */
+	RSS_TO_STRING(RTE_ETH_RSS_IPV4),
+	/* RTE_BIT64(3)   IPv4 dst + IPv4 src + Identification of group of fragments  */
+	RSS_TO_STRING(RTE_ETH_RSS_FRAG_IPV4),
+	/* RTE_BIT64(4)   IPv4 dst + IPv4 src + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_NONFRAG_IPV4_TCP),
+	/* RTE_BIT64(5)   IPv4 dst + IPv4 src + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_NONFRAG_IPV4_UDP),
+	/* RTE_BIT64(6)   IPv4 dst + IPv4 src + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_NONFRAG_IPV4_SCTP),
+	/* RTE_BIT64(7)   IPv4 dst + IPv4 src + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_NONFRAG_IPV4_OTHER),
+	/*
+	 * RTE_BIT64(14)  128-bits of L2 payload starting after src MAC, i.e. including optional
+	 * VLAN tag and ethertype. Overrides all L3 and L4 flags at the same level, but inner
+	 * L2 payload can be combined with outer S-VLAN and GTPU TEID flags.
+	 */
+	RSS_TO_STRING(RTE_ETH_RSS_L2_PAYLOAD),
+	/* RTE_BIT64(18)  L4 dst + L4 src + L4 protocol - see comment of RTE_ETH_RSS_L4_CHKSUM */
+	RSS_TO_STRING(RTE_ETH_RSS_PORT),
+	/* RTE_BIT64(19)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_VXLAN),
+	/* RTE_BIT64(20)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_GENEVE),
+	/* RTE_BIT64(21)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_NVGRE),
+	/* RTE_BIT64(23)  GTP TEID - always from outer GTPU header */
+	RSS_TO_STRING(RTE_ETH_RSS_GTPU),
+	/* RTE_BIT64(24)  MAC dst + MAC src */
+	RSS_TO_STRING(RTE_ETH_RSS_ETH),
+	/* RTE_BIT64(25)  outermost VLAN ID + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_S_VLAN),
+	/* RTE_BIT64(26)  innermost VLAN ID + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_C_VLAN),
+	/* RTE_BIT64(27)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_ESP),
+	/* RTE_BIT64(28)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_AH),
+	/* RTE_BIT64(29)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L2TPV3),
+	/* RTE_BIT64(30)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_PFCP),
+	/* RTE_BIT64(31)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_PPPOE),
+	/* RTE_BIT64(32)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_ECPRI),
+	/* RTE_BIT64(33)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_MPLS),
+	/* RTE_BIT64(34)  IPv4 Header checksum + L4 protocol */
+	RSS_TO_STRING(RTE_ETH_RSS_IPV4_CHKSUM),
+
+	/*
+	 * if combined with RTE_ETH_RSS_NONFRAG_IPV4_[TCP|UDP|SCTP] then
+	 *   L4 protocol + chosen protocol header Checksum
+	 * else
+	 *   error
+	 */
+	/* RTE_BIT64(35) */
+	RSS_TO_STRING(RTE_ETH_RSS_L4_CHKSUM),
+#ifndef ANDROMEDA_DPDK_21_11
+	/* RTE_BIT64(36)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L2TPV2),
+#endif
+
+	{ RTE_BIT64(37), "unknown_RTE_BIT64(37)" },
+	{ RTE_BIT64(38), "unknown_RTE_BIT64(38)" },
+	{ RTE_BIT64(39), "unknown_RTE_BIT64(39)" },
+	{ RTE_BIT64(40), "unknown_RTE_BIT64(40)" },
+	{ RTE_BIT64(41), "unknown_RTE_BIT64(41)" },
+	{ RTE_BIT64(42), "unknown_RTE_BIT64(42)" },
+	{ RTE_BIT64(43), "unknown_RTE_BIT64(43)" },
+	{ RTE_BIT64(44), "unknown_RTE_BIT64(44)" },
+	{ RTE_BIT64(45), "unknown_RTE_BIT64(45)" },
+	{ RTE_BIT64(46), "unknown_RTE_BIT64(46)" },
+	{ RTE_BIT64(47), "unknown_RTE_BIT64(47)" },
+	{ RTE_BIT64(48), "unknown_RTE_BIT64(48)" },
+	{ RTE_BIT64(49), "unknown_RTE_BIT64(49)" },
+
+	/* RTE_BIT64(50)  outermost encapsulation */
+	RSS_TO_STRING(RTE_ETH_RSS_LEVEL_OUTERMOST),
+	/* RTE_BIT64(51)  innermost encapsulation */
+	RSS_TO_STRING(RTE_ETH_RSS_LEVEL_INNERMOST),
+
+	/* RTE_BIT64(52)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_PRE96),
+	/* RTE_BIT64(53)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_PRE64),
+	/* RTE_BIT64(54)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_PRE56),
+	/* RTE_BIT64(55)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_PRE48),
+	/* RTE_BIT64(56)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_PRE40),
+	/* RTE_BIT64(57)  Not supported */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_PRE32),
+
+	/* RTE_BIT64(58) */
+	RSS_TO_STRING(RTE_ETH_RSS_L2_DST_ONLY),
+	/* RTE_BIT64(59) */
+	RSS_TO_STRING(RTE_ETH_RSS_L2_SRC_ONLY),
+	/* RTE_BIT64(60) */
+	RSS_TO_STRING(RTE_ETH_RSS_L4_DST_ONLY),
+	/* RTE_BIT64(61) */
+	RSS_TO_STRING(RTE_ETH_RSS_L4_SRC_ONLY),
+	/* RTE_BIT64(62) */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_DST_ONLY),
+	/* RTE_BIT64(63) */
+	RSS_TO_STRING(RTE_ETH_RSS_L3_SRC_ONLY),
+};
+
+int sprint_nt_rss_mask(char *str, uint16_t str_len, const char *prefix, uint64_t hash_mask)
+{
+	if (str == NULL || str_len == 0)
+		return -1;
+
+	memset(str, 0x0, str_len);
+	uint16_t str_end = 0;
+	const struct rss_type_info *start = rss_to_string;
+
+	for (const struct rss_type_info *p = start; p != start + ARRAY_SIZE(rss_to_string); ++p) {
+		if (p->rss_type & hash_mask) {
+			if (strlen(prefix) + strlen(p->str) < (size_t)(str_len - str_end)) {
+				snprintf(str + str_end, str_len - str_end, "%s", prefix);
+				str_end += strlen(prefix);
+				snprintf(str + str_end, str_len - str_end, "%s", p->str);
+				str_end += strlen(p->str);
+
+			} else {
+				return -1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Hash
+ */
+
+int flow_nic_set_hasher(struct flow_nic_dev *ndev, int hsh_idx, enum flow_nic_hash_e algorithm)
+{
+	hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_PRESET_ALL, hsh_idx, 0, 0);
+
+	switch (algorithm) {
+	case HASH_ALGO_5TUPLE:
+		/* need to create an IPv6 hashing and enable the adaptive ip mask bit */
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_LOAD_DIST_TYPE, hsh_idx, 0, 2);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_QW0_PE, hsh_idx, 0, DYN_FINAL_IP_DST);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_QW0_OFS, hsh_idx, 0, -16);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_QW4_PE, hsh_idx, 0, DYN_FINAL_IP_DST);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_QW4_OFS, hsh_idx, 0, 0);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_W8_PE, hsh_idx, 0, DYN_L4);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_W8_OFS, hsh_idx, 0, 0);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_W9_PE, hsh_idx, 0, 0);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_W9_OFS, hsh_idx, 0, 0);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_W9_P, hsh_idx, 0, 0);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_P_MASK, hsh_idx, 0, 1);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 0, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 1, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 2, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 3, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 4, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 5, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 6, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 7, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 8, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx, 9, 0);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_SEED, hsh_idx, 0, 0xffffffff);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_HSH_VALID, hsh_idx, 0, 1);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_HSH_TYPE, hsh_idx, 0, HASH_5TUPLE);
+		hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_AUTO_IPV4_MASK, hsh_idx, 0, 1);
+
+		NT_LOG(DBG, FILTER, "Set IPv6 5-tuple hasher with adaptive IPv4 hashing");
+		break;
+
+	default:
+	case HASH_ALGO_ROUND_ROBIN:
+		/* zero is round-robin */
+		break;
+	}
+
+	return 0;
+}
+
+int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
+	struct nt_eth_rss_conf rss_conf)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return -1;
+	}
+
+	return profile_inline_ops->flow_nic_set_hasher_fields_inline(ndev, hsh_idx, rss_conf);
 }
 
 static const struct flow_filter_ops ops = {

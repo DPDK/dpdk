@@ -38,4 +38,8 @@ int flow_destroy_profile_inline(struct flow_eth_dev *dev,
 	struct flow_handle *flow,
 	struct rte_flow_error *error);
 
+int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev,
+	int hsh_idx,
+	struct nt_eth_rss_conf rss_conf);
+
 #endif	/* _FLOW_API_PROFILE_INLINE_H_ */

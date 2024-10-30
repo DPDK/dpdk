@@ -149,14 +149,27 @@ enum km_flm_if_select_e {
 	int debug
 
 enum frame_offs_e {
+	DYN_SOF = 0,
 	DYN_L2 = 1,
 	DYN_FIRST_VLAN = 2,
+	DYN_MPLS = 3,
 	DYN_L3 = 4,
+	DYN_ID_IPV4_6 = 5,
+	DYN_FINAL_IP_DST = 6,
 	DYN_L4 = 7,
 	DYN_L4_PAYLOAD = 8,
+	DYN_TUN_PAYLOAD = 9,
+	DYN_TUN_L2 = 10,
+	DYN_TUN_VLAN = 11,
+	DYN_TUN_MPLS = 12,
 	DYN_TUN_L3 = 13,
+	DYN_TUN_ID_IPV4_6 = 14,
+	DYN_TUN_FINAL_IP_DST = 15,
 	DYN_TUN_L4 = 16,
 	DYN_TUN_L4_PAYLOAD = 17,
+	DYN_EOF = 18,
+	DYN_L3_PAYLOAD_END = 19,
+	DYN_TUN_L3_PAYLOAD_END = 20,
 	SB_VNI = SWX_INFO | 1,
 	SB_MAC_PORT = SWX_INFO | 2,
 	SB_KCC_ID = SWX_INFO | 3
@@ -226,6 +239,11 @@ enum {
 	PROT_TUN_L4_ICMP = 4
 };
 
+
+enum {
+	HASH_HASH_NONE = 0,
+	HASH_5TUPLE = 8,
+};
 
 enum {
 	CPY_SELECT_DSCP_IPV4 = 0,
@@ -670,6 +688,8 @@ int hw_mod_hsh_alloc(struct flow_api_backend_s *be);
 void hw_mod_hsh_free(struct flow_api_backend_s *be);
 int hw_mod_hsh_reset(struct flow_api_backend_s *be);
 int hw_mod_hsh_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_hsh_rcp_set(struct flow_api_backend_s *be, enum hw_hsh_e field, uint32_t index,
+	uint32_t word_off, uint32_t value);
 
 struct qsl_func_s {
 	COMMON_FUNC_INFO_S;
