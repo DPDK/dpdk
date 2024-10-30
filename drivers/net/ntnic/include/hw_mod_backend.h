@@ -697,6 +697,8 @@ int hw_mod_slc_lr_alloc(struct flow_api_backend_s *be);
 void hw_mod_slc_lr_free(struct flow_api_backend_s *be);
 int hw_mod_slc_lr_reset(struct flow_api_backend_s *be);
 int hw_mod_slc_lr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_slc_lr_rcp_set(struct flow_api_backend_s *be, enum hw_slc_lr_e field, uint32_t index,
+	uint32_t value);
 
 struct pdb_func_s {
 	COMMON_FUNC_INFO_S;

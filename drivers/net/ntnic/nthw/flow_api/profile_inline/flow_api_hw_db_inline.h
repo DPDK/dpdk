@@ -40,10 +40,15 @@ struct hw_db_cat_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_slc_lr_idx {
+	HW_DB_IDX;
+};
+
 enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_NONE = 0,
 	HW_DB_IDX_TYPE_COT,
 	HW_DB_IDX_TYPE_CAT,
+	HW_DB_IDX_TYPE_SLC_LR,
 };
 
 /* Functionality data types */
@@ -89,6 +94,13 @@ struct hw_db_inline_cot_data {
 	uint32_t padding : 24;
 };
 
+struct hw_db_inline_slc_lr_data {
+	uint32_t head_slice_en : 1;
+	uint32_t head_slice_dyn : 5;
+	uint32_t head_slice_ofs : 8;
+	uint32_t padding : 18;
+};
+
 struct hw_db_inline_hsh_data {
 	uint32_t func;
 	uint64_t hash_mask;
@@ -118,6 +130,13 @@ struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_ha
 	const struct hw_db_inline_cot_data *data);
 void hw_db_inline_cot_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);
 void hw_db_inline_cot_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);
+
+struct hw_db_slc_lr_idx hw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_slc_lr_data *data);
+void hw_db_inline_slc_lr_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_slc_lr_idx idx);
+void hw_db_inline_slc_lr_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_slc_lr_idx idx);
 
 /**/
 

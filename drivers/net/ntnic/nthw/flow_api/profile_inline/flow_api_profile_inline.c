@@ -2276,18 +2276,38 @@ static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_d
 	return 0;
 }
 
-static int setup_flow_flm_actions(struct flow_eth_dev *dev __rte_unused,
-	const struct nic_flow_def *fd __rte_unused,
+static int setup_flow_flm_actions(struct flow_eth_dev *dev,
+	const struct nic_flow_def *fd,
 	const struct hw_db_inline_qsl_data *qsl_data __rte_unused,
 	const struct hw_db_inline_hsh_data *hsh_data __rte_unused,
 	uint32_t group __rte_unused,
-	uint32_t local_idxs[] __rte_unused,
-	uint32_t *local_idx_counter __rte_unused,
+	uint32_t local_idxs[],
+	uint32_t *local_idx_counter,
 	uint16_t *flm_rpl_ext_ptr __rte_unused,
 	uint32_t *flm_ft __rte_unused,
 	uint32_t *flm_scrub __rte_unused,
-	struct rte_flow_error *error __rte_unused)
+	struct rte_flow_error *error)
 {
+	/* Setup SLC LR */
+	struct hw_db_slc_lr_idx slc_lr_idx = { .raw = 0 };
+
+	if (fd->header_strip_end_dyn != 0 || fd->header_strip_end_ofs != 0) {
+		struct hw_db_inline_slc_lr_data slc_lr_data = {
+			.head_slice_en = 1,
+			.head_slice_dyn = fd->header_strip_end_dyn,
+			.head_slice_ofs = fd->header_strip_end_ofs,
+		};
+		slc_lr_idx =
+			hw_db_inline_slc_lr_add(dev->ndev, dev->ndev->hw_db_handle, &slc_lr_data);
+		local_idxs[(*local_idx_counter)++] = slc_lr_idx.raw;
+
+		if (slc_lr_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference SLC LR resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
@@ -2449,6 +2469,9 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		if (hw_mod_cat_cot_flush(&ndev->be, 0, 1) < 0)
 			goto err_exit0;
 
+		/* SLC LR index 0 is reserved */
+		flow_nic_mark_resource_used(ndev, RES_SLC_LR_RCP, 0);
+
 		/* Setup filter using matching all packets violating traffic policing parameters */
 		flow_nic_mark_resource_used(ndev, RES_CAT_CFN, NT_VIOLATING_MBR_CFN);
 
@@ -2496,6 +2519,10 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
 		hw_mod_cat_cot_flush(&ndev->be, 0, 1);
 		flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
+
+		hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_PRESET_ALL, 0, 0);
+		hw_mod_slc_lr_rcp_flush(&ndev->be, 0, 1);
+		flow_nic_free_resource(ndev, RES_SLC_LR_RCP, 0);
 
 		hw_mod_tpe_reset(&ndev->be);
 		flow_nic_free_resource(ndev, RES_TPE_RCP, 0);

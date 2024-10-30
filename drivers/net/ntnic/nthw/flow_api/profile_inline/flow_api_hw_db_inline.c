@@ -20,7 +20,13 @@ struct hw_db_inline_resource_db {
 		int ref;
 	} *cot;
 
+	struct hw_db_inline_resource_db_slc_lr {
+		struct hw_db_inline_slc_lr_data data;
+		int ref;
+	} *slc_lr;
+
 	uint32_t nb_cot;
+	uint32_t nb_slc_lr;
 
 	/* Items */
 	struct hw_db_inline_resource_db_cat {
@@ -55,6 +61,14 @@ int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle)
 		return -1;
 	}
 
+	db->nb_slc_lr = ndev->be.max_categories;
+	db->slc_lr = calloc(db->nb_slc_lr, sizeof(struct hw_db_inline_resource_db_slc_lr));
+
+	if (db->slc_lr == NULL) {
+		hw_db_inline_destroy(db);
+		return -1;
+	}
+
 	db->nb_cat = ndev->be.cat.nb_cat_funcs;
 	db->cat = calloc(db->nb_cat, sizeof(struct hw_db_inline_resource_db_cat));
 
@@ -72,6 +86,7 @@ void hw_db_inline_destroy(void *db_handle)
 	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
 
 	free(db->cot);
+	free(db->slc_lr);
 	free(db->cat);
 
 	free(db->cfn);
@@ -93,6 +108,11 @@ void hw_db_inline_deref_idxs(struct flow_nic_dev *ndev, void *db_handle, struct 
 
 		case HW_DB_IDX_TYPE_COT:
 			hw_db_inline_cot_deref(ndev, db_handle, *(struct hw_db_cot_idx *)&idxs[i]);
+			break;
+
+		case HW_DB_IDX_TYPE_SLC_LR:
+			hw_db_inline_slc_lr_deref(ndev, db_handle,
+				*(struct hw_db_slc_lr_idx *)&idxs[i]);
 			break;
 
 		default:
@@ -232,6 +252,90 @@ void hw_db_inline_cot_deref(struct flow_nic_dev *ndev __rte_unused, void *db_han
 	if (db->cot[idx.ids].ref <= 0) {
 		memset(&db->cot[idx.ids].data, 0x0, sizeof(struct hw_db_inline_cot_data));
 		db->cot[idx.ids].ref = 0;
+	}
+}
+
+/******************************************************************************/
+/* SLC_LR                                                                     */
+/******************************************************************************/
+
+static int hw_db_inline_slc_lr_compare(const struct hw_db_inline_slc_lr_data *data1,
+	const struct hw_db_inline_slc_lr_data *data2)
+{
+	if (!data1->head_slice_en)
+		return data1->head_slice_en == data2->head_slice_en;
+
+	return data1->head_slice_en == data2->head_slice_en &&
+		data1->head_slice_dyn == data2->head_slice_dyn &&
+		data1->head_slice_ofs == data2->head_slice_ofs;
+}
+
+struct hw_db_slc_lr_idx hw_db_inline_slc_lr_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_slc_lr_data *data)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+	struct hw_db_slc_lr_idx idx = { .raw = 0 };
+	int found = 0;
+
+	idx.type = HW_DB_IDX_TYPE_SLC_LR;
+
+	for (uint32_t i = 1; i < db->nb_slc_lr; ++i) {
+		int ref = db->slc_lr[i].ref;
+
+		if (ref > 0 && hw_db_inline_slc_lr_compare(data, &db->slc_lr[i].data)) {
+			idx.ids = i;
+			hw_db_inline_slc_lr_ref(ndev, db, idx);
+			return idx;
+		}
+
+		if (!found && ref <= 0) {
+			found = 1;
+			idx.ids = i;
+		}
+	}
+
+	if (!found) {
+		idx.error = 1;
+		return idx;
+	}
+
+	db->slc_lr[idx.ids].ref = 1;
+	memcpy(&db->slc_lr[idx.ids].data, data, sizeof(struct hw_db_inline_slc_lr_data));
+
+	hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_HEAD_SLC_EN, idx.ids, data->head_slice_en);
+	hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_HEAD_DYN, idx.ids, data->head_slice_dyn);
+	hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_HEAD_OFS, idx.ids, data->head_slice_ofs);
+	hw_mod_slc_lr_rcp_flush(&ndev->be, idx.ids, 1);
+
+	return idx;
+}
+
+void hw_db_inline_slc_lr_ref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_slc_lr_idx idx)
+{
+	(void)ndev;
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (!idx.error)
+		db->slc_lr[idx.ids].ref += 1;
+}
+
+void hw_db_inline_slc_lr_deref(struct flow_nic_dev *ndev, void *db_handle,
+	struct hw_db_slc_lr_idx idx)
+{
+	struct hw_db_inline_resource_db *db = (struct hw_db_inline_resource_db *)db_handle;
+
+	if (idx.error)
+		return;
+
+	db->slc_lr[idx.ids].ref -= 1;
+
+	if (db->slc_lr[idx.ids].ref <= 0) {
+		hw_mod_slc_lr_rcp_set(&ndev->be, HW_SLC_LR_RCP_PRESET_ALL, idx.ids, 0x0);
+		hw_mod_slc_lr_rcp_flush(&ndev->be, idx.ids, 1);
+
+		memset(&db->slc_lr[idx.ids].data, 0x0, sizeof(struct hw_db_inline_slc_lr_data));
+		db->slc_lr[idx.ids].ref = 0;
 	}
 }
 
