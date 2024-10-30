@@ -21,6 +21,10 @@
 #define NT_FLM_OP_UNLEARN 0
 #define NT_FLM_OP_LEARN 1
 
+#define NT_FLM_VIOLATING_MBR_FLOW_TYPE 15
+#define NT_VIOLATING_MBR_CFN 0
+#define NT_VIOLATING_MBR_QSL 1
+
 static void *flm_lrn_queue_arr;
 
 static int rx_queue_idx_to_hw_id(const struct flow_eth_dev *dev, int id)
@@ -2346,6 +2350,67 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		/*
 		 * Flow for group 0
 		 */
+		struct hw_db_inline_action_set_data action_set_data = { 0 };
+		(void)action_set_data;
+
+		if (fd->jump_to_group != UINT32_MAX) {
+			/* Action Set only contains jump */
+			action_set_data.contains_jump = 1;
+			action_set_data.jump = fd->jump_to_group;
+
+		} else {
+			/* Action Set doesn't contain jump */
+			action_set_data.contains_jump = 0;
+
+			/* Setup COT */
+			struct hw_db_inline_cot_data cot_data = {
+				.matcher_color_contrib = 0,
+				.frag_rcp = 0,
+			};
+			struct hw_db_cot_idx cot_idx =
+				hw_db_inline_cot_add(dev->ndev, dev->ndev->hw_db_handle,
+				&cot_data);
+			fh->db_idxs[fh->db_idx_counter++] = cot_idx.raw;
+			action_set_data.cot = cot_idx;
+
+			if (cot_idx.error) {
+				NT_LOG(ERR, FILTER, "Could not reference COT resource");
+				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				goto error_out;
+			}
+		}
+
+		/* Setup CAT */
+		struct hw_db_inline_cat_data cat_data = {
+			.vlan_mask = (0xf << fd->vlans) & 0xf,
+			.mac_port_mask = 1 << fh->port_id,
+			.ptc_mask_frag = fd->fragmentation,
+			.ptc_mask_l2 = fd->l2_prot != -1 ? (1 << fd->l2_prot) : -1,
+			.ptc_mask_l3 = fd->l3_prot != -1 ? (1 << fd->l3_prot) : -1,
+			.ptc_mask_l4 = fd->l4_prot != -1 ? (1 << fd->l4_prot) : -1,
+			.err_mask_ttl = (fd->ttl_sub_enable &&
+				fd->ttl_sub_outer) ? -1 : 0x1,
+			.ptc_mask_tunnel = fd->tunnel_prot !=
+				-1 ? (1 << fd->tunnel_prot) : -1,
+			.ptc_mask_l3_tunnel =
+				fd->tunnel_l3_prot != -1 ? (1 << fd->tunnel_l3_prot) : -1,
+			.ptc_mask_l4_tunnel =
+				fd->tunnel_l4_prot != -1 ? (1 << fd->tunnel_l4_prot) : -1,
+			.err_mask_ttl_tunnel =
+				(fd->ttl_sub_enable && !fd->ttl_sub_outer) ? -1 : 0x1,
+			.ip_prot = fd->ip_prot,
+			.ip_prot_tunnel = fd->tunnel_ip_prot,
+		};
+		struct hw_db_cat_idx cat_idx =
+			hw_db_inline_cat_add(dev->ndev, dev->ndev->hw_db_handle, &cat_data);
+		fh->db_idxs[fh->db_idx_counter++] = cat_idx.raw;
+
+		if (cat_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference CAT resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
 		nic_insert_flow(dev->ndev, fh);
 	}
 
@@ -2377,6 +2442,20 @@ int initialize_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 	if (!ndev->flow_mgnt_prepared) {
 		/* Check static arrays are big enough */
 		assert(ndev->be.tpe.nb_cpy_writers <= MAX_CPY_WRITERS_SUPPORTED);
+
+		/* COT is locked to CFN. Don't set color for CFN 0 */
+		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
+
+		if (hw_mod_cat_cot_flush(&ndev->be, 0, 1) < 0)
+			goto err_exit0;
+
+		/* Setup filter using matching all packets violating traffic policing parameters */
+		flow_nic_mark_resource_used(ndev, RES_CAT_CFN, NT_VIOLATING_MBR_CFN);
+
+		if (hw_db_inline_setup_mbr_filter(ndev, NT_VIOLATING_MBR_CFN,
+			NT_FLM_VIOLATING_MBR_FLOW_TYPE,
+			NT_VIOLATING_MBR_QSL) < 0)
+			goto err_exit0;
 
 		ndev->id_table_handle = ntnic_id_table_create();
 
@@ -2412,6 +2491,10 @@ int done_flow_management_of_ndev_profile_inline(struct flow_nic_dev *ndev)
 		flow_group_handle_destroy(&ndev->group_handle);
 		ntnic_id_table_destroy(ndev->id_table_handle);
 
+		hw_mod_cat_cfn_set(&ndev->be, HW_CAT_CFN_PRESET_ALL, 0, 0, 0);
+		hw_mod_cat_cfn_flush(&ndev->be, 0, 1);
+		hw_mod_cat_cot_set(&ndev->be, HW_CAT_COT_PRESET_ALL, 0, 0);
+		hw_mod_cat_cot_flush(&ndev->be, 0, 1);
 		flow_nic_free_resource(ndev, RES_CAT_CFN, 0);
 
 		hw_mod_tpe_reset(&ndev->be);

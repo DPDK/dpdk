@@ -36,12 +36,37 @@ struct hw_db_cot_idx {
 	HW_DB_IDX;
 };
 
+struct hw_db_cat_idx {
+	HW_DB_IDX;
+};
+
 enum hw_db_idx_type {
 	HW_DB_IDX_TYPE_NONE = 0,
 	HW_DB_IDX_TYPE_COT,
+	HW_DB_IDX_TYPE_CAT,
 };
 
 /* Functionality data types */
+struct hw_db_inline_cat_data {
+	uint32_t vlan_mask : 4;
+	uint32_t mac_port_mask : 8;
+	uint32_t ptc_mask_frag : 4;
+	uint32_t ptc_mask_l2 : 7;
+	uint32_t ptc_mask_l3 : 3;
+	uint32_t ptc_mask_l4 : 5;
+	uint32_t padding0 : 1;
+
+	uint32_t ptc_mask_tunnel : 11;
+	uint32_t ptc_mask_l3_tunnel : 3;
+	uint32_t ptc_mask_l4_tunnel : 5;
+	uint32_t err_mask_ttl_tunnel : 2;
+	uint32_t err_mask_ttl : 2;
+	uint32_t padding1 : 9;
+
+	uint8_t ip_prot;
+	uint8_t ip_prot_tunnel;
+};
+
 struct hw_db_inline_qsl_data {
 	uint32_t discard : 1;
 	uint32_t drop : 1;
@@ -70,6 +95,16 @@ struct hw_db_inline_hsh_data {
 	uint8_t key[MAX_RSS_KEY_LEN];
 };
 
+struct hw_db_inline_action_set_data {
+	int contains_jump;
+	union {
+		int jump;
+		struct {
+			struct hw_db_cot_idx cot;
+		};
+	};
+};
+
 /**/
 
 int hw_db_inline_create(struct flow_nic_dev *ndev, void **db_handle);
@@ -83,5 +118,17 @@ struct hw_db_cot_idx hw_db_inline_cot_add(struct flow_nic_dev *ndev, void *db_ha
 	const struct hw_db_inline_cot_data *data);
 void hw_db_inline_cot_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);
 void hw_db_inline_cot_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cot_idx idx);
+
+/**/
+
+struct hw_db_cat_idx hw_db_inline_cat_add(struct flow_nic_dev *ndev, void *db_handle,
+	const struct hw_db_inline_cat_data *data);
+void hw_db_inline_cat_ref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cat_idx idx);
+void hw_db_inline_cat_deref(struct flow_nic_dev *ndev, void *db_handle, struct hw_db_cat_idx idx);
+
+/**/
+
+int hw_db_inline_setup_mbr_filter(struct flow_nic_dev *ndev, uint32_t cat_hw_id, uint32_t ft,
+	uint32_t qsl_hw_id);
 
 #endif	/* _FLOW_API_HW_DB_INLINE_H_ */

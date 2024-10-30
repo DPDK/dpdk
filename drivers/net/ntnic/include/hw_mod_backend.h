@@ -315,11 +315,35 @@ int hw_mod_cat_reset(struct flow_api_backend_s *be);
 int hw_mod_cat_cfn_flush(struct flow_api_backend_s *be, int start_idx, int count);
 int hw_mod_cat_cfn_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index, int word_off,
 	uint32_t value);
+/* KCE/KCS/FTE KM */
+int hw_mod_cat_fte_km_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+	int start_idx, int count);
+int hw_mod_cat_fte_km_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t value);
+int hw_mod_cat_fte_km_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t *value);
+/* KCE/KCS/FTE FLM */
+int hw_mod_cat_fte_flm_flush(struct flow_api_backend_s *be, enum km_flm_if_select_e if_num,
+	int start_idx, int count);
+int hw_mod_cat_fte_flm_set(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t value);
+int hw_mod_cat_fte_flm_get(struct flow_api_backend_s *be, enum hw_cat_e field,
+	enum km_flm_if_select_e if_num, int index, uint32_t *value);
 
 int hw_mod_cat_cte_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cte_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+	uint32_t value);
+
 int hw_mod_cat_cts_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cts_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+	uint32_t value);
+
 int hw_mod_cat_cot_flush(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_cat_cot_set(struct flow_api_backend_s *be, enum hw_cat_e field, int index,
+	uint32_t value);
+
 int hw_mod_cat_cct_flush(struct flow_api_backend_s *be, int start_idx, int count);
+
 int hw_mod_cat_kcc_flush(struct flow_api_backend_s *be, int start_idx, int count);
 
 int hw_mod_cat_exo_flush(struct flow_api_backend_s *be, int start_idx, int count);
