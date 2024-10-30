@@ -40,28 +40,7 @@ static int test_valid_kvargs(void)
 {
 	struct rte_kvargs *kvlist;
 	const char *args;
-	const char *valid_keys_list[] = { "foo", "check", NULL };
-	const char **valid_keys;
-
-	/* third test using list as value */
-	args = "foo=[0,1],check=value2";
-	valid_keys = valid_keys_list;
-	kvlist = rte_kvargs_parse(args, valid_keys);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error\n");
-		goto fail;
-	}
-	if (strcmp(kvlist->pairs[0].value, "[0,1]") != 0) {
-		printf("wrong value %s", kvlist->pairs[0].value);
-		goto fail;
-	}
-	count = kvlist->count;
-	if (count != 2) {
-		printf("invalid count value %d\n", count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	rte_kvargs_free(kvlist);
+	const char **valid_keys = NULL;
 
 	/* test using empty elements (it is valid) */
 	args = "foo=1,,check=value2,,";
@@ -235,6 +214,36 @@ test_parse_with_valid_keys(void)
 	return 0;
 }
 
+static int
+test_parse_list_value(void)
+{
+	const char *valid_keys[] = { "foo", "check", NULL };
+	const char *args = "foo=[0,1],check=value2";
+	struct rte_kvargs *kvlist;
+
+	kvlist = rte_kvargs_parse(args, valid_keys);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error\n");
+		return -1;
+	}
+
+	count = kvlist->count;
+	if (count != 2) {
+		printf("invalid count value %u\n", count);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	if (strcmp(kvlist->pairs[0].value, "[0,1]") != 0) {
+		printf("wrong value %s", kvlist->pairs[0].value);
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 /* test several error cases */
 static int test_invalid_kvargs(void)
 {
@@ -279,6 +288,7 @@ static struct unit_test_suite kvargs_test_suite  = {
 		TEST_CASE(test_basic_token_count),
 		TEST_CASE(test_parse_without_valid_keys),
 		TEST_CASE(test_parse_with_valid_keys),
+		TEST_CASE(test_parse_list_value),
 		TEST_CASE(test_invalid_kvargs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
