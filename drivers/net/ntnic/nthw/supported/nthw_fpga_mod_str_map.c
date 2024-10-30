@@ -20,5 +20,6 @@ const struct nthw_fpga_mod_str_s sa_nthw_fpga_mod_str_map[] = {
 	{ MOD_RST9563, "RST9563" },
 	{ MOD_SDC, "SDC" },
 	{ MOD_STA, "STA" },
+	{ MOD_TSM, "TSM" },
 	{ 0UL, NULL }
 };

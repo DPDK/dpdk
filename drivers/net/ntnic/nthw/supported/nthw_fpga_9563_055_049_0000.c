@@ -2575,6 +2575,397 @@ static nthw_fpga_register_init_s sta_registers[] = {
 	{ STA_STATUS, 7, 1, NTHW_FPGA_REG_TYPE_RC1, 0, 1, sta_status_fields },
 };
 
+static nthw_fpga_field_init_s tsm_con0_config_fields[] = {
+	{ TSM_CON0_CONFIG_BLIND, 5, 8, 9 }, { TSM_CON0_CONFIG_DC_SRC, 3, 5, 0 },
+	{ TSM_CON0_CONFIG_PORT, 3, 0, 0 }, { TSM_CON0_CONFIG_PPSIN_2_5V, 1, 13, 0 },
+	{ TSM_CON0_CONFIG_SAMPLE_EDGE, 2, 3, 2 },
+};
+
+static nthw_fpga_field_init_s tsm_con0_interface_fields[] = {
+	{ TSM_CON0_INTERFACE_EX_TERM, 2, 0, 3 }, { TSM_CON0_INTERFACE_IN_REF_PWM, 8, 12, 128 },
+	{ TSM_CON0_INTERFACE_PWM_ENA, 1, 2, 0 }, { TSM_CON0_INTERFACE_RESERVED, 1, 3, 0 },
+	{ TSM_CON0_INTERFACE_VTERM_PWM, 8, 4, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_con0_sample_hi_fields[] = {
+	{ TSM_CON0_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con0_sample_lo_fields[] = {
+	{ TSM_CON0_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con1_config_fields[] = {
+	{ TSM_CON1_CONFIG_BLIND, 5, 8, 9 }, { TSM_CON1_CONFIG_DC_SRC, 3, 5, 0 },
+	{ TSM_CON1_CONFIG_PORT, 3, 0, 0 }, { TSM_CON1_CONFIG_PPSIN_2_5V, 1, 13, 0 },
+	{ TSM_CON1_CONFIG_SAMPLE_EDGE, 2, 3, 2 },
+};
+
+static nthw_fpga_field_init_s tsm_con1_sample_hi_fields[] = {
+	{ TSM_CON1_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con1_sample_lo_fields[] = {
+	{ TSM_CON1_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con2_config_fields[] = {
+	{ TSM_CON2_CONFIG_BLIND, 5, 8, 9 }, { TSM_CON2_CONFIG_DC_SRC, 3, 5, 0 },
+	{ TSM_CON2_CONFIG_PORT, 3, 0, 0 }, { TSM_CON2_CONFIG_PPSIN_2_5V, 1, 13, 0 },
+	{ TSM_CON2_CONFIG_SAMPLE_EDGE, 2, 3, 2 },
+};
+
+static nthw_fpga_field_init_s tsm_con2_sample_hi_fields[] = {
+	{ TSM_CON2_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con2_sample_lo_fields[] = {
+	{ TSM_CON2_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con3_config_fields[] = {
+	{ TSM_CON3_CONFIG_BLIND, 5, 5, 26 },
+	{ TSM_CON3_CONFIG_PORT, 3, 0, 1 },
+	{ TSM_CON3_CONFIG_SAMPLE_EDGE, 2, 3, 1 },
+};
+
+static nthw_fpga_field_init_s tsm_con3_sample_hi_fields[] = {
+	{ TSM_CON3_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con3_sample_lo_fields[] = {
+	{ TSM_CON3_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con4_config_fields[] = {
+	{ TSM_CON4_CONFIG_BLIND, 5, 5, 26 },
+	{ TSM_CON4_CONFIG_PORT, 3, 0, 1 },
+	{ TSM_CON4_CONFIG_SAMPLE_EDGE, 2, 3, 1 },
+};
+
+static nthw_fpga_field_init_s tsm_con4_sample_hi_fields[] = {
+	{ TSM_CON4_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con4_sample_lo_fields[] = {
+	{ TSM_CON4_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con5_config_fields[] = {
+	{ TSM_CON5_CONFIG_BLIND, 5, 5, 26 },
+	{ TSM_CON5_CONFIG_PORT, 3, 0, 1 },
+	{ TSM_CON5_CONFIG_SAMPLE_EDGE, 2, 3, 1 },
+};
+
+static nthw_fpga_field_init_s tsm_con5_sample_hi_fields[] = {
+	{ TSM_CON5_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con5_sample_lo_fields[] = {
+	{ TSM_CON5_SAMPLE_LO_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con6_config_fields[] = {
+	{ TSM_CON6_CONFIG_BLIND, 5, 5, 26 },
+	{ TSM_CON6_CONFIG_PORT, 3, 0, 1 },
+	{ TSM_CON6_CONFIG_SAMPLE_EDGE, 2, 3, 1 },
+};
+
+static nthw_fpga_field_init_s tsm_con6_sample_hi_fields[] = {
+	{ TSM_CON6_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con6_sample_lo_fields[] = {
+	{ TSM_CON6_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con7_host_sample_hi_fields[] = {
+	{ TSM_CON7_HOST_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_con7_host_sample_lo_fields[] = {
+	{ TSM_CON7_HOST_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_config_fields[] = {
+	{ TSM_CONFIG_NTTS_SRC, 2, 5, 0 }, { TSM_CONFIG_NTTS_SYNC, 1, 4, 0 },
+	{ TSM_CONFIG_TIMESET_EDGE, 2, 8, 1 }, { TSM_CONFIG_TIMESET_SRC, 3, 10, 0 },
+	{ TSM_CONFIG_TIMESET_UP, 1, 7, 0 }, { TSM_CONFIG_TS_FORMAT, 4, 0, 1 },
+};
+
+static nthw_fpga_field_init_s tsm_int_config_fields[] = {
+	{ TSM_INT_CONFIG_AUTO_DISABLE, 1, 0, 0 },
+	{ TSM_INT_CONFIG_MASK, 19, 1, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_int_stat_fields[] = {
+	{ TSM_INT_STAT_CAUSE, 19, 1, 0 },
+	{ TSM_INT_STAT_ENABLE, 1, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_led_fields[] = {
+	{ TSM_LED_LED0_BG_COLOR, 2, 3, 0 }, { TSM_LED_LED0_COLOR, 2, 1, 0 },
+	{ TSM_LED_LED0_MODE, 1, 0, 0 }, { TSM_LED_LED0_SRC, 4, 5, 0 },
+	{ TSM_LED_LED1_BG_COLOR, 2, 12, 0 }, { TSM_LED_LED1_COLOR, 2, 10, 0 },
+	{ TSM_LED_LED1_MODE, 1, 9, 0 }, { TSM_LED_LED1_SRC, 4, 14, 1 },
+	{ TSM_LED_LED2_BG_COLOR, 2, 21, 0 }, { TSM_LED_LED2_COLOR, 2, 19, 0 },
+	{ TSM_LED_LED2_MODE, 1, 18, 0 }, { TSM_LED_LED2_SRC, 4, 23, 2 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_config_fields[] = {
+	{ TSM_NTTS_CONFIG_AUTO_HARDSET, 1, 5, 1 },
+	{ TSM_NTTS_CONFIG_EXT_CLK_ADJ, 1, 6, 0 },
+	{ TSM_NTTS_CONFIG_HIGH_SAMPLE, 1, 4, 0 },
+	{ TSM_NTTS_CONFIG_TS_SRC_FORMAT, 4, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_ext_stat_fields[] = {
+	{ TSM_NTTS_EXT_STAT_MASTER_ID, 8, 16, 0x0000 },
+	{ TSM_NTTS_EXT_STAT_MASTER_REV, 8, 24, 0x0000 },
+	{ TSM_NTTS_EXT_STAT_MASTER_STAT, 16, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_limit_hi_fields[] = {
+	{ TSM_NTTS_LIMIT_HI_SEC, 16, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_limit_lo_fields[] = {
+	{ TSM_NTTS_LIMIT_LO_NS, 32, 0, 100000 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_offset_fields[] = {
+	{ TSM_NTTS_OFFSET_NS, 30, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_sample_hi_fields[] = {
+	{ TSM_NTTS_SAMPLE_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_sample_lo_fields[] = {
+	{ TSM_NTTS_SAMPLE_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_stat_fields[] = {
+	{ TSM_NTTS_STAT_NTTS_VALID, 1, 0, 0 },
+	{ TSM_NTTS_STAT_SIGNAL_LOST, 8, 1, 0 },
+	{ TSM_NTTS_STAT_SYNC_LOST, 8, 9, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_ts_t0_hi_fields[] = {
+	{ TSM_NTTS_TS_T0_HI_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_ts_t0_lo_fields[] = {
+	{ TSM_NTTS_TS_T0_LO_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ntts_ts_t0_offset_fields[] = {
+	{ TSM_NTTS_TS_T0_OFFSET_COUNT, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_pb_ctrl_fields[] = {
+	{ TSM_PB_CTRL_INSTMEM_WR, 1, 1, 0 },
+	{ TSM_PB_CTRL_RST, 1, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_pb_instmem_fields[] = {
+	{ TSM_PB_INSTMEM_MEM_ADDR, 14, 0, 0 },
+	{ TSM_PB_INSTMEM_MEM_DATA, 18, 14, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_pi_ctrl_i_fields[] = {
+	{ TSM_PI_CTRL_I_VAL, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_pi_ctrl_ki_fields[] = {
+	{ TSM_PI_CTRL_KI_GAIN, 24, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_pi_ctrl_kp_fields[] = {
+	{ TSM_PI_CTRL_KP_GAIN, 24, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_pi_ctrl_shl_fields[] = {
+	{ TSM_PI_CTRL_SHL_VAL, 4, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_stat_fields[] = {
+	{ TSM_STAT_HARD_SYNC, 8, 8, 0 }, { TSM_STAT_LINK_CON0, 1, 0, 0 },
+	{ TSM_STAT_LINK_CON1, 1, 1, 0 }, { TSM_STAT_LINK_CON2, 1, 2, 0 },
+	{ TSM_STAT_LINK_CON3, 1, 3, 0 }, { TSM_STAT_LINK_CON4, 1, 4, 0 },
+	{ TSM_STAT_LINK_CON5, 1, 5, 0 }, { TSM_STAT_NTTS_INSYNC, 1, 6, 0 },
+	{ TSM_STAT_PTP_MI_PRESENT, 1, 7, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_timer_ctrl_fields[] = {
+	{ TSM_TIMER_CTRL_TIMER_EN_T0, 1, 0, 0 },
+	{ TSM_TIMER_CTRL_TIMER_EN_T1, 1, 1, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_timer_t0_fields[] = {
+	{ TSM_TIMER_T0_MAX_COUNT, 30, 0, 50000 },
+};
+
+static nthw_fpga_field_init_s tsm_timer_t1_fields[] = {
+	{ TSM_TIMER_T1_MAX_COUNT, 30, 0, 50000 },
+};
+
+static nthw_fpga_field_init_s tsm_time_hardset_hi_fields[] = {
+	{ TSM_TIME_HARDSET_HI_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_time_hardset_lo_fields[] = {
+	{ TSM_TIME_HARDSET_LO_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_time_hi_fields[] = {
+	{ TSM_TIME_HI_SEC, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_time_lo_fields[] = {
+	{ TSM_TIME_LO_NS, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_time_rate_adj_fields[] = {
+	{ TSM_TIME_RATE_ADJ_FRACTION, 29, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_hi_fields[] = {
+	{ TSM_TS_HI_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_lo_fields[] = {
+	{ TSM_TS_LO_TIME, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_offset_fields[] = {
+	{ TSM_TS_OFFSET_NS, 30, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_fields[] = {
+	{ TSM_TS_STAT_OVERRUN, 1, 16, 0 },
+	{ TSM_TS_STAT_SAMPLES, 16, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_hi_offset_fields[] = {
+	{ TSM_TS_STAT_HI_OFFSET_NS, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_lo_offset_fields[] = {
+	{ TSM_TS_STAT_LO_OFFSET_NS, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_tar_hi_fields[] = {
+	{ TSM_TS_STAT_TAR_HI_SEC, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_tar_lo_fields[] = {
+	{ TSM_TS_STAT_TAR_LO_NS, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_x_fields[] = {
+	{ TSM_TS_STAT_X_NS, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_x2_hi_fields[] = {
+	{ TSM_TS_STAT_X2_HI_NS, 16, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_ts_stat_x2_lo_fields[] = {
+	{ TSM_TS_STAT_X2_LO_NS, 32, 0, 0 },
+};
+
+static nthw_fpga_field_init_s tsm_utc_offset_fields[] = {
+	{ TSM_UTC_OFFSET_SEC, 8, 0, 0 },
+};
+
+static nthw_fpga_register_init_s tsm_registers[] = {
+	{ TSM_CON0_CONFIG, 24, 14, NTHW_FPGA_REG_TYPE_RW, 2320, 5, tsm_con0_config_fields },
+	{
+		TSM_CON0_INTERFACE, 25, 20, NTHW_FPGA_REG_TYPE_RW, 524291, 5,
+		tsm_con0_interface_fields
+	},
+	{ TSM_CON0_SAMPLE_HI, 27, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con0_sample_hi_fields },
+	{ TSM_CON0_SAMPLE_LO, 26, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con0_sample_lo_fields },
+	{ TSM_CON1_CONFIG, 28, 14, NTHW_FPGA_REG_TYPE_RW, 2320, 5, tsm_con1_config_fields },
+	{ TSM_CON1_SAMPLE_HI, 30, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con1_sample_hi_fields },
+	{ TSM_CON1_SAMPLE_LO, 29, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con1_sample_lo_fields },
+	{ TSM_CON2_CONFIG, 31, 14, NTHW_FPGA_REG_TYPE_RW, 2320, 5, tsm_con2_config_fields },
+	{ TSM_CON2_SAMPLE_HI, 33, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con2_sample_hi_fields },
+	{ TSM_CON2_SAMPLE_LO, 32, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con2_sample_lo_fields },
+	{ TSM_CON3_CONFIG, 34, 10, NTHW_FPGA_REG_TYPE_RW, 841, 3, tsm_con3_config_fields },
+	{ TSM_CON3_SAMPLE_HI, 36, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con3_sample_hi_fields },
+	{ TSM_CON3_SAMPLE_LO, 35, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con3_sample_lo_fields },
+	{ TSM_CON4_CONFIG, 37, 10, NTHW_FPGA_REG_TYPE_RW, 841, 3, tsm_con4_config_fields },
+	{ TSM_CON4_SAMPLE_HI, 39, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con4_sample_hi_fields },
+	{ TSM_CON4_SAMPLE_LO, 38, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con4_sample_lo_fields },
+	{ TSM_CON5_CONFIG, 40, 10, NTHW_FPGA_REG_TYPE_RW, 841, 3, tsm_con5_config_fields },
+	{ TSM_CON5_SAMPLE_HI, 42, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con5_sample_hi_fields },
+	{ TSM_CON5_SAMPLE_LO, 41, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con5_sample_lo_fields },
+	{ TSM_CON6_CONFIG, 43, 10, NTHW_FPGA_REG_TYPE_RW, 841, 3, tsm_con6_config_fields },
+	{ TSM_CON6_SAMPLE_HI, 45, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con6_sample_hi_fields },
+	{ TSM_CON6_SAMPLE_LO, 44, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_con6_sample_lo_fields },
+	{
+		TSM_CON7_HOST_SAMPLE_HI, 47, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		tsm_con7_host_sample_hi_fields
+	},
+	{
+		TSM_CON7_HOST_SAMPLE_LO, 46, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		tsm_con7_host_sample_lo_fields
+	},
+	{ TSM_CONFIG, 0, 13, NTHW_FPGA_REG_TYPE_RW, 257, 6, tsm_config_fields },
+	{ TSM_INT_CONFIG, 2, 20, NTHW_FPGA_REG_TYPE_RW, 0, 2, tsm_int_config_fields },
+	{ TSM_INT_STAT, 3, 20, NTHW_FPGA_REG_TYPE_MIXED, 0, 2, tsm_int_stat_fields },
+	{ TSM_LED, 4, 27, NTHW_FPGA_REG_TYPE_RW, 16793600, 12, tsm_led_fields },
+	{ TSM_NTTS_CONFIG, 13, 7, NTHW_FPGA_REG_TYPE_RW, 32, 4, tsm_ntts_config_fields },
+	{ TSM_NTTS_EXT_STAT, 15, 32, NTHW_FPGA_REG_TYPE_MIXED, 0, 3, tsm_ntts_ext_stat_fields },
+	{ TSM_NTTS_LIMIT_HI, 23, 16, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_ntts_limit_hi_fields },
+	{ TSM_NTTS_LIMIT_LO, 22, 32, NTHW_FPGA_REG_TYPE_RW, 100000, 1, tsm_ntts_limit_lo_fields },
+	{ TSM_NTTS_OFFSET, 21, 30, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_ntts_offset_fields },
+	{ TSM_NTTS_SAMPLE_HI, 19, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ntts_sample_hi_fields },
+	{ TSM_NTTS_SAMPLE_LO, 18, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ntts_sample_lo_fields },
+	{ TSM_NTTS_STAT, 14, 17, NTHW_FPGA_REG_TYPE_RO, 0, 3, tsm_ntts_stat_fields },
+	{ TSM_NTTS_TS_T0_HI, 17, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ntts_ts_t0_hi_fields },
+	{ TSM_NTTS_TS_T0_LO, 16, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ntts_ts_t0_lo_fields },
+	{
+		TSM_NTTS_TS_T0_OFFSET, 20, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		tsm_ntts_ts_t0_offset_fields
+	},
+	{ TSM_PB_CTRL, 63, 2, NTHW_FPGA_REG_TYPE_WO, 0, 2, tsm_pb_ctrl_fields },
+	{ TSM_PB_INSTMEM, 64, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, tsm_pb_instmem_fields },
+	{ TSM_PI_CTRL_I, 54, 32, NTHW_FPGA_REG_TYPE_WO, 0, 1, tsm_pi_ctrl_i_fields },
+	{ TSM_PI_CTRL_KI, 52, 24, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_pi_ctrl_ki_fields },
+	{ TSM_PI_CTRL_KP, 51, 24, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_pi_ctrl_kp_fields },
+	{ TSM_PI_CTRL_SHL, 53, 4, NTHW_FPGA_REG_TYPE_WO, 0, 1, tsm_pi_ctrl_shl_fields },
+	{ TSM_STAT, 1, 16, NTHW_FPGA_REG_TYPE_RO, 0, 9, tsm_stat_fields },
+	{ TSM_TIMER_CTRL, 48, 2, NTHW_FPGA_REG_TYPE_RW, 0, 2, tsm_timer_ctrl_fields },
+	{ TSM_TIMER_T0, 49, 30, NTHW_FPGA_REG_TYPE_RW, 50000, 1, tsm_timer_t0_fields },
+	{ TSM_TIMER_T1, 50, 30, NTHW_FPGA_REG_TYPE_RW, 50000, 1, tsm_timer_t1_fields },
+	{ TSM_TIME_HARDSET_HI, 12, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_time_hardset_hi_fields },
+	{ TSM_TIME_HARDSET_LO, 11, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_time_hardset_lo_fields },
+	{ TSM_TIME_HI, 9, 32, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_time_hi_fields },
+	{ TSM_TIME_LO, 8, 32, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_time_lo_fields },
+	{ TSM_TIME_RATE_ADJ, 10, 29, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_time_rate_adj_fields },
+	{ TSM_TS_HI, 6, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_hi_fields },
+	{ TSM_TS_LO, 5, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_lo_fields },
+	{ TSM_TS_OFFSET, 7, 30, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_ts_offset_fields },
+	{ TSM_TS_STAT, 55, 17, NTHW_FPGA_REG_TYPE_RO, 0, 2, tsm_ts_stat_fields },
+	{
+		TSM_TS_STAT_HI_OFFSET, 62, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		tsm_ts_stat_hi_offset_fields
+	},
+	{
+		TSM_TS_STAT_LO_OFFSET, 61, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1,
+		tsm_ts_stat_lo_offset_fields
+	},
+	{ TSM_TS_STAT_TAR_HI, 57, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_stat_tar_hi_fields },
+	{ TSM_TS_STAT_TAR_LO, 56, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_stat_tar_lo_fields },
+	{ TSM_TS_STAT_X, 58, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_stat_x_fields },
+	{ TSM_TS_STAT_X2_HI, 60, 16, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_stat_x2_hi_fields },
+	{ TSM_TS_STAT_X2_LO, 59, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, tsm_ts_stat_x2_lo_fields },
+	{ TSM_UTC_OFFSET, 65, 8, NTHW_FPGA_REG_TYPE_RW, 0, 1, tsm_utc_offset_fields },
+};
+
 static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_CAT, 0, MOD_CAT, 0, 21, NTHW_FPGA_BUS_TYPE_RAB1, 768, 34, cat_registers },
 	{ MOD_CSU, 0, MOD_CSU, 0, 0, NTHW_FPGA_BUS_TYPE_RAB1, 9728, 2, csu_registers },
@@ -2627,6 +3018,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_TX_INS, 0, MOD_INS, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 8704, 2, ins_registers },
 	{ MOD_TX_RPL, 0, MOD_RPL, 0, 4, NTHW_FPGA_BUS_TYPE_RAB1, 8960, 6, rpl_registers },
 	{ MOD_STA, 0, MOD_STA, 0, 9, NTHW_FPGA_BUS_TYPE_RAB0, 2048, 17, sta_registers },
+	{ MOD_TSM, 0, MOD_TSM, 0, 8, NTHW_FPGA_BUS_TYPE_RAB2, 1024, 66, tsm_registers },
 };
 
 static nthw_fpga_prod_param_s product_parameters[] = {
@@ -2785,5 +3177,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 36, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 37, fpga_modules,
 };
