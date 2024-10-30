@@ -47,9 +47,6 @@ const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL }
 #define SG_HW_RX_PKT_BUFFER_SIZE (1024 << 1)
 #define SG_HW_TX_PKT_BUFFER_SIZE (1024 << 1)
 
-/* Max RSS queues */
-#define MAX_QUEUES 125
-
 #define NUM_VQ_SEGS(_data_size_)                                                                  \
 	({                                                                                        \
 		size_t _size = (_data_size_);                                                     \

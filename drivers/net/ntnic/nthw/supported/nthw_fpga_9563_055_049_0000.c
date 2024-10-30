@@ -728,7 +728,7 @@ static nthw_fpga_field_init_s flm_lrn_data_fields[] = {
 	{ FLM_LRN_DATA_PRIO, 2, 691, 0x0000 }, { FLM_LRN_DATA_PROT, 8, 320, 0x0000 },
 	{ FLM_LRN_DATA_QFI, 6, 704, 0x0000 }, { FLM_LRN_DATA_QW0, 128, 192, 0x0000 },
 	{ FLM_LRN_DATA_QW4, 128, 64, 0x0000 }, { FLM_LRN_DATA_RATE, 16, 416, 0x0000 },
-	{ FLM_LRN_DATA_RQI, 1, 710, 0x0000 },
+	{ FLM_LRN_DATA_RQI, 1, 710, 0x0000 }, { FLM_LRN_DATA_SCRUB_PROF, 4, 712, 0x0000 },
 	{ FLM_LRN_DATA_SIZE, 16, 432, 0x0000 }, { FLM_LRN_DATA_STAT_PROF, 4, 687, 0x0000 },
 	{ FLM_LRN_DATA_SW8, 32, 32, 0x0000 }, { FLM_LRN_DATA_SW9, 32, 0, 0x0000 },
 	{ FLM_LRN_DATA_TEID, 32, 368, 0x0000 }, { FLM_LRN_DATA_VOL_IDX, 3, 684, 0x0000 },
@@ -780,6 +780,18 @@ static nthw_fpga_field_init_s flm_rcp_data_fields[] = {
 
 static nthw_fpga_field_init_s flm_scan_fields[] = {
 	{ FLM_SCAN_I, 16, 0, 0 },
+};
+
+static nthw_fpga_field_init_s flm_scrub_ctrl_fields[] = {
+	{ FLM_SCRUB_CTRL_ADR, 4, 0, 0x0000 },
+	{ FLM_SCRUB_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s flm_scrub_data_fields[] = {
+	{ FLM_SCRUB_DATA_DEL, 1, 12, 0 },
+	{ FLM_SCRUB_DATA_INF, 1, 13, 0 },
+	{ FLM_SCRUB_DATA_R, 4, 8, 0 },
+	{ FLM_SCRUB_DATA_T, 8, 0, 0 },
 };
 
 static nthw_fpga_field_init_s flm_status_fields[] = {
@@ -921,6 +933,8 @@ static nthw_fpga_register_init_s flm_registers[] = {
 	{ FLM_RCP_CTRL, 8, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, flm_rcp_ctrl_fields },
 	{ FLM_RCP_DATA, 9, 403, NTHW_FPGA_REG_TYPE_WO, 0, 19, flm_rcp_data_fields },
 	{ FLM_SCAN, 2, 16, NTHW_FPGA_REG_TYPE_WO, 0, 1, flm_scan_fields },
+	{ FLM_SCRUB_CTRL, 10, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, flm_scrub_ctrl_fields },
+	{ FLM_SCRUB_DATA, 11, 14, NTHW_FPGA_REG_TYPE_WO, 0, 4, flm_scrub_data_fields },
 	{ FLM_STATUS, 1, 17, NTHW_FPGA_REG_TYPE_MIXED, 0, 9, flm_status_fields },
 	{ FLM_STAT_AUL_DONE, 41, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, flm_stat_aul_done_fields },
 	{ FLM_STAT_AUL_FAIL, 43, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, flm_stat_aul_fail_fields },
@@ -3058,6 +3072,7 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 	{ NT_FLM_PRESENT, 1 },
 	{ NT_FLM_PRIOS, 4 },
 	{ NT_FLM_PST_PROFILES, 16 },
+	{ NT_FLM_SCRUB_PROFILES, 16 },
 	{ NT_FLM_SIZE_MB, 12288 },
 	{ NT_FLM_STATEFUL, 1 },
 	{ NT_FLM_VARIANT, 2 },
