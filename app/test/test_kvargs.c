@@ -280,16 +280,21 @@ static int test_invalid_kvargs(void)
 	return -1;
 }
 
+static struct unit_test_suite kvargs_test_suite  = {
+	.suite_name = "Kvargs Unit Test Suite",
+	.setup = NULL,
+	.teardown = NULL,
+	.unit_test_cases = {
+		TEST_CASE(test_valid_kvargs),
+		TEST_CASE(test_invalid_kvargs),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 static int
 test_kvargs(void)
 {
-	printf("== test valid case ==\n");
-	if (test_valid_kvargs() < 0)
-		return -1;
-	printf("== test invalid case ==\n");
-	if (test_invalid_kvargs() < 0)
-		return -1;
-	return 0;
+	return unit_test_suite_runner(&kvargs_test_suite);
 }
 
 REGISTER_FAST_TEST(kvargs_autotest, true, true, test_kvargs);
