@@ -22,9 +22,10 @@ sources = [
         'e1000_vf.c',
 ]
 
-error_cflags = ['-Wno-uninitialized', '-Wno-unused-parameter',
-    '-Wno-unused-variable', '-Wno-misleading-indentation',
-    '-Wno-implicit-fallthrough']
+error_cflags = [
+        '-Wno-unused-parameter',
+        '-Wno-implicit-fallthrough',
+]
 c_args = cflags
 foreach flag: error_cflags
     if cc.has_argument(flag)
