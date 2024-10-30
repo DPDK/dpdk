@@ -242,6 +242,20 @@ struct flow_filter_ops {
 		int *rss_target_id,
 		enum flow_eth_dev_profile flow_profile,
 		uint32_t exception_path);
+	/*
+	 * NT Flow API
+	 */
+	struct flow_handle *(*flow_create)(struct flow_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		uint16_t forced_vlan_vid,
+		uint16_t caller_id,
+		const struct rte_flow_item item[],
+		const struct rte_flow_action action[],
+		struct rte_flow_error *error);
+
+	int (*flow_destroy)(struct flow_eth_dev *dev,
+		struct flow_handle *flow,
+		struct rte_flow_error *error);
 };
 
 void register_dev_flow_ops(const struct rte_flow_ops *ops);

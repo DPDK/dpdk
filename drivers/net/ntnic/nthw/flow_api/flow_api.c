@@ -117,6 +117,40 @@ static struct flow_nic_dev *get_nic_dev_from_adapter_no(uint8_t adapter_no)
 
 	return ndev;
 }
+/*
+ * Flow API
+ */
+
+static struct flow_handle *flow_create(struct flow_eth_dev *dev __rte_unused,
+	const struct rte_flow_attr *attr __rte_unused,
+	uint16_t forced_vlan_vid __rte_unused,
+	uint16_t caller_id __rte_unused,
+	const struct rte_flow_item item[] __rte_unused,
+	const struct rte_flow_action action[] __rte_unused,
+	struct rte_flow_error *error __rte_unused)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return NULL;
+	}
+
+	return NULL;
+}
+
+static int flow_destroy(struct flow_eth_dev *dev __rte_unused,
+	struct flow_handle *flow __rte_unused,	struct rte_flow_error *error __rte_unused)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL) {
+		NT_LOG(ERR, FILTER, "%s: profile_inline module uninitialized", __func__);
+		return -1;
+	}
+
+	return -1;
+}
 
 /*
  * Device Management API
@@ -572,6 +606,11 @@ static const struct flow_filter_ops ops = {
 	 * Device Management API
 	 */
 	.flow_get_eth_dev = flow_get_eth_dev,
+	/*
+	 * NT Flow API
+	 */
+	.flow_create = flow_create,
+	.flow_destroy = flow_destroy,
 };
 
 void init_flow_filter(void)

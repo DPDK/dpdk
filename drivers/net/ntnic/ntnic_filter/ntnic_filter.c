@@ -110,6 +110,13 @@ static inline uint16_t get_caller_id(uint16_t port)
 	return MAX_VDPA_PORTS + port + 1;
 }
 
+static int is_flow_handle_typecast(struct rte_flow *flow)
+{
+	const void *first_element = &nt_flows[0];
+	const void *last_element = &nt_flows[MAX_RTE_FLOWS - 1];
+	return (void *)flow < first_element || (void *)flow > last_element;
+}
+
 static int convert_flow(struct rte_eth_dev *eth_dev,
 	const struct rte_flow_attr *attr,
 	const struct rte_flow_item items[],
@@ -173,9 +180,17 @@ static int convert_flow(struct rte_eth_dev *eth_dev,
 }
 
 static int
-eth_flow_destroy(struct rte_eth_dev *eth_dev __rte_unused, struct rte_flow *flow,
-	struct rte_flow_error *error)
+eth_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *flow, struct rte_flow_error *error)
 {
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
+
 	static struct rte_flow_error flow_error = {
 		.type = RTE_FLOW_ERROR_TYPE_NONE, .message = "none" };
 	int res = 0;
@@ -184,6 +199,20 @@ eth_flow_destroy(struct rte_eth_dev *eth_dev __rte_unused, struct rte_flow *flow
 
 	if (!flow)
 		return 0;
+
+	if (is_flow_handle_typecast(flow)) {
+		res = flow_filter_ops->flow_destroy(internals->flw_dev, (void *)flow, &flow_error);
+		convert_error(error, &flow_error);
+
+	} else {
+		res = flow_filter_ops->flow_destroy(internals->flw_dev, flow->flw_hdl,
+			&flow_error);
+		convert_error(error, &flow_error);
+
+		rte_spinlock_lock(&flow_lock);
+		flow->used = 0;
+		rte_spinlock_unlock(&flow_lock);
+	}
 
 	return res;
 }
@@ -194,6 +223,13 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 	const struct rte_flow_action actions[],
 	struct rte_flow_error *error)
 {
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return NULL;
+	}
+
 	struct pmd_internals *internals = (struct pmd_internals *)eth_dev->data->dev_private;
 
 	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
@@ -213,8 +249,12 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 	attribute.caller_id = get_caller_id(eth_dev->data->port_id);
 
 	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE && attribute.attr.group > 0) {
+		void *flw_hdl = flow_filter_ops->flow_create(internals->flw_dev, &attribute.attr,
+			attribute.forced_vlan_vid, attribute.caller_id,
+			match.rte_flow_item, action.flow_actions,
+			&flow_error);
 		convert_error(error, &flow_error);
-		return (struct rte_flow *)NULL;
+		return (struct rte_flow *)flw_hdl;
 	}
 
 	struct rte_flow *flow = NULL;
@@ -235,6 +275,26 @@ static struct rte_flow *eth_flow_create(struct rte_eth_dev *eth_dev,
 	}
 
 	rte_spinlock_unlock(&flow_lock);
+
+	if (flow) {
+		flow->flw_hdl = flow_filter_ops->flow_create(internals->flw_dev, &attribute.attr,
+			attribute.forced_vlan_vid, attribute.caller_id,
+			match.rte_flow_item, action.flow_actions,
+			&flow_error);
+		convert_error(error, &flow_error);
+
+		if (!flow->flw_hdl) {
+			rte_spinlock_lock(&flow_lock);
+			flow->used = 0;
+			flow = NULL;
+			rte_spinlock_unlock(&flow_lock);
+
+		} else {
+			rte_spinlock_lock(&flow_lock);
+			flow->caller_id = attribute.caller_id;
+			rte_spinlock_unlock(&flow_lock);
+		}
+	}
 
 	return flow;
 }
