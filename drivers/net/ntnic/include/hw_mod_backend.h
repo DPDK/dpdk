@@ -166,6 +166,7 @@ enum {
 };
 
 enum {
+	PROT_L4_TCP = 1,
 	PROT_L4_UDP = 2,
 	PROT_L4_ICMP = 4
 };
@@ -177,6 +178,7 @@ enum {
 
 enum {
 	PROT_TUN_L4_OTHER = 0,
+	PROT_TUN_L4_TCP = 1,
 	PROT_TUN_L4_UDP = 2,
 	PROT_TUN_L4_ICMP = 4
 };
