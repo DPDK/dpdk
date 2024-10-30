@@ -35,25 +35,6 @@ static int check_handler(const char *key, const char *value,
 	return 0;
 }
 
-/* test parsing. */
-static int test_kvargs_parsing(const char *args, unsigned int n)
-{
-	struct rte_kvargs *kvlist;
-
-	kvlist = rte_kvargs_parse(args, NULL);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error: %s\n", args);
-		return -1;
-	}
-	if (kvlist->count != n) {
-		printf("invalid count value %d: %s\n", kvlist->count, args);
-		rte_kvargs_free(kvlist);
-		return -1;
-	}
-	rte_kvargs_free(kvlist);
-	return 0;
-}
-
 /* test a valid case */
 static int test_valid_kvargs(void)
 {
@@ -61,29 +42,6 @@ static int test_valid_kvargs(void)
 	const char *args;
 	const char *valid_keys_list[] = { "foo", "check", NULL };
 	const char **valid_keys;
-	static const struct {
-		unsigned int expected;
-		const char *input;
-	} valid_inputs[] = {
-		{ 2, "foo=1,foo=" },
-		{ 2, "foo=1,foo=" },
-		{ 2, "foo=1,foo" },
-		{ 2, "foo=1,=2" },
-		{ 1, "foo=[1,2" },
-		{ 1, ",=" },
-		{ 1, "foo=[" },
-	};
-	unsigned int i;
-
-	/* empty args is valid */
-	args = "";
-	valid_keys = NULL;
-	kvlist = rte_kvargs_parse(args, valid_keys);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error");
-		goto fail;
-	}
-	rte_kvargs_free(kvlist);
 
 	/* first test without valid_keys */
 	args = "foo=1234,check=value0,check=value1";
@@ -123,14 +81,6 @@ static int test_valid_kvargs(void)
 	count = rte_kvargs_count(kvlist, "foo");
 	if (count != 1) {
 		printf("invalid count value %d after rte_kvargs_count(foo)\n",
-			count);
-		rte_kvargs_free(kvlist);
-		goto fail;
-	}
-	/* count all entries */
-	count = rte_kvargs_count(kvlist, NULL);
-	if (count != 3) {
-		printf("invalid count value %d after rte_kvargs_count(NULL)\n",
 			count);
 		rte_kvargs_free(kvlist);
 		goto fail;
@@ -189,28 +139,11 @@ static int test_valid_kvargs(void)
 	}
 	rte_kvargs_free(kvlist);
 
-	/* test using empty string (it is valid) */
-	args = "";
-	kvlist = rte_kvargs_parse(args, NULL);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error\n");
-		goto fail;
-	}
-	if (rte_kvargs_count(kvlist, NULL) != 0) {
-		printf("invalid count value\n");
-		goto fail;
-	}
-	rte_kvargs_free(kvlist);
-
 	/* test using empty elements (it is valid) */
 	args = "foo=1,,check=value2,,";
 	kvlist = rte_kvargs_parse(args, NULL);
 	if (kvlist == NULL) {
 		printf("rte_kvargs_parse() error\n");
-		goto fail;
-	}
-	if (rte_kvargs_count(kvlist, NULL) != 2) {
-		printf("invalid count value\n");
 		goto fail;
 	}
 	if (rte_kvargs_count(kvlist, "foo") != 1) {
@@ -222,14 +155,6 @@ static int test_valid_kvargs(void)
 		goto fail;
 	}
 	rte_kvargs_free(kvlist);
-
-	valid_keys = NULL;
-
-	for (i = 0; i < RTE_DIM(valid_inputs); ++i) {
-		args = valid_inputs[i].input;
-		if (test_kvargs_parsing(args, valid_inputs[i].expected))
-			goto fail;
-	}
 
 	return 0;
 
@@ -243,6 +168,50 @@ static int test_valid_kvargs(void)
 	}
 	printf("\n");
 	return -1;
+}
+
+static int
+test_basic_token_count(void)
+{
+	static const struct {
+		unsigned int expected;
+		const char *input;
+	} valid_inputs[] = {
+		{ 3, "foo=1,check=1,check=2" },
+		{ 3, "foo=1,check,check=2"   },
+		{ 2, "foo=1,foo="            },
+		{ 2, "foo=1,foo="            },
+		{ 2, "foo=1,foo"             },
+		{ 2, "foo=1,=2"              },
+		{ 2, "foo=1,,foo=2,,"        },
+		{ 1, "foo=[1,2"              },
+		{ 1, ",="                    },
+		{ 1, "foo=["                 },
+		{ 0, ""                      },
+	};
+	struct rte_kvargs *kvlist;
+	unsigned int count;
+	const char *args;
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(valid_inputs); i++) {
+		args = valid_inputs[i].input;
+		kvlist = rte_kvargs_parse(args, NULL);
+		if (kvlist == NULL) {
+			printf("rte_kvargs_parse() error: %s\n", args);
+			return -1;
+		}
+		count = rte_kvargs_count(kvlist, NULL);
+		if (count != valid_inputs[i].expected) {
+			printf("invalid count value %u (expected %u): %s\n",
+			       count, valid_inputs[i].expected, args);
+			rte_kvargs_free(kvlist);
+			return -1;
+		}
+		rte_kvargs_free(kvlist);
+	}
+
+	return 0;
 }
 
 /* test several error cases */
@@ -286,6 +255,7 @@ static struct unit_test_suite kvargs_test_suite  = {
 	.teardown = NULL,
 	.unit_test_cases = {
 		TEST_CASE(test_valid_kvargs),
+		TEST_CASE(test_basic_token_count),
 		TEST_CASE(test_invalid_kvargs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
