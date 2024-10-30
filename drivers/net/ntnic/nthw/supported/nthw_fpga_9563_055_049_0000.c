@@ -1095,6 +1095,44 @@ static nthw_fpga_register_init_s hsh_registers[] = {
 	{ HSH_RCP_DATA, 1, 743, NTHW_FPGA_REG_TYPE_WO, 0, 23, hsh_rcp_data_fields },
 };
 
+static nthw_fpga_field_init_s ifr_counters_ctrl_fields[] = {
+	{ IFR_COUNTERS_CTRL_ADR, 4, 0, 0x0000 },
+	{ IFR_COUNTERS_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s ifr_counters_data_fields[] = {
+	{ IFR_COUNTERS_DATA_DROP, 32, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s ifr_df_buf_ctrl_fields[] = {
+	{ IFR_DF_BUF_CTRL_AVAILABLE, 11, 0, 0x0000 },
+	{ IFR_DF_BUF_CTRL_MTU_PROFILE, 16, 11, 0x0000 },
+};
+
+static nthw_fpga_field_init_s ifr_df_buf_data_fields[] = {
+	{ IFR_DF_BUF_DATA_FIFO_DAT, 128, 0, 0x0000 },
+};
+
+static nthw_fpga_field_init_s ifr_rcp_ctrl_fields[] = {
+	{ IFR_RCP_CTRL_ADR, 4, 0, 0x0000 },
+	{ IFR_RCP_CTRL_CNT, 16, 16, 0x0000 },
+};
+
+static nthw_fpga_field_init_s ifr_rcp_data_fields[] = {
+	{ IFR_RCP_DATA_IPV4_DF_DROP, 1, 17, 0x0000 }, { IFR_RCP_DATA_IPV4_EN, 1, 0, 0x0000 },
+	{ IFR_RCP_DATA_IPV6_DROP, 1, 16, 0x0000 }, { IFR_RCP_DATA_IPV6_EN, 1, 1, 0x0000 },
+	{ IFR_RCP_DATA_MTU, 14, 2, 0x0000 },
+};
+
+static nthw_fpga_register_init_s ifr_registers[] = {
+	{ IFR_COUNTERS_CTRL, 4, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, ifr_counters_ctrl_fields },
+	{ IFR_COUNTERS_DATA, 5, 32, NTHW_FPGA_REG_TYPE_RO, 0, 1, ifr_counters_data_fields },
+	{ IFR_DF_BUF_CTRL, 2, 27, NTHW_FPGA_REG_TYPE_RO, 0, 2, ifr_df_buf_ctrl_fields },
+	{ IFR_DF_BUF_DATA, 3, 128, NTHW_FPGA_REG_TYPE_RO, 0, 1, ifr_df_buf_data_fields },
+	{ IFR_RCP_CTRL, 0, 32, NTHW_FPGA_REG_TYPE_WO, 0, 2, ifr_rcp_ctrl_fields },
+	{ IFR_RCP_DATA, 1, 18, NTHW_FPGA_REG_TYPE_WO, 0, 5, ifr_rcp_data_fields },
+};
+
 static nthw_fpga_field_init_s iic_adr_fields[] = {
 	{ IIC_ADR_SLV_ADR, 7, 1, 0 },
 };
@@ -2071,6 +2109,7 @@ static nthw_fpga_module_init_s fpga_modules[] = {
 	{ MOD_HFU, 0, MOD_HFU, 0, 2, NTHW_FPGA_BUS_TYPE_RAB1, 9472, 2, hfu_registers },
 	{ MOD_HIF, 0, MOD_HIF, 0, 0, NTHW_FPGA_BUS_TYPE_PCI, 0, 18, hif_registers },
 	{ MOD_HSH, 0, MOD_HSH, 0, 5, NTHW_FPGA_BUS_TYPE_RAB1, 1536, 2, hsh_registers },
+	{ MOD_IFR, 0, MOD_IFR, 0, 7, NTHW_FPGA_BUS_TYPE_RAB1, 9984, 6, ifr_registers },
 	{ MOD_IIC, 0, MOD_IIC, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 768, 22, iic_registers },
 	{ MOD_IIC, 1, MOD_IIC, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 896, 22, iic_registers },
 	{ MOD_IIC, 2, MOD_IIC, 0, 1, NTHW_FPGA_BUS_TYPE_RAB0, 24832, 22, iic_registers },
@@ -2255,5 +2294,5 @@ static nthw_fpga_prod_param_s product_parameters[] = {
 };
 
 nthw_fpga_prod_init_s nthw_fpga_9563_055_049_0000 = {
-	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 25, fpga_modules,
+	200, 9563, 55, 49, 0, 0, 1726740521, 152, product_parameters, 26, fpga_modules,
 };
