@@ -35,44 +35,6 @@ static int check_handler(const char *key, const char *value,
 	return 0;
 }
 
-/* test a valid case */
-static int test_valid_kvargs(void)
-{
-	struct rte_kvargs *kvlist;
-	const char *args;
-	const char **valid_keys = NULL;
-
-	/* test using empty elements (it is valid) */
-	args = "foo=1,,check=value2,,";
-	kvlist = rte_kvargs_parse(args, NULL);
-	if (kvlist == NULL) {
-		printf("rte_kvargs_parse() error\n");
-		goto fail;
-	}
-	if (rte_kvargs_count(kvlist, "foo") != 1) {
-		printf("invalid count value for 'foo'\n");
-		goto fail;
-	}
-	if (rte_kvargs_count(kvlist, "check") != 1) {
-		printf("invalid count value for 'check'\n");
-		goto fail;
-	}
-	rte_kvargs_free(kvlist);
-
-	return 0;
-
- fail:
-	printf("while processing <%s>", args);
-	if (valid_keys != NULL && *valid_keys != NULL) {
-		printf(" using valid_keys=<%s", *valid_keys);
-		while (*(++valid_keys) != NULL)
-			printf(",%s", *valid_keys);
-		printf(">");
-	}
-	printf("\n");
-	return -1;
-}
-
 static int
 test_basic_token_count(void)
 {
@@ -244,6 +206,34 @@ test_parse_list_value(void)
 	return 0;
 }
 
+static int
+test_parse_empty_elements(void)
+{
+	const char *args = "foo=1,,check=value2,,";
+	struct rte_kvargs *kvlist;
+
+	kvlist = rte_kvargs_parse(args, NULL);
+	if (kvlist == NULL) {
+		printf("rte_kvargs_parse() error\n");
+		return -1;
+	}
+
+	if (rte_kvargs_count(kvlist, "foo") != 1) {
+		printf("invalid count value for 'foo'\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	if (rte_kvargs_count(kvlist, "check") != 1) {
+		printf("invalid count value for 'check'\n");
+		rte_kvargs_free(kvlist);
+		return -1;
+	}
+
+	rte_kvargs_free(kvlist);
+	return 0;
+}
+
 /* test several error cases */
 static int test_invalid_kvargs(void)
 {
@@ -284,11 +274,11 @@ static struct unit_test_suite kvargs_test_suite  = {
 	.setup = NULL,
 	.teardown = NULL,
 	.unit_test_cases = {
-		TEST_CASE(test_valid_kvargs),
 		TEST_CASE(test_basic_token_count),
 		TEST_CASE(test_parse_without_valid_keys),
 		TEST_CASE(test_parse_with_valid_keys),
 		TEST_CASE(test_parse_list_value),
+		TEST_CASE(test_parse_empty_elements),
 		TEST_CASE(test_invalid_kvargs),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
