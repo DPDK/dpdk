@@ -827,6 +827,107 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 
 			break;
 
+		case RTE_FLOW_ITEM_TYPE_ICMP:
+			NT_LOG(DBG, FILTER, "Adap %i, Port %i: RTE_FLOW_ITEM_TYPE_ICMP",
+				dev->ndev->adapter_no, dev->port);
+			{
+				const struct rte_flow_item_icmp *icmp_spec =
+					(const struct rte_flow_item_icmp *)elem[eidx].spec;
+				const struct rte_flow_item_icmp *icmp_mask =
+					(const struct rte_flow_item_icmp *)elem[eidx].mask;
+
+				if (icmp_spec == NULL || icmp_mask == NULL) {
+					if (any_count > 0 || fd->l4_prot != -1) {
+						fd->tunnel_l4_prot = PROT_TUN_L4_ICMP;
+						fd->tunnel_ip_prot = 1;
+						key_def->inner_proto = 1;
+					} else {
+						fd->l4_prot = PROT_L4_ICMP;
+						fd->ip_prot = 1;
+						key_def->outer_proto = 1;
+					}
+					break;
+				}
+
+				if (icmp_mask->hdr.icmp_cksum != 0 ||
+					icmp_mask->hdr.icmp_ident != 0 ||
+					icmp_mask->hdr.icmp_seq_nb != 0) {
+					NT_LOG(ERR, FILTER,
+						"Requested ICMP field not supported by running SW version");
+					flow_nic_set_error(ERR_FAILED, error);
+					return -1;
+				}
+
+				if (icmp_mask->hdr.icmp_type || icmp_mask->hdr.icmp_code) {
+					if (sw_counter < 2) {
+						uint32_t *sw_data = &packet_data[1 - sw_counter];
+						uint32_t *sw_mask = &packet_mask[1 - sw_counter];
+
+						sw_mask[0] = icmp_mask->hdr.icmp_type << 24 |
+							icmp_mask->hdr.icmp_code << 16;
+						sw_data[0] = icmp_spec->hdr.icmp_type << 24 |
+							icmp_spec->hdr.icmp_code << 16;
+						sw_data[0] &= sw_mask[0];
+
+						km_add_match_elem(&fd->km, &sw_data[0],
+							&sw_mask[0], 1, any_count > 0
+							? DYN_TUN_L4 : DYN_L4, 0);
+						set_key_def_sw(key_def, sw_counter,
+							any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						sw_counter += 1;
+
+					} else if (qw_counter < 2 && qw_free > 0) {
+						uint32_t *qw_data =
+							&packet_data[2 + 4 - qw_counter * 4];
+						uint32_t *qw_mask =
+							&packet_mask[2 + 4 - qw_counter * 4];
+
+						qw_data[0] = icmp_spec->hdr.icmp_type << 24 |
+							icmp_spec->hdr.icmp_code << 16;
+						qw_data[1] = 0;
+						qw_data[2] = 0;
+						qw_data[3] = 0;
+
+						qw_mask[0] = icmp_mask->hdr.icmp_type << 24 |
+							icmp_mask->hdr.icmp_code << 16;
+						qw_mask[1] = 0;
+						qw_mask[2] = 0;
+						qw_mask[3] = 0;
+
+						qw_data[0] &= qw_mask[0];
+						qw_data[1] &= qw_mask[1];
+						qw_data[2] &= qw_mask[2];
+						qw_data[3] &= qw_mask[3];
+
+						km_add_match_elem(&fd->km, &qw_data[0], &qw_mask[0],
+							4, any_count > 0 ? DYN_TUN_L4 : DYN_L4, 0);
+						set_key_def_qw(key_def, qw_counter, any_count > 0
+							? DYN_TUN_L4 : DYN_L4, 0);
+						qw_counter += 1;
+						qw_free -= 1;
+
+					} else {
+						NT_LOG(ERR, FILTER,
+							"Key size too big. Out of SW-QW resources.");
+						flow_nic_set_error(ERR_FAILED, error);
+						return -1;
+					}
+				}
+
+				if (any_count > 0 || fd->l4_prot != -1) {
+					fd->tunnel_l4_prot = PROT_TUN_L4_ICMP;
+					fd->tunnel_ip_prot = 1;
+					key_def->inner_proto = 1;
+
+				} else {
+					fd->l4_prot = PROT_L4_ICMP;
+					fd->ip_prot = 1;
+					key_def->outer_proto = 1;
+				}
+			}
+
+			break;
+
 		default:
 			NT_LOG(ERR, FILTER, "Invalid or unsupported flow request: %d",
 				(int)elem[eidx].type);
