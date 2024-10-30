@@ -195,6 +195,7 @@ New Features
   * Added statistics support.
   * Added age flow action support.
   * Added meter flow metering and flow policy support.
+  * Added flow actions update support.
 
 * **Updated NVIDIA mlx5 net driver.**
 

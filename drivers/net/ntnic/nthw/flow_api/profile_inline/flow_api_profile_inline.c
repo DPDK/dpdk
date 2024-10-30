@@ -15,6 +15,7 @@
 #include "flow_api_hw_db_inline.h"
 #include "flow_api_profile_inline_config.h"
 #include "flow_id_table.h"
+#include "rte_flow.h"
 #include "stream_binary_flow_api.h"
 
 #include "flow_api_profile_inline.h"
@@ -36,6 +37,7 @@
 #define NT_FLM_UNHANDLED_FLOW_TYPE 1
 #define NT_FLM_OP_UNLEARN 0
 #define NT_FLM_OP_LEARN 1
+#define NT_FLM_OP_RELEARN 2
 
 #define NT_FLM_VIOLATING_MBR_FLOW_TYPE 15
 #define NT_VIOLATING_MBR_CFN 0
@@ -4381,6 +4383,168 @@ int flow_flush_profile_inline(struct flow_eth_dev *dev,
 	return err;
 }
 
+int flow_actions_update_profile_inline(struct flow_eth_dev *dev,
+	struct flow_handle *flow,
+	const struct rte_flow_action action[],
+	struct rte_flow_error *error)
+{
+	assert(dev);
+	assert(flow);
+
+	uint32_t num_dest_port = 0;
+	uint32_t num_queues = 0;
+
+	int group = (int)flow->flm_kid - 2;
+
+	flow_nic_set_error(ERR_SUCCESS, error);
+
+	if (flow->type != FLOW_HANDLE_TYPE_FLM) {
+		NT_LOG(ERR, FILTER,
+			"Flow actions update not supported for group 0 or default flows");
+		flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
+		return -1;
+	}
+
+	struct nic_flow_def *fd = allocate_nic_flow_def();
+
+	if (fd == NULL) {
+		error->type = RTE_FLOW_ERROR_TYPE_UNSPECIFIED;
+		error->message = "Failed to allocate nic_flow_def";
+		return -1;
+	}
+
+	fd->non_empty = 1;
+
+	int res =
+		interpret_flow_actions(dev, action, NULL, fd, error, &num_dest_port, &num_queues);
+
+	if (res) {
+		free(fd);
+		return -1;
+	}
+
+	pthread_mutex_lock(&dev->ndev->mtx);
+
+	/* Setup new actions */
+	uint32_t local_idx_counter = 0;
+	uint32_t local_idxs[RES_COUNT];
+	memset(local_idxs, 0x0, sizeof(uint32_t) * RES_COUNT);
+
+	struct hw_db_inline_qsl_data qsl_data;
+	setup_db_qsl_data(fd, &qsl_data, num_dest_port, num_queues);
+
+	struct hw_db_inline_hsh_data hsh_data;
+	setup_db_hsh_data(fd, &hsh_data);
+
+	{
+		uint32_t flm_ft = 0;
+		uint32_t flm_scrub = 0;
+
+		/* Setup FLM RCP */
+		const struct hw_db_inline_flm_rcp_data *flm_data =
+			hw_db_inline_find_data(dev->ndev, dev->ndev->hw_db_handle,
+				HW_DB_IDX_TYPE_FLM_RCP,
+				(struct hw_db_idx *)flow->flm_db_idxs,
+				flow->flm_db_idx_counter);
+
+		if (flm_data == NULL) {
+			NT_LOG(ERR, FILTER, "Could not retrieve FLM RPC resource");
+			flow_nic_set_error(ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM, error);
+			goto error_out;
+		}
+
+		struct hw_db_flm_idx flm_idx =
+			hw_db_inline_flm_add(dev->ndev, dev->ndev->hw_db_handle, flm_data, group);
+
+		local_idxs[local_idx_counter++] = flm_idx.raw;
+
+		if (flm_idx.error) {
+			NT_LOG(ERR, FILTER, "Could not reference FLM RPC resource");
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
+
+		if (setup_flow_flm_actions(dev, fd, &qsl_data, &hsh_data, group, local_idxs,
+				&local_idx_counter, &flow->flm_rpl_ext_ptr, &flm_ft,
+				&flm_scrub, error)) {
+			goto error_out;
+		}
+
+		/* Update flow_handle */
+		for (int i = 0; i < MAX_FLM_MTRS_SUPPORTED; ++i) {
+			struct flm_flow_mtr_handle_s *handle = dev->ndev->flm_mtr_handle;
+			struct flm_mtr_stat_s *mtr_stat =
+					handle->port_stats[flow->caller_id]->stats;
+			flow->flm_mtr_ids[i] =
+				fd->mtr_ids[i] == UINT32_MAX ? 0 : mtr_stat[fd->mtr_ids[i]].flm_id;
+		}
+
+		for (unsigned int i = 0; i < fd->modify_field_count; ++i) {
+			switch (fd->modify_field[i].select) {
+			case CPY_SELECT_DSCP_IPV4:
+
+			/* fallthrough */
+			case CPY_SELECT_DSCP_IPV6:
+				flow->flm_dscp = fd->modify_field[i].value8[0];
+				break;
+
+			case CPY_SELECT_RQI_QFI:
+				flow->flm_rqi = (fd->modify_field[i].value8[0] >> 6) & 0x1;
+				flow->flm_qfi = fd->modify_field[i].value8[0] & 0x3f;
+				break;
+
+			case CPY_SELECT_IPV4:
+				flow->flm_nat_ipv4 = ntohl(fd->modify_field[i].value32[0]);
+				break;
+
+			case CPY_SELECT_PORT:
+				flow->flm_nat_port = ntohs(fd->modify_field[i].value16[0]);
+				break;
+
+			case CPY_SELECT_TEID:
+				flow->flm_teid = ntohl(fd->modify_field[i].value32[0]);
+				break;
+
+			default:
+				NT_LOG(DBG, FILTER, "Unknown modify field: %d",
+					fd->modify_field[i].select);
+				break;
+			}
+		}
+
+		flow->flm_ft = (uint8_t)flm_ft;
+		flow->flm_scrub_prof = (uint8_t)flm_scrub;
+		flow->context = fd->age.context;
+
+		/* Program flow */
+		flm_flow_programming(flow, NT_FLM_OP_RELEARN);
+
+		hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle,
+			(struct hw_db_idx *)flow->flm_db_idxs,
+			flow->flm_db_idx_counter);
+		memset(flow->flm_db_idxs, 0x0, sizeof(struct hw_db_idx) * RES_COUNT);
+
+		flow->flm_db_idx_counter = local_idx_counter;
+
+		for (int i = 0; i < RES_COUNT; ++i)
+			flow->flm_db_idxs[i] = local_idxs[i];
+	}
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	free(fd);
+	return 0;
+
+error_out:
+	hw_db_inline_deref_idxs(dev->ndev, dev->ndev->hw_db_handle, (struct hw_db_idx *)local_idxs,
+		local_idx_counter);
+
+	pthread_mutex_unlock(&dev->ndev->mtx);
+
+	free(fd);
+	return -1;
+}
+
 static __rte_always_inline bool all_bits_enabled(uint64_t hash_mask, uint64_t hash_bits)
 {
 	return (hash_mask & hash_bits) == hash_bits;
@@ -5324,6 +5488,7 @@ static const struct profile_inline_ops ops = {
 	.flow_create_profile_inline = flow_create_profile_inline,
 	.flow_destroy_profile_inline = flow_destroy_profile_inline,
 	.flow_flush_profile_inline = flow_flush_profile_inline,
+	.flow_actions_update_profile_inline = flow_actions_update_profile_inline,
 	.flow_nic_set_hasher_fields_inline = flow_nic_set_hasher_fields_inline,
 	.flow_get_aged_flows_profile_inline = flow_get_aged_flows_profile_inline,
 	/*
