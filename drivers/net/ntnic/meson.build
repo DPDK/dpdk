@@ -47,6 +47,7 @@ sources = files(
         'nthw/core/nthw_iic.c',
         'nthw/core/nthw_mac_pcs.c',
         'nthw/core/nthw_pcie3.c',
+        'nthw/core/nthw_rpf.c',
         'nthw/core/nthw_rmc.c',
         'nthw/core/nthw_sdc.c',
         'nthw/core/nthw_si5340.c',

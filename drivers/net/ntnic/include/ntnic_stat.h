@@ -8,6 +8,7 @@
 
 #include "common_adapter_defs.h"
 #include "nthw_rmc.h"
+#include "nthw_rpf.h"
 #include "nthw_fpga_model.h"
 
 #define NT_MAX_COLOR_FLOW_STATS 0x400
@@ -102,6 +103,7 @@ struct flm_counters_v1 {
 struct nt4ga_stat_s {
 	nthw_stat_t *mp_nthw_stat;
 	nthw_rmc_t *mp_nthw_rmc;
+	nthw_rpf_t *mp_nthw_rpf;
 	struct nt_dma_s *p_stat_dma;
 	uint32_t *p_stat_dma_virtual;
 	uint32_t n_stat_size;

@@ -1050,6 +1050,18 @@ uint32_t nthw_field_get_val32(const nthw_field_t *p)
 	return val;
 }
 
+int32_t nthw_field_get_signed(const nthw_field_t *p)
+{
+	uint32_t val;
+
+	nthw_field_get_val(p, &val, 1);
+
+	if (val & (1U << nthw_field_get_bit_pos_high(p)))	/* check sign */
+		val = val | ~nthw_field_get_mask(p);	/* sign extension */
+
+	return (int32_t)val;	/* cast to signed value */
+}
+
 uint32_t nthw_field_get_updated(const nthw_field_t *p)
 {
 	uint32_t val;

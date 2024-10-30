@@ -39,6 +39,7 @@
 #include "nthw_fpga_reg_defs_qsl.h"
 #include "nthw_fpga_reg_defs_rac.h"
 #include "nthw_fpga_reg_defs_rmc.h"
+#include "nthw_fpga_reg_defs_rpf.h"
 #include "nthw_fpga_reg_defs_rpl.h"
 #include "nthw_fpga_reg_defs_rpp_lr.h"
 #include "nthw_fpga_reg_defs_rst9563.h"

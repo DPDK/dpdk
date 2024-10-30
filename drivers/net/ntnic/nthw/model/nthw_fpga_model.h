@@ -227,6 +227,7 @@ void nthw_field_get_val(const nthw_field_t *p, uint32_t *p_data, uint32_t len);
 void nthw_field_set_val(const nthw_field_t *p, const uint32_t *p_data, uint32_t len);
 void nthw_field_set_val_flush(const nthw_field_t *p, const uint32_t *p_data, uint32_t len);
 uint32_t nthw_field_get_val32(const nthw_field_t *p);
+int32_t nthw_field_get_signed(const nthw_field_t *p);
 uint32_t nthw_field_get_updated(const nthw_field_t *p);
 void nthw_field_update_register(const nthw_field_t *p);
 void nthw_field_flush_register(const nthw_field_t *p);

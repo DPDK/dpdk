@@ -11,6 +11,7 @@
 #include "nt4ga_adapter.h"
 #include "ntnic_nim.h"
 #include "flow_filter.h"
+#include "ntnic_stat.h"
 #include "ntnic_mod_reg.h"
 
 #define DEFAULT_MAX_BPS_SPEED 100e9
@@ -43,7 +44,7 @@ static int nt4ga_stat_init(struct adapter_info_s *p_adapter_info)
 
 			if (!p_nthw_rmc) {
 				nthw_stat_delete(p_nthw_stat);
-				NT_LOG(ERR, NTNIC, "%s: ERROR ", p_adapter_id_str);
+				NT_LOG(ERR, NTNIC, "%s: ERROR rmc allocation", p_adapter_id_str);
 				return -1;
 			}
 
@@ -52,6 +53,22 @@ static int nt4ga_stat_init(struct adapter_info_s *p_adapter_info)
 
 		} else {
 			p_nt4ga_stat->mp_nthw_rmc = NULL;
+		}
+
+		if (nthw_rpf_init(NULL, p_fpga, p_adapter_info->adapter_no) == 0) {
+			nthw_rpf_t *p_nthw_rpf = nthw_rpf_new();
+
+			if (!p_nthw_rpf) {
+				nthw_stat_delete(p_nthw_stat);
+				NT_LOG_DBGX(ERR, NTNIC, "%s: ERROR", p_adapter_id_str);
+				return -1;
+			}
+
+			nthw_rpf_init(p_nthw_rpf, p_fpga, p_adapter_info->adapter_no);
+			p_nt4ga_stat->mp_nthw_rpf = p_nthw_rpf;
+
+		} else {
+			p_nt4ga_stat->mp_nthw_rpf = NULL;
 		}
 
 		p_nt4ga_stat->mp_nthw_stat = p_nthw_stat;
@@ -76,6 +93,9 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 
 	if (p_nt4ga_stat->mp_nthw_rmc)
 		nthw_rmc_block(p_nt4ga_stat->mp_nthw_rmc);
+
+	if (p_nt4ga_stat->mp_nthw_rpf)
+		nthw_rpf_block(p_nt4ga_stat->mp_nthw_rpf);
 
 	/* Allocate and map memory for fpga statistics */
 	{
@@ -111,6 +131,9 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 
 	if (p_nt4ga_stat->mp_nthw_rmc)
 		nthw_rmc_unblock(p_nt4ga_stat->mp_nthw_rmc, false);
+
+	if (p_nt4ga_stat->mp_nthw_rpf)
+		nthw_rpf_unblock(p_nt4ga_stat->mp_nthw_rpf);
 
 	p_nt4ga_stat->mp_stat_structs_color =
 		calloc(p_nthw_stat->m_nb_color_counters, sizeof(struct color_counters));
