@@ -1013,6 +1013,16 @@ int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
 	return profile_inline_ops->flow_nic_set_hasher_fields_inline(ndev, hsh_idx, rss_conf);
 }
 
+int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
+{
+	(void)ndev;
+	(void)data;
+	(void)size;
+
+	NT_LOG_DBGX(DBG, FILTER, "Not implemented yet");
+	return -1;
+}
+
 static const struct flow_filter_ops ops = {
 	.flow_filter_init = flow_filter_init,
 	.flow_filter_done = flow_filter_done,
@@ -1027,6 +1037,7 @@ static const struct flow_filter_ops ops = {
 	.flow_destroy = flow_destroy,
 	.flow_flush = flow_flush,
 	.flow_dev_dump = flow_dev_dump,
+	.flow_get_flm_stats = flow_get_flm_stats,
 
 	/*
 	 * Other

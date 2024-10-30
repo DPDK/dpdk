@@ -233,4 +233,6 @@ int flow_nic_set_hasher(struct flow_nic_dev *ndev, int hsh_idx, enum flow_nic_ha
 int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
 	struct nt_eth_rss_conf rss_conf);
 
+int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
+
 #endif
