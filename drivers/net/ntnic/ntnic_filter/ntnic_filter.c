@@ -884,6 +884,224 @@ static int eth_flow_configure(struct rte_eth_dev *dev, const struct rte_flow_por
 	return res;
 }
 
+static struct rte_flow_pattern_template *eth_flow_pattern_template_create(struct rte_eth_dev *dev,
+	const struct rte_flow_pattern_template_attr *template_attr,
+	const struct rte_flow_item pattern[], struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return NULL;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	struct cnv_match_s match = { 0 };
+	struct rte_flow_pattern_template_attr attr = {
+		.relaxed_matching = template_attr->relaxed_matching,
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer,
+	};
+
+	uint16_t caller_id = get_caller_id(dev->data->port_id);
+
+	if (create_match_elements(&match, pattern, MAX_ELEMENTS) != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+			"Error in pattern");
+		return NULL;
+	}
+
+	struct flow_pattern_template *res =
+		flow_filter_ops->flow_pattern_template_create(internals->flw_dev, &attr, caller_id,
+			match.rte_flow_item, &flow_error);
+
+	convert_error(error, &flow_error);
+	return (struct rte_flow_pattern_template *)res;
+}
+
+static int eth_flow_pattern_template_destroy(struct rte_eth_dev *dev,
+	struct rte_flow_pattern_template *pattern_template,
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	int res = flow_filter_ops->flow_pattern_template_destroy(internals->flw_dev,
+			(struct flow_pattern_template *)
+			pattern_template,
+			&rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return res;
+}
+
+static struct rte_flow_actions_template *eth_flow_actions_template_create(struct rte_eth_dev *dev,
+	const struct rte_flow_actions_template_attr *template_attr,
+	const struct rte_flow_action actions[], const struct rte_flow_action masks[],
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return NULL;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	struct fpga_info_s *fpga_info = &internals->p_drv->ntdrv.adapter_info.fpga_info;
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	struct cnv_action_s action = { 0 };
+	struct cnv_action_s mask = { 0 };
+	struct rte_flow_actions_template_attr attr = {
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer,
+	};
+	uint16_t caller_id = get_caller_id(dev->data->port_id);
+
+	if (fpga_info->profile == FPGA_INFO_PROFILE_INLINE) {
+		uint32_t queue_offset = 0;
+
+		if (internals->type == PORT_TYPE_OVERRIDE && internals->vpq_nb_vq > 0)
+			queue_offset = internals->vpq[0].id;
+
+		if (create_action_elements_inline(&action, actions, MAX_ACTIONS, queue_offset) !=
+			0) {
+			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Error in actions");
+			return NULL;
+		}
+
+		if (create_action_elements_inline(&mask, masks, MAX_ACTIONS, queue_offset) != 0) {
+			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Error in masks");
+			return NULL;
+		}
+
+	} else {
+		rte_flow_error_set(error, EPERM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"Unsupported adapter profile");
+		return NULL;
+	}
+
+	struct flow_actions_template *res =
+		flow_filter_ops->flow_actions_template_create(internals->flw_dev, &attr, caller_id,
+			action.flow_actions,
+			mask.flow_actions, &rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return (struct rte_flow_actions_template *)res;
+}
+
+static int eth_flow_actions_template_destroy(struct rte_eth_dev *dev,
+	struct rte_flow_actions_template *actions_template,
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, NTNIC, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	int res = flow_filter_ops->flow_actions_template_destroy(internals->flw_dev,
+			(struct flow_actions_template *)
+			actions_template,
+			&rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return res;
+}
+
+static struct rte_flow_template_table *eth_flow_template_table_create(struct rte_eth_dev *dev,
+	const struct rte_flow_template_table_attr *table_attr,
+	struct rte_flow_pattern_template *pattern_templates[], uint8_t nb_pattern_templates,
+	struct rte_flow_actions_template *actions_templates[], uint8_t nb_actions_templates,
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return NULL;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	struct rte_flow_template_table_attr attr = {
+		.flow_attr = {
+			.group = table_attr->flow_attr.group,
+			.priority = table_attr->flow_attr.priority,
+			.ingress = table_attr->flow_attr.ingress,
+			.egress = table_attr->flow_attr.egress,
+			.transfer = table_attr->flow_attr.transfer,
+		},
+		.nb_flows = table_attr->nb_flows,
+	};
+	uint16_t forced_vlan_vid = 0;
+	uint16_t caller_id = get_caller_id(dev->data->port_id);
+
+	struct flow_template_table *res =
+		flow_filter_ops->flow_template_table_create(internals->flw_dev, &attr,
+			forced_vlan_vid, caller_id,
+			(struct flow_pattern_template **)pattern_templates,
+			nb_pattern_templates, (struct flow_actions_template **)actions_templates,
+			nb_actions_templates, &rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return (struct rte_flow_template_table *)res;
+}
+
+static int eth_flow_template_table_destroy(struct rte_eth_dev *dev,
+	struct rte_flow_template_table *template_table,
+	struct rte_flow_error *error)
+{
+	const struct flow_filter_ops *flow_filter_ops = get_flow_filter_ops();
+
+	if (flow_filter_ops == NULL) {
+		NT_LOG_DBGX(ERR, FILTER, "flow_filter module uninitialized");
+		return -1;
+	}
+
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	static struct rte_flow_error rte_flow_error = { .type = RTE_FLOW_ERROR_TYPE_NONE,
+		.message = "none" };
+
+	int res = flow_filter_ops->flow_template_table_destroy(internals->flw_dev,
+			(struct flow_template_table *)
+			template_table,
+			&rte_flow_error);
+
+	convert_error(error, &rte_flow_error);
+	return res;
+}
+
 static struct rte_flow *eth_flow_async_create(struct rte_eth_dev *dev, uint32_t queue_id,
 	const struct rte_flow_op_attr *op_attr,
 	struct rte_flow_template_table *template_table, const struct rte_flow_item pattern[],
@@ -1104,6 +1322,12 @@ static const struct rte_flow_ops dev_flow_ops = {
 	.get_aged_flows = eth_flow_get_aged_flows,
 	.info_get = eth_flow_info_get,
 	.configure = eth_flow_configure,
+	.pattern_template_create = eth_flow_pattern_template_create,
+	.pattern_template_destroy = eth_flow_pattern_template_destroy,
+	.actions_template_create = eth_flow_actions_template_create,
+	.actions_template_destroy = eth_flow_actions_template_destroy,
+	.template_table_create = eth_flow_template_table_create,
+	.template_table_destroy = eth_flow_template_table_destroy,
 };
 
 void dev_flow_init(void)
