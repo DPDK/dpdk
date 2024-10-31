@@ -968,6 +968,74 @@ Extended statistics can be queried using ``rte_eth_xstats_get()``. The extended 
 Finally per-flow statistics can by queried using ``rte_flow_query`` when attaching a count action for specific flow. The flow counter counts the number of packets received successfully by the port and match the specific flow.
 
 
+Extended Statistics Counters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Send Scheduling Counters
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The mlx5 PMD provides a comprehensive set of counters designed for
+debugging and diagnostics related to packet scheduling during transmission.
+These counters are applicable only if the port was configured with the ``tx_pp`` devarg
+and reflect the status of the PMD scheduling infrastructure
+based on Clock and Rearm Queues, used as a workaround on ConnectX-6 DX NICs.
+
+``tx_pp_missed_interrupt_errors``
+  Indicates that the Rearm Queue interrupt was not serviced on time.
+  The EAL manages interrupts in a dedicated thread,
+  and it is possible that other time-consuming actions were being processed concurrently.
+
+``tx_pp_rearm_queue_errors``
+  Signifies hardware errors that occurred on the Rearm Queue,
+  typically caused by delays in servicing interrupts.
+
+``tx_pp_clock_queue_errors``
+  Reflects hardware errors on the Clock Queue,
+  which usually indicate configuration issues
+  or problems with the internal NIC hardware or firmware.
+
+``tx_pp_timestamp_past_errors``
+  Tracks the application attempted to send packets with timestamps set in the past.
+  It is useful for debugging application code
+  and does not indicate a malfunction of the PMD.
+
+``tx_pp_timestamp_future_errors``
+  Records attempts by the application to send packets
+  with timestamps set too far into the future,
+  exceeding the hardware’s scheduling capabilities.
+  Like the previous counter, it aids in application debugging
+  without suggesting a PMD malfunction.
+
+``tx_pp_jitter``
+  Measures the internal NIC real-time clock jitter estimation
+  between two consecutive Clock Queue completions, expressed in nanoseconds.
+  Significant jitter may signal potential clock synchronization issues,
+  possibly due to inappropriate adjustments
+  made by a system PTP (Precision Time Protocol) agent.
+
+``tx_pp_wander``
+  Indicates the long-term stability of the internal NIC real-time clock
+  over 2^24 completions, measured in nanoseconds.
+  Significant wander may also suggest clock synchronization problems.
+
+``tx_pp_sync_lost``
+  A general operational indicator;
+  a non-zero value indicates that the driver has lost synchronization with the Clock Queue,
+  resulting in improper scheduling operations.
+  To restore correct scheduling functionality, it is necessary to restart the port.
+
+The following counters are particularly valuable for verifying and debugging application code.
+They do not indicate driver or hardware malfunctions
+and are applicable to newer hardware with direct on-time scheduling capabilities
+(such as ConnectX-7 and above):
+
+``tx_pp_timestamp_order_errors``
+  Indicates attempts by the application to send packets
+  with timestamps that are not in strictly ascending order.
+  Since the PMD does not reorder packets within hardware queues,
+  violations of timestamp order can lead to packets being sent at incorrect times.
+
+
 Compilation
 -----------
 
