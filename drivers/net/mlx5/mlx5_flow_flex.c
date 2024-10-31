@@ -344,12 +344,14 @@ mlx5_flex_release_index(struct rte_eth_dev *dev,
  *
  *   shift      mask
  * ------- ---------------
- *    0     b111100  0x3C
- *    1     b111110  0x3E
- *    2     b111111  0x3F
- *    3     b011111  0x1F
- *    4     b001111  0x0F
- *    5     b000111  0x07
+ *    0     b11111100  0x3C
+ *    1     b01111110  0x3E
+ *    2     b00111111  0x3F
+ *    3     b00011111  0x1F
+ *    4     b00001111  0x0F
+ *    5     b00000111  0x07
+ *    6     b00000011  0x03
+ *    7     b00000001  0x01
  */
 static uint8_t
 mlx5_flex_hdr_len_mask(uint8_t shift,
@@ -359,8 +361,7 @@ mlx5_flex_hdr_len_mask(uint8_t shift,
 	int diff = shift - MLX5_PARSE_GRAPH_NODE_HDR_LEN_SHIFT_DWORD;
 
 	base_mask = mlx5_hca_parse_graph_node_base_hdr_len_mask(attr);
-	return diff == 0 ? base_mask :
-	       diff < 0 ? (base_mask << -diff) & base_mask : base_mask >> diff;
+	return diff < 0 ? base_mask << -diff : base_mask >> diff;
 }
 
 static int
@@ -371,7 +372,6 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 {
 	const struct rte_flow_item_flex_field *field = &conf->next_header;
 	struct mlx5_devx_graph_node_attr *node = &devx->devx_conf;
-	uint32_t len_width, mask;
 
 	if (field->field_base % CHAR_BIT)
 		return rte_flow_error_set
@@ -399,49 +399,90 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 				 "negative header length field base (FIXED)");
 		node->header_length_mode = MLX5_GRAPH_NODE_LEN_FIXED;
 		break;
-	case FIELD_MODE_OFFSET:
+	case FIELD_MODE_OFFSET: {
+		uint32_t msb, lsb;
+		int32_t shift = field->offset_shift;
+		uint32_t offset = field->offset_base;
+		uint32_t mask = field->offset_mask;
+		uint32_t wmax = attr->header_length_mask_width +
+				MLX5_PARSE_GRAPH_NODE_HDR_LEN_SHIFT_DWORD;
+
 		if (!(attr->header_length_mode &
 		    RTE_BIT32(MLX5_GRAPH_NODE_LEN_FIELD)))
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 				 "unsupported header length field mode (OFFSET)");
+		if (!field->field_size)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "field size is a must for offset mode");
+		if ((offset ^ (field->field_size + offset)) >> 5)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "field crosses the 32-bit word boundary");
+		/* Hardware counts in dwords, all shifts done by offset within mask */
+		if (shift < 0 || (uint32_t)shift >= wmax)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "header length field shift exceeds limits (OFFSET)");
+		if (!mask)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "zero length field offset mask (OFFSET)");
+		msb = rte_fls_u32(mask) - 1;
+		lsb = rte_bsf32(mask);
+		if (!rte_is_power_of_2((mask >> lsb) + 1))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "length field offset mask not contiguous (OFFSET)");
+		if (msb >= field->field_size)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "length field offset mask exceeds field size (OFFSET)");
+		if (msb >= wmax)
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "length field offset mask exceeds supported width (OFFSET)");
+		if (mask & ~mlx5_flex_hdr_len_mask(shift, attr))
+			return rte_flow_error_set
+				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				 "mask and shift combination not supported (OFFSET)");
+		msb++;
+		offset += field->field_size - msb;
+		if (msb < attr->header_length_mask_width) {
+			if (attr->header_length_mask_width - msb > offset)
+				return rte_flow_error_set
+					(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					 "field size plus offset_base is too small");
+			offset += msb;
+			/*
+			 * Here we can move to preceding dword. Hardware does
+			 * cyclic left shift so we should avoid this and stay
+			 * at current dword offset.
+			 */
+			offset = (offset & ~0x1Fu) |
+				 ((offset - attr->header_length_mask_width) & 0x1F);
+		}
 		node->header_length_mode = MLX5_GRAPH_NODE_LEN_FIELD;
-		if (field->offset_mask == 0 ||
-		    !rte_is_power_of_2(field->offset_mask + 1))
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "invalid length field offset mask (OFFSET)");
-		len_width = rte_fls_u32(field->offset_mask);
-		if (len_width > attr->header_length_mask_width)
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "length field offset mask too wide (OFFSET)");
-		mask = mlx5_flex_hdr_len_mask(field->offset_shift, attr);
-		if (mask < field->offset_mask)
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "length field shift too big (OFFSET)");
-		node->header_length_field_mask = RTE_MIN(mask,
-							 field->offset_mask);
+		node->header_length_field_mask = mask;
+		node->header_length_field_shift = shift;
+		node->header_length_field_offset = offset;
 		break;
+	}
 	case FIELD_MODE_BITMASK:
 		if (!(attr->header_length_mode &
 		    RTE_BIT32(MLX5_GRAPH_NODE_LEN_BITMASK)))
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 				 "unsupported header length field mode (BITMASK)");
-		if (attr->header_length_mask_width < field->field_size)
+		if (field->offset_shift > 15 || field->offset_shift < 0)
 			return rte_flow_error_set
 				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "header length field width exceeds limit");
+				 "header length field shift exceeds limit (BITMASK)");
 		node->header_length_mode = MLX5_GRAPH_NODE_LEN_BITMASK;
-		mask = mlx5_flex_hdr_len_mask(field->offset_shift, attr);
-		if (mask < field->offset_mask)
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "length field shift too big (BITMASK)");
-		node->header_length_field_mask = RTE_MIN(mask,
-							 field->offset_mask);
+		node->header_length_field_mask = field->offset_mask;
+		node->header_length_field_shift = field->offset_shift;
+		node->header_length_field_offset = field->offset_base;
 		break;
 	default:
 		return rte_flow_error_set
@@ -454,15 +495,6 @@ mlx5_flex_translate_length(struct mlx5_hca_flex_attr *attr,
 			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 			 "header length field base exceeds limit");
 	node->header_length_base_value = field->field_base / CHAR_BIT;
-	if (field->field_mode == FIELD_MODE_OFFSET ||
-	    field->field_mode == FIELD_MODE_BITMASK) {
-		if (field->offset_shift > 15 || field->offset_shift < 0)
-			return rte_flow_error_set
-				(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				 "header length field shift exceeds limit");
-		node->header_length_field_shift	= field->offset_shift;
-		node->header_length_field_offset = field->offset_base;
-	}
 	return 0;
 }
 
