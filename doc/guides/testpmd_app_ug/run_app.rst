@@ -571,6 +571,9 @@ The command line options are:
 
     The default value is 0. Hairpin will use single port mode and implicit Tx flow mode.
 
+*   ``--hairpin-map=Rx port id:Rx queue:Tx port id:Tx queue:queues number``
+
+    Set explicit hairpin configuration.
 
 Testpmd Multi-Process Command-line Options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -143,6 +143,8 @@ enum {
 	TESTPMD_OPT_HAIRPINQ_NUM,
 #define TESTPMD_OPT_HAIRPIN_MODE "hairpin-mode"
 	TESTPMD_OPT_HAIRPIN_MODE_NUM,
+#define TESTPMD_OPT_HAIRPIN_MAP "hairpin-map"
+	TESTPMD_OPT_HAIRPIN_MAP_NUM,
 #define TESTPMD_OPT_BURST "burst"
 	TESTPMD_OPT_BURST_NUM,
 #define TESTPMD_OPT_FLOWGEN_CLONES "flowgen-clones"
@@ -317,6 +319,7 @@ static const struct option long_options[] = {
 	REQUIRED_ARG(TESTPMD_OPT_TXD),
 	REQUIRED_ARG(TESTPMD_OPT_HAIRPINQ),
 	REQUIRED_ARG(TESTPMD_OPT_HAIRPIN_MODE),
+	REQUIRED_ARG(TESTPMD_OPT_HAIRPIN_MAP),
 	REQUIRED_ARG(TESTPMD_OPT_BURST),
 	REQUIRED_ARG(TESTPMD_OPT_FLOWGEN_CLONES),
 	REQUIRED_ARG(TESTPMD_OPT_FLOWGEN_FLOWS),
@@ -542,6 +545,7 @@ usage(char* progname)
 	printf("  --hairpin-mode=0xXX: bitmask set the hairpin port mode.\n"
 	       "    0x10 - explicit Tx rule, 0x02 - hairpin ports paired\n"
 	       "    0x01 - hairpin ports loop, 0x00 - hairpin port self\n");
+	hairpin_map_usage();
 }
 
 static int
@@ -1317,6 +1321,12 @@ launch_args_parse(int argc, char** argv)
 				hairpin_mode = (uint32_t)n;
 			break;
 		}
+		case TESTPMD_OPT_HAIRPIN_MAP_NUM:
+			hairpin_multiport_mode = true;
+			ret = parse_hairpin_map(optarg);
+			if (ret)
+				rte_exit(EXIT_FAILURE, "invalid hairpin map\n");
+			break;
 		case TESTPMD_OPT_BURST_NUM:
 			n = atoi(optarg);
 			if (n == 0) {
