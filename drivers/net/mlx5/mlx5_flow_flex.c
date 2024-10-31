@@ -1006,6 +1006,8 @@ mlx5_flex_arc_type(enum rte_flow_item_type type, int in)
 		return MLX5_GRAPH_ARC_NODE_GENEVE;
 	case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 		return MLX5_GRAPH_ARC_NODE_VXLAN_GPE;
+	case RTE_FLOW_ITEM_TYPE_ESP:
+		return MLX5_GRAPH_ARC_NODE_IPSEC_ESP;
 	default:
 		return -EINVAL;
 	}
@@ -1041,6 +1043,38 @@ mlx5_flex_arc_in_udp(const struct rte_flow_item *item,
 			 "invalid eth item mask");
 	}
 	return rte_be_to_cpu_16(spec->hdr.dst_port);
+}
+
+static int
+mlx5_flex_arc_in_ipv4(const struct rte_flow_item *item,
+		      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv4 *spec = item->spec;
+	const struct rte_flow_item_ipv4 *mask = item->mask;
+	struct rte_flow_item_ipv4 ip = { .hdr.next_proto_id = 0xff };
+
+	if (memcmp(mask, &ip, sizeof(struct rte_flow_item_ipv4))) {
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "invalid ipv4 item mask, full mask is desired");
+	}
+	return spec->hdr.next_proto_id;
+}
+
+static int
+mlx5_flex_arc_in_ipv6(const struct rte_flow_item *item,
+		      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_ipv6 *spec = item->spec;
+	const struct rte_flow_item_ipv6 *mask = item->mask;
+	struct rte_flow_item_ipv6 ip = { .hdr.proto = 0xff };
+
+	if (memcmp(mask, &ip, sizeof(struct rte_flow_item_ipv6))) {
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
+			 "invalid ipv6 item mask, full mask is desired");
+	}
+	return spec->hdr.proto;
 }
 
 static int
@@ -1088,6 +1122,12 @@ mlx5_flex_translate_arc_in(struct mlx5_hca_flex_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			ret = mlx5_flex_arc_in_udp(rte_item, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			ret = mlx5_flex_arc_in_ipv4(rte_item, error);
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			ret = mlx5_flex_arc_in_ipv6(rte_item, error);
 			break;
 		default:
 			MLX5_ASSERT(false);
