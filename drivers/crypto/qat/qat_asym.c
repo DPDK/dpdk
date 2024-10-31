@@ -277,6 +277,7 @@ modexp_collect(struct rte_crypto_asym_op *asym_op,
 	rte_memcpy(modexp_result,
 		cookie->output_array[0] + alg_bytesize
 		- n.length, n.length);
+	asym_op->modex.result.length = alg_bytesize;
 	HEXDUMP("ModExp result", cookie->output_array[0],
 			alg_bytesize);
 	return RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -338,6 +339,7 @@ modinv_collect(struct rte_crypto_asym_op *asym_op,
 		- n.length),
 		cookie->output_array[0] + alg_bytesize
 		- n.length, n.length);
+	asym_op->modinv.result.length = alg_bytesize;
 	HEXDUMP("ModInv result", cookie->output_array[0],
 			alg_bytesize);
 	return RTE_CRYPTO_OP_STATUS_SUCCESS;
