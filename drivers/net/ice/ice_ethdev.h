@@ -735,6 +735,18 @@ ice_align_floor(int n)
 	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2_AOC_ACC) || \
 	((phy_type) & ICE_PHY_TYPE_HIGH_100G_AUI2))
 
+#define ICE_PHY_TYPE_SUPPORT_200G_HIGH(phy_type) \
+	(((phy_type) & ICE_PHY_TYPE_HIGH_200G_CR4_PAM4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_SR4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_FR4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_LR4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_DR4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_KR4_PAM4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_AUI4_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_AUI4) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_AUI8_AOC_ACC) || \
+	((phy_type) & ICE_PHY_TYPE_HIGH_200G_AUI8))
+
 __rte_experimental
 int rte_pmd_ice_dump_package(uint16_t port, uint8_t **buff, uint32_t *size);
 

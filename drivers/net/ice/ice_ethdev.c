@@ -4213,6 +4213,9 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			ICE_PHY_TYPE_SUPPORT_100G_HIGH(phy_type_high))
 		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_100G;
 
+	if (ICE_PHY_TYPE_SUPPORT_200G_HIGH(phy_type_high))
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_200G;
+
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
 
@@ -4338,6 +4341,9 @@ ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	case ICE_AQ_LINK_SPEED_100GB:
 		link.link_speed = RTE_ETH_SPEED_NUM_100G;
 		break;
+	case ICE_AQ_LINK_SPEED_200GB:
+		link.link_speed = RTE_ETH_SPEED_NUM_200G;
+		break;
 	case ICE_AQ_LINK_SPEED_UNKNOWN:
 		PMD_DRV_LOG(ERR, "Unknown link speed");
 		link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
@@ -4364,6 +4370,8 @@ ice_parse_link_speeds(uint16_t link_speeds)
 {
 	uint16_t link_speed = ICE_AQ_LINK_SPEED_UNKNOWN;
 
+	if (link_speeds & RTE_ETH_LINK_SPEED_200G)
+		link_speed |= ICE_AQ_LINK_SPEED_200GB;
 	if (link_speeds & RTE_ETH_LINK_SPEED_100G)
 		link_speed |= ICE_AQ_LINK_SPEED_100GB;
 	if (link_speeds & RTE_ETH_LINK_SPEED_50G)
@@ -4396,7 +4404,8 @@ ice_apply_link_speed(struct rte_eth_dev *dev)
 	struct rte_eth_conf *conf = &dev->data->dev_conf;
 
 	if (conf->link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
-		conf->link_speeds = RTE_ETH_LINK_SPEED_100G |
+		conf->link_speeds = RTE_ETH_LINK_SPEED_200G |
+				    RTE_ETH_LINK_SPEED_100G |
 				    RTE_ETH_LINK_SPEED_50G  |
 				    RTE_ETH_LINK_SPEED_40G  |
 				    RTE_ETH_LINK_SPEED_25G  |
