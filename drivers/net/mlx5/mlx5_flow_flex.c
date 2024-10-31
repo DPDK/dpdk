@@ -118,28 +118,32 @@ mlx5_flex_get_bitfield(const struct rte_flow_item_flex *item,
 		       uint32_t pos, uint32_t width, uint32_t shift)
 {
 	const uint8_t *ptr = item->pattern + pos / CHAR_BIT;
-	uint32_t val, vbits;
+	uint32_t val, vbits, skip = pos % CHAR_BIT;
 
 	/* Proceed the bitfield start byte. */
 	MLX5_ASSERT(width <= sizeof(uint32_t) * CHAR_BIT && width);
 	MLX5_ASSERT(width + shift <= sizeof(uint32_t) * CHAR_BIT);
 	if (item->length <= pos / CHAR_BIT)
 		return 0;
-	val = *ptr++ >> (pos % CHAR_BIT);
+	/* Bits are enumerated in byte in network order: 01234567 */
+	val = *ptr++;
 	vbits = CHAR_BIT - pos % CHAR_BIT;
-	pos = (pos + vbits) / CHAR_BIT;
+	pos = RTE_ALIGN_CEIL(pos, CHAR_BIT) / CHAR_BIT;
 	vbits = RTE_MIN(vbits, width);
-	val &= RTE_BIT32(vbits) - 1;
+	/* Load bytes to cover the field width, checking pattern boundary */
 	while (vbits < width && pos < item->length) {
 		uint32_t part = RTE_MIN(width - vbits, (uint32_t)CHAR_BIT);
 		uint32_t tmp = *ptr++;
 
-		pos++;
-		tmp &= RTE_BIT32(part) - 1;
-		val |= tmp << vbits;
+		val |= tmp << RTE_ALIGN_CEIL(vbits, CHAR_BIT);
 		vbits += part;
+		pos++;
 	}
-	return rte_bswap32(val <<= shift);
+	val = rte_cpu_to_be_32(val);
+	val <<= skip;
+	val >>= shift;
+	val &= (RTE_BIT64(width) - 1) << (sizeof(uint32_t) * CHAR_BIT - shift - width);
+	return val;
 }
 
 #define SET_FP_MATCH_SAMPLE_ID(x, def, msk, val, sid) \
@@ -235,19 +239,21 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 	mask = item->mask;
 	tp = (struct mlx5_flex_item *)spec->handle;
 	MLX5_ASSERT(mlx5_flex_index(dev->data->dev_private, tp) >= 0);
-	for (i = 0; i < tp->mapnum; i++) {
+	for (i = 0; i < tp->mapnum && pos < (spec->length * CHAR_BIT); i++) {
 		struct mlx5_flex_pattern_field *map = tp->map + i;
 		uint32_t id = map->reg_id;
-		uint32_t def = (RTE_BIT64(map->width) - 1) << map->shift;
-		uint32_t val, msk;
+		uint32_t val, msk, def;
 
 		/* Skip placeholders for DUMMY fields. */
 		if (id == MLX5_INVALID_SAMPLE_REG_ID) {
 			pos += map->width;
 			continue;
 		}
+		def = (uint32_t)(RTE_BIT64(map->width) - 1);
+		def <<= (sizeof(uint32_t) * CHAR_BIT - map->shift - map->width);
 		val = mlx5_flex_get_bitfield(spec, pos, map->width, map->shift);
-		msk = mlx5_flex_get_bitfield(mask, pos, map->width, map->shift);
+		msk = pos < (mask->length * CHAR_BIT) ?
+		      mlx5_flex_get_bitfield(mask, pos, map->width, map->shift) : def;
 		MLX5_ASSERT(map->width);
 		MLX5_ASSERT(id < tp->devx_fp->num_samples);
 		if (tp->tunnel_mode == FLEX_TUNNEL_MODE_MULTI && is_inner) {
@@ -258,7 +264,7 @@ mlx5_flex_flow_translate_item(struct rte_eth_dev *dev,
 			id += num_samples;
 		}
 		mlx5_flex_set_match_sample(misc4_m, misc4_v,
-					   def, msk & def, val & msk & def,
+					   def, msk, val & msk,
 					   tp->devx_fp->sample_ids[id], id);
 		pos += map->width;
 	}
