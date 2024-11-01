@@ -156,7 +156,7 @@ node_clone(struct node *node, const char *name)
 				     (node->xstats->nb_xstats * RTE_NODE_XSTAT_DESC_SIZE));
 		if (reg->xstats == NULL) {
 			rte_errno = ENOMEM;
-			goto fail;
+			goto free;
 		}
 
 		for (i = 0; i < node->xstats->nb_xstats; i++)
@@ -178,7 +178,7 @@ node_clone(struct node *node, const char *name)
 
 	/* Naming ceremony of the new node. name is node->name + "-" + name */
 	if (clone_name(reg->name, node->name, name))
-		goto free;
+		goto free_xstat;
 
 	rc = __rte_node_register(reg);
 free_xstat:
