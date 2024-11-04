@@ -296,6 +296,8 @@ API Changes
     releases: it handles key=value and only-key cases.
   * Both ``rte_kvargs_process`` and ``rte_kvargs_process_opt`` reject a NULL ``kvlist`` parameter.
 
+* net: The IPv4 header structure ``rte_ipv4_hdr`` has been marked as two bytes aligned.
+
 * net: The ICMP message types ``RTE_IP_ICMP_ECHO_REPLY`` and ``RTE_IP_ICMP_ECHO_REQUEST``
   are marked as deprecated, and are replaced
   by ``RTE_ICMP_TYPE_ECHO_REPLY`` and ``RTE_ICMP_TYPE_ECHO_REQUEST``.

@@ -39,7 +39,7 @@ extern "C" {
 /**
  * IPv4 Header
  */
-struct rte_ipv4_hdr {
+struct __rte_aligned(2) rte_ipv4_hdr {
 	__extension__
 	union {
 		uint8_t version_ihl;    /**< version and header length */
@@ -188,7 +188,7 @@ rte_ipv4_cksum_simple(const struct rte_ipv4_hdr *ipv4_hdr)
 	 * Compute the sum of successive 16-bit words of the IPv4 header,
 	 * skipping the checksum field of the header.
 	 */
-	v16_h = (const unaligned_uint16_t *)&ipv4_hdr->version_ihl;
+	v16_h = (const uint16_t *)ipv4_hdr;
 	ip_cksum = v16_h[0] + v16_h[1] + v16_h[2] + v16_h[3] +
 		v16_h[4] + v16_h[6] + v16_h[7] + v16_h[8] + v16_h[9];
 
