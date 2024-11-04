@@ -1944,18 +1944,14 @@ static int ice_read_customized_path(char *pkg_file, uint16_t buff_len)
 	}
 
 	n = read(fp, pkg_file, buff_len - 1);
-	if (n == 0) {
-		close(fp);
-		return -EIO;
+	if (n > 0) {
+		if (pkg_file[n - 1] == '\n')
+			n--;
+		pkg_file[n] = '\0';
 	}
 
-	if (pkg_file[n - 1] == '\n')
-		n--;
-
-	pkg_file[n] = '\0';
-
 	close(fp);
-	return 0;
+	return n;
 }
 
 int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
@@ -1983,7 +1979,7 @@ int ice_load_pkg(struct ice_adapter *adapter, bool use_dsn, uint64_t dsn)
 	snprintf(opt_ddp_filename, ICE_MAX_PKG_FILENAME_SIZE,
 		"ice-%016" PRIx64 ".pkg", dsn);
 
-	if (ice_read_customized_path(customized_path, ICE_MAX_PKG_FILENAME_SIZE) == 0) {
+	if (ice_read_customized_path(customized_path, ICE_MAX_PKG_FILENAME_SIZE) > 0) {
 		if (use_dsn) {
 			snprintf(pkg_file, RTE_DIM(pkg_file), "%s/%s",
 					customized_path, opt_ddp_filename);
