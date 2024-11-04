@@ -31,6 +31,7 @@
 #define TXGBE_FLAG_NEED_LINK_CONFIG (uint32_t)(1 << 4)
 #define TXGBE_FLAG_NEED_AN_CONFIG   (uint32_t)(1 << 5)
 #define TXGBE_FLAG_OVERHEAT         (uint32_t)(1 << 6)
+#define TXGBE_FLAG_TX_DESC_ERR      (uint32_t)(1 << 7)
 
 /*
  * Defines that were not part of txgbe_type.h as they are not used by the
@@ -473,6 +474,8 @@ int txgbe_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int txgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
 int txgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
+
+void txgbe_tx_queue_clear_error(void *param);
 
 void txgbe_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);

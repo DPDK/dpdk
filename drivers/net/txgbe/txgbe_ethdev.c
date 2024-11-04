@@ -1936,6 +1936,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	rte_eal_alarm_cancel(txgbe_dev_detect_sfp, dev);
+	rte_eal_alarm_cancel(txgbe_tx_queue_clear_error, dev);
 	txgbe_dev_wait_setup_link_complete(dev, 0);
 
 	/* disable interrupts */
@@ -2838,6 +2839,60 @@ txgbe_dev_setup_link_alarm_handler(void *param)
 	intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
 }
 
+static void
+txgbe_do_reset(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	struct txgbe_tx_queue *txq;
+	u32 i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		txq->resetting = true;
+	}
+
+	rte_delay_ms(1);
+	wr32(hw, TXGBE_RST, TXGBE_RST_LAN(hw->bus.lan_id));
+	txgbe_flush(hw);
+
+	PMD_DRV_LOG(ERR, "Please manually restart the port %d",
+		dev->data->port_id);
+}
+
+static void
+txgbe_tx_ring_recovery(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+	u32 desc_error[4] = {0, 0, 0, 0};
+	struct txgbe_tx_queue *txq;
+	u32 i;
+
+	/* check tdm fatal error */
+	for (i = 0; i < 4; i++) {
+		desc_error[i] = rd32(hw, TXGBE_TDM_DESC_FATAL(i));
+		if (desc_error[i] != 0) {
+			PMD_DRV_LOG(ERR, "TDM fatal error reg[%d]: 0x%x", i, desc_error[i]);
+			txgbe_do_reset(dev);
+			return;
+		}
+	}
+
+	/* check tdm non-fatal error */
+	for (i = 0; i < 4; i++)
+		desc_error[i] = rd32(hw, TXGBE_TDM_DESC_NONFATAL(i));
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (desc_error[i / 32] & (1 << i % 32)) {
+			PMD_DRV_LOG(ERR, "TDM non-fatal error, reset port[%d] queue[%d]",
+				dev->data->port_id, i);
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+			txq = dev->data->tx_queues[i];
+			txq->resetting = true;
+			rte_eal_alarm_set(1000, txgbe_tx_queue_clear_error, (void *)dev);
+		}
+	}
+}
+
 /*
  * If @timeout_ms was 0, it means that it will not return until link complete.
  * It returns 1 on complete, return 0 on timeout.
@@ -3096,6 +3151,7 @@ txgbe_dev_misc_interrupt_setup(struct rte_eth_dev *dev)
 	intr->mask |= mask;
 	intr->mask_misc |= TXGBE_ICRMISC_GPIO;
 	intr->mask_misc |= TXGBE_ICRMISC_ANDONE;
+	intr->mask_misc |= TXGBE_ICRMISC_TXDESC;
 	return 0;
 }
 
@@ -3190,6 +3246,9 @@ txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
 
 	if (eicr & TXGBE_ICRMISC_HEAT)
 		intr->flags |= TXGBE_FLAG_OVERHEAT;
+
+	if (eicr & TXGBE_ICRMISC_TXDESC)
+		intr->flags |= TXGBE_FLAG_TX_DESC_ERR;
 
 	((u32 *)hw->isb_mem)[TXGBE_ISB_MISC] = 0;
 
@@ -3308,6 +3367,11 @@ txgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 	if (intr->flags & TXGBE_FLAG_OVERHEAT) {
 		txgbe_dev_overheat(dev);
 		intr->flags &= ~TXGBE_FLAG_OVERHEAT;
+	}
+
+	if (intr->flags & TXGBE_FLAG_TX_DESC_ERR) {
+		txgbe_tx_ring_recovery(dev);
+		intr->flags &= ~TXGBE_FLAG_TX_DESC_ERR;
 	}
 
 	PMD_DRV_LOG(DEBUG, "enable intr immediately");

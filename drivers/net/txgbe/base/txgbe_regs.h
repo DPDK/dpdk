@@ -1197,6 +1197,7 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_ICRMISC_ANDONE MS(19, 0x1) /* link auto-nego done */
 #define   TXGBE_ICRMISC_ERRIG  MS(20, 0x1) /* integrity error */
 #define   TXGBE_ICRMISC_SPI    MS(21, 0x1) /* SPI interface */
+#define   TXGBE_ICRMISC_TXDESC MS(22, 0x1) /* TDM desc error */
 #define   TXGBE_ICRMISC_VFMBX  MS(23, 0x1) /* VF-PF message box */
 #define   TXGBE_ICRMISC_GPIO   MS(26, 0x1) /* GPIO interrupt */
 #define   TXGBE_ICRMISC_ERRPCI MS(27, 0x1) /* pcie request error */
@@ -1381,6 +1382,11 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_TXCFG_WTHRESH_MASK      MS(16, 0x7F)
 #define   TXGBE_TXCFG_WTHRESH(v)        LS(v, 16, 0x7F)
 #define   TXGBE_TXCFG_FLUSH             MS(26, 0x1)
+
+#define TXGBE_TDM_DESC_CHK(i)		(0x0180B0 + (i) * 4) /*0-3*/
+#define TXGBE_TDM_DESC_NONFATAL(i)	(0x0180C0 + (i) * 4) /*0-3*/
+#define TXGBE_TDM_DESC_FATAL(i)		(0x0180D0 + (i) * 4) /*0-3*/
+#define TXGBE_TDM_DESC_MASK(v)		MS(v, 0x1)
 
 /* interrupt registers */
 #define TXGBE_ITRI                      0x000180

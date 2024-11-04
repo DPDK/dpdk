@@ -412,6 +412,7 @@ struct txgbe_tx_queue {
 	/**< indicates that IPsec TX feature is in use */
 #endif
 	const struct rte_memzone *mz;
+	bool		    resetting;
 };
 
 struct txgbe_txq_ops {
