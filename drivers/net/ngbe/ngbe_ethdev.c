@@ -1941,6 +1941,7 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 	bool link_up;
 	int err;
 	int wait = 1;
+	u32 reg;
 
 	memset(&link, 0, sizeof(link));
 	link.link_status = RTE_ETH_LINK_DOWN;
@@ -1998,8 +1999,13 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 			wr32m(hw, NGBE_MACTXCFG, NGBE_MACTXCFG_SPEED_MASK,
 				NGBE_MACTXCFG_SPEED_1G | NGBE_MACTXCFG_TE);
 		}
+		/* Re configure MAC RX */
+		reg = rd32(hw, NGBE_MACRXCFG);
+		wr32(hw, NGBE_MACRXCFG, reg);
 		wr32m(hw, NGBE_MACRXFLT, NGBE_MACRXFLT_PROMISC,
 			NGBE_MACRXFLT_PROMISC);
+		reg = rd32(hw, NGBE_MAC_WDG_TIMEOUT);
+		wr32(hw, NGBE_MAC_WDG_TIMEOUT, reg);
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
