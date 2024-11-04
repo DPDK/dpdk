@@ -263,6 +263,8 @@ ngbe_pf_reset_hw(struct ngbe_hw *hw)
 	status = hw->mac.reset_hw(hw);
 
 	ctrl_ext = rd32(hw, NGBE_PORTCTL);
+	/* let hardware know driver is loaded */
+	ctrl_ext |= NGBE_PORTCTL_DRVLOAD;
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
 	ctrl_ext |= NGBE_PORTCTL_RSTDONE;
 	wr32(hw, NGBE_PORTCTL, ctrl_ext);
@@ -1276,6 +1278,9 @@ ngbe_dev_close(struct rte_eth_dev *dev)
 	ngbe_pf_reset_hw(hw);
 
 	ngbe_dev_stop(dev);
+
+	/* Let firmware take over control of hardware */
+	wr32m(hw, NGBE_PORTCTL, NGBE_PORTCTL_DRVLOAD, 0);
 
 	ngbe_dev_free_queues(dev);
 
