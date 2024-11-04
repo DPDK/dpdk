@@ -983,6 +983,8 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.set_eeprom             = nfp_net_set_eeprom,
 	.get_module_info        = nfp_net_get_module_info,
 	.get_module_eeprom      = nfp_net_get_module_eeprom,
+	.dev_led_on             = nfp_net_led_on,
+	.dev_led_off            = nfp_net_led_off,
 };
 
 static inline void

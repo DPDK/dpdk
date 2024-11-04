@@ -3181,3 +3181,35 @@ exit_close_nsp:
 	nfp_nsp_close(nsp);
 	return ret;
 }
+
+static int
+nfp_net_led_control(struct rte_eth_dev *dev,
+		bool is_on)
+{
+	int ret;
+	uint32_t nfp_idx;
+	struct nfp_net_hw_priv *hw_priv;
+
+	hw_priv = dev->process_private;
+	nfp_idx = nfp_net_get_nfp_index(dev);
+
+	ret = nfp_eth_set_idmode(hw_priv->pf_dev->cpp, nfp_idx, is_on);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Set nfp idmode failed.");
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+nfp_net_led_on(struct rte_eth_dev *dev)
+{
+	return nfp_net_led_control(dev, true);
+}
+
+int
+nfp_net_led_off(struct rte_eth_dev *dev)
+{
+	return nfp_net_led_control(dev, false);
+}

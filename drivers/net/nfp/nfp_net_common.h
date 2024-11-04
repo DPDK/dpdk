@@ -399,6 +399,8 @@ int nfp_net_get_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eepr
 int nfp_net_set_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom);
 int nfp_net_get_module_info(struct rte_eth_dev *dev, struct rte_eth_dev_module_info *info);
 int nfp_net_get_module_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *info);
+int nfp_net_led_on(struct rte_eth_dev *dev);
+int nfp_net_led_off(struct rte_eth_dev *dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

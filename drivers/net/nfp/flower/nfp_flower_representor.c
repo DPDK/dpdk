@@ -89,6 +89,30 @@ nfp_repr_get_module_eeprom(struct rte_eth_dev *dev,
 }
 
 static int
+nfp_flower_repr_led_on(struct rte_eth_dev *dev)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_led_on(dev);
+}
+
+static int
+nfp_flower_repr_led_off(struct rte_eth_dev *dev)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_led_off(dev);
+}
+
+static int
 nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
@@ -623,6 +647,9 @@ static const struct eth_dev_ops nfp_flower_multiple_pf_repr_dev_ops = {
 	.set_eeprom           = nfp_repr_set_eeprom,
 	.get_module_info      = nfp_repr_get_module_info,
 	.get_module_eeprom    = nfp_repr_get_module_eeprom,
+
+	.dev_led_on           = nfp_flower_repr_led_on,
+	.dev_led_off          = nfp_flower_repr_led_off,
 };
 
 static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
@@ -661,6 +688,9 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.set_eeprom           = nfp_repr_set_eeprom,
 	.get_module_info      = nfp_repr_get_module_info,
 	.get_module_eeprom    = nfp_repr_get_module_eeprom,
+
+	.dev_led_on           = nfp_flower_repr_led_on,
+	.dev_led_off          = nfp_flower_repr_led_off,
 };
 
 static uint32_t

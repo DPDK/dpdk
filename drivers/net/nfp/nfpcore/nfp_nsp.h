@@ -216,6 +216,7 @@ int nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
 int nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
 int nfp_eth_set_tx_pause(struct nfp_nsp *nsp, bool tx_pause);
 int nfp_eth_set_rx_pause(struct nfp_nsp *nsp, bool rx_pause);
+int nfp_eth_set_idmode(struct nfp_cpp *cpp, uint32_t idx, bool is_on);
 
 /* NSP static information */
 struct nfp_nsp_identify {

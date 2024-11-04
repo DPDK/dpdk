@@ -44,6 +44,7 @@
 #define NSP_ETH_CTRL_SET_LANES          RTE_BIT64(5)
 #define NSP_ETH_CTRL_SET_ANEG           RTE_BIT64(6)
 #define NSP_ETH_CTRL_SET_FEC            RTE_BIT64(7)
+#define NSP_ETH_CTRL_SET_IDMODE         RTE_BIT64(8)
 #define NSP_ETH_CTRL_SET_TX_PAUSE       RTE_BIT64(10)
 #define NSP_ETH_CTRL_SET_RX_PAUSE       RTE_BIT64(11)
 
@@ -735,4 +736,39 @@ nfp_eth_set_rx_pause(struct nfp_nsp *nsp,
 
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
 			NSP_ETH_STATE_RX_PAUSE, rx_pause, NSP_ETH_CTRL_SET_RX_PAUSE);
+}
+
+int
+nfp_eth_set_idmode(struct nfp_cpp *cpp,
+		uint32_t idx,
+		bool is_on)
+{
+	uint64_t reg;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
+
+	nsp = nfp_eth_config_start(cpp, idx);
+	if (nsp == NULL)
+		return -EIO;
+
+	/*
+	 * Older ABI versions did support this feature, however this has only
+	 * been reliable since ABI 32.
+	 */
+	if (nfp_nsp_get_abi_ver_minor(nsp) < 32) {
+		PMD_DRV_LOG(ERR, "Operation only supported on ABI 32 or newer.");
+		nfp_eth_config_cleanup_end(nsp);
+		return -ENOTSUP;
+	}
+
+	entries = nfp_nsp_config_entries(nsp);
+
+	reg = rte_le_to_cpu_64(entries[idx].control);
+	reg &= ~NSP_ETH_CTRL_SET_IDMODE;
+	reg |= FIELD_PREP(NSP_ETH_CTRL_SET_IDMODE, is_on);
+	entries[idx].control = rte_cpu_to_le_64(reg);
+
+	nfp_nsp_config_set_modified(nsp, 1);
+
+	return nfp_eth_config_commit_end(nsp);
 }
