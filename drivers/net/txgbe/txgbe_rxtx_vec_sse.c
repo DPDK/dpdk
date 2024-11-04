@@ -607,9 +607,14 @@ static inline void
 vtx1(volatile struct txgbe_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)
 {
-	__m128i descriptor = _mm_set_epi64x((uint64_t)pkt->pkt_len << 45 |
-			flags | pkt->data_len,
-			pkt->buf_iova + pkt->data_off);
+	uint16_t pkt_len = pkt->data_len;
+	__m128i descriptor;
+
+	if (pkt_len < RTE_ETHER_HDR_LEN)
+		pkt_len = TXGBE_FRAME_SIZE_DFT;
+
+	descriptor = _mm_set_epi64x((uint64_t)pkt_len << 45 | flags | pkt_len,
+				pkt->buf_iova + pkt->data_off);
 	_mm_store_si128((__m128i *)(uintptr_t)txdp, descriptor);
 }
 
