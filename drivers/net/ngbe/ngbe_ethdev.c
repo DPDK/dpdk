@@ -586,41 +586,25 @@ ngbe_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static void
-ngbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+ngbe_vlan_strip_q_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 {
-	struct ngbe_hw *hw = ngbe_dev_hw(dev);
-	struct ngbe_rx_queue *rxq;
-	bool restart;
-	uint32_t rxcfg, rxbal, rxbah;
-
 	if (on)
 		ngbe_vlan_hw_strip_enable(dev, queue);
 	else
 		ngbe_vlan_hw_strip_disable(dev, queue);
+}
 
-	rxq = dev->data->rx_queues[queue];
-	rxbal = rd32(hw, NGBE_RXBAL(rxq->reg_idx));
-	rxbah = rd32(hw, NGBE_RXBAH(rxq->reg_idx));
-	rxcfg = rd32(hw, NGBE_RXCFG(rxq->reg_idx));
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) {
-		restart = (rxcfg & NGBE_RXCFG_ENA) &&
-			!(rxcfg & NGBE_RXCFG_VLAN);
-		rxcfg |= NGBE_RXCFG_VLAN;
-	} else {
-		restart = (rxcfg & NGBE_RXCFG_ENA) &&
-			(rxcfg & NGBE_RXCFG_VLAN);
-		rxcfg &= ~NGBE_RXCFG_VLAN;
-	}
-	rxcfg &= ~NGBE_RXCFG_ENA;
+static void
+ngbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
-	if (restart) {
-		/* set vlan strip for ring */
-		ngbe_dev_rx_queue_stop(dev, queue);
-		wr32(hw, NGBE_RXBAL(rxq->reg_idx), rxbal);
-		wr32(hw, NGBE_RXBAH(rxq->reg_idx), rxbah);
-		wr32(hw, NGBE_RXCFG(rxq->reg_idx), rxcfg);
-		ngbe_dev_rx_queue_start(dev, queue);
+	if (!hw->adapter_stopped) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		return;
 	}
+
+	ngbe_vlan_strip_q_set(dev, queue, on);
 }
 
 static int
@@ -846,9 +830,9 @@ ngbe_vlan_hw_strip_config(struct rte_eth_dev *dev)
 		rxq = dev->data->rx_queues[i];
 
 		if (rxq->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-			ngbe_vlan_hw_strip_enable(dev, i);
+			ngbe_vlan_strip_q_set(dev, i, 1);
 		else
-			ngbe_vlan_hw_strip_disable(dev, i);
+			ngbe_vlan_strip_q_set(dev, i, 0);
 	}
 }
 
@@ -910,6 +894,13 @@ ngbe_vlan_offload_config(struct rte_eth_dev *dev, int mask)
 static int
 ngbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	if (!hw->adapter_stopped && (mask & RTE_ETH_VLAN_STRIP_MASK)) {
+		PMD_DRV_LOG(ERR, "Please stop port first");
+		return -EPERM;
+	}
+
 	ngbe_config_vlan_strip_on_all_queues(dev, mask);
 
 	ngbe_vlan_offload_config(dev, mask);
