@@ -2193,6 +2193,19 @@ ngbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
 
+	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_VEC0];
+	if (!eicr) {
+		/*
+		 * shared interrupt alert!
+		 * make sure interrupts are enabled because the read will
+		 * have disabled interrupts.
+		 */
+		if (!hw->adapter_stopped)
+			ngbe_enable_intr(dev);
+		return 0;
+	}
+	((u32 *)hw->isb_mem)[NGBE_ISB_VEC0] = 0;
+
 	/* read-on-clear nic registers here */
 	eicr = ((u32 *)hw->isb_mem)[NGBE_ISB_MISC];
 	PMD_DRV_LOG(DEBUG, "eicr %x", eicr);
