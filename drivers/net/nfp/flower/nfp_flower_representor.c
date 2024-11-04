@@ -25,6 +25,70 @@ struct nfp_repr_init {
 };
 
 static int
+nfp_repr_get_eeprom_len(struct rte_eth_dev *dev)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_get_eeprom_len(dev);
+}
+
+static int
+nfp_repr_get_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *eeprom)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_get_eeprom(dev, eeprom);
+}
+
+static int
+nfp_repr_set_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *eeprom)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_set_eeprom(dev, eeprom);
+}
+
+static int
+nfp_repr_get_module_info(struct rte_eth_dev *dev,
+		struct rte_eth_dev_module_info *info)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_get_module_info(dev, info);
+}
+
+static int
+nfp_repr_get_module_eeprom(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *info)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	if (!nfp_flower_repr_is_phy(repr))
+		return -EOPNOTSUPP;
+
+	return nfp_net_get_module_eeprom(dev, info);
+}
+
+static int
 nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
@@ -553,6 +617,12 @@ static const struct eth_dev_ops nfp_flower_multiple_pf_repr_dev_ops = {
 	.xstats_get_names       = nfp_net_xstats_get_names,
 	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
 	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
+
+	.get_eeprom_length    = nfp_repr_get_eeprom_len,
+	.get_eeprom           = nfp_repr_get_eeprom,
+	.set_eeprom           = nfp_repr_set_eeprom,
+	.get_module_info      = nfp_repr_get_module_info,
+	.get_module_eeprom    = nfp_repr_get_module_eeprom,
 };
 
 static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
@@ -585,6 +655,12 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.xstats_get_names       = nfp_net_xstats_get_names,
 	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
 	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
+
+	.get_eeprom_length    = nfp_repr_get_eeprom_len,
+	.get_eeprom           = nfp_repr_get_eeprom,
+	.set_eeprom           = nfp_repr_set_eeprom,
+	.get_module_info      = nfp_repr_get_module_info,
+	.get_module_eeprom    = nfp_repr_get_module_eeprom,
 };
 
 static uint32_t

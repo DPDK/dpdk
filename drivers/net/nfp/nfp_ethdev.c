@@ -978,6 +978,11 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.fec_get_capability     = nfp_net_fec_get_capability,
 	.fec_get                = nfp_net_fec_get,
 	.fec_set                = nfp_net_fec_set,
+	.get_eeprom_length      = nfp_net_get_eeprom_len,
+	.get_eeprom             = nfp_net_get_eeprom,
+	.set_eeprom             = nfp_net_set_eeprom,
+	.get_module_info        = nfp_net_get_module_info,
+	.get_module_eeprom      = nfp_net_get_module_eeprom,
 };
 
 static inline void

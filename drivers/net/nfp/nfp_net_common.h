@@ -394,6 +394,12 @@ void nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 		struct rte_eth_link *link);
 bool nfp_net_recv_pkt_meta_check_register(struct nfp_net_hw_priv *hw_priv);
 
+int nfp_net_get_eeprom_len(struct rte_eth_dev *dev);
+int nfp_net_get_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom);
+int nfp_net_set_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *eeprom);
+int nfp_net_get_module_info(struct rte_eth_dev *dev, struct rte_eth_dev_module_info *info);
+int nfp_net_get_module_eeprom(struct rte_eth_dev *dev, struct rte_dev_eeprom_info *info);
+
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)
 

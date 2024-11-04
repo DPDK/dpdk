@@ -808,6 +808,102 @@ nfp_nsp_hwinfo_lookup_real(struct nfp_nsp *state,
 	return nfp_nsp_command_buf(state, &hwinfo_lookup);
 }
 
+static int
+nfp_nsp_read_module_eeprom_real(struct nfp_nsp *state,
+		void *buf,
+		uint32_t size)
+{
+	struct nfp_nsp_command_buf_arg module_eeprom = {
+		{
+			.code   = SPCODE_READ_SFF_EEPROM,
+			.option = size,
+		},
+		.in_buf         = buf,
+		.in_size        = size,
+		.out_buf        = buf,
+		.out_size       = size,
+	};
+
+	return nfp_nsp_command_buf(state, &module_eeprom);
+}
+
+int
+nfp_nsp_read_module_eeprom(struct nfp_nsp *state,
+		int eth_index,
+		uint32_t offset,
+		void *data,
+		uint32_t len,
+		uint32_t *read_len)
+{
+	int ret;
+	int bufsz;
+	struct eeprom_buf {
+		uint8_t metalen;
+		rte_le16_t length;
+		rte_le16_t offset;
+		rte_le16_t readlen;
+		uint8_t eth_index;
+		uint8_t data[];
+	} __rte_packed * buf;
+
+	/* Buffer must be large enough and rounded to the next block size. */
+	bufsz = sizeof(*(buf)) + sizeof((buf)->data[0]) *
+			(RTE_ALIGN_CEIL(len, NSP_SFF_EEPROM_BLOCK_LEN));
+	buf = calloc(1, bufsz);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	buf->metalen = offsetof(struct eeprom_buf, data) / NSP_SFF_EEPROM_BLOCK_LEN;
+	buf->length = rte_cpu_to_le_16(len);
+	buf->offset = rte_cpu_to_le_16(offset);
+	buf->eth_index = eth_index;
+
+	ret = nfp_nsp_read_module_eeprom_real(state, buf, bufsz);
+	if (ret != 0)
+		goto free_exit;
+
+	if (rte_le_to_cpu_16(buf->readlen) < len) {
+		ret = -EIO;
+		goto free_exit;
+	}
+
+	if (len != 0)
+		memcpy(data, buf->data, len);
+
+	*read_len = len;
+
+free_exit:
+	free(buf);
+	return ret;
+}
+
+int
+nfp_nsp_hwinfo_lookup(struct nfp_nsp *state,
+		void *buf,
+		uint32_t size)
+{
+	int ret;
+	uint32_t size_tmp;
+
+	if (!nfp_nsp_has_hwinfo_lookup(state)) {
+		PMD_DRV_LOG(ERR, "NSP HWinfo lookup not supported. Please update flash.");
+		return -EOPNOTSUPP;
+	}
+
+	size_tmp = RTE_MIN(size, NFP_HWINFO_LOOKUP_SIZE);
+
+	ret = nfp_nsp_hwinfo_lookup_real(state, buf, size, false);
+	if (ret != 0)
+		return ret;
+
+	if (strnlen(buf, size_tmp) == size_tmp) {
+		PMD_DRV_LOG(ERR, "NSP HWinfo value not NULL terminated.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int
 nfp_nsp_hwinfo_lookup_optional(struct nfp_nsp *state,
 		void *buf,

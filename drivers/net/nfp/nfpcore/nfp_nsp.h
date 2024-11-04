@@ -8,6 +8,11 @@
 
 #include "nfp_cpp.h"
 
+/* EEPROM byte offsets */
+#define SFP_SFF8472_COMPLIANCE          0x5e
+#define SFP_SFF_REV_COMPLIANCE          1
+#define NSP_SFF_EEPROM_BLOCK_LEN        8
+
 /* Defines the valid values of the 'abi_drv_reset' hwinfo key */
 #define NFP_NSP_DRV_RESET_DISK                  0
 #define NFP_NSP_DRV_RESET_ALWAYS                1
@@ -238,8 +243,12 @@ int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
 		uint32_t *val);
 bool nfp_nsp_fw_loaded(struct nfp_nsp *state);
 int nfp_nsp_load_stored_fw(struct nfp_nsp *state);
+int nfp_nsp_hwinfo_lookup(struct nfp_nsp *state, void *buf, uint32_t size);
 int nfp_nsp_hwinfo_lookup_optional(struct nfp_nsp *state,
 		void *buf, size_t size, const char *default_val);
+int nfp_nsp_read_module_eeprom(struct nfp_nsp *state, int eth_index,
+		uint32_t offset, void *data,
+		uint32_t len, uint32_t *read_len);
 
 /* The buf used to receive bitmap of link modes */
 struct nfp_eth_media_buf {
