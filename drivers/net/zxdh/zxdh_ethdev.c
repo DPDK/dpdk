@@ -833,9 +833,23 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
-zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
+zxdh_dev_close(struct rte_eth_dev *dev)
 {
+	struct zxdh_hw *hw = dev->data->dev_private;
 	int ret = 0;
+
+	zxdh_intr_release(dev);
+	zxdh_pci_reset(hw);
+
+	zxdh_dev_free_mbufs(dev);
+	zxdh_free_queues(dev);
+
+	zxdh_bar_msg_chan_exit();
+
+	if (dev->data->mac_addrs != NULL) {
+		rte_free(dev->data->mac_addrs);
+		dev->data->mac_addrs = NULL;
+	}
 
 	return ret;
 }
@@ -843,6 +857,7 @@ zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
 /* dev_ops for zxdh, bare necessities for basic operation */
 static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.dev_configure			 = zxdh_dev_configure,
+	.dev_close				 = zxdh_dev_close,
 	.dev_infos_get			 = zxdh_dev_infos_get,
 };
 
