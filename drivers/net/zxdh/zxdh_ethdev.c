@@ -10,8 +10,21 @@
 #include "zxdh_logs.h"
 #include "zxdh_pci.h"
 #include "zxdh_msg.h"
+#include "zxdh_common.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
+
+uint16_t
+zxdh_vport_to_vfid(union zxdh_virport_num v)
+{
+	/* epid > 4 is local soft queue. return 1192 */
+	if (v.epid > 4)
+		return 1192;
+	if (v.vf_flag)
+		return v.epid * 256 + v.vfid;
+	else
+		return (v.epid * 8 + v.pfid) + 1152;
+}
 
 static int
 zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
@@ -51,6 +64,26 @@ zxdh_init_device(struct rte_eth_dev *eth_dev)
 err:
 	PMD_DRV_LOG(ERR, "port %d init device failed", eth_dev->data->port_id);
 	return ret;
+}
+
+static int
+zxdh_agent_comm(struct rte_eth_dev *eth_dev, struct zxdh_hw *hw)
+{
+	if (zxdh_phyport_get(eth_dev, &hw->phyport) != 0) {
+		PMD_DRV_LOG(ERR, "Failed to get phyport");
+		return -1;
+	}
+	PMD_DRV_LOG(INFO, "Get phyport success: 0x%x", hw->phyport);
+
+	hw->vfid = zxdh_vport_to_vfid(hw->vport);
+
+	if (zxdh_panelid_get(eth_dev, &hw->panel_id) != 0) {
+		PMD_DRV_LOG(ERR, "Failed to get panel_id");
+		return -1;
+	}
+	PMD_DRV_LOG(INFO, "Get panel id success: 0x%x", hw->panel_id);
+
+	return 0;
 }
 
 static int
@@ -112,6 +145,10 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR, "zxdh_msg_bar_chan_enable failed ret %d", ret);
 		goto err_zxdh_init;
 	}
+
+	ret = zxdh_agent_comm(eth_dev, hw);
+	if (ret != 0)
+		goto err_zxdh_init;
 
 	return ret;
 

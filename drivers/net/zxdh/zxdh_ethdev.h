@@ -51,6 +51,7 @@ struct zxdh_hw {
 	uint16_t pcie_id;
 	uint16_t device_id;
 	uint16_t port_id;
+	uint16_t vfid;
 
 	uint8_t *isr;
 	uint8_t weak_barriers;
@@ -60,6 +61,10 @@ struct zxdh_hw {
 	uint8_t duplex;
 	uint8_t is_pf;
 	uint8_t msg_chan_init;
+	uint8_t phyport;
+	uint8_t panel_id;
 };
+
+uint16_t zxdh_vport_to_vfid(union zxdh_virport_num v);
 
 #endif /* ZXDH_ETHDEV_H */
