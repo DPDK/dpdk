@@ -151,13 +151,13 @@ struct __rte_cache_aligned mlx5_rxq_data {
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {
 	struct mlx5_rxq_data rxq; /* Data path structure. */
-	LIST_ENTRY(mlx5_rxq_ctrl) next; /* Pointer to the next element. */
 	LIST_HEAD(priv, mlx5_rxq_priv) owners; /* Owner rxq list. */
 	struct mlx5_rxq_obj *obj; /* Verbs/DevX elements. */
 	struct mlx5_dev_ctx_shared *sh; /* Shared context. */
 	bool is_hairpin; /* Whether RxQ type is Hairpin. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	LIST_ENTRY(mlx5_rxq_ctrl) share_entry; /* Entry in shared RXQ list. */
+	RTE_ATOMIC(uint32_t) ctrl_ref; /* Reference counter. */
 	uint32_t share_group; /* Group ID of shared RXQ. */
 	uint16_t share_qid; /* Shared RxQ ID in group. */
 	unsigned int started:1; /* Whether (shared) RXQ has been started. */
@@ -173,7 +173,6 @@ struct mlx5_rxq_ctrl {
 /* RX queue private data. */
 struct mlx5_rxq_priv {
 	uint16_t idx; /* Queue index. */
-	bool possessor; /* Shared rxq_ctrl allocated for the 1st time. */
 	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *ctrl; /* Shared Rx Queue. */
 	LIST_ENTRY(mlx5_rxq_priv) owner_entry; /* Entry in shared rxq_ctrl. */
