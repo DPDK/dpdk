@@ -1197,7 +1197,7 @@ enum txgbe_5tuple_protocol {
 #define   TXGBE_ICRMISC_ANDONE MS(19, 0x1) /* link auto-nego done */
 #define   TXGBE_ICRMISC_ERRIG  MS(20, 0x1) /* integrity error */
 #define   TXGBE_ICRMISC_SPI    MS(21, 0x1) /* SPI interface */
-#define   TXGBE_ICRMISC_VFMBX  MS(22, 0x1) /* VF-PF message box */
+#define   TXGBE_ICRMISC_VFMBX  MS(23, 0x1) /* VF-PF message box */
 #define   TXGBE_ICRMISC_GPIO   MS(26, 0x1) /* GPIO interrupt */
 #define   TXGBE_ICRMISC_ERRPCI MS(27, 0x1) /* pcie request error */
 #define   TXGBE_ICRMISC_HEAT   MS(28, 0x1) /* overheat detection */
