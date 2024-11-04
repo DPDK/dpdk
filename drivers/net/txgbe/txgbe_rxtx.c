@@ -894,6 +894,7 @@ txgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_pkt = *tx_pkts++;
 		if (txgbe_check_pkt_err(tx_pkt)) {
 			rte_pktmbuf_free(tx_pkt);
+			txq->desc_error++;
 			continue;
 		}
 
@@ -2523,6 +2524,7 @@ txgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txgbe_set_tx_function(dev, txq);
 
 	txq->ops->reset(txq);
+	txq->desc_error = 0;
 
 	dev->data->tx_queues[queue_idx] = txq;
 
@@ -4980,6 +4982,10 @@ txgbe_tx_queue_clear_error(void *param)
 		if (!txq->resetting)
 			continue;
 
+		/* Increase the count of Tx desc error since
+		 * it causes the queue reset.
+		 */
+		txq->desc_error++;
 		txgbe_dev_save_tx_queue(hw, i);
 
 		/* tx ring reset */

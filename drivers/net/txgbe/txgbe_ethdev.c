@@ -2344,6 +2344,7 @@ txgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
 	struct txgbe_stat_mappings *stat_mappings =
 			TXGBE_DEV_STAT_MAPPINGS(dev);
+	struct txgbe_tx_queue *txq;
 	uint32_t i, j;
 
 	txgbe_read_stats_registers(hw, hw_stats);
@@ -2398,6 +2399,11 @@ txgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Tx Errors */
 	stats->oerrors  = 0;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		stats->oerrors += txq->desc_error;
+	}
+
 	return 0;
 }
 
@@ -2406,6 +2412,13 @@ txgbe_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct txgbe_hw_stats *hw_stats = TXGBE_DEV_STATS(dev);
+	struct txgbe_tx_queue *txq;
+	uint32_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		txq->desc_error = 0;
+	}
 
 	/* HW registers are cleared on read */
 	hw->offset_loaded = 0;
