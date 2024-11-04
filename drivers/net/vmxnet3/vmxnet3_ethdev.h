@@ -121,8 +121,8 @@ struct vmxnet3_hw {
 #define VMXNET3_VFT_TABLE_SIZE     (VMXNET3_VFT_SIZE * sizeof(uint32_t))
 	UPT1_TxStats	      saved_tx_stats[VMXNET3_EXT_MAX_TX_QUEUES];
 	UPT1_RxStats	      saved_rx_stats[VMXNET3_EXT_MAX_RX_QUEUES];
-	UPT1_TxStats          snapshot_tx_stats[VMXNET3_MAX_TX_QUEUES];
-	UPT1_RxStats          snapshot_rx_stats[VMXNET3_MAX_RX_QUEUES];
+	UPT1_TxStats          snapshot_tx_stats[VMXNET3_EXT_MAX_TX_QUEUES];
+	UPT1_RxStats          snapshot_rx_stats[VMXNET3_EXT_MAX_RX_QUEUES];
 	uint16_t              tx_prod_offset;
 	uint16_t              rx_prod_offset[2];
 	/* device capability bit map */

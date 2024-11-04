@@ -1471,42 +1471,52 @@ vmxnet3_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct UPT1_TxStats txStats;
 	struct UPT1_RxStats rxStats;
+	uint64_t packets, bytes;
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
 
 	for (i = 0; i < hw->num_tx_queues; i++) {
 		vmxnet3_tx_stats_get(hw, i, &txStats);
 
-		stats->q_opackets[i] = txStats.ucastPktsTxOK +
+		packets = txStats.ucastPktsTxOK +
 			txStats.mcastPktsTxOK +
 			txStats.bcastPktsTxOK;
 
-		stats->q_obytes[i] = txStats.ucastBytesTxOK +
+		bytes = txStats.ucastBytesTxOK +
 			txStats.mcastBytesTxOK +
 			txStats.bcastBytesTxOK;
 
-		stats->opackets += stats->q_opackets[i];
-		stats->obytes += stats->q_obytes[i];
+		stats->opackets += packets;
+		stats->obytes += bytes;
 		stats->oerrors += txStats.pktsTxError + txStats.pktsTxDiscard;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = packets;
+			stats->q_obytes[i] = bytes;
+		}
 	}
 
 	for (i = 0; i < hw->num_rx_queues; i++) {
 		vmxnet3_rx_stats_get(hw, i, &rxStats);
 
-		stats->q_ipackets[i] = rxStats.ucastPktsRxOK +
+		packets = rxStats.ucastPktsRxOK +
 			rxStats.mcastPktsRxOK +
 			rxStats.bcastPktsRxOK;
 
-		stats->q_ibytes[i] = rxStats.ucastBytesRxOK +
+		bytes = rxStats.ucastBytesRxOK +
 			rxStats.mcastBytesRxOK +
 			rxStats.bcastBytesRxOK;
 
-		stats->ipackets += stats->q_ipackets[i];
-		stats->ibytes += stats->q_ibytes[i];
-
-		stats->q_errors[i] = rxStats.pktsRxError;
+		stats->ipackets += packets;
+		stats->ibytes += bytes;
 		stats->ierrors += rxStats.pktsRxError;
 		stats->imissed += rxStats.pktsRxOutOfBuf;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = packets;
+			stats->q_ibytes[i] = bytes;
+			stats->q_errors[i] = rxStats.pktsRxError;
+		}
 	}
 
 	return 0;
@@ -1521,8 +1531,6 @@ vmxnet3_dev_stats_reset(struct rte_eth_dev *dev)
 	struct UPT1_RxStats rxStats = {0};
 
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_GET_STATS);
-
-	RTE_BUILD_BUG_ON(RTE_ETHDEV_QUEUE_STAT_CNTRS < VMXNET3_MAX_TX_QUEUES);
 
 	for (i = 0; i < hw->num_tx_queues; i++) {
 		vmxnet3_hw_tx_stats_get(hw, i, &txStats);
