@@ -47,6 +47,7 @@ struct zxdh_hw {
 
 	uint8_t duplex;
 	uint8_t is_pf;
+	uint8_t msg_chan_init;
 };
 
 #endif /* ZXDH_ETHDEV_H */

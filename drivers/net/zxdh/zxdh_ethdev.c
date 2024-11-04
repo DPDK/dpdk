@@ -9,6 +9,7 @@
 #include "zxdh_ethdev.h"
 #include "zxdh_logs.h"
 #include "zxdh_pci.h"
+#include "zxdh_msg.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 
@@ -93,9 +94,23 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (ret < 0)
 		goto err_zxdh_init;
 
+	ret = zxdh_msg_chan_init();
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to init bar msg chan");
+		goto err_zxdh_init;
+	}
+	hw->msg_chan_init = 1;
+
+	ret = zxdh_msg_chan_hwlock_init(eth_dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "zxdh_msg_chan_hwlock_init failed ret %d", ret);
+		goto err_zxdh_init;
+	}
+
 	return ret;
 
 err_zxdh_init:
+	zxdh_bar_msg_chan_exit();
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 	return ret;

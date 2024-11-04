@@ -15,5 +15,6 @@ endif
 
 sources = files(
         'zxdh_ethdev.c',
+        'zxdh_msg.c',
         'zxdh_pci.c',
 )
