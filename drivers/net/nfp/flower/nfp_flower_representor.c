@@ -96,7 +96,7 @@ nfp_flower_repr_dev_start(struct rte_eth_dev *dev)
 	hw_priv = dev->process_private;
 	app_fw_flower = repr->app_fw_flower;
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+	if (nfp_flower_repr_is_phy(repr)) {
 		ret = nfp_eth_set_configured(hw_priv->pf_dev->cpp, repr->nfp_idx, 1);
 		if (ret < 0)
 			return ret;
@@ -127,7 +127,7 @@ nfp_flower_repr_dev_stop(struct rte_eth_dev *dev)
 
 	nfp_flower_cmsg_port_mod(app_fw_flower, repr->port_id, false);
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+	if (nfp_flower_repr_is_phy(repr)) {
 		ret = nfp_eth_set_configured(hw_priv->pf_dev->cpp, repr->nfp_idx, 0);
 		if (ret == 1)
 			ret = 0;
@@ -411,7 +411,7 @@ nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 	nfp_flower_repr_base_uninit(repr);
 	rte_free(repr->ring);
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+	if (nfp_flower_repr_is_phy(repr)) {
 		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(repr->port_id);
 		repr->app_fw_flower->phy_reprs[index] = NULL;
 	} else {
@@ -768,14 +768,14 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		goto ring_cleanup;
 	}
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
+	if (nfp_flower_repr_is_phy(repr))
 		eth_dev->data->representor_id = repr->vf_id;
 	else
 		eth_dev->data->representor_id = repr->vf_id +
 				app_fw_flower->num_phyport_reprs + 1;
 
 	/* Add repr to correct array */
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+	if (nfp_flower_repr_is_phy(repr)) {
 		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(repr->port_id);
 		app_fw_flower->phy_reprs[index] = repr;
 	} else {
@@ -783,7 +783,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		app_fw_flower->vf_reprs[index] = repr;
 	}
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+	if (nfp_flower_repr_is_phy(repr)) {
 		repr->mac_stats = hw_priv->pf_dev->mac_stats_bar +
 				(repr->nfp_idx * NFP_MAC_STATS_SIZE);
 	}
@@ -1182,4 +1182,10 @@ bool
 nfp_flower_repr_is_vf(struct nfp_flower_representor *repr)
 {
 	return repr->repr_type == NFP_REPR_TYPE_VF;
+}
+
+bool
+nfp_flower_repr_is_phy(struct nfp_flower_representor *repr)
+{
+	return repr->repr_type == NFP_REPR_TYPE_PHYS_PORT;
 }
