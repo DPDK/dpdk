@@ -20,6 +20,7 @@
 #define ZXDH_COMMON_TABLE_WRITE       1
 
 #define ZXDH_COMMON_FIELD_PHYPORT     6
+#define ZXDH_COMMON_FIELD_DATACH      3
 
 #define ZXDH_RSC_TBL_CONTENT_LEN_MAX  (257 * 2)
 
@@ -252,5 +253,148 @@ zxdh_panelid_get(struct rte_eth_dev *dev, uint8_t *panelid)
 
 	zxdh_fill_res_para(dev, &param);
 	int32_t ret = zxdh_get_res_panel_id(&param, panelid);
+	return ret;
+}
+
+uint32_t
+zxdh_read_bar_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint64_t baseaddr = (uint64_t)(hw->bar_addr[bar]);
+	uint32_t val      = *((volatile uint32_t *)(baseaddr + reg));
+	return val;
+}
+
+void
+zxdh_write_bar_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg, uint32_t val)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint64_t baseaddr = (uint64_t)(hw->bar_addr[bar]);
+	*((volatile uint32_t *)(baseaddr + reg)) = val;
+}
+
+static bool
+zxdh_try_lock(struct zxdh_hw *hw)
+{
+	uint32_t var = zxdh_read_comm_reg((uint64_t)hw->common_cfg, ZXDH_VF_LOCK_REG);
+
+	/* check whether lock is used */
+	if (!(var & ZXDH_VF_LOCK_ENABLE_MASK))
+		return false;
+
+	return true;
+}
+
+int32_t
+zxdh_timedlock(struct zxdh_hw *hw, uint32_t us)
+{
+	uint16_t timeout = 0;
+
+	while ((timeout++) < ZXDH_ACQUIRE_CHANNEL_NUM_MAX) {
+		rte_delay_us_block(us);
+		/* acquire hw lock */
+		if (!zxdh_try_lock(hw)) {
+			PMD_DRV_LOG(ERR, "Acquiring hw lock got failed, timeout: %d", timeout);
+			continue;
+		}
+		break;
+	}
+	if (timeout >= ZXDH_ACQUIRE_CHANNEL_NUM_MAX) {
+		PMD_DRV_LOG(ERR, "Failed to acquire channel");
+		return -1;
+	}
+	return 0;
+}
+
+void
+zxdh_release_lock(struct zxdh_hw *hw)
+{
+	uint32_t var = zxdh_read_comm_reg((uint64_t)hw->common_cfg, ZXDH_VF_LOCK_REG);
+
+	if (var & ZXDH_VF_LOCK_ENABLE_MASK) {
+		var &= ~ZXDH_VF_LOCK_ENABLE_MASK;
+		zxdh_write_comm_reg((uint64_t)hw->common_cfg, ZXDH_VF_LOCK_REG, var);
+	}
+}
+
+uint32_t
+zxdh_read_comm_reg(uint64_t pci_comm_cfg_baseaddr, uint32_t reg)
+{
+	uint32_t val = *((volatile uint32_t *)(pci_comm_cfg_baseaddr + reg));
+	return val;
+}
+
+void
+zxdh_write_comm_reg(uint64_t pci_comm_cfg_baseaddr, uint32_t reg, uint32_t val)
+{
+	*((volatile uint32_t *)(pci_comm_cfg_baseaddr + reg)) = val;
+}
+
+static int32_t
+zxdh_common_table_write(struct zxdh_hw *hw, uint8_t field,
+			void *buff, uint16_t buff_size)
+{
+	struct zxdh_pci_bar_msg desc;
+	struct zxdh_msg_recviver_mem msg_rsp;
+	int32_t ret = 0;
+
+	if (!hw->msg_chan_init) {
+		PMD_DRV_LOG(ERR, "Bar messages channel not initialized");
+		return -1;
+	}
+	if (buff_size != 0 && buff == NULL) {
+		PMD_DRV_LOG(ERR, "Buff is invalid");
+		return -1;
+	}
+
+	ret = zxdh_fill_common_msg(hw, &desc, ZXDH_COMMON_TABLE_WRITE,
+					field, buff, buff_size);
+
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to fill common msg");
+		return ret;
+	}
+
+	ret = zxdh_send_command(hw, &desc, ZXDH_BAR_MODULE_TBL, &msg_rsp);
+	if (ret != 0)
+		goto free_msg_data;
+
+	ret = zxdh_common_rsp_check(&msg_rsp, NULL, 0);
+	if (ret != 0)
+		goto free_rsp_data;
+
+free_rsp_data:
+	rte_free(msg_rsp.recv_buffer);
+free_msg_data:
+	rte_free(desc.payload_addr);
+	return ret;
+}
+
+int32_t
+zxdh_datach_set(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint16_t buff_size = (hw->queue_num + 1) * 2;
+	int32_t ret = 0;
+	uint16_t i;
+
+	void *buff = rte_zmalloc(NULL, buff_size, 0);
+	if (unlikely(buff == NULL)) {
+		PMD_DRV_LOG(ERR, "Failed to allocate buff");
+		return -ENOMEM;
+	}
+	memset(buff, 0, buff_size);
+	uint16_t *pdata = (uint16_t *)buff;
+	*pdata++ = hw->queue_num;
+
+	for (i = 0; i < hw->queue_num; i++)
+		*(pdata + i) = hw->channel_context[i].ph_chno;
+
+	ret = zxdh_common_table_write(hw, ZXDH_COMMON_FIELD_DATACH,
+						(void *)buff, buff_size);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "Failed to setup data channel of common table");
+
+	rte_free(buff);
 	return ret;
 }

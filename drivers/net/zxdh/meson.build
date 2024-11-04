@@ -18,4 +18,5 @@ sources = files(
         'zxdh_ethdev.c',
         'zxdh_msg.c',
         'zxdh_pci.c',
+        'zxdh_queue.c',
 )

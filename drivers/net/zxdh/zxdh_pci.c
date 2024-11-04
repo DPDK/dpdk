@@ -115,6 +115,93 @@ zxdh_get_isr(struct zxdh_hw *hw)
 	return rte_read8(hw->isr);
 }
 
+static uint16_t
+zxdh_get_queue_num(struct zxdh_hw *hw, uint16_t queue_id)
+{
+	rte_write16(queue_id, &hw->common_cfg->queue_select);
+	return rte_read16(&hw->common_cfg->queue_size);
+}
+
+static void
+zxdh_set_queue_num(struct zxdh_hw *hw, uint16_t queue_id, uint16_t vq_size)
+{
+	rte_write16(queue_id, &hw->common_cfg->queue_select);
+	rte_write16(vq_size, &hw->common_cfg->queue_size);
+}
+
+static int32_t
+check_vq_phys_addr_ok(struct zxdh_virtqueue *vq)
+{
+	if ((vq->vq_ring_mem + vq->vq_ring_size - 1) >> (ZXDH_PCI_QUEUE_ADDR_SHIFT + 32)) {
+		PMD_DRV_LOG(ERR, "vring address shouldn't be above 16TB!");
+		return 0;
+	}
+	return 1;
+}
+
+static inline void
+io_write64_twopart(uint64_t val, uint32_t *lo, uint32_t *hi)
+{
+	rte_write32(val & ((1ULL << 32) - 1), lo);
+	rte_write32(val >> 32, hi);
+}
+
+static int32_t
+zxdh_setup_queue(struct zxdh_hw *hw, struct zxdh_virtqueue *vq)
+{
+	uint64_t desc_addr  = 0;
+	uint64_t avail_addr = 0;
+	uint64_t used_addr  = 0;
+	uint16_t notify_off = 0;
+
+	if (!check_vq_phys_addr_ok(vq))
+		return -1;
+
+	desc_addr = vq->vq_ring_mem;
+	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct zxdh_vring_desc);
+	if (vtpci_packed_queue(vq->hw)) {
+		used_addr = RTE_ALIGN_CEIL((avail_addr +
+				sizeof(struct zxdh_vring_packed_desc_event)),
+				ZXDH_PCI_VRING_ALIGN);
+	} else {
+		used_addr = RTE_ALIGN_CEIL(avail_addr + offsetof(struct zxdh_vring_avail,
+						ring[vq->vq_nentries]), ZXDH_PCI_VRING_ALIGN);
+	}
+
+	rte_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+
+	io_write64_twopart(desc_addr, &hw->common_cfg->queue_desc_lo,
+					   &hw->common_cfg->queue_desc_hi);
+	io_write64_twopart(avail_addr, &hw->common_cfg->queue_avail_lo,
+					   &hw->common_cfg->queue_avail_hi);
+	io_write64_twopart(used_addr, &hw->common_cfg->queue_used_lo,
+					   &hw->common_cfg->queue_used_hi);
+
+	notify_off = rte_read16(&hw->common_cfg->queue_notify_off); /* default 0 */
+	notify_off = 0;
+	vq->notify_addr = (void *)((uint8_t *)hw->notify_base +
+			notify_off * hw->notify_off_multiplier);
+
+	rte_write16(1, &hw->common_cfg->queue_enable);
+
+	return 0;
+}
+
+static void
+zxdh_del_queue(struct zxdh_hw *hw, struct zxdh_virtqueue *vq)
+{
+	rte_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+
+	io_write64_twopart(0, &hw->common_cfg->queue_desc_lo,
+					   &hw->common_cfg->queue_desc_hi);
+	io_write64_twopart(0, &hw->common_cfg->queue_avail_lo,
+					   &hw->common_cfg->queue_avail_hi);
+	io_write64_twopart(0, &hw->common_cfg->queue_used_lo,
+					   &hw->common_cfg->queue_used_hi);
+
+	rte_write16(0, &hw->common_cfg->queue_enable);
+}
+
 const struct zxdh_pci_ops zxdh_dev_pci_ops = {
 	.read_dev_cfg   = zxdh_read_dev_config,
 	.write_dev_cfg  = zxdh_write_dev_config,
@@ -125,6 +212,10 @@ const struct zxdh_pci_ops zxdh_dev_pci_ops = {
 	.set_queue_irq  = zxdh_set_queue_irq,
 	.set_config_irq = zxdh_set_config_irq,
 	.get_isr        = zxdh_get_isr,
+	.get_queue_num  = zxdh_get_queue_num,
+	.set_queue_num  = zxdh_set_queue_num,
+	.setup_queue    = zxdh_setup_queue,
+	.del_queue      = zxdh_del_queue,
 };
 
 uint8_t
@@ -152,6 +243,21 @@ zxdh_pci_reset(struct zxdh_hw *hw)
 		rte_delay_ms(1);
 	}
 	PMD_DRV_LOG(INFO, "port %u device reset %u ms done", hw->port_id, retry);
+}
+
+void
+zxdh_pci_reinit_complete(struct zxdh_hw *hw)
+{
+	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_DRIVER_OK);
+}
+
+void
+zxdh_pci_set_status(struct zxdh_hw *hw, uint8_t status)
+{
+	if (status != ZXDH_CONFIG_STATUS_RESET)
+		status |= ZXDH_VTPCI_OPS(hw)->get_status(hw);
+
+	ZXDH_VTPCI_OPS(hw)->set_status(hw, status);
 }
 
 static void

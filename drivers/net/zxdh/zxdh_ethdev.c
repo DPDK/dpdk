@@ -374,6 +374,464 @@ free_intr_vec:
 	return ret;
 }
 
+static int32_t
+zxdh_features_update(struct zxdh_hw *hw,
+		const struct rte_eth_rxmode *rxmode,
+		const struct rte_eth_txmode *txmode)
+{
+	uint64_t rx_offloads = rxmode->offloads;
+	uint64_t tx_offloads = txmode->offloads;
+	uint64_t req_features = hw->guest_features;
+
+	if (rx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
+		req_features |= (1ULL << ZXDH_NET_F_GUEST_CSUM);
+
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
+		req_features |= (1ULL << ZXDH_NET_F_GUEST_TSO4) |
+						(1ULL << ZXDH_NET_F_GUEST_TSO6);
+
+	if (tx_offloads & (RTE_ETH_RX_OFFLOAD_UDP_CKSUM | RTE_ETH_RX_OFFLOAD_TCP_CKSUM))
+		req_features |= (1ULL << ZXDH_NET_F_CSUM);
+
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO)
+		req_features |= (1ULL << ZXDH_NET_F_HOST_TSO4) |
+						(1ULL << ZXDH_NET_F_HOST_TSO6);
+
+	if (tx_offloads & RTE_ETH_TX_OFFLOAD_UDP_TSO)
+		req_features |= (1ULL << ZXDH_NET_F_HOST_UFO);
+
+	req_features = req_features & hw->host_features;
+	hw->guest_features = req_features;
+
+	ZXDH_VTPCI_OPS(hw)->set_features(hw, req_features);
+
+	if ((rx_offloads & (RTE_ETH_TX_OFFLOAD_UDP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM)) &&
+		 !vtpci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM)) {
+		PMD_DRV_LOG(ERR, "rx checksum not available on this host");
+		return -ENOTSUP;
+	}
+
+	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) &&
+		(!vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
+		 !vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6))) {
+		PMD_DRV_LOG(ERR, "Large Receive Offload not available on this host");
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+static bool
+rx_offload_enabled(struct zxdh_hw *hw)
+{
+	return vtpci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM) ||
+		   vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
+		   vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6);
+}
+
+static bool
+tx_offload_enabled(struct zxdh_hw *hw)
+{
+	return vtpci_with_feature(hw, ZXDH_NET_F_CSUM) ||
+		   vtpci_with_feature(hw, ZXDH_NET_F_HOST_TSO4) ||
+		   vtpci_with_feature(hw, ZXDH_NET_F_HOST_TSO6) ||
+		   vtpci_with_feature(hw, ZXDH_NET_F_HOST_UFO);
+}
+
+static void
+zxdh_dev_free_mbufs(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint16_t nr_vq = hw->queue_num;
+	uint32_t i = 0;
+
+	const char *type = NULL;
+	struct zxdh_virtqueue *vq = NULL;
+	struct rte_mbuf *buf = NULL;
+	int32_t queue_type = 0;
+
+	if (hw->vqs == NULL)
+		return;
+
+	for (i = 0; i < nr_vq; i++) {
+		vq = hw->vqs[i];
+		if (!vq)
+			continue;
+
+		queue_type = zxdh_get_queue_type(i);
+		if (queue_type == ZXDH_VTNET_RQ)
+			type = "rxq";
+		else if (queue_type == ZXDH_VTNET_TQ)
+			type = "txq";
+		else
+			continue;
+		PMD_DRV_LOG(DEBUG, "Before freeing %s[%d] used and unused buf", type, i);
+
+		while ((buf = zxdh_virtqueue_detach_unused(vq)) != NULL)
+			rte_pktmbuf_free(buf);
+	}
+}
+
+static int32_t
+zxdh_get_available_channel(struct rte_eth_dev *dev, uint8_t queue_type)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint16_t base    = (queue_type == ZXDH_VTNET_RQ) ? 0 : 1;
+	uint16_t i       = 0;
+	uint16_t j       = 0;
+	uint16_t done    = 0;
+	int32_t ret = 0;
+
+	ret = zxdh_timedlock(hw, 1000);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Acquiring hw lock got failed, timeout");
+		return -1;
+	}
+
+	/* Iterate COI table and find free channel */
+	for (i = ZXDH_QUEUES_BASE / 32; i < ZXDH_TOTAL_QUEUES_NUM / 32; i++) {
+		uint32_t addr = ZXDH_QUERES_SHARE_BASE + (i * sizeof(uint32_t));
+		uint32_t var = zxdh_read_bar_reg(dev, ZXDH_BAR0_INDEX, addr);
+
+		for (j = base; j < 32; j += 2) {
+			/* Got the available channel & update COI table */
+			if ((var & (1 << j)) == 0) {
+				var |= (1 << j);
+				zxdh_write_bar_reg(dev, ZXDH_BAR0_INDEX, addr, var);
+				done = 1;
+				break;
+			}
+		}
+		if (done)
+			break;
+	}
+	zxdh_release_lock(hw);
+	/* check for no channel condition */
+	if (done != 1) {
+		PMD_DRV_LOG(ERR, "NO availd queues");
+		return -1;
+	}
+	/* reruen available channel ID */
+	return (i * 32) + j;
+}
+
+static int32_t
+zxdh_acquire_channel(struct rte_eth_dev *dev, uint16_t lch)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+
+	if (hw->channel_context[lch].valid == 1) {
+		PMD_DRV_LOG(DEBUG, "Logic channel:%u already acquired Physics channel:%u",
+				lch, hw->channel_context[lch].ph_chno);
+		return hw->channel_context[lch].ph_chno;
+	}
+	int32_t pch = zxdh_get_available_channel(dev, zxdh_get_queue_type(lch));
+
+	if (pch < 0) {
+		PMD_DRV_LOG(ERR, "Failed to acquire channel");
+		return -1;
+	}
+	hw->channel_context[lch].ph_chno = (uint16_t)pch;
+	hw->channel_context[lch].valid = 1;
+	PMD_DRV_LOG(DEBUG, "Acquire channel success lch:%u --> pch:%d", lch, pch);
+	return 0;
+}
+
+static void
+zxdh_init_vring(struct zxdh_virtqueue *vq)
+{
+	int32_t  size	  = vq->vq_nentries;
+	uint8_t *ring_mem = vq->vq_ring_virt_mem;
+
+	memset(ring_mem, 0, vq->vq_ring_size);
+
+	vq->vq_used_cons_idx = 0;
+	vq->vq_desc_head_idx = 0;
+	vq->vq_avail_idx	 = 0;
+	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
+	vq->vq_free_cnt = vq->vq_nentries;
+	memset(vq->vq_descx, 0, sizeof(struct zxdh_vq_desc_extra) * vq->vq_nentries);
+	vring_init_packed(&vq->vq_packed.ring, ring_mem, ZXDH_PCI_VRING_ALIGN, size);
+	vring_desc_init_packed(vq, size);
+	virtqueue_disable_intr(vq);
+}
+
+static int32_t
+zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
+{
+	char vq_name[ZXDH_VIRTQUEUE_MAX_NAME_SZ] = {0};
+	char vq_hdr_name[ZXDH_VIRTQUEUE_MAX_NAME_SZ] = {0};
+	const struct rte_memzone *mz = NULL;
+	const struct rte_memzone *hdr_mz = NULL;
+	uint32_t size = 0;
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_virtnet_rx *rxvq = NULL;
+	struct zxdh_virtnet_tx *txvq = NULL;
+	struct zxdh_virtqueue *vq = NULL;
+	size_t sz_hdr_mz = 0;
+	void *sw_ring = NULL;
+	int32_t queue_type = zxdh_get_queue_type(vtpci_logic_qidx);
+	int32_t numa_node = dev->device->numa_node;
+	uint16_t vtpci_phy_qidx = 0;
+	uint32_t vq_size = 0;
+	int32_t ret = 0;
+
+	if (hw->channel_context[vtpci_logic_qidx].valid == 0) {
+		PMD_DRV_LOG(ERR, "lch %d is invalid", vtpci_logic_qidx);
+		return -EINVAL;
+	}
+	vtpci_phy_qidx = hw->channel_context[vtpci_logic_qidx].ph_chno;
+
+	PMD_DRV_LOG(DEBUG, "vtpci_logic_qidx :%d setting up physical queue: %u on NUMA node %d",
+			vtpci_logic_qidx, vtpci_phy_qidx, numa_node);
+
+	vq_size = ZXDH_QUEUE_DEPTH;
+
+	if (ZXDH_VTPCI_OPS(hw)->set_queue_num != NULL)
+		ZXDH_VTPCI_OPS(hw)->set_queue_num(hw, vtpci_phy_qidx, vq_size);
+
+	snprintf(vq_name, sizeof(vq_name), "port%d_vq%d", dev->data->port_id, vtpci_phy_qidx);
+
+	size = RTE_ALIGN_CEIL(sizeof(*vq) + vq_size * sizeof(struct zxdh_vq_desc_extra),
+				RTE_CACHE_LINE_SIZE);
+	if (queue_type == ZXDH_VTNET_TQ) {
+		/*
+		 * For each xmit packet, allocate a zxdh_net_hdr
+		 * and indirect ring elements
+		 */
+		sz_hdr_mz = vq_size * sizeof(struct zxdh_tx_region);
+	}
+
+	vq = rte_zmalloc_socket(vq_name, size, RTE_CACHE_LINE_SIZE, numa_node);
+	if (vq == NULL) {
+		PMD_DRV_LOG(ERR, "can not allocate vq");
+		return -ENOMEM;
+	}
+	hw->vqs[vtpci_logic_qidx] = vq;
+
+	vq->hw = hw;
+	vq->vq_queue_index = vtpci_phy_qidx;
+	vq->vq_nentries = vq_size;
+
+	vq->vq_packed.used_wrap_counter = 1;
+	vq->vq_packed.cached_flags = ZXDH_VRING_PACKED_DESC_F_AVAIL;
+	vq->vq_packed.event_flags_shadow = 0;
+	if (queue_type == ZXDH_VTNET_RQ)
+		vq->vq_packed.cached_flags |= ZXDH_VRING_DESC_F_WRITE;
+
+	/*
+	 * Reserve a memzone for vring elements
+	 */
+	size = vring_size(hw, vq_size, ZXDH_PCI_VRING_ALIGN);
+	vq->vq_ring_size = RTE_ALIGN_CEIL(size, ZXDH_PCI_VRING_ALIGN);
+	PMD_DRV_LOG(DEBUG, "vring_size: %d, rounded_vring_size: %d", size, vq->vq_ring_size);
+
+	mz = rte_memzone_reserve_aligned(vq_name, vq->vq_ring_size,
+				numa_node, RTE_MEMZONE_IOVA_CONTIG,
+				ZXDH_PCI_VRING_ALIGN);
+	if (mz == NULL) {
+		if (rte_errno == EEXIST)
+			mz = rte_memzone_lookup(vq_name);
+		if (mz == NULL) {
+			ret = -ENOMEM;
+			goto fail_q_alloc;
+		}
+	}
+
+	memset(mz->addr, 0, mz->len);
+
+	vq->vq_ring_mem = mz->iova;
+	vq->vq_ring_virt_mem = mz->addr;
+
+	zxdh_init_vring(vq);
+
+	if (sz_hdr_mz) {
+		snprintf(vq_hdr_name, sizeof(vq_hdr_name), "port%d_vq%d_hdr",
+					dev->data->port_id, vtpci_phy_qidx);
+		hdr_mz = rte_memzone_reserve_aligned(vq_hdr_name, sz_hdr_mz,
+					numa_node, RTE_MEMZONE_IOVA_CONTIG,
+					RTE_CACHE_LINE_SIZE);
+		if (hdr_mz == NULL) {
+			if (rte_errno == EEXIST)
+				hdr_mz = rte_memzone_lookup(vq_hdr_name);
+			if (hdr_mz == NULL) {
+				ret = -ENOMEM;
+				goto fail_q_alloc;
+			}
+		}
+	}
+
+	if (queue_type == ZXDH_VTNET_RQ) {
+		size_t sz_sw = (ZXDH_MBUF_BURST_SZ + vq_size) * sizeof(vq->sw_ring[0]);
+
+		sw_ring = rte_zmalloc_socket("sw_ring", sz_sw, RTE_CACHE_LINE_SIZE, numa_node);
+		if (!sw_ring) {
+			PMD_DRV_LOG(ERR, "can not allocate RX soft ring");
+			ret = -ENOMEM;
+			goto fail_q_alloc;
+		}
+
+		vq->sw_ring = sw_ring;
+		rxvq = &vq->rxq;
+		rxvq->vq = vq;
+		rxvq->port_id = dev->data->port_id;
+		rxvq->mz = mz;
+	} else {             /* queue_type == VTNET_TQ */
+		txvq = &vq->txq;
+		txvq->vq = vq;
+		txvq->port_id = dev->data->port_id;
+		txvq->mz = mz;
+		txvq->zxdh_net_hdr_mz = hdr_mz;
+		txvq->zxdh_net_hdr_mem = hdr_mz->iova;
+	}
+
+	vq->offset = offsetof(struct rte_mbuf, buf_iova);
+	if (queue_type == ZXDH_VTNET_TQ) {
+		struct zxdh_tx_region *txr = hdr_mz->addr;
+		uint32_t i;
+
+		memset(txr, 0, vq_size * sizeof(*txr));
+		for (i = 0; i < vq_size; i++) {
+			/* first indirect descriptor is always the tx header */
+			struct zxdh_vring_packed_desc *start_dp = txr[i].tx_packed_indir;
+
+			vring_desc_init_indirect_packed(start_dp, RTE_DIM(txr[i].tx_packed_indir));
+			start_dp->addr = txvq->zxdh_net_hdr_mem + i * sizeof(*txr) +
+					offsetof(struct zxdh_tx_region, tx_hdr);
+			/* length will be updated to actual pi hdr size when xmit pkt */
+			start_dp->len = 0;
+		}
+	}
+	if (ZXDH_VTPCI_OPS(hw)->setup_queue(hw, vq) < 0) {
+		PMD_DRV_LOG(ERR, "setup_queue failed");
+		return -EINVAL;
+	}
+	return 0;
+fail_q_alloc:
+	rte_free(sw_ring);
+	rte_memzone_free(hdr_mz);
+	rte_memzone_free(mz);
+	rte_free(vq);
+	return ret;
+}
+
+static int32_t
+zxdh_alloc_queues(struct rte_eth_dev *dev, uint16_t nr_vq)
+{
+	uint16_t lch;
+	struct zxdh_hw *hw = dev->data->dev_private;
+
+	hw->vqs = rte_zmalloc(NULL, sizeof(struct zxdh_virtqueue *) * nr_vq, 0);
+	if (!hw->vqs) {
+		PMD_DRV_LOG(ERR, "Failed to allocate vqs");
+		return -ENOMEM;
+	}
+	for (lch = 0; lch < nr_vq; lch++) {
+		if (zxdh_acquire_channel(dev, lch) < 0) {
+			PMD_DRV_LOG(ERR, "Failed to acquire the channels");
+			zxdh_free_queues(dev);
+			return -1;
+		}
+		if (zxdh_init_queue(dev, lch) < 0) {
+			PMD_DRV_LOG(ERR, "Failed to alloc virtio queue");
+			zxdh_free_queues(dev);
+			return -1;
+		}
+	}
+	return 0;
+}
+
+
+static int32_t
+zxdh_dev_configure(struct rte_eth_dev *dev)
+{
+	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	const struct rte_eth_txmode *txmode = &dev->data->dev_conf.txmode;
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint32_t nr_vq = 0;
+	int32_t  ret = 0;
+
+	if (dev->data->nb_rx_queues != dev->data->nb_tx_queues) {
+		PMD_DRV_LOG(ERR, "nb_rx_queues=%d and nb_tx_queues=%d not equal!",
+					 dev->data->nb_rx_queues, dev->data->nb_tx_queues);
+		return -EINVAL;
+	}
+	if ((dev->data->nb_rx_queues + dev->data->nb_tx_queues) >= ZXDH_QUEUES_NUM_MAX) {
+		PMD_DRV_LOG(ERR, "nb_rx_queues=%d + nb_tx_queues=%d must < (%d)!",
+					 dev->data->nb_rx_queues, dev->data->nb_tx_queues,
+					 ZXDH_QUEUES_NUM_MAX);
+		return -EINVAL;
+	}
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_RSS && rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
+		PMD_DRV_LOG(ERR, "Unsupported Rx multi queue mode %d", rxmode->mq_mode);
+		return -EINVAL;
+	}
+
+	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
+		PMD_DRV_LOG(ERR, "Unsupported Tx multi queue mode %d", txmode->mq_mode);
+		return -EINVAL;
+	}
+	if (rxmode->mq_mode != RTE_ETH_MQ_RX_RSS && rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
+		PMD_DRV_LOG(ERR, "Unsupported Rx multi queue mode %d", rxmode->mq_mode);
+		return -EINVAL;
+	}
+
+	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
+		PMD_DRV_LOG(ERR, "Unsupported Tx multi queue mode %d", txmode->mq_mode);
+		return -EINVAL;
+	}
+
+	ret = zxdh_features_update(hw, rxmode, txmode);
+	if (ret < 0)
+		return ret;
+
+	/* check if lsc interrupt feature is enabled */
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		if (!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)) {
+			PMD_DRV_LOG(ERR, "link status not supported by host");
+			return -ENOTSUP;
+		}
+	}
+
+	hw->has_tx_offload = tx_offload_enabled(hw);
+	hw->has_rx_offload = rx_offload_enabled(hw);
+
+	nr_vq = dev->data->nb_rx_queues + dev->data->nb_tx_queues;
+	if (nr_vq == hw->queue_num)
+		return 0;
+
+	PMD_DRV_LOG(DEBUG, "queue changed need reset ");
+	/* Reset the device although not necessary at startup */
+	zxdh_pci_reset(hw);
+
+	/* Tell the host we've noticed this device. */
+	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_ACK);
+
+	/* Tell the host we've known how to drive the device. */
+	zxdh_pci_set_status(hw, ZXDH_CONFIG_STATUS_DRIVER);
+	/* The queue needs to be released when reconfiguring*/
+	if (hw->vqs != NULL) {
+		zxdh_dev_free_mbufs(dev);
+		zxdh_free_queues(dev);
+	}
+
+	hw->queue_num = nr_vq;
+	ret = zxdh_alloc_queues(dev, nr_vq);
+	if (ret < 0)
+		return ret;
+
+	zxdh_datach_set(dev);
+
+	if (zxdh_configure_intr(dev) < 0) {
+		PMD_DRV_LOG(ERR, "Failed to configure interrupt");
+		zxdh_free_queues(dev);
+		return -1;
+	}
+
+	zxdh_pci_reinit_complete(hw);
+
+	return ret;
+}
+
 static int
 zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
@@ -384,6 +842,7 @@ zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
 
 /* dev_ops for zxdh, bare necessities for basic operation */
 static const struct eth_dev_ops zxdh_eth_dev_ops = {
+	.dev_configure			 = zxdh_dev_configure,
 	.dev_infos_get			 = zxdh_dev_infos_get,
 };
 

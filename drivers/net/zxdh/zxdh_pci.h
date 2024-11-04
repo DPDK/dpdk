@@ -25,7 +25,20 @@ enum zxdh_msix_status {
 /* Vector value used to disable MSI for queue. */
 #define ZXDH_MSI_NO_VECTOR   0x7F
 
+#define ZXDH_PCI_VRING_ALIGN         4096
+
+#define ZXDH_NET_F_CSUM              0   /* Host handles pkts w/ partial csum */
+#define ZXDH_NET_F_GUEST_CSUM        1   /* Guest handles pkts w/ partial csum */
+#define ZXDH_NET_F_MTU               3   /* Initial MTU advice. */
 #define ZXDH_NET_F_MAC               5   /* Host has given MAC address. */
+#define ZXDH_NET_F_GUEST_TSO4        7   /* Guest can handle TSOv4 in. */
+#define ZXDH_NET_F_GUEST_TSO6        8   /* Guest can handle TSOv6 in. */
+#define ZXDH_NET_F_GUEST_ECN         9   /* Guest can handle TSO[6] w/ ECN in. */
+#define ZXDH_NET_F_GUEST_UFO         10  /* Guest can handle UFO in. */
+
+#define ZXDH_NET_F_HOST_UFO          14  /* Host can handle UFO in. */
+#define ZXDH_NET_F_HOST_TSO4         11  /* Host can handle TSOv4 in. */
+#define ZXDH_NET_F_HOST_TSO6         12  /* Host can handle TSOv6 in. */
 #define ZXDH_NET_F_MRG_RXBUF         15  /* Host can merge receive buffers. */
 #define ZXDH_NET_F_STATUS            16  /* zxdh_net_config.status available */
 #define ZXDH_NET_F_MQ                22  /* Device supports Receive Flow Steering */
@@ -49,6 +62,7 @@ enum zxdh_msix_status {
 #define ZXDH_CONFIG_STATUS_FEATURES_OK     0x08
 #define ZXDH_CONFIG_STATUS_DEV_NEED_RESET  0x40
 #define ZXDH_CONFIG_STATUS_FAILED          0x80
+#define ZXDH_PCI_QUEUE_ADDR_SHIFT          12
 
 struct zxdh_net_config {
 	/* The config defining mac address (if ZXDH_NET_F_MAC) */
@@ -99,9 +113,16 @@ struct zxdh_pci_common_cfg {
 	uint32_t queue_used_hi;     /* read-write */
 };
 
-static inline int32_t vtpci_with_feature(struct zxdh_hw *hw, uint64_t bit)
+static inline int32_t
+vtpci_with_feature(struct zxdh_hw *hw, uint64_t bit)
 {
 	return (hw->guest_features & (1ULL << bit)) != 0;
+}
+
+static inline int32_t
+vtpci_packed_queue(struct zxdh_hw *hw)
+{
+	return vtpci_with_feature(hw, ZXDH_F_RING_PACKED);
 }
 
 struct zxdh_pci_ops {
@@ -116,6 +137,11 @@ struct zxdh_pci_ops {
 	uint16_t (*set_queue_irq)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq, uint16_t vec);
 	uint16_t (*set_config_irq)(struct zxdh_hw *hw, uint16_t vec);
 	uint8_t  (*get_isr)(struct zxdh_hw *hw);
+	uint16_t (*get_queue_num)(struct zxdh_hw *hw, uint16_t queue_id);
+	void     (*set_queue_num)(struct zxdh_hw *hw, uint16_t queue_id, uint16_t vq_size);
+
+	int32_t  (*setup_queue)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq);
+	void     (*del_queue)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq);
 };
 
 struct zxdh_hw_internal {
@@ -137,5 +163,7 @@ void zxdh_get_pci_dev_config(struct zxdh_hw *hw);
 uint16_t zxdh_pci_get_features(struct zxdh_hw *hw);
 enum zxdh_msix_status zxdh_pci_msix_detect(struct rte_pci_device *dev);
 uint8_t zxdh_pci_isr(struct zxdh_hw *hw);
+void zxdh_pci_reinit_complete(struct zxdh_hw *hw);
+void zxdh_pci_set_status(struct zxdh_hw *hw, uint8_t status);
 
 #endif /* ZXDH_PCI_H */
