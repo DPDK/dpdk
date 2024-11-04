@@ -8,12 +8,47 @@
 
 #include "zxdh_ethdev.h"
 #include "zxdh_logs.h"
+#include "zxdh_pci.h"
+
+struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 
 static int
 zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
 	int ret = 0;
 
+	return ret;
+}
+
+static int32_t
+zxdh_init_device(struct rte_eth_dev *eth_dev)
+{
+	struct zxdh_hw *hw = eth_dev->data->dev_private;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	int ret = 0;
+
+	ret = zxdh_read_pci_caps(pci_dev, hw);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "port 0x%x pci caps read failed .", hw->port_id);
+		goto err;
+	}
+
+	zxdh_hw_internal[hw->port_id].zxdh_vtpci_ops = &zxdh_dev_pci_ops;
+	zxdh_pci_reset(hw);
+	zxdh_get_pci_dev_config(hw);
+
+	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac_addr, &eth_dev->data->mac_addrs[0]);
+
+	/* If host does not support both status and MSI-X then disable LSC */
+	if (vtpci_with_feature(hw, ZXDH_NET_F_STATUS) && hw->use_msix != ZXDH_MSIX_NONE)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+	else
+		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
+
+	return 0;
+
+err:
+	PMD_DRV_LOG(ERR, "port %d init device failed", eth_dev->data->port_id);
 	return ret;
 }
 
@@ -54,6 +89,15 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 		hw->is_pf = 1;
 	}
 
+	ret = zxdh_init_device(eth_dev);
+	if (ret < 0)
+		goto err_zxdh_init;
+
+	return ret;
+
+err_zxdh_init:
+	rte_free(eth_dev->data->mac_addrs);
+	eth_dev->data->mac_addrs = NULL;
 	return ret;
 }
 
