@@ -7,6 +7,7 @@
 #include <rte_ethdev.h>
 
 #include "zxdh_ethdev.h"
+#include "zxdh_logs.h"
 
 static int
 zxdh_dev_close(struct rte_eth_dev *dev __rte_unused)
@@ -28,13 +29,18 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("zxdh_mac",
 			ZXDH_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN, 0);
-	if (eth_dev->data->mac_addrs == NULL)
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate %d bytes store MAC addresses",
+				ZXDH_MAX_MAC_ADDRS * RTE_ETHER_ADDR_LEN);
 		return -ENOMEM;
+	}
 
 	memset(hw, 0, sizeof(*hw));
 	hw->bar_addr[0] = (uint64_t)pci_dev->mem_resource[0].addr;
-	if (hw->bar_addr[0] == 0)
+	if (hw->bar_addr[0] == 0) {
+		PMD_DRV_LOG(ERR, "Bad mem resource.");
 		return -EIO;
+	}
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->port_id = eth_dev->data->port_id;
@@ -95,3 +101,7 @@ static struct rte_pci_driver zxdh_pmd = {
 RTE_PMD_REGISTER_PCI(net_zxdh, zxdh_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_zxdh, pci_id_zxdh_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_zxdh, "* vfio-pci");
+RTE_LOG_REGISTER_SUFFIX(zxdh_logtype_driver, driver, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(zxdh_logtype_rx, rx, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(zxdh_logtype_tx, tx, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(zxdh_logtype_msg, msg, NOTICE);
