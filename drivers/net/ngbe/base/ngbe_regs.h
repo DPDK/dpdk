@@ -712,6 +712,8 @@ enum ngbe_5tuple_protocol {
 #define   NGBE_MACRXFLT_CTL_PASS       LS(3, 6, 0x3)
 #define   NGBE_MACRXFLT_RXALL          MS(31, 0x1)
 
+#define NGBE_MAC_WDG_TIMEOUT           0x01100C
+
 /******************************************************************************
  * Statistic Registers
  ******************************************************************************/
