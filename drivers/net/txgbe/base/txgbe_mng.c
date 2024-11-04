@@ -58,6 +58,7 @@ txgbe_hic_unlocked(struct txgbe_hw *hw, u32 *buffer, u32 length, u32 timeout)
 
 	dword_len = length >> 2;
 
+	txgbe_flush(hw);
 	/* The device driver writes the relevant command block
 	 * into the ram area.
 	 */
