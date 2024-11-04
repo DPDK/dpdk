@@ -331,6 +331,8 @@ txgbe_pf_reset_hw(struct txgbe_hw *hw)
 	status = hw->mac.reset_hw(hw);
 
 	ctrl_ext = rd32(hw, TXGBE_PORTCTL);
+	/* let hardware know driver is loaded */
+	ctrl_ext |= TXGBE_PORTCTL_DRVLOAD;
 	/* Set PF Reset Done bit so PF/VF Mail Ops can work */
 	ctrl_ext |= TXGBE_PORTCTL_RSTDONE;
 	wr32(hw, TXGBE_PORTCTL, ctrl_ext);
@@ -2060,6 +2062,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 	txgbe_pf_reset_hw(hw);
 
 	ret = txgbe_dev_stop(dev);
+
+	/* Let firmware take over control of hardware */
+	wr32m(hw, TXGBE_PORTCTL, TXGBE_PORTCTL_DRVLOAD, 0);
 
 	txgbe_dev_free_queues(dev);
 
