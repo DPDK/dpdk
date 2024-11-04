@@ -1066,6 +1066,13 @@ F: drivers/net/avp/
 F: doc/guides/nics/avp.rst
 F: doc/guides/nics/features/avp.ini
 
+ZTE zxdh - EXPERIMENTAL
+M: Junlong Wang <wang.junlong1@zte.com.cn>
+M: Lijie Shan <shan.lijie@zte.com.cn>
+F: drivers/net/zxdh/
+F: doc/guides/nics/zxdh.rst
+F: doc/guides/nics/features/zxdh.ini
+
 PCAP PMD
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
