@@ -476,9 +476,13 @@ static inline void
 vtx1(volatile struct ngbe_tx_desc *txdp,
 		struct rte_mbuf *pkt, uint64_t flags)
 {
-	uint64x2_t descriptor = {
-			pkt->buf_iova + pkt->data_off,
-			(uint64_t)pkt->pkt_len << 45 | flags | pkt->data_len};
+	uint16_t pkt_len = pkt->data_len;
+
+	if (pkt_len < RTE_ETHER_HDR_LEN)
+		pkt_len = NGBE_FRAME_SIZE_DFT;
+
+	uint64x2_t descriptor = {pkt->buf_iova + pkt->data_off,
+				(uint64_t)pkt_len << 45 | flags | pkt_len};
 
 	vst1q_u64((uint64_t *)(uintptr_t)txdp, descriptor);
 }

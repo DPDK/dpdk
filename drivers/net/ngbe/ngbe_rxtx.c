@@ -113,6 +113,8 @@ tx4(volatile struct ngbe_tx_desc *txdp, struct rte_mbuf **pkts)
 	for (i = 0; i < 4; ++i, ++txdp, ++pkts) {
 		buf_dma_addr = rte_mbuf_data_iova(*pkts);
 		pkt_len = (*pkts)->data_len;
+		if (pkt_len < RTE_ETHER_HDR_LEN)
+			pkt_len = NGBE_FRAME_SIZE_DFT;
 
 		/* write data to descriptor */
 		txdp->qw0 = rte_cpu_to_le_64(buf_dma_addr);
@@ -133,6 +135,8 @@ tx1(volatile struct ngbe_tx_desc *txdp, struct rte_mbuf **pkts)
 
 	buf_dma_addr = rte_mbuf_data_iova(*pkts);
 	pkt_len = (*pkts)->data_len;
+	if (pkt_len < RTE_ETHER_HDR_LEN)
+		pkt_len = NGBE_FRAME_SIZE_DFT;
 
 	/* write data to descriptor */
 	txdp->qw0 = cpu_to_le64(buf_dma_addr);
@@ -555,6 +559,30 @@ ngbe_xmit_cleanup(struct ngbe_tx_queue *txq)
 	return 0;
 }
 
+static inline bool
+ngbe_check_pkt_err(struct rte_mbuf *tx_pkt)
+{
+	uint32_t total_len = 0, nb_seg = 0;
+	struct rte_mbuf *mseg;
+
+	mseg = tx_pkt;
+	do {
+		if (mseg->data_len == 0)
+			return true;
+		total_len += mseg->data_len;
+		nb_seg++;
+		mseg = mseg->next;
+	} while (mseg != NULL);
+
+	if (tx_pkt->pkt_len != total_len || tx_pkt->pkt_len == 0)
+		return true;
+
+	if (tx_pkt->nb_segs != nb_seg || tx_pkt->nb_segs > 64)
+		return true;
+
+	return false;
+}
+
 uint16_t
 ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
@@ -599,6 +627,11 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		new_ctx = 0;
 		tx_pkt = *tx_pkts++;
+		if (ngbe_check_pkt_err(tx_pkt)) {
+			rte_pktmbuf_free(tx_pkt);
+			continue;
+		}
+
 		pkt_len = tx_pkt->pkt_len;
 
 		/*
