@@ -629,6 +629,7 @@ ngbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_pkt = *tx_pkts++;
 		if (ngbe_check_pkt_err(tx_pkt)) {
 			rte_pktmbuf_free(tx_pkt);
+			txq->desc_error++;
 			continue;
 		}
 
@@ -2100,6 +2101,7 @@ ngbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	ngbe_set_tx_function(dev, txq);
 
 	txq->ops->reset(txq);
+	txq->desc_error = 0;
 
 	dev->data->tx_queues[queue_idx] = txq;
 

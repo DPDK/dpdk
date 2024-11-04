@@ -1507,6 +1507,7 @@ ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
 	struct ngbe_stat_mappings *stat_mappings =
 			NGBE_DEV_STAT_MAPPINGS(dev);
+	struct ngbe_tx_queue *txq;
 	uint32_t i, j;
 
 	ngbe_read_stats_registers(hw, hw_stats);
@@ -1559,6 +1560,11 @@ ngbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Tx Errors */
 	stats->oerrors  = 0;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		stats->oerrors += txq->desc_error;
+	}
+
 	return 0;
 }
 
@@ -1567,6 +1573,13 @@ ngbe_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct ngbe_hw_stats *hw_stats = NGBE_DEV_STATS(dev);
+	struct ngbe_tx_queue *txq;
+	uint32_t i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		txq->desc_error = 0;
+	}
 
 	/* HW registers are cleared on read */
 	hw->offset_loaded = 0;

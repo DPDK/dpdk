@@ -375,6 +375,7 @@ struct ngbe_tx_queue {
 
 	const struct ngbe_txq_ops *ops;       /**< txq ops */
 	const struct rte_memzone *mz;
+	uint64_t            desc_error;
 };
 
 struct ngbe_txq_ops {
