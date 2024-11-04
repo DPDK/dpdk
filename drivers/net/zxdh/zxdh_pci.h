@@ -18,6 +18,13 @@ enum zxdh_msix_status {
 	ZXDH_MSIX_ENABLED  = 2
 };
 
+/* The bit of the ISR which indicates a device has an interrupt. */
+#define ZXDH_PCI_ISR_INTR    0x1
+/* The bit of the ISR which indicates a device configuration change. */
+#define ZXDH_PCI_ISR_CONFIG  0x2
+/* Vector value used to disable MSI for queue. */
+#define ZXDH_MSI_NO_VECTOR   0x7F
+
 #define ZXDH_NET_F_MAC               5   /* Host has given MAC address. */
 #define ZXDH_NET_F_MRG_RXBUF         15  /* Host can merge receive buffers. */
 #define ZXDH_NET_F_STATUS            16  /* zxdh_net_config.status available */
@@ -106,6 +113,9 @@ struct zxdh_pci_ops {
 
 	uint64_t (*get_features)(struct zxdh_hw *hw);
 	void     (*set_features)(struct zxdh_hw *hw, uint64_t features);
+	uint16_t (*set_queue_irq)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq, uint16_t vec);
+	uint16_t (*set_config_irq)(struct zxdh_hw *hw, uint16_t vec);
+	uint8_t  (*get_isr)(struct zxdh_hw *hw);
 };
 
 struct zxdh_hw_internal {
@@ -126,5 +136,6 @@ void zxdh_get_pci_dev_config(struct zxdh_hw *hw);
 
 uint16_t zxdh_pci_get_features(struct zxdh_hw *hw);
 enum zxdh_msix_status zxdh_pci_msix_detect(struct rte_pci_device *dev);
+uint8_t zxdh_pci_isr(struct zxdh_hw *hw);
 
 #endif /* ZXDH_PCI_H */

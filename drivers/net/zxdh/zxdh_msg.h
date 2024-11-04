@@ -9,10 +9,17 @@
 
 #include <ethdev_driver.h>
 
-#define ZXDH_BAR0_INDEX     0
-#define ZXDH_CTRLCH_OFFSET            (0x2000)
+#define ZXDH_BAR0_INDEX                 0
+#define ZXDH_CTRLCH_OFFSET              (0x2000)
+#define ZXDH_MSG_CHAN_PFVFSHARE_OFFSET  (ZXDH_CTRLCH_OFFSET + 0x1000)
 
 #define ZXDH_MSIX_INTR_MSG_VEC_BASE   1
+#define ZXDH_MSIX_INTR_MSG_VEC_NUM    3
+#define ZXDH_MSIX_INTR_DTB_VEC        (ZXDH_MSIX_INTR_MSG_VEC_BASE + ZXDH_MSIX_INTR_MSG_VEC_NUM)
+#define ZXDH_MSIX_INTR_DTB_VEC_NUM    1
+#define ZXDH_INTR_NONQUE_NUM          (ZXDH_MSIX_INTR_MSG_VEC_NUM + ZXDH_MSIX_INTR_DTB_VEC_NUM + 1)
+#define ZXDH_QUEUE_INTR_VEC_BASE      (ZXDH_MSIX_INTR_DTB_VEC + ZXDH_MSIX_INTR_DTB_VEC_NUM)
+#define ZXDH_QUEUE_INTR_VEC_NUM       256
 
 #define ZXDH_BAR_MSG_POLLING_SPAN     100
 #define ZXDH_BAR_MSG_POLL_CNT_PER_MS  (1 * 1000 / ZXDH_BAR_MSG_POLLING_SPAN)
@@ -197,6 +204,9 @@ struct zxdh_bar_msg_header {
 	uint16_t dst_pcieid; /* used in PF-->VF */
 };
 
+typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
+		void *reps_buffer, uint16_t *reps_len, void *dev);
+
 int zxdh_msg_chan_init(void);
 int zxdh_bar_msg_chan_exit(void);
 int zxdh_msg_chan_hwlock_init(struct rte_eth_dev *dev);
@@ -204,5 +214,7 @@ int zxdh_msg_chan_hwlock_init(struct rte_eth_dev *dev);
 int zxdh_msg_chan_enable(struct rte_eth_dev *dev);
 int zxdh_bar_chan_sync_msg_send(struct zxdh_pci_bar_msg *in,
 		struct zxdh_msg_recviver_mem *result);
+
+int zxdh_bar_irq_recv(uint8_t src, uint8_t dst, uint64_t virt_addr, void *dev);
 
 #endif /* ZXDH_MSG_H */

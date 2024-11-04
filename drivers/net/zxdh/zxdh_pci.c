@@ -14,6 +14,7 @@
 #include "zxdh_ethdev.h"
 #include "zxdh_pci.h"
 #include "zxdh_logs.h"
+#include "zxdh_queue.h"
 
 #define ZXDH_PMD_DEFAULT_GUEST_FEATURES   \
 		(1ULL << ZXDH_NET_F_MRG_RXBUF | \
@@ -93,6 +94,27 @@ zxdh_set_features(struct zxdh_hw *hw, uint64_t features)
 	rte_write32(features >> 32, &hw->common_cfg->guest_feature);
 }
 
+static uint16_t
+zxdh_set_config_irq(struct zxdh_hw *hw, uint16_t vec)
+{
+	rte_write16(vec, &hw->common_cfg->msix_config);
+	return rte_read16(&hw->common_cfg->msix_config);
+}
+
+static uint16_t
+zxdh_set_queue_irq(struct zxdh_hw *hw, struct zxdh_virtqueue *vq, uint16_t vec)
+{
+	rte_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+	rte_write16(vec, &hw->common_cfg->queue_msix_vector);
+	return rte_read16(&hw->common_cfg->queue_msix_vector);
+}
+
+static uint8_t
+zxdh_get_isr(struct zxdh_hw *hw)
+{
+	return rte_read8(hw->isr);
+}
+
 const struct zxdh_pci_ops zxdh_dev_pci_ops = {
 	.read_dev_cfg   = zxdh_read_dev_config,
 	.write_dev_cfg  = zxdh_write_dev_config,
@@ -100,7 +122,16 @@ const struct zxdh_pci_ops zxdh_dev_pci_ops = {
 	.set_status     = zxdh_set_status,
 	.get_features   = zxdh_get_features,
 	.set_features   = zxdh_set_features,
+	.set_queue_irq  = zxdh_set_queue_irq,
+	.set_config_irq = zxdh_set_config_irq,
+	.get_isr        = zxdh_get_isr,
 };
+
+uint8_t
+zxdh_pci_isr(struct zxdh_hw *hw)
+{
+	return ZXDH_VTPCI_OPS(hw)->get_isr(hw);
+}
 
 uint16_t
 zxdh_pci_get_features(struct zxdh_hw *hw)
