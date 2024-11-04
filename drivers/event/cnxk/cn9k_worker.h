@@ -499,13 +499,13 @@ NIX_RX_FASTPATH_MODES
 
 #define R(name, flags)                                                                             \
 	SSO_DEQ(cn9k_sso_hws_deq_##name, flags)                                                    \
-	SSO_DEQ(cn9k_sso_hws_dual_deq_##name, flags)                                               \
+	SSO_DUAL_DEQ(cn9k_sso_hws_dual_deq_##name, flags)                                          \
 	SSO_DEQ_SEG(cn9k_sso_hws_deq_seg_##name, flags)                                            \
-	SSO_DEQ_SEG(cn9k_sso_hws_dual_deq_seg_##name, flags)                                       \
+	SSO_DUAL_DEQ_SEG(cn9k_sso_hws_dual_deq_seg_##name, flags)                                  \
 	SSO_DEQ_TMO(cn9k_sso_hws_deq_tmo_##name, flags)                                            \
-	SSO_DEQ_TMO(cn9k_sso_hws_dual_deq_tmo_##name, flags)                                       \
+	SSO_DUAL_DEQ_TMO(cn9k_sso_hws_dual_deq_tmo_##name, flags)                                  \
 	SSO_DEQ_TMO_SEG(cn9k_sso_hws_deq_tmo_seg_##name, flags)                                    \
-	SSO_DEQ_TMO_SEG(cn9k_sso_hws_dual_deq_tmo_seg_##name, flags)
+	SSO_DUAL_DEQ_TMO_SEG(cn9k_sso_hws_dual_deq_tmo_seg_##name, flags)
 
 NIX_RX_FASTPATH_MODES
 #undef R
