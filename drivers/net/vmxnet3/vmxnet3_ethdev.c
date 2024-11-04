@@ -1575,7 +1575,7 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->min_rx_bufsize = 1518 + RTE_PKTMBUF_HEADROOM;
 	dev_info->max_rx_pktlen = 16384; /* includes CRC, cf MAXFRS register */
 	dev_info->min_mtu = VMXNET3_MIN_MTU;
-	dev_info->max_mtu = VMXNET3_MAX_MTU;
+	dev_info->max_mtu = VMXNET3_VERSION_GE_6(hw) ? VMXNET3_V6_MAX_MTU : VMXNET3_MAX_MTU;
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10G;
 	dev_info->max_mac_addrs = VMXNET3_MAX_MAC_ADDRS;
 
