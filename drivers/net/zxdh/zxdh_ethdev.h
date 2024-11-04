@@ -25,6 +25,8 @@
 #define ZXDH_NUM_BARS             2
 #define ZXDH_RX_QUEUES_MAX        128U
 #define ZXDH_TX_QUEUES_MAX        128U
+#define ZXDH_MIN_RX_BUFSIZE       64
+#define ZXDH_MAX_RX_PKTLEN        14000U
 
 union zxdh_virport_num {
 	uint16_t vport;
