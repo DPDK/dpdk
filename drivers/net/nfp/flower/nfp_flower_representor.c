@@ -672,6 +672,7 @@ nfp_flower_repr_base_init(struct rte_eth_dev *eth_dev,
 	init_repr_data = repr_init->flower_repr;
 
 	/* Copy data here from the input representor template */
+	repr->idx              = init_repr_data->idx;
 	repr->vf_id            = init_repr_data->vf_id;
 	repr->switch_domain_id = init_repr_data->switch_domain_id;
 	repr->port_id          = init_repr_data->port_id;
@@ -930,6 +931,7 @@ nfp_flower_phy_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 		flower_repr->repr_type = NFP_REPR_TYPE_PHYS_PORT;
 		flower_repr->port_id = nfp_flower_get_phys_port_id(eth_port->index);
 		flower_repr->nfp_idx = eth_port->index;
+		flower_repr->idx = id;
 
 		/* Copy the real mac of the interface to the representor struct */
 		rte_ether_addr_copy(&eth_port->mac_addr, &flower_repr->mac_addr);
@@ -985,6 +987,7 @@ nfp_flower_vf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 				NFP_FLOWER_CMSG_PORT_VNIC_TYPE_VF, i + pf_dev->vf_base_id, 0);
 		flower_repr->nfp_idx = 0;
 		flower_repr->vf_id = i;
+		flower_repr->idx = nfp_function_id_get(pf_dev, 0);
 
 		/* VF reprs get a random MAC address */
 		rte_eth_random_addr(flower_repr->mac_addr.addr_bytes);
@@ -1022,6 +1025,7 @@ nfp_flower_pf_repr_alloc(struct nfp_net_hw_priv *hw_priv,
 
 	/* Create a rte_eth_dev for PF vNIC representor */
 	flower_repr->repr_type = NFP_REPR_TYPE_PF;
+	flower_repr->idx = 0;
 
 	/* PF vNIC reprs get a random MAC address */
 	rte_eth_random_addr(flower_repr->mac_addr.addr_bytes);
