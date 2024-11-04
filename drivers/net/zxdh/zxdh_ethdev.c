@@ -107,6 +107,12 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_zxdh_init;
 	}
 
+	ret = zxdh_msg_chan_enable(eth_dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "zxdh_msg_bar_chan_enable failed ret %d", ret);
+		goto err_zxdh_init;
+	}
+
 	return ret;
 
 err_zxdh_init:

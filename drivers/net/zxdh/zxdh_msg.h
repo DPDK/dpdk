@@ -10,12 +10,34 @@
 #include <ethdev_driver.h>
 
 #define ZXDH_BAR0_INDEX     0
+#define ZXDH_CTRLCH_OFFSET            (0x2000)
+
+#define ZXDH_MSIX_INTR_MSG_VEC_BASE   1
+
+#define ZXDH_BAR_MSG_POLLING_SPAN     100
+#define ZXDH_BAR_MSG_POLL_CNT_PER_MS  (1 * 1000 / ZXDH_BAR_MSG_POLLING_SPAN)
+#define ZXDH_BAR_MSG_POLL_CNT_PER_S   (1 * 1000 * 1000 / ZXDH_BAR_MSG_POLLING_SPAN)
+#define ZXDH_BAR_MSG_TIMEOUT_TH       (10 * 1000 * 1000 / ZXDH_BAR_MSG_POLLING_SPAN)
+
+#define ZXDH_BAR_CHAN_MSG_SYNC         0
+
+#define ZXDH_BAR_MSG_ADDR_CHAN_INTERVAL  (2 * 1024) /* channel size */
+#define ZXDH_BAR_MSG_PLAYLOAD_OFFSET     (sizeof(struct zxdh_bar_msg_header))
+#define ZXDH_BAR_MSG_PAYLOAD_MAX_LEN     \
+	(ZXDH_BAR_MSG_ADDR_CHAN_INTERVAL - sizeof(struct zxdh_bar_msg_header))
 
 enum ZXDH_DRIVER_TYPE {
 	ZXDH_MSG_CHAN_END_MPF = 0,
 	ZXDH_MSG_CHAN_END_PF,
 	ZXDH_MSG_CHAN_END_VF,
 	ZXDH_MSG_CHAN_END_RISC,
+};
+
+enum ZXDH_MSG_VEC {
+	ZXDH_MSIX_FROM_PFVF = ZXDH_MSIX_INTR_MSG_VEC_BASE,
+	ZXDH_MSIX_FROM_MPF,
+	ZXDH_MSIX_FROM_RISCV,
+	ZXDH_MSG_VEC_NUM,
 };
 
 enum ZXDH_BAR_MSG_RTN {
@@ -52,8 +74,114 @@ enum ZXDH_BAR_MSG_RTN {
 	ZXDH_BAR_MSG_ERR_SOCKET, /* netlink sockte err */
 };
 
+enum ZXDH_BAR_MODULE_ID {
+	ZXDH_BAR_MODULE_DBG = 0, /* 0:  debug */
+	ZXDH_BAR_MODULE_TBL,     /* 1:  resource table */
+	ZXDH_BAR_MODULE_MISX,    /* 2:  config msix */
+	ZXDH_BAR_MODULE_SDA,     /* 3: */
+	ZXDH_BAR_MODULE_RDMA,    /* 4: */
+	ZXDH_BAR_MODULE_DEMO,    /* 5:  channel test */
+	ZXDH_BAR_MODULE_SMMU,    /* 6: */
+	ZXDH_BAR_MODULE_MAC,     /* 7:  mac rx/tx stats */
+	ZXDH_BAR_MODULE_VDPA,    /* 8:  vdpa live migration */
+	ZXDH_BAR_MODULE_VQM,     /* 9:  vqm live migration */
+	ZXDH_BAR_MODULE_NP,      /* 10: vf msg callback np */
+	ZXDH_BAR_MODULE_VPORT,   /* 11: get vport */
+	ZXDH_BAR_MODULE_BDF,     /* 12: get bdf */
+	ZXDH_BAR_MODULE_RISC_READY, /* 13: */
+	ZXDH_BAR_MODULE_REVERSE,    /* 14: byte stream reverse */
+	ZXDH_BAR_MDOULE_NVME,       /* 15: */
+	ZXDH_BAR_MDOULE_NPSDK,      /* 16: */
+	ZXDH_BAR_MODULE_NP_TODO,    /* 17: */
+	ZXDH_MODULE_BAR_MSG_TO_PF,  /* 18: */
+	ZXDH_MODULE_BAR_MSG_TO_VF,  /* 19: */
+
+	ZXDH_MODULE_FLASH = 32,
+	ZXDH_BAR_MODULE_OFFSET_GET = 33,
+	ZXDH_BAR_EVENT_OVS_WITH_VCB = 36,
+
+	ZXDH_BAR_MSG_MODULE_NUM = 100,
+};
+
+struct zxdh_msix_para {
+	uint16_t pcie_id;
+	uint16_t vector_risc;
+	uint16_t vector_pfvf;
+	uint16_t vector_mpf;
+	uint64_t virt_addr;
+	uint16_t driver_type; /* refer to DRIVER_TYPE */
+};
+
+struct zxdh_msix_msg {
+	uint16_t pcie_id;
+	uint16_t vector_risc;
+	uint16_t vector_pfvf;
+	uint16_t vector_mpf;
+};
+
+struct zxdh_pci_bar_msg {
+	uint64_t virt_addr; /* bar addr */
+	void    *payload_addr;
+	uint16_t payload_len;
+	uint16_t emec;
+	uint16_t src; /* refer to BAR_DRIVER_TYPE */
+	uint16_t dst; /* refer to BAR_DRIVER_TYPE */
+	uint16_t module_id;
+	uint16_t src_pcieid;
+	uint16_t dst_pcieid;
+	uint16_t usr;
+};
+
+struct zxdh_bar_msix_reps {
+	uint16_t pcie_id;
+	uint16_t check;
+	uint16_t vport;
+	uint16_t rsv;
+} __rte_packed;
+
+struct zxdh_bar_offset_reps {
+	uint16_t check;
+	uint16_t rsv;
+	uint32_t offset;
+	uint32_t length;
+} __rte_packed;
+
+struct zxdh_bar_recv_msg {
+	uint8_t reps_ok;
+	uint16_t reps_len;
+	uint8_t rsv;
+	union {
+		struct zxdh_bar_msix_reps msix_reps;
+		struct zxdh_bar_offset_reps offset_reps;
+	} __rte_packed;
+} __rte_packed;
+
+struct zxdh_msg_recviver_mem {
+	void *recv_buffer; /* first 4B is head, followed by payload */
+	uint64_t buffer_len;
+};
+
+struct zxdh_bar_msg_header {
+	uint8_t valid : 1; /* used by __bar_chan_msg_valid_set/get */
+	uint8_t sync  : 1;
+	uint8_t emec  : 1; /* emergency */
+	uint8_t ack   : 1; /* ack msg */
+	uint8_t poll  : 1;
+	uint8_t usr   : 1;
+	uint8_t rsv;
+	uint16_t module_id;
+	uint16_t len;
+	uint16_t msg_id;
+	uint16_t src_pcieid;
+	uint16_t dst_pcieid; /* used in PF-->VF */
+};
+
 int zxdh_msg_chan_init(void);
 int zxdh_bar_msg_chan_exit(void);
 int zxdh_msg_chan_hwlock_init(struct rte_eth_dev *dev);
+
+int zxdh_msg_chan_enable(struct rte_eth_dev *dev);
+int zxdh_bar_chan_sync_msg_send(struct zxdh_pci_bar_msg *in,
+		struct zxdh_msg_recviver_mem *result);
 
 #endif /* ZXDH_MSG_H */
