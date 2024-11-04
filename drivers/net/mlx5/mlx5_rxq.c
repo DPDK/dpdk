@@ -946,7 +946,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = ENOMEM;
 			return -rte_errno;
 		}
-		rxq->possessor = true;
 	}
 	rxq->priv = priv;
 	rxq->idx = idx;
@@ -954,6 +953,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	/* Join owner list. */
 	LIST_INSERT_HEAD(&rxq_ctrl->owners, rxq, owner_entry);
 	rxq->ctrl = rxq_ctrl;
+	rte_atomic_fetch_add_explicit(&rxq_ctrl->ctrl_ref, 1, rte_memory_order_relaxed);
 	mlx5_rxq_ref(dev, idx);
 	DRV_LOG(DEBUG, "port %u adding Rx queue %u to list",
 		dev->data->port_id, idx);
@@ -1971,9 +1971,9 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		tmpl->rxq.shared = 1;
 		tmpl->share_group = conf->share_group;
 		tmpl->share_qid = conf->share_qid;
-		LIST_INSERT_HEAD(&priv->sh->shared_rxqs, tmpl, share_entry);
 	}
-	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
+	LIST_INSERT_HEAD(&priv->sh->shared_rxqs, tmpl, share_entry);
+	rte_atomic_store_explicit(&tmpl->ctrl_ref, 1, rte_memory_order_relaxed);
 	return tmpl;
 error:
 	mlx5_mr_btree_free(&tmpl->rxq.mr_ctrl.cache_bh);
@@ -2025,9 +2025,9 @@ mlx5_rxq_hairpin_new(struct rte_eth_dev *dev, struct mlx5_rxq_priv *rxq,
 	tmpl->rxq.mr_ctrl.cache_bh = (struct mlx5_mr_btree) { 0 };
 	tmpl->rxq.idx = idx;
 	rxq->hairpin_conf = *hairpin_conf;
-	rxq->possessor = true;
 	mlx5_rxq_ref(dev, idx);
-	LIST_INSERT_HEAD(&priv->rxqsctrl, tmpl, next);
+	LIST_INSERT_HEAD(&priv->sh->shared_rxqs, tmpl, share_entry);
+	rte_atomic_store_explicit(&tmpl->ctrl_ref, 1, rte_memory_order_relaxed);
 	return tmpl;
 }
 
@@ -2293,16 +2293,16 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 					RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	} else { /* Refcnt zero, closing device. */
-		if (rxq->possessor)
-			LIST_REMOVE(rxq_ctrl, next);
 		LIST_REMOVE(rxq, owner_entry);
 		if (LIST_EMPTY(&rxq_ctrl->owners)) {
 			if (!rxq_ctrl->is_hairpin)
 				mlx5_mr_btree_free
 					(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
-			if (rxq_ctrl->rxq.shared)
+			if (rte_atomic_fetch_sub_explicit(&rxq_ctrl->ctrl_ref, 1,
+			    rte_memory_order_relaxed) == 1) {
 				LIST_REMOVE(rxq_ctrl, share_entry);
-			mlx5_free(rxq_ctrl);
+				mlx5_free(rxq_ctrl);
+			}
 		}
 		dev->data->rx_queues[idx] = NULL;
 		mlx5_free(rxq);
@@ -2327,7 +2327,7 @@ mlx5_rxq_verify(struct rte_eth_dev *dev)
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 	int ret = 0;
 
-	LIST_FOREACH(rxq_ctrl, &priv->rxqsctrl, next) {
+	LIST_FOREACH(rxq_ctrl, &priv->sh->shared_rxqs, share_entry) {
 		DRV_LOG(DEBUG, "port %u Rx Queue %u still referenced",
 			dev->data->port_id, rxq_ctrl->rxq.idx);
 		++ret;
