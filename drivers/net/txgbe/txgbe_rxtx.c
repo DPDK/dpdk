@@ -2284,8 +2284,7 @@ txgbe_get_tx_port_offloads(struct rte_eth_dev *dev)
 
 	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MACSEC_INSERT;
 
-	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
-			   RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM;
+	tx_offload_capa |= RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 
 #ifdef RTE_LIB_SECURITY
 	if (dev->security_ctx)
