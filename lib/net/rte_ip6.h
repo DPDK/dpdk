@@ -461,7 +461,7 @@ rte_ether_mcast_from_ipv6(struct rte_ether_addr *mac, const struct rte_ipv6_addr
 /**
  * IPv6 Header
  */
-struct rte_ipv6_hdr {
+struct __rte_aligned(2) rte_ipv6_hdr {
 	union {
 		rte_be32_t vtc_flow;        /**< IP version, traffic class & flow label. */
 		__extension__
@@ -508,7 +508,7 @@ static inline int rte_ipv6_check_version(const struct rte_ipv6_hdr *ip)
 /**
  * IPv6 Routing Extension Header
  */
-struct rte_ipv6_routing_ext {
+struct __rte_aligned(2) rte_ipv6_routing_ext {
 	uint8_t next_hdr;			/**< Protocol, next header. */
 	uint8_t hdr_len;			/**< Header length. */
 	uint8_t type;				/**< Extension header type. */
@@ -752,7 +752,7 @@ rte_ipv6_udptcp_cksum_mbuf_verify(const struct rte_mbuf *m,
 #define RTE_IPV6_SET_FRAG_DATA(fo, mf)	\
 	(((fo) & RTE_IPV6_EHDR_FO_MASK) | ((mf) & RTE_IPV6_EHDR_MF_MASK))
 
-struct rte_ipv6_fragment_ext {
+struct __rte_aligned(2) rte_ipv6_fragment_ext {
 	uint8_t next_header;	/**< Next header type */
 	uint8_t reserved;	/**< Reserved */
 	rte_be16_t frag_data;	/**< All fragmentation data */

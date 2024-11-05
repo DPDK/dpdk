@@ -302,6 +302,9 @@ API Changes
   are marked as deprecated, and are replaced
   by ``RTE_ICMP_TYPE_ECHO_REPLY`` and ``RTE_ICMP_TYPE_ECHO_REQUEST``.
 
+* net: The IPv6 header structure ``rte_ipv6_hdr`` and extension structures ``rte_ipv6_routing_ext``
+  and ``rte_ipv6_fragment_ext`` have been marked as two bytes aligned.
+
 * net: A new IPv6 address structure was introduced to replace ad-hoc ``uint8_t[16]`` arrays.
   The following libraries and symbols were modified:
 
