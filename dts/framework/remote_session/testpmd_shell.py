@@ -426,7 +426,46 @@ class RxQueueState(StrEnum):
 
 
 @dataclass
-class TestPmdRxqInfo(TextParser):
+class TestPmdQueueInfo(TextParser):
+    """Dataclass representation of the common parts of the testpmd `show rxq/txq info` commands."""
+
+    #:
+    prefetch_threshold: int = field(metadata=TextParser.find_int(r"prefetch threshold: (\d+)"))
+    #:
+    host_threshold: int = field(metadata=TextParser.find_int(r"host threshold: (\d+)"))
+    #:
+    writeback_threshold: int = field(metadata=TextParser.find_int(r"writeback threshold: (\d+)"))
+    #:
+    free_threshold: int = field(metadata=TextParser.find_int(r"free threshold: (\d+)"))
+    #:
+    deferred_start: bool = field(metadata=TextParser.find("deferred start: on"))
+    #: The number of RXD/TXDs is just the ring size of the queue.
+    ring_size: int = field(metadata=TextParser.find_int(r"Number of (?:RXDs|TXDs): (\d+)"))
+    #:
+    is_queue_started: bool = field(metadata=TextParser.find("queue state: started"))
+    #:
+    burst_mode: str | None = field(
+        default=None, metadata=TextParser.find(r"Burst mode: ([^\r\n]+)")
+    )
+
+
+@dataclass
+class TestPmdTxqInfo(TestPmdQueueInfo):
+    """Representation of testpmd's ``show txq info <port_id> <queue_id>`` command.
+
+    References:
+        testpmd command function: ``app/test-pmd/cmdline.c:cmd_showqueue()``
+        testpmd display function: ``app/test-pmd/config.c:rx_queue_infos_display()``
+    """
+
+    #: Ring size threshold
+    rs_threshold: int | None = field(
+        default=None, metadata=TextParser.find_int(r"TX RS threshold: (\d+)\b")
+    )
+
+
+@dataclass
+class TestPmdRxqInfo(TestPmdQueueInfo):
     """Representation of testpmd's ``show rxq info <port_id> <queue_id>`` command.
 
     References:
@@ -434,42 +473,18 @@ class TestPmdRxqInfo(TextParser):
         testpmd display function: ``app/test-pmd/config.c:rx_queue_infos_display()``
     """
 
-    #:
-    port_id: int = field(metadata=TextParser.find_int(r"Infos for port (\d+)\b ?, RX queue \d+\b"))
-    #:
-    queue_id: int = field(metadata=TextParser.find_int(r"Infos for port \d+\b ?, RX queue (\d+)\b"))
     #: Mempool used by that queue
-    mempool: str = field(metadata=TextParser.find(r"Mempool: ([^\r\n]+)"))
-    #: Ring prefetch threshold
-    rx_prefetch_threshold: int = field(
-        metadata=TextParser.find_int(r"RX prefetch threshold: (\d+)\b")
-    )
-    #: Ring host threshold
-    rx_host_threshold: int = field(metadata=TextParser.find_int(r"RX host threshold: (\d+)\b"))
-    #: Ring writeback threshold
-    rx_writeback_threshold: int = field(
-        metadata=TextParser.find_int(r"RX writeback threshold: (\d+)\b")
-    )
-    #: Drives the freeing of Rx descriptors
-    rx_free_threshold: int = field(metadata=TextParser.find_int(r"RX free threshold: (\d+)\b"))
+    mempool: str | None = field(default=None, metadata=TextParser.find(r"Mempool: ([^\r\n]+)"))
     #: Drop packets if no descriptors are available
-    rx_drop_packets: bool = field(metadata=TextParser.find(r"RX drop packets: on"))
-    #: Do not start queue with rte_eth_dev_start()
-    rx_deferred_start: bool = field(metadata=TextParser.find(r"RX deferred start: on"))
+    drop_packets: bool | None = field(
+        default=None, metadata=TextParser.find(r"RX drop packets: on")
+    )
     #: Scattered packets Rx enabled
-    rx_scattered_packets: bool = field(metadata=TextParser.find(r"RX scattered packets: on"))
+    scattered_packets: bool | None = field(
+        default=None, metadata=TextParser.find(r"RX scattered packets: on")
+    )
     #: The state of the queue
-    rx_queue_state: str = field(metadata=RxQueueState.make_parser())
-    #: Configured number of RXDs
-    number_of_rxds: int = field(metadata=TextParser.find_int(r"Number of RXDs: (\d+)\b"))
-    #: Hardware receive buffer size
-    rx_buffer_size: int | None = field(
-        default=None, metadata=TextParser.find_int(r"RX buffer size: (\d+)\b")
-    )
-    #: Burst mode information
-    burst_mode: str | None = field(
-        default=None, metadata=TextParser.find(r"Burst mode: ([^\r\n]+)")
-    )
+    queue_state: str | None = field(default=None, metadata=RxQueueState.make_parser())
 
 
 @dataclass
@@ -2036,6 +2051,139 @@ class TestPmdShell(DPDKShell):
             rx_offload_capabilities.per_port | rx_offload_capabilities.per_queue,
         )
 
+    def get_port_queue_info(
+        self, port_id: int, queue_id: int, is_rx_queue: bool
+    ) -> TestPmdQueueInfo:
+        """Returns the current state of the specified queue."""
+        command = f"show {'rxq' if is_rx_queue else 'txq'} info {port_id} {queue_id}"
+        queue_info = TestPmdQueueInfo.parse(self.send_command(command))
+        return queue_info
+
+    def setup_port_queue(self, port_id: int, queue_id: int, is_rx_queue: bool) -> None:
+        """Setup a given queue on a port.
+
+        This functionality cannot be verified because the setup action only takes effect when the
+        queue is started.
+
+        Args:
+            port_id: ID of the port where the queue resides.
+            queue_id: ID of the queue to setup.
+            is_rx_queue: Type of queue to setup. If :data:`True` an RX queue will be setup,
+                otherwise a TX queue will be setup.
+        """
+        self.send_command(f"port {port_id} {'rxq' if is_rx_queue else 'txq'} {queue_id} setup")
+
+    def stop_port_queue(
+        self, port_id: int, queue_id: int, is_rx_queue: bool, verify: bool = True
+    ) -> None:
+        """Stops a given queue on a port.
+
+        Args:
+            port_id: ID of the port that the queue belongs to.
+            queue_id: ID of the queue to stop.
+            is_rx_queue: Type of queue to stop. If :data:`True` an RX queue will be stopped,
+                otherwise a TX queue will be stopped.
+            verify: If :data:`True` an additional command will be sent to verify the queue stopped.
+                Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the queue fails to
+                stop.
+        """
+        port_type = "rxq" if is_rx_queue else "txq"
+        stop_cmd_output = self.send_command(f"port {port_id} {port_type} {queue_id} stop")
+        if verify:
+            queue_started = self.get_port_queue_info(
+                port_id, queue_id, is_rx_queue
+            ).is_queue_started
+            if queue_started:
+                self._logger.debug(
+                    f"Failed to stop {port_type} {queue_id} on port {port_id}:\n{stop_cmd_output}"
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Test pmd failed to stop {port_type} {queue_id} on port {port_id}"
+                )
+
+    def start_port_queue(
+        self, port_id: int, queue_id: int, is_rx_queue: bool, verify: bool = True
+    ) -> None:
+        """Starts a given queue on a port.
+
+        First sets up the port queue, then starts it.
+
+        Args:
+            port_id: ID of the port that the queue belongs to.
+            queue_id: ID of the queue to start.
+            is_rx_queue: Type of queue to start. If :data:`True` an RX queue will be started,
+                otherwise a TX queue will be started.
+            verify: if :data:`True` an additional command will be sent to verify that the queue was
+                started. Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the queue fails to
+                start.
+        """
+        port_type = "rxq" if is_rx_queue else "txq"
+        self.setup_port_queue(port_id, queue_id, is_rx_queue)
+        start_cmd_output = self.send_command(f"port {port_id} {port_type} {queue_id} start")
+        if verify:
+            queue_started = self.get_port_queue_info(
+                port_id, queue_id, is_rx_queue
+            ).is_queue_started
+            if not queue_started:
+                self._logger.debug(
+                    f"Failed to start {port_type} {queue_id} on port {port_id}:\n{start_cmd_output}"
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Test pmd failed to start {port_type} {queue_id} on port {port_id}"
+                )
+
+    def get_queue_ring_size(self, port_id: int, queue_id: int, is_rx_queue: bool) -> int:
+        """Returns the current size of the ring on the specified queue."""
+        command = f"show {'rxq' if is_rx_queue else 'txq'} info {port_id} {queue_id}"
+        queue_info = TestPmdQueueInfo.parse(self.send_command(command))
+        return queue_info.ring_size
+
+    def set_queue_ring_size(
+        self,
+        port_id: int,
+        queue_id: int,
+        size: int,
+        is_rx_queue: bool,
+        verify: bool = True,
+    ) -> None:
+        """Update the ring size of an Rx/Tx queue on a given port.
+
+        Queue is setup after setting the ring size so that the queue info reflects this change and
+        it can be verified.
+
+        Args:
+            port_id: The port that the queue resides on.
+            queue_id: The ID of the queue on the port.
+            size: The size to update the ring size to.
+            is_rx_queue: Whether to modify an RX or TX queue. If :data:`True` an RX queue will be
+                updated, otherwise a TX queue will be updated.
+            verify: If :data:`True` an additional command will be sent to check the ring size of
+                the queue in an attempt to validate that the size was changes properly.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and there is a failure
+                when updating ring size.
+        """
+        queue_type = "rxq" if is_rx_queue else "txq"
+        self.send_command(f"port config {port_id} {queue_type} {queue_id} ring_size {size}")
+        self.setup_port_queue(port_id, queue_id, is_rx_queue)
+        if verify:
+            curr_ring_size = self.get_queue_ring_size(port_id, queue_id, is_rx_queue)
+            if curr_ring_size != size:
+                self._logger.debug(
+                    f"Failed up update ring size of queue {queue_id} on port {port_id}. Current"
+                    f" ring size is {curr_ring_size}."
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Failed to update ring size of queue {queue_id} on port {port_id}"
+                )
+
     def _update_capabilities_from_flag(
         self,
         supported_capabilities: MutableSet["NicCapability"],
@@ -2065,7 +2213,7 @@ class TestPmdShell(DPDKShell):
         self._logger.debug("Getting rxq capabilities.")
         command = f"show rxq info {self.ports[0].id} 0"
         rxq_info = TestPmdRxqInfo.parse(self.send_command(command))
-        if rxq_info.rx_scattered_packets:
+        if rxq_info.scattered_packets:
             supported_capabilities.add(NicCapability.SCATTERED_RX_ENABLED)
         else:
             unsupported_capabilities.add(NicCapability.SCATTERED_RX_ENABLED)
