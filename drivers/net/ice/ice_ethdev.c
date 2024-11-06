@@ -6704,9 +6704,26 @@ ice_timesync_read_tx_timestamp(struct rte_eth_dev *dev,
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_adapter *ad =
 			ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	uint64_t ts_ns, tstamp;
+	uint64_t ts_ns, tstamp, tstamp_ready = 0;
+	uint64_t end_time;
 	const uint64_t mask = 0xFFFFFFFF;
 	int ret;
+
+	/* Set the end time with a delay of 10 microseconds */
+	end_time = rte_get_timer_cycles() + (rte_get_timer_hz() / 100000);
+
+	do {
+		ret = ice_get_phy_tx_tstamp_ready(hw, ad->ptp_tx_block, &tstamp_ready);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to get phy ready for timestamp");
+			return -1;
+		}
+
+		if ((tstamp_ready & BIT_ULL(0)) == 0 && rte_get_timer_cycles() > end_time) {
+			PMD_DRV_LOG(ERR, "Timeout to get phy ready for timestamp");
+			return -1;
+		}
+	} while ((tstamp_ready & BIT_ULL(0)) == 0);
 
 	ret = ice_read_phy_tstamp(hw, ad->ptp_tx_block, ad->ptp_tx_index, &tstamp);
 	if (ret || tstamp == 0) {
