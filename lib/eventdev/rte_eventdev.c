@@ -2067,6 +2067,15 @@ RTE_INIT(eventdev_init_telemetry)
 			"Returns list of available eventdevs. Takes no parameters");
 	rte_telemetry_register_cmd("/eventdev/dev_info", handle_dev_info,
 			"Returns basic info about an eventdev. Parameter: DevID");
+
+	/* alias "dev_list" and "dev_info" as just "list" and "info" to match
+	 * other categories, such as ethdev, ring, mempool etc.
+	 */
+	rte_telemetry_register_cmd("/eventdev/list", handle_dev_list,
+			"Returns list of available eventdevs. Takes no parameters");
+	rte_telemetry_register_cmd("/eventdev/info", handle_dev_info,
+			"Returns basic info about an eventdev. Parameter: DevID");
+
 	rte_telemetry_register_cmd("/eventdev/port_list", handle_port_list,
 			"Returns list of available ports. Parameter: DevID");
 	rte_telemetry_register_cmd("/eventdev/queue_list", handle_queue_list,
