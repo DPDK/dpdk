@@ -1726,6 +1726,41 @@ handle_dev_list(const char *cmd __rte_unused,
 }
 
 static int
+handle_dev_info(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	uint8_t dev_id;
+	struct rte_eventdev *dev;
+	char *end_param;
+
+	if (params == NULL || strlen(params) == 0 || !isdigit(*params))
+		return -1;
+
+	dev_id = strtoul(params, &end_param, 10);
+	if (*end_param != '\0')
+		RTE_EDEV_LOG_DEBUG(
+			"Extra parameters passed to eventdev telemetry command, ignoring");
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+
+	rte_tel_data_start_dict(d);
+	rte_tel_data_add_dict_int(d, "dev_id", dev_id);
+	rte_tel_data_add_dict_string(d, "dev_name", dev->dev->name);
+	rte_tel_data_add_dict_string(d, "dev_driver", dev->dev->driver->name);
+	rte_tel_data_add_dict_string(d, "state",
+		dev->data->dev_started ? "started" : "stopped");
+	rte_tel_data_add_dict_int(d, "socket_id", dev->data->socket_id);
+	rte_tel_data_add_dict_int(d, "nb_queues", dev->data->nb_queues);
+	rte_tel_data_add_dict_int(d, "nb_ports", dev->data->nb_ports);
+	rte_tel_data_add_dict_uint_hex(d, "capabilities", dev->data->event_dev_cap,
+		sizeof(dev->data->event_dev_cap) * CHAR_BIT);
+
+	return 0;
+}
+
+static int
 handle_port_list(const char *cmd __rte_unused,
 		 const char *params,
 		 struct rte_tel_data *d)
@@ -2030,6 +2065,8 @@ RTE_INIT(eventdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/eventdev/dev_list", handle_dev_list,
 			"Returns list of available eventdevs. Takes no parameters");
+	rte_telemetry_register_cmd("/eventdev/dev_info", handle_dev_info,
+			"Returns basic info about an eventdev. Parameter: DevID");
 	rte_telemetry_register_cmd("/eventdev/port_list", handle_port_list,
 			"Returns list of available ports. Parameter: DevID");
 	rte_telemetry_register_cmd("/eventdev/queue_list", handle_queue_list,
