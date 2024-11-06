@@ -30,8 +30,6 @@ class TestSmokeTests(TestSuite):
     The infrastructure also needs to be tested, as that is also used by all other test suites.
 
     Attributes:
-        is_blocking: This test suite will block the execution of all other test suites
-            in the test run after it.
         nics_in_node: The NICs present on the SUT node.
     """
 
