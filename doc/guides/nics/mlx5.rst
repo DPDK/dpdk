@@ -461,6 +461,11 @@ Limitations
   - Only supported in HW steering(``dv_flow_en`` = 2) mode.
   - Only single flow is supported to the flow table.
   - Only single item is supported per pattern template.
+  - In switch mode, when the ``repr_matching_en`` flag is enabled in the devargs
+    (which is the default setting),
+    the match with compare result item is not supported for ``ingress`` rules.
+    This is because an implicit ``REPRESENTED_PORT`` needs to be added to the matcher,
+    which conflicts with the single item limitation.
   - Only 32-bit comparison is supported or 16-bit for random field.
   - Only supported for ``RTE_FLOW_FIELD_META``, ``RTE_FLOW_FIELD_TAG``,
     ``RTE_FLOW_FIELD_ESP_SEQ_NUM``,
