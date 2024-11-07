@@ -993,11 +993,15 @@ dump_denied_pkt(const struct rte_mbuf *pkt, uint32_t res)
 #endif
 }
 
-static inline void
+/*
+ * run packets through ACL classify.
+ * returns number of packets to be dropped (hops[i] == BAD_PORT)
+ */
+static inline uint32_t
 acl_process_pkts(struct rte_mbuf *pkts[MAX_PKT_BURST],
 	uint16_t hops[MAX_PKT_BURST], uint32_t num, int32_t socketid)
 {
-	uint32_t i, n4, n6, res;
+	uint32_t i, k, n4, n6, res;
 	struct acl_search_t acl_search;
 
 	/* split packets burst depending on packet type (IPv4/IPv6) */
@@ -1020,6 +1024,7 @@ acl_process_pkts(struct rte_mbuf *pkts[MAX_PKT_BURST],
 	/* combine lookup results back, into one array of next hops */
 	n4 = 0;
 	n6 = 0;
+	k = 0;
 	for (i = 0; i != num; i++) {
 		switch (acl_search.types[i]) {
 		case TYPE_IPV4:
@@ -1034,21 +1039,33 @@ acl_process_pkts(struct rte_mbuf *pkts[MAX_PKT_BURST],
 		if (likely((res & ACL_DENY_SIGNATURE) == 0 && res != 0))
 			hops[i] = res - FWD_PORT_SHIFT;
 		else {
+			/* bad or denied by ACL rule packets */
 			hops[i] = BAD_PORT;
 			dump_denied_pkt(pkts[i], res);
+			k++;
 		}
 	}
+
+	return k;
 }
 
+/*
+ * send_packets_multi() can't deal properly with hops[i] == BAD_PORT
+ * (it assumes input hops[] contain only valid port numbers),
+ * so it is ok to use it only when there are no denied packets.
+ */
 static inline void
 acl_send_packets(struct lcore_conf *qconf, struct rte_mbuf *pkts[],
-	uint16_t hops[], uint32_t num)
+	uint16_t hops[], uint32_t num, uint32_t nb_drop)
 {
 #if defined ACL_SEND_MULTI
-	send_packets_multi(qconf, pkts, hops, num);
+	if (nb_drop == 0)
+		send_packets_multi(qconf, pkts, hops, num);
+	else
 #else
-	send_packets_single(qconf, pkts, hops, num);
+		RTE_SET_USED(nb_drop);
 #endif
+		send_packets_single(qconf, pkts, hops, num);
 }
 
 /* main processing loop */
@@ -1059,7 +1076,7 @@ acl_main_loop(__rte_unused void *dummy)
 	uint16_t hops[SENDM_PORT_OVERHEAD(MAX_PKT_BURST)];
 	unsigned int lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
-	int i, nb_rx;
+	int i, nb_drop, nb_rx;
 	uint16_t portid;
 	uint16_t queueid;
 	struct lcore_conf *qconf;
@@ -1122,10 +1139,10 @@ acl_main_loop(__rte_unused void *dummy)
 				pkts_burst, MAX_PKT_BURST);
 
 			if (nb_rx > 0) {
-				acl_process_pkts(pkts_burst, hops, nb_rx,
-					socketid);
+				nb_drop = acl_process_pkts(pkts_burst, hops,
+					nb_rx, socketid);
 				acl_send_packets(qconf, pkts_burst, hops,
-					nb_rx);
+					nb_rx, nb_drop);
 			}
 		}
 	}
