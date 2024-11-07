@@ -991,6 +991,7 @@ struct bnxt {
 	uint8_t			ecpri_port_cnt;
 	uint8_t			l2_etype_tunnel_cnt;
 	uint16_t		vxlan_port;
+	uint16_t		vxlan_ip_port;
 	uint16_t		geneve_port;
 	uint16_t		ecpri_port;
 	uint16_t		vxlan_fw_dst_port_id;
@@ -1000,6 +1001,7 @@ struct bnxt {
 	uint16_t		l2_etype_tunnel_id;
 	uint16_t		ecpri_upar_in_use;
 	uint8_t			l2_etype_upar_in_use;
+	uint8_t			vxlan_ip_upar_in_use;
 	uint32_t		fw_ver;
 	uint32_t		hwrm_spec_code;
 

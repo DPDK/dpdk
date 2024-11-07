@@ -4847,6 +4847,12 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 		bp->l2_etype_tunnel_id = port;
 		bp->l2_etype_upar_in_use = resp->upar_in_use;
 		break;
+	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4:
+		bp->vxlan_ip_upar_in_use = resp->upar_in_use;
+		bp->vxlan_ip_port = port;
+		PMD_DRV_LOG_LINE(DEBUG, "vxlan_ip_upar_in_use %x port %x",
+				 bp->vxlan_ip_upar_in_use, bp->vxlan_ip_port);
+		break;
 	default:
 		break;
 	}

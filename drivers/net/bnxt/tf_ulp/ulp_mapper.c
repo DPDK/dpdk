@@ -56,6 +56,12 @@ ulp_mapper_glb_resource_info_list_get(uint32_t *num_entries)
 	return ulp_glb_resource_tbl;
 }
 
+uint32_t bnxt_ulp_glb_app_id_sig_get(uint8_t app_id)
+{
+	if (app_id >= BNXT_ULP_GLB_SIG_TBL_SIZE)
+		return 0;
+	return ulp_glb_app_sig_tbl[app_id];
+}
 /*
  * Read the global resource from the mapper global resource list
  *
@@ -230,9 +236,12 @@ ulp_mapper_glb_field_tbl_get(struct bnxt_ulp_mapper_parms *parms,
 			     uint32_t operand,
 			     uint8_t *val)
 {
+	uint8_t app_id_sig;
 	uint32_t t_idx;
 
-	t_idx = parms->app_id << (BNXT_ULP_APP_ID_SHIFT +
+	app_id_sig = bnxt_ulp_glb_app_id_sig_get(parms->app_id);
+
+	t_idx = app_id_sig << (BNXT_ULP_APP_ID_SHIFT +
 				  BNXT_ULP_HDR_SIG_ID_SHIFT +
 				  BNXT_ULP_GLB_FIELD_TBL_SHIFT);
 	t_idx += parms->class_tid << (BNXT_ULP_HDR_SIG_ID_SHIFT +
@@ -3314,6 +3323,11 @@ ulp_mapper_global_res_free(struct bnxt_ulp_context *ulp __rte_unused,
 		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
 						&handle);
 		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE_V6:
+		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6;
+		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
+						&handle);
+		break;
 	default:
 		rc = -EINVAL;
 		BNXT_TF_DBG(ERR, "Invalid ulp global resource type %d\n",
@@ -3374,6 +3388,9 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE:
 		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE;
 		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE_V6:
+		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6;
+		break;
 	default:
 		rc = -EINVAL;
 		BNXT_TF_DBG(ERR, "Invalid ulp global resource type %d\n",
@@ -3421,15 +3438,14 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 				  struct bnxt_ulp_mapper_data *mapper_data)
 {
 	struct bnxt_ulp_glb_resource_info *glb_res;
-	uint32_t num_glb_res_ids, idx, dev_id;
+	uint32_t num_entries = 0, idx, dev_id;
 	uint8_t app_id;
 	int32_t rc = 0;
 
-	glb_res = ulp_mapper_glb_resource_info_list_get(&num_glb_res_ids);
-	if (!glb_res || !num_glb_res_ids) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
+	glb_res = ulp_mapper_glb_resource_info_list_get(&num_entries);
+	/* Check if there are no resources */
+	if (!num_entries)
+		return 0;
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
@@ -3446,7 +3462,7 @@ ulp_mapper_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* Iterate the global resources and process each one */
-	for (idx = 0; idx < num_glb_res_ids; idx++) {
+	for (idx = 0; idx < num_entries; idx++) {
 		if (dev_id != glb_res[idx].device_id ||
 		    glb_res[idx].app_id != app_id)
 			continue;
@@ -3480,15 +3496,14 @@ ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 				  struct bnxt_ulp_mapper_data *mapper_data)
 {
 	struct bnxt_ulp_glb_resource_info *glb_res;
-	uint32_t num_glb_res_ids, idx, dev_id;
+	uint32_t num_entries, idx, dev_id;
 	uint8_t app_id;
 	int32_t rc = 0;
 
-	glb_res = bnxt_ulp_app_glb_resource_info_list_get(&num_glb_res_ids);
-	if (!glb_res || !num_glb_res_ids) {
-		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
-		return -EINVAL;
-	}
+	glb_res = bnxt_ulp_app_glb_resource_info_list_get(&num_entries);
+	/* Check if there are no resources */
+	if (!num_entries)
+		return 0;
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
@@ -3505,7 +3520,7 @@ ulp_mapper_app_glb_resource_info_init(struct bnxt_ulp_context *ulp_ctx,
 	}
 
 	/* Iterate the global resources and process each one */
-	for (idx = 0; idx < num_glb_res_ids; idx++) {
+	for (idx = 0; idx < num_entries; idx++) {
 		if (dev_id != glb_res[idx].device_id ||
 		    glb_res[idx].app_id != app_id)
 			continue;

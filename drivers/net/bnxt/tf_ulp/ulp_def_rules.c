@@ -183,6 +183,7 @@ ulp_df_dev_port_handler(struct bnxt_ulp_context *ulp_ctx,
 			struct bnxt_ulp_mapper_create_parms *mapper_params)
 {
 	uint16_t port_id;
+	uint16_t parif;
 	uint32_t ifindex;
 	int rc;
 
@@ -242,6 +243,18 @@ ulp_df_dev_port_handler(struct bnxt_ulp_context *ulp_ctx,
 				       BNXT_ULP_DRV_FUNC_PARIF, mapper_params);
 	if (rc)
 		return rc;
+
+	/* Note:
+	 * We save the drv_func_parif into CF_IDX of phy_port_parif,
+	 * since that index is currently referenced by ingress templates
+	 * for datapath flows. If in the future we change the parser to
+	 * save it in the CF_IDX of drv_func_parif we also need to update
+	 * the template.
+	 * WARNING: Two VFs on same parent PF will not work, as the parif is
+	 * based on fw fid of the parent PF.
+	 */
+	parif = ULP_COMP_FLD_IDX_RD(mapper_params, BNXT_ULP_CF_IDX_DRV_FUNC_PARIF);
+	ULP_COMP_FLD_IDX_WR(mapper_params, BNXT_ULP_CF_IDX_PHY_PORT_PARIF, parif);
 
 	/* Set VF Func PARIF */
 	rc = ulp_set_parif_in_comp_fld(ulp_ctx, ifindex, BNXT_ULP_VF_FUNC_PARIF,

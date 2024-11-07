@@ -558,6 +558,9 @@ bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
 	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE:
 		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE;
 		break;
+	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6:
+		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE_V6;
+		break;
 	default:
 		BNXT_TF_DBG(ERR, "Tunnel Type (%d) invalid\n", type);
 		return -EINVAL;
@@ -625,13 +628,41 @@ bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
  * If BNXT_ULP_T_HA_SUPPORT is set to zero explicitly then
  * hotupgrade is disabled.
  */
-int32_t bnxt_pmd_get_hot_upgrade_env(void)
+static bool bnxt_pmd_get_hot_upgrade_env(void)
 {
 	char *env;
-	int32_t hot_up = 1;
+	bool hot_up = 1;
 
 	env = getenv(BNXT_ULP_HOT_UP_DYNAMIC_ENV_VAR);
 	if (env && strcmp(env, "0") == 0)
 		hot_up = 0;
 	return hot_up;
+}
+
+static bool hot_up_api;
+static bool hot_up_configured_by_api;
+/* There are two ways to configure hot upgrade.
+ * By either calling this bnxt_pmd_configure_hot_upgrade API or
+ * setting the BNXT_ULP_T_HA_SUPPORT environment variable.
+ * bnxt_pmd_configure_hot_upgrade takes precedence over the
+ * environment variable way. Once the setting is done through
+ * bnxt_pmd_configure_hot_upgrade, can't switch back to env
+ * variable.
+ *
+ * bnxt_pmd_configure_hot_upgrade must be called before
+ * dev_start eth_dev_ops is called for the configuration to
+ * take effect.
+ */
+void bnxt_pmd_configure_hot_upgrade(bool enable)
+{
+	hot_up_configured_by_api = true;
+	hot_up_api = enable;
+}
+
+bool bnxt_pmd_get_hot_up_config(void)
+{
+	if (hot_up_configured_by_api)
+		return hot_up_api;
+
+	return bnxt_pmd_get_hot_upgrade_env();
 }

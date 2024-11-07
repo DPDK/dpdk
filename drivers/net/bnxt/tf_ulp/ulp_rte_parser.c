@@ -249,10 +249,19 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 	if (dir == BNXT_ULP_DIR_INGRESS) {
 		/* Set port PARIF */
 		if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
-					  BNXT_ULP_PHY_PORT_PARIF, &parif)) {
+					  BNXT_ULP_DRV_FUNC_PARIF, &parif)) {
 			BNXT_TF_DBG(ERR, "ParseErr:ifindex is not valid\n");
 			return;
 		}
+		/* Note:
+		 * We save the drv_func_parif into CF_IDX of phy_port_parif,
+		 * since that index is currently referenced by ingress templates
+		 * for datapath flows. If in the future we change the parser to
+		 * save it in the CF_IDX of drv_func_parif we also need to update
+		 * the template.
+		 * WARNING: Two VFs on same parent PF will not work, as the parif is
+		 * based on fw fid of the parent PF.
+		 */
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_PHY_PORT_PARIF,
 				    parif);
 		/* Set port SVIF */
@@ -1232,6 +1241,8 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 			     uint16_t dst_port, uint16_t dst_mask,
 			     enum bnxt_ulp_hdr_bit hdr_bit)
 {
+	struct bnxt *bp;
+
 	switch (hdr_bit) {
 	case BNXT_ULP_HDR_BIT_I_UDP:
 	case BNXT_ULP_HDR_BIT_I_TCP:
@@ -1281,17 +1292,51 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 		break;
 	}
 
-	if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP && dst_port ==
-	    tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
-		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
-			       BNXT_ULP_HDR_BIT_T_VXLAN);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	bp = bnxt_pmd_get_bp(params->port_id);
+	if (bp == NULL) {
+		BNXT_TF_DBG(ERR, "Invalid bp\n");
+		return;
 	}
 
-	if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP && dst_port ==
-	    tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN_GPE)) {
+	/* vxlan dynamic customized port */
+	if (ULP_APP_CUST_VXLAN_EN(params->ulp_ctx)) {
+		/* ulp_rte_vxlan_hdr_handler will parser it further */
+		return;
+	}
+	/* vxlan static cutomized port */
+	else if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
+		if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
+		    dst_port == tfp_cpu_to_be_16(bp->ulp_ctx->cfg_data->vxlan_port)) {
+			ULP_BITMAP_SET(params->hdr_fp_bit.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+		}
+	}
+	/* vxlan ip port */
+	else if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
+		if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
+		    dst_port == tfp_cpu_to_be_16(bp->ulp_ctx->cfg_data->vxlan_ip_port)) {
+			ULP_BITMAP_SET(params->hdr_fp_bit.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+			if (bp->vxlan_ip_upar_in_use &
+			    HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_UPAR_IN_USE_UPAR0) {
+				ULP_COMP_FLD_IDX_WR(params,
+						    BNXT_ULP_CF_IDX_VXLAN_IP_UPAR_ID,
+						    ULP_WP_SYM_TUN_HDR_TYPE_UPAR1);
+			}
+		}
+	}
+	/* vxlan gpe port */
+	else if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
+		 dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN_GPE)) {
 		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
 			       BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
+	}
+	/* vxlan standard port */
+	else if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
+		 dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
+		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
+			       BNXT_ULP_HDR_BIT_T_VXLAN);
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L3_TUN, 1);
 	}
 }
@@ -1536,6 +1581,17 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 				    ULP_UDP_PORT_VXLAN_MASK);
 	}
 
+	/* No need to check vxlan port for these conditions here */
+	if (ULP_APP_CUST_VXLAN_EN(params->ulp_ctx) ||
+	    ULP_APP_CUST_VXLAN_SUPPORT(params->ulp_ctx) ||
+	    ULP_APP_CUST_VXLAN_IP_SUPPORT(params->ulp_ctx))
+		return BNXT_TF_RC_SUCCESS;
+
+	/* Verify vxlan port */
+	if (dport != 0 && dport != ULP_UDP_PORT_VXLAN) {
+		BNXT_TF_DBG(ERR, "ParseErr:vxlan port is not valid\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -1603,6 +1659,18 @@ ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
 				    ULP_UDP_PORT_VXLAN_GPE_MASK);
 	}
 
+	if (ULP_APP_CUST_VXLAN_EN(params->ulp_ctx) ||
+	    ULP_APP_CUST_VXLAN_SUPPORT(params->ulp_ctx) ||
+	    ULP_APP_CUST_VXLAN_IP_SUPPORT(params->ulp_ctx)) {
+		BNXT_TF_DBG(ERR, "ParseErr:vxlan setting is not valid\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
+
+	/* Verify the vxlan gpe port */
+	if (dport != 0 && dport != ULP_UDP_PORT_VXLAN_GPE) {
+		BNXT_TF_DBG(ERR, "ParseErr:vxlan gpe port is not valid\n");
+		return BNXT_TF_RC_PARSE_ERR;
+	}
 	return BNXT_TF_RC_SUCCESS;
 }
 
