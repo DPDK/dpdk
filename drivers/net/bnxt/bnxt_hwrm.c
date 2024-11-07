@@ -2397,7 +2397,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	return rc;
 }
 
-static int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
+int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 {
 	int rc;
 	struct hwrm_stat_ctx_free_input req = {.req_type = 0 };
@@ -7477,6 +7477,49 @@ int bnxt_hwrm_config_host_mtu(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_func_cfg_mpc(struct bnxt *bp, uint8_t mpc_chnls_msk, bool enable)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+	uint16_t mpc_chnls = 0;
+
+	HWRM_PREP(&req, HWRM_FUNC_CFG, BNXT_USE_CHIMP_MB);
+	req.fid = rte_cpu_to_le_16(0xffff);
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_MPC_CHNLS);
+	if (enable) {
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_TCE))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_TCE_ENABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_RCE))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_RCE_ENABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_TE_CFA))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_TE_CFA_ENABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_RE_CFA))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_RE_CFA_ENABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_PRIMATE))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_PRIMATE_ENABLE;
+	} else {
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_TCE))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_TCE_DISABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_RCE))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_RCE_DISABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_TE_CFA))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_TE_CFA_DISABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_RE_CFA))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_RE_CFA_DISABLE;
+		if (mpc_chnls_msk & (1 << BNXT_MPC_CHNL_PRIMATE))
+			mpc_chnls |= HWRM_FUNC_CFG_INPUT_MPC_CHNLS_PRIMATE_DISABLE;
+	}
+	req.mpc_chnls = rte_cpu_to_le_16(mpc_chnls);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
 int
 bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
@@ -7496,6 +7539,44 @@ bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 		HWRM_CHECK_RESULT();
 		HWRM_UNLOCK();
 	}
+
+	return rc;
+}
+
+int bnxt_hwrm_tf_oem_cmd(struct bnxt *bp,
+			 uint32_t *in,
+			 uint16_t in_len,
+			 uint32_t *out,
+			 uint16_t out_len)
+{
+	struct hwrm_oem_cmd_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_oem_cmd_input req = {0};
+	int rc = 0;
+
+	if (!BNXT_VF(bp)) {
+		PMD_DRV_LOG_LINE(DEBUG, "Not a VF. Command not supported");
+		return -ENOTSUP;
+	}
+
+	HWRM_PREP(&req, HWRM_OEM_CMD, BNXT_USE_CHIMP_MB);
+
+	req.oem_id = rte_cpu_to_le_32(0x14e4);
+	req.naming_authority =
+		HWRM_OEM_CMD_INPUT_NAMING_AUTHORITY_PCI_SIG;
+	req.message_family =
+		HWRM_OEM_CMD_INPUT_MESSAGE_FAMILY_TRUFLOW;
+	memcpy(req.oem_data, in, in_len);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+
+	HWRM_CHECK_RESULT();
+	if (resp->oem_id == 0x14e4 &&
+	    resp->naming_authority ==
+		HWRM_OEM_CMD_INPUT_NAMING_AUTHORITY_PCI_SIG &&
+	    resp->message_family ==
+		HWRM_OEM_CMD_INPUT_MESSAGE_FAMILY_TRUFLOW)
+		memcpy(out, resp->oem_data, out_len);
+	HWRM_UNLOCK();
 
 	return rc;
 }

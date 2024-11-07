@@ -8,12 +8,17 @@
 #include <stdbool.h>
 
 #include <rte_io.h>
+#include <rte_version.h>
 #include "hsi_struct_def_dpdk.h"
 
 struct bnxt_db_info;
 
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
+
+#define CMPL_VALID(cmp, v)						\
+	(!!(rte_le_to_cpu_32(((struct cmpl_base *)(cmp))->info3_v) &	\
+	    CMPL_BASE_V) == !(v))
 
 /* Get completion length from completion type, in 16-byte units. */
 #define CMP_LEN(cmp_type) (((cmp_type) & 1) + 1)
@@ -27,6 +32,14 @@ struct bnxt_db_info;
 
 #define DB_CP_REARM_FLAGS	(DB_KEY_CP | DB_IDX_VALID)
 #define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
+
+#define NEXT_CMPL(cpr, idx, v, inc)	do { \
+	(idx) += (inc); \
+	if (unlikely((idx) >= (cpr)->cp_ring_struct->ring_size)) { \
+		(v) = !(v); \
+		(idx) = 0; \
+	} \
+} while (0)
 
 #define B_CP_DB_REARM(cpr, raw_cons)					\
 	rte_write32((DB_CP_REARM_FLAGS |				\
@@ -74,6 +87,8 @@ struct bnxt_cp_ring_info {
 	uint32_t		hw_stats_ctx_id;
 
 	struct bnxt_ring	*cp_ring_struct;
+	bool			valid;
+	uint32_t                epoch;
 };
 
 #define RX_CMP_L2_ERRORS						\
@@ -104,10 +119,13 @@ bool bnxt_is_recovery_enabled(struct bnxt *bp);
 bool bnxt_is_primary_func(struct bnxt *bp);
 
 void bnxt_stop_rxtx(struct rte_eth_dev *eth_dev);
+#if (RTE_VERSION_NUM(21, 8, 0, 0) < RTE_VERSION)
+void bnxt_start_rxtx(struct rte_eth_dev *eth_dev);
+#endif
 
 /**
  * Check validity of a completion ring entry. If the entry is valid, include a
- * C11 rte_memory_order_acquire fence to ensure that subsequent loads of fields in the
+ * C11 __ATOMIC_ACQUIRE fence to ensure that subsequent loads of fields in the
  * completion are not hoisted by the compiler or by the CPU to come before the
  * loading of the "valid" field.
  *
@@ -124,7 +142,7 @@ void bnxt_stop_rxtx(struct rte_eth_dev *eth_dev);
 static __rte_always_inline bool
 bnxt_cpr_cmp_valid(const void *cmpl, uint32_t raw_cons, uint32_t ring_size)
 {
-	const struct cmpl_base *c = cmpl;
+	const struct cmpl_base *c = (const struct cmpl_base *)cmpl;
 	bool expected, valid;
 
 	expected = !(raw_cons & ring_size);

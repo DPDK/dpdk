@@ -367,6 +367,10 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
 void bnxt_free_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_hwrm_config_host_mtu(struct bnxt *bp);
+int bnxt_hwrm_func_cfg_mpc(struct bnxt *bp,
+			   uint8_t mpc_chnls_msk,
+			   bool enable);
+int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
 int bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_vnic_rss_configure_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp);
@@ -375,4 +379,9 @@ int bnxt_hwrm_func_backing_store_cfg_v2(struct bnxt *bp,
 int bnxt_hwrm_func_backing_store_types_count(struct bnxt *bp);
 int bnxt_hwrm_func_backing_store_ctx_alloc(struct bnxt *bp, uint16_t types);
 int bnxt_alloc_ctx_pg_tbls(struct bnxt *bp);
+int bnxt_hwrm_tf_oem_cmd(struct bnxt *bp,
+			 uint32_t *in,
+			 uint16_t in_len,
+			 uint32_t *out,
+			 uint16_t out_len);
 #endif

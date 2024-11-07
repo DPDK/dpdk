@@ -14,7 +14,7 @@ endif
 
 headers = files('rte_pmd_bnxt.h')
 cflags_options = [
-        '-DSUPPORT_CFA_HW_ALL=1',
+        '-DSUPPORT_CFA_HW_P70=1',
 ]
 
 foreach option:cflags_options
@@ -34,6 +34,7 @@ sources = files(
         'bnxt_flow.c',
         'bnxt_hwrm.c',
         'bnxt_irq.c',
+        'bnxt_mpc.c',
         'bnxt_ring.c',
         'bnxt_rxq.c',
         'bnxt_rxr.c',
@@ -49,7 +50,9 @@ sources = files(
 #Add the subdirectories that need to be compiled
 subdir('tf_ulp')
 subdir('tf_core')
+subdir('tf_core/v3')
 subdir('hcapi/cfa')
+subdir('hcapi/cfa_v3')
 
 if arch_subdir == 'x86'
     sources += files('bnxt_rxtx_vec_sse.c')
