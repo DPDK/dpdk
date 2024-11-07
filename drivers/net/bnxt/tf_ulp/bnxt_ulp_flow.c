@@ -92,27 +92,55 @@ bnxt_ulp_init_parser_cf_defaults(struct ulp_rte_parser_params *params,
 }
 
 static void
-bnxt_ulp_init_cf_header_bitmap(struct ulp_rte_parser_params *params)
+bnxt_ulp_init_cf_header_bitmap(struct bnxt_ulp_mapper_parms *params)
 {
 	uint64_t hdr_bits = 0;
 
 	/* Remove the internal tunnel bits */
-	hdr_bits = params->hdr_bitmap.bits;
+	hdr_bits = params->hdr_bitmap->bits;
 	ULP_BITMAP_RESET(hdr_bits, BNXT_ULP_HDR_BIT_F2);
 
 	/* Add untag bits */
-	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_OO_VLAN) &&
-	    !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_OI_VLAN)) {
-		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_O_UNTAGGED);
-	}
-	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_IO_VLAN) &&
-	    !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_II_VLAN)) {
-		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_I_UNTAGGED);
-	}
+	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_OO_VLAN))
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_OO_UNTAGGED);
+	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_OI_VLAN))
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_OI_UNTAGGED);
+	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_IO_VLAN))
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_IO_UNTAGGED);
+	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_II_VLAN))
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_II_UNTAGGED);
+
 	/* Add non-tunnel bit */
-	if (!ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL))
+	if (!ULP_BITMAP_ISSET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL))
 		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_NON_TUNNEL);
 
+	/* Add l2 only bit */
+	if ((!ULP_BITMAP_ISSET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL) &&
+	     !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_O_IPV4) &&
+	     !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_O_IPV6)) ||
+	    (ULP_BITMAP_ISSET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL) &&
+	    !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_I_IPV4) &&
+	    !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_I_IPV6))) {
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_L2_ONLY);
+		ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_L2_ONLY);
+	}
+
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_PROFILE_BITMAP, hdr_bits);
+
+	/* Update the l4 protocol bits */
+	if ((ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_O_TCP) ||
+	     ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_O_UDP))) {
+		ULP_BITMAP_RESET(hdr_bits, BNXT_ULP_HDR_BIT_O_TCP);
+		ULP_BITMAP_RESET(hdr_bits, BNXT_ULP_HDR_BIT_O_UDP);
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_O_L4_FLOW);
+	}
+
+	if ((ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_I_TCP) ||
+	     ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_I_UDP))) {
+		ULP_BITMAP_RESET(hdr_bits, BNXT_ULP_HDR_BIT_I_TCP);
+		ULP_BITMAP_RESET(hdr_bits, BNXT_ULP_HDR_BIT_I_UDP);
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_I_L4_FLOW);
+	}
 	/*update the comp field header bits */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_BITMAP, hdr_bits);
 }
@@ -152,7 +180,7 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_parms *mparms,
 			    params->class_info_idx);
 
 	/* update the header bitmap */
-	bnxt_ulp_init_cf_header_bitmap(params);
+	bnxt_ulp_init_cf_header_bitmap(mparms);
 
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FLOW_SIG_ID,
 			    params->flow_sig_id);

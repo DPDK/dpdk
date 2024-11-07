@@ -277,7 +277,7 @@ error:
 static int32_t
 ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			     struct bnxt_ulp_mapper_tbl_info *tbl,
-			     __rte_unused void *error)
+			     void *error)
 {
 	struct bnxt_ulp_mapper_key_info	*kflds;
 	struct ulp_blob key, data;
@@ -419,7 +419,27 @@ ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	rc = tf_insert_em_entry(tfp, &iparms);
 	if (rc) {
-		BNXT_DRV_DBG(ERR, "Failed to insert em entry rc=%d.\n", rc);
+		/* Set the error flag in reg file */
+		if (tbl->tbl_opcode == BNXT_ULP_EM_TBL_OPC_WR_REGFILE) {
+			uint64_t val = 0;
+
+			/* over max flows or hash collision */
+			if (rc == -EIO || rc == -ENOMEM) {
+				val = 1;
+				rc = 0;
+				BNXT_DRV_DBG(DEBUG,
+					     "Fail to insert EM, shall add to wc\n");
+			}
+			ulp_regfile_write(parms->regfile, tbl->tbl_operand,
+					  tfp_cpu_to_be_64(val));
+		}
+		if (rc)
+			BNXT_DRV_DBG(ERR,
+				     "Failed to insert em entry rc=%d.\n", rc);
+		if (rc && error != NULL)
+			rte_flow_error_set((struct rte_flow_error *)error, EIO,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "error adding EM entry");
 		return rc;
 	}
 
@@ -468,6 +488,10 @@ error:
 	if (trc)
 		BNXT_DRV_DBG(ERR, "Failed to delete EM entry on failed add\n");
 
+	if (error != NULL)
+		rte_flow_error_set((struct rte_flow_error *)error, EIO,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "error adding EM entry");
 	return rc;
 }
 

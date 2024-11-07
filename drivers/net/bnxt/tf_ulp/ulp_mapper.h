@@ -200,6 +200,10 @@ ulp_mapper_key_fields_get(struct bnxt_ulp_mapper_parms *mparms,
 			  struct bnxt_ulp_mapper_tbl_info *tbl,
 			  uint32_t *num_flds);
 
+uint32_t
+ulp_mapper_partial_key_fields_get(struct bnxt_ulp_mapper_parms *mparms,
+				  struct bnxt_ulp_mapper_tbl_info *tbl);
+
 int32_t
 ulp_mapper_fdb_opc_process(struct bnxt_ulp_mapper_parms *parms,
 			   struct bnxt_ulp_mapper_tbl_info *tbl,

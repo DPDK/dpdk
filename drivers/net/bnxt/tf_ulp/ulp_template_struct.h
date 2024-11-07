@@ -293,10 +293,16 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	enum bnxt_ulp_critical_resource		critical_resource;
 
-	/* Information for accessing the ulp_key_field_list */
+	/* Information for accessing the key in ulp_key_field_list */
 	uint32_t	key_start_idx;
 	uint16_t	key_bit_size;
 	uint16_t	key_num_fields;
+
+	/* Information for accessing the partial key in ulp_key_field_list */
+	uint32_t	partial_key_start_idx;
+	uint16_t	partial_key_bit_size;
+	uint16_t	partial_key_num_fields;
+
 	/* Size of the blob that holds the key */
 	uint16_t	blob_key_bit_size;
 	uint16_t	record_size;
@@ -422,6 +428,7 @@ struct bnxt_ulp_generic_tbl_params {
 	uint32_t			hash_tbl_entries;
 	uint16_t			num_buckets;
 	uint16_t			key_num_bytes;
+	uint16_t			partial_key_num_bytes;
 };
 
 struct bnxt_ulp_shared_act_info {
