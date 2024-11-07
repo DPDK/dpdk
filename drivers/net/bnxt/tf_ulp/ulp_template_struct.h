@@ -267,6 +267,7 @@ struct bnxt_ulp_device_params {
 	uint32_t			wc_ctl_size_bits;
 	uint32_t			dev_features;
 	const struct bnxt_ulp_generic_tbl_params *gen_tbl_params;
+	const struct bnxt_ulp_allocator_tbl_params *allocator_tbl_params;
 	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 };
 
@@ -432,6 +433,11 @@ struct bnxt_ulp_generic_tbl_params {
 	uint16_t			num_buckets;
 	uint16_t			key_num_bytes;
 	uint16_t			partial_key_num_bytes;
+};
+
+struct bnxt_ulp_allocator_tbl_params  {
+	const char			*name;
+	uint16_t			num_entries;
 };
 
 struct bnxt_ulp_shared_act_info {

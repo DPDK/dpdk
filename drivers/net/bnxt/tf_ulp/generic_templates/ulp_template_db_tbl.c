@@ -608,6 +608,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_wh_plus_generic_tbl_params[] = {
 	.num_buckets = 0,
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_FLOW_CHAIN_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	}
 };
 
@@ -1204,6 +1252,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_EGRESS] = {
 	.name = "EGRESS GENERIC_TABLE_MULTI_SHARED_MIRROR",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_KEY_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_FLOW_CHAIN_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 32,
+	.result_num_bytes = 6,
+	.key_num_bytes = 4,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 128,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 32,
+	.result_num_bytes = 6,
+	.key_num_bytes = 4,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 128,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 16,
+	.result_num_bytes = 6,
+	.key_num_bytes = 2,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
 	.result_num_entries = 0,
 	.result_num_bytes = 0,
 	.key_num_bytes = 0,
@@ -1814,6 +1910,93 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 	.num_buckets = 0,
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_FLOW_CHAIN_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	}
+};
+
+const struct bnxt_ulp_allocator_tbl_params ulp_wh_plus_allocator_tbl_params[] = {
+	[BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS ALLOCATOR_TABLE_JUMP_INDEX",
+	.num_entries = 0,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS ALLOCATOR_TABLE_JUMP_INDEX",
+	.num_entries = 0,
+	}
+};
+
+const struct bnxt_ulp_allocator_tbl_params ulp_thor_allocator_tbl_params[] = {
+	[BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS ALLOCATOR_TABLE_JUMP_INDEX",
+	.num_entries = 32,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS ALLOCATOR_TABLE_JUMP_INDEX",
+	.num_entries = 32,
+	}
+};
+
+const struct bnxt_ulp_allocator_tbl_params ulp_thor2_allocator_tbl_params[] = {
+	[BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS ALLOCATOR_TABLE_JUMP_INDEX",
+	.num_entries = 0,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS ALLOCATOR_TABLE_JUMP_INDEX",
+	.num_entries = 0,
 	}
 };
 
@@ -1964,6 +2147,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.wc_mod_list_max_size    = 4,
 	.wc_ctl_size_bits        = 16,
 	.gen_tbl_params          = ulp_wh_plus_generic_tbl_params,
+	.allocator_tbl_params    = ulp_wh_plus_allocator_tbl_params,
 	.dev_tbls                = ulp_template_wh_plus_tbls,
 	.dev_features            = BNXT_ULP_DEV_FT_STAT_SW_AGG | BNXT_ULP_DEV_FT_STAT_PARENT_AGG
 	},
@@ -2012,6 +2196,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.wc_mod_list_max_size    = 4,
 	.wc_ctl_size_bits        = 32,
 	.gen_tbl_params          = ulp_thor_generic_tbl_params,
+	.allocator_tbl_params    = ulp_thor_allocator_tbl_params,
 	.dev_tbls                = ulp_template_thor_tbls,
 	.dev_features            = BNXT_ULP_DEV_FT_STAT_SW_AGG | BNXT_ULP_DEV_FT_STAT_PARENT_AGG
 	},
@@ -2059,6 +2244,7 @@ struct bnxt_ulp_device_params ulp_device_params[BNXT_ULP_DEVICE_ID_LAST] = {
 	.wc_mod_list_max_size    = 4,
 	.wc_ctl_size_bits        = 3,
 	.gen_tbl_params          = ulp_thor2_generic_tbl_params,
+	.allocator_tbl_params    = ulp_thor2_allocator_tbl_params,
 	.dev_tbls                = ulp_template_thor2_tbls
 	}
 };
