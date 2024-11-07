@@ -9,6 +9,8 @@
 #include <rte_flow_driver.h>
 #include <rte_tailq.h>
 #include <rte_spinlock.h>
+#include <rte_mtr.h>
+#include <rte_version.h>
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
@@ -1018,6 +1020,20 @@ ulp_tfc_init(struct bnxt *bp,
 		goto jump_to_error;
 	}
 
+	rc = bnxt_ulp_cntxt_dev_id_get(bp->ulp_ctx, &ulp_dev_id);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Unable to get device id from ulp.\n");
+		return rc;
+	}
+
+	if (ulp_dev_id == BNXT_ULP_DEVICE_ID_THOR2) {
+		rc = bnxt_flow_mtr_init(bp);
+		if (rc) {
+			BNXT_DRV_DBG(ERR, "Failed to config meter\n");
+			goto jump_to_error;
+		}
+	}
+
 	BNXT_DRV_DBG(DEBUG, "ulp ctx has been initialized\n");
 	return rc;
 
@@ -1026,11 +1042,40 @@ jump_to_error:
 	return rc;
 }
 
+/**
+ * Get meter capabilities.
+ */
+#define MAX_FLOW_PER_METER 1024
+#define MAX_NUM_METER 1024
+#define MAX_METER_RATE_200GBPS ((1ULL << 31) * 100 / 8)
+static int
+ulp_tfc_mtr_cap_get(struct bnxt *bp __rte_unused,
+		    struct rte_mtr_capabilities *cap)
+{
+#if (RTE_VERSION_NUM(21, 05, 0, 0) <= RTE_VERSION)
+	cap->srtcm_rfc2697_byte_mode_supported = 1;
+#endif
+	cap->n_max = MAX_NUM_METER;
+	cap->n_shared_max = cap->n_max;
+	/* No meter is identical */
+	cap->identical = 1;
+	cap->shared_identical = 1;
+	cap->shared_n_flows_per_mtr_max = MAX_FLOW_PER_METER;
+	cap->chaining_n_mtrs_per_flow_max = 1; /* Chaining is not supported. */
+	cap->meter_srtcm_rfc2697_n_max = cap->n_max;
+	cap->meter_rate_max = MAX_METER_RATE_200GBPS;
+	/* No stats supported now */
+	cap->stats_mask = 0;
+
+	return 0;
+}
+
 const struct bnxt_ulp_core_ops bnxt_ulp_tfc_core_ops = {
 	.ulp_ctx_attach = ulp_tfc_ctx_attach,
 	.ulp_ctx_detach = ulp_tfc_ctx_detach,
 	.ulp_deinit =  ulp_tfc_deinit,
 	.ulp_init =  ulp_tfc_init,
 	.ulp_vfr_session_fid_add = ulp_tfc_vfr_session_fid_add,
-	.ulp_vfr_session_fid_rem = ulp_tfc_vfr_session_fid_rem
+	.ulp_vfr_session_fid_rem = ulp_tfc_vfr_session_fid_rem,
+	.ulp_mtr_cap_get = ulp_tfc_mtr_cap_get
 };

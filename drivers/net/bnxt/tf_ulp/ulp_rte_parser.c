@@ -3401,13 +3401,11 @@ ulp_rte_meter_act_handler(const struct rte_flow_action *action_item,
 	}
 
 	meter = action_item->conf;
-	if (meter) {
-		/* validate the mtr_id and update the reference counter */
-		tmp_meter_id = tfp_cpu_to_be_32(meter->mtr_id);
-		memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_METER],
-		       &tmp_meter_id,
-		       BNXT_ULP_ACT_PROP_SZ_METER);
-	}
+	/* validate the mtr_id and update the reference counter */
+	tmp_meter_id = tfp_cpu_to_be_32(meter->mtr_id);
+	memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_METER],
+	       &tmp_meter_id,
+	       BNXT_ULP_ACT_PROP_SZ_METER);
 
 	/* set the meter action header bit */
 	ULP_BITMAP_SET(params->act_bitmap.bits, BNXT_ULP_ACT_BIT_METER);
