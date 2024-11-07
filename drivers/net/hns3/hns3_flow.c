@@ -286,7 +286,7 @@ hns3_counter_new(struct rte_eth_dev *dev, uint32_t indirect, uint32_t id,
 	cnt = hns3_counter_lookup(dev, id);
 	if (cnt) {
 		if (!cnt->indirect || cnt->indirect != indirect)
-			return rte_flow_error_set(error, ENOTSUP,
+			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				cnt,
 				"Counter id is used, indirect flag not match");
