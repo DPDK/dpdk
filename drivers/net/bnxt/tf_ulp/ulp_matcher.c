@@ -43,7 +43,7 @@ ulp_matcher_action_list_lookup(struct ulp_rte_parser_params *params,
 	uint32_t idx = 0;
 
 	while (++idx < BNXT_ULP_ACT_MATCH_LIST_MAX_SZ) {
-		/* iterate the list of class matches to find header match */
+		/* iterate the list of action matches to find header match */
 		if ((act_bits & act_list[idx].act_bitmap.bits) == act_bits) {
 			/* Found the match */
 			*act_tmpl_idx = act_list[idx].act_tid;
@@ -111,7 +111,7 @@ ulp_matcher_class_hash_lookup(struct bnxt_ulp_matcher_data *matcher_data,
 	int32_t idx;
 	int32_t rc = -ENOENT;
 
-	/* popoulate the key for the search */
+	/* populate the key for the search */
 	key.app_id = params->app_id;
 	key.hdr_bitmap = params->hdr_bitmap;
 
@@ -142,7 +142,7 @@ ulp_matcher_class_hash_add(struct bnxt_ulp_matcher_data *matcher_data,
 	int32_t hash_idx;
 	int32_t rc = -EINVAL;
 
-	/* popoulate the key for the search */
+	/* populate the key for the search */
 	key.app_id = params->app_id;
 	key.hdr_bitmap = params->hdr_bitmap;
 
@@ -239,7 +239,7 @@ ulp_matcher_action_hash_lookup(struct bnxt_ulp_matcher_data *matcher_data,
 	struct ulp_matcher_act_db_node *node;
 	int32_t idx;
 
-	/* popoulate the key for the search */
+	/* populate the key for the search */
 	key.act_bitmap = params->act_bitmap;
 
 	/* search the hash table for the hdr bit match */
@@ -263,7 +263,7 @@ ulp_matcher_action_hash_add(struct bnxt_ulp_matcher_data *matcher_data,
 	int32_t hash_idx;
 	int32_t rc = -EINVAL;
 
-	/* popoulate the key for the search */
+	/* populate the key for the search */
 	key.act_bitmap = params->act_bitmap;
 
 	/* add to the hash table for the hdr bit match */

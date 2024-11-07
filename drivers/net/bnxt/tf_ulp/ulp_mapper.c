@@ -585,7 +585,7 @@ ulp_mapper_fdb_opc_process(struct bnxt_ulp_mapper_parms *parms,
 	case BNXT_ULP_FDB_OPC_PUSH_FID_SW_ONLY:
 		push_fid = parms->flow_id;
 		flow_type = parms->flow_type;
-		fid_parms->reserve_flag = 0x1;
+		fid_parms->fdb_flags = ULP_FDB_FLAG_SW_ONLY;
 		break;
 	default:
 		return rc; /* Nothing to be done */
@@ -3803,6 +3803,11 @@ ulp_mapper_cond_reject_list_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* get the reject condition list */
 	reject_info = ulp_mapper_tmpl_reject_list_get(parms, tid);
+
+	if (reject_info->cond_list_opcode == BNXT_ULP_COND_LIST_OPC_TRUE) {
+		cond_list_res  = 1;
+		goto jump_exit;
+	}
 
 	/* If there are no reject conditions then skip */
 	if (!reject_info->cond_nums)

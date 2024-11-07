@@ -106,7 +106,8 @@ ulp_rte_prsr_fld_mask(struct ulp_rte_parser_params *params,
 	field->size = size;
 
 	/* copy the mask specifications only if mask is not null */
-	if (!(prsr_act & ULP_PRSR_ACT_MASK_IGNORE) && mask_buff) {
+	if (!(prsr_act & ULP_PRSR_ACT_MASK_IGNORE) && mask_buff &&
+	    spec_buff && ulp_bitmap_notzero(spec_buff, size)) {
 		memcpy(field->mask, mask_buff, size);
 		ulp_rte_parser_field_bitmap_update(params, *idx, prsr_act);
 	}
@@ -724,8 +725,13 @@ ulp_rte_eth_hdr_handler(const struct rte_flow_item *item,
 		eth_type = eth_spec->hdr.ether_type;
 		has_vlan = eth_spec->has_vlan;
 	}
+
+	/* If mask is not specified then use the default mask */
+	if (eth_spec && !eth_mask)
+		eth_mask = &rte_flow_item_eth_mask;
+
 	if (eth_mask) {
-		eth_type &= eth_mask->hdr.ether_type;
+		eth_type &= eth_mask->type;
 		has_vlan_mask = eth_mask->has_vlan;
 	}
 
@@ -808,11 +814,14 @@ ulp_rte_vlan_hdr_handler(const struct rte_flow_item *item,
 		eth_type = vlan_spec->hdr.eth_proto;
 	}
 
+	/* assign default vlan mask if spec is valid and mask is not */
+	if (vlan_spec && !vlan_mask)
+		vlan_mask = &rte_flow_item_vlan_mask;
+
 	if (vlan_mask) {
-		vlan_tag_mask = ntohs(vlan_mask->hdr.vlan_tci);
+		vlan_tag_mask = ntohs(vlan_mask->tci);
 		priority_mask = htons(vlan_tag_mask >> ULP_VLAN_PRIORITY_SHIFT);
 		vlan_tag_mask &= 0xfff;
-
 		/*
 		 * the storage for priority and vlan tag is 2 bytes
 		 * The mask of priority which is 3 bits if it is all 1's
@@ -1018,6 +1027,10 @@ ulp_rte_ipv4_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	/* If mask is not specified then use the default mask */
+	if (ipv4_spec && !ipv4_mask)
+		ipv4_mask = &rte_flow_item_ipv4_mask;
+
 	/*
 	 * Copy the rte_flow_item for ipv4 into hdr_field using ipv4
 	 * header fields
@@ -1165,6 +1178,10 @@ ulp_rte_ipv6_hdr_handler(const struct rte_flow_item *item,
 		BNXT_DRV_DBG(ERR, "Error parsing protocol header\n");
 		return BNXT_TF_RC_ERROR;
 	}
+
+	/* If mask is not specified then use the default mask */
+	if (ipv6_spec && !ipv6_mask)
+		ipv6_mask = &rte_flow_item_ipv6_mask;
 
 	/*
 	 * Copy the rte_flow_item for ipv6 into hdr_field using ipv6
@@ -1399,6 +1416,9 @@ ulp_rte_udp_hdr_handler(const struct rte_flow_item *item,
 		sport = udp_spec->hdr.src_port;
 		dport = udp_spec->hdr.dst_port;
 	}
+	if (udp_spec && !udp_mask)
+		udp_mask = &rte_flow_item_udp_mask;
+
 	if (udp_mask) {
 		sport_mask = udp_mask->hdr.src_port;
 		dport_mask = udp_mask->hdr.dst_port;
@@ -1475,6 +1495,10 @@ ulp_rte_tcp_hdr_handler(const struct rte_flow_item *item,
 		sport = tcp_spec->hdr.src_port;
 		dport = tcp_spec->hdr.dst_port;
 	}
+
+	if (tcp_spec && !tcp_mask)
+		tcp_mask = &rte_flow_item_tcp_mask;
+
 	if (tcp_mask) {
 		sport_mask = tcp_mask->hdr.src_port;
 		dport_mask = tcp_mask->hdr.dst_port;
@@ -1574,6 +1598,8 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (vxlan_spec && !vxlan_mask)
+		vxlan_mask = &rte_flow_item_vxlan_mask;
 	/*
 	 * Copy the rte_flow_item for vxlan into hdr_field using vxlan
 	 * header fields
@@ -1646,6 +1672,8 @@ ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (vxlan_gpe_spec && !vxlan_gpe_mask)
+		vxlan_gpe_mask = &rte_flow_item_vxlan_gpe_mask;
 	/*
 	 * Copy the rte_flow_item for vxlan gpe into hdr_field using vxlan
 	 * header fields
@@ -1724,6 +1752,9 @@ ulp_rte_geneve_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (geneve_spec && !geneve_mask)
+		geneve_mask = &rte_flow_item_geneve_mask;
+
 	/*
 	 * Copy the rte_flow_item for geneve into hdr_field using geneve
 	 * header fields
@@ -1784,6 +1815,9 @@ ulp_rte_gre_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (gre_spec && !gre_mask)
+		gre_mask = &rte_flow_item_gre_mask;
+
 	size = sizeof(((struct rte_flow_item_gre *)NULL)->c_rsvd0_ver);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
 			      ulp_deference_struct(gre_spec, c_rsvd0_ver),
@@ -1826,6 +1860,9 @@ ulp_rte_icmp_hdr_handler(const struct rte_flow_item *item,
 		BNXT_DRV_DBG(ERR, "Error parsing protocol header\n");
 		return BNXT_TF_RC_ERROR;
 	}
+
+	if (icmp_spec && !icmp_mask)
+		icmp_mask = &rte_flow_item_icmp_mask;
 
 	size = sizeof(((struct rte_flow_item_icmp *)NULL)->hdr.icmp_type);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
@@ -1882,6 +1919,9 @@ ulp_rte_icmp6_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	if (icmp_spec && !icmp_mask)
+		icmp_mask = &rte_flow_item_icmp6_mask;
+
 	size = sizeof(((struct rte_flow_item_icmp6 *)NULL)->type);
 	ulp_rte_prsr_fld_mask(params, &idx, size,
 			      ulp_deference_struct(icmp_spec, type),
@@ -1932,6 +1972,9 @@ ulp_rte_ecpri_hdr_handler(const struct rte_flow_item *item,
 		BNXT_DRV_DBG(ERR, "Error parsing protocol header\n");
 		return BNXT_TF_RC_ERROR;
 	}
+
+	if (ecpri_spec && !ecpri_mask)
+		ecpri_mask = &rte_flow_item_ecpri_mask;
 
 	/* Figure out if eCPRI is within L4(UDP), unsupported, for now */
 	cnt = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_L4_HDR_CNT);
@@ -2652,6 +2695,19 @@ ulp_rte_parser_act_port_set(struct ulp_rte_parser_params *param,
 					BNXT_ULP_CF_IDX_MP_VPORT_B :
 					BNXT_ULP_CF_IDX_MP_VPORT_A,
 				    pid_s);
+
+		/* Setup the VF_TO_VF VNIC information */
+		if (!multi_port && port_type == BNXT_ULP_INTF_TYPE_VF_REP) {
+			if (ulp_port_db_default_vnic_get(param->ulp_ctx,
+							 ifindex,
+							 BNXT_ULP_VF_FUNC_VNIC,
+							 &pid_s))
+				return BNXT_TF_RC_ERROR;
+			pid = pid_s;
+
+			/* Allows use of func_opcode with VNIC */
+			ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_VNIC, pid);
+		}
 	} else {
 		/* For ingress direction, fill vnic */
 		/*

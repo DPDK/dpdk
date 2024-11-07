@@ -157,17 +157,19 @@ ulp_fc_tf_update_accum_stats(struct bnxt_ulp_context *ctxt,
 	enum tf_dir dir;
 	struct tf *tfp;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, BNXT_ULP_SESSION_TYPE_DEFAULT);
-	if (!tfp) {
-		BNXT_DRV_DBG(ERR, "Failed to get the truflow pointer\n");
-		return 0; /* This can happen, return for now with success */
-	}
-
 	num_entries = dparms->flow_count_db_entries / 2;
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		for (j = 0; j < num_entries; j++) {
 			if (!fc_info->sw_acc_tbl[dir][j].valid)
 				continue;
+			tfp = bnxt_ulp_cntxt_tfp_get(ctxt,
+						     fc_info->sw_acc_tbl[dir][j].session_type);
+			if (!tfp) {
+				BNXT_DRV_DBG(ERR,
+					     "Failed to get the tfp\n");
+				return 0;
+			}
+
 			hw_cntr_id = fc_info->sw_acc_tbl[dir][j].hw_cntr_id;
 
 			rc = ulp_fc_tf_flow_stat_update(ctxt, tfp, fc_info, dir,
@@ -183,6 +185,7 @@ ulp_fc_tf_update_accum_stats(struct bnxt_ulp_context *ctxt,
 static int32_t
 ulp_fc_tf_flow_stat_get(struct bnxt_ulp_context *ctxt,
 			uint8_t direction,
+			uint32_t session_type,
 			uint64_t handle,
 			struct rte_flow_query_count *qcount)
 {
@@ -195,7 +198,7 @@ ulp_fc_tf_flow_stat_get(struct bnxt_ulp_context *ctxt,
 	uint32_t dev_id = 0;
 	int32_t rc = 0;
 
-	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, BNXT_ULP_SESSION_TYPE_DEFAULT);
+	tfp = bnxt_ulp_cntxt_tfp_get(ctxt, session_type);
 	if (!tfp) {
 		BNXT_DRV_DBG(ERR, "Failed to get the truflow pointer\n");
 		return -EINVAL;

@@ -1381,8 +1381,8 @@ ulp_mapper_tfc_cmm_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	uint16_t fw_fid = 0;
 	int32_t rc = 0;
 
-	/* skip cmm processing if reserve flag is enabled */
-	if (res->reserve_flag)
+	/* skip cmm processing if fdb flag is sw only */
+	if (res->fdb_flags & ULP_FDB_FLAG_SW_ONLY)
 		return 0;
 
 	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {

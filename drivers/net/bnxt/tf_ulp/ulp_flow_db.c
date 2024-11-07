@@ -17,12 +17,7 @@
 
 #define ULP_FLOW_DB_RES_DIR_BIT		31
 #define ULP_FLOW_DB_RES_DIR_MASK	0x80000000
-#define ULP_FLOW_DB_RES_FUNC_BITS	28
-#define ULP_FLOW_DB_RES_FUNC_MASK	0x70000000
-#define ULP_FLOW_DB_RES_NXT_MASK	0x0FFFFFFF
-#define ULP_FLOW_DB_RES_FUNC_UPPER	5
-#define ULP_FLOW_DB_RES_FUNC_NEED_LOWER	0x80
-#define ULP_FLOW_DB_RES_FUNC_LOWER_MASK	0x1F
+#define ULP_FLOW_DB_RES_NXT_MASK	0x7FFFFFFF
 
 /* Macro to copy the nxt_resource_idx */
 #define ULP_FLOW_DB_RES_NXT_SET(dst, src)	{(dst) |= ((src) &\
@@ -111,17 +106,10 @@ ulp_flow_db_resource_dir_get(struct ulp_fdb_resource_info *res_info)
 		ULP_FLOW_DB_RES_DIR_BIT);
 }
 
-static uint8_t
+static inline uint8_t
 ulp_flow_db_resource_func_get(struct ulp_fdb_resource_info *res_info)
 {
-	uint8_t func;
-
-	func = (((res_info->nxt_resource_idx & ULP_FLOW_DB_RES_FUNC_MASK) >>
-		 ULP_FLOW_DB_RES_FUNC_BITS) << ULP_FLOW_DB_RES_FUNC_UPPER);
-	/* The resource func is split into upper and lower */
-	if (func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER)
-		return (func | res_info->resource_func_lower);
-	return func;
+	return res_info->resource_func;
 }
 
 /*
@@ -136,35 +124,14 @@ static void
 ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info *resource_info,
 			       struct ulp_flow_db_res_params *params)
 {
-	uint32_t resource_func;
-
 	resource_info->nxt_resource_idx |= ((params->direction <<
 				      ULP_FLOW_DB_RES_DIR_BIT) &
 				     ULP_FLOW_DB_RES_DIR_MASK);
-	resource_func = (params->resource_func >> ULP_FLOW_DB_RES_FUNC_UPPER);
-	resource_info->nxt_resource_idx |= ((resource_func <<
-					     ULP_FLOW_DB_RES_FUNC_BITS) &
-					    ULP_FLOW_DB_RES_FUNC_MASK);
-
-	if (params->resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
-		/* Break the resource func into two parts */
-		resource_func = (params->resource_func &
-				 ULP_FLOW_DB_RES_FUNC_LOWER_MASK);
-		resource_info->resource_func_lower = resource_func;
-	}
-
-	/* Store the handle as 64bit only for EM table entries */
-	if (params->resource_func != BNXT_ULP_RESOURCE_FUNC_EM_TABLE &&
-	    params->resource_func != BNXT_ULP_RESOURCE_FUNC_CMM_TABLE &&
-	    params->resource_func != BNXT_ULP_RESOURCE_FUNC_CMM_STAT) {
-		resource_info->resource_hndl = (uint32_t)params->resource_hndl;
-		resource_info->resource_type = params->resource_type;
-		resource_info->resource_sub_type = params->resource_sub_type;
-		resource_info->fdb_flags = params->fdb_flags;
-	} else {
-		resource_info->resource_em_handle = params->resource_hndl;
-		resource_info->reserve_flag = params->reserve_flag;
-	}
+	resource_info->resource_func = params->resource_func;
+	resource_info->resource_type = params->resource_type;
+	resource_info->resource_sub_type = params->resource_sub_type;
+	resource_info->fdb_flags = params->fdb_flags;
+	resource_info->resource_hndl = params->resource_hndl;
 }
 
 /*
@@ -181,22 +148,13 @@ ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info *resource_info,
 			       struct ulp_flow_db_res_params *params)
 {
 	memset(params, 0, sizeof(struct ulp_flow_db_res_params));
-
 	/* use the helper function to get the resource func */
 	params->direction = ulp_flow_db_resource_dir_get(resource_info);
 	params->resource_func = ulp_flow_db_resource_func_get(resource_info);
-
-	if (params->resource_func == BNXT_ULP_RESOURCE_FUNC_EM_TABLE ||
-	    params->resource_func == BNXT_ULP_RESOURCE_FUNC_CMM_TABLE ||
-	    params->resource_func == BNXT_ULP_RESOURCE_FUNC_CMM_STAT) {
-		params->resource_hndl = resource_info->resource_em_handle;
-		params->reserve_flag = resource_info->reserve_flag;
-	} else if (params->resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
-		params->resource_hndl = resource_info->resource_hndl;
-		params->resource_type = resource_info->resource_type;
-		params->resource_sub_type = resource_info->resource_sub_type;
-		params->fdb_flags = resource_info->fdb_flags;
-	}
+	params->resource_type = resource_info->resource_type;
+	params->resource_sub_type = resource_info->resource_sub_type;
+	params->fdb_flags = resource_info->fdb_flags;
+	params->resource_hndl = resource_info->resource_hndl;
 }
 
 /*
@@ -629,7 +587,8 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 	}
 	fid_resource = &flow_tbl->flow_resources[fid];
 
-	if (params->critical_resource && fid_resource->resource_em_handle) {
+	if (params->critical_resource && (fid_resource->fdb_flags &
+					  ULP_FDB_FLAG_CRITICAL_RES)) {
 		BNXT_DRV_DBG(DEBUG, "Ignore multiple critical resources\n");
 		/* Ignore the multiple critical resources */
 		params->critical_resource = BNXT_ULP_CRITICAL_RESOURCE_NO;
@@ -652,6 +611,7 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 	} else {
 		/* critical resource. Just update the fid resource */
 		ulp_flow_db_res_params_to_info(fid_resource, params);
+		fid_resource->fdb_flags |= ULP_FDB_FLAG_CRITICAL_RES;
 	}
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ulp_ctxt);
@@ -1150,24 +1110,10 @@ ulp_flow_db_resource_params_get(struct bnxt_ulp_context *ulp_ctx,
 	memset(params, 0, sizeof(struct ulp_flow_db_res_params));
 	while (res_id) {
 		fid_res = &flow_tbl->flow_resources[res_id];
-		if (ulp_flow_db_resource_func_get(fid_res) == resource_func) {
-			if (resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
-				if (res_subtype == fid_res->resource_sub_type) {
-					ulp_flow_db_res_info_to_params(fid_res,
-								       params);
-					return 0;
-				}
-
-			} else if (resource_func ==
-				   BNXT_ULP_RESOURCE_FUNC_EM_TABLE ||
-				   resource_func ==
-				   BNXT_ULP_RESOURCE_FUNC_CMM_TABLE ||
-				   resource_func ==
-				   BNXT_ULP_RESOURCE_FUNC_CMM_STAT) {
-				ulp_flow_db_res_info_to_params(fid_res,
-							       params);
-				return 0;
-			}
+		if (ulp_flow_db_resource_func_get(fid_res) == resource_func &&
+		    fid_res->resource_sub_type == res_subtype) {
+			ulp_flow_db_res_info_to_params(fid_res, params);
+			return 0;
 		}
 		res_id = 0;
 		ULP_FLOW_DB_RES_NXT_SET(res_id, fid_res->nxt_resource_idx);

@@ -16,30 +16,22 @@
 /* Defines for the fdb flag */
 #define ULP_FDB_FLAG_SHARED_SESSION	0x1
 #define ULP_FDB_FLAG_SHARED_WC_SESSION	0x2
+#define ULP_FDB_FLAG_SW_ONLY		0x4
+#define ULP_FDB_FLAG_CRITICAL_RES	0x8
 
 /*
  * Structure for the flow database resource information
  * The below structure is based on the below partitions
- * nxt_resource_idx = dir[31],resource_func_upper[30:28],nxt_resource_idx[27:0]
- * If resource_func is EM_TBL then use resource_em_handle.
- * Else the other part of the union is used and
- * resource_func is resource_func_upper[30:28] << 5 | resource_func_lower
+ * nxt_resource_idx = dir[31],nxt_resource_idx[30:0]
  */
 struct ulp_fdb_resource_info {
 	/* Points to next resource in the chained list. */
-	uint32_t			nxt_resource_idx;
-	/* TBD: used for tfc stat resource for now */
-	uint32_t			reserve_flag;
-	union {
-		uint64_t		resource_em_handle;
-		struct {
-			uint8_t		resource_func_lower;
-			uint8_t		resource_type;
-			uint8_t		resource_sub_type;
-			uint8_t		fdb_flags;
-			uint32_t	resource_hndl;
-		};
-	};
+	uint32_t	nxt_resource_idx;
+	uint8_t		resource_func;
+	uint8_t		resource_type;
+	uint8_t		resource_sub_type;
+	uint8_t		fdb_flags;
+	uint64_t	resource_hndl;
 };
 
 /* Structure for the flow database resource information. */
@@ -97,7 +89,6 @@ struct ulp_flow_db_res_params {
 	uint8_t				fdb_flags;
 	uint8_t				critical_resource;
 	uint64_t			resource_hndl;
-	uint32_t			reserve_flag;
 };
 
 /*
