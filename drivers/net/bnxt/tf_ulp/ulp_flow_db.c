@@ -16,6 +16,7 @@
 #include "ulp_tun.h"
 #ifdef TF_FLOW_SCALE_QUERY
 #include "tf_resources.h"
+#include "tfc_resources.h"
 #endif /* TF_FLOW_SCALE_QUERY */
 
 #define ULP_FLOW_DB_RES_DIR_BIT		31
@@ -964,11 +965,12 @@ ulp_flow_db_flush_flows(struct bnxt_ulp_context *ulp_ctx,
 #ifdef TF_FLOW_SCALE_QUERY
 	tf_resc_pause_usage_update();
 #endif
+
 	while (!ulp_flow_db_next_entry_get(flow_db, flow_type, &fid))
 		ulp_mapper_resources_free(ulp_ctx, flow_type, fid, NULL);
+
 #ifdef TF_FLOW_SCALE_QUERY
-	tf_resc_resume_usage_update();
-	tf_resc_usage_update_all(ulp_ctx->bp);
+	ulp_resc_usage_sync(ulp_ctx);
 #endif
 
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
@@ -1018,8 +1020,7 @@ ulp_flow_db_function_flow_flush(struct bnxt_ulp_context *ulp_ctx,
 						  NULL);
 	}
 #ifdef TF_FLOW_SCALE_QUERY
-	tf_resc_resume_usage_update();
-	tf_resc_usage_update_all(ulp_ctx->bp);
+	ulp_resc_usage_sync(ulp_ctx);
 #endif
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	return 0;
