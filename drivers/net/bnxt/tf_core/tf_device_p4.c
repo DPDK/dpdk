@@ -512,6 +512,11 @@ const struct tf_dev_ops tf_dev_ops_p4_init = {
 	.tf_dev_get_sram_resources = NULL,
 	.tf_dev_set_sram_policy = NULL,
 	.tf_dev_get_sram_policy = NULL,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = NULL,
+	.tf_dev_query_resc_usage = NULL,
+	.tf_dev_update_tbl_usage_buffer = NULL,
+#endif /* TF_FLOW_SCALE_QUERY */
 };
 
 /**
@@ -570,4 +575,9 @@ const struct tf_dev_ops tf_dev_ops_p4 = {
 	.tf_dev_get_sram_resources = NULL,
 	.tf_dev_set_sram_policy = NULL,
 	.tf_dev_get_sram_policy = NULL,
+#ifdef TF_FLOW_SCALE_QUERY
+	.tf_dev_update_resc_usage = NULL,
+	.tf_dev_query_resc_usage = NULL,
+	.tf_dev_update_tbl_usage_buffer = NULL,
+#endif /* TF_FLOW_SCALE_QUERY */
 };

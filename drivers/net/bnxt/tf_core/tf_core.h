@@ -2584,4 +2584,56 @@ struct tf_get_sram_policy_parms {
  */
 int tf_get_sram_policy(struct tf *tfp,
 		       struct tf_get_sram_policy_parms *parms);
+
+#ifdef TF_FLOW_SCALE_QUERY
+enum tf_flow_resc_type {
+	TF_FLOW_RESC_TYPE_WCTCAM,
+	TF_FLOW_RESC_TYPE_EM,
+	TF_FLOW_RESC_TYPE_METER,
+	TF_FLOW_RESC_TYPE_COUNTER,
+	TF_FLOW_RESC_TYPE_ACTION,
+	TF_FLOW_RESC_TYPE_ACT_MOD_ENCAP,
+	TF_FLOW_RESC_TYPE_SP_SMAC,
+	TF_FLOW_RESC_TYPE_ALL,
+};
+
+/**
+ * Update TF resource usage state with firmware
+ *
+ * Returns success or failure code.
+ */
+int tf_update_resc_usage(struct tf *tfp,
+			 enum tf_dir dir,
+			 enum tf_flow_resc_type flow_resc_type);
+
+/**
+ * tf_query_resc_usage parameter definition
+ */
+struct	tf_query_resc_usage_parms {
+	/**
+	 * [in] receive or transmit direction
+	 */
+	enum tf_dir dir;
+	/**
+	 * [in] RESC type
+	 */
+	enum tf_flow_resc_type flow_resc_type;
+	/**
+	 * [in] received buffer size
+	 */
+	uint32_t size;
+	/**
+	 * [out] buffer for query data
+	 */
+	uint8_t data[96];
+};
+/**
+ * Get TF resource usage state from firmware
+ *
+ * Returns success or failure code.
+ */
+int tf_query_resc_usage(struct tf *tfp,
+			struct tf_query_resc_usage_parms *parms);
+
+#endif /* TF_FLOW_SCALE_QUERY */
 #endif /* _TF_CORE_H_ */

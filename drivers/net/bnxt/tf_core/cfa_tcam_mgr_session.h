@@ -20,6 +20,9 @@ int
 cfa_tcam_mgr_session_find(unsigned int session_id);
 
 int
+cfa_tcam_mgr_session_empty(void);
+
+int
 cfa_tcam_mgr_session_add(unsigned int session_id);
 
 int

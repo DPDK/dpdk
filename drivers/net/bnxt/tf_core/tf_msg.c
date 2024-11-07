@@ -1995,3 +1995,178 @@ tf_msg_session_get_hotup_state(struct tf *tfp,
 
 	return rc;
 }
+
+#ifdef TF_FLOW_SCALE_QUERY
+/* Send set resource usage request to the firmware. */
+int
+tf_msg_set_resc_usage(struct tf *tfp,
+		      enum tf_dir dir,
+		      uint32_t resc_types,
+		      uint32_t size,
+		      uint8_t *data)
+{
+	int rc;
+	struct hwrm_tf_resc_usage_set_input req = { 0 };
+	struct hwrm_tf_resc_usage_set_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	struct tf_msg_dma_buf buf = { 0 };
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(dir);
+	req.types = tfp_cpu_to_le_32(resc_types);
+	req.size = tfp_cpu_to_le_16(size);
+#if (TF_RM_MSG_DEBUG == 1)
+	/* Dump data */
+	dump_tf_resc_usage(dir, data, size);
+#endif /* (TF_RM_MSG_DEBUG == 1) */
+	/* Check for data size conformity */
+	if (size > sizeof(req.data)) {
+		/* use dma buffer */
+		req.flags |= HWRM_TF_RESC_USAGE_SET_INPUT_FLAGS_DMA;
+		rc = tf_msg_alloc_dma_buf(&buf, size);
+		if (rc)
+			goto exit;
+		tfp_memcpy(buf.va_addr, data, size);
+		tfp_memcpy(&req.data[0],
+			   &buf.pa_addr,
+			   sizeof(buf.pa_addr));
+	} else {
+		tfp_memcpy(&req.data, data, size);
+	}
+
+	parms.tf_type = HWRM_TF_RESC_USAGE_SET;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
+				 &parms);
+
+	/* Free dma buffer */
+	if (size > sizeof(req.data))
+		tf_msg_free_dma_buf(&buf);
+exit:
+	return rc;
+}
+
+/* Send query resource usage request to the firmware. */
+int tf_msg_query_resc_usage(struct tf *tfp,
+			    enum tf_dir dir,
+			    uint32_t resc_types,
+			    uint32_t *size,
+			    uint8_t *data)
+{
+	int rc;
+	struct hwrm_tf_resc_usage_query_input req = { 0 };
+	struct hwrm_tf_resc_usage_query_output resp = { 0 };
+	struct tfp_send_msg_parms parms = { 0 };
+	uint8_t fw_session_id;
+	struct tf_dev_info *dev;
+	struct tf_session *tfs;
+	uint32_t flags = 0;
+
+	/* Retrieve the session information */
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup session, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	/* Retrieve the device information */
+	rc = tf_session_get_device(tfs, &dev);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Failed to lookup device, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+
+	rc = tf_session_get_fw_session_id(tfp, &fw_session_id);
+	if (rc) {
+		TFP_DRV_LOG(ERR,
+			    "%s: Unable to lookup FW id, rc:%s\n",
+			    tf_dir_2_str(dir),
+			    strerror(-rc));
+		return rc;
+	}
+	flags = (dir == TF_DIR_TX ?
+		 HWRM_TF_RESC_USAGE_QUERY_INPUT_FLAGS_DIR_TX :
+		 HWRM_TF_RESC_USAGE_QUERY_INPUT_FLAGS_DIR_RX);
+
+	/* Populate the request */
+	req.fw_session_id = tfp_cpu_to_le_32(fw_session_id);
+	req.flags = tfp_cpu_to_le_16(flags);
+	req.types = tfp_cpu_to_le_32(resc_types);
+
+	parms.tf_type = HWRM_TF_RESC_USAGE_QUERY;
+	parms.req_data = (uint32_t *)&req;
+	parms.req_size = sizeof(req);
+	parms.resp_data = (uint32_t *)&resp;
+	parms.resp_size = sizeof(resp);
+	parms.mailbox = dev->ops->tf_dev_get_mailbox();
+
+	rc = tfp_send_msg_direct(tf_session_get_bp(tfp),
+				 &parms);
+	if (rc)
+		return rc;
+
+	/* The response size should be less than or equal to (<=) the input buffer size. */
+	if (resp.size > *size)
+		return -EINVAL;
+
+	*size = resp.size;
+
+	/*
+	 * Copy the requested number of bytes
+	 */
+	tfp_memcpy(data,
+		   &resp.data,
+		   resp.size);
+
+#if (TF_RM_MSG_DEBUG == 1)
+	/* dump data */
+	dump_tf_resc_usage(dir, data, resp.size);
+#endif /* (TF_RM_MSG_DEBUG == 1) */
+
+	return 0;
+}
+#endif /* TF_FLOW_SCALE_QUERY */

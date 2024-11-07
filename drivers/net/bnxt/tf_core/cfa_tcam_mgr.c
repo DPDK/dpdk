@@ -20,15 +20,6 @@
 
 #define TF_TCAM_SLICE_INVALID (-1)
 
-/*
- * The following macros are for setting the entry status in a row entry.
- * row is (struct cfa_tcam_mgr_table_rows_0 *)
- */
-#define ROW_ENTRY_INUSE(row, entry)  ((row)->entry_inuse &   (1U << (entry)))
-#define ROW_ENTRY_SET(row, entry)    ((row)->entry_inuse |=  (1U << (entry)))
-#define ROW_ENTRY_CLEAR(row, entry)  ((row)->entry_inuse &= ~(1U << (entry)))
-#define ROW_INUSE(row)               ((row)->entry_inuse != 0)
-
 static struct cfa_tcam_mgr_entry_data *entry_data[TF_TCAM_MAX_SESSIONS];
 
 static int global_data_initialized[TF_TCAM_MAX_SESSIONS];
@@ -685,6 +676,27 @@ cfa_tcam_mgr_rows_combine(int sess_idx, struct cfa_tcam_mgr_context *context,
 				if (entry_moved)
 					break;
 			}
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* CFA update usage state when moved entries */
+			if (entry_moved) {
+				if (tf_tcam_usage_update(context->tfp->session->session_id.id,
+							 parms->dir,
+							 parms->type,
+							 to_row,
+							 TF_RESC_ALLOC)) {
+					CFA_TCAM_MGR_TRACE(DEBUG, "TF tcam usage update failed\n");
+				}
+				if (tf_tcam_usage_update(context->tfp->session->session_id.id,
+							 parms->dir,
+							 parms->type,
+							 from_row,
+							 TF_RESC_FREE)) {
+					CFA_TCAM_MGR_TRACE(DEBUG, "TF tcam usage update failed\n");
+				}
+			}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 			if (ROW_INUSE(from_row))
 				entry_moved = false;
 			else
@@ -1207,6 +1219,11 @@ cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
 		return rc;
 	}
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Initialize the WC TCAM usage state */
+	tf_tcam_usage_init(tfp);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return 0;
 }
 
@@ -1352,6 +1369,17 @@ cfa_tcam_mgr_alloc(struct cfa_tcam_mgr_context *context,
 
 	parms->id = new_entry_id;
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* CFA update usage state */
+	if (tf_tcam_usage_update(session_id,
+				 parms->dir,
+				 parms->type,
+				 row,
+				 TF_RESC_ALLOC)) {
+		CFA_TCAM_MGR_TRACE(DEBUG, "TF tcam usage update failed\n");
+	}
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return 0;
 }
 
@@ -1442,6 +1470,17 @@ cfa_tcam_mgr_free(struct cfa_tcam_mgr_context *context,
 					    table_data->result_size,
 					    table_data->max_slices);
 		ROW_ENTRY_CLEAR(row, entry->slice);
+
+#ifdef TF_FLOW_SCALE_QUERY
+		/* CFA update usage state */
+		if (tf_tcam_usage_update(session_id,
+					 parms->dir,
+					 parms->type,
+					 row,
+					 TF_RESC_FREE)) {
+			CFA_TCAM_MGR_TRACE(DEBUG, "TF tcam usage update failed\n");
+		}
+#endif /* TF_FLOW_SCALE_QUERY */
 
 		new_row_to_free = entry->row;
 		cfa_tcam_mgr_rows_combine(sess_idx, context, parms, table_data,

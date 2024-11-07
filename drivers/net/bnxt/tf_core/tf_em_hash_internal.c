@@ -108,6 +108,15 @@ tf_em_hash_insert_int_entry(struct tf *tfp,
 				     rptr_entry,
 				     0);
 	dpool_set_entry_data(pool, index, parms->flow_handle);
+
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Update usage state buffer for EM */
+	tf_em_usage_update(tfs->session_id.id,
+			   parms->dir,
+			   num_of_entries,
+			   TF_RESC_ALLOC);
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	return 0;
 }
 
@@ -124,6 +133,10 @@ tf_em_hash_delete_int_entry(struct tf *tfp,
 	int rc = 0;
 	struct tf_session *tfs;
 	struct dpool *pool;
+#ifdef TF_FLOW_SCALE_QUERY
+	uint32_t size;
+#endif /* TF_FLOW_SCALE_QUERY */
+
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
 	if (rc) {
@@ -137,11 +150,18 @@ tf_em_hash_delete_int_entry(struct tf *tfp,
 	rc = tf_msg_delete_em_entry(tfp, parms);
 
 	/* Return resource to pool */
-	if (rc == 0) {
-		pool = (struct dpool *)tfs->em_pool[parms->dir];
-		dpool_free(pool, parms->index);
-	}
+	pool = (struct dpool *)tfs->em_pool[parms->dir];
 
+#ifdef TF_FLOW_SCALE_QUERY
+	/* Update usage state buffer for EM */
+	size = DP_FLAGS_SIZE(pool->entry[parms->index - pool->start_index].flags);
+	tf_em_usage_update(tfs->session_id.id,
+			   parms->dir,
+			   size,
+			   TF_RESC_FREE);
+#endif /* TF_FLOW_SCALE_QUERY */
+
+	dpool_free(pool, parms->index);
 	return rc;
 }
 

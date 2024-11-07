@@ -293,6 +293,13 @@ tf_em_int_bind(struct tf *tfp,
 			/* Logging handled in tf_create_em_pool */
 			if (rc)
 				return rc;
+
+#ifdef TF_FLOW_SCALE_QUERY
+			/* Initialize the usage state buffer for EM */
+			tf_em_usage_init(tfs->session_id.id,
+					 i,
+					 iparms.info->entry.stride);
+#endif /* TF_FLOW_SCALE_QUERY */
 		}
 
 		if (rc) {

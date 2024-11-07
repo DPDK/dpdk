@@ -30,6 +30,7 @@ sources += files(
         'tf_msg.c',
         'tfp.c',
         'tf_rm.c',
+        'tf_resources.c',
         'tf_session.c',
         'tf_sram_mgr.c',
         'tf_tbl.c',
