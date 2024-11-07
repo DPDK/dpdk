@@ -153,28 +153,6 @@ tf_dev_bind_p4(struct tf *tfp,
 		}
 		no_rsv_flag = false;
 	}
-
-	/*
-	 * EEM
-	 */
-
-	em_cfg.cfg = tf_em_ext_p4;
-	rsv_cnt = tf_dev_reservation_check(TF_EM_TBL_TYPE_MAX,
-					   em_cfg.cfg,
-					   (uint16_t *)resources->em_cnt);
-	if (rsv_cnt) {
-		em_cfg.num_elements = TF_EM_TBL_TYPE_MAX;
-		em_cfg.resources = resources;
-		em_cfg.mem_type = TF_EEM_MEM_TYPE_HOST;
-		rc = tf_em_ext_common_bind(tfp, &em_cfg);
-		if (rc) {
-			TFP_DRV_LOG(ERR,
-				    "EEM initialization failure\n");
-			goto fail;
-		}
-		no_rsv_flag = false;
-	}
-
 	/*
 	 * EM
 	 */
@@ -294,14 +272,6 @@ tf_dev_unbind_p4(struct tf *tfp)
 			    "Device unbind failed, Table Type\n");
 		fail = true;
 	}
-
-	rc = tf_em_ext_common_unbind(tfp);
-	if (rc) {
-		TFP_DRV_LOG(INFO,
-			    "Device unbind failed, EEM\n");
-		fail = true;
-	}
-
 	rc = tf_em_int_unbind(tfp);
 	if (rc) {
 		TFP_DRV_LOG(INFO,
