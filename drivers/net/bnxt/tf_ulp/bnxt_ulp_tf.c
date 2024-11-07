@@ -11,6 +11,7 @@
 #include <rte_spinlock.h>
 #include <rte_mtr.h>
 #include <rte_version.h>
+#include <rte_hash_crc.h>
 
 #include "bnxt.h"
 #include "bnxt_ulp.h"
@@ -1456,6 +1457,9 @@ ulp_tf_init(struct bnxt *bp,
 {
 	int rc;
 	uint32_t ulp_dev_id = BNXT_ULP_DEVICE_ID_LAST;
+
+	/* Select 64bit SSE4.2 intrinsic if available */
+	rte_hash_crc_set_alg(CRC32_SSE42_x64);
 
 	/* Allocate and Initialize the ulp context. */
 	rc = ulp_tf_ctx_init(bp, session);

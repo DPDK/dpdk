@@ -6,11 +6,11 @@
 #include <rte_bitops.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_hash_crc.h>
 
 #include "bnxt_tf_common.h"
 #include "ulp_gen_hash.h"
 #include "ulp_utils.h"
-#include "tf_hash.h"
 
 static
 int32_t ulp_bit_alloc_list_alloc(struct bit_alloc_list *blist,
@@ -205,8 +205,29 @@ ulp_gen_hash_tbl_list_key_search(struct ulp_gen_hash_tbl *hash_tbl,
 	}
 
 	/* calculate the hash */
-	hash_id = tf_hash_calc_crc32(entry->key_data,
-				     hash_tbl->key_tbl.data_size);
+	switch (hash_tbl->key_tbl.data_size) {
+	case 1:
+		hash_id = rte_hash_crc_1byte(*entry->key_data,
+					     ~0U);
+		break;
+	case 2:
+		hash_id = rte_hash_crc_2byte(*((uint16_t *)entry->key_data),
+					     ~0U);
+		break;
+	case 4:
+		hash_id = rte_hash_crc_4byte(*((uint32_t *)entry->key_data),
+					     ~0U);
+		break;
+	case 8:
+		hash_id = rte_hash_crc_8byte(*((uint64_t *)entry->key_data),
+					     ~0U);
+		break;
+	default:
+		hash_id = rte_hash_crc(entry->key_data,
+				       hash_tbl->key_tbl.data_size,
+				       ~0U);
+		break;
+	}
 	hash_id = (uint16_t)(((hash_id >> 16) & 0xffff) ^ (hash_id & 0xffff));
 	hash_id &= hash_tbl->hash_mask;
 	hash_id = hash_id * hash_tbl->hash_bkt_num;
@@ -377,4 +398,3 @@ ulp_gen_hash_tbl_list_del(struct ulp_gen_hash_tbl *hash_tbl,
 
 	return 0;
 }
-
