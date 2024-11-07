@@ -7,6 +7,7 @@
 #include "ulp_matcher.h"
 #include "ulp_mapper.h"
 #include "ulp_utils.h"
+#include "bnxt_ulp_utils.h"
 
 #ifndef RTE_HASH_BUCKET_ENTRIES
 /* it is defined in lib/hash/rte_cuckoo_hash.h */

@@ -8,7 +8,7 @@
 
 #include "bnxt.h"
 #include "bnxt_tf_common.h"
-#include "ulp_utils.h"
+#include "bnxt_ulp_utils.h"
 #include "ulp_template_struct.h"
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"

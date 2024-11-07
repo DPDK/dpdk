@@ -67,11 +67,4 @@ enum bnxt_ulp_intf_type {
 	BNXT_ULP_INTF_TYPE_LAST
 };
 
-struct bnxt_ulp_mark_tbl *
-bnxt_ulp_cntxt_ptr2_mark_db_get(struct bnxt_ulp_context *ulp_ctx);
-
-int32_t
-bnxt_ulp_cntxt_ptr2_mark_db_set(struct bnxt_ulp_context *ulp_ctx,
-				struct bnxt_ulp_mark_tbl *mark_tbl);
-
 #endif /* _BNXT_TF_COMMON_H_ */

@@ -5,6 +5,7 @@
 
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include "bnxt_ulp_utils.h"
 #include "tf_core.h"
 #include "tfp.h"
 #include "ulp_mapper.h"
@@ -625,4 +626,3 @@ ulp_gen_tbl_simple_list_search(struct ulp_mapper_gen_tbl_list *tbl_list,
 	}
 	return rc;
 }
-

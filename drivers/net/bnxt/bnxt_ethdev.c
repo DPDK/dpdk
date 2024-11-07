@@ -33,6 +33,7 @@
 #include "bnxt_tf_common.h"
 #include "ulp_flow_db.h"
 #include "rte_pmd_bnxt.h"
+#include "bnxt_ulp_utils.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =

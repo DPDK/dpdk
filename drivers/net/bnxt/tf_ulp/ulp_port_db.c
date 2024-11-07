@@ -7,6 +7,7 @@
 #include "bnxt.h"
 #include "bnxt_vnic.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_ulp_utils.h"
 #include "bnxt_tf_pmd_shim.h"
 #include "ulp_port_db.h"
 #include "tfp.h"

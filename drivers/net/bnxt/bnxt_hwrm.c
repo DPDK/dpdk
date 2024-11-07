@@ -23,6 +23,7 @@
 #include "bnxt_txr.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
+#include "bnxt_ulp_utils.h"
 
 struct bnxt_plcmodes_cfg {
 	uint32_t	flags;

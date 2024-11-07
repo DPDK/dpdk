@@ -9,6 +9,7 @@
 #include "cfa_bld.h"
 #include "tfc_util.h"
 #include "bnxt_ulp_tfc.h"
+#include "bnxt_ulp_utils.h"
 #include "tfc_action_handle.h"
 
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
@@ -34,13 +35,13 @@ ulp_mapper_tfc_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t fw_fid;
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
 
 	rc = bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid);
-	if (rc)
+	if (unlikely(rc))
 		return rc;
 
 	tfc_info.dir = tbl->direction;
@@ -53,7 +54,7 @@ ulp_mapper_tfc_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 	remap_size = ULP_BITS_2_BYTE(remap_size);
 	tfc_data.remap_sz_in_bytes = remap_size;
 
-	if (tfc_tcam_set(tfcp, fw_fid, &tfc_info, &tfc_data)) {
+	if (unlikely(tfc_tcam_set(tfcp, fw_fid, &tfc_info, &tfc_data))) {
 		BNXT_DRV_DBG(ERR, "tcam[%s][%s][%x] write failed.\n",
 			     tfc_tcam_2_str(tfc_info.rsubtype),
 			     tfc_dir_2_str(tfc_info.dir), tfc_info.id);
@@ -65,7 +66,7 @@ ulp_mapper_tfc_tcam_tbl_entry_write(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Mark action */
 	rc = ulp_mapper_mark_act_ptr_process(parms, tbl);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "failed mark action processing\n");
 		return rc;
 	}
@@ -102,21 +103,21 @@ ulp_mapper_tfc_wc_tcam_post_process(struct bnxt_ulp_device_params *dparms,
 		tlen = tlen << 1;
 	}
 
-	if (num_slices > max_slices) {
+	if (unlikely(num_slices > max_slices)) {
 		BNXT_DRV_DBG(ERR, "Key size (%d) too large for WC\n", blen);
 		return -EINVAL;
 	}
 
 	/* The key/mask may not be on a natural slice boundary, pad it */
 	pad = tlen - blen;
-	if (ulp_blob_pad_push(key, pad) < 0) {
+	if (unlikely(ulp_blob_pad_push(key, pad) < 0)) {
 		BNXT_DRV_DBG(ERR, "Unable to pad key/mask\n");
 		return -EINVAL;
 	}
 
 	/* The new length accounts for the ctrl word length and num slices */
 	tlen = tlen + (clen + 1) * num_slices;
-	if (ulp_blob_init(tkey, tlen, key->byte_order)) {
+	if (unlikely(ulp_blob_init(tkey, tlen, key->byte_order))) {
 		BNXT_DRV_DBG(ERR, "Unable to post process wc tcam entry\n");
 		return -EINVAL;
 	}
@@ -124,7 +125,7 @@ ulp_mapper_tfc_wc_tcam_post_process(struct bnxt_ulp_device_params *dparms,
 	/* pad any remaining bits to do byte alignment */
 	pad = (slice_width + clen) * num_slices;
 	pad = ULP_BYTE_ROUND_OFF_8(pad) - pad;
-	if (ulp_blob_pad_push(tkey, pad) < 0) {
+	if (unlikely(ulp_blob_pad_push(tkey, pad) < 0)) {
 		BNXT_DRV_DBG(ERR, "Unable to pad key/mask\n");
 		return -EINVAL;
 	}
@@ -135,12 +136,12 @@ ulp_mapper_tfc_wc_tcam_post_process(struct bnxt_ulp_device_params *dparms,
 	offset = 0;
 	for (i = 0; i < num_slices; i++) {
 		val = ulp_blob_push_32(tkey, &cword, clen);
-		if (!val) {
+		if (unlikely(!val)) {
 			BNXT_DRV_DBG(ERR, "Key ctrl word push failed\n");
 			return -EINVAL;
 		}
 		rc = ulp_blob_append(tkey, key, offset, slice_width);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Key blob append failed\n");
 			return rc;
 		}
@@ -195,12 +196,12 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
 		return -EINVAL;
 	}
 
-	if (bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
@@ -208,14 +209,14 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	/* Allocate the identifiers */
 	if (alloc_ident) {
 		rc = ulp_mapper_tcam_tbl_ident_alloc(parms, tbl);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Failed to alloc identifier\n");
 			return rc;
 		}
 	}
 
 	/* If no allocation or write is needed, then just exit */
-	if (!alloc_tcam && !write_tcam)
+	if (unlikely(!alloc_tcam && !write_tcam))
 		return rc;
 
 	/* Initialize the blobs for write */
@@ -225,9 +226,9 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		key_byte_order = dparms->key_byte_order;
 
 	res_byte_order = dparms->result_byte_order;
-	if (ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
-	    ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
-	    ulp_blob_init(&data, tbl->result_bit_size, res_byte_order)) {
+	if (unlikely(ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
+		     ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
+		     ulp_blob_init(&data, tbl->result_bit_size, res_byte_order))) {
 		BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -237,7 +238,7 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		kflds = ulp_mapper_key_recipe_fields_get(parms, tbl, &num_kflds);
 	else
 		kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
-	if (!kflds || !num_kflds) {
+	if (unlikely(!kflds || !num_kflds)) {
 		BNXT_DRV_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
 	}
@@ -247,7 +248,7 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
 						  &kflds[i].field_info_spec,
 						  key, 1, "TCAM Key");
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Key field set failed %s\n",
 				     kflds[i].field_info_spec.description);
 			return rc;
@@ -257,7 +258,7 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
 						  &kflds[i].field_info_mask,
 						  mask, 0, "TCAM Mask");
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Mask field set failed %s\n",
 				     kflds[i].field_info_mask.description);
 			return rc;
@@ -268,14 +269,14 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	if (tbl->resource_type == CFA_RSUBTYPE_TCAM_WC) {
 		/* Sets up the slices for writing to the WC TCAM */
 		rc = ulp_mapper_tfc_wc_tcam_post_process(dparms, key, &tkey);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to post proc WC key.\n");
 			return rc;
 		}
 		/* Sets up the slices for writing to the WC TCAM */
 		rc = ulp_mapper_tfc_wc_tcam_post_process(dparms, mask, &tmask);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to post proc WC mask.\n");
 			return rc;
@@ -291,14 +292,14 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	if (alloc_tcam) {
 		tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-		if (tfcp == NULL) {
+		if (unlikely(tfcp == NULL)) {
 			PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
 			return -EINVAL;
 		}
 		/* calculate the entry priority*/
 		rc = ulp_mapper_priority_opc_process(parms, tbl,
 						     &priority);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "entry priority process failed\n");
 			return rc;
 		}
@@ -311,14 +312,14 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 		rc = tfc_tcam_alloc(tfcp, fw_fid, tt, priority,
 				    key_sz_in_words, &tfc_inf);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "TCAM Alloc failed, status:%d\n", rc);
 			return rc;
 		}
 
 		/* Write the tcam index into the regfile*/
-		if (ulp_regfile_write(parms->regfile, tbl->tbl_operand,
-				      (uint64_t)rte_cpu_to_be_64(tfc_inf.id))) {
+		if (unlikely(ulp_regfile_write(parms->regfile, tbl->tbl_operand,
+					       (uint64_t)rte_cpu_to_be_64(tfc_inf.id)))) {
 			BNXT_DRV_DBG(ERR, "Regfile[%d] write failed.\n",
 				     tbl->tbl_operand);
 			/* Need to free the tcam idx, so goto error */
@@ -349,7 +350,7 @@ ulp_mapper_tfc_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	ulp_flow_db_shared_session_set(&fid_parms, tbl->session_type);
 
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to link resource to flow rc = %d\n",
 			     rc);
 		/* Need to free the identifier, so goto error */
@@ -395,14 +396,14 @@ ulp_mapper_blob_block_swap(struct ulp_blob *blob, uint32_t block_sz)
 	int i;
 
 	/* Shouldn't happen since it is internal function, but check anyway */
-	if (blob == NULL || !block_sz) {
+	if (unlikely(blob == NULL || !block_sz)) {
 		BNXT_DRV_DBG(ERR, "Invalid arguments\n");
 		return -EINVAL;
 	}
 
 	pdata = ulp_blob_data_get(blob, &data_sz);
 	data_sz = ULP_BITS_2_BYTE(data_sz);
-	if (!data_sz || (data_sz % block_sz) != 0) {
+	if (unlikely(!data_sz || (data_sz % block_sz) != 0)) {
 		BNXT_DRV_DBG(ERR, "length(%d) not a multiple of %d\n",
 			     data_sz, block_sz);
 		return -EINVAL;
@@ -475,7 +476,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc = 0;
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
@@ -484,15 +485,15 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		kflds = ulp_mapper_key_recipe_fields_get(parms, tbl, &num_kflds);
 	else
 		kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
-	if (!kflds || !num_kflds) {
+	if (unlikely(!kflds || !num_kflds)) {
 		BNXT_DRV_DBG(ERR, "Failed to get key fields\n");
 		return -EINVAL;
 	}
 
 	byte_order = dparms->em_byte_order;
 	/* Initialize the key/result blobs */
-	if (ulp_blob_init(&key, tbl->blob_key_bit_size, byte_order) ||
-	    ulp_blob_init(&data, tbl->result_bit_size, byte_order)) {
+	if (unlikely(ulp_blob_init(&key, tbl->blob_key_bit_size, byte_order) ||
+		     ulp_blob_init(&data, tbl->result_bit_size, byte_order))) {
 		BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -503,7 +504,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = ulp_mapper_field_opc_process(parms, tbl->direction,
 						  &kflds[i].field_info_spec,
 						  &key, 1, "EM Key");
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Key field set failed.\n");
 			return rc;
 		}
@@ -528,7 +529,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 #endif
 	/* Create the result data blob */
 	rc = ulp_mapper_tbl_result_build(parms, tbl, &data, "EM Result");
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to build the result blob\n");
 		return rc;
 	}
@@ -542,7 +543,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 #endif
 #endif
 	rc = ulp_blob_append(&key, &data, 0, dparms->em_blk_align_bits);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "EM Failed to append the result to key(%d)",
 			     rc);
 		return rc;
@@ -553,7 +554,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	rc = ulp_mapper_blob_block_swap(&key,
 					ULP_BITS_2_BYTE(dparms->em_blk_size_bits));
 	/* Error printed within function, just return on error */
-	if (rc)
+	if (unlikely(rc))
 		return rc;
 
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
@@ -570,7 +571,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	iparms.batch_info	 = &parms->batch_info;
 
 	rc = bnxt_ulp_cntxt_tsid_get(parms->ulp_ctx, &tsid);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to get the table scope\n");
 		return rc;
 	}
@@ -609,7 +610,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			uint64_t val = 0;
 
 			/* hash collision */
-			if (rc == -E2BIG)
+			if (unlikely(rc == -E2BIG))
 				BNXT_DRV_DBG(DEBUG, "Duplicate EM entry\n");
 
 			/* over max flows */
@@ -641,7 +642,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 #endif
 	/* Mark action process */
 	rc = ulp_mapper_mark_gfid_process(parms, tbl, *iparms.flow_handle);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to add mark to flow\n");
 		goto error;
 	}
@@ -655,7 +656,7 @@ ulp_mapper_tfc_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	fid_parms.resource_hndl = *iparms.flow_handle;
 
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Fail to link res to flow rc = %d\n", rc);
 		/* Need to free the identifier, so goto error */
 		goto error;
@@ -687,13 +688,13 @@ ulp_mapper_tfc_em_entry_free(struct bnxt_ulp_context *ulp,
 
 	memset(&batch_info, 0, sizeof(batch_info));
 
-	if (bnxt_ulp_cntxt_fid_get(ulp, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
@@ -766,12 +767,12 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t fw_fid = 0;
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
 		return -EINVAL;
 	}
 
-	if (bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func id\n");
 		return -EINVAL;
 	}
@@ -780,8 +781,8 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bit_size = ulp_mapper_tfc_dyn_blob_size_get(parms, tbl);
 
 	/* Initialize the blob data */
-	if (ulp_blob_init(&data, bit_size,
-			  parms->device_params->result_byte_order)) {
+	if (unlikely(ulp_blob_init(&data, bit_size,
+				   parms->device_params->result_byte_order))) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize index table blob\n");
 		return -EINVAL;
 	}
@@ -818,7 +819,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		write = true;
 		break;
 	case BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE:
-		if (tbl->fdb_opcode != BNXT_ULP_FDB_OPC_NOP) {
+		if (unlikely(tbl->fdb_opcode != BNXT_ULP_FDB_OPC_NOP)) {
 			BNXT_DRV_DBG(ERR, "Template error, wrong fdb opcode\n");
 			return -EINVAL;
 		}
@@ -826,10 +827,10 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * get the index to write to from the global regfile and then
 		 * write the table.
 		 */
-		if (ulp_mapper_glb_resource_read(parms->mapper_data,
-						 tbl->direction,
-						 tbl->tbl_operand,
-						 &regval, &shared)) {
+		if (unlikely(ulp_mapper_glb_resource_read(parms->mapper_data,
+							  tbl->direction,
+							  tbl->tbl_operand,
+							  &regval, &shared))) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from Glb RF[%d].\n",
 				     tbl->tbl_operand);
@@ -846,8 +847,8 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * with the index from the regfile, scan and store the
 		 * identifiers, and return.
 		 */
-		if (ulp_regfile_read(parms->regfile,
-				     tbl->tbl_operand, &regval)) {
+		if (unlikely(ulp_regfile_read(parms->regfile,
+					      tbl->tbl_operand, &regval))) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from regfile[%d]\n",
 				     tbl->tbl_operand);
@@ -864,7 +865,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 		rc = tfc_idx_tbl_get(tfcp, fw_fid, &tbl_info, (uint32_t *)data_p,
 				     (uint8_t *)&wordlen);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to read the tbl entry %d:%d\n",
 				     tbl->resource_type, index);
@@ -874,7 +875,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		/* Scan the fields in the entry and push them into the regfile*/
 		rc = ulp_mapper_tbl_ident_scan_ext(parms, tbl, data_p,
 						   wordlen, data.byte_order);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get flds on tbl read rc=%d\n",
 				     rc);
@@ -894,9 +895,9 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* read the CMM identifier from the regfile, it is not allocated */
 	if (!alloc && regfile) {
-		if (ulp_regfile_read(parms->regfile,
-				     tbl->tbl_operand,
-				     &regval)) {
+		if (unlikely(ulp_regfile_read(parms->regfile,
+					      tbl->tbl_operand,
+					      &regval))) {
 			BNXT_DRV_DBG(ERR,
 				    "Failed to get tbl idx from regfile[%d].\n",
 				     tbl->tbl_operand);
@@ -910,7 +911,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		tbl_info.dir = tbl->direction;
 		tbl_info.rsubtype = tbl->resource_type;
 		rc =  tfc_idx_tbl_alloc(tfcp, fw_fid, tt, &tbl_info);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Alloc table[%s][%s] failed rc=%d\n",
 				     tfc_idx_tbl_2_str(tbl_info.rsubtype),
 				     tfc_dir_2_str(tbl->direction), rc);
@@ -934,7 +935,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = ulp_mapper_glb_resource_write(parms->mapper_data,
 						   &glb_res, regval,
 						   false);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to write %s regfile[%d] rc=%d\n",
 				     (global) ? "global" : "reg",
@@ -948,7 +949,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		regval = rte_cpu_to_be_64(index);
 		rc = ulp_regfile_write(parms->regfile,
 				       tbl->tbl_operand, regval);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to write %s regfile[%d] rc=%d\n",
 				     (global) ? "global" : "reg",
@@ -963,7 +964,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 						 tbl,
 						 &data,
 						 "Indexed Result");
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Failed to build the result blob\n");
 			return rc;
 		}
@@ -974,7 +975,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		wordlen = ULP_BITS_2_BYTE(tmplen);
 		rc = tfc_idx_tbl_set(tfcp, fw_fid, &tbl_info,
 				     (uint32_t *)data_p, wordlen);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Index table[%s][%s][%x] write fail %d\n",
 				     tfc_idx_tbl_2_str(tbl_info.rsubtype),
@@ -998,7 +999,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	ulp_flow_db_shared_session_set(&fid_parms, tbl->session_type);
 
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to link resource to flow rc = %d\n",
 			     rc);
 		goto error;
@@ -1006,7 +1007,7 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Perform the VF rep action */
 	rc = ulp_mapper_mark_vfr_idx_process(parms, tbl);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to add vfr mark rc = %d\n", rc);
 		goto error;
 	}
@@ -1034,14 +1035,14 @@ ulp_mapper_tfc_index_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	uint16_t fw_fid = 0;
 	int32_t rc;
 
-	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 #ifndef ULP_MAPPER_TFC_TEST
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
@@ -1084,7 +1085,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	int32_t rc = 0;
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
 		return -EINVAL;
 	}
@@ -1093,8 +1094,8 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bit_size = ulp_mapper_tfc_dyn_blob_size_get(parms, tbl);
 
 	/* Initialize the blob data */
-	if (ulp_blob_init(&data, bit_size,
-			  parms->device_params->result_byte_order)) {
+	if (unlikely(ulp_blob_init(&data, bit_size,
+				   parms->device_params->result_byte_order))) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize cmm table blob\n");
 		return -EINVAL;
 	}
@@ -1131,7 +1132,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		write = true;
 		break;
 	case BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE:
-		if (tbl->fdb_opcode != BNXT_ULP_FDB_OPC_NOP) {
+		if (unlikely(tbl->fdb_opcode != BNXT_ULP_FDB_OPC_NOP)) {
 			BNXT_DRV_DBG(ERR, "Template error, wrong fdb opcode\n");
 			return -EINVAL;
 		}
@@ -1139,10 +1140,10 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * get the index to write to from the global regfile and then
 		 * write the table.
 		 */
-		if (ulp_mapper_glb_resource_read(parms->mapper_data,
-						 tbl->direction,
-						 tbl->tbl_operand,
-						 &regval, &shared)) {
+		if (unlikely(ulp_mapper_glb_resource_read(parms->mapper_data,
+							  tbl->direction,
+							  tbl->tbl_operand,
+							  &regval, &shared))) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from Glb RF[%d].\n",
 				     tbl->tbl_operand);
@@ -1159,8 +1160,8 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * with the index from the regfile, scan and store the
 		 * identifiers, and return.
 		 */
-		if (ulp_regfile_read(parms->regfile,
-				     tbl->tbl_operand, &regval)) {
+		if (unlikely(ulp_regfile_read(parms->regfile,
+					      tbl->tbl_operand, &regval))) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from regfile[%d]\n",
 				     tbl->tbl_operand);
@@ -1180,9 +1181,9 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* read the CMM handle from the regfile, it is not allocated */
 	if (!alloc && regfile) {
-		if (ulp_regfile_read(parms->regfile,
+		if (unlikely(ulp_regfile_read(parms->regfile,
 				     tbl->tbl_operand,
-				     &regval)) {
+					      &regval))) {
 			BNXT_DRV_DBG(ERR,
 				    "Failed to get tbl idx from regfile[%d].\n",
 				     tbl->tbl_operand);
@@ -1196,7 +1197,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 					 tbl,
 					 &data,
 					 "Indexed Result");
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to build the result blob\n");
 		return rc;
 	}
@@ -1210,13 +1211,13 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		act_wordlen = ULP_BITS_TO_32_BYTE_WORD(tmplen);
 
 		rc = bnxt_ulp_cntxt_tsid_get(parms->ulp_ctx, &tsid);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Failed to get the table scope\n");
 			return rc;
 		}
 		/* All failures after the alloc succeeds require a free */
 		rc =  tfc_act_alloc(tfcp, tsid, &cmm_info, act_wordlen);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR, "Alloc CMM [%d][%s] failed rc=%d\n",
 				     cmm_info.rsubtype,
 				     tfc_dir_2_str(cmm_info.dir), rc);
@@ -1232,7 +1233,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 					 &parms->batch_info,
 					 &cmm_info, act_data,
 					 act_wordlen);
-			if (rc) {
+			if (unlikely(rc)) {
 				BNXT_DRV_DBG(ERR, "Stat alloc/clear[%d][%s]"
 					     "[0x%" PRIx64 "] failed rc=%d\n",
 					     cmm_info.rsubtype,
@@ -1267,7 +1268,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		rc = ulp_mapper_glb_resource_write(parms->mapper_data,
 						   &glb_res, regval,
 						   false);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to write %s regfile[%d] rc=%d\n",
 				     (global) ? "global" : "reg",
@@ -1281,7 +1282,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		regval = rte_cpu_to_be_64(handle);
 		rc = ulp_regfile_write(parms->regfile,
 				       tbl->tbl_operand, regval);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to write %s regfile[%d] rc=%d\n",
 				     (global) ? "global" : "reg",
@@ -1297,7 +1298,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		cmm_info.act_handle = handle;
 		act_wordlen = ULP_BITS_TO_32_BYTE_WORD(tmplen);
 		rc = tfc_act_set(tfcp, &parms->batch_info, &cmm_info, act_data, act_wordlen);
-		if (rc) {
+		if (unlikely(rc)) {
 			BNXT_DRV_DBG(ERR,
 				     "CMM table[%d][%s][0x%" PRIx64
 				      "] write fail %d\n",
@@ -1343,7 +1344,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	ulp_flow_db_shared_session_set(&fid_parms, tbl->session_type);
 
 	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to link resource to flow rc = %d\n",
 			     rc);
 		goto error;
@@ -1351,7 +1352,7 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Perform the VF rep action */
 	rc = ulp_mapper_mark_vfr_idx_process(parms, tbl);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to add vfr mark rc = %d\n", rc);
 		goto error;
 	}
@@ -1385,13 +1386,13 @@ ulp_mapper_tfc_cmm_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	if (res->fdb_flags & ULP_FDB_FLAG_SW_ONLY)
 		return 0;
 
-	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
@@ -1402,7 +1403,7 @@ ulp_mapper_tfc_cmm_entry_free(struct bnxt_ulp_context *ulp_ctx,
 
 	/* TBD: check to see if the memory needs to be cleaned as well*/
 	rc = tfc_act_free(tfcp, &cmm_info);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR,
 			     "Failed to delete CMM entry,res = 0x%" PRIx64 "\n",
 			     res->resource_hndl);
@@ -1426,7 +1427,7 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			      struct bnxt_ulp_mapper_tbl_info *tbl)
 {
 	struct ulp_blob	data, res_blob;
-	uint64_t idx;
+	uint64_t idx = 0;
 	int32_t rc = 0;
 	struct tfc *tfcp;
 	enum bnxt_ulp_if_tbl_opc if_opc = tbl->tbl_opcode;
@@ -1437,27 +1438,27 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint8_t data_size;
 	uint16_t tmplen;
 
-	if (bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(parms->ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(parms->ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
 		return -EINVAL;
 	}
 
 	/* Initialize the blob data */
-	if (ulp_blob_init(&data, tbl->result_bit_size,
-			  parms->device_params->result_byte_order)) {
+	if (unlikely(ulp_blob_init(&data, tbl->result_bit_size,
+				   parms->device_params->result_byte_order))) {
 		BNXT_DRV_DBG(ERR, "Failed initial index table blob\n");
 		return -EINVAL;
 	}
 
 	/* create the result blob */
 	rc = ulp_mapper_tbl_result_build(parms, tbl, &data, "IFtable Result");
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Failed to build the result blob\n");
 		return rc;
 	}
@@ -1468,7 +1469,7 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		idx = ULP_COMP_FLD_IDX_RD(parms, tbl->tbl_operand);
 		break;
 	case BNXT_ULP_IF_TBL_OPC_WR_REGFILE:
-		if (ulp_regfile_read(parms->regfile, tbl->tbl_operand, &idx)) {
+		if (unlikely(ulp_regfile_read(parms->regfile, tbl->tbl_operand, &idx))) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 				     tbl->tbl_operand);
 			return -EINVAL;
@@ -1480,8 +1481,8 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	case BNXT_ULP_IF_TBL_OPC_RD_COMP_FIELD:
 		/* Initialize the result blob */
-		if (ulp_blob_init(&res_blob, tbl->result_bit_size,
-				  parms->device_params->result_byte_order)) {
+		if (unlikely(ulp_blob_init(&res_blob, tbl->result_bit_size,
+					   parms->device_params->result_byte_order))) {
 			BNXT_DRV_DBG(ERR, "Failed initial result blob\n");
 			return -EINVAL;
 		}
@@ -1493,7 +1494,7 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 						   res_blob.data,
 						   res_size,
 						   res_blob.byte_order);
-		if (rc)
+		if (unlikely(rc))
 			BNXT_DRV_DBG(ERR, "Scan and extract failed rc=%d\n",
 				     rc);
 		return rc;
@@ -1512,7 +1513,7 @@ ulp_mapper_tfc_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	rc = tfc_if_tbl_set(tfcp, fw_fid, &tbl_info, (uint8_t *)data_p,
 			    data_size);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR,
 			     "Failed to write the if tbl entry %d:%d\n",
 			     tbl->resource_type, (uint32_t)idx);
@@ -1535,13 +1536,13 @@ ulp_mapper_tfc_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 	int32_t rc = 0;
 	uint16_t fw_fid = 0;
 
-	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
@@ -1550,7 +1551,7 @@ ulp_mapper_tfc_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 	ident_info.rsubtype = ident_type;
 
 	rc = tfc_identifier_alloc(tfcp, fw_fid, tt, &ident_info);
-	if (rc != 0) {
+	if (unlikely(rc != 0)) {
 		BNXT_DRV_DBG(ERR, "alloc failed %d\n", rc);
 		return rc;
 	}
@@ -1575,13 +1576,13 @@ ulp_mapper_tfc_ident_free(struct bnxt_ulp_context *ulp_ctx,
 	int32_t rc = 0;
 	uint16_t fw_fid = 0;
 
-	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
@@ -1591,7 +1592,7 @@ ulp_mapper_tfc_ident_free(struct bnxt_ulp_context *ulp_ctx,
 	ident_info.id = res->resource_hndl;
 
 	rc = tfc_identifier_free(tfcp, fw_fid, &ident_info);
-	if (rc != 0) {
+	if (unlikely(rc != 0)) {
 		BNXT_DRV_DBG(ERR, "free failed %d\n", rc);
 		return rc;
 	}
@@ -1614,13 +1615,13 @@ ulp_mapper_tfc_tcam_entry_free(struct bnxt_ulp_context *ulp,
 	struct tfc_tcam_info tcam_info = { 0 };
 	uint16_t fw_fid = 0;
 
-	if (bnxt_ulp_cntxt_fid_get(ulp, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");
 		return -EINVAL;
 	}
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		PMD_DRV_LOG_LINE(ERR, "Failed to get tfcp pointer");
 		return -EINVAL;
 	}
@@ -1628,7 +1629,7 @@ ulp_mapper_tfc_tcam_entry_free(struct bnxt_ulp_context *ulp,
 	tcam_info.rsubtype = res->resource_type;
 	tcam_info.id = (uint16_t)res->resource_hndl;
 
-	if (!tfcp || tfc_tcam_free(tfcp, fw_fid, &tcam_info)) {
+	if (unlikely(!tfcp || tfc_tcam_free(tfcp, fw_fid, &tcam_info))) {
 		BNXT_DRV_DBG(ERR, "Unable to free tcam resource %u\n",
 			    tcam_info.id);
 		return -EINVAL;
@@ -1677,12 +1678,12 @@ ulp_mapper_tfc_index_tbl_alloc_process(struct bnxt_ulp_context *ulp,
 	int32_t rc = 0;
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp);
-	if (tfcp == NULL) {
+	if (unlikely(tfcp == NULL)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tfcp pointer\n");
 		return -EINVAL;
 	}
 
-	if (bnxt_ulp_cntxt_fid_get(ulp, &fw_fid)) {
+	if (unlikely(bnxt_ulp_cntxt_fid_get(ulp, &fw_fid))) {
 		BNXT_DRV_DBG(ERR, "Failed to get func id\n");
 		return -EINVAL;
 	}
@@ -1690,7 +1691,7 @@ ulp_mapper_tfc_index_tbl_alloc_process(struct bnxt_ulp_context *ulp,
 	tbl_info.rsubtype = table_type;
 	tbl_info.dir = direction;
 	rc = tfc_idx_tbl_alloc(tfcp, fw_fid, tt, &tbl_info);
-	if (rc) {
+	if (unlikely(rc)) {
 		BNXT_DRV_DBG(ERR, "Alloc table[%s][%s] failed rc=%d\n",
 			     tfc_idx_tbl_2_str(tbl_info.rsubtype),
 			     tfc_dir_2_str(direction), rc);
