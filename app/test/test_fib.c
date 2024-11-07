@@ -400,7 +400,6 @@ test_invalid_rcu(void)
 	config.max_routes = MAX_ROUTES;
 	config.rib_ext_sz = 0;
 	config.default_nh = def_nh;
-	config.type = RTE_FIB_DUMMY;
 
 	fib = rte_fib_create(__func__, SOCKET_ID_ANY, &config);
 	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
@@ -417,23 +416,33 @@ test_invalid_rcu(void)
 	rcu_cfg.v = qsv;
 
 	/* adding rcu to RTE_FIB_DUMMY FIB type */
+	config.type = RTE_FIB_DUMMY;
 	rcu_cfg.mode = RTE_FIB_QSBR_MODE_SYNC;
 	status = rte_fib_rcu_qsbr_add(fib, &rcu_cfg);
-	RTE_TEST_ASSERT(status == -ENOTSUP, "rte_fib_rcu_qsbr_add returned wrong error status\n");
+	RTE_TEST_ASSERT(status == -ENOTSUP,
+		"rte_fib_rcu_qsbr_add returned wrong error status when called with DUMMY type FIB\n");
 	rte_fib_free(fib);
 
-	/* Invalid QSBR mode */
 	config.type = RTE_FIB_DIR24_8;
 	config.dir24_8.nh_sz = RTE_FIB_DIR24_8_4B;
 	config.dir24_8.num_tbl8 = MAX_TBL8;
 	fib = rte_fib_create(__func__, SOCKET_ID_ANY, &config);
 	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	/* Call rte_fib_rcu_qsbr_add without fib or config */
+	status = rte_fib_rcu_qsbr_add(NULL, &rcu_cfg);
+	RTE_TEST_ASSERT(status == -EINVAL, "RCU added without fib\n");
+	status = rte_fib_rcu_qsbr_add(fib, NULL);
+	RTE_TEST_ASSERT(status == -EINVAL, "RCU added without config\n");
+
+	/* Invalid QSBR mode */
 	rcu_cfg.mode = 2;
 	status = rte_fib_rcu_qsbr_add(fib, &rcu_cfg);
-	RTE_TEST_ASSERT(status != 0, "Failed to add RCU\n");
+	RTE_TEST_ASSERT(status == -EINVAL, "RCU added with incorrect mode\n");
 
 	rcu_cfg.mode = RTE_FIB_QSBR_MODE_DQ;
-	/* Attach RCU QSBR to FIB */
+
+	/* Attach RCU QSBR to FIB to check for double attach */
 	status = rte_fib_rcu_qsbr_add(fib, &rcu_cfg);
 	RTE_TEST_ASSERT(status == 0, "Can not attach RCU to FIB\n");
 
@@ -445,7 +454,7 @@ test_invalid_rcu(void)
 	rcu_cfg.v = qsv2;
 	rcu_cfg.mode = RTE_FIB_QSBR_MODE_SYNC;
 	status = rte_fib_rcu_qsbr_add(fib, &rcu_cfg);
-	RTE_TEST_ASSERT(status != 0, "Secondary RCU was mistakenly attached\n");
+	RTE_TEST_ASSERT(status == -EEXIST, "Secondary RCU was mistakenly attached\n");
 
 	rte_fib_free(fib);
 	rte_free(qsv);

@@ -346,6 +346,9 @@ rte_fib_select_lookup(struct rte_fib *fib,
 int
 rte_fib_rcu_qsbr_add(struct rte_fib *fib, struct rte_fib_rcu_config *cfg)
 {
+	if (fib == NULL)
+		return -EINVAL;
+
 	switch (fib->type) {
 	case RTE_FIB_DIR24_8:
 		return dir24_8_rcu_qsbr_add(fib->dp, cfg, fib->name);
