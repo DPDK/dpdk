@@ -27,7 +27,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor_class_tmpl_list[] = {
 	.start_tbl_idx = 72,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
-		.cond_start_idx = 1936,
+		.cond_start_idx = 1943,
 		.cond_nums = 0 }
 	},
 	/* class_tid: 3, ingress */
@@ -37,7 +37,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor_class_tmpl_list[] = {
 	.start_tbl_idx = 118,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 0 }
 	},
 	/* class_tid: 4, egress */
@@ -47,7 +47,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor_class_tmpl_list[] = {
 	.start_tbl_idx = 140,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
-		.cond_start_idx = 3830,
+		.cond_start_idx = 3843,
 		.cond_nums = 0 }
 	}
 };
@@ -874,7 +874,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 112,
+		.cond_start_idx = 113,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -915,7 +915,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 127,
+		.cond_start_idx = 128,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -936,7 +936,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 138,
+		.cond_start_idx = 139,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -957,7 +957,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 13,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 140,
+		.cond_start_idx = 141,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -972,7 +972,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 141,
+		.cond_start_idx = 142,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -996,7 +996,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 143,
+		.cond_start_idx = 144,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1011,7 +1011,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 144,
+		.cond_start_idx = 145,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_IDENT,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -1033,7 +1033,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 144,
+		.cond_start_idx = 145,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_KEY_ID_0,
@@ -1055,7 +1055,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 398,
+		.cond_start_idx = 400,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1080,7 +1080,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 400,
+		.cond_start_idx = 402,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1095,7 +1095,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 400,
+		.cond_start_idx = 402,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_KEY_ID_0,
@@ -1117,7 +1117,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 401,
+		.cond_start_idx = 403,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_KEY_RECIPE_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_RECIPE_ID,
@@ -1136,7 +1136,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 401,
+		.cond_start_idx = 403,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1156,7 +1156,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 417,
+		.cond_start_idx = 419,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -1188,7 +1188,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 662,
+		.cond_start_idx = 664,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_KEY_RECIPE_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_RECIPE_ID,
@@ -1213,7 +1213,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1178,
+		.cond_start_idx = 1182,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1237,7 +1237,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 9,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1180,
+		.cond_start_idx = 1184,
 		.cond_nums = 3 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1258,7 +1258,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1185,
+		.cond_start_idx = 1189,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1273,7 +1273,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1186,
+		.cond_start_idx = 1190,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_KEY_ID_0,
@@ -1294,7 +1294,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1432,
+		.cond_start_idx = 1437,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_KEY_RECIPE_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_RECIPE_ID,
@@ -1318,7 +1318,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 3,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1924,
+		.cond_start_idx = 1931,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1340,7 +1340,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 4,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1926,
+		.cond_start_idx = 1933,
 		.cond_nums = 2 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1360,7 +1360,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 5,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1928,
+		.cond_start_idx = 1935,
 		.cond_nums = 2 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -1374,7 +1374,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1930,
+		.cond_start_idx = 1937,
 		.cond_nums = 4 },
 	.tbl_opcode = BNXT_ULP_EM_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_INSERT_FAIL,
@@ -1394,7 +1394,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1934,
+		.cond_start_idx = 1941,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -1408,7 +1408,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1935,
+		.cond_start_idx = 1942,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_TCAM_INDEX_0,
@@ -1431,7 +1431,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1935,
+		.cond_start_idx = 1942,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -1444,7 +1444,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1936,
+		.cond_start_idx = 1943,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1463,7 +1463,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = -27,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1936,
+		.cond_start_idx = 1943,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1484,7 +1484,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1936,
+		.cond_start_idx = 1943,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -1547,7 +1547,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1023,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1958,
+		.cond_start_idx = 1965,
 		.cond_nums = 2 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -1562,7 +1562,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1960,
+		.cond_start_idx = 1967,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1583,7 +1583,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 5,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1988,
+		.cond_start_idx = 1995,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1599,7 +1599,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1989,
+		.cond_start_idx = 1996,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_ALLOC_TBL_OPC_ALLOC,
 	.tbl_operand = BNXT_ULP_RF_IDX_JUMP_META_IDX,
@@ -1618,7 +1618,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1989,
+		.cond_start_idx = 1996,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1639,7 +1639,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1989,
+		.cond_start_idx = 1996,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1660,7 +1660,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 1989,
+		.cond_start_idx = 1996,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1682,7 +1682,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2017,
+		.cond_start_idx = 2024,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1701,7 +1701,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2017,
+		.cond_start_idx = 2024,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1720,7 +1720,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 6,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 2025,
+		.cond_start_idx = 2032,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -1735,7 +1735,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2026,
+		.cond_start_idx = 2033,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1756,7 +1756,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 2026,
+		.cond_start_idx = 2033,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1772,7 +1772,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2027,
+		.cond_start_idx = 2034,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_ALLOC_TBL_OPC_ALLOC,
 	.tbl_operand = BNXT_ULP_RF_IDX_JUMP_META_IDX,
@@ -1791,7 +1791,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2027,
+		.cond_start_idx = 2034,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -1814,7 +1814,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2027,
+		.cond_start_idx = 2034,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1838,7 +1838,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2027,
+		.cond_start_idx = 2034,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1859,7 +1859,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 13,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 2029,
+		.cond_start_idx = 2036,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -1874,7 +1874,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2030,
+		.cond_start_idx = 2037,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1898,7 +1898,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 2032,
+		.cond_start_idx = 2039,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1913,7 +1913,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2033,
+		.cond_start_idx = 2040,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_IDENT,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -1935,7 +1935,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2033,
+		.cond_start_idx = 2040,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_KEY_ID_0,
@@ -1957,7 +1957,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2290,
+		.cond_start_idx = 2298,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -1982,7 +1982,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2292,
+		.cond_start_idx = 2300,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -1997,7 +1997,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 2292,
+		.cond_start_idx = 2300,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_KEY_ID_0,
@@ -2019,7 +2019,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2293,
+		.cond_start_idx = 2301,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_KEY_RECIPE_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_RECIPE_ID,
@@ -2038,7 +2038,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2293,
+		.cond_start_idx = 2301,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -2058,7 +2058,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2309,
+		.cond_start_idx = 2317,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -2090,7 +2090,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 2552,
+		.cond_start_idx = 2560,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_KEY_RECIPE_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_RECIPE_ID,
@@ -2115,7 +2115,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3074,
+		.cond_start_idx = 3084,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -2139,7 +2139,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 9,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3076,
+		.cond_start_idx = 3086,
 		.cond_nums = 3 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -2160,7 +2160,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3081,
+		.cond_start_idx = 3091,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -2175,7 +2175,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3082,
+		.cond_start_idx = 3092,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_KEY_ID_0,
@@ -2196,7 +2196,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3325,
+		.cond_start_idx = 3336,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_KEY_RECIPE_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_RECIPE_ID,
@@ -2220,7 +2220,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 3,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3811,
+		.cond_start_idx = 3824,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -2242,7 +2242,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 4,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3813,
+		.cond_start_idx = 3826,
 		.cond_nums = 2 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -2262,7 +2262,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 5,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3815,
+		.cond_start_idx = 3828,
 		.cond_nums = 2 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -2276,7 +2276,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3817,
+		.cond_start_idx = 3830,
 		.cond_nums = 4 },
 	.tbl_opcode = BNXT_ULP_EM_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_EM_INSERT_FAIL,
@@ -2296,7 +2296,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3821,
+		.cond_start_idx = 3834,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -2310,7 +2310,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3822,
+		.cond_start_idx = 3835,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_WC_TCAM_INDEX_0,
@@ -2333,7 +2333,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3822,
+		.cond_start_idx = 3835,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
@@ -2346,7 +2346,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -2365,7 +2365,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = -26,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
@@ -2387,7 +2387,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_DEFAULT_AREC_PTR,
@@ -2409,7 +2409,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2433,7 +2433,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2454,7 +2454,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3823,
+		.cond_start_idx = 3836,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -2469,7 +2469,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_L2_CNTXT_TCAM_INDEX_0,
@@ -2501,7 +2501,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2524,7 +2524,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -2554,7 +2554,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_COMP_FIELD,
 	.tbl_operand = BNXT_ULP_CF_IDX_PHY_PORT_PARIF,
@@ -2573,7 +2573,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_COMP_FIELD,
 	.tbl_operand = BNXT_ULP_CF_IDX_PHY_PORT_PARIF,
@@ -2594,7 +2594,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
@@ -2617,7 +2617,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2640,7 +2640,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_COMP_FIELD,
 	.tbl_operand = BNXT_ULP_CF_IDX_DRV_FUNC_SVIF,
@@ -2660,7 +2660,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2681,7 +2681,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3824,
+		.cond_start_idx = 3837,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -2696,7 +2696,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3825,
+		.cond_start_idx = 3838,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_L2_CNTXT_TCAM_INDEX_0,
@@ -2725,7 +2725,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3825,
+		.cond_start_idx = 3838,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -2756,7 +2756,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3825,
+		.cond_start_idx = 3838,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2801,7 +2801,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3827,
+		.cond_start_idx = 3840,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -2817,7 +2817,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3828,
+		.cond_start_idx = 3841,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
@@ -2836,7 +2836,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3829,
+		.cond_start_idx = 3842,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
@@ -2855,7 +2855,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3830,
+		.cond_start_idx = 3843,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
@@ -2880,7 +2880,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3830,
+		.cond_start_idx = 3843,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -2901,7 +2901,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 6,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3830,
+		.cond_start_idx = 3843,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -2918,7 +2918,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_GLB_MODIFY_PTR,
@@ -2941,7 +2941,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_GLB_LB_AREC_PTR,
@@ -2963,7 +2963,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_CONST,
 	.tbl_operand = ULP_THOR_SYM_LOOPBACK_PARIF,
@@ -2983,7 +2983,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_CONST,
 	.tbl_operand = ULP_THOR_SYM_LOOPBACK_PARIF,
@@ -3005,7 +3005,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3029,7 +3029,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3050,7 +3050,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 5,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3831,
+		.cond_start_idx = 3844,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -3066,7 +3066,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3088,7 +3088,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_L2_CNTXT_TCAM_INDEX_0,
@@ -3117,7 +3117,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -3149,7 +3149,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3174,7 +3174,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
@@ -3197,7 +3197,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3218,7 +3218,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 10,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3832,
+		.cond_start_idx = 3845,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -3235,7 +3235,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_GLB_DROP_AREC_PTR,
@@ -3257,7 +3257,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_L2_CNTXT_TCAM_INDEX_0,
@@ -3288,7 +3288,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_L2_CNTXT_TCAM_INDEX_0,
@@ -3319,7 +3319,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_GLB_VFR_EM_KEY_ID_0,
@@ -3339,7 +3339,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_GLB_VFR_EM_KEY_ID_1,
@@ -3359,7 +3359,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -3388,7 +3388,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_TCAM_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_PROFILE_TCAM_INDEX_0,
@@ -3419,7 +3419,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3442,7 +3442,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_COMP_FIELD,
 	.tbl_operand = BNXT_ULP_CF_IDX_VF_FUNC_SVIF,
@@ -3461,7 +3461,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
@@ -3485,7 +3485,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3506,7 +3506,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 3833,
+		.cond_start_idx = 3846,
 		.cond_nums = 1 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
@@ -3521,7 +3521,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_COMP_FIELD,
 	.tbl_operand = BNXT_ULP_CF_IDX_DRV_FUNC_SVIF,
@@ -3542,7 +3542,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
@@ -3565,7 +3565,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_IF_TBL_OPC_WR_COMP_FIELD,
 	.tbl_operand = BNXT_ULP_CF_IDX_VF_FUNC_SVIF,
@@ -3586,7 +3586,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MODIFY_PTR,
@@ -3609,7 +3609,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
@@ -3632,7 +3632,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
@@ -3653,7 +3653,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_class_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 3834,
+		.cond_start_idx = 3847,
 		.cond_nums = 0 },
 	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
@@ -3705,58 +3705,58 @@ struct bnxt_ulp_mapper_cond_list_info ulp_thor_class_cond_oper_list[] = {
 		.cond_start_idx = 35,
 		.cond_nums = 3
 	},
-	/* cond_execute: class_tid: 1, control.l2_only_check:113*/
+	/* cond_execute: class_tid: 1, control.l2_only_check:114*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 113,
+		.cond_start_idx = 114,
 		.cond_nums = 5
 	},
-	/* cond_execute: class_tid: 1, control.l2_only_check:113*/
+	/* cond_execute: class_tid: 1, control.l2_only_check:114*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 118,
+		.cond_start_idx = 119,
 		.cond_nums = 5
 	},
-	/* cond_execute: class_tid: 1, control.tunnel_ipv6_sip_check:123*/
+	/* cond_execute: class_tid: 1, control.tunnel_ipv6_sip_check:124*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 123,
+		.cond_start_idx = 124,
 		.cond_nums = 4
 	},
-	/* cond_execute: class_tid: 2, control.l2_only_check:1936*/
+	/* cond_execute: class_tid: 2, control.l2_only_check:1943*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1936,
+		.cond_start_idx = 1943,
 		.cond_nums = 5
 	},
-	/* cond_execute: class_tid: 2, control.l2_only_check:1936*/
+	/* cond_execute: class_tid: 2, control.l2_only_check:1943*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1941,
+		.cond_start_idx = 1948,
 		.cond_nums = 5
 	},
-	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1946*/
+	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1953*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1946,
+		.cond_start_idx = 1953,
 		.cond_nums = 5
 	},
-	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1946*/
+	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1953*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1951,
+		.cond_start_idx = 1958,
 		.cond_nums = 5
 	},
-	/* cond_execute: class_tid: 2, control.check_tunnel_recycle:1956*/
+	/* cond_execute: class_tid: 2, control.check_tunnel_recycle:1963*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 1956,
+		.cond_start_idx = 1963,
 		.cond_nums = 2
 	},
-	/* cond_execute: class_tid: 3, tunnel_gparse_cache.def_cust_tun_rd:3825*/
+	/* cond_execute: class_tid: 3, tunnel_gparse_cache.def_cust_tun_rd:3838*/
 	{
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 3825,
+		.cond_start_idx = 3838,
 		.cond_nums = 2
 	}
 };
@@ -4273,12 +4273,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_METADATA
 	},
-	/* cond_execute: class_tid: 1, control.check_f1_flow:112*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	/* cond_execute: class_tid: 1, control.check_f1_flow:113*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_F1
 	},
-	/* cond_execute: class_tid: 1, control.l2_only_check:113*/
+	/* cond_execute: class_tid: 1, control.l2_only_check:114*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4299,7 +4303,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* cond_execute: class_tid: 1, control.l2_only_check:113*/
+	/* cond_execute: class_tid: 1, control.l2_only_check:114*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4320,7 +4324,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* cond_execute: class_tid: 1, control.tunnel_ipv6_sip_check:123*/
+	/* cond_execute: class_tid: 1, control.tunnel_ipv6_sip_check:124*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
@@ -4337,7 +4341,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, control.terminating_flow:127*/
+	/* field_cond: class_tid: 1, control.terminating_flow:128*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4350,7 +4354,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 1, control.terminating_flow:130*/
+	/* field_cond: class_tid: 1, control.terminating_flow:131*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4363,7 +4367,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 1, control.terminating_flow:133*/
+	/* field_cond: class_tid: 1, control.terminating_flow:134*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4372,7 +4376,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 1, control.terminating_flow:135*/
+	/* field_cond: class_tid: 1, control.terminating_flow:136*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4381,12 +4385,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 1, control.terminating_flow:137*/
+	/* field_cond: class_tid: 1, control.terminating_flow:138*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* field_cond: class_tid: 1, proto_header_cache.rd:138*/
+	/* field_cond: class_tid: 1, proto_header_cache.rd:139*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -4395,12 +4399,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 1, control.proto_header_cache_miss:140*/
+	/* cond_execute: class_tid: 1, control.proto_header_cache_miss:141*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 1, hdr_overlap_cache.overlap_check:141*/
+	/* field_cond: class_tid: 1, hdr_overlap_cache.overlap_check:142*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -4409,12 +4413,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 1, control.overlap_miss:143*/
+	/* cond_execute: class_tid: 1, control.overlap_miss:144*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:144*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:145*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4423,7 +4427,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:146*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:147*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -4432,12 +4436,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:148*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:149*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:149*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:150*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4454,7 +4458,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:153*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:154*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4471,7 +4475,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:157*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:158*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4492,7 +4496,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:162*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:163*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4513,7 +4517,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:167*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:168*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4534,7 +4538,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:172*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:173*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -4555,7 +4559,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:177*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:178*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4572,12 +4576,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:181*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:182*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:182*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:183*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4594,7 +4598,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:186*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:187*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4611,7 +4615,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:190*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:191*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4628,7 +4632,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:194*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:195*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4645,7 +4649,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:198*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:199*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4662,7 +4666,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:202*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:203*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4679,7 +4683,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:206*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:207*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4696,7 +4700,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:210*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:211*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4713,7 +4717,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:214*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:215*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4730,7 +4734,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:218*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:219*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4747,7 +4751,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:222*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:223*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4764,7 +4768,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:226*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:227*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4774,6 +4778,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -4781,7 +4789,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:230*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:232*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -4798,7 +4806,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:234*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:236*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4811,7 +4819,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:237*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:239*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4824,7 +4832,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:240*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:242*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4841,7 +4849,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:244*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:246*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4854,7 +4862,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:247*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:249*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4871,7 +4879,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:251*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:253*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4884,7 +4892,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:254*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:256*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4905,7 +4913,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:259*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:261*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4922,7 +4930,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:263*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:265*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4943,7 +4951,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:268*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:270*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -4964,7 +4972,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:273*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:275*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4981,7 +4989,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:277*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:279*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -4998,7 +5006,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:281*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:283*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5019,7 +5027,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:286*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:288*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5036,7 +5044,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:290*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:292*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5057,7 +5065,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:295*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:297*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5078,7 +5086,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:300*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:302*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5095,7 +5103,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:304*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:306*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5112,7 +5120,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:308*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:310*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5133,7 +5141,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:313*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:315*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5154,7 +5162,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:318*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:320*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5171,7 +5179,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:322*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:324*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5188,7 +5196,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:326*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:328*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5209,7 +5217,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:331*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:333*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5230,7 +5238,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:336*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:338*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5247,7 +5255,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:340*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:342*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5264,7 +5272,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:344*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:346*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5285,7 +5293,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:349*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:351*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5306,7 +5314,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:354*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:356*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5323,7 +5331,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:358*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:360*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5340,7 +5348,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:362*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:364*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5361,7 +5369,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:367*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:369*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5382,7 +5390,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:372*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:374*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5399,7 +5407,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:376*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:378*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -5416,7 +5424,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:380*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:382*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -5425,7 +5433,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:382*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:384*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
@@ -5438,12 +5446,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_ICMP
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:385*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:387*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:386*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:388*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -5455,18 +5463,18 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ICMP
-	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:389*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:391*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:393*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
@@ -5478,12 +5486,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_ICMP
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:394*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:396*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:395*/
+	/* field_cond: class_tid: 1, fkb_select.wc_gen_template:397*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -5496,7 +5504,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ICMP
 	},
-	/* field_cond: class_tid: 1, hdr_overlap_cache.overlap_wr:398*/
+	/* field_cond: class_tid: 1, hdr_overlap_cache.overlap_wr:400*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -5505,19 +5513,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 1, fkb_select.em_gen_template_alloc:400*/
+	/* cond_execute: class_tid: 1, fkb_select.em_gen_template_alloc:402*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_TERM_FLOW
-	},
-	/* field_cond: class_tid: 1, control.profile_tcam_priority:401*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:403*/
 	{
@@ -5526,16 +5525,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:405*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:407*/
 	{
@@ -5544,7 +5543,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:409*/
 	{
@@ -5553,7 +5552,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:411*/
 	{
@@ -5562,16 +5561,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:413*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, control.profile_tcam_priority:415*/
 	{
@@ -5580,235 +5579,244 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:417*/
+	/* field_cond: class_tid: 1, control.profile_tcam_priority:417*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:419*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:421*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:423*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:425*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:427*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:429*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:431*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:433*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:435*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:437*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:439*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:441*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:443*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:445*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:447*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:449*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:451*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:453*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:455*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:457*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:459*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:461*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:463*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:465*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:467*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:469*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -5816,7 +5824,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:469*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:471*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5825,7 +5833,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:471*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:473*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5834,7 +5842,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:473*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:475*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5843,7 +5851,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:475*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:477*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5852,7 +5860,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:477*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:479*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5861,7 +5869,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:479*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:481*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5870,7 +5878,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:481*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:483*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5878,54 +5886,54 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
-	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:483*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:485*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:487*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:489*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:491*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:493*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:495*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -5933,7 +5941,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:495*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:497*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5942,7 +5950,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:497*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:499*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5951,7 +5959,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:499*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:501*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5960,7 +5968,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:501*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:503*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5969,7 +5977,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:503*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:505*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -5977,15 +5985,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:505*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:507*/
 	{
@@ -5994,16 +5993,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:509*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:511*/
 	{
@@ -6012,16 +6011,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:513*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:515*/
 	{
@@ -6030,16 +6029,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:517*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:519*/
 	{
@@ -6048,16 +6047,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:521*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:523*/
 	{
@@ -6066,16 +6065,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:525*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:527*/
 	{
@@ -6084,16 +6083,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:529*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:531*/
 	{
@@ -6102,16 +6101,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:533*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:535*/
 	{
@@ -6120,9 +6119,18 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:537*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:539*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6135,7 +6143,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:540*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:542*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6148,7 +6156,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:543*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:545*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6161,7 +6169,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:546*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:548*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6174,45 +6182,45 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:549*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
-	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:550*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
-	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:551*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:552*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:553*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:555*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:557*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:559*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -6220,7 +6228,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:559*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:561*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6229,7 +6237,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:561*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:563*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6237,15 +6245,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:563*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:565*/
 	{
@@ -6254,7 +6253,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:567*/
 	{
@@ -6263,7 +6262,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:569*/
 	{
@@ -6272,7 +6271,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
+	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:571*/
 	{
@@ -6280,8 +6279,8 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:573*/
 	{
@@ -6290,7 +6289,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
+	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:575*/
 	{
@@ -6298,8 +6297,8 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:577*/
 	{
@@ -6308,7 +6307,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:579*/
 	{
@@ -6317,7 +6316,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:581*/
 	{
@@ -6326,7 +6325,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
+	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:583*/
 	{
@@ -6334,8 +6333,8 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:585*/
 	{
@@ -6344,17 +6343,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
+	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:587*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:588*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:589*/
 	{
@@ -6366,9 +6364,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:591*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:592*/
 	{
@@ -6377,7 +6376,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:594*/
 	{
@@ -6386,7 +6385,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:596*/
 	{
@@ -6395,7 +6394,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:598*/
 	{
@@ -6404,7 +6403,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:600*/
 	{
@@ -6413,7 +6412,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:602*/
 	{
@@ -6422,7 +6421,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:604*/
 	{
@@ -6431,7 +6430,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:606*/
 	{
@@ -6440,7 +6439,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:608*/
 	{
@@ -6449,7 +6448,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:610*/
 	{
@@ -6458,7 +6457,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:612*/
 	{
@@ -6467,7 +6466,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:614*/
 	{
@@ -6476,7 +6475,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:616*/
 	{
@@ -6485,21 +6484,21 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:618*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:619*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:620*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:621*/
 	{
@@ -6508,21 +6507,21 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:623*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:624*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:625*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:626*/
 	{
@@ -6531,7 +6530,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:628*/
 	{
@@ -6540,7 +6539,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:630*/
 	{
@@ -6549,7 +6548,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:632*/
 	{
@@ -6558,7 +6557,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:634*/
 	{
@@ -6567,7 +6566,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:636*/
 	{
@@ -6576,7 +6575,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:638*/
 	{
@@ -6585,7 +6584,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:640*/
 	{
@@ -6594,7 +6593,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:642*/
 	{
@@ -6603,7 +6602,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:644*/
 	{
@@ -6612,7 +6611,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:646*/
 	{
@@ -6621,9 +6620,18 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:648*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:650*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6636,7 +6644,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:651*/
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:653*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -6649,24 +6657,15 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:654*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
-	},
-	/* field_cond: class_tid: 1, profile_tcam.gen_template:655*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
-	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:656*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:657*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:658*/
 	{
@@ -6675,9 +6674,18 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_F2
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	/* field_cond: class_tid: 1, profile_tcam.gen_template:660*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_F2
+	},
+	/* field_cond: class_tid: 1, profile_tcam.gen_template:662*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -6685,15 +6693,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:662*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:664*/
 	{
@@ -6706,12 +6705,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:666*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:668*/
 	{
@@ -6725,15 +6724,24 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	/* field_cond: class_tid: 1, wm_key_recipe.0:670*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:671*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:672*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:673*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:674*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
@@ -6749,7 +6757,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:676*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:678*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6766,7 +6774,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:680*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:682*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6783,7 +6791,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:684*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:686*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6800,7 +6808,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:688*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:690*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6821,7 +6829,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:693*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:695*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6842,7 +6850,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:698*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:700*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6863,7 +6871,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:703*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:705*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6884,7 +6892,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:708*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:710*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6905,7 +6913,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:713*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:715*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6926,7 +6934,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:718*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:720*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -6947,7 +6955,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:723*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:725*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -6968,7 +6976,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:728*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:730*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -6985,7 +6993,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:732*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:734*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7002,7 +7010,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:736*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:738*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7019,12 +7027,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:740*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:742*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:741*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:743*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7041,12 +7049,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:745*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:747*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:746*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:748*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7063,7 +7071,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:750*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:752*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7080,7 +7088,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:754*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:756*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7097,7 +7105,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:758*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:760*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7114,7 +7122,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:762*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:764*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7131,7 +7139,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:766*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:768*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7148,7 +7156,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:770*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:772*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7165,7 +7173,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:774*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:776*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7182,7 +7190,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:778*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:780*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7199,7 +7207,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:782*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:784*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7216,7 +7224,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:786*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:788*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7233,7 +7241,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:790*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:792*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7250,7 +7258,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:794*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:796*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7267,7 +7275,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:798*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:800*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7284,7 +7292,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:802*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:804*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7301,7 +7309,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:806*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:808*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7318,7 +7326,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:810*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:812*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7335,7 +7343,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:814*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:816*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7352,7 +7360,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:818*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:820*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7369,7 +7377,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:822*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:824*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7386,7 +7394,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:826*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:828*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7396,6 +7404,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -7403,7 +7415,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:830*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:833*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7420,7 +7432,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:834*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:837*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -7428,6 +7440,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
@@ -7436,80 +7452,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:838*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:842*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:845*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:848*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:851*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:854*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
@@ -7517,14 +7464,83 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:846*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:849*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:852*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:855*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:858*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:862*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -7536,7 +7552,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:861*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:865*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7553,7 +7569,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:865*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:869*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -7566,7 +7582,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:868*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:872*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7583,7 +7599,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:872*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:876*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -7595,26 +7611,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:875*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:879*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:883*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -7626,7 +7642,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:882*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:886*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7646,26 +7662,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:887*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:891*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:895*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -7685,7 +7701,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:896*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:900*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -7702,7 +7718,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:900*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:904*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7723,7 +7739,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:905*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:909*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7743,23 +7759,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:910*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:914*/
 	{
@@ -7771,6 +7770,23 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:918*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
@@ -7778,7 +7794,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:918*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:922*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7799,7 +7815,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:923*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:927*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7820,7 +7836,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:928*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:932*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -7837,7 +7853,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:932*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:936*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -7854,7 +7870,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:936*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:940*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -7874,23 +7890,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:941*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:945*/
 	{
@@ -7898,6 +7897,23 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:949*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -7913,7 +7929,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:950*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:954*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -7930,7 +7946,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:954*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:958*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -7947,7 +7963,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:958*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:962*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -7959,26 +7975,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:961*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:965*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:969*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -7990,7 +8006,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:968*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:972*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8007,7 +8023,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:972*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:976*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8019,26 +8035,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:975*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:979*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:983*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -8050,7 +8066,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:982*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:986*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8067,7 +8083,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:986*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:990*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8079,26 +8095,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:989*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:993*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:997*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -8110,7 +8126,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:996*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1000*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8127,7 +8143,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1000*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1004*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8139,39 +8155,9 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1003*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:1007*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1010*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -8185,7 +8171,20 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1011*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:1014*/
 	{
@@ -8198,13 +8197,30 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1018*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1018*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1022*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8217,7 +8233,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1021*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1025*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8230,7 +8246,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1024*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1028*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8247,7 +8263,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1028*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1032*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8264,7 +8280,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1032*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1036*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8277,7 +8293,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1035*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1039*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8290,7 +8306,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1038*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1042*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8303,7 +8319,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1041*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1045*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8316,7 +8332,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1044*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1048*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8325,7 +8341,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1046*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1050*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8333,23 +8349,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1048*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:1052*/
 	{
@@ -8362,13 +8361,30 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1056*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1056*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1060*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8381,7 +8397,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1059*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1063*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8394,7 +8410,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1062*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1066*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8407,7 +8423,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1065*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1069*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8420,7 +8436,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1068*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1072*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8429,7 +8445,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1070*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1074*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8438,7 +8454,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1072*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1076*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8455,7 +8471,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1076*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1080*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8472,7 +8488,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1080*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1084*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8485,7 +8501,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1083*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1087*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8498,7 +8514,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1086*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1090*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8515,7 +8531,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1090*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1094*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8532,7 +8548,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1094*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1098*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8545,7 +8561,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1097*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1101*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8557,23 +8573,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1100*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:1104*/
 	{
@@ -8586,13 +8585,30 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1108*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1108*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1112*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8605,7 +8621,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1111*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1115*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8618,7 +8634,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1114*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1118*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8635,7 +8651,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1118*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1122*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8652,7 +8668,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1122*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1126*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8665,7 +8681,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1125*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1129*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8678,7 +8694,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1128*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1132*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8686,23 +8702,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1130*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:1134*/
 	{
@@ -8715,13 +8714,30 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1138*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1138*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1142*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8734,7 +8750,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1141*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1145*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8747,7 +8763,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1144*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1148*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8755,23 +8771,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1146*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
 	/* field_cond: class_tid: 1, wm_key_recipe.0:1150*/
 	{
@@ -8784,13 +8783,30 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
+	},
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1154*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1154*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1158*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8803,7 +8819,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1157*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1161*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8816,7 +8832,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1160*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1164*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8825,7 +8841,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1162*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1166*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8842,7 +8858,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1166*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1170*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8859,7 +8875,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1170*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1174*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8872,7 +8888,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1173*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1177*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -8885,7 +8901,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, wm_key_recipe.0:1176*/
+	/* field_cond: class_tid: 1, wm_key_recipe.0:1180*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -8894,7 +8910,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
-	/* field_cond: class_tid: 1, proto_header_cache.wr:1178*/
+	/* field_cond: class_tid: 1, proto_header_cache.wr:1182*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -8903,7 +8919,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 1, em_flow_conflict_cache.rd:1180*/
+	/* cond_execute: class_tid: 1, em_flow_conflict_cache.rd:1184*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_WC_MATCH
@@ -8916,7 +8932,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* field_cond: class_tid: 1, em_flow_conflict_cache.rd:1183*/
+	/* field_cond: class_tid: 1, em_flow_conflict_cache.rd:1187*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -8925,12 +8941,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 1, control.em_flow_conflict_cache_miss:1185*/
+	/* cond_execute: class_tid: 1, control.em_flow_conflict_cache_miss:1189*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1186*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1190*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -8939,7 +8955,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1188*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1192*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -8948,12 +8964,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1190*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1194*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1191*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1195*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -8974,7 +8990,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1196*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1200*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -8991,7 +9007,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1200*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1204*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9012,7 +9028,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1205*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1209*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9033,7 +9049,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1210*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1214*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9054,7 +9070,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1215*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1219*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -9075,7 +9091,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1220*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1224*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9092,7 +9108,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1224*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1228*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9109,7 +9125,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1228*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1232*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9126,7 +9142,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1232*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1236*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9143,7 +9159,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1236*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1240*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9160,7 +9176,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1240*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1244*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9177,7 +9193,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1244*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1248*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9194,7 +9210,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1248*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1252*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9211,7 +9227,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1252*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1256*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9228,7 +9244,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1256*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1260*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9245,7 +9261,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1260*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1264*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9262,7 +9278,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1264*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1268*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9279,7 +9295,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1268*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1272*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9289,6 +9305,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -9296,7 +9316,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1272*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1277*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9313,7 +9333,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1276*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1281*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9326,7 +9346,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1279*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1284*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9339,7 +9359,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1282*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1287*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9360,7 +9380,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1287*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1292*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9377,7 +9397,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1291*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1296*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9394,7 +9414,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1295*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1300*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9407,7 +9427,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1298*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1303*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9428,7 +9448,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1303*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1308*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9444,27 +9464,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
-	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1307*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
 	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1312*/
 	{
@@ -9480,6 +9479,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
+	},
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1317*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
 	},
@@ -9487,7 +9507,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1317*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1322*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9504,7 +9524,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1321*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1326*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9521,7 +9541,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1325*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1330*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -9542,7 +9562,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1330*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1335*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -9559,7 +9579,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1334*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1339*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9576,7 +9596,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1338*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1343*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9593,7 +9613,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1342*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1347*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9606,7 +9626,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1345*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1350*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9619,7 +9639,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1348*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1353*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9636,7 +9656,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1352*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1357*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9653,7 +9673,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1356*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1361*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9666,7 +9686,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1359*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1364*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9679,7 +9699,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1362*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1367*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9696,7 +9716,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1366*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1371*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9713,7 +9733,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1370*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1375*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9726,7 +9746,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1373*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1378*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9739,7 +9759,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1376*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1381*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9756,7 +9776,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1380*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1385*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9773,7 +9793,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1384*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1389*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9786,7 +9806,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1387*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1392*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9799,7 +9819,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1390*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1395*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9816,7 +9836,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1394*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1399*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9833,7 +9853,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1398*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1403*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9846,7 +9866,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1401*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1406*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9859,7 +9879,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1404*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1409*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9876,7 +9896,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1408*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1413*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9893,7 +9913,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1412*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1417*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9906,7 +9926,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1415*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1420*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9919,7 +9939,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1418*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1423*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9936,7 +9956,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1422*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1427*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -9953,7 +9973,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1426*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1431*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9966,7 +9986,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1429*/
+	/* field_cond: class_tid: 1, fkb_select.em_gen_template:1434*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -9979,7 +9999,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1432*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1437*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9988,7 +10008,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1434*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1439*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -9996,55 +10016,34 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1436*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1438*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1440*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1441*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1442*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1443*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1445*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1446*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1447*/
 	{
@@ -10082,9 +10081,13 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1456*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1457*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10101,7 +10104,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1460*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1461*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10112,15 +10115,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1465*/
 	{
@@ -10162,7 +10161,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1475*/
 	{
@@ -10178,6 +10177,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1480*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
@@ -10185,7 +10205,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1480*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1485*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10206,7 +10226,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1485*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1490*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10226,27 +10246,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1490*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1495*/
 	{
@@ -10271,6 +10270,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1500*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1505*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
@@ -10286,7 +10306,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1504*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1509*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10303,7 +10323,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1508*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1513*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10320,7 +10340,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1512*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1517*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10337,7 +10357,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1516*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1521*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10354,7 +10374,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1520*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1525*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10371,7 +10391,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1524*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1529*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10388,7 +10408,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1528*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1533*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10405,7 +10425,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1532*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1537*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10422,7 +10442,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1536*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1541*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10439,7 +10459,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1540*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1545*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10456,7 +10476,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1544*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1549*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10473,7 +10493,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1548*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1553*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10490,7 +10510,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1552*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1557*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10507,7 +10527,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1556*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1561*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10524,7 +10544,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1560*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1565*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10541,7 +10561,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1564*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1569*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10558,7 +10578,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1568*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1573*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10575,7 +10595,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1572*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1577*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10592,7 +10612,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1576*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1581*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10609,7 +10629,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1580*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1585*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10626,7 +10646,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1584*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1589*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10643,7 +10663,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1588*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1593*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10660,7 +10680,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1592*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1597*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10677,7 +10697,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1596*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1601*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10687,6 +10707,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -10694,7 +10718,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1600*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1606*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10711,7 +10735,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1604*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1610*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -10719,6 +10743,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
@@ -10727,51 +10755,25 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1608*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1612*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1615*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1618*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1619*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -10784,7 +10786,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1621*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1622*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -10797,7 +10799,33 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1624*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1625*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1628*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1631*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -10818,7 +10846,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1629*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1636*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -10835,7 +10863,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1633*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1640*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -10856,7 +10884,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1638*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1645*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -10872,36 +10900,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXCLUDE_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1642*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1646*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1649*/
 	{
@@ -10944,34 +10942,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1661*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1660*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1665*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1663*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -10992,7 +10982,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1670*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1668*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11009,7 +10999,45 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1674*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1672*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1677*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1681*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11030,7 +11058,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1679*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1686*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11051,7 +11079,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1684*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1691*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11068,7 +11096,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1688*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1695*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11085,7 +11113,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1692*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1699*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11106,7 +11134,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1697*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1704*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11127,7 +11155,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1702*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1709*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11144,7 +11172,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1706*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1713*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11161,7 +11189,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1710*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1717*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -11182,7 +11210,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1715*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1722*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -11199,7 +11227,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1719*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1726*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -11220,7 +11248,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1724*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1731*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -11236,36 +11264,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1728*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1732*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1735*/
 	{
@@ -11308,11 +11306,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1746*/
 	{
@@ -11321,11 +11319,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1749*/
 	{
@@ -11368,11 +11366,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1760*/
 	{
@@ -11381,11 +11379,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1763*/
 	{
@@ -11428,11 +11426,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1774*/
 	{
@@ -11441,11 +11439,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1777*/
 	{
@@ -11492,27 +11490,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1788*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1792*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -11522,22 +11503,9 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1795*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1798*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1791*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11554,7 +11522,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1802*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1795*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11571,7 +11539,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1806*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1799*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11584,7 +11552,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1809*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1802*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11597,7 +11565,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1812*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1805*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11612,40 +11580,40 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1809*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1813*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1816*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1820*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1823*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -11655,9 +11623,9 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1826*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1819*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11674,7 +11642,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1830*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1823*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11691,7 +11659,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1834*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1827*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11704,7 +11672,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1837*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1830*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11717,7 +11685,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1840*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1833*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11732,40 +11700,40 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1837*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1841*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1844*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1848*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1851*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -11775,9 +11743,9 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1854*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1847*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11794,7 +11762,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1858*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1851*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11811,7 +11779,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1862*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1855*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11824,7 +11792,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1865*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1858*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11837,7 +11805,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1868*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1861*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11848,56 +11816,56 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1865*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1869*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1872*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1876*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1879*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1882*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1875*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11914,7 +11882,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1886*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1879*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11931,7 +11899,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1890*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1883*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11944,7 +11912,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1893*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1886*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -11957,7 +11925,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1896*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1889*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -11972,40 +11940,40 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1893*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1897*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
 	/* field_cond: class_tid: 1, em_key_recipe.0:1900*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1904*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1907*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -12015,9 +11983,9 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1910*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1903*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -12034,7 +12002,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1914*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1907*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -12051,7 +12019,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1918*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1911*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12064,7 +12032,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_key_recipe.0:1921*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1914*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12077,7 +12045,67 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 1, em_flow_conflict_cache.wr:1924*/
+	/* field_cond: class_tid: 1, em_key_recipe.0:1917*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1921*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1925*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
+	},
+	/* field_cond: class_tid: 1, em_key_recipe.0:1928*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
+	},
+	/* field_cond: class_tid: 1, em_flow_conflict_cache.wr:1931*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -12086,7 +12114,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 1, control.field_sig_validation:1926*/
+	/* cond_execute: class_tid: 1, control.field_sig_validation:1933*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_CC
@@ -12095,7 +12123,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_FLOW_SIG_ID
 	},
-	/* cond_execute: class_tid: 1, control.outer_loop_add_check:1928*/
+	/* cond_execute: class_tid: 1, control.outer_loop_add_check:1935*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -12104,7 +12132,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_ADD
 	},
-	/* cond_execute: class_tid: 1, em.ingress_generic_template:1930*/
+	/* cond_execute: class_tid: 1, em.ingress_generic_template:1937*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_WC_MATCH
@@ -12121,17 +12149,17 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* cond_execute: class_tid: 1, control.em_add_check:1934*/
+	/* cond_execute: class_tid: 1, control.em_add_check:1941*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_EM_INSERT_FAIL
 	},
-	/* cond_execute: class_tid: 1, control.outer_loop_check:1935*/
+	/* cond_execute: class_tid: 1, control.outer_loop_check:1942*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* cond_execute: class_tid: 2, control.l2_only_check:1936*/
+	/* cond_execute: class_tid: 2, control.l2_only_check:1943*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12152,7 +12180,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* cond_execute: class_tid: 2, control.l2_only_check:1936*/
+	/* cond_execute: class_tid: 2, control.l2_only_check:1943*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12173,7 +12201,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1946*/
+	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1953*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
@@ -12194,7 +12222,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1946*/
+	/* cond_execute: class_tid: 2, control.tunnel_ipv6_sip_check:1953*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
@@ -12215,7 +12243,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* cond_execute: class_tid: 2, control.check_tunnel_recycle:1956*/
+	/* cond_execute: class_tid: 2, control.check_tunnel_recycle:1963*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
@@ -12224,7 +12252,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: class_tid: 2, control.multi_tunnel_check:1958*/
+	/* cond_execute: class_tid: 2, control.multi_tunnel_check:1965*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_IS_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_OUTER_EM_ONLY
@@ -12233,7 +12261,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1960*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1967*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12242,7 +12270,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1962*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1969*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12251,7 +12279,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1964*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1971*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12260,7 +12288,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1966*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1973*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12269,7 +12297,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1968*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1975*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12278,7 +12306,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1970*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1977*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12287,7 +12315,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1972*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1979*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12296,7 +12324,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1974*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1981*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12305,7 +12333,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1976*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1983*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12314,7 +12342,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1978*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1985*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12323,7 +12351,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1980*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1987*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12332,7 +12360,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1982*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1989*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12341,7 +12369,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1984*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1991*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
@@ -12350,7 +12378,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1986*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.rd:1993*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
@@ -12359,12 +12387,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* cond_execute: class_tid: 2, control.multi_flow_cache_check:1988*/
+	/* cond_execute: class_tid: 2, control.multi_flow_cache_check:1995*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1989*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1996*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12373,7 +12401,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1991*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1998*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12382,7 +12410,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1993*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2000*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12391,7 +12419,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1995*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2002*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
@@ -12400,7 +12428,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1997*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2004*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12409,7 +12437,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:1999*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2006*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12418,7 +12446,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2001*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2008*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12427,7 +12455,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2003*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2010*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -12436,7 +12464,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2005*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2012*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12445,7 +12473,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2007*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2014*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12454,7 +12482,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2009*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2016*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12463,7 +12491,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2011*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2018*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -12472,7 +12500,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2013*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2020*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
@@ -12481,7 +12509,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2015*/
+	/* field_cond: class_tid: 2, multi_flow_tunnel_cache.wr:2022*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
@@ -12490,7 +12518,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, control.terminating_flow:2017*/
+	/* field_cond: class_tid: 2, control.terminating_flow:2024*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12499,7 +12527,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 2, control.terminating_flow:2019*/
+	/* field_cond: class_tid: 2, control.terminating_flow:2026*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12508,7 +12536,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 2, control.terminating_flow:2021*/
+	/* field_cond: class_tid: 2, control.terminating_flow:2028*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12517,7 +12545,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 2, control.terminating_flow:2023*/
+	/* field_cond: class_tid: 2, control.terminating_flow:2030*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -12526,31 +12554,17 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* cond_execute: class_tid: 2, control.group_id_check:2025*/
+	/* cond_execute: class_tid: 2, control.group_id_check:2032*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
-	/* cond_execute: class_tid: 2, control.flow_chain_group_id:2026*/
+	/* cond_execute: class_tid: 2, control.flow_chain_group_id:2033*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 2, proto_header_cache.rd:2027*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	/* cond_execute: class_tid: 2, control.proto_header_cache_miss:2029*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
-	},
-	/* field_cond: class_tid: 2, hdr_overlap_cache.overlap_check:2030*/
+	/* field_cond: class_tid: 2, proto_header_cache.rd:2034*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -12559,12 +12573,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 2, control.overlap_miss:2032*/
+	/* cond_execute: class_tid: 2, control.proto_header_cache_miss:2036*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2033*/
+	/* field_cond: class_tid: 2, hdr_overlap_cache.overlap_check:2037*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	/* cond_execute: class_tid: 2, control.overlap_miss:2039*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
+	},
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2040*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12573,7 +12601,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2035*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2042*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -12582,12 +12610,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2037*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2044*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2038*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2045*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12604,7 +12632,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2042*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2049*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12621,7 +12649,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2046*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2053*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
@@ -12634,7 +12662,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2049*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2056*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12655,7 +12683,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2054*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2061*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12676,7 +12704,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2059*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2066*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12697,7 +12725,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2064*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2071*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -12718,7 +12746,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2069*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2076*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12735,12 +12763,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2073*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2080*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2074*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2081*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12757,7 +12785,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2078*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2085*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12774,7 +12802,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2082*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2089*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12791,7 +12819,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2086*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2093*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12808,7 +12836,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2090*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2097*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12825,7 +12853,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2094*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2101*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12842,7 +12870,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2098*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2105*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12859,7 +12887,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2102*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2109*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12876,7 +12904,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2106*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2113*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12893,7 +12921,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2110*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2117*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12910,7 +12938,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2114*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2121*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12927,7 +12955,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2118*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2125*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12937,6 +12965,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -12944,7 +12976,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2122*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2130*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -12961,7 +12993,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2126*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2134*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -12974,7 +13006,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2129*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2137*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -12987,7 +13019,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2132*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2140*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -13004,7 +13036,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2136*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2144*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13017,7 +13049,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2139*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2147*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -13034,7 +13066,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2143*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2151*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13047,7 +13079,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2146*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2154*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -13068,7 +13100,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2151*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2159*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13085,7 +13117,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2155*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2163*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -13106,7 +13138,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2160*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2168*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -13127,7 +13159,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2165*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2173*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13144,7 +13176,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2169*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2177*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13161,7 +13193,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2173*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2181*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13182,7 +13214,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2178*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2186*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13199,7 +13231,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2182*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2190*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13220,7 +13252,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2187*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2195*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13241,7 +13273,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2192*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2200*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13258,7 +13290,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2196*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2204*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13275,7 +13307,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2200*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2208*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13296,7 +13328,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2205*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2213*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13317,7 +13349,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2210*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2218*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13334,7 +13366,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2214*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2222*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13351,7 +13383,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2218*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2226*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13372,7 +13404,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2223*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2231*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13393,7 +13425,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2228*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2236*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13410,7 +13442,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2232*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2240*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13427,7 +13459,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2236*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2244*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13448,7 +13480,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2241*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2249*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13469,7 +13501,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2246*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2254*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13486,7 +13518,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2250*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2258*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13503,7 +13535,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2254*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2262*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13524,7 +13556,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2259*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2267*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13545,7 +13577,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2264*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2272*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13562,7 +13594,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2268*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2276*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -13579,7 +13611,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2272*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2280*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -13588,7 +13620,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2274*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2282*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
@@ -13601,52 +13633,52 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_ICMP
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2277*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2285*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2278*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ICMP
-	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2281*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2283*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ICMP
 	},
 	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2286*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ICMP
+	},
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2289*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2291*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ICMP
+	},
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2294*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2287*/
+	/* field_cond: class_tid: 2, fkb_select.wc_gen_template:2295*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -13659,7 +13691,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ICMP
 	},
-	/* field_cond: class_tid: 2, hdr_overlap_cache.overlap_wr:2290*/
+	/* field_cond: class_tid: 2, hdr_overlap_cache.overlap_wr:2298*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -13668,12 +13700,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 2, fkb_select.em_gen_template_alloc:2292*/
+	/* cond_execute: class_tid: 2, fkb_select.em_gen_template_alloc:2300*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_TERM_FLOW
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2293*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2301*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13682,7 +13714,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2295*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2303*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13691,7 +13723,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2297*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2305*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13700,7 +13732,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2299*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2307*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13709,7 +13741,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2301*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2309*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13718,7 +13750,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2303*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2311*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13727,7 +13759,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2305*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2313*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13736,7 +13768,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
-	/* field_cond: class_tid: 2, control.profile_tcam_priority:2307*/
+	/* field_cond: class_tid: 2, control.profile_tcam_priority:2315*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -13744,42 +13776,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2309*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2311*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2313*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2315*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2317*/
 	{
@@ -14040,7 +14036,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2375*/
 	{
@@ -14049,7 +14045,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2377*/
 	{
@@ -14058,7 +14054,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2379*/
 	{
@@ -14067,7 +14063,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2381*/
 	{
@@ -14152,21 +14148,21 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2399*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2401*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2401*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2403*/
 	{
@@ -14292,13 +14288,49 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2431*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2433*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2435*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2437*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2432*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2440*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14311,7 +14343,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2435*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2443*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14324,7 +14356,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2438*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2446*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14337,51 +14369,15 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2441*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2442*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2443*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2445*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2447*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
-	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2449*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2450*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2451*/
 	{
@@ -14408,16 +14404,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2457*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2459*/
 	{
@@ -14426,36 +14422,18 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2461*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2463*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2465*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2467*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14464,7 +14442,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2469*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2465*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14473,7 +14451,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2471*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2467*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14482,7 +14460,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2473*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2469*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14491,7 +14469,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2475*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2471*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14500,7 +14478,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2477*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2473*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14509,56 +14487,74 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
 	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2475*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2477*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2479*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2480*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_GENEVE
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2481*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2482*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_GRE
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2483*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_UPAR1
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2484*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2485*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_UPAR2
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2486*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2487*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2488*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2489*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2490*/
 	{
@@ -14655,16 +14651,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2511*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2513*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2512*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14673,10 +14664,14 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2515*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2514*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2516*/
 	{
@@ -14685,34 +14680,35 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2518*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2520*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2519*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2522*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2521*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2523*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	/* field_cond: class_tid: 2, profile_tcam.gen_template:2524*/
 	{
@@ -14793,13 +14789,49 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2542*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2544*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2546*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2548*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2543*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2551*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14812,17 +14844,17 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2546*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2554*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2547*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2555*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_DIX_TRAFFIC
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2548*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2556*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -14831,43 +14863,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
-	/* field_cond: class_tid: 2, profile_tcam.gen_template:2550*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2552*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2554*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2556*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2558*/
+	/* field_cond: class_tid: 2, profile_tcam.gen_template:2558*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -14878,13 +14874,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2560*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2561*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
+	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2562*/
 	{
@@ -14893,32 +14888,35 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2564*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2566*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2568*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2569*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2570*/
 	{
@@ -14935,22 +14933,26 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2574*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2577*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2578*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -14967,7 +14969,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2581*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2582*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
@@ -14980,7 +14982,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2584*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2585*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -14991,18 +14993,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2589*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2592*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
@@ -15022,7 +15033,28 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2594*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2597*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2602*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15043,7 +15075,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2599*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2607*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15064,7 +15096,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2604*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2612*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15085,7 +15117,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2609*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2617*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15106,7 +15138,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2614*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2622*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -15127,7 +15159,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2619*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2627*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -15147,40 +15179,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2624*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2628*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2632*/
 	{
@@ -15193,18 +15191,30 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2636*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2637*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2640*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15221,12 +15231,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2641*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2644*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2642*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2645*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15237,28 +15247,16 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2646*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2649*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
+	.cond_opcode = BNXT_ULP_COND_OPC_FEATURE_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2650*/
 	{
@@ -15271,11 +15269,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2654*/
 	{
@@ -15288,11 +15286,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2658*/
 	{
@@ -15309,7 +15307,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2662*/
 	{
@@ -15322,11 +15320,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2666*/
 	{
@@ -15377,7 +15375,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2678*/
 	{
@@ -15394,7 +15392,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2682*/
 	{
@@ -15445,7 +15443,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2694*/
 	{
@@ -15462,7 +15460,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2698*/
 	{
@@ -15509,11 +15507,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2710*/
 	{
@@ -15526,11 +15524,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2714*/
 	{
@@ -15581,7 +15579,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2726*/
 	{
@@ -15598,7 +15596,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2730*/
 	{
@@ -15610,6 +15608,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -15617,7 +15619,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2734*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2735*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -15634,62 +15636,31 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2738*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2739*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2741*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2744*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2747*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2750*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
@@ -15697,24 +15668,50 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2754*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2748*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2751*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2754*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2757*/
 	{
@@ -15722,6 +15719,19 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2760*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -15733,7 +15743,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2761*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2764*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -15746,7 +15756,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2764*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2767*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -15761,23 +15771,23 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2768*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2771*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2774*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -15793,7 +15803,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2775*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2778*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -15806,7 +15816,37 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2778*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2781*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2785*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2788*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -15827,7 +15867,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2783*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2793*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -15844,7 +15884,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2787*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2797*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -15865,7 +15905,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2792*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2802*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -15881,85 +15921,9 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2796*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2801*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2806*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2810*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2814*/
-	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -15979,7 +15943,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2819*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2811*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16000,7 +15964,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2824*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2816*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16017,7 +15981,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2828*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2820*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16034,7 +15998,83 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2832*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2824*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2829*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2834*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2838*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2842*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -16055,7 +16095,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2837*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2847*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -16072,7 +16112,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2841*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2851*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -16093,7 +16133,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2846*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2856*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -16110,7 +16150,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2850*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2860*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16126,52 +16166,22 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2854*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2857*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2861*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2864*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2867*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -16181,27 +16191,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2868*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2871*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2874*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -16217,7 +16227,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2875*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2878*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16230,7 +16240,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2878*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2881*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16241,27 +16251,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2882*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2885*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2888*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -16277,7 +16287,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2889*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2892*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16290,7 +16300,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2892*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2895*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16301,27 +16311,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2896*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2899*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2902*/
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
@@ -16337,7 +16347,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2903*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2906*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16350,7 +16360,37 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2906*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2909*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2913*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2916*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16366,49 +16406,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2910*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2914*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2917*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2920*/
 	{
@@ -16421,13 +16418,56 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2924*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2927*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2930*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2924*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2934*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16444,7 +16484,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2928*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2938*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16457,7 +16497,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2931*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2941*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16470,7 +16510,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2934*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2944*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16483,7 +16523,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2937*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2947*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16496,7 +16536,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2940*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2950*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16505,7 +16545,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2942*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2952*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16514,7 +16554,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2944*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2954*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16530,49 +16570,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2948*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2952*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2955*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2958*/
 	{
@@ -16585,9 +16582,52 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2962*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2965*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2968*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2961*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2971*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16600,7 +16640,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_UDP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2964*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2974*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16609,7 +16649,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2966*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2976*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16618,7 +16658,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2968*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2978*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16635,7 +16675,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2972*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2982*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16652,7 +16692,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2976*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2986*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16665,7 +16705,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2979*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2989*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16678,7 +16718,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2982*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:2992*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16694,49 +16734,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2986*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2990*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:2993*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:2996*/
 	{
@@ -16749,13 +16746,56 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3000*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3003*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3006*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV6
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3000*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3010*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16772,7 +16812,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3004*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3014*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16785,7 +16825,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3007*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3017*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16798,7 +16838,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3010*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3020*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16814,49 +16854,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3014*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3018*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3021*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:3024*/
 	{
@@ -16865,9 +16862,52 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3028*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3031*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3034*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3026*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3036*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16884,7 +16924,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3030*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3040*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16901,7 +16941,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3034*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3044*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16914,7 +16954,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3037*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3047*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -16927,7 +16967,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3040*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3050*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16936,7 +16976,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3042*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3052*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -16952,49 +16992,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3046*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3050*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3053*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
 	/* field_cond: class_tid: 2, wm_key_recipe.0:3056*/
 	{
@@ -17003,9 +17000,52 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3060*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3063*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
+	},
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3066*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3058*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3068*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17022,7 +17062,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3062*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3072*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17039,7 +17079,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3066*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3076*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17052,7 +17092,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3069*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3079*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17065,7 +17105,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_WC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, wm_key_recipe.0:3072*/
+	/* field_cond: class_tid: 2, wm_key_recipe.0:3082*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17074,7 +17114,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
-	/* field_cond: class_tid: 2, proto_header_cache.wr:3074*/
+	/* field_cond: class_tid: 2, proto_header_cache.wr:3084*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -17083,7 +17123,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 2, em_flow_conflict_cache.rd:3076*/
+	/* cond_execute: class_tid: 2, em_flow_conflict_cache.rd:3086*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_WC_MATCH
@@ -17096,7 +17136,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* field_cond: class_tid: 2, em_flow_conflict_cache.rd:3079*/
+	/* field_cond: class_tid: 2, em_flow_conflict_cache.rd:3089*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -17105,12 +17145,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 2, control.em_flow_conflict_cache_miss:3081*/
+	/* cond_execute: class_tid: 2, control.em_flow_conflict_cache_miss:3091*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3082*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3092*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17119,7 +17159,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3084*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3094*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -17128,12 +17168,12 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3086*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3096*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3087*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3097*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17150,7 +17190,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3091*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3101*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17166,48 +17206,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
-	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3095*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3100*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
 	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3105*/
 	{
@@ -17223,7 +17221,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
 	},
 	{
@@ -17231,6 +17229,48 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
 	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3110*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3115*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3120*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -17251,7 +17291,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3115*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3125*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17268,7 +17308,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3119*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3129*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17285,7 +17325,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3123*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3133*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17302,7 +17342,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3127*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3137*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17319,7 +17359,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3131*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3141*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17336,7 +17376,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3135*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3145*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17353,7 +17393,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3139*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3149*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17370,7 +17410,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3143*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3153*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17387,7 +17427,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3147*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3157*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17404,7 +17444,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3151*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3161*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17421,7 +17461,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3155*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3165*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17438,7 +17478,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3159*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3169*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17455,7 +17495,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3163*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3173*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17465,6 +17505,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
 	},
@@ -17472,7 +17516,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3167*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3178*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -17489,7 +17533,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3171*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3182*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17502,7 +17546,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3174*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3185*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17515,7 +17559,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3177*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3188*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17532,7 +17576,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3181*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3192*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17545,7 +17589,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3184*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3195*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17562,7 +17606,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3188*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3199*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17575,7 +17619,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3191*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3202*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17596,7 +17640,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3196*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3207*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17613,7 +17657,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3200*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3211*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17634,7 +17678,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3205*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3216*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17655,7 +17699,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3210*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3221*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17672,7 +17716,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3214*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3225*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17689,7 +17733,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3218*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3229*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -17710,7 +17754,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3223*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3234*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -17727,7 +17771,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3227*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3238*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17744,7 +17788,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3231*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3242*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17761,7 +17805,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3235*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3246*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17774,7 +17818,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3238*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3249*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17787,7 +17831,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3241*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3252*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17804,7 +17848,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3245*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3256*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17821,7 +17865,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3249*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3260*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17834,7 +17878,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3252*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3263*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17847,7 +17891,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3255*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3266*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17864,7 +17908,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3259*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3270*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17881,7 +17925,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3263*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3274*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17894,7 +17938,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3266*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3277*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17907,7 +17951,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3269*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3280*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17924,7 +17968,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3273*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3284*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17941,7 +17985,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3277*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3288*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17954,7 +17998,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3280*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3291*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -17967,7 +18011,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3283*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3294*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -17984,7 +18028,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3287*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3298*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -18001,7 +18045,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3291*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3302*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -18014,7 +18058,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3294*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3305*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -18027,7 +18071,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3297*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3308*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -18044,7 +18088,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3301*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3312*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -18061,7 +18105,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3305*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3316*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -18074,7 +18118,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3308*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3319*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -18087,7 +18131,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3311*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3322*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -18104,7 +18148,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3315*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3326*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -18121,7 +18165,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3319*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3330*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -18134,7 +18178,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3322*/
+	/* field_cond: class_tid: 2, fkb_select.em_gen_template:3333*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -18147,7 +18191,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3325*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3336*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18156,7 +18200,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3327*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3338*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18165,7 +18209,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_CNTXT_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3329*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3340*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -18174,7 +18218,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3331*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3342*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -18183,17 +18227,17 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3333*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3344*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3334*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3345*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_RECYCLE_CNT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3335*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3346*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18210,7 +18254,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3339*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3350*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18227,7 +18271,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3343*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3354*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18244,7 +18288,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3347*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3358*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18261,7 +18305,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3351*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3362*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18282,7 +18326,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3356*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3367*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18303,7 +18347,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3361*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3372*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18324,7 +18368,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3366*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3377*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18345,7 +18389,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3371*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3382*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18366,7 +18410,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3376*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3387*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18387,7 +18431,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3381*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3392*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -18408,7 +18452,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3386*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3397*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -18429,7 +18473,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3391*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3402*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18446,7 +18490,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3395*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3406*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18463,7 +18507,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3399*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3410*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18480,7 +18524,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3403*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3414*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18497,7 +18541,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3407*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3418*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18514,7 +18558,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3411*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3422*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18531,7 +18575,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3415*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3426*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18548,7 +18592,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3419*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3430*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18565,7 +18609,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3423*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3434*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18582,7 +18626,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3427*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3438*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18599,7 +18643,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3431*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3442*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18616,7 +18660,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3435*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3446*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18633,7 +18677,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3439*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3450*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18650,7 +18694,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3443*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3454*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18667,7 +18711,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3447*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3458*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18684,7 +18728,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3451*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3462*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18701,7 +18745,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3455*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3466*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18718,7 +18762,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3459*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3470*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18735,7 +18779,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3463*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3474*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18752,7 +18796,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3467*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3478*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18769,7 +18813,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3471*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3482*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18786,7 +18830,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3475*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3486*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18803,7 +18847,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3479*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3490*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18820,7 +18864,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3483*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3494*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18837,7 +18881,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3487*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3498*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
@@ -18845,6 +18889,10 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
@@ -18853,114 +18901,11 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3491*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3495*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3499*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
 	/* field_cond: class_tid: 2, em_key_recipe.0:3503*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3506*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3509*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3512*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3515*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
@@ -18968,24 +18913,75 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3519*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3507*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_UDP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3512*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	.cond_operand = BNXT_ULP_HDR_BIT_O_TCP
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3516*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3519*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
 	},
 	/* field_cond: class_tid: 2, em_key_recipe.0:3522*/
 	{
@@ -18993,6 +18989,32 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_VNI
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3525*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN_GPE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_T_VXLAN_GPE_VNI
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3528*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
@@ -19004,7 +19026,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3526*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3532*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19017,7 +19039,37 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3529*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3535*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_DMAC
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3539*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_DMAC
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3542*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19034,7 +19086,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3533*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3546*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19047,7 +19099,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3536*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3549*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19064,7 +19116,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3540*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3553*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19077,7 +19129,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_SMAC
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3543*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3556*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19097,63 +19149,63 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3548*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3552*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3557*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
 	/* field_cond: class_tid: 2, em_key_recipe.0:3561*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3565*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3570*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3574*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19173,61 +19225,6 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3566*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3571*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3575*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
 	/* field_cond: class_tid: 2, em_key_recipe.0:3579*/
 	{
@@ -19243,6 +19240,61 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
 	},
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3584*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3588*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OO_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_OI_VLAN
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3592*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_IO_VLAN
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_II_VLAN
 	},
@@ -19250,7 +19302,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_II_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3584*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3597*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19271,7 +19323,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_IO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3589*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3602*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19288,7 +19340,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OI_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3593*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3606*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19305,7 +19357,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_OO_VLAN_VID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3597*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3610*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
@@ -19325,93 +19377,63 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3602*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3606*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
-	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3611*/
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
-	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
-	},
-	{
-	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
 	/* field_cond: class_tid: 2, em_key_recipe.0:3615*/
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
-	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
 	},
 	{
-	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
 	/* field_cond: class_tid: 2, em_key_recipe.0:3619*/
 	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_ETH
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_ETH_TYPE
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3624*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_L2_ONLY
+	},
+	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	.cond_operand = BNXT_ULP_HDR_BIT_O_ETH
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
-	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_ETH_TYPE
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3622*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3628*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19428,7 +19450,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3626*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3632*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19441,7 +19463,37 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3629*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3635*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
+	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_I_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_SRC_ADDR
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3639*/
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_HDR_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_SRC_ADDR
+	},
+	/* field_cond: class_tid: 2, em_key_recipe.0:3642*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19458,7 +19510,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3633*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3646*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19471,7 +19523,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3636*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3649*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19488,7 +19540,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3640*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3653*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19501,7 +19553,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3643*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3656*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19518,7 +19570,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3647*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3660*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19531,7 +19583,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3650*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3663*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19548,7 +19600,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3654*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3667*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19561,7 +19613,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3657*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3670*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19578,7 +19630,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3661*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3674*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19591,7 +19643,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3664*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3677*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19608,7 +19660,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3668*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3681*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19621,7 +19673,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_DST_ADDR
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3671*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3684*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19638,7 +19690,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3675*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3688*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19655,7 +19707,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3679*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3692*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19668,7 +19720,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3682*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3695*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19681,7 +19733,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3685*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3698*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19698,7 +19750,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3689*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3702*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19715,7 +19767,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3693*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3706*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19728,7 +19780,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3696*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3709*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19741,7 +19793,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_TTL
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3699*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3712*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19758,7 +19810,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3703*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3716*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19775,7 +19827,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3707*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3720*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19788,7 +19840,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3710*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3723*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19801,7 +19853,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3713*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3726*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19818,7 +19870,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3717*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3730*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19835,7 +19887,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3721*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3734*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19848,7 +19900,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3724*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3737*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19861,7 +19913,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3727*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3740*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19878,7 +19930,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3731*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3744*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19895,7 +19947,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3735*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3748*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19908,7 +19960,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3738*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3751*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19921,7 +19973,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3741*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3754*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19938,7 +19990,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3745*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3758*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19955,7 +20007,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3749*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3762*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19968,7 +20020,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV6_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3752*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3765*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -19981,7 +20033,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_IPV4_QOS
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3755*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3768*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -19998,7 +20050,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3759*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3772*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20015,7 +20067,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3763*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3776*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20028,7 +20080,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3766*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3779*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20041,7 +20093,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3769*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3782*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20058,7 +20110,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3773*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3786*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20075,7 +20127,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3777*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3790*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20088,7 +20140,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3780*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3793*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20101,7 +20153,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3783*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3796*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20118,7 +20170,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3787*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3800*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20135,7 +20187,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3791*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3804*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20148,7 +20200,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3794*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3807*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20161,7 +20213,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3797*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3810*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20178,7 +20230,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3801*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3814*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20195,7 +20247,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_I_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3805*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3818*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20208,7 +20260,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_key_recipe.0:3808*/
+	/* field_cond: class_tid: 2, em_key_recipe.0:3821*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_IS_TUNNEL
@@ -20221,7 +20273,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_FIELD_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_GLB_HF_ID_O_TCP_DST_PORT
 	},
-	/* field_cond: class_tid: 2, em_flow_conflict_cache.wr:3811*/
+	/* field_cond: class_tid: 2, em_flow_conflict_cache.wr:3824*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_GROUP_ID
@@ -20230,7 +20282,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_INNER_LOOP
 	},
-	/* cond_execute: class_tid: 2, control.field_sig_validation:3813*/
+	/* cond_execute: class_tid: 2, control.field_sig_validation:3826*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_CC
@@ -20239,7 +20291,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_FLOW_SIG_ID
 	},
-	/* cond_execute: class_tid: 2, control.outer_loop_add_check:3815*/
+	/* cond_execute: class_tid: 2, control.outer_loop_add_check:3828*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
@@ -20248,7 +20300,7 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_ADD
 	},
-	/* cond_execute: class_tid: 2, em.egress_generic_template:3817*/
+	/* cond_execute: class_tid: 2, em.egress_generic_template:3830*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_WC_MATCH
@@ -20265,27 +20317,27 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_NOT_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* cond_execute: class_tid: 2, control.em_add_check:3821*/
+	/* cond_execute: class_tid: 2, control.em_add_check:3834*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_EM_INSERT_FAIL
 	},
-	/* cond_execute: class_tid: 2, control.outer_loop_check:3822*/
+	/* cond_execute: class_tid: 2, control.outer_loop_check:3835*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_OUTER_LOOP
 	},
-	/* cond_execute: class_tid: 3, control.ing_0:3823*/
+	/* cond_execute: class_tid: 3, control.ing_0:3836*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: class_tid: 3, control.non_vfr_egr_2:3824*/
+	/* cond_execute: class_tid: 3, control.non_vfr_egr_2:3837*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: class_tid: 3, tunnel_gparse_cache.def_cust_tun_rd:3825*/
+	/* cond_execute: class_tid: 3, tunnel_gparse_cache.def_cust_tun_rd:3838*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_STATIC_VXLAN_PORT
@@ -20294,37 +20346,37 @@ struct bnxt_ulp_mapper_cond_info ulp_thor_class_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_STATIC_VXLAN_IP_PORT
 	},
-	/* cond_execute: class_tid: 3, control.default_custom_tunnel:3827*/
+	/* cond_execute: class_tid: 3, control.default_custom_tunnel:3840*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: class_tid: 3, cust_tunnel.def_conf_vxlan_port:3828*/
+	/* cond_execute: class_tid: 3, cust_tunnel.def_conf_vxlan_port:3841*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_STATIC_VXLAN_PORT
 	},
-	/* cond_execute: class_tid: 3, cust_tunnel.def_conf_vxlan_ip_port:3829*/
+	/* cond_execute: class_tid: 3, cust_tunnel.def_conf_vxlan_ip_port:3842*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_CF_BIT_STATIC_VXLAN_IP_PORT
 	},
-	/* cond_execute: class_tid: 4, control.prof_tcam_cache.vfr_glb_act_rec_rd.0:3830*/
+	/* cond_execute: class_tid: 4, control.prof_tcam_cache.vfr_glb_act_rec_rd.0:3843*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: class_tid: 4, control.vf_2_vfr.0:3831*/
+	/* cond_execute: class_tid: 4, control.vf_2_vfr.0:3844*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: class_tid: 4, control.prof_tcam_cache.vfr.0:3832*/
+	/* cond_execute: class_tid: 4, control.prof_tcam_cache.vfr.0:3845*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: class_tid: 4, control.0:3833*/
+	/* cond_execute: class_tid: 4, control.0:3846*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
@@ -21637,6 +21689,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 			103 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opr2 = {
+		(ULP_THOR_SYM_CHAIN_META_VAL >> 8) & 0xff,
+		ULP_THOR_SYM_CHAIN_META_VAL & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -22117,12 +22173,16 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.description = "metadata",
 		.field_bit_size = 16,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
 			(111 >> 8) & 0xff,
 			111 & 0xff,
-			(1 >> 8) & 0xff,
-			1 & 0xff},
+			(2 >> 8) & 0xff,
+			2 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opr2 = {
+		(ULP_THOR_SYM_CHAIN_META_VAL >> 8) & 0xff,
+		ULP_THOR_SYM_CHAIN_META_VAL & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
@@ -22142,8 +22202,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(138 >> 8) & 0xff,
-			138 & 0xff,
+			(139 >> 8) & 0xff,
+			139 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22213,8 +22273,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(141 >> 8) & 0xff,
-			141 & 0xff,
+			(142 >> 8) & 0xff,
+			142 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22285,8 +22345,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(398 >> 8) & 0xff,
-			398 & 0xff,
+			(400 >> 8) & 0xff,
+			400 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22349,8 +22409,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(417 >> 8) & 0xff,
-			417 & 0xff,
+			(419 >> 8) & 0xff,
+			419 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22365,8 +22425,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(425 >> 8) & 0xff,
-			425 & 0xff,
+			(427 >> 8) & 0xff,
+			427 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22385,8 +22445,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(433 >> 8) & 0xff,
-			433 & 0xff,
+			(435 >> 8) & 0xff,
+			435 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22401,8 +22461,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(441 >> 8) & 0xff,
-			441 & 0xff,
+			(443 >> 8) & 0xff,
+			443 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22419,8 +22479,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(449 >> 8) & 0xff,
-			449 & 0xff,
+			(451 >> 8) & 0xff,
+			451 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22435,8 +22495,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(457 >> 8) & 0xff,
-			457 & 0xff,
+			(459 >> 8) & 0xff,
+			459 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22453,8 +22513,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(465 >> 8) & 0xff,
-			465 & 0xff,
+			(467 >> 8) & 0xff,
+			467 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22469,8 +22529,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(473 >> 8) & 0xff,
-			473 & 0xff,
+			(475 >> 8) & 0xff,
+			475 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22539,8 +22599,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(481 >> 8) & 0xff,
-			481 & 0xff,
+			(483 >> 8) & 0xff,
+			483 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22559,8 +22619,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(489 >> 8) & 0xff,
-			489 & 0xff,
+			(491 >> 8) & 0xff,
+			491 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22575,8 +22635,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(497 >> 8) & 0xff,
-			497 & 0xff,
+			(499 >> 8) & 0xff,
+			499 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22595,8 +22655,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(505 >> 8) & 0xff,
-			505 & 0xff,
+			(507 >> 8) & 0xff,
+			507 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22611,8 +22671,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(513 >> 8) & 0xff,
-			513 & 0xff,
+			(515 >> 8) & 0xff,
+			515 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22629,8 +22689,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(521 >> 8) & 0xff,
-			521 & 0xff,
+			(523 >> 8) & 0xff,
+			523 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22645,8 +22705,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(529 >> 8) & 0xff,
-			529 & 0xff,
+			(531 >> 8) & 0xff,
+			531 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22673,8 +22733,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(537 >> 8) & 0xff,
-			537 & 0xff,
+			(539 >> 8) & 0xff,
+			539 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22701,8 +22761,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(543 >> 8) & 0xff,
-			543 & 0xff,
+			(545 >> 8) & 0xff,
+			545 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22737,8 +22797,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(549 >> 8) & 0xff,
-			549 & 0xff,
+			(551 >> 8) & 0xff,
+			551 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22750,8 +22810,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(550 >> 8) & 0xff,
-			550 & 0xff,
+			(552 >> 8) & 0xff,
+			552 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22765,8 +22825,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(551 >> 8) & 0xff,
-			551 & 0xff,
+			(553 >> 8) & 0xff,
+			553 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22781,8 +22841,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(555 >> 8) & 0xff,
-			555 & 0xff,
+			(557 >> 8) & 0xff,
+			557 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22807,8 +22867,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(559 >> 8) & 0xff,
-			559 & 0xff,
+			(561 >> 8) & 0xff,
+			561 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22841,8 +22901,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(563 >> 8) & 0xff,
-			563 & 0xff,
+			(565 >> 8) & 0xff,
+			565 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22857,8 +22917,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(575 >> 8) & 0xff,
-			575 & 0xff,
+			(577 >> 8) & 0xff,
+			577 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22875,8 +22935,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(587 >> 8) & 0xff,
-			587 & 0xff,
+			(589 >> 8) & 0xff,
+			589 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22888,8 +22948,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(588 >> 8) & 0xff,
-			588 & 0xff,
+			(590 >> 8) & 0xff,
+			590 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22911,8 +22971,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(589 >> 8) & 0xff,
-			589 & 0xff,
+			(591 >> 8) & 0xff,
+			591 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22928,8 +22988,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(590 >> 8) & 0xff,
-			590 & 0xff,
+			(592 >> 8) & 0xff,
+			592 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22944,8 +23004,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(594 >> 8) & 0xff,
-			594 & 0xff,
+			(596 >> 8) & 0xff,
+			596 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -22964,8 +23024,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(598 >> 8) & 0xff,
-			598 & 0xff,
+			(600 >> 8) & 0xff,
+			600 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -22980,8 +23040,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(602 >> 8) & 0xff,
-			602 & 0xff,
+			(604 >> 8) & 0xff,
+			604 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -22998,8 +23058,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(606 >> 8) & 0xff,
-			606 & 0xff,
+			(608 >> 8) & 0xff,
+			608 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23014,8 +23074,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(610 >> 8) & 0xff,
-			610 & 0xff,
+			(612 >> 8) & 0xff,
+			612 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -23032,8 +23092,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(614 >> 8) & 0xff,
-			614 & 0xff,
+			(616 >> 8) & 0xff,
+			616 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23048,8 +23108,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(619 >> 8) & 0xff,
-			619 & 0xff,
+			(621 >> 8) & 0xff,
+			621 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23104,8 +23164,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(624 >> 8) & 0xff,
-			624 & 0xff,
+			(626 >> 8) & 0xff,
+			626 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23124,8 +23184,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(628 >> 8) & 0xff,
-			628 & 0xff,
+			(630 >> 8) & 0xff,
+			630 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23140,8 +23200,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(632 >> 8) & 0xff,
-			632 & 0xff,
+			(634 >> 8) & 0xff,
+			634 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23160,8 +23220,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(636 >> 8) & 0xff,
-			636 & 0xff,
+			(638 >> 8) & 0xff,
+			638 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23176,8 +23236,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(640 >> 8) & 0xff,
-			640 & 0xff,
+			(642 >> 8) & 0xff,
+			642 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -23202,8 +23262,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(644 >> 8) & 0xff,
-			644 & 0xff,
+			(646 >> 8) & 0xff,
+			646 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23230,8 +23290,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(648 >> 8) & 0xff,
-			648 & 0xff,
+			(650 >> 8) & 0xff,
+			650 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23255,8 +23315,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(651 >> 8) & 0xff,
-			651 & 0xff,
+			(653 >> 8) & 0xff,
+			653 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23286,8 +23346,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(654 >> 8) & 0xff,
-			654 & 0xff,
+			(656 >> 8) & 0xff,
+			656 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23299,8 +23359,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(655 >> 8) & 0xff,
-			655 & 0xff,
+			(657 >> 8) & 0xff,
+			657 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -23322,8 +23382,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(656 >> 8) & 0xff,
-			656 & 0xff,
+			(658 >> 8) & 0xff,
+			658 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -23398,8 +23458,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(660 >> 8) & 0xff,
-			660 & 0xff,
+			(662 >> 8) & 0xff,
+			662 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -23484,8 +23544,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(662 >> 8) & 0xff,
-			662 & 0xff,
+			(664 >> 8) & 0xff,
+			664 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23497,8 +23557,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(664 >> 8) & 0xff,
-			664 & 0xff,
+			(666 >> 8) & 0xff,
+			666 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -23515,8 +23575,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(666 >> 8) & 0xff,
-			666 & 0xff,
+			(668 >> 8) & 0xff,
+			668 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23528,8 +23588,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(668 >> 8) & 0xff,
-			668 & 0xff,
+			(670 >> 8) & 0xff,
+			670 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -23546,8 +23606,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(670 >> 8) & 0xff,
-			670 & 0xff,
+			(672 >> 8) & 0xff,
+			672 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -23559,8 +23619,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(671 >> 8) & 0xff,
-			671 & 0xff,
+			(673 >> 8) & 0xff,
+			673 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -23577,8 +23637,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(672 >> 8) & 0xff,
-			672 & 0xff,
+			(674 >> 8) & 0xff,
+			674 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23593,8 +23653,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(676 >> 8) & 0xff,
-			676 & 0xff,
+			(678 >> 8) & 0xff,
+			678 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23611,8 +23671,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(680 >> 8) & 0xff,
-			680 & 0xff,
+			(682 >> 8) & 0xff,
+			682 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23627,8 +23687,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(684 >> 8) & 0xff,
-			684 & 0xff,
+			(686 >> 8) & 0xff,
+			686 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23645,8 +23705,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(688 >> 8) & 0xff,
-			688 & 0xff,
+			(690 >> 8) & 0xff,
+			690 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23661,8 +23721,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(693 >> 8) & 0xff,
-			693 & 0xff,
+			(695 >> 8) & 0xff,
+			695 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23679,8 +23739,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(698 >> 8) & 0xff,
-			698 & 0xff,
+			(700 >> 8) & 0xff,
+			700 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23698,8 +23758,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(708 >> 8) & 0xff,
-			708 & 0xff,
+			(710 >> 8) & 0xff,
+			710 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23719,8 +23779,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(718 >> 8) & 0xff,
-			718 & 0xff,
+			(720 >> 8) & 0xff,
+			720 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23735,8 +23795,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(723 >> 8) & 0xff,
-			723 & 0xff,
+			(725 >> 8) & 0xff,
+			725 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23753,8 +23813,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(728 >> 8) & 0xff,
-			728 & 0xff,
+			(730 >> 8) & 0xff,
+			730 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23769,8 +23829,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(732 >> 8) & 0xff,
-			732 & 0xff,
+			(734 >> 8) & 0xff,
+			734 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23787,8 +23847,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(736 >> 8) & 0xff,
-			736 & 0xff,
+			(738 >> 8) & 0xff,
+			738 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -23803,8 +23863,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(741 >> 8) & 0xff,
-			741 & 0xff,
+			(743 >> 8) & 0xff,
+			743 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -23821,8 +23881,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(746 >> 8) & 0xff,
-			746 & 0xff,
+			(748 >> 8) & 0xff,
+			748 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23837,8 +23897,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(750 >> 8) & 0xff,
-			750 & 0xff,
+			(752 >> 8) & 0xff,
+			752 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23855,8 +23915,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(754 >> 8) & 0xff,
-			754 & 0xff,
+			(756 >> 8) & 0xff,
+			756 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23871,8 +23931,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(758 >> 8) & 0xff,
-			758 & 0xff,
+			(760 >> 8) & 0xff,
+			760 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23889,8 +23949,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(762 >> 8) & 0xff,
-			762 & 0xff,
+			(764 >> 8) & 0xff,
+			764 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23908,8 +23968,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(770 >> 8) & 0xff,
-			770 & 0xff,
+			(772 >> 8) & 0xff,
+			772 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23929,8 +23989,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(778 >> 8) & 0xff,
-			778 & 0xff,
+			(780 >> 8) & 0xff,
+			780 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23948,8 +24008,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(786 >> 8) & 0xff,
-			786 & 0xff,
+			(788 >> 8) & 0xff,
+			788 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23969,8 +24029,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(794 >> 8) & 0xff,
-			794 & 0xff,
+			(796 >> 8) & 0xff,
+			796 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -23988,8 +24048,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(802 >> 8) & 0xff,
-			802 & 0xff,
+			(804 >> 8) & 0xff,
+			804 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24009,8 +24069,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(810 >> 8) & 0xff,
-			810 & 0xff,
+			(812 >> 8) & 0xff,
+			812 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24028,8 +24088,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(818 >> 8) & 0xff,
-			818 & 0xff,
+			(820 >> 8) & 0xff,
+			820 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24049,10 +24109,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(826 >> 8) & 0xff,
-			826 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(828 >> 8) & 0xff,
+			828 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT >> 8) & 0xff,
@@ -24068,10 +24128,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(834 >> 8) & 0xff,
-			834 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(837 >> 8) & 0xff,
+			837 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT >> 8) & 0xff,
@@ -24089,8 +24149,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(842 >> 8) & 0xff,
-			842 & 0xff,
+			(846 >> 8) & 0xff,
+			846 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24108,8 +24168,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(848 >> 8) & 0xff,
-			848 & 0xff,
+			(852 >> 8) & 0xff,
+			852 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24129,8 +24189,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(854 >> 8) & 0xff,
-			854 & 0xff,
+			(858 >> 8) & 0xff,
+			858 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24148,8 +24208,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(861 >> 8) & 0xff,
-			861 & 0xff,
+			(865 >> 8) & 0xff,
+			865 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24169,8 +24229,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(868 >> 8) & 0xff,
-			868 & 0xff,
+			(872 >> 8) & 0xff,
+			872 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24188,8 +24248,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(875 >> 8) & 0xff,
-			875 & 0xff,
+			(879 >> 8) & 0xff,
+			879 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24209,8 +24269,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(882 >> 8) & 0xff,
-			882 & 0xff,
+			(886 >> 8) & 0xff,
+			886 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24228,8 +24288,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(891 >> 8) & 0xff,
-			891 & 0xff,
+			(895 >> 8) & 0xff,
+			895 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24249,8 +24309,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(900 >> 8) & 0xff,
-			900 & 0xff,
+			(904 >> 8) & 0xff,
+			904 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24268,8 +24328,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(918 >> 8) & 0xff,
-			918 & 0xff,
+			(922 >> 8) & 0xff,
+			922 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24289,8 +24349,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(936 >> 8) & 0xff,
-			936 & 0xff,
+			(940 >> 8) & 0xff,
+			940 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24308,8 +24368,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(945 >> 8) & 0xff,
-			945 & 0xff,
+			(949 >> 8) & 0xff,
+			949 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24329,8 +24389,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(954 >> 8) & 0xff,
-			954 & 0xff,
+			(958 >> 8) & 0xff,
+			958 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24348,8 +24408,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(961 >> 8) & 0xff,
-			961 & 0xff,
+			(965 >> 8) & 0xff,
+			965 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24369,8 +24429,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(968 >> 8) & 0xff,
-			968 & 0xff,
+			(972 >> 8) & 0xff,
+			972 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24388,8 +24448,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(975 >> 8) & 0xff,
-			975 & 0xff,
+			(979 >> 8) & 0xff,
+			979 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24409,8 +24469,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(982 >> 8) & 0xff,
-			982 & 0xff,
+			(986 >> 8) & 0xff,
+			986 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24428,8 +24488,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(989 >> 8) & 0xff,
-			989 & 0xff,
+			(993 >> 8) & 0xff,
+			993 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24449,8 +24509,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(996 >> 8) & 0xff,
-			996 & 0xff,
+			(1000 >> 8) & 0xff,
+			1000 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24468,8 +24528,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1003 >> 8) & 0xff,
-			1003 & 0xff,
+			(1007 >> 8) & 0xff,
+			1007 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24489,8 +24549,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1010 >> 8) & 0xff,
-			1010 & 0xff,
+			(1014 >> 8) & 0xff,
+			1014 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24508,8 +24568,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1024 >> 8) & 0xff,
-			1024 & 0xff,
+			(1028 >> 8) & 0xff,
+			1028 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24529,8 +24589,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1038 >> 8) & 0xff,
-			1038 & 0xff,
+			(1042 >> 8) & 0xff,
+			1042 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -24545,8 +24605,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1062 >> 8) & 0xff,
-			1062 & 0xff,
+			(1066 >> 8) & 0xff,
+			1066 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -24565,8 +24625,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1086 >> 8) & 0xff,
-			1086 & 0xff,
+			(1090 >> 8) & 0xff,
+			1090 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24584,8 +24644,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1100 >> 8) & 0xff,
-			1100 & 0xff,
+			(1104 >> 8) & 0xff,
+			1104 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24605,8 +24665,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1114 >> 8) & 0xff,
-			1114 & 0xff,
+			(1118 >> 8) & 0xff,
+			1118 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24624,8 +24684,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1130 >> 8) & 0xff,
-			1130 & 0xff,
+			(1134 >> 8) & 0xff,
+			1134 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24645,8 +24705,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1146 >> 8) & 0xff,
-			1146 & 0xff,
+			(1150 >> 8) & 0xff,
+			1150 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24664,8 +24724,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1162 >> 8) & 0xff,
-			1162 & 0xff,
+			(1166 >> 8) & 0xff,
+			1166 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24694,8 +24754,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1178 >> 8) & 0xff,
-			1178 & 0xff,
+			(1182 >> 8) & 0xff,
+			1182 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -24779,8 +24839,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1183 >> 8) & 0xff,
-			1183 & 0xff,
+			(1187 >> 8) & 0xff,
+			1187 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -24861,8 +24921,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1432 >> 8) & 0xff,
-			1432 & 0xff,
+			(1437 >> 8) & 0xff,
+			1437 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -24874,8 +24934,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1434 >> 8) & 0xff,
-			1434 & 0xff,
+			(1439 >> 8) & 0xff,
+			1439 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -24892,8 +24952,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1436 >> 8) & 0xff,
-			1436 & 0xff,
+			(1441 >> 8) & 0xff,
+			1441 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -24905,8 +24965,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1438 >> 8) & 0xff,
-			1438 & 0xff,
+			(1443 >> 8) & 0xff,
+			1443 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -24923,8 +24983,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1440 >> 8) & 0xff,
-			1440 & 0xff,
+			(1445 >> 8) & 0xff,
+			1445 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -24936,8 +24996,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1441 >> 8) & 0xff,
-			1441 & 0xff,
+			(1446 >> 8) & 0xff,
+			1446 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -24954,8 +25014,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1442 >> 8) & 0xff,
-			1442 & 0xff,
+			(1447 >> 8) & 0xff,
+			1447 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -24967,8 +25027,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1447 >> 8) & 0xff,
-			1447 & 0xff,
+			(1452 >> 8) & 0xff,
+			1452 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -24985,8 +25045,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1452 >> 8) & 0xff,
-			1452 & 0xff,
+			(1457 >> 8) & 0xff,
+			1457 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -24998,8 +25058,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1456 >> 8) & 0xff,
-			1456 & 0xff,
+			(1461 >> 8) & 0xff,
+			1461 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25016,8 +25076,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1460 >> 8) & 0xff,
-			1460 & 0xff,
+			(1465 >> 8) & 0xff,
+			1465 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25029,8 +25089,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1465 >> 8) & 0xff,
-			1465 & 0xff,
+			(1470 >> 8) & 0xff,
+			1470 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25047,8 +25107,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1470 >> 8) & 0xff,
-			1470 & 0xff,
+			(1475 >> 8) & 0xff,
+			1475 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25063,8 +25123,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1480 >> 8) & 0xff,
-			1480 & 0xff,
+			(1485 >> 8) & 0xff,
+			1485 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25084,8 +25144,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1490 >> 8) & 0xff,
-			1490 & 0xff,
+			(1495 >> 8) & 0xff,
+			1495 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25097,8 +25157,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1495 >> 8) & 0xff,
-			1495 & 0xff,
+			(1500 >> 8) & 0xff,
+			1500 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25115,8 +25175,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1500 >> 8) & 0xff,
-			1500 & 0xff,
+			(1505 >> 8) & 0xff,
+			1505 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25128,8 +25188,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1504 >> 8) & 0xff,
-			1504 & 0xff,
+			(1509 >> 8) & 0xff,
+			1509 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25146,8 +25206,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1508 >> 8) & 0xff,
-			1508 & 0xff,
+			(1513 >> 8) & 0xff,
+			1513 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25159,8 +25219,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1512 >> 8) & 0xff,
-			1512 & 0xff,
+			(1517 >> 8) & 0xff,
+			1517 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25177,8 +25237,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1516 >> 8) & 0xff,
-			1516 & 0xff,
+			(1521 >> 8) & 0xff,
+			1521 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25190,8 +25250,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1520 >> 8) & 0xff,
-			1520 & 0xff,
+			(1525 >> 8) & 0xff,
+			1525 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25208,8 +25268,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1524 >> 8) & 0xff,
-			1524 & 0xff,
+			(1529 >> 8) & 0xff,
+			1529 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25221,8 +25281,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1528 >> 8) & 0xff,
-			1528 & 0xff,
+			(1533 >> 8) & 0xff,
+			1533 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25239,8 +25299,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1532 >> 8) & 0xff,
-			1532 & 0xff,
+			(1537 >> 8) & 0xff,
+			1537 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25255,8 +25315,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1540 >> 8) & 0xff,
-			1540 & 0xff,
+			(1545 >> 8) & 0xff,
+			1545 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25276,8 +25336,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1548 >> 8) & 0xff,
-			1548 & 0xff,
+			(1553 >> 8) & 0xff,
+			1553 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25292,8 +25352,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1556 >> 8) & 0xff,
-			1556 & 0xff,
+			(1561 >> 8) & 0xff,
+			1561 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25313,8 +25373,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1564 >> 8) & 0xff,
-			1564 & 0xff,
+			(1569 >> 8) & 0xff,
+			1569 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25329,8 +25389,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1572 >> 8) & 0xff,
-			1572 & 0xff,
+			(1577 >> 8) & 0xff,
+			1577 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25350,8 +25410,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1580 >> 8) & 0xff,
-			1580 & 0xff,
+			(1585 >> 8) & 0xff,
+			1585 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25366,8 +25426,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1588 >> 8) & 0xff,
-			1588 & 0xff,
+			(1593 >> 8) & 0xff,
+			1593 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25387,10 +25447,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1596 >> 8) & 0xff,
-			1596 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(1601 >> 8) & 0xff,
+			1601 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
@@ -25403,10 +25463,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1604 >> 8) & 0xff,
-			1604 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(1610 >> 8) & 0xff,
+			1610 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT >> 8) & 0xff,
@@ -25424,8 +25484,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1612 >> 8) & 0xff,
-			1612 & 0xff,
+			(1619 >> 8) & 0xff,
+			1619 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25440,8 +25500,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1618 >> 8) & 0xff,
-			1618 & 0xff,
+			(1625 >> 8) & 0xff,
+			1625 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25461,8 +25521,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1624 >> 8) & 0xff,
-			1624 & 0xff,
+			(1631 >> 8) & 0xff,
+			1631 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25477,8 +25537,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1633 >> 8) & 0xff,
-			1633 & 0xff,
+			(1640 >> 8) & 0xff,
+			1640 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25498,8 +25558,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1642 >> 8) & 0xff,
-			1642 & 0xff,
+			(1649 >> 8) & 0xff,
+			1649 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25514,8 +25574,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1649 >> 8) & 0xff,
-			1649 & 0xff,
+			(1656 >> 8) & 0xff,
+			1656 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25535,8 +25595,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1656 >> 8) & 0xff,
-			1656 & 0xff,
+			(1663 >> 8) & 0xff,
+			1663 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25551,8 +25611,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1665 >> 8) & 0xff,
-			1665 & 0xff,
+			(1672 >> 8) & 0xff,
+			1672 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25572,8 +25632,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1674 >> 8) & 0xff,
-			1674 & 0xff,
+			(1681 >> 8) & 0xff,
+			1681 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25588,8 +25648,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1692 >> 8) & 0xff,
-			1692 & 0xff,
+			(1699 >> 8) & 0xff,
+			1699 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25609,8 +25669,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1710 >> 8) & 0xff,
-			1710 & 0xff,
+			(1717 >> 8) & 0xff,
+			1717 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25625,8 +25685,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1719 >> 8) & 0xff,
-			1719 & 0xff,
+			(1726 >> 8) & 0xff,
+			1726 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25646,8 +25706,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1728 >> 8) & 0xff,
-			1728 & 0xff,
+			(1735 >> 8) & 0xff,
+			1735 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25662,8 +25722,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1735 >> 8) & 0xff,
-			1735 & 0xff,
+			(1742 >> 8) & 0xff,
+			1742 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25683,8 +25743,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1742 >> 8) & 0xff,
-			1742 & 0xff,
+			(1749 >> 8) & 0xff,
+			1749 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25699,8 +25759,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1749 >> 8) & 0xff,
-			1749 & 0xff,
+			(1756 >> 8) & 0xff,
+			1756 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25720,8 +25780,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1756 >> 8) & 0xff,
-			1756 & 0xff,
+			(1763 >> 8) & 0xff,
+			1763 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25736,8 +25796,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1763 >> 8) & 0xff,
-			1763 & 0xff,
+			(1770 >> 8) & 0xff,
+			1770 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25757,8 +25817,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1770 >> 8) & 0xff,
-			1770 & 0xff,
+			(1777 >> 8) & 0xff,
+			1777 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25773,8 +25833,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1777 >> 8) & 0xff,
-			1777 & 0xff,
+			(1784 >> 8) & 0xff,
+			1784 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25794,8 +25854,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1784 >> 8) & 0xff,
-			1784 & 0xff,
+			(1791 >> 8) & 0xff,
+			1791 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25810,8 +25870,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1798 >> 8) & 0xff,
-			1798 & 0xff,
+			(1805 >> 8) & 0xff,
+			1805 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25831,8 +25891,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1812 >> 8) & 0xff,
-			1812 & 0xff,
+			(1819 >> 8) & 0xff,
+			1819 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25847,8 +25907,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1826 >> 8) & 0xff,
-			1826 & 0xff,
+			(1833 >> 8) & 0xff,
+			1833 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25868,8 +25928,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1840 >> 8) & 0xff,
-			1840 & 0xff,
+			(1847 >> 8) & 0xff,
+			1847 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25884,8 +25944,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1854 >> 8) & 0xff,
-			1854 & 0xff,
+			(1861 >> 8) & 0xff,
+			1861 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25905,8 +25965,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1868 >> 8) & 0xff,
-			1868 & 0xff,
+			(1875 >> 8) & 0xff,
+			1875 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25921,8 +25981,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1882 >> 8) & 0xff,
-			1882 & 0xff,
+			(1889 >> 8) & 0xff,
+			1889 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -25942,8 +26002,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1896 >> 8) & 0xff,
-			1896 & 0xff,
+			(1903 >> 8) & 0xff,
+			1903 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -25958,8 +26018,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1910 >> 8) & 0xff,
-			1910 & 0xff,
+			(1917 >> 8) & 0xff,
+			1917 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26002,8 +26062,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1924 >> 8) & 0xff,
-			1924 & 0xff,
+			(1931 >> 8) & 0xff,
+			1931 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -26135,8 +26195,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1960 >> 8) & 0xff,
-			1960 & 0xff,
+			(1967 >> 8) & 0xff,
+			1967 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26151,8 +26211,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1962 >> 8) & 0xff,
-			1962 & 0xff,
+			(1969 >> 8) & 0xff,
+			1969 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26169,8 +26229,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1964 >> 8) & 0xff,
-			1964 & 0xff,
+			(1971 >> 8) & 0xff,
+			1971 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26185,8 +26245,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1966 >> 8) & 0xff,
-			1966 & 0xff,
+			(1973 >> 8) & 0xff,
+			1973 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26203,8 +26263,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1968 >> 8) & 0xff,
-			1968 & 0xff,
+			(1975 >> 8) & 0xff,
+			1975 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26219,8 +26279,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1970 >> 8) & 0xff,
-			1970 & 0xff,
+			(1977 >> 8) & 0xff,
+			1977 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26237,8 +26297,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1972 >> 8) & 0xff,
-			1972 & 0xff,
+			(1979 >> 8) & 0xff,
+			1979 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26253,8 +26313,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1974 >> 8) & 0xff,
-			1974 & 0xff,
+			(1981 >> 8) & 0xff,
+			1981 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26271,8 +26331,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1976 >> 8) & 0xff,
-			1976 & 0xff,
+			(1983 >> 8) & 0xff,
+			1983 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26287,8 +26347,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1978 >> 8) & 0xff,
-			1978 & 0xff,
+			(1985 >> 8) & 0xff,
+			1985 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26305,8 +26365,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1980 >> 8) & 0xff,
-			1980 & 0xff,
+			(1987 >> 8) & 0xff,
+			1987 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26321,8 +26381,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1982 >> 8) & 0xff,
-			1982 & 0xff,
+			(1989 >> 8) & 0xff,
+			1989 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26339,8 +26399,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1984 >> 8) & 0xff,
-			1984 & 0xff,
+			(1991 >> 8) & 0xff,
+			1991 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26355,8 +26415,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1986 >> 8) & 0xff,
-			1986 & 0xff,
+			(1993 >> 8) & 0xff,
+			1993 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26423,8 +26483,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1989 >> 8) & 0xff,
-			1989 & 0xff,
+			(1996 >> 8) & 0xff,
+			1996 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26439,8 +26499,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1991 >> 8) & 0xff,
-			1991 & 0xff,
+			(1998 >> 8) & 0xff,
+			1998 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26457,8 +26517,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1993 >> 8) & 0xff,
-			1993 & 0xff,
+			(2000 >> 8) & 0xff,
+			2000 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26473,8 +26533,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1995 >> 8) & 0xff,
-			1995 & 0xff,
+			(2002 >> 8) & 0xff,
+			2002 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26491,8 +26551,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1997 >> 8) & 0xff,
-			1997 & 0xff,
+			(2004 >> 8) & 0xff,
+			2004 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26507,8 +26567,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1999 >> 8) & 0xff,
-			1999 & 0xff,
+			(2006 >> 8) & 0xff,
+			2006 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26525,8 +26585,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2001 >> 8) & 0xff,
-			2001 & 0xff,
+			(2008 >> 8) & 0xff,
+			2008 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26541,8 +26601,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2003 >> 8) & 0xff,
-			2003 & 0xff,
+			(2010 >> 8) & 0xff,
+			2010 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26559,8 +26619,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2005 >> 8) & 0xff,
-			2005 & 0xff,
+			(2012 >> 8) & 0xff,
+			2012 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26575,8 +26635,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2007 >> 8) & 0xff,
-			2007 & 0xff,
+			(2014 >> 8) & 0xff,
+			2014 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26593,8 +26653,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2009 >> 8) & 0xff,
-			2009 & 0xff,
+			(2016 >> 8) & 0xff,
+			2016 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26609,8 +26669,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2011 >> 8) & 0xff,
-			2011 & 0xff,
+			(2018 >> 8) & 0xff,
+			2018 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26627,8 +26687,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2013 >> 8) & 0xff,
-			2013 & 0xff,
+			(2020 >> 8) & 0xff,
+			2020 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26643,8 +26703,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2015 >> 8) & 0xff,
-			2015 & 0xff,
+			(2022 >> 8) & 0xff,
+			2022 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -26716,8 +26776,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(2027 >> 8) & 0xff,
-			2027 & 0xff,
+			(2034 >> 8) & 0xff,
+			2034 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -26787,8 +26847,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(2030 >> 8) & 0xff,
-			2030 & 0xff,
+			(2037 >> 8) & 0xff,
+			2037 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -26859,8 +26919,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(2290 >> 8) & 0xff,
-			2290 & 0xff,
+			(2298 >> 8) & 0xff,
+			2298 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -26923,8 +26983,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2309 >> 8) & 0xff,
-			2309 & 0xff,
+			(2317 >> 8) & 0xff,
+			2317 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -26939,8 +26999,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2317 >> 8) & 0xff,
-			2317 & 0xff,
+			(2325 >> 8) & 0xff,
+			2325 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -26959,8 +27019,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2325 >> 8) & 0xff,
-			2325 & 0xff,
+			(2333 >> 8) & 0xff,
+			2333 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -26975,8 +27035,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2333 >> 8) & 0xff,
-			2333 & 0xff,
+			(2341 >> 8) & 0xff,
+			2341 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -26993,8 +27053,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2341 >> 8) & 0xff,
-			2341 & 0xff,
+			(2349 >> 8) & 0xff,
+			2349 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27009,8 +27069,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2349 >> 8) & 0xff,
-			2349 & 0xff,
+			(2357 >> 8) & 0xff,
+			2357 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27027,8 +27087,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2357 >> 8) & 0xff,
-			2357 & 0xff,
+			(2365 >> 8) & 0xff,
+			2365 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27043,8 +27103,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2365 >> 8) & 0xff,
-			2365 & 0xff,
+			(2373 >> 8) & 0xff,
+			2373 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27113,8 +27173,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2373 >> 8) & 0xff,
-			2373 & 0xff,
+			(2381 >> 8) & 0xff,
+			2381 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27133,8 +27193,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2381 >> 8) & 0xff,
-			2381 & 0xff,
+			(2389 >> 8) & 0xff,
+			2389 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27149,8 +27209,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2389 >> 8) & 0xff,
-			2389 & 0xff,
+			(2397 >> 8) & 0xff,
+			2397 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27169,8 +27229,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2397 >> 8) & 0xff,
-			2397 & 0xff,
+			(2405 >> 8) & 0xff,
+			2405 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27185,8 +27245,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2405 >> 8) & 0xff,
-			2405 & 0xff,
+			(2413 >> 8) & 0xff,
+			2413 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27203,8 +27263,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2413 >> 8) & 0xff,
-			2413 & 0xff,
+			(2421 >> 8) & 0xff,
+			2421 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27219,8 +27279,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2421 >> 8) & 0xff,
-			2421 & 0xff,
+			(2429 >> 8) & 0xff,
+			2429 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27247,8 +27307,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2429 >> 8) & 0xff,
-			2429 & 0xff,
+			(2437 >> 8) & 0xff,
+			2437 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27275,8 +27335,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2435 >> 8) & 0xff,
-			2435 & 0xff,
+			(2443 >> 8) & 0xff,
+			2443 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27311,8 +27371,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2441 >> 8) & 0xff,
-			2441 & 0xff,
+			(2449 >> 8) & 0xff,
+			2449 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27324,8 +27384,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2442 >> 8) & 0xff,
-			2442 & 0xff,
+			(2450 >> 8) & 0xff,
+			2450 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27339,8 +27399,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2443 >> 8) & 0xff,
-			2443 & 0xff,
+			(2451 >> 8) & 0xff,
+			2451 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27355,8 +27415,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2447 >> 8) & 0xff,
-			2447 & 0xff,
+			(2455 >> 8) & 0xff,
+			2455 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27381,8 +27441,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2451 >> 8) & 0xff,
-			2451 & 0xff,
+			(2459 >> 8) & 0xff,
+			2459 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27415,8 +27475,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2455 >> 8) & 0xff,
-			2455 & 0xff,
+			(2463 >> 8) & 0xff,
+			2463 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27431,8 +27491,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2467 >> 8) & 0xff,
-			2467 & 0xff,
+			(2475 >> 8) & 0xff,
+			2475 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27449,8 +27509,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2479 >> 8) & 0xff,
-			2479 & 0xff,
+			(2487 >> 8) & 0xff,
+			2487 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27462,8 +27522,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2480 >> 8) & 0xff,
-			2480 & 0xff,
+			(2488 >> 8) & 0xff,
+			2488 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27485,8 +27545,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2481 >> 8) & 0xff,
-			2481 & 0xff,
+			(2489 >> 8) & 0xff,
+			2489 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27502,8 +27562,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2482 >> 8) & 0xff,
-			2482 & 0xff,
+			(2490 >> 8) & 0xff,
+			2490 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27518,8 +27578,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2486 >> 8) & 0xff,
-			2486 & 0xff,
+			(2494 >> 8) & 0xff,
+			2494 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27538,8 +27598,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2490 >> 8) & 0xff,
-			2490 & 0xff,
+			(2498 >> 8) & 0xff,
+			2498 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27554,8 +27614,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2494 >> 8) & 0xff,
-			2494 & 0xff,
+			(2502 >> 8) & 0xff,
+			2502 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27572,8 +27632,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2498 >> 8) & 0xff,
-			2498 & 0xff,
+			(2506 >> 8) & 0xff,
+			2506 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27588,8 +27648,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2502 >> 8) & 0xff,
-			2502 & 0xff,
+			(2510 >> 8) & 0xff,
+			2510 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27606,8 +27666,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2506 >> 8) & 0xff,
-			2506 & 0xff,
+			(2514 >> 8) & 0xff,
+			2514 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27622,8 +27682,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2511 >> 8) & 0xff,
-			2511 & 0xff,
+			(2519 >> 8) & 0xff,
+			2519 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27678,8 +27738,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2516 >> 8) & 0xff,
-			2516 & 0xff,
+			(2524 >> 8) & 0xff,
+			2524 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27698,8 +27758,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2520 >> 8) & 0xff,
-			2520 & 0xff,
+			(2528 >> 8) & 0xff,
+			2528 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27714,8 +27774,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2524 >> 8) & 0xff,
-			2524 & 0xff,
+			(2532 >> 8) & 0xff,
+			2532 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27734,8 +27794,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2528 >> 8) & 0xff,
-			2528 & 0xff,
+			(2536 >> 8) & 0xff,
+			2536 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27750,8 +27810,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2532 >> 8) & 0xff,
-			2532 & 0xff,
+			(2540 >> 8) & 0xff,
+			2540 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27776,8 +27836,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2536 >> 8) & 0xff,
-			2536 & 0xff,
+			(2544 >> 8) & 0xff,
+			2544 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27804,8 +27864,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2540 >> 8) & 0xff,
-			2540 & 0xff,
+			(2548 >> 8) & 0xff,
+			2548 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27829,8 +27889,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2543 >> 8) & 0xff,
-			2543 & 0xff,
+			(2551 >> 8) & 0xff,
+			2551 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27860,8 +27920,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2546 >> 8) & 0xff,
-			2546 & 0xff,
+			(2554 >> 8) & 0xff,
+			2554 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -27873,8 +27933,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2547 >> 8) & 0xff,
-			2547 & 0xff,
+			(2555 >> 8) & 0xff,
+			2555 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -27896,8 +27956,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2548 >> 8) & 0xff,
-			2548 & 0xff,
+			(2556 >> 8) & 0xff,
+			2556 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -27969,8 +28029,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(2550 >> 8) & 0xff,
-			2550 & 0xff,
+			(2558 >> 8) & 0xff,
+			2558 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -28055,8 +28115,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2552 >> 8) & 0xff,
-			2552 & 0xff,
+			(2560 >> 8) & 0xff,
+			2560 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -28068,8 +28128,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2554 >> 8) & 0xff,
-			2554 & 0xff,
+			(2562 >> 8) & 0xff,
+			2562 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -28086,8 +28146,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(2556 >> 8) & 0xff,
-			2556 & 0xff,
+			(2564 >> 8) & 0xff,
+			2564 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -28099,8 +28159,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(2558 >> 8) & 0xff,
-			2558 & 0xff,
+			(2566 >> 8) & 0xff,
+			2566 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -28117,8 +28177,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2560 >> 8) & 0xff,
-			2560 & 0xff,
+			(2568 >> 8) & 0xff,
+			2568 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -28130,8 +28190,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2561 >> 8) & 0xff,
-			2561 & 0xff,
+			(2569 >> 8) & 0xff,
+			2569 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -28148,8 +28208,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2562 >> 8) & 0xff,
-			2562 & 0xff,
+			(2570 >> 8) & 0xff,
+			2570 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28164,8 +28224,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2566 >> 8) & 0xff,
-			2566 & 0xff,
+			(2574 >> 8) & 0xff,
+			2574 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28182,8 +28242,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2570 >> 8) & 0xff,
-			2570 & 0xff,
+			(2578 >> 8) & 0xff,
+			2578 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -28198,8 +28258,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2577 >> 8) & 0xff,
-			2577 & 0xff,
+			(2585 >> 8) & 0xff,
+			2585 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -28216,8 +28276,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2584 >> 8) & 0xff,
-			2584 & 0xff,
+			(2592 >> 8) & 0xff,
+			2592 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28232,8 +28292,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2589 >> 8) & 0xff,
-			2589 & 0xff,
+			(2597 >> 8) & 0xff,
+			2597 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28250,8 +28310,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2594 >> 8) & 0xff,
-			2594 & 0xff,
+			(2602 >> 8) & 0xff,
+			2602 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28269,8 +28329,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2604 >> 8) & 0xff,
-			2604 & 0xff,
+			(2612 >> 8) & 0xff,
+			2612 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28290,8 +28350,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2614 >> 8) & 0xff,
-			2614 & 0xff,
+			(2622 >> 8) & 0xff,
+			2622 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28306,8 +28366,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2619 >> 8) & 0xff,
-			2619 & 0xff,
+			(2627 >> 8) & 0xff,
+			2627 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28324,8 +28384,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2624 >> 8) & 0xff,
-			2624 & 0xff,
+			(2632 >> 8) & 0xff,
+			2632 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28340,8 +28400,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2628 >> 8) & 0xff,
-			2628 & 0xff,
+			(2636 >> 8) & 0xff,
+			2636 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28358,8 +28418,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2632 >> 8) & 0xff,
-			2632 & 0xff,
+			(2640 >> 8) & 0xff,
+			2640 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -28374,8 +28434,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2637 >> 8) & 0xff,
-			2637 & 0xff,
+			(2645 >> 8) & 0xff,
+			2645 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -28392,8 +28452,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2642 >> 8) & 0xff,
-			2642 & 0xff,
+			(2650 >> 8) & 0xff,
+			2650 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28408,8 +28468,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2646 >> 8) & 0xff,
-			2646 & 0xff,
+			(2654 >> 8) & 0xff,
+			2654 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28426,8 +28486,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2650 >> 8) & 0xff,
-			2650 & 0xff,
+			(2658 >> 8) & 0xff,
+			2658 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28442,8 +28502,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2654 >> 8) & 0xff,
-			2654 & 0xff,
+			(2662 >> 8) & 0xff,
+			2662 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28460,8 +28520,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2658 >> 8) & 0xff,
-			2658 & 0xff,
+			(2666 >> 8) & 0xff,
+			2666 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28479,8 +28539,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2666 >> 8) & 0xff,
-			2666 & 0xff,
+			(2674 >> 8) & 0xff,
+			2674 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28500,8 +28560,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2674 >> 8) & 0xff,
-			2674 & 0xff,
+			(2682 >> 8) & 0xff,
+			2682 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28519,8 +28579,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2682 >> 8) & 0xff,
-			2682 & 0xff,
+			(2690 >> 8) & 0xff,
+			2690 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28540,8 +28600,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2690 >> 8) & 0xff,
-			2690 & 0xff,
+			(2698 >> 8) & 0xff,
+			2698 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28559,8 +28619,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2698 >> 8) & 0xff,
-			2698 & 0xff,
+			(2706 >> 8) & 0xff,
+			2706 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28580,8 +28640,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2706 >> 8) & 0xff,
-			2706 & 0xff,
+			(2714 >> 8) & 0xff,
+			2714 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28599,8 +28659,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2714 >> 8) & 0xff,
-			2714 & 0xff,
+			(2722 >> 8) & 0xff,
+			2722 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28620,10 +28680,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2722 >> 8) & 0xff,
-			2722 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(2730 >> 8) & 0xff,
+			2730 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT >> 8) & 0xff,
@@ -28639,10 +28699,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2730 >> 8) & 0xff,
-			2730 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(2739 >> 8) & 0xff,
+			2739 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT >> 8) & 0xff,
@@ -28660,8 +28720,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2738 >> 8) & 0xff,
-			2738 & 0xff,
+			(2748 >> 8) & 0xff,
+			2748 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28679,8 +28739,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2744 >> 8) & 0xff,
-			2744 & 0xff,
+			(2754 >> 8) & 0xff,
+			2754 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28700,8 +28760,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2750 >> 8) & 0xff,
-			2750 & 0xff,
+			(2760 >> 8) & 0xff,
+			2760 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28719,8 +28779,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2757 >> 8) & 0xff,
-			2757 & 0xff,
+			(2767 >> 8) & 0xff,
+			2767 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28740,8 +28800,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2764 >> 8) & 0xff,
-			2764 & 0xff,
+			(2774 >> 8) & 0xff,
+			2774 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28759,8 +28819,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2771 >> 8) & 0xff,
-			2771 & 0xff,
+			(2781 >> 8) & 0xff,
+			2781 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28780,8 +28840,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2778 >> 8) & 0xff,
-			2778 & 0xff,
+			(2788 >> 8) & 0xff,
+			2788 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28799,8 +28859,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2787 >> 8) & 0xff,
-			2787 & 0xff,
+			(2797 >> 8) & 0xff,
+			2797 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28820,8 +28880,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2796 >> 8) & 0xff,
-			2796 & 0xff,
+			(2806 >> 8) & 0xff,
+			2806 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28839,8 +28899,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2814 >> 8) & 0xff,
-			2814 & 0xff,
+			(2824 >> 8) & 0xff,
+			2824 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28860,8 +28920,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2832 >> 8) & 0xff,
-			2832 & 0xff,
+			(2842 >> 8) & 0xff,
+			2842 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28879,8 +28939,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2841 >> 8) & 0xff,
-			2841 & 0xff,
+			(2851 >> 8) & 0xff,
+			2851 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28900,8 +28960,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2850 >> 8) & 0xff,
-			2850 & 0xff,
+			(2860 >> 8) & 0xff,
+			2860 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28919,8 +28979,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2857 >> 8) & 0xff,
-			2857 & 0xff,
+			(2867 >> 8) & 0xff,
+			2867 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28940,8 +29000,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2864 >> 8) & 0xff,
-			2864 & 0xff,
+			(2874 >> 8) & 0xff,
+			2874 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28959,8 +29019,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2871 >> 8) & 0xff,
-			2871 & 0xff,
+			(2881 >> 8) & 0xff,
+			2881 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28980,8 +29040,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2878 >> 8) & 0xff,
-			2878 & 0xff,
+			(2888 >> 8) & 0xff,
+			2888 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -28999,8 +29059,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2885 >> 8) & 0xff,
-			2885 & 0xff,
+			(2895 >> 8) & 0xff,
+			2895 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29020,8 +29080,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2892 >> 8) & 0xff,
-			2892 & 0xff,
+			(2902 >> 8) & 0xff,
+			2902 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29039,8 +29099,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2899 >> 8) & 0xff,
-			2899 & 0xff,
+			(2909 >> 8) & 0xff,
+			2909 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29060,8 +29120,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2906 >> 8) & 0xff,
-			2906 & 0xff,
+			(2916 >> 8) & 0xff,
+			2916 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29079,8 +29139,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2920 >> 8) & 0xff,
-			2920 & 0xff,
+			(2930 >> 8) & 0xff,
+			2930 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29100,8 +29160,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2934 >> 8) & 0xff,
-			2934 & 0xff,
+			(2944 >> 8) & 0xff,
+			2944 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29116,8 +29176,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2958 >> 8) & 0xff,
-			2958 & 0xff,
+			(2968 >> 8) & 0xff,
+			2968 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -29136,8 +29196,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2982 >> 8) & 0xff,
-			2982 & 0xff,
+			(2992 >> 8) & 0xff,
+			2992 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29155,8 +29215,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2996 >> 8) & 0xff,
-			2996 & 0xff,
+			(3006 >> 8) & 0xff,
+			3006 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29176,8 +29236,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3010 >> 8) & 0xff,
-			3010 & 0xff,
+			(3020 >> 8) & 0xff,
+			3020 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29195,8 +29255,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3026 >> 8) & 0xff,
-			3026 & 0xff,
+			(3036 >> 8) & 0xff,
+			3036 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29216,8 +29276,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3042 >> 8) & 0xff,
-			3042 & 0xff,
+			(3052 >> 8) & 0xff,
+			3052 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29235,8 +29295,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3058 >> 8) & 0xff,
-			3058 & 0xff,
+			(3068 >> 8) & 0xff,
+			3068 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29265,8 +29325,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3074 >> 8) & 0xff,
-			3074 & 0xff,
+			(3084 >> 8) & 0xff,
+			3084 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -29350,8 +29410,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3079 >> 8) & 0xff,
-			3079 & 0xff,
+			(3089 >> 8) & 0xff,
+			3089 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -29432,8 +29492,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3325 >> 8) & 0xff,
-			3325 & 0xff,
+			(3336 >> 8) & 0xff,
+			3336 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29445,8 +29505,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3327 >> 8) & 0xff,
-			3327 & 0xff,
+			(3338 >> 8) & 0xff,
+			3338 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -29463,8 +29523,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3329 >> 8) & 0xff,
-			3329 & 0xff,
+			(3340 >> 8) & 0xff,
+			3340 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29476,8 +29536,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3331 >> 8) & 0xff,
-			3331 & 0xff,
+			(3342 >> 8) & 0xff,
+			3342 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -29494,8 +29554,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3333 >> 8) & 0xff,
-			3333 & 0xff,
+			(3344 >> 8) & 0xff,
+			3344 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29507,8 +29567,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3334 >> 8) & 0xff,
-			3334 & 0xff,
+			(3345 >> 8) & 0xff,
+			3345 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_RF,
@@ -29525,8 +29585,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3335 >> 8) & 0xff,
-			3335 & 0xff,
+			(3346 >> 8) & 0xff,
+			3346 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29538,8 +29598,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3339 >> 8) & 0xff,
-			3339 & 0xff,
+			(3350 >> 8) & 0xff,
+			3350 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29556,8 +29616,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3343 >> 8) & 0xff,
-			3343 & 0xff,
+			(3354 >> 8) & 0xff,
+			3354 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29569,8 +29629,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3347 >> 8) & 0xff,
-			3347 & 0xff,
+			(3358 >> 8) & 0xff,
+			3358 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29587,8 +29647,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3351 >> 8) & 0xff,
-			3351 & 0xff,
+			(3362 >> 8) & 0xff,
+			3362 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29600,8 +29660,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3356 >> 8) & 0xff,
-			3356 & 0xff,
+			(3367 >> 8) & 0xff,
+			3367 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29618,8 +29678,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3361 >> 8) & 0xff,
-			3361 & 0xff,
+			(3372 >> 8) & 0xff,
+			3372 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29634,8 +29694,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3371 >> 8) & 0xff,
-			3371 & 0xff,
+			(3382 >> 8) & 0xff,
+			3382 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29655,8 +29715,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3381 >> 8) & 0xff,
-			3381 & 0xff,
+			(3392 >> 8) & 0xff,
+			3392 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29668,8 +29728,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3386 >> 8) & 0xff,
-			3386 & 0xff,
+			(3397 >> 8) & 0xff,
+			3397 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29686,8 +29746,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3391 >> 8) & 0xff,
-			3391 & 0xff,
+			(3402 >> 8) & 0xff,
+			3402 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29699,8 +29759,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3395 >> 8) & 0xff,
-			3395 & 0xff,
+			(3406 >> 8) & 0xff,
+			3406 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29717,8 +29777,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3399 >> 8) & 0xff,
-			3399 & 0xff,
+			(3410 >> 8) & 0xff,
+			3410 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29730,8 +29790,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3403 >> 8) & 0xff,
-			3403 & 0xff,
+			(3414 >> 8) & 0xff,
+			3414 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29748,8 +29808,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3407 >> 8) & 0xff,
-			3407 & 0xff,
+			(3418 >> 8) & 0xff,
+			3418 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29761,8 +29821,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3411 >> 8) & 0xff,
-			3411 & 0xff,
+			(3422 >> 8) & 0xff,
+			3422 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29779,8 +29839,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3415 >> 8) & 0xff,
-			3415 & 0xff,
+			(3426 >> 8) & 0xff,
+			3426 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29792,8 +29852,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3419 >> 8) & 0xff,
-			3419 & 0xff,
+			(3430 >> 8) & 0xff,
+			3430 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29810,8 +29870,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3423 >> 8) & 0xff,
-			3423 & 0xff,
+			(3434 >> 8) & 0xff,
+			3434 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29826,8 +29886,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3431 >> 8) & 0xff,
-			3431 & 0xff,
+			(3442 >> 8) & 0xff,
+			3442 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29847,8 +29907,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3439 >> 8) & 0xff,
-			3439 & 0xff,
+			(3450 >> 8) & 0xff,
+			3450 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29863,8 +29923,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3447 >> 8) & 0xff,
-			3447 & 0xff,
+			(3458 >> 8) & 0xff,
+			3458 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29884,8 +29944,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3455 >> 8) & 0xff,
-			3455 & 0xff,
+			(3466 >> 8) & 0xff,
+			3466 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29900,8 +29960,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3463 >> 8) & 0xff,
-			3463 & 0xff,
+			(3474 >> 8) & 0xff,
+			3474 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29921,8 +29981,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3471 >> 8) & 0xff,
-			3471 & 0xff,
+			(3482 >> 8) & 0xff,
+			3482 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -29937,8 +29997,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3479 >> 8) & 0xff,
-			3479 & 0xff,
+			(3490 >> 8) & 0xff,
+			3490 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -29958,10 +30018,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3487 >> 8) & 0xff,
-			3487 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(3498 >> 8) & 0xff,
+			3498 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
@@ -29974,10 +30034,10 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3495 >> 8) & 0xff,
-			3495 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
+			(3507 >> 8) & 0xff,
+			3507 & 0xff,
+			(5 >> 8) & 0xff,
+			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_UDP_DST_PORT >> 8) & 0xff,
@@ -29995,8 +30055,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3503 >> 8) & 0xff,
-			3503 & 0xff,
+			(3516 >> 8) & 0xff,
+			3516 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30011,8 +30071,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3509 >> 8) & 0xff,
-			3509 & 0xff,
+			(3522 >> 8) & 0xff,
+			3522 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30032,8 +30092,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3515 >> 8) & 0xff,
-			3515 & 0xff,
+			(3528 >> 8) & 0xff,
+			3528 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30048,8 +30108,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3522 >> 8) & 0xff,
-			3522 & 0xff,
+			(3535 >> 8) & 0xff,
+			3535 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30069,8 +30129,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3529 >> 8) & 0xff,
-			3529 & 0xff,
+			(3542 >> 8) & 0xff,
+			3542 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30085,8 +30145,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3536 >> 8) & 0xff,
-			3536 & 0xff,
+			(3549 >> 8) & 0xff,
+			3549 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30106,8 +30166,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3543 >> 8) & 0xff,
-			3543 & 0xff,
+			(3556 >> 8) & 0xff,
+			3556 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30122,8 +30182,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3552 >> 8) & 0xff,
-			3552 & 0xff,
+			(3565 >> 8) & 0xff,
+			3565 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30143,8 +30203,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3561 >> 8) & 0xff,
-			3561 & 0xff,
+			(3574 >> 8) & 0xff,
+			3574 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30159,8 +30219,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3579 >> 8) & 0xff,
-			3579 & 0xff,
+			(3592 >> 8) & 0xff,
+			3592 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30180,8 +30240,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3597 >> 8) & 0xff,
-			3597 & 0xff,
+			(3610 >> 8) & 0xff,
+			3610 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30196,8 +30256,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3606 >> 8) & 0xff,
-			3606 & 0xff,
+			(3619 >> 8) & 0xff,
+			3619 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30217,8 +30277,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3615 >> 8) & 0xff,
-			3615 & 0xff,
+			(3628 >> 8) & 0xff,
+			3628 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30233,8 +30293,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3622 >> 8) & 0xff,
-			3622 & 0xff,
+			(3635 >> 8) & 0xff,
+			3635 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30254,8 +30314,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3629 >> 8) & 0xff,
-			3629 & 0xff,
+			(3642 >> 8) & 0xff,
+			3642 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30270,8 +30330,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3636 >> 8) & 0xff,
-			3636 & 0xff,
+			(3649 >> 8) & 0xff,
+			3649 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30291,8 +30351,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3643 >> 8) & 0xff,
-			3643 & 0xff,
+			(3656 >> 8) & 0xff,
+			3656 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30307,8 +30367,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3650 >> 8) & 0xff,
-			3650 & 0xff,
+			(3663 >> 8) & 0xff,
+			3663 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30328,8 +30388,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3657 >> 8) & 0xff,
-			3657 & 0xff,
+			(3670 >> 8) & 0xff,
+			3670 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30344,8 +30404,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3664 >> 8) & 0xff,
-			3664 & 0xff,
+			(3677 >> 8) & 0xff,
+			3677 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30365,8 +30425,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3671 >> 8) & 0xff,
-			3671 & 0xff,
+			(3684 >> 8) & 0xff,
+			3684 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30381,8 +30441,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3685 >> 8) & 0xff,
-			3685 & 0xff,
+			(3698 >> 8) & 0xff,
+			3698 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30402,8 +30462,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3699 >> 8) & 0xff,
-			3699 & 0xff,
+			(3712 >> 8) & 0xff,
+			3712 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30418,8 +30478,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3713 >> 8) & 0xff,
-			3713 & 0xff,
+			(3726 >> 8) & 0xff,
+			3726 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30439,8 +30499,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3727 >> 8) & 0xff,
-			3727 & 0xff,
+			(3740 >> 8) & 0xff,
+			3740 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30455,8 +30515,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3741 >> 8) & 0xff,
-			3741 & 0xff,
+			(3754 >> 8) & 0xff,
+			3754 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30476,8 +30536,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3755 >> 8) & 0xff,
-			3755 & 0xff,
+			(3768 >> 8) & 0xff,
+			3768 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30492,8 +30552,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3769 >> 8) & 0xff,
-			3769 & 0xff,
+			(3782 >> 8) & 0xff,
+			3782 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30513,8 +30573,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3783 >> 8) & 0xff,
-			3783 & 0xff,
+			(3796 >> 8) & 0xff,
+			3796 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -30529,8 +30589,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3797 >> 8) & 0xff,
-			3797 & 0xff,
+			(3810 >> 8) & 0xff,
+			3810 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -30573,8 +30633,8 @@ struct bnxt_ulp_mapper_key_info ulp_thor_class_key_info_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3811 >> 8) & 0xff,
-			3811 & 0xff,
+			(3824 >> 8) & 0xff,
+			3824 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -35907,8 +35967,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(127 >> 8) & 0xff,
-		127 & 0xff,
+		(128 >> 8) & 0xff,
+		128 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -35925,8 +35985,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(130 >> 8) & 0xff,
-		130 & 0xff,
+		(131 >> 8) & 0xff,
+		131 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -35943,8 +36003,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(133 >> 8) & 0xff,
-		133 & 0xff,
+		(134 >> 8) & 0xff,
+		134 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -35961,8 +36021,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(135 >> 8) & 0xff,
-		135 & 0xff,
+		(136 >> 8) & 0xff,
+		136 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -35979,8 +36039,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(137 >> 8) & 0xff,
-		137 & 0xff,
+		(138 >> 8) & 0xff,
+		138 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -35994,8 +36054,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(167 >> 8) & 0xff,
-		167 & 0xff,
+		(168 >> 8) & 0xff,
+		168 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36009,8 +36069,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(181 >> 8) & 0xff,
-		181 & 0xff,
+		(182 >> 8) & 0xff,
+		182 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36024,8 +36084,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(182 >> 8) & 0xff,
-		182 & 0xff,
+		(183 >> 8) & 0xff,
+		183 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36039,8 +36099,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(190 >> 8) & 0xff,
-		190 & 0xff,
+		(191 >> 8) & 0xff,
+		191 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36054,8 +36114,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(198 >> 8) & 0xff,
-		198 & 0xff,
+		(199 >> 8) & 0xff,
+		199 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36069,8 +36129,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(206 >> 8) & 0xff,
-		206 & 0xff,
+		(207 >> 8) & 0xff,
+		207 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36084,8 +36144,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(214 >> 8) & 0xff,
-		214 & 0xff,
+		(215 >> 8) & 0xff,
+		215 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36099,8 +36159,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(222 >> 8) & 0xff,
-		222 & 0xff,
+		(223 >> 8) & 0xff,
+		223 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36114,8 +36174,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(230 >> 8) & 0xff,
-		230 & 0xff,
+		(232 >> 8) & 0xff,
+		232 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36129,8 +36189,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(237 >> 8) & 0xff,
-		237 & 0xff,
+		(239 >> 8) & 0xff,
+		239 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36144,8 +36204,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(244 >> 8) & 0xff,
-		244 & 0xff,
+		(246 >> 8) & 0xff,
+		246 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36159,8 +36219,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(251 >> 8) & 0xff,
-		251 & 0xff,
+		(253 >> 8) & 0xff,
+		253 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36174,8 +36234,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(259 >> 8) & 0xff,
-		259 & 0xff,
+		(261 >> 8) & 0xff,
+		261 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36189,8 +36249,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(268 >> 8) & 0xff,
-		268 & 0xff,
+		(270 >> 8) & 0xff,
+		270 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36207,8 +36267,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(273 >> 8) & 0xff,
-		273 & 0xff,
+		(275 >> 8) & 0xff,
+		275 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36225,8 +36285,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(277 >> 8) & 0xff,
-		277 & 0xff,
+		(279 >> 8) & 0xff,
+		279 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36240,8 +36300,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(286 >> 8) & 0xff,
-		286 & 0xff,
+		(288 >> 8) & 0xff,
+		288 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36255,8 +36315,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(295 >> 8) & 0xff,
-		295 & 0xff,
+		(297 >> 8) & 0xff,
+		297 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36273,8 +36333,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(300 >> 8) & 0xff,
-		300 & 0xff,
+		(302 >> 8) & 0xff,
+		302 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36291,8 +36351,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(304 >> 8) & 0xff,
-		304 & 0xff,
+		(306 >> 8) & 0xff,
+		306 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36306,8 +36366,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(313 >> 8) & 0xff,
-		313 & 0xff,
+		(315 >> 8) & 0xff,
+		315 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36324,8 +36384,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(318 >> 8) & 0xff,
-		318 & 0xff,
+		(320 >> 8) & 0xff,
+		320 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36342,8 +36402,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(322 >> 8) & 0xff,
-		322 & 0xff,
+		(324 >> 8) & 0xff,
+		324 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36357,8 +36417,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(331 >> 8) & 0xff,
-		331 & 0xff,
+		(333 >> 8) & 0xff,
+		333 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36375,8 +36435,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(336 >> 8) & 0xff,
-		336 & 0xff,
+		(338 >> 8) & 0xff,
+		338 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36393,8 +36453,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(340 >> 8) & 0xff,
-		340 & 0xff,
+		(342 >> 8) & 0xff,
+		342 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36408,8 +36468,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(349 >> 8) & 0xff,
-		349 & 0xff,
+		(351 >> 8) & 0xff,
+		351 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36426,8 +36486,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(354 >> 8) & 0xff,
-		354 & 0xff,
+		(356 >> 8) & 0xff,
+		356 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36444,8 +36504,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(358 >> 8) & 0xff,
-		358 & 0xff,
+		(360 >> 8) & 0xff,
+		360 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36459,8 +36519,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(367 >> 8) & 0xff,
-		367 & 0xff,
+		(369 >> 8) & 0xff,
+		369 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36477,8 +36537,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(372 >> 8) & 0xff,
-		372 & 0xff,
+		(374 >> 8) & 0xff,
+		374 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36495,8 +36555,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(376 >> 8) & 0xff,
-		376 & 0xff,
+		(378 >> 8) & 0xff,
+		378 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36510,8 +36570,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(382 >> 8) & 0xff,
-		382 & 0xff,
+		(384 >> 8) & 0xff,
+		384 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36525,8 +36585,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(385 >> 8) & 0xff,
-		385 & 0xff,
+		(387 >> 8) & 0xff,
+		387 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -36541,8 +36601,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(386 >> 8) & 0xff,
-		386 & 0xff,
+		(388 >> 8) & 0xff,
+		388 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36556,8 +36616,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(391 >> 8) & 0xff,
-		391 & 0xff,
+		(393 >> 8) & 0xff,
+		393 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36571,8 +36631,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(394 >> 8) & 0xff,
-		394 & 0xff,
+		(396 >> 8) & 0xff,
+		396 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -36587,8 +36647,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(395 >> 8) & 0xff,
-		395 & 0xff,
+		(397 >> 8) & 0xff,
+		397 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36603,8 +36663,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(401 >> 8) & 0xff,
-		401 & 0xff,
+		(403 >> 8) & 0xff,
+		403 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -36619,8 +36679,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(403 >> 8) & 0xff,
-		403 & 0xff,
+		(405 >> 8) & 0xff,
+		405 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -36635,8 +36695,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(405 >> 8) & 0xff,
-		405 & 0xff,
+		(407 >> 8) & 0xff,
+		407 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -36651,8 +36711,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(407 >> 8) & 0xff,
-		407 & 0xff,
+		(409 >> 8) & 0xff,
+		409 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -36660,24 +36720,6 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opr3 = {
 	(52 >> 8) & 0xff,
 	52 & 0xff}
-		},
-	{
-		.description = "",
-		.field_bit_size = 8,
-	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
-	.field_opr1 = {
-		(409 >> 8) & 0xff,
-		409 & 0xff,
-		(2 >> 8) & 0xff,
-		2 & 0xff},
-	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
-	.field_opr2 = {
-	1},
-	.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-	.field_opr3 = {
-	(53 >> 8) & 0xff,
-	53 & 0xff}
 		},
 	{
 		.description = "",
@@ -36694,8 +36736,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	1},
 	.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 	.field_opr3 = {
-	(54 >> 8) & 0xff,
-	54 & 0xff}
+	(53 >> 8) & 0xff,
+	53 & 0xff}
 		},
 	{
 		.description = "",
@@ -36712,8 +36754,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	1},
 	.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 	.field_opr3 = {
-	(55 >> 8) & 0xff,
-	55 & 0xff}
+	(54 >> 8) & 0xff,
+	54 & 0xff}
 		},
 	{
 		.description = "",
@@ -36723,6 +36765,24 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opr1 = {
 		(415 >> 8) & 0xff,
 		415 & 0xff,
+		(2 >> 8) & 0xff,
+		2 & 0xff},
+	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+	.field_opr2 = {
+	1},
+	.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+	.field_opr3 = {
+	(55 >> 8) & 0xff,
+	55 & 0xff}
+		},
+	{
+		.description = "",
+		.field_bit_size = 8,
+	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
+	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+	.field_opr1 = {
+		(417 >> 8) & 0xff,
+		417 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36738,8 +36798,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(419 >> 8) & 0xff,
-			419 & 0xff,
+			(421 >> 8) & 0xff,
+			421 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -36754,8 +36814,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(421 >> 8) & 0xff,
-			421 & 0xff,
+			(423 >> 8) & 0xff,
+			423 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -36770,30 +36830,12 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(423 >> 8) & 0xff,
-			423 & 0xff,
+			(425 >> 8) & 0xff,
+			425 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
-		},
-	{
-		.description = "l4_hdr_is_udp_tcp",
-		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
-		.field_opr1 = {
-			(427 >> 8) & 0xff,
-			427 & 0xff,
-			(2 >> 8) & 0xff,
-			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr2 = {
-		ULP_THOR_SYM_L4_HDR_IS_UDP_TCP_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(60 >> 8) & 0xff,
-		60 & 0xff}
 		},
 	{
 		.description = "l4_hdr_is_udp_tcp",
@@ -36810,8 +36852,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		ULP_THOR_SYM_L4_HDR_IS_UDP_TCP_YES},
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(61 >> 8) & 0xff,
-		61 & 0xff}
+		(60 >> 8) & 0xff,
+		60 & 0xff}
 		},
 	{
 		.description = "l4_hdr_is_udp_tcp",
@@ -36826,23 +36868,25 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
 		ULP_THOR_SYM_L4_HDR_IS_UDP_TCP_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(61 >> 8) & 0xff,
+		61 & 0xff}
 		},
 	{
-		.description = "l4_hdr_type",
-		.field_bit_size = 4,
+		.description = "l4_hdr_is_udp_tcp",
+		.field_bit_size = 1,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(435 >> 8) & 0xff,
-			435 & 0xff,
+			(433 >> 8) & 0xff,
+			433 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(63 >> 8) & 0xff,
-		63 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opr2 = {
+		ULP_THOR_SYM_L4_HDR_IS_UDP_TCP_YES},
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l4_hdr_type",
@@ -36857,8 +36901,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(64 >> 8) & 0xff,
-		64 & 0xff}
+		(63 >> 8) & 0xff,
+		63 & 0xff}
 		},
 	{
 		.description = "l4_hdr_type",
@@ -36871,6 +36915,22 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(64 >> 8) & 0xff,
+		64 & 0xff}
+		},
+	{
+		.description = "l4_hdr_type",
+		.field_bit_size = 4,
+		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+		.field_opr1 = {
+			(441 >> 8) & 0xff,
+			441 & 0xff,
+			(2 >> 8) & 0xff,
+			2 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
@@ -36879,8 +36939,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(443 >> 8) & 0xff,
-			443 & 0xff,
+			(445 >> 8) & 0xff,
+			445 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -36895,8 +36955,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(445 >> 8) & 0xff,
-			445 & 0xff,
+			(447 >> 8) & 0xff,
+			447 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -36913,30 +36973,14 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(447 >> 8) & 0xff,
-			447 & 0xff,
+			(449 >> 8) & 0xff,
+			449 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
 		ULP_THOR_SYM_L4_HDR_TYPE_UDP},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
-		},
-	{
-		.description = "l4_hdr_error",
-		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
-		.field_opr1 = {
-			(451 >> 8) & 0xff,
-			451 & 0xff,
-			(2 >> 8) & 0xff,
-			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(69 >> 8) & 0xff,
-		69 & 0xff}
 		},
 	{
 		.description = "l4_hdr_error",
@@ -36951,8 +36995,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(70 >> 8) & 0xff,
-		70 & 0xff}
+		(69 >> 8) & 0xff,
+		69 & 0xff}
 		},
 	{
 		.description = "l4_hdr_error",
@@ -36965,7 +37009,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(70 >> 8) & 0xff,
+		70 & 0xff}
 		},
 	{
 		.description = "l4_hdr_error",
@@ -36973,15 +37020,12 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(459 >> 8) & 0xff,
-			459 & 0xff,
+			(457 >> 8) & 0xff,
+			457 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(72 >> 8) & 0xff,
-		72 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l4_hdr_error",
@@ -36996,8 +37040,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(73 >> 8) & 0xff,
-		73 & 0xff}
+		(72 >> 8) & 0xff,
+		72 & 0xff}
 		},
 	{
 		.description = "l4_hdr_error",
@@ -37010,23 +37054,23 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(73 >> 8) & 0xff,
+		73 & 0xff}
 		},
 	{
-		.description = "l4_hdr_valid",
+		.description = "l4_hdr_error",
 		.field_bit_size = 1,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(467 >> 8) & 0xff,
-			467 & 0xff,
+			(465 >> 8) & 0xff,
+			465 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(75 >> 8) & 0xff,
-		75 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l4_hdr_valid",
@@ -37041,8 +37085,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(76 >> 8) & 0xff,
-		76 & 0xff}
+		(75 >> 8) & 0xff,
+		75 & 0xff}
 		},
 	{
 		.description = "l4_hdr_valid",
@@ -37055,7 +37099,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(76 >> 8) & 0xff,
+		76 & 0xff}
 		},
 	{
 		.description = "l4_hdr_valid",
@@ -37063,17 +37110,12 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(475 >> 8) & 0xff,
-			475 & 0xff,
+			(473 >> 8) & 0xff,
+			473 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr2 = {
-		ULP_THOR_SYM_L4_HDR_VALID_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(78 >> 8) & 0xff,
-		78 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l4_hdr_valid",
@@ -37090,8 +37132,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		ULP_THOR_SYM_L4_HDR_VALID_YES},
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(79 >> 8) & 0xff,
-		79 & 0xff}
+		(78 >> 8) & 0xff,
+		78 & 0xff}
 		},
 	{
 		.description = "l4_hdr_valid",
@@ -37106,25 +37148,25 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
 		ULP_THOR_SYM_L4_HDR_VALID_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(79 >> 8) & 0xff,
+		79 & 0xff}
 		},
 	{
-		.description = "l3_hdr_isIP",
+		.description = "l4_hdr_valid",
 		.field_bit_size = 1,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(483 >> 8) & 0xff,
-			483 & 0xff,
+			(481 >> 8) & 0xff,
+			481 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
-		ULP_THOR_SYM_L3_HDR_ISIP_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(81 >> 8) & 0xff,
-		81 & 0xff}
+		ULP_THOR_SYM_L4_HDR_VALID_YES},
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l3_hdr_isIP",
@@ -37141,8 +37183,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		ULP_THOR_SYM_L3_HDR_ISIP_YES},
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(82 >> 8) & 0xff,
-		82 & 0xff}
+		(81 >> 8) & 0xff,
+		81 & 0xff}
 		},
 	{
 		.description = "l3_hdr_isIP",
@@ -37157,23 +37199,25 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
 		ULP_THOR_SYM_L3_HDR_ISIP_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(82 >> 8) & 0xff,
+		82 & 0xff}
 		},
 	{
-		.description = "l3_hdr_type",
-		.field_bit_size = 4,
+		.description = "l3_hdr_isIP",
+		.field_bit_size = 1,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(491 >> 8) & 0xff,
-			491 & 0xff,
+			(489 >> 8) & 0xff,
+			489 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(84 >> 8) & 0xff,
-		84 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opr2 = {
+		ULP_THOR_SYM_L3_HDR_ISIP_YES},
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l3_hdr_type",
@@ -37188,8 +37232,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(85 >> 8) & 0xff,
-		85 & 0xff}
+		(84 >> 8) & 0xff,
+		84 & 0xff}
 		},
 	{
 		.description = "l3_hdr_type",
@@ -37202,6 +37246,22 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(85 >> 8) & 0xff,
+		85 & 0xff}
+		},
+	{
+		.description = "l3_hdr_type",
+		.field_bit_size = 4,
+		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+		.field_opr1 = {
+			(497 >> 8) & 0xff,
+			497 & 0xff,
+			(2 >> 8) & 0xff,
+			2 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
@@ -37210,8 +37270,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(499 >> 8) & 0xff,
-			499 & 0xff,
+			(501 >> 8) & 0xff,
+			501 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37228,8 +37288,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(501 >> 8) & 0xff,
-			501 & 0xff,
+			(503 >> 8) & 0xff,
+			503 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37244,28 +37304,12 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(503 >> 8) & 0xff,
-			503 & 0xff,
+			(505 >> 8) & 0xff,
+			505 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
-		},
-	{
-		.description = "l3_hdr_error",
-		.field_bit_size = 1,
-		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
-		.field_opr1 = {
-			(507 >> 8) & 0xff,
-			507 & 0xff,
-			(2 >> 8) & 0xff,
-			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(90 >> 8) & 0xff,
-		90 & 0xff}
 		},
 	{
 		.description = "l3_hdr_error",
@@ -37280,8 +37324,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(91 >> 8) & 0xff,
-		91 & 0xff}
+		(90 >> 8) & 0xff,
+		90 & 0xff}
 		},
 	{
 		.description = "l3_hdr_error",
@@ -37294,7 +37338,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(91 >> 8) & 0xff,
+		91 & 0xff}
 		},
 	{
 		.description = "l3_hdr_error",
@@ -37302,15 +37349,12 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(515 >> 8) & 0xff,
-			515 & 0xff,
+			(513 >> 8) & 0xff,
+			513 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(93 >> 8) & 0xff,
-		93 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l3_hdr_error",
@@ -37325,8 +37369,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(94 >> 8) & 0xff,
-		94 & 0xff}
+		(93 >> 8) & 0xff,
+		93 & 0xff}
 		},
 	{
 		.description = "l3_hdr_error",
@@ -37339,23 +37383,23 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(94 >> 8) & 0xff,
+		94 & 0xff}
 		},
 	{
-		.description = "l3_hdr_valid",
+		.description = "l3_hdr_error",
 		.field_bit_size = 1,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(523 >> 8) & 0xff,
-			523 & 0xff,
+			(521 >> 8) & 0xff,
+			521 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(96 >> 8) & 0xff,
-		96 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l3_hdr_valid",
@@ -37370,8 +37414,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(97 >> 8) & 0xff,
-		97 & 0xff}
+		(96 >> 8) & 0xff,
+		96 & 0xff}
 		},
 	{
 		.description = "l3_hdr_valid",
@@ -37384,7 +37428,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(97 >> 8) & 0xff,
+		97 & 0xff}
 		},
 	{
 		.description = "l3_hdr_valid",
@@ -37392,17 +37439,12 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(531 >> 8) & 0xff,
-			531 & 0xff,
+			(529 >> 8) & 0xff,
+			529 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
-		.field_opr2 = {
-		ULP_THOR_SYM_L3_HDR_VALID_YES},
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(99 >> 8) & 0xff,
-		99 & 0xff}
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
 		.description = "l3_hdr_valid",
@@ -37419,8 +37461,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		ULP_THOR_SYM_L3_HDR_VALID_YES},
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(100 >> 8) & 0xff,
-		100 & 0xff}
+		(99 >> 8) & 0xff,
+		99 & 0xff}
 		},
 	{
 		.description = "l3_hdr_valid",
@@ -37435,6 +37477,24 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
 		ULP_THOR_SYM_L3_HDR_VALID_YES},
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(100 >> 8) & 0xff,
+		100 & 0xff}
+		},
+	{
+		.description = "l3_hdr_valid",
+		.field_bit_size = 1,
+		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+		.field_opr1 = {
+			(537 >> 8) & 0xff,
+			537 & 0xff,
+			(2 >> 8) & 0xff,
+			2 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
+		.field_opr2 = {
+		ULP_THOR_SYM_L3_HDR_VALID_YES},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
@@ -37443,8 +37503,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(540 >> 8) & 0xff,
-			540 & 0xff,
+			(542 >> 8) & 0xff,
+			542 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37458,8 +37518,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(546 >> 8) & 0xff,
-			546 & 0xff,
+			(548 >> 8) & 0xff,
+			548 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37473,8 +37533,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(553 >> 8) & 0xff,
-			553 & 0xff,
+			(555 >> 8) & 0xff,
+			555 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37486,8 +37546,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(557 >> 8) & 0xff,
-			557 & 0xff,
+			(559 >> 8) & 0xff,
+			559 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37499,30 +37559,14 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(561 >> 8) & 0xff,
-			561 & 0xff,
+			(563 >> 8) & 0xff,
+			563 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 		.field_opr2 = {
 		ULP_THOR_SYM_L2_HDR_VALID_YES},
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
-		},
-	{
-		.description = "tun_hdr_type",
-		.field_bit_size = 4,
-		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
-		.field_opr1 = {
-			(565 >> 8) & 0xff,
-			565 & 0xff,
-			(2 >> 8) & 0xff,
-			2 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
-		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
-		.field_opr3 = {
-		(107 >> 8) & 0xff,
-		107 & 0xff}
 		},
 	{
 		.description = "tun_hdr_type",
@@ -37537,8 +37581,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(108 >> 8) & 0xff,
-		108 & 0xff}
+		(107 >> 8) & 0xff,
+		107 & 0xff}
 		},
 	{
 		.description = "tun_hdr_type",
@@ -37553,8 +37597,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(109 >> 8) & 0xff,
-		109 & 0xff}
+		(108 >> 8) & 0xff,
+		108 & 0xff}
 		},
 	{
 		.description = "tun_hdr_type",
@@ -37569,8 +37613,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
 		.field_opr3 = {
-		(110 >> 8) & 0xff,
-		110 & 0xff}
+		(109 >> 8) & 0xff,
+		109 & 0xff}
 		},
 	{
 		.description = "tun_hdr_type",
@@ -37583,6 +37627,22 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
+		.field_src3 = BNXT_ULP_FIELD_SRC_NEXT,
+		.field_opr3 = {
+		(110 >> 8) & 0xff,
+		110 & 0xff}
+		},
+	{
+		.description = "tun_hdr_type",
+		.field_bit_size = 4,
+		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+		.field_opr1 = {
+			(575 >> 8) & 0xff,
+			575 & 0xff,
+			(2 >> 8) & 0xff,
+			2 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
 		.field_src3 = BNXT_ULP_FIELD_SRC_ZERO
 		},
 	{
@@ -37591,8 +37651,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(577 >> 8) & 0xff,
-			577 & 0xff,
+			(579 >> 8) & 0xff,
+			579 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37607,8 +37667,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(579 >> 8) & 0xff,
-			579 & 0xff,
+			(581 >> 8) & 0xff,
+			581 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37625,8 +37685,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(581 >> 8) & 0xff,
-			581 & 0xff,
+			(583 >> 8) & 0xff,
+			583 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37643,8 +37703,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(583 >> 8) & 0xff,
-			583 & 0xff,
+			(585 >> 8) & 0xff,
+			585 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37661,8 +37721,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(585 >> 8) & 0xff,
-			585 & 0xff,
+			(587 >> 8) & 0xff,
+			587 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37676,8 +37736,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(592 >> 8) & 0xff,
-			592 & 0xff,
+			(594 >> 8) & 0xff,
+			594 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37689,8 +37749,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(596 >> 8) & 0xff,
-			596 & 0xff,
+			(598 >> 8) & 0xff,
+			598 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37704,8 +37764,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(600 >> 8) & 0xff,
-			600 & 0xff,
+			(602 >> 8) & 0xff,
+			602 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37717,8 +37777,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(604 >> 8) & 0xff,
-			604 & 0xff,
+			(606 >> 8) & 0xff,
+			606 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37732,8 +37792,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(608 >> 8) & 0xff,
-			608 & 0xff,
+			(610 >> 8) & 0xff,
+			610 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37745,8 +37805,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(612 >> 8) & 0xff,
-			612 & 0xff,
+			(614 >> 8) & 0xff,
+			614 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37758,8 +37818,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(616 >> 8) & 0xff,
-			616 & 0xff,
+			(618 >> 8) & 0xff,
+			618 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37774,8 +37834,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(618 >> 8) & 0xff,
-			618 & 0xff,
+			(620 >> 8) & 0xff,
+			620 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37787,8 +37847,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(621 >> 8) & 0xff,
-			621 & 0xff,
+			(623 >> 8) & 0xff,
+			623 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37805,8 +37865,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(623 >> 8) & 0xff,
-			623 & 0xff,
+			(625 >> 8) & 0xff,
+			625 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37818,8 +37878,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(626 >> 8) & 0xff,
-			626 & 0xff,
+			(628 >> 8) & 0xff,
+			628 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37833,8 +37893,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(630 >> 8) & 0xff,
-			630 & 0xff,
+			(632 >> 8) & 0xff,
+			632 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37846,8 +37906,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(634 >> 8) & 0xff,
-			634 & 0xff,
+			(636 >> 8) & 0xff,
+			636 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37859,8 +37919,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(638 >> 8) & 0xff,
-			638 & 0xff,
+			(640 >> 8) & 0xff,
+			640 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -37872,8 +37932,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(642 >> 8) & 0xff,
-			642 & 0xff,
+			(644 >> 8) & 0xff,
+			644 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -37885,8 +37945,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(646 >> 8) & 0xff,
-			646 & 0xff,
+			(648 >> 8) & 0xff,
+			648 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37900,8 +37960,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(658 >> 8) & 0xff,
-			658 & 0xff,
+			(660 >> 8) & 0xff,
+			660 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -37915,8 +37975,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(703 >> 8) & 0xff,
-			703 & 0xff,
+			(705 >> 8) & 0xff,
+			705 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -37931,8 +37991,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(713 >> 8) & 0xff,
-			713 & 0xff,
+			(715 >> 8) & 0xff,
+			715 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -37947,8 +38007,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(740 >> 8) & 0xff,
-			740 & 0xff,
+			(742 >> 8) & 0xff,
+			742 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -37963,8 +38023,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(745 >> 8) & 0xff,
-			745 & 0xff,
+			(747 >> 8) & 0xff,
+			747 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -37979,8 +38039,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(766 >> 8) & 0xff,
-			766 & 0xff,
+			(768 >> 8) & 0xff,
+			768 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -37995,8 +38055,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(774 >> 8) & 0xff,
-			774 & 0xff,
+			(776 >> 8) & 0xff,
+			776 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38011,8 +38071,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(782 >> 8) & 0xff,
-			782 & 0xff,
+			(784 >> 8) & 0xff,
+			784 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38027,8 +38087,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(790 >> 8) & 0xff,
-			790 & 0xff,
+			(792 >> 8) & 0xff,
+			792 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38043,8 +38103,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(798 >> 8) & 0xff,
-			798 & 0xff,
+			(800 >> 8) & 0xff,
+			800 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38059,8 +38119,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(806 >> 8) & 0xff,
-			806 & 0xff,
+			(808 >> 8) & 0xff,
+			808 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38075,8 +38135,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(814 >> 8) & 0xff,
-			814 & 0xff,
+			(816 >> 8) & 0xff,
+			816 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38091,8 +38151,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(822 >> 8) & 0xff,
-			822 & 0xff,
+			(824 >> 8) & 0xff,
+			824 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38107,8 +38167,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(830 >> 8) & 0xff,
-			830 & 0xff,
+			(833 >> 8) & 0xff,
+			833 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38123,8 +38183,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(838 >> 8) & 0xff,
-			838 & 0xff,
+			(842 >> 8) & 0xff,
+			842 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38139,8 +38199,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(845 >> 8) & 0xff,
-			845 & 0xff,
+			(849 >> 8) & 0xff,
+			849 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38155,8 +38215,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(851 >> 8) & 0xff,
-			851 & 0xff,
+			(855 >> 8) & 0xff,
+			855 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38171,8 +38231,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(858 >> 8) & 0xff,
-			858 & 0xff,
+			(862 >> 8) & 0xff,
+			862 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38187,8 +38247,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(865 >> 8) & 0xff,
-			865 & 0xff,
+			(869 >> 8) & 0xff,
+			869 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38203,8 +38263,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(872 >> 8) & 0xff,
-			872 & 0xff,
+			(876 >> 8) & 0xff,
+			876 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38219,8 +38279,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(879 >> 8) & 0xff,
-			879 & 0xff,
+			(883 >> 8) & 0xff,
+			883 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38235,8 +38295,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(887 >> 8) & 0xff,
-			887 & 0xff,
+			(891 >> 8) & 0xff,
+			891 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38251,8 +38311,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(896 >> 8) & 0xff,
-			896 & 0xff,
+			(900 >> 8) & 0xff,
+			900 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38267,8 +38327,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(905 >> 8) & 0xff,
-			905 & 0xff,
+			(909 >> 8) & 0xff,
+			909 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38286,8 +38346,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(910 >> 8) & 0xff,
-			910 & 0xff,
+			(914 >> 8) & 0xff,
+			914 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38305,8 +38365,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(914 >> 8) & 0xff,
-			914 & 0xff,
+			(918 >> 8) & 0xff,
+			918 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38321,8 +38381,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(923 >> 8) & 0xff,
-			923 & 0xff,
+			(927 >> 8) & 0xff,
+			927 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38340,8 +38400,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(928 >> 8) & 0xff,
-			928 & 0xff,
+			(932 >> 8) & 0xff,
+			932 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38359,8 +38419,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(932 >> 8) & 0xff,
-			932 & 0xff,
+			(936 >> 8) & 0xff,
+			936 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38375,8 +38435,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(941 >> 8) & 0xff,
-			941 & 0xff,
+			(945 >> 8) & 0xff,
+			945 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38391,8 +38451,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(950 >> 8) & 0xff,
-			950 & 0xff,
+			(954 >> 8) & 0xff,
+			954 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38407,8 +38467,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(958 >> 8) & 0xff,
-			958 & 0xff,
+			(962 >> 8) & 0xff,
+			962 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38423,8 +38483,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(965 >> 8) & 0xff,
-			965 & 0xff,
+			(969 >> 8) & 0xff,
+			969 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38439,8 +38499,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(972 >> 8) & 0xff,
-			972 & 0xff,
+			(976 >> 8) & 0xff,
+			976 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38455,8 +38515,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(979 >> 8) & 0xff,
-			979 & 0xff,
+			(983 >> 8) & 0xff,
+			983 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38471,8 +38531,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(986 >> 8) & 0xff,
-			986 & 0xff,
+			(990 >> 8) & 0xff,
+			990 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38487,8 +38547,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(993 >> 8) & 0xff,
-			993 & 0xff,
+			(997 >> 8) & 0xff,
+			997 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38503,8 +38563,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1000 >> 8) & 0xff,
-			1000 & 0xff,
+			(1004 >> 8) & 0xff,
+			1004 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38519,8 +38579,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1007 >> 8) & 0xff,
-			1007 & 0xff,
+			(1011 >> 8) & 0xff,
+			1011 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38535,8 +38595,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1014 >> 8) & 0xff,
-			1014 & 0xff,
+			(1018 >> 8) & 0xff,
+			1018 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38554,8 +38614,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1018 >> 8) & 0xff,
-			1018 & 0xff,
+			(1022 >> 8) & 0xff,
+			1022 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38573,8 +38633,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1021 >> 8) & 0xff,
-			1021 & 0xff,
+			(1025 >> 8) & 0xff,
+			1025 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38589,8 +38649,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1028 >> 8) & 0xff,
-			1028 & 0xff,
+			(1032 >> 8) & 0xff,
+			1032 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38608,8 +38668,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1032 >> 8) & 0xff,
-			1032 & 0xff,
+			(1036 >> 8) & 0xff,
+			1036 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38627,8 +38687,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1035 >> 8) & 0xff,
-			1035 & 0xff,
+			(1039 >> 8) & 0xff,
+			1039 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38643,8 +38703,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1041 >> 8) & 0xff,
-			1041 & 0xff,
+			(1045 >> 8) & 0xff,
+			1045 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -38659,8 +38719,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1044 >> 8) & 0xff,
-			1044 & 0xff,
+			(1048 >> 8) & 0xff,
+			1048 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -38675,8 +38735,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1046 >> 8) & 0xff,
-			1046 & 0xff,
+			(1050 >> 8) & 0xff,
+			1050 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -38691,8 +38751,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1048 >> 8) & 0xff,
-			1048 & 0xff,
+			(1052 >> 8) & 0xff,
+			1052 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38710,8 +38770,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1052 >> 8) & 0xff,
-			1052 & 0xff,
+			(1056 >> 8) & 0xff,
+			1056 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38729,8 +38789,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1056 >> 8) & 0xff,
-			1056 & 0xff,
+			(1060 >> 8) & 0xff,
+			1060 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38748,8 +38808,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1059 >> 8) & 0xff,
-			1059 & 0xff,
+			(1063 >> 8) & 0xff,
+			1063 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38764,8 +38824,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1065 >> 8) & 0xff,
-			1065 & 0xff,
+			(1069 >> 8) & 0xff,
+			1069 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -38782,8 +38842,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1068 >> 8) & 0xff,
-			1068 & 0xff,
+			(1072 >> 8) & 0xff,
+			1072 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -38800,8 +38860,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1070 >> 8) & 0xff,
-			1070 & 0xff,
+			(1074 >> 8) & 0xff,
+			1074 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -38818,8 +38878,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1072 >> 8) & 0xff,
-			1072 & 0xff,
+			(1076 >> 8) & 0xff,
+			1076 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38837,8 +38897,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1076 >> 8) & 0xff,
-			1076 & 0xff,
+			(1080 >> 8) & 0xff,
+			1080 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38856,8 +38916,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1080 >> 8) & 0xff,
-			1080 & 0xff,
+			(1084 >> 8) & 0xff,
+			1084 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38875,8 +38935,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1083 >> 8) & 0xff,
-			1083 & 0xff,
+			(1087 >> 8) & 0xff,
+			1087 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38891,8 +38951,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1090 >> 8) & 0xff,
-			1090 & 0xff,
+			(1094 >> 8) & 0xff,
+			1094 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38910,8 +38970,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1094 >> 8) & 0xff,
-			1094 & 0xff,
+			(1098 >> 8) & 0xff,
+			1098 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38929,8 +38989,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1097 >> 8) & 0xff,
-			1097 & 0xff,
+			(1101 >> 8) & 0xff,
+			1101 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38945,8 +39005,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1104 >> 8) & 0xff,
-			1104 & 0xff,
+			(1108 >> 8) & 0xff,
+			1108 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38964,8 +39024,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1108 >> 8) & 0xff,
-			1108 & 0xff,
+			(1112 >> 8) & 0xff,
+			1112 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38983,8 +39043,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1111 >> 8) & 0xff,
-			1111 & 0xff,
+			(1115 >> 8) & 0xff,
+			1115 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -38999,8 +39059,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1118 >> 8) & 0xff,
-			1118 & 0xff,
+			(1122 >> 8) & 0xff,
+			1122 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39018,8 +39078,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1122 >> 8) & 0xff,
-			1122 & 0xff,
+			(1126 >> 8) & 0xff,
+			1126 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39037,8 +39097,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1125 >> 8) & 0xff,
-			1125 & 0xff,
+			(1129 >> 8) & 0xff,
+			1129 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39056,8 +39116,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1128 >> 8) & 0xff,
-			1128 & 0xff,
+			(1132 >> 8) & 0xff,
+			1132 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -39069,8 +39129,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1134 >> 8) & 0xff,
-			1134 & 0xff,
+			(1138 >> 8) & 0xff,
+			1138 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39088,8 +39148,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1138 >> 8) & 0xff,
-			1138 & 0xff,
+			(1142 >> 8) & 0xff,
+			1142 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39107,8 +39167,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1141 >> 8) & 0xff,
-			1141 & 0xff,
+			(1145 >> 8) & 0xff,
+			1145 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39126,8 +39186,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1144 >> 8) & 0xff,
-			1144 & 0xff,
+			(1148 >> 8) & 0xff,
+			1148 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -39139,8 +39199,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1150 >> 8) & 0xff,
-			1150 & 0xff,
+			(1154 >> 8) & 0xff,
+			1154 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39158,8 +39218,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1154 >> 8) & 0xff,
-			1154 & 0xff,
+			(1158 >> 8) & 0xff,
+			1158 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39177,8 +39237,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1157 >> 8) & 0xff,
-			1157 & 0xff,
+			(1161 >> 8) & 0xff,
+			1161 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39196,8 +39256,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1160 >> 8) & 0xff,
-			1160 & 0xff,
+			(1164 >> 8) & 0xff,
+			1164 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -39209,8 +39269,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1166 >> 8) & 0xff,
-			1166 & 0xff,
+			(1170 >> 8) & 0xff,
+			1170 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39228,8 +39288,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1170 >> 8) & 0xff,
-			1170 & 0xff,
+			(1174 >> 8) & 0xff,
+			1174 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39247,8 +39307,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1173 >> 8) & 0xff,
-			1173 & 0xff,
+			(1177 >> 8) & 0xff,
+			1177 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39266,8 +39326,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(1176 >> 8) & 0xff,
-			1176 & 0xff,
+			(1180 >> 8) & 0xff,
+			1180 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -39279,8 +39339,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1210 >> 8) & 0xff,
-		1210 & 0xff,
+		(1214 >> 8) & 0xff,
+		1214 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39294,8 +39354,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1224 >> 8) & 0xff,
-		1224 & 0xff,
+		(1228 >> 8) & 0xff,
+		1228 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39309,8 +39369,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1232 >> 8) & 0xff,
-		1232 & 0xff,
+		(1236 >> 8) & 0xff,
+		1236 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39324,8 +39384,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1240 >> 8) & 0xff,
-		1240 & 0xff,
+		(1244 >> 8) & 0xff,
+		1244 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39339,8 +39399,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1248 >> 8) & 0xff,
-		1248 & 0xff,
+		(1252 >> 8) & 0xff,
+		1252 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39354,8 +39414,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1256 >> 8) & 0xff,
-		1256 & 0xff,
+		(1260 >> 8) & 0xff,
+		1260 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39369,8 +39429,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1264 >> 8) & 0xff,
-		1264 & 0xff,
+		(1268 >> 8) & 0xff,
+		1268 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39384,8 +39444,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1272 >> 8) & 0xff,
-		1272 & 0xff,
+		(1277 >> 8) & 0xff,
+		1277 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39399,8 +39459,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1279 >> 8) & 0xff,
-		1279 & 0xff,
+		(1284 >> 8) & 0xff,
+		1284 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39414,8 +39474,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1287 >> 8) & 0xff,
-		1287 & 0xff,
+		(1292 >> 8) & 0xff,
+		1292 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39429,8 +39489,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1295 >> 8) & 0xff,
-		1295 & 0xff,
+		(1300 >> 8) & 0xff,
+		1300 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39444,8 +39504,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1303 >> 8) & 0xff,
-		1303 & 0xff,
+		(1308 >> 8) & 0xff,
+		1308 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39459,8 +39519,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1312 >> 8) & 0xff,
-		1312 & 0xff,
+		(1317 >> 8) & 0xff,
+		1317 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39477,8 +39537,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1317 >> 8) & 0xff,
-		1317 & 0xff,
+		(1322 >> 8) & 0xff,
+		1322 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39495,8 +39555,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1321 >> 8) & 0xff,
-		1321 & 0xff,
+		(1326 >> 8) & 0xff,
+		1326 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39510,8 +39570,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1330 >> 8) & 0xff,
-		1330 & 0xff,
+		(1335 >> 8) & 0xff,
+		1335 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39525,8 +39585,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1338 >> 8) & 0xff,
-		1338 & 0xff,
+		(1343 >> 8) & 0xff,
+		1343 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39543,8 +39603,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1342 >> 8) & 0xff,
-		1342 & 0xff,
+		(1347 >> 8) & 0xff,
+		1347 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39561,8 +39621,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1345 >> 8) & 0xff,
-		1345 & 0xff,
+		(1350 >> 8) & 0xff,
+		1350 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39576,8 +39636,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1352 >> 8) & 0xff,
-		1352 & 0xff,
+		(1357 >> 8) & 0xff,
+		1357 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39594,8 +39654,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1356 >> 8) & 0xff,
-		1356 & 0xff,
+		(1361 >> 8) & 0xff,
+		1361 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39612,8 +39672,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1359 >> 8) & 0xff,
-		1359 & 0xff,
+		(1364 >> 8) & 0xff,
+		1364 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39627,8 +39687,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1366 >> 8) & 0xff,
-		1366 & 0xff,
+		(1371 >> 8) & 0xff,
+		1371 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39645,8 +39705,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1370 >> 8) & 0xff,
-		1370 & 0xff,
+		(1375 >> 8) & 0xff,
+		1375 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39663,8 +39723,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1373 >> 8) & 0xff,
-		1373 & 0xff,
+		(1378 >> 8) & 0xff,
+		1378 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39678,8 +39738,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1380 >> 8) & 0xff,
-		1380 & 0xff,
+		(1385 >> 8) & 0xff,
+		1385 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39696,8 +39756,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1384 >> 8) & 0xff,
-		1384 & 0xff,
+		(1389 >> 8) & 0xff,
+		1389 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39714,8 +39774,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1387 >> 8) & 0xff,
-		1387 & 0xff,
+		(1392 >> 8) & 0xff,
+		1392 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39729,8 +39789,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1394 >> 8) & 0xff,
-		1394 & 0xff,
+		(1399 >> 8) & 0xff,
+		1399 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39747,8 +39807,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1398 >> 8) & 0xff,
-		1398 & 0xff,
+		(1403 >> 8) & 0xff,
+		1403 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39765,8 +39825,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1401 >> 8) & 0xff,
-		1401 & 0xff,
+		(1406 >> 8) & 0xff,
+		1406 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39780,8 +39840,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1408 >> 8) & 0xff,
-		1408 & 0xff,
+		(1413 >> 8) & 0xff,
+		1413 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39798,8 +39858,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1412 >> 8) & 0xff,
-		1412 & 0xff,
+		(1417 >> 8) & 0xff,
+		1417 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39816,8 +39876,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1415 >> 8) & 0xff,
-		1415 & 0xff,
+		(1420 >> 8) & 0xff,
+		1420 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39831,8 +39891,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1422 >> 8) & 0xff,
-		1422 & 0xff,
+		(1427 >> 8) & 0xff,
+		1427 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39849,8 +39909,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1426 >> 8) & 0xff,
-		1426 & 0xff,
+		(1431 >> 8) & 0xff,
+		1431 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39867,8 +39927,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1429 >> 8) & 0xff,
-		1429 & 0xff,
+		(1434 >> 8) & 0xff,
+		1434 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -39882,8 +39942,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1475 >> 8) & 0xff,
-			1475 & 0xff,
+			(1480 >> 8) & 0xff,
+			1480 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -39895,8 +39955,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1485 >> 8) & 0xff,
-			1485 & 0xff,
+			(1490 >> 8) & 0xff,
+			1490 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39911,8 +39971,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1536 >> 8) & 0xff,
-			1536 & 0xff,
+			(1541 >> 8) & 0xff,
+			1541 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -39924,8 +39984,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1544 >> 8) & 0xff,
-			1544 & 0xff,
+			(1549 >> 8) & 0xff,
+			1549 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39940,8 +40000,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1552 >> 8) & 0xff,
-			1552 & 0xff,
+			(1557 >> 8) & 0xff,
+			1557 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -39953,8 +40013,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1560 >> 8) & 0xff,
-			1560 & 0xff,
+			(1565 >> 8) & 0xff,
+			1565 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39969,8 +40029,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1568 >> 8) & 0xff,
-			1568 & 0xff,
+			(1573 >> 8) & 0xff,
+			1573 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -39982,8 +40042,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1576 >> 8) & 0xff,
-			1576 & 0xff,
+			(1581 >> 8) & 0xff,
+			1581 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -39998,8 +40058,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1584 >> 8) & 0xff,
-			1584 & 0xff,
+			(1589 >> 8) & 0xff,
+			1589 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40011,8 +40071,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1592 >> 8) & 0xff,
-			1592 & 0xff,
+			(1597 >> 8) & 0xff,
+			1597 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40027,8 +40087,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1600 >> 8) & 0xff,
-			1600 & 0xff,
+			(1606 >> 8) & 0xff,
+			1606 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40040,8 +40100,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1608 >> 8) & 0xff,
-			1608 & 0xff,
+			(1615 >> 8) & 0xff,
+			1615 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40056,8 +40116,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1615 >> 8) & 0xff,
-			1615 & 0xff,
+			(1622 >> 8) & 0xff,
+			1622 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40069,8 +40129,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1621 >> 8) & 0xff,
-			1621 & 0xff,
+			(1628 >> 8) & 0xff,
+			1628 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40085,8 +40145,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1629 >> 8) & 0xff,
-			1629 & 0xff,
+			(1636 >> 8) & 0xff,
+			1636 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40098,8 +40158,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1638 >> 8) & 0xff,
-			1638 & 0xff,
+			(1645 >> 8) & 0xff,
+			1645 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40114,8 +40174,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1646 >> 8) & 0xff,
-			1646 & 0xff,
+			(1653 >> 8) & 0xff,
+			1653 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40127,8 +40187,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1653 >> 8) & 0xff,
-			1653 & 0xff,
+			(1660 >> 8) & 0xff,
+			1660 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40143,8 +40203,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1661 >> 8) & 0xff,
-			1661 & 0xff,
+			(1668 >> 8) & 0xff,
+			1668 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40156,8 +40216,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1670 >> 8) & 0xff,
-			1670 & 0xff,
+			(1677 >> 8) & 0xff,
+			1677 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40172,8 +40232,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1679 >> 8) & 0xff,
-			1679 & 0xff,
+			(1686 >> 8) & 0xff,
+			1686 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40188,8 +40248,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1684 >> 8) & 0xff,
-			1684 & 0xff,
+			(1691 >> 8) & 0xff,
+			1691 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40204,8 +40264,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1688 >> 8) & 0xff,
-			1688 & 0xff,
+			(1695 >> 8) & 0xff,
+			1695 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40217,8 +40277,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1697 >> 8) & 0xff,
-			1697 & 0xff,
+			(1704 >> 8) & 0xff,
+			1704 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40236,8 +40296,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1702 >> 8) & 0xff,
-			1702 & 0xff,
+			(1709 >> 8) & 0xff,
+			1709 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40255,8 +40315,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1706 >> 8) & 0xff,
-			1706 & 0xff,
+			(1713 >> 8) & 0xff,
+			1713 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40271,8 +40331,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1715 >> 8) & 0xff,
-			1715 & 0xff,
+			(1722 >> 8) & 0xff,
+			1722 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40284,8 +40344,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1724 >> 8) & 0xff,
-			1724 & 0xff,
+			(1731 >> 8) & 0xff,
+			1731 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40300,8 +40360,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1732 >> 8) & 0xff,
-			1732 & 0xff,
+			(1739 >> 8) & 0xff,
+			1739 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40313,8 +40373,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1739 >> 8) & 0xff,
-			1739 & 0xff,
+			(1746 >> 8) & 0xff,
+			1746 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40329,8 +40389,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1746 >> 8) & 0xff,
-			1746 & 0xff,
+			(1753 >> 8) & 0xff,
+			1753 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40342,8 +40402,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1753 >> 8) & 0xff,
-			1753 & 0xff,
+			(1760 >> 8) & 0xff,
+			1760 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40358,8 +40418,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1760 >> 8) & 0xff,
-			1760 & 0xff,
+			(1767 >> 8) & 0xff,
+			1767 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40371,8 +40431,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1767 >> 8) & 0xff,
-			1767 & 0xff,
+			(1774 >> 8) & 0xff,
+			1774 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40387,8 +40447,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1774 >> 8) & 0xff,
-			1774 & 0xff,
+			(1781 >> 8) & 0xff,
+			1781 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40400,8 +40460,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1781 >> 8) & 0xff,
-			1781 & 0xff,
+			(1788 >> 8) & 0xff,
+			1788 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40416,8 +40476,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1788 >> 8) & 0xff,
-			1788 & 0xff,
+			(1795 >> 8) & 0xff,
+			1795 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40432,8 +40492,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1792 >> 8) & 0xff,
-			1792 & 0xff,
+			(1799 >> 8) & 0xff,
+			1799 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40448,8 +40508,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1795 >> 8) & 0xff,
-			1795 & 0xff,
+			(1802 >> 8) & 0xff,
+			1802 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40461,8 +40521,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1802 >> 8) & 0xff,
-			1802 & 0xff,
+			(1809 >> 8) & 0xff,
+			1809 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40480,8 +40540,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1806 >> 8) & 0xff,
-			1806 & 0xff,
+			(1813 >> 8) & 0xff,
+			1813 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40499,8 +40559,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1809 >> 8) & 0xff,
-			1809 & 0xff,
+			(1816 >> 8) & 0xff,
+			1816 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40515,8 +40575,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1816 >> 8) & 0xff,
-			1816 & 0xff,
+			(1823 >> 8) & 0xff,
+			1823 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40531,8 +40591,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1820 >> 8) & 0xff,
-			1820 & 0xff,
+			(1827 >> 8) & 0xff,
+			1827 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40547,8 +40607,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1823 >> 8) & 0xff,
-			1823 & 0xff,
+			(1830 >> 8) & 0xff,
+			1830 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40560,8 +40620,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1830 >> 8) & 0xff,
-			1830 & 0xff,
+			(1837 >> 8) & 0xff,
+			1837 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40579,8 +40639,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1834 >> 8) & 0xff,
-			1834 & 0xff,
+			(1841 >> 8) & 0xff,
+			1841 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40598,8 +40658,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1837 >> 8) & 0xff,
-			1837 & 0xff,
+			(1844 >> 8) & 0xff,
+			1844 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40614,8 +40674,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1844 >> 8) & 0xff,
-			1844 & 0xff,
+			(1851 >> 8) & 0xff,
+			1851 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40630,8 +40690,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1848 >> 8) & 0xff,
-			1848 & 0xff,
+			(1855 >> 8) & 0xff,
+			1855 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40646,8 +40706,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1851 >> 8) & 0xff,
-			1851 & 0xff,
+			(1858 >> 8) & 0xff,
+			1858 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40659,8 +40719,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1858 >> 8) & 0xff,
-			1858 & 0xff,
+			(1865 >> 8) & 0xff,
+			1865 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40678,8 +40738,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1862 >> 8) & 0xff,
-			1862 & 0xff,
+			(1869 >> 8) & 0xff,
+			1869 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40697,8 +40757,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1865 >> 8) & 0xff,
-			1865 & 0xff,
+			(1872 >> 8) & 0xff,
+			1872 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40713,8 +40773,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1872 >> 8) & 0xff,
-			1872 & 0xff,
+			(1879 >> 8) & 0xff,
+			1879 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40729,8 +40789,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1876 >> 8) & 0xff,
-			1876 & 0xff,
+			(1883 >> 8) & 0xff,
+			1883 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40745,8 +40805,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1879 >> 8) & 0xff,
-			1879 & 0xff,
+			(1886 >> 8) & 0xff,
+			1886 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40758,8 +40818,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1886 >> 8) & 0xff,
-			1886 & 0xff,
+			(1893 >> 8) & 0xff,
+			1893 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40777,8 +40837,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1890 >> 8) & 0xff,
-			1890 & 0xff,
+			(1897 >> 8) & 0xff,
+			1897 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40796,8 +40856,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1893 >> 8) & 0xff,
-			1893 & 0xff,
+			(1900 >> 8) & 0xff,
+			1900 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40812,8 +40872,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1900 >> 8) & 0xff,
-			1900 & 0xff,
+			(1907 >> 8) & 0xff,
+			1907 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40828,8 +40888,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1904 >> 8) & 0xff,
-			1904 & 0xff,
+			(1911 >> 8) & 0xff,
+			1911 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40844,8 +40904,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1907 >> 8) & 0xff,
-			1907 & 0xff,
+			(1914 >> 8) & 0xff,
+			1914 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -40857,8 +40917,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1914 >> 8) & 0xff,
-			1914 & 0xff,
+			(1921 >> 8) & 0xff,
+			1921 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40876,8 +40936,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1918 >> 8) & 0xff,
-			1918 & 0xff,
+			(1925 >> 8) & 0xff,
+			1925 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40895,8 +40955,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(1921 >> 8) & 0xff,
-			1921 & 0xff,
+			(1928 >> 8) & 0xff,
+			1928 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -40912,8 +40972,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2017 >> 8) & 0xff,
-		2017 & 0xff,
+		(2024 >> 8) & 0xff,
+		2024 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -40930,8 +40990,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2019 >> 8) & 0xff,
-		2019 & 0xff,
+		(2026 >> 8) & 0xff,
+		2026 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -40948,8 +41008,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2021 >> 8) & 0xff,
-		2021 & 0xff,
+		(2028 >> 8) & 0xff,
+		2028 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -40966,8 +41026,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2023 >> 8) & 0xff,
-		2023 & 0xff,
+		(2030 >> 8) & 0xff,
+		2030 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -40981,8 +41041,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2046 >> 8) & 0xff,
-		2046 & 0xff,
+		(2053 >> 8) & 0xff,
+		2053 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -40996,8 +41056,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2059 >> 8) & 0xff,
-		2059 & 0xff,
+		(2066 >> 8) & 0xff,
+		2066 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41011,8 +41071,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2073 >> 8) & 0xff,
-		2073 & 0xff,
+		(2080 >> 8) & 0xff,
+		2080 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41026,8 +41086,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2074 >> 8) & 0xff,
-		2074 & 0xff,
+		(2081 >> 8) & 0xff,
+		2081 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41041,8 +41101,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2082 >> 8) & 0xff,
-		2082 & 0xff,
+		(2089 >> 8) & 0xff,
+		2089 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41056,8 +41116,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2090 >> 8) & 0xff,
-		2090 & 0xff,
+		(2097 >> 8) & 0xff,
+		2097 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41071,8 +41131,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2098 >> 8) & 0xff,
-		2098 & 0xff,
+		(2105 >> 8) & 0xff,
+		2105 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41086,8 +41146,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2106 >> 8) & 0xff,
-		2106 & 0xff,
+		(2113 >> 8) & 0xff,
+		2113 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41101,8 +41161,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2114 >> 8) & 0xff,
-		2114 & 0xff,
+		(2121 >> 8) & 0xff,
+		2121 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41116,8 +41176,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2122 >> 8) & 0xff,
-		2122 & 0xff,
+		(2130 >> 8) & 0xff,
+		2130 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41131,8 +41191,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2129 >> 8) & 0xff,
-		2129 & 0xff,
+		(2137 >> 8) & 0xff,
+		2137 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41146,8 +41206,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2136 >> 8) & 0xff,
-		2136 & 0xff,
+		(2144 >> 8) & 0xff,
+		2144 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41161,8 +41221,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2143 >> 8) & 0xff,
-		2143 & 0xff,
+		(2151 >> 8) & 0xff,
+		2151 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41176,8 +41236,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2151 >> 8) & 0xff,
-		2151 & 0xff,
+		(2159 >> 8) & 0xff,
+		2159 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41191,8 +41251,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2160 >> 8) & 0xff,
-		2160 & 0xff,
+		(2168 >> 8) & 0xff,
+		2168 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41209,8 +41269,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2165 >> 8) & 0xff,
-		2165 & 0xff,
+		(2173 >> 8) & 0xff,
+		2173 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41227,8 +41287,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2169 >> 8) & 0xff,
-		2169 & 0xff,
+		(2177 >> 8) & 0xff,
+		2177 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41242,8 +41302,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2178 >> 8) & 0xff,
-		2178 & 0xff,
+		(2186 >> 8) & 0xff,
+		2186 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41257,8 +41317,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2187 >> 8) & 0xff,
-		2187 & 0xff,
+		(2195 >> 8) & 0xff,
+		2195 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41275,8 +41335,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2192 >> 8) & 0xff,
-		2192 & 0xff,
+		(2200 >> 8) & 0xff,
+		2200 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41293,8 +41353,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2196 >> 8) & 0xff,
-		2196 & 0xff,
+		(2204 >> 8) & 0xff,
+		2204 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41308,8 +41368,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2205 >> 8) & 0xff,
-		2205 & 0xff,
+		(2213 >> 8) & 0xff,
+		2213 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41326,8 +41386,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2210 >> 8) & 0xff,
-		2210 & 0xff,
+		(2218 >> 8) & 0xff,
+		2218 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41344,8 +41404,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2214 >> 8) & 0xff,
-		2214 & 0xff,
+		(2222 >> 8) & 0xff,
+		2222 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41359,8 +41419,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2223 >> 8) & 0xff,
-		2223 & 0xff,
+		(2231 >> 8) & 0xff,
+		2231 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41377,8 +41437,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2228 >> 8) & 0xff,
-		2228 & 0xff,
+		(2236 >> 8) & 0xff,
+		2236 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41395,8 +41455,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2232 >> 8) & 0xff,
-		2232 & 0xff,
+		(2240 >> 8) & 0xff,
+		2240 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41410,8 +41470,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2241 >> 8) & 0xff,
-		2241 & 0xff,
+		(2249 >> 8) & 0xff,
+		2249 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41428,8 +41488,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2246 >> 8) & 0xff,
-		2246 & 0xff,
+		(2254 >> 8) & 0xff,
+		2254 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41446,8 +41506,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2250 >> 8) & 0xff,
-		2250 & 0xff,
+		(2258 >> 8) & 0xff,
+		2258 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41461,8 +41521,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2259 >> 8) & 0xff,
-		2259 & 0xff,
+		(2267 >> 8) & 0xff,
+		2267 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41479,8 +41539,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2264 >> 8) & 0xff,
-		2264 & 0xff,
+		(2272 >> 8) & 0xff,
+		2272 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41497,8 +41557,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2268 >> 8) & 0xff,
-		2268 & 0xff,
+		(2276 >> 8) & 0xff,
+		2276 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41512,8 +41572,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(2274 >> 8) & 0xff,
-		2274 & 0xff,
+		(2282 >> 8) & 0xff,
+		2282 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41527,8 +41587,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2277 >> 8) & 0xff,
-		2277 & 0xff,
+		(2285 >> 8) & 0xff,
+		2285 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -41543,8 +41603,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(2278 >> 8) & 0xff,
-		2278 & 0xff,
+		(2286 >> 8) & 0xff,
+		2286 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41558,8 +41618,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(2283 >> 8) & 0xff,
-		2283 & 0xff,
+		(2291 >> 8) & 0xff,
+		2291 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41573,8 +41633,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2286 >> 8) & 0xff,
-		2286 & 0xff,
+		(2294 >> 8) & 0xff,
+		2294 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -41589,8 +41649,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(2287 >> 8) & 0xff,
-		2287 & 0xff,
+		(2295 >> 8) & 0xff,
+		2295 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41605,8 +41665,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2293 >> 8) & 0xff,
-		2293 & 0xff,
+		(2301 >> 8) & 0xff,
+		2301 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -41621,8 +41681,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2295 >> 8) & 0xff,
-		2295 & 0xff,
+		(2303 >> 8) & 0xff,
+		2303 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -41637,8 +41697,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2297 >> 8) & 0xff,
-		2297 & 0xff,
+		(2305 >> 8) & 0xff,
+		2305 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -41653,8 +41713,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2299 >> 8) & 0xff,
-		2299 & 0xff,
+		(2307 >> 8) & 0xff,
+		2307 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -41669,8 +41729,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2301 >> 8) & 0xff,
-		2301 & 0xff,
+		(2309 >> 8) & 0xff,
+		2309 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41687,8 +41747,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2303 >> 8) & 0xff,
-		2303 & 0xff,
+		(2311 >> 8) & 0xff,
+		2311 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41705,8 +41765,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2305 >> 8) & 0xff,
-		2305 & 0xff,
+		(2313 >> 8) & 0xff,
+		2313 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41723,8 +41783,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2307 >> 8) & 0xff,
-		2307 & 0xff,
+		(2315 >> 8) & 0xff,
+		2315 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41740,8 +41800,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2311 >> 8) & 0xff,
-			2311 & 0xff,
+			(2319 >> 8) & 0xff,
+			2319 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41756,8 +41816,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2313 >> 8) & 0xff,
-			2313 & 0xff,
+			(2321 >> 8) & 0xff,
+			2321 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41772,8 +41832,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2315 >> 8) & 0xff,
-			2315 & 0xff,
+			(2323 >> 8) & 0xff,
+			2323 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41785,8 +41845,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2319 >> 8) & 0xff,
-			2319 & 0xff,
+			(2327 >> 8) & 0xff,
+			2327 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41803,8 +41863,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2321 >> 8) & 0xff,
-			2321 & 0xff,
+			(2329 >> 8) & 0xff,
+			2329 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41821,8 +41881,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2323 >> 8) & 0xff,
-			2323 & 0xff,
+			(2331 >> 8) & 0xff,
+			2331 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41836,8 +41896,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2327 >> 8) & 0xff,
-			2327 & 0xff,
+			(2335 >> 8) & 0xff,
+			2335 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41852,8 +41912,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2329 >> 8) & 0xff,
-			2329 & 0xff,
+			(2337 >> 8) & 0xff,
+			2337 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41868,8 +41928,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2331 >> 8) & 0xff,
-			2331 & 0xff,
+			(2339 >> 8) & 0xff,
+			2339 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41881,8 +41941,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2335 >> 8) & 0xff,
-			2335 & 0xff,
+			(2343 >> 8) & 0xff,
+			2343 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -41897,8 +41957,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2337 >> 8) & 0xff,
-			2337 & 0xff,
+			(2345 >> 8) & 0xff,
+			2345 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41915,8 +41975,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2339 >> 8) & 0xff,
-			2339 & 0xff,
+			(2347 >> 8) & 0xff,
+			2347 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -41930,8 +41990,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2343 >> 8) & 0xff,
-			2343 & 0xff,
+			(2351 >> 8) & 0xff,
+			2351 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41946,8 +42006,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2345 >> 8) & 0xff,
-			2345 & 0xff,
+			(2353 >> 8) & 0xff,
+			2353 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41962,8 +42022,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2347 >> 8) & 0xff,
-			2347 & 0xff,
+			(2355 >> 8) & 0xff,
+			2355 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -41975,8 +42035,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2351 >> 8) & 0xff,
-			2351 & 0xff,
+			(2359 >> 8) & 0xff,
+			2359 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -41991,8 +42051,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2353 >> 8) & 0xff,
-			2353 & 0xff,
+			(2361 >> 8) & 0xff,
+			2361 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42007,8 +42067,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2355 >> 8) & 0xff,
-			2355 & 0xff,
+			(2363 >> 8) & 0xff,
+			2363 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42020,8 +42080,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2359 >> 8) & 0xff,
-			2359 & 0xff,
+			(2367 >> 8) & 0xff,
+			2367 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42036,8 +42096,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2361 >> 8) & 0xff,
-			2361 & 0xff,
+			(2369 >> 8) & 0xff,
+			2369 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42052,8 +42112,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2363 >> 8) & 0xff,
-			2363 & 0xff,
+			(2371 >> 8) & 0xff,
+			2371 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42065,8 +42125,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2367 >> 8) & 0xff,
-			2367 & 0xff,
+			(2375 >> 8) & 0xff,
+			2375 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42083,8 +42143,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2369 >> 8) & 0xff,
-			2369 & 0xff,
+			(2377 >> 8) & 0xff,
+			2377 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42101,8 +42161,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2371 >> 8) & 0xff,
-			2371 & 0xff,
+			(2379 >> 8) & 0xff,
+			2379 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42116,8 +42176,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2375 >> 8) & 0xff,
-			2375 & 0xff,
+			(2383 >> 8) & 0xff,
+			2383 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42134,8 +42194,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2377 >> 8) & 0xff,
-			2377 & 0xff,
+			(2385 >> 8) & 0xff,
+			2385 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42152,8 +42212,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2379 >> 8) & 0xff,
-			2379 & 0xff,
+			(2387 >> 8) & 0xff,
+			2387 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42167,8 +42227,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2383 >> 8) & 0xff,
-			2383 & 0xff,
+			(2391 >> 8) & 0xff,
+			2391 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42183,8 +42243,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2385 >> 8) & 0xff,
-			2385 & 0xff,
+			(2393 >> 8) & 0xff,
+			2393 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42199,8 +42259,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2387 >> 8) & 0xff,
-			2387 & 0xff,
+			(2395 >> 8) & 0xff,
+			2395 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42212,8 +42272,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2391 >> 8) & 0xff,
-			2391 & 0xff,
+			(2399 >> 8) & 0xff,
+			2399 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42230,8 +42290,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2393 >> 8) & 0xff,
-			2393 & 0xff,
+			(2401 >> 8) & 0xff,
+			2401 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42246,8 +42306,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2395 >> 8) & 0xff,
-			2395 & 0xff,
+			(2403 >> 8) & 0xff,
+			2403 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42259,8 +42319,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2399 >> 8) & 0xff,
-			2399 & 0xff,
+			(2407 >> 8) & 0xff,
+			2407 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42275,8 +42335,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2401 >> 8) & 0xff,
-			2401 & 0xff,
+			(2409 >> 8) & 0xff,
+			2409 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42291,8 +42351,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2403 >> 8) & 0xff,
-			2403 & 0xff,
+			(2411 >> 8) & 0xff,
+			2411 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42304,8 +42364,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2407 >> 8) & 0xff,
-			2407 & 0xff,
+			(2415 >> 8) & 0xff,
+			2415 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42320,8 +42380,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2409 >> 8) & 0xff,
-			2409 & 0xff,
+			(2417 >> 8) & 0xff,
+			2417 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42336,8 +42396,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2411 >> 8) & 0xff,
-			2411 & 0xff,
+			(2419 >> 8) & 0xff,
+			2419 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42349,8 +42409,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2415 >> 8) & 0xff,
-			2415 & 0xff,
+			(2423 >> 8) & 0xff,
+			2423 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42365,8 +42425,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2417 >> 8) & 0xff,
-			2417 & 0xff,
+			(2425 >> 8) & 0xff,
+			2425 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42381,8 +42441,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2419 >> 8) & 0xff,
-			2419 & 0xff,
+			(2427 >> 8) & 0xff,
+			2427 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42394,8 +42454,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2423 >> 8) & 0xff,
-			2423 & 0xff,
+			(2431 >> 8) & 0xff,
+			2431 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42412,8 +42472,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2425 >> 8) & 0xff,
-			2425 & 0xff,
+			(2433 >> 8) & 0xff,
+			2433 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42430,8 +42490,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2427 >> 8) & 0xff,
-			2427 & 0xff,
+			(2435 >> 8) & 0xff,
+			2435 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42445,8 +42505,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2432 >> 8) & 0xff,
-			2432 & 0xff,
+			(2440 >> 8) & 0xff,
+			2440 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42460,8 +42520,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2438 >> 8) & 0xff,
-			2438 & 0xff,
+			(2446 >> 8) & 0xff,
+			2446 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42475,8 +42535,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2445 >> 8) & 0xff,
-			2445 & 0xff,
+			(2453 >> 8) & 0xff,
+			2453 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42488,8 +42548,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2449 >> 8) & 0xff,
-			2449 & 0xff,
+			(2457 >> 8) & 0xff,
+			2457 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42501,8 +42561,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2453 >> 8) & 0xff,
-			2453 & 0xff,
+			(2461 >> 8) & 0xff,
+			2461 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42516,8 +42576,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2457 >> 8) & 0xff,
-			2457 & 0xff,
+			(2465 >> 8) & 0xff,
+			2465 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42532,8 +42592,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2459 >> 8) & 0xff,
-			2459 & 0xff,
+			(2467 >> 8) & 0xff,
+			2467 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42548,8 +42608,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2461 >> 8) & 0xff,
-			2461 & 0xff,
+			(2469 >> 8) & 0xff,
+			2469 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42564,8 +42624,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2463 >> 8) & 0xff,
-			2463 & 0xff,
+			(2471 >> 8) & 0xff,
+			2471 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42580,8 +42640,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2465 >> 8) & 0xff,
-			2465 & 0xff,
+			(2473 >> 8) & 0xff,
+			2473 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42593,8 +42653,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2469 >> 8) & 0xff,
-			2469 & 0xff,
+			(2477 >> 8) & 0xff,
+			2477 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42609,8 +42669,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2471 >> 8) & 0xff,
-			2471 & 0xff,
+			(2479 >> 8) & 0xff,
+			2479 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42627,8 +42687,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2473 >> 8) & 0xff,
-			2473 & 0xff,
+			(2481 >> 8) & 0xff,
+			2481 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42645,8 +42705,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2475 >> 8) & 0xff,
-			2475 & 0xff,
+			(2483 >> 8) & 0xff,
+			2483 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42663,8 +42723,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2477 >> 8) & 0xff,
-			2477 & 0xff,
+			(2485 >> 8) & 0xff,
+			2485 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42678,8 +42738,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2484 >> 8) & 0xff,
-			2484 & 0xff,
+			(2492 >> 8) & 0xff,
+			2492 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42691,8 +42751,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2488 >> 8) & 0xff,
-			2488 & 0xff,
+			(2496 >> 8) & 0xff,
+			2496 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42706,8 +42766,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2492 >> 8) & 0xff,
-			2492 & 0xff,
+			(2500 >> 8) & 0xff,
+			2500 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42719,8 +42779,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2496 >> 8) & 0xff,
-			2496 & 0xff,
+			(2504 >> 8) & 0xff,
+			2504 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42734,8 +42794,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2500 >> 8) & 0xff,
-			2500 & 0xff,
+			(2508 >> 8) & 0xff,
+			2508 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42747,8 +42807,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2504 >> 8) & 0xff,
-			2504 & 0xff,
+			(2512 >> 8) & 0xff,
+			2512 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42760,8 +42820,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2508 >> 8) & 0xff,
-			2508 & 0xff,
+			(2516 >> 8) & 0xff,
+			2516 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42776,8 +42836,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2510 >> 8) & 0xff,
-			2510 & 0xff,
+			(2518 >> 8) & 0xff,
+			2518 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42789,8 +42849,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2513 >> 8) & 0xff,
-			2513 & 0xff,
+			(2521 >> 8) & 0xff,
+			2521 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42807,8 +42867,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2515 >> 8) & 0xff,
-			2515 & 0xff,
+			(2523 >> 8) & 0xff,
+			2523 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42820,8 +42880,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2518 >> 8) & 0xff,
-			2518 & 0xff,
+			(2526 >> 8) & 0xff,
+			2526 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42835,8 +42895,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2522 >> 8) & 0xff,
-			2522 & 0xff,
+			(2530 >> 8) & 0xff,
+			2530 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42848,8 +42908,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2526 >> 8) & 0xff,
-			2526 & 0xff,
+			(2534 >> 8) & 0xff,
+			2534 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42861,8 +42921,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2530 >> 8) & 0xff,
-			2530 & 0xff,
+			(2538 >> 8) & 0xff,
+			2538 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -42874,8 +42934,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2534 >> 8) & 0xff,
-			2534 & 0xff,
+			(2542 >> 8) & 0xff,
+			2542 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ZERO,
@@ -42887,8 +42947,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2538 >> 8) & 0xff,
-			2538 & 0xff,
+			(2546 >> 8) & 0xff,
+			2546 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -42902,8 +42962,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2574 >> 8) & 0xff,
-			2574 & 0xff,
+			(2582 >> 8) & 0xff,
+			2582 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -42918,8 +42978,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2581 >> 8) & 0xff,
-			2581 & 0xff,
+			(2589 >> 8) & 0xff,
+			2589 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -42934,8 +42994,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2599 >> 8) & 0xff,
-			2599 & 0xff,
+			(2607 >> 8) & 0xff,
+			2607 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -42950,8 +43010,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2609 >> 8) & 0xff,
-			2609 & 0xff,
+			(2617 >> 8) & 0xff,
+			2617 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -42966,8 +43026,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2636 >> 8) & 0xff,
-			2636 & 0xff,
+			(2644 >> 8) & 0xff,
+			2644 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -42982,30 +43042,14 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2641 >> 8) & 0xff,
-			2641 & 0xff,
+			(2649 >> 8) & 0xff,
+			2649 & 0xff,
 			(1 >> 8) & 0xff,
 			1 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
 		(BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR >> 8) & 0xff,
 		BNXT_ULP_GLB_HF_ID_O_IPV6_SRC_ADDR & 0xff},
-		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
-		},
-	{
-		.description = "tl3.ttl",
-		.field_bit_size = 8,
-		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
-		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
-		.field_opr1 = {
-			(2662 >> 8) & 0xff,
-			2662 & 0xff,
-			(4 >> 8) & 0xff,
-			4 & 0xff},
-		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
-		.field_opr2 = {
-		(BNXT_ULP_GLB_HF_ID_O_IPV4_TTL >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_O_IPV4_TTL & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
@@ -43025,7 +43069,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
-		.description = "tl3.prot",
+		.description = "tl3.ttl",
 		.field_bit_size = 8,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
@@ -43036,8 +43080,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
-		(BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID & 0xff},
+		(BNXT_ULP_GLB_HF_ID_O_IPV4_TTL >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_O_IPV4_TTL & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
@@ -43057,7 +43101,7 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
-		.description = "tl3.qos",
+		.description = "tl3.prot",
 		.field_bit_size = 8,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
@@ -43068,8 +43112,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
-		(BNXT_ULP_GLB_HF_ID_O_IPV4_QOS >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_O_IPV4_QOS & 0xff},
+		(BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_O_IPV4_PROTO_ID & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
@@ -43089,8 +43133,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
-		.description = "tl4.src",
-		.field_bit_size = 16,
+		.description = "tl3.qos",
+		.field_bit_size = 8,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
@@ -43100,8 +43144,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
 		.field_opr2 = {
-		(BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT >> 8) & 0xff,
-		BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT & 0xff},
+		(BNXT_ULP_GLB_HF_ID_O_IPV4_QOS >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_O_IPV4_QOS & 0xff},
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
@@ -43121,13 +43165,29 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
 		},
 	{
-		.description = "tl4.dst",
+		.description = "tl4.src",
 		.field_bit_size = 16,
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
 			(2726 >> 8) & 0xff,
 			2726 & 0xff,
+			(4 >> 8) & 0xff,
+			4 & 0xff},
+		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
+		.field_opr2 = {
+		(BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT >> 8) & 0xff,
+		BNXT_ULP_GLB_HF_ID_O_TCP_SRC_PORT & 0xff},
+		.field_src3 = BNXT_ULP_FIELD_SRC_SKIP
+		},
+	{
+		.description = "tl4.dst",
+		.field_bit_size = 16,
+		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
+		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
+		.field_opr1 = {
+			(2735 >> 8) & 0xff,
+			2735 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43142,8 +43202,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2734 >> 8) & 0xff,
-			2734 & 0xff,
+			(2744 >> 8) & 0xff,
+			2744 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43158,8 +43218,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2741 >> 8) & 0xff,
-			2741 & 0xff,
+			(2751 >> 8) & 0xff,
+			2751 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43174,8 +43234,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2747 >> 8) & 0xff,
-			2747 & 0xff,
+			(2757 >> 8) & 0xff,
+			2757 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43190,8 +43250,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2754 >> 8) & 0xff,
-			2754 & 0xff,
+			(2764 >> 8) & 0xff,
+			2764 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43206,8 +43266,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2761 >> 8) & 0xff,
-			2761 & 0xff,
+			(2771 >> 8) & 0xff,
+			2771 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43222,8 +43282,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2768 >> 8) & 0xff,
-			2768 & 0xff,
+			(2778 >> 8) & 0xff,
+			2778 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43238,8 +43298,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2775 >> 8) & 0xff,
-			2775 & 0xff,
+			(2785 >> 8) & 0xff,
+			2785 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43254,8 +43314,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2783 >> 8) & 0xff,
-			2783 & 0xff,
+			(2793 >> 8) & 0xff,
+			2793 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43270,8 +43330,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2792 >> 8) & 0xff,
-			2792 & 0xff,
+			(2802 >> 8) & 0xff,
+			2802 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43286,8 +43346,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2801 >> 8) & 0xff,
-			2801 & 0xff,
+			(2811 >> 8) & 0xff,
+			2811 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43305,8 +43365,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2806 >> 8) & 0xff,
-			2806 & 0xff,
+			(2816 >> 8) & 0xff,
+			2816 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43324,8 +43384,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2810 >> 8) & 0xff,
-			2810 & 0xff,
+			(2820 >> 8) & 0xff,
+			2820 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43340,8 +43400,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2819 >> 8) & 0xff,
-			2819 & 0xff,
+			(2829 >> 8) & 0xff,
+			2829 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43359,8 +43419,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2824 >> 8) & 0xff,
-			2824 & 0xff,
+			(2834 >> 8) & 0xff,
+			2834 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43378,8 +43438,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2828 >> 8) & 0xff,
-			2828 & 0xff,
+			(2838 >> 8) & 0xff,
+			2838 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43394,8 +43454,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2837 >> 8) & 0xff,
-			2837 & 0xff,
+			(2847 >> 8) & 0xff,
+			2847 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43410,8 +43470,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2846 >> 8) & 0xff,
-			2846 & 0xff,
+			(2856 >> 8) & 0xff,
+			2856 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43426,8 +43486,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2854 >> 8) & 0xff,
-			2854 & 0xff,
+			(2864 >> 8) & 0xff,
+			2864 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43442,8 +43502,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2861 >> 8) & 0xff,
-			2861 & 0xff,
+			(2871 >> 8) & 0xff,
+			2871 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43458,8 +43518,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2868 >> 8) & 0xff,
-			2868 & 0xff,
+			(2878 >> 8) & 0xff,
+			2878 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43474,8 +43534,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2875 >> 8) & 0xff,
-			2875 & 0xff,
+			(2885 >> 8) & 0xff,
+			2885 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43490,8 +43550,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2882 >> 8) & 0xff,
-			2882 & 0xff,
+			(2892 >> 8) & 0xff,
+			2892 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43506,8 +43566,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2889 >> 8) & 0xff,
-			2889 & 0xff,
+			(2899 >> 8) & 0xff,
+			2899 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43522,8 +43582,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2896 >> 8) & 0xff,
-			2896 & 0xff,
+			(2906 >> 8) & 0xff,
+			2906 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43538,8 +43598,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2903 >> 8) & 0xff,
-			2903 & 0xff,
+			(2913 >> 8) & 0xff,
+			2913 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43554,8 +43614,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2910 >> 8) & 0xff,
-			2910 & 0xff,
+			(2920 >> 8) & 0xff,
+			2920 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43573,8 +43633,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2914 >> 8) & 0xff,
-			2914 & 0xff,
+			(2924 >> 8) & 0xff,
+			2924 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43592,8 +43652,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2917 >> 8) & 0xff,
-			2917 & 0xff,
+			(2927 >> 8) & 0xff,
+			2927 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43608,8 +43668,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2924 >> 8) & 0xff,
-			2924 & 0xff,
+			(2934 >> 8) & 0xff,
+			2934 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43627,8 +43687,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2928 >> 8) & 0xff,
-			2928 & 0xff,
+			(2938 >> 8) & 0xff,
+			2938 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43646,8 +43706,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2931 >> 8) & 0xff,
-			2931 & 0xff,
+			(2941 >> 8) & 0xff,
+			2941 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43662,8 +43722,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2937 >> 8) & 0xff,
-			2937 & 0xff,
+			(2947 >> 8) & 0xff,
+			2947 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -43678,8 +43738,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2940 >> 8) & 0xff,
-			2940 & 0xff,
+			(2950 >> 8) & 0xff,
+			2950 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -43694,8 +43754,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2942 >> 8) & 0xff,
-			2942 & 0xff,
+			(2952 >> 8) & 0xff,
+			2952 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -43710,8 +43770,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2944 >> 8) & 0xff,
-			2944 & 0xff,
+			(2954 >> 8) & 0xff,
+			2954 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43729,8 +43789,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2948 >> 8) & 0xff,
-			2948 & 0xff,
+			(2958 >> 8) & 0xff,
+			2958 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43748,8 +43808,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2952 >> 8) & 0xff,
-			2952 & 0xff,
+			(2962 >> 8) & 0xff,
+			2962 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43767,8 +43827,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2955 >> 8) & 0xff,
-			2955 & 0xff,
+			(2965 >> 8) & 0xff,
+			2965 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43783,8 +43843,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2961 >> 8) & 0xff,
-			2961 & 0xff,
+			(2971 >> 8) & 0xff,
+			2971 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -43801,8 +43861,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2964 >> 8) & 0xff,
-			2964 & 0xff,
+			(2974 >> 8) & 0xff,
+			2974 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -43819,8 +43879,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2966 >> 8) & 0xff,
-			2966 & 0xff,
+			(2976 >> 8) & 0xff,
+			2976 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -43837,8 +43897,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2968 >> 8) & 0xff,
-			2968 & 0xff,
+			(2978 >> 8) & 0xff,
+			2978 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43856,8 +43916,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2972 >> 8) & 0xff,
-			2972 & 0xff,
+			(2982 >> 8) & 0xff,
+			2982 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43875,8 +43935,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2976 >> 8) & 0xff,
-			2976 & 0xff,
+			(2986 >> 8) & 0xff,
+			2986 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43894,8 +43954,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2979 >> 8) & 0xff,
-			2979 & 0xff,
+			(2989 >> 8) & 0xff,
+			2989 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43910,8 +43970,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2986 >> 8) & 0xff,
-			2986 & 0xff,
+			(2996 >> 8) & 0xff,
+			2996 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43929,8 +43989,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2990 >> 8) & 0xff,
-			2990 & 0xff,
+			(3000 >> 8) & 0xff,
+			3000 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43948,8 +44008,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(2993 >> 8) & 0xff,
-			2993 & 0xff,
+			(3003 >> 8) & 0xff,
+			3003 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43964,8 +44024,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3000 >> 8) & 0xff,
-			3000 & 0xff,
+			(3010 >> 8) & 0xff,
+			3010 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -43983,8 +44043,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3004 >> 8) & 0xff,
-			3004 & 0xff,
+			(3014 >> 8) & 0xff,
+			3014 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44002,8 +44062,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3007 >> 8) & 0xff,
-			3007 & 0xff,
+			(3017 >> 8) & 0xff,
+			3017 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44018,8 +44078,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3014 >> 8) & 0xff,
-			3014 & 0xff,
+			(3024 >> 8) & 0xff,
+			3024 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44037,8 +44097,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3018 >> 8) & 0xff,
-			3018 & 0xff,
+			(3028 >> 8) & 0xff,
+			3028 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44056,8 +44116,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3021 >> 8) & 0xff,
-			3021 & 0xff,
+			(3031 >> 8) & 0xff,
+			3031 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44075,8 +44135,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3024 >> 8) & 0xff,
-			3024 & 0xff,
+			(3034 >> 8) & 0xff,
+			3034 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -44088,8 +44148,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3030 >> 8) & 0xff,
-			3030 & 0xff,
+			(3040 >> 8) & 0xff,
+			3040 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44107,8 +44167,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3034 >> 8) & 0xff,
-			3034 & 0xff,
+			(3044 >> 8) & 0xff,
+			3044 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44126,8 +44186,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3037 >> 8) & 0xff,
-			3037 & 0xff,
+			(3047 >> 8) & 0xff,
+			3047 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44145,8 +44205,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3040 >> 8) & 0xff,
-			3040 & 0xff,
+			(3050 >> 8) & 0xff,
+			3050 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -44158,8 +44218,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3046 >> 8) & 0xff,
-			3046 & 0xff,
+			(3056 >> 8) & 0xff,
+			3056 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44177,8 +44237,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3050 >> 8) & 0xff,
-			3050 & 0xff,
+			(3060 >> 8) & 0xff,
+			3060 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44196,8 +44256,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3053 >> 8) & 0xff,
-			3053 & 0xff,
+			(3063 >> 8) & 0xff,
+			3063 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44215,8 +44275,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3056 >> 8) & 0xff,
-			3056 & 0xff,
+			(3066 >> 8) & 0xff,
+			3066 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -44228,8 +44288,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3062 >> 8) & 0xff,
-			3062 & 0xff,
+			(3072 >> 8) & 0xff,
+			3072 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44247,8 +44307,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3066 >> 8) & 0xff,
-			3066 & 0xff,
+			(3076 >> 8) & 0xff,
+			3076 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44266,8 +44326,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3069 >> 8) & 0xff,
-			3069 & 0xff,
+			(3079 >> 8) & 0xff,
+			3079 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44285,8 +44345,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 		.field_opr1 = {
-			(3072 >> 8) & 0xff,
-			3072 & 0xff,
+			(3082 >> 8) & 0xff,
+			3082 & 0xff,
 			(2 >> 8) & 0xff,
 			2 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_SKIP,
@@ -44298,8 +44358,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3105 >> 8) & 0xff,
-		3105 & 0xff,
+		(3115 >> 8) & 0xff,
+		3115 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44313,8 +44373,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3119 >> 8) & 0xff,
-		3119 & 0xff,
+		(3129 >> 8) & 0xff,
+		3129 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44328,8 +44388,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3127 >> 8) & 0xff,
-		3127 & 0xff,
+		(3137 >> 8) & 0xff,
+		3137 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44343,8 +44403,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3135 >> 8) & 0xff,
-		3135 & 0xff,
+		(3145 >> 8) & 0xff,
+		3145 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44358,8 +44418,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3143 >> 8) & 0xff,
-		3143 & 0xff,
+		(3153 >> 8) & 0xff,
+		3153 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44373,8 +44433,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3151 >> 8) & 0xff,
-		3151 & 0xff,
+		(3161 >> 8) & 0xff,
+		3161 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44388,8 +44448,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3159 >> 8) & 0xff,
-		3159 & 0xff,
+		(3169 >> 8) & 0xff,
+		3169 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44403,8 +44463,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3167 >> 8) & 0xff,
-		3167 & 0xff,
+		(3178 >> 8) & 0xff,
+		3178 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44418,8 +44478,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3174 >> 8) & 0xff,
-		3174 & 0xff,
+		(3185 >> 8) & 0xff,
+		3185 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44433,8 +44493,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3181 >> 8) & 0xff,
-		3181 & 0xff,
+		(3192 >> 8) & 0xff,
+		3192 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44448,8 +44508,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3188 >> 8) & 0xff,
-		3188 & 0xff,
+		(3199 >> 8) & 0xff,
+		3199 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44463,8 +44523,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3196 >> 8) & 0xff,
-		3196 & 0xff,
+		(3207 >> 8) & 0xff,
+		3207 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44478,8 +44538,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3205 >> 8) & 0xff,
-		3205 & 0xff,
+		(3216 >> 8) & 0xff,
+		3216 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44496,8 +44556,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3210 >> 8) & 0xff,
-		3210 & 0xff,
+		(3221 >> 8) & 0xff,
+		3221 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44514,8 +44574,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3214 >> 8) & 0xff,
-		3214 & 0xff,
+		(3225 >> 8) & 0xff,
+		3225 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44529,8 +44589,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3223 >> 8) & 0xff,
-		3223 & 0xff,
+		(3234 >> 8) & 0xff,
+		3234 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44544,8 +44604,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3231 >> 8) & 0xff,
-		3231 & 0xff,
+		(3242 >> 8) & 0xff,
+		3242 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44562,8 +44622,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3235 >> 8) & 0xff,
-		3235 & 0xff,
+		(3246 >> 8) & 0xff,
+		3246 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44580,8 +44640,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3238 >> 8) & 0xff,
-		3238 & 0xff,
+		(3249 >> 8) & 0xff,
+		3249 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44595,8 +44655,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3245 >> 8) & 0xff,
-		3245 & 0xff,
+		(3256 >> 8) & 0xff,
+		3256 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44613,8 +44673,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3249 >> 8) & 0xff,
-		3249 & 0xff,
+		(3260 >> 8) & 0xff,
+		3260 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44631,8 +44691,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3252 >> 8) & 0xff,
-		3252 & 0xff,
+		(3263 >> 8) & 0xff,
+		3263 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44646,8 +44706,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3259 >> 8) & 0xff,
-		3259 & 0xff,
+		(3270 >> 8) & 0xff,
+		3270 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44664,8 +44724,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3263 >> 8) & 0xff,
-		3263 & 0xff,
+		(3274 >> 8) & 0xff,
+		3274 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44682,8 +44742,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3266 >> 8) & 0xff,
-		3266 & 0xff,
+		(3277 >> 8) & 0xff,
+		3277 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44697,8 +44757,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3273 >> 8) & 0xff,
-		3273 & 0xff,
+		(3284 >> 8) & 0xff,
+		3284 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44715,8 +44775,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3277 >> 8) & 0xff,
-		3277 & 0xff,
+		(3288 >> 8) & 0xff,
+		3288 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44733,8 +44793,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3280 >> 8) & 0xff,
-		3280 & 0xff,
+		(3291 >> 8) & 0xff,
+		3291 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44748,8 +44808,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3287 >> 8) & 0xff,
-		3287 & 0xff,
+		(3298 >> 8) & 0xff,
+		3298 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44766,8 +44826,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3291 >> 8) & 0xff,
-		3291 & 0xff,
+		(3302 >> 8) & 0xff,
+		3302 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44784,8 +44844,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3294 >> 8) & 0xff,
-		3294 & 0xff,
+		(3305 >> 8) & 0xff,
+		3305 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44799,8 +44859,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3301 >> 8) & 0xff,
-		3301 & 0xff,
+		(3312 >> 8) & 0xff,
+		3312 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44817,8 +44877,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3305 >> 8) & 0xff,
-		3305 & 0xff,
+		(3316 >> 8) & 0xff,
+		3316 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44835,8 +44895,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3308 >> 8) & 0xff,
-		3308 & 0xff,
+		(3319 >> 8) & 0xff,
+		3319 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44850,8 +44910,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3315 >> 8) & 0xff,
-		3315 & 0xff,
+		(3326 >> 8) & 0xff,
+		3326 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44868,8 +44928,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3319 >> 8) & 0xff,
-		3319 & 0xff,
+		(3330 >> 8) & 0xff,
+		3330 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44886,8 +44946,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3322 >> 8) & 0xff,
-		3322 & 0xff,
+		(3333 >> 8) & 0xff,
+		3333 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -44901,8 +44961,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3366 >> 8) & 0xff,
-			3366 & 0xff,
+			(3377 >> 8) & 0xff,
+			3377 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -44914,8 +44974,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3376 >> 8) & 0xff,
-			3376 & 0xff,
+			(3387 >> 8) & 0xff,
+			3387 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44930,8 +44990,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3427 >> 8) & 0xff,
-			3427 & 0xff,
+			(3438 >> 8) & 0xff,
+			3438 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -44943,8 +45003,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3435 >> 8) & 0xff,
-			3435 & 0xff,
+			(3446 >> 8) & 0xff,
+			3446 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44959,8 +45019,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3443 >> 8) & 0xff,
-			3443 & 0xff,
+			(3454 >> 8) & 0xff,
+			3454 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -44972,8 +45032,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3451 >> 8) & 0xff,
-			3451 & 0xff,
+			(3462 >> 8) & 0xff,
+			3462 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -44988,8 +45048,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3459 >> 8) & 0xff,
-			3459 & 0xff,
+			(3470 >> 8) & 0xff,
+			3470 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45001,8 +45061,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3467 >> 8) & 0xff,
-			3467 & 0xff,
+			(3478 >> 8) & 0xff,
+			3478 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45017,8 +45077,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3475 >> 8) & 0xff,
-			3475 & 0xff,
+			(3486 >> 8) & 0xff,
+			3486 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45030,8 +45090,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3483 >> 8) & 0xff,
-			3483 & 0xff,
+			(3494 >> 8) & 0xff,
+			3494 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45046,8 +45106,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3491 >> 8) & 0xff,
-			3491 & 0xff,
+			(3503 >> 8) & 0xff,
+			3503 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45059,8 +45119,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3499 >> 8) & 0xff,
-			3499 & 0xff,
+			(3512 >> 8) & 0xff,
+			3512 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45075,8 +45135,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3506 >> 8) & 0xff,
-			3506 & 0xff,
+			(3519 >> 8) & 0xff,
+			3519 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45088,8 +45148,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3512 >> 8) & 0xff,
-			3512 & 0xff,
+			(3525 >> 8) & 0xff,
+			3525 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45104,8 +45164,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3519 >> 8) & 0xff,
-			3519 & 0xff,
+			(3532 >> 8) & 0xff,
+			3532 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45117,8 +45177,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3526 >> 8) & 0xff,
-			3526 & 0xff,
+			(3539 >> 8) & 0xff,
+			3539 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45133,8 +45193,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3533 >> 8) & 0xff,
-			3533 & 0xff,
+			(3546 >> 8) & 0xff,
+			3546 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45146,8 +45206,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3540 >> 8) & 0xff,
-			3540 & 0xff,
+			(3553 >> 8) & 0xff,
+			3553 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45162,8 +45222,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3548 >> 8) & 0xff,
-			3548 & 0xff,
+			(3561 >> 8) & 0xff,
+			3561 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45175,8 +45235,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3557 >> 8) & 0xff,
-			3557 & 0xff,
+			(3570 >> 8) & 0xff,
+			3570 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45191,8 +45251,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3566 >> 8) & 0xff,
-			3566 & 0xff,
+			(3579 >> 8) & 0xff,
+			3579 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45207,8 +45267,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3571 >> 8) & 0xff,
-			3571 & 0xff,
+			(3584 >> 8) & 0xff,
+			3584 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45223,8 +45283,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3575 >> 8) & 0xff,
-			3575 & 0xff,
+			(3588 >> 8) & 0xff,
+			3588 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45236,8 +45296,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3584 >> 8) & 0xff,
-			3584 & 0xff,
+			(3597 >> 8) & 0xff,
+			3597 & 0xff,
 			(5 >> 8) & 0xff,
 			5 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45255,8 +45315,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3589 >> 8) & 0xff,
-			3589 & 0xff,
+			(3602 >> 8) & 0xff,
+			3602 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45274,8 +45334,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3593 >> 8) & 0xff,
-			3593 & 0xff,
+			(3606 >> 8) & 0xff,
+			3606 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45290,8 +45350,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3602 >> 8) & 0xff,
-			3602 & 0xff,
+			(3615 >> 8) & 0xff,
+			3615 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45303,8 +45363,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3611 >> 8) & 0xff,
-			3611 & 0xff,
+			(3624 >> 8) & 0xff,
+			3624 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45319,8 +45379,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3619 >> 8) & 0xff,
-			3619 & 0xff,
+			(3632 >> 8) & 0xff,
+			3632 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45332,8 +45392,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3626 >> 8) & 0xff,
-			3626 & 0xff,
+			(3639 >> 8) & 0xff,
+			3639 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45348,8 +45408,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3633 >> 8) & 0xff,
-			3633 & 0xff,
+			(3646 >> 8) & 0xff,
+			3646 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45361,8 +45421,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3640 >> 8) & 0xff,
-			3640 & 0xff,
+			(3653 >> 8) & 0xff,
+			3653 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45377,8 +45437,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3647 >> 8) & 0xff,
-			3647 & 0xff,
+			(3660 >> 8) & 0xff,
+			3660 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45390,8 +45450,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3654 >> 8) & 0xff,
-			3654 & 0xff,
+			(3667 >> 8) & 0xff,
+			3667 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45406,8 +45466,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3661 >> 8) & 0xff,
-			3661 & 0xff,
+			(3674 >> 8) & 0xff,
+			3674 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45419,8 +45479,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3668 >> 8) & 0xff,
-			3668 & 0xff,
+			(3681 >> 8) & 0xff,
+			3681 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45435,8 +45495,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3675 >> 8) & 0xff,
-			3675 & 0xff,
+			(3688 >> 8) & 0xff,
+			3688 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45451,8 +45511,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3679 >> 8) & 0xff,
-			3679 & 0xff,
+			(3692 >> 8) & 0xff,
+			3692 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45467,8 +45527,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3682 >> 8) & 0xff,
-			3682 & 0xff,
+			(3695 >> 8) & 0xff,
+			3695 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45480,8 +45540,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3689 >> 8) & 0xff,
-			3689 & 0xff,
+			(3702 >> 8) & 0xff,
+			3702 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45499,8 +45559,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3693 >> 8) & 0xff,
-			3693 & 0xff,
+			(3706 >> 8) & 0xff,
+			3706 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45518,8 +45578,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3696 >> 8) & 0xff,
-			3696 & 0xff,
+			(3709 >> 8) & 0xff,
+			3709 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45534,8 +45594,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3703 >> 8) & 0xff,
-			3703 & 0xff,
+			(3716 >> 8) & 0xff,
+			3716 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45550,8 +45610,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3707 >> 8) & 0xff,
-			3707 & 0xff,
+			(3720 >> 8) & 0xff,
+			3720 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45566,8 +45626,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3710 >> 8) & 0xff,
-			3710 & 0xff,
+			(3723 >> 8) & 0xff,
+			3723 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45579,8 +45639,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3717 >> 8) & 0xff,
-			3717 & 0xff,
+			(3730 >> 8) & 0xff,
+			3730 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45598,8 +45658,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3721 >> 8) & 0xff,
-			3721 & 0xff,
+			(3734 >> 8) & 0xff,
+			3734 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45617,8 +45677,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3724 >> 8) & 0xff,
-			3724 & 0xff,
+			(3737 >> 8) & 0xff,
+			3737 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45633,8 +45693,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3731 >> 8) & 0xff,
-			3731 & 0xff,
+			(3744 >> 8) & 0xff,
+			3744 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45649,8 +45709,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3735 >> 8) & 0xff,
-			3735 & 0xff,
+			(3748 >> 8) & 0xff,
+			3748 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45665,8 +45725,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3738 >> 8) & 0xff,
-			3738 & 0xff,
+			(3751 >> 8) & 0xff,
+			3751 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45678,8 +45738,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3745 >> 8) & 0xff,
-			3745 & 0xff,
+			(3758 >> 8) & 0xff,
+			3758 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45697,8 +45757,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3749 >> 8) & 0xff,
-			3749 & 0xff,
+			(3762 >> 8) & 0xff,
+			3762 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45716,8 +45776,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3752 >> 8) & 0xff,
-			3752 & 0xff,
+			(3765 >> 8) & 0xff,
+			3765 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45732,8 +45792,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3759 >> 8) & 0xff,
-			3759 & 0xff,
+			(3772 >> 8) & 0xff,
+			3772 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45748,8 +45808,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3763 >> 8) & 0xff,
-			3763 & 0xff,
+			(3776 >> 8) & 0xff,
+			3776 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45764,8 +45824,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3766 >> 8) & 0xff,
-			3766 & 0xff,
+			(3779 >> 8) & 0xff,
+			3779 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45777,8 +45837,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3773 >> 8) & 0xff,
-			3773 & 0xff,
+			(3786 >> 8) & 0xff,
+			3786 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45796,8 +45856,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3777 >> 8) & 0xff,
-			3777 & 0xff,
+			(3790 >> 8) & 0xff,
+			3790 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45815,8 +45875,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3780 >> 8) & 0xff,
-			3780 & 0xff,
+			(3793 >> 8) & 0xff,
+			3793 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45831,8 +45891,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3787 >> 8) & 0xff,
-			3787 & 0xff,
+			(3800 >> 8) & 0xff,
+			3800 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45847,8 +45907,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3791 >> 8) & 0xff,
-			3791 & 0xff,
+			(3804 >> 8) & 0xff,
+			3804 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45863,8 +45923,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3794 >> 8) & 0xff,
-			3794 & 0xff,
+			(3807 >> 8) & 0xff,
+			3807 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_ONES,
@@ -45876,8 +45936,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3801 >> 8) & 0xff,
-			3801 & 0xff,
+			(3814 >> 8) & 0xff,
+			3814 & 0xff,
 			(4 >> 8) & 0xff,
 			4 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45895,8 +45955,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3805 >> 8) & 0xff,
-			3805 & 0xff,
+			(3818 >> 8) & 0xff,
+			3818 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -45914,8 +45974,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_key_ext_list[] = {
 		.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 		.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 		.field_opr1 = {
-			(3808 >> 8) & 0xff,
-			3808 & 0xff,
+			(3821 >> 8) & 0xff,
+			3821 & 0xff,
 			(3 >> 8) & 0xff,
 			3 & 0xff},
 		.field_src2 = BNXT_ULP_FIELD_SRC_HF,
@@ -46212,8 +46272,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(144 >> 8) & 0xff,
-		144 & 0xff,
+		(145 >> 8) & 0xff,
+		145 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46251,8 +46311,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(146 >> 8) & 0xff,
-		146 & 0xff,
+		(147 >> 8) & 0xff,
+		147 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46266,8 +46326,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(148 >> 8) & 0xff,
-		148 & 0xff,
+		(149 >> 8) & 0xff,
+		149 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46293,8 +46353,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(149 >> 8) & 0xff,
-		149 & 0xff,
+		(150 >> 8) & 0xff,
+		150 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46308,8 +46368,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(153 >> 8) & 0xff,
-		153 & 0xff,
+		(154 >> 8) & 0xff,
+		154 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46353,8 +46413,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(157 >> 8) & 0xff,
-		157 & 0xff,
+		(158 >> 8) & 0xff,
+		158 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46386,8 +46446,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(162 >> 8) & 0xff,
-		162 & 0xff,
+		(163 >> 8) & 0xff,
+		163 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46410,8 +46470,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(172 >> 8) & 0xff,
-		172 & 0xff,
+		(173 >> 8) & 0xff,
+		173 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46431,8 +46491,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(177 >> 8) & 0xff,
-		177 & 0xff,
+		(178 >> 8) & 0xff,
+		178 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -46456,8 +46516,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(186 >> 8) & 0xff,
-		186 & 0xff,
+		(187 >> 8) & 0xff,
+		187 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46480,8 +46540,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(194 >> 8) & 0xff,
-		194 & 0xff,
+		(195 >> 8) & 0xff,
+		195 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46498,8 +46558,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(202 >> 8) & 0xff,
-		202 & 0xff,
+		(203 >> 8) & 0xff,
+		203 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46522,8 +46582,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(210 >> 8) & 0xff,
-		210 & 0xff,
+		(211 >> 8) & 0xff,
+		211 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46606,8 +46666,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(218 >> 8) & 0xff,
-		218 & 0xff,
+		(219 >> 8) & 0xff,
+		219 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46624,10 +46684,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(226 >> 8) & 0xff,
-		226 & 0xff,
-		(4 >> 8) & 0xff,
-		4 & 0xff},
+		(227 >> 8) & 0xff,
+		227 & 0xff,
+		(5 >> 8) & 0xff,
+		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 	1},
@@ -46690,8 +46750,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(234 >> 8) & 0xff,
-		234 & 0xff,
+		(236 >> 8) & 0xff,
+		236 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46744,8 +46804,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(240 >> 8) & 0xff,
-		240 & 0xff,
+		(242 >> 8) & 0xff,
+		242 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46762,8 +46822,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(247 >> 8) & 0xff,
-		247 & 0xff,
+		(249 >> 8) & 0xff,
+		249 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46810,8 +46870,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(254 >> 8) & 0xff,
-		254 & 0xff,
+		(256 >> 8) & 0xff,
+		256 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46846,8 +46906,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(263 >> 8) & 0xff,
-		263 & 0xff,
+		(265 >> 8) & 0xff,
+		265 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46870,8 +46930,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(281 >> 8) & 0xff,
-		281 & 0xff,
+		(283 >> 8) & 0xff,
+		283 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46894,8 +46954,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(290 >> 8) & 0xff,
-		290 & 0xff,
+		(292 >> 8) & 0xff,
+		292 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46918,8 +46978,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(308 >> 8) & 0xff,
-		308 & 0xff,
+		(310 >> 8) & 0xff,
+		310 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46942,8 +47002,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(326 >> 8) & 0xff,
-		326 & 0xff,
+		(328 >> 8) & 0xff,
+		328 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46960,8 +47020,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(344 >> 8) & 0xff,
-		344 & 0xff,
+		(346 >> 8) & 0xff,
+		346 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -46984,8 +47044,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(362 >> 8) & 0xff,
-		362 & 0xff,
+		(364 >> 8) & 0xff,
+		364 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -47068,8 +47128,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(380 >> 8) & 0xff,
-		380 & 0xff,
+		(382 >> 8) & 0xff,
+		382 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -47087,8 +47147,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(389 >> 8) & 0xff,
-		389 & 0xff,
+		(391 >> 8) & 0xff,
+		391 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -47971,8 +48031,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1186 >> 8) & 0xff,
-		1186 & 0xff,
+		(1190 >> 8) & 0xff,
+		1190 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48010,8 +48070,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(1188 >> 8) & 0xff,
-		1188 & 0xff,
+		(1192 >> 8) & 0xff,
+		1192 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48025,8 +48085,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1190 >> 8) & 0xff,
-		1190 & 0xff,
+		(1194 >> 8) & 0xff,
+		1194 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48052,8 +48112,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1191 >> 8) & 0xff,
-		1191 & 0xff,
+		(1195 >> 8) & 0xff,
+		1195 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48067,8 +48127,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1196 >> 8) & 0xff,
-		1196 & 0xff,
+		(1200 >> 8) & 0xff,
+		1200 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48112,8 +48172,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1200 >> 8) & 0xff,
-		1200 & 0xff,
+		(1204 >> 8) & 0xff,
+		1204 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48145,8 +48205,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1205 >> 8) & 0xff,
-		1205 & 0xff,
+		(1209 >> 8) & 0xff,
+		1209 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48169,8 +48229,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1215 >> 8) & 0xff,
-		1215 & 0xff,
+		(1219 >> 8) & 0xff,
+		1219 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48190,8 +48250,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1220 >> 8) & 0xff,
-		1220 & 0xff,
+		(1224 >> 8) & 0xff,
+		1224 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48214,8 +48274,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1228 >> 8) & 0xff,
-		1228 & 0xff,
+		(1232 >> 8) & 0xff,
+		1232 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48238,8 +48298,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1236 >> 8) & 0xff,
-		1236 & 0xff,
+		(1240 >> 8) & 0xff,
+		1240 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48256,8 +48316,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1244 >> 8) & 0xff,
-		1244 & 0xff,
+		(1248 >> 8) & 0xff,
+		1248 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48280,8 +48340,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1252 >> 8) & 0xff,
-		1252 & 0xff,
+		(1256 >> 8) & 0xff,
+		1256 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48364,8 +48424,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1260 >> 8) & 0xff,
-		1260 & 0xff,
+		(1264 >> 8) & 0xff,
+		1264 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48382,10 +48442,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1268 >> 8) & 0xff,
-		1268 & 0xff,
-		(4 >> 8) & 0xff,
-		4 & 0xff},
+		(1272 >> 8) & 0xff,
+		1272 & 0xff,
+		(5 >> 8) & 0xff,
+		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 	1},
@@ -48448,8 +48508,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1276 >> 8) & 0xff,
-		1276 & 0xff,
+		(1281 >> 8) & 0xff,
+		1281 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48502,8 +48562,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1282 >> 8) & 0xff,
-		1282 & 0xff,
+		(1287 >> 8) & 0xff,
+		1287 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48520,8 +48580,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1291 >> 8) & 0xff,
-		1291 & 0xff,
+		(1296 >> 8) & 0xff,
+		1296 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48568,8 +48628,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1298 >> 8) & 0xff,
-		1298 & 0xff,
+		(1303 >> 8) & 0xff,
+		1303 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48604,8 +48664,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1307 >> 8) & 0xff,
-		1307 & 0xff,
+		(1312 >> 8) & 0xff,
+		1312 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48628,8 +48688,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1325 >> 8) & 0xff,
-		1325 & 0xff,
+		(1330 >> 8) & 0xff,
+		1330 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48652,8 +48712,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1334 >> 8) & 0xff,
-		1334 & 0xff,
+		(1339 >> 8) & 0xff,
+		1339 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48676,8 +48736,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1348 >> 8) & 0xff,
-		1348 & 0xff,
+		(1353 >> 8) & 0xff,
+		1353 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48700,8 +48760,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1362 >> 8) & 0xff,
-		1362 & 0xff,
+		(1367 >> 8) & 0xff,
+		1367 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48718,8 +48778,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1376 >> 8) & 0xff,
-		1376 & 0xff,
+		(1381 >> 8) & 0xff,
+		1381 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48742,8 +48802,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1390 >> 8) & 0xff,
-		1390 & 0xff,
+		(1395 >> 8) & 0xff,
+		1395 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48826,8 +48886,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1404 >> 8) & 0xff,
-		1404 & 0xff,
+		(1409 >> 8) & 0xff,
+		1409 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -48844,8 +48904,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(1418 >> 8) & 0xff,
-		1418 & 0xff,
+		(1423 >> 8) & 0xff,
+		1423 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49096,8 +49156,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2033 >> 8) & 0xff,
-		2033 & 0xff,
+		(2040 >> 8) & 0xff,
+		2040 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49135,8 +49195,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(2035 >> 8) & 0xff,
-		2035 & 0xff,
+		(2042 >> 8) & 0xff,
+		2042 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49150,8 +49210,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2037 >> 8) & 0xff,
-		2037 & 0xff,
+		(2044 >> 8) & 0xff,
+		2044 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49177,8 +49237,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2038 >> 8) & 0xff,
-		2038 & 0xff,
+		(2045 >> 8) & 0xff,
+		2045 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49192,8 +49252,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2042 >> 8) & 0xff,
-		2042 & 0xff,
+		(2049 >> 8) & 0xff,
+		2049 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -49238,8 +49298,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2049 >> 8) & 0xff,
-		2049 & 0xff,
+		(2056 >> 8) & 0xff,
+		2056 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49271,8 +49331,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2054 >> 8) & 0xff,
-		2054 & 0xff,
+		(2061 >> 8) & 0xff,
+		2061 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49295,8 +49355,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2064 >> 8) & 0xff,
-		2064 & 0xff,
+		(2071 >> 8) & 0xff,
+		2071 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49316,8 +49376,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2069 >> 8) & 0xff,
-		2069 & 0xff,
+		(2076 >> 8) & 0xff,
+		2076 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -49341,8 +49401,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2078 >> 8) & 0xff,
-		2078 & 0xff,
+		(2085 >> 8) & 0xff,
+		2085 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49365,8 +49425,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2086 >> 8) & 0xff,
-		2086 & 0xff,
+		(2093 >> 8) & 0xff,
+		2093 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49383,8 +49443,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2094 >> 8) & 0xff,
-		2094 & 0xff,
+		(2101 >> 8) & 0xff,
+		2101 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49407,8 +49467,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2102 >> 8) & 0xff,
-		2102 & 0xff,
+		(2109 >> 8) & 0xff,
+		2109 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49491,8 +49551,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2110 >> 8) & 0xff,
-		2110 & 0xff,
+		(2117 >> 8) & 0xff,
+		2117 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49509,10 +49569,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2118 >> 8) & 0xff,
-		2118 & 0xff,
-		(4 >> 8) & 0xff,
-		4 & 0xff},
+		(2125 >> 8) & 0xff,
+		2125 & 0xff,
+		(5 >> 8) & 0xff,
+		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 	1},
@@ -49575,8 +49635,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2126 >> 8) & 0xff,
-		2126 & 0xff,
+		(2134 >> 8) & 0xff,
+		2134 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49629,8 +49689,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2132 >> 8) & 0xff,
-		2132 & 0xff,
+		(2140 >> 8) & 0xff,
+		2140 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49647,8 +49707,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2139 >> 8) & 0xff,
-		2139 & 0xff,
+		(2147 >> 8) & 0xff,
+		2147 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49695,8 +49755,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2146 >> 8) & 0xff,
-		2146 & 0xff,
+		(2154 >> 8) & 0xff,
+		2154 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49731,8 +49791,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2155 >> 8) & 0xff,
-		2155 & 0xff,
+		(2163 >> 8) & 0xff,
+		2163 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49755,8 +49815,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2173 >> 8) & 0xff,
-		2173 & 0xff,
+		(2181 >> 8) & 0xff,
+		2181 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49779,8 +49839,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2182 >> 8) & 0xff,
-		2182 & 0xff,
+		(2190 >> 8) & 0xff,
+		2190 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49803,8 +49863,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2200 >> 8) & 0xff,
-		2200 & 0xff,
+		(2208 >> 8) & 0xff,
+		2208 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49827,8 +49887,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2218 >> 8) & 0xff,
-		2218 & 0xff,
+		(2226 >> 8) & 0xff,
+		2226 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49845,8 +49905,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2236 >> 8) & 0xff,
-		2236 & 0xff,
+		(2244 >> 8) & 0xff,
+		2244 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49869,8 +49929,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2254 >> 8) & 0xff,
-		2254 & 0xff,
+		(2262 >> 8) & 0xff,
+		2262 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -49953,8 +50013,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2272 >> 8) & 0xff,
-		2272 & 0xff,
+		(2280 >> 8) & 0xff,
+		2280 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -49972,8 +50032,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(2281 >> 8) & 0xff,
-		2281 & 0xff,
+		(2289 >> 8) & 0xff,
+		2289 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_NEXT,
@@ -50856,8 +50916,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3082 >> 8) & 0xff,
-		3082 & 0xff,
+		(3092 >> 8) & 0xff,
+		3092 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -50895,8 +50955,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_OR,
 	.field_opr1 = {
-		(3084 >> 8) & 0xff,
-		3084 & 0xff,
+		(3094 >> 8) & 0xff,
+		3094 & 0xff,
 		(2 >> 8) & 0xff,
 		2 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -50910,8 +50970,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3086 >> 8) & 0xff,
-		3086 & 0xff,
+		(3096 >> 8) & 0xff,
+		3096 & 0xff,
 		(1 >> 8) & 0xff,
 		1 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -50937,8 +50997,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3087 >> 8) & 0xff,
-		3087 & 0xff,
+		(3097 >> 8) & 0xff,
+		3097 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -50952,8 +51012,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3091 >> 8) & 0xff,
-		3091 & 0xff,
+		(3101 >> 8) & 0xff,
+		3101 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -50997,8 +51057,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3095 >> 8) & 0xff,
-		3095 & 0xff,
+		(3105 >> 8) & 0xff,
+		3105 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51030,8 +51090,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3100 >> 8) & 0xff,
-		3100 & 0xff,
+		(3110 >> 8) & 0xff,
+		3110 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51054,8 +51114,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3110 >> 8) & 0xff,
-		3110 & 0xff,
+		(3120 >> 8) & 0xff,
+		3120 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51075,8 +51135,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3115 >> 8) & 0xff,
-		3115 & 0xff,
+		(3125 >> 8) & 0xff,
+		3125 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51099,8 +51159,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3123 >> 8) & 0xff,
-		3123 & 0xff,
+		(3133 >> 8) & 0xff,
+		3133 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51123,8 +51183,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3131 >> 8) & 0xff,
-		3131 & 0xff,
+		(3141 >> 8) & 0xff,
+		3141 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51141,8 +51201,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3139 >> 8) & 0xff,
-		3139 & 0xff,
+		(3149 >> 8) & 0xff,
+		3149 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51165,8 +51225,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3147 >> 8) & 0xff,
-		3147 & 0xff,
+		(3157 >> 8) & 0xff,
+		3157 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51249,8 +51309,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3155 >> 8) & 0xff,
-		3155 & 0xff,
+		(3165 >> 8) & 0xff,
+		3165 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51267,10 +51327,10 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3163 >> 8) & 0xff,
-		3163 & 0xff,
-		(4 >> 8) & 0xff,
-		4 & 0xff},
+		(3173 >> 8) & 0xff,
+		3173 & 0xff,
+		(5 >> 8) & 0xff,
+		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
 	.field_opr2 = {
 	1},
@@ -51333,8 +51393,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3171 >> 8) & 0xff,
-		3171 & 0xff,
+		(3182 >> 8) & 0xff,
+		3182 & 0xff,
 		(3 >> 8) & 0xff,
 		3 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51387,8 +51447,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3177 >> 8) & 0xff,
-		3177 & 0xff,
+		(3188 >> 8) & 0xff,
+		3188 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51405,8 +51465,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3184 >> 8) & 0xff,
-		3184 & 0xff,
+		(3195 >> 8) & 0xff,
+		3195 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51453,8 +51513,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3191 >> 8) & 0xff,
-		3191 & 0xff,
+		(3202 >> 8) & 0xff,
+		3202 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51489,8 +51549,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3200 >> 8) & 0xff,
-		3200 & 0xff,
+		(3211 >> 8) & 0xff,
+		3211 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51513,8 +51573,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3218 >> 8) & 0xff,
-		3218 & 0xff,
+		(3229 >> 8) & 0xff,
+		3229 & 0xff,
 		(5 >> 8) & 0xff,
 		5 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51537,8 +51597,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3227 >> 8) & 0xff,
-		3227 & 0xff,
+		(3238 >> 8) & 0xff,
+		3238 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51561,8 +51621,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3241 >> 8) & 0xff,
-		3241 & 0xff,
+		(3252 >> 8) & 0xff,
+		3252 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51585,8 +51645,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3255 >> 8) & 0xff,
-		3255 & 0xff,
+		(3266 >> 8) & 0xff,
+		3266 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51603,8 +51663,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3269 >> 8) & 0xff,
-		3269 & 0xff,
+		(3280 >> 8) & 0xff,
+		3280 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51627,8 +51687,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3283 >> 8) & 0xff,
-		3283 & 0xff,
+		(3294 >> 8) & 0xff,
+		3294 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51711,8 +51771,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3297 >> 8) & 0xff,
-		3297 & 0xff,
+		(3308 >> 8) & 0xff,
+		3308 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
@@ -51729,8 +51789,8 @@ struct bnxt_ulp_mapper_field_info ulp_thor_class_result_field_list[] = {
 	.field_opc = BNXT_ULP_FIELD_OPC_TERNARY_LIST,
 	.field_src1 = BNXT_ULP_FIELD_SRC_LIST_AND,
 	.field_opr1 = {
-		(3311 >> 8) & 0xff,
-		3311 & 0xff,
+		(3322 >> 8) & 0xff,
+		3322 & 0xff,
 		(4 >> 8) & 0xff,
 		4 & 0xff},
 	.field_src2 = BNXT_ULP_FIELD_SRC_CONST,
