@@ -38,34 +38,6 @@ static enum cfa_tcam_mgr_tbl_type tcam_types[TF_TCAM_TBL_TYPE_MAX] = {
 
 static uint16_t hcapi_type[TF_TCAM_TBL_TYPE_MAX];
 
-/*
- * This is the glue between the core tf_tcam and the TCAM manager.  It is
- * intended to abstract out the location of the TCAM manager so that the core
- * code will be the same if the TCAM manager is in the core or in firmware.
- *
- * If the TCAM manager is in the core, then this file will just translate to
- * TCAM manager APIs.  If TCAM manager is in firmware, then this file will cause
- * messages to be sent (except for bind and unbind).
- */
-
-int
-tf_tcam_mgr_qcaps_msg(struct tf *tfp,
-		      struct tf_dev_info *dev __rte_unused,
-		      uint32_t *rx_tcam_supported,
-		      uint32_t *tx_tcam_supported)
-{
-	struct cfa_tcam_mgr_qcaps_parms mgr_parms;
-	int rc;
-
-	memset(&mgr_parms, 0, sizeof(mgr_parms));
-	rc = cfa_tcam_mgr_qcaps(tfp, &mgr_parms);
-	if (rc >= 0) {
-		*rx_tcam_supported = mgr_parms.rx_tcam_supported;
-		*tx_tcam_supported = mgr_parms.tx_tcam_supported;
-	}
-	return rc;
-}
-
 int
 tf_tcam_mgr_bind_msg(struct tf *tfp,
 		     struct tf_dev_info *dev __rte_unused,

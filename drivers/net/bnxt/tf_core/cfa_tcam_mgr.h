@@ -114,18 +114,6 @@ struct cfa_tcam_mgr_init_parms {
 };
 
 /**
- * TCAM Manager initialization parameters
- */
-struct cfa_tcam_mgr_qcaps_parms {
-	/**
-	 * [out] Bitmasks.  Set if TCAM Manager is managing a logical TCAM.
-	 * Each bitmask is indexed by logical TCAM table ID.
-	 */
-	uint32_t rx_tcam_supported;
-	uint32_t tx_tcam_supported;
-};
-
-/**
  * TCAM Manager configuration parameters
  */
 struct cfa_tcam_mgr_cfg_parms {
@@ -359,23 +347,6 @@ cfa_tcam_mgr_init(struct tf *tfp, enum cfa_tcam_mgr_device_type type,
  */
 int
 cfa_tcam_mgr_get_phys_table_type(enum cfa_tcam_mgr_tbl_type type);
-
-/**
- * Queries the capabilities of TCAM Manager.
- *
- * [in] context
- *   Pointer to context information
- *
- * [out] parms
- *   Pointer to parameters to be returned
- *
- * Returns
- *   - (0) if successful.
- *   - (<0) on failure.
- */
-int
-cfa_tcam_mgr_qcaps(struct tf *tfp __rte_unused,
-		   struct cfa_tcam_mgr_qcaps_parms *parms);
 
 /**
  * Initializes the TCAM module with the requested DBs. Must be

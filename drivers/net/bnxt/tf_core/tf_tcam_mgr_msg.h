@@ -10,12 +10,6 @@
 #include "tf_rm.h"
 
 int
-tf_tcam_mgr_qcaps_msg(struct tf *tfp,
-		      struct tf_dev_info *dev __rte_unused,
-		      uint32_t *rx_tcam_supported,
-		      uint32_t *tx_tcam_supported);
-
-int
 tf_tcam_mgr_bind_msg(struct tf *tfp,
 		     struct tf_dev_info *dev,
 		     struct tf_tcam_cfg_parms *parms,

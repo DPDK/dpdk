@@ -1072,52 +1072,6 @@ cfa_tcam_mgr_init(struct tf *tfp, enum cfa_tcam_mgr_device_type type,
 	return 0;
 }
 
-int
-cfa_tcam_mgr_qcaps(struct tf *tfp __rte_unused,
-		   struct cfa_tcam_mgr_qcaps_parms *parms)
-{
-	struct cfa_tcam_mgr_data *tcam_mgr_data;
-	struct tf_session *tfs;
-	unsigned int type;
-	int rc;
-
-	CFA_TCAM_MGR_CHECK_PARMS2(tfp, parms);
-
-	rc = tf_session_get_session_internal(tfp, &tfs);
-	if (rc)
-		return rc;
-
-	tcam_mgr_data = tfs->tcam_mgr_handle;
-	if (!tcam_mgr_data) {
-		CFA_TCAM_MGR_LOG_0(ERR, "No TCAM data created for session.\n");
-		return -CFA_TCAM_MGR_ERR_CODE(PERM);
-	}
-
-	/*
-	 * This code will indicate if TCAM Manager is managing a logical TCAM
-	 * table or not.  If not, then the physical TCAM will have to be
-	 * accessed using the traditional methods.
-	 */
-	parms->rx_tcam_supported = 0;
-	parms->tx_tcam_supported = 0;
-	for (type = 0; type < CFA_TCAM_MGR_TBL_TYPE_MAX; type++) {
-		if (tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-				[type].max_entries > 0 &&
-		    tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-				[type].hcapi_type > 0)
-			parms->rx_tcam_supported |=
-				1 << cfa_tcam_mgr_get_phys_table_type(type);
-		if (tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-				[type].max_entries > 0 &&
-		    tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-				[type].hcapi_type > 0)
-			parms->tx_tcam_supported |=
-				1 << cfa_tcam_mgr_get_phys_table_type(type);
-	}
-
-	return 0;
-}
-
 static
 int cfa_tcam_mgr_validate_tcam_cnt(struct tf *tfp  __rte_unused,
 				   struct cfa_tcam_mgr_data *tcam_mgr_data,
