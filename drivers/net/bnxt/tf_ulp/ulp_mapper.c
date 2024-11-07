@@ -769,7 +769,7 @@ ulp_mapper_priority_opc_process(struct bnxt_ulp_mapper_parms *parms,
 
 	switch (tbl->pri_opcode) {
 	case BNXT_ULP_PRI_OPC_NOT_USED:
-		*priority = 0;
+		*priority = bnxt_ulp_default_app_priority_get(parms->ulp_ctx);
 		break;
 	case BNXT_ULP_PRI_OPC_CONST:
 		*priority = tbl->pri_operand;
@@ -3303,6 +3303,11 @@ ulp_mapper_global_res_free(struct bnxt_ulp_context *ulp __rte_unused,
 		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
 						&handle);
 		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE:
+		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE;
+		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
+						&handle);
+		break;
 	default:
 		rc = -EINVAL;
 		BNXT_TF_DBG(ERR, "Invalid ulp global resource type %d\n",
@@ -3355,35 +3360,28 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	switch (tbl->resource_sub_type) {
 	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN:
-		tmp_data = ulp_blob_data_get(&data, &data_len);
-		udp_port = *((uint16_t *)tmp_data);
-		udp_port = tfp_be_to_cpu_16(udp_port);
 		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN;
-
-		rc = bnxt_pmd_global_tunnel_set(parms->port_id, ttype,
-						udp_port, &handle);
-		if (rc) {
-			BNXT_TF_DBG(ERR, "Unable to set VXLAN UDP port\n");
-			return rc;
-		}
 		break;
 	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_ECPRI:
-		tmp_data = ulp_blob_data_get(&data, &data_len);
-		udp_port = *((uint16_t *)tmp_data);
-		udp_port = tfp_be_to_cpu_16(udp_port);
 		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI;
-
-		rc = bnxt_pmd_global_tunnel_set(parms->port_id, ttype,
-						udp_port, &handle);
-		if (rc) {
-			BNXT_TF_DBG(ERR, "Unable to set eCPRI UDP port\n");
-			return rc;
-		}
-	break;
+		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE:
+		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE;
+		break;
 	default:
 		rc = -EINVAL;
 		BNXT_TF_DBG(ERR, "Invalid ulp global resource type %d\n",
 			    tbl->resource_sub_type);
+		return rc;
+	}
+
+	tmp_data = ulp_blob_data_get(&data, &data_len);
+	udp_port = *((uint16_t *)tmp_data);
+	udp_port = tfp_be_to_cpu_16(udp_port);
+
+	rc = bnxt_pmd_global_tunnel_set(parms->port_id, ttype, udp_port, &handle);
+	if (rc) {
+		BNXT_TF_DBG(ERR, "Unable to set Type %d port\n", ttype);
 		return rc;
 	}
 

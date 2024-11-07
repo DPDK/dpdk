@@ -469,6 +469,7 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 		bnxt_ulp_ha_reg_set(ulp_ctx, info[i].ha_reg_state,
 				    info[i].ha_reg_cnt);
 		ulp_ctx->cfg_data->ha_pool_id = info[i].ha_pool_id;
+		ulp_ctx->cfg_data->default_priority = info[i].default_priority;
 	}
 	if (!found) {
 		BNXT_TF_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
@@ -547,6 +548,16 @@ bnxt_ulp_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx)
 		return 0;
 
 	return (unsigned int)ulp_ctx->cfg_data->vxlan_port;
+}
+
+/* Function to retrieve the default app priority from the context. */
+unsigned int
+bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (!ulp_ctx || !ulp_ctx->cfg_data)
+		return 0;
+
+	return (unsigned int)ulp_ctx->cfg_data->default_priority;
 }
 
 static inline uint32_t
