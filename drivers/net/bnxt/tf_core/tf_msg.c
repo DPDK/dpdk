@@ -925,7 +925,7 @@ tf_msg_hash_insert_em_internal_entry(struct tf *tfp,
 	if (msg_record_size > TF_MSG_EM_INSERT_RECORD_SIZE) {
 		rc = -EINVAL;
 		TFP_DRV_LOG(ERR,
-			    "%s: Record size to large, rc:%s\n",
+			    "%s: Record size too large, rc:%s\n",
 			    tf_dir_2_str(em_parms->dir),
 			    strerror(-rc));
 		return rc;
