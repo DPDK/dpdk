@@ -20,10 +20,11 @@ import time
 from collections.abc import Callable, MutableSet
 from dataclasses import dataclass, field
 from enum import Flag, auto
+from os import environ
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, TypeAlias
 
-if TYPE_CHECKING:
+if TYPE_CHECKING or environ.get("DTS_DOC_BUILD"):
     from enum import Enum as NoAliasEnum
 else:
     from aenum import NoAliasEnum

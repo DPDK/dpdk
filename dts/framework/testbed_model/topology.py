@@ -8,9 +8,10 @@ The link information then implies what type of topology is available.
 """
 
 from dataclasses import dataclass
+from os import environ
 from typing import TYPE_CHECKING, Iterable
 
-if TYPE_CHECKING:
+if TYPE_CHECKING or environ.get("DTS_DOC_BUILD"):
     from enum import Enum as NoAliasEnum
 else:
     from aenum import NoAliasEnum
