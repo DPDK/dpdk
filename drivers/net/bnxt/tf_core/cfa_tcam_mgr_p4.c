@@ -165,17 +165,7 @@ struct cfa_tcam_mgr_table_rows_p4 {
 struct cfa_tcam_mgr_table_data
 cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 	{				/* RX */
-		{			/* High AFM */
-			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
-			.num_rows    = L2_CTXT_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_HIGH,
-		},
-		{			/* High APPS */
+		{
 			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_RX_NUM_ROWS,
@@ -185,17 +175,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_HIGH,
 		},
-		{			/* Low AFM */
-			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
-			.num_rows    = L2_CTXT_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_LOW,
-		},
-		{			/* Low APPS */
+		{
 			.max_slices  = L2_CTXT_TCAM_RX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_RX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_RX_NUM_ROWS,
@@ -205,17 +185,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = L2_CTXT_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_LOW,
 		},
-		{			/* AFM */
-			.max_slices  = PROF_TCAM_RX_MAX_SLICES,
-			.row_width   = PROF_TCAM_RX_ROW_WIDTH,
-			.num_rows    = PROF_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = PROF_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_PROF_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = PROF_TCAM_RX_MAX_SLICES,
 			.row_width   = PROF_TCAM_RX_ROW_WIDTH,
 			.num_rows    = PROF_TCAM_RX_NUM_ROWS,
@@ -225,17 +195,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = PROF_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_PROF_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_RX_MAX_SLICES,
-			.row_width   = WC_TCAM_RX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_RX_MAX_SLICES,
 			.row_width   = WC_TCAM_RX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_RX_NUM_ROWS,
@@ -245,17 +205,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = SP_TCAM_RX_MAX_SLICES,
-			.row_width   = SP_TCAM_RX_ROW_WIDTH,
-			.num_rows    = SP_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = SP_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_SP_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = SP_TCAM_RX_MAX_SLICES,
 			.row_width   = SP_TCAM_RX_ROW_WIDTH,
 			.num_rows    = SP_TCAM_RX_NUM_ROWS,
@@ -265,16 +215,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = SP_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_SP_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = CT_RULE_TCAM_RX_MAX_SLICES,
-			.row_width   = CT_RULE_TCAM_RX_ROW_WIDTH,
-			.num_rows    = CT_RULE_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = CT_RULE_TCAM_RX_MAX_SLICES,
 			.row_width   = CT_RULE_TCAM_RX_ROW_WIDTH,
 			.num_rows    = CT_RULE_TCAM_RX_NUM_ROWS,
@@ -288,16 +229,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.max_entries = CT_RULE_TCAM_RX_MAX_ENTRIES,
 			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = VEB_TCAM_RX_MAX_SLICES,
-			.row_width   = VEB_TCAM_RX_ROW_WIDTH,
-			.num_rows    = VEB_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = VEB_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = VEB_TCAM_RX_MAX_SLICES,
 			.row_width   = VEB_TCAM_RX_ROW_WIDTH,
 			.num_rows    = VEB_TCAM_RX_NUM_ROWS,
@@ -311,17 +243,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.max_entries = VEB_TCAM_RX_MAX_ENTRIES,
 			.result_size = VEB_TCAM_RX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_RX_MAX_SLICES,
-			.row_width   = WC_TCAM_RX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_RX_MAX_SLICES,
 			.row_width   = WC_TCAM_RX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_RX_NUM_ROWS,
@@ -331,17 +253,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_RX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_RX_MAX_SLICES,
-			.row_width   = WC_TCAM_RX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_RX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_RX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_RX_MAX_SLICES,
 			.row_width   = WC_TCAM_RX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_RX_NUM_ROWS,
@@ -353,17 +265,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 		},
 	},
 	{				/* TX */
-		{			/* AFM */
-			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
-			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_HIGH,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
@@ -373,17 +275,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_HIGH,
 		},
-		{			/* AFM */
-			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
-			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
-			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_LOW,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = L2_CTXT_TCAM_TX_MAX_SLICES,
 			.row_width   = L2_CTXT_TCAM_TX_ROW_WIDTH,
 			.num_rows    = L2_CTXT_TCAM_TX_NUM_ROWS,
@@ -393,17 +285,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = L2_CTXT_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_L2_CTXT_TCAM_LOW,
 		},
-		{			/* AFM */
-			.max_slices  = PROF_TCAM_TX_MAX_SLICES,
-			.row_width   = PROF_TCAM_TX_ROW_WIDTH,
-			.num_rows    = PROF_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = PROF_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_PROF_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = PROF_TCAM_TX_MAX_SLICES,
 			.row_width   = PROF_TCAM_TX_ROW_WIDTH,
 			.num_rows    = PROF_TCAM_TX_NUM_ROWS,
@@ -413,17 +295,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = PROF_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_PROF_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_TX_MAX_SLICES,
-			.row_width   = WC_TCAM_TX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_TX_MAX_SLICES,
 			.row_width   = WC_TCAM_TX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_TX_NUM_ROWS,
@@ -433,17 +305,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = SP_TCAM_TX_MAX_SLICES,
-			.row_width   = SP_TCAM_TX_ROW_WIDTH,
-			.num_rows    = SP_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = SP_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_SP_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = SP_TCAM_TX_MAX_SLICES,
 			.row_width   = SP_TCAM_TX_ROW_WIDTH,
 			.num_rows    = SP_TCAM_TX_NUM_ROWS,
@@ -453,16 +315,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = SP_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_SP_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = CT_RULE_TCAM_TX_MAX_SLICES,
-			.row_width   = CT_RULE_TCAM_TX_ROW_WIDTH,
-			.num_rows    = CT_RULE_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = CT_RULE_TCAM_TX_MAX_SLICES,
 			.row_width   = CT_RULE_TCAM_TX_ROW_WIDTH,
 			.num_rows    = CT_RULE_TCAM_TX_NUM_ROWS,
@@ -476,16 +329,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.max_entries = CT_RULE_TCAM_TX_MAX_ENTRIES,
 			.result_size = CT_RULE_TCAM_RX_RESULT_SIZE,
 		},
-		{			/* AFM */
-			.max_slices  = VEB_TCAM_TX_MAX_SLICES,
-			.row_width   = VEB_TCAM_TX_ROW_WIDTH,
-			.num_rows    = VEB_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = VEB_TCAM_RX_RESULT_SIZE,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = VEB_TCAM_TX_MAX_SLICES,
 			.row_width   = VEB_TCAM_TX_ROW_WIDTH,
 			.num_rows    = VEB_TCAM_TX_NUM_ROWS,
@@ -495,17 +339,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = VEB_TCAM_RX_RESULT_SIZE,
 /*			.hcapi_type  = */
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_TX_MAX_SLICES,
-			.row_width   = WC_TCAM_TX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_TX_MAX_SLICES,
 			.row_width   = WC_TCAM_TX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_TX_NUM_ROWS,
@@ -515,17 +349,7 @@ cfa_tcam_mgr_tables_p4[TF_DIR_MAX][CFA_TCAM_MGR_TBL_TYPE_MAX] = {
 			.result_size = WC_TCAM_TX_RESULT_SIZE,
 			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
 		},
-		{			/* AFM */
-			.max_slices  = WC_TCAM_TX_MAX_SLICES,
-			.row_width   = WC_TCAM_TX_ROW_WIDTH,
-			.num_rows    = WC_TCAM_TX_NUM_ROWS,
-			.start_row   = 0,
-			.end_row     = 0,
-			.max_entries = 0,
-			.result_size = WC_TCAM_TX_RESULT_SIZE,
-			.hcapi_type  = CFA_RESOURCE_TYPE_P4_WC_TCAM,
-		},
-		{			/* APPS */
+		{
 			.max_slices  = WC_TCAM_TX_MAX_SLICES,
 			.row_width   = WC_TCAM_TX_ROW_WIDTH,
 			.num_rows    = WC_TCAM_TX_NUM_ROWS,
@@ -633,164 +457,92 @@ cfa_tcam_mgr_init_p4(struct tf *tfp)
 	       sizeof(tcam_mgr_data->cfa_tcam_mgr_tables));
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_L2_CTXT_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_L2_CTXT_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_L2_CTXT_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_L2_CTXT_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_L2_CTXT_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_L2_CTXT_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_L2_CTXT_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_L2_CTXT_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_PROF_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_PROF_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_PROF_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_PROF_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_WC_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_WC_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_WC_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_WC_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_SP_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_SP_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_SP_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_SP_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_CT_RULE_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_CT_RULE_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_CT_RULE_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_CT_RULE_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_VEB_TCAM_RX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_VEB_TCAM_RX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_VEB_TCAM_TX[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_VEB_TCAM_TX[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_WC_TCAM_RX_HIGH[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_WC_TCAM_RX_HIGH[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_WC_TCAM_TX_HIGH[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_WC_TCAM_TX_HIGH[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_WC_TCAM_RX_LOW[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_RX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_WC_TCAM_RX_LOW[0];
 
 	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_AFM].tcam_rows =
-		(struct cfa_tcam_mgr_table_rows_0 *)
-		&table_rows->table_rows_WC_TCAM_TX_LOW[0];
-	tcam_mgr_data->cfa_tcam_mgr_tables[TF_DIR_TX]
-		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS].tcam_rows =
+		[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW].tcam_rows =
 		(struct cfa_tcam_mgr_table_rows_0 *)
 		&table_rows->table_rows_WC_TCAM_TX_LOW[0];
 

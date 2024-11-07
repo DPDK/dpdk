@@ -20,23 +20,23 @@
 #define TF_TCAM_SLICE_INVALID (-1)
 
 static int physical_table_types[CFA_TCAM_MGR_TBL_TYPE_MAX] = {
-	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS] =
+	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH] =
 		TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_HIGH,
-	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS]  =
+	[CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW]  =
 		TF_TCAM_TBL_TYPE_L2_CTXT_TCAM_LOW,
-	[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM]	      =
 		TF_TCAM_TBL_TYPE_PROF_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM]	      =
 		TF_TCAM_TBL_TYPE_WC_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_SP_TCAM]	      =
 		TF_TCAM_TBL_TYPE_SP_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS]      =
+	[CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM]      =
 		TF_TCAM_TBL_TYPE_CT_RULE_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS]	      =
+	[CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM]	      =
 		TF_TCAM_TBL_TYPE_VEB_TCAM,
-	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS]     =
+	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH]     =
 		TF_TCAM_TBL_TYPE_WC_TCAM_HIGH,
-	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS]      =
+	[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW]      =
 		TF_TCAM_TBL_TYPE_WC_TCAM_LOW,
 };
 
@@ -53,41 +53,23 @@ const char *
 cfa_tcam_mgr_tbl_2_str(enum cfa_tcam_mgr_tbl_type tcam_type)
 {
 	switch (tcam_type) {
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM:
-		return "l2_ctxt_tcam_high AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH:
 		return "l2_ctxt_tcam_high Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_AFM:
-		return "l2_ctxt_tcam_low AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_LOW:
 		return "l2_ctxt_tcam_low Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_AFM:
-		return "prof_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_PROF_TCAM:
 		return "prof_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_AFM:
-		return "wc_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM:
 		return "wc_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_AFM:
-		return "veb_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_VEB_TCAM:
 		return "veb_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_AFM:
-		return "sp_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_SP_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_SP_TCAM:
 		return "sp_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_AFM:
-		return "ct_rule_tcam AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_CT_RULE_TCAM:
 		return "ct_rule_tcam Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_AFM:
-		return "wc_tcam_high AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH:
 		return "wc_tcam_high Apps";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_AFM:
-		return "wc_tcam_low AFM";
-	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS:
+	case CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW:
 		return "wc_tcam_low Apps";
 	default:
 		return "Invalid tcam table type";
@@ -965,10 +947,13 @@ cfa_tcam_mgr_bitmap_alloc(struct tf *tfp __rte_unused,
 
 	/* Allocate first index to avoid idx 0 */
 	first_idx = ba_alloc(tcam_mgr_data->session_bmp);
-	if (first_idx == BA_FAIL)
+	if (first_idx == BA_FAIL) {
+		tfp_free(tcam_mgr_data->session_bmp);
+		tcam_mgr_data->session_bmp = NULL;
 		return -CFA_TCAM_MGR_ERR_CODE(NOSPC);
+	}
 
-	TFP_DRV_LOG(INFO,
+	TFP_DRV_LOG(DEBUG,
 		    "session bitmap size is %" PRIX64 "\n",
 		    tcam_mgr_data->session_bmp_size);
 
@@ -1080,7 +1065,8 @@ cfa_tcam_mgr_init(struct tf *tfp, enum cfa_tcam_mgr_device_type type,
 	if (parms)
 		parms->max_entries = tcam_mgr_data->cfa_tcam_mgr_max_entries;
 
-	CFA_TCAM_MGR_LOG(DEBUG, "Global TCAM tbl initialized max entries %d\n",
+	PMD_DRV_LOG_LINE(DEBUG,
+			 "Global TCAM tbl initialized max entries %d",
 			 tcam_mgr_data->cfa_tcam_mgr_max_entries);
 
 	return 0;
@@ -1220,38 +1206,41 @@ cfa_tcam_mgr_shared_wc_bind(struct tf *tfp, bool dual_ha_app,
 
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
 		rc = cfa_tcam_mgr_tables_get(tfp, dir,
-					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS,
-					     &start_row, &end_row, &max_entries, &slices);
+					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM,
+					     &start_row, &end_row, &max_entries,
+					     &slices);
 		if (rc)
 			return rc;
 		if (max_entries) {
 			rc = cfa_tcam_mgr_tables_set(tfp, dir,
-						     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS,
+					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH,
 						     start_row,
 						     start_row +
-						     ((max_entries / slices) / num_pools) - 1,
+						     ((max_entries / slices) /
+						     num_pools) - 1,
 						     max_entries / num_pools);
 			if (rc)
 				return rc;
 			rc = cfa_tcam_mgr_tables_set(tfp, dir,
-						     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS,
+					      CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW,
 						     start_row +
-						     ((max_entries / slices) / num_pools),
+						     ((max_entries / slices) /
+						     num_pools),
 						     start_row +
 						     (max_entries / slices) - 1,
 						     max_entries / num_pools);
 			if (rc)
 				return rc;
 			rc = cfa_tcam_mgr_tables_set(tfp, dir,
-						     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS,
+						  CFA_TCAM_MGR_TBL_TYPE_WC_TCAM,
 						     0, 0, 0);
 			if (rc)
 				return rc;
-			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS] =
+			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH] =
 				max_entries / num_pools;
-			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS] =
+			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW] =
 				max_entries / num_pools;
-			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS] = 0;
+			tcam_cnt[dir][CFA_TCAM_MGR_TBL_TYPE_WC_TCAM] = 0;
 		}
 	}
 
@@ -1382,7 +1371,7 @@ cfa_tcam_mgr_bind(struct tf *tfp,
 		}
 	}
 
-	CFA_TCAM_MGR_LOG(DEBUG, "TCAM table bind for max entries %d.\n",
+	PMD_DRV_LOG_LINE(DEBUG, "TCAM table bind for max entries %d.",
 			 tcam_mgr_data->cfa_tcam_mgr_max_entries);
 
 	if (tf_session_is_shared_hotup_session(tfs)) {
@@ -1524,16 +1513,6 @@ cfa_tcam_mgr_alloc(struct tf *tfp,
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
-#if TF_TCAM_PRIORITY_MAX < UINT16_MAX
-	if (parms->priority > TF_TCAM_PRIORITY_MAX) {
-		CFA_TCAM_MGR_LOG_DIR(ERR, dir,
-				     "%s: Priority:%u out of range (%u-%u).\n",
-				     tf_dir_2_str(dir), parms->priority,
-				     TF_TCAM_PRIORITY_MIN,
-				     TF_TCAM_PRIORITY_MAX);
-	}
-#endif
-
 	rc = tf_session_get_session_internal(tfp, &tfs);
 	if (rc)
 		return rc;
@@ -1637,7 +1616,7 @@ cfa_tcam_mgr_free(struct tf *tfp,
 	id = parms->id;
 	entry = cfa_tcam_mgr_entry_get(tcam_mgr_data, id);
 	if (!entry) {
-		CFA_TCAM_MGR_LOG(INFO, "Entry %d not found\n", id);
+		CFA_TCAM_MGR_LOG(ERR, "Entry %d not found\n", id);
 		return -CFA_TCAM_MGR_ERR_CODE(INVAL);
 	}
 
@@ -1963,7 +1942,7 @@ cfa_tcam_mgr_shared_entry_move(struct cfa_tcam_mgr_data *tcam_mgr_data,
 		return rc;
 
 	sparms.dir	   = dir;
-	sparms.type	   = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS;
+	sparms.type	   = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW;
 	sparms.hcapi_type  = table_data->hcapi_type;
 	sparms.key	   = key;
 	sparms.mask	   = mask;
@@ -2046,15 +2025,15 @@ int cfa_tcam_mgr_shared_move(struct tf *tfp,
 
 	src_table_data =
 		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir]
-			[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS];
+			[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH];
 	dst_table_data =
 		&tcam_mgr_data->cfa_tcam_mgr_tables[parms->dir]
-			[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW_APPS];
+			[CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_LOW];
 
 	row_size =
 		cfa_tcam_mgr_row_size_get(tcam_mgr_data,
 					  parms->dir,
-					  CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS);
+					  CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH);
 
 	for (src_row = src_table_data->start_row,
 	     dst_row = dst_table_data->start_row;
@@ -2080,8 +2059,8 @@ int cfa_tcam_mgr_shared_move(struct tf *tfp,
 			rc = cfa_tcam_mgr_shared_entry_move(tcam_mgr_data,
 							tfp,
 							parms->dir,
-							CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH_APPS,
-							src_table_row->entries[slice],
+					     CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_HIGH,
+						  src_table_row->entries[slice],
 							dst_table_data,
 							src_table_data,
 							dst_row, slice,
