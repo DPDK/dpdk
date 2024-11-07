@@ -1056,7 +1056,7 @@ int
 acl_main_loop(__rte_unused void *dummy)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-	uint16_t hops[MAX_PKT_BURST];
+	uint16_t hops[SENDM_PORT_OVERHEAD(MAX_PKT_BURST)];
 	unsigned int lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
