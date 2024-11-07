@@ -307,6 +307,14 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 					    BNXT_ULP_CF_IDX_VF_FUNC_PARIF,
 					    parif);
 
+			/* Set VF func SVIF */
+			if (ulp_port_db_svif_get(params->ulp_ctx, ifindex,
+						 BNXT_ULP_CF_IDX_VF_FUNC_SVIF, &svif)) {
+				BNXT_DRV_DBG(ERR, "ParseErr:ifindex is not valid\n");
+				return;
+			}
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_VF_FUNC_SVIF,
+					    svif);
 		} else {
 			/* Set DRV func PARIF */
 			if (ulp_port_db_parif_get(params->ulp_ctx, ifindex,
@@ -319,6 +327,15 @@ bnxt_ulp_comp_fld_intf_update(struct ulp_rte_parser_params *params)
 			ULP_COMP_FLD_IDX_WR(params,
 					    BNXT_ULP_CF_IDX_DRV_FUNC_PARIF,
 					    parif);
+
+			/* Set DRV SVIF */
+			if (ulp_port_db_svif_get(params->ulp_ctx, ifindex,
+						 BNXT_ULP_DRV_FUNC_SVIF, &svif)) {
+				BNXT_DRV_DBG(ERR, "ParseErr:ifindex is not valid\n");
+				return;
+			}
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_DRV_FUNC_SVIF,
+					    svif);
 		}
 		if (mtype == BNXT_ULP_INTF_TYPE_PF) {
 			ULP_COMP_FLD_IDX_WR(params,

@@ -70,6 +70,7 @@ struct ulp_phy_port_info {
 	uint16_t	port_spif;
 	uint16_t	port_parif;
 	uint16_t	port_vport;
+	uint32_t	port_mirror_id;
 };
 
 /* Structure for the Port database */
@@ -241,6 +242,20 @@ ulp_port_db_phy_port_svif_get(struct bnxt_ulp_context *ulp_ctxt,
 			      uint16_t *svif);
 
 /*
+ * Api to get the socket direct svif for a given device port.
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] device port id
+ * svif [out] the socket direct svif of the given device index
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_dev_port_socket_direct_svif_get(struct bnxt_ulp_context *ulp_ctxt,
+					    uint32_t port_id,
+					    uint16_t *svif);
+
+/*
  * Api to get the port type for a given ulp ifindex.
  *
  * ulp_ctxt [in] Ptr to ulp context
@@ -379,4 +394,17 @@ ulp_port_db_port_vf_fid_get(struct bnxt_ulp_context *ulp_ctxt,
 int32_t
 ulp_port_db_port_table_scope_get(struct bnxt_ulp_context *ulp_ctxt,
 				 uint16_t port_id, uint8_t **tsid);
+
+/* Api to get the PF Mirror Id for a given port id
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * mirror id [in] mirror id
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_table_mirror_set(struct bnxt_ulp_context *ulp_ctxt,
+				  uint16_t port_id, uint32_t mirror_id);
+
 #endif /* _ULP_PORT_DB_H_ */

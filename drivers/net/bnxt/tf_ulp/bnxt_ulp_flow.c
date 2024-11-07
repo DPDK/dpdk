@@ -66,7 +66,7 @@ bnxt_ulp_flow_validate_args(const struct rte_flow_attr *attr,
 	return BNXT_TF_RC_SUCCESS;
 }
 
-static inline void
+void
 bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 			    const struct rte_flow_attr *attr)
 {
@@ -86,7 +86,7 @@ bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 	}
 }
 
-static int32_t
+int32_t
 bnxt_ulp_set_prio_attribute(struct ulp_rte_parser_params *params,
 			    const struct rte_flow_attr *attr)
 {
@@ -117,7 +117,7 @@ bnxt_ulp_set_prio_attribute(struct ulp_rte_parser_params *params,
 	return 0;
 }
 
-static inline void
+void
 bnxt_ulp_init_parser_cf_defaults(struct ulp_rte_parser_params *params,
 				 uint16_t port_id)
 {
@@ -268,6 +268,26 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_parms *mparms,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SOCKET_DIRECT_VPORT,
 				    (vport == 1) ? 2 : 1);
 	}
+
+	/* Update the socket direct svif when socket_direct feature enabled. */
+	if (ULP_BITMAP_ISSET(bnxt_ulp_feature_bits_get(params->ulp_ctx),
+			     BNXT_ULP_FEATURE_BIT_SOCKET_DIRECT)) {
+		enum bnxt_ulp_intf_type intf_type;
+		/* For ingress flow on trusted_vf port */
+		intf_type = bnxt_pmd_get_interface_type(params->port_id);
+		if (intf_type == BNXT_ULP_INTF_TYPE_TRUSTED_VF) {
+			uint16_t svif;
+			/* Get the socket direct svif of the given dev port */
+			if (unlikely(ulp_port_db_dev_port_socket_direct_svif_get(params->ulp_ctx,
+										 params->port_id,
+										 &svif))) {
+				BNXT_DRV_DBG(ERR, "Invalid port id %u\n",
+					     params->port_id);
+				return;
+			}
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SOCKET_DIRECT_SVIF, svif);
+		}
+	}
 }
 
 /* Function to create the rte flow. */
@@ -305,6 +325,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	/* Initialize the parser params */
 	memset(&params, 0, sizeof(struct ulp_rte_parser_params));
 	params.ulp_ctx = ulp_ctx;
+	params.port_id = dev->data->port_id;
 
 	if (unlikely(bnxt_ulp_cntxt_app_id_get(params.ulp_ctx, &params.app_id))) {
 		BNXT_DRV_DBG(ERR, "failed to get the app id\n");
