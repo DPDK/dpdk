@@ -5052,10 +5052,84 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_O_IPV6 |
 		BNXT_ULP_HDR_BIT_O_UDP |
 		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A100000000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[52] = 5,
+		[54] = 6,
+		[56] = 7,
+		[58] = 8,
+		[60] = 9,
+		[62] = 10,
+		[64] = 11,
+		[66] = 12,
+		[100] = 13,
+		[102] = 14,
+		[104] = 15,
+		[106] = 16,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[127] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006840000000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[34] = 6,
+		[36] = 7,
+		[38] = 8,
+		[40] = 9,
+		[42] = 10,
+		[44] = 11,
+		[46] = 12,
+		[48] = 13,
+		[50] = 14,
+		[100] = 15,
+		[102] = 16,
+		[104] = 17,
+		[106] = 18,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[128] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
 		BNXT_ULP_HDR_BIT_I_ETH |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A170000000000,
+	.field_opt_bitmap = 0xB01A170000000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5085,7 +5159,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[127] = {
+	[129] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5095,7 +5169,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_ETH |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C000000000,
+	.field_opt_bitmap = 0xB00685C000000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5127,7 +5201,195 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[128] = {
+	[130] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV6 |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A105800000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[52] = 5,
+		[53] = 21,
+		[54] = 6,
+		[55] = 22,
+		[56] = 7,
+		[57] = 23,
+		[58] = 8,
+		[59] = 24,
+		[60] = 9,
+		[61] = 25,
+		[62] = 10,
+		[63] = 26,
+		[64] = 11,
+		[65] = 27,
+		[66] = 12,
+		[67] = 28,
+		[100] = 13,
+		[102] = 14,
+		[104] = 15,
+		[106] = 16,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[131] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV6 |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006841600000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[34] = 6,
+		[36] = 7,
+		[38] = 8,
+		[40] = 9,
+		[42] = 10,
+		[44] = 11,
+		[46] = 12,
+		[48] = 13,
+		[50] = 14,
+		[53] = 23,
+		[55] = 24,
+		[57] = 25,
+		[59] = 26,
+		[61] = 27,
+		[63] = 28,
+		[65] = 29,
+		[67] = 30,
+		[100] = 15,
+		[102] = 16,
+		[104] = 17,
+		[106] = 18,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[132] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV4 |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A101600000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[33] = 21,
+		[35] = 22,
+		[37] = 23,
+		[39] = 24,
+		[41] = 25,
+		[43] = 26,
+		[45] = 27,
+		[47] = 28,
+		[49] = 29,
+		[51] = 30,
+		[52] = 5,
+		[54] = 6,
+		[56] = 7,
+		[58] = 8,
+		[60] = 9,
+		[62] = 10,
+		[64] = 11,
+		[66] = 12,
+		[100] = 13,
+		[102] = 14,
+		[104] = 15,
+		[106] = 16,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[133] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV4 |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006840580000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[33] = 23,
+		[34] = 6,
+		[35] = 24,
+		[36] = 7,
+		[37] = 25,
+		[38] = 8,
+		[39] = 26,
+		[40] = 9,
+		[41] = 27,
+		[42] = 10,
+		[43] = 28,
+		[44] = 11,
+		[45] = 29,
+		[46] = 12,
+		[47] = 30,
+		[48] = 13,
+		[49] = 31,
+		[50] = 14,
+		[51] = 32,
+		[100] = 15,
+		[102] = 16,
+		[104] = 17,
+		[106] = 18,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[134] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5138,7 +5400,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A170B00000000,
+	.field_opt_bitmap = 0xB01A170B00000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5176,7 +5438,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[129] = {
+	[135] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5187,7 +5449,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_IPV6 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C2C0000000,
+	.field_opt_bitmap = 0xB00685C2C0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5227,7 +5489,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[130] = {
+	[136] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5238,7 +5500,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A1702C0000000,
+	.field_opt_bitmap = 0xB01A1702C0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5278,7 +5540,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[131] = {
+	[137] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5289,7 +5551,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_IPV4 |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C0B0000000,
+	.field_opt_bitmap = 0xB00685C0B0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5331,7 +5593,185 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[132] = {
+	[138] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_TCP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A160000000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[52] = 5,
+		[54] = 6,
+		[56] = 7,
+		[58] = 8,
+		[60] = 9,
+		[62] = 10,
+		[64] = 11,
+		[66] = 12,
+		[83] = 21,
+		[85] = 22,
+		[87] = 23,
+		[89] = 24,
+		[91] = 25,
+		[93] = 26,
+		[95] = 27,
+		[97] = 28,
+		[99] = 29,
+		[100] = 13,
+		[102] = 14,
+		[104] = 15,
+		[106] = 16,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[139] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_TCP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006858000000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[34] = 6,
+		[36] = 7,
+		[38] = 8,
+		[40] = 9,
+		[42] = 10,
+		[44] = 11,
+		[46] = 12,
+		[48] = 13,
+		[50] = 14,
+		[83] = 23,
+		[85] = 24,
+		[87] = 25,
+		[89] = 26,
+		[91] = 27,
+		[93] = 28,
+		[95] = 29,
+		[97] = 30,
+		[99] = 31,
+		[100] = 15,
+		[102] = 16,
+		[104] = 17,
+		[106] = 18,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[140] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_UDP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A160000000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[52] = 5,
+		[54] = 6,
+		[56] = 7,
+		[58] = 8,
+		[60] = 9,
+		[62] = 10,
+		[64] = 11,
+		[66] = 12,
+		[100] = 13,
+		[101] = 21,
+		[102] = 14,
+		[103] = 22,
+		[104] = 15,
+		[105] = 23,
+		[106] = 16,
+		[107] = 24,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[141] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_UDP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006858000000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[34] = 6,
+		[36] = 7,
+		[38] = 8,
+		[40] = 9,
+		[42] = 10,
+		[44] = 11,
+		[46] = 12,
+		[48] = 13,
+		[50] = 14,
+		[100] = 15,
+		[101] = 23,
+		[102] = 16,
+		[103] = 24,
+		[104] = 17,
+		[105] = 25,
+		[106] = 18,
+		[107] = 26,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[142] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5342,7 +5782,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A17C000000000,
+	.field_opt_bitmap = 0xB01A17C000000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5381,7 +5821,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[133] = {
+	[143] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5392,7 +5832,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285F000000000,
+	.field_opt_bitmap = 0xB00685F000000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5433,7 +5873,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[134] = {
+	[144] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5444,7 +5884,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A17C000000000,
+	.field_opt_bitmap = 0xB01A17C000000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5478,7 +5918,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[135] = {
+	[145] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5489,7 +5929,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285F000000000,
+	.field_opt_bitmap = 0xB00685F000000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5525,7 +5965,443 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[136] = {
+	[146] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV6 |
+		BNXT_ULP_HDR_BIT_I_TCP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A105E00000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[52] = 5,
+		[53] = 21,
+		[54] = 6,
+		[55] = 22,
+		[56] = 7,
+		[57] = 23,
+		[58] = 8,
+		[59] = 24,
+		[60] = 9,
+		[61] = 25,
+		[62] = 10,
+		[63] = 26,
+		[64] = 11,
+		[65] = 27,
+		[66] = 12,
+		[67] = 28,
+		[83] = 29,
+		[85] = 30,
+		[87] = 31,
+		[89] = 32,
+		[91] = 33,
+		[93] = 34,
+		[95] = 35,
+		[97] = 36,
+		[99] = 37,
+		[100] = 13,
+		[102] = 14,
+		[104] = 15,
+		[106] = 16,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[147] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV6 |
+		BNXT_ULP_HDR_BIT_I_TCP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006841780000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[34] = 6,
+		[36] = 7,
+		[38] = 8,
+		[40] = 9,
+		[42] = 10,
+		[44] = 11,
+		[46] = 12,
+		[48] = 13,
+		[50] = 14,
+		[53] = 23,
+		[55] = 24,
+		[57] = 25,
+		[59] = 26,
+		[61] = 27,
+		[63] = 28,
+		[65] = 29,
+		[67] = 30,
+		[83] = 31,
+		[85] = 32,
+		[87] = 33,
+		[89] = 34,
+		[91] = 35,
+		[93] = 36,
+		[95] = 37,
+		[97] = 38,
+		[99] = 39,
+		[100] = 15,
+		[102] = 16,
+		[104] = 17,
+		[106] = 18,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[148] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV4 |
+		BNXT_ULP_HDR_BIT_I_TCP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A101780000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[33] = 21,
+		[35] = 22,
+		[37] = 23,
+		[39] = 24,
+		[41] = 25,
+		[43] = 26,
+		[45] = 27,
+		[47] = 28,
+		[49] = 29,
+		[51] = 30,
+		[52] = 5,
+		[54] = 6,
+		[56] = 7,
+		[58] = 8,
+		[60] = 9,
+		[62] = 10,
+		[64] = 11,
+		[66] = 12,
+		[83] = 31,
+		[85] = 32,
+		[87] = 33,
+		[89] = 34,
+		[91] = 35,
+		[93] = 36,
+		[95] = 37,
+		[97] = 38,
+		[99] = 39,
+		[100] = 13,
+		[102] = 14,
+		[104] = 15,
+		[106] = 16,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[149] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV4 |
+		BNXT_ULP_HDR_BIT_I_TCP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB0068405E0000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[33] = 23,
+		[34] = 6,
+		[35] = 24,
+		[36] = 7,
+		[37] = 25,
+		[38] = 8,
+		[39] = 26,
+		[40] = 9,
+		[41] = 27,
+		[42] = 10,
+		[43] = 28,
+		[44] = 11,
+		[45] = 29,
+		[46] = 12,
+		[47] = 30,
+		[48] = 13,
+		[49] = 31,
+		[50] = 14,
+		[51] = 32,
+		[83] = 33,
+		[85] = 34,
+		[87] = 35,
+		[89] = 36,
+		[91] = 37,
+		[93] = 38,
+		[95] = 39,
+		[97] = 40,
+		[99] = 41,
+		[100] = 15,
+		[102] = 16,
+		[104] = 17,
+		[106] = 18,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[150] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV6 |
+		BNXT_ULP_HDR_BIT_I_UDP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A105E00000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[52] = 5,
+		[53] = 21,
+		[54] = 6,
+		[55] = 22,
+		[56] = 7,
+		[57] = 23,
+		[58] = 8,
+		[59] = 24,
+		[60] = 9,
+		[61] = 25,
+		[62] = 10,
+		[63] = 26,
+		[64] = 11,
+		[65] = 27,
+		[66] = 12,
+		[67] = 28,
+		[100] = 13,
+		[101] = 29,
+		[102] = 14,
+		[103] = 30,
+		[104] = 15,
+		[105] = 31,
+		[106] = 16,
+		[107] = 32,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[151] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV6 |
+		BNXT_ULP_HDR_BIT_I_UDP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB006841780000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[34] = 6,
+		[36] = 7,
+		[38] = 8,
+		[40] = 9,
+		[42] = 10,
+		[44] = 11,
+		[46] = 12,
+		[48] = 13,
+		[50] = 14,
+		[53] = 23,
+		[55] = 24,
+		[57] = 25,
+		[59] = 26,
+		[61] = 27,
+		[63] = 28,
+		[65] = 29,
+		[67] = 30,
+		[100] = 15,
+		[101] = 31,
+		[102] = 16,
+		[103] = 32,
+		[104] = 17,
+		[105] = 33,
+		[106] = 18,
+		[107] = 34,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[152] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV6 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV4 |
+		BNXT_ULP_HDR_BIT_I_UDP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB01A101780000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[33] = 21,
+		[35] = 22,
+		[37] = 23,
+		[39] = 24,
+		[41] = 25,
+		[43] = 26,
+		[45] = 27,
+		[47] = 28,
+		[49] = 29,
+		[51] = 30,
+		[52] = 5,
+		[54] = 6,
+		[56] = 7,
+		[58] = 8,
+		[60] = 9,
+		[62] = 10,
+		[64] = 11,
+		[66] = 12,
+		[100] = 13,
+		[101] = 31,
+		[102] = 14,
+		[103] = 32,
+		[104] = 15,
+		[105] = 33,
+		[106] = 16,
+		[107] = 34,
+		[120] = 17,
+		[121] = 18,
+		[122] = 19,
+		[123] = 20,
+		},
+	},
+	[153] = {
+	.app_id = 0,
+	.hdr_bitmap = { .bits =
+		BNXT_ULP_HDR_BIT_O_ETH |
+		BNXT_ULP_HDR_BIT_O_IPV4 |
+		BNXT_ULP_HDR_BIT_O_UDP |
+		BNXT_ULP_HDR_BIT_T_VXLAN |
+		BNXT_ULP_HDR_BIT_I_IPV4 |
+		BNXT_ULP_HDR_BIT_I_UDP |
+		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
+	.field_man_bitmap = 0x0,
+	.field_opt_bitmap = 0xB0068405E0000000,
+	.field_exclude_bitmap = 0x0,
+	.class_tid = 2,
+	.flow_pattern_id = 1,
+	.field_list = {
+		[1] = 1,
+		[6] = 2,
+		[8] = 3,
+		[10] = 4,
+		[32] = 5,
+		[33] = 23,
+		[34] = 6,
+		[35] = 24,
+		[36] = 7,
+		[37] = 25,
+		[38] = 8,
+		[39] = 26,
+		[40] = 9,
+		[41] = 27,
+		[42] = 10,
+		[43] = 28,
+		[44] = 11,
+		[45] = 29,
+		[46] = 12,
+		[47] = 30,
+		[48] = 13,
+		[49] = 31,
+		[50] = 14,
+		[51] = 32,
+		[100] = 15,
+		[101] = 33,
+		[102] = 16,
+		[103] = 34,
+		[104] = 17,
+		[105] = 35,
+		[106] = 18,
+		[107] = 36,
+		[120] = 19,
+		[121] = 20,
+		[122] = 21,
+		[123] = 22,
+		},
+	},
+	[154] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5537,7 +6413,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A170BC0000000,
+	.field_opt_bitmap = 0xB01A170BC0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5584,7 +6460,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[137] = {
+	[155] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5596,7 +6472,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C2F0000000,
+	.field_opt_bitmap = 0xB00685C2F0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5645,7 +6521,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[138] = {
+	[156] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5657,7 +6533,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A1702F0000000,
+	.field_opt_bitmap = 0xB01A1702F0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5706,7 +6582,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[139] = {
+	[157] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5718,7 +6594,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_TCP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C0BC000000,
+	.field_opt_bitmap = 0xB00685C0BC000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5769,7 +6645,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[140] = {
+	[158] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5781,7 +6657,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A170BC0000000,
+	.field_opt_bitmap = 0xB01A170BC0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5823,7 +6699,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[141] = {
+	[159] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5835,7 +6711,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C2F0000000,
+	.field_opt_bitmap = 0xB00685C2F0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5879,7 +6755,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[142] = {
+	[160] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5891,7 +6767,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00A1702F0000000,
+	.field_opt_bitmap = 0xB01A1702F0000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5935,7 +6811,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 20,
 		},
 	},
-	[143] = {
+	[161] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |
@@ -5947,7 +6823,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		BNXT_ULP_HDR_BIT_I_UDP |
 		BNXT_ULP_FLOW_DIR_BITMASK_EGR },
 	.field_man_bitmap = 0x0,
-	.field_opt_bitmap = 0xB00285C0BC000000,
+	.field_opt_bitmap = 0xB00685C0BC000000,
 	.field_exclude_bitmap = 0x0,
 	.class_tid = 2,
 	.flow_pattern_id = 1,
@@ -5993,7 +6869,7 @@ struct bnxt_ulp_class_match_info ulp_class_match_list[] = {
 		[123] = 22,
 		},
 	},
-	[144] = {
+	[162] = {
 	.app_id = 0,
 	.hdr_bitmap = { .bits =
 		BNXT_ULP_HDR_BIT_O_ETH |

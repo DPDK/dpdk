@@ -17,6 +17,7 @@
 #include "rte_flow.h"
 #include "tf_core.h"
 #include "cfa_resources.h"
+#include "cfa_types.h"
 
 /* Number of fields for each protocol */
 #define BNXT_ULP_PROTO_HDR_SVIF_NUM	2
@@ -336,6 +337,7 @@ struct bnxt_ulp_mapper_tbl_info {
 
 	/* Shared session */
 	enum bnxt_ulp_session_type	session_type;
+	enum cfa_track_type		track_type;
 
 	/* Key recipes for generic templates */
 	enum bnxt_ulp_key_recipe_opc key_recipe_opcode;
@@ -421,6 +423,8 @@ struct bnxt_ulp_app_capabilities_info {
 	uint32_t			pbl_page_sz_in_bytes;
 	uint16_t			num_key_recipes_per_dir;
 	uint64_t			feature_bits;
+	uint64_t			default_class_bits;
+	uint64_t			default_act_bits;
 };
 
 struct bnxt_ulp_cache_tbl_params {

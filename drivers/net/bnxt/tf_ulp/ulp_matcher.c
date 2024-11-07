@@ -175,6 +175,7 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 	struct bnxt_ulp_matcher_data *matcher_data;
 	uint32_t class_match_idx = 0;
 	uint32_t hash_idx;
+	uint64_t bits = 0;
 
 	/* Get the matcher data for hash lookup  */
 	matcher_data = (struct bnxt_ulp_matcher_data *)
@@ -183,6 +184,9 @@ ulp_matcher_pattern_match(struct ulp_rte_parser_params *params,
 		BNXT_DRV_DBG(ERR, "Failed to get the ulp matcher data\n");
 		return -EINVAL;
 	}
+
+	bits = bnxt_ulp_cntxt_ptr2_default_class_bits_get(params->ulp_ctx);
+	params->hdr_bitmap.bits |= bits;
 
 	/* search the matcher hash db for the entry  */
 	if (ulp_matcher_class_hash_lookup(matcher_data, params,
@@ -290,6 +294,7 @@ ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 {
 	struct bnxt_ulp_matcher_data *matcher_data;
 	uint32_t act_tmpl_idx = 0;
+	uint64_t bits = 0;
 
 	/* Get the matcher data for hash lookup  */
 	matcher_data = (struct bnxt_ulp_matcher_data *)
@@ -298,6 +303,9 @@ ulp_matcher_action_match(struct ulp_rte_parser_params *params,
 		BNXT_DRV_DBG(ERR, "Failed to get the ulp matcher data\n");
 		return -EINVAL;
 	}
+
+	bits = bnxt_ulp_cntxt_ptr2_default_act_bits_get(params->ulp_ctx);
+	params->act_bitmap.bits |= bits;
 
 	/* search the matcher hash db for the entry  */
 	if (ulp_matcher_action_hash_lookup(matcher_data, params,

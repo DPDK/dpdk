@@ -533,6 +533,11 @@ ulp_tfc_cntxt_app_caps_init(struct bnxt *bp, uint8_t app_id, uint32_t dev_id)
 					    "Socket Direct feature is enabled\n");
 			}
 		}
+		ulp_ctx->cfg_data->feature_bits = info[i].feature_bits;
+		bnxt_ulp_cntxt_ptr2_default_class_bits_set(ulp_ctx,
+							   info[i].default_class_bits);
+		bnxt_ulp_cntxt_ptr2_default_act_bits_set(ulp_ctx,
+							 info[i].default_act_bits);
 
 		rc = bnxt_ulp_cntxt_tbl_scope_max_pools_set(ulp_ctx,
 							    info[i].max_pools);

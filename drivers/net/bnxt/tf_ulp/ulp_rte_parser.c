@@ -349,6 +349,11 @@ ulp_post_process_normal_flow(struct ulp_rte_parser_params *params)
 			       BNXT_ULP_FLOW_DIR_BITMASK_EGR);
 		ULP_BITMAP_SET(params->act_bitmap.bits,
 			       BNXT_ULP_FLOW_DIR_BITMASK_EGR);
+	} else {
+		ULP_BITMAP_SET(params->hdr_bitmap.bits,
+			       BNXT_ULP_FLOW_DIR_BITMASK_ING);
+		ULP_BITMAP_SET(params->act_bitmap.bits,
+			       BNXT_ULP_FLOW_DIR_BITMASK_ING);
 	}
 
 	/* Evaluate the VF to VF flag */

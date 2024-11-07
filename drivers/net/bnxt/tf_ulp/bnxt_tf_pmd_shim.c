@@ -602,7 +602,7 @@ bnxt_pmd_global_tunnel_set(struct bnxt_ulp_context *ulp_ctx,
 			rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_port,
 							     hwtype);
 		else
-			rc = bnxt_hwrm_tunnel_dst_port_free(bp, port_id,
+			rc = bnxt_hwrm_tunnel_dst_port_free(bp, ludp_port,
 							    hwtype);
 	}
 

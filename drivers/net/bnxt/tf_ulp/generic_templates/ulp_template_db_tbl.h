@@ -34,6 +34,9 @@ extern struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[];
 extern struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[];
 
 extern struct
+bnxt_ulp_mapper_field_info ulp_wh_plus_act_key_ext_list[];
+
+extern struct
 bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[];
 
 extern struct
@@ -110,6 +113,9 @@ extern struct bnxt_ulp_mapper_key_info ulp_thor_act_key_info_list[];
 extern struct bnxt_ulp_mapper_ident_info ulp_thor_act_ident_list[];
 
 extern struct
+bnxt_ulp_mapper_field_info ulp_thor_act_key_ext_list[];
+
+extern struct
 bnxt_ulp_mapper_field_info ulp_thor_act_result_field_list[];
 
 extern struct
@@ -157,6 +163,9 @@ extern struct bnxt_ulp_mapper_tbl_info ulp_thor2_act_tbl_list[];
 
 extern struct
 bnxt_ulp_mapper_key_info ulp_thor2_act_key_info_list[];
+
+extern struct
+bnxt_ulp_mapper_field_info ulp_thor2_act_key_ext_list[];
 
 extern struct
 bnxt_ulp_mapper_field_info ulp_thor2_act_result_field_list[];

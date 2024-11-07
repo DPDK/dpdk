@@ -1048,6 +1048,7 @@ ulp_mapper_tf_ident_alloc(struct bnxt_ulp_context *ulp_ctx,
 			  uint32_t session_type,
 			  uint16_t ident_type,
 			  uint8_t direction,
+			  enum cfa_track_type tt __rte_unused,
 			  uint64_t *identifier_id)
 {
 	struct tf_alloc_identifier_parms iparms = {0};
