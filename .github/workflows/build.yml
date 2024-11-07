@@ -139,13 +139,6 @@ jobs:
         .ci/linux-setup.sh
         # Workaround on $HOME permissions as EAL checks them for plugin loading
         chmod o-w $HOME
-    - name: Reduce ASLR entropy
-      if: env.ASAN == 'true'
-      # ASan in llvm 14 provided in ubuntu-22.04 is incompatible with
-      # high-entropy ASLR configured in much newer kernels that GitHub
-      # runners are using leading to random crashes:
-      #   https://github.com/actions/runner-images/issues/9491
-      run: sudo sysctl -w vm.mmap_rnd_bits=28
     - name: Build and test
       run: .ci/linux-build.sh
     - name: Upload logs on failure
