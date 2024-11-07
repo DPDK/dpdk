@@ -680,6 +680,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_wh_plus_generic_tbl_params[] = {
 	.num_buckets = 0,
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROF_FUNC_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_PROF_FUNC_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROF_FUNC_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_PROF_FUNC_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GROUP_MISS_ACTION_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_GROUP_MISS_ACTION_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GROUP_MISS_ACTION_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_GROUP_MISS_ACTION_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	}
 };
 
@@ -1351,6 +1399,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor_generic_tbl_params[] = {
 	.result_num_entries = 128,
 	.result_num_bytes = 6,
 	.key_num_bytes = 56,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 512,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROF_FUNC_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_PROF_FUNC_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 8,
+	.result_num_bytes = 5,
+	.key_num_bytes = 1,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROF_FUNC_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_PROF_FUNC_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GROUP_MISS_ACTION_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_GROUP_MISS_ACTION_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 128,
+	.result_num_bytes = 6,
+	.key_num_bytes = 6,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 512,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GROUP_MISS_ACTION_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_GROUP_MISS_ACTION_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 128,
+	.result_num_bytes = 6,
+	.key_num_bytes = 6,
 	.partial_key_num_bytes = 0,
 	.num_buckets = 4,
 	.hash_tbl_entries = 512,
@@ -2030,6 +2126,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 	.num_buckets = 4,
 	.hash_tbl_entries = 512,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROF_FUNC_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_PROF_FUNC_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_PROF_FUNC_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_PROF_FUNC_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GROUP_MISS_ACTION_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_GROUP_MISS_ACTION_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GROUP_MISS_ACTION_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_GROUP_MISS_ACTION_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	}
 };
 
@@ -2365,6 +2509,10 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.vxlan_port              = 0,
 	.vxlan_ip_port           = 0,
 	.num_key_recipes_per_dir = 256,
+	.feature_bits            = BNXT_ULP_FEATURE_BIT_PORT_DMAC |
+			BNXT_ULP_FEATURE_BIT_PARENT_DMAC |
+			BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW |
+			BNXT_ULP_FEATURE_BIT_SOCKET_DIRECT,
 	.default_class_bits      = 0,
 	.default_act_bits        = BNXT_ULP_ACT_BIT_GENERIC
 	},
@@ -2388,6 +2536,9 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.em_tx_key_max_sz        = 112,
 	.pbl_page_sz_in_bytes    = 4096,
 	.num_key_recipes_per_dir = 256,
+	.feature_bits            = BNXT_ULP_FEATURE_BIT_PORT_DMAC |
+			BNXT_ULP_FEATURE_BIT_PARENT_DMAC |
+			BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW,
 	.default_class_bits      = 0,
 	.default_act_bits        = BNXT_ULP_ACT_BIT_GENERIC
 	}
