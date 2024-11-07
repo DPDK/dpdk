@@ -121,8 +121,8 @@ eal_parse_args(int argc, char **argv)
 			return -1;
 		}
 
-		/* eal_log_level_parse() already handled this option */
-		if (opt == OPT_LOG_LEVEL_NUM)
+		/* eal_parse_log_options() already handled this option */
+		if (eal_option_is_log(opt))
 			continue;
 
 		ret = eal_parse_common_option(opt, optarg, internal_conf);
@@ -254,7 +254,8 @@ rte_eal_init(int argc, char **argv)
 
 	eal_log_init(NULL, 0);
 
-	eal_log_level_parse(argc, argv);
+	/* parse log options as early as possible */
+	eal_parse_log_options(argc, argv);
 
 	if (eal_create_cpu_map() < 0) {
 		rte_eal_init_alert("Cannot discover CPU and NUMA.");

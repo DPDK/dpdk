@@ -1640,9 +1640,20 @@ eal_parse_huge_unlink(const char *arg, struct hugepage_file_discipline *out)
 	return -1;
 }
 
-/* Parse the arguments for --log-level only */
+bool
+eal_option_is_log(int opt)
+{
+	switch (opt) {
+	case OPT_LOG_LEVEL_NUM:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* Parse all arguments looking for log related ones */
 int
-eal_log_level_parse(int argc, char * const argv[])
+eal_parse_log_options(int argc, char * const argv[])
 {
 	struct internal_config *internal_conf = eal_get_internal_configuration();
 	int option_index, opt;
@@ -1661,12 +1672,11 @@ eal_log_level_parse(int argc, char * const argv[])
 	while ((opt = getopt_long(argc, argv, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {
 
-		switch (opt) {
-		case OPT_LOG_LEVEL_NUM:
-			if (eal_parse_common_option(opt, optarg, internal_conf) < 0)
-				return -1;
-			break;
-		}
+		if (!eal_option_is_log(opt))
+			continue;
+
+		if (eal_parse_common_option(opt, optarg, internal_conf) < 0)
+			return -1;
 	}
 
 	/* restore getopt lib */

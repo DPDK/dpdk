@@ -96,7 +96,8 @@ enum {
 extern const char eal_short_options[];
 extern const struct option eal_long_options[];
 
-int eal_log_level_parse(int argc, char * const argv[]);
+bool eal_option_is_log(int opt);
+int eal_parse_log_options(int argc, char * const argv[]);
 int eal_parse_common_option(int opt, const char *argv,
 			    struct internal_config *conf);
 int eal_option_device_parse(void);
