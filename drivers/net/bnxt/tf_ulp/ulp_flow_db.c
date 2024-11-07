@@ -1361,13 +1361,12 @@ ulp_flow_db_pc_db_parent_flow_set(struct bnxt_ulp_context *ulp_ctxt,
 
 	if (set_flag) {
 		pc_entry->parent_fid = parent_fid;
+		pc_entry->parent_ref_cnt++;
 	} else {
-		if (pc_entry->parent_fid != parent_fid)
-			BNXT_TF_DBG(ERR, "Panic: invalid parent id\n");
-		pc_entry->parent_fid = 0;
-
+		if (pc_entry->parent_ref_cnt > 0)
+			pc_entry->parent_ref_cnt--;
 		/* Free the parent child db entry if no user present */
-		if (!pc_entry->f2_cnt)
+		if (!pc_entry->parent_ref_cnt && !pc_entry->f2_cnt)
 			ulp_flow_db_pc_db_entry_free(ulp_ctxt, pc_entry);
 	}
 	return 0;
@@ -1422,7 +1421,7 @@ ulp_flow_db_pc_db_child_flow_set(struct bnxt_ulp_context *ulp_ctxt,
 		ULP_INDEX_BITMAP_RESET(t[a_idx], child_fid);
 		if (pc_entry->f2_cnt)
 			pc_entry->f2_cnt--;
-		if (!pc_entry->f2_cnt && !pc_entry->parent_fid)
+		if (!pc_entry->f2_cnt && !pc_entry->parent_ref_cnt)
 			ulp_flow_db_pc_db_entry_free(ulp_ctxt, pc_entry);
 	}
 	return 0;
@@ -1514,7 +1513,7 @@ ulp_flow_db_parent_flow_count_accum_set(struct bnxt_ulp_context *ulp_ctxt,
 	/* check for parent idx validity */
 	p_pdb = &flow_db->parent_child_db;
 	if (pc_idx >= p_pdb->entries_count ||
-	    !p_pdb->parent_flow_tbl[pc_idx].parent_fid) {
+	    !p_pdb->parent_flow_tbl[pc_idx].parent_ref_cnt) {
 		BNXT_TF_DBG(ERR, "Invalid parent child index %x\n", pc_idx);
 		return -EINVAL;
 	}
@@ -1761,6 +1760,7 @@ ulp_flow_db_parent_flow_count_update(struct bnxt_ulp_context *ulp_ctxt,
  */
 int32_t
 ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
+				  uint32_t flow_id,
 				  uint32_t pc_idx, uint64_t *packet_count,
 				  uint64_t *byte_count, uint8_t count_reset)
 {
@@ -1771,6 +1771,13 @@ ulp_flow_db_parent_flow_count_get(struct bnxt_ulp_context *ulp_ctxt,
 	if (!pc_entry) {
 		BNXT_TF_DBG(ERR, "failed to get the parent child entry\n");
 		return -EINVAL;
+	}
+
+	/* stale parent fid */
+	if (flow_id != pc_entry->parent_fid) {
+		*packet_count = 0;
+		*byte_count = 0;
+		return 0;
 	}
 
 	if (pc_entry->counter_acc) {
