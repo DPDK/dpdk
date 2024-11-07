@@ -220,6 +220,12 @@ struct bnxt_ulp_core_ops {
 	void
 	(*ulp_ctx_detach)(struct bnxt *bp,
 			  struct bnxt_ulp_session_state *session);
+	int32_t
+	(*ulp_vfr_session_fid_add)(struct bnxt_ulp_context *ulp_ctx,
+				  uint16_t rep_fid);
+	int32_t
+	(*ulp_vfr_session_fid_rem)(struct bnxt_ulp_context *ulp_ctx,
+				  uint16_t rep_fid);
 };
 
 extern const struct bnxt_ulp_core_ops bnxt_ulp_tf_core_ops;
@@ -581,4 +587,10 @@ int32_t bnxt_ulp_num_key_recipes_get(struct bnxt_ulp_context *ulp_ctx);
 uint64_t
 bnxt_ulp_feature_bits_get(struct bnxt_ulp_context *ulp_ctx);
 
+int32_t
+bnxt_ulp_vfr_session_fid_add(struct bnxt_ulp_context *ulp_ctx,
+			     uint16_t vfr_fid);
+int32_t
+bnxt_ulp_vfr_session_fid_rem(struct bnxt_ulp_context *ulp_ctx,
+			     uint16_t vfr_fid);
 #endif /* _BNXT_ULP_H_ */

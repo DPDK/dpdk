@@ -34,7 +34,7 @@ static const struct eth_dev_ops bnxt_rep_dev_ops = {
 
 static bool bnxt_rep_check_parent(struct bnxt_representor *rep)
 {
-	if (!rep->parent_dev->data->dev_private)
+	if (!rep->parent_dev->data || !rep->parent_dev->data->dev_private)
 		return false;
 
 	return true;
@@ -357,28 +357,41 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 		rc = bnxt_hwrm_release_afm_func(parent_bp,
 				vfr->fw_fid,
 				parent_bp->fw_fid,
-				HWRM_CFA_RELEASE_AFM_FUNC_INPUT_TYPE_RFID,
+				HWRM_CFA_RELEASE_AFM_FUNC_INPUT_TYPE_EFID,
 				0);
 
-		if (rc)
+		if (rc) {
 			PMD_DRV_LOG_LINE(ERR,
-					 "Failed in hwrm release afm func:%u rc=%d",
-					 vfr->vf_id, rc);
+					 "Failed to release EFID:%d from RFID:%d rc=%d",
+					 vfr->vf_id, parent_bp->fw_fid, rc);
+			goto error_del_rules;
+		}
+		PMD_DRV_LOG_LINE(DEBUG, "Released EFID:%d from RFID:%d",
+				 vfr->fw_fid, parent_bp->fw_fid);
+
 	} else {
 		rc = bnxt_hwrm_cfa_pair_alloc(parent_bp, vfr);
-		if (rc)
+		if (rc) {
 			PMD_DRV_LOG_LINE(ERR,
 					 "Failed in hwrm vfr alloc vfr:%u rc=%d",
 					 vfr->vf_id, rc);
+			goto error_del_rules;
+		}
 	}
 
+	/* if supported, it will add the vfr endpoint to the session, otherwise
+	 * it returns success
+	 */
+	rc = bnxt_ulp_vfr_session_fid_add(parent_bp->ulp_ctx, vfr->fw_fid);
 	if (rc)
-		(void)bnxt_ulp_delete_vfr_default_rules(vfr);
+		goto error_del_rules;
 	else
 		PMD_DRV_LOG_LINE(DEBUG,
 				 "BNXT Port:%d VFR created and initialized",
 				 vfr->dpdk_port_id);
-
+	return rc;
+error_del_rules:
+	(void)bnxt_ulp_delete_vfr_default_rules(vfr);
 	return rc;
 }
 
@@ -490,9 +503,29 @@ int bnxt_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 
 static int bnxt_tf_vfr_free(struct bnxt_representor *vfr)
 {
-	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR ulp free",
-			 vfr->dpdk_port_id);
-	return bnxt_ulp_delete_vfr_default_rules(vfr);
+	struct bnxt *parent_bp;
+	int32_t rc;
+
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR ulp free", vfr->dpdk_port_id);
+	rc = bnxt_ulp_delete_vfr_default_rules(vfr);
+	if (rc)
+		PMD_DRV_LOG_LINE(ERR,
+				 "Failed to delete dflt rules from Port:%d VFR",
+				 vfr->dpdk_port_id);
+
+	/* Need to remove the vfr fid from the session regardless */
+	parent_bp = vfr->parent_dev->data->dev_private;
+	if (!parent_bp) {
+		PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR already freed",
+				 vfr->dpdk_port_id);
+		return 0;
+	}
+	rc = bnxt_ulp_vfr_session_fid_rem(parent_bp->ulp_ctx, vfr->fw_fid);
+	if (rc)
+		PMD_DRV_LOG_LINE(ERR,
+				 "Failed to remove BNXT Port:%d VFR from session",
+				 vfr->dpdk_port_id);
+	return rc;
 }
 
 static int bnxt_vfr_free(struct bnxt_representor *vfr)
@@ -568,13 +601,15 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_representor *rep_bp = eth_dev->data->dev_private;
 	struct bnxt *parent_bp;
 	unsigned int max_rx_rings;
-	int rc = 0;
 
 	/* MAC Specifics */
 	if (!bnxt_rep_check_parent(rep_bp)) {
+		PMD_DRV_LOG_LINE(INFO, "Rep parent port does not exist");
+		/* Need be an error scenario, if parent is removed first */
+		if (eth_dev->device->driver == NULL)
+			return -ENODEV;
 		/* Need not be an error scenario, if parent is closed first */
-		PMD_DRV_LOG_LINE(INFO, "Rep parent port does not exist.");
-		return rc;
+		return 0;
 	}
 	parent_bp = rep_bp->parent_dev->data->dev_private;
 	PMD_DRV_LOG_LINE(DEBUG, "Representor dev_info_get_op");
