@@ -1717,6 +1717,11 @@ cfa_tcam_mgr_shared_entry_move(int sess_idx, struct cfa_tcam_mgr_context *contex
 	uint8_t  key[CFA_TCAM_MGR_MAX_KEY_SIZE];
 	uint8_t  mask[CFA_TCAM_MGR_MAX_KEY_SIZE];
 	uint8_t  result[CFA_TCAM_MGR_MAX_KEY_SIZE];
+	/*
+	 * Copy entry size before moving else if
+	 * slice number is non zero and entry size is zero it will cause issues
+	 */
+	dst_row->entry_size = src_row->entry_size;
 
 	int rc;
 
@@ -1791,7 +1796,6 @@ cfa_tcam_mgr_shared_entry_move(int sess_idx, struct cfa_tcam_mgr_context *contex
 
 	ROW_ENTRY_SET(dst_row, dst_row_slice);
 	dst_row->entries[dst_row_slice] = entry_id;
-	dst_row->entry_size = src_row->entry_size;
 	dst_row->priority = src_row->priority;
 	ROW_ENTRY_CLEAR(src_row, entry->slice);
 	entry->row = dst_row_index;
