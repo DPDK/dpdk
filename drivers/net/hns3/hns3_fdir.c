@@ -900,6 +900,7 @@ int hns3_fdir_filter_init(struct hns3_adapter *hns)
 		.key_len = sizeof(struct hns3_fdir_key_conf),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_EXT_TABLE,
 	};
 	int ret;
 
