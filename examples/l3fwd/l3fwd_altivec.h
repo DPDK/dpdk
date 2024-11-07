@@ -11,6 +11,9 @@
 #include "altivec/port_group.h"
 #include "l3fwd_common.h"
 
+#undef SENDM_PORT_OVERHEAD
+#define SENDM_PORT_OVERHEAD(x) ((x) + 2 * FWDSTEP)
+
 /*
  * Update source and destination MAC addresses in the ethernet header.
  * Perform RFC1812 checks and updates for IPV4 packets.
@@ -117,7 +120,8 @@ process_packet(struct rte_mbuf *pkt, uint16_t *dst_port)
  */
 static __rte_always_inline void
 send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
-		uint16_t dst_port[MAX_PKT_BURST], int nb_rx)
+		uint16_t dst_port[SENDM_PORT_OVERHEAD(MAX_PKT_BURST)],
+		int nb_rx)
 {
 	int32_t k;
 	int j = 0;
