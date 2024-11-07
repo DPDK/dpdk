@@ -1035,4 +1035,36 @@ bnxt_ulp_vfr_session_fid_rem(struct bnxt_ulp_context *ulp_ctx,
 	return rc;
 }
 
+static inline int32_t
+bnxt_ulp_cap_feat_process(uint64_t feat_bits, uint64_t *out_bits)
+{
+#ifdef RTE_BNXT_TF_FEAT_BITS
+	uint64_t bit = RTE_BNXT_TF_FEAT_BITS;
+#else
+	uint64_t bit = 0;
+#endif
+
+	*out_bits = 0;
+	if ((feat_bits | bit) != feat_bits) {
+		BNXT_DRV_DBG(ERR, "Invalid TF feature bit is set %" PRIu64 "\n",
+			     bit);
+		return -EINVAL;
+	}
+	if ((bit & BNXT_ULP_FEATURE_BIT_PARENT_DMAC) &&
+	    (bit & BNXT_ULP_FEATURE_BIT_PORT_DMAC)) {
+		BNXT_DRV_DBG(ERR, "Invalid both Port and Parent Mac set\n");
+		return -EINVAL;
+	}
+
+	if (bit & BNXT_ULP_FEATURE_BIT_PARENT_DMAC)
+		BNXT_DRV_DBG(ERR, "Parent Mac Address Feature is enabled\n");
+	if (bit & BNXT_ULP_FEATURE_BIT_PORT_DMAC)
+		BNXT_DRV_DBG(ERR, "Port Mac Address Feature is enabled\n");
+	if (bit & BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW)
+		BNXT_DRV_DBG(ERR, "Multi Tunnel Flow Feature is enabled\n");
+
+	*out_bits =  bit;
+	return 0;
+}
+
 #endif /* _BNXT_ULP_UTILS_H_ */

@@ -536,7 +536,11 @@ ulp_tfc_cntxt_app_caps_init(struct bnxt *bp, uint8_t app_id, uint32_t dev_id)
 					    "Socket Direct feature is enabled\n");
 			}
 		}
-		ulp_ctx->cfg_data->feature_bits = info[i].feature_bits;
+		/* Update the capability feature bits*/
+		if (bnxt_ulp_cap_feat_process(info[i].feature_bits,
+					      &ulp_ctx->cfg_data->feature_bits))
+			return -EINVAL;
+
 		bnxt_ulp_default_app_priority_set(ulp_ctx,
 						  info[i].default_priority);
 		bnxt_ulp_max_def_priority_set(ulp_ctx,
