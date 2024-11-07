@@ -536,6 +536,15 @@ ulp_tfc_cntxt_app_caps_init(struct bnxt *bp, uint8_t app_id, uint32_t dev_id)
 			}
 		}
 		ulp_ctx->cfg_data->feature_bits = info[i].feature_bits;
+		bnxt_ulp_default_app_priority_set(ulp_ctx,
+						  info[i].default_priority);
+		bnxt_ulp_max_def_priority_set(ulp_ctx,
+					      info[i].max_def_priority);
+		bnxt_ulp_min_flow_priority_set(ulp_ctx,
+					       info[i].min_flow_priority);
+		bnxt_ulp_max_flow_priority_set(ulp_ctx,
+					       info[i].max_flow_priority);
+
 		bnxt_ulp_cntxt_ptr2_default_class_bits_set(ulp_ctx,
 							   info[i].default_class_bits);
 		bnxt_ulp_cntxt_ptr2_default_act_bits_set(ulp_ctx,
