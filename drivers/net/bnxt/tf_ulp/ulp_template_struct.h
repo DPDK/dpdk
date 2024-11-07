@@ -265,6 +265,7 @@ struct bnxt_ulp_device_params {
 	uint32_t			wc_mode_list[4];
 	uint32_t			wc_mod_list_max_size;
 	uint32_t			wc_ctl_size_bits;
+	uint32_t			dev_features;
 	const struct bnxt_ulp_generic_tbl_params *gen_tbl_params;
 	const struct bnxt_ulp_template_device_tbls *dev_tbls;
 };

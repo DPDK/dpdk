@@ -881,6 +881,11 @@ ulp_mapper_tfc_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 			return rc;
 		}
 		return 0;
+	case BNXT_ULP_INDEX_TBL_OPC_NOP_REGFILE:
+		/* Special case, where hw table processing is not being done */
+		/* but only for writing the regfile into the flow database */
+		regfile = true;
+		break;
 	default:
 		BNXT_DRV_DBG(ERR, "Invalid index table opcode %d\n",
 			     tbl->tbl_opcode);
@@ -1163,6 +1168,10 @@ ulp_mapper_tfc_cmm_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 		handle = rte_be_to_cpu_64(regval);
 		return 0;
+	case BNXT_ULP_INDEX_TBL_OPC_NOP_REGFILE:
+		regfile = true;
+		alloc = false;
+		break;
 	default:
 		BNXT_DRV_DBG(ERR, "Invalid cmm table opcode %d\n",
 			     tbl->tbl_opcode);
@@ -1371,6 +1380,10 @@ ulp_mapper_tfc_cmm_entry_free(struct bnxt_ulp_context *ulp_ctx,
 	struct tfc_cmm_info cmm_info = { 0 };
 	uint16_t fw_fid = 0;
 	int32_t rc = 0;
+
+	/* skip cmm processing if reserve flag is enabled */
+	if (res->reserve_flag)
+		return 0;
 
 	if (bnxt_ulp_cntxt_fid_get(ulp_ctx, &fw_fid)) {
 		BNXT_DRV_DBG(ERR, "Failed to get func_id\n");

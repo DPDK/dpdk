@@ -163,6 +163,7 @@ ulp_flow_db_res_params_to_info(struct ulp_fdb_resource_info *resource_info,
 		resource_info->fdb_flags = params->fdb_flags;
 	} else {
 		resource_info->resource_em_handle = params->resource_hndl;
+		resource_info->reserve_flag = params->reserve_flag;
 	}
 }
 
@@ -189,6 +190,7 @@ ulp_flow_db_res_info_to_params(struct ulp_fdb_resource_info *resource_info,
 	    params->resource_func == BNXT_ULP_RESOURCE_FUNC_CMM_TABLE ||
 	    params->resource_func == BNXT_ULP_RESOURCE_FUNC_CMM_STAT) {
 		params->resource_hndl = resource_info->resource_em_handle;
+		params->reserve_flag = resource_info->reserve_flag;
 	} else if (params->resource_func & ULP_FLOW_DB_RES_FUNC_NEED_LOWER) {
 		params->resource_hndl = resource_info->resource_hndl;
 		params->resource_type = resource_info->resource_type;

@@ -90,6 +90,7 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 	uint32_t dev_id, sw_acc_cntr_tbl_sz, hw_fc_mem_info_sz;
 	struct bnxt_ulp_fc_info *ulp_fc_info;
 	const struct bnxt_ulp_fc_core_ops *fc_ops;
+	uint32_t flags = 0;
 	int i, rc;
 
 	if (!ctxt) {
@@ -108,6 +109,12 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 		return -EINVAL;
 	}
 
+	/* update the features list */
+	if (dparms->dev_features & BNXT_ULP_DEV_FT_STAT_SW_AGG)
+		flags = ULP_FLAG_FC_SW_AGG_EN;
+	if (dparms->dev_features & BNXT_ULP_DEV_FT_STAT_PARENT_AGG)
+		flags |= ULP_FLAG_FC_PARENT_AGG_EN;
+
 	fc_ops = bnxt_ulp_fc_ops_get(ctxt);
 	if (fc_ops == NULL) {
 		BNXT_DRV_DBG(DEBUG, "Failed to get the counter ops\n");
@@ -119,6 +126,7 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 		goto error;
 
 	ulp_fc_info->fc_ops = fc_ops;
+	ulp_fc_info->flags = flags;
 
 	rc = pthread_mutex_init(&ulp_fc_info->fc_lock, NULL);
 	if (rc) {
@@ -135,6 +143,10 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 		BNXT_DRV_DBG(DEBUG, "Sw flow counter support not enabled\n");
 		return 0;
 	}
+
+	/* no need to allocate sw aggregation memory if agg is disabled */
+	if (!(ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN))
+		return 0;
 
 	sw_acc_cntr_tbl_sz = sizeof(struct sw_acc_counter) *
 				dparms->flow_count_db_entries;
@@ -182,11 +194,12 @@ ulp_fc_mgr_deinit(struct bnxt_ulp_context *ctxt)
 	if (!ulp_fc_info)
 		return -EINVAL;
 
-	ulp_fc_mgr_thread_cancel(ctxt);
+	if (ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN)
+		ulp_fc_mgr_thread_cancel(ctxt);
 
 	pthread_mutex_destroy(&ulp_fc_info->fc_lock);
 
-	if (ulp_fc_info->num_counters) {
+	if (ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN) {
 		for (i = 0; i < TF_DIR_MAX; i++)
 			rte_free(ulp_fc_info->sw_acc_tbl[i]);
 
@@ -512,7 +525,6 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	bool found_cntr_resource = false;
 	bool found_parent_flow = false;
 	uint32_t pc_idx = 0;
-	uint64_t handle = 0;
 	uint8_t dir;
 
 	ulp_fc_info = bnxt_ulp_cntxt_ptr2_fc_info_get(ctxt);
@@ -557,6 +569,10 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 		return rc;
 
 	dir = params.direction;
+	if (!(ulp_fc_info->flags & ULP_FLAG_FC_SW_AGG_EN))
+		return fc_ops->ulp_flow_stat_get(ctxt, dir,
+						 params.resource_hndl, count);
+
 	if (!found_parent_flow &&
 	    params.resource_sub_type ==
 			BNXT_ULP_RESOURCE_SUB_TYPE_INDEX_TABLE_INT_COUNT) {
@@ -594,10 +610,6 @@ int ulp_fc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 			count->hits_set = 1;
 		if (count->bytes)
 			count->bytes_set = 1;
-	} else if (!found_parent_flow &&
-		   params.resource_func == BNXT_ULP_RESOURCE_FUNC_CMM_STAT) {
-		handle = params.resource_hndl;
-		rc = fc_ops->ulp_flow_stat_get(ctxt, dir, handle, count);
 	} else {
 		rc = -EINVAL;
 	}

@@ -9,6 +9,8 @@
 #include "bnxt_ulp.h"
 
 #define ULP_FLAG_FC_THREAD			BIT(0)
+#define ULP_FLAG_FC_SW_AGG_EN			BIT(1)
+#define ULP_FLAG_FC_PARENT_AGG_EN		BIT(2)
 #define ULP_FC_TIMER	1/* Timer freq in Sec Flow Counters */
 
 /* Macros to extract packet/byte counters from a 64-bit flow counter. */

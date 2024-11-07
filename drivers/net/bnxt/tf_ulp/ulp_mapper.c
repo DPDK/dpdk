@@ -582,6 +582,11 @@ ulp_mapper_fdb_opc_process(struct bnxt_ulp_mapper_parms *parms,
 		push_fid = (uint32_t)tfp_be_to_cpu_64(val64);
 		flow_type = BNXT_ULP_FDB_TYPE_RID;
 		break;
+	case BNXT_ULP_FDB_OPC_PUSH_FID_SW_ONLY:
+		push_fid = parms->flow_id;
+		flow_type = parms->flow_type;
+		fid_parms->reserve_flag = 0x1;
+		break;
 	default:
 		return rc; /* Nothing to be done */
 	}
