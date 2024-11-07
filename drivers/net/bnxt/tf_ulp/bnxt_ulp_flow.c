@@ -85,6 +85,37 @@ bnxt_ulp_set_dir_attributes(struct ulp_rte_parser_params *params,
 	}
 }
 
+static int32_t
+bnxt_ulp_set_prio_attribute(struct ulp_rte_parser_params *params,
+			    const struct rte_flow_attr *attr)
+{
+	uint32_t max_p = bnxt_ulp_max_flow_priority_get(params->ulp_ctx);
+	uint32_t min_p = bnxt_ulp_min_flow_priority_get(params->ulp_ctx);
+
+	if (max_p < min_p) {
+		if (attr->priority > min_p || attr->priority < max_p) {
+			BNXT_DRV_DBG(ERR, "invalid prio, not in range %u:%u\n",
+				     max_p, min_p);
+			return -EINVAL;
+		}
+		params->priority = attr->priority;
+	} else {
+		if (attr->priority > max_p || attr->priority < min_p) {
+			BNXT_DRV_DBG(ERR, "invalid prio, not in range %u:%u\n",
+				     min_p, max_p);
+			return -EINVAL;
+		}
+		params->priority = max_p - attr->priority;
+	}
+	/* flows with priority zero is considered as highest and put in EM */
+	if (attr->priority >=
+	    bnxt_ulp_default_app_priority_get(params->ulp_ctx) &&
+	    attr->priority <= bnxt_ulp_max_def_priority_get(params->ulp_ctx)) {
+		ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_DEF_PRIO);
+	}
+	return 0;
+}
+
 static inline void
 bnxt_ulp_init_parser_cf_defaults(struct ulp_rte_parser_params *params,
 				 uint16_t port_id)
@@ -282,6 +313,9 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	/* Set the flow attributes */
 	bnxt_ulp_set_dir_attributes(&params, attr);
 
+	if (bnxt_ulp_set_prio_attribute(&params, attr))
+		goto flow_error;
+
 	bnxt_ulp_init_parser_cf_defaults(&params, dev->data->port_id);
 
 	/* Get the function id */
@@ -321,7 +355,6 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 
 	mparms.flow_id = fid;
 	mparms.func_id = func_id;
-	mparms.app_priority = attr->priority;
 	mparms.port_id = dev->data->port_id;
 
 	/* Perform the rte flow post process */
@@ -403,6 +436,10 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 
 	/* Set the flow attributes */
 	bnxt_ulp_set_dir_attributes(&params, attr);
+
+	if (bnxt_ulp_set_prio_attribute(&params, attr))
+		goto parse_error;
+
 	bnxt_ulp_init_parser_cf_defaults(&params, dev->data->port_id);
 
 	/* Parse the rte flow pattern */

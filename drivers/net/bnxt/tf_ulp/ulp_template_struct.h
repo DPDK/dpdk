@@ -396,6 +396,9 @@ struct bnxt_ulp_resource_resv_info {
 struct bnxt_ulp_app_capabilities_info {
 	uint8_t				app_id;
 	uint32_t			default_priority;
+	uint32_t			max_def_priority;
+	uint32_t			min_flow_priority;
+	uint32_t			max_flow_priority;
 	uint32_t			vxlan_port;
 	uint32_t			vxlan_ip_port;
 	uint32_t			ecpri_udp_port;

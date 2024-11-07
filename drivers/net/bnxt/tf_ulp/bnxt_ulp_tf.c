@@ -468,7 +468,14 @@ ulp_tf_cntxt_app_caps_init(struct bnxt *bp,
 		bnxt_ulp_cntxt_ha_reg_set(ulp_ctx, info[i].ha_reg_state,
 				    info[i].ha_reg_cnt);
 		ulp_ctx->cfg_data->ha_pool_id = info[i].ha_pool_id;
-		ulp_ctx->cfg_data->default_priority = info[i].default_priority;
+		bnxt_ulp_default_app_priority_set(ulp_ctx,
+						  info[i].default_priority);
+		bnxt_ulp_max_def_priority_set(ulp_ctx,
+					      info[i].max_def_priority);
+		bnxt_ulp_min_flow_priority_set(ulp_ctx,
+					       info[i].min_flow_priority);
+		bnxt_ulp_max_flow_priority_set(ulp_ctx,
+					       info[i].max_flow_priority);
 		ulp_ctx->cfg_data->feature_bits = info[i].feature_bits;
 	}
 	if (!found) {

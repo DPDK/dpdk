@@ -123,6 +123,9 @@ struct bnxt_ulp_data {
 	uint8_t				num_shared_clients;
 	struct bnxt_flow_app_tun_ent	app_tun[BNXT_ULP_MAX_TUN_CACHE_ENTRIES];
 	uint32_t			default_priority;
+	uint32_t			max_def_priority;
+	uint32_t			min_flow_priority;
+	uint32_t			max_flow_priority;
 	uint32_t			vxlan_port;
 	uint32_t			vxlan_gpe_port;
 	uint32_t			vxlan_ip_port;
@@ -497,9 +500,6 @@ bnxt_ulp_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
 unsigned int
 bnxt_ulp_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx);
 
-unsigned int
-bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx);
-
 int
 bnxt_ulp_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
 			   uint32_t vxlan_ip_port);
@@ -527,8 +527,31 @@ bnxt_ulp_cntxt_vxlan_port_set(struct bnxt_ulp_context *ulp_ctx,
 unsigned int
 bnxt_ulp_cntxt_vxlan_port_get(struct bnxt_ulp_context *ulp_ctx);
 
+int
+bnxt_ulp_default_app_priority_set(struct bnxt_ulp_context *ulp_ctx,
+				  uint32_t prio);
+
 unsigned int
 bnxt_ulp_default_app_priority_get(struct bnxt_ulp_context *ulp_ctx);
+
+int
+bnxt_ulp_max_def_priority_set(struct bnxt_ulp_context *ulp_ctx,
+			      uint32_t prio);
+
+unsigned int
+bnxt_ulp_max_def_priority_get(struct bnxt_ulp_context *ulp_ctx);
+
+int
+bnxt_ulp_min_flow_priority_set(struct bnxt_ulp_context *ulp_ctx, uint32_t prio);
+
+unsigned int
+bnxt_ulp_min_flow_priority_get(struct bnxt_ulp_context *ulp_ctx);
+
+int
+bnxt_ulp_max_flow_priority_set(struct bnxt_ulp_context *ulp_ctx, uint32_t prio);
+
+unsigned int
+bnxt_ulp_max_flow_priority_get(struct bnxt_ulp_context *ulp_ctx);
 
 int
 bnxt_ulp_cntxt_vxlan_ip_port_set(struct bnxt_ulp_context *ulp_ctx,
