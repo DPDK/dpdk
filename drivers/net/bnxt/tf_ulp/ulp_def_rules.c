@@ -12,6 +12,10 @@
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 
+static void
+ulp_l2_custom_tunnel_id_update(struct bnxt *bp,
+			       struct bnxt_ulp_mapper_create_parms *params);
+
 struct bnxt_ulp_def_param_handler {
 	int32_t (*vfr_func)(struct bnxt_ulp_context *ulp_ctx,
 			    struct ulp_tlv_param *param,
@@ -306,6 +310,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	struct ulp_rte_act_bitmap	act = { 0 };
 	struct bnxt_ulp_context		*ulp_ctx;
 	uint32_t type, ulp_flags = 0, fid;
+	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc = 0;
 
 	memset(&mapper_params, 0, sizeof(mapper_params));
@@ -365,6 +370,9 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	/* update the VF meta function id  */
 	ULP_COMP_FLD_IDX_WR(&mapper_params, BNXT_ULP_CF_IDX_VF_META_FID,
 			    BNXT_ULP_META_VF_FLAG | mapper_params.func_id);
+
+	/* update the upar id */
+	ulp_l2_custom_tunnel_id_update(bp, &mapper_params);
 
 	BNXT_TF_DBG(DEBUG, "Creating default flow with template id: %u\n",
 		    ulp_class_tid);
@@ -640,4 +648,22 @@ bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr)
 	vfr->vfr_tx_cfa_action = 0;
 	memset(info, 0, sizeof(struct bnxt_ulp_vfr_rule_info));
 	return 0;
+}
+
+static void
+ulp_l2_custom_tunnel_id_update(struct bnxt *bp,
+			       struct bnxt_ulp_mapper_create_parms *params)
+{
+	if (!bp->l2_etype_tunnel_cnt)
+		return;
+
+	if (bp->l2_etype_upar_in_use &
+	    HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_UPAR_IN_USE_UPAR0) {
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L2_CUSTOM_UPAR_ID,
+				    ULP_WP_SYM_TUN_HDR_TYPE_UPAR1);
+	} else if (bp->l2_etype_upar_in_use &
+		   HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_UPAR_IN_USE_UPAR1) {
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_L2_CUSTOM_UPAR_ID,
+				    ULP_WP_SYM_TUN_HDR_TYPE_UPAR2);
+	}
 }

@@ -760,3 +760,35 @@ ulp_port_db_port_meta_data_get(struct bnxt_ulp_context *ulp_ctxt,
 	}
 	return -EINVAL;
 }
+
+/* Api to get the function id for a given port id
+ *
+ * ulp_ctxt [in] Ptr to ulp context
+ * port_id [in] dpdk port id
+ * fid_data [out] the function id of the given port
+ *
+ * Returns 0 on success or negative number on failure.
+ */
+int32_t
+ulp_port_db_port_vf_fid_get(struct bnxt_ulp_context *ulp_ctxt,
+			    uint16_t port_id, uint8_t **fid_data)
+{
+	struct bnxt_ulp_port_db *port_db;
+	uint32_t ifindex;
+
+	port_db = bnxt_ulp_cntxt_ptr2_port_db_get(ulp_ctxt);
+	if (!port_db || port_id >= RTE_MAX_ETHPORTS) {
+		BNXT_TF_DBG(ERR, "Invalid Arguments\n");
+		return -EINVAL;
+	}
+	ifindex = port_db->dev_port_list[port_id];
+	if (!ifindex)
+		return -ENOENT;
+
+	if (port_db->ulp_intf_list[ifindex].type != BNXT_ULP_INTF_TYPE_VF &&
+	    port_db->ulp_intf_list[ifindex].type != BNXT_ULP_INTF_TYPE_VF_REP)
+		return -EINVAL;
+
+	*fid_data = (uint8_t *)&port_db->ulp_intf_list[ifindex].vf_func_id;
+	return 0;
+}

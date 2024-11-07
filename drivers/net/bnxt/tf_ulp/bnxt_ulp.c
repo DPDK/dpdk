@@ -1927,6 +1927,11 @@ bnxt_ulp_port_init(struct bnxt *bp)
 		}
 	}
 
+	/* setup the l2 etype tunnel for custom l2 encap/decap */
+	rc = ulp_l2_etype_tunnel_alloc(bp);
+	if (rc)
+		goto jump_to_error;
+
 	/* Update bnxt driver flags */
 	rc = ulp_dparms_dev_port_intf_update(bp, bp->ulp_ctx);
 	if (rc) {

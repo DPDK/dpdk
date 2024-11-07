@@ -1073,6 +1073,12 @@ ulp_mapper_field_port_db_process(struct bnxt_ulp_mapper_parms *parms,
 			return -EINVAL;
 		}
 		break;
+	case BNXT_ULP_PORT_TABLE_VF_FUNC_FID:
+		if (ulp_port_db_port_vf_fid_get(parms->ulp_ctx, port_id, val)) {
+			BNXT_TF_DBG(ERR, "Invalid port id %u\n", port_id);
+			return -EINVAL;
+		}
+		break;
 	default:
 		BNXT_TF_DBG(ERR, "Invalid port_data %d\n", port_data);
 		return -EINVAL;
