@@ -135,12 +135,12 @@ ulp_mapper_tf_tcam_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	else
 		key_byte_order = dparms->key_byte_order;
 
-	if (!ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
-	    !ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size,
-			   dparms->result_byte_order) ||
-	    !ulp_blob_init(&update_data, tbl->result_bit_size,
-			   dparms->result_byte_order)) {
+	if (ulp_blob_init(key, tbl->blob_key_bit_size, key_byte_order) ||
+	    ulp_blob_init(mask, tbl->blob_key_bit_size, key_byte_order) ||
+	    ulp_blob_init(&data, tbl->result_bit_size,
+			  dparms->result_byte_order) ||
+	    ulp_blob_init(&update_data, tbl->result_bit_size,
+			  dparms->result_byte_order)) {
 		BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -314,8 +314,8 @@ ulp_mapper_tf_em_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	res_order = dparms->em_byte_order;
 
 	/* Initialize the key/result blobs */
-	if (!ulp_blob_init(&key, tbl->blob_key_bit_size, key_order) ||
-	    !ulp_blob_init(&data, tbl->result_bit_size, res_order)) {
+	if (ulp_blob_init(&key, tbl->blob_key_bit_size, key_order) ||
+	    ulp_blob_init(&data, tbl->result_bit_size, res_order)) {
 		BNXT_DRV_DBG(ERR, "blob inits failed.\n");
 		return -EINVAL;
 	}
@@ -626,8 +626,8 @@ ulp_mapper_tf_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	bit_size = ulp_mapper_tf_dyn_blob_size_get(parms, tbl);
 
 	/* Initialize the blob data */
-	if (!ulp_blob_init(&data, bit_size,
-			   parms->device_params->result_byte_order)) {
+	if (ulp_blob_init(&data, bit_size,
+			  parms->device_params->result_byte_order)) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize index table blob\n");
 		return -EINVAL;
 	}
@@ -656,9 +656,9 @@ ulp_mapper_tf_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		 * get the index to write to from the regfile and then write
 		 * the table entry.
 		 */
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand,
-				      &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				    tbl->tbl_operand,
+				    &regval)) {
 			BNXT_DRV_DBG(ERR,
 				    "Failed to get tbl idx from regfile[%d].\n",
 				     tbl->tbl_operand);
@@ -721,8 +721,8 @@ ulp_mapper_tf_index_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				     "Ext Table Read Opcode not supported.\n");
 			return -EINVAL;
 		}
-		if (!ulp_regfile_read(parms->regfile,
-				      tbl->tbl_operand, &regval)) {
+		if (ulp_regfile_read(parms->regfile,
+				     tbl->tbl_operand, &regval)) {
 			BNXT_DRV_DBG(ERR,
 				     "Failed to get tbl idx from regfile[%d]\n",
 				     tbl->tbl_operand);
@@ -947,8 +947,8 @@ ulp_mapper_tf_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	tfp = bnxt_ulp_cntxt_tfp_get(parms->ulp_ctx, tbl->session_type);
 	/* Initialize the blob data */
-	if (!ulp_blob_init(&data, tbl->result_bit_size,
-			   parms->device_params->result_byte_order)) {
+	if (ulp_blob_init(&data, tbl->result_bit_size,
+			  parms->device_params->result_byte_order)) {
 		BNXT_DRV_DBG(ERR, "Failed initial index table blob\n");
 		return -EINVAL;
 	}
@@ -966,7 +966,7 @@ ulp_mapper_tf_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		idx = ULP_COMP_FLD_IDX_RD(parms, tbl->tbl_operand);
 		break;
 	case BNXT_ULP_IF_TBL_OPC_WR_REGFILE:
-		if (!ulp_regfile_read(parms->regfile, tbl->tbl_operand, &idx)) {
+		if (ulp_regfile_read(parms->regfile, tbl->tbl_operand, &idx)) {
 			BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
 				     tbl->tbl_operand);
 			return -EINVAL;
@@ -978,8 +978,8 @@ ulp_mapper_tf_if_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		break;
 	case BNXT_ULP_IF_TBL_OPC_RD_COMP_FIELD:
 		/* Initialize the result blob */
-		if (!ulp_blob_init(&res_blob, tbl->result_bit_size,
-				   parms->device_params->result_byte_order)) {
+		if (ulp_blob_init(&res_blob, tbl->result_bit_size,
+				  parms->device_params->result_byte_order)) {
 			BNXT_DRV_DBG(ERR, "Failed initial result blob\n");
 			return -EINVAL;
 		}
