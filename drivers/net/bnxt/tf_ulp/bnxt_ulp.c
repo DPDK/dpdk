@@ -454,6 +454,10 @@ bnxt_ulp_cntxt_app_caps_init(struct bnxt *bp,
 			}
 		}
 
+		if (info[i].flags & BNXT_ULP_APP_CAP_L2_ETYPE)
+			ulp_ctx->cfg_data->ulp_flags |=
+				BNXT_ULP_APP_L2_ETYPE;
+
 		bnxt_ulp_vxlan_ip_port_set(ulp_ctx, info[i].vxlan_ip_port);
 		bnxt_ulp_vxlan_port_set(ulp_ctx, info[i].vxlan_port);
 		bnxt_ulp_ecpri_udp_port_set(ulp_ctx, info[i].ecpri_udp_port);
@@ -1796,6 +1800,29 @@ jump_to_error:
 }
 
 static int
+ulp_l2_etype_tunnel_alloc(struct bnxt *bp)
+{
+	int rc = 0;
+
+	if (!ULP_APP_L2_ETYPE_SUPPORT(bp->ulp_ctx))
+		return rc;
+
+	if (bp->l2_etype_tunnel_cnt) {
+		BNXT_TF_DBG(DEBUG, "L2 ETYPE Custom Tunnel already allocated\n");
+		return rc;
+	}
+	rc = bnxt_tunnel_dst_port_alloc(bp,
+					BNXT_L2_ETYPE_TUNNEL_ID,
+					HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_L2_ETYPE);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Failed to set global L2 ETYPE Custom Tunnel\n");
+	else
+		bp->l2_etype_tunnel_cnt++;
+
+	return rc;
+}
+
+static int
 ulp_cust_vxlan_alloc(struct bnxt *bp)
 {
 	int rc = 0;
@@ -1943,11 +1970,37 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	if (rc)
 		goto jump_to_error;
 
+	rc = ulp_l2_etype_tunnel_alloc(bp);
+	if (rc)
+		goto jump_to_error;
+
 	return rc;
 
 jump_to_error:
 	bnxt_ulp_port_deinit(bp);
 	return rc;
+}
+
+static void
+ulp_l2_etype_tunnel_free(struct bnxt *bp)
+{
+	int rc;
+
+	if (!ULP_APP_L2_ETYPE_SUPPORT(bp->ulp_ctx))
+		return;
+
+	if (bp->l2_etype_tunnel_cnt == 0) {
+		BNXT_TF_DBG(DEBUG, "L2 ETYPE Custom Tunnel already freed\n");
+		return;
+	}
+
+	rc = bnxt_tunnel_dst_port_free(bp,
+				       BNXT_L2_ETYPE_TUNNEL_ID,
+				       HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_L2_ETYPE);
+	if (rc)
+		BNXT_TF_DBG(ERR, "Failed to clear L2 ETYPE Custom Tunnel\n");
+
+	bp->l2_etype_tunnel_cnt--;
 }
 
 static void
@@ -2026,6 +2079,7 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 		if (bp->ulp_ctx->cfg_data->ref_cnt) {
 			/* Free tunnel configurations */
 			ulp_cust_vxlan_free(bp);
+			ulp_l2_etype_tunnel_free(bp);
 
 			/* free the port details */
 			/* Free the default flow rule associated to this port */

@@ -40,6 +40,7 @@
 #define BNXT_ULP_CUST_VXLAN_SUPPORT	0x100
 #define BNXT_ULP_MULTI_SHARED_SUPPORT	0x200
 #define BNXT_ULP_APP_HA_DYNAMIC		0x400
+#define BNXT_ULP_APP_L2_ETYPE		0x800
 
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 #define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
@@ -60,6 +61,8 @@
 #define ULP_APP_CUST_VXLAN_SUPPORT(ctx)	   ((ctx)->cfg_data->vxlan_port != 0)
 #define ULP_APP_VXLAN_GPE_SUPPORT(ctx)     ((ctx)->cfg_data->vxlan_gpe_port != 0)
 #define ULP_APP_CUST_VXLAN_IP_SUPPORT(ctx) ((ctx)->cfg_data->vxlan_ip_port != 0)
+#define ULP_APP_L2_ETYPE_SUPPORT(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_APP_L2_ETYPE)
 
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,
