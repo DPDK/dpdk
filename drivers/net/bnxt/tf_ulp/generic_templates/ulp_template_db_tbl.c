@@ -728,6 +728,30 @@ const struct bnxt_ulp_generic_tbl_params ulp_wh_plus_generic_tbl_params[] = {
 	.num_buckets = 0,
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_STATS_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_SHARED_METER_STATS_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_KEY_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_STATS_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_SHARED_METER_STATS_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_KEY_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	}
 };
 
@@ -1361,8 +1385,8 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor_generic_tbl_params[] = {
 	.name = "INGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
 	.result_num_entries = 64,
-	.result_num_bytes = 10,
-	.key_num_bytes = 1,
+	.result_num_bytes = 11,
+	.key_num_bytes = 2,
 	.partial_key_num_bytes = 0,
 	.num_buckets = 4,
 	.hash_tbl_entries = 256,
@@ -1451,6 +1475,30 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor_generic_tbl_params[] = {
 	.num_buckets = 4,
 	.hash_tbl_entries = 512,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_STATS_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_SHARED_METER_STATS_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_KEY_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_STATS_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_SHARED_METER_STATS_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_KEY_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	}
 };
 
@@ -1748,7 +1796,7 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 	.name = "INGRESS GENERIC_TABLE_SHARED_METER_TBL_CACHE",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
 	.result_num_entries = 1024,
-	.result_num_bytes = 10,
+	.result_num_bytes = 18,
 	.key_num_bytes = 4,
 	.partial_key_num_bytes = 0,
 	.num_buckets = 8,
@@ -2174,6 +2222,30 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 	.num_buckets = 0,
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_STATS_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_SHARED_METER_STATS_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_STATS_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_SHARED_METER_STATS_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	}
 };
 
@@ -2523,7 +2595,7 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.default_priority        = 0,
 	.max_def_priority        = 0,
 	.min_flow_priority       = 0,
-	.max_flow_priority       = 255,
+	.max_flow_priority       = 65535,
 	.vxlan_port              = 0,
 	.vxlan_ip_port           = 0,
 	.max_pools               = 1,
