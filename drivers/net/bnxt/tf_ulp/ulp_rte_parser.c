@@ -330,9 +330,21 @@ ulp_post_process_normal_flow(struct ulp_rte_parser_params *params)
 
 	/* Evaluate the VF to VF flag */
 	if (act_port_set && act_port_type == BNXT_ULP_INTF_TYPE_VF_REP &&
-	    match_port_type == BNXT_ULP_INTF_TYPE_VF_REP)
-		ULP_BITMAP_SET(params->act_bitmap.bits,
-			       BNXT_ULP_ACT_BIT_VF_TO_VF);
+	     match_port_type == BNXT_ULP_INTF_TYPE_VF_REP) {
+		if (!ULP_BITMAP_ISSET(params->act_bitmap.bits,
+				      BNXT_ULP_ACT_BIT_MULTIPLE_PORT)) {
+			ULP_BITMAP_SET(params->act_bitmap.bits,
+				       BNXT_ULP_ACT_BIT_VF_TO_VF);
+		} else {
+			if (ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_MP_A_IS_VFREP) &&
+			    ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_MP_B_IS_VFREP))
+				ULP_BITMAP_SET(params->act_bitmap.bits,
+					       BNXT_ULP_ACT_BIT_VF_TO_VF);
+			else
+				ULP_BITMAP_RESET(params->act_bitmap.bits,
+						 BNXT_ULP_ACT_BIT_VF_TO_VF);
+		}
+	}
 
 	/* Update the decrement ttl computational fields */
 	if (ULP_BITMAP_ISSET(params->act_bitmap.bits,
@@ -2349,15 +2361,74 @@ ulp_rte_count_act_handler(const struct rte_flow_action *action_item,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+static bool ulp_rte_parser_is_portb_vfrep(struct ulp_rte_parser_params *param)
+{
+	return ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_B_IS_VFREP);
+}
+
+/*
+ * Swaps info related to multi-port:
+ * common:
+ *    BNXT_ULP_CF_IDX_MP_B_IS_VFREP, BNXT_ULP_CF_IDX_MP_A_IS_VFREP
+ *    BNXT_ULP_CF_IDX_MP_PORT_A, BNXT_ULP_CF_IDX_MP_PORT_B
+ *
+ * ingress:
+ *    BNXT_ULP_CF_IDX_MP_VNIC_B, BNXT_ULP_CF_IDX_MP_VNIC_A
+ *
+ * egress:
+ *    BNXT_ULP_CF_IDX_MP_MDATA_B, BNXT_ULP_CF_IDX_MP_MDATA_A
+ *    BNXT_ULP_CF_IDX_MP_VPORT_B, BNXT_ULP_CF_IDX_MP_VPORT_A
+ *
+ * Note: This is done as OVS could give us a non-VFREP port in port B, and we
+ * cannot use that to mirror, so we swap out the ports so that a VFREP is now
+ * in port B instead.
+ */
+static int32_t
+ulp_rte_parser_normalize_port_info(struct ulp_rte_parser_params *param)
+{
+	uint16_t mp_port_a, mp_port_b, mp_mdata_a, mp_mdata_b,
+		 mp_vport_a, mp_vport_b, mp_vnic_a, mp_vnic_b,
+		 mp_is_vfrep_a, mp_is_vfrep_b;
+
+	mp_is_vfrep_a = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_A_IS_VFREP);
+	mp_is_vfrep_b = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_B_IS_VFREP);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_B_IS_VFREP, mp_is_vfrep_a);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_A_IS_VFREP, mp_is_vfrep_b);
+
+	mp_port_a = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_PORT_A);
+	mp_port_b = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_PORT_B);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_PORT_B, mp_port_a);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_PORT_A, mp_port_b);
+
+	mp_vport_a = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_VPORT_A);
+	mp_vport_b = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_VPORT_B);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_VPORT_B, mp_vport_a);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_VPORT_A, mp_vport_b);
+
+	mp_vnic_a = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_VNIC_A);
+	mp_vnic_b = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_VNIC_B);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_VNIC_B, mp_vnic_a);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_VNIC_A, mp_vnic_b);
+
+	mp_mdata_a = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_MDATA_A);
+	mp_mdata_b = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_MDATA_B);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_MDATA_B, mp_mdata_a);
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_MDATA_A, mp_mdata_b);
+
+	return BNXT_TF_RC_SUCCESS;
+}
+
+
 /* Function to handle the parsing of action ports. */
 static int32_t
 ulp_rte_parser_act_port_set(struct ulp_rte_parser_params *param,
-			    uint32_t ifindex,
+			    uint32_t ifindex, bool multi_port,
 			    enum bnxt_ulp_direction_type act_dir)
 {
 	enum bnxt_ulp_direction_type dir;
 	uint16_t pid_s;
-	uint32_t pid;
+	uint8_t *p_mdata;
+	uint32_t pid, port_index;
 	struct ulp_rte_act_prop *act = &param->act_prop;
 	enum bnxt_ulp_intf_type port_type;
 	uint32_t vnic_type;
@@ -2367,27 +2438,63 @@ ulp_rte_parser_act_port_set(struct ulp_rte_parser_params *param,
 	dir = (act_dir == BNXT_ULP_DIR_INVALID) ?
 		ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_DIRECTION) :
 		act_dir;
-	port_type = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_ACT_PORT_TYPE);
-	if (dir == BNXT_ULP_DIR_EGRESS &&
-	    port_type != BNXT_ULP_INTF_TYPE_VF_REP) {
+
+	port_type = ULP_COMP_FLD_IDX_RD(param,
+					BNXT_ULP_CF_IDX_ACT_PORT_TYPE);
+
+	/* Update flag if Port A/B type is VF-REP */
+	ULP_COMP_FLD_IDX_WR(param, multi_port ?
+					BNXT_ULP_CF_IDX_MP_B_IS_VFREP :
+					BNXT_ULP_CF_IDX_MP_A_IS_VFREP,
+			    (port_type == BNXT_ULP_INTF_TYPE_VF_REP) ? 1 : 0);
+	if (dir == BNXT_ULP_DIR_EGRESS) {
 		/* For egress direction, fill vport */
 		if (ulp_port_db_vport_get(param->ulp_ctx, ifindex, &pid_s))
 			return BNXT_TF_RC_ERROR;
 
 		pid = pid_s;
 		pid = rte_cpu_to_be_32(pid);
-		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
-		       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+		if (!multi_port)
+			memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VPORT],
+			       &pid, BNXT_ULP_ACT_PROP_SZ_VPORT);
+
+		/* Fill metadata */
+		if (port_type == BNXT_ULP_INTF_TYPE_VF_REP) {
+			port_index  = ULP_COMP_FLD_IDX_RD(param, multi_port ?
+								 BNXT_ULP_CF_IDX_MP_PORT_B :
+								 BNXT_ULP_CF_IDX_MP_PORT_A);
+			if (ulp_port_db_port_meta_data_get(param->ulp_ctx,
+							   port_index, &p_mdata))
+				return BNXT_TF_RC_ERROR;
+			/*
+			 * Update appropriate port (A/B) metadata based on multi-port
+			 * indication
+			 */
+			ULP_COMP_FLD_IDX_WR(param,
+					    multi_port ?
+						BNXT_ULP_CF_IDX_MP_MDATA_B :
+						BNXT_ULP_CF_IDX_MP_MDATA_A,
+					    rte_cpu_to_be_16(*((uint16_t *)p_mdata)));
+		}
+		/*
+		 * Update appropriate port (A/B) VPORT based on multi-port
+		 * indication.
+		 */
+		ULP_COMP_FLD_IDX_WR(param,
+				    multi_port ?
+					BNXT_ULP_CF_IDX_MP_VPORT_B :
+					BNXT_ULP_CF_IDX_MP_VPORT_A,
+				    pid_s);
 	} else {
 		/* For ingress direction, fill vnic */
 		/*
-		 * Action		Destination
+		 * Action               Destination
 		 * ------------------------------------
-		 * PORT_REPRESENTOR	Driver Function
+		 * PORT_REPRESENTOR     Driver Function
 		 * ------------------------------------
-		 * REPRESENTED_PORT	VF
+		 * REPRESENTED_PORT     VF
 		 * ------------------------------------
-		 * PORT_ID		VF
+		 * PORT_ID              VF
 		 */
 		if (act_dir != BNXT_ULP_DIR_INGRESS &&
 		    port_type == BNXT_ULP_INTF_TYPE_VF_REP)
@@ -2401,9 +2508,22 @@ ulp_rte_parser_act_port_set(struct ulp_rte_parser_params *param,
 
 		pid = pid_s;
 		pid = rte_cpu_to_be_32(pid);
-		memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
-		       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
+		if (!multi_port)
+			memcpy(&act->act_details[BNXT_ULP_ACT_PROP_IDX_VNIC],
+			       &pid, BNXT_ULP_ACT_PROP_SZ_VNIC);
+		/*
+		 * Update appropriate port (A/B) VNIC based on multi-port
+		 * indication.
+		 */
+		ULP_COMP_FLD_IDX_WR(param,
+				    multi_port ?
+					BNXT_ULP_CF_IDX_MP_VNIC_B :
+					BNXT_ULP_CF_IDX_MP_VNIC_A,
+				    pid_s);
 	}
+
+	if (multi_port && !ulp_rte_parser_is_portb_vfrep(param))
+		ulp_rte_parser_normalize_port_info(param);
 
 	/* Update the action port set bit */
 	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_ACT_PORT_IS_SET, 1);
@@ -2437,7 +2557,7 @@ ulp_rte_pf_act_handler(const struct rte_flow_action *action_item __rte_unused,
 	}
 	/* Update the action properties */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_PORT_TYPE, intf_type);
-	return ulp_rte_parser_act_port_set(params, ifindex,
+	return ulp_rte_parser_act_port_set(params, ifindex, false,
 					   BNXT_ULP_DIR_INVALID);
 }
 
@@ -2489,7 +2609,7 @@ ulp_rte_vf_act_handler(const struct rte_flow_action *action_item,
 
 	/* Update the action properties */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_ACT_PORT_TYPE, intf_type);
-	return ulp_rte_parser_act_port_set(params, ifindex,
+	return ulp_rte_parser_act_port_set(params, ifindex, false,
 					   BNXT_ULP_DIR_INVALID);
 }
 
@@ -2500,12 +2620,14 @@ ulp_rte_port_act_handler(const struct rte_flow_action *act_item,
 {
 	uint32_t ethdev_id;
 	uint32_t ifindex;
+	const struct rte_flow_action_port_id *port_id = act_item->conf;
+	uint32_t num_ports;
 	enum bnxt_ulp_intf_type intf_type;
 	enum bnxt_ulp_direction_type act_dir;
 
 	if (!act_item->conf) {
 		BNXT_TF_DBG(ERR,
-			    "ParseErr: Invalid Argument\n");
+				"ParseErr: Invalid Argument\n");
 		return BNXT_TF_RC_PARSE_ERR;
 	}
 	switch (act_item->type) {
@@ -2540,6 +2662,18 @@ ulp_rte_port_act_handler(const struct rte_flow_action *act_item,
 		return BNXT_TF_RC_ERROR;
 	}
 
+	num_ports  = ULP_COMP_FLD_IDX_RD(param, BNXT_ULP_CF_IDX_MP_NPORTS);
+
+	if (num_ports) {
+		ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_PORT_B,
+				    port_id->id);
+		ULP_BITMAP_SET(param->act_bitmap.bits,
+			       BNXT_ULP_ACT_BIT_MULTIPLE_PORT);
+	} else {
+		ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_PORT_A,
+				    port_id->id);
+	}
+
 	/* Get the port db ifindex */
 	if (ulp_port_db_dev_port_to_ulp_index(param->ulp_ctx, ethdev_id,
 					      &ifindex)) {
@@ -2558,7 +2692,12 @@ ulp_rte_port_act_handler(const struct rte_flow_action *act_item,
 	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_ACT_PORT_TYPE, intf_type);
 	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_DEV_ACT_PORT_ID,
 			    ethdev_id);
-	return ulp_rte_parser_act_port_set(param, ifindex, act_dir);
+
+	ULP_COMP_FLD_IDX_WR(param, BNXT_ULP_CF_IDX_MP_NPORTS, ++num_ports);
+	return ulp_rte_parser_act_port_set(param, ifindex,
+					   ULP_BITMAP_ISSET(param->act_bitmap.bits,
+							    BNXT_ULP_ACT_BIT_MULTIPLE_PORT),
+					   act_dir);
 }
 
 /* Function to handle the parsing of RTE Flow action pop vlan. */
