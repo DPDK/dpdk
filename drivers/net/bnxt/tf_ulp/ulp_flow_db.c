@@ -1200,7 +1200,7 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 					     BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 					     sub_typ, &params);
 	if (rc) {
-		BNXT_DRV_DBG(INFO, "CFA Action ptr not found for flow id %u\n",
+		BNXT_DRV_DBG(DEBUG, "CFA Action ptr not found for flow id %u\n",
 			     flow_id);
 		return -ENOENT;
 	}

@@ -1302,7 +1302,9 @@ ulp_mapper_key_recipe_tbl_deinit(struct bnxt_ulp_mapper_data *mdata)
 					rte_free(recipes[idx]);
 			}
 			rte_free(mdata->key_recipe_info.recipes[dir][ftype]);
-			mdata->key_recipe_info.recipes[dir][ftype] =  NULL;
+			mdata->key_recipe_info.recipes[dir][ftype] = NULL;
+			rte_free(mdata->key_recipe_info.recipe_ba[dir][ftype]);
+			mdata->key_recipe_info.recipe_ba[dir][ftype] = NULL;
 		}
 	}
 	mdata->key_recipe_info.num_recipes = 0;
@@ -1315,8 +1317,9 @@ ulp_mapper_key_recipe_tbl_init(struct bnxt_ulp_context *ulp_ctx,
 	struct bnxt_ulp_key_recipe_entry **recipes;
 	enum bnxt_ulp_direction dir;
 	uint32_t dev_id = 0, size_val;
-	uint32_t num_recipes, ftype;
+	uint32_t num_recipes, ftype, pool_size;
 	int32_t rc = 0;
+	struct bitalloc *recipe_ba;
 
 	rc = bnxt_ulp_cntxt_dev_id_get(ulp_ctx, &dev_id);
 	if (rc) {
@@ -1327,20 +1330,43 @@ ulp_mapper_key_recipe_tbl_init(struct bnxt_ulp_context *ulp_ctx,
 	if (!num_recipes)
 		return rc;
 
+	/* Need to write these values so that a failure will result in freeing
+	 * the memory in the deinit
+	 */
+	mdata->key_recipe_info.num_recipes = num_recipes;
+	mdata->key_recipe_info.max_fields = BNXT_ULP_KEY_RECIPE_MAX_FLDS;
+
 	size_val = sizeof(struct bnxt_ulp_key_recipe_entry *);
+	pool_size = BITALLOC_SIZEOF(num_recipes);
+
+	/* The caller will deinit if failures occur, so just return fail instead
+	 * of attempting to free allocated memory
+	 **/
 	for (dir = 0; dir < BNXT_ULP_DIRECTION_LAST; dir++) {
 		for (ftype = 0; ftype < ULP_RECIPE_TYPE_MAX; ftype++) {
 			recipes = rte_zmalloc("key_recipe_list",
 					      size_val * num_recipes, 0);
 			if (!recipes) {
-				BNXT_DRV_DBG(ERR, "Uanable to alloc memory\n");
+				BNXT_DRV_DBG(ERR, "Unable to alloc memory\n");
 				return -ENOMEM;
 			}
 			mdata->key_recipe_info.recipes[dir][ftype] = recipes;
+
+			recipe_ba = rte_malloc("key_recipe_ba", pool_size, 0);
+			if (!recipe_ba) {
+				BNXT_DRV_DBG(ERR, "Unable to alloc memory\n");
+				return -ENOMEM;
+			}
+			mdata->key_recipe_info.recipe_ba[dir][ftype] =
+				recipe_ba;
+			rc = ba_init(recipe_ba, num_recipes, true);
+			if (rc) {
+				BNXT_DRV_DBG(ERR,
+					     "Unable to alloc recipe ba\n");
+				return -ENOMEM;
+			}
 		}
 	}
-	mdata->key_recipe_info.num_recipes = num_recipes;
-	mdata->key_recipe_info.max_fields = BNXT_ULP_KEY_RECIPE_MAX_FLDS;
 	return rc;
 }
 
@@ -1348,7 +1374,7 @@ static struct bnxt_ulp_mapper_data *
 ulp_mapper_key_recipe_args_validate(struct bnxt_ulp_context *ulp_ctx,
 				    enum bnxt_ulp_direction dir,
 				    enum bnxt_ulp_resource_sub_type stype,
-				    uint8_t recipe_id)
+				    uint32_t recipe_id)
 {
 	struct bnxt_ulp_mapper_data *mdata;
 
@@ -1373,7 +1399,7 @@ ulp_mapper_key_recipe_args_validate(struct bnxt_ulp_context *ulp_ctx,
 	}
 	if (recipe_id >= mdata->key_recipe_info.num_recipes ||
 	    !mdata->key_recipe_info.num_recipes) {
-		BNXT_DRV_DBG(ERR, "Key recipe id out of range(%d >= %d)\n",
+		BNXT_DRV_DBG(ERR, "Key recipe id out of range(%u >= %u)\n",
 			     recipe_id, mdata->key_recipe_info.num_recipes);
 		return NULL;
 	}
@@ -1384,7 +1410,8 @@ static struct bnxt_ulp_key_recipe_entry *
 ulp_mapper_key_recipe_alloc(struct bnxt_ulp_context *ulp_ctx,
 			    enum bnxt_ulp_direction dir,
 			    enum bnxt_ulp_resource_sub_type stype,
-			    uint8_t recipe_id, uint8_t *max_fields)
+			    uint32_t recipe_id, bool alloc_only,
+			    uint8_t *max_fields)
 {
 	struct bnxt_ulp_key_recipe_entry **recipes;
 	struct bnxt_ulp_mapper_data *mdata = NULL;
@@ -1396,7 +1423,7 @@ ulp_mapper_key_recipe_alloc(struct bnxt_ulp_context *ulp_ctx,
 		return NULL;
 
 	recipes = mdata->key_recipe_info.recipes[dir][stype];
-	if (recipes[recipe_id] == NULL) {
+	if (alloc_only && recipes[recipe_id] == NULL) {
 		recipes[recipe_id] = rte_zmalloc("key_recipe_entry", size_s, 0);
 		if (recipes[recipe_id] == NULL) {
 			BNXT_DRV_DBG(ERR, "Unable to alloc key recipe\n");
@@ -1409,11 +1436,12 @@ ulp_mapper_key_recipe_alloc(struct bnxt_ulp_context *ulp_ctx,
 		     ulp_mapper_key_recipe_type_to_str(stype), recipe_id);
 #endif
 #endif
-		*max_fields = mdata->key_recipe_info.max_fields;
-		return recipes[recipe_id];
+	} else if (alloc_only) {
+		BNXT_DRV_DBG(ERR, "Recipe ID (%d) already allocated\n",
+			     recipe_id);
 	}
-	BNXT_DRV_DBG(ERR, "Recipe ID (%d) already allocated\n", recipe_id);
-	return NULL;
+	*max_fields = mdata->key_recipe_info.max_fields;
+	return recipes[recipe_id];
 }
 
 /* The free just marks the entry as not in use and resets the number of entries
@@ -1427,15 +1455,28 @@ ulp_mapper_key_recipe_free(struct bnxt_ulp_context *ulp_ctx,
 {
 	struct bnxt_ulp_key_recipe_entry **recipes;
 	struct bnxt_ulp_mapper_data *mdata = NULL;
+	struct bitalloc *recipe_ba = NULL;
+	int32_t rc;
 
 	mdata = ulp_mapper_key_recipe_args_validate(ulp_ctx, dir,
 						    stype, index);
 	if (mdata == NULL)
 		return -EINVAL;
 
+	recipe_ba = mdata->key_recipe_info.recipe_ba[dir][stype];
+	rc = ba_free(recipe_ba, index);
+	if (rc < 0)
+		BNXT_DRV_DBG(DEBUG, "Unable to free recipe id[%s][%u] = (%d)\n",
+			     (dir == BNXT_ULP_DIRECTION_INGRESS) ? "rx" : "tx",
+			     stype, index);
+
 	recipes = mdata->key_recipe_info.recipes[dir][stype];
-	if (recipes[index] == NULL)
-		return -EINVAL;
+	if (recipes[index] == NULL) {
+		BNXT_DRV_DBG(DEBUG, "recipe id[%s][%u] = (%d) already freed\n",
+			     (dir == BNXT_ULP_DIRECTION_INGRESS) ? "rx" : "tx",
+			     stype, index);
+		return 0;
+	}
 	rte_free(recipes[index]);
 	recipes[index] = NULL;
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
@@ -1473,7 +1514,8 @@ ulp_mapper_key_recipe_fields_get(struct bnxt_ulp_mapper_parms *parms,
 	struct bnxt_ulp_key_recipe_entry **recipes;
 	enum bnxt_ulp_resource_sub_type stype;
 	struct bnxt_ulp_mapper_data *mdata = NULL;
-	uint64_t recipe_id = 0;
+	uint64_t regval = 0;
+	uint32_t recipe_id = 0;
 
 	/* Don't like this, but need to convert from a tbl resource func to the
 	 * subtype for key_recipes.
@@ -1493,12 +1535,12 @@ ulp_mapper_key_recipe_fields_get(struct bnxt_ulp_mapper_parms *parms,
 
 	/* Get the recipe index from the registry file */
 	if (!ulp_regfile_read(parms->regfile, tbl->key_recipe_operand,
-			      &recipe_id)) {
+			      &regval)) {
 		BNXT_DRV_DBG(ERR, "Failed to get tbl idx from regfile[%d].\n",
 			     tbl->tbl_operand);
 		return NULL;
 	}
-	recipe_id = tfp_be_to_cpu_64(recipe_id);
+	recipe_id = (uint32_t)tfp_be_to_cpu_64(regval);
 	mdata = ulp_mapper_key_recipe_args_validate(parms->ulp_ctx,
 						    tbl->direction,
 						    stype, recipe_id);
@@ -1665,29 +1707,39 @@ static int32_t
 ulp_mapper_key_recipe_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 				  struct bnxt_ulp_mapper_tbl_info *tbl)
 {
-	uint8_t max_rflds = 0, recipe_id = 0, rnum_flds = 0;
+	bool alloc = false, write = false, regfile = false;
 	struct bnxt_ulp_mapper_key_info	*kflds, *rflds;
 	struct bnxt_ulp_mapper_field_info *kfld, *rfld;
+	struct bnxt_ulp_mapper_data *mdata = NULL;
 	struct bnxt_ulp_key_recipe_entry *recipe;
 	struct ulp_flow_db_res_params fid_parms;
+	int32_t rc = 0, free_rc, tmp_recipe_id;
+	enum bnxt_ulp_resource_sub_type stype;
+	uint8_t max_rflds = 0, rnum_flds = 0;
+	enum bnxt_ulp_direction dir;
+	struct bitalloc *recipe_ba = NULL;
+	uint32_t recipe_id = 0;
 	uint32_t i, num_kflds;
 	bool written = false;
 	uint64_t regval = 0;
-	int32_t rc = 0, free_rc;
-	/* The key recipe tbl only supports writing based on regfile,
-	 * get the index to write via the regfile
-	 */
-	switch (tbl->tbl_opcode) {
-	case BNXT_ULP_KEY_RECIPE_TBL_OPC_WR_REGFILE:
-		if (!ulp_regfile_read(parms->regfile, tbl->tbl_operand,
-				      &regval)) {
-			BNXT_DRV_DBG(ERR,
-				     "Failed to get tbl idx from regfile[%d].\n",
-				     tbl->tbl_operand);
-			return -EINVAL;
-		}
 
-		recipe_id = rte_be_to_cpu_64(regval);
+	dir = tbl->direction;
+	stype = tbl->resource_sub_type;
+
+	switch (tbl->tbl_opcode) {
+	case BNXT_ULP_KEY_RECIPE_TBL_OPC_ALLOC_WR_REGFILE:
+		alloc = true;
+		write = true;
+		regfile = true;
+		break;
+	case BNXT_ULP_KEY_RECIPE_TBL_OPC_ALLOC_REGFILE:
+		alloc = true;
+		regfile = true;
+		break;
+	case BNXT_ULP_KEY_RECIPE_TBL_OPC_WR_REGFILE:
+		alloc = false;
+		regfile = true;
+		write = true;
 		break;
 	default:
 		BNXT_DRV_DBG(ERR, "Invalid recipe table opcode %d\n",
@@ -1695,57 +1747,125 @@ ulp_mapper_key_recipe_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	};
 
-	/* Get the key fields to process */
-	kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
-	if (!kflds || !num_kflds) {
-		BNXT_DRV_DBG(ERR, "Failed to get the key fields\n");
-		return -EINVAL;
+	/* Get the recipe_id from the regfile */
+	if (!alloc && regfile) {
+		if (!ulp_regfile_read(parms->regfile,
+				      tbl->tbl_operand,
+				      &regval)) {
+			BNXT_DRV_DBG(ERR,
+				     "Fail to get tbl idx from regfile[%d].\n",
+				     tbl->tbl_operand);
+			return -EINVAL;
+		}
+		recipe_id = rte_be_to_cpu_64(regval);
 	}
 
-	/* Get the recipe entry to write */
-	recipe = ulp_mapper_key_recipe_alloc(parms->ulp_ctx,
-					     tbl->direction,
-					     tbl->resource_sub_type,
-					     recipe_id, &max_rflds);
+	if (alloc) {
+		/* Allocate a recipe id based on the direction and type
+		 * only supported types are EM and WC for now.
+		 */
+		mdata = ulp_mapper_key_recipe_args_validate(parms->ulp_ctx, dir,
+							    stype, 0);
+		if (mdata == NULL)
+			return -EINVAL;
+
+		recipe_ba = mdata->key_recipe_info.recipe_ba[dir][stype];
+		tmp_recipe_id = ba_alloc(recipe_ba);
+		if (tmp_recipe_id < 0) {
+			BNXT_DRV_DBG(ERR, "Failed to allocate a recipe id\n");
+			return -EINVAL;
+		} else if ((uint32_t)tmp_recipe_id >=
+			   mdata->key_recipe_info.num_recipes) {
+			/* Shouldn't get here, but could be an issue with the
+			 * allocator, so free the recipe_id
+			 */
+			BNXT_DRV_DBG(ERR,
+				     "Allocated recipe id(%d) >= max(%d)\n",
+				     tmp_recipe_id,
+				     mdata->key_recipe_info.num_recipes);
+			(void)ba_free(recipe_ba, tmp_recipe_id);
+			return -EINVAL;
+		}
+		/* any error after this must goto error in order to free
+		 * the recipe_id
+		 */
+		recipe_id = tmp_recipe_id;
+	}
+
+	if (alloc && regfile) {
+		regval = rte_cpu_to_be_64(recipe_id);
+		rc = ulp_regfile_write(parms->regfile, tbl->tbl_operand,
+				       regval);
+		if (rc) {
+			BNXT_DRV_DBG(ERR, "Failed to write regfile[%d] rc=%d\n",
+				     tbl->tbl_operand, rc);
+			if (recipe_ba)
+				(void)ba_free(recipe_ba, recipe_id);
+			return -EINVAL;
+		}
+	}
+
+	/* allocate or Get the recipe entry based on alloc */
+	recipe = ulp_mapper_key_recipe_alloc(parms->ulp_ctx, dir, stype,
+					     recipe_id, alloc, &max_rflds);
 	if (!recipe || !max_rflds) {
-		BNXT_DRV_DBG(ERR, "Failed to allocate key recipe\n");
+		BNXT_DRV_DBG(ERR, "Failed to get the recipe slot\n");
+		if (recipe_ba)
+			(void)ba_free(recipe_ba, recipe_id);
 		return -EINVAL;
 	}
-	rflds = &recipe->flds[0];
 
-	/* iterate over the key fields and write the recipe */
-	for (i = 0; i < num_kflds; i++) {
-		if (rnum_flds >= max_rflds) {
-			BNXT_DRV_DBG(ERR, "Max recipe fields exceeded (%d)\n",
-				     rnum_flds);
+	/* We have a recipe_id by now, write the data */
+	if (write) {
+		/* Get the key fields to process */
+		kflds = ulp_mapper_key_fields_get(parms, tbl, &num_kflds);
+		if (!kflds || !num_kflds) {
+			BNXT_DRV_DBG(ERR, "Failed to get the key fields\n");
+			rc = -EINVAL;
 			goto error;
 		}
-		written = false;
-		kfld = &kflds[i].field_info_spec;
-		rfld = &rflds[rnum_flds].field_info_spec;
 
-		rc = ulp_mapper_key_recipe_field_opc_process(parms, tbl->direction,
-							 kfld, 1, "KEY",
-							 &written, rfld);
-		if (rc)
-			goto error;
+		rflds = &recipe->flds[0];
+		/* iterate over the key fields and write the recipe */
+		for (i = 0; i < num_kflds; i++) {
+			if (rnum_flds >= max_rflds) {
+				BNXT_DRV_DBG(ERR,
+					     "Max recipe fields exceeded (%d)\n",
+					     rnum_flds);
+				goto error;
+			}
+			written = false;
+			kfld = &kflds[i].field_info_spec;
+			rfld = &rflds[rnum_flds].field_info_spec;
 
-		if (tbl->resource_sub_type ==
-		    BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_WM) {
-			kfld = &kflds[i].field_info_mask;
-			rfld = &rflds[rnum_flds].field_info_mask;
 			rc = ulp_mapper_key_recipe_field_opc_process(parms,
-								 tbl->direction,
-								 kfld, 0, "MASK",
-								 &written, rfld);
+								     dir,
+								     kfld, 1,
+								     "KEY",
+								     &written,
+								     rfld);
 			if (rc)
 				goto error;
-		}
-		if (written)
-			rnum_flds++;
-	}
 
-	recipe->cnt = rnum_flds;
+			if (stype ==
+			    BNXT_ULP_RESOURCE_SUB_TYPE_KEY_RECIPE_TABLE_WM) {
+				kfld = &kflds[i].field_info_mask;
+				rfld = &rflds[rnum_flds].field_info_mask;
+				rc = ulp_mapper_key_recipe_field_opc_process(parms,
+									     dir,
+									     kfld,
+									     0,
+									     "MASK",
+									     &written,
+									     rfld);
+				if (rc)
+					goto error;
+			}
+			if (written)
+				rnum_flds++;
+		}
+		recipe->cnt = rnum_flds;
+	}
 
 	memset(&fid_parms, 0, sizeof(fid_parms));
 	fid_parms.direction	= tbl->direction;
@@ -1764,6 +1884,7 @@ ulp_mapper_key_recipe_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 
 	return rc;
 error:
+	/* Free the actual recipe */
 	free_rc = ulp_mapper_key_recipe_free(parms->ulp_ctx, tbl->direction,
 					     tbl->resource_sub_type, recipe_id);
 	if (free_rc)
