@@ -56,8 +56,8 @@ def compute_eal_params(
         sut_node.dpdk_prefix_list.append(prefix)
     params.prefix = prefix
 
-    if params.ports is None:
-        params.ports = sut_node.ports
+    if params.allowed_ports is None:
+        params.allowed_ports = sut_node.ports
 
     return params
 

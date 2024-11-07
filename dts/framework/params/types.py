@@ -50,7 +50,8 @@ class EalParamsDict(TypedDict, total=False):
     prefix: str
     no_pci: Switch
     vdevs: list[VirtualDevice] | None
-    ports: list[Port] | None
+    allowed_ports: list[Port] | None
+    blocked_ports: list[Port] | None
     other_eal_param: Params | None
 
 

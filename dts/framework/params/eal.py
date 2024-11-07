@@ -45,9 +45,13 @@ class EalParams(Params):
     vdevs: list[VirtualDevice] | None = field(
         default=None, metadata=Params.multiple() | Params.long("vdev")
     )
-    ports: list[Port] | None = field(
+    allowed_ports: list[Port] | None = field(
         default=None,
         metadata=Params.convert_value(_port_to_pci) | Params.multiple() | Params.short("a"),
+    )
+    blocked_ports: list[Port] | None = field(
+        default=None,
+        metadata=Params.convert_value(_port_to_pci) | Params.multiple() | Params.short("b"),
     )
     other_eal_param: Params | None = None
     _separator: Literal[True] = field(default=True, init=False, metadata=Params.short("-"))
