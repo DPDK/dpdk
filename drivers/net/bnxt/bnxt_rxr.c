@@ -19,9 +19,8 @@
 #include "bnxt_rxq.h"
 #include "hsi_struct_def_dpdk.h"
 #include "bnxt_hwrm.h"
-
-#include <bnxt_tf_common.h>
-#include <ulp_mark_mgr.h>
+#include "bnxt_tf_common.h"
+#include "ulp_mark_mgr.h"
 
 /*
  * RX Ring handling

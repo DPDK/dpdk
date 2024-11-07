@@ -193,6 +193,9 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			    void *encaped, size_t ec_size);
 int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			      void *encaped, size_t ec_size);
+int bnxt_hwrm_fwd_resp(struct bnxt *bp, uint16_t target_id,
+		       void *encaped, size_t ec_size,
+		       uint64_t encap_resp_addr, uint16_t cmpl_ring);
 
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_buf_unrgtr(struct bnxt *bp);
@@ -241,6 +244,9 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 				struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic, bool enable);
+int bnxt_hwrm_vnic_update(struct bnxt *bp,
+			  struct bnxt_vnic_info *vnic,
+			  uint8_t valid);
 
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_alloc_all_hwrm_ring_grps(struct bnxt *bp);
@@ -384,4 +390,9 @@ int bnxt_hwrm_tf_oem_cmd(struct bnxt *bp,
 			 uint16_t in_len,
 			 uint32_t *out,
 			 uint16_t out_len);
+int bnxt_hwrm_release_afm_func(struct bnxt *bp,
+			       uint16_t fid,
+			       uint16_t rfid,
+			       uint8_t type,
+			       uint32_t flags);
 #endif

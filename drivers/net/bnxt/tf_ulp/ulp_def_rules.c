@@ -14,18 +14,18 @@
 
 static void
 ulp_l2_custom_tunnel_id_update(struct bnxt *bp,
-			       struct bnxt_ulp_mapper_create_parms *params);
+			       struct bnxt_ulp_mapper_parms *params);
 
 struct bnxt_ulp_def_param_handler {
 	int32_t (*vfr_func)(struct bnxt_ulp_context *ulp_ctx,
 			    struct ulp_tlv_param *param,
-			    struct bnxt_ulp_mapper_create_parms *mapper_params);
+			    struct bnxt_ulp_mapper_parms *mapper_params);
 };
 
 static int32_t
 ulp_set_svif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 			 uint32_t  ifindex, uint8_t svif_type,
-			 struct bnxt_ulp_mapper_create_parms *mapper_params)
+			 struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	uint16_t svif;
 	uint8_t idx;
@@ -50,7 +50,7 @@ ulp_set_svif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 static int32_t
 ulp_set_spif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 			 uint32_t  ifindex, uint8_t spif_type,
-			 struct bnxt_ulp_mapper_create_parms *mapper_params)
+			 struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	uint16_t spif;
 	uint8_t idx;
@@ -75,7 +75,7 @@ ulp_set_spif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 static int32_t
 ulp_set_parif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 			  uint32_t  ifindex, uint8_t parif_type,
-			  struct bnxt_ulp_mapper_create_parms *mapper_params)
+			  struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	uint16_t parif;
 	uint8_t idx;
@@ -99,7 +99,7 @@ ulp_set_parif_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 
 static int32_t
 ulp_set_vport_in_comp_fld(struct bnxt_ulp_context *ulp_ctx, uint32_t ifindex,
-			  struct bnxt_ulp_mapper_create_parms *mapper_params)
+			  struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	uint16_t vport;
 	int rc;
@@ -116,7 +116,7 @@ ulp_set_vport_in_comp_fld(struct bnxt_ulp_context *ulp_ctx, uint32_t ifindex,
 static int32_t
 ulp_set_vnic_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 			 uint32_t  ifindex, uint8_t vnic_type,
-			 struct bnxt_ulp_mapper_create_parms *mapper_params)
+			 struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	uint16_t vnic;
 	uint8_t idx;
@@ -138,20 +138,20 @@ ulp_set_vnic_in_comp_fld(struct bnxt_ulp_context *ulp_ctx,
 
 static int32_t
 ulp_set_vlan_in_act_prop(uint16_t port_id,
-			 struct bnxt_ulp_mapper_create_parms *mapper_params)
+			 struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	struct ulp_rte_act_prop *act_prop = mapper_params->act_prop;
 
-	if (ULP_BITMAP_ISSET(mapper_params->act->bits,
+	if (ULP_BITMAP_ISSET(mapper_params->act_bitmap->bits,
 			     BNXT_ULP_ACT_BIT_SET_VLAN_VID)) {
-		BNXT_TF_DBG(ERR,
-			    "VLAN already set, multiple VLANs unsupported\n");
+		BNXT_DRV_DBG(ERR,
+			     "VLAN already set, multiple VLANs unsupported\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
 	port_id = rte_cpu_to_be_16(port_id);
 
-	ULP_BITMAP_SET(mapper_params->act->bits,
+	ULP_BITMAP_SET(mapper_params->act_bitmap->bits,
 		       BNXT_ULP_ACT_BIT_SET_VLAN_VID);
 
 	memcpy(&act_prop->act_details[BNXT_ULP_ACT_PROP_IDX_ENCAP_VTAG],
@@ -162,12 +162,12 @@ ulp_set_vlan_in_act_prop(uint16_t port_id,
 
 static int32_t
 ulp_set_mark_in_act_prop(uint16_t port_id,
-			 struct bnxt_ulp_mapper_create_parms *mapper_params)
+			 struct bnxt_ulp_mapper_parms *mapper_params)
 {
-	if (ULP_BITMAP_ISSET(mapper_params->act->bits,
+	if (ULP_BITMAP_ISSET(mapper_params->act_bitmap->bits,
 			     BNXT_ULP_ACT_BIT_MARK)) {
-		BNXT_TF_DBG(ERR,
-			    "MARK already set, multiple MARKs unsupported\n");
+		BNXT_DRV_DBG(ERR,
+			     "MARK already set, multiple MARKs unsupported\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -180,7 +180,7 @@ ulp_set_mark_in_act_prop(uint16_t port_id,
 static int32_t
 ulp_df_dev_port_handler(struct bnxt_ulp_context *ulp_ctx,
 			struct ulp_tlv_param *param,
-			struct bnxt_ulp_mapper_create_parms *mapper_params)
+			struct bnxt_ulp_mapper_parms *mapper_params)
 {
 	uint16_t port_id;
 	uint16_t parif;
@@ -191,8 +191,7 @@ ulp_df_dev_port_handler(struct bnxt_ulp_context *ulp_ctx,
 
 	rc = ulp_port_db_dev_port_to_ulp_index(ulp_ctx, port_id, &ifindex);
 	if (rc) {
-		BNXT_TF_DBG(ERR,
-				"Invalid port id\n");
+		BNXT_DRV_DBG(ERR, "Invalid port id\n");
 		return BNXT_TF_RC_ERROR;
 	}
 
@@ -318,7 +317,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 {
 	struct ulp_rte_hdr_field	hdr_field[BNXT_ULP_PROTO_HDR_MAX];
 	uint64_t			comp_fld[BNXT_ULP_CF_IDX_LAST];
-	struct bnxt_ulp_mapper_create_parms mapper_params = { 0 };
+	struct bnxt_ulp_mapper_parms mapper_params = { 0 };
 	struct ulp_rte_act_prop		act_prop;
 	struct ulp_rte_act_bitmap	act = { 0 };
 	struct bnxt_ulp_context		*ulp_ctx;
@@ -332,7 +331,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	memset(&act_prop, 0, sizeof(act_prop));
 
 	mapper_params.hdr_field = hdr_field;
-	mapper_params.act = &act;
+	mapper_params.act_bitmap = &act;
 	mapper_params.act_prop = &act_prop;
 	mapper_params.comp_fld = comp_fld;
 	mapper_params.class_tid = ulp_class_tid;
@@ -341,14 +340,14 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR,
-			    "ULP is not init'ed. Fail to create dflt flow.\n");
+		BNXT_DRV_DBG(ERR,
+			     "ULP is not init'ed. Fail to create dflt flow.\n");
 		return -EINVAL;
 	}
 
 	/* update the vf rep flag */
 	if (bnxt_ulp_cntxt_ptr2_ulp_flags_get(ulp_ctx, &ulp_flags)) {
-		BNXT_TF_DBG(ERR, "Error in getting ULP context flags\n");
+		BNXT_DRV_DBG(ERR, "Error in getting ULP context flags\n");
 		return -EINVAL;
 	}
 	if (ULP_VF_REP_IS_ENABLED(ulp_flags))
@@ -362,7 +361,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 								param_list,
 								&mapper_params);
 			if (rc) {
-				BNXT_TF_DBG(ERR,
+				BNXT_DRV_DBG(ERR,
 					    "Failed to create default flow.\n");
 				return rc;
 			}
@@ -376,7 +375,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 port_id,
 					 &mapper_params.func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto err1;
 	}
 
@@ -387,24 +386,25 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	/* update the upar id */
 	ulp_l2_custom_tunnel_id_update(bp, &mapper_params);
 
-	BNXT_TF_DBG(DEBUG, "Creating default flow with template id: %u\n",
-		    ulp_class_tid);
+	BNXT_DRV_DBG(DEBUG, "Creating default flow with template id: %u\n",
+		     ulp_class_tid);
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto err1;
 	}
 
 	rc = ulp_flow_db_fid_alloc(ulp_ctx, mapper_params.flow_type,
 				   mapper_params.func_id, &fid);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
+		BNXT_DRV_DBG(ERR, "Unable to allocate flow table entry\n");
 		goto err2;
 	}
 
 	mapper_params.flow_id = fid;
-	rc = ulp_mapper_flow_create(ulp_ctx, &mapper_params);
+	rc = ulp_mapper_flow_create(ulp_ctx, &mapper_params,
+				    NULL);
 	if (rc)
 		goto err3;
 
@@ -417,7 +417,7 @@ err3:
 err2:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 err1:
-	BNXT_TF_DBG(ERR, "Failed to create default flow.\n");
+	BNXT_DRV_DBG(ERR, "Failed to create default flow.\n");
 	return rc;
 }
 
@@ -441,23 +441,24 @@ ulp_default_flow_destroy(struct rte_eth_dev *eth_dev, uint32_t flow_id)
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		return -EINVAL;
 	}
 
 	if (!flow_id) {
-		BNXT_TF_DBG(DEBUG, "invalid flow id zero\n");
+		BNXT_DRV_DBG(DEBUG, "invalid flow id zero\n");
 		return rc;
 	}
 
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		return -EINVAL;
 	}
 	rc = ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_DEFAULT,
-				     flow_id);
+				     flow_id,
+				     NULL);
 	if (rc)
-		BNXT_TF_DBG(ERR, "Failed to destroy flow.\n");
+		BNXT_DRV_DBG(ERR, "Failed to destroy flow.\n");
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	return rc;
@@ -544,14 +545,17 @@ bnxt_ulp_create_df_rules(struct bnxt *bp)
 					  BNXT_ULP_DF_TPL_DEFAULT_UPLINK_PORT,
 					  &info->def_port_flow_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR,
-			    "Failed to create port to app default rule\n");
+		BNXT_DRV_DBG(ERR,
+			     "Failed to create port to app default rule\n");
 		return rc;
 	}
 
-	rc = ulp_default_flow_db_cfa_action_get(bp->ulp_ctx,
-						info->def_port_flow_id,
-						&bp->tx_cfa_action);
+	/* If the template already set the bd_action, skip this */
+	if (!bp->tx_cfa_action) {
+		rc = ulp_default_flow_db_cfa_action_get(bp->ulp_ctx,
+							info->def_port_flow_id,
+							&bp->tx_cfa_action);
+	}
 
 	if (rc || BNXT_TESTPMD_EN(bp))
 		bp->tx_cfa_action = 0;
@@ -601,12 +605,12 @@ bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev)
 	info = bnxt_ulp_cntxt_ptr2_ulp_vfr_info_get(bp->ulp_ctx, port_id);
 
 	if (!info) {
-		BNXT_TF_DBG(ERR, "Failed to get vfr ulp context\n");
+		BNXT_DRV_DBG(ERR, "Failed to get vfr ulp context\n");
 		return -EINVAL;
 	}
 
 	if (info->valid) {
-		BNXT_TF_DBG(ERR, "VFR already allocated\n");
+		BNXT_DRV_DBG(ERR, "VFR already allocated\n");
 		return -EINVAL;
 	}
 
@@ -615,15 +619,19 @@ bnxt_ulp_create_vfr_default_rules(struct rte_eth_dev *vfr_ethdev)
 					       vfr_port_id,
 					       &info->vfr_flow_id);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to create VFR default rule\n");
+		BNXT_DRV_DBG(ERR, "Failed to create VFR default rule\n");
 		goto error;
 	}
-	rc = ulp_default_flow_db_cfa_action_get(bp->ulp_ctx,
-						info->vfr_flow_id,
-						&vfr->vfr_tx_cfa_action);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to get the tx cfa action\n");
-		goto error;
+
+	/* If the template already set the bd action, skip this */
+	if (!vfr->vfr_tx_cfa_action) {
+		rc = ulp_default_flow_db_cfa_action_get(bp->ulp_ctx,
+							info->vfr_flow_id,
+							&vfr->vfr_tx_cfa_action);
+		if (rc) {
+			BNXT_DRV_DBG(ERR, "Failed to get the tx cfa action\n");
+			goto error;
+		}
 	}
 
 	/* Update the other details */
@@ -649,12 +657,12 @@ bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr)
 	info = bnxt_ulp_cntxt_ptr2_ulp_vfr_info_get(bp->ulp_ctx,
 						    vfr->dpdk_port_id);
 	if (!info) {
-		BNXT_TF_DBG(ERR, "Failed to get vfr ulp context\n");
+		BNXT_DRV_DBG(ERR, "Failed to get vfr ulp context\n");
 		return -EINVAL;
 	}
 
 	if (!info->valid) {
-		BNXT_TF_DBG(ERR, "VFR already freed\n");
+		BNXT_DRV_DBG(ERR, "VFR already freed\n");
 		return -EINVAL;
 	}
 	ulp_default_flow_destroy(bp->eth_dev, info->vfr_flow_id);
@@ -665,7 +673,7 @@ bnxt_ulp_delete_vfr_default_rules(struct bnxt_representor *vfr)
 
 static void
 ulp_l2_custom_tunnel_id_update(struct bnxt *bp,
-			       struct bnxt_ulp_mapper_create_parms *params)
+			       struct bnxt_ulp_mapper_parms *params)
 {
 	if (!bp->l2_etype_tunnel_cnt)
 		return;

@@ -260,7 +260,7 @@ ulp_flow_db_validate_flow_func(struct bnxt_ulp_context *ulp_ctx,
 int32_t
 ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 				   uint32_t flow_id,
-				   uint16_t *cfa_action);
+				   uint32_t *cfa_action);
 
 /*
  * Set or reset the parent flow in the parent-child database
@@ -413,9 +413,11 @@ void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
 				    enum bnxt_ulp_session_type s_type);
 
 /*
- * Get the shared bit for the flow db entry
+ * get the shared bit for the flow db entry
  *
- * res [out] Shared session type
+ * res [in] Ptr to fdb entry
+ *
+ * returns session type
  */
 enum bnxt_ulp_session_type
 ulp_flow_db_shared_session_get(struct ulp_flow_db_res_params *res);

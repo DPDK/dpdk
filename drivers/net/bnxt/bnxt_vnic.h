@@ -81,6 +81,8 @@ struct bnxt_vnic_info {
 	uint8_t		ring_select_mode;
 	enum rte_eth_hash_function hash_f_local;
 	uint64_t	rss_types_local;
+	uint8_t         metadata_format;
+	uint8_t         state;
 };
 
 struct bnxt_vnic_queue_db {

@@ -11,10 +11,14 @@
 #include "bnxt_ulp.h"
 #include "ulp_template_db_enum.h"
 
-#define BNXT_TF_DBG(lvl, fmt, ...) \
+#define BNXT_DRV_DBG(lvl, fmt, ...) \
 	RTE_LOG(lvl, BNXT, "%s(): " fmt, __func__, ## __VA_ARGS__)
 
-#define BNXT_TF_INF(fmt, args...)
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#define BNXT_DRV_INF(fmt, args...)	RTE_LOG(INFO, fmt, ## args)
+#else
+#define BNXT_DRV_INF(fmt, args...)
+#endif
 
 #define BNXT_ULP_EM_FLOWS			8192
 #define BNXT_ULP_1M_FLOWS			1000000
@@ -69,4 +73,5 @@ bnxt_ulp_cntxt_ptr2_mark_db_get(struct bnxt_ulp_context *ulp_ctx);
 int32_t
 bnxt_ulp_cntxt_ptr2_mark_db_set(struct bnxt_ulp_context *ulp_ctx,
 				struct bnxt_ulp_mark_tbl *mark_tbl);
+
 #endif /* _BNXT_TF_COMMON_H_ */

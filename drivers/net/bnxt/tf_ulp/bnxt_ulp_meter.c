@@ -27,6 +27,7 @@
 
 #include "tfp.h"
 #include "bnxt_tf_common.h"
+#include "bnxt_ulp_tf.h"
 #include "ulp_rte_parser.h"
 #include "ulp_matcher.h"
 #include "ulp_flow_db.h"
@@ -67,8 +68,8 @@ bnxt_meter_global_cfg_update(struct bnxt *bp,
 	tfp = bnxt_ulp_bp_tfp_get(bp, BNXT_ULP_SESSION_TYPE_DEFAULT);
 	rc = tf_get_global_cfg(tfp, &parms);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to get global cfg 0x%x rc:%d\n",
-			    type, rc);
+		BNXT_DRV_DBG(ERR, "Failed to get global cfg 0x%x rc:%d\n",
+			     type, rc);
 		return rc;
 	}
 
@@ -79,8 +80,8 @@ bnxt_meter_global_cfg_update(struct bnxt *bp,
 
 	rc = tf_set_global_cfg(tfp, &parms);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to set global cfg 0x%x rc:%d\n",
-			    type, rc);
+		BNXT_DRV_DBG(ERR, "Failed to set global cfg 0x%x rc:%d\n",
+			     type, rc);
 		return rc;
 	}
 	return rc;
@@ -107,7 +108,7 @@ bnxt_flow_meter_init(struct bnxt *bp)
 					  BNXT_THOR_FMTCR_NUM_MET_MET_1K,
 					  1);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to set rx meter configuration\n");
+		BNXT_DRV_DBG(ERR, "Failed to set rx meter configuration\n");
 		goto jump_to_error;
 	}
 
@@ -116,7 +117,7 @@ bnxt_flow_meter_init(struct bnxt *bp)
 					BNXT_THOR_FMTCR_NUM_MET_MET_1K,
 					1);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to set tx meter configuration\n");
+		BNXT_DRV_DBG(ERR, "Failed to set tx meter configuration\n");
 		goto jump_to_error;
 	}
 
@@ -129,7 +130,7 @@ bnxt_flow_meter_init(struct bnxt *bp)
 					  BNXT_THOR_FMTCR_INTERVAL_1K,
 					  1);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to set rx meter interval\n");
+		BNXT_DRV_DBG(ERR, "Failed to set rx meter interval\n");
 		goto jump_to_error;
 	}
 
@@ -138,12 +139,12 @@ bnxt_flow_meter_init(struct bnxt *bp)
 					  BNXT_THOR_FMTCR_INTERVAL_1K,
 					  1);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to set tx meter interval\n");
+		BNXT_DRV_DBG(ERR, "Failed to set tx meter interval\n");
 		goto jump_to_error;
 	}
 
 	bnxt_meter_initialized = 1;
-	BNXT_TF_DBG(DEBUG, "Bnxt flow meter has been initialized\n");
+	BNXT_DRV_DBG(DEBUG, "Bnxt flow meter has been initialized\n");
 	return rc;
 
 jump_to_error:
@@ -399,7 +400,7 @@ bnxt_flow_meter_profile_add(struct rte_eth_dev *dev,
 	struct bnxt_ulp_context *ulp_ctx;
 	struct ulp_rte_parser_params params;
 	struct ulp_rte_act_prop *act_prop = &params.act_prop;
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	uint32_t act_tid;
 	uint16_t func_id;
 	int ret;
@@ -446,17 +447,18 @@ bnxt_flow_meter_profile_add(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto act_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto act_error;
 	}
 
-	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	if (ret)
@@ -483,7 +485,7 @@ bnxt_flow_meter_profile_delete(struct rte_eth_dev *dev,
 	struct bnxt_ulp_context *ulp_ctx;
 	struct ulp_rte_parser_params params;
 	struct ulp_rte_act_prop *act_prop = &params.act_prop;
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	uint32_t act_tid;
 	uint16_t func_id;
 	int ret;
@@ -527,24 +529,25 @@ bnxt_flow_meter_profile_delete(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto parse_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto parse_error;
 	}
 
-	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	if (ret)
 		goto parse_error;
 
-	BNXT_TF_DBG(DEBUG, "Bnxt flow meter profile %d deleted\n",
-		    meter_profile_id);
+	BNXT_DRV_DBG(DEBUG, "Bnxt flow meter profile %d deleted\n",
+		     meter_profile_id);
 
 	return 0;
 
@@ -566,7 +569,7 @@ bnxt_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	struct bnxt_ulp_context *ulp_ctx;
 	struct ulp_rte_parser_params pparams;
 	struct ulp_rte_act_prop *act_prop = &pparams.act_prop;
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	uint32_t act_tid;
 	uint16_t func_id;
 	bool meter_en = params->meter_enable ? true : false;
@@ -619,23 +622,24 @@ bnxt_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto parse_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto parse_error;
 	}
 
-	ret = ulp_mapper_flow_create(pparams.ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(pparams.ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	if (ret)
 		goto parse_error;
 
-	BNXT_TF_DBG(DEBUG, "Bnxt flow meter %d is created\n", meter_id);
+	BNXT_DRV_DBG(DEBUG, "Bnxt flow meter %d is created\n", meter_id);
 
 	return 0;
 parse_error:
@@ -656,7 +660,7 @@ bnxt_flow_meter_destroy(struct rte_eth_dev *dev,
 	struct bnxt_ulp_context *ulp_ctx;
 	struct ulp_rte_parser_params pparams;
 	struct ulp_rte_act_prop *act_prop = &pparams.act_prop;
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	uint32_t act_tid;
 	uint16_t func_id;
 	int ret;
@@ -700,23 +704,24 @@ bnxt_flow_meter_destroy(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto parse_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto parse_error;
 	}
 
-	ret = ulp_mapper_flow_create(pparams.ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(pparams.ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	if (ret)
 		goto parse_error;
 
-	BNXT_TF_DBG(DEBUG, "Bnxt flow meter %d is deleted\n", meter_id);
+	BNXT_DRV_DBG(DEBUG, "Bnxt flow meter %d is deleted\n", meter_id);
 
 	return 0;
 parse_error:
@@ -738,7 +743,7 @@ bnxt_flow_meter_enable_set(struct rte_eth_dev *dev,
 	struct bnxt_ulp_context *ulp_ctx;
 	struct ulp_rte_parser_params pparams;
 	struct ulp_rte_act_prop *act_prop = &pparams.act_prop;
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	uint32_t act_tid;
 	uint16_t func_id;
 	int ret;
@@ -784,24 +789,25 @@ bnxt_flow_meter_enable_set(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto parse_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto parse_error;
 	}
 
-	ret = ulp_mapper_flow_create(pparams.ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(pparams.ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	if (ret)
 		goto parse_error;
 
-	BNXT_TF_DBG(DEBUG, "Bnxt flow meter %d is %s\n",
-		    meter_id, val ? "enabled" : "disabled");
+	BNXT_DRV_DBG(DEBUG, "Bnxt flow meter %d is %s\n",
+		     meter_id, val ? "enabled" : "disabled");
 
 	return 0;
 parse_error:

@@ -91,42 +91,73 @@ bnxt_ulp_init_parser_cf_defaults(struct ulp_rte_parser_params *params,
 			    BNXT_ULP_INVALID_SVIF_VAL);
 }
 
+static void
+bnxt_ulp_init_cf_header_bitmap(struct ulp_rte_parser_params *params)
+{
+	uint64_t hdr_bits = 0;
+
+	/* Remove the internal tunnel bits */
+	hdr_bits = params->hdr_bitmap.bits;
+	ULP_BITMAP_RESET(hdr_bits, BNXT_ULP_HDR_BIT_F2);
+
+	/* Add untag bits */
+	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_OO_VLAN) &&
+	    !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_OI_VLAN)) {
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_O_UNTAGGED);
+	}
+	if (!ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_IO_VLAN) &&
+	    !ULP_BITMAP_ISSET(hdr_bits, BNXT_ULP_HDR_BIT_II_VLAN)) {
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_I_UNTAGGED);
+	}
+	/* Add non-tunnel bit */
+	if (!ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL))
+		ULP_BITMAP_SET(hdr_bits, BNXT_ULP_HDR_BIT_NON_TUNNEL);
+
+	/*update the comp field header bits */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_BITMAP, hdr_bits);
+}
+
 void
-bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
+bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_parms *mparms,
 			    struct ulp_rte_parser_params *params,
 			    enum bnxt_ulp_fdb_type flow_type)
 {
 	uint32_t ulp_flags = 0;
 
-	memset(mapper_cparms, 0, sizeof(*mapper_cparms));
-	mapper_cparms->flow_type = flow_type;
-	mapper_cparms->app_priority = params->priority;
-	mapper_cparms->dir_attr = params->dir_attr;
-	mapper_cparms->class_tid = params->class_id;
-	mapper_cparms->act_tid = params->act_tmpl;
-	mapper_cparms->func_id = params->func_id;
-	mapper_cparms->hdr_bitmap = &params->hdr_bitmap;
-	mapper_cparms->enc_hdr_bitmap = &params->enc_hdr_bitmap;
-	mapper_cparms->hdr_field = params->hdr_field;
-	mapper_cparms->enc_field = params->enc_field;
-	mapper_cparms->comp_fld = params->comp_fld;
-	mapper_cparms->act = &params->act_bitmap;
-	mapper_cparms->act_prop = &params->act_prop;
-	mapper_cparms->flow_id = params->fid;
-	mapper_cparms->parent_flow = params->parent_flow;
-	mapper_cparms->child_flow = params->child_flow;
-	mapper_cparms->fld_bitmap = &params->fld_bitmap;
-	mapper_cparms->flow_pattern_id = params->flow_pattern_id;
-	mapper_cparms->act_pattern_id = params->act_pattern_id;
-	mapper_cparms->app_id = params->app_id;
-	mapper_cparms->port_id = params->port_id;
-	mapper_cparms->tun_idx = params->tun_idx;
+	mparms->flow_type = flow_type;
+	mparms->app_priority = params->priority;
+	mparms->class_tid = params->class_id;
+	mparms->act_tid =  params->act_tmpl;
+	mparms->func_id = params->func_id;
+	mparms->hdr_bitmap = &params->hdr_bitmap;
+	mparms->enc_hdr_bitmap = &params->enc_hdr_bitmap;
+	mparms->hdr_field = params->hdr_field;
+	mparms->enc_field = params->enc_field;
+	mparms->comp_fld = params->comp_fld;
+	mparms->act_bitmap = &params->act_bitmap;
+	mparms->act_prop = &params->act_prop;
+	mparms->parent_flow = params->parent_flow;
+	mparms->child_flow = params->child_flow;
+	mparms->fld_bitmap = &params->fld_bitmap;
+	mparms->flow_pattern_id = params->flow_pattern_id;
+	mparms->act_pattern_id = params->act_pattern_id;
+	mparms->wc_field_bitmap = params->wc_field_bitmap;
+	mparms->app_id = params->app_id;
+	mparms->tun_idx = params->tun_idx;
+	mparms->cf_bitmap = params->cf_bitmap;
+	mparms->exclude_field_bitmap = params->exclude_field_bitmap;
 
 	/* update the signature fields into the computed field list */
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_HDR_SIG_ID,
-			    params->hdr_sig_id);
+			    params->class_info_idx);
+
+	/* update the header bitmap */
+	bnxt_ulp_init_cf_header_bitmap(params);
+
 	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FLOW_SIG_ID,
 			    params->flow_sig_id);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_FUNCTION_ID,
+			    params->func_id);
 
 	if (bnxt_ulp_cntxt_ptr2_ulp_flags_get(params->ulp_ctx, &ulp_flags))
 		return;
@@ -138,7 +169,7 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 
 		rc = ulp_ha_mgr_region_get(params->ulp_ctx, &region);
 		if (rc)
-			BNXT_TF_DBG(ERR, "Unable to get WC region\n");
+			BNXT_DRV_DBG(ERR, "Unable to get WC region\n");
 		if (region == ULP_HA_REGION_HI)
 			ULP_COMP_FLD_IDX_WR(params,
 					    BNXT_ULP_CF_IDX_WC_IS_HA_HIGH_REG,
@@ -159,13 +190,14 @@ bnxt_ulp_init_mapper_params(struct bnxt_ulp_mapper_create_parms *mapper_cparms,
 		if (ulp_port_db_dev_port_to_ulp_index(params->ulp_ctx,
 						      params->port_id,
 						      &ifindex)) {
-			BNXT_TF_DBG(ERR, "Invalid port id %u\n",
-				    params->port_id);
+			BNXT_DRV_DBG(ERR, "Invalid port id %u\n",
+				     params->port_id);
 			return;
 		}
 		/* Update the phy port of the other interface */
 		if (ulp_port_db_vport_get(params->ulp_ctx, ifindex, &vport)) {
-			BNXT_TF_DBG(ERR, "Invalid port if index %u\n", ifindex);
+			BNXT_DRV_DBG(ERR, "Invalid port if index %u\n",
+				     ifindex);
 			return;
 		}
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_SOCKET_DIRECT_VPORT,
@@ -181,7 +213,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 		     const struct rte_flow_action actions[],
 		     struct rte_flow_error *error)
 {
-	struct bnxt_ulp_mapper_create_parms mapper_cparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	struct ulp_rte_parser_params params;
 	struct bnxt_ulp_context *ulp_ctx;
 	int rc, ret = BNXT_TF_RC_ERROR;
@@ -189,16 +221,19 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	uint16_t func_id;
 	uint32_t fid;
 
+	if (error != NULL)
+		error->type = RTE_FLOW_ERROR_TYPE_NONE;
+
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
 					error) == BNXT_TF_RC_ERROR) {
-		BNXT_TF_DBG(ERR, "Invalid arguments being passed\n");
+		BNXT_DRV_DBG(ERR, "Invalid arguments being passed\n");
 		goto flow_error;
 	}
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		goto flow_error;
 	}
 
@@ -207,7 +242,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	params.ulp_ctx = ulp_ctx;
 
 	if (bnxt_ulp_cntxt_app_id_get(params.ulp_ctx, &params.app_id)) {
-		BNXT_TF_DBG(ERR, "failed to get the app id\n");
+		BNXT_DRV_DBG(ERR, "failed to get the app id\n");
 		goto flow_error;
 	}
 
@@ -220,13 +255,13 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto flow_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto flow_error;
 	}
 
@@ -237,7 +272,7 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	rc = ulp_flow_db_fid_alloc(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
 				   func_id, &fid);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Unable to allocate flow table entry\n");
+		BNXT_DRV_DBG(ERR, "Unable to allocate flow table entry\n");
 		goto release_lock;
 	}
 
@@ -251,10 +286,10 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto free_fid;
 
-	params.fid = fid;
-	params.func_id = func_id;
-	params.priority = attr->priority;
-	params.port_id = dev->data->port_id;
+	mparms.flow_id = fid;
+	mparms.func_id = func_id;
+	mparms.app_priority = attr->priority;
+	mparms.port_id = dev->data->port_id;
 
 	/* Perform the rte flow post process */
 	bnxt_ulp_rte_parser_post_process(&params);
@@ -272,10 +307,11 @@ bnxt_ulp_flow_create(struct rte_eth_dev *dev,
 	if (ret != BNXT_TF_RC_SUCCESS)
 		goto free_fid;
 
-	bnxt_ulp_init_mapper_params(&mapper_cparms, &params,
+	bnxt_ulp_init_mapper_params(&mparms, &params,
 				    BNXT_ULP_FDB_TYPE_REGULAR);
 	/* Call the ulp mapper to create the flow in the hardware. */
-	ret = ulp_mapper_flow_create(ulp_ctx, &mapper_cparms);
+	ret = ulp_mapper_flow_create(ulp_ctx, &mparms,
+				     (void *)error);
 	if (ret)
 		goto free_fid;
 
@@ -289,7 +325,10 @@ free_fid:
 release_lock:
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 flow_error:
-	rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+	if (error != NULL &&
+	    error->type == RTE_FLOW_ERROR_TYPE_NONE)
+		rte_flow_error_set(error, ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create flow.");
 	return NULL;
 }
@@ -310,13 +349,13 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 	if (bnxt_ulp_flow_validate_args(attr,
 					pattern, actions,
 					error) == BNXT_TF_RC_ERROR) {
-		BNXT_TF_DBG(ERR, "Invalid arguments being passed\n");
+		BNXT_DRV_DBG(ERR, "Invalid arguments being passed\n");
 		goto parse_error;
 	}
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		goto parse_error;
 	}
 
@@ -325,7 +364,7 @@ bnxt_ulp_flow_validate(struct rte_eth_dev *dev,
 	params.ulp_ctx = ulp_ctx;
 
 	if (bnxt_ulp_cntxt_app_id_get(params.ulp_ctx, &params.app_id)) {
-		BNXT_TF_DBG(ERR, "failed to get the app id\n");
+		BNXT_DRV_DBG(ERR, "failed to get the app id\n");
 		goto parse_error;
 	}
 
@@ -380,9 +419,12 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 	uint16_t func_id;
 	int ret;
 
+	if (error != NULL)
+		error->type = RTE_FLOW_ERROR_TYPE_NONE;
+
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		if (error)
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -395,7 +437,7 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		if (error)
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -405,7 +447,7 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 
 	if (ulp_flow_db_validate_flow_func(ulp_ctx, flow_id, func_id) ==
 	    false) {
-		BNXT_TF_DBG(ERR, "Incorrect device params\n");
+		BNXT_DRV_DBG(ERR, "Incorrect device params\n");
 		if (error)
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -414,14 +456,15 @@ bnxt_ulp_flow_destroy(struct rte_eth_dev *dev,
 	}
 
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		return -EINVAL;
 	}
 	ret = ulp_mapper_flow_destroy(ulp_ctx, BNXT_ULP_FDB_TYPE_REGULAR,
-				      flow_id);
+				      flow_id, (void *)error);
 	if (ret) {
-		BNXT_TF_DBG(ERR, "Failed to destroy flow.\n");
-		if (error)
+		BNXT_DRV_DBG(ERR, "Failed to destroy flow.\n");
+		if (error != NULL &&
+		    error->type == RTE_FLOW_ERROR_TYPE_NONE)
 			rte_flow_error_set(error, -ret,
 					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 					   "Failed to destroy flow.");
@@ -455,7 +498,7 @@ bnxt_ulp_flow_flush(struct rte_eth_dev *eth_dev,
 		if (!ret)
 			ret = ulp_flow_db_function_flow_flush(ulp_ctx, func_id);
 		else
-			BNXT_TF_DBG(ERR, "convert port to func id failed\n");
+			BNXT_DRV_DBG(ERR, "convert port to func id failed\n");
 	}
 	if (ret)
 		rte_flow_error_set(error, ret,
@@ -479,7 +522,7 @@ bnxt_ulp_flow_query(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to query flow.");
@@ -538,7 +581,7 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 			      struct rte_flow_error *error)
 {
 	enum bnxt_ulp_intf_type port_type = BNXT_ULP_INTF_TYPE_INVALID;
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	struct ulp_rte_parser_params params;
 	struct bnxt_ulp_context *ulp_ctx;
 	uint32_t act_tid;
@@ -555,12 +598,15 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 		}
 	};
 
+	if (error != NULL)
+		error->type = RTE_FLOW_ERROR_TYPE_NONE;
+
 	if (bnxt_ulp_action_handle_chk_args(action, conf) != BNXT_TF_RC_SUCCESS)
 		goto parse_error;
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		goto parse_error;
 	}
 
@@ -577,12 +623,12 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 	if (ulp_port_db_dev_port_to_ulp_index(ulp_ctx,
 					      dev->data->port_id,
 					      &ifindex)) {
-		BNXT_TF_DBG(ERR, "Port id is not valid\n");
+		BNXT_DRV_DBG(ERR, "Port id is not valid\n");
 		goto parse_error;
 	}
 	port_type = ulp_port_db_port_type_get(ulp_ctx, ifindex);
 	if (port_type == BNXT_ULP_INTF_TYPE_INVALID) {
-		BNXT_TF_DBG(ERR, "Port type is not valid\n");
+		BNXT_DRV_DBG(ERR, "Port type is not valid\n");
 		goto parse_error;
 	}
 
@@ -610,12 +656,12 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 	if (ulp_port_db_dev_port_to_ulp_index(ulp_ctx,
 					      dev->data->port_id,
 					      &ifindex)) {
-		BNXT_TF_DBG(ERR, "Port id is not valid\n");
+		BNXT_DRV_DBG(ERR, "Port id is not valid\n");
 		goto parse_error;
 	}
 	port_type = ulp_port_db_port_type_get(ulp_ctx, ifindex);
 	if (port_type == BNXT_ULP_INTF_TYPE_INVALID) {
-		BNXT_TF_DBG(ERR, "Port type is not valid\n");
+		BNXT_DRV_DBG(ERR, "Port type is not valid\n");
 		goto parse_error;
 	}
 
@@ -638,6 +684,7 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 			ULP_COMP_FLD_IDX_WR(&params, BNXT_ULP_CF_IDX_DIRECTION,
 					    BNXT_ULP_DIR_EGRESS);
 	}
+
 	/* Parse the shared action */
 	ret = bnxt_ulp_rte_parser_act_parse(actions, &params);
 	if (ret != BNXT_TF_RC_SUCCESS)
@@ -663,17 +710,18 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 	if (ulp_port_db_port_func_id_get(ulp_ctx,
 					 dev->data->port_id,
 					 &func_id)) {
-		BNXT_TF_DBG(ERR, "conversion of port to func id failed\n");
+		BNXT_DRV_DBG(ERR, "conversion of port to func id failed\n");
 		goto parse_error;
 	}
 
 	/* Protect flow creation */
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto parse_error;
 	}
 
-	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(params.ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 
 	if (ret)
@@ -682,7 +730,9 @@ bnxt_ulp_action_handle_create(struct rte_eth_dev *dev,
 	return (struct rte_flow_action_handle *)((uintptr_t)mparms.shared_hndl);
 
 parse_error:
-	rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+	if (error != NULL &&
+	    error->type == RTE_FLOW_ERROR_TYPE_NONE)
+		rte_flow_error_set(error, ret, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create shared action.");
 	return NULL;
 }
@@ -692,7 +742,7 @@ bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
 			       struct rte_flow_action_handle *shared_hndl,
 			       struct rte_flow_error *error)
 {
-	struct bnxt_ulp_mapper_create_parms mparms = { 0 };
+	struct bnxt_ulp_mapper_parms mparms = { 0 };
 	struct bnxt_ulp_shared_act_info *act_info;
 	struct ulp_rte_parser_params params;
 	struct ulp_rte_act_prop *act_prop;
@@ -703,14 +753,17 @@ bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
 	uint32_t shared_action_type;
 	uint64_t tmp64;
 
+	if (error != NULL)
+		error->type = RTE_FLOW_ERROR_TYPE_NONE;
+
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(dev);
 	if (!ulp_ctx) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		goto parse_error;
 	}
 
 	if (!shared_hndl) {
-		BNXT_TF_DBG(ERR, "Invalid argument of shared handle\n");
+		BNXT_DRV_DBG(ERR, "Invalid argument of shared handle\n");
 		goto parse_error;
 	}
 
@@ -719,19 +772,19 @@ bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
 	params.ulp_ctx = ulp_ctx;
 
 	if (bnxt_ulp_cntxt_app_id_get(ulp_ctx, &params.app_id)) {
-		BNXT_TF_DBG(ERR, "failed to get the app id\n");
+		BNXT_DRV_DBG(ERR, "failed to get the app id\n");
 		goto parse_error;
 	}
 	/* The template will delete the entry if there are no references */
 	if (bnxt_get_action_handle_type(shared_hndl, &shared_action_type)) {
-		BNXT_TF_DBG(ERR, "Invalid shared handle\n");
+		BNXT_DRV_DBG(ERR, "Invalid shared handle\n");
 		goto parse_error;
 	}
 
 	act_info_entries = 0;
 	act_info = bnxt_ulp_shared_act_info_get(&act_info_entries);
 	if (shared_action_type >= act_info_entries || !act_info) {
-		BNXT_TF_DBG(ERR, "Invalid shared handle\n");
+		BNXT_DRV_DBG(ERR, "Invalid shared handle\n");
 		goto parse_error;
 	}
 
@@ -741,7 +794,7 @@ bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
 
 	ret = bnxt_get_action_handle_direction(shared_hndl, &dir);
 	if (ret) {
-		BNXT_TF_DBG(ERR, "Invalid shared handle dir\n");
+		BNXT_DRV_DBG(ERR, "Invalid shared handle dir\n");
 		goto parse_error;
 	}
 
@@ -770,11 +823,12 @@ bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
 	mparms.act_tid = act_tid;
 
 	if (bnxt_ulp_cntxt_acquire_fdb_lock(ulp_ctx)) {
-		BNXT_TF_DBG(ERR, "Flow db lock acquire failed\n");
+		BNXT_DRV_DBG(ERR, "Flow db lock acquire failed\n");
 		goto parse_error;
 	}
 
-	ret = ulp_mapper_flow_create(ulp_ctx, &mparms);
+	ret = ulp_mapper_flow_create(ulp_ctx, &mparms,
+				     (void *)error);
 	bnxt_ulp_cntxt_release_fdb_lock(ulp_ctx);
 	if (ret)
 		goto parse_error;
@@ -782,7 +836,9 @@ bnxt_ulp_action_handle_destroy(struct rte_eth_dev *dev,
 	return 0;
 
 parse_error:
-	rte_flow_error_set(error, BNXT_TF_RC_ERROR,
+	if (error != NULL &&
+	    error->type == RTE_FLOW_ERROR_TYPE_NONE)
+		rte_flow_error_set(error, BNXT_TF_RC_ERROR,
 			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to destroy shared action.");
 	return -EINVAL;
@@ -804,7 +860,7 @@ bnxt_ulp_tunnel_decap_set(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (ulp_ctx == NULL) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "ULP context uninitialized");
@@ -812,7 +868,7 @@ bnxt_ulp_tunnel_decap_set(struct rte_eth_dev *eth_dev,
 	}
 
 	if (tunnel == NULL) {
-		BNXT_TF_DBG(ERR, "No tunnel specified\n");
+		BNXT_DRV_DBG(ERR, "No tunnel specified\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 				   "no tunnel specified");
@@ -820,7 +876,7 @@ bnxt_ulp_tunnel_decap_set(struct rte_eth_dev *eth_dev,
 	}
 
 	if (tunnel->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
-		BNXT_TF_DBG(ERR, "Tunnel type unsupported\n");
+		BNXT_DRV_DBG(ERR, "Tunnel type unsupported\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 				   "tunnel type unsupported");
@@ -861,7 +917,7 @@ bnxt_ulp_tunnel_match(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (ulp_ctx == NULL) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "ULP context uninitialized");
@@ -869,7 +925,7 @@ bnxt_ulp_tunnel_match(struct rte_eth_dev *eth_dev,
 	}
 
 	if (tunnel == NULL) {
-		BNXT_TF_DBG(ERR, "No tunnel specified\n");
+		BNXT_DRV_DBG(ERR, "No tunnel specified\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "no tunnel specified");
@@ -877,7 +933,7 @@ bnxt_ulp_tunnel_match(struct rte_eth_dev *eth_dev,
 	}
 
 	if (tunnel->type != RTE_FLOW_ITEM_TYPE_VXLAN) {
-		BNXT_TF_DBG(ERR, "Tunnel type unsupported\n");
+		BNXT_DRV_DBG(ERR, "Tunnel type unsupported\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "tunnel type unsupported");
@@ -917,14 +973,14 @@ bnxt_ulp_tunnel_decap_release(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (ulp_ctx == NULL) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "ULP context uninitialized");
 		return -EINVAL;
 	}
 	if (num_actions != BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS) {
-		BNXT_TF_DBG(ERR, "num actions is invalid\n");
+		BNXT_DRV_DBG(ERR, "num actions is invalid\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 				   "num actions is invalid");
@@ -953,14 +1009,14 @@ bnxt_ulp_tunnel_item_release(struct rte_eth_dev *eth_dev,
 
 	ulp_ctx = bnxt_ulp_eth_dev_ptr2_cntxt_get(eth_dev);
 	if (ulp_ctx == NULL) {
-		BNXT_TF_DBG(ERR, "ULP context is not initialized\n");
+		BNXT_DRV_DBG(ERR, "ULP context is not initialized\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "ULP context uninitialized");
 		return -EINVAL;
 	}
 	if (num_items != BNXT_ULP_TUNNEL_OFFLOAD_NUM_ITEMS) {
-		BNXT_TF_DBG(ERR, "num items is invalid\n");
+		BNXT_DRV_DBG(ERR, "num items is invalid\n");
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 				   "num items is invalid");

@@ -62,6 +62,12 @@
 /* Macro to check bits are byte aligned */
 #define ULP_BITS_IS_BYTE_NOT_ALIGNED(x)	((x) % 8)
 
+/* Macro for word conversion */
+#define ULP_BITS_TO_4_BYTE_WORD(x) (((x) + 31) / 32)
+#define ULP_BITS_TO_32_BYTE_WORD(x) (((x) + 255) / 256)
+#define ULP_BITS_TO_4_BYTE_QWORDS(x) (((x) + 127) / 128)
+#define ULP_BITS_TO_128B_ALIGNED_BYTES(x) ((((x) + 127) / 128) * 16)
+
 /* Macros to read the computed fields */
 #define ULP_COMP_FLD_IDX_RD(params, idx) \
 	rte_be_to_cpu_64((params)->comp_fld[(idx)])

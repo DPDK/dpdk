@@ -36,9 +36,9 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.num_tbls = 22,
 	.start_tbl_idx = 28,
 	.reject_info = {
-		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 27,
-		.cond_nums = 3 }
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_LIST_OR,
+		.cond_start_idx = 0,
+		.cond_nums = 2 }
 	},
 	/* act_tid: 4, ingress */
 	[4] = {
@@ -46,9 +46,9 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.num_tbls = 5,
 	.start_tbl_idx = 50,
 	.reject_info = {
-		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 44,
-		.cond_nums = 1 }
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_LIST_OR,
+		.cond_start_idx = 2,
+		.cond_nums = 2 }
 	},
 	/* act_tid: 5, ingress */
 	[5] = {
@@ -57,7 +57,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.start_tbl_idx = 55,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
-		.cond_start_idx = 50,
+		.cond_start_idx = 57,
 		.cond_nums = 0 }
 	},
 	/* act_tid: 6, egress */
@@ -67,7 +67,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.start_tbl_idx = 56,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
-		.cond_start_idx = 50,
+		.cond_start_idx = 57,
 		.cond_nums = 0 }
 	},
 	/* act_tid: 7, egress */
@@ -76,8 +76,8 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.num_tbls = 25,
 	.start_tbl_idx = 79,
 	.reject_info = {
-		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 66,
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_LIST_OR,
+		.cond_start_idx = 4,
 		.cond_nums = 2 }
 	},
 	/* act_tid: 8, egress */
@@ -87,7 +87,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.start_tbl_idx = 104,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 84,
+		.cond_start_idx = 97,
 		.cond_nums = 2 }
 	},
 	/* act_tid: 9, egress */
@@ -97,7 +97,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_wh_plus_act_tmpl_list[] = {
 	.start_tbl_idx = 134,
 	.reject_info = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_FALSE,
-		.cond_start_idx = 111,
+		.cond_start_idx = 124,
 		.cond_nums = 0 }
 	}
 };
@@ -112,6 +112,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 12,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -133,6 +134,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.key_start_idx = 0,
 	.blob_key_bit_size = 4,
@@ -150,6 +152,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
 		.cond_start_idx = 13,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 1, , table: multi_shared_mirror_record.rd_a */
@@ -166,6 +169,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 1,
 	.blob_key_bit_size = 8,
@@ -183,6 +187,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
 		.cond_start_idx = 15,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 1, , table: control.set_dest_vnic_b */
@@ -194,6 +199,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 16,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -215,6 +221,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 2,
 	.blob_key_bit_size = 8,
@@ -232,6 +239,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
 		.cond_start_idx = 16,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 1, , table: control.set_dest_vnic_a */
@@ -243,6 +251,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 17,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -259,6 +268,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 17,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -276,6 +286,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -297,6 +308,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -318,6 +330,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -340,6 +353,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -362,6 +376,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 70,
@@ -377,6 +392,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 20,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_ADD,
@@ -400,6 +416,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 3,
 	.blob_key_bit_size = 8,
@@ -423,6 +440,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 78,
@@ -443,6 +461,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.record_size = 8,
@@ -465,6 +484,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 90,
@@ -486,6 +506,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 116,
@@ -502,6 +523,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
 		.cond_start_idx = 24,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -519,6 +541,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -540,6 +563,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -561,6 +585,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -583,6 +608,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -605,6 +631,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 223,
@@ -625,6 +652,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.ref_cnt_opcode = BNXT_ULP_REF_CNT_OPC_INC,
 	.key_start_idx = 4,
@@ -642,8 +670,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 30,
+		.cond_start_idx = 35,
 		.cond_nums = 3 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 3, , table: control.set_dest_vnic_default */
@@ -653,8 +682,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 33,
+		.cond_start_idx = 38,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -672,10 +702,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 14,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 33,
+		.cond_start_idx = 38,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 5,
 	.blob_key_bit_size = 8,
@@ -691,8 +722,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 34,
+		.cond_start_idx = 39,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 3, , table: control.set_dest_vnic_b */
@@ -702,8 +734,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 12,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 35,
+		.cond_start_idx = 40,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -721,10 +754,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 35,
+		.cond_start_idx = 40,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 6,
 	.blob_key_bit_size = 8,
@@ -740,8 +774,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 35,
+		.cond_start_idx = 40,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 3, , table: control.set_dest_vnic_a */
@@ -751,8 +786,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 9,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 36,
+		.cond_start_idx = 41,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -767,8 +803,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 36,
+		.cond_start_idx = 41,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -782,10 +819,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 36,
+		.cond_start_idx = 41,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -803,10 +841,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 36,
+		.cond_start_idx = 41,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -824,10 +863,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 37,
+		.cond_start_idx = 42,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -846,10 +886,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 38,
+		.cond_start_idx = 43,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -868,10 +909,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 39,
+		.cond_start_idx = 44,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 301,
@@ -885,8 +927,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 39,
+		.cond_start_idx = 44,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_ADD,
@@ -906,10 +949,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 39,
+		.cond_start_idx = 44,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 7,
 	.blob_key_bit_size = 8,
@@ -929,10 +973,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 39,
+		.cond_start_idx = 44,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 309,
 	.result_bit_size = 64,
@@ -948,10 +993,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 40,
+		.cond_start_idx = 45,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 310,
 	.result_bit_size = 32,
@@ -967,10 +1013,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 41,
+		.cond_start_idx = 46,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 311,
 	.result_bit_size = 32,
@@ -986,10 +1033,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 42,
+		.cond_start_idx = 47,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.record_size = 16,
 	.result_start_idx = 312,
@@ -1007,10 +1055,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 42,
+		.cond_start_idx = 47,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 323,
 	.result_bit_size = 128,
@@ -1026,10 +1075,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 43,
+		.cond_start_idx = 48,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 349,
 	.result_bit_size = 128,
@@ -1046,10 +1096,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 45,
+		.cond_start_idx = 52,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 386,
@@ -1065,10 +1116,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 46,
+		.cond_start_idx = 53,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_VNIC_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_RSS_VNIC,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 387,
 	.result_bit_size = 0,
@@ -1083,10 +1135,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 47,
+		.cond_start_idx = 54,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_VNIC_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_RSS_VNIC,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 387,
 	.result_bit_size = 0,
@@ -1102,10 +1155,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
-		.cond_start_idx = 48,
+		.cond_start_idx = 55,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 387,
@@ -1123,10 +1177,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 50,
+		.cond_start_idx = 57,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 413,
@@ -1141,8 +1196,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 50,
+		.cond_start_idx = 57,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 6, , table: control.set_dest_vport_default */
@@ -1152,8 +1208,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 50,
+		.cond_start_idx = 57,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -1171,10 +1228,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 50,
+		.cond_start_idx = 57,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 8,
 	.blob_key_bit_size = 4,
@@ -1190,8 +1248,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 16,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 51,
+		.cond_start_idx = 58,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 6, , table: multi_shared_mirror_record.rd_a */
@@ -1204,10 +1263,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 15,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 52,
+		.cond_start_idx = 59,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 9,
 	.blob_key_bit_size = 8,
@@ -1223,8 +1283,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 53,
+		.cond_start_idx = 60,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 6, , table: control.set_dest_vport_b */
@@ -1234,8 +1295,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 13,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 54,
+		.cond_start_idx = 61,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -1253,10 +1315,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 54,
+		.cond_start_idx = 61,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 10,
 	.blob_key_bit_size = 8,
@@ -1272,8 +1335,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 54,
+		.cond_start_idx = 61,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 6, , table: control.set_dest_vport_a */
@@ -1283,8 +1347,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 10,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 55,
+		.cond_start_idx = 62,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -1299,8 +1364,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 55,
+		.cond_start_idx = 62,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -1311,8 +1377,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 55,
+		.cond_start_idx = 62,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 6, , table: mirror_tbl.alloc */
@@ -1325,10 +1392,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 56,
+		.cond_start_idx = 63,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -1346,10 +1414,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 56,
+		.cond_start_idx = 63,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -1367,10 +1436,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 57,
+		.cond_start_idx = 64,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -1390,10 +1460,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 57,
+		.cond_start_idx = 64,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.result_start_idx = 457,
@@ -1410,10 +1481,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 58,
+		.cond_start_idx = 65,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 483,
@@ -1427,8 +1499,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 58,
+		.cond_start_idx = 65,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_ADD,
@@ -1448,10 +1521,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 58,
+		.cond_start_idx = 65,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 11,
 	.blob_key_bit_size = 8,
@@ -1471,10 +1545,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 58,
+		.cond_start_idx = 65,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 491,
 	.result_bit_size = 64,
@@ -1490,10 +1565,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 59,
+		.cond_start_idx = 66,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.record_size = 8,
 	.result_start_idx = 492,
@@ -1511,10 +1587,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 61,
+		.cond_start_idx = 68,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 503,
 	.result_bit_size = 128,
@@ -1530,10 +1607,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 62,
+		.cond_start_idx = 69,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 529,
 	.result_bit_size = 128,
@@ -1550,10 +1628,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 64,
+		.cond_start_idx = 71,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 566,
 	.result_bit_size = 128,
@@ -1567,8 +1646,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 68,
+		.cond_start_idx = 81,
 		.cond_nums = 3 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 7, , table: control.set_dest_vport_default */
@@ -1578,8 +1658,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 71,
+		.cond_start_idx = 84,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -1597,10 +1678,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 71,
+		.cond_start_idx = 84,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 12,
 	.blob_key_bit_size = 4,
@@ -1616,8 +1698,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 16,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 72,
+		.cond_start_idx = 85,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 7, , table: multi_shared_mirror_record.rd_a */
@@ -1630,10 +1713,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 15,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 73,
+		.cond_start_idx = 86,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 13,
 	.blob_key_bit_size = 8,
@@ -1649,8 +1733,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 74,
+		.cond_start_idx = 87,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 7, , table: control.set_dest_vport_b */
@@ -1660,8 +1745,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 13,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 75,
+		.cond_start_idx = 88,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -1679,10 +1765,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 75,
+		.cond_start_idx = 88,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 14,
 	.blob_key_bit_size = 8,
@@ -1698,8 +1785,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 75,
+		.cond_start_idx = 88,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 7, , table: control.set_dest_vport_a */
@@ -1709,8 +1797,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 10,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 76,
+		.cond_start_idx = 89,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -1725,8 +1814,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 76,
+		.cond_start_idx = 89,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -1737,8 +1827,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 76,
+		.cond_start_idx = 89,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 7, , table: mirror_tbl.alloc */
@@ -1751,10 +1842,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 77,
+		.cond_start_idx = 90,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -1772,10 +1864,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 77,
+		.cond_start_idx = 90,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -1793,10 +1886,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 78,
+		.cond_start_idx = 91,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -1816,10 +1910,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 78,
+		.cond_start_idx = 91,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.result_start_idx = 621,
@@ -1836,10 +1931,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 79,
+		.cond_start_idx = 92,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 647,
@@ -1853,8 +1949,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 79,
+		.cond_start_idx = 92,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_ADD,
@@ -1874,10 +1971,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 79,
+		.cond_start_idx = 92,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 15,
 	.blob_key_bit_size = 8,
@@ -1897,10 +1995,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 79,
+		.cond_start_idx = 92,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 655,
 	.result_bit_size = 64,
@@ -1916,10 +2015,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 80,
+		.cond_start_idx = 93,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MODIFY_IPV4_SRC_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 656,
 	.result_bit_size = 32,
@@ -1935,10 +2035,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 81,
+		.cond_start_idx = 94,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MODIFY_IPV4_DST_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 657,
 	.result_bit_size = 32,
@@ -1954,10 +2055,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 82,
+		.cond_start_idx = 95,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_GLB_REGFILE,
 	.tbl_operand = BNXT_ULP_GLB_RF_IDX_ENCAP_MAC_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.record_size = 16,
 	.result_start_idx = 658,
@@ -1975,10 +2077,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 82,
+		.cond_start_idx = 95,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 669,
 	.result_bit_size = 128,
@@ -1994,10 +2097,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 83,
+		.cond_start_idx = 96,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 695,
 	.result_bit_size = 128,
@@ -2011,8 +2115,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 86,
+		.cond_start_idx = 99,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -2030,10 +2135,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 86,
+		.cond_start_idx = 99,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 16,
 	.blob_key_bit_size = 4,
@@ -2049,8 +2155,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 16,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 87,
+		.cond_start_idx = 100,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 8, , table: multi_shared_mirror_record.rd_a */
@@ -2063,10 +2170,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 15,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 88,
+		.cond_start_idx = 101,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 17,
 	.blob_key_bit_size = 8,
@@ -2082,8 +2190,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 89,
+		.cond_start_idx = 102,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 8, , table: control.set_dest_vport_b */
@@ -2093,8 +2202,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 13,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 90,
+		.cond_start_idx = 103,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -2112,10 +2222,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 90,
+		.cond_start_idx = 103,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 18,
 	.blob_key_bit_size = 8,
@@ -2131,8 +2242,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 90,
+		.cond_start_idx = 103,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 8, , table: control.set_dest_vport_a */
@@ -2142,8 +2254,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 10,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 91,
+		.cond_start_idx = 104,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -2158,8 +2271,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 91,
+		.cond_start_idx = 104,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -2170,8 +2284,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 91,
+		.cond_start_idx = 104,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 8, , table: mirror_tbl.alloc */
@@ -2184,10 +2299,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 92,
+		.cond_start_idx = 105,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -2205,10 +2321,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 92,
+		.cond_start_idx = 105,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -2226,10 +2343,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 93,
+		.cond_start_idx = 106,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -2249,10 +2367,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 93,
+		.cond_start_idx = 106,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.result_start_idx = 750,
@@ -2269,10 +2388,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 94,
+		.cond_start_idx = 107,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 776,
@@ -2286,8 +2406,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 94,
+		.cond_start_idx = 107,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_ADD,
@@ -2307,10 +2428,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 94,
+		.cond_start_idx = 107,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 19,
 	.blob_key_bit_size = 8,
@@ -2330,10 +2452,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 94,
+		.cond_start_idx = 107,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 784,
 	.result_bit_size = 64,
@@ -2348,10 +2471,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 95,
+		.cond_start_idx = 108,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 20,
 	.blob_key_bit_size = 8,
@@ -2370,10 +2494,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 95,
+		.cond_start_idx = 108,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_SP_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.record_size = 16,
 	.result_start_idx = 785,
@@ -2391,10 +2516,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 97,
+		.cond_start_idx = 110,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_SP_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.record_size = 24,
 	.result_start_idx = 787,
@@ -2411,15 +2537,16 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 99,
+		.cond_start_idx = 112,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.key_start_idx = 21,
-	.blob_key_bit_size = 136,
-	.key_bit_size = 136,
-	.key_num_fields = 5,
+	.blob_key_bit_size = 141,
+	.key_bit_size = 141,
+	.key_num_fields = 6,
 	.ident_start_idx = 15,
 	.ident_nums = 1
 	},
@@ -2432,27 +2559,29 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 101,
+		.cond_start_idx = 114,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 26,
-	.blob_key_bit_size = 232,
-	.key_bit_size = 232,
-	.key_num_fields = 5,
+	.key_start_idx = 27,
+	.blob_key_bit_size = 237,
+	.key_bit_size = 237,
+	.key_num_fields = 6,
 	.ident_start_idx = 16,
 	.ident_nums = 1
 	},
-	{ /* act_tid: 8, , table: control.vxlan */
+	{ /* act_tid: 8, , table: control.vxlan_v6_encap */
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 4,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 103,
+		.cond_start_idx = 116,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -2466,10 +2595,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 104,
+		.cond_start_idx = 117,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.record_size = 64,
 	.result_start_idx = 789,
@@ -2486,17 +2616,18 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 105,
+		.cond_start_idx = 118,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 31,
-	.blob_key_bit_size = 136,
-	.key_bit_size = 136,
-	.key_num_fields = 5,
+	.key_start_idx = 33,
+	.blob_key_bit_size = 141,
+	.key_bit_size = 141,
+	.key_num_fields = 6,
 	.result_start_idx = 819,
-	.result_bit_size = 48,
+	.result_bit_size = 64,
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: vxlan_encap_ipv6_rec_cache.wr */
@@ -2508,17 +2639,18 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 107,
+		.cond_start_idx = 120,
 		.cond_nums = 2 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_HASH,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 36,
-	.blob_key_bit_size = 232,
-	.key_bit_size = 232,
-	.key_num_fields = 5,
+	.key_start_idx = 39,
+	.blob_key_bit_size = 237,
+	.key_bit_size = 237,
+	.key_num_fields = 6,
 	.result_start_idx = 821,
-	.result_bit_size = 48,
+	.result_bit_size = 64,
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: int_full_act_record.0 */
@@ -2531,10 +2663,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 109,
+		.cond_start_idx = 122,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 823,
 	.result_bit_size = 128,
@@ -2550,10 +2683,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 110,
+		.cond_start_idx = 123,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 849,
 	.result_bit_size = 128,
@@ -2567,8 +2701,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 111,
+		.cond_start_idx = 124,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -2586,12 +2721,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 2,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 111,
+		.cond_start_idx = 124,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 41,
+	.key_start_idx = 45,
 	.blob_key_bit_size = 4,
 	.key_bit_size = 4,
 	.key_num_fields = 1,
@@ -2605,8 +2741,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1023,
 		.cond_false_goto = 15,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 112,
+		.cond_start_idx = 125,
 		.cond_nums = 2 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 9, , table: multi_shared_mirror_record.rd_a */
@@ -2619,12 +2756,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 14,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 114,
+		.cond_start_idx = 127,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 42,
+	.key_start_idx = 46,
 	.blob_key_bit_size = 8,
 	.key_bit_size = 8,
 	.key_num_fields = 1,
@@ -2638,8 +2776,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 115,
+		.cond_start_idx = 128,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 9, , table: control.set_dest_mdata_b */
@@ -2649,8 +2788,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 12,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 116,
+		.cond_start_idx = 129,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -2668,12 +2808,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 116,
+		.cond_start_idx = 129,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_READ,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 43,
+	.key_start_idx = 47,
 	.blob_key_bit_size = 8,
 	.key_bit_size = 8,
 	.key_num_fields = 1,
@@ -2687,8 +2828,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 2,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 116,
+		.cond_start_idx = 129,
 		.cond_nums = 1 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 9, , table: control.set_dest_mdata_a */
@@ -2698,8 +2840,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 9,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 117,
+		.cond_start_idx = 130,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_COPY_SRC1_TO_RF,
@@ -2714,8 +2857,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 117,
+		.cond_start_idx = 130,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_ALLOC_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
@@ -2729,10 +2873,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 117,
+		.cond_start_idx = 130,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -2750,10 +2895,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 117,
+		.cond_start_idx = 130,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -2771,10 +2917,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 118,
+		.cond_start_idx = 131,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
@@ -2794,10 +2941,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 118,
+		.cond_start_idx = 131,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRR_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_RID_REGFILE,
 	.fdb_operand = BNXT_ULP_RF_IDX_RID,
 	.result_start_idx = 923,
@@ -2814,10 +2962,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 119,
+		.cond_start_idx = 132,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MIRROR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.result_start_idx = 949,
@@ -2831,8 +2980,9 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 119,
+		.cond_start_idx = 132,
 		.cond_nums = 0 },
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP,
 	.func_info = {
 		.func_opc = BNXT_ULP_FUNC_OPC_ADD,
@@ -2852,12 +3002,13 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 119,
+		.cond_start_idx = 132,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_GENERIC_TBL_OPC_WRITE,
 	.gen_tbl_lkup_type = BNXT_ULP_GENERIC_TBL_LKUP_TYPE_INDEX,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
-	.key_start_idx = 44,
+	.key_start_idx = 48,
 	.blob_key_bit_size = 8,
 	.key_bit_size = 8,
 	.key_num_fields = 1,
@@ -2875,10 +3026,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 119,
+		.cond_start_idx = 132,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_FLOW_CNTR_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 957,
 	.result_bit_size = 64,
@@ -2894,10 +3046,11 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 1,
 		.cond_false_goto = 1,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_TRUE,
-		.cond_start_idx = 120,
+		.cond_start_idx = 133,
 		.cond_nums = 0 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.mark_db_opcode = BNXT_ULP_MARK_DB_OPC_NOP,
 	.record_size = 64,
@@ -2916,14 +3069,54 @@ struct bnxt_ulp_mapper_tbl_info ulp_wh_plus_act_tbl_list[] = {
 		.cond_true_goto  = 0,
 		.cond_false_goto = 0,
 		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
-		.cond_start_idx = 120,
+		.cond_start_idx = 133,
 		.cond_nums = 1 },
 	.tbl_opcode = BNXT_ULP_INDEX_TBL_OPC_ALLOC_WR_REGFILE,
 	.tbl_operand = BNXT_ULP_RF_IDX_MAIN_ACTION_PTR,
+	.key_recipe_opcode = BNXT_ULP_KEY_RECIPE_OPC_NOP,
 	.fdb_opcode = BNXT_ULP_FDB_OPC_PUSH_FID,
 	.result_start_idx = 969,
 	.result_bit_size = 128,
 	.result_num_fields = 26
+	}
+};
+
+struct bnxt_ulp_mapper_cond_list_info ulp_wh_plus_act_cond_oper_list[] = {
+	/* cond_reject: wh_plus, act_tid: 3 */
+	{
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
+		.cond_start_idx = 27,
+		.cond_nums = 3
+	},
+	/* cond_reject: wh_plus, act_tid: 3 */
+	{
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
+		.cond_start_idx = 30,
+		.cond_nums = 5
+	},
+	/* cond_reject: wh_plus, act_tid: 4 */
+	{
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
+		.cond_start_idx = 49,
+		.cond_nums = 1
+	},
+	/* cond_reject: wh_plus, act_tid: 4 */
+	{
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
+		.cond_start_idx = 50,
+		.cond_nums = 2
+	},
+	/* cond_reject: wh_plus, act_tid: 7 */
+	{
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_AND,
+		.cond_start_idx = 73,
+		.cond_nums = 3
+	},
+	/* cond_reject: wh_plus, act_tid: 7 */
+	{
+		.cond_list_opcode = BNXT_ULP_COND_LIST_OPC_OR,
+		.cond_start_idx = 76,
+		.cond_nums = 5
 	}
 };
 
@@ -2977,74 +3170,87 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_METER
 	},
-	/* cond_execute: act_tid: 1, shared_mirror_record.rd */
+	/* cond_execute: act_tid: 1, shared_mirror_record.rd:12*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 1, control.mirror_ing_0 */
+	/* cond_execute: act_tid: 1, control.mirror_ing_0:13*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 1, multi_shared_mirror_record.rd_a */
+	/* cond_execute: act_tid: 1, multi_shared_mirror_record.rd_a:14*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_MULTIPLE_PORT
 	},
-	/* cond_execute: act_tid: 1, control.mirror_port_a */
+	/* cond_execute: act_tid: 1, control.mirror_port_a:15*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 1, control.mirror_port_b */
+	/* cond_execute: act_tid: 1, control.mirror_port_b:16*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 1, int_flow_counter_tbl.mirror */
+	/* cond_execute: act_tid: 1, int_flow_counter_tbl.mirror:17*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 1, int_full_act_record.mirror */
+	/* cond_execute: act_tid: 1, int_full_act_record.mirror:18*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 1, ext_full_act_record.mirror */
+	/* cond_execute: act_tid: 1, ext_full_act_record.mirror:19*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
-	/* cond_execute: act_tid: 1, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 1, int_flow_counter_tbl.0:20*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 1, int_vtag_encap_record.0 */
+	/* cond_execute: act_tid: 1, int_vtag_encap_record.0:21*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_PUSH_VLAN
 	},
-	/* cond_execute: act_tid: 1, int_full_act_record.0 */
+	/* cond_execute: act_tid: 1, int_full_act_record.0:22*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 1, ext_full_act_record.0 */
+	/* cond_execute: act_tid: 1, ext_full_act_record.0:23*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
-	/* cond_execute: act_tid: 2, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 2, int_flow_counter_tbl.0:24*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 2, int_full_act_record.0 */
+	/* cond_execute: act_tid: 2, int_full_act_record.0:25*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 2, ext_full_act_record.0 */
+	/* cond_execute: act_tid: 2, ext_full_act_record.0:26*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
+	},
+	/* cond_reject: wh_plus, act_tid: 3 */
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_DST
 	},
 	/* cond_reject: wh_plus, act_tid: 3 */
 	{
@@ -3059,7 +3265,15 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 3, control.0 */
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV6_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV6_DST
+	},
+	/* cond_execute: act_tid: 3, control.0:35*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
@@ -3072,54 +3286,54 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_SRC
 	},
-	/* cond_execute: act_tid: 3, multi_shared_mirror_record.rd_a */
+	/* cond_execute: act_tid: 3, multi_shared_mirror_record.rd_a:38*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_MULTIPLE_PORT
 	},
-	/* cond_execute: act_tid: 3, control.mirror_port_a */
+	/* cond_execute: act_tid: 3, control.mirror_port_a:39*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 3, control.mirror_port_b */
+	/* cond_execute: act_tid: 3, control.mirror_port_b:40*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 3, int_flow_counter_tbl.mirror */
+	/* cond_execute: act_tid: 3, int_flow_counter_tbl.mirror:41*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 3, int_full_act_record.mirror */
+	/* cond_execute: act_tid: 3, int_full_act_record.mirror:42*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 3, ext_full_act_record.mirror */
+	/* cond_execute: act_tid: 3, ext_full_act_record.mirror:43*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
-	/* cond_execute: act_tid: 3, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 3, int_flow_counter_tbl.0:44*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 3, act_modify_ipv4_src.0 */
+	/* cond_execute: act_tid: 3, act_modify_ipv4_src.0:45*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_SRC
 	},
-	/* cond_execute: act_tid: 3, act_modify_ipv4_dst.0 */
+	/* cond_execute: act_tid: 3, act_modify_ipv4_dst.0:46*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
 	},
-	/* cond_execute: act_tid: 3, int_full_act_record.0 */
+	/* cond_execute: act_tid: 3, int_full_act_record.0:47*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 3, ext_full_act_record.0 */
+	/* cond_execute: act_tid: 3, ext_full_act_record.0:48*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
@@ -3128,22 +3342,31 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 4, int_flow_counter_tbl.0 */
+	/* cond_reject: wh_plus, act_tid: 4 */
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_RSS
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_QUEUE
+	},
+	/* cond_execute: act_tid: 4, int_flow_counter_tbl.0:52*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 4, vnic_interface_rss_config.0 */
+	/* cond_execute: act_tid: 4, vnic_interface_rss_config.0:53*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_RSS
 	},
-	/* cond_execute: act_tid: 4, vnic_interface_queue_config.0 */
+	/* cond_execute: act_tid: 4, vnic_interface_queue_config.0:54*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_QUEUE
 	},
-	/* cond_execute: act_tid: 4, int_full_act_record.0 */
+	/* cond_execute: act_tid: 4, int_full_act_record.0:55*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_QUEUE
@@ -3152,51 +3375,51 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_RSS
 	},
-	/* cond_execute: act_tid: 6, shared_mirror_record.rd */
+	/* cond_execute: act_tid: 6, shared_mirror_record.rd:57*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 6, control.mirror.0 */
+	/* cond_execute: act_tid: 6, control.mirror.0:58*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 6, multi_shared_mirror_record.rd_a */
+	/* cond_execute: act_tid: 6, multi_shared_mirror_record.rd_a:59*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_MULTIPLE_PORT
 	},
-	/* cond_execute: act_tid: 6, control.mirror_port_a */
+	/* cond_execute: act_tid: 6, control.mirror_port_a:60*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 6, control.mirror_port_b */
+	/* cond_execute: act_tid: 6, control.mirror_port_b:61*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 6, control.set_dest_is_b_vfrep */
+	/* cond_execute: act_tid: 6, control.set_dest_is_b_vfrep:62*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_MP_B_IS_VFREP
 	},
-	/* cond_execute: act_tid: 6, int_flow_counter_tbl.mirror */
+	/* cond_execute: act_tid: 6, int_flow_counter_tbl.mirror:63*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 6, int_full_act_record.mirr_2_vf */
+	/* cond_execute: act_tid: 6, int_full_act_record.mirr_2_vf:64*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 6, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 6, int_flow_counter_tbl.0:65*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 6, int_vtag_encap_record.0 */
+	/* cond_execute: act_tid: 6, int_vtag_encap_record.0:66*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
@@ -3204,11 +3427,11 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_PUSH_VLAN
 	},
-	/* cond_execute: act_tid: 6, int_full_act_record.0 */
+	/* cond_execute: act_tid: 6, int_full_act_record.0:68*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 6, ext_full_act_record.no_tag */
+	/* cond_execute: act_tid: 6, ext_full_act_record.no_tag:69*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
@@ -3216,7 +3439,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_PUSH_VLAN
 	},
-	/* cond_execute: act_tid: 6, ext_full_act_record.one_tag */
+	/* cond_execute: act_tid: 6, ext_full_act_record.one_tag:71*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
@@ -3227,13 +3450,38 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	/* cond_reject: wh_plus, act_tid: 7 */
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_NOT_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_DST
+	},
+	/* cond_reject: wh_plus, act_tid: 7 */
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_MAC_DST
 	},
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_MAC_SRC
 	},
-	/* cond_execute: act_tid: 7, control.0 */
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV6_SRC
+	},
+	{
+	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
+	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV6_DST
+	},
+	/* cond_execute: act_tid: 7, control.0:81*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
@@ -3246,65 +3494,65 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_NOT_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_TP_SRC
 	},
-	/* cond_execute: act_tid: 7, shared_mirror_record.rd */
+	/* cond_execute: act_tid: 7, shared_mirror_record.rd:84*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 7, control.mirror.0 */
+	/* cond_execute: act_tid: 7, control.mirror.0:85*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 7, multi_shared_mirror_record.rd_a */
+	/* cond_execute: act_tid: 7, multi_shared_mirror_record.rd_a:86*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_MULTIPLE_PORT
 	},
-	/* cond_execute: act_tid: 7, control.mirror_port_a */
+	/* cond_execute: act_tid: 7, control.mirror_port_a:87*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 7, control.mirror_port_b */
+	/* cond_execute: act_tid: 7, control.mirror_port_b:88*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 7, control.set_dest_is_b_vfrep */
+	/* cond_execute: act_tid: 7, control.set_dest_is_b_vfrep:89*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_MP_B_IS_VFREP
 	},
-	/* cond_execute: act_tid: 7, int_flow_counter_tbl.mirror */
+	/* cond_execute: act_tid: 7, int_flow_counter_tbl.mirror:90*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 7, int_full_act_record.mirr_2_vf */
+	/* cond_execute: act_tid: 7, int_full_act_record.mirr_2_vf:91*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 7, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 7, int_flow_counter_tbl.0:92*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 7, act_modify_ipv4_src.0 */
+	/* cond_execute: act_tid: 7, act_modify_ipv4_src.0:93*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_SRC
 	},
-	/* cond_execute: act_tid: 7, act_modify_ipv4_dst.0 */
+	/* cond_execute: act_tid: 7, act_modify_ipv4_dst.0:94*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_IPV4_DST
 	},
-	/* cond_execute: act_tid: 7, int_full_act_record.0 */
+	/* cond_execute: act_tid: 7, int_full_act_record.0:95*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 7, ext_full_act_record.0 */
+	/* cond_execute: act_tid: 7, ext_full_act_record.0:96*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
@@ -3317,51 +3565,51 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SET_MAC_SRC
 	},
-	/* cond_execute: act_tid: 8, shared_mirror_record.rd */
+	/* cond_execute: act_tid: 8, shared_mirror_record.rd:99*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 8, control.mirror.0 */
+	/* cond_execute: act_tid: 8, control.mirror.0:100*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 8, multi_shared_mirror_record.rd_a */
+	/* cond_execute: act_tid: 8, multi_shared_mirror_record.rd_a:101*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_MULTIPLE_PORT
 	},
-	/* cond_execute: act_tid: 8, control.mirror_port_a */
+	/* cond_execute: act_tid: 8, control.mirror_port_a:102*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 8, control.mirror_port_b */
+	/* cond_execute: act_tid: 8, control.mirror_port_b:103*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 8, control.set_dest_is_b_vfrep */
+	/* cond_execute: act_tid: 8, control.set_dest_is_b_vfrep:104*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_CF_NOT_SET,
 	.cond_operand = BNXT_ULP_CF_IDX_MP_B_IS_VFREP
 	},
-	/* cond_execute: act_tid: 8, int_flow_counter_tbl.mirror */
+	/* cond_execute: act_tid: 8, int_flow_counter_tbl.mirror:105*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 8, int_full_act_record.mirr_2_vf */
+	/* cond_execute: act_tid: 8, int_full_act_record.mirr_2_vf:106*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 8, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 8, int_flow_counter_tbl.0:107*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 8, sp_smac_ipv4.0 */
+	/* cond_execute: act_tid: 8, sp_smac_ipv4.0:108*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -3370,7 +3618,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: act_tid: 8, sp_smac_ipv6.0 */
+	/* cond_execute: act_tid: 8, sp_smac_ipv6.0:110*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -3379,7 +3627,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: act_tid: 8, vxlan_encap_rec_cache.rd */
+	/* cond_execute: act_tid: 8, vxlan_encap_rec_cache.rd:112*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -3388,7 +3636,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: act_tid: 8, vxlan_encap_ipv6_rec_cache.rd */
+	/* cond_execute: act_tid: 8, vxlan_encap_ipv6_rec_cache.rd:114*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -3397,16 +3645,16 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: act_tid: 8, control.vxlan */
+	/* cond_execute: act_tid: 8, control.vxlan_v6_encap:116*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 8, int_tun_encap_record.0 */
+	/* cond_execute: act_tid: 8, int_tun_encap_record.0:117*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 8, vxlan_encap_rec_cache.wr */
+	/* cond_execute: act_tid: 8, vxlan_encap_rec_cache.wr:118*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV4
@@ -3415,7 +3663,7 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: act_tid: 8, vxlan_encap_ipv6_rec_cache.wr */
+	/* cond_execute: act_tid: 8, vxlan_encap_ipv6_rec_cache.wr:120*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_O_IPV6
@@ -3424,20 +3672,20 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_ENC_HDR_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_HDR_BIT_T_VXLAN
 	},
-	/* cond_execute: act_tid: 8, int_full_act_record.0 */
+	/* cond_execute: act_tid: 8, int_full_act_record.0:122*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 8, ext_full_act_record_vxlan.0 */
+	/* cond_execute: act_tid: 8, ext_full_act_record_vxlan.0:123*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_IS_SET,
 	},
-	/* cond_execute: act_tid: 9, shared_mirror_record.rd */
+	/* cond_execute: act_tid: 9, shared_mirror_record.rd:124*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
 	},
-	/* cond_execute: act_tid: 9, control.mirror.0 */
+	/* cond_execute: act_tid: 9, control.mirror.0:125*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_SHARED_SAMPLE
@@ -3446,36 +3694,36 @@ struct bnxt_ulp_mapper_cond_info ulp_wh_plus_act_cond_list[] = {
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 9, multi_shared_mirror_record.rd_a */
+	/* cond_execute: act_tid: 9, multi_shared_mirror_record.rd_a:127*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_MULTIPLE_PORT
 	},
-	/* cond_execute: act_tid: 9, control.mirror_port_a */
+	/* cond_execute: act_tid: 9, control.mirror_port_a:128*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 9, control.mirror_port_b */
+	/* cond_execute: act_tid: 9, control.mirror_port_b:129*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_RF_IS_SET,
 	.cond_operand = BNXT_ULP_RF_IDX_GENERIC_TBL_MISS
 	},
-	/* cond_execute: act_tid: 9, int_flow_counter_tbl.mirror */
+	/* cond_execute: act_tid: 9, int_flow_counter_tbl.mirror:130*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 9, int_full_act_record.mirr_2_vf */
+	/* cond_execute: act_tid: 9, int_full_act_record.mirr_2_vf:131*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	},
-	/* cond_execute: act_tid: 9, int_flow_counter_tbl.0 */
+	/* cond_execute: act_tid: 9, int_flow_counter_tbl.0:132*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_ACT_BIT_IS_SET,
 	.cond_operand = BNXT_ULP_ACT_BIT_COUNT
 	},
-	/* cond_execute: act_tid: 9, int_full_act_record.0 */
+	/* cond_execute: act_tid: 9, int_full_act_record.0:133*/
 	{
 	.cond_opcode = BNXT_ULP_COND_OPC_EXT_MEM_NOT_SET,
 	}
@@ -4010,6 +4258,20 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		BNXT_ULP_ENC_FIELD_VXLAN_VNI & 0xff}
 		}
 	},
+	{
+	.field_info_mask = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		},
+	.field_info_spec = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		}
+	},
 	/* act_tid: 8, , table: vxlan_encap_ipv6_rec_cache.rd */
 	{
 	.field_info_mask = {
@@ -4130,6 +4392,20 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		BNXT_ULP_ENC_FIELD_VXLAN_VNI & 0xff}
 		}
 	},
+	{
+	.field_info_mask = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		},
+	.field_info_spec = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		}
+	},
 	/* act_tid: 8, , table: vxlan_encap_rec_cache.wr */
 	{
 	.field_info_mask = {
@@ -4236,6 +4512,20 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		.field_opr1 = {
 		(BNXT_ULP_ENC_FIELD_VXLAN_VNI >> 8) & 0xff,
 		BNXT_ULP_ENC_FIELD_VXLAN_VNI & 0xff}
+		}
+	},
+	{
+	.field_info_mask = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		},
+	.field_info_spec = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
 		}
 	},
 	/* act_tid: 8, , table: vxlan_encap_ipv6_rec_cache.wr */
@@ -4358,6 +4648,20 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		BNXT_ULP_ENC_FIELD_VXLAN_VNI & 0xff}
 		}
 	},
+	{
+	.field_info_mask = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		},
+	.field_info_spec = {
+		.description = "tbl_scope",
+		.field_bit_size = 5,
+		.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
+		.field_src1 = BNXT_ULP_FIELD_SRC_ZERO
+		}
+	},
 	/* act_tid: 9, , table: shared_mirror_record.rd */
 	{
 	.field_info_mask = {
@@ -4438,6 +4742,9 @@ struct bnxt_ulp_mapper_key_info ulp_wh_plus_act_key_info_list[] = {
 		BNXT_ULP_CF_IDX_MP_PORT_B & 0xff}
 		}
 	}
+};
+
+struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_key_ext_list[] = {
 };
 
 struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
@@ -10800,7 +11107,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	},
 	{
 	.description = "enc_rec_ptr",
-	.field_bit_size = 16,
+	.field_bit_size = 32,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
@@ -10819,7 +11126,7 @@ struct bnxt_ulp_mapper_field_info ulp_wh_plus_act_result_field_list[] = {
 	},
 	{
 	.description = "enc_rec_ptr",
-	.field_bit_size = 16,
+	.field_bit_size = 32,
 	.field_opc = BNXT_ULP_FIELD_OPC_SRC1,
 	.field_src1 = BNXT_ULP_FIELD_SRC_RF,
 	.field_opr1 = {
@@ -12444,14 +12751,14 @@ struct bnxt_ulp_mapper_ident_info ulp_wh_plus_act_ident_list[] = {
 	{
 	.description = "enc_rec_ptr",
 	.regfile_idx = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
-	.ident_bit_size = 16,
+	.ident_bit_size = 32,
 	.ident_bit_pos = 32
 	},
 	/* act_tid: 8, , table: vxlan_encap_ipv6_rec_cache.rd */
 	{
 	.description = "enc_rec_ptr",
 	.regfile_idx = BNXT_ULP_RF_IDX_ENCAP_PTR_0,
-	.ident_bit_size = 16,
+	.ident_bit_size = 32,
 	.ident_bit_pos = 32
 	},
 	/* act_tid: 9, , table: shared_mirror_record.rd */

@@ -11,6 +11,7 @@
 #include "bnxt_hwrm.h"
 #include "bnxt_ring.h"
 #include "hsi_struct_def_dpdk.h"
+#include "tfc_vf2pf_msg.h"
 
 void bnxt_wait_for_device_shutdown(struct bnxt *bp)
 {
@@ -135,6 +136,7 @@ static void
 bnxt_process_vf_flr(struct bnxt *bp, uint32_t data1)
 {
 	uint16_t pfid, vfid;
+	int rc;
 
 	if (!BNXT_TRUFLOW_EN(bp))
 		return;
@@ -145,7 +147,11 @@ bnxt_process_vf_flr(struct bnxt *bp, uint32_t data1)
 		HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_SFT;
 
 	PMD_DRV_LOG_LINE(INFO, "VF FLR async event received pfid: %u, vfid: %u",
-		    pfid, vfid);
+			 pfid, vfid);
+
+	rc = tfc_tbl_scope_func_reset(&bp->tfcp, vfid);
+	if (rc != 0)
+		PMD_DRV_LOG_LINE(ERR, "Failed to reset vf");
 }
 
 /*
@@ -358,6 +364,60 @@ void bnxt_handle_fwd_req(struct bnxt *bp, struct cmpl_base *cmpl)
 				HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY |
 			    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN |
 			    HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ANYVLAN_NONVLAN);
+		}
+
+		if (fwd_cmd->req_type == HWRM_OEM_CMD) {
+			struct hwrm_oem_cmd_input *oem_cmd = (void *)fwd_cmd;
+			struct hwrm_oem_cmd_output oem_out = { 0 };
+
+			if (oem_cmd->oem_id == 0x14e4 &&
+			    oem_cmd->naming_authority
+				== HWRM_OEM_CMD_INPUT_NAMING_AUTHORITY_PCI_SIG &&
+			    oem_cmd->message_family
+				== HWRM_OEM_CMD_INPUT_MESSAGE_FAMILY_TRUFLOW) {
+				uint32_t resp[18] = { 0 };
+				uint16_t oem_data_len = sizeof(oem_out.oem_data);
+				uint16_t resp_len = oem_data_len;
+
+				rc = tfc_oem_cmd_process(&bp->tfcp,
+							 oem_cmd->oem_data,
+							 resp,
+							 &resp_len);
+				if (rc) {
+					PMD_DRV_LOG_LINE(ERR,
+						"OEM cmd process error id 0x%x, name 0x%x, family 0x%x",
+						oem_cmd->oem_id,
+						oem_cmd->naming_authority,
+						oem_cmd->message_family);
+					goto reject;
+				}
+
+				oem_out.error_code = 0;
+				oem_out.req_type = oem_cmd->req_type;
+				oem_out.seq_id = oem_cmd->seq_id;
+				oem_out.resp_len = rte_cpu_to_le_16(sizeof(oem_out));
+				oem_out.oem_id = oem_cmd->oem_id;
+				oem_out.naming_authority = oem_cmd->naming_authority;
+				oem_out.message_family = oem_cmd->message_family;
+				memcpy(oem_out.oem_data, resp, resp_len);
+				oem_out.valid = 1;
+
+				rc = bnxt_hwrm_fwd_resp(bp, fw_vf_id, &oem_out, oem_out.resp_len,
+						oem_cmd->resp_addr, oem_cmd->cmpl_ring);
+				if (rc) {
+					PMD_DRV_LOG_LINE(ERR,
+							 "Failed to send HWRM_FWD_RESP VF 0x%x, type",
+							 fw_vf_id - bp->pf->first_vf_id);
+				}
+			} else {
+				PMD_DRV_LOG_LINE(ERR,
+						 "Unsupported OEM cmd id 0x%x, name 0x%x, family 0x%x",
+						 oem_cmd->oem_id, oem_cmd->naming_authority,
+						 oem_cmd->message_family);
+				goto reject;
+			}
+
+			return;
 		}
 
 		/* Forward */

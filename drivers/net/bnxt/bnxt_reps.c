@@ -324,42 +324,61 @@ static int bnxt_tf_vfr_alloc(struct rte_eth_dev *vfr_ethdev)
 	struct bnxt *parent_bp = parent_dev->data->dev_private;
 
 	if (!parent_bp || !parent_bp->ulp_ctx) {
-		BNXT_TF_DBG(ERR, "Invalid arguments\n");
+		PMD_DRV_LOG_LINE(ERR, "Invalid arguments");
 		return 0;
 	}
 	/* update the port id so you can backtrack to ethdev */
 	vfr->dpdk_port_id = vfr_ethdev->data->port_id;
 
 	/* If pair is present, then delete the pair */
-	if (bnxt_hwrm_cfa_pair_exists(parent_bp, vfr))
-		(void)bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
+	if (!BNXT_CHIP_P7(parent_bp))
+		if (bnxt_hwrm_cfa_pair_exists(parent_bp, vfr))
+			(void)bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
 
 	/* Update the ULP portdata base with the new VFR interface */
 	rc = ulp_port_db_port_update(parent_bp->ulp_ctx, vfr_ethdev);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to update ulp port details vfr:%u\n",
-			    vfr->vf_id);
+		PMD_DRV_LOG_LINE(ERR, "Failed to update ulp port details vfr:%u",
+				 vfr->vf_id);
 		return rc;
 	}
 
 	/* Create the default rules for the VFR */
 	rc = bnxt_ulp_create_vfr_default_rules(vfr_ethdev);
 	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed to create VFR default rules vfr:%u\n",
-			    vfr->vf_id);
+		PMD_DRV_LOG_LINE(ERR, "Failed to create VFR default rules vfr:%u",
+				 vfr->vf_id);
 		return rc;
 	}
 	/* update the port id so you can backtrack to ethdev */
 	vfr->dpdk_port_id = vfr_ethdev->data->port_id;
 
-	rc = bnxt_hwrm_cfa_pair_alloc(parent_bp, vfr);
-	if (rc) {
-		BNXT_TF_DBG(ERR, "Failed in hwrm vfr alloc vfr:%u rc=%d\n",
-			    vfr->vf_id, rc);
-		(void)bnxt_ulp_delete_vfr_default_rules(vfr);
+	if (BNXT_CHIP_P7(parent_bp))  {
+		rc = bnxt_hwrm_release_afm_func(parent_bp,
+				vfr->fw_fid,
+				parent_bp->fw_fid,
+				HWRM_CFA_RELEASE_AFM_FUNC_INPUT_TYPE_RFID,
+				0);
+
+		if (rc)
+			PMD_DRV_LOG_LINE(ERR,
+					 "Failed in hwrm release afm func:%u rc=%d",
+					 vfr->vf_id, rc);
+	} else {
+		rc = bnxt_hwrm_cfa_pair_alloc(parent_bp, vfr);
+		if (rc)
+			PMD_DRV_LOG_LINE(ERR,
+					 "Failed in hwrm vfr alloc vfr:%u rc=%d",
+					 vfr->vf_id, rc);
 	}
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR created and initialized\n",
-		    vfr->dpdk_port_id);
+
+	if (rc)
+		(void)bnxt_ulp_delete_vfr_default_rules(vfr);
+	else
+		PMD_DRV_LOG_LINE(DEBUG,
+				 "BNXT Port:%d VFR created and initialized",
+				 vfr->dpdk_port_id);
+
 	return rc;
 }
 
@@ -444,7 +463,8 @@ int bnxt_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 	parent_bp = rep_bp->parent_dev->data->dev_private;
 	rep_info = &parent_bp->rep_info[rep_bp->vf_id];
 
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR start\n", eth_dev->data->port_id);
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR start",
+			 eth_dev->data->port_id);
 	pthread_mutex_lock(&rep_info->vfr_start_lock);
 	if (!rep_info->conduit_valid) {
 		rc = bnxt_get_dflt_vnic_svif(parent_bp, rep_bp);
@@ -470,7 +490,8 @@ int bnxt_rep_dev_start_op(struct rte_eth_dev *eth_dev)
 
 static int bnxt_tf_vfr_free(struct bnxt_representor *vfr)
 {
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR ulp free\n", vfr->dpdk_port_id);
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR ulp free",
+			 vfr->dpdk_port_id);
 	return bnxt_ulp_delete_vfr_default_rules(vfr);
 }
 
@@ -507,7 +528,8 @@ static int bnxt_vfr_free(struct bnxt_representor *vfr)
 		    vfr->vf_id);
 	vfr->vfr_tx_cfa_action = 0;
 
-	rc = bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
+	if  (!BNXT_CHIP_P7(parent_bp))
+		rc = bnxt_hwrm_cfa_pair_free(parent_bp, vfr);
 
 	return rc;
 }
@@ -519,7 +541,8 @@ int bnxt_rep_dev_stop_op(struct rte_eth_dev *eth_dev)
 	/* Avoid crashes as we are about to free queues */
 	bnxt_stop_rxtx(eth_dev);
 
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR stop\n", eth_dev->data->port_id);
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR stop",
+			 eth_dev->data->port_id);
 
 	bnxt_vfr_free(vfr_bp);
 
@@ -533,7 +556,8 @@ int bnxt_rep_dev_stop_op(struct rte_eth_dev *eth_dev)
 
 int bnxt_rep_dev_close_op(struct rte_eth_dev *eth_dev)
 {
-	BNXT_TF_DBG(DEBUG, "BNXT Port:%d VFR close\n", eth_dev->data->port_id);
+	PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR close",
+			 eth_dev->data->port_id);
 	bnxt_representor_uninit(eth_dev);
 	return 0;
 }
@@ -706,8 +730,13 @@ int bnxt_rep_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	return 0;
 
 out:
-	if (rxq)
+	if (rxq) {
+ #if (RTE_VERSION_NUM(21, 8, 0, 0) < RTE_VERSION)
 		bnxt_rep_rx_queue_release_op(eth_dev, queue_idx);
+ #else
+		bnxt_rx_queue_release_op(rxq);
+ #endif
+	}
 
 	return rc;
 }

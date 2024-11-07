@@ -1028,6 +1028,7 @@ Listed below are the rte_flow items supported:
 * ``any``
 * ``ecpri``
 * ``eth``
+* ``geneve``
 * ``gre``
 * ``icmp``
 * ``icmp6``
@@ -1068,8 +1069,11 @@ Listed below are the rte_flow actions supported:
 * ``sample``
 * ``set_ipv4_dst``
 * ``set_ipv4_src``
+* ``set_ipv6_dst``
+* ``set_ipv6_src``
 * ``set_tp_dst``
 * ``set_tp_src``
+* ``set_ttl``
 * ``vf``
 * ``vxlan_decap``
 * ``vxlan_encap``
