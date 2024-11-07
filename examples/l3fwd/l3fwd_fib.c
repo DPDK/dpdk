@@ -121,7 +121,7 @@ fib_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 {
 	uint32_t ipv4_arr[nb_rx];
 	uint8_t ipv6_arr[nb_rx][RTE_FIB6_IPV6_ADDR_SIZE];
-	uint16_t hops[nb_rx];
+	uint16_t hops[SENDM_PORT_OVERHEAD(nb_rx)];
 	uint64_t hopsv4[nb_rx], hopsv6[nb_rx];
 	uint8_t type_arr[nb_rx];
 	uint32_t ipv4_cnt = 0, ipv6_cnt = 0;
