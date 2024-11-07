@@ -465,6 +465,7 @@ ulp_tf_cntxt_app_caps_init(struct bnxt *bp,
 				    info[i].ha_reg_cnt);
 		ulp_ctx->cfg_data->ha_pool_id = info[i].ha_pool_id;
 		ulp_ctx->cfg_data->default_priority = info[i].default_priority;
+		ulp_ctx->cfg_data->feature_bits = info[i].feature_bits;
 	}
 	if (!found) {
 		BNXT_DRV_DBG(ERR, "APP ID %d, Device ID: 0x%x not supported.\n",
