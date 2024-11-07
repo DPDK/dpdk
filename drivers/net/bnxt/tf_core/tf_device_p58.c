@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -865,13 +865,13 @@ static int tf_dev_p58_query_resc_usage(struct tf *tfp,
  *    -EINVAL - Error
  */
 static int
-tf_dev_p58_update_tbl_usage_buffer(uint32_t session_id,
+tf_dev_p58_update_tbl_usage_buffer(struct tf *tfp,
 				   enum tf_dir dir,
 				   enum tf_tbl_type tbl_type,
 				   enum tf_resc_opt resc_opt)
 {
 	int rc;
-	rc = tf_tbl_usage_update(session_id, dir, tbl_type, resc_opt);
+	rc = tf_tbl_usage_update(tfp, dir, tbl_type, resc_opt);
 	return rc;
 }
 #endif /* TF_FLOW_SCALE_QUERY */

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -27,7 +27,7 @@ tf_tcam_bind(struct tf *tfp,
 	int d, t;
 	struct tf_rm_alloc_info info;
 	struct tf_rm_free_db_parms fparms;
-	struct tf_rm_create_db_parms db_cfg;
+	struct tf_rm_create_db_parms db_cfg = { 0 };
 	struct tf_tcam_resources local_tcam_cnt[TF_DIR_MAX];
 	struct tf_tcam_resources *tcam_cnt;
 	struct tf_rm_get_alloc_info_parms ainfo;

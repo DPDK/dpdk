@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021-2023 Broadcom
+ * Copyright(c) 2021-2024 Broadcom
  * All rights reserved.
  */
 
@@ -14,10 +14,6 @@
 /**
  * The TCAM module provides processing of Internal TCAM types.
  */
-
-#ifndef TF_TCAM_MAX_SESSIONS
-#define TF_TCAM_MAX_SESSIONS 16
-#endif
 
 #define ENTRY_ID_INVALID UINT16_MAX
 
@@ -79,9 +75,10 @@
 		}							\
 	} while (0)
 
+#define CFA_TCAM_MGR_TBL_TYPE_START 0
+
+/* Logical TCAM tables */
 enum cfa_tcam_mgr_tbl_type {
-	/* Logical TCAM tables */
-	CFA_TCAM_MGR_TBL_TYPE_START,
 	CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_AFM =
 		CFA_TCAM_MGR_TBL_TYPE_START,
 	CFA_TCAM_MGR_TBL_TYPE_L2_CTXT_TCAM_HIGH_APPS,
@@ -106,13 +103,8 @@ enum cfa_tcam_mgr_tbl_type {
 
 enum cfa_tcam_mgr_device_type {
 	CFA_TCAM_MGR_DEVICE_TYPE_P4 = 0,
-	CFA_TCAM_MGR_DEVICE_TYPE_SR,
 	CFA_TCAM_MGR_DEVICE_TYPE_P5,
 	CFA_TCAM_MGR_DEVICE_TYPE_MAX
-};
-
-struct cfa_tcam_mgr_context {
-	struct tf *tfp;
 };
 
 /**
@@ -361,7 +353,7 @@ cfa_tcam_mgr_tbl_2_str(enum cfa_tcam_mgr_tbl_type tcam_type);
  *   - (<0) on failure.
  */
 int
-cfa_tcam_mgr_init(int sess_idx, enum cfa_tcam_mgr_device_type type,
+cfa_tcam_mgr_init(struct tf *tfp, enum cfa_tcam_mgr_device_type type,
 		  struct cfa_tcam_mgr_init_parms *parms);
 
 /**
@@ -391,7 +383,7 @@ cfa_tcam_mgr_get_phys_table_type(enum cfa_tcam_mgr_tbl_type type);
  *   - (<0) on failure.
  */
 int
-cfa_tcam_mgr_qcaps(struct cfa_tcam_mgr_context *context __rte_unused,
+cfa_tcam_mgr_qcaps(struct tf *tfp __rte_unused,
 		   struct cfa_tcam_mgr_qcaps_parms *parms);
 
 /**
@@ -408,7 +400,7 @@ cfa_tcam_mgr_qcaps(struct cfa_tcam_mgr_context *context __rte_unused,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_bind(struct tf *tfp,
 		      struct cfa_tcam_mgr_cfg_parms *parms);
 
 /**
@@ -424,7 +416,7 @@ int cfa_tcam_mgr_bind(struct cfa_tcam_mgr_context *context,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int cfa_tcam_mgr_unbind(struct cfa_tcam_mgr_context *context);
+int cfa_tcam_mgr_unbind(struct tf *tfp);
 
 /**
  * Allocates the requested tcam type from the internal RM DB.
@@ -439,7 +431,7 @@ int cfa_tcam_mgr_unbind(struct cfa_tcam_mgr_context *context);
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int cfa_tcam_mgr_alloc(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_alloc(struct tf *tfp,
 		       struct cfa_tcam_mgr_alloc_parms *parms);
 
 /**
@@ -456,7 +448,7 @@ int cfa_tcam_mgr_alloc(struct cfa_tcam_mgr_context *context,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int cfa_tcam_mgr_free(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_free(struct tf *tfp,
 		      struct cfa_tcam_mgr_free_parms *parms);
 
 /**
@@ -473,7 +465,7 @@ int cfa_tcam_mgr_free(struct cfa_tcam_mgr_context *context,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int cfa_tcam_mgr_set(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_set(struct tf *tfp,
 		     struct cfa_tcam_mgr_set_parms *parms);
 
 /**
@@ -490,30 +482,27 @@ int cfa_tcam_mgr_set(struct cfa_tcam_mgr_context *context,
  *   - (0) if successful.
  *   - (-EINVAL) on failure.
  */
-int cfa_tcam_mgr_get(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_get(struct tf *tfp,
 		     struct cfa_tcam_mgr_get_parms *parms);
 
 int
-cfa_tcam_mgr_tables_get(int sess_idx, enum tf_dir dir,
+cfa_tcam_mgr_tables_get(struct tf *tfp, enum tf_dir dir,
 			enum cfa_tcam_mgr_tbl_type type,
 			uint16_t *start_row,
 			uint16_t *end_row,
 			uint16_t *max_entries,
 			uint16_t *slices);
 int
-cfa_tcam_mgr_tables_set(int sess_idx, enum tf_dir dir,
+cfa_tcam_mgr_tables_set(struct tf *tfp, enum tf_dir dir,
 			enum cfa_tcam_mgr_tbl_type type,
 			uint16_t start_row,
 			uint16_t end_row,
 			uint16_t max_entries);
 
-int cfa_tcam_mgr_shared_clear(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_shared_clear(struct tf *tfp,
 		     struct cfa_tcam_mgr_shared_clear_parms *parms);
 
-int cfa_tcam_mgr_shared_move(struct cfa_tcam_mgr_context *context,
+int cfa_tcam_mgr_shared_move(struct tf *tfp,
 		     struct cfa_tcam_mgr_shared_move_parms *parms);
 
-void cfa_tcam_mgr_rows_dump(int sess_idx, enum tf_dir dir, enum cfa_tcam_mgr_tbl_type type);
-void cfa_tcam_mgr_tables_dump(int sess_idx, enum tf_dir dir, enum cfa_tcam_mgr_tbl_type type);
-void cfa_tcam_mgr_entries_dump(int sess_idx);
 #endif /* _CFA_TCAM_MGR_H */

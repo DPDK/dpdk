@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
-# Copyright(c) 2023 Broadcom
+# Copyright(c) 2024 Broadcom
 
 #Include the folder for headers
 includes += include_directories('.')
@@ -12,7 +12,6 @@ sources += files(
         'cfa_tcam_mgr_hwop_msg.c',
         'cfa_tcam_mgr_p4.c',
         'cfa_tcam_mgr_p58.c',
-        'cfa_tcam_mgr_session.c',
         'dpool.c',
         'll.c',
         'rand.c',

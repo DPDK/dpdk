@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -179,6 +179,10 @@ struct tf_session {
 	 */
 	int tcam_mgr_control[TF_DIR_MAX][TF_TCAM_TBL_TYPE_MAX];
 
+	/**
+	 * TCAM Manager handle pointing to session based tcam memory
+	 */
+	void *tcam_mgr_handle;
 };
 
 /**

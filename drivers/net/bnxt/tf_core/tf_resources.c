@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -16,7 +16,6 @@
 #include "tf_session.h"
 #include "tf_device.h"
 #include "cfa_tcam_mgr_device.h"
-#include "cfa_tcam_mgr_session.h"
 
 #ifdef TF_FLOW_SCALE_QUERY
 
@@ -35,41 +34,32 @@ struct tf_resc_usage_buffer_control {
 static struct tf_resc_usage_buffer_control resc_usage_control;
 
 /* Check if supporting resource usage */
-static bool tf_resc_usage_support(int session_id)
+static bool tf_resc_usage_support(struct tf *tfp)
 {
+	struct tf_session *tfs;
 	bool support = true;
-	int sess_idx;
+	int rc;
 
 	/* Not valid session id */
-	if (!session_id)
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return false;
 
-	/* Support Generic template with one session */
-	sess_idx = cfa_tcam_mgr_session_find(session_id);
-	if (sess_idx < 0 && !cfa_tcam_mgr_session_empty())
-		support = false;
-
 	/* Support Thor */
-	if (resc_usage_control.device_type != TF_DEVICE_TYPE_P5)
+	if (resc_usage_control.device_type != tfs->dev.type)
 		support = false;
 
 #if (TF_FLOW_SCALE_QUERY_DEBUG == 1)
-	TFP_DRV_LOG(INFO, "Resc usage update sess_id: %x, idx: %d, type: %d, allow: %s\n",
-			 session_id,
-			 sess_idx,
-			 resc_usage_control.device_type,
-			 support ? "True" : "False");
+	TFP_DRV_LOG(INFO, "Resc usage update on device type: %d, allow: %s\n",
+		    resc_usage_control.device_type,
+		    support ? "True" : "False");
 #endif /* TF_FLOW_SCALE_QUERY_DEBUG == 1 */
 	return support;
 }
 
 /* Reset the resource usage buffer */
-void tf_resc_usage_reset(enum tf_device_type type, int session_id)
+void tf_resc_usage_reset(struct tf *tfp __rte_unused, enum tf_device_type type)
 {
-	/* Check if supported on this device */
-	if (cfa_tcam_mgr_session_find(session_id) > 0)
-		return;
-
 	/* Support Thor only*/
 	if (type != TF_DEVICE_TYPE_P5)
 		return;
@@ -96,24 +86,35 @@ tf_tcam_mgr_row_entry_used(struct cfa_tcam_mgr_table_rows_0 *row,
 }
 
 /* Initialize the resource usage buffer for WC-TCAM tables */
-void tf_tcam_usage_init(int session_id)
+void tf_tcam_usage_init(struct tf *tfp)
 {
-	enum tf_dir dir;
 	enum cfa_tcam_mgr_tbl_type type = CFA_TCAM_MGR_TBL_TYPE_WC_TCAM_APPS;
 	struct cfa_tcam_mgr_table_data *table_data = NULL;
 	struct tf_resc_wc_tcam_usage *usage_data = NULL;
-	int sess_idx = cfa_tcam_mgr_session_find(session_id);
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
+	struct tf_session *tfs;
+	enum tf_dir dir;
+	int rc;
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(session_id))
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
 		return;
+
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No TCAM data created for session\n",
+			    __func__);
+		return;
+	}
 
 	/* Iterate over all directions */
 	for (dir = 0; dir < TF_DIR_MAX; dir++) {
-		table_data = &cfa_tcam_mgr_tables[sess_idx][dir][type];
+		table_data = &tcam_mgr_data->cfa_tcam_mgr_tables[dir][type];
 		usage_data = &tf_resc_usage[dir].wc_tcam_usage;
 
-		/* cfa_tcam_mgr_table_dump(session_id, dir, type); */
+		/* cfa_tcam_mgr_table_dump(tfs->session_id.id, dir, type); */
 		memset(usage_data, 0, sizeof(*usage_data));
 		if (table_data->start_row != table_data->end_row)
 			usage_data->max_row_number = table_data->end_row -
@@ -122,33 +123,49 @@ void tf_tcam_usage_init(int session_id)
 
 #if (TF_FLOW_SCALE_QUERY_DEBUG == 1)
 		/* dump usage data */
-		CFA_TCAM_MGR_LOG(INFO, "WC-TCAM:  1-p  1-f  2-p  2-f  4-f  free-rows\n");
-		CFA_TCAM_MGR_LOG(INFO, "%s         %-4d %-4d %-4d %-4d %-4d %-4d\n",
-				 (dir == TF_DIR_RX) ? "RX" : "TX",
-				 usage_data->slice_row_1_p_used,
-				 usage_data->slice_row_1_f_used,
-				 usage_data->slice_row_2_p_used,
-				 usage_data->slice_row_2_f_used,
-				 usage_data->slice_row_4_used,
-				 usage_data->unused_row_number);
+		TFP_DRV_LOG(INFO, "WC-TCAM:  1-p  1-f  2-p  2-f  4-f  free-rows\n");
+		TFP_DRV_LOG(INFO, "%s	 %-4d %-4d %-4d %-4d %-4d %-4d\n",
+			    (dir == TF_DIR_RX) ? "RX" : "TX",
+			    usage_data->slice_row_1_p_used,
+			    usage_data->slice_row_1_f_used,
+			    usage_data->slice_row_2_p_used,
+			    usage_data->slice_row_2_f_used,
+			    usage_data->slice_row_4_used,
+			    usage_data->unused_row_number);
 #endif
 	}
 }
 
 /* Update wc-tcam table resoure usage */
-int tf_tcam_usage_update(int session_id,
+int tf_tcam_usage_update(struct tf *tfp,
 			 enum tf_dir dir,
 			 int tcam_tbl_type,
 			 void *data,
 			 enum tf_resc_opt resc_opt)
 {
-	struct tf_resc_wc_tcam_usage *usage_data;
-	int used_entries;
 	struct cfa_tcam_mgr_table_rows_0 *key_row = (struct cfa_tcam_mgr_table_rows_0 *)data;
+	struct tf_resc_wc_tcam_usage *usage_data;
+	struct cfa_tcam_mgr_data *tcam_mgr_data;
 	int key_slices = key_row->entry_size;
+	struct tf_session *tfs;
+	int used_entries;
+	int rc;
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(session_id))
+	rc = tf_session_get_session_internal(tfp, &tfs);
+	if (rc)
+		return rc;
+
+	tcam_mgr_data = tfs->tcam_mgr_handle;
+	if (!tcam_mgr_data) {
+		TFP_DRV_LOG(ERR,
+			    "%s: No TCAM data created for session\n",
+			    __func__);
+		return -CFA_TCAM_MGR_ERR_CODE(PERM);
+	}
+
+	/* Check if supported on this device */
+	if (!tf_resc_usage_support(tfp))
 		return -1;
 
 	/* Support WC-TCAM APPs only */
@@ -184,7 +201,8 @@ int tf_tcam_usage_update(int session_id,
 			}
 			break;
 		default:
-			CFA_TCAM_MGR_LOG(ERR, "CFA invalid size of key slices: %d\n", key_slices);
+			TFP_DRV_LOG(ERR, "CFA invalid size of key slices: %d\n",
+				    key_slices);
 			break;
 		}
 	} else { /* free one entry */
@@ -213,32 +231,33 @@ int tf_tcam_usage_update(int session_id,
 			}
 			break;
 		default:
-			CFA_TCAM_MGR_LOG(ERR, "CFA invalid size of key slices: %d\n", key_slices);
+			TFP_DRV_LOG(ERR, "CFA invalid size of key slices: %d\n",
+				    key_slices);
 			break;
 		}
 	}
 
 #if (TF_FLOW_SCALE_QUERY_DEBUG == 1)
 	/* dump usage data*/
-	CFA_TCAM_MGR_LOG(INFO, "WC-TCAM:  1-p  1-f  2-p  2-f  4-f  free-rows\n");
-	CFA_TCAM_MGR_LOG(INFO, "          %-4d %-4d %-4d %-4d %-4d %-4d\n",
-			 usage_data->slice_row_1_p_used,
-			 usage_data->slice_row_1_f_used,
-			 usage_data->slice_row_2_p_used,
-			 usage_data->slice_row_2_f_used,
-			 usage_data->slice_row_4_used,
-			 usage_data->unused_row_number);
+	TFP_DRV_LOG(INFO, "WC-TCAM:  1-p  1-f  2-p  2-f  4-f  free-rows\n");
+	TFP_DRV_LOG(INFO, "	  %-4d %-4d %-4d %-4d %-4d %-4d\n",
+		    usage_data->slice_row_1_p_used,
+		    usage_data->slice_row_1_f_used,
+		    usage_data->slice_row_2_p_used,
+		    usage_data->slice_row_2_f_used,
+		    usage_data->slice_row_4_used,
+		    usage_data->unused_row_number);
 #endif
 	return 0;
 }
 
 /* Initialize the EM usage table */
-void tf_em_usage_init(uint32_t session_id, enum tf_dir dir, uint16_t max_entries)
+void tf_em_usage_init(struct tf *tfp, enum tf_dir dir, uint16_t max_entries)
 {
 	struct tf_resc_em_usage *em;
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(session_id))
+	if (!tf_resc_usage_support(tfp))
 		return;
 
 	em = &tf_resc_usage[dir].em_int_usage;
@@ -247,7 +266,7 @@ void tf_em_usage_init(uint32_t session_id, enum tf_dir dir, uint16_t max_entries
 }
 
 /* Update the EM usage table */
-int tf_em_usage_update(uint32_t session_id,
+int tf_em_usage_update(struct tf *tfp,
 		       enum tf_dir dir,
 		       uint16_t size,
 		       enum tf_resc_opt resc_opt)
@@ -255,15 +274,15 @@ int tf_em_usage_update(uint32_t session_id,
 	struct tf_resc_em_usage *em;
 
 #if (TF_FLOW_SCALE_QUERY_DEBUG == 1)
-	CFA_TCAM_MGR_LOG(INFO, "%s: %s: EM record size: %d, %s\n",
-			 __func__,
-			 dir ? "TX" : "RX",
-			 size,
-			 resc_opt == TF_RESC_ALLOC ? "Alloc" : "Free");
+	TFP_DRV_LOG(INFO, "%s: %s: EM record size: %d, %s\n",
+		    __func__,
+		    dir ? "TX" : "RX",
+		    size,
+		    resc_opt == TF_RESC_ALLOC ? "Alloc" : "Free");
 #endif /* TF_FLOW_SCALE_QUERY_DEBUG == 1 */
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(session_id))
+	if (!tf_resc_usage_support(tfp))
 		return -1;
 
 	/* not valid size */
@@ -283,7 +302,7 @@ int tf_em_usage_update(uint32_t session_id,
 }
 
 /* Initialize the usage buffer for all kinds of sram tables */
-void tf_tbl_usage_init(uint32_t session_id,
+void tf_tbl_usage_init(struct tf *tfp,
 		       enum tf_dir dir,
 		       uint32_t tbl_type,
 		       uint16_t max_entries)
@@ -291,17 +310,17 @@ void tf_tbl_usage_init(uint32_t session_id,
 	struct tf_rm_element_cfg *tbl_cfg = tf_tbl_p58[dir];
 
 #if (TF_FLOW_SCALE_QUERY_DEBUG == 1)
-	CFA_TCAM_MGR_LOG(INFO, "%s: %s: tbl_type: %d[%s], max entries: [%d]:[0x%x]\n",
-			 __func__,
-			 dir ? "TX" : "RX",
-			 tbl_type,
-			 tf_tbl_type_2_str(tbl_type),
-			 max_entries,
-			 max_entries);
+	TFP_DRV_LOG(INFO, "%s: %s: tbl_type: %d[%s], max entries: [%d]:[0x%x]\n",
+		    __func__,
+		    dir ? "TX" : "RX",
+		    tbl_type,
+		    tf_tbl_type_2_str(tbl_type),
+		    max_entries,
+		    max_entries);
 #endif /* TF_FLOW_SCALE_QUERY_DEBUG == 1 */
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(session_id))
+	if (!tf_resc_usage_support(tfp))
 		return;
 
 	/* Convert to entries */
@@ -372,7 +391,7 @@ void tf_tbl_usage_init(uint32_t session_id,
 }
 
 /* Update the usage buffer for sram tables: add or free one entry */
-int tf_tbl_usage_update(uint32_t session_id,
+int tf_tbl_usage_update(struct tf *tfp,
 			 enum tf_dir dir,
 			 uint32_t tbl_type,
 			 enum tf_resc_opt resc_opt)
@@ -384,7 +403,7 @@ int tf_tbl_usage_update(uint32_t session_id,
 	int entries = 0;
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(session_id))
+	if (!tf_resc_usage_support(tfp))
 		return -1;
 
 	/* Convert to entries */
@@ -393,11 +412,11 @@ int tf_tbl_usage_update(uint32_t session_id,
 
 #if (TF_FLOW_SCALE_QUERY_DEBUG == 1)
 	TFP_DRV_LOG(INFO, "%s: %s: tbl_type: %d[%s] %s, Entries: %d\n", __func__,
-			 dir ? "TX" : "RX",
-			 tbl_type,
-			 tf_tbl_type_2_str(tbl_type),
-			 resc_opt ? "Alloc" : "Free",
-			 entries);
+		    dir ? "TX" : "RX",
+		    tbl_type,
+		    tf_tbl_type_2_str(tbl_type),
+		    resc_opt ? "Alloc" : "Free",
+		    entries);
 #endif /* TF_FLOW_SCALE_QUERY_DEBUG == 1 */
 
 	resc_usage_control.buffer_dirty[dir] = 1;
@@ -521,7 +540,7 @@ void tf_resc_usage_update_all(struct bnxt *bp)
 	}
 
 	/* Check if supported on this device */
-	if (!tf_resc_usage_support(tfp->session->session_id.id))
+	if (!tf_resc_usage_support(tfp))
 		return;
 
 	/* update usage state with firmware for each direction */

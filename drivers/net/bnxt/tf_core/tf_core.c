@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2019-2023 Broadcom
+ * Copyright(c) 2019-2024 Broadcom
  * All rights reserved.
  */
 
@@ -1104,7 +1104,7 @@ tf_alloc_tbl_entry(struct tf *tfp,
 #ifdef TF_FLOW_SCALE_QUERY
 	/* Update resource usage buffer */
 	if (!rc && dev->ops->tf_dev_update_tbl_usage_buffer) {
-		rc = dev->ops->tf_dev_update_tbl_usage_buffer(tfs->session_id.id,
+		rc = dev->ops->tf_dev_update_tbl_usage_buffer(tfp,
 							      parms->dir,
 							      parms->type,
 							      TF_RESC_ALLOC);
@@ -1200,7 +1200,7 @@ tf_free_tbl_entry(struct tf *tfp,
 #ifdef TF_FLOW_SCALE_QUERY
 	/* Update resource usage buffer */
 	if (!rc && dev->ops->tf_dev_update_tbl_usage_buffer) {
-		rc = dev->ops->tf_dev_update_tbl_usage_buffer(tfs->session_id.id,
+		rc = dev->ops->tf_dev_update_tbl_usage_buffer(tfp,
 							      parms->dir,
 							      parms->type,
 							      TF_RESC_FREE);
