@@ -323,6 +323,7 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 	struct bnxt_ulp_context		*ulp_ctx;
 	uint32_t type, ulp_flags = 0, fid;
 	struct bnxt *bp = eth_dev->data->dev_private;
+	uint16_t static_port = 0;
 	int rc = 0;
 
 	memset(&mapper_params, 0, sizeof(mapper_params));
@@ -385,6 +386,25 @@ ulp_default_flow_create(struct rte_eth_dev *eth_dev,
 
 	/* update the upar id */
 	ulp_l2_custom_tunnel_id_update(bp, &mapper_params);
+
+	/* update the vxlan port */
+	if (ULP_APP_STATIC_VXLAN_PORT_EN(ulp_ctx)) {
+		static_port = bnxt_ulp_cntxt_vxlan_port_get(ulp_ctx);
+		if (static_port) {
+			ULP_COMP_FLD_IDX_WR(&mapper_params,
+					    BNXT_ULP_CF_IDX_TUNNEL_PORT,
+					    static_port);
+			ULP_BITMAP_SET(mapper_params.cf_bitmap,
+				       BNXT_ULP_CF_BIT_STATIC_VXLAN_PORT);
+		} else {
+			static_port = bnxt_ulp_cntxt_vxlan_ip_port_get(ulp_ctx);
+			ULP_COMP_FLD_IDX_WR(&mapper_params,
+					    BNXT_ULP_CF_IDX_TUNNEL_PORT,
+					    static_port);
+			ULP_BITMAP_SET(mapper_params.cf_bitmap,
+				       BNXT_ULP_CF_BIT_STATIC_VXLAN_IP_PORT);
+		}
+	}
 
 	BNXT_DRV_DBG(DEBUG, "Creating default flow with template id: %u\n",
 		     ulp_class_tid);

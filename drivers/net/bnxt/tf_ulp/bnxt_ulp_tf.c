@@ -446,10 +446,6 @@ ulp_tf_cntxt_app_caps_init(struct bnxt *bp,
 			ulp_ctx->cfg_data->ulp_flags |=
 				BNXT_ULP_APP_L2_ETYPE;
 
-		if (info[i].flags & BNXT_ULP_APP_CAP_CUST_VXLAN)
-			ulp_ctx->cfg_data->ulp_flags |=
-			    BNXT_ULP_CUST_VXLAN_SUPPORT;
-
 		bnxt_ulp_cntxt_vxlan_ip_port_set(ulp_ctx, info[i].vxlan_ip_port);
 		bnxt_ulp_cntxt_vxlan_port_set(ulp_ctx, info[i].vxlan_port);
 		bnxt_ulp_cntxt_ecpri_udp_port_set(ulp_ctx, info[i].ecpri_udp_port);
@@ -1052,13 +1048,6 @@ ulp_tf_ctx_init(struct bnxt *bp,
 	/* Initialize the context entries list */
 	bnxt_ulp_cntxt_list_init();
 
-	/* Add the context to the context entries list */
-	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Failed to add the context list entry\n");
-		return -ENOMEM;
-	}
-
 	/* Allocate memory to hold ulp context data. */
 	ulp_data = rte_zmalloc("bnxt_ulp_data",
 			       sizeof(struct bnxt_ulp_data), 0);
@@ -1072,6 +1061,13 @@ ulp_tf_ctx_init(struct bnxt *bp,
 	session->cfg_data = ulp_data;
 	ulp_data->ref_cnt++;
 	ulp_data->ulp_flags |= BNXT_ULP_VF_REP_ENABLED;
+
+	/* Add the context to the context entries list */
+	rc = bnxt_ulp_cntxt_list_add(bp->ulp_ctx);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to add the context list entry\n");
+		goto error_deinit;
+	}
 
 	rc = bnxt_ulp_devid_get(bp, &devid);
 	if (rc) {

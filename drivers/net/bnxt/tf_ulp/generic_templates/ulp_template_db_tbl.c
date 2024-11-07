@@ -345,30 +345,6 @@ const struct bnxt_ulp_generic_tbl_params ulp_wh_plus_generic_tbl_params[] = {
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GLOBAL_REGISTER_TBL << 1 |
-		BNXT_ULP_DIRECTION_INGRESS] = {
-	.name = "INGRESS GENERIC_TABLE_GLOBAL_REGISTER_TBL",
-	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
-	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
-	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GLOBAL_REGISTER_TBL << 1 |
-		BNXT_ULP_DIRECTION_EGRESS] = {
-	.name = "EGRESS GENERIC_TABLE_GLOBAL_REGISTER_TBL",
-	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
-	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
-	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_CHAIN_ID_CACHE << 1 |
 		BNXT_ULP_DIRECTION_INGRESS] = {
 	.name = "INGRESS GENERIC_TABLE_CHAIN_ID_CACHE",
@@ -649,6 +625,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_wh_plus_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_EGRESS] = {
 	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_TUNNEL_GPARSE_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_TUNNEL_GPARSE_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
 	.result_num_entries = 0,
 	.result_num_bytes = 0,
 	.key_num_bytes = 0,
@@ -996,30 +1020,6 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor_generic_tbl_params[] = {
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
 	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GLOBAL_REGISTER_TBL << 1 |
-		BNXT_ULP_DIRECTION_INGRESS] = {
-	.name = "INGRESS GENERIC_TABLE_GLOBAL_REGISTER_TBL",
-	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
-	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
-	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GLOBAL_REGISTER_TBL << 1 |
-		BNXT_ULP_DIRECTION_EGRESS] = {
-	.name = "EGRESS GENERIC_TABLE_GLOBAL_REGISTER_TBL",
-	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
-	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
-	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_CHAIN_ID_CACHE << 1 |
 		BNXT_ULP_DIRECTION_INGRESS] = {
 	.name = "INGRESS GENERIC_TABLE_CHAIN_ID_CACHE",
@@ -1307,6 +1307,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor_generic_tbl_params[] = {
 	.num_buckets = 0,
 	.hash_tbl_entries = 0,
 	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_TUNNEL_GPARSE_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 64,
+	.result_num_bytes = 10,
+	.key_num_bytes = 1,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 256,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_TUNNEL_GPARSE_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 128,
+	.result_num_bytes = 6,
+	.key_num_bytes = 56,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 512,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 128,
+	.result_num_bytes = 6,
+	.key_num_bytes = 56,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 4,
+	.hash_tbl_entries = 512,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
 	}
 };
 
@@ -1603,13 +1651,13 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_INGRESS] = {
 	.name = "INGRESS GENERIC_TABLE_SHARED_METER_TBL_CACHE",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
+	.result_num_entries = 1024,
+	.result_num_bytes = 10,
+	.key_num_bytes = 4,
 	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	.num_buckets = 8,
+	.hash_tbl_entries = 2048,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_TBL_CACHE << 1 |
 		BNXT_ULP_DIRECTION_EGRESS] = {
@@ -1627,41 +1675,17 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_INGRESS] = {
 	.name = "INGRESS GENERIC_TABLE_METER_PROFILE_TBL_CACHE",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
+	.result_num_entries = 512,
+	.result_num_bytes = 13,
+	.key_num_bytes = 4,
 	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	.num_buckets = 8,
+	.hash_tbl_entries = 2048,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE
 	},
 	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_METER_PROFILE_TBL_CACHE << 1 |
 		BNXT_ULP_DIRECTION_EGRESS] = {
 	.name = "EGRESS GENERIC_TABLE_METER_PROFILE_TBL_CACHE",
-	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
-	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
-	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GLOBAL_REGISTER_TBL << 1 |
-		BNXT_ULP_DIRECTION_INGRESS] = {
-	.name = "INGRESS GENERIC_TABLE_GLOBAL_REGISTER_TBL",
-	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
-	.result_num_entries = 0,
-	.result_num_bytes = 0,
-	.key_num_bytes = 0,
-	.partial_key_num_bytes = 0,
-	.num_buckets = 0,
-	.hash_tbl_entries = 0,
-	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
-	},
-	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GLOBAL_REGISTER_TBL << 1 |
-		BNXT_ULP_DIRECTION_EGRESS] = {
-	.name = "EGRESS GENERIC_TABLE_GLOBAL_REGISTER_TBL",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
 	.result_num_entries = 0,
 	.result_num_bytes = 0,
@@ -1951,6 +1975,54 @@ const struct bnxt_ulp_generic_tbl_params ulp_thor2_generic_tbl_params[] = {
 		BNXT_ULP_DIRECTION_EGRESS] = {
 	.name = "EGRESS GENERIC_TABLE_FLOW_CHAIN_L2_CNTXT",
 	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_SIMPLE_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_TUNNEL_GPARSE_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_TUNNEL_GPARSE_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_TUNNEL_GPARSE_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE << 1 |
+		BNXT_ULP_DIRECTION_INGRESS] = {
+	.name = "INGRESS GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
+	.result_num_entries = 0,
+	.result_num_bytes = 0,
+	.key_num_bytes = 0,
+	.partial_key_num_bytes = 0,
+	.num_buckets = 0,
+	.hash_tbl_entries = 0,
+	.result_byte_order = BNXT_ULP_BYTE_ORDER_LE,
+	},
+	[BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE << 1 |
+		BNXT_ULP_DIRECTION_EGRESS] = {
+	.name = "EGRESS GENERIC_TABLE_MULTI_FLOW_TUNNEL_CACHE",
+	.gen_tbl_type = BNXT_ULP_GEN_TBL_TYPE_HASH_LIST,
 	.result_num_entries = 0,
 	.result_num_bytes = 0,
 	.key_num_bytes = 0,
@@ -2284,7 +2356,8 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.max_flow_priority       = 0,
 	.vxlan_port              = 0,
 	.vxlan_ip_port           = 0,
-	.num_key_recipes_per_dir = 256
+	.num_key_recipes_per_dir = 256,
+	.feature_bits            = BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW
 	},
 	{
 	.app_id                  = 0,
@@ -2298,8 +2371,8 @@ struct bnxt_ulp_app_capabilities_info ulp_app_cap_info_list[] = {
 	.vxlan_ip_port           = 0,
 	.max_pools               = 1,
 	.em_multiplier           = 4,
-	.num_rx_flows            = 262144,
-	.num_tx_flows            = 262144,
+	.num_rx_flows            = 524288,
+	.num_tx_flows            = 524288,
 	.act_rx_max_sz           = 256,
 	.act_tx_max_sz           = 256,
 	.em_rx_key_max_sz        = 112,
@@ -3630,6 +3703,28 @@ uint32_t ulp_act_prop_map_table[] = {
 		BNXT_ULP_ACT_PROP_SZ_METER_INST_MTR_VAL_UPDATE,
 	[BNXT_ULP_ACT_PROP_IDX_METER_INST_MTR_VAL] =
 		BNXT_ULP_ACT_PROP_SZ_METER_INST_MTR_VAL,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_CIR] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_CIR,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_EIR] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_EIR,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_CBS] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_CBS,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_EBS] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_EBS,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_RFC2698] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_RFC2698,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_PM] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_PM,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_EBND] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_EBND,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_CBND] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_CBND,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_EBSM] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_EBSM,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_CBSM] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_CBSM,
+	[BNXT_ULP_ACT_PROP_IDX_METER_INST_CF] =
+		BNXT_ULP_ACT_PROP_SZ_METER_INST_CF,
 	[BNXT_ULP_ACT_PROP_IDX_GOTO_CHAINID] =
 		BNXT_ULP_ACT_PROP_SZ_GOTO_CHAINID,
 	[BNXT_ULP_ACT_PROP_IDX_SET_TTL] =

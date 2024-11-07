@@ -16,6 +16,10 @@
 #include "bnxt_hwrm.h"
 #include "bnxt_tf_common.h"
 #include "bnxt_tf_pmd_shim.h"
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#include "ulp_template_debug_proto.h"
+#endif
+
 
 int
 bnxt_tunnel_dst_port_free(struct bnxt *bp,
@@ -476,17 +480,20 @@ int32_t bnxt_pmd_rss_action_delete(struct bnxt *bp, uint16_t vnic_idx)
 	return bnxt_vnic_rss_action_free(bp, vnic_idx);
 }
 
+#define ULP_GLOBAL_TUNNEL_UDP_PORT_SHIFT  32
+#define ULP_GLOBAL_TUNNEL_UDP_PORT_MASK   ((uint16_t)0xffff)
 #define ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT  16
 #define ULP_GLOBAL_TUNNEL_PORT_ID_MASK   ((uint16_t)0xffff)
 #define ULP_GLOBAL_TUNNEL_UPARID_SHIFT   8
 #define ULP_GLOBAL_TUNNEL_UPARID_MASK    ((uint16_t)0xff)
 #define ULP_GLOBAL_TUNNEL_TYPE_SHIFT     0
-#define ULP_GLOBAL_TUNNEL_TYPE_MASK      ((uint16_t)0xffff)
+#define ULP_GLOBAL_TUNNEL_TYPE_MASK      ((uint16_t)0xff)
 
 /* Extracts the dpdk port id and tunnel type from the handle */
 static void
-bnxt_pmd_global_reg_hndl_to_data(uint32_t handle, uint16_t *port,
-				 uint8_t *upar_id, uint8_t *type)
+bnxt_pmd_global_reg_hndl_to_data(uint64_t handle, uint16_t *port,
+				 uint8_t *upar_id, uint8_t *type,
+				 uint16_t *udp_port)
 {
 	*type    = (handle >> ULP_GLOBAL_TUNNEL_TYPE_SHIFT) &
 		   ULP_GLOBAL_TUNNEL_TYPE_MASK;
@@ -494,55 +501,43 @@ bnxt_pmd_global_reg_hndl_to_data(uint32_t handle, uint16_t *port,
 		   ULP_GLOBAL_TUNNEL_UPARID_MASK;
 	*port    = (handle >> ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT) &
 		   ULP_GLOBAL_TUNNEL_PORT_ID_MASK;
+	*udp_port = (handle >> ULP_GLOBAL_TUNNEL_UDP_PORT_SHIFT) &
+		   ULP_GLOBAL_TUNNEL_UDP_PORT_MASK;
 }
 
 /* Packs the dpdk port id and tunnel type in the handle */
 static void
 bnxt_pmd_global_reg_data_to_hndl(uint16_t port_id, uint8_t upar_id,
-				 uint8_t type, uint32_t *handle)
+				 uint8_t type, uint16_t udp_port,
+				 uint64_t *handle)
 {
-	*handle	=  (port_id & ULP_GLOBAL_TUNNEL_PORT_ID_MASK) <<
-		   ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT;
+	*handle = 0;
+	*handle	|=  (udp_port & ULP_GLOBAL_TUNNEL_UDP_PORT_MASK);
+	*handle	<<= ULP_GLOBAL_TUNNEL_UDP_PORT_SHIFT;
+	*handle	|=  (port_id & ULP_GLOBAL_TUNNEL_PORT_ID_MASK) <<
+		ULP_GLOBAL_TUNNEL_PORT_ID_SHIFT;
 	*handle	|= (upar_id & ULP_GLOBAL_TUNNEL_UPARID_MASK) <<
-		   ULP_GLOBAL_TUNNEL_UPARID_SHIFT;
-	*handle |= (type & ULP_GLOBAL_TUNNEL_TYPE_MASK) <<
-		   ULP_GLOBAL_TUNNEL_TYPE_SHIFT;
+		ULP_GLOBAL_TUNNEL_UPARID_SHIFT;
+	*handle |= (type & ULP_GLOBAL_TUNNEL_TYPE_MASK);
 }
 
-static struct bnxt_global_tunnel_info
-	      ulp_global_tunnel_db[BNXT_GLOBAL_REGISTER_TUNNEL_MAX] = {{0}};
 /* Sets or resets the tunnel ports.
  * If dport == 0, then the port_id and type are retrieved from the handle.
  * otherwise, the incoming port_id, type, and dport are used.
  * The type is enum ulp_mapper_ulp_global_tunnel_type
  */
 int32_t
-bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
-			   uint16_t udp_port, uint32_t *handle)
+bnxt_pmd_global_tunnel_set(struct bnxt_ulp_context *ulp_ctx,
+			   uint16_t port_id, uint8_t type,
+			   uint16_t udp_port, uint64_t *handle)
 {
-	uint16_t lport_id, ldport;
-	uint8_t hwtype, ltype, lupar_id;
+	uint8_t hwtype = 0, ltype, lupar_id = 0;
+	struct rte_eth_dev *eth_dev;
+	struct rte_eth_udp_tunnel udp_tunnel = { 0 };
+	uint32_t *ulp_flags;
 	struct bnxt *bp;
 	int32_t rc = 0;
-
-	/* convert to HWRM type */
-	switch (type) {
-	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN:
-		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN;
-		break;
-	case BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI:
-		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_ECPRI;
-		break;
-	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE:
-		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE;
-		break;
-	case BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6:
-		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE_V6;
-		break;
-	default:
-		BNXT_DRV_DBG(ERR, "Tunnel Type (%d) invalid\n", type);
-		return -EINVAL;
-	}
+	uint16_t ludp_port = udp_port;
 
 	if (!udp_port) {
 		/* Free based on the handle */
@@ -550,29 +545,52 @@ bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
 			BNXT_DRV_DBG(ERR, "Free with invalid handle\n");
 			return -EINVAL;
 		}
-		bnxt_pmd_global_reg_hndl_to_data(*handle, &lport_id,
-						  &lupar_id, &ltype);
+		bnxt_pmd_global_reg_hndl_to_data(*handle, &port_id,
+						 &lupar_id, &ltype, &ludp_port);
+	}
 
-		bp = bnxt_pmd_get_bp(lport_id);
-		if (!bp) {
-			BNXT_DRV_DBG(ERR, "Unable to get dev by port %d\n",
-				     lport_id);
+	/* convert to HWRM type */
+	switch (type) {
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN:
+		udp_tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN;
+		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_ECPRI:
+		udp_tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_ECPRI;
+		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE:
+		udp_tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_VXLAN_GPE;
+		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_GENEVE:
+		udp_tunnel.prot_type = RTE_ETH_TUNNEL_TYPE_GENEVE;
+		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE_V6:
+		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE_V6;
+		break;
+	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_IP:
+		hwtype = HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_V4;
+		break;
+	default:
+		BNXT_DRV_DBG(ERR, "Tunnel Type (%d) invalid\n", type);
+		return -EINVAL;
+	}
+
+	if (udp_tunnel.prot_type) {
+		udp_tunnel.udp_port = ludp_port;
+		if (!rte_eth_dev_is_valid_port(port_id)) {
+			PMD_DRV_LOG_LINE(ERR, "Invalid port %d", port_id);
 			return -EINVAL;
 		}
 
-		if (!ulp_global_tunnel_db[ltype].ref_cnt)
-			return 0;
-		ldport = ulp_global_tunnel_db[ltype].dport;
-		rc = bnxt_hwrm_tunnel_dst_port_free(bp, ldport, hwtype);
-		if (rc) {
-			BNXT_DRV_DBG(ERR,
-				     "Unable to free tunnel dst port (%d)\n",
-				     ldport);
-			return rc;
+		eth_dev = &rte_eth_devices[port_id];
+		if (!is_bnxt_supported(eth_dev)) {
+			PMD_DRV_LOG_LINE(ERR, "Device %d not supported", port_id);
+			return -EINVAL;
 		}
-		ulp_global_tunnel_db[ltype].ref_cnt--;
-		if (ulp_global_tunnel_db[ltype].ref_cnt == 0)
-			ulp_global_tunnel_db[ltype].dport = 0;
+
+		if (udp_port)
+			rc = bnxt_udp_tunnel_port_add_op(eth_dev, &udp_tunnel);
+		else
+			rc = bnxt_udp_tunnel_port_del_op(eth_dev, &udp_tunnel);
 	} else {
 		bp = bnxt_pmd_get_bp(port_id);
 		if (!bp) {
@@ -580,23 +598,42 @@ bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
 				     port_id);
 			return -EINVAL;
 		}
-
-		rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_port, hwtype);
-		if (rc) {
-			if (rc == HWRM_TUNNEL_DST_PORT_ALLOC_OUTPUT_ERROR_INFO_ERR_ALLOCATED)
-				PMD_DRV_LOG_LINE(ERR,
-						 "Tunnel already allocated, type:%d port:%d",
-						 hwtype, udp_port);
-			else
-				PMD_DRV_LOG_LINE(ERR, "Tunnel allocation failed, type:%d port:%d",
-						 hwtype, udp_port);
-		} else {
-			ulp_global_tunnel_db[type].ref_cnt++;
-			ulp_global_tunnel_db[type].dport = udp_port;
-			bnxt_pmd_global_reg_data_to_hndl(port_id, bp->ecpri_upar_in_use,
-							 type, handle);
-		}
+		if (udp_port)
+			rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_port,
+							     hwtype);
+		else
+			rc = bnxt_hwrm_tunnel_dst_port_free(bp, port_id,
+							    hwtype);
 	}
+
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR, "Tunnel set failed for port:%d error:%d",
+			    port_id, rc);
+		return rc;
+	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+	ulp_mapper_global_register_tbl_dump(type, udp_port);
+#endif
+	if (udp_port)
+		bnxt_pmd_global_reg_data_to_hndl(port_id, lupar_id,
+						 type, udp_port, handle);
+
+	if (type == BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN ||
+	    type == BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_IP) {
+		ulp_flags = &ulp_ctx->cfg_data->ulp_flags;
+		if (udp_port)
+			*ulp_flags |= BNXT_ULP_DYNAMIC_VXLAN_PORT;
+		else
+			*ulp_flags &= ~BNXT_ULP_DYNAMIC_VXLAN_PORT;
+	}
+	if (type == BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_GENEVE) {
+		ulp_flags = &ulp_ctx->cfg_data->ulp_flags;
+		if (udp_port)
+			*ulp_flags |= BNXT_ULP_DYNAMIC_GENEVE_PORT;
+		else
+			*ulp_flags &= ~BNXT_ULP_DYNAMIC_GENEVE_PORT;
+	}
+
 	return rc;
 }
 

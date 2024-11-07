@@ -1197,6 +1197,20 @@ ulp_mapper_field_src_process(struct bnxt_ulp_mapper_parms *parms,
 			*value = 0;
 		}
 		break;
+	case BNXT_ULP_FIELD_SRC_CF_BIT:
+		if (ulp_operand_read(field_opr,
+				     (uint8_t *)&lregval, sizeof(uint64_t))) {
+			BNXT_DRV_DBG(ERR, "CF operand read failed\n");
+			return -EINVAL;
+		}
+		lregval = tfp_be_to_cpu_64(lregval);
+		if (ULP_BITMAP_ISSET(parms->cf_bitmap, lregval)) {
+			*val = mapper_fld_one;
+			*value = 1;
+		} else {
+			*val = mapper_fld_zeros;
+		}
+		break;
 	default:
 		BNXT_DRV_DBG(ERR, "invalid field opcode 0x%x\n", field_src);
 		return -EINVAL;
@@ -2911,44 +2925,14 @@ ulp_mapper_vnic_tbl_res_free(struct bnxt_ulp_context *ulp __rte_unused,
 }
 
 static int32_t
-ulp_mapper_global_res_free(struct bnxt_ulp_context *ulp __rte_unused,
+ulp_mapper_global_res_free(struct bnxt_ulp_context *ulp,
 			   struct bnxt *bp __rte_unused,
 			   struct ulp_flow_db_res_params *res)
 {
-	uint16_t port_id = 0, dport = 0; /* Not needed for free */
-	int32_t rc = 0;
-	uint8_t ttype;
-	uint32_t handle = res->resource_hndl;
+	uint64_t handle = res->resource_hndl;
 
-	switch (res->resource_sub_type) {
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN;
-		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
-						&handle);
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_ECPRI:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI;
-		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
-						&handle);
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE;
-		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
-						&handle);
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE_V6:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6;
-		rc = bnxt_pmd_global_tunnel_set(port_id, ttype, dport,
-						&handle);
-		break;
-	default:
-		rc = -EINVAL;
-		BNXT_DRV_DBG(ERR, "Invalid ulp global resource type %d\n",
-			    res->resource_sub_type);
-		break;
-	}
-
-	return rc;
+	return bnxt_pmd_global_tunnel_set(ulp, 0, res->resource_sub_type,
+					  0, &handle);
 }
 
 static int32_t
@@ -2960,9 +2944,8 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	uint16_t data_len = 0;
 	uint8_t *tmp_data;
 	uint16_t udp_port;
-	uint32_t handle;
+	uint64_t handle;
 	int32_t rc = 0, write_reg = 0;
-	uint8_t ttype;
 
 	/* Initialize the blob data */
 	if (ulp_blob_init(&data, tbl->result_bit_size,
@@ -2991,33 +2974,16 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 		return -EINVAL;
 	}
 
-	switch (tbl->resource_sub_type) {
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN;
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_ECPRI:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI;
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE;
-		break;
-	case BNXT_ULP_RESOURCE_SUB_TYPE_GLOBAL_REGISTER_CUST_VXLAN_GPE_V6:
-		ttype = BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6;
-		break;
-	default:
-		rc = -EINVAL;
-		BNXT_DRV_DBG(ERR, "Invalid ulp global resource type %d\n",
-			    tbl->resource_sub_type);
-		return rc;
-	}
-
 	tmp_data = ulp_blob_data_get(&data, &data_len);
 	udp_port = *((uint16_t *)tmp_data);
 	udp_port = tfp_be_to_cpu_16(udp_port);
 
-	rc = bnxt_pmd_global_tunnel_set(parms->port_id, ttype, udp_port, &handle);
+	rc = bnxt_pmd_global_tunnel_set(parms->ulp_ctx,
+					parms->port_id, tbl->resource_sub_type,
+					udp_port, &handle);
 	if (rc) {
-		BNXT_DRV_DBG(ERR, "Unable to set Type %d port\n", ttype);
+		BNXT_DRV_DBG(ERR, "Unable to set Type %d port\n",
+			     tbl->resource_sub_type);
 		return rc;
 	}
 
@@ -3037,7 +3003,7 @@ ulp_mapper_global_register_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	if (write_reg) {
 		rc = ulp_regfile_write(parms->regfile,
 				       tbl->tbl_operand,
-				       (uint64_t)tfp_cpu_to_be_64(handle));
+				       tfp_cpu_to_be_64(handle));
 		if (rc)
 			BNXT_DRV_DBG(ERR, "Regfile[%d] write failed.\n",
 				     tbl->tbl_operand);
@@ -4158,7 +4124,14 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, void *error)
 			goto error;
 		}
 next_iteration:
-		if (cond_goto == BNXT_ULP_COND_GOTO_REJECT) {
+		if (cond_goto < 0) {
+			if (((int32_t)tbl_idx + cond_goto) < 0) {
+				BNXT_DRV_DBG(ERR,
+					     "invalid conditional goto %d\n",
+					     cond_goto);
+				goto error;
+			}
+		} else if (cond_goto == BNXT_ULP_COND_GOTO_REJECT) {
 			if (tbl->false_message || tbl->true_message) {
 				const char *msg = (tbl->false_message) ?
 					tbl->false_message :
@@ -4175,11 +4148,11 @@ next_iteration:
 			rc = -EINVAL;
 			goto error;
 		} else if (cond_goto & BNXT_ULP_COND_GOTO_RF) {
-			uint32_t rf_idx;
+			int32_t rf_idx;
 			uint64_t regval;
 
 			/* least significant 16 bits from reg_file index */
-			rf_idx = (uint32_t)(cond_goto & 0xFFFF);
+			rf_idx = (int32_t)(cond_goto & 0xFFFF);
 			if (ulp_regfile_read(parms->regfile, rf_idx,
 					     &regval)) {
 				BNXT_DRV_DBG(ERR, "regfile[%d] read oob\n",
@@ -4188,12 +4161,6 @@ next_iteration:
 				goto error;
 			}
 			cond_goto = (int32_t)regval;
-		}
-
-		if (cond_goto < 0 && ((int32_t)tbl_idx + cond_goto) < 0) {
-			BNXT_DRV_DBG(ERR, "invalid conditional goto %d\n",
-				     cond_goto);
-			goto error;
 		}
 		tbl_idx += cond_goto;
 	}

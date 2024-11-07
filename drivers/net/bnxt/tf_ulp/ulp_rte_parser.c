@@ -1291,7 +1291,7 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 			     uint16_t dst_port, uint16_t dst_mask,
 			     enum bnxt_ulp_hdr_bit hdr_bit)
 {
-	struct bnxt *bp;
+	uint16_t stat_port = 0;
 
 	switch (hdr_bit) {
 	case BNXT_ULP_HDR_BIT_I_UDP:
@@ -1342,52 +1342,44 @@ ulp_rte_l4_proto_type_update(struct ulp_rte_parser_params *params,
 		break;
 	}
 
-	bp = bnxt_pmd_get_bp(params->port_id);
-	if (bp == NULL) {
-		BNXT_DRV_DBG(ERR, "Invalid bp\n");
+	/* If it is not udp port then there is no need to set tunnel bits */
+	if (hdr_bit != BNXT_ULP_HDR_BIT_O_UDP)
 		return;
-	}
 
-	/* vxlan dynamic customized port */
-	if (ULP_APP_CUST_VXLAN_EN(params->ulp_ctx)) {
-		/* ulp_rte_vxlan_hdr_handler will parser it further */
-		return;
-	}
-	/* vxlan static cutomized port */
-	else if (ULP_APP_CUST_VXLAN_SUPPORT(bp->ulp_ctx)) {
-		if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
-		    dst_port == tfp_cpu_to_be_16(bp->ulp_ctx->cfg_data->vxlan_port)) {
-			ULP_BITMAP_SET(params->hdr_fp_bit.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
-			ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_TUNNEL_PORT,
+			    tfp_be_to_cpu_16(dst_port));
+
+	/* vxlan static customized port */
+	if (ULP_APP_STATIC_VXLAN_PORT_EN(params->ulp_ctx)) {
+		stat_port = bnxt_ulp_cntxt_vxlan_ip_port_get(params->ulp_ctx);
+		if (!stat_port)
+			stat_port =
+			bnxt_ulp_cntxt_vxlan_port_get(params->ulp_ctx);
+
+		/* if udp and equal to static vxlan port then set tunnel bits*/
+		if (stat_port && dst_port == tfp_cpu_to_be_16(stat_port)) {
+			ULP_BITMAP_SET(params->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_T_VXLAN);
+			ULP_BITMAP_SET(params->cf_bitmap,
+				       BNXT_ULP_CF_BIT_IS_TUNNEL);
 		}
-	}
-	/* vxlan ip port */
-	else if (ULP_APP_CUST_VXLAN_IP_SUPPORT(bp->ulp_ctx)) {
-		if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
-		    dst_port == tfp_cpu_to_be_16(bp->ulp_ctx->cfg_data->vxlan_ip_port)) {
-			ULP_BITMAP_SET(params->hdr_fp_bit.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
-			ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
-			if (bp->vxlan_ip_upar_in_use &
-			    HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_UPAR_IN_USE_UPAR0) {
-				ULP_COMP_FLD_IDX_WR(params,
-						    BNXT_ULP_CF_IDX_VXLAN_IP_UPAR_ID,
-						    ULP_WP_SYM_TUN_HDR_TYPE_UPAR1);
-			}
+	} else {
+		/* if dynamic Vxlan is enabled then skip dport checks */
+		if (ULP_APP_DYNAMIC_VXLAN_PORT_EN(params->ulp_ctx))
+			return;
+
+		/* Vxlan and GPE port check */
+		if (dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN_GPE)) {
+			ULP_BITMAP_SET(params->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
+			ULP_BITMAP_SET(params->cf_bitmap,
+				       BNXT_ULP_CF_BIT_IS_TUNNEL);
+		} else if (dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
+			ULP_BITMAP_SET(params->hdr_fp_bit.bits,
+				       BNXT_ULP_HDR_BIT_T_VXLAN);
+			ULP_BITMAP_SET(params->cf_bitmap,
+				       BNXT_ULP_CF_BIT_IS_TUNNEL);
 		}
-	}
-	/* vxlan gpe port */
-	else if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
-		 dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN_GPE)) {
-		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
-			       BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
-		ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
-	}
-	/* vxlan standard port */
-	else if (hdr_bit == BNXT_ULP_HDR_BIT_O_UDP &&
-		 dst_port == tfp_cpu_to_be_16(ULP_UDP_PORT_VXLAN)) {
-		ULP_BITMAP_SET(params->hdr_fp_bit.bits,
-			       BNXT_ULP_HDR_BIT_T_VXLAN);
-		ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
 	}
 }
 
@@ -1588,8 +1580,9 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 	const struct rte_flow_item_vxlan *vxlan_spec = item->spec;
 	const struct rte_flow_item_vxlan *vxlan_mask = item->mask;
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	struct bnxt_ulp_context *ulp_ctx = params->ulp_ctx;
 	uint32_t idx = 0;
-	uint16_t dport;
+	uint16_t dport, stat_port;
 	uint32_t size;
 
 	if (ulp_rte_prsr_fld_size_validate(params, &idx,
@@ -1600,6 +1593,11 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 
 	if (vxlan_spec && !vxlan_mask)
 		vxlan_mask = &rte_flow_item_vxlan_mask;
+
+	/* Update if the outer headers have any partial masks */
+	if (!ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_WC_MATCH))
+		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_OUTER_EM_ONLY, 1);
+
 	/*
 	 * Copy the rte_flow_item for vxlan into hdr_field using vxlan
 	 * header fields
@@ -1632,6 +1630,9 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_VXLAN);
 	ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
 
+	/* if l4 protocol header updated it then reset it */
+	ULP_BITMAP_RESET(params->hdr_fp_bit.bits, BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
+
 	dport = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT);
 	if (!dport) {
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
@@ -1640,16 +1641,44 @@ ulp_rte_vxlan_hdr_handler(const struct rte_flow_item *item,
 				    ULP_UDP_PORT_VXLAN_MASK);
 	}
 
-	/* No need to check vxlan port for these conditions here */
-	if (ULP_APP_CUST_VXLAN_EN(params->ulp_ctx) ||
-	    ULP_APP_CUST_VXLAN_SUPPORT(params->ulp_ctx) ||
-	    ULP_APP_CUST_VXLAN_IP_SUPPORT(params->ulp_ctx))
-		return BNXT_TF_RC_SUCCESS;
+	/* vxlan static customized port */
+	if (ULP_APP_STATIC_VXLAN_PORT_EN(ulp_ctx)) {
+		stat_port = bnxt_ulp_cntxt_vxlan_ip_port_get(ulp_ctx);
+		if (!stat_port)
+			stat_port = bnxt_ulp_cntxt_vxlan_port_get(ulp_ctx);
 
-	/* Verify vxlan port */
-	if (dport != 0 && dport != ULP_UDP_PORT_VXLAN) {
-		BNXT_DRV_DBG(ERR, "ParseErr:vxlan port is not valid\n");
-		return BNXT_TF_RC_PARSE_ERR;
+		/* validate that static ports match if not reject */
+		if (dport != 0 && dport != tfp_cpu_to_be_16(stat_port)) {
+			BNXT_DRV_DBG(ERR, "ParseErr:vxlan port is not valid\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		} else if (dport == 0) {
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_TUNNEL_PORT,
+					    tfp_cpu_to_be_16(stat_port));
+		}
+	} else {
+		/* dynamic vxlan support */
+		if (ULP_APP_DYNAMIC_VXLAN_PORT_EN(params->ulp_ctx)) {
+			if (dport == 0) {
+				BNXT_DRV_DBG(ERR,
+					     "ParseErr:vxlan port is null\n");
+				return BNXT_TF_RC_PARSE_ERR;
+			}
+			/* set the dynamic vxlan port check */
+			ULP_BITMAP_SET(params->cf_bitmap,
+				       BNXT_ULP_CF_BIT_DYNAMIC_VXLAN_PORT);
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_TUNNEL_PORT, dport);
+		} else if (dport != 0 && dport != ULP_UDP_PORT_VXLAN) {
+			/* set the dynamic vxlan port check */
+			ULP_BITMAP_SET(params->cf_bitmap,
+				       BNXT_ULP_CF_BIT_DYNAMIC_VXLAN_PORT);
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_TUNNEL_PORT, dport);
+		} else {
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_TUNNEL_PORT,
+					    ULP_UDP_PORT_VXLAN);
+		}
 	}
 	return BNXT_TF_RC_SUCCESS;
 }
@@ -1712,6 +1741,9 @@ ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_VXLAN_GPE);
 	ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
 
+	/* if l4 protocol header updated it then reset it */
+	ULP_BITMAP_RESET(params->hdr_fp_bit.bits, BNXT_ULP_HDR_BIT_T_VXLAN);
+
 	dport = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT);
 	if (!dport) {
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
@@ -1719,13 +1751,9 @@ ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
 		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT_MASK,
 				    ULP_UDP_PORT_VXLAN_GPE_MASK);
 	}
-
-	if (ULP_APP_CUST_VXLAN_EN(params->ulp_ctx) ||
-	    ULP_APP_CUST_VXLAN_SUPPORT(params->ulp_ctx) ||
-	    ULP_APP_CUST_VXLAN_IP_SUPPORT(params->ulp_ctx)) {
-		BNXT_DRV_DBG(ERR, "ParseErr:vxlan setting is not valid\n");
-		return BNXT_TF_RC_PARSE_ERR;
-	}
+	/* TBD: currently dynamic or static gpe port config is not supported */
+	/* Update the tunnel port */
+	ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_TUNNEL_PORT, dport);
 
 	/* Verify the vxlan gpe port */
 	if (dport != 0 && dport != ULP_UDP_PORT_VXLAN_GPE) {
@@ -1734,6 +1762,7 @@ ulp_rte_vxlan_gpe_hdr_handler(const struct rte_flow_item *item,
 	}
 	return BNXT_TF_RC_SUCCESS;
 }
+
 /* Function to handle the parsing of RTE Flow item GENEVE Header. */
 int32_t
 ulp_rte_geneve_hdr_handler(const struct rte_flow_item *item,
@@ -1787,14 +1816,33 @@ ulp_rte_geneve_hdr_handler(const struct rte_flow_item *item,
 	ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_T_GENEVE);
 	ULP_BITMAP_SET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL);
 
+	/* update the tunnel port */
 	dport = ULP_COMP_FLD_IDX_RD(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT);
-	if (!dport) {
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT,
-				    ULP_UDP_PORT_GENEVE);
-		ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_O_L4_DST_PORT_MASK,
-				    ULP_UDP_PORT_GENEVE_MASK);
+	if  (ULP_APP_DYNAMIC_GENEVE_PORT_EN(params->ulp_ctx)) {
+		if (dport == 0) {
+			BNXT_DRV_DBG(ERR, "ParseErr:geneve port is null\n");
+			return BNXT_TF_RC_PARSE_ERR;
+		}
+		/* set the dynamic geneve port check */
+		ULP_BITMAP_SET(params->cf_bitmap,
+			       BNXT_ULP_CF_BIT_DYNAMIC_GENEVE_PORT);
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_TUNNEL_PORT, dport);
+	} else {
+		if (dport == 0) {
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_O_L4_DST_PORT,
+					    ULP_UDP_PORT_GENEVE);
+			ULP_COMP_FLD_IDX_WR(params,
+					    BNXT_ULP_CF_IDX_O_L4_DST_PORT_MASK,
+					    ULP_UDP_PORT_GENEVE_MASK);
+		} else if (dport != 0 && dport != ULP_UDP_PORT_GENEVE) {
+			ULP_COMP_FLD_IDX_WR(params, BNXT_ULP_CF_IDX_TUNNEL_PORT,
+					    dport);
+			ULP_BITMAP_SET(params->cf_bitmap,
+				       BNXT_ULP_CF_BIT_DYNAMIC_GENEVE_PORT);
+		}
 	}
-
 	return BNXT_TF_RC_SUCCESS;
 }
 

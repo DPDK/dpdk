@@ -37,12 +37,14 @@
 #define BNXT_ULP_APP_SOCKET_DIRECT	0x20
 #define BNXT_ULP_APP_TOS_PROTO_SUPPORT	0x40
 #define BNXT_ULP_APP_BC_MC_SUPPORT	0x80
-#define BNXT_ULP_CUST_VXLAN_SUPPORT	0x100
+#define BNXT_ULP_STATIC_VXLAN_SUPPORT	0x100
 #define BNXT_ULP_MULTI_SHARED_SUPPORT	0x200
 #define BNXT_ULP_APP_HA_DYNAMIC		0x400
 #define BNXT_ULP_APP_SRV6               0x800
 #define BNXT_ULP_APP_L2_ETYPE		0x1000
 #define BNXT_ULP_SHARED_TBL_SCOPE_ENABLED 0x2000
+#define BNXT_ULP_DYNAMIC_VXLAN_PORT	0x4000
+#define BNXT_ULP_DYNAMIC_GENEVE_PORT	0x8000
 
 #define ULP_VF_REP_IS_ENABLED(flag)	((flag) & BNXT_ULP_VF_REP_ENABLED)
 #define ULP_SHARED_SESSION_IS_ENABLED(flag) ((flag) &\
@@ -60,15 +62,15 @@
 #define ULP_APP_HA_IS_DYNAMIC(ctx)	((ctx)->cfg_data->ulp_flags &\
 					BNXT_ULP_APP_HA_DYNAMIC)
 
-#define ULP_APP_CUST_VXLAN_EN(ctx)	((ctx)->cfg_data->ulp_flags &\
-					BNXT_ULP_CUST_VXLAN_SUPPORT)
-#define ULP_APP_VXLAN_GPE_SUPPORT(ctx)     ((ctx)->cfg_data->vxlan_gpe_port != 0)
 #define ULP_APP_L2_ETYPE_SUPPORT(ctx)	((ctx)->cfg_data->ulp_flags &\
 					BNXT_ULP_APP_L2_ETYPE)
-#define ULP_APP_CUST_VXLAN_SUPPORT(ctx)	\
-	((ctx) && (ctx)->cfg_data && (ctx)->cfg_data->vxlan_port != 0)
-#define ULP_APP_CUST_VXLAN_IP_SUPPORT(ctx)\
-	((ctx) && (ctx)->cfg_data && (ctx)->cfg_data->vxlan_ip_port != 0)
+
+#define ULP_APP_STATIC_VXLAN_PORT_EN(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_STATIC_VXLAN_SUPPORT)
+#define ULP_APP_DYNAMIC_VXLAN_PORT_EN(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_DYNAMIC_VXLAN_PORT)
+#define ULP_APP_DYNAMIC_GENEVE_PORT_EN(ctx)	((ctx)->cfg_data->ulp_flags &\
+					BNXT_ULP_DYNAMIC_GENEVE_PORT)
 
 enum bnxt_ulp_flow_mem_type {
 	BNXT_ULP_FLOW_MEM_TYPE_INT = 0,

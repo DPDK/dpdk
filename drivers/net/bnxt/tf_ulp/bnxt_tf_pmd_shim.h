@@ -15,16 +15,6 @@ struct bnxt_global_tunnel_info {
 	uint16_t ref_cnt;
 };
 
-/* Internal Tunnel type, */
-enum bnxt_global_register_tunnel_type {
-	BNXT_GLOBAL_REGISTER_TUNNEL_UNUSED = 0,
-	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN,
-	BNXT_GLOBAL_REGISTER_TUNNEL_ECPRI,
-	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE,
-	BNXT_GLOBAL_REGISTER_TUNNEL_VXLAN_GPE_V6,
-	BNXT_GLOBAL_REGISTER_TUNNEL_MAX
-};
-
 int32_t bnxt_rss_config_action_apply(struct bnxt_ulp_mapper_parms *parms);
 int32_t bnxt_pmd_get_parent_mac_addr(struct bnxt_ulp_mapper_parms *parms,
 				     uint8_t *mac);
@@ -54,8 +44,9 @@ int32_t bnxt_tunnel_dst_port_alloc(struct bnxt *bp,
 				   uint16_t port,
 				   uint8_t type);
 int32_t
-bnxt_pmd_global_tunnel_set(uint16_t port_id, uint8_t type,
-			   uint16_t udp_port, uint32_t *handle);
+bnxt_pmd_global_tunnel_set(struct bnxt_ulp_context *ulp_ctx,
+			   uint16_t port_id, uint8_t type,
+			   uint16_t udp_port, uint64_t *handle);
 int32_t
 bnxt_tunnel_upar_id_get(struct bnxt *bp,
 			uint8_t type,

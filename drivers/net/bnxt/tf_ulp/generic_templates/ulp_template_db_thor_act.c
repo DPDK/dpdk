@@ -114,6 +114,7 @@ struct bnxt_ulp_mapper_tmpl_info ulp_thor_act_tmpl_list[] = {
 
 struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	{ /* act_tid: 1, , table: flow_chain_cache.rd */
+	.description = "flow_chain_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE,
@@ -136,6 +137,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 1, , table: control.flow_chain */
+	.description = "control.flow_chain",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -149,6 +151,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 1, , table: jump_index_table.alloc */
+	.description = "jump_index_table.alloc",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_ALLOCATOR_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX,
@@ -169,6 +172,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 0
 	},
 	{ /* act_tid: 1, , table: control.metadata_cal */
+	.description = "control.metadata_cal",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -189,6 +193,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_JUMP_META }
 	},
 	{ /* act_tid: 1, , table: flow_chain_cache.write */
+	.description = "flow_chain_cache.write",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE,
@@ -212,6 +217,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 1, , table: shared_meter_tbl_cache.rd */
+	.description = "shared_meter_tbl_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_TBL_CACHE,
@@ -234,6 +240,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 1, , table: control.meter_chk */
+	.description = "control.meter_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -246,6 +253,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 1, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -269,6 +277,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 1, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -281,6 +290,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 1, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -302,6 +312,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 1, , table: mod_record.ing_ttl */
+	.description = "mod_record.ing_ttl",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -323,6 +334,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 29
 	},
 	{ /* act_tid: 1, , table: mod_record.ing_no_ttl */
+	.description = "mod_record.ing_no_ttl",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -344,6 +356,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 22
 	},
 	{ /* act_tid: 1, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -365,6 +378,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 1, , table: int_compact_act_record.0 */
+	.description = "int_compact_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_COMPACT_ACT_RECORD,
 	.resource_sub_type =
@@ -386,6 +400,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 13
 	},
 	{ /* act_tid: 2, , table: control.delete_chk */
+	.description = "control.delete_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -398,6 +413,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 2, , table: shared_mirror_record.del_chk */
+	.description = "shared_mirror_record.del_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -422,6 +438,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 2, , table: control.mirror_del_exist_chk */
+	.description = "control.mirror_del_exist_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -434,6 +451,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 2, , table: control.mirror_ref_cnt_chk */
+	.description = "control.mirror_ref_cnt_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -454,6 +472,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC }
 	},
 	{ /* act_tid: 2, , table: control.create */
+	.description = "control.create",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -467,6 +486,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 2, , table: mirror_tbl.alloc */
+	.description = "mirror_tbl.alloc",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -489,6 +509,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* act_tid: 2, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -511,6 +532,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 2, , table: int_compact_act_record.0 */
+	.description = "int_compact_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_COMPACT_ACT_RECORD,
 	.resource_sub_type =
@@ -534,6 +556,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 0
 	},
 	{ /* act_tid: 2, , table: mirror_tbl.wr */
+	.description = "mirror_tbl.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -555,6 +578,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* act_tid: 2, , table: shared_mirror_record.wr */
+	.description = "shared_mirror_record.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -581,6 +605,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 3, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -604,6 +629,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 3, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -616,6 +642,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 3, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -636,6 +663,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 3, , table: mod_record.ing_ttl */
+	.description = "mod_record.ing_ttl",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -657,6 +685,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 31
 	},
 	{ /* act_tid: 3, , table: mod_record.ing_no_ttl */
+	.description = "mod_record.ing_no_ttl",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -678,6 +707,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 24
 	},
 	{ /* act_tid: 3, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -698,6 +728,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 4, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -721,6 +752,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 4, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -733,6 +765,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 4, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -754,6 +787,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 4, , table: vnic_interface_rss_config.0 */
+	.description = "vnic_interface_rss_config.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_VNIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_VNIC_TABLE_RSS,
@@ -773,6 +807,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 0
 	},
 	{ /* act_tid: 4, , table: vnic_interface_queue_config.0 */
+	.description = "vnic_interface_queue_config.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_VNIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_VNIC_TABLE_QUEUE,
@@ -792,6 +827,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 0
 	},
 	{ /* act_tid: 4, , table: int_compact_act_record.0 */
+	.description = "int_compact_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_COMPACT_ACT_RECORD,
 	.resource_sub_type =
@@ -814,6 +850,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 0
 	},
 	{ /* act_tid: 4, , table: int_compact_act_record.1 */
+	.description = "int_compact_act_record.1",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_COMPACT_ACT_RECORD,
 	.resource_sub_type =
@@ -836,6 +873,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 0
 	},
 	{ /* act_tid: 5, , table: control.create_check */
+	.description = "control.create_check",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -848,6 +886,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 5, , table: meter_profile_tbl_cache.rd */
+	.description = "meter_profile_tbl_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_METER_PROFILE_TBL_CACHE,
@@ -871,6 +910,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 0
 	},
 	{ /* act_tid: 5, , table: control.shared_meter_profile_0 */
+	.description = "control.shared_meter_profile_0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -884,6 +924,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 5, , table: meter_profile_tbl.0 */
+	.description = "meter_profile_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_METER_PROF,
 	.resource_sub_type =
@@ -905,6 +946,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 11
 	},
 	{ /* act_tid: 5, , table: meter_profile_tbl_cache.wr */
+	.description = "meter_profile_tbl_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_METER_PROF,
 	.resource_sub_type =
@@ -930,6 +972,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 5, , table: shared_meter_tbl_cache.rd */
+	.description = "shared_meter_tbl_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_TBL_CACHE,
@@ -953,6 +996,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 0
 	},
 	{ /* act_tid: 5, , table: control.meter_created_chk */
+	.description = "control.meter_created_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -966,6 +1010,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 5, , table: meter_profile_tbl_cache.rd2 */
+	.description = "meter_profile_tbl_cache.rd2",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_METER_PROFILE_TBL_CACHE,
@@ -989,6 +1034,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 5, , table: control.shared_meter_profile_chk */
+	.description = "control.shared_meter_profile_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1001,6 +1047,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 5, , table: meter_tbl.0 */
+	.description = "meter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_METER_INST,
 	.resource_sub_type =
@@ -1022,6 +1069,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* act_tid: 5, , table: shared_meter_tbl_cache.wr */
+	.description = "shared_meter_tbl_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_TBL_CACHE,
@@ -1046,6 +1094,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 3
 	},
 	{ /* act_tid: 5, , table: control.delete_check */
+	.description = "control.delete_check",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1058,6 +1107,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 5, , table: meter_profile_tbl_cache.del_chk */
+	.description = "meter_profile_tbl_cache.del_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_METER_PROFILE_TBL_CACHE,
@@ -1081,6 +1131,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 5, , table: control.mtr_prof_ref_cnt_chk */
+	.description = "control.mtr_prof_ref_cnt_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1101,6 +1152,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC }
 	},
 	{ /* act_tid: 5, , table: shared_meter_tbl_cache.del_chk */
+	.description = "shared_meter_tbl_cache.del_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_TBL_CACHE,
@@ -1124,6 +1176,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 5, , table: control.shared_mtr_ref_cnt_chk */
+	.description = "control.shared_mtr_ref_cnt_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1144,6 +1197,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC }
 	},
 	{ /* act_tid: 5, , table: control.update_check */
+	.description = "control.update_check",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_RX,
 	.execute_info = {
@@ -1156,6 +1210,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 5, , table: shared_meter_tbl_cache.rd_update */
+	.description = "shared_meter_tbl_cache.rd_update",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SHARED_METER_TBL_CACHE,
@@ -1179,6 +1234,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 5, , table: meter_tbl.update_rd */
+	.description = "meter_tbl.update_rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_METER_INST,
 	.resource_sub_type =
@@ -1199,6 +1255,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_bit_size = 64
 	},
 	{ /* act_tid: 5, , table: meter_tbl.update_wr */
+	.description = "meter_tbl.update_wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_METER_INST,
 	.resource_sub_type =
@@ -1219,6 +1276,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* act_tid: 6, , table: flow_chain_cache.rd */
+	.description = "flow_chain_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE,
@@ -1241,6 +1299,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 6, , table: control.flow_chain */
+	.description = "control.flow_chain",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1254,6 +1313,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 6, , table: jump_index_table.alloc */
+	.description = "jump_index_table.alloc",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_ALLOCATOR_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_ALLOCATOR_TABLE_JUMP_INDEX,
@@ -1274,6 +1334,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 0
 	},
 	{ /* act_tid: 6, , table: control.metadata_cal */
+	.description = "control.metadata_cal",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1294,6 +1355,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_JUMP_META }
 	},
 	{ /* act_tid: 6, , table: flow_chain_cache.write */
+	.description = "flow_chain_cache.write",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_FLOW_CHAIN_CACHE,
@@ -1317,6 +1379,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 6, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -1340,6 +1403,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 6, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1352,6 +1416,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 6, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -1372,6 +1437,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 6, , table: int_vtag_encap_record.0 */
+	.description = "int_vtag_encap_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_16B,
 	.resource_sub_type =
@@ -1393,6 +1459,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 11
 	},
 	{ /* act_tid: 6, , table: mod_record.dec_ttl_egr */
+	.description = "mod_record.dec_ttl_egr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -1414,6 +1481,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 23
 	},
 	{ /* act_tid: 6, , table: mod_record.no_dec_ttl_egr */
+	.description = "mod_record.no_dec_ttl_egr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -1435,6 +1503,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 20
 	},
 	{ /* act_tid: 6, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1455,6 +1524,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 6, , table: int_compact_act_record.0 */
+	.description = "int_compact_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_COMPACT_ACT_RECORD,
 	.resource_sub_type =
@@ -1475,6 +1545,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 13
 	},
 	{ /* act_tid: 7, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -1498,6 +1569,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 7, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1510,6 +1582,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 7, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -1530,6 +1603,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 7, , table: mod_record.ing_ttl */
+	.description = "mod_record.ing_ttl",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -1551,6 +1625,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 31
 	},
 	{ /* act_tid: 7, , table: mod_record.ing_no_ttl */
+	.description = "mod_record.ing_no_ttl",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -1572,6 +1647,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 24
 	},
 	{ /* act_tid: 7, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -1592,6 +1668,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 8, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -1615,6 +1692,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 8, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1627,6 +1705,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 8, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -1647,6 +1726,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 8, , table: source_property_cache.rd */
+	.description = "source_property_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SOURCE_PROPERTY_CACHE,
@@ -1669,6 +1749,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 8, , table: control.sp_rec_v4 */
+	.description = "control.sp_rec_v4",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1682,6 +1763,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 8, , table: sp_smac_ipv4.0 */
+	.description = "sp_smac_ipv4.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV4,
 	.resource_sub_type =
@@ -1705,6 +1787,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 3
 	},
 	{ /* act_tid: 8, , table: source_property_cache.wr */
+	.description = "source_property_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SOURCE_PROPERTY_CACHE,
@@ -1728,6 +1811,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: source_property_ipv6_cache.rd */
+	.description = "source_property_ipv6_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SOURCE_PROPERTY_IPV6_CACHE,
@@ -1750,6 +1834,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 8, , table: control.sp_rec_v6 */
+	.description = "control.sp_rec_v6",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1763,6 +1848,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 8, , table: sp_smac_ipv6.0 */
+	.description = "sp_smac_ipv6.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_SP_SMAC_IPV6,
 	.resource_sub_type =
@@ -1785,6 +1871,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 3
 	},
 	{ /* act_tid: 8, , table: source_property_ipv6_cache.wr */
+	.description = "source_property_ipv6_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_SOURCE_PROPERTY_IPV6_CACHE,
@@ -1808,6 +1895,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: mod_record.ing_l2write */
+	.description = "mod_record.ing_l2write",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -1829,6 +1917,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 18
 	},
 	{ /* act_tid: 8, , table: vxlan_encap_rec_cache.rd */
+	.description = "vxlan_encap_rec_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_VXLAN_ENCAP_REC_CACHE,
@@ -1851,6 +1940,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 8, , table: vxlan_encap_ipv6_rec_cache.rd */
+	.description = "vxlan_encap_ipv6_rec_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_VXLAN_ENCAP_IPV6_REC_CACHE,
@@ -1873,6 +1963,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 8, , table: control.vxlan_v6_encap */
+	.description = "control.vxlan_v6_encap",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -1886,6 +1977,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 8, , table: int_tun_encap_record.ipv4_vxlan */
+	.description = "int_tun_encap_record.ipv4_vxlan",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_64B,
 	.resource_sub_type =
@@ -1908,6 +2000,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 25
 	},
 	{ /* act_tid: 8, , table: int_tun_encap_record.ipv6_vxlan */
+	.description = "int_tun_encap_record.ipv6_vxlan",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_64B,
 	.resource_sub_type =
@@ -1929,6 +2022,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 23
 	},
 	{ /* act_tid: 8, , table: vxlan_encap_rec_cache.wr */
+	.description = "vxlan_encap_rec_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_VXLAN_ENCAP_REC_CACHE,
@@ -1952,6 +2046,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: vxlan_encap_ipv6_rec_cache.wr */
+	.description = "vxlan_encap_ipv6_rec_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_VXLAN_ENCAP_IPV6_REC_CACHE,
@@ -1975,6 +2070,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: geneve_encap_rec_cache.rd */
+	.description = "geneve_encap_rec_cache.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GENEVE_ENCAP_REC_CACHE,
@@ -1997,6 +2093,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 8, , table: control.geneve_encap */
+	.description = "control.geneve_encap",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -2010,6 +2107,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 8, , table: int_geneve_encap_record.ipv4_geneve */
+	.description = "int_geneve_encap_record.ipv4_geneve",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_64B,
 	.resource_sub_type =
@@ -2032,6 +2130,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 31
 	},
 	{ /* act_tid: 8, , table: int_geneve_encap_record.ipv6_geneve */
+	.description = "int_geneve_encap_record.ipv6_geneve",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_ENCAP_64B,
 	.resource_sub_type =
@@ -2053,6 +2152,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 29
 	},
 	{ /* act_tid: 8, , table: geneve_encap_rec_cache.wr */
+	.description = "geneve_encap_rec_cache.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_sub_type =
 		BNXT_ULP_RESOURCE_SUB_TYPE_GENERIC_TABLE_GENEVE_ENCAP_REC_CACHE,
@@ -2076,6 +2176,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 2
 	},
 	{ /* act_tid: 8, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -2097,6 +2198,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 9, , table: shared_mirror_record.rd */
+	.description = "shared_mirror_record.rd",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -2120,6 +2222,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 9, , table: control.mirror */
+	.description = "control.mirror",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -2132,6 +2235,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 9, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -2152,6 +2256,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 9, , table: mod_record.vf_2_vf */
+	.description = "mod_record.vf_2_vf",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -2173,6 +2278,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 20
 	},
 	{ /* act_tid: 9, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -2193,6 +2299,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 10, , table: control.delete_chk */
+	.description = "control.delete_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -2205,6 +2312,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 10, , table: shared_mirror_record.del_chk */
+	.description = "shared_mirror_record.del_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -2229,6 +2337,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.ident_nums = 1
 	},
 	{ /* act_tid: 10, , table: control.mirror_del_exist_chk */
+	.description = "control.mirror_del_exist_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -2241,6 +2350,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_opcode = BNXT_ULP_FDB_OPC_NOP
 	},
 	{ /* act_tid: 10, , table: control.mirror_ref_cnt_chk */
+	.description = "control.mirror_ref_cnt_chk",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -2261,6 +2371,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 		.func_dst_opr = BNXT_ULP_RF_IDX_CC }
 	},
 	{ /* act_tid: 10, , table: control.create */
+	.description = "control.create",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_CTRL_TABLE,
 	.direction = TF_DIR_TX,
 	.execute_info = {
@@ -2274,6 +2385,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.fdb_operand = BNXT_ULP_RF_IDX_RID
 	},
 	{ /* act_tid: 10, , table: mirror_tbl.alloc */
+	.description = "mirror_tbl.alloc",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -2296,6 +2408,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* act_tid: 10, , table: int_flow_counter_tbl.0 */
+	.description = "int_flow_counter_tbl.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_STATS_64,
 	.resource_sub_type =
@@ -2318,6 +2431,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 1
 	},
 	{ /* act_tid: 10, , table: mod_record.vf_2_vf */
+	.description = "mod_record.vf_2_vf",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_ACT_MODIFY_64B,
 	.resource_sub_type =
@@ -2340,6 +2454,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.encap_num_fields = 20
 	},
 	{ /* act_tid: 10, , table: int_full_act_record.0 */
+	.description = "int_full_act_record.0",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_FULL_ACT_RECORD,
 	.resource_sub_type =
@@ -2362,6 +2477,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 17
 	},
 	{ /* act_tid: 10, , table: mirror_tbl.wr */
+	.description = "mirror_tbl.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_INDEX_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
@@ -2383,6 +2499,7 @@ struct bnxt_ulp_mapper_tbl_info ulp_thor_act_tbl_list[] = {
 	.result_num_fields = 5
 	},
 	{ /* act_tid: 10, , table: shared_mirror_record.wr */
+	.description = "shared_mirror_record.wr",
 	.resource_func = BNXT_ULP_RESOURCE_FUNC_GENERIC_TABLE,
 	.resource_type = TF_TBL_TYPE_MIRROR_CONFIG,
 	.resource_sub_type =
