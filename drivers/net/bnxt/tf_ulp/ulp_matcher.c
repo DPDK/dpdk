@@ -327,9 +327,17 @@ error:
 int32_t ulp_matcher_init(struct bnxt_ulp_context *ulp_ctx)
 {
 	struct rte_hash_parameters hash_tbl_params = {0};
-	char hash_class_tbl_name[64] = "bnxt_ulp_class_matcher";
-	char hash_act_tbl_name[64] = "bnxt_ulp_act_matcher";
+	char hash_class_tbl_name[64] = {0};
+	char hash_act_tbl_name[64] = {0};
 	struct bnxt_ulp_matcher_data *data;
+	uint16_t port_id;
+
+	/* append port_id to the buffer name */
+	port_id = ulp_ctx->bp->eth_dev->data->port_id;
+	snprintf(hash_class_tbl_name, sizeof(hash_class_tbl_name),
+		 "bnxt_ulp_class_matcher_%d", port_id);
+	snprintf(hash_act_tbl_name, sizeof(hash_act_tbl_name),
+		 "bnxt_ulp_act_matcher_%d", port_id);
 
 	data = rte_zmalloc("bnxt_ulp_matcher_data",
 			   sizeof(struct bnxt_ulp_matcher_data), 0);
