@@ -505,7 +505,47 @@ static int tfc_act_get_only(struct tfc *tfcp,
 	return rc;
 }
 
+int tfc_act_get_clear_response(struct cfa_bld_mpcinfo *mpc_info,
+			       struct bnxt_mpc_mbuf *mpc_msg_out,
+			       uint8_t *rx_msg,
+			       uint16_t *data_sz_words)
+{
+	int i;
+	int rc;
+	uint8_t discard_data[TFC_ACT_DISCARD_DATA_SIZE];
+	struct cfa_mpc_data_obj fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_MAX_FLD] = { {0} };
+
+	/* Process response */
+	for (i = 0; i < CFA_BLD_MPC_READ_CLR_CMP_MAX_FLD; i++)
+		fields_cmp[i].field_id = INVALID_U16;
+
+	fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].field_id =
+		CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD;
+
+	rc = mpc_info->mpcops->cfa_bld_mpc_parse_cache_read_clr(rx_msg,
+								mpc_msg_out->msg_size,
+								discard_data,
+								*data_sz_words *
+								TFC_MPC_BYTES_PER_WORD,
+								fields_cmp);
+
+	if (unlikely(rc)) {
+		PMD_DRV_LOG_LINE(ERR, "Action read clear parse failed: %d", rc);
+		return -1;
+	}
+
+	if (fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].val != CFA_BLD_MPC_OK) {
+		PMD_DRV_LOG_LINE(ERR, "Action read clear failed with status code:%d",
+				 (uint32_t)fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].val);
+		rc = ((int)fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].val) * -1;
+		return rc;
+	}
+
+	return 0;
+}
+
 static int tfc_act_get_clear(struct tfc *tfcp,
+			     struct tfc_mpc_batch_info_t *batch_info,
 			     const struct tfc_cmm_info *cmm_info,
 			     uint8_t *data,
 			     uint16_t *data_sz_words,
@@ -519,8 +559,6 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 	int i;
 	uint32_t buff_len;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_READ_CLR_CMD_MAX_FLD] = { {0} };
-	struct cfa_mpc_data_obj fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_MAX_FLD] = { {0} };
-	uint8_t discard_data[TFC_ACT_DISCARD_DATA_SIZE];
 	uint32_t entry_offset;
 	uint64_t host_address;
 	struct bnxt_mpc_mbuf mpc_msg_in;
@@ -631,37 +669,24 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 			  &mpc_msg_out,
 			  &msg_count,
 			  TFC_MPC_TABLE_READ_CLEAR,
-			  NULL);
+			  batch_info);
 
 	if (unlikely(rc)) {
 		PMD_DRV_LOG_LINE(ERR, "read clear MPC send failed: %d", rc);
 		goto cleanup;
 	}
 
-	/* Process response */
-	for (i = 0; i < CFA_BLD_MPC_READ_CLR_CMP_MAX_FLD; i++)
-		fields_cmp[i].field_id = INVALID_U16;
-
-	fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].field_id =
-		CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD;
-
-	rc = mpc_info->mpcops->cfa_bld_mpc_parse_cache_read_clr(rx_msg,
-								mpc_msg_out.msg_size,
-								discard_data,
-								*data_sz_words *
-								TFC_MPC_BYTES_PER_WORD,
-								fields_cmp);
-
-	if (unlikely(rc)) {
-		PMD_DRV_LOG_LINE(ERR, "Action read clear parse failed: %d", rc);
-		goto cleanup;
-	}
-
-	if (fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].val != CFA_BLD_MPC_OK) {
-		PMD_DRV_LOG_LINE(ERR, "Action read clear failed with status code:%d",
-				 (uint32_t)fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].val);
-		rc = ((int)fields_cmp[CFA_BLD_MPC_READ_CLR_CMP_STATUS_FLD].val) * -1;
-		goto cleanup;
+	if ((batch_info && !batch_info->enabled) || !batch_info) {
+		rc = tfc_act_get_clear_response(mpc_info,
+						&mpc_msg_out,
+						rx_msg,
+						data_sz_words);
+		if (rc) {
+			PMD_DRV_LOG_LINE(ERR, "Action response failed: %d", rc);
+			goto cleanup;
+		}
+	} else {
+		batch_info->comp_info[batch_info->count - 1].read_words = *data_sz_words;
 	}
 
 	return 0;
@@ -682,11 +707,6 @@ int tfc_act_get(struct tfc *tfcp,
 	 * clear via the clr flag.
 	 */
 	if (clr && clr->clr) {
-		if (unlikely(batch_info && batch_info->enabled)) {
-			PMD_DRV_LOG_LINE(ERR, "Not supported in batching mode");
-			return -EINVAL;
-		}
-
 		/* Clear offset and size have to be two bytes aligned */
 		if (clr->offset_in_byte % 2 || clr->sz_in_byte % 2) {
 			PMD_DRV_LOG_LINE(ERR,
@@ -695,7 +715,9 @@ int tfc_act_get(struct tfc *tfcp,
 			return -EINVAL;
 		}
 
-		return tfc_act_get_clear(tfcp, cmm_info,
+		return tfc_act_get_clear(tfcp,
+					 batch_info,
+					 cmm_info,
 					 data, data_sz_words,
 					 clr->offset_in_byte / 2,
 					 clr->sz_in_byte / 2);

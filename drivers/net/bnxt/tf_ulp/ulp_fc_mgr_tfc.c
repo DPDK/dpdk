@@ -30,6 +30,19 @@
 #define ULP_TFC_CNTR_ALIGN 32
 #define ULP_TFC_ACT_WORD_SZ 32
 
+struct ulp_fc_tfc_stats_cache_entry {
+	uint32_t flags;
+	uint64_t timestamp;
+	uint8_t tsid;
+	uint32_t record_size;
+	uint32_t offset;
+	uint8_t dir;
+	uint64_t packet_count;
+	uint64_t byte_count;
+	uint16_t tcp_flags;
+	uint32_t tcp_timestamp;
+};
+
 static int32_t
 ulp_fc_tfc_update_accum_stats(__rte_unused struct bnxt_ulp_context *ctxt,
 			      __rte_unused struct bnxt_ulp_fc_info *fc_info,

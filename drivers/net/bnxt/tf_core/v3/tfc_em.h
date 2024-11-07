@@ -164,6 +164,11 @@ int tfc_act_get_only_response(struct cfa_bld_mpcinfo *mpc_info,
 			      uint8_t *rx_msg,
 			      uint16_t *data_sz_words);
 
+int tfc_act_get_clear_response(struct cfa_bld_mpcinfo *mpc_info,
+			       struct bnxt_mpc_mbuf *mpc_msg_out,
+			       uint8_t *rx_msg,
+			       uint16_t *data_sz_words);
+
 int tfc_mpc_send(struct bnxt *bp,
 		 struct bnxt_mpc_mbuf *in_msg,
 		 struct bnxt_mpc_mbuf *out_msg,

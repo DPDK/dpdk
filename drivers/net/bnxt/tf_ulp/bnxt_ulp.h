@@ -162,6 +162,8 @@ struct bnxt_ulp_data {
 	uint64_t			feature_bits;
 	uint64_t			default_class_bits;
 	uint64_t			default_act_bits;
+	struct ulp_fc_tfc_stats_cache_entry *stats_cache;
+	struct bnxt_ulp_sc_info		*sc_info;
 };
 
 enum bnxt_ulp_tfo_type {

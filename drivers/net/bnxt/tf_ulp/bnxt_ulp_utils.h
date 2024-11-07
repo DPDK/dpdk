@@ -25,6 +25,7 @@
 #include "ulp_template_struct.h"
 #include "ulp_mark_mgr.h"
 #include "ulp_fc_mgr.h"
+#include "ulp_sc_mgr.h"
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_matcher.h"
@@ -737,6 +738,31 @@ bnxt_ulp_cntxt_ptr2_fc_info_get(struct bnxt_ulp_context *ulp_ctx)
 		return NULL;
 
 	return ulp_ctx->cfg_data->fc_info;
+}
+
+/* Function to set the flow counter info into the context */
+static inline int32_t
+bnxt_ulp_cntxt_ptr2_sc_info_set(struct bnxt_ulp_context *ulp_ctx,
+				struct bnxt_ulp_sc_info *ulp_sc_info)
+{
+	if (unlikely(!ulp_ctx || !ulp_ctx->cfg_data)) {
+		BNXT_DRV_DBG(ERR, "Invalid ulp context data\n");
+		return -EINVAL;
+	}
+
+	ulp_ctx->cfg_data->sc_info = ulp_sc_info;
+
+	return 0;
+}
+
+/* Function to retrieve the flow counter info from the context. */
+static inline struct bnxt_ulp_sc_info *
+bnxt_ulp_cntxt_ptr2_sc_info_get(struct bnxt_ulp_context *ulp_ctx)
+{
+	if (unlikely(!ulp_ctx || !ulp_ctx->cfg_data))
+		return NULL;
+
+	return ulp_ctx->cfg_data->sc_info;
 }
 
 /* Function to get the ulp flags from the ulp context. */

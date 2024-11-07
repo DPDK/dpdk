@@ -926,6 +926,11 @@ int tfc_mpc_batch_end(struct tfc *tfcp,
 	if (unlikely(!batch_info->enabled))
 		return -EBUSY;
 
+	if (unlikely(!batch_info->count)) {
+		batch_info->enabled = false;
+		return 0;
+	}
+
 	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
 
 	if (unlikely(mpc_info->mpcops == NULL)) {
@@ -933,7 +938,8 @@ int tfc_mpc_batch_end(struct tfc *tfcp,
 		return -EINVAL;
 	}
 
-	rte_delay_us_block(BNXT_MPC_RX_US_DELAY * 4);
+	if (batch_info->count < (BNXT_MPC_COMP_MAX_COUNT / 4))
+		rte_delay_us_block(BNXT_MPC_RX_US_DELAY * 4);
 
 	for (i = 0; i < batch_info->count; i++) {
 		rc = tfc_mpc_process_completions(&rx_msg[TFC_MPC_HEADER_SIZE_BYTES],
@@ -981,6 +987,12 @@ int tfc_mpc_batch_end(struct tfc *tfcp,
 			break;
 
 		case TFC_MPC_TABLE_READ_CLEAR:
+			rc = tfc_act_get_clear_response(mpc_info,
+							&batch_info->comp_info[i].out_msg,
+							rx_msg,
+							&batch_info->comp_info[i].read_words);
+			break;
+
 		default:
 			PMD_DRV_LOG_LINE(ERR, "MPC Batch not supported for type: %d",
 					 batch_info->comp_info[i].type);

@@ -13,6 +13,7 @@
 #include "ulp_mapper.h"
 #include "ulp_flow_db.h"
 #include "ulp_fc_mgr.h"
+#include "ulp_sc_mgr.h"
 #include "ulp_tun.h"
 #ifdef TF_FLOW_SCALE_QUERY
 #include "tf_resources.h"
@@ -634,6 +635,9 @@ ulp_flow_db_resource_add(struct bnxt_ulp_context *ulp_ctxt,
 
 		if (!ulp_fc_mgr_thread_isstarted(ulp_ctxt))
 			ulp_fc_mgr_thread_start(ulp_ctxt);
+
+		if (!ulp_sc_mgr_thread_isstarted(ulp_ctxt))
+			ulp_sc_mgr_thread_start(ulp_ctxt);
 	}
 
 	/* all good, return success */

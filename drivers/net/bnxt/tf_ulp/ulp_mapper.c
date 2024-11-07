@@ -2950,6 +2950,72 @@ ulp_mapper_vnic_tbl_process(struct bnxt_ulp_mapper_parms *parms,
 	return rc;
 }
 
+static int32_t
+ulp_mapper_stats_cache_tbl_process(struct bnxt_ulp_mapper_parms *parms,
+				   struct bnxt_ulp_mapper_tbl_info *tbl)
+{
+	struct ulp_flow_db_res_params fid_parms;
+	uint64_t counter_handle;
+	struct ulp_blob	data;
+	uint16_t data_len = 0;
+	uint8_t *tmp_data;
+	int32_t rc = 0;
+
+	/* Initialize the blob data */
+	if (unlikely(ulp_blob_init(&data, tbl->result_bit_size,
+				   BNXT_ULP_BYTE_ORDER_BE))) {
+		BNXT_DRV_DBG(ERR, "Failed initial ulp_global table blob\n");
+		return -EINVAL;
+	}
+
+	/* read the arguments from the result table */
+	rc = ulp_mapper_tbl_result_build(parms, tbl, &data,
+					 "ULP Global Result");
+	if (unlikely(rc)) {
+		BNXT_DRV_DBG(ERR, "Failed to build the result blob\n");
+		return rc;
+	}
+
+	tmp_data = ulp_blob_data_get(&data, &data_len);
+	counter_handle = *(uint64_t *)tmp_data;
+	counter_handle = tfp_be_to_cpu_64(counter_handle);
+
+	memset(&fid_parms, 0, sizeof(fid_parms));
+	fid_parms.direction	= tbl->direction;
+	fid_parms.resource_func	= tbl->resource_func;
+	fid_parms.resource_type	= tbl->resource_type;
+	fid_parms.resource_sub_type = tbl->resource_sub_type;
+	fid_parms.resource_hndl	    = counter_handle;
+	fid_parms.critical_resource = tbl->critical_resource;
+	rc = ulp_mapper_fdb_opc_process(parms, tbl, &fid_parms);
+	if (unlikely(rc)) {
+		BNXT_DRV_DBG(ERR, "Failed to link resource to flow rc = %d\n",
+			     rc);
+		return rc;
+	}
+
+	rc = ulp_sc_mgr_entry_alloc(parms, counter_handle, tbl);
+	if (unlikely(rc)) {
+		BNXT_DRV_DBG(ERR, "Failed to link resource to flow rc = %d\n",
+			     rc);
+		return rc;
+	}
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
+#ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG_MAPPER
+	BNXT_DRV_DBG(DEBUG, "flow id =0x%x\n", parms->flow_id);
+#endif
+#endif
+	return rc;
+}
+
+static int32_t
+ulp_mapper_stats_cache_tbl_res_free(struct bnxt_ulp_context *ulp,
+				    uint32_t fid)
+{
+	ulp_sc_mgr_entry_free(ulp, fid);
+	return 0;
+}
+
 /* Free the vnic resource */
 static int32_t
 ulp_mapper_vnic_tbl_res_free(struct bnxt_ulp_context *ulp __rte_unused,
@@ -4148,6 +4214,9 @@ ulp_mapper_tbls_process(struct bnxt_ulp_mapper_parms *parms, void *error)
 		case BNXT_ULP_RESOURCE_FUNC_ALLOCATOR_TABLE:
 			rc = ulp_mapper_allocator_tbl_process(parms, tbl);
 			break;
+		case BNXT_ULP_RESOURCE_FUNC_STATS_CACHE:
+			rc = ulp_mapper_stats_cache_tbl_process(parms, tbl);
+			break;
 		default:
 			BNXT_DRV_DBG(ERR, "Unexpected mapper resource %d\n",
 				     tbl->resource_func);
@@ -4285,6 +4354,10 @@ ulp_mapper_resource_free(struct bnxt_ulp_context *ulp,
 						 res->resource_sub_type,
 						 res->direction,
 						 res->resource_hndl);
+		break;
+	case BNXT_ULP_RESOURCE_FUNC_STATS_CACHE:
+		rc = ulp_mapper_stats_cache_tbl_res_free(ulp,
+							 fid);
 		break;
 	default:
 		break;

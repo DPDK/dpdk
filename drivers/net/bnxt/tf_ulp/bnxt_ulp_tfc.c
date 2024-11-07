@@ -26,6 +26,7 @@
 #include "ulp_template_struct.h"
 #include "ulp_mark_mgr.h"
 #include "ulp_fc_mgr.h"
+#include "ulp_sc_mgr.h"
 #include "ulp_flow_db.h"
 #include "ulp_mapper.h"
 #include "ulp_matcher.h"
@@ -888,6 +889,9 @@ ulp_tfc_deinit(struct bnxt *bp,
 			BNXT_DRV_DBG(ERR, "Failed to close HA (%d)\n", rc);
 	}
 
+	/* Delete the Stats Counter Manager */
+	ulp_sc_mgr_deinit(bp->ulp_ctx);
+
 	/* cleanup the flow database */
 	ulp_flow_db_deinit(bp->ulp_ctx);
 
@@ -1041,6 +1045,12 @@ ulp_tfc_init(struct bnxt *bp,
 	rc = ulp_fc_mgr_init(bp->ulp_ctx);
 	if (rc) {
 		BNXT_DRV_DBG(ERR, "Failed to initialize ulp flow counter mgr\n");
+		goto jump_to_error;
+	}
+
+	rc = ulp_sc_mgr_init(bp->ulp_ctx);
+	if (rc) {
+		BNXT_DRV_DBG(ERR, "Failed to initialize ulp stats cache mgr\n");
 		goto jump_to_error;
 	}
 
