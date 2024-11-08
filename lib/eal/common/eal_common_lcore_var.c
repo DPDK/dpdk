@@ -54,7 +54,6 @@ lcore_var_alloc(size_t size, size_t align)
 		current_buffer = _aligned_malloc(alloc_size, RTE_CACHE_LINE_SIZE);
 #else
 		current_buffer = aligned_alloc(RTE_CACHE_LINE_SIZE, alloc_size);
-
 #endif
 		RTE_VERIFY(current_buffer != NULL);
 
@@ -108,7 +107,11 @@ eal_lcore_var_cleanup(void)
 	while (current_buffer != NULL) {
 		struct lcore_var_buffer *prev = current_buffer->prev;
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+		_aligned_free(current_buffer);
+#else
 		free(current_buffer);
+#endif
 
 		current_buffer = prev;
 	}
