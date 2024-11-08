@@ -301,11 +301,6 @@ cpfl_fxp_parse_action(struct cpfl_itf *itf,
 				PMD_DRV_LOG(ERR, "Cannot use port_representor action for the represented_port");
 				goto err;
 			}
-			if (action_type == RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT &&
-			    dst_itf->type == CPFL_ITF_TYPE_VPORT) {
-				PMD_DRV_LOG(ERR, "Cannot use represented_port action for the local vport");
-				goto err;
-			}
 			if (is_vsi)
 				dev_id = cpfl_get_vsi_id(dst_itf);
 			else
