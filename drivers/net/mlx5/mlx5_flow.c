@@ -8565,7 +8565,7 @@ mlx5_legacy_dmac_flow_create(struct rte_eth_dev *dev, const struct rte_ether_add
 		.hdr.dst_addr = *addr,
 	};
 	struct rte_flow_item_eth unicast_mask = {
-		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 
 	return mlx5_ctrl_flow(dev, &unicast, &unicast_mask);
@@ -8580,7 +8580,7 @@ mlx5_legacy_dmac_vlan_flow_create(struct rte_eth_dev *dev,
 		.hdr.dst_addr = *addr,
 	};
 	struct rte_flow_item_eth unicast_mask = {
-		.hdr.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+		.hdr.dst_addr.addr_bytes = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff },
 	};
 	struct rte_flow_item_vlan vlan_spec = {
 		.hdr.vlan_tci = rte_cpu_to_be_16(vid),
