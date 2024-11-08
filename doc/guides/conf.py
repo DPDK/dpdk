@@ -87,6 +87,7 @@ if environ.get('DTS_DOC_BUILD'):
     autodoc_typehints = 'both'
     autodoc_typehints_format = 'short'
     autodoc_typehints_description_target = 'documented'
+    autodoc_member_order = 'bysource'
 
     # DTS docstring options.
     add_module_names = False
