@@ -795,7 +795,7 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 				sw_rings_base, ACC_SIZE_64MBYTE);
 		next_64mb_align_addr_iova = sw_rings_base_iova +
 				next_64mb_align_offset;
-		sw_ring_iova_end_addr = sw_rings_base_iova + dev_sw_ring_size;
+		sw_ring_iova_end_addr = sw_rings_base_iova + dev_sw_ring_size - 1;
 
 		/* Check if the end of the sw ring memory block is before the
 		 * start of next 64MB aligned mem address
