@@ -166,7 +166,7 @@ static const struct rte_flow_item_gre dpaa2_flow_item_gre_mask = {
 
 static const struct rte_flow_item_vxlan dpaa2_flow_item_vxlan_mask = {
 	.flags = 0xff,
-	.vni = "\xff\xff\xff",
+	.vni = { 0xff, 0xff, 0xff },
 };
 
 static const struct rte_flow_item_ecpri dpaa2_flow_item_ecpri_mask = {
