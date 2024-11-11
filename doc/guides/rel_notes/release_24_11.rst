@@ -276,6 +276,11 @@ New Features
   This field is used to pass an extra configuration settings such as ability
   to lookup IPv4 addresses in network byte order.
 
+* **Added per-CPU power management QoS interface.**
+
+  Added per-CPU PM QoS interface to lower the resume latency
+  when wake up from idle state.
+
 * **Added new API to register telemetry endpoint callbacks with private arguments.**
 
   A new ``rte_telemetry_register_cmd_arg`` function is available to pass an opaque value to

@@ -14,8 +14,9 @@ endif
 sources = files(
         'power_common.c',
         'rte_power_cpufreq.c',
-        'rte_power_uncore.c',
         'rte_power_pmd_mgmt.c',
+        'rte_power_qos.c',
+        'rte_power_uncore.c',
 )
 headers = files(
         'power_cpufreq.h',
@@ -23,6 +24,7 @@ headers = files(
         'rte_power_cpufreq.h',
         'rte_power_guest_channel.h',
         'rte_power_pmd_mgmt.h',
+        'rte_power_qos.h',
         'rte_power_uncore.h',
 )
 
