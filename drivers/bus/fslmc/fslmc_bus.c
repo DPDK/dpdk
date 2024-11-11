@@ -243,8 +243,6 @@ rte_fslmc_parse(const char *name, void *addr)
 	uint8_t sep_exists = 0;
 	int ret = -1;
 
-	DPAA2_BUS_DEBUG("Parsing dev=(%s)", name);
-
 	/* There are multiple ways this can be called, with bus:dev, name=dev
 	 * or just dev. In all cases, the 'addr' is actually a string.
 	 */
@@ -329,7 +327,8 @@ rte_fslmc_scan(void)
 	group_name = getenv("DPRC");
 	if (!group_name) {
 		DPAA2_BUS_DEBUG("DPAA2: DPRC not available");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto scan_fail;
 	}
 
 	ret = fslmc_get_container_group(group_name, &groupid);
