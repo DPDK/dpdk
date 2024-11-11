@@ -3677,7 +3677,11 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-		if (m->pkt_len < IAVF_TX_MIN_PKT_LEN) {
+		/* valid packets are greater than min size, and single-buffer pkts
+		 * must have data_len == pkt_len
+		 */
+		if (m->pkt_len < IAVF_TX_MIN_PKT_LEN ||
+				(m->nb_segs == 1 && m->data_len != m->pkt_len)) {
 			rte_errno = EINVAL;
 			return i;
 		}
