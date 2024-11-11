@@ -68,6 +68,10 @@ In this application, we introduce a heuristic algorithm that allows packet proce
 if there is no Rx packet received on recent polls.
 In this way, CPUIdle automatically forces the corresponding cores to enter deeper C-states
 instead of always running to the C0 state waiting for packets.
+But user can set the CPU resume latency to control C-state selection.
+Setting the CPU resume latency to 0
+can limit the CPU just to enter C0-state to improve performance,
+which may increase power consumption of platform.
 
 .. note::
 
@@ -104,6 +108,8 @@ where,
 *   -i (frequency index): optional, sets uncore frequency to frequency index value, by setting min and max values to be the same.
 
 *   --config (port,queue,lcore)[,(port,queue,lcore)]: determines which queues from which ports are mapped to which cores.
+
+*   --cpu-resume-latency LATENCY: set CPU resume latency to control C-state selection, 0 : just allow to enter C0-state.
 
 *   --max-pkt-len: optional, maximum packet length in decimal (64-9600)
 
