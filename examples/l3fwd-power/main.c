@@ -1520,8 +1520,12 @@ print_usage(const char *prgname)
 		prgname);
 }
 
+/*
+ * Caller must give the right upper limit so as to ensure receiver variable
+ * doesn't overflow.
+ */
 static int
-parse_int(const char *opt)
+parse_uint(const char *opt, uint32_t max, uint32_t *res)
 {
 	char *end = NULL;
 	unsigned long val;
@@ -1531,23 +1535,15 @@ parse_int(const char *opt)
 	if ((opt[0] == '\0') || (end == NULL) || (*end != '\0'))
 		return -1;
 
-	return val;
-}
-
-static int parse_max_pkt_len(const char *pktlen)
-{
-	char *end = NULL;
-	unsigned long len;
-
-	/* parse decimal string */
-	len = strtoul(pktlen, &end, 10);
-	if ((pktlen[0] == '\0') || (end == NULL) || (*end != '\0'))
+	if (val > max) {
+		RTE_LOG(ERR, L3FWD_POWER, "%s parameter shouldn't exceed %u.\n",
+			opt, max);
 		return -1;
+	}
 
-	if (len == 0)
-		return -1;
+	*res = val;
 
-	return len;
+	return 0;
 }
 
 static int
@@ -1894,8 +1890,9 @@ parse_args(int argc, char **argv)
 			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_MAX_PKT_LEN,
 					sizeof(CMD_LINE_OPT_MAX_PKT_LEN))) {
+				if (parse_uint(optarg, UINT32_MAX, &max_pkt_len) != 0)
+					return -1;
 				printf("Custom frame size is configured\n");
-				max_pkt_len = parse_max_pkt_len(optarg);
 			}
 
 			if (!strncmp(lgopts[option_index].name,
@@ -1908,29 +1905,33 @@ parse_args(int argc, char **argv)
 			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_MAX_EMPTY_POLLS,
 					sizeof(CMD_LINE_OPT_MAX_EMPTY_POLLS))) {
+				if (parse_uint(optarg, UINT32_MAX, &max_empty_polls) != 0)
+					return -1;
 				printf("Maximum empty polls configured\n");
-				max_empty_polls = parse_int(optarg);
 			}
 
 			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_PAUSE_DURATION,
 					sizeof(CMD_LINE_OPT_PAUSE_DURATION))) {
+				if (parse_uint(optarg, UINT32_MAX, &pause_duration) != 0)
+					return -1;
 				printf("Pause duration configured\n");
-				pause_duration = parse_int(optarg);
 			}
 
 			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_SCALE_FREQ_MIN,
 					sizeof(CMD_LINE_OPT_SCALE_FREQ_MIN))) {
+				if (parse_uint(optarg, UINT32_MAX, &scale_freq_min) != 0)
+					return -1;
 				printf("Scaling frequency minimum configured\n");
-				scale_freq_min = parse_int(optarg);
 			}
 
 			if (!strncmp(lgopts[option_index].name,
 					CMD_LINE_OPT_SCALE_FREQ_MAX,
 					sizeof(CMD_LINE_OPT_SCALE_FREQ_MAX))) {
+				if (parse_uint(optarg, UINT32_MAX, &scale_freq_max) != 0)
+					return -1;
 				printf("Scaling frequency maximum configured\n");
-				scale_freq_max = parse_int(optarg);
 			}
 
 			break;
