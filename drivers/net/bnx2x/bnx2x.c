@@ -10331,12 +10331,13 @@ static int bnx2x_init_hw_common(struct bnx2x_softc *sc)
 	REG_WR(sc, PXP2_REG_RD_DISABLE_INPUTS, 0);
 
 	if (!CHIP_IS_E1x(sc)) {
-		int factor = 0;
+		int factor = CHIP_REV_IS_EMUL(sc) ? 1000 :
+				(CHIP_REV_IS_FPGA(sc) ? 400 : 0);
 
 		ecore_init_block(sc, BLOCK_PGLUE_B, PHASE_COMMON);
 		ecore_init_block(sc, BLOCK_ATC, PHASE_COMMON);
 
-/* let the HW do it's magic... */
+		/* let the HW do it's magic... */
 		do {
 			DELAY(200000);
 			val = REG_RD(sc, ATC_REG_ATC_INIT_DONE);
