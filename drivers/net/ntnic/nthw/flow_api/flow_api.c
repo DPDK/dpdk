@@ -473,8 +473,7 @@ static void done_resource_elements(struct flow_nic_dev *ndev, enum res_type_e re
 {
 	assert(ndev);
 
-	if (ndev->res[res_type].alloc_bm)
-		free(ndev->res[res_type].alloc_bm);
+	free(ndev->res[res_type].alloc_bm);
 }
 
 static void list_insert_flow_nic(struct flow_nic_dev *ndev)
@@ -653,8 +652,7 @@ err_exit0:
 	rte_spinlock_unlock(&ndev->mtx);
 	rte_spinlock_unlock(&base_mtx);
 
-	if (eth_dev)
-		free(eth_dev);
+	free(eth_dev);
 
 #ifdef FLOW_DEBUG
 	ndev->be.iface->set_debug_mode(ndev->be.be_dev, FLOW_BACKEND_DEBUG_MODE_NONE);

@@ -40,8 +40,7 @@ void flm_age_queue_free(uint8_t port, uint16_t caller_id)
 		age_queue[caller_id] = NULL;
 	}
 
-	if (q != NULL)
-		rte_ring_free(q);
+	rte_ring_free(q);
 }
 
 void flm_age_queue_free_all(void)

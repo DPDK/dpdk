@@ -31,8 +31,7 @@ void *flm_lrn_queue_create(void)
 
 void flm_lrn_queue_free(void *q)
 {
-	if (q)
-		rte_ring_free(q);
+	rte_ring_free(q);
 }
 
 uint32_t *flm_lrn_queue_get_write_buffer(void *q)

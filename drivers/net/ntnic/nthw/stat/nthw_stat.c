@@ -25,8 +25,7 @@ nthw_stat_t *nthw_stat_new(void)
 
 void nthw_stat_delete(nthw_stat_t *p)
 {
-	if (p)
-		free(p);
+	free(p);
 }
 
 int nthw_stat_init(nthw_stat_t *p, nthw_fpga_t *p_fpga, int n_instance)

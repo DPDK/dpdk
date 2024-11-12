@@ -68,8 +68,7 @@ static void flm_inf_sta_queue_free(uint8_t port, uint8_t caller)
 		break;
 	}
 
-	if (q)
-		rte_ring_free(q);
+	rte_ring_free(q);
 }
 
 void flm_inf_sta_queue_free_all(uint8_t caller)
