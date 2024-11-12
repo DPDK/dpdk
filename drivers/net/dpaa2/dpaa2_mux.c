@@ -329,10 +329,8 @@ rte_pmd_dpaa2_mux_flow_create(uint32_t dpdmux_id,
 	}
 
 creation_error:
-	if (key_cfg_va)
-		rte_free(key_cfg_va);
-	if (key_va)
-		rte_free(key_va);
+	rte_free(key_cfg_va);
+	rte_free(key_va);
 
 	return ret;
 }

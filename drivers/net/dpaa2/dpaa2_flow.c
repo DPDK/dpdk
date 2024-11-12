@@ -4784,8 +4784,7 @@ end_flow_set:
 		}
 	}
 
-	if (dpaa2_pattern)
-		rte_free(dpaa2_pattern);
+	rte_free(dpaa2_pattern);
 
 	return ret;
 }
@@ -5057,14 +5056,10 @@ mem_failure:
 
 creation_error:
 	if (flow) {
-		if (flow->qos_key_addr)
-			rte_free(flow->qos_key_addr);
-		if (flow->qos_mask_addr)
-			rte_free(flow->qos_mask_addr);
-		if (flow->fs_key_addr)
-			rte_free(flow->fs_key_addr);
-		if (flow->fs_mask_addr)
-			rte_free(flow->fs_mask_addr);
+		rte_free(flow->qos_key_addr);
+		rte_free(flow->qos_mask_addr);
+		rte_free(flow->fs_key_addr);
+		rte_free(flow->fs_mask_addr);
 		rte_free(flow);
 	}
 	priv->curr = NULL;
@@ -5128,14 +5123,10 @@ dpaa2_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *_flow,
 	}
 
 	LIST_REMOVE(flow, next);
-	if (flow->qos_key_addr)
-		rte_free(flow->qos_key_addr);
-	if (flow->qos_mask_addr)
-		rte_free(flow->qos_mask_addr);
-	if (flow->fs_key_addr)
-		rte_free(flow->fs_key_addr);
-	if (flow->fs_mask_addr)
-		rte_free(flow->fs_mask_addr);
+	rte_free(flow->qos_key_addr);
+	rte_free(flow->qos_mask_addr);
+	rte_free(flow->fs_key_addr);
+	rte_free(flow->fs_mask_addr);
 	/* Now free the flow */
 	rte_free(flow);
 
