@@ -490,7 +490,8 @@ def check_noiommu_mode():
 
     try:
         with open(filename, "r") as f:
-            if f.read(1) == "1":
+            value = f.read(1)
+            if value in ("1", "y" ,"Y"):
                 return
     except OSError as err:
         sys.exit(f"Error: failed to check unsafe noiommu mode - Cannot open {filename}: {err}")
