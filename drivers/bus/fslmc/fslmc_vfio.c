@@ -557,8 +557,7 @@ success_exit:
 	return vfio_container_fd;
 
 err_exit:
-	if (mp_reply.msgs)
-		free(mp_reply.msgs);
+	free(mp_reply.msgs);
 	DPAA2_BUS_ERR("Open container fd err(%d)", ret);
 	return ret;
 }
