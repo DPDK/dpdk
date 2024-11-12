@@ -11189,11 +11189,9 @@ static int bnx2x_init_hw_func(struct bnx2x_softc *sc)
 /* Turn on a single ISR mode in IGU if driver is going to use
  * INT#x or MSI
  */
-		if ((sc->interrupt_mode != INTR_MODE_MSIX)
-		    || (sc->interrupt_mode != INTR_MODE_SINGLE_MSIX)) {
+		if (sc->interrupt_mode == INTR_MODE_INTX ||
+		    sc->interrupt_mode == INTR_MODE_MSI)
 			pf_conf |= IGU_PF_CONF_SINGLE_ISR_EN;
-		}
-
 /*
  * Timers workaround bug: function init part.
  * Need to wait 20msec after initializing ILT,
