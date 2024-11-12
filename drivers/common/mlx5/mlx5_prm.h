@@ -941,7 +941,7 @@ struct mlx5_modification_cmd {
 			unsigned int field:12;
 			unsigned int action_type:4;
 		};
-	};
+	} __rte_packed;
 	union {
 		uint32_t data1;
 		uint8_t data[4];
@@ -952,7 +952,7 @@ struct mlx5_modification_cmd {
 			unsigned int dst_field:12;
 			unsigned int rsvd4:4;
 		};
-	};
+	} __rte_packed;
 };
 
 typedef uint64_t u64;
