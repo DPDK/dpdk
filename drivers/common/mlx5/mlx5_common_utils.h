@@ -131,7 +131,7 @@ struct mlx5_list_inconst {
  * For huge amount of entries, please consider hash list.
  *
  */
-struct mlx5_list {
+struct __rte_aligned(16) mlx5_list {
 	struct mlx5_list_const l_const;
 	struct mlx5_list_inconst l_inconst;
 };
