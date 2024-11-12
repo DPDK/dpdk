@@ -1623,16 +1623,12 @@ static int bnx2x_nic_unload_no_mcp(struct bnx2x_softc *sc)
 }
 
 /* request unload mode from the MCP: COMMON, PORT or FUNCTION */
-static uint32_t bnx2x_send_unload_req(struct bnx2x_softc *sc, int unload_mode)
+static uint32_t bnx2x_send_unload_req(struct bnx2x_softc *sc, int unload_mode __rte_unused)
 {
 	uint32_t reset_code = 0;
 
 	/* Select the UNLOAD request mode */
-	if (unload_mode == UNLOAD_NORMAL) {
-		reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
-	} else {
-		reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
-	}
+	reset_code = DRV_MSG_CODE_UNLOAD_REQ_WOL_DIS;
 
 	/* Send the request to the MCP */
 	if (!BNX2X_NOMCP(sc)) {
