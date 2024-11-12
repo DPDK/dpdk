@@ -73,9 +73,6 @@ bnx2x_storm_stats_post(struct bnx2x_softc *sc)
 	int rc;
 
 	if (!sc->stats_pending) {
-		if (sc->stats_pending)
-			return;
-
 		sc->fw_stats_req->hdr.drv_stats_counter =
 			htole16(sc->stats_counter++);
 
