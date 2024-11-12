@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 r"""Record and process DTS results.
 
@@ -22,20 +23,21 @@ The :option:`--output` command line argument and the :envvar:`DTS_OUTPUT_DIR` en
 variable modify the directory where the files with results will be stored.
 """
 
-import os.path
+import json
 from collections.abc import MutableSequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
-from typing import Union
+from pathlib import Path
+from typing import Any, Callable, TypedDict
 
 from framework.testbed_model.capability import Capability
 
 from .config import TestRunConfiguration, TestSuiteConfig
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLogger
-from .settings import SETTINGS
 from .test_suite import TestCase, TestSuite
 from .testbed_model.os_session import OSSessionInfo
+from .testbed_model.port import Port
 from .testbed_model.sut_node import DPDKBuildInfo
 
 
@@ -131,6 +133,60 @@ class Result(Enum):
     def __bool__(self) -> bool:
         """Only :attr:`PASS` is True."""
         return self is self.PASS
+
+
+class TestCaseResultDict(TypedDict):
+    """Represents the `TestCaseResult` results.
+
+    Attributes:
+        test_case_name: The name of the test case.
+        result: The result name of the test case.
+    """
+
+    test_case_name: str
+    result: str
+
+
+class TestSuiteResultDict(TypedDict):
+    """Represents the `TestSuiteResult` results.
+
+    Attributes:
+        test_suite_name: The name of the test suite.
+        test_cases: A list of test case results contained in this test suite.
+    """
+
+    test_suite_name: str
+    test_cases: list[TestCaseResultDict]
+
+
+class TestRunResultDict(TypedDict, total=False):
+    """Represents the `TestRunResult` results.
+
+    Attributes:
+        compiler_version: The version of the compiler used for the DPDK build.
+        dpdk_version: The version of DPDK being tested.
+        ports: A list of ports associated with the test run.
+        test_suites: A list of test suite results included in this test run.
+        summary: A dictionary containing overall results, such as pass/fail counts.
+    """
+
+    compiler_version: str | None
+    dpdk_version: str | None
+    ports: list[dict[str, Any]]
+    test_suites: list[TestSuiteResultDict]
+    summary: dict[str, int | float]
+
+
+class DtsRunResultDict(TypedDict):
+    """Represents the `DtsRunResult` results.
+
+    Attributes:
+        test_runs: A list of test run results.
+        summary: A summary dictionary containing overall statistics for the test runs.
+    """
+
+    test_runs: list[TestRunResultDict]
+    summary: dict[str, int | float]
 
 
 class FixtureResult:
@@ -247,14 +303,34 @@ class BaseResult:
         """
         return self._get_setup_teardown_errors() + self._get_child_errors()
 
-    def add_stats(self, statistics: "Statistics") -> None:
-        """Collate stats from the whole result hierarchy.
+    def to_dict(self):
+        """Convert the results hierarchy into a dictionary representation."""
+
+    def add_result(self, results: dict[str, int]):
+        """Collate the test case result to the given result hierarchy.
 
         Args:
-            statistics: The :class:`Statistics` object where the stats will be collated.
+            results: The dictionary in which results will be collated.
         """
         for child_result in self.child_results:
-            child_result.add_stats(statistics)
+            child_result.add_result(results)
+
+    def generate_pass_rate_dict(self, test_run_summary) -> dict[str, float]:
+        """Generate a dictionary with the PASS/FAIL ratio of all test cases.
+
+        Args:
+            test_run_summary: The summary dictionary containing test result counts.
+
+        Returns:
+            A dictionary with the PASS/FAIL ratio of all test cases.
+        """
+        return {
+            "PASS_RATE": (
+                float(test_run_summary[Result.PASS.name])
+                * 100
+                / sum(test_run_summary[result.name] for result in Result if result != Result.SKIP)
+            )
+        }
 
 
 class DTSResult(BaseResult):
@@ -269,31 +345,25 @@ class DTSResult(BaseResult):
     and as such is where the data form the whole hierarchy is collated or processed.
 
     The internal list stores the results of all test runs.
-
-    Attributes:
-        dpdk_version: The DPDK version to record.
     """
 
-    dpdk_version: str | None
+    _output_dir: str
     _logger: DTSLogger
     _errors: list[Exception]
     _return_code: ErrorSeverity
-    _stats_result: Union["Statistics", None]
-    _stats_filename: str
 
-    def __init__(self, logger: DTSLogger):
+    def __init__(self, output_dir: str, logger: DTSLogger):
         """Extend the constructor with top-level specifics.
 
         Args:
+            output_dir: The directory where DTS logs and results are saved.
             logger: The logger instance the whole result will use.
         """
         super().__init__()
-        self.dpdk_version = None
+        self._output_dir = output_dir
         self._logger = logger
         self._errors = []
         self._return_code = ErrorSeverity.NO_ERR
-        self._stats_result = None
-        self._stats_filename = os.path.join(SETTINGS.output_dir, "statistics.txt")
 
     def add_test_run(self, test_run_config: TestRunConfiguration) -> "TestRunResult":
         """Add and return the child result (test run).
@@ -330,10 +400,8 @@ class DTSResult(BaseResult):
             for error in self._errors:
                 self._logger.debug(repr(error))
 
-        self._stats_result = Statistics(self.dpdk_version)
-        self.add_stats(self._stats_result)
-        with open(self._stats_filename, "w+") as stats_file:
-            stats_file.write(str(self._stats_result))
+        TextSummary(self).save(Path(self._output_dir, "results_summary.txt"))
+        JsonResults(self).save(Path(self._output_dir, "results.json"))
 
     def get_return_code(self) -> int:
         """Go through all stored Exceptions and return the final DTS error code.
@@ -351,6 +419,37 @@ class DTSResult(BaseResult):
 
         return int(self._return_code)
 
+    def to_dict(self) -> DtsRunResultDict:
+        """Convert DTS result into a dictionary format.
+
+        The dictionary contains test runs and summary of test runs.
+
+        Returns:
+            A dictionary representation of the DTS result
+        """
+
+        def merge_test_run_summaries(test_run_summaries: list[dict[str, int]]) -> dict[str, int]:
+            """Merge multiple test run summaries into one dictionary.
+
+            Args:
+                test_run_summaries: List of test run summary dictionaries.
+
+            Returns:
+                A merged dictionary containing the aggregated summary.
+            """
+            return {
+                key.name: sum(test_run_summary[key.name] for test_run_summary in test_run_summaries)
+                for key in Result
+            }
+
+        test_runs = [child.to_dict() for child in self.child_results]
+        test_run_summary = merge_test_run_summaries([test_run["summary"] for test_run in test_runs])
+
+        return {
+            "test_runs": test_runs,
+            "summary": test_run_summary | self.generate_pass_rate_dict(test_run_summary),
+        }
+
 
 class TestRunResult(BaseResult):
     """The test run specific result.
@@ -365,13 +464,11 @@ class TestRunResult(BaseResult):
         sut_kernel_version: The operating system kernel version of the SUT node.
     """
 
-    compiler_version: str | None
-    dpdk_version: str | None
-    sut_os_name: str
-    sut_os_version: str
-    sut_kernel_version: str
     _config: TestRunConfiguration
     _test_suites_with_cases: list[TestSuiteWithCases]
+    _ports: list[Port]
+    _sut_info: OSSessionInfo | None
+    _dpdk_build_info: DPDKBuildInfo | None
 
     def __init__(self, test_run_config: TestRunConfiguration):
         """Extend the constructor with the test run's config.
@@ -380,10 +477,11 @@ class TestRunResult(BaseResult):
             test_run_config: A test run configuration.
         """
         super().__init__()
-        self.compiler_version = None
-        self.dpdk_version = None
         self._config = test_run_config
         self._test_suites_with_cases = []
+        self._ports = []
+        self._sut_info = None
+        self._dpdk_build_info = None
 
     def add_test_suite(
         self,
@@ -423,24 +521,96 @@ class TestRunResult(BaseResult):
             )
         self._test_suites_with_cases = test_suites_with_cases
 
-    def add_sut_info(self, sut_info: OSSessionInfo) -> None:
-        """Add SUT information gathered at runtime.
+    @property
+    def ports(self) -> list[Port]:
+        """Get the list of ports associated with this test run."""
+        return self._ports
+
+    @ports.setter
+    def ports(self, ports: list[Port]) -> None:
+        """Set the list of ports associated with this test run.
 
         Args:
-            sut_info: The additional SUT node information.
-        """
-        self.sut_os_name = sut_info.os_name
-        self.sut_os_version = sut_info.os_version
-        self.sut_kernel_version = sut_info.kernel_version
+            ports: The list of ports to associate with this test run.
 
-    def add_dpdk_build_info(self, versions: DPDKBuildInfo) -> None:
-        """Add information about the DPDK build gathered at runtime.
+        Raises:
+            ValueError: If the ports have already been assigned to this test run.
+        """
+        if self._ports:
+            raise ValueError(
+                "Attempted to assign `ports` to a test run result which already has `ports`."
+            )
+        self._ports = ports
+
+    @property
+    def sut_info(self) -> OSSessionInfo | None:
+        """Get the SUT OS session information associated with this test run."""
+        return self._sut_info
+
+    @sut_info.setter
+    def sut_info(self, sut_info: OSSessionInfo) -> None:
+        """Set the SUT node information associated with this test run.
 
         Args:
-            versions: The additional information.
+            sut_info: The SUT node information to associate with this test run.
+
+        Raises:
+            ValueError: If the SUT information has already been assigned to this test run.
         """
-        self.compiler_version = versions.compiler_version
-        self.dpdk_version = versions.dpdk_version
+        if self._sut_info:
+            raise ValueError(
+                "Attempted to assign `sut_info` to a test run result which already has `sut_info`."
+            )
+        self._sut_info = sut_info
+
+    @property
+    def dpdk_build_info(self) -> DPDKBuildInfo | None:
+        """Get the DPDK build information associated with this test run."""
+        return self._dpdk_build_info
+
+    @dpdk_build_info.setter
+    def dpdk_build_info(self, dpdk_build_info: DPDKBuildInfo) -> None:
+        """Set the DPDK build information associated with this test run.
+
+        Args:
+            dpdk_build_info: The DPDK build information to associate with this test run.
+
+        Raises:
+            ValueError: If the DPDK build information has already been assigned to this test run.
+        """
+        if self._dpdk_build_info:
+            raise ValueError(
+                "Attempted to assign `dpdk_build_info` to a test run result which already "
+                "has `dpdk_build_info`."
+            )
+        self._dpdk_build_info = dpdk_build_info
+
+    def to_dict(self) -> TestRunResultDict:
+        """Convert the test run result into a dictionary.
+
+        The dictionary contains test suites in this test run, and a summary of the test run and
+        information about the DPDK version, compiler version and associated ports.
+
+        Returns:
+            TestRunResultDict: A dictionary representation of the test run result.
+        """
+        results = {result.name: 0 for result in Result}
+        self.add_result(results)
+
+        compiler_version = None
+        dpdk_version = None
+
+        if self.dpdk_build_info:
+            compiler_version = self.dpdk_build_info.compiler_version
+            dpdk_version = self.dpdk_build_info.dpdk_version
+
+        return {
+            "compiler_version": compiler_version,
+            "dpdk_version": dpdk_version,
+            "ports": [asdict(port) for port in self.ports],
+            "test_suites": [child.to_dict() for child in self.child_results],
+            "summary": results | self.generate_pass_rate_dict(results),
+        }
 
     def _mark_results(self, result) -> None:
         """Mark the test suite results as `result`."""
@@ -484,6 +654,16 @@ class TestSuiteResult(BaseResult):
         result = TestCaseResult(test_case_name)
         self.child_results.append(result)
         return result
+
+    def to_dict(self) -> TestSuiteResultDict:
+        """Convert the test suite result into a dictionary.
+
+        The dictionary contains a test suite name and test cases given in this test suite.
+        """
+        return {
+            "test_suite_name": self.test_suite_name,
+            "test_cases": [child.to_dict() for child in self.child_results],
+        }
 
     def _mark_results(self, result) -> None:
         """Mark the test case results as `result`."""
@@ -532,16 +712,23 @@ class TestCaseResult(BaseResult, FixtureResult):
             return [self.error]
         return []
 
-    def add_stats(self, statistics: "Statistics") -> None:
-        r"""Add the test case result to statistics.
+    def to_dict(self) -> TestCaseResultDict:
+        """Convert the test case result into a dictionary.
+
+        The dictionary contains a test case name and the result name.
+        """
+        return {"test_case_name": self.test_case_name, "result": self.result.name}
+
+    def add_result(self, results: dict[str, int]):
+        r"""Add the test case result to the results.
 
         The base method goes through the hierarchy recursively and this method is here to stop
-        the recursion, as the :class:`TestCaseResult`\s are the leaves of the hierarchy tree.
+        the recursion, as the :class:`TestCaseResult` are the leaves of the hierarchy tree.
 
         Args:
-            statistics: The :class:`Statistics` object where the stats will be added.
+            results: The dictionary to which results will be collated.
         """
-        statistics += self.result
+        results[self.result.name] += 1
 
     def _mark_results(self, result) -> None:
         r"""Mark the result as `result`."""
@@ -552,59 +739,114 @@ class TestCaseResult(BaseResult, FixtureResult):
         return bool(self.setup_result) and bool(self.teardown_result) and bool(self.result)
 
 
-class Statistics(dict):
-    """How many test cases ended in which result state along some other basic information.
+class TextSummary:
+    """Generates and saves textual summaries of DTS run results.
 
-    Subclassing :class:`dict` provides a convenient way to format the data.
-
-    The data are stored in the following keys:
-
-    * **PASS RATE** (:class:`int`) -- The :attr:`~Result.FAIL`/:attr:`~Result.PASS` ratio
-        of all test cases.
-    * **DPDK VERSION** (:class:`str`) -- The tested DPDK version.
+    The summary includes:
+    * Results of test cases,
+    * Compiler version of the DPDK build,
+    * DPDK version of the DPDK source tree,
+    * Overall summary of results when multiple test runs are present.
     """
 
-    def __init__(self, dpdk_version: str | None):
-        """Extend the constructor with keys in which the data are stored.
+    _dict_result: DtsRunResultDict
+    _summary: dict[str, int | float]
+    _text: str
+
+    def __init__(self, dts_run_result: DTSResult):
+        """Initializes with a DTSResult object and converts it to a dictionary format.
 
         Args:
-            dpdk_version: The version of tested DPDK.
+            dts_run_result: The DTS result.
         """
-        super().__init__()
-        for result in Result:
-            self[result.name] = 0
-        self["PASS RATE"] = 0.0
-        self["DPDK VERSION"] = dpdk_version
+        self._dict_result = dts_run_result.to_dict()
+        self._summary = self._dict_result["summary"]
+        self._text = ""
 
-    def __iadd__(self, other: Result) -> "Statistics":
-        """Add a :class:`Result` to the final count.
+    @property
+    def _outdent(self) -> str:
+        """Appropriate indentation based on multiple test run results."""
+        return "\t" if len(self._dict_result["test_runs"]) > 1 else ""
 
-        :attr:`~Result.SKIP` is not taken into account
-
-        Example:
-            stats: Statistics = Statistics()  # empty :class:`Statistics`
-            stats += Result.PASS  # add a :class:`Result` to `stats`
+    def save(self, output_path: Path):
+        """Generate and save text statistics to a file.
 
         Args:
-            other: The :class:`Result` to add to this statistics object.
-
-        Returns:
-            The modified statistics object.
+            output_path: The path where the text file will be saved.
         """
-        self[other.name] += 1
-        if other != Result.SKIP:
-            self["PASS RATE"] = (
-                float(self[Result.PASS.name])
-                * 100
-                / sum([self[result.name] for result in Result if result != Result.SKIP])
-            )
-        return self
+        if self._dict_result["test_runs"]:
+            with open(f"{output_path}", "w") as fp:
+                self._add_test_runs_dict_decorator(self._add_test_run_dict)
+                fp.write(self._text)
 
-    def __str__(self) -> str:
-        """Each line contains the formatted key = value pair."""
-        stats_str = ""
-        for key, value in self.items():
-            stats_str += f"{key:<12} = {value}\n"
-            # according to docs, we should use \n when writing to text files
-            # on all platforms
-        return stats_str
+    def _add_test_runs_dict_decorator(self, func: Callable):
+        """Handles multiple test runs and appends results to the summary.
+
+        Adds headers for each test run and overall result when multiple
+        test runs are provided.
+
+        Args:
+            func: Function to process and add results from each test run.
+        """
+        if len(self._dict_result["test_runs"]) > 1:
+            for idx, test_run_result in enumerate(self._dict_result["test_runs"]):
+                self._text += f"TEST_RUN_{idx}\n"
+                func(test_run_result)
+
+            self._add_overall_results()
+        else:
+            func(self._dict_result["test_runs"][0])
+
+    def _add_test_run_dict(self, test_run_dict: TestRunResultDict):
+        """Adds the results and the test run attributes of a single test run to the summary.
+
+        Args:
+            test_run_dict: Dictionary containing the test run results.
+        """
+        self._add_column(
+            DPDK_VERSION=test_run_dict["dpdk_version"],
+            COMPILER_VERSION=test_run_dict["compiler_version"],
+            **test_run_dict["summary"],
+        )
+        self._text += "\n"
+
+    def _add_column(self, **rows):
+        """Formats and adds key-value pairs to the summary text.
+
+        Handles cases where values might be None by replacing them with "N/A".
+
+        Args:
+            **rows: Arbitrary key-value pairs representing the result data.
+        """
+        rows = {k: "N/A" if v is None else v for k, v in rows.items()}
+        max_length = len(max(rows, key=len))
+        for key, value in rows.items():
+            self._text += f"{self._outdent}{key:<{max_length}} = {value}\n"
+
+    def _add_overall_results(self):
+        """Add overall summary of test runs."""
+        self._text += "OVERALL\n"
+        self._add_column(**self._summary)
+
+
+class JsonResults:
+    """Save DTS run result in JSON format."""
+
+    _dict_result: DtsRunResultDict
+
+    def __init__(self, dts_run_result: DTSResult):
+        """Initializes with a DTSResult object and converts it to a dictionary format.
+
+        Args:
+            dts_run_result: The DTS result.
+        """
+        self._dict_result = dts_run_result.to_dict()
+
+    def save(self, output_path: Path):
+        """Save the result to a file as JSON.
+
+        Args:
+            output_path: The path where the JSON file will be saved.
+        """
+        with open(f"{output_path}", "w") as fp:
+            json.dump(self._dict_result, fp, indent=4)

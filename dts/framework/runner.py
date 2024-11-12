@@ -87,7 +87,7 @@ class DTSRunner:
         if not os.path.exists(SETTINGS.output_dir):
             os.makedirs(SETTINGS.output_dir)
         self._logger.add_dts_root_logger_handlers(SETTINGS.verbose, SETTINGS.output_dir)
-        self._result = DTSResult(self._logger)
+        self._result = DTSResult(SETTINGS.output_dir, self._logger)
         self._test_suite_class_prefix = "Test"
         self._test_suite_module_prefix = "tests.TestSuite_"
         self._func_test_case_regex = r"test_(?!perf_)"
@@ -314,7 +314,8 @@ class DTSRunner:
         self._logger.info(
             f"Running test run with SUT '{test_run_config.system_under_test_node.node_name}'."
         )
-        test_run_result.add_sut_info(sut_node.node_info)
+        test_run_result.ports = sut_node.ports
+        test_run_result.sut_info = sut_node.node_info
         try:
             dpdk_build_config = test_run_config.dpdk_config
             if new_location := SETTINGS.dpdk_location:
@@ -326,7 +327,7 @@ class DTSRunner:
                     dpdk_location=dpdk_build_config.dpdk_location, precompiled_build_dir=dir
                 )
             sut_node.set_up_test_run(test_run_config, dpdk_build_config)
-            test_run_result.add_dpdk_build_info(sut_node.get_dpdk_build_info())
+            test_run_result.dpdk_build_info = sut_node.get_dpdk_build_info()
             tg_node.set_up_test_run(test_run_config, dpdk_build_config)
             test_run_result.update_setup(Result.PASS)
         except Exception as e:
