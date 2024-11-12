@@ -10,5 +10,6 @@ sources = files(
         'guest_channel.c',
         'kvm_vm.c',
 )
+headers = files('rte_power_guest_channel.h')
 
 deps += ['power']

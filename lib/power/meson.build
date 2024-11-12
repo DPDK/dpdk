@@ -22,7 +22,6 @@ headers = files(
         'power_cpufreq.h',
         'power_uncore_ops.h',
         'rte_power_cpufreq.h',
-        'rte_power_guest_channel.h',
         'rte_power_pmd_mgmt.h',
         'rte_power_qos.h',
         'rte_power_uncore.h',

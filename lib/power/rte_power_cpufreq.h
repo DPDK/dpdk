@@ -13,7 +13,6 @@
 
 #include <rte_common.h>
 #include <rte_log.h>
-#include <rte_power_guest_channel.h>
 
 #include "power_cpufreq.h"
 

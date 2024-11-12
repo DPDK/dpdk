@@ -16,8 +16,6 @@ DPDK_25 {
 	rte_power_get_env;
 	rte_power_get_freq;
 	rte_power_get_uncore_freq;
-	rte_power_guest_channel_receive_msg;
-	rte_power_guest_channel_send_msg;
 	rte_power_init;
 	rte_power_pmd_mgmt_get_emptypoll_max;
 	rte_power_pmd_mgmt_get_pause_duration;

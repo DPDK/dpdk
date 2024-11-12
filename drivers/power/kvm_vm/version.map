@@ -1,0 +1,8 @@
+DPDK_25 {
+	global:
+
+	rte_power_guest_channel_receive_msg;
+	rte_power_guest_channel_send_msg;
+
+	local: *;
+};
