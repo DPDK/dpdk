@@ -831,7 +831,7 @@ mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh,
 		 */
 		case MLX5_IPOOL_MLX5_FLOW:
 			cfg.size = config->dv_flow_en ?
-				sizeof(struct mlx5_flow_handle) :
+				RTE_ALIGN_MUL_CEIL(sizeof(struct mlx5_flow_handle), 8) :
 				MLX5_FLOW_HANDLE_VERBS_SIZE;
 			break;
 		}
