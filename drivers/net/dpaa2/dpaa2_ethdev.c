@@ -1390,8 +1390,7 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 	for (i = 0; i < MAX_TCS; i++)
 		rte_free((void *)(size_t)priv->extract.tc_extract_param[i]);
 
-	if (priv->extract.qos_extract_param)
-		rte_free((void *)(size_t)priv->extract.qos_extract_param);
+	rte_free((void *)(size_t)priv->extract.qos_extract_param);
 
 	DPAA2_PMD_INFO("%s: netdev deleted", dev->data->name);
 	return 0;
