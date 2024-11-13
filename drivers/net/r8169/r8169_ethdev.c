@@ -107,6 +107,9 @@ rtl_dev_close(struct rte_eth_dev *dev)
 static int
 rtl_dev_init(struct rte_eth_dev *dev)
 {
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
 	dev->dev_ops = &rtl_eth_dev_ops;
 	dev->tx_pkt_burst = &rtl_xmit_pkts;
 	dev->rx_pkt_burst = &rtl_recv_pkts;
@@ -114,6 +117,9 @@ rtl_dev_init(struct rte_eth_dev *dev)
 	/* For secondary processes, the primary process has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	if (rtl_set_hw_ops(hw))
+		return -ENOTSUP;
 
 	return 0;
 }

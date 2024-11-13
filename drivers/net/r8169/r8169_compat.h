@@ -494,6 +494,7 @@ enum RTL_register_content {
 
 #define RX_DMA_BURST_unlimited  7   /* Maximum PCI burst, '7' is unlimited */
 #define RX_DMA_BURST_512    5
+#define RX_DMA_BURST_256    4
 #define TX_DMA_BURST_unlimited  7
 #define TX_DMA_BURST_1024   6
 #define TX_DMA_BURST_512    5
@@ -503,6 +504,11 @@ enum RTL_register_content {
 #define TX_DMA_BURST_32     1
 #define TX_DMA_BURST_16     0
 #define InterFrameGap       0x03    /* 3 means InterFrameGap = the shortest one */
+#define Rx_Fetch_Number_8  (1 << 30)
+#define Rx_Close_Multiple  (1 << 21)
+
+#define TRUE  1
+#define FALSE 0
 
 static inline u32
 rtl_read32(void *addr)

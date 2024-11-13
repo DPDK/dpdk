@@ -355,6 +355,7 @@ void
 rtl_disable_rxdvgate(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
 	case CFG_METHOD_69 ... CFG_METHOD_71:
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_3);
 		rte_delay_ms(2);
@@ -798,4 +799,121 @@ rtl_hw_config(struct rtl_hw *hw)
 	rtl_disable_cfg9346_write(hw);
 
 	rte_delay_us(10);
+}
+
+int
+rtl_set_hw_ops(struct rtl_hw *hw)
+{
+	switch (hw->mcfg) {
+	/* 8125A */
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+		hw->hw_ops = rtl8125a_ops;
+		return 0;
+	/* 8125B */
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+		hw->hw_ops = rtl8125b_ops;
+		return 0;
+	/* 8125BP */
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+		hw->hw_ops = rtl8125bp_ops;
+		return 0;
+	/* 8125D */
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+		hw->hw_ops = rtl8125d_ops;
+		return 0;
+	/* 8126A */
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->hw_ops = rtl8126a_ops;
+		return 0;
+	default:
+		return -ENOTSUP;
+	}
+}
+
+void
+rtl_hw_disable_mac_mcu_bps(struct rtl_hw *hw)
+{
+	u16 reg_addr;
+
+	rtl_enable_aspm_clkreq_lock(hw, 0);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		rtl_mac_ocp_write(hw, 0xFC48, 0x0000);
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		for (reg_addr = 0xFC28; reg_addr < 0xFC48; reg_addr += 2)
+			rtl_mac_ocp_write(hw, reg_addr, 0x0000);
+
+		rte_delay_ms(3);
+
+		rtl_mac_ocp_write(hw, 0xFC26, 0x0000);
+		break;
+	}
+}
+
+static void
+rtl_switch_mac_mcu_ram_code_page(struct rtl_hw *hw, u16 page)
+{
+	u16 tmp_ushort;
+
+	page &= (BIT_1 | BIT_0);
+	tmp_ushort = rtl_mac_ocp_read(hw, 0xE446);
+	tmp_ushort &= ~(BIT_1 | BIT_0);
+	tmp_ushort |= page;
+	rtl_mac_ocp_write(hw, 0xE446, tmp_ushort);
+}
+
+static void
+_rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry, u16 entry_cnt)
+{
+	u16 i;
+
+	for (i = 0; i < entry_cnt; i++)
+		rtl_mac_ocp_write(hw, 0xF800 + i * 2, entry[i]);
+}
+
+static void
+_rtl_write_mac_mcu_ram_code_with_page(struct rtl_hw *hw, const u16 *entry,
+				      u16 entry_cnt, u16 page_size)
+{
+	u16 i;
+	u16 offset;
+	u16 page;
+
+	if (page_size == 0)
+		return;
+
+	for (i = 0; i < entry_cnt; i++) {
+		offset = i % page_size;
+		if (offset == 0) {
+			page = (i / page_size);
+			rtl_switch_mac_mcu_ram_code_page(hw, page);
+		}
+		rtl_mac_ocp_write(hw, 0xF800 + offset * 2, entry[i]);
+	}
+}
+
+void
+rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry, u16 entry_cnt)
+{
+	if (HW_SUPPORT_MAC_MCU(hw) == FALSE)
+		return;
+	if (entry == NULL || entry_cnt == 0)
+		return;
+
+	if (hw->MacMcuPageSize > 0)
+		_rtl_write_mac_mcu_ram_code_with_page(hw, entry, entry_cnt,
+						      hw->MacMcuPageSize);
+	else
+		_rtl_write_mac_mcu_ram_code(hw, entry, entry_cnt);
 }

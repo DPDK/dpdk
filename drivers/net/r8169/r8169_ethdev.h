@@ -12,11 +12,31 @@
 
 #include "r8169_compat.h"
 
+struct rtl_hw;
+
+struct rtl_hw_ops {
+	void (*hw_init_rxcfg)(struct rtl_hw *hw);
+	void (*hw_ephy_config)(struct rtl_hw *hw);
+	void (*hw_phy_config)(struct rtl_hw *hw);
+	void (*hw_mac_mcu_config)(struct rtl_hw *hw);
+	void (*hw_phy_mcu_config)(struct rtl_hw *hw);
+};
+
 struct rtl_hw {
+	struct rtl_hw_ops hw_ops;
 	u8  *mmio_addr;
 	u32 mcfg;
+	u32 mtu;
 	u8  HwSuppIntMitiVer;
 	u16 cur_page;
+
+	u8  RequirePhyMdiSwapPatch;
+	u8  NotWrMcuPatchCode;
+	u8  HwSuppMacMcuVer;
+	u16 MacMcuPageSize;
+
+	u8  NotWrRamCodeToMicroP;
+	u8  HwHasWrRamCodeToMicroP;
 
 	/* Enable Tx No Close */
 	u8 EnableTxNoClose;

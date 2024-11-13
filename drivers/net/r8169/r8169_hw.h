@@ -35,11 +35,29 @@ void rtl8125_oob_mutex_unlock(struct rtl_hw *hw);
 
 void rtl_disable_rxdvgate(struct rtl_hw *hw);
 
+int rtl_set_hw_ops(struct rtl_hw *hw);
+
+void rtl_hw_disable_mac_mcu_bps(struct rtl_hw *hw);
+
+void rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry,
+				u16 entry_cnt);
+
+extern const struct rtl_hw_ops rtl8125a_ops;
+extern const struct rtl_hw_ops rtl8125b_ops;
+extern const struct rtl_hw_ops rtl8125bp_ops;
+extern const struct rtl_hw_ops rtl8125d_ops;
+extern const struct rtl_hw_ops rtl8126a_ops;
+
 #define NO_BASE_ADDRESS 0x00000000
 
 /* Channel wait count */
 #define RTL_CHANNEL_WAIT_COUNT      20000
 #define RTL_CHANNEL_WAIT_TIME       1   /*  1 us */
 #define RTL_CHANNEL_EXIT_DELAY_TIME 20  /* 20 us */
+
+#define ARRAY_SIZE(arr) RTE_DIM(arr)
+
+#define HW_SUPPORT_MAC_MCU(_M)            ((_M)->HwSuppMacMcuVer > 0)
+#define HW_HAS_WRITE_PHY_MCU_RAM_CODE(_M) ((_M)->HwHasWrRamCodeToMicroP ? 1 : 0)
 
 #endif /* R8169_HW_H */
