@@ -62,6 +62,12 @@ rtl_dev_start(struct rte_eth_dev *dev)
 	struct rtl_hw *hw = &adapter->hw;
 	int err;
 
+	rtl_powerup_pll(hw);
+
+	rtl_hw_ephy_config(hw);
+
+	rtl_hw_phy_config(hw);
+
 	rtl_hw_config(hw);
 
 	/* Initialize transmission unit */
@@ -74,6 +80,8 @@ rtl_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	rtl_mdio_write(hw, 0x1F, 0x0000);
+
 	return 0;
 error:
 	return -EIO;
@@ -83,8 +91,13 @@ error:
  * Stop device: disable RX and TX functions to allow for reconfiguring.
  */
 static int
-rtl_dev_stop(struct rte_eth_dev *dev  __rte_unused)
+rtl_dev_stop(struct rte_eth_dev *dev)
 {
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	rtl_powerdown_pll(hw);
+
 	return 0;
 }
 

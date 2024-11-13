@@ -37,6 +37,12 @@ struct rtl_hw {
 
 	u8  NotWrRamCodeToMicroP;
 	u8  HwHasWrRamCodeToMicroP;
+	u8  HwSuppCheckPhyDisableModeVer;
+
+	u16 sw_ram_code_ver;
+	u16 hw_ram_code_ver;
+
+	u32 HwSuppMaxPhyLinkSpeed;
 
 	/* Enable Tx No Close */
 	u8 EnableTxNoClose;
