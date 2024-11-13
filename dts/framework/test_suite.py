@@ -310,8 +310,23 @@ class TestSuite(TestProtocol):
         packets = self._adjust_addresses(packets)
         self.tg_node.send_packets(packets, self._tg_port_egress)
 
+    def get_expected_packets(self, packets: list[Packet]) -> list[Packet]:
+        """Inject the proper L2/L3 addresses into `packets`.
+
+        Inject the L2/L3 addresses expected at the receiving end of the traffic generator.
+
+        Args:
+            packets: The packets to modify.
+
+        Returns:
+            `packets` with injected L2/L3 addresses.
+        """
+        return self._adjust_addresses(packets, expected=True)
+
     def get_expected_packet(self, packet: Packet) -> Packet:
         """Inject the proper L2/L3 addresses into `packet`.
+
+        Inject the L2/L3 addresses expected at the receiving end of the traffic generator.
 
         Args:
             packet: The packet to modify.
@@ -319,7 +334,7 @@ class TestSuite(TestProtocol):
         Returns:
             `packet` with injected L2/L3 addresses.
         """
-        return self._adjust_addresses([packet], expected=True)[0]
+        return self.get_expected_packets([packet])[0]
 
     def _adjust_addresses(self, packets: list[Packet], expected: bool = False) -> list[Packet]:
         """L2 and L3 address additions in both directions.
