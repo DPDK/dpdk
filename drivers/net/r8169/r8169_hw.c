@@ -355,7 +355,7 @@ void
 rtl_disable_rxdvgate(struct rtl_hw *hw)
 {
 	switch (hw->mcfg) {
-	case CFG_METHOD_1 ... CFG_METHOD_3:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
 		RTL_W8(hw, 0xF2, RTL_R8(hw, 0xF2) & ~BIT_3);
 		rte_delay_ms(2);
 	}
