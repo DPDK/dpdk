@@ -232,6 +232,10 @@ enum RTL_registers {
 	IMR_V4_L2_CLEAR_REG_8125 = 0x0D10,
 	IMR_V4_L2_SET_REG_8125   = 0x0D18,
 	ISR_V4_L2_8125      = 0x0D14,
+	SW_TAIL_PTR0_8125BP = 0x0D30,
+	SW_TAIL_PTR1_8125BP = 0x0D38,
+	HW_CLO_PTR0_8125BP = 0x0D34,
+	HW_CLO_PTR1_8125BP = 0x0D3C,
 	DOUBLE_VLAN_CONFIG = 0x1000,
 	TX_NEW_CTRL        = 0x203E,
 	TNPDS_Q1_LOW_8125  = 0x2100,
@@ -477,6 +481,16 @@ enum RTL_register_content {
 	ISRIMR_V2_LINKCHG    = (1 << 21),
 };
 
+enum RTL_chipset_name {
+	RTL8125A = 0,
+	RTL8125B,
+	RTL8168KB,
+	RTL8125BP,
+	RTL8125D,
+	RTL8126A,
+	UNKNOWN
+};
+
 #define PCI_VENDOR_ID_REALTEK 0x10EC
 
 #define RTL_PCI_REG_ADDR(hw, reg) ((u8 *)(hw)->mmio_addr + (reg))
@@ -509,6 +523,31 @@ enum RTL_register_content {
 
 #define TRUE  1
 #define FALSE 0
+
+#define SPEED_10	10
+#define SPEED_100	100
+#define SPEED_1000	1000
+#define SPEED_2500	2500
+#define SPEED_5000	5000
+
+#define DUPLEX_HALF	1
+#define DUPLEX_FULL	2
+
+#define AUTONEG_ENABLE	1
+#define AUTONEG_DISABLE	0
+
+#define ADVERTISE_10_HALF     0x0001
+#define ADVERTISE_10_FULL     0x0002
+#define ADVERTISE_100_HALF    0x0004
+#define ADVERTISE_100_FULL    0x0008
+#define ADVERTISE_1000_HALF   0x0010 /* Not used, just FYI */
+#define ADVERTISE_1000_FULL   0x0020
+#define ADVERTISE_2500_HALF   0x0040 /* NOT used, just FYI */
+#define ADVERTISE_2500_FULL   0x0080
+#define ADVERTISE_5000_HALF   0x0100 /* NOT used, just FYI */
+#define ADVERTISE_5000_FULL   0x0200
+
+#define MAC_ADDR_LEN    RTE_ETHER_ADDR_LEN
 
 static inline u32
 rtl_read32(void *addr)

@@ -11,6 +11,7 @@
 
 #include "r8169_hw.h"
 #include "r8169_logs.h"
+#include "r8169_dash.h"
 
 static u32
 rtl_eri_read_with_oob_base_address(struct rtl_hw *hw, int addr, int len,
@@ -916,4 +917,586 @@ rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry, u16 entry_cnt)
 						      hw->MacMcuPageSize);
 	else
 		_rtl_write_mac_mcu_ram_code(hw, entry, entry_cnt);
+}
+
+bool
+rtl_is_speed_mode_valid(u32 speed)
+{
+	switch (speed) {
+	case SPEED_5000:
+	case SPEED_2500:
+	case SPEED_1000:
+	case SPEED_100:
+	case SPEED_10:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool
+rtl_is_duplex_mode_valid(u8 duplex)
+{
+	switch (duplex) {
+	case DUPLEX_FULL:
+	case DUPLEX_HALF:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool
+rtl_is_autoneg_mode_valid(u32 autoneg)
+{
+	switch (autoneg) {
+	case AUTONEG_ENABLE:
+	case AUTONEG_DISABLE:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static void
+rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
+		    enum rtl_fc_mode fc)
+{
+	u64 adv;
+
+	if (!rtl_is_speed_mode_valid(speed))
+		speed = SPEED_5000;
+
+	if (!rtl_is_duplex_mode_valid(duplex))
+		duplex = DUPLEX_FULL;
+
+	if (!rtl_is_autoneg_mode_valid(autoneg))
+		autoneg = AUTONEG_ENABLE;
+
+	speed = RTE_MIN(speed, hw->HwSuppMaxPhyLinkSpeed);
+
+	adv = 0;
+	switch (speed) {
+	case SPEED_5000:
+		adv |= ADVERTISE_5000_FULL;
+	/* Fall through */
+	case SPEED_2500:
+		adv |= ADVERTISE_2500_FULL;
+	/* Fall through */
+	default:
+		adv |= (ADVERTISE_10_HALF | ADVERTISE_10_FULL |
+			ADVERTISE_100_HALF | ADVERTISE_100_FULL |
+			ADVERTISE_1000_HALF | ADVERTISE_1000_FULL);
+		break;
+	}
+
+	hw->autoneg = autoneg;
+	hw->speed = speed;
+	hw->duplex = duplex;
+	hw->advertising = adv;
+	hw->fcpause = fc;
+}
+
+static void
+rtl_init_software_variable(struct rtl_hw *hw)
+{
+	int tx_no_close_enable = 1;
+	unsigned int speed_mode = SPEED_5000;
+	unsigned int duplex_mode = DUPLEX_FULL;
+	unsigned int autoneg_mode = AUTONEG_ENABLE;
+	u8 tmp;
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+		tmp = (u8)rtl_mac_ocp_read(hw, 0xD006);
+		if (tmp == 0x02 || tmp == 0x04)
+			hw->HwSuppDashVer = 2;
+		break;
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+		hw->HwSuppDashVer = 4;
+		break;
+	default:
+		hw->HwSuppDashVer = 0;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+		if (HW_DASH_SUPPORT_DASH(hw))
+			hw->HwSuppOcpChannelVer = 2;
+		break;
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+		hw->HwSuppOcpChannelVer = 2;
+		break;
+	}
+
+	hw->AllowAccessDashOcp = rtl_is_allow_access_dash_ocp(hw);
+
+	if (HW_DASH_SUPPORT_DASH(hw) && rtl_check_dash(hw))
+		hw->DASH = 1;
+	else
+		hw->DASH = 0;
+
+	if (HW_DASH_SUPPORT_TYPE_2(hw))
+		hw->cmac_ioaddr = hw->mmio_addr;
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+		hw->chipset_name = RTL8125A;
+		break;
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+		hw->chipset_name = RTL8125B;
+		break;
+	case CFG_METHOD_52:
+	case CFG_METHOD_53:
+		hw->chipset_name = RTL8168KB;
+		break;
+	case CFG_METHOD_54:
+	case CFG_METHOD_55:
+		hw->chipset_name = RTL8125BP;
+		break;
+	case CFG_METHOD_56:
+	case CFG_METHOD_57:
+		hw->chipset_name = RTL8125D;
+		break;
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->chipset_name = RTL8126A;
+		break;
+	default:
+		hw->chipset_name = UNKNOWN;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->HwSuppNowIsOobVer = 1;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->HwSuppCheckPhyDisableModeVer = 3;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_51:
+	case CFG_METHOD_54 ... CFG_METHOD_57:
+		hw->HwSuppMaxPhyLinkSpeed = 2500;
+		break;
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->HwSuppMaxPhyLinkSpeed = 5000;
+		break;
+	default:
+		hw->HwSuppMaxPhyLinkSpeed = 1000;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_53:
+		hw->HwSuppTxNoCloseVer = 3;
+		break;
+	case CFG_METHOD_54 ... CFG_METHOD_57:
+		hw->HwSuppTxNoCloseVer = 6;
+		break;
+	case CFG_METHOD_69:
+		hw->HwSuppTxNoCloseVer = 4;
+		break;
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		hw->HwSuppTxNoCloseVer = 5;
+		break;
+	}
+
+	switch (hw->HwSuppTxNoCloseVer) {
+	case 5:
+	case 6:
+		hw->MaxTxDescPtrMask = MAX_TX_NO_CLOSE_DESC_PTR_MASK_V4;
+		break;
+	case 4:
+		hw->MaxTxDescPtrMask = MAX_TX_NO_CLOSE_DESC_PTR_MASK_V3;
+		break;
+	case 3:
+		hw->MaxTxDescPtrMask = MAX_TX_NO_CLOSE_DESC_PTR_MASK_V2;
+		break;
+	default:
+		tx_no_close_enable = 0;
+		break;
+	}
+
+	if (hw->HwSuppTxNoCloseVer > 0 && tx_no_close_enable == 1)
+		hw->EnableTxNoClose = TRUE;
+
+	switch (hw->HwSuppTxNoCloseVer) {
+	case 4:
+	case 5:
+		hw->hw_clo_ptr_reg = HW_CLO_PTR0_8126;
+		hw->sw_tail_ptr_reg = SW_TAIL_PTR0_8126;
+		break;
+	case 6:
+		hw->hw_clo_ptr_reg = HW_CLO_PTR0_8125BP;
+		hw->sw_tail_ptr_reg = SW_TAIL_PTR0_8125BP;
+		break;
+	default:
+		hw->hw_clo_ptr_reg = HW_CLO_PTR0_8125;
+		hw->sw_tail_ptr_reg = SW_TAIL_PTR0_8125;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_48;
+		break;
+	case CFG_METHOD_49:
+	case CFG_METHOD_52:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_49;
+		break;
+	case CFG_METHOD_50:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_50;
+		break;
+	case CFG_METHOD_51:
+	case CFG_METHOD_53:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_51;
+		break;
+	case CFG_METHOD_54:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_54;
+		break;
+	case CFG_METHOD_55:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_55;
+		break;
+	case CFG_METHOD_56:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_56;
+		break;
+	case CFG_METHOD_57:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_57;
+		break;
+	case CFG_METHOD_69:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_69;
+		break;
+	case CFG_METHOD_70:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_70;
+		break;
+	case CFG_METHOD_71:
+		hw->sw_ram_code_ver = NIC_RAMCODE_VERSION_CFG_METHOD_71;
+		break;
+	}
+
+	if (hw->HwIcVerUnknown) {
+		hw->NotWrRamCodeToMicroP = TRUE;
+		hw->NotWrMcuPatchCode = TRUE;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->HwSuppMacMcuVer = 2;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->MacMcuPageSize = RTL_MAC_MCU_PAGE_SIZE;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_49:
+	case CFG_METHOD_52:
+		if ((rtl_mac_ocp_read(hw, 0xD442) & BIT_5) &&
+		    (rtl_mdio_direct_read_phy_ocp(hw, 0xD068) & BIT_1))
+			hw->RequirePhyMdiSwapPatch = TRUE;
+		break;
+	}
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48:
+	case CFG_METHOD_49:
+	case CFG_METHOD_52:
+		hw->HwSuppIntMitiVer = 3;
+		break;
+	case CFG_METHOD_50:
+	case CFG_METHOD_51:
+	case CFG_METHOD_53:
+	case CFG_METHOD_69:
+		hw->HwSuppIntMitiVer = 4;
+		break;
+	case CFG_METHOD_54 ... CFG_METHOD_57:
+		hw->HwSuppIntMitiVer = 6;
+		break;
+	case CFG_METHOD_70:
+	case CFG_METHOD_71:
+		hw->HwSuppIntMitiVer = 5;
+		break;
+	}
+
+	rtl_set_link_option(hw, autoneg_mode, speed_mode, duplex_mode, rtl_fc_full);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		hw->mcu_pme_setting = rtl_mac_ocp_read(hw, 0xE00A);
+		break;
+	}
+
+	hw->mtu = RTL_DEFAULT_MTU;
+}
+
+static void
+rtl_exit_realwow(struct rtl_hw *hw)
+{
+	/* Disable realwow function */
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		rtl_mac_ocp_write(hw, 0xC0BC, 0x00FF);
+		break;
+	}
+}
+
+static void
+rtl_disable_now_is_oob(struct rtl_hw *hw)
+{
+	if (hw->HwSuppNowIsOobVer == 1)
+		RTL_W8(hw, MCUCmd_reg, RTL_R8(hw, MCUCmd_reg) & ~Now_is_oob);
+}
+
+static void
+rtl_wait_ll_share_fifo_ready(struct rtl_hw *hw)
+{
+	int i;
+
+	for (i = 0; i < 10; i++) {
+		rte_delay_us(100);
+		if (RTL_R16(hw, 0xD2) & BIT_9)
+			break;
+	}
+}
+
+static void
+rtl_exit_oob(struct rtl_hw *hw)
+{
+	u16 data16;
+
+	rtl_disable_rx_packet_filter(hw);
+
+	rtl_exit_realwow(hw);
+
+	rtl_nic_reset(hw);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		rtl_disable_now_is_oob(hw);
+
+		data16 = rtl_mac_ocp_read(hw, 0xE8DE) & ~BIT_14;
+		rtl_mac_ocp_write(hw, 0xE8DE, data16);
+		rtl_wait_ll_share_fifo_ready(hw);
+
+		rtl_mac_ocp_write(hw, 0xC0AA, 0x07D0);
+
+		rtl_mac_ocp_write(hw, 0xC0A6, 0x01B5);
+
+		rtl_mac_ocp_write(hw, 0xC01E, 0x5555);
+
+		rtl_wait_ll_share_fifo_ready(hw);
+		break;
+	}
+}
+
+static void
+rtl_disable_ups(struct rtl_hw *hw)
+{
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		rtl_mac_ocp_write(hw, 0xD40A, rtl_mac_ocp_read(hw, 0xD40A) & ~BIT_4);
+		break;
+	}
+}
+
+static void
+rtl8125_disable_ocp_phy_power_saving(struct rtl_hw *hw)
+{
+	u16 val;
+
+	if (hw->mcfg == CFG_METHOD_48 || hw->mcfg == CFG_METHOD_49 ||
+	    hw->mcfg == CFG_METHOD_52) {
+		val = rtl_mdio_direct_read_phy_ocp(hw, 0xC416);
+		if (val != 0x0050) {
+			rtl_set_phy_mcu_patch_request(hw);
+			rtl_mdio_direct_write_phy_ocp(hw, 0xC416, 0x0000);
+			rtl_mdio_direct_write_phy_ocp(hw, 0xC416, 0x0500);
+			rtl_clear_phy_mcu_patch_request(hw);
+		}
+	}
+}
+
+static void
+rtl_hw_init(struct rtl_hw *hw)
+{
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		rtl_enable_aspm_clkreq_lock(hw, 0);
+		rtl_enable_force_clkreq(hw, 0);
+		break;
+	}
+
+	rtl_disable_ups(hw);
+
+	hw->hw_ops.hw_mac_mcu_config(hw);
+
+	/* Disable ocp phy power saving */
+	rtl8125_disable_ocp_phy_power_saving(hw);
+}
+
+void
+rtl_hw_initialize(struct rtl_hw *hw)
+{
+	rtl_init_software_variable(hw);
+
+	rtl_exit_oob(hw);
+
+	rtl_hw_init(hw);
+
+	rtl_nic_reset(hw);
+}
+
+void
+rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev)
+{
+	u32 reg, val32;
+	u32 ic_version_id;
+
+	val32 = RTL_R32(hw, TxConfig);
+	reg = val32 & 0x7c800000;
+	ic_version_id = val32 & 0x00700000;
+
+	switch (reg) {
+	case 0x60800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_48;
+
+		} else if (ic_version_id == 0x100000) {
+			hw->mcfg = CFG_METHOD_49;
+
+		} else {
+			hw->mcfg = CFG_METHOD_49;
+			hw->HwIcVerUnknown = TRUE;
+		}
+
+		hw->efuse_ver = EFUSE_SUPPORT_V4;
+		break;
+	case 0x64000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_50;
+
+		} else if (ic_version_id == 0x100000) {
+			hw->mcfg = CFG_METHOD_51;
+
+		} else {
+			hw->mcfg = CFG_METHOD_51;
+			hw->HwIcVerUnknown = TRUE;
+		}
+
+		hw->efuse_ver = EFUSE_SUPPORT_V4;
+		break;
+	case 0x68000000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_54;
+		} else if (ic_version_id == 0x100000) {
+			hw->mcfg = CFG_METHOD_55;
+		} else {
+			hw->mcfg = CFG_METHOD_55;
+			hw->HwIcVerUnknown = TRUE;
+		}
+
+		hw->efuse_ver = EFUSE_SUPPORT_V4;
+		break;
+	case 0x68800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_56;
+		} else if (ic_version_id == 0x100000) {
+			hw->mcfg = CFG_METHOD_57;
+		} else {
+			hw->mcfg = CFG_METHOD_57;
+			hw->HwIcVerUnknown = TRUE;
+		}
+
+		hw->efuse_ver = EFUSE_SUPPORT_V4;
+		break;
+	case 0x64800000:
+		if (ic_version_id == 0x00000000) {
+			hw->mcfg = CFG_METHOD_69;
+		} else if (ic_version_id == 0x100000) {
+			hw->mcfg = CFG_METHOD_70;
+		} else if (ic_version_id == 0x200000) {
+			hw->mcfg = CFG_METHOD_71;
+		} else {
+			hw->mcfg = CFG_METHOD_71;
+			hw->HwIcVerUnknown = TRUE;
+		}
+
+		hw->efuse_ver = EFUSE_SUPPORT_V4;
+		break;
+	default:
+		PMD_INIT_LOG(NOTICE, "unknown chip version (%x)", reg);
+		hw->mcfg = CFG_METHOD_DEFAULT;
+		hw->HwIcVerUnknown = TRUE;
+		hw->efuse_ver = EFUSE_NOT_SUPPORT;
+		break;
+	}
+
+	if (pci_dev->id.device_id == 0x8162) {
+		if (hw->mcfg == CFG_METHOD_49)
+			hw->mcfg = CFG_METHOD_52;
+		else if (hw->mcfg == CFG_METHOD_51)
+			hw->mcfg = CFG_METHOD_53;
+	}
+}
+
+int
+rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea)
+{
+	u8 mac_addr[MAC_ADDR_LEN];
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		*(u32 *)&mac_addr[0] = RTL_R32(hw, BACKUP_ADDR0_8125);
+		*(u16 *)&mac_addr[4] = RTL_R16(hw, BACKUP_ADDR1_8125);
+		break;
+	default:
+		break;
+	}
+
+	rte_ether_addr_copy((struct rte_ether_addr *)mac_addr, ea);
+
+	return 0;
+}
+
+void
+rtl_rar_set(struct rtl_hw *hw, uint8_t *addr)
+{
+	uint32_t rar_low = 0;
+	uint32_t rar_high = 0;
+
+	rar_low = ((uint32_t)addr[0] | ((uint32_t)addr[1] << 8) |
+		   ((uint32_t)addr[2] << 16) | ((uint32_t)addr[3] << 24));
+
+	rar_high = ((uint32_t)addr[4] | ((uint32_t)addr[5] << 8));
+
+	rtl_enable_cfg9346_write(hw);
+
+	RTL_W32(hw, MAC0, rar_low);
+	RTL_W32(hw, MAC4, rar_high);
+
+	rtl_disable_cfg9346_write(hw);
 }

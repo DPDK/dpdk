@@ -3,16 +3,21 @@
  */
 
 #include <stdio.h>
+#include <errno.h>
 #include <stdint.h>
 
 #include <rte_eal.h>
 
 #include <rte_common.h>
+#include <rte_interrupts.h>
+#include <rte_byteorder.h>
 #include <rte_pci.h>
 #include <bus_pci_driver.h>
 #include <rte_ether.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
+#include <rte_memory.h>
+#include <rte_malloc.h>
 #include <dev_driver.h>
 
 #include "r8169_ethdev.h"
@@ -96,6 +101,15 @@ rtl_dev_stop(struct rte_eth_dev *dev)
 	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
 	struct rtl_hw *hw = &adapter->hw;
 
+	rtl_nic_reset(hw);
+
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		rtl_mac_ocp_write(hw, 0xE00A, hw->mcu_pme_setting);
+		break;
+	}
+
 	rtl_powerdown_pll(hw);
 
 	return 0;
@@ -107,6 +121,8 @@ rtl_dev_stop(struct rte_eth_dev *dev)
 static int
 rtl_dev_close(struct rte_eth_dev *dev)
 {
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
 	int ret_stp;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -114,14 +130,20 @@ rtl_dev_close(struct rte_eth_dev *dev)
 
 	ret_stp = rtl_dev_stop(dev);
 
+	/* Reprogram the RAR[0] in case user changed it. */
+	rtl_rar_set(hw, hw->mac_addr);
+
 	return ret_stp;
 }
 
 static int
 rtl_dev_init(struct rte_eth_dev *dev)
 {
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
 	struct rtl_hw *hw = &adapter->hw;
+	struct rte_ether_addr *perm_addr = (struct rte_ether_addr *)hw->mac_addr;
+	char buf[RTE_ETHER_ADDR_FMT_SIZE];
 
 	dev->dev_ops = &rtl_eth_dev_ops;
 	dev->tx_pkt_burst = &rtl_xmit_pkts;
@@ -131,8 +153,38 @@ rtl_dev_init(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	hw->mmio_addr = (u8 *)pci_dev->mem_resource[2].addr; /* RTL8169 uses BAR2 */
+
+	rtl_get_mac_version(hw, pci_dev);
+
 	if (rtl_set_hw_ops(hw))
 		return -ENOTSUP;
+
+	rtl_hw_initialize(hw);
+
+	/* Read the permanent MAC address out of ROM */
+	rtl_get_mac_address(hw, perm_addr);
+
+	if (!rte_is_valid_assigned_ether_addr(perm_addr)) {
+		rte_eth_random_addr(&perm_addr->addr_bytes[0]);
+
+		rte_ether_format_addr(buf, sizeof(buf), perm_addr);
+
+		PMD_INIT_LOG(NOTICE, "r8169: Assign randomly generated MAC address %s", buf);
+	}
+
+	/* Allocate memory for storing MAC addresses */
+	dev->data->mac_addrs = rte_zmalloc("r8169", RTE_ETHER_ADDR_LEN, 0);
+
+	if (dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR, "MAC Malloc failed");
+		return -ENOMEM;
+	}
+
+	/* Copy the permanent MAC address */
+	rte_ether_addr_copy(perm_addr, &dev->data->mac_addrs[0]);
+
+	rtl_rar_set(hw, &perm_addr->addr_bytes[0]);
 
 	return 0;
 }

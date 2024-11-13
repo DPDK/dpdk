@@ -42,6 +42,15 @@ void rtl_hw_disable_mac_mcu_bps(struct rtl_hw *hw);
 void rtl_write_mac_mcu_ram_code(struct rtl_hw *hw, const u16 *entry,
 				u16 entry_cnt);
 
+void rtl_hw_initialize(struct rtl_hw *hw);
+
+bool rtl_is_speed_mode_valid(u32 speed);
+
+void rtl_get_mac_version(struct rtl_hw *hw, struct rte_pci_device *pci_dev);
+int rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea);
+
+void rtl_rar_set(struct rtl_hw *hw, uint8_t *addr);
+
 extern const struct rtl_hw_ops rtl8125a_ops;
 extern const struct rtl_hw_ops rtl8125b_ops;
 extern const struct rtl_hw_ops rtl8125bp_ops;
@@ -59,5 +68,38 @@ extern const struct rtl_hw_ops rtl8126a_ops;
 
 #define HW_SUPPORT_MAC_MCU(_M)            ((_M)->HwSuppMacMcuVer > 0)
 #define HW_HAS_WRITE_PHY_MCU_RAM_CODE(_M) ((_M)->HwHasWrRamCodeToMicroP ? 1 : 0)
+
+/* Tx NO CLOSE */
+#define MAX_TX_NO_CLOSE_DESC_PTR_V2            0x10000
+#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V2       0xFFFF
+#define MAX_TX_NO_CLOSE_DESC_PTR_V3            0x100000000
+#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V3       0xFFFFFFFF
+#define MAX_TX_NO_CLOSE_DESC_PTR_V4            0x80000000
+#define MAX_TX_NO_CLOSE_DESC_PTR_MASK_V4       0x7FFFFFFF
+#define TX_NO_CLOSE_SW_PTR_MASK_V2             0x1FFFF
+
+/* Ram code version */
+#define NIC_RAMCODE_VERSION_CFG_METHOD_48  (0x0b11)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_49  (0x0b33)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_50  (0x0b17)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_51  (0x0b99)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_54  (0x0013)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_55  (0x0001)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_56  (0x0016)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_57  (0x0001)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_69  (0x0023)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_70  (0x0033)
+#define NIC_RAMCODE_VERSION_CFG_METHOD_71  (0x0051)
+
+#define RTL_MAC_MCU_PAGE_SIZE 256
+#define RTL_DEFAULT_MTU       1500
+
+enum effuse {
+	EFUSE_NOT_SUPPORT = 0,
+	EFUSE_SUPPORT_V1,
+	EFUSE_SUPPORT_V2,
+	EFUSE_SUPPORT_V3,
+	EFUSE_SUPPORT_V4,
+};
 
 #endif /* R8169_HW_H */

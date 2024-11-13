@@ -22,13 +22,27 @@ struct rtl_hw_ops {
 	void (*hw_phy_mcu_config)(struct rtl_hw *hw);
 };
 
+/* Flow control settings */
+enum rtl_fc_mode {
+	rtl_fc_none = 0,
+	rtl_fc_rx_pause,
+	rtl_fc_tx_pause,
+	rtl_fc_full,
+	rtl_fc_default
+};
+
 struct rtl_hw {
 	struct rtl_hw_ops hw_ops;
 	u8  *mmio_addr;
+	u8  *cmac_ioaddr; /* cmac memory map physical address */
+	u8  chipset_name;
+	u8  efuse_ver;
+	u8  HwIcVerUnknown;
 	u32 mcfg;
 	u32 mtu;
 	u8  HwSuppIntMitiVer;
 	u16 cur_page;
+	u8  mac_addr[MAC_ADDR_LEN];
 
 	u8  RequirePhyMdiSwapPatch;
 	u8  NotWrMcuPatchCode;
@@ -42,10 +56,24 @@ struct rtl_hw {
 	u16 sw_ram_code_ver;
 	u16 hw_ram_code_ver;
 
+	u8  autoneg;
+	u8  duplex;
+	u32 speed;
+	u32 advertising;
+	enum rtl_fc_mode fcpause;
+
 	u32 HwSuppMaxPhyLinkSpeed;
 
+	u8  HwSuppNowIsOobVer;
+
+	u16 mcu_pme_setting;
+
 	/* Enable Tx No Close */
-	u8 EnableTxNoClose;
+	u8  HwSuppTxNoCloseVer;
+	u8  EnableTxNoClose;
+	u16 hw_clo_ptr_reg;
+	u16 sw_tail_ptr_reg;
+	u32 MaxTxDescPtrMask;
 
 	/* Dash */
 	u8 HwSuppDashVer;
