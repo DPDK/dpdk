@@ -3244,14 +3244,11 @@ process_openssl_eddsa_op_evp(struct rte_crypto_op *cop,
 err_eddsa:
 	OSSL_PARAM_BLD_free(iparam_bld);
 
-	if (sctx)
-		EVP_PKEY_CTX_free(sctx);
+	EVP_PKEY_CTX_free(sctx);
 
-	if (cctx)
-		EVP_PKEY_CTX_free(cctx);
+	EVP_PKEY_CTX_free(cctx);
 
-	if (pkey)
-		EVP_PKEY_free(pkey);
+	EVP_PKEY_free(pkey);
 
 	return ret;
 }
