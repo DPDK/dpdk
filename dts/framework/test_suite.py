@@ -324,8 +324,7 @@ class TestSuite(TestProtocol):
     def _adjust_addresses(self, packets: list[Packet], expected: bool = False) -> list[Packet]:
         """L2 and L3 address additions in both directions.
 
-        Packets in `packets` will be directly modified in this method. The returned list of packets
-        however will be copies of the modified packets.
+        Copies of `packets` will be made, modified and returned in this method.
 
         Only missing addresses are added to packets, existing addresses will not be overridden. If
         any packet in `packets` has multiple IP layers (using GRE, for example) only the inner-most
@@ -343,7 +342,9 @@ class TestSuite(TestProtocol):
             A list containing copies of all packets in `packets` after modification.
         """
         ret_packets = []
-        for packet in packets:
+        for original_packet in packets:
+            packet = original_packet.copy()
+
             # update l2 addresses
             # If `expected` is :data:`True`, the packet enters the TG from SUT, otherwise the
             # packet leaves the TG towards the SUT.
