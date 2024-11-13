@@ -1424,7 +1424,7 @@ M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 F: drivers/event/octeontx/timvf_*
 
 Intel DLB2
-M: Abdullah Sevincer <abdullah.sevincer@intel.com>
+M: Pravin Pathak <pravin.pathak@intel.com>
 F: drivers/event/dlb2/
 F: doc/guides/eventdevs/dlb2.rst
 
