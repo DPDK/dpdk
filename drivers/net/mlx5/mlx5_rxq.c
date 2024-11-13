@@ -2894,6 +2894,7 @@ static void
 __mlx5_hrxq_remove(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	bool deref_rxqs = true;
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	if (hrxq->hws_flags)
@@ -2903,9 +2904,10 @@ __mlx5_hrxq_remove(struct rte_eth_dev *dev, struct mlx5_hrxq *hrxq)
 #endif
 	priv->obj_ops.hrxq_destroy(hrxq);
 	if (!hrxq->standalone) {
-		mlx5_ind_table_obj_release(dev, hrxq->ind_table,
-					   hrxq->hws_flags ?
-					   (!!dev->data->dev_started) : true);
+		if (!dev->data->dev_started && hrxq->hws_flags &&
+		    !priv->hws_rule_flushing)
+			deref_rxqs = false;
+		mlx5_ind_table_obj_release(dev, hrxq->ind_table, deref_rxqs);
 	}
 	mlx5_ipool_free(priv->sh->ipool[MLX5_IPOOL_HRXQ], hrxq->idx);
 }
