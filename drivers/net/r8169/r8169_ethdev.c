@@ -38,6 +38,10 @@ static int rtl_dev_infos_get(struct rte_eth_dev *dev,
 static int rtl_dev_stats_get(struct rte_eth_dev *dev,
 			     struct rte_eth_stats *rte_stats);
 static int rtl_dev_stats_reset(struct rte_eth_dev *dev);
+static int rtl_promiscuous_enable(struct rte_eth_dev *dev);
+static int rtl_promiscuous_disable(struct rte_eth_dev *dev);
+static int rtl_allmulticast_enable(struct rte_eth_dev *dev);
+static int rtl_allmulticast_disable(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -73,6 +77,11 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.dev_set_link_up      = rtl_dev_set_link_up,
 	.dev_set_link_down    = rtl_dev_set_link_down,
 	.dev_infos_get        = rtl_dev_infos_get,
+
+	.promiscuous_enable   = rtl_promiscuous_enable,
+	.promiscuous_disable  = rtl_promiscuous_disable,
+	.allmulticast_enable  = rtl_allmulticast_enable,
+	.allmulticast_disable = rtl_allmulticast_disable,
 
 	.link_update          = rtl_dev_link_update,
 
@@ -368,6 +377,64 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads() |
 				     dev_info->rx_queue_offload_capa);
 	dev_info->tx_offload_capa = rtl_get_tx_port_offloads();
+
+	return 0;
+}
+
+static int
+rtl_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	int rx_mode = AcceptBroadcast | AcceptMulticast | AcceptMyPhys | AcceptAllPhys;
+
+	RTL_W32(hw, RxConfig, rx_mode | (RTL_R32(hw, RxConfig)));
+	rtl_allmulticast_enable(dev);
+
+	return 0;
+}
+
+static int
+rtl_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	int rx_mode = ~AcceptAllPhys;
+
+	RTL_W32(hw, RxConfig, rx_mode & (RTL_R32(hw, RxConfig)));
+
+	if (dev->data->all_multicast == 1)
+		rtl_allmulticast_enable(dev);
+	else
+		rtl_allmulticast_disable(dev);
+
+	return 0;
+}
+
+static int
+rtl_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	RTL_W32(hw, MAR0 + 0, 0xffffffff);
+	RTL_W32(hw, MAR0 + 4, 0xffffffff);
+
+	return 0;
+}
+
+static int
+rtl_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	if (dev->data->promiscuous == 1)
+		return 0; /* Must remain in all_multicast mode */
+
+	RTL_W32(hw, MAR0 + 0, 0);
+	RTL_W32(hw, MAR0 + 4, 0);
 
 	return 0;
 }
