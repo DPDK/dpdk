@@ -12,6 +12,10 @@
 
 #include "r8169_compat.h"
 
+struct rtl_hw {
+	u8 *mmio_addr;
+};
+
 struct rtl_sw_stats {
 	u64 tx_packets;
 	u64 tx_bytes;
@@ -22,6 +26,7 @@ struct rtl_sw_stats {
 };
 
 struct rtl_adapter {
+	struct rtl_hw       hw;
 	struct rtl_sw_stats sw_stats;
 };
 
