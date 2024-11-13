@@ -58,7 +58,11 @@ rtl_dev_configure(struct rte_eth_dev *dev __rte_unused)
 static int
 rtl_dev_start(struct rte_eth_dev *dev)
 {
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
 	int err;
+
+	rtl_hw_config(hw);
 
 	/* Initialize transmission unit */
 	rtl_tx_init(dev);

@@ -18,6 +18,117 @@ typedef uint16_t  u16;
 typedef uint32_t  u32;
 typedef uint64_t  u64;
 
+enum mcfg {
+	CFG_METHOD_1 = 1,
+	CFG_METHOD_2,
+	CFG_METHOD_3,
+	CFG_METHOD_4,
+	CFG_METHOD_5,
+	CFG_METHOD_6,
+	CFG_METHOD_7,
+	CFG_METHOD_8,
+	CFG_METHOD_9,
+	CFG_METHOD_10,
+	CFG_METHOD_11,
+	CFG_METHOD_12,
+	CFG_METHOD_13,
+	CFG_METHOD_14,
+	CFG_METHOD_15,
+	CFG_METHOD_16,
+	CFG_METHOD_17,
+	CFG_METHOD_18,
+	CFG_METHOD_19,
+	CFG_METHOD_20,
+	CFG_METHOD_21,
+	CFG_METHOD_22,
+	CFG_METHOD_23,
+	CFG_METHOD_24,
+	CFG_METHOD_25,
+	CFG_METHOD_26,
+	CFG_METHOD_27,
+	CFG_METHOD_28,
+	CFG_METHOD_29,
+	CFG_METHOD_30,
+	CFG_METHOD_31,
+	CFG_METHOD_32,
+	CFG_METHOD_33,
+	CFG_METHOD_34,
+	CFG_METHOD_35,
+	CFG_METHOD_36,
+	CFG_METHOD_37,
+	CFG_METHOD_38,
+	CFG_METHOD_39,
+	CFG_METHOD_40,
+	CFG_METHOD_41,
+	CFG_METHOD_42,
+	CFG_METHOD_43,
+	CFG_METHOD_44,
+	CFG_METHOD_45,
+	CFG_METHOD_46,
+	CFG_METHOD_47,
+	CFG_METHOD_48,
+	CFG_METHOD_49,
+	CFG_METHOD_50,
+	CFG_METHOD_51,
+	CFG_METHOD_52,
+	CFG_METHOD_53,
+	CFG_METHOD_54,
+	CFG_METHOD_55,
+	CFG_METHOD_56,
+	CFG_METHOD_57,
+	CFG_METHOD_58,
+	CFG_METHOD_59,
+	CFG_METHOD_60,
+	CFG_METHOD_61,
+	CFG_METHOD_62,
+	CFG_METHOD_63,
+	CFG_METHOD_64,
+	CFG_METHOD_65,
+	CFG_METHOD_66,
+	CFG_METHOD_67,
+	CFG_METHOD_68,
+	CFG_METHOD_69,
+	CFG_METHOD_70,
+	CFG_METHOD_71,
+	CFG_METHOD_MAX,
+	CFG_METHOD_DEFAULT = 0xFF
+};
+
+enum bits {
+	BIT_0 = (1UL << 0),
+	BIT_1 = (1UL << 1),
+	BIT_2 = (1UL << 2),
+	BIT_3 = (1UL << 3),
+	BIT_4 = (1UL << 4),
+	BIT_5 = (1UL << 5),
+	BIT_6 = (1UL << 6),
+	BIT_7 = (1UL << 7),
+	BIT_8 = (1UL << 8),
+	BIT_9 = (1UL << 9),
+	BIT_10 = (1UL << 10),
+	BIT_11 = (1UL << 11),
+	BIT_12 = (1UL << 12),
+	BIT_13 = (1UL << 13),
+	BIT_14 = (1UL << 14),
+	BIT_15 = (1UL << 15),
+	BIT_16 = (1UL << 16),
+	BIT_17 = (1UL << 17),
+	BIT_18 = (1UL << 18),
+	BIT_19 = (1UL << 19),
+	BIT_20 = (1UL << 20),
+	BIT_21 = (1UL << 21),
+	BIT_22 = (1UL << 22),
+	BIT_23 = (1UL << 23),
+	BIT_24 = (1UL << 24),
+	BIT_25 = (1UL << 25),
+	BIT_26 = (1UL << 26),
+	BIT_27 = (1UL << 27),
+	BIT_28 = (1UL << 28),
+	BIT_29 = (1UL << 29),
+	BIT_30 = (1UL << 30),
+	BIT_31 = (1UL << 31)
+};
+
 enum RTL_registers {
 	MAC0            = 0x00,     /* Ethernet hardware address */
 	MAC4            = 0x04,
@@ -358,6 +469,8 @@ enum RTL_register_content {
 	INT_CFG0_ENABLE_8125            = (1 << 0),
 	INT_CFG0_TIMEOUT0_BYPASS_8125   = (1 << 1),
 	INT_CFG0_MITIGATION_BYPASS_8125 = (1 << 2),
+	INT_CFG0_RDU_BYPASS_8126        = (1 << 4),
+	INT_CFG0_MSIX_ENTRY_NUM_MODE    = (1 << 5),
 	ISRIMR_V2_ROK_Q0     = (1 << 0),
 	ISRIMR_TOK_Q0        = (1 << 16),
 	ISRIMR_TOK_Q1        = (1 << 18),
@@ -378,6 +491,18 @@ enum RTL_register_content {
 	rte_write16((rte_cpu_to_le_16(val)), RTL_PCI_REG_ADDR(hw, reg))
 #define RTL_W32(hw, reg, val) \
 	rte_write32((rte_cpu_to_le_32(val)), RTL_PCI_REG_ADDR(hw, reg))
+
+#define RX_DMA_BURST_unlimited  7   /* Maximum PCI burst, '7' is unlimited */
+#define RX_DMA_BURST_512    5
+#define TX_DMA_BURST_unlimited  7
+#define TX_DMA_BURST_1024   6
+#define TX_DMA_BURST_512    5
+#define TX_DMA_BURST_256    4
+#define TX_DMA_BURST_128    3
+#define TX_DMA_BURST_64     2
+#define TX_DMA_BURST_32     1
+#define TX_DMA_BURST_16     0
+#define InterFrameGap       0x03    /* 3 means InterFrameGap = the shortest one */
 
 static inline u32
 rtl_read32(void *addr)

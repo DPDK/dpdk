@@ -13,7 +13,18 @@
 #include "r8169_compat.h"
 
 struct rtl_hw {
-	u8 *mmio_addr;
+	u8  *mmio_addr;
+	u32 mcfg;
+	u8  HwSuppIntMitiVer;
+
+	/* Enable Tx No Close */
+	u8 EnableTxNoClose;
+
+	/* Dash */
+	u8 HwSuppDashVer;
+	u8 DASH;
+	u8 HwSuppOcpChannelVer;
+	u8 AllowAccessDashOcp;
 };
 
 struct rtl_sw_stats {
@@ -29,6 +40,9 @@ struct rtl_adapter {
 	struct rtl_hw       hw;
 	struct rtl_sw_stats sw_stats;
 };
+
+#define RTL_DEV_PRIVATE(eth_dev) \
+	((struct rtl_adapter *)((eth_dev)->data->dev_private))
 
 int rtl_rx_init(struct rte_eth_dev *dev);
 int rtl_tx_init(struct rte_eth_dev *dev);
