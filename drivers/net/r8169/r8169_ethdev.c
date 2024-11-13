@@ -76,6 +76,11 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.rx_queue_setup       = rtl_rx_queue_setup,
 	.rx_queue_release     = rtl_rx_queue_release,
 	.rxq_info_get         = rtl_rxq_info_get,
+
+	.tx_queue_setup       = rtl_tx_queue_setup,
+	.tx_queue_release     = rtl_tx_queue_release,
+	.tx_done_cleanup      = rtl_tx_done_cleanup,
+	.txq_info_get         = rtl_txq_info_get,
 };
 
 static int
@@ -349,6 +354,7 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads() |
 				     dev_info->rx_queue_offload_capa);
+	dev_info->tx_offload_capa = rtl_get_tx_port_offloads();
 
 	return 0;
 }

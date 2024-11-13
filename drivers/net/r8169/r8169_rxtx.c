@@ -25,6 +25,28 @@
 #include "r8169_hw.h"
 #include "r8169_logs.h"
 
+/* Bit mask to indicate what bits required for building TX context */
+#define RTL_TX_OFFLOAD_MASK (RTE_MBUF_F_TX_IPV6 |		\
+			     RTE_MBUF_F_TX_IPV4 |		\
+			     RTE_MBUF_F_TX_VLAN |		\
+			     RTE_MBUF_F_TX_IP_CKSUM |	        \
+			     RTE_MBUF_F_TX_L4_MASK |		\
+			     RTE_MBUF_F_TX_TCP_SEG)
+
+#define MIN_PATCH_LENGTH 47
+#define ETH_ZLEN	 60		/* Min. octets in frame sans FCS */
+
+/* Struct TxDesc in kernel r8169 */
+struct rtl_tx_desc {
+	u32 opts1;
+	u32 opts2;
+	u64 addr;
+	u32 reserved0;
+	u32 reserved1;
+	u32 reserved2;
+	u32 reserved3;
+};
+
 /* Struct RxDesc in kernel r8169 */
 struct rtl_rx_desc {
 	u32 opts1;
@@ -32,9 +54,29 @@ struct rtl_rx_desc {
 	u64 addr;
 };
 
+/* Structure associated with each descriptor of the TX ring of a TX queue. */
+struct rtl_tx_entry {
+	struct rte_mbuf *mbuf;
+};
+
 /* Structure associated with each descriptor of the RX ring of a RX queue. */
 struct rtl_rx_entry {
 	struct rte_mbuf *mbuf;
+};
+
+/* Structure associated with each TX queue. */
+struct rtl_tx_queue {
+	struct rtl_tx_desc   *hw_ring;
+	struct rtl_tx_entry  *sw_ring;
+	struct rtl_hw        *hw;
+	uint64_t	     hw_ring_phys_addr;
+	uint16_t	     nb_tx_desc;
+	RTE_ATOMIC(uint32_t) tx_tail;
+	uint16_t	     tx_head;
+	uint16_t	     queue_id;
+	uint16_t	     port_id;
+	uint16_t	     tx_free_thresh;
+	uint16_t	     tx_free;
 };
 
 /* Structure associated with each RX queue. */
@@ -136,6 +178,15 @@ enum _DescStatusBit {
 	RxV4F_v3       = RxV4F,
 	/*@@@@@@ offset 4 of RX descriptor => bits for RTL8169 only     end @@@@@@*/
 };
+
+#define GTTCPHO_SHIFT  18
+#define GTTCPHO_MAX    0x70U
+#define GTPKTSIZE_MAX  0x3ffffU
+#define TCPHO_SHIFT    18
+#define TCPHO_MAX      0x3ffU
+#define LSOPKTSIZE_MAX 0xffffU
+#define MSS_MAX        0x07ffu /* MSS value */
+
 /* ---------------------------------RX---------------------------------- */
 
 static void
@@ -789,25 +840,618 @@ next_desc:
 }
 
 /* ---------------------------------TX---------------------------------- */
-int
-rtl_tx_init(struct rte_eth_dev *dev __rte_unused)
+static void
+rtl_tx_queue_release_mbufs(struct rtl_tx_queue *txq)
 {
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (txq != NULL) {
+		if (txq->sw_ring != NULL) {
+			for (i = 0; i < txq->nb_tx_desc; i++) {
+				if (txq->sw_ring[i].mbuf != NULL) {
+					rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+					txq->sw_ring[i].mbuf = NULL;
+				}
+			}
+		}
+	}
+}
+
+void
+rtl_tx_queue_release(struct rte_eth_dev *dev, uint16_t tx_queue_id)
+{
+	struct rtl_tx_queue *txq = dev->data->tx_queues[tx_queue_id];
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (txq != NULL) {
+		rtl_tx_queue_release_mbufs(txq);
+		rte_free(txq->sw_ring);
+		rte_free(txq);
+	}
+}
+
+void
+rtl_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		 struct rte_eth_txq_info *qinfo)
+{
+	struct rtl_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+}
+
+static void
+rtl_reset_tx_queue(struct rtl_tx_queue *txq)
+{
+	static const struct rtl_tx_desc zero_txd = {0};
+	int i;
+
+	for (i = 0; i < txq->nb_tx_desc; i++)
+		txq->hw_ring[i] = zero_txd;
+
+	txq->hw_ring[txq->nb_tx_desc - 1].opts1 = rte_cpu_to_le_32(RingEnd);
+
+	txq->tx_tail = 0;
+	txq->tx_head = 0;
+	txq->tx_free = txq->nb_tx_desc - 1;
+}
+
+uint64_t
+rtl_get_tx_port_offloads(void)
+{
+	uint64_t tx_offload_capa;
+
+	tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+			  RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+			  RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+			  RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
+			  RTE_ETH_TX_OFFLOAD_TCP_TSO     |
+			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
+	return tx_offload_capa;
+}
+
+int
+rtl_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+		   uint16_t nb_tx_desc, unsigned int socket_id,
+		   const struct rte_eth_txconf *tx_conf)
+{
+	struct rtl_tx_queue *txq;
+	const struct rte_memzone *mz;
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	u32 size;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/*
+	 * If this queue existed already, free the associated memory. The
+	 * queue cannot be reused in case we need to allocate memory on
+	 * different socket than was previously used.
+	 */
+	if (dev->data->tx_queues[queue_idx] != NULL) {
+		rtl_tx_queue_release(dev, queue_idx);
+		dev->data->tx_queues[queue_idx] = NULL;
+	}
+
+	txq = rte_zmalloc_socket("r8169 TX queue", sizeof(struct rtl_tx_queue),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+
+	if (txq == NULL) {
+		PMD_INIT_LOG(ERR, "Cannot allocate Tx queue structure");
+		return -ENOMEM;
+	}
+
+	/* Setup queue */
+	txq->nb_tx_desc = nb_tx_desc;
+	txq->port_id = dev->data->port_id;
+	txq->queue_id = queue_idx;
+	txq->tx_free_thresh = tx_conf->tx_free_thresh;
+
+	/* Allocate memory for the software ring */
+	txq->sw_ring = rte_calloc("r8169 sw tx ring", nb_tx_desc,
+				  sizeof(struct rtl_tx_entry), RTE_CACHE_LINE_SIZE);
+
+	if (txq->sw_ring == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Port %d: Cannot allocate software ring for queue %d",
+			     txq->port_id, txq->queue_id);
+		rte_free(txq);
+		return -ENOMEM;
+	}
+
+	/*
+	 * Allocate TX ring hardware descriptors. A memzone large enough to
+	 * handle the maximum ring size is allocated in order to allow for
+	 * resizing in later calls to the queue setup function.
+	 */
+	size = sizeof(struct rtl_tx_desc) * (nb_tx_desc + 1);
+	mz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx, size,
+				      RTL_RING_ALIGN, socket_id);
+	if (mz == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Port %d: Cannot allocate hardware ring for queue %d",
+			     txq->port_id, txq->queue_id);
+		rtl_tx_queue_release(dev, txq->queue_id);
+		return -ENOMEM;
+	}
+
+	txq->hw = hw;
+	txq->hw_ring = mz->addr;
+	txq->hw_ring_phys_addr = mz->iova;
+
+	rtl_reset_tx_queue(txq);
+
+	/* EnableTxNoClose */
+	hw->NextHwDesCloPtr0 = 0;
+	hw->BeginHwDesCloPtr0 = 0;
+
+	dev->data->tx_queues[queue_idx] = txq;
+
 	return 0;
 }
 
-uint16_t
-rtl_xmit_pkts(void *txq __rte_unused, struct rte_mbuf **tx_pkts __rte_unused,
-	      uint16_t nb_pkts __rte_unused)
+int
+rtl_tx_init(struct rte_eth_dev *dev)
 {
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	struct rtl_tx_queue *txq;
+
+	txq = dev->data->tx_queues[0];
+
+	RTL_W32(hw, TxDescStartAddrLow,
+		((u64)txq->hw_ring_phys_addr & DMA_BIT_MASK(32)));
+	RTL_W32(hw, TxDescStartAddrHigh, ((u64)txq->hw_ring_phys_addr >> 32));
+
+	rtl_enable_cfg9346_write(hw);
+
+	/* Set TDFNR: TX Desc Fetch NumbeR */
+	switch (hw->mcfg) {
+	case CFG_METHOD_48 ... CFG_METHOD_57:
+	case CFG_METHOD_69 ... CFG_METHOD_71:
+		RTL_W8(hw, TDFNR, 0x10);
+		break;
+	}
+
+	rtl_disable_cfg9346_write(hw);
+
+	RTL_W8(hw, ChipCmd, RTL_R8(hw, ChipCmd) | CmdTxEnb);
+
+	dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
+}
+
+static inline uint32_t
+rtl_tx_vlan_tag(struct rte_mbuf *tx_pkt, uint64_t ol_flags)
+{
+	return (ol_flags & RTE_MBUF_F_TX_VLAN) ?
+	       (TxVlanTag | rte_bswap16(tx_pkt->vlan_tci)) :
+	       0;
+}
+
+static inline int
+rtl_tso_setup(struct rte_mbuf *tx_pkt, uint64_t ol_flags, u32 *opts)
+{
+	uint32_t mss;
+	uint64_t l4_offset;
+
+	/* Check if TCP segmentation required for this packet */
+	if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		mss = tx_pkt->tso_segsz;
+		l4_offset = tx_pkt->l2_len + tx_pkt->l3_len;
+		if (l4_offset <= GTTCPHO_MAX) {
+			/* Implies IP cksum in IPv4 */
+			if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
+				opts[0] |= GiantSendv4;
+			else
+				opts[0] |= GiantSendv6;
+
+			opts[0] |= l4_offset << GTTCPHO_SHIFT;
+			opts[1] |= RTE_MIN(mss, MSS_MAX) << 18;
+
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static inline void
+rtl_setup_csum_offload(struct rte_mbuf *tx_pkt, uint64_t ol_flags,
+		       uint32_t *opts)
+{
+	uint32_t csum_cmd = 0;
+	uint64_t l4_offset;
+
+	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
+		csum_cmd |= TxIPCS_C;
+
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_UDP_CKSUM:
+		csum_cmd |= TxUDPCS_C;
+		break;
+	case RTE_MBUF_F_TX_TCP_CKSUM:
+		csum_cmd |= TxTCPCS_C;
+		break;
+	}
+
+	if (csum_cmd != 0) {
+		if (ol_flags & RTE_MBUF_F_TX_IPV6) {
+			l4_offset = tx_pkt->l2_len + tx_pkt->l3_len;
+			csum_cmd |= TxIPV6F_C;
+			csum_cmd |= l4_offset << TCPHO_SHIFT;
+		} else {
+			csum_cmd |= TxIPCS_C;
+		}
+		opts[1] |= csum_cmd;
+	}
+}
+
+static uint32_t
+rtl8125_get_patch_pad_len(struct rte_mbuf *tx_pkt)
+{
+	uint16_t dest_port;
+	uint32_t pad_len = 0;
+	int udp_hdr_len = sizeof(struct rte_udp_hdr);
+	int trans_data_len, l4_offset;
+	struct rte_udp_hdr *udp_hdr;
+
+	if (!(tx_pkt->l4_len && tx_pkt->data_len < 175))
+		goto no_padding;
+
+	l4_offset = tx_pkt->l2_len + tx_pkt->l3_len;
+	trans_data_len = tx_pkt->data_len - l4_offset;
+
+	if (trans_data_len > 3 && trans_data_len < MIN_PATCH_LENGTH) {
+		udp_hdr = rte_pktmbuf_mtod_offset(tx_pkt, struct rte_udp_hdr *, l4_offset);
+		dest_port = ntohs(udp_hdr->dst_port);
+		if (dest_port == 0x13f || dest_port == 0x140) {
+			pad_len = MIN_PATCH_LENGTH - trans_data_len;
+			goto out;
+		}
+	}
+
+	if (trans_data_len < udp_hdr_len)
+		pad_len = udp_hdr_len - trans_data_len;
+
+out:
+	if ((tx_pkt->data_len + pad_len) < ETH_ZLEN)
+		pad_len = ETH_ZLEN - tx_pkt->data_len;
+
+	return pad_len;
+
+no_padding:
+
+	return 0;
+}
+
+static void
+rtl8125_ptp_patch(struct rte_mbuf *tx_pkt)
+{
+	uint32_t pad_len;
+	char *padding;
+
+	if (tx_pkt->packet_type & RTE_PTYPE_L4_UDP) {
+		pad_len = rtl8125_get_patch_pad_len(tx_pkt);
+		if (pad_len > 0) {
+			padding = rte_pktmbuf_append(tx_pkt, pad_len);
+			if (unlikely(padding == NULL))
+				PMD_DRV_LOG(ERR, "Not enough mbuf trailing space.");
+			memset(padding, 0, pad_len);
+		}
+	}
+}
+
+static inline void
+rtl_xmit_pkt(struct rtl_hw *hw, struct rtl_tx_queue *txq,
+	     struct rte_mbuf *tx_pkt)
+{
+	struct rte_mbuf *m_seg;
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_sw_stats *stats = &adapter->sw_stats;
+	struct rtl_tx_desc *txd;
+	struct rtl_tx_entry *txe = NULL;
+	uint16_t desc_count = 0;
+	const uint16_t nb_tx_desc = txq->nb_tx_desc;
+	uint16_t tail;
+	u32 len;
+	u32 opts[2] = {0};
+	u32 opts1;
+	u32 opts2;
+	int large_send;
+	uint64_t buf_dma_addr;
+	uint64_t ol_flags;
+	uint64_t tx_ol_flags;
+
+	/* Like cur_tx */
+	tail = (uint16_t)(txq->tx_tail % nb_tx_desc);
+
+	/* If hardware offload required */
+	ol_flags = tx_pkt->ol_flags;
+	tx_ol_flags = ol_flags & RTL_TX_OFFLOAD_MASK;
+
+	opts[0] = DescOwn;
+	opts[1] = rtl_tx_vlan_tag(tx_pkt, tx_ol_flags);
+
+	large_send = rtl_tso_setup(tx_pkt, tx_ol_flags, opts);
+
+	/* No TSO */
+	if (large_send == 0) {
+		rtl_setup_csum_offload(tx_pkt, tx_ol_flags, opts);
+
+		switch (hw->mcfg) {
+		case CFG_METHOD_48 ... CFG_METHOD_53:
+			rtl8125_ptp_patch(tx_pkt);
+			break;
+		}
+	}
+
+	for (m_seg = tx_pkt; m_seg; m_seg = m_seg->next) {
+		opts1 = opts[0];
+		opts2 = opts[1];
+
+		len = m_seg->data_len;
+
+		if (len == 0)
+			break;
+
+		txd = &txq->hw_ring[tail];
+
+		buf_dma_addr = rte_mbuf_data_iova(m_seg);
+		txd->addr = rte_cpu_to_le_64(buf_dma_addr);
+
+		opts1 |= len;
+		if (m_seg == tx_pkt)
+			opts1 |= FirstFrag;
+		if (!m_seg->next)
+			opts1 |= LastFrag;
+		if (tail == nb_tx_desc - 1)
+			opts1 |= RingEnd;
+
+		/* Store mbuf for freeing later */
+		txe = &txq->sw_ring[tail];
+
+		if (txe->mbuf)
+			rte_pktmbuf_free_seg(txe->mbuf);
+
+		txe->mbuf = m_seg;
+
+		txd->opts2 = rte_cpu_to_le_32(opts2);
+		rte_wmb();
+		txd->opts1 = rte_cpu_to_le_32(opts1);
+
+		tail = (tail + 1) % nb_tx_desc;
+
+		desc_count++;
+
+		stats->tx_bytes += len;
+	}
+
+	txq->tx_tail += desc_count;
+	txq->tx_free -= desc_count;
+
+	stats->tx_packets++;
+}
+
+static inline u32
+rtl_fast_mod_mask(const u32 input, const u32 mask)
+{
+	return input > mask ? input & mask : input;
+}
+
+static u32
+rtl_get_hw_clo_ptr(struct rtl_hw *hw)
+{
+	switch (hw->HwSuppTxNoCloseVer) {
+	case 3:
+		return RTL_R16(hw, hw->hw_clo_ptr_reg);
+	case 4:
+	case 5:
+	case 6:
+		return RTL_R32(hw, hw->hw_clo_ptr_reg);
+	default:
+		return 0;
+	}
+}
+
+static u32
+rtl_get_opts1(struct rtl_tx_desc *txd)
+{
+	rte_smp_rmb();
+
+	return rte_le_to_cpu_32(txd->opts1);
+}
+
+static void
+rtl_tx_clean(struct rtl_hw *hw, struct rtl_tx_queue *txq)
+{
+	struct rtl_tx_entry *sw_ring = txq->sw_ring;
+	struct rtl_tx_entry *txe;
+	struct rtl_tx_desc *txd;
+	const uint8_t enable_tx_no_close = hw->EnableTxNoClose;
+	const uint16_t nb_tx_desc = txq->nb_tx_desc;
+	uint16_t head = txq->tx_head;
+	uint16_t desc_freed = 0;
+	uint32_t tx_left;
+	uint32_t tx_desc_closed, next_hw_desc_clo_ptr0;
+
+	if (txq == NULL)
+		return;
+
+	if (enable_tx_no_close) {
+		next_hw_desc_clo_ptr0 = rtl_get_hw_clo_ptr(hw);
+		hw->NextHwDesCloPtr0 = next_hw_desc_clo_ptr0;
+		tx_desc_closed = rtl_fast_mod_mask(next_hw_desc_clo_ptr0 -
+						   hw->BeginHwDesCloPtr0, hw->MaxTxDescPtrMask);
+		tx_left = RTE_MIN(((rte_atomic_load_explicit(&txq->tx_tail,
+				    rte_memory_order_relaxed) % nb_tx_desc) - head),
+				    tx_desc_closed);
+		hw->BeginHwDesCloPtr0 += tx_left;
+	} else {
+		tx_left = (rte_atomic_load_explicit(&txq->tx_tail,
+						    rte_memory_order_relaxed) % nb_tx_desc) - head;
+	}
+
+	while (tx_left > 0) {
+		txd = &txq->hw_ring[head];
+
+		if (!enable_tx_no_close && (rtl_get_opts1(txd) & DescOwn))
+			break;
+
+		txe = &sw_ring[head];
+		if (txe->mbuf) {
+			rte_pktmbuf_free_seg(txe->mbuf);
+			txe->mbuf = NULL;
+		}
+
+		head = (head + 1) % nb_tx_desc;
+		desc_freed++;
+		tx_left--;
+	}
+	txq->tx_free += desc_freed;
+	txq->tx_head = head;
+}
+
+int
+rtl_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
+{
+	struct rtl_tx_queue *txq = tx_queue;
+	struct rtl_hw *hw = txq->hw;
+	struct rtl_tx_entry *sw_ring = txq->sw_ring;
+	struct rtl_tx_entry *txe;
+	struct rtl_tx_desc *txd;
+	const uint8_t enable_tx_no_close = hw->EnableTxNoClose;
+	const uint16_t nb_tx_desc = txq->nb_tx_desc;
+	uint16_t head = txq->tx_head;
+	uint16_t desc_freed = 0;
+	uint32_t tx_left;
+	uint32_t count = 0;
+	uint32_t status;
+	uint32_t tx_desc_closed, next_hw_desc_clo_ptr0;
+
+	if (txq == NULL)
+		return -ENODEV;
+
+	if (enable_tx_no_close) {
+		next_hw_desc_clo_ptr0 = rtl_get_hw_clo_ptr(hw);
+		hw->NextHwDesCloPtr0 = next_hw_desc_clo_ptr0;
+		tx_desc_closed = rtl_fast_mod_mask(next_hw_desc_clo_ptr0 -
+						   hw->BeginHwDesCloPtr0, hw->MaxTxDescPtrMask);
+		tx_left = RTE_MIN(((rte_atomic_load_explicit(&txq->tx_tail,
+				    rte_memory_order_relaxed) % nb_tx_desc) - head),
+				    tx_desc_closed);
+		hw->BeginHwDesCloPtr0 += tx_left;
+	} else {
+		tx_left = (rte_atomic_load_explicit(&txq->tx_tail,
+						    rte_memory_order_relaxed) % nb_tx_desc) - head;
+	}
+
+	while (tx_left > 0) {
+		txd = &txq->hw_ring[head];
+
+		status = rtl_get_opts1(txd);
+
+		if (!enable_tx_no_close && (status & DescOwn))
+			break;
+
+		txe = &sw_ring[head];
+		if (txe->mbuf) {
+			rte_pktmbuf_free_seg(txe->mbuf);
+			txe->mbuf = NULL;
+		}
+
+		head = (head + 1) % nb_tx_desc;
+
+		desc_freed++;
+		tx_left--;
+
+		if (status & LastFrag) {
+			count++;
+			if (count == free_cnt)
+				break;
+		}
+	}
+
+	txq->tx_free += desc_freed;
+	txq->tx_head = head;
+
+	return count;
+}
+
+static void
+rtl_doorbell(struct rtl_hw *hw, struct rtl_tx_queue *txq)
+{
+	if (hw->EnableTxNoClose)
+		if (hw->HwSuppTxNoCloseVer > 3)
+			RTL_W32(hw, hw->sw_tail_ptr_reg, txq->tx_tail);
+		else
+			RTL_W16(hw, hw->sw_tail_ptr_reg, txq->tx_tail);
+	else
+		RTL_W16(hw, TPPOLL_8125, BIT_0);
+}
+
+/* PMD transmit function */
+uint16_t
+rtl_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rtl_tx_queue *txq = tx_queue;
+	struct rtl_hw *hw = txq->hw;
+	struct rte_mbuf *tx_pkt;
+	uint16_t nb_tx;
+
+	RTE_ASSERT(RTL_R8(hw, ChipCmd) & CmdTxEnb);
+
+	PMD_TX_LOG(DEBUG,
+		   "port %d txq %d pkts: %d tx_free=%d tx_tail=%d tx_head=%d",
+		   txq->port_id, txq->queue_id, nb_pkts, txq->tx_free,
+		   txq->tx_tail, txq->tx_head);
+
+	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
+		tx_pkt = *tx_pkts++;
+
+		if (txq->tx_free < tx_pkt->nb_segs)
+			break;
+
+		/* Check mbuf is valid */
+		if (tx_pkt->nb_segs == 0 || tx_pkt->pkt_len == 0 ||
+		    (tx_pkt->nb_segs > 1 && tx_pkt->next == NULL))
+			break;
+
+		rtl_xmit_pkt(hw, txq, tx_pkt);
+	}
+
+	rte_wmb();
+
+	if (nb_tx > 0)
+		rtl_doorbell(hw, txq);
+
+	PMD_TX_LOG(DEBUG, "%s %d transmitted", __func__, nb_tx);
+
+	rtl_tx_clean(hw, txq);
+
+	return nb_tx;
 }
 
 int
 rtl_stop_queues(struct rte_eth_dev *dev)
 {
+	struct rtl_tx_queue *txq;
 	struct rtl_rx_queue *rxq;
 
 	PMD_INIT_FUNC_TRACE();
+
+	txq = dev->data->tx_queues[0];
+
+	rtl_tx_queue_release_mbufs(txq);
+	rtl_reset_tx_queue(txq);
+	dev->data->tx_queue_state[0] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	rxq = dev->data->rx_queues[0];
 
@@ -827,4 +1471,9 @@ rtl_free_queues(struct rte_eth_dev *dev)
 	rtl_rx_queue_release(dev, 0);
 	dev->data->rx_queues[0] = 0;
 	dev->data->nb_rx_queues = 0;
+
+	rte_eth_dma_zone_free(dev, "tx_ring", 0);
+	rtl_tx_queue_release(dev, 0);
+	dev->data->tx_queues[0] = 0;
+	dev->data->nb_tx_queues = 0;
 }
