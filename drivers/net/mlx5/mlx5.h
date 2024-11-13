@@ -1938,6 +1938,7 @@ struct mlx5_priv {
 	uint32_t hws_mark_refcnt; /* HWS mark action reference counter. */
 	struct rte_pmd_mlx5_flow_engine_mode_info mode_info; /* Process set flow engine info. */
 	struct mlx5_flow_hw_attr *hw_attr; /* HW Steering port configuration. */
+	bool hws_rule_flushing; /**< Whether this port is in rules flushing stage. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */
 	LIST_HEAD(flow_hw_itt, rte_flow_pattern_template) flow_hw_itt;
