@@ -1286,6 +1286,11 @@ rtl_exit_oob(struct rtl_hw *hw)
 
 	rtl_disable_rx_packet_filter(hw);
 
+	if (HW_DASH_SUPPORT_DASH(hw)) {
+		rtl8125_driver_start(hw);
+		rtl8125_dash2_disable_txrx(hw);
+	}
+
 	rtl_exit_realwow(hw);
 
 	rtl_nic_reset(hw);

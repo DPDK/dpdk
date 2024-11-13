@@ -265,7 +265,11 @@ enum RTL_registers {
 	Q_NUM_CTRL_8125    = 0x4800,
 	RSS_KEY_8125       = 0x4600,
 	RSS_INDIRECTION_TBL_8125_V2 = 0x4700,
-	EEE_TXIDLE_TIMER_8125 = 0x6048,
+	EEE_TXIDLE_TIMER_8125       = 0x6048,
+	IB2SOC_SET     = 0x0010,
+	IB2SOC_DATA    = 0x0014,
+	IB2SOC_CMD     = 0x0018,
+	IB2SOC_IMR     = 0x001C,
 };
 
 enum RTL_register_content {
