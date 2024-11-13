@@ -7474,7 +7474,9 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	if (priv->sh->config.dv_flow_en == 2 &&
 	    type == MLX5_FLOW_TYPE_GEN) {
+		priv->hws_rule_flushing = true;
 		flow_hw_q_flow_flush(dev, NULL);
+		priv->hws_rule_flushing = false;
 		return;
 	}
 #endif
