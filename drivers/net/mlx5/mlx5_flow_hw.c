@@ -16164,7 +16164,7 @@ mlx5_flow_hw_ctrl_flows(struct rte_eth_dev *dev, uint32_t flags)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
 	unsigned int i;
-	unsigned int j;
+	int j;
 	int ret = 0;
 
 	RTE_SET_USED(priv);
