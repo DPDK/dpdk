@@ -118,7 +118,7 @@ based on this CPU resume latency in their idle task.
 
 The deeper the idle state, the lower the power consumption,
 but the longer the resume time.
-Some services are latency sensitive and very except the low resume time,
+Some services are latency sensitive and request a low resume time,
 like interrupt packet receiving mode.
 
 Applications can set and get the CPU resume latency with
