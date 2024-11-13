@@ -42,6 +42,7 @@ static int rtl_promiscuous_enable(struct rte_eth_dev *dev);
 static int rtl_promiscuous_disable(struct rte_eth_dev *dev);
 static int rtl_allmulticast_enable(struct rte_eth_dev *dev);
 static int rtl_allmulticast_disable(struct rte_eth_dev *dev);
+static int rtl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 /*
  * The set of PCI devices this driver supports
@@ -87,6 +88,8 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 
 	.stats_get            = rtl_dev_stats_get,
 	.stats_reset          = rtl_dev_stats_reset,
+
+	.mtu_set              = rtl_dev_mtu_set,
 
 	.rx_queue_setup       = rtl_rx_queue_setup,
 	.rx_queue_release     = rtl_rx_queue_release,
@@ -374,6 +377,9 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		break;
 	}
 
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
+	dev_info->max_mtu = dev_info->max_rx_pktlen - RTL_ETH_OVERHEAD;
+
 	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads() |
 				     dev_info->rx_queue_offload_capa);
 	dev_info->tx_offload_capa = rtl_get_tx_port_offloads();
@@ -594,6 +600,20 @@ rtl_dev_close(struct rte_eth_dev *dev)
 	} while (retries++ < (10 + 90));
 
 	return ret_stp;
+}
+
+static int
+rtl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	uint32_t frame_size = mtu + RTL_ETH_OVERHEAD;
+
+	hw->mtu = mtu;
+
+	RTL_W16(hw, RxMaxSize, frame_size);
+
+	return 0;
 }
 
 static int
