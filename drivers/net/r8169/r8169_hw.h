@@ -51,6 +51,9 @@ int rtl_get_mac_address(struct rtl_hw *hw, struct rte_ether_addr *ea);
 
 void rtl_rar_set(struct rtl_hw *hw, uint8_t *addr);
 
+void rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
+			 enum rtl_fc_mode fc);
+
 extern const struct rtl_hw_ops rtl8125a_ops;
 extern const struct rtl_hw_ops rtl8125b_ops;
 extern const struct rtl_hw_ops rtl8125bp_ops;

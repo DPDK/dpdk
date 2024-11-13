@@ -958,7 +958,7 @@ rtl_is_autoneg_mode_valid(u32 autoneg)
 	}
 }
 
-static void
+void
 rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
 		    enum rtl_fc_mode fc)
 {
@@ -1088,13 +1088,13 @@ rtl_init_software_variable(struct rtl_hw *hw)
 	switch (hw->mcfg) {
 	case CFG_METHOD_48 ... CFG_METHOD_51:
 	case CFG_METHOD_54 ... CFG_METHOD_57:
-		hw->HwSuppMaxPhyLinkSpeed = 2500;
+		hw->HwSuppMaxPhyLinkSpeed = SPEED_2500;
 		break;
 	case CFG_METHOD_69 ... CFG_METHOD_71:
-		hw->HwSuppMaxPhyLinkSpeed = 5000;
+		hw->HwSuppMaxPhyLinkSpeed = SPEED_5000;
 		break;
 	default:
-		hw->HwSuppMaxPhyLinkSpeed = 1000;
+		hw->HwSuppMaxPhyLinkSpeed = SPEED_1000;
 		break;
 	}
 

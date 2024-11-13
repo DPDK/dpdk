@@ -99,6 +99,9 @@ struct rtl_adapter {
 #define RTL_DEV_PRIVATE(eth_dev) \
 	((struct rtl_adapter *)((eth_dev)->data->dev_private))
 
+#define R8169_LINK_CHECK_TIMEOUT  50   /* 10s */
+#define R8169_LINK_CHECK_INTERVAL 200  /* ms */
+
 int rtl_rx_init(struct rte_eth_dev *dev);
 int rtl_tx_init(struct rte_eth_dev *dev);
 

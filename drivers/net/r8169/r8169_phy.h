@@ -142,4 +142,6 @@ void rtl_powerdown_pll(struct rtl_hw *hw);
 void rtl_hw_ephy_config(struct rtl_hw *hw);
 void rtl_hw_phy_config(struct rtl_hw *hw);
 
+int rtl_set_speed(struct rtl_hw *hw);
+
 #endif /* R8169_PHY_H */

@@ -374,6 +374,7 @@ enum RTL_register_content {
 
 	/* PHY status */
 	PowerSaveStatus = 0x80,
+	_5000bpsF       = 0x1000,
 	_2500bpsF       = 0x400,
 	TxFlowCtrl      = 0x40,
 	RxFlowCtrl      = 0x20,

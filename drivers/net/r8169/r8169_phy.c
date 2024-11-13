@@ -776,3 +776,124 @@ rtl_hw_phy_config(struct rtl_hw *hw)
 	if (HW_HAS_WRITE_PHY_MCU_RAM_CODE(hw))
 		rtl_disable_eee(hw);
 }
+
+static void
+rtl_phy_restart_nway(struct rtl_hw *hw)
+{
+	if (rtl_is_in_phy_disable_mode(hw))
+		return;
+
+	rtl_mdio_write(hw, 0x1F, 0x0000);
+	rtl_mdio_write(hw, MII_BMCR, BMCR_ANENABLE | BMCR_ANRESTART);
+}
+
+static void
+rtl_phy_setup_force_mode(struct rtl_hw *hw, u32 speed, u8 duplex)
+{
+	u16 bmcr_true_force = 0;
+
+	if (rtl_is_in_phy_disable_mode(hw))
+		return;
+
+	if (speed == SPEED_10 && duplex == DUPLEX_HALF)
+		bmcr_true_force = BMCR_SPEED10;
+	else if (speed == SPEED_10 && duplex == DUPLEX_FULL)
+		bmcr_true_force = BMCR_SPEED10 | BMCR_FULLDPLX;
+	else if (speed == SPEED_100 && duplex == DUPLEX_HALF)
+		bmcr_true_force = BMCR_SPEED100;
+	else if (speed == SPEED_100 && duplex == DUPLEX_FULL)
+		bmcr_true_force = BMCR_SPEED100 | BMCR_FULLDPLX;
+	else
+		return;
+
+	rtl_mdio_write(hw, 0x1F, 0x0000);
+	rtl_mdio_write(hw, MII_BMCR, bmcr_true_force);
+}
+
+static int
+rtl_set_speed_xmii(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex, u32 adv)
+{
+	int auto_nego = 0;
+	int giga_ctrl = 0;
+	int ctrl_2500 = 0;
+	int rc = -EINVAL;
+
+	/* Disable giga lite */
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA428, BIT_9);
+	rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, BIT_0);
+
+	if (HW_SUPP_PHY_LINK_SPEED_5000M(hw))
+		rtl_clear_eth_phy_ocp_bit(hw, 0xA5EA, BIT_1);
+
+	if (!rtl_is_speed_mode_valid(speed)) {
+		speed = hw->HwSuppMaxPhyLinkSpeed;
+		duplex = DUPLEX_FULL;
+		adv |= hw->advertising;
+	}
+
+	giga_ctrl = rtl_mdio_read(hw, MII_CTRL1000);
+	giga_ctrl &= ~(ADVERTISE_1000HALF | ADVERTISE_1000FULL);
+	ctrl_2500 = rtl_mdio_direct_read_phy_ocp(hw, 0xA5D4);
+	ctrl_2500 &= ~(RTK_ADVERTISE_2500FULL | RTK_ADVERTISE_5000FULL);
+
+	if (autoneg == AUTONEG_ENABLE) {
+		/* N-way force */
+		auto_nego = rtl_mdio_read(hw, MII_ADVERTISE);
+		auto_nego &= ~(ADVERTISE_10HALF | ADVERTISE_10FULL |
+			       ADVERTISE_100HALF | ADVERTISE_100FULL |
+			       ADVERTISE_PAUSE_CAP | ADVERTISE_PAUSE_ASYM);
+
+		if (adv & ADVERTISE_10_HALF)
+			auto_nego |= ADVERTISE_10HALF;
+		if (adv & ADVERTISE_10_FULL)
+			auto_nego |= ADVERTISE_10FULL;
+		if (adv & ADVERTISE_100_HALF)
+			auto_nego |= ADVERTISE_100HALF;
+		if (adv & ADVERTISE_100_FULL)
+			auto_nego |= ADVERTISE_100FULL;
+		if (adv & ADVERTISE_1000_HALF)
+			giga_ctrl |= ADVERTISE_1000HALF;
+		if (adv & ADVERTISE_1000_FULL)
+			giga_ctrl |= ADVERTISE_1000FULL;
+		if (adv & ADVERTISE_2500_FULL)
+			ctrl_2500 |= RTK_ADVERTISE_2500FULL;
+		if (adv & ADVERTISE_5000_FULL)
+			ctrl_2500 |= RTK_ADVERTISE_5000FULL;
+
+		/* Flow control */
+		if (hw->fcpause == rtl_fc_full)
+			auto_nego |= ADVERTISE_PAUSE_CAP | ADVERTISE_PAUSE_ASYM;
+
+		rtl_mdio_write(hw, 0x1f, 0x0000);
+		rtl_mdio_write(hw, MII_ADVERTISE, auto_nego);
+		rtl_mdio_write(hw, MII_CTRL1000, giga_ctrl);
+		rtl_mdio_direct_write_phy_ocp(hw, 0xA5D4, ctrl_2500);
+		rtl_phy_restart_nway(hw);
+		rte_delay_ms(20);
+	} else {
+		/* True force */
+		if (speed == SPEED_10 || speed == SPEED_100)
+			rtl_phy_setup_force_mode(hw, speed, duplex);
+		else
+			goto out;
+	}
+	hw->autoneg = autoneg;
+	hw->speed = speed;
+	hw->duplex = duplex;
+	hw->advertising = adv;
+
+	rc = 0;
+out:
+	return rc;
+}
+
+int
+rtl_set_speed(struct rtl_hw *hw)
+{
+	int ret;
+
+	ret = rtl_set_speed_xmii(hw, hw->autoneg, hw->speed, hw->duplex,
+				 hw->advertising);
+
+	return ret;
+}
