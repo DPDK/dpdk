@@ -204,6 +204,11 @@ New Features
   * Added ``rte_flow_async_create_by_index_with_pattern()`` support.
   * Added jump to flow table index support.
 
+* **Added Realtek r8169 net driver.**
+
+  Added a new network PMD which supports Realtek 2.5 and 5 Gigabit
+  Ethernet NICs.
+
 * **Added ZTE zxdh net driver [EXPERIMENTAL].**
 
   Added ethdev driver support for zxdh NX Series Ethernet Controller.
