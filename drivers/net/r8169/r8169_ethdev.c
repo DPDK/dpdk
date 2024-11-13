@@ -145,3 +145,12 @@ static struct rte_pci_driver rte_r8169_pmd = {
 RTE_PMD_REGISTER_PCI(net_r8169, rte_r8169_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_r8169, pci_id_r8169_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_r8169, "* igb_uio | uio_pci_generic | vfio-pci");
+
+RTE_LOG_REGISTER_SUFFIX(r8169_logtype_init, init, NOTICE)
+RTE_LOG_REGISTER_SUFFIX(r8169_logtype_driver, driver, NOTICE)
+#ifdef RTE_ETHDEV_DEBUG_RX
+RTE_LOG_REGISTER_SUFFIX(r8169_logtype_rx, rx, DEBUG)
+#endif
+#ifdef RTE_ETHDEV_DEBUG_TX
+RTE_LOG_REGISTER_SUFFIX(r8169_logtype_tx, tx, DEBUG)
+#endif
