@@ -30,4 +30,10 @@ struct rtl_adapter {
 	struct rtl_sw_stats sw_stats;
 };
 
+int rtl_rx_init(struct rte_eth_dev *dev);
+int rtl_tx_init(struct rte_eth_dev *dev);
+
+uint16_t rtl_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t rtl_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+
 #endif /* R8169_ETHDEV_H */

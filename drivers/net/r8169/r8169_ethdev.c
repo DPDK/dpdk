@@ -17,6 +17,8 @@
 
 #include "r8169_ethdev.h"
 #include "r8169_compat.h"
+#include "r8169_logs.h"
+#include "r8169_hw.h"
 
 static int rtl_dev_configure(struct rte_eth_dev *dev);
 static int rtl_dev_start(struct rte_eth_dev *dev);
@@ -54,9 +56,23 @@ rtl_dev_configure(struct rte_eth_dev *dev __rte_unused)
  * It returns 0 on success.
  */
 static int
-rtl_dev_start(struct rte_eth_dev *dev  __rte_unused)
+rtl_dev_start(struct rte_eth_dev *dev)
 {
+	int err;
+
+	/* Initialize transmission unit */
+	rtl_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	err = rtl_rx_init(dev);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware");
+		goto error;
+	}
+
 	return 0;
+error:
+	return -EIO;
 }
 
 /*
@@ -88,6 +104,8 @@ static int
 rtl_dev_init(struct rte_eth_dev *dev)
 {
 	dev->dev_ops = &rtl_eth_dev_ops;
+	dev->tx_pkt_burst = &rtl_xmit_pkts;
+	dev->rx_pkt_burst = &rtl_recv_pkts;
 
 	/* For secondary processes, the primary process has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

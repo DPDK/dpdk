@@ -4,4 +4,5 @@
 sources = files(
         'r8169_ethdev.c',
         'r8169_hw.c',
+        'r8169_rxtx.c',
 )
