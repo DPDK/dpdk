@@ -17,3 +17,11 @@ Supported Chipsets and NICs
 
 - Realtek RTL8125 2.5 Gigabit Ethernet Controller
 - Realtek RTL8126 5 Gigabit Ethernet Controller
+
+Features
+--------
+
+Features of the R8169 PMD are:
+
+* Checksum offload
+* Jumbo frames supported

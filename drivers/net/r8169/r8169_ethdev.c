@@ -33,6 +33,8 @@ static int rtl_dev_close(struct rte_eth_dev *dev);
 static int rtl_dev_link_update(struct rte_eth_dev *dev, int wait);
 static int rtl_dev_set_link_up(struct rte_eth_dev *dev);
 static int rtl_dev_set_link_down(struct rte_eth_dev *dev);
+static int rtl_dev_infos_get(struct rte_eth_dev *dev,
+			     struct rte_eth_dev_info *dev_info);
 
 /*
  * The set of PCI devices this driver supports
@@ -45,6 +47,20 @@ static const struct rte_pci_id pci_id_r8169_map[] = {
 	{.vendor_id = 0, /* sentinel */ },
 };
 
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max   = RTL_MAX_RX_DESC,
+	.nb_min   = RTL_MIN_RX_DESC,
+	.nb_align = RTL_DESC_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max         = RTL_MAX_TX_DESC,
+	.nb_min         = RTL_MIN_TX_DESC,
+	.nb_align       = RTL_DESC_ALIGN,
+	.nb_seg_max     = RTL_MAX_TX_SEG,
+	.nb_mtu_seg_max = RTL_MAX_TX_SEG,
+};
+
 static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.dev_configure	      = rtl_dev_configure,
 	.dev_start	      = rtl_dev_start,
@@ -53,8 +69,13 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.dev_reset	      = rtl_dev_reset,
 	.dev_set_link_up      = rtl_dev_set_link_up,
 	.dev_set_link_down    = rtl_dev_set_link_down,
+	.dev_infos_get        = rtl_dev_infos_get,
 
 	.link_update          = rtl_dev_link_update,
+
+	.rx_queue_setup       = rtl_rx_queue_setup,
+	.rx_queue_release     = rtl_rx_queue_release,
+	.rxq_info_get         = rtl_rxq_info_get,
 };
 
 static int
@@ -143,6 +164,7 @@ _rtl_setup_link(struct rte_eth_dev *dev)
 error_invalid_config:
 	PMD_INIT_LOG(ERR, "Invalid advertised speeds (%u) for port %u",
 		     dev->data->dev_conf.link_speeds, dev->data->port_id);
+	rtl_stop_queues(dev);
 	return -EINVAL;
 }
 
@@ -221,6 +243,7 @@ rtl_dev_start(struct rte_eth_dev *dev)
 
 	return 0;
 error:
+	rtl_stop_queues(dev);
 	return -EIO;
 }
 
@@ -246,6 +269,8 @@ rtl_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	rtl_powerdown_pll(hw);
+
+	rtl_stop_queues(dev);
 
 	/* Clear the recorded link status */
 	memset(&link, 0, sizeof(link));
@@ -280,6 +305,50 @@ rtl_dev_set_link_down(struct rte_eth_dev *dev)
 	}
 
 	rtl_powerdown_pll(hw);
+
+	return 0;
+}
+
+static int
+rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	dev_info->min_rx_bufsize = 1024;
+	dev_info->max_rx_pktlen = JUMBO_FRAME_9K;
+	dev_info->max_mac_addrs = 1;
+
+	dev_info->max_rx_queues = 1;
+	dev_info->max_tx_queues = 1;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = RTL_RX_FREE_THRESH,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_free_thresh = RTL_TX_FREE_THRESH,
+	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
+
+	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10M_HD | RTE_ETH_LINK_SPEED_10M |
+			       RTE_ETH_LINK_SPEED_100M_HD | RTE_ETH_LINK_SPEED_100M |
+			       RTE_ETH_LINK_SPEED_1G;
+
+	switch (hw->chipset_name) {
+	case RTL8126A:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_5G;
+	/* fallthrough */
+	case RTL8125A:
+	case RTL8125B:
+		dev_info->speed_capa |= RTE_ETH_LINK_SPEED_2_5G;
+		break;
+	}
+
+	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads() |
+				     dev_info->rx_queue_offload_capa);
 
 	return 0;
 }
@@ -384,6 +453,8 @@ rtl_dev_close(struct rte_eth_dev *dev)
 
 	ret_stp = rtl_dev_stop(dev);
 
+	rtl_free_queues(dev);
+
 	/* Reprogram the RAR[0] in case user changed it. */
 	rtl_rar_set(hw, hw->mac_addr);
 
@@ -419,8 +490,11 @@ rtl_dev_init(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = &rtl_recv_pkts;
 
 	/* For secondary processes, the primary process has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		if (dev->data->scattered_rx)
+			dev->rx_pkt_burst = &rtl_recv_scattered_pkts;
 		return 0;
+	}
 
 	hw->mmio_addr = (u8 *)pci_dev->mem_resource[2].addr; /* RTL8169 uses BAR2 */
 

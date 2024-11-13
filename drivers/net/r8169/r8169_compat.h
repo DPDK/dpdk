@@ -550,6 +550,30 @@ enum RTL_chipset_name {
 
 #define MAC_ADDR_LEN    RTE_ETHER_ADDR_LEN
 
+#define RTL_MAX_TX_DESC 4096
+#define RTL_MAX_RX_DESC 4096
+#define RTL_MIN_TX_DESC 64
+#define RTL_MIN_RX_DESC 64
+
+#define RTL_RING_ALIGN 256
+
+#define RTL_MAX_TX_SEG 64
+#define RTL_DESC_ALIGN 64
+
+#define RTL_RX_FREE_THRESH 32
+#define RTL_TX_FREE_THRESH 32
+
+#define VLAN_TAG_SIZE   4
+
+/*
+ * The overhead from MTU to max frame size.
+ * Considering VLAN so a tag needs to be counted.
+ */
+#define RTL_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + VLAN_TAG_SIZE)
+#define JUMBO_FRAME_9K  (9 * 1024 - RTE_ETHER_HDR_LEN - RTE_VLAN_HLEN - RTE_ETHER_CRC_LEN)
+
+#define DMA_BIT_MASK(n) (((n) == 64) ? ~0ULL : ((1ULL << (n)) - 1))
+
 static inline u32
 rtl_read32(void *addr)
 {

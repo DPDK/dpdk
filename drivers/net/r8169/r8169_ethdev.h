@@ -43,6 +43,7 @@ struct rtl_hw {
 	u8  HwSuppIntMitiVer;
 	u16 cur_page;
 	u8  mac_addr[MAC_ADDR_LEN];
+	u32 rx_buf_sz;
 
 	u8  RequirePhyMdiSwapPatch;
 	u8  NotWrMcuPatchCode;
@@ -107,5 +108,22 @@ int rtl_tx_init(struct rte_eth_dev *dev);
 
 uint16_t rtl_xmit_pkts(void *txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 uint16_t rtl_recv_pkts(void *rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t rtl_recv_scattered_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+				 uint16_t nb_pkts);
+
+void rtl_rx_queue_release(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+
+void rtl_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+		      struct rte_eth_rxq_info *qinfo);
+
+uint64_t rtl_get_rx_port_offloads(void);
+
+int rtl_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
+		       uint16_t nb_rx_desc, unsigned int socket_id,
+		       const struct rte_eth_rxconf *rx_conf,
+		       struct rte_mempool *mb_pool);
+
+int rtl_stop_queues(struct rte_eth_dev *dev);
+void rtl_free_queues(struct rte_eth_dev *dev);
 
 #endif /* R8169_ETHDEV_H */
