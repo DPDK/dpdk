@@ -43,6 +43,8 @@ static int rtl_promiscuous_disable(struct rte_eth_dev *dev);
 static int rtl_allmulticast_enable(struct rte_eth_dev *dev);
 static int rtl_allmulticast_disable(struct rte_eth_dev *dev);
 static int rtl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+static int rtl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+			      size_t fw_size);
 
 /*
  * The set of PCI devices this driver supports
@@ -90,6 +92,8 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.stats_reset          = rtl_dev_stats_reset,
 
 	.mtu_set              = rtl_dev_mtu_set,
+
+	.fw_version_get       = rtl_fw_version_get,
 
 	.rx_queue_setup       = rtl_rx_queue_setup,
 	.rx_queue_release     = rtl_rx_queue_release,
@@ -614,6 +618,22 @@ rtl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	RTL_W16(hw, RxMaxSize, frame_size);
 
 	return 0;
+}
+
+static int
+rtl_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	int ret;
+
+	ret = snprintf(fw_version, fw_size, "0x%08x", hw->hw_ram_code_ver);
+
+	ret += 1; /* Add the size of '\0' */
+	if (fw_size < (u32)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static int
