@@ -1500,3 +1500,83 @@ rtl_rar_set(struct rtl_hw *hw, uint8_t *addr)
 
 	rtl_disable_cfg9346_write(hw);
 }
+
+void
+rtl_get_tally_stats(struct rtl_hw *hw, struct rte_eth_stats *rte_stats)
+{
+	struct rtl_counters *counters;
+	uint64_t paddr;
+	u32 cmd;
+	u32 wait_cnt;
+
+	counters = hw->tally_vaddr;
+	paddr = hw->tally_paddr;
+	if (!counters)
+		return;
+
+	RTL_W32(hw, CounterAddrHigh, (u64)paddr >> 32);
+	cmd = (u64)paddr & DMA_BIT_MASK(32);
+	RTL_W32(hw, CounterAddrLow, cmd);
+	RTL_W32(hw, CounterAddrLow, cmd | CounterDump);
+
+	wait_cnt = 0;
+	while (RTL_R32(hw, CounterAddrLow) & CounterDump) {
+		rte_delay_us(10);
+
+		wait_cnt++;
+		if (wait_cnt > 20)
+			break;
+	}
+
+	/* RX errors */
+	rte_stats->imissed = rte_le_to_cpu_64(counters->rx_missed);
+	rte_stats->ierrors = rte_le_to_cpu_64(counters->rx_errors);
+
+	/* TX errors */
+	rte_stats->oerrors = rte_le_to_cpu_64(counters->tx_errors);
+
+	rte_stats->ipackets = rte_le_to_cpu_64(counters->rx_packets);
+	rte_stats->opackets = rte_le_to_cpu_64(counters->tx_packets);
+}
+
+void
+rtl_clear_tally_stats(struct rtl_hw *hw)
+{
+	if (!hw->tally_paddr)
+		return;
+
+	RTL_W32(hw, CounterAddrHigh, (u64)hw->tally_paddr >> 32);
+	RTL_W32(hw, CounterAddrLow,
+		((u64)hw->tally_paddr & (DMA_BIT_MASK(32))) | CounterReset);
+}
+
+int
+rtl_tally_init(struct rte_eth_dev *dev)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+	const struct rte_memzone *mz;
+
+	mz = rte_eth_dma_zone_reserve(dev, "tally_counters", 0,
+				      sizeof(struct rtl_counters), 64, rte_socket_id());
+	if (mz == NULL)
+		return -ENOMEM;
+
+	hw->tally_vaddr = mz->addr;
+	hw->tally_paddr = mz->iova;
+
+	/* Fill tally addrs */
+	RTL_W32(hw, CounterAddrHigh, (u64)hw->tally_paddr >> 32);
+	RTL_W32(hw, CounterAddrLow, (u64)hw->tally_paddr & (DMA_BIT_MASK(32)));
+
+	/* Reset the hw statistics */
+	rtl_clear_tally_stats(hw);
+
+	return 0;
+}
+
+void
+rtl_tally_free(struct rte_eth_dev *dev)
+{
+	rte_eth_dma_zone_free(dev, "tally_counters", 0);
+}

@@ -54,6 +54,12 @@ void rtl_rar_set(struct rtl_hw *hw, uint8_t *addr);
 void rtl_set_link_option(struct rtl_hw *hw, u8 autoneg, u32 speed, u8 duplex,
 			 enum rtl_fc_mode fc);
 
+void rtl_get_tally_stats(struct rtl_hw *hw, struct rte_eth_stats *rte_stats);
+void rtl_clear_tally_stats(struct rtl_hw *hw);
+
+int rtl_tally_init(struct rte_eth_dev *dev);
+void rtl_tally_free(struct rte_eth_dev *dev);
+
 extern const struct rtl_hw_ops rtl8125a_ops;
 extern const struct rtl_hw_ops rtl8125b_ops;
 extern const struct rtl_hw_ops rtl8125bp_ops;

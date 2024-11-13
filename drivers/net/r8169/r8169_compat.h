@@ -18,6 +18,21 @@ typedef uint16_t  u16;
 typedef uint32_t  u32;
 typedef uint64_t  u64;
 
+struct rtl_counters {
+	u64 tx_packets;
+	u64 rx_packets;
+	u64 tx_errors;
+	u32 rx_errors;
+	u16 rx_missed;
+	u16 align_errors;
+	u32 tx_one_collision;
+	u32 tx_multi_collision;
+	u64 rx_unicast;
+	u64 rx_broadcast;
+	u32 rx_multicast;
+	u16 tx_aborted;
+};
+
 enum mcfg {
 	CFG_METHOD_1 = 1,
 	CFG_METHOD_2,

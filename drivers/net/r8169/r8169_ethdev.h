@@ -45,6 +45,9 @@ struct rtl_hw {
 	u8  mac_addr[MAC_ADDR_LEN];
 	u32 rx_buf_sz;
 
+	struct rtl_counters *tally_vaddr;
+	u64 tally_paddr;
+
 	u8  RequirePhyMdiSwapPatch;
 	u8  NotWrMcuPatchCode;
 	u8  HwSuppMacMcuVer;

@@ -35,6 +35,9 @@ static int rtl_dev_set_link_up(struct rte_eth_dev *dev);
 static int rtl_dev_set_link_down(struct rte_eth_dev *dev);
 static int rtl_dev_infos_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
+static int rtl_dev_stats_get(struct rte_eth_dev *dev,
+			     struct rte_eth_stats *rte_stats);
+static int rtl_dev_stats_reset(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports
@@ -72,6 +75,9 @@ static const struct eth_dev_ops rtl_eth_dev_ops = {
 	.dev_infos_get        = rtl_dev_infos_get,
 
 	.link_update          = rtl_dev_link_update,
+
+	.stats_get            = rtl_dev_stats_get,
+	.stats_reset          = rtl_dev_stats_reset,
 
 	.rx_queue_setup       = rtl_rx_queue_setup,
 	.rx_queue_release     = rtl_rx_queue_release,
@@ -236,6 +242,11 @@ rtl_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	/* This can fail when allocating mem for tally counters */
+	err = rtl_tally_init(dev);
+	if (err)
+		goto error;
+
 	/* Enable uio/vfio intr/eventfd mapping */
 	rte_intr_enable(intr_handle);
 
@@ -276,6 +287,8 @@ rtl_dev_stop(struct rte_eth_dev *dev)
 	rtl_powerdown_pll(hw);
 
 	rtl_stop_queues(dev);
+
+	rtl_tally_free(dev);
 
 	/* Clear the recorded link status */
 	memset(&link, 0, sizeof(link));
@@ -355,6 +368,41 @@ rtl_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->rx_offload_capa = (rtl_get_rx_port_offloads() |
 				     dev_info->rx_queue_offload_capa);
 	dev_info->tx_offload_capa = rtl_get_tx_port_offloads();
+
+	return 0;
+}
+
+static int
+rtl_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	rtl_clear_tally_stats(hw);
+
+	memset(&adapter->sw_stats, 0, sizeof(adapter->sw_stats));
+
+	return 0;
+}
+
+static void
+rtl_sw_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_sw_stats *sw_stats = &adapter->sw_stats;
+
+	rte_stats->ibytes = sw_stats->rx_bytes;
+	rte_stats->obytes = sw_stats->tx_bytes;
+}
+
+static int
+rtl_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *rte_stats)
+{
+	struct rtl_adapter *adapter = RTL_DEV_PRIVATE(dev);
+	struct rtl_hw *hw = &adapter->hw;
+
+	rtl_get_tally_stats(hw, rte_stats);
+	rtl_sw_stats_get(dev, rte_stats);
 
 	return 0;
 }
