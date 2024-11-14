@@ -88,6 +88,8 @@
 #define LOW32_MASK                              0xffffffff
 #define LOW16_MASK                              0xffff
 
+#define ZXDH_GDMA_TC_CNT_MAX                    0x10000
+
 #define IDX_TO_ADDR(addr, idx, t) \
 	((t)((uintptr_t)(addr) + (idx) * sizeof(struct zxdh_gdma_buff_desc)))
 
@@ -114,6 +116,19 @@ zxdh_gdma_get_queue(struct rte_rawdev *dev, uint16_t queue_id)
 	}
 
 	return &(gdmadev->vqs[queue_id]);
+}
+
+static uint32_t
+zxdh_gdma_read_reg(struct rte_rawdev *dev, uint16_t queue_id, uint32_t offset)
+{
+	struct zxdh_gdma_rawdev *gdmadev = zxdh_gdma_rawdev_get_priv(dev);
+	uint32_t addr = 0;
+	uint32_t val = 0;
+
+	addr = offset + queue_id * ZXDH_GDMA_CHAN_SHIFT;
+	val = *(uint32_t *)(gdmadev->base_addr + addr);
+
+	return val;
 }
 
 static void
@@ -518,6 +533,116 @@ zxdh_gdma_rawdev_enqueue_bufs(struct rte_rawdev *dev,
 
 	return count;
 }
+
+static inline void
+zxdh_gdma_used_idx_update(struct zxdh_gdma_queue *queue, uint16_t cnt, uint8_t data_bd_err)
+{
+	uint16_t idx = 0;
+
+	if (queue->sw_ring.used_idx + cnt < queue->queue_size)
+		queue->sw_ring.used_idx += cnt;
+	else
+		queue->sw_ring.used_idx = queue->sw_ring.used_idx + cnt - queue->queue_size;
+
+	if (data_bd_err == 1) {
+		/* Update job status, the last job status is error */
+		if (queue->sw_ring.used_idx == 0)
+			idx = queue->queue_size - 1;
+		else
+			idx = queue->sw_ring.used_idx - 1;
+
+		queue->sw_ring.job[idx]->status = 1;
+	}
+}
+
+static int
+zxdh_gdma_rawdev_dequeue_bufs(struct rte_rawdev *dev,
+		__rte_unused struct rte_rawdev_buf **buffers,
+		uint32_t count,
+		rte_rawdev_obj_t context)
+{
+	struct zxdh_gdma_queue *queue = NULL;
+	struct zxdh_gdma_enqdeq *e_context = NULL;
+	uint16_t queue_id = 0;
+	uint32_t val = 0;
+	uint16_t tc_cnt = 0;
+	uint16_t diff_cnt = 0;
+	uint16_t i = 0;
+	uint16_t bd_idx = 0;
+	uint64_t next_bd_addr = 0;
+	uint8_t data_bd_err = 0;
+
+	if ((dev == NULL) || (context == NULL))
+		return -EINVAL;
+
+	e_context = (struct zxdh_gdma_enqdeq *)context;
+	queue_id = e_context->vq_id;
+	queue = zxdh_gdma_get_queue(dev, queue_id);
+	if ((queue == NULL) || (queue->enable == 0))
+		return -EINVAL;
+
+	if (queue->sw_ring.pend_cnt == 0)
+		goto deq_job;
+
+	/* Get data transmit count */
+	val = zxdh_gdma_read_reg(dev, queue_id, ZXDH_GDMA_TC_CNT_OFFSET);
+	tc_cnt = val & LOW16_MASK;
+	if (tc_cnt >= queue->tc_cnt)
+		diff_cnt = tc_cnt - queue->tc_cnt;
+	else
+		diff_cnt = tc_cnt + ZXDH_GDMA_TC_CNT_MAX - queue->tc_cnt;
+
+	queue->tc_cnt = tc_cnt;
+
+	/* Data transmit error, channel stopped */
+	if ((val & ZXDH_GDMA_ERR_STATUS) != 0) {
+		next_bd_addr  = zxdh_gdma_read_reg(dev, queue_id, ZXDH_GDMA_LLI_L_OFFSET);
+		next_bd_addr |= ((uint64_t)zxdh_gdma_read_reg(dev, queue_id,
+				ZXDH_GDMA_LLI_H_OFFSET) << 32);
+		next_bd_addr  = next_bd_addr << 6;
+		bd_idx = (next_bd_addr - queue->ring.ring_mem) / sizeof(struct zxdh_gdma_buff_desc);
+		if ((val & ZXDH_GDMA_SRC_DATA_ERR) || (val & ZXDH_GDMA_DST_ADDR_ERR)) {
+			diff_cnt++;
+			data_bd_err = 1;
+		}
+		ZXDH_PMD_LOG(INFO, "queue%d is err(0x%x) next_bd_idx:%u ll_addr:0x%"PRIx64" def user:0x%x",
+				queue_id, val, bd_idx, next_bd_addr, queue->user);
+
+		ZXDH_PMD_LOG(INFO, "Clean up error status");
+		val = ZXDH_GDMA_ERR_STATUS | ZXDH_GDMA_ERR_INTR_ENABLE;
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_TC_CNT_OFFSET, val);
+
+		ZXDH_PMD_LOG(INFO, "Restart channel");
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_XFERSIZE_OFFSET, 0);
+		zxdh_gdma_control_cal(&val, 0);
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_CONTROL_OFFSET, val);
+	}
+
+	if (diff_cnt != 0) {
+		zxdh_gdma_used_idx_update(queue, diff_cnt, data_bd_err);
+		queue->sw_ring.deq_cnt += diff_cnt;
+		queue->sw_ring.pend_cnt -= diff_cnt;
+	}
+
+deq_job:
+	if (queue->sw_ring.deq_cnt == 0)
+		return 0;
+	else if (queue->sw_ring.deq_cnt < count)
+		count = queue->sw_ring.deq_cnt;
+
+	queue->sw_ring.deq_cnt -= count;
+
+	for (i = 0; i < count; i++) {
+		e_context->job[i] = queue->sw_ring.job[queue->sw_ring.deq_idx];
+		queue->sw_ring.job[queue->sw_ring.deq_idx] = NULL;
+		if (++queue->sw_ring.deq_idx >= queue->queue_size)
+			queue->sw_ring.deq_idx -= queue->queue_size;
+	}
+	queue->sw_ring.free_cnt += count;
+
+	return count;
+}
+
 static const struct rte_rawdev_ops zxdh_gdma_rawdev_ops = {
 	.dev_info_get = zxdh_gdma_rawdev_info_get,
 	.dev_configure = zxdh_gdma_rawdev_configure,
@@ -532,6 +657,7 @@ static const struct rte_rawdev_ops zxdh_gdma_rawdev_ops = {
 	.attr_get = zxdh_gdma_rawdev_get_attr,
 
 	.enqueue_bufs = zxdh_gdma_rawdev_enqueue_bufs,
+	.dequeue_bufs = zxdh_gdma_rawdev_dequeue_bufs,
 };
 
 static int
