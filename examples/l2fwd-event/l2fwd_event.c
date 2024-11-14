@@ -141,6 +141,7 @@ l2fwd_get_free_event_port(struct l2fwd_event_resources *evt_rsrc)
 	rte_spinlock_lock(&evt_rsrc->evp.lock);
 	if (index >= evt_rsrc->evp.nb_ports) {
 		printf("No free event port is available\n");
+		rte_spinlock_unlock(&evt_rsrc->evp.lock);
 		return -1;
 	}
 
