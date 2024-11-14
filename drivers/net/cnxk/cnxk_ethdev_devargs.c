@@ -305,12 +305,12 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint16_t scalar_enable = 0;
 	uint16_t tx_compl_ena = 0;
 	uint16_t custom_sa_act = 0;
-	uint8_t custom_inb_sa = 0;
+	uint16_t custom_inb_sa = 0;
 	struct rte_kvargs *kvlist;
 	uint32_t meta_buf_sz = 0;
+	uint16_t lock_rx_ctx = 0;
+	uint16_t rx_inj_ena = 0;
 	uint16_t no_inl_dev = 0;
-	uint8_t lock_rx_ctx = 0;
-	uint8_t rx_inj_ena = 0;
 
 	memset(&sdp_chan, 0, sizeof(sdp_chan));
 	memset(&pre_l2_info, 0, sizeof(struct flow_pre_l2_size_info));
