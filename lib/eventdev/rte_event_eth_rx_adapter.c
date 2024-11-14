@@ -2299,7 +2299,7 @@ rxa_sw_add(struct event_eth_rx_adapter *rx_adapter, uint16_t eth_dev_id,
 			for (i = 0; i < dev_info->dev->data->nb_rx_queues; i++)
 				dev_info->intr_queue[i] = i;
 		} else {
-			if (!rxa_intr_queue(dev_info, rx_queue_id))
+			if (!rxa_intr_queue(dev_info, rx_queue_id) && nb_rx_intr > 0)
 				dev_info->intr_queue[nb_rx_intr - 1] =
 					rx_queue_id;
 		}
