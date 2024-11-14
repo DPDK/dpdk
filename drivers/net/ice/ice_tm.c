@@ -679,6 +679,10 @@ ice_tm_setup_txq_node(struct ice_pf *pf, struct ice_hw *hw, uint16_t qid, uint32
 	struct ice_sched_node *hw_node = ice_sched_find_node_by_teid(hw->port_info->root, teid);
 	struct ice_tm_node *sw_node = find_node(pf->tm_conf.root, qid);
 
+	/* bad node teid passed */
+	if (hw_node == NULL)
+		return -ENOENT;
+
 	/* not configured in hierarchy */
 	if (sw_node == NULL)
 		return 0;
