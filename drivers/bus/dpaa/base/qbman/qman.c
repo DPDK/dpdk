@@ -22,23 +22,10 @@
 #define FSL_QMAN_POLL_LIMIT 8
 
 /* Lock/unlock frame queues, subject to the "LOCKED" flag. This is about
- * inter-processor locking only. Note, FQLOCK() is always called either under a
- * local_irq_save() or from interrupt context - hence there's no need for irq
- * protection (and indeed, attempting to nest irq-protection doesn't work, as
- * the "irq en/disable" machinery isn't recursive...).
+ * inter-processor locking only.
  */
-#define FQLOCK(fq) \
-	do { \
-		struct qman_fq *__fq478 = (fq); \
-		if (fq_isset(__fq478, QMAN_FQ_FLAG_LOCKED)) \
-			spin_lock(&__fq478->fqlock); \
-	} while (0)
-#define FQUNLOCK(fq) \
-	do { \
-		struct qman_fq *__fq478 = (fq); \
-		if (fq_isset(__fq478, QMAN_FQ_FLAG_LOCKED)) \
-			spin_unlock(&__fq478->fqlock); \
-	} while (0)
+#define FQLOCK(fq) fq_lock(fq)
+#define FQUNLOCK(fq) fq_unlock(fq)
 
 static qman_cb_free_mbuf qman_free_mbuf_cb;
 
@@ -55,6 +42,22 @@ static inline void fq_clear(struct qman_fq *fq, u32 mask)
 static inline int fq_isset(struct qman_fq *fq, u32 mask)
 {
 	return fq->flags & mask;
+}
+
+static inline void fq_lock(struct qman_fq *fq)
+	__rte_exclusive_lock_function(&fq->fqlock)
+	__rte_no_thread_safety_analysis
+{
+	if (fq_isset(fq, QMAN_FQ_FLAG_LOCKED))
+		spin_lock(&fq->fqlock);
+}
+
+static inline void fq_unlock(struct qman_fq *fq)
+	 __rte_unlock_function(&fq->fqlock)
+	__rte_no_thread_safety_analysis
+{
+	if (fq_isset(fq, QMAN_FQ_FLAG_LOCKED))
+		spin_unlock(&fq->fqlock);
 }
 
 static inline int fq_isclear(struct qman_fq *fq, u32 mask)
