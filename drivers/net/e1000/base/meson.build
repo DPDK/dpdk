@@ -24,7 +24,6 @@ sources = [
 
 error_cflags = [
         '-Wno-unused-parameter',
-        '-Wno-implicit-fallthrough',
 ]
 c_args = cflags
 foreach flag: error_cflags
