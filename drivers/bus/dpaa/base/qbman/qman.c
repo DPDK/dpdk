@@ -2169,8 +2169,10 @@ int qman_set_vdq(struct qman_fq *fq, u16 num, uint32_t vdqcr_flags)
 
 	if (!p->vdqcr_owned) {
 		FQLOCK(fq);
-		if (fq_isset(fq, QMAN_FQ_STATE_VDQCR))
+		if (fq_isset(fq, QMAN_FQ_STATE_VDQCR)) {
+			FQUNLOCK(fq);
 			goto escape;
+		}
 		fq_set(fq, QMAN_FQ_STATE_VDQCR);
 		FQUNLOCK(fq);
 		p->vdqcr_owned = fq;
@@ -2203,8 +2205,10 @@ int qman_volatile_dequeue(struct qman_fq *fq, u32 flags __maybe_unused,
 
 	if (!p->vdqcr_owned) {
 		FQLOCK(fq);
-		if (fq_isset(fq, QMAN_FQ_STATE_VDQCR))
+		if (fq_isset(fq, QMAN_FQ_STATE_VDQCR)) {
+			FQUNLOCK(fq);
 			goto escape;
+		}
 		fq_set(fq, QMAN_FQ_STATE_VDQCR);
 		FQUNLOCK(fq);
 		p->vdqcr_owned = fq;
