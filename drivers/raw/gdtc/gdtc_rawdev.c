@@ -43,10 +43,34 @@
 /* Register offset */
 #define ZXDH_GDMA_BASE_OFFSET                   0x100000
 #define ZXDH_GDMA_EXT_ADDR_OFFSET               0x218
+#define ZXDH_GDMA_SAR_LOW_OFFSET                0x200
+#define ZXDH_GDMA_DAR_LOW_OFFSET                0x204
+#define ZXDH_GDMA_SAR_HIGH_OFFSET               0x234
+#define ZXDH_GDMA_DAR_HIGH_OFFSET               0x238
+#define ZXDH_GDMA_XFERSIZE_OFFSET               0x208
 #define ZXDH_GDMA_CONTROL_OFFSET                0x230
+#define ZXDH_GDMA_TC_STATUS_OFFSET              0x0
+#define ZXDH_GDMA_STATUS_CLEAN_OFFSET           0x80
+#define ZXDH_GDMA_LLI_L_OFFSET                  0x21c
+#define ZXDH_GDMA_LLI_H_OFFSET                  0x220
+#define ZXDH_GDMA_CHAN_CONTINUE_OFFSET          0x224
 #define ZXDH_GDMA_TC_CNT_OFFSET                 0x23c
 #define ZXDH_GDMA_LLI_USER_OFFSET               0x228
 
+/* Control register */
+#define ZXDH_GDMA_CHAN_ENABLE                   0x1
+#define ZXDH_GDMA_CHAN_DISABLE                  0
+#define ZXDH_GDMA_SOFT_CHAN                     0x2
+#define ZXDH_GDMA_TC_INTR_ENABLE                0x10
+#define ZXDH_GDMA_ALL_INTR_ENABLE               0x30
+#define ZXDH_GDMA_SBS_SHIFT                     6           /* src burst size */
+#define ZXDH_GDMA_SBL_SHIFT                     9           /* src burst length */
+#define ZXDH_GDMA_DBS_SHIFT                     13          /* dest burst size */
+#define ZXDH_GDMA_BURST_SIZE_MIN                0x1         /* 1 byte */
+#define ZXDH_GDMA_BURST_SIZE_MEDIUM             0x4         /* 4 word */
+#define ZXDH_GDMA_BURST_SIZE_MAX                0x6         /* 16 word */
+#define ZXDH_GDMA_DEFAULT_BURST_LEN             0xf         /* 16 beats */
+#define ZXDH_GDMA_TC_CNT_ENABLE                 (1 << 27)
 #define ZXDH_GDMA_CHAN_FORCE_CLOSE              (1 << 31)
 
 /* TC count & Error interrupt status register */
@@ -58,8 +82,14 @@
 #define ZXDH_GDMA_TC_CNT_CLEAN                  (1)
 
 #define ZXDH_GDMA_CHAN_SHIFT                    0x80
+#define ZXDH_GDMA_LINK_END_NODE                 (1 << 30)
+#define ZXDH_GDMA_CHAN_CONTINUE                 (1)
+
 #define LOW32_MASK                              0xffffffff
 #define LOW16_MASK                              0xffff
+
+#define IDX_TO_ADDR(addr, idx, t) \
+	((t)((uintptr_t)(addr) + (idx) * sizeof(struct zxdh_gdma_buff_desc)))
 
 static int zxdh_gdma_queue_init(struct rte_rawdev *dev, uint16_t queue_id);
 static int zxdh_gdma_queue_free(struct rte_rawdev *dev, uint16_t queue_id);
@@ -301,6 +331,193 @@ zxdh_gdma_rawdev_get_attr(struct rte_rawdev *dev,
 
 	return 0;
 }
+
+static inline void
+zxdh_gdma_control_cal(uint32_t *val, uint8_t tc_enable)
+{
+	*val = (ZXDH_GDMA_CHAN_ENABLE |
+			ZXDH_GDMA_SOFT_CHAN |
+			(ZXDH_GDMA_DEFAULT_BURST_LEN << ZXDH_GDMA_SBL_SHIFT) |
+			(ZXDH_GDMA_BURST_SIZE_MAX << ZXDH_GDMA_SBS_SHIFT) |
+			(ZXDH_GDMA_BURST_SIZE_MAX << ZXDH_GDMA_DBS_SHIFT));
+
+	if (tc_enable != 0)
+		*val |= ZXDH_GDMA_TC_CNT_ENABLE;
+}
+
+static inline uint32_t
+zxdh_gdma_user_get(struct zxdh_gdma_queue *queue, struct zxdh_gdma_job *job)
+{
+	uint32_t src_user = 0;
+	uint32_t dst_user = 0;
+
+	if ((job->flags & ZXDH_GDMA_JOB_DIR_MASK) == 0) {
+		ZXDH_PMD_LOG(DEBUG, "job flags:0x%x default user:0x%x",
+				job->flags, queue->user);
+		return queue->user;
+	} else if ((job->flags & ZXDH_GDMA_JOB_DIR_TX) != 0) {
+		src_user = ZXDH_GDMA_ZF_USER;
+		dst_user = ((job->pf_id << ZXDH_GDMA_PF_NUM_SHIFT) |
+				((job->ep_id + ZXDH_GDMA_EPID_OFFSET) << ZXDH_GDMA_EP_ID_SHIFT));
+
+		if (job->vf_id != 0)
+			dst_user |= (ZXDH_GDMA_VF_EN |
+					((job->vf_id - 1) << ZXDH_GDMA_VF_NUM_SHIFT));
+	} else {
+		dst_user = ZXDH_GDMA_ZF_USER;
+		src_user = ((job->pf_id << ZXDH_GDMA_PF_NUM_SHIFT) |
+				((job->ep_id + ZXDH_GDMA_EPID_OFFSET) << ZXDH_GDMA_EP_ID_SHIFT));
+
+		if (job->vf_id != 0)
+			src_user |= (ZXDH_GDMA_VF_EN |
+					((job->vf_id - 1) << ZXDH_GDMA_VF_NUM_SHIFT));
+	}
+	ZXDH_PMD_LOG(DEBUG, "job flags:0x%x ep_id:%u, pf_id:%u, vf_id:%u, user:0x%x",
+			job->flags, job->ep_id, job->pf_id, job->vf_id,
+			(src_user & LOW16_MASK) | (dst_user << 16));
+
+	return (src_user & LOW16_MASK) | (dst_user << 16);
+}
+
+static inline void
+zxdh_gdma_fill_bd(struct zxdh_gdma_queue *queue, struct zxdh_gdma_job *job)
+{
+	struct zxdh_gdma_buff_desc *bd = NULL;
+	uint32_t val = 0;
+	uint64_t next_bd_addr = 0;
+	uint16_t avail_idx = 0;
+
+	avail_idx = queue->ring.avail_idx;
+	bd = &(queue->ring.desc[avail_idx]);
+	memset(bd, 0, sizeof(struct zxdh_gdma_buff_desc));
+
+	/* data bd */
+	if (job != NULL) {
+		zxdh_gdma_control_cal(&val, 1);
+		next_bd_addr   = IDX_TO_ADDR(queue->ring.ring_mem,
+				(avail_idx + 1) % ZXDH_GDMA_RING_SIZE, uint64_t);
+		bd->SrcAddr_L  = job->src & LOW32_MASK;
+		bd->DstAddr_L  = job->dest & LOW32_MASK;
+		bd->SrcAddr_H  = (job->src >> 32) & LOW32_MASK;
+		bd->DstAddr_H  = (job->dest >> 32) & LOW32_MASK;
+		bd->Xpara      = job->len;
+		bd->ExtAddr    = zxdh_gdma_user_get(queue, job);
+		bd->LLI_Addr_L = (next_bd_addr >> 6) & LOW32_MASK;
+		bd->LLI_Addr_H = next_bd_addr >> 38;
+		bd->LLI_User   = ZXDH_GDMA_ZF_USER;
+		bd->Control    = val;
+	} else {
+		zxdh_gdma_control_cal(&val, 0);
+		next_bd_addr   = IDX_TO_ADDR(queue->ring.ring_mem, avail_idx, uint64_t);
+		bd->ExtAddr    = queue->user;
+		bd->LLI_User   = ZXDH_GDMA_ZF_USER;
+		bd->Control    = val;
+		bd->LLI_Addr_L = (next_bd_addr >> 6) & LOW32_MASK;
+		bd->LLI_Addr_H = (next_bd_addr >> 38) | ZXDH_GDMA_LINK_END_NODE;
+		if (queue->flag != 0) {
+			bd = IDX_TO_ADDR(queue->ring.desc,
+					queue->ring.last_avail_idx,
+					struct zxdh_gdma_buff_desc*);
+			next_bd_addr = IDX_TO_ADDR(queue->ring.ring_mem,
+					(queue->ring.last_avail_idx + 1) % ZXDH_GDMA_RING_SIZE,
+					uint64_t);
+			bd->LLI_Addr_L  = (next_bd_addr >> 6) & LOW32_MASK;
+			bd->LLI_Addr_H  = next_bd_addr >> 38;
+			rte_wmb();
+			bd->LLI_Addr_H &= ~ZXDH_GDMA_LINK_END_NODE;
+		}
+		/* Record the index of empty bd for dynamic chaining */
+		queue->ring.last_avail_idx = avail_idx;
+	}
+
+	if (++avail_idx >= ZXDH_GDMA_RING_SIZE)
+		avail_idx -= ZXDH_GDMA_RING_SIZE;
+
+	queue->ring.avail_idx = avail_idx;
+}
+
+static int
+zxdh_gdma_rawdev_enqueue_bufs(struct rte_rawdev *dev,
+				__rte_unused struct rte_rawdev_buf **buffers,
+				uint32_t count,
+				rte_rawdev_obj_t context)
+{
+	struct zxdh_gdma_rawdev *gdmadev = NULL;
+	struct zxdh_gdma_queue *queue = NULL;
+	struct zxdh_gdma_enqdeq *e_context = NULL;
+	struct zxdh_gdma_job *job = NULL;
+	uint16_t queue_id = 0;
+	uint32_t val = 0;
+	uint16_t i = 0;
+	uint16_t free_cnt = 0;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	if (unlikely((count < 1) || (context == NULL)))
+		return -EINVAL;
+
+	gdmadev = zxdh_gdma_rawdev_get_priv(dev);
+	if (gdmadev->device_state == ZXDH_GDMA_DEV_STOPPED) {
+		ZXDH_PMD_LOG(ERR, "gdma dev is stop");
+		return 0;
+	}
+
+	e_context = (struct zxdh_gdma_enqdeq *)context;
+	queue_id = e_context->vq_id;
+	queue = zxdh_gdma_get_queue(dev, queue_id);
+	if ((queue == NULL) || (queue->enable == 0))
+		return -EINVAL;
+
+	free_cnt = queue->sw_ring.free_cnt;
+	if (free_cnt == 0) {
+		ZXDH_PMD_LOG(ERR, "queue %u is full, enq_idx:%u deq_idx:%u used_idx:%u",
+				queue_id, queue->sw_ring.enq_idx,
+				queue->sw_ring.deq_idx, queue->sw_ring.used_idx);
+		return 0;
+	} else if (free_cnt < count) {
+		ZXDH_PMD_LOG(DEBUG, "job num %u > free_cnt, change to %u", count, free_cnt);
+		count = free_cnt;
+	}
+
+	rte_spinlock_lock(&queue->enqueue_lock);
+
+	/* Build bd list, the last bd is empty bd */
+	for (i = 0; i < count; i++) {
+		job = e_context->job[i];
+		zxdh_gdma_fill_bd(queue, job);
+	}
+	zxdh_gdma_fill_bd(queue, NULL);
+
+	if (unlikely(queue->flag == 0)) {
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_LLI_L_OFFSET,
+				(queue->ring.ring_mem >> 6) & LOW32_MASK);
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_LLI_H_OFFSET,
+				queue->ring.ring_mem >> 38);
+		/* Start hardware handling */
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_XFERSIZE_OFFSET, 0);
+		zxdh_gdma_control_cal(&val, 0);
+		zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_CONTROL_OFFSET, val);
+		queue->flag = 1;
+	} else {
+		val = ZXDH_GDMA_CHAN_CONTINUE;
+		zxdh_gdma_write_reg(dev, queue->vq_id, ZXDH_GDMA_CHAN_CONTINUE_OFFSET, val);
+	}
+
+    /* job enqueue */
+	for (i = 0; i < count; i++) {
+		queue->sw_ring.job[queue->sw_ring.enq_idx] = e_context->job[i];
+		if (++queue->sw_ring.enq_idx >= queue->queue_size)
+			queue->sw_ring.enq_idx -= queue->queue_size;
+
+		free_cnt--;
+	}
+	queue->sw_ring.free_cnt = free_cnt;
+	queue->sw_ring.pend_cnt += count;
+	rte_spinlock_unlock(&queue->enqueue_lock);
+
+	return count;
+}
 static const struct rte_rawdev_ops zxdh_gdma_rawdev_ops = {
 	.dev_info_get = zxdh_gdma_rawdev_info_get,
 	.dev_configure = zxdh_gdma_rawdev_configure,
@@ -313,6 +530,8 @@ static const struct rte_rawdev_ops zxdh_gdma_rawdev_ops = {
 	.queue_release = zxdh_gdma_rawdev_queue_release,
 
 	.attr_get = zxdh_gdma_rawdev_get_attr,
+
+	.enqueue_bufs = zxdh_gdma_rawdev_enqueue_bufs,
 };
 
 static int

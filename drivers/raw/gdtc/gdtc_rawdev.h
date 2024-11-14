@@ -24,6 +24,20 @@ extern int zxdh_gdma_rawdev_logtype;
 #define ZXDH_GDMA_QUEUE_SIZE                    16384
 #define ZXDH_GDMA_RING_SIZE                     32768
 
+/* States if the source addresses is physical. */
+#define ZXDH_GDMA_JOB_SRC_PHY                   (1UL)
+
+/* States if the destination addresses is physical. */
+#define ZXDH_GDMA_JOB_DEST_PHY                  (1UL << 1)
+
+/* ZF->HOST */
+#define ZXDH_GDMA_JOB_DIR_TX                    (1UL << 2)
+
+/* HOST->ZF */
+#define ZXDH_GDMA_JOB_DIR_RX                    (1UL << 3)
+
+#define ZXDH_GDMA_JOB_DIR_MASK                  (ZXDH_GDMA_JOB_DIR_TX | ZXDH_GDMA_JOB_DIR_RX)
+
 enum zxdh_gdma_device_state {
 	ZXDH_GDMA_DEV_RUNNING,
 	ZXDH_GDMA_DEV_STOPPED
@@ -98,6 +112,11 @@ struct zxdh_gdma_rawdev {
 	uint8_t used_num;  /* used  queue num */
 	enum zxdh_gdma_device_state device_state;
 	struct zxdh_gdma_queue vqs[ZXDH_GDMA_TOTAL_CHAN_NUM];
+};
+
+struct zxdh_gdma_enqdeq {
+	uint16_t vq_id;
+	struct zxdh_gdma_job **job;
 };
 
 struct zxdh_gdma_config {
