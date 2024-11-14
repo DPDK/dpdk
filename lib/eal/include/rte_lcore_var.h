@@ -15,6 +15,8 @@
  *
  * Please refer to the lcore variables' programmer's guide
  * for an overview of this API and its implementation.
+ *
+ * EXPERIMENTAL: this API may change, or be removed, without prior notice.
  */
 
 #include <stddef.h>

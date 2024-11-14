@@ -240,7 +240,7 @@ and huge pages for lcore variables:
   and their use would result in a significant amount of memory going to waste.
   An example: ~256 kB worth of lcore variables are allocated
   by DPDK libraries, PMDs and the application.
-  ``RTE_MAX_LCORE_VAR`` is set to 1 MB and ``RTE_MAX_LCORE`` to 128.
+  ``RTE_MAX_LCORE_VAR`` is set to 128 kB and ``RTE_MAX_LCORE`` to 128.
   With 4 kB OS pages, only the first ~64 pages of each of the 128 per-lcore id slices
   in the (only) ``lcore_var_buffer`` will actually be resident (paged in).
   Here, demand paging saves ~98 MB of memory.
