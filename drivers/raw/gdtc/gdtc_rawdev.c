@@ -97,6 +97,96 @@ zxdh_gdma_write_reg(struct rte_rawdev *dev, uint16_t queue_id, uint32_t offset, 
 }
 
 static int
+zxdh_gdma_rawdev_info_get(struct rte_rawdev *dev,
+		__rte_unused rte_rawdev_obj_t dev_info,
+		__rte_unused size_t dev_info_size)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+zxdh_gdma_rawdev_configure(const struct rte_rawdev *dev,
+		rte_rawdev_obj_t config,
+		size_t config_size)
+{
+	struct zxdh_gdma_config *gdma_config = NULL;
+
+	if ((dev == NULL) ||
+		(config == NULL) ||
+		(config_size != sizeof(struct zxdh_gdma_config)))
+		return -EINVAL;
+
+	gdma_config = (struct zxdh_gdma_config *)config;
+	if (gdma_config->max_vqs > ZXDH_GDMA_TOTAL_CHAN_NUM) {
+		ZXDH_PMD_LOG(ERR, "gdma supports up to %d queues", ZXDH_GDMA_TOTAL_CHAN_NUM);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+zxdh_gdma_rawdev_start(struct rte_rawdev *dev)
+{
+	struct zxdh_gdma_rawdev *gdmadev = NULL;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	gdmadev = zxdh_gdma_rawdev_get_priv(dev);
+	gdmadev->device_state = ZXDH_GDMA_DEV_RUNNING;
+
+	return 0;
+}
+
+static void
+zxdh_gdma_rawdev_stop(struct rte_rawdev *dev)
+{
+	struct zxdh_gdma_rawdev *gdmadev = NULL;
+
+	if (dev == NULL)
+		return;
+
+	gdmadev = zxdh_gdma_rawdev_get_priv(dev);
+	gdmadev->device_state = ZXDH_GDMA_DEV_STOPPED;
+}
+
+static int
+zxdh_gdma_rawdev_reset(struct rte_rawdev *dev)
+{
+	if (dev == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+zxdh_gdma_rawdev_close(struct rte_rawdev *dev)
+{
+	struct zxdh_gdma_rawdev *gdmadev = NULL;
+	struct zxdh_gdma_queue *queue = NULL;
+	uint16_t queue_id = 0;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	for (queue_id = 0; queue_id < ZXDH_GDMA_TOTAL_CHAN_NUM; queue_id++) {
+		queue = zxdh_gdma_get_queue(dev, queue_id);
+		if ((queue == NULL) || (queue->enable == 0))
+			continue;
+
+		zxdh_gdma_queue_free(dev, queue_id);
+	}
+	gdmadev = zxdh_gdma_rawdev_get_priv(dev);
+	gdmadev->device_state = ZXDH_GDMA_DEV_STOPPED;
+
+	return 0;
+}
+
+static int
 zxdh_gdma_rawdev_queue_setup(struct rte_rawdev *dev,
 		uint16_t queue_id,
 		rte_rawdev_obj_t queue_conf,
@@ -177,8 +267,52 @@ zxdh_gdma_rawdev_queue_setup(struct rte_rawdev *dev,
 	return queue_id;
 }
 
+static int
+zxdh_gdma_rawdev_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
+{
+	struct zxdh_gdma_queue *queue = NULL;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	queue = zxdh_gdma_get_queue(dev, queue_id);
+	if ((queue == NULL) || (queue->enable == 0))
+		return -EINVAL;
+
+	zxdh_gdma_queue_free(dev, queue_id);
+
+	return 0;
+}
+
+static int
+zxdh_gdma_rawdev_get_attr(struct rte_rawdev *dev,
+				__rte_unused const char *attr_name,
+				uint64_t *attr_value)
+{
+	struct zxdh_gdma_rawdev *gdmadev = NULL;
+	struct zxdh_gdma_attr *gdma_attr = NULL;
+
+	if ((dev == NULL) || (attr_value == NULL))
+		return -EINVAL;
+
+	gdmadev   = zxdh_gdma_rawdev_get_priv(dev);
+	gdma_attr = (struct zxdh_gdma_attr *)attr_value;
+	gdma_attr->num_hw_queues = gdmadev->used_num;
+
+	return 0;
+}
 static const struct rte_rawdev_ops zxdh_gdma_rawdev_ops = {
+	.dev_info_get = zxdh_gdma_rawdev_info_get,
+	.dev_configure = zxdh_gdma_rawdev_configure,
+	.dev_start = zxdh_gdma_rawdev_start,
+	.dev_stop = zxdh_gdma_rawdev_stop,
+	.dev_close = zxdh_gdma_rawdev_close,
+	.dev_reset = zxdh_gdma_rawdev_reset,
+
 	.queue_setup = zxdh_gdma_rawdev_queue_setup,
+	.queue_release = zxdh_gdma_rawdev_queue_release,
+
+	.attr_get = zxdh_gdma_rawdev_get_attr,
 };
 
 static int
@@ -237,7 +371,7 @@ zxdh_gdma_queue_init(struct rte_rawdev *dev, uint16_t queue_id)
 	ZXDH_PMD_LOG(INFO, "queue%u ring phy addr:0x%"PRIx64" virt addr:%p",
 			queue_id, mz->iova, mz->addr);
 
-	/* Initialize the hardware channel */
+	/* Configure the hardware channel to the initial state */
 	zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_CONTROL_OFFSET,
 			ZXDH_GDMA_CHAN_FORCE_CLOSE);
 	zxdh_gdma_write_reg(dev, queue_id, ZXDH_GDMA_TC_CNT_OFFSET,
