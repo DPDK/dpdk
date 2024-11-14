@@ -1722,6 +1722,7 @@ STATIC s32 e1000_get_media_type_82575(struct e1000_hw *hw)
 			break;
 		}
 		/* Fall through for I2C based SGMII */
+		/* Fall through */
 	case E1000_CTRL_EXT_LINK_MODE_PCIE_SERDES:
 		/* read media type from SFP EEPROM */
 		ret_val = e1000_set_sfp_media_type_82575(hw);

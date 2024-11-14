@@ -23,8 +23,7 @@ sources = [
 ]
 
 error_cflags = ['-Wno-uninitialized', '-Wno-unused-parameter',
-    '-Wno-unused-variable', '-Wno-misleading-indentation',
-    '-Wno-implicit-fallthrough']
+    '-Wno-unused-variable', '-Wno-misleading-indentation']
 c_args = cflags
 foreach flag: error_cflags
     if cc.has_argument(flag)
