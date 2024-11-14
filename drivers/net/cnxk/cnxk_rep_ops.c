@@ -80,14 +80,12 @@ cnxk_rep_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 	PLT_SET_USED(wait_to_complete);
 
 	memset(&link, 0, sizeof(link));
-	if (ethdev->data->dev_started)
+	if (ethdev->data->dev_started) {
 		link.link_status = RTE_ETH_LINK_UP;
-	else
-		link.link_status = RTE_ETH_LINK_DOWN;
-
-	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-	link.link_autoneg = RTE_ETH_LINK_FIXED;
-	link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+		link.link_autoneg = RTE_ETH_LINK_FIXED;
+		link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+	}
 
 	return rte_eth_linkstatus_set(ethdev, &link);
 }
@@ -234,6 +232,7 @@ int
 cnxk_rep_dev_start(struct rte_eth_dev *ethdev)
 {
 	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(ethdev);
+	struct rte_eth_link link;
 	int rc = 0, qid;
 
 	ethdev->rx_pkt_burst = cnxk_rep_rx_burst;
@@ -278,6 +277,13 @@ cnxk_rep_dev_start(struct rte_eth_dev *ethdev)
 
 	rep_dev->parent_dev->repr_cnt.nb_repr_started++;
 
+	link.link_status = RTE_ETH_LINK_UP;
+	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+	link.link_autoneg = RTE_ETH_LINK_FIXED;
+	link.link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
+	rte_eth_linkstatus_set(ethdev, &link);
+	ethdev->data->dev_started = 1;
+
 	return 0;
 fail:
 	return rc;
@@ -293,12 +299,18 @@ int
 cnxk_rep_dev_stop(struct rte_eth_dev *ethdev)
 {
 	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(ethdev);
+	struct rte_eth_link link;
 
 	ethdev->rx_pkt_burst = cnxk_rep_rx_burst_dummy;
 	ethdev->tx_pkt_burst = cnxk_rep_tx_burst_dummy;
 	cnxk_rep_rx_queue_stop(ethdev, 0);
 	cnxk_rep_tx_queue_stop(ethdev, 0);
 	rep_dev->parent_dev->repr_cnt.nb_repr_started--;
+
+	/* Bring down link status internally */
+	memset(&link, 0, sizeof(link));
+	rte_eth_linkstatus_set(ethdev, &link);
+	ethdev->data->dev_started = 0;
 
 	return 0;
 }
