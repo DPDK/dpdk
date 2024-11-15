@@ -99,12 +99,12 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 
 	/* Add the thread to the bitmap of registered threads */
 	old_bmap = rte_atomic_fetch_or_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-						(1UL << id), rte_memory_order_release);
+						RTE_BIT64(id), rte_memory_order_release);
 
 	/* Increment the number of threads registered only if the thread was not already
 	 * registered
 	 */
-	if (!(old_bmap & (1UL << id)))
+	if (!(old_bmap & RTE_BIT64(id)))
 		rte_atomic_fetch_add_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
@@ -137,12 +137,12 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * reporting threads.
 	 */
 	old_bmap = rte_atomic_fetch_and_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-						 ~(1UL << id), rte_memory_order_release);
+						 ~RTE_BIT64(id), rte_memory_order_release);
 
 	/* Decrement the number of threads unregistered only if the thread was not already
 	 * unregistered
 	 */
-	if (old_bmap & (1UL << id))
+	if (old_bmap & RTE_BIT64(id))
 		rte_atomic_fetch_sub_explicit(&v->num_threads, 1, rte_memory_order_relaxed);
 
 	return 0;
@@ -198,7 +198,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 			t = rte_ctz64(bmap);
 			fprintf(f, "%u ", id + t);
 
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
@@ -225,7 +225,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].lock_cnt,
 					rte_memory_order_relaxed));
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
