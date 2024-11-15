@@ -496,6 +496,9 @@ ABI Changes
   added new structure ``rte_node_xstats`` to ``rte_node_register`` and
   added ``xstat_off`` to ``rte_node``.
 
+* graph: The members ``dispatch`` and ``xstat_off`` of the structure ``rte_node``
+  have been marked as ``RTE_CACHE_LINE_MIN_SIZE`` bytes aligned.
+
 
 Known Issues
 ------------

@@ -104,16 +104,20 @@ struct __rte_cache_aligned rte_node {
 	/** Original process function when pcap is enabled. */
 	rte_node_process_t original_process;
 
+	/** Fast schedule area for mcore dispatch model. */
 	union {
-		/* Fast schedule area for mcore dispatch model */
-		struct {
+		alignas(RTE_CACHE_LINE_MIN_SIZE) struct {
 			unsigned int lcore_id;  /**< Node running lcore. */
 			uint64_t total_sched_objs; /**< Number of objects scheduled. */
 			uint64_t total_sched_fail; /**< Number of scheduled failure. */
 		} dispatch;
 	};
+
+	/** Fast path area cache line 1. */
+	alignas(RTE_CACHE_LINE_MIN_SIZE)
 	rte_graph_off_t xstat_off; /**< Offset to xstat counters. */
-	/* Fast path area  */
+
+	/** Fast path area cache line 2. */
 	__extension__ struct __rte_cache_aligned {
 #define RTE_NODE_CTX_SZ 16
 		union {
