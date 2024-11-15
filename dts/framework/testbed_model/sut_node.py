@@ -488,14 +488,6 @@ class SutNode(Node):
             f"{app_path} {eal_params}", timeout, privileged=True, verify=True
         )
 
-    def configure_ipv4_forwarding(self, enable: bool) -> None:
-        """Enable/disable IPv4 forwarding on the node.
-
-        Args:
-            enable: If :data:`True`, enable the forwarding, otherwise disable it.
-        """
-        self.main_session.configure_ipv4_forwarding(enable)
-
     def bind_ports_to_driver(self, for_dpdk: bool = True) -> None:
         """Bind all ports on the SUT to a driver.
 

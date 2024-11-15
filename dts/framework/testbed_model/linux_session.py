@@ -10,8 +10,7 @@ This intermediate module implements the common parts of mostly POSIX compliant d
 """
 
 import json
-from ipaddress import IPv4Interface, IPv6Interface
-from typing import TypedDict, Union
+from typing import TypedDict
 
 from typing_extensions import NotRequired
 
@@ -178,25 +177,6 @@ class LinuxSession(PosixSession):
             self._logger.warning(
                 f"Attempted to get '{attr_name}' of port {port.pci}, but it doesn't exist."
             )
-
-    def configure_port_state(self, port: Port, enable: bool) -> None:
-        """Overrides :meth:`~.os_session.OSSession.configure_port_state`."""
-        state = "up" if enable else "down"
-        self.send_command(f"ip link set dev {port.logical_name} {state}", privileged=True)
-
-    def configure_port_ip_address(
-        self,
-        address: Union[IPv4Interface, IPv6Interface],
-        port: Port,
-        delete: bool,
-    ) -> None:
-        """Overrides :meth:`~.os_session.OSSession.configure_port_ip_address`."""
-        command = "del" if delete else "add"
-        self.send_command(
-            f"ip address {command} {address} dev {port.logical_name}",
-            privileged=True,
-            verify=True,
-        )
 
     def configure_port_mtu(self, mtu: int, port: Port) -> None:
         """Overrides :meth:`~.os_session.OSSession.configure_port_mtu`."""

@@ -209,42 +209,6 @@ class TestSuite(TestProtocol):
         This is done after *each* test case.
         """
 
-    def configure_testbed_ipv4(self, restore: bool = False) -> None:
-        """Configure IPv4 addresses on all testbed ports.
-
-        The configured ports are:
-
-        * SUT ingress port,
-        * SUT egress port,
-        * TG ingress port,
-        * TG egress port.
-
-        Args:
-            restore: If :data:`True`, will remove the configuration instead.
-        """
-        delete = True if restore else False
-        enable = False if restore else True
-        self._configure_ipv4_forwarding(enable)
-        self.sut_node.configure_port_ip_address(
-            self._sut_ip_address_egress, self._sut_port_egress, delete
-        )
-        self.sut_node.configure_port_state(self._sut_port_egress, enable)
-        self.sut_node.configure_port_ip_address(
-            self._sut_ip_address_ingress, self._sut_port_ingress, delete
-        )
-        self.sut_node.configure_port_state(self._sut_port_ingress, enable)
-        self.tg_node.configure_port_ip_address(
-            self._tg_ip_address_ingress, self._tg_port_ingress, delete
-        )
-        self.tg_node.configure_port_state(self._tg_port_ingress, enable)
-        self.tg_node.configure_port_ip_address(
-            self._tg_ip_address_egress, self._tg_port_egress, delete
-        )
-        self.tg_node.configure_port_state(self._tg_port_egress, enable)
-
-    def _configure_ipv4_forwarding(self, enable: bool) -> None:
-        self.sut_node.configure_ipv4_forwarding(enable)
-
     def send_packet_and_capture(
         self,
         packet: Packet,

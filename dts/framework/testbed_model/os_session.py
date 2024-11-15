@@ -25,9 +25,7 @@ Example:
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
-from ipaddress import IPv4Interface, IPv6Interface
 from pathlib import Path, PurePath, PurePosixPath
-from typing import Union
 
 from framework.config import Architecture, NodeConfiguration
 from framework.logger import DTSLogger
@@ -522,42 +520,10 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def configure_port_state(self, port: Port, enable: bool) -> None:
-        """Enable/disable `port` in the operating system.
-
-        Args:
-            port: The port to configure.
-            enable: If :data:`True`, enable the port, otherwise shut it down.
-        """
-
-    @abstractmethod
-    def configure_port_ip_address(
-        self,
-        address: Union[IPv4Interface, IPv6Interface],
-        port: Port,
-        delete: bool,
-    ) -> None:
-        """Configure an IP address on `port` in the operating system.
-
-        Args:
-            address: The address to configure.
-            port: The port to configure.
-            delete: If :data:`True`, remove the IP address, otherwise configure it.
-        """
-
-    @abstractmethod
     def configure_port_mtu(self, mtu: int, port: Port) -> None:
         """Configure `mtu` on `port`.
 
         Args:
             mtu: Desired MTU value.
             port: Port to set `mtu` on.
-        """
-
-    @abstractmethod
-    def configure_ipv4_forwarding(self, enable: bool) -> None:
-        """Enable IPv4 forwarding in the operating system.
-
-        Args:
-            enable: If :data:`True`, enable the forwarding, otherwise disable it.
         """

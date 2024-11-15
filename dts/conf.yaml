@@ -29,7 +29,6 @@ test_runs:
     skip_smoke_tests: false # optional
     test_suites: # the following test suites will be run in their entirety
       - hello_world
-      - os_udp
     # The machine running the DPDK test executable
     system_under_test_node:
       node_name: "SUT 1"
