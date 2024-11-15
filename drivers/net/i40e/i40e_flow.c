@@ -1263,27 +1263,31 @@ i40e_flow_parse_attr(const struct rte_flow_attr *attr,
 	return 0;
 }
 
-static uint16_t
-i40e_get_outer_vlan(struct rte_eth_dev *dev)
+static int
+i40e_get_outer_vlan(struct rte_eth_dev *dev, uint16_t *tpid)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	int qinq = dev->data->dev_conf.rxmode.offloads &
 		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	uint64_t reg_r = 0;
 	uint16_t reg_id;
-	uint16_t tpid;
+	int ret;
 
 	if (qinq)
 		reg_id = 2;
 	else
 		reg_id = 3;
 
-	i40e_aq_debug_read_register(hw, I40E_GL_SWT_L2TAGCTRL(reg_id),
+	ret = i40e_aq_debug_read_register(hw, I40E_GL_SWT_L2TAGCTRL(reg_id),
 				    &reg_r, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to read from L2 tag ctrl register [%d]", reg_id);
+		return -EIO;
+	}
 
-	tpid = (reg_r >> I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT) & 0xFFFF;
+	*tpid = (reg_r >> I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT) & 0xFFFF;
 
-	return tpid;
+	return 0;
 }
 
 /* 1. Last in item should be NULL as range is not supported.
@@ -1303,6 +1307,8 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 	const struct rte_flow_item_eth *eth_spec;
 	const struct rte_flow_item_eth *eth_mask;
 	enum rte_flow_item_type item_type;
+	int ret;
+	uint16_t tpid;
 
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -1361,8 +1367,23 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 
 			if (filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
 			    filter->ether_type == RTE_ETHER_TYPE_IPV6 ||
-			    filter->ether_type == RTE_ETHER_TYPE_LLDP ||
-			    filter->ether_type == i40e_get_outer_vlan(dev)) {
+			    filter->ether_type == RTE_ETHER_TYPE_LLDP) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Unsupported ether_type in control packet filter.");
+				return -rte_errno;
+			}
+
+			ret = i40e_get_outer_vlan(dev, &tpid);
+			if (ret != 0) {
+				rte_flow_error_set(error, EIO,
+						RTE_FLOW_ERROR_TYPE_ITEM,
+						item,
+						"Can not get the Ethertype identifying the L2 tag");
+				return -rte_errno;
+			}
+			if (filter->ether_type == tpid) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
@@ -1370,6 +1391,7 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 						   " control packet filter.");
 				return -rte_errno;
 			}
+
 			break;
 		default:
 			break;
@@ -1641,6 +1663,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	bool outer_ip = true;
 	uint8_t field_idx;
 	int ret;
+	uint16_t tpid;
 
 	memset(off_arr, 0, sizeof(off_arr));
 	memset(len_arr, 0, sizeof(len_arr));
@@ -1709,14 +1732,29 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 
 				if (ether_type == RTE_ETHER_TYPE_IPV4 ||
-				    ether_type == RTE_ETHER_TYPE_IPV6 ||
-				    ether_type == i40e_get_outer_vlan(dev)) {
+				    ether_type == RTE_ETHER_TYPE_IPV6) {
 					rte_flow_error_set(error, EINVAL,
 						     RTE_FLOW_ERROR_TYPE_ITEM,
 						     item,
 						     "Unsupported ether_type.");
 					return -rte_errno;
 				}
+				ret = i40e_get_outer_vlan(dev, &tpid);
+				if (ret != 0) {
+					rte_flow_error_set(error, EIO,
+							RTE_FLOW_ERROR_TYPE_ITEM,
+							item,
+							"Can not get the Ethertype identifying the L2 tag");
+					return -rte_errno;
+				}
+				if (ether_type == tpid) {
+					rte_flow_error_set(error, EINVAL,
+						     RTE_FLOW_ERROR_TYPE_ITEM,
+						     item,
+						     "Unsupported ether_type.");
+					return -rte_errno;
+				}
+
 				input_set |= I40E_INSET_LAST_ETHER_TYPE;
 				filter->input.flow.l2_flow.ether_type =
 					eth_spec->hdr.ether_type;
@@ -1763,14 +1801,29 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					rte_be_to_cpu_16(vlan_spec->hdr.eth_proto);
 
 				if (ether_type == RTE_ETHER_TYPE_IPV4 ||
-				    ether_type == RTE_ETHER_TYPE_IPV6 ||
-				    ether_type == i40e_get_outer_vlan(dev)) {
+				    ether_type == RTE_ETHER_TYPE_IPV6) {
 					rte_flow_error_set(error, EINVAL,
 						     RTE_FLOW_ERROR_TYPE_ITEM,
 						     item,
 						     "Unsupported inner_type.");
 					return -rte_errno;
 				}
+				ret = i40e_get_outer_vlan(dev, &tpid);
+				if (ret != 0) {
+					rte_flow_error_set(error, EIO,
+							RTE_FLOW_ERROR_TYPE_ITEM,
+							item,
+							"Can not get the Ethertype identifying the L2 tag");
+					return -rte_errno;
+				}
+				if (ether_type == tpid) {
+					rte_flow_error_set(error, EINVAL,
+						     RTE_FLOW_ERROR_TYPE_ITEM,
+						     item,
+						     "Unsupported ether_type.");
+					return -rte_errno;
+				}
+
 				input_set |= I40E_INSET_LAST_ETHER_TYPE;
 				filter->input.flow.l2_flow.ether_type =
 					vlan_spec->hdr.eth_proto;
