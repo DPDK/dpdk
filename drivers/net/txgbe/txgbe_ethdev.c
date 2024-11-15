@@ -1553,6 +1553,9 @@ static void txgbe_reinit_gpio_intr(struct txgbe_hw *hw)
 	wr32(hw, TXGBE_GPIOINTMASK, 0xFF);
 	reg = rd32(hw, TXGBE_GPIORAWINTSTAT);
 
+	if (reg & TXGBE_GPIOBIT_0)
+		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_0);
+
 	if (reg & TXGBE_GPIOBIT_2)
 		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_2);
 
@@ -2776,6 +2779,8 @@ txgbe_dev_sfp_event(struct rte_eth_dev *dev)
 
 	wr32(hw, TXGBE_GPIOINTMASK, 0xFF);
 	reg = rd32(hw, TXGBE_GPIORAWINTSTAT);
+	if (reg & TXGBE_GPIOBIT_0)
+		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_0);
 	if (reg & TXGBE_GPIOBIT_2) {
 		wr32(hw, TXGBE_GPIOEOI, TXGBE_GPIOBIT_2);
 		rte_eal_alarm_set(1000 * 100, txgbe_dev_detect_sfp, dev);
