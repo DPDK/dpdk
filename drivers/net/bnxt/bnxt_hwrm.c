@@ -1139,8 +1139,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	int rc = 0;
 	struct hwrm_func_qcaps_input req = {.req_type = 0 };
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	uint32_t flags, flags_ext2, flags_ext3;
 	uint16_t new_max_vfs;
-	uint32_t flags, flags_ext2;
 
 	HWRM_PREP(&req, HWRM_FUNC_QCAPS, BNXT_USE_CHIMP_MB);
 
@@ -1153,6 +1153,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
 	flags = rte_le_to_cpu_32(resp->flags);
 	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
+	flags_ext3 = rte_le_to_cpu_32(resp->flags_ext3);
 
 	if (BNXT_PF(bp)) {
 		bp->pf->port_id = resp->port_id;
@@ -1259,6 +1260,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->fw_cap |= BNXT_FW_CAP_RX_ALL_PKT_TS;
 	if (flags_ext2 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_UDP_GSO_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_UDP_GSO;
+	if (flags_ext3 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_RX_RATE_PROFILE_SEL_SUPPORTED)
+		bp->fw_cap |= BNXT_FW_CAP_RX_RATE_PROFILE;
 
 unlock:
 	HWRM_UNLOCK();
@@ -2227,6 +2230,11 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		if (stats_ctx_id != INVALID_STATS_CTX_ID)
 			enables |=
 				HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID;
+		if (bp->fw_cap & BNXT_FW_CAP_RX_RATE_PROFILE) {
+			req.rx_rate_profile_sel =
+				HWRM_RING_ALLOC_INPUT_RX_RATE_PROFILE_SEL_POLL_MODE;
+			enables |= HWRM_RING_ALLOC_INPUT_ENABLES_RX_RATE_PROFILE_VALID;
+		}
 		break;
 	case HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL:
 		req.ring_type = ring_type;
@@ -2257,6 +2265,11 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		enables |= HWRM_RING_ALLOC_INPUT_ENABLES_RX_RING_ID_VALID |
 			   HWRM_RING_ALLOC_INPUT_ENABLES_RX_BUF_SIZE_VALID |
 			   HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID;
+		if (bp->fw_cap & BNXT_FW_CAP_RX_RATE_PROFILE) {
+			req.rx_rate_profile_sel =
+				HWRM_RING_ALLOC_INPUT_RX_RATE_PROFILE_SEL_POLL_MODE;
+			enables |= HWRM_RING_ALLOC_INPUT_ENABLES_RX_RATE_PROFILE_VALID;
+		}
 		break;
 	default:
 		PMD_DRV_LOG_LINE(ERR, "hwrm alloc invalid ring type %d",
