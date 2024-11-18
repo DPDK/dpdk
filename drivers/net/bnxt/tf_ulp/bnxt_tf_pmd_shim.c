@@ -587,10 +587,16 @@ bnxt_pmd_global_tunnel_set(struct bnxt_ulp_context *ulp_ctx,
 			return -EINVAL;
 		}
 
-		if (udp_port)
+		if (udp_port) {
 			rc = bnxt_udp_tunnel_port_add_op(eth_dev, &udp_tunnel);
-		else
-			rc = bnxt_udp_tunnel_port_del_op(eth_dev, &udp_tunnel);
+		} else {
+			/* TODO: Make the counters shareable so the resource
+			 * free can be synced up between core dpdk path and
+			 * the tf path.
+			 */
+			if (eth_dev->data->dev_started != 0)
+				rc = bnxt_udp_tunnel_port_del_op(eth_dev, &udp_tunnel);
+		}
 	} else {
 		bp = bnxt_pmd_get_bp(port_id);
 		if (!bp) {

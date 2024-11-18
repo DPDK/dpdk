@@ -13,13 +13,16 @@
 #define ULP_FLAG_SC_THREAD			BIT(0)
 
 #define ULP_SC_ENTRY_FLAG_VALID BIT(0)
+#define ULP_SC_ENTRY_FLAG_PARENT BIT(1)
+#define ULP_SC_PC_IDX_MASK 0xFFFFF
 
 #define ULP_SC_BATCH_SIZE   64
 #define ULP_SC_PAGE_SIZE  4096
 
 struct ulp_sc_tfc_stats_cache_entry {
 	struct bnxt_ulp_context *ctxt;
-	uint32_t flags;
+	uint32_t flags : 8;
+	uint32_t pc_idx : 24;
 	uint64_t timestamp;
 	uint64_t handle;
 	uint8_t dir;
@@ -136,6 +139,19 @@ int ulp_sc_mgr_entry_alloc(struct bnxt_ulp_mapper_parms *parms,
  */
 void ulp_sc_mgr_entry_free(struct bnxt_ulp_context *ulp,
 			   uint32_t fid);
+
+
+/*
+ * Set pc_idx for the flow if stat cache info is valid
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ * flow_id [in] The HW flow ID
+ * pc_idx [in] The parent flow entry idx
+ *
+ */
+void ulp_sc_mgr_set_pc_idx(struct bnxt_ulp_context *ctxt,
+			   uint32_t flow_id,
+			   uint32_t pc_idx);
 
 extern const struct bnxt_ulp_sc_core_ops ulp_sc_tfc_core_ops;
 

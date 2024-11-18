@@ -1176,7 +1176,7 @@ ulp_default_flow_db_cfa_action_get(struct bnxt_ulp_context *ulp_ctx,
 }
 
 /* internal validation function for parent flow tbl */
-static struct ulp_fdb_parent_info *
+struct ulp_fdb_parent_info *
 ulp_flow_db_pc_db_entry_get(struct bnxt_ulp_context *ulp_ctxt,
 			    uint32_t pc_idx)
 {
@@ -1634,6 +1634,8 @@ ulp_flow_db_parent_flow_create(struct bnxt_ulp_mapper_parms *parms)
 		}
 	}
 
+	/* Set parent flow entry idx in stats cache entry */
+	ulp_sc_mgr_set_pc_idx(parms->ulp_ctx, parms->flow_id, pc_idx);
 	return 0;
 }
 

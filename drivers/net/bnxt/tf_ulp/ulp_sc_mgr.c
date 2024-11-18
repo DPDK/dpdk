@@ -441,8 +441,17 @@ int ulp_sc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 {
 	struct ulp_sc_tfc_stats_cache_entry *sce;
 	struct bnxt_ulp_sc_info *ulp_sc_info;
+	struct ulp_fdb_parent_info *pc_entry;
+	struct bnxt_ulp_flow_db *flow_db;
+	uint32_t max_array;
+	uint32_t child_fid;
+	uint32_t a_idx;
+	uint32_t f2_cnt;
+	uint64_t *t;
+	uint64_t bs;
 	int rc = 0;
 
+	/* Get stats cache info */
 	ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
 	if (!ulp_sc_info)
 		return -ENODEV;
@@ -450,18 +459,66 @@ int ulp_sc_mgr_query_count_get(struct bnxt_ulp_context *ctxt,
 	sce = ulp_sc_info->stats_cache_tbl;
 	sce += flow_id;
 
-	/* If entry is not valid return an error */
-	if (!(sce->flags & ULP_SC_ENTRY_FLAG_VALID))
-		return -EBUSY;
+	/* To handle the parent flow */
+	if (sce->flags & ULP_SC_ENTRY_FLAG_PARENT) {
+		flow_db = bnxt_ulp_cntxt_ptr2_flow_db_get(ctxt);
+		if (!flow_db) {
+			BNXT_DRV_DBG(ERR, "parent child db validation failed\n");
+			return -EINVAL;
+		}
 
-	count->hits = sce->packet_count;
-	count->hits_set = 1;
-	count->bytes = sce->byte_count;
-	count->bytes_set = 1;
+		/* Validate the arguments and parent child entry */
+		pc_entry = ulp_flow_db_pc_db_entry_get(ctxt, sce->pc_idx);
+		if (!pc_entry) {
+			BNXT_DRV_DBG(ERR, "failed to get the parent child entry\n");
+			return -EINVAL;
+		}
 
-	if (count->reset)
-		sce->reset = true;
+		t = pc_entry->child_fid_bitset;
+		f2_cnt = pc_entry->f2_cnt;
+		max_array = flow_db->parent_child_db.child_bitset_size * 8 / ULP_INDEX_BITMAP_SIZE;
 
+		/* Iterate all possible child flows */
+		for (a_idx = 0; (a_idx < max_array) && f2_cnt; a_idx++) {
+			/* If it is zero, then check the next bitset */
+			bs = t[a_idx];
+			if (!bs)
+				continue;
+
+			/* check one bitset */
+			do {
+				/* get the next child fid */
+				child_fid = (a_idx * ULP_INDEX_BITMAP_SIZE) + rte_clz64(bs);
+				sce = ulp_sc_info->stats_cache_tbl;
+				sce += child_fid;
+
+				/* clear the bit for this child flow */
+				ULP_INDEX_BITMAP_RESET(bs, child_fid);
+				f2_cnt--;
+
+				/* no counter action, then ignore flows */
+				if (!(sce->flags & ULP_SC_ENTRY_FLAG_VALID))
+					continue;
+				count->hits += sce->packet_count;
+				count->hits_set = 1;
+				count->bytes += sce->byte_count;
+				count->bytes_set = 1;
+			} while (bs && f2_cnt);
+		}
+	} else {
+		/* To handle regular or child flows */
+		/* If entry is not valid return an error */
+		if (!(sce->flags & ULP_SC_ENTRY_FLAG_VALID))
+			return -EBUSY;
+
+		count->hits = sce->packet_count;
+		count->hits_set = 1;
+		count->bytes = sce->byte_count;
+		count->bytes_set = 1;
+
+		if (count->reset)
+			sce->reset = true;
+	}
 	return rc;
 }
 
@@ -491,6 +548,8 @@ int ulp_sc_mgr_entry_alloc(struct bnxt_ulp_mapper_parms *parms,
 	memset(sce, 0, sizeof(*sce));
 	sce->ctxt = parms->ulp_ctx;
 	sce->flags |= ULP_SC_ENTRY_FLAG_VALID;
+	if (parms->parent_flow)
+		sce->flags |= ULP_SC_ENTRY_FLAG_PARENT;
 	sce->handle = counter_handle;
 	sce->dir = tbl->direction;
 	ulp_sc_info->num_entries++;
@@ -521,6 +580,37 @@ void ulp_sc_mgr_entry_free(struct bnxt_ulp_context *ulp,
 
 	sce->flags = 0;
 	ulp_sc_info->num_entries--;
+
+	pthread_mutex_unlock(&ulp_sc_info->sc_lock);
+}
+
+/*
+ * Set pc_idx for the flow if stat cache info is valid
+ *
+ * ctxt [in] The ulp context for the flow counter manager
+ *
+ * flow_id [in] The HW flow ID
+ *
+ * pc_idx [in] The parent flow entry idx
+ *
+ */
+void ulp_sc_mgr_set_pc_idx(struct bnxt_ulp_context *ctxt,
+			   uint32_t flow_id,
+			   uint32_t pc_idx)
+{
+	struct ulp_sc_tfc_stats_cache_entry *sce;
+	struct bnxt_ulp_sc_info *ulp_sc_info;
+
+	/* Get stats cache info */
+	ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
+	if (!ulp_sc_info)
+		return;
+
+	pthread_mutex_lock(&ulp_sc_info->sc_lock);
+
+	sce = ulp_sc_info->stats_cache_tbl;
+	sce += flow_id;
+	sce->pc_idx = pc_idx & ULP_SC_PC_IDX_MASK;
 
 	pthread_mutex_unlock(&ulp_sc_info->sc_lock);
 }

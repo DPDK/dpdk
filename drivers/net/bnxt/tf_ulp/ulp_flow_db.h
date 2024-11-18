@@ -417,4 +417,17 @@ void ulp_flow_db_shared_session_set(struct ulp_flow_db_res_params *res,
  */
 enum bnxt_ulp_session_type
 ulp_flow_db_shared_session_get(struct ulp_flow_db_res_params *res);
+
+/*
+ * Get the parent flow table info
+ *
+ * ulp_ctxt [in] Ptr to ulp_context
+ * pc_idx [in] The index to parent child db
+ *
+ * returns Pointer of parent flow tbl
+ */
+struct ulp_fdb_parent_info *
+ulp_flow_db_pc_db_entry_get(struct bnxt_ulp_context *ulp_ctxt,
+			    uint32_t pc_idx);
+
 #endif /* _ULP_FLOW_DB_H_ */
