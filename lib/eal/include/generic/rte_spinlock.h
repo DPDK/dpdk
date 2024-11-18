@@ -32,7 +32,7 @@ extern "C" {
 /**
  * The rte_spinlock_t type.
  */
-typedef struct __rte_lockable {
+typedef struct __rte_capability("spinlock") {
 	volatile RTE_ATOMIC(int) locked; /**< lock status 0 = unlocked, 1 = locked */
 } rte_spinlock_t;
 
@@ -61,7 +61,7 @@ rte_spinlock_init(rte_spinlock_t *sl)
  */
 static inline void
 rte_spinlock_lock(rte_spinlock_t *sl)
-	__rte_exclusive_lock_function(sl);
+	__rte_acquire_capability(sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline void
@@ -87,7 +87,7 @@ rte_spinlock_lock(rte_spinlock_t *sl)
  */
 static inline void
 rte_spinlock_unlock(rte_spinlock_t *sl)
-	__rte_unlock_function(sl);
+	__rte_release_capability(sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline void
@@ -109,7 +109,7 @@ rte_spinlock_unlock(rte_spinlock_t *sl)
 __rte_warn_unused_result
 static inline int
 rte_spinlock_trylock(rte_spinlock_t *sl)
-	__rte_exclusive_trylock_function(1, sl);
+	__rte_try_acquire_capability(true, sl);
 
 #ifdef RTE_FORCE_INTRINSICS
 static inline int
@@ -158,7 +158,7 @@ static inline int rte_tm_supported(void);
  */
 static inline void
 rte_spinlock_lock_tm(rte_spinlock_t *sl)
-	__rte_exclusive_lock_function(sl);
+	__rte_acquire_capability(sl);
 
 /**
  * Commit hardware memory transaction or release the spinlock if
@@ -169,7 +169,7 @@ rte_spinlock_lock_tm(rte_spinlock_t *sl)
  */
 static inline void
 rte_spinlock_unlock_tm(rte_spinlock_t *sl)
-	__rte_unlock_function(sl);
+	__rte_release_capability(sl);
 
 /**
  * Try to execute critical section in a hardware memory transaction,
@@ -190,7 +190,7 @@ rte_spinlock_unlock_tm(rte_spinlock_t *sl)
 __rte_warn_unused_result
 static inline int
 rte_spinlock_trylock_tm(rte_spinlock_t *sl)
-	__rte_exclusive_trylock_function(1, sl);
+	__rte_try_acquire_capability(true, sl);
 
 /**
  * The rte_spinlock_recursive_t type.

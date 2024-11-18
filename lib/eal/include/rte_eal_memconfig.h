@@ -132,14 +132,14 @@ rte_mcfg_mempool_write_unlock(void)
  */
 void
 rte_mcfg_timer_lock(void)
-	__rte_exclusive_lock_function(rte_mcfg_timer_get_lock());
+	__rte_acquire_capability(rte_mcfg_timer_get_lock());
 
 /**
  * Unlock the internal EAL Timer Library lock for exclusive access.
  */
 void
 rte_mcfg_timer_unlock(void)
-	__rte_unlock_function(rte_mcfg_timer_get_lock());
+	__rte_release_capability(rte_mcfg_timer_get_lock());
 
 /**
  * If true, pages are put in single files (per memseg list),

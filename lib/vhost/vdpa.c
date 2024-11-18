@@ -32,7 +32,7 @@ static struct vdpa_device_list * const vdpa_device_list
 
 static struct rte_vdpa_device *
 __vdpa_find_device_by_name(const char *name)
-	__rte_exclusive_locks_required(&vdpa_device_list_lock)
+	__rte_requires_capability(&vdpa_device_list_lock)
 {
 	struct rte_vdpa_device *dev, *ret = NULL;
 

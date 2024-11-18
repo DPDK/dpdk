@@ -45,7 +45,7 @@ static inline int fq_isset(struct qman_fq *fq, u32 mask)
 }
 
 static inline void fq_lock(struct qman_fq *fq)
-	__rte_exclusive_lock_function(&fq->fqlock)
+	__rte_acquire_capability(&fq->fqlock)
 	__rte_no_thread_safety_analysis
 {
 	if (fq_isset(fq, QMAN_FQ_FLAG_LOCKED))
@@ -53,7 +53,7 @@ static inline void fq_lock(struct qman_fq *fq)
 }
 
 static inline void fq_unlock(struct qman_fq *fq)
-	 __rte_unlock_function(&fq->fqlock)
+	__rte_release_capability(&fq->fqlock)
 	__rte_no_thread_safety_analysis
 {
 	if (fq_isset(fq, QMAN_FQ_FLAG_LOCKED))

@@ -221,7 +221,7 @@ graph_spinlock_get(void);
  * Take a lock on the graph internal spin lock.
  */
 void graph_spinlock_lock(void)
-	__rte_exclusive_lock_function(graph_spinlock_get());
+	__rte_acquire_capability(graph_spinlock_get());
 
 /**
  * @internal
@@ -229,7 +229,7 @@ void graph_spinlock_lock(void)
  * Release a lock on the graph internal spin lock.
  */
 void graph_spinlock_unlock(void)
-	__rte_unlock_function(graph_spinlock_get());
+	__rte_release_capability(graph_spinlock_get());
 
 /* Graph operations */
 /**
