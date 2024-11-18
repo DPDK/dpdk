@@ -2538,7 +2538,7 @@ virtio_dev_rx_async_submit(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	if (unlikely(!vq->access_ok)) {
 		vhost_user_iotlb_rd_unlock(vq);
-		rte_rwlock_read_unlock(&vq->access_lock);
+		rte_rwlock_write_unlock(&vq->access_lock);
 
 		virtio_dev_vring_translate(dev, vq);
 		goto out_no_unlock;
