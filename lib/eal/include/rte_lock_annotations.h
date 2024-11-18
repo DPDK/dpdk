@@ -43,6 +43,41 @@ extern "C" {
 #define __rte_locks_excluded(...) \
 	__attribute__((locks_excluded(__VA_ARGS__)))
 
+
+#if defined(__clang__) && __clang_major__ >= 11
+#define __rte_capability(...) \
+	__attribute__((capability(__VA_ARGS__)))
+#else
+#define __rte_capability(...) \
+	__attribute__((capability("mutex")))
+#endif
+
+#define __rte_requires_capability(...) \
+	__attribute__((requires_capability(__VA_ARGS__)))
+#define __rte_acquire_capability(...) \
+	__attribute__((acquire_capability(__VA_ARGS__)))
+#define __rte_try_acquire_capability(ret, ...) \
+	__attribute__((try_acquire_capability(ret, __VA_ARGS__)))
+#define __rte_release_capability(...) \
+	__attribute__((release_capability(__VA_ARGS__)))
+#define __rte_assert_capability(...) \
+	__attribute__((assert_capability(__VA_ARGS__)))
+
+#define __rte_requires_shared_capability(...) \
+	__attribute__((requires_shared_capability(__VA_ARGS__)))
+#define __rte_acquire_shared_capability(...) \
+	__attribute__((acquire_shared_capability(__VA_ARGS__)))
+#define __rte_try_acquire_shared_capability(ret, ...) \
+	__attribute__((try_acquire_shared_capability(ret, __VA_ARGS__)))
+#define __rte_release_shared_capability(...) \
+	__attribute__((release_shared_capability(__VA_ARGS__)))
+#define __rte_assert_shared_capability(...) \
+	__attribute__((assert_shared_capability(__VA_ARGS__)))
+
+#define __rte_exclude_capability(...) \
+	__attribute__((exclude_capability(__VA_ARGS__)))
+
+
 #define __rte_no_thread_safety_analysis \
 	__attribute__((no_thread_safety_analysis))
 
@@ -66,6 +101,24 @@ extern "C" {
 #define __rte_unlock_function(...)
 
 #define __rte_locks_excluded(...)
+
+
+#define __rte_capability(...)
+
+#define __rte_requires_capability(...)
+#define __rte_acquire_capability(...)
+#define __rte_try_acquire_capability(...)
+#define __rte_release_capability(...)
+#define __rte_assert_capability(...)
+
+#define __rte_requires_shared_capability(...)
+#define __rte_acquire_shared_capability(...)
+#define __rte_try_acquire_shared_capability(...)
+#define __rte_release_shared_capability(...)
+#define __rte_assert_shared_capability(...)
+
+#define __rte_exclude_capability(...)
+
 
 #define __rte_no_thread_safety_analysis
 
