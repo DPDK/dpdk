@@ -4160,8 +4160,10 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 		}
 		type = (enum age_action_context_type *)contexts[idx];
 		switch (*type) {
-		case ACTION_AGE_CONTEXT_TYPE_FLOW:
+		case ACTION_AGE_CONTEXT_TYPE_FLOW: {
+			uint64_t flow_id;
 			ctx.pf = container_of(type, struct port_flow, age_type);
+			flow_id = ctx.pf->id;
 			printf("%-20s\t%" PRIu64 "\t%" PRIu32 "\t%" PRIu32
 								 "\t%c%c%c\t\n",
 			       "Flow",
@@ -4172,9 +4174,10 @@ port_flow_aged(portid_t port_id, uint8_t destroy)
 			       ctx.pf->rule.attr->egress ? 'e' : '-',
 			       ctx.pf->rule.attr->transfer ? 't' : '-');
 			if (destroy && !port_flow_destroy(port_id, 1,
-							  &ctx.pf->id, false))
+							  &flow_id, false))
 				total++;
 			break;
+		}
 		case ACTION_AGE_CONTEXT_TYPE_INDIRECT_ACTION:
 			ctx.pia = container_of(type,
 					struct port_indirect_action, age_type);
