@@ -596,6 +596,9 @@ bnxt_ulp_port_deinit(struct bnxt *bp)
 			/* close the session associated with this port */
 			bp->ulp_ctx->ops->ulp_ctx_detach(bp, session);
 		} else {
+			/* Free the ulp context in the context entry list */
+			bnxt_ulp_cntxt_list_del(bp->ulp_ctx);
+
 			/* clean up default flows */
 			bnxt_ulp_destroy_df_rules(bp, true);
 
@@ -660,6 +663,20 @@ bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx)
 		}
 	}
 	rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
+}
+
+int
+bnxt_ulp_cntxt_list_count(void)
+{
+	struct ulp_context_list_entry *entry, *temp;
+	int count_1 = 0;
+
+	rte_spinlock_lock(&bnxt_ulp_ctxt_lock);
+	RTE_TAILQ_FOREACH_SAFE(entry, &ulp_cntx_list, next, temp) {
+		count_1++;
+	}
+	rte_spinlock_unlock(&bnxt_ulp_ctxt_lock);
+	return count_1;
 }
 
 struct bnxt_ulp_context *

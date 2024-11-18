@@ -297,6 +297,9 @@ bnxt_ulp_cntxt_list_add(struct bnxt_ulp_context *ulp_ctx);
 void
 bnxt_ulp_cntxt_list_del(struct bnxt_ulp_context *ulp_ctx);
 
+int
+bnxt_ulp_cntxt_list_count(void);
+
 struct bnxt_ulp_context *
 bnxt_ulp_cntxt_entry_acquire(void *arg);
 

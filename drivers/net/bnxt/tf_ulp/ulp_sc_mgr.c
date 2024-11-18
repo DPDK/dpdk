@@ -89,12 +89,6 @@ int32_t ulp_sc_mgr_init(struct bnxt_ulp_context *ctxt)
 	ulp_sc_info->sc_ops = sc_ops;
 	ulp_sc_info->flags = 0;
 
-	rc = pthread_mutex_init(&ulp_sc_info->sc_lock, NULL);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Failed to initialize sc mutex\n");
-		goto error;
-	}
-
 	/* Add the SC info tbl to the ulp context. */
 	bnxt_ulp_cntxt_ptr2_sc_info_set(ctxt, ulp_sc_info);
 
@@ -109,9 +103,10 @@ int32_t ulp_sc_mgr_init(struct bnxt_ulp_context *ctxt)
 	 * Size is determined by the number of flows + 10% to cover IDs
 	 * used for resources.
 	 */
+	ulp_sc_info->cache_tbl_size = ulp_sc_info->num_counters +
+		(ulp_sc_info->num_counters / 10);
 	stats_cache_tbl_sz = sizeof(struct ulp_sc_tfc_stats_cache_entry) *
-		(ulp_sc_info->num_counters +
-		 (ulp_sc_info->num_counters / 10));
+		ulp_sc_info->cache_tbl_size;
 
 	ulp_sc_info->stats_cache_tbl = rte_zmalloc("ulp_stats_cache_tbl",
 						   stats_cache_tbl_sz, 0);
@@ -153,12 +148,6 @@ ulp_sc_mgr_deinit(struct bnxt_ulp_context *ctxt)
 	if (!ulp_sc_info)
 		return -EINVAL;
 
-	pthread_mutex_lock(&ulp_sc_info->sc_lock);
-
-	ulp_sc_mgr_thread_cancel(ctxt);
-
-	pthread_mutex_destroy(&ulp_sc_info->sc_lock);
-
 	if (ulp_sc_info->stats_cache_tbl)
 		rte_free(ulp_sc_info->stats_cache_tbl);
 
@@ -173,13 +162,13 @@ ulp_sc_mgr_deinit(struct bnxt_ulp_context *ctxt)
 	return 0;
 }
 
-#define ULP_SC_PERIOD_S 1
-#define ULP_SC_PERIOD_MS (ULP_SC_PERIOD_S * 1000)
+#define ULP_SC_PERIOD_US 256
+#define ULP_SC_CTX_DELAY 10000
 
 static uint32_t ulp_stats_cache_main_loop(void *arg)
 {
 	struct ulp_sc_tfc_stats_cache_entry *count;
-	const struct bnxt_ulp_sc_core_ops *sc_ops;
+	const struct bnxt_ulp_sc_core_ops *sc_ops = NULL;
 	struct ulp_sc_tfc_stats_cache_entry *sce;
 	struct ulp_sc_tfc_stats_cache_entry *sce_end;
 	struct tfc_mpc_batch_info_t batch_info;
@@ -188,95 +177,68 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 	uint16_t words = (ULP_TFC_CNTR_READ_BYTES + ULP_TFC_ACT_WORD_SZ - 1) / ULP_TFC_ACT_WORD_SZ;
 	uint32_t batch_size;
 	struct tfc *tfcp = NULL;
-	uint32_t batch;
-	uint32_t delay = ULP_SC_PERIOD_MS;
-	uint64_t start;
-	uint64_t stop;
-	uint64_t hz;
+	uint32_t batch, stat_cnt;
 	uint8_t *data;
 	int rc;
-	static uint32_t loop;
-	uint64_t cycles = 0;
-	uint64_t cpms = 0;
-
-	while (!ctxt) {
-		ctxt = bnxt_ulp_cntxt_entry_acquire(arg);
-
-		if (ctxt)
-			break;
-
-		BNXT_DRV_DBG(INFO, "could not get the ulp context lock\n");
-		rte_delay_us_block(1000);
-	}
-
-
-	ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
-	if (!ulp_sc_info) {
-		bnxt_ulp_cntxt_entry_release();
-		goto terminate;
-	}
-
-	sc_ops = ulp_sc_info->sc_ops;
-
-	hz = rte_get_timer_hz();
-	cpms = hz / 1000;
 
 	while (true) {
-		bnxt_ulp_cntxt_entry_release();
 		ctxt = NULL;
-		rte_delay_ms(delay);
-
 		while (!ctxt) {
 			ctxt = bnxt_ulp_cntxt_entry_acquire(arg);
 
 			if (ctxt)
 				break;
-
-			BNXT_DRV_DBG(INFO, "could not get the ulp context lock\n");
-			rte_delay_us_block(1);
+			/* If there are no more contexts just exit */
+			if (bnxt_ulp_cntxt_list_count() == 0)
+				goto terminate;
+			rte_delay_us_block(ULP_SC_CTX_DELAY);
 		}
 
-		start = rte_get_timer_cycles();
+		/* get the stats counter info block from ulp context */
+		ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
+		if (unlikely(!ulp_sc_info)) {
+			bnxt_ulp_cntxt_entry_release();
+			goto terminate;
+		}
+
 		sce = ulp_sc_info->stats_cache_tbl;
-		sce_end = sce + (ulp_sc_info->num_counters + (ulp_sc_info->num_counters / 10));
+		sce_end = sce + ulp_sc_info->cache_tbl_size;
 
-		while (ulp_sc_info->num_entries && (sce < sce_end)) {
+		if (unlikely(!sc_ops))
+			sc_ops = ulp_sc_info->sc_ops;
+
+		stat_cnt = 0;
+		while (stat_cnt < ulp_sc_info->num_entries && (sce < sce_end)) {
 			data = ulp_sc_info->read_data;
-
-			rc = tfc_mpc_batch_start(&batch_info);
-			if (rc) {
-				PMD_DRV_LOG_LINE(ERR,
-						 "MPC batch start failed rc:%d loop:%d",
-						 rc, loop);
-				break;
-			}
 
 			if (bnxt_ulp_cntxt_acquire_fdb_lock(ctxt))
 				break;
 
-			rc = pthread_mutex_lock(&ulp_sc_info->sc_lock);
-			if (rc) {
+			rc = tfc_mpc_batch_start(&batch_info);
+			if (unlikely(rc)) {
 				PMD_DRV_LOG_LINE(ERR,
-						 "Failed to get SC lock, terminating main loop rc:%d loop:%d",
-						 rc, loop);
-				goto terminate;
+						 "MPC batch start failed rc:%d", rc);
+				bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+				break;
 			}
 
-			for (batch = 0; (batch < ULP_SC_BATCH_SIZE) && (sce < sce_end);) {
+			for (batch = 0; (batch < ULP_SC_BATCH_SIZE) &&
+			     (sce < sce_end);) {
 				if (!(sce->flags & ULP_SC_ENTRY_FLAG_VALID)) {
 					sce++;
 					continue;
 				}
-
+				stat_cnt++;
 				tfcp = bnxt_ulp_cntxt_tfcp_get(sce->ctxt);
-				if (tfcp == NULL) {
+				if (unlikely(!tfcp)) {
+					bnxt_ulp_cntxt_release_fdb_lock(ctxt);
 					bnxt_ulp_cntxt_entry_release();
 					goto terminate;
 				}
 
-
 				/* Store the entry pointer to use for counter update */
-				batch_info.em_hdl[batch_info.count] = (uint64_t)sce;
+				batch_info.em_hdl[batch_info.count] =
+					(uint64_t)sce;
 
 				rc = sc_ops->ulp_stats_cache_update(tfcp,
 								    sce->dir,
@@ -285,11 +247,10 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 								    &words,
 								    &batch_info,
 								    sce->reset);
-				if (rc) {
+				if (unlikely(rc)) {
 					/* Abort this batch */
 					PMD_DRV_LOG_LINE(ERR,
-							 "loop:%d read_counter() failed:%d",
-							 loop, rc);
+							 "read_counter() failed:%d", rc);
 					break;
 				}
 
@@ -305,13 +266,10 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 			batch_size = batch_info.count;
 			rc = tfc_mpc_batch_end(tfcp, &batch_info);
 
-			pthread_mutex_unlock(&ulp_sc_info->sc_lock);
 			bnxt_ulp_cntxt_release_fdb_lock(ctxt);
 
-			if (rc) {
-				PMD_DRV_LOG_LINE(ERR,
-						 "MPC batch end failed rc:%d loop:%d",
-						 rc, loop);
+			if (unlikely(rc)) {
+				PMD_DRV_LOG_LINE(ERR, "MPC batch end failed rc:%d", rc);
 				batch_info.enabled = false;
 				break;
 			}
@@ -322,8 +280,7 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 			for (batch = 0; batch < batch_size; batch++) {
 				/* Check for error in completion */
 				if (batch_info.result[batch]) {
-					PMD_DRV_LOG_LINE(ERR,
-							 "batch:%d result:%d",
+					PMD_DRV_LOG_LINE(ERR, "batch:%d result:%d",
 							 batch, batch_info.result[batch]);
 				} else {
 					count = (struct ulp_sc_tfc_stats_cache_entry *)
@@ -334,28 +291,13 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 				data += ULP_SC_PAGE_SIZE;
 			}
 		}
-
-		loop++;
-		stop = rte_get_timer_cycles();
-		cycles = stop - start;
-		if (cycles > (hz * ULP_SC_PERIOD_S)) {
-			PMD_DRV_LOG_LINE(ERR,
-					 "Stats collection time exceeded %dmS Cycles:%" PRIu64,
-					 ULP_SC_PERIOD_MS, cycles);
-			delay = ULP_SC_PERIOD_MS;
-		} else {
-			delay = ULP_SC_PERIOD_MS - (cycles / cpms);
-
-			if (delay > ULP_SC_PERIOD_MS) {
-				PMD_DRV_LOG_LINE(ERR,
-						 "Stats collection delay:%dmS exceedes %dmS",
-						 delay, ULP_SC_PERIOD_MS);
-				delay = ULP_SC_PERIOD_MS;
-			}
-		}
+		bnxt_ulp_cntxt_entry_release();
+		/* Sleep to give any other threads opportunity to access ULP */
+		rte_delay_us_sleep(ULP_SC_PERIOD_US);
 	}
 
  terminate:
+	PMD_DRV_LOG_LINE(DEBUG, "Terminating the stats cachce thread");
 	return 0;
 }
 
@@ -534,14 +476,13 @@ int ulp_sc_mgr_entry_alloc(struct bnxt_ulp_mapper_parms *parms,
 	if (!ulp_sc_info)
 		return -ENODEV;
 
-	pthread_mutex_lock(&ulp_sc_info->sc_lock);
-
 	sce = ulp_sc_info->stats_cache_tbl;
 	sce += parms->flow_id;
 
 	/* If entry is not free return an error */
 	if (sce->flags & ULP_SC_ENTRY_FLAG_VALID) {
-		pthread_mutex_unlock(&ulp_sc_info->sc_lock);
+		BNXT_DRV_DBG(ERR, "Entry is not free, invalid flow id %u\n",
+			     parms->flow_id);
 		return -EBUSY;
 	}
 
@@ -553,8 +494,6 @@ int ulp_sc_mgr_entry_alloc(struct bnxt_ulp_mapper_parms *parms,
 	sce->handle = counter_handle;
 	sce->dir = tbl->direction;
 	ulp_sc_info->num_entries++;
-	pthread_mutex_unlock(&ulp_sc_info->sc_lock);
-
 	return 0;
 }
 
@@ -568,20 +507,17 @@ void ulp_sc_mgr_entry_free(struct bnxt_ulp_context *ulp,
 	if (!ulp_sc_info)
 		return;
 
-	pthread_mutex_lock(&ulp_sc_info->sc_lock);
-
 	sce = ulp_sc_info->stats_cache_tbl;
 	sce += fid;
 
 	if (!(sce->flags & ULP_SC_ENTRY_FLAG_VALID)) {
-		pthread_mutex_unlock(&ulp_sc_info->sc_lock);
+		BNXT_DRV_DBG(ERR, "Entry already free, invalid flow id %u\n",
+			     fid);
 		return;
 	}
 
 	sce->flags = 0;
 	ulp_sc_info->num_entries--;
-
-	pthread_mutex_unlock(&ulp_sc_info->sc_lock);
 }
 
 /*
@@ -606,11 +542,7 @@ void ulp_sc_mgr_set_pc_idx(struct bnxt_ulp_context *ctxt,
 	if (!ulp_sc_info)
 		return;
 
-	pthread_mutex_lock(&ulp_sc_info->sc_lock);
-
 	sce = ulp_sc_info->stats_cache_tbl;
 	sce += flow_id;
 	sce->pc_idx = pc_idx & ULP_SC_PC_IDX_MASK;
-
-	pthread_mutex_unlock(&ulp_sc_info->sc_lock);
 }

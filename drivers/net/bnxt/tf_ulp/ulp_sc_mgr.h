@@ -35,12 +35,12 @@ struct ulp_sc_tfc_stats_cache_entry {
 
 struct bnxt_ulp_sc_info {
 	struct ulp_sc_tfc_stats_cache_entry *stats_cache_tbl;
-	uint8_t                 *read_data;
-	uint32_t		flags;
-	uint32_t		num_entries;
-	pthread_mutex_t		sc_lock;
-	uint32_t		num_counters;
-	rte_thread_t            tid;
+	uint8_t		*read_data;
+	uint32_t	flags;
+	uint32_t	num_entries;
+	uint32_t	num_counters;
+	uint32_t	cache_tbl_size;
+	rte_thread_t	tid;
 	const struct bnxt_ulp_sc_core_ops *sc_ops;
 };
 
