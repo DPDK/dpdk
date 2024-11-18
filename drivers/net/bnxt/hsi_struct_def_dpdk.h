@@ -15617,7 +15617,46 @@ struct hwrm_func_qcaps_output {
 	 * (SR-IOV) disabled or on a VF.
 	 */
 	uint32_t	roce_vf_max_gid;
-	uint8_t	unused_3[3];
+	uint32_t	flags_ext3;
+	/*
+	 * When this bit is '1', firmware supports the driver using
+	 * FUNC_CFG (or FUNC_VF_CFG) to decrease resource reservations
+	 * while some resources are still allocated. An error is returned
+	 * if the driver tries to set the reservation to be less than the
+	 * number of allocated resources.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_RM_RSV_WHILE_ALLOC_CAP \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the PF requires an L2 filter to be
+	 * allocated by the driver using HWRM_CFA_L2_FILTER_ALLOC after
+	 * bringing the interface up, before traffic is sent.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_REQUIRE_L2_FILTER \
+		UINT32_C(0x2)
+	/*
+	 * When set to 1, indicates the field max_roce_vfs in the structure
+	 * is valid. If this bit is 0, the driver should not use the
+	 * 'max_roce_vfs' field.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_MAX_ROCE_VFS_SUPPORTED \
+		UINT32_C(0x4)
+	/*
+	 * When set to 1, indicates the field 'rx_rate_profile_sel' in
+	 * RING_ALLOC can specify a valid RX rate profile when allocating
+	 * RX or RX aggregation rings. If this bit is 0, the driver
+	 * should not use the 'rx_rate_profile_sel' field.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT3_RX_RATE_PROFILE_SEL_SUPPORTED \
+		UINT32_C(0x8)
+	/*
+	 * The number of VFs that can be used for RoCE on the function. If less
+	 * than max_vfs, roce vfs will be assigned to the first VF of the
+	 * function and be contiguous.
+	 * This is valid only on the PF with SR-IOV and RDMA enabled.
+	 */
+	uint16_t	max_roce_vfs;
+	uint8_t	unused_3[5];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
@@ -45026,6 +45065,14 @@ struct hwrm_ring_alloc_input {
 	 */
 	#define HWRM_RING_ALLOC_INPUT_ENABLES_STEERING_TAG_VALID \
 		UINT32_C(0x800)
+	/*
+	 * This bit must be '1' for the rx_rate_profile_sel field to
+	 * be configured. This should only be used when
+	 * 'rx_rate_profile_sel_supported' bit is set in flags_ext3
+	 * field of FUNC_QCAPS response.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_RX_RATE_PROFILE_VALID \
+		UINT32_C(0x1000)
 	/* Ring Type. */
 	uint8_t	ring_type;
 	/* L2 Completion Ring (CR) */
@@ -45362,7 +45409,27 @@ struct hwrm_ring_alloc_input {
 	#define HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_PRIMATE UINT32_C(0x4)
 	#define HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_LAST \
 		HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_PRIMATE
-	uint8_t	unused_4[2];
+	/* RX rate profile select */
+	uint8_t	rx_rate_profile_sel;
+	/*
+	 * Indicate default RX rate profile when allocating
+	 * RX or RX aggregation rings. This should only be
+	 * used when 'rx_rate_profile_sel_supported' bit is
+	 * set in flags_ext3 field of FUNC_QCAPS response.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_RX_RATE_PROFILE_SEL_DEFAULT \
+		UINT32_C(0x0)
+	/*
+	 * Indicate poll_mode RX rate profile when allocating
+	 * RX or RX aggregation rings. This should only be
+	 * used when 'rx_rate_profile_sel_supported' bit is
+	 * set in flags_ext3 field of FUNC_QCAPS response.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_RX_RATE_PROFILE_SEL_POLL_MODE \
+		UINT32_C(0x1)
+	#define HWRM_RING_ALLOC_INPUT_RX_RATE_PROFILE_SEL_LAST \
+		HWRM_RING_ALLOC_INPUT_RX_RATE_PROFILE_SEL_POLL_MODE
+	uint8_t	unused_4;
 	/*
 	 * The cq_handle is specified when allocating a completion ring. For
 	 * devices that support NQs, this cq_handle will be included in the
