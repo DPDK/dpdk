@@ -36,6 +36,7 @@ struct ulp_sc_tfc_stats_cache_entry {
 struct bnxt_ulp_sc_info {
 	struct ulp_sc_tfc_stats_cache_entry *stats_cache_tbl;
 	uint8_t		*read_data;
+	uint64_t	read_data_iova[ULP_SC_BATCH_SIZE];
 	uint32_t	flags;
 	uint32_t	num_entries;
 	uint32_t	num_counters;
@@ -48,7 +49,7 @@ struct bnxt_ulp_sc_core_ops {
 	int32_t
 	(*ulp_stats_cache_update)(struct tfc *tfcp,
 				  int dir,
-				  uint8_t *data,
+				  uint64_t *host_address,
 				  uint64_t handle,
 				  uint16_t *words,
 				  struct tfc_mpc_batch_info_t *batch_info,

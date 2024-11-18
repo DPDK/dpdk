@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include <sched.h>
+#include <unistd.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
@@ -56,7 +58,9 @@ int32_t ulp_sc_mgr_init(struct bnxt_ulp_context *ctxt)
 	struct bnxt_ulp_sc_info *ulp_sc_info;
 	uint32_t stats_cache_tbl_sz;
 	uint32_t dev_id;
+	uint8_t *data;
 	int rc;
+	int i;
 
 	if (!ctxt) {
 		BNXT_DRV_DBG(DEBUG, "Invalid ULP CTXT\n");
@@ -122,6 +126,12 @@ int32_t ulp_sc_mgr_init(struct bnxt_ulp_context *ctxt)
 		rte_free(ulp_sc_info->stats_cache_tbl);
 		rc = -ENOMEM;
 		goto error;
+	}
+
+	data = ulp_sc_info->read_data;
+	for (i = 0; i < ULP_SC_BATCH_SIZE; i++) {
+		ulp_sc_info->read_data_iova[i] = (uint64_t)rte_mem_virt2iova(data);
+		data += ULP_SC_PAGE_SIZE;
 	}
 
 	rc = ulp_sc_mgr_thread_start(ctxt);
@@ -241,12 +251,12 @@ static uint32_t ulp_stats_cache_main_loop(void *arg)
 					(uint64_t)sce;
 
 				rc = sc_ops->ulp_stats_cache_update(tfcp,
-								    sce->dir,
-								    data,
-								    sce->handle,
-								    &words,
-								    &batch_info,
-								    sce->reset);
+							    sce->dir,
+							    &ulp_sc_info->read_data_iova[batch],
+							    sce->handle,
+							    &words,
+							    &batch_info,
+							    sce->reset);
 				if (unlikely(rc)) {
 					/* Abort this batch */
 					PMD_DRV_LOG_LINE(ERR,
@@ -330,17 +340,38 @@ int32_t
 ulp_sc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 {
 	struct bnxt_ulp_sc_info *ulp_sc_info;
+	rte_thread_attr_t attr;
+	rte_cpuset_t mask;
+	size_t i;
 	int rc;
 
 	ulp_sc_info = bnxt_ulp_cntxt_ptr2_sc_info_get(ctxt);
 
 	if (ulp_sc_info && !(ulp_sc_info->flags & ULP_FLAG_SC_THREAD)) {
+		rte_thread_attr_init(&attr);
+
+		rte_thread_get_affinity(&mask);
+
+		for (i = 1; i < CPU_SETSIZE; i++) {
+			if (CPU_ISSET(i, &mask)) {
+				CPU_ZERO(&mask);
+				CPU_SET(i + 2, &mask);
+				break;
+			}
+		}
+
+		rc = rte_thread_attr_set_affinity(&attr, &mask);
+		if (rc)
+			return rc;
+
 		rc = rte_thread_create(&ulp_sc_info->tid,
-				       NULL,
+				       &attr,
 				       &ulp_stats_cache_main_loop,
 				       (void *)ctxt->cfg_data);
 		if (rc)
 			return rc;
+
+		rte_thread_set_prefixed_name(ulp_sc_info->tid, "ulp_sc_mgr");
 
 		ulp_sc_info->flags |= ULP_FLAG_SC_THREAD;
 	}

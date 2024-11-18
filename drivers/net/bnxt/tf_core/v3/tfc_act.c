@@ -367,7 +367,7 @@ int tfc_act_get_only_response(struct cfa_bld_mpcinfo *mpc_info,
 static int tfc_act_get_only(struct tfc *tfcp,
 			    struct tfc_mpc_batch_info_t *batch_info,
 			    const struct tfc_cmm_info *cmm_info,
-			    uint8_t *data,
+			    uint64_t *host_address,
 			    uint16_t *data_sz_words)
 {
 	int rc = 0;
@@ -378,7 +378,6 @@ static int tfc_act_get_only(struct tfc *tfcp,
 	uint32_t buff_len;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_READ_CMD_MAX_FLD] = { {0} };
 	uint32_t entry_offset;
-	uint64_t host_address;
 	struct bnxt_mpc_mbuf mpc_msg_in;
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	uint32_t record_size;
@@ -405,12 +404,10 @@ static int tfc_act_get_only(struct tfc *tfcp,
 	}
 
 	/* Check that data pointer is word aligned */
-	if (unlikely(((uint64_t)data)  & 0x3ULL)) {
+	if (unlikely(*host_address  & 0x3ULL)) {
 		PMD_DRV_LOG_LINE(ERR, "data pointer not word aligned");
 		return -EINVAL;
 	}
-
-	host_address = (uint64_t)rte_mem_virt2iova(data);
 
 	/* Check that MPC APIs are bound */
 	if (unlikely(mpc_info->mpcops == NULL)) {
@@ -450,7 +447,7 @@ static int tfc_act_get_only(struct tfc *tfcp,
 
 	fields_cmd[CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD].field_id =
 		CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD;
-	fields_cmd[CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD].val = host_address;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD].val = *host_address;
 
 	buff_len = TFC_MPC_MAX_TX_BYTES;
 
@@ -547,7 +544,7 @@ int tfc_act_get_clear_response(struct cfa_bld_mpcinfo *mpc_info,
 static int tfc_act_get_clear(struct tfc *tfcp,
 			     struct tfc_mpc_batch_info_t *batch_info,
 			     const struct tfc_cmm_info *cmm_info,
-			     uint8_t *data,
+			     uint64_t *host_address,
 			     uint16_t *data_sz_words,
 			     uint8_t clr_offset,
 			     uint8_t clr_size)
@@ -560,7 +557,6 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 	uint32_t buff_len;
 	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_READ_CLR_CMD_MAX_FLD] = { {0} };
 	uint32_t entry_offset;
-	uint64_t host_address;
 	struct bnxt_mpc_mbuf mpc_msg_in;
 	struct bnxt_mpc_mbuf mpc_msg_out;
 	uint32_t record_size;
@@ -589,12 +585,10 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 	}
 
 	/* Check that data pointer is word aligned */
-	if (unlikely(((uint64_t)data)  & 0x3ULL)) {
+	if (unlikely(*host_address  & 0x3ULL)) {
 		PMD_DRV_LOG_LINE(ERR, "data pointer not word aligned");
 		return -EINVAL;
 	}
-
-	host_address = (uint64_t)rte_mem_virt2iova(data);
 
 	/* Check that MPC APIs are bound */
 	if (unlikely(mpc_info->mpcops == NULL)) {
@@ -634,7 +628,7 @@ static int tfc_act_get_clear(struct tfc *tfcp,
 
 	fields_cmd[CFA_BLD_MPC_READ_CLR_CMD_HOST_ADDRESS_FLD].field_id =
 		CFA_BLD_MPC_READ_CLR_CMD_HOST_ADDRESS_FLD;
-	fields_cmd[CFA_BLD_MPC_READ_CLR_CMD_HOST_ADDRESS_FLD].val = host_address;
+	fields_cmd[CFA_BLD_MPC_READ_CLR_CMD_HOST_ADDRESS_FLD].val = *host_address;
 
 	for (i = clr_offset; i < clr_size; i++)
 		mask |= (1 << i);
@@ -700,7 +694,8 @@ int tfc_act_get(struct tfc *tfcp,
 		struct tfc_mpc_batch_info_t *batch_info,
 		const struct tfc_cmm_info *cmm_info,
 		struct tfc_cmm_clr *clr,
-		uint8_t *data, uint16_t *data_sz_words)
+		uint64_t *host_address,
+		uint16_t *data_sz_words)
 {
 	/* It's not an error to pass clr as a Null pointer, just means that read
 	 * and clear is not being requested.  Also allow the user to manage
@@ -718,14 +713,15 @@ int tfc_act_get(struct tfc *tfcp,
 		return tfc_act_get_clear(tfcp,
 					 batch_info,
 					 cmm_info,
-					 data, data_sz_words,
+					 host_address,
+					 data_sz_words,
 					 clr->offset_in_byte / 2,
 					 clr->sz_in_byte / 2);
 	} else {
 		return tfc_act_get_only(tfcp,
 					batch_info,
 					cmm_info,
-					data,
+					host_address,
 					data_sz_words);
 	}
 }

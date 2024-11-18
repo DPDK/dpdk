@@ -705,7 +705,9 @@ enum tfc_tbl_scope_bucket_factor {
 	TFC_TBL_SCOPE_BUCKET_FACTOR_4 = 4,
 	TFC_TBL_SCOPE_BUCKET_FACTOR_8 = 8,
 	TFC_TBL_SCOPE_BUCKET_FACTOR_16 = 16,
-	TFC_TBL_SCOPE_BUCKET_FACTOR_MAX = TFC_TBL_SCOPE_BUCKET_FACTOR_16
+	TFC_TBL_SCOPE_BUCKET_FACTOR_32 = 32,
+	TFC_TBL_SCOPE_BUCKET_FACTOR_64 = 64,
+	TFC_TBL_SCOPE_BUCKET_FACTOR_MAX = TFC_TBL_SCOPE_BUCKET_FACTOR_64
 };
 
 /**
@@ -1420,8 +1422,9 @@ int tfc_act_set(struct tfc *tfcp,
  * @param[in] cmm_clr
  *   Pointer to cmm clr
  *
- * @param[in,out] data
- *   Data read. Must be word aligned, i.e. [1:0] must be 0.
+ * @param[in,out] host_address
+ *   Data read. Must be word aligned, i.e. [1:0] must be 0. The address
+ *   must be the ret_mem_virt2iova() version of the virt address.
  *
  * @param[in,out] data_sz_words
  *   Data buffer size in words.	Size could be 8/16/24/32/64B
@@ -1437,7 +1440,8 @@ int tfc_act_get(struct tfc *tfcp,
 		struct tfc_mpc_batch_info_t *batch_info,
 		const struct tfc_cmm_info *cmm_info,
 		struct tfc_cmm_clr *clr,
-		uint8_t *data, uint16_t *data_sz_words);
+		uint64_t *host_address,
+		uint16_t *data_sz_words);
 
 /**
  * Free a CMM Resource

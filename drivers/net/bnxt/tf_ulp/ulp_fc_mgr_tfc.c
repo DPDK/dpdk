@@ -53,6 +53,7 @@ ulp_fc_tfc_update_accum_stats(__rte_unused struct bnxt_ulp_context *ctxt,
 }
 
 static uint8_t *data;
+static uint64_t virt2iova_data;
 
 static int32_t
 ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
@@ -84,6 +85,8 @@ ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
 			BNXT_DRV_DBG(ERR, "Failed to allocate dma buffer\n");
 			return -EINVAL;
 		}
+
+		virt2iova_data = (uint64_t)rte_mem_virt2iova(data);
 	}
 
 	/* Ensure that data is large enough to read words */
@@ -105,7 +108,7 @@ ulp_fc_tfc_flow_stat_get(struct bnxt_ulp_context *ctxt,
 		cmm_clr.sz_in_byte = sizeof(data64[ULP_FC_TFC_PKT_CNT_OFFS]) +
 			sizeof(data64[ULP_FC_TFC_BYTE_CNT_OFFS]);
 	}
-	rc = tfc_act_get(tfcp, NULL, &cmm_info, &cmm_clr, data, &word_size);
+	rc = tfc_act_get(tfcp, NULL, &cmm_info, &cmm_clr, &virt2iova_data, &word_size);
 	if (rc) {
 		BNXT_DRV_DBG(ERR,
 			     "Failed to read stat memory hndl=0x%" PRIx64 "\n",

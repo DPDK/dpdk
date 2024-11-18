@@ -24,7 +24,7 @@
 static int32_t
 ulp_sc_tfc_stats_cache_update(struct tfc *tfcp,
 			      int dir,
-			      uint8_t *data,
+			      uint64_t *host_address,
 			      uint64_t handle,
 			      uint16_t *words,
 			      struct tfc_mpc_batch_info_t *batch_info,
@@ -48,7 +48,7 @@ ulp_sc_tfc_stats_cache_update(struct tfc *tfcp,
 			 batch_info,
 			 &cmm_info,
 			 &cmm_clr,
-			 data,
+			 host_address,
 			 words);
 
 	return rc;
