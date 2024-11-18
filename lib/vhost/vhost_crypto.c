@@ -491,7 +491,7 @@ static __rte_always_inline struct virtio_crypto_inhdr *
 reach_inhdr(struct vhost_crypto_data_req *vc_req,
 		struct vhost_crypto_desc *head,
 		uint32_t max_n_descs)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	struct virtio_crypto_inhdr *inhdr;
 	struct vhost_crypto_desc *last = head + (max_n_descs - 1);
@@ -538,7 +538,7 @@ static __rte_always_inline void *
 get_data_ptr(struct vhost_crypto_data_req *vc_req,
 		struct vhost_crypto_desc *cur_desc,
 		uint8_t perm)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	void *data;
 	uint64_t dlen = cur_desc->len;
@@ -555,7 +555,7 @@ get_data_ptr(struct vhost_crypto_data_req *vc_req,
 static __rte_always_inline uint32_t
 copy_data_from_desc(void *dst, struct vhost_crypto_data_req *vc_req,
 	struct vhost_crypto_desc *desc, uint32_t size)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	uint64_t remain;
 	uint64_t addr;
@@ -586,7 +586,7 @@ static __rte_always_inline int
 copy_data(void *data, struct vhost_crypto_data_req *vc_req,
 	struct vhost_crypto_desc *head, struct vhost_crypto_desc **cur_desc,
 	uint32_t size, uint32_t max_n_descs)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	struct vhost_crypto_desc *desc = *cur_desc;
 	uint32_t left = size;
@@ -670,7 +670,7 @@ prepare_write_back_data(struct vhost_crypto_data_req *vc_req,
 		uint32_t offset,
 		uint64_t write_back_len,
 		uint32_t max_n_descs)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	struct vhost_crypto_writeback_data *wb_data, *head;
 	struct vhost_crypto_desc *desc = *cur_desc;
@@ -791,7 +791,7 @@ prepare_sym_cipher_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		struct virtio_crypto_cipher_data_req *cipher,
 		struct vhost_crypto_desc *head,
 		uint32_t max_n_descs)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	struct vhost_crypto_desc *desc = head;
 	struct vhost_crypto_writeback_data *ewb = NULL;
@@ -945,7 +945,7 @@ prepare_sym_chain_op(struct vhost_crypto *vcrypto, struct rte_crypto_op *op,
 		struct virtio_crypto_alg_chain_data_req *chain,
 		struct vhost_crypto_desc *head,
 		uint32_t max_n_descs)
-	__rte_shared_locks_required(&vc_req->vq->iotlb_lock)
+	__rte_requires_shared_capability(&vc_req->vq->iotlb_lock)
 {
 	struct vhost_crypto_desc *desc = head, *digest_desc;
 	struct vhost_crypto_writeback_data *ewb = NULL, *ewb2 = NULL;

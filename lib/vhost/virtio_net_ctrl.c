@@ -26,7 +26,7 @@ struct virtio_net_ctrl_elem {
 static int
 virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 		struct virtio_net_ctrl_elem *ctrl_elem)
-	__rte_shared_locks_required(&cvq->iotlb_lock)
+	__rte_requires_shared_capability(&cvq->iotlb_lock)
 {
 	uint16_t avail_idx, desc_idx, n_descs = 0;
 	uint64_t desc_len, desc_addr, desc_iova, data_len = 0;

@@ -11,28 +11,28 @@
 
 static __rte_always_inline void
 vhost_user_iotlb_rd_lock(struct vhost_virtqueue *vq)
-	__rte_shared_lock_function(&vq->iotlb_lock)
+	__rte_acquire_shared_capability(&vq->iotlb_lock)
 {
 	rte_rwlock_read_lock(&vq->iotlb_lock);
 }
 
 static __rte_always_inline void
 vhost_user_iotlb_rd_unlock(struct vhost_virtqueue *vq)
-	__rte_unlock_function(&vq->iotlb_lock)
+	__rte_release_shared_capability(&vq->iotlb_lock)
 {
 	rte_rwlock_read_unlock(&vq->iotlb_lock);
 }
 
 static __rte_always_inline void
 vhost_user_iotlb_wr_lock(struct vhost_virtqueue *vq)
-	__rte_exclusive_lock_function(&vq->iotlb_lock)
+	__rte_acquire_capability(&vq->iotlb_lock)
 {
 	rte_rwlock_write_lock(&vq->iotlb_lock);
 }
 
 static __rte_always_inline void
 vhost_user_iotlb_wr_unlock(struct vhost_virtqueue *vq)
-	__rte_unlock_function(&vq->iotlb_lock)
+	__rte_release_capability(&vq->iotlb_lock)
 {
 	rte_rwlock_write_unlock(&vq->iotlb_lock);
 }

@@ -422,7 +422,7 @@ rte_eth_dev_is_valid_port(uint16_t port_id)
 
 static int
 eth_is_valid_owner_id(uint64_t owner_id)
-	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
+	__rte_requires_capability(rte_mcfg_ethdev_get_lock())
 {
 	if (owner_id == RTE_ETH_DEV_NO_OWNER ||
 	    eth_dev_shared_data->next_owner_id <= owner_id)
@@ -473,7 +473,7 @@ rte_eth_dev_owner_new(uint64_t *owner_id)
 static int
 eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 		       const struct rte_eth_dev_owner *new_owner)
-	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
+	__rte_requires_capability(rte_mcfg_ethdev_get_lock())
 {
 	struct rte_eth_dev *ethdev = &rte_eth_devices[port_id];
 	struct rte_eth_dev_owner *port_owner;

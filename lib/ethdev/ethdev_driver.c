@@ -48,7 +48,7 @@ eth_dev_allocated(const char *name)
 
 static uint16_t
 eth_dev_find_free_port(void)
-	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
+	__rte_requires_capability(rte_mcfg_ethdev_get_lock())
 {
 	uint16_t i;
 
@@ -65,7 +65,7 @@ eth_dev_find_free_port(void)
 
 static struct rte_eth_dev *
 eth_dev_get(uint16_t port_id)
-	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
+	__rte_requires_capability(rte_mcfg_ethdev_get_lock())
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 

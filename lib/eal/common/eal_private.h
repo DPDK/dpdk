@@ -124,7 +124,7 @@ int rte_eal_memseg_init(void);
  *   0 on success, negative on error
  */
 int rte_eal_memory_init(void)
-	__rte_shared_locks_required(rte_mcfg_mem_get_lock());
+	__rte_requires_shared_capability(rte_mcfg_mem_get_lock());
 
 /**
  * Configure timers

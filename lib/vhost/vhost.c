@@ -390,7 +390,7 @@ cleanup_device(struct virtio_net *dev, int destroy)
 
 static void
 vhost_free_async_mem(struct vhost_virtqueue *vq)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_requires_capability(&vq->access_lock)
 {
 	if (!vq->async)
 		return;
@@ -439,7 +439,7 @@ free_device(struct virtio_net *dev)
 
 static __rte_always_inline int
 log_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
-	__rte_shared_locks_required(&vq->iotlb_lock)
+	__rte_requires_shared_capability(&vq->iotlb_lock)
 {
 	if (likely(!(vq->ring_addrs.flags & (1 << VHOST_VRING_F_LOG))))
 		return 0;
@@ -488,7 +488,7 @@ translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 static int
 vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
-	__rte_shared_locks_required(&vq->iotlb_lock)
+	__rte_requires_shared_capability(&vq->iotlb_lock)
 {
 	uint64_t req_size, size;
 
@@ -527,7 +527,7 @@ vring_translate_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 static int
 vring_translate_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
-	__rte_shared_locks_required(&vq->iotlb_lock)
+	__rte_requires_shared_capability(&vq->iotlb_lock)
 {
 	uint64_t req_size, size;
 
@@ -1772,7 +1772,7 @@ rte_vhost_extern_callback_register(int vid,
 
 static __rte_always_inline int
 async_channel_register(struct virtio_net *dev, struct vhost_virtqueue *vq)
-	__rte_exclusive_locks_required(&vq->access_lock)
+	__rte_requires_capability(&vq->access_lock)
 {
 	struct vhost_async *async;
 	int node = vq->numa_node;
