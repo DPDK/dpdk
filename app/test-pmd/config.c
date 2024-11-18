@@ -3882,7 +3882,8 @@ port_flow_update(portid_t port_id, uint32_t rule_id,
 		 const struct rte_flow_action *actions, bool is_user_id)
 {
 	struct rte_port *port;
-	struct port_flow **flow_list;
+	struct port_flow **flow_list, *uf;
+	struct rte_flow_action_age *age = age_action_get(actions);
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
@@ -3897,6 +3898,16 @@ port_flow_update(portid_t port_id, uint32_t rule_id,
 			flow_list = &flow->next;
 			continue;
 		}
+
+		/* Update flow action(s) with new action(s) */
+		uf = port_flow_new(flow->rule.attr_ro, flow->rule.pattern_ro, actions, &error);
+		if (!uf)
+			return port_flow_complain(&error);
+		if (age) {
+			flow->age_type = ACTION_AGE_CONTEXT_TYPE_FLOW;
+			age->context = &flow->age_type;
+		}
+
 		/*
 		 * Poisoning to make sure PMDs update it in case
 		 * of error.
@@ -3913,6 +3924,14 @@ port_flow_update(portid_t port_id, uint32_t rule_id,
 			printf("Flow rule #%"PRIu64
 			       " updated with new actions\n",
 			       flow->id);
+
+		uf->next = flow->next;
+		uf->id = flow->id;
+		uf->user_id = flow->user_id;
+		uf->flow = flow->flow;
+		*flow_list = uf;
+
+		free(flow);
 		return 0;
 	}
 	printf("Failed to find flow %"PRIu32"\n", rule_id);
