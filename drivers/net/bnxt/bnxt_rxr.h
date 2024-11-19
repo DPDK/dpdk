@@ -535,6 +535,6 @@ bnxt_parse_csum_v3(struct rte_mbuf *mbuf, struct rx_pkt_cmpl_hi *rxcmp1)
 	uint16_t error_v2 = rte_le_to_cpu_16(v3_cmp->errors_v2);
 	uint32_t flags2 = rte_le_to_cpu_32(v3_cmp->flags2);
 
-	mbuf->ol_flags |= bnxt_parse_csum_fields_v3(flags2, error_v2);
+	mbuf->ol_flags = bnxt_parse_csum_fields_v3(flags2, error_v2);
 }
 #endif /*  _BNXT_RXR_H_ */
