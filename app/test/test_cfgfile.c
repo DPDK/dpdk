@@ -108,7 +108,8 @@ test_cfgfile_sample1(void)
 	ret = rte_cfgfile_close(cfgfile);
 	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
 
 	return 0;
 }
@@ -137,7 +138,8 @@ test_cfgfile_sample2(void)
 	ret = rte_cfgfile_close(cfgfile);
 	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
 
 	return 0;
 }
@@ -173,7 +175,8 @@ test_cfgfile_realloc_sections(void)
 	TEST_ASSERT(strcmp("value8_section9", value) == 0,
 		    "key unexpected value: %s", value);
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
 
 	char tmp[PATH_MAX] = "/tmp/";
 #ifdef RTE_EXEC_ENV_WINDOWS
@@ -184,7 +187,9 @@ test_cfgfile_realloc_sections(void)
 
 	ret = rte_cfgfile_save(cfgfile, filename);
 	TEST_ASSERT_SUCCESS(ret, "Failed to save to %s", filename);
-	remove(filename);
+
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
 
 	ret = rte_cfgfile_close(cfgfile);
 	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
@@ -205,7 +210,9 @@ test_cfgfile_invalid_section_header(void)
 	cfgfile = rte_cfgfile_load(filename, 0);
 	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
@@ -227,7 +234,9 @@ test_cfgfile_invalid_comment(void)
 	cfgfile = rte_cfgfile_load_with_params(filename, 0, &params);
 	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
@@ -244,7 +253,9 @@ test_cfgfile_invalid_key_value_pair(void)
 	cfgfile = rte_cfgfile_load(filename, 0);
 	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
@@ -277,7 +288,9 @@ test_cfgfile_empty_key_value_pair(void)
 	ret = rte_cfgfile_close(cfgfile);
 	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
@@ -294,7 +307,9 @@ test_cfgfile_missing_section(void)
 	cfgfile = rte_cfgfile_load(filename, 0);
 	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
@@ -328,7 +343,9 @@ test_cfgfile_global_properties(void)
 	ret = rte_cfgfile_close(cfgfile);
 	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
@@ -351,7 +368,9 @@ test_cfgfile_empty_file(void)
 	ret = rte_cfgfile_close(cfgfile);
 	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
 
-	remove(filename);
+	ret = remove(filename);
+	TEST_ASSERT_SUCCESS(ret, "Failed to remove file");
+
 	return 0;
 }
 
