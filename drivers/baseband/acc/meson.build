@@ -26,4 +26,4 @@ deps += ['bus_pci']
 
 sources = files('rte_acc100_pmd.c', 'rte_vrb_pmd.c')
 
-headers = files('rte_acc_cfg.h')
+headers = files('rte_acc_cfg.h', 'rte_acc_common_cfg.h')
