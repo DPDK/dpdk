@@ -11,8 +11,10 @@
 #ifndef _PMD_CNXK_CRYPTO_H_
 #define _PMD_CNXK_CRYPTO_H_
 
+#include <stdbool.h>
 #include <stdint.h>
 
+#include <rte_compat.h>
 #include <rte_crypto.h>
 #include <rte_security.h>
 

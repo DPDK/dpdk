@@ -15,6 +15,7 @@
  */
 
 #include <stdio.h>
+
 #include <rte_compat.h>
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
@@ -184,6 +185,7 @@ __rte_experimental
 static inline void
 rte_pmd_ifd_dump_proto_xtr_metadata(struct rte_mbuf *m)
 {
+#ifdef ALLOW_EXPERIMENTAL_API
 	union rte_pmd_ifd_proto_xtr_metadata data;
 
 	if (!rte_pmd_ifd_dynf_proto_xtr_metadata_avail())
@@ -243,6 +245,10 @@ rte_pmd_ifd_dump_proto_xtr_metadata(struct rte_mbuf *m)
 	else if (m->ol_flags & RTE_IAVF_PKT_RX_DYNF_PROTO_XTR_IP_OFFSET)
 		printf(" - Flexible descriptor's Extraction: ip_offset=%u",
 		       data.ip_ofs);
+#else
+	RTE_SET_USED(m);
+	RTE_VERIFY(false);
+#endif
 }
 
 #ifdef __cplusplus
