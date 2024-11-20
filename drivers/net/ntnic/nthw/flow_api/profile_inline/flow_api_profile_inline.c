@@ -3057,6 +3057,10 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 	for (unsigned int i = 0; i < fd->modify_field_count; ++i) {
 		switch (fd->modify_field[i].select) {
 		case CPY_SELECT_DSCP_IPV4:
+		case CPY_SELECT_DSCP_IPV6:
+			fh->flm_dscp = fd->modify_field[i].value8[0];
+			break;
+
 		case CPY_SELECT_RQI_QFI:
 			fh->flm_rqi = (fd->modify_field[i].value8[0] >> 6) & 0x1;
 			fh->flm_qfi = fd->modify_field[i].value8[0] & 0x3f;
