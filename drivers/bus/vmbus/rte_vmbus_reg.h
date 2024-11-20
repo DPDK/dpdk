@@ -6,6 +6,11 @@
 #ifndef _VMBUS_REG_H_
 #define _VMBUS_REG_H_
 
+#include <stdint.h>
+
+#include <rte_common.h>
+#include <rte_uuid.h>
+
 /*
  * Hyper-V SynIC message format.
  */
