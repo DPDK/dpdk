@@ -5,6 +5,9 @@
 #ifndef RTE_PMD_PRIVATE_MLX5_H_
 #define RTE_PMD_PRIVATE_MLX5_H_
 
+#include <stdint.h>
+
+#include <rte_byteorder.h>
 #include <rte_compat.h>
 
 /**
