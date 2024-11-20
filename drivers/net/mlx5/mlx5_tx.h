@@ -18,6 +18,7 @@
 #include <mlx5_common_mr.h>
 
 #include "mlx5.h"
+#include "mlx5_rx.h"
 #include "mlx5_autoconf.h"
 
 /* TX burst subroutines return codes. */
@@ -359,6 +360,35 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	ci += mts;
 	ci >>= 64 - MLX5_CQ_INDEX_WIDTH;
 	return ci;
+}
+
+/**
+ * Read real time clock counter directly from the device PCI BAR area.
+ * The PCI BAR must be mapped to the process memory space at initialization.
+ *
+ * @param dev
+ *   Device to read clock counter from
+ *
+ * @return
+ *   0 - if HCA BAR is not supported or not mapped.
+ *   !=0 - read 64-bit value of real-time in UTC formatv (nanoseconds)
+ */
+static __rte_always_inline uint64_t mlx5_read_pcibar_clock(struct rte_eth_dev *dev)
+{
+	struct mlx5_proc_priv *ppriv = dev->process_private;
+
+	if (ppriv && ppriv->hca_bar) {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		struct mlx5_dev_ctx_shared *sh = priv->sh;
+		uint64_t *hca_ptr = (uint64_t *)(ppriv->hca_bar) +
+				  __mlx5_64_off(initial_seg, real_time);
+		uint64_t ts = __atomic_load_n(hca_ptr,  __ATOMIC_SEQ_CST);
+
+		ts = rte_be_to_cpu_64(ts);
+		ts = mlx5_txpp_convert_rx_ts(sh, ts);
+		return ts;
+	}
+	return 0;
 }
 
 /**
