@@ -11,9 +11,12 @@
 #include "flow_api.h"
 #include "stream_binary_flow_api.h"
 
+#define ENABLE_FRAGMENTATION 1
 #define DISABLE_FRAGMENTATION 0
 #define IPV4_DF_DROP 1
+#define IPV4_DF_FORWARD 0
 #define IPV6_DROP 1
+#define IPV6_FRAGMENT 0
 
 /*
  * Management
