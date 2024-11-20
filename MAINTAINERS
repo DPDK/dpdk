@@ -493,6 +493,7 @@ M: Anoob Joseph <anoobj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/security/
 F: doc/guides/prog_guide/rte_security.rst
+F: doc/guides/howto/security.rst
 F: app/test/test_security*
 
 Compression API

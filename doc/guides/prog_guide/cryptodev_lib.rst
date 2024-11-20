@@ -10,6 +10,7 @@ APIs which support a number of different Crypto operations. The framework
 currently only supports cipher, authentication, chained cipher/authentication
 and AEAD symmetric and asymmetric Crypto operations.
 
+The usages in security protocols are discussed in the :doc:`../howto/security` guide.
 
 Design Principles
 -----------------
