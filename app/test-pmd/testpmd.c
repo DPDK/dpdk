@@ -4080,15 +4080,11 @@ const uint16_t vlan_tags[] = {
 		24, 25, 26, 27, 28, 29, 30, 31
 };
 
-static  int
-get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
-		 enum dcb_mode_enable dcb_mode,
-		 enum rte_eth_nb_tcs num_tcs,
-		 uint8_t pfc_en)
+static void
+get_eth_dcb_conf(struct rte_eth_conf *eth_conf, enum dcb_mode_enable dcb_mode,
+		 enum rte_eth_nb_tcs num_tcs, uint8_t pfc_en)
 {
 	uint8_t i;
-	int32_t rc;
-	struct rte_eth_rss_conf rss_conf;
 
 	/*
 	 * Builds up the correct configuration for dcb+vt based on the vlan tags array
@@ -4130,12 +4126,6 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		struct rte_eth_dcb_tx_conf *tx_conf =
 				&eth_conf->tx_adv_conf.dcb_tx_conf;
 
-		memset(&rss_conf, 0, sizeof(struct rte_eth_rss_conf));
-
-		rc = rte_eth_dev_rss_hash_conf_get(pid, &rss_conf);
-		if (rc != 0)
-			return rc;
-
 		rx_conf->nb_tcs = num_tcs;
 		tx_conf->nb_tcs = num_tcs;
 
@@ -4147,7 +4137,6 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 		eth_conf->rxmode.mq_mode =
 				(enum rte_eth_rx_mq_mode)
 					(rx_mq_mode & RTE_ETH_MQ_RX_DCB_RSS);
-		eth_conf->rx_adv_conf.rss_conf = rss_conf;
 		eth_conf->txmode.mq_mode = RTE_ETH_MQ_TX_DCB;
 	}
 
@@ -4156,8 +4145,6 @@ get_eth_dcb_conf(portid_t pid, struct rte_eth_conf *eth_conf,
 				RTE_ETH_DCB_PG_SUPPORT | RTE_ETH_DCB_PFC_SUPPORT;
 	else
 		eth_conf->dcb_capability_en = RTE_ETH_DCB_PG_SUPPORT;
-
-	return 0;
 }
 
 int
@@ -4180,10 +4167,9 @@ init_port_dcb_config(portid_t pid,
 	/* retain the original device configuration. */
 	memcpy(&port_conf, &rte_port->dev_conf, sizeof(struct rte_eth_conf));
 
-	/*set configuration of DCB in vt mode and DCB in non-vt mode*/
-	retval = get_eth_dcb_conf(pid, &port_conf, dcb_mode, num_tcs, pfc_en);
-	if (retval < 0)
-		return retval;
+	/* set configuration of DCB in vt mode and DCB in non-vt mode */
+	get_eth_dcb_conf(&port_conf, dcb_mode, num_tcs, pfc_en);
+
 	port_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_VLAN_FILTER;
 	/* remove RSS HASH offload for DCB in vt mode */
 	if (port_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_VMDQ_DCB) {
