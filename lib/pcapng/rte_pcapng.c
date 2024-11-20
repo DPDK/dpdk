@@ -33,8 +33,8 @@
 /* conversion from DPDK speed to PCAPNG */
 #define PCAPNG_MBPS_SPEED 1000000ull
 
-/* upper bound for section, stats and interface blocks */
-#define PCAPNG_BLKSIZ	2048
+/* upper bound for section, stats and interface blocks (in uint32_t) */
+#define PCAPNG_BLKSIZ	(2048 / sizeof(uint32_t))
 
 /* Format of the capture file handle */
 struct rte_pcapng {
@@ -144,7 +144,7 @@ pcapng_section_block(rte_pcapng_t *self,
 {
 	struct pcapng_section_header *hdr;
 	struct pcapng_option *opt;
-	uint8_t buf[PCAPNG_BLKSIZ];
+	uint32_t buf[PCAPNG_BLKSIZ];
 	uint32_t len;
 
 	len = sizeof(*hdr);
@@ -212,7 +212,7 @@ rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
 	struct pcapng_option *opt;
 	const uint8_t tsresol = 9;	/* nanosecond resolution */
 	uint32_t len;
-	uint8_t buf[PCAPNG_BLKSIZ];
+	uint32_t buf[PCAPNG_BLKSIZ];
 	char ifname_buf[IF_NAMESIZE];
 	char ifhw[256];
 	uint64_t speed = 0;
@@ -330,7 +330,7 @@ rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port_id,
 	uint64_t start_time = self->offset_ns;
 	uint64_t sample_time;
 	uint32_t optlen, len;
-	uint8_t buf[PCAPNG_BLKSIZ];
+	uint32_t buf[PCAPNG_BLKSIZ];
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
