@@ -23,6 +23,9 @@ includes = [
         include_directories('nim/'),
 ]
 
+# headers
+headers = files('rte_pmd_ntnic.h')
+
 # all sources
 sources = files(
         'adapter/nt4ga_adapter.c',
