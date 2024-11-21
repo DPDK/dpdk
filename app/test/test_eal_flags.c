@@ -677,8 +677,8 @@ test_missing_c_flag(void)
 
 	if (rte_lcore_is_enabled(0) && rte_lcore_is_enabled(1) &&
 	    rte_lcore_is_enabled(2) && rte_lcore_is_enabled(3) &&
-	    rte_lcore_is_enabled(3) && rte_lcore_is_enabled(5) &&
-	    rte_lcore_is_enabled(4) && rte_lcore_is_enabled(7) &&
+	    rte_lcore_is_enabled(4) && rte_lcore_is_enabled(5) &&
+	    rte_lcore_is_enabled(6) && rte_lcore_is_enabled(7) &&
 	    launch_proc(argv29) != 0) {
 		printf("Error - "
 		       "process did not run ok with valid corelist value\n");
