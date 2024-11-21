@@ -93,8 +93,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			-1, -1,           /* skip vlan_tci */
 			11, 10,  9,  8};  /* bswap32, rss */
 	/* Restore the compressed count. Must be 16 bits. */
-	const uint16_t mcqe_n = t_pkt->data_len +
-		(rxq->crc_present * RTE_ETHER_CRC_LEN);
+	const uint16_t mcqe_n = rte_be_to_cpu_32(cq->byte_cnt);
 	const __vector unsigned char rearm =
 		(__vector unsigned char)vec_vsx_ld(0,
 		(signed int const *)&t_pkt->rearm_data);
