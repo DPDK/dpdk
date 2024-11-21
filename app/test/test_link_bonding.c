@@ -792,7 +792,7 @@ test_set_primary_member(void)
 				&read_mac_addr),
 				"Failed to get mac address (port %d)",
 				test_params->bonding_port_id);
-		TEST_ASSERT_SUCCESS(memcmp(&read_mac_addr, &read_mac_addr,
+		TEST_ASSERT_SUCCESS(memcmp(expected_mac_addr, &read_mac_addr,
 				sizeof(read_mac_addr)),
 				"bonding port mac address not set to that of primary port\n");
 
