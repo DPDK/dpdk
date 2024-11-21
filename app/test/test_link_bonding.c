@@ -787,7 +787,7 @@ test_set_primary_slave(void)
 		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
 				"Failed to get mac address (port %d)",
 				test_params->bonded_port_id);
-		TEST_ASSERT_SUCCESS(memcmp(&read_mac_addr, &read_mac_addr,
+		TEST_ASSERT_SUCCESS(memcmp(expected_mac_addr, &read_mac_addr,
 				sizeof(read_mac_addr)),
 				"bonded port mac address not set to that of primary port\n");
 
