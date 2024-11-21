@@ -12892,7 +12892,7 @@ comp_names_to_index(struct context *ctx, const struct token *token,
 	RTE_SET_USED(token);
 	if (!buf)
 		return names_size;
-	if (names[ent] && ent < names_size)
+	if (ent < names_size && names[ent] != NULL)
 		return rte_strscpy(buf, names[ent], size);
 	return -1;
 
