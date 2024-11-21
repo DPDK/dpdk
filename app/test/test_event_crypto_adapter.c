@@ -1154,21 +1154,17 @@ configure_cryptodev(void)
 
 static inline void
 evdev_set_conf_values(struct rte_event_dev_config *dev_conf,
-			struct rte_event_dev_info *info)
+		      const struct rte_event_dev_info *info)
 {
-	memset(dev_conf, 0, sizeof(struct rte_event_dev_config));
-	dev_conf->dequeue_timeout_ns = info->min_dequeue_timeout_ns;
-	dev_conf->nb_event_ports = NB_TEST_PORTS;
-	dev_conf->nb_event_queues = NB_TEST_QUEUES;
-	dev_conf->nb_event_queue_flows = info->max_event_queue_flows;
-	dev_conf->nb_event_port_dequeue_depth =
-			info->max_event_port_dequeue_depth;
-	dev_conf->nb_event_port_enqueue_depth =
-			info->max_event_port_enqueue_depth;
-	dev_conf->nb_event_port_enqueue_depth =
-			info->max_event_port_enqueue_depth;
-	dev_conf->nb_events_limit =
-			info->max_num_events;
+	*dev_conf = (struct rte_event_dev_config) {
+		.dequeue_timeout_ns = info->min_dequeue_timeout_ns,
+		.nb_event_ports = NB_TEST_PORTS,
+		.nb_event_queues = NB_TEST_QUEUES,
+		.nb_event_queue_flows = info->max_event_queue_flows,
+		.nb_event_port_dequeue_depth = info->max_event_port_dequeue_depth,
+		.nb_event_port_enqueue_depth = info->max_event_port_enqueue_depth,
+		.nb_events_limit = info->max_num_events,
+	};
 }
 
 static int
