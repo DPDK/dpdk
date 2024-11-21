@@ -2288,7 +2288,7 @@ port_meter_policy_add(portid_t port_id, uint32_t policy_id,
 		for (act_n = 0, start = act;
 			act->type != RTE_FLOW_ACTION_TYPE_END; act++)
 			act_n++;
-		if (act_n && act->type == RTE_FLOW_ACTION_TYPE_END)
+		if (act_n > 0)
 			policy.actions[i] = start;
 		else
 			policy.actions[i] = NULL;
@@ -7338,4 +7338,3 @@ show_mcast_macs(portid_t port_id)
 		printf("  %s\n", buf);
 	}
 }
-
