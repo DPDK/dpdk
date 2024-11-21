@@ -12253,10 +12253,7 @@ again:
 		if (flags->skip_sess_destroy && sec_session_outb == NULL)
 			sec_session_outb = ut_params->sec_session;
 
-		if (flags->zero_len &&
-		    ((flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE) ||
-		    (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE) ||
-		    (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE))) {
+		if (flags->zero_len && flags->content_type != TLS_RECORD_TEST_CONTENT_TYPE_APP) {
 			if (ret == TEST_SUCCESS)
 				return TEST_FAILED;
 			goto skip_decrypt;
