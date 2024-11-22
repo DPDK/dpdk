@@ -168,7 +168,8 @@ enum flow_nic_err_msg_e {
 	ERR_ACTION_MULTIPLE_PORT_ID_UNSUPPORTED = 40,
 	ERR_RSS_TOO_LONG_KEY = 41,
 	ERR_ACTION_AGE_UNSUPPORTED_GROUP_0 = 42,
-	ERR_MSG_NO_MSG
+	ERR_MSG_NO_MSG = 43,
+	ERR_MSG_END
 };
 
 void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error);

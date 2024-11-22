@@ -19,27 +19,30 @@
 	}
 
 const char *dbg_res_descr[] = {
-	/* RES_QUEUE */ "RES_QUEUE",
-	/* RES_CAT_CFN */ "RES_CAT_CFN",
-	/* RES_CAT_COT */ "RES_CAT_COT",
-	/* RES_CAT_EXO */ "RES_CAT_EXO",
-	/* RES_CAT_LEN */ "RES_CAT_LEN",
-	/* RES_KM_FLOW_TYPE */ "RES_KM_FLOW_TYPE",
-	/* RES_KM_CATEGORY */ "RES_KM_CATEGORY",
-	/* RES_HSH_RCP */ "RES_HSH_RCP",
-	/* RES_PDB_RCP */ "RES_PDB_RCP",
-	/* RES_QSL_RCP */ "RES_QSL_RCP",
-	/* RES_QSL_LTX */ "RES_QSL_LTX",
-	/* RES_QSL_QST */ "RES_QSL_QST",
-	/* RES_SLC_LR_RCP */ "RES_SLC_LR_RCP",
-	/* RES_FLM_FLOW_TYPE */ "RES_FLM_FLOW_TYPE",
-	/* RES_FLM_RCP */ "RES_FLM_RCP",
-	/* RES_TPE_RCP */ "RES_TPE_RCP",
-	/* RES_TPE_EXT */ "RES_TPE_EXT",
-	/* RES_TPE_RPL */ "RES_TPE_RPL",
-	/* RES_COUNT */ "RES_COUNT",
-	/* RES_INVALID */ "RES_INVALID"
+	[RES_QUEUE] = "RES_QUEUE",
+	[RES_CAT_CFN] = "RES_CAT_CFN",
+	[RES_CAT_COT] = "RES_CAT_COT",
+	[RES_CAT_EXO] = "RES_CAT_EXO",
+	[RES_CAT_LEN] = "RES_CAT_LEN",
+	[RES_KM_FLOW_TYPE] = "RES_KM_FLOW_TYPE",
+	[RES_KM_CATEGORY] = "RES_KM_CATEGORY",
+	[RES_HSH_RCP] = "RES_HSH_RCP",
+	[RES_PDB_RCP] = "RES_PDB_RCP",
+	[RES_QSL_RCP] = "RES_QSL_RCP",
+	[RES_QSL_QST] = "RES_QSL_QST",
+	[RES_SLC_LR_RCP] = "RES_SLC_LR_RCP",
+	[RES_FLM_FLOW_TYPE] = "RES_FLM_FLOW_TYPE",
+	[RES_FLM_RCP] = "RES_FLM_RCP",
+	[RES_TPE_RCP] = "RES_TPE_RCP",
+	[RES_TPE_EXT] = "RES_TPE_EXT",
+	[RES_TPE_RPL] = "RES_TPE_RPL",
+	[RES_SCRUB_RCP] = "RES_SCRUB_RCP",
+	[RES_COUNT] = "RES_COUNT",
+	[RES_INVALID] = "RES_INVALID",
 };
+
+static_assert(RTE_DIM(dbg_res_descr) == RES_END,
+	"The list of debug descriptions is not fully completed");
 
 static struct flow_nic_dev *dev_base;
 static rte_spinlock_t base_mtx = RTE_SPINLOCK_INITIALIZER;
@@ -51,37 +54,98 @@ static rte_spinlock_t base_mtx = RTE_SPINLOCK_INITIALIZER;
 static const struct {
 	const char *message;
 } err_msg[] = {
-	/* 00 */ { "Operation successfully completed" },
-	/* 01 */ { "Operation failed" },
-	/* 02 */ { "Memory allocation failed" },
-	/* 03 */ { "Too many output destinations" },
-	/* 04 */ { "Too many output queues for RSS" },
-	/* 05 */ { "The VLAN TPID specified is not supported" },
-	/* 06 */ { "The VxLan Push header specified is not accepted" },
-	/* 07 */ { "While interpreting VxLan Pop action, could not find a destination port" },
-	/* 08 */ { "Failed in creating a HW-internal VTEP port" },
-	/* 09 */ { "Too many VLAN tag matches" },
-	/* 10 */ { "IPv6 invalid header specified" },
-	/* 11 */ { "Too many tunnel ports. HW limit reached" },
-	/* 12 */ { "Unknown or unsupported flow match element received" },
-	/* 13 */ { "Match failed because of HW limitations" },
-	/* 14 */ { "Match failed because of HW resource limitations" },
-	/* 15 */ { "Match failed because of too complex element definitions" },
-	/* 16 */ { "Action failed. To too many output destinations" },
-	/* 17 */ { "Action Output failed, due to HW resource exhaustion" },
-	/* 18 */ { "Push Tunnel Header action cannot output to multiple destination queues" },
-	/* 19 */ { "Inline action HW resource exhaustion" },
-	/* 20 */ { "Action retransmit/recirculate HW resource exhaustion" },
-	/* 21 */ { "Flow counter HW resource exhaustion" },
-	/* 22 */ { "Internal HW resource exhaustion to handle Actions" },
-	/* 23 */ { "Internal HW QSL compare failed" },
-	/* 24 */ { "Internal CAT CFN reuse failed" },
-	/* 25 */ { "Match variations too complex" },
-	/* 26 */ { "Match failed because of CAM/TCAM full" },
-	/* 27 */ { "Internal creation of a tunnel end point port failed" },
-	/* 28 */ { "Unknown or unsupported flow action received" },
-	/* 29 */ { "Removing flow failed" },
+	[ERR_SUCCESS] = {
+		"Operation successfully completed" },
+	[ERR_FAILED] = {
+		"Operation failed" },
+	[ERR_MEMORY] = {
+		"Memory allocation failed" },
+	[ERR_OUTPUT_TOO_MANY] = {
+		"Too many output destinations" },
+	[ERR_RSS_TOO_MANY_QUEUES] = {
+		"Too many output queues for RSS" },
+	[ERR_VLAN_TYPE_NOT_SUPPORTED] = {
+		"The VLAN TPID specified is not supported" },
+	[ERR_VXLAN_HEADER_NOT_ACCEPTED] = {
+		"The VxLan Push header specified is not accepted" },
+	[ERR_VXLAN_POP_INVALID_RECIRC_PORT] = {
+		"While interpreting VxLan Pop action, could not find a destination port" },
+	[ERR_VXLAN_POP_FAILED_CREATING_VTEP] = {
+		"Failed in creating a HW-internal VTEP port" },
+	[ERR_MATCH_VLAN_TOO_MANY] = {
+		"Too many VLAN tag matches" },
+	[ERR_MATCH_INVALID_IPV6_HDR] = {
+		"IPv6 invalid header specified" },
+	[ERR_MATCH_TOO_MANY_TUNNEL_PORTS] = {
+		"Too many tunnel ports. HW limit reached" },
+	[ERR_MATCH_INVALID_OR_UNSUPPORTED_ELEM] = {
+		"Unknown or unsupported flow match element received" },
+	[ERR_MATCH_FAILED_BY_HW_LIMITS] = {
+		"Match failed because of HW limitations" },
+	[ERR_MATCH_RESOURCE_EXHAUSTION] = {
+		"Match failed because of HW resource limitations" },
+	[ERR_MATCH_FAILED_TOO_COMPLEX] = {
+		"Match failed because of too complex element definitions" },
+	[ERR_ACTION_REPLICATION_FAILED] = {
+		"Action failed. To too many output destinations" },
+	[ERR_ACTION_OUTPUT_RESOURCE_EXHAUSTION] = {
+		"Action Output failed, due to HW resource exhaustion" },
+	[ERR_ACTION_TUNNEL_HEADER_PUSH_OUTPUT_LIMIT] = {
+		"Push Tunnel Header action cannot output to multiple destination queues" },
+	[ERR_ACTION_INLINE_MOD_RESOURCE_EXHAUSTION] = {
+		"Inline action HW resource exhaustion" },
+	[ERR_ACTION_RETRANSMIT_RESOURCE_EXHAUSTION] = {
+		"Action retransmit/recirculate HW resource exhaustion" },
+	[ERR_ACTION_FLOW_COUNTER_EXHAUSTION] = {
+		"Flow counter HW resource exhaustion" },
+	[ERR_ACTION_INTERNAL_RESOURCE_EXHAUSTION] = {
+		"Internal HW resource exhaustion to handle Actions" },
+	[ERR_INTERNAL_QSL_COMPARE_FAILED] = {
+		"Internal HW QSL compare failed" },
+	[ERR_INTERNAL_CAT_FUNC_REUSE_FAILED] = {
+		"Internal CAT CFN reuse failed" },
+	[ERR_MATCH_ENTROPHY_FAILED] = {
+		"Match variations too complex" },
+	[ERR_MATCH_CAM_EXHAUSTED] = {
+		"Match failed because of CAM/TCAM full" },
+	[ERR_INTERNAL_VIRTUAL_PORT_CREATION_FAILED] = {
+		"Internal creation of a tunnel end point port failed" },
+	[ERR_ACTION_UNSUPPORTED] = {
+		"Unknown or unsupported flow action received" },
+	[ERR_REMOVE_FLOW_FAILED] = {
+		"Removing flow failed" },
+	[ERR_ACTION_NO_OUTPUT_DEFINED_USE_DEFAULT] = {
+		"No output queue specified. Ignore this flow offload and uses default queue"},
+	[ERR_ACTION_NO_OUTPUT_QUEUE_FOUND] = {
+		"No output queue found"},
+	[ERR_MATCH_UNSUPPORTED_ETHER_TYPE] = {
+		"Unsupported EtherType or rejected caused by offload policy"},
+	[ERR_OUTPUT_INVALID] = {
+		"Destination port specified is invalid or not reachable from this NIC"},
+	[ERR_MATCH_PARTIAL_OFFLOAD_NOT_SUPPORTED] = {
+		"Partial offload is not supported in this configuration"},
+	[ERR_MATCH_CAT_CAM_EXHAUSTED] = {
+		"Match failed because of CAT CAM exhausted"},
+	[ERR_MATCH_KCC_KEY_CLASH] = {
+		"Match failed because of CAT CAM Key clashed with an existing KCC Key"},
+	[ERR_MATCH_CAT_CAM_FAILED] = {
+		"Match failed because of CAT CAM write failed"},
+	[ERR_PARTIAL_FLOW_MARK_TOO_BIG] = {
+		"Partial flow mark too big for device"},
+	[ERR_FLOW_PRIORITY_VALUE_INVALID] = {
+		"Invalid priority value"},
+	[ERR_ACTION_MULTIPLE_PORT_ID_UNSUPPORTED] = {
+		"Multiple port_id actions for one flow is not supported"},
+	[ERR_RSS_TOO_LONG_KEY] = {
+		"Too long hash key for RSS"},
+	[ERR_ACTION_AGE_UNSUPPORTED_GROUP_0] = {
+		"Action AGE is not supported for flow in group 0"},
+	[ERR_MSG_NO_MSG] = {
+		"Unknown error"},
 };
+
+static_assert(RTE_DIM(err_msg) == ERR_MSG_END,
+	"The list of error messages is not fully completed.");
 
 void flow_nic_set_error(enum flow_nic_err_msg_e msg, struct rte_flow_error *error)
 {

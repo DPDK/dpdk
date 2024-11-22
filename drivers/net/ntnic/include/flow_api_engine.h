@@ -44,7 +44,8 @@ enum res_type_e {
 	RES_TPE_RPL,
 	RES_SCRUB_RCP,
 	RES_COUNT,
-	RES_INVALID
+	RES_INVALID,
+	RES_END
 };
 
 /*
