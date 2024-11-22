@@ -6741,6 +6741,7 @@ ixgbe_read_systime_cyclecounter(struct rte_eth_dev *dev)
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
 	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_E610:
 		/* SYSTIMEL stores ns and SYSTIMEH stores seconds. */
 		systime_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_SYSTIML);
 		systime_cycles += (uint64_t)IXGBE_READ_REG(hw, IXGBE_SYSTIMH)
@@ -6765,6 +6766,7 @@ ixgbe_read_rx_tstamp_cyclecounter(struct rte_eth_dev *dev)
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
 	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_E610:
 		/* RXSTMPL stores ns and RXSTMPH stores seconds. */
 		rx_tstamp_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_RXSTMPL);
 		rx_tstamp_cycles += (uint64_t)IXGBE_READ_REG(hw, IXGBE_RXSTMPH)
@@ -6790,6 +6792,7 @@ ixgbe_read_tx_tstamp_cyclecounter(struct rte_eth_dev *dev)
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
 	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_E610:
 		/* TXSTMPL stores ns and TXSTMPH stores seconds. */
 		tx_tstamp_cycles = (uint64_t)IXGBE_READ_REG(hw, IXGBE_TXSTMPL);
 		tx_tstamp_cycles += (uint64_t)IXGBE_READ_REG(hw, IXGBE_TXSTMPH)
@@ -6838,6 +6841,7 @@ ixgbe_start_timecounters(struct rte_eth_dev *dev)
 	case ixgbe_mac_X550:
 	case ixgbe_mac_X550EM_x:
 	case ixgbe_mac_X550EM_a:
+	case ixgbe_mac_E610:
 		/* Independent of link speed. */
 		incval = 1;
 		/* Cycles read will be interpreted as ns. */
