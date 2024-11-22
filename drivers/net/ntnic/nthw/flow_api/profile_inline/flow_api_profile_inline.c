@@ -3829,7 +3829,6 @@ struct hsh_words {
 	 * is used for hash mask calculation
 	 */
 	uint8_t index;
-	uint8_t toeplitz_index;	/* offset in Bytes of given [Q]W inside Toeplitz RSS key */
 	enum hw_hsh_e pe;	/* offset to header part, e.g. beginning of L4 */
 	enum hw_hsh_e ofs;	/* relative offset in BYTES to 'pe' header offset above */
 	uint16_t bit_len;	/* max length of header part in bits to fit into QW/W */
@@ -3878,7 +3877,6 @@ static int flow_nic_set_hasher_part_inline(struct flow_nic_dev *ndev, int hsh_id
 	/* set HW_HSH_RCP_WORD_MASK based on used QW/W and given 'bit_len' */
 	int mask_bit_len = bit_len;
 	uint32_t mask = 0x0;
-	uint32_t mask_be = 0x0;
 	uint32_t toeplitz_mask[9] = { 0x0 };
 	/* iterate through all words of QW */
 	uint16_t words_count = words[word].bit_len / 32;
@@ -3887,27 +3885,23 @@ static int flow_nic_set_hasher_part_inline(struct flow_nic_dev *ndev, int hsh_id
 		if (mask_bit_len >= 32) {
 			mask_bit_len -= 32;
 			mask = 0xffffffff;
-			mask_be = mask;
 
 		} else if (mask_bit_len > 0) {
-			/* keep bits from left to right, i.e. little to big endian */
-			mask_be = 0xffffffff >> (32 - mask_bit_len);
-			mask = mask_be << (32 - mask_bit_len);
+			mask = 0xffffffff >> (32 - mask_bit_len) << (32 - mask_bit_len);
 			mask_bit_len = 0;
 
 		} else {
 			mask = 0x0;
-			mask_be = 0x0;
 		}
 
 		/* reorder QW words mask from little to big endian */
 		res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, hsh_idx,
 			words[word].index + words_count - mask_off, mask);
-		NT_LOG(DBG, FILTER,
-			"hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, %d, %d, 0x%" PRIX32
+		NT_LOG_DBGX(DBG, FILTER,
+			"hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_WORD_MASK, %d, %d, 0x%08" PRIX32
 			")",
 			hsh_idx, words[word].index + words_count - mask_off, mask);
-		toeplitz_mask[words[word].toeplitz_index + mask_off - 1] = mask_be;
+		toeplitz_mask[words[word].index + mask_off - 1] = mask;
 	}
 
 	if (toeplitz) {
@@ -3915,9 +3909,9 @@ static int flow_nic_set_hasher_part_inline(struct flow_nic_dev *ndev, int hsh_id
 			"Partial Toeplitz RSS key mask: %08" PRIX32 " %08" PRIX32 " %08" PRIX32
 			" %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32
 			" %08" PRIX32 "",
-			toeplitz_mask[8], toeplitz_mask[7], toeplitz_mask[6], toeplitz_mask[5],
-			toeplitz_mask[4], toeplitz_mask[3], toeplitz_mask[2], toeplitz_mask[1],
-			toeplitz_mask[0]);
+			toeplitz_mask[0], toeplitz_mask[1], toeplitz_mask[2], toeplitz_mask[3],
+			toeplitz_mask[4], toeplitz_mask[5], toeplitz_mask[6], toeplitz_mask[7],
+			toeplitz_mask[8]);
 		NT_LOG(DBG, FILTER,
 			"                               MSB                                                                          LSB");
 	}
@@ -4636,11 +4630,11 @@ int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev, int hsh_idx,
 	 * word | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 |
 	 */
 	struct hsh_words words[HSH_WORDS_SIZE] = {
-		{ 0, 5, HW_HSH_RCP_QW0_PE, HW_HSH_RCP_QW0_OFS, 128, true },
-		{ 4, 1, HW_HSH_RCP_QW4_PE, HW_HSH_RCP_QW4_OFS, 128, true },
-		{ 8, 0, HW_HSH_RCP_W8_PE, HW_HSH_RCP_W8_OFS, 32, true },
+		{ 0, HW_HSH_RCP_QW0_PE, HW_HSH_RCP_QW0_OFS, 128, true },
+		{ 4, HW_HSH_RCP_QW4_PE, HW_HSH_RCP_QW4_OFS, 128, true },
+		{ 8, HW_HSH_RCP_W8_PE, HW_HSH_RCP_W8_OFS, 32, true },
 		{
-			9, 255, HW_HSH_RCP_W9_PE, HW_HSH_RCP_W9_OFS, 32,
+			9, HW_HSH_RCP_W9_PE, HW_HSH_RCP_W9_OFS, 32,
 			true
 		},	/* not supported for Toeplitz */
 	};
@@ -4668,34 +4662,21 @@ int flow_nic_set_hasher_fields_inline(struct flow_nic_dev *ndev, int hsh_idx,
 		res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_TOEPLITZ, hsh_idx, 0, 1);
 		uint8_t empty_key = 0;
 
-		/* Toeplitz key (always 40B) must be encoded from little to big endian */
-		for (uint8_t i = 0; i <= (MAX_RSS_KEY_LEN - 8); i += 8) {
-			res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, hsh_idx, i / 4,
-				rss_conf.rss_key[i + 4] << 24 |
-				rss_conf.rss_key[i + 5] << 16 |
-				rss_conf.rss_key[i + 6] << 8 |
-				rss_conf.rss_key[i + 7]);
-			NT_LOG(DBG, FILTER,
+		/* Toeplitz key (always 40B) words have to be programmed in reverse order */
+		for (uint8_t i = 0; i <= (MAX_RSS_KEY_LEN - 4); i += 4) {
+			res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, hsh_idx, 9 - i / 4,
+					rss_conf.rss_key[i] << 24 |
+					rss_conf.rss_key[i + 1] << 16 |
+					rss_conf.rss_key[i + 2] << 8 |
+					rss_conf.rss_key[i + 3]);
+			NT_LOG_DBG(DBG, FILTER,
 				"hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, %d, %d, 0x%" PRIX32
 				")",
-				hsh_idx, i / 4,
-				rss_conf.rss_key[i + 4] << 24 | rss_conf.rss_key[i + 5] << 16 |
-				rss_conf.rss_key[i + 6] << 8 | rss_conf.rss_key[i + 7]);
-			res |= hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, hsh_idx, i / 4 + 1,
-				rss_conf.rss_key[i] << 24 |
-				rss_conf.rss_key[i + 1] << 16 |
-				rss_conf.rss_key[i + 2] << 8 |
-				rss_conf.rss_key[i + 3]);
-			NT_LOG(DBG, FILTER,
-				"hw_mod_hsh_rcp_set(&ndev->be, HW_HSH_RCP_K, %d, %d, 0x%" PRIX32
-				")",
-				hsh_idx, i / 4 + 1,
+				hsh_idx, 9 - i / 4,
 				rss_conf.rss_key[i] << 24 | rss_conf.rss_key[i + 1] << 16 |
 				rss_conf.rss_key[i + 2] << 8 | rss_conf.rss_key[i + 3]);
 			empty_key |= rss_conf.rss_key[i] | rss_conf.rss_key[i + 1] |
-				rss_conf.rss_key[i + 2] | rss_conf.rss_key[i + 3] |
-				rss_conf.rss_key[i + 4] | rss_conf.rss_key[i + 5] |
-				rss_conf.rss_key[i + 6] | rss_conf.rss_key[i + 7];
+				rss_conf.rss_key[i + 2] | rss_conf.rss_key[i + 3];
 		}
 
 		if (empty_key == 0) {
