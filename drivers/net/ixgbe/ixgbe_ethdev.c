@@ -35,6 +35,7 @@
 #ifdef RTE_LIB_SECURITY
 #include <rte_security_driver.h>
 #endif
+#include <rte_os_shim.h>
 
 #include "ixgbe_logs.h"
 #include "base/ixgbe_api.h"
@@ -4168,7 +4169,12 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	/* if the read failed it could just be a mailbox collision, best wait
 	 * until we are called again and don't report an error
 	 */
-	if (mbx->ops[0].read(hw, &in_msg, 1, 0))
+
+	/*
+	 * on MinGW, the read op call is interpreted as call into read() macro,
+	 * so avoid calling it directly.
+	 */
+	if ((mbx->ops[0].read)(hw, &in_msg, 1, 0))
 		goto out;
 
 	if (!(in_msg & IXGBE_VT_MSGTYPE_CTS)) {
@@ -6924,6 +6930,12 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t tsync_ctl;
 	uint32_t tsauxc;
+	struct timespec ts;
+
+	memset(&ts, 0, sizeof(struct timespec));
+
+	/* get current system time */
+	clock_gettime(CLOCK_REALTIME, &ts);
 
 	/* Stop the timesync system time. */
 	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, 0x0);
@@ -6955,6 +6967,9 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_TSYNCTXCTL, tsync_ctl);
 
 	IXGBE_WRITE_FLUSH(hw);
+
+	/* ixgbe uses zero-based timestamping so only adjust timecounter */
+	ixgbe_timesync_write_time(dev, &ts);
 
 	return 0;
 }
