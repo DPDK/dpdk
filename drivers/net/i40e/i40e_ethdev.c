@@ -10556,6 +10556,9 @@ i40e_timesync_enable(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t tsync_ctl_l;
 	uint32_t tsync_ctl_h;
+	struct timespec ts;
+
+	memset(&ts, 0, sizeof(struct timespec));
 
 	/* Stop the timesync system time. */
 	I40E_WRITE_REG(hw, I40E_PRTTSYN_INC_L, 0x0);
@@ -10584,6 +10587,9 @@ i40e_timesync_enable(struct rte_eth_dev *dev)
 
 	I40E_WRITE_REG(hw, I40E_PRTTSYN_CTL0, tsync_ctl_l);
 	I40E_WRITE_REG(hw, I40E_PRTTSYN_CTL1, tsync_ctl_h);
+
+	/* i40e uses zero-based timestamping so only adjust timecounter */
+	i40e_timesync_write_time(dev, &ts);
 
 	return 0;
 }
