@@ -4817,6 +4817,9 @@ igb_timesync_enable(struct rte_eth_dev *dev)
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t tsync_ctl;
 	uint32_t tsauxc;
+	struct timespec ts;
+
+	memset(&ts, 0, sizeof(struct timespec));
 
 	/* Stop the timesync system time. */
 	E1000_WRITE_REG(hw, E1000_TIMINCA, 0x0);
@@ -4860,6 +4863,9 @@ igb_timesync_enable(struct rte_eth_dev *dev)
 	tsync_ctl = E1000_READ_REG(hw, E1000_TSYNCTXCTL);
 	tsync_ctl |= E1000_TSYNCTXCTL_ENABLED;
 	E1000_WRITE_REG(hw, E1000_TSYNCTXCTL, tsync_ctl);
+
+	/* e1000 uses zero-based timestamping so only adjust timecounter */
+	igb_timesync_write_time(dev, &ts);
 
 	return 0;
 }
