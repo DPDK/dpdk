@@ -157,7 +157,7 @@ struct mlx5_rxq_ctrl {
 	bool is_hairpin; /* Whether RxQ type is Hairpin. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	LIST_ENTRY(mlx5_rxq_ctrl) share_entry; /* Entry in shared RXQ list. */
-	RTE_ATOMIC(uint32_t) ctrl_ref; /* Reference counter. */
+	RTE_ATOMIC(int32_t) ctrl_ref; /* Reference counter. */
 	uint32_t share_group; /* Group ID of shared RXQ. */
 	uint16_t share_qid; /* Shared RxQ ID in group. */
 	unsigned int started:1; /* Whether (shared) RXQ has been started. */

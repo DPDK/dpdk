@@ -2268,6 +2268,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_priv *rxq;
 	struct mlx5_rxq_ctrl *rxq_ctrl;
 	uint32_t refcnt;
+	int32_t ctrl_ref;
 
 	if (priv->rxq_privs == NULL)
 		return 0;
@@ -2293,15 +2294,14 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 		}
 	} else { /* Refcnt zero, closing device. */
 		LIST_REMOVE(rxq, owner_entry);
-		if (LIST_EMPTY(&rxq_ctrl->owners)) {
+		ctrl_ref = rte_atomic_fetch_sub_explicit(&rxq_ctrl->ctrl_ref, 1,
+							 rte_memory_order_relaxed) - 1;
+		if (ctrl_ref == 1 && LIST_EMPTY(&rxq_ctrl->owners)) {
 			if (!rxq_ctrl->is_hairpin)
 				mlx5_mr_btree_free
 					(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
-			if (rte_atomic_fetch_sub_explicit(&rxq_ctrl->ctrl_ref, 1,
-			    rte_memory_order_relaxed) == 1) {
-				LIST_REMOVE(rxq_ctrl, share_entry);
-				mlx5_free(rxq_ctrl);
-			}
+			LIST_REMOVE(rxq_ctrl, share_entry);
+			mlx5_free(rxq_ctrl);
 		}
 		dev->data->rx_queues[idx] = NULL;
 		mlx5_free(rxq);
