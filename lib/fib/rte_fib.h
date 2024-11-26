@@ -88,8 +88,8 @@ enum rte_fib_lookup_type {
 };
 
 /** If set, fib lookup is expecting IPv4 address in network byte order */
-#define RTE_FIB_F_NETWORK_ORDER	1
-#define RTE_FIB_ALLOWED_FLAGS	(RTE_FIB_F_NETWORK_ORDER)
+#define RTE_FIB_F_LOOKUP_NETWORK_ORDER 1
+#define RTE_FIB_ALLOWED_FLAGS (RTE_FIB_F_LOOKUP_NETWORK_ORDER)
 
 /** FIB configuration structure */
 struct rte_fib_conf {
