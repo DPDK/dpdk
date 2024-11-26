@@ -90,8 +90,11 @@ eal_long_options[] = {
 	{OPT_DEV_BLOCK,         1, NULL, OPT_DEV_BLOCK_NUM        },
 	{OPT_DEV_ALLOW,		1, NULL, OPT_DEV_ALLOW_NUM	  },
 	{OPT_PROC_TYPE,         1, NULL, OPT_PROC_TYPE_NUM        },
-	{OPT_SOCKET_MEM,        1, NULL, OPT_SOCKET_MEM_NUM       },
-	{OPT_SOCKET_LIMIT,      1, NULL, OPT_SOCKET_LIMIT_NUM     },
+	/* socket-mem/socket-limit are kept for backwards compatibility */
+	{OPT_SOCKET_MEM,        1, NULL, OPT_NUMA_MEM_NUM         },
+	{OPT_SOCKET_LIMIT,      1, NULL, OPT_NUMA_LIMIT_NUM       },
+	{OPT_NUMA_MEM,          1, NULL, OPT_NUMA_MEM_NUM         },
+	{OPT_NUMA_LIMIT,        1, NULL, OPT_NUMA_LIMIT_NUM       },
 #ifndef RTE_EXEC_ENV_WINDOWS
 	{OPT_SYSLOG,            2, NULL, OPT_SYSLOG_NUM           },
 #endif
@@ -2007,12 +2010,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 		return -1;
 	}
 	if (mem_parsed && internal_cfg->force_numa == 1) {
-		EAL_LOG(ERR, "Options -m and --"OPT_SOCKET_MEM" cannot "
+		EAL_LOG(ERR, "Options -m and --"OPT_NUMA_MEM" cannot "
 			"be specified at the same time");
 		return -1;
 	}
 	if (internal_cfg->no_hugetlbfs && internal_cfg->force_numa == 1) {
-		EAL_LOG(ERR, "Option --"OPT_SOCKET_MEM" cannot "
+		EAL_LOG(ERR, "Option --"OPT_NUMA_MEM" cannot "
 			"be specified together with --"OPT_NO_HUGE);
 		return -1;
 	}
@@ -2030,7 +2033,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 		return -1;
 	}
 	if (internal_conf->force_numa_limits && internal_conf->legacy_mem) {
-		EAL_LOG(ERR, "Option --"OPT_SOCKET_LIMIT
+		EAL_LOG(ERR, "Option --"OPT_NUMA_LIMIT
 			" is only supported in non-legacy memory mode");
 	}
 	if (internal_cfg->single_file_segments &&
@@ -2065,7 +2068,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	if (internal_cfg->legacy_mem && internal_cfg->memory == 0) {
 		EAL_LOG(NOTICE, "Static memory layout is selected, "
 			"amount of reserved memory can be adjusted with "
-			"-m or --"OPT_SOCKET_MEM);
+			"-m or --"OPT_NUMA_MEM);
 	}
 
 	return 0;
@@ -2121,7 +2124,7 @@ eal_common_usage(void)
 	       "  --"OPT_MAIN_LCORE" ID     Core ID that is used as main\n"
 	       "  --"OPT_MBUF_POOL_OPS_NAME" Pool ops name for mbuf to use\n"
 	       "  -n CHANNELS         Number of memory channels\n"
-	       "  -m MB               Memory to allocate (see also --"OPT_SOCKET_MEM")\n"
+	       "  -m MB               Memory to allocate (see also --"OPT_NUMA_MEM")\n"
 	       "  -r RANKS            Force number of memory ranks (don't detect)\n"
 	       "  -b, --block         Add a device to the blocked list.\n"
 	       "                      Prevent EAL from using this device. The argument\n"

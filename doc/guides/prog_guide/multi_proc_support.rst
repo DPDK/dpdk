@@ -127,7 +127,7 @@ allocate more memory than they need. However if ``--legacy-mem`` is used, DPDK
 will attempt to preallocate all memory it can get to, and memory use must be
 explicitly limited. This is done by passing the ``-m`` flag to each process to
 specify how much hugepage memory, in megabytes, each process can use (or passing
-``--socket-mem`` to specify how much hugepage memory on each socket each process
+``--numa-mem`` to specify how much hugepage memory on each socket each process
 can use).
 
 .. note::

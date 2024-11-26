@@ -119,11 +119,11 @@ in use, either reserved memory will satisfy the requirements, or the allocation
 will fail.
 
 There is no need to preallocate any memory at startup using ``-m`` or
-``--socket-mem`` command-line parameters, however it is still possible to do so,
+``--numa-mem`` command-line parameters, however it is still possible to do so,
 in which case preallocate memory will be "pinned" (i.e. will never be released
 by the application back to the system). It will be possible to allocate more
 hugepages, and deallocate those, but any preallocated pages will not be freed.
-If neither ``-m`` nor ``--socket-mem`` were specified, no memory will be
+If neither ``-m`` nor ``--numa-mem`` were specified, no memory will be
 preallocated, and all memory will be allocated at runtime, as needed.
 
 Another available option to use in dynamic memory mode is
@@ -143,7 +143,7 @@ to deny them), allocation validator callbacks are also available via
 ``rte_mem_alloc_validator_callback_register()`` function.
 
 A default validator callback is provided by EAL, which can be enabled with a
-``--socket-limit`` command-line option, for a simple way to limit maximum amount
+``--numa-limit`` command-line option, for a simple way to limit maximum amount
 of memory that can be used by DPDK application.
 
 .. warning::
@@ -164,7 +164,7 @@ This mode mimics historical behavior of EAL. That is, EAL will reserve all
 memory at startup, sort all memory into large IOVA-contiguous chunks, and will
 not allow acquiring or releasing hugepages from the system at runtime.
 
-If neither ``-m`` nor ``--socket-mem`` were specified, the entire available
+If neither ``-m`` nor ``--numa-mem`` were specified, the entire available
 hugepage memory will be preallocated.
 
 Hugepage Allocation Matching
@@ -187,7 +187,7 @@ very dependent on the memory allocation patterns of the application.
 
 Additional restrictions are present when running in 32-bit mode. In dynamic
 memory mode, by default maximum of 2 gigabytes of VA space will be preallocated,
-and all of it will be on main lcore NUMA node unless ``--socket-mem`` flag is
+and all of it will be on main lcore NUMA node unless ``--numa-mem`` flag is
 used.
 
 In legacy mode, VA space will only be preallocated for segments that were
@@ -1215,7 +1215,7 @@ into a single block.
 If deallocating pages at runtime is supported, and the free element encloses
 one or more pages, those pages can be deallocated and be removed from the heap.
 If DPDK was started with command-line parameters for preallocating memory
-(``-m`` or ``--socket-mem``), then those pages that were allocated at startup
+(``-m`` or ``--numa-mem``), then those pages that were allocated at startup
 will not be deallocated.
 
 Any successful deallocation event will trigger a callback, for which user

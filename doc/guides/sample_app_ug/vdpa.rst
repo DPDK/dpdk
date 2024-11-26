@@ -54,7 +54,7 @@ Take IFCVF driver for example:
 
 .. code-block:: console
 
-        ./dpdk-vdpa -c 0x2 -n 4 --socket-mem 1024,1024 \
+        ./dpdk-vdpa -c 0x2 -n 4 --numa-mem 1024,1024 \
                 -a 0000:06:00.3,vdpa=1 -a 0000:06:00.4,vdpa=1 \
                 -- --interactive
 

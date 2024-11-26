@@ -64,9 +64,11 @@ enum {
 #define OPT_IN_MEMORY         "in-memory"
 	OPT_IN_MEMORY_NUM,
 #define OPT_SOCKET_MEM        "socket-mem"
-	OPT_SOCKET_MEM_NUM,
-#define OPT_SOCKET_LIMIT        "socket-limit"
-	OPT_SOCKET_LIMIT_NUM,
+#define OPT_NUMA_MEM          "numa-mem"
+	OPT_NUMA_MEM_NUM,
+#define OPT_SOCKET_LIMIT      "socket-limit"
+#define OPT_NUMA_LIMIT        "numa-limit"
+	OPT_NUMA_LIMIT_NUM,
 #define OPT_SYSLOG            "syslog"
 	OPT_SYSLOG_NUM,
 #define OPT_VDEV              "vdev"

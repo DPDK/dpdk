@@ -34,7 +34,7 @@ The following is the list of options that can be given to the EAL:
 .. code-block:: console
 
     ./rte-app [-c COREMASK | -l CORELIST] [-n NUM] [-b <domain:bus:devid.func>] \
-              [--socket-mem=MB,...] [-d LIB.so|DIR] [-m MB] [-r NUM] [-v] [--file-prefix] \
+              [--numa-mem=MB,...] [-d LIB.so|DIR] [-m MB] [-r NUM] [-v] [--file-prefix] \
 	      [--proc-type <primary|secondary|auto>]
 
 The EAL options are as follows:
@@ -55,12 +55,12 @@ The EAL options are as follows:
   use the specified Ethernet device(s) only. Use comma-separate
   ``[domain:]bus:devid.func`` values. Cannot be used with ``-b`` option.
 
-* ``--socket-mem``:
+* ``--numa-mem``:
   Memory to allocate from hugepages on specific sockets. In dynamic memory mode,
   this memory will also be pinned (i.e. not released back to the system until
   application closes).
 
-* ``--socket-limit``:
+* ``--numa-limit``:
   Limit maximum memory available for allocation on each socket. Does not support
   legacy memory mode.
 
@@ -71,7 +71,7 @@ The EAL options are as follows:
 
 * ``-m MB``:
   Memory to allocate from hugepages, regardless of processor socket. It is
-  recommended that ``--socket-mem`` be used instead of this option.
+  recommended that ``--numa-mem`` be used instead of this option.
 
 * ``-r NUM``:
   Number of memory ranks.
@@ -158,9 +158,9 @@ Hugepage Memory Use by Applications
 
 When running an application, it is recommended to use the same amount of memory as that allocated for hugepages.
 This is done automatically by the DPDK application at startup,
-if no ``-m`` or ``--socket-mem`` parameter is passed to it when run.
+if no ``-m`` or ``--numa-mem`` parameter is passed to it when run.
 
-If more memory is requested by explicitly passing a ``-m`` or ``--socket-mem`` value, the application fails.
+If more memory is requested by explicitly passing a ``-m`` or ``--numa-mem`` value, the application fails.
 However, the application itself can also fail if the user requests less memory than the reserved amount of hugepage-memory, particularly if using the ``-m`` option.
 The reason is as follows.
 Suppose the system has 1024 reserved 2 MB pages in socket 0 and 1024 in socket 1.
@@ -168,15 +168,15 @@ If the user requests 128 MB of memory, the 64 pages may not match the constraint
 
 *   The hugepage memory by be given to the application by the kernel in socket 1 only.
     In this case, if the application attempts to create an object, such as a ring or memory pool in socket 0, it fails.
-    To avoid this issue, it is recommended that the ``--socket-mem`` option be used instead of the ``-m`` option.
+    To avoid this issue, it is recommended that the ``--numa-mem`` option be used instead of the ``-m`` option.
 
 *   These pages can be located anywhere in physical memory, and, although the DPDK EAL will attempt to allocate memory in contiguous blocks,
     it is possible that the pages will not be contiguous. In this case, the application is not able to allocate big memory pools.
 
 The socket-mem option can be used to request specific amounts of memory for specific sockets.
-This is accomplished by supplying the ``--socket-mem`` flag followed by amounts of memory requested on each socket,
-for example, supply ``--socket-mem=0,512`` to try and reserve 512 MB for socket 1 only.
-Similarly, on a four socket system, to allocate 1 GB memory on each of sockets 0 and 2 only, the parameter ``--socket-mem=1024,0,1024`` can be used.
+This is accomplished by supplying the ``--numa-mem`` flag followed by amounts of memory requested on each socket,
+for example, supply ``--numa-mem=0,512`` to try and reserve 512 MB for socket 1 only.
+Similarly, on a four socket system, to allocate 1 GB memory on each of sockets 0 and 2 only, the parameter ``--numa-mem=1024,0,1024`` can be used.
 No memory will be reserved on any CPU socket that is not explicitly referenced, for example, socket 3 in this case.
 If the DPDK cannot allocate enough memory on each socket, the EAL initialization fails.
 
