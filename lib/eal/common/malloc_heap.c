@@ -711,7 +711,7 @@ malloc_get_numa_socket(void)
 	/* for control threads, return first socket where memory is available */
 	for (idx = 0; idx < rte_socket_count(); idx++) {
 		socket_id = rte_socket_id_by_idx(idx);
-		if (conf->socket_mem[socket_id] != 0)
+		if (conf->numa_mem[socket_id] != 0)
 			return socket_id;
 	}
 	/* We couldn't quickly find a NUMA node where memory was available,

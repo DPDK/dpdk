@@ -335,14 +335,14 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->hugepage_dir = NULL;
 	internal_cfg->hugepage_file.unlink_before_mapping = false;
 	internal_cfg->hugepage_file.unlink_existing = true;
-	internal_cfg->force_sockets = 0;
+	internal_cfg->force_numa = 0;
 	/* zero out the NUMA config */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_cfg->socket_mem[i] = 0;
-	internal_cfg->force_socket_limits = 0;
+		internal_cfg->numa_mem[i] = 0;
+	internal_cfg->force_numa_limits = 0;
 	/* zero out the NUMA limits config */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_cfg->socket_limit[i] = 0;
+		internal_cfg->numa_limit[i] = 0;
 	/* zero out hugedir descriptors */
 	for (i = 0; i < MAX_HUGEPAGE_SIZES; i++) {
 		memset(&internal_cfg->hugepage_info[i], 0,
@@ -1965,7 +1965,7 @@ eal_adjust_config(struct internal_config *internal_cfg)
 	/* if no memory amounts were requested, this will result in 0 and
 	 * will be overridden later, right after eal_hugepage_info_init() */
 	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
-		internal_cfg->memory += internal_cfg->socket_mem[i];
+		internal_cfg->memory += internal_cfg->numa_mem[i];
 
 	return 0;
 }
@@ -2006,12 +2006,12 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"option");
 		return -1;
 	}
-	if (mem_parsed && internal_cfg->force_sockets == 1) {
+	if (mem_parsed && internal_cfg->force_numa == 1) {
 		EAL_LOG(ERR, "Options -m and --"OPT_SOCKET_MEM" cannot "
 			"be specified at the same time");
 		return -1;
 	}
-	if (internal_cfg->no_hugetlbfs && internal_cfg->force_sockets == 1) {
+	if (internal_cfg->no_hugetlbfs && internal_cfg->force_numa == 1) {
 		EAL_LOG(ERR, "Option --"OPT_SOCKET_MEM" cannot "
 			"be specified together with --"OPT_NO_HUGE);
 		return -1;
@@ -2029,7 +2029,7 @@ eal_check_common_options(struct internal_config *internal_cfg)
 			"be specified together with --"OPT_NO_HUGE);
 		return -1;
 	}
-	if (internal_conf->force_socket_limits && internal_conf->legacy_mem) {
+	if (internal_conf->force_numa_limits && internal_conf->legacy_mem) {
 		EAL_LOG(ERR, "Option --"OPT_SOCKET_LIMIT
 			" is only supported in non-legacy memory mode");
 	}

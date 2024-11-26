@@ -717,7 +717,7 @@ rte_eal_init(int argc, char **argv)
 		}
 	}
 
-	if (internal_conf->memory == 0 && internal_conf->force_sockets == 0) {
+	if (internal_conf->memory == 0 && internal_conf->force_numa == 0) {
 		if (internal_conf->no_hugetlbfs)
 			internal_conf->memory = MEMSIZE_IF_NO_HUGE_PAGE;
 		else

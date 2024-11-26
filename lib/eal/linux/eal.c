@@ -659,26 +659,26 @@ eal_parse_args(int argc, char **argv)
 		}
 		case OPT_SOCKET_MEM_NUM:
 			if (eal_parse_socket_arg(optarg,
-					internal_conf->socket_mem) < 0) {
+					internal_conf->numa_mem) < 0) {
 				EAL_LOG(ERR, "invalid parameters for --"
 						OPT_SOCKET_MEM);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
 			}
-			internal_conf->force_sockets = 1;
+			internal_conf->force_numa = 1;
 			break;
 
 		case OPT_SOCKET_LIMIT_NUM:
 			if (eal_parse_socket_arg(optarg,
-					internal_conf->socket_limit) < 0) {
+					internal_conf->numa_limit) < 0) {
 				EAL_LOG(ERR, "invalid parameters for --"
 						OPT_SOCKET_LIMIT);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
 			}
-			internal_conf->force_socket_limits = 1;
+			internal_conf->force_numa_limits = 1;
 			break;
 
 		case OPT_VFIO_INTR_NUM:
@@ -1098,7 +1098,7 @@ rte_eal_init(int argc, char **argv)
 		}
 	}
 
-	if (internal_conf->memory == 0 && internal_conf->force_sockets == 0) {
+	if (internal_conf->memory == 0 && internal_conf->force_numa == 0) {
 		if (internal_conf->no_hugetlbfs)
 			internal_conf->memory = MEMSIZE_IF_NO_HUGE_PAGE;
 	}
