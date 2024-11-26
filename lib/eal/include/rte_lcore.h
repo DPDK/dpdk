@@ -113,22 +113,21 @@ unsigned int rte_lcore_count(void);
 int rte_lcore_index(int lcore_id);
 
 /**
- * Return the ID of the physical socket of the logical core we are
- * running on.
+ * Return the ID of NUMA node of the logical core we are running on.
  * @return
- *   the ID of current lcoreid's physical socket
+ *   the ID of current lcoreid's NUMA node
  */
 unsigned int rte_socket_id(void);
 
 /**
- * Return number of physical sockets detected on the system.
+ * Return number of NUMA nodes detected on the system.
  *
- * Note that number of nodes may not be correspondent to their physical id's:
- * for example, a system may report two socket id's, but the actual socket id's
+ * Note that number of nodes may not be correspondent to their NUMA ID's:
+ * for example, a system may report two NUMA ID's, but the actual NUMA ID's
  * may be 0 and 8.
  *
  * @return
- *   the number of physical sockets as recognized by EAL
+ *   the number of NUMA ID's as recognized by EAL
  */
 unsigned int
 rte_socket_count(void);
@@ -137,26 +136,27 @@ rte_socket_count(void);
  * Return socket id with a particular index.
  *
  * This will return socket id at a particular position in list of all detected
- * physical socket id's. For example, on a machine with sockets [0, 8], passing
- * 1 as a parameter will return 8.
+ * NUMA node ID's.
+ * For example, on a machine with NUMA nodes [0, 8],
+ * passing 1 as a parameter will return 8.
  *
  * @param idx
- *   index of physical socket id to return
+ *   index of NUMA node ID to return
  *
  * @return
- *   - physical socket id as recognized by EAL
+ *   - NUMA node ID as recognized by EAL
  *   - -1 on error, with errno set to EINVAL
  */
 int
 rte_socket_id_by_idx(unsigned int idx);
 
 /**
- * Get the ID of the physical socket of the specified lcore
+ * Get the ID of the NUMA node of the specified lcore
  *
  * @param lcore_id
  *   the targeted lcore, which MUST be between 0 and RTE_MAX_LCORE-1.
  * @return
- *   the ID of lcoreid's physical socket
+ *   the ID of lcoreid's NUMA node
  */
 unsigned int
 rte_lcore_to_socket_id(unsigned int lcore_id);

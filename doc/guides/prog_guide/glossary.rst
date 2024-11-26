@@ -194,7 +194,10 @@ Slave lcore
    Deprecated name for *worker lcore*. No longer used.
 
 Socket
-   A physical CPU, that includes several *cores*.
+   For historical reasons, the term "socket" is used in the DPDK
+   to refer to both physical sockets, as well as NUMA nodes.
+   As a general rule, the term should be understood to mean "NUMA node"
+   unless it is clear from context that it is referring to physical CPU sockets.
 
 SLA
    Service Level Agreement
