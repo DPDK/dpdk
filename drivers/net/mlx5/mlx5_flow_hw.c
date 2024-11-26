@@ -966,6 +966,27 @@ __flow_hw_actions_release(struct rte_eth_dev *dev, struct mlx5_hw_actions *acts)
 }
 
 /**
+ * Release the action data back into the pool without destroy any action.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ */
+static inline void
+__flow_hw_act_data_flush(struct rte_eth_dev *dev, struct mlx5_hw_actions *acts)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_action_construct_data *data;
+
+	while (!LIST_EMPTY(&acts->act_list)) {
+		data = LIST_FIRST(&acts->act_list);
+		LIST_REMOVE(data, next);
+		mlx5_ipool_free(priv->acts_ipool, data->idx);
+	}
+}
+
+/*
  * Destroy DR actions created by action template.
  *
  * For DR actions created during table creation's action translate.
@@ -979,15 +1000,7 @@ __flow_hw_actions_release(struct rte_eth_dev *dev, struct mlx5_hw_actions *acts)
 static void
 __flow_hw_action_template_destroy(struct rte_eth_dev *dev, struct mlx5_hw_actions *acts)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_action_construct_data *data;
-
-	while (!LIST_EMPTY(&acts->act_list)) {
-		data = LIST_FIRST(&acts->act_list);
-		LIST_REMOVE(data, next);
-		mlx5_ipool_free(priv->acts_ipool, data->idx);
-	}
-
+	__flow_hw_act_data_flush(dev, acts);
 	__flow_hw_actions_release(dev, acts);
 }
 
@@ -13492,14 +13505,14 @@ flow_nta_build_template_mask(const struct rte_flow_action actions[],
 
 static int
 flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
-			  const struct rte_flow_attr *attr,
-			  const struct rte_flow_action actions[],
-			  struct rte_flow_hw *flow,
-			  struct mlx5_flow_hw_action_params *ap,
-			  struct mlx5_hw_actions *hw_acts,
-			  uint64_t item_flags, uint64_t action_flags,
-			  bool external,
-			  struct rte_flow_error *error)
+			       const struct rte_flow_attr *attr,
+			       const struct rte_flow_action actions[],
+			       struct rte_flow_hw *flow,
+			       struct mlx5_flow_hw_action_params *ap,
+			       struct mlx5_hw_actions *hw_acts,
+			       uint64_t item_flags, uint64_t action_flags,
+			       bool external,
+			       struct rte_flow_error *error)
 {
 	int ret = 0;
 	uint32_t src_group = 0;
@@ -13542,7 +13555,7 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	table = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*table), 0, SOCKET_ID_ANY);
 	if (!table)
 		return rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ACTION,
-				   actions, "Failed to allocate dummy table");
+					  actions, "Failed to allocate dummy table");
 	at = __flow_hw_actions_template_create(dev, &template_attr, actions, masks, true, error);
 	if (!at) {
 		ret = -rte_errno;
@@ -13556,27 +13569,29 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	memcpy(&table->cfg.attr.flow_attr, attr, sizeof(*attr));
 	table->ats[0].action_template = at;
 	ret = __flow_hw_translate_actions_template(dev, &table->cfg, hw_acts, at,
-		&table->mpctx, true, error);
+						   &table->mpctx, true, error);
 	if (ret)
 		goto end;
 	/* handle bulk actions register. */
 	ret = flow_hw_encap_decap_resource_register(dev, table, hw_acts, flow, error);
 	if (ret)
-		goto clean_up;
+		goto end;
 	ret = flow_hw_modify_hdr_resource_register(dev, table, hw_acts, flow, error);
 	if (ret)
-		goto clean_up;
+		goto end;
 	table->ats[0].acts = *hw_acts;
 	ret = flow_hw_actions_construct(dev, flow, ap,
-		&table->ats[0], item_flags, table,
-		actions, hw_acts->rule_acts, 0, error);
+					&table->ats[0], item_flags, table,
+					actions, hw_acts->rule_acts, 0, error);
 	if (ret)
-		goto clean_up;
+		goto end;
 	goto end;
-clean_up:
-	/* Make sure that there is no garbage in the actions. */
-	__flow_hw_action_template_destroy(dev, hw_acts);
 end:
+	if (ret)
+		/* Make sure that there is no garbage in the actions. */
+		__flow_hw_action_template_destroy(dev, hw_acts);
+	else
+		__flow_hw_act_data_flush(dev, hw_acts);
 	if (table)
 		mlx5_free(table);
 	if (at)
