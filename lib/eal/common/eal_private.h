@@ -30,7 +30,7 @@ struct lcore_config {
 	volatile int ret;          /**< return value of function */
 
 	volatile RTE_ATOMIC(enum rte_lcore_state_t) state; /**< lcore state */
-	unsigned int socket_id;    /**< physical socket id for this lcore */
+	unsigned int numa_id;      /**< NUMA node ID for this lcore */
 	unsigned int core_id;      /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */
 	uint8_t core_role;         /**< role of core eg: OFF, RTE, SERVICE */

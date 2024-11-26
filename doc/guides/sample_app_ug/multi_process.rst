@@ -50,19 +50,12 @@ The process should start successfully and display a command prompt as follows:
 .. code-block:: console
 
     $ ./<build_dir>/examples/dpdk-simple_mp -l 0-1 -n 4 --proc-type=primary
-    EAL: coremask set to 3
-    EAL: Detected lcore 0 on socket 0
-    EAL: Detected lcore 1 on socket 0
-    EAL: Detected lcore 2 on socket 0
-    EAL: Detected lcore 3 on socket 0
     ...
-
     EAL: Requesting 2 pages of size 1073741824
     EAL: Requesting 768 pages of size 2097152
     EAL: Ask a virtual area of 0x40000000 bytes
     EAL: Virtual area found at 0x7ff200000000 (size = 0x40000000)
     ...
-
     EAL: check module finished
     EAL: Main core 0 is ready (tid=54e41820)
     EAL: Core 1 is ready (tid=53b32700)

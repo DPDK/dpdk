@@ -126,7 +126,7 @@ RTE_EXPORT_SYMBOL(rte_lcore_to_socket_id)
 unsigned int
 rte_lcore_to_socket_id(unsigned int lcore_id)
 {
-	return lcore_config[lcore_id].socket_id;
+	return lcore_config[lcore_id].numa_id;
 }
 
 static int
@@ -188,11 +188,11 @@ rte_eal_cpu_init(void)
 		config->lcore_role[lcore_id] = ROLE_RTE;
 		lcore_config[lcore_id].core_role = ROLE_RTE;
 		lcore_config[lcore_id].core_id = eal_cpu_core_id(lcore_id);
-		lcore_config[lcore_id].socket_id = socket_id;
+		lcore_config[lcore_id].numa_id = socket_id;
 		EAL_LOG(DEBUG, "Detected lcore %u as "
-				"core %u on socket %u",
+				"core %u on NUMA node %u",
 				lcore_id, lcore_config[lcore_id].core_id,
-				lcore_config[lcore_id].socket_id);
+				lcore_config[lcore_id].numa_id);
 		count++;
 	}
 	for (; lcore_id < CPU_SETSIZE; lcore_id++) {
@@ -200,7 +200,7 @@ rte_eal_cpu_init(void)
 			continue;
 		socket_id = eal_cpu_socket_id(lcore_id);
 		lcore_to_socket_id[lcore_id] = socket_id;
-		EAL_LOG(DEBUG, "Skipped lcore %u as core %u on socket %u",
+		EAL_LOG(DEBUG, "Skipped lcore %u as core %u on NUMA node %u",
 			lcore_id, eal_cpu_core_id(lcore_id),
 			socket_id);
 	}

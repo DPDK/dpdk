@@ -224,9 +224,7 @@ Multiple devices may be specified, separated by commas.
 .. code-block:: console
 
     ./dpdk-testpmd -l 1-3 -n 4 --vdev=net_ring0 --vdev=net_ring1 -- -i
-    EAL: Detected lcore 1 as core 1 on socket 0
     ...
-
     Interactive-mode selected
     Configuring Port 0 (socket 0)
     Configuring Port 1 (socket 0)

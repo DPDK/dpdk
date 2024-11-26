@@ -67,14 +67,7 @@ To run the example in linux environment with 2 lcores (2,4) over 2 ports(0,2) wi
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-ip_fragmentation -l 2,4 -n 3 -- -p 5
-    EAL: coremask set to 14
-    EAL: Detected lcore 0 on socket 0
-    EAL: Detected lcore 1 on socket 1
-    EAL: Detected lcore 2 on socket 0
-    EAL: Detected lcore 3 on socket 1
-    EAL: Detected lcore 4 on socket 0
     ...
-
     Initializing port 0 on lcore 2... Address:00:1B:21:76:FA:2C, rxq=0 txq=2,0 txq=4,1
     done: Link Up - speed 10000 Mbps - full-duplex
     Skipping disabled port 1

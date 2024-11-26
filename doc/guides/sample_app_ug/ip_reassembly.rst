@@ -63,14 +63,7 @@ with 1 Rx queue per lcore:
 .. code-block:: console
 
     ./<build_dir>/examples/dpdk-ip_reassembly -l 2,4 -n 3 -- -p 5
-    EAL: coremask set to 14
-    EAL: Detected lcore 0 on socket 0
-    EAL: Detected lcore 1 on socket 1
-    EAL: Detected lcore 2 on socket 0
-    EAL: Detected lcore 3 on socket 1
-    EAL: Detected lcore 4 on socket 0
     ...
-
     Initializing port 0 on lcore 2... Address:00:1B:21:76:FA:2C, rxq=0 txq=2,0 txq=4,1
     done: Link Up - speed 10000 Mbps - full-duplex
     Skipping disabled port 1
@@ -79,11 +72,9 @@ with 1 Rx queue per lcore:
     Skipping disabled port 3IP_FRAG: Socket 0: adding route 100.10.0.0/16 (port 0)
     IP_RSMBL: Socket 0: adding route 100.20.0.0/16 (port 1)
     ...
-
     IP_RSMBL: Socket 0: adding route 0101:0101:0101:0101:0101:0101:0101:0101/48 (port 0)
     IP_RSMBL: Socket 0: adding route 0201:0101:0101:0101:0101:0101:0101:0101/48 (port 1)
     ...
-
     IP_RSMBL: entering main loop on lcore 4
     IP_RSMBL: -- lcoreid=4 portid=2
     IP_RSMBL: entering main loop on lcore 2
