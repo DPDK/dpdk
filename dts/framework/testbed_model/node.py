@@ -14,8 +14,6 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 """
 
 from abc import ABC
-from ipaddress import IPv4Interface, IPv6Interface
-from typing import Union
 
 from framework.config import (
     OS,
@@ -191,30 +189,6 @@ class Node(ABC):
                 self.main_session.hugepage_size,
                 self.config.hugepages.force_first_numa,
             )
-
-    def configure_port_state(self, port: Port, enable: bool = True) -> None:
-        """Enable/disable `port`.
-
-        Args:
-            port: The port to enable/disable.
-            enable: :data:`True` to enable, :data:`False` to disable.
-        """
-        self.main_session.configure_port_state(port, enable)
-
-    def configure_port_ip_address(
-        self,
-        address: Union[IPv4Interface, IPv6Interface],
-        port: Port,
-        delete: bool = False,
-    ) -> None:
-        """Add an IP address to `port` on this node.
-
-        Args:
-            address: The IP address with mask in CIDR format. Can be either IPv4 or IPv6.
-            port: The port to which to add the address.
-            delete: If :data:`True`, will delete the address from the port instead of adding it.
-        """
-        self.main_session.configure_port_ip_address(address, port, delete)
 
     def close(self) -> None:
         """Close all connections and free other resources."""
