@@ -5359,7 +5359,8 @@ ixgbe_check_supported_loopback_mode(struct rte_eth_dev *dev)
 		     hw->mac.type == ixgbe_mac_X540 ||
 		     hw->mac.type == ixgbe_mac_X550 ||
 		     hw->mac.type == ixgbe_mac_X550EM_x ||
-		     hw->mac.type == ixgbe_mac_X550EM_a)
+		     hw->mac.type == ixgbe_mac_X550EM_a ||
+		     hw->mac.type == ixgbe_mac_E610)
 			return 0;
 
 	return -ENOTSUP;
