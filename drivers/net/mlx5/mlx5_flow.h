@@ -1919,6 +1919,9 @@ struct mlx5_flow_workspace {
 	/* The meter policy used by meter in flow. */
 	struct mlx5_flow_meter_policy *final_policy;
 	/* The final policy when meter policy is hierarchy. */
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct rte_flow_template_table *table;
+#endif
 	uint32_t skip_matcher_reg:1;
 	/* Indicates if need to skip matcher register in translate. */
 	uint32_t mark:1; /* Indicates if flow contains mark action. */

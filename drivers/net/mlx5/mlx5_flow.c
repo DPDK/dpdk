@@ -8270,14 +8270,21 @@ flow_alloc_thread_workspace(void)
 {
 	size_t data_size = RTE_ALIGN(sizeof(struct mlx5_flow_workspace), sizeof(long));
 	size_t rss_queue_array_size = sizeof(uint16_t) * RTE_ETH_RSS_RETA_SIZE_512;
-	struct mlx5_flow_workspace *data = calloc(1, data_size +
-						     rss_queue_array_size);
+	size_t alloc_size = data_size + rss_queue_array_size;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	/* Dummy table size for the non-template API. */
+	alloc_size += sizeof(struct rte_flow_template_table);
+#endif
+	struct mlx5_flow_workspace *data = calloc(1, alloc_size);
 
 	if (!data) {
 		DRV_LOG(ERR, "Failed to allocate flow workspace memory.");
 		return NULL;
 	}
 	data->rss_desc.queue = RTE_PTR_ADD(data, data_size);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	data->table = RTE_PTR_ADD(data->rss_desc.queue, rss_queue_array_size);
+#endif
 	return data;
 }
 
