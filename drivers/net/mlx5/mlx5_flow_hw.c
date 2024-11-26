@@ -13517,7 +13517,6 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	int ret = 0;
 	uint32_t src_group = 0;
 	enum mlx5dr_table_type table_type;
-	struct rte_flow_template_table *table = NULL;
 	struct mlx5_flow_group grp;
 	struct rte_flow_actions_template *at = NULL;
 	struct rte_flow_actions_template_attr template_attr = {
@@ -13531,6 +13530,10 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	RTE_SET_USED(action_flags);
 	memset(masks, 0, sizeof(masks));
 	memset(mask_conf, 0, sizeof(mask_conf));
+	/* Only set the needed fields explicitly. */
+	struct mlx5_flow_workspace *wks = mlx5_flow_push_thread_workspace();
+	struct rte_flow_template_table *table;
+
 	/*
 	 * Notice All direct actions will be unmasked,
 	 * except for modify header and encap,
@@ -13540,6 +13543,12 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	 * shared actions will be parsed as part of template translation
 	 * and not during action construct.
 	 */
+	if (!wks)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "failed to push flow workspace");
+	table = wks->table;
 	flow_nta_build_template_mask(actions, masks, mask_conf);
 	/* The group in the attribute translation was done in advance. */
 	ret = __translate_group(dev, attr, external, attr->group, &src_group, error);
@@ -13551,11 +13560,6 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 		table_type = MLX5DR_TABLE_TYPE_NIC_TX;
 	else
 		table_type = MLX5DR_TABLE_TYPE_NIC_RX;
-	/* TODO: consider to reuse the workspace per thread. */
-	table = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*table), 0, SOCKET_ID_ANY);
-	if (!table)
-		return rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ACTION,
-					  actions, "Failed to allocate dummy table");
 	at = __flow_hw_actions_template_create(dev, &template_attr, actions, masks, true, error);
 	if (!at) {
 		ret = -rte_errno;
@@ -13592,10 +13596,9 @@ end:
 		__flow_hw_action_template_destroy(dev, hw_acts);
 	else
 		__flow_hw_act_data_flush(dev, hw_acts);
-	if (table)
-		mlx5_free(table);
 	if (at)
 		mlx5_free(at);
+	mlx5_flow_pop_thread_workspace();
 	return ret;
 }
 
