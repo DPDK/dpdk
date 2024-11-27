@@ -533,3 +533,168 @@ Tested Platforms
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* Intel\ |reg| platforms with Intel\ |reg| NICs combinations
+
+  * CPU
+
+    * Intel Atom\ |reg| P5342 processor
+    * Intel\ |reg| Atom\ |trade| CPU C3758 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| CPU D-1553N @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| CPU E5-2699 v4 @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| D-1747NTE CPU @ 2.50GHz
+    * Intel\ |reg| Xeon\ |reg| D-2796NT CPU @ 2.00GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6139 CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6140M CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6252N CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6348 CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8280M CPU @ 2.70GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8358 CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8380 CPU @ 2.30GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8468H
+    * Intel\ |reg| Xeon\ |reg| Platinum 8490H
+
+  * OS:
+
+    * Microsoft Azure Linux 3.0
+    * Fedora 40
+    * FreeBSD 14.1
+    * OpenAnolis OS 8.9
+    * openEuler 24.03 (LTS)
+    * Red Hat Enterprise Linux Server release 9.4
+    * Ubuntu 22.04.3
+    * Ubuntu 22.04.4
+    * Ubuntu 24.04
+    * Ubuntu 24.04.1
+
+  * NICs:
+
+    * Intel\ |reg| Ethernet Controller E810-C for SFP (4x25G)
+
+      * Firmware version: 4.60 0x8001e8b2 1.3682.0
+      * Device id (pf/vf): 8086:1593 / 8086:1889
+      * Driver version(out-tree): 1.15.4 (ice)
+      * Driver version(in-tree): 6.8.0-48-generic (Ubuntu24.04.1) /
+        5.14.0-427.13.1.el9_4.x86_64+rt (RHEL9.4) (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+      * Wireless Edge DDP: 1.3.14.0
+
+    * Intel\ |reg| Ethernet Controller E810-C for QSFP (2x100G)
+
+      * Firmware version: 4.60 0x8001e8b1 1.3682.0
+      * Device id (pf/vf): 8086:1592 / 8086:1889
+      * Driver version(out-tree): 1.15.4 (ice)
+      * Driver version(in-tree): 6.6.12.1-1.azl3+ice+ (Microsoft Azure Linux 3.0) (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+      * Wireless Edge DDP: 1.3.14.0
+
+    * Intel\ |reg| Ethernet Controller E810-XXV for SFP (2x25G)
+
+      * Firmware version: 4.60 0x8001e8b0 1.3682.0
+      * Device id (pf/vf): 8086:159b / 8086:1889
+      * Driver version: 1.15.4 (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+
+    * Intel\ |reg| Ethernet Connection E823-C for QSFP
+
+      * Firmware version: 3.42 0x8001f66b 1.3682.0
+      * Device id (pf/vf): 8086:188b / 8086:1889
+      * Driver version: 1.15.4 (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+      * Wireless Edge DDP: 1.3.14.0
+
+    * Intel\ |reg| Ethernet Connection E823-L for QSFP
+
+      * Firmware version: 3.42 0x8001ea89 1.3636.0
+      * Device id (pf/vf): 8086:124c / 8086:1889
+      * Driver version: 1.15.4 (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+      * Wireless Edge DDP: 1.3.14.0
+
+    * Intel\ |reg| Ethernet Connection E822-L for backplane
+
+      * Firmware version: 3.42 0x8001eaad 1.3636.0
+      * Device id (pf/vf): 8086:1897 / 8086:1889
+      * Driver version: 1.15.4 (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+      * Wireless Edge DDP: 1.3.14.0
+
+    * Intel\ |reg| Ethernet Network Adapter E830-XXVDA2 for OCP
+
+      * Firmware version: 1.00 0x8000942a 1.3672.0
+      * Device id (pf/vf): 8086:12d3 / 8086:1889
+      * Driver version: 1.15.4 (ice)
+      * OS Default DDP: 1.3.38.0
+
+    * Intel\ |reg| Ethernet Network Adapter E830-CQDA2
+
+      * Firmware version: 1.00 0x8000d294 1.3722.0
+      * Device id (pf/vf): 8086:12d2 / 8086:1889
+      * Driver version: 1.15.4 (ice)
+      * OS Default DDP: 1.3.39.0
+      * COMMS DDP: 1.3.51.0
+      * Wireless Edge DDP: 1.3.19.0
+
+    * Intel\ |reg| 82599ES 10 Gigabit Ethernet Controller
+
+      * Firmware version: 0x000161bf
+      * Device id (pf/vf): 8086:10fb / 8086:10ed
+      * Driver version(out-tree): 5.21.5 (ixgbe)
+      * Driver version(in-tree): 6.8.0-48-generic (Ubuntu24.04.1)
+
+    * Intel\ |reg| Ethernet Network Adapter E610-XT2
+
+      * Firmware version: 1.00 0x800066ae 0.0.0
+      * Device id (pf/vf): 8086:57b0 / 8086:57ad
+      * Driver version(out-tree): 5.21.5 (ixgbe)
+
+    * Intel\ |reg| Ethernet Network Adapter E610-XT4
+
+      * Firmware version: 1.00 0x80004ef2 0.0.0
+      * Device id (pf/vf): 8086:57b0 / 8086:57ad
+      * Driver version(out-tree): 5.21.5 (ixgbe)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+      * Firmware version: 9.50 0x8000f4c6 1.3682.0
+      * Device id (pf/vf): 8086:1572 / 8086:154c
+      * Driver version(out-tree): 2.26.8 (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GbE SFP+ (2x10G)
+
+      * Firmware version: 6.50 0x80004216 1.3597.0
+      * Device id (pf/vf): 8086:37d0 / 8086:37cd
+      * Driver version(out-tree): 2.26.8 (i40e)
+      * Driver version(in-tree): 5.14.0-427.13.1.el9_4.x86_64 (RHEL9.4)(i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XXV710-DA2 (2x25G)
+
+      * Firmware version:  9.50 0x8000f4e1 1.3682.0
+      * Device id (pf/vf): 8086:158b / 8086:154c
+      * Driver version(out-tree): 2.26.8 (i40e)
+      * Driver version(in-tree): 6.8.0-45-generic (Ubuntu24.04.1) /
+        5.14.0-427.13.1.el9_4.x86_64 (RHEL9.4)(i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+      * Firmware version(PF): 9.50 0x8000f4fe 1.3682.0
+      * Device id (pf/vf): 8086:1583 / 8086:154c
+      * Driver version(out-tree): 2.26.8 (i40e)
+
+    * Intel\ |reg| Ethernet Controller I225-LM
+
+      * Firmware version: 1.3, 0x800000c9
+      * Device id (pf): 8086:15f2
+      * Driver version(in-tree): 6.8.0-48-generic (Ubuntu24.04.1)(igc)
+
+    * Intel\ |reg| Ethernet Controller I226-LM
+
+      * Firmware version: 2.14, 0x8000028c
+      * Device id (pf): 8086:125b
+      * Driver version(in-tree): 6.8.0-45-generic (Ubuntu24.04.1)(igc)
