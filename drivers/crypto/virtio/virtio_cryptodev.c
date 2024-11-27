@@ -478,10 +478,13 @@ virtio_crypto_free_queues(struct rte_cryptodev *dev)
 
 	/* control queue release */
 	virtio_crypto_queue_release(hw->cvq);
+	hw->cvq = NULL;
 
 	/* data queue release */
-	for (i = 0; i < hw->max_dataqueues; i++)
+	for (i = 0; i < hw->max_dataqueues; i++) {
 		virtio_crypto_queue_release(dev->data->queue_pairs[i]);
+		dev->data->queue_pairs[i] = NULL;
+	}
 }
 
 static int
@@ -613,6 +616,7 @@ virtio_crypto_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 	}
 
 	virtio_crypto_queue_release(vq);
+	dev->data->queue_pairs[queue_pair_id] = NULL;
 	return 0;
 }
 
@@ -760,8 +764,6 @@ crypto_virtio_create(const char *name, struct rte_pci_device *pci_dev,
 static int
 virtio_crypto_dev_uninit(struct rte_cryptodev *cryptodev)
 {
-	struct virtio_crypto_hw *hw = cryptodev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -775,9 +777,6 @@ virtio_crypto_dev_uninit(struct rte_cryptodev *cryptodev)
 	cryptodev->dev_ops = NULL;
 	cryptodev->enqueue_burst = NULL;
 	cryptodev->dequeue_burst = NULL;
-
-	/* release control queue */
-	virtio_crypto_queue_release(hw->cvq);
 
 	rte_free(cryptodev->data);
 	cryptodev->data = NULL;
