@@ -631,6 +631,7 @@ def show_device_status(devices_type, device_name, if_field=False):
             extra_param = "if=%(Interface)s " + extra_param
         if print_numa:
             extra_param = "numa_node=%(NUMANode)s " + extra_param
+        extra_param += " %(Active)s"
         display_devices("%s devices using kernel driver" % device_name,
                         kernel_drv, extra_param)
     if no_drv:
