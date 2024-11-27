@@ -92,8 +92,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		11, 10,  9,  8  /* hash.rss, bswap32 */
 	};
 	/* Restore the compressed count. Must be 16 bits. */
-	const uint16_t mcqe_n = t_pkt->data_len +
-				(rxq->crc_present * RTE_ETHER_CRC_LEN);
+	const uint16_t mcqe_n = rte_be_to_cpu_32(cq->byte_cnt);
 	const uint64x2_t rearm =
 		vld1q_u64((void *)&t_pkt->rearm_data);
 	const uint32x4_t rxdf_mask = {
