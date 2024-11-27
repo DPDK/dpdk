@@ -13006,6 +13006,8 @@ test_cryptodev_error_recover_helper(uint8_t dev_id, const void *test_data, bool 
 
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id, &ut_params->cipher_xform,
 							   ts_params->session_mpool);
+	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
+		return TEST_SKIPPED;
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
@@ -14707,15 +14709,19 @@ test_multi_session(void)
 		sessions[i] = rte_cryptodev_sym_session_create(
 			ts_params->valid_devs[0], &ut_params->auth_xform,
 				ts_params->session_mpool);
-		if (sessions[i] == NULL && rte_errno == ENOTSUP) {
+		if (sessions[i] == NULL) {
 			nb_sess = i;
-			ret = TEST_SKIPPED;
+			if (rte_errno == ENOTSUP)
+				ret = TEST_SKIPPED;
+			else {
+				ret = TEST_FAILED;
+				printf("TestCase %s() line %d failed : "
+						"Session creation failed at session number %u",
+						__func__, __LINE__, i);
+			}
 			break;
 		}
 
-		TEST_ASSERT_NOT_NULL(sessions[i],
-				"Session creation failed at session number %u",
-				i);
 
 		/* Attempt to send a request on each session */
 		ret = test_AES_CBC_HMAC_SHA512_decrypt_perform(
@@ -14843,15 +14849,19 @@ test_multi_session_random_usage(void)
 				ts_params->valid_devs[0],
 				&ut_paramz[i].ut_params.auth_xform,
 				ts_params->session_mpool);
-		if (sessions[i] == NULL && rte_errno == ENOTSUP) {
+		if (sessions[i] == NULL) {
 			nb_sess = i;
-			ret = TEST_SKIPPED;
+			if (rte_errno == ENOTSUP)
+				ret = TEST_SKIPPED;
+			else {
+				ret = TEST_FAILED;
+				printf("TestCase %s() line %d failed : "
+						"Session creation failed at session number %u",
+						__func__, __LINE__, i);
+			}
 			goto session_clear;
 		}
 
-		TEST_ASSERT_NOT_NULL(sessions[i],
-				"Session creation failed at session number %u",
-				i);
 	}
 
 	nb_sess = i;
@@ -14934,6 +14944,8 @@ test_null_invalid_operation(void)
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->valid_devs[0], &ut_params->cipher_xform,
 			ts_params->session_mpool);
+	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
+		return TEST_SKIPPED;
 	TEST_ASSERT(ut_params->sess == NULL,
 			"Session creation succeeded unexpectedly");
 
@@ -14948,6 +14960,8 @@ test_null_invalid_operation(void)
 	ut_params->sess = rte_cryptodev_sym_session_create(
 			ts_params->valid_devs[0], &ut_params->auth_xform,
 			ts_params->session_mpool);
+	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
+		return TEST_SKIPPED;
 	TEST_ASSERT(ut_params->sess == NULL,
 			"Session creation succeeded unexpectedly");
 
@@ -15095,6 +15109,8 @@ test_enqdeq_callback_null_cipher(void)
 	/* Create Crypto session */
 	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
 				&ut_params->auth_xform, ts_params->session_mpool);
+	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
+		return TEST_SKIPPED;
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
@@ -16155,6 +16171,7 @@ create_auth_session(struct crypto_unittest_params *ut_params,
 				ts_params->session_mpool);
 	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
 		return TEST_SKIPPED;
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	return 0;
 }
@@ -16205,6 +16222,7 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 				ts_params->session_mpool);
 	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
 		return TEST_SKIPPED;
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
 	return 0;
 }
