@@ -50,12 +50,6 @@ The adjustment for time receiver can be represented as:
 If the command line parameter ``-T 1`` is used the application also
 synchronizes the PTP PHC clock with the Linux kernel clock.
 
-If the command line parameter ``-c 1`` is used,
-the application will also use the servo of the local clock.
-Only one type of servo is currently implemented, the PI controller.
-Default 0 (not used).
-
-
 Compiling the Application
 -------------------------
 
@@ -71,7 +65,7 @@ To run the example in a ``linux`` environment:
 
 .. code-block:: console
 
-    ./<build_dir>/examples/dpdk-ptpclient -l 1 -n 4 -- -p 0x1 -T 0 -c 1
+    ./<build_dir>/examples/dpdk-ptpclient -l 1 -n 4 -- -p 0x1 -T 0
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.
@@ -79,15 +73,6 @@ applications and the Environment Abstraction Layer (EAL) options.
 * ``-p portmask``: Hexadecimal portmask.
 * ``-T 0``: Update only the PTP time receiver clock.
 * ``-T 1``: Update the PTP time receiver clock and synchronize the Linux Kernel to the PTP clock.
-* ``-c 0``: Not used clock servo controller.
-* ``-c 1``: The clock servo PI controller is used and the log will print information
-            about time transmitter offset.
-            Note that the PMD needs to support the ``rte_eth_timesync_adjust_freq()`` API
-            to enable the servo controller.
-
-Also, by adding ``-T 1`` and ``-c 1``, the time transmitter offset value printed in the log
-will slowly converge and eventually stabilise at the nanosecond level.
-The synchronisation accuracy is much higher compared to not using a servo controller.
 
 
 Code Explanation
