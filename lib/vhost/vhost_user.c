@@ -2147,6 +2147,7 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 
 	rte_spinlock_lock(&vq->access_lock);
 	vring_invalidate(dev, vq);
+	memset(&vq->ring_addrs, 0, sizeof(struct vhost_vring_addr));
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return RTE_VHOST_MSG_RESULT_REPLY;
