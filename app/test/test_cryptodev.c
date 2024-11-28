@@ -13757,7 +13757,7 @@ test_enq_callback_setup(void)
 			"qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
 
-	TEST_ASSERT(deq_cb_called == true, "Crypto dequeue callback not called");
+	TEST_ASSERT(enq_cb_called == true, "Crypto enqueue callback not called");
 
 	return TEST_SUCCESS;
 }
@@ -13882,7 +13882,7 @@ test_deq_callback_setup(void)
 			"qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
 
-	TEST_ASSERT(enq_cb_called == true, "Crypto enqueue callback not called");
+	TEST_ASSERT(deq_cb_called == true, "Crypto dequeue callback not called");
 
 	return TEST_SUCCESS;
 }
