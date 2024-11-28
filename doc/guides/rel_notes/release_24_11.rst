@@ -6,65 +6,19 @@
 DPDK Release 24.11
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_24_11.html
-
-
 New Features
 ------------
 
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
-
 * **Added new bit manipulation API.**
 
-  The support for bit-level operations on single 32- and 64-bit words in
-  <rte_bitops.h> has been extended with semantically well-defined functions.
+  Extended support for bit-level operations on single 32 and 64-bit words in
+  ``<rte_bitops.h>`` with semantically well-defined functions.
 
   * ``rte_bit_[test|set|clear|assign|flip]`` functions provide excellent
     performance (by avoiding restricting the compiler and CPU), but give
-    no guarantees in regards to memory ordering or atomicity.
+    no guarantees in relation to memory ordering or atomicity.
 
-  * ``rte_bit_atomic_*`` provide atomic bit-level operations, including
+  * ``rte_bit_atomic_*`` provide atomic bit-level operations including
     the possibility to specify memory ordering constraints.
 
   The new public API elements are polymorphic, using the _Generic-based
@@ -72,15 +26,17 @@ New Features
 
 * **Added multi-word bitset API.**
 
-  A new multi-word bitset API has been introduced in the EAL.
+  Introduced a new multi-word bitset API to the EAL.
+
   The RTE bitset is optimized for scenarios where the bitset size exceeds the
   capacity of a single word (e.g., larger than 64 bits), but is not large
   enough to justify the overhead and complexity of the more scalable,
-  yet slower, <rte_bitmap.h> API.
-  This addition provides an efficient and straightforward alternative
-  for handling bitsets of intermediate sizes.
+  yet slower, ``<rte_bitmap.h>`` API.
 
-* **Added per-lcore static memory allocation facility.**
+  This addition provides an efficient and straightforward alternative
+  for handling bitsets of intermediate size.
+
+* **Added a per-lcore static memory allocation facility.**
 
   Added EAL API ``<rte_lcore_var.h>`` for statically allocating small,
   frequently-accessed data structures, for which one instance should exist
@@ -89,10 +45,10 @@ New Features
   With lcore variables, data is organized spatially on a per-lcore id basis,
   rather than per library or PMD, avoiding the need for cache aligning
   (or RTE_CACHE_GUARDing) data structures, which in turn
-  reduces CPU cache internal fragmentation, improving performance.
+  reduces CPU cache internal fragmentation and improves performance.
 
   Lcore variables are similar to thread-local storage (TLS, e.g. C11 ``_Thread_local``),
-  but decoupling the values' life time from that of the threads.
+  but decouples the values' life times from those of the threads.
 
 * **Extended service cores statistics.**
 
@@ -101,7 +57,7 @@ New Features
   * ``RTE_SERVICE_ATTR_IDLE_CALL_COUNT`` tracks the number of service function
     invocations where no actual work was performed.
 
-  * ``RTE_SERVICE_ATTR_ERROR_CALL_COUNT`` tracks the number invocations
+  * ``RTE_SERVICE_ATTR_ERROR_CALL_COUNT`` tracks the number of invocations
     resulting in an error.
 
   The new statistics are useful for debugging and profiling.
@@ -110,17 +66,17 @@ New Features
 
   Added function attributes to ``rte_malloc`` and similar functions
   that can catch some obvious bugs at compile time (with GCC 11.0 or later).
-  Examples: calling ``free`` on pointer that was allocated with ``rte_malloc``
-  (and vice versa); freeing the same pointer twice in the same routine;
-  freeing an object that was not created by allocation; etc.
+  For example, calling ``free`` on a pointer that was allocated with ``rte_malloc``
+  (and vice versa); freeing the same pointer twice in the same routine or
+  freeing an object that was not created by allocation.
 
-* **Updated logging library**
+* **Updated logging library.**
 
   * The log subsystem is initialized earlier in startup so all messages go through the library.
 
   * If the application is a systemd service and the log output is being sent to standard error
     then DPDK will switch to journal native protocol.
-    This allows the more data such as severity to be sent.
+    This allows more data such as severity to be sent.
 
   * The syslog option has changed.
     By default, messages are no longer sent to syslog unless the ``--syslog`` option is specified.
@@ -136,7 +92,7 @@ New Features
 
 * **Added more ICMP message types and codes.**
 
-  New ICMP message types and codes from RFC 792 were added in ``rte_icmp.h``.
+  Added new ICMP message types and codes from RFC 792 in ``rte_icmp.h``.
 
 * **Added IPv6 address structure and related utilities.**
 
@@ -154,7 +110,7 @@ New Features
 
 * **Extended flow table index features.**
 
-  * Extended the flow table insertion type enum with
+  * Extended the flow table insertion type enum with the
     ``RTE_FLOW_TABLE_INSERTION_TYPE_INDEX_WITH_PATTERN`` type.
   * Added a function for inserting a flow rule by index with pattern:
     ``rte_flow_async_create_by_index_with_pattern()``.
@@ -171,8 +127,8 @@ New Features
 
   * Modified the PMD API that controls the LLQ header policy.
   * Replaced ``enable_llq``, ``normal_llq_hdr`` and ``large_llq_hdr`` devargs
-    with a new shared devarg ``llq_policy`` that keeps the same logic.
-  * Added validation check for Rx packet descriptor consistency.
+    with a new shared devarg ``llq_policy`` that maintains the same logic.
+  * Added a validation check for Rx packet descriptor consistency.
 
 * **Updated Cisco enic driver.**
 
@@ -187,17 +143,19 @@ New Features
 
   * Updated supported version of the FPGA to 9563.55.49.
   * Extended and fixed logging.
-  * Added NT flow filter initialization.
-  * Added NT flow backend initialization.
-  * Added initialization of FPGA modules related to flow HW offload.
-  * Added basic handling of the virtual queues.
-  * Added flow handling support.
-  * Added statistics support.
-  * Added age flow action support.
-  * Added meter flow metering and flow policy support.
-  * Added flow actions update support.
-  * Added asynchronous flow support.
-  * Added MTU update support.
+  * Added:
+
+    - NT flow filter initialization.
+    - NT flow backend initialization.
+    - Initialization of FPGA modules related to flow HW offload.
+    - Basic handling of the virtual queues.
+    - Flow handling support.
+    - Statistics support.
+    - Age flow action support.
+    - Meter flow metering and flow policy support.
+    - Flow actions update support.
+    - Asynchronous flow support.
+    - MTU update support.
 
 * **Updated NVIDIA mlx5 net driver.**
 
@@ -211,9 +169,10 @@ New Features
 
 * **Added ZTE zxdh net driver [EXPERIMENTAL].**
 
-  Added ethdev driver support for zxdh NX Series Ethernet Controller.
+  Added ethdev driver support for the zxdh NX Series Ethernet Controller.
+  This has:
 
-  * Ability to initialize the NIC.
+  * The ability to initialize the NIC.
   * No datapath support.
 
 * **Added cryptodev queue pair reset support.**
@@ -232,9 +191,9 @@ New Features
 
 * **Updated IPsec_MB crypto driver.**
 
-  * Added support for SM3 algorithm.
-  * Added support for SM3 HMAC algorithm.
-  * Added support for SM4 CBC, SM4 ECB and SM4 CTR algorithms.
+  * Added support for the SM3 algorithm.
+  * Added support for the SM3 HMAC algorithm.
+  * Added support for the SM4 CBC, SM4 ECB and SM4 CTR algorithms.
   * Bumped the minimum version requirement of Intel IPsec Multi-buffer library to v1.4.
     Affected PMDs: KASUMI, SNOW3G, ZUC, AESNI GCM, AESNI MB and CHACHAPOLY.
 
@@ -264,7 +223,7 @@ New Features
 * **Added Marvell cnxk RVU LF rawdev driver.**
 
   Added a new raw device driver for Marvell cnxk based devices
-  to allow out-of-tree driver to manage RVU LF device.
+  to allow an out-of-tree driver to manage a RVU LF device.
   It enables operations such as sending/receiving mailbox,
   register and notify the interrupts, etc.
 
@@ -305,8 +264,8 @@ New Features
 
 * **Added IPv4 network order lookup in the FIB library.**
 
-  A new flag field is introduced in ``rte_fib_conf`` structure.
-  This field is used to pass an extra configuration settings such as ability
+  A new flag field is introduced in the ``rte_fib_conf`` structure.
+  This field is used to pass an extra configuration settings such as the ability
   to lookup IPv4 addresses in network byte order.
 
 * **Added RSS hash key generating API.**
@@ -317,7 +276,7 @@ New Features
 * **Added per-CPU power management QoS interface.**
 
   Added per-CPU PM QoS interface to lower the resume latency
-  when wake up from idle state.
+  when waking up from idle state.
 
 * **Added new API to register telemetry endpoint callbacks with private arguments.**
 
@@ -326,45 +285,24 @@ New Features
 
 * **Added node specific statistics.**
 
-  Added ability for node to advertise and update multiple xstat counters,
+  Added ability for a node to advertise and update multiple xstat counters,
   that can be retrieved using ``rte_graph_cluster_stats_get``.
 
 
 Removed Items
 -------------
 
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-* ethdev: Removed the __rte_ethdev_trace_rx_burst symbol, as the corresponding
+* ethdev: Removed the ``__rte_ethdev_trace_rx_burst`` symbol, as the corresponding
   tracepoint was split into two separate ones for empty and non-empty calls.
 
 
 API Changes
 -----------
 
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * kvargs: reworked the process API.
 
-  * The already existing ``rte_kvargs_process`` now only handles key=value cases and
-    rejects if only a key is present in the parsed string.
+  * The already existing ``rte_kvargs_process`` now only handles ``key=value`` cases and
+    rejects input where only a key is present in the parsed string.
   * ``rte_kvargs_process_opt`` has been added to behave as ``rte_kvargs_process`` in previous
     releases: it handles key=value and only-key cases.
   * Both ``rte_kvargs_process`` and ``rte_kvargs_process_opt`` reject a NULL ``kvlist`` parameter.
@@ -381,24 +319,35 @@ API Changes
 * net: A new IPv6 address structure was introduced to replace ad-hoc ``uint8_t[16]`` arrays.
   The following libraries and symbols were modified:
 
-  cmdline
+  - cmdline:
+
     - ``cmdline_ipaddr_t``
-  ethdev
+
+  - ethdev:
+
     - ``struct rte_flow_action_set_ipv6``
     - ``struct rte_flow_item_icmp6_nd_na``
     - ``struct rte_flow_item_icmp6_nd_ns``
     - ``struct rte_flow_tunnel``
-  fib
+
+  - fib:
+
     - ``rte_fib6_add()``
     - ``rte_fib6_delete()``
     - ``rte_fib6_lookup_bulk()``
     - ``RTE_FIB6_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
     - ``RTE_FIB6_MAXDEPTH`` (deprecated, replaced with ``RTE_IPV6_MAX_DEPTH``)
-  hash
+
+  - hash:
+
     - ``struct rte_ipv6_tuple``
-  ipsec
+
+  - ipsec:
+
     - ``struct rte_ipsec_sadv6_key``
-  lpm
+
+  - lpm:
+
     - ``rte_lpm6_add()``
     - ``rte_lpm6_delete()``
     - ``rte_lpm6_delete_bulk_func()``
@@ -407,20 +356,32 @@ API Changes
     - ``rte_lpm6_lookup_bulk_func()``
     - ``RTE_LPM6_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
     - ``RTE_LPM6_MAX_DEPTH`` (deprecated, replaced with ``RTE_IPV6_MAX_DEPTH``)
-  net
+
+  - net:
+
     - ``struct rte_ipv6_hdr``
-  node
+
+  - node:
+
     - ``rte_node_ip6_route_add()``
-  pipeline
+
+  - pipeline:
+
     - ``struct rte_swx_ipsec_sa_encap_params``
     - ``struct rte_table_action_ipv6_header``
     - ``struct rte_table_action_nat_params``
-  security
+
+  - security:
+
     - ``struct rte_security_ipsec_tunnel_param``
-  table
+
+  - table:
+
     - ``struct rte_table_lpm_ipv6_key``
     - ``RTE_LPM_IPV6_ADDR_SIZE`` (deprecated, replaced with ``RTE_IPV6_ADDR_SIZE``)
-  rib
+
+  - rib:
+
     - ``rte_rib6_get_ip()``
     - ``rte_rib6_get_nxt()``
     - ``rte_rib6_insert()``
@@ -439,20 +400,8 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * eal: The maximum number of file descriptors that can be passed to a secondary process
-  has been increased from 8 to 253 (which is the maximum possible with Unix domain socket).
+  has been increased from 8 to 253 (which is the maximum possible with Unix domain sockets).
   This allows for more queues when using software devices such as TAP and XDP.
 
 * ethdev: Added ``filter`` and ``names`` fields to ``rte_dev_reg_info`` structure
@@ -468,25 +417,25 @@ ABI Changes
 * cryptodev: The enum ``rte_crypto_asym_xform_type`` and struct ``rte_crypto_asym_op``
   are updated to include new values to support EdDSA.
 
-* cryptodev: The ``rte_crypto_rsa_xform`` struct member to hold private key
-  in either exponent or quintuple format is changed from union to struct data type.
+* cryptodev: The ``rte_crypto_rsa_xform`` struct member to hold private key data
+  in either exponent or quintuple format is changed from a union to a struct data type.
   This change is to support ASN.1 syntax (RFC 3447 Appendix A.1.2).
 
 * cryptodev: The padding struct ``rte_crypto_rsa_padding`` is moved
   from ``rte_crypto_rsa_op_param`` to ``rte_crypto_rsa_xform``
   as the padding information is part of session creation
-  instead of per packet crypto operation.
+  instead of the per packet crypto operation.
   This change is required to support virtio-crypto specifications.
 
 * bbdev: The structure ``rte_bbdev_stats`` was updated to add a new parameter
-  to optionally report the number of enqueue batch available ``enqueue_depth_avail``.
+  to optionally report the number of enqueue batches available ``enqueue_depth_avail``.
 
-* dmadev: Added ``nb_priorities`` field to ``rte_dma_info`` structure
-  and ``priority`` field to ``rte_dma_conf`` structure
+* dmadev: Added ``nb_priorities`` field to the ``rte_dma_info`` structure
+  and ``priority`` field to the ``rte_dma_conf`` structure
   to get device supported priority levels
   and configure required priority from the application.
 
-* eventdev: Added ``preschedule_type`` field to ``rte_event_dev_config`` structure.
+* eventdev: Added the ``preschedule_type`` field to ``rte_event_dev_config`` structure.
 
 * eventdev: Removed the single-event enqueue and dequeue function pointers
   from ``rte_event_fp_fps``.
@@ -500,39 +449,8 @@ ABI Changes
   have been marked as ``RTE_CACHE_LINE_MIN_SIZE`` bytes aligned.
 
 
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
