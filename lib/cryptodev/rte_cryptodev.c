@@ -620,7 +620,7 @@ rte_cryptodev_asym_xform_capability_check_hash(
 {
 	bool ret = false;
 
-	if (capability->hash_algos & (1 << hash))
+	if (capability->hash_algos & RTE_BIT64(hash))
 		ret = true;
 
 	rte_cryptodev_trace_asym_xform_capability_check_hash(
