@@ -11,6 +11,19 @@
 
 #include "rte_kvargs.h"
 
+/** A key/value association */
+struct rte_kvargs_pair {
+	char *key;      /**< the name (key) of the association  */
+	char *value;    /**< the value associated to that key */
+};
+
+/** Store a list of key/value associations */
+struct rte_kvargs {
+	char *str;      /**< copy of the argument string */
+	unsigned count; /**< number of entries in the list */
+	struct rte_kvargs_pair pairs[RTE_KVARGS_MAX]; /**< list of key/values */
+};
+
 /*
  * Receive a string with a list of arguments following the pattern
  * key=value,key=value,... and insert them into the list.

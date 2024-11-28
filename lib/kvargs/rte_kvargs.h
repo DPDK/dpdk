@@ -49,18 +49,8 @@ extern "C" {
  */
 typedef int (*arg_handler_t)(const char *key, const char *value, void *opaque);
 
-/** A key/value association */
-struct rte_kvargs_pair {
-	char *key;      /**< the name (key) of the association  */
-	char *value;    /**< the value associated to that key */
-};
-
 /** Store a list of key/value associations */
-struct rte_kvargs {
-	char *str;      /**< copy of the argument string */
-	unsigned count; /**< number of entries in the list */
-	struct rte_kvargs_pair pairs[RTE_KVARGS_MAX]; /**< list of key/values */
-};
+struct rte_kvargs;
 
 /**
  * Allocate a rte_kvargs and store key/value associations from a string
