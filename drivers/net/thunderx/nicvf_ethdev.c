@@ -2147,14 +2147,12 @@ nicvf_set_first_skip(struct rte_eth_dev *dev)
 	if (!kvlist)
 		return -EINVAL;
 
-	if (kvlist->count == 0)
+	if (rte_kvargs_count(kvlist, NULL) == 0)
 		goto exit;
 
-	for (i = 0; i != kvlist->count; ++i) {
-		const struct rte_kvargs_pair *pair = &kvlist->pairs[i];
-
-		if (!strcmp(pair->key, SKIP_DATA_BYTES))
-			bytes_to_skip = atoi(pair->value);
+	const char *arg = rte_kvargs_get(kvlist, SKIP_DATA_BYTES);
+	if (arg != NULL) {
+		bytes_to_skip = atoi(arg);
 	}
 
 	/*128 bytes amounts to one cache line*/
