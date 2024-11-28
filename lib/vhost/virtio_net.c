@@ -2261,6 +2261,9 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m,
 			 */
 			uint16_t csum = 0, off;
 
+			if (hdr->csum_start >= rte_pktmbuf_pkt_len(m))
+				return;
+
 			if (rte_raw_cksum_mbuf(m, hdr->csum_start,
 					rte_pktmbuf_pkt_len(m) - hdr->csum_start, &csum) < 0)
 				return;
