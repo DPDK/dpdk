@@ -38,6 +38,7 @@ static struct rte_logs {
 	uint32_t type;  /**< Bitfield with enabled logs. */
 	uint32_t level; /**< Log level. */
 	FILE *file;     /**< Output file set by rte_openlog_stream, or NULL. */
+	bool is_internal_file;
 	log_print_t print_func;
 	size_t dynamic_types_len;
 	struct rte_log_dynamic_type *dynamic_types;
@@ -80,8 +81,11 @@ static RTE_DEFINE_PER_LCORE(struct log_cur_msg, log_cur_msg);
 int
 rte_openlog_stream(FILE *f)
 {
+	if (rte_logs.is_internal_file && rte_logs.file != NULL)
+		fclose(rte_logs.file);
 	rte_logs.file = f;
 	rte_logs.print_func = vfprintf;
+	rte_logs.is_internal_file = false;
 	return 0;
 }
 
@@ -520,6 +524,7 @@ eal_log_init(const char *id)
 		/* if either syslog or journal is used, then no special handling */
 		if (logf) {
 			rte_openlog_stream(logf);
+			rte_logs.is_internal_file = true;
 		} else {
 			bool is_terminal = isatty(fileno(stderr));
 			bool use_color = log_color_enabled(is_terminal);
@@ -550,11 +555,8 @@ eal_log_init(const char *id)
 void
 rte_eal_log_cleanup(void)
 {
-	FILE *log_stream = rte_logs.file;
-
-	/* don't close stderr on the application */
-	if (log_stream != NULL)
-		fclose(log_stream);
-
+	if (rte_logs.is_internal_file && rte_logs.file != NULL)
+		fclose(rte_logs.file);
 	rte_logs.file = NULL;
+	rte_logs.is_internal_file = false;
 }
