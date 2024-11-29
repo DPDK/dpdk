@@ -716,8 +716,34 @@ npc_rss_action_configure(struct roc_npc *roc_npc,
 	uint8_t key[ROC_NIX_RSS_KEY_LEN];
 	const uint8_t *key_ptr;
 	uint8_t flowkey_algx;
+	uint32_t key_len;
 	uint16_t *reta;
 	int rc;
+
+	roc_nix_rss_key_get(roc_nix, key);
+	if (rss->key == NULL) {
+		key_ptr = key;
+	} else {
+		key_len = rss->key_len;
+		if (key_len > ROC_NIX_RSS_KEY_LEN)
+			key_len = ROC_NIX_RSS_KEY_LEN;
+
+		for (i = 0; i < key_len; i++) {
+			if (key[i] != rss->key[i]) {
+				plt_err("RSS key config not supported");
+				plt_err("New Key:");
+				for (i = 0; i < key_len; i++)
+					plt_dump_no_nl("0x%.2x ", rss->key[i]);
+				plt_dump_no_nl("\n");
+				plt_err("Configured Key:");
+				for (i = 0; i < ROC_NIX_RSS_KEY_LEN; i++)
+					plt_dump_no_nl("0x%.2x ", key[i]);
+				plt_dump_no_nl("\n");
+				return -ENOTSUP;
+			}
+		}
+		key_ptr = rss->key;
+	}
 
 	rc = npc_rss_free_grp_get(npc, &rss_grp_idx);
 	/* RSS group :0 is not usable for flow rss action */
@@ -732,13 +758,6 @@ npc_rss_action_configure(struct roc_npc *roc_npc,
 	}
 
 	*rss_grp = rss_grp_idx;
-
-	if (rss->key == NULL) {
-		roc_nix_rss_key_default_fill(roc_nix, key);
-		key_ptr = key;
-	} else {
-		key_ptr = rss->key;
-	}
 
 	roc_nix_rss_key_set(roc_nix, key_ptr);
 
