@@ -111,11 +111,6 @@ noiommu_flag = False
 args = []
 
 
-# check if this system has NUMA support
-def is_numa():
-    return os.path.exists('/sys/devices/system/node')
-
-
 # check if a specific kernel module is loaded
 def module_is_loaded(module):
     global loaded_modules
@@ -595,9 +590,12 @@ def show_device_status(devices_type, device_name, if_field=False):
     dpdk_drv = []
     no_drv = []
 
+    print_numa = True  # by default, assume we can print NUMA information
+
     # split our list of network devices into the three categories above
     for d in devices.keys():
         if device_type_match(devices[d], devices_type):
+            print_numa &= "NUMANode" in devices[d]
             if not has_driver(d):
                 no_drv.append(devices[d])
                 continue
@@ -615,8 +613,6 @@ def show_device_status(devices_type, device_name, if_field=False):
         print(msg)
         print("".join('=' * len(msg)))
         return
-
-    print_numa = is_numa()
 
     # print each category separately, so we can clearly see what's used by DPDK
     if dpdk_drv:
