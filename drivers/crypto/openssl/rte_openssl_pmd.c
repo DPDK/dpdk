@@ -1595,9 +1595,6 @@ process_openssl_auth_cmac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
 process_auth_final:
 	if (CMAC_Final(ctx, dst, (size_t *)&dstlen) != 1)
 		goto process_auth_err;
-
-	CMAC_CTX_cleanup(ctx);
-
 	return 0;
 
 process_auth_err:
