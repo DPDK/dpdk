@@ -875,6 +875,16 @@ eth_ark_set_mtu(struct rte_eth_dev *dev, uint16_t  size)
 }
 
 static inline int
+log_args(const char *key, const char *value,
+		   void *extra_args)
+{
+	ARK_PMD_LOG(DEBUG, "**** Arg passed to PMD = %s:%s\n",
+			     key,
+			     value);
+	return 0;
+}
+
+static inline int
 process_pktdir_arg(const char *key, const char *value,
 		   void *extra_args)
 {
@@ -942,12 +952,7 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 	ark->pkt_gen_args[0] = 0;
 	ark->pkt_chkr_args[0] = 0;
 
-	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
-		pair = &kvlist->pairs[k_idx];
-		ARK_PMD_LOG(DEBUG, "**** Arg passed to PMD = %s:%s\n",
-			     pair->key,
-			     pair->value);
-	}
+	rte_kvargs_process(kvlist, NULL, log_args, NULL);
 
 	if (rte_kvargs_process(kvlist,
 			       ARK_PKTDIR_ARG,

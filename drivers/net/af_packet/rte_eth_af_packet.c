@@ -716,7 +716,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
 	struct rte_eth_dev_data *data = NULL;
-	struct rte_kvargs_pair *pair = NULL;
+	const char *ifname = NULL;
 	struct ifreq ifr;
 	size_t ifnamelen;
 	unsigned k_idx;
@@ -731,12 +731,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	int fanout_arg;
 #endif
 
-	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
-		pair = &kvlist->pairs[k_idx];
-		if (strstr(pair->key, ETH_AF_PACKET_IFACE_ARG) != NULL)
-			break;
-	}
-	if (pair == NULL) {
+	ifname = rte_kvargs_get(kvlist, ETH_AF_PACKET_IFACE_ARG);
+	if (ifname == NULL) {
 		PMD_LOG(ERR,
 			"%s: no interface specified for AF_PACKET ethdev",
 		        name);
@@ -779,21 +775,21 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	req->tp_frame_size = framesize;
 	req->tp_frame_nr = framecnt;
 
-	ifnamelen = strlen(pair->value);
+	ifnamelen = strlen(ifname);
 	if (ifnamelen < sizeof(ifr.ifr_name)) {
-		memcpy(ifr.ifr_name, pair->value, ifnamelen);
+		memcpy(ifr.ifr_name, ifname, ifnamelen);
 		ifr.ifr_name[ifnamelen] = '\0';
 	} else {
 		PMD_LOG(ERR,
 			"%s: I/F name too long (%s)",
-			name, pair->value);
+			name, ifname);
 		goto free_internals;
 	}
 	if (ioctl(sockfd, SIOCGIFINDEX, &ifr) == -1) {
 		PMD_LOG_ERRNO(ERR, "%s: ioctl failed (SIOCGIFINDEX)", name);
 		goto free_internals;
 	}
-	(*internals)->if_name = strdup(pair->value);
+	(*internals)->if_name = strdup(ifname);
 	if ((*internals)->if_name == NULL)
 		goto free_internals;
 	(*internals)->if_index = ifr.ifr_ifindex;
@@ -833,7 +829,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rc == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not set PACKET_VERSION on AF_PACKET socket for %s",
-				name, pair->value);
+				name, ifname);
 			goto error;
 		}
 
@@ -843,7 +839,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rc == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not set PACKET_LOSS on AF_PACKET socket for %s",
-				name, pair->value);
+				name, ifname);
 			goto error;
 		}
 
@@ -854,7 +850,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 			if (rc == -1) {
 				PMD_LOG_ERRNO(ERR,
 					"%s: could not set PACKET_QDISC_BYPASS on AF_PACKET socket for %s",
-					name, pair->value);
+					name, ifname);
 				goto error;
 			}
 #endif
@@ -864,7 +860,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rc == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not set PACKET_RX_RING on AF_PACKET socket for %s",
-				name, pair->value);
+				name, ifname);
 			goto error;
 		}
 
@@ -872,7 +868,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rc == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not set PACKET_TX_RING on AF_PACKET "
-				"socket for %s", name, pair->value);
+				"socket for %s", name, ifname);
 			goto error;
 		}
 
@@ -885,7 +881,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rx_queue->map == MAP_FAILED) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: call to mmap failed on AF_PACKET socket for %s",
-				name, pair->value);
+				name, ifname);
 			goto error;
 		}
 
@@ -922,7 +918,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rc == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not bind AF_PACKET socket to %s",
-				name, pair->value);
+				name, ifname);
 			goto error;
 		}
 
@@ -932,7 +928,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		if (rc == -1) {
 			PMD_LOG_ERRNO(ERR,
 				"%s: could not set PACKET_FANOUT on AF_PACKET socket for %s",
-				name, pair->value);
+				name, ifname);
 			goto error;
 		}
 #endif
@@ -995,7 +991,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	const char *name = rte_vdev_device_name(dev);
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
-	struct rte_kvargs_pair *pair = NULL;
+	const char *arg = NULL;
 	unsigned k_idx;
 	unsigned int blockcount;
 	unsigned int blocksize;
@@ -1013,57 +1009,55 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	/*
 	 * Walk arguments for configurable settings
 	 */
-	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
-		pair = &kvlist->pairs[k_idx];
-		if (strstr(pair->key, ETH_AF_PACKET_NUM_Q_ARG) != NULL) {
-			qpairs = atoi(pair->value);
-			if (qpairs < 1) {
-				PMD_LOG(ERR,
-					"%s: invalid qpairs value",
-				        name);
-				return -1;
-			}
-			continue;
-		}
-		if (strstr(pair->key, ETH_AF_PACKET_BLOCKSIZE_ARG) != NULL) {
-			blocksize = atoi(pair->value);
-			if (!blocksize) {
-				PMD_LOG(ERR,
-					"%s: invalid blocksize value",
-				        name);
-				return -1;
-			}
-			continue;
-		}
-		if (strstr(pair->key, ETH_AF_PACKET_FRAMESIZE_ARG) != NULL) {
-			framesize = atoi(pair->value);
-			if (!framesize) {
-				PMD_LOG(ERR,
-					"%s: invalid framesize value",
-				        name);
-				return -1;
-			}
-			continue;
-		}
-		if (strstr(pair->key, ETH_AF_PACKET_FRAMECOUNT_ARG) != NULL) {
-			framecount = atoi(pair->value);
-			if (!framecount) {
-				PMD_LOG(ERR,
-					"%s: invalid framecount value",
-				        name);
-				return -1;
-			}
-			continue;
-		}
-		if (strstr(pair->key, ETH_AF_PACKET_QDISC_BYPASS_ARG) != NULL) {
-			qdisc_bypass = atoi(pair->value);
-			if (qdisc_bypass > 1) {
-				PMD_LOG(ERR,
-					"%s: invalid bypass value",
+	arg = rte_kvargs_get(kvlist, ETH_AF_PACKET_NUM_Q_ARG);
+	if (arg != NULL) {
+		qpairs = atoi(arg);
+		if (qpairs < 1)
+		{
+			PMD_LOG(ERR,
+				"%s: invalid qpairs value",
 					name);
-				return -1;
-			}
-			continue;
+			return -1;
+		}
+	}
+	arg = rte_kvargs_get(kvlist, ETH_AF_PACKET_BLOCKSIZE_ARG);
+	if (arg != NULL) {
+		blocksize = atoi(arg);
+		if (!blocksize) {
+			PMD_LOG(ERR,
+				"%s: invalid blocksize value",
+					name);
+			return -1;
+		}
+	}
+	arg = rte_kvargs_get(kvlist, ETH_AF_PACKET_FRAMESIZE_ARG);
+	if (arg != NULL) {
+		framesize = atoi(arg);
+		if (!framesize) {
+			PMD_LOG(ERR,
+				"%s: invalid framesize value",
+					name);
+			return -1;
+		}
+	}
+	arg = rte_kvargs_get(kvlist, ETH_AF_PACKET_FRAMECOUNT_ARG);
+	if (arg != NULL) {
+		framecount = atoi(arg);
+		if (!framecount) {
+			PMD_LOG(ERR,
+				"%s: invalid framecount value",
+					name);
+			return -1;
+		}
+	}
+	arg = rte_kvargs_get(kvlist, ETH_AF_PACKET_QDISC_BYPASS_ARG);
+	if (arg != NULL) {
+		qdisc_bypass = atoi(arg);
+		if (qdisc_bypass > 1) {
+			PMD_LOG(ERR,
+				"%s: invalid bypass value",
+				name);
+			return -1;
 		}
 	}
 
