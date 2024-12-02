@@ -21,9 +21,9 @@
 #include "host/cfa_p70_mpc_field_mapping.h"
 
 #ifdef NXT_ENV_DEBUG
-#define ASSERT_RETURN(ERRNO) CFA_LOG_ERR("Returning error: %d\n", (ERRNO))
+#define LOG_RC(ERRNO) PMD_DRV_LOG_LINE(ERR, "Returning error: %d", (ERRNO))
 #else
-#define ASSERT_RETURN(ERRNO)
+#define LOG_RC(ERRNO)
 #endif
 
 /*
@@ -47,7 +47,7 @@
 			uint64_t mapped_val;                                   \
 			retcode = MAP_FUNC(fields[INDEX].val, &mapped_val);    \
 			if (retcode)                                           \
-				ASSERT_RETURN(retcode);                        \
+				LOG_RC(retcode);                        \
 			else                                                   \
 				parms.NAME = (TYPE)mapped_val;                 \
 		}                                                              \
@@ -75,7 +75,7 @@
 			uint64_t mapped_val;                                   \
 			retcode = MAP_FUNC(result.NAME, &mapped_val);          \
 			if (retcode)                                           \
-				ASSERT_RETURN(retcode);                        \
+				LOG_RC(retcode);                        \
 			else                                                   \
 				fields[INDEX].val = mapped_val;                \
 		}                                                              \
@@ -121,7 +121,7 @@ static int table_type_map(uint64_t val, uint64_t *mapped_val)
 		*mapped_val = CFA_HW_TABLE_LOOKUP;
 		break;
 	default:
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -145,7 +145,7 @@ static int read_mode_map(uint64_t val, uint64_t *mapped_val)
 		*mapped_val = CFA_MPC_RD_DEBUG_TAG;
 		break;
 	default:
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 	return 0;
@@ -162,7 +162,7 @@ static int write_mode_map(uint64_t val, uint64_t *mapped_val)
 		*mapped_val = CFA_MPC_WR_WRITE_BACK;
 		break;
 	default:
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 	return 0;
@@ -191,7 +191,7 @@ static int evict_mode_map(uint64_t val, uint64_t *mapped_val)
 		*mapped_val = CFA_MPC_EV_EVICT_TABLE_SCOPE;
 		break;
 	default:
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 	return 0;
@@ -232,7 +232,7 @@ static int status_code_map(uint64_t val, uint64_t *mapped_val)
 		*mapped_val = CFA_BLD_MPC_EM_ABORT;
 		break;
 	default:
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 	return 0;
@@ -266,13 +266,13 @@ int cfa_bld_p70_mpc_build_cache_read(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_READ_CMD_MAX_FLD,
 			  cfa_p70_mpc_read_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -291,7 +291,7 @@ int cfa_bld_p70_mpc_build_cache_read(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_READ_CMD_TABLE_TYPE_FLD, fields,
 				   table_type_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -299,7 +299,7 @@ int cfa_bld_p70_mpc_build_cache_read(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_READ_CMD_CACHE_OPTION_FLD,
 				   fields, read_mode_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -316,13 +316,13 @@ int cfa_bld_p70_mpc_build_cache_write(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_WRITE_CMD_MAX_FLD,
 			  cfa_p70_mpc_write_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -339,7 +339,7 @@ int cfa_bld_p70_mpc_build_cache_write(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_WRITE_CMD_TABLE_TYPE_FLD, fields,
 				   table_type_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -348,7 +348,7 @@ int cfa_bld_p70_mpc_build_cache_write(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_WRITE_CMD_CACHE_OPTION_FLD,
 				   fields, write_mode_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -364,13 +364,13 @@ int cfa_bld_p70_mpc_build_cache_evict(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_INVALIDATE_CMD_MAX_FLD,
 			  cfa_p70_mpc_invalidate_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -387,7 +387,7 @@ int cfa_bld_p70_mpc_build_cache_evict(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_INVALIDATE_CMD_TABLE_TYPE_FLD,
 				   fields, table_type_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -395,7 +395,7 @@ int cfa_bld_p70_mpc_build_cache_evict(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_INVALIDATE_CMD_CACHE_OPTION_FLD,
 				   fields, evict_mode_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -411,13 +411,13 @@ int cfa_bld_p70_mpc_build_cache_rdclr(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_READ_CLR_CMD_MAX_FLD,
 			  cfa_p70_mpc_read_clr_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -436,7 +436,7 @@ int cfa_bld_p70_mpc_build_cache_rdclr(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_READ_CLR_CMD_TABLE_TYPE_FLD,
 				   fields, table_type_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -446,7 +446,7 @@ int cfa_bld_p70_mpc_build_cache_rdclr(uint8_t *cmd, uint32_t *cmd_buff_len,
 				   CFA_BLD_MPC_READ_CLR_CMD_CACHE_OPTION_FLD,
 				   fields, read_mode_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -465,20 +465,20 @@ int cfa_bld_p70_mpc_build_em_search(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_SEARCH_CMD_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_SEARCH_CMD_MAX_FLD,
 			  cfa_p70_mpc_em_search_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -509,20 +509,20 @@ int cfa_bld_p70_mpc_build_em_insert(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_INSERT_CMD_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_INSERT_CMD_MAX_FLD,
 			  cfa_p70_mpc_em_insert_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -558,20 +558,20 @@ int cfa_bld_p70_mpc_build_em_delete(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_DELETE_CMD_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_DELETE_CMD_MAX_FLD,
 			  cfa_p70_mpc_em_delete_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -602,20 +602,20 @@ int cfa_bld_p70_mpc_build_em_chain(uint8_t *cmd, uint32_t *cmd_buff_len,
 
 	/* Parameters check */
 	if (!cmd || !cmd_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_CHAIN_CMD_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_CHAIN_CMD_MAX_FLD,
 			  cfa_p70_mpc_em_chain_cmd_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -653,20 +653,20 @@ int cfa_bld_p70_mpc_parse_cache_read(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields || !rd_data) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_READ_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_READ_CMP_MAX_FLD,
 			  cfa_p70_mpc_read_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -683,7 +683,7 @@ int cfa_bld_p70_mpc_parse_cache_read(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_READ_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -707,20 +707,20 @@ int cfa_bld_p70_mpc_parse_cache_write(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_WRITE_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_WRITE_CMP_MAX_FLD,
 			  cfa_p70_mpc_write_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -728,7 +728,7 @@ int cfa_bld_p70_mpc_parse_cache_write(uint8_t *resp, uint32_t resp_buff_len,
 	rc = cfa_mpc_parse_cache_axs_resp(CFA_MPC_WRITE, resp, resp_buff_len,
 					  &result);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -737,7 +737,7 @@ int cfa_bld_p70_mpc_parse_cache_write(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_WRITE_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -761,20 +761,20 @@ int cfa_bld_p70_mpc_parse_cache_evict(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_INVALIDATE_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_INVALIDATE_CMP_MAX_FLD,
 			  cfa_p70_mpc_invalidate_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -782,7 +782,7 @@ int cfa_bld_p70_mpc_parse_cache_evict(uint8_t *resp, uint32_t resp_buff_len,
 	rc = cfa_mpc_parse_cache_axs_resp(CFA_MPC_INVALIDATE, resp,
 					  resp_buff_len, &result);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -793,7 +793,7 @@ int cfa_bld_p70_mpc_parse_cache_evict(uint8_t *resp, uint32_t resp_buff_len,
 				   CFA_BLD_MPC_INVALIDATE_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -819,20 +819,20 @@ int cfa_bld_p70_mpc_parse_cache_rdclr(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields || !rd_data) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_READ_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_READ_CMP_MAX_FLD,
 			  cfa_p70_mpc_read_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -849,7 +849,7 @@ int cfa_bld_p70_mpc_parse_cache_rdclr(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_READ_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -872,20 +872,20 @@ int cfa_bld_p70_mpc_parse_em_search(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_SEARCH_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_SEARCH_CMP_MAX_FLD,
 			  cfa_p70_mpc_em_search_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -893,7 +893,7 @@ int cfa_bld_p70_mpc_parse_em_search(uint8_t *resp, uint32_t resp_buff_len,
 	rc = cfa_mpc_parse_em_op_resp(CFA_MPC_EM_SEARCH, resp, resp_buff_len,
 				      &result);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -903,7 +903,7 @@ int cfa_bld_p70_mpc_parse_em_search(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_EM_SEARCH_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -939,20 +939,20 @@ int cfa_bld_p70_mpc_parse_em_insert(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_INSERT_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_INSERT_CMP_MAX_FLD,
 			  cfa_p70_mpc_em_insert_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -960,7 +960,7 @@ int cfa_bld_p70_mpc_parse_em_insert(uint8_t *resp, uint32_t resp_buff_len,
 	rc = cfa_mpc_parse_em_op_resp(CFA_MPC_EM_INSERT, resp, resp_buff_len,
 				      &result);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -970,7 +970,7 @@ int cfa_bld_p70_mpc_parse_em_insert(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_EM_INSERT_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -1010,20 +1010,20 @@ int cfa_bld_p70_mpc_parse_em_delete(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_DELETE_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_DELETE_CMP_MAX_FLD,
 			  cfa_p70_mpc_em_delete_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -1031,7 +1031,7 @@ int cfa_bld_p70_mpc_parse_em_delete(uint8_t *resp, uint32_t resp_buff_len,
 	rc = cfa_mpc_parse_em_op_resp(CFA_MPC_EM_DELETE, resp, resp_buff_len,
 				      &result);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -1041,7 +1041,7 @@ int cfa_bld_p70_mpc_parse_em_delete(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_EM_DELETE_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -1076,20 +1076,20 @@ int cfa_bld_p70_mpc_parse_em_chain(uint8_t *resp, uint32_t resp_buff_len,
 
 	/* Parameters check */
 	if (!resp || !resp_buff_len || !fields) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (has_unsupported_fields(fields, CFA_BLD_MPC_EM_CHAIN_CMP_MAX_FLD,
 				   unsupported_fields,
 				   ARRAY_SIZE(unsupported_fields))) {
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
 	if (!fields_valid(fields, CFA_BLD_MPC_EM_CHAIN_CMP_MAX_FLD,
 			  cfa_p70_mpc_em_chain_cmp_gbl_to_dev)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -1097,7 +1097,7 @@ int cfa_bld_p70_mpc_parse_em_chain(uint8_t *resp, uint32_t resp_buff_len,
 	rc = cfa_mpc_parse_em_op_resp(CFA_MPC_EM_CHAIN, resp, resp_buff_len,
 				      &result);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
@@ -1107,7 +1107,7 @@ int cfa_bld_p70_mpc_parse_em_chain(uint8_t *resp, uint32_t resp_buff_len,
 	rc = GET_RESP_MAPPED_VALUE(status, CFA_BLD_MPC_EM_CHAIN_CMP_STATUS_FLD,
 				   fields, status_code_map);
 	if (rc) {
-		ASSERT_RETURN(rc);
+		LOG_RC(rc);
 		return rc;
 	}
 
