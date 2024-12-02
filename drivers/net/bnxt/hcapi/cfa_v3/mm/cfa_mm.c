@@ -123,7 +123,11 @@ int cfa_mm_open(void *cmm, struct cfa_mm_open_parms *parms)
 	}
 
 	for (i = 0; i < num_blocks; i++) {
-		context->blk_tbl[i].prev_blk_idx = i - 1;
+		if (i == 0)
+			context->blk_tbl[i].prev_blk_idx = CFA_MM_INVALID32;
+		else
+			context->blk_tbl[i].prev_blk_idx = i - 1;
+
 		context->blk_tbl[i].next_blk_idx = i + 1;
 		context->blk_tbl[i].num_free_records = records_per_block;
 		context->blk_tbl[i].first_free_record = 0;
