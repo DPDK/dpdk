@@ -56,6 +56,12 @@ OPTIONS
         WARNING: This can lead to loss of network connection and should be used
         with caution.
 
+* ``--uid uid, --gid gid``
+
+        By default, devices which are bound to VFIO will be owned by ``root``.
+        Use this flag to change ownership to the specified user and group,
+        so that devices bound to VFIO would be usable by unprivileged users.
+
 
 .. warning::
 
