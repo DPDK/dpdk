@@ -1084,7 +1084,7 @@ bnxt_ulp_cap_feat_process(uint64_t feat_bits, uint64_t *out_bits)
 
 	if (bit & BNXT_ULP_FEATURE_BIT_PARENT_DMAC)
 		BNXT_DRV_DBG(ERR, "Parent Mac Address Feature is enabled\n");
-	if (bit & BNXT_ULP_FEATURE_BIT_PORT_DMAC)
+	else if (bit & BNXT_ULP_FEATURE_BIT_PORT_DMAC)
 		BNXT_DRV_DBG(ERR, "Port Mac Address Feature is enabled\n");
 	if (bit & BNXT_ULP_FEATURE_BIT_MULTI_TUNNEL_FLOW)
 		BNXT_DRV_DBG(ERR, "Multi Tunnel Flow Feature is enabled\n");
