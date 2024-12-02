@@ -887,7 +887,7 @@ eh_initialize_crypto_adapter(struct eventmode_conf *em_conf)
 		}
 
 		/* Add crypto queue pairs to event crypto adapter */
-		ret = rte_event_crypto_adapter_queue_pair_add(cdev_id, eventdev_id,
+		ret = rte_event_crypto_adapter_queue_pair_add(eventdev_id, cdev_id,
 				-1, /* adds all the pre configured queue pairs to the instance */
 				&queue_conf);
 		if (ret < 0) {
