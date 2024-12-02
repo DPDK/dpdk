@@ -31,9 +31,9 @@
 	} while (0)
 
 #ifdef NXT_ENV_DEBUG
-#define ASSERT_RETURN(ERRNO) CFA_LOG_ERR("Returning error: %d\n", (ERRNO))
+#define LOG_RC(ERRNO) PMD_DRV_LOG_LINE(ERR, "Returning error: %d", (ERRNO))
 #else
-#define ASSERT_RETURN(ERRNO)
+#define LOG_RC(ERRNO)
 #endif
 
 /**
@@ -68,7 +68,7 @@ static int fill_mpc_header(uint8_t *cmd, uint32_t size, uint32_t opaque_val)
 	};
 
 	if (size < sizeof(struct mpc_header)) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -87,17 +87,17 @@ static int compose_mpc_read_clr_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 		sizeof(struct mpc_header) + sizeof(struct cfa_mpc_read_clr_cmd);
 
 	if (parms->data_size != 1) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (parms->tbl_type >= CFA_HW_TABLE_MAX) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -138,17 +138,17 @@ static int compose_mpc_read_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 		sizeof(struct mpc_header) + sizeof(struct cfa_mpc_read_cmd);
 
 	if (parms->data_size < 1 || parms->data_size > 4) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (parms->tbl_type >= CFA_HW_TABLE_MAX) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -194,22 +194,22 @@ static int compose_mpc_write_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 			    parms->data_size * MPC_CFA_CACHE_ACCESS_UNIT_SIZE;
 
 	if (parms->data_size < 1 || parms->data_size > 4) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (parms->tbl_type >= CFA_HW_TABLE_MAX) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!parms->write.data_ptr) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -252,17 +252,17 @@ static int compose_mpc_evict_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 			    sizeof(struct cfa_mpc_invalidate_cmd);
 
 	if (parms->data_size < 1 || parms->data_size > 4) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (parms->tbl_type >= CFA_HW_TABLE_MAX) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -293,7 +293,7 @@ static int compose_mpc_evict_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 		break;
 	case CFA_MPC_EV_EVICT_TABLE_SCOPE:
 		/* Not supported */
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	default:
 	case CFA_MPC_EV_EVICT_SCOPE_ADDRESS:
@@ -326,7 +326,7 @@ int cfa_mpc_build_cache_axs_cmd(enum cfa_mpc_opcode opc, uint8_t *cmd_buff,
 {
 	int rc;
 	if (!cmd_buff || !cmd_buff_len || *cmd_buff_len == 0 || !parms) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -344,7 +344,7 @@ int cfa_mpc_build_cache_axs_cmd(enum cfa_mpc_opcode opc, uint8_t *cmd_buff,
 	case CFA_MPC_INVALIDATE:
 		return compose_mpc_evict_msg(cmd_buff, cmd_buff_len, parms);
 	default:
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 }
@@ -360,17 +360,17 @@ static int compose_mpc_em_search_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 			    e->data_size * MPC_CFA_CACHE_ACCESS_UNIT_SIZE;
 
 	if (e->data_size < 1 || e->data_size > 4) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!e->em_entry) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -405,17 +405,17 @@ static int compose_mpc_em_insert_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 			    e->data_size * MPC_CFA_CACHE_ACCESS_UNIT_SIZE;
 
 	if (e->data_size < 1 || e->data_size > 4) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!e->em_entry) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -455,7 +455,7 @@ static int compose_mpc_em_delete_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 			    sizeof(struct cfa_mpc_em_delete_cmd);
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -487,7 +487,7 @@ static int compose_mpc_em_chain_msg(uint8_t *cmd_buff, uint32_t *cmd_buff_len,
 		sizeof(struct mpc_header) + sizeof(struct cfa_mpc_em_chain_cmd);
 
 	if (*cmd_buff_len < cmd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -530,7 +530,7 @@ int cfa_mpc_build_em_op_cmd(enum cfa_mpc_opcode opc, uint8_t *cmd_buff,
 {
 	int rc;
 	if (!cmd_buff || !cmd_buff_len || *cmd_buff_len == 0 || !parms) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -548,7 +548,7 @@ int cfa_mpc_build_em_op_cmd(enum cfa_mpc_opcode opc, uint8_t *cmd_buff,
 	case CFA_MPC_EM_CHAIN:
 		return compose_mpc_em_chain_msg(cmd_buff, cmd_buff_len, parms);
 	default:
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 
@@ -572,17 +572,17 @@ static int parse_mpc_read_clr_result(uint8_t *resp_buff, uint32_t resp_buff_len,
 					      sizeof(struct mpc_header));
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (result->data_len < rd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!result->rd_data) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -622,17 +622,17 @@ static int parse_mpc_read_result(uint8_t *resp_buff, uint32_t resp_buff_len,
 					  sizeof(struct mpc_header));
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (result->data_len < rd_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
 	if (!result->rd_data) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -671,7 +671,7 @@ static int parse_mpc_write_result(uint8_t *resp_buff, uint32_t resp_buff_len,
 					   sizeof(struct mpc_header));
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -696,7 +696,7 @@ static int parse_mpc_evict_result(uint8_t *resp_buff, uint32_t resp_buff_len,
 						sizeof(struct mpc_header));
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -728,7 +728,7 @@ int cfa_mpc_parse_cache_axs_resp(enum cfa_mpc_opcode opc, uint8_t *resp_buff,
 				 struct cfa_mpc_cache_axs_result *result)
 {
 	if (!resp_buff || resp_buff_len == 0 || !result) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -743,7 +743,7 @@ int cfa_mpc_parse_cache_axs_resp(enum cfa_mpc_opcode opc, uint8_t *resp_buff,
 	case CFA_MPC_INVALIDATE:
 		return parse_mpc_evict_result(resp_buff, resp_buff_len, result);
 	default:
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 }
@@ -762,7 +762,7 @@ static int parse_mpc_em_search_result(uint8_t *resp_buff,
 		    sizeof(struct cfa_mpc_em_search_cmp);
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -794,7 +794,7 @@ static int parse_mpc_em_insert_result(uint8_t *resp_buff,
 		    sizeof(struct cfa_mpc_em_insert_cmp);
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -828,7 +828,7 @@ static int parse_mpc_em_delete_result(uint8_t *resp_buff,
 		    sizeof(struct cfa_mpc_em_delete_cmp);
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -859,7 +859,7 @@ static int parse_mpc_em_chain_result(uint8_t *resp_buff, uint32_t resp_buff_len,
 		sizeof(struct mpc_header) + sizeof(struct cfa_mpc_em_chain_cmp);
 
 	if (resp_buff_len < resp_size) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -894,7 +894,7 @@ int cfa_mpc_parse_em_op_resp(enum cfa_mpc_opcode opc, uint8_t *resp_buff,
 			     struct cfa_mpc_em_op_result *result)
 {
 	if (!resp_buff || resp_buff_len == 0 || !result) {
-		ASSERT_RETURN(-EINVAL);
+		LOG_RC(-EINVAL);
 		return -EINVAL;
 	}
 
@@ -912,7 +912,7 @@ int cfa_mpc_parse_em_op_resp(enum cfa_mpc_opcode opc, uint8_t *resp_buff,
 		return parse_mpc_em_chain_result(resp_buff, resp_buff_len,
 						 result);
 	default:
-		ASSERT_RETURN(-ENOTSUP);
+		LOG_RC(-ENOTSUP);
 		return -ENOTSUP;
 	}
 }
