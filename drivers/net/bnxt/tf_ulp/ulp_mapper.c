@@ -3611,9 +3611,13 @@ ulp_mapper_func_cond_list_process(struct bnxt_ulp_mapper_parms *parms,
 		}
 	}
 	/* write the value into result */
-	ulp_operand_read(val, res_local + res_size -
-			 ULP_BITS_2_BYTE_NR(oper_size),
-			 ULP_BITS_2_BYTE_NR(val_len));
+	if (unlikely(ulp_operand_read(val, res_local + res_size -
+				      ULP_BITS_2_BYTE_NR(oper_size),
+				      ULP_BITS_2_BYTE_NR(val_len)))) {
+		BNXT_DRV_DBG(ERR,
+			     "field idx operand read failed\n");
+		return -EINVAL;
+	}
 
 	/* convert the data to cpu format */
 	*res = tfp_be_to_cpu_64(*res);

@@ -517,7 +517,13 @@ ulp_rte_parser_svif_set(struct ulp_rte_parser_params *params,
 		else
 			svif_type = BNXT_ULP_DRV_FUNC_SVIF;
 	}
-	ulp_port_db_svif_get(params->ulp_ctx, ifindex, svif_type, &svif);
+
+	if (ulp_port_db_svif_get(params->ulp_ctx, ifindex,
+				 svif_type, &svif)) {
+			BNXT_DRV_DBG(ERR, "ParseErr:ifindex is not valid\n");
+			return BNXT_TF_RC_ERROR;
+	}
+
 	svif = rte_cpu_to_be_16(svif);
 	mask = rte_cpu_to_be_16(mask);
 	hdr_field = &params->hdr_field[BNXT_ULP_PROTO_HDR_FIELD_SVIF_IDX];
