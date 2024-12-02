@@ -255,7 +255,7 @@ roc_npa_batch_alloc_wait(uint64_t *cache_line, unsigned int wait_us)
 	/* Batch alloc status code is updated in bits [5:6] of the first word
 	 * of the 128 byte cache line.
 	 */
-	while (((__atomic_load_n(cache_line, __ATOMIC_RELAXED) >> 5) & 0x3) ==
+	while (((__atomic_load_n(cache_line, __ATOMIC_ACQUIRE) >> 5) & 0x3) ==
 	       ALLOC_CCODE_INVAL)
 		if (wait_us && (plt_tsc_cycles() - start) >= ticks)
 			break;
