@@ -560,6 +560,7 @@ int tfc_em_delete_raw(struct tfc *tfcp,
 	mpc_msg_out.cmp_type = CMPL_BASE_TYPE_MID_PATH_LONG;
 	mpc_msg_out.msg_data = &rx_msg[TFC_MPC_HEADER_SIZE_BYTES];
 	mpc_msg_out.msg_size = TFC_MPC_MAX_RX_BYTES;
+	mpc_msg_out.chnl_id = 0;
 
 	rc = tfc_mpc_send(tfcp->bp,
 			  &mpc_msg_in,
