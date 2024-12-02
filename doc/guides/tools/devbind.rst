@@ -56,6 +56,11 @@ OPTIONS
         WARNING: This can lead to loss of network connection and should be used
         with caution.
 
+* ``--noiommu-mode``
+
+        When using vfio-pci driver on a system with no IOMMU,
+        this flag should be used to enable unsafe no-IOMMU mode for vfio-pci driver.
+
 
 .. warning::
 
