@@ -2764,7 +2764,8 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 		hw->mac.type != ixgbe_mac_X540 &&
 		hw->mac.type != ixgbe_mac_X550 &&
 		hw->mac.type != ixgbe_mac_X550EM_x &&
-		hw->mac.type != ixgbe_mac_X550EM_a)
+		hw->mac.type != ixgbe_mac_X550EM_a &&
+		hw->mac.type != ixgbe_mac_E610)
 		return -ENOTSUP;
 
 	ret = ixgbe_parse_fdir_filter_normal(dev, attr, pattern,
