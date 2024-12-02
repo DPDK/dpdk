@@ -647,7 +647,8 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev)
 		hw->mac.type != ixgbe_mac_X540 &&
 		hw->mac.type != ixgbe_mac_X550 &&
 		hw->mac.type != ixgbe_mac_X550EM_x &&
-		hw->mac.type != ixgbe_mac_X550EM_a)
+		hw->mac.type != ixgbe_mac_X550EM_a &&
+		hw->mac.type != ixgbe_mac_E610)
 		return -ENOSYS;
 
 	/* x550 supports mac-vlan and tunnel mode but other NICs not */
