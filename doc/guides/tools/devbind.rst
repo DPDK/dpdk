@@ -62,6 +62,11 @@ OPTIONS
         Use this flag to change ownership to the specified user and group,
         so that devices bound to VFIO would be usable by unprivileged users.
 
+* ``--noiommu-mode``
+
+        When using vfio-pci driver on a system with no IOMMU,
+        this flag should be used to enable unsafe no-IOMMU mode for vfio-pci driver.
+
 
 .. warning::
 
