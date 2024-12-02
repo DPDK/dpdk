@@ -468,7 +468,7 @@ static int alloc_link_pbl(struct tfc_ts_mem_cfg *mem_cfg, uint32_t page_size,
 	 * and page tables. The allocation will occur once only per backing
 	 * store and will located by name and reused on subsequent runs.
 	 */
-	total_size = page_size * total_pages;
+	total_size = (uint64_t)page_size * (uint64_t)total_pages;
 
 	if (total_size <= (1024 * 256))
 		mz_size = RTE_MEMZONE_256KB;
