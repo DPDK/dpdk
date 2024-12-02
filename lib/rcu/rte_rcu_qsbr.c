@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <errno.h>
 
+#include <rte_bitops.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -108,11 +109,11 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	/* Check if the thread is already registered */
 	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					__ATOMIC_RELAXED);
-	if (old_bmap & 1UL << id)
+	if (old_bmap & RTE_BIT64(id))
 		return 0;
 
 	do {
-		new_bmap = old_bmap | (1UL << id);
+		new_bmap = old_bmap | RTE_BIT64(id);
 		success = __atomic_compare_exchange(
 					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					&old_bmap, &new_bmap, 0,
@@ -121,7 +122,7 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		if (success)
 			__atomic_fetch_add(&v->num_threads,
 						1, __ATOMIC_RELAXED);
-		else if (old_bmap & (1UL << id))
+		else if (old_bmap & RTE_BIT64(id))
 			/* Someone else registered this thread.
 			 * Counter should not be incremented.
 			 */
@@ -160,11 +161,11 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	/* Check if the thread is already unregistered */
 	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					__ATOMIC_RELAXED);
-	if (!(old_bmap & (1UL << id)))
+	if (!(old_bmap & RTE_BIT64(id)))
 		return 0;
 
 	do {
-		new_bmap = old_bmap & ~(1UL << id);
+		new_bmap = old_bmap & ~RTE_BIT64(id);
 		/* Make sure any loads of the shared data structure are
 		 * completed before removal of the thread from the list of
 		 * reporting threads.
@@ -177,7 +178,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		if (success)
 			__atomic_fetch_sub(&v->num_threads,
 						1, __ATOMIC_RELAXED);
-		else if (!(old_bmap & (1UL << id)))
+		else if (!(old_bmap & RTE_BIT64(id)))
 			/* Someone else unregistered this thread.
 			 * Counter should not be incremented.
 			 */
@@ -238,7 +239,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 			t = __builtin_ctzl(bmap);
 			fprintf(f, "%u ", id + t);
 
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
@@ -265,7 +266,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 				__atomic_load_n(
 					&v->qsbr_cnt[id + t].lock_cnt,
 					__ATOMIC_RELAXED));
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
