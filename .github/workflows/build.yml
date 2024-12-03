@@ -12,7 +12,7 @@ defaults:
 env:
   REF_GIT_BRANCH: main
   REF_GIT_REPO: https://dpdk.org/git/dpdk
-  REF_GIT_TAG: none
+  REF_GIT_TAG: v24.11
 
 jobs:
   checkpatch:
@@ -46,7 +46,7 @@ jobs:
       BUILD_EXAMPLES: ${{ contains(matrix.config.checks, 'examples') }}
       CC: ccache ${{ matrix.config.compiler }}
       DEF_LIB: ${{ matrix.config.library }}
-      LIBABIGAIL_VERSION: libabigail-2.4
+      LIBABIGAIL_VERSION: libabigail-2.6
       MINGW: ${{ matrix.config.cross == 'mingw' }}
       MINI: ${{ matrix.config.mini != '' }}
       PPC64LE: ${{ matrix.config.cross == 'ppc64le' }}
@@ -69,7 +69,7 @@ jobs:
             checks: stdatomic
           - os: ubuntu-22.04
             compiler: gcc
-            checks: debug+doc+examples+tests
+            checks: abi+debug+doc+examples+tests
           - os: ubuntu-22.04
             compiler: clang
             checks: asan+doc+tests
@@ -133,7 +133,7 @@ jobs:
         python3-pyelftools python3-setuptools python3-wheel zlib1g-dev
     - name: Install libabigail build dependencies if no cache is available
       if: env.ABI_CHECKS == 'true' && steps.libabigail-cache.outputs.cache-hit != 'true'
-      run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev
+      run: sudo apt install -y autoconf automake libdw-dev libtool libxml2-dev libxxhash-dev
     - name: Install i386 cross compiling packages
       if: env.BUILD_32BIT == 'true'
       run: sudo apt install -y gcc-multilib g++-multilib libnuma-dev:i386
