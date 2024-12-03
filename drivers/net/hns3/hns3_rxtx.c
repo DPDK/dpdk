@@ -51,7 +51,7 @@ hns3_rx_queue_release_mbufs(struct hns3_rx_queue *rxq)
 			}
 		}
 		for (i = 0; i < rxq->rx_rearm_nb; i++)
-			rxq->sw_ring[rxq->rx_rearm_start + i].mbuf = NULL;
+			rxq->sw_ring[(rxq->rx_rearm_start + i) % rxq->nb_rx_desc].mbuf = NULL;
 	}
 
 	for (i = 0; i < rxq->bulk_mbuf_num; i++)
