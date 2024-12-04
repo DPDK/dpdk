@@ -416,32 +416,21 @@ There are four types of methods that comprise a test suite:
 DTS Developer Tools
 -------------------
 
-There are three tools used in DTS to help with code checking, style and formatting:
+There are two tools used in DTS to help with code checking, style and formatting:
 
-* `isort <https://pycqa.github.io/isort/>`_
+* `ruff <https://astral.sh/ruff/>`_
 
-  Alphabetically sorts python imports within blocks.
-
-* `black <https://github.com/psf/black>`_
-
-  Does most of the actual formatting (whitespaces, comments, line length etc.)
-  and works similarly to clang-format.
-
-* `pylama <https://github.com/klen/pylama>`_
-
-  Runs a collection of python linters and aggregates output.
-  It will run these tools over the repository:
-
-  .. literalinclude:: ../../../dts/pyproject.toml
-     :language: cfg
-     :start-after: [tool.pylama]
-     :end-at: linters
+  An extremely fast all-in-one linting and formatting solution,
+  which covers most if not all the major rules such as:
+  pylama, flake8, pylint etc.
+  Its built-in formatter is also Black-compatible
+  and is able to sort imports automatically like isort would.
 
 * `mypy <https://github.com/python/mypy>`_
 
   Enables static typing for Python, exploiting the type hints in the source code.
 
-These three tools are all used in ``devtools/dts-check-format.sh``,
+These two tools are all used in ``devtools/dts-check-format.sh``,
 the DTS code check and format script.
 Refer to the script for usage: ``devtools/dts-check-format.sh -h``.
 
