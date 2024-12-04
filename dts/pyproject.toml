@@ -36,6 +36,7 @@ isort = "^5.10.1"
 pylama = "^8.4.1"
 pyflakes = "^2.5.0"
 toml = "^0.10.2"
+ruff = "^0.8.1"
 
 [tool.poetry.group.docs]
 optional = true
@@ -49,6 +50,25 @@ autodoc-pydantic = "^2.2.0"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "F",      # pyflakes
+    "E", "W", # pycodestyle
+    "D",      # pydocstyle
+    "C90",    # mccabe
+    "I",      # isort
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.pylama]
 linters = "mccabe,pycodestyle,pydocstyle,pyflakes"
