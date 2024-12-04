@@ -426,6 +426,15 @@ enum ice_status ice_read_sr_word(struct ice_hw *hw, u16 offset, u16 *data)
 	return status;
 }
 
+static inline bool
+check_add_overflow(uint16_t a, uint16_t b, uint16_t *out)
+{
+	uint32_t val = (uint32_t)a + (uint32_t)b;
+	*out = (uint16_t)val;
+
+	return (val > UINT16_MAX);
+}
+
 /**
  * ice_get_pfa_module_tlv - Reads sub module TLV from NVM PFA
  * @hw: pointer to hardware structure
@@ -442,8 +451,7 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 		       u16 module_type)
 {
 	enum ice_status status;
-	u16 pfa_len, pfa_ptr;
-	u32 next_tlv;
+	u16 pfa_len, pfa_ptr, next_tlv, max_tlv;
 
 	status = ice_read_sr_word(hw, ICE_SR_PFA_PTR, &pfa_ptr);
 	if (status != ICE_SUCCESS) {
@@ -455,11 +463,23 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 		ice_debug(hw, ICE_DBG_INIT, "Failed to read PFA length.\n");
 		return status;
 	}
-	/* Starting with first TLV after PFA length, iterate through the list
+
+	if (check_add_overflow(pfa_ptr, (u16)(pfa_len - 1), &max_tlv)) {
+		ice_debug(hw, ICE_DBG_INIT, "PFA starts at offset %u. PFA length of %u caused 16-bit arithmetic overflow.\n",
+				  pfa_ptr, pfa_len);
+		return ICE_ERR_INVAL_SIZE;
+	}
+
+	/* The Preserved Fields Area contains a sequence of TLVs which define
+	 * its contents. The PFA length includes all of the TLVs, plus its
+	 * initial length word itself, *and* one final word at the end of all
+	 * of the TLVs.
+	 *
+	 * Starting with first TLV after PFA length, iterate through the list
 	 * of TLVs to find the requested one.
 	 */
 	next_tlv = pfa_ptr + 1;
-	while (next_tlv < ((u32)pfa_ptr + pfa_len)) {
+	while (next_tlv < max_tlv) {
 		u16 tlv_sub_module_type;
 		u16 tlv_len;
 
@@ -476,10 +496,6 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 			ice_debug(hw, ICE_DBG_INIT, "Failed to read TLV length.\n");
 			break;
 		}
-		if (tlv_len > pfa_len) {
-			ice_debug(hw, ICE_DBG_INIT, "Invalid TLV length.\n");
-			return ICE_ERR_INVAL_SIZE;
-		}
 		if (tlv_sub_module_type == module_type) {
 			if (tlv_len) {
 				*module_tlv = (u16)next_tlv;
@@ -488,10 +504,13 @@ ice_get_pfa_module_tlv(struct ice_hw *hw, u16 *module_tlv, u16 *module_tlv_len,
 			}
 			return ICE_ERR_INVAL_SIZE;
 		}
-		/* Check next TLV, i.e. current TLV pointer + length + 2 words
-		 * (for current TLV's type and length)
-		 */
-		next_tlv = next_tlv + tlv_len + 2;
+
+		if (check_add_overflow(next_tlv, (u16)2, &next_tlv) ||
+		    check_add_overflow(next_tlv, tlv_len, &next_tlv)) {
+			ice_debug(hw, ICE_DBG_INIT, "TLV of type %u and length 0x%04x caused 16-bit arithmetic overflow. The PFA starts at 0x%04x and has length of 0x%04x\n",
+					  tlv_sub_module_type, tlv_len, pfa_ptr, pfa_len);
+			return ICE_ERR_INVAL_SIZE;
+		}
 	}
 	/* Module does not exist */
 	return ICE_ERR_DOES_NOT_EXIST;
