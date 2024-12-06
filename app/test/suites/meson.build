@@ -5,6 +5,7 @@
 # to complete, so timeout to 10 minutes
 timeout_seconds = 600
 timeout_seconds_fast = 10
+timeout_seconds_stress = 900
 
 test_no_huge_args = ['--no-huge', '-m', '2048']
 has_hugepage = run_command(has_hugepages_cmd, check: true).stdout().strip() != '0'
@@ -21,6 +22,7 @@ endif
 # - fast_tests
 # - perf_tests
 # - driver_tests
+# - stress_tests
 test_suites = run_command(get_test_suites_cmd, autotest_sources,
          check: true).stdout().strip().split()
 foreach suite:test_suites
@@ -38,6 +40,14 @@ foreach suite:test_suites
                     env: ['DPDK_TEST=' + t],
                     timeout: timeout_seconds,
                     is_parallel: false)
+        endforeach
+    elif suite_name == 'stress-tests'
+        foreach t: suite_tests
+            test(t, dpdk_test,
+                    env: ['DPDK_TEST=' + t],
+                    timeout: timeout_seconds_stress,
+                    is_parallel: false,
+                    suite: suite_name)
         endforeach
     elif suite_name != 'fast-tests'
         # simple cases - tests without parameters or special handling

@@ -208,5 +208,6 @@ void add_test_command(struct test_command *t);
 #define REGISTER_FAST_TEST(cmd, no_huge, ASan, func)  REGISTER_TEST_COMMAND(cmd, func)
 #define REGISTER_PERF_TEST REGISTER_TEST_COMMAND
 #define REGISTER_DRIVER_TEST REGISTER_TEST_COMMAND
+#define REGISTER_STRESS_TEST REGISTER_TEST_COMMAND
 
 #endif

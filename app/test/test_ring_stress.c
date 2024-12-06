@@ -63,4 +63,4 @@ test_ring_stress(void)
 	return (k != n);
 }
 
-REGISTER_TEST_COMMAND(ring_stress_autotest, test_ring_stress);
+REGISTER_STRESS_TEST(ring_stress_autotest, test_ring_stress);
