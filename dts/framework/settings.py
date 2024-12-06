@@ -88,6 +88,7 @@ Attributes:
 Typical usage example::
 
   from framework.settings import SETTINGS
+
   foo = SETTINGS.foo
 """
 
@@ -257,9 +258,7 @@ class _EnvVarHelpFormatter(ArgumentDefaultsHelpFormatter):
         return help
 
 
-def _required_with_one_of(
-    parser: _DTSArgumentParser, action: Action, *required_dests: str
-) -> None:
+def _required_with_one_of(parser: _DTSArgumentParser, action: Action, *required_dests: str) -> None:
     """Verify that `action` is listed together with at least one of `required_dests`.
 
     Verify that when `action` is among the command-line arguments or

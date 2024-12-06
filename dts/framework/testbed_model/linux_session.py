@@ -83,9 +83,7 @@ class LinuxSession(PosixSession):
         """Overrides :meth:`~.os_session.OSSession.get_dpdk_file_prefix`."""
         return dpdk_prefix
 
-    def setup_hugepages(
-        self, number_of: int, hugepage_size: int, force_first_numa: bool
-    ) -> None:
+    def setup_hugepages(self, number_of: int, hugepage_size: int, force_first_numa: bool) -> None:
         """Overrides :meth:`~.os_session.OSSession.setup_hugepages`.
 
         Raises:
@@ -133,9 +131,7 @@ class LinuxSession(PosixSession):
         if result.stdout == "":
             remote_mount_path = "/mnt/huge"
             self.send_command(f"mkdir -p {remote_mount_path}", privileged=True)
-            self.send_command(
-                f"mount -t hugetlbfs nodev {remote_mount_path}", privileged=True
-            )
+            self.send_command(f"mount -t hugetlbfs nodev {remote_mount_path}", privileged=True)
 
     def _supports_numa(self) -> bool:
         # the system supports numa if self._numa_nodes is non-empty and there are more
@@ -143,13 +139,9 @@ class LinuxSession(PosixSession):
         # there's no reason to do any numa specific configuration)
         return len(self._numa_nodes) > 1
 
-    def _configure_huge_pages(
-        self, number_of: int, size: int, force_first_numa: bool
-    ) -> None:
+    def _configure_huge_pages(self, number_of: int, size: int, force_first_numa: bool) -> None:
         self._logger.info("Configuring Hugepages.")
-        hugepage_config_path = (
-            f"/sys/kernel/mm/hugepages/hugepages-{size}kB/nr_hugepages"
-        )
+        hugepage_config_path = f"/sys/kernel/mm/hugepages/hugepages-{size}kB/nr_hugepages"
         if force_first_numa and self._supports_numa():
             # clear non-numa hugepages
             self.send_command(f"echo 0 | tee {hugepage_config_path}", privileged=True)
@@ -158,25 +150,19 @@ class LinuxSession(PosixSession):
                 f"/hugepages-{size}kB/nr_hugepages"
             )
 
-        self.send_command(
-            f"echo {number_of} | tee {hugepage_config_path}", privileged=True
-        )
+        self.send_command(f"echo {number_of} | tee {hugepage_config_path}", privileged=True)
 
     def update_ports(self, ports: list[Port]) -> None:
         """Overrides :meth:`~.os_session.OSSession.update_ports`."""
         self._logger.debug("Gathering port info.")
         for port in ports:
-            assert (
-                port.node == self.name
-            ), "Attempted to gather port info on the wrong node"
+            assert port.node == self.name, "Attempted to gather port info on the wrong node"
 
         port_info_list = self._get_lshw_info()
         for port in ports:
             for port_info in port_info_list:
                 if f"pci@{port.pci}" == port_info.get("businfo"):
-                    self._update_port_attr(
-                        port, port_info.get("logicalname"), "logical_name"
-                    )
+                    self._update_port_attr(port, port_info.get("logicalname"), "logical_name")
                     self._update_port_attr(port, port_info.get("serial"), "mac_address")
                     port_info_list.remove(port_info)
                     break
@@ -187,14 +173,10 @@ class LinuxSession(PosixSession):
         output = self.send_command("lshw -quiet -json -C network", verify=True)
         return json.loads(output.stdout)
 
-    def _update_port_attr(
-        self, port: Port, attr_value: str | None, attr_name: str
-    ) -> None:
+    def _update_port_attr(self, port: Port, attr_value: str | None, attr_name: str) -> None:
         if attr_value:
             setattr(port, attr_name, attr_value)
-            self._logger.debug(
-                f"Found '{attr_name}' of port {port.pci}: '{attr_value}'."
-            )
+            self._logger.debug(f"Found '{attr_name}' of port {port.pci}: '{attr_value}'.")
         else:
             self._logger.warning(
                 f"Attempted to get '{attr_name}' of port {port.pci}, but it doesn't exist."

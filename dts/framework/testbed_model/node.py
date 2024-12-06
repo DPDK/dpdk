@@ -198,9 +198,7 @@ class Node(ABC):
             session.close()
 
 
-def create_session(
-    node_config: NodeConfiguration, name: str, logger: DTSLogger
-) -> OSSession:
+def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger) -> OSSession:
     """Factory for OS-aware sessions.
 
     Args:

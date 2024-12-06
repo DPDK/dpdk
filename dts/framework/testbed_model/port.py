@@ -8,7 +8,6 @@ Basic port information, such as location (the port are identified by their PCI a
 drivers and address.
 """
 
-
 from dataclasses import dataclass
 
 from framework.config import PortConfig

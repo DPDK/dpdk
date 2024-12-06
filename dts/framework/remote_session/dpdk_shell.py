@@ -6,7 +6,6 @@
 Provides a base class to create interactive shells based on DPDK.
 """
 
-
 from abc import ABC
 from pathlib import PurePath
 

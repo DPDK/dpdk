@@ -58,9 +58,7 @@ class TopologyType(int, NoAliasEnum):
             case 2:
                 return TopologyType.two_links
             case _:
-                raise ConfigurationError(
-                    "More than two links in a topology are not supported."
-                )
+                raise ConfigurationError("More than two links in a topology are not supported.")
 
 
 class Topology:

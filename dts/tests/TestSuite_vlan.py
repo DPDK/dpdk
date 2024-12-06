@@ -38,9 +38,7 @@ class TestVlan(TestSuite):
     tag when insertion is enabled.
     """
 
-    def send_vlan_packet_and_verify(
-        self, should_receive: bool, strip: bool, vlan_id: int
-    ) -> None:
+    def send_vlan_packet_and_verify(self, should_receive: bool, strip: bool, vlan_id: int) -> None:
         """Generate a VLAN packet, send and verify packet with same payload is received on the dut.
 
         Args:
@@ -155,9 +153,7 @@ class TestVlan(TestSuite):
         with TestPmdShell(node=self.sut_node) as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
-            self.send_vlan_packet_and_verify(
-                should_receive=False, strip=False, vlan_id=2
-            )
+            self.send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
 
     @func_test
     def test_vlan_header_insertion(self) -> None:

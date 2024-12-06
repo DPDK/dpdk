@@ -96,9 +96,7 @@ class PosixSession(OSSession):
         result = self.send_command(f"test -e {remote_path}")
         return not result.return_code
 
-    def copy_from(
-        self, source_file: str | PurePath, destination_dir: str | Path
-    ) -> None:
+    def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
         """Overrides :meth:`~.os_session.OSSession.copy_from`."""
         self.remote_session.copy_from(source_file, destination_dir)
 
@@ -115,16 +113,12 @@ class PosixSession(OSSession):
     ) -> None:
         """Overrides :meth:`~.os_session.OSSession.copy_dir_from`."""
         source_dir = PurePath(source_dir)
-        remote_tarball_path = self.create_remote_tarball(
-            source_dir, compress_format, exclude
-        )
+        remote_tarball_path = self.create_remote_tarball(source_dir, compress_format, exclude)
 
         self.copy_from(remote_tarball_path, destination_dir)
         self.remove_remote_file(remote_tarball_path)
 
-        tarball_path = Path(
-            destination_dir, f"{source_dir.name}.{compress_format.extension}"
-        )
+        tarball_path = Path(destination_dir, f"{source_dir.name}.{compress_format.extension}")
         extract_tarball(tarball_path)
         tarball_path.unlink()
 
@@ -147,9 +141,7 @@ class PosixSession(OSSession):
         self.extract_remote_tarball(remote_tar_path)
         self.remove_remote_file(remote_tar_path)
 
-    def remove_remote_file(
-        self, remote_file_path: str | PurePath, force: bool = True
-    ) -> None:
+    def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
         """Overrides :meth:`~.os_session.OSSession.remove_remote_dir`."""
         opts = PosixSession.combine_short_options(f=force)
         self.send_command(f"rm{opts} {remote_file_path}")
@@ -184,15 +176,11 @@ class PosixSession(OSSession):
             """
             if exclude_patterns:
                 exclude_patterns = convert_to_list_of_string(exclude_patterns)
-                return "".join(
-                    [f" --exclude={pattern}" for pattern in exclude_patterns]
-                )
+                return "".join([f" --exclude={pattern}" for pattern in exclude_patterns])
             return ""
 
         posix_remote_dir_path = PurePosixPath(remote_dir_path)
-        target_tarball_path = PurePosixPath(
-            f"{remote_dir_path}.{compress_format.extension}"
-        )
+        target_tarball_path = PurePosixPath(f"{remote_dir_path}.{compress_format.extension}")
 
         self.send_command(
             f"tar caf {target_tarball_path}{generate_tar_exclude_args(exclude)} "
@@ -285,9 +273,7 @@ class PosixSession(OSSession):
 
     def get_dpdk_version(self, build_dir: str | PurePath) -> str:
         """Overrides :meth:`~.os_session.OSSession.get_dpdk_version`."""
-        out = self.send_command(
-            f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True
-        )
+        out = self.send_command(f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True)
         return out.stdout
 
     def kill_cleanup_dpdk_apps(self, dpdk_prefix_list: Iterable[str]) -> None:
@@ -302,9 +288,7 @@ class PosixSession(OSSession):
             self._check_dpdk_hugepages(dpdk_runtime_dirs)
             self._remove_dpdk_runtime_dirs(dpdk_runtime_dirs)
 
-    def _get_dpdk_runtime_dirs(
-        self, dpdk_prefix_list: Iterable[str]
-    ) -> list[PurePosixPath]:
+    def _get_dpdk_runtime_dirs(self, dpdk_prefix_list: Iterable[str]) -> list[PurePosixPath]:
         """Find runtime directories DPDK apps are currently using.
 
         Args:
@@ -332,9 +316,7 @@ class PosixSession(OSSession):
         Returns:
             The contents of remote_path. If remote_path doesn't exist, return None.
         """
-        out = self.send_command(
-            f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'"
-        ).stdout
+        out = self.send_command(f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'").stdout
         if "No such file or directory" in out:
             return None
         else:
@@ -365,9 +347,7 @@ class PosixSession(OSSession):
                             pids.append(int(match.group(1)))
         return pids
 
-    def _check_dpdk_hugepages(
-        self, dpdk_runtime_dirs: Iterable[str | PurePath]
-    ) -> None:
+    def _check_dpdk_hugepages(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> None:
         """Check there aren't any leftover hugepages.
 
         If any hugepages are found, emit a warning. The hugepages are investigated in the
@@ -386,9 +366,7 @@ class PosixSession(OSSession):
                     self._logger.warning(out)
                     self._logger.warning("*******************************************")
 
-    def _remove_dpdk_runtime_dirs(
-        self, dpdk_runtime_dirs: Iterable[str | PurePath]
-    ) -> None:
+    def _remove_dpdk_runtime_dirs(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> None:
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             self.remove_remote_dir(dpdk_runtime_dir)
 
@@ -425,6 +403,4 @@ class PosixSession(OSSession):
             SETTINGS.timeout,
         ).stdout.split("\n")
         kernel_version = self.send_command("uname -r", SETTINGS.timeout).stdout
-        return OSSessionInfo(
-            os_release_info[0].strip(), os_release_info[1].strip(), kernel_version
-        )
+        return OSSessionInfo(os_release_info[0].strip(), os_release_info[1].strip(), kernel_version)

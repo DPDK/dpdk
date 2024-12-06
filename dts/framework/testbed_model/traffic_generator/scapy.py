@@ -12,7 +12,6 @@ The traffic generator extends :class:`framework.remote_session.python_shell.Pyth
 implement the methods for handling packets by sending commands into the interactive shell.
 """
 
-
 import re
 import time
 from typing import ClassVar
@@ -231,9 +230,7 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
         self.send_command(f"{self._sniffer_name}.start()")
         # Insert a one second delay to prevent timeout errors from occurring
         time.sleep(duration + 1)
-        self.send_command(
-            f"{sniffed_packets_name} = {self._sniffer_name}.stop(join=True)"
-        )
+        self.send_command(f"{sniffed_packets_name} = {self._sniffer_name}.stop(join=True)")
         # An extra newline is required here due to the nature of interactive Python shells
         packet_strs = self.send_command(
             f"for pakt in {sniffed_packets_name}: print(bytes_base64(pakt.build()))\n"

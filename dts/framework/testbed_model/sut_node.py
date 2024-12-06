@@ -11,7 +11,6 @@ and the hardware we're testing with DPDK (NICs, crypto and other devices).
 An SUT node is where this SUT runs.
 """
 
-
 import os
 import time
 from dataclasses import dataclass
@@ -139,9 +138,7 @@ class SutNode(Node):
     def dpdk_version(self) -> str | None:
         """Last built DPDK version."""
         if self._dpdk_version is None:
-            self._dpdk_version = self.main_session.get_dpdk_version(
-                self._remote_dpdk_tree_path
-            )
+            self._dpdk_version = self.main_session.get_dpdk_version(self._remote_dpdk_tree_path)
         return self._dpdk_version
 
     @property
@@ -155,9 +152,7 @@ class SutNode(Node):
     def compiler_version(self) -> str | None:
         """The node's compiler version."""
         if self._compiler_version is None:
-            self._logger.warning(
-                "The `compiler_version` is None because a pre-built DPDK is used."
-            )
+            self._logger.warning("The `compiler_version` is None because a pre-built DPDK is used.")
 
         return self._compiler_version
 
@@ -185,9 +180,7 @@ class SutNode(Node):
         Returns:
             The DPDK build information,
         """
-        return DPDKBuildInfo(
-            dpdk_version=self.dpdk_version, compiler_version=self.compiler_version
-        )
+        return DPDKBuildInfo(dpdk_version=self.dpdk_version, compiler_version=self.compiler_version)
 
     def set_up_test_run(
         self,
@@ -277,9 +270,7 @@ class SutNode(Node):
                 f"Remote DPDK source tree '{dpdk_tree}' not found in SUT node."
             )
         if not self.main_session.is_remote_dir(dpdk_tree):
-            raise ConfigurationError(
-                f"Remote DPDK source tree '{dpdk_tree}' must be a directory."
-            )
+            raise ConfigurationError(f"Remote DPDK source tree '{dpdk_tree}' must be a directory.")
 
         self.__remote_dpdk_tree_path = dpdk_tree
 
@@ -315,13 +306,9 @@ class SutNode(Node):
             ConfigurationError: If the `dpdk_tarball` is a valid path but not a valid tar archive.
         """
         if not self.main_session.remote_path_exists(dpdk_tarball):
-            raise RemoteFileNotFoundError(
-                f"Remote DPDK tarball '{dpdk_tarball}' not found in SUT."
-            )
+            raise RemoteFileNotFoundError(f"Remote DPDK tarball '{dpdk_tarball}' not found in SUT.")
         if not self.main_session.is_remote_tarfile(dpdk_tarball):
-            raise ConfigurationError(
-                f"Remote DPDK tarball '{dpdk_tarball}' must be a tar archive."
-            )
+            raise ConfigurationError(f"Remote DPDK tarball '{dpdk_tarball}' must be a tar archive.")
 
     def _copy_dpdk_tarball_to_remote(self, dpdk_tarball: Path) -> PurePath:
         """Copy the local DPDK tarball to the SUT node.
@@ -336,9 +323,7 @@ class SutNode(Node):
             f"Copying DPDK tarball to SUT: '{dpdk_tarball}' into '{self._remote_tmp_dir}'."
         )
         self.main_session.copy_to(dpdk_tarball, self._remote_tmp_dir)
-        return self.main_session.join_remote_path(
-            self._remote_tmp_dir, dpdk_tarball.name
-        )
+        return self.main_session.join_remote_path(self._remote_tmp_dir, dpdk_tarball.name)
 
     def _prepare_and_extract_dpdk_tarball(self, remote_tarball_path: PurePath) -> None:
         """Prepare the remote DPDK tree path and extract the tarball.
@@ -362,9 +347,7 @@ class SutNode(Node):
             if len(remote_tarball_path.suffixes) > 1:
                 if remote_tarball_path.suffixes[-2] == ".tar":
                     suffixes_to_remove = "".join(remote_tarball_path.suffixes[-2:])
-                    return PurePath(
-                        str(remote_tarball_path).replace(suffixes_to_remove, "")
-                    )
+                    return PurePath(str(remote_tarball_path).replace(suffixes_to_remove, ""))
             return remote_tarball_path.with_suffix("")
 
         tarball_top_dir = self.main_session.get_tarball_top_dir(remote_tarball_path)
@@ -407,9 +390,7 @@ class SutNode(Node):
 
         self._remote_dpdk_build_dir = PurePath(remote_dpdk_build_dir)
 
-    def _configure_dpdk_build(
-        self, dpdk_build_config: DPDKBuildOptionsConfiguration
-    ) -> None:
+    def _configure_dpdk_build(self, dpdk_build_config: DPDKBuildOptionsConfiguration) -> None:
         """Populate common environment variables and set the DPDK build related properties.
 
         This method sets `compiler_version` for additional information and `remote_dpdk_build_dir`
@@ -419,13 +400,9 @@ class SutNode(Node):
             dpdk_build_config: A DPDK build configuration to test.
         """
         self._env_vars = {}
-        self._env_vars.update(
-            self.main_session.get_dpdk_build_env_vars(dpdk_build_config.arch)
-        )
+        self._env_vars.update(self.main_session.get_dpdk_build_env_vars(dpdk_build_config.arch))
         if compiler_wrapper := dpdk_build_config.compiler_wrapper:
-            self._env_vars["CC"] = (
-                f"'{compiler_wrapper} {dpdk_build_config.compiler.name}'"
-            )
+            self._env_vars["CC"] = f"'{compiler_wrapper} {dpdk_build_config.compiler.name}'"
         else:
             self._env_vars["CC"] = dpdk_build_config.compiler.name
 
@@ -476,9 +453,7 @@ class SutNode(Node):
         )
 
         if app_name == "all":
-            return self.main_session.join_remote_path(
-                self.remote_dpdk_build_dir, "examples"
-            )
+            return self.main_session.join_remote_path(self.remote_dpdk_build_dir, "examples")
         return self.main_session.join_remote_path(
             self.remote_dpdk_build_dir, "examples", f"dpdk-{app_name}"
         )
