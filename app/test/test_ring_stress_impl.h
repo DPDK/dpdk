@@ -297,7 +297,7 @@ mt1_init(struct rte_ring **rng, void **data, uint32_t num)
 	*data = elm;
 
 	/* alloc ring */
-	nr = 2 * num;
+	nr = rte_align32pow2(2 * num);
 	sz = rte_ring_get_memsize(nr);
 	r = rte_zmalloc(NULL, sz, alignof(typeof(*r)));
 	if (r == NULL) {
