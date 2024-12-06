@@ -65,7 +65,11 @@ select = [
     "D",      # pydocstyle
     "C90",    # mccabe
     "I",      # isort
+    # pydoclint
+    "DOC202", "DOC402", "DOC403", "DOC501"
 ]
+preview = true # enable to get early access to pydoclint rules
+explicit-preview-rules = true # enable ONLY the explicitly selected preview rules
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
