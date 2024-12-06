@@ -325,6 +325,9 @@ rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 	/* Not to cross queue end. */
 	pkts_n = RTE_MIN(pkts_n, q_n - elts_idx);
 	pkts_n = RTE_MIN(pkts_n, q_n - cq_idx);
+	/* Not to move past the allocated mbufs. */
+	pkts_n = RTE_MIN(pkts_n, RTE_ALIGN_FLOOR(rxq->rq_ci - rxq->rq_pi,
+						MLX5_VPMD_DESCS_PER_LOOP));
 	if (!pkts_n) {
 		*no_cq = !rcvd_pkt;
 		return rcvd_pkt;
