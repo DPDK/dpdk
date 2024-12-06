@@ -205,6 +205,24 @@ void rte_ring_free(struct rte_ring *r);
 void rte_ring_dump(FILE *f, const struct rte_ring *r);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Dump the status of a headtail to a file.
+ *
+ * @param f
+ *   A pointer to a file for output
+ * @param prefix
+ *   A string to prefix each output line with
+ * @param r
+ *   A pointer to a ring headtail structure.
+ */
+__rte_experimental
+void
+rte_ring_headtail_dump(FILE *f, const char *prefix,
+		const struct rte_ring_headtail *r);
+
+/**
  * Enqueue several objects on the ring (multi-producers safe).
  *
  * This function uses a "compare and set" instruction to move the
