@@ -422,6 +422,7 @@ M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: lib/ring/
 F: doc/guides/prog_guide/ring_lib.rst
 F: app/test/test_ring*
+F: app/test/test_soring*
 F: app/test/test_func_reentrancy.c
 
 Stack
