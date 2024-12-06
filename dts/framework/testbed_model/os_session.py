@@ -195,7 +195,9 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def copy_from(self, source_file: str | PurePath, destination_dir: str | Path) -> None:
+    def copy_from(
+        self, source_file: str | PurePath, destination_dir: str | Path
+    ) -> None:
         """Copy a file from the remote node to the local filesystem.
 
         Copy `source_file` from the remote node associated with this remote
@@ -301,7 +303,9 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def remove_remote_file(self, remote_file_path: str | PurePath, force: bool = True) -> None:
+    def remove_remote_file(
+        self, remote_file_path: str | PurePath, force: bool = True
+    ) -> None:
         """Remove remote file, by default remove forcefully.
 
         Args:
@@ -366,7 +370,7 @@ class OSSession(ABC):
         """Check if the `remote_path` is a directory.
 
         Args:
-            remote_tarball_path: The path to the remote tarball.
+            remote_path: The path to the remote tarball.
 
         Returns:
             If :data:`True` the `remote_path` is a directory, otherwise :data:`False`.
@@ -475,7 +479,9 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def setup_hugepages(self, number_of: int, hugepage_size: int, force_first_numa: bool) -> None:
+    def setup_hugepages(
+        self, number_of: int, hugepage_size: int, force_first_numa: bool
+    ) -> None:
         """Configure hugepages on the node.
 
         Get the node's Hugepage Size, configure the specified count of hugepages

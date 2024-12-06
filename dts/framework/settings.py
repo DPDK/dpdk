@@ -257,7 +257,9 @@ class _EnvVarHelpFormatter(ArgumentDefaultsHelpFormatter):
         return help
 
 
-def _required_with_one_of(parser: _DTSArgumentParser, action: Action, *required_dests: str) -> None:
+def _required_with_one_of(
+    parser: _DTSArgumentParser, action: Action, *required_dests: str
+) -> None:
     """Verify that `action` is listed together with at least one of `required_dests`.
 
     Verify that when `action` is among the command-line arguments or
@@ -461,6 +463,7 @@ def _process_dpdk_location(
     any valid :class:`DPDKLocation` with the provided parameters if validation is successful.
 
     Args:
+        parser: The instance of the arguments parser.
         dpdk_tree: The path to the DPDK source tree directory.
         tarball: The path to the DPDK tarball.
         remote: If :data:`True`, `dpdk_tree` or `tarball` is located on the SUT node, instead of the
@@ -512,6 +515,7 @@ def _process_test_suites(
     """Process the given argument to a list of :class:`TestSuiteConfig` to execute.
 
     Args:
+        parser: The instance of the arguments parser.
         args: The arguments to process. The args is a string from an environment variable
               or a list of from the user input containing tests suites with tests cases,
               each of which is a list of [test_suite, test_case, test_case, ...].

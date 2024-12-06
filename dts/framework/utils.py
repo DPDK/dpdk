@@ -31,7 +31,9 @@ from .exception import InternalError
 REGEX_FOR_PCI_ADDRESS: str = r"[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}"
 _REGEX_FOR_COLON_OR_HYPHEN_SEP_MAC: str = r"(?:[\da-fA-F]{2}[:-]){5}[\da-fA-F]{2}"
 _REGEX_FOR_DOT_SEP_MAC: str = r"(?:[\da-fA-F]{4}.){2}[\da-fA-F]{4}"
-REGEX_FOR_MAC_ADDRESS: str = rf"{_REGEX_FOR_COLON_OR_HYPHEN_SEP_MAC}|{_REGEX_FOR_DOT_SEP_MAC}"
+REGEX_FOR_MAC_ADDRESS: str = (
+    rf"{_REGEX_FOR_COLON_OR_HYPHEN_SEP_MAC}|{_REGEX_FOR_DOT_SEP_MAC}"
+)
 REGEX_FOR_BASE64_ENCODING: str = "[-a-zA-Z0-9+\\/]*={0,3}"
 
 
@@ -56,7 +58,9 @@ def expand_range(range_str: str) -> list[int]:
         range_boundaries = range_str.split("-")
         # will throw an exception when items in range_boundaries can't be converted,
         # serving as type check
-        expanded_range.extend(range(int(range_boundaries[0]), int(range_boundaries[-1]) + 1))
+        expanded_range.extend(
+            range(int(range_boundaries[0]), int(range_boundaries[-1]) + 1)
+        )
 
     return expanded_range
 
@@ -73,7 +77,9 @@ def get_packet_summaries(packets: list[Packet]) -> str:
     if len(packets) == 1:
         packet_summaries = packets[0].summary()
     else:
-        packet_summaries = json.dumps(list(map(lambda pkt: pkt.summary(), packets)), indent=4)
+        packet_summaries = json.dumps(
+            list(map(lambda pkt: pkt.summary(), packets)), indent=4
+        )
     return f"Packet contents: \n{packet_summaries}"
 
 
@@ -81,7 +87,9 @@ class StrEnum(Enum):
     """Enum with members stored as strings."""
 
     @staticmethod
-    def _generate_next_value_(name: str, start: int, count: int, last_values: object) -> str:
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: object
+    ) -> str:
         return name
 
     def __str__(self) -> str:
@@ -108,7 +116,9 @@ class MesonArgs:
 
                 meson_args = MesonArgs(enable_kmods=True).
         """
-        self._default_library = f"--default-library={default_library}" if default_library else ""
+        self._default_library = (
+            f"--default-library={default_library}" if default_library else ""
+        )
         self._dpdk_args = " ".join(
             (
                 f"-D{dpdk_arg_name}={dpdk_arg_value}"
@@ -149,7 +159,9 @@ class TarCompressionFormat(StrEnum):
         For other compression formats, the extension will be in the format
         'tar.{compression format}'.
         """
-        return f"{self.value}" if self == self.none else f"{self.none.value}.{self.value}"
+        return (
+            f"{self.value}" if self == self.none else f"{self.none.value}.{self.value}"
+        )
 
 
 def convert_to_list_of_string(value: Any | list[Any]) -> list[str]:
@@ -177,7 +189,9 @@ def create_tarball(
         The path to the created tarball.
     """
 
-    def create_filter_function(exclude_patterns: str | list[str] | None) -> Callable | None:
+    def create_filter_function(
+        exclude_patterns: str | list[str] | None,
+    ) -> Callable | None:
         """Create a filter function based on the provided exclude patterns.
 
         Args:
@@ -192,7 +206,9 @@ def create_tarball(
 
             def filter_func(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo | None:
                 file_name = os.path.basename(tarinfo.name)
-                if any(fnmatch.fnmatch(file_name, pattern) for pattern in exclude_patterns):
+                if any(
+                    fnmatch.fnmatch(file_name, pattern) for pattern in exclude_patterns
+                ):
                     return None
                 return tarinfo
 
@@ -285,7 +301,9 @@ def generate_random_packets(
             packet /= random.choice(l4_factories)(sport=src_port, dport=dst_port)
 
         max_payload_size = mtu - len(packet)
-        usable_payload_size = payload_size if payload_size < max_payload_size else max_payload_size
+        usable_payload_size = (
+            payload_size if payload_size < max_payload_size else max_payload_size
+        )
         return packet / random.randbytes(usable_payload_size)
 
     return [_make_packet() for _ in range(number_of)]
@@ -300,7 +318,7 @@ class MultiInheritanceBaseClass:
     :meth:`super.__init__` without repercussion.
     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self) -> None:
         """Call the init method of :class:`object`."""
         super().__init__()
 

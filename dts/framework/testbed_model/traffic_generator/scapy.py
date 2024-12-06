@@ -81,7 +81,7 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
             tg_node.config.os == OS.linux
         ), "Linux is the only supported OS for scapy traffic generation"
 
-        super().__init__(tg_node, config=config, **kwargs)
+        super().__init__(node=tg_node, config=config, tg_node=tg_node, **kwargs)
         self.start_application()
 
     def start_application(self) -> None:
@@ -173,7 +173,11 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
         return " && ".join(bpf_filter)
 
     def _shell_create_sniffer(
-        self, packets_to_send: list[Packet], send_port: Port, recv_port: Port, filter_config: str
+        self,
+        packets_to_send: list[Packet],
+        send_port: Port,
+        recv_port: Port,
+        filter_config: str,
     ) -> None:
         """Create an asynchronous sniffer in the shell.
 
@@ -227,7 +231,9 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
         self.send_command(f"{self._sniffer_name}.start()")
         # Insert a one second delay to prevent timeout errors from occurring
         time.sleep(duration + 1)
-        self.send_command(f"{sniffed_packets_name} = {self._sniffer_name}.stop(join=True)")
+        self.send_command(
+            f"{sniffed_packets_name} = {self._sniffer_name}.stop(join=True)"
+        )
         # An extra newline is required here due to the nature of interactive Python shells
         packet_strs = self.send_command(
             f"for pakt in {sniffed_packets_name}: print(bytes_base64(pakt.build()))\n"

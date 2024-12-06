@@ -136,17 +136,25 @@ class DTSRunner:
 
             # for all test run sections
             for test_run_with_nodes_config in self._configuration.test_runs_with_nodes:
-                test_run_config, sut_node_config, tg_node_config = test_run_with_nodes_config
+                test_run_config, sut_node_config, tg_node_config = (
+                    test_run_with_nodes_config
+                )
                 self._logger.set_stage(DtsStage.test_run_setup)
-                self._logger.info(f"Running test run with SUT '{sut_node_config.name}'.")
+                self._logger.info(
+                    f"Running test run with SUT '{sut_node_config.name}'."
+                )
                 self._init_random_seed(test_run_config)
                 test_run_result = self._result.add_test_run(test_run_config)
                 # we don't want to modify the original config, so create a copy
                 test_run_test_suites = list(
-                    SETTINGS.test_suites if SETTINGS.test_suites else test_run_config.test_suites
+                    SETTINGS.test_suites
+                    if SETTINGS.test_suites
+                    else test_run_config.test_suites
                 )
                 if not test_run_config.skip_smoke_tests:
-                    test_run_test_suites[:0] = [TestSuiteConfig(test_suite="smoke_tests")]
+                    test_run_test_suites[:0] = [
+                        TestSuiteConfig(test_suite="smoke_tests")
+                    ]
                 try:
                     test_suites_with_cases = self._get_test_suites_with_cases(
                         test_run_test_suites, test_run_config.func, test_run_config.perf
@@ -154,7 +162,8 @@ class DTSRunner:
                     test_run_result.test_suites_with_cases = test_suites_with_cases
                 except Exception as e:
                     self._logger.exception(
-                        f"Invalid test suite configuration found: " f"{test_run_test_suites}."
+                        f"Invalid test suite configuration found: "
+                        f"{test_run_test_suites}."
                     )
                     test_run_result.update_setup(Result.FAIL, e)
 
@@ -236,7 +245,9 @@ class DTSRunner:
                 test_cases.extend(perf_test_cases)
 
             test_suites_with_cases.append(
-                TestSuiteWithCases(test_suite_class=test_suite_class, test_cases=test_cases)
+                TestSuiteWithCases(
+                    test_suite_class=test_suite_class, test_cases=test_cases
+                )
             )
         return test_suites_with_cases
 
@@ -285,7 +296,11 @@ class DTSRunner:
 
         else:
             self._run_test_run(
-                sut_node, tg_node, test_run_config, test_run_result, test_suites_with_cases
+                sut_node,
+                tg_node,
+                test_run_config,
+                test_run_result,
+                test_suites_with_cases,
             )
 
     def _run_test_run(
@@ -324,7 +339,8 @@ class DTSRunner:
                 )
             if dir := SETTINGS.precompiled_build_dir:
                 dpdk_build_config = DPDKPrecompiledBuildConfiguration(
-                    dpdk_location=dpdk_build_config.dpdk_location, precompiled_build_dir=dir
+                    dpdk_location=dpdk_build_config.dpdk_location,
+                    precompiled_build_dir=dir,
                 )
             sut_node.set_up_test_run(test_run_config, dpdk_build_config)
             test_run_result.dpdk_build_info = sut_node.get_dpdk_build_info()
@@ -335,7 +351,9 @@ class DTSRunner:
             test_run_result.update_setup(Result.FAIL, e)
 
         else:
-            self._run_test_suites(sut_node, tg_node, test_run_result, test_suites_with_cases)
+            self._run_test_suites(
+                sut_node, tg_node, test_run_result, test_suites_with_cases
+            )
 
         finally:
             try:
@@ -360,7 +378,9 @@ class DTSRunner:
 
         self._logger.debug(f"Found capabilities to check: {capabilities_to_check}")
 
-        return get_supported_capabilities(sut_node, topology_config, capabilities_to_check)
+        return get_supported_capabilities(
+            sut_node, topology_config, capabilities_to_check
+        )
 
     def _run_test_suites(
         self,
@@ -443,6 +463,7 @@ class DTSRunner:
         Args:
             sut_node: The test run's SUT node.
             tg_node: The test run's TG node.
+            topology: The port topology of the nodes.
             test_suite_result: The test suite level result object associated
                 with the current test suite.
             test_suite_with_cases: The test suite with test cases to run.
@@ -585,6 +606,9 @@ class DTSRunner:
             test_case: The test case function.
             test_case_result: The test case level result object associated
                 with the current test case.
+
+        Raises:
+            KeyboardInterrupt: If DTS has been interrupted by the user.
         """
         test_case_name = test_case.__name__
         try:
@@ -601,7 +625,9 @@ class DTSRunner:
             self._logger.exception(f"Test case execution ERROR: {test_case_name}")
             test_case_result.update(Result.ERROR, e)
         except KeyboardInterrupt:
-            self._logger.error(f"Test case execution INTERRUPTED by user: {test_case_name}")
+            self._logger.error(
+                f"Test case execution INTERRUPTED by user: {test_case_name}"
+            )
             test_case_result.update(Result.SKIP)
             raise KeyboardInterrupt("Stop DTS")
 

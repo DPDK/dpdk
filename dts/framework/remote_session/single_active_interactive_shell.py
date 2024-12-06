@@ -110,6 +110,7 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
             app_params: The command line parameters to be passed to the application on startup.
             name: Name for the interactive shell to use for logging. This name will be appended to
                 the name of the underlying node which it is running on.
+            **kwargs: Any additional arguments if any.
         """
         self._node = node
         if name is None:
@@ -120,10 +121,12 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
         self._timeout = timeout
         # Ensure path is properly formatted for the host
         self._update_real_path(self.path)
-        super().__init__(node, **kwargs)
+        super().__init__(**kwargs)
 
     def _setup_ssh_channel(self):
-        self._ssh_channel = self._node.main_session.interactive_session.session.invoke_shell()
+        self._ssh_channel = (
+            self._node.main_session.interactive_session.session.invoke_shell()
+        )
         self._stdin = self._ssh_channel.makefile_stdin("w")
         self._stdout = self._ssh_channel.makefile("r")
         self._ssh_channel.settimeout(self._timeout)
@@ -133,7 +136,9 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
         """Makes the command that starts the interactive shell."""
         start_command = f"{self._real_path} {self._app_params or ''}"
         if self._privileged:
-            start_command = self._node.main_session._get_privileged_command(start_command)
+            start_command = self._node.main_session._get_privileged_command(
+                start_command
+            )
         return start_command
 
     def _start_application(self) -> None:

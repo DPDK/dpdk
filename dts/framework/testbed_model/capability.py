@@ -130,7 +130,9 @@ class Capability(ABC):
 
     @classmethod
     @abstractmethod
-    def get_supported_capabilities(cls, sut_node: SutNode, topology: "Topology") -> set[Self]:
+    def get_supported_capabilities(
+        cls, sut_node: SutNode, topology: "Topology"
+    ) -> set[Self]:
         """Get the support status of each registered capability.
 
         Each subclass must implement this method and return the subset of supported capabilities
@@ -224,7 +226,10 @@ class DecoratedNicCapability(Capability):
             with TestPmdShell(
                 sut_node, privileged=True, disable_device_start=True
             ) as testpmd_shell:
-                for conditional_capability_fn, capabilities in capabilities_to_check_map.items():
+                for (
+                    conditional_capability_fn,
+                    capabilities,
+                ) in capabilities_to_check_map.items():
                     supported_capabilities: set[NicCapability] = set()
                     unsupported_capabilities: set[NicCapability] = set()
                     capability_fn = cls._reduce_capabilities(
@@ -237,14 +242,18 @@ class DecoratedNicCapability(Capability):
                         if capability.nic_capability in supported_capabilities:
                             supported_conditional_capabilities.add(capability)
 
-        logger.debug(f"Found supported capabilities {supported_conditional_capabilities}.")
+        logger.debug(
+            f"Found supported capabilities {supported_conditional_capabilities}."
+        )
         return supported_conditional_capabilities
 
     @classmethod
     def _get_decorated_capabilities_map(
         cls,
     ) -> dict[TestPmdShellDecorator | None, set["DecoratedNicCapability"]]:
-        capabilities_map: dict[TestPmdShellDecorator | None, set["DecoratedNicCapability"]] = {}
+        capabilities_map: dict[
+            TestPmdShellDecorator | None, set["DecoratedNicCapability"]
+        ] = {}
         for capability in cls.capabilities_to_check:
             if capability.capability_decorator not in capabilities_map:
                 capabilities_map[capability.capability_decorator] = set()
@@ -307,7 +316,9 @@ class TopologyCapability(Capability):
     _unique_capabilities: ClassVar[dict[str, Self]] = {}
 
     def _preprocess_required(self, test_case_or_suite: type["TestProtocol"]) -> None:
-        test_case_or_suite.required_capabilities.discard(test_case_or_suite.topology_type)
+        test_case_or_suite.required_capabilities.discard(
+            test_case_or_suite.topology_type
+        )
         test_case_or_suite.topology_type = self
 
     @classmethod
@@ -353,6 +364,10 @@ class TopologyCapability(Capability):
         At that point, the test case topologies have been set by the :func:`requires` decorator.
         The test suite topology only affects the test case topologies
         if not :attr:`~.topology.TopologyType.default`.
+
+        Raises:
+            ConfigurationError: If the topology type requested by the test case is more complex than
+                the test suite's.
         """
         if inspect.isclass(test_case_or_suite):
             if self.topology_type is not TopologyType.default:
@@ -443,7 +458,9 @@ class TestProtocol(Protocol):
     #: The reason for skipping the test case or suite.
     skip_reason: ClassVar[str] = ""
     #: The topology type of the test case or suite.
-    topology_type: ClassVar[TopologyCapability] = TopologyCapability(TopologyType.default)
+    topology_type: ClassVar[TopologyCapability] = TopologyCapability(
+        TopologyType.default
+    )
     #: The capabilities the test case or suite requires in order to be executed.
     required_capabilities: ClassVar[set[Capability]] = set()
 
@@ -471,7 +488,9 @@ def requires(
         The decorated test case or test suite.
     """
 
-    def add_required_capability(test_case_or_suite: type[TestProtocol]) -> type[TestProtocol]:
+    def add_required_capability(
+        test_case_or_suite: type[TestProtocol],
+    ) -> type[TestProtocol]:
         for nic_capability in nic_capabilities:
             decorated_nic_capability = DecoratedNicCapability.get_unique(nic_capability)
             decorated_nic_capability.add_to_required(test_case_or_suite)

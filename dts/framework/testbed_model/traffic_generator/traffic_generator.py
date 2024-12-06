@@ -42,11 +42,12 @@ class TrafficGenerator(MultiInheritanceBaseClass, ABC):
         Args:
             tg_node: The traffic generator node where the created traffic generator will be running.
             config: The traffic generator's test run configuration.
+            **kwargs: Any additional arguments if any.
         """
         self._config = config
         self._tg_node = tg_node
         self._logger = get_dts_logger(f"{self._tg_node.name} {self._config.type}")
-        super().__init__(tg_node, **kwargs)
+        super().__init__(**kwargs)
 
     def send_packet(self, packet: Packet, port: Port) -> None:
         """Send `packet` and block until it is fully sent.

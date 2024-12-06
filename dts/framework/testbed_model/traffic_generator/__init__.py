@@ -33,9 +33,16 @@ def create_traffic_generator(
 
     Returns:
         A traffic generator capable of capturing received packets.
+
+    Raises:
+        ConfigurationError: If an unknown traffic generator has been setup.
     """
     match traffic_generator_config:
         case ScapyTrafficGeneratorConfig():
-            return ScapyTrafficGenerator(tg_node, traffic_generator_config, privileged=True)
+            return ScapyTrafficGenerator(
+                tg_node, traffic_generator_config, privileged=True
+            )
         case _:
-            raise ConfigurationError(f"Unknown traffic generator: {traffic_generator_config.type}")
+            raise ConfigurationError(
+                f"Unknown traffic generator: {traffic_generator_config.type}"
+            )

@@ -198,13 +198,18 @@ class Node(ABC):
             session.close()
 
 
-def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger) -> OSSession:
+def create_session(
+    node_config: NodeConfiguration, name: str, logger: DTSLogger
+) -> OSSession:
     """Factory for OS-aware sessions.
 
     Args:
         node_config: The test run configuration of the node to connect to.
         name: The name of the session.
         logger: The logger instance this session will use.
+
+    Raises:
+        ConfigurationError: If the node's OS is unsupported.
     """
     match node_config.os:
         case OS.linux:

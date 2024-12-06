@@ -38,7 +38,9 @@ class TestVlan(TestSuite):
     tag when insertion is enabled.
     """
 
-    def send_vlan_packet_and_verify(self, should_receive: bool, strip: bool, vlan_id: int) -> None:
+    def send_vlan_packet_and_verify(
+        self, should_receive: bool, strip: bool, vlan_id: int
+    ) -> None:
         """Generate a VLAN packet, send and verify packet with same payload is received on the dut.
 
         Args:
@@ -57,12 +59,14 @@ class TestVlan(TestSuite):
                 break
         if should_receive:
             self.verify(
-                test_packet is not None, "Packet was dropped when it should have been received"
+                test_packet is not None,
+                "Packet was dropped when it should have been received",
             )
             if test_packet is not None:
                 if strip:
                     self.verify(
-                        not test_packet.haslayer(Dot1Q), "VLAN tag was not stripped successfully"
+                        not test_packet.haslayer(Dot1Q),
+                        "VLAN tag was not stripped successfully",
                     )
                 else:
                     self.verify(
@@ -88,11 +92,18 @@ class TestVlan(TestSuite):
             if hasattr(packet, "load") and b"xxxxx" in packet.load:
                 test_packet = packet
                 break
-        self.verify(test_packet is not None, "Packet was dropped when it should have been received")
+        self.verify(
+            test_packet is not None,
+            "Packet was dropped when it should have been received",
+        )
         if test_packet is not None:
-            self.verify(test_packet.haslayer(Dot1Q), "The received packet did not have a VLAN tag")
             self.verify(
-                test_packet.vlan == expected_id, "The received tag did not match the expected tag"
+                test_packet.haslayer(Dot1Q),
+                "The received packet did not have a VLAN tag",
+            )
+            self.verify(
+                test_packet.vlan == expected_id,
+                "The received tag did not match the expected tag",
             )
 
     def vlan_setup(self, testpmd: TestPmdShell, port_id: int, filtered_id: int) -> None:
@@ -102,9 +113,6 @@ class TestVlan(TestSuite):
             testpmd: Testpmd shell session to send commands to.
             port_id: Number of port to use for setup.
             filtered_id: ID to be added to the VLAN filter list.
-
-        Returns:
-            TestPmdShell: Testpmd session being configured.
         """
         testpmd.set_forward_mode(SimpleForwardingModes.mac)
         testpmd.set_promisc(port_id, False)
@@ -147,7 +155,9 @@ class TestVlan(TestSuite):
         with TestPmdShell(node=self.sut_node) as testpmd:
             self.vlan_setup(testpmd=testpmd, port_id=0, filtered_id=1)
             testpmd.start()
-            self.send_vlan_packet_and_verify(should_receive=False, strip=False, vlan_id=2)
+            self.send_vlan_packet_and_verify(
+                should_receive=False, strip=False, vlan_id=2
+            )
 
     @func_test
     def test_vlan_header_insertion(self) -> None:

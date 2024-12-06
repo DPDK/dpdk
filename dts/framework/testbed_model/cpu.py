@@ -87,7 +87,9 @@ class LogicalCoreList:
 
         # the input lcores may not be sorted
         self._lcore_list.sort()
-        self._lcore_str = f'{",".join(self._get_consecutive_lcores_range(self._lcore_list))}'
+        self._lcore_str = (
+            f'{",".join(self._get_consecutive_lcores_range(self._lcore_list))}'
+        )
 
     @property
     def lcore_list(self) -> list[int]:
@@ -102,11 +104,15 @@ class LogicalCoreList:
                 segment.append(lcore_id)
             else:
                 formatted_core_list.append(
-                    f"{segment[0]}-{segment[-1]}" if len(segment) > 1 else f"{segment[0]}"
+                    f"{segment[0]}-{segment[-1]}"
+                    if len(segment) > 1
+                    else f"{segment[0]}"
                 )
                 current_core_index = lcore_ids_list.index(lcore_id)
                 formatted_core_list.extend(
-                    self._get_consecutive_lcores_range(lcore_ids_list[current_core_index:])
+                    self._get_consecutive_lcores_range(
+                        lcore_ids_list[current_core_index:]
+                    )
                 )
                 segment.clear()
                 break
@@ -166,7 +172,9 @@ class LogicalCoreFilter(ABC):
         self._filter_specifier = filter_specifier
 
         # sorting by core is needed in case hyperthreading is enabled
-        self._lcores_to_filter = sorted(lcore_list, key=lambda x: x.core, reverse=not ascending)
+        self._lcores_to_filter = sorted(
+            lcore_list, key=lambda x: x.core, reverse=not ascending
+        )
         self.filter()
 
     @abstractmethod
@@ -231,6 +239,9 @@ class LogicalCoreCountFilter(LogicalCoreFilter):
 
         Returns:
             A list of lists of logical CPU cores. Each list contains cores from one socket.
+
+        Raises:
+            ValueError: If the number of the requested sockets by the filter can't be satisfied.
         """
         allowed_sockets: set[int] = set()
         socket_count = self._filter_specifier.socket_count
@@ -272,6 +283,10 @@ class LogicalCoreCountFilter(LogicalCoreFilter):
 
         Returns:
             The filtered logical CPU cores.
+
+        Raises:
+            ValueError: If the number of the requested cores per socket by the filter
+                can't be satisfied.
         """
         # no need to use ordered dict, from Python3.7 the dict
         # insertion order is preserved (LIFO).
@@ -287,7 +302,9 @@ class LogicalCoreCountFilter(LogicalCoreFilter):
                 else:
                     # we have enough lcores per this core
                     continue
-            elif self._filter_specifier.cores_per_socket > len(lcore_count_per_core_map):
+            elif self._filter_specifier.cores_per_socket > len(
+                lcore_count_per_core_map
+            ):
                 # only add cores if we need more
                 lcore_count_per_core_map[lcore.core] = 1
                 filtered_lcores.append(lcore)
@@ -327,6 +344,9 @@ class LogicalCoreListFilter(LogicalCoreFilter):
 
         Return:
             The filtered logical CPU cores.
+
+        Raises:
+            ValueError: If the specified lcore filter specifier is invalid.
         """
         if not len(self._filter_specifier.lcore_list):
             return self._lcores_to_filter
@@ -360,6 +380,9 @@ def lcore_filter(
 
     Returns:
         The filter that corresponds to `filter_specifier`.
+
+    Raises:
+        ValueError: If the supplied `filter_specifier` is invalid.
     """
     if isinstance(filter_specifier, LogicalCoreList):
         return LogicalCoreListFilter(core_list, filter_specifier, ascending)

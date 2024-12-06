@@ -43,6 +43,12 @@ class TopologyType(int, NoAliasEnum):
         :class:`TopologyType` is a regular :class:`~enum.Enum`.
         When getting an instance from value, we're not interested in the default,
         since we already know the value, allowing us to remove the ambiguity.
+
+        Args:
+            value: The value of the requested enum.
+
+        Raises:
+            ConfigurationError: If an unsupported link topology is supplied.
         """
         match value:
             case 0:
@@ -52,7 +58,9 @@ class TopologyType(int, NoAliasEnum):
             case 2:
                 return TopologyType.two_links
             case _:
-                raise ConfigurationError("More than two links in a topology are not supported.")
+                raise ConfigurationError(
+                    "More than two links in a topology are not supported."
+                )
 
 
 class Topology:

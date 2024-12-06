@@ -300,7 +300,9 @@ class TestSuite(TestProtocol):
         """
         return self.get_expected_packets([packet])[0]
 
-    def _adjust_addresses(self, packets: list[Packet], expected: bool = False) -> list[Packet]:
+    def _adjust_addresses(
+        self, packets: list[Packet], expected: bool = False
+    ) -> list[Packet]:
         """L2 and L3 address additions in both directions.
 
         Copies of `packets` will be made, modified and returned in this method.
@@ -378,15 +380,21 @@ class TestSuite(TestProtocol):
             self._fail_test_case_verify(failure_description)
 
     def _fail_test_case_verify(self, failure_description: str) -> None:
-        self._logger.debug("A test case failed, showing the last 10 commands executed on SUT:")
+        self._logger.debug(
+            "A test case failed, showing the last 10 commands executed on SUT:"
+        )
         for command_res in self.sut_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
-        self._logger.debug("A test case failed, showing the last 10 commands executed on TG:")
+        self._logger.debug(
+            "A test case failed, showing the last 10 commands executed on TG:"
+        )
         for command_res in self.tg_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
         raise TestCaseVerifyError(failure_description)
 
-    def verify_packets(self, expected_packet: Packet, received_packets: list[Packet]) -> None:
+    def verify_packets(
+        self, expected_packet: Packet, received_packets: list[Packet]
+    ) -> None:
         """Verify that `expected_packet` has been received.
 
         Go through `received_packets` and check that `expected_packet` is among them.
@@ -408,7 +416,9 @@ class TestSuite(TestProtocol):
                 f"The expected packet {get_packet_summaries(expected_packet)} "
                 f"not found among received {get_packet_summaries(received_packets)}"
             )
-            self._fail_test_case_verify("An expected packet not found among received packets.")
+            self._fail_test_case_verify(
+                "An expected packet not found among received packets."
+            )
 
     def match_all_packets(
         self, expected_packets: list[Packet], received_packets: list[Packet]
@@ -444,7 +454,9 @@ class TestSuite(TestProtocol):
                 f"but {missing_packets_count} were missing."
             )
 
-    def _compare_packets(self, expected_packet: Packet, received_packet: Packet) -> bool:
+    def _compare_packets(
+        self, expected_packet: Packet, received_packet: Packet
+    ) -> bool:
         self._logger.debug(
             f"Comparing packets: \n{expected_packet.summary()}\n{received_packet.summary()}"
         )
@@ -473,10 +485,14 @@ class TestSuite(TestProtocol):
             expected_payload = expected_payload.payload
 
         if expected_payload:
-            self._logger.debug(f"The expected packet did not contain {expected_payload}.")
+            self._logger.debug(
+                f"The expected packet did not contain {expected_payload}."
+            )
             return False
         if received_payload and received_payload.__class__ != Padding:
-            self._logger.debug("The received payload had extra layers which were not padding.")
+            self._logger.debug(
+                "The received payload had extra layers which were not padding."
+            )
             return False
         return True
 
@@ -503,7 +519,10 @@ class TestSuite(TestProtocol):
 
     def _verify_l3_packet(self, received_packet: IP, expected_packet: IP) -> bool:
         self._logger.debug("Looking at the IP layer.")
-        if received_packet.src != expected_packet.src or received_packet.dst != expected_packet.dst:
+        if (
+            received_packet.src != expected_packet.src
+            or received_packet.dst != expected_packet.dst
+        ):
             return False
         return True
 
@@ -615,7 +634,11 @@ class TestSuiteSpec:
 
     @cached_property
     def class_obj(self) -> type[TestSuite]:
-        """A reference to the test suite's class."""
+        """A reference to the test suite's class.
+
+        Raises:
+            InternalError: If the test suite class is missing from the module.
+        """
 
         def is_test_suite(obj) -> bool:
             """Check whether `obj` is a :class:`TestSuite`.
