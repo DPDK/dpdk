@@ -23,6 +23,7 @@ sed '/^uint->/d' |
 sed "/^doesn'->/d" |
 sed '/^wasn->/d' |
 sed '/^stdio->/d' |
+sed '/^soring->/d' |
 
 # print to stdout
 cat

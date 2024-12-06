@@ -174,6 +174,7 @@ The public API headers are grouped by topics:
   [mbuf](@ref rte_mbuf.h),
   [mbuf pool ops](@ref rte_mbuf_pool_ops.h),
   [ring](@ref rte_ring.h),
+  [soring](@ref rte_soring.h),
   [stack](@ref rte_stack.h),
   [tailq](@ref rte_tailq.h),
   [bitset](@ref rte_bitset.h),
