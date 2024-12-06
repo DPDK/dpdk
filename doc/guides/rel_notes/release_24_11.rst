@@ -543,6 +543,15 @@ Tested Platforms
       * COMMS DDP: 1.3.46.0
       * Wireless Edge DDP: 1.3.14.0
 
+    * Intel\ |reg| Ethernet Connection E825-C for QSFP
+
+      * Firmware version: 3.75 0x80005600 1.3643.0
+      * Device id (pf/vf): 8086:579d / 8086:1889
+      * Driver version: 2.1.0_rc23 (ice)
+      * OS Default DDP: 1.3.36.0
+      * COMMS DDP: 1.3.46.0
+      * Wireless Edge DDP: 1.3.14.0
+
     * Intel\ |reg| Ethernet Network Adapter E830-XXVDA2 for OCP
 
       * Firmware version: 1.00 0x8000942a 1.3672.0
@@ -616,6 +625,12 @@ Tested Platforms
       * Firmware version: 2.14, 0x8000028c
       * Device id (pf): 8086:125b
       * Driver version(in-tree): 6.8.0-45-generic (Ubuntu24.04.1)(igc)
+
+    * Intel Corporation Ethernet Server Adapter I350-T4
+
+      * Firmware version: 1.63, 0x80001001
+      * Device id (pf): 8086:1521 /8086:1520
+      * Driver version: 6.6.25-lts-240422t024020z(igb)
 
 * Intel\ |reg| platforms with NVIDIA\ |reg| NICs combinations
 
