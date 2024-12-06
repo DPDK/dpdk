@@ -23,13 +23,13 @@ python = "^3.10"
 PyYAML = "^6.0"
 types-PyYAML = "^6.0.8"
 fabric = "^2.7.1"
-scapy = "^2.5.0"
+scapy = "^2.6.1"
 typing-extensions = "^4.11.0"
 aenum = "^3.1.15"
 pydantic = "^2.9.2"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.10.0"
+mypy = "^1.13.0"
 toml = "^0.10.2"
 ruff = "^0.8.1"
 
