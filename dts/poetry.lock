@@ -1229,6 +1229,31 @@ files = [
 ]
 
 [[package]]
+name = "types-invoke"
+version = "2.0.0.10"
+description = "Typing stubs for invoke"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "types-invoke-2.0.0.10.tar.gz", hash = "sha256:a54d7ecdc19e0c22cd2786ef2e64c2631715c78eba8a1bf40b511d0608f33a88"},
+    {file = "types_invoke-2.0.0.10-py3-none-any.whl", hash = "sha256:2404e4279601fa96e14ef68321fd10a660a828677aabdcaeef6a5189778084ef"},
+]
+
+[[package]]
+name = "types-paramiko"
+version = "3.5.0.20240928"
+description = "Typing stubs for paramiko"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "types-paramiko-3.5.0.20240928.tar.gz", hash = "sha256:79dd9b2ee510b76a3b60d8ac1f3f348c45fcecf01347ca79e14db726bbfc442d"},
+    {file = "types_paramiko-3.5.0.20240928-py3-none-any.whl", hash = "sha256:cda0aff4905fe8efe4b5448331a80e943d42a796bd4beb77a3eed3485bc96a85"},
+]
+
+[package.dependencies]
+cryptography = ">=37.0.0"
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20240917"
 description = "Typing stubs for PyYAML"
@@ -1270,4 +1295,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "416cab6effbb2848e872e2ced35bbfb4862722f1e96351ab0694f6fa2d919535"
+content-hash = "ef76008e3c2578b03a4360ca1b7bbf394c4fc7abbbef46ac1d52a6de0ff9ba88"
