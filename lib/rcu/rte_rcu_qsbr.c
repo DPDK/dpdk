@@ -104,11 +104,11 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	/* Check if the thread is already registered */
 	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					rte_memory_order_relaxed);
-	if (old_bmap & 1UL << id)
+	if (old_bmap & RTE_BIT64(id))
 		return 0;
 
 	do {
-		new_bmap = old_bmap | (1UL << id);
+		new_bmap = old_bmap | RTE_BIT64(id);
 		success = rte_atomic_compare_exchange_strong_explicit(
 					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					&old_bmap, new_bmap,
@@ -117,7 +117,7 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		if (success)
 			rte_atomic_fetch_add_explicit(&v->num_threads,
 						1, rte_memory_order_relaxed);
-		else if (old_bmap & (1UL << id))
+		else if (old_bmap & RTE_BIT64(id))
 			/* Someone else registered this thread.
 			 * Counter should not be incremented.
 			 */
@@ -156,11 +156,11 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	/* Check if the thread is already unregistered */
 	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
 					rte_memory_order_relaxed);
-	if (!(old_bmap & (1UL << id)))
+	if (!(old_bmap & RTE_BIT64(id)))
 		return 0;
 
 	do {
-		new_bmap = old_bmap & ~(1UL << id);
+		new_bmap = old_bmap & ~RTE_BIT64(id);
 		/* Make sure any loads of the shared data structure are
 		 * completed before removal of the thread from the list of
 		 * reporting threads.
@@ -173,7 +173,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		if (success)
 			rte_atomic_fetch_sub_explicit(&v->num_threads,
 						1, rte_memory_order_relaxed);
-		else if (!(old_bmap & (1UL << id)))
+		else if (!(old_bmap & RTE_BIT64(id)))
 			/* Someone else unregistered this thread.
 			 * Counter should not be incremented.
 			 */
@@ -234,7 +234,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 			t = rte_ctz64(bmap);
 			fprintf(f, "%u ", id + t);
 
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
@@ -261,7 +261,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].lock_cnt,
 					rte_memory_order_relaxed));
-			bmap &= ~(1UL << t);
+			bmap &= ~RTE_BIT64(t);
 		}
 	}
 
