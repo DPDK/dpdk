@@ -416,7 +416,7 @@ check_scale(unsigned int lcore)
 	if (!rte_power_check_env_supported(PM_ENV_ACPI_CPUFREQ) &&
 			!rte_power_check_env_supported(PM_ENV_PSTATE_CPUFREQ) &&
 			!rte_power_check_env_supported(PM_ENV_CPPC_CPUFREQ)) {
-		RTE_LOG(DEBUG, POWER, "Only ACPI, PSTATE, or CPPC modes are supported");
+		RTE_LOG(DEBUG, POWER, "Only ACPI, PSTATE, or CPPC modes are supported\n");
 		return -ENOTSUP;
 	}
 	/* ensure we could initialize the power library */
@@ -427,7 +427,7 @@ check_scale(unsigned int lcore)
 	env = rte_power_get_env();
 	if (env != PM_ENV_ACPI_CPUFREQ && env != PM_ENV_PSTATE_CPUFREQ &&
 			env != PM_ENV_CPPC_CPUFREQ) {
-		RTE_LOG(DEBUG, POWER, "Unable to initialize ACPI, PSTATE, or CPPC modes");
+		RTE_LOG(DEBUG, POWER, "Unable to initialize ACPI, PSTATE, or CPPC modes\n");
 		return -ENOTSUP;
 	}
 
