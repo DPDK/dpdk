@@ -9,7 +9,7 @@ A traffic generator (TG) generates traffic that's sent towards the SUT node.
 A TG node is where the TG runs.
 """
 
-from scapy.packet import Packet  # type: ignore[import-untyped]
+from scapy.packet import Packet
 
 from framework.config import TGNodeConfiguration
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (

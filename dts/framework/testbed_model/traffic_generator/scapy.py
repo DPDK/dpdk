@@ -16,9 +16,9 @@ import re
 import time
 from typing import ClassVar
 
-from scapy.compat import base64_bytes  # type: ignore[import-untyped]
-from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
-from scapy.packet import Packet  # type: ignore[import-untyped]
+from scapy.compat import base64_bytes
+from scapy.layers.l2 import Ether
+from scapy.packet import Packet
 
 from framework.config import OS, ScapyTrafficGeneratorConfig
 from framework.remote_session.python_shell import PythonShell

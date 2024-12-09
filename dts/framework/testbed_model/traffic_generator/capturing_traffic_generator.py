@@ -13,8 +13,8 @@ import uuid
 from abc import abstractmethod
 from dataclasses import dataclass
 
-import scapy.utils  # type: ignore[import-untyped]
-from scapy.packet import Packet  # type: ignore[import-untyped]
+import scapy.utils
+from scapy.packet import Packet
 
 from framework.settings import SETTINGS
 from framework.testbed_model.port import Port

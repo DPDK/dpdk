@@ -24,7 +24,7 @@ from abc import ABC
 from pathlib import PurePath
 from typing import ClassVar
 
-from paramiko import Channel, channel  # type: ignore[import-untyped]
+from paramiko import Channel, channel
 from typing_extensions import Self
 
 from framework.exception import (

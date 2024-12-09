@@ -169,7 +169,7 @@ class DecoratedNicCapability(Capability):
     _unique_capabilities: ClassVar[dict[NicCapability, Self]] = {}
 
     @classmethod
-    def get_unique(cls, nic_capability: NicCapability) -> "DecoratedNicCapability":
+    def get_unique(cls, nic_capability: NicCapability) -> Self:
         """Get the capability uniquely identified by `nic_capability`.
 
         This is a factory method that implements a quasi-enum pattern.
@@ -314,7 +314,7 @@ class TopologyCapability(Capability):
         test_case_or_suite.topology_type = self
 
     @classmethod
-    def get_unique(cls, topology_type: TopologyType) -> "TopologyCapability":
+    def get_unique(cls, topology_type: TopologyType) -> Self:
         """Get the capability uniquely identified by `topology_type`.
 
         This is a factory method that implements a quasi-enum pattern.

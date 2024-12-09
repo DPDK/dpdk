@@ -12,8 +12,8 @@ VLAN ID should have a specified ID inserted and then be forwarded.
 
 """
 
-from scapy.layers.l2 import Dot1Q, Ether  # type: ignore[import-untyped]
-from scapy.packet import Raw  # type: ignore[import-untyped]
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.packet import Raw
 
 from framework.remote_session.testpmd_shell import SimpleForwardingModes, TestPmdShell
 from framework.test_suite import TestSuite, func_test
@@ -96,7 +96,7 @@ class TestVlan(TestSuite):
         )
         if test_packet is not None:
             self.verify(
-                test_packet.haslayer(Dot1Q),
+                test_packet.haslayer(Dot1Q) == 1,
                 "The received packet did not have a VLAN tag",
             )
             self.verify(

@@ -17,10 +17,10 @@ scattered packets.
 
 import struct
 
-from scapy.layers.inet import IP  # type: ignore[import-untyped]
-from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
-from scapy.packet import Raw  # type: ignore[import-untyped]
-from scapy.utils import hexstr  # type: ignore[import-untyped]
+from scapy.layers.inet import IP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
+from scapy.utils import hexstr
 
 from framework.params.testpmd import SimpleForwardingModes
 from framework.remote_session.testpmd_shell import TestPmdShell
@@ -76,7 +76,8 @@ class TestPmdBufferScatter(TestSuite):
             The payload of the received packet as a string.
         """
         packet = Ether() / IP() / Raw()
-        packet.getlayer(2).load = ""
+        if layer2 := packet.getlayer(2):
+            layer2.load = ""
         payload_len = pktsize - len(packet) - 4
         payload = ["58"] * payload_len
         # pack the payload
@@ -84,7 +85,11 @@ class TestPmdBufferScatter(TestSuite):
             packet.load += struct.pack("=B", int("%s%s" % (X_in_hex[0], X_in_hex[1]), 16))
         received_packets = self.send_packet_and_capture(packet)
         self.verify(len(received_packets) > 0, "Did not receive any packets.")
-        load = hexstr(received_packets[0].getlayer(2), onlyhex=1)
+
+        layer2 = received_packets[0].getlayer(2)
+        self.verify(layer2 is not None, "The received packet is invalid.")
+        assert layer2 is not None
+        load = hexstr(layer2, onlyhex=1)
 
         return load
 

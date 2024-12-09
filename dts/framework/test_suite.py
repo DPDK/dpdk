@@ -26,9 +26,9 @@ from pkgutil import iter_modules
 from types import ModuleType
 from typing import ClassVar, Protocol, TypeVar, Union, cast
 
-from scapy.layers.inet import IP  # type: ignore[import-untyped]
-from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
-from scapy.packet import Packet, Padding, raw  # type: ignore[import-untyped]
+from scapy.layers.inet import IP
+from scapy.layers.l2 import Ether
+from scapy.packet import Packet, Padding, raw
 from typing_extensions import Self
 
 from framework.testbed_model.capability import TestProtocol
@@ -322,7 +322,7 @@ class TestSuite(TestProtocol):
         """
         ret_packets = []
         for original_packet in packets:
-            packet = original_packet.copy()
+            packet: Packet = original_packet.copy()
 
             # update l2 addresses
             # If `expected` is :data:`True`, the packet enters the TG from SUT, otherwise the
@@ -351,12 +351,13 @@ class TestSuite(TestProtocol):
                 # Update the last IP layer if there are multiple (the framework should be modifying
                 # the packet address instead of the tunnel address if there is one).
                 l3_to_use = packet.getlayer(IP, num_ip_layers)
+                assert l3_to_use is not None
                 if "src" not in l3_to_use.fields:
                     l3_to_use.src = self._tg_ip_address_egress.ip.exploded
 
                 if "dst" not in l3_to_use.fields:
                     l3_to_use.dst = self._tg_ip_address_ingress.ip.exploded
-            ret_packets.append(Ether(packet.build()))
+            ret_packets.append(packet)
 
         return ret_packets
 
@@ -405,7 +406,7 @@ class TestSuite(TestProtocol):
                 break
         else:
             self._logger.debug(
-                f"The expected packet {get_packet_summaries(expected_packet)} "
+                f"The expected packet {expected_packet.summary()} "
                 f"not found among received {get_packet_summaries(received_packets)}"
             )
             self._fail_test_case_verify("An expected packet not found among received packets.")
@@ -458,12 +459,13 @@ class TestSuite(TestProtocol):
             self._logger.debug("Comparing payloads:")
             self._logger.debug(f"Received: {received_payload}")
             self._logger.debug(f"Expected: {expected_payload}")
-            if received_payload.__class__ == expected_payload.__class__:
+            if type(received_payload) is type(expected_payload):
                 self._logger.debug("The layers are the same.")
-                if received_payload.__class__ == Ether:
+                if type(received_payload) is Ether:
                     if not self._verify_l2_frame(received_payload, l3):
                         return False
-                elif received_payload.__class__ == IP:
+                elif type(received_payload) is IP:
+                    assert type(expected_payload) is IP
                     if not self._verify_l3_packet(received_payload, expected_payload):
                         return False
             else:

@@ -10,7 +10,7 @@ only count the number of received packets.
 
 from abc import ABC, abstractmethod
 
-from scapy.packet import Packet  # type: ignore[import-untyped]
+from scapy.packet import Packet
 
 from framework.config import TrafficGeneratorConfig
 from framework.logger import DTSLogger, get_dts_logger

@@ -23,8 +23,8 @@ from enum import Enum, Flag
 from pathlib import Path
 from typing import Any, Callable
 
-from scapy.layers.inet import IP, TCP, UDP, Ether  # type: ignore[import-untyped]
-from scapy.packet import Packet  # type: ignore[import-untyped]
+from scapy.layers.inet import IP, TCP, UDP, Ether
+from scapy.packet import Packet
 
 from .exception import InternalError
 
@@ -270,7 +270,7 @@ def generate_random_packets(
     if payload_size < 0:
         raise InternalError(f"An invalid payload_size of {payload_size} was given.")
 
-    l4_factories = []
+    l4_factories: list[type[Packet]] = []
     if protocols & PacketProtocols.TCP:
         l4_factories.append(TCP)
     if protocols & PacketProtocols.UDP:

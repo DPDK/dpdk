@@ -13,11 +13,11 @@ match expected flags.
 
 from typing import List
 
-from scapy.layers.inet import IP, TCP, UDP  # type: ignore[import-untyped]
-from scapy.layers.inet6 import IPv6  # type: ignore[import-untyped]
-from scapy.layers.l2 import Dot1Q, Ether  # type: ignore[import-untyped]
-from scapy.layers.sctp import SCTP  # type: ignore[import-untyped]
-from scapy.packet import Packet, Raw  # type: ignore[import-untyped]
+from scapy.layers.inet import IP, TCP, UDP
+from scapy.layers.inet6 import IPv6
+from scapy.layers.l2 import Dot1Q, Ether
+from scapy.layers.sctp import SCTP
+from scapy.packet import Packet, Raw
 
 from framework.params.testpmd import SimpleForwardingModes
 from framework.remote_session.testpmd_shell import (
@@ -49,7 +49,7 @@ class TestChecksumOffload(TestSuite):
     """
 
     def send_packets_and_verify(
-        self, packet_list: List[Packet], load: str, should_receive: bool
+        self, packet_list: List[Packet], load: bytes, should_receive: bool
     ) -> None:
         """Iterates through a list of packets and verifies they are received.
 
@@ -62,7 +62,7 @@ class TestChecksumOffload(TestSuite):
         for i in range(0, len(packet_list)):
             received_packets = self.send_packet_and_capture(packet=packet_list[i])
             received = any(
-                packet.haslayer(Raw) and load in str(packet.load) for packet in received_packets
+                packet.haslayer(Raw) and load in packet.load for packet in received_packets
             )
             self.verify(
                 received == should_receive,
@@ -86,8 +86,8 @@ class TestChecksumOffload(TestSuite):
         testpmd.start()
         self.send_packet_and_capture(packet=packet)
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
-        for packet in verbose_output:
-            if packet.dst_mac == id:
+        for testpmd_packet in verbose_output:
+            if testpmd_packet.dst_mac == id:
                 isIP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in packet.ol_flags
                 isL4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in packet.ol_flags
         self.verify(isL4 == goodL4, "Layer 4 checksum flag did not match expected checksum flag.")
@@ -110,7 +110,7 @@ class TestChecksumOffload(TestSuite):
     def test_insert_checksums(self) -> None:
         """Enable checksum offload insertion and verify packet reception."""
         mac_id = "00:00:00:00:00:01"
-        payload = "xxxxx"
+        payload = b"xxxxx"
         packet_list = [
             Ether(dst=mac_id) / IP() / UDP() / Raw(payload),
             Ether(dst=mac_id) / IP() / TCP() / Raw(payload),
@@ -132,7 +132,7 @@ class TestChecksumOffload(TestSuite):
     def test_no_insert_checksums(self) -> None:
         """Disable checksum offload insertion and verify packet reception."""
         mac_id = "00:00:00:00:00:01"
-        payload = "xxxxx"
+        payload = b"xxxxx"
         packet_list = [
             Ether(dst=mac_id) / IP() / UDP() / Raw(payload),
             Ether(dst=mac_id) / IP() / TCP() / Raw(payload),
@@ -231,7 +231,7 @@ class TestChecksumOffload(TestSuite):
     def test_vlan_checksum(self) -> None:
         """Test VLAN Rx checksum hardware offload and verify packet reception."""
         mac_id = "00:00:00:00:00:01"
-        payload = "xxxxx"
+        payload = b"xxxxx"
         packet_list = [
             Ether(dst=mac_id) / Dot1Q(vlan=1) / IP(chksum=0x0) / UDP(chksum=0xF) / Raw(payload),
             Ether(dst=mac_id) / Dot1Q(vlan=1) / IP(chksum=0x0) / TCP(chksum=0xF) / Raw(payload),

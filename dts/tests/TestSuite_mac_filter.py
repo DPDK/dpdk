@@ -15,9 +15,9 @@ Additionally, testing is done within the PMD itself to ensure that the mac addre
 allow list is behaving as expected.
 """
 
-from scapy.layers.inet import IP  # type: ignore[import-untyped]
-from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
-from scapy.packet import Raw  # type: ignore[import-untyped]
+from scapy.layers.inet import IP
+from scapy.layers.l2 import Ether
+from scapy.packet import Raw
 
 from framework.exception import InteractiveCommandExecutionError
 from framework.remote_session.testpmd_shell import NicCapability, TestPmdShell
