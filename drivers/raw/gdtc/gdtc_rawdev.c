@@ -70,19 +70,19 @@
 #define ZXDH_GDMA_BURST_SIZE_MEDIUM             0x4         /* 4 word */
 #define ZXDH_GDMA_BURST_SIZE_MAX                0x6         /* 16 word */
 #define ZXDH_GDMA_DEFAULT_BURST_LEN             0xf         /* 16 beats */
-#define ZXDH_GDMA_TC_CNT_ENABLE                 (1 << 27)
-#define ZXDH_GDMA_CHAN_FORCE_CLOSE              (1 << 31)
+#define ZXDH_GDMA_TC_CNT_ENABLE                 RTE_BIT32(27)
+#define ZXDH_GDMA_CHAN_FORCE_CLOSE              RTE_BIT32(31)
 
 /* TC count & Error interrupt status register */
-#define ZXDH_GDMA_SRC_LLI_ERR                   (1 << 16)
-#define ZXDH_GDMA_SRC_DATA_ERR                  (1 << 17)
-#define ZXDH_GDMA_DST_ADDR_ERR                  (1 << 18)
-#define ZXDH_GDMA_ERR_STATUS                    (1 << 19)
-#define ZXDH_GDMA_ERR_INTR_ENABLE               (1 << 20)
+#define ZXDH_GDMA_SRC_LLI_ERR                   RTE_BIT32(16)
+#define ZXDH_GDMA_SRC_DATA_ERR                  RTE_BIT32(17)
+#define ZXDH_GDMA_DST_ADDR_ERR                  RTE_BIT32(18)
+#define ZXDH_GDMA_ERR_STATUS                    RTE_BIT32(19)
+#define ZXDH_GDMA_ERR_INTR_ENABLE               RTE_BIT32(20)
 #define ZXDH_GDMA_TC_CNT_CLEAN                  (1)
 
 #define ZXDH_GDMA_CHAN_SHIFT                    0x80
-#define ZXDH_GDMA_LINK_END_NODE                 (1 << 30)
+#define ZXDH_GDMA_LINK_END_NODE                 RTE_BIT32(30)
 #define ZXDH_GDMA_CHAN_CONTINUE                 (1)
 
 #define LOW32_MASK                              0xffffffff

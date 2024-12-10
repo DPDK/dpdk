@@ -28,13 +28,13 @@ extern int zxdh_gdma_rawdev_logtype;
 #define ZXDH_GDMA_JOB_SRC_PHY                   (1UL)
 
 /* States if the destination addresses is physical. */
-#define ZXDH_GDMA_JOB_DEST_PHY                  (1UL << 1)
+#define ZXDH_GDMA_JOB_DEST_PHY                  RTE_BIT32(1)
 
 /* ZF->HOST */
-#define ZXDH_GDMA_JOB_DIR_TX                    (1UL << 2)
+#define ZXDH_GDMA_JOB_DIR_TX                    RTE_BIT32(2)
 
 /* HOST->ZF */
-#define ZXDH_GDMA_JOB_DIR_RX                    (1UL << 3)
+#define ZXDH_GDMA_JOB_DIR_RX                    RTE_BIT32(3)
 
 #define ZXDH_GDMA_JOB_DIR_MASK                  (ZXDH_GDMA_JOB_DIR_TX | ZXDH_GDMA_JOB_DIR_RX)
 
