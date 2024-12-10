@@ -1348,6 +1348,49 @@ class RxOffloadCapabilities(TextParser):
     per_port: RxOffloadCapability = field(metadata=RxOffloadCapability.make_parser(True))
 
 
+@dataclass
+class TestPmdPortFlowCtrl(TextParser):
+    """Class representing a port's flow control parameters.
+
+    The parameters can also be parsed from the output of ``show port <port_id> flow_ctrl``.
+    """
+
+    #: Enable Reactive Extensions.
+    rx: bool = field(default=False, metadata=TextParser.find(r"Rx pause: on"))
+    #: Enable Transmit.
+    tx: bool = field(default=False, metadata=TextParser.find(r"Tx pause: on"))
+    #: High threshold value to trigger XOFF.
+    high_water: int = field(
+        default=0, metadata=TextParser.find_int(r"High waterline: (0x[a-fA-F\d]+)")
+    )
+    #: Low threshold value to trigger XON.
+    low_water: int = field(
+        default=0, metadata=TextParser.find_int(r"Low waterline: (0x[a-fA-F\d]+)")
+    )
+    #: Pause quota in the Pause frame.
+    pause_time: int = field(default=0, metadata=TextParser.find_int(r"Pause time: (0x[a-fA-F\d]+)"))
+    #: Send XON frame.
+    send_xon: bool = field(default=False, metadata=TextParser.find(r"Tx pause: on"))
+    #: Enable receiving MAC control frames.
+    mac_ctrl_frame_fwd: bool = field(default=False, metadata=TextParser.find(r"Tx pause: on"))
+    #: Change the auto-negotiation parameter.
+    autoneg: bool = field(default=False, metadata=TextParser.find(r"Autoneg: on"))
+
+    def __str__(self) -> str:
+        """Returns the string representation of this instance."""
+        ret = (
+            f"rx {'on' if self.rx else 'off'} "
+            f"tx {'on' if self.tx else 'off'} "
+            f"{self.high_water} "
+            f"{self.low_water} "
+            f"{self.pause_time} "
+            f"{1 if self.send_xon else 0} "
+            f"mac_ctrl_frame_fwd {'on' if self.mac_ctrl_frame_fwd else 'off'} "
+            f"autoneg {'on' if self.autoneg else 'off'}"
+        )
+        return ret
+
+
 def requires_stopped_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
     """Decorator for :class:`TestPmdShell` commands methods that require stopped ports.
 
@@ -1959,6 +2002,66 @@ class TestPmdShell(DPDKShell):
                     filter on port {port}"""
                 )
 
+    def set_mac_address(self, port: int, mac_address: str, verify: bool = True) -> None:
+        """Set port's MAC address.
+
+        Args:
+            port: The number of the requested port.
+            mac_address: The MAC address to set.
+            verify: If :data:`True`, the output of the command is scanned to verify that
+                the mac address is set in the specified port.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the command
+                fails to execute.
+        """
+        output = self.send_command(f"mac_addr set {port} {mac_address}", skip_first_line=True)
+        if verify:
+            if output.strip():
+                self._logger.debug(
+                    f"Testpmd failed to set MAC address {mac_address} on port {port}."
+                )
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to set MAC address {mac_address} on port {port}."
+                )
+
+    def set_flow_control(
+        self, port: int, flow_ctrl: TestPmdPortFlowCtrl, verify: bool = True
+    ) -> None:
+        """Set the given `port`'s flow control.
+
+        Args:
+            port: The number of the requested port.
+            flow_ctrl: The requested flow control parameters.
+            verify: If :data:`True`, the output of the command is scanned to verify that
+                the flow control in the specified port is set.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and the command
+                fails to execute.
+        """
+        output = self.send_command(f"set flow_ctrl {flow_ctrl} {port}", skip_first_line=True)
+        if verify:
+            if output.strip():
+                self._logger.debug(f"Testpmd failed to set the {flow_ctrl} in port {port}.")
+                raise InteractiveCommandExecutionError(
+                    f"Testpmd failed to set the {flow_ctrl} in port {port}."
+                )
+
+    def show_port_flow_info(self, port: int) -> TestPmdPortFlowCtrl | None:
+        """Show port info flow.
+
+        Args:
+            port: The number of the requested port.
+
+        Returns:
+            The current port flow control parameters if supported, otherwise :data:`None`.
+        """
+        output = self.send_command(f"show port {port} flow_ctrl")
+        if "Flow control infos" in output:
+            return TestPmdPortFlowCtrl.parse(output)
+        return None
+
     @requires_stopped_ports
     def rx_vlan(self, vlan: int, port: int, add: bool, verify: bool = True) -> None:
         """Add specified vlan tag to the filter list on a port. Requires vlan filter to be on.
@@ -2365,6 +2468,25 @@ class TestPmdShell(DPDKShell):
             command = str.replace(command, "add", "remove", 1)
             self.send_command(command)
 
+    def get_capabilities_flow_ctrl(
+        self,
+        supported_capabilities: MutableSet["NicCapability"],
+        unsupported_capabilities: MutableSet["NicCapability"],
+    ) -> None:
+        """Get flow control capability and check for testpmd failure.
+
+        Args:
+            supported_capabilities: Supported capabilities will be added to this set.
+            unsupported_capabilities: Unsupported capabilities will be added to this set.
+        """
+        self._logger.debug("Getting flow ctrl capabilities.")
+        command = f"show port {self.ports[0].id} flow_ctrl"
+        output = self.send_command(command)
+        if "Flow control infos" in output:
+            supported_capabilities.add(NicCapability.FLOW_CTRL)
+        else:
+            unsupported_capabilities.add(NicCapability.FLOW_CTRL)
+
 
 class NicCapability(NoAliasEnum):
     """A mapping between capability names and the associated :class:`TestPmdShell` methods.
@@ -2499,6 +2621,10 @@ class NicCapability(NoAliasEnum):
     #: Device supports multicast address filtering.
     MCAST_FILTERING: TestPmdShellCapabilityMethod = functools.partial(
         TestPmdShell.get_capabilities_mcast_filtering
+    )
+    #: Device supports flow ctrl.
+    FLOW_CTRL: TestPmdShellCapabilityMethod = functools.partial(
+        TestPmdShell.get_capabilities_flow_ctrl
     )
 
     def __call__(
