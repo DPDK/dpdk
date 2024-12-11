@@ -1311,7 +1311,7 @@ RTE_INIT(__##c) \
 #endif
 #endif /* __GCC__ */
 
-#define TESTPMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## args)
+#define TESTPMD_LOG(level, fmt, ...) \
+	rte_log(RTE_LOG_ ## level, testpmd_logtype, "testpmd: " fmt, ## __VA_ARGS__)
 
 #endif /* _TESTPMD_H_ */

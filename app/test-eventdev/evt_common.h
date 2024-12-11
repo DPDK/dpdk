@@ -18,16 +18,16 @@
 #define CLGRN  "\x1b[32m"
 #define CLYEL  "\x1b[33m"
 
-#define evt_err(fmt, args...) \
-	fprintf(stderr, CLRED"error: %s() "fmt CLNRM "\n", __func__, ## args)
+#define evt_err(fmt, ...) \
+	fprintf(stderr, CLRED"error: %s() "fmt CLNRM "\n", __func__, ## __VA_ARGS__)
 
-#define evt_info(fmt, args...) \
-	fprintf(stdout, CLYEL""fmt CLNRM "\n", ## args)
+#define evt_info(fmt, ...) \
+	fprintf(stdout, CLYEL""fmt CLNRM "\n", ## __VA_ARGS__)
 
 #define EVT_STR_FMT 20
 
-#define evt_dump(str, fmt, val...) \
-	printf("\t%-*s : "fmt"\n", EVT_STR_FMT, str, ## val)
+#define evt_dump(str, fmt, ...) \
+	printf("\t%-*s : "fmt"\n", EVT_STR_FMT, str, ## __VA_ARGS__)
 
 #define evt_dump_begin(str) printf("\t%-*s : {", EVT_STR_FMT, str)
 
