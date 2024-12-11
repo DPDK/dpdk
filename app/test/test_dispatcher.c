@@ -385,6 +385,7 @@ test_app_process_queue(uint8_t p_event_dev_id, uint8_t p_event_port_id,
 				.sched_type = RTE_SCHED_TYPE_ATOMIC,
 				.op = RTE_EVENT_OP_FORWARD,
 				.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+				.impl_opaque = in_event->impl_opaque,
 				.u64 = sn
 			};
 	}
