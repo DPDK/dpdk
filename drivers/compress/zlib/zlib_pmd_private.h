@@ -19,12 +19,12 @@ extern int zlib_logtype_driver;
 #define ZLIB_PMD_LOG(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, ZLIB_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
-#define ZLIB_PMD_INFO(fmt, args...) \
-	ZLIB_PMD_LOG(INFO, fmt, ## args)
-#define ZLIB_PMD_ERR(fmt, args...) \
-	ZLIB_PMD_LOG(ERR, fmt, ## args)
-#define ZLIB_PMD_WARN(fmt, args...) \
-	ZLIB_PMD_LOG(WARNING, fmt, ## args)
+#define ZLIB_PMD_INFO(fmt, ...) \
+	ZLIB_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define ZLIB_PMD_ERR(fmt, ...) \
+	ZLIB_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define ZLIB_PMD_WARN(fmt, ...) \
+	ZLIB_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 struct zlib_private {
 	struct rte_mempool *mp;

@@ -16,12 +16,12 @@ extern int dpaa2_logtype_event;
 
 #define EVENTDEV_INIT_FUNC_TRACE() DPAA2_EVENTDEV_DEBUG(" >>")
 
-#define DPAA2_EVENTDEV_INFO(fmt, args...) \
-	DPAA2_EVENTDEV_LOG(INFO, fmt, ## args)
-#define DPAA2_EVENTDEV_ERR(fmt, args...) \
-	DPAA2_EVENTDEV_LOG(ERR, fmt, ## args)
-#define DPAA2_EVENTDEV_WARN(fmt, args...) \
-	DPAA2_EVENTDEV_LOG(WARNING, fmt, ## args)
+#define DPAA2_EVENTDEV_INFO(fmt, ...) \
+	DPAA2_EVENTDEV_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA2_EVENTDEV_ERR(fmt, ...) \
+	DPAA2_EVENTDEV_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA2_EVENTDEV_WARN(fmt, ...) \
+	DPAA2_EVENTDEV_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #define dpaa2_evdev_info(fmt, ...) DPAA2_EVENTDEV_LOG(INFO, fmt, ##__VA_ARGS__)
 #define dpaa2_evdev_dbg(fmt, ...) DPAA2_EVENTDEV_LOG(DEBUG, fmt, ##__VA_ARGS__)

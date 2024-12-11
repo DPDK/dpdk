@@ -14,15 +14,15 @@ extern int pfe_logtype_pmd;
 
 #define PMD_INIT_FUNC_TRACE() PFE_PMD_LOG(DEBUG, " >>")
 
-#define PFE_PMD_DEBUG(fmt, args...) \
-	PFE_PMD_LOG(DEBUG, fmt, ## args)
-#define PFE_PMD_ERR(fmt, args...) \
-	PFE_PMD_LOG(ERR, fmt, ## args)
-#define PFE_PMD_INFO(fmt, args...) \
-	PFE_PMD_LOG(INFO, fmt, ## args)
+#define PFE_PMD_DEBUG(fmt, ...) \
+	PFE_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define PFE_PMD_ERR(fmt, ...) \
+	PFE_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define PFE_PMD_INFO(fmt, ...) \
+	PFE_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
 
-#define PFE_PMD_WARN(fmt, args...) \
-	PFE_PMD_LOG(WARNING, fmt, ## args)
+#define PFE_PMD_WARN(fmt, ...) \
+	PFE_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define PFE_DP_LOG(level, ...) \

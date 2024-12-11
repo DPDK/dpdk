@@ -28,11 +28,11 @@
 
 #define DEBUGFUNC(F)            DEBUGOUT(F "\n");
 #define DEBUGOUT(S, ...)        RTE_LOG(DEBUG, E1000_DRIVER, "%s(): " S, __func__, ## __VA_ARGS__)
-#define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT3(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT6(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT7(S, args...)   DEBUGOUT(S, ##args)
+#define DEBUGOUT1(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT2(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT3(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT6(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT7(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 
 #ifndef UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(_p)

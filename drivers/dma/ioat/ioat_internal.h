@@ -40,9 +40,9 @@ extern int ioat_pmd_logtype;
 #define IOAT_PMD_LOG(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, IOAT_PMD, "%s(): ", __func__, __VA_ARGS__)
 
-#define IOAT_PMD_DEBUG(fmt, args...)  IOAT_PMD_LOG(DEBUG, fmt, ## args)
-#define IOAT_PMD_INFO(fmt, args...)   IOAT_PMD_LOG(INFO, fmt, ## args)
-#define IOAT_PMD_ERR(fmt, args...)    IOAT_PMD_LOG(ERR, fmt, ## args)
-#define IOAT_PMD_WARN(fmt, args...)   IOAT_PMD_LOG(WARNING, fmt, ## args)
+#define IOAT_PMD_DEBUG(fmt, ...)  IOAT_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define IOAT_PMD_INFO(fmt, ...)   IOAT_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define IOAT_PMD_ERR(fmt, ...)    IOAT_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define IOAT_PMD_WARN(fmt, ...)   IOAT_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* _IOAT_INTERNAL_H_ */

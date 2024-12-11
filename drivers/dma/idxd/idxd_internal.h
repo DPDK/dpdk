@@ -25,10 +25,10 @@ extern int idxd_pmd_logtype;
 #define IDXD_PMD_LOG(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, IDXD_PMD, "%s(): ", __func__, __VA_ARGS__)
 
-#define IDXD_PMD_DEBUG(fmt, args...)  IDXD_PMD_LOG(DEBUG, fmt, ## args)
-#define IDXD_PMD_INFO(fmt, args...)   IDXD_PMD_LOG(INFO, fmt, ## args)
-#define IDXD_PMD_ERR(fmt, args...)    IDXD_PMD_LOG(ERR, fmt, ## args)
-#define IDXD_PMD_WARN(fmt, args...)   IDXD_PMD_LOG(WARNING, fmt, ## args)
+#define IDXD_PMD_DEBUG(fmt, ...)  IDXD_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define IDXD_PMD_INFO(fmt, ...)   IDXD_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define IDXD_PMD_ERR(fmt, ...)    IDXD_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define IDXD_PMD_WARN(fmt, ...)   IDXD_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 struct idxd_pci_common {
 	rte_spinlock_t lk;

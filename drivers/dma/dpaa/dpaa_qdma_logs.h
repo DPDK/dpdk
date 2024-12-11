@@ -16,22 +16,22 @@ extern int dpaa_qdma_logtype;
 
 #define DPAA_QDMA_FUNC_TRACE() DPAA_QDMA_DEBUG(">>")
 
-#define DPAA_QDMA_INFO(fmt, args...) \
-	DPAA_QDMA_LOG(INFO, fmt, ## args)
-#define DPAA_QDMA_ERR(fmt, args...) \
-	DPAA_QDMA_LOG(ERR, fmt, ## args)
-#define DPAA_QDMA_WARN(fmt, args...) \
-	DPAA_QDMA_LOG(WARNING, fmt, ## args)
+#define DPAA_QDMA_INFO(fmt, ...) \
+	DPAA_QDMA_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_QDMA_ERR(fmt, ...) \
+	DPAA_QDMA_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_QDMA_WARN(fmt, ...) \
+	DPAA_QDMA_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA_QDMA_DP_LOG(level, ...) \
 	RTE_LOG_DP_LINE(level, DPAA_QDMA, __VA_ARGS__)
 
-#define DPAA_QDMA_DP_DEBUG(fmt, args...) \
-	DPAA_QDMA_DP_LOG(DEBUG, fmt, ## args)
-#define DPAA_QDMA_DP_INFO(fmt, args...) \
-	DPAA_QDMA_DP_LOG(INFO, fmt, ## args)
-#define DPAA_QDMA_DP_WARN(fmt, args...) \
-	DPAA_QDMA_DP_LOG(WARNING, fmt, ## args)
+#define DPAA_QDMA_DP_DEBUG(fmt, ...) \
+	DPAA_QDMA_DP_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_QDMA_DP_INFO(fmt, ...) \
+	DPAA_QDMA_DP_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_QDMA_DP_WARN(fmt, ...) \
+	DPAA_QDMA_DP_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* __DPAA_QDMA_LOGS_H__ */

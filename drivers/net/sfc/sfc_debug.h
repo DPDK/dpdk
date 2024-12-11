@@ -23,7 +23,7 @@
 #endif
 
 /* Log PMD message, automatically add prefix and \n */
-#define sfc_panic(sa, fmt, args...) \
+#define sfc_panic(sa, fmt, ...) \
 	do {								\
 		const struct sfc_adapter_shared *_sas;			\
 									\
@@ -32,7 +32,7 @@
 			  " #%" PRIu16 ": " fmt "\n",			\
 			  _sas->pci_addr.domain, _sas->pci_addr.bus,	\
 			  _sas->pci_addr.devid, _sas->pci_addr.function,\
-			  _sas->port_id, ##args);			\
+			  _sas->port_id, ##__VA_ARGS__);		\
 	} while (0)
 
 #endif /* _SFC_DEBUG_H_ */

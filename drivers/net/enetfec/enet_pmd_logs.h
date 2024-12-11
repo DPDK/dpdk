@@ -16,15 +16,15 @@ extern int enetfec_logtype_pmd;
 
 #define PMD_INIT_FUNC_TRACE() ENET_PMD_LOG(DEBUG, " >>")
 
-#define ENETFEC_PMD_DEBUG(fmt, args...) \
-	ENETFEC_PMD_LOG(DEBUG, fmt, ## args)
-#define ENETFEC_PMD_ERR(fmt, args...) \
-	ENETFEC_PMD_LOG(ERR, fmt, ## args)
-#define ENETFEC_PMD_INFO(fmt, args...) \
-	ENETFEC_PMD_LOG(INFO, fmt, ## args)
+#define ENETFEC_PMD_DEBUG(fmt, ...) \
+	ENETFEC_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define ENETFEC_PMD_ERR(fmt, ...) \
+	ENETFEC_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define ENETFEC_PMD_INFO(fmt, ...) \
+	ENETFEC_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
 
-#define ENETFEC_PMD_WARN(fmt, args...) \
-	ENETFEC_PMD_LOG(WARNING, fmt, ## args)
+#define ENETFEC_PMD_WARN(fmt, ...) \
+	ENETFEC_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define ENETFEC_DP_LOG(level, ...) \

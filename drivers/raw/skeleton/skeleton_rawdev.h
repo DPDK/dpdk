@@ -15,14 +15,14 @@ extern int skeleton_pmd_logtype;
 
 #define SKELETON_PMD_FUNC_TRACE() SKELETON_PMD_LOG(DEBUG, ">>")
 
-#define SKELETON_PMD_DEBUG(fmt, args...) \
-	SKELETON_PMD_LOG(DEBUG, fmt, ## args)
-#define SKELETON_PMD_INFO(fmt, args...) \
-	SKELETON_PMD_LOG(INFO, fmt, ## args)
-#define SKELETON_PMD_ERR(fmt, args...) \
-	SKELETON_PMD_LOG(ERR, fmt, ## args)
-#define SKELETON_PMD_WARN(fmt, args...) \
-	SKELETON_PMD_LOG(WARNING, fmt, ## args)
+#define SKELETON_PMD_DEBUG(fmt, ...) \
+	SKELETON_PMD_LOG(DEBUG, fmt, ##__VA_ARGS__)
+#define SKELETON_PMD_INFO(fmt, ...) \
+	SKELETON_PMD_LOG(INFO, fmt, ##__VA_ARGS__)
+#define SKELETON_PMD_ERR(fmt, ...) \
+	SKELETON_PMD_LOG(ERR, fmt, ##__VA_ARGS__)
+#define SKELETON_PMD_WARN(fmt, ...) \
+	SKELETON_PMD_LOG(WARNING, fmt, ##__VA_ARGS__)
 /* Macros for self test application */
 #define SKELETON_TEST_INFO	SKELETON_PMD_INFO
 #define SKELETON_TEST_DEBUG	SKELETON_PMD_DEBUG

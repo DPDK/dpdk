@@ -15,14 +15,14 @@ extern int ifpga_rawdev_logtype;
 
 #define IFPGA_RAWDEV_PMD_FUNC_TRACE() IFPGA_RAWDEV_PMD_LOG(DEBUG, ">>")
 
-#define IFPGA_RAWDEV_PMD_DEBUG(fmt, args...) \
-	IFPGA_RAWDEV_PMD_LOG(DEBUG, fmt, ## args)
-#define IFPGA_RAWDEV_PMD_INFO(fmt, args...) \
-	IFPGA_RAWDEV_PMD_LOG(INFO, fmt, ## args)
-#define IFPGA_RAWDEV_PMD_ERR(fmt, args...) \
-	IFPGA_RAWDEV_PMD_LOG(ERR, fmt, ## args)
-#define IFPGA_RAWDEV_PMD_WARN(fmt, args...) \
-	IFPGA_RAWDEV_PMD_LOG(WARNING, fmt, ## args)
+#define IFPGA_RAWDEV_PMD_DEBUG(fmt, ...) \
+	IFPGA_RAWDEV_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define IFPGA_RAWDEV_PMD_INFO(fmt, ...) \
+	IFPGA_RAWDEV_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define IFPGA_RAWDEV_PMD_ERR(fmt, ...) \
+	IFPGA_RAWDEV_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define IFPGA_RAWDEV_PMD_WARN(fmt, ...) \
+	IFPGA_RAWDEV_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 enum ifpga_rawdev_device_state {
 	IFPGA_IDLE,

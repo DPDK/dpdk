@@ -16,24 +16,24 @@ extern int dpaa2_logtype_pmd;
 
 #define PMD_INIT_FUNC_TRACE() DPAA2_PMD_DEBUG(">>")
 
-#define DPAA2_PMD_CRIT(fmt, args...) \
-	DPAA2_PMD_LOG(CRIT, fmt, ## args)
-#define DPAA2_PMD_INFO(fmt, args...) \
-	DPAA2_PMD_LOG(INFO, fmt, ## args)
-#define DPAA2_PMD_ERR(fmt, args...) \
-	DPAA2_PMD_LOG(ERR, fmt, ## args)
-#define DPAA2_PMD_WARN(fmt, args...) \
-	DPAA2_PMD_LOG(WARNING, fmt, ## args)
+#define DPAA2_PMD_CRIT(fmt, ...) \
+	DPAA2_PMD_LOG(CRIT, fmt, ## __VA_ARGS__)
+#define DPAA2_PMD_INFO(fmt, ...) \
+	DPAA2_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA2_PMD_ERR(fmt, ...) \
+	DPAA2_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA2_PMD_WARN(fmt, ...) \
+	DPAA2_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA2_PMD_DP_LOG(level, ...) \
 	RTE_LOG_DP_LINE(level, DPAA2_NET, __VA_ARGS__)
 
-#define DPAA2_PMD_DP_DEBUG(fmt, args...) \
-	DPAA2_PMD_DP_LOG(DEBUG, fmt, ## args)
-#define DPAA2_PMD_DP_INFO(fmt, args...) \
-	DPAA2_PMD_DP_LOG(INFO, fmt, ## args)
-#define DPAA2_PMD_DP_WARN(fmt, args...) \
-	DPAA2_PMD_DP_LOG(WARNING, fmt, ## args)
+#define DPAA2_PMD_DP_DEBUG(fmt, ...) \
+	DPAA2_PMD_DP_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA2_PMD_DP_INFO(fmt, ...) \
+	DPAA2_PMD_DP_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA2_PMD_DP_WARN(fmt, ...) \
+	DPAA2_PMD_DP_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* _DPAA2_PMD_LOGS_H_ */

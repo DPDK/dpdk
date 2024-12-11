@@ -154,8 +154,8 @@ do {								\
 					##__VA_ARGS__);		\
 } while (0)
 
-#define ice_info(hw, fmt, args...) ice_debug(hw, ICE_DBG_ALL, fmt, ##args)
-#define ice_warn(hw, fmt, args...) ice_debug(hw, ICE_DBG_ALL, fmt, ##args)
+#define ice_info(hw, fmt, ...) ice_debug(hw, ICE_DBG_ALL, fmt, ##__VA_ARGS__)
+#define ice_warn(hw, fmt, ...) ice_debug(hw, ICE_DBG_ALL, fmt, ##__VA_ARGS__)
 #define ice_debug_array(hw, type, rowsize, groupsize, buf, len)		\
 do {									\
 	struct ice_hw *hw_l = hw;					\

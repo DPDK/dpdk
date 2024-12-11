@@ -18,24 +18,24 @@ extern int caam_jr_logtype;
 
 #define PMD_INIT_FUNC_TRACE() CAAM_JR_DEBUG(" >>")
 
-#define CAAM_JR_INFO(fmt, args...) \
-	CAAM_JR_LOG(INFO, fmt, ## args)
-#define CAAM_JR_ERR(fmt, args...) \
-	CAAM_JR_LOG(ERR, fmt, ## args)
-#define CAAM_JR_WARN(fmt, args...) \
-	CAAM_JR_LOG(WARNING, fmt, ## args)
+#define CAAM_JR_INFO(fmt, ...) \
+	CAAM_JR_LOG(INFO, fmt, ## __VA_ARGS__)
+#define CAAM_JR_ERR(fmt, ...) \
+	CAAM_JR_LOG(ERR, fmt, ## __VA_ARGS__)
+#define CAAM_JR_WARN(fmt, ...) \
+	CAAM_JR_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define CAAM_JR_DP_LOG(level, ...) \
 	RTE_LOG_DP_LINE(level, CAAM_JR, __VA_ARGS__)
 
-#define CAAM_JR_DP_DEBUG(fmt, args...) \
-	CAAM_JR_DP_LOG(DEBUG, fmt, ## args)
-#define CAAM_JR_DP_INFO(fmt, args...) \
-	CAAM_JR_DP_LOG(INFO, fmt, ## args)
-#define CAAM_JR_DP_WARN(fmt, args...) \
-	CAAM_JR_DP_LOG(WARNING, fmt, ## args)
-#define CAAM_JR_DP_ERR(fmt, args...) \
-	CAAM_JR_DP_LOG(ERR, fmt, ## args)
+#define CAAM_JR_DP_DEBUG(fmt, ...) \
+	CAAM_JR_DP_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define CAAM_JR_DP_INFO(fmt, ...) \
+	CAAM_JR_DP_LOG(INFO, fmt, ## __VA_ARGS__)
+#define CAAM_JR_DP_WARN(fmt, ...) \
+	CAAM_JR_DP_LOG(WARNING, fmt, ## __VA_ARGS__)
+#define CAAM_JR_DP_ERR(fmt, ...) \
+	CAAM_JR_DP_LOG(ERR, fmt, ## __VA_ARGS__)
 
 #endif /* _CAAM_JR_LOG_H_ */

@@ -80,10 +80,10 @@ extern int octtx_zip_logtype_driver;
 #define ZIP_PMD_LOG(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, OCTTX_ZIP_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
-#define ZIP_PMD_INFO(fmt, args...) \
-	ZIP_PMD_LOG(INFO, fmt, ## args)
-#define ZIP_PMD_ERR(fmt, args...) \
-	ZIP_PMD_LOG(ERR, fmt, ## args)
+#define ZIP_PMD_INFO(fmt, ...) \
+	ZIP_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define ZIP_PMD_ERR(fmt, ...) \
+	ZIP_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
 
 /* resources required to process stream */
 enum NUM_BUFS_PER_STREAM {

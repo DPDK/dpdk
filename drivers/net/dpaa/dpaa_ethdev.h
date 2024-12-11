@@ -281,14 +281,14 @@ extern int dpaa_logtype_pmd;
 
 #define PMD_INIT_FUNC_TRACE() DPAA_PMD_LOG(DEBUG, " >>")
 
-#define DPAA_PMD_DEBUG(fmt, args...) \
-	DPAA_PMD_LOG(DEBUG, fmt, ## args)
-#define DPAA_PMD_ERR(fmt, args...) \
-	DPAA_PMD_LOG(ERR, fmt, ## args)
-#define DPAA_PMD_INFO(fmt, args...) \
-	DPAA_PMD_LOG(INFO, fmt, ## args)
-#define DPAA_PMD_WARN(fmt, args...) \
-	DPAA_PMD_LOG(WARNING, fmt, ## args)
+#define DPAA_PMD_DEBUG(fmt, ...) \
+	DPAA_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_PMD_ERR(fmt, ...) \
+	DPAA_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_PMD_INFO(fmt, ...) \
+	DPAA_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_PMD_WARN(fmt, ...) \
+	DPAA_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA_DP_LOG(level, ...) \

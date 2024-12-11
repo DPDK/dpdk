@@ -17,20 +17,20 @@ extern int hns3_logtype_driver;
 	RTE_LOG_LINE_PREFIX(level, HNS3_DRIVER, "%s %s(): ", \
 		(hw)->data->name RTE_LOG_COMMA __func__, __VA_ARGS__)
 
-#define hns3_err(hw, fmt, args...) \
-	PMD_DRV_LOG(hw, ERR, fmt, ## args)
+#define hns3_err(hw, fmt, ...) \
+	PMD_DRV_LOG(hw, ERR, fmt, ## __VA_ARGS__)
 
-#define hns3_warn(hw, fmt, args...) \
-	PMD_DRV_LOG(hw, WARNING, fmt, ## args)
+#define hns3_warn(hw, fmt, ...) \
+	PMD_DRV_LOG(hw, WARNING, fmt, ## __VA_ARGS__)
 
-#define hns3_notice(hw, fmt, args...) \
-	PMD_DRV_LOG(hw, NOTICE, fmt, ## args)
+#define hns3_notice(hw, fmt, ...) \
+	PMD_DRV_LOG(hw, NOTICE, fmt, ## __VA_ARGS__)
 
-#define hns3_info(hw, fmt, args...) \
-	PMD_DRV_LOG(hw, INFO, fmt, ## args)
+#define hns3_info(hw, fmt, ...) \
+	PMD_DRV_LOG(hw, INFO, fmt, ## __VA_ARGS__)
 
-#define hns3_dbg(hw, fmt, args...) \
-	PMD_DRV_LOG(hw, DEBUG, fmt, ## args)
+#define hns3_dbg(hw, fmt, ...) \
+	PMD_DRV_LOG(hw, DEBUG, fmt, ## __VA_ARGS__)
 
 #ifdef RTE_ETHDEV_DEBUG_RX
 extern int hns3_logtype_rx;

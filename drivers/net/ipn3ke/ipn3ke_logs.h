@@ -15,16 +15,16 @@ extern int ipn3ke_afu_logtype;
 
 #define IPN3KE_AFU_PMD_FUNC_TRACE() IPN3KE_AFU_PMD_LOG(DEBUG, ">>")
 
-#define IPN3KE_AFU_PMD_DEBUG(fmt, args...) \
-	IPN3KE_AFU_PMD_LOG(DEBUG, fmt, ## args)
+#define IPN3KE_AFU_PMD_DEBUG(fmt, ...) \
+	IPN3KE_AFU_PMD_LOG(DEBUG, fmt, ## __VA_ARGS__)
 
-#define IPN3KE_AFU_PMD_INFO(fmt, args...) \
-	IPN3KE_AFU_PMD_LOG(INFO, fmt, ## args)
+#define IPN3KE_AFU_PMD_INFO(fmt, ...) \
+	IPN3KE_AFU_PMD_LOG(INFO, fmt, ## __VA_ARGS__)
 
-#define IPN3KE_AFU_PMD_ERR(fmt, args...) \
-	IPN3KE_AFU_PMD_LOG(ERR, fmt, ## args)
+#define IPN3KE_AFU_PMD_ERR(fmt, ...) \
+	IPN3KE_AFU_PMD_LOG(ERR, fmt, ## __VA_ARGS__)
 
-#define IPN3KE_AFU_PMD_WARN(fmt, args...) \
-	IPN3KE_AFU_PMD_LOG(WARNING, fmt, ## args)
+#define IPN3KE_AFU_PMD_WARN(fmt, ...) \
+	IPN3KE_AFU_PMD_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* _IPN3KE_LOGS_H_ */

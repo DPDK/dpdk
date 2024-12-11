@@ -303,11 +303,11 @@ dsw_pmd_priv(const struct rte_eventdev *eventdev)
 
 extern int event_dsw_logtype;
 #define RTE_LOGTYPE_EVENT_DSW event_dsw_logtype
-#define DSW_LOG_DP_LINE(level, fmt, args...)				\
+#define DSW_LOG_DP_LINE(level, fmt, ...)				\
 	RTE_LOG_DP_LINE(level, EVENT_DSW, "%s() line %u: " fmt,		\
-		   __func__, __LINE__, ## args)
+		   __func__, __LINE__, ## __VA_ARGS__)
 
-#define DSW_LOG_DP_PORT_LINE(level, port_id, fmt, args...)		\
-	DSW_LOG_DP_LINE(level, "<Port %d> " fmt, port_id, ## args)
+#define DSW_LOG_DP_PORT_LINE(level, port_id, fmt, ...)			\
+	DSW_LOG_DP_LINE(level, "<Port %d> " fmt, port_id, ## __VA_ARGS__)
 
 #endif

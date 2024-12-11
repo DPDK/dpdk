@@ -34,15 +34,15 @@
 
 #define DEBUGFUNC(F)            DEBUGOUT(F "\n");
 #define DEBUGOUT(S, ...)        RTE_LOG(DEBUG, IXGBE_DRIVER, "%s(): " S, __func__, ## __VA_ARGS__)
-#define DEBUGOUT1(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT2(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT3(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT6(S, args...)   DEBUGOUT(S, ##args)
-#define DEBUGOUT7(S, args...)   DEBUGOUT(S, ##args)
+#define DEBUGOUT1(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT2(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT3(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT6(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
+#define DEBUGOUT7(S, ...)       DEBUGOUT(S, ##__VA_ARGS__)
 
-#define ERROR_REPORT1(e, S, args...)   DEBUGOUT(S, ##args)
-#define ERROR_REPORT2(e, S, args...)   DEBUGOUT(S, ##args)
-#define ERROR_REPORT3(e, S, args...)   DEBUGOUT(S, ##args)
+#define ERROR_REPORT1(e, S, ...) DEBUGOUT(S, ##__VA_ARGS__)
+#define ERROR_REPORT2(e, S, ...) DEBUGOUT(S, ##__VA_ARGS__)
+#define ERROR_REPORT3(e, S, ...) DEBUGOUT(S, ##__VA_ARGS__)
 
 #define FALSE               0
 #define TRUE                1
@@ -53,7 +53,7 @@
 #define min(a,b)	RTE_MIN(a,b) 
 #endif
 
-#define EWARN(hw, S, args...)     DEBUGOUT1(S, ##args)
+#define EWARN(hw, S, ...)         DEBUGOUT1(S, ##__VA_ARGS__)
 
 /* Bunch of defines for shared code bogosity */
 #ifndef UNREFERENCED_PARAMETER

@@ -21,7 +21,7 @@
 #define _fml_dbg(...) \
 	RTE_LOG_LINE_PREFIX(DEBUG, DPAA_PMD, "%s: ", __func__, __VA_ARGS__)
 #else
-	#define _fml_dbg(arg...)
+	#define _fml_dbg(...)
 #endif
 
 /*#define FM_IOCTL_DBG*/
@@ -30,7 +30,7 @@
 	#define _fm_ioctl_dbg(...) \
 	RTE_LOG_LINE_PREFIX(DEBUG, DPAA_PMD, "%s: ", __func__, __VA_ARGS__)
 #else
-	#define _fm_ioctl_dbg(arg...)
+	#define _fm_ioctl_dbg(...)
 #endif
 
 /*

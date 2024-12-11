@@ -12,11 +12,11 @@ extern int eventdev_dlb2_log_level;
 #define DLB2_LOG_IMPL(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, EVENTDEV_DLB2, "%s", __func__, __VA_ARGS__)
 
-#define DLB2_LOG_INFO(fmt, args...) \
-	DLB2_LOG_IMPL(INFO, fmt, ## args)
+#define DLB2_LOG_INFO(fmt, ...) \
+	DLB2_LOG_IMPL(INFO, fmt, ## __VA_ARGS__)
 
-#define DLB2_LOG_ERR(fmt, args...) \
-	DLB2_LOG_IMPL(ERR, fmt, ## args)
+#define DLB2_LOG_ERR(fmt, ...) \
+	DLB2_LOG_IMPL(ERR, fmt, ## __VA_ARGS__)
 
 /* remove debug logs at compile time unless actually debugging */
 #define DLB2_LOG_LINE_DBG(...) \

@@ -62,10 +62,10 @@ extern int uacce_bus_logtype;
 #define RTE_LOGTYPE_UACCE_BUS uacce_bus_logtype
 #define UACCE_BUS_LOG(level, ...) \
 	RTE_LOG_LINE(level, UACCE_BUS, __VA_ARGS__)
-#define UACCE_BUS_ERR(fmt, args...) UACCE_BUS_LOG(ERR, fmt, ##args)
-#define UACCE_BUS_WARN(fmt, args...) UACCE_BUS_LOG(WARNING, fmt, ##args)
-#define UACCE_BUS_INFO(fmt, args...) UACCE_BUS_LOG(INFO, fmt, ##args)
-#define UACCE_BUS_DEBUG(fmt, args...) UACCE_BUS_LOG(DEBUG, fmt, ##args)
+#define UACCE_BUS_ERR(fmt, ...) UACCE_BUS_LOG(ERR, fmt, ##__VA_ARGS__)
+#define UACCE_BUS_WARN(fmt, ...) UACCE_BUS_LOG(WARNING, fmt, ##__VA_ARGS__)
+#define UACCE_BUS_INFO(fmt, ...) UACCE_BUS_LOG(INFO, fmt, ##__VA_ARGS__)
+#define UACCE_BUS_DEBUG(fmt, ...) UACCE_BUS_LOG(DEBUG, fmt, ##__VA_ARGS__)
 
 
 static struct rte_devargs *

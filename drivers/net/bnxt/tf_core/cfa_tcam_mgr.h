@@ -25,13 +25,13 @@
 #endif
 
 /* Use TFP_DRV_LOG definition in tfp.h */
-#define CFA_TCAM_MGR_LOG(level, fmt, args...)	\
-	TFP_DRV_LOG(level, fmt, ## args)
-#define CFA_TCAM_MGR_LOG_DIR(level, dir, fmt, args...)			\
-	TFP_DRV_LOG(level, "%s: " fmt, tf_dir_2_str(dir), ## args)
-#define CFA_TCAM_MGR_LOG_DIR_TYPE(level, dir, type, fmt, args...)	\
+#define CFA_TCAM_MGR_LOG(level, fmt, ...)	\
+	TFP_DRV_LOG(level, fmt, ## __VA_ARGS__)
+#define CFA_TCAM_MGR_LOG_DIR(level, dir, fmt, ...)			\
+	TFP_DRV_LOG(level, "%s: " fmt, tf_dir_2_str(dir), ## __VA_ARGS__)
+#define CFA_TCAM_MGR_LOG_DIR_TYPE(level, dir, type, fmt, ...)	\
 	TFP_DRV_LOG(level, "%s: %s " fmt, tf_dir_2_str(dir),		\
-		    cfa_tcam_mgr_tbl_2_str(type), ## args)
+		    cfa_tcam_mgr_tbl_2_str(type), ## __VA_ARGS__)
 
 #define CFA_TCAM_MGR_LOG_0(level, fmt)		\
 	TFP_DRV_LOG(level, fmt)

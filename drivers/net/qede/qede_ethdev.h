@@ -39,8 +39,8 @@
 #include "qede_if.h"
 #include "qede_rxtx.h"
 
-#define qede_stringify1(x...)		#x
-#define qede_stringify(x...)		qede_stringify1(x)
+#define qede_stringify1(...)		#__VA_ARGS__
+#define qede_stringify(...)		qede_stringify1(__VA_ARGS__)
 
 /* Driver versions */
 #define QEDE_PMD_DRV_VER_STR_SIZE NAME_SIZE /* 128 */

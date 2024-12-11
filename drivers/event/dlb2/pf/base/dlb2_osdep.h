@@ -40,14 +40,14 @@
 	DLB2_PCI_REG_WRITE(DLB2_FUNC_REG_ADDR((hw), (reg)), (value))
 
 /* Map to PMDs logging interface */
-#define DLB2_ERR(dev, fmt, args...) \
-	RTE_LOG(ERR, EVENTDEV_DLB2, "%s" fmt, __func__, ## args)
+#define DLB2_ERR(dev, fmt, ...) \
+	RTE_LOG(ERR, EVENTDEV_DLB2, "%s" fmt, __func__, ## __VA_ARGS__)
 
-#define DLB2_INFO(dev, fmt, args...) \
-	RTE_LOG(INFO, EVENTDEV_DLB2, "%s" fmt, __func__, ## args)
+#define DLB2_INFO(dev, fmt, ...) \
+	RTE_LOG(INFO, EVENTDEV_DLB2, "%s" fmt, __func__, ## __VA_ARGS__)
 
-#define DLB2_DEBUG(dev, fmt, args...) \
-	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt, ## args)
+#define DLB2_DEBUG(dev, fmt, ...) \
+	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt, ## __VA_ARGS__)
 
 /**
  * os_udelay() - busy-wait for a number of microseconds

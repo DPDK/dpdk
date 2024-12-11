@@ -30,15 +30,15 @@
 typedef uint64_t	dma_addr_t;
 
 /* Debugging */
-#define prflush(fmt, args...) \
+#define prflush(fmt, ...) \
 	do { \
-		printf(fmt, ##args); \
+		printf(fmt, ##__VA_ARGS__); \
 		fflush(stdout); \
 	} while (0)
-#define pr_crit(fmt, args...)	 prflush("CRIT:" fmt, ##args)
-#define pr_err(fmt, args...)	 prflush("ERR:" fmt, ##args)
-#define pr_warn(fmt, args...)	 prflush("WARN:" fmt, ##args)
-#define pr_info(fmt, args...)	 prflush(fmt, ##args)
+#define pr_crit(fmt, ...)	 prflush("CRIT:" fmt, ##__VA_ARGS__)
+#define pr_err(fmt, ...)	 prflush("ERR:" fmt, ##__VA_ARGS__)
+#define pr_warn(fmt, ...)	 prflush("WARN:" fmt, ##__VA_ARGS__)
+#define pr_info(fmt, ...)	 prflush(fmt, ##__VA_ARGS__)
 
 #ifdef RTE_LIBRTE_DPAA2_DEBUG_BUS
 
@@ -54,7 +54,7 @@ typedef uint64_t	dma_addr_t;
 #ifdef pr_debug
 #undef pr_debug
 #endif
-#define pr_debug(fmt, args...)	printf(fmt, ##args)
+#define pr_debug(fmt, ...)	printf(fmt, ##__VA_ARGS__)
 #define QBMAN_BUG_ON(c) \
 do { \
 	static int warned_##__LINE__; \
@@ -65,7 +65,7 @@ do { \
 } while (0)
 #else
 #define QBMAN_BUG_ON(c) {}
-#define pr_debug(fmt, args...) {}
+#define pr_debug(fmt, ...) {}
 #endif
 
 /* Other miscellaneous interfaces our APIs depend on; */

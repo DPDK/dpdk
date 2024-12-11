@@ -82,13 +82,13 @@ struct dpaa_eventdev {
 
 #define EVENTDEV_INIT_FUNC_TRACE() DPAA_EVENTDEV_LOG(DEBUG, " >>")
 
-#define DPAA_EVENTDEV_DEBUG(fmt, args...) \
-	DPAA_EVENTDEV_LOG(DEBUG, fmt, ## args)
-#define DPAA_EVENTDEV_ERR(fmt, args...) \
-	DPAA_EVENTDEV_LOG(ERR, fmt, ## args)
-#define DPAA_EVENTDEV_INFO(fmt, args...) \
-	DPAA_EVENTDEV_LOG(INFO, fmt, ## args)
-#define DPAA_EVENTDEV_WARN(fmt, args...) \
-	DPAA_EVENTDEV_LOG(WARNING, fmt, ## args)
+#define DPAA_EVENTDEV_DEBUG(fmt, ...) \
+	DPAA_EVENTDEV_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_EVENTDEV_ERR(fmt, ...) \
+	DPAA_EVENTDEV_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_EVENTDEV_INFO(fmt, ...) \
+	DPAA_EVENTDEV_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_EVENTDEV_WARN(fmt, ...) \
+	DPAA_EVENTDEV_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* __DPAA_EVENTDEV_H__ */

@@ -34,7 +34,7 @@ typedef uint64_t        u64;
 
 typedef enum i40e_status_code i40e_status;
 #define __iomem
-#define hw_dbg(hw, S, A...) do {} while (0)
+#define hw_dbg(hw, S, ...) do {} while (0)
 #define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
 #define lower_32_bits(n) ((u32)(n))
 #define low_16_bits(x)   ((x) & 0xFFFF)

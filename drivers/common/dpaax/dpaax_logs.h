@@ -11,13 +11,13 @@ extern int dpaax_logger;
 #define RTE_LOGTYPE_DPAAX_LOGGER dpaax_logger
 
 #ifdef RTE_LIBRTE_DPAAX_DEBUG
-#define DPAAX_HWWARN(cond, fmt, args...) \
+#define DPAAX_HWWARN(cond, fmt, ...) \
 	do {\
 		if (cond) \
-			DPAAX_LOG(DEBUG, "WARN: " fmt, ##args); \
+			DPAAX_LOG(DEBUG, "WARN: " fmt, ##__VA_ARGS__); \
 	} while (0)
 #else
-#define DPAAX_HWWARN(cond, fmt, args...) do { } while (0)
+#define DPAAX_HWWARN(cond, fmt, ...) do { } while (0)
 #endif
 
 #define DPAAX_LOG(level, ...) \
@@ -27,11 +27,11 @@ extern int dpaax_logger;
 #define DPAAX_DEBUG(...) \
 	RTE_LOG_LINE_PREFIX(DEBUG, DPAAX_LOGGER, "%s(): ", __func__, __VA_ARGS__)
 
-#define DPAAX_INFO(fmt, args...) \
-	DPAAX_LOG(INFO, fmt, ## args)
-#define DPAAX_ERR(fmt, args...) \
-	DPAAX_LOG(ERR, fmt, ## args)
-#define DPAAX_WARN(fmt, args...) \
-	DPAAX_LOG(WARNING, fmt, ## args)
+#define DPAAX_INFO(fmt, ...) \
+	DPAAX_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAAX_ERR(fmt, ...) \
+	DPAAX_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAAX_WARN(fmt, ...) \
+	DPAAX_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* _DPAAX_LOGS_H_ */

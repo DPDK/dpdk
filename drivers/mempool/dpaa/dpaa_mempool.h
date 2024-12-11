@@ -65,15 +65,15 @@ extern struct dpaa_bp_info *rte_dpaa_bpid_info;
 
 #define MEMPOOL_INIT_FUNC_TRACE() DPAA_MEMPOOL_LOG(DEBUG, " >>")
 
-#define DPAA_MEMPOOL_DPDEBUG(fmt, args...) \
-	RTE_LOG_DP(DEBUG, DPAA_MEMPOOL, fmt, ## args)
-#define DPAA_MEMPOOL_DEBUG(fmt, args...) \
-	DPAA_MEMPOOL_LOG(DEBUG, fmt, ## args)
-#define DPAA_MEMPOOL_ERR(fmt, args...) \
-	DPAA_MEMPOOL_LOG(ERR, fmt, ## args)
-#define DPAA_MEMPOOL_INFO(fmt, args...) \
-	DPAA_MEMPOOL_LOG(INFO, fmt, ## args)
-#define DPAA_MEMPOOL_WARN(fmt, args...) \
-	DPAA_MEMPOOL_LOG(WARNING, fmt, ## args)
+#define DPAA_MEMPOOL_DPDEBUG(fmt, ...) \
+	RTE_LOG_DP(DEBUG, DPAA_MEMPOOL, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_DEBUG(fmt, ...) \
+	DPAA_MEMPOOL_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_ERR(fmt, ...) \
+	DPAA_MEMPOOL_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_INFO(fmt, ...) \
+	DPAA_MEMPOOL_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_MEMPOOL_WARN(fmt, ...) \
+	DPAA_MEMPOOL_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif

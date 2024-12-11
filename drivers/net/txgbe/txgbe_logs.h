@@ -49,7 +49,7 @@ extern int txgbe_logtype_tx_free;
 #define PMD_TX_FREE_LOG(...) do { } while (0)
 #endif
 
-#define DEBUGOUT(fmt, args...)    PMD_DRV_LOG(DEBUG, fmt, ##args)
+#define DEBUGOUT(fmt, ...)        PMD_DRV_LOG(DEBUG, fmt, ##__VA_ARGS__)
 #define PMD_INIT_FUNC_TRACE()     PMD_DRV_LOG(DEBUG, ">>")
 
 #endif /* _TXGBE_LOGS_H_ */

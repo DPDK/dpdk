@@ -477,10 +477,10 @@ extern int fman_ccsr_map_fd;
 #define fman_if_for_each_bpool(bp, __if) \
 	list_for_each_entry(bp, &(__if)->bpool_list, node)
 
-#define FMAN_ERR(rc, fmt, args...) \
+#define FMAN_ERR(rc, fmt, ...) \
 	do { \
 		_errno = (rc); \
-		RTE_LOG_LINE(ERR, DPAA_BUS, fmt "(%d)", ##args, errno); \
+		RTE_LOG_LINE(ERR, DPAA_BUS, fmt "(%d)", ##__VA_ARGS__, errno); \
 	} while (0)
 
 #define FMAN_IP_REV_1	0xC30C4

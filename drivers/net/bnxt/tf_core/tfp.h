@@ -28,12 +28,12 @@ struct tfp_spinlock_parms {
 	rte_spinlock_t slock;
 };
 
-#define TFP_DRV_LOG_RAW(level, fmt, args...) \
+#define TFP_DRV_LOG_RAW(level, fmt, ...) \
 	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
-		__func__, ## args)
+		__func__, ## __VA_ARGS__)
 
-#define TFP_DRV_LOG(level, fmt, args...) \
-	TFP_DRV_LOG_RAW(level, fmt, ## args)
+#define TFP_DRV_LOG(level, fmt, ...) \
+	TFP_DRV_LOG_RAW(level, fmt, ## __VA_ARGS__)
 
 /**
  * @file

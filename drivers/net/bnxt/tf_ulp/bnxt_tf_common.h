@@ -15,9 +15,9 @@
 	RTE_LOG(lvl, BNXT, "%s(): " fmt, __func__, ## __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BNXT_TRUFLOW_DEBUG
-#define BNXT_DRV_INF(fmt, args...)	RTE_LOG(INFO, fmt, ## args)
+#define BNXT_DRV_INF(fmt, ...)	RTE_LOG(INFO, fmt, ## __VA_ARGS__)
 #else
-#define BNXT_DRV_INF(fmt, args...)
+#define BNXT_DRV_INF(fmt, ...)
 #endif
 
 #define BNXT_ULP_EM_FLOWS			8192

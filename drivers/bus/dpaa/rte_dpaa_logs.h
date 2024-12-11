@@ -16,13 +16,13 @@ extern int dpaa_logtype_bus;
 	RTE_LOG_LINE(level, DPAA_BUS, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_DPAA_DEBUG_BUS
-#define DPAA_BUS_HWWARN(cond, fmt, args...) \
+#define DPAA_BUS_HWWARN(cond, fmt, ...) \
 	do {\
 		if (cond) \
-			DPAA_BUS_LOG(DEBUG, "WARN: " fmt, ##args); \
+			DPAA_BUS_LOG(DEBUG, "WARN: " fmt, ##__VA_ARGS__); \
 	} while (0)
 #else
-#define DPAA_BUS_HWWARN(cond, fmt, args...) do { } while (0)
+#define DPAA_BUS_HWWARN(cond, fmt, ...) do { } while (0)
 #endif
 
 #define DPAA_BUS_DEBUG(...) \
@@ -30,11 +30,11 @@ extern int dpaa_logtype_bus;
 
 #define BUS_INIT_FUNC_TRACE() DPAA_BUS_DEBUG(" >>")
 
-#define DPAA_BUS_INFO(fmt, args...) \
-	DPAA_BUS_LOG(INFO, fmt, ## args)
-#define DPAA_BUS_ERR(fmt, args...) \
-	DPAA_BUS_LOG(ERR, fmt, ## args)
-#define DPAA_BUS_WARN(fmt, args...) \
-	DPAA_BUS_LOG(WARNING, fmt, ## args)
+#define DPAA_BUS_INFO(fmt, ...) \
+	DPAA_BUS_LOG(INFO, fmt, ## __VA_ARGS__)
+#define DPAA_BUS_ERR(fmt, ...) \
+	DPAA_BUS_LOG(ERR, fmt, ## __VA_ARGS__)
+#define DPAA_BUS_WARN(fmt, ...) \
+	DPAA_BUS_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* _DPAA_LOGS_H_ */

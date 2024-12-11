@@ -15,13 +15,13 @@ extern int ifpga_bus_logtype;
 
 #define IFPGA_BUS_FUNC_TRACE() IFPGA_BUS_LOG(DEBUG, ">>")
 
-#define IFPGA_BUS_DEBUG(fmt, args...) \
-	IFPGA_BUS_LOG(DEBUG, fmt, ## args)
-#define IFPGA_BUS_INFO(fmt, args...) \
-	IFPGA_BUS_LOG(INFO, fmt, ## args)
-#define IFPGA_BUS_ERR(fmt, args...) \
-	IFPGA_BUS_LOG(ERR, fmt, ## args)
-#define IFPGA_BUS_WARN(fmt, args...) \
-	IFPGA_BUS_LOG(WARNING, fmt, ## args)
+#define IFPGA_BUS_DEBUG(fmt, ...) \
+	IFPGA_BUS_LOG(DEBUG, fmt, ## __VA_ARGS__)
+#define IFPGA_BUS_INFO(fmt, ...) \
+	IFPGA_BUS_LOG(INFO, fmt, ## __VA_ARGS__)
+#define IFPGA_BUS_ERR(fmt, ...) \
+	IFPGA_BUS_LOG(ERR, fmt, ## __VA_ARGS__)
+#define IFPGA_BUS_WARN(fmt, ...) \
+	IFPGA_BUS_LOG(WARNING, fmt, ## __VA_ARGS__)
 
 #endif /* _IFPGA_BUS_LOGS_H_ */

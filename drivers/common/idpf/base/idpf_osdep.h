@@ -42,7 +42,7 @@ typedef uint64_t	s64;
 typedef struct idpf_lock idpf_lock;
 
 #define __iomem
-#define hw_dbg(hw, S, A...)	do {} while (0)
+#define hw_dbg(hw, S, ...)	do {} while (0)
 #define upper_32_bits(n)	((u32)(((n) >> 16) >> 16))
 #define lower_32_bits(n)	((u32)(n))
 #define low_16_bits(x)		((x) & 0xFFFF)
@@ -122,8 +122,10 @@ typedef struct idpf_lock idpf_lock;
 					##__VA_ARGS__);			\
 	} while (0)
 
-#define idpf_info(hw, fmt, args...) idpf_debug(hw, IDPF_DBG_ALL, fmt, ##args)
-#define idpf_warn(hw, fmt, args...) idpf_debug(hw, IDPF_DBG_ALL, fmt, ##args)
+#define idpf_info(hw, fmt, ...) \
+	idpf_debug(hw, IDPF_DBG_ALL, fmt, ##__VA_ARGS__)
+#define idpf_warn(hw, fmt, ...) \
+	idpf_debug(hw, IDPF_DBG_ALL, fmt, ##__VA_ARGS__)
 #define idpf_debug_array(hw, type, rowsize, groupsize, buf, len)	\
 	do {								\
 		struct idpf_hw *hw_l = hw;				\

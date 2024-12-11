@@ -20,8 +20,8 @@
 
 extern int ark_logtype;
 
-#define ARK_PMD_LOG(level, fmt, args...)	\
-	rte_log(RTE_LOG_ ##level, ark_logtype, "ARK: " fmt, ## args)
+#define ARK_PMD_LOG(level, fmt, ...)	\
+	rte_log(RTE_LOG_ ##level, ark_logtype, "ARK: " fmt, ## __VA_ARGS__)
 
 
 /* Debug macro to enable core debug code */
