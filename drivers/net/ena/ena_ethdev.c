@@ -2330,6 +2330,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Assign default devargs values */
 	adapter->missing_tx_completion_to = ENA_TX_TIMEOUT;
+	adapter->llq_header_policy = ENA_LLQ_POLICY_RECOMMENDED;
 
 	/* Get user bypass */
 	rc = ena_parse_devargs(adapter, pci_dev->device.devargs);
