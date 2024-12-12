@@ -232,7 +232,14 @@ class SingleActiveInteractiveShell(MultiInheritanceBaseClass, ABC):
         return out
 
     def _close(self) -> None:
-        self._stdin.close()
+        try:
+            # Ensure the primary application has terminated via readiness of 'stdout'.
+            if self._ssh_channel.recv_ready():
+                self._ssh_channel.recv(1)  # 'Waits' for a single byte to enter 'stdout' buffer.
+        except TimeoutError as e:
+            self._logger.exception(e)
+            self._logger.debug("Application failed to exit before set timeout.")
+            raise InteractiveSSHTimeoutError("Application 'exit' command") from e
         self._ssh_channel.close()
 
     def _update_real_path(self, path: PurePath) -> None:
