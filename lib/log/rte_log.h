@@ -17,7 +17,6 @@
 extern "C" {
 #endif
 
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -358,26 +357,6 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
 	 rte_log(RTE_LOG_ ## l,					\
 		 RTE_LOGTYPE_ ## t, # t ": " __VA_ARGS__) :	\
 	 0)
-
-#if defined(RTE_TOOLCHAIN_GCC) && !defined(PEDANTIC)
-#define RTE_LOG_CHECK_NO_NEWLINE(fmt) \
-	static_assert(!__builtin_strchr(fmt, '\n'), \
-		"This log format string contains a \\n")
-#else
-#define RTE_LOG_CHECK_NO_NEWLINE(...)
-#endif
-
-#define RTE_LOG_LINE(l, t, ...) do { \
-	RTE_LOG_CHECK_NO_NEWLINE(RTE_FMT_HEAD(__VA_ARGS__ ,)); \
-	RTE_LOG(l, t, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__ ,))); \
-} while (0)
-
-#define RTE_LOG_DP_LINE(l, t, ...) do { \
-	RTE_LOG_CHECK_NO_NEWLINE(RTE_FMT_HEAD(__VA_ARGS__ ,)); \
-	RTE_LOG_DP(l, t, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__ ,))); \
-} while (0)
 
 #define RTE_LOG_REGISTER_IMPL(type, name, level)			    \
 int type;								    \
