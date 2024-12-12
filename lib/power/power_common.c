@@ -211,8 +211,8 @@ int power_get_lcore_mapped_cpu_id(uint32_t lcore_id, uint32_t *cpu_id)
 
 	lcore_cpus = rte_lcore_cpuset(lcore_id);
 	if (CPU_COUNT(&lcore_cpus) != 1) {
-		RTE_LOG(ERR, POWER, "Power library does not support lcore %u mapping to %u CPUs", lcore_id,
-			CPU_COUNT(&lcore_cpus));
+		RTE_LOG(ERR, POWER, "Power library does not support lcore %u mapping to %u CPUs\n",
+			lcore_id, CPU_COUNT(&lcore_cpus));
 		return -1;
 	}
 
