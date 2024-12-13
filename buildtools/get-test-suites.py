@@ -6,10 +6,10 @@ import sys
 import re
 
 input_list = sys.argv[1:]
-test_def_regex = re.compile("REGISTER_([A-Z]+)_TEST\s*\(\s*([a-z0-9_]+)")
+test_def_regex = re.compile(r"REGISTER_([A-Z]+)_TEST\s*\(\s*([a-z0-9_]+)")
 test_suites = {}
 # track tests not in any test suite.
-non_suite_regex = re.compile("REGISTER_TEST_COMMAND\s*\(\s*([a-z0-9_]+)")
+non_suite_regex = re.compile(r"REGISTER_TEST_COMMAND\s*\(\s*([a-z0-9_]+)")
 non_suite_tests = []
 
 def get_fast_test_params(test_name, ln):
