@@ -4173,7 +4173,6 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		if (!use_sse && !use_avx2 && !use_avx512)
 			goto normal;
 
-		dev->tx_pkt_prepare = NULL;
 		if (use_sse) {
 			PMD_DRV_LOG(DEBUG, "Using Vector Tx (port %d).",
 				    dev->data->port_id);
@@ -4190,7 +4189,6 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 				goto normal;
 			} else {
 				tx_burst_type = IAVF_TX_AVX2_OFFLOAD;
-				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX2 OFFLOAD Vector Tx (port %d).",
 					    dev->data->port_id);
 			}
@@ -4203,17 +4201,14 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 					    dev->data->port_id);
 			} else if (check_ret == IAVF_VECTOR_OFFLOAD_PATH) {
 				tx_burst_type = IAVF_TX_AVX512_OFFLOAD;
-				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX512 OFFLOAD Vector Tx (port %d).",
 					    dev->data->port_id);
 			} else if (check_ret == IAVF_VECTOR_CTX_PATH) {
 				tx_burst_type = IAVF_TX_AVX512_CTX;
-				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX512 CONTEXT Vector Tx (port %d).",
 						dev->data->port_id);
 			} else {
 				tx_burst_type = IAVF_TX_AVX512_CTX_OFFLOAD;
-				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX512 CONTEXT OFFLOAD Vector Tx (port %d).",
 					    dev->data->port_id);
 			}
@@ -4251,7 +4246,6 @@ normal:
 	PMD_DRV_LOG(DEBUG, "Using Basic Tx callback (port=%d).",
 		    dev->data->port_id);
 	tx_burst_type = IAVF_TX_DEFAULT;
-	dev->tx_pkt_prepare = iavf_prep_pkts;
 
 	if (no_poll_on_link_down) {
 		adapter->tx_burst_type = tx_burst_type;
