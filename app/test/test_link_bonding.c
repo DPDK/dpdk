@@ -2246,49 +2246,48 @@ test_activebackup_rx_burst(void)
 		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[0], burst_size);
 
+		/* Expect burst if this was the active port, zero otherwise */
+		unsigned int rx_expect
+			= (test_params->member_port_ids[i] == primary_port) ? burst_size : 0;
+
 		/* Call rx burst on bonding device */
-		TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonding_port_id, 0,
-				&rx_pkt_burst[0], MAX_PKT_BURST), burst_size,
-				"rte_eth_rx_burst failed");
+		unsigned int rx_count = rte_eth_rx_burst(test_params->bonding_port_id, 0,
+							 &rx_pkt_burst[0], MAX_PKT_BURST);
+		TEST_ASSERT_EQUAL(rx_count, rx_expect,
+				  "rte_eth_rx_burst (%u) not as expected (%u)",
+				  rx_count, rx_expect);
 
-		if (test_params->member_port_ids[i] == primary_port) {
-			/* Verify bonding device rx count */
-			rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
-			TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-					"Bonding Port (%d) ipackets value (%u) not as expected (%d)",
+		/* Verify bonding device rx count */
+		rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
+		TEST_ASSERT_EQUAL(port_stats.ipackets, rx_expect,
+				  "Bonding Port (%d) ipackets value (%u) not as expected (%u)",
 					test_params->bonding_port_id,
-					(unsigned int)port_stats.ipackets, burst_size);
+				  (unsigned int)port_stats.ipackets, rx_expect);
 
-			/* Verify bonding member devices rx count */
-			for (j = 0; j < test_params->bonding_member_count; j++) {
-				rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
-				if (i == j) {
-					TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-							"Member Port (%d) ipackets value (%u) not as "
-							"expected (%d)",
-							test_params->member_port_ids[i],
-							(unsigned int)port_stats.ipackets,
-							burst_size);
-				} else {
-					TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-							"Member Port (%d) ipackets value (%u) not as "
-							"expected (%d)\n",
-							test_params->member_port_ids[i],
-							(unsigned int)port_stats.ipackets, 0);
-				}
-			}
-		} else {
-			for (j = 0; j < test_params->bonding_member_count; j++) {
-				rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
+		for (j = 0; j < test_params->bonding_member_count; j++) {
+			rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
+			if (i == j) {
+				TEST_ASSERT_EQUAL(port_stats.ipackets, rx_expect,
+					  "Member Port (%d) ipackets (%u) not as expected (%d)",
+					  test_params->member_port_ids[i],
+					  (unsigned int)port_stats.ipackets, rx_expect);
+
+				/* reset member device stats */
+				rte_eth_stats_reset(test_params->member_port_ids[j]);
+			} else {
 				TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-						"Member Port (%d) ipackets value (%u) not as expected "
-						"(%d)", test_params->member_port_ids[i],
-						(unsigned int)port_stats.ipackets, 0);
+					  "Member Port (%d) ipackets (%u) not as expected (%d)",
+					  test_params->member_port_ids[i],
+					  (unsigned int)port_stats.ipackets, 0);
 			}
 		}
 
-		/* free mbufs */
-		rte_pktmbuf_free_bulk(rx_pkt_burst, burst_size);
+		/* extract packets queued to inactive member */
+		if (rx_count == 0)
+			rx_count = rte_eth_rx_burst(test_params->member_port_ids[i], 0,
+						    rx_pkt_burst, MAX_PKT_BURST);
+		if (rx_count > 0)
+			rte_pktmbuf_free_bulk(rx_pkt_burst, rx_count);
 
 		/* reset bonding device stats */
 		rte_eth_stats_reset(test_params->bonding_port_id);
