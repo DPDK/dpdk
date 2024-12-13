@@ -366,7 +366,7 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_desc,
 			unsigned int socket_id __rte_unused,
-			const struct rte_eth_txconf *tx_conf)
+			const struct rte_eth_txconf *tx_conf __rte_unused)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
 	unsigned int i;
@@ -376,12 +376,6 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
 		sizeof(struct bufdesc);
 	unsigned int dsize_log2 = rte_fls_u64(dsize) - 1;
-
-	/* Tx deferred start is not supported */
-	if (tx_conf->tx_deferred_start) {
-		ENETFEC_PMD_ERR("Tx deferred start not supported");
-		return -EINVAL;
-	}
 
 	/* allocate transmit queue */
 	txq = rte_zmalloc(NULL, sizeof(*txq), RTE_CACHE_LINE_SIZE);
@@ -442,7 +436,7 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 			uint16_t queue_idx,
 			uint16_t nb_rx_desc,
 			unsigned int socket_id __rte_unused,
-			const struct rte_eth_rxconf *rx_conf,
+			const struct rte_eth_rxconf *rx_conf __rte_unused,
 			struct rte_mempool *mb_pool)
 {
 	struct enetfec_private *fep = dev->data->dev_private;
@@ -454,12 +448,6 @@ enetfec_rx_queue_setup(struct rte_eth_dev *dev,
 	unsigned int dsize = fep->bufdesc_ex ? sizeof(struct bufdesc_ex) :
 			sizeof(struct bufdesc);
 	unsigned int dsize_log2 = rte_fls_u64(dsize) - 1;
-
-	/* Rx deferred start is not supported */
-	if (rx_conf->rx_deferred_start) {
-		ENETFEC_PMD_ERR("Rx deferred start not supported");
-		return -EINVAL;
-	}
 
 	if (queue_idx >= ENETFEC_MAX_Q) {
 		ENETFEC_PMD_ERR("Invalid queue id %" PRIu16 ", max %d",
