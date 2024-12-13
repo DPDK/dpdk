@@ -726,13 +726,6 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		DPAA2_PMD_WARN("To use Normal buffers, run 'export DPNI_NORMAL_BUF=1' before running dynamic_dpl.sh script");
 	}
 
-	/* Rx deferred start is not supported */
-	if (rx_conf->rx_deferred_start) {
-		DPAA2_PMD_ERR("%s:Rx deferred start not supported",
-			dev->data->name);
-		return -EINVAL;
-	}
-
 	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
 		if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 			ret = rte_dpaa2_bpid_info_init(mb_pool);
@@ -888,13 +881,6 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	uint64_t iova;
 
 	PMD_INIT_FUNC_TRACE();
-
-	/* Tx deferred start is not supported */
-	if (tx_conf->tx_deferred_start) {
-		DPAA2_PMD_ERR("%s:Tx deferred start not supported",
-			dev->data->name);
-		return -EINVAL;
-	}
 
 	dpaa2_q->nb_desc = UINT16_MAX;
 	dpaa2_q->offloads = tx_conf->offloads;
