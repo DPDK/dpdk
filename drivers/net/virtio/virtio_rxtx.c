@@ -654,11 +654,6 @@ virtio_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (rx_conf->rx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Rx deferred start is not supported");
-		return -EINVAL;
-	}
-
 	buf_size = virtio_rx_mem_pool_buf_size(mp);
 	if (!virtio_rx_check_scatter(hw->max_rx_pkt_len, buf_size,
 				     hw->rx_ol_scatter, &error)) {
@@ -818,11 +813,6 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_free_thresh;
 
 	PMD_INIT_FUNC_TRACE();
-
-	if (tx_conf->tx_deferred_start) {
-		PMD_INIT_LOG(ERR, "Tx deferred start is not supported");
-		return -EINVAL;
-	}
 
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
