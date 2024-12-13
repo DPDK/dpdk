@@ -76,7 +76,6 @@ snippet_ipv4_flow_create_actions_template(uint16_t port_id, struct rte_flow_erro
 		.ingress = 1,
 	};
 
-	tactions[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
 	tactions[0].type = RTE_FLOW_ACTION_TYPE_END;
 
 	/* This sets the masks to match the actions, indicating that all fields of the actions
