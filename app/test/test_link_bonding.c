@@ -2288,7 +2288,12 @@ test_activebackup_rx_burst(void)
 		}
 
 		/* free mbufs */
-		rte_pktmbuf_free_bulk(rx_pkt_burst, burst_size);
+		for (i = 0; i < MAX_PKT_BURST; i++) {
+			if (rx_pkt_burst[i] != NULL) {
+				rte_pktmbuf_free(rx_pkt_burst[i]);
+				rx_pkt_burst[i] = NULL;
+			}
+		}
 
 		/* reset bonding device stats */
 		rte_eth_stats_reset(test_params->bonding_port_id);
