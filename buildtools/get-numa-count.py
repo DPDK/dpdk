@@ -11,7 +11,7 @@ import re
 if os.name == 'posix':
     if os.path.isdir('/sys/devices/system/node'):
         numa_nodes = glob.glob('/sys/devices/system/node/node*')
-        numa_nodes.sort(key=lambda l: int(re.findall('\d+', l)[0]))
+        numa_nodes.sort(key=lambda l: int(re.findall(r'\d+', l)[0]))
         print(int(os.path.basename(numa_nodes[-1])[4:]) + 1)
     else:
         subprocess.run(['sysctl', '-n', 'vm.ndomains'], check=False)
