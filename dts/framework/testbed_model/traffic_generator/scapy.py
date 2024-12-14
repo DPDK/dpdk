@@ -237,6 +237,6 @@ class ScapyTrafficGenerator(PythonShell, CapturingTrafficGenerator):
         )
         # In the string of bytes "b'XXXX'", we only want the contents ("XXXX")
         list_of_packets_base64 = re.findall(
-            f"^b'({REGEX_FOR_BASE64_ENCODING})'", packet_strs, re.MULTILINE
+            rf"^b'({REGEX_FOR_BASE64_ENCODING})'", packet_strs, re.MULTILINE
         )
         return [Ether(base64_bytes(pakt)) for pakt in list_of_packets_base64]
