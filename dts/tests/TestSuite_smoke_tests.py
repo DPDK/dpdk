@@ -91,7 +91,7 @@ class SmokeTests(TestSuite):
             # with the address for the nic we are on in the loop and then captures the
             # name of the driver in a group
             devbind_info_for_nic = re.search(
-                f"{nic.pci}[^\\n]*drv=([\\d\\w-]*) [^\\n]*",
+                rf"{nic.pci}[^\\n]*drv=([\\d\\w-]*) [^\\n]*",
                 all_nics_in_dpdk_devbind,
             )
             self.verify(
