@@ -1318,6 +1318,10 @@ rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
  * Port attribute id for the implicit release disable attribute of the port.
  */
 #define RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE 3
+/**
+ * Port attribute id for the Independent Enqueue feature.
+ */
+#define RTE_EVENT_PORT_ATTR_INDEPENDENT_ENQ 4
 
 /**
  * Get an attribute from a port.

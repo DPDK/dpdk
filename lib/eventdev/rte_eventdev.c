@@ -880,6 +880,14 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 		*attr_value = !!(config & RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 		break;
 	}
+	case RTE_EVENT_PORT_ATTR_INDEPENDENT_ENQ:
+	{
+		uint32_t config;
+
+		config = dev->data->ports_cfg[port_id].event_port_cfg;
+		*attr_value = !!(config & RTE_EVENT_PORT_CFG_INDEPENDENT_ENQ);
+		break;
+	}
 	default:
 		return -EINVAL;
 	};
