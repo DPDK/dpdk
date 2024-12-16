@@ -149,6 +149,7 @@ Queue start/stop
 ----------------
 
 Supports starting/stopping a specific Rx/Tx queue of a port.
+This is required for use deferred start configuration option.
 
 * **[implements] eth_dev_ops**: ``rx_queue_start``, ``rx_queue_stop``, ``tx_queue_start``,
   ``tx_queue_stop``.
