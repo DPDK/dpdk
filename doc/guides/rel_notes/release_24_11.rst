@@ -616,3 +616,22 @@ Tested Platforms
       * Firmware version: 2.14, 0x8000028c
       * Device id (pf): 8086:125b
       * Driver version(in-tree): 6.8.0-45-generic (Ubuntu24.04.1)(igc)
+
+24.11.1 Release Notes
+---------------------
+
+
+24.11.1 Fixes
+~~~~~~~~~~~~~
+
+* net/virtio: fix Rx checksum calculation
+
+24.11.1 Validation
+~~~~~~~~~~~~~~~~~~
+
+* Tested by Red Hat validation team
+
+24.11.1 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* DPDK 24.11.1 contains DPDK 24.11 plus the fix for CVE-2024-11614 only
