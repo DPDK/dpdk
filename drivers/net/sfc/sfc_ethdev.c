@@ -2722,6 +2722,14 @@ adapter_unlock:
 	return -rc;
 }
 
+static uint64_t
+sfc_get_restore_flags(__rte_unused struct rte_eth_dev *dev,
+		      __rte_unused enum rte_eth_dev_operation op)
+{
+	/* sfc PMD does not require any configuration restore */
+	return 0;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -2774,6 +2782,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.fec_get_capability		= sfc_fec_get_capability,
 	.fec_get			= sfc_fec_get,
 	.fec_set			= sfc_fec_set,
+	.get_restore_flags		= sfc_get_restore_flags,
 };
 
 struct sfc_ethdev_init_data {
