@@ -3806,3 +3806,319 @@ Tested Platforms
 * 063cddfc74  rcu: use atomic operation on acked token
 * 4ad17a1c8f  test/crypto: fix enqueue/dequeue callback case
 * 63bf81a617  test: fix named test macro
+
+21.11.9 Release Notes
+---------------------
+
+
+21.11.9 Fixes
+~~~~~~~~~~~~~
+
+* app/dumpcap: remove unused struct array
+* app/procinfo: fix leak on exit
+* app/testpmd: fix aged flow destroy
+* app/testpmd: remove flex item init command leftover
+* app/testpmd: remove redundant policy action condition
+* app/testpmd: remove unnecessary cast
+* baseband/la12xx: fix use after free in modem config
+* bpf: fix free function mismatch if convert fails
+* build: remove version check on compiler links function
+* bus/dpaa: fix lock condition during error handling
+* bus/dpaa: fix PFDRs leaks due to FQRNIs
+* bus/dpaa: fix the fman details status
+* bus/dpaa: fix VSP for 1G fm1-mac9 and 10
+* bus/fslmc: fix Coverity warnings in QBMAN
+* common/cnxk: fix base log level
+* common/cnxk: fix build on Ubuntu 24.04
+* common/cnxk: fix RSS key configuration
+* common/dpaax/caamflib: fix PDCP SNOW-ZUC watchdog
+* common/mlx5: fix error CQE handling for 128 bytes CQE
+* common/mlx5: fix misalignment
+* crypto/bcmfs: fix free function mismatch
+* crypto/dpaa2_sec: fix memory leak
+* crypto/openssl: fix 3DES-CTR with big endian CPUs
+* dev: fix callback lookup when unregistering device
+* devtools: fix check of multiple commits fixed at once
+* dmadev: fix potential null pointer access
+* dma/idxd: fix free function mismatch in device probe
+* doc: correct definition of stats per queue feature
+* eal/x86: fix 32-bit write combining store
+* ethdev: fix overflow in descriptor count
+* ethdev: verify queue ID in Tx done cleanup
+* event/cnxk: fix free function mismatch in port config
+* eventdev: fix possible array underflow/overflow
+* event/octeontx: fix possible integer overflow
+* examples/eventdev: fix queue crash with generic pipeline
+* examples/l2fwd-event: fix spinlock handling
+* examples/ntb: check info query return
+* examples/vhost: fix free function mismatch
+* fib6: add runtime checks in AVX512 lookup
+* fib: fix AVX512 lookup
+* hash: fix thash LFSR initialization
+* member: fix choice of bucket for displacement
+* net/bnx2x: fix always true expression
+* net/bnx2x: fix duplicate branch
+* net/bnx2x: fix possible infinite loop at startup
+* net/bnx2x: remove dead conditional
+* net/bnxt: fix bad action offset in Tx BD
+* net/bnxt: fix reading SFF-8436 SFP EEPROMs
+* net/bnxt: fix TCP and UDP checksum flags
+* net/bnxt/tf_core: fix Thor TF EM key size check
+* net/cnxk: fix Rx offloads to handle timestamp
+* net/cnxk: fix Rx timestamp handling for VF
+* net/dpaa: fix reallocate mbuf handling
+* net/dpaa: fix typecasting channel ID
+* net/e1000: fix link status crash in secondary process
+* net/e1000: fix use after free in filter flush
+* net/ena: revert redefining memcpy
+* net/hns3: fix dump counter of registers
+* net/hns3: fix error code for repeatedly create counter
+* net/hns3: fix fully use hardware flow director table
+* net/hns3: remove some basic address dump
+* net/hns3: restrict tunnel flow rule to one header
+* net/hns3: verify reset type from firmware
+* net/i40e/base: fix blinking X722 with X557 PHY
+* net/i40e/base: fix DDP loading with reserved track ID
+* net/i40e/base: fix loop bounds
+* net/i40e/base: fix misleading debug logs and comments
+* net/i40e/base: fix repeated register dumps
+* net/i40e/base: fix setting flags in init function
+* net/i40e/base: fix unchecked return value
+* net/i40e: check register read for outer VLAN
+* net/i40e: fix AVX-512 pointer copy on 32-bit
+* net/iavf: add segment-length check to Tx prep
+* net/iavf: fix AVX-512 pointer copy on 32-bit
+* net/iavf: fix crash when link is unstable
+* net/iavf: fix VF reset when using DCF
+* net/iavf: preserve MAC address with i40e PF Linux driver
+* net/ice/base: add bounds check
+* net/ice/base: fix iteration of TLVs in Preserved Fields Area
+* net/ice/base: fix link speed for 200G
+* net/ice/base: fix VLAN replay after reset
+* net/ice: detect stopping a flow director queue twice
+* net/ice: fix AVX-512 pointer copy on 32-bit
+* net/ionic: fix build with Fedora Rawhide
+* net/ixgbe/base: fix unchecked return value
+* net/ixgbe: fix link status delay on FreeBSD
+* net/memif: fix buffer overflow in zero copy Rx
+* net/mlx5: fix memory leak in metering
+* net/mlx5: fix miniCQEs number calculation
+* net/mlx5: fix next protocol validation after flex item
+* net/mlx5: fix non full word sample fields in flex item
+* net/mlx5: fix number of supported flex parsers
+* net/mlx5: fix reported Rx/Tx descriptor limits
+* net/mlx5: fix shared queue port number in vector Rx
+* net/mlx5: workaround list management of Rx queue control
+* net/mvneta: fix possible out-of-bounds write
+* net/netvsc: fix using Tx queue higher than Rx queues
+* net/netvsc: force Tx VLAN offload on 801.2Q packet
+* net/nfb: fix use after free
+* net/nfp: fix link change return value
+* net/ngbe: fix driver load bit to inform firmware
+* net/ngbe: fix interrupt lost in legacy or MSI mode
+* net/ngbe: reconfigure more MAC Rx registers
+* net/ngbe: restrict configuration of VLAN strip offload
+* net/pcap: fix blocking Rx
+* net/pcap: set live interface as non-blocking
+* net/sfc: fix use after free in debug logs
+* net/tap: avoid memcpy with null argument
+* net/tap: restrict maximum number of MP FDs
+* net/txgbe: fix driver load bit to inform firmware
+* net/txgbe: fix SWFW mbox
+* net/txgbe: fix VF-PF mbox interrupt
+* net/txgbe: remove outer UDP checksum capability
+* net/virtio: fix Rx checksum calculation
+* net/virtio-user: reset used index counter
+* net/vmxnet3: fix crash after configuration failure
+* power: enable CPPC
+* power: fix log message when checking lcore ID
+* power: fix log message when checking power modes
+* power: fix mapped lcore ID
+* raw/ifpga/base: fix use after free
+* raw/ifpga: fix free function mismatch in interrupt config
+* rcu: fix implicit conversion in bit shift
+* Revert "test/bonding: fix loop on members"
+* test/bonding: fix loop on members
+* test/bonding: fix MAC address comparison
+* test/bonding: remove redundant info query
+* test/eal: fix lcore check
+* test/eal: fix loop coverage for alignment macros
+* test/event: avoid duplicate initialization
+* vdpa: update used flags in used ring relay
+* version: 21.11.9-rc1
+* vhost: fix offset while mapping log base address
+
+21.11.9 Validation
+~~~~~~~~~~~~~~~~~~
+
+* `Red Hat(R) Testing <https://mails.dpdk.org/archives/dev/2024-December/310322.html>`__
+
+   * Platform
+
+      * RHEL 9
+      * Kernel 5.14
+      * Qemu 7.2
+      * X540-AT2 NIC(ixgbe, 10G)
+
+   * Functionality
+
+      * Guest with device assignment(PF) throughput testing(1G hugepage size)
+      * Guest with device assignment(PF) throughput testing(2M hugepage size)
+      * Guest with device assignment(VF) throughput testing
+      * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+      * PVP vhost-user 2Q throughput testing
+      * PVP vhost-user 1Q cross numa node  throughput testing
+      * Guest with vhost-user 2 queues throughput testing
+      * vhost-user reconnect with dpdk-client, qemu-server: qemu reconnect
+      * vhost-user reconnect with dpdk-client, qemu-server: ovs reconnect
+      * PVP 1Q live migration testing
+      * PVP 1Q cross numa node live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+      * Guest with ovs+dpdk+vhost-user 2Q live migration testing
+      * Guest with ovs+dpdk+vhost-user 4Q live migration testing
+      * Host PF + DPDK testing
+      * Host VF + DPDK testing
+
+
+* `Nvidia(R) Testing <https://mails.dpdk.org/archives/stable/2024-December/051225.html>`__
+
+   * Basic functionality with testpmd
+
+      * Tx/Rx
+      * xstats
+      * Timestamps
+      * Link status
+      * RTE flow
+      * RSS
+      * VLAN filtering, stripping and insertion
+      * Checksum/TSO
+      * ptype
+      * link_status_interrupt example application
+      * l3fwd-power example application
+      * Multi-process example applications
+      * Hardware LRO tests
+      * Regex application
+      * Buffer Split
+      * Tx scheduling
+
+   * Build tests
+   * ConnectX-6 Dx
+   * ConnectX-7
+   * BlueField-2
+
+
+* `Intel(R) Testing <https://mails.dpdk.org/archives/stable/2024-December/051231.html>`__
+
+   * Basic Intel(R) NIC(ixgbe, i40e and ice) testing
+
+      * PF (i40e, ixgbe)
+      * VF (i40e, ixgbe)
+      * PF/VF (ice)
+      * Compile Testing
+      * Intel NIC single core/NIC performance - partial testing
+      * IPseca - partial testing
+
+   * Basic cryptodev and virtio testing
+
+      * vhost/virtio basic loopback, PVP and performance test
+      * cryptodev Function/Performance - partial testing
+
+21.11.9 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* DPDK 21.11.9 contains fixes up to DPDK 24.11 and CVE-2024-11614
+* Issues identified/fixed in DPDK main branch after DPDK 24.11 may be present in DPDK 21.11.9
+* Ubuntu 24.04 with gcc 13.2.0 running at optimisation -O1 shows a maybe-uninitialized warning for iavf driver
+* Some validation was ongoing at time of release
+
+21.11.9 Fixes skipped and status unresolved
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* c5b531d6ee  app/crypto-perf: fix session freeing
+* 7bdf7a13ae  app/testpmd: fix encap/decap size calculation
+* 461c287ab5  app/testpmd: fix GRO packets flush on timeout
+* ecf408d2aa  app/testpmd: fix indirect action flush
+* 0c5709824b  baseband/acc: fix ring memory allocation
+* 4edbcc7b53  bpf: disable on 32-bit x86
+* 4edbcc7b53  bpf: disable on 32-bit x86
+* 5d8c1f6253  common/cnxk: check error in MAC address set
+* a6f639e079  common/cnxk: fix BP threshold calculation
+* 772e30281a  common/cnxk: fix CPT backpressure disable on LBK
+* 6c3de40af8  common/cnxk: fix inline CTX write
+* 48054ca384  common/cnxk: fix link config for SDP
+* 2d4505dc6d  common/cnxk: fix MAC address change with active VF
+* 1c7a4d37e7  common/cnxk: fix mailbox timeout due to deadlock
+* 59ceaa72d5  common/cnxk: fix part number for CN10K
+* 5781638519  common/cnxk: fix RQ mask config for CN10KB chip
+* 37ca457d3f  common/mlx5: fix obtaining IB device in LAG mode
+* cedb44dc87  common/mlx5: improve AES-XTS tweak capability check
+* 7be74edb90  common/mlx5: use just sufficient barrier for Arm
+* 046341575b  crypto/dpaa_sec: fix IPsec descriptor
+* 17d5bc6135  crypto/openssl: make per-QP auth context clones
+* b1d7112602  crypto/openssl: make per-QP cipher context clones
+* 3dd3115078  dma/cnxk: fix chunk buffer failure return code
+* ba39a261a7  dma/cnxk: fix completion ring tail wrap
+* 95a955e3e0  dma/cnxk: fix device reconfigure
+* 2a3f42942a  dma/hisilicon: remove support for HIP09 platform
+* b9a87346b0  ethdev: fix strict aliasing in link up
+* 694e8e643d  event/cnxk: fix CASP usage for clang
+* b37fe88a2c  event/cnxk: fix LMTST write for single event mode
+* 3fe71706ab  event/cnxk: fix stale data in workslot
+* 04dac73643  eventdev/crypto: fix enqueue count
+* 4b04134cbb  eventdev/crypto: fix failed events
+* da73a2a0d1  eventdev/crypto: fix offset used while flushing events
+* ad12d08f05  eventdev/crypto: fix opaque field handling
+* f442c04001  eventdev/crypto: fix overflow in circular buffer
+* 9a518054b5  examples/l3fwd: fix duplicate expression for default nexthop
+* 927cb43fe9  examples/l3fwd: fix port group mask with AltiVec
+* ebab0e8b22  examples/l3fwd: fix read beyond boundaries
+* ebab0e8b22  examples/l3fwd: fix read beyond boundaries
+* 547f294357  gro: fix reordering of packets
+* 6df1bc6b3b  mempool/cnxk: avoid hang when counting batch allocs
+* b3ddd649ad  mempool/cnxk: fix alloc from non-EAL threads
+* 97039941b2  net/af_xdp: parse UMEM map info from mempool
+* abdabad636  net/af_xdp: remove unused local statistic
+* e82b0fe097  net/axgbe: disable RRC for yellow carp devices
+* 78dcdb821c  net/bnxt/tf_core: fix WC TCAM multi-slice delete
+* 8782e4de3e  net/bnxt/tf_ulp: fix parent child DB counters
+* a78a1ed8ba  net/bonding: fix failover time of LACP with mode 4
+* 02a2accb5f  net/bonding: fix flow count query
+* 26a6bda9df  net/cnxk: add cookies check for multi-segment offload
+* 5a0f64d84b  net/cnxk: fix configuring large Rx/Tx queues
+* 3232c95d2c  net/cnxk: fix indirect mbuf handling in Tx
+* 8ed5ca4dda  net/cnxk: fix mbuf fields in multi-segment Tx
+* 7752f14026  net/cnxk: fix Rx flush on CN10k
+* 4c2f14bc6d  net/cnxk: fix xstats reset
+* ee0fa7552a  net/dpaa: forbid MTU configuration for shared interface
+* 0f044b6681  net/iavf: fix refine protocol header
+* 0b241667cc  net/iavf: fix tainted scalar
+* b125c0e721  net/iavf: fix tainted scalar
+* 92a16af450  net/iavf: fix virtchnl command called in interrupt
+* df44ba7a3c  net/ice/base: fix preparing PHY for timesync command
+* e2072ba1b0  net/ice/base: fix resource leak
+* 9749dffe23  net/ice: fix MAC type of E822 and E823
+* 87e4384d26  net/mlx5: fix condition of LACP miss flow
+* b04b06f4cb  net/mlx5: fix flex item header length field translation
+* 2ece3b7186  net/mlx5: fix flow workspace double free in Windows
+* 1cfb78d2c4  net/mlx5: fix meter policy priority
+* 27918f0d53  net/mlx5: fix real time counter reading from PCI BAR
+* 3c9a82fa6e  net/mlx5: fix Rx queue control management
+* f8f294c66b  net/mlx5: fix shared Rx queue control release
+* 48adbc80ba  net/mlx5: remove GENEVE options length limitation
+* a74c5001e9  net/ngbe: add proper memory barriers in Rx
+* 79be49dd2d  net/ngbe: add special config for YT8531SH-CA PHY
+* 31a28a99fd  net/ngbe: add spinlock protection on YT PHY
+* 21f702d556  net/ngbe: fix link status in no LSC mode
+* 659cfce01e  net/ngbe: remove redundant codes
+* 44a8635459  net/thunderx: fix DMAC control register update
+* 12011b11a3  net/txgbe: adapt to MNG veto bit setting
+* 916aa13f4a  net/txgbe: fix a mass of interrupts
+* 5e170dd8b6  net/txgbe: fix blocking system events
+* 6db358536f  pcapng: fix handling of chained mbufs
+* 166591931b  pcapng: modify timestamp calculation
+* df33fb53e4  rcu: fix acked token in debug log
+* 063cddfc74  rcu: use atomic operation on acked token
+* 4ad17a1c8f  test/crypto: fix enqueue/dequeue callback case
+* 251fdc592d  test/crypto: fix synchronous API calls
+* 63bf81a617  test: fix named test macro
