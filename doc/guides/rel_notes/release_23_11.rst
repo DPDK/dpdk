@@ -1410,3 +1410,333 @@ Tested Platforms
 * Failed to add vdev when launch dpdk-pdump with vdev secondary process
 
     Fix available in upstream.
+
+23.11.3 Release Notes
+---------------------
+
+
+23.11.3 Fixes
+~~~~~~~~~~~~~
+
+* 23.11.3-rc1
+* Revert "test/bonding: fix loop on members"
+* app/dumpcap: fix handling of jumbo frames
+* app/dumpcap: remove unused struct array
+* app/procinfo: fix leak on exit
+* app/testpmd: avoid potential outside of array reference
+* app/testpmd: fix aged flow destroy
+* app/testpmd: remove flex item init command leftover
+* app/testpmd: remove redundant policy action condition
+* app/testpmd: remove unnecessary cast
+* baseband/acc: fix access to deallocated mem
+* baseband/acc: fix ring memory allocation
+* baseband/acc: fix soft output bypass RM
+* baseband/la12xx: fix use after free in modem config
+* bpf: fix free function mismatch if convert fails
+* build: remove version check on compiler links function
+* bus/dpaa: fix PFDRs leaks due to FQRNIs
+* bus/dpaa: fix VSP for 1G fm1-mac9 and 10
+* bus/dpaa: fix lock condition during error handling
+* bus/dpaa: fix the fman details status
+* bus/fslmc: fix Coverity warnings in QBMAN
+* bus/vdev: revert fix devargs in secondary process
+* common/cnxk: fix CPT HW word size for outbound SA
+* common/cnxk: fix IRQ reconfiguration
+* common/cnxk: fix MAC address change with active VF
+* common/cnxk: fix base log level
+* common/cnxk: fix build on Ubuntu 24.04
+* common/cnxk: fix double free of flow aging resources
+* common/cnxk: fix inline CTX write
+* common/dpaax/caamflib: enable fallthrough warnings
+* common/dpaax/caamflib: fix PDCP SNOW-ZUC watchdog
+* common/idpf: fix AVX-512 pointer copy on 32-bit
+* common/idpf: fix use after free in mailbox init
+* common/mlx5: fix error CQE handling for 128 bytes CQE
+* common/mlx5: fix misalignment
+* common/qat: fix use after free in device probe
+* crypto/bcmfs: fix free function mismatch
+* crypto/dpaa2_sec: fix memory leak
+* crypto/openssl: fix 3DES-CTR with big endian CPUs
+* crypto/openssl: fix potential string overflow
+* crypto/qat: fix ECDSA session handling
+* crypto/qat: fix modexp/inv length
+* crypto/scheduler: fix session size computation
+* dev: fix callback lookup when unregistering device
+* devtools: fix check of multiple commits fixed at once
+* dma/idxd: fix free function mismatch in device probe
+* dmadev: fix potential null pointer access
+* doc: correct definition of stats per queue feature
+* drivers: remove redundant newline from logs
+* eal/unix: optimize thread creation
+* eal/x86: fix 32-bit write combining store
+* ethdev: fix overflow in descriptor count
+* ethdev: verify queue ID in Tx done cleanup
+* event/cnxk: fix OOP handling in event mode
+* event/cnxk: fix Rx timestamp handling
+* event/cnxk: fix free function mismatch in port config
+* event/octeontx: fix possible integer overflow
+* eventdev: fix possible array underflow/overflow
+* examples/eventdev: fix queue crash with generic pipeline
+* examples/ipsec-secgw: fix dequeue count from cryptodev
+* examples/l2fwd-event: fix spinlock handling
+* examples/l3fwd-power: fix options parsing overflow
+* examples/l3fwd: fix read beyond boundaries
+* examples/ntb: check info query return
+* examples/vhost: fix free function mismatch
+* fib6: add runtime checks in AVX512 lookup
+* fib: fix AVX512 lookup
+* hash: fix thash LFSR initialization
+* log: remove per line log helper
+* member: fix choice of bucket for displacement
+* ml/cnxk: fix handling of TVM model I/O
+* net/bnx2x: fix always true expression
+* net/bnx2x: fix duplicate branch
+* net/bnx2x: fix possible infinite loop at startup
+* net/bnx2x: remove dead conditional
+* net/bnxt/tf_core: fix TCAM manager data corruption
+* net/bnxt/tf_core: fix Thor TF EM key size check
+* net/bnxt/tf_core: fix WC TCAM multi-slice delete
+* net/bnxt/tf_core: fix slice count in case of HA entry move
+* net/bnxt: fix TCP and UDP checksum flags
+* net/bnxt: fix bad action offset in Tx BD
+* net/bnxt: fix reading SFF-8436 SFP EEPROMs
+* net/cnxk: fix OOP handling for inbound packets
+* net/cnxk: fix Rx offloads to handle timestamp
+* net/cnxk: fix Rx timestamp handling for VF
+* net/cnxk: fix build on Ubuntu 24.04
+* net/cnxk: fix use after free in mempool create
+* net/cpfl: add checks for flow action types
+* net/cpfl: fix forwarding to physical port
+* net/cpfl: fix invalid free in JSON parser
+* net/cpfl: fix parsing protocol ID mask field
+* net/dpaa2: fix memory corruption in TM
+* net/dpaa2: remove unnecessary check for null before free
+* net/dpaa: fix reallocate mbuf handling
+* net/dpaa: fix typecasting channel ID
+* net/e1000/base: fix fallthrough in switch
+* net/e1000: fix link status crash in secondary process
+* net/e1000: fix use after free in filter flush
+* net/ena: revert redefining memcpy
+* net/gve/base: fix build with Fedora Rawhide
+* net/gve: add IO memory barriers before reading descriptors
+* net/gve: always attempt Rx refill on DQ
+* net/gve: fix Tx for chained mbuf
+* net/gve: fix mbuf allocation memory leak for DQ Rx
+* net/gve: fix queue setup and stop
+* net/gve: fix refill logic causing memory corruption
+* net/hns3: fix dump counter of registers
+* net/hns3: fix error code for repeatedly create counter
+* net/hns3: fix fully use hardware flow director table
+* net/hns3: register VLAN flow match mode parameter
+* net/hns3: remove ROH devices
+* net/hns3: remove some basic address dump
+* net/hns3: restrict tunnel flow rule to one header
+* net/hns3: verify reset type from firmware
+* net/i40e/base: add missing X710TL device check
+* net/i40e/base: fix DDP loading with reserved track ID
+* net/i40e/base: fix blinking X722 with X557 PHY
+* net/i40e/base: fix loop bounds
+* net/i40e/base: fix misleading debug logs and comments
+* net/i40e/base: fix repeated register dumps
+* net/i40e/base: fix setting flags in init function
+* net/i40e/base: fix unchecked return value
+* net/i40e: check register read for outer VLAN
+* net/i40e: fix AVX-512 pointer copy on 32-bit
+* net/iavf: add segment-length check to Tx prep
+* net/iavf: delay VF reset command
+* net/iavf: fix AVX-512 pointer copy on 32-bit
+* net/iavf: fix crash when link is unstable
+* net/iavf: preserve MAC address with i40e PF Linux driver
+* net/ice/base: add bounds check
+* net/ice/base: fix VLAN replay after reset
+* net/ice/base: fix iteration of TLVs in Preserved Fields Area
+* net/ice/base: fix link speed for 200G
+* net/ice: detect stopping a flow director queue twice
+* net/ice: fix AVX-512 pointer copy on 32-bit
+* net/igc: fix Rx buffers when timestamping enabled
+* net/ionic: fix build with Fedora Rawhide
+* net/ixgbe/base: fix unchecked return value
+* net/ixgbe: fix link status delay on FreeBSD
+* net/mana: support rdma-core via pkg-config
+* net/memif: fix buffer overflow in zero copy Rx
+* net/mlx5/hws: fix allocation of STCs
+* net/mlx5/hws: fix flex item as tunnel header
+* net/mlx5/hws: fix range definer error recovery
+* net/mlx5: add flex item query for tunnel mode
+* net/mlx5: fix GRE flow item translation for root table
+* net/mlx5: fix Rx queue control management
+* net/mlx5: fix Rx queue reference count in flushing flows
+* net/mlx5: fix SQ flow item size
+* net/mlx5: fix SWS meter state initialization
+* net/mlx5: fix Tx tracing to use single clock source
+* net/mlx5: fix counter query loop getting stuck
+* net/mlx5: fix default RSS flows creation order
+* net/mlx5: fix flex item header length field translation
+* net/mlx5: fix flex item tunnel mode
+* net/mlx5: fix indirect list flow action callback invocation
+* net/mlx5: fix memory leak in metering
+* net/mlx5: fix miniCQEs number calculation
+* net/mlx5: fix next protocol validation after flex item
+* net/mlx5: fix non full word sample fields in flex item
+* net/mlx5: fix non-template flow action validation
+* net/mlx5: fix number of supported flex parsers
+* net/mlx5: fix real time counter reading from PCI BAR
+* net/mlx5: fix reported Rx/Tx descriptor limits
+* net/mlx5: fix shared Rx queue control release
+* net/mlx5: fix shared queue port number in vector Rx
+* net/mlx5: fix trace script for multiple burst completion
+* net/mlx5: workaround list management of Rx queue control
+* net/mvneta: fix possible out-of-bounds write
+* net/netvsc: fix using Tx queue higher than Rx queues
+* net/netvsc: force Tx VLAN offload on 801.2Q packet
+* net/nfb: fix use after free
+* net/nfp: do not set IPv6 flag in transport mode
+* net/nfp: fix double free in flow destroy
+* net/nfp: fix link change return value
+* net/nfp: fix pause frame setting check
+* net/nfp: fix representor port link status update
+* net/nfp: fix type declaration of some variables
+* net/nfp: notify flower firmware about PF speed
+* net/ngbe: fix driver load bit to inform firmware
+* net/ngbe: fix interrupt lost in legacy or MSI mode
+* net/ngbe: reconfigure more MAC Rx registers
+* net/ngbe: restrict configuration of VLAN strip offload
+* net/pcap: fix blocking Rx
+* net/pcap: set live interface as non-blocking
+* net/sfc: fix use after free in debug logs
+* net/tap: avoid memcpy with null argument
+* net/tap: restrict maximum number of MP FDs
+* net/txgbe: fix SWFW mbox
+* net/txgbe: fix VF-PF mbox interrupt
+* net/txgbe: fix a mass of interrupts
+* net/txgbe: fix driver load bit to inform firmware
+* net/txgbe: remove outer UDP checksum capability
+* net/virtio-user: reset used index counter
+* net/virtio: fix Rx checksum calculation
+* net/vmxnet3: fix crash after configuration failure
+* net/vmxnet3: fix potential out of bounds stats access
+* net/vmxnet3: support larger MTU with version 6
+* pcapng: avoid potential unaligned data
+* pcapng: fix handling of chained mbufs
+* power: enable CPPC
+* power: fix log message when checking lcore ID
+* power: fix mapped lcore ID
+* raw/ifpga/base: fix use after free
+* raw/ifpga: fix free function mismatch in interrupt config
+* rcu: fix implicit conversion in bit shift
+* test/bonding: fix MAC address comparison
+* test/bonding: fix loop on members
+* test/bonding: remove redundant info query
+* test/crypto: fix synchronous API calls
+* test/eal: fix lcore check
+* test/eal: fix loop coverage for alignment macros
+* test/event: avoid duplicate initialization
+* test/event: fix schedule type
+* test/event: fix target event queue
+* test/security: fix IPv6 extension loop
+* vdpa/nfp: fix hardware initialization
+* vdpa/nfp: fix reconfiguration
+* vdpa: update used flags in used ring relay
+* version: 23.11.3-rc1
+* vhost: fix deadlock in Rx async path
+* vhost: fix offset while mapping log base address
+* vhost: restrict set max queue pair API to VDUSE
+
+23.11.3 Validation
+~~~~~~~~~~~~~~~~~~
+
+* RedHat Testing:
+
+    * Test scenarios:
+
+        * VM with device assignment(PF) throughput testing(1G hugepage size)
+        * VM with device assignment(PF) throughput testing(2M hugepage size)
+        * VM with device assignment(VF) throughput testing
+        * PVP (host dpdk testpmd as vswitch) 1Q: throughput testing
+        * PVP vhost-user 2Q throughput testing
+        * PVP vhost-user 1Q - cross numa node throughput testing
+        * VM with vhost-user 2 queues throughput testing
+        * vhost-user reconnect with dpdk-client, qemu-server(qemu reconnect)
+        * vhost-user reconnect with dpdk-client, qemu-server(ovs reconnect)
+        * PVP  reconnect with dpdk-client, qemu-server
+        * PVP 1Q live migration testing
+        * PVP 1Q cross numa node live migration testing
+        * VM with ovs+dpdk+vhost-user 1Q live migration testing
+        * VM with ovs+dpdk+vhost-user 1Q live migration testing (2M)
+        * VM with ovs+dpdk+vhost-user 2Q live migration testing
+        * VM with ovs+dpdk+vhost-user 4Q live migration testing
+        * Host PF + DPDK testing
+        * Host VF + DPDK testing
+
+    * Test Versions and device:
+
+        * RHEL 9.4
+        * qemu-kvm-8.2.0
+        * kernel 5.14
+        * libvirt 10.0
+        * openvswitch 3.1
+        * X540-AT2 NIC(ixgbe, 10G)
+
+* Nvidia(R) Testing:
+
+    * Test scenarios:
+
+        * Send and receive multiple types of traffic.
+        * testpmd xstats counter test.
+        * testpmd timestamp test.
+        * Changing/checking link status through testpmd.
+        * rte_flow tests (https://doc.dpdk.org/guides/nics/mlx5.html#supported-hardware-offloads)
+        * RSS tests.
+        * VLAN filtering, stripping, and insertion tests.
+        * Checksum and TSO tests.
+        * ptype tests.
+        * link_status_interrupt example application tests.
+        * l3fwd-power example application tests.
+        * Multi-process example applications tests.
+        * Hardware LRO tests.
+        * Buffer Split tests.
+        * Tx scheduling tests.
+
+    * Test platform:
+
+        * NIC: ConnectX-6 Dx / OS: Ubuntu 22.04 / Driver: MLNX_OFED_LINUX-24.10-1.1.4.0 / Firmware: 22.43.2026
+        * NIC: ConnectX-7 / OS: Ubuntu 22.04 / Driver: MLNX_OFED_LINUX-24.10-1.1.4.0 / Firmware: 28.43.2026
+        * DPU: BlueField-2 / DOCA SW version: 2.9.1 / Firmware: 24.43.2026
+
+    * OS/driver combinations:
+
+        * Debian 12 with MLNX_OFED_LINUX-24.10-1.1.4.0.
+        * Ubuntu 22.04 with MLNX_OFED_LINUX-24.10-1.1.4.0.
+        * Ubuntu 24.04 with MLNX_OFED_LINUX-24.10-1.1.4.0.
+        * Ubuntu 24.04 with rdma-core v50.0.
+        * Fedora 40 with rdma-core v48.0.
+        * Fedora 42 (Rawhide) with rdma-core v51.0.
+        * OpenSUSE Leap 15.6 with rdma-core v49.1.
+
+* Intel(R) Testing:
+
+    * Basic NIC testing
+
+        * Build & CFLAG compile: cover the build test combination with latest GCC/Clang version and the popular OS revision such as Ubuntu24.10, Ubuntu22.04, Fedora40, RHEL8.10, RHEL9.4, FreeBSD14.1, SUSE15, openEuler22.03-SP2, OpenAnolis8.9 etc.
+        * PF(i40e, ixgbe): test scenarios including RTE_FLOW/TSO/Jumboframe/checksum offload/VLAN/VXLAN, etc.
+        * VF(i40e, ixgbe): test scenarios including VF-RTE_FLOW/TSO/Jumboframe/checksum offload/VLAN/VXLAN, etc.
+        * PF/VF(ice): test scenarios including Switch features/Package Management/Flow Director/Advanced Tx/Advanced RSS/ACL/DCF/Flexible Descriptor, etc.
+        * Intel NIC single core/NIC performance: test scenarios including PF/VF single core performance test, etc.
+        * IPsec: test scenarios including ipsec/ipsec-gw/ipsec library basic test - QAT&SW/FIB library, etc.
+
+    * Basic cryptodev and virtio testing
+
+        * Virtio: both function and performance test are covered. Such as PVP/Virtio_loopback/virtio-user loopback/virtio-net VM2VM perf testing/VMAWARE ESXI 8.0, etc.
+        * Cryptodev Function test: Cryptodev API testing/CompressDev ISA-L/QAT/ZLIB PMD Testing/FIPS, etc.
+        * Cryptodev Performance test: test scenarios including Throughput Performance/Cryptodev Latency, etc.
+
+23.11.3 Known Issues
+~~~~~~~~~~~~~~~~~~~~
+
+* Start dpdk-pdump in VM with virtio-0.95 protocol failed
+
+    Fix available in upstream.
+
+* Failed to add vdev when launch dpdk-pdump with vdev secondary process
+
+    Fix available in upstream.
