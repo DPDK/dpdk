@@ -1112,12 +1112,8 @@ inline uint16_t bnxt_max_rings(struct bnxt *bp)
 static inline bool
 bnxt_compressed_rx_cqe_mode_enabled(struct bnxt *bp)
 {
-	uint64_t rx_offloads = bp->eth_dev->data->dev_conf.rxmode.offloads;
-
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_L2_CQE_MODE &&
 		bp->flags2 & BNXT_FLAGS2_COMPRESSED_RX_CQE &&
-		!(rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) &&
-		!(rx_offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) &&
 		!bp->num_reps && !bp->ieee_1588)
 		return true;
 
