@@ -256,9 +256,6 @@ int otx_ep_mbox_get_link_info(struct rte_eth_dev *eth_dev,
 	}
 	link->link_status = RTE_ETH_LINK_UP;
 	link->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-	link->link_autoneg = (link_info.autoneg ==
-			      OTX_EP_LINK_AUTONEG) ? RTE_ETH_LINK_AUTONEG : RTE_ETH_LINK_FIXED;
-
 	link->link_autoneg = link_info.autoneg;
 	link->link_speed = link_info.speed;
 	return 0;
