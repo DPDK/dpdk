@@ -415,7 +415,6 @@ enetfec_tx_queue_setup(struct rte_eth_dev *dev,
 			offset_des_active_txq[queue_idx];
 	bd_base = (struct bufdesc *)(((uintptr_t)bd_base) + size);
 	txq->bd.last = (struct bufdesc *)(((uintptr_t)bd_base) - dsize);
-	bdp = txq->bd.base;
 	bdp = txq->bd.cur;
 
 	for (i = 0; i < txq->bd.ring_size; i++) {
