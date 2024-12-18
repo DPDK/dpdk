@@ -32,5 +32,8 @@ int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 bool nfp_flower_repr_is_vf(struct nfp_flower_representor *repr);
 bool nfp_flower_repr_is_phy(struct nfp_flower_representor *repr);
 int nfp_flower_repr_stats_reset(struct rte_eth_dev *ethdev);
+int nfp_flower_repr_link_update(struct rte_eth_dev *dev,
+		__rte_unused int wait_to_complete);
+bool nfp_flower_repr_is_pf(struct rte_eth_dev *dev);
 
 #endif /* __NFP_FLOWER_REPRESENTOR_H__ */

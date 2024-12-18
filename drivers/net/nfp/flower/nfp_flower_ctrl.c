@@ -420,6 +420,8 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 {
 	uint32_t port;
 	uint32_t index;
+	uint16_t link_status;
+	struct rte_eth_dev *eth_dev;
 	struct nfp_flower_representor *repr;
 	struct nfp_flower_cmsg_port_mod *msg;
 	struct nfp_app_fw_flower *app_fw_flower;
@@ -456,10 +458,22 @@ nfp_flower_cmsg_port_mod_rx(struct nfp_net_hw_priv *hw_priv,
 	}
 
 	repr->link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
+
+	link_status = repr->link.link_status;
 	if ((msg->info & NFP_FLOWER_CMSG_PORT_MOD_INFO_LINK) != 0)
 		repr->link.link_status = RTE_ETH_LINK_UP;
 	else
 		repr->link.link_status = RTE_ETH_LINK_DOWN;
+
+	if (link_status != repr->link.link_status) {
+		eth_dev = rte_eth_dev_get_by_name(repr->name);
+		if (eth_dev == NULL) {
+			PMD_DRV_LOG(ERR, "Can not get 'eth_dev' by name %s.", repr->name);
+			return -EINVAL;
+		}
+
+		nfp_flower_repr_link_update(eth_dev, 0);
+	}
 
 	return 0;
 }
