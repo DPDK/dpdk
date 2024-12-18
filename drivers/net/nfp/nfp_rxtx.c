@@ -863,6 +863,7 @@ nfp_net_rx_queue_info_get(struct rte_eth_dev *dev,
 	nfp_net_infos_get(dev, &dev_info);
 	info->conf.offloads = dev_info.rx_offload_capa &
 			dev->data->dev_conf.rxmode.offloads;
+	info->conf.rx_thresh = dev_info.default_rxconf.rx_thresh;
 }
 
 void
@@ -884,6 +885,7 @@ nfp_net_tx_queue_info_get(struct rte_eth_dev *dev,
 	nfp_net_infos_get(dev, &dev_info);
 	info->conf.offloads = dev_info.tx_offload_capa &
 			dev->data->dev_conf.txmode.offloads;
+	info->conf.tx_thresh = dev_info.default_txconf.tx_thresh;
 }
 
 void
