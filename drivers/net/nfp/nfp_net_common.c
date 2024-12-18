@@ -159,6 +159,15 @@ static const uint32_t nfp_net_link_speed_nfp2rte[] = {
 	[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
 };
 
+static bool
+nfp_net_is_pf(struct rte_eth_dev *dev)
+{
+	if (rte_eth_dev_is_repr(dev))
+		return nfp_flower_repr_is_pf(dev);
+
+	return ((struct nfp_net_hw_priv *)dev->process_private)->is_pf;
+}
+
 static size_t
 nfp_net_link_speed_rte2nfp(uint32_t speed)
 {
@@ -826,7 +835,7 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 
 	hw_priv = dev->process_private;
 	if (link->link_status == RTE_ETH_LINK_UP) {
-		if (hw_priv->is_pf)
+		if (nfp_net_is_pf(dev))
 			nfp_net_pf_speed_update(dev, hw_priv, link);
 		else
 			nfp_net_vf_speed_update(link, link_status);

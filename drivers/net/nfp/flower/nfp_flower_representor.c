@@ -24,6 +24,21 @@ struct nfp_repr_init {
 	struct nfp_net_hw_priv *hw_priv;
 };
 
+bool
+nfp_flower_repr_is_pf(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw_priv *hw_priv;
+	struct nfp_flower_representor *repr;
+
+	hw_priv = dev->process_private;
+	repr = dev->data->dev_private;
+
+	if (hw_priv->pf_dev->multi_pf.enabled)
+		return repr->repr_type == NFP_REPR_TYPE_PHYS_PORT;
+	else
+		return repr->repr_type == NFP_REPR_TYPE_PF;
+}
+
 static int
 nfp_repr_get_eeprom_len(struct rte_eth_dev *dev)
 {
@@ -112,7 +127,7 @@ nfp_flower_repr_led_off(struct rte_eth_dev *dev)
 	return nfp_net_led_off(dev);
 }
 
-static int
+int
 nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
@@ -125,7 +140,7 @@ nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 
 	ret = nfp_net_link_update_common(dev, link, link->link_status);
 
-	if (repr->repr_type == NFP_REPR_TYPE_PF)
+	if (nfp_flower_repr_is_pf(dev))
 		nfp_net_notify_port_speed(repr->app_fw_flower->pf_hw, link);
 
 	return ret;
