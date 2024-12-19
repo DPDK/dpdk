@@ -6532,8 +6532,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	eth_dev->rx_queue_count = bnxt_rx_queue_count_op;
 	eth_dev->rx_descriptor_status = bnxt_rx_descriptor_status_op;
 	eth_dev->tx_descriptor_status = bnxt_tx_descriptor_status_op;
-	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
-	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
+	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
+	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
 
 	/*
 	 * For secondary processes, we don't initialise any further
