@@ -25,6 +25,10 @@
 
 struct rte_cryptodev_asym_session;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** asym key exchange operation type name strings */
 extern const char *
 rte_crypto_asym_ke_strings[];
@@ -32,6 +36,10 @@ rte_crypto_asym_ke_strings[];
 /** asym operations type name strings */
 extern const char *
 rte_crypto_asym_op_strings[];
+
+#ifdef __cplusplus
+}
+#endif
 
 #define RTE_CRYPTO_ASYM_FLAG_PUB_KEY_NO_PADDING		RTE_BIT32(0)
 /**<
