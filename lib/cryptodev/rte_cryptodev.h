@@ -22,6 +22,10 @@
 
 #include "rte_cryptodev_trace_fp.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @internal Logtype used for cryptodev related messages.
  */
@@ -1928,11 +1932,16 @@ int rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 				      uint16_t qp_id,
 				      struct rte_cryptodev_cb *cb);
 
-#include <rte_cryptodev_core.h>
+#ifdef __cplusplus
+}
+#endif
+
+#include "rte_cryptodev_core.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /**
  *
  * Dequeue a burst of processed crypto operations from a queue on the crypto
@@ -2124,7 +2133,6 @@ out:
 	rte_cryptodev_trace_qp_depth_used(dev_id, qp_id);
 	return rc;
 }
-
 
 #ifdef __cplusplus
 }
