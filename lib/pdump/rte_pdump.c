@@ -202,6 +202,8 @@ pdump_register_rx_callbacks(enum pdump_version ver,
 					rte_errno);
 				return rte_errno;
 			}
+
+			memset(&pdump_stats->rx[port][qid], 0, sizeof(struct rte_pdump_stats));
 		} else if (operation == DISABLE) {
 			int ret;
 
@@ -260,6 +262,7 @@ pdump_register_tx_callbacks(enum pdump_version ver,
 					rte_errno);
 				return rte_errno;
 			}
+			memset(&pdump_stats->tx[port][qid], 0, sizeof(struct rte_pdump_stats));
 		} else if (operation == DISABLE) {
 			int ret;
 
