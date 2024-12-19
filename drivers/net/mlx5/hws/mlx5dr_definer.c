@@ -2205,7 +2205,7 @@ mlx5dr_definer_conv_item_ptype(struct mlx5dr_definer_conv_data *cd,
 		 * Cannot be combined with Layer 4 Types (TCP/UDP).
 		 * The exact value must be specified in the mask.
 		 */
-		if (m->packet_type == RTE_PTYPE_L4_FRAG) {
+		if ((m->packet_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_FRAG) {
 			fc = &cd->fc[DR_CALC_FNAME(PTYPE_FRAG, false)];
 			fc->item_idx = item_idx;
 			fc->tag_set = &mlx5dr_definer_ptype_frag_set;
@@ -2227,7 +2227,7 @@ mlx5dr_definer_conv_item_ptype(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	if (m->packet_type & RTE_PTYPE_INNER_L4_MASK) {
-		if (m->packet_type == RTE_PTYPE_INNER_L4_FRAG) {
+		if ((m->packet_type & RTE_PTYPE_INNER_L4_MASK) == RTE_PTYPE_INNER_L4_FRAG) {
 			fc = &cd->fc[DR_CALC_FNAME(PTYPE_FRAG, true)];
 			fc->item_idx = item_idx;
 			fc->tag_set = &mlx5dr_definer_ptype_frag_set;
