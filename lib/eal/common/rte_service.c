@@ -879,7 +879,7 @@ lcore_attr_get_service_calls(uint32_t service_id, unsigned int lcore)
 static uint64_t
 lcore_attr_get_service_idle_calls(uint32_t service_id, unsigned int lcore)
 {
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	return rte_atomic_load_explicit(&cs->service_stats[service_id].idle_calls,
 		rte_memory_order_relaxed);
@@ -888,7 +888,7 @@ lcore_attr_get_service_idle_calls(uint32_t service_id, unsigned int lcore)
 static uint64_t
 lcore_attr_get_service_error_calls(uint32_t service_id, unsigned int lcore)
 {
-	struct core_state *cs = &lcore_states[lcore];
+	struct core_state *cs =	RTE_LCORE_VAR_LCORE(lcore, lcore_states);
 
 	return rte_atomic_load_explicit(&cs->service_stats[service_id].error_calls,
 		rte_memory_order_relaxed);
