@@ -2733,6 +2733,9 @@ vhost_dequeue_offload_legacy(struct virtio_net *dev, struct virtio_net_hdr *hdr,
 	}
 
 	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
+		if (hdr->gso_size == 0)
+			goto error;
+
 		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
 		case VIRTIO_NET_HDR_GSO_TCPV4:
 		case VIRTIO_NET_HDR_GSO_TCPV6:
