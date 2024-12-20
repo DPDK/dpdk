@@ -2783,6 +2783,7 @@ bond_ethdev_promiscuous_update(struct rte_eth_dev *dev)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
 	uint16_t port_id = internals->current_primary_port;
+	int ret;
 
 	switch (internals->mode) {
 	case BONDING_MODE_ROUND_ROBIN:
@@ -2802,10 +2803,19 @@ bond_ethdev_promiscuous_update(struct rte_eth_dev *dev)
 		 * mode should be set to new primary member according to bonding
 		 * device.
 		 */
-		if (rte_eth_promiscuous_get(internals->port_id) == 1)
-			rte_eth_promiscuous_enable(port_id);
-		else
-			rte_eth_promiscuous_disable(port_id);
+		if (rte_eth_promiscuous_get(internals->port_id) == 1) {
+			ret = rte_eth_promiscuous_enable(port_id);
+			if (ret != 0)
+				RTE_BOND_LOG(ERR,
+					     "Failed to enable promiscuous mode for port %u: %s",
+					     port_id, rte_strerror(-ret));
+		} else {
+			ret = rte_eth_promiscuous_disable(port_id);
+			if (ret != 0)
+				RTE_BOND_LOG(ERR,
+					     "Failed to disable promiscuous mode for port %u: %s",
+					     port_id, rte_strerror(-ret));
+		}
 	}
 
 	return 0;
