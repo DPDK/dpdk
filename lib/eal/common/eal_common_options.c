@@ -395,12 +395,21 @@ eal_plugins_init(void)
 }
 #else
 
+static bool
+ends_with(const char *str, const char *tail)
+{
+	size_t tail_len = strlen(tail);
+	size_t str_len = strlen(str);
+
+	return str_len >= tail_len && strcmp(&str[str_len - tail_len], tail) == 0;
+}
+
 static int
 eal_plugindir_init(const char *path)
 {
-	DIR *d = NULL;
 	struct dirent *dent = NULL;
 	char sopath[PATH_MAX];
+	DIR *d = NULL;
 
 	if (path == NULL || *path == '\0')
 		return 0;
@@ -414,12 +423,8 @@ eal_plugindir_init(const char *path)
 
 	while ((dent = readdir(d)) != NULL) {
 		struct stat sb;
-		int nlen = strnlen(dent->d_name, sizeof(dent->d_name));
 
-		/* check if name ends in .so or .so.ABI_VERSION */
-		if (strcmp(&dent->d_name[nlen - 3], ".so") != 0 &&
-		    strcmp(&dent->d_name[nlen - 4 - strlen(ABI_VERSION)],
-			   ".so."ABI_VERSION) != 0)
+		if (!ends_with(dent->d_name, ".so") && !ends_with(dent->d_name, ".so."ABI_VERSION))
 			continue;
 
 		snprintf(sopath, sizeof(sopath), "%s/%s", path, dent->d_name);
