@@ -6440,6 +6440,8 @@ static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 {
 	struct rte_eth_dev *eth_dev;
+	uint16_t port_id;
+	int rc = 0;
 
 	eth_dev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (!eth_dev)
@@ -6449,14 +6451,20 @@ static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 			   * +ve value will at least help in proper cleanup
 			   */
 
-	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci remove\n", eth_dev->data->port_id);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
-			return rte_eth_dev_destroy(eth_dev,
-						   bnxt_representor_uninit);
-		else
-			return rte_eth_dev_destroy(eth_dev,
-						   bnxt_dev_uninit);
+		RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device) {
+			PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci remove", port_id);
+			eth_dev = &rte_eth_devices[port_id];
+			if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+				rc = rte_eth_dev_destroy(eth_dev,
+							 bnxt_representor_uninit);
+			else
+				rc = rte_eth_dev_destroy(eth_dev,
+							 bnxt_dev_uninit);
+			if (rc != 0)
+				return rc;
+		}
+		return rc;
 	} else {
 		return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
 	}
