@@ -691,6 +691,8 @@ mlx5_handle_port_info_update(struct mlx5_dev_info *dev_info, uint32_t if_index,
 	if (dev_info->port_num <= 1 || dev_info->port_info == NULL)
 		return;
 
+	DRV_LOG(DEBUG, "IB device %s ifindex %u received netlink event %u",
+			dev_info->ibname, if_index, msg_type);
 	for (i = 1; i <= dev_info->port_num; i++) {
 		if (!dev_info->port_info[i].valid)
 			continue;
@@ -734,7 +736,8 @@ mlx5_dev_interrupt_nl_cb(struct nlmsghdr *hdr, void *cb_arg)
 
 	if (mlx5_nl_parse_link_status_update(hdr, &if_index) < 0)
 		return;
-	mlx5_handle_port_info_update(&sh->cdev->dev_info, if_index, hdr->nlmsg_type);
+	if (sh->cdev->config.probe_opt && sh->cdev->dev_info.port_num > 1)
+		mlx5_handle_port_info_update(&sh->cdev->dev_info, if_index, hdr->nlmsg_type);
 
 	for (i = 0; i < sh->max_port; i++) {
 		struct mlx5_dev_shared_port *port = &sh->port[i];

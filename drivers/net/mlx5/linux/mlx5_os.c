@@ -2339,7 +2339,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	while (ret-- > 0) {
 		struct rte_pci_addr pci_addr;
 
-		if (cdev->dev_info.port_num) {
+		if (cdev->config.probe_opt && cdev->dev_info.port_num) {
 			if (strcmp(ibv_list[ret]->name, cdev->dev_info.ibname)) {
 				DRV_LOG(INFO, "Unmatched caching device \"%s\" \"%s\"",
 					cdev->dev_info.ibname, ibv_list[ret]->name);

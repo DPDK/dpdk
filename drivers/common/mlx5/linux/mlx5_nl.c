@@ -1148,7 +1148,7 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info 
 			.flags = 0,
 	};
 
-	if (!strcmp(name, dev_info->ibname)) {
+	if (dev_info->probe_opt && !strcmp(name, dev_info->ibname)) {
 		if (dev_info->port_info && pindex <= dev_info->port_num &&
 		    dev_info->port_info[pindex].valid) {
 			if (!dev_info->port_info[pindex].ifindex)
@@ -1161,7 +1161,7 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info 
 
 	ret = mlx5_nl_port_info(nl, pindex, &data);
 
-	if (!strcmp(dev_info->ibname, name)) {
+	if (dev_info->probe_opt && !strcmp(dev_info->ibname, name)) {
 		if ((!ret || ret == -ENODEV) && dev_info->port_info &&
 		    pindex <= dev_info->port_num) {
 			if (!ret)
@@ -1201,7 +1201,8 @@ mlx5_nl_port_state(int nl, const char *name, uint32_t pindex, struct mlx5_dev_in
 			.ibindex = UINT32_MAX,
 	};
 
-	if (dev_info && !strcmp(name, dev_info->ibname) && dev_info->port_num)
+	if (dev_info && dev_info->probe_opt &&
+	    !strcmp(name, dev_info->ibname) && dev_info->port_num)
 		data.ibindex = dev_info->ibindex;
 	if (mlx5_nl_port_info(nl, pindex, &data) < 0)
 		return -rte_errno;
@@ -1244,7 +1245,8 @@ mlx5_nl_portnum(int nl, const char *name, struct mlx5_dev_info *dev_info)
 	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret, size;
 
-	if (dev_info->port_num && !strcmp(name, dev_info->ibname))
+	if (dev_info->probe_opt && dev_info->port_num &&
+	    !strcmp(name, dev_info->ibname))
 		return dev_info->port_num;
 
 	ret = mlx5_nl_send(nl, &req, sn);
@@ -1263,6 +1265,8 @@ mlx5_nl_portnum(int nl, const char *name, struct mlx5_dev_info *dev_info)
 		rte_errno = EINVAL;
 		return 0;
 	}
+	if (!dev_info->probe_opt)
+		return data.portnum;
 	MLX5_ASSERT(!strlen(dev_info->ibname));
 	dev_info->port_num = data.portnum;
 	dev_info->ibindex = data.ibindex;

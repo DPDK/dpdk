@@ -1061,6 +1061,13 @@ Runtime Configuration
 Please refer to :ref:`mlx5 common options <mlx5_common_driver_options>`
 for an additional list of options shared with other mlx5 drivers.
 
+- ``probe_opt_en`` parameter [int]
+
+  A non-zero value optimizes the probing process, especially for large scale.
+  The PMD will hold the IB device information internally and reuse it.
+
+  By default, the PMD will set this value to 0.
+
 - ``rxq_cqe_comp_en`` parameter [int]
 
   A nonzero value enables the compression of CQE on RX side. This feature

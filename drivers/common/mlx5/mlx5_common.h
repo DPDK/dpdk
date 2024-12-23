@@ -183,6 +183,7 @@ struct mlx5_dev_info {
 	uint32_t port_num;
 	uint32_t ibindex;
 	char ibname[MLX5_FS_NAME_MAX];
+	uint8_t probe_opt;
 	struct mlx5_port_nl_info *port_info;
 };
 
@@ -525,6 +526,7 @@ struct mlx5_common_dev_config {
 	int pd_handle; /* Protection Domain handle for importation.  */
 	unsigned int devx:1; /* Whether devx interface is available or not. */
 	unsigned int sys_mem_en:1; /* The default memory allocator. */
+	unsigned int probe_opt:1; /* Optimize probing . */
 	unsigned int mr_mempool_reg_en:1;
 	/* Allow/prevent implicit mempool memory registration. */
 	unsigned int mr_ext_memseg_en:1;
