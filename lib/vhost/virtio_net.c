@@ -3960,6 +3960,16 @@ virtio_dev_tx_async_single_packed(struct virtio_net *dev,
 					 VHOST_ACCESS_RO) < 0))
 		return -1;
 
+	if (unlikely(buf_len <= dev->vhost_hlen)) {
+		if (!allocerr_warned) {
+			VHOST_DATA_LOG(dev->ifname, ERR, "Invalid buffer length.");
+			allocerr_warned = true;
+		}
+		return -1;
+	}
+
+	buf_len -= dev->vhost_hlen;
+
 	if (unlikely(virtio_dev_pktmbuf_prep(dev, pkts, buf_len))) {
 		if (!allocerr_warned) {
 			VHOST_DATA_LOG(dev->ifname, ERR, "Failed mbuf alloc of size %d from %s.",
