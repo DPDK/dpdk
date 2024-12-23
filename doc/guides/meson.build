@@ -22,6 +22,7 @@ html_guides = custom_target('html_guides',
         depfile: '.html.d',
         build_by_default: get_option('enable_docs'),
         install: get_option('enable_docs'),
+        install_tag: 'doc',
         install_dir: htmldir)
 
 doc_targets += html_guides
