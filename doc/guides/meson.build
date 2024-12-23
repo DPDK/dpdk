@@ -12,7 +12,7 @@ if get_option('werror')
     extra_sphinx_args += '-W'
 endif
 
-htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
+htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk', 'guides')
 html_guides = custom_target('html_guides',
         input: files('index.rst'),
         output: 'html',

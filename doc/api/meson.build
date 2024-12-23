@@ -14,7 +14,7 @@ endif
 generate_doxygen = py3 + files('generate_doxygen.py')
 generate_examples = py3 + files('generate_examples.py')
 
-htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk')
+htmldir = join_paths(get_option('datadir'), 'doc', 'dpdk', 'api')
 
 # due to the following bug: https://github.com/mesonbuild/meson/issues/4107
 # if install is set to true it will override build_by_default and it will
