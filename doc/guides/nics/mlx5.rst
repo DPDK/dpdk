@@ -1068,6 +1068,13 @@ for an additional list of options shared with other mlx5 drivers.
 
   By default, the PMD will set this value to 0.
 
+  .. note::
+
+    There is a race condition in probing port if ``probe_opt_en`` is enabled.
+    Port probing may fail with a wrong ifindex in cache
+    while the interrupt thread is updating the cache.
+    Please try again if port probing failed.
+
 - ``rxq_cqe_comp_en`` parameter [int]
 
   A nonzero value enables the compression of CQE on RX side. This feature

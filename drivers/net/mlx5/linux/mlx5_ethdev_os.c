@@ -894,6 +894,85 @@ mlx5_dev_interrupt_handler_devx(void *cb_arg)
 #endif /* HAVE_IBV_DEVX_ASYNC */
 }
 
+static void
+mlx5_dev_interrupt_ib_cb(struct nlmsghdr *hdr, void *cb_arg)
+{
+	mlx5_nl_rdma_monitor_info_get(hdr, (struct mlx5_nl_port_info *)cb_arg);
+}
+
+void
+mlx5_dev_interrupt_handler_ib(void *arg)
+{
+	struct mlx5_dev_ctx_shared *sh = arg;
+	struct mlx5_nl_port_info data = {
+		.flags = 0,
+		.name = "",
+		.ifindex = 0,
+		.ibindex = 0,
+		.portnum = 0,
+	};
+	int nlsk_fd = rte_intr_fd_get(sh->intr_handle_ib);
+	struct mlx5_dev_info *dev_info;
+	uint32_t i;
+
+	dev_info = &sh->cdev->dev_info;
+	DRV_LOG(DEBUG, "IB device %s received RDMA monitor netlink event", dev_info->ibname);
+	if (dev_info->port_num <= 1 || dev_info->port_info == NULL)
+		return;
+
+	if (nlsk_fd < 0)
+		return;
+
+	if (mlx5_nl_read_events(nlsk_fd, mlx5_dev_interrupt_ib_cb, &data) < 0)
+		DRV_LOG(ERR, "Failed to process Netlink events: %s",
+			rte_strerror(rte_errno));
+
+	if (!(data.flags & MLX5_NL_CMD_GET_EVENT_TYPE) ||
+		!(data.flags & MLX5_NL_CMD_GET_PORT_INDEX) ||
+		!(data.flags & MLX5_NL_CMD_GET_IB_INDEX))
+		return;
+
+	if (data.ibindex != dev_info->ibindex)
+		return;
+
+	if (data.event_type != MLX5_NL_RDMA_NETDEV_ATTACH_EVENT &&
+		data.event_type != MLX5_NL_RDMA_NETDEV_DETACH_EVENT)
+		return;
+
+	if (data.event_type == MLX5_NL_RDMA_NETDEV_ATTACH_EVENT &&
+	    !(data.flags & MLX5_NL_CMD_GET_NET_INDEX))
+		return;
+
+	DRV_LOG(DEBUG, "Event info: type %d, ibindex %d, ifindex %d, portnum %d,",
+		data.event_type, data.ibindex, data.ifindex, data.portnum);
+
+	/* Changes found in number of SF/VF ports. All information is likely unreliable. */
+	if (data.portnum > dev_info->port_num) {
+		DRV_LOG(ERR, "Port[%d] exceeds maximum[%d]", data.portnum, dev_info->port_num);
+		goto flush_all;
+	}
+	if (data.event_type == MLX5_NL_RDMA_NETDEV_ATTACH_EVENT) {
+		if (!dev_info->port_info[data.portnum].ifindex) {
+			dev_info->port_info[data.portnum].ifindex = data.ifindex;
+			dev_info->port_info[data.portnum].valid = 1;
+		} else {
+			DRV_LOG(WARNING, "Duplicate RDMA event for port[%d] ifindex[%d]",
+				data.portnum, data.ifindex);
+			if (data.ifindex != dev_info->port_info[data.portnum].ifindex)
+				goto flush_all;
+		}
+	} else if (data.event_type == MLX5_NL_RDMA_NETDEV_DETACH_EVENT) {
+		memset(dev_info->port_info + data.portnum, 0, sizeof(struct mlx5_port_nl_info));
+	}
+	return;
+
+flush_all:
+	for (i = 1; i <= dev_info->port_num; i++) {
+		dev_info->port_info[i].ifindex = 0;
+		dev_info->port_info[i].valid = 0;
+	}
+}
+
 /**
  * DPDK callback to bring the link DOWN.
  *

@@ -1616,6 +1616,7 @@ struct mlx5_dev_ctx_shared {
 	struct rte_intr_handle *intr_handle; /* Interrupt handler for device. */
 	struct rte_intr_handle *intr_handle_devx; /* DEVX interrupt handler. */
 	struct rte_intr_handle *intr_handle_nl; /* Netlink interrupt handler. */
+	struct rte_intr_handle *intr_handle_ib; /* Interrupt handler for IB device. */
 	void *devx_comp; /* DEVX async comp obj. */
 	struct mlx5_devx_obj *tis[16]; /* TIS object. */
 	struct mlx5_devx_obj *td; /* Transport domain. */
@@ -2322,6 +2323,7 @@ int mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev,
 void mlx5_dev_interrupt_handler(void *arg);
 void mlx5_dev_interrupt_handler_devx(void *arg);
 void mlx5_dev_interrupt_handler_nl(void *arg);
+void mlx5_dev_interrupt_handler_ib(void *arg);
 int mlx5_set_link_down(struct rte_eth_dev *dev);
 int mlx5_set_link_up(struct rte_eth_dev *dev);
 int mlx5_is_removed(struct rte_eth_dev *dev);

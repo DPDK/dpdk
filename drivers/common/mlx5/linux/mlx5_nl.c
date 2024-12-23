@@ -101,6 +101,7 @@
 #ifndef HAVE_RDMA_NL_GROUP_NOTIFY
 #define RDMA_NL_GROUP_NOTIFY 4
 #endif
+#define RDMA_NL_GROUP_NOTIFICATION (1 << (RDMA_NL_GROUP_NOTIFY - 1))
 
 /* These are normally found in linux/if_link.h. */
 #ifndef HAVE_IFLA_NUM_VF
@@ -174,22 +175,6 @@ struct mlx5_nl_mac_addr {
 	struct rte_ether_addr (*mac)[];
 	/**< MAC address handled by the device. */
 	int mac_n; /**< Number of addresses in the array. */
-};
-
-#define MLX5_NL_CMD_GET_IB_NAME (1 << 0)
-#define MLX5_NL_CMD_GET_IB_INDEX (1 << 1)
-#define MLX5_NL_CMD_GET_NET_INDEX (1 << 2)
-#define MLX5_NL_CMD_GET_PORT_INDEX (1 << 3)
-#define MLX5_NL_CMD_GET_PORT_STATE (1 << 4)
-
-/** Data structure used by mlx5_nl_cmdget_cb(). */
-struct mlx5_nl_port_info {
-	const char *name; /**< IB device name (in). */
-	uint32_t flags; /**< found attribute flags (out). */
-	uint32_t ibindex; /**< IB device index (out). */
-	uint32_t ifindex; /**< Network interface index (out). */
-	uint32_t portnum; /**< IB device max port number (out). */
-	uint16_t state; /**< IB device port state (out). */
 };
 
 RTE_ATOMIC(uint32_t) atomic_sn;
@@ -2109,4 +2094,61 @@ mlx5_nl_devlink_esw_multiport_get(int nlsk_fd, int family_id, const char *pci_ad
 	DRV_LOG(DEBUG, "Multiport E-Switch is %sabled for device \"%s\".",
 		*enable ? "en" : "dis", pci_addr);
 	return ret;
+}
+
+int
+mlx5_nl_rdma_monitor_init(void)
+{
+	return mlx5_nl_init(NETLINK_RDMA, RDMA_NL_GROUP_NOTIFICATION);
+}
+
+void
+mlx5_nl_rdma_monitor_info_get(struct nlmsghdr *hdr, struct mlx5_nl_port_info *data)
+{
+	size_t off = NLMSG_HDRLEN;
+	uint8_t event_type = 0;
+
+	if (hdr->nlmsg_type != RDMA_NL_GET_TYPE(RDMA_NL_NLDEV, RDMA_NLDEV_CMD_MONITOR))
+		goto error;
+
+	while (off < hdr->nlmsg_len) {
+		struct nlattr *na = (void *)((uintptr_t)hdr + off);
+		void *payload = (void *)((uintptr_t)na + NLA_HDRLEN);
+
+		if (na->nla_len > hdr->nlmsg_len - off)
+			goto error;
+		switch (na->nla_type) {
+		case RDMA_NLDEV_ATTR_EVENT_TYPE:
+			event_type = *(uint8_t *)payload;
+			if (event_type == RDMA_NETDEV_ATTACH_EVENT) {
+				data->flags |= MLX5_NL_CMD_GET_EVENT_TYPE;
+				data->event_type = MLX5_NL_RDMA_NETDEV_ATTACH_EVENT;
+			} else if (event_type == RDMA_NETDEV_DETACH_EVENT) {
+				data->flags |= MLX5_NL_CMD_GET_EVENT_TYPE;
+				data->event_type = MLX5_NL_RDMA_NETDEV_DETACH_EVENT;
+			}
+			break;
+		case RDMA_NLDEV_ATTR_DEV_INDEX:
+			data->ibindex = *(uint32_t *)payload;
+			data->flags |= MLX5_NL_CMD_GET_IB_INDEX;
+			break;
+		case RDMA_NLDEV_ATTR_PORT_INDEX:
+			data->portnum = *(uint32_t *)payload;
+			data->flags |= MLX5_NL_CMD_GET_PORT_INDEX;
+			break;
+		case RDMA_NLDEV_ATTR_NDEV_INDEX:
+			data->ifindex = *(uint32_t *)payload;
+			data->flags |= MLX5_NL_CMD_GET_NET_INDEX;
+			break;
+		default:
+			DRV_LOG(DEBUG, "Unknown attribute[%d] found", na->nla_type);
+			break;
+		}
+		off += NLA_ALIGN(na->nla_len);
+	}
+
+	return;
+
+error:
+	rte_errno = EINVAL;
 }

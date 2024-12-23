@@ -3024,6 +3024,21 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 		DRV_LOG(ERR, "Failed to allocate intr_handle.");
 		return;
 	}
+	if (sh->cdev->config.probe_opt && sh->cdev->dev_info.port_num > 1) {
+		nlsk_fd = mlx5_nl_rdma_monitor_init();
+		if (nlsk_fd < 0) {
+			DRV_LOG(ERR, "Failed to create a socket for RDMA Netlink events: %s",
+				rte_strerror(rte_errno));
+			return;
+		}
+		sh->intr_handle_ib = mlx5_os_interrupt_handler_create
+			(RTE_INTR_INSTANCE_F_SHARED, true,
+			 nlsk_fd, mlx5_dev_interrupt_handler_ib, sh);
+		if (sh->intr_handle_ib == NULL) {
+			DRV_LOG(ERR, "Fail to allocate intr_handle");
+			return;
+		}
+	}
 	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
 	if (nlsk_fd < 0) {
 		DRV_LOG(ERR, "Failed to create a socket for Netlink events: %s",
@@ -3085,6 +3100,11 @@ mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 	if (sh->devx_comp)
 		mlx5_glue->devx_destroy_cmd_comp(sh->devx_comp);
 #endif
+	fd = rte_intr_fd_get(sh->intr_handle_ib);
+	mlx5_os_interrupt_handler_destroy(sh->intr_handle_ib,
+				  mlx5_dev_interrupt_handler_ib, sh);
+	if (fd >= 0)
+		close(fd);
 }
 
 /**
