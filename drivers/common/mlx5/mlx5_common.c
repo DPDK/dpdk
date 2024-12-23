@@ -735,6 +735,11 @@ mlx5_common_dev_release(struct mlx5_common_device *cdev)
 		if (TAILQ_EMPTY(&devices_list))
 			rte_mem_event_callback_unregister("MLX5_MEM_EVENT_CB",
 							  NULL);
+		if (cdev->dev_info.port_info != NULL) {
+			mlx5_free(cdev->dev_info.port_info);
+			cdev->dev_info.port_info = NULL;
+		}
+		cdev->dev_info.port_num = 0;
 		mlx5_dev_mempool_unsubscribe(cdev);
 		mlx5_mr_release_cache(&cdev->mr_scache);
 		mlx5_dev_hw_global_release(cdev);

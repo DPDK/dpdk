@@ -1267,7 +1267,7 @@ err_secondary:
 		/* IB doesn't allow more than 255 ports, must be Ethernet. */
 		err = mlx5_nl_port_state(nl_rdma,
 			spawn->phys_dev_name,
-			spawn->phys_port);
+			spawn->phys_port, &spawn->cdev->dev_info);
 		if (err < 0) {
 			DRV_LOG(INFO, "Failed to get netlink port state: %s",
 				strerror(rte_errno));
@@ -1896,6 +1896,8 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
  *   Netlink RDMA group socket handle.
  * @param[in] owner
  *   Representor owner PF index.
+ * @param[in] dev_info
+ *   Cached mlx5 device information.
  * @param[out] bond_info
  *   Pointer to bonding information.
  *
@@ -1907,6 +1909,7 @@ static int
 mlx5_device_bond_pci_match(const char *ibdev_name,
 			   const struct rte_pci_addr *pci_dev,
 			   int nl_rdma, uint16_t owner,
+			   struct mlx5_dev_info *dev_info,
 			   struct mlx5_bond_info *bond_info)
 {
 	char ifname[IF_NAMESIZE + 1];
@@ -1927,7 +1930,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		return -1;
 	if (!strstr(ibdev_name, "bond"))
 		return -1;
-	np = mlx5_nl_portnum(nl_rdma, ibdev_name);
+	np = mlx5_nl_portnum(nl_rdma, ibdev_name, dev_info);
 	if (!np)
 		return -1;
 	if (mlx5_get_device_guid(pci_dev, cur_guid, sizeof(cur_guid)) < 0)
@@ -1939,7 +1942,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	 */
 	for (i = 1; i <= np; ++i) {
 		/* Check whether Infiniband port is populated. */
-		ifindex = mlx5_nl_ifindex(nl_rdma, ibdev_name, i);
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibdev_name, i, dev_info);
 		if (!ifindex)
 			continue;
 		if (!if_indextoname(ifindex, ifname))
@@ -1977,9 +1980,13 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		if (!file)
 			break;
 		info.name_type = MLX5_PHYS_PORT_NAME_TYPE_NOTSET;
-		if (fscanf(file, "%32s", tmp_str) == 1)
+		if (fscanf(file, "%32s", tmp_str) == 1) {
 			mlx5_translate_port_name(tmp_str, &info);
-		fclose(file);
+			fclose(file);
+		} else {
+			fclose(file);
+			break;
+		}
 		/* Only process PF ports. */
 		if (info.name_type != MLX5_PHYS_PORT_NAME_TYPE_LEGACY &&
 		    info.name_type != MLX5_PHYS_PORT_NAME_TYPE_UPLINK)
@@ -2002,8 +2009,8 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		if (ret != 1)
 			break;
 		/* Save bonding info. */
-		strncpy(bond_info->ports[info.port_name].ifname, ifname,
-			sizeof(bond_info->ports[0].ifname));
+		snprintf(bond_info->ports[info.port_name].ifname,
+			 sizeof(bond_info->ports[0].ifname), "%s", ifname);
 		bond_info->ports[info.port_name].pci_addr = pci_addr;
 		bond_info->ports[info.port_name].ifindex = ifindex;
 		bond_info->n_port++;
@@ -2032,6 +2039,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 		      pci_addr.function == owner)))
 			pf = info.port_name;
 	}
+	fclose(bond_file);
 	if (pf >= 0) {
 		/* Get bond interface info */
 		ret = mlx5_sysfs_bond_info(ifindex, &bond_info->ifindex,
@@ -2083,7 +2091,8 @@ close_nlsk_fd:
 #define SYSFS_MPESW_PARAM_MAX_LEN 16
 
 static int
-mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_addr, int *enabled)
+mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_addr, int *enabled,
+			     struct mlx5_dev_info *dev_info)
 {
 	int nl_rdma;
 	unsigned int n_ports;
@@ -2095,7 +2104,7 @@ mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_ad
 	nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
 	if (nl_rdma < 0)
 		return nl_rdma;
-	n_ports = mlx5_nl_portnum(nl_rdma, ibv->name);
+	n_ports = mlx5_nl_portnum(nl_rdma, ibv->name, dev_info);
 	if (!n_ports) {
 		ret = -rte_errno;
 		goto close_nl_rdma;
@@ -2103,12 +2112,12 @@ mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_ad
 	for (i = 1; i <= n_ports; ++i) {
 		unsigned int ifindex;
 		char ifname[IF_NAMESIZE + 1];
-		struct rte_pci_addr if_pci_addr;
+		struct rte_pci_addr if_pci_addr = { 0 };
 		char mpesw[SYSFS_MPESW_PARAM_MAX_LEN + 1];
 		FILE *sysfs;
 		int n;
 
-		ifindex = mlx5_nl_ifindex(nl_rdma, ibv->name, i);
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibv->name, i, dev_info);
 		if (!ifindex)
 			continue;
 		if (!if_indextoname(ifindex, ifname))
@@ -2150,7 +2159,8 @@ close_nl_rdma:
 }
 
 static int
-mlx5_is_mpesw_enabled(struct ibv_device *ibv, struct rte_pci_addr *ibv_pci_addr, int *enabled)
+mlx5_is_mpesw_enabled(struct ibv_device *ibv, struct rte_pci_addr *ibv_pci_addr, int *enabled,
+		      struct mlx5_dev_info *dev_info)
 {
 	/*
 	 * Try getting Multiport E-Switch state through netlink interface
@@ -2158,7 +2168,7 @@ mlx5_is_mpesw_enabled(struct ibv_device *ibv, struct rte_pci_addr *ibv_pci_addr,
 	 * assume that Multiport E-Switch is disabled and return an error.
 	 */
 	if (mlx5_nl_esw_multiport_get(ibv_pci_addr, enabled) >= 0 ||
-	    mlx5_sysfs_esw_multiport_get(ibv, ibv_pci_addr, enabled) >= 0)
+	    mlx5_sysfs_esw_multiport_get(ibv, ibv_pci_addr, enabled, dev_info) >= 0)
 		return 0;
 	DRV_LOG(DEBUG, "Unable to check MPESW state for IB device %s "
 		       "(PCI: " PCI_PRI_FMT ")",
@@ -2172,7 +2182,7 @@ mlx5_is_mpesw_enabled(struct ibv_device *ibv, struct rte_pci_addr *ibv_pci_addr,
 static int
 mlx5_device_mpesw_pci_match(struct ibv_device *ibv,
 			    const struct rte_pci_addr *owner_pci,
-			    int nl_rdma)
+			    int nl_rdma, struct mlx5_dev_info *dev_info)
 {
 	struct rte_pci_addr ibdev_pci_addr = { 0 };
 	char ifname[IF_NAMESIZE + 1] = { 0 };
@@ -2196,24 +2206,24 @@ mlx5_device_mpesw_pci_match(struct ibv_device *ibv,
 		return -1;
 	}
 	/* Check if IB device has MPESW enabled. */
-	if (mlx5_is_mpesw_enabled(ibv, &ibdev_pci_addr, &enabled))
+	if (mlx5_is_mpesw_enabled(ibv, &ibdev_pci_addr, &enabled, dev_info))
 		return -1;
 	if (!enabled)
 		return -1;
 	/* Iterate through IB ports to find MPESW master uplink port. */
 	if (nl_rdma < 0)
 		return -1;
-	np = mlx5_nl_portnum(nl_rdma, ibv->name);
+	np = mlx5_nl_portnum(nl_rdma, ibv->name, dev_info);
 	if (!np)
 		return -1;
 	for (i = 1; i <= np; ++i) {
-		struct rte_pci_addr pci_addr;
+		struct rte_pci_addr pci_addr = { 0 };
 		FILE *file;
 		char port_name[IF_NAMESIZE + 1];
 		struct mlx5_switch_info	info;
 
 		/* Check whether IB port has a corresponding netdev. */
-		ifindex = mlx5_nl_ifindex(nl_rdma, ibv->name, i);
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibv->name, i, dev_info);
 		if (!ifindex)
 			continue;
 		if (!if_indextoname(ifindex, ifname))
@@ -2320,16 +2330,30 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 	 * matching ones, gathering into the list.
 	 */
 	struct ibv_device *ibv_match[ret + 1];
+	struct mlx5_dev_info *info, tmp_info[ret];
 	int nl_route = mlx5_nl_init(NETLINK_ROUTE, 0);
 	int nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
 	unsigned int i;
 
+	memset(tmp_info, 0, sizeof(tmp_info));
 	while (ret-- > 0) {
 		struct rte_pci_addr pci_addr;
 
+		if (cdev->dev_info.port_num) {
+			if (strcmp(ibv_list[ret]->name, cdev->dev_info.ibname)) {
+				DRV_LOG(INFO, "Unmatched caching device \"%s\" \"%s\"",
+					cdev->dev_info.ibname, ibv_list[ret]->name);
+				continue;
+			}
+			info = &cdev->dev_info;
+		} else {
+			info = &tmp_info[ret];
+		}
 		DRV_LOG(DEBUG, "Checking device \"%s\"", ibv_list[ret]->name);
 		bd = mlx5_device_bond_pci_match(ibv_list[ret]->name, &owner_pci,
-						nl_rdma, owner_id, &bond_info);
+						nl_rdma, owner_id,
+						info,
+						&bond_info);
 		if (bd >= 0) {
 			/*
 			 * Bonding device detected. Only one match is allowed,
@@ -2355,7 +2379,8 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 			ibv_match[nd++] = ibv_list[ret];
 			break;
 		}
-		mpesw = mlx5_device_mpesw_pci_match(ibv_list[ret], &owner_pci, nl_rdma);
+		mpesw = mlx5_device_mpesw_pci_match(ibv_list[ret], &owner_pci, nl_rdma,
+						    info);
 		if (mpesw >= 0) {
 			/*
 			 * MPESW device detected. Only one matching IB device is allowed,
@@ -2379,10 +2404,18 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		}
 		/* Bonding or MPESW device was not found. */
 		if (mlx5_get_pci_addr(ibv_list[ret]->ibdev_path,
-					&pci_addr))
+					&pci_addr)) {
+			if (tmp_info[ret].port_info != NULL)
+				mlx5_free(tmp_info[ret].port_info);
+			memset(&tmp_info[ret], 0, sizeof(tmp_info[0]));
 			continue;
-		if (rte_pci_addr_cmp(&owner_pci, &pci_addr) != 0)
+		}
+		if (rte_pci_addr_cmp(&owner_pci, &pci_addr) != 0) {
+			if (tmp_info[ret].port_info != NULL)
+				mlx5_free(tmp_info[ret].port_info);
+			memset(&tmp_info[ret], 0, sizeof(tmp_info[0]));
 			continue;
+		}
 		DRV_LOG(INFO, "PCI information matches for device \"%s\"",
 			ibv_list[ret]->name);
 		ibv_match[nd++] = ibv_list[ret];
@@ -2400,13 +2433,21 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 		goto exit;
 	}
 	if (nd == 1) {
+		if (!cdev->dev_info.port_num) {
+			for (i = 0; i < RTE_DIM(tmp_info); i++) {
+				if (tmp_info[i].port_num) {
+					cdev->dev_info = tmp_info[i];
+					break;
+				}
+			}
+		}
 		/*
 		 * Found single matching device may have multiple ports.
 		 * Each port may be representor, we have to check the port
 		 * number and check the representors existence.
 		 */
 		if (nl_rdma >= 0)
-			np = mlx5_nl_portnum(nl_rdma, ibv_match[0]->name);
+			np = mlx5_nl_portnum(nl_rdma, ibv_match[0]->name, &cdev->dev_info);
 		if (!np)
 			DRV_LOG(WARNING,
 				"Cannot get IB device \"%s\" ports number.",
@@ -2423,6 +2464,14 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 			ret = -rte_errno;
 			goto exit;
 		}
+	} else {
+		/* Can't handle one common device with multiple IB devices caching */
+		for (i = 0; i < RTE_DIM(tmp_info); i++) {
+			if (tmp_info[i].port_info != NULL)
+				mlx5_free(tmp_info[i].port_info);
+			memset(&tmp_info[i], 0, sizeof(tmp_info[0]));
+		}
+		DRV_LOG(INFO, "Cannot handle multiple IB devices info caching in single common device.");
 	}
 	/* Now we can determine the maximal amount of devices to be spawned. */
 	list = mlx5_malloc(MLX5_MEM_ZERO,
@@ -2456,7 +2505,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 			list[ns].mpesw_port = MLX5_MPESW_PORT_INVALID;
 			list[ns].ifindex = mlx5_nl_ifindex(nl_rdma,
 							   ibv_match[0]->name,
-							   i);
+							   i, &cdev->dev_info);
 			if (!list[ns].ifindex) {
 				/*
 				 * No network interface index found for the
@@ -2587,7 +2636,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 				list[ns].ifindex = mlx5_nl_ifindex
 							    (nl_rdma,
 							     ibv_match[i]->name,
-							     1);
+							     1, &cdev->dev_info);
 			if (!list[ns].ifindex) {
 				char ifname[IF_NAMESIZE];
 
@@ -2776,6 +2825,11 @@ exit:
 		mlx5_free(list);
 	MLX5_ASSERT(ibv_list);
 	mlx5_glue->free_device_list(ibv_list);
+	if (ret) {
+		if (cdev->dev_info.port_info != NULL)
+			mlx5_free(cdev->dev_info.port_info);
+		memset(&cdev->dev_info, 0, sizeof(cdev->dev_info));
+	}
 	return ret;
 }
 

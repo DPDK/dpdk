@@ -105,6 +105,12 @@ New Features
 
   * Added flow rules support for CN20K SoC.
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Optimized port probing in large scale.
+    This feature enhances the efficiency of probing VF/SFs on a large scale
+    by significantly reducing the probing time.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for virtual function (VF).

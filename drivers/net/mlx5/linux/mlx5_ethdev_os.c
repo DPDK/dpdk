@@ -23,6 +23,7 @@
 #include <stdalign.h>
 #include <sys/un.h>
 #include <time.h>
+#include <linux/rtnetlink.h>
 
 #include <ethdev_linux_ethtool.h>
 #include <ethdev_driver.h>
@@ -674,6 +675,57 @@ mlx5_link_update_bond(struct rte_eth_dev *dev)
 }
 
 static void
+mlx5_handle_port_info_update(struct mlx5_dev_info *dev_info, uint32_t if_index,
+			     uint16_t msg_type)
+{
+	struct mlx5_switch_info info = {
+		.master = 0,
+		.representor = 0,
+		.name_type = MLX5_PHYS_PORT_NAME_TYPE_NOTSET,
+		.port_name = 0,
+		.switch_id = 0,
+	};
+	uint32_t i;
+	int nl_route;
+
+	if (dev_info->port_num <= 1 || dev_info->port_info == NULL)
+		return;
+
+	for (i = 1; i <= dev_info->port_num; i++) {
+		if (!dev_info->port_info[i].valid)
+			continue;
+		if (dev_info->port_info[i].ifindex == if_index)
+			break;
+	}
+	if (msg_type == RTM_NEWLINK && i > dev_info->port_num) {
+		nl_route = mlx5_nl_init(NETLINK_ROUTE, 0);
+		if  (nl_route < 0)
+			goto flush_all;
+
+		if (mlx5_nl_switch_info(nl_route, if_index, &info)) {
+			if (mlx5_sysfs_switch_info(if_index, &info))
+				goto flush_all;
+		}
+
+		if (info.name_type == MLX5_PHYS_PORT_NAME_TYPE_PFSF ||
+		    info.name_type == MLX5_PHYS_PORT_NAME_TYPE_PFVF)
+			goto flush_all;
+		close(nl_route);
+	} else if (msg_type == RTM_DELLINK && i <= dev_info->port_num) {
+		memset(dev_info->port_info + i, 0, sizeof(struct mlx5_port_nl_info));
+	}
+
+	return;
+flush_all:
+	if (nl_route >= 0)
+		close(nl_route);
+	for (i = 1; i <= dev_info->port_num; i++) {
+		if (!dev_info->port_info[i].ifindex)
+			dev_info->port_info[i].valid = 0;
+	}
+}
+
+static void
 mlx5_dev_interrupt_nl_cb(struct nlmsghdr *hdr, void *cb_arg)
 {
 	struct mlx5_dev_ctx_shared *sh = cb_arg;
@@ -682,6 +734,8 @@ mlx5_dev_interrupt_nl_cb(struct nlmsghdr *hdr, void *cb_arg)
 
 	if (mlx5_nl_parse_link_status_update(hdr, &if_index) < 0)
 		return;
+	mlx5_handle_port_info_update(&sh->cdev->dev_info, if_index, hdr->nlmsg_type);
+
 	for (i = 0; i < sh->max_port; i++) {
 		struct mlx5_dev_shared_port *port = &sh->port[i];
 		struct rte_eth_dev *dev;

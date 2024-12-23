@@ -20,6 +20,11 @@
 
 #define MLX5_BF_OFFSET 0x800
 
+enum {
+	MLX5_FS_NAME_MAX = MLX5_DEVX_DEVICE_NAME_SIZE + 1,
+	MLX5_FS_PATH_MAX = MLX5_DEVX_DEVICE_PNP_SIZE + 1
+};
+
 /**
  * This API allocates aligned or non-aligned memory.  The free can be on either
  * aligned or nonaligned memory.  To be protected - even though there may be no

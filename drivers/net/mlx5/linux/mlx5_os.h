@@ -8,12 +8,6 @@
 
 #include <net/if.h>
 
-/* verb enumerations translations to local enums. */
-enum {
-	MLX5_FS_NAME_MAX = IBV_SYSFS_NAME_MAX + 1,
-	MLX5_FS_PATH_MAX = IBV_SYSFS_PATH_MAX + 1
-};
-
 /* Maximal data of sendmsg message(in bytes). */
 #define MLX5_SENDMSG_MAX 64
 

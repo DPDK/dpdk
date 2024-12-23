@@ -11,6 +11,7 @@
 #include <rte_ether.h>
 
 #include "mlx5_common.h"
+#include "mlx5_common_utils.h"
 
 typedef void (mlx5_nl_event_cb)(struct nlmsghdr *hdr, void *user_data);
 
@@ -52,11 +53,12 @@ int mlx5_nl_promisc(int nlsk_fd, unsigned int iface_idx, int enable);
 __rte_internal
 int mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable);
 __rte_internal
-unsigned int mlx5_nl_portnum(int nl, const char *name);
+unsigned int mlx5_nl_portnum(int nl, const char *name, struct mlx5_dev_info *dev_info);
 __rte_internal
-unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex);
+unsigned int mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex,
+			     struct mlx5_dev_info *info);
 __rte_internal
-int mlx5_nl_port_state(int nl, const char *name, uint32_t pindex);
+int mlx5_nl_port_state(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info *dev_info);
 __rte_internal
 int mlx5_nl_vf_mac_addr_modify(int nlsk_fd, unsigned int iface_idx,
 			       struct rte_ether_addr *mac, int vf_index);

@@ -174,6 +174,18 @@ enum mlx5_nl_phys_port_name_type {
 	MLX5_PHYS_PORT_NAME_TYPE_UNKNOWN, /* Unrecognized. */
 };
 
+struct mlx5_port_nl_info {
+	uint32_t ifindex;
+	uint8_t valid;
+};
+
+struct mlx5_dev_info {
+	uint32_t port_num;
+	uint32_t ibindex;
+	char ibname[MLX5_FS_NAME_MAX];
+	struct mlx5_port_nl_info *port_info;
+};
+
 /** Switch information returned by mlx5_nl_switch_info(). */
 struct mlx5_switch_info {
 	uint32_t master:1; /**< Master device. */
@@ -525,6 +537,7 @@ struct mlx5_common_device {
 	uint32_t classes_loaded;
 	void *ctx; /* Verbs/DV/DevX context. */
 	void *pd; /* Protection Domain. */
+	struct mlx5_dev_info dev_info; /* Device port info queried via netlink. */
 	uint32_t pdn; /* Protection Domain Number. */
 	struct mlx5_mr_share_cache mr_scache; /* Global shared MR cache. */
 	struct mlx5_common_dev_config config; /* Device configuration. */

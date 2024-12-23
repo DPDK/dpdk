@@ -1073,16 +1073,18 @@ mlx5_nl_port_info(int nl, uint32_t pindex, struct mlx5_nl_port_info *data)
 	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
 
-	ret = mlx5_nl_send(nl, &req.nh, sn);
-	if (ret < 0)
-		return ret;
-	ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, data);
-	if (ret < 0)
-		return ret;
-	if (!(data->flags & MLX5_NL_CMD_GET_IB_NAME) ||
-	    !(data->flags & MLX5_NL_CMD_GET_IB_INDEX))
-		goto error;
-	data->flags = 0;
+	if (data->ibindex == UINT32_MAX) {
+		ret = mlx5_nl_send(nl, &req.nh, sn);
+		if (ret < 0)
+			return ret;
+		ret = mlx5_nl_recv(nl, sn, mlx5_nl_cmdget_cb, data);
+		if (ret < 0)
+			return ret;
+		if (!(data->flags & MLX5_NL_CMD_GET_IB_NAME) ||
+		    !(data->flags & MLX5_NL_CMD_GET_IB_INDEX))
+			goto error;
+		data->flags = 0;
+	}
 	sn = MLX5_NL_SN_GENERATE;
 	req.nh.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
 					     RDMA_NLDEV_CMD_PORT_GET);
@@ -1109,7 +1111,7 @@ mlx5_nl_port_info(int nl, uint32_t pindex, struct mlx5_nl_port_info *data)
 	    !(data->flags & MLX5_NL_CMD_GET_NET_INDEX) ||
 	    !data->ifindex)
 		goto error;
-	return 1;
+	return 0;
 error:
 	rte_errno = ENODEV;
 	return -rte_errno;
@@ -1128,21 +1130,48 @@ error:
  *   IB device name.
  * @param[in] pindex
  *   IB device port index, starting from 1
+ * @param[in] dev_info
+ *   Cached mlx5 device information.
  * @return
  *   A valid (nonzero) interface index on success, 0 otherwise and rte_errno
  *   is set.
  */
 unsigned int
-mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
+mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info *dev_info)
 {
+	int ret;
+
 	struct mlx5_nl_port_info data = {
 			.ifindex = 0,
 			.name = name,
+			.ibindex = UINT32_MAX,
+			.flags = 0,
 	};
 
-	if (mlx5_nl_port_info(nl, pindex, &data) < 0)
-		return 0;
-	return data.ifindex;
+	if (!strcmp(name, dev_info->ibname)) {
+		if (dev_info->port_info && pindex <= dev_info->port_num &&
+		    dev_info->port_info[pindex].valid) {
+			if (!dev_info->port_info[pindex].ifindex)
+				rte_errno = ENODEV;
+			return dev_info->port_info[pindex].ifindex;
+		}
+		if (dev_info->port_num)
+			data.ibindex = dev_info->ibindex;
+	}
+
+	ret = mlx5_nl_port_info(nl, pindex, &data);
+
+	if (!strcmp(dev_info->ibname, name)) {
+		if ((!ret || ret == -ENODEV) && dev_info->port_info &&
+		    pindex <= dev_info->port_num) {
+			if (!ret)
+				dev_info->port_info[pindex].ifindex = data.ifindex;
+			/* -ENODEV means the pindex is unused but still valid case */
+			dev_info->port_info[pindex].valid = 1;
+		}
+	}
+
+	return ret ? 0 : data.ifindex;
 }
 
 /**
@@ -1157,18 +1186,23 @@ mlx5_nl_ifindex(int nl, const char *name, uint32_t pindex)
  *   IB device name.
  * @param[in] pindex
  *   IB device port index, starting from 1
+ * @param[in] dev_info
+ *   Cached mlx5 device information.
  * @return
  *   Port state (ibv_port_state) on success, negative on error
  *   and rte_errno is set.
  */
 int
-mlx5_nl_port_state(int nl, const char *name, uint32_t pindex)
+mlx5_nl_port_state(int nl, const char *name, uint32_t pindex, struct mlx5_dev_info *dev_info)
 {
 	struct mlx5_nl_port_info data = {
 			.state = 0,
 			.name = name,
+			.ibindex = UINT32_MAX,
 	};
 
+	if (dev_info && !strcmp(name, dev_info->ibname) && dev_info->port_num)
+		data.ibindex = dev_info->ibindex;
 	if (mlx5_nl_port_info(nl, pindex, &data) < 0)
 		return -rte_errno;
 	if ((data.flags & MLX5_NL_CMD_GET_PORT_STATE) == 0) {
@@ -1185,13 +1219,15 @@ mlx5_nl_port_state(int nl, const char *name, uint32_t pindex)
  *   Netlink socket of the RDMA kind (NETLINK_RDMA).
  * @param[in] name
  *   IB device name.
+ * @param[in] dev_info
+ *   Cached mlx5 device info.
  *
  * @return
  *   A valid (nonzero) number of ports on success, 0 otherwise
  *   and rte_errno is set.
  */
 unsigned int
-mlx5_nl_portnum(int nl, const char *name)
+mlx5_nl_portnum(int nl, const char *name, struct mlx5_dev_info *dev_info)
 {
 	struct mlx5_nl_port_info data = {
 		.flags = 0,
@@ -1206,7 +1242,10 @@ mlx5_nl_portnum(int nl, const char *name)
 		.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_DUMP,
 	};
 	uint32_t sn = MLX5_NL_SN_GENERATE;
-	int ret;
+	int ret, size;
+
+	if (dev_info->port_num && !strcmp(name, dev_info->ibname))
+		return dev_info->port_num;
 
 	ret = mlx5_nl_send(nl, &req, sn);
 	if (ret < 0)
@@ -1220,8 +1259,25 @@ mlx5_nl_portnum(int nl, const char *name)
 		rte_errno = ENODEV;
 		return 0;
 	}
-	if (!data.portnum)
+	if (!data.portnum) {
 		rte_errno = EINVAL;
+		return 0;
+	}
+	MLX5_ASSERT(!strlen(dev_info->ibname));
+	dev_info->port_num = data.portnum;
+	dev_info->ibindex = data.ibindex;
+	snprintf(dev_info->ibname, MLX5_FS_NAME_MAX, "%s", name);
+	if (data.portnum > 1) {
+		size = (data.portnum + 1) * sizeof(struct mlx5_port_nl_info);
+		dev_info->port_info = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE, size,
+						  RTE_CACHE_LINE_SIZE,
+						  SOCKET_ID_ANY);
+		if (dev_info->port_info == NULL) {
+			memset(dev_info, 0, sizeof(*dev_info));
+			rte_errno = ENOMEM;
+			return 0;
+		}
+	}
 	return data.portnum;
 }
 
