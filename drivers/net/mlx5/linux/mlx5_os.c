@@ -2657,10 +2657,15 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 void
 mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 {
+	int fd;
+
 	mlx5_os_interrupt_handler_destroy(sh->intr_handle,
 					  mlx5_dev_interrupt_handler, sh);
+	fd = rte_intr_fd_get(sh->intr_handle_nl);
 	mlx5_os_interrupt_handler_destroy(sh->intr_handle_nl,
 					  mlx5_dev_interrupt_handler_nl, sh);
+	if (fd >= 0)
+		close(fd);
 #ifdef HAVE_IBV_DEVX_ASYNC
 	mlx5_os_interrupt_handler_destroy(sh->intr_handle_devx,
 					  mlx5_dev_interrupt_handler_devx, sh);
