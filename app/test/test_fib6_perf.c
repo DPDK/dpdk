@@ -9,6 +9,7 @@
 
 #include <rte_cycles.h>
 #include <rte_random.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_fib6.h>
 
@@ -73,8 +74,14 @@ test_fib6_perf(void)
 	uint64_t next_hop_add;
 	int status = 0;
 	int64_t count = 0;
-	struct rte_ipv6_addr ip_batch[NUM_IPS_ENTRIES];
-	uint64_t next_hops[NUM_IPS_ENTRIES];
+
+	struct rte_ipv6_addr *ip_batch = rte_calloc("ip_batch",
+			NUM_IPS_ENTRIES, sizeof(struct rte_ipv6_addr), 0);
+	TEST_FIB_ASSERT(ip_batch != NULL);
+
+	uint64_t *next_hops = rte_calloc("next_hops",
+			NUM_IPS_ENTRIES, sizeof(uint64_t), 0);
+	TEST_FIB_ASSERT(next_hops != NULL);
 
 	conf.type = RTE_FIB6_TRIE;
 	conf.default_nh = 0;
@@ -150,6 +157,9 @@ test_fib6_perf(void)
 			(double)total_time / NUM_ROUTE_ENTRIES);
 
 	rte_fib6_free(fib);
+
+	rte_free(next_hops);
+	rte_free(ip_batch);
 
 	return 0;
 }
