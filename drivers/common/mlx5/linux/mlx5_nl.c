@@ -2152,3 +2152,76 @@ mlx5_nl_rdma_monitor_info_get(struct nlmsghdr *hdr, struct mlx5_nl_port_info *da
 error:
 	rte_errno = EINVAL;
 }
+
+static int
+mlx5_nl_rdma_monitor_cap_get_cb(struct nlmsghdr *hdr, void *arg)
+{
+	size_t off = NLMSG_HDRLEN;
+	uint8_t *cap = arg;
+
+	if (hdr->nlmsg_type != RDMA_NL_GET_TYPE(RDMA_NL_NLDEV, RDMA_NLDEV_CMD_SYS_GET))
+		goto error;
+
+	*cap = 0;
+	while (off < hdr->nlmsg_len) {
+		struct nlattr *na = (void *)((uintptr_t)hdr + off);
+		void *payload = (void *)((uintptr_t)na + NLA_HDRLEN);
+
+		if (na->nla_len > hdr->nlmsg_len - off)
+			goto error;
+		switch (na->nla_type) {
+		case RDMA_NLDEV_SYS_ATTR_MONITOR_MODE:
+			*cap = *(uint8_t *)payload;
+			return 0;
+		default:
+			break;
+		}
+		off += NLA_ALIGN(na->nla_len);
+	}
+
+	return 0;
+
+error:
+	return -EINVAL;
+}
+
+/**
+ * Get RDMA monitor support in driver.
+ *
+ *
+ * @param nl
+ *   Netlink socket of the RDMA kind (NETLINK_RDMA).
+ * @param[out] cap
+ *   Pointer to port info.
+ * @return
+ *   0 on success, negative on error and rte_errno is set.
+ */
+int
+mlx5_nl_rdma_monitor_cap_get(int nl, uint8_t *cap)
+{
+	union {
+		struct nlmsghdr nh;
+		uint8_t buf[NLMSG_HDRLEN];
+	} req = {
+		.nh = {
+			.nlmsg_len = NLMSG_LENGTH(0),
+			.nlmsg_type = RDMA_NL_GET_TYPE(RDMA_NL_NLDEV,
+						       RDMA_NLDEV_CMD_SYS_GET),
+			.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK,
+		},
+	};
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+
+	ret = mlx5_nl_send(nl, &req.nh, sn);
+	if (ret < 0) {
+		rte_errno = -ret;
+		return ret;
+	}
+	ret = mlx5_nl_recv(nl, sn, mlx5_nl_rdma_monitor_cap_get_cb, cap);
+	if (ret < 0) {
+		rte_errno = -ret;
+		return ret;
+	}
+	return 0;
+}

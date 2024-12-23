@@ -3016,6 +3016,7 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 {
 	struct ibv_context *ctx = sh->cdev->ctx;
 	int nlsk_fd;
+	uint8_t rdma_monitor_supp = 0;
 
 	sh->intr_handle = mlx5_os_interrupt_handler_create
 		(RTE_INTR_INSTANCE_F_SHARED, true,
@@ -3024,19 +3025,33 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 		DRV_LOG(ERR, "Failed to allocate intr_handle.");
 		return;
 	}
-	if (sh->cdev->config.probe_opt && sh->cdev->dev_info.port_num > 1) {
+	if (sh->cdev->config.probe_opt &&
+	    sh->cdev->dev_info.port_num > 1 &&
+	    !sh->rdma_monitor_supp) {
 		nlsk_fd = mlx5_nl_rdma_monitor_init();
 		if (nlsk_fd < 0) {
 			DRV_LOG(ERR, "Failed to create a socket for RDMA Netlink events: %s",
 				rte_strerror(rte_errno));
 			return;
 		}
-		sh->intr_handle_ib = mlx5_os_interrupt_handler_create
-			(RTE_INTR_INSTANCE_F_SHARED, true,
-			 nlsk_fd, mlx5_dev_interrupt_handler_ib, sh);
-		if (sh->intr_handle_ib == NULL) {
-			DRV_LOG(ERR, "Fail to allocate intr_handle");
+		if (mlx5_nl_rdma_monitor_cap_get(nlsk_fd, &rdma_monitor_supp)) {
+			DRV_LOG(ERR, "Failed to query RDMA monitor support: %s",
+				rte_strerror(rte_errno));
+			close(nlsk_fd);
 			return;
+		}
+		sh->rdma_monitor_supp = rdma_monitor_supp;
+		if (sh->rdma_monitor_supp) {
+			sh->intr_handle_ib = mlx5_os_interrupt_handler_create
+				(RTE_INTR_INSTANCE_F_SHARED, true,
+				 nlsk_fd, mlx5_dev_interrupt_handler_ib, sh);
+			if (sh->intr_handle_ib == NULL) {
+				DRV_LOG(ERR, "Fail to allocate intr_handle");
+				close(nlsk_fd);
+				return;
+			}
+		} else {
+			close(nlsk_fd);
 		}
 	}
 	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
