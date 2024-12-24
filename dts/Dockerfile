@@ -5,7 +5,7 @@
 # One is to be used in CI for automated testing.
 # The other provides a DTS development environment, simplifying Python dependency management.
 
-FROM ubuntu:22.04 AS base
+FROM ubuntu:24.04 AS base
 
 RUN apt-get -y update && apt-get -y upgrade && \
     apt-get -y install --no-install-recommends \
