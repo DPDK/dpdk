@@ -1684,10 +1684,26 @@ member_configure_slow_queue(struct rte_eth_dev *bonding_eth_dev,
 	}
 
 	if (internals->mode4.dedicated_queues.enabled == 1) {
-		/* Configure slow Rx queue */
+		struct rte_eth_dev_info member_info = {};
+		uint16_t nb_rx_desc = SLOW_RX_QUEUE_HW_DEFAULT_SIZE;
+		uint16_t nb_tx_desc = SLOW_TX_QUEUE_HW_DEFAULT_SIZE;
 
+		errval = rte_eth_dev_info_get(member_eth_dev->data->port_id,
+				&member_info);
+		if (errval != 0) {
+			RTE_BOND_LOG(ERR,
+					"rte_eth_dev_info_get: port=%d, err (%d)",
+					member_eth_dev->data->port_id,
+					errval);
+			return errval;
+		}
+
+		if (member_info.rx_desc_lim.nb_min != 0)
+			nb_rx_desc = member_info.rx_desc_lim.nb_min;
+
+		/* Configure slow Rx queue */
 		errval = rte_eth_rx_queue_setup(member_eth_dev->data->port_id,
-				internals->mode4.dedicated_queues.rx_qid, 128,
+				internals->mode4.dedicated_queues.rx_qid, nb_rx_desc,
 				rte_eth_dev_socket_id(member_eth_dev->data->port_id),
 				NULL, port->slow_pool);
 		if (errval != 0) {
@@ -1699,8 +1715,11 @@ member_configure_slow_queue(struct rte_eth_dev *bonding_eth_dev,
 			return errval;
 		}
 
+		if (member_info.tx_desc_lim.nb_min != 0)
+			nb_tx_desc = member_info.tx_desc_lim.nb_min;
+
 		errval = rte_eth_tx_queue_setup(member_eth_dev->data->port_id,
-				internals->mode4.dedicated_queues.tx_qid, 512,
+				internals->mode4.dedicated_queues.tx_qid, nb_tx_desc,
 				rte_eth_dev_socket_id(member_eth_dev->data->port_id),
 				NULL);
 		if (errval != 0) {
