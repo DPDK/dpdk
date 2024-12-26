@@ -35,6 +35,9 @@ extern "C" {
 #define MARKER_TLV_TYPE_INFO                0x01
 #define MARKER_TLV_TYPE_RESP                0x02
 
+#define SLOW_TX_QUEUE_HW_DEFAULT_SIZE       512
+#define SLOW_RX_QUEUE_HW_DEFAULT_SIZE       512
+
 typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint16_t member_id,
 						  struct rte_mbuf *lacp_pkt);
 
