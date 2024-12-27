@@ -996,7 +996,7 @@ rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
 	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	if (!rte_dma_is_valid(dma_dev_id)) {
-		RTE_EDEV_LOG_ERR("Invalid dma_dev_id = %" PRIu8, dma_dev_id);
+		RTE_EDEV_LOG_ERR("Invalid dma_dev_id = %" PRId16, dma_dev_id);
 		return -EINVAL;
 	}
 
@@ -1109,7 +1109,7 @@ rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dma_dev_id, uint16_t vchan)
 	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	if (!rte_dma_is_valid(dma_dev_id)) {
-		RTE_EDEV_LOG_ERR("Invalid dma_dev_id = %" PRIu8, dma_dev_id);
+		RTE_EDEV_LOG_ERR("Invalid dma_dev_id = %" PRId16, dma_dev_id);
 		return -EINVAL;
 	}
 
@@ -1267,7 +1267,7 @@ dma_adapter_cap_check(struct event_dma_adapter *adapter)
 
 	ret = rte_event_dma_adapter_caps_get(adapter->eventdev_id, adapter->next_dmadev_id, &caps);
 	if (ret) {
-		RTE_EDEV_LOG_ERR("Failed to get adapter caps dev %" PRIu8 " cdev %" PRIu8,
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps dev %" PRIu8 " cdev %" PRIu16,
 				 adapter->eventdev_id, adapter->next_dmadev_id);
 		return ret;
 	}
