@@ -58,10 +58,21 @@ cnxk_ep_process_pkts_vec_sse(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 		s23 = _mm_shuffle_epi8(s23, cpy_mask);
 
 		/* Store packet length and data length to mbuf. */
+#ifdef RTE_ARCH_64
+		*(uint64_t *)&m0->pkt_len = _mm_extract_epi64(s01, 0);
+		*(uint64_t *)&m1->pkt_len = _mm_extract_epi64(s01, 1);
+		*(uint64_t *)&m2->pkt_len = _mm_extract_epi64(s23, 0);
+		*(uint64_t *)&m3->pkt_len = _mm_extract_epi64(s23, 1);
+#else
+		/* _mm_extract_epi64 is only available on 64-bit architecture.
+		 * The cast below is non-portable and results in compile error
+		 * using MSVC.
+		 */
 		*(uint64_t *)&m0->pkt_len = ((rte_xmm_t)s01).u64[0];
 		*(uint64_t *)&m1->pkt_len = ((rte_xmm_t)s01).u64[1];
 		*(uint64_t *)&m2->pkt_len = ((rte_xmm_t)s23).u64[0];
 		*(uint64_t *)&m3->pkt_len = ((rte_xmm_t)s23).u64[1];
+#endif
 
 		/* Reset rearm data. */
 		*(uint64_t *)&m0->rearm_data = droq->rearm_data;
