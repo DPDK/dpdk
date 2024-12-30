@@ -693,6 +693,10 @@ hns3_get_vlan_tx_offload_cfg(FILE *file, struct hns3_hw *hw)
 static void
 hns3_get_port_pvid_info(FILE *file, struct hns3_hw *hw)
 {
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	if (hns->is_vf)
+		return;
+
 	fprintf(file, "  - pvid status: %s\n",
 		hw->port_base_vlan_cfg.state ? "On" : "Off");
 }
