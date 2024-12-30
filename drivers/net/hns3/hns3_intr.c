@@ -1432,8 +1432,8 @@ static const struct hns3_hw_mod_name hns3_hw_module_name[] = {
 		.module_name = MODULE_MASTER,
 		.msg = "MODULE_MASTER"
 	}, {
-		.module_name = MODULE_ROH_MAC,
-		.msg = "MODULE_ROH_MAC"
+		.module_name = MODULE_HIMAC,
+		.msg = "MODULE_HIMAC"
 	}
 };
 
