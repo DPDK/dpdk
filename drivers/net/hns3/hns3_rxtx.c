@@ -4006,7 +4006,7 @@ hns3_tx_free_buffer_simple(struct hns3_tx_queue *txq)
 		for (i = 0; i < txq->tx_rs_thresh; i++)
 			rte_prefetch0((tx_entry + i)->mbuf);
 		for (i = 0; i < txq->tx_rs_thresh; i++, tx_entry++) {
-			rte_mempool_put(tx_entry->mbuf->pool, tx_entry->mbuf);
+			rte_pktmbuf_free_seg(tx_entry->mbuf);
 			tx_entry->mbuf = NULL;
 		}
 
