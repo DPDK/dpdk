@@ -1472,6 +1472,7 @@ eal_legacy_hugepage_init(void)
 		mem_sz = msl->len;
 		munmap(msl->base_va, mem_sz);
 		msl->base_va = NULL;
+		msl->len = 0;
 		msl->heap = 0;
 
 		/* destroy backing fbarray */
