@@ -1142,7 +1142,7 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 	cryptodev_fp_ops_reset(rte_crypto_fp_ops + dev_id);
 
 	/* Close device only if device operations have been set */
-	if (cryptodev->dev_ops) {
+	if (cryptodev->dev_ops && (rte_eal_process_type() == RTE_PROC_PRIMARY)) {
 		ret = rte_cryptodev_close(dev_id);
 		if (ret < 0)
 			return ret;
