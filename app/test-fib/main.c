@@ -5,8 +5,6 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 
 #include <rte_cycles.h>
 #include <rte_errno.h>
@@ -15,8 +13,14 @@
 #include <rte_malloc.h>
 #include <rte_lpm.h>
 #include <rte_lpm6.h>
+#include <rte_os_shim.h>
 #include <rte_fib.h>
 #include <rte_fib6.h>
+
+#ifndef LINE_MAX
+/* On Linux this constant is defined in limits.h, but not on Windows */
+#define LINE_MAX 2048
+#endif
 
 #define	PRINT_USAGE_START	"%s [EAL options] --\n"
 
