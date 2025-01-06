@@ -394,6 +394,17 @@ soc_bluefield = {
     'numa': false
 }
 
+soc_bluefield3 = {
+  'description': 'NVIDIA BlueField-3',
+  'implementer': '0x41',
+   'flags': [
+          ['RTE_MAX_LCORE', 32],
+          ['RTE_MAX_NUMA_NODES', 1]
+      ],
+   'part_number': '0xd42',
+   'numa': false
+}
+
 soc_capri = {
     'description': 'AMD Pensando Capri',
     'implementer': '0x75',
@@ -471,13 +482,6 @@ soc_ft2000plus = {
     'description': 'Phytium FT-2000+',
     'implementer': '0x70',
     'part_number': '0x662',
-    'numa': true
-}
-
-soc_tys2500 = {
-    'description': 'Phytium TengYun S2500',
-    'implementer': '0x70',
-    'part_number': '0x663',
     'numa': true
 }
 
@@ -591,27 +595,23 @@ soc_thunderx2 = {
     'part_number': '0xaf'
 }
 
-soc_thunderxt88 = {
-    'description': 'Marvell ThunderX T88',
-    'implementer': '0x43',
-    'part_number': '0xa1'
-}
-
 soc_thunderxt83 = {
     'description': 'Marvell ThunderX T83',
     'implementer': '0x43',
     'part_number': '0xa3'
 }
 
-soc_bluefield3 = {
-  'description': 'NVIDIA BlueField-3',
-  'implementer': '0x41',
-   'flags': [
-          ['RTE_MAX_LCORE', 32],
-          ['RTE_MAX_NUMA_NODES', 1]
-      ],
-   'part_number': '0xd42',
-   'numa': false
+soc_thunderxt88 = {
+    'description': 'Marvell ThunderX T88',
+    'implementer': '0x43',
+    'part_number': '0xa1'
+}
+
+soc_tys2500 = {
+    'description': 'Phytium TengYun S2500',
+    'implementer': '0x70',
+    'part_number': '0x663',
+    'numa': true
 }
 
 soc_v2 = {
@@ -622,23 +622,31 @@ soc_v2 = {
 }
 
 mcpu_defs = {
-    'mcpu_kunpeng930': {
-        'march': 'armv8.2-a',
-        'march_extensions': ['crypto', 'sve']
-    },
-    'mcpu_hip10': {
-        'march': 'armv8.5-a',
-        'march_extensions': ['crypto', 'sve']
+    'mcpu_centriq2400': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc']
     },
     'mcpu_ft2000plus': {
         'march': 'armv8-a',
         'march_extensions': ['crc']
     },
-    'mcpu_tys2500': {
-        'march': 'armv8-a',
-        'march_extensions': ['crc']
+    'mcpu_hip10': {
+        'march': 'armv8.5-a',
+        'march_extensions': ['crypto', 'sve']
     },
-    'mcpu_centriq2400': {
+    'mcpu_kunpeng930': {
+        'march': 'armv8.2-a',
+        'march_extensions': ['crypto', 'sve']
+    },
+    'mcpu_thunderxt83': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc', 'crypto']
+    },
+    'mcpu_thunderx2t99': {
+        'march': 'armv8.1-a',
+        'march_extensions': ['crc', 'crypto']
+    },
+    'mcpu_tys2500': {
         'march': 'armv8-a',
         'march_extensions': ['crc']
     },
@@ -649,14 +657,6 @@ mcpu_defs = {
     'mcpu_generic_aarch32': {
         'march': 'armv8-a',
         'march_extensions': ['simd'],
-    },
-    'mcpu_thunderx2t99': {
-        'march': 'armv8.1-a',
-        'march_extensions': ['crc', 'crypto']
-    },
-    'mcpu_thunderxt83': {
-        'march': 'armv8-a',
-        'march_extensions': ['crc', 'crypto']
     },
 }
 
@@ -679,7 +679,6 @@ dpaa:            NXP DPAA
 elba:            AMD Pensando Elba
 emag:            Ampere eMAG
 ft2000plus:      Phytium FT-2000+
-tys2500:         Phytium TengYun S2500
 grace:           NVIDIA Grace
 graviton2:       AWS Graviton2
 graviton3:       AWS Graviton3
@@ -692,8 +691,9 @@ n2:              Arm Neoverse N2
 odyssey:         Marvell Odyssey
 stingray:        Broadcom Stingray
 thunderx2:       Marvell ThunderX2 T99
-thunderxt88:     Marvell ThunderX T88
 thunderxt83:     Marvell ThunderX T83
+thunderxt88:     Marvell ThunderX T88
+tys2500:         Phytium TengYun S2500
 v2:              Arm Neoverse V2
 End of SoCs list
 '''
@@ -717,7 +717,6 @@ socs = {
     'elba': soc_elba,
     'emag': soc_emag,
     'ft2000plus': soc_ft2000plus,
-    'tys2500': soc_tys2500,
     'grace': soc_grace,
     'graviton2': soc_graviton2,
     'graviton3': soc_graviton3,
@@ -731,8 +730,9 @@ socs = {
     'odyssey' : soc_odyssey,
     'stingray': soc_stingray,
     'thunderx2': soc_thunderx2,
-    'thunderxt88': soc_thunderxt88,
     'thunderxt83': soc_thunderxt83,
+    'thunderxt88': soc_thunderxt88,
+    'tys2500': soc_tys2500,
     'v2': soc_v2,
 }
 
