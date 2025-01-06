@@ -39,14 +39,11 @@ implementer_generic = {
     ],
     'part_number_config': {
         'generic': {
-            'march': 'armv8-a',
-            'march_features': ['crc'],
+            'mcpu': 'mcpu_generic',
             'compiler_options': ['-moutline-atomics']
         },
         'generic_aarch32': {
-            'march': 'armv8-a',
-            'force_march': true,
-            'march_features': ['simd'],
+            'mcpu': 'mcpu_generic_aarch32',
             'compiler_options': ['-mfpu=auto'],
             'flags': [
                 ['RTE_ARCH_ARM_NEON_MEMCPY', false],
@@ -69,8 +66,6 @@ part_number_config_arm = {
     '0xd0a': {'mcpu': 'cortex-a75'},
     '0xd0b': {'mcpu': 'cortex-a76'},
     '0xd0c': {
-        'march': 'armv8.2-a',
-        'march_features': ['crypto', 'rcpc'],
         'mcpu': 'neoverse-n1',
         'flags': [
             ['RTE_MACHINE', '"neoverse-n1"'],
@@ -81,8 +76,6 @@ part_number_config_arm = {
         ]
     },
     '0xd40': {
-        'march': 'armv8.4-a',
-        'march_features': ['sve'],
         'mcpu': 'neoverse-v1',
         'flags': [
             ['RTE_MACHINE', '"neoverse-v1"'],
@@ -94,9 +87,6 @@ part_number_config_arm = {
         'march': 'armv8.4-a',
     },
     '0xd49': {
-        'march': 'armv9-a',
-        'march_features': ['sve2'],
-        'fallback_march': 'armv8.5-a',
         'mcpu': 'neoverse-n2',
         'flags': [
             ['RTE_MACHINE', '"neoverse-n2"'],
@@ -106,10 +96,7 @@ part_number_config_arm = {
         ]
     },
     '0xd4f': {
-        'march': 'armv9-a',
-        'march_features': ['sve2'],
         'mcpu' : 'neoverse-v2',
-        'fallback_march': 'armv8.5-a',
         'flags': [
             ['RTE_MACHINE', '"neoverse-v2"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -171,15 +158,11 @@ implementer_cavium = {
             'flags': flags_part_number_thunderx
         },
         '0xa3': {
-            'march': 'armv8-a',
-            'march_features': ['crc', 'crypto'],
-            'mcpu': 'thunderxt83',
+            'mcpu': 'mcpu_thunderxt83',
             'flags': flags_part_number_thunderx
         },
         '0xaf': {
-            'march': 'armv8.1-a',
-            'march_features': ['crc', 'crypto'],
-            'mcpu': 'thunderx2t99',
+            'mcpu': 'mcpu_thunderx2t99',
             'flags': [
                 ['RTE_MACHINE', '"thunderx2"'],
                 ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -189,8 +172,6 @@ implementer_cavium = {
             ]
         },
         '0xb2': {
-            'march': 'armv8.2-a',
-            'march_features': ['crc', 'crypto', 'lse'],
             'mcpu': 'octeontx2',
             'flags': [
                 ['RTE_MACHINE', '"cn9k"'],
@@ -212,8 +193,6 @@ implementer_ampere = {
     ],
     'part_number_config': {
         '0x0': {
-            'march': 'armv8-a',
-            'march_features': ['crc', 'crypto'],
             'mcpu': 'emag',
             'flags': [
                 ['RTE_MACHINE', '"eMAG"'],
@@ -222,8 +201,6 @@ implementer_ampere = {
             ]
         },
         '0xac3': {
-            'march': 'armv8.6-a',
-            'march_features': ['crc', 'crypto'],
             'mcpu': 'ampere1',
             'flags': [
                 ['RTE_MACHINE', '"AmpereOne"'],
@@ -232,8 +209,6 @@ implementer_ampere = {
             ]
         },
         '0xac4': {
-            'march': 'armv8.6-a',
-            'march_features': ['crc', 'crypto'],
             'mcpu': 'ampere1a',
             'flags': [
                 ['RTE_MACHINE', '"AmpereOneAC04"'],
@@ -252,8 +227,6 @@ implementer_hisilicon = {
     ],
     'part_number_config': {
         '0xd01': {
-            'march': 'armv8.2-a',
-            'march_features': ['crypto'],
             'mcpu': 'tsv110',
             'flags': [
                 ['RTE_MACHINE', '"Kunpeng 920"'],
@@ -263,8 +236,7 @@ implementer_hisilicon = {
             ]
         },
         '0xd02': {
-            'march': 'armv8.2-a',
-            'march_features': ['crypto', 'sve'],
+            'mcpu': 'mcpu_kunpeng930',
             'flags': [
                 ['RTE_MACHINE', '"Kunpeng 930"'],
                 ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -273,8 +245,7 @@ implementer_hisilicon = {
             ]
         },
         '0xd03': {
-            'march': 'armv8.5-a',
-            'march_features': ['crypto', 'sve'],
+            'mcpu': 'mcpu_hip10',
             'flags': [
                 ['RTE_MACHINE', '"hip10"'],
                 ['RTE_ARM_FEATURE_ATOMICS', true],
@@ -321,16 +292,14 @@ implementer_phytium = {
     ],
     'part_number_config': {
         '0x662': {
-            'march': 'armv8-a',
-            'march_features': ['crc'],
+            'mcpu': 'mcpu_ft2000plus',
             'flags': [
                 ['RTE_MAX_LCORE', 64],
                 ['RTE_MAX_NUMA_NODES', 8]
-             ]
+            ]
         },
-       '0x663': {
-            'march': 'armv8-a',
-            'march_features': ['crc'],
+        '0x663': {
+            'mcpu': 'mcpu_tys2500',
             'flags': [
                 ['RTE_MAX_LCORE', 256],
                 ['RTE_MAX_NUMA_NODES', 32]
@@ -349,13 +318,8 @@ implementer_qualcomm = {
         ['RTE_MAX_NUMA_NODES', 1]
     ],
     'part_number_config': {
-        '0x800': {
-            'march': 'armv8-a',
-            'march_features': ['crc']
-        },
         '0xc00': {
-            'march': 'armv8-a',
-            'march_features': ['crc']
+            'mcpu': 'mcpu_centriq2400'
         }
     }
 }
@@ -657,6 +621,45 @@ soc_v2 = {
     'numa': true
 }
 
+mcpu_defs = {
+    'mcpu_kunpeng930': {
+        'march': 'armv8.2-a',
+        'march_extensions': ['crypto', 'sve']
+    },
+    'mcpu_hip10': {
+        'march': 'armv8.5-a',
+        'march_extensions': ['crypto', 'sve']
+    },
+    'mcpu_ft2000plus': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc']
+    },
+    'mcpu_tys2500': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc']
+    },
+    'mcpu_centriq2400': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc']
+    },
+    'mcpu_generic': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc'],
+    },
+    'mcpu_generic_aarch32': {
+        'march': 'armv8-a',
+        'march_extensions': ['simd'],
+    },
+    'mcpu_thunderx2t99': {
+        'march': 'armv8.1-a',
+        'march_extensions': ['crc', 'crypto']
+    },
+    'mcpu_thunderxt83': {
+        'march': 'armv8-a',
+        'march_extensions': ['crc', 'crypto']
+    },
+}
+
 '''
 Start of SoCs list
 generic:         Generic un-optimized build for armv8 aarch64 execution mode.
@@ -848,81 +851,44 @@ if update_flags
     dpdk_flags = flags_common + implementer_config['flags'] + part_number_config.get('flags', []) + soc_flags
 
     machine_args = [] # Clear previous machine args
-
-    march_features = []
-    if part_number_config.has_key('march_features')
-        march_features += part_number_config['march_features']
-    endif
-    if soc_config.has_key('extra_march_features')
-        march_features += soc_config['extra_march_features']
+    mcpu = part_number_config.get('mcpu', '')
+    if mcpu == ''
+        error('No suitable Arm mcpu name or custom mcpu definition object found.')
     endif
 
-    candidate_mcpu = ''
-    candidate_march = ''
+    if mcpu.contains('mcpu_')
+        mcpu_def = mcpu_defs.get(mcpu, {})
+        if mcpu_def.keys().length() == 0
+            error('Custom mcpu definition @0@ is not found.'.format(mcpu))
+        endif
 
-    if (part_number_config.has_key('mcpu') and
-        cc.has_argument('-mcpu=' + part_number_config['mcpu']))
-        candidate_mcpu = '-mcpu=' + part_number_config['mcpu']
-        foreach feature: march_features
-            if cc.has_argument('+'.join([candidate_mcpu, feature]))
-                candidate_mcpu = '+'.join([candidate_mcpu, feature])
+        march = mcpu_def.get('march', '')
+        if march == ''
+            error(('march not specified in the custom mcpu definition.'
+                   .format(march)))
+        endif
+        march = '-march=' + march
+
+        if not cc.has_argument(march)
+            error('Compiler does not support @0@.'.format(march))
+        endif
+
+        march_exts = mcpu_def.get('march_extensions', [])
+        foreach ext: march_exts
+            if cc.has_argument('+'.join([march, ext]))
+                march = '+'.join([march, ext])
             else
-                warning('The compiler does not support feature @0@'
-                    .format(feature))
+                error('Compiler does not support march extension @0@.'.format(ext))
             endif
         endforeach
-        machine_args += candidate_mcpu
-    elif part_number_config.has_key('march')
-        # probe supported archs and their features
-        if part_number_config.get('force_march', false)
-            candidate_march = part_number_config['march']
+        machine_args += march
+    else
+        candidate_mcpu = '-mcpu=' + mcpu
+        if (cc.has_argument(candidate_mcpu))
+            machine_args += candidate_mcpu
         else
-            supported_marchs = ['armv9-a', 'armv8.7-a', 'armv8.6-a', 'armv8.5-a', 'armv8.4-a', 'armv8.3-a',
-                                'armv8.2-a', 'armv8.1-a', 'armv8-a']
-            check_compiler_support = false
-            foreach supported_march: supported_marchs
-                if supported_march == part_number_config['march']
-                    # start checking from this version downwards
-                    check_compiler_support = true
-                endif
-                if (check_compiler_support and
-                    cc.has_argument('-march=' + supported_march))
-                    candidate_march = supported_march
-                    # highest supported march version found
-                    break
-                endif
-            endforeach
-            if (part_number_config.has_key('fallback_march') and
-                candidate_march != part_number_config['march'] and
-                cc.has_argument('-march=' + part_number_config['fallback_march']))
-                    candidate_march = part_number_config['fallback_march']
-            endif
+            error('Compiler does not support -mcpu=@0@.'.format(mcpu))
         endif
-
-        if candidate_march != part_number_config['march']
-            warning('Configuration march version is @0@, not supported.'
-                    .format(part_number_config['march']))
-            if candidate_march != ''
-                warning('Using march version @0@.'.format(candidate_march))
-            endif
-        endif
-
-        if candidate_march != ''
-            candidate_march = '-march=' + candidate_march
-            foreach feature: march_features
-                if cc.has_argument('+'.join([candidate_march, feature]))
-                    candidate_march = '+'.join([candidate_march, feature])
-                else
-                    warning('The compiler does not support feature @0@'
-                        .format(feature))
-                endif
-            endforeach
-            machine_args += candidate_march
-        endif
-    endif
-
-    if candidate_mcpu == '' and candidate_march == ''
-        error('No suitable ARM march/mcpu version found.')
     endif
 
     # apply supported compiler options
