@@ -419,12 +419,11 @@ virtio_crypto_dataq_start(struct rte_cryptodev *dev)
 	 * -	Setup vring structure for data queues
 	 */
 	uint16_t i;
-	struct virtio_crypto_hw *hw = dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
 	/* Start data vring. */
-	for (i = 0; i < hw->max_dataqueues; i++) {
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		virtio_crypto_vring_start(dev->data->queue_pairs[i]);
 		VIRTQUEUE_DUMP((struct virtqueue *)dev->data->queue_pairs[i]);
 	}
