@@ -1836,13 +1836,16 @@ class TestPmdShell(DPDKShell):
                                                            {port_id}:\n{csum_output}"""
                     )
 
+    @requires_started_ports
     @requires_stopped_ports
     def set_port_mtu(self, port_id: int, mtu: int, verify: bool = True) -> None:
         """Change the MTU of a port using testpmd.
 
         Some PMDs require that the port be stopped before changing the MTU, and it does no harm to
         stop the port before configuring in cases where it isn't required, so ports are stopped
-        prior to changing their MTU.
+        prior to changing their MTU. On the other hand, some PMDs require that the port had already
+        been started once since testpmd startup. Therefore, ports are also started before stopping
+        them to ensure this has happened.
 
         Args:
             port_id: ID of the port to adjust the MTU on.
