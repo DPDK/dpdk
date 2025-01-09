@@ -22,42 +22,97 @@ gve_write_version(uint8_t *driver_version_register)
 	writeb('\n', driver_version_register);
 }
 
+static const struct rte_memzone *
+gve_alloc_using_mz(const char *name, uint32_t num_pages)
+{
+	const struct rte_memzone *mz;
+	mz = rte_memzone_reserve_aligned(name, num_pages * PAGE_SIZE,
+					 rte_socket_id(),
+					 RTE_MEMZONE_IOVA_CONTIG, PAGE_SIZE);
+	if (mz == NULL)
+		PMD_DRV_LOG(ERR, "Failed to alloc memzone %s.", name);
+	return mz;
+}
+
+static int
+gve_alloc_using_malloc(void **bufs, uint32_t num_entries)
+{
+	uint32_t i;
+
+	for (i = 0; i < num_entries; i++) {
+		bufs[i] = rte_malloc_socket(NULL, PAGE_SIZE, PAGE_SIZE, rte_socket_id());
+		if (bufs[i] == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to malloc");
+			goto free_bufs;
+		}
+	}
+	return 0;
+
+free_bufs:
+	while (i > 0)
+		rte_free(bufs[--i]);
+
+	return -ENOMEM;
+}
+
 static struct gve_queue_page_list *
-gve_alloc_queue_page_list(const char *name, uint32_t num_pages)
+gve_alloc_queue_page_list(const char *name, uint32_t num_pages, bool is_rx)
 {
 	struct gve_queue_page_list *qpl;
 	const struct rte_memzone *mz;
-	dma_addr_t page_bus;
 	uint32_t i;
 
 	qpl = rte_zmalloc("qpl struct",	sizeof(struct gve_queue_page_list), 0);
 	if (!qpl)
 		return NULL;
 
-	mz = rte_memzone_reserve_aligned(name, num_pages * PAGE_SIZE,
-					 rte_socket_id(),
-					 RTE_MEMZONE_IOVA_CONTIG, PAGE_SIZE);
-	if (mz == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to alloc %s.", name);
-		goto free_qpl_struct;
-	}
 	qpl->page_buses = rte_zmalloc("qpl page buses",
 		num_pages * sizeof(dma_addr_t), 0);
 	if (qpl->page_buses == NULL) {
 		PMD_DRV_LOG(ERR, "Failed to alloc qpl page buses");
-		goto free_qpl_memzone;
+		goto free_qpl_struct;
 	}
-	page_bus = mz->iova;
-	for (i = 0; i < num_pages; i++) {
-		qpl->page_buses[i] = page_bus;
-		page_bus += PAGE_SIZE;
+
+	if (is_rx) {
+		/* RX QPL need not be IOVA contiguous.
+		 * Allocate 4K size buffers using malloc
+		 */
+		qpl->qpl_bufs = rte_zmalloc("qpl bufs",
+			num_pages * sizeof(void *), 0);
+		if (qpl->qpl_bufs == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc qpl bufs");
+			goto free_qpl_page_buses;
+		}
+
+		if (gve_alloc_using_malloc(qpl->qpl_bufs, num_pages))
+			goto free_qpl_page_bufs;
+
+		/* Populate the IOVA addresses */
+		for (i = 0; i < num_pages; i++)
+			qpl->page_buses[i] =
+				rte_malloc_virt2iova(qpl->qpl_bufs[i]);
+	} else {
+		/* TX QPL needs to be IOVA contiguous
+		 * Allocate QPL using memzone
+		 */
+		mz = gve_alloc_using_mz(name, num_pages);
+		if (!mz)
+			goto free_qpl_page_buses;
+
+		qpl->mz = mz;
+
+		/* Populate the IOVA addresses */
+		for (i = 0; i < num_pages; i++)
+			qpl->page_buses[i] = mz->iova + i * PAGE_SIZE;
 	}
-	qpl->mz = mz;
+
 	qpl->num_entries = num_pages;
 	return qpl;
 
-free_qpl_memzone:
-	rte_memzone_free(qpl->mz);
+free_qpl_page_bufs:
+	rte_free(qpl->qpl_bufs);
+free_qpl_page_buses:
+	rte_free(qpl->page_buses);
 free_qpl_struct:
 	rte_free(qpl);
 	return NULL;
@@ -69,7 +124,18 @@ gve_free_queue_page_list(struct gve_queue_page_list *qpl)
 	if (qpl->mz) {
 		rte_memzone_free(qpl->mz);
 		qpl->mz = NULL;
+	} else if (qpl->qpl_bufs) {
+		uint32_t i;
+
+		for (i = 0; i < qpl->num_entries; i++)
+			rte_free(qpl->qpl_bufs[i]);
 	}
+
+	if (qpl->qpl_bufs) {
+		rte_free(qpl->qpl_bufs);
+		qpl->qpl_bufs = NULL;
+	}
+
 	if (qpl->page_buses) {
 		rte_free(qpl->page_buses);
 		qpl->page_buses = NULL;
@@ -89,7 +155,7 @@ gve_setup_queue_page_list(struct gve_priv *priv, uint16_t queue_id, bool is_rx,
 	/* Allocate a new QPL. */
 	snprintf(qpl_name, sizeof(qpl_name), "gve_%s_%s_qpl%d",
 		priv->pci_dev->device.name, queue_type_string, queue_id);
-	qpl = gve_alloc_queue_page_list(qpl_name, num_pages);
+	qpl = gve_alloc_queue_page_list(qpl_name, num_pages, is_rx);
 	if (!qpl) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to alloc %s qpl for queue %hu.",

@@ -117,7 +117,7 @@ gve_rx_mbuf(struct gve_rx_queue *rxq, struct rte_mbuf *rxe, uint16_t len,
 		rxq->ctx.mbuf_tail = rxe;
 	}
 	if (rxq->is_gqi_qpl) {
-		addr = (uint64_t)(rxq->qpl->mz->addr) + rx_id * PAGE_SIZE + padding;
+		addr = (uint64_t)rxq->qpl->qpl_bufs[rx_id] + padding;
 		rte_memcpy((void *)((size_t)rxe->buf_addr + rxe->data_off),
 				    (void *)(size_t)addr, len);
 	}
