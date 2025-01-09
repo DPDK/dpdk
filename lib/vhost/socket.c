@@ -849,14 +849,6 @@ rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs)
 	struct vhost_user_socket *vsocket;
 	int ret = 0;
 
-	VHOST_LOG_CONFIG(path, INFO, "Setting max queue pairs to %u\n", max_queue_pairs);
-
-	if (max_queue_pairs > VHOST_MAX_QUEUE_PAIRS) {
-		VHOST_LOG_CONFIG(path, ERR, "Library only supports up to %u queue pairs\n",
-				VHOST_MAX_QUEUE_PAIRS);
-		return -1;
-	}
-
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
 	if (!vsocket) {
@@ -873,6 +865,15 @@ rte_vhost_driver_set_max_queue_num(const char *path, uint32_t max_queue_pairs)
 	if (!vsocket->is_vduse) {
 		VHOST_LOG_CONFIG(path, DEBUG, "Keeping %u max queue pairs for Vhost-user backend\n",
 				 VHOST_MAX_QUEUE_PAIRS);
+		goto unlock_exit;
+	}
+
+	VHOST_LOG_CONFIG(path, INFO, "Setting max queue pairs to %u", max_queue_pairs);
+
+	if (max_queue_pairs > VHOST_MAX_QUEUE_PAIRS) {
+		VHOST_LOG_CONFIG(path, ERR, "Library only supports up to %u queue pairs",
+				VHOST_MAX_QUEUE_PAIRS);
+		ret = -1;
 		goto unlock_exit;
 	}
 
