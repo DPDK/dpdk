@@ -274,31 +274,41 @@ class TestSuite(TestProtocol):
         packets = self._adjust_addresses(packets)
         self.tg_node.send_packets(packets, self._tg_port_egress)
 
-    def get_expected_packets(self, packets: list[Packet]) -> list[Packet]:
+    def get_expected_packets(
+        self,
+        packets: list[Packet],
+        sent_from_tg: bool = False,
+    ) -> list[Packet]:
         """Inject the proper L2/L3 addresses into `packets`.
 
         Inject the L2/L3 addresses expected at the receiving end of the traffic generator.
 
         Args:
             packets: The packets to modify.
+            sent_from_tg: If :data:`True` packet was sent from the TG.
 
         Returns:
             `packets` with injected L2/L3 addresses.
         """
-        return self._adjust_addresses(packets, expected=True)
+        return self._adjust_addresses(packets, not sent_from_tg)
 
-    def get_expected_packet(self, packet: Packet) -> Packet:
+    def get_expected_packet(
+        self,
+        packet: Packet,
+        sent_from_tg: bool = False,
+    ) -> Packet:
         """Inject the proper L2/L3 addresses into `packet`.
 
         Inject the L2/L3 addresses expected at the receiving end of the traffic generator.
 
         Args:
             packet: The packet to modify.
+            sent_from_tg: If :data:`True` packet was sent from the TG.
 
         Returns:
             `packet` with injected L2/L3 addresses.
         """
-        return self.get_expected_packets([packet])[0]
+        return self.get_expected_packets([packet], sent_from_tg)[0]
 
     def log(self, message: str) -> None:
         """Call the private instance of logger within the TestSuite class.
