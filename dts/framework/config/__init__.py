@@ -33,10 +33,11 @@ Nearly all of them are frozen:
 """
 
 import tarfile
+from collections.abc import Callable, MutableMapping
 from enum import Enum, auto, unique
 from functools import cached_property
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple, TypedDict, cast
 
 import yaml
 from pydantic import (
@@ -44,16 +45,58 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
 from typing_extensions import Self
 
 from framework.exception import ConfigurationError
+from framework.settings import Settings
 from framework.utils import REGEX_FOR_PCI_ADDRESS, StrEnum
 
 if TYPE_CHECKING:
     from framework.test_suite import TestSuiteSpec
+
+
+class ValidationContext(TypedDict):
+    """A context dictionary to use for validation."""
+
+    #: The command line settings.
+    settings: Settings
+
+
+def load_fields_from_settings(
+    *fields: str | tuple[str, str],
+) -> Callable[[Any, ValidationInfo], Any]:
+    """Before model validator that injects values from :attr:`ValidationContext.settings`.
+
+    Args:
+        *fields: The name of the fields to apply the argument value to. If the settings field name
+            is not the same as the configuration field, supply a tuple with the respective names.
+
+    Returns:
+        Pydantic before model validator.
+    """
+
+    def _loader(data: Any, info: ValidationInfo) -> Any:
+        if not isinstance(data, MutableMapping):
+            return data
+
+        settings = cast(ValidationContext, info.context)["settings"]
+        for field in fields:
+            if isinstance(field, tuple):
+                settings_field = field[0]
+                config_field = field[1]
+            else:
+                settings_field = config_field = field
+
+            if settings_data := getattr(settings, settings_field):
+                data[config_field] = settings_data
+
+        return data
+
+    return _loader
 
 
 class FrozenModel(BaseModel):
@@ -317,6 +360,10 @@ class BaseDPDKBuildConfiguration(FrozenModel):
     #: The location of the DPDK tree.
     dpdk_location: DPDKLocation
 
+    dpdk_location_from_settings = model_validator(mode="before")(
+        load_fields_from_settings("dpdk_location")
+    )
+
 
 class DPDKPrecompiledBuildConfiguration(BaseDPDKBuildConfiguration):
     """DPDK precompiled build configuration."""
@@ -324,6 +371,10 @@ class DPDKPrecompiledBuildConfiguration(BaseDPDKBuildConfiguration):
     #: If it's defined, DPDK has been pre-compiled and the build directory is located in a
     #: subdirectory of `~dpdk_location.dpdk_tree` or `~dpdk_location.tarball` root directory.
     precompiled_build_dir: str = Field(min_length=1)
+
+    build_dir_from_settings = model_validator(mode="before")(
+        load_fields_from_settings("precompiled_build_dir")
+    )
 
 
 class DPDKBuildOptionsConfiguration(FrozenModel):
@@ -439,6 +490,10 @@ class TestRunConfiguration(FrozenModel):
     #: The seed to use for pseudo-random generation.
     random_seed: int | None = None
 
+    fields_from_settings = model_validator(mode="before")(
+        load_fields_from_settings("test_suites", "random_seed")
+    )
+
 
 class TestRunWithNodesConfiguration(NamedTuple):
     """Tuple containing the configuration of the test run and its associated nodes."""
@@ -541,7 +596,7 @@ class Configuration(FrozenModel):
         return self
 
 
-def load_config(config_file_path: Path) -> Configuration:
+def load_config(settings: Settings) -> Configuration:
     """Load DTS test run configuration from a file.
 
     Load the YAML test run configuration file, validate it, and create a test run configuration
@@ -552,6 +607,7 @@ def load_config(config_file_path: Path) -> Configuration:
 
     Args:
         config_file_path: The path to the YAML test run configuration file.
+        settings: The settings provided by the user on the command line.
 
     Returns:
         The parsed test run configuration.
@@ -559,10 +615,11 @@ def load_config(config_file_path: Path) -> Configuration:
     Raises:
         ConfigurationError: If the supplied configuration file is invalid.
     """
-    with open(config_file_path, "r") as f:
+    with open(settings.config_file_path, "r") as f:
         config_data = yaml.safe_load(f)
 
     try:
-        return Configuration.model_validate(config_data)
+        context = ValidationContext(settings=settings)
+        return Configuration.model_validate(config_data, context=context)
     except ValidationError as e:
         raise ConfigurationError("failed to load the supplied configuration") from e

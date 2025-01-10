@@ -31,7 +31,6 @@ from framework.testbed_model.tg_node import TGNode
 
 from .config import (
     Configuration,
-    DPDKPrecompiledBuildConfiguration,
     SutNodeConfiguration,
     TestRunConfiguration,
     TestSuiteConfig,
@@ -82,7 +81,7 @@ class DTSRunner:
 
     def __init__(self):
         """Initialize the instance with configuration, logger, result and string constants."""
-        self._configuration = load_config(SETTINGS.config_file_path)
+        self._configuration = load_config(SETTINGS)
         self._logger = get_dts_logger()
         if not os.path.exists(SETTINGS.output_dir):
             os.makedirs(SETTINGS.output_dir)
@@ -142,9 +141,7 @@ class DTSRunner:
                 self._init_random_seed(test_run_config)
                 test_run_result = self._result.add_test_run(test_run_config)
                 # we don't want to modify the original config, so create a copy
-                test_run_test_suites = list(
-                    SETTINGS.test_suites if SETTINGS.test_suites else test_run_config.test_suites
-                )
+                test_run_test_suites = test_run_config.test_suites
                 if not test_run_config.skip_smoke_tests:
                     test_run_test_suites[:0] = [TestSuiteConfig(test_suite="smoke_tests")]
                 try:
@@ -320,15 +317,6 @@ class DTSRunner:
         test_run_result.sut_info = sut_node.node_info
         try:
             dpdk_build_config = test_run_config.dpdk_config
-            if new_location := SETTINGS.dpdk_location:
-                dpdk_build_config = dpdk_build_config.model_copy(
-                    update={"dpdk_location": new_location}
-                )
-            if dir := SETTINGS.precompiled_build_dir:
-                dpdk_build_config = DPDKPrecompiledBuildConfiguration(
-                    dpdk_location=dpdk_build_config.dpdk_location,
-                    precompiled_build_dir=dir,
-                )
             sut_node.set_up_test_run(test_run_config, dpdk_build_config)
             test_run_result.dpdk_build_info = sut_node.get_dpdk_build_info()
             tg_node.set_up_test_run(test_run_config, dpdk_build_config)
@@ -622,6 +610,6 @@ class DTSRunner:
 
     def _init_random_seed(self, conf: TestRunConfiguration) -> None:
         """Initialize the random seed to use for the test run."""
-        seed = SETTINGS.random_seed or conf.random_seed or random.randrange(0xFFFF_FFFF)
+        seed = conf.random_seed or random.randrange(0xFFFF_FFFF)
         self._logger.info(f"Initializing test run with random seed {seed}.")
         random.seed(seed)
