@@ -84,6 +84,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: The ``__rte_packed`` macro for packing data is replaced with
+  ``__rte_packed_begin`` / ``__rte_packed_end``.
+
 
 ABI Changes
 -----------
