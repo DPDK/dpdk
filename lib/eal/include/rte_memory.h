@@ -46,7 +46,7 @@ extern "C" {
 /**
  * Physical memory segment descriptor.
  */
-struct rte_memseg {
+struct __rte_packed_begin rte_memseg {
 	rte_iova_t iova;            /**< Start IO address. */
 	union {
 		void *addr;         /**< Start virtual address. */
@@ -58,7 +58,7 @@ struct rte_memseg {
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */
 	uint32_t flags;             /**< Memseg-specific flags */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * memseg list is a special case as we need to store a bunch of other data

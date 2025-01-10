@@ -461,7 +461,7 @@ rte_ether_mcast_from_ipv6(struct rte_ether_addr *mac, const struct rte_ipv6_addr
 /**
  * IPv6 Header
  */
-struct __rte_aligned(2) rte_ipv6_hdr {
+struct __rte_aligned(2) __rte_packed_begin rte_ipv6_hdr {
 	union {
 		rte_be32_t vtc_flow;        /**< IP version, traffic class & flow label. */
 		__extension__
@@ -484,7 +484,7 @@ struct __rte_aligned(2) rte_ipv6_hdr {
 	uint8_t  hop_limits;	/**< Hop limits. */
 	struct rte_ipv6_addr src_addr;	/**< IP address of source host. */
 	struct rte_ipv6_addr dst_addr;	/**< IP address of destination host(s). */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Check that the IPv6 header version field is valid according to RFC 8200 section 3.
@@ -508,7 +508,7 @@ static inline int rte_ipv6_check_version(const struct rte_ipv6_hdr *ip)
 /**
  * IPv6 Routing Extension Header
  */
-struct __rte_aligned(2) rte_ipv6_routing_ext {
+struct __rte_aligned(2) __rte_packed_begin rte_ipv6_routing_ext {
 	uint8_t next_hdr;			/**< Protocol, next header. */
 	uint8_t hdr_len;			/**< Header length. */
 	uint8_t type;				/**< Extension header type. */
@@ -523,7 +523,7 @@ struct __rte_aligned(2) rte_ipv6_routing_ext {
 		};
 	};
 	/* Next are 128-bit IPv6 address fields to describe segments. */
-} __rte_packed;
+} __rte_packed_end;
 
 /* IPv6 vtc_flow: IPv / TC / flow_label */
 #define RTE_IPV6_HDR_FL_SHIFT 0
@@ -752,12 +752,12 @@ rte_ipv6_udptcp_cksum_mbuf_verify(const struct rte_mbuf *m,
 #define RTE_IPV6_SET_FRAG_DATA(fo, mf)	\
 	(((fo) & RTE_IPV6_EHDR_FO_MASK) | ((mf) & RTE_IPV6_EHDR_MF_MASK))
 
-struct __rte_aligned(2) rte_ipv6_fragment_ext {
+struct __rte_aligned(2) __rte_packed_begin rte_ipv6_fragment_ext {
 	uint8_t next_header;	/**< Next header type */
 	uint8_t reserved;	/**< Reserved */
 	rte_be16_t frag_data;	/**< All fragmentation data */
 	rte_be32_t id;		/**< Packet ID */
-} __rte_packed;
+} __rte_packed_end;
 
 /* IPv6 fragment extension header size */
 #define RTE_IPV6_FRAG_HDR_SIZE	sizeof(struct rte_ipv6_fragment_ext)

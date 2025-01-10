@@ -67,15 +67,15 @@ rte_mov15_or_less(void *dst, const void *src, size_t n)
 	 * Use the following structs to avoid violating C standard
 	 * alignment requirements and to avoid strict aliasing bugs
 	 */
-	struct rte_uint64_alias {
+	struct __rte_packed_begin rte_uint64_alias {
 		uint64_t val;
-	} __rte_packed __rte_may_alias;
-	struct rte_uint32_alias {
+	} __rte_packed_end __rte_may_alias;
+	struct __rte_packed_begin rte_uint32_alias {
 		uint32_t val;
-	} __rte_packed __rte_may_alias;
-	struct rte_uint16_alias {
+	} __rte_packed_end __rte_may_alias;
+	struct __rte_packed_begin rte_uint16_alias {
 		uint16_t val;
-	} __rte_packed __rte_may_alias;
+	} __rte_packed_end __rte_may_alias;
 
 	void *ret = dst;
 	if (n & 8) {

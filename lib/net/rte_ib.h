@@ -22,7 +22,7 @@
  * IB Specification Vol 1-Release-1.4.
  */
 __extension__
-struct rte_ib_bth {
+struct __rte_packed_begin rte_ib_bth {
 	uint8_t	opcode;		/**< Opcode. */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint8_t	tver:4;		/**< Transport Header Version. */
@@ -54,7 +54,7 @@ struct rte_ib_bth {
 	uint8_t	rsvd1:7;	/**< Reserved. */
 #endif
 	uint8_t	psn[3];		/**< Packet Sequence Number */
-} __rte_packed;
+} __rte_packed_end;
 
 /** RoCEv2 default port. */
 #define RTE_ROCEV2_DEFAULT_PORT 4791

@@ -143,7 +143,7 @@ struct vhost_user_config {
 	uint8_t region[VHOST_USER_MAX_CONFIG_SIZE];
 };
 
-typedef struct VhostUserMsg {
+typedef struct __rte_packed_begin VhostUserMsg {
 	union {
 		uint32_t frontend; /* a VhostUserRequest value */
 		uint32_t backend;  /* a VhostUserBackendRequest value*/
@@ -169,16 +169,16 @@ typedef struct VhostUserMsg {
 		struct vhost_user_config cfg;
 	} payload;
 	/* Nothing should be added after the payload */
-} __rte_packed VhostUserMsg;
+} __rte_packed_end VhostUserMsg;
 
 /* Note: this structure and VhostUserMsg can't be changed carelessly as
  * external message handlers rely on them.
  */
-struct __rte_packed vhu_msg_context {
+struct __rte_packed_begin vhu_msg_context {
 	VhostUserMsg msg;
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num;
-};
+} __rte_packed_end;
 
 #define VHOST_USER_HDR_SIZE offsetof(VhostUserMsg, payload.u64)
 

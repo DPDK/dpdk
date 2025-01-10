@@ -28,13 +28,13 @@
  * TLS Header
  */
 __extension__
-struct rte_tls_hdr {
+struct __rte_packed_begin rte_tls_hdr {
 	/** Content type of TLS packet. Defined as RTE_TLS_TYPE_*. */
 	uint8_t type;
 	/** TLS Version defined as RTE_TLS_VERSION*. */
 	rte_be16_t version;
 	/** The length (in bytes) of the following TLS packet. */
 	rte_be16_t length;
-} __rte_packed;
+} __rte_packed_end;
 
 #endif /* RTE_TLS_H */

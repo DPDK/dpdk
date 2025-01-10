@@ -17,10 +17,10 @@
 /**
  * PPP Header
  */
-struct rte_ppp_hdr {
+struct __rte_packed_begin rte_ppp_hdr {
 	uint8_t addr; /**< PPP address(8) */
 	uint8_t ctrl; /**< PPP control(8) */
 	rte_be16_t proto_id; /**< PPP protocol identifier(16) */
-} __rte_packed;
+} __rte_packed_end;
 
 #endif /* _RTE_PPP_H_ */

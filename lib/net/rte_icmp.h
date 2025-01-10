@@ -21,33 +21,33 @@
 /**
  * ICMP base header
  */
-struct rte_icmp_base_hdr {
+struct __rte_packed_begin rte_icmp_base_hdr {
 	uint8_t type;
 	uint8_t code;
 	rte_be16_t checksum;
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * ICMP echo header
  */
-struct rte_icmp_echo_hdr {
+struct __rte_packed_begin rte_icmp_echo_hdr {
 	struct rte_icmp_base_hdr base;
 	rte_be16_t identifier;
 	rte_be16_t sequence;
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * ICMP Header
  *
  * @see rte_icmp_echo_hdr which is similar.
  */
-struct rte_icmp_hdr {
+struct __rte_packed_begin rte_icmp_hdr {
 	uint8_t  icmp_type;     /* ICMP packet type. */
 	uint8_t  icmp_code;     /* ICMP packet code. */
 	rte_be16_t icmp_cksum;  /* ICMP packet checksum. */
 	rte_be16_t icmp_ident;  /* ICMP packet identifier. */
 	rte_be16_t icmp_seq_nb; /* ICMP packet sequence number. */
-} __rte_packed;
+} __rte_packed_end;
 
 /* ICMP packet types */
 #define RTE_ICMP_TYPE_ECHO_REPLY 0

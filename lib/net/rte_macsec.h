@@ -25,7 +25,7 @@
  * MACsec Header (SecTAG)
  */
 __extension__
-struct rte_macsec_hdr {
+struct __rte_packed_begin rte_macsec_hdr {
 	/**
 	 * Tag control information and Association number of secure channel.
 	 * Various bits of TCI and AN are masked using RTE_MACSEC_TCI_* and RTE_MACSEC_AN_MASK.
@@ -39,7 +39,7 @@ struct rte_macsec_hdr {
 	uint8_t short_length:6; /**< Short Length. */
 #endif
 	rte_be32_t packet_number; /**< Packet number to support replay protection. */
-} __rte_packed;
+} __rte_packed_end;
 
 /** SCI length in MACsec header if present. */
 #define RTE_MACSEC_SCI_LEN 8
@@ -48,8 +48,8 @@ struct rte_macsec_hdr {
  * MACsec SCI header (8 bytes) after the MACsec header
  * which is present if SC bit is set in tci_an.
  */
-struct rte_macsec_sci_hdr {
+struct __rte_packed_begin rte_macsec_sci_hdr {
 	uint8_t sci[RTE_MACSEC_SCI_LEN]; /**< Optional secure channel ID. */
-} __rte_packed;
+} __rte_packed_end;
 
 #endif /* RTE_MACSEC_H */

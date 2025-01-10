@@ -21,7 +21,7 @@
 /**
  * TCP Header
  */
-struct rte_tcp_hdr {
+struct __rte_packed_begin rte_tcp_hdr {
 	rte_be16_t src_port; /**< TCP source port. */
 	rte_be16_t dst_port; /**< TCP destination port. */
 	rte_be32_t sent_seq; /**< TX data sequence number. */
@@ -31,7 +31,7 @@ struct rte_tcp_hdr {
 	rte_be16_t rx_win;   /**< RX flow control window. */
 	rte_be16_t cksum;    /**< TCP checksum. */
 	rte_be16_t tcp_urp;  /**< TCP urgent pointer, if any. */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * TCP Flags

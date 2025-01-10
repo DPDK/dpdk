@@ -23,7 +23,7 @@
  * GRE Header
  */
 __extension__
-struct rte_gre_hdr {
+struct __rte_packed_begin rte_gre_hdr {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint16_t res2:4; /**< Reserved */
 	uint16_t s:1;    /**< Sequence Number Present bit */
@@ -42,28 +42,28 @@ struct rte_gre_hdr {
 	uint16_t ver:3;  /**< Version Number */
 #endif
 	rte_be16_t proto;  /**< Protocol Type */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Optional field checksum in GRE header
  */
-struct rte_gre_hdr_opt_checksum_rsvd {
+struct __rte_packed_begin rte_gre_hdr_opt_checksum_rsvd {
 	rte_be16_t checksum;
 	rte_be16_t reserved1;
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Optional field key in GRE header
  */
-struct rte_gre_hdr_opt_key {
+struct __rte_packed_begin rte_gre_hdr_opt_key {
 	rte_be32_t key;
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * Optional field sequence in GRE header
  */
-struct rte_gre_hdr_opt_sequence {
+struct __rte_packed_begin rte_gre_hdr_opt_sequence {
 	rte_be32_t sequence;
-} __rte_packed;
+} __rte_packed_end;
 
 #endif /* RTE_GRE_H_ */
