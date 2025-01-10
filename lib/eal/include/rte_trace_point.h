@@ -298,7 +298,7 @@ struct __rte_trace_stream_header {
 	rte_uuid_t uuid;
 	uint32_t lcore_id;
 	char thread_name[__RTE_TRACE_EMIT_STRING_LEN_MAX];
-} __rte_packed;
+};
 
 struct __rte_trace_header {
 	uint32_t offset;
