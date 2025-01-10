@@ -214,7 +214,7 @@ enum hns3_pkt_tun_type {
 };
 
 /* hardware spec ring buffer format */
-struct hns3_desc {
+struct __rte_packed_begin hns3_desc {
 	union {
 		uint64_t addr;
 		uint64_t timestamp;
@@ -282,7 +282,7 @@ struct hns3_desc {
 			};
 		} rx;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 struct hns3_entry {
 	struct rte_mbuf *mbuf;

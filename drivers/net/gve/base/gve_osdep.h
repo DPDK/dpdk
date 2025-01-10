@@ -96,7 +96,7 @@
 #define ____cacheline_aligned	__rte_cache_aligned
 #endif
 #ifndef __packed
-#define __packed		__rte_packed
+#define __packed		__attribute__((__packed__))
 #endif
 #define __iomem
 

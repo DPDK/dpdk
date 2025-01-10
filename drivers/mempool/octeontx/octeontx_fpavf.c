@@ -46,20 +46,20 @@ struct octeontx_mbox_fpa_cfg {
 	uint64_t	aura_cfg;
 };
 
-struct __rte_packed gen_req {
+struct __rte_packed_begin gen_req {
 	uint32_t	value;
-};
+} __rte_packed_end;
 
-struct __rte_packed idn_req {
+struct __rte_packed_begin idn_req {
 	uint8_t	domain_id;
-};
+} __rte_packed_end;
 
-struct __rte_packed gen_resp {
+struct __rte_packed_begin gen_resp {
 	uint16_t	domain_id;
 	uint16_t	vfid;
-};
+} __rte_packed_end;
 
-struct __rte_packed dcfg_resp {
+struct __rte_packed_begin dcfg_resp {
 	uint8_t	sso_count;
 	uint8_t	ssow_count;
 	uint8_t	fpa_count;
@@ -67,7 +67,7 @@ struct __rte_packed dcfg_resp {
 	uint8_t	tim_count;
 	uint8_t	net_port_count;
 	uint8_t	virt_port_count;
-};
+} __rte_packed_end;
 
 #define FPA_MAX_POOL	32
 #define FPA_PF_PAGE_SZ	4096

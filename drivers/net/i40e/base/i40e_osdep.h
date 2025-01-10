@@ -177,21 +177,21 @@ static inline uint64_t i40e_read64_addr(volatile void *addr)
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
 
 /* memory allocation tracking */
-struct i40e_dma_mem {
+struct __rte_packed_begin i40e_dma_mem {
 	void *va;
 	u64 pa;
 	u32 size;
 	const void *zone;
-} __rte_packed;
+} __rte_packed_end;
 
 #define i40e_allocate_dma_mem(h, m, unused, s, a) \
 			i40e_allocate_dma_mem_d(h, m, s, a)
 #define i40e_free_dma_mem(h, m) i40e_free_dma_mem_d(h, m)
 
-struct i40e_virt_mem {
+struct __rte_packed_begin i40e_virt_mem {
 	void *va;
 	u32 size;
-} __rte_packed;
+} __rte_packed_end;
 
 #define i40e_allocate_virt_mem(h, m, s) i40e_allocate_virt_mem_d(h, m, s)
 #define i40e_free_virt_mem(h, m) i40e_free_virt_mem_d(h, m)

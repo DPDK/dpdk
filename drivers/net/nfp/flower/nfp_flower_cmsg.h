@@ -943,7 +943,7 @@ struct nfp_fl_act_pre_tun {
  * |            var_flags          |            var_np             |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
-struct nfp_fl_act_set_tun {
+struct __rte_packed_begin nfp_fl_act_set_tun {
 	struct nfp_fl_act_head head;
 	rte_be16_t reserved;
 	rte_be64_t tun_id;
@@ -956,7 +956,7 @@ struct nfp_fl_act_set_tun {
 	uint8_t    tun_len;      /**< Only valid for NFP_FL_TUNNEL_GENEVE */
 	uint8_t    reserved2;
 	rte_be16_t tun_proto;    /**< Only valid for NFP_FL_TUNNEL_GENEVE */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Meter

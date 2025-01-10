@@ -263,13 +263,13 @@ struct iocpt_lif_setattr_cmd {
 	u8     opcode;
 	u8     attr;
 	__le16 lif_index;
-	union {
+	union __rte_packed_begin {
 		u8	state;
 		char	name[IOCPT_IFNAMSIZ];
 		__le64	features;
 		u8	stats_ctl;
 		u8	rsvd[60];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 /**
@@ -283,10 +283,10 @@ struct iocpt_lif_setattr_comp {
 	u8     status;
 	u8     rsvd;
 	__le16 comp_index;
-	union {
+	union __rte_packed_begin {
 		__le64	features;
 		u8	rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -316,11 +316,11 @@ struct iocpt_lif_getattr_comp {
 	u8     status;
 	u8     rsvd;
 	__le16 comp_index;
-	union {
+	union __rte_packed_begin {
 		u8	state;
 		__le64	features;
 		u8	rsvd2[11];
-	} __rte_packed;
+	} __rte_packed_end;
 	u8     color;
 };
 
@@ -396,7 +396,7 @@ struct iocpt_q_identify_comp {
  * @cq_ring_base: Completion queue ring base address
  * @sg_ring_base: Scatter/Gather ring base address
  */
-struct iocpt_q_init_cmd {
+struct __rte_packed_begin iocpt_q_init_cmd {
 	u8     opcode;
 	u8     type;
 	__le16 lif_index;
@@ -417,7 +417,7 @@ struct iocpt_q_init_cmd {
 	__le64 cq_ring_base;
 	__le64 sg_ring_base;
 	u8     rsvd2[20];
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * struct iocpt_q_init_comp - Queue init command completion
@@ -469,7 +469,7 @@ enum iocpt_desc_opcode {
  * @intr_ctx_addr:   Completion interrupt context address
  * @intr_ctx_data:   Completion interrupt context data
  */
-struct iocpt_crypto_desc {
+struct __rte_packed_begin iocpt_crypto_desc {
 	uint8_t  opcode;
 	uint8_t  flags;
 	uint8_t  num_src_dst_sgs;
@@ -481,7 +481,7 @@ struct iocpt_crypto_desc {
 	__le32   session_tag;
 	__le64   intr_ctx_addr;
 	__le64   intr_ctx_data;
-} __rte_packed;
+} __rte_packed_end;
 
 static inline uint8_t iocpt_encode_nsge_src_dst(uint8_t src, uint8_t dst)
 {
@@ -765,14 +765,14 @@ struct iocpt_log_event {
  * @queue_count:    Queue counts per queue-type
  */
 union iocpt_lif_config {
-	struct {
+	struct __rte_packed_begin {
 		u8     state;
 		u8     rsvd[3];
 		char   name[IOCPT_IFNAMSIZ];
 		u8     rsvd2[12];
 		__le64 features;
 		__le32 queue_count[IOCPT_QTYPE_MAX];
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[56];
 };
 
@@ -876,14 +876,14 @@ union iocpt_dev_info_regs {
  * @data:            Opcode-specific side-data
  */
 union iocpt_dev_cmd_regs {
-	struct {
+	struct __rte_packed_begin {
 		u32    doorbell;
 		u32    done;
 		union iocpt_dev_cmd         cmd;
 		union iocpt_dev_cmd_comp    comp;
 		u8     rsvd[48];
 		u32    data[478];
-	} __rte_packed;
+	} __rte_packed_end;
 	u32    words[512];
 };
 
@@ -893,10 +893,10 @@ union iocpt_dev_cmd_regs {
  * @devcmd:          Device command registers
  */
 union iocpt_dev_regs {
-	struct {
+	struct __rte_packed_begin {
 		union iocpt_dev_info_regs info;
 		union iocpt_dev_cmd_regs  devcmd;
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[1024];
 };
 
@@ -971,7 +971,7 @@ union iocpt_dev_identity {
  * @config:             LIF config struct with features, q counts
  */
 union iocpt_lif_identity {
-	struct {
+	struct __rte_packed_begin {
 		__le64 features;
 
 		u8 version;
@@ -980,7 +980,7 @@ union iocpt_lif_identity {
 		__le32 max_nb_sessions;
 		u8 rsvd2[120];
 		union iocpt_lif_config config;
-	} __rte_packed;
+	} __rte_packed_end;
 	__le32 words[90];
 };
 

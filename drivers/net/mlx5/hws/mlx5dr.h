@@ -328,13 +328,13 @@ union mlx5dr_crc_encap_entropy_hash_ip_field {
 	};
 };
 
-struct mlx5dr_crc_encap_entropy_hash_fields {
+struct __rte_packed_begin mlx5dr_crc_encap_entropy_hash_fields {
 	union mlx5dr_crc_encap_entropy_hash_ip_field dst;
 	union mlx5dr_crc_encap_entropy_hash_ip_field src;
 	uint8_t next_protocol;
 	rte_be16_t dst_port;
 	rte_be16_t src_port;
-} __rte_packed;
+} __rte_packed_end;
 
 enum mlx5dr_crc_encap_entropy_hash_size {
 	MLX5DR_CRC_ENCAP_ENTROPY_HASH_SIZE_8,

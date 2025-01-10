@@ -68,24 +68,24 @@
 	} \
 } while (0)
 
-struct __rte_packed virtq_avail {
+struct __rte_packed_begin virtq_avail {
 	uint16_t flags;
 	uint16_t idx;
 	uint16_t ring[];	/* Queue Size */
-};
+} __rte_packed_end;
 
-struct __rte_packed virtq_used_elem {
+struct __rte_packed_begin virtq_used_elem {
 	/* Index of start of used descriptor chain. */
 	uint32_t id;
 	/* Total length of the descriptor chain which was used (written to) */
 	uint32_t len;
-};
+} __rte_packed_end;
 
-struct __rte_packed virtq_used {
+struct __rte_packed_begin virtq_used {
 	uint16_t flags;
 	uint16_t idx;
 	struct virtq_used_elem ring[];	/* Queue Size */
-};
+} __rte_packed_end;
 
 struct virtq_struct_layout_s {
 	size_t used_offset;

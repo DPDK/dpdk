@@ -32,12 +32,12 @@ extern "C" {
 #define DPAA2_FD_CTRL_PTV1	0x00400000
 
 /* Frame annotation status */
-struct dpaa2_fas {
+struct __rte_packed_begin dpaa2_fas {
 	uint8_t reserved;
 	uint8_t ppid;
 	__le16 ifpid;
 	__le32 status;
-}  __rte_packed;
+} __rte_packed_end;
 
 /**
  * HW Packet Annotation  Register structures

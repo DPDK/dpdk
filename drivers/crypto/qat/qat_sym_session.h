@@ -92,7 +92,7 @@ typedef int (*qat_sym_build_request_t)(void *in_op, struct qat_sym_session *ctx,
 		uint8_t *out_msg, void *op_cookie);
 
 /* Common content descriptor */
-struct __rte_cache_aligned qat_sym_cd {
+struct __rte_cache_aligned __rte_packed_begin qat_sym_cd {
 	struct icp_qat_hw_cipher_algo_blk cipher;
 	union {
 		struct icp_qat_hw_auth_algo_blk hash;
@@ -100,7 +100,7 @@ struct __rte_cache_aligned qat_sym_cd {
 		struct icp_qat_hw_gen3_crc_cd crc_gen3;
 		struct icp_qat_hw_gen4_crc_cd crc_gen4;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 struct qat_sym_session {
 	enum icp_qat_fw_la_cmd_id qat_cmd;

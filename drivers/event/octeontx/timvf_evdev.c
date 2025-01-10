@@ -9,10 +9,10 @@ RTE_LOG_REGISTER_SUFFIX(otx_logtype_timvf, timer, NOTICE);
 
 static struct rte_eventdev *event_dev;
 
-struct __rte_packed timvf_mbox_dev_info {
+struct __rte_packed_begin timvf_mbox_dev_info {
 	uint64_t ring_active[4];
 	uint64_t clk_freq;
-};
+} __rte_packed_end;
 
 /* Response messages */
 enum {

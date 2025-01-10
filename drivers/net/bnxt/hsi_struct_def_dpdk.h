@@ -10,7 +10,7 @@
 
 /* This is the HWRM command header. */
 /* hwrm_cmd_hdr (size:128b/16B) */
-struct hwrm_cmd_hdr {
+struct __rte_packed_begin hwrm_cmd_hdr {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39,11 +39,11 @@ struct hwrm_cmd_hdr {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* This is the HWRM response header. */
 /* hwrm_resp_hdr (size:64b/8B) */
-struct hwrm_resp_hdr {
+struct __rte_packed_begin hwrm_resp_hdr {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -52,7 +52,7 @@ struct hwrm_resp_hdr {
 	uint16_t	seq_id;
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * TLV encapsulated message. Use the TLV type field of the
@@ -99,7 +99,7 @@ struct hwrm_resp_hdr {
 
 
 /* tlv (size:64b/8B) */
-struct tlv {
+struct __rte_packed_begin tlv {
 	/*
 	 * The command discriminator is used to differentiate between various
 	 * types of HWRM messages. This includes legacy HWRM and RoCE slowpath
@@ -151,11 +151,11 @@ struct tlv {
 	 * and it must be an integer multiple of 8B.
 	 */
 	uint16_t	length;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Input */
 /* input (size:128b/16B) */
-struct input {
+struct __rte_packed_begin input {
 	/*
 	 * This value indicates what type of request this is. The format
 	 * for the rest of the command is determined by this field.
@@ -184,11 +184,11 @@ struct input {
 	 * and must be cleared to zero before the request is made.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Output */
 /* output (size:64b/8B) */
-struct output {
+struct __rte_packed_begin output {
 	/*
 	 * Pass/Fail or error type
 	 *
@@ -207,11 +207,11 @@ struct output {
 	 * memory.
 	 */
 	uint16_t	resp_len;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Short Command Structure */
 /* hwrm_short_input (size:128b/16B) */
-struct hwrm_short_input {
+struct __rte_packed_begin hwrm_short_input {
 	/*
 	 * This field indicates the type of request in the request buffer.
 	 * The format for the rest of the command (request) is determined
@@ -243,7 +243,7 @@ struct hwrm_short_input {
 	 * This area must be 16B aligned.
 	 */
 	uint64_t	req_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Command numbering
@@ -251,7 +251,7 @@ struct hwrm_short_input {
  * #        So only structure definition is provided here.
  */
 /* cmd_nums (size:64b/8B) */
-struct cmd_nums {
+struct __rte_packed_begin cmd_nums {
 	/*
 	 * This version of the specification defines the commands listed in
 	 * the table below. The following are general implementation
@@ -1046,11 +1046,11 @@ struct cmd_nums {
 	#define HWRM_NVM_RAW_WRITE_BLK                    UINT32_C(0xffff)
 	#define HWRM_LAST                                HWRM_NVM_RAW_WRITE_BLK
 	uint16_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Return Codes */
 /* ret_codes (size:64b/8B) */
-struct ret_codes {
+struct __rte_packed_begin ret_codes {
 	uint16_t	error_code;
 	/* Request was successfully executed by the HWRM. */
 	#define HWRM_ERR_CODE_SUCCESS                      UINT32_C(0x0)
@@ -1169,11 +1169,11 @@ struct ret_codes {
 	#define HWRM_ERR_CODE_LAST \
 		HWRM_ERR_CODE_CMD_NOT_SUPPORTED
 	uint16_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Output */
 /* hwrm_err_output (size:128b/16B) */
-struct hwrm_err_output {
+struct __rte_packed_begin hwrm_err_output {
 	/*
 	 * Pass/Fail or error type
 	 *
@@ -1209,7 +1209,7 @@ struct hwrm_err_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 /*
  * Following is the signature for HWRM message field that indicates not
  * applicable (All F's). Need to cast it the size of the field if needed.
@@ -1255,7 +1255,7 @@ struct hwrm_err_output {
 
 
 /* hwrm_ver_get_input (size:192b/24B) */
-struct hwrm_ver_get_input {
+struct __rte_packed_begin hwrm_ver_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -1312,10 +1312,10 @@ struct hwrm_ver_get_input {
 	 */
 	uint8_t	hwrm_intf_upd;
 	uint8_t	unused_0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ver_get_output (size:1408b/176B) */
-struct hwrm_ver_get_output {
+struct __rte_packed_begin hwrm_ver_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -1842,10 +1842,10 @@ struct hwrm_ver_get_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_read_cmd_data_msg (size:128b/16B) */
-struct cfa_bds_read_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_read_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/*
@@ -1888,10 +1888,10 @@ struct cfa_bds_read_cmd_data_msg {
 	 * zero. The size of the write is controlled by the data_size field.
 	 */
 	uint64_t	host_address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_write_cmd_data_msg (size:1152b/144B) */
-struct cfa_bds_write_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_write_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/*
@@ -1941,10 +1941,10 @@ struct cfa_bds_write_cmd_data_msg {
 	 * WRITE_CMD message is extracted from the BD.
 	 */
 	uint32_t	dta[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_read_clr_cmd_data_msg (size:256b/32B) */
-struct cfa_bds_read_clr_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_read_clr_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/*
@@ -1997,10 +1997,10 @@ struct cfa_bds_read_clr_cmd_data_msg {
 	uint16_t	clear_mask;
 	uint16_t	unused0[3];
 	uint16_t	unused1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_em_insert_cmd_data_msg (size:1152b/144B) */
-struct cfa_bds_em_insert_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_em_insert_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/*
@@ -2049,10 +2049,10 @@ struct cfa_bds_em_insert_cmd_data_msg {
 	 * the data_size field. The bd_cnt in the encapsulating BD must also be
 	 */
 	uint32_t	dta[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_em_delete_cmd_data_msg (size:256b/32B) */
-struct cfa_bds_em_delete_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_em_delete_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/* An exact match table delete will be attempted. */
@@ -2094,10 +2094,10 @@ struct cfa_bds_em_delete_cmd_data_msg {
 	 */
 	uint64_t	dta;
 	uint32_t	unused1[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_invalidate_cmd_data_msg (size:128b/16B) */
-struct cfa_bds_invalidate_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_invalidate_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/*
@@ -2134,10 +2134,10 @@ struct cfa_bds_invalidate_cmd_data_msg {
 		UINT32_C(0x3ffffff)
 	#define CFA_BDS_INVALIDATE_CMD_DATA_MSG_TABLE_INDEX_SFT 0
 	uint32_t	unused[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_bds_event_collect_cmd_data_msg (size:128b/16B) */
-struct cfa_bds_event_collect_cmd_data_msg {
+struct __rte_packed_begin cfa_bds_event_collect_cmd_data_msg {
 	/* This value selects the format for the mid-path command for the CFA. */
 	uint8_t	opcode;
 	/* Reads notification messages from the Host Notification Queue. */
@@ -2164,10 +2164,10 @@ struct cfa_bds_event_collect_cmd_data_msg {
 	 * data will be written to the same function as the one that owns the SQ
 	 */
 	uint64_t	host_address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* ce_bds_add_data_msg (size:576b/72B) */
-struct ce_bds_add_data_msg {
+struct __rte_packed_begin ce_bds_add_data_msg {
 	uint32_t	version_algorithm_kid_opcode;
 	/*
 	 * This value selects the operation for the mid-path command for the
@@ -2281,10 +2281,10 @@ struct ce_bds_add_data_msg {
 	 * the two end points. This field is used for TLS1.3 only.
 	 */
 	uint8_t	addl_iv[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* ce_bds_delete_data_msg (size:32b/4B) */
-struct ce_bds_delete_data_msg {
+struct __rte_packed_begin ce_bds_delete_data_msg {
 	uint32_t	kid_opcode_ctx_kind;
 	/*
 	 * This value selects the operation for the mid-path command for the
@@ -2323,10 +2323,10 @@ struct ce_bds_delete_data_msg {
 	#define CE_BDS_DELETE_DATA_MSG_CTX_KIND_QUIC_RX  (UINT32_C(0x15) << 24)
 	#define CE_BDS_DELETE_DATA_MSG_CTX_KIND_LAST \
 		CE_BDS_DELETE_DATA_MSG_CTX_KIND_QUIC_RX
-} __rte_packed;
+} __rte_packed_end;
 
 /* ce_bds_resync_resp_ack_msg (size:128b/16B) */
-struct ce_bds_resync_resp_ack_msg {
+struct __rte_packed_begin ce_bds_resync_resp_ack_msg {
 	uint32_t	resync_status_kid_opcode;
 	/*
 	 * This value selects the operation for the mid-path command for the
@@ -2376,10 +2376,10 @@ struct ce_bds_resync_resp_ack_msg {
 	 * resume decrypting records.
 	 */
 	uint64_t	resync_record_seq_num;
-} __rte_packed;
+} __rte_packed_end;
 
 /* ce_bds_resync_resp_nack_msg (size:64b/8B) */
-struct ce_bds_resync_resp_nack_msg {
+struct __rte_packed_begin ce_bds_resync_resp_nack_msg {
 	uint32_t	resync_status_kid_opcode;
 	/*
 	 * This value selects the operation for the mid-path command for the
@@ -2423,10 +2423,10 @@ struct ce_bds_resync_resp_nack_msg {
 	 * response.
 	 */
 	uint32_t	resync_record_tcp_seq_num;
-} __rte_packed;
+} __rte_packed_end;
 
 /* crypto_presync_bd_cmd (size:256b/32B) */
-struct crypto_presync_bd_cmd {
+struct __rte_packed_begin crypto_presync_bd_cmd {
 	uint8_t	flags;
 	/*
 	 * Typically, presync BDs are used for packet retransmissions. Source
@@ -2519,10 +2519,10 @@ struct crypto_presync_bd_cmd {
 	 * field.
 	 */
 	uint64_t	record_seq_num;
-} __rte_packed;
+} __rte_packed_end;
 
 /* ce_bds_quic_add_data_msg (size:832b/104B) */
-struct ce_bds_quic_add_data_msg {
+struct __rte_packed_begin ce_bds_quic_add_data_msg {
 	uint32_t	ver_algo_kid_opcode;
 	/*
 	 * This value selects the operation for the mid-path command for the
@@ -2622,10 +2622,10 @@ struct ce_bds_quic_add_data_msg {
 	uint8_t	hp_key[32];
 	/* Packet number associated with the QUIC connection. */
 	uint64_t	pkt_number;
-} __rte_packed;
+} __rte_packed_end;
 
 /* bd_base (size:64b/8B) */
-struct bd_base {
+struct __rte_packed_begin bd_base {
 	uint8_t	type;
 	/* This value identifies the type of buffer descriptor. */
 	#define BD_BASE_TYPE_MASK             UINT32_C(0x3f)
@@ -2684,10 +2684,10 @@ struct bd_base {
 	#define BD_BASE_TYPE_TX_BD_LONG_INLINE  UINT32_C(0x11)
 	#define BD_BASE_TYPE_LAST              BD_BASE_TYPE_TX_BD_LONG_INLINE
 	uint8_t	unused_1[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_bd_short (size:128b/16B) */
-struct tx_bd_short {
+struct __rte_packed_begin tx_bd_short {
 	/*
 	 * All bits in this field must be valid on the first BD of a packet.
 	 * Only the packet_end bit must be valid for the remaining BDs
@@ -2798,10 +2798,10 @@ struct tx_bd_short {
 	 * This value must be valid on all BDs of a packet.
 	 */
 	uint64_t	address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_bd_long (size:128b/16B) */
-struct tx_bd_long {
+struct __rte_packed_begin tx_bd_long {
 	/* This value identifies the type of buffer descriptor. */
 	uint16_t	flags_type;
 	/*
@@ -2910,11 +2910,11 @@ struct tx_bd_long {
 	 * This value must be valid on all BDs of a packet.
 	 */
 	uint64_t	address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Last 16 bytes of tx_bd_long. */
 /* tx_bd_long_hi (size:128b/16B) */
-struct tx_bd_long_hi {
+struct __rte_packed_begin tx_bd_long_hi {
 	/*
 	 * All bits in this field must be valid on the first BD of a packet.
 	 * Their value on other BDs of the packet will be ignored.
@@ -3196,7 +3196,7 @@ struct tx_bd_long_hi {
 		(UINT32_C(0x2) << 28)
 	#define TX_BD_LONG_CFA_META_KEY_LAST \
 		TX_BD_LONG_CFA_META_KEY_METADATA_TRANSFER
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This structure is used to inform the NIC of packet data that needs to
@@ -3206,7 +3206,7 @@ struct tx_bd_long_hi {
  * the additional extended features supported by long BDs.
  */
 /* tx_bd_long_inline (size:256b/32B) */
-struct tx_bd_long_inline {
+struct __rte_packed_begin tx_bd_long_inline {
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
 	#define TX_BD_LONG_INLINE_TYPE_MASK             UINT32_C(0x3f)
@@ -3492,10 +3492,10 @@ struct tx_bd_long_inline {
 		(UINT32_C(0x2) << 28)
 	#define TX_BD_LONG_INLINE_CFA_META_KEY_LAST \
 		TX_BD_LONG_INLINE_CFA_META_KEY_METADATA_TRANSFER
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_bd_empty (size:128b/16B) */
-struct tx_bd_empty {
+struct __rte_packed_begin tx_bd_empty {
 	/* This value identifies the type of buffer descriptor. */
 	uint8_t	type;
 	#define TX_BD_EMPTY_TYPE_MASK       UINT32_C(0x3f)
@@ -3510,10 +3510,10 @@ struct tx_bd_empty {
 	uint8_t	unused_2;
 	uint8_t	unused_3[3];
 	uint8_t	unused_4[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_bd_mp_cmd (size:128b/16B) */
-struct tx_bd_mp_cmd {
+struct __rte_packed_begin tx_bd_mp_cmd {
 	/* Unless otherwise stated, sub-fields of this field are always valid. */
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
@@ -3549,10 +3549,10 @@ struct tx_bd_mp_cmd {
 	 */
 	uint32_t	opaque;
 	uint64_t	unused1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_bd_presync_cmd (size:128b/16B) */
-struct tx_bd_presync_cmd {
+struct __rte_packed_begin tx_bd_presync_cmd {
 	/* Unless otherwise stated, sub-fields of this field are always valid. */
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
@@ -3601,7 +3601,7 @@ struct tx_bd_presync_cmd {
 	#define TX_BD_PRESYNC_CMD_KID_VAL_MASK UINT32_C(0xfffff)
 	#define TX_BD_PRESYNC_CMD_KID_VAL_SFT 0
 	uint32_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This structure is used to send additional information for transmitting
@@ -3610,7 +3610,7 @@ struct tx_bd_presync_cmd {
  * BDs will follow the timed transmit BD.
  */
 /* tx_bd_timedtx (size:128b/16B) */
-struct tx_bd_timedtx {
+struct __rte_packed_begin tx_bd_timedtx {
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
 	#define TX_BD_TIMEDTX_TYPE_MASK           UINT32_C(0x3f)
@@ -3686,10 +3686,10 @@ struct tx_bd_timedtx {
 	 * This field is applicable only if flags.kind is so_txtime.
 	 */
 	uint64_t	tx_time;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_prod_pkt_bd (size:128b/16B) */
-struct rx_prod_pkt_bd {
+struct __rte_packed_begin rx_prod_pkt_bd {
 	/* This value identifies the type of buffer descriptor. */
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
@@ -3746,10 +3746,10 @@ struct rx_prod_pkt_bd {
 	 * be placed in host memory.
 	 */
 	uint64_t	address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_prod_bfr_bd (size:128b/16B) */
-struct rx_prod_bfr_bd {
+struct __rte_packed_begin rx_prod_bfr_bd {
 	/* This value identifies the type of buffer descriptor. */
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
@@ -3775,10 +3775,10 @@ struct rx_prod_bfr_bd {
 	 * be placed in host memory.
 	 */
 	uint64_t	address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_prod_agg_bd (size:128b/16B) */
-struct rx_prod_agg_bd {
+struct __rte_packed_begin rx_prod_agg_bd {
 	/* This value identifies the type of buffer descriptor. */
 	uint16_t	flags_type;
 	/* This value identifies the type of buffer descriptor. */
@@ -3814,10 +3814,10 @@ struct rx_prod_agg_bd {
 	 * be placed in host memory.
 	 */
 	uint64_t	address;
-} __rte_packed;
+} __rte_packed_end;
 
 /* cfa_cmpls_cmp_data_msg (size:128b/16B) */
-struct cfa_cmpls_cmp_data_msg {
+struct __rte_packed_begin cfa_cmpls_cmp_data_msg {
 	uint32_t	mp_client_dma_length_opcode_status_type;
 	/*
 	 * This field represents the Mid-Path client that generated the
@@ -3996,38 +3996,38 @@ struct cfa_cmpls_cmp_data_msg {
 	 */
 	#define CFA_CMPLS_CMP_DATA_MSG_TABLE_INDEX_MASK UINT32_C(0x3ffffff)
 	#define CFA_CMPLS_CMP_DATA_MSG_TABLE_INDEX_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* CFA Mid-Path 32B DMA Message */
 /* cfa_dma32b_data_msg (size:256b/32B) */
-struct cfa_dma32b_data_msg {
+struct __rte_packed_begin cfa_dma32b_data_msg {
 	/* DMA data value. */
 	uint32_t	dta[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* CFA Mid-Path 64B DMA Message */
 /* cfa_dma64b_data_msg (size:512b/64B) */
-struct cfa_dma64b_data_msg {
+struct __rte_packed_begin cfa_dma64b_data_msg {
 	/* DMA data value. */
 	uint32_t	dta[16];
-} __rte_packed;
+} __rte_packed_end;
 
 /* CFA Mid-Path 96B DMA Message */
 /* cfa_dma96b_data_msg (size:768b/96B) */
-struct cfa_dma96b_data_msg {
+struct __rte_packed_begin cfa_dma96b_data_msg {
 	/* DMA data value. */
 	uint32_t	dta[24];
-} __rte_packed;
+} __rte_packed_end;
 
 /* CFA Mid-Path 128B DMA Message */
 /* cfa_dma128b_data_msg (size:1024b/128B) */
-struct cfa_dma128b_data_msg {
+struct __rte_packed_begin cfa_dma128b_data_msg {
 	/* DMA data value. */
 	uint32_t	dta[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* ce_cmpls_cmp_data_msg (size:128b/16B) */
-struct ce_cmpls_cmp_data_msg {
+struct __rte_packed_begin ce_cmpls_cmp_data_msg {
 	uint16_t	client_subtype_type;
 	/*
 	 * This field indicates the exact type of the completion. By
@@ -4117,10 +4117,10 @@ struct ce_cmpls_cmp_data_msg {
 	#define CE_CMPLS_CMP_DATA_MSG_KID_SFT     0
 	#define CE_CMPLS_CMP_DATA_MSG_UNUSED3_MASK UINT32_C(0xfff00000)
 	#define CE_CMPLS_CMP_DATA_MSG_UNUSED3_SFT 20
-} __rte_packed;
+} __rte_packed_end;
 
 /* cmpl_base (size:128b/16B) */
-struct cmpl_base {
+struct __rte_packed_begin cmpl_base {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -4273,10 +4273,10 @@ struct cmpl_base {
 	#define CMPL_BASE_INFO3_SFT 1
 	/* info4 is 32 b */
 	uint32_t	info4;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_cmpl (size:128b/16B) */
-struct tx_cmpl {
+struct __rte_packed_begin tx_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -4392,10 +4392,10 @@ struct tx_cmpl {
 	uint16_t	unused_1;
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_cmpl_coal (size:128b/16B) */
-struct tx_cmpl_coal {
+struct __rte_packed_begin tx_cmpl_coal {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -4529,10 +4529,10 @@ struct tx_cmpl_coal {
 	 */
 	#define TX_CMPL_COAL_SQ_CONS_IDX_MASK UINT32_C(0xffffff)
 	#define TX_CMPL_COAL_SQ_CONS_IDX_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* tx_cmpl_packet_timestamp (size:128b/16B) */
-struct tx_cmpl_packet_timestamp {
+struct __rte_packed_begin tx_cmpl_packet_timestamp {
 	uint16_t	ts_sub_ns_flags_type;
 	/*
 	 * This field indicates the exact type of the completion. By
@@ -4709,10 +4709,10 @@ struct tx_cmpl_packet_timestamp {
 	 * PA for PA timestamps. This field is in units of ns.
 	 */
 	uint32_t	ts_ns_lo;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_pkt_cmpl (size:128b/16B) */
-struct rx_pkt_cmpl {
+struct __rte_packed_begin rx_pkt_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -4926,11 +4926,11 @@ struct rx_pkt_cmpl {
 	 * based on the mode bits and key value in the VNIC.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Last 16 bytes of rx_pkt_cmpl. */
 /* rx_pkt_cmpl_hi (size:128b/16B) */
-struct rx_pkt_cmpl_hi {
+struct __rte_packed_begin rx_pkt_cmpl_hi {
 	uint32_t	flags2;
 	/*
 	 * This indicates that the ip checksum was calculated for the
@@ -5272,10 +5272,10 @@ struct rx_pkt_cmpl_hi {
 	 */
 	#define RX_PKT_CMPL_REORDER_MASK UINT32_C(0xffffff)
 	#define RX_PKT_CMPL_REORDER_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_pkt_v2_cmpl (size:128b/16B) */
-struct rx_pkt_v2_cmpl {
+struct __rte_packed_begin rx_pkt_v2_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -5534,11 +5534,11 @@ struct rx_pkt_v2_cmpl {
 	 * from the first BD used to place the packet.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Last 16 bytes of RX Packet V2 Completion Record */
 /* rx_pkt_v2_cmpl_hi (size:128b/16B) */
-struct rx_pkt_v2_cmpl_hi {
+struct __rte_packed_begin rx_pkt_v2_cmpl_hi {
 	uint32_t	flags2;
 	/*
 	 * When this bit is '0', the cs_ok field has the following definition:-
@@ -5937,10 +5937,10 @@ struct rx_pkt_v2_cmpl_hi {
 	 * the MAC.
 	 */
 	uint32_t	timestamp;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_pkt_v3_cmpl (size:128b/16B) */
-struct rx_pkt_v3_cmpl {
+struct __rte_packed_begin rx_pkt_v3_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -6263,11 +6263,11 @@ struct rx_pkt_v3_cmpl {
 	 * from the first BD used to place the packet.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Last 16 bytes of RX Packet V3 Completion Record */
 /* rx_pkt_v3_cmpl_hi (size:128b/16B) */
-struct rx_pkt_v3_cmpl_hi {
+struct __rte_packed_begin rx_pkt_v3_cmpl_hi {
 	uint32_t	flags2;
 	/*
 	 * This indicates that the ip checksum was calculated for the inner
@@ -6623,10 +6623,10 @@ struct rx_pkt_v3_cmpl_hi {
 	 * host address from the first BD used to place the packet.
 	 */
 	uint32_t	timestamp;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_pkt_compress_cmpl (size:128b/16B) */
-struct rx_pkt_compress_cmpl {
+struct __rte_packed_begin rx_pkt_compress_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -7031,14 +7031,14 @@ struct rx_pkt_compress_cmpl {
 		UINT32_C(0xe0000000)
 	#define RX_PKT_COMPRESS_CMPL_ERRORS_AGG_BUFS_OPAQUE_UNUSED1_SFT \
 		29
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_start_cmpl (size:128b/16B) */
-struct rx_tpa_start_cmpl {
+struct __rte_packed_begin rx_tpa_start_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -7196,7 +7196,7 @@ struct rx_tpa_start_cmpl {
 	 * based on the mode bits and key value in the VNIC.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Last 16 bytes of rx_tpa_start_cmpl.
@@ -7205,7 +7205,7 @@ struct rx_tpa_start_cmpl {
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_start_cmpl_hi (size:128b/16B) */
-struct rx_tpa_start_cmpl_hi {
+struct __rte_packed_begin rx_tpa_start_cmpl_hi {
 	uint32_t	flags2;
 	/*
 	 * This indicates that the ip checksum was calculated for the
@@ -7313,7 +7313,7 @@ struct rx_tpa_start_cmpl_hi {
 	 */
 	#define RX_TPA_START_CMPL_INNER_L4_SIZE_MASK  UINT32_C(0xf8000000)
 	#define RX_TPA_START_CMPL_INNER_L4_SIZE_SFT   27
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -7322,7 +7322,7 @@ struct rx_tpa_start_cmpl_hi {
  * struct)
  */
 /* rx_tpa_start_v2_cmpl (size:128b/16B) */
-struct rx_tpa_start_v2_cmpl {
+struct __rte_packed_begin rx_tpa_start_v2_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -7549,7 +7549,7 @@ struct rx_tpa_start_v2_cmpl {
 	 * 32b of the host address from the first BD used to place the packet.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Last 16 bytes of RX L2 TPA Start V2 Completion Record
@@ -7558,7 +7558,7 @@ struct rx_tpa_start_v2_cmpl {
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_start_v2_cmpl_hi (size:128b/16B) */
-struct rx_tpa_start_v2_cmpl_hi {
+struct __rte_packed_begin rx_tpa_start_v2_cmpl_hi {
 	uint32_t	flags2;
 	/* This indicates that the aggregation was done using GRO rules. */
 	#define RX_TPA_START_V2_CMPL_FLAGS2_AGG_GRO \
@@ -7760,7 +7760,7 @@ struct rx_tpa_start_v2_cmpl_hi {
 	 * hdr_offsets[31:27] contains the inner_l4_size.
 	 */
 	uint32_t	hdr_offsets;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
@@ -7769,7 +7769,7 @@ struct rx_tpa_start_v2_cmpl_hi {
  * struct)
  */
 /* rx_tpa_start_v3_cmpl (size:128b/16B) */
-struct rx_tpa_start_v3_cmpl {
+struct __rte_packed_begin rx_tpa_start_v3_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -8016,7 +8016,7 @@ struct rx_tpa_start_v3_cmpl {
 	 * 32b of the host address from the first BD used to place the packet.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Last 16 bytes of RX L2 TPA Start V3 Completion Record
@@ -8025,7 +8025,7 @@ struct rx_tpa_start_v3_cmpl {
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_start_v3_cmpl_hi (size:128b/16B) */
-struct rx_tpa_start_v3_cmpl_hi {
+struct __rte_packed_begin rx_tpa_start_v3_cmpl_hi {
 	uint32_t	flags2;
 	/*
 	 * This indicates that the ip checksum was calculated for the inner
@@ -8241,14 +8241,14 @@ struct rx_tpa_start_v3_cmpl_hi {
 	 * hdr_offsets[31:27] contains the inner_l4_size.
 	 */
 	uint32_t	hdr_offsets;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_end_cmpl (size:128b/16B) */
-struct rx_tpa_end_cmpl {
+struct __rte_packed_begin rx_tpa_end_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -8425,7 +8425,7 @@ struct rx_tpa_end_cmpl {
 	 *     option is present in the packet.
 	 */
 	uint32_t	tsdelta;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Last 16 bytes of rx_tpa_end_cmpl.
@@ -8434,7 +8434,7 @@ struct rx_tpa_end_cmpl {
  * `hwrm_vnic_qcaps.max_aggs_supported` value is 0.
  */
 /* rx_tpa_end_cmpl_hi (size:128b/16B) */
-struct rx_tpa_end_cmpl_hi {
+struct __rte_packed_begin rx_tpa_end_cmpl_hi {
 	uint32_t	tpa_dup_acks;
 	/*
 	 * This value is the number of duplicate ACKs that have been
@@ -8507,14 +8507,14 @@ struct rx_tpa_end_cmpl_hi {
 	 * completion that corresponds to this TPA end completion.
 	 */
 	uint32_t	start_opaque;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
  */
 /* rx_tpa_v2_start_cmpl (size:128b/16B) */
-struct rx_tpa_v2_start_cmpl {
+struct __rte_packed_begin rx_tpa_v2_start_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -8678,7 +8678,7 @@ struct rx_tpa_v2_start_cmpl {
 	 * based on the mode bits and key value in the VNIC.
 	 */
 	uint32_t	rss_hash;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Last 16 bytes of rx_tpa_v2_start_cmpl.
@@ -8687,7 +8687,7 @@ struct rx_tpa_v2_start_cmpl {
  * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
  */
 /* rx_tpa_v2_start_cmpl_hi (size:128b/16B) */
-struct rx_tpa_v2_start_cmpl_hi {
+struct __rte_packed_begin rx_tpa_v2_start_cmpl_hi {
 	uint32_t	flags2;
 	/*
 	 * This indicates that the ip checksum was calculated for the
@@ -8893,14 +8893,14 @@ struct rx_tpa_v2_start_cmpl_hi {
 	 */
 	#define RX_TPA_V2_START_CMPL_INNER_L4_SIZE_MASK  UINT32_C(0xf8000000)
 	#define RX_TPA_V2_START_CMPL_INNER_L4_SIZE_SFT   27
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
  */
 /* rx_tpa_v2_end_cmpl (size:128b/16B) */
-struct rx_tpa_v2_end_cmpl {
+struct __rte_packed_begin rx_tpa_v2_end_cmpl {
 	uint16_t	flags_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9049,7 +9049,7 @@ struct rx_tpa_v2_end_cmpl {
 	 *     option is present in the packet.
 	 */
 	uint32_t	tsdelta;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Last 16 bytes of rx_tpa_v2_end_cmpl.
@@ -9058,7 +9058,7 @@ struct rx_tpa_v2_end_cmpl {
  * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
  */
 /* rx_tpa_v2_end_cmpl_hi (size:128b/16B) */
-struct rx_tpa_v2_end_cmpl_hi {
+struct __rte_packed_begin rx_tpa_v2_end_cmpl_hi {
 	/*
 	 * This value is the number of duplicate ACKs that have been
 	 * received as part of the TPA operation.
@@ -9159,14 +9159,14 @@ struct rx_tpa_v2_end_cmpl_hi {
 	 * completion that corresponds to this TPA end completion.
 	 */
 	uint32_t	start_opaque;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This TPA completion structure is used on devices where the
  * `hwrm_vnic_qcaps.max_aggs_supported` value is greater than 0.
  */
 /* rx_tpa_v2_abuf_cmpl (size:128b/16B) */
-struct rx_tpa_v2_abuf_cmpl {
+struct __rte_packed_begin rx_tpa_v2_abuf_cmpl {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9213,10 +9213,10 @@ struct rx_tpa_v2_abuf_cmpl {
 	 */
 	uint16_t	agg_id;
 	uint32_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* rx_abuf_cmpl (size:128b/16B) */
-struct rx_abuf_cmpl {
+struct __rte_packed_begin rx_abuf_cmpl {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9257,11 +9257,11 @@ struct rx_abuf_cmpl {
 	#define RX_ABUF_CMPL_V     UINT32_C(0x1)
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VEE FLUSH Completion Record (16 bytes) */
 /* vee_flush (size:128b/16B) */
-struct vee_flush {
+struct __rte_packed_begin vee_flush {
 	uint32_t	downstream_path_type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9303,10 +9303,10 @@ struct vee_flush {
 	#define VEE_FLUSH_V     UINT32_C(0x1)
 	/* unused3 is 32 b */
 	uint32_t	unused_3;
-} __rte_packed;
+} __rte_packed_end;
 
 /* eject_cmpl (size:128b/16B) */
-struct eject_cmpl {
+struct __rte_packed_begin eject_cmpl {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9385,10 +9385,10 @@ struct eject_cmpl {
 	uint16_t	reserved16;
 	/* unused3 is 32 b */
 	uint32_t	unused_2;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cmpl (size:128b/16B) */
-struct hwrm_cmpl {
+struct __rte_packed_begin hwrm_cmpl {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9418,10 +9418,10 @@ struct hwrm_cmpl {
 	#define HWRM_CMPL_V     UINT32_C(0x1)
 	/* unused4 is 32 b */
 	uint32_t	unused_3;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_fwd_req_cmpl (size:128b/16B) */
-struct hwrm_fwd_req_cmpl {
+struct __rte_packed_begin hwrm_fwd_req_cmpl {
 	/*
 	 * This field indicates the exact type of the completion.
 	 * By convention, the LSB identifies the length of the
@@ -9467,10 +9467,10 @@ struct hwrm_fwd_req_cmpl {
 	/* Address of forwarded request. */
 	#define HWRM_FWD_REQ_CMPL_REQ_BUF_ADDR_MASK UINT32_C(0xfffffffe)
 	#define HWRM_FWD_REQ_CMPL_REQ_BUF_ADDR_SFT 1
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_fwd_resp_cmpl (size:128b/16B) */
-struct hwrm_fwd_resp_cmpl {
+struct __rte_packed_begin hwrm_fwd_resp_cmpl {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9508,10 +9508,10 @@ struct hwrm_fwd_resp_cmpl {
 	/* Address of forwarded request. */
 	#define HWRM_FWD_RESP_CMPL_RESP_BUF_ADDR_MASK UINT32_C(0xfffffffe)
 	#define HWRM_FWD_RESP_CMPL_RESP_BUF_ADDR_SFT 1
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl (size:128b/16B) */
-struct hwrm_async_event_cmpl {
+struct __rte_packed_begin hwrm_async_event_cmpl {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9784,10 +9784,10 @@ struct hwrm_async_event_cmpl {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_link_status_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_link_status_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_link_status_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9863,10 +9863,10 @@ struct hwrm_async_event_cmpl_link_status_change {
 		UINT32_C(0xff00000)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_STATUS_CHANGE_EVENT_DATA1_PF_ID_SFT \
 		20
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_link_mtu_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_link_mtu_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_link_mtu_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -9913,10 +9913,10 @@ struct hwrm_async_event_cmpl_link_mtu_change {
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_DATA1_NEW_MTU_MASK \
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_MTU_CHANGE_EVENT_DATA1_NEW_MTU_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_link_speed_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_link_speed_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_link_speed_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10008,10 +10008,10 @@ struct hwrm_async_event_cmpl_link_speed_change {
 		UINT32_C(0xffff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		16
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_dcb_config_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_dcb_config_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_dcb_config_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10092,10 +10092,10 @@ struct hwrm_async_event_cmpl_dcb_config_change {
 		(UINT32_C(0xff) << 24)
 	#define HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_LAST \
 		HWRM_ASYNC_EVENT_CMPL_DCB_CONFIG_CHANGE_EVENT_DATA1_RECOMMEND_L2_PRIORITY_NONE
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_port_conn_not_allowed (size:128b/16B) */
-struct hwrm_async_event_cmpl_port_conn_not_allowed {
+struct __rte_packed_begin hwrm_async_event_cmpl_port_conn_not_allowed {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10168,10 +10168,10 @@ struct hwrm_async_event_cmpl_port_conn_not_allowed {
 		(UINT32_C(0x3) << 16)
 	#define HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_LAST \
 		HWRM_ASYNC_EVENT_CMPL_PORT_CONN_NOT_ALLOWED_EVENT_DATA1_ENFORCEMENT_POLICY_PWRDOWN
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_link_speed_cfg_not_allowed (size:128b/16B) */
-struct hwrm_async_event_cmpl_link_speed_cfg_not_allowed {
+struct __rte_packed_begin hwrm_async_event_cmpl_link_speed_cfg_not_allowed {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10221,10 +10221,10 @@ struct hwrm_async_event_cmpl_link_speed_cfg_not_allowed {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_NOT_ALLOWED_EVENT_DATA1_PORT_ID_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_link_speed_cfg_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_link_speed_cfg_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_link_speed_cfg_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10290,10 +10290,10 @@ struct hwrm_async_event_cmpl_link_speed_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_LINK_SPEED_CFG_CHANGE_EVENT_DATA1_ILLEGAL_LINK_SPEED_CFG \
 		UINT32_C(0x20000)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_port_phy_cfg_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_port_phy_cfg_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_port_phy_cfg_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10366,10 +10366,10 @@ struct hwrm_async_event_cmpl_port_phy_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_PORT_PHY_CFG_CHANGE_EVENT_DATA1_PAUSE_CFG_CHANGE \
 		UINT32_C(0x40000)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_reset_notify (size:128b/16B) */
-struct hwrm_async_event_cmpl_reset_notify {
+struct __rte_packed_begin hwrm_async_event_cmpl_reset_notify {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10488,10 +10488,10 @@ struct hwrm_async_event_cmpl_reset_notify {
 		UINT32_C(0xffff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_RESET_NOTIFY_EVENT_DATA1_DELAY_IN_100MS_TICKS_SFT \
 		16
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_recovery (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_recovery {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_recovery {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10557,10 +10557,10 @@ struct hwrm_async_event_cmpl_error_recovery {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_RECOVERY_EVENT_DATA1_FLAGS_RECOVERY_ENABLED \
 		UINT32_C(0x2)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_ring_monitor_msg (size:128b/16B) */
-struct hwrm_async_event_cmpl_ring_monitor_msg {
+struct __rte_packed_begin hwrm_async_event_cmpl_ring_monitor_msg {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10622,10 +10622,10 @@ struct hwrm_async_event_cmpl_ring_monitor_msg {
 	 * then this field will indicate the ring id.
 	 */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_func_drvr_unload (size:128b/16B) */
-struct hwrm_async_event_cmpl_func_drvr_unload {
+struct __rte_packed_begin hwrm_async_event_cmpl_func_drvr_unload {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10673,10 +10673,10 @@ struct hwrm_async_event_cmpl_func_drvr_unload {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_UNLOAD_EVENT_DATA1_FUNC_ID_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_func_drvr_load (size:128b/16B) */
-struct hwrm_async_event_cmpl_func_drvr_load {
+struct __rte_packed_begin hwrm_async_event_cmpl_func_drvr_load {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10722,10 +10722,10 @@ struct hwrm_async_event_cmpl_func_drvr_load {
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_DATA1_FUNC_ID_MASK \
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_DRVR_LOAD_EVENT_DATA1_FUNC_ID_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_func_flr_proc_cmplt (size:128b/16B) */
-struct hwrm_async_event_cmpl_func_flr_proc_cmplt {
+struct __rte_packed_begin hwrm_async_event_cmpl_func_flr_proc_cmplt {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10775,10 +10775,10 @@ struct hwrm_async_event_cmpl_func_flr_proc_cmplt {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_FUNC_FLR_PROC_CMPLT_EVENT_DATA1_FUNC_ID_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_pf_drvr_unload (size:128b/16B) */
-struct hwrm_async_event_cmpl_pf_drvr_unload {
+struct __rte_packed_begin hwrm_async_event_cmpl_pf_drvr_unload {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10828,10 +10828,10 @@ struct hwrm_async_event_cmpl_pf_drvr_unload {
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_PORT_MASK \
 		UINT32_C(0x70000)
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_UNLOAD_EVENT_DATA1_PORT_SFT    16
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_pf_drvr_load (size:128b/16B) */
-struct hwrm_async_event_cmpl_pf_drvr_load {
+struct __rte_packed_begin hwrm_async_event_cmpl_pf_drvr_load {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10881,10 +10881,10 @@ struct hwrm_async_event_cmpl_pf_drvr_load {
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_PORT_MASK \
 		UINT32_C(0x70000)
 	#define HWRM_ASYNC_EVENT_CMPL_PF_DRVR_LOAD_EVENT_DATA1_PORT_SFT    16
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_vf_flr (size:128b/16B) */
-struct hwrm_async_event_cmpl_vf_flr {
+struct __rte_packed_begin hwrm_async_event_cmpl_vf_flr {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10933,10 +10933,10 @@ struct hwrm_async_event_cmpl_vf_flr {
 	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_MASK \
 		UINT32_C(0xff0000)
 	#define HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_SFT 16
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_vf_mac_addr_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_vf_mac_addr_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_vf_mac_addr_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -10985,10 +10985,10 @@ struct hwrm_async_event_cmpl_vf_mac_addr_change {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_VF_MAC_ADDR_CHANGE_EVENT_DATA1_VF_ID_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_pf_vf_comm_status_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_pf_vf_comm_status_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_pf_vf_comm_status_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11041,10 +11041,10 @@ struct hwrm_async_event_cmpl_pf_vf_comm_status_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_PF_VF_COMM_STATUS_CHANGE_EVENT_DATA1_COMM_ESTABLISHED \
 		UINT32_C(0x1)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_vf_cfg_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_vf_cfg_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_vf_cfg_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11145,10 +11145,10 @@ struct hwrm_async_event_cmpl_vf_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_VF_CFG_CHANGE_EVENT_DATA1_TF_OWNERSHIP_RELEASE \
 		UINT32_C(0x20)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_llfc_pfc_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_llfc_pfc_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_llfc_pfc_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11224,10 +11224,10 @@ struct hwrm_async_event_cmpl_llfc_pfc_change {
 		UINT32_C(0x1fffe0)
 	#define HWRM_ASYNC_EVENT_CMPL_LLFC_PFC_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		5
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_default_vnic_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_default_vnic_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_default_vnic_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11306,10 +11306,10 @@ struct hwrm_async_event_cmpl_default_vnic_change {
 		UINT32_C(0x3fffc00)
 	#define HWRM_ASYNC_EVENT_CMPL_DEFAULT_VNIC_CHANGE_EVENT_DATA1_VF_ID_SFT \
 		10
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_hw_flow_aged (size:128b/16B) */
-struct hwrm_async_event_cmpl_hw_flow_aged {
+struct __rte_packed_begin hwrm_async_event_cmpl_hw_flow_aged {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11373,10 +11373,10 @@ struct hwrm_async_event_cmpl_hw_flow_aged {
 		(UINT32_C(0x1) << 31)
 	#define HWRM_ASYNC_EVENT_CMPL_HW_FLOW_AGED_EVENT_DATA1_FLOW_DIRECTION_LAST \
 		HWRM_ASYNC_EVENT_CMPL_HW_FLOW_AGED_EVENT_DATA1_FLOW_DIRECTION_TX
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_eem_cache_flush_req (size:128b/16B) */
-struct hwrm_async_event_cmpl_eem_cache_flush_req {
+struct __rte_packed_begin hwrm_async_event_cmpl_eem_cache_flush_req {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11421,10 +11421,10 @@ struct hwrm_async_event_cmpl_eem_cache_flush_req {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_eem_cache_flush_done (size:128b/16B) */
-struct hwrm_async_event_cmpl_eem_cache_flush_done {
+struct __rte_packed_begin hwrm_async_event_cmpl_eem_cache_flush_done {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11477,10 +11477,10 @@ struct hwrm_async_event_cmpl_eem_cache_flush_done {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_CMPL_EEM_CACHE_FLUSH_DONE_EVENT_DATA1_FID_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_tcp_flag_action_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_tcp_flag_action_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_tcp_flag_action_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11525,10 +11525,10 @@ struct hwrm_async_event_cmpl_tcp_flag_action_change {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_eem_flow_active (size:128b/16B) */
-struct hwrm_async_event_cmpl_eem_flow_active {
+struct __rte_packed_begin hwrm_async_event_cmpl_eem_flow_active {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11625,10 +11625,10 @@ struct hwrm_async_event_cmpl_eem_flow_active {
 		(UINT32_C(0x1) << 31)
 	#define HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_EEM_FLOW_ACTIVE_EVENT_DATA1_MODE_1
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_eem_cfg_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_eem_cfg_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_eem_cfg_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11682,10 +11682,10 @@ struct hwrm_async_event_cmpl_eem_cfg_change {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_EEM_CFG_CHANGE_EVENT_DATA1_EEM_RX_ENABLE \
 		UINT32_C(0x2)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_quiesce_done (size:128b/16B) */
-struct hwrm_async_event_cmpl_quiesce_done {
+struct __rte_packed_begin hwrm_async_event_cmpl_quiesce_done {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11785,10 +11785,10 @@ struct hwrm_async_event_cmpl_quiesce_done {
 	/* Time stamp for error event */
 	#define HWRM_ASYNC_EVENT_CMPL_QUIESCE_DONE_EVENT_DATA1_TIMESTAMP \
 		UINT32_C(0x1)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_deferred_response (size:128b/16B) */
-struct hwrm_async_event_cmpl_deferred_response {
+struct __rte_packed_begin hwrm_async_event_cmpl_deferred_response {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11846,10 +11846,10 @@ struct hwrm_async_event_cmpl_deferred_response {
 	uint16_t	timestamp_hi;
 	/* Estimated remaining time of command execution in ms (if not zero) */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_pfc_watchdog_cfg_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_pfc_watchdog_cfg_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_pfc_watchdog_cfg_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11931,10 +11931,10 @@ struct hwrm_async_event_cmpl_pfc_watchdog_cfg_change {
 		UINT32_C(0xffff00)
 	#define HWRM_ASYNC_EVENT_CMPL_PFC_WATCHDOG_CFG_CHANGE_EVENT_DATA1_PORT_ID_SFT \
 		8
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_echo_request (size:128b/16B) */
-struct hwrm_async_event_cmpl_echo_request {
+struct __rte_packed_begin hwrm_async_event_cmpl_echo_request {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -11979,10 +11979,10 @@ struct hwrm_async_event_cmpl_echo_request {
 	uint16_t	timestamp_hi;
 	/* Event specific data that should be provided in the echo response */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_phc_update (size:128b/16B) */
-struct hwrm_async_event_cmpl_phc_update {
+struct __rte_packed_begin hwrm_async_event_cmpl_phc_update {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12078,10 +12078,10 @@ struct hwrm_async_event_cmpl_phc_update {
 		UINT32_C(0xffff0)
 	#define HWRM_ASYNC_EVENT_CMPL_PHC_UPDATE_EVENT_DATA1_PHC_TIME_MSB_SFT \
 		4
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_pps_timestamp (size:128b/16B) */
-struct hwrm_async_event_cmpl_pps_timestamp {
+struct __rte_packed_begin hwrm_async_event_cmpl_pps_timestamp {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12162,10 +12162,10 @@ struct hwrm_async_event_cmpl_pps_timestamp {
 		UINT32_C(0xffffffff)
 	#define HWRM_ASYNC_EVENT_CMPL_PPS_TIMESTAMP_EVENT_DATA1_PPS_TIMESTAMP_LOWER_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12218,10 +12218,10 @@ struct hwrm_async_event_cmpl_error_report {
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_EVENT_DATA1_ERROR_TYPE_MASK \
 		UINT32_C(0xff)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_EVENT_DATA1_ERROR_TYPE_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_doorbell_pacing_threshold (size:128b/16B) */
-struct hwrm_async_event_cmpl_doorbell_pacing_threshold {
+struct __rte_packed_begin hwrm_async_event_cmpl_doorbell_pacing_threshold {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12271,10 +12271,10 @@ struct hwrm_async_event_cmpl_doorbell_pacing_threshold {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_rss_change (size:128b/16B) */
-struct hwrm_async_event_cmpl_rss_change {
+struct __rte_packed_begin hwrm_async_event_cmpl_rss_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12320,10 +12320,10 @@ struct hwrm_async_event_cmpl_rss_change {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_doorbell_pacing_nq_update (size:128b/16B) */
-struct hwrm_async_event_cmpl_doorbell_pacing_nq_update {
+struct __rte_packed_begin hwrm_async_event_cmpl_doorbell_pacing_nq_update {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12373,10 +12373,10 @@ struct hwrm_async_event_cmpl_doorbell_pacing_nq_update {
 	uint16_t	timestamp_hi;
 	/* Event specific data */
 	uint32_t	event_data1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_hw_doorbell_recovery_read_error (size:128b/16B) */
-struct hwrm_async_event_cmpl_hw_doorbell_recovery_read_error {
+struct __rte_packed_begin hwrm_async_event_cmpl_hw_doorbell_recovery_read_error {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12460,10 +12460,10 @@ struct hwrm_async_event_cmpl_hw_doorbell_recovery_read_error {
 	 */
 	#define HWRM_ASYNC_EVENT_CMPL_HW_DOORBELL_RECOVERY_READ_ERROR_EVENT_DATA1_READ_ERROR_FLAGS_CQ_ERR \
 		UINT32_C(0x8)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_ctx_error (size:128b/16B) */
-struct hwrm_async_event_cmpl_ctx_error {
+struct __rte_packed_begin hwrm_async_event_cmpl_ctx_error {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12534,10 +12534,10 @@ struct hwrm_async_event_cmpl_ctx_error {
 	#define HWRM_ASYNC_EVENT_CMPL_CTX_ERROR_EVENT_DATA1_START_XID_MASK \
 		UINT32_C(0xffffffff)
 	#define HWRM_ASYNC_EVENT_CMPL_CTX_ERROR_EVENT_DATA1_START_XID_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_udcc_session_change (size:128b/16B) */
-struct hwrm_async_event_udcc_session_change {
+struct __rte_packed_begin hwrm_async_event_udcc_session_change {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12600,10 +12600,10 @@ struct hwrm_async_event_udcc_session_change {
 		UINT32_C(0xffff)
 	#define HWRM_ASYNC_EVENT_UDCC_SESSION_CHANGE_EVENT_DATA1_UDCC_SESSION_ID_SFT \
 		0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_dbg_buf_producer (size:128b/16B) */
-struct hwrm_async_event_cmpl_dbg_buf_producer {
+struct __rte_packed_begin hwrm_async_event_cmpl_dbg_buf_producer {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12690,10 +12690,10 @@ struct hwrm_async_event_cmpl_dbg_buf_producer {
 		UINT32_C(0x6)
 	#define HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_DBG_BUF_PRODUCER_EVENT_DATA1_TYPE_ROCE_HWRM_TRACE
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_fw_trace_msg (size:128b/16B) */
-struct hwrm_async_event_cmpl_fw_trace_msg {
+struct __rte_packed_begin hwrm_async_event_cmpl_fw_trace_msg {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12797,10 +12797,10 @@ struct hwrm_async_event_cmpl_fw_trace_msg {
 	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE9_MASK \
 		UINT32_C(0xff000000)
 	#define HWRM_ASYNC_EVENT_CMPL_FW_TRACE_MSG_EVENT_DATA1_BYTE9_SFT 24
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_hwrm_error (size:128b/16B) */
-struct hwrm_async_event_cmpl_hwrm_error {
+struct __rte_packed_begin hwrm_async_event_cmpl_hwrm_error {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12860,10 +12860,10 @@ struct hwrm_async_event_cmpl_hwrm_error {
 	/* Time stamp for error event */
 	#define HWRM_ASYNC_EVENT_CMPL_HWRM_ERROR_EVENT_DATA1_TIMESTAMP \
 		UINT32_C(0x1)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_base (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_base {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_base {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -12961,10 +12961,10 @@ struct hwrm_async_event_cmpl_error_report_base {
 		UINT32_C(0x6)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_BASE_EVENT_DATA1_ERROR_TYPE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_BASE_EVENT_DATA1_ERROR_TYPE_DUAL_DATA_RATE_NOT_SUPPORTED
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_pause_storm (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_pause_storm {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_pause_storm {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -13026,10 +13026,10 @@ struct hwrm_async_event_cmpl_error_report_pause_storm {
 		UINT32_C(0x1)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_PAUSE_STORM_EVENT_DATA1_ERROR_TYPE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_PAUSE_STORM_EVENT_DATA1_ERROR_TYPE_PAUSE_STORM
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_invalid_signal (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_invalid_signal {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_invalid_signal {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -13099,10 +13099,10 @@ struct hwrm_async_event_cmpl_error_report_invalid_signal {
 		UINT32_C(0x2)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_INVALID_SIGNAL_EVENT_DATA1_ERROR_TYPE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_INVALID_SIGNAL_EVENT_DATA1_ERROR_TYPE_INVALID_SIGNAL
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_nvm (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_nvm {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_nvm {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -13188,10 +13188,10 @@ struct hwrm_async_event_cmpl_error_report_nvm {
 		(UINT32_C(0x2) << 8)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_NVM_EVENT_DATA1_NVM_ERR_TYPE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_NVM_EVENT_DATA1_NVM_ERR_TYPE_ERASE
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_doorbell_drop_threshold (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_doorbell_drop_threshold {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_doorbell_drop_threshold {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -13263,10 +13263,10 @@ struct hwrm_async_event_cmpl_error_report_doorbell_drop_threshold {
 		UINT32_C(0xffffff00)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_DOORBELL_DROP_THRESHOLD_EVENT_DATA1_EPOCH_SFT \
 		8
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_thermal (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_thermal {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_thermal {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -13382,10 +13382,10 @@ struct hwrm_async_event_cmpl_error_report_thermal {
 		(UINT32_C(0x1) << 11)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_THERMAL_EVENT_DATA1_TRANSITION_DIR_LAST \
 		HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_THERMAL_EVENT_DATA1_TRANSITION_DIR_INCREASING
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_async_event_cmpl_error_report_dual_data_rate_not_supported (size:128b/16B) */
-struct hwrm_async_event_cmpl_error_report_dual_data_rate_not_supported {
+struct __rte_packed_begin hwrm_async_event_cmpl_error_report_dual_data_rate_not_supported {
 	uint16_t	type;
 	/*
 	 * This field indicates the exact type of the completion.
@@ -13448,10 +13448,10 @@ struct hwrm_async_event_cmpl_error_report_dual_data_rate_not_supported {
 		UINT32_C(0x6)
 	#define HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_DUAL_DATA_RATE_NOT_SUPPORTED_EVENT_DATA1_ERROR_TYPE_LAST \
 		HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_DUAL_DATA_RATE_NOT_SUPPORTED_EVENT_DATA1_ERROR_TYPE_DUAL_DATA_RATE_NOT_SUPPORTED
-} __rte_packed;
+} __rte_packed_end;
 
 /* metadata_base_msg (size:64b/8B) */
-struct metadata_base_msg {
+struct __rte_packed_begin metadata_base_msg {
 	uint16_t	md_type_link;
 	/* This field classifies the data present in the meta-data. */
 	#define METADATA_BASE_MSG_MD_TYPE_MASK      UINT32_C(0x1f)
@@ -13489,10 +13489,10 @@ struct metadata_base_msg {
 	#define METADATA_BASE_MSG_LINK_SFT          5
 	uint16_t	unused0;
 	uint32_t	unused1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tls_metadata_base_msg (size:64b/8B) */
-struct tls_metadata_base_msg {
+struct __rte_packed_begin tls_metadata_base_msg {
 	uint32_t	md_type_link_flags_kid_lo;
 	/* This field classifies the data present in the meta-data. */
 	#define TLS_METADATA_BASE_MSG_MD_TYPE_MASK \
@@ -13659,10 +13659,10 @@ struct tls_metadata_base_msg {
 	#define TLS_METADATA_BASE_MSG_KID_HI_MASK UINT32_C(0x1fff)
 	#define TLS_METADATA_BASE_MSG_KID_HI_SFT 0
 	uint16_t	unused0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tls_metadata_insync_msg (size:192b/24B) */
-struct tls_metadata_insync_msg {
+struct __rte_packed_begin tls_metadata_insync_msg {
 	uint32_t	md_type_link_flags_kid_lo;
 	/* This field classifies the data present in the meta-data. */
 	#define TLS_METADATA_INSYNC_MSG_MD_TYPE_MASK \
@@ -13847,10 +13847,10 @@ struct tls_metadata_insync_msg {
 	 * only sent out with packet having the TAG field.
 	 */
 	uint8_t	partial_ghash[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* tls_metadata_resync_msg (size:256b/32B) */
-struct tls_metadata_resync_msg {
+struct __rte_packed_begin tls_metadata_resync_msg {
 	uint32_t	md_type_link_flags_kid_lo;
 	/* This field classifies the data present in the meta-data. */
 	#define TLS_METADATA_RESYNC_MSG_MD_TYPE_MASK \
@@ -13998,7 +13998,7 @@ struct tls_metadata_resync_msg {
 	uint64_t	metadata_2;
 	/* This field is unused in this context. */
 	uint64_t	metadata_3;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_func_reset *
@@ -14006,7 +14006,7 @@ struct tls_metadata_resync_msg {
 
 
 /* hwrm_func_reset_input (size:192b/24B) */
-struct hwrm_func_reset_input {
+struct __rte_packed_begin hwrm_func_reset_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -14081,10 +14081,10 @@ struct hwrm_func_reset_input {
 	#define HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_LAST \
 		HWRM_FUNC_RESET_INPUT_FUNC_RESET_LEVEL_RESETVF
 	uint8_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_reset_output (size:128b/16B) */
-struct hwrm_func_reset_output {
+struct __rte_packed_begin hwrm_func_reset_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -14102,7 +14102,7 @@ struct hwrm_func_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_func_getfid *
@@ -14110,7 +14110,7 @@ struct hwrm_func_reset_output {
 
 
 /* hwrm_func_getfid_input (size:192b/24B) */
-struct hwrm_func_getfid_input {
+struct __rte_packed_begin hwrm_func_getfid_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -14153,10 +14153,10 @@ struct hwrm_func_getfid_input {
 	 */
 	uint16_t	pci_id;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_getfid_output (size:128b/16B) */
-struct hwrm_func_getfid_output {
+struct __rte_packed_begin hwrm_func_getfid_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -14179,7 +14179,7 @@ struct hwrm_func_getfid_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_vf_alloc *
@@ -14187,7 +14187,7 @@ struct hwrm_func_getfid_output {
 
 
 /* hwrm_func_vf_alloc_input (size:192b/24B) */
-struct hwrm_func_vf_alloc_input {
+struct __rte_packed_begin hwrm_func_vf_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -14229,10 +14229,10 @@ struct hwrm_func_vf_alloc_input {
 	uint16_t	first_vf_id;
 	/* The number of virtual functions requested. */
 	uint16_t	num_vfs;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_alloc_output (size:128b/16B) */
-struct hwrm_func_vf_alloc_output {
+struct __rte_packed_begin hwrm_func_vf_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -14252,7 +14252,7 @@ struct hwrm_func_vf_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_func_vf_free *
@@ -14260,7 +14260,7 @@ struct hwrm_func_vf_alloc_output {
 
 
 /* hwrm_func_vf_free_input (size:192b/24B) */
-struct hwrm_func_vf_free_input {
+struct __rte_packed_begin hwrm_func_vf_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -14305,10 +14305,10 @@ struct hwrm_func_vf_free_input {
 	 * 0xFFFF - Cleanup all children of this PF.
 	 */
 	uint16_t	num_vfs;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_free_output (size:128b/16B) */
-struct hwrm_func_vf_free_output {
+struct __rte_packed_begin hwrm_func_vf_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -14326,7 +14326,7 @@ struct hwrm_func_vf_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_func_vf_cfg *
@@ -14334,7 +14334,7 @@ struct hwrm_func_vf_free_output {
 
 
 /* hwrm_func_vf_cfg_input (size:576b/72B) */
-struct hwrm_func_vf_cfg_input {
+struct __rte_packed_begin hwrm_func_vf_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -14620,10 +14620,10 @@ struct hwrm_func_vf_cfg_input {
 	uint32_t	num_quic_tx_key_ctxs;
 	/* Number of QUIC Rx Key Contexts requested. */
 	uint32_t	num_quic_rx_key_ctxs;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_cfg_output (size:128b/16B) */
-struct hwrm_func_vf_cfg_output {
+struct __rte_packed_begin hwrm_func_vf_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -14641,7 +14641,7 @@ struct hwrm_func_vf_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_func_qcaps *
@@ -14649,7 +14649,7 @@ struct hwrm_func_vf_cfg_output {
 
 
 /* hwrm_func_qcaps_input (size:192b/24B) */
-struct hwrm_func_qcaps_input {
+struct __rte_packed_begin hwrm_func_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -14687,10 +14687,10 @@ struct hwrm_func_qcaps_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_qcaps_output (size:1088b/136B) */
-struct hwrm_func_qcaps_output {
+struct __rte_packed_begin hwrm_func_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -15666,7 +15666,7 @@ struct hwrm_func_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_func_qcfg *
@@ -15674,7 +15674,7 @@ struct hwrm_func_qcaps_output {
 
 
 /* hwrm_func_qcfg_input (size:192b/24B) */
-struct hwrm_func_qcfg_input {
+struct __rte_packed_begin hwrm_func_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -15712,10 +15712,10 @@ struct hwrm_func_qcfg_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_qcfg_output (size:1280b/160B) */
-struct hwrm_func_qcfg_output {
+struct __rte_packed_begin hwrm_func_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -16465,7 +16465,7 @@ struct hwrm_func_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_func_cfg *
@@ -16473,7 +16473,7 @@ struct hwrm_func_qcfg_output {
 
 
 /* hwrm_func_cfg_input (size:1280b/160B) */
-struct hwrm_func_cfg_input {
+struct __rte_packed_begin hwrm_func_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -17555,10 +17555,10 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_XID_PARTITION_CFG_RX_CK     UINT32_C(0x2)
 	uint16_t	unused_2;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_cfg_output (size:128b/16B) */
-struct hwrm_func_cfg_output {
+struct __rte_packed_begin hwrm_func_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -17576,10 +17576,10 @@ struct hwrm_func_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_cfg_cmd_err (size:64b/8B) */
-struct hwrm_func_cfg_cmd_err {
+struct __rte_packed_begin hwrm_func_cfg_cmd_err {
 	/* command specific error codes for the cmd_err field in hwrm_err_output */
 	uint8_t	code;
 	/* Unknown error. */
@@ -17603,7 +17603,7 @@ struct hwrm_func_cfg_cmd_err {
 	#define HWRM_FUNC_CFG_CMD_ERR_CODE_LAST \
 		HWRM_FUNC_CFG_CMD_ERR_CODE_PARTITION_BW_PERCENT
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_func_qstats *
@@ -17611,7 +17611,7 @@ struct hwrm_func_cfg_cmd_err {
 
 
 /* hwrm_func_qstats_input (size:192b/24B) */
-struct hwrm_func_qstats_input {
+struct __rte_packed_begin hwrm_func_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -17669,10 +17669,10 @@ struct hwrm_func_qstats_input {
 	 */
 	#define HWRM_FUNC_QSTATS_INPUT_FLAGS_L2_ONLY          UINT32_C(0x4)
 	uint8_t	unused_0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_qstats_output (size:1408b/176B) */
-struct hwrm_func_qstats_output {
+struct __rte_packed_begin hwrm_func_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -17762,7 +17762,7 @@ struct hwrm_func_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_qstats_ext *
@@ -17770,7 +17770,7 @@ struct hwrm_func_qstats_output {
 
 
 /* hwrm_func_qstats_ext_input (size:256b/32B) */
-struct hwrm_func_qstats_ext_input {
+struct __rte_packed_begin hwrm_func_qstats_ext_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -17836,10 +17836,10 @@ struct hwrm_func_qstats_ext_input {
 	 */
 	uint16_t	traffic_class;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_qstats_ext_output (size:1536b/192B) */
-struct hwrm_func_qstats_ext_output {
+struct __rte_packed_begin hwrm_func_qstats_ext_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -17901,7 +17901,7 @@ struct hwrm_func_qstats_ext_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_func_clr_stats *
@@ -17909,7 +17909,7 @@ struct hwrm_func_qstats_ext_output {
 
 
 /* hwrm_func_clr_stats_input (size:192b/24B) */
-struct hwrm_func_clr_stats_input {
+struct __rte_packed_begin hwrm_func_clr_stats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -17945,10 +17945,10 @@ struct hwrm_func_clr_stats_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_clr_stats_output (size:128b/16B) */
-struct hwrm_func_clr_stats_output {
+struct __rte_packed_begin hwrm_func_clr_stats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -17966,7 +17966,7 @@ struct hwrm_func_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_func_vf_resc_free *
@@ -17974,7 +17974,7 @@ struct hwrm_func_clr_stats_output {
 
 
 /* hwrm_func_vf_resc_free_input (size:192b/24B) */
-struct hwrm_func_vf_resc_free_input {
+struct __rte_packed_begin hwrm_func_vf_resc_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18009,10 +18009,10 @@ struct hwrm_func_vf_resc_free_input {
 	 */
 	uint16_t	vf_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_resc_free_output (size:128b/16B) */
-struct hwrm_func_vf_resc_free_output {
+struct __rte_packed_begin hwrm_func_vf_resc_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18030,7 +18030,7 @@ struct hwrm_func_vf_resc_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_drv_rgtr *
@@ -18038,7 +18038,7 @@ struct hwrm_func_vf_resc_free_output {
 
 
 /* hwrm_func_drv_rgtr_input (size:896b/112B) */
-struct hwrm_func_drv_rgtr_input {
+struct __rte_packed_begin hwrm_func_drv_rgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18305,10 +18305,10 @@ struct hwrm_func_drv_rgtr_input {
 	uint16_t	ver_upd;
 	/* This is the 16bit patch version of the driver. */
 	uint16_t	ver_patch;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_drv_rgtr_output (size:128b/16B) */
-struct hwrm_func_drv_rgtr_output {
+struct __rte_packed_begin hwrm_func_drv_rgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18333,7 +18333,7 @@ struct hwrm_func_drv_rgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_drv_unrgtr *
@@ -18341,7 +18341,7 @@ struct hwrm_func_drv_rgtr_output {
 
 
 /* hwrm_func_drv_unrgtr_input (size:192b/24B) */
-struct hwrm_func_drv_unrgtr_input {
+struct __rte_packed_begin hwrm_func_drv_unrgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18378,10 +18378,10 @@ struct hwrm_func_drv_unrgtr_input {
 	#define HWRM_FUNC_DRV_UNRGTR_INPUT_FLAGS_PREPARE_FOR_SHUTDOWN \
 		UINT32_C(0x1)
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_drv_unrgtr_output (size:128b/16B) */
-struct hwrm_func_drv_unrgtr_output {
+struct __rte_packed_begin hwrm_func_drv_unrgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18399,7 +18399,7 @@ struct hwrm_func_drv_unrgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_buf_rgtr *
@@ -18407,7 +18407,7 @@ struct hwrm_func_drv_unrgtr_output {
 
 
 /* hwrm_func_buf_rgtr_input (size:1024b/128B) */
-struct hwrm_func_buf_rgtr_input {
+struct __rte_packed_begin hwrm_func_buf_rgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18513,10 +18513,10 @@ struct hwrm_func_buf_rgtr_input {
 	 * HWRM.
 	 */
 	uint64_t	resp_buf_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_buf_rgtr_output (size:128b/16B) */
-struct hwrm_func_buf_rgtr_output {
+struct __rte_packed_begin hwrm_func_buf_rgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18534,7 +18534,7 @@ struct hwrm_func_buf_rgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_buf_unrgtr *
@@ -18542,7 +18542,7 @@ struct hwrm_func_buf_rgtr_output {
 
 
 /* hwrm_func_buf_unrgtr_input (size:192b/24B) */
-struct hwrm_func_buf_unrgtr_input {
+struct __rte_packed_begin hwrm_func_buf_unrgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18583,10 +18583,10 @@ struct hwrm_func_buf_unrgtr_input {
 	 */
 	uint16_t	vf_id;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_buf_unrgtr_output (size:128b/16B) */
-struct hwrm_func_buf_unrgtr_output {
+struct __rte_packed_begin hwrm_func_buf_unrgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18604,7 +18604,7 @@ struct hwrm_func_buf_unrgtr_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_drv_qver *
@@ -18612,7 +18612,7 @@ struct hwrm_func_buf_unrgtr_output {
 
 
 /* hwrm_func_drv_qver_input (size:192b/24B) */
-struct hwrm_func_drv_qver_input {
+struct __rte_packed_begin hwrm_func_drv_qver_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18661,10 +18661,10 @@ struct hwrm_func_drv_qver_input {
 	#define HWRM_FUNC_DRV_QVER_INPUT_DRIVER_TYPE_LAST \
 		HWRM_FUNC_DRV_QVER_INPUT_DRIVER_TYPE_ROCE
 	uint8_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_drv_qver_output (size:256b/32B) */
-struct hwrm_func_drv_qver_output {
+struct __rte_packed_begin hwrm_func_drv_qver_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18726,7 +18726,7 @@ struct hwrm_func_drv_qver_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_func_resource_qcaps *
@@ -18734,7 +18734,7 @@ struct hwrm_func_drv_qver_output {
 
 
 /* hwrm_func_resource_qcaps_input (size:192b/24B) */
-struct hwrm_func_resource_qcaps_input {
+struct __rte_packed_begin hwrm_func_resource_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18770,10 +18770,10 @@ struct hwrm_func_resource_qcaps_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_resource_qcaps_output (size:704b/88B) */
-struct hwrm_func_resource_qcaps_output {
+struct __rte_packed_begin hwrm_func_resource_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -18884,7 +18884,7 @@ struct hwrm_func_resource_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_func_vf_resource_cfg *
@@ -18892,7 +18892,7 @@ struct hwrm_func_resource_qcaps_output {
 
 
 /* hwrm_func_vf_resource_cfg_input (size:704b/88B) */
-struct hwrm_func_vf_resource_cfg_input {
+struct __rte_packed_begin hwrm_func_vf_resource_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -18983,10 +18983,10 @@ struct hwrm_func_vf_resource_cfg_input {
 	uint32_t	min_quic_rx_key_ctxs;
 	/* Maximum non-guaranteed number of QUIC Rx Key Contexts */
 	uint32_t	max_quic_rx_key_ctxs;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_resource_cfg_output (size:384b/48B) */
-struct hwrm_func_vf_resource_cfg_output {
+struct __rte_packed_begin hwrm_func_vf_resource_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -19028,7 +19028,7 @@ struct hwrm_func_vf_resource_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************************
  * hwrm_func_backing_store_qcaps *
@@ -19036,7 +19036,7 @@ struct hwrm_func_vf_resource_cfg_output {
 
 
 /* hwrm_func_backing_store_qcaps_input (size:128b/16B) */
-struct hwrm_func_backing_store_qcaps_input {
+struct __rte_packed_begin hwrm_func_backing_store_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -19065,10 +19065,10 @@ struct hwrm_func_backing_store_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_backing_store_qcaps_output (size:832b/104B) */
-struct hwrm_func_backing_store_qcaps_output {
+struct __rte_packed_begin hwrm_func_backing_store_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -19327,10 +19327,10 @@ struct hwrm_func_backing_store_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* tqm_fp_ring_cfg (size:128b/16B) */
-struct tqm_fp_ring_cfg {
+struct __rte_packed_begin tqm_fp_ring_cfg {
 	/* TQM ring page size and level. */
 	uint8_t	tqm_ring_pg_size_tqm_ring_lvl;
 	/* TQM ring PBL indirect levels. */
@@ -19380,7 +19380,7 @@ struct tqm_fp_ring_cfg {
 	uint32_t	tqm_ring_num_entries;
 	/* TQM ring page directory. */
 	uint64_t	tqm_ring_page_dir;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_func_backing_store_cfg *
@@ -19388,7 +19388,7 @@ struct tqm_fp_ring_cfg {
 
 
 /* hwrm_func_backing_store_cfg_input (size:2688b/336B) */
-struct hwrm_func_backing_store_cfg_input {
+struct __rte_packed_begin hwrm_func_backing_store_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -20736,10 +20736,10 @@ struct hwrm_func_backing_store_cfg_input {
 	 * function to support fast QP modify destroy feature.
 	 */
 	uint16_t	qp_num_fast_qpmd_entries;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_backing_store_cfg_output (size:128b/16B) */
-struct hwrm_func_backing_store_cfg_output {
+struct __rte_packed_begin hwrm_func_backing_store_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -20757,7 +20757,7 @@ struct hwrm_func_backing_store_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_func_backing_store_qcfg *
@@ -20765,7 +20765,7 @@ struct hwrm_func_backing_store_cfg_output {
 
 
 /* hwrm_func_backing_store_qcfg_input (size:128b/16B) */
-struct hwrm_func_backing_store_qcfg_input {
+struct __rte_packed_begin hwrm_func_backing_store_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -20794,10 +20794,10 @@ struct hwrm_func_backing_store_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_backing_store_qcfg_output (size:2496b/312B) */
-struct hwrm_func_backing_store_qcfg_output {
+struct __rte_packed_begin hwrm_func_backing_store_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -22009,7 +22009,7 @@ struct hwrm_func_backing_store_qcfg_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_error_recovery_qcfg *
@@ -22017,7 +22017,7 @@ struct hwrm_func_backing_store_qcfg_output {
 
 
 /* hwrm_error_recovery_qcfg_input (size:192b/24B) */
-struct hwrm_error_recovery_qcfg_input {
+struct __rte_packed_begin hwrm_error_recovery_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -22047,10 +22047,10 @@ struct hwrm_error_recovery_qcfg_input {
 	 */
 	uint64_t	resp_addr;
 	uint8_t	unused_0[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_error_recovery_qcfg_output (size:1664b/208B) */
-struct hwrm_error_recovery_qcfg_output {
+struct __rte_packed_begin hwrm_error_recovery_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -22423,7 +22423,7 @@ struct hwrm_error_recovery_qcfg_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_func_echo_response *
@@ -22431,7 +22431,7 @@ struct hwrm_error_recovery_qcfg_output {
 
 
 /* hwrm_func_echo_response_input (size:192b/24B) */
-struct hwrm_func_echo_response_input {
+struct __rte_packed_begin hwrm_func_echo_response_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -22462,10 +22462,10 @@ struct hwrm_func_echo_response_input {
 	uint64_t	resp_addr;
 	uint32_t	event_data1;
 	uint32_t	event_data2;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_echo_response_output (size:128b/16B) */
-struct hwrm_func_echo_response_output {
+struct __rte_packed_begin hwrm_func_echo_response_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -22483,7 +22483,7 @@ struct hwrm_func_echo_response_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_func_ptp_pin_qcfg *
@@ -22491,7 +22491,7 @@ struct hwrm_func_echo_response_output {
 
 
 /* hwrm_func_ptp_pin_qcfg_input (size:192b/24B) */
-struct hwrm_func_ptp_pin_qcfg_input {
+struct __rte_packed_begin hwrm_func_ptp_pin_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -22521,10 +22521,10 @@ struct hwrm_func_ptp_pin_qcfg_input {
 	 */
 	uint64_t	resp_addr;
 	uint8_t	unused_0[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_ptp_pin_qcfg_output (size:128b/16B) */
-struct hwrm_func_ptp_pin_qcfg_output {
+struct __rte_packed_begin hwrm_func_ptp_pin_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -22651,7 +22651,7 @@ struct hwrm_func_ptp_pin_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_func_ptp_pin_cfg *
@@ -22659,7 +22659,7 @@ struct hwrm_func_ptp_pin_qcfg_output {
 
 
 /* hwrm_func_ptp_pin_cfg_input (size:256b/32B) */
-struct hwrm_func_ptp_pin_cfg_input {
+struct __rte_packed_begin hwrm_func_ptp_pin_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -22848,10 +22848,10 @@ struct hwrm_func_ptp_pin_cfg_input {
 	#define HWRM_FUNC_PTP_PIN_CFG_INPUT_PIN3_USAGE_LAST \
 		HWRM_FUNC_PTP_PIN_CFG_INPUT_PIN3_USAGE_SYNCE_SECONDARY_CLOCK_OUT
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_ptp_pin_cfg_output (size:128b/16B) */
-struct hwrm_func_ptp_pin_cfg_output {
+struct __rte_packed_begin hwrm_func_ptp_pin_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -22869,7 +22869,7 @@ struct hwrm_func_ptp_pin_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_func_ptp_cfg *
@@ -22877,7 +22877,7 @@ struct hwrm_func_ptp_pin_cfg_output {
 
 
 /* hwrm_func_ptp_cfg_input (size:384b/48B) */
-struct hwrm_func_ptp_cfg_input {
+struct __rte_packed_begin hwrm_func_ptp_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23056,10 +23056,10 @@ struct hwrm_func_ptp_cfg_input {
 	 * to indicate the programmed upper 16 bits.
 	 */
 	uint64_t	ptp_set_time;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_ptp_cfg_output (size:128b/16B) */
-struct hwrm_func_ptp_cfg_output {
+struct __rte_packed_begin hwrm_func_ptp_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23077,7 +23077,7 @@ struct hwrm_func_ptp_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_func_ptp_ts_query *
@@ -23085,7 +23085,7 @@ struct hwrm_func_ptp_cfg_output {
 
 
 /* hwrm_func_ptp_ts_query_input (size:192b/24B) */
-struct hwrm_func_ptp_ts_query_input {
+struct __rte_packed_begin hwrm_func_ptp_ts_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23120,10 +23120,10 @@ struct hwrm_func_ptp_ts_query_input {
 	/* If set, the response includes PTM timestamps */
 	#define HWRM_FUNC_PTP_TS_QUERY_INPUT_FLAGS_PTM_TIME     UINT32_C(0x2)
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_ptp_ts_query_output (size:320b/40B) */
-struct hwrm_func_ptp_ts_query_output {
+struct __rte_packed_begin hwrm_func_ptp_ts_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23162,7 +23162,7 @@ struct hwrm_func_ptp_ts_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_func_ptp_ext_cfg *
@@ -23170,7 +23170,7 @@ struct hwrm_func_ptp_ts_query_output {
 
 
 /* hwrm_func_ptp_ext_cfg_input (size:256b/32B) */
-struct hwrm_func_ptp_ext_cfg_input {
+struct __rte_packed_begin hwrm_func_ptp_ext_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23288,10 +23288,10 @@ struct hwrm_func_ptp_ext_cfg_input {
 	 */
 	uint32_t	failover_timer;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_ptp_ext_cfg_output (size:128b/16B) */
-struct hwrm_func_ptp_ext_cfg_output {
+struct __rte_packed_begin hwrm_func_ptp_ext_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23309,7 +23309,7 @@ struct hwrm_func_ptp_ext_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_func_ptp_ext_qcfg *
@@ -23317,7 +23317,7 @@ struct hwrm_func_ptp_ext_cfg_output {
 
 
 /* hwrm_func_ptp_ext_qcfg_input (size:192b/24B) */
-struct hwrm_func_ptp_ext_qcfg_input {
+struct __rte_packed_begin hwrm_func_ptp_ext_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23347,10 +23347,10 @@ struct hwrm_func_ptp_ext_qcfg_input {
 	 */
 	uint64_t	resp_addr;
 	uint8_t	unused_0[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_ptp_ext_qcfg_output (size:256b/32B) */
-struct hwrm_func_ptp_ext_qcfg_output {
+struct __rte_packed_begin hwrm_func_ptp_ext_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23404,7 +23404,7 @@ struct hwrm_func_ptp_ext_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_func_key_ctx_alloc *
@@ -23412,7 +23412,7 @@ struct hwrm_func_ptp_ext_qcfg_output {
 
 
 /* hwrm_func_key_ctx_alloc_input (size:384b/48B) */
-struct hwrm_func_key_ctx_alloc_input {
+struct __rte_packed_begin hwrm_func_key_ctx_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23496,10 +23496,10 @@ struct hwrm_func_key_ctx_alloc_input {
 	 */
 	uint32_t	partition_start_xid;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_key_ctx_alloc_output (size:192b/24B) */
-struct hwrm_func_key_ctx_alloc_output {
+struct __rte_packed_begin hwrm_func_key_ctx_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23537,7 +23537,7 @@ struct hwrm_func_key_ctx_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_func_key_ctx_free *
@@ -23545,7 +23545,7 @@ struct hwrm_func_key_ctx_alloc_output {
 
 
 /* hwrm_func_key_ctx_free_input (size:256b/32B) */
-struct hwrm_func_key_ctx_free_input {
+struct __rte_packed_begin hwrm_func_key_ctx_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23602,10 +23602,10 @@ struct hwrm_func_key_ctx_free_input {
 	 */
 	uint16_t	num_entries;
 	uint8_t	unused_1[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_key_ctx_free_output (size:128b/16B) */
-struct hwrm_func_key_ctx_free_output {
+struct __rte_packed_begin hwrm_func_key_ctx_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23624,7 +23624,7 @@ struct hwrm_func_key_ctx_free_output {
 	 * that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_func_backing_store_cfg_v2 *
@@ -23632,7 +23632,7 @@ struct hwrm_func_key_ctx_free_output {
 
 
 /* hwrm_func_backing_store_cfg_v2_input (size:448b/56B) */
-struct hwrm_func_backing_store_cfg_v2_input {
+struct __rte_packed_begin hwrm_func_backing_store_cfg_v2_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -23877,10 +23877,10 @@ struct hwrm_func_backing_store_cfg_v2_input {
 	uint32_t	split_entry_2;
 	/* Split entry #3. */
 	uint32_t	split_entry_3;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_backing_store_cfg_v2_output (size:128b/16B) */
-struct hwrm_func_backing_store_cfg_v2_output {
+struct __rte_packed_begin hwrm_func_backing_store_cfg_v2_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -23899,7 +23899,7 @@ struct hwrm_func_backing_store_cfg_v2_output {
 	 * that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************************
  * hwrm_func_backing_store_qcfg_v2 *
@@ -23907,7 +23907,7 @@ struct hwrm_func_backing_store_cfg_v2_output {
 
 
 /* hwrm_func_backing_store_qcfg_v2_input (size:192b/24B) */
-struct hwrm_func_backing_store_qcfg_v2_input {
+struct __rte_packed_begin hwrm_func_backing_store_qcfg_v2_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -24034,10 +24034,10 @@ struct hwrm_func_backing_store_qcfg_v2_input {
 	 */
 	uint16_t	instance;
 	uint8_t	rsvd[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_backing_store_qcfg_v2_output (size:448b/56B) */
-struct hwrm_func_backing_store_qcfg_v2_output {
+struct __rte_packed_begin hwrm_func_backing_store_qcfg_v2_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -24226,7 +24226,7 @@ struct hwrm_func_backing_store_qcfg_v2_output {
 	 * that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast QPC split entries. This casting is required in the
  * following HWRM command inputs/outputs if the backing store type is QPC.
@@ -24235,7 +24235,7 @@ struct hwrm_func_backing_store_qcfg_v2_output {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* qpc_split_entries (size:128b/16B) */
-struct qpc_split_entries {
+struct __rte_packed_begin qpc_split_entries {
 	/* Number of L2 QP backing store entries. */
 	uint32_t	qp_num_l2_entries;
 	/* Number of QP1 entries. */
@@ -24246,7 +24246,7 @@ struct qpc_split_entries {
 	 */
 	uint32_t	qp_num_fast_qpmd_entries;
 	uint32_t	rsvd;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast SRQ split entries. This casting is required in the
  * following HWRM command inputs/outputs if the backing store type is SRQ.
@@ -24255,12 +24255,12 @@ struct qpc_split_entries {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* srq_split_entries (size:128b/16B) */
-struct srq_split_entries {
+struct __rte_packed_begin srq_split_entries {
 	/* Number of L2 SRQ backing store entries. */
 	uint32_t	srq_num_l2_entries;
 	uint32_t	rsvd;
 	uint32_t	rsvd2[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast CQ split entries. This casting is required in the
  * following HWRM command inputs/outputs if the backing store type is CQ.
@@ -24269,12 +24269,12 @@ struct srq_split_entries {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* cq_split_entries (size:128b/16B) */
-struct cq_split_entries {
+struct __rte_packed_begin cq_split_entries {
 	/* Number of L2 CQ backing store entries. */
 	uint32_t	cq_num_l2_entries;
 	uint32_t	rsvd;
 	uint32_t	rsvd2[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast VNIC split entries. This casting is required in the
  * following HWRM command inputs/outputs if the backing store type is VNIC.
@@ -24283,12 +24283,12 @@ struct cq_split_entries {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* vnic_split_entries (size:128b/16B) */
-struct vnic_split_entries {
+struct __rte_packed_begin vnic_split_entries {
 	/* Number of VNIC backing store entries. */
 	uint32_t	vnic_num_vnic_entries;
 	uint32_t	rsvd;
 	uint32_t	rsvd2[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast MRAV split entries. This casting is required in the
  * following HWRM command inputs/outputs if the backing store type is MRAV.
@@ -24297,12 +24297,12 @@ struct vnic_split_entries {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* mrav_split_entries (size:128b/16B) */
-struct mrav_split_entries {
+struct __rte_packed_begin mrav_split_entries {
 	/* Number of AV backing store entries. */
 	uint32_t	mrav_num_av_entries;
 	uint32_t	rsvd;
 	uint32_t	rsvd2[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast TBL_SCOPE split entries. This casting is required
  * in the following HWRM command inputs/outputs if the backing store type is
@@ -24312,7 +24312,7 @@ struct mrav_split_entries {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* ts_split_entries (size:128b/16B) */
-struct ts_split_entries {
+struct __rte_packed_begin ts_split_entries {
 	/* Max number of TBL_SCOPE region entries (QCAPS). */
 	uint32_t	region_num_entries;
 	/* tsid to configure (CFG). */
@@ -24324,7 +24324,7 @@ struct ts_split_entries {
 	uint8_t	lkup_static_bkt_cnt_exp[2];
 	uint8_t	rsvd;
 	uint32_t	rsvd2[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Common structure to cast crypto key split entries. This casting is required
  * in the following HWRM command inputs/outputs if the backing store type is
@@ -24334,7 +24334,7 @@ struct ts_split_entries {
  * 3. hwrm_func_backing_store_qcaps_v2_output
  */
 /* ck_split_entries (size:128b/16B) */
-struct ck_split_entries {
+struct __rte_packed_begin ck_split_entries {
 	/*
 	 * Number of QUIC backing store entries. That means the number of KTLS
 	 * backing store entries is the difference between this number and the
@@ -24343,7 +24343,7 @@ struct ck_split_entries {
 	uint32_t	num_quic_entries;
 	uint32_t	rsvd;
 	uint32_t	rsvd2[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /************************************
  * hwrm_func_backing_store_qcaps_v2 *
@@ -24351,7 +24351,7 @@ struct ck_split_entries {
 
 
 /* hwrm_func_backing_store_qcaps_v2_input (size:192b/24B) */
-struct hwrm_func_backing_store_qcaps_v2_input {
+struct __rte_packed_begin hwrm_func_backing_store_qcaps_v2_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -24463,10 +24463,10 @@ struct hwrm_func_backing_store_qcaps_v2_input {
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_LAST \
 		HWRM_FUNC_BACKING_STORE_QCAPS_V2_INPUT_TYPE_INVALID
 	uint8_t	rsvd[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_backing_store_qcaps_v2_output (size:448b/56B) */
-struct hwrm_func_backing_store_qcaps_v2_output {
+struct __rte_packed_begin hwrm_func_backing_store_qcaps_v2_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -24721,7 +24721,7 @@ struct hwrm_func_backing_store_qcaps_v2_output {
 	 * that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_func_dbr_pacing_cfg *
@@ -24729,7 +24729,7 @@ struct hwrm_func_backing_store_qcaps_v2_output {
 
 
 /* hwrm_func_dbr_pacing_cfg_input (size:320b/40B) */
-struct hwrm_func_dbr_pacing_cfg_input {
+struct __rte_packed_begin hwrm_func_dbr_pacing_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -24794,10 +24794,10 @@ struct hwrm_func_dbr_pacing_cfg_input {
 	 */
 	uint32_t	pacing_threshold;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_dbr_pacing_cfg_output (size:128b/16B) */
-struct hwrm_func_dbr_pacing_cfg_output {
+struct __rte_packed_begin hwrm_func_dbr_pacing_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -24816,7 +24816,7 @@ struct hwrm_func_dbr_pacing_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_func_dbr_pacing_qcfg *
@@ -24824,7 +24824,7 @@ struct hwrm_func_dbr_pacing_cfg_output {
 
 
 /* hwrm_func_dbr_pacing_qcfg_input (size:128b/16B) */
-struct hwrm_func_dbr_pacing_qcfg_input {
+struct __rte_packed_begin hwrm_func_dbr_pacing_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -24853,10 +24853,10 @@ struct hwrm_func_dbr_pacing_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_dbr_pacing_qcfg_output (size:512b/64B) */
-struct hwrm_func_dbr_pacing_qcfg_output {
+struct __rte_packed_begin hwrm_func_dbr_pacing_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25020,7 +25020,7 @@ struct hwrm_func_dbr_pacing_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************************
  * hwrm_func_dbr_pacing_broadcast_event *
@@ -25028,7 +25028,7 @@ struct hwrm_func_dbr_pacing_qcfg_output {
 
 
 /* hwrm_func_dbr_pacing_broadcast_event_input (size:128b/16B) */
-struct hwrm_func_dbr_pacing_broadcast_event_input {
+struct __rte_packed_begin hwrm_func_dbr_pacing_broadcast_event_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25057,10 +25057,10 @@ struct hwrm_func_dbr_pacing_broadcast_event_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_dbr_pacing_broadcast_event_output (size:128b/16B) */
-struct hwrm_func_dbr_pacing_broadcast_event_output {
+struct __rte_packed_begin hwrm_func_dbr_pacing_broadcast_event_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25079,7 +25079,7 @@ struct hwrm_func_dbr_pacing_broadcast_event_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************************
  * hwrm_func_dbr_pacing_nqlist_query *
@@ -25087,7 +25087,7 @@ struct hwrm_func_dbr_pacing_broadcast_event_output {
 
 
 /* hwrm_func_dbr_pacing_nqlist_query_input (size:128b/16B) */
-struct hwrm_func_dbr_pacing_nqlist_query_input {
+struct __rte_packed_begin hwrm_func_dbr_pacing_nqlist_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25116,10 +25116,10 @@ struct hwrm_func_dbr_pacing_nqlist_query_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_dbr_pacing_nqlist_query_output (size:384b/48B) */
-struct hwrm_func_dbr_pacing_nqlist_query_output {
+struct __rte_packed_begin hwrm_func_dbr_pacing_nqlist_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25171,7 +25171,7 @@ struct hwrm_func_dbr_pacing_nqlist_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************************
  * hwrm_func_dbr_recovery_completed *
@@ -25179,7 +25179,7 @@ struct hwrm_func_dbr_pacing_nqlist_query_output {
 
 
 /* hwrm_func_dbr_recovery_completed_input (size:192b/24B) */
-struct hwrm_func_dbr_recovery_completed_input {
+struct __rte_packed_begin hwrm_func_dbr_recovery_completed_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25219,10 +25219,10 @@ struct hwrm_func_dbr_recovery_completed_input {
 		UINT32_C(0xffffff)
 	#define HWRM_FUNC_DBR_RECOVERY_COMPLETED_INPUT_EPOCH_VALUE_SFT 0
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_dbr_recovery_completed_output (size:128b/16B) */
-struct hwrm_func_dbr_recovery_completed_output {
+struct __rte_packed_begin hwrm_func_dbr_recovery_completed_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25241,7 +25241,7 @@ struct hwrm_func_dbr_recovery_completed_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_func_synce_cfg *
@@ -25249,7 +25249,7 @@ struct hwrm_func_dbr_recovery_completed_output {
 
 
 /* hwrm_func_synce_cfg_input (size:192b/24B) */
-struct hwrm_func_synce_cfg_input {
+struct __rte_packed_begin hwrm_func_synce_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25332,10 +25332,10 @@ struct hwrm_func_synce_cfg_input {
 	#define HWRM_FUNC_SYNCE_CFG_INPUT_SECONDARY_CLOCK_STATE_LAST \
 		HWRM_FUNC_SYNCE_CFG_INPUT_SECONDARY_CLOCK_STATE_ENABLE
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_synce_cfg_output (size:128b/16B) */
-struct hwrm_func_synce_cfg_output {
+struct __rte_packed_begin hwrm_func_synce_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25353,7 +25353,7 @@ struct hwrm_func_synce_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_synce_qcfg *
@@ -25361,7 +25361,7 @@ struct hwrm_func_synce_cfg_output {
 
 
 /* hwrm_func_synce_qcfg_input (size:192b/24B) */
-struct hwrm_func_synce_qcfg_input {
+struct __rte_packed_begin hwrm_func_synce_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25391,10 +25391,10 @@ struct hwrm_func_synce_qcfg_input {
 	 */
 	uint64_t	resp_addr;
 	uint8_t	unused_0[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_synce_qcfg_output (size:128b/16B) */
-struct hwrm_func_synce_qcfg_output {
+struct __rte_packed_begin hwrm_func_synce_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25436,7 +25436,7 @@ struct hwrm_func_synce_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_lag_create *
@@ -25444,7 +25444,7 @@ struct hwrm_func_synce_qcfg_output {
 
 
 /* hwrm_func_lag_create_input (size:192b/24B) */
-struct hwrm_func_lag_create_input {
+struct __rte_packed_begin hwrm_func_lag_create_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25577,10 +25577,10 @@ struct hwrm_func_lag_create_input {
 	#define HWRM_FUNC_LAG_CREATE_INPUT_AGGR_MODE_LAST \
 		HWRM_FUNC_LAG_CREATE_INPUT_AGGR_MODE_802_3_AD
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_lag_create_output (size:128b/16B) */
-struct hwrm_func_lag_create_output {
+struct __rte_packed_begin hwrm_func_lag_create_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25603,7 +25603,7 @@ struct hwrm_func_lag_create_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_lag_update *
@@ -25611,7 +25611,7 @@ struct hwrm_func_lag_create_output {
 
 
 /* hwrm_func_lag_update_input (size:192b/24B) */
-struct hwrm_func_lag_update_input {
+struct __rte_packed_begin hwrm_func_lag_update_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25746,10 +25746,10 @@ struct hwrm_func_lag_update_input {
 	#define HWRM_FUNC_LAG_UPDATE_INPUT_AGGR_MODE_LAST \
 		HWRM_FUNC_LAG_UPDATE_INPUT_AGGR_MODE_802_3_AD
 	uint8_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_lag_update_output (size:128b/16B) */
-struct hwrm_func_lag_update_output {
+struct __rte_packed_begin hwrm_func_lag_update_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25767,7 +25767,7 @@ struct hwrm_func_lag_update_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_lag_free *
@@ -25775,7 +25775,7 @@ struct hwrm_func_lag_update_output {
 
 
 /* hwrm_func_lag_free_input (size:192b/24B) */
-struct hwrm_func_lag_free_input {
+struct __rte_packed_begin hwrm_func_lag_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25807,10 +25807,10 @@ struct hwrm_func_lag_free_input {
 	/* Link aggregation group ID of the LAG to be freed. */
 	uint8_t	fw_lag_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_lag_free_output (size:128b/16B) */
-struct hwrm_func_lag_free_output {
+struct __rte_packed_begin hwrm_func_lag_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25828,7 +25828,7 @@ struct hwrm_func_lag_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_lag_qcfg *
@@ -25836,7 +25836,7 @@ struct hwrm_func_lag_free_output {
 
 
 /* hwrm_func_lag_qcfg_input (size:192b/24B) */
-struct hwrm_func_lag_qcfg_input {
+struct __rte_packed_begin hwrm_func_lag_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -25868,10 +25868,10 @@ struct hwrm_func_lag_qcfg_input {
 	/* Link aggregation group ID of the LAG to be queried. */
 	uint8_t	fw_lag_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_lag_qcfg_output (size:128b/16B) */
-struct hwrm_func_lag_qcfg_output {
+struct __rte_packed_begin hwrm_func_lag_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -25968,7 +25968,7 @@ struct hwrm_func_lag_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_func_lag_mode_cfg *
@@ -25976,7 +25976,7 @@ struct hwrm_func_lag_qcfg_output {
 
 
 /* hwrm_func_lag_mode_cfg_input (size:192b/24B) */
-struct hwrm_func_lag_mode_cfg_input {
+struct __rte_packed_begin hwrm_func_lag_mode_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26139,10 +26139,10 @@ struct hwrm_func_lag_mode_cfg_input {
 	/* Link aggregation group idx being used. */
 	uint8_t	lag_id;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_lag_mode_cfg_output (size:128b/16B) */
-struct hwrm_func_lag_mode_cfg_output {
+struct __rte_packed_begin hwrm_func_lag_mode_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26162,7 +26162,7 @@ struct hwrm_func_lag_mode_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_func_lag_mode_qcfg *
@@ -26170,7 +26170,7 @@ struct hwrm_func_lag_mode_cfg_output {
 
 
 /* hwrm_func_lag_mode_qcfg_input (size:192b/24B) */
-struct hwrm_func_lag_mode_qcfg_input {
+struct __rte_packed_begin hwrm_func_lag_mode_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26200,10 +26200,10 @@ struct hwrm_func_lag_mode_qcfg_input {
 	 */
 	uint64_t	resp_addr;
 	uint8_t	unused_0[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_lag_mode_qcfg_output (size:128b/16B) */
-struct hwrm_func_lag_mode_qcfg_output {
+struct __rte_packed_begin hwrm_func_lag_mode_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26315,7 +26315,7 @@ struct hwrm_func_lag_mode_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_func_vlan_qcfg *
@@ -26323,7 +26323,7 @@ struct hwrm_func_lag_mode_qcfg_output {
 
 
 /* hwrm_func_vlan_qcfg_input (size:192b/24B) */
-struct hwrm_func_vlan_qcfg_input {
+struct __rte_packed_begin hwrm_func_vlan_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26360,10 +26360,10 @@ struct hwrm_func_vlan_qcfg_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vlan_qcfg_output (size:320b/40B) */
-struct hwrm_func_vlan_qcfg_output {
+struct __rte_packed_begin hwrm_func_vlan_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26406,7 +26406,7 @@ struct hwrm_func_vlan_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_vlan_cfg *
@@ -26414,7 +26414,7 @@ struct hwrm_func_vlan_qcfg_output {
 
 
 /* hwrm_func_vlan_cfg_input (size:384b/48B) */
-struct hwrm_func_vlan_cfg_input {
+struct __rte_packed_begin hwrm_func_vlan_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26507,10 +26507,10 @@ struct hwrm_func_vlan_cfg_input {
 	/* Future use. */
 	uint32_t	rsvd2;
 	uint8_t	unused_3[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vlan_cfg_output (size:128b/16B) */
-struct hwrm_func_vlan_cfg_output {
+struct __rte_packed_begin hwrm_func_vlan_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26528,7 +26528,7 @@ struct hwrm_func_vlan_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_func_vf_vnic_ids_query *
@@ -26536,7 +26536,7 @@ struct hwrm_func_vlan_cfg_output {
 
 
 /* hwrm_func_vf_vnic_ids_query_input (size:256b/32B) */
-struct hwrm_func_vf_vnic_ids_query_input {
+struct __rte_packed_begin hwrm_func_vf_vnic_ids_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26575,10 +26575,10 @@ struct hwrm_func_vf_vnic_ids_query_input {
 	uint32_t	max_vnic_id_cnt;
 	/* This is the address for VF VNIC ID table */
 	uint64_t	vnic_id_tbl_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_vnic_ids_query_output (size:128b/16B) */
-struct hwrm_func_vf_vnic_ids_query_output {
+struct __rte_packed_begin hwrm_func_vf_vnic_ids_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26602,7 +26602,7 @@ struct hwrm_func_vf_vnic_ids_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_func_vf_bw_cfg *
@@ -26610,7 +26610,7 @@ struct hwrm_func_vf_vnic_ids_query_output {
 
 
 /* hwrm_func_vf_bw_cfg_input (size:960b/120B) */
-struct hwrm_func_vf_bw_cfg_input {
+struct __rte_packed_begin hwrm_func_vf_bw_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26706,10 +26706,10 @@ struct hwrm_func_vf_bw_cfg_input {
 		(UINT32_C(0xf) << 12)
 	#define HWRM_FUNC_VF_BW_CFG_INPUT_VFN_RATE_LAST \
 		HWRM_FUNC_VF_BW_CFG_INPUT_VFN_RATE_PCT_100
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_bw_cfg_output (size:128b/16B) */
-struct hwrm_func_vf_bw_cfg_output {
+struct __rte_packed_begin hwrm_func_vf_bw_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26727,7 +26727,7 @@ struct hwrm_func_vf_bw_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_func_vf_bw_qcfg *
@@ -26735,7 +26735,7 @@ struct hwrm_func_vf_bw_cfg_output {
 
 
 /* hwrm_func_vf_bw_qcfg_input (size:960b/120B) */
-struct hwrm_func_vf_bw_qcfg_input {
+struct __rte_packed_begin hwrm_func_vf_bw_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26776,10 +26776,10 @@ struct hwrm_func_vf_bw_qcfg_input {
 	/* The physical VF id of interest */
 	#define HWRM_FUNC_VF_BW_QCFG_INPUT_VFN_VFID_MASK UINT32_C(0xfff)
 	#define HWRM_FUNC_VF_BW_QCFG_INPUT_VFN_VFID_SFT 0
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_vf_bw_qcfg_output (size:960b/120B) */
-struct hwrm_func_vf_bw_qcfg_output {
+struct __rte_packed_begin hwrm_func_vf_bw_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26865,7 +26865,7 @@ struct hwrm_func_vf_bw_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_func_drv_if_change *
@@ -26873,7 +26873,7 @@ struct hwrm_func_vf_bw_qcfg_output {
 
 
 /* hwrm_func_drv_if_change_input (size:192b/24B) */
-struct hwrm_func_drv_if_change_input {
+struct __rte_packed_begin hwrm_func_drv_if_change_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -26918,10 +26918,10 @@ struct hwrm_func_drv_if_change_input {
 	 */
 	#define HWRM_FUNC_DRV_IF_CHANGE_INPUT_FLAGS_UP     UINT32_C(0x1)
 	uint32_t	unused;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_drv_if_change_output (size:128b/16B) */
-struct hwrm_func_drv_if_change_output {
+struct __rte_packed_begin hwrm_func_drv_if_change_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -26965,7 +26965,7 @@ struct hwrm_func_drv_if_change_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_func_host_pf_ids_query *
@@ -26973,7 +26973,7 @@ struct hwrm_func_drv_if_change_output {
 
 
 /* hwrm_func_host_pf_ids_query_input (size:192b/24B) */
-struct hwrm_func_host_pf_ids_query_input {
+struct __rte_packed_begin hwrm_func_host_pf_ids_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -27051,10 +27051,10 @@ struct hwrm_func_host_pf_ids_query_input {
 	#define HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_LAST \
 		HWRM_FUNC_HOST_PF_IDS_QUERY_INPUT_FILTER_ROCE
 	uint8_t	unused_1[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_host_pf_ids_query_output (size:128b/16B) */
-struct hwrm_func_host_pf_ids_query_output {
+struct __rte_packed_begin hwrm_func_host_pf_ids_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -27171,7 +27171,7 @@ struct hwrm_func_host_pf_ids_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_func_spd_cfg *
@@ -27179,7 +27179,7 @@ struct hwrm_func_host_pf_ids_query_output {
 
 
 /* hwrm_func_spd_cfg_input (size:384b/48B) */
-struct hwrm_func_spd_cfg_input {
+struct __rte_packed_begin hwrm_func_spd_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -27355,10 +27355,10 @@ struct hwrm_func_spd_cfg_input {
 	uint64_t	ring_grp_tbl_addr;
 	/* This is the address for rss hash key table */
 	uint64_t	hash_key_tbl_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_spd_cfg_output (size:128b/16B) */
-struct hwrm_func_spd_cfg_output {
+struct __rte_packed_begin hwrm_func_spd_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -27376,7 +27376,7 @@ struct hwrm_func_spd_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_func_spd_qcfg *
@@ -27384,7 +27384,7 @@ struct hwrm_func_spd_cfg_output {
 
 
 /* hwrm_func_spd_qcfg_input (size:128b/16B) */
-struct hwrm_func_spd_qcfg_input {
+struct __rte_packed_begin hwrm_func_spd_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -27413,10 +27413,10 @@ struct hwrm_func_spd_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_func_spd_qcfg_output (size:512b/64B) */
-struct hwrm_func_spd_qcfg_output {
+struct __rte_packed_begin hwrm_func_spd_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -27539,7 +27539,7 @@ struct hwrm_func_spd_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_port_phy_cfg *
@@ -27547,7 +27547,7 @@ struct hwrm_func_spd_qcfg_output {
 
 
 /* hwrm_port_phy_cfg_input (size:512b/64B) */
-struct hwrm_port_phy_cfg_input {
+struct __rte_packed_begin hwrm_port_phy_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -28360,10 +28360,10 @@ struct hwrm_port_phy_cfg_input {
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_800GB_PAM4_112 \
 		UINT32_C(0x2000)
 	uint8_t	unused_2[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_cfg_output (size:128b/16B) */
-struct hwrm_port_phy_cfg_output {
+struct __rte_packed_begin hwrm_port_phy_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -28381,10 +28381,10 @@ struct hwrm_port_phy_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_cfg_cmd_err (size:64b/8B) */
-struct hwrm_port_phy_cfg_cmd_err {
+struct __rte_packed_begin hwrm_port_phy_cfg_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -28410,7 +28410,7 @@ struct hwrm_port_phy_cfg_cmd_err {
 	#define HWRM_PORT_PHY_CFG_CMD_ERR_CODE_LAST \
 		HWRM_PORT_PHY_CFG_CMD_ERR_CODE_RETRY
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_port_phy_qcfg *
@@ -28418,7 +28418,7 @@ struct hwrm_port_phy_cfg_cmd_err {
 
 
 /* hwrm_port_phy_qcfg_input (size:192b/24B) */
-struct hwrm_port_phy_qcfg_input {
+struct __rte_packed_begin hwrm_port_phy_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -28450,10 +28450,10 @@ struct hwrm_port_phy_qcfg_input {
 	/* Port ID of port that is to be queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_qcfg_output (size:832b/104B) */
-struct hwrm_port_phy_qcfg_output {
+struct __rte_packed_begin hwrm_port_phy_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -29754,7 +29754,7 @@ struct hwrm_port_phy_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_port_mac_cfg *
@@ -29762,7 +29762,7 @@ struct hwrm_port_phy_qcfg_output {
 
 
 /* hwrm_port_mac_cfg_input (size:448b/56B) */
-struct hwrm_port_mac_cfg_input {
+struct __rte_packed_begin hwrm_port_mac_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -30209,10 +30209,10 @@ struct hwrm_port_mac_cfg_input {
 	 * nanoseconds.
 	 */
 	int64_t	ptp_adj_phase;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_mac_cfg_output (size:128b/16B) */
-struct hwrm_port_mac_cfg_output {
+struct __rte_packed_begin hwrm_port_mac_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -30263,7 +30263,7 @@ struct hwrm_port_mac_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_port_mac_qcfg *
@@ -30271,7 +30271,7 @@ struct hwrm_port_mac_cfg_output {
 
 
 /* hwrm_port_mac_qcfg_input (size:192b/24B) */
-struct hwrm_port_mac_qcfg_input {
+struct __rte_packed_begin hwrm_port_mac_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -30303,10 +30303,10 @@ struct hwrm_port_mac_qcfg_input {
 	/* Port ID of port that is to be configured. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_mac_qcfg_output (size:256b/32B) */
-struct hwrm_port_mac_qcfg_output {
+struct __rte_packed_begin hwrm_port_mac_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -30586,7 +30586,7 @@ struct hwrm_port_mac_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_port_mac_ptp_qcfg *
@@ -30594,7 +30594,7 @@ struct hwrm_port_mac_qcfg_output {
 
 
 /* hwrm_port_mac_ptp_qcfg_input (size:192b/24B) */
-struct hwrm_port_mac_ptp_qcfg_input {
+struct __rte_packed_begin hwrm_port_mac_ptp_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -30626,10 +30626,10 @@ struct hwrm_port_mac_ptp_qcfg_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_mac_ptp_qcfg_output (size:704b/88B) */
-struct hwrm_port_mac_ptp_qcfg_output {
+struct __rte_packed_begin hwrm_port_mac_ptp_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -30736,11 +30736,11 @@ struct hwrm_port_mac_ptp_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Port Tx Statistics Format */
 /* tx_port_stats (size:3264b/408B) */
-struct tx_port_stats {
+struct __rte_packed_begin tx_port_stats {
 	/* Total Number of 64 Bytes frames transmitted */
 	uint64_t	tx_64b_frames;
 	/* Total Number of 65-127 Bytes frames transmitted */
@@ -30877,11 +30877,11 @@ struct tx_port_stats {
 	uint64_t	tx_stat_discard;
 	/* Total Tx Error Drops per Port reported by STATS block */
 	uint64_t	tx_stat_error;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Port Rx Statistics Format */
 /* rx_port_stats (size:4224b/528B) */
-struct rx_port_stats {
+struct __rte_packed_begin rx_port_stats {
 	/* Total Number of 64 Bytes frames received */
 	uint64_t	rx_64b_frames;
 	/* Total Number of 65-127 Bytes frames received */
@@ -31092,7 +31092,7 @@ struct rx_port_stats {
 	/* Total Rx Discards per Port reported by STATS block */
 	uint64_t	rx_stat_discard;
 	uint64_t	rx_stat_err;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_port_qstats *
@@ -31100,7 +31100,7 @@ struct rx_port_stats {
 
 
 /* hwrm_port_qstats_input (size:320b/40B) */
-struct hwrm_port_qstats_input {
+struct __rte_packed_begin hwrm_port_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -31149,10 +31149,10 @@ struct hwrm_port_qstats_input {
 	 * Rx port statistics will be stored
 	 */
 	uint64_t	rx_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_qstats_output (size:128b/16B) */
-struct hwrm_port_qstats_output {
+struct __rte_packed_begin hwrm_port_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -31174,11 +31174,11 @@ struct hwrm_port_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Port Tx Statistics extended Format */
 /* tx_port_stats_ext (size:2048b/256B) */
-struct tx_port_stats_ext {
+struct __rte_packed_begin tx_port_stats_ext {
 	/* Total number of tx bytes count on cos queue 0 */
 	uint64_t	tx_bytes_cos0;
 	/* Total number of tx bytes count on cos queue 1 */
@@ -31291,11 +31291,11 @@ struct tx_port_stats_ext {
 	 * priority 7
 	 */
 	uint64_t	pfc_pri7_tx_transitions;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Port Rx Statistics extended Format */
 /* rx_port_stats_ext (size:3904b/488B) */
-struct rx_port_stats_ext {
+struct __rte_packed_begin rx_port_stats_ext {
 	/* Number of times link state changed to down */
 	uint64_t	link_down_events;
 	/* Number of times the idle rings with pause bit are found */
@@ -31487,7 +31487,7 @@ struct rx_port_stats_ext {
 	 * codeword gets corrected.
 	 */
 	uint64_t	rx_fec_symbol_err;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Port Rx Statistics extended PFC WatchDog Format.
@@ -31504,7 +31504,7 @@ struct rx_port_stats_ext {
  * hwrm_queue_pfc_enable_cfg call.
  */
 /* rx_port_stats_ext_pfc_wd (size:5120b/640B) */
-struct rx_port_stats_ext_pfc_wd {
+struct __rte_packed_begin rx_port_stats_ext_pfc_wd {
 	/*
 	 * Total number of PFC WatchDog StormDetect events detected
 	 * for Pri 0
@@ -31905,7 +31905,7 @@ struct rx_port_stats_ext_pfc_wd {
 	 *  for pri 7
 	 */
 	uint64_t	rx_pfc_watchdog_last_storm_rx_bytes_dropped_pri7;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_port_qstats_ext *
@@ -31913,7 +31913,7 @@ struct rx_port_stats_ext_pfc_wd {
 
 
 /* hwrm_port_qstats_ext_input (size:320b/40B) */
-struct hwrm_port_qstats_ext_input {
+struct __rte_packed_begin hwrm_port_qstats_ext_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -31972,10 +31972,10 @@ struct hwrm_port_qstats_ext_input {
 	 * Rx port statistics will be stored
 	 */
 	uint64_t	rx_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_qstats_ext_output (size:128b/16B) */
-struct hwrm_port_qstats_ext_output {
+struct __rte_packed_begin hwrm_port_qstats_ext_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32005,7 +32005,7 @@ struct hwrm_port_qstats_ext_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_port_qstats_ext_pfc_wd *
@@ -32013,7 +32013,7 @@ struct hwrm_port_qstats_ext_output {
 
 
 /* hwrm_port_qstats_ext_pfc_wd_input (size:256b/32B) */
-struct hwrm_port_qstats_ext_pfc_wd_input {
+struct __rte_packed_begin hwrm_port_qstats_ext_pfc_wd_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32055,10 +32055,10 @@ struct hwrm_port_qstats_ext_pfc_wd_input {
 	 * rx_port_stats_ext_pfc_wd will be stored
 	 */
 	uint64_t	pfc_wd_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_qstats_ext_pfc_wd_output (size:128b/16B) */
-struct hwrm_port_qstats_ext_pfc_wd_output {
+struct __rte_packed_begin hwrm_port_qstats_ext_pfc_wd_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32081,7 +32081,7 @@ struct hwrm_port_qstats_ext_pfc_wd_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_port_lpbk_qstats *
@@ -32089,7 +32089,7 @@ struct hwrm_port_qstats_ext_pfc_wd_output {
 
 
 /* hwrm_port_lpbk_qstats_input (size:256b/32B) */
-struct hwrm_port_lpbk_qstats_input {
+struct __rte_packed_begin hwrm_port_lpbk_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32140,10 +32140,10 @@ struct hwrm_port_lpbk_qstats_input {
 	 * loopback statistics will be stored
 	 */
 	uint64_t	lpbk_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_lpbk_qstats_output (size:128b/16B) */
-struct hwrm_port_lpbk_qstats_output {
+struct __rte_packed_begin hwrm_port_lpbk_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32169,11 +32169,11 @@ struct hwrm_port_lpbk_qstats_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Loopback Port Statistic Format */
 /* port_lpbk_stats (size:640b/80B) */
-struct port_lpbk_stats {
+struct __rte_packed_begin port_lpbk_stats {
 	/* Number of transmitted unicast frames */
 	uint64_t	lpbk_ucast_frames;
 	/* Number of transmitted multicast frames */
@@ -32194,7 +32194,7 @@ struct port_lpbk_stats {
 	uint64_t	lpbk_rx_discards;
 	/* Number of error dropped rx packets */
 	uint64_t	lpbk_rx_errors;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_port_ecn_qstats *
@@ -32202,7 +32202,7 @@ struct port_lpbk_stats {
 
 
 /* hwrm_port_ecn_qstats_input (size:256b/32B) */
-struct hwrm_port_ecn_qstats_input {
+struct __rte_packed_begin hwrm_port_ecn_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32254,10 +32254,10 @@ struct hwrm_port_ecn_qstats_input {
 	 * ECN port statistics will be stored
 	 */
 	uint64_t	ecn_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_ecn_qstats_output (size:128b/16B) */
-struct hwrm_port_ecn_qstats_output {
+struct __rte_packed_begin hwrm_port_ecn_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32282,11 +32282,11 @@ struct hwrm_port_ecn_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* ECN mark statistics format */
 /* port_stats_ecn (size:512b/64B) */
-struct port_stats_ecn {
+struct __rte_packed_begin port_stats_ecn {
 	/*
 	 * Number of packets marked in CoS queue 0.
 	 * Or, if the driver requested counter masks, a mask to indicate the size
@@ -32335,7 +32335,7 @@ struct port_stats_ecn {
 	 * of the counter.
 	 */
 	uint64_t	mark_cnt_cos7;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_port_clr_stats *
@@ -32343,7 +32343,7 @@ struct port_stats_ecn {
 
 
 /* hwrm_port_clr_stats_input (size:192b/24B) */
-struct hwrm_port_clr_stats_input {
+struct __rte_packed_begin hwrm_port_clr_stats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32387,10 +32387,10 @@ struct hwrm_port_clr_stats_input {
 	 */
 	#define HWRM_PORT_CLR_STATS_INPUT_FLAGS_ROCE_COUNTERS     UINT32_C(0x1)
 	uint8_t	unused_0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_clr_stats_output (size:128b/16B) */
-struct hwrm_port_clr_stats_output {
+struct __rte_packed_begin hwrm_port_clr_stats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32408,7 +32408,7 @@ struct hwrm_port_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_port_lpbk_clr_stats *
@@ -32416,7 +32416,7 @@ struct hwrm_port_clr_stats_output {
 
 
 /* hwrm_port_lpbk_clr_stats_input (size:192b/24B) */
-struct hwrm_port_lpbk_clr_stats_input {
+struct __rte_packed_begin hwrm_port_lpbk_clr_stats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32448,10 +32448,10 @@ struct hwrm_port_lpbk_clr_stats_input {
 	/* Port ID of port that is to be queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_lpbk_clr_stats_output (size:128b/16B) */
-struct hwrm_port_lpbk_clr_stats_output {
+struct __rte_packed_begin hwrm_port_lpbk_clr_stats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32469,7 +32469,7 @@ struct hwrm_port_lpbk_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_port_phy_qcaps *
@@ -32477,7 +32477,7 @@ struct hwrm_port_lpbk_clr_stats_output {
 
 
 /* hwrm_port_phy_qcaps_input (size:192b/24B) */
-struct hwrm_port_phy_qcaps_input {
+struct __rte_packed_begin hwrm_port_phy_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32509,10 +32509,10 @@ struct hwrm_port_phy_qcaps_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_qcaps_output (size:320b/40B) */
-struct hwrm_port_phy_qcaps_output {
+struct __rte_packed_begin hwrm_port_phy_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -32926,7 +32926,7 @@ struct hwrm_port_phy_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_port_phy_mdio_write *
@@ -32934,7 +32934,7 @@ struct hwrm_port_phy_qcaps_output {
 
 
 /* hwrm_port_phy_mdio_write_input (size:320b/40B) */
-struct hwrm_port_phy_mdio_write_input {
+struct __rte_packed_begin hwrm_port_phy_mdio_write_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -32982,10 +32982,10 @@ struct hwrm_port_phy_mdio_write_input {
 	uint8_t	cl45_mdio;
 	/*  */
 	uint8_t	unused_1[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_mdio_write_output (size:128b/16B) */
-struct hwrm_port_phy_mdio_write_output {
+struct __rte_packed_begin hwrm_port_phy_mdio_write_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -33003,7 +33003,7 @@ struct hwrm_port_phy_mdio_write_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_port_phy_mdio_read *
@@ -33011,7 +33011,7 @@ struct hwrm_port_phy_mdio_write_output {
 
 
 /* hwrm_port_phy_mdio_read_input (size:256b/32B) */
-struct hwrm_port_phy_mdio_read_input {
+struct __rte_packed_begin hwrm_port_phy_mdio_read_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -33057,10 +33057,10 @@ struct hwrm_port_phy_mdio_read_input {
 	uint8_t	cl45_mdio;
 	/*  */
 	uint8_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_mdio_read_output (size:128b/16B) */
-struct hwrm_port_phy_mdio_read_output {
+struct __rte_packed_begin hwrm_port_phy_mdio_read_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -33080,7 +33080,7 @@ struct hwrm_port_phy_mdio_read_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_port_led_cfg *
@@ -33088,7 +33088,7 @@ struct hwrm_port_phy_mdio_read_output {
 
 
 /* hwrm_port_led_cfg_input (size:512b/64B) */
-struct hwrm_port_led_cfg_input {
+struct __rte_packed_begin hwrm_port_led_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -33483,10 +33483,10 @@ struct hwrm_port_led_cfg_input {
 	uint8_t	led3_group_id;
 	/* Reserved field. */
 	uint8_t	rsvd3;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_led_cfg_output (size:128b/16B) */
-struct hwrm_port_led_cfg_output {
+struct __rte_packed_begin hwrm_port_led_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -33504,7 +33504,7 @@ struct hwrm_port_led_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_port_led_qcfg *
@@ -33512,7 +33512,7 @@ struct hwrm_port_led_cfg_output {
 
 
 /* hwrm_port_led_qcfg_input (size:192b/24B) */
-struct hwrm_port_led_qcfg_input {
+struct __rte_packed_begin hwrm_port_led_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -33544,10 +33544,10 @@ struct hwrm_port_led_qcfg_input {
 	/* Port ID of port whose LED configuration is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_led_qcfg_output (size:448b/56B) */
-struct hwrm_port_led_qcfg_output {
+struct __rte_packed_begin hwrm_port_led_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -33810,7 +33810,7 @@ struct hwrm_port_led_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_port_led_qcaps *
@@ -33818,7 +33818,7 @@ struct hwrm_port_led_qcfg_output {
 
 
 /* hwrm_port_led_qcaps_input (size:192b/24B) */
-struct hwrm_port_led_qcaps_input {
+struct __rte_packed_begin hwrm_port_led_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -33850,10 +33850,10 @@ struct hwrm_port_led_qcaps_input {
 	/* Port ID of port whose LED configuration is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_led_qcaps_output (size:384b/48B) */
-struct hwrm_port_led_qcaps_output {
+struct __rte_packed_begin hwrm_port_led_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34162,7 +34162,7 @@ struct hwrm_port_led_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_port_prbs_test *
@@ -34170,7 +34170,7 @@ struct hwrm_port_led_qcaps_output {
 
 
 /* hwrm_port_prbs_test_input (size:384b/48B) */
-struct hwrm_port_prbs_test_input {
+struct __rte_packed_begin hwrm_port_prbs_test_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -34293,10 +34293,10 @@ struct hwrm_port_prbs_test_input {
 	 * bit1 = lane1 ..bit31 = lane31
 	 */
 	uint32_t	rx_lane_map;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_prbs_test_output (size:128b/16B) */
-struct hwrm_port_prbs_test_output {
+struct __rte_packed_begin hwrm_port_prbs_test_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34325,7 +34325,7 @@ struct hwrm_port_prbs_test_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_port_dsc_dump *
@@ -34333,7 +34333,7 @@ struct hwrm_port_prbs_test_output {
 
 
 /* hwrm_port_dsc_dump_input (size:320b/40B) */
-struct hwrm_port_dsc_dump_input {
+struct __rte_packed_begin hwrm_port_dsc_dump_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -34470,10 +34470,10 @@ struct hwrm_port_dsc_dump_input {
 	 */
 	#define HWRM_PORT_DSC_DUMP_INPUT_DSC_DUMP_CONFIG_DEFER_CLOSE \
 		UINT32_C(0x4)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_dsc_dump_output (size:128b/16B) */
-struct hwrm_port_dsc_dump_output {
+struct __rte_packed_begin hwrm_port_dsc_dump_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34528,7 +34528,7 @@ struct hwrm_port_dsc_dump_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_port_sfp_sideband_cfg *
@@ -34536,7 +34536,7 @@ struct hwrm_port_dsc_dump_output {
 
 
 /* hwrm_port_sfp_sideband_cfg_input (size:256b/32B) */
-struct hwrm_port_sfp_sideband_cfg_input {
+struct __rte_packed_begin hwrm_port_sfp_sideband_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -34648,10 +34648,10 @@ struct hwrm_port_sfp_sideband_cfg_input {
 	/* When this bit is set to '1', the module will be powered down. */
 	#define HWRM_PORT_SFP_SIDEBAND_CFG_INPUT_FLAGS_PWR_DIS \
 		UINT32_C(0x40)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_sfp_sideband_cfg_output (size:128b/16B) */
-struct hwrm_port_sfp_sideband_cfg_output {
+struct __rte_packed_begin hwrm_port_sfp_sideband_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34669,7 +34669,7 @@ struct hwrm_port_sfp_sideband_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_port_sfp_sideband_qcfg *
@@ -34677,7 +34677,7 @@ struct hwrm_port_sfp_sideband_cfg_output {
 
 
 /* hwrm_port_sfp_sideband_qcfg_input (size:192b/24B) */
-struct hwrm_port_sfp_sideband_qcfg_input {
+struct __rte_packed_begin hwrm_port_sfp_sideband_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -34709,10 +34709,10 @@ struct hwrm_port_sfp_sideband_qcfg_input {
 	/* Port ID of port that is to be queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_sfp_sideband_qcfg_output (size:192b/24B) */
-struct hwrm_port_sfp_sideband_qcfg_output {
+struct __rte_packed_begin hwrm_port_sfp_sideband_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34792,7 +34792,7 @@ struct hwrm_port_sfp_sideband_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_port_phy_mdio_bus_acquire *
@@ -34800,7 +34800,7 @@ struct hwrm_port_sfp_sideband_qcfg_output {
 
 
 /* hwrm_port_phy_mdio_bus_acquire_input (size:192b/24B) */
-struct hwrm_port_phy_mdio_bus_acquire_input {
+struct __rte_packed_begin hwrm_port_phy_mdio_bus_acquire_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -34847,10 +34847,10 @@ struct hwrm_port_phy_mdio_bus_acquire_input {
 	 */
 	uint16_t	mdio_bus_timeout;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_mdio_bus_acquire_output (size:128b/16B) */
-struct hwrm_port_phy_mdio_bus_acquire_output {
+struct __rte_packed_begin hwrm_port_phy_mdio_bus_acquire_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34874,7 +34874,7 @@ struct hwrm_port_phy_mdio_bus_acquire_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_port_phy_mdio_bus_release *
@@ -34882,7 +34882,7 @@ struct hwrm_port_phy_mdio_bus_acquire_output {
 
 
 /* hwrm_port_phy_mdio_bus_release_input (size:192b/24B) */
-struct hwrm_port_phy_mdio_bus_release_input {
+struct __rte_packed_begin hwrm_port_phy_mdio_bus_release_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -34919,10 +34919,10 @@ struct hwrm_port_phy_mdio_bus_release_input {
 	 */
 	uint16_t	client_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_mdio_bus_release_output (size:128b/16B) */
-struct hwrm_port_phy_mdio_bus_release_output {
+struct __rte_packed_begin hwrm_port_phy_mdio_bus_release_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -34943,7 +34943,7 @@ struct hwrm_port_phy_mdio_bus_release_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_port_tx_fir_cfg *
@@ -34951,7 +34951,7 @@ struct hwrm_port_phy_mdio_bus_release_output {
 
 
 /* hwrm_port_tx_fir_cfg_input (size:320b/40B) */
-struct hwrm_port_tx_fir_cfg_input {
+struct __rte_packed_begin hwrm_port_tx_fir_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35010,10 +35010,10 @@ struct hwrm_port_tx_fir_cfg_input {
 	/* Value4 of TX FIR, required for PAM4. */
 	uint32_t	txfir_val_4;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_tx_fir_cfg_output (size:128b/16B) */
-struct hwrm_port_tx_fir_cfg_output {
+struct __rte_packed_begin hwrm_port_tx_fir_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35031,7 +35031,7 @@ struct hwrm_port_tx_fir_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_port_tx_fir_qcfg *
@@ -35039,7 +35039,7 @@ struct hwrm_port_tx_fir_cfg_output {
 
 
 /* hwrm_port_tx_fir_qcfg_input (size:192b/24B) */
-struct hwrm_port_tx_fir_qcfg_input {
+struct __rte_packed_begin hwrm_port_tx_fir_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35089,10 +35089,10 @@ struct hwrm_port_tx_fir_qcfg_input {
 	/* The ID of the lane TX FIR will be queried. */
 	uint8_t	lane_id;
 	uint8_t	unused[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_tx_fir_qcfg_output (size:256b/32B) */
-struct hwrm_port_tx_fir_qcfg_output {
+struct __rte_packed_begin hwrm_port_tx_fir_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35118,7 +35118,7 @@ struct hwrm_port_tx_fir_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_port_ep_tx_cfg *
@@ -35126,7 +35126,7 @@ struct hwrm_port_tx_fir_qcfg_output {
 
 
 /* hwrm_port_ep_tx_cfg_input (size:256b/32B) */
-struct hwrm_port_ep_tx_cfg_input {
+struct __rte_packed_begin hwrm_port_ep_tx_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35240,10 +35240,10 @@ struct hwrm_port_ep_tx_cfg_input {
 	 */
 	uint8_t	ep3_max_bw;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_ep_tx_cfg_output (size:128b/16B) */
-struct hwrm_port_ep_tx_cfg_output {
+struct __rte_packed_begin hwrm_port_ep_tx_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35262,10 +35262,10 @@ struct hwrm_port_ep_tx_cfg_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_ep_tx_cfg_cmd_err (size:64b/8B) */
-struct hwrm_port_ep_tx_cfg_cmd_err {
+struct __rte_packed_begin hwrm_port_ep_tx_cfg_cmd_err {
 	/*
 	 * command specific error codes for the cmd_err field in
 	 * hwrm_err_output
@@ -35301,7 +35301,7 @@ struct hwrm_port_ep_tx_cfg_cmd_err {
 	#define HWRM_PORT_EP_TX_CFG_CMD_ERR_CODE_LAST \
 		HWRM_PORT_EP_TX_CFG_CMD_ERR_CODE_MIN_BW_UNSUPPORTED
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_port_ep_tx_qcfg *
@@ -35309,7 +35309,7 @@ struct hwrm_port_ep_tx_cfg_cmd_err {
 
 
 /* hwrm_port_ep_tx_qcfg_input (size:192b/24B) */
-struct hwrm_port_ep_tx_qcfg_input {
+struct __rte_packed_begin hwrm_port_ep_tx_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35341,10 +35341,10 @@ struct hwrm_port_ep_tx_qcfg_input {
 	/* The port whose endpoint rate limits are queried. */
 	uint8_t	port_id;
 	uint8_t	unused[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_ep_tx_qcfg_output (size:192b/24B) */
-struct hwrm_port_ep_tx_qcfg_output {
+struct __rte_packed_begin hwrm_port_ep_tx_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35427,7 +35427,7 @@ struct hwrm_port_ep_tx_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_port_cfg *
@@ -35435,7 +35435,7 @@ struct hwrm_port_ep_tx_qcfg_output {
 
 
 /* hwrm_port_cfg_input (size:256b/32B) */
-struct hwrm_port_cfg_input {
+struct __rte_packed_begin hwrm_port_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35481,10 +35481,10 @@ struct hwrm_port_cfg_input {
 	 * field is '1'.
 	 */
 	uint32_t	tx_rate_limit;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_cfg_output (size:128b/16B) */
-struct hwrm_port_cfg_output {
+struct __rte_packed_begin hwrm_port_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35502,7 +35502,7 @@ struct hwrm_port_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_port_qcfg *
@@ -35510,7 +35510,7 @@ struct hwrm_port_cfg_output {
 
 
 /* hwrm_port_qcfg_input (size:192b/24B) */
-struct hwrm_port_qcfg_input {
+struct __rte_packed_begin hwrm_port_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35542,10 +35542,10 @@ struct hwrm_port_qcfg_input {
 	/* Port ID of port that is to be queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_qcfg_output (size:192b/24B) */
-struct hwrm_port_qcfg_output {
+struct __rte_packed_begin hwrm_port_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35581,7 +35581,7 @@ struct hwrm_port_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_port_mac_qcaps *
@@ -35589,7 +35589,7 @@ struct hwrm_port_qcfg_output {
 
 
 /* hwrm_port_mac_qcaps_input (size:192b/24B) */
-struct hwrm_port_mac_qcaps_input {
+struct __rte_packed_begin hwrm_port_mac_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35621,10 +35621,10 @@ struct hwrm_port_mac_qcaps_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_mac_qcaps_output (size:128b/16B) */
-struct hwrm_port_mac_qcaps_output {
+struct __rte_packed_begin hwrm_port_mac_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -35656,7 +35656,7 @@ struct hwrm_port_mac_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_queue_qportcfg *
@@ -35664,7 +35664,7 @@ struct hwrm_port_mac_qcaps_output {
 
 
 /* hwrm_queue_qportcfg_input (size:192b/24B) */
-struct hwrm_queue_qportcfg_input {
+struct __rte_packed_begin hwrm_queue_qportcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -35723,10 +35723,10 @@ struct hwrm_queue_qportcfg_input {
 	#define HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_LAST \
 		HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_ENABLED
 	uint8_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_qportcfg_output (size:1344b/168B) */
-struct hwrm_queue_qportcfg_output {
+struct __rte_packed_begin hwrm_queue_qportcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -36280,7 +36280,7 @@ struct hwrm_queue_qportcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_queue_qcfg *
@@ -36288,7 +36288,7 @@ struct hwrm_queue_qportcfg_output {
 
 
 /* hwrm_queue_qcfg_input (size:192b/24B) */
-struct hwrm_queue_qcfg_input {
+struct __rte_packed_begin hwrm_queue_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -36332,10 +36332,10 @@ struct hwrm_queue_qcfg_input {
 		HWRM_QUEUE_QCFG_INPUT_FLAGS_PATH_RX
 	/* Queue ID of the queue. */
 	uint32_t	queue_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_qcfg_output (size:128b/16B) */
-struct hwrm_queue_qcfg_output {
+struct __rte_packed_begin hwrm_queue_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -36378,7 +36378,7 @@ struct hwrm_queue_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_queue_cfg *
@@ -36386,7 +36386,7 @@ struct hwrm_queue_qcfg_output {
 
 
 /* hwrm_queue_cfg_input (size:320b/40B) */
-struct hwrm_queue_cfg_input {
+struct __rte_packed_begin hwrm_queue_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -36461,10 +36461,10 @@ struct hwrm_queue_cfg_input {
 	#define HWRM_QUEUE_CFG_INPUT_SERVICE_PROFILE_LAST \
 		HWRM_QUEUE_CFG_INPUT_SERVICE_PROFILE_UNKNOWN
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_cfg_output (size:128b/16B) */
-struct hwrm_queue_cfg_output {
+struct __rte_packed_begin hwrm_queue_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -36482,7 +36482,7 @@ struct hwrm_queue_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_queue_pfcenable_qcfg *
@@ -36490,7 +36490,7 @@ struct hwrm_queue_cfg_output {
 
 
 /* hwrm_queue_pfcenable_qcfg_input (size:192b/24B) */
-struct hwrm_queue_pfcenable_qcfg_input {
+struct __rte_packed_begin hwrm_queue_pfcenable_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -36526,10 +36526,10 @@ struct hwrm_queue_pfcenable_qcfg_input {
 	 */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pfcenable_qcfg_output (size:128b/16B) */
-struct hwrm_queue_pfcenable_qcfg_output {
+struct __rte_packed_begin hwrm_queue_pfcenable_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -36596,7 +36596,7 @@ struct hwrm_queue_pfcenable_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_queue_pfcenable_cfg *
@@ -36604,7 +36604,7 @@ struct hwrm_queue_pfcenable_qcfg_output {
 
 
 /* hwrm_queue_pfcenable_cfg_input (size:192b/24B) */
-struct hwrm_queue_pfcenable_cfg_input {
+struct __rte_packed_begin hwrm_queue_pfcenable_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -36689,10 +36689,10 @@ struct hwrm_queue_pfcenable_cfg_input {
 	 */
 	uint16_t	port_id;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pfcenable_cfg_output (size:128b/16B) */
-struct hwrm_queue_pfcenable_cfg_output {
+struct __rte_packed_begin hwrm_queue_pfcenable_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -36710,7 +36710,7 @@ struct hwrm_queue_pfcenable_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_queue_pri2cos_qcfg *
@@ -36718,7 +36718,7 @@ struct hwrm_queue_pfcenable_cfg_output {
 
 
 /* hwrm_queue_pri2cos_qcfg_input (size:192b/24B) */
-struct hwrm_queue_pri2cos_qcfg_input {
+struct __rte_packed_begin hwrm_queue_pri2cos_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -36774,10 +36774,10 @@ struct hwrm_queue_pri2cos_qcfg_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pri2cos_qcfg_output (size:192b/24B) */
-struct hwrm_queue_pri2cos_qcfg_output {
+struct __rte_packed_begin hwrm_queue_pri2cos_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -36861,7 +36861,7 @@ struct hwrm_queue_pri2cos_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_queue_pri2cos_cfg *
@@ -36869,7 +36869,7 @@ struct hwrm_queue_pri2cos_qcfg_output {
 
 
 /* hwrm_queue_pri2cos_cfg_input (size:320b/40B) */
-struct hwrm_queue_pri2cos_cfg_input {
+struct __rte_packed_begin hwrm_queue_pri2cos_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -37017,10 +37017,10 @@ struct hwrm_queue_pri2cos_cfg_input {
 	 */
 	uint8_t	pri7_cos_queue_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pri2cos_cfg_output (size:128b/16B) */
-struct hwrm_queue_pri2cos_cfg_output {
+struct __rte_packed_begin hwrm_queue_pri2cos_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -37038,7 +37038,7 @@ struct hwrm_queue_pri2cos_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_queue_cos2bw_qcfg *
@@ -37046,7 +37046,7 @@ struct hwrm_queue_pri2cos_cfg_output {
 
 
 /* hwrm_queue_cos2bw_qcfg_input (size:192b/24B) */
-struct hwrm_queue_cos2bw_qcfg_input {
+struct __rte_packed_begin hwrm_queue_cos2bw_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -37082,10 +37082,10 @@ struct hwrm_queue_cos2bw_qcfg_input {
 	 */
 	uint16_t	port_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_cos2bw_qcfg_output (size:896b/112B) */
-struct hwrm_queue_cos2bw_qcfg_output {
+struct __rte_packed_begin hwrm_queue_cos2bw_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -38081,7 +38081,7 @@ struct hwrm_queue_cos2bw_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_queue_cos2bw_cfg *
@@ -38089,7 +38089,7 @@ struct hwrm_queue_cos2bw_qcfg_output {
 
 
 /* hwrm_queue_cos2bw_cfg_input (size:1024b/128B) */
-struct hwrm_queue_cos2bw_cfg_input {
+struct __rte_packed_begin hwrm_queue_cos2bw_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39152,10 +39152,10 @@ struct hwrm_queue_cos2bw_cfg_input {
 	 */
 	uint8_t	queue_id7_bw_weight;
 	uint8_t	unused_1[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_cos2bw_cfg_output (size:128b/16B) */
-struct hwrm_queue_cos2bw_cfg_output {
+struct __rte_packed_begin hwrm_queue_cos2bw_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39173,7 +39173,7 @@ struct hwrm_queue_cos2bw_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_queue_dscp_qcaps *
@@ -39181,7 +39181,7 @@ struct hwrm_queue_cos2bw_cfg_output {
 
 
 /* hwrm_queue_dscp_qcaps_input (size:192b/24B) */
-struct hwrm_queue_dscp_qcaps_input {
+struct __rte_packed_begin hwrm_queue_dscp_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39217,10 +39217,10 @@ struct hwrm_queue_dscp_qcaps_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_dscp_qcaps_output (size:128b/16B) */
-struct hwrm_queue_dscp_qcaps_output {
+struct __rte_packed_begin hwrm_queue_dscp_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39243,7 +39243,7 @@ struct hwrm_queue_dscp_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_queue_dscp2pri_qcfg *
@@ -39251,7 +39251,7 @@ struct hwrm_queue_dscp_qcaps_output {
 
 
 /* hwrm_queue_dscp2pri_qcfg_input (size:256b/32B) */
-struct hwrm_queue_dscp2pri_qcfg_input {
+struct __rte_packed_begin hwrm_queue_dscp2pri_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39295,10 +39295,10 @@ struct hwrm_queue_dscp2pri_qcfg_input {
 	/* Size of the buffer pointed to by dest_data_addr. */
 	uint16_t	dest_data_buffer_size;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_dscp2pri_qcfg_output (size:128b/16B) */
-struct hwrm_queue_dscp2pri_qcfg_output {
+struct __rte_packed_begin hwrm_queue_dscp2pri_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39326,7 +39326,7 @@ struct hwrm_queue_dscp2pri_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_queue_dscp2pri_cfg *
@@ -39334,7 +39334,7 @@ struct hwrm_queue_dscp2pri_qcfg_output {
 
 
 /* hwrm_queue_dscp2pri_cfg_input (size:320b/40B) */
-struct hwrm_queue_dscp2pri_cfg_input {
+struct __rte_packed_begin hwrm_queue_dscp2pri_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39400,10 +39400,10 @@ struct hwrm_queue_dscp2pri_cfg_input {
 	 */
 	uint16_t	entry_cnt;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_dscp2pri_cfg_output (size:128b/16B) */
-struct hwrm_queue_dscp2pri_cfg_output {
+struct __rte_packed_begin hwrm_queue_dscp2pri_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39421,7 +39421,7 @@ struct hwrm_queue_dscp2pri_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_queue_mpls_qcaps *
@@ -39429,7 +39429,7 @@ struct hwrm_queue_dscp2pri_cfg_output {
 
 
 /* hwrm_queue_mpls_qcaps_input (size:192b/24B) */
-struct hwrm_queue_mpls_qcaps_input {
+struct __rte_packed_begin hwrm_queue_mpls_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39465,10 +39465,10 @@ struct hwrm_queue_mpls_qcaps_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_mpls_qcaps_output (size:128b/16B) */
-struct hwrm_queue_mpls_qcaps_output {
+struct __rte_packed_begin hwrm_queue_mpls_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39504,7 +39504,7 @@ struct hwrm_queue_mpls_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_queue_mplstc2pri_qcfg *
@@ -39512,7 +39512,7 @@ struct hwrm_queue_mpls_qcaps_output {
 
 
 /* hwrm_queue_mplstc2pri_qcfg_input (size:192b/24B) */
-struct hwrm_queue_mplstc2pri_qcfg_input {
+struct __rte_packed_begin hwrm_queue_mplstc2pri_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39548,10 +39548,10 @@ struct hwrm_queue_mplstc2pri_qcfg_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_mplstc2pri_qcfg_output (size:192b/24B) */
-struct hwrm_queue_mplstc2pri_qcfg_output {
+struct __rte_packed_begin hwrm_queue_mplstc2pri_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39625,7 +39625,7 @@ struct hwrm_queue_mplstc2pri_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_queue_mplstc2pri_cfg *
@@ -39633,7 +39633,7 @@ struct hwrm_queue_mplstc2pri_qcfg_output {
 
 
 /* hwrm_queue_mplstc2pri_cfg_input (size:256b/32B) */
-struct hwrm_queue_mplstc2pri_cfg_input {
+struct __rte_packed_begin hwrm_queue_mplstc2pri_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39758,10 +39758,10 @@ struct hwrm_queue_mplstc2pri_cfg_input {
 	 * be changed before traffic has started.
 	 */
 	uint8_t	tc7_pri_queue_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_mplstc2pri_cfg_output (size:128b/16B) */
-struct hwrm_queue_mplstc2pri_cfg_output {
+struct __rte_packed_begin hwrm_queue_mplstc2pri_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39779,7 +39779,7 @@ struct hwrm_queue_mplstc2pri_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_queue_vlanpri_qcaps *
@@ -39787,7 +39787,7 @@ struct hwrm_queue_mplstc2pri_cfg_output {
 
 
 /* hwrm_queue_vlanpri_qcaps_input (size:192b/24B) */
-struct hwrm_queue_vlanpri_qcaps_input {
+struct __rte_packed_begin hwrm_queue_vlanpri_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39823,10 +39823,10 @@ struct hwrm_queue_vlanpri_qcaps_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_vlanpri_qcaps_output (size:128b/16B) */
-struct hwrm_queue_vlanpri_qcaps_output {
+struct __rte_packed_begin hwrm_queue_vlanpri_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39849,7 +39849,7 @@ struct hwrm_queue_vlanpri_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_queue_vlanpri2pri_qcfg *
@@ -39857,7 +39857,7 @@ struct hwrm_queue_vlanpri_qcaps_output {
 
 
 /* hwrm_queue_vlanpri2pri_qcfg_input (size:192b/24B) */
-struct hwrm_queue_vlanpri2pri_qcfg_input {
+struct __rte_packed_begin hwrm_queue_vlanpri2pri_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -39893,10 +39893,10 @@ struct hwrm_queue_vlanpri2pri_qcfg_input {
 	 */
 	uint8_t	port_id;
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_vlanpri2pri_qcfg_output (size:192b/24B) */
-struct hwrm_queue_vlanpri2pri_qcfg_output {
+struct __rte_packed_begin hwrm_queue_vlanpri2pri_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -39962,7 +39962,7 @@ struct hwrm_queue_vlanpri2pri_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_queue_vlanpri2pri_cfg *
@@ -39970,7 +39970,7 @@ struct hwrm_queue_vlanpri2pri_qcfg_output {
 
 
 /* hwrm_queue_vlanpri2pri_cfg_input (size:256b/32B) */
-struct hwrm_queue_vlanpri2pri_cfg_input {
+struct __rte_packed_begin hwrm_queue_vlanpri2pri_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -40095,10 +40095,10 @@ struct hwrm_queue_vlanpri2pri_cfg_input {
 	 * be changed before traffic has started.
 	 */
 	uint8_t	vlanpri7_user_pri_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_vlanpri2pri_cfg_output (size:128b/16B) */
-struct hwrm_queue_vlanpri2pri_cfg_output {
+struct __rte_packed_begin hwrm_queue_vlanpri2pri_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -40116,7 +40116,7 @@ struct hwrm_queue_vlanpri2pri_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_queue_global_cfg *
@@ -40124,7 +40124,7 @@ struct hwrm_queue_vlanpri2pri_cfg_output {
 
 
 /* hwrm_queue_global_cfg_input (size:192b/24B) */
-struct hwrm_queue_global_cfg_input {
+struct __rte_packed_begin hwrm_queue_global_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -40227,10 +40227,10 @@ struct hwrm_queue_global_cfg_input {
 	 * indicates no rate limit.
 	 */
 	uint8_t	g3_max_bw;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_global_cfg_output (size:128b/16B) */
-struct hwrm_queue_global_cfg_output {
+struct __rte_packed_begin hwrm_queue_global_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -40248,7 +40248,7 @@ struct hwrm_queue_global_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_queue_global_qcfg *
@@ -40256,7 +40256,7 @@ struct hwrm_queue_global_cfg_output {
 
 
 /* hwrm_queue_global_qcfg_input (size:128b/16B) */
-struct hwrm_queue_global_qcfg_input {
+struct __rte_packed_begin hwrm_queue_global_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -40285,10 +40285,10 @@ struct hwrm_queue_global_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_global_qcfg_output (size:320b/40B) */
-struct hwrm_queue_global_qcfg_output {
+struct __rte_packed_begin hwrm_queue_global_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -40394,7 +40394,7 @@ struct hwrm_queue_global_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************************
  * hwrm_queue_adptv_qos_rx_feature_qcfg *
@@ -40402,7 +40402,7 @@ struct hwrm_queue_global_qcfg_output {
 
 
 /* hwrm_queue_adptv_qos_rx_feature_qcfg_input (size:128b/16B) */
-struct hwrm_queue_adptv_qos_rx_feature_qcfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_feature_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -40431,10 +40431,10 @@ struct hwrm_queue_adptv_qos_rx_feature_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_rx_feature_qcfg_output (size:128b/16B) */
-struct hwrm_queue_adptv_qos_rx_feature_qcfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_feature_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -40646,7 +40646,7 @@ struct hwrm_queue_adptv_qos_rx_feature_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************************
  * hwrm_queue_adptv_qos_rx_feature_cfg *
@@ -40654,7 +40654,7 @@ struct hwrm_queue_adptv_qos_rx_feature_qcfg_output {
 
 
 /* hwrm_queue_adptv_qos_rx_feature_cfg_input (size:192b/24B) */
-struct hwrm_queue_adptv_qos_rx_feature_cfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_feature_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -40885,10 +40885,10 @@ struct hwrm_queue_adptv_qos_rx_feature_cfg_input {
 	#define HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_INPUT_QUEUE_MODE_QID7_MODE_LAST \
 		HWRM_QUEUE_ADPTV_QOS_RX_FEATURE_CFG_INPUT_QUEUE_MODE_QID7_MODE_LOSSLESS
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_rx_feature_cfg_output (size:128b/16B) */
-struct hwrm_queue_adptv_qos_rx_feature_cfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_feature_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -40906,7 +40906,7 @@ struct hwrm_queue_adptv_qos_rx_feature_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************************
  * hwrm_queue_adptv_qos_tx_feature_qcfg *
@@ -40914,7 +40914,7 @@ struct hwrm_queue_adptv_qos_rx_feature_cfg_output {
 
 
 /* hwrm_queue_adptv_qos_tx_feature_qcfg_input (size:128b/16B) */
-struct hwrm_queue_adptv_qos_tx_feature_qcfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_feature_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -40943,10 +40943,10 @@ struct hwrm_queue_adptv_qos_tx_feature_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_tx_feature_qcfg_output (size:128b/16B) */
-struct hwrm_queue_adptv_qos_tx_feature_qcfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_feature_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -41061,7 +41061,7 @@ struct hwrm_queue_adptv_qos_tx_feature_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************************
  * hwrm_queue_adptv_qos_tx_feature_cfg *
@@ -41069,7 +41069,7 @@ struct hwrm_queue_adptv_qos_tx_feature_qcfg_output {
 
 
 /* hwrm_queue_adptv_qos_tx_feature_cfg_input (size:192b/24B) */
-struct hwrm_queue_adptv_qos_tx_feature_cfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_feature_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -41200,10 +41200,10 @@ struct hwrm_queue_adptv_qos_tx_feature_cfg_input {
 	#define HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_INPUT_QUEUE_ENABLE_QID7_ENABLE_LAST \
 		HWRM_QUEUE_ADPTV_QOS_TX_FEATURE_CFG_INPUT_QUEUE_ENABLE_QID7_ENABLE_ENABLED
 	uint8_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_tx_feature_cfg_output (size:128b/16B) */
-struct hwrm_queue_adptv_qos_tx_feature_cfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_feature_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -41221,7 +41221,7 @@ struct hwrm_queue_adptv_qos_tx_feature_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_queue_qcaps *
@@ -41229,7 +41229,7 @@ struct hwrm_queue_adptv_qos_tx_feature_cfg_output {
 
 
 /* hwrm_queue_qcaps_input (size:128b/16B) */
-struct hwrm_queue_qcaps_input {
+struct __rte_packed_begin hwrm_queue_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -41258,10 +41258,10 @@ struct hwrm_queue_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_qcaps_output (size:256b/32B) */
-struct hwrm_queue_qcaps_output {
+struct __rte_packed_begin hwrm_queue_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -41509,7 +41509,7 @@ struct hwrm_queue_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************************
  * hwrm_queue_adptv_qos_rx_tuning_qcfg *
@@ -41517,7 +41517,7 @@ struct hwrm_queue_qcaps_output {
 
 
 /* hwrm_queue_adptv_qos_rx_tuning_qcfg_input (size:128b/16B) */
-struct hwrm_queue_adptv_qos_rx_tuning_qcfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_tuning_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -41546,10 +41546,10 @@ struct hwrm_queue_adptv_qos_rx_tuning_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_rx_tuning_qcfg_output (size:576b/72B) */
-struct hwrm_queue_adptv_qos_rx_tuning_qcfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_tuning_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -41642,7 +41642,7 @@ struct hwrm_queue_adptv_qos_rx_tuning_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************************
  * hwrm_queue_adptv_qos_rx_tuning_cfg *
@@ -41650,7 +41650,7 @@ struct hwrm_queue_adptv_qos_rx_tuning_qcfg_output {
 
 
 /* hwrm_queue_adptv_qos_rx_tuning_cfg_input (size:640b/80B) */
-struct hwrm_queue_adptv_qos_rx_tuning_cfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_tuning_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -41798,10 +41798,10 @@ struct hwrm_queue_adptv_qos_rx_tuning_cfg_input {
 	 */
 	uint32_t	shaper_refill_timer;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_rx_tuning_cfg_output (size:128b/16B) */
-struct hwrm_queue_adptv_qos_rx_tuning_cfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_rx_tuning_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -41819,7 +41819,7 @@ struct hwrm_queue_adptv_qos_rx_tuning_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************************
  * hwrm_queue_adptv_qos_tx_tuning_qcfg *
@@ -41827,7 +41827,7 @@ struct hwrm_queue_adptv_qos_rx_tuning_cfg_output {
 
 
 /* hwrm_queue_adptv_qos_tx_tuning_qcfg_input (size:128b/16B) */
-struct hwrm_queue_adptv_qos_tx_tuning_qcfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_tuning_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -41856,10 +41856,10 @@ struct hwrm_queue_adptv_qos_tx_tuning_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_tx_tuning_qcfg_output (size:448b/56B) */
-struct hwrm_queue_adptv_qos_tx_tuning_qcfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_tuning_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -41928,7 +41928,7 @@ struct hwrm_queue_adptv_qos_tx_tuning_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************************
  * hwrm_queue_adptv_qos_tx_tuning_cfg *
@@ -41936,7 +41936,7 @@ struct hwrm_queue_adptv_qos_tx_tuning_qcfg_output {
 
 
 /* hwrm_queue_adptv_qos_tx_tuning_cfg_input (size:512b/64B) */
-struct hwrm_queue_adptv_qos_tx_tuning_cfg_input {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_tuning_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42048,10 +42048,10 @@ struct hwrm_queue_adptv_qos_tx_tuning_cfg_input {
 	 */
 	uint32_t	shaper_refill_timer;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_adptv_qos_tx_tuning_cfg_output (size:128b/16B) */
-struct hwrm_queue_adptv_qos_tx_tuning_cfg_output {
+struct __rte_packed_begin hwrm_queue_adptv_qos_tx_tuning_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42069,7 +42069,7 @@ struct hwrm_queue_adptv_qos_tx_tuning_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_queue_pfcwd_timeout_qcaps *
@@ -42077,7 +42077,7 @@ struct hwrm_queue_adptv_qos_tx_tuning_cfg_output {
 
 
 /* hwrm_queue_pfcwd_timeout_qcaps_input (size:128b/16B) */
-struct hwrm_queue_pfcwd_timeout_qcaps_input {
+struct __rte_packed_begin hwrm_queue_pfcwd_timeout_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42106,10 +42106,10 @@ struct hwrm_queue_pfcwd_timeout_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pfcwd_timeout_qcaps_output (size:128b/16B) */
-struct hwrm_queue_pfcwd_timeout_qcaps_output {
+struct __rte_packed_begin hwrm_queue_pfcwd_timeout_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42129,7 +42129,7 @@ struct hwrm_queue_pfcwd_timeout_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_queue_pfcwd_timeout_cfg *
@@ -42137,7 +42137,7 @@ struct hwrm_queue_pfcwd_timeout_qcaps_output {
 
 
 /* hwrm_queue_pfcwd_timeout_cfg_input (size:192b/24B) */
-struct hwrm_queue_pfcwd_timeout_cfg_input {
+struct __rte_packed_begin hwrm_queue_pfcwd_timeout_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42169,10 +42169,10 @@ struct hwrm_queue_pfcwd_timeout_cfg_input {
 	/* pfc watchdog timeout value in msec. */
 	uint32_t	pfcwd_timeout_value;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pfcwd_timeout_cfg_output (size:128b/16B) */
-struct hwrm_queue_pfcwd_timeout_cfg_output {
+struct __rte_packed_begin hwrm_queue_pfcwd_timeout_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42190,7 +42190,7 @@ struct hwrm_queue_pfcwd_timeout_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************************
  * hwrm_queue_pfcwd_timeout_qcfg *
@@ -42198,7 +42198,7 @@ struct hwrm_queue_pfcwd_timeout_cfg_output {
 
 
 /* hwrm_queue_pfcwd_timeout_qcfg_input (size:128b/16B) */
-struct hwrm_queue_pfcwd_timeout_qcfg_input {
+struct __rte_packed_begin hwrm_queue_pfcwd_timeout_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42227,10 +42227,10 @@ struct hwrm_queue_pfcwd_timeout_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_queue_pfcwd_timeout_qcfg_output (size:128b/16B) */
-struct hwrm_queue_pfcwd_timeout_qcfg_output {
+struct __rte_packed_begin hwrm_queue_pfcwd_timeout_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42250,7 +42250,7 @@ struct hwrm_queue_pfcwd_timeout_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_vnic_alloc *
@@ -42258,7 +42258,7 @@ struct hwrm_queue_pfcwd_timeout_qcfg_output {
 
 
 /* hwrm_vnic_alloc_input (size:192b/24B) */
-struct hwrm_vnic_alloc_input {
+struct __rte_packed_begin hwrm_vnic_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42308,10 +42308,10 @@ struct hwrm_vnic_alloc_input {
 	 */
 	uint16_t	virtio_net_fid;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_alloc_output (size:128b/16B) */
-struct hwrm_vnic_alloc_output {
+struct __rte_packed_begin hwrm_vnic_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42331,7 +42331,7 @@ struct hwrm_vnic_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_vnic_update *
@@ -42339,7 +42339,7 @@ struct hwrm_vnic_alloc_output {
 
 
 /* hwrm_vnic_update_input (size:256b/32B) */
-struct hwrm_vnic_update_input {
+struct __rte_packed_begin hwrm_vnic_update_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42425,10 +42425,10 @@ struct hwrm_vnic_update_input {
 	 */
 	uint16_t	mru;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_update_output (size:128b/16B) */
-struct hwrm_vnic_update_output {
+struct __rte_packed_begin hwrm_vnic_update_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42447,7 +42447,7 @@ struct hwrm_vnic_update_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_vnic_free *
@@ -42455,7 +42455,7 @@ struct hwrm_vnic_update_output {
 
 
 /* hwrm_vnic_free_input (size:192b/24B) */
-struct hwrm_vnic_free_input {
+struct __rte_packed_begin hwrm_vnic_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42487,10 +42487,10 @@ struct hwrm_vnic_free_input {
 	/* Logical vnic ID */
 	uint32_t	vnic_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_free_output (size:128b/16B) */
-struct hwrm_vnic_free_output {
+struct __rte_packed_begin hwrm_vnic_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42508,7 +42508,7 @@ struct hwrm_vnic_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_vnic_cfg *
@@ -42516,7 +42516,7 @@ struct hwrm_vnic_free_output {
 
 
 /* hwrm_vnic_cfg_input (size:384b/48B) */
-struct hwrm_vnic_cfg_input {
+struct __rte_packed_begin hwrm_vnic_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42799,10 +42799,10 @@ struct hwrm_vnic_cfg_input {
 	#define HWRM_VNIC_CFG_INPUT_L2_CQE_MODE_LAST \
 		HWRM_VNIC_CFG_INPUT_L2_CQE_MODE_MIXED
 	uint8_t	unused0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_cfg_output (size:128b/16B) */
-struct hwrm_vnic_cfg_output {
+struct __rte_packed_begin hwrm_vnic_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -42820,7 +42820,7 @@ struct hwrm_vnic_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_vnic_qcfg *
@@ -42828,7 +42828,7 @@ struct hwrm_vnic_cfg_output {
 
 
 /* hwrm_vnic_qcfg_input (size:256b/32B) */
-struct hwrm_vnic_qcfg_input {
+struct __rte_packed_begin hwrm_vnic_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -42868,10 +42868,10 @@ struct hwrm_vnic_qcfg_input {
 	/* ID of Virtual Function whose VNIC resource is being queried. */
 	uint16_t	vf_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_qcfg_output (size:256b/32B) */
-struct hwrm_vnic_qcfg_output {
+struct __rte_packed_begin hwrm_vnic_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -43064,7 +43064,7 @@ struct hwrm_vnic_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_vnic_qcaps *
@@ -43072,7 +43072,7 @@ struct hwrm_vnic_qcfg_output {
 
 
 /* hwrm_vnic_qcaps_input (size:192b/24B) */
-struct hwrm_vnic_qcaps_input {
+struct __rte_packed_begin hwrm_vnic_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -43103,10 +43103,10 @@ struct hwrm_vnic_qcaps_input {
 	uint64_t	resp_addr;
 	uint32_t	enables;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_qcaps_output (size:192b/24B) */
-struct hwrm_vnic_qcaps_output {
+struct __rte_packed_begin hwrm_vnic_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -43362,7 +43362,7 @@ struct hwrm_vnic_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_vnic_tpa_cfg *
@@ -43370,7 +43370,7 @@ struct hwrm_vnic_qcaps_output {
 
 
 /* hwrm_vnic_tpa_cfg_input (size:384b/48B) */
-struct hwrm_vnic_tpa_cfg_input {
+struct __rte_packed_begin hwrm_vnic_tpa_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -43664,10 +43664,10 @@ struct hwrm_vnic_tpa_cfg_input {
 	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR8 \
 		UINT32_C(0x10000)
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_tpa_cfg_output (size:128b/16B) */
-struct hwrm_vnic_tpa_cfg_output {
+struct __rte_packed_begin hwrm_vnic_tpa_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -43685,7 +43685,7 @@ struct hwrm_vnic_tpa_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_vnic_tpa_qcfg *
@@ -43693,7 +43693,7 @@ struct hwrm_vnic_tpa_cfg_output {
 
 
 /* hwrm_vnic_tpa_qcfg_input (size:192b/24B) */
-struct hwrm_vnic_tpa_qcfg_input {
+struct __rte_packed_begin hwrm_vnic_tpa_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -43725,10 +43725,10 @@ struct hwrm_vnic_tpa_qcfg_input {
 	/* Logical vnic ID */
 	uint16_t	vnic_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_tpa_qcfg_output (size:256b/32B) */
-struct hwrm_vnic_tpa_qcfg_output {
+struct __rte_packed_begin hwrm_vnic_tpa_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -43967,7 +43967,7 @@ struct hwrm_vnic_tpa_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_vnic_rss_cfg *
@@ -43975,7 +43975,7 @@ struct hwrm_vnic_tpa_qcfg_output {
 
 
 /* hwrm_vnic_rss_cfg_input (size:384b/48B) */
-struct hwrm_vnic_rss_cfg_input {
+struct __rte_packed_begin hwrm_vnic_rss_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -44225,10 +44225,10 @@ struct hwrm_vnic_rss_cfg_input {
 	#define HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_LAST \
 		HWRM_VNIC_RSS_CFG_INPUT_RING_SELECT_MODE_TOEPLITZ_CHECKSUM
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_rss_cfg_output (size:128b/16B) */
-struct hwrm_vnic_rss_cfg_output {
+struct __rte_packed_begin hwrm_vnic_rss_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -44246,10 +44246,10 @@ struct hwrm_vnic_rss_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_rss_cfg_cmd_err (size:64b/8B) */
-struct hwrm_vnic_rss_cfg_cmd_err {
+struct __rte_packed_begin hwrm_vnic_rss_cfg_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -44267,7 +44267,7 @@ struct hwrm_vnic_rss_cfg_cmd_err {
 	#define HWRM_VNIC_RSS_CFG_CMD_ERR_CODE_LAST \
 		HWRM_VNIC_RSS_CFG_CMD_ERR_CODE_INTERFACE_NOT_READY
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_vnic_rss_qcfg *
@@ -44275,7 +44275,7 @@ struct hwrm_vnic_rss_cfg_cmd_err {
 
 
 /* hwrm_vnic_rss_qcfg_input (size:192b/24B) */
-struct hwrm_vnic_rss_qcfg_input {
+struct __rte_packed_begin hwrm_vnic_rss_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -44315,10 +44315,10 @@ struct hwrm_vnic_rss_qcfg_input {
 	 */
 	uint16_t	vnic_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_rss_qcfg_output (size:512b/64B) */
-struct hwrm_vnic_rss_qcfg_output {
+struct __rte_packed_begin hwrm_vnic_rss_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -44509,7 +44509,7 @@ struct hwrm_vnic_rss_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_vnic_plcmodes_cfg *
@@ -44517,7 +44517,7 @@ struct hwrm_vnic_rss_qcfg_output {
 
 
 /* hwrm_vnic_plcmodes_cfg_input (size:320b/40B) */
-struct hwrm_vnic_plcmodes_cfg_input {
+struct __rte_packed_begin hwrm_vnic_plcmodes_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -44679,10 +44679,10 @@ struct hwrm_vnic_plcmodes_cfg_input {
 	 */
 	uint16_t	max_bds;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_plcmodes_cfg_output (size:128b/16B) */
-struct hwrm_vnic_plcmodes_cfg_output {
+struct __rte_packed_begin hwrm_vnic_plcmodes_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -44701,7 +44701,7 @@ struct hwrm_vnic_plcmodes_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_vnic_plcmodes_qcfg *
@@ -44709,7 +44709,7 @@ struct hwrm_vnic_plcmodes_cfg_output {
 
 
 /* hwrm_vnic_plcmodes_qcfg_input (size:192b/24B) */
-struct hwrm_vnic_plcmodes_qcfg_input {
+struct __rte_packed_begin hwrm_vnic_plcmodes_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -44741,10 +44741,10 @@ struct hwrm_vnic_plcmodes_qcfg_input {
 	/* Logical vnic ID */
 	uint32_t	vnic_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_plcmodes_qcfg_output (size:192b/24B) */
-struct hwrm_vnic_plcmodes_qcfg_output {
+struct __rte_packed_begin hwrm_vnic_plcmodes_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -44852,7 +44852,7 @@ struct hwrm_vnic_plcmodes_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_vnic_rss_cos_lb_ctx_alloc *
@@ -44860,7 +44860,7 @@ struct hwrm_vnic_plcmodes_qcfg_output {
 
 
 /* hwrm_vnic_rss_cos_lb_ctx_alloc_input (size:128b/16B) */
-struct hwrm_vnic_rss_cos_lb_ctx_alloc_input {
+struct __rte_packed_begin hwrm_vnic_rss_cos_lb_ctx_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -44889,10 +44889,10 @@ struct hwrm_vnic_rss_cos_lb_ctx_alloc_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_rss_cos_lb_ctx_alloc_output (size:128b/16B) */
-struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
+struct __rte_packed_begin hwrm_vnic_rss_cos_lb_ctx_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -44912,7 +44912,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************************
  * hwrm_vnic_rss_cos_lb_ctx_free *
@@ -44920,7 +44920,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_alloc_output {
 
 
 /* hwrm_vnic_rss_cos_lb_ctx_free_input (size:192b/24B) */
-struct hwrm_vnic_rss_cos_lb_ctx_free_input {
+struct __rte_packed_begin hwrm_vnic_rss_cos_lb_ctx_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -44952,10 +44952,10 @@ struct hwrm_vnic_rss_cos_lb_ctx_free_input {
 	/* rss_cos_lb_ctx_id is 16 b */
 	uint16_t	rss_cos_lb_ctx_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vnic_rss_cos_lb_ctx_free_output (size:128b/16B) */
-struct hwrm_vnic_rss_cos_lb_ctx_free_output {
+struct __rte_packed_begin hwrm_vnic_rss_cos_lb_ctx_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -44973,7 +44973,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_ring_alloc *
@@ -44981,7 +44981,7 @@ struct hwrm_vnic_rss_cos_lb_ctx_free_output {
 
 
 /* hwrm_ring_alloc_input (size:704b/88B) */
-struct hwrm_ring_alloc_input {
+struct __rte_packed_begin hwrm_ring_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -45437,10 +45437,10 @@ struct hwrm_ring_alloc_input {
 	 * record.
 	 */
 	uint64_t	cq_handle;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_alloc_output (size:128b/16B) */
-struct hwrm_ring_alloc_output {
+struct __rte_packed_begin hwrm_ring_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -45478,7 +45478,7 @@ struct hwrm_ring_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_ring_free *
@@ -45486,7 +45486,7 @@ struct hwrm_ring_alloc_output {
 
 
 /* hwrm_ring_free_input (size:256b/32B) */
-struct hwrm_ring_free_input {
+struct __rte_packed_begin hwrm_ring_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -45562,10 +45562,10 @@ struct hwrm_ring_free_input {
 	 */
 	uint32_t	opaque;
 	uint32_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_free_output (size:128b/16B) */
-struct hwrm_ring_free_output {
+struct __rte_packed_begin hwrm_ring_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -45583,7 +45583,7 @@ struct hwrm_ring_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_ring_reset *
@@ -45591,7 +45591,7 @@ struct hwrm_ring_free_output {
 
 
 /* hwrm_ring_reset_input (size:192b/24B) */
-struct hwrm_ring_reset_input {
+struct __rte_packed_begin hwrm_ring_reset_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -45645,10 +45645,10 @@ struct hwrm_ring_reset_input {
 	 */
 	uint16_t	ring_id;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_reset_output (size:128b/16B) */
-struct hwrm_ring_reset_output {
+struct __rte_packed_begin hwrm_ring_reset_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -45681,7 +45681,7 @@ struct hwrm_ring_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_ring_cfg *
@@ -45689,7 +45689,7 @@ struct hwrm_ring_reset_output {
 
 
 /* hwrm_ring_cfg_input (size:320b/40B) */
-struct hwrm_ring_cfg_input {
+struct __rte_packed_begin hwrm_ring_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -45820,10 +45820,10 @@ struct hwrm_ring_cfg_input {
 	 */
 	uint32_t	tx_metadata;
 	uint8_t	unused_2[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_cfg_output (size:128b/16B) */
-struct hwrm_ring_cfg_output {
+struct __rte_packed_begin hwrm_ring_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -45842,7 +45842,7 @@ struct hwrm_ring_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_ring_qcfg *
@@ -45850,7 +45850,7 @@ struct hwrm_ring_cfg_output {
 
 
 /* hwrm_ring_qcfg_input (size:192b/24B) */
-struct hwrm_ring_qcfg_input {
+struct __rte_packed_begin hwrm_ring_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -45890,10 +45890,10 @@ struct hwrm_ring_qcfg_input {
 	uint8_t	unused_0[5];
 	/* Physical number of the ring. */
 	uint16_t	ring_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_qcfg_output (size:256b/32B) */
-struct hwrm_ring_qcfg_output {
+struct __rte_packed_begin hwrm_ring_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -45984,7 +45984,7 @@ struct hwrm_ring_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_ring_aggint_qcaps *
@@ -45992,7 +45992,7 @@ struct hwrm_ring_qcfg_output {
 
 
 /* hwrm_ring_aggint_qcaps_input (size:128b/16B) */
-struct hwrm_ring_aggint_qcaps_input {
+struct __rte_packed_begin hwrm_ring_aggint_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -46021,10 +46021,10 @@ struct hwrm_ring_aggint_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_aggint_qcaps_output (size:384b/48B) */
-struct hwrm_ring_aggint_qcaps_output {
+struct __rte_packed_begin hwrm_ring_aggint_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -46134,7 +46134,7 @@ struct hwrm_ring_aggint_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************************
  * hwrm_ring_cmpl_ring_qaggint_params *
@@ -46142,7 +46142,7 @@ struct hwrm_ring_aggint_qcaps_output {
 
 
 /* hwrm_ring_cmpl_ring_qaggint_params_input (size:192b/24B) */
-struct hwrm_ring_cmpl_ring_qaggint_params_input {
+struct __rte_packed_begin hwrm_ring_cmpl_ring_qaggint_params_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -46185,10 +46185,10 @@ struct hwrm_ring_cmpl_ring_qaggint_params_input {
 	#define HWRM_RING_CMPL_RING_QAGGINT_PARAMS_INPUT_FLAGS_IS_NQ \
 		UINT32_C(0x4)
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_cmpl_ring_qaggint_params_output (size:256b/32B) */
-struct hwrm_ring_cmpl_ring_qaggint_params_output {
+struct __rte_packed_begin hwrm_ring_cmpl_ring_qaggint_params_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -46252,7 +46252,7 @@ struct hwrm_ring_cmpl_ring_qaggint_params_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************************
  * hwrm_ring_cmpl_ring_cfg_aggint_params *
@@ -46260,7 +46260,7 @@ struct hwrm_ring_cmpl_ring_qaggint_params_output {
 
 
 /* hwrm_ring_cmpl_ring_cfg_aggint_params_input (size:320b/40B) */
-struct hwrm_ring_cmpl_ring_cfg_aggint_params_input {
+struct __rte_packed_begin hwrm_ring_cmpl_ring_cfg_aggint_params_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -46388,10 +46388,10 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_input {
 	#define HWRM_RING_CMPL_RING_CFG_AGGINT_PARAMS_INPUT_ENABLES_NUM_CMPL_AGGR_INT \
 		UINT32_C(0x20)
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_cmpl_ring_cfg_aggint_params_output (size:128b/16B) */
-struct hwrm_ring_cmpl_ring_cfg_aggint_params_output {
+struct __rte_packed_begin hwrm_ring_cmpl_ring_cfg_aggint_params_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -46409,7 +46409,7 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_ring_grp_alloc *
@@ -46417,7 +46417,7 @@ struct hwrm_ring_cmpl_ring_cfg_aggint_params_output {
 
 
 /* hwrm_ring_grp_alloc_input (size:192b/24B) */
-struct hwrm_ring_grp_alloc_input {
+struct __rte_packed_begin hwrm_ring_grp_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -46467,10 +46467,10 @@ struct hwrm_ring_grp_alloc_input {
 	 * with the ring group.
 	 */
 	uint16_t	sc;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_grp_alloc_output (size:128b/16B) */
-struct hwrm_ring_grp_alloc_output {
+struct __rte_packed_begin hwrm_ring_grp_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -46494,7 +46494,7 @@ struct hwrm_ring_grp_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_ring_grp_free *
@@ -46502,7 +46502,7 @@ struct hwrm_ring_grp_alloc_output {
 
 
 /* hwrm_ring_grp_free_input (size:192b/24B) */
-struct hwrm_ring_grp_free_input {
+struct __rte_packed_begin hwrm_ring_grp_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -46534,10 +46534,10 @@ struct hwrm_ring_grp_free_input {
 	/* This is the ring group ID value. */
 	uint32_t	ring_group_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_grp_free_output (size:128b/16B) */
-struct hwrm_ring_grp_free_output {
+struct __rte_packed_begin hwrm_ring_grp_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -46555,7 +46555,7 @@ struct hwrm_ring_grp_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_ring_schq_alloc *
@@ -46563,7 +46563,7 @@ struct hwrm_ring_grp_free_output {
 
 
 /* hwrm_ring_schq_alloc_input (size:1088b/136B) */
-struct hwrm_ring_schq_alloc_input {
+struct __rte_packed_begin hwrm_ring_schq_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -47102,10 +47102,10 @@ struct hwrm_ring_schq_alloc_input {
 	/* Number of bytes that have been allocated for each context entry. */
 	uint16_t	tqm_entry_size;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_schq_alloc_output (size:128b/16B) */
-struct hwrm_ring_schq_alloc_output {
+struct __rte_packed_begin hwrm_ring_schq_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -47129,7 +47129,7 @@ struct hwrm_ring_schq_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_ring_schq_cfg *
@@ -47137,7 +47137,7 @@ struct hwrm_ring_schq_alloc_output {
 
 
 /* hwrm_ring_schq_cfg_input (size:768b/96B) */
-struct hwrm_ring_schq_cfg_input {
+struct __rte_packed_begin hwrm_ring_schq_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -47263,10 +47263,10 @@ struct hwrm_ring_schq_cfg_input {
 	 */
 	uint32_t	max_bw;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_schq_cfg_output (size:128b/16B) */
-struct hwrm_ring_schq_cfg_output {
+struct __rte_packed_begin hwrm_ring_schq_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -47284,7 +47284,7 @@ struct hwrm_ring_schq_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_ring_schq_free *
@@ -47292,7 +47292,7 @@ struct hwrm_ring_schq_cfg_output {
 
 
 /* hwrm_ring_schq_free_input (size:192b/24B) */
-struct hwrm_ring_schq_free_input {
+struct __rte_packed_begin hwrm_ring_schq_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -47324,10 +47324,10 @@ struct hwrm_ring_schq_free_input {
 	/* Identifies the SCHQ being freed. */
 	uint16_t	schq_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_ring_schq_free_output (size:128b/16B) */
-struct hwrm_ring_schq_free_output {
+struct __rte_packed_begin hwrm_ring_schq_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -47345,7 +47345,7 @@ struct hwrm_ring_schq_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 /*
  * special reserved flow ID to identify per function default
  * flows for vSwitch offload
@@ -47373,7 +47373,7 @@ struct hwrm_ring_schq_free_output {
 
 
 /* hwrm_cfa_l2_filter_alloc_input (size:768b/96B) */
-struct hwrm_cfa_l2_filter_alloc_input {
+struct __rte_packed_begin hwrm_cfa_l2_filter_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -47789,10 +47789,10 @@ struct hwrm_cfa_l2_filter_alloc_input {
 	 * 2 - Below the given filter
 	 */
 	uint64_t	l2_filter_id_hint;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_l2_filter_alloc_output (size:192b/24B) */
-struct hwrm_cfa_l2_filter_alloc_output {
+struct __rte_packed_begin hwrm_cfa_l2_filter_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -47856,7 +47856,7 @@ struct hwrm_cfa_l2_filter_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_cfa_l2_filter_free *
@@ -47864,7 +47864,7 @@ struct hwrm_cfa_l2_filter_alloc_output {
 
 
 /* hwrm_cfa_l2_filter_free_input (size:192b/24B) */
-struct hwrm_cfa_l2_filter_free_input {
+struct __rte_packed_begin hwrm_cfa_l2_filter_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -47898,10 +47898,10 @@ struct hwrm_cfa_l2_filter_free_input {
 	 * context.
 	 */
 	uint64_t	l2_filter_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_l2_filter_free_output (size:128b/16B) */
-struct hwrm_cfa_l2_filter_free_output {
+struct __rte_packed_begin hwrm_cfa_l2_filter_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -47920,7 +47920,7 @@ struct hwrm_cfa_l2_filter_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_cfa_l2_filter_cfg *
@@ -47928,7 +47928,7 @@ struct hwrm_cfa_l2_filter_free_output {
 
 
 /* hwrm_cfa_l2_filter_cfg_input (size:384b/48B) */
-struct hwrm_cfa_l2_filter_cfg_input {
+struct __rte_packed_begin hwrm_cfa_l2_filter_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48069,10 +48069,10 @@ struct hwrm_cfa_l2_filter_cfg_input {
 	 * Lookup entry for further classification.
 	 */
 	uint32_t	l2_context_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_l2_filter_cfg_output (size:128b/16B) */
-struct hwrm_cfa_l2_filter_cfg_output {
+struct __rte_packed_begin hwrm_cfa_l2_filter_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48091,7 +48091,7 @@ struct hwrm_cfa_l2_filter_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_cfa_l2_set_rx_mask *
@@ -48099,7 +48099,7 @@ struct hwrm_cfa_l2_filter_cfg_output {
 
 
 /* hwrm_cfa_l2_set_rx_mask_input (size:448b/56B) */
-struct hwrm_cfa_l2_set_rx_mask_input {
+struct __rte_packed_begin hwrm_cfa_l2_set_rx_mask_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48252,10 +48252,10 @@ struct hwrm_cfa_l2_set_rx_mask_input {
 	 */
 	uint32_t	num_vlan_tags;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_l2_set_rx_mask_output (size:128b/16B) */
-struct hwrm_cfa_l2_set_rx_mask_output {
+struct __rte_packed_begin hwrm_cfa_l2_set_rx_mask_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48274,10 +48274,10 @@ struct hwrm_cfa_l2_set_rx_mask_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_l2_set_rx_mask_cmd_err (size:64b/8B) */
-struct hwrm_cfa_l2_set_rx_mask_cmd_err {
+struct __rte_packed_begin hwrm_cfa_l2_set_rx_mask_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -48292,7 +48292,7 @@ struct hwrm_cfa_l2_set_rx_mask_cmd_err {
 	#define HWRM_CFA_L2_SET_RX_MASK_CMD_ERR_CODE_LAST \
 		HWRM_CFA_L2_SET_RX_MASK_CMD_ERR_CODE_NTUPLE_FILTER_CONFLICT_ERR
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_vlan_antispoof_cfg *
@@ -48300,7 +48300,7 @@ struct hwrm_cfa_l2_set_rx_mask_cmd_err {
 
 
 /* hwrm_cfa_vlan_antispoof_cfg_input (size:256b/32B) */
-struct hwrm_cfa_vlan_antispoof_cfg_input {
+struct __rte_packed_begin hwrm_cfa_vlan_antispoof_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48346,10 +48346,10 @@ struct hwrm_cfa_vlan_antispoof_cfg_input {
 	 * for the 12-bit VLAN ID.
 	 */
 	uint64_t	vlan_tag_mask_tbl_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vlan_antispoof_cfg_output (size:128b/16B) */
-struct hwrm_cfa_vlan_antispoof_cfg_output {
+struct __rte_packed_begin hwrm_cfa_vlan_antispoof_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48368,7 +48368,7 @@ struct hwrm_cfa_vlan_antispoof_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_cfa_vlan_antispoof_qcfg *
@@ -48376,7 +48376,7 @@ struct hwrm_cfa_vlan_antispoof_cfg_output {
 
 
 /* hwrm_cfa_vlan_antispoof_qcfg_input (size:256b/32B) */
-struct hwrm_cfa_vlan_antispoof_qcfg_input {
+struct __rte_packed_begin hwrm_cfa_vlan_antispoof_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48425,10 +48425,10 @@ struct hwrm_cfa_vlan_antispoof_qcfg_input {
 	 * the mask value should be 0xfff for the 12-bit VLAN ID.
 	 */
 	uint64_t	vlan_tag_mask_tbl_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vlan_antispoof_qcfg_output (size:128b/16B) */
-struct hwrm_cfa_vlan_antispoof_qcfg_output {
+struct __rte_packed_begin hwrm_cfa_vlan_antispoof_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48449,7 +48449,7 @@ struct hwrm_cfa_vlan_antispoof_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_cfa_tunnel_filter_alloc *
@@ -48457,7 +48457,7 @@ struct hwrm_cfa_vlan_antispoof_qcfg_output {
 
 
 /* hwrm_cfa_tunnel_filter_alloc_input (size:704b/88B) */
-struct hwrm_cfa_tunnel_filter_alloc_input {
+struct __rte_packed_begin hwrm_cfa_tunnel_filter_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48708,10 +48708,10 @@ struct hwrm_cfa_tunnel_filter_alloc_input {
 	 * mirrored.
 	 */
 	uint32_t	mirror_vnic_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_tunnel_filter_alloc_output (size:192b/24B) */
-struct hwrm_cfa_tunnel_filter_alloc_output {
+struct __rte_packed_begin hwrm_cfa_tunnel_filter_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48772,7 +48772,7 @@ struct hwrm_cfa_tunnel_filter_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_tunnel_filter_free *
@@ -48780,7 +48780,7 @@ struct hwrm_cfa_tunnel_filter_alloc_output {
 
 
 /* hwrm_cfa_tunnel_filter_free_input (size:192b/24B) */
-struct hwrm_cfa_tunnel_filter_free_input {
+struct __rte_packed_begin hwrm_cfa_tunnel_filter_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48811,10 +48811,10 @@ struct hwrm_cfa_tunnel_filter_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	tunnel_filter_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_tunnel_filter_free_output (size:128b/16B) */
-struct hwrm_cfa_tunnel_filter_free_output {
+struct __rte_packed_begin hwrm_cfa_tunnel_filter_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48833,7 +48833,7 @@ struct hwrm_cfa_tunnel_filter_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************************
  * hwrm_cfa_redirect_tunnel_type_alloc *
@@ -48841,7 +48841,7 @@ struct hwrm_cfa_tunnel_filter_free_output {
 
 
 /* hwrm_cfa_redirect_tunnel_type_alloc_input (size:192b/24B) */
-struct hwrm_cfa_redirect_tunnel_type_alloc_input {
+struct __rte_packed_begin hwrm_cfa_redirect_tunnel_type_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -48936,10 +48936,10 @@ struct hwrm_cfa_redirect_tunnel_type_alloc_input {
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_ALLOC_INPUT_FLAGS_MODIFY_DST \
 		UINT32_C(0x1)
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_redirect_tunnel_type_alloc_output (size:128b/16B) */
-struct hwrm_cfa_redirect_tunnel_type_alloc_output {
+struct __rte_packed_begin hwrm_cfa_redirect_tunnel_type_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -48958,7 +48958,7 @@ struct hwrm_cfa_redirect_tunnel_type_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************************
  * hwrm_cfa_redirect_tunnel_type_free *
@@ -48966,7 +48966,7 @@ struct hwrm_cfa_redirect_tunnel_type_alloc_output {
 
 
 /* hwrm_cfa_redirect_tunnel_type_free_input (size:192b/24B) */
-struct hwrm_cfa_redirect_tunnel_type_free_input {
+struct __rte_packed_begin hwrm_cfa_redirect_tunnel_type_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -49053,10 +49053,10 @@ struct hwrm_cfa_redirect_tunnel_type_free_input {
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_CFA_REDIRECT_TUNNEL_TYPE_FREE_INPUT_TUNNEL_TYPE_ANYTUNNEL
 	uint8_t	unused_0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_redirect_tunnel_type_free_output (size:128b/16B) */
-struct hwrm_cfa_redirect_tunnel_type_free_output {
+struct __rte_packed_begin hwrm_cfa_redirect_tunnel_type_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -49075,7 +49075,7 @@ struct hwrm_cfa_redirect_tunnel_type_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************************
  * hwrm_cfa_redirect_tunnel_type_info *
@@ -49083,7 +49083,7 @@ struct hwrm_cfa_redirect_tunnel_type_free_output {
 
 
 /* hwrm_cfa_redirect_tunnel_type_info_input (size:192b/24B) */
-struct hwrm_cfa_redirect_tunnel_type_info_input {
+struct __rte_packed_begin hwrm_cfa_redirect_tunnel_type_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -49170,10 +49170,10 @@ struct hwrm_cfa_redirect_tunnel_type_info_input {
 	#define HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_CFA_REDIRECT_TUNNEL_TYPE_INFO_INPUT_TUNNEL_TYPE_ANYTUNNEL
 	uint8_t	unused_0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_redirect_tunnel_type_info_output (size:128b/16B) */
-struct hwrm_cfa_redirect_tunnel_type_info_output {
+struct __rte_packed_begin hwrm_cfa_redirect_tunnel_type_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -49194,10 +49194,10 @@ struct hwrm_cfa_redirect_tunnel_type_info_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vxlan_ipv4_hdr (size:128b/16B) */
-struct hwrm_vxlan_ipv4_hdr {
+struct __rte_packed_begin hwrm_vxlan_ipv4_hdr {
 	/* IPv4 version and header length. */
 	uint8_t	ver_hlen;
 	/* IPv4 header length */
@@ -49220,10 +49220,10 @@ struct hwrm_vxlan_ipv4_hdr {
 	uint32_t	src_ip_addr;
 	/* IPv4 destination address. */
 	uint32_t	dest_ip_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_vxlan_ipv6_hdr (size:320b/40B) */
-struct hwrm_vxlan_ipv6_hdr {
+struct __rte_packed_begin hwrm_vxlan_ipv6_hdr {
 	/* IPv6 version, traffic class and flow label. */
 	uint32_t	ver_tc_flow_label;
 	/* IPv6 version shift */
@@ -49256,10 +49256,10 @@ struct hwrm_vxlan_ipv6_hdr {
 	uint32_t	src_ip_addr[4];
 	/* IPv6 destination address. */
 	uint32_t	dest_ip_addr[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_encap_data_vxlan (size:640b/80B) */
-struct hwrm_cfa_encap_data_vxlan {
+struct __rte_packed_begin hwrm_cfa_encap_data_vxlan {
 	/* Source MAC address. */
 	uint8_t	src_mac_addr[6];
 	/* reserved. */
@@ -49304,7 +49304,7 @@ struct hwrm_cfa_encap_data_vxlan {
 	/* VXLAN header flags field. */
 	uint8_t	hdr_flags;
 	uint8_t	unused[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_encap_record_alloc *
@@ -49312,7 +49312,7 @@ struct hwrm_cfa_encap_data_vxlan {
 
 
 /* hwrm_cfa_encap_record_alloc_input (size:832b/104B) */
-struct hwrm_cfa_encap_record_alloc_input {
+struct __rte_packed_begin hwrm_cfa_encap_record_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -49407,10 +49407,10 @@ struct hwrm_cfa_encap_record_alloc_input {
 	uint8_t	unused_0[3];
 	/* This value is encap data used for the given encap type. */
 	uint32_t	encap_data[20];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_encap_record_alloc_output (size:128b/16B) */
-struct hwrm_cfa_encap_record_alloc_output {
+struct __rte_packed_begin hwrm_cfa_encap_record_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -49431,7 +49431,7 @@ struct hwrm_cfa_encap_record_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_cfa_encap_record_free *
@@ -49439,7 +49439,7 @@ struct hwrm_cfa_encap_record_alloc_output {
 
 
 /* hwrm_cfa_encap_record_free_input (size:192b/24B) */
-struct hwrm_cfa_encap_record_free_input {
+struct __rte_packed_begin hwrm_cfa_encap_record_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -49471,10 +49471,10 @@ struct hwrm_cfa_encap_record_free_input {
 	/* This value is an opaque id into CFA data structures. */
 	uint32_t	encap_record_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_encap_record_free_output (size:128b/16B) */
-struct hwrm_cfa_encap_record_free_output {
+struct __rte_packed_begin hwrm_cfa_encap_record_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -49493,7 +49493,7 @@ struct hwrm_cfa_encap_record_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_cfa_ntuple_filter_alloc *
@@ -49501,7 +49501,7 @@ struct hwrm_cfa_encap_record_free_output {
 
 
 /* hwrm_cfa_ntuple_filter_alloc_input (size:1024b/128B) */
-struct hwrm_cfa_ntuple_filter_alloc_input {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -49907,10 +49907,10 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 * the pri_hint.
 	 */
 	uint64_t	ntuple_filter_id_hint;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ntuple_filter_alloc_output (size:192b/24B) */
-struct hwrm_cfa_ntuple_filter_alloc_output {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -49971,10 +49971,10 @@ struct hwrm_cfa_ntuple_filter_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ntuple_filter_alloc_cmd_err (size:64b/8B) */
-struct hwrm_cfa_ntuple_filter_alloc_cmd_err {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_alloc_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -49989,7 +49989,7 @@ struct hwrm_cfa_ntuple_filter_alloc_cmd_err {
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_CMD_ERR_CODE_LAST \
 		HWRM_CFA_NTUPLE_FILTER_ALLOC_CMD_ERR_CODE_RX_MASK_VLAN_CONFLICT_ERR
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_ntuple_filter_free *
@@ -49997,7 +49997,7 @@ struct hwrm_cfa_ntuple_filter_alloc_cmd_err {
 
 
 /* hwrm_cfa_ntuple_filter_free_input (size:192b/24B) */
-struct hwrm_cfa_ntuple_filter_free_input {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -50028,10 +50028,10 @@ struct hwrm_cfa_ntuple_filter_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	ntuple_filter_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ntuple_filter_free_output (size:128b/16B) */
-struct hwrm_cfa_ntuple_filter_free_output {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -50050,7 +50050,7 @@ struct hwrm_cfa_ntuple_filter_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_cfa_ntuple_filter_cfg *
@@ -50058,7 +50058,7 @@ struct hwrm_cfa_ntuple_filter_free_output {
 
 
 /* hwrm_cfa_ntuple_filter_cfg_input (size:384b/48B) */
-struct hwrm_cfa_ntuple_filter_cfg_input {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -50159,10 +50159,10 @@ struct hwrm_cfa_ntuple_filter_cfg_input {
 	#define HWRM_CFA_NTUPLE_FILTER_CFG_INPUT_NEW_METER_INSTANCE_ID_LAST \
 		HWRM_CFA_NTUPLE_FILTER_CFG_INPUT_NEW_METER_INSTANCE_ID_INVALID
 	uint8_t	unused_1[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ntuple_filter_cfg_output (size:128b/16B) */
-struct hwrm_cfa_ntuple_filter_cfg_output {
+struct __rte_packed_begin hwrm_cfa_ntuple_filter_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -50181,7 +50181,7 @@ struct hwrm_cfa_ntuple_filter_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_cfa_em_flow_alloc *
@@ -50189,7 +50189,7 @@ struct hwrm_cfa_ntuple_filter_cfg_output {
 
 
 /* hwrm_cfa_em_flow_alloc_input (size:896b/112B) */
-struct hwrm_cfa_em_flow_alloc_input {
+struct __rte_packed_begin hwrm_cfa_em_flow_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -50539,10 +50539,10 @@ struct hwrm_cfa_em_flow_alloc_input {
 	/* Logical ID of the encapsulation record. */
 	uint32_t	encap_record_id;
 	uint8_t	unused_2[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_em_flow_alloc_output (size:192b/24B) */
-struct hwrm_cfa_em_flow_alloc_output {
+struct __rte_packed_begin hwrm_cfa_em_flow_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -50603,7 +50603,7 @@ struct hwrm_cfa_em_flow_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_cfa_em_flow_free *
@@ -50611,7 +50611,7 @@ struct hwrm_cfa_em_flow_alloc_output {
 
 
 /* hwrm_cfa_em_flow_free_input (size:192b/24B) */
-struct hwrm_cfa_em_flow_free_input {
+struct __rte_packed_begin hwrm_cfa_em_flow_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -50642,10 +50642,10 @@ struct hwrm_cfa_em_flow_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	em_filter_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_em_flow_free_output (size:128b/16B) */
-struct hwrm_cfa_em_flow_free_output {
+struct __rte_packed_begin hwrm_cfa_em_flow_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -50664,7 +50664,7 @@ struct hwrm_cfa_em_flow_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_cfa_meter_qcaps *
@@ -50672,7 +50672,7 @@ struct hwrm_cfa_em_flow_free_output {
 
 
 /* hwrm_cfa_meter_qcaps_input (size:128b/16B) */
-struct hwrm_cfa_meter_qcaps_input {
+struct __rte_packed_begin hwrm_cfa_meter_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -50701,10 +50701,10 @@ struct hwrm_cfa_meter_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_qcaps_output (size:320b/40B) */
-struct hwrm_cfa_meter_qcaps_output {
+struct __rte_packed_begin hwrm_cfa_meter_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -50778,7 +50778,7 @@ struct hwrm_cfa_meter_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_cfa_meter_profile_alloc *
@@ -50786,7 +50786,7 @@ struct hwrm_cfa_meter_qcaps_output {
 
 
 /* hwrm_cfa_meter_profile_alloc_input (size:320b/40B) */
-struct hwrm_cfa_meter_profile_alloc_input {
+struct __rte_packed_begin hwrm_cfa_meter_profile_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -51025,10 +51025,10 @@ struct hwrm_cfa_meter_profile_alloc_input {
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_LAST \
 		HWRM_CFA_METER_PROFILE_ALLOC_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_profile_alloc_output (size:128b/16B) */
-struct hwrm_cfa_meter_profile_alloc_output {
+struct __rte_packed_begin hwrm_cfa_meter_profile_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -51057,7 +51057,7 @@ struct hwrm_cfa_meter_profile_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_meter_profile_free *
@@ -51065,7 +51065,7 @@ struct hwrm_cfa_meter_profile_alloc_output {
 
 
 /* hwrm_cfa_meter_profile_free_input (size:192b/24B) */
-struct hwrm_cfa_meter_profile_free_input {
+struct __rte_packed_begin hwrm_cfa_meter_profile_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -51121,10 +51121,10 @@ struct hwrm_cfa_meter_profile_free_input {
 	#define HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_LAST \
 		HWRM_CFA_METER_PROFILE_FREE_INPUT_METER_PROFILE_ID_INVALID
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_profile_free_output (size:128b/16B) */
-struct hwrm_cfa_meter_profile_free_output {
+struct __rte_packed_begin hwrm_cfa_meter_profile_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -51143,7 +51143,7 @@ struct hwrm_cfa_meter_profile_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_cfa_meter_profile_cfg *
@@ -51151,7 +51151,7 @@ struct hwrm_cfa_meter_profile_free_output {
 
 
 /* hwrm_cfa_meter_profile_cfg_input (size:320b/40B) */
-struct hwrm_cfa_meter_profile_cfg_input {
+struct __rte_packed_begin hwrm_cfa_meter_profile_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -51393,10 +51393,10 @@ struct hwrm_cfa_meter_profile_cfg_input {
 		(UINT32_C(0x7) << 29)
 	#define HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_LAST \
 		HWRM_CFA_METER_PROFILE_CFG_INPUT_EXCESS_PEAK_BURST_BW_VALUE_UNIT_INVALID
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_profile_cfg_output (size:128b/16B) */
-struct hwrm_cfa_meter_profile_cfg_output {
+struct __rte_packed_begin hwrm_cfa_meter_profile_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -51415,7 +51415,7 @@ struct hwrm_cfa_meter_profile_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************************
  * hwrm_cfa_meter_instance_alloc *
@@ -51423,7 +51423,7 @@ struct hwrm_cfa_meter_profile_cfg_output {
 
 
 /* hwrm_cfa_meter_instance_alloc_input (size:192b/24B) */
-struct hwrm_cfa_meter_instance_alloc_input {
+struct __rte_packed_begin hwrm_cfa_meter_instance_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -51480,10 +51480,10 @@ struct hwrm_cfa_meter_instance_alloc_input {
 	#define HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_LAST \
 		HWRM_CFA_METER_INSTANCE_ALLOC_INPUT_METER_PROFILE_ID_INVALID
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_instance_alloc_output (size:128b/16B) */
-struct hwrm_cfa_meter_instance_alloc_output {
+struct __rte_packed_begin hwrm_cfa_meter_instance_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -51512,7 +51512,7 @@ struct hwrm_cfa_meter_instance_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_meter_instance_cfg *
@@ -51520,7 +51520,7 @@ struct hwrm_cfa_meter_instance_alloc_output {
 
 
 /* hwrm_cfa_meter_instance_cfg_input (size:192b/24B) */
-struct hwrm_cfa_meter_instance_cfg_input {
+struct __rte_packed_begin hwrm_cfa_meter_instance_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -51584,10 +51584,10 @@ struct hwrm_cfa_meter_instance_cfg_input {
 	 */
 	uint16_t	meter_instance_id;
 	uint8_t	unused_1[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_instance_cfg_output (size:128b/16B) */
-struct hwrm_cfa_meter_instance_cfg_output {
+struct __rte_packed_begin hwrm_cfa_meter_instance_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -51606,7 +51606,7 @@ struct hwrm_cfa_meter_instance_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_cfa_meter_instance_free *
@@ -51614,7 +51614,7 @@ struct hwrm_cfa_meter_instance_cfg_output {
 
 
 /* hwrm_cfa_meter_instance_free_input (size:192b/24B) */
-struct hwrm_cfa_meter_instance_free_input {
+struct __rte_packed_begin hwrm_cfa_meter_instance_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -51670,10 +51670,10 @@ struct hwrm_cfa_meter_instance_free_input {
 	#define HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_LAST \
 		HWRM_CFA_METER_INSTANCE_FREE_INPUT_METER_INSTANCE_ID_INVALID
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_meter_instance_free_output (size:128b/16B) */
-struct hwrm_cfa_meter_instance_free_output {
+struct __rte_packed_begin hwrm_cfa_meter_instance_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -51692,7 +51692,7 @@ struct hwrm_cfa_meter_instance_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_cfa_decap_filter_alloc *
@@ -51700,7 +51700,7 @@ struct hwrm_cfa_meter_instance_free_output {
 
 
 /* hwrm_cfa_decap_filter_alloc_input (size:832b/104B) */
-struct hwrm_cfa_decap_filter_alloc_input {
+struct __rte_packed_begin hwrm_cfa_decap_filter_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -52003,10 +52003,10 @@ struct hwrm_cfa_decap_filter_alloc_input {
 	 * L2 information of the decap filter.
 	 */
 	uint16_t	l2_ctxt_ref_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_decap_filter_alloc_output (size:128b/16B) */
-struct hwrm_cfa_decap_filter_alloc_output {
+struct __rte_packed_begin hwrm_cfa_decap_filter_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -52027,7 +52027,7 @@ struct hwrm_cfa_decap_filter_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_cfa_decap_filter_free *
@@ -52035,7 +52035,7 @@ struct hwrm_cfa_decap_filter_alloc_output {
 
 
 /* hwrm_cfa_decap_filter_free_input (size:192b/24B) */
-struct hwrm_cfa_decap_filter_free_input {
+struct __rte_packed_begin hwrm_cfa_decap_filter_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -52067,10 +52067,10 @@ struct hwrm_cfa_decap_filter_free_input {
 	/* This value is an opaque id into CFA data structures. */
 	uint32_t	decap_filter_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_decap_filter_free_output (size:128b/16B) */
-struct hwrm_cfa_decap_filter_free_output {
+struct __rte_packed_begin hwrm_cfa_decap_filter_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -52089,7 +52089,7 @@ struct hwrm_cfa_decap_filter_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_cfa_flow_alloc *
@@ -52097,7 +52097,7 @@ struct hwrm_cfa_decap_filter_free_output {
 
 
 /* hwrm_cfa_flow_alloc_input (size:1024b/128B) */
-struct hwrm_cfa_flow_alloc_input {
+struct __rte_packed_begin hwrm_cfa_flow_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -52387,10 +52387,10 @@ struct hwrm_cfa_flow_alloc_input {
 		UINT32_C(0xff)
 	#define HWRM_CFA_FLOW_ALLOC_INPUT_TUNNEL_TYPE_LAST \
 		HWRM_CFA_FLOW_ALLOC_INPUT_TUNNEL_TYPE_ANYTUNNEL
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_alloc_output (size:256b/32B) */
-struct hwrm_cfa_flow_alloc_output {
+struct __rte_packed_begin hwrm_cfa_flow_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -52455,10 +52455,10 @@ struct hwrm_cfa_flow_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_alloc_cmd_err (size:64b/8B) */
-struct hwrm_cfa_flow_alloc_cmd_err {
+struct __rte_packed_begin hwrm_cfa_flow_alloc_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -52483,7 +52483,7 @@ struct hwrm_cfa_flow_alloc_cmd_err {
 	#define HWRM_CFA_FLOW_ALLOC_CMD_ERR_CODE_LAST \
 		HWRM_CFA_FLOW_ALLOC_CMD_ERR_CODE_FLOW_CTXT_DB
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_cfa_flow_free *
@@ -52491,7 +52491,7 @@ struct hwrm_cfa_flow_alloc_cmd_err {
 
 
 /* hwrm_cfa_flow_free_input (size:256b/32B) */
-struct hwrm_cfa_flow_free_input {
+struct __rte_packed_begin hwrm_cfa_flow_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -52527,10 +52527,10 @@ struct hwrm_cfa_flow_free_input {
 	uint32_t	flow_counter_id;
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_free_output (size:256b/32B) */
-struct hwrm_cfa_flow_free_output {
+struct __rte_packed_begin hwrm_cfa_flow_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -52553,10 +52553,10 @@ struct hwrm_cfa_flow_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_action_data (size:960b/120B) */
-struct hwrm_cfa_flow_action_data {
+struct __rte_packed_begin hwrm_cfa_flow_action_data {
 	uint16_t	action_flags;
 	/* Setting of this flag indicates accept action. */
 	#define HWRM_CFA_FLOW_ACTION_DATA_ACTION_FLAGS_FWD \
@@ -52643,10 +52643,10 @@ struct hwrm_cfa_flow_action_data {
 	uint8_t	unused[7];
 	/* This value is encap data for the associated encap type. */
 	uint32_t	encap_data[20];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_tunnel_hdr_data (size:64b/8B) */
-struct hwrm_cfa_flow_tunnel_hdr_data {
+struct __rte_packed_begin hwrm_cfa_flow_tunnel_hdr_data {
 	/* Tunnel Type. */
 	uint8_t	tunnel_type;
 	/* Non-tunnel */
@@ -52708,19 +52708,19 @@ struct hwrm_cfa_flow_tunnel_hdr_data {
 	 * Virtual Network Identifier (VNI).
 	 */
 	uint32_t	tunnel_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_l4_key_data (size:64b/8B) */
-struct hwrm_cfa_flow_l4_key_data {
+struct __rte_packed_begin hwrm_cfa_flow_l4_key_data {
 	/* The value of source port. */
 	uint16_t	l4_src_port;
 	/* The value of destination port. */
 	uint16_t	l4_dst_port;
 	uint32_t	unused;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_l3_key_data (size:512b/64B) */
-struct hwrm_cfa_flow_l3_key_data {
+struct __rte_packed_begin hwrm_cfa_flow_l3_key_data {
 	/* The value of ip protocol. */
 	uint8_t	ip_protocol;
 	uint8_t	unused_0[7];
@@ -52731,10 +52731,10 @@ struct hwrm_cfa_flow_l3_key_data {
 	/* NAT IPv4/IPv6 address. */
 	uint32_t	nat_ip_address[4];
 	uint32_t	unused[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_l2_key_data (size:448b/56B) */
-struct hwrm_cfa_flow_l2_key_data {
+struct __rte_packed_begin hwrm_cfa_flow_l2_key_data {
 	/* Destination MAC address. */
 	uint16_t	dmac[3];
 	uint16_t	unused_0;
@@ -52764,10 +52764,10 @@ struct hwrm_cfa_flow_l2_key_data {
 	/* Inner VLAN TCI. */
 	uint16_t	ivlan_tci;
 	uint8_t	unused[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_key_data (size:4160b/520B) */
-struct hwrm_cfa_flow_key_data {
+struct __rte_packed_begin hwrm_cfa_flow_key_data {
 	/* Flow associated tunnel L2 header key info. */
 	uint32_t	t_l2_key_data[14];
 	/* Flow associated tunnel L2 header mask info. */
@@ -52794,7 +52794,7 @@ struct hwrm_cfa_flow_key_data {
 	uint32_t	l4_key_data[2];
 	/* Flow associated L4 header mask info. */
 	uint32_t	l4_key_mask[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_cfa_flow_info *
@@ -52802,7 +52802,7 @@ struct hwrm_cfa_flow_key_data {
 
 
 /* hwrm_cfa_flow_info_input (size:256b/32B) */
-struct hwrm_cfa_flow_info_input {
+struct __rte_packed_begin hwrm_cfa_flow_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -52868,10 +52868,10 @@ struct hwrm_cfa_flow_info_input {
 	uint8_t	unused_0[6];
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_info_output (size:5632b/704B) */
-struct hwrm_cfa_flow_info_output {
+struct __rte_packed_begin hwrm_cfa_flow_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -52922,7 +52922,7 @@ struct hwrm_cfa_flow_info_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_cfa_flow_flush *
@@ -52930,7 +52930,7 @@ struct hwrm_cfa_flow_info_output {
 
 
 /* hwrm_cfa_flow_flush_input (size:256b/32B) */
-struct hwrm_cfa_flow_flush_input {
+struct __rte_packed_begin hwrm_cfa_flow_flush_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53045,10 +53045,10 @@ struct hwrm_cfa_flow_flush_input {
 	uint16_t	num_flows;
 	/* Pointer to the PBL, or PDL depending on number of levels */
 	uint64_t	page_dir;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_flush_output (size:128b/16B) */
-struct hwrm_cfa_flow_flush_output {
+struct __rte_packed_begin hwrm_cfa_flow_flush_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53067,7 +53067,7 @@ struct hwrm_cfa_flow_flush_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_cfa_flow_stats *
@@ -53075,7 +53075,7 @@ struct hwrm_cfa_flow_flush_output {
 
 
 /* hwrm_cfa_flow_stats_input (size:640b/80B) */
-struct hwrm_cfa_flow_stats_input {
+struct __rte_packed_begin hwrm_cfa_flow_stats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53187,10 +53187,10 @@ struct hwrm_cfa_flow_stats_input {
 	uint32_t	flow_id_8;
 	/* Flow ID of a flow. */
 	uint32_t	flow_id_9;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_stats_output (size:1408b/176B) */
-struct hwrm_cfa_flow_stats_output {
+struct __rte_packed_begin hwrm_cfa_flow_stats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53258,7 +53258,7 @@ struct hwrm_cfa_flow_stats_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************************
  * hwrm_cfa_flow_aging_timer_reset *
@@ -53266,7 +53266,7 @@ struct hwrm_cfa_flow_stats_output {
 
 
 /* hwrm_cfa_flow_aging_timer_reset_input (size:256b/32B) */
-struct hwrm_cfa_flow_aging_timer_reset_input {
+struct __rte_packed_begin hwrm_cfa_flow_aging_timer_reset_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53305,10 +53305,10 @@ struct hwrm_cfa_flow_aging_timer_reset_input {
 	uint32_t	flow_timer;
 	/* This value identifies a set of CFA data structures used for a flow. */
 	uint64_t	ext_flow_handle;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_aging_timer_reset_output (size:128b/16B) */
-struct hwrm_cfa_flow_aging_timer_reset_output {
+struct __rte_packed_begin hwrm_cfa_flow_aging_timer_reset_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53327,7 +53327,7 @@ struct hwrm_cfa_flow_aging_timer_reset_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_cfa_flow_aging_cfg *
@@ -53335,7 +53335,7 @@ struct hwrm_cfa_flow_aging_timer_reset_output {
 
 
 /* hwrm_cfa_flow_aging_cfg_input (size:384b/48B) */
-struct hwrm_cfa_flow_aging_cfg_input {
+struct __rte_packed_begin hwrm_cfa_flow_aging_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53476,10 +53476,10 @@ struct hwrm_cfa_flow_aging_cfg_input {
 	#define HWRM_CFA_FLOW_AGING_CFG_INPUT_EEM_CTX_MEM_TYPE_LAST \
 		HWRM_CFA_FLOW_AGING_CFG_INPUT_EEM_CTX_MEM_TYPE_EJECTION_DATA
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_aging_cfg_output (size:128b/16B) */
-struct hwrm_cfa_flow_aging_cfg_output {
+struct __rte_packed_begin hwrm_cfa_flow_aging_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53498,7 +53498,7 @@ struct hwrm_cfa_flow_aging_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_cfa_flow_aging_qcfg *
@@ -53506,7 +53506,7 @@ struct hwrm_cfa_flow_aging_cfg_output {
 
 
 /* hwrm_cfa_flow_aging_qcfg_input (size:192b/24B) */
-struct hwrm_cfa_flow_aging_qcfg_input {
+struct __rte_packed_begin hwrm_cfa_flow_aging_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53549,10 +53549,10 @@ struct hwrm_cfa_flow_aging_qcfg_input {
 	#define HWRM_CFA_FLOW_AGING_QCFG_INPUT_FLAGS_PATH_LAST \
 		HWRM_CFA_FLOW_AGING_QCFG_INPUT_FLAGS_PATH_RX
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_aging_qcfg_output (size:320b/40B) */
-struct hwrm_cfa_flow_aging_qcfg_output {
+struct __rte_packed_begin hwrm_cfa_flow_aging_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53602,7 +53602,7 @@ struct hwrm_cfa_flow_aging_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_cfa_flow_aging_qcaps *
@@ -53610,7 +53610,7 @@ struct hwrm_cfa_flow_aging_qcfg_output {
 
 
 /* hwrm_cfa_flow_aging_qcaps_input (size:192b/24B) */
-struct hwrm_cfa_flow_aging_qcaps_input {
+struct __rte_packed_begin hwrm_cfa_flow_aging_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53653,10 +53653,10 @@ struct hwrm_cfa_flow_aging_qcaps_input {
 	#define HWRM_CFA_FLOW_AGING_QCAPS_INPUT_FLAGS_PATH_LAST \
 		HWRM_CFA_FLOW_AGING_QCAPS_INPUT_FLAGS_PATH_RX
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_flow_aging_qcaps_output (size:256b/32B) */
-struct hwrm_cfa_flow_aging_qcaps_output {
+struct __rte_packed_begin hwrm_cfa_flow_aging_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53692,7 +53692,7 @@ struct hwrm_cfa_flow_aging_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_cfa_tcp_flag_process_qcfg *
@@ -53700,7 +53700,7 @@ struct hwrm_cfa_flow_aging_qcaps_output {
 
 
 /* hwrm_cfa_tcp_flag_process_qcfg_input (size:128b/16B) */
-struct hwrm_cfa_tcp_flag_process_qcfg_input {
+struct __rte_packed_begin hwrm_cfa_tcp_flag_process_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53729,10 +53729,10 @@ struct hwrm_cfa_tcp_flag_process_qcfg_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_tcp_flag_process_qcfg_output (size:192b/24B) */
-struct hwrm_cfa_tcp_flag_process_qcfg_output {
+struct __rte_packed_begin hwrm_cfa_tcp_flag_process_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53765,7 +53765,7 @@ struct hwrm_cfa_tcp_flag_process_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_cfa_vf_pair_alloc *
@@ -53773,7 +53773,7 @@ struct hwrm_cfa_tcp_flag_process_qcfg_output {
 
 
 /* hwrm_cfa_vf_pair_alloc_input (size:448b/56B) */
-struct hwrm_cfa_vf_pair_alloc_input {
+struct __rte_packed_begin hwrm_cfa_vf_pair_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53809,10 +53809,10 @@ struct hwrm_cfa_vf_pair_alloc_input {
 	uint8_t	unused_0[4];
 	/* VF Pair name (32 byte string). */
 	char	pair_name[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vf_pair_alloc_output (size:128b/16B) */
-struct hwrm_cfa_vf_pair_alloc_output {
+struct __rte_packed_begin hwrm_cfa_vf_pair_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53831,7 +53831,7 @@ struct hwrm_cfa_vf_pair_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_cfa_vf_pair_free *
@@ -53839,7 +53839,7 @@ struct hwrm_cfa_vf_pair_alloc_output {
 
 
 /* hwrm_cfa_vf_pair_free_input (size:384b/48B) */
-struct hwrm_cfa_vf_pair_free_input {
+struct __rte_packed_begin hwrm_cfa_vf_pair_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53870,10 +53870,10 @@ struct hwrm_cfa_vf_pair_free_input {
 	uint64_t	resp_addr;
 	/* VF Pair name (32 byte string). */
 	char	pair_name[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vf_pair_free_output (size:128b/16B) */
-struct hwrm_cfa_vf_pair_free_output {
+struct __rte_packed_begin hwrm_cfa_vf_pair_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53892,7 +53892,7 @@ struct hwrm_cfa_vf_pair_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_cfa_vf_pair_info *
@@ -53900,7 +53900,7 @@ struct hwrm_cfa_vf_pair_free_output {
 
 
 /* hwrm_cfa_vf_pair_info_input (size:448b/56B) */
-struct hwrm_cfa_vf_pair_info_input {
+struct __rte_packed_begin hwrm_cfa_vf_pair_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -53937,10 +53937,10 @@ struct hwrm_cfa_vf_pair_info_input {
 	uint8_t	unused_0[2];
 	/* VF Pair name (32 byte string). */
 	char	vf_pair_name[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vf_pair_info_output (size:512b/64B) */
-struct hwrm_cfa_vf_pair_info_output {
+struct __rte_packed_begin hwrm_cfa_vf_pair_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -53980,7 +53980,7 @@ struct hwrm_cfa_vf_pair_info_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_cfa_pair_alloc *
@@ -53988,7 +53988,7 @@ struct hwrm_cfa_vf_pair_info_output {
 
 
 /* hwrm_cfa_pair_alloc_input (size:576b/72B) */
-struct hwrm_cfa_pair_alloc_input {
+struct __rte_packed_begin hwrm_cfa_pair_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54126,10 +54126,10 @@ struct hwrm_cfa_pair_alloc_input {
 	 */
 	uint8_t	fc_ba;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_pair_alloc_output (size:192b/24B) */
-struct hwrm_cfa_pair_alloc_output {
+struct __rte_packed_begin hwrm_cfa_pair_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54156,7 +54156,7 @@ struct hwrm_cfa_pair_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_cfa_pair_free *
@@ -54164,7 +54164,7 @@ struct hwrm_cfa_pair_alloc_output {
 
 
 /* hwrm_cfa_pair_free_input (size:448b/56B) */
-struct hwrm_cfa_pair_free_input {
+struct __rte_packed_begin hwrm_cfa_pair_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54238,10 +54238,10 @@ struct hwrm_cfa_pair_free_input {
 	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW UINT32_C(0x7)
 	#define HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_LAST \
 		HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_pair_free_output (size:128b/16B) */
-struct hwrm_cfa_pair_free_output {
+struct __rte_packed_begin hwrm_cfa_pair_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54260,7 +54260,7 @@ struct hwrm_cfa_pair_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_cfa_pair_info *
@@ -54268,7 +54268,7 @@ struct hwrm_cfa_pair_free_output {
 
 
 /* hwrm_cfa_pair_info_input (size:448b/56B) */
-struct hwrm_cfa_pair_info_input {
+struct __rte_packed_begin hwrm_cfa_pair_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54310,10 +54310,10 @@ struct hwrm_cfa_pair_info_input {
 	uint8_t	pair_vfid;
 	/* Pair name (32 byte string). */
 	char	pair_name[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_pair_info_output (size:576b/72B) */
-struct hwrm_cfa_pair_info_output {
+struct __rte_packed_begin hwrm_cfa_pair_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54391,7 +54391,7 @@ struct hwrm_cfa_pair_info_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_cfa_vfr_alloc *
@@ -54399,7 +54399,7 @@ struct hwrm_cfa_pair_info_output {
 
 
 /* hwrm_cfa_vfr_alloc_input (size:448b/56B) */
-struct hwrm_cfa_vfr_alloc_input {
+struct __rte_packed_begin hwrm_cfa_vfr_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54438,10 +54438,10 @@ struct hwrm_cfa_vfr_alloc_input {
 	uint8_t	unused_0[4];
 	/* VF Representor name (32 byte string). */
 	char	vfr_name[32];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vfr_alloc_output (size:128b/16B) */
-struct hwrm_cfa_vfr_alloc_output {
+struct __rte_packed_begin hwrm_cfa_vfr_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54464,7 +54464,7 @@ struct hwrm_cfa_vfr_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_cfa_vfr_free *
@@ -54472,7 +54472,7 @@ struct hwrm_cfa_vfr_alloc_output {
 
 
 /* hwrm_cfa_vfr_free_input (size:448b/56B) */
-struct hwrm_cfa_vfr_free_input {
+struct __rte_packed_begin hwrm_cfa_vfr_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54511,10 +54511,10 @@ struct hwrm_cfa_vfr_free_input {
 	 */
 	uint16_t	reserved;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_vfr_free_output (size:128b/16B) */
-struct hwrm_cfa_vfr_free_output {
+struct __rte_packed_begin hwrm_cfa_vfr_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54533,7 +54533,7 @@ struct hwrm_cfa_vfr_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************************
  * hwrm_cfa_redirect_query_tunnel_type *
@@ -54541,7 +54541,7 @@ struct hwrm_cfa_vfr_free_output {
 
 
 /* hwrm_cfa_redirect_query_tunnel_type_input (size:192b/24B) */
-struct hwrm_cfa_redirect_query_tunnel_type_input {
+struct __rte_packed_begin hwrm_cfa_redirect_query_tunnel_type_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54573,10 +54573,10 @@ struct hwrm_cfa_redirect_query_tunnel_type_input {
 	/* The source function id. */
 	uint16_t	src_fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_redirect_query_tunnel_type_output (size:128b/16B) */
-struct hwrm_cfa_redirect_query_tunnel_type_output {
+struct __rte_packed_begin hwrm_cfa_redirect_query_tunnel_type_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54648,7 +54648,7 @@ struct hwrm_cfa_redirect_query_tunnel_type_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_cfa_ctx_mem_rgtr *
@@ -54656,7 +54656,7 @@ struct hwrm_cfa_redirect_query_tunnel_type_output {
 
 
 /* hwrm_cfa_ctx_mem_rgtr_input (size:256b/32B) */
-struct hwrm_cfa_ctx_mem_rgtr_input {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_rgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54722,10 +54722,10 @@ struct hwrm_cfa_ctx_mem_rgtr_input {
 	uint32_t	unused_0;
 	/* Pointer to the PBL, or PDL depending on number of levels */
 	uint64_t	page_dir;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ctx_mem_rgtr_output (size:128b/16B) */
-struct hwrm_cfa_ctx_mem_rgtr_output {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_rgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54749,7 +54749,7 @@ struct hwrm_cfa_ctx_mem_rgtr_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_cfa_ctx_mem_unrgtr *
@@ -54757,7 +54757,7 @@ struct hwrm_cfa_ctx_mem_rgtr_output {
 
 
 /* hwrm_cfa_ctx_mem_unrgtr_input (size:192b/24B) */
-struct hwrm_cfa_ctx_mem_unrgtr_input {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_unrgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54792,10 +54792,10 @@ struct hwrm_cfa_ctx_mem_unrgtr_input {
 	 */
 	uint16_t	ctx_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ctx_mem_unrgtr_output (size:128b/16B) */
-struct hwrm_cfa_ctx_mem_unrgtr_output {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_unrgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54814,7 +54814,7 @@ struct hwrm_cfa_ctx_mem_unrgtr_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_cfa_ctx_mem_qctx *
@@ -54822,7 +54822,7 @@ struct hwrm_cfa_ctx_mem_unrgtr_output {
 
 
 /* hwrm_cfa_ctx_mem_qctx_input (size:192b/24B) */
-struct hwrm_cfa_ctx_mem_qctx_input {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_qctx_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54857,10 +54857,10 @@ struct hwrm_cfa_ctx_mem_qctx_input {
 	 */
 	uint16_t	ctx_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ctx_mem_qctx_output (size:256b/32B) */
-struct hwrm_cfa_ctx_mem_qctx_output {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_qctx_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54916,7 +54916,7 @@ struct hwrm_cfa_ctx_mem_qctx_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_cfa_ctx_mem_qcaps *
@@ -54924,7 +54924,7 @@ struct hwrm_cfa_ctx_mem_qctx_output {
 
 
 /* hwrm_cfa_ctx_mem_qcaps_input (size:128b/16B) */
-struct hwrm_cfa_ctx_mem_qcaps_input {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -54953,10 +54953,10 @@ struct hwrm_cfa_ctx_mem_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_ctx_mem_qcaps_output (size:128b/16B) */
-struct hwrm_cfa_ctx_mem_qcaps_output {
+struct __rte_packed_begin hwrm_cfa_ctx_mem_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -54980,7 +54980,7 @@ struct hwrm_cfa_ctx_mem_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_cfa_counter_qcaps *
@@ -54988,7 +54988,7 @@ struct hwrm_cfa_ctx_mem_qcaps_output {
 
 
 /* hwrm_cfa_counter_qcaps_input (size:128b/16B) */
-struct hwrm_cfa_counter_qcaps_input {
+struct __rte_packed_begin hwrm_cfa_counter_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55017,10 +55017,10 @@ struct hwrm_cfa_counter_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_counter_qcaps_output (size:576b/72B) */
-struct hwrm_cfa_counter_qcaps_output {
+struct __rte_packed_begin hwrm_cfa_counter_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55117,7 +55117,7 @@ struct hwrm_cfa_counter_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_cfa_counter_cfg *
@@ -55125,7 +55125,7 @@ struct hwrm_cfa_counter_qcaps_output {
 
 
 /* hwrm_cfa_counter_cfg_input (size:256b/32B) */
-struct hwrm_cfa_counter_cfg_input {
+struct __rte_packed_begin hwrm_cfa_counter_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55208,10 +55208,10 @@ struct hwrm_cfa_counter_cfg_input {
 	/* Total number of entries. */
 	uint32_t	num_entries;
 	uint32_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_counter_cfg_output (size:128b/16B) */
-struct hwrm_cfa_counter_cfg_output {
+struct __rte_packed_begin hwrm_cfa_counter_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55230,7 +55230,7 @@ struct hwrm_cfa_counter_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_cfa_counter_qstats *
@@ -55238,7 +55238,7 @@ struct hwrm_cfa_counter_cfg_output {
 
 
 /* hwrm_cfa_counter_qstats_input (size:320b/40B) */
-struct hwrm_cfa_counter_qstats_input {
+struct __rte_packed_begin hwrm_cfa_counter_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55284,10 +55284,10 @@ struct hwrm_cfa_counter_qstats_input {
 	uint16_t	mdc_ctx_id;
 	uint8_t	unused_0[2];
 	uint64_t	expected_count;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_counter_qstats_output (size:128b/16B) */
-struct hwrm_cfa_counter_qstats_output {
+struct __rte_packed_begin hwrm_cfa_counter_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55306,7 +55306,7 @@ struct hwrm_cfa_counter_qstats_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_cfa_eem_qcaps *
@@ -55314,7 +55314,7 @@ struct hwrm_cfa_counter_qstats_output {
 
 
 /* hwrm_cfa_eem_qcaps_input (size:192b/24B) */
-struct hwrm_cfa_eem_qcaps_input {
+struct __rte_packed_begin hwrm_cfa_eem_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55362,10 +55362,10 @@ struct hwrm_cfa_eem_qcaps_input {
 	#define HWRM_CFA_EEM_QCAPS_INPUT_FLAGS_PREFERRED_OFFLOAD \
 		UINT32_C(0x4)
 	uint32_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_eem_qcaps_output (size:320b/40B) */
-struct hwrm_cfa_eem_qcaps_output {
+struct __rte_packed_begin hwrm_cfa_eem_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55468,7 +55468,7 @@ struct hwrm_cfa_eem_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_cfa_eem_cfg *
@@ -55476,7 +55476,7 @@ struct hwrm_cfa_eem_qcaps_output {
 
 
 /* hwrm_cfa_eem_cfg_input (size:384b/48B) */
-struct hwrm_cfa_eem_cfg_input {
+struct __rte_packed_begin hwrm_cfa_eem_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55552,10 +55552,10 @@ struct hwrm_cfa_eem_cfg_input {
 	uint16_t	fid_ctx_id;
 	uint16_t	unused_2;
 	uint32_t	unused_3;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_eem_cfg_output (size:128b/16B) */
-struct hwrm_cfa_eem_cfg_output {
+struct __rte_packed_begin hwrm_cfa_eem_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55574,7 +55574,7 @@ struct hwrm_cfa_eem_cfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_cfa_eem_qcfg *
@@ -55582,7 +55582,7 @@ struct hwrm_cfa_eem_cfg_output {
 
 
 /* hwrm_cfa_eem_qcfg_input (size:192b/24B) */
-struct hwrm_cfa_eem_qcfg_input {
+struct __rte_packed_begin hwrm_cfa_eem_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55617,10 +55617,10 @@ struct hwrm_cfa_eem_qcfg_input {
 	/* When set to 1, indicates the configuration is the RX flow. */
 	#define HWRM_CFA_EEM_QCFG_INPUT_FLAGS_PATH_RX     UINT32_C(0x2)
 	uint32_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_eem_qcfg_output (size:256b/32B) */
-struct hwrm_cfa_eem_qcfg_output {
+struct __rte_packed_begin hwrm_cfa_eem_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55661,7 +55661,7 @@ struct hwrm_cfa_eem_qcfg_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_cfa_eem_op *
@@ -55669,7 +55669,7 @@ struct hwrm_cfa_eem_qcfg_output {
 
 
 /* hwrm_cfa_eem_op_input (size:192b/24B) */
-struct hwrm_cfa_eem_op_input {
+struct __rte_packed_begin hwrm_cfa_eem_op_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55737,10 +55737,10 @@ struct hwrm_cfa_eem_op_input {
 	#define HWRM_CFA_EEM_OP_INPUT_OP_EEM_CLEANUP UINT32_C(0x3)
 	#define HWRM_CFA_EEM_OP_INPUT_OP_LAST \
 		HWRM_CFA_EEM_OP_INPUT_OP_EEM_CLEANUP
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_eem_op_output (size:128b/16B) */
-struct hwrm_cfa_eem_op_output {
+struct __rte_packed_begin hwrm_cfa_eem_op_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55759,7 +55759,7 @@ struct hwrm_cfa_eem_op_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************************
  * hwrm_cfa_adv_flow_mgnt_qcaps *
@@ -55767,7 +55767,7 @@ struct hwrm_cfa_eem_op_output {
 
 
 /* hwrm_cfa_adv_flow_mgnt_qcaps_input (size:256b/32B) */
-struct hwrm_cfa_adv_flow_mgnt_qcaps_input {
+struct __rte_packed_begin hwrm_cfa_adv_flow_mgnt_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -55797,10 +55797,10 @@ struct hwrm_cfa_adv_flow_mgnt_qcaps_input {
 	 */
 	uint64_t	resp_addr;
 	uint32_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_adv_flow_mgnt_qcaps_output (size:128b/16B) */
-struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
+struct __rte_packed_begin hwrm_cfa_adv_flow_mgnt_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -55977,7 +55977,7 @@ struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_cfa_tflib *
@@ -55985,7 +55985,7 @@ struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
 
 
 /* hwrm_cfa_tflib_input (size:1024b/128B) */
-struct hwrm_cfa_tflib_input {
+struct __rte_packed_begin hwrm_cfa_tflib_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56022,10 +56022,10 @@ struct hwrm_cfa_tflib_input {
 	uint8_t	unused0[4];
 	/* TFLIB request data. */
 	uint32_t	tf_req[26];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_tflib_output (size:5632b/704B) */
-struct hwrm_cfa_tflib_output {
+struct __rte_packed_begin hwrm_cfa_tflib_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56053,7 +56053,7 @@ struct hwrm_cfa_tflib_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************************
  * hwrm_cfa_lag_group_member_rgtr *
@@ -56061,7 +56061,7 @@ struct hwrm_cfa_tflib_output {
 
 
 /* hwrm_cfa_lag_group_member_rgtr_input (size:192b/24B) */
-struct hwrm_cfa_lag_group_member_rgtr_input {
+struct __rte_packed_begin hwrm_cfa_lag_group_member_rgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56122,10 +56122,10 @@ struct hwrm_cfa_lag_group_member_rgtr_input {
 	/* Specify the active port when active-backup mode is specified */
 	uint8_t	active_port;
 	uint8_t	unused_0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_lag_group_member_rgtr_output (size:128b/16B) */
-struct hwrm_cfa_lag_group_member_rgtr_output {
+struct __rte_packed_begin hwrm_cfa_lag_group_member_rgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56146,7 +56146,7 @@ struct hwrm_cfa_lag_group_member_rgtr_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************************
  * hwrm_cfa_lag_group_member_unrgtr *
@@ -56154,7 +56154,7 @@ struct hwrm_cfa_lag_group_member_rgtr_output {
 
 
 /* hwrm_cfa_lag_group_member_unrgtr_input (size:192b/24B) */
-struct hwrm_cfa_lag_group_member_unrgtr_input {
+struct __rte_packed_begin hwrm_cfa_lag_group_member_unrgtr_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56186,10 +56186,10 @@ struct hwrm_cfa_lag_group_member_unrgtr_input {
 	/* lag group ID configured for the function */
 	uint16_t	lag_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_lag_group_member_unrgtr_output (size:128b/16B) */
-struct hwrm_cfa_lag_group_member_unrgtr_output {
+struct __rte_packed_begin hwrm_cfa_lag_group_member_unrgtr_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56208,7 +56208,7 @@ struct hwrm_cfa_lag_group_member_unrgtr_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_cfa_tls_filter_alloc *
@@ -56216,7 +56216,7 @@ struct hwrm_cfa_lag_group_member_unrgtr_output {
 
 
 /* hwrm_cfa_tls_filter_alloc_input (size:768b/96B) */
-struct hwrm_cfa_tls_filter_alloc_input {
+struct __rte_packed_begin hwrm_cfa_tls_filter_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56403,10 +56403,10 @@ struct hwrm_cfa_tls_filter_alloc_input {
 	uint32_t	kid;
 	/* The Destination Connection ID of QUIC. */
 	uint64_t	quic_dst_connect_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_tls_filter_alloc_output (size:192b/24B) */
-struct hwrm_cfa_tls_filter_alloc_output {
+struct __rte_packed_begin hwrm_cfa_tls_filter_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56467,7 +56467,7 @@ struct hwrm_cfa_tls_filter_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_cfa_tls_filter_free *
@@ -56475,7 +56475,7 @@ struct hwrm_cfa_tls_filter_alloc_output {
 
 
 /* hwrm_cfa_tls_filter_free_input (size:192b/24B) */
-struct hwrm_cfa_tls_filter_free_input {
+struct __rte_packed_begin hwrm_cfa_tls_filter_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56506,10 +56506,10 @@ struct hwrm_cfa_tls_filter_free_input {
 	uint64_t	resp_addr;
 	/* This value is an opaque id into CFA data structures. */
 	uint64_t	tls_filter_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_tls_filter_free_output (size:128b/16B) */
-struct hwrm_cfa_tls_filter_free_output {
+struct __rte_packed_begin hwrm_cfa_tls_filter_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56528,7 +56528,7 @@ struct hwrm_cfa_tls_filter_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_cfa_release_afm_func *
@@ -56536,7 +56536,7 @@ struct hwrm_cfa_tls_filter_free_output {
 
 
 /* hwrm_cfa_release_afm_func_input (size:256b/32B) */
-struct hwrm_cfa_release_afm_func_input {
+struct __rte_packed_begin hwrm_cfa_release_afm_func_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56595,10 +56595,10 @@ struct hwrm_cfa_release_afm_func_input {
 	#define HWRM_CFA_RELEASE_AFM_FUNC_INPUT_FLAGS_PROMISC_REM \
 		UINT32_C(0x4)
 	uint32_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_cfa_release_afm_func_output (size:128b/16B) */
-struct hwrm_cfa_release_afm_func_output {
+struct __rte_packed_begin hwrm_cfa_release_afm_func_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56617,7 +56617,7 @@ struct hwrm_cfa_release_afm_func_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********
  * hwrm_tf *
@@ -56625,7 +56625,7 @@ struct hwrm_cfa_release_afm_func_output {
 
 
 /* hwrm_tf_input (size:1024b/128B) */
-struct hwrm_tf_input {
+struct __rte_packed_begin hwrm_tf_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56662,10 +56662,10 @@ struct hwrm_tf_input {
 	uint8_t	unused0[4];
 	/* TF request data. */
 	uint32_t	req[26];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_output (size:5632b/704B) */
-struct hwrm_tf_output {
+struct __rte_packed_begin hwrm_tf_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56693,7 +56693,7 @@ struct hwrm_tf_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_tf_version_get *
@@ -56701,7 +56701,7 @@ struct hwrm_tf_output {
 
 
 /* hwrm_tf_version_get_input (size:128b/16B) */
-struct hwrm_tf_version_get_input {
+struct __rte_packed_begin hwrm_tf_version_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56730,10 +56730,10 @@ struct hwrm_tf_version_get_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_version_get_output (size:256b/32B) */
-struct hwrm_tf_version_get_output {
+struct __rte_packed_begin hwrm_tf_version_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56766,7 +56766,7 @@ struct hwrm_tf_version_get_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tf_session_open *
@@ -56774,7 +56774,7 @@ struct hwrm_tf_version_get_output {
 
 
 /* hwrm_tf_session_open_input (size:640b/80B) */
-struct hwrm_tf_session_open_input {
+struct __rte_packed_begin hwrm_tf_session_open_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56805,10 +56805,10 @@ struct hwrm_tf_session_open_input {
 	uint64_t	resp_addr;
 	/* Name of the session. */
 	uint8_t	session_name[64];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_open_output (size:192b/24B) */
-struct hwrm_tf_session_open_output {
+struct __rte_packed_begin hwrm_tf_session_open_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56861,7 +56861,7 @@ struct hwrm_tf_session_open_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_tf_session_register *
@@ -56869,7 +56869,7 @@ struct hwrm_tf_session_open_output {
 
 
 /* hwrm_tf_session_register_input (size:704b/88B) */
-struct hwrm_tf_session_register_input {
+struct __rte_packed_begin hwrm_tf_session_register_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56911,10 +56911,10 @@ struct hwrm_tf_session_register_input {
 	uint32_t	unused0;
 	/* Name of the session client. */
 	uint8_t	session_client_name[64];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_register_output (size:128b/16B) */
-struct hwrm_tf_session_register_output {
+struct __rte_packed_begin hwrm_tf_session_register_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -56940,7 +56940,7 @@ struct hwrm_tf_session_register_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tf_session_unregister *
@@ -56948,7 +56948,7 @@ struct hwrm_tf_session_register_output {
 
 
 /* hwrm_tf_session_unregister_input (size:192b/24B) */
-struct hwrm_tf_session_unregister_input {
+struct __rte_packed_begin hwrm_tf_session_unregister_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -56987,10 +56987,10 @@ struct hwrm_tf_session_unregister_input {
 	 * unregister request want to close.
 	 */
 	uint32_t	fw_session_client_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_unregister_output (size:128b/16B) */
-struct hwrm_tf_session_unregister_output {
+struct __rte_packed_begin hwrm_tf_session_unregister_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57010,7 +57010,7 @@ struct hwrm_tf_session_unregister_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_tf_session_close *
@@ -57018,7 +57018,7 @@ struct hwrm_tf_session_unregister_output {
 
 
 /* hwrm_tf_session_close_input (size:192b/24B) */
-struct hwrm_tf_session_close_input {
+struct __rte_packed_begin hwrm_tf_session_close_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57051,10 +57051,10 @@ struct hwrm_tf_session_close_input {
 	uint32_t	fw_session_id;
 	/* unused. */
 	uint8_t	unused0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_close_output (size:128b/16B) */
-struct hwrm_tf_session_close_output {
+struct __rte_packed_begin hwrm_tf_session_close_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57074,7 +57074,7 @@ struct hwrm_tf_session_close_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tf_session_qcfg *
@@ -57082,7 +57082,7 @@ struct hwrm_tf_session_close_output {
 
 
 /* hwrm_tf_session_qcfg_input (size:192b/24B) */
-struct hwrm_tf_session_qcfg_input {
+struct __rte_packed_begin hwrm_tf_session_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57115,10 +57115,10 @@ struct hwrm_tf_session_qcfg_input {
 	uint32_t	fw_session_id;
 	/* unused. */
 	uint8_t	unused0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_qcfg_output (size:128b/16B) */
-struct hwrm_tf_session_qcfg_output {
+struct __rte_packed_begin hwrm_tf_session_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57186,7 +57186,7 @@ struct hwrm_tf_session_qcfg_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tf_session_resc_qcaps *
@@ -57194,7 +57194,7 @@ struct hwrm_tf_session_qcfg_output {
 
 
 /* hwrm_tf_session_resc_qcaps_input (size:256b/32B) */
-struct hwrm_tf_session_resc_qcaps_input {
+struct __rte_packed_begin hwrm_tf_session_resc_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57249,10 +57249,10 @@ struct hwrm_tf_session_resc_qcaps_input {
 	 * device specific.
 	 */
 	uint64_t	qcaps_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_resc_qcaps_output (size:192b/24B) */
-struct hwrm_tf_session_resc_qcaps_output {
+struct __rte_packed_begin hwrm_tf_session_resc_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57306,7 +57306,7 @@ struct hwrm_tf_session_resc_qcaps_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tf_session_resc_alloc *
@@ -57314,7 +57314,7 @@ struct hwrm_tf_session_resc_qcaps_output {
 
 
 /* hwrm_tf_session_resc_alloc_input (size:320b/40B) */
-struct hwrm_tf_session_resc_alloc_input {
+struct __rte_packed_begin hwrm_tf_session_resc_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57375,10 +57375,10 @@ struct hwrm_tf_session_resc_alloc_input {
 	 * message.
 	 */
 	uint64_t	resc_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_resc_alloc_output (size:128b/16B) */
-struct hwrm_tf_session_resc_alloc_output {
+struct __rte_packed_begin hwrm_tf_session_resc_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57405,7 +57405,7 @@ struct hwrm_tf_session_resc_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tf_session_resc_flush *
@@ -57413,7 +57413,7 @@ struct hwrm_tf_session_resc_alloc_output {
 
 
 /* hwrm_tf_session_resc_flush_input (size:256b/32B) */
-struct hwrm_tf_session_resc_flush_input {
+struct __rte_packed_begin hwrm_tf_session_resc_flush_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57466,10 +57466,10 @@ struct hwrm_tf_session_resc_flush_input {
 	 * message.
 	 */
 	uint64_t	flush_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_resc_flush_output (size:128b/16B) */
-struct hwrm_tf_session_resc_flush_output {
+struct __rte_packed_begin hwrm_tf_session_resc_flush_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57489,7 +57489,7 @@ struct hwrm_tf_session_resc_flush_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_tf_session_resc_info *
@@ -57497,7 +57497,7 @@ struct hwrm_tf_session_resc_flush_output {
 
 
 /* hwrm_tf_session_resc_info_input (size:320b/40B) */
-struct hwrm_tf_session_resc_info_input {
+struct __rte_packed_begin hwrm_tf_session_resc_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57558,10 +57558,10 @@ struct hwrm_tf_session_resc_info_input {
 	 * message.
 	 */
 	uint64_t	resc_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_resc_info_output (size:128b/16B) */
-struct hwrm_tf_session_resc_info_output {
+struct __rte_packed_begin hwrm_tf_session_resc_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57588,29 +57588,29 @@ struct hwrm_tf_session_resc_info_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* TruFlow RM capability of a resource. */
 /* tf_rm_resc_req_entry (size:64b/8B) */
-struct tf_rm_resc_req_entry {
+struct __rte_packed_begin tf_rm_resc_req_entry {
 	/* Type of the resource, defined globally in HCAPI RM. */
 	uint32_t	type;
 	/* Minimum value. */
 	uint16_t	min;
 	/* Maximum value. */
 	uint16_t	max;
-} __rte_packed;
+} __rte_packed_end;
 
 /* TruFlow RM reservation information. */
 /* tf_rm_resc_entry (size:64b/8B) */
-struct tf_rm_resc_entry {
+struct __rte_packed_begin tf_rm_resc_entry {
 	/* Type of the resource, defined globally in HCAPI RM. */
 	uint32_t	type;
 	/* Start offset. */
 	uint16_t	start;
 	/* Number of resources. */
 	uint16_t	stride;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_tf_tbl_type_alloc *
@@ -57618,7 +57618,7 @@ struct tf_rm_resc_entry {
 
 
 /* hwrm_tf_tbl_type_alloc_input (size:192b/24B) */
-struct hwrm_tf_tbl_type_alloc_input {
+struct __rte_packed_begin hwrm_tf_tbl_type_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57681,10 +57681,10 @@ struct hwrm_tf_tbl_type_alloc_input {
 	 * tunnel-type of dynamic UPAR tunnel.
 	 */
 	uint8_t	type;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tbl_type_alloc_output (size:128b/16B) */
-struct hwrm_tf_tbl_type_alloc_output {
+struct __rte_packed_begin hwrm_tf_tbl_type_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57711,7 +57711,7 @@ struct hwrm_tf_tbl_type_alloc_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tf_tbl_type_get *
@@ -57719,7 +57719,7 @@ struct hwrm_tf_tbl_type_alloc_output {
 
 
 /* hwrm_tf_tbl_type_get_input (size:256b/32B) */
-struct hwrm_tf_tbl_type_get_input {
+struct __rte_packed_begin hwrm_tf_tbl_type_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57794,10 +57794,10 @@ struct hwrm_tf_tbl_type_get_input {
 	uint32_t	type;
 	/* Index of the type to retrieve. */
 	uint32_t	index;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tbl_type_get_output (size:2240b/280B) */
-struct hwrm_tf_tbl_type_get_output {
+struct __rte_packed_begin hwrm_tf_tbl_type_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57825,7 +57825,7 @@ struct hwrm_tf_tbl_type_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tf_tbl_type_set *
@@ -57833,7 +57833,7 @@ struct hwrm_tf_tbl_type_get_output {
 
 
 /* hwrm_tf_tbl_type_set_input (size:1024b/128B) */
-struct hwrm_tf_tbl_type_set_input {
+struct __rte_packed_begin hwrm_tf_tbl_type_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -57907,10 +57907,10 @@ struct hwrm_tf_tbl_type_set_input {
 	uint8_t	unused1[6];
 	/* Data to be set. */
 	uint8_t	data[88];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tbl_type_set_output (size:128b/16B) */
-struct hwrm_tf_tbl_type_set_output {
+struct __rte_packed_begin hwrm_tf_tbl_type_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -57930,7 +57930,7 @@ struct hwrm_tf_tbl_type_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_tf_tbl_type_free *
@@ -57938,7 +57938,7 @@ struct hwrm_tf_tbl_type_set_output {
 
 
 /* hwrm_tf_tbl_type_free_input (size:256b/32B) */
-struct hwrm_tf_tbl_type_free_input {
+struct __rte_packed_begin hwrm_tf_tbl_type_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58004,10 +58004,10 @@ struct hwrm_tf_tbl_type_free_input {
 	uint16_t	idx_tbl_id;
 	/* Unused */
 	uint8_t	unused1[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tbl_type_free_output (size:128b/16B) */
-struct hwrm_tf_tbl_type_free_output {
+struct __rte_packed_begin hwrm_tf_tbl_type_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58029,7 +58029,7 @@ struct hwrm_tf_tbl_type_free_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_tf_em_insert *
@@ -58037,7 +58037,7 @@ struct hwrm_tf_tbl_type_free_output {
 
 
 /* hwrm_tf_em_insert_input (size:832b/104B) */
-struct hwrm_tf_em_insert_input {
+struct __rte_packed_begin hwrm_tf_em_insert_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58090,10 +58090,10 @@ struct hwrm_tf_em_insert_input {
 	uint16_t	em_key_bitlen;
 	/* unused. */
 	uint16_t	unused0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_em_insert_output (size:128b/16B) */
-struct hwrm_tf_em_insert_output {
+struct __rte_packed_begin hwrm_tf_em_insert_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58119,7 +58119,7 @@ struct hwrm_tf_em_insert_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_tf_em_hash_insert *
@@ -58127,7 +58127,7 @@ struct hwrm_tf_em_insert_output {
 
 
 /* hwrm_tf_em_hash_insert_input (size:1024b/128B) */
-struct hwrm_tf_em_hash_insert_input {
+struct __rte_packed_begin hwrm_tf_em_hash_insert_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58182,10 +58182,10 @@ struct hwrm_tf_em_hash_insert_input {
 	uint32_t	unused0;
 	/* EM record. */
 	uint64_t	em_record[11];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_em_hash_insert_output (size:128b/16B) */
-struct hwrm_tf_em_hash_insert_output {
+struct __rte_packed_begin hwrm_tf_em_hash_insert_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58211,7 +58211,7 @@ struct hwrm_tf_em_hash_insert_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_tf_em_delete *
@@ -58219,7 +58219,7 @@ struct hwrm_tf_em_hash_insert_output {
 
 
 /* hwrm_tf_em_delete_input (size:832b/104B) */
-struct hwrm_tf_em_delete_input {
+struct __rte_packed_begin hwrm_tf_em_delete_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58270,10 +58270,10 @@ struct hwrm_tf_em_delete_input {
 	uint16_t	em_key_bitlen;
 	/* unused. */
 	uint16_t	unused1[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_em_delete_output (size:128b/16B) */
-struct hwrm_tf_em_delete_output {
+struct __rte_packed_begin hwrm_tf_em_delete_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58295,7 +58295,7 @@ struct hwrm_tf_em_delete_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_tf_em_move *
@@ -58303,7 +58303,7 @@ struct hwrm_tf_em_delete_output {
 
 
 /* hwrm_tf_em_move_input (size:320b/40B) */
-struct hwrm_tf_em_move_input {
+struct __rte_packed_begin hwrm_tf_em_move_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58352,10 +58352,10 @@ struct hwrm_tf_em_move_input {
 	uint32_t	unused0;
 	/* EM internal flow handle. */
 	uint64_t	flow_handle;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_em_move_output (size:128b/16B) */
-struct hwrm_tf_em_move_output {
+struct __rte_packed_begin hwrm_tf_em_move_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58377,7 +58377,7 @@ struct hwrm_tf_em_move_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_tf_tcam_set *
@@ -58385,7 +58385,7 @@ struct hwrm_tf_em_move_output {
 
 
 /* hwrm_tf_tcam_set_input (size:1024b/128B) */
-struct hwrm_tf_tcam_set_input {
+struct __rte_packed_begin hwrm_tf_tcam_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58456,10 +58456,10 @@ struct hwrm_tf_tcam_set_input {
 	 * and result at result_offset for the device.
 	 */
 	uint8_t	dev_data[88];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tcam_set_output (size:128b/16B) */
-struct hwrm_tf_tcam_set_output {
+struct __rte_packed_begin hwrm_tf_tcam_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58479,7 +58479,7 @@ struct hwrm_tf_tcam_set_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_tf_tcam_get *
@@ -58487,7 +58487,7 @@ struct hwrm_tf_tcam_set_output {
 
 
 /* hwrm_tf_tcam_get_input (size:256b/32B) */
-struct hwrm_tf_tcam_get_input {
+struct __rte_packed_begin hwrm_tf_tcam_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58537,10 +58537,10 @@ struct hwrm_tf_tcam_get_input {
 	uint16_t	idx;
 	/* unused. */
 	uint16_t	unused0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tcam_get_output (size:2368b/296B) */
-struct hwrm_tf_tcam_get_output {
+struct __rte_packed_begin hwrm_tf_tcam_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58575,7 +58575,7 @@ struct hwrm_tf_tcam_get_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_tf_tcam_move *
@@ -58583,7 +58583,7 @@ struct hwrm_tf_tcam_get_output {
 
 
 /* hwrm_tf_tcam_move_input (size:1024b/128B) */
-struct hwrm_tf_tcam_move_input {
+struct __rte_packed_begin hwrm_tf_tcam_move_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58635,10 +58635,10 @@ struct hwrm_tf_tcam_move_input {
 	uint16_t	unused0;
 	/* TCAM index pairs to be swapped for the device. */
 	uint16_t	idx_pairs[48];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tcam_move_output (size:128b/16B) */
-struct hwrm_tf_tcam_move_output {
+struct __rte_packed_begin hwrm_tf_tcam_move_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58658,7 +58658,7 @@ struct hwrm_tf_tcam_move_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_tf_tcam_free *
@@ -58666,7 +58666,7 @@ struct hwrm_tf_tcam_move_output {
 
 
 /* hwrm_tf_tcam_free_input (size:1024b/128B) */
-struct hwrm_tf_tcam_free_input {
+struct __rte_packed_begin hwrm_tf_tcam_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58718,10 +58718,10 @@ struct hwrm_tf_tcam_free_input {
 	uint16_t	unused0;
 	/* TCAM index list to be deleted for the device. */
 	uint16_t	idx_list[48];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tcam_free_output (size:128b/16B) */
-struct hwrm_tf_tcam_free_output {
+struct __rte_packed_begin hwrm_tf_tcam_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58741,7 +58741,7 @@ struct hwrm_tf_tcam_free_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_tf_global_cfg_set *
@@ -58749,7 +58749,7 @@ struct hwrm_tf_tcam_free_output {
 
 
 /* hwrm_tf_global_cfg_set_input (size:448b/56B) */
-struct hwrm_tf_global_cfg_set_input {
+struct __rte_packed_begin hwrm_tf_global_cfg_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58804,10 +58804,10 @@ struct hwrm_tf_global_cfg_set_input {
 	uint8_t	data[8];
 	/* Mask of data to set, 0 indicates no mask */
 	uint8_t	mask[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_global_cfg_set_output (size:128b/16B) */
-struct hwrm_tf_global_cfg_set_output {
+struct __rte_packed_begin hwrm_tf_global_cfg_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58827,7 +58827,7 @@ struct hwrm_tf_global_cfg_set_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_tf_global_cfg_get *
@@ -58835,7 +58835,7 @@ struct hwrm_tf_global_cfg_set_output {
 
 
 /* hwrm_tf_global_cfg_get_input (size:320b/40B) */
-struct hwrm_tf_global_cfg_get_input {
+struct __rte_packed_begin hwrm_tf_global_cfg_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58884,10 +58884,10 @@ struct hwrm_tf_global_cfg_get_input {
 	uint16_t	size;
 	/* unused. */
 	uint8_t	unused0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_global_cfg_get_output (size:2240b/280B) */
-struct hwrm_tf_global_cfg_get_output {
+struct __rte_packed_begin hwrm_tf_global_cfg_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -58913,7 +58913,7 @@ struct hwrm_tf_global_cfg_get_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_tf_if_tbl_get *
@@ -58921,7 +58921,7 @@ struct hwrm_tf_global_cfg_get_output {
 
 
 /* hwrm_tf_if_tbl_get_input (size:256b/32B) */
-struct hwrm_tf_if_tbl_get_input {
+struct __rte_packed_begin hwrm_tf_if_tbl_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -58971,10 +58971,10 @@ struct hwrm_tf_if_tbl_get_input {
 	uint32_t	type;
 	/* Index of the type to retrieve. */
 	uint32_t	index;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_if_tbl_get_output (size:1216b/152B) */
-struct hwrm_tf_if_tbl_get_output {
+struct __rte_packed_begin hwrm_tf_if_tbl_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59002,7 +59002,7 @@ struct hwrm_tf_if_tbl_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_tf_if_tbl_type_set *
@@ -59010,7 +59010,7 @@ struct hwrm_tf_if_tbl_get_output {
 
 
 /* hwrm_tf_if_tbl_set_input (size:1024b/128B) */
-struct hwrm_tf_if_tbl_set_input {
+struct __rte_packed_begin hwrm_tf_if_tbl_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59066,10 +59066,10 @@ struct hwrm_tf_if_tbl_set_input {
 	uint8_t	unused1[6];
 	/* Data to be set. */
 	uint8_t	data[88];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_if_tbl_set_output (size:128b/16B) */
-struct hwrm_tf_if_tbl_set_output {
+struct __rte_packed_begin hwrm_tf_if_tbl_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59089,7 +59089,7 @@ struct hwrm_tf_if_tbl_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_tf_tbl_type_bulk_get *
@@ -59097,7 +59097,7 @@ struct hwrm_tf_if_tbl_set_output {
 
 
 /* hwrm_tf_tbl_type_bulk_get_input (size:384b/48B) */
-struct hwrm_tf_tbl_type_bulk_get_input {
+struct __rte_packed_begin hwrm_tf_tbl_type_bulk_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59162,10 +59162,10 @@ struct hwrm_tf_tbl_type_bulk_get_input {
 	uint32_t	unused1;
 	/* Host memory where data will be stored. */
 	uint64_t	host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_tbl_type_bulk_get_output (size:128b/16B) */
-struct hwrm_tf_tbl_type_bulk_get_output {
+struct __rte_packed_begin hwrm_tf_tbl_type_bulk_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59189,7 +59189,7 @@ struct hwrm_tf_tbl_type_bulk_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************************
  * hwrm_tf_session_hotup_state_set *
@@ -59197,7 +59197,7 @@ struct hwrm_tf_tbl_type_bulk_get_output {
 
 
 /* hwrm_tf_session_hotup_state_set_input (size:192b/24B) */
-struct hwrm_tf_session_hotup_state_set_input {
+struct __rte_packed_begin hwrm_tf_session_hotup_state_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59243,10 +59243,10 @@ struct hwrm_tf_session_hotup_state_set_input {
 		UINT32_C(0x1)
 	#define HWRM_TF_SESSION_HOTUP_STATE_SET_INPUT_FLAGS_DIR_LAST \
 		HWRM_TF_SESSION_HOTUP_STATE_SET_INPUT_FLAGS_DIR_TX
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_hotup_state_set_output (size:128b/16B) */
-struct hwrm_tf_session_hotup_state_set_output {
+struct __rte_packed_begin hwrm_tf_session_hotup_state_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59266,7 +59266,7 @@ struct hwrm_tf_session_hotup_state_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************************
  * hwrm_tf_session_hotup_state_get *
@@ -59274,7 +59274,7 @@ struct hwrm_tf_session_hotup_state_set_output {
 
 
 /* hwrm_tf_session_hotup_state_get_input (size:192b/24B) */
-struct hwrm_tf_session_hotup_state_get_input {
+struct __rte_packed_begin hwrm_tf_session_hotup_state_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59320,10 +59320,10 @@ struct hwrm_tf_session_hotup_state_get_input {
 		HWRM_TF_SESSION_HOTUP_STATE_GET_INPUT_FLAGS_DIR_TX
 	/* unused. */
 	uint8_t	unused0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_session_hotup_state_get_output (size:128b/16B) */
-struct hwrm_tf_session_hotup_state_get_output {
+struct __rte_packed_begin hwrm_tf_session_hotup_state_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59347,7 +59347,7 @@ struct hwrm_tf_session_hotup_state_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_tf_resc_usage_set *
@@ -59355,7 +59355,7 @@ struct hwrm_tf_session_hotup_state_get_output {
 
 
 /* hwrm_tf_resc_usage_set_input (size:1024b/128B) */
-struct hwrm_tf_resc_usage_set_input {
+struct __rte_packed_begin hwrm_tf_resc_usage_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59430,10 +59430,10 @@ struct hwrm_tf_resc_usage_set_input {
 	uint8_t	unused1[6];
 	/* Data to be set. */
 	uint8_t	data[96];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_resc_usage_set_output (size:128b/16B) */
-struct hwrm_tf_resc_usage_set_output {
+struct __rte_packed_begin hwrm_tf_resc_usage_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59453,7 +59453,7 @@ struct hwrm_tf_resc_usage_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_tf_resc_usage_query *
@@ -59461,7 +59461,7 @@ struct hwrm_tf_resc_usage_set_output {
 
 
 /* hwrm_tf_resc_usage_query_input (size:256b/32B) */
-struct hwrm_tf_resc_usage_query_input {
+struct __rte_packed_begin hwrm_tf_resc_usage_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59532,10 +59532,10 @@ struct hwrm_tf_resc_usage_query_input {
 		UINT32_C(0x80)
 	/* unused */
 	uint8_t	unused1[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tf_resc_usage_query_output (size:960b/120B) */
-struct hwrm_tf_resc_usage_query_output {
+struct __rte_packed_begin hwrm_tf_resc_usage_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59563,7 +59563,7 @@ struct hwrm_tf_resc_usage_query_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_tfc_tbl_scope_qcaps *
@@ -59575,7 +59575,7 @@ struct hwrm_tf_resc_usage_query_output {
  * supporting table scopes.
  */
 /* hwrm_tfc_tbl_scope_qcaps_input (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_qcaps_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59604,10 +59604,10 @@ struct hwrm_tfc_tbl_scope_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_qcaps_output (size:192b/24B) */
-struct hwrm_tfc_tbl_scope_qcaps_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59644,7 +59644,7 @@ struct hwrm_tfc_tbl_scope_qcaps_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_tfc_tbl_scope_id_alloc *
@@ -59661,7 +59661,7 @@ struct hwrm_tfc_tbl_scope_qcaps_output {
  * been freed.
  */
 /* hwrm_tfc_tbl_scope_id_alloc_input (size:256b/32B) */
-struct hwrm_tfc_tbl_scope_id_alloc_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_id_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59721,10 +59721,10 @@ struct hwrm_tfc_tbl_scope_id_alloc_input {
 	uint8_t	app_type;
 	/* unused. */
 	uint8_t	unused0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_id_alloc_output (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_id_alloc_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_id_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59751,7 +59751,7 @@ struct hwrm_tfc_tbl_scope_id_alloc_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_tfc_tbl_scope_config *
@@ -59760,7 +59760,7 @@ struct hwrm_tfc_tbl_scope_id_alloc_output {
 
 /* TruFlow command to configure the table scope memory. */
 /* hwrm_tfc_tbl_scope_config_input (size:704b/88B) */
-struct hwrm_tfc_tbl_scope_config_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_config_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59837,10 +59837,10 @@ struct hwrm_tfc_tbl_scope_config_input {
 	uint8_t	tsid;
 	/* unused. */
 	uint8_t	unused0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_config_output (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_config_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_config_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59860,7 +59860,7 @@ struct hwrm_tfc_tbl_scope_config_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_tfc_tbl_scope_deconfig *
@@ -59869,7 +59869,7 @@ struct hwrm_tfc_tbl_scope_config_output {
 
 /* TruFlow command to deconfigure the table scope memory. */
 /* hwrm_tfc_tbl_scope_deconfig_input (size:192b/24B) */
-struct hwrm_tfc_tbl_scope_deconfig_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_deconfig_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59902,10 +59902,10 @@ struct hwrm_tfc_tbl_scope_deconfig_input {
 	uint8_t	tsid;
 	/* unused. */
 	uint8_t	unused0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_deconfig_output (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_deconfig_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_deconfig_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -59925,7 +59925,7 @@ struct hwrm_tfc_tbl_scope_deconfig_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tfc_tbl_scope_fid_add *
@@ -59934,7 +59934,7 @@ struct hwrm_tfc_tbl_scope_deconfig_output {
 
 /* TruFlow command to add a FID to a table scope. */
 /* hwrm_tfc_tbl_scope_fid_add_input (size:192b/24B) */
-struct hwrm_tfc_tbl_scope_fid_add_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_fid_add_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -59976,10 +59976,10 @@ struct hwrm_tfc_tbl_scope_fid_add_input {
 	uint8_t	tsid;
 	/* unused. */
 	uint8_t	unused0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_fid_add_output (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_fid_add_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_fid_add_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60001,7 +60001,7 @@ struct hwrm_tfc_tbl_scope_fid_add_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tfc_tbl_scope_fid_rem *
@@ -60010,7 +60010,7 @@ struct hwrm_tfc_tbl_scope_fid_add_output {
 
 /* TruFlow command to remove a FID from a table scope. */
 /* hwrm_tfc_tbl_scope_fid_rem_input (size:192b/24B) */
-struct hwrm_tfc_tbl_scope_fid_rem_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_fid_rem_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60052,10 +60052,10 @@ struct hwrm_tfc_tbl_scope_fid_rem_input {
 	uint8_t	tsid;
 	/* unused. */
 	uint8_t	unused0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_fid_rem_output (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_fid_rem_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_fid_rem_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60077,7 +60077,7 @@ struct hwrm_tfc_tbl_scope_fid_rem_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_tfc_session_id_alloc *
@@ -60092,7 +60092,7 @@ struct hwrm_tfc_tbl_scope_fid_rem_output {
  * to 0), will result in this session id being freed automatically.
  */
 /* hwrm_tfc_session_id_alloc_input (size:192b/24B) */
-struct hwrm_tfc_session_id_alloc_input {
+struct __rte_packed_begin hwrm_tfc_session_id_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60132,10 +60132,10 @@ struct hwrm_tfc_session_id_alloc_input {
 	uint16_t	fid;
 	/* Unused field */
 	uint8_t	unused0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_session_id_alloc_output (size:128b/16B) */
-struct hwrm_tfc_session_id_alloc_output {
+struct __rte_packed_begin hwrm_tfc_session_id_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60160,7 +60160,7 @@ struct hwrm_tfc_session_id_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_tfc_session_fid_add *
@@ -60172,7 +60172,7 @@ struct hwrm_tfc_session_id_alloc_output {
  * will be associated with the passed in sid.
  */
 /* hwrm_tfc_session_fid_add_input (size:192b/24B) */
-struct hwrm_tfc_session_fid_add_input {
+struct __rte_packed_begin hwrm_tfc_session_fid_add_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60217,10 +60217,10 @@ struct hwrm_tfc_session_fid_add_input {
 	uint16_t	sid;
 	/* Unused field */
 	uint8_t	unused0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_session_fid_add_output (size:128b/16B) */
-struct hwrm_tfc_session_fid_add_output {
+struct __rte_packed_begin hwrm_tfc_session_fid_add_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60242,7 +60242,7 @@ struct hwrm_tfc_session_fid_add_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_tfc_session_fid_rem *
@@ -60257,7 +60257,7 @@ struct hwrm_tfc_session_fid_add_output {
  * automatically.
  */
 /* hwrm_tfc_session_fid_rem_input (size:192b/24B) */
-struct hwrm_tfc_session_fid_rem_input {
+struct __rte_packed_begin hwrm_tfc_session_fid_rem_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60302,10 +60302,10 @@ struct hwrm_tfc_session_fid_rem_input {
 	uint16_t	sid;
 	/* Unused field */
 	uint8_t	unused0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_session_fid_rem_output (size:128b/16B) */
-struct hwrm_tfc_session_fid_rem_output {
+struct __rte_packed_begin hwrm_tfc_session_fid_rem_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60327,7 +60327,7 @@ struct hwrm_tfc_session_fid_rem_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tfc_ident_alloc *
@@ -60342,7 +60342,7 @@ struct hwrm_tfc_session_fid_rem_output {
  * to all these is allocated and returned in the HWRM response.
  */
 /* hwrm_tfc_ident_alloc_input (size:192b/24B) */
-struct hwrm_tfc_ident_alloc_input {
+struct __rte_packed_begin hwrm_tfc_ident_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60415,10 +60415,10 @@ struct hwrm_tfc_ident_alloc_input {
 		HWRM_TFC_IDENT_ALLOC_INPUT_TRACK_TYPE_TRACK_TYPE_FID
 	/* Unused field */
 	uint8_t	unused0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_ident_alloc_output (size:128b/16B) */
-struct hwrm_tfc_ident_alloc_output {
+struct __rte_packed_begin hwrm_tfc_ident_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60443,7 +60443,7 @@ struct hwrm_tfc_ident_alloc_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_tfc_ident_free *
@@ -60457,7 +60457,7 @@ struct hwrm_tfc_ident_alloc_output {
  * freed, only after various sanity checks are completed.
  */
 /* hwrm_tfc_ident_free_input (size:192b/24B) */
-struct hwrm_tfc_ident_free_input {
+struct __rte_packed_begin hwrm_tfc_ident_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60517,10 +60517,10 @@ struct hwrm_tfc_ident_free_input {
 		HWRM_TFC_IDENT_FREE_INPUT_FLAGS_DIR_TX
 	/* The resource identifier to be freed */
 	uint16_t	ident_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_ident_free_output (size:128b/16B) */
-struct hwrm_tfc_ident_free_output {
+struct __rte_packed_begin hwrm_tfc_ident_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60540,7 +60540,7 @@ struct hwrm_tfc_ident_free_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_tfc_idx_tbl_alloc *
@@ -60548,7 +60548,7 @@ struct hwrm_tfc_ident_free_output {
 
 
 /* hwrm_tfc_idx_tbl_alloc_input (size:192b/24B) */
-struct hwrm_tfc_idx_tbl_alloc_input {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60641,10 +60641,10 @@ struct hwrm_tfc_idx_tbl_alloc_input {
 		UINT32_C(0x3)
 	#define HWRM_TFC_IDX_TBL_ALLOC_INPUT_BLKTYPE_LAST \
 		HWRM_TFC_IDX_TBL_ALLOC_INPUT_BLKTYPE_BLKTYPE_TE_GPARSE
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_idx_tbl_alloc_output (size:128b/16B) */
-struct hwrm_tfc_idx_tbl_alloc_output {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60669,7 +60669,7 @@ struct hwrm_tfc_idx_tbl_alloc_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tfc_idx_tbl_alloc_set *
@@ -60677,7 +60677,7 @@ struct hwrm_tfc_idx_tbl_alloc_output {
 
 
 /* hwrm_tfc_idx_tbl_alloc_set_input (size:1088b/136B) */
-struct hwrm_tfc_idx_tbl_alloc_set_input {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_alloc_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60786,10 +60786,10 @@ struct hwrm_tfc_idx_tbl_alloc_set_input {
 	 * then this field contains the DMA buffer pointer.
 	 */
 	uint8_t	dev_data[96];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_idx_tbl_alloc_set_output (size:128b/16B) */
-struct hwrm_tfc_idx_tbl_alloc_set_output {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_alloc_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60814,7 +60814,7 @@ struct hwrm_tfc_idx_tbl_alloc_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tfc_idx_tbl_set *
@@ -60822,7 +60822,7 @@ struct hwrm_tfc_idx_tbl_alloc_set_output {
 
 
 /* hwrm_tfc_idx_tbl_set_input (size:1088b/136B) */
-struct hwrm_tfc_idx_tbl_set_input {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -60917,10 +60917,10 @@ struct hwrm_tfc_idx_tbl_set_input {
 	 * then this field contains the DMA buffer pointer.
 	 */
 	uint8_t	dev_data[96];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_idx_tbl_set_output (size:128b/16B) */
-struct hwrm_tfc_idx_tbl_set_output {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -60940,7 +60940,7 @@ struct hwrm_tfc_idx_tbl_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_tfc_idx_tbl_get *
@@ -60948,7 +60948,7 @@ struct hwrm_tfc_idx_tbl_set_output {
 
 
 /* hwrm_tfc_idx_tbl_get_input (size:320b/40B) */
-struct hwrm_tfc_idx_tbl_get_input {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61042,10 +61042,10 @@ struct hwrm_tfc_idx_tbl_get_input {
 	uint8_t	unused0[5];
 	/* The location of the response dma buffer */
 	uint64_t	dma_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_idx_tbl_get_output (size:128b/16B) */
-struct hwrm_tfc_idx_tbl_get_output {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61067,7 +61067,7 @@ struct hwrm_tfc_idx_tbl_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_tfc_idx_tbl_free *
@@ -61075,7 +61075,7 @@ struct hwrm_tfc_idx_tbl_get_output {
 
 
 /* hwrm_tfc_idx_tbl_free_input (size:256b/32B) */
-struct hwrm_tfc_idx_tbl_free_input {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61153,10 +61153,10 @@ struct hwrm_tfc_idx_tbl_free_input {
 		HWRM_TFC_IDX_TBL_FREE_INPUT_BLKTYPE_BLKTYPE_TE_GPARSE
 	/* unused. */
 	uint8_t	unused0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_idx_tbl_free_output (size:128b/16B) */
-struct hwrm_tfc_idx_tbl_free_output {
+struct __rte_packed_begin hwrm_tfc_idx_tbl_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61176,11 +61176,11 @@ struct hwrm_tfc_idx_tbl_free_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* TruFlow resources request for a global id. */
 /* tfc_global_id_hwrm_req (size:64b/8B) */
-struct tfc_global_id_hwrm_req {
+struct __rte_packed_begin tfc_global_id_hwrm_req {
 	/* Type of the resource, defined in enum cfa_resource_type HCAPI RM. */
 	uint16_t	rtype;
 	/* Indicates the flow direction in type of cfa_dir. */
@@ -61189,11 +61189,11 @@ struct tfc_global_id_hwrm_req {
 	uint16_t	subtype;
 	/* Number of the type of resources. */
 	uint16_t	cnt;
-} __rte_packed;
+} __rte_packed_end;
 
 /* The reserved resources for the global id. */
 /* tfc_global_id_hwrm_rsp (size:64b/8B) */
-struct tfc_global_id_hwrm_rsp {
+struct __rte_packed_begin tfc_global_id_hwrm_rsp {
 	/* Type of the resource, defined in enum cfa_resource_type HCAPI RM. */
 	uint16_t	rtype;
 	/* Indicates the flow direction in type of cfa_dir. */
@@ -61202,7 +61202,7 @@ struct tfc_global_id_hwrm_rsp {
 	uint16_t	subtype;
 	/* The global id that the resources reserved for. */
 	uint16_t	id;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_tfc_global_id_alloc *
@@ -61210,7 +61210,7 @@ struct tfc_global_id_hwrm_rsp {
 
 
 /* hwrm_tfc_global_id_alloc_input (size:320b/40B) */
-struct hwrm_tfc_global_id_alloc_input {
+struct __rte_packed_begin hwrm_tfc_global_id_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61272,10 +61272,10 @@ struct hwrm_tfc_global_id_alloc_input {
 	 * message.
 	 */
 	uint64_t	resc_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_global_id_alloc_output (size:128b/16B) */
-struct hwrm_tfc_global_id_alloc_output {
+struct __rte_packed_begin hwrm_tfc_global_id_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61304,7 +61304,7 @@ struct hwrm_tfc_global_id_alloc_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_tfc_tcam_set *
@@ -61312,7 +61312,7 @@ struct hwrm_tfc_global_id_alloc_output {
 
 
 /* hwrm_tfc_tcam_set_input (size:1088b/136B) */
-struct hwrm_tfc_tcam_set_input {
+struct __rte_packed_begin hwrm_tfc_tcam_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61387,10 +61387,10 @@ struct hwrm_tfc_tcam_set_input {
 	 * and result at result_offset for the device.
 	 */
 	uint8_t	dev_data[96];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tcam_set_output (size:128b/16B) */
-struct hwrm_tfc_tcam_set_output {
+struct __rte_packed_begin hwrm_tfc_tcam_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61410,7 +61410,7 @@ struct hwrm_tfc_tcam_set_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_tfc_tcam_get *
@@ -61418,7 +61418,7 @@ struct hwrm_tfc_tcam_set_output {
 
 
 /* hwrm_tfc_tcam_get_input (size:192b/24B) */
-struct hwrm_tfc_tcam_get_input {
+struct __rte_packed_begin hwrm_tfc_tcam_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61478,10 +61478,10 @@ struct hwrm_tfc_tcam_get_input {
 	uint16_t	sid;
 	/* Logical TCAM ID. */
 	uint16_t	tcam_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tcam_get_output (size:2368b/296B) */
-struct hwrm_tfc_tcam_get_output {
+struct __rte_packed_begin hwrm_tfc_tcam_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61512,7 +61512,7 @@ struct hwrm_tfc_tcam_get_output {
 	 * to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_tfc_tcam_alloc *
@@ -61520,7 +61520,7 @@ struct hwrm_tfc_tcam_get_output {
 
 
 /* hwrm_tfc_tcam_alloc_input (size:256b/32B) */
-struct hwrm_tfc_tcam_alloc_input {
+struct __rte_packed_begin hwrm_tfc_tcam_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61598,10 +61598,10 @@ struct hwrm_tfc_tcam_alloc_input {
 		HWRM_TFC_TCAM_ALLOC_INPUT_TRACK_TYPE_TRACK_TYPE_FID
 	/* Unused. */
 	uint8_t	unused0[5];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tcam_alloc_output (size:128b/16B) */
-struct hwrm_tfc_tcam_alloc_output {
+struct __rte_packed_begin hwrm_tfc_tcam_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61626,7 +61626,7 @@ struct hwrm_tfc_tcam_alloc_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_tfc_tcam_alloc_set *
@@ -61634,7 +61634,7 @@ struct hwrm_tfc_tcam_alloc_output {
 
 
 /* hwrm_tfc_tcam_alloc_set_input (size:1088b/136B) */
-struct hwrm_tfc_tcam_alloc_set_input {
+struct __rte_packed_begin hwrm_tfc_tcam_alloc_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61723,10 +61723,10 @@ struct hwrm_tfc_tcam_alloc_set_input {
 	 * then this field contains the DMA buffer pointer.
 	 */
 	uint8_t	dev_data[96];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tcam_alloc_set_output (size:128b/16B) */
-struct hwrm_tfc_tcam_alloc_set_output {
+struct __rte_packed_begin hwrm_tfc_tcam_alloc_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61748,7 +61748,7 @@ struct hwrm_tfc_tcam_alloc_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_tfc_tcam_free *
@@ -61756,7 +61756,7 @@ struct hwrm_tfc_tcam_alloc_set_output {
 
 
 /* hwrm_tfc_tcam_free_input (size:192b/24B) */
-struct hwrm_tfc_tcam_free_input {
+struct __rte_packed_begin hwrm_tfc_tcam_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61816,10 +61816,10 @@ struct hwrm_tfc_tcam_free_input {
 	uint16_t	sid;
 	/* Logical TCAM ID. */
 	uint16_t	tcam_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tcam_free_output (size:128b/16B) */
-struct hwrm_tfc_tcam_free_output {
+struct __rte_packed_begin hwrm_tfc_tcam_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61839,7 +61839,7 @@ struct hwrm_tfc_tcam_free_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_tfc_if_tbl_set *
@@ -61847,7 +61847,7 @@ struct hwrm_tfc_tcam_free_output {
 
 
 /* hwrm_tfc_if_tbl_set_input (size:960b/120B) */
-struct hwrm_tfc_if_tbl_set_input {
+struct __rte_packed_begin hwrm_tfc_if_tbl_set_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61903,10 +61903,10 @@ struct hwrm_tfc_if_tbl_set_input {
 	uint8_t	unused0[7];
 	/* Table data. */
 	uint8_t	data[88];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_if_tbl_set_output (size:128b/16B) */
-struct hwrm_tfc_if_tbl_set_output {
+struct __rte_packed_begin hwrm_tfc_if_tbl_set_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -61926,7 +61926,7 @@ struct hwrm_tfc_if_tbl_set_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_tfc_if_tbl_get *
@@ -61934,7 +61934,7 @@ struct hwrm_tfc_if_tbl_set_output {
 
 
 /* hwrm_tfc_if_tbl_get_input (size:256b/32B) */
-struct hwrm_tfc_if_tbl_get_input {
+struct __rte_packed_begin hwrm_tfc_if_tbl_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -61988,10 +61988,10 @@ struct hwrm_tfc_if_tbl_get_input {
 	uint8_t	data_size;
 	/* Reserved */
 	uint8_t	unused0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_if_tbl_get_output (size:960b/120B) */
-struct hwrm_tfc_if_tbl_get_output {
+struct __rte_packed_begin hwrm_tfc_if_tbl_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -62038,7 +62038,7 @@ struct hwrm_tfc_if_tbl_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************************
  * hwrm_tfc_tbl_scope_config_get *
@@ -62047,7 +62047,7 @@ struct hwrm_tfc_if_tbl_get_output {
 
 /* TruFlow command to return whether the table scope is fully configured. */
 /* hwrm_tfc_tbl_scope_config_get_input (size:192b/24B) */
-struct hwrm_tfc_tbl_scope_config_get_input {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_config_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -62080,10 +62080,10 @@ struct hwrm_tfc_tbl_scope_config_get_input {
 	uint8_t	tsid;
 	/* unused. */
 	uint8_t	unused0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_tbl_scope_config_get_output (size:128b/16B) */
-struct hwrm_tfc_tbl_scope_config_get_output {
+struct __rte_packed_begin hwrm_tfc_tbl_scope_config_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -62105,7 +62105,7 @@ struct hwrm_tfc_tbl_scope_config_get_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_tfc_resc_usage_query *
@@ -62113,7 +62113,7 @@ struct hwrm_tfc_tbl_scope_config_get_output {
 
 
 /* hwrm_tfc_resc_usage_query_input (size:256b/32B) */
-struct hwrm_tfc_resc_usage_query_input {
+struct __rte_packed_begin hwrm_tfc_resc_usage_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -62173,10 +62173,10 @@ struct hwrm_tfc_resc_usage_query_input {
 	uint16_t	data_size;
 	/* unused */
 	uint8_t	unused1[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tfc_resc_usage_query_output (size:960b/120B) */
-struct hwrm_tfc_resc_usage_query_output {
+struct __rte_packed_begin hwrm_tfc_resc_usage_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -62204,7 +62204,7 @@ struct hwrm_tfc_resc_usage_query_output {
 	 * is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tunnel_dst_port_query *
@@ -62212,7 +62212,7 @@ struct hwrm_tfc_resc_usage_query_output {
 
 
 /* hwrm_tunnel_dst_port_query_input (size:192b/24B) */
-struct hwrm_tunnel_dst_port_query_input {
+struct __rte_packed_begin hwrm_tunnel_dst_port_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -62314,10 +62314,10 @@ struct hwrm_tunnel_dst_port_query_input {
 	 */
 	uint8_t	tunnel_next_proto;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tunnel_dst_port_query_output (size:128b/16B) */
-struct hwrm_tunnel_dst_port_query_output {
+struct __rte_packed_begin hwrm_tunnel_dst_port_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -62398,7 +62398,7 @@ struct hwrm_tunnel_dst_port_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_tunnel_dst_port_alloc *
@@ -62406,7 +62406,7 @@ struct hwrm_tunnel_dst_port_query_output {
 
 
 /* hwrm_tunnel_dst_port_alloc_input (size:192b/24B) */
-struct hwrm_tunnel_dst_port_alloc_input {
+struct __rte_packed_begin hwrm_tunnel_dst_port_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -62522,10 +62522,10 @@ struct hwrm_tunnel_dst_port_alloc_input {
 	 */
 	uint16_t	tunnel_dst_port_val;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tunnel_dst_port_alloc_output (size:128b/16B) */
-struct hwrm_tunnel_dst_port_alloc_output {
+struct __rte_packed_begin hwrm_tunnel_dst_port_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -62595,7 +62595,7 @@ struct hwrm_tunnel_dst_port_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_tunnel_dst_port_free *
@@ -62603,7 +62603,7 @@ struct hwrm_tunnel_dst_port_alloc_output {
 
 
 /* hwrm_tunnel_dst_port_free_input (size:192b/24B) */
-struct hwrm_tunnel_dst_port_free_input {
+struct __rte_packed_begin hwrm_tunnel_dst_port_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -62713,10 +62713,10 @@ struct hwrm_tunnel_dst_port_free_input {
 	 */
 	uint16_t	tunnel_dst_port_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_tunnel_dst_port_free_output (size:128b/16B) */
-struct hwrm_tunnel_dst_port_free_output {
+struct __rte_packed_begin hwrm_tunnel_dst_port_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -62747,11 +62747,11 @@ struct hwrm_tunnel_dst_port_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Periodic statistics context DMA to host. */
 /* ctx_hw_stats (size:1280b/160B) */
-struct ctx_hw_stats {
+struct __rte_packed_begin ctx_hw_stats {
 	/* Number of received unicast packets */
 	uint64_t	rx_ucast_pkts;
 	/* Number of received multicast packets */
@@ -62792,7 +62792,7 @@ struct ctx_hw_stats {
 	uint64_t	tpa_events;
 	/* Number of TPA aborts */
 	uint64_t	tpa_aborts;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Extended periodic statistics context DMA to host. On cards that
@@ -62800,7 +62800,7 @@ struct ctx_hw_stats {
  * by DMA of ctx_hw_stats_ext, rather than legacy ctx_hw_stats structure.
  */
 /* ctx_hw_stats_ext (size:1408b/176B) */
-struct ctx_hw_stats_ext {
+struct __rte_packed_begin ctx_hw_stats_ext {
 	/* Number of received unicast packets */
 	uint64_t	rx_ucast_pkts;
 	/* Number of received multicast packets */
@@ -62845,11 +62845,11 @@ struct ctx_hw_stats_ext {
 	uint64_t	rx_tpa_errors;
 	/* Number of TPA events */
 	uint64_t	rx_tpa_events;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Periodic Engine statistics context DMA to host. */
 /* ctx_eng_stats (size:512b/64B) */
-struct ctx_eng_stats {
+struct __rte_packed_begin ctx_eng_stats {
 	/*
 	 * Count of data bytes into the Engine.
 	 * This includes any user supplied prefix,
@@ -62891,7 +62891,7 @@ struct ctx_eng_stats {
 	 * the unit is count of clock cycles
 	 */
 	uint64_t	cdd_engine_usage;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_stat_ctx_alloc *
@@ -62899,7 +62899,7 @@ struct ctx_eng_stats {
 
 
 /* hwrm_stat_ctx_alloc_input (size:320b/40B) */
-struct hwrm_stat_ctx_alloc_input {
+struct __rte_packed_begin hwrm_stat_ctx_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -62981,10 +62981,10 @@ struct hwrm_stat_ctx_alloc_input {
 	 */
 	uint16_t	steering_tag;
 	uint32_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_ctx_alloc_output (size:128b/16B) */
-struct hwrm_stat_ctx_alloc_output {
+struct __rte_packed_begin hwrm_stat_ctx_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63004,7 +63004,7 @@ struct hwrm_stat_ctx_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_stat_ctx_free *
@@ -63012,7 +63012,7 @@ struct hwrm_stat_ctx_alloc_output {
 
 
 /* hwrm_stat_ctx_free_input (size:192b/24B) */
-struct hwrm_stat_ctx_free_input {
+struct __rte_packed_begin hwrm_stat_ctx_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63044,10 +63044,10 @@ struct hwrm_stat_ctx_free_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_ctx_free_output (size:128b/16B) */
-struct hwrm_stat_ctx_free_output {
+struct __rte_packed_begin hwrm_stat_ctx_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63067,7 +63067,7 @@ struct hwrm_stat_ctx_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_stat_ctx_query *
@@ -63075,7 +63075,7 @@ struct hwrm_stat_ctx_free_output {
 
 
 /* hwrm_stat_ctx_query_input (size:192b/24B) */
-struct hwrm_stat_ctx_query_input {
+struct __rte_packed_begin hwrm_stat_ctx_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63114,10 +63114,10 @@ struct hwrm_stat_ctx_query_input {
 	 */
 	#define HWRM_STAT_CTX_QUERY_INPUT_FLAGS_COUNTER_MASK     UINT32_C(0x1)
 	uint8_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_ctx_query_output (size:1408b/176B) */
-struct hwrm_stat_ctx_query_output {
+struct __rte_packed_begin hwrm_stat_ctx_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63175,7 +63175,7 @@ struct hwrm_stat_ctx_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_stat_ext_ctx_query *
@@ -63183,7 +63183,7 @@ struct hwrm_stat_ctx_query_output {
 
 
 /* hwrm_stat_ext_ctx_query_input (size:192b/24B) */
-struct hwrm_stat_ext_ctx_query_input {
+struct __rte_packed_begin hwrm_stat_ext_ctx_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63223,10 +63223,10 @@ struct hwrm_stat_ext_ctx_query_input {
 	#define HWRM_STAT_EXT_CTX_QUERY_INPUT_FLAGS_COUNTER_MASK \
 		UINT32_C(0x1)
 	uint8_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_ext_ctx_query_output (size:1536b/192B) */
-struct hwrm_stat_ext_ctx_query_output {
+struct __rte_packed_begin hwrm_stat_ext_ctx_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63288,7 +63288,7 @@ struct hwrm_stat_ext_ctx_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_stat_ctx_eng_query *
@@ -63296,7 +63296,7 @@ struct hwrm_stat_ext_ctx_query_output {
 
 
 /* hwrm_stat_ctx_eng_query_input (size:192b/24B) */
-struct hwrm_stat_ctx_eng_query_input {
+struct __rte_packed_begin hwrm_stat_ctx_eng_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63328,10 +63328,10 @@ struct hwrm_stat_ctx_eng_query_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_ctx_eng_query_output (size:640b/80B) */
-struct hwrm_stat_ctx_eng_query_output {
+struct __rte_packed_begin hwrm_stat_ctx_eng_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63390,7 +63390,7 @@ struct hwrm_stat_ctx_eng_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_stat_ctx_clr_stats *
@@ -63398,7 +63398,7 @@ struct hwrm_stat_ctx_eng_query_output {
 
 
 /* hwrm_stat_ctx_clr_stats_input (size:192b/24B) */
-struct hwrm_stat_ctx_clr_stats_input {
+struct __rte_packed_begin hwrm_stat_ctx_clr_stats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63430,10 +63430,10 @@ struct hwrm_stat_ctx_clr_stats_input {
 	/* ID of the statistics context that is being queried. */
 	uint32_t	stat_ctx_id;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_ctx_clr_stats_output (size:128b/16B) */
-struct hwrm_stat_ctx_clr_stats_output {
+struct __rte_packed_begin hwrm_stat_ctx_clr_stats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63451,7 +63451,7 @@ struct hwrm_stat_ctx_clr_stats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /********************
  * hwrm_pcie_qstats *
@@ -63459,7 +63459,7 @@ struct hwrm_stat_ctx_clr_stats_output {
 
 
 /* hwrm_pcie_qstats_input (size:256b/32B) */
-struct hwrm_pcie_qstats_input {
+struct __rte_packed_begin hwrm_pcie_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63500,10 +63500,10 @@ struct hwrm_pcie_qstats_input {
 	 * PCIe statistics will be stored
 	 */
 	uint64_t	pcie_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_pcie_qstats_output (size:128b/16B) */
-struct hwrm_pcie_qstats_output {
+struct __rte_packed_begin hwrm_pcie_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63523,11 +63523,11 @@ struct hwrm_pcie_qstats_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* PCIe Statistics Formats */
 /* pcie_ctx_hw_stats (size:768b/96B) */
-struct pcie_ctx_hw_stats {
+struct __rte_packed_begin pcie_ctx_hw_stats {
 	/* Number of physical layer receiver errors */
 	uint64_t	pcie_pl_signal_integrity;
 	/* Number of DLLP CRC errors detected by Data Link Layer */
@@ -63559,7 +63559,7 @@ struct pcie_ctx_hw_stats {
 	 * to Recovery
 	 */
 	uint64_t	pcie_recovery_histogram;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_stat_generic_qstats *
@@ -63567,7 +63567,7 @@ struct pcie_ctx_hw_stats {
 
 
 /* hwrm_stat_generic_qstats_input (size:256b/32B) */
-struct hwrm_stat_generic_qstats_input {
+struct __rte_packed_begin hwrm_stat_generic_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63618,10 +63618,10 @@ struct hwrm_stat_generic_qstats_input {
 	 * generic statistics will be stored
 	 */
 	uint64_t	generic_stat_host_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_generic_qstats_output (size:128b/16B) */
-struct hwrm_stat_generic_qstats_output {
+struct __rte_packed_begin hwrm_stat_generic_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63642,11 +63642,11 @@ struct hwrm_stat_generic_qstats_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Generic Statistic Format */
 /* generic_sw_hw_stats (size:1472b/184B) */
-struct generic_sw_hw_stats {
+struct __rte_packed_begin generic_sw_hw_stats {
 	/*
 	 * This is the number of TLP bytes that have been transmitted for
 	 * the caller PF.
@@ -63744,7 +63744,7 @@ struct generic_sw_hw_stats {
 	 * the hardware based doorbell drop recovery feature.
 	 */
 	uint64_t	hw_db_recov_oo_drop_count;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_stat_db_error_qstats *
@@ -63752,7 +63752,7 @@ struct generic_sw_hw_stats {
 
 
 /* hwrm_stat_db_error_qstats_input (size:128b/16B) */
-struct hwrm_stat_db_error_qstats_input {
+struct __rte_packed_begin hwrm_stat_db_error_qstats_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63781,10 +63781,10 @@ struct hwrm_stat_db_error_qstats_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_stat_db_error_qstats_output (size:320b/40B) */
-struct hwrm_stat_db_error_qstats_output {
+struct __rte_packed_begin hwrm_stat_db_error_qstats_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63835,7 +63835,7 @@ struct hwrm_stat_db_error_qstats_output {
 	 * written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_exec_fwd_resp *
@@ -63843,7 +63843,7 @@ struct hwrm_stat_db_error_qstats_output {
 
 
 /* hwrm_exec_fwd_resp_input (size:1024b/128B) */
-struct hwrm_exec_fwd_resp_input {
+struct __rte_packed_begin hwrm_exec_fwd_resp_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63888,10 +63888,10 @@ struct hwrm_exec_fwd_resp_input {
 	 */
 	uint16_t	encap_resp_target_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_exec_fwd_resp_output (size:128b/16B) */
-struct hwrm_exec_fwd_resp_output {
+struct __rte_packed_begin hwrm_exec_fwd_resp_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63909,7 +63909,7 @@ struct hwrm_exec_fwd_resp_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_reject_fwd_resp *
@@ -63917,7 +63917,7 @@ struct hwrm_exec_fwd_resp_output {
 
 
 /* hwrm_reject_fwd_resp_input (size:1024b/128B) */
-struct hwrm_reject_fwd_resp_input {
+struct __rte_packed_begin hwrm_reject_fwd_resp_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -63962,10 +63962,10 @@ struct hwrm_reject_fwd_resp_input {
 	 */
 	uint16_t	encap_resp_target_id;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_reject_fwd_resp_output (size:128b/16B) */
-struct hwrm_reject_fwd_resp_output {
+struct __rte_packed_begin hwrm_reject_fwd_resp_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -63983,7 +63983,7 @@ struct hwrm_reject_fwd_resp_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_fwd_resp *
@@ -63991,7 +63991,7 @@ struct hwrm_reject_fwd_resp_output {
 
 
 /* hwrm_fwd_resp_input (size:1024b/128B) */
-struct hwrm_fwd_resp_input {
+struct __rte_packed_begin hwrm_fwd_resp_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64051,10 +64051,10 @@ struct hwrm_fwd_resp_input {
 	uint64_t	encap_resp_addr;
 	/* This is an encapsulated response. */
 	uint32_t	encap_resp[24];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_fwd_resp_output (size:128b/16B) */
-struct hwrm_fwd_resp_output {
+struct __rte_packed_begin hwrm_fwd_resp_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64072,7 +64072,7 @@ struct hwrm_fwd_resp_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_fwd_async_event_cmpl *
@@ -64080,7 +64080,7 @@ struct hwrm_fwd_resp_output {
 
 
 /* hwrm_fwd_async_event_cmpl_input (size:320b/40B) */
-struct hwrm_fwd_async_event_cmpl_input {
+struct __rte_packed_begin hwrm_fwd_async_event_cmpl_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64121,10 +64121,10 @@ struct hwrm_fwd_async_event_cmpl_input {
 	uint8_t	unused_0[6];
 	/* This is an encapsulated asynchronous event completion. */
 	uint32_t	encap_async_event_cmpl[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_fwd_async_event_cmpl_output (size:128b/16B) */
-struct hwrm_fwd_async_event_cmpl_output {
+struct __rte_packed_begin hwrm_fwd_async_event_cmpl_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64142,7 +64142,7 @@ struct hwrm_fwd_async_event_cmpl_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_nvm_raw_write_blk *
@@ -64150,7 +64150,7 @@ struct hwrm_fwd_async_event_cmpl_output {
 
 
 /* hwrm_nvm_raw_write_blk_input (size:256b/32B) */
-struct hwrm_nvm_raw_write_blk_input {
+struct __rte_packed_begin hwrm_nvm_raw_write_blk_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64192,10 +64192,10 @@ struct hwrm_nvm_raw_write_blk_input {
 	uint32_t	dest_addr;
 	/* Length of data to be written, in bytes. */
 	uint32_t	len;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_raw_write_blk_output (size:128b/16B) */
-struct hwrm_nvm_raw_write_blk_output {
+struct __rte_packed_begin hwrm_nvm_raw_write_blk_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64213,7 +64213,7 @@ struct hwrm_nvm_raw_write_blk_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_nvm_read *
@@ -64221,7 +64221,7 @@ struct hwrm_nvm_raw_write_blk_output {
 
 
 /* hwrm_nvm_read_input (size:320b/40B) */
-struct hwrm_nvm_read_input {
+struct __rte_packed_begin hwrm_nvm_read_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64263,10 +64263,10 @@ struct hwrm_nvm_read_input {
 	/* The length of the data to be read, in bytes. */
 	uint32_t	len;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_read_output (size:128b/16B) */
-struct hwrm_nvm_read_output {
+struct __rte_packed_begin hwrm_nvm_read_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64284,7 +64284,7 @@ struct hwrm_nvm_read_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_nvm_raw_dump *
@@ -64292,7 +64292,7 @@ struct hwrm_nvm_read_output {
 
 
 /* hwrm_nvm_raw_dump_input (size:256b/32B) */
-struct hwrm_nvm_raw_dump_input {
+struct __rte_packed_begin hwrm_nvm_raw_dump_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64330,10 +64330,10 @@ struct hwrm_nvm_raw_dump_input {
 	uint32_t	offset;
 	/* Total length of NVRAM contents to be read, in bytes. */
 	uint32_t	len;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_raw_dump_output (size:128b/16B) */
-struct hwrm_nvm_raw_dump_output {
+struct __rte_packed_begin hwrm_nvm_raw_dump_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64351,7 +64351,7 @@ struct hwrm_nvm_raw_dump_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_nvm_get_dir_entries *
@@ -64359,7 +64359,7 @@ struct hwrm_nvm_raw_dump_output {
 
 
 /* hwrm_nvm_get_dir_entries_input (size:192b/24B) */
-struct hwrm_nvm_get_dir_entries_input {
+struct __rte_packed_begin hwrm_nvm_get_dir_entries_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64393,10 +64393,10 @@ struct hwrm_nvm_get_dir_entries_input {
 	 * This is the host address where the directory will be written.
 	 */
 	uint64_t	host_dest_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_get_dir_entries_output (size:128b/16B) */
-struct hwrm_nvm_get_dir_entries_output {
+struct __rte_packed_begin hwrm_nvm_get_dir_entries_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64414,7 +64414,7 @@ struct hwrm_nvm_get_dir_entries_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_nvm_get_dir_info *
@@ -64422,7 +64422,7 @@ struct hwrm_nvm_get_dir_entries_output {
 
 
 /* hwrm_nvm_get_dir_info_input (size:128b/16B) */
-struct hwrm_nvm_get_dir_info_input {
+struct __rte_packed_begin hwrm_nvm_get_dir_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64451,10 +64451,10 @@ struct hwrm_nvm_get_dir_info_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_get_dir_info_output (size:192b/24B) */
-struct hwrm_nvm_get_dir_info_output {
+struct __rte_packed_begin hwrm_nvm_get_dir_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64476,7 +64476,7 @@ struct hwrm_nvm_get_dir_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_nvm_write *
@@ -64484,7 +64484,7 @@ struct hwrm_nvm_get_dir_info_output {
 
 
 /* hwrm_nvm_write_input (size:448b/56B) */
-struct hwrm_nvm_write_input {
+struct __rte_packed_begin hwrm_nvm_write_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64598,10 +64598,10 @@ struct hwrm_nvm_write_input {
 	 */
 	uint32_t	len;
 	uint32_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_write_output (size:128b/16B) */
-struct hwrm_nvm_write_output {
+struct __rte_packed_begin hwrm_nvm_write_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64629,10 +64629,10 @@ struct hwrm_nvm_write_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_write_cmd_err (size:64b/8B) */
-struct hwrm_nvm_write_cmd_err {
+struct __rte_packed_begin hwrm_nvm_write_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -64647,7 +64647,7 @@ struct hwrm_nvm_write_cmd_err {
 	#define HWRM_NVM_WRITE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_WRITE_CMD_ERR_CODE_NO_SPACE
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_nvm_modify *
@@ -64655,7 +64655,7 @@ struct hwrm_nvm_write_cmd_err {
 
 
 /* hwrm_nvm_modify_input (size:320b/40B) */
-struct hwrm_nvm_modify_input {
+struct __rte_packed_begin hwrm_nvm_modify_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64716,10 +64716,10 @@ struct hwrm_nvm_modify_input {
 	 */
 	uint32_t	len;
 	uint8_t	unused_1[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_modify_output (size:128b/16B) */
-struct hwrm_nvm_modify_output {
+struct __rte_packed_begin hwrm_nvm_modify_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64737,7 +64737,7 @@ struct hwrm_nvm_modify_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_nvm_find_dir_entry *
@@ -64745,7 +64745,7 @@ struct hwrm_nvm_modify_output {
 
 
 /* hwrm_nvm_find_dir_entry_input (size:256b/32B) */
-struct hwrm_nvm_find_dir_entry_input {
+struct __rte_packed_begin hwrm_nvm_find_dir_entry_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64806,10 +64806,10 @@ struct hwrm_nvm_find_dir_entry_input {
 	#define HWRM_NVM_FIND_DIR_ENTRY_INPUT_OPT_ORDINAL_LAST \
 		HWRM_NVM_FIND_DIR_ENTRY_INPUT_OPT_ORDINAL_GT
 	uint8_t	unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_find_dir_entry_output (size:256b/32B) */
-struct hwrm_nvm_find_dir_entry_output {
+struct __rte_packed_begin hwrm_nvm_find_dir_entry_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64841,7 +64841,7 @@ struct hwrm_nvm_find_dir_entry_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_nvm_erase_dir_entry *
@@ -64849,7 +64849,7 @@ struct hwrm_nvm_find_dir_entry_output {
 
 
 /* hwrm_nvm_erase_dir_entry_input (size:192b/24B) */
-struct hwrm_nvm_erase_dir_entry_input {
+struct __rte_packed_begin hwrm_nvm_erase_dir_entry_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64881,10 +64881,10 @@ struct hwrm_nvm_erase_dir_entry_input {
 	/* Directory Entry Index */
 	uint16_t	dir_idx;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_erase_dir_entry_output (size:128b/16B) */
-struct hwrm_nvm_erase_dir_entry_output {
+struct __rte_packed_begin hwrm_nvm_erase_dir_entry_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -64902,7 +64902,7 @@ struct hwrm_nvm_erase_dir_entry_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_nvm_get_dev_info *
@@ -64910,7 +64910,7 @@ struct hwrm_nvm_erase_dir_entry_output {
 
 
 /* hwrm_nvm_get_dev_info_input (size:128b/16B) */
-struct hwrm_nvm_get_dev_info_input {
+struct __rte_packed_begin hwrm_nvm_get_dev_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -64939,10 +64939,10 @@ struct hwrm_nvm_get_dev_info_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_get_dev_info_output (size:704b/88B) */
-struct hwrm_nvm_get_dev_info_output {
+struct __rte_packed_begin hwrm_nvm_get_dev_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65076,7 +65076,7 @@ struct hwrm_nvm_get_dev_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_nvm_mod_dir_entry *
@@ -65084,7 +65084,7 @@ struct hwrm_nvm_get_dev_info_output {
 
 
 /* hwrm_nvm_mod_dir_entry_input (size:256b/32B) */
-struct hwrm_nvm_mod_dir_entry_input {
+struct __rte_packed_begin hwrm_nvm_mod_dir_entry_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65141,10 +65141,10 @@ struct hwrm_nvm_mod_dir_entry_input {
 	 * value of the content in the directory entry.
 	 */
 	uint32_t	checksum;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_mod_dir_entry_output (size:128b/16B) */
-struct hwrm_nvm_mod_dir_entry_output {
+struct __rte_packed_begin hwrm_nvm_mod_dir_entry_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65162,7 +65162,7 @@ struct hwrm_nvm_mod_dir_entry_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_nvm_verify_update *
@@ -65170,7 +65170,7 @@ struct hwrm_nvm_mod_dir_entry_output {
 
 
 /* hwrm_nvm_verify_update_input (size:192b/24B) */
-struct hwrm_nvm_verify_update_input {
+struct __rte_packed_begin hwrm_nvm_verify_update_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65217,10 +65217,10 @@ struct hwrm_nvm_verify_update_input {
 	 */
 	uint16_t	dir_ext;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_verify_update_output (size:128b/16B) */
-struct hwrm_nvm_verify_update_output {
+struct __rte_packed_begin hwrm_nvm_verify_update_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65238,7 +65238,7 @@ struct hwrm_nvm_verify_update_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_nvm_install_update *
@@ -65246,7 +65246,7 @@ struct hwrm_nvm_verify_update_output {
 
 
 /* hwrm_nvm_install_update_input (size:192b/24B) */
-struct hwrm_nvm_install_update_input {
+struct __rte_packed_begin hwrm_nvm_install_update_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65329,10 +65329,10 @@ struct hwrm_nvm_install_update_input {
 	#define HWRM_NVM_INSTALL_UPDATE_INPUT_FLAGS_VERIFY_ONLY \
 		UINT32_C(0x8)
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_install_update_output (size:192b/24B) */
-struct hwrm_nvm_install_update_output {
+struct __rte_packed_begin hwrm_nvm_install_update_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65481,10 +65481,10 @@ struct hwrm_nvm_install_update_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_install_update_cmd_err (size:64b/8B) */
-struct hwrm_nvm_install_update_cmd_err {
+struct __rte_packed_begin hwrm_nvm_install_update_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -65508,7 +65508,7 @@ struct hwrm_nvm_install_update_cmd_err {
 	#define HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_INSTALL_UPDATE_CMD_ERR_CODE_NO_VOLTREG_SUPPORT
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_nvm_flush *
@@ -65516,7 +65516,7 @@ struct hwrm_nvm_install_update_cmd_err {
 
 
 /* hwrm_nvm_flush_input (size:128b/16B) */
-struct hwrm_nvm_flush_input {
+struct __rte_packed_begin hwrm_nvm_flush_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65545,10 +65545,10 @@ struct hwrm_nvm_flush_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_flush_output (size:128b/16B) */
-struct hwrm_nvm_flush_output {
+struct __rte_packed_begin hwrm_nvm_flush_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65566,10 +65566,10 @@ struct hwrm_nvm_flush_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_flush_cmd_err (size:64b/8B) */
-struct hwrm_nvm_flush_cmd_err {
+struct __rte_packed_begin hwrm_nvm_flush_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -65582,7 +65582,7 @@ struct hwrm_nvm_flush_cmd_err {
 	#define HWRM_NVM_FLUSH_CMD_ERR_CODE_LAST \
 		HWRM_NVM_FLUSH_CMD_ERR_CODE_FAIL
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_nvm_get_variable *
@@ -65590,7 +65590,7 @@ struct hwrm_nvm_flush_cmd_err {
 
 
 /* hwrm_nvm_get_variable_input (size:320b/40B) */
-struct hwrm_nvm_get_variable_input {
+struct __rte_packed_begin hwrm_nvm_get_variable_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65659,10 +65659,10 @@ struct hwrm_nvm_get_variable_input {
 	#define HWRM_NVM_GET_VARIABLE_INPUT_FLAGS_FACTORY_DFLT \
 		UINT32_C(0x1)
 	uint8_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_get_variable_output (size:128b/16B) */
-struct hwrm_nvm_get_variable_output {
+struct __rte_packed_begin hwrm_nvm_get_variable_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65699,10 +65699,10 @@ struct hwrm_nvm_get_variable_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_get_variable_cmd_err (size:64b/8B) */
-struct hwrm_nvm_get_variable_cmd_err {
+struct __rte_packed_begin hwrm_nvm_get_variable_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -65719,7 +65719,7 @@ struct hwrm_nvm_get_variable_cmd_err {
 	#define HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_GET_VARIABLE_CMD_ERR_CODE_LEN_TOO_SHORT
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*************************
  * hwrm_nvm_set_variable *
@@ -65727,7 +65727,7 @@ struct hwrm_nvm_get_variable_cmd_err {
 
 
 /* hwrm_nvm_set_variable_input (size:320b/40B) */
-struct hwrm_nvm_set_variable_input {
+struct __rte_packed_begin hwrm_nvm_set_variable_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65820,10 +65820,10 @@ struct hwrm_nvm_set_variable_input {
 	#define HWRM_NVM_SET_VARIABLE_INPUT_FLAGS_FACTORY_DEFAULT \
 		UINT32_C(0x80)
 	uint8_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_set_variable_output (size:128b/16B) */
-struct hwrm_nvm_set_variable_output {
+struct __rte_packed_begin hwrm_nvm_set_variable_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65841,10 +65841,10 @@ struct hwrm_nvm_set_variable_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_set_variable_cmd_err (size:64b/8B) */
-struct hwrm_nvm_set_variable_cmd_err {
+struct __rte_packed_begin hwrm_nvm_set_variable_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -65859,7 +65859,7 @@ struct hwrm_nvm_set_variable_cmd_err {
 	#define HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_LAST \
 		HWRM_NVM_SET_VARIABLE_CMD_ERR_CODE_CORRUPT_VAR
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_nvm_validate_option *
@@ -65867,7 +65867,7 @@ struct hwrm_nvm_set_variable_cmd_err {
 
 
 /* hwrm_nvm_validate_option_input (size:320b/40B) */
-struct hwrm_nvm_validate_option_input {
+struct __rte_packed_begin hwrm_nvm_validate_option_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -65930,10 +65930,10 @@ struct hwrm_nvm_validate_option_input {
 	/* index for the 4th dimensions */
 	uint16_t	index_3;
 	uint8_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_validate_option_output (size:128b/16B) */
-struct hwrm_nvm_validate_option_output {
+struct __rte_packed_begin hwrm_nvm_validate_option_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -65964,10 +65964,10 @@ struct hwrm_nvm_validate_option_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_validate_option_cmd_err (size:64b/8B) */
-struct hwrm_nvm_validate_option_cmd_err {
+struct __rte_packed_begin hwrm_nvm_validate_option_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -65978,7 +65978,7 @@ struct hwrm_nvm_validate_option_cmd_err {
 	#define HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_LAST \
 		HWRM_NVM_VALIDATE_OPTION_CMD_ERR_CODE_UNKNOWN
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_nvm_defrag *
@@ -65986,7 +65986,7 @@ struct hwrm_nvm_validate_option_cmd_err {
 
 
 /* hwrm_nvm_defrag_input (size:192b/24B) */
-struct hwrm_nvm_defrag_input {
+struct __rte_packed_begin hwrm_nvm_defrag_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66019,10 +66019,10 @@ struct hwrm_nvm_defrag_input {
 	/* This bit must be '1' to perform NVM defragmentation. */
 	#define HWRM_NVM_DEFRAG_INPUT_FLAGS_DEFRAG     UINT32_C(0x1)
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_defrag_output (size:128b/16B) */
-struct hwrm_nvm_defrag_output {
+struct __rte_packed_begin hwrm_nvm_defrag_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66040,10 +66040,10 @@ struct hwrm_nvm_defrag_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_defrag_cmd_err (size:64b/8B) */
-struct hwrm_nvm_defrag_cmd_err {
+struct __rte_packed_begin hwrm_nvm_defrag_cmd_err {
 	/*
 	 * command specific error codes that goes to
 	 * the cmd_err field in Common HWRM Error Response.
@@ -66056,7 +66056,7 @@ struct hwrm_nvm_defrag_cmd_err {
 	#define HWRM_NVM_DEFRAG_CMD_ERR_CODE_LAST \
 		HWRM_NVM_DEFRAG_CMD_ERR_CODE_FAIL
 	uint8_t	unused_0[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_nvm_get_vpd_field_info *
@@ -66064,7 +66064,7 @@ struct hwrm_nvm_defrag_cmd_err {
 
 
 /* hwrm_nvm_get_vpd_field_info_input (size:192b/24B) */
-struct hwrm_nvm_get_vpd_field_info_input {
+struct __rte_packed_begin hwrm_nvm_get_vpd_field_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66102,10 +66102,10 @@ struct hwrm_nvm_get_vpd_field_info_input {
 	 */
 	uint8_t	tag_id[2];
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_get_vpd_field_info_output (size:2176b/272B) */
-struct hwrm_nvm_get_vpd_field_info_output {
+struct __rte_packed_begin hwrm_nvm_get_vpd_field_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66127,7 +66127,7 @@ struct hwrm_nvm_get_vpd_field_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************************
  * hwrm_nvm_set_vpd_field_info *
@@ -66135,7 +66135,7 @@ struct hwrm_nvm_get_vpd_field_info_output {
 
 
 /* hwrm_nvm_set_vpd_field_info_input (size:256b/32B) */
-struct hwrm_nvm_set_vpd_field_info_input {
+struct __rte_packed_begin hwrm_nvm_set_vpd_field_info_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66180,10 +66180,10 @@ struct hwrm_nvm_set_vpd_field_info_input {
 	/* size of data in bytes */
 	uint16_t	data_len;
 	uint8_t	unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_nvm_set_vpd_field_info_output (size:128b/16B) */
-struct hwrm_nvm_set_vpd_field_info_output {
+struct __rte_packed_begin hwrm_nvm_set_vpd_field_info_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66201,7 +66201,7 @@ struct hwrm_nvm_set_vpd_field_info_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************
  * hwrm_oem_cmd *
@@ -66209,7 +66209,7 @@ struct hwrm_nvm_set_vpd_field_info_output {
 
 
 /* hwrm_oem_cmd_input (size:1024b/128B) */
-struct hwrm_oem_cmd_input {
+struct __rte_packed_begin hwrm_oem_cmd_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66265,10 +66265,10 @@ struct hwrm_oem_cmd_input {
 	uint16_t	unused;
 	/* This field contains the vendor specific command data. */
 	uint32_t	oem_data[26];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_oem_cmd_output (size:768b/96B) */
-struct hwrm_oem_cmd_output {
+struct __rte_packed_begin hwrm_oem_cmd_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66295,7 +66295,7 @@ struct hwrm_oem_cmd_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_dbg_crashdump_header *
@@ -66303,7 +66303,7 @@ struct hwrm_oem_cmd_output {
 
 
 /* hwrm_dbg_crashdump_header_input (size:192b/24B) */
-struct hwrm_dbg_crashdump_header_input {
+struct __rte_packed_begin hwrm_dbg_crashdump_header_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66333,10 +66333,10 @@ struct hwrm_dbg_crashdump_header_input {
 	 */
 	uint64_t	resp_addr;
 	uint32_t	unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_crashdump_header_output (size:512b/64B) */
-struct hwrm_dbg_crashdump_header_output {
+struct __rte_packed_begin hwrm_dbg_crashdump_header_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66481,7 +66481,7 @@ struct hwrm_dbg_crashdump_header_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /****************************
  * hwrm_dbg_crashdump_erase *
@@ -66489,7 +66489,7 @@ struct hwrm_dbg_crashdump_header_output {
 
 
 /* hwrm_dbg_crashdump_erase_input (size:192b/24B) */
-struct hwrm_dbg_crashdump_erase_input {
+struct __rte_packed_begin hwrm_dbg_crashdump_erase_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66537,10 +66537,10 @@ struct hwrm_dbg_crashdump_erase_input {
 		HWRM_DBG_CRASHDUMP_ERASE_INPUT_SCOPE_REINIT
 	uint8_t	unused_0[3];
 	uint32_t	unused_1;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_crashdump_erase_output (size:128b/16B) */
-struct hwrm_dbg_crashdump_erase_output {
+struct __rte_packed_begin hwrm_dbg_crashdump_erase_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66558,7 +66558,7 @@ struct hwrm_dbg_crashdump_erase_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************
  * hwrm_dbg_qcaps *
@@ -66566,7 +66566,7 @@ struct hwrm_dbg_crashdump_erase_output {
 
 
 /* hwrm_dbg_qcaps_input (size:192b/24B) */
-struct hwrm_dbg_qcaps_input {
+struct __rte_packed_begin hwrm_dbg_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66602,10 +66602,10 @@ struct hwrm_dbg_qcaps_input {
 	 */
 	uint16_t	fid;
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_qcaps_output (size:192b/24B) */
-struct hwrm_dbg_qcaps_output {
+struct __rte_packed_begin hwrm_dbg_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66653,7 +66653,7 @@ struct hwrm_dbg_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_dbg_qcfg *
@@ -66661,7 +66661,7 @@ struct hwrm_dbg_qcaps_output {
 
 
 /* hwrm_dbg_qcfg_input (size:192b/24B) */
-struct hwrm_dbg_qcfg_input {
+struct __rte_packed_begin hwrm_dbg_qcfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66727,10 +66727,10 @@ struct hwrm_dbg_qcfg_input {
 	 */
 	#define HWRM_DBG_QCFG_INPUT_COREDUMP_COMPONENT_DISABLE_FLAGS_NVRAM \
 		UINT32_C(0x1)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_qcfg_output (size:256b/32B) */
-struct hwrm_dbg_qcfg_output {
+struct __rte_packed_begin hwrm_dbg_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66807,7 +66807,7 @@ struct hwrm_dbg_qcfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************************
  * hwrm_dbg_crashdump_medium_cfg *
@@ -66815,7 +66815,7 @@ struct hwrm_dbg_qcfg_output {
 
 
 /* hwrm_dbg_crashdump_medium_cfg_input (size:320b/40B) */
-struct hwrm_dbg_crashdump_medium_cfg_input {
+struct __rte_packed_begin hwrm_dbg_crashdump_medium_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -66908,10 +66908,10 @@ struct hwrm_dbg_crashdump_medium_cfg_input {
 	uint32_t	unused_0;
 	/* Crashdump buffer PBL physical address. */
 	uint64_t	pbl;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_crashdump_medium_cfg_output (size:128b/16B) */
-struct hwrm_dbg_crashdump_medium_cfg_output {
+struct __rte_packed_begin hwrm_dbg_crashdump_medium_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -66929,10 +66929,10 @@ struct hwrm_dbg_crashdump_medium_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* coredump_segment_record (size:128b/16B) */
-struct coredump_segment_record {
+struct __rte_packed_begin coredump_segment_record {
 	/* Component id of the returned component. */
 	uint16_t	component_id;
 	/* Segment id of the returned component. */
@@ -66961,7 +66961,7 @@ struct coredump_segment_record {
 	 * the firmware does not support returning the segment data length.
 	 */
 	uint32_t	segment_len;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_dbg_coredump_list *
@@ -66969,7 +66969,7 @@ struct coredump_segment_record {
 
 
 /* hwrm_dbg_coredump_list_input (size:256b/32B) */
-struct hwrm_dbg_coredump_list_input {
+struct __rte_packed_begin hwrm_dbg_coredump_list_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67015,10 +67015,10 @@ struct hwrm_dbg_coredump_list_input {
 	 */
 	#define HWRM_DBG_COREDUMP_LIST_INPUT_FLAGS_CRASHDUMP     UINT32_C(0x1)
 	uint8_t	unused_0[1];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_coredump_list_output (size:128b/16B) */
-struct hwrm_dbg_coredump_list_output {
+struct __rte_packed_begin hwrm_dbg_coredump_list_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67047,7 +67047,7 @@ struct hwrm_dbg_coredump_list_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_dbg_coredump_initiate *
@@ -67055,7 +67055,7 @@ struct hwrm_dbg_coredump_list_output {
 
 
 /* hwrm_dbg_coredump_initiate_input (size:256b/32B) */
-struct hwrm_dbg_coredump_initiate_input {
+struct __rte_packed_begin hwrm_dbg_coredump_initiate_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67099,10 +67099,10 @@ struct hwrm_dbg_coredump_initiate_input {
 	uint8_t	seg_flags;
 	/* Not used. */
 	uint8_t	unused_1[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_coredump_initiate_output (size:128b/16B) */
-struct hwrm_dbg_coredump_initiate_output {
+struct __rte_packed_begin hwrm_dbg_coredump_initiate_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67120,10 +67120,10 @@ struct hwrm_dbg_coredump_initiate_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /* coredump_data_hdr (size:128b/16B) */
-struct coredump_data_hdr {
+struct __rte_packed_begin coredump_data_hdr {
 	/* Starting address of the register range. */
 	uint32_t	address;
 	/*
@@ -67143,7 +67143,7 @@ struct coredump_data_hdr {
 	uint32_t	instance;
 	/* Starting address of the next register after the current data range */
 	uint32_t	next_offset;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_dbg_coredump_retrieve *
@@ -67151,7 +67151,7 @@ struct coredump_data_hdr {
 
 
 /* hwrm_dbg_coredump_retrieve_input (size:448b/56B) */
-struct hwrm_dbg_coredump_retrieve_input {
+struct __rte_packed_begin hwrm_dbg_coredump_retrieve_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67209,10 +67209,10 @@ struct hwrm_dbg_coredump_retrieve_input {
 	/* Sequence number is used per segment request. Starts at 0. */
 	uint32_t	seq_no;
 	uint32_t	unused_5;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_coredump_retrieve_output (size:128b/16B) */
-struct hwrm_dbg_coredump_retrieve_output {
+struct __rte_packed_begin hwrm_dbg_coredump_retrieve_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67239,7 +67239,7 @@ struct hwrm_dbg_coredump_retrieve_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*******************
  * hwrm_dbg_fw_cli *
@@ -67247,7 +67247,7 @@ struct hwrm_dbg_coredump_retrieve_output {
 
 
 /* hwrm_dbg_fw_cli_input (size:1024b/128B) */
-struct hwrm_dbg_fw_cli_input {
+struct __rte_packed_begin hwrm_dbg_fw_cli_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67288,10 +67288,10 @@ struct hwrm_dbg_fw_cli_input {
 	uint8_t	unused_0[2];
 	/* CLI command string, a single ASCII encoded null terminated string. */
 	uint8_t	cli_cmd[96];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_fw_cli_output (size:128b/16B) */
-struct hwrm_dbg_fw_cli_output {
+struct __rte_packed_begin hwrm_dbg_fw_cli_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67311,7 +67311,7 @@ struct hwrm_dbg_fw_cli_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**************************
  * hwrm_dbg_ring_info_get *
@@ -67319,7 +67319,7 @@ struct hwrm_dbg_fw_cli_output {
 
 
 /* hwrm_dbg_ring_info_get_input (size:192b/24B) */
-struct hwrm_dbg_ring_info_get_input {
+struct __rte_packed_begin hwrm_dbg_ring_info_get_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67363,10 +67363,10 @@ struct hwrm_dbg_ring_info_get_input {
 	uint8_t	unused_0[3];
 	/* Firmware ring ID associated with ring being queried. */
 	uint32_t	fw_ring_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_ring_info_get_output (size:192b/24B) */
-struct hwrm_dbg_ring_info_get_output {
+struct __rte_packed_begin hwrm_dbg_ring_info_get_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67399,7 +67399,7 @@ struct hwrm_dbg_ring_info_get_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_dbg_drv_trace *
@@ -67407,7 +67407,7 @@ struct hwrm_dbg_ring_info_get_output {
 
 
 /* hwrm_dbg_drv_trace_input (size:1024b/128B) */
-struct hwrm_dbg_drv_trace_input {
+struct __rte_packed_begin hwrm_dbg_drv_trace_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67463,10 +67463,10 @@ struct hwrm_dbg_drv_trace_input {
 	 * ASCII chars, 'NULL' termination not required.
 	 */
 	char	trace_data[104];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_drv_trace_output (size:128b/16B) */
-struct hwrm_dbg_drv_trace_output {
+struct __rte_packed_begin hwrm_dbg_drv_trace_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67484,7 +67484,7 @@ struct hwrm_dbg_drv_trace_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_dbg_useq_alloc *
@@ -67492,7 +67492,7 @@ struct hwrm_dbg_drv_trace_output {
 
 
 /* hwrm_dbg_useq_alloc_input (size:192b/24B) */
-struct hwrm_dbg_useq_alloc_input {
+struct __rte_packed_begin hwrm_dbg_useq_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67533,10 +67533,10 @@ struct hwrm_dbg_useq_alloc_input {
 	uint16_t	output_bytes;
 	/* This field is reserved */
 	uint16_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_alloc_output (size:256b/32B) */
-struct hwrm_dbg_useq_alloc_output {
+struct __rte_packed_begin hwrm_dbg_useq_alloc_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67577,7 +67577,7 @@ struct hwrm_dbg_useq_alloc_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_dbg_useq_free *
@@ -67585,7 +67585,7 @@ struct hwrm_dbg_useq_alloc_output {
 
 
 /* hwrm_dbg_useq_free_input (size:192b/24B) */
-struct hwrm_dbg_useq_free_input {
+struct __rte_packed_begin hwrm_dbg_useq_free_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67618,10 +67618,10 @@ struct hwrm_dbg_useq_free_input {
 	uint16_t	usid;
 	/* This field is reserved */
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_free_output (size:256b/32B) */
-struct hwrm_dbg_useq_free_output {
+struct __rte_packed_begin hwrm_dbg_useq_free_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67660,7 +67660,7 @@ struct hwrm_dbg_useq_free_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_dbg_useq_flush *
@@ -67668,7 +67668,7 @@ struct hwrm_dbg_useq_free_output {
 
 
 /* hwrm_dbg_useq_flush_input (size:192b/24B) */
-struct hwrm_dbg_useq_flush_input {
+struct __rte_packed_begin hwrm_dbg_useq_flush_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67707,10 +67707,10 @@ struct hwrm_dbg_useq_flush_input {
 		HWRM_DBG_USEQ_FLUSH_INPUT_BUFFERS
 	/* This field is reserved */
 	uint8_t	unused_0[6];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_flush_output (size:256b/32B) */
-struct hwrm_dbg_useq_flush_output {
+struct __rte_packed_begin hwrm_dbg_useq_flush_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67749,7 +67749,7 @@ struct hwrm_dbg_useq_flush_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /************************
  * hwrm_dbg_useq_cw_cfg *
@@ -67757,7 +67757,7 @@ struct hwrm_dbg_useq_flush_output {
 
 
 /* hwrm_dbg_useq_cw_cfg_input (size:960b/120B) */
-struct hwrm_dbg_useq_cw_cfg_input {
+struct __rte_packed_begin hwrm_dbg_useq_cw_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67832,10 +67832,10 @@ struct hwrm_dbg_useq_cw_cfg_input {
 		HWRM_DBG_USEQ_CW_CFG_INPUT_FLAGS_END
 	/* command dependent data (e.g. function id for host dma command) */
 	uint32_t	opaque[24];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_cw_cfg_output (size:192b/24B) */
-struct hwrm_dbg_useq_cw_cfg_output {
+struct __rte_packed_begin hwrm_dbg_useq_cw_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67864,7 +67864,7 @@ struct hwrm_dbg_useq_cw_cfg_output {
 	uint8_t	full_cnt;
 	/* Reserved */
 	uint8_t	useq_resp_unused_0[3];
-} __rte_packed;
+} __rte_packed_end;
 
 /***********************
  * hwrm_dbg_useq_qcaps *
@@ -67872,7 +67872,7 @@ struct hwrm_dbg_useq_cw_cfg_output {
 
 
 /* hwrm_dbg_useq_qcaps_input (size:128b/16B) */
-struct hwrm_dbg_useq_qcaps_input {
+struct __rte_packed_begin hwrm_dbg_useq_qcaps_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -67901,10 +67901,10 @@ struct hwrm_dbg_useq_qcaps_input {
 	 * point to a physically contiguous block of memory.
 	 */
 	uint64_t	resp_addr;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_qcaps_output (size:384b/48B) */
-struct hwrm_dbg_useq_qcaps_output {
+struct __rte_packed_begin hwrm_dbg_useq_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -67951,7 +67951,7 @@ struct hwrm_dbg_useq_qcaps_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /***************************
  * hwrm_dbg_useq_sched_cfg *
@@ -67959,7 +67959,7 @@ struct hwrm_dbg_useq_qcaps_output {
 
 
 /* hwrm_dbg_useq_sched_cfg_input (size:192b/24B) */
-struct hwrm_dbg_useq_sched_cfg_input {
+struct __rte_packed_begin hwrm_dbg_useq_sched_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -68013,10 +68013,10 @@ struct hwrm_dbg_useq_sched_cfg_input {
 	uint16_t	usid;
 	/* This value represents microseconds between runs of the USEQ */
 	uint32_t	polling_interval;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_sched_cfg_output (size:256b/32B) */
-struct hwrm_dbg_useq_sched_cfg_output {
+struct __rte_packed_begin hwrm_dbg_useq_sched_cfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -68055,7 +68055,7 @@ struct hwrm_dbg_useq_sched_cfg_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*********************
  * hwrm_dbg_useq_run *
@@ -68063,7 +68063,7 @@ struct hwrm_dbg_useq_sched_cfg_output {
 
 
 /* hwrm_dbg_useq_run_input (size:320b/40B) */
-struct hwrm_dbg_useq_run_input {
+struct __rte_packed_begin hwrm_dbg_useq_run_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -68138,10 +68138,10 @@ struct hwrm_dbg_useq_run_input {
 	uint32_t	host_dest_len;
 	/* This field is reserved */
 	uint32_t	unused_0;
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_run_output (size:256b/32B) */
-struct hwrm_dbg_useq_run_output {
+struct __rte_packed_begin hwrm_dbg_useq_run_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -68184,7 +68184,7 @@ struct hwrm_dbg_useq_run_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /******************************
  * hwrm_dbg_useq_delivery_req *
@@ -68192,7 +68192,7 @@ struct hwrm_dbg_useq_run_output {
 
 
 /* hwrm_dbg_useq_delivery_req_input (size:896b/112B) */
-struct hwrm_dbg_useq_delivery_req_input {
+struct __rte_packed_begin hwrm_dbg_useq_delivery_req_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -68233,10 +68233,10 @@ struct hwrm_dbg_useq_delivery_req_input {
 	 * 4096 bytes.
 	 */
 	uint32_t	host_dest_len[8];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_useq_delivery_req_output (size:512b/64B) */
-struct hwrm_dbg_useq_delivery_req_output {
+struct __rte_packed_begin hwrm_dbg_useq_delivery_req_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -68281,7 +68281,7 @@ struct hwrm_dbg_useq_delivery_req_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint32_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************************
  * hwrm_dbg_log_buffer_flush *
@@ -68289,7 +68289,7 @@ struct hwrm_dbg_useq_delivery_req_output {
 
 
 /* hwrm_dbg_log_buffer_flush_input (size:192b/24B) */
-struct hwrm_dbg_log_buffer_flush_input {
+struct __rte_packed_begin hwrm_dbg_log_buffer_flush_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -68352,10 +68352,10 @@ struct hwrm_dbg_log_buffer_flush_input {
 	 */
 	#define HWRM_DBG_LOG_BUFFER_FLUSH_INPUT_FLAGS_FLUSH_ALL_BUFFERS \
 		UINT32_C(0x1)
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_dbg_log_buffer_flush_output (size:128b/16B) */
-struct hwrm_dbg_log_buffer_flush_output {
+struct __rte_packed_begin hwrm_dbg_log_buffer_flush_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -68381,7 +68381,7 @@ struct hwrm_dbg_log_buffer_flush_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*****************
  * hwrm_fw_reset *
@@ -68389,7 +68389,7 @@ struct hwrm_dbg_log_buffer_flush_output {
 
 
 /* hwrm_fw_reset_input (size:192b/24B) */
-struct hwrm_fw_reset_input {
+struct __rte_packed_begin hwrm_fw_reset_input {
 	/* The HWRM command request type. */
 	uint16_t        req_type;
 	/*
@@ -68484,10 +68484,10 @@ struct hwrm_fw_reset_input {
 	 */
 	#define HWRM_FW_RESET_INPUT_FLAGS_RESET_GRACEFUL     UINT32_C(0x1)
 	uint8_t unused_0[4];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_fw_reset_output (size:128b/16B) */
-struct hwrm_fw_reset_output {
+struct __rte_packed_begin hwrm_fw_reset_output {
 	/* The specific error status for the command. */
 	uint16_t        error_code;
 	/* The HWRM command request type. */
@@ -68521,7 +68521,7 @@ struct hwrm_fw_reset_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /**********************
  * hwrm_port_ts_query *
@@ -68529,7 +68529,7 @@ struct hwrm_fw_reset_output {
 
 
 /* hwrm_port_ts_query_input (size:192b/24B) */
-struct hwrm_port_ts_query_input {
+struct __rte_packed_begin hwrm_port_ts_query_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -68579,10 +68579,10 @@ struct hwrm_port_ts_query_input {
 	/* Port ID of port that is being queried. */
 	uint16_t	port_id;
 	uint8_t		unused_0[2];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_ts_query_output (size:192b/24B) */
-struct hwrm_port_ts_query_output {
+struct __rte_packed_begin hwrm_port_ts_query_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -68607,7 +68607,7 @@ struct hwrm_port_ts_query_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t		valid;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This structure is fixed at the beginning of the ChiMP SRAM (GRC
@@ -68617,7 +68617,7 @@ struct hwrm_port_ts_query_output {
  * FW_STATUS location in the next field.
  */
 /* hcomm_status (size:64b/8B) */
-struct hcomm_status {
+struct __rte_packed_begin hcomm_status {
 	uint32_t	sig_ver;
 	/*
 	 * This field defines the version of the structure. The latest
@@ -68654,7 +68654,7 @@ struct hcomm_status {
 	 */
 	#define HCOMM_STATUS_TRUE_OFFSET_MASK		UINT32_C(0xfffffffc)
 	#define HCOMM_STATUS_TRUE_OFFSET_SFT		2
-} __rte_packed;
+} __rte_packed_end;
 /* This is the GRC offset where the hcomm_status struct resides. */
 #define HCOMM_STATUS_STRUCT_LOC		0x31001F0UL
 
@@ -68664,7 +68664,7 @@ struct hcomm_status {
 
 
 /* hwrm_port_phy_i2c_read_input (size:320b/40B) */
-struct hwrm_port_phy_i2c_read_input {
+struct __rte_packed_begin hwrm_port_phy_i2c_read_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
 	/*
@@ -68716,10 +68716,10 @@ struct hwrm_port_phy_i2c_read_input {
 	 */
 	uint8_t	data_length;
 	uint8_t	unused_1[7];
-} __rte_packed;
+} __rte_packed_end;
 
 /* hwrm_port_phy_i2c_read_output (size:640b/80B) */
-struct hwrm_port_phy_i2c_read_output {
+struct __rte_packed_begin hwrm_port_phy_i2c_read_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
 	/* The HWRM command request type. */
@@ -68739,5 +68739,5 @@ struct hwrm_port_phy_i2c_read_output {
 	 * the order of writes has to be such that this field is written last.
 	 */
 	uint8_t	valid;
-} __rte_packed;
+} __rte_packed_end;
 #endif /* _HSI_STRUCT_DEF_DPDK_H_ */

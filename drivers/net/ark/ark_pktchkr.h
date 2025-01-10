@@ -23,7 +23,7 @@ typedef void *ark_pkt_chkr_t;
  * This are overlay structures to a memory mapped FPGA device.  These
  * structs will never be instantiated in ram memory
  */
-struct ark_pkt_chkr_stat_regs {
+struct __rte_packed_begin ark_pkt_chkr_stat_regs {
 	uint32_t r0;
 	uint32_t pkt_start_stop;
 	uint32_t pkt_ctrl;
@@ -37,9 +37,9 @@ struct ark_pkt_chkr_stat_regs {
 	uint32_t pkts_missing;
 	uint32_t min_latency;
 	uint32_t max_latency;
-} __rte_packed;
+} __rte_packed_end;
 
-struct ark_pkt_chkr_ctl_regs {
+struct __rte_packed_begin ark_pkt_chkr_ctl_regs {
 	uint32_t pkt_ctrl;
 	uint32_t pkt_payload;
 	uint32_t pkt_size_min;
@@ -53,7 +53,7 @@ struct ark_pkt_chkr_ctl_regs {
 	uint32_t dst_mac_addr_h;
 	uint32_t eth_type;
 	uint32_t hdr_dw[7];
-} __rte_packed;
+} __rte_packed_end;
 
 struct ark_pkt_chkr_inst {
 	struct rte_eth_dev_info *dev_info;

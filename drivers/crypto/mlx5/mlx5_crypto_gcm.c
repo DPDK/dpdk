@@ -62,10 +62,10 @@ struct mlx5_crypto_gcm_data {
 	uint32_t dst_mkey;
 };
 
-struct mlx5_crypto_gcm_tag_cpy_info {
+struct __rte_packed_begin mlx5_crypto_gcm_tag_cpy_info {
 	void *digest;
 	uint8_t tag_len;
-} __rte_packed;
+} __rte_packed_end;
 
 static struct rte_cryptodev_capabilities mlx5_crypto_gcm_caps[] = {
 	{

@@ -89,7 +89,7 @@ enum {
 };
 
 /* FPGA 5GNR Ring Control Register. */
-struct __rte_packed fpga_5gnr_ring_ctrl_reg {
+struct __rte_packed_begin fpga_5gnr_ring_ctrl_reg {
 	uint64_t ring_base_addr;
 	uint64_t ring_head_addr;
 	uint16_t ring_size:11;
@@ -107,7 +107,7 @@ struct __rte_packed fpga_5gnr_ring_ctrl_reg {
 	uint16_t rsrvd3;
 	uint16_t head_point;
 	uint16_t rsrvd4;
-};
+} __rte_packed_end;
 
 /* Private data structure for each FPGA 5GNR device. */
 struct fpga_5gnr_fec_device {

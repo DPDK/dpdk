@@ -62,8 +62,8 @@ enum dpaa_sec_op_type {
 #define DPAA_SEC_MAX_DESC_SIZE  64
 /* code or cmd block to caam */
 struct sec_cdb {
-	struct {
-		union {
+	struct __rte_packed_begin {
+		union __rte_packed_begin {
 			uint32_t word;
 			struct {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -76,9 +76,9 @@ struct sec_cdb {
 				uint16_t rsvd63_48;
 #endif
 			} field;
-		} __packed hi;
+		} __rte_packed_end hi;
 
-		union {
+		union __rte_packed_begin {
 			uint32_t word;
 			struct {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -101,8 +101,8 @@ struct sec_cdb {
 				unsigned int rsvd31_30:2;
 #endif
 			} field;
-		} __packed lo;
-	} __packed sh_hdr;
+		} __rte_packed_end lo;
+	} __rte_packed_end sh_hdr;
 
 	uint32_t sh_desc[DPAA_SEC_MAX_DESC_SIZE];
 };

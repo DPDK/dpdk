@@ -27,22 +27,22 @@
 #define ZXDH_REPS_HEADER_OFFSET       4
 #define ZXDH_TBL_MSG_PRO_SUCCESS      0xaa
 
-struct zxdh_common_msg {
+struct __rte_packed_begin zxdh_common_msg {
 	uint8_t  type;    /* 0:read table 1:write table */
 	uint8_t  field;
 	uint16_t pcie_id;
 	uint16_t slen;    /* Data length for write table */
 	uint16_t reserved;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_common_rsp_hdr {
+struct __rte_packed_begin zxdh_common_rsp_hdr {
 	uint8_t  rsp_status;
 	uint16_t rsp_len;
 	uint8_t  reserved;
 	uint8_t  payload_status;
 	uint8_t  rsv;
 	uint16_t payload_len;
-} __rte_packed;
+} __rte_packed_end;
 
 struct zxdh_tbl_msg_header {
 	uint8_t  type;

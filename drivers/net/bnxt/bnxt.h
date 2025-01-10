@@ -219,16 +219,16 @@ struct bnxt_led_cfg {
 #define BNXT_LED_DFLT_ENABLES(x)                        \
 	rte_cpu_to_le_32(BNXT_LED_DFLT_ENA << (BNXT_LED_DFLT_ENA_SHIFT * (x)))
 
-struct bnxt_vlan_table_entry {
+struct __rte_packed_begin bnxt_vlan_table_entry {
 	uint16_t		tpid;
 	uint16_t		vid;
-} __rte_packed;
+} __rte_packed_end;
 
-struct bnxt_vlan_antispoof_table_entry {
+struct __rte_packed_begin bnxt_vlan_antispoof_table_entry {
 	uint16_t		tpid;
 	uint16_t		vid;
 	uint16_t		mask;
-} __rte_packed;
+} __rte_packed_end;
 
 struct bnxt_child_vf_info {
 	void			*req_buf;

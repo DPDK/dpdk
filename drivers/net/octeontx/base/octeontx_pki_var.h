@@ -21,7 +21,7 @@
 #define OCTTX_PACKET_LATER_SKIP		128
 
 /* WQE descriptor */
-typedef union octtx_wqe_s {
+typedef union __rte_packed_begin octtx_wqe_s {
 	uint64_t	w[6];
 
 	struct {
@@ -160,7 +160,7 @@ typedef union octtx_wqe_s {
 #endif
 	} s;
 
-} __rte_packed octtx_wqe_t;
+} __rte_packed_end octtx_wqe_t;
 
 enum occtx_pki_ltype_e {
 	OCCTX_PKI_LTYPE_NONE		= 0,

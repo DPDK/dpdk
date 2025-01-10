@@ -35,12 +35,12 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
  * ring descriptors: 16 bytes.
  * These can chain together via "next".
  */
-struct zxdh_vring_desc {
+struct __rte_packed_begin zxdh_vring_desc {
 	uint64_t addr;  /*  Address (guest-physical). */
 	uint32_t len;   /* Length. */
 	uint16_t flags; /* The flags as indicated above. */
 	uint16_t next;  /* We chain unused descriptors via this. */
-} __rte_packed;
+} __rte_packed_end;
 
 struct zxdh_vring_used_elem {
 	/* Index of start of used descriptor chain. */
@@ -49,46 +49,46 @@ struct zxdh_vring_used_elem {
 	uint32_t len;
 };
 
-struct zxdh_vring_used {
+struct __rte_packed_begin zxdh_vring_used {
 	uint16_t flags;
 	uint16_t idx;
 	struct zxdh_vring_used_elem ring[];
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_vring_avail {
+struct __rte_packed_begin zxdh_vring_avail {
 	uint16_t flags;
 	uint16_t idx;
 	uint16_t ring[];
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_vring_packed_desc {
+struct __rte_packed_begin zxdh_vring_packed_desc {
 	uint64_t addr;
 	uint32_t len;
 	uint16_t id;
 	uint16_t flags;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_vring_packed_desc_event {
+struct __rte_packed_begin zxdh_vring_packed_desc_event {
 	uint16_t desc_event_off_wrap;
 	uint16_t desc_event_flags;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_vring_packed {
+struct __rte_packed_begin zxdh_vring_packed {
 	uint32_t num;
 	struct zxdh_vring_packed_desc *desc;
 	struct zxdh_vring_packed_desc_event *driver;
 	struct zxdh_vring_packed_desc_event *device;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_vq_desc_extra {
+struct __rte_packed_begin zxdh_vq_desc_extra {
 	void *cookie;
 	uint16_t ndescs;
 	uint16_t next;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_virtqueue {
+struct __rte_packed_begin zxdh_virtqueue {
 	struct zxdh_hw  *hw; /* < zxdh_hw structure pointer. */
-	struct {
+	struct __rte_packed_begin {
 		/* vring keeping descs and events */
 		struct zxdh_vring_packed ring;
 		uint8_t used_wrap_counter;
@@ -96,7 +96,7 @@ struct zxdh_virtqueue {
 		uint16_t cached_flags; /* < cached flags for descs */
 		uint16_t event_flags_shadow;
 		uint16_t rsv1;
-	} __rte_packed vq_packed;
+	} __rte_packed_end vq_packed;
 	uint16_t vq_used_cons_idx; /* < last consumed descriptor */
 	uint16_t vq_nentries;  /* < vring desc numbers */
 	uint16_t vq_free_cnt;  /* < num of desc available */
@@ -129,16 +129,16 @@ struct zxdh_virtqueue {
 	uint16_t *notify_addr;
 	struct rte_mbuf **sw_ring;  /* < RX software ring. */
 	struct zxdh_vq_desc_extra vq_descx[];
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_type_hdr {
+struct __rte_packed_begin zxdh_type_hdr {
 	uint8_t port;  /* bit[0:1] 00-np 01-DRS 10-DTP */
 	uint8_t pd_len;
 	uint8_t num_buffers;
 	uint8_t reserved;
-} __rte_packed; /* 4B */
+} __rte_packed_end; /* 4B */
 
-struct zxdh_pi_hdr {
+struct __rte_packed_begin zxdh_pi_hdr {
 	uint8_t  pi_len;
 	uint8_t  pkt_type;
 	uint16_t vlan_id;
@@ -162,24 +162,24 @@ struct zxdh_pi_hdr {
 			uint8_t  reserved[2];
 		} ul;
 	};
-} __rte_packed; /* 32B */
+} __rte_packed_end; /* 32B */
 
-struct zxdh_pd_hdr_dl {
+struct __rte_packed_begin zxdh_pd_hdr_dl {
 	uint32_t ol_flag;
 	uint8_t tag_idx;
 	uint8_t tag_data;
 	uint16_t dst_vfid;
 	uint32_t svlan_insert;
 	uint32_t cvlan_insert;
-} __rte_packed; /* 16B */
+} __rte_packed_end; /* 16B */
 
-struct zxdh_net_hdr_dl {
+struct __rte_packed_begin zxdh_net_hdr_dl {
 	struct zxdh_type_hdr  type_hdr; /* 4B */
 	struct zxdh_pi_hdr    pi_hdr; /* 32B */
 	struct zxdh_pd_hdr_dl pd_hdr; /* 16B */
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_pd_hdr_ul {
+struct __rte_packed_begin zxdh_pd_hdr_ul {
 	uint32_t pkt_flag;
 	uint32_t rss_hash;
 	uint32_t fd;
@@ -189,20 +189,20 @@ struct zxdh_pd_hdr_ul {
 	uint16_t src_vfid;
 	uint16_t pkt_type_out;
 	uint16_t pkt_type_in;
-} __rte_packed; /* 24B */
+} __rte_packed_end; /* 24B */
 
-struct zxdh_net_hdr_ul {
+struct __rte_packed_begin zxdh_net_hdr_ul {
 	struct zxdh_type_hdr  type_hdr; /* 4B */
 	struct zxdh_pi_hdr    pi_hdr; /* 32B */
 	struct zxdh_pd_hdr_ul pd_hdr; /* 24B */
-} __rte_packed; /* 60B */
+} __rte_packed_end; /* 60B */
 
 struct zxdh_tx_region {
 	struct zxdh_net_hdr_dl tx_hdr;
-	union {
+	union __rte_packed_begin {
 		struct zxdh_vring_desc tx_indir[ZXDH_MAX_TX_INDIRECT];
 		struct zxdh_vring_packed_desc tx_packed_indir[ZXDH_MAX_TX_INDIRECT];
-	} __rte_packed;
+	} __rte_packed_end;
 };
 
 static inline size_t

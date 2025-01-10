@@ -160,29 +160,29 @@ struct zxdh_pci_bar_msg {
 	uint16_t usr;
 };
 
-struct zxdh_bar_msix_reps {
+struct __rte_packed_begin zxdh_bar_msix_reps {
 	uint16_t pcie_id;
 	uint16_t check;
 	uint16_t vport;
 	uint16_t rsv;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_bar_offset_reps {
+struct __rte_packed_begin zxdh_bar_offset_reps {
 	uint16_t check;
 	uint16_t rsv;
 	uint32_t offset;
 	uint32_t length;
-} __rte_packed;
+} __rte_packed_end;
 
-struct zxdh_bar_recv_msg {
+struct __rte_packed_begin zxdh_bar_recv_msg {
 	uint8_t reps_ok;
 	uint16_t reps_len;
 	uint8_t rsv;
-	union {
+	union __rte_packed_begin {
 		struct zxdh_bar_msix_reps msix_reps;
 		struct zxdh_bar_offset_reps offset_reps;
-	} __rte_packed;
-} __rte_packed;
+	} __rte_packed_end;
+} __rte_packed_end;
 
 struct zxdh_msg_recviver_mem {
 	void *recv_buffer; /* first 4B is head, followed by payload */

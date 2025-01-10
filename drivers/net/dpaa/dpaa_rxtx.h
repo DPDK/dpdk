@@ -173,12 +173,12 @@ enum dpaa_parse_result_l4_type {
 /**
  * FMan parse result array
  */
-struct dpaa_eth_parse_results_t {
+struct __rte_packed_begin dpaa_eth_parse_results_t {
 	uint8_t lpid; /**< Logical port id */
 	uint8_t shimr; /**< Shim header result  */
-	union {
+	union __rte_packed_begin {
 		uint16_t l2r; /**< Layer 2 result */
-		struct {
+		struct __rte_packed_begin {
 			uint16_t unused_1:3;
 			uint16_t ppoe_ppp:1;
 			uint16_t mpls:1;
@@ -190,11 +190,11 @@ struct dpaa_eth_parse_results_t {
 			uint16_t eth_frame_type:2;
 			/*00-unicast, 01-multicast, 11-broadcast*/
 			uint16_t unknown_eth_proto:1;
-		} __rte_packed;
-	} __rte_packed;
-	union {
+		} __rte_packed_end;
+	} __rte_packed_end;
+	union __rte_packed_begin {
 		uint16_t l3r;	/**< Layer 3 result */
-		struct {
+		struct __rte_packed_begin {
 			uint16_t unused_2:1;
 			uint16_t l3_err:1;
 			uint16_t last_ipv6:1;
@@ -205,19 +205,19 @@ struct dpaa_eth_parse_results_t {
 			uint16_t first_ipv4:1;
 
 			uint16_t unused_3:8;
-		} __rte_packed;
-	} __rte_packed;
-	union {
+		} __rte_packed_end;
+	} __rte_packed_end;
+	union __rte_packed_begin {
 		uint8_t l4r;	/**< Layer 4 result */
-		struct{
+		struct __rte_packed_begin {
 			uint8_t l4cv:1;
 			uint8_t unused_4:1;
 			uint8_t ah:1;
 			uint8_t esp_sum:1;
 			uint8_t l4_info_err:1;
 			uint8_t l4_type:3;
-		} __rte_packed;
-	} __rte_packed;
+		} __rte_packed_end;
+	} __rte_packed_end;
 	uint8_t cplan; /**< Classification plan id */
 	uint16_t nxthdr; /**< Next Header  */
 	uint16_t cksum; /**< Checksum */
@@ -233,7 +233,7 @@ struct dpaa_eth_parse_results_t {
 	uint8_t gre_off; /**< GRE offset */
 	uint8_t l4_off; /**< Layer 4 offset */
 	uint8_t nxthdr_off; /**< Parser end point */
-} __rte_packed;
+} __rte_packed_end;
 
 /* The structure is the Prepended Data to the Frame which is used by FMAN */
 struct annotations_t {

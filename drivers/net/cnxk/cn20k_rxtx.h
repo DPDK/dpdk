@@ -91,7 +91,7 @@ struct cn20k_inb_priv_data {
 	struct cnxk_eth_sec_sess *eth_sec;
 };
 
-struct cn20k_sec_sess_priv {
+struct __rte_packed_begin cn20k_sec_sess_priv {
 	union {
 		struct {
 			uint32_t sa_idx;
@@ -109,7 +109,7 @@ struct cn20k_sec_sess_priv {
 
 		uint64_t u64;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 #define LMT_OFF(lmt_addr, lmt_num, offset)                                                         \
 	(void *)((uintptr_t)(lmt_addr) + ((uint64_t)(lmt_num) << ROC_LMT_LINE_SIZE_LOG2) + (offset))

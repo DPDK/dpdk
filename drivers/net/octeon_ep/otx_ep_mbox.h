@@ -76,7 +76,7 @@ enum otx_ep_link_autoneg {
 #define OTX_EP_MBOX_MORE_FRAG_FLAG 1
 #define OTX_EP_MBOX_WRITE_WAIT_TIME msecs_to_jiffies(1)
 
-union otx_ep_mbox_word {
+union __rte_packed_begin otx_ep_mbox_word {
 	uint64_t u64;
 	struct {
 		uint64_t opcode:8;
@@ -127,7 +127,7 @@ union otx_ep_mbox_word {
 		uint64_t status:1;
 		uint64_t rsvd:53;
 	} s_link_status;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Hardware interface link state information. */
 struct otx_ep_iface_link_info {

@@ -112,18 +112,18 @@ struct hns3_ring_chain_param {
 	uint8_t int_gl_index;
 };
 
-struct hns3_mbx_vlan_filter {
+struct __rte_packed_begin hns3_mbx_vlan_filter {
 	uint8_t is_kill;
 	uint16_t vlan_id;
 	uint16_t proto;
-} __rte_packed;
+} __rte_packed_end;
 
-struct hns3_mbx_link_status {
+struct __rte_packed_begin hns3_mbx_link_status {
 	uint16_t link_status;
 	uint32_t speed;
 	uint16_t duplex;
 	uint8_t flag;
-} __rte_packed;
+} __rte_packed_end;
 
 #define HNS3_MBX_MSG_MAX_DATA_SIZE	14
 #define HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM	4

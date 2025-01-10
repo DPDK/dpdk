@@ -123,8 +123,8 @@
 }
 /* Union describing a descriptor header.
  */
-struct descriptor_header_s {
-	union {
+struct __rte_packed_begin descriptor_header_s {
+	union __rte_packed_begin {
 		uint32_t word;
 		struct {
 			/* 4  */ unsigned int ctype:5;
@@ -162,15 +162,15 @@ struct descriptor_header_s {
 			/* 26  */ unsigned int res1:1;
 			/* 27  */ unsigned int ctype:5;
 		} jd;
-	} __rte_packed command;
-} __rte_packed;
+	} __rte_packed_end command;
+} __rte_packed_end;
 
 /* Union describing a KEY command in a descriptor.
  */
-struct key_command_s {
-	union {
+struct __rte_packed_begin key_command_s {
+	union __rte_packed_begin {
 		uint32_t word;
-		struct {
+		struct __rte_packed_begin {
 			unsigned int ctype:5;
 			unsigned int cls:2;
 			unsigned int sgf:1;
@@ -182,30 +182,30 @@ struct key_command_s {
 			unsigned int tk:1;
 			unsigned int rsvd1:5;
 			unsigned int length:10;
-		} __rte_packed field;
-	} __rte_packed command;
-} __rte_packed;
+		} __rte_packed_end field;
+	} __rte_packed_end command;
+} __rte_packed_end;
 
 /* Union describing a PROTOCOL command
  * in a descriptor.
  */
-struct protocol_operation_command_s {
-	union {
+struct __rte_packed_begin protocol_operation_command_s {
+	union __rte_packed_begin {
 		uint32_t word;
-		struct {
+		struct __rte_packed_begin {
 			unsigned int ctype:5;
 			unsigned int optype:3;
 			unsigned char protid;
 			unsigned short protinfo;
-		} __rte_packed field;
-	} __rte_packed command;
-} __rte_packed;
+		} __rte_packed_end field;
+	} __rte_packed_end command;
+} __rte_packed_end;
 
 /* Union describing a SEQIN command in a
  * descriptor.
  */
-struct seq_in_command_s {
-	union {
+struct __rte_packed_begin seq_in_command_s {
+	union __rte_packed_begin {
 		uint32_t word;
 		struct {
 			unsigned int ctype:5;
@@ -219,14 +219,14 @@ struct seq_in_command_s {
 			unsigned int res2:4;
 			unsigned int length:16;
 		} field;
-	} __rte_packed command;
-} __rte_packed;
+	} __rte_packed_end command;
+} __rte_packed_end;
 
 /* Union describing a SEQOUT command in a
  * descriptor.
  */
-struct seq_out_command_s {
-	union {
+struct __rte_packed_begin seq_out_command_s {
+	union __rte_packed_begin {
 		uint32_t word;
 		struct {
 			unsigned int ctype:5;
@@ -238,11 +238,11 @@ struct seq_out_command_s {
 			unsigned int res2:5;
 			unsigned int length:16;
 		} field;
-	} __rte_packed command;
-} __rte_packed;
+	} __rte_packed_end command;
+} __rte_packed_end;
 
-struct load_command_s {
-	union {
+struct __rte_packed_begin load_command_s {
+	union __rte_packed_begin {
 		uint32_t word;
 		struct {
 			unsigned int ctype:5;
@@ -253,23 +253,23 @@ struct load_command_s {
 			unsigned char offset;
 			unsigned char length;
 		} fields;
-	} __rte_packed command;
-} __rte_packed;
+	} __rte_packed_end command;
+} __rte_packed_end;
 
 /* Structure encompassing a general shared descriptor of maximum
  * size (64 WORDs). Usually, other specific shared descriptor structures
  * will be type-casted to this one
  * this one.
  */
-struct __rte_aligned(64) sec_sd_t {
+struct __rte_aligned(64) __rte_packed_begin sec_sd_t {
 	uint32_t rsvd[MAX_DESC_SIZE_WORDS];
-} __rte_packed;
+} __rte_packed_end;
 
 /* Structure encompassing a job descriptor which processes
  * a single packet from a context. The job descriptor references
  * a shared descriptor from a SEC context.
  */
-struct __rte_aligned(64) sec_job_descriptor_t {
+struct __rte_aligned(64) __rte_packed_begin sec_job_descriptor_t {
 	struct descriptor_header_s deschdr;
 	dma_addr_t sd_ptr;
 	struct seq_out_command_s seq_out;
@@ -280,6 +280,6 @@ struct __rte_aligned(64) sec_job_descriptor_t {
 	uint32_t in_ext_length;
 	struct load_command_s load_dpovrd;
 	uint32_t dpovrd;
-} __rte_packed;
+} __rte_packed_end;
 
 #endif

@@ -540,20 +540,20 @@ struct stat_fields_s {
 	uint64_t pkt_cnt;
 	uint64_t byte_cnt;
 	union {
-		struct {
-			uint32_t timestamp __rte_packed;
-			uint16_t tcp_flags __rte_packed;
-		} c_24b;
+		struct __rte_packed_begin {
+			uint32_t timestamp;
+			uint16_t tcp_flags;
+		} c_24b __rte_packed_end;
 		struct {
 			uint64_t meter_pkt_cnt;
 			uint64_t meter_byte_cnt;
 		} c_32b;
-		struct {
-			uint64_t timestamp:32 __rte_packed;
-			uint64_t tcp_flags:16 __rte_packed;
-			uint64_t meter_pkt_cnt:38 __rte_packed;
-			uint64_t meter_byte_cnt:42 __rte_packed;
-		} c_32b_all;
+		struct __rte_packed_begin {
+			uint64_t timestamp:32;
+			uint64_t tcp_flags:16;
+			uint64_t meter_pkt_cnt:38;
+			uint64_t meter_byte_cnt:42;
+		} c_32b_all __rte_packed_end;
 	} t;
 };
 

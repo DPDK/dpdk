@@ -86,7 +86,7 @@ struct cn9k_outb_priv_data {
 	uint8_t iv_dbg[ROC_IE_ON_MAX_IV_LEN];
 };
 
-struct cn9k_sec_sess_priv {
+struct __rte_packed_begin cn9k_sec_sess_priv {
 	union {
 		struct {
 			uint32_t sa_idx;
@@ -99,7 +99,7 @@ struct cn9k_sec_sess_priv {
 
 		uint64_t u64;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 /* Rx and Tx routines */
 void cn9k_eth_set_rx_function(struct rte_eth_dev *eth_dev);

@@ -158,17 +158,17 @@ do {                                                            \
 } while (0)
 
 /* memory allocation tracking */
-struct iavf_dma_mem {
+struct __rte_packed_begin iavf_dma_mem {
 	void *va;
 	u64 pa;
 	u32 size;
 	const void *zone;
-} __rte_packed;
+} __rte_packed_end;
 
-struct iavf_virt_mem {
+struct __rte_packed_begin iavf_virt_mem {
 	void *va;
 	u32 size;
-} __rte_packed;
+} __rte_packed_end;
 
 #define iavf_allocate_dma_mem(h, m, unused, s, a) \
 			iavf_allocate_dma_mem_d(h, m, s, a)

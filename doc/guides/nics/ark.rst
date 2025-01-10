@@ -172,10 +172,10 @@ during RX from user meta data coming from FPGA hardware.
    };
 
    /* RX tuser field based on user's hardware */
-   struct user_rx_meta {
+   struct __rte_packed_begin user_rx_meta {
       uint64_t timestamp;
       uint32_t rss;
-   } __rte_packed;
+   } __rte_packed_end;
 
    /* Create ark_user_extension object for use in other hook functions */
    void *rte_pmd_ark_dev_init(struct rte_eth_dev * dev,

@@ -67,18 +67,18 @@
 #define FSL_LS_SRDS1_PRTCL_MASK		0xFFFF0000
 #define FSL_LS_SRDS2_PRTCL_MASK		0x0000FFFF
 
-struct ccsr_lx_serdes_lan {
+struct __rte_packed_begin ccsr_lx_serdes_lan {
 	uint8_t unused1[0xa0];
 	uint32_t lnatcsr0;
 	uint8_t unused2[0x100 - 0xa4];
-} __rte_packed;
+} __rte_packed_end;
 
-struct ccsr_lx_serdes {
+struct __rte_packed_begin ccsr_lx_serdes {
 	uint8_t unused0[0x800];
 	struct ccsr_lx_serdes_lan lane[LSX_SERDES_LAN_NB];
-} __rte_packed;
+} __rte_packed_end;
 
-struct ccsr_ls_serdes {
+struct __rte_packed_begin ccsr_ls_serdes {
 	uint8_t unused[0x800];
 	struct serdes_lane {
 		uint32_t gcr0;   /* General Control Register 0 */
@@ -94,9 +94,9 @@ struct ccsr_ls_serdes {
 		uint32_t tsc3;
 	} lane[LSX_SERDES_LAN_NB];
 	uint8_t res5[0x19fc - 0xa00];
-} __rte_packed;
+} __rte_packed_end;
 
-struct ccsr_gur {
+struct __rte_packed_begin ccsr_gur {
 	uint32_t	porsr1;		/* POR status 1 */
 	uint32_t	porsr2;		/* POR status 2 */
 	uint8_t	res_008[0x20 - 0x8];
@@ -170,7 +170,7 @@ struct ccsr_gur {
 	uint32_t ipbrr1;
 	uint32_t ipbrr2;
 	uint8_t	res_858[0x1000 - 0xc00];
-} __rte_packed;
+} __rte_packed_end;
 
 static void *lsx_ccsr_map_region(uint64_t addr, size_t len)
 {

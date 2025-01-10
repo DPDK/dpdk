@@ -97,7 +97,8 @@
 
 #define __plt_cache_aligned __rte_cache_aligned
 #define __plt_always_inline __rte_always_inline
-#define __plt_packed	    __rte_packed
+#define __plt_packed_begin  __rte_packed_begin
+#define __plt_packed_end    __rte_packed_end
 #define __plt_unused	    __rte_unused
 #define __roc_api	    __rte_internal
 #define plt_iova_t	    rte_iova_t

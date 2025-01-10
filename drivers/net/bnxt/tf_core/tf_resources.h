@@ -22,7 +22,7 @@ enum tf_resc_opt {
  *  WC TCAM includes a set of rows, and each row have 4-slices;
  *  each slice has 160bit
  */
-typedef struct tf_resc_wc_tcam_usage {
+typedef struct __rte_packed_begin tf_resc_wc_tcam_usage {
 	uint16_t max_row_number;      /* Max number of rows (excluding AFM), 160bit row */
 	uint16_t slice_row_1_p_used;  /* 1-slice rows partially used */
 	uint16_t slice_row_1_f_used;  /* 1-slice rows fully used */
@@ -31,47 +31,47 @@ typedef struct tf_resc_wc_tcam_usage {
 	uint16_t slice_row_4_used;    /* 4-slice rows fully used */
 	uint16_t unused_row_number;   /* number of unused rows */
 	uint8_t  reserved[2];
-} __rte_packed tf_resc_wc_tcam_usage_t;
+} __rte_packed_end tf_resc_wc_tcam_usage_t;
 
 /* Resource Internal EM memory pool; vary size records */
-typedef struct tf_resc_em_usage {
+typedef struct __rte_packed_begin tf_resc_em_usage {
 	uint16_t max_entries;   /* Max 16-Bytes entries */
 	uint16_t used_entries;  /* each record takes up to 7 entries by design */
-} __rte_packed tf_resc_em_usage_t;
+} __rte_packed_end tf_resc_em_usage_t;
 
 /* Resource Meter */
-typedef struct tf_resc_meter_usage {
+typedef struct __rte_packed_begin tf_resc_meter_usage {
 	uint16_t max_meter_instance;    /* 1023 for Thor, app can reserve some entries */
 	uint16_t max_meter_profile;     /* 256 for Thor, app can reserve some profiles  */
 	uint16_t used_meter_instance;   /* meter instance: fixed size record */
 	uint16_t used_meter_profile;    /* meter profile: fixed size record */
-} __rte_packed tf_resc_meter_usage_t;
+} __rte_packed_end tf_resc_meter_usage_t;
 
 /* Resource Counter */
-typedef struct tf_resc_cnt_usage {
+typedef struct __rte_packed_begin tf_resc_cnt_usage {
 	uint16_t max_entries;           /* each counter take 64-Bytes */
 	uint16_t used_entries;          /* each record uses one entry */
-} __rte_packed tf_resc_cnt_usage_t;
+} __rte_packed_end tf_resc_cnt_usage_t;
 
 /* Resource Action */
-typedef struct tf_resc_act_usage {
+typedef struct __rte_packed_begin tf_resc_act_usage {
 	uint16_t max_entries;              /* Max 8-Bytes entries */
 	uint16_t num_compact_act_records;  /* 8-Bytes records */
 	uint16_t num_full_act_records;     /* 16-Bytes records */
 	uint16_t free_entries;             /* unused entries */
-} __rte_packed tf_resc_act_usage_t;
+} __rte_packed_end tf_resc_act_usage_t;
 
 /* Resource SP SMAC  */
-typedef struct tf_resc_act_sp_smac_usage {
+typedef struct __rte_packed_begin tf_resc_act_sp_smac_usage {
 	uint16_t max_entries;              /* Max 8-Bytes entries */
 	uint16_t num_sp_smac_records;      /* 8-Bytes records */
 	uint16_t num_sp_smac_ipv4_records; /* 8-Bytes records */
 	uint16_t num_sp_smac_ipv6_records; /* 16-Bytes records */
 	uint16_t free_entries;             /* unused entries */
-} __rte_packed tf_resc_act_sp_smac_usage_t;
+} __rte_packed_end tf_resc_act_sp_smac_usage_t;
 
 /* Resource ACT MODIFY and ACT ENCAP */
-typedef struct tf_resc_act_mod_enc_usage {
+typedef struct __rte_packed_begin tf_resc_act_mod_enc_usage {
 	uint16_t max_entries;	            /* Max 8-Bytes entries */
 	struct {
 		uint16_t num_8b_records;    /* 8-bytes records */
@@ -81,10 +81,10 @@ typedef struct tf_resc_act_mod_enc_usage {
 		uint16_t num_128b_records;  /* 128-bytes records  */
 	} data;
 	int16_t free_entries; /* unused entries */
-} __rte_packed tf_resc_act_mod_enc_usage_t;
+} __rte_packed_end tf_resc_act_mod_enc_usage_t;
 
 /* All types of resource usage on both direction */
-typedef struct cfa_tf_resc_usage {
+typedef struct __rte_packed_begin cfa_tf_resc_usage {
 	tf_resc_em_usage_t           em_int_usage;
 	tf_resc_wc_tcam_usage_t      wc_tcam_usage;
 	tf_resc_cnt_usage_t          cnt_usage;
@@ -92,7 +92,7 @@ typedef struct cfa_tf_resc_usage {
 	tf_resc_meter_usage_t        meter_usage;
 	tf_resc_act_mod_enc_usage_t  mod_encap_usage;
 	tf_resc_act_sp_smac_usage_t  sp_smac_usage;
-} __rte_packed cfa_tf_resc_usage_t;
+} __rte_packed_end cfa_tf_resc_usage_t;
 
 /* global data stored in firmware memory and TruFlow driver */
 extern cfa_tf_resc_usage_t tf_resc_usage[TF_DIR_MAX];

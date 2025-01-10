@@ -16,7 +16,7 @@
 
 struct nfp_net_nfd3_tx_desc {
 	union {
-		struct {
+		struct __rte_packed_begin {
 			uint8_t dma_addr_hi; /**< High bits of host buf address */
 			uint16_t dma_len;    /**< Length to DMA for this desc */
 			/** Offset in buf where pkt starts + highest bit is eop flag */
@@ -35,7 +35,7 @@ struct nfp_net_nfd3_tx_desc {
 				uint16_t vlan; /**< VLAN tag to add if indicated */
 			};
 			uint16_t data_len;     /**< Length of frame + meta data */
-		} __rte_packed;
+		} __rte_packed_end;
 		uint32_t vals[4];
 	};
 };

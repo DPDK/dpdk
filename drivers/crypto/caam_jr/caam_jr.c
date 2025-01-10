@@ -53,10 +53,10 @@ static enum sec_driver_state_e g_driver_state = SEC_DRIVER_STATE_IDLE;
 static int g_job_rings_no;
 static int g_job_rings_max;
 
-struct sec_outring_entry {
+struct __rte_packed_begin sec_outring_entry {
 	phys_addr_t desc;	/* Pointer to completed descriptor */
 	uint32_t status;	/* Status for completed descriptor */
-} __rte_packed;
+} __rte_packed_end;
 
 /* virtual address conversin when mempool support is available for ctx */
 static inline phys_addr_t

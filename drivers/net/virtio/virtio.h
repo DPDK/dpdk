@@ -157,7 +157,7 @@
  * config space; it is just a shadow structure.
  *
  */
-struct virtio_net_config {
+struct __rte_packed_begin virtio_net_config {
 	/* The config defining mac address (if VIRTIO_NET_F_MAC) */
 	uint8_t    mac[RTE_ETHER_ADDR_LEN];
 	/* See VIRTIO_NET_F_STATUS and VIRTIO_NET_S_* above */
@@ -178,7 +178,7 @@ struct virtio_net_config {
 	uint8_t rss_max_key_size;
 	uint16_t rss_max_indirection_table_length;
 	uint32_t supported_hash_types;
-} __rte_packed;
+} __rte_packed_end;
 
 struct virtio_hw {
 	struct virtqueue **vqs;

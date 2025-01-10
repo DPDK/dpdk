@@ -798,13 +798,13 @@ struct vnic_devcmd_provinfo {
 			     FILTER_FIELD_USNIC_PROTO | \
 			     FILTER_FIELD_USNIC_ID)
 
-struct filter_usnic_id {
+struct __rte_packed_begin filter_usnic_id {
 	uint32_t flags;
 	uint16_t vlan;
 	uint16_t ethtype;
 	uint8_t proto_version;
 	uint32_t usnic_id;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_FIELD_5TUP_PROTO  FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_5TUP_SRC_AD FILTER_FIELD_VALID(2)
@@ -826,14 +826,14 @@ enum protocol_e {
 	PROTO_IPV6 = 3
 };
 
-struct filter_ipv4_5tuple {
+struct __rte_packed_begin filter_ipv4_5tuple {
 	uint32_t flags;
 	uint32_t protocol;
 	uint32_t src_addr;
 	uint32_t dst_addr;
 	uint16_t src_port;
 	uint16_t dst_port;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_FIELD_VMQ_VLAN   FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_VMQ_MAC    FILTER_FIELD_VALID(2)
@@ -843,11 +843,11 @@ struct filter_ipv4_5tuple {
 
 #define FILTER_FIELDS_NVGRE    FILTER_FIELD_VMQ_MAC
 
-struct filter_mac_vlan {
+struct __rte_packed_begin filter_mac_vlan {
 	uint32_t flags;
 	uint16_t vlan;
 	uint8_t mac_addr[6];
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_FIELD_VLAN_IP_3TUP_VLAN      FILTER_FIELD_VALID(1)
 #define FILTER_FIELD_VLAN_IP_3TUP_L3_PROTO  FILTER_FIELD_VALID(2)
@@ -861,7 +861,7 @@ struct filter_mac_vlan {
 				    FILTER_FIELD_VLAN_IP_3TUP_L4_PROTO | \
 				    FILTER_FIELD_VLAN_IP_3TUP_DST_PT)
 
-struct filter_vlan_ip_3tuple {
+struct __rte_packed_begin filter_vlan_ip_3tuple {
 	uint32_t flags;
 	uint16_t vlan;
 	uint16_t l3_protocol;
@@ -871,7 +871,7 @@ struct filter_vlan_ip_3tuple {
 	} u;
 	uint32_t l4_protocol;
 	uint16_t dst_port;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_GENERIC_1_BYTES 64
 
@@ -898,19 +898,19 @@ enum filter_generic_1_layer {
  * Version 1 of generic filter specification
  * position is only 16 bits, reserving positions > 64k to be used by firmware
  */
-struct filter_generic_1 {
+struct __rte_packed_begin filter_generic_1 {
 	uint16_t position;       /* lower position comes first */
 	uint32_t mask_flags;
 	uint32_t val_flags;
 	uint16_t mask_vlan;
 	uint16_t val_vlan;
-	struct {
+	struct __rte_packed_begin {
 		uint8_t mask[FILTER_GENERIC_1_KEY_LEN]; /* 0 bit means
 							 * " don't care"
 							 */
 		uint8_t val[FILTER_GENERIC_1_KEY_LEN];
-	} __rte_packed layer[FILTER_GENERIC_1_NUM_LAYERS];
-} __rte_packed;
+	} __rte_packed_end layer[FILTER_GENERIC_1_NUM_LAYERS];
+} __rte_packed_end;
 
 /* Specifies the filter_action type. */
 enum {
@@ -919,12 +919,12 @@ enum {
 	FILTER_ACTION_MAX
 };
 
-struct filter_action {
+struct __rte_packed_begin filter_action {
 	uint32_t type;
 	union {
 		uint32_t rq_idx;
 	} u;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FILTER_ACTION_RQ_STEERING_FLAG	(1 << 0)
 #define FILTER_ACTION_FILTER_ID_FLAG	(1 << 1)
@@ -937,13 +937,13 @@ struct filter_action {
 /* Version 2 of filter action must be a strict extension of struct
  * filter_action where the first fields exactly match in size and meaning.
  */
-struct filter_action_v2 {
+struct __rte_packed_begin filter_action_v2 {
 	uint32_t type;
 	uint32_t rq_idx;
 	uint32_t flags;               /* use FILTER_ACTION_XXX_FLAG defines */
 	uint16_t filter_id;
 	uint8_t reserved[32];         /* for future expansion */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Specifies the filter type. */
 enum filter_type {
@@ -973,7 +973,7 @@ enum filter_type {
 					FILTER_USNIC_IP_FLAG | \
 					FILTER_DPDK_1_FLAG)
 
-struct filter {
+struct __rte_packed_begin filter {
 	uint32_t type;
 	union {
 		struct filter_usnic_id usnic;
@@ -981,7 +981,7 @@ struct filter {
 		struct filter_mac_vlan mac_vlan;
 		struct filter_vlan_ip_3tuple vlan_3tuple;
 	} u;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * This is a strict superset of "struct filter" and exists only
@@ -992,7 +992,7 @@ struct filter {
  * the TLV size instead of sizeof (struct fiter_v2) to guard against future
  * growth.
  */
-struct filter_v2 {
+struct __rte_packed_begin filter_v2 {
 	uint32_t type;
 	union {
 		struct filter_usnic_id usnic;
@@ -1001,7 +1001,7 @@ struct filter_v2 {
 		struct filter_vlan_ip_3tuple vlan_3tuple;
 		struct filter_generic_1 generic_1;
 	} u;
-} __rte_packed;
+} __rte_packed_end;
 
 enum {
 	CLSF_TLV_FILTER = 0,

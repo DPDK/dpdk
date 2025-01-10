@@ -182,17 +182,17 @@ static inline uint64_t idpf_read_addr64(volatile void *addr)
 #define BITS_PER_BYTE       8
 
 /* memory allocation tracking */
-struct idpf_dma_mem {
+struct __rte_packed_begin idpf_dma_mem {
 	void *va;
 	u64 pa;
 	u32 size;
 	const void *zone;
-} __rte_packed;
+} __rte_packed_end;
 
-struct idpf_virt_mem {
+struct __rte_packed_begin idpf_virt_mem {
 	void *va;
 	u32 size;
-} __rte_packed;
+} __rte_packed_end;
 
 #define idpf_malloc(h, s)	rte_zmalloc(NULL, s, 0)
 #define idpf_calloc(h, c, s)	rte_zmalloc(NULL, (c) * (s), 0)

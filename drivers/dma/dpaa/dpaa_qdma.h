@@ -119,7 +119,7 @@
 	(((fsl_qdma_engine)->block_offset) * (x))
 
 /* qDMA Command Descriptor Formats */
-struct fsl_qdma_comp_cmd_desc {
+struct __rte_packed_begin fsl_qdma_comp_cmd_desc {
 	uint8_t status;
 	uint32_t rsv0:22;
 	uint32_t ser:1;
@@ -132,9 +132,9 @@ struct fsl_qdma_comp_cmd_desc {
 	uint8_t queue:3;
 	uint8_t rsv4:3;
 	uint8_t dd:2;
-} __rte_packed;
+} __rte_packed_end;
 
-struct fsl_qdma_comp_sg_desc {
+struct __rte_packed_begin fsl_qdma_comp_sg_desc {
 	uint32_t offset:13;
 	uint32_t rsv0:19;
 	uint32_t length:30;
@@ -143,9 +143,9 @@ struct fsl_qdma_comp_sg_desc {
 	uint32_t addr_lo;
 	uint8_t addr_hi;
 	uint32_t rsv1:24;
-} __rte_packed;
+} __rte_packed_end;
 
-struct fsl_qdma_sdf {
+struct __rte_packed_begin fsl_qdma_sdf {
 	uint32_t rsv0;
 	uint32_t ssd:12;
 	uint32_t sss:12;
@@ -160,9 +160,9 @@ struct fsl_qdma_sdf {
 	uint32_t sqos:3;
 	uint32_t ns:1;
 	uint32_t srttype:4;
-} __rte_packed;
+} __rte_packed_end;
 
-struct fsl_qdma_ddf {
+struct __rte_packed_begin fsl_qdma_ddf {
 	uint32_t rsv0;
 	uint32_t dsd:12;
 	uint32_t dss:12;
@@ -177,7 +177,7 @@ struct fsl_qdma_ddf {
 	uint32_t dqos:3;
 	uint32_t ns:1;
 	uint32_t dwttype:4;
-} __rte_packed;
+} __rte_packed_end;
 
 struct fsl_qdma_df {
 	struct fsl_qdma_sdf sdf;
@@ -186,7 +186,7 @@ struct fsl_qdma_df {
 
 #define FSL_QDMA_SG_MAX_ENTRY 64
 #define FSL_QDMA_MAX_DESC_NUM (FSL_QDMA_SG_MAX_ENTRY * QDMA_QUEUE_SIZE)
-struct fsl_qdma_cmpd_ft {
+struct __rte_packed_begin fsl_qdma_cmpd_ft {
 	struct fsl_qdma_comp_sg_desc desc_buf;
 	struct fsl_qdma_comp_sg_desc desc_sbuf;
 	struct fsl_qdma_comp_sg_desc desc_dbuf;
@@ -197,7 +197,7 @@ struct fsl_qdma_cmpd_ft {
 	uint64_t phy_ssge;
 	uint64_t phy_dsge;
 	uint64_t phy_df;
-} __rte_packed;
+} __rte_packed_end;
 
 #define FSL_QDMA_ERR_REG_STATUS_OFFSET 0xe00
 

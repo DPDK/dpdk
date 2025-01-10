@@ -109,7 +109,7 @@ enum inline_ipsec_ops {
 };
 
 /* Not all valid, if certain field is invalid, set 1 for all bits */
-struct virtchnl_algo_cap  {
+struct __rte_packed_begin virtchnl_algo_cap  {
 	u32 algo_type;
 
 	u16 block_size;
@@ -129,20 +129,20 @@ struct virtchnl_algo_cap  {
 	u16 min_aad_size;
 	u16 max_aad_size;
 	u16 inc_aad_size;
-} __rte_packed;
+} __rte_packed_end;
 
 /* vf record the capability of crypto from the virtchnl */
-struct virtchnl_sym_crypto_cap {
+struct __rte_packed_begin virtchnl_sym_crypto_cap {
 	u8 crypto_type;
 	u8 algo_cap_num;
 	struct virtchnl_algo_cap algo_cap_list[VIRTCHNL_IPSEC_MAX_ALGO_CAP_NUM];
-} __rte_packed;
+} __rte_packed_end;
 
 /* VIRTCHNL_OP_GET_IPSEC_CAP
  * VF pass virtchnl_ipsec_cap to PF
  * and PF return capability of ipsec from virtchnl.
  */
-struct virtchnl_ipsec_cap {
+struct __rte_packed_begin virtchnl_ipsec_cap {
 	/* max number of SA per VF */
 	u16 max_sa_num;
 
@@ -169,10 +169,10 @@ struct virtchnl_ipsec_cap {
 
 	/* crypto capabilities */
 	struct virtchnl_sym_crypto_cap cap[VIRTCHNL_IPSEC_MAX_CRYPTO_CAP_NUM];
-} __rte_packed;
+} __rte_packed_end;
 
 /* configuration of crypto function */
-struct virtchnl_ipsec_crypto_cfg_item {
+struct __rte_packed_begin virtchnl_ipsec_crypto_cfg_item {
 	u8 crypto_type;
 
 	u32 algo_type;
@@ -191,7 +191,7 @@ struct virtchnl_ipsec_crypto_cfg_item {
 
 	/* key data buffer */
 	u8 key_data[VIRTCHNL_IPSEC_MAX_KEY_LEN];
-} __rte_packed;
+} __rte_packed_end;
 
 struct virtchnl_ipsec_sym_crypto_cfg {
 	struct virtchnl_ipsec_crypto_cfg_item
@@ -203,7 +203,7 @@ struct virtchnl_ipsec_sym_crypto_cfg {
  * PF create SA as configuration and PF driver will return
  * an unique index (sa_idx) for the created SA.
  */
-struct virtchnl_ipsec_sa_cfg {
+struct __rte_packed_begin virtchnl_ipsec_sa_cfg {
 	/* IPsec SA Protocol - AH/ESP */
 	u8 virtchnl_protocol_type;
 
@@ -292,17 +292,17 @@ struct virtchnl_ipsec_sa_cfg {
 
 	/* crypto configuration */
 	struct virtchnl_ipsec_sym_crypto_cfg crypto_cfg;
-} __rte_packed;
+} __rte_packed_end;
 
 /* VIRTCHNL_OP_IPSEC_SA_UPDATE
  * VF send configuration of index of SA to PF
  * PF will update SA according to configuration
  */
-struct virtchnl_ipsec_sa_update {
+struct __rte_packed_begin virtchnl_ipsec_sa_update {
 	u32 sa_index; /* SA to update */
 	u32 esn_hi; /* high 32 bits of esn */
 	u32 esn_low; /* low 32 bits of esn */
-} __rte_packed;
+} __rte_packed_end;
 
 /* VIRTCHNL_OP_IPSEC_SA_DESTROY
  * VF send configuration of index of SA to PF
@@ -310,7 +310,7 @@ struct virtchnl_ipsec_sa_update {
  * flag bitmap indicate all SA or just selected SA will
  * be destroyed
  */
-struct virtchnl_ipsec_sa_destroy {
+struct __rte_packed_begin virtchnl_ipsec_sa_destroy {
 	/* All zero bitmap indicates all SA will be destroyed.
 	 * Non-zero bitmap indicates the selected SA in
 	 * array sa_index will be destroyed.
@@ -319,13 +319,13 @@ struct virtchnl_ipsec_sa_destroy {
 
 	/* selected SA index */
 	u32 sa_index[VIRTCHNL_IPSEC_MAX_SA_DESTROY_NUM];
-} __rte_packed;
+} __rte_packed_end;
 
 /* VIRTCHNL_OP_IPSEC_SA_READ
  * VF send this SA configuration to PF using virtchnl;
  * PF read SA and will return configuration for the created SA.
  */
-struct virtchnl_ipsec_sa_read {
+struct __rte_packed_begin virtchnl_ipsec_sa_read {
 	/* SA valid - invalid/valid */
 	u8 valid;
 
@@ -424,14 +424,14 @@ struct virtchnl_ipsec_sa_read {
 
 	/* crypto configuration. Salt and keys are set to 0 */
 	struct virtchnl_ipsec_sym_crypto_cfg crypto_cfg;
-} __rte_packed;
+} __rte_packed_end;
 
 
 #define VIRTCHNL_IPSEC_INBOUND_SPD_TBL_IPV4	(0)
 #define VIRTCHNL_IPSEC_INBOUND_SPD_TBL_IPV6	(1)
 
 /* Add allowlist entry in IES */
-struct virtchnl_ipsec_sp_cfg {
+struct __rte_packed_begin virtchnl_ipsec_sp_cfg {
 	u32 spi;
 	u32 dip[4];
 
@@ -455,15 +455,15 @@ struct virtchnl_ipsec_sp_cfg {
 
 	/* NAT-T UDP port number. Only valid in case NAT-T supported */
 	u16 udp_port;
-} __rte_packed;
+} __rte_packed_end;
 
 
 /* Delete allowlist entry in IES */
-struct virtchnl_ipsec_sp_destroy {
+struct __rte_packed_begin virtchnl_ipsec_sp_destroy {
 	/* 0 for IPv4 table, 1 for IPv6 table. */
 	u8 table_id;
 	u32 rule_id;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Response from IES to allowlist operations */
 struct virtchnl_ipsec_sp_cfg_resp {
@@ -494,7 +494,7 @@ struct virtchnl_ipsec_resp {
 };
 
 /* Internal message descriptor for VF <-> IPsec communication */
-struct inline_ipsec_msg {
+struct __rte_packed_begin inline_ipsec_msg {
 	u16 ipsec_opcode;
 	u16 req_id;
 
@@ -520,7 +520,7 @@ struct inline_ipsec_msg {
 		/* Reserved */
 		struct virtchnl_ipsec_sa_read sa_read[0];
 	} ipsec_data;
-} __rte_packed;
+} __rte_packed_end;
 
 static inline u16 virtchnl_inline_ipsec_val_msg_len(u16 opcode)
 {

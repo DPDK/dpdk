@@ -12,7 +12,7 @@
 /* Status field in FD is updated on Rx side by FMAN with following information.
  * Refer to field description in FM BG.
  */
-struct fm_status_t {
+struct __rte_packed_begin fm_status_t {
 	unsigned int reserved0:3;
 	unsigned int dcl4c:1; /* Don't Check L4 Checksum */
 	unsigned int reserved1:1;
@@ -38,7 +38,7 @@ struct fm_status_t {
 	unsigned int phe:1; /* Header Error during parsing */
 	unsigned int frdr:1; /* Frame Dropped by disabled port */
 	unsigned int reserved5:4;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Set MAC address for a particular interface */
 __rte_internal

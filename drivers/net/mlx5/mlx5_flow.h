@@ -673,7 +673,7 @@ struct mlx5_flow_dv_tag_resource {
 };
 
 /* Modify resource structure */
-struct mlx5_flow_dv_modify_hdr_resource {
+struct __rte_packed_begin mlx5_flow_dv_modify_hdr_resource {
 	struct mlx5_list_entry entry;
 	void *action; /**< Modify header action object. */
 	uint32_t idx;
@@ -684,7 +684,7 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	bool root; /**< Whether action is in root table. */
 	struct mlx5_modification_cmd actions[];
 	/**< Modification actions. */
-} __rte_packed;
+} __rte_packed_end;
 
 /* Modify resource key of the hash organization. */
 union mlx5_flow_modify_hdr_key {
@@ -831,7 +831,7 @@ struct mlx5_flow_dv_dest_array_resource {
 
 
 /** Device flow handle structure for DV mode only. */
-struct mlx5_flow_handle_dv {
+struct __rte_packed_begin mlx5_flow_handle_dv {
 	/* Flow DV api: */
 	struct mlx5_flow_dv_matcher *matcher; /**< Cache to matcher. */
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
@@ -846,10 +846,10 @@ struct mlx5_flow_handle_dv {
 	/**< Index to sample action resource in cache. */
 	uint32_t rix_dest_array;
 	/**< Index to destination array resource in cache. */
-} __rte_packed;
+} __rte_packed_end;
 
 /** Device flow handle structure: used both for creating & destroying. */
-struct mlx5_flow_handle {
+struct __rte_packed_begin mlx5_flow_handle {
 	SILIST_ENTRY(uint32_t)next;
 	struct mlx5_vf_vlan vf_vlan; /**< Structure for VF VLAN workaround. */
 	/**< Index to next device flow handle. */
@@ -875,7 +875,7 @@ struct mlx5_flow_handle {
 	struct mlx5_flow_handle_dv dvh;
 #endif
 	uint8_t flex_item; /**< referenced Flex Item bitmask. */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Size for Verbs device flow handle structure only. Do not use the DV only
@@ -1250,7 +1250,7 @@ struct mlx5_flow_attr {
 };
 
 /* Flow structure. */
-struct rte_flow {
+struct __rte_packed_begin rte_flow {
 	uint32_t dev_handles;
 	/**< Device flow handles that are part of the flow. */
 	uint32_t type:2;
@@ -1268,7 +1268,7 @@ struct rte_flow {
 		uint32_t ct; /**< Holds ASO CT index. */
 	};
 	uint32_t geneve_tlv_option; /**< Holds Geneve TLV option id. > */
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * HWS COUNTER ID's layout

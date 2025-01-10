@@ -211,7 +211,7 @@ typedef union {
 	};
 } msgdma_desc_ctrl;
 
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	uint32_t rd_address;
 	uint32_t wr_address;
 	uint32_t len;
@@ -223,7 +223,7 @@ typedef struct __rte_packed {
 	uint32_t rd_address_ext;
 	uint32_t wr_address_ext;
 	msgdma_desc_ctrl control;
-} msgdma_ext_desc;
+} __rte_packed_end msgdma_ext_desc;
 
 typedef union {
 	uint32_t csr;
@@ -279,13 +279,13 @@ typedef union {
 	};
 } msgdma_seq_num;
 
-typedef struct __rte_packed {
+typedef struct __rte_packed_begin {
 	msgdma_status status;
 	msgdma_ctrl ctrl;
 	msgdma_fill_level fill_level;
 	msgdma_rsp_level rsp;
 	msgdma_seq_num seq_num;
-} msgdma_csr;
+} __rte_packed_end msgdma_csr;
 
 #define CSR_STATUS(csr)   (&(((msgdma_csr *)(csr))->status))
 #define CSR_CONTROL(csr)  (&(((msgdma_csr *)(csr))->ctrl))

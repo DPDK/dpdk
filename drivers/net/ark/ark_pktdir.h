@@ -6,6 +6,7 @@
 #define _ARK_PKTDIR_H_
 
 #include <stdint.h>
+#include <rte_common.h>
 
 #define ARK_PKT_DIR_INIT_VAL 0x0110
 
@@ -22,11 +23,11 @@ typedef void *ark_pkt_dir_t;
  * This is an overlay structures to a memory mapped FPGA device.  These
  * structs will never be instantiated in ram memory
  */
-struct ark_pkt_dir_regs {
+struct __rte_packed_begin ark_pkt_dir_regs {
 	uint32_t ctrl;
 	uint32_t status;
 	uint32_t stall_cnt;
-} __rte_packed;
+} __rte_packed_end;
 
 struct ark_pkt_dir_inst {
 	volatile struct ark_pkt_dir_regs *regs;

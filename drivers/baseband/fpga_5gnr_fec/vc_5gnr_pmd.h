@@ -46,7 +46,7 @@ enum {
 };
 
 /* VC 5GNR FPGA FEC DMA Encoding Request Descriptor. */
-struct __rte_packed vc_5gnr_dma_enc_desc {
+struct __rte_packed_begin vc_5gnr_dma_enc_desc {
 	uint32_t done:1,
 		rsrvd0:7,
 		error:4,
@@ -84,10 +84,10 @@ struct __rte_packed vc_5gnr_dma_enc_desc {
 		uint8_t sw_ctxt[VC_5GNR_RING_DESC_LEN_UNIT_BYTES *
 					(VC_5GNR_RING_DESC_ENTRY_LENGTH - 1)];
 	};
-};
+} __rte_packed_end;
 
 /* VC 5GNR FPGA DPC FEC DMA Decoding Request Descriptor. */
-struct __rte_packed vc_5gnr_dma_dec_desc {
+struct __rte_packed_begin vc_5gnr_dma_dec_desc {
 	uint32_t done:1,
 		iter:5,
 		et_pass:1,
@@ -128,7 +128,7 @@ struct __rte_packed vc_5gnr_dma_dec_desc {
 
 		uint32_t sw_ctxt[8 * (VC_5GNR_RING_DESC_ENTRY_LENGTH - 1)];
 	};
-};
+} __rte_packed_end;
 
 /* Vista Creek 5GNR DMA Descriptor. */
 union vc_5gnr_dma_desc {

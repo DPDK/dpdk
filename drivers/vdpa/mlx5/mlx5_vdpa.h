@@ -90,13 +90,13 @@ enum mlx5_vdpa_task_type {
 };
 
 /* Generic task information and size must be multiple of 4B. */
-struct __rte_aligned(4) mlx5_vdpa_task {
+struct __rte_aligned(4) __rte_packed_begin mlx5_vdpa_task {
 	struct mlx5_vdpa_priv *priv;
 	enum mlx5_vdpa_task_type type;
 	RTE_ATOMIC(uint32_t) *remaining_cnt;
 	RTE_ATOMIC(uint32_t) *err_cnt;
 	uint32_t idx;
-} __rte_packed;
+} __rte_packed_end;
 
 /* Generic mlx5_vdpa_c_thread information. */
 struct mlx5_vdpa_c_thread {

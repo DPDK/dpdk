@@ -115,11 +115,11 @@ struct ifcvf_pci_common_cfg {
 	u32 queue_used_hi;
 };
 
-struct ifcvf_net_config {
+struct __rte_packed_begin ifcvf_net_config {
 	u8    mac[6];
 	u16   status;
 	u16   max_virtqueue_pairs;
-} __rte_packed;
+} __rte_packed_end;
 
 struct ifcvf_pci_mem_resource {
 	u64      phys_addr; /**< Physical address, 0 if not resource. */

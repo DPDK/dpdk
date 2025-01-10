@@ -837,14 +837,14 @@ nfp_nsp_read_module_eeprom(struct nfp_nsp *state,
 {
 	int ret;
 	int bufsz;
-	struct eeprom_buf {
+	struct __rte_packed_begin eeprom_buf {
 		uint8_t metalen;
 		rte_le16_t length;
 		rte_le16_t offset;
 		rte_le16_t readlen;
 		uint8_t eth_index;
 		uint8_t data[];
-	} __rte_packed * buf;
+	} __rte_packed_end * buf;
 
 	/* Buffer must be large enough and rounded to the next block size. */
 	bufsz = sizeof(*(buf)) + sizeof((buf)->data[0]) *

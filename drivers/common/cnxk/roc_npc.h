@@ -97,10 +97,10 @@ struct roc_npc_flow_item_eth {
 	uint32_t reserved : 31; /**< Reserved, must be zero. */
 };
 
-struct roc_vlan_hdr {
+struct __plt_packed_begin roc_vlan_hdr {
 	uint16_t vlan_tci; /**< Priority (3) + CFI (1) + Identifier Code (12) */
 	uint16_t eth_proto; /**< Ethernet type of encapsulated frame. */
-} __plt_packed;
+} __plt_packed_end;
 
 struct roc_npc_flow_item_vlan {
 	union {
@@ -115,23 +115,23 @@ struct roc_npc_flow_item_vlan {
 	uint32_t reserved : 31; /**< Reserved, must be zero. */
 };
 
-struct roc_ipv6_hdr {
+struct __plt_packed_begin roc_ipv6_hdr {
 	uint32_t vtc_flow;    /**< IP version, traffic class & flow label. */
 	uint16_t payload_len; /**< IP payload size, including ext. headers */
 	uint8_t proto;	      /**< Protocol, next header. */
 	uint8_t hop_limits;   /**< Hop limits. */
 	uint8_t src_addr[16]; /**< IP address of source host. */
 	uint8_t dst_addr[16]; /**< IP address of destination host(s). */
-} __plt_packed;
+} __plt_packed_end;
 
-struct roc_ipv6_fragment_ext {
+struct __plt_packed_begin roc_ipv6_fragment_ext {
 	uint8_t next_header; /**< Next header type */
 	uint8_t reserved;    /**< Reserved */
 	uint16_t frag_data;  /**< All fragmentation data */
 	uint32_t id;	     /**< Packet ID */
-} __plt_packed;
+} __plt_packed_end;
 
-struct roc_ipv6_routing_ext {
+struct __plt_packed_begin roc_ipv6_routing_ext {
 	uint8_t next_hdr;	/**< Protocol, next header. */
 	uint8_t hdr_len;	/**< Header length. */
 	uint8_t type;		/**< Extension header type. */
@@ -145,7 +145,7 @@ struct roc_ipv6_routing_ext {
 		};
 	};
 	/* Next are 128-bit IPv6 address fields to describe segments. */
-} __plt_packed;
+} __plt_packed_end;
 
 struct roc_flow_item_ipv6_ext {
 	uint8_t next_hdr; /**< Next header. */

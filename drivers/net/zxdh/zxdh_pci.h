@@ -64,7 +64,7 @@ enum zxdh_msix_status {
 #define ZXDH_CONFIG_STATUS_FAILED          0x80
 #define ZXDH_PCI_QUEUE_ADDR_SHIFT          12
 
-struct zxdh_net_config {
+struct __rte_packed_begin zxdh_net_config {
 	/* The config defining mac address (if ZXDH_NET_F_MAC) */
 	uint8_t    mac[RTE_ETHER_ADDR_LEN];
 	/* See ZXDH_NET_F_STATUS and ZXDH_NET_S_* above */
@@ -73,7 +73,7 @@ struct zxdh_net_config {
 	uint16_t   mtu;
 	uint32_t   speed;
 	uint8_t    duplex;
-} __rte_packed;
+} __rte_packed_end;
 
 /* This is the PCI capability header: */
 struct zxdh_pci_cap {

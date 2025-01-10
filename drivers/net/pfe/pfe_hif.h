@@ -83,9 +83,9 @@ struct __hif_hdr {
 	};
 };
 
-struct hif_ipsec_hdr {
+struct __rte_packed_begin hif_ipsec_hdr {
 	u16	sa_handle[2];
-} __packed;
+} __rte_packed_end;
 
 struct pfe_parse {
 	unsigned int packet_type;

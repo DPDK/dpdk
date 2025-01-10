@@ -39,7 +39,7 @@
 #define DPAA2_QDMA_BMT_DISABLE 0x0
 
 /** Source/Destination Descriptor */
-struct qdma_sdd {
+struct __rte_packed_begin qdma_sdd {
 	uint32_t rsv;
 	/** Stride configuration */
 	uint32_t stride;
@@ -85,7 +85,7 @@ struct qdma_sdd {
 			uint32_t wrttype:4;
 		} write_cmd;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 #define QDMA_SG_FMT_SDB	0x0 /* single data buffer */
 #define QDMA_SG_FMT_FDS	0x1 /* frame data section */
@@ -96,7 +96,7 @@ struct qdma_sdd {
 #define QDMA_SG_BMT_ENABLE DPAA2_QDMA_BMT_ENABLE
 #define QDMA_SG_BMT_DISABLE DPAA2_QDMA_BMT_DISABLE
 
-struct qdma_sg_entry {
+struct __rte_packed_begin qdma_sg_entry {
 	uint32_t addr_lo;		/* address 0:31 */
 	uint32_t addr_hi:17;	/* address 32:48 */
 	uint32_t rsv:15;
@@ -122,7 +122,7 @@ struct qdma_sg_entry {
 			uint32_t f:1;
 		} ctrl;
 	};
-} __rte_packed;
+} __rte_packed_end;
 
 struct dpaa2_qdma_rbp {
 	uint32_t use_ultrashort:1;
@@ -213,19 +213,19 @@ enum {
 	DPAA2_QDMA_MAX_SDD
 };
 
-struct qdma_cntx_fle_sdd {
+struct __rte_packed_begin qdma_cntx_fle_sdd {
 	struct qbman_fle fle[DPAA2_QDMA_MAX_FLE];
 	struct qdma_sdd sdd[DPAA2_QDMA_MAX_SDD];
-} __rte_packed;
+} __rte_packed_end;
 
-struct qdma_cntx_sg {
+struct __rte_packed_begin qdma_cntx_sg {
 	struct qdma_cntx_fle_sdd fle_sdd;
 	struct qdma_sg_entry sg_src_entry[RTE_DPAAX_QDMA_JOB_SUBMIT_MAX];
 	struct qdma_sg_entry sg_dst_entry[RTE_DPAAX_QDMA_JOB_SUBMIT_MAX];
 	uint16_t cntx_idx[RTE_DPAAX_QDMA_JOB_SUBMIT_MAX];
 	uint16_t job_nb;
 	uint16_t rsv[3];
-} __rte_packed;
+} __rte_packed_end;
 
 #define DPAA2_QDMA_IDXADDR_FROM_SG_FLAG(flag) \
 	((void *)(uintptr_t)((flag) - ((flag) & RTE_DPAAX_QDMA_SG_IDX_ADDR_MASK)))

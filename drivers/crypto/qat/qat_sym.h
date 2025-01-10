@@ -103,10 +103,10 @@
 
 struct qat_sym_session;
 
-struct __rte_cache_aligned qat_sym_sgl {
+struct __rte_cache_aligned __rte_packed_begin qat_sym_sgl {
 	qat_sgl_hdr;
 	struct qat_flat_buf buffers[QAT_SYM_SGL_MAX_NUMBER];
-} __rte_packed;
+} __rte_packed_end;
 
 struct qat_sym_op_cookie {
 	struct qat_sym_sgl qat_sgl_src;
@@ -116,8 +116,8 @@ struct qat_sym_op_cookie {
 	union {
 		/* Used for Single-Pass AES-GMAC only */
 		struct {
-			alignas(RTE_CACHE_LINE_SIZE) struct icp_qat_hw_cipher_algo_blk cd_cipher
-					__rte_packed;
+			alignas(RTE_CACHE_LINE_SIZE) struct __rte_packed_begin
+				icp_qat_hw_cipher_algo_blk cd_cipher __rte_packed_end;
 			phys_addr_t cd_phys_addr;
 		} spc_gmac;
 	} opt;

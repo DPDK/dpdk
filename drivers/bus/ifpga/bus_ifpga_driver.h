@@ -29,10 +29,10 @@ struct rte_afu_driver;
 
 #define IFPGA_BUS_BITSTREAM_PATH_MAX_LEN 256
 
-struct rte_afu_uuid {
+struct __rte_packed_begin rte_afu_uuid {
 	uint64_t uuid_low;
 	uint64_t uuid_high;
-} __rte_packed;
+} __rte_packed_end;
 
 #define IFPGA_BUS_DEV_PORT_MAX 4
 
@@ -40,10 +40,10 @@ struct rte_afu_uuid {
  * A structure describing an ID for a AFU driver. Each driver provides a
  * table of these IDs for each device that it supports.
  */
-struct rte_afu_id {
+struct __rte_packed_begin rte_afu_id {
 	struct rte_afu_uuid uuid;
 	int      port; /**< port number */
-} __rte_packed;
+} __rte_packed_end;
 
 /**
  * A structure PR (Partial Reconfiguration) configuration AFU driver.

@@ -53,9 +53,6 @@
 #ifndef __always_unused
 #define __always_unused	__rte_unused
 #endif
-#ifndef __packed
-#define __packed	__rte_packed
-#endif
 #ifndef noinline
 #define noinline	__rte_noinline
 #endif
