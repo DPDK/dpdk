@@ -19,7 +19,7 @@ import struct
 
 from scapy.layers.inet import IP
 from scapy.layers.l2 import Ether
-from scapy.packet import Raw
+from scapy.packet import Packet, Raw
 from scapy.utils import hexstr
 
 from framework.params.testpmd import SimpleForwardingModes
@@ -61,65 +61,70 @@ class TestPmdBufferScatter(TestSuite):
         self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_egress)
         self.tg_node.main_session.configure_port_mtu(9000, self._tg_port_ingress)
 
-    def scatter_pktgen_send_packet(self, pktsize: int) -> str:
+    def scatter_pktgen_send_packet(self, pkt_size: int) -> list[Packet]:
         """Generate and send a packet to the SUT then capture what is forwarded back.
 
         Generate an IP packet of a specific length and send it to the SUT,
-        then capture the resulting received packet and extract its payload.
-        The desired length of the packet is met by packing its payload
+        then capture the resulting received packets and filter them down to the ones that have the
+        correct layers. The desired length of the packet is met by packing its payload
         with the letter "X" in hexadecimal.
 
         Args:
-            pktsize: Size of the packet to generate and send.
+            pkt_size: Size of the packet to generate and send.
 
         Returns:
-            The payload of the received packet as a string.
+            The filtered down list of received packets.
         """
         packet = Ether() / IP() / Raw()
         if layer2 := packet.getlayer(2):
             layer2.load = ""
-        payload_len = pktsize - len(packet) - 4
+        payload_len = pkt_size - len(packet) - 4
         payload = ["58"] * payload_len
         # pack the payload
         for X_in_hex in payload:
             packet.load += struct.pack("=B", int("%s%s" % (X_in_hex[0], X_in_hex[1]), 16))
         received_packets = self.send_packet_and_capture(packet)
+        # filter down the list to packets that have the appropriate structure
+        received_packets = [p for p in received_packets if Ether in p and IP in p and Raw in p]
+
         self.verify(len(received_packets) > 0, "Did not receive any packets.")
 
         layer2 = received_packets[0].getlayer(2)
         self.verify(layer2 is not None, "The received packet is invalid.")
         assert layer2 is not None
-        load = hexstr(layer2, onlyhex=1)
 
-        return load
+        return received_packets
 
-    def pmd_scatter(self, mbsize: int) -> None:
+    def pmd_scatter(self, mb_size: int, enable_offload: bool = False) -> None:
         """Testpmd support of receiving and sending scattered multi-segment packets.
 
         Support for scattered packets is shown by sending 5 packets of differing length
         where the length of the packet is calculated by taking mbuf-size + an offset.
         The offsets used in the test are -1, 0, 1, 4, 5 respectively.
 
+        Args:
+            mb_size: Size to set memory buffers to when starting testpmd.
+            enable_offload: Whether or not to offload the scattering functionality in testpmd.
+
         Test:
-            Start testpmd and run functional test with preset mbsize.
+            Start testpmd and run functional test with preset `mb_size`.
         """
         with TestPmdShell(
             self.sut_node,
             forward_mode=SimpleForwardingModes.mac,
             mbcache=200,
-            mbuf_size=[mbsize],
+            mbuf_size=[mb_size],
             max_pkt_len=9000,
             tx_offloads=0x00008000,
+            enable_scatter=True if enable_offload else None,
         ) as testpmd:
             testpmd.start()
 
             for offset in [-1, 0, 1, 4, 5]:
-                recv_payload = self.scatter_pktgen_send_packet(mbsize + offset)
-                self._logger.debug(
-                    f"Payload of scattered packet after forwarding: \n{recv_payload}"
-                )
+                recv_packets = self.scatter_pktgen_send_packet(mb_size + offset)
+                self._logger.debug(f"Relevant captured packets: \n{recv_packets}")
                 self.verify(
-                    ("58 " * 8).strip() in recv_payload,
+                    any(" ".join(["58"] * 8) in hexstr(pkt, onlyhex=1) for pkt in recv_packets),
                     "Payload of scattered packet did not match expected payload with offset "
                     f"{offset}.",
                 )
@@ -127,8 +132,14 @@ class TestPmdBufferScatter(TestSuite):
     @requires(NicCapability.SCATTERED_RX_ENABLED)
     @func_test
     def test_scatter_mbuf_2048(self) -> None:
-        """Run the :meth:`pmd_scatter` test with `mbsize` set to 2048."""
-        self.pmd_scatter(mbsize=2048)
+        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048."""
+        self.pmd_scatter(mb_size=2048)
+
+    @requires(NicCapability.RX_OFFLOAD_SCATTER)
+    @func_test
+    def test_scatter_mbuf_2048_with_offload(self) -> None:
+        """Run the :meth:`pmd_scatter` test with `mb_size` set to 2048 and rx_scatter offload."""
+        self.pmd_scatter(mb_size=2048, enable_offload=True)
 
     def tear_down_suite(self) -> None:
         """Tear down the test suite.
