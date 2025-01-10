@@ -36,21 +36,21 @@ struct ipv6_l3fwd_route {
 	uint8_t if_out;
 };
 
-struct ipv4_5tuple {
+struct __rte_packed_begin ipv4_5tuple {
 	uint32_t ip_dst;
 	uint32_t ip_src;
 	uint16_t port_dst;
 	uint16_t port_src;
 	uint8_t  proto;
-} __rte_packed;
+} __rte_packed_end;
 
-struct ipv6_5tuple {
+struct __rte_packed_begin ipv6_5tuple {
 	uint8_t  ip_dst[IPV6_ADDR_LEN];
 	uint8_t  ip_src[IPV6_ADDR_LEN];
 	uint16_t port_dst;
 	uint16_t port_src;
 	uint8_t  proto;
-} __rte_packed;
+} __rte_packed_end;
 
 struct lpm_route_rule {
 	union {
