@@ -202,6 +202,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# forbid use of __rte_packed_begin with enums
+	awk -v FOLDERS='lib drivers app examples' \
+		-v EXPRESSIONS='enum.*__rte_packed_begin' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __rte_packed_begin with enum is not allowed' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid use of experimental build flag except in examples
 	awk -v FOLDERS='lib drivers app' \
 		-v EXPRESSIONS='-DALLOW_EXPERIMENTAL_API allow_experimental_apis' \
@@ -362,6 +370,30 @@ check_aligned_attributes() { # <patch>
 	return $res
 }
 
+check_packed_attributes() { # <patch>
+	res=0
+
+	if [ $(grep -E '^\+.*__rte_packed_begin' "$1" | \
+			grep -vE '\<struct[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<union[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_cache_aligned[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_cache_min_aligned[[:space:]]*__rte_packed_begin\>' | \
+			grep -vE '\<__rte_aligned\(.*\)[[:space:]]*__rte_packed_begin\>' | \
+			wc -l) != 0 ]; then
+		echo "Use __rte_packed_begin only after struct, union or alignment attributes."
+		res=1
+	fi
+
+	begin_count=$(grep '__rte_packed_begin' "$1" | wc -l)
+	end_count=$(grep '__rte_packed_end' "$1" | wc -l)
+	if [ $begin_count != $end_count ]; then
+		echo "__rte_packed_begin and __rte_packed_end should always be used in pairs."
+		res=1
+	fi
+
+	return $res
+}
+
 check_release_notes() { # <patch>
 	rel_notes_prefix=doc/guides/rel_notes/release_
 	IFS=. read year month release < VERSION
@@ -473,6 +505,14 @@ check () { # <patch-file> <commit>
 
 	! $verbose || printf '\nChecking alignment attributes:\n'
 	report=$(check_aligned_attributes "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$subject"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking packed attributes:\n'
+	report=$(check_packed_attributes "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"

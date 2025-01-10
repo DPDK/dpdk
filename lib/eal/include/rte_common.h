@@ -101,11 +101,19 @@ typedef uint16_t unaligned_uint16_t;
 
 /**
  * Force a structure to be packed
+ * Usage:
+ *     struct __rte_packed_begin mystruct { ... } __rte_packed_end;
+ *     union __rte_packed_begin myunion { ... } __rte_packed_end;
+ * Note: alignment attributes when present should precede __rte_packed_begin.
  */
 #ifdef RTE_TOOLCHAIN_MSVC
 #define __rte_packed
+#define __rte_packed_begin __pragma(pack(push, 1))
+#define __rte_packed_end __pragma(pack(pop))
 #else
 #define __rte_packed __attribute__((__packed__))
+#define __rte_packed_begin
+#define __rte_packed_end __attribute__((__packed__))
 #endif
 
 /**
