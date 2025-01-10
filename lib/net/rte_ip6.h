@@ -358,7 +358,7 @@ enum rte_ipv6_mc_scope {
 	RTE_IPV6_MC_SCOPE_ORGLOCAL = 0x08,
 	/** Global multicast scope. */
 	RTE_IPV6_MC_SCOPE_GLOBAL = 0x0e,
-} __rte_packed;
+};
 
 /**
  * Extract the IPv6 multicast scope value as defined in RFC 4291, section 2.7.
