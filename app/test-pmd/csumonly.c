@@ -92,7 +92,7 @@ struct testpmd_offload_info {
 struct simple_gre_hdr {
 	uint16_t flags;
 	uint16_t proto;
-} __rte_packed;
+};
 
 static uint16_t
 get_udptcp_checksum(struct rte_mbuf *m, void *l3_hdr, uint16_t l4_off,
