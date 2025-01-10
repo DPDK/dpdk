@@ -53,7 +53,7 @@ static uint16_t geneve_udp_port = RTE_GENEVE_DEFAULT_PORT;
 struct simple_gre_hdr {
 	uint16_t flags;
 	uint16_t proto;
-} __rte_packed;
+};
 
 /* structure that caches offload info for the current packet */
 struct offload_info {

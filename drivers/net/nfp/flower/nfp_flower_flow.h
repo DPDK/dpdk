@@ -53,8 +53,8 @@ struct nfp_fl_rule_metadata {
 	uint8_t act_len;
 	uint8_t flags;
 	rte_be32_t host_ctx_id;
-	rte_be64_t host_cookie __rte_packed;
-	rte_be64_t flow_version __rte_packed;
+	rte_be64_t host_cookie;
+	rte_be64_t flow_version;
 	rte_be32_t shortcut;
 };
 

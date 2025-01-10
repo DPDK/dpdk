@@ -97,7 +97,7 @@ struct iavf_ipsec_crypto_pkt_metadata {
 	uint8_t next_proto;		/* Next Protocol (8b/1B) */
 
 	uint32_t esn;		        /* Extended Sequence Number (32b/4B) */
-} __rte_packed;
+};
 
 /**
  * Inline IPsec Crypto offload is supported
