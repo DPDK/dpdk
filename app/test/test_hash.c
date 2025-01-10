@@ -79,13 +79,13 @@ static uint32_t hashtest_key_lens[] = {0, 2, 4, 5, 6, 7, 8, 10, 11, 15, 16, 21, 
  * Should be packed to avoid holes with potentially
  * undefined content in the middle.
  */
-struct flow_key {
+struct __rte_packed_begin flow_key {
 	uint32_t ip_src;
 	uint32_t ip_dst;
 	uint16_t port_src;
 	uint16_t port_dst;
 	uint32_t proto;
-} __rte_packed;
+} __rte_packed_end;
 
 /*
  * Hash function that always returns the same value, to easily test what
