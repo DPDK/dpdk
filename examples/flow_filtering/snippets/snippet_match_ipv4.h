@@ -13,7 +13,6 @@
 #define DEST_IP ((192<<24) + (168<<16) + (1<<8) + 1) /* dest ip = 192.168.1.1 */
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
-#define DEST_MASK 0xffff /* full mask */
 
 #define MAX_PATTERN_NUM		3 /* Maximal number of patterns for this example. */
 #define MAX_ACTION_NUM		2 /* Maximal number of actions for this example. */
