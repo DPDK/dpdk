@@ -198,12 +198,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		goto err;
 	}
 
-	rc = pthread_mutex_init(&txq->txq_lock, NULL);
-	if (rc != 0) {
-		PMD_DRV_LOG_LINE(ERR, "TxQ mutex init failed!");
-		goto err;
-	}
-	return 0;
+	return pthread_mutex_init(&txq->txq_lock, NULL);
 err:
 	bnxt_tx_queue_release_op(eth_dev, queue_idx);
 	return rc;

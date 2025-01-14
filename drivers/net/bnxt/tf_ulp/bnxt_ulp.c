@@ -188,7 +188,6 @@ ulp_session_init(struct bnxt *bp,
 	struct rte_pci_device		*pci_dev;
 	struct rte_pci_addr		*pci_addr;
 	struct bnxt_ulp_session_state	*session;
-	int rc = 0;
 
 	if (!bp)
 		return NULL;
@@ -215,12 +214,7 @@ ulp_session_init(struct bnxt *bp,
 			session->pci_info.domain = pci_addr->domain;
 			session->pci_info.bus = pci_addr->bus;
 			memcpy(session->dsn, bp->dsn, sizeof(session->dsn));
-			rc = pthread_mutex_init(&session->bnxt_ulp_mutex, NULL);
-			if (rc) {
-				BNXT_DRV_DBG(ERR, "mutex create failed\n");
-				pthread_mutex_unlock(&bnxt_ulp_global_mutex);
-				return NULL;
-			}
+			pthread_mutex_init(&session->bnxt_ulp_mutex, NULL);
 			STAILQ_INSERT_TAIL(&bnxt_ulp_session_list,
 					   session, next);
 		}

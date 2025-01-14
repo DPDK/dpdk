@@ -1472,11 +1472,7 @@ ulp_tf_init(struct bnxt *bp,
 		goto jump_to_error;
 	}
 
-	rc = pthread_mutex_init(&bp->ulp_ctx->cfg_data->flow_db_lock, NULL);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Unable to initialize flow db lock\n");
-		goto jump_to_error;
-	}
+	pthread_mutex_init(&bp->ulp_ctx->cfg_data->flow_db_lock, NULL);
 
 	/* Initialize ulp dparms with values devargs passed */
 	rc = ulp_tf_dparms_init(bp, bp->ulp_ctx);

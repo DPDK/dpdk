@@ -129,11 +129,7 @@ ulp_fc_mgr_init(struct bnxt_ulp_context *ctxt)
 	ulp_fc_info->fc_ops = fc_ops;
 	ulp_fc_info->flags = flags;
 
-	rc = pthread_mutex_init(&ulp_fc_info->fc_lock, NULL);
-	if (rc) {
-		BNXT_DRV_DBG(ERR, "Failed to initialize fc mutex\n");
-		goto error;
-	}
+	pthread_mutex_init(&ulp_fc_info->fc_lock, NULL);
 
 	/* Add the FC info tbl to the ulp context. */
 	bnxt_ulp_cntxt_ptr2_fc_info_set(ctxt, ulp_fc_info);
