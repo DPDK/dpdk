@@ -477,6 +477,7 @@ enum ixgbe_aci_opc {
 	ixgbe_aci_opc_write_mdio			= 0x06E5,
 	ixgbe_aci_opc_set_gpio_by_func			= 0x06E6,
 	ixgbe_aci_opc_get_gpio_by_func			= 0x06E7,
+	ixgbe_aci_opc_set_port_id_led			= 0x06E9,
 	ixgbe_aci_opc_set_gpio				= 0x06EC,
 	ixgbe_aci_opc_get_gpio				= 0x06ED,
 	ixgbe_aci_opc_sff_eeprom			= 0x06EE,
@@ -1252,6 +1253,19 @@ struct ixgbe_aci_cmd_gpio_by_func {
 
 IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_gpio_by_func);
 
+/* Set Port Identification LED (direct, 0x06E9) */
+struct ixgbe_aci_cmd_set_port_id_led {
+	u8 lport_num;
+	u8 lport_num_valid;
+#define IXGBE_ACI_PORT_ID_PORT_NUM_VALID	BIT(0)
+	u8 ident_mode;
+#define IXGBE_ACI_PORT_IDENT_LED_BLINK		BIT(0)
+#define IXGBE_ACI_PORT_IDENT_LED_ORIG		0
+	u8 rsvd[13];
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_port_id_led);
+
 /* Set/Get GPIO (direct, 0x06EC/0x06ED) */
 struct ixgbe_aci_cmd_gpio {
 	__le16 gpio_ctrl_handle;
@@ -1854,6 +1868,7 @@ struct ixgbe_aci_desc {
 		struct ixgbe_aci_cmd_mdio read_write_mdio;
 		struct ixgbe_aci_cmd_mdio read_mdio;
 		struct ixgbe_aci_cmd_mdio write_mdio;
+		struct ixgbe_aci_cmd_set_port_id_led set_port_id_led;
 		struct ixgbe_aci_cmd_gpio_by_func read_write_gpio_by_func;
 		struct ixgbe_aci_cmd_gpio read_write_gpio;
 		struct ixgbe_aci_cmd_sff_eeprom read_write_sff_param;

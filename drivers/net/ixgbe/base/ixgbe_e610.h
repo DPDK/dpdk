@@ -61,6 +61,7 @@ s32 ixgbe_aci_read_i2c(struct ixgbe_hw *hw,
 s32 ixgbe_aci_write_i2c(struct ixgbe_hw *hw,
 			struct ixgbe_aci_cmd_link_topo_addr topo_addr,
 			u16 bus_addr, __le16 addr, u8 params, u8 *data);
+s32 ixgbe_aci_set_port_id_led(struct ixgbe_hw *hw, bool orig_mode);
 s32 ixgbe_aci_set_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
 		       bool value);
 s32 ixgbe_aci_get_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
