@@ -497,11 +497,7 @@ vhost_user_reconnect_init(void)
 {
 	int ret;
 
-	ret = pthread_mutex_init(&reconn_list.mutex, NULL);
-	if (ret < 0) {
-		VHOST_CONFIG_LOG("thread", ERR, "%s: failed to initialize mutex", __func__);
-		return ret;
-	}
+	pthread_mutex_init(&reconn_list.mutex, NULL);
 	TAILQ_INIT(&reconn_list.head);
 
 	ret = rte_thread_create_internal_control(&reconn_tid, "vhost-reco",
@@ -921,11 +917,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out;
 	}
 	TAILQ_INIT(&vsocket->conn_list);
-	ret = pthread_mutex_init(&vsocket->conn_mutex, NULL);
-	if (ret) {
-		VHOST_CONFIG_LOG(path, ERR, "failed to init connection mutex");
-		goto out_free;
-	}
+	pthread_mutex_init(&vsocket->conn_mutex, NULL);
 
 	if (!strncmp("/dev/vduse/", path, strlen("/dev/vduse/")))
 		vsocket->is_vduse = true;
@@ -1034,8 +1026,6 @@ out_mutex:
 	if (pthread_mutex_destroy(&vsocket->conn_mutex)) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to destroy connection mutex");
 	}
-out_free:
-	vhost_user_socket_mem_free(vsocket);
 out:
 	pthread_mutex_unlock(&vhost_user.mutex);
 
