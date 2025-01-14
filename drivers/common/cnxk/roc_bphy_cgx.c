@@ -189,14 +189,11 @@ int
 roc_bphy_cgx_dev_init(struct roc_bphy_cgx *roc_cgx)
 {
 	uint64_t val;
-	int ret;
 
 	if (!roc_cgx || !roc_cgx->bar0_va || !roc_cgx->bar0_pa)
 		return -EINVAL;
 
-	ret = pthread_mutex_init(&roc_cgx->lock, NULL);
-	if (ret)
-		return ret;
+	pthread_mutex_init(&roc_cgx->lock, NULL);
 
 	val = roc_bphy_cgx_read(roc_cgx, 0, CGX_CMRX_RX_LMACS);
 	val = FIELD_GET(CGX_CMRX_RX_LMACS_LMACS, val);
