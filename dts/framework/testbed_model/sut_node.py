@@ -16,7 +16,10 @@ import time
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 
-from framework.config import (
+from framework.config.node import (
+    SutNodeConfiguration,
+)
+from framework.config.test_run import (
     DPDKBuildConfiguration,
     DPDKBuildOptionsConfiguration,
     DPDKPrecompiledBuildConfiguration,
@@ -25,7 +28,6 @@ from framework.config import (
     LocalDPDKTreeLocation,
     RemoteDPDKTarballLocation,
     RemoteDPDKTreeLocation,
-    SutNodeConfiguration,
     TestRunConfiguration,
 )
 from framework.exception import ConfigurationError, RemoteFileNotFoundError

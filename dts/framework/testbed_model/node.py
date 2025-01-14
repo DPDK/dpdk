@@ -15,10 +15,12 @@ The :func:`~Node.skip_setup` decorator can be used without subclassing.
 
 from abc import ABC
 
-from framework.config import (
+from framework.config.node import (
     OS,
-    DPDKBuildConfiguration,
     NodeConfiguration,
+)
+from framework.config.test_run import (
+    DPDKBuildConfiguration,
     TestRunConfiguration,
 )
 from framework.exception import ConfigurationError

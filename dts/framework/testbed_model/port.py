@@ -10,7 +10,7 @@ drivers and address.
 
 from dataclasses import dataclass
 
-from framework.config import PortConfig
+from framework.config.node import PortConfig
 
 
 @dataclass(slots=True, frozen=True)

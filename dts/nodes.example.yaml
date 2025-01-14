@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2022-2023 The DPDK contributors
+# Copyright 2023 Arm Limited
+
+# Define a system under test node, having two network ports physically
+# connected to the corresponding ports in TG 1 (the peer node)
+- name: "SUT 1"
+  hostname: sut1.change.me.localhost
+  user: dtsuser
+  os: linux
+  ports:
+    # sets up the physical link between "SUT 1"@0000:00:08.0 and "TG 1"@0000:00:08.0
+    - pci: "0000:00:08.0"
+      os_driver_for_dpdk: vfio-pci # OS driver that DPDK will use
+      os_driver: i40e              # OS driver to bind when the tests are not running
+      peer_node: "TG 1"
+      peer_pci: "0000:00:08.0"
+    # sets up the physical link between "SUT 1"@0000:00:08.1 and "TG 1"@0000:00:08.1
+    - pci: "0000:00:08.1"
+      os_driver_for_dpdk: vfio-pci
+      os_driver: i40e
+      peer_node: "TG 1"
+      peer_pci: "0000:00:08.1"
+  hugepages_2mb: # optional; if removed, will use system hugepage configuration
+      number_of: 256
+      force_first_numa: false
+  dpdk_config:
+      lcores: "" # use all available logical cores (Skips first core)
+      memory_channels: 4 # tells DPDK to use 4 memory channels
+# Define a Scapy traffic generator node, having two network ports
+# physically connected to the corresponding ports in SUT 1 (the peer node).
+- name: "TG 1"
+  hostname: tg1.change.me.localhost
+  user: dtsuser
+  os: linux
+  ports:
+    # sets up the physical link between "TG 1"@0000:00:08.0 and "SUT 1"@0000:00:08.0
+    - pci: "0000:00:08.0"
+      os_driver_for_dpdk: rdma
+      os_driver: rdma
+      peer_node: "SUT 1"
+      peer_pci: "0000:00:08.0"
+    # sets up the physical link between "SUT 1"@0000:00:08.0 and "TG 1"@0000:00:08.0
+    - pci: "0000:00:08.1"
+      os_driver_for_dpdk: rdma
+      os_driver: rdma
+      peer_node: "SUT 1"
+      peer_pci: "0000:00:08.1"
+  hugepages_2mb: # optional; if removed, will use system hugepage configuration
+      number_of: 256
+      force_first_numa: false
+  traffic_generator:
+      type: SCAPY

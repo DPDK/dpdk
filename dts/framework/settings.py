@@ -14,10 +14,15 @@ followed by the default value defined in this module.
 
 The command line arguments along with the supported environment variables are:
 
-.. option:: --config-file
-.. envvar:: DTS_CFG_FILE
+.. option:: --test-runs-config-file
+.. envvar:: DTS_TEST_RUNS_CFG_FILE
 
-    The path to the YAML test run configuration file.
+    The path to the YAML configuration file of the test runs.
+
+.. option:: --nodes-config-file
+.. envvar:: DTS_NODES_CFG_FILE
+
+    The path to the YAML configuration file of the nodes.
 
 .. option:: --output-dir, --output
 .. envvar:: DTS_OUTPUT_DIR
@@ -102,7 +107,7 @@ from typing import Callable
 
 from pydantic import ValidationError
 
-from .config import (
+from .config.test_run import (
     DPDKLocation,
     LocalDPDKTarballLocation,
     LocalDPDKTreeLocation,
@@ -120,7 +125,9 @@ class Settings:
     """
 
     #:
-    config_file_path: Path = Path(__file__).parent.parent.joinpath("conf.yaml")
+    test_runs_config_path: Path = Path(__file__).parent.parent.joinpath("test_runs.yaml")
+    #:
+    nodes_config_path: Path = Path(__file__).parent.parent.joinpath("nodes.yaml")
     #:
     output_dir: str = "output"
     #:
@@ -316,14 +323,24 @@ def _get_parser() -> _DTSArgumentParser:
     )
 
     action = parser.add_argument(
-        "--config-file",
-        default=SETTINGS.config_file_path,
+        "--test-runs-config-file",
+        default=SETTINGS.test_runs_config_path,
         type=Path,
-        help="The configuration file that describes the test cases, SUTs and DPDK build configs.",
+        help="The configuration file that describes the test cases and DPDK build options.",
         metavar="FILE_PATH",
-        dest="config_file_path",
+        dest="test_runs_config_path",
     )
-    _add_env_var_to_action(action, "CFG_FILE")
+    _add_env_var_to_action(action, "TEST_RUNS_CFG_FILE")
+
+    action = parser.add_argument(
+        "--nodes-config-file",
+        default=SETTINGS.nodes_config_path,
+        type=Path,
+        help="The configuration file that describes the SUT and TG nodes.",
+        metavar="FILE_PATH",
+        dest="nodes_config_path",
+    )
+    _add_env_var_to_action(action, "NODES_CFG_FILE")
 
     action = parser.add_argument(
         "--output-dir",

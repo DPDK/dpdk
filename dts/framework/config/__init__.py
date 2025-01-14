@@ -8,20 +8,15 @@
 
 This package offers classes that hold real-time information about the testbed, hold test run
 configuration describing the tested testbed and a loader function, :func:`load_config`, which loads
-the YAML test run configuration file and validates it against the :class:`Configuration` Pydantic
-model.
+the YAML configuration files and validates them against the :class:`Configuration` Pydantic
+model, which fields are directly mapped.
 
-The YAML test run configuration file is parsed into a dictionary, parts of which are used throughout
-this package. The allowed keys and types inside this dictionary map directly to the
-:class:`Configuration` model, its fields and sub-models.
+The configuration files are split in:
 
-The test run configuration has two main sections:
-
-    * The :class:`TestRunConfiguration` which defines what tests are going to be run
-      and how DPDK will be built. It also references the testbed where these tests and DPDK
-      are going to be run,
-    * The nodes of the testbed are defined in the other section,
-      a :class:`list` of :class:`NodeConfiguration` objects.
+    * A list of test run which are represented by :class:`~.test_run.TestRunConfiguration`
+      defining what tests are going to be run and how DPDK will be built. It also references
+      the testbed where these tests and DPDK are going to be run,
+    * A list of the nodes of the testbed which ar represented by :class:`~.node.NodeConfiguration`.
 
 The real-time information about testbed is supposed to be gathered at runtime.
 
@@ -32,467 +27,24 @@ Nearly all of them are frozen:
       and makes it thread safe should we ever want to move in that direction.
 """
 
-import tarfile
-from collections.abc import Callable, MutableMapping
-from enum import Enum, auto, unique
 from functools import cached_property
-from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Annotated, Any, Literal, NamedTuple, TypedDict, cast
+from pathlib import Path
+from typing import Annotated, Any, Literal, NamedTuple, TypeVar, cast
 
 import yaml
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationError,
-    ValidationInfo,
-    field_validator,
-    model_validator,
-)
+from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
 from typing_extensions import Self
 
 from framework.exception import ConfigurationError
-from framework.settings import Settings
-from framework.utils import REGEX_FOR_PCI_ADDRESS, StrEnum
 
-if TYPE_CHECKING:
-    from framework.test_suite import TestSuiteSpec
-
-
-class ValidationContext(TypedDict):
-    """A context dictionary to use for validation."""
-
-    #: The command line settings.
-    settings: Settings
-
-
-def load_fields_from_settings(
-    *fields: str | tuple[str, str],
-) -> Callable[[Any, ValidationInfo], Any]:
-    """Before model validator that injects values from :attr:`ValidationContext.settings`.
-
-    Args:
-        *fields: The name of the fields to apply the argument value to. If the settings field name
-            is not the same as the configuration field, supply a tuple with the respective names.
-
-    Returns:
-        Pydantic before model validator.
-    """
-
-    def _loader(data: Any, info: ValidationInfo) -> Any:
-        if not isinstance(data, MutableMapping):
-            return data
-
-        settings = cast(ValidationContext, info.context)["settings"]
-        for field in fields:
-            if isinstance(field, tuple):
-                settings_field = field[0]
-                config_field = field[1]
-            else:
-                settings_field = config_field = field
-
-            if settings_data := getattr(settings, settings_field):
-                data[config_field] = settings_data
-
-        return data
-
-    return _loader
-
-
-class FrozenModel(BaseModel):
-    """A pre-configured :class:`~pydantic.BaseModel`."""
-
-    #: Fields are set as read-only and any extra fields are forbidden.
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-@unique
-class OS(StrEnum):
-    r"""The supported operating systems of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    linux = auto()
-    #:
-    freebsd = auto()
-    #:
-    windows = auto()
-
-
-@unique
-class Compiler(StrEnum):
-    r"""The supported compilers of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #:
-    gcc = auto()
-    #:
-    clang = auto()
-    #:
-    icc = auto()
-    #:
-    msvc = auto()
-
-
-@unique
-class TrafficGeneratorType(str, Enum):
-    """The supported traffic generators."""
-
-    #:
-    SCAPY = "SCAPY"
-
-
-class HugepageConfiguration(FrozenModel):
-    r"""The hugepage configuration of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #: The number of hugepages to allocate.
-    number_of: int
-    #: If :data:`True`, the hugepages will be configured on the first NUMA node.
-    force_first_numa: bool
-
-
-class PortConfig(FrozenModel):
-    r"""The port configuration of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #: The PCI address of the port.
-    pci: str = Field(pattern=REGEX_FOR_PCI_ADDRESS)
-    #: The driver that the kernel should bind this device to for DPDK to use it.
-    os_driver_for_dpdk: str = Field(examples=["vfio-pci", "mlx5_core"])
-    #: The operating system driver name when the operating system controls the port.
-    os_driver: str = Field(examples=["i40e", "ice", "mlx5_core"])
-    #: The name of the peer node this port is connected to.
-    peer_node: str
-    #: The PCI address of the peer port connected to this port.
-    peer_pci: str = Field(pattern=REGEX_FOR_PCI_ADDRESS)
-
-
-class TrafficGeneratorConfig(FrozenModel):
-    """A protocol required to define traffic generator types."""
-
-    #: The traffic generator type the child class is required to define to be distinguished among
-    #: others.
-    type: TrafficGeneratorType
-
-
-class ScapyTrafficGeneratorConfig(TrafficGeneratorConfig):
-    """Scapy traffic generator specific configuration."""
-
-    type: Literal[TrafficGeneratorType.SCAPY]
-
-
-#: A union type discriminating traffic generators by the `type` field.
-TrafficGeneratorConfigTypes = Annotated[ScapyTrafficGeneratorConfig, Field(discriminator="type")]
-
-#: Comma-separated list of logical cores to use. An empty string or ```any``` means use all lcores.
-LogicalCores = Annotated[
-    str,
-    Field(
-        examples=["1,2,3,4,5,18-22", "10-15", "any"],
-        pattern=r"^(([0-9]+|([0-9]+-[0-9]+))(,([0-9]+|([0-9]+-[0-9]+)))*)?$|any",
-    ),
-]
-
-
-class NodeConfiguration(FrozenModel):
-    r"""The configuration of :class:`~framework.testbed_model.node.Node`\s."""
-
-    #: The name of the :class:`~framework.testbed_model.node.Node`.
-    name: str
-    #: The hostname of the :class:`~framework.testbed_model.node.Node`. Can also be an IP address.
-    hostname: str
-    #: The name of the user used to connect to the :class:`~framework.testbed_model.node.Node`.
-    user: str
-    #: The password of the user. The use of passwords is heavily discouraged, please use SSH keys.
-    password: str | None = None
-    #: The operating system of the :class:`~framework.testbed_model.node.Node`.
-    os: OS
-    #: An optional hugepage configuration.
-    hugepages: HugepageConfiguration | None = Field(None, alias="hugepages_2mb")
-    #: The ports that can be used in testing.
-    ports: list[PortConfig] = Field(min_length=1)
-
-
-class DPDKConfiguration(FrozenModel):
-    """Configuration of the DPDK EAL parameters."""
-
-    #: A comma delimited list of logical cores to use when running DPDK. ```any```, an empty
-    #: string or omitting this field means use any core except for the first one. The first core
-    #: will only be used if explicitly set.
-    lcores: LogicalCores = ""
-
-    #: The number of memory channels to use when running DPDK.
-    memory_channels: int = 1
-
-    @property
-    def use_first_core(self) -> bool:
-        """Returns :data:`True` if `lcores` explicitly selects the first core."""
-        return "0" in self.lcores
-
-
-class SutNodeConfiguration(NodeConfiguration):
-    """:class:`~framework.testbed_model.sut_node.SutNode` specific configuration."""
-
-    #: The runtime configuration for DPDK.
-    dpdk_config: DPDKConfiguration
-
-
-class TGNodeConfiguration(NodeConfiguration):
-    """:class:`~framework.testbed_model.tg_node.TGNode` specific configuration."""
-
-    #: The configuration of the traffic generator present on the TG node.
-    traffic_generator: TrafficGeneratorConfigTypes
-
-
-#: Union type for all the node configuration types.
-NodeConfigurationTypes = TGNodeConfiguration | SutNodeConfiguration
-
-
-def resolve_path(path: Path) -> Path:
-    """Resolve a path into a real path."""
-    return path.resolve()
-
-
-class BaseDPDKLocation(FrozenModel):
-    """DPDK location base class.
-
-    The path to the DPDK sources and type of location.
-    """
-
-    #: Specifies whether to find DPDK on the SUT node or on the local host. Which are respectively
-    #: represented by :class:`RemoteDPDKLocation` and :class:`LocalDPDKTreeLocation`.
-    remote: bool = False
-
-
-class LocalDPDKLocation(BaseDPDKLocation):
-    """Local DPDK location base class.
-
-    This class is meant to represent any location that is present only locally.
-    """
-
-    remote: Literal[False] = False
-
-
-class LocalDPDKTreeLocation(LocalDPDKLocation):
-    """Local DPDK tree location.
-
-    This class makes a distinction from :class:`RemoteDPDKTreeLocation` by enforcing on the fly
-    validation.
-    """
-
-    #: The path to the DPDK source tree directory on the local host passed as string.
-    dpdk_tree: Path
-
-    #: Resolve the local DPDK tree path.
-    resolve_dpdk_tree_path = field_validator("dpdk_tree")(resolve_path)
-
-    @model_validator(mode="after")
-    def validate_dpdk_tree_path(self) -> Self:
-        """Validate the provided DPDK tree path."""
-        assert self.dpdk_tree.exists(), "DPDK tree not found in local filesystem."
-        assert self.dpdk_tree.is_dir(), "The DPDK tree path must be a directory."
-        return self
-
-
-class LocalDPDKTarballLocation(LocalDPDKLocation):
-    """Local DPDK tarball location.
-
-    This class makes a distinction from :class:`RemoteDPDKTarballLocation` by enforcing on the fly
-    validation.
-    """
-
-    #: The path to the DPDK tarball on the local host passed as string.
-    tarball: Path
-
-    #: Resolve the local tarball path.
-    resolve_tarball_path = field_validator("tarball")(resolve_path)
-
-    @model_validator(mode="after")
-    def validate_tarball_path(self) -> Self:
-        """Validate the provided tarball."""
-        assert self.tarball.exists(), "DPDK tarball not found in local filesystem."
-        assert tarfile.is_tarfile(self.tarball), "The DPDK tarball must be a valid tar archive."
-        return self
-
-
-class RemoteDPDKLocation(BaseDPDKLocation):
-    """Remote DPDK location base class.
-
-    This class is meant to represent any location that is present only remotely.
-    """
-
-    remote: Literal[True] = True
-
-
-class RemoteDPDKTreeLocation(RemoteDPDKLocation):
-    """Remote DPDK tree location.
-
-    This class is distinct from :class:`LocalDPDKTreeLocation` which enforces on the fly validation.
-    """
-
-    #: The path to the DPDK source tree directory on the remote node passed as string.
-    dpdk_tree: PurePath
-
-
-class RemoteDPDKTarballLocation(RemoteDPDKLocation):
-    """Remote DPDK tarball location.
-
-    This class is distinct from :class:`LocalDPDKTarballLocation` which enforces on the fly
-    validation.
-    """
-
-    #: The path to the DPDK tarball on the remote node passed as string.
-    tarball: PurePath
-
-
-#: Union type for different DPDK locations.
-DPDKLocation = (
-    LocalDPDKTreeLocation
-    | LocalDPDKTarballLocation
-    | RemoteDPDKTreeLocation
-    | RemoteDPDKTarballLocation
+from .common import FrozenModel, ValidationContext
+from .node import (
+    NodeConfiguration,
+    NodeConfigurationTypes,
+    SutNodeConfiguration,
+    TGNodeConfiguration,
 )
-
-
-class BaseDPDKBuildConfiguration(FrozenModel):
-    """The base configuration for different types of build.
-
-    The configuration contain the location of the DPDK and configuration used for building it.
-    """
-
-    #: The location of the DPDK tree.
-    dpdk_location: DPDKLocation
-
-    dpdk_location_from_settings = model_validator(mode="before")(
-        load_fields_from_settings("dpdk_location")
-    )
-
-
-class DPDKPrecompiledBuildConfiguration(BaseDPDKBuildConfiguration):
-    """DPDK precompiled build configuration."""
-
-    #: If it's defined, DPDK has been pre-compiled and the build directory is located in a
-    #: subdirectory of `~dpdk_location.dpdk_tree` or `~dpdk_location.tarball` root directory.
-    precompiled_build_dir: str = Field(min_length=1)
-
-    build_dir_from_settings = model_validator(mode="before")(
-        load_fields_from_settings("precompiled_build_dir")
-    )
-
-
-class DPDKBuildOptionsConfiguration(FrozenModel):
-    """DPDK build options configuration.
-
-    The build options used for building DPDK.
-    """
-
-    #: The compiler executable to use.
-    compiler: Compiler
-    #: This string will be put in front of the compiler when executing the build. Useful for adding
-    #: wrapper commands, such as ``ccache``.
-    compiler_wrapper: str = ""
-
-
-class DPDKUncompiledBuildConfiguration(BaseDPDKBuildConfiguration):
-    """DPDK uncompiled build configuration."""
-
-    #: The build options to compiled DPDK with.
-    build_options: DPDKBuildOptionsConfiguration
-
-
-#: Union type for different build configurations.
-DPDKBuildConfiguration = DPDKPrecompiledBuildConfiguration | DPDKUncompiledBuildConfiguration
-
-
-class TestSuiteConfig(FrozenModel):
-    """Test suite configuration.
-
-    Information about a single test suite to be executed. This can also be represented as a string
-    instead of a mapping, example:
-
-    .. code:: yaml
-
-        test_runs:
-        - test_suites:
-            # As string representation:
-            - hello_world # test all of `hello_world`, or
-            - hello_world hello_world_single_core # test only `hello_world_single_core`
-            # or as model fields:
-            - test_suite: hello_world
-              test_cases: [hello_world_single_core] # without this field all test cases are run
-    """
-
-    #: The name of the test suite module without the starting ``TestSuite_``.
-    test_suite_name: str = Field(alias="test_suite")
-    #: The names of test cases from this test suite to execute. If empty, all test cases will be
-    #: executed.
-    test_cases_names: list[str] = Field(default_factory=list, alias="test_cases")
-
-    @cached_property
-    def test_suite_spec(self) -> "TestSuiteSpec":
-        """The specification of the requested test suite."""
-        from framework.test_suite import find_by_name
-
-        test_suite_spec = find_by_name(self.test_suite_name)
-        assert (
-            test_suite_spec is not None
-        ), f"{self.test_suite_name} is not a valid test suite module name."
-        return test_suite_spec
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_from_string(cls, data: Any) -> Any:
-        """Convert the string representation of the model into a valid mapping."""
-        if isinstance(data, str):
-            [test_suite, *test_cases] = data.split()
-            return dict(test_suite=test_suite, test_cases=test_cases)
-        return data
-
-    @model_validator(mode="after")
-    def validate_names(self) -> Self:
-        """Validate the supplied test suite and test cases names.
-
-        This validator relies on the cached property `test_suite_spec` to run for the first
-        time in this call, therefore triggering the assertions if needed.
-        """
-        available_test_cases = map(
-            lambda t: t.name, self.test_suite_spec.class_obj.get_test_cases()
-        )
-        for requested_test_case in self.test_cases_names:
-            assert requested_test_case in available_test_cases, (
-                f"{requested_test_case} is not a valid test case "
-                f"of test suite {self.test_suite_name}."
-            )
-
-        return self
-
-
-class TestRunConfiguration(FrozenModel):
-    """The configuration of a test run.
-
-    The configuration contains testbed information, what tests to execute
-    and with what DPDK build.
-    """
-
-    #: The DPDK configuration used to test.
-    dpdk_config: DPDKBuildConfiguration = Field(alias="dpdk_build")
-    #: Whether to run performance tests.
-    perf: bool
-    #: Whether to run functional tests.
-    func: bool
-    #: Whether to skip smoke tests.
-    skip_smoke_tests: bool = False
-    #: The names of test suites and/or test cases to execute.
-    test_suites: list[TestSuiteConfig] = Field(min_length=1)
-    #: The SUT node name to use in this test run.
-    system_under_test_node: str
-    #: The TG node name to use in this test run.
-    traffic_generator_node: str
-    #: The names of virtual devices to test.
-    vdevs: list[str] = Field(default_factory=list)
-    #: The seed to use for pseudo-random generation.
-    random_seed: int | None = None
-
-    fields_from_settings = model_validator(mode="before")(
-        load_fields_from_settings("test_suites", "random_seed")
-    )
+from .test_run import TestRunConfiguration
 
 
 class TestRunWithNodesConfiguration(NamedTuple):
@@ -506,13 +58,18 @@ class TestRunWithNodesConfiguration(NamedTuple):
     tg_node_config: TGNodeConfiguration
 
 
+TestRunsConfig = Annotated[list[TestRunConfiguration], Field(min_length=1)]
+
+NodesConfig = Annotated[list[NodeConfigurationTypes], Field(min_length=1)]
+
+
 class Configuration(FrozenModel):
     """DTS testbed and test configuration."""
 
     #: Test run configurations.
-    test_runs: list[TestRunConfiguration] = Field(min_length=1)
+    test_runs: TestRunsConfig
     #: Node configurations.
-    nodes: list[NodeConfigurationTypes] = Field(min_length=1)
+    nodes: NodesConfig
 
     @cached_property
     def test_runs_with_nodes(self) -> list[TestRunWithNodesConfiguration]:
@@ -596,30 +153,37 @@ class Configuration(FrozenModel):
         return self
 
 
-def load_config(settings: Settings) -> Configuration:
-    """Load DTS test run configuration from a file.
+T = TypeVar("T")
 
-    Load the YAML test run configuration file, validate it, and create a test run configuration
-    object.
 
-    The YAML test run configuration file is specified in the :option:`--config-file` command line
-    argument or the :envvar:`DTS_CFG_FILE` environment variable.
+def _load_and_parse_model(file_path: Path, model_type: T, ctx: ValidationContext) -> T:
+    with open(file_path) as f:
+        try:
+            data = yaml.safe_load(f)
+            return TypeAdapter(model_type).validate_python(data, context=cast(dict[str, Any], ctx))
+        except ValidationError as e:
+            msg = f"failed to load the configuration file {file_path}"
+            raise ConfigurationError(msg) from e
+
+
+def load_config(ctx: ValidationContext) -> Configuration:
+    """Load the DTS configuration from files.
+
+    Load the YAML configuration files, validate them, and create a configuration object.
 
     Args:
-        config_file_path: The path to the YAML test run configuration file.
-        settings: The settings provided by the user on the command line.
+        ctx: The context required for validation.
 
     Returns:
         The parsed test run configuration.
 
     Raises:
-        ConfigurationError: If the supplied configuration file is invalid.
+        ConfigurationError: If the supplied configuration files are invalid.
     """
-    with open(settings.config_file_path, "r") as f:
-        config_data = yaml.safe_load(f)
+    test_runs = _load_and_parse_model(ctx["settings"].test_runs_config_path, TestRunsConfig, ctx)
+    nodes = _load_and_parse_model(ctx["settings"].nodes_config_path, NodesConfig, ctx)
 
     try:
-        context = ValidationContext(settings=settings)
-        return Configuration.model_validate(config_data, context=context)
+        return Configuration.model_validate({"test_runs": test_runs, "nodes": nodes}, context=ctx)
     except ValidationError as e:
-        raise ConfigurationError("failed to load the supplied configuration") from e
+        raise ConfigurationError("the configurations supplied are invalid") from e

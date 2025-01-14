@@ -28,7 +28,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path, PurePath, PurePosixPath
 
-from framework.config import NodeConfiguration
+from framework.config.node import NodeConfiguration
 from framework.logger import DTSLogger
 from framework.remote_session import (
     InteractiveRemoteSession,

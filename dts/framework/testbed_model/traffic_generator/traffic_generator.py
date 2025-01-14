@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 
 from scapy.packet import Packet
 
-from framework.config import TrafficGeneratorConfig
+from framework.config.node import TrafficGeneratorConfig
 from framework.logger import DTSLogger, get_dts_logger
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port

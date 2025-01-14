@@ -14,7 +14,7 @@ in the infrastructure (a faulty link between NICs or a misconfiguration).
 
 import re
 
-from framework.config import PortConfig
+from framework.config.node import PortConfig
 from framework.remote_session.testpmd_shell import TestPmdShell
 from framework.settings import SETTINGS
 from framework.test_suite import TestSuite, func_test

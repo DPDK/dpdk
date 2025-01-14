@@ -11,7 +11,7 @@ A TG node is where the TG runs.
 
 from scapy.packet import Packet
 
-from framework.config import TGNodeConfiguration
+from framework.config.node import TGNodeConfiguration
 from framework.testbed_model.traffic_generator.capturing_traffic_generator import (
     PacketFilteringConfig,
 )
