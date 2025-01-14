@@ -741,6 +741,9 @@ ixgbe_parse_common_caps(struct ixgbe_hw *hw, struct ixgbe_hw_common_caps *caps,
 			(phys_id & IXGBE_EXT_TOPO_DEV_IMG_PROG_EN) != 0;
 		break;
 	}
+	case IXGBE_ACI_CAPS_OROM_RECOVERY_UPDATE:
+		caps->orom_recovery_update = (number == 1);
+		break;
 
 	case IXGBE_ACI_CAPS_NEXT_CLUSTER_ID:
 		caps->next_cluster_id_support = (number == 1);

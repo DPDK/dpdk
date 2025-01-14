@@ -700,6 +700,7 @@ struct ixgbe_aci_cmd_list_caps_elem {
 #define IXGBE_ACI_CAPS_EXT_TOPO_DEV_IMG1		0x0082
 #define IXGBE_ACI_CAPS_EXT_TOPO_DEV_IMG2		0x0083
 #define IXGBE_ACI_CAPS_EXT_TOPO_DEV_IMG3		0x0084
+#define IXGBE_ACI_CAPS_OROM_RECOVERY_UPDATE		0x0090
 #define IXGBE_ACI_CAPS_NEXT_CLUSTER_ID			0x0096
 #define IXGBE_ACI_CAPS_PTP_BY_PHY			0x0097
 	u8 major_ver;
@@ -2087,6 +2088,8 @@ struct ixgbe_hw_common_caps {
 #define IXGBE_EXT_TOPO_DEV_IMG_LOAD_EN	BIT(0)
 	bool ext_topo_dev_img_prog_en[IXGBE_EXT_TOPO_DEV_IMG_COUNT];
 #define IXGBE_EXT_TOPO_DEV_IMG_PROG_EN	BIT(1)
+	/* Support for OROM update in Recovery Mode. */
+	bool orom_recovery_update;
 	bool next_cluster_id_support;
 	bool ptp_by_phy_support;
 };
