@@ -1486,10 +1486,7 @@ intel_max10_device_init(struct intel_max10_device *dev)
 		if (ret)
 			return ret;
 
-		ret = pthread_mutex_init(&dev->bmc_ops.lock, NULL);
-		if (ret)
-			return ret;
-
+		pthread_mutex_init(&dev->bmc_ops.lock, NULL);
 		if (!dev->bmc_ops.mutex)
 			dev->bmc_ops.mutex = &dev->bmc_ops.lock;
 	}
