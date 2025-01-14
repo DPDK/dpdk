@@ -747,6 +747,11 @@ ixgbe_parse_common_caps(struct ixgbe_hw *hw, struct ixgbe_hw_common_caps *caps,
 		DEBUGOUT2("%s: next_cluster_id_support = %d\n",
 			  prefix, caps->next_cluster_id_support);
 		break;
+	case IXGBE_ACI_CAPS_PTP_BY_PHY:
+		caps->ptp_by_phy_support = (number == 1);
+		DEBUGOUT2("%s: ptp_by_phy_support = %d\n", prefix,
+			  caps->ptp_by_phy_support);
+		break;
 	default:
 		/* Not one of the recognized common capabilities */
 		found = false;
@@ -1795,6 +1800,57 @@ s32 ixgbe_configure_lse(struct ixgbe_hw *hw, bool activate, u16 mask)
 		return rc;
 	}
 	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_set_ptp_by_phy - Set PTP timestamping by PHY
+ * @hw: pointer to the HW struct
+ * @ptp_request: timestamp mode request
+ * @flags: timestamp mode flags
+ *
+ * Set PTP by PHY using ACI command (0x0634).
+ *
+ * Return: 0 on success, negative error code otherwise
+ */
+s32 ixgbe_set_ptp_by_phy(struct ixgbe_hw *hw, u8 ptp_request, u8 flags)
+{
+	struct ixgbe_aci_cmd_set_ptp_by_phy *cmd;
+	struct ixgbe_aci_desc desc;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_set_ptp_by_phy);
+	cmd = &desc.params.set_ptp_by_phy;
+	cmd->ptp_request = ptp_request;
+	cmd->flags = flags;
+
+	return ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+}
+
+/**
+ * ixgbe_get_ptp_by_phy - Get PTP timestamping by PHY
+ * @hw: pointer to the HW struct
+ * @ptp_config: timestamp mode config
+ * @flags: timestamp mode flags
+ *
+ * Get PTP by PHY using ACI command (0x0635).
+ *
+ * Return: 0 on success, negative error code otherwise
+ */
+s32 ixgbe_get_ptp_by_phy(struct ixgbe_hw *hw, u8 *ptp_config, u8 *flags)
+{
+	struct ixgbe_aci_cmd_get_ptp_by_phy_resp *resp;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_ptp_by_phy);
+	resp = &desc.params.get_ptp_by_phy_resp;
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+	if (!status) {
+		*ptp_config = resp->ptp_config;
+		*flags = resp->flags;
+	}
+
+	return status;
 }
 
 /**

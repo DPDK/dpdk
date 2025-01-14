@@ -469,6 +469,8 @@ enum ixgbe_aci_opc {
 	ixgbe_aci_opc_restart_an			= 0x0605,
 	ixgbe_aci_opc_get_link_status			= 0x0607,
 	ixgbe_aci_opc_set_event_mask			= 0x0613,
+	ixgbe_aci_opc_set_ptp_by_phy			= 0x0634,
+	ixgbe_aci_opc_get_ptp_by_phy			= 0x0635,
 	ixgbe_aci_opc_get_link_topo			= 0x06E0,
 	ixgbe_aci_opc_get_link_topo_pin			= 0x06E1,
 	ixgbe_aci_opc_read_i2c				= 0x06E2,
@@ -697,6 +699,7 @@ struct ixgbe_aci_cmd_list_caps_elem {
 #define IXGBE_ACI_CAPS_EXT_TOPO_DEV_IMG2		0x0083
 #define IXGBE_ACI_CAPS_EXT_TOPO_DEV_IMG3		0x0084
 #define IXGBE_ACI_CAPS_NEXT_CLUSTER_ID			0x0096
+#define IXGBE_ACI_CAPS_PTP_BY_PHY			0x0097
 	u8 major_ver;
 	u8 minor_ver;
 	/* Number of resources described by this capability */
@@ -1071,6 +1074,45 @@ struct ixgbe_aci_cmd_set_event_mask {
 };
 
 IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_event_mask);
+
+/* Set PTP by PHY (direct 0x0634) */
+struct ixgbe_aci_cmd_set_ptp_by_phy {
+	u8 ptp_request;
+#define IXGBE_SET_PTP_BY_PHY_PTP_REQ_DISABLE		0
+#define IXGBE_SET_PTP_BY_PHY_PTP_REQ_ENABLE		1
+#define IXGBE_SET_PTP_BY_PHY_PTP_REQ_TOD_INIT		2
+#define IXGBE_SET_PTP_BY_PHY_PTP_REQ_SET_PHY_PARAMS	3
+	u8 flags;
+#define IXGBE_SET_PTP_BY_PHY_ETHERTYPE_M		GENMASK(4, 0)
+#define IXGBE_SET_PTP_BY_PHY_ETHERTYPE_NO_VLAN_TAG	0x0C
+#define IXGBE_SET_PTP_BY_PHY_ETHERTYPE_VLAN_TAG		0x10
+#define IXGBE_SET_PTP_BY_PHY_TX_TS_M			BIT(5)
+#define IXGBE_SET_PTP_BY_PHY_TX_TS_2STEP		0
+#define IXGBE_SET_PTP_BY_PHY_TX_TS_1STEP		1
+	u8 rsvd[14];
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_ptp_by_phy);
+
+/* Get PTP by PHY response (direct 0x0635) */
+struct ixgbe_aci_cmd_get_ptp_by_phy_resp {
+	u8 ptp_config;
+#define IXGBE_GET_PTP_BY_PHY_PTP_REQ_DISABLE		0
+#define IXGBE_GET_PTP_BY_PHY_PTP_REQ_ENABLE		1
+	u8 flags;
+#define IXGBE_GET_PTP_BY_PHY_ETHERTYPE_M		GENMASK(4, 0)
+#define IXGBE_GET_PTP_BY_PHY_ETHERTYPE_NO_VLAN_TAG	0x0C
+#define IXGBE_GET_PTP_BY_PHY_ETHERTYPE_VLAN_TAG		0x10
+#define IXGBE_GET_PTP_BY_PHY_TX_TS_M			BIT(5)
+#define IXGBE_GET_PTP_BY_PHY_TX_TS_2STEP		0
+#define IXGBE_GET_PTP_BY_PHY_TX_TS_1STEP		1
+	u8 rsvd[6];
+	__le16 maxDriftThreshold;
+	__le16 minDriftThreshold;
+	u8 rsvd2[4];
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_ptp_by_phy_resp);
 
 struct ixgbe_aci_cmd_link_topo_params {
 	u8 lport_num;
@@ -1861,6 +1903,8 @@ struct ixgbe_aci_desc {
 		struct ixgbe_aci_cmd_restart_an restart_an;
 		struct ixgbe_aci_cmd_get_link_status get_link_status;
 		struct ixgbe_aci_cmd_set_event_mask set_event_mask;
+		struct ixgbe_aci_cmd_set_ptp_by_phy set_ptp_by_phy;
+		struct ixgbe_aci_cmd_get_ptp_by_phy_resp get_ptp_by_phy_resp;
 		struct ixgbe_aci_cmd_get_link_topo get_link_topo;
 		struct ixgbe_aci_cmd_get_link_topo_pin get_link_topo_pin;
 		struct ixgbe_aci_cmd_i2c read_write_i2c;
@@ -2019,6 +2063,7 @@ struct ixgbe_hw_common_caps {
 	bool ext_topo_dev_img_prog_en[IXGBE_EXT_TOPO_DEV_IMG_COUNT];
 #define IXGBE_EXT_TOPO_DEV_IMG_PROG_EN	BIT(1)
 	bool next_cluster_id_support;
+	bool ptp_by_phy_support;
 };
 
 /* IEEE 1588 TIME_SYNC specific info */
@@ -2204,5 +2249,12 @@ struct ixgbe_nvm_access_cmd {
 struct ixgbe_nvm_access_data {
 	u32 regval;			/* Storage for register value */
 };
+
+#define PROXY_TX_TS            0x00000100
+#define PROXY_STS              0x00000104
+#define PROXY_STS_SEQ_ID       GENMASK(15, 0)
+#define PROXY_STS_ERR          GENMASK(29, 15)
+#define PROXY_STS_TX_TS_RDY    BIT(30)
+#define PROXY_STS_TX_TS_INT    BIT(31)
 
 #endif /* _IXGBE_TYPE_E610_H_ */
