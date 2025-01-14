@@ -21,11 +21,7 @@
 	(__GNUC__ == 4 &&  __GNUC_MINOR__ < 4))
 
 #include <smmintrin.h> /* SSE4 */
-
-#if defined(__AVX__)
 #include <immintrin.h>
-#endif
-
 #else
 
 #include <x86intrin.h>
