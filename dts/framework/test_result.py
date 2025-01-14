@@ -32,7 +32,7 @@ from typing import Any, Callable, TypedDict
 
 from framework.testbed_model.capability import Capability
 
-from .config import TestRunConfiguration, TestSuiteConfig
+from .config.test_run import TestRunConfiguration, TestSuiteConfig
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLogger
 from .test_suite import TestCase, TestSuite

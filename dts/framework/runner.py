@@ -25,17 +25,22 @@ from pathlib import Path
 from types import MethodType
 from typing import Iterable
 
+from framework.config.common import ValidationContext
 from framework.testbed_model.capability import Capability, get_supported_capabilities
 from framework.testbed_model.sut_node import SutNode
 from framework.testbed_model.tg_node import TGNode
 
 from .config import (
     Configuration,
+    load_config,
+)
+from .config.node import (
     SutNodeConfiguration,
+    TGNodeConfiguration,
+)
+from .config.test_run import (
     TestRunConfiguration,
     TestSuiteConfig,
-    TGNodeConfiguration,
-    load_config,
 )
 from .exception import BlockingTestSuiteError, SSHTimeoutError, TestCaseVerifyError
 from .logger import DTSLogger, DtsStage, get_dts_logger
@@ -81,7 +86,7 @@ class DTSRunner:
 
     def __init__(self):
         """Initialize the instance with configuration, logger, result and string constants."""
-        self._configuration = load_config(SETTINGS)
+        self._configuration = load_config(ValidationContext(settings=SETTINGS))
         self._logger = get_dts_logger()
         if not os.path.exists(SETTINGS.output_dir):
             os.makedirs(SETTINGS.output_dir)

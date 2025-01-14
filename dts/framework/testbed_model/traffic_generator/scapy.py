@@ -20,7 +20,7 @@ from scapy.compat import base64_bytes
 from scapy.layers.l2 import Ether
 from scapy.packet import Packet
 
-from framework.config import OS, ScapyTrafficGeneratorConfig
+from framework.config.node import OS, ScapyTrafficGeneratorConfig
 from framework.remote_session.python_shell import PythonShell
 from framework.testbed_model.node import Node
 from framework.testbed_model.port import Port

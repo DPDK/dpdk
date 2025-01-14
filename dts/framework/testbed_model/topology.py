@@ -16,7 +16,7 @@ if TYPE_CHECKING or environ.get("DTS_DOC_BUILD"):
 else:
     from aenum import NoAliasEnum
 
-from framework.config import PortConfig
+from framework.config.node import PortConfig
 from framework.exception import ConfigurationError
 
 from .port import Port
