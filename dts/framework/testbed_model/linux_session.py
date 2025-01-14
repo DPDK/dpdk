@@ -90,12 +90,12 @@ class LinuxSession(PosixSession):
             ConfigurationError: If the given `hugepage_size` is not supported by the OS.
         """
         self._logger.info("Getting Hugepage information.")
-        hugepages_total = self._get_hugepages_total(hugepage_size)
         if (
             f"hugepages-{hugepage_size}kB"
             not in self.send_command("ls /sys/kernel/mm/hugepages").stdout
         ):
             raise ConfigurationError("hugepage size not supported by operating system")
+        hugepages_total = self._get_hugepages_total(hugepage_size)
         self._numa_nodes = self._get_numa_nodes()
 
         if force_first_numa or hugepages_total < number_of:
