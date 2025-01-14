@@ -18,9 +18,7 @@
 
 #if defined(__ICC) || defined(_WIN64)
 #include <smmintrin.h> /* SSE4 */
-#if defined(__AVX__)
 #include <immintrin.h>
-#endif
 #else
 #include <x86intrin.h>
 #endif
