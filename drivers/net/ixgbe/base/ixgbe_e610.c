@@ -1833,12 +1833,14 @@ s32 ixgbe_set_ptp_by_phy(struct ixgbe_hw *hw, u8 ptp_request, u8 flags)
  * @hw: pointer to the HW struct
  * @ptp_config: timestamp mode config
  * @flags: timestamp mode flags
+ * @max_drift_thresh: maximal PHY clock drift threshold
  *
  * Get PTP by PHY using ACI command (0x0635).
  *
  * Return: 0 on success, negative error code otherwise
  */
-s32 ixgbe_get_ptp_by_phy(struct ixgbe_hw *hw, u8 *ptp_config, u8 *flags)
+s32 ixgbe_get_ptp_by_phy(struct ixgbe_hw *hw, u8 *ptp_config, u8 *flags,
+			 u16 *max_drift_thresh)
 {
 	struct ixgbe_aci_cmd_get_ptp_by_phy_resp *resp;
 	struct ixgbe_aci_desc desc;
@@ -1851,6 +1853,7 @@ s32 ixgbe_get_ptp_by_phy(struct ixgbe_hw *hw, u8 *ptp_config, u8 *flags)
 	if (!status) {
 		*ptp_config = resp->ptp_config;
 		*flags = resp->flags;
+		*max_drift_thresh = IXGBE_LE16_TO_CPU(resp->maxDriftThreshold);
 	}
 
 	return status;
