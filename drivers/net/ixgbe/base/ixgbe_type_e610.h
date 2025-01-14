@@ -509,6 +509,8 @@ enum ixgbe_aci_opc {
 	ixgbe_aci_opc_done_alt_write			= 0x0904,
 	ixgbe_aci_opc_clear_port_alt_write		= 0x0906,
 
+	ixgbe_aci_opc_temp_tca_event			= 0x0C94,
+
 	/* debug commands */
 	ixgbe_aci_opc_debug_dump_internals		= 0xFF08,
 
@@ -1755,6 +1757,29 @@ struct ixgbe_aci_cmd_get_cgu_info {
 };
 
 IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_cgu_info);
+
+struct ixgbe_aci_cmd_temp_tca_event {
+	u8 event_desc;
+#define IXGBE_TEMP_TCA_EVENT_DESC_SUBJ_SHIFT         0
+#define IXGBE_TEMP_TCA_EVENT_DESC_SUBJ_NVM           0
+#define IXGBE_TEMP_TCA_EVENT_DESC_SUBJ_EVENT_STATE   1
+#define IXGBE_TEMP_TCA_EVENT_DESC_SUBJ_ALL           2
+
+#define IXGBE_TEMP_TCA_EVENT_DESC_ALARM_SHIFT        2
+#define IXGBE_TEMP_TCA_EVENT_DESC_WARNING_CLEARED    0
+#define IXGBE_TEMP_TCA_EVENT_DESC_ALARM_CLEARED      1
+#define IXGBE_TEMP_TCA_EVENT_DESC_WARNING_RAISED     2
+#define IXGBE_TEMP_TCA_EVENT_DESC_ALARM_RAISED       3
+
+	u8 reserved;
+	__le16 temperature;
+	__le16 thermal_sensor_max_value;
+	__le16 thermal_sensor_min_value;
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_temp_tca_event);
 
 /* Debug Dump Internal Data (indirect 0xFF08) */
 struct ixgbe_aci_cmd_debug_dump_internals {
