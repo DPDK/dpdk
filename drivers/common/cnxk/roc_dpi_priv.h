@@ -27,7 +27,7 @@ typedef union dpi_mbox_msg_t {
 		/* Command code */
 		uint64_t cmd : 4;
 		/* Command buffer size in 8-byte words */
-		uint64_t csize : 14;
+		uint64_t csize : 16;
 		/* aura of the command buffer */
 		uint64_t aura : 20;
 		/* SSO PF function */
