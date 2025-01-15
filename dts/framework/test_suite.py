@@ -300,6 +300,16 @@ class TestSuite(TestProtocol):
         """
         return self.get_expected_packets([packet])[0]
 
+    def log(self, message: str) -> None:
+        """Call the private instance of logger within the TestSuite class.
+
+        Log the given message with the level 'INFO'.
+
+        Args:
+            message: String representing the message to log.
+        """
+        self._logger.info(message)
+
     def _adjust_addresses(self, packets: list[Packet], expected: bool = False) -> list[Packet]:
         """L2 and L3 address additions in both directions.
 
