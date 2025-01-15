@@ -2477,6 +2477,24 @@ class TestPmdShell(DPDKShell):
                     f"Failed to update ring size of queue {queue_id} on port {port_id}"
                 )
 
+    @requires_stopped_ports
+    def set_queue_deferred_start(
+        self, port_id: int, queue_id: int, is_rx_queue: bool, on: bool
+    ) -> None:
+        """Set the deferred start attribute of the specified queue on/off.
+
+        Args:
+            port_id: The port that the queue resides on.
+            queue_id: The ID of the queue on the port.
+            is_rx_queue: Whether to modify an RX or TX queue. If :data:`True` an RX queue will be
+                updated, otherwise a TX queue will be updated.
+            on: Whether to set deferred start mode on or off. If :data:`True` deferred start will
+                be turned on, otherwise it will be turned off.
+        """
+        queue_type = "rxq" if is_rx_queue else "txq"
+        action = "on" if on else "off"
+        self.send_command(f"port {port_id} {queue_type} {queue_id} deferred_start {action}")
+
     def _update_capabilities_from_flag(
         self,
         supported_capabilities: MutableSet["NicCapability"],
