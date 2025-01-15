@@ -23,6 +23,7 @@
   perf: false # disable performance testing
   func: true # enable functional testing
   skip_smoke_tests: false # optional
+  # by removing the `test_suites` field, this test run will run every test suite available
   test_suites: # the following test suites will be run in their entirety
     - hello_world
   vdevs: # optional; if removed, vdevs won't be used in the execution
