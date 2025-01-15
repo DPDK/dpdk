@@ -1795,6 +1795,30 @@ class TestPmdShell(DPDKShell):
 
         return TestPmdPortStats.parse(output)
 
+    def set_multicast_all(self, on: bool, verify: bool = True):
+        """Turns multicast mode on/off for the specified port.
+
+        Args:
+            on: If :data:`True`, turns multicast mode on, otherwise turns off.
+            verify: If :data:`True` an additional command will be sent to verify
+                that multicast mode is properly set. Defaults to :data:`True`.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and multicast
+                mode is not properly set.
+        """
+        multicast_cmd_output = self.send_command(f"set allmulti all {'on' if on else 'off'}")
+        if verify:
+            stats0 = self.show_port_info(port_id=0)
+            stats1 = self.show_port_info(port_id=1)
+            if on ^ (stats0.is_allmulticast_mode_enabled and stats1.is_allmulticast_mode_enabled):
+                self._logger.debug(
+                    f"Failed to set multicast mode on all ports.: \n{multicast_cmd_output}"
+                )
+                raise InteractiveCommandExecutionError(
+                    "Testpmd failed to set multicast mode on all ports."
+                )
+
     @requires_stopped_ports
     def csum_set_hw(
         self, layers: ChecksumOffloadOptions, port_id: int, verify: bool = True
