@@ -324,13 +324,10 @@ class BaseResult:
         Returns:
             A dictionary with the PASS/FAIL ratio of all test cases.
         """
-        return {
-            "PASS_RATE": (
-                float(test_run_summary[Result.PASS.name])
-                * 100
-                / sum(test_run_summary[result.name] for result in Result if result != Result.SKIP)
-            )
-        }
+        cases_not_skipped = sum(
+            test_run_summary[result.name] for result in Result if result != Result.SKIP
+        )
+        return {"PASS_RATE": test_run_summary[Result.PASS.name] * 100.0 / max(cases_not_skipped, 1)}
 
 
 class DTSResult(BaseResult):
