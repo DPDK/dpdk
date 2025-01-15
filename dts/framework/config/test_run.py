@@ -259,6 +259,20 @@ class TestSuiteConfig(FrozenModel):
         return self
 
 
+def fetch_all_test_suites() -> list[TestSuiteConfig]:
+    """Returns all the available test suites as configuration objects.
+
+    This function does not include the smoke tests.
+    """
+    from framework.test_suite import AVAILABLE_TEST_SUITES
+
+    return [
+        TestSuiteConfig(test_suite=test_suite.name)
+        for test_suite in AVAILABLE_TEST_SUITES
+        if test_suite.name != "smoke_tests"
+    ]
+
+
 class TestRunConfiguration(FrozenModel):
     """The configuration of a test run.
 
@@ -275,7 +289,7 @@ class TestRunConfiguration(FrozenModel):
     #: Whether to skip smoke tests.
     skip_smoke_tests: bool = False
     #: The names of test suites and/or test cases to execute.
-    test_suites: list[TestSuiteConfig] = Field(min_length=1)
+    test_suites: list[TestSuiteConfig] = Field(default_factory=fetch_all_test_suites)
     #: The SUT node name to use in this test run.
     system_under_test_node: str
     #: The TG node name to use in this test run.
