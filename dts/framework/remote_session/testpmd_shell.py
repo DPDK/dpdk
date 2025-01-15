@@ -2107,6 +2107,27 @@ class TestPmdShell(DPDKShell):
                     f"Testpmd failed to set verbose level to {level}."
                 )
 
+    def rx_vxlan(self, vxlan_id: int, port_id: int, enable: bool, verify: bool = True) -> None:
+        """Add or remove vxlan id to/from filter list.
+
+        Args:
+            vxlan_id: VXLAN ID to add to port filter list.
+            port_id: ID of the port to modify VXLAN filter of.
+            enable: If :data:`True`, adds specified VXLAN ID, otherwise removes it.
+            verify: If :data:`True`, the output of the command is checked to verify
+                the VXLAN ID was successfully added/removed from the port.
+
+        Raises:
+            InteractiveCommandExecutionError: If `verify` is :data:`True` and VXLAN ID
+                is not successfully added or removed.
+        """
+        action = "add" if enable else "rm"
+        vxlan_output = self.send_command(f"rx_vxlan_port {action} {vxlan_id} {port_id}")
+        if verify:
+            if "udp tunneling add error" in vxlan_output:
+                self._logger.debug(f"Failed to set VXLAN:\n{vxlan_output}")
+                raise InteractiveCommandExecutionError(f"Failed to set VXLAN:\n{vxlan_output}")
+
     def _close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
         self.stop()
