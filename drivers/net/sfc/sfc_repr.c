@@ -769,11 +769,7 @@ static void
 sfc_repr_close(struct sfc_repr *sr)
 {
 	SFC_ASSERT(sfc_repr_lock_is_locked(sr));
-
 	SFC_ASSERT(sr->state == SFC_ETHDEV_CONFIGURED);
-	sr->state = SFC_ETHDEV_CLOSING;
-
-	/* Put representor close actions here */
 
 	sr->state = SFC_ETHDEV_INITIALIZED;
 }
