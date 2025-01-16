@@ -432,8 +432,11 @@ class TestSuite(TestProtocol):
             self._fail_test_case_verify("An expected packet not found among received packets.")
 
     def match_all_packets(
-        self, expected_packets: list[Packet], received_packets: list[Packet]
-    ) -> None:
+        self,
+        expected_packets: list[Packet],
+        received_packets: list[Packet],
+        verify: bool = True,
+    ) -> bool:
         """Matches all the expected packets against the received ones.
 
         Matching is performed by counting down the occurrences in a dictionary which keys are the
@@ -443,10 +446,14 @@ class TestSuite(TestProtocol):
         Args:
             expected_packets: The packets we are expecting to receive.
             received_packets: All the packets that were received.
+            verify: If :data:`True`, and there are missing packets an exception will be raised.
 
         Raises:
             TestCaseVerifyError: if and not all the `expected_packets` were found in
                 `received_packets`.
+
+        Returns:
+            :data:`True` If there are no missing packets.
         """
         expected_packets_counters = Counter(map(raw, expected_packets))
         received_packets_counters = Counter(map(raw, received_packets))
@@ -460,10 +467,14 @@ class TestSuite(TestProtocol):
         )
 
         if missing_packets_count != 0:
-            self._fail_test_case_verify(
-                f"Not all packets were received, expected {len(expected_packets)} "
-                f"but {missing_packets_count} were missing."
-            )
+            if verify:
+                self._fail_test_case_verify(
+                    f"Not all packets were received, expected {len(expected_packets)} "
+                    f"but {missing_packets_count} were missing."
+                )
+            return False
+
+        return True
 
     def _compare_packets(self, expected_packet: Packet, received_packet: Packet) -> bool:
         self._logger.debug(
