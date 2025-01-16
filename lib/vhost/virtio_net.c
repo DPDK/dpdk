@@ -3593,7 +3593,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count)
 {
 	struct virtio_net *dev;
-	struct rte_mbuf *rarp_mbuf = NULL;
 	struct vhost_virtqueue *vq;
 	int16_t success = 1;
 	uint16_t nb_rx = 0;
@@ -3654,32 +3653,32 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	if (unlikely(rte_atomic_load_explicit(&dev->broadcast_rarp, rte_memory_order_acquire) &&
 			rte_atomic_compare_exchange_strong_explicit(&dev->broadcast_rarp,
 			&success, 0, rte_memory_order_release, rte_memory_order_relaxed))) {
-
-		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
-		if (rarp_mbuf == NULL) {
+		/*
+		 * Inject the RARP packet to the head of "pkts" array,
+		 * so that switch's mac learning table will get updated first.
+		 */
+		pkts[nb_rx] = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
+		if (pkts[nb_rx] == NULL) {
 			VHOST_DATA_LOG(dev->ifname, ERR, "failed to make RARP packet.");
 			goto out;
 		}
-		/*
-		 * Inject it to the head of "pkts" array, so that switch's mac
-		 * learning table will get updated first.
-		 */
-		pkts[0] = rarp_mbuf;
-		vhost_queue_stats_update(dev, vq, pkts, 1);
-		pkts++;
-		count -= 1;
+		nb_rx += 1;
 	}
 
 	if (vq_is_packed(dev)) {
 		if (dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS)
-			nb_rx = virtio_dev_tx_packed_legacy(dev, vq, mbuf_pool, pkts, count);
+			nb_rx += virtio_dev_tx_packed_legacy(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx);
 		else
-			nb_rx = virtio_dev_tx_packed_compliant(dev, vq, mbuf_pool, pkts, count);
+			nb_rx += virtio_dev_tx_packed_compliant(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx);
 	} else {
 		if (dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS)
-			nb_rx = virtio_dev_tx_split_legacy(dev, vq, mbuf_pool, pkts, count);
+			nb_rx += virtio_dev_tx_split_legacy(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx);
 		else
-			nb_rx = virtio_dev_tx_split_compliant(dev, vq, mbuf_pool, pkts, count);
+			nb_rx += virtio_dev_tx_split_compliant(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx);
 	}
 
 	vhost_queue_stats_update(dev, vq, pkts, nb_rx);
@@ -3689,9 +3688,6 @@ out:
 
 out_access_unlock:
 	rte_rwlock_read_unlock(&vq->access_lock);
-
-	if (unlikely(rarp_mbuf != NULL))
-		nb_rx += 1;
 
 out_no_unlock:
 	return nb_rx;
@@ -4197,7 +4193,6 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 	int *nr_inflight, int16_t dma_id, uint16_t vchan_id)
 {
 	struct virtio_net *dev;
-	struct rte_mbuf *rarp_mbuf = NULL;
 	struct vhost_virtqueue *vq;
 	int16_t success = 1;
 	uint16_t nb_rx = 0;
@@ -4276,36 +4271,32 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 	if (unlikely(rte_atomic_load_explicit(&dev->broadcast_rarp, rte_memory_order_acquire) &&
 			rte_atomic_compare_exchange_strong_explicit(&dev->broadcast_rarp,
 			&success, 0, rte_memory_order_release, rte_memory_order_relaxed))) {
-
-		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
-		if (rarp_mbuf == NULL) {
+		/*
+		 * Inject the RARP packet to the head of "pkts" array,
+		 * so that switch's mac learning table will get updated first.
+		 */
+		pkts[nb_rx] = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
+		if (pkts[nb_rx] == NULL) {
 			VHOST_DATA_LOG(dev->ifname, ERR, "failed to make RARP packet.");
 			goto out;
 		}
-		/*
-		 * Inject it to the head of "pkts" array, so that switch's mac
-		 * learning table will get updated first.
-		 */
-		pkts[0] = rarp_mbuf;
-		vhost_queue_stats_update(dev, vq, pkts, 1);
-		pkts++;
-		count -= 1;
+		nb_rx += 1;
 	}
 
 	if (vq_is_packed(dev)) {
 		if (dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS)
-			nb_rx = virtio_dev_tx_async_packed_legacy(dev, vq, mbuf_pool,
-					pkts, count, dma_id, vchan_id);
+			nb_rx += virtio_dev_tx_async_packed_legacy(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx, dma_id, vchan_id);
 		else
-			nb_rx = virtio_dev_tx_async_packed_compliant(dev, vq, mbuf_pool,
-					pkts, count, dma_id, vchan_id);
+			nb_rx += virtio_dev_tx_async_packed_compliant(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx, dma_id, vchan_id);
 	} else {
 		if (dev->flags & VIRTIO_DEV_LEGACY_OL_FLAGS)
-			nb_rx = virtio_dev_tx_async_split_legacy(dev, vq, mbuf_pool,
-					pkts, count, dma_id, vchan_id);
+			nb_rx += virtio_dev_tx_async_split_legacy(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx, dma_id, vchan_id);
 		else
-			nb_rx = virtio_dev_tx_async_split_compliant(dev, vq, mbuf_pool,
-					pkts, count, dma_id, vchan_id);
+			nb_rx += virtio_dev_tx_async_split_compliant(dev, vq, mbuf_pool,
+					pkts + nb_rx, count - nb_rx, dma_id, vchan_id);
 	}
 
 	*nr_inflight = vq->async->pkts_inflight_n;
@@ -4316,9 +4307,6 @@ out:
 
 out_access_unlock:
 	rte_rwlock_read_unlock(&vq->access_lock);
-
-	if (unlikely(rarp_mbuf != NULL))
-		nb_rx += 1;
 
 out_no_unlock:
 	return nb_rx;
