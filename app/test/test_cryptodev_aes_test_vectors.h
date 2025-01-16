@@ -833,11 +833,11 @@ static const struct blockcipher_test_data aes_test_data_19 = {
 	},
 	.plaintext = {
 		.data = plaintext_aes192ecb_192bytes,
-		.len = 64
+		.len = 192
 	},
 	.ciphertext = {
 		.data = ciphertext_aes192ecb_192bytes,
-		.len = 64
+		.len = 192
 	}
 };
 
@@ -5103,7 +5103,7 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 	},
 	{
-		.test_descr = "AES-256-ECB Decryption (192-byte plaintext)",
+		.test_descr = "AES-256-ECB Decryption (256-byte plaintext)",
 		.test_data = &aes_test_data_20,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 	},
