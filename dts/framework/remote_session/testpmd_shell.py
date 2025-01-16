@@ -1795,7 +1795,7 @@ class TestPmdShell(DPDKShell):
 
         return TestPmdPortStats.parse(output)
 
-    def set_multicast_all(self, on: bool, verify: bool = True):
+    def set_multicast_all(self, on: bool, verify: bool = True) -> None:
         """Turns multicast mode on/off for the specified port.
 
         Args:
@@ -1809,9 +1809,8 @@ class TestPmdShell(DPDKShell):
         """
         multicast_cmd_output = self.send_command(f"set allmulti all {'on' if on else 'off'}")
         if verify:
-            stats0 = self.show_port_info(port_id=0)
-            stats1 = self.show_port_info(port_id=1)
-            if on ^ (stats0.is_allmulticast_mode_enabled and stats1.is_allmulticast_mode_enabled):
+            port_stats = self.show_port_info_all()
+            if on ^ all(stats.is_allmulticast_mode_enabled for stats in port_stats):
                 self._logger.debug(
                     f"Failed to set multicast mode on all ports.: \n{multicast_cmd_output}"
                 )
