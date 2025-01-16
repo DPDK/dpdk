@@ -88,8 +88,8 @@ class TestChecksumOffload(TestSuite):
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
         for testpmd_packet in verbose_output:
             if testpmd_packet.dst_mac == id:
-                isIP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in packet.ol_flags
-                isL4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in packet.ol_flags
+                isIP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in testpmd_packet.ol_flags
+                isL4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in testpmd_packet.ol_flags
         self.verify(isL4 == goodL4, "Layer 4 checksum flag did not match expected checksum flag.")
         self.verify(isIP == goodIP, "IP checksum flag did not match expected checksum flag.")
 
