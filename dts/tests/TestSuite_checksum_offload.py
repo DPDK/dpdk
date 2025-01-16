@@ -70,15 +70,15 @@ class TestChecksumOffload(TestSuite):
             )
 
     def send_packet_and_verify_checksum(
-        self, packet: Packet, goodL4: bool, goodIP: bool, testpmd: TestPmdShell, id: str
+        self, packet: Packet, good_L4: bool, good_IP: bool, testpmd: TestPmdShell, id: str
     ) -> None:
         """Send packet and verify verbose output matches expected output.
 
         Args:
             packet: Scapy packet to send to DUT.
-            goodL4: Verifies RTE_MBUF_F_RX_L4_CKSUM_GOOD in verbose output
+            good_L4: Verifies RTE_MBUF_F_RX_L4_CKSUM_GOOD in verbose output
                 if :data:`True`, or RTE_MBUF_F_RX_L4_CKSUM_UNKNOWN if :data:`False`.
-            goodIP: Verifies RTE_MBUF_F_RX_IP_CKSUM_GOOD in verbose output
+            good_IP: Verifies RTE_MBUF_F_RX_IP_CKSUM_GOOD in verbose output
                 if :data:`True`, or RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN if :data:`False`.
             testpmd: Testpmd shell session to analyze verbose output of.
             id: The destination mac address that matches the sent packet in verbose output.
@@ -88,10 +88,10 @@ class TestChecksumOffload(TestSuite):
         verbose_output = testpmd.extract_verbose_output(testpmd.stop())
         for testpmd_packet in verbose_output:
             if testpmd_packet.dst_mac == id:
-                isIP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in testpmd_packet.ol_flags
-                isL4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in testpmd_packet.ol_flags
-        self.verify(isL4 == goodL4, "Layer 4 checksum flag did not match expected checksum flag.")
-        self.verify(isIP == goodIP, "IP checksum flag did not match expected checksum flag.")
+                is_IP = PacketOffloadFlag.RTE_MBUF_F_RX_IP_CKSUM_GOOD in testpmd_packet.ol_flags
+                is_L4 = PacketOffloadFlag.RTE_MBUF_F_RX_L4_CKSUM_GOOD in testpmd_packet.ol_flags
+        self.verify(is_L4 == good_L4, "Layer 4 checksum flag did not match expected checksum flag.")
+        self.verify(is_IP == good_IP, "IP checksum flag did not match expected checksum flag.")
 
     def setup_hw_offload(self, testpmd: TestPmdShell) -> None:
         """Sets IP, UDP, and TCP layers to hardware offload.
@@ -108,7 +108,18 @@ class TestChecksumOffload(TestSuite):
 
     @func_test
     def test_insert_checksums(self) -> None:
-        """Enable checksum offload insertion and verify packet reception."""
+        """Enable checksum offload insertion and verify packet reception.
+
+        Steps:
+            Create a list of packets to send.
+            Launch testpmd with the necessary configuration.
+            Enable checksum hardware offload.
+            Send list of packets.
+
+        Verify:
+            Verify packets are received.
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         payload = b"xxxxx"
         packet_list = [
@@ -125,12 +136,22 @@ class TestChecksumOffload(TestSuite):
             self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
             for i in range(0, len(packet_list)):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=True, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
                 )
 
     @func_test
     def test_no_insert_checksums(self) -> None:
-        """Disable checksum offload insertion and verify packet reception."""
+        """Disable checksum offload insertion and verify packet reception.
+
+        Steps:
+            Create a list of packets to send.
+            Launch testpmd with the necessary configuration.
+            Send list of packets.
+
+        Verify:
+            Verify packets are received.
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         payload = b"xxxxx"
         packet_list = [
@@ -146,12 +167,22 @@ class TestChecksumOffload(TestSuite):
             self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
             for i in range(0, len(packet_list)):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=True, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
                 )
 
     @func_test
     def test_l4_rx_checksum(self) -> None:
-        """Tests L4 Rx checksum in a variety of scenarios."""
+        """Tests L4 Rx checksum in a variety of scenarios.
+
+        Steps:
+            Create a list of packets to send with UDP/TCP fields.
+            Launch testpmd with the necessary configuration.
+            Enable checksum hardware offload.
+            Send list of packets.
+
+        Verify:
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         packet_list = [
             Ether(dst=mac_id) / IP() / UDP(),
@@ -165,16 +196,26 @@ class TestChecksumOffload(TestSuite):
             self.setup_hw_offload(testpmd=testpmd)
             for i in range(0, 2):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=True, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
                 )
             for i in range(2, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=False, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
                 )
 
     @func_test
     def test_l3_rx_checksum(self) -> None:
-        """Tests L3 Rx checksum hardware offload."""
+        """Tests L3 Rx checksum hardware offload.
+
+        Steps:
+            Create a list of packets to send with IP fields.
+            Launch testpmd with the necessary configuration.
+            Enable checksum hardware offload.
+            Send list of packets.
+
+        Verify:
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         packet_list = [
             Ether(dst=mac_id) / IP() / UDP(),
@@ -188,16 +229,26 @@ class TestChecksumOffload(TestSuite):
             self.setup_hw_offload(testpmd=testpmd)
             for i in range(0, 2):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=True, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
                 )
             for i in range(2, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=True, goodIP=False, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=False, testpmd=testpmd, id=mac_id
                 )
 
     @func_test
     def test_validate_rx_checksum(self) -> None:
-        """Verify verbose output of Rx packets matches expected behavior."""
+        """Verify verbose output of Rx packets matches expected behavior.
+
+        Steps:
+            Create a list of packets to send.
+            Launch testpmd with the necessary configuration.
+            Enable checksum hardware offload.
+            Send list of packets.
+
+        Verify:
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         packet_list = [
             Ether(dst=mac_id) / IP() / UDP(),
@@ -215,21 +266,31 @@ class TestChecksumOffload(TestSuite):
             self.setup_hw_offload(testpmd=testpmd)
             for i in range(0, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=True, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
                 )
             for i in range(4, 6):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=False, goodIP=False, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=False, testpmd=testpmd, id=mac_id
                 )
             for i in range(6, 8):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=False, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
                 )
 
     @requires(NicCapability.RX_OFFLOAD_VLAN)
     @func_test
     def test_vlan_checksum(self) -> None:
-        """Test VLAN Rx checksum hardware offload and verify packet reception."""
+        """Test VLAN Rx checksum hardware offload and verify packet reception.
+
+        Steps:
+            Create a list of packets to send with VLAN fields.
+            Launch testpmd with the necessary configuration.
+            Enable checksum hardware offload.
+            Send list of packets.
+
+        Verify:
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         payload = b"xxxxx"
         packet_list = [
@@ -246,17 +307,27 @@ class TestChecksumOffload(TestSuite):
             self.send_packets_and_verify(packet_list=packet_list, load=payload, should_receive=True)
             for i in range(0, 2):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=False, goodIP=False, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=False, testpmd=testpmd, id=mac_id
                 )
             for i in range(2, 4):
                 self.send_packet_and_verify_checksum(
-                    packet=packet_list[i], goodL4=False, goodIP=True, testpmd=testpmd, id=mac_id
+                    packet=packet_list[i], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
                 )
 
     @requires(NicCapability.RX_OFFLOAD_SCTP_CKSUM)
     @func_test
     def test_validate_sctp_checksum(self) -> None:
-        """Test SCTP Rx checksum hardware offload and verify packet reception."""
+        """Test SCTP Rx checksum hardware offload and verify packet reception.
+
+        Steps:
+            Create a list of packets to send with SCTP fields.
+            Launch testpmd with the necessary configuration.
+            Enable checksum hardware offload.
+            Send list of packets.
+
+        Verify:
+            Verify packet checksums match the expected flags.
+        """
         mac_id = "00:00:00:00:00:01"
         packet_list = [
             Ether(dst=mac_id) / IP() / SCTP(),
@@ -268,8 +339,8 @@ class TestChecksumOffload(TestSuite):
             testpmd.csum_set_hw(layers=ChecksumOffloadOptions.sctp)
             testpmd.start()
             self.send_packet_and_verify_checksum(
-                packet=packet_list[0], goodL4=True, goodIP=True, testpmd=testpmd, id=mac_id
+                packet=packet_list[0], good_L4=True, good_IP=True, testpmd=testpmd, id=mac_id
             )
             self.send_packet_and_verify_checksum(
-                packet=packet_list[1], goodL4=False, goodIP=True, testpmd=testpmd, id=mac_id
+                packet=packet_list[1], good_L4=False, good_IP=True, testpmd=testpmd, id=mac_id
             )
