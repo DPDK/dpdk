@@ -3601,6 +3601,8 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 		rte_rwlock_read_unlock(&vq->access_lock);
 
 		virtio_dev_vring_translate(dev, vq);
+
+		count = 0;
 		goto out_no_unlock;
 	}
 
