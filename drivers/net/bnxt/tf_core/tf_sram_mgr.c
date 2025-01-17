@@ -949,7 +949,7 @@ int tf_sram_mgr_is_allocated(void *sram_handle,
 			    tf_sram_slice_2_str(parms->slice_size),
 			    tf_sram_bank_2_str(parms->bank_id));
 
-		parms->is_allocated = false;
+		*parms->is_allocated = false;
 		goto done;
 	}
 
@@ -964,7 +964,7 @@ int tf_sram_mgr_is_allocated(void *sram_handle,
 	if (block == NULL) {
 		TFP_DRV_LOG(ERR, "block not found in list 0x%x\n",
 			    parms->sram_offset);
-		parms->is_allocated = false;
+		*parms->is_allocated = false;
 		goto done;
 	}
 
