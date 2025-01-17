@@ -484,6 +484,7 @@ ice_alloc_rx_queue_mbufs(struct ice_rx_queue *rxq)
 			struct rte_mbuf *mbuf_pay;
 			mbuf_pay = rte_mbuf_raw_alloc(rxq->rxseg[1].mp);
 			if (unlikely(!mbuf_pay)) {
+				rte_pktmbuf_free(mbuf);
 				PMD_DRV_LOG(ERR, "Failed to allocate payload mbuf for RX");
 				return -ENOMEM;
 			}
@@ -1874,6 +1875,8 @@ ice_rx_alloc_bufs(struct ice_rx_queue *rxq)
 		diag_pay = rte_mempool_get_bulk(rxq->rxseg[1].mp,
 				(void *)mbufs_pay, rxq->rx_free_thresh);
 		if (unlikely(diag_pay != 0)) {
+			rte_mempool_put_bulk(rxq->mp, (void *)rxep,
+				    rxq->rx_free_thresh);
 			PMD_RX_LOG(ERR, "Failed to get payload mbufs in bulk");
 			return -ENOMEM;
 		}
@@ -2580,6 +2583,13 @@ ice_recv_pkts(void *rx_queue,
 			nmb_pay = rte_mbuf_raw_alloc(rxq->rxseg[1].mp);
 			if (unlikely(!nmb_pay)) {
 				rxq->vsi->adapter->pf.dev_data->rx_mbuf_alloc_failed++;
+				rxe->mbuf = NULL;
+				nb_hold--;
+				if (unlikely(rx_id == 0))
+					rx_id = rxq->nb_rx_desc;
+
+				rx_id--;
+				rte_pktmbuf_free(nmb);
 				break;
 			}
 
