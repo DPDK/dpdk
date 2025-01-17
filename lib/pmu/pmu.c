@@ -41,7 +41,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_pmu)
 struct rte_pmu rte_pmu;
 
 /* Stubs for arch-specific functions */
-#if !defined(RTE_PMU_SUPPORTED)
+#if !defined(RTE_PMU_SUPPORTED) || defined(RTE_ARCH_X86_64)
 int
 pmu_arch_init(void)
 {

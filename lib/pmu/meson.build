@@ -12,6 +12,7 @@ sources = files('pmu.c')
 
 indirect_headers += files(
         'rte_pmu_pmc_arm64.h',
+        'rte_pmu_pmc_x86_64.h',
 )
 
 if dpdk_conf.has('RTE_ARCH_ARM64')

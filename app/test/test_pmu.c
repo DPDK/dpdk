@@ -15,6 +15,8 @@ test_pmu_read(void)
 
 #if defined(RTE_ARCH_ARM64)
 	name = "cpu_cycles";
+#elif defined(RTE_ARCH_X86_64)
+	name = "cpu-cycles";
 #endif
 
 	if (name == NULL) {
