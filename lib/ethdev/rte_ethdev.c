@@ -602,9 +602,10 @@ rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 	struct rte_eth_dev *ethdev;
 	int ret;
 
-	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	ethdev = &rte_eth_devices[port_id];
+	if (port_id >= RTE_MAX_ETHPORTS)
+		return -ENODEV;
 
+	ethdev = &rte_eth_devices[port_id];
 	if (!eth_dev_is_allocated(ethdev)) {
 		RTE_ETHDEV_LOG_LINE(ERR, "Port ID %"PRIu16" is not allocated",
 			port_id);
@@ -637,8 +638,15 @@ int
 rte_eth_dev_socket_id(uint16_t port_id)
 {
 	int socket_id = SOCKET_ID_ANY;
+	struct rte_eth_dev *ethdev;
 
-	if (!rte_eth_dev_is_valid_port(port_id)) {
+	if (port_id >= RTE_MAX_ETHPORTS) {
+		rte_errno = EINVAL;
+		return socket_id;
+	}
+
+	ethdev = &rte_eth_devices[port_id];
+	if (!eth_dev_is_allocated(ethdev)) {
 		rte_errno = EINVAL;
 	} else {
 		socket_id = rte_eth_devices[port_id].data->numa_node;

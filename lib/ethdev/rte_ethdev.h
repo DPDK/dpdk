@@ -4162,7 +4162,8 @@ enum rte_eth_event_type {
 	/**
 	 * The port is being probed, i.e. allocated and not yet available.
 	 * It is too early to check validity, query infos, and configure
-	 * the port.
+	 * the port. But some functions, like rte_eth_dev_socket_id() and
+	 * rte_eth_dev_owner_*() are available to the application.
 	 */
 	RTE_ETH_EVENT_NEW,
 	RTE_ETH_EVENT_DESTROY,  /**< port is released */
