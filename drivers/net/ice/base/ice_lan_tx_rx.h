@@ -1269,6 +1269,12 @@ struct ice_tx_drbell_q_ctx {
 };
 #pragma pack()
 
+/* Tx time stamp descriptor */
+struct ice_ts_desc {
+	__le32 tx_desc_idx_tstamp;
+};
+#define ICE_TS_DESC(R, i) (&(((struct ice_ts_desc *)((R)->desc))[i]))
+
 /* The ice_ptype_lkup table is used to convert from the 10-bit ptype in the
  * hardware to a bit-field that can be used by SW to more easily determine the
  * packet type.
