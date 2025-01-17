@@ -1275,6 +1275,43 @@ struct ice_ts_desc {
 };
 #define ICE_TS_DESC(R, i) (&(((struct ice_ts_desc *)((R)->desc))[i]))
 
+#define ICE_TXTIME_MAX_QUEUE		2047
+#define ICE_SET_TXTIME_MAX_Q_AMOUNT	127
+#define ICE_OP_TXTIME_MAX_Q_AMOUNT	2047
+/* Tx Time queue context data
+ *
+ * The sizes of the variables may be larger than needed due to crossing byte
+ * boundaries. If we do not have the width of the variable set to the correct
+ * size then we could end up shifting bits off the top of the variable when the
+ * variable is at the top of a byte and crosses over into the next byte.
+ */
+struct ice_txtime_ctx {
+#define ICE_TXTIME_CTX_BASE_S		7
+	u64 base;			/* base is defined in 128-byte units */
+	u8 pf_num;
+	u16 vmvf_num;
+	u8 vmvf_type;
+#define ICE_TXTIME_CTX_VMVF_TYPE_VF	0
+#define ICE_TXTIME_CTX_VMVF_TYPE_VMQ	1
+#define ICE_TXTIME_CTX_VMVF_TYPE_PF	2
+	u16 src_vsi;
+	u8 cpuid;
+	u8 tphrd_desc;
+	u32 qlen;		/* bigger than needed, see above for reason */
+	u8 timer_num;
+	u8 txtime_ena_q;
+	u8 drbell_mode_32;
+#define ICE_TXTIME_CTX_DRBELL_MODE_32	1
+	u8 ts_res;
+	u8 ts_round_type;
+	u8 ts_pacing_slot;
+	u8 merging_ena;
+	u8 ts_fetch_prof_id;
+	u8 ts_fetch_cache_line_aln_thld;
+	u8 tx_pipe_delay_mode;
+	u8 int_q_state; /* width not needed - internal - DO NOT WRITE!!! */
+};
+
 /* The ice_ptype_lkup table is used to convert from the 10-bit ptype in the
  * hardware to a bit-field that can be used by SW to more easily determine the
  * packet type.

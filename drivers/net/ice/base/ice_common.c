@@ -1660,6 +1660,31 @@ ice_clear_tx_drbell_q_ctx(struct ice_hw *hw, u32 tx_drbell_q_index)
 	return 0;
 }
 
+/* Tx time Queue Context */
+const struct ice_ctx_ele ice_txtime_ctx_info[] = {
+				    /* Field			Width	LSB */
+	ICE_CTX_STORE(ice_txtime_ctx, base,			57,	0),
+	ICE_CTX_STORE(ice_txtime_ctx, pf_num,			3,	57),
+	ICE_CTX_STORE(ice_txtime_ctx, vmvf_num,			10,	60),
+	ICE_CTX_STORE(ice_txtime_ctx, vmvf_type,		2,	70),
+	ICE_CTX_STORE(ice_txtime_ctx, src_vsi,			10,	72),
+	ICE_CTX_STORE(ice_txtime_ctx, cpuid,			8,	82),
+	ICE_CTX_STORE(ice_txtime_ctx, tphrd_desc,		1,	90),
+	ICE_CTX_STORE(ice_txtime_ctx, qlen,			13,	91),
+	ICE_CTX_STORE(ice_txtime_ctx, timer_num,		3,	104),
+	ICE_CTX_STORE(ice_txtime_ctx, txtime_ena_q,		1,	107),
+	ICE_CTX_STORE(ice_txtime_ctx, drbell_mode_32,		1,	108),
+	ICE_CTX_STORE(ice_txtime_ctx, ts_res,			4,	109),
+	ICE_CTX_STORE(ice_txtime_ctx, ts_round_type,		2,	113),
+	ICE_CTX_STORE(ice_txtime_ctx, ts_pacing_slot,		3,	115),
+	ICE_CTX_STORE(ice_txtime_ctx, merging_ena,		1,	118),
+	ICE_CTX_STORE(ice_txtime_ctx, ts_fetch_prof_id,		4,	119),
+	ICE_CTX_STORE(ice_txtime_ctx, ts_fetch_cache_line_aln_thld, 4,	123),
+	ICE_CTX_STORE(ice_txtime_ctx, tx_pipe_delay_mode,	1,	127),
+	ICE_CTX_STORE(ice_txtime_ctx, int_q_state,		70,	128),
+	{ 0 }
+};
+
 /* Sideband Queue command wrappers */
 
 /**
@@ -4727,6 +4752,77 @@ ice_aq_move_recfg_lan_txq(struct ice_hw *hw, u8 num_qs, bool is_move,
 		*blocked_cgds = LE32_TO_CPU(cmd->blocked_cgds);
 
 	return status;
+}
+
+/**
+ * ice_aq_set_txtimeq - set Tx time queues
+ * @hw: pointer to the hardware structure
+ * @txtimeq: first Tx time queue id to configure
+ * @q_count: number of queues to configure
+ * @txtime_qg: queue group to be set
+ * @buf_size: size of buffer for indirect command
+ * @cd: pointer to command details structure or NULL
+ *
+ * Set Tx Time queue (0x0C35)
+ */
+enum ice_status
+ice_aq_set_txtimeq(struct ice_hw *hw, u16 txtimeq, u8 q_count,
+		   struct ice_aqc_set_txtime_qgrp *txtime_qg, u16 buf_size,
+		   struct ice_sq_cd *cd)
+{
+	struct ice_aqc_set_txtimeqs *cmd;
+	struct ice_aq_desc desc;
+	u16 size;
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+	cmd = &desc.params.set_txtimeqs;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_set_txtimeqs);
+	if (!txtime_qg)
+		return ICE_ERR_PARAM;
+	if (txtimeq > ICE_TXTIME_MAX_QUEUE || q_count < 1 ||
+	    q_count > ICE_SET_TXTIME_MAX_Q_AMOUNT)
+		return ICE_ERR_PARAM;
+	size = ice_struct_size(txtime_qg, txtimeqs, q_count);
+	if (buf_size != size)
+		return ICE_ERR_PARAM;
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+	cmd->q_id = CPU_TO_LE16(txtimeq);
+	cmd->q_amount = CPU_TO_LE16(q_count);
+	return ice_aq_send_cmd(hw, &desc, txtime_qg, buf_size, cd);
+}
+
+/**
+ * ice_aq_ena_dis_txtimeq - enable/disable Tx time queue
+ * @hw: pointer to the hardware structure
+ * @txtimeq: first Tx time queue id to configure
+ * @q_count: number of queues to configure
+ * @q_ena: enable/disable Tx time queue
+ * @txtime_qg: holds the first Tx time queue that failed enable/disable on
+ * response
+ * @cd: pointer to command details structure or NULL
+ *
+ * Enable/disable Tx Time queue (0x0C37)
+ */
+enum ice_status
+ice_aq_ena_dis_txtimeq(struct ice_hw *hw, u16 txtimeq, u16 q_count, bool q_ena,
+		       struct ice_aqc_ena_dis_txtime_qgrp *txtime_qg,
+		       struct ice_sq_cd *cd)
+{
+	struct ice_aqc_ena_dis_txtimeqs *cmd;
+	struct ice_aq_desc desc;
+	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
+	cmd = &desc.params.operate_txtimeqs;
+	ice_fill_dflt_direct_cmd_desc(&desc, ice_aqc_opc_ena_dis_txtimeqs);
+	if (!txtime_qg)
+		return ICE_ERR_PARAM;
+	if (txtimeq > ICE_TXTIME_MAX_QUEUE || q_count < 1 ||
+	    q_count > ICE_OP_TXTIME_MAX_Q_AMOUNT)
+		return ICE_ERR_PARAM;
+	desc.flags |= CPU_TO_LE16(ICE_AQ_FLAG_RD);
+	cmd->q_id = CPU_TO_LE16(txtimeq);
+	cmd->q_amount = CPU_TO_LE16(q_count);
+	if (q_ena)
+		cmd->cmd_type |= ICE_AQC_TXTIME_CMD_TYPE_Q_ENA;
+	return ice_aq_send_cmd(hw, &desc, txtime_qg, sizeof(*txtime_qg), cd);
 }
 
 /* End of FW Admin Queue command wrappers */

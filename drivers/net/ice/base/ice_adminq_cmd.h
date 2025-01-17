@@ -2975,6 +2975,55 @@ struct ice_aqc_move_txqs_data {
 	struct ice_aqc_move_txqs_elem txqs[STRUCT_HACK_VAR_LEN];
 };
 
+/* Set Tx Time LAN Queue (indirect 0x0C35) */
+struct ice_aqc_set_txtimeqs {
+	__le16 q_id;
+	__le16 q_amount;
+	u8 reserved[4];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+
+/* This is the descriptor of each queue entry for the Set Tx Time Queue
+ * command (0x0C35). Only used within struct ice_aqc_set_txtime_qgrp.
+ */
+struct ice_aqc_set_txtimeqs_perq {
+	u8 reserved[4];
+	u8 txtime_ctx[25];
+	u8 reserved1[3];
+};
+
+/* The format of the command buffer for Set Tx Time Queue (0x0C35)
+ * is an array of the following structs. Please note that the length of
+ * each struct ice_aqc_set_txtime_qgrp is variable due to the variable
+ * number of queues in each group!
+ */
+struct ice_aqc_set_txtime_qgrp {
+	u8 reserved[8];
+	struct ice_aqc_set_txtimeqs_perq txtimeqs[STRUCT_HACK_VAR_LEN];
+};
+
+/* Operate Tx Time Queue (indirect 0x0C37) */
+struct ice_aqc_ena_dis_txtimeqs {
+	__le16 q_id;
+	__le16 q_amount;
+	u8 cmd_type;
+#define ICE_AQC_TXTIME_CMD_TYPE_S      0
+#define ICE_AQC_TXTIME_CMD_TYPE_M      (0x1 << ICE_AQC_Q_CMD_TYPE_S)
+#define ICE_AQC_TXTIME_CMD_TYPE_Q_ENA  1
+	u8 reserved[3];
+	__le32 addr_high;
+	__le32 addr_low;
+};
+#pragma pack(1)
+
+struct ice_aqc_ena_dis_txtime_qgrp {
+	u8 reserved[5];
+	__le16 fail_txtime_q;
+	u8 reserved1[1];
+};
+#pragma pack()
+
 /* Download Package (indirect 0x0C40) */
 /* Also used for Update Package (indirect 0x0C41 and 0x0C42) */
 struct ice_aqc_download_pkg {
@@ -3297,6 +3346,8 @@ struct ice_aq_desc {
 		struct ice_aqc_add_txqs add_txqs;
 		struct ice_aqc_dis_txqs dis_txqs;
 		struct ice_aqc_move_txqs move_txqs;
+		struct ice_aqc_set_txtimeqs set_txtimeqs;
+		struct ice_aqc_ena_dis_txtimeqs operate_txtimeqs;
 		struct ice_aqc_txqs_cleanup txqs_cleanup;
 		struct ice_aqc_add_get_update_free_vsi vsi_cmd;
 		struct ice_aqc_add_update_free_vsi_resp add_update_free_vsi_res;
@@ -3575,6 +3626,10 @@ enum ice_adminq_opc {
 	ice_aqc_opc_dis_txqs				= 0x0C31,
 	ice_aqc_opc_txqs_cleanup			= 0x0C31,
 	ice_aqc_opc_move_recfg_txqs			= 0x0C32,
+
+	/* Tx Time queue commands */
+	ice_aqc_opc_set_txtimeqs			= 0x0C35,
+	ice_aqc_opc_ena_dis_txtimeqs		= 0x0C37,
 
 	/* package commands */
 	ice_aqc_opc_download_pkg			= 0x0C40,
