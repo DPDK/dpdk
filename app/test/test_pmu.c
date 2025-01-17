@@ -13,6 +13,10 @@ test_pmu_read(void)
 	int tries = 10, event;
 	uint64_t val = 0;
 
+#if defined(RTE_ARCH_ARM64)
+	name = "cpu_cycles";
+#endif
+
 	if (name == NULL) {
 		printf("PMU not supported on this arch\n");
 		return TEST_SKIPPED;

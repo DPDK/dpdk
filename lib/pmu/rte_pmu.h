@@ -34,7 +34,11 @@
 #include <rte_lcore.h>
 
 #define RTE_PMU_SUPPORTED
+#if defined(RTE_ARCH_ARM64)
+#include "rte_pmu_pmc_arm64.h"
+#else
 #undef RTE_PMU_SUPPORTED
+#endif
 
 #ifdef __cplusplus
 extern "C" {
