@@ -143,6 +143,7 @@ source_file_deps = {
     'test_pmd_perf.c': ['ethdev', 'net'] + packet_burst_generator_deps,
     'test_pmd_ring.c': ['net_ring', 'ethdev', 'bus_vdev'],
     'test_pmd_ring_perf.c': ['ethdev', 'net_ring', 'bus_vdev'],
+    'test_pmu.c': ['pmu'],
     'test_power.c': ['power'],
     'test_power_cpufreq.c': ['power'],
     'test_power_intel_uncore.c': ['power'],

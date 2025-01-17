@@ -164,6 +164,9 @@ pktmbuf
 PMD
    Poll Mode Driver
 
+PMU
+   Performance Monitoring Unit
+
 QoS
    Quality of Service
 

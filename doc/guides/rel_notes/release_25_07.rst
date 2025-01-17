@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added PMU library.**
+
+  Added a Performance Monitoring Unit (PMU) library which allows Linux applications
+  to perform self monitoring activities without depending on external utilities like perf.
+
 * **Added Mucse rnp net driver.**
 
   Added a new network PMD which supports Mucse 10 Gigabit Ethernet NICs.

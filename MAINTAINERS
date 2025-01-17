@@ -1848,6 +1848,11 @@ F: lib/dispatcher/
 F: app/test/test_dispatcher.c
 F: doc/guides/prog_guide/eventdev/dispatcher_lib.rst
 
+PMU - EXPERIMENTAL
+M: Tomasz Duszynski <tduszynski@marvell.com>
+F: lib/pmu/
+F: app/test/test_pmu.c
+
 Job statistics
 F: lib/jobstats/
 F: examples/l2fwd-jobstats/
