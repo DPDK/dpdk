@@ -241,6 +241,12 @@ int
 ngbe_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 		      struct rte_eth_burst_mode *mode);
 
+int ngbevf_dev_rx_init(struct rte_eth_dev *dev);
+
+void ngbevf_dev_tx_init(struct rte_eth_dev *dev);
+
+void ngbevf_dev_rxtx_start(struct rte_eth_dev *dev);
+
 uint16_t ngbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts);
 

@@ -115,6 +115,34 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = &ngbevf_eth_dev_ops;
+	eth_dev->rx_descriptor_status = ngbe_dev_rx_descriptor_status;
+	eth_dev->tx_descriptor_status = ngbe_dev_tx_descriptor_status;
+	eth_dev->rx_pkt_burst = &ngbe_recv_pkts;
+	eth_dev->tx_pkt_burst = &ngbe_xmit_pkts;
+
+	/* for secondary processes, we don't initialise any further as primary
+	 * has already done this work. Only check we don't need a different
+	 * RX function
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		struct ngbe_tx_queue *txq;
+		uint16_t nb_tx_queues = eth_dev->data->nb_tx_queues;
+		/* TX queue function in primary, set by last queue initialized
+		 * Tx queue may not initialized by primary process
+		 */
+		if (eth_dev->data->tx_queues) {
+			txq = eth_dev->data->tx_queues[nb_tx_queues - 1];
+			ngbe_set_tx_function(eth_dev, txq);
+		} else {
+			/* Use default TX function if we get here */
+			PMD_INIT_LOG(NOTICE,
+				     "No TX queues configured yet. Using default TX function.");
+		}
+
+		ngbe_set_rx_function(eth_dev);
+
+		return 0;
+	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
@@ -290,6 +318,40 @@ ngbevf_dev_info_get(struct rte_eth_dev *dev,
 
 	dev_info->rx_desc_lim = rx_desc_lim;
 	dev_info->tx_desc_lim = tx_desc_lim;
+
+	return 0;
+}
+
+static int
+ngbevf_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_conf *conf = &dev->data->dev_conf;
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+
+	PMD_INIT_LOG(DEBUG, "Configured Virtual Function port id: %d",
+		     dev->data->port_id);
+
+	/*
+	 * VF has no ability to enable/disable HW CRC
+	 * Keep the persistent behavior the same as Host PF
+	 */
+#ifndef RTE_LIBRTE_NGBE_PF_DISABLE_STRIP_CRC
+	if (conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC) {
+		PMD_INIT_LOG(NOTICE, "VF can't disable HW CRC Strip");
+		conf->rxmode.offloads &= ~RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+	}
+#else
+	if (!(conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_KEEP_CRC)) {
+		PMD_INIT_LOG(NOTICE, "VF can't enable HW CRC Strip");
+		conf->rxmode.offloads |= RTE_ETH_RX_OFFLOAD_KEEP_CRC;
+	}
+#endif
+
+	/*
+	 * Initialize to TRUE. If any of Rx queues doesn't meet the bulk
+	 * allocation or vector Rx preconditions we will reset it.
+	 */
+	adapter->rx_bulk_alloc_allowed = true;
 
 	return 0;
 }
@@ -539,6 +601,7 @@ ngbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
  * operation have been implemented
  */
 static const struct eth_dev_ops ngbevf_eth_dev_ops = {
+	.dev_configure        = ngbevf_dev_configure,
 	.promiscuous_enable   = ngbevf_dev_promiscuous_enable,
 	.promiscuous_disable  = ngbevf_dev_promiscuous_disable,
 	.allmulticast_enable  = ngbevf_dev_allmulticast_enable,

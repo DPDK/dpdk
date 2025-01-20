@@ -42,6 +42,17 @@ Prerequisites
 Configuration
 -------------
 
+Compilation Options
+~~~~~~~~~~~~~~~~~~~
+
+The following build-time options may be enabled on build time using.
+
+``-Dc_args=`` meson argument (e.g. ``-Dc_args=-DRTE_LIBRTE_NGBE_PF_DISABLE_STRIP_CRC``).
+
+- ``RTE_LIBRTE_NGBE_PF_DISABLE_STRIP_CRC`` (undefined by default)
+
+  Decide to enable or disable HW CRC in VF PMD.
+
 Dynamic Logging Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
