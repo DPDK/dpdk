@@ -554,17 +554,160 @@ ngbevf_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
+ngbevf_dev_start(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t intr_vector = 0;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+
+	int err, mask = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	err = hw->mac.reset_hw(hw);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to reset vf hardware (%d)", err);
+		return err;
+	}
+	hw->mac.get_link_status = true;
+
+	/* negotiate mailbox API version to use with the PF. */
+	ngbevf_negotiate_api(hw);
+
+	ngbevf_dev_tx_init(dev);
+
+	/* This can fail when allocating mbufs for descriptor rings */
+	err = ngbevf_dev_rx_init(dev);
+
+	/**
+	 * In this case, reuses the MAC address assigned by VF
+	 * initialization.
+	 */
+	if (err != 0 && err != NGBE_ERR_INVALID_MAC_ADDR) {
+		PMD_INIT_LOG(ERR, "Unable to initialize RX hardware (%d)", err);
+		ngbe_dev_clear_queues(dev);
+		return err;
+	}
+
+	/* Set vfta */
+	ngbevf_set_vfta_all(dev, 1);
+
+	/* Set HW strip */
+	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
+		RTE_ETH_VLAN_EXTEND_MASK;
+	err = ngbevf_vlan_offload_config(dev, mask);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to set VLAN offload (%d)", err);
+		ngbe_dev_clear_queues(dev);
+		return err;
+	}
+
+	ngbevf_dev_rxtx_start(dev);
+
+	/* check and configure queue intr-vector mapping */
+	if (rte_intr_cap_multiple(intr_handle) &&
+	    dev->data->dev_conf.intr_conf.rxq) {
+		/* According to datasheet, only vector 0/1/2 can be used,
+		 * now only one vector is used for Rx queue
+		 */
+		intr_vector = 1;
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle)) {
+		if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
+						   dev->data->nb_rx_queues)) {
+			PMD_INIT_LOG(ERR,
+				     "Failed to allocate %d rx_queues intr_vec",
+				     dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+	}
+
+	ngbevf_configure_msix(dev);
+
+	/* When a VF port is bound to VFIO-PCI, only miscellaneous interrupt
+	 * is mapped to VFIO vector 0 in eth_ngbevf_dev_init( ).
+	 * If previous VFIO interrupt mapping setting in eth_ngbevf_dev_init( )
+	 * is not cleared, it will fail when following rte_intr_enable( ) tries
+	 * to map Rx queue interrupt to other VFIO vectors.
+	 * So clear uio/vfio intr/evevnfd first to avoid failure.
+	 */
+	rte_intr_disable(intr_handle);
+
+	rte_intr_enable(intr_handle);
+
+	/* Re-enable interrupt for VF */
+	ngbevf_intr_enable(dev);
+
+	/*
+	 * Update link status right before return, because it may
+	 * start link configuration process in a separate thread.
+	 */
+	ngbevf_dev_link_update(dev, 0);
+
+	hw->adapter_stopped = false;
+
+	return 0;
+}
+
+static int
+ngbevf_dev_stop(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_adapter *adapter = ngbe_dev_adapter(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+
+	if (hw->adapter_stopped)
+		return 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ngbevf_intr_disable(dev);
+
+	hw->adapter_stopped = 1;
+	hw->mac.stop_hw(hw);
+
+	/*
+	 * Clear what we set, but we still keep shadow_vfta to
+	 * restore after device starts
+	 */
+	ngbevf_set_vfta_all(dev, 0);
+
+	/* Clear stored conf */
+	dev->data->scattered_rx = 0;
+
+	ngbe_dev_clear_queues(dev);
+
+	/* Clean datapath event and queue/vec mapping */
+	rte_intr_efd_disable(intr_handle);
+	rte_intr_vec_list_free(intr_handle);
+
+	adapter->rss_reta_updated = 0;
+
+	return 0;
+}
+
+static int
 ngbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	hw->mac.reset_hw(hw);
+
+	ret = ngbevf_dev_stop(dev);
+
+	ngbe_dev_free_queues(dev);
 
 	/**
 	 * Remove the VF MAC address ro ensure
@@ -586,7 +729,24 @@ ngbevf_dev_close(struct rte_eth_dev *dev)
 	rte_intr_callback_unregister(intr_handle,
 				     ngbevf_dev_interrupt_handler, dev);
 
-	return 0;
+	return ret;
+}
+
+/*
+ * Reset VF device
+ */
+static int
+ngbevf_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = eth_ngbevf_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_ngbevf_dev_init(dev);
+
+	return ret;
 }
 
 static void ngbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
@@ -1080,12 +1240,16 @@ ngbevf_dev_interrupt_handler(void *param)
  */
 static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.dev_configure        = ngbevf_dev_configure,
+	.dev_start            = ngbevf_dev_start,
+	.dev_stop             = ngbevf_dev_stop,
 	.link_update          = ngbevf_dev_link_update,
 	.stats_get            = ngbevf_dev_stats_get,
 	.xstats_get           = ngbevf_dev_xstats_get,
 	.stats_reset          = ngbevf_dev_stats_reset,
 	.xstats_reset         = ngbevf_dev_stats_reset,
 	.xstats_get_names     = ngbevf_dev_xstats_get_names,
+	.dev_close            = ngbevf_dev_close,
+	.dev_reset	      = ngbevf_dev_reset,
 	.promiscuous_enable   = ngbevf_dev_promiscuous_enable,
 	.promiscuous_disable  = ngbevf_dev_promiscuous_disable,
 	.allmulticast_enable  = ngbevf_dev_allmulticast_enable,
@@ -1095,6 +1259,10 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.vlan_filter_set      = ngbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ngbevf_vlan_strip_queue_set,
 	.vlan_offload_set     = ngbevf_vlan_offload_set,
+	.rx_queue_setup       = ngbe_dev_rx_queue_setup,
+	.rx_queue_release     = ngbe_dev_rx_queue_release,
+	.tx_queue_setup       = ngbe_dev_tx_queue_setup,
+	.tx_queue_release     = ngbe_dev_tx_queue_release,
 	.rx_queue_intr_enable = ngbevf_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable = ngbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = ngbevf_add_mac_addr,
