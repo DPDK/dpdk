@@ -11,5 +11,6 @@
 #include "ngbe_eeprom.h"
 #include "ngbe_phy.h"
 #include "ngbe_hw.h"
+#include "ngbe_vf.h"
 
 #endif /* _NGBE_H_ */

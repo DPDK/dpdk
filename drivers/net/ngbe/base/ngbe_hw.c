@@ -9,6 +9,7 @@
 #include "ngbe_eeprom.h"
 #include "ngbe_mng.h"
 #include "ngbe_hw.h"
+#include "ngbe_vf.h"
 
 static s32 ngbe_is_lldp(struct ngbe_hw *hw)
 {
@@ -2112,6 +2113,9 @@ s32 ngbe_init_shared_code(struct ngbe_hw *hw)
 	switch (hw->mac.type) {
 	case ngbe_mac_em:
 		ngbe_init_ops_pf(hw);
+		break;
+	case ngbe_mac_em_vf:
+		ngbe_init_ops_vf(hw);
 		break;
 	default:
 		status = NGBE_ERR_DEVICE_NOT_SUPPORTED;

@@ -10,6 +10,7 @@ sources = [
         'ngbe_phy_rtl.c',
         'ngbe_phy_mvl.c',
         'ngbe_phy_yt.c',
+        'ngbe_vf.c',
 ]
 
 error_cflags = []

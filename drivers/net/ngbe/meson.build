@@ -15,6 +15,7 @@ sources = files(
         'ngbe_ptypes.c',
         'ngbe_pf.c',
         'ngbe_rxtx.c',
+        'ngbe_ethdev_vf.c',
 )
 
 deps += ['hash']
