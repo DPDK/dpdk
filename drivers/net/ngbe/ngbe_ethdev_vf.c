@@ -1327,6 +1327,7 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.allmulticast_enable  = ngbevf_dev_allmulticast_enable,
 	.allmulticast_disable = ngbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ngbevf_dev_info_get,
+	.dev_supported_ptypes_get = ngbe_dev_supported_ptypes_get,
 	.mtu_set              = ngbevf_dev_set_mtu,
 	.vlan_filter_set      = ngbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ngbevf_vlan_strip_queue_set,
@@ -1339,8 +1340,12 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.rx_queue_intr_disable = ngbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = ngbevf_add_mac_addr,
 	.mac_addr_remove      = ngbevf_remove_mac_addr,
+	.set_mc_addr_list     = ngbe_dev_set_mc_addr_list,
+	.rxq_info_get         = ngbe_rxq_info_get,
+	.txq_info_get         = ngbe_txq_info_get,
 	.mac_addr_set         = ngbevf_set_default_mac_addr,
 	.get_reg              = ngbevf_get_regs,
+	.tx_done_cleanup      = ngbe_dev_tx_done_cleanup,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe_vf, rte_ngbevf_pmd);
