@@ -21,6 +21,8 @@ s32 ngbe_set_rar_vf(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 		     u32 enable_addr);
 s32 ngbevf_set_uc_addr_vf(struct ngbe_hw *hw, u32 index, u8 *addr);
 s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode);
+s32 ngbe_set_vfta_vf(struct ngbe_hw *hw, u32 vlan, u32 vind,
+		      bool vlan_on, bool vlvf_bypass);
 s32 ngbevf_rlpml_set_vf(struct ngbe_hw *hw, u16 max_size);
 int ngbevf_negotiate_api_version(struct ngbe_hw *hw, int api);
 int ngbevf_get_queues(struct ngbe_hw *hw, unsigned int *num_tcs,

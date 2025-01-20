@@ -18,6 +18,8 @@
 
 #define NGBEVF_PMD_NAME "rte_ngbevf_pmd" /* PMD name */
 static int ngbevf_dev_close(struct rte_eth_dev *dev);
+static int ngbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
+static void ngbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static int ngbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int ngbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void ngbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
@@ -109,6 +111,8 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 	uint32_t tc, tcs;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
+	struct ngbe_vfta *shadow_vfta = NGBE_DEV_VFTA(eth_dev);
+	struct ngbe_hwstrip *hwstrip = NGBE_DEV_HWSTRIP(eth_dev);
 	struct rte_ether_addr *perm_addr =
 			(struct rte_ether_addr *)hw->mac.perm_addr;
 
@@ -151,6 +155,12 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 	hw->sub_system_id = pci_dev->id.subsystem_device_id;
 	ngbe_map_device_id(hw);
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
+
+	/* initialize the vfta */
+	memset(shadow_vfta, 0, sizeof(*shadow_vfta));
+
+	/* initialize the hw strip bitmap*/
+	memset(hwstrip, 0, sizeof(*hwstrip));
 
 	/* Initialize the shared code (base driver) */
 	err = ngbe_init_shared_code(hw);
@@ -383,6 +393,105 @@ ngbevf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void ngbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_vfta *shadow_vfta = NGBE_DEV_VFTA(dev);
+	int i = 0, j = 0, vfta = 0, mask = 1;
+
+	for (i = 0; i < NGBE_VFTA_SIZE; i++) {
+		vfta = shadow_vfta->vfta[i];
+		if (vfta) {
+			mask = 1;
+			for (j = 0; j < 32; j++) {
+				if (vfta & mask)
+					hw->mac.set_vfta(hw, (i << 5) + j, 0,
+						       on, false);
+				mask <<= 1;
+			}
+		}
+	}
+}
+
+static int
+ngbevf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_vfta *shadow_vfta = NGBE_DEV_VFTA(dev);
+	uint32_t vid_idx = 0;
+	uint32_t vid_bit = 0;
+	int ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* vind is not used in VF driver, set to 0, check ngbe_set_vfta_vf */
+	ret = hw->mac.set_vfta(hw, vlan_id, 0, !!on, false);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Unable to set VF vlan");
+		return ret;
+	}
+	vid_idx = (uint32_t)((vlan_id >> 5) & 0x7F);
+	vid_bit = (uint32_t)(1 << (vlan_id & 0x1F));
+
+	/* Save what we set and restore it after device reset */
+	if (on)
+		shadow_vfta->vfta[vid_idx] |= vid_bit;
+	else
+		shadow_vfta->vfta[vid_idx] &= ~vid_bit;
+
+	return 0;
+}
+
+static void
+ngbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t ctrl;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (queue >= hw->mac.max_rx_queues)
+		return;
+
+	ctrl = rd32(hw, NGBE_RXCFG(queue));
+	if (on)
+		ctrl |= NGBE_RXCFG_VLAN;
+	else
+		ctrl &= ~NGBE_RXCFG_VLAN;
+	wr32(hw, NGBE_RXCFG(queue), ctrl);
+
+	ngbe_vlan_hw_strip_bitmap_set(dev, queue, on);
+}
+
+static int
+ngbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask)
+{
+	struct ngbe_rx_queue *rxq;
+	uint16_t i;
+	int on = 0;
+
+	/* VF function only support hw strip feature, others are not support */
+	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
+			rxq = dev->data->rx_queues[i];
+			on = !!(rxq->offloads &	RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
+			ngbevf_vlan_strip_queue_set(dev, i, on);
+		}
+	}
+
+	return 0;
+}
+
+static int
+ngbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	ngbe_config_vlan_strip_on_all_queues(dev, mask);
+
+	ngbevf_vlan_offload_config(dev, mask);
+
+	return 0;
+}
+
 static int
 ngbevf_add_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		     __rte_unused uint32_t index,
@@ -608,6 +717,9 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.allmulticast_disable = ngbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ngbevf_dev_info_get,
 	.mtu_set              = ngbevf_dev_set_mtu,
+	.vlan_filter_set      = ngbevf_vlan_filter_set,
+	.vlan_strip_queue_set = ngbevf_vlan_strip_queue_set,
+	.vlan_offload_set     = ngbevf_vlan_offload_set,
 	.mac_addr_add         = ngbevf_add_mac_addr,
 	.mac_addr_remove      = ngbevf_remove_mac_addr,
 	.mac_addr_set         = ngbevf_set_default_mac_addr,

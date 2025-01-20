@@ -263,6 +263,36 @@ s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode)
 }
 
 /**
+ *  ngbe_set_vfta_vf - Set/Unset vlan filter table address
+ *  @hw: pointer to the HW structure
+ *  @vlan: 12 bit VLAN ID
+ *  @vind: unused by VF drivers
+ *  @vlan_on: if true then set bit, else clear bit
+ *  @vlvf_bypass: boolean flag indicating updating default pool is okay
+ *
+ *  Turn on/off specified VLAN in the VLAN filter table.
+ **/
+s32 ngbe_set_vfta_vf(struct ngbe_hw *hw, u32 vlan, u32 vind,
+		      bool vlan_on, bool vlvf_bypass)
+{
+	u32 msgbuf[2];
+	s32 ret_val;
+
+	UNREFERENCED_PARAMETER(vind, vlvf_bypass);
+
+	msgbuf[0] = NGBE_VF_SET_VLAN;
+	msgbuf[1] = vlan;
+	/* Setting the 8 bit field MSG INFO to TRUE indicates "add" */
+	msgbuf[0] |= vlan_on << NGBE_VT_MSGINFO_SHIFT;
+
+	ret_val = ngbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
+	if (!ret_val && (msgbuf[0] & NGBE_VT_MSGTYPE_ACK))
+		return 0;
+
+	return ret_val | (msgbuf[0] & NGBE_VT_MSGTYPE_NACK);
+}
+
+/**
  * ngbe_get_mac_addr_vf - Read device MAC address
  * @hw: pointer to the HW structure
  * @mac_addr: the MAC address
@@ -441,10 +471,11 @@ s32 ngbe_init_ops_vf(struct ngbe_hw *hw)
 	mac->get_mac_addr = ngbe_get_mac_addr_vf;
 	mac->negotiate_api_version = ngbevf_negotiate_api_version;
 
-	/* RAR, Multicast */
+	/* RAR, Multicast, VLAN */
 	mac->set_rar = ngbe_set_rar_vf;
 	mac->set_uc_addr = ngbevf_set_uc_addr_vf;
 	mac->update_xcast_mode = ngbevf_update_xcast_mode;
+	mac->set_vfta = ngbe_set_vfta_vf;
 	mac->set_rlpml = ngbevf_rlpml_set_vf;
 
 	mac->max_tx_queues = 1;
