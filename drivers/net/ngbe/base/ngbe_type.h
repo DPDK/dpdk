@@ -311,6 +311,7 @@ struct ngbe_mac_info {
 	s32 (*enable_sec_rx_path)(struct ngbe_hw *hw);
 	s32 (*acquire_swfw_sync)(struct ngbe_hw *hw, u32 mask);
 	void (*release_swfw_sync)(struct ngbe_hw *hw, u32 mask);
+	s32 (*negotiate_api_version)(struct ngbe_hw *hw, int api);
 
 	/* Link */
 	s32 (*setup_link)(struct ngbe_hw *hw, u32 speed,
@@ -422,6 +423,10 @@ struct ngbe_mbx_info {
 	void (*init_params)(struct ngbe_hw *hw);
 	s32  (*read)(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
 	s32  (*write)(struct ngbe_hw *hw, u32 *msg, u16 size, u16 vf_number);
+	s32  (*read_posted)(struct ngbe_hw *hw, u32 *msg, u16 size,
+				u16 mbx_id);
+	s32  (*write_posted)(struct ngbe_hw *hw, u32 *msg, u16 size,
+				u16 mbx_id);
 	s32  (*check_for_msg)(struct ngbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_ack)(struct ngbe_hw *hw, u16 mbx_id);
 	s32  (*check_for_rst)(struct ngbe_hw *hw, u16 mbx_id);
@@ -429,6 +434,7 @@ struct ngbe_mbx_info {
 	struct ngbe_mbx_stats stats;
 	u32 timeout;
 	u32 usec_delay;
+	u32 v2p_mailbox;
 	u16 size;
 };
 
@@ -458,6 +464,7 @@ struct ngbe_hw {
 	u8 port_id;
 	u8 revision_id;
 	bool adapter_stopped;
+	int api_version;
 	bool wol_enabled;
 	bool ncsi_enabled;
 	bool lldp_enabled;
