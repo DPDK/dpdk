@@ -351,6 +351,7 @@ struct ngbe_mac_info {
 	void (*set_mac_anti_spoofing)(struct ngbe_hw *hw, bool enable, int vf);
 	void (*set_vlan_anti_spoofing)(struct ngbe_hw *hw,
 					bool enable, int vf);
+	s32 (*update_xcast_mode)(struct ngbe_hw *hw, int xcast_mode);
 
 	/* Flow Control */
 	s32 (*fc_enable)(struct ngbe_hw *hw);

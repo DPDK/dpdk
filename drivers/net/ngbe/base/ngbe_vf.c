@@ -192,6 +192,43 @@ STATIC s32 ngbevf_write_msg_read_ack(struct ngbe_hw *hw, u32 *msg,
 }
 
 /**
+ *  ngbevf_update_xcast_mode - Update Multicast mode
+ *  @hw: pointer to the HW structure
+ *  @xcast_mode: new multicast mode
+ *
+ *  Updates the Multicast Mode of VF.
+ **/
+s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode)
+{
+	u32 msgbuf[2];
+	s32 err;
+
+	switch (hw->api_version) {
+	case ngbe_mbox_api_12:
+		/* New modes were introduced in 1.3 version */
+		if (xcast_mode > NGBEVF_XCAST_MODE_ALLMULTI)
+			return NGBE_ERR_FEATURE_NOT_SUPPORTED;
+		/* Fall through */
+	case ngbe_mbox_api_13:
+		break;
+	default:
+		return NGBE_ERR_FEATURE_NOT_SUPPORTED;
+	}
+
+	msgbuf[0] = NGBE_VF_UPDATE_XCAST_MODE;
+	msgbuf[1] = xcast_mode;
+
+	err = ngbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
+	if (err)
+		return err;
+
+	msgbuf[0] &= ~NGBE_VT_MSGTYPE_CTS;
+	if (msgbuf[0] == (NGBE_VF_UPDATE_XCAST_MODE | NGBE_VT_MSGTYPE_NACK))
+		return NGBE_ERR_FEATURE_NOT_SUPPORTED;
+	return 0;
+}
+
+/**
  *  ngbevf_negotiate_api_version - Negotiate supported API version
  *  @hw: pointer to the HW structure
  *  @api: integer containing requested API version
@@ -300,6 +337,8 @@ s32 ngbe_init_ops_vf(struct ngbe_hw *hw)
 	mac->start_hw = ngbe_start_hw_vf;
 	mac->stop_hw = ngbe_stop_hw_vf;
 	mac->negotiate_api_version = ngbevf_negotiate_api_version;
+
+	mac->update_xcast_mode = ngbevf_update_xcast_mode;
 
 	mac->max_tx_queues = 1;
 	mac->max_rx_queues = 1;

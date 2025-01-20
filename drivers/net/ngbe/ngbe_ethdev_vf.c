@@ -18,6 +18,8 @@
 
 #define NGBEVF_PMD_NAME "rte_ngbevf_pmd" /* PMD name */
 static int ngbevf_dev_close(struct rte_eth_dev *dev);
+static int ngbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
+static int ngbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 
 /*
  * The set of PCI devices this driver supports (for VF)
@@ -155,6 +157,9 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return -EIO;
 	}
 
+	/* enter promiscuous mode */
+	ngbevf_dev_promiscuous_enable(eth_dev);
+
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id, "ngbe_mac_sp_vf");
@@ -264,11 +269,102 @@ ngbevf_dev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+ngbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, NGBEVF_XCAST_MODE_PROMISC)) {
+	case 0:
+		ret = 0;
+		break;
+	case NGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+ngbevf_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, NGBEVF_XCAST_MODE_NONE)) {
+	case 0:
+		ret = 0;
+		break;
+	case NGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+ngbevf_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	int ret;
+
+	if (dev->data->promiscuous == 1)
+		return 0;
+
+	switch (hw->mac.update_xcast_mode(hw, NGBEVF_XCAST_MODE_ALLMULTI)) {
+	case 0:
+		ret = 0;
+		break;
+	case NGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
+static int
+ngbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	int ret;
+
+	switch (hw->mac.update_xcast_mode(hw, NGBEVF_XCAST_MODE_MULTI)) {
+	case 0:
+		ret = 0;
+		break;
+	case NGBE_ERR_FEATURE_NOT_SUPPORTED:
+		ret = -ENOTSUP;
+		break;
+	default:
+		ret = -EAGAIN;
+		break;
+	}
+
+	return ret;
+}
+
 /*
  * dev_ops for virtual function, bare necessities for basic vf
  * operation have been implemented
  */
 static const struct eth_dev_ops ngbevf_eth_dev_ops = {
+	.promiscuous_enable   = ngbevf_dev_promiscuous_enable,
+	.promiscuous_disable  = ngbevf_dev_promiscuous_disable,
+	.allmulticast_enable  = ngbevf_dev_allmulticast_enable,
+	.allmulticast_disable = ngbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ngbevf_dev_info_get,
 };
 
