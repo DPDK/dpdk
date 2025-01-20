@@ -13,8 +13,6 @@ PACKET_MMAP, which provides a mmapped ring buffer, shared between user space
 and kernel, that's used to send and receive packets. This helps reducing system
 calls and the copies needed between user space and Kernel.
 
-The PACKET_FANOUT_HASH behavior of AF_PACKET is used for frame reception.
-
 Options and inherent limitations
 --------------------------------
 
@@ -25,10 +23,23 @@ Some of these, in turn, will be used to configure the PACKET_MMAP settings.
 *   ``qpairs`` - number of Rx and Tx queues (optional, default 1);
 *   ``qdisc_bypass`` - set PACKET_QDISC_BYPASS option in AF_PACKET (optional,
     disabled by default);
+*   ``fanout_mode`` - set fanout algorithm.
+    Possible choices: hash, lb, cpu, rollover, rnd, qm (optional, default hash);
 *   ``blocksz`` - PACKET_MMAP block size (optional, default 4096);
 *   ``framesz`` - PACKET_MMAP frame size (optional, default 2048B; Note: multiple
     of 16B);
 *   ``framecnt`` - PACKET_MMAP frame count (optional, default 512).
+
+For details regarding ``fanout_mode`` argument, you can consult the
+`PACKET_FANOUT documentation <https://www.man7.org/linux/man-pages/man7/packet.7.html>`_.
+
+As an example, when ``fanout_mode=cpu`` is selected, the PACKET_FANOUT_CPU mode
+will be set on the sockets, so that on frame reception,
+the socket will be selected based on the CPU on which the packet arrived.
+
+Only one ``fanout_mode`` can be chosen.
+If left unspecified, the default is to use the ``PACKET_FANOUT_HASH`` behavior
+of AF_PACKET for frame reception.
 
 Because this implementation is based on PACKET_MMAP, and PACKET_MMAP has its
 own pre-requisites, it should be noted that the inner workings of PACKET_MMAP
@@ -64,7 +75,7 @@ framecnt=512):
 
 .. code-block:: console
 
-    --vdev=eth_af_packet0,iface=tap0,blocksz=4096,framesz=2048,framecnt=512,qpairs=1,qdisc_bypass=0
+    --vdev=eth_af_packet0,iface=tap0,blocksz=4096,framesz=2048,framecnt=512,qpairs=1,qdisc_bypass=0,fanout_mode=hash
 
 Features and Limitations
 ------------------------

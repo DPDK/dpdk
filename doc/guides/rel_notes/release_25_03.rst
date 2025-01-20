@@ -63,6 +63,10 @@ New Features
   and even substantial part of its code.
   It can be viewed as an extension of rte_ring functionality.
 
+* **Updated af_packet net driver.**
+
+  * Added ability to option to configure receive packet fanout mode.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for virtual function (VF).
