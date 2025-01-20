@@ -16,6 +16,35 @@
 #include "ngbe_rxtx.h"
 #include "ngbe_regs_group.h"
 
+static const struct reg_info ngbevf_regs_general[] = {
+	{NGBE_VFRST, 1, 1, "NGBE_VFRST"},
+	{NGBE_VFSTATUS, 1, 1, "NGBE_VFSTATUS"},
+	{NGBE_VFMBCTL, 1, 1, "NGBE_VFMAILBOX"},
+	{NGBE_VFMBX, 16, 4, "NGBE_VFMBX"},
+	{NGBE_VFPBWRAP, 1, 1, "NGBE_VFPBWRAP"},
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbevf_regs_interrupt[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbevf_regs_rxdma[] = {
+	{0, 0, 0, ""}
+};
+
+static const struct reg_info ngbevf_regs_tx[] = {
+	{0, 0, 0, ""}
+};
+
+/* VF registers */
+static const struct reg_info *ngbevf_regs[] = {
+				ngbevf_regs_general,
+				ngbevf_regs_interrupt,
+				ngbevf_regs_rxdma,
+				ngbevf_regs_tx,
+				NULL};
+
 #define NGBEVF_PMD_NAME "rte_ngbevf_pmd" /* PMD name */
 static int ngbevf_dev_close(struct rte_eth_dev *dev);
 static int ngbevf_dev_link_update(struct rte_eth_dev *dev,
@@ -1082,6 +1111,49 @@ ngbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 }
 
 static int
+ngbevf_get_reg_length(struct rte_eth_dev *dev __rte_unused)
+{
+	int count = 0;
+	int g_ind = 0;
+	const struct reg_info *reg_group;
+
+	while ((reg_group = ngbevf_regs[g_ind++]))
+		count += ngbe_regs_group_count(reg_group);
+
+	return count;
+}
+
+static int
+ngbevf_get_regs(struct rte_eth_dev *dev,
+		struct rte_dev_reg_info *regs)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t *data = regs->data;
+	int g_ind = 0;
+	int count = 0;
+	const struct reg_info *reg_group;
+
+	if (data == NULL) {
+		regs->length = ngbevf_get_reg_length(dev);
+		regs->width = sizeof(uint32_t);
+		return 0;
+	}
+
+	/* Support only full register dump */
+	if (regs->length == 0 ||
+	    regs->length == (uint32_t)ngbevf_get_reg_length(dev)) {
+		regs->version = hw->mac.type << 24 | hw->revision_id << 16 |
+			hw->device_id;
+		while ((reg_group = ngbevf_regs[g_ind++]))
+			count += ngbe_read_regs_group(dev, &data[count],
+						      reg_group);
+		return 0;
+	}
+
+	return -ENOTSUP;
+}
+
+static int
 ngbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
@@ -1268,6 +1340,7 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.mac_addr_add         = ngbevf_add_mac_addr,
 	.mac_addr_remove      = ngbevf_remove_mac_addr,
 	.mac_addr_set         = ngbevf_set_default_mac_addr,
+	.get_reg              = ngbevf_get_regs,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe_vf, rte_ngbevf_pmd);
