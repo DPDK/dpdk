@@ -229,6 +229,29 @@ s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode)
 }
 
 /**
+ *  ngbevf_rlpml_set_vf - Set the maximum receive packet length
+ *  @hw: pointer to the HW structure
+ *  @max_size: value to assign to max frame size
+ **/
+s32 ngbevf_rlpml_set_vf(struct ngbe_hw *hw, u16 max_size)
+{
+	u32 msgbuf[2];
+	s32 retval;
+
+	msgbuf[0] = NGBE_VF_SET_LPE;
+	msgbuf[1] = max_size;
+
+	retval = ngbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 2);
+	if (retval)
+		return retval;
+	if ((msgbuf[0] & NGBE_VF_SET_LPE) &&
+	    (msgbuf[0] & NGBE_VT_MSGTYPE_NACK))
+		return NGBE_ERR_MBX;
+
+	return 0;
+}
+
+/**
  *  ngbevf_negotiate_api_version - Negotiate supported API version
  *  @hw: pointer to the HW structure
  *  @api: integer containing requested API version
@@ -339,6 +362,7 @@ s32 ngbe_init_ops_vf(struct ngbe_hw *hw)
 	mac->negotiate_api_version = ngbevf_negotiate_api_version;
 
 	mac->update_xcast_mode = ngbevf_update_xcast_mode;
+	mac->set_rlpml = ngbevf_rlpml_set_vf;
 
 	mac->max_tx_queues = 1;
 	mac->max_rx_queues = 1;

@@ -352,6 +352,7 @@ struct ngbe_mac_info {
 	void (*set_vlan_anti_spoofing)(struct ngbe_hw *hw,
 					bool enable, int vf);
 	s32 (*update_xcast_mode)(struct ngbe_hw *hw, int xcast_mode);
+	s32 (*set_rlpml)(struct ngbe_hw *hw, u16 max_size);
 
 	/* Flow Control */
 	s32 (*fc_enable)(struct ngbe_hw *hw);

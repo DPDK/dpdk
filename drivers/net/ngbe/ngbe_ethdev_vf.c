@@ -270,6 +270,41 @@ ngbevf_dev_close(struct rte_eth_dev *dev)
 }
 
 static int
+ngbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct ngbe_hw *hw;
+	uint32_t max_frame = mtu + RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN;
+	struct rte_eth_dev_data *dev_data = dev->data;
+
+	hw = ngbe_dev_hw(dev);
+
+	if (mtu < RTE_ETHER_MIN_MTU ||
+			max_frame > RTE_ETHER_MAX_JUMBO_FRAME_LEN)
+		return -EINVAL;
+
+	/* If device is started, refuse mtu that requires the support of
+	 * scattered packets when this feature has not been enabled before.
+	 */
+	if (dev_data->dev_started && !dev_data->scattered_rx &&
+	    (max_frame + 2 * RTE_VLAN_HLEN >
+	     dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)) {
+		PMD_INIT_LOG(ERR, "Stop port first.");
+		return -EINVAL;
+	}
+
+	/*
+	 * When supported by the underlying PF driver, use the NGBE_VF_SET_MTU
+	 * request of the version 2.0 of the mailbox API.
+	 * For now, use the NGBE_VF_SET_LPE request of the version 1.0
+	 * of the mailbox API.
+	 */
+	if (ngbevf_rlpml_set_vf(hw, max_frame))
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
 ngbevf_dev_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
@@ -366,6 +401,7 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.allmulticast_enable  = ngbevf_dev_allmulticast_enable,
 	.allmulticast_disable = ngbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ngbevf_dev_info_get,
+	.mtu_set              = ngbevf_dev_set_mtu,
 };
 
 RTE_PMD_REGISTER_PCI(net_ngbe_vf, rte_ngbevf_pmd);
