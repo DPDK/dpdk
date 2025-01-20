@@ -22,6 +22,7 @@ static int ngbevf_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static void ngbevf_intr_disable(struct rte_eth_dev *dev);
 static void ngbevf_intr_enable(struct rte_eth_dev *dev);
+static int ngbevf_dev_stats_reset(struct rte_eth_dev *dev);
 static int ngbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
 static void ngbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static void ngbevf_configure_msix(struct rte_eth_dev *dev);
@@ -64,6 +65,13 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 };
 
 static const struct eth_dev_ops ngbevf_eth_dev_ops;
+
+static const struct rte_ngbe_xstats_name_off rte_ngbevf_stats_strings[] = {
+	{"rx_multicast_packets", offsetof(struct ngbevf_hw_stats, vfmprc)},
+};
+
+#define NGBEVF_NB_XSTATS (sizeof(rte_ngbevf_stats_strings) /	\
+		sizeof(rte_ngbevf_stats_strings[0]))
 
 /*
  * Negotiate mailbox API version with the PF.
@@ -179,6 +187,9 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* init_mailbox_params */
 	hw->mbx.init_params(hw);
+
+	/* Reset the hw statistics */
+	ngbevf_dev_stats_reset(eth_dev);
 
 	/* Disable the interrupts for VF */
 	ngbevf_intr_disable(eth_dev);
@@ -297,6 +308,128 @@ static struct rte_pci_driver rte_ngbevf_pmd = {
 	.probe = eth_ngbevf_pci_probe,
 	.remove = eth_ngbevf_pci_remove,
 };
+
+static int ngbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned int limit)
+{
+	unsigned int i;
+
+	if (limit < NGBEVF_NB_XSTATS && xstats_names != NULL)
+		return -ENOMEM;
+
+	if (xstats_names != NULL)
+		for (i = 0; i < NGBEVF_NB_XSTATS; i++)
+			snprintf(xstats_names[i].name,
+				sizeof(xstats_names[i].name),
+				"%s", rte_ngbevf_stats_strings[i].name);
+	return NGBEVF_NB_XSTATS;
+}
+
+static void
+ngbevf_update_stats(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbevf_hw_stats *hw_stats = (struct ngbevf_hw_stats *)
+			  NGBE_DEV_STATS(dev);
+
+	/* Good Rx packet, include VF loopback */
+	NGBE_UPDCNT32(NGBE_QPRXPKT(0),
+	    hw_stats->last_vfgprc, hw_stats->vfgprc);
+
+	/* Good Rx octets, include VF loopback */
+	NGBE_UPDCNT36(NGBE_QPRXOCTL(0),
+	    hw_stats->last_vfgorc, hw_stats->vfgorc);
+
+	/* Rx Multicst Packet */
+	NGBE_UPDCNT32(NGBE_QPRXMPKT(0),
+	    hw_stats->last_vfmprc, hw_stats->vfmprc);
+
+	/* Rx Broadcast Packet */
+	NGBE_UPDCNT32(NGBE_QPRXBPKT(0),
+	    hw_stats->last_vfbprc, hw_stats->vfbprc);
+
+	hw->rx_loaded = 0;
+
+	/* Good Tx packet, include VF loopback */
+	NGBE_UPDCNT32(NGBE_QPTXPKT(0),
+	    hw_stats->last_vfgptc, hw_stats->vfgptc);
+
+	/* Good Tx octets, include VF loopback */
+	NGBE_UPDCNT36(NGBE_QPTXOCTL(0),
+	    hw_stats->last_vfgotc, hw_stats->vfgotc);
+
+	/* Tx Multicst Packet */
+	NGBE_UPDCNT32(NGBE_QPTXMPKT(0),
+	    hw_stats->last_vfmprc, hw_stats->vfmprc);
+
+	/* Tx Broadcast Packet */
+	NGBE_UPDCNT32(NGBE_QPTXBPKT(0),
+	    hw_stats->last_vfbptc, hw_stats->vfbptc);
+
+	hw->offset_loaded = 0;
+}
+
+static int
+ngbevf_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		       unsigned int n)
+{
+	struct ngbevf_hw_stats *hw_stats = (struct ngbevf_hw_stats *)
+			NGBE_DEV_STATS(dev);
+	unsigned int i;
+
+	if (n < NGBEVF_NB_XSTATS)
+		return NGBEVF_NB_XSTATS;
+
+	ngbevf_update_stats(dev);
+
+	if (!xstats)
+		return 0;
+
+	/* Extended stats */
+	for (i = 0; i < NGBEVF_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value = *(uint64_t *)(((char *)hw_stats) +
+			rte_ngbevf_stats_strings[i].offset);
+	}
+
+	return NGBEVF_NB_XSTATS;
+}
+
+static int
+ngbevf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct ngbevf_hw_stats *hw_stats = (struct ngbevf_hw_stats *)
+			  NGBE_DEV_STATS(dev);
+
+	ngbevf_update_stats(dev);
+
+	if (stats == NULL)
+		return -EINVAL;
+
+	stats->ipackets = hw_stats->vfgprc;
+	stats->ibytes = hw_stats->vfgorc;
+	stats->opackets = hw_stats->vfgptc;
+	stats->obytes = hw_stats->vfgotc;
+	return 0;
+}
+
+static int
+ngbevf_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct ngbevf_hw_stats *hw_stats = (struct ngbevf_hw_stats *)
+			NGBE_DEV_STATS(dev);
+
+	/* Sync HW register to the last stats */
+	ngbevf_dev_stats_get(dev, NULL);
+
+	/* reset HW current stats*/
+	hw_stats->vfgprc = 0;
+	hw_stats->vfgorc = 0;
+	hw_stats->vfgptc = 0;
+	hw_stats->vfgotc = 0;
+
+	return 0;
+}
 
 static int
 ngbevf_dev_info_get(struct rte_eth_dev *dev,
@@ -948,6 +1081,11 @@ ngbevf_dev_interrupt_handler(void *param)
 static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.dev_configure        = ngbevf_dev_configure,
 	.link_update          = ngbevf_dev_link_update,
+	.stats_get            = ngbevf_dev_stats_get,
+	.xstats_get           = ngbevf_dev_xstats_get,
+	.stats_reset          = ngbevf_dev_stats_reset,
+	.xstats_reset         = ngbevf_dev_stats_reset,
+	.xstats_get_names     = ngbevf_dev_xstats_get_names,
 	.promiscuous_enable   = ngbevf_dev_promiscuous_enable,
 	.promiscuous_disable  = ngbevf_dev_promiscuous_disable,
 	.allmulticast_enable  = ngbevf_dev_allmulticast_enable,

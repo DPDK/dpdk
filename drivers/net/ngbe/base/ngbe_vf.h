@@ -11,6 +11,38 @@
 #define NGBE_VF_MAX_TX_QUEUES	1
 #define NGBE_VF_MAX_RX_QUEUES	1
 
+struct ngbevf_hw_stats {
+	u64 base_vfgprc;
+	u64 base_vfgptc;
+	u64 base_vfgorc;
+	u64 base_vfgotc;
+	u64 base_vfmprc;
+
+	u64 last_vfgprc;
+	u64 last_vfgptc;
+	u64 last_vfgorc;
+	u64 last_vfgotc;
+	u64 last_vfmprc;
+	u64 last_vfbprc;
+	u64 last_vfmptc;
+	u64 last_vfbptc;
+
+	u64 vfgprc;
+	u64 vfgptc;
+	u64 vfgorc;
+	u64 vfgotc;
+	u64 vfmprc;
+	u64 vfbprc;
+	u64 vfmptc;
+	u64 vfbptc;
+
+	u64 saved_reset_vfgprc;
+	u64 saved_reset_vfgptc;
+	u64 saved_reset_vfgorc;
+	u64 saved_reset_vfgotc;
+	u64 saved_reset_vfmprc;
+};
+
 s32 ngbe_init_ops_vf(struct ngbe_hw *hw);
 s32 ngbe_init_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_start_hw_vf(struct ngbe_hw *hw);
