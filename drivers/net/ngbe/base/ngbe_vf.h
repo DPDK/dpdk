@@ -17,6 +17,8 @@ s32 ngbe_start_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_reset_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_stop_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_get_mac_addr_vf(struct ngbe_hw *hw, u8 *mac_addr);
+s32 ngbe_check_mac_link_vf(struct ngbe_hw *hw, u32 *speed,
+			    bool *link_up, bool autoneg_wait_to_complete);
 s32 ngbe_set_rar_vf(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 		     u32 enable_addr);
 s32 ngbevf_set_uc_addr_vf(struct ngbe_hw *hw, u32 index, u8 *addr);

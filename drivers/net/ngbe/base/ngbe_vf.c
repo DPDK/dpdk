@@ -338,6 +338,99 @@ s32 ngbevf_set_uc_addr_vf(struct ngbe_hw *hw, u32 index, u8 *addr)
 }
 
 /**
+ *  ngbe_check_mac_link_vf - Get link/speed status
+ *  @hw: pointer to hardware structure
+ *  @speed: pointer to link speed
+ *  @link_up: true is link is up, false otherwise
+ *  @autoneg_wait_to_complete: true when waiting for completion is needed
+ *
+ *  Reads the links register to determine if link is up and the current speed
+ **/
+s32 ngbe_check_mac_link_vf(struct ngbe_hw *hw, u32 *speed,
+			    bool *link_up, bool wait_to_complete)
+{
+	/**
+	 * for a quick link status checking, wait_to_compelet == 0,
+	 * skip PF link status checking
+	 */
+	bool no_pflink_check = 0;
+	struct ngbe_mbx_info *mbx = &hw->mbx;
+	struct ngbe_mac_info *mac = &hw->mac;
+	s32 ret_val = 0;
+	u32 links_reg;
+	u32 in_msg = 0;
+
+	UNREFERENCED_PARAMETER(wait_to_complete);
+
+	/* If we were hit with a reset drop the link */
+	if (!mbx->check_for_rst(hw, 0) || !mbx->timeout)
+		mac->get_link_status = true;
+
+	if (!mac->get_link_status)
+		goto out;
+
+	/* if link status is down no point in checking to see if pf is up */
+	links_reg = rd32(hw, NGBE_VFSTATUS);
+	if (!(links_reg & NGBE_VFSTATUS_BW_MASK))
+		goto out;
+
+	/* for SFP+ modules and DA cables it can take up to 500usecs
+	 * before the link status is correct
+	 */
+	if (mac->type == ngbe_mac_em_vf) {
+		if (po32m(hw, NGBE_VFSTATUS, NGBE_VFSTATUS_BW_MASK,
+			0, NULL, 5, 100))
+			goto out;
+	}
+
+	if (links_reg & NGBE_VFSTATUS_BW_1G)
+		*speed = NGBE_LINK_SPEED_1GB_FULL;
+	else if (links_reg & NGBE_VFSTATUS_BW_100M)
+		*speed = NGBE_LINK_SPEED_100M_FULL;
+	else if (links_reg & NGBE_VFSTATUS_BW_10M)
+		*speed = NGBE_LINK_SPEED_10M_FULL;
+	else
+		*speed = NGBE_LINK_SPEED_UNKNOWN;
+
+	if (no_pflink_check) {
+		if (*speed == NGBE_LINK_SPEED_UNKNOWN)
+			mac->get_link_status = true;
+		else
+			mac->get_link_status = false;
+
+		goto out;
+	}
+
+	/* if the read failed it could just be a mailbox collision, best wait
+	 * until we are called again and don't report an error
+	 */
+	if (mbx->read(hw, &in_msg, 1, 0))
+		goto out;
+
+	if (!(in_msg & NGBE_VT_MSGTYPE_CTS)) {
+		/* msg is not CTS and is NACK we must have lost CTS status */
+		if (in_msg & NGBE_VT_MSGTYPE_NACK)
+			ret_val = -1;
+		goto out;
+	}
+
+	/* the pf is talking, if we timed out in the past we reinit */
+	if (!mbx->timeout) {
+		ret_val = -1;
+		goto out;
+	}
+
+	/* if we passed all the tests above then the link is up and we no
+	 * longer need to check for link
+	 */
+	mac->get_link_status = false;
+
+out:
+	*link_up = !mac->get_link_status;
+	return ret_val;
+}
+
+/**
  *  ngbevf_rlpml_set_vf - Set the maximum receive packet length
  *  @hw: pointer to the HW structure
  *  @max_size: value to assign to max frame size
@@ -470,6 +563,9 @@ s32 ngbe_init_ops_vf(struct ngbe_hw *hw)
 	mac->stop_hw = ngbe_stop_hw_vf;
 	mac->get_mac_addr = ngbe_get_mac_addr_vf;
 	mac->negotiate_api_version = ngbevf_negotiate_api_version;
+
+	/* Link */
+	mac->check_link = ngbe_check_mac_link_vf;
 
 	/* RAR, Multicast, VLAN */
 	mac->set_rar = ngbe_set_rar_vf;
