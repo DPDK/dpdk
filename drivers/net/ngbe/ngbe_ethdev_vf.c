@@ -18,11 +18,15 @@
 
 #define NGBEVF_PMD_NAME "rte_ngbevf_pmd" /* PMD name */
 static int ngbevf_dev_close(struct rte_eth_dev *dev);
+static void ngbevf_intr_disable(struct rte_eth_dev *dev);
+static void ngbevf_intr_enable(struct rte_eth_dev *dev);
 static int ngbevf_vlan_offload_config(struct rte_eth_dev *dev, int mask);
 static void ngbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
+static void ngbevf_configure_msix(struct rte_eth_dev *dev);
 static int ngbevf_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static int ngbevf_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void ngbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
+static void ngbevf_dev_interrupt_handler(void *param);
 
 /*
  * The set of PCI devices this driver supports (for VF)
@@ -110,6 +114,7 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 	int err;
 	uint32_t tc, tcs;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
 	struct ngbe_vfta *shadow_vfta = NGBE_DEV_VFTA(eth_dev);
 	struct ngbe_hwstrip *hwstrip = NGBE_DEV_HWSTRIP(eth_dev);
@@ -172,6 +177,9 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* init_mailbox_params */
 	hw->mbx.init_params(hw);
+
+	/* Disable the interrupts for VF */
+	ngbevf_intr_disable(eth_dev);
 
 	hw->mac.num_rar_entries = 32; /* The MAX of the underlying PF */
 	err = hw->mac.reset_hw(hw);
@@ -239,6 +247,11 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* enter promiscuous mode */
 	ngbevf_dev_promiscuous_enable(eth_dev);
+
+	rte_intr_callback_register(intr_handle,
+				   ngbevf_dev_interrupt_handler, eth_dev);
+	rte_intr_enable(intr_handle);
+	ngbevf_intr_enable(eth_dev);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
@@ -332,6 +345,39 @@ ngbevf_dev_info_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+ngbevf_intr_disable(struct rte_eth_dev *dev)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Clear interrupt mask to stop from interrupts being generated */
+	wr32(hw, NGBE_VFIMS, NGBE_VFIMS_MASK);
+
+	ngbe_flush(hw);
+
+	/* Clear mask value. */
+	intr->mask_misc = NGBE_VFIMS_MASK;
+}
+
+static void
+ngbevf_intr_enable(struct rte_eth_dev *dev)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* VF enable interrupt autoclean */
+	wr32(hw, NGBE_VFIMC, NGBE_VFIMC_MASK);
+
+	ngbe_flush(hw);
+
+	intr->mask_misc = 0;
+}
+
 static int
 ngbevf_dev_configure(struct rte_eth_dev *dev)
 {
@@ -370,6 +416,8 @@ static int
 ngbevf_dev_close(struct rte_eth_dev *dev)
 {
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -387,8 +435,15 @@ ngbevf_dev_close(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
 
+	/* Disable the interrupts for VF */
+	ngbevf_intr_disable(dev);
+
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
+
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     ngbevf_dev_interrupt_handler, dev);
 
 	return 0;
 }
@@ -490,6 +545,113 @@ ngbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	ngbevf_vlan_offload_config(dev, mask);
 
 	return 0;
+}
+
+static int
+ngbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t vec = NGBE_MISC_VEC_ID;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = NGBE_RX_VEC_START;
+	intr->mask_misc &= ~(1 << vec);
+	RTE_SET_USED(queue_id);
+	wr32(hw, NGBE_VFIMC, ~intr->mask_misc);
+
+	rte_intr_enable(intr_handle);
+
+	return 0;
+}
+
+static int
+ngbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	uint32_t vec = NGBE_MISC_VEC_ID;
+
+	if (rte_intr_allow_others(intr_handle))
+		vec = NGBE_RX_VEC_START;
+	intr->mask_misc |= (1 << vec);
+	RTE_SET_USED(queue_id);
+	wr32(hw, NGBE_VFIMS, intr->mask_misc);
+
+	return 0;
+}
+
+static void
+ngbevf_set_ivar_map(struct ngbe_hw *hw, int8_t direction,
+		     uint8_t queue, uint8_t msix_vector)
+{
+	uint32_t tmp, idx;
+
+	if (direction == -1) {
+		/* other causes */
+		msix_vector |= NGBE_VFIVAR_VLD;
+		tmp = rd32(hw, NGBE_VFIVARMISC);
+		tmp &= ~0xFF;
+		tmp |= msix_vector;
+		wr32(hw, NGBE_VFIVARMISC, tmp);
+	} else {
+		/* rx or tx cause */
+		/* Workaround for ICR lost */
+		idx = ((16 * (queue & 1)) + (8 * direction));
+		tmp = rd32(hw, NGBE_VFIVAR(queue >> 1));
+		tmp &= ~(0xFF << idx);
+		tmp |= (msix_vector << idx);
+		wr32(hw, NGBE_VFIVAR(queue >> 1), tmp);
+	}
+}
+
+static void
+ngbevf_configure_msix(struct rte_eth_dev *dev)
+{
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	uint32_t q_idx;
+	uint32_t vector_idx = NGBE_MISC_VEC_ID;
+	uint32_t base = NGBE_MISC_VEC_ID;
+
+	/* Configure VF other cause ivar */
+	ngbevf_set_ivar_map(hw, -1, 1, vector_idx);
+
+	/* won't configure msix register if no mapping is done
+	 * between intr vector and event fd.
+	 */
+	if (!rte_intr_dp_is_en(intr_handle))
+		return;
+
+	if (rte_intr_allow_others(intr_handle)) {
+		base = NGBE_RX_VEC_START;
+		vector_idx = NGBE_RX_VEC_START;
+	}
+
+	/* Configure all RX queues of VF */
+	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
+		/* Force all queue use vector 0,
+		 * as NGBE_VF_MAXMSIVECOTR = 1
+		 */
+		ngbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
+		rte_intr_vec_list_index_set(intr_handle, q_idx,
+						   vector_idx);
+		if (vector_idx < base + rte_intr_nb_efd_get(intr_handle)
+		    - 1)
+			vector_idx++;
+	}
+
+	/* As RX queue setting above show, all queues use the vector 0.
+	 * Set only the ITR value of NGBE_MISC_VEC_ID.
+	 */
+	wr32(hw, NGBE_ITR(NGBE_MISC_VEC_ID),
+		NGBE_ITR_IVAL(NGBE_QUEUE_ITR_INTERVAL_DEFAULT)
+		| NGBE_ITR_WRDSA);
 }
 
 static int
@@ -705,6 +867,72 @@ ngbevf_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static void ngbevf_mbx_process(struct rte_eth_dev *dev)
+{
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	u32 in_msg = 0;
+
+	/* peek the message first */
+	in_msg = rd32(hw, NGBE_VFMBX);
+
+	/* PF reset VF event */
+	if (in_msg == NGBE_PF_CONTROL_MSG) {
+		/* dummy mbx read to ack pf */
+		if (ngbe_read_mbx(hw, &in_msg, 1, 0))
+			return;
+		rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
+					      NULL);
+	}
+}
+
+static int
+ngbevf_dev_interrupt_get_status(struct rte_eth_dev *dev)
+{
+	uint32_t eicr;
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+
+	ngbevf_intr_disable(dev);
+
+	/* read-on-clear nic registers here */
+	eicr = rd32(hw, NGBE_VFICR);
+	intr->flags = 0;
+
+	/* only one misc vector supported - mailbox */
+	eicr &= NGBE_VFICR_MASK;
+	/* Workaround for ICR lost */
+	intr->flags |= NGBE_FLAG_MAILBOX;
+
+	/* To avoid compiler warnings set eicr to used. */
+	RTE_SET_USED(eicr);
+
+	return 0;
+}
+
+static int
+ngbevf_dev_interrupt_action(struct rte_eth_dev *dev)
+{
+	struct ngbe_interrupt *intr = ngbe_dev_intr(dev);
+
+	if (intr->flags & NGBE_FLAG_MAILBOX) {
+		ngbevf_mbx_process(dev);
+		intr->flags &= ~NGBE_FLAG_MAILBOX;
+	}
+
+	ngbevf_intr_enable(dev);
+
+	return 0;
+}
+
+static void
+ngbevf_dev_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+
+	ngbevf_dev_interrupt_get_status(dev);
+	ngbevf_dev_interrupt_action(dev);
+}
+
 /*
  * dev_ops for virtual function, bare necessities for basic vf
  * operation have been implemented
@@ -720,6 +948,8 @@ static const struct eth_dev_ops ngbevf_eth_dev_ops = {
 	.vlan_filter_set      = ngbevf_vlan_filter_set,
 	.vlan_strip_queue_set = ngbevf_vlan_strip_queue_set,
 	.vlan_offload_set     = ngbevf_vlan_offload_set,
+	.rx_queue_intr_enable = ngbevf_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable = ngbevf_dev_rx_queue_intr_disable,
 	.mac_addr_add         = ngbevf_add_mac_addr,
 	.mac_addr_remove      = ngbevf_remove_mac_addr,
 	.mac_addr_set         = ngbevf_set_default_mac_addr,
