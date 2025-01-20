@@ -8,6 +8,9 @@
 
 #define NGBE_LINK_UP_TIME	90 /* 9.0 Seconds */
 
+#define NGBE_RX_HDR_SIZE	256
+#define NGBE_RX_BUF_SIZE	2048
+
 #define NGBE_FRAME_SIZE_MAX       (9728) /* Maximum frame size, +FCS */
 #define NGBE_FRAME_SIZE_DFT       (1518) /* Default frame size, +FCS */
 #define NGBE_NUM_POOL             (32)
@@ -17,6 +20,7 @@
 #define NGBE_MAX_QP               (8)
 #define NGBE_MAX_UTA              128
 
+#define NGBE_VF_INIT_TIMEOUT	200 /* Number of retries to clear RSTI */
 #define NGBE_PCI_MASTER_DISABLE_TIMEOUT	800
 #define NGBE_SPI_TIMEOUT	10000
 
@@ -480,6 +484,7 @@ struct ngbe_hw {
 	u32 q_tx_regs[8 * 4];
 	u32 gphy_efuse[2];
 	bool offset_loaded;
+	bool rx_loaded;
 	bool is_pf;
 	bool gpio_ctl;
 	bool lsc;

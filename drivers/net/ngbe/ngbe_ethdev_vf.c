@@ -38,7 +38,47 @@ static const struct rte_pci_id pci_id_ngbevf_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static const struct rte_eth_desc_lim rx_desc_lim = {
+	.nb_max = NGBE_RING_DESC_MAX,
+	.nb_min = NGBE_RING_DESC_MIN,
+	.nb_align = NGBE_RXD_ALIGN,
+};
+
+static const struct rte_eth_desc_lim tx_desc_lim = {
+	.nb_max = NGBE_RING_DESC_MAX,
+	.nb_min = NGBE_RING_DESC_MIN,
+	.nb_align = NGBE_TXD_ALIGN,
+	.nb_seg_max = NGBE_TX_MAX_SEG,
+	.nb_mtu_seg_max = NGBE_TX_MAX_SEG,
+};
+
 static const struct eth_dev_ops ngbevf_eth_dev_ops;
+
+/*
+ * Negotiate mailbox API version with the PF.
+ * After reset API version is always set to the basic one (ngbe_mbox_api_10).
+ * Then we try to negotiate starting with the most recent one.
+ * If all negotiation attempts fail, then we will proceed with
+ * the default one (ngbe_mbox_api_10).
+ */
+static void
+ngbevf_negotiate_api(struct ngbe_hw *hw)
+{
+	int32_t i;
+
+	/* start with highest supported, proceed down */
+	static const int sup_ver[] = {
+		ngbe_mbox_api_13,
+		ngbe_mbox_api_12,
+		ngbe_mbox_api_11,
+		ngbe_mbox_api_10,
+	};
+
+	for (i = 0; i < ARRAY_SIZE(sup_ver); i++) {
+		if (ngbevf_negotiate_api_version(hw, sup_ver[i]) == 0)
+			break;
+	}
+}
 
 /*
  * Virtual Function device init
@@ -47,6 +87,7 @@ static int
 eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 {
 	int err;
+	uint32_t tc, tcs;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(eth_dev);
 
@@ -70,7 +111,32 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 		return -EIO;
 	}
 
+	/* init_mailbox_params */
+	hw->mbx.init_params(hw);
+
 	hw->mac.num_rar_entries = 32; /* The MAX of the underlying PF */
+	err = hw->mac.reset_hw(hw);
+
+	/*
+	 * The VF reset operation returns the NGBE_ERR_INVALID_MAC_ADDR when
+	 * the underlying PF driver has not assigned a MAC address to the VF.
+	 * In this case, assign a random MAC address.
+	 */
+	if (err != 0 && err != NGBE_ERR_INVALID_MAC_ADDR) {
+		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", err);
+		/*
+		 * This error code will be propagated to the app by
+		 * rte_eth_dev_reset, so use a public error code rather than
+		 * the internal-only NGBE_ERR_RESET_FAILED
+		 */
+		return -EAGAIN;
+	}
+
+	/* negotiate mailbox API version to use with the PF. */
+	ngbevf_negotiate_api(hw);
+
+	/* Get Rx/Tx queue count via mailbox, which is ready after reset_hw */
+	ngbevf_get_queues(hw, &tcs, &tc);
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("ngbevf", RTE_ETHER_ADDR_LEN *
@@ -80,6 +146,13 @@ eth_ngbevf_dev_init(struct rte_eth_dev *eth_dev)
 			     "Failed to allocate %u bytes needed to store MAC addresses",
 			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
 		return -ENOMEM;
+	}
+
+	/* reset the hardware with the new settings */
+	err = hw->mac.start_hw(hw);
+	if (err) {
+		PMD_INIT_LOG(ERR, "VF Initialization Failure: %d", err);
+		return -EIO;
 	}
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
@@ -129,10 +202,47 @@ static int
 ngbevf_dev_info_get(struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct ngbe_hw *hw = ngbe_dev_hw(dev);
 
 	dev_info->max_rx_queues = (uint16_t)hw->mac.max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->mac.max_tx_queues;
+	dev_info->min_rx_bufsize = 1024;
+	dev_info->max_rx_pktlen = NGBE_FRAME_SIZE_MAX;
+	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
+	dev_info->max_hash_mac_addrs = NGBE_VMDQ_NUM_UC_MAC;
+	dev_info->max_vfs = pci_dev->max_vfs;
+	dev_info->max_vmdq_pools = RTE_ETH_64_POOLS;
+	dev_info->rx_queue_offload_capa = ngbe_get_rx_queue_offloads(dev);
+	dev_info->rx_offload_capa = (ngbe_get_rx_port_offloads(dev) |
+				     dev_info->rx_queue_offload_capa);
+	dev_info->tx_queue_offload_capa = 0;
+	dev_info->tx_offload_capa = ngbe_get_tx_port_offloads(dev);
+	dev_info->hash_key_size = NGBE_HKEY_MAX_INDEX * sizeof(uint32_t);
+	dev_info->reta_size = RTE_ETH_RSS_RETA_SIZE_128;
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_thresh = {
+			.pthresh = NGBE_DEFAULT_RX_PTHRESH,
+			.hthresh = NGBE_DEFAULT_RX_HTHRESH,
+			.wthresh = NGBE_DEFAULT_RX_WTHRESH,
+		},
+		.rx_free_thresh = NGBE_DEFAULT_RX_FREE_THRESH,
+		.rx_drop_en = 0,
+		.offloads = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_thresh = {
+			.pthresh = NGBE_DEFAULT_TX_PTHRESH,
+			.hthresh = NGBE_DEFAULT_TX_HTHRESH,
+			.wthresh = NGBE_DEFAULT_TX_WTHRESH,
+		},
+		.tx_free_thresh = NGBE_DEFAULT_TX_FREE_THRESH,
+		.offloads = 0,
+	};
+
+	dev_info->rx_desc_lim = rx_desc_lim;
+	dev_info->tx_desc_lim = tx_desc_lim;
 
 	return 0;
 }
@@ -140,9 +250,13 @@ ngbevf_dev_info_get(struct rte_eth_dev *dev,
 static int
 ngbevf_dev_close(struct rte_eth_dev *dev)
 {
+	struct ngbe_hw *hw = ngbe_dev_hw(dev);
+
 	PMD_INIT_FUNC_TRACE();
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
+
+	hw->mac.reset_hw(hw);
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;

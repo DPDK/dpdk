@@ -57,6 +57,8 @@ enum ngbe_pfvf_api_rev {
 #define NGBE_VF_GET_RSS_KEY	0x0b    /* get RSS key */
 #define NGBE_VF_UPDATE_XCAST_MODE	0x0c
 
+#define NGBE_VF_BACKUP		0x8001 /* VF requests backup */
+
 /* mode choices for NGBE_VF_UPDATE_XCAST_MODE */
 enum ngbevf_xcast_modes {
 	NGBEVF_XCAST_MODE_NONE = 0,
