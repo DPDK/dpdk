@@ -179,6 +179,39 @@ s32 ngbe_stop_hw_vf(struct ngbe_hw *hw)
 	return 0;
 }
 
+/**
+ *  ngbe_mta_vector - Determines bit-vector in multicast table to set
+ *  @hw: pointer to hardware structure
+ *  @mc_addr: the multicast address
+ **/
+STATIC s32 ngbe_mta_vector(struct ngbe_hw *hw, u8 *mc_addr)
+{
+	u32 vector = 0;
+
+	switch (hw->mac.mc_filter_type) {
+	case 0:   /* use bits [47:36] of the address */
+		vector = ((mc_addr[4] >> 4) | (((u16)mc_addr[5]) << 4));
+		break;
+	case 1:   /* use bits [46:35] of the address */
+		vector = ((mc_addr[4] >> 3) | (((u16)mc_addr[5]) << 5));
+		break;
+	case 2:   /* use bits [45:34] of the address */
+		vector = ((mc_addr[4] >> 2) | (((u16)mc_addr[5]) << 6));
+		break;
+	case 3:   /* use bits [43:32] of the address */
+		vector = ((mc_addr[4]) | (((u16)mc_addr[5]) << 8));
+		break;
+	default:  /* Invalid mc_filter_type */
+		DEBUGOUT("MC filter type param set incorrectly");
+		ASSERT(0);
+		break;
+	}
+
+	/* vector can only be 12-bits or boundary will be exceeded */
+	vector &= 0xFFF;
+	return vector;
+}
+
 STATIC s32 ngbevf_write_msg_read_ack(struct ngbe_hw *hw, u32 *msg,
 				      u32 *retmsg, u16 size)
 {
@@ -223,6 +256,53 @@ s32 ngbe_set_rar_vf(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 	}
 
 	return ret_val;
+}
+
+/**
+ *  ngbe_update_mc_addr_list_vf - Update Multicast addresses
+ *  @hw: pointer to the HW structure
+ *  @mc_addr_list: array of multicast addresses to program
+ *  @mc_addr_count: number of multicast addresses to program
+ *  @next: caller supplied function to return next address in list
+ *  @clear: unused
+ *
+ *  Updates the Multicast Table Array.
+ **/
+s32 ngbe_update_mc_addr_list_vf(struct ngbe_hw *hw, u8 *mc_addr_list,
+				 u32 mc_addr_count, ngbe_mc_addr_itr next,
+				 bool clear)
+{
+	struct ngbe_mbx_info *mbx = &hw->mbx;
+	u32 msgbuf[NGBE_P2VMBX_SIZE];
+	u16 *vector_list = (u16 *)&msgbuf[1];
+	u32 vector;
+	u32 cnt, i;
+	u32 vmdq;
+
+	UNREFERENCED_PARAMETER(clear);
+
+	/* Each entry in the list uses 1 16 bit word.  We have 30
+	 * 16 bit words available in our HW msg buffer (minus 1 for the
+	 * msg type).  That's 30 hash values if we pack 'em right.  If
+	 * there are more than 30 MC addresses to add then punt the
+	 * extras for now and then add code to handle more than 30 later.
+	 * It would be unusual for a server to request that many multi-cast
+	 * addresses except for in large enterprise network environments.
+	 */
+
+	DEBUGOUT("MC Addr Count = %d", mc_addr_count);
+
+	cnt = (mc_addr_count > 30) ? 30 : mc_addr_count;
+	msgbuf[0] = NGBE_VF_SET_MULTICAST;
+	msgbuf[0] |= cnt << NGBE_VT_MSGINFO_SHIFT;
+
+	for (i = 0; i < cnt; i++) {
+		vector = ngbe_mta_vector(hw, next(hw, &mc_addr_list, &vmdq));
+		DEBUGOUT("Hash value = 0x%03X", vector);
+		vector_list[i] = (u16)vector;
+	}
+
+	return mbx->write_posted(hw, msgbuf, NGBE_P2VMBX_SIZE, 0);
 }
 
 /**
@@ -570,6 +650,7 @@ s32 ngbe_init_ops_vf(struct ngbe_hw *hw)
 	/* RAR, Multicast, VLAN */
 	mac->set_rar = ngbe_set_rar_vf;
 	mac->set_uc_addr = ngbevf_set_uc_addr_vf;
+	mac->update_mc_addr_list = ngbe_update_mc_addr_list_vf;
 	mac->update_xcast_mode = ngbevf_update_xcast_mode;
 	mac->set_vfta = ngbe_set_vfta_vf;
 	mac->set_rlpml = ngbevf_rlpml_set_vf;

@@ -54,6 +54,9 @@ s32 ngbe_check_mac_link_vf(struct ngbe_hw *hw, u32 *speed,
 s32 ngbe_set_rar_vf(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 		     u32 enable_addr);
 s32 ngbevf_set_uc_addr_vf(struct ngbe_hw *hw, u32 index, u8 *addr);
+s32 ngbe_update_mc_addr_list_vf(struct ngbe_hw *hw, u8 *mc_addr_list,
+				 u32 mc_addr_count, ngbe_mc_addr_itr next,
+				 bool clear);
 s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode);
 s32 ngbe_set_vfta_vf(struct ngbe_hw *hw, u32 vlan, u32 vind,
 		      bool vlan_on, bool vlvf_bypass);
