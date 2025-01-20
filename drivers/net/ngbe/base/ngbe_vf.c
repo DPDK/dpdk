@@ -192,6 +192,40 @@ STATIC s32 ngbevf_write_msg_read_ack(struct ngbe_hw *hw, u32 *msg,
 }
 
 /**
+ *  ngbe_set_rar_vf - set device MAC address
+ *  @hw: pointer to hardware structure
+ *  @index: Receive address register to write
+ *  @addr: Address to put into receive address register
+ *  @vmdq: VMDq "set" or "pool" index
+ *  @enable_addr: set flag that address is active
+ **/
+s32 ngbe_set_rar_vf(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+		     u32 enable_addr)
+{
+	u32 msgbuf[3];
+	u8 *msg_addr = (u8 *)(&msgbuf[1]);
+	s32 ret_val;
+
+	UNREFERENCED_PARAMETER(vmdq, enable_addr, index);
+
+	memset(msgbuf, 0, 12);
+	msgbuf[0] = NGBE_VF_SET_MAC_ADDR;
+	memcpy(msg_addr, addr, 6);
+	ret_val = ngbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
+
+	msgbuf[0] &= ~NGBE_VT_MSGTYPE_CTS;
+
+	/* if nacked the address was rejected, use "perm_addr" */
+	if (!ret_val &&
+	    (msgbuf[0] == (NGBE_VF_SET_MAC_ADDR | NGBE_VT_MSGTYPE_NACK))) {
+		ngbe_get_mac_addr_vf(hw, hw->mac.addr);
+		return NGBE_ERR_MBX;
+	}
+
+	return ret_val;
+}
+
+/**
  *  ngbevf_update_xcast_mode - Update Multicast mode
  *  @hw: pointer to the HW structure
  *  @xcast_mode: new multicast mode
@@ -226,6 +260,51 @@ s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode)
 	if (msgbuf[0] == (NGBE_VF_UPDATE_XCAST_MODE | NGBE_VT_MSGTYPE_NACK))
 		return NGBE_ERR_FEATURE_NOT_SUPPORTED;
 	return 0;
+}
+
+/**
+ * ngbe_get_mac_addr_vf - Read device MAC address
+ * @hw: pointer to the HW structure
+ * @mac_addr: the MAC address
+ **/
+s32 ngbe_get_mac_addr_vf(struct ngbe_hw *hw, u8 *mac_addr)
+{
+	int i;
+
+	for (i = 0; i < ETH_ADDR_LEN; i++)
+		mac_addr[i] = hw->mac.perm_addr[i];
+
+	return 0;
+}
+
+s32 ngbevf_set_uc_addr_vf(struct ngbe_hw *hw, u32 index, u8 *addr)
+{
+	u32 msgbuf[3], msgbuf_chk;
+	u8 *msg_addr = (u8 *)(&msgbuf[1]);
+	s32 ret_val;
+
+	memset(msgbuf, 0, sizeof(msgbuf));
+	/*
+	 * If index is one then this is the start of a new list and needs
+	 * indication to the PF so it can do it's own list management.
+	 * If it is zero then that tells the PF to just clear all of
+	 * this VF's macvlans and there is no new list.
+	 */
+	msgbuf[0] |= index << NGBE_VT_MSGINFO_SHIFT;
+	msgbuf[0] |= NGBE_VF_SET_MACVLAN;
+	msgbuf_chk = msgbuf[0];
+	if (addr)
+		memcpy(msg_addr, addr, 6);
+
+	ret_val = ngbevf_write_msg_read_ack(hw, msgbuf, msgbuf, 3);
+	if (!ret_val) {
+		msgbuf[0] &= ~NGBE_VT_MSGTYPE_CTS;
+
+		if (msgbuf[0] == (msgbuf_chk | NGBE_VT_MSGTYPE_NACK))
+			return NGBE_ERR_OUT_OF_MEM;
+	}
+
+	return ret_val;
 }
 
 /**
@@ -359,8 +438,12 @@ s32 ngbe_init_ops_vf(struct ngbe_hw *hw)
 	mac->reset_hw = ngbe_reset_hw_vf;
 	mac->start_hw = ngbe_start_hw_vf;
 	mac->stop_hw = ngbe_stop_hw_vf;
+	mac->get_mac_addr = ngbe_get_mac_addr_vf;
 	mac->negotiate_api_version = ngbevf_negotiate_api_version;
 
+	/* RAR, Multicast */
+	mac->set_rar = ngbe_set_rar_vf;
+	mac->set_uc_addr = ngbevf_set_uc_addr_vf;
 	mac->update_xcast_mode = ngbevf_update_xcast_mode;
 	mac->set_rlpml = ngbevf_rlpml_set_vf;
 

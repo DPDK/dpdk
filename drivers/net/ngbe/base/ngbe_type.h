@@ -335,6 +335,7 @@ struct ngbe_mac_info {
 	/* RAR */
 	s32 (*set_rar)(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
 			  u32 enable_addr);
+	s32 (*set_uc_addr)(struct ngbe_hw *hw, u32 index, u8 *addr);
 	s32 (*clear_rar)(struct ngbe_hw *hw, u32 index);
 	s32 (*set_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);
 	s32 (*clear_vmdq)(struct ngbe_hw *hw, u32 rar, u32 vmdq);

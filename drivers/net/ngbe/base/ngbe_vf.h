@@ -16,6 +16,10 @@ s32 ngbe_init_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_start_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_reset_hw_vf(struct ngbe_hw *hw);
 s32 ngbe_stop_hw_vf(struct ngbe_hw *hw);
+s32 ngbe_get_mac_addr_vf(struct ngbe_hw *hw, u8 *mac_addr);
+s32 ngbe_set_rar_vf(struct ngbe_hw *hw, u32 index, u8 *addr, u32 vmdq,
+		     u32 enable_addr);
+s32 ngbevf_set_uc_addr_vf(struct ngbe_hw *hw, u32 index, u8 *addr);
 s32 ngbevf_update_xcast_mode(struct ngbe_hw *hw, int xcast_mode);
 s32 ngbevf_rlpml_set_vf(struct ngbe_hw *hw, u16 max_size);
 int ngbevf_negotiate_api_version(struct ngbe_hw *hw, int api);
