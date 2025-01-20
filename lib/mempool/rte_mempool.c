@@ -928,8 +928,10 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	else
 		ret = rte_mempool_set_ops_byname(mp, "ring_mp_mc", NULL);
 
-	if (ret)
+	if (ret) {
+		rte_errno = -ret;
 		goto exit_unlock;
+	}
 
 	/*
 	 * local_cache pointer is set even if cache_size is zero.
