@@ -98,6 +98,8 @@ struct zxdh_hw {
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;
 	uint8_t admin_status;
+	uint8_t promisc_status;
+	uint8_t allmulti_status;
 };
 
 struct zxdh_dtb_shared_data {

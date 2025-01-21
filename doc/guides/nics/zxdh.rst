@@ -26,6 +26,8 @@ Features of the ZXDH PMD are:
 - Set Link down or up
 - Unicast MAC filter
 - Multicast MAC filter
+- Promiscuous mode
+- Multicast mode
 
 
 Driver compilation and testing
