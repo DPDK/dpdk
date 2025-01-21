@@ -31,6 +31,93 @@
 #define ZXDH_TX_MAX_SEGS                      31
 #define ZXDH_RX_MAX_SEGS                      31
 
+uint32_t zxdh_outer_l2_type[16] = {
+	0,
+	RTE_PTYPE_L2_ETHER,
+	RTE_PTYPE_L2_ETHER_TIMESYNC,
+	RTE_PTYPE_L2_ETHER_ARP,
+	RTE_PTYPE_L2_ETHER_LLDP,
+	RTE_PTYPE_L2_ETHER_NSH,
+	RTE_PTYPE_L2_ETHER_VLAN,
+	RTE_PTYPE_L2_ETHER_QINQ,
+	RTE_PTYPE_L2_ETHER_PPPOE,
+	RTE_PTYPE_L2_ETHER_FCOE,
+	RTE_PTYPE_L2_ETHER_MPLS,
+};
+
+uint32_t zxdh_outer_l3_type[16] = {
+	0,
+	RTE_PTYPE_L3_IPV4,
+	RTE_PTYPE_L3_IPV4_EXT,
+	RTE_PTYPE_L3_IPV6,
+	RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+	RTE_PTYPE_L3_IPV6_EXT,
+	RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+};
+
+uint32_t zxdh_outer_l4_type[16] = {
+	0,
+	RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L4_UDP,
+	RTE_PTYPE_L4_FRAG,
+	RTE_PTYPE_L4_SCTP,
+	RTE_PTYPE_L4_ICMP,
+	RTE_PTYPE_L4_NONFRAG,
+	RTE_PTYPE_L4_IGMP,
+};
+
+uint32_t zxdh_tunnel_type[16] = {
+	0,
+	RTE_PTYPE_TUNNEL_IP,
+	RTE_PTYPE_TUNNEL_GRE,
+	RTE_PTYPE_TUNNEL_VXLAN,
+	RTE_PTYPE_TUNNEL_NVGRE,
+	RTE_PTYPE_TUNNEL_GENEVE,
+	RTE_PTYPE_TUNNEL_GRENAT,
+	RTE_PTYPE_TUNNEL_GTPC,
+	RTE_PTYPE_TUNNEL_GTPU,
+	RTE_PTYPE_TUNNEL_ESP,
+	RTE_PTYPE_TUNNEL_L2TP,
+	RTE_PTYPE_TUNNEL_VXLAN_GPE,
+	RTE_PTYPE_TUNNEL_MPLS_IN_GRE,
+	RTE_PTYPE_TUNNEL_MPLS_IN_UDP,
+};
+
+uint32_t zxdh_inner_l2_type[16] = {
+	0,
+	RTE_PTYPE_INNER_L2_ETHER,
+	0,
+	0,
+	0,
+	0,
+	RTE_PTYPE_INNER_L2_ETHER_VLAN,
+	RTE_PTYPE_INNER_L2_ETHER_QINQ,
+	0,
+	0,
+	0,
+};
+
+uint32_t zxdh_inner_l3_type[16] = {
+	0,
+	RTE_PTYPE_INNER_L3_IPV4,
+	RTE_PTYPE_INNER_L3_IPV4_EXT,
+	RTE_PTYPE_INNER_L3_IPV6,
+	RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+	RTE_PTYPE_INNER_L3_IPV6_EXT,
+	RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+};
+
+uint32_t zxdh_inner_l4_type[16] = {
+	0,
+	RTE_PTYPE_INNER_L4_TCP,
+	RTE_PTYPE_INNER_L4_UDP,
+	RTE_PTYPE_INNER_L4_FRAG,
+	RTE_PTYPE_INNER_L4_SCTP,
+	RTE_PTYPE_INNER_L4_ICMP,
+	0,
+	0,
+};
+
 static void
 zxdh_xmit_cleanup_inorder_packed(struct zxdh_virtqueue *vq, int32_t num)
 {
@@ -393,4 +480,230 @@ uint16_t zxdh_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **t
 		}
 	}
 	return nb_tx;
+}
+
+static uint16_t zxdh_dequeue_burst_rx_packed(struct zxdh_virtqueue *vq,
+					struct rte_mbuf **rx_pkts,
+					uint32_t *len,
+					uint16_t num)
+{
+	struct zxdh_vring_packed_desc *desc = vq->vq_packed.ring.desc;
+	struct rte_mbuf *cookie = NULL;
+	uint16_t i, used_idx;
+	uint16_t id;
+
+	for (i = 0; i < num; i++) {
+		used_idx = vq->vq_used_cons_idx;
+		/**
+		 * desc_is_used has a load-acquire or rte_io_rmb inside
+		 * and wait for used desc in virtqueue.
+		 */
+		if (!zxdh_desc_used(&desc[used_idx], vq))
+			return i;
+		len[i] = desc[used_idx].len;
+		id = desc[used_idx].id;
+		cookie = (struct rte_mbuf *)vq->vq_descx[id].cookie;
+		vq->vq_descx[id].cookie = NULL;
+		if (unlikely(cookie == NULL)) {
+			PMD_RX_LOG(ERR,
+				"vring descriptor with no mbuf cookie at %u", vq->vq_used_cons_idx);
+			break;
+		}
+		rx_pkts[i] = cookie;
+		vq->vq_free_cnt++;
+		vq->vq_used_cons_idx++;
+		if (vq->vq_used_cons_idx >= vq->vq_nentries) {
+			vq->vq_used_cons_idx -= vq->vq_nentries;
+			vq->vq_packed.used_wrap_counter ^= 1;
+		}
+	}
+	return i;
+}
+
+static int32_t zxdh_rx_update_mbuf(struct rte_mbuf *m, struct zxdh_net_hdr_ul *hdr)
+{
+	struct zxdh_pd_hdr_ul *pd_hdr = &hdr->pd_hdr;
+	struct zxdh_pi_hdr *pi_hdr = &hdr->pi_hdr;
+	uint32_t idx = 0;
+
+	m->pkt_len = rte_be_to_cpu_16(pi_hdr->ul.pkt_len);
+
+	uint16_t pkt_type_outer = rte_be_to_cpu_16(pd_hdr->pkt_type_out);
+
+	idx = (pkt_type_outer >> 12) & 0xF;
+	m->packet_type  = zxdh_outer_l2_type[idx];
+	idx = (pkt_type_outer >> 8)  & 0xF;
+	m->packet_type |= zxdh_outer_l3_type[idx];
+	idx = (pkt_type_outer >> 4)  & 0xF;
+	m->packet_type |= zxdh_outer_l4_type[idx];
+	idx = pkt_type_outer         & 0xF;
+	m->packet_type |= zxdh_tunnel_type[idx];
+
+	uint16_t pkt_type_inner = rte_be_to_cpu_16(pd_hdr->pkt_type_in);
+
+	if (pkt_type_inner) {
+		idx = (pkt_type_inner >> 12) & 0xF;
+		m->packet_type |= zxdh_inner_l2_type[idx];
+		idx = (pkt_type_inner >> 8)  & 0xF;
+		m->packet_type |= zxdh_inner_l3_type[idx];
+		idx = (pkt_type_inner >> 4)  & 0xF;
+		m->packet_type |= zxdh_inner_l4_type[idx];
+	}
+
+	return 0;
+}
+
+static inline void zxdh_discard_rxbuf(struct zxdh_virtqueue *vq, struct rte_mbuf *m)
+{
+	int32_t error = 0;
+	/*
+	 * Requeue the discarded mbuf. This should always be
+	 * successful since it was just dequeued.
+	 */
+	error = zxdh_enqueue_recv_refill_packed(vq, &m, 1);
+	if (unlikely(error)) {
+		PMD_RX_LOG(ERR, "cannot enqueue discarded mbuf");
+		rte_pktmbuf_free(m);
+	}
+}
+
+uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts)
+{
+	struct zxdh_virtnet_rx *rxvq = rx_queue;
+	struct zxdh_virtqueue *vq = rxvq->vq;
+	struct zxdh_hw *hw = vq->hw;
+	struct rte_eth_dev *dev = hw->eth_dev;
+	struct rte_mbuf *rxm = NULL;
+	struct rte_mbuf *prev = NULL;
+	uint32_t len[ZXDH_MBUF_BURST_SZ] = {0};
+	struct rte_mbuf *rcv_pkts[ZXDH_MBUF_BURST_SZ] = {NULL};
+	uint32_t nb_enqueued = 0;
+	uint32_t seg_num = 0;
+	uint32_t seg_res = 0;
+	uint16_t hdr_size = 0;
+	int32_t error = 0;
+	uint16_t nb_rx = 0;
+	uint16_t num = nb_pkts;
+
+	if (unlikely(num > ZXDH_MBUF_BURST_SZ))
+		num = ZXDH_MBUF_BURST_SZ;
+
+	num = zxdh_dequeue_burst_rx_packed(vq, rcv_pkts, len, num);
+	uint16_t i;
+	uint16_t rcvd_pkt_len = 0;
+
+	for (i = 0; i < num; i++) {
+		rxm = rcv_pkts[i];
+
+		struct zxdh_net_hdr_ul *header =
+			(struct zxdh_net_hdr_ul *)((char *)rxm->buf_addr +
+			RTE_PKTMBUF_HEADROOM);
+
+		seg_num  = header->type_hdr.num_buffers;
+		if (seg_num == 0) {
+			PMD_RX_LOG(ERR, "dequeue %d pkt, No.%d pkt seg_num is %d", num, i, seg_num);
+			seg_num = 1;
+		}
+		/* bit[0:6]-pd_len unit:2B */
+		uint16_t pd_len = header->type_hdr.pd_len << 1;
+		/* Private queue only handle type hdr */
+		hdr_size = pd_len;
+		rxm->data_off = RTE_PKTMBUF_HEADROOM + hdr_size;
+		rxm->nb_segs = seg_num;
+		rxm->ol_flags = 0;
+		rxm->vlan_tci = 0;
+		rcvd_pkt_len = (uint32_t)(len[i] - hdr_size);
+		rxm->data_len = (uint16_t)(len[i] - hdr_size);
+		rxm->port = rxvq->port_id;
+		rx_pkts[nb_rx] = rxm;
+		prev = rxm;
+		/* Update rte_mbuf according to pi/pd header */
+		if (zxdh_rx_update_mbuf(rxm, header) < 0) {
+			zxdh_discard_rxbuf(vq, rxm);
+			continue;
+		}
+		seg_res = seg_num - 1;
+		/* Merge remaining segments */
+		while (seg_res != 0 && i < (num - 1)) {
+			i++;
+			rxm = rcv_pkts[i];
+			rxm->data_off = RTE_PKTMBUF_HEADROOM;
+			rxm->data_len = (uint16_t)(len[i]);
+
+			rcvd_pkt_len += (uint32_t)(len[i]);
+			prev->next = rxm;
+			prev = rxm;
+			rxm->next = NULL;
+			seg_res -= 1;
+		}
+
+		if (!seg_res) {
+			if (rcvd_pkt_len != rx_pkts[nb_rx]->pkt_len) {
+				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d.",
+					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
+				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
+				continue;
+			}
+			nb_rx++;
+		}
+	}
+	/* Last packet still need merge segments */
+	while (seg_res != 0) {
+		uint16_t rcv_cnt = RTE_MIN((uint16_t)seg_res, ZXDH_MBUF_BURST_SZ);
+		uint16_t extra_idx = 0;
+
+		rcv_cnt = zxdh_dequeue_burst_rx_packed(vq, rcv_pkts, len, rcv_cnt);
+		if (unlikely(rcv_cnt == 0)) {
+			PMD_RX_LOG(ERR, "No enough segments for packet.");
+			rte_pktmbuf_free(rx_pkts[nb_rx]);
+			break;
+		}
+		while (extra_idx < rcv_cnt) {
+			rxm = rcv_pkts[extra_idx];
+			rxm->data_off = RTE_PKTMBUF_HEADROOM;
+			rxm->pkt_len = (uint32_t)(len[extra_idx]);
+			rxm->data_len = (uint16_t)(len[extra_idx]);
+			prev->next = rxm;
+			prev = rxm;
+			rxm->next = NULL;
+			rcvd_pkt_len += len[extra_idx];
+			extra_idx += 1;
+		}
+		seg_res -= rcv_cnt;
+		if (!seg_res) {
+			if (rcvd_pkt_len != rx_pkts[nb_rx]->pkt_len) {
+				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d.",
+					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
+				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
+				continue;
+			}
+			nb_rx++;
+		}
+	}
+
+	/* Allocate new mbuf for the used descriptor */
+	if (likely(!zxdh_queue_full(vq))) {
+		/* free_cnt may include mrg descs */
+		uint16_t free_cnt = vq->vq_free_cnt;
+		struct rte_mbuf *new_pkts[free_cnt];
+
+		if (!rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts, free_cnt)) {
+			error = zxdh_enqueue_recv_refill_packed(vq, new_pkts, free_cnt);
+			if (unlikely(error)) {
+				for (i = 0; i < free_cnt; i++)
+					rte_pktmbuf_free(new_pkts[i]);
+			}
+			nb_enqueued += free_cnt;
+		} else {
+			dev->data->rx_mbuf_alloc_failed += free_cnt;
+		}
+	}
+	if (likely(nb_enqueued)) {
+		if (unlikely(zxdh_queue_kick_prepare_packed(vq))) {
+			zxdh_queue_notify(vq);
+			PMD_RX_LOG(DEBUG, "Notified");
+		}
+	}
+	return nb_rx;
 }

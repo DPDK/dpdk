@@ -48,5 +48,7 @@ struct __rte_cache_aligned zxdh_virtnet_tx {
 uint16_t zxdh_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 uint16_t zxdh_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts);
+uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
+				uint16_t nb_pkts);
 
 #endif  /* ZXDH_RXTX_H */
