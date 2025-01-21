@@ -176,6 +176,24 @@ struct zxdh_mac_multicast_table {
 	struct zxdh_mac_multicast_entry entry;
 };
 
+struct zxdh_brocast_table {
+	uint32_t flag;
+	uint32_t rsv;
+	uint32_t bitmap[2];
+};
+
+struct zxdh_unitcast_table {
+	uint32_t uc_flood_pf_enable;
+	uint32_t rsv;
+	uint32_t bitmap[2];
+};
+
+struct zxdh_multicast_table {
+	uint32_t mc_flood_pf_enable;
+	uint32_t rsv;
+	uint32_t bitmap[2];
+};
+
 int zxdh_port_attr_init(struct rte_eth_dev *dev);
 int zxdh_panel_table_init(struct rte_eth_dev *dev);
 int zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
@@ -183,5 +201,9 @@ int zxdh_port_attr_uninit(struct rte_eth_dev *dev);
 int zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
 int zxdh_set_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_search_idx);
 int zxdh_del_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_search_idx);
+int zxdh_promisc_table_init(struct rte_eth_dev *dev);
+int zxdh_promisc_table_uninit(struct rte_eth_dev *dev);
+int zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
+int zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable);
 
 #endif /* ZXDH_TABLES_H */

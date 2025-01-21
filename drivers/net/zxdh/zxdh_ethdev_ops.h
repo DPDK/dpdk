@@ -14,5 +14,9 @@ int zxdh_dev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_ad
 		uint32_t index, uint32_t vmdq);
 int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
+int zxdh_dev_promiscuous_enable(struct rte_eth_dev *dev);
+int zxdh_dev_promiscuous_disable(struct rte_eth_dev *dev);
+int zxdh_dev_allmulticast_enable(struct rte_eth_dev *dev);
+int zxdh_dev_allmulticast_disable(struct rte_eth_dev *dev);
 
 #endif /* ZXDH_ETHDEV_OPS_H */

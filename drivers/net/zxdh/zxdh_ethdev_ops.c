@@ -395,3 +395,131 @@ void zxdh_dev_mac_addr_remove(struct rte_eth_dev *dev __rte_unused, uint32_t ind
 	}
 	memset(&dev->data->mac_addrs[index], 0, sizeof(struct rte_ether_addr));
 }
+
+int zxdh_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw	= dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	int16_t ret = 0;
+
+	if (hw->promisc_status == 0) {
+		if (hw->is_pf) {
+			ret = zxdh_dev_unicast_table_set(hw, hw->vport.vport, true);
+			if (hw->allmulti_status == 0)
+				ret = zxdh_dev_multicast_table_set(hw, hw->vport.vport, true);
+
+		} else {
+			struct zxdh_port_promisc_msg *promisc_msg = &msg_info.data.port_promisc_msg;
+
+			zxdh_msg_head_build(hw, ZXDH_PORT_PROMISC_SET, &msg_info);
+			promisc_msg->mode = ZXDH_PROMISC_MODE;
+			promisc_msg->value = true;
+			if (hw->allmulti_status == 0)
+				promisc_msg->mc_follow = true;
+
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+						hw->vport.vport, ZXDH_PROMISC_MODE);
+				return ret;
+			}
+		}
+		hw->promisc_status = 1;
+	}
+	return ret;
+}
+
+int zxdh_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	int16_t ret = 0;
+	struct zxdh_msg_info msg_info = {0};
+
+	if (hw->promisc_status == 1) {
+		if (hw->is_pf) {
+			ret = zxdh_dev_unicast_table_set(hw, hw->vport.vport, false);
+			if (hw->allmulti_status == 0)
+				ret = zxdh_dev_multicast_table_set(hw, hw->vport.vport, false);
+
+		} else {
+			struct zxdh_port_promisc_msg *promisc_msg = &msg_info.data.port_promisc_msg;
+
+			zxdh_msg_head_build(hw, ZXDH_PORT_PROMISC_SET, &msg_info);
+			promisc_msg->mode = ZXDH_PROMISC_MODE;
+			promisc_msg->value = false;
+			if (hw->allmulti_status == 0)
+				promisc_msg->mc_follow = true;
+
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+						hw->vport.vport, ZXDH_PROMISC_MODE);
+				return ret;
+			}
+		}
+		hw->promisc_status = 0;
+	}
+	return ret;
+}
+
+int zxdh_dev_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	int16_t ret = 0;
+	struct zxdh_msg_info msg_info = {0};
+
+	if (hw->allmulti_status == 0) {
+		if (hw->is_pf) {
+			ret = zxdh_dev_multicast_table_set(hw, hw->vport.vport, true);
+		} else {
+			struct zxdh_port_promisc_msg *promisc_msg = &msg_info.data.port_promisc_msg;
+
+			zxdh_msg_head_build(hw, ZXDH_PORT_PROMISC_SET, &msg_info);
+
+			promisc_msg->mode = ZXDH_ALLMULTI_MODE;
+			promisc_msg->value = true;
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+						hw->vport.vport, ZXDH_ALLMULTI_MODE);
+				return ret;
+			}
+		}
+		hw->allmulti_status = 1;
+	}
+	return ret;
+}
+
+int zxdh_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	int16_t ret = 0;
+	struct zxdh_msg_info msg_info = {0};
+
+	if (hw->allmulti_status == 1) {
+		if (hw->is_pf) {
+			if (hw->promisc_status == 1)
+				goto end;
+			ret = zxdh_dev_multicast_table_set(hw, hw->vport.vport, false);
+		} else {
+			struct zxdh_port_promisc_msg *promisc_msg = &msg_info.data.port_promisc_msg;
+
+			zxdh_msg_head_build(hw, ZXDH_PORT_PROMISC_SET, &msg_info);
+			if (hw->promisc_status == 1)
+				goto end;
+			promisc_msg->mode = ZXDH_ALLMULTI_MODE;
+			promisc_msg->value = false;
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+						hw->vport.vport, ZXDH_ALLMULTI_MODE);
+				return ret;
+			}
+		}
+		hw->allmulti_status = 0;
+	}
+	return ret;
+end:
+	hw->allmulti_status = 0;
+	return ret;
+}

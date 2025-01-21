@@ -10,10 +10,15 @@
 
 #define ZXDH_SDT_VPORT_ATT_TABLE          1
 #define ZXDH_SDT_PANEL_ATT_TABLE          2
+#define ZXDH_SDT_BROCAST_ATT_TABLE        6
+#define ZXDH_SDT_UNICAST_ATT_TABLE        10
+#define ZXDH_SDT_MULTICAST_ATT_TABLE      11
 
 #define ZXDH_MAC_HASH_INDEX_BASE          64
 #define ZXDH_MAC_HASH_INDEX(index)        (ZXDH_MAC_HASH_INDEX_BASE + (index))
 #define ZXDH_MC_GROUP_NUM                 4
+#define ZXDH_BASE_VFID                    1152
+#define ZXDH_TABLE_HIT_FLAG               128
 
 int
 zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
@@ -343,6 +348,224 @@ zxdh_del_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_se
 							g_dtb_data.queueid, 1, &entry_get);
 			}
 		}
+	}
+	return 0;
+}
+
+int
+zxdh_promisc_table_init(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint32_t ret, vf_group_id = 0;
+	struct zxdh_brocast_table brocast_table = {0};
+	struct zxdh_unitcast_table uc_table = {0};
+	struct zxdh_multicast_table mc_table = {0};
+
+	if (!hw->is_pf)
+		return 0;
+
+	for (; vf_group_id < 4; vf_group_id++) {
+		brocast_table.flag = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG);
+		ZXDH_DTB_ERAM_ENTRY_INFO_T eram_brocast_entry = {
+			.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			.p_data = (uint32_t *)&brocast_table
+		};
+		ZXDH_DTB_USER_ENTRY_T entry_brocast = {
+			.sdt_no = ZXDH_SDT_BROCAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_brocast_entry
+		};
+
+		ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO,
+					g_dtb_data.queueid, 1, &entry_brocast);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "write brocast table failed");
+			return ret;
+		}
+
+		uc_table.uc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG);
+		ZXDH_DTB_ERAM_ENTRY_INFO_T eram_uc_entry = {
+			.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			.p_data = (uint32_t *)&uc_table
+		};
+		ZXDH_DTB_USER_ENTRY_T entry_unicast = {
+			.sdt_no = ZXDH_SDT_UNICAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_uc_entry
+		};
+
+		ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO,
+					g_dtb_data.queueid, 1, &entry_unicast);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "write unicast table failed");
+			return ret;
+		}
+
+		mc_table.mc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG);
+		ZXDH_DTB_ERAM_ENTRY_INFO_T eram_mc_entry = {
+			.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			.p_data = (uint32_t *)&mc_table
+		};
+		ZXDH_DTB_USER_ENTRY_T entry_multicast = {
+			.sdt_no = ZXDH_SDT_MULTICAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_mc_entry
+		};
+
+		ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+					1, &entry_multicast);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "write multicast table failed");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+int
+zxdh_promisc_table_uninit(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint32_t ret, vf_group_id = 0;
+	struct zxdh_brocast_table brocast_table = {0};
+	struct zxdh_unitcast_table uc_table = {0};
+	struct zxdh_multicast_table mc_table = {0};
+
+	if (!hw->is_pf)
+		return 0;
+
+	for (; vf_group_id < 4; vf_group_id++) {
+		brocast_table.flag = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG);
+		ZXDH_DTB_ERAM_ENTRY_INFO_T eram_brocast_entry = {
+			.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			.p_data = (uint32_t *)&brocast_table
+		};
+		ZXDH_DTB_USER_ENTRY_T entry_brocast = {
+			.sdt_no = ZXDH_SDT_BROCAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_brocast_entry
+		};
+
+		ret = zxdh_np_dtb_table_entry_delete(ZXDH_DEVICE_NO,
+				g_dtb_data.queueid, 1, &entry_brocast);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "write brocast table failed");
+			return ret;
+		}
+
+		uc_table.uc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG);
+		ZXDH_DTB_ERAM_ENTRY_INFO_T eram_uc_entry = {
+			.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			.p_data = (uint32_t *)&uc_table
+		};
+		ZXDH_DTB_USER_ENTRY_T entry_unicast = {
+			.sdt_no = ZXDH_SDT_UNICAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_uc_entry
+		};
+
+		ret = zxdh_np_dtb_table_entry_delete(ZXDH_DEVICE_NO,
+				g_dtb_data.queueid, 1, &entry_unicast);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "write unicast table failed");
+			return ret;
+		}
+
+		mc_table.mc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG);
+		ZXDH_DTB_ERAM_ENTRY_INFO_T eram_mc_entry = {
+			.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vf_group_id,
+			.p_data = (uint32_t *)&mc_table
+		};
+		ZXDH_DTB_USER_ENTRY_T entry_multicast = {
+			.sdt_no = ZXDH_SDT_MULTICAST_ATT_TABLE,
+			.p_entry_data = (void *)&eram_mc_entry
+		};
+
+		ret = zxdh_np_dtb_table_entry_delete(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+					1, &entry_multicast);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "write multicast table failed");
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+int
+zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
+{
+	int16_t ret = 0;
+	struct zxdh_unitcast_table uc_table = {0};
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T uc_table_entry = {
+		.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vport_num.vfid / 64,
+		.p_data = (uint32_t *)&uc_table
+	};
+	ZXDH_DTB_USER_ENTRY_T entry = {
+		.sdt_no = ZXDH_SDT_UNICAST_ATT_TABLE,
+		.p_entry_data = (void *)&uc_table_entry
+	};
+
+	ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO, g_dtb_data.queueid, &entry, 1);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "unicast_table_get_failed:%d", hw->vfid);
+		return -ret;
+	}
+
+	if (vport_num.vf_flag) {
+		if (enable)
+			uc_table.bitmap[(vport_num.vfid % 64) / 32] |=
+					UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32);
+		else
+			uc_table.bitmap[(vport_num.vfid % 64) / 32] &=
+					~(UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32));
+	} else {
+		uc_table.uc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG + (enable << 6));
+	}
+
+	ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO, g_dtb_data.queueid, 1, &entry);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d",  hw->vfid);
+		return -ret;
+	}
+	return 0;
+}
+
+int
+zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
+{
+	int16_t ret = 0;
+	struct zxdh_multicast_table mc_table = {0};
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T mc_table_entry = {
+		.index = ((hw->vfid - ZXDH_BASE_VFID) << 2) + vport_num.vfid / 64,
+		.p_data = (uint32_t *)&mc_table
+	};
+	ZXDH_DTB_USER_ENTRY_T entry = {
+		.sdt_no = ZXDH_SDT_MULTICAST_ATT_TABLE,
+		.p_entry_data = (void *)&mc_table_entry
+	};
+
+	ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO, g_dtb_data.queueid, &entry, 1);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "allmulti_table_get_failed:%d", hw->vfid);
+		return -ret;
+	}
+
+	if (vport_num.vf_flag) {
+		if (enable)
+			mc_table.bitmap[(vport_num.vfid % 64) / 32] |=
+					UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32);
+		else
+			mc_table.bitmap[(vport_num.vfid % 64) / 32] &=
+					~(UINT32_C(1) << (31 - (vport_num.vfid % 64) % 32));
+
+	} else {
+		mc_table.mc_flood_pf_enable = rte_be_to_cpu_32(ZXDH_TABLE_HIT_FLAG + (enable << 6));
+	}
+	ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO, g_dtb_data.queueid, 1, &entry);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "allmulti_table_set_failed:%d", hw->vfid);
+		return -ret;
 	}
 	return 0;
 }

@@ -83,6 +83,7 @@ New Features
   * Scatter and gather for Tx and Rx.
   * Link state and auto-negotiation.
   * MAC address filtering.
+  * Multicast and promiscuous mode.
 
 
 Removed Items
