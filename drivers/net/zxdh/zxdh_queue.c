@@ -13,7 +13,7 @@
 #include "zxdh_msg.h"
 
 struct rte_mbuf *
-zxdh_virtqueue_detach_unused(struct zxdh_virtqueue *vq)
+zxdh_queue_detach_unused(struct zxdh_virtqueue *vq)
 {
 	struct rte_mbuf *cookie = NULL;
 	int32_t          idx    = 0;

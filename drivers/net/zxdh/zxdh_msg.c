@@ -1035,3 +1035,47 @@ exit:
 	rte_free(recved_msg);
 	return ZXDH_BAR_MSG_OK;
 }
+
+int zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras,
+		struct zxdh_bar_offset_res *res)
+{
+	uint16_t check_token;
+	uint16_t sum_res;
+	int ret;
+
+	if (!paras)
+		return ZXDH_BAR_MSG_ERR_NULL;
+
+	struct zxdh_offset_get_msg send_msg = {
+		.pcie_id = paras->pcie_id,
+		.type = paras->type,
+	};
+	struct zxdh_pci_bar_msg in = {
+		.payload_addr = &send_msg,
+		.payload_len = sizeof(send_msg),
+		.virt_addr = paras->virt_addr,
+		.src = ZXDH_MSG_CHAN_END_PF,
+		.dst = ZXDH_MSG_CHAN_END_RISC,
+		.module_id = ZXDH_BAR_MODULE_OFFSET_GET,
+		.src_pcieid = paras->pcie_id,
+	};
+	struct zxdh_bar_recv_msg recv_msg = {0};
+	struct zxdh_msg_recviver_mem result = {
+		.recv_buffer = &recv_msg,
+		.buffer_len = sizeof(recv_msg),
+	};
+	ret = zxdh_bar_chan_sync_msg_send(&in, &result);
+	if (ret != ZXDH_BAR_MSG_OK)
+		return -ret;
+
+	check_token = recv_msg.offset_reps.check;
+	sum_res = zxdh_bar_get_sum((uint8_t *)&send_msg, sizeof(send_msg));
+
+	if (check_token != sum_res) {
+		PMD_MSG_LOG(ERR, "expect token: 0x%x, get token: 0x%x", sum_res, check_token);
+		return ZXDH_BAR_MSG_ERR_REPLY;
+	}
+	res->bar_offset = recv_msg.offset_reps.offset;
+	res->bar_length = recv_msg.offset_reps.length;
+	return ZXDH_BAR_MSG_OK;
+}

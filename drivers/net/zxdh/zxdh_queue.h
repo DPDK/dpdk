@@ -206,11 +206,11 @@ struct zxdh_tx_region {
 };
 
 static inline size_t
-vring_size(struct zxdh_hw *hw, uint32_t num, unsigned long align)
+zxdh_vring_size(struct zxdh_hw *hw, uint32_t num, unsigned long align)
 {
 	size_t size;
 
-	if (vtpci_packed_queue(hw)) {
+	if (zxdh_pci_packed_queue(hw)) {
 		size = num * sizeof(struct zxdh_vring_packed_desc);
 		size += sizeof(struct zxdh_vring_packed_desc_event);
 		size = RTE_ALIGN_CEIL(size, align);
@@ -226,7 +226,7 @@ vring_size(struct zxdh_hw *hw, uint32_t num, unsigned long align)
 }
 
 static inline void
-vring_init_packed(struct zxdh_vring_packed *vr, uint8_t *p,
+zxdh_vring_init_packed(struct zxdh_vring_packed *vr, uint8_t *p,
 		unsigned long align, uint32_t num)
 {
 	vr->num    = num;
@@ -238,7 +238,7 @@ vring_init_packed(struct zxdh_vring_packed *vr, uint8_t *p,
 }
 
 static inline void
-vring_desc_init_packed(struct zxdh_virtqueue *vq, int32_t n)
+zxdh_vring_desc_init_packed(struct zxdh_virtqueue *vq, int32_t n)
 {
 	int32_t i = 0;
 
@@ -251,7 +251,7 @@ vring_desc_init_packed(struct zxdh_virtqueue *vq, int32_t n)
 }
 
 static inline void
-vring_desc_init_indirect_packed(struct zxdh_vring_packed_desc *dp, int32_t n)
+zxdh_vring_desc_init_indirect_packed(struct zxdh_vring_packed_desc *dp, int32_t n)
 {
 	int32_t i = 0;
 
@@ -262,7 +262,7 @@ vring_desc_init_indirect_packed(struct zxdh_vring_packed_desc *dp, int32_t n)
 }
 
 static inline void
-virtqueue_disable_intr(struct zxdh_virtqueue *vq)
+zxdh_queue_disable_intr(struct zxdh_virtqueue *vq)
 {
 	if (vq->vq_packed.event_flags_shadow != ZXDH_RING_EVENT_FLAGS_DISABLE) {
 		vq->vq_packed.event_flags_shadow = ZXDH_RING_EVENT_FLAGS_DISABLE;
@@ -270,7 +270,7 @@ virtqueue_disable_intr(struct zxdh_virtqueue *vq)
 	}
 }
 
-struct rte_mbuf *zxdh_virtqueue_detach_unused(struct zxdh_virtqueue *vq);
+struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);
 int32_t zxdh_free_queues(struct rte_eth_dev *dev);
 int32_t zxdh_get_queue_type(uint16_t vtpci_queue_idx);
 

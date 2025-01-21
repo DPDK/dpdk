@@ -131,6 +131,26 @@ enum ZXDH_TBL_MSG_TYPE {
 	ZXDH_TBL_TYPE_NON,
 };
 
+enum pciebar_layout_type {
+	ZXDH_URI_VQM      = 0,
+	ZXDH_URI_SPINLOCK = 1,
+	ZXDH_URI_FWCAP    = 2,
+	ZXDH_URI_FWSHR    = 3,
+	ZXDH_URI_DRS_SEC  = 4,
+	ZXDH_URI_RSV      = 5,
+	ZXDH_URI_CTRLCH   = 6,
+	ZXDH_URI_1588     = 7,
+	ZXDH_URI_QBV      = 8,
+	ZXDH_URI_MACPCS   = 9,
+	ZXDH_URI_RDMA     = 10,
+	ZXDH_URI_MNP      = 11,
+	ZXDH_URI_MSPM     = 12,
+	ZXDH_URI_MVQM     = 13,
+	ZXDH_URI_MDPI     = 14,
+	ZXDH_URI_NP       = 15,
+	ZXDH_URI_MAX,
+};
+
 struct zxdh_msix_para {
 	uint16_t pcie_id;
 	uint16_t vector_risc;
@@ -204,9 +224,26 @@ struct zxdh_bar_msg_header {
 	uint16_t dst_pcieid; /* used in PF-->VF */
 };
 
+struct zxdh_bar_offset_params {
+	uint64_t virt_addr;  /* Bar space control space virtual address */
+	uint16_t pcie_id;
+	uint16_t type;  /* Module types corresponding to PCIBAR planning */
+};
+
+struct zxdh_bar_offset_res {
+	uint32_t bar_offset;
+	uint32_t bar_length;
+};
+
+struct zxdh_offset_get_msg {
+	uint16_t pcie_id;
+	uint16_t type;
+};
+
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 		void *reps_buffer, uint16_t *reps_len, void *dev);
 
+int zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras, struct zxdh_bar_offset_res *res);
 int zxdh_msg_chan_init(void);
 int zxdh_bar_msg_chan_exit(void);
 int zxdh_msg_chan_hwlock_init(struct rte_eth_dev *dev);

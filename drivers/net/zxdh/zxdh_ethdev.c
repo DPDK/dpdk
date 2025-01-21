@@ -5,6 +5,7 @@
 #include <ethdev_pci.h>
 #include <bus_pci_driver.h>
 #include <rte_ethdev.h>
+#include <rte_malloc.h>
 
 #include "zxdh_ethdev.h"
 #include "zxdh_logs.h"
@@ -12,8 +13,15 @@
 #include "zxdh_msg.h"
 #include "zxdh_common.h"
 #include "zxdh_queue.h"
+#include "zxdh_np.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
+struct zxdh_shared_data *zxdh_shared_data;
+const char *ZXDH_PMD_SHARED_DATA_MZ = "zxdh_pmd_shared_data";
+rte_spinlock_t zxdh_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
+struct zxdh_dtb_shared_data g_dtb_data;
+
+#define ZXDH_INVALID_DTBQUE  0xFFFF
 
 uint16_t
 zxdh_vport_to_vfid(union zxdh_virport_num v)
@@ -406,14 +414,14 @@ zxdh_features_update(struct zxdh_hw *hw,
 	ZXDH_VTPCI_OPS(hw)->set_features(hw, req_features);
 
 	if ((rx_offloads & (RTE_ETH_TX_OFFLOAD_UDP_CKSUM | RTE_ETH_TX_OFFLOAD_TCP_CKSUM)) &&
-		 !vtpci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM)) {
+		 !zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM)) {
 		PMD_DRV_LOG(ERR, "rx checksum not available on this host");
 		return -ENOTSUP;
 	}
 
 	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) &&
-		(!vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
-		 !vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6))) {
+		(!zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
+		 !zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6))) {
 		PMD_DRV_LOG(ERR, "Large Receive Offload not available on this host");
 		return -ENOTSUP;
 	}
@@ -421,20 +429,20 @@ zxdh_features_update(struct zxdh_hw *hw,
 }
 
 static bool
-rx_offload_enabled(struct zxdh_hw *hw)
+zxdh_rx_offload_enabled(struct zxdh_hw *hw)
 {
-	return vtpci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM) ||
-		   vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
-		   vtpci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6);
+	return zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_CSUM) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO4) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_GUEST_TSO6);
 }
 
 static bool
-tx_offload_enabled(struct zxdh_hw *hw)
+zxdh_tx_offload_enabled(struct zxdh_hw *hw)
 {
-	return vtpci_with_feature(hw, ZXDH_NET_F_CSUM) ||
-		   vtpci_with_feature(hw, ZXDH_NET_F_HOST_TSO4) ||
-		   vtpci_with_feature(hw, ZXDH_NET_F_HOST_TSO6) ||
-		   vtpci_with_feature(hw, ZXDH_NET_F_HOST_UFO);
+	return zxdh_pci_with_feature(hw, ZXDH_NET_F_CSUM) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_TSO4) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_TSO6) ||
+		   zxdh_pci_with_feature(hw, ZXDH_NET_F_HOST_UFO);
 }
 
 static void
@@ -466,7 +474,7 @@ zxdh_dev_free_mbufs(struct rte_eth_dev *dev)
 			continue;
 		PMD_DRV_LOG(DEBUG, "Before freeing %s[%d] used and unused buf", type, i);
 
-		while ((buf = zxdh_virtqueue_detach_unused(vq)) != NULL)
+		while ((buf = zxdh_queue_detach_unused(vq)) != NULL)
 			rte_pktmbuf_free(buf);
 	}
 }
@@ -550,9 +558,9 @@ zxdh_init_vring(struct zxdh_virtqueue *vq)
 	vq->vq_desc_tail_idx = (uint16_t)(vq->vq_nentries - 1);
 	vq->vq_free_cnt = vq->vq_nentries;
 	memset(vq->vq_descx, 0, sizeof(struct zxdh_vq_desc_extra) * vq->vq_nentries);
-	vring_init_packed(&vq->vq_packed.ring, ring_mem, ZXDH_PCI_VRING_ALIGN, size);
-	vring_desc_init_packed(vq, size);
-	virtqueue_disable_intr(vq);
+	zxdh_vring_init_packed(&vq->vq_packed.ring, ring_mem, ZXDH_PCI_VRING_ALIGN, size);
+	zxdh_vring_desc_init_packed(vq, size);
+	zxdh_queue_disable_intr(vq);
 }
 
 static int32_t
@@ -621,7 +629,7 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 	/*
 	 * Reserve a memzone for vring elements
 	 */
-	size = vring_size(hw, vq_size, ZXDH_PCI_VRING_ALIGN);
+	size = zxdh_vring_size(hw, vq_size, ZXDH_PCI_VRING_ALIGN);
 	vq->vq_ring_size = RTE_ALIGN_CEIL(size, ZXDH_PCI_VRING_ALIGN);
 	PMD_DRV_LOG(DEBUG, "vring_size: %d, rounded_vring_size: %d", size, vq->vq_ring_size);
 
@@ -694,7 +702,8 @@ zxdh_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_logic_qidx)
 			/* first indirect descriptor is always the tx header */
 			struct zxdh_vring_packed_desc *start_dp = txr[i].tx_packed_indir;
 
-			vring_desc_init_indirect_packed(start_dp, RTE_DIM(txr[i].tx_packed_indir));
+			zxdh_vring_desc_init_indirect_packed(start_dp,
+					RTE_DIM(txr[i].tx_packed_indir));
 			start_dp->addr = txvq->zxdh_net_hdr_mem + i * sizeof(*txr) +
 					offsetof(struct zxdh_tx_region, tx_hdr);
 			/* length will be updated to actual pi hdr size when xmit pkt */
@@ -792,8 +801,8 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	hw->has_tx_offload = tx_offload_enabled(hw);
-	hw->has_rx_offload = rx_offload_enabled(hw);
+	hw->has_tx_offload = zxdh_tx_offload_enabled(hw);
+	hw->has_rx_offload = zxdh_rx_offload_enabled(hw);
 
 	nr_vq = dev->data->nb_rx_queues + dev->data->nb_tx_queues;
 	if (nr_vq == hw->queue_num)
@@ -881,7 +890,7 @@ zxdh_init_device(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac_addr, &eth_dev->data->mac_addrs[0]);
 
 	/* If host does not support both status and MSI-X then disable LSC */
-	if (vtpci_with_feature(hw, ZXDH_NET_F_STATUS) && hw->use_msix != ZXDH_MSIX_NONE)
+	if (zxdh_pci_with_feature(hw, ZXDH_NET_F_STATUS) && hw->use_msix != ZXDH_MSIX_NONE)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	else
 		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
@@ -910,6 +919,181 @@ zxdh_agent_comm(struct rte_eth_dev *eth_dev, struct zxdh_hw *hw)
 	}
 	PMD_DRV_LOG(INFO, "Get panel id success: 0x%x", hw->panel_id);
 
+	return 0;
+}
+
+static int
+zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_bar_offset_params param = {0};
+	struct zxdh_bar_offset_res res = {0};
+	int ret = 0;
+
+	if (g_dtb_data.init_done) {
+		PMD_DRV_LOG(DEBUG, "DTB res already init done, dev %s no need init",
+			dev->device->name);
+		return 0;
+	}
+	g_dtb_data.queueid = ZXDH_INVALID_DTBQUE;
+	g_dtb_data.bind_device = dev;
+	g_dtb_data.dev_refcnt++;
+	g_dtb_data.init_done = 1;
+
+	ZXDH_DEV_INIT_CTRL_T *dpp_ctrl = rte_zmalloc(NULL, sizeof(*dpp_ctrl) +
+			sizeof(ZXDH_DTB_ADDR_INFO_T) * 256, 0);
+	if (dpp_ctrl == NULL) {
+		PMD_DRV_LOG(ERR, "dev %s annot allocate memory for dpp_ctrl", dev->device->name);
+		ret = -ENOMEM;
+		goto free_res;
+	}
+	dpp_ctrl->queue_id = 0xff;
+	dpp_ctrl->vport = hw->vport.vport;
+	dpp_ctrl->vector = ZXDH_MSIX_INTR_DTB_VEC;
+	strlcpy(dpp_ctrl->port_name, dev->device->name, sizeof(dpp_ctrl->port_name));
+	dpp_ctrl->pcie_vir_addr = (uint32_t)hw->bar_addr[0];
+
+	param.pcie_id = hw->pcie_id;
+	param.virt_addr = hw->bar_addr[0] + ZXDH_CTRLCH_OFFSET;
+	param.type = ZXDH_URI_NP;
+
+	ret = zxdh_get_bar_offset(&param, &res);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "dev %s get npbar offset failed", dev->device->name);
+		goto free_res;
+	}
+	dpp_ctrl->np_bar_len = res.bar_length;
+	dpp_ctrl->np_bar_offset = res.bar_offset;
+
+	if (!g_dtb_data.dtb_table_conf_mz) {
+		const struct rte_memzone *conf_mz = rte_memzone_reserve_aligned("zxdh_dtb_table_conf_mz",
+				ZXDH_DTB_TABLE_CONF_SIZE, SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
+
+		if (conf_mz == NULL) {
+			PMD_DRV_LOG(ERR,
+				"dev %s annot allocate memory for dtb table conf",
+				dev->device->name);
+			ret = -ENOMEM;
+			goto free_res;
+		}
+		dpp_ctrl->down_vir_addr = conf_mz->addr_64;
+		dpp_ctrl->down_phy_addr = conf_mz->iova;
+		g_dtb_data.dtb_table_conf_mz = conf_mz;
+	}
+
+	if (!g_dtb_data.dtb_table_dump_mz) {
+		const struct rte_memzone *dump_mz = rte_memzone_reserve_aligned("zxdh_dtb_table_dump_mz",
+				ZXDH_DTB_TABLE_DUMP_SIZE, SOCKET_ID_ANY, 0, RTE_CACHE_LINE_SIZE);
+
+		if (dump_mz == NULL) {
+			PMD_DRV_LOG(ERR,
+				"dev %s Cannot allocate memory for dtb table dump",
+				dev->device->name);
+			ret = -ENOMEM;
+			goto free_res;
+		}
+		dpp_ctrl->dump_vir_addr = dump_mz->addr_64;
+		dpp_ctrl->dump_phy_addr = dump_mz->iova;
+		g_dtb_data.dtb_table_dump_mz = dump_mz;
+	}
+
+	ret = zxdh_np_host_init(0, dpp_ctrl);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "dev %s dpp host np init failed .ret %d", dev->device->name, ret);
+		goto free_res;
+	}
+
+	PMD_DRV_LOG(DEBUG, "dev %s dpp host np init ok.dtb queue %d",
+		dev->device->name, dpp_ctrl->queue_id);
+	g_dtb_data.queueid = dpp_ctrl->queue_id;
+	rte_free(dpp_ctrl);
+	return 0;
+
+free_res:
+	rte_free(dpp_ctrl);
+	return ret;
+}
+
+static int
+zxdh_init_shared_data(void)
+{
+	const struct rte_memzone *mz;
+	int ret = 0;
+
+	rte_spinlock_lock(&zxdh_shared_data_lock);
+	if (zxdh_shared_data == NULL) {
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+			/* Allocate shared memory. */
+			mz = rte_memzone_reserve(ZXDH_PMD_SHARED_DATA_MZ,
+					sizeof(*zxdh_shared_data), SOCKET_ID_ANY, 0);
+			if (mz == NULL) {
+				PMD_DRV_LOG(ERR, "Cannot allocate zxdh shared data");
+				ret = -rte_errno;
+				goto error;
+			}
+			zxdh_shared_data = mz->addr;
+			memset(zxdh_shared_data, 0, sizeof(*zxdh_shared_data));
+			rte_spinlock_init(&zxdh_shared_data->lock);
+		} else { /* Lookup allocated shared memory. */
+			mz = rte_memzone_lookup(ZXDH_PMD_SHARED_DATA_MZ);
+			if (mz == NULL) {
+				PMD_DRV_LOG(ERR, "Cannot attach zxdh shared data");
+				ret = -rte_errno;
+				goto error;
+			}
+			zxdh_shared_data = mz->addr;
+		}
+	}
+
+error:
+	rte_spinlock_unlock(&zxdh_shared_data_lock);
+	return ret;
+}
+
+static int
+zxdh_init_once(void)
+{
+	int ret = 0;
+
+	if (zxdh_init_shared_data())
+		return -1;
+
+	struct zxdh_shared_data *sd = zxdh_shared_data;
+	rte_spinlock_lock(&sd->lock);
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		if (!sd->init_done) {
+			++sd->secondary_cnt;
+			sd->init_done = true;
+		}
+		goto out;
+	}
+	/* RTE_PROC_PRIMARY */
+	if (!sd->init_done)
+		sd->init_done = true;
+	sd->dev_refcnt++;
+
+out:
+	rte_spinlock_unlock(&sd->lock);
+	return ret;
+}
+
+static int
+zxdh_np_init(struct rte_eth_dev *eth_dev)
+{
+	struct zxdh_hw *hw = eth_dev->data->dev_private;
+	int ret = 0;
+
+	if (hw->is_pf) {
+		ret = zxdh_np_dtb_res_init(eth_dev);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "np dtb init failed, ret:%d ", ret);
+			return ret;
+		}
+	}
+	if (zxdh_shared_data != NULL)
+		zxdh_shared_data->np_init_done = 1;
+
+	PMD_DRV_LOG(DEBUG, "np init ok ");
 	return 0;
 }
 
@@ -950,6 +1134,10 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 		hw->is_pf = 1;
 	}
 
+	ret = zxdh_init_once();
+	if (ret != 0)
+		goto err_zxdh_init;
+
 	ret = zxdh_init_device(eth_dev);
 	if (ret < 0)
 		goto err_zxdh_init;
@@ -975,6 +1163,10 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	ret = zxdh_agent_comm(eth_dev, hw);
 	if (ret != 0)
+		goto err_zxdh_init;
+
+	ret = zxdh_np_init(eth_dev);
+	if (ret)
 		goto err_zxdh_init;
 
 	ret = zxdh_configure_intr(eth_dev);
