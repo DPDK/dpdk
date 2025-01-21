@@ -750,7 +750,7 @@ i40e_write_global_rx_ctl(struct i40e_hw *hw, uint32_t reg_addr,
 	ori_reg_val = i40e_read_rx_ctl(hw, reg_addr);
 	i40e_write_rx_ctl(hw, reg_addr, reg_val);
 	if (ori_reg_val != reg_val)
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(INFO,
 			    "i40e device %s changed global register [0x%08x]."
 			    " original: 0x%08x, new: 0x%08x",
 			    dev->device->name, reg_addr, ori_reg_val, reg_val);
@@ -1352,7 +1352,7 @@ i40e_aq_debug_write_global_register(struct i40e_hw *hw,
 	}
 
 	if (ori_reg_val != reg_val)
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(INFO,
 			    "i40e device %s changed global register [0x%08x]."
 			    " original: 0x%"PRIx64", after: 0x%"PRIx64,
 			    dev->device->name, reg_addr, ori_reg_val, reg_val);
@@ -9774,7 +9774,7 @@ i40e_check_write_global_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 
 	if (reg != val) {
 		i40e_write_rx_ctl(hw, addr, val);
-		PMD_DRV_LOG(WARNING,
+		PMD_DRV_LOG(INFO,
 			    "i40e device %s changed global register [0x%08x]."
 			    " original: 0x%08x, new: 0x%08x",
 			    dev->device->name, addr, reg,
