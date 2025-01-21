@@ -972,6 +972,7 @@ zxdh_set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 	}
 	eth_dev->tx_pkt_prepare = zxdh_xmit_pkts_prepare;
 	eth_dev->tx_pkt_burst = &zxdh_xmit_pkts_packed;
+	eth_dev->rx_pkt_burst = &zxdh_recv_pkts_packed;
 
 	return 0;
 }

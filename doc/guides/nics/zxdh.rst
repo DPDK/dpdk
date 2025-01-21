@@ -20,6 +20,7 @@ Features of the ZXDH PMD are:
 - Multi arch support: x86_64, ARMv8.
 - Multiple queues for Tx and Rx
 - SR-IOV VF
+- Scatter and gather for Tx and Rx
 
 
 Driver compilation and testing
