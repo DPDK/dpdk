@@ -22,4 +22,5 @@ sources = files(
         'zxdh_np.c',
         'zxdh_tables.c',
         'zxdh_rxtx.c',
+        'zxdh_ethdev_ops.c',
 )

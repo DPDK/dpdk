@@ -134,3 +134,18 @@ int zxdh_panel_table_init(struct rte_eth_dev *dev)
 
 	return ret;
 }
+
+int
+zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
+{
+	int ret;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T entry = {vfid, (uint32_t *)port_attr};
+	ZXDH_DTB_USER_ENTRY_T user_entry_get = {ZXDH_SDT_VPORT_ATT_TABLE, &entry};
+
+	ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO, g_dtb_data.queueid, &user_entry_get, 1);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "get port_attr vfid:%d failed, ret:%d ", vfid, ret);
+
+	return ret;
+}

@@ -72,6 +72,7 @@ struct zxdh_hw {
 	uint64_t guest_features;
 	uint32_t max_queue_pairs;
 	uint32_t speed;
+	uint32_t speed_mode;
 	uint32_t notify_off_multiplier;
 	uint16_t *notify_base;
 	uint16_t pcie_id;
@@ -93,6 +94,7 @@ struct zxdh_hw {
 	uint8_t panel_id;
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;
+	uint8_t admin_status;
 };
 
 struct zxdh_dtb_shared_data {

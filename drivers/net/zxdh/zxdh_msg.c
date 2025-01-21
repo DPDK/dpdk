@@ -1134,6 +1134,54 @@ int zxdh_vf_send_msg_to_pf(struct rte_eth_dev *dev,  void *msg_req,
 	return 0;
 }
 
+int32_t zxdh_send_msg_to_riscv(struct rte_eth_dev *dev, void *msg_req,
+			uint16_t msg_req_len, void *reply, uint16_t reply_len,
+			enum ZXDH_BAR_MODULE_ID module_id)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_recviver_mem result = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+
+	if (reply) {
+		RTE_ASSERT(reply_len < sizeof(zxdh_msg_reply_info));
+		result.recv_buffer  = reply;
+		result.buffer_len = reply_len;
+	} else {
+		result.recv_buffer = &reply_info;
+		result.buffer_len = sizeof(reply_info);
+	}
+	struct zxdh_msg_reply_head *reply_head =
+				&(((struct zxdh_msg_reply_info *)result.recv_buffer)->reply_head);
+	struct zxdh_msg_reply_body *reply_body =
+				&(((struct zxdh_msg_reply_info *)result.recv_buffer)->reply_body);
+
+	struct zxdh_pci_bar_msg in = {
+		.payload_addr = &msg_req,
+		.payload_len = msg_req_len,
+		.virt_addr = (uint64_t)(hw->bar_addr[ZXDH_BAR0_INDEX] + ZXDH_CTRLCH_OFFSET),
+		.src = hw->is_pf ? ZXDH_MSG_CHAN_END_PF : ZXDH_MSG_CHAN_END_VF,
+		.dst = ZXDH_MSG_CHAN_END_RISC,
+		.module_id = module_id,
+		.src_pcieid = hw->pcie_id,
+	};
+
+	if (zxdh_bar_chan_sync_msg_send(&in, &result) != ZXDH_BAR_MSG_OK) {
+		PMD_MSG_LOG(ERR, "Failed to send sync messages or receive response");
+		return -1;
+	}
+	if (reply_head->flag != ZXDH_MSG_REPS_OK) {
+		PMD_MSG_LOG(ERR, "vf[%d] get pf reply failed: reply_head flag : 0x%x(0xff is OK).replylen %d",
+				hw->vport.vfid, reply_head->flag, reply_head->reps_len);
+		return -1;
+	}
+	if (reply_body->flag != ZXDH_REPS_SUCC) {
+		PMD_MSG_LOG(ERR, "vf[%d] msg processing failed", hw->vfid);
+		return -1;
+	}
+
+	return 0;
+}
+
 void zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
 		struct zxdh_msg_info *msg_info)
 {
@@ -1143,4 +1191,16 @@ void zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
 	msghead->vport    = hw->vport.vport;
 	msghead->vf_id    = hw->vport.vfid;
 	msghead->pcieid   = hw->pcie_id;
+}
+
+void zxdh_agent_msg_build(struct zxdh_hw *hw, enum zxdh_agent_msg_type type,
+		struct zxdh_msg_info *msg_info)
+{
+	struct zxdh_agent_msg_head *agent_head = &msg_info->agent_msg_head;
+
+	agent_head->msg_type = type;
+	agent_head->panel_id = hw->panel_id;
+	agent_head->phyport = hw->phyport;
+	agent_head->vf_id = hw->vfid;
+	agent_head->pcie_id = hw->pcie_id;
 }
