@@ -9,6 +9,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_malloc.h>
+#include <rte_memcpy.h>
 
 #include "zxdh_np.h"
 #include "zxdh_logs.h"
@@ -16,11 +17,14 @@
 static uint64_t g_np_bar_offset;
 static ZXDH_DEV_MGR_T g_dev_mgr;
 static ZXDH_SDT_MGR_T g_sdt_mgr;
+static uint32_t g_dpp_dtb_int_enable;
+static uint32_t g_table_type[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
 ZXDH_PPU_CLS_BITMAP_T g_ppu_cls_bit_map[ZXDH_DEV_CHANNEL_MAX];
 ZXDH_DTB_MGR_T *p_dpp_dtb_mgr[ZXDH_DEV_CHANNEL_MAX];
 ZXDH_RISCV_DTB_MGR *p_riscv_dtb_queue_mgr[ZXDH_DEV_CHANNEL_MAX];
 ZXDH_TLB_MGR_T *g_p_dpp_tlb_mgr[ZXDH_DEV_CHANNEL_MAX];
 ZXDH_REG_T g_dpp_reg_info[4];
+ZXDH_DTB_TABLE_T g_dpp_dtb_table_info[4];
 
 #define ZXDH_SDT_MGR_PTR_GET()    (&g_sdt_mgr)
 #define ZXDH_SDT_SOFT_TBL_GET(id) (g_sdt_mgr.sdt_tbl_array[id])
@@ -75,6 +79,92 @@ do {\
 		RTE_ASSERT(0);\
 	} \
 } while (0)
+
+#define ZXDH_COMM_CHECK_POINT(point)\
+do {\
+	if ((point) == NULL) {\
+		PMD_DRV_LOG(ERR, "ZXIC %s:%d[Error:POINT NULL] ! FUNCTION : %s!",\
+		__FILE__, __LINE__, __func__);\
+		RTE_ASSERT(0);\
+	} \
+} while (0)
+
+
+#define ZXDH_COMM_CHECK_POINT_MEMORY_FREE(point, ptr)\
+do {\
+	if ((point) == NULL) {\
+		PMD_DRV_LOG(ERR, "ZXIC %s:%d[Error:POINT NULL] !"\
+		"FUNCTION : %s!", __FILE__, __LINE__, __func__);\
+		rte_free(ptr);\
+		RTE_ASSERT(0);\
+	} \
+} while (0)
+
+#define ZXDH_COMM_CHECK_RC_MEMORY_FREE_NO_ASSERT(rc, becall, ptr)\
+do {\
+	if ((rc) != 0) {\
+		PMD_DRV_LOG(ERR, "ZXICP  %s:%d, %s Call"\
+		" %s Fail!", __FILE__, __LINE__, __func__, becall);\
+		rte_free(ptr);\
+	} \
+} while (0)
+
+#define ZXDH_COMM_CONVERT16(w_data) \
+			(((w_data) & 0xff) << 8)
+
+#define ZXDH_DTB_TAB_UP_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)     \
+		((INDEX) * p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_up.item_size)
+
+#define ZXDH_DTB_TAB_DOWN_VIR_ADDR_GET(DEV_ID, QUEUE_ID, INDEX)   \
+		((INDEX) * p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_down.item_size)
+
+#define ZXDH_DTB_TAB_DOWN_WR_INDEX_GET(DEV_ID, QUEUE_ID)       \
+		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].tab_down.wr_index)
+
+#define ZXDH_DTB_QUEUE_INIT_FLAG_GET(DEV_ID, QUEUE_ID)       \
+		(p_dpp_dtb_mgr[(DEV_ID)]->queue_info[(QUEUE_ID)].init_flag)
+
+static uint32_t
+zxdh_np_comm_is_big_endian(void)
+{
+	ZXDH_ENDIAN_U c_data;
+
+	c_data.a = 1;
+
+	if (c_data.b == 1)
+		return 0;
+	else
+		return 1;
+}
+
+static void
+zxdh_np_comm_swap(uint8_t *p_uc_data, uint32_t dw_byte_len)
+{
+	uint16_t *p_w_tmp = NULL;
+	uint32_t *p_dw_tmp = NULL;
+	uint32_t dw_byte_num;
+	uint8_t uc_byte_mode;
+	uint32_t uc_is_big_flag;
+	uint32_t i;
+
+	p_dw_tmp = (uint32_t *)(p_uc_data);
+	uc_is_big_flag = zxdh_np_comm_is_big_endian();
+	if (uc_is_big_flag)
+		return;
+
+	dw_byte_num  = dw_byte_len >> 2;
+	uc_byte_mode = dw_byte_len % 4 & 0xff;
+
+	for (i = 0; i < dw_byte_num; i++) {
+		(*p_dw_tmp) = ZXDH_COMM_CONVERT16(*p_dw_tmp);
+		p_dw_tmp++;
+	}
+
+	if (uc_byte_mode > 1) {
+		p_w_tmp = (uint16_t *)(p_dw_tmp);
+		(*p_w_tmp) = ZXDH_COMM_CONVERT16(*p_w_tmp);
+	}
+}
 
 static uint32_t
 zxdh_np_dev_init(void)
@@ -503,7 +593,7 @@ zxdh_np_dtb_queue_vm_info_get(uint32_t dev_id,
 	p_vm_info->func_num = vm_info.cfg_func_num;
 	p_vm_info->vfunc_active = vm_info.cfg_vfunc_active;
 
-	return 0;
+	return rc;
 }
 
 static uint32_t
@@ -807,4 +897,560 @@ zxdh_np_online_uninit(uint32_t dev_id,
 	zxdh_np_dev_del(dev_id);
 
 	return 0;
+}
+
+static uint32_t
+zxdh_np_sdt_tbl_type_get(uint32_t dev_id, uint32_t sdt_no)
+{
+	return g_table_type[dev_id][sdt_no];
+}
+
+
+static ZXDH_DTB_TABLE_T *
+zxdh_np_table_info_get(uint32_t table_type)
+{
+	return &g_dpp_dtb_table_info[table_type];
+}
+
+static uint32_t
+zxdh_np_dtb_write_table_cmd(uint32_t dev_id,
+			ZXDH_DTB_TABLE_INFO_E table_type,
+			void *p_cmd_data,
+			void *p_cmd_buff)
+{
+	uint32_t         field_cnt;
+	ZXDH_DTB_TABLE_T     *p_table_info = NULL;
+	ZXDH_DTB_FIELD_T     *p_field_info = NULL;
+	uint32_t         temp_data;
+	uint32_t         rc;
+
+	ZXDH_COMM_CHECK_POINT(p_cmd_data);
+	ZXDH_COMM_CHECK_POINT(p_cmd_buff);
+	p_table_info = zxdh_np_table_info_get(table_type);
+	p_field_info = p_table_info->p_fields;
+	ZXDH_COMM_CHECK_DEV_POINT(dev_id, p_table_info);
+
+	for (field_cnt = 0; field_cnt < p_table_info->field_num; field_cnt++) {
+		temp_data = *((uint32_t *)p_cmd_data + field_cnt) & ZXDH_COMM_GET_BIT_MASK(uint32_t,
+			p_field_info[field_cnt].len);
+
+		rc = zxdh_np_comm_write_bits_ex((uint8_t *)p_cmd_buff,
+					ZXDH_DTB_TABLE_CMD_SIZE_BIT,
+					temp_data,
+					p_field_info[field_cnt].lsb_pos,
+					p_field_info[field_cnt].len);
+
+		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "zxic_comm_write_bits");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_smmu0_write_entry_data(uint32_t dev_id,
+		uint32_t mode,
+		uint32_t addr,
+		uint32_t *p_data,
+		ZXDH_DTB_ENTRY_T *p_entry)
+{
+	ZXDH_DTB_ERAM_TABLE_FORM_T dtb_eram_form_info = {0};
+	uint32_t  rc = 0;
+
+	dtb_eram_form_info.valid = ZXDH_DTB_TABLE_VALID;
+	dtb_eram_form_info.type_mode = ZXDH_DTB_TABLE_MODE_ERAM;
+	dtb_eram_form_info.data_mode = mode;
+	dtb_eram_form_info.cpu_wr = 1;
+	dtb_eram_form_info.addr = addr;
+	dtb_eram_form_info.cpu_rd = 0;
+	dtb_eram_form_info.cpu_rd_mode = 0;
+
+	if (ZXDH_ERAM128_OPR_128b == mode) {
+		p_entry->data_in_cmd_flag = 0;
+		p_entry->data_size = 128 / 8;
+
+		rc = zxdh_np_dtb_write_table_cmd(dev_id, ZXDH_DTB_TABLE_ERAM_128,
+			&dtb_eram_form_info, p_entry->cmd);
+		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_write_table_cmd");
+
+		memcpy(p_entry->data, p_data, 128 / 8);
+	} else if (ZXDH_ERAM128_OPR_64b == mode) {
+		p_entry->data_in_cmd_flag = 1;
+		p_entry->data_size  = 64 / 8;
+		dtb_eram_form_info.data_l = *(p_data + 1);
+		dtb_eram_form_info.data_h = *(p_data);
+
+		rc = zxdh_np_dtb_write_table_cmd(dev_id, ZXDH_DTB_TABLE_ERAM_64,
+			&dtb_eram_form_info, p_entry->cmd);
+		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_write_table_cmd");
+
+	} else if (ZXDH_ERAM128_OPR_1b == mode) {
+		p_entry->data_in_cmd_flag = 1;
+		p_entry->data_size  = 1;
+		dtb_eram_form_info.data_h = *(p_data);
+
+		rc = zxdh_np_dtb_write_table_cmd(dev_id, ZXDH_DTB_TABLE_ERAM_1,
+			&dtb_eram_form_info, p_entry->cmd);
+		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_write_table_cmd");
+	}
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
+		uint32_t base_addr,
+		uint32_t index,
+		uint32_t wrt_mode,
+		uint32_t *p_data,
+		ZXDH_DTB_ENTRY_T *p_entry)
+{
+	uint32_t temp_idx;
+	uint32_t dtb_ind_addr;
+	uint32_t rc;
+
+	switch (wrt_mode) {
+	case ZXDH_ERAM128_OPR_128b:
+	{
+		if ((0xFFFFFFFF - (base_addr)) < (index)) {
+			PMD_DRV_LOG(ERR,  "ICM %s:%d[Error:VALUE[val0=0x%x]"
+				"INVALID] [val1=0x%x] ! FUNCTION :%s !", __FILE__, __LINE__,
+				base_addr, index, __func__);
+
+			return ZXDH_PAR_CHK_INVALID_INDEX;
+		}
+		if (base_addr + index > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range !");
+			return 1;
+		}
+		temp_idx = index << 7;
+		break;
+	}
+
+	case ZXDH_ERAM128_OPR_64b:
+	{
+		if ((base_addr + (index >> 1)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range !");
+			return 1;
+		}
+		temp_idx = index << 6;
+		break;
+	}
+
+	case ZXDH_ERAM128_OPR_1b:
+	{
+		if ((base_addr + (index >> 7)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
+			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range !");
+			return 1;
+		}
+
+		temp_idx = index;
+	}
+	}
+
+	dtb_ind_addr = ((base_addr << 7) & ZXDH_ERAM128_BADDR_MASK) + temp_idx;
+
+	PMD_DRV_LOG(INFO, " dtb eram item 1bit addr: 0x%x", dtb_ind_addr);
+
+	rc = zxdh_np_dtb_smmu0_write_entry_data(dev_id,
+						  wrt_mode,
+						  dtb_ind_addr,
+						  p_data,
+						  p_entry);
+	ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_smmu0_write_entry_data");
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_eram_dtb_len_get(uint32_t mode)
+{
+	uint32_t dtb_len = 0;
+
+	switch (mode) {
+	case ZXDH_ERAM128_OPR_128b:
+	{
+		dtb_len += 2;
+		break;
+	}
+	case ZXDH_ERAM128_OPR_64b:
+	case ZXDH_ERAM128_OPR_1b:
+	{
+		dtb_len += 1;
+		break;
+	}
+	default:
+		break;
+	}
+
+	return dtb_len;
+}
+
+static uint32_t
+zxdh_np_dtb_eram_one_entry(uint32_t dev_id,
+		uint32_t sdt_no,
+		uint32_t del_en,
+		void *pdata,
+		uint32_t *p_dtb_len,
+		ZXDH_DTB_ENTRY_T *p_dtb_one_entry)
+{
+	uint32_t buff[ZXDH_SMMU0_READ_REG_MAX_NUM]      = {0};
+	ZXDH_SDTTBL_ERAM_T sdt_eram           = {0};
+	ZXDH_DTB_ERAM_ENTRY_INFO_T *peramdata = NULL;
+	uint32_t base_addr;
+	uint32_t index;
+	uint32_t opr_mode;
+	uint32_t rc;
+
+	ZXDH_COMM_CHECK_POINT(pdata);
+	ZXDH_COMM_CHECK_POINT(p_dtb_one_entry);
+	ZXDH_COMM_CHECK_POINT(p_dtb_len);
+
+	peramdata = (ZXDH_DTB_ERAM_ENTRY_INFO_T *)pdata;
+	index = peramdata->index;
+	base_addr = sdt_eram.eram_base_addr;
+	opr_mode = sdt_eram.eram_mode;
+
+	switch (opr_mode) {
+	case ZXDH_ERAM128_TBL_128b:
+	{
+		opr_mode = ZXDH_ERAM128_OPR_128b;
+		break;
+	}
+	case ZXDH_ERAM128_TBL_64b:
+	{
+		opr_mode = ZXDH_ERAM128_OPR_64b;
+		break;
+	}
+
+	case ZXDH_ERAM128_TBL_1b:
+	{
+		opr_mode = ZXDH_ERAM128_OPR_1b;
+		break;
+	}
+	}
+
+	if (del_en) {
+		memset((uint8_t *)buff, 0, sizeof(buff));
+		rc = zxdh_np_dtb_se_smmu0_ind_write(dev_id,
+						base_addr,
+						index,
+						opr_mode,
+						buff,
+						p_dtb_one_entry);
+		ZXDH_COMM_CHECK_DEV_RC(sdt_no, rc, "zxdh_dtb_se_smmu0_ind_write");
+	} else {
+		rc = zxdh_np_dtb_se_smmu0_ind_write(dev_id,
+								   base_addr,
+								   index,
+								   opr_mode,
+								   peramdata->p_data,
+								   p_dtb_one_entry);
+		ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "zxdh_dtb_se_smmu0_ind_write");
+	}
+	*p_dtb_len = zxdh_np_eram_dtb_len_get(opr_mode);
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_data_write(uint8_t *p_data_buff,
+			uint32_t addr_offset,
+			ZXDH_DTB_ENTRY_T *entry)
+{
+	ZXDH_COMM_CHECK_POINT(p_data_buff);
+	ZXDH_COMM_CHECK_POINT(entry);
+
+	uint8_t *p_cmd = p_data_buff + addr_offset;
+	uint32_t cmd_size = ZXDH_DTB_TABLE_CMD_SIZE_BIT / 8;
+
+	uint8_t *p_data = p_cmd + cmd_size;
+	uint32_t data_size = entry->data_size;
+
+	uint8_t *cmd = (uint8_t *)entry->cmd;
+	uint8_t *data = (uint8_t *)entry->data;
+
+	rte_memcpy(p_cmd, cmd, cmd_size);
+
+	if (!entry->data_in_cmd_flag) {
+		zxdh_np_comm_swap(data, data_size);
+		rte_memcpy(p_data, data, data_size);
+	}
+
+	return 0;
+}
+
+static uint32_t
+zxdh_np_dtb_queue_enable_get(uint32_t dev_id,
+		uint32_t queue_id,
+		uint32_t *enable)
+{
+	uint32_t rc = 0;
+	ZXDH_DTB_QUEUE_VM_INFO_T vm_info = {0};
+
+	rc = zxdh_np_dtb_queue_vm_info_get(dev_id, queue_id, &vm_info);
+	ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "zxdh_dtb_queue_vm_info_get");
+
+	*enable = vm_info.queue_en;
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_item_buff_wr(uint32_t dev_id,
+		uint32_t queue_id,
+		uint32_t dir_flag,
+		uint32_t index,
+		uint32_t pos,
+		uint32_t len,
+		uint32_t *p_data)
+{
+	uint64_t addr;
+
+	if (dir_flag == 1)
+		addr = ZXDH_DTB_TAB_UP_VIR_ADDR_GET(dev_id, queue_id, index) +
+			ZXDH_DTB_ITEM_ACK_SIZE + pos * 4;
+	else
+		addr = ZXDH_DTB_TAB_DOWN_VIR_ADDR_GET(dev_id, queue_id, index) +
+			ZXDH_DTB_ITEM_ACK_SIZE + pos * 4;
+
+	memcpy((uint8_t *)(addr), p_data, len * 4);
+
+	return 0;
+}
+
+static uint32_t
+zxdh_np_dtb_item_ack_rd(uint32_t dev_id,
+		uint32_t queue_id,
+		uint32_t dir_flag,
+		uint32_t index,
+		uint32_t pos,
+		uint32_t *p_data)
+{
+	uint64_t addr;
+	uint32_t val;
+
+	if (dir_flag == 1)
+		addr = ZXDH_DTB_TAB_UP_VIR_ADDR_GET(dev_id, queue_id, index) + pos * 4;
+	else
+		addr = ZXDH_DTB_TAB_DOWN_VIR_ADDR_GET(dev_id, queue_id, index) + pos * 4;
+
+	val = *((volatile uint32_t *)(addr));
+
+	*p_data = val;
+
+	return 0;
+}
+
+static uint32_t
+zxdh_np_dtb_item_ack_wr(uint32_t dev_id,
+		uint32_t queue_id,
+		uint32_t dir_flag,
+		uint32_t index,
+		uint32_t pos,
+		uint32_t data)
+{
+	uint64_t addr;
+
+	if (dir_flag == 1)
+		addr = ZXDH_DTB_TAB_UP_VIR_ADDR_GET(dev_id, queue_id, index) + pos * 4;
+	else
+		addr = ZXDH_DTB_TAB_DOWN_VIR_ADDR_GET(dev_id, queue_id, index) + pos * 4;
+
+	*((volatile uint32_t *)(addr)) = data;
+
+	return 0;
+}
+
+static uint32_t
+zxdh_np_dtb_queue_item_info_set(uint32_t dev_id,
+		uint32_t queue_id,
+		ZXDH_DTB_QUEUE_ITEM_INFO_T *p_item_info)
+{
+	ZXDH_DTB_QUEUE_LEN_T dtb_len = {0};
+	uint32_t rc;
+
+	dtb_len.cfg_dtb_cmd_type = p_item_info->cmd_type;
+	dtb_len.cfg_dtb_cmd_int_en = p_item_info->int_en;
+	dtb_len.cfg_queue_dtb_len = p_item_info->data_len;
+
+	rc = zxdh_np_reg_write(dev_id, ZXDH_DTB_CFG_QUEUE_DTB_LEN,
+						0, queue_id, (void *)&dtb_len);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "dpp_reg_write");
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_tab_down_info_set(uint32_t dev_id,
+		uint32_t queue_id,
+		uint32_t int_flag,
+		uint32_t data_len,
+		uint32_t *p_data,
+		uint32_t *p_item_index)
+{
+	ZXDH_DTB_QUEUE_ITEM_INFO_T item_info = {0};
+	uint32_t unused_item_num = 0;
+	uint32_t queue_en = 0;
+	uint32_t ack_vale = 0;
+	uint64_t phy_addr;
+	uint32_t item_index;
+	uint32_t i;
+	uint32_t rc;
+
+	if (ZXDH_DTB_QUEUE_INIT_FLAG_GET(dev_id, queue_id) == 0) {
+		PMD_DRV_LOG(ERR, "dtb queue %d is not init.", queue_id);
+		return ZXDH_RC_DTB_QUEUE_IS_NOT_INIT;
+	}
+
+	if (data_len % 4 != 0)
+		return ZXDH_RC_DTB_PARA_INVALID;
+
+	rc = zxdh_np_dtb_queue_enable_get(dev_id, queue_id, &queue_en);
+	if (!queue_en) {
+		PMD_DRV_LOG(ERR, "the queue %d is not enable!,rc=%d", queue_id, rc);
+		return ZXDH_RC_DTB_QUEUE_NOT_ENABLE;
+	}
+
+	rc = zxdh_np_dtb_queue_unused_item_num_get(dev_id, queue_id, &unused_item_num);
+	if (unused_item_num == 0)
+		return ZXDH_RC_DTB_QUEUE_ITEM_HW_EMPTY;
+
+	for (i = 0; i < ZXDH_DTB_QUEUE_ITEM_NUM_MAX; i++) {
+		item_index = ZXDH_DTB_TAB_DOWN_WR_INDEX_GET(dev_id, queue_id) %
+			ZXDH_DTB_QUEUE_ITEM_NUM_MAX;
+
+		rc = zxdh_np_dtb_item_ack_rd(dev_id, queue_id, 0,
+			item_index, 0, &ack_vale);
+
+		ZXDH_DTB_TAB_DOWN_WR_INDEX_GET(dev_id, queue_id)++;
+
+		if ((ack_vale >> 8) == ZXDH_DTB_TAB_ACK_UNUSED_MASK)
+			break;
+	}
+
+	if (i == ZXDH_DTB_QUEUE_ITEM_NUM_MAX)
+		return ZXDH_RC_DTB_QUEUE_ITEM_SW_EMPTY;
+
+	rc = zxdh_np_dtb_item_buff_wr(dev_id, queue_id, 0,
+		item_index, 0, data_len, p_data);
+
+	rc = zxdh_np_dtb_item_ack_wr(dev_id, queue_id, 0,
+		item_index, 0, ZXDH_DTB_TAB_ACK_IS_USING_MASK);
+
+	item_info.cmd_vld = 1;
+	item_info.cmd_type = 0;
+	item_info.int_en = int_flag;
+	item_info.data_len = data_len / 4;
+	phy_addr = p_dpp_dtb_mgr[dev_id]->queue_info[queue_id].tab_down.start_phy_addr +
+		item_index * p_dpp_dtb_mgr[dev_id]->queue_info[queue_id].tab_down.item_size;
+	item_info.data_hddr = ((phy_addr >> 4) >> 32) & 0xffffffff;
+	item_info.data_laddr = (phy_addr >> 4) & 0xffffffff;
+
+	rc = zxdh_np_dtb_queue_item_info_set(dev_id, queue_id, &item_info);
+	*p_item_index = item_index;
+
+	return rc;
+}
+
+static uint32_t
+zxdh_np_dtb_write_down_table_data(uint32_t dev_id,
+		uint32_t queue_id,
+		uint32_t down_table_len,
+		uint8_t *p_down_table_buff,
+		uint32_t *p_element_id)
+{
+	uint32_t  rc = 0;
+	uint32_t dtb_interrupt_status = 0;
+
+	dtb_interrupt_status = g_dpp_dtb_int_enable;
+
+	rc = zxdh_np_dtb_tab_down_info_set(dev_id,
+					queue_id,
+					dtb_interrupt_status,
+					down_table_len / 4,
+					(uint32_t *)p_down_table_buff,
+					p_element_id);
+	return rc;
+}
+
+int
+zxdh_np_dtb_table_entry_write(uint32_t dev_id,
+			uint32_t queue_id,
+			uint32_t entrynum,
+			ZXDH_DTB_USER_ENTRY_T *down_entries)
+{
+	ZXDH_DTB_USER_ENTRY_T *pentry = NULL;
+	ZXDH_DTB_ENTRY_T   dtb_one_entry = {0};
+	uint8_t entry_cmd[ZXDH_DTB_TABLE_CMD_SIZE_BIT] = {0};
+	uint8_t entry_data[ZXDH_ETCAM_WIDTH_MAX] = {0};
+	uint8_t *p_data_buff = NULL;
+	uint8_t *p_data_buff_ex = NULL;
+	uint32_t element_id = 0xff;
+	uint32_t one_dtb_len = 0;
+	uint32_t dtb_len = 0;
+	uint32_t entry_index;
+	uint32_t sdt_no;
+	uint32_t tbl_type;
+	uint32_t addr_offset;
+	uint32_t max_size;
+	uint32_t rc;
+
+	p_data_buff = rte_zmalloc(NULL, ZXDH_DTB_TABLE_DATA_BUFF_SIZE, 0);
+	ZXDH_COMM_CHECK_POINT(p_data_buff);
+
+	p_data_buff_ex = rte_zmalloc(NULL, ZXDH_DTB_TABLE_DATA_BUFF_SIZE, 0);
+	ZXDH_COMM_CHECK_POINT_MEMORY_FREE(p_data_buff_ex, p_data_buff);
+
+	dtb_one_entry.cmd = entry_cmd;
+	dtb_one_entry.data = entry_data;
+
+	max_size = (ZXDH_DTB_TABLE_DATA_BUFF_SIZE / 16) - 1;
+
+	for (entry_index = 0; entry_index < entrynum; entry_index++) {
+		pentry = down_entries + entry_index;
+		sdt_no = pentry->sdt_no;
+		tbl_type = zxdh_np_sdt_tbl_type_get(dev_id, sdt_no);
+		switch (tbl_type) {
+		case ZXDH_SDT_TBLT_ERAM:
+		{
+			rc = zxdh_np_dtb_eram_one_entry(dev_id, sdt_no, ZXDH_DTB_ITEM_ADD_OR_UPDATE,
+				pentry->p_entry_data, &one_dtb_len, &dtb_one_entry);
+			break;
+		}
+		default:
+		{
+			PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
+			rte_free(p_data_buff);
+			rte_free(p_data_buff_ex);
+			return 1;
+		}
+		}
+
+		addr_offset = dtb_len * ZXDH_DTB_LEN_POS_SETP;
+		dtb_len += one_dtb_len;
+		if (dtb_len > max_size) {
+			rte_free(p_data_buff);
+			rte_free(p_data_buff_ex);
+			PMD_DRV_LOG(ERR, " %s error dtb_len>%u!", __func__,
+				max_size);
+			return ZXDH_RC_DTB_DOWN_LEN_INVALID;
+		}
+		rc = zxdh_np_dtb_data_write(p_data_buff, addr_offset, &dtb_one_entry);
+		memset(entry_cmd, 0x0, sizeof(entry_cmd));
+		memset(entry_data, 0x0, sizeof(entry_data));
+	}
+
+	if (dtb_len == 0) {
+		rte_free(p_data_buff);
+		rte_free(p_data_buff_ex);
+		return ZXDH_RC_DTB_DOWN_LEN_INVALID;
+	}
+
+	rc = zxdh_np_dtb_write_down_table_data(dev_id,
+					queue_id,
+					dtb_len * 16,
+					p_data_buff,
+					&element_id);
+	rte_free(p_data_buff);
+	rte_free(p_data_buff_ex);
+
+	return rc;
 }

@@ -14,6 +14,7 @@
 #include "zxdh_ethdev.h"
 #include "zxdh_logs.h"
 #include "zxdh_msg.h"
+#include "zxdh_pci.h"
 
 #define ZXDH_REPS_INFO_FLAG_USABLE  0x00
 #define ZXDH_BAR_SEQID_NUM_MAX      256
@@ -100,6 +101,7 @@
 #define ZXDH_BAR_CHAN_MSG_EMEC     1
 #define ZXDH_BAR_CHAN_MSG_NO_ACK   0
 #define ZXDH_BAR_CHAN_MSG_ACK      1
+#define ZXDH_MSG_REPS_OK           0xff
 
 uint8_t subchan_id_tbl[ZXDH_BAR_MSG_SRC_NUM][ZXDH_BAR_MSG_DST_NUM] = {
 	{ZXDH_BAR_CHAN_INDEX_SEND, ZXDH_BAR_CHAN_INDEX_SEND, ZXDH_BAR_CHAN_INDEX_SEND},
@@ -1078,4 +1080,67 @@ int zxdh_get_bar_offset(struct zxdh_bar_offset_params *paras,
 	res->bar_offset = recv_msg.offset_reps.offset;
 	res->bar_length = recv_msg.offset_reps.length;
 	return ZXDH_BAR_MSG_OK;
+}
+
+int zxdh_vf_send_msg_to_pf(struct rte_eth_dev *dev,  void *msg_req,
+			uint16_t msg_req_len, void *reply, uint16_t reply_len)
+{
+	struct zxdh_hw *hw  = dev->data->dev_private;
+	struct zxdh_msg_recviver_mem result = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	int ret = 0;
+
+	if (reply) {
+		RTE_ASSERT(reply_len < sizeof(zxdh_msg_reply_info));
+		result.recv_buffer  = reply;
+		result.buffer_len = reply_len;
+	} else {
+		result.recv_buffer = &reply_info;
+		result.buffer_len = sizeof(reply_info);
+	}
+
+	struct zxdh_msg_reply_head *reply_head =
+				&(((struct zxdh_msg_reply_info *)result.recv_buffer)->reply_head);
+	struct zxdh_msg_reply_body *reply_body =
+				&(((struct zxdh_msg_reply_info *)result.recv_buffer)->reply_body);
+
+	struct zxdh_pci_bar_msg in = {
+		.virt_addr = (uint64_t)(hw->bar_addr[ZXDH_BAR0_INDEX] +
+				ZXDH_MSG_CHAN_PFVFSHARE_OFFSET),
+		.payload_addr = msg_req,
+		.payload_len = msg_req_len,
+		.src = ZXDH_MSG_CHAN_END_VF,
+		.dst = ZXDH_MSG_CHAN_END_PF,
+		.module_id = ZXDH_MODULE_BAR_MSG_TO_PF,
+		.src_pcieid = hw->pcie_id,
+		.dst_pcieid = ZXDH_PF_PCIE_ID(hw->pcie_id),
+	};
+
+	ret = zxdh_bar_chan_sync_msg_send(&in, &result);
+	if (ret != ZXDH_BAR_MSG_OK) {
+		PMD_MSG_LOG(ERR,
+			"vf[%d] send bar msg to pf failed.ret %d", hw->vport.vfid, ret);
+		return -1;
+	}
+	if (reply_head->flag != ZXDH_MSG_REPS_OK) {
+		PMD_MSG_LOG(ERR, "vf[%d] get pf reply failed: reply_head flag : 0x%x(0xff is OK).replylen %d",
+				hw->vport.vfid, reply_head->flag, reply_head->reps_len);
+		return -1;
+	}
+	if (reply_body->flag != ZXDH_REPS_SUCC) {
+		PMD_MSG_LOG(ERR, "vf[%d] msg processing failed", hw->vfid);
+		return -1;
+	}
+	return 0;
+}
+
+void zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
+		struct zxdh_msg_info *msg_info)
+{
+	struct zxdh_msg_head *msghead = &msg_info->msg_head;
+
+	msghead->msg_type = type;
+	msghead->vport    = hw->vport.vport;
+	msghead->vf_id    = hw->vport.vfid;
+	msghead->pcieid   = hw->pcie_id;
 }
