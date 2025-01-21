@@ -28,6 +28,9 @@ Features of the ZXDH PMD are:
 - Multicast MAC filter
 - Promiscuous mode
 - Multicast mode
+- VLAN filter and VLAN offload
+- VLAN stripping and inserting
+- QINQ stripping and inserting
 
 
 Driver compilation and testing

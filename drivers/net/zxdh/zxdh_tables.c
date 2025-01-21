@@ -10,6 +10,7 @@
 
 #define ZXDH_SDT_VPORT_ATT_TABLE          1
 #define ZXDH_SDT_PANEL_ATT_TABLE          2
+#define ZXDH_SDT_VLAN_ATT_TABLE           4
 #define ZXDH_SDT_BROCAST_ATT_TABLE        6
 #define ZXDH_SDT_UNICAST_ATT_TABLE        10
 #define ZXDH_SDT_MULTICAST_ATT_TABLE      11
@@ -19,6 +20,10 @@
 #define ZXDH_MC_GROUP_NUM                 4
 #define ZXDH_BASE_VFID                    1152
 #define ZXDH_TABLE_HIT_FLAG               128
+#define ZXDH_FIRST_VLAN_GROUP_BITS        23
+#define ZXDH_VLAN_GROUP_BITS              31
+#define ZXDH_VLAN_GROUP_NUM               35
+#define ZXDH_VLAN_FILTER_VLANID_STEP      120
 
 int
 zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
@@ -566,6 +571,100 @@ zxdh_dev_multicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 	if (ret) {
 		PMD_DRV_LOG(ERR, "allmulti_table_set_failed:%d", hw->vfid);
 		return -ret;
+	}
+	return 0;
+}
+
+int
+zxdh_vlan_filter_table_init(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_vlan_filter_table vlan_table = {0};
+	int16_t ret = 0;
+
+	if (!hw->is_pf)
+		return 0;
+
+	for (uint8_t vlan_group = 0; vlan_group < ZXDH_VLAN_GROUP_NUM; vlan_group++) {
+		if (vlan_group == 0) {
+			vlan_table.vlans[0] |= (1 << ZXDH_FIRST_VLAN_GROUP_BITS);
+			vlan_table.vlans[0] |= (1 << ZXDH_VLAN_GROUP_BITS);
+
+		} else {
+			vlan_table.vlans[0] = 0;
+		}
+		uint32_t index = (vlan_group << 11) | hw->vport.vfid;
+		ZXDH_DTB_ERAM_ENTRY_INFO_T entry_data = {
+			.index = index,
+			.p_data = (uint32_t *)&vlan_table
+		};
+		ZXDH_DTB_USER_ENTRY_T user_entry = {ZXDH_SDT_VLAN_ATT_TABLE, &entry_data};
+
+		ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO,
+					g_dtb_data.queueid, 1, &user_entry);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR,
+				"[vfid:%d], vlan_group:%d, init vlan filter table failed",
+				hw->vport.vfid, vlan_group);
+			ret = -1;
+		}
+	}
+
+	return ret;
+}
+
+int
+zxdh_vlan_filter_table_set(uint16_t vport, uint16_t vlan_id, uint8_t enable)
+{
+	struct zxdh_vlan_filter_table vlan_table = {0};
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	int ret = 0;
+
+	memset(&vlan_table, 0, sizeof(struct zxdh_vlan_filter_table));
+	int table_num = vlan_id / ZXDH_VLAN_FILTER_VLANID_STEP;
+	uint32_t index = (table_num << 11) | vport_num.vfid;
+	uint16_t group = (vlan_id - table_num * ZXDH_VLAN_FILTER_VLANID_STEP) / 8 + 1;
+
+	uint8_t val = sizeof(struct zxdh_vlan_filter_table) / sizeof(uint32_t);
+	uint8_t vlan_tbl_index = group / val;
+	uint16_t used_group = vlan_tbl_index * val;
+
+	used_group = (used_group == 0 ? 0 : (used_group - 1));
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T entry_data = {index, (uint32_t *)&vlan_table};
+	ZXDH_DTB_USER_ENTRY_T user_entry_get = {ZXDH_SDT_VLAN_ATT_TABLE, &entry_data};
+
+	ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO, g_dtb_data.queueid, &user_entry_get, 1);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "get vlan table failed");
+		return -1;
+	}
+	uint16_t relative_vlan_id = vlan_id - table_num * ZXDH_VLAN_FILTER_VLANID_STEP;
+	uint32_t *base_group = &vlan_table.vlans[0];
+
+	*base_group |= 1 << 31;
+	base_group = &vlan_table.vlans[vlan_tbl_index];
+	uint8_t valid_bits = (vlan_tbl_index == 0 ?
+				ZXDH_FIRST_VLAN_GROUP_BITS : ZXDH_VLAN_GROUP_BITS) + 1;
+
+	uint8_t shift_left = (valid_bits - (relative_vlan_id - used_group * 8) % valid_bits) - 1;
+
+	if (enable)
+		*base_group |= 1 << shift_left;
+	else
+		*base_group &= ~(1 << shift_left);
+
+
+	ZXDH_DTB_USER_ENTRY_T user_entry_write = {
+		.sdt_no = ZXDH_SDT_VLAN_ATT_TABLE,
+		.p_entry_data = &entry_data
+	};
+
+	ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO,
+				g_dtb_data.queueid, 1, &user_entry_write);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "write vlan table failed");
+		return -1;
 	}
 	return 0;
 }

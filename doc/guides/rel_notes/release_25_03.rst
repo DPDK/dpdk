@@ -84,6 +84,7 @@ New Features
   * Link state and auto-negotiation.
   * MAC address filtering.
   * Multicast and promiscuous mode.
+  * VLAN filtering and offload.
 
 
 Removed Items

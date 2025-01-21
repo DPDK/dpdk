@@ -50,6 +50,8 @@
 #define ZXDH_MAC_UNFILTER          0xff
 #define ZXDH_PROMISC_MODE          1
 #define ZXDH_ALLMULTI_MODE         2
+#define ZXDH_VLAN_STRIP_MSG_TYPE   0
+#define ZXDH_QINQ_STRIP_MSG_TYPE   1
 
 enum ZXDH_DRIVER_TYPE {
 	ZXDH_MSG_CHAN_END_MPF = 0,
@@ -180,6 +182,10 @@ enum zxdh_msg_type {
 	ZXDH_VF_PORT_UNINIT = 2,
 	ZXDH_MAC_ADD = 3,
 	ZXDH_MAC_DEL = 4,
+	ZXDH_VLAN_FILTER_SET = 17,
+	ZXDH_VLAN_FILTER_ADD = 18,
+	ZXDH_VLAN_FILTER_DEL = 19,
+	ZXDH_VLAN_OFFLOAD = 21,
 
 	ZXDH_PORT_ATTRS_SET = 25,
 	ZXDH_PORT_PROMISC_SET = 26,
@@ -341,6 +347,19 @@ struct __rte_packed_begin zxdh_port_promisc_msg {
 	uint8_t mc_follow;
 } __rte_packed_end;
 
+struct zxdh_vlan_filter {
+	uint16_t vlan_id;
+};
+
+struct zxdh_vlan_filter_set {
+	uint8_t enable;
+};
+
+struct __rte_packed_begin zxdh_vlan_offload {
+	uint8_t enable;
+	uint8_t type;
+} __rte_packed_end;
+
 struct __rte_packed_begin zxdh_agent_msg_head {
 	enum zxdh_agent_msg_type msg_type;
 	uint8_t panel_id;
@@ -363,6 +382,9 @@ struct __rte_packed_begin zxdh_msg_info {
 		struct zxdh_link_info_msg link_msg;
 		struct zxdh_mac_filter mac_filter_msg;
 		struct zxdh_port_promisc_msg port_promisc_msg;
+		struct zxdh_vlan_filter vlan_filter_msg;
+		struct zxdh_vlan_filter_set vlan_filter_set_msg;
+		struct zxdh_vlan_offload vlan_offload_msg;
 	} __rte_packed_end data;
 } __rte_packed_end;
 

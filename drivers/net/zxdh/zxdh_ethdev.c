@@ -759,6 +759,34 @@ zxdh_alloc_queues(struct rte_eth_dev *dev, uint16_t nr_vq)
 	return 0;
 }
 
+static int
+zxdh_vlan_offload_configure(struct rte_eth_dev *dev)
+{
+	int ret;
+	int mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |	RTE_ETH_QINQ_STRIP_MASK;
+
+	ret = zxdh_dev_vlan_offload_set(dev, mask);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "vlan offload set error");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+zxdh_dev_conf_offload(struct rte_eth_dev *dev)
+{
+	int ret = 0;
+
+	ret = zxdh_vlan_offload_configure(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "zxdh_vlan_offload_configure failed");
+		return ret;
+	}
+
+	return 0;
+}
 
 static int32_t
 zxdh_dev_configure(struct rte_eth_dev *dev)
@@ -816,7 +844,7 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 
 	nr_vq = dev->data->nb_rx_queues + dev->data->nb_tx_queues;
 	if (nr_vq == hw->queue_num)
-		return 0;
+		goto end;
 
 	PMD_DRV_LOG(DEBUG, "queue changed need reset ");
 	/* Reset the device although not necessary at startup */
@@ -848,6 +876,8 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 
 	zxdh_pci_reinit_complete(hw);
 
+end:
+	zxdh_dev_conf_offload(dev);
 	return ret;
 }
 
@@ -1088,6 +1118,8 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.promiscuous_disable	 = zxdh_dev_promiscuous_disable,
 	.allmulticast_enable	 = zxdh_dev_allmulticast_enable,
 	.allmulticast_disable	 = zxdh_dev_allmulticast_disable,
+	.vlan_filter_set		 = zxdh_dev_vlan_filter_set,
+	.vlan_offload_set		 = zxdh_dev_vlan_offload_set,
 };
 
 static int32_t
@@ -1343,6 +1375,12 @@ zxdh_tables_init(struct rte_eth_dev *dev)
 	ret = zxdh_promisc_table_init(dev);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "promisc_table_init failed");
+		return ret;
+	}
+
+	ret = zxdh_vlan_filter_table_init(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, " vlan filter table init failed");
 		return ret;
 	}
 
