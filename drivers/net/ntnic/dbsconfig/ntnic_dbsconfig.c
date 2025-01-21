@@ -345,9 +345,9 @@ dbs_initialize_virt_queue_structs(void *avail_struct_addr, void *used_struct_add
 		flgs);
 }
 
-static uint16_t dbs_qsize_log2(uint16_t qsize)
+static uint8_t dbs_qsize_log2(uint16_t qsize)
 {
-	uint32_t qs = 0;
+	uint8_t qs = 0;
 
 	while (qsize) {
 		qsize = qsize >> 1;
