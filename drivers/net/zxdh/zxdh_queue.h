@@ -21,8 +21,15 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 #define ZXDH_TQ_QUEUE_IDX                 1
 #define ZXDH_MAX_TX_INDIRECT              8
 
+/* This marks a buffer as continuing via the next field. */
+#define ZXDH_VRING_DESC_F_NEXT                 1
+
 /* This marks a buffer as write-only (otherwise read-only). */
-#define ZXDH_VRING_DESC_F_WRITE           2
+#define ZXDH_VRING_DESC_F_WRITE                2
+
+/* This means the buffer contains a list of buffer descriptors. */
+#define ZXDH_VRING_DESC_F_INDIRECT             4
+
 /* This flag means the descriptor was made available by the driver */
 #define ZXDH_VRING_PACKED_DESC_F_AVAIL   (1 << (7))
 #define ZXDH_VRING_PACKED_DESC_F_USED    (1 << (15))
@@ -35,11 +42,17 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 #define ZXDH_RING_EVENT_FLAGS_DISABLE     0x1
 #define ZXDH_RING_EVENT_FLAGS_DESC        0x2
 
+#define ZXDH_RING_F_INDIRECT_DESC         28
+
 #define ZXDH_VQ_RING_DESC_CHAIN_END       32768
 #define ZXDH_QUEUE_DEPTH                  1024
 
 #define ZXDH_RQ_QUEUE_IDX                 0
 #define ZXDH_TQ_QUEUE_IDX                 1
+#define ZXDH_TYPE_HDR_SIZE        sizeof(struct zxdh_type_hdr)
+#define ZXDH_PI_HDR_SIZE          sizeof(struct zxdh_pi_hdr)
+#define ZXDH_DL_NET_HDR_SIZE      sizeof(struct zxdh_net_hdr_dl)
+#define ZXDH_UL_NET_HDR_SIZE      sizeof(struct zxdh_net_hdr_ul)
 
 /*
  * ring descriptors: 16 bytes.
@@ -353,6 +366,17 @@ zxdh_desc_used(struct zxdh_vring_packed_desc *desc, struct zxdh_virtqueue *vq)
 static inline void zxdh_queue_notify(struct zxdh_virtqueue *vq)
 {
 	ZXDH_VTPCI_OPS(vq->hw)->notify_queue(vq->hw, vq);
+}
+
+static inline int32_t
+zxdh_queue_kick_prepare_packed(struct zxdh_virtqueue *vq)
+{
+	uint16_t flags = 0;
+
+	zxdh_mb(vq->hw->weak_barriers);
+	flags = vq->vq_packed.ring.device->desc_event_flags;
+
+	return (flags != ZXDH_RING_EVENT_FLAGS_DISABLE);
 }
 
 struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);

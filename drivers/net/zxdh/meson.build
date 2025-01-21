@@ -21,4 +21,5 @@ sources = files(
         'zxdh_queue.c',
         'zxdh_np.c',
         'zxdh_tables.c',
+        'zxdh_rxtx.c',
 )
