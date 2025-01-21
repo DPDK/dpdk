@@ -933,6 +933,10 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.dev_configure			 = zxdh_dev_configure,
 	.dev_close				 = zxdh_dev_close,
 	.dev_infos_get			 = zxdh_dev_infos_get,
+	.rx_queue_setup			 = zxdh_dev_rx_queue_setup,
+	.tx_queue_setup			 = zxdh_dev_tx_queue_setup,
+	.rx_queue_intr_enable	 = zxdh_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable	 = zxdh_dev_rx_queue_intr_disable,
 };
 
 static int32_t
