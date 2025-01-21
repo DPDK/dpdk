@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <rte_common.h>
+#include <rte_atomic.h>
 
 #include "zxdh_ethdev.h"
 #include "zxdh_rxtx.h"
@@ -30,6 +31,7 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 #define ZXDH_RING_EVENT_FLAGS_DESC        0x2
 
 #define ZXDH_VQ_RING_DESC_CHAIN_END       32768
+#define ZXDH_QUEUE_DEPTH                  1024
 
 /*
  * ring descriptors: 16 bytes.
@@ -270,8 +272,39 @@ zxdh_queue_disable_intr(struct zxdh_virtqueue *vq)
 	}
 }
 
+static inline void
+zxdh_queue_enable_intr(struct zxdh_virtqueue *vq)
+{
+	if (vq->vq_packed.event_flags_shadow == ZXDH_RING_EVENT_FLAGS_DISABLE) {
+		vq->vq_packed.event_flags_shadow = ZXDH_RING_EVENT_FLAGS_DISABLE;
+		vq->vq_packed.ring.driver->desc_event_flags = vq->vq_packed.event_flags_shadow;
+	}
+}
+
+static inline void
+zxdh_mb(uint8_t weak_barriers)
+{
+	if (weak_barriers)
+		rte_atomic_thread_fence(rte_memory_order_seq_cst);
+	else
+		rte_mb();
+}
+
 struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);
 int32_t zxdh_free_queues(struct rte_eth_dev *dev);
 int32_t zxdh_get_queue_type(uint16_t vtpci_queue_idx);
+int32_t zxdh_dev_tx_queue_setup(struct rte_eth_dev *dev,
+			uint16_t queue_idx,
+			uint16_t nb_desc,
+			uint32_t socket_id __rte_unused,
+			const struct rte_eth_txconf *tx_conf);
+int32_t zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
+			uint16_t queue_idx,
+			uint16_t nb_desc,
+			uint32_t socket_id __rte_unused,
+			const struct rte_eth_rxconf *rx_conf,
+			struct rte_mempool *mp);
+int32_t zxdh_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
+int32_t zxdh_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 
 #endif /* ZXDH_QUEUE_H */
