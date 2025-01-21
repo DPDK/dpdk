@@ -24,6 +24,8 @@ Features of the ZXDH PMD are:
 - Link auto-negotiation
 - Link state information
 - Set link down or up
+- Unicast MAC filter
+- Multicast MAC filter
 
 
 Driver compilation and testing

@@ -80,6 +80,8 @@ struct zxdh_hw {
 	uint16_t port_id;
 	uint16_t vfid;
 	uint16_t queue_num;
+	uint16_t mc_num;
+	uint16_t uc_num;
 
 	uint8_t *isr;
 	uint8_t weak_barriers;
@@ -92,6 +94,7 @@ struct zxdh_hw {
 	uint8_t msg_chan_init;
 	uint8_t phyport;
 	uint8_t panel_id;
+	uint8_t hash_search_index;
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;
 	uint8_t admin_status;

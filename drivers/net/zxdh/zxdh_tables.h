@@ -142,10 +142,46 @@ struct zxdh_panel_table {
 	uint32_t rsv_2;
 }; /* 16B */
 
+struct zxdh_mac_unicast_key {
+	uint16_t rsv;
+	uint8_t  dmac_addr[6];
+};
+
+struct zxdh_mac_unicast_entry {
+	uint8_t rsv1     : 7,
+			hit_flag : 1;
+	uint8_t rsv;
+	uint16_t vfid;
+};
+
+struct zxdh_mac_unicast_table {
+	struct zxdh_mac_unicast_key key;
+	struct zxdh_mac_unicast_entry entry;
+};
+
+struct zxdh_mac_multicast_key {
+	uint8_t rsv;
+	uint8_t vf_group_id;
+	uint8_t mac_addr[6];
+};
+
+struct zxdh_mac_multicast_entry {
+	uint32_t mc_pf_enable;
+	uint32_t rsv1;
+	uint32_t mc_bitmap[2];
+};
+
+struct zxdh_mac_multicast_table {
+	struct zxdh_mac_multicast_key key;
+	struct zxdh_mac_multicast_entry entry;
+};
+
 int zxdh_port_attr_init(struct rte_eth_dev *dev);
 int zxdh_panel_table_init(struct rte_eth_dev *dev);
 int zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
 int zxdh_port_attr_uninit(struct rte_eth_dev *dev);
 int zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
+int zxdh_set_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_search_idx);
+int zxdh_del_mac_table(uint16_t vport, struct rte_ether_addr *addr,  uint8_t hash_search_idx);
 
 #endif /* ZXDH_TABLES_H */

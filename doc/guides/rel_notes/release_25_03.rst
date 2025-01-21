@@ -82,6 +82,7 @@ New Features
   * Added support for SR-IOV VF.
   * Scatter and gather for Tx and Rx.
   * Link state and auto-negotiation.
+  * MAC address filtering.
 
 
 Removed Items

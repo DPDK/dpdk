@@ -256,6 +256,30 @@ zxdh_panelid_get(struct rte_eth_dev *dev, uint8_t *panelid)
 	return ret;
 }
 
+static int
+zxdh_get_res_hash_id(struct zxdh_res_para *in, uint8_t *hash_id)
+{
+	uint8_t reps = 0;
+	uint16_t reps_len = 0;
+
+	if (zxdh_get_res_info(in, ZXDH_TBL_FIELD_HASHID, &reps, &reps_len) != ZXDH_BAR_MSG_OK)
+		return -1;
+
+	*hash_id = reps;
+	return ZXDH_BAR_MSG_OK;
+}
+
+int32_t
+zxdh_hashidx_get(struct rte_eth_dev *dev, uint8_t *hash_idx)
+{
+	struct zxdh_res_para param;
+
+	zxdh_fill_res_para(dev, &param);
+	int32_t ret = zxdh_get_res_hash_id(&param, hash_idx);
+
+	return ret;
+}
+
 uint32_t
 zxdh_read_bar_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg)
 {
