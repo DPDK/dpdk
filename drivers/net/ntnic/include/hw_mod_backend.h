@@ -239,12 +239,6 @@ enum {
 	PROT_TUN_L4_ICMP = 4
 };
 
-
-enum {
-	HASH_HASH_NONE = 0,
-	HASH_5TUPLE = 8,
-};
-
 enum {
 	CPY_SELECT_DSCP_IPV4 = 0,
 	CPY_SELECT_DSCP_IPV6 = 1,

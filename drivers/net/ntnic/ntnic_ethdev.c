@@ -27,6 +27,7 @@
 #include "ntnic_vfio.h"
 #include "ntnic_mod_reg.h"
 #include "nt_util.h"
+#include "flow_hsh_cfg.h"
 #include "profile_inline/flm_age_queue.h"
 #include "profile_inline/flm_evt_queue.h"
 #include "rte_pmd_ntnic.h"
@@ -1672,7 +1673,7 @@ static int eth_dev_rss_hash_update(struct rte_eth_dev *eth_dev, struct rte_eth_r
 	tmp_rss_conf.algorithm = rss_conf->algorithm;
 
 	tmp_rss_conf.rss_hf = rss_conf->rss_hf;
-	int res = flow_filter_ops->flow_nic_set_hasher_fields(ndev, hsh_idx, tmp_rss_conf);
+	int res = hsh_set(ndev, hsh_idx, tmp_rss_conf);
 
 	if (res == 0) {
 		flow_filter_ops->hw_mod_hsh_rcp_flush(&ndev->be, hsh_idx, 1);
