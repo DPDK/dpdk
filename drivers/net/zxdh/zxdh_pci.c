@@ -202,6 +202,26 @@ zxdh_del_queue(struct zxdh_hw *hw, struct zxdh_virtqueue *vq)
 	rte_write16(0, &hw->common_cfg->queue_enable);
 }
 
+static void
+zxdh_notify_queue(struct zxdh_hw *hw, struct zxdh_virtqueue *vq)
+{
+	uint32_t notify_data = 0;
+
+	if (!zxdh_pci_with_feature(hw, ZXDH_F_NOTIFICATION_DATA)) {
+		rte_write16(vq->vq_queue_index, vq->notify_addr);
+		return;
+	}
+
+	notify_data = ((uint32_t)vq->vq_avail_idx << 16) | vq->vq_queue_index;
+	if (zxdh_pci_with_feature(hw, ZXDH_F_RING_PACKED) &&
+			(vq->vq_packed.cached_flags & ZXDH_VRING_PACKED_DESC_F_AVAIL))
+		notify_data |= RTE_BIT32(31);
+
+	PMD_DRV_LOG(DEBUG, "queue:%d notify_data 0x%x notify_addr 0x%p",
+				 vq->vq_queue_index, notify_data, vq->notify_addr);
+	rte_write32(notify_data, vq->notify_addr);
+}
+
 const struct zxdh_pci_ops zxdh_dev_pci_ops = {
 	.read_dev_cfg   = zxdh_read_dev_config,
 	.write_dev_cfg  = zxdh_write_dev_config,
@@ -216,6 +236,7 @@ const struct zxdh_pci_ops zxdh_dev_pci_ops = {
 	.set_queue_num  = zxdh_set_queue_num,
 	.setup_queue    = zxdh_setup_queue,
 	.del_queue      = zxdh_del_queue,
+	.notify_queue   = zxdh_notify_queue,
 };
 
 uint8_t

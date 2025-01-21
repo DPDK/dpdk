@@ -900,10 +900,38 @@ zxdh_tables_uninit(struct rte_eth_dev *dev)
 }
 
 static int
+zxdh_dev_stop(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	int ret;
+
+	if (dev->data->dev_started == 0)
+		return 0;
+
+	ret = zxdh_intr_disable(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "intr disable failed");
+		return ret;
+	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+static int
 zxdh_dev_close(struct rte_eth_dev *dev)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	int ret = 0;
+
+	ret = zxdh_dev_stop(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, " stop port %s failed.", dev->device->name);
+		return -1;
+	}
 
 	ret = zxdh_tables_uninit(dev);
 	if (ret != 0) {
@@ -928,9 +956,52 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static int
+zxdh_dev_start(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_virtqueue *vq;
+	int32_t ret;
+	uint16_t logic_qidx;
+	uint16_t i;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		logic_qidx = 2 * i + ZXDH_RQ_QUEUE_IDX;
+		ret = zxdh_dev_rx_queue_setup_finish(dev, logic_qidx);
+		if (ret < 0)
+			return ret;
+	}
+	ret = zxdh_intr_enable(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "interrupt enable failed");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		logic_qidx = 2 * i + ZXDH_RQ_QUEUE_IDX;
+		vq = hw->vqs[logic_qidx];
+		/* Flush the old packets */
+		zxdh_queue_rxvq_flush(vq);
+		zxdh_queue_notify(vq);
+	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		logic_qidx = 2 * i + ZXDH_TQ_QUEUE_IDX;
+		vq = hw->vqs[logic_qidx];
+		zxdh_queue_notify(vq);
+	}
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
+	return 0;
+}
+
 /* dev_ops for zxdh, bare necessities for basic operation */
 static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.dev_configure			 = zxdh_dev_configure,
+	.dev_start				 = zxdh_dev_start,
+	.dev_stop				 = zxdh_dev_stop,
 	.dev_close				 = zxdh_dev_close,
 	.dev_infos_get			 = zxdh_dev_infos_get,
 	.rx_queue_setup			 = zxdh_dev_rx_queue_setup,
