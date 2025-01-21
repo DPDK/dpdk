@@ -7,9 +7,10 @@
 
 #include <stdint.h>
 
-extern struct zxdh_dtb_shared_data g_dtb_data;
-
 #define ZXDH_DEVICE_NO                    0
+#define ZXDH_PORT_ATTR_IS_UP_FLAG         35
+
+extern struct zxdh_dtb_shared_data g_dtb_data;
 
 struct zxdh_port_attr_table {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
@@ -145,5 +146,6 @@ int zxdh_port_attr_init(struct rte_eth_dev *dev);
 int zxdh_panel_table_init(struct rte_eth_dev *dev);
 int zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
 int zxdh_port_attr_uninit(struct rte_eth_dev *dev);
+int zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
 
 #endif /* ZXDH_TABLES_H */

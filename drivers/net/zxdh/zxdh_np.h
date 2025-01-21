@@ -514,11 +514,31 @@ typedef struct zxdh_sdt_tbl_data_t {
 	uint32_t data_low32;
 } ZXDH_SDT_TBL_DATA_T;
 
+typedef struct zxdh_sdt_tbl_etcam_t {
+	uint32_t table_type;
+	uint32_t etcam_id;
+	uint32_t etcam_key_mode;
+	uint32_t etcam_table_id;
+	uint32_t no_as_rsp_mode;
+	uint32_t as_en;
+	uint32_t as_eram_baddr;
+	uint32_t as_rsp_mode;
+	uint32_t etcam_table_depth;
+	uint32_t etcam_clutch_en;
+} ZXDH_SDTTBL_ETCAM_T;
+
+typedef struct zxdh_sdt_tbl_porttbl_t {
+	uint32_t table_type;
+	uint32_t porttbl_clutch_en;
+} ZXDH_SDTTBL_PORTTBL_T;
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 int zxdh_np_dtb_table_entry_write(uint32_t dev_id, uint32_t queue_id,
 			uint32_t entrynum, ZXDH_DTB_USER_ENTRY_T *down_entries);
 int zxdh_np_dtb_table_entry_delete(uint32_t dev_id, uint32_t queue_id,
 			 uint32_t entrynum, ZXDH_DTB_USER_ENTRY_T *delete_entries);
+int zxdh_np_dtb_table_entry_get(uint32_t dev_id, uint32_t queue_id,
+			ZXDH_DTB_USER_ENTRY_T *get_entry, uint32_t srh_mode);
 
 #endif /* ZXDH_NP_H */

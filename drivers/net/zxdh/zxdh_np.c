@@ -36,6 +36,10 @@ ZXDH_SDT_TBL_DATA_T g_sdt_info[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
 #define ZXDH_COMM_GET_BIT_MASK(_inttype_, _bitqnt_)\
 	((_inttype_)(((_bitqnt_) < 32)))
 
+#define ZXDH_COMM_UINT32_GET_BITS(_uidst_, _uisrc_, _uistartpos_, _uilen_)\
+	((_uidst_) = (((_uisrc_) >> (_uistartpos_)) & \
+	(ZXDH_COMM_GET_BIT_MASK(uint32_t, (_uilen_)))))
+
 #define ZXDH_REG_DATA_MAX      (128)
 
 #define ZXDH_COMM_CHECK_DEV_POINT(dev_id, point)\
@@ -1456,15 +1460,11 @@ zxdh_np_dtb_table_entry_write(uint32_t dev_id,
 	return rc;
 }
 
-static uint32_t
+static void
 zxdh_np_sdt_tbl_data_get(uint32_t dev_id, uint32_t sdt_no, ZXDH_SDT_TBL_DATA_T *p_sdt_data)
 {
-	uint32_t rc   = 0;
-
 	p_sdt_data->data_high32 = g_sdt_info[dev_id][sdt_no].data_high32;
 	p_sdt_data->data_low32  = g_sdt_info[dev_id][sdt_no].data_low32;
-
-	return rc;
 }
 
 int
@@ -1507,7 +1507,7 @@ zxdh_np_dtb_table_entry_delete(uint32_t dev_id,
 		pentry = delete_entries + entry_index;
 
 		sdt_no = pentry->sdt_no;
-		rc = zxdh_np_sdt_tbl_data_get(dev_id, sdt_no, &sdt_tbl);
+		zxdh_np_sdt_tbl_data_get(dev_id, sdt_no, &sdt_tbl);
 		switch (tbl_type) {
 		case ZXDH_SDT_TBLT_ERAM:
 		{
@@ -1555,5 +1555,165 @@ zxdh_np_dtb_table_entry_delete(uint32_t dev_id,
 		"dpp_dtb_write_down_table_data", p_data_buff_ex);
 
 	rte_free(p_data_buff_ex);
+	return 0;
+}
+
+static uint32_t
+zxdh_np_sdt_tbl_data_parser(uint32_t sdt_hig32, uint32_t sdt_low32, void *p_sdt_info)
+{
+	uint32_t tbl_type = 0;
+	uint32_t clutch_en = 0;
+
+	ZXDH_SDTTBL_ERAM_T *p_sdt_eram = NULL;
+	ZXDH_SDTTBL_PORTTBL_T *p_sdt_porttbl = NULL;
+
+	ZXDH_COMM_UINT32_GET_BITS(tbl_type, sdt_hig32,
+		ZXDH_SDT_H_TBL_TYPE_BT_POS, ZXDH_SDT_H_TBL_TYPE_BT_LEN);
+	ZXDH_COMM_UINT32_GET_BITS(clutch_en, sdt_low32, 0, 1);
+
+	switch (tbl_type) {
+	case ZXDH_SDT_TBLT_ERAM:
+	{
+		p_sdt_eram = (ZXDH_SDTTBL_ERAM_T *)p_sdt_info;
+		p_sdt_eram->table_type = tbl_type;
+		p_sdt_eram->eram_clutch_en = clutch_en;
+		break;
+	}
+
+	case ZXDH_SDT_TBLT_PORTTBL:
+	{
+		p_sdt_porttbl = (ZXDH_SDTTBL_PORTTBL_T *)p_sdt_info;
+		p_sdt_porttbl->table_type = tbl_type;
+		p_sdt_porttbl->porttbl_clutch_en = clutch_en;
+		break;
+	}
+	default:
+	{
+		PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
+		return 1;
+	}
+	}
+
+	return 0;
+}
+
+static uint32_t
+zxdh_np_soft_sdt_tbl_get(uint32_t dev_id, uint32_t sdt_no, void *p_sdt_info)
+{
+	ZXDH_SDT_TBL_DATA_T sdt_tbl = {0};
+	uint32_t rc;
+
+	zxdh_np_sdt_tbl_data_get(dev_id, sdt_no, &sdt_tbl);
+
+	rc = zxdh_np_sdt_tbl_data_parser(sdt_tbl.data_high32, sdt_tbl.data_low32, p_sdt_info);
+	if (rc != 0)
+		PMD_DRV_LOG(ERR, "dpp sdt [%d] tbl_data_parser error.", sdt_no);
+
+	return rc;
+}
+
+static void
+zxdh_np_eram_index_cal(uint32_t eram_mode, uint32_t index,
+		uint32_t *p_row_index, uint32_t *p_col_index)
+{
+	uint32_t row_index = 0;
+	uint32_t col_index = 0;
+
+	switch (eram_mode) {
+	case ZXDH_ERAM128_TBL_128b:
+	{
+		row_index = index;
+		break;
+	}
+	case ZXDH_ERAM128_TBL_64b:
+	{
+		row_index = (index >> 1);
+		col_index = index & 0x1;
+		break;
+	}
+	case ZXDH_ERAM128_TBL_1b:
+	{
+		row_index = (index >> 7);
+		col_index = index & 0x7F;
+		break;
+	}
+	}
+	*p_row_index = row_index;
+	*p_col_index = col_index;
+}
+
+static uint32_t
+zxdh_np_dtb_eram_data_get(uint32_t dev_id, uint32_t queue_id, uint32_t sdt_no,
+		ZXDH_DTB_ERAM_ENTRY_INFO_T *p_dump_eram_entry)
+{
+	uint32_t index = p_dump_eram_entry->index;
+	uint32_t *p_data = p_dump_eram_entry->p_data;
+	ZXDH_SDTTBL_ERAM_T sdt_eram_info = {0};
+	uint32_t temp_data[4] = {0};
+	uint32_t row_index = 0;
+	uint32_t col_index = 0;
+	uint32_t rd_mode;
+	uint32_t rc;
+
+	rc = zxdh_np_soft_sdt_tbl_get(queue_id, sdt_no, &sdt_eram_info);
+	ZXDH_COMM_CHECK_DEV_RC(dev_id, rc, "dpp_soft_sdt_tbl_get");
+	rd_mode = sdt_eram_info.eram_mode;
+
+	zxdh_np_eram_index_cal(rd_mode, index, &row_index, &col_index);
+
+	switch (rd_mode) {
+	case ZXDH_ERAM128_TBL_128b:
+	{
+		memcpy(p_data, temp_data, (128 / 8));
+		break;
+	}
+	case ZXDH_ERAM128_TBL_64b:
+	{
+		memcpy(p_data, temp_data + ((1 - col_index) << 1), (64 / 8));
+		break;
+	}
+	case ZXDH_ERAM128_TBL_1b:
+	{
+		ZXDH_COMM_UINT32_GET_BITS(p_data[0], *(temp_data +
+			(3 - col_index / 32)), (col_index % 32), 1);
+		break;
+	}
+	}
+	return rc;
+}
+
+int
+zxdh_np_dtb_table_entry_get(uint32_t dev_id,
+		 uint32_t queue_id,
+		 ZXDH_DTB_USER_ENTRY_T *get_entry,
+		 uint32_t srh_mode)
+{
+	ZXDH_SDT_TBL_DATA_T sdt_tbl = {0};
+	uint32_t tbl_type = 0;
+	uint32_t rc;
+	uint32_t sdt_no;
+
+	sdt_no = get_entry->sdt_no;
+	zxdh_np_sdt_tbl_data_get(srh_mode, sdt_no, &sdt_tbl);
+
+	ZXDH_COMM_UINT32_GET_BITS(tbl_type, sdt_tbl.data_high32,
+			ZXDH_SDT_H_TBL_TYPE_BT_POS, ZXDH_SDT_H_TBL_TYPE_BT_LEN);
+	switch (tbl_type) {
+	case ZXDH_SDT_TBLT_ERAM:
+	{
+		rc = zxdh_np_dtb_eram_data_get(dev_id,
+				queue_id,
+				sdt_no,
+				(ZXDH_DTB_ERAM_ENTRY_INFO_T *)get_entry->p_entry_data);
+		ZXDH_COMM_CHECK_RC_NO_ASSERT(rc, "dpp_dtb_eram_data_get");
+		break;
+	}
+	default:
+	{
+		PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
+		return 1;
+	}
+	}
+
 	return 0;
 }

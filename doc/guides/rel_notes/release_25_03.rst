@@ -81,6 +81,7 @@ New Features
   * Added support for multiple queues.
   * Added support for SR-IOV VF.
   * Scatter and gather for Tx and Rx.
+  * Link state and auto-negotiation.
 
 
 Removed Items

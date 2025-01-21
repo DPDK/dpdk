@@ -21,6 +21,9 @@ Features of the ZXDH PMD are:
 - Multiple queues for Tx and Rx
 - SR-IOV VF
 - Scatter and gather for Tx and Rx
+- Link auto-negotiation
+- Link state information
+- Set link down or up
 
 
 Driver compilation and testing

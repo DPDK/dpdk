@@ -16,6 +16,7 @@
 #include "zxdh_np.h"
 #include "zxdh_tables.h"
 #include "zxdh_rxtx.h"
+#include "zxdh_ethdev_ops.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 struct zxdh_shared_data *zxdh_shared_data;
@@ -105,9 +106,16 @@ static void
 zxdh_devconf_intr_handler(void *param)
 {
 	struct rte_eth_dev *dev = param;
+	struct zxdh_hw *hw = dev->data->dev_private;
+
+	uint8_t isr = zxdh_pci_isr(hw);
 
 	if (zxdh_intr_unmask(dev) < 0)
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
+	if (isr & ZXDH_PCI_ISR_CONFIG) {
+		if (zxdh_dev_link_update(dev, 0) == 0)
+			rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	}
 }
 
 
@@ -914,6 +922,13 @@ zxdh_dev_stop(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "intr disable failed");
 		return ret;
 	}
+
+	ret = zxdh_dev_set_link_down(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "set port %s link down failed!", dev->device->name);
+		return ret;
+	}
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
@@ -1012,6 +1027,9 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 		vq = hw->vqs[logic_qidx];
 		zxdh_queue_notify(vq);
 	}
+
+	zxdh_dev_set_link_up(dev);
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
@@ -1031,6 +1049,9 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.tx_queue_setup			 = zxdh_dev_tx_queue_setup,
 	.rx_queue_intr_enable	 = zxdh_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable	 = zxdh_dev_rx_queue_intr_disable,
+	.link_update			 = zxdh_dev_link_update,
+	.dev_set_link_up		 = zxdh_dev_set_link_up,
+	.dev_set_link_down		 = zxdh_dev_set_link_down,
 };
 
 static int32_t
