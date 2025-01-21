@@ -11,8 +11,6 @@
 #include "ixgbe_rxtx.h"
 #include "ixgbe_rxtx_vec_common.h"
 
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 static inline void
 ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 {
@@ -36,7 +34,7 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		    rxq->nb_rx_desc) {
 			for (i = 0; i < RTE_IXGBE_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
-				vst1q_u64((uint64_t *)&rxdp[i].read,
+				vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp[i].read),
 					  zero);
 			}
 		}
@@ -60,12 +58,12 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		paddr = mb0->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr0 = vsetq_lane_u64(paddr, zero, 0);
 		/* flush desc with pa dma_addr */
-		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr0);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr0);
 
 		vst1_u8((uint8_t *)&mb1->rearm_data, p);
 		paddr = mb1->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vsetq_lane_u64(paddr, zero, 0);
-		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr1);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr1);
 	}
 
 	rxq->rxrearm_start += RTE_IXGBE_RXQ_REARM_THRESH;
@@ -367,10 +365,10 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
 
 		/* A. load 4 pkts descs */
-		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
-		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
-		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
-		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
+		descs[0] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp));
+		descs[1] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 1));
+		descs[2] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 2));
+		descs[3] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 3));
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
@@ -554,7 +552,7 @@ vtx1(volatile union ixgbe_adv_tx_desc *txdp,
 			pkt->buf_iova + pkt->data_off,
 			(uint64_t)pkt->pkt_len << 46 | flags | pkt->data_len};
 
-	vst1q_u64((uint64_t *)&txdp->read, descriptor);
+	vst1q_u64(RTE_CAST_PTR(uint64_t *, &txdp->read), descriptor);
 }
 
 static inline void

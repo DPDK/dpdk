@@ -23,10 +23,10 @@
 
 #ifdef HAVE_BPF_RSS
 /* Workaround for warning in bpftool generated skeleton code */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
+__rte_diagnostic_push
+__rte_diagnostic_ignored_wcast_qual
 #include "tap_rss.skel.h"
-#pragma GCC diagnostic pop
+__rte_diagnostic_pop
 #endif
 
 #define ISOLATE_HANDLE 1

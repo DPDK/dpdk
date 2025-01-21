@@ -25,8 +25,6 @@
 #include "mlx5_rxtx_vec.h"
 #include "mlx5_autoconf.h"
 
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 /**
  * Store free buffers to RX SW ring.
  *
@@ -75,7 +73,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		    struct rte_mbuf **elts, bool keep)
 {
 	volatile struct mlx5_mini_cqe8 *mcq =
-		(void *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
+		(volatile struct mlx5_mini_cqe8 *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
 	/* Title packet is pre-built. */
 	struct rte_mbuf *t_pkt = rxq->cqe_comp_layout ? &rxq->title_pkt : elts[0];
 	unsigned int pos;
@@ -139,9 +137,9 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	 */
 cycle:
 	if (rxq->cqe_comp_layout)
-		rte_prefetch0((void *)(cq + mcqe_n));
+		rte_prefetch0((volatile void *)(cq + mcqe_n));
 	for (pos = 0; pos < mcqe_n; ) {
-		uint8_t *p = (void *)&mcq[pos % 8];
+		uint8_t *p = RTE_CAST_PTR(uint8_t *, &mcq[pos % 8]);
 		uint8_t *e0 = (void *)&elts[pos]->rearm_data;
 		uint8_t *e1 = (void *)&elts[pos + 1]->rearm_data;
 		uint8_t *e2 = (void *)&elts[pos + 2]->rearm_data;
@@ -157,7 +155,7 @@ cycle:
 		if (!rxq->cqe_comp_layout)
 			for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
 				if (likely(pos + i < mcqe_n))
-					rte_prefetch0((void *)(cq + pos + i));
+					rte_prefetch0((volatile void *)(cq + pos + i));
 		__asm__ volatile (
 		/* A.1 load mCQEs into a 128bit register. */
 		"ld1 {v16.16b - v17.16b}, [%[mcq]] \n\t"
@@ -367,8 +365,8 @@ cycle:
 		if (!rxq->cqe_comp_layout) {
 			if (!(pos & 0x7) && pos < mcqe_n) {
 				if (pos + 8 < mcqe_n)
-					rte_prefetch0((void *)(cq + pos + 8));
-				mcq = (void *)&(cq + pos)->pkt_info;
+					rte_prefetch0((volatile void *)(cq + pos + 8));
+				mcq = (volatile struct mlx5_mini_cqe8 *)&(cq + pos)->pkt_info;
 				for (i = 0; i < 8; ++i)
 					cq[inv++].op_own = MLX5_CQE_INVALIDATE;
 			}
@@ -383,7 +381,7 @@ cycle:
 		    MLX5_CQE_FORMAT(cq->op_own) == MLX5_COMPRESSED) {
 			pos = 0;
 			elts = &elts[mcqe_n];
-			mcq = (void *)cq;
+			mcq = (volatile struct mlx5_mini_cqe8 *)cq;
 			mcqe_n = MLX5_CQE_NUM_MINIS(cq->op_own) + 1;
 			pkts_n += mcqe_n;
 			goto cycle;
@@ -663,7 +661,7 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		mask = vcreate_u16(pkts_n - pos < MLX5_VPMD_DESCS_PER_LOOP ?
 				   -1UL >> ((pkts_n - pos) *
 					    sizeof(uint16_t) * 8) : 0);
-		p0 = (void *)&cq[pos].pkt_info;
+		p0 = RTE_PTR_UNQUAL(&cq[pos].pkt_info);
 		p1 = p0 + (pkts_n - pos > 1) * sizeof(struct mlx5_cqe);
 		p2 = p1 + (pkts_n - pos > 2) * sizeof(struct mlx5_cqe);
 		p3 = p2 + (pkts_n - pos > 3) * sizeof(struct mlx5_cqe);

@@ -15,10 +15,6 @@
 
 #include <rte_vect.h>
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 static __rte_always_inline void
 i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 {
@@ -39,8 +35,8 @@ desc_fdir_processing_32b(volatile union i40e_rx_desc *rxdp,
 			 const uint32_t desc_idx)
 {
 	/* 32B desc path: load rxdp.wb.qword2 for EXT_STATUS and FLEXBH_STAT */
-	__m128i *rxdp_desc_0 = (void *)(&rxdp[desc_idx + 0].wb.qword2);
-	__m128i *rxdp_desc_1 = (void *)(&rxdp[desc_idx + 1].wb.qword2);
+	__m128i *rxdp_desc_0 = RTE_CAST_PTR(__m128i *, &rxdp[desc_idx + 0].wb.qword2);
+	__m128i *rxdp_desc_1 = RTE_CAST_PTR(__m128i *, &rxdp[desc_idx + 1].wb.qword2);
 	const __m128i desc_qw2_0 = _mm_load_si128(rxdp_desc_0);
 	const __m128i desc_qw2_1 = _mm_load_si128(rxdp_desc_1);
 
@@ -276,21 +272,21 @@ _recv_raw_pkts_vec_avx2(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				_mm256_loadu_si256((void *)&sw_ring[i + 4]));
 #endif
 
-		const __m128i raw_desc7 = _mm_load_si128((void *)(rxdp + 7));
+		const __m128i raw_desc7 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 7));
 		rte_compiler_barrier();
-		const __m128i raw_desc6 = _mm_load_si128((void *)(rxdp + 6));
+		const __m128i raw_desc6 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 6));
 		rte_compiler_barrier();
-		const __m128i raw_desc5 = _mm_load_si128((void *)(rxdp + 5));
+		const __m128i raw_desc5 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 5));
 		rte_compiler_barrier();
-		const __m128i raw_desc4 = _mm_load_si128((void *)(rxdp + 4));
+		const __m128i raw_desc4 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 4));
 		rte_compiler_barrier();
-		const __m128i raw_desc3 = _mm_load_si128((void *)(rxdp + 3));
+		const __m128i raw_desc3 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 3));
 		rte_compiler_barrier();
-		const __m128i raw_desc2 = _mm_load_si128((void *)(rxdp + 2));
+		const __m128i raw_desc2 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 2));
 		rte_compiler_barrier();
-		const __m128i raw_desc1 = _mm_load_si128((void *)(rxdp + 1));
+		const __m128i raw_desc1 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 1));
 		rte_compiler_barrier();
-		const __m128i raw_desc0 = _mm_load_si128((void *)(rxdp + 0));
+		const __m128i raw_desc0 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 0));
 
 		const __m256i raw_desc6_7 = _mm256_inserti128_si256(
 				_mm256_castsi128_si256(raw_desc6), raw_desc7, 1);
@@ -695,7 +691,7 @@ vtx1(volatile struct i40e_tx_desc *txdp,
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 				pkt->buf_iova + pkt->data_off);
-	_mm_store_si128((__m128i *)txdp, descriptor);
+	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
 }
 
 static inline void
@@ -728,8 +724,8 @@ vtx(volatile struct i40e_tx_desc *txdp,
 		__m256i desc0_1 = _mm256_set_epi64x(
 				hi_qw1, pkt[1]->buf_iova + pkt[1]->data_off,
 				hi_qw0, pkt[0]->buf_iova + pkt[0]->data_off);
-		_mm256_store_si256((void *)(txdp + 2), desc2_3);
-		_mm256_store_si256((void *)txdp, desc0_1);
+		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp + 2), desc2_3);
+		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp), desc0_1);
 	}
 
 	/* do any last ones */

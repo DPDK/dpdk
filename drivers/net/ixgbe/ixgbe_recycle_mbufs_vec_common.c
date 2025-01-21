@@ -8,8 +8,6 @@
 #include "ixgbe_ethdev.h"
 #include "ixgbe_rxtx.h"
 
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 void
 ixgbe_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs)
 {

@@ -16,9 +16,6 @@
 #include "i40e_rxtx.h"
 #include "i40e_rxtx_vec_common.h"
 
-
-#pragma GCC diagnostic ignored "-Wcast-qual"
-
 static inline void
 i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 {
@@ -41,7 +38,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		    rxq->nb_rx_desc) {
 			for (i = 0; i < RTE_I40E_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
-				vst1q_u64((uint64_t *)&rxdp[i].read, zero);
+				vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp[i].read), zero);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
@@ -58,11 +55,11 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		dma_addr0 = vdupq_n_u64(paddr);
 
 		/* flush desc with pa dma_addr */
-		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr0);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr0);
 
 		paddr = mb1->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vdupq_n_u64(paddr);
-		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr1);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr1);
 	}
 
 	rxq->rxrearm_start += RTE_I40E_RXQ_REARM_THRESH;
@@ -87,10 +84,10 @@ descs_to_fdir_32b(volatile union i40e_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
 {
 	/* 32B descriptors: Load 2nd half of descriptors for FDIR ID data */
 	uint64x2_t desc0_qw23, desc1_qw23, desc2_qw23, desc3_qw23;
-	desc0_qw23 = vld1q_u64((uint64_t *)&(rxdp + 0)->wb.qword2);
-	desc1_qw23 = vld1q_u64((uint64_t *)&(rxdp + 1)->wb.qword2);
-	desc2_qw23 = vld1q_u64((uint64_t *)&(rxdp + 2)->wb.qword2);
-	desc3_qw23 = vld1q_u64((uint64_t *)&(rxdp + 3)->wb.qword2);
+	desc0_qw23 = vld1q_u64(RTE_CAST_PTR(uint64_t *, &(rxdp + 0)->wb.qword2));
+	desc1_qw23 = vld1q_u64(RTE_CAST_PTR(uint64_t *, &(rxdp + 1)->wb.qword2));
+	desc2_qw23 = vld1q_u64(RTE_CAST_PTR(uint64_t *, &(rxdp + 2)->wb.qword2));
+	desc3_qw23 = vld1q_u64(RTE_CAST_PTR(uint64_t *, &(rxdp + 3)->wb.qword2));
 
 	/* FDIR ID data: move last u32 of each desc to 4 u32 lanes */
 	uint32x4_t v_unpack_02, v_unpack_13;
@@ -421,18 +418,18 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 		int32x4_t len_shl = {0, 0, 0, PKTLEN_SHIFT};
 
 		/* A.1 load desc[3-0] */
-		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
-		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
-		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
-		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
+		descs[3] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 3));
+		descs[2] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 2));
+		descs[1] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 1));
+		descs[0] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp));
 
 		/* Use acquire fence to order loads of descriptor qwords */
 		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* A.2 reload qword0 to make it ordered after qword1 load */
-		descs[3] = vld1q_lane_u64((uint64_t *)(rxdp + 3), descs[3], 0);
-		descs[2] = vld1q_lane_u64((uint64_t *)(rxdp + 2), descs[2], 0);
-		descs[1] = vld1q_lane_u64((uint64_t *)(rxdp + 1), descs[1], 0);
-		descs[0] = vld1q_lane_u64((uint64_t *)(rxdp), descs[0], 0);
+		descs[3] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp + 3), descs[3], 0);
+		descs[2] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp + 2), descs[2], 0);
+		descs[1] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp + 1), descs[1], 0);
+		descs[0] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp), descs[0], 0);
 
 		/* B.1 load 4 mbuf point */
 		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
@@ -662,7 +659,7 @@ vtx1(volatile struct i40e_tx_desc *txdp,
 			((uint64_t)pkt->data_len << I40E_TXD_QW1_TX_BUF_SZ_SHIFT));
 
 	uint64x2_t descriptor = {pkt->buf_iova + pkt->data_off, high_qw};
-	vst1q_u64((uint64_t *)txdp, descriptor);
+	vst1q_u64(RTE_CAST_PTR(uint64_t *, txdp), descriptor);
 }
 
 static inline void

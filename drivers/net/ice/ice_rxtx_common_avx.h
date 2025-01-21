@@ -7,10 +7,6 @@
 
 #include "ice_rxtx.h"
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 #ifdef __AVX2__
 static __rte_always_inline void
 ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
@@ -33,7 +29,7 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 			dma_addr0 = _mm_setzero_si128();
 			for (i = 0; i < ICE_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
-				_mm_store_si128((__m128i *)&rxdp[i].read,
+				_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i].read),
 						dma_addr0);
 			}
 		}
@@ -77,8 +73,8 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 		dma_addr1 = _mm_add_epi64(dma_addr1, hdr_room);
 
 		/* flush desc with pa dma_addr */
-		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr0);
-		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr1);
+		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->read), dma_addr0);
+		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->read), dma_addr1);
 	}
 #else
 #ifdef __AVX512VL__
@@ -157,8 +153,8 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 			dma_addr4_7 = _mm512_add_epi64(dma_addr4_7, hdr_room);
 
 			/* flush desc with pa dma_addr */
-			_mm512_store_si512((__m512i *)&rxdp->read, dma_addr0_3);
-			_mm512_store_si512((__m512i *)&(rxdp + 4)->read, dma_addr4_7);
+			_mm512_store_si512(RTE_CAST_PTR(__m512i *, &rxdp->read), dma_addr0_3);
+			_mm512_store_si512(RTE_CAST_PTR(__m512i *, &(rxdp + 4)->read), dma_addr4_7);
 		}
 	} else
 #endif /* __AVX512VL__ */
@@ -213,8 +209,8 @@ ice_rxq_rearm_common(struct ice_rx_queue *rxq, __rte_unused bool avx512)
 			dma_addr2_3 = _mm256_add_epi64(dma_addr2_3, hdr_room);
 
 			/* flush desc with pa dma_addr */
-			_mm256_store_si256((__m256i *)&rxdp->read, dma_addr0_1);
-			_mm256_store_si256((__m256i *)&(rxdp + 2)->read, dma_addr2_3);
+			_mm256_store_si256(RTE_CAST_PTR(__m256i *, &rxdp->read), dma_addr0_1);
+			_mm256_store_si256(RTE_CAST_PTR(__m256i *, &(rxdp + 2)->read), dma_addr2_3);
 		}
 	}
 

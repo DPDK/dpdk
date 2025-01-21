@@ -6,15 +6,6 @@
 #ifndef _AXGBE_RXTX_H_
 #define _AXGBE_RXTX_H_
 
-/* to suppress gcc warnings related to descriptor casting*/
-#ifdef RTE_TOOLCHAIN_GCC
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
-#ifdef RTE_TOOLCHAIN_CLANG
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 /* Descriptor related defines */
 #define AXGBE_MAX_RING_DESC		4096 /*should be power of 2*/
 #define AXGBE_TX_DESC_MIN_FREE		(AXGBE_MAX_RING_DESC >> 3)

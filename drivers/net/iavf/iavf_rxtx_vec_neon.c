@@ -36,7 +36,7 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 		    rxq->nb_rx_desc) {
 			for (i = 0; i < IAVF_VPMD_DESCS_PER_LOOP; i++) {
 				rxep[i] = &rxq->fake_mbuf;
-				vst1q_u64((uint64_t *)&rxdp[i].read, zero);
+				vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp[i].read), zero);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
@@ -53,11 +53,11 @@ iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 		dma_addr0 = vdupq_n_u64(paddr);
 
 		/* flush desc with pa dma_addr */
-		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr0);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr0);
 
 		paddr = mb1->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vdupq_n_u64(paddr);
-		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr1);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp++->read), dma_addr1);
 	}
 
 	rxq->rxrearm_start += IAVF_RXQ_REARM_THRESH;
@@ -269,18 +269,18 @@ _recv_raw_pkts_vec(struct iavf_rx_queue *__rte_restrict rxq,
 		int32x4_t len_shl = {0, 0, 0, PKTLEN_SHIFT};
 
 		/* A.1 load desc[3-0] */
-		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
-		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
-		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
-		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
+		descs[3] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 3));
+		descs[2] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 2));
+		descs[1] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp + 1));
+		descs[0] =  vld1q_u64(RTE_CAST_PTR(uint64_t *, rxdp));
 
 		/* Use acquire fence to order loads of descriptor qwords */
 		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* A.2 reload qword0 to make it ordered after qword1 load */
-		descs[3] = vld1q_lane_u64((uint64_t *)(rxdp + 3), descs[3], 0);
-		descs[2] = vld1q_lane_u64((uint64_t *)(rxdp + 2), descs[2], 0);
-		descs[1] = vld1q_lane_u64((uint64_t *)(rxdp + 1), descs[1], 0);
-		descs[0] = vld1q_lane_u64((uint64_t *)(rxdp), descs[0], 0);
+		descs[3] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp + 3), descs[3], 0);
+		descs[2] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp + 2), descs[2], 0);
+		descs[1] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp + 1), descs[1], 0);
+		descs[0] = vld1q_lane_u64(RTE_CAST_PTR(uint64_t *, rxdp), descs[0], 0);
 
 		/* B.1 load 4 mbuf point */
 		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);

@@ -14,10 +14,6 @@
 
 #include <rte_vect.h>
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 static inline void
 i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 {
@@ -41,7 +37,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 			dma_addr0 = _mm_setzero_si128();
 			for (i = 0; i < RTE_I40E_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
-				_mm_store_si128((__m128i *)&rxdp[i].read,
+				_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i].read),
 						dma_addr0);
 			}
 		}
@@ -72,8 +68,8 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		dma_addr1 = _mm_add_epi64(dma_addr1, hdr_room);
 
 		/* flush desc with pa dma_addr */
-		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr0);
-		_mm_store_si128((__m128i *)&rxdp++->read, dma_addr1);
+		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->read), dma_addr0);
+		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->read), dma_addr1);
 	}
 
 	rxq->rxrearm_start += RTE_I40E_RXQ_REARM_THRESH;
@@ -97,10 +93,10 @@ descs_to_fdir_32b(volatile union i40e_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
 {
 	/* 32B descriptors: Load 2nd half of descriptors for FDIR ID data */
 	__m128i desc0_qw23, desc1_qw23, desc2_qw23, desc3_qw23;
-	desc0_qw23 = _mm_loadu_si128((__m128i *)&(rxdp + 0)->wb.qword2);
-	desc1_qw23 = _mm_loadu_si128((__m128i *)&(rxdp + 1)->wb.qword2);
-	desc2_qw23 = _mm_loadu_si128((__m128i *)&(rxdp + 2)->wb.qword2);
-	desc3_qw23 = _mm_loadu_si128((__m128i *)&(rxdp + 3)->wb.qword2);
+	desc0_qw23 = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, &(rxdp + 0)->wb.qword2));
+	desc1_qw23 = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, &(rxdp + 1)->wb.qword2));
+	desc2_qw23 = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, &(rxdp + 2)->wb.qword2));
+	desc3_qw23 = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, &(rxdp + 3)->wb.qword2));
 
 	/* FDIR ID data: move last u32 of each desc to 4 u32 lanes */
 	__m128i v_unpack_01, v_unpack_23;
@@ -462,7 +458,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		mbp1 = _mm_loadu_si128((__m128i *)&sw_ring[pos]);
 		/* Read desc statuses backwards to avoid race condition */
 		/* A.1 load desc[3] */
-		descs[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
+		descs[3] = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, rxdp + 3));
 		rte_compiler_barrier();
 
 		/* B.2 copy 2 64 bit or 4 32 bit mbuf point into rx_pkts */
@@ -474,11 +470,11 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 #endif
 
 		/* A.1 load desc[2-0] */
-		descs[2] = _mm_loadu_si128((__m128i *)(rxdp + 2));
+		descs[2] = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, rxdp + 2));
 		rte_compiler_barrier();
-		descs[1] = _mm_loadu_si128((__m128i *)(rxdp + 1));
+		descs[1] = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, rxdp + 1));
 		rte_compiler_barrier();
-		descs[0] = _mm_loadu_si128((__m128i *)(rxdp));
+		descs[0] = _mm_loadu_si128(RTE_CAST_PTR(const __m128i *, rxdp));
 
 #if defined(RTE_ARCH_X86_64)
 		/* B.2 copy 2 mbuf point into rx_pkts  */
@@ -681,7 +677,7 @@ vtx1(volatile struct i40e_tx_desc *txdp,
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 				pkt->buf_iova + pkt->data_off);
-	_mm_store_si128((__m128i *)txdp, descriptor);
+	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
 }
 
 static inline void

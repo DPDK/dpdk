@@ -11,10 +11,6 @@
 #include "cpfl_ethdev.h"
 #include "cpfl_rxtx.h"
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 #define CPFL_SCALAR_PATH		0
 #define CPFL_VECTOR_PATH		1
 #define CPFL_RX_NO_VECTOR_FLAGS (		\

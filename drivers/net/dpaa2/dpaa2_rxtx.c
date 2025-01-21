@@ -1962,14 +1962,6 @@ skip_tx:
 	return num_tx;
 }
 
-#if defined(RTE_TOOLCHAIN_GCC)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#elif defined(RTE_TOOLCHAIN_CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-qual"
-#endif
-
 /* This function loopbacks all the received packets.*/
 uint16_t
 dpaa2_dev_loopback_rx(void *queue,
@@ -2083,7 +2075,7 @@ dpaa2_dev_loopback_rx(void *queue,
 			if (unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0))
 				continue;
 		}
-		fd[num_rx] = (struct qbman_fd *)qbman_result_DQ_fd(dq_storage);
+		fd[num_rx] = RTE_PTR_UNQUAL(qbman_result_DQ_fd(dq_storage));
 
 		dq_storage++;
 		num_rx++;
@@ -2118,8 +2110,3 @@ dpaa2_dev_loopback_rx(void *queue,
 
 	return 0;
 }
-#if defined(RTE_TOOLCHAIN_GCC)
-#pragma GCC diagnostic pop
-#elif defined(RTE_TOOLCHAIN_CLANG)
-#pragma clang diagnostic pop
-#endif

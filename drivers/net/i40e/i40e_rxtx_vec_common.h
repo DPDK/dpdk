@@ -11,10 +11,6 @@
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 static inline uint16_t
 reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 		   uint16_t nb_bufs, uint8_t *split_flags)

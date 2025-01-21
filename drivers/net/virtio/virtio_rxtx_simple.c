@@ -23,10 +23,6 @@
 
 #include "virtio_rxtx_simple.h"
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 int __rte_cold
 virtio_rxq_vec_setup(struct virtnet_rx *rxq)
 {

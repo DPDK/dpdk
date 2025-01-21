@@ -7,10 +7,6 @@
 
 #include <rte_vect.h>
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 #define ICE_DESCS_PER_LOOP_AVX 8
 
 static __rte_always_inline void
@@ -244,28 +240,28 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 
 		/* load in descriptors, in reverse order */
 		const __m128i raw_desc7 =
-			_mm_load_si128((void *)(rxdp + 7));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 7));
 		rte_compiler_barrier();
 		const __m128i raw_desc6 =
-			_mm_load_si128((void *)(rxdp + 6));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 6));
 		rte_compiler_barrier();
 		const __m128i raw_desc5 =
-			_mm_load_si128((void *)(rxdp + 5));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 5));
 		rte_compiler_barrier();
 		const __m128i raw_desc4 =
-			_mm_load_si128((void *)(rxdp + 4));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 4));
 		rte_compiler_barrier();
 		const __m128i raw_desc3 =
-			_mm_load_si128((void *)(rxdp + 3));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 3));
 		rte_compiler_barrier();
 		const __m128i raw_desc2 =
-			_mm_load_si128((void *)(rxdp + 2));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 2));
 		rte_compiler_barrier();
 		const __m128i raw_desc1 =
-			_mm_load_si128((void *)(rxdp + 1));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 1));
 		rte_compiler_barrier();
 		const __m128i raw_desc0 =
-			_mm_load_si128((void *)(rxdp + 0));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 0));
 
 		raw_desc6_7 =
 			_mm256_inserti128_si256
@@ -474,37 +470,29 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 			if (rxq->vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
 					RTE_ETH_RX_OFFLOAD_RSS_HASH) {
 				/* load bottom half of every 32B desc */
-				const __m128i raw_desc_bh7 =
-					_mm_load_si128
-						((void *)(&rxdp[7].wb.status_error1));
+				const __m128i raw_desc_bh7 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[7].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh6 =
-					_mm_load_si128
-						((void *)(&rxdp[6].wb.status_error1));
+				const __m128i raw_desc_bh6 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, rxdp[6].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh5 =
-					_mm_load_si128
-						((void *)(&rxdp[5].wb.status_error1));
+				const __m128i raw_desc_bh5 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[5].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh4 =
-					_mm_load_si128
-						((void *)(&rxdp[4].wb.status_error1));
+				const __m128i raw_desc_bh4 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[4].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh3 =
-					_mm_load_si128
-						((void *)(&rxdp[3].wb.status_error1));
+				const __m128i raw_desc_bh3 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[3].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh2 =
-					_mm_load_si128
-						((void *)(&rxdp[2].wb.status_error1));
+				const __m128i raw_desc_bh2 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[2].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh1 =
-					_mm_load_si128
-						((void *)(&rxdp[1].wb.status_error1));
+				const __m128i raw_desc_bh1 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[1].wb.status_error1));
 				rte_compiler_barrier();
-				const __m128i raw_desc_bh0 =
-					_mm_load_si128
-						((void *)(&rxdp[0].wb.status_error1));
+				const __m128i raw_desc_bh0 = _mm_load_si128
+					(RTE_CAST_PTR(const __m128i *, &rxdp[0].wb.status_error1));
 
 				__m256i raw_desc_bh6_7 =
 					_mm256_inserti128_si256
@@ -987,7 +975,7 @@ ice_vtx1(volatile struct ice_tx_desc *txdp,
 		ice_txd_enable_offload(pkt, &high_qw);
 
 	__m128i descriptor = _mm_set_epi64x(high_qw, rte_pktmbuf_iova(pkt));
-	_mm_store_si128((__m128i *)txdp, descriptor);
+	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
 }
 
 static __rte_always_inline void
@@ -1029,7 +1017,7 @@ ice_vtx(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkt,
 				 hi_qw2, rte_pktmbuf_iova(pkt[2]),
 				 hi_qw1, rte_pktmbuf_iova(pkt[1]),
 				 hi_qw0, rte_pktmbuf_iova(pkt[0]));
-		_mm512_storeu_si512((void *)txdp, desc0_3);
+		_mm512_storeu_si512(RTE_CAST_PTR(void *, txdp), desc0_3);
 	}
 
 	/* do any last ones */

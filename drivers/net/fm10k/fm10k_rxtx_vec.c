@@ -11,10 +11,6 @@
 
 #include <rte_vect.h>
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 static void
 fm10k_reset_tx_queue(struct fm10k_tx_queue *txq);
 
@@ -270,8 +266,7 @@ fm10k_rxq_rearm(struct fm10k_rx_queue *rxq)
 		/* Clean up all the HW/SW ring content */
 		for (i = 0; i < RTE_FM10K_RXQ_REARM_THRESH; i++) {
 			mb_alloc[i] = &rxq->fake_mbuf;
-			_mm_store_si128((__m128i *)&rxdp[i].q,
-						dma_addr0);
+			_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp[i].q), dma_addr0);
 		}
 
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
@@ -316,8 +311,8 @@ fm10k_rxq_rearm(struct fm10k_rx_queue *rxq)
 		dma_addr1 = _mm_and_si128(dma_addr1, hba_msk);
 
 		/* flush desc with pa dma_addr */
-		_mm_store_si128((__m128i *)&rxdp++->q, dma_addr0);
-		_mm_store_si128((__m128i *)&rxdp++->q, dma_addr1);
+		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->q), dma_addr0);
+		_mm_store_si128(RTE_CAST_PTR(__m128i *, &rxdp++->q), dma_addr1);
 
 		/* enforce 512B alignment on default Rx virtual addresses */
 		mb0->data_off = (uint16_t)(RTE_PTR_ALIGN((char *)mb0->buf_addr
@@ -465,7 +460,7 @@ fm10k_recv_raw_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		/* Read desc statuses backwards to avoid race condition */
 		/* A.1 load desc[3] */
-		descs0[3] = _mm_loadu_si128((__m128i *)(rxdp + 3));
+		descs0[3] = _mm_loadu_si128(RTE_CAST_PTR(__m128i *, rxdp + 3));
 		rte_compiler_barrier();
 
 		/* B.2 copy 2 64 bit or 4 32 bit mbuf point into rx_pkts */
@@ -477,11 +472,11 @@ fm10k_recv_raw_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 #endif
 
 		/* A.1 load desc[2-0] */
-		descs0[2] = _mm_loadu_si128((__m128i *)(rxdp + 2));
+		descs0[2] = _mm_loadu_si128(RTE_CAST_PTR(__m128i *, rxdp + 2));
 		rte_compiler_barrier();
-		descs0[1] = _mm_loadu_si128((__m128i *)(rxdp + 1));
+		descs0[1] = _mm_loadu_si128(RTE_CAST_PTR(__m128i *, rxdp + 1));
 		rte_compiler_barrier();
-		descs0[0] = _mm_loadu_si128((__m128i *)(rxdp));
+		descs0[0] = _mm_loadu_si128(RTE_CAST_PTR(__m128i *, rxdp));
 
 #if defined(RTE_ARCH_X86_64)
 		/* B.2 copy 2 mbuf point into rx_pkts  */
@@ -736,7 +731,7 @@ vtx1(volatile struct fm10k_tx_desc *txdp,
 	__m128i descriptor = _mm_set_epi64x(flags << 56 |
 			(uint64_t)pkt->vlan_tci << 16 | (uint64_t)pkt->data_len,
 			MBUF_DMA_ADDR(pkt));
-	_mm_store_si128((__m128i *)txdp, descriptor);
+	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
 }
 
 static inline void

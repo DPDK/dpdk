@@ -35,7 +35,7 @@ ngbe_rxq_rearm(struct ngbe_rx_queue *rxq)
 		    rxq->nb_rx_desc) {
 			for (i = 0; i < RTE_NGBE_DESCS_PER_LOOP; i++) {
 				rxep[i].mbuf = &rxq->fake_mbuf;
-				vst1q_u64((uint64_t *)(uintptr_t)&rxdp[i], zero);
+				vst1q_u64(RTE_CAST_PTR(uint64_t *, &rxdp[i]), zero);
 			}
 		}
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed +=
@@ -58,12 +58,12 @@ ngbe_rxq_rearm(struct ngbe_rx_queue *rxq)
 		paddr = mb0->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr0 = vsetq_lane_u64(paddr, zero, 0);
 		/* flush desc with pa dma_addr */
-		vst1q_u64((uint64_t *)(uintptr_t)rxdp++, dma_addr0);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, rxdp++), dma_addr0);
 
 		vst1_u8((uint8_t *)&mb1->rearm_data, p);
 		paddr = mb1->buf_iova + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vsetq_lane_u64(paddr, zero, 0);
-		vst1q_u64((uint64_t *)(uintptr_t)rxdp++, dma_addr1);
+		vst1q_u64(RTE_CAST_PTR(uint64_t *, rxdp++), dma_addr1);
 	}
 
 	rxq->rxrearm_start += RTE_NGBE_RXQ_REARM_THRESH;
@@ -484,7 +484,7 @@ vtx1(volatile struct ngbe_tx_desc *txdp,
 	uint64x2_t descriptor = {pkt->buf_iova + pkt->data_off,
 				(uint64_t)pkt_len << 45 | flags | pkt_len};
 
-	vst1q_u64((uint64_t *)(uintptr_t)txdp, descriptor);
+	vst1q_u64(RTE_CAST_PTR(uint64_t *, txdp), descriptor);
 }
 
 static inline void

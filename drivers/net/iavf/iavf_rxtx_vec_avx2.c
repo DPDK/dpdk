@@ -6,10 +6,6 @@
 
 #include <rte_vect.h>
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 static __rte_always_inline void
 iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 {
@@ -193,21 +189,21 @@ _iavf_recv_raw_pkts_vec_avx2(struct iavf_rx_queue *rxq,
 			 _mm256_loadu_si256((void *)&sw_ring[i + 4]));
 #endif
 
-		const __m128i raw_desc7 = _mm_load_si128((void *)(rxdp + 7));
+		const __m128i raw_desc7 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 7));
 		rte_compiler_barrier();
-		const __m128i raw_desc6 = _mm_load_si128((void *)(rxdp + 6));
+		const __m128i raw_desc6 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 6));
 		rte_compiler_barrier();
-		const __m128i raw_desc5 = _mm_load_si128((void *)(rxdp + 5));
+		const __m128i raw_desc5 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 5));
 		rte_compiler_barrier();
-		const __m128i raw_desc4 = _mm_load_si128((void *)(rxdp + 4));
+		const __m128i raw_desc4 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 4));
 		rte_compiler_barrier();
-		const __m128i raw_desc3 = _mm_load_si128((void *)(rxdp + 3));
+		const __m128i raw_desc3 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 3));
 		rte_compiler_barrier();
-		const __m128i raw_desc2 = _mm_load_si128((void *)(rxdp + 2));
+		const __m128i raw_desc2 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 2));
 		rte_compiler_barrier();
-		const __m128i raw_desc1 = _mm_load_si128((void *)(rxdp + 1));
+		const __m128i raw_desc1 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 1));
 		rte_compiler_barrier();
-		const __m128i raw_desc0 = _mm_load_si128((void *)(rxdp + 0));
+		const __m128i raw_desc0 = _mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 0));
 
 		const __m256i raw_desc6_7 =
 			_mm256_inserti128_si256(_mm256_castsi128_si256(raw_desc6), raw_desc7, 1);
@@ -509,7 +505,7 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 			0, rxq->mbuf_initializer);
 	struct rte_mbuf **sw_ring = &rxq->sw_ring[rxq->rx_tail];
 	volatile union iavf_rx_flex_desc *rxdp =
-		(union iavf_rx_flex_desc *)rxq->rx_ring + rxq->rx_tail;
+		(volatile union iavf_rx_flex_desc *)rxq->rx_ring + rxq->rx_tail;
 
 	rte_prefetch0(rxdp);
 
@@ -743,28 +739,28 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 		__m256i raw_desc0_1, raw_desc2_3, raw_desc4_5, raw_desc6_7;
 
 		const __m128i raw_desc7 =
-			_mm_load_si128((void *)(rxdp + 7));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 7));
 		rte_compiler_barrier();
 		const __m128i raw_desc6 =
-			_mm_load_si128((void *)(rxdp + 6));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 6));
 		rte_compiler_barrier();
 		const __m128i raw_desc5 =
-			_mm_load_si128((void *)(rxdp + 5));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 5));
 		rte_compiler_barrier();
 		const __m128i raw_desc4 =
-			_mm_load_si128((void *)(rxdp + 4));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 4));
 		rte_compiler_barrier();
 		const __m128i raw_desc3 =
-			_mm_load_si128((void *)(rxdp + 3));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 3));
 		rte_compiler_barrier();
 		const __m128i raw_desc2 =
-			_mm_load_si128((void *)(rxdp + 2));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 2));
 		rte_compiler_barrier();
 		const __m128i raw_desc1 =
-			_mm_load_si128((void *)(rxdp + 1));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 1));
 		rte_compiler_barrier();
 		const __m128i raw_desc0 =
-			_mm_load_si128((void *)(rxdp + 0));
+			_mm_load_si128(RTE_CAST_PTR(const __m128i *, rxdp + 0));
 
 		raw_desc6_7 =
 			_mm256_inserti128_si256
@@ -961,35 +957,35 @@ _iavf_recv_raw_pkts_vec_avx2_flex_rxd(struct iavf_rx_queue *rxq,
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 =
 					_mm_load_si128
-						((void *)(&rxdp[7].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[7].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh6 =
 					_mm_load_si128
-						((void *)(&rxdp[6].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[6].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh5 =
 					_mm_load_si128
-						((void *)(&rxdp[5].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[5].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh4 =
 					_mm_load_si128
-						((void *)(&rxdp[4].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[4].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh3 =
 					_mm_load_si128
-						((void *)(&rxdp[3].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[3].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh2 =
 					_mm_load_si128
-						((void *)(&rxdp[2].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[2].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh1 =
 					_mm_load_si128
-						((void *)(&rxdp[1].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[1].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh0 =
 					_mm_load_si128
-						((void *)(&rxdp[0].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[0].wb.status_error1));
 
 				__m256i raw_desc_bh6_7 =
 					_mm256_inserti128_si256
@@ -1664,7 +1660,7 @@ iavf_vtx1(volatile struct iavf_tx_desc *txdp,
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 				pkt->buf_iova + pkt->data_off);
-	_mm_store_si128((__m128i *)txdp, descriptor);
+	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
 }
 
 static __rte_always_inline void
@@ -1719,8 +1715,8 @@ iavf_vtx(volatile struct iavf_tx_desc *txdp,
 				 pkt[1]->buf_iova + pkt[1]->data_off,
 				 hi_qw0,
 				 pkt[0]->buf_iova + pkt[0]->data_off);
-		_mm256_store_si256((void *)(txdp + 2), desc2_3);
-		_mm256_store_si256((void *)txdp, desc0_1);
+		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp + 2), desc2_3);
+		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp), desc0_1);
 	}
 
 	/* do any last ones */
