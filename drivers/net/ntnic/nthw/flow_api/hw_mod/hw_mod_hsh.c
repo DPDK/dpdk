@@ -221,7 +221,7 @@ static int hw_mod_hsh_rcp_mod(struct flow_api_backend_s *be, enum hw_hsh_e field
 			break;
 
 		case HW_HSH_RCP_WORD_MASK:
-			if (word_off > HSH_RCP_WORD_MASK_SIZE) {
+			if (word_off >= HSH_RCP_WORD_MASK_SIZE) {
 				WORD_OFF_TOO_LARGE_LOG;
 				return WORD_OFF_TOO_LARGE;
 			}
