@@ -406,6 +406,40 @@ static inline void zxdh_enqueue_xmit_packed(struct zxdh_virtnet_tx *txvq,
 	zxdh_queue_store_flags_packed(head_dp, head_flags, vq->hw->weak_barriers);
 }
 
+static void
+zxdh_update_packet_stats(struct zxdh_virtnet_stats *stats, struct rte_mbuf *mbuf)
+{
+	uint32_t s = mbuf->pkt_len;
+	struct rte_ether_addr *ea = NULL;
+
+	stats->bytes += s;
+
+	if (s == 64) {
+		stats->size_bins[1]++;
+	} else if (s > 64 && s < 1024) {
+		uint32_t bin;
+
+		/* count zeros, and offset into correct bin */
+		bin = (sizeof(s) * 8) - rte_clz32(s) - 5;
+		stats->size_bins[bin]++;
+	} else {
+		if (s < 64)
+			stats->size_bins[0]++;
+		else if (s < 1519)
+			stats->size_bins[6]++;
+		else
+			stats->size_bins[7]++;
+	}
+
+	ea = rte_pktmbuf_mtod(mbuf, struct rte_ether_addr *);
+	if (rte_is_multicast_ether_addr(ea)) {
+		if (rte_is_broadcast_ether_addr(ea))
+			stats->broadcast++;
+		else
+			stats->multicast++;
+	}
+}
+
 uint16_t
 zxdh_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -459,12 +493,19 @@ zxdh_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 				break;
 			}
 		}
+		if (txm->nb_segs > ZXDH_TX_MAX_SEGS) {
+			PMD_TX_LOG(ERR, "%d segs  dropped", txm->nb_segs);
+			txvq->stats.truncated_err += nb_pkts - nb_tx;
+			break;
+		}
 		/* Enqueue Packet buffers */
 		if (can_push)
 			zxdh_enqueue_xmit_packed_fast(txvq, txm, in_order);
 		else
 			zxdh_enqueue_xmit_packed(txvq, txm, slots, use_indirect, in_order);
+		zxdh_update_packet_stats(&txvq->stats, txm);
 	}
+	txvq->stats.packets += nb_tx;
 	if (likely(nb_tx)) {
 		if (unlikely(zxdh_queue_kick_prepare_packed(vq))) {
 			zxdh_queue_notify(vq);
@@ -474,9 +515,10 @@ zxdh_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 	return nb_tx;
 }
 
-uint16_t zxdh_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **tx_pkts,
+uint16_t zxdh_xmit_pkts_prepare(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts)
 {
+	struct zxdh_virtnet_tx *txvq = tx_queue;
 	uint16_t nb_tx;
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
@@ -494,6 +536,12 @@ uint16_t zxdh_xmit_pkts_prepare(void *tx_queue __rte_unused, struct rte_mbuf **t
 		error = rte_net_intel_cksum_prepare(m);
 		if (unlikely(error)) {
 			rte_errno = -error;
+			break;
+		}
+		if (m->nb_segs > ZXDH_TX_MAX_SEGS) {
+			PMD_TX_LOG(ERR, "%d segs dropped", m->nb_segs);
+			txvq->stats.truncated_err += nb_pkts - nb_tx;
+			rte_errno = ENOMEM;
 			break;
 		}
 	}
@@ -571,7 +619,7 @@ static int32_t zxdh_rx_update_mbuf(struct rte_mbuf *m, struct zxdh_net_hdr_ul *h
 	return 0;
 }
 
-static inline void zxdh_discard_rxbuf(struct zxdh_virtqueue *vq, struct rte_mbuf *m)
+static void zxdh_discard_rxbuf(struct zxdh_virtqueue *vq, struct rte_mbuf *m)
 {
 	int32_t error = 0;
 	/*
@@ -613,7 +661,13 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	for (i = 0; i < num; i++) {
 		rxm = rcv_pkts[i];
-
+		if (unlikely(len[i] < ZXDH_UL_NET_HDR_SIZE)) {
+			nb_enqueued++;
+			PMD_RX_LOG(ERR, "RX, len:%u err", len[i]);
+			zxdh_discard_rxbuf(vq, rxm);
+			rxvq->stats.errors++;
+			continue;
+		}
 		struct zxdh_net_hdr_ul *header =
 			(struct zxdh_net_hdr_ul *)((char *)rxm->buf_addr +
 			RTE_PKTMBUF_HEADROOM);
@@ -623,8 +677,22 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 			PMD_RX_LOG(ERR, "dequeue %d pkt, No.%d pkt seg_num is %d", num, i, seg_num);
 			seg_num = 1;
 		}
+		if (seg_num > ZXDH_RX_MAX_SEGS) {
+			PMD_RX_LOG(ERR, "dequeue %d pkt, No.%d pkt seg_num is %d", num, i, seg_num);
+			nb_enqueued++;
+			zxdh_discard_rxbuf(vq, rxm);
+			rxvq->stats.errors++;
+			continue;
+		}
 		/* bit[0:6]-pd_len unit:2B */
 		uint16_t pd_len = header->type_hdr.pd_len << 1;
+		if (pd_len > ZXDH_PD_HDR_SIZE_MAX || pd_len < ZXDH_PD_HDR_SIZE_MIN) {
+			PMD_RX_LOG(ERR, "pd_len:%d is invalid", pd_len);
+			nb_enqueued++;
+			zxdh_discard_rxbuf(vq, rxm);
+			rxvq->stats.errors++;
+			continue;
+		}
 		/* Private queue only handle type hdr */
 		hdr_size = pd_len;
 		rxm->data_off = RTE_PKTMBUF_HEADROOM + hdr_size;
@@ -639,6 +707,7 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* Update rte_mbuf according to pi/pd header */
 		if (zxdh_rx_update_mbuf(rxm, header) < 0) {
 			zxdh_discard_rxbuf(vq, rxm);
+			rxvq->stats.errors++;
 			continue;
 		}
 		seg_res = seg_num - 1;
@@ -661,8 +730,11 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d.",
 					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
 				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
+				rxvq->stats.errors++;
+				rxvq->stats.truncated_err++;
 				continue;
 			}
+			zxdh_update_packet_stats(&rxvq->stats, rx_pkts[nb_rx]);
 			nb_rx++;
 		}
 	}
@@ -675,6 +747,7 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (unlikely(rcv_cnt == 0)) {
 			PMD_RX_LOG(ERR, "No enough segments for packet.");
 			rte_pktmbuf_free(rx_pkts[nb_rx]);
+			rxvq->stats.errors++;
 			break;
 		}
 		while (extra_idx < rcv_cnt) {
@@ -694,11 +767,15 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d.",
 					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
 				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
+				rxvq->stats.errors++;
+				rxvq->stats.truncated_err++;
 				continue;
 			}
+			zxdh_update_packet_stats(&rxvq->stats, rx_pkts[nb_rx]);
 			nb_rx++;
 		}
 	}
+	rxvq->stats.packets += nb_rx;
 
 	/* Allocate new mbuf for the used descriptor */
 	if (likely(!zxdh_queue_full(vq))) {

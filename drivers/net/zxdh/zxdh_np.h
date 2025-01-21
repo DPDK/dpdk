@@ -432,6 +432,18 @@ typedef enum zxdh_sdt_table_type_e {
 	ZXDH_SDT_TBLT_MAX     = 7,
 } ZXDH_SDT_TABLE_TYPE_E;
 
+typedef enum zxdh_dtb_dir_type_e {
+	ZXDH_DTB_DIR_DOWN_TYPE    = 0,
+	ZXDH_DTB_DIR_UP_TYPE    = 1,
+	ZXDH_DTB_DIR_TYPE_MAX,
+} ZXDH_DTB_DIR_TYPE_E;
+
+typedef enum zxdh_dtb_tab_up_user_addr_type_e {
+	ZXDH_DTB_TAB_UP_NOUSER_ADDR_TYPE     = 0,
+	ZXDH_DTB_TAB_UP_USER_ADDR_TYPE       = 1,
+	ZXDH_DTB_TAB_UP_USER_ADDR_TYPE_MAX,
+} ZXDH_DTB_TAB_UP_USER_ADDR_TYPE_E;
+
 typedef struct zxdh_dtb_lpm_entry_t {
 	uint32_t dtb_len0;
 	uint8_t *p_data_buff0;
@@ -537,6 +549,19 @@ typedef struct zxdh_dtb_hash_entry_info_t {
 	uint8_t *p_rst;
 } ZXDH_DTB_HASH_ENTRY_INFO_T;
 
+typedef struct zxdh_ppu_stat_cfg_t {
+	uint32_t eram_baddr;
+	uint32_t eram_depth;
+	uint32_t ddr_base_addr;
+	uint32_t ppu_addr_offset;
+} ZXDH_PPU_STAT_CFG_T;
+
+typedef enum zxdh_stat_cnt_mode_e {
+	ZXDH_STAT_64_MODE  = 0,
+	ZXDH_STAT_128_MODE = 1,
+	ZXDH_STAT_MAX_MODE,
+} ZXDH_STAT_CNT_MODE_E;
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 int zxdh_np_dtb_table_entry_write(uint32_t dev_id, uint32_t queue_id,
@@ -545,5 +570,10 @@ int zxdh_np_dtb_table_entry_delete(uint32_t dev_id, uint32_t queue_id,
 			 uint32_t entrynum, ZXDH_DTB_USER_ENTRY_T *delete_entries);
 int zxdh_np_dtb_table_entry_get(uint32_t dev_id, uint32_t queue_id,
 			ZXDH_DTB_USER_ENTRY_T *get_entry, uint32_t srh_mode);
+int zxdh_np_dtb_stats_get(uint32_t dev_id,
+			uint32_t queue_id,
+			ZXDH_STAT_CNT_MODE_E rd_mode,
+			uint32_t index,
+			uint32_t *p_data);
 
 #endif /* ZXDH_NP_H */

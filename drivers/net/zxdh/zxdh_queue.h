@@ -53,6 +53,8 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 #define ZXDH_PI_HDR_SIZE          sizeof(struct zxdh_pi_hdr)
 #define ZXDH_DL_NET_HDR_SIZE      sizeof(struct zxdh_net_hdr_dl)
 #define ZXDH_UL_NET_HDR_SIZE      sizeof(struct zxdh_net_hdr_ul)
+#define ZXDH_PD_HDR_SIZE_MAX              256
+#define ZXDH_PD_HDR_SIZE_MIN              ZXDH_TYPE_HDR_SIZE
 
 /*
  * ring descriptors: 16 bytes.
