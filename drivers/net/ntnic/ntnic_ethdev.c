@@ -140,7 +140,7 @@ store_pdrv(struct drv_s *p_drv)
 
 static void clear_pdrv(struct drv_s *p_drv)
 {
-	if (p_drv->adapter_no > NUM_ADAPTER_MAX)
+	if (p_drv->adapter_no >= NUM_ADAPTER_MAX)
 		return;
 
 	rte_spinlock_lock(&hwlock);
