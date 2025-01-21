@@ -405,7 +405,7 @@ static int _port_init(adapter_info_t *drv, nthw_fpga_t *fpga, int port)
 	_reset_rx(drv, mac_pcs);
 
 	/* 2.2) Nt4gaPort::setup() */
-	if (nthw_gmf_init(NULL, fpga, port) == 0) {
+	if (fpga && nthw_gmf_init(NULL, fpga, port) == 0) {
 		nthw_gmf_t gmf;
 
 		if (nthw_gmf_init(&gmf, fpga, port) == 0)
