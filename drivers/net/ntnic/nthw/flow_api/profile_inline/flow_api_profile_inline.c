@@ -479,13 +479,16 @@ static void flm_mtr_read_inf_records(struct flow_eth_dev *dev, uint32_t *data, u
 				struct flow_handle *fh = (struct flow_handle *)flm_h.p;
 				struct flm_age_event_s age_event;
 				uint8_t port;
+				bool is_remote;
 
 				age_event.context = fh->context;
 
-				is_remote_caller(caller_id, &port);
+				is_remote = is_remote_caller(caller_id, &port);
 
 				flm_age_queue_put(caller_id, &age_event);
-				flm_age_event_set(port);
+				/* age events are supported only for physical ports */
+				if (!is_remote)
+					flm_age_event_set(port);
 			}
 			break;
 
