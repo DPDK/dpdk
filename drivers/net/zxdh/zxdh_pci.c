@@ -254,7 +254,7 @@ zxdh_pci_get_features(struct zxdh_hw *hw)
 void
 zxdh_pci_reset(struct zxdh_hw *hw)
 {
-	PMD_DRV_LOG(INFO, "port %u device start reset, just wait...", hw->port_id);
+	PMD_DRV_LOG(INFO, "port %u device start reset, just wait", hw->port_id);
 	uint32_t retry = 0;
 
 	ZXDH_VTPCI_OPS(hw)->set_status(hw, ZXDH_CONFIG_STATUS_RESET);
@@ -379,7 +379,7 @@ next:
 	}
 	if (hw->common_cfg == NULL || hw->notify_base == NULL ||
 		hw->dev_cfg == NULL || hw->isr == NULL) {
-		PMD_DRV_LOG(ERR, "no zxdh pci device found.");
+		PMD_DRV_LOG(ERR, "no zxdh pci device found");
 		return -1;
 	}
 	return 0;

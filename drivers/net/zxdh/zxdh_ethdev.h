@@ -65,7 +65,6 @@ struct zxdh_hw {
 	struct rte_intr_handle *dtb_intr;
 	struct zxdh_virtqueue **vqs;
 	struct zxdh_chnl_context channel_context[ZXDH_QUEUES_NUM_MAX];
-	union zxdh_virport_num vport;
 
 	uint64_t bar_addr[ZXDH_NUM_BARS];
 	uint64_t host_features;
@@ -74,7 +73,7 @@ struct zxdh_hw {
 	uint32_t speed;
 	uint32_t speed_mode;
 	uint32_t notify_off_multiplier;
-	uint16_t *notify_base;
+	union zxdh_virport_num vport;
 	uint16_t pcie_id;
 	uint16_t device_id;
 	uint16_t port_id;
@@ -82,14 +81,16 @@ struct zxdh_hw {
 	uint16_t queue_num;
 	uint16_t mc_num;
 	uint16_t uc_num;
-	uint16_t *rss_reta;
 
+	uint16_t *rss_reta;
+	uint16_t *notify_base;
 	uint8_t *isr;
+
 	uint8_t weak_barriers;
 	uint8_t intr_enabled;
-	uint8_t use_msix;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
 
+	uint8_t use_msix;
 	uint8_t duplex;
 	uint8_t is_pf;
 	uint8_t msg_chan_init;
@@ -103,6 +104,7 @@ struct zxdh_hw {
 	uint8_t allmulti_status;
 	uint8_t rss_enable;
 	uint8_t rss_init;
+	uint8_t rsv[2];
 };
 
 struct zxdh_dtb_shared_data {

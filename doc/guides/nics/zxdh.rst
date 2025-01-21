@@ -33,6 +33,8 @@ Features of the ZXDH PMD are:
 - QINQ stripping and inserting
 - Receive Side Scaling (RSS)
 - Port hardware statistics
+- MTU update
+- Jumbo frames
 
 
 Driver compilation and testing

@@ -64,6 +64,10 @@ zxdh_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->reta_size = RTE_ETH_RSS_RETA_SIZE_256;
 	dev_info->flow_type_rss_offloads = ZXDH_RSS_HF;
 
+	dev_info->max_mtu = ZXDH_MAX_RX_PKTLEN - RTE_ETHER_HDR_LEN -
+		RTE_VLAN_HLEN - ZXDH_DL_NET_HDR_SIZE;
+	dev_info->min_mtu = ZXDH_ETHER_MIN_MTU;
+
 	dev_info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_MULTI_SEGS);
 	dev_info->tx_offload_capa |= (RTE_ETH_TX_OFFLOAD_TCP_TSO |
 					RTE_ETH_TX_OFFLOAD_UDP_TSO);
@@ -256,7 +260,7 @@ zxdh_setup_risc_interrupts(struct rte_eth_dev *dev)
 	uint8_t i;
 
 	if (!hw->risc_intr) {
-		PMD_DRV_LOG(ERR, " to allocate risc_intr");
+		PMD_DRV_LOG(ERR, "to allocate risc_intr");
 		hw->risc_intr = rte_zmalloc("risc_intr",
 			ZXDH_MSIX_INTR_MSG_VEC_NUM * sizeof(struct rte_intr_handle), 0);
 		if (hw->risc_intr == NULL) {
@@ -822,7 +826,7 @@ zxdh_rss_qid_config(struct rte_eth_dev *dev)
 		attr_msg->value = hw->channel_context[0].ph_chno & 0xfff;
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d ",
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
 					hw->vport.vport, ZXDH_PORT_BASE_QID_FLAG);
 			return ret;
 		}
@@ -888,7 +892,7 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 	if (nr_vq == hw->queue_num)
 		goto end;
 
-	PMD_DRV_LOG(DEBUG, "queue changed need reset ");
+	PMD_DRV_LOG(DEBUG, "queue changed need reset");
 	/* Reset the device although not necessary at startup */
 	zxdh_pci_reset(hw);
 
@@ -1031,13 +1035,13 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 
 	ret = zxdh_dev_stop(dev);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, " stop port %s failed.", dev->device->name);
+		PMD_DRV_LOG(ERR, "stop port %s failed.", dev->device->name);
 		return -1;
 	}
 
 	ret = zxdh_tables_uninit(dev);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "%s :tables uninit %s failed ", __func__, dev->device->name);
+		PMD_DRV_LOG(ERR, "%s :tables uninit %s failed", __func__, dev->device->name);
 		return -1;
 	}
 
@@ -1064,11 +1068,11 @@ zxdh_set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 	struct zxdh_hw *hw = eth_dev->data->dev_private;
 
 	if (!zxdh_pci_packed_queue(hw)) {
-		PMD_DRV_LOG(ERR, " port %u not support packed queue", eth_dev->data->port_id);
+		PMD_DRV_LOG(ERR, "port %u not support packed queue", eth_dev->data->port_id);
 		return -1;
 	}
 	if (!zxdh_pci_with_feature(hw, ZXDH_NET_F_MRG_RXBUF)) {
-		PMD_DRV_LOG(ERR, " port %u not support rx mergeable", eth_dev->data->port_id);
+		PMD_DRV_LOG(ERR, "port %u not support rx mergeable", eth_dev->data->port_id);
 		return -1;
 	}
 	eth_dev->tx_pkt_prepare = zxdh_xmit_pkts_prepare;
@@ -1135,7 +1139,7 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 
 	ret = zxdh_mac_config(hw->eth_dev);
 	if (ret)
-		PMD_DRV_LOG(ERR, " mac config failed");
+		PMD_DRV_LOG(ERR, "mac config failed");
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -1174,6 +1178,7 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.rss_hash_conf_get		 = zxdh_rss_hash_conf_get,
 	.stats_get				 = zxdh_dev_stats_get,
 	.stats_reset			 = zxdh_dev_stats_reset,
+	.mtu_set				 = zxdh_dev_mtu_set,
 };
 
 static int32_t
@@ -1185,7 +1190,7 @@ zxdh_init_device(struct rte_eth_dev *eth_dev)
 
 	ret = zxdh_read_pci_caps(pci_dev, hw);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "port 0x%x pci caps read failed .", hw->port_id);
+		PMD_DRV_LOG(ERR, "port 0x%x pci caps read failed", hw->port_id);
 		goto err;
 	}
 
@@ -1398,14 +1403,14 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 	if (hw->is_pf) {
 		ret = zxdh_np_dtb_res_init(eth_dev);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "np dtb init failed, ret:%d ", ret);
+			PMD_DRV_LOG(ERR, "np dtb init failed, ret:%d", ret);
 			return ret;
 		}
 	}
 	if (zxdh_shared_data != NULL)
 		zxdh_shared_data->np_init_done = 1;
 
-	PMD_DRV_LOG(DEBUG, "np init ok ");
+	PMD_DRV_LOG(DEBUG, "np init ok");
 	return 0;
 }
 
@@ -1422,7 +1427,7 @@ zxdh_tables_init(struct rte_eth_dev *dev)
 
 	ret = zxdh_panel_table_init(dev);
 	if (ret) {
-		PMD_DRV_LOG(ERR, " panel table init failed");
+		PMD_DRV_LOG(ERR, "panel table init failed");
 		return ret;
 	}
 
@@ -1434,7 +1439,7 @@ zxdh_tables_init(struct rte_eth_dev *dev)
 
 	ret = zxdh_vlan_filter_table_init(dev);
 	if (ret) {
-		PMD_DRV_LOG(ERR, " vlan filter table init failed");
+		PMD_DRV_LOG(ERR, "vlan filter table init failed");
 		return ret;
 	}
 
@@ -1462,7 +1467,7 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 	memset(hw, 0, sizeof(*hw));
 	hw->bar_addr[0] = (uint64_t)pci_dev->mem_resource[0].addr;
 	if (hw->bar_addr[0] == 0) {
-		PMD_DRV_LOG(ERR, "Bad mem resource.");
+		PMD_DRV_LOG(ERR, "Bad mem resource");
 		return -EIO;
 	}
 

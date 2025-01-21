@@ -150,6 +150,48 @@ int zxdh_panel_table_init(struct rte_eth_dev *dev)
 	return ret;
 }
 
+int zxdh_get_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint8_t index_phy_port = hw->phyport;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T panel_entry = {
+		.index = index_phy_port,
+		.p_data = (uint32_t *)panel_attr
+	};
+	ZXDH_DTB_USER_ENTRY_T entry = {
+		.sdt_no = ZXDH_SDT_PANEL_ATT_TABLE,
+		.p_entry_data = (void *)&panel_entry
+	};
+	int ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO, g_dtb_data.queueid, &entry, 1);
+
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "get panel table failed");
+
+	return ret;
+}
+
+int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint8_t index_phy_port = hw->phyport;
+
+	ZXDH_DTB_ERAM_ENTRY_INFO_T panel_entry = {
+		.index = index_phy_port,
+		.p_data = (uint32_t *)panel_attr
+	};
+	ZXDH_DTB_USER_ENTRY_T entry = {
+		.sdt_no = ZXDH_SDT_PANEL_ATT_TABLE,
+		.p_entry_data = (void *)&panel_entry
+	};
+	int ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO, g_dtb_data.queueid, 1, &entry);
+
+	if (ret)
+		PMD_DRV_LOG(ERR, "Insert panel table failed");
+
+	return ret;
+}
+
 int
 zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
 {
@@ -160,7 +202,7 @@ zxdh_get_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
 
 	ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO, g_dtb_data.queueid, &user_entry_get, 1);
 	if (ret != 0)
-		PMD_DRV_LOG(ERR, "get port_attr vfid:%d failed, ret:%d ", vfid, ret);
+		PMD_DRV_LOG(ERR, "get port_attr vfid:%d failed, ret:%d", vfid, ret);
 
 	return ret;
 }
@@ -529,7 +571,7 @@ zxdh_dev_unicast_table_set(struct zxdh_hw *hw, uint16_t vport, bool enable)
 
 	ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO, g_dtb_data.queueid, 1, &entry);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d",  hw->vfid);
+		PMD_DRV_LOG(ERR, "unicast_table_set_failed:%d", hw->vfid);
 		return -ret;
 	}
 	return 0;

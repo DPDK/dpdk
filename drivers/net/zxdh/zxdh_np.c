@@ -188,7 +188,7 @@ static uint32_t
 zxdh_np_dev_init(void)
 {
 	if (g_dev_mgr.is_init) {
-		PMD_DRV_LOG(ERR, "Dev is already initialized.");
+		PMD_DRV_LOG(ERR, "Dev is already initialized");
 		return 0;
 	}
 
@@ -209,14 +209,14 @@ zxdh_np_dev_add(uint32_t  dev_id, ZXDH_DEV_TYPE_E dev_type,
 
 	p_dev_mgr = &g_dev_mgr;
 	if (!p_dev_mgr->is_init) {
-		PMD_DRV_LOG(ERR, "ErrorCode[ 0x%x]: Device Manager is not init!!!",
+		PMD_DRV_LOG(ERR, "ErrorCode[ 0x%x]: Device Manager is not init",
 								 ZXDH_RC_DEV_MGR_NOT_INIT);
 		return ZXDH_RC_DEV_MGR_NOT_INIT;
 	}
 
 	if (p_dev_mgr->p_dev_array[dev_id] != NULL) {
 		/* device is already exist. */
-		PMD_DRV_LOG(ERR, "Device is added again!!!");
+		PMD_DRV_LOG(ERR, "Device is added again");
 		p_dev_info = p_dev_mgr->p_dev_array[dev_id];
 	} else {
 		/* device is new. */
@@ -907,7 +907,7 @@ zxdh_np_online_uninit(uint32_t dev_id,
 	rc = zxdh_np_dtb_queue_release(dev_id, port_name, queue_id);
 	if (rc != 0)
 		PMD_DRV_LOG(ERR, "%s:dtb release error,"
-			"port name %s queue id %d. ", __func__, port_name, queue_id);
+			"port name %s queue id %d", __func__, port_name, queue_id);
 
 	zxdh_np_dtb_mgr_destroy(dev_id);
 	zxdh_np_tlb_mgr_destroy(dev_id);
@@ -1030,14 +1030,14 @@ zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 	case ZXDH_ERAM128_OPR_128b:
 	{
 		if ((0xFFFFFFFF - (base_addr)) < (index)) {
-			PMD_DRV_LOG(ERR,  "ICM %s:%d[Error:VALUE[val0=0x%x]"
-				"INVALID] [val1=0x%x] ! FUNCTION :%s !", __FILE__, __LINE__,
+			PMD_DRV_LOG(ERR, "ICM %s:%d[Error:VALUE[val0=0x%x]"
+				"INVALID] [val1=0x%x] FUNCTION :%s", __FILE__, __LINE__,
 				base_addr, index, __func__);
 
 			return ZXDH_PAR_CHK_INVALID_INDEX;
 		}
 		if (base_addr + index > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
-			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range !");
+			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range");
 			return 1;
 		}
 		temp_idx = index << 7;
@@ -1047,7 +1047,7 @@ zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 	case ZXDH_ERAM128_OPR_64b:
 	{
 		if ((base_addr + (index >> 1)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
-			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range !");
+			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range");
 			return 1;
 		}
 		temp_idx = index << 6;
@@ -1057,7 +1057,7 @@ zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 	case ZXDH_ERAM128_OPR_1b:
 	{
 		if ((base_addr + (index >> 7)) > ZXDH_SE_SMMU0_ERAM_ADDR_NUM_TOTAL - 1) {
-			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range !");
+			PMD_DRV_LOG(ERR, "dpp_se_smmu0_ind_write : index out of range");
 			return 1;
 		}
 
@@ -1067,7 +1067,7 @@ zxdh_np_dtb_se_smmu0_ind_write(uint32_t dev_id,
 
 	dtb_ind_addr = ((base_addr << 7) & ZXDH_ERAM128_BADDR_MASK) + temp_idx;
 
-	PMD_DRV_LOG(INFO, " dtb eram item 1bit addr: 0x%x", dtb_ind_addr);
+	PMD_DRV_LOG(INFO, "dtb eram item 1bit addr: 0x%x", dtb_ind_addr);
 
 	rc = zxdh_np_dtb_smmu0_write_entry_data(dev_id,
 						  wrt_mode,
@@ -1314,7 +1314,7 @@ zxdh_np_dtb_tab_down_info_set(uint32_t dev_id,
 	uint32_t rc;
 
 	if (ZXDH_DTB_QUEUE_INIT_FLAG_GET(dev_id, queue_id) == 0) {
-		PMD_DRV_LOG(ERR, "dtb queue %d is not init.", queue_id);
+		PMD_DRV_LOG(ERR, "dtb queue %d is not init", queue_id);
 		return ZXDH_RC_DTB_QUEUE_IS_NOT_INIT;
 	}
 
@@ -1447,7 +1447,7 @@ zxdh_np_dtb_table_entry_write(uint32_t dev_id,
 		if (dtb_len > max_size) {
 			rte_free(p_data_buff);
 			rte_free(p_data_buff_ex);
-			PMD_DRV_LOG(ERR, " %s error dtb_len>%u!", __func__,
+			PMD_DRV_LOG(ERR, "%s error dtb_len>%u!", __func__,
 				max_size);
 			return ZXDH_RC_DTB_DOWN_LEN_INVALID;
 		}
@@ -1542,7 +1542,7 @@ zxdh_np_dtb_table_entry_delete(uint32_t dev_id,
 		if (dtb_len > max_size) {
 			rte_free(p_data_buff);
 			rte_free(p_data_buff_ex);
-			PMD_DRV_LOG(ERR, " %s error dtb_len>%u!", __func__,
+			PMD_DRV_LOG(ERR, "%s error dtb_len>%u!", __func__,
 				max_size);
 			return ZXDH_RC_DTB_DOWN_LEN_INVALID;
 		}
@@ -1620,7 +1620,7 @@ zxdh_np_soft_sdt_tbl_get(uint32_t dev_id, uint32_t sdt_no, void *p_sdt_info)
 
 	rc = zxdh_np_sdt_tbl_data_parser(sdt_tbl.data_high32, sdt_tbl.data_low32, p_sdt_info);
 	if (rc != 0)
-		PMD_DRV_LOG(ERR, "dpp sdt [%d] tbl_data_parser error.", sdt_no);
+		PMD_DRV_LOG(ERR, "dpp sdt [%d] tbl_data_parser error", sdt_no);
 
 	return rc;
 }
@@ -1763,7 +1763,7 @@ zxdh_np_dtb_tab_up_info_set(uint32_t dev_id,
 	}
 
 	if (ZXDH_DTB_QUEUE_INIT_FLAG_GET(dev_id, queue_id) == 0) {
-		PMD_DRV_LOG(ERR, "dtb queue %d is not init.", queue_id);
+		PMD_DRV_LOG(ERR, "dtb queue %d is not init", queue_id);
 		return ZXDH_RC_DTB_QUEUE_IS_NOT_INIT;
 	}
 
@@ -1829,7 +1829,7 @@ zxdh_np_dtb_tab_up_free_item_get(uint32_t dev_id,
 	uint32_t i;
 
 	if (ZXDH_DTB_QUEUE_INIT_FLAG_GET(dev_id, queue_id) == 0) {
-		PMD_DRV_LOG(ERR, "dtb queue %d is not init.", queue_id);
+		PMD_DRV_LOG(ERR, "dtb queue %d is not init", queue_id);
 		return ZXDH_RC_DTB_QUEUE_IS_NOT_INIT;
 	}
 
@@ -1874,7 +1874,7 @@ zxdh_np_dtb_tab_up_item_addr_get(uint32_t dev_id,
 	uint64_t addr;
 
 	if (ZXDH_DTB_QUEUE_INIT_FLAG_GET(dev_id, queue_id) == 0) {
-		PMD_DRV_LOG(ERR, "dtb queue %d is not init.", queue_id);
+		PMD_DRV_LOG(ERR, "dtb queue %d is not init", queue_id);
 		return ZXDH_RC_DTB_QUEUE_IS_NOT_INIT;
 	}
 

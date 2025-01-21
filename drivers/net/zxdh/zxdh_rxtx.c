@@ -494,7 +494,7 @@ zxdh_xmit_pkts_packed(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkt
 			}
 		}
 		if (txm->nb_segs > ZXDH_TX_MAX_SEGS) {
-			PMD_TX_LOG(ERR, "%d segs  dropped", txm->nb_segs);
+			PMD_TX_LOG(ERR, "%d segs dropped", txm->nb_segs);
 			txvq->stats.truncated_err += nb_pkts - nb_tx;
 			break;
 		}
@@ -727,7 +727,7 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		if (!seg_res) {
 			if (rcvd_pkt_len != rx_pkts[nb_rx]->pkt_len) {
-				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d.",
+				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d",
 					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
 				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
 				rxvq->stats.errors++;
@@ -745,7 +745,7 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		rcv_cnt = zxdh_dequeue_burst_rx_packed(vq, rcv_pkts, len, rcv_cnt);
 		if (unlikely(rcv_cnt == 0)) {
-			PMD_RX_LOG(ERR, "No enough segments for packet.");
+			PMD_RX_LOG(ERR, "No enough segments for packet");
 			rte_pktmbuf_free(rx_pkts[nb_rx]);
 			rxvq->stats.errors++;
 			break;
@@ -764,7 +764,7 @@ uint16_t zxdh_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		seg_res -= rcv_cnt;
 		if (!seg_res) {
 			if (rcvd_pkt_len != rx_pkts[nb_rx]->pkt_len) {
-				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d.",
+				PMD_RX_LOG(ERR, "dropped rcvd_pkt_len %d pktlen %d",
 					rcvd_pkt_len, rx_pkts[nb_rx]->pkt_len);
 				zxdh_discard_rxbuf(vq, rx_pkts[nb_rx]);
 				rxvq->stats.errors++;

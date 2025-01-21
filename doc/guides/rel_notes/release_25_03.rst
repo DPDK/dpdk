@@ -87,6 +87,7 @@ New Features
   * VLAN filtering and offload.
   * Receive Side Scaling (RSS).
   * Hardware statistics.
+  * Jumbo frames.
 
 
 Removed Items
