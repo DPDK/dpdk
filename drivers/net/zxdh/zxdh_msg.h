@@ -9,9 +9,15 @@
 
 #include <ethdev_driver.h>
 
+#include "zxdh_ethdev_ops.h"
+
 #define ZXDH_BAR0_INDEX                 0
 #define ZXDH_CTRLCH_OFFSET              (0x2000)
 #define ZXDH_MSG_CHAN_PFVFSHARE_OFFSET  (ZXDH_CTRLCH_OFFSET + 0x1000)
+
+#define ZXDH_MAC_OFFSET                 (0x24000)
+#define ZXDH_MAC_STATS_OFFSET           (0x1408)
+#define ZXDH_MAC_BYTES_OFFSET           (0xb000)
 
 #define ZXDH_MSIX_INTR_MSG_VEC_BASE   1
 #define ZXDH_MSIX_INTR_MSG_VEC_NUM    3
@@ -173,7 +179,13 @@ enum pciebar_layout_type {
 
 /* riscv msg opcodes */
 enum zxdh_agent_msg_type {
+	ZXDH_MAC_STATS_GET = 10,
+	ZXDH_MAC_STATS_RESET,
 	ZXDH_MAC_LINK_GET = 14,
+	ZXDH_VQM_DEV_STATS_GET = 21,
+	ZXDH_VQM_DEV_STATS_RESET,
+	ZXDH_VQM_QUEUE_STATS_GET = 24,
+	ZXDH_VQM_QUEUE_STATS_RESET,
 };
 
 enum zxdh_msg_type {
@@ -194,6 +206,8 @@ enum zxdh_msg_type {
 
 	ZXDH_PORT_ATTRS_SET = 25,
 	ZXDH_PORT_PROMISC_SET = 26,
+
+	ZXDH_GET_NP_STATS = 31,
 
 	ZXDH_MSG_TYPE_END,
 };
@@ -319,9 +333,11 @@ struct __rte_packed_begin zxdh_msg_reply_body {
 	enum zxdh_reps_flag flag;
 	union __rte_packed_begin {
 		uint8_t reply_data[ZXDH_MSG_REPLY_BODY_MAX_LEN - sizeof(enum zxdh_reps_flag)];
+		struct zxdh_hw_np_stats np_stats;
 		struct zxdh_link_info_msg link_msg;
 		struct zxdh_rss_hf rss_hf;
 		struct zxdh_rss_reta rss_reta;
+		struct zxdh_hw_vqm_stats vqm_stats;
 	} __rte_packed_end;
 } __rte_packed_end;
 

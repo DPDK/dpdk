@@ -5,6 +5,8 @@
 #ifndef ZXDH_ETHDEV_OPS_H
 #define ZXDH_ETHDEV_OPS_H
 
+#include <stdint.h>
+
 #include <rte_ether.h>
 
 #include "zxdh_ethdev.h"
@@ -23,6 +25,29 @@
 #define ZXDH_HF_F3_ETH        ZXDH_ETH_RSS_IP
 #define ZXDH_HF_MAC_VLAN_ETH  ZXDH_ETH_RSS_L2
 #define ZXDH_RSS_HF  ((ZXDH_HF_MAC_VLAN_ETH | ZXDH_HF_F3_ETH | ZXDH_HF_F5_ETH))
+
+struct zxdh_hw_vqm_stats {
+	uint64_t rx_total;
+	uint64_t tx_total;
+	uint64_t rx_bytes;
+	uint64_t tx_bytes;
+	uint64_t rx_error;
+	uint64_t tx_error;
+	uint64_t rx_drop;
+};
+
+struct zxdh_hw_np_stats {
+	uint64_t np_rx_broadcast;
+	uint64_t np_tx_broadcast;
+	uint64_t np_rx_mtu_drop_pkts;
+	uint64_t np_tx_mtu_drop_pkts;
+	uint64_t np_rx_mtu_drop_bytes;
+	uint64_t np_tx_mtu_drop_bytes;
+	uint64_t np_rx_mtr_drop_pkts;
+	uint64_t np_tx_mtr_drop_pkts;
+	uint64_t np_rx_mtr_drop_bytes;
+	uint64_t np_tx_mtr_drop_bytes;
+};
 
 int zxdh_dev_set_link_up(struct rte_eth_dev *dev);
 int zxdh_dev_set_link_down(struct rte_eth_dev *dev);
@@ -46,5 +71,7 @@ int zxdh_dev_rss_reta_query(struct rte_eth_dev *dev,
 int zxdh_rss_hash_update(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf);
 int zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf);
 int zxdh_rss_configure(struct rte_eth_dev *dev);
+int zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+int zxdh_dev_stats_reset(struct rte_eth_dev *dev);
 
 #endif /* ZXDH_ETHDEV_OPS_H */

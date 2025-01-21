@@ -11,6 +11,8 @@
 #include "zxdh_ethdev_ops.h"
 #include "zxdh_tables.h"
 #include "zxdh_logs.h"
+#include "zxdh_rxtx.h"
+#include "zxdh_np.h"
 
 #define ZXDH_VLAN_FILTER_GROUPS       64
 #define ZXDH_INVALID_LOGIC_QID        0xFFFFU
@@ -21,6 +23,108 @@
 #define ZXDH_HF_F3           2
 #define ZXDH_HF_MAC_VLAN     4
 #define ZXDH_HF_ALL          0
+
+struct zxdh_hw_mac_stats {
+	uint64_t rx_total;
+	uint64_t rx_pause;
+	uint64_t rx_unicast;
+	uint64_t rx_multicast;
+	uint64_t rx_broadcast;
+	uint64_t rx_vlan;
+	uint64_t rx_size_64;
+	uint64_t rx_size_65_127;
+	uint64_t rx_size_128_255;
+	uint64_t rx_size_256_511;
+	uint64_t rx_size_512_1023;
+	uint64_t rx_size_1024_1518;
+	uint64_t rx_size_1519_mru;
+	uint64_t rx_undersize;
+	uint64_t rx_oversize;
+	uint64_t rx_fragment;
+	uint64_t rx_jabber;
+	uint64_t rx_control;
+	uint64_t rx_eee;
+
+	uint64_t tx_total;
+	uint64_t tx_pause;
+	uint64_t tx_unicast;
+	uint64_t tx_multicast;
+	uint64_t tx_broadcast;
+	uint64_t tx_vlan;
+	uint64_t tx_size_64;
+	uint64_t tx_size_65_127;
+	uint64_t tx_size_128_255;
+	uint64_t tx_size_256_511;
+	uint64_t tx_size_512_1023;
+	uint64_t tx_size_1024_1518;
+	uint64_t tx_size_1519_mtu;
+	uint64_t tx_undersize;
+	uint64_t tx_oversize;
+	uint64_t tx_fragment;
+	uint64_t tx_jabber;
+	uint64_t tx_control;
+	uint64_t tx_eee;
+
+	uint64_t rx_error;
+	uint64_t rx_fcs_error;
+	uint64_t rx_drop;
+
+	uint64_t tx_error;
+	uint64_t tx_fcs_error;
+	uint64_t tx_drop;
+
+};
+
+struct zxdh_hw_mac_bytes {
+	uint64_t rx_total_bytes;
+	uint64_t rx_good_bytes;
+	uint64_t tx_total_bytes;
+	uint64_t tx_good_bytes;
+};
+
+struct zxdh_np_stats_data {
+	uint64_t n_pkts_dropped;
+	uint64_t n_bytes_dropped;
+};
+
+struct zxdh_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct zxdh_xstats_name_off zxdh_rxq_stat_strings[] = {
+	{"good_packets",           offsetof(struct zxdh_virtnet_rx, stats.packets)},
+	{"good_bytes",             offsetof(struct zxdh_virtnet_rx, stats.bytes)},
+	{"errors",                 offsetof(struct zxdh_virtnet_rx, stats.errors)},
+	{"multicast_packets",      offsetof(struct zxdh_virtnet_rx, stats.multicast)},
+	{"broadcast_packets",      offsetof(struct zxdh_virtnet_rx, stats.broadcast)},
+	{"truncated_err",          offsetof(struct zxdh_virtnet_rx, stats.truncated_err)},
+	{"undersize_packets",      offsetof(struct zxdh_virtnet_rx, stats.size_bins[0])},
+	{"size_64_packets",        offsetof(struct zxdh_virtnet_rx, stats.size_bins[1])},
+	{"size_65_127_packets",    offsetof(struct zxdh_virtnet_rx, stats.size_bins[2])},
+	{"size_128_255_packets",   offsetof(struct zxdh_virtnet_rx, stats.size_bins[3])},
+	{"size_256_511_packets",   offsetof(struct zxdh_virtnet_rx, stats.size_bins[4])},
+	{"size_512_1023_packets",  offsetof(struct zxdh_virtnet_rx, stats.size_bins[5])},
+	{"size_1024_1518_packets", offsetof(struct zxdh_virtnet_rx, stats.size_bins[6])},
+	{"size_1519_max_packets",  offsetof(struct zxdh_virtnet_rx, stats.size_bins[7])},
+};
+
+static const struct zxdh_xstats_name_off zxdh_txq_stat_strings[] = {
+	{"good_packets",           offsetof(struct zxdh_virtnet_tx, stats.packets)},
+	{"good_bytes",             offsetof(struct zxdh_virtnet_tx, stats.bytes)},
+	{"errors",                 offsetof(struct zxdh_virtnet_tx, stats.errors)},
+	{"multicast_packets",      offsetof(struct zxdh_virtnet_tx, stats.multicast)},
+	{"broadcast_packets",      offsetof(struct zxdh_virtnet_tx, stats.broadcast)},
+	{"truncated_err",          offsetof(struct zxdh_virtnet_tx, stats.truncated_err)},
+	{"undersize_packets",      offsetof(struct zxdh_virtnet_tx, stats.size_bins[0])},
+	{"size_64_packets",        offsetof(struct zxdh_virtnet_tx, stats.size_bins[1])},
+	{"size_65_127_packets",    offsetof(struct zxdh_virtnet_tx, stats.size_bins[2])},
+	{"size_128_255_packets",   offsetof(struct zxdh_virtnet_tx, stats.size_bins[3])},
+	{"size_256_511_packets",   offsetof(struct zxdh_virtnet_tx, stats.size_bins[4])},
+	{"size_512_1023_packets",  offsetof(struct zxdh_virtnet_tx, stats.size_bins[5])},
+	{"size_1024_1518_packets", offsetof(struct zxdh_virtnet_tx, stats.size_bins[6])},
+	{"size_1519_max_packets",  offsetof(struct zxdh_virtnet_tx, stats.size_bins[7])},
+};
 
 static int32_t zxdh_config_port_status(struct rte_eth_dev *dev, uint16_t link_status)
 {
@@ -1151,5 +1255,254 @@ zxdh_rss_configure(struct rte_eth_dev *dev)
 			return -EINVAL;
 		}
 	}
+	return 0;
+}
+
+static int32_t
+zxdh_hw_vqm_stats_get(struct rte_eth_dev *dev, enum zxdh_agent_msg_type opcode,
+			struct zxdh_hw_vqm_stats *hw_stats)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	enum ZXDH_BAR_MODULE_ID module_id;
+	int ret = 0;
+
+	switch (opcode) {
+	case ZXDH_VQM_DEV_STATS_GET:
+	case ZXDH_VQM_QUEUE_STATS_GET:
+	case ZXDH_VQM_QUEUE_STATS_RESET:
+		module_id = ZXDH_BAR_MODULE_VQM;
+		break;
+	case ZXDH_MAC_STATS_GET:
+	case ZXDH_MAC_STATS_RESET:
+		module_id = ZXDH_BAR_MODULE_MAC;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid opcode %u", opcode);
+		return -1;
+	}
+
+	zxdh_agent_msg_build(hw, opcode, &msg_info);
+
+	ret = zxdh_send_msg_to_riscv(dev, &msg_info, sizeof(struct zxdh_msg_info),
+				&reply_info, sizeof(struct zxdh_msg_reply_info), module_id);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get hw stats");
+		return -1;
+	}
+	struct zxdh_msg_reply_body *reply_body = &reply_info.reply_body;
+
+	rte_memcpy(hw_stats, &reply_body->vqm_stats, sizeof(struct zxdh_hw_vqm_stats));
+	return 0;
+}
+
+static int zxdh_hw_mac_stats_get(struct rte_eth_dev *dev,
+				struct zxdh_hw_mac_stats *mac_stats,
+				struct zxdh_hw_mac_bytes *mac_bytes)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	uint64_t virt_addr = (uint64_t)(hw->bar_addr[ZXDH_BAR0_INDEX] + ZXDH_MAC_OFFSET);
+	uint64_t stats_addr =  0;
+	uint64_t bytes_addr =  0;
+
+	if (hw->speed <= RTE_ETH_SPEED_NUM_25G) {
+		stats_addr = virt_addr + ZXDH_MAC_STATS_OFFSET + 352 * (hw->phyport % 4);
+		bytes_addr = virt_addr + ZXDH_MAC_BYTES_OFFSET + 32 * (hw->phyport % 4);
+	} else {
+		stats_addr = virt_addr + ZXDH_MAC_STATS_OFFSET + 352 * 4;
+		bytes_addr = virt_addr + ZXDH_MAC_BYTES_OFFSET + 32 * 4;
+	}
+
+	rte_memcpy(mac_stats, (void *)stats_addr, sizeof(struct zxdh_hw_mac_stats));
+	rte_memcpy(mac_bytes, (void *)bytes_addr, sizeof(struct zxdh_hw_mac_bytes));
+	return 0;
+}
+
+static void zxdh_data_hi_to_lo(uint64_t *data)
+{
+	uint32_t n_data_hi;
+	uint32_t n_data_lo;
+
+	n_data_lo = *data >> 32;
+	n_data_hi = *data;
+	*data =  (uint64_t)(rte_le_to_cpu_32(n_data_hi)) << 32 |
+				rte_le_to_cpu_32(n_data_lo);
+}
+
+static int zxdh_np_stats_get(struct rte_eth_dev *dev, struct zxdh_hw_np_stats *np_stats)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_np_stats_data stats_data;
+	uint32_t stats_id = zxdh_vport_to_vfid(hw->vport);
+	uint32_t idx = 0;
+	int ret = 0;
+
+	idx = stats_id + ZXDH_BROAD_STATS_EGRESS_BASE;
+	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+				0, idx, (uint32_t *)&np_stats->np_tx_broadcast);
+	if (ret)
+		return ret;
+	zxdh_data_hi_to_lo(&np_stats->np_tx_broadcast);
+
+	idx = stats_id + ZXDH_BROAD_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+				0, idx, (uint32_t *)&np_stats->np_rx_broadcast);
+	if (ret)
+		return ret;
+	zxdh_data_hi_to_lo(&np_stats->np_rx_broadcast);
+
+	idx = stats_id + ZXDH_MTU_STATS_EGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+				1, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+
+	np_stats->np_tx_mtu_drop_pkts = stats_data.n_pkts_dropped;
+	np_stats->np_tx_mtu_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->np_tx_mtu_drop_pkts);
+	zxdh_data_hi_to_lo(&np_stats->np_tx_mtu_drop_bytes);
+
+	idx = stats_id + ZXDH_MTU_STATS_INGRESS_BASE;
+	memset(&stats_data, 0, sizeof(stats_data));
+	ret = zxdh_np_dtb_stats_get(ZXDH_DEVICE_NO, g_dtb_data.queueid,
+				1, idx, (uint32_t *)&stats_data);
+	if (ret)
+		return ret;
+	np_stats->np_rx_mtu_drop_pkts = stats_data.n_pkts_dropped;
+	np_stats->np_rx_mtu_drop_bytes = stats_data.n_bytes_dropped;
+	zxdh_data_hi_to_lo(&np_stats->np_rx_mtu_drop_pkts);
+	zxdh_data_hi_to_lo(&np_stats->np_rx_mtu_drop_bytes);
+
+	return 0;
+}
+
+static int
+zxdh_hw_np_stats_get(struct rte_eth_dev *dev,  struct zxdh_hw_np_stats *np_stats)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	int ret = 0;
+
+	if (hw->is_pf) {
+		ret = zxdh_np_stats_get(dev, np_stats);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "get np stats failed");
+			return -1;
+		}
+	} else {
+		zxdh_msg_head_build(hw, ZXDH_GET_NP_STATS, &msg_info);
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(struct zxdh_msg_info),
+					&reply_info, sizeof(struct zxdh_msg_reply_info));
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				"Failed to send msg: port 0x%x msg type ZXDH_PORT_METER_STAT_GET",
+				hw->vport.vport);
+			return -1;
+		}
+		memcpy(np_stats, &reply_info.reply_body.np_stats, sizeof(struct zxdh_hw_np_stats));
+	}
+	return ret;
+}
+
+int
+zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_hw_vqm_stats vqm_stats = {0};
+	struct zxdh_hw_np_stats np_stats = {0};
+	struct zxdh_hw_mac_stats mac_stats = {0};
+	struct zxdh_hw_mac_bytes mac_bytes = {0};
+	uint32_t i = 0;
+
+	zxdh_hw_vqm_stats_get(dev, ZXDH_VQM_DEV_STATS_GET,  &vqm_stats);
+	if (hw->is_pf)
+		zxdh_hw_mac_stats_get(dev, &mac_stats, &mac_bytes);
+
+	zxdh_hw_np_stats_get(dev, &np_stats);
+
+	stats->ipackets = vqm_stats.rx_total;
+	stats->opackets = vqm_stats.tx_total;
+	stats->ibytes = vqm_stats.rx_bytes;
+	stats->obytes = vqm_stats.tx_bytes;
+	stats->imissed = vqm_stats.rx_drop + mac_stats.rx_drop;
+	stats->ierrors = vqm_stats.rx_error + mac_stats.rx_error + np_stats.np_rx_mtu_drop_pkts;
+	stats->oerrors = vqm_stats.tx_error + mac_stats.tx_error + np_stats.np_tx_mtu_drop_pkts;
+
+	stats->rx_nombuf = dev->data->rx_mbuf_alloc_failed;
+	for (i = 0; (i < dev->data->nb_rx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
+		struct zxdh_virtnet_rx *rxvq = dev->data->rx_queues[i];
+
+		if (rxvq == NULL)
+			continue;
+		stats->q_ipackets[i] = *(uint64_t *)(((char *)rxvq) +
+				zxdh_rxq_stat_strings[0].offset);
+		stats->q_ibytes[i] = *(uint64_t *)(((char *)rxvq) +
+				zxdh_rxq_stat_strings[1].offset);
+		stats->q_errors[i] = *(uint64_t *)(((char *)rxvq) +
+				zxdh_rxq_stat_strings[2].offset);
+		stats->q_errors[i] += *(uint64_t *)(((char *)rxvq) +
+				zxdh_rxq_stat_strings[5].offset);
+	}
+
+	for (i = 0; (i < dev->data->nb_tx_queues) && (i < RTE_ETHDEV_QUEUE_STAT_CNTRS); i++) {
+		struct zxdh_virtnet_tx *txvq = dev->data->tx_queues[i];
+
+		if (txvq == NULL)
+			continue;
+		stats->q_opackets[i] = *(uint64_t *)(((char *)txvq) +
+				zxdh_txq_stat_strings[0].offset);
+		stats->q_obytes[i] = *(uint64_t *)(((char *)txvq) +
+				zxdh_txq_stat_strings[1].offset);
+		stats->q_errors[i] += *(uint64_t *)(((char *)txvq) +
+				zxdh_txq_stat_strings[2].offset);
+		stats->q_errors[i] += *(uint64_t *)(((char *)txvq) +
+				zxdh_txq_stat_strings[5].offset);
+	}
+	return 0;
+}
+
+static int zxdh_hw_stats_reset(struct rte_eth_dev *dev, enum zxdh_agent_msg_type opcode)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_msg_reply_info reply_info = {0};
+	enum ZXDH_BAR_MODULE_ID module_id;
+	int ret = 0;
+
+	switch (opcode) {
+	case ZXDH_VQM_DEV_STATS_RESET:
+		module_id = ZXDH_BAR_MODULE_VQM;
+		break;
+	case ZXDH_MAC_STATS_RESET:
+		module_id = ZXDH_BAR_MODULE_MAC;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "invalid opcode %u", opcode);
+		return -1;
+	}
+
+	zxdh_agent_msg_build(hw, opcode, &msg_info);
+
+	ret = zxdh_send_msg_to_riscv(dev, &msg_info, sizeof(struct zxdh_msg_info),
+				&reply_info, sizeof(struct zxdh_msg_reply_info), module_id);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to reset hw stats");
+		return -1;
+	}
+	return 0;
+}
+
+int zxdh_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+
+	zxdh_hw_stats_reset(dev, ZXDH_VQM_DEV_STATS_RESET);
+	if (hw->is_pf)
+		zxdh_hw_stats_reset(dev, ZXDH_MAC_STATS_RESET);
+
 	return 0;
 }

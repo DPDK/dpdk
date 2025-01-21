@@ -86,6 +86,7 @@ New Features
   * Multicast and promiscuous mode.
   * VLAN filtering and offload.
   * Receive Side Scaling (RSS).
+  * Hardware statistics.
 
 
 Removed Items

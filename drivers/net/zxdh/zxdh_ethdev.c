@@ -1172,6 +1172,8 @@ static const struct eth_dev_ops zxdh_eth_dev_ops = {
 	.reta_query				 = zxdh_dev_rss_reta_query,
 	.rss_hash_update		 = zxdh_rss_hash_update,
 	.rss_hash_conf_get		 = zxdh_rss_hash_conf_get,
+	.stats_get				 = zxdh_dev_stats_get,
+	.stats_reset			 = zxdh_dev_stats_reset,
 };
 
 static int32_t
