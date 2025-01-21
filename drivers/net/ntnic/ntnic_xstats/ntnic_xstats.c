@@ -645,16 +645,8 @@ static int nthw_xstats_get_by_id(nt4ga_stat_t *p_nt4ga_stat,
 				break;
 
 			case 4:
-
 				/* Port Load stat */
-				if (pld_ptr) {
-					/* No reset */
-					values[i] = *((uint64_t *)&pld_ptr[names[i].offset]);
-
-				} else {
-					values[i] = 0;
-				}
-
+				values[i] = *((uint64_t *)&pld_ptr[names[i].offset]);
 				break;
 
 			default:
