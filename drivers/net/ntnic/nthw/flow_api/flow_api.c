@@ -385,8 +385,10 @@ static void flow_ndev_reset(struct flow_nic_dev *ndev)
 	}
 
 	/* Delete all eth-port devices created on this NIC device */
-	while (ndev->eth_base)
+	while (ndev->eth_base) {
 		flow_delete_eth_dev(ndev->eth_base);
+		ndev->eth_base = NULL;
+	}
 
 	/* Error check */
 	while (ndev->flow_base) {
