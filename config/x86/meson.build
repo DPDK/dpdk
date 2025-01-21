@@ -17,7 +17,8 @@ endif
 cc_avx512_flags = ['-mavx512f', '-mavx512vl', '-mavx512dq', '-mavx512bw']
 cc_has_avx512 = false
 target_has_avx512 = false
-if binutils_ok and cc.has_multi_arguments(cc_avx512_flags)
+if (binutils_ok and cc.has_multi_arguments(cc_avx512_flags)
+        and '-mno-avx512f' not in get_option('c_args'))
     # check if compiler is working with _mm512_extracti64x4_epi64
     # Ref: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82887
     code = '''#include <immintrin.h>
