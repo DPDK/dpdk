@@ -2089,6 +2089,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 				NT_LOG_DBGX(ERR, NTNIC,
 					"problem with command line arguments: res=%d",
 					res);
+				free(kvlist);
 				return -1;
 			}
 
@@ -2112,6 +2113,7 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 				NT_LOG_DBGX(ERR, NTNIC,
 					"problem with command line arguments: res=%d",
 					res);
+				free(kvlist);
 				return -1;
 			}
 
