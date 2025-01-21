@@ -5523,11 +5523,16 @@ int flow_configure_profile_inline(struct flow_eth_dev *dev, uint8_t caller_id,
 		struct flm_flow_mtr_handle_s *mtr_handle = dev->ndev->flm_mtr_handle;
 
 		if (mtr_handle->port_stats[caller_id]->shared == 1) {
-			res = realloc(mtr_handle->port_stats[caller_id]->stats,
-					port_attr->nb_meters) == NULL
-				? -1
-				: 0;
-			mtr_handle->port_stats[caller_id]->size = port_attr->nb_meters;
+			struct flm_mtr_stat_s *temp_stats =
+				realloc(mtr_handle->port_stats[caller_id]->stats,
+					port_attr->nb_meters);
+			if (temp_stats == NULL) {
+				res = -1;
+			} else {
+				res = 0;
+				mtr_handle->port_stats[caller_id]->stats = temp_stats;
+				mtr_handle->port_stats[caller_id]->size = port_attr->nb_meters;
+			}
 
 		} else {
 			mtr_handle->port_stats[caller_id] =
