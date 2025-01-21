@@ -18,5 +18,7 @@ int zxdh_dev_promiscuous_enable(struct rte_eth_dev *dev);
 int zxdh_dev_promiscuous_disable(struct rte_eth_dev *dev);
 int zxdh_dev_allmulticast_enable(struct rte_eth_dev *dev);
 int zxdh_dev_allmulticast_disable(struct rte_eth_dev *dev);
+int zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on);
+int zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
 #endif /* ZXDH_ETHDEV_OPS_H */

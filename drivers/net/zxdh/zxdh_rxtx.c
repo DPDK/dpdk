@@ -11,6 +11,9 @@
 #include "zxdh_pci.h"
 #include "zxdh_queue.h"
 
+#define ZXDH_SVLAN_TPID                       0x88a8
+#define ZXDH_CVLAN_TPID                       0x8100
+
 #define ZXDH_PKT_FORM_CPU                     0x20    /* 1-cpu 0-np */
 #define ZXDH_NO_IP_FRAGMENT                   0x2000  /* ip fragment flag */
 #define ZXDH_NO_IPID_UPDATE                   0x4000  /* ipid update flag */
@@ -20,6 +23,9 @@
 #define ZXDH_PI_L3TYPE_NOIP                   0x80
 #define ZXDH_PI_L3TYPE_RSV                    0xC0
 #define ZXDH_PI_L3TYPE_MASK                   0xC0
+
+#define  ZXDH_PD_OFFLOAD_SVLAN_INSERT         (1 << 14)
+#define  ZXDH_PD_OFFLOAD_CVLAN_INSERT         (1 << 13)
 
 #define ZXDH_PCODE_MASK                       0x1F
 #define ZXDH_PCODE_IP_PKT_TYPE                0x01
@@ -258,6 +264,18 @@ static void zxdh_xmit_fill_net_hdr(struct rte_mbuf *cookie,
 				cookie->outer_l3_len + cookie->l2_len;
 	hdr->pi_hdr.l3_offset = rte_be_to_cpu_16(l3_offset);
 	hdr->pi_hdr.l4_offset = rte_be_to_cpu_16(l3_offset + cookie->l3_len);
+
+	if (cookie->ol_flags & RTE_MBUF_F_TX_VLAN) {
+		ol_flag |= ZXDH_PD_OFFLOAD_CVLAN_INSERT;
+		hdr->pi_hdr.vlan_id = rte_be_to_cpu_16(cookie->vlan_tci);
+		hdr->pd_hdr.cvlan_insert =
+			rte_be_to_cpu_32((ZXDH_CVLAN_TPID << 16) | cookie->vlan_tci);
+	}
+	if (cookie->ol_flags & RTE_MBUF_F_TX_QINQ) {
+		ol_flag |= ZXDH_PD_OFFLOAD_SVLAN_INSERT;
+		hdr->pd_hdr.svlan_insert =
+			rte_be_to_cpu_32((ZXDH_SVLAN_TPID << 16) | cookie->vlan_tci_outer);
+	}
 
 	hdr->pd_hdr.ol_flag = rte_be_to_cpu_32(ol_flag);
 }
