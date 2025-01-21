@@ -85,6 +85,7 @@ New Features
   * MAC address filtering.
   * Multicast and promiscuous mode.
   * VLAN filtering and offload.
+  * Receive Side Scaling (RSS).
 
 
 Removed Items

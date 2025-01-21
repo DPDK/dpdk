@@ -3,6 +3,7 @@
  */
 
 #include <rte_malloc.h>
+#include <rte_ether.h>
 
 #include "zxdh_ethdev.h"
 #include "zxdh_pci.h"
@@ -12,6 +13,14 @@
 #include "zxdh_logs.h"
 
 #define ZXDH_VLAN_FILTER_GROUPS       64
+#define ZXDH_INVALID_LOGIC_QID        0xFFFFU
+
+/* Supported RSS */
+#define ZXDH_RSS_HF_MASK     (~(ZXDH_RSS_HF))
+#define ZXDH_HF_F5           1
+#define ZXDH_HF_F3           2
+#define ZXDH_HF_MAC_VLAN     4
+#define ZXDH_HF_ALL          0
 
 static int32_t zxdh_config_port_status(struct rte_eth_dev *dev, uint16_t link_status)
 {
@@ -745,4 +754,402 @@ zxdh_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 
 	return ret;
+}
+
+int
+zxdh_dev_rss_reta_update(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg = {0};
+	uint16_t old_reta[RTE_ETH_RSS_RETA_SIZE_256];
+	uint16_t idx;
+	uint16_t i;
+	uint16_t pos;
+	int ret;
+
+	if (reta_size != RTE_ETH_RSS_RETA_SIZE_256) {
+		PMD_DRV_LOG(ERR, "reta_size is illegal(%u).reta_size should be 256", reta_size);
+		return -EINVAL;
+	}
+	if (!hw->rss_reta) {
+		hw->rss_reta = rte_calloc(NULL, RTE_ETH_RSS_RETA_SIZE_256, sizeof(uint16_t), 0);
+		if (hw->rss_reta == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to allocate RSS reta");
+			return -ENOMEM;
+		}
+	}
+	for (idx = 0, i = 0; (i < reta_size); ++i) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		pos = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (((reta_conf[idx].mask >> pos) & 0x1) == 0)
+			continue;
+		if (reta_conf[idx].reta[pos] > dev->data->nb_rx_queues) {
+			PMD_DRV_LOG(ERR, "reta table value err(%u >= %u)",
+				reta_conf[idx].reta[pos], dev->data->nb_rx_queues);
+			return -EINVAL;
+		}
+		if (hw->rss_reta[i] != reta_conf[idx].reta[pos])
+			break;
+	}
+	if (i == reta_size) {
+		PMD_DRV_LOG(INFO, "reta table same with buffered table");
+		return 0;
+	}
+	memcpy(old_reta, hw->rss_reta, sizeof(old_reta));
+
+	for (idx = 0, i = 0; i < reta_size; ++i) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		pos = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (((reta_conf[idx].mask >> pos) & 0x1) == 0)
+			continue;
+		hw->rss_reta[i] = reta_conf[idx].reta[pos];
+	}
+
+	zxdh_msg_head_build(hw, ZXDH_RSS_RETA_SET, &msg);
+	for (i = 0; i < reta_size; i++)
+		msg.data.rss_reta.reta[i] =
+			(hw->channel_context[hw->rss_reta[i] * 2].ph_chno);
+
+	if (hw->is_pf) {
+		ret = zxdh_rss_table_set(hw->vport.vport, &msg.data.rss_reta);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "rss reta table set failed");
+			return -EINVAL;
+		}
+	} else {
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "vf rss reta table set failed");
+			return -EINVAL;
+		}
+	}
+	return ret;
+}
+
+static uint16_t
+zxdh_hw_qid_to_logic_qid(struct rte_eth_dev *dev, uint16_t qid)
+{
+	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
+	uint16_t rx_queues = dev->data->nb_rx_queues;
+	uint16_t i;
+
+	for (i = 0; i < rx_queues; i++) {
+		if (qid == hw->channel_context[i * 2].ph_chno)
+			return i;
+	}
+	return ZXDH_INVALID_LOGIC_QID;
+}
+
+int
+zxdh_dev_rss_reta_query(struct rte_eth_dev *dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
+	struct zxdh_msg_info msg = {0};
+	struct zxdh_msg_reply_info reply_msg = {0};
+	uint16_t idx;
+	uint16_t i;
+	int ret = 0;
+	uint16_t qid_logic;
+
+	ret = (!reta_size || reta_size > RTE_ETH_RSS_RETA_SIZE_256);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "request reta size(%u) not same with buffered(%u)",
+			reta_size, RTE_ETH_RSS_RETA_SIZE_256);
+		return -EINVAL;
+	}
+
+	/* Fill each entry of the table even if its bit is not set. */
+	for (idx = 0, i = 0; (i != reta_size); ++i) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+		reta_conf[idx].reta[i % RTE_ETH_RETA_GROUP_SIZE] = hw->rss_reta[i];
+	}
+
+	zxdh_msg_head_build(hw, ZXDH_RSS_RETA_GET, &msg);
+
+	if (hw->is_pf) {
+		ret = zxdh_rss_table_get(hw->vport.vport, &reply_msg.reply_body.rss_reta);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "rss reta table set failed");
+			return -EINVAL;
+		}
+	} else {
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info),
+					&reply_msg, sizeof(struct zxdh_msg_reply_info));
+		if (ret) {
+			PMD_DRV_LOG(ERR, "vf rss reta table get failed");
+			return -EINVAL;
+		}
+	}
+
+	struct zxdh_rss_reta *reta_table = &reply_msg.reply_body.rss_reta;
+
+	for (idx = 0, i = 0; i < reta_size; ++i) {
+		idx = i / RTE_ETH_RETA_GROUP_SIZE;
+
+		qid_logic = zxdh_hw_qid_to_logic_qid(dev, reta_table->reta[i]);
+		if (qid_logic == ZXDH_INVALID_LOGIC_QID) {
+			PMD_DRV_LOG(ERR, "rsp phy reta qid (%u) is illegal(%u)",
+				reta_table->reta[i], qid_logic);
+			return -EINVAL;
+		}
+		reta_conf[idx].reta[i % RTE_ETH_RETA_GROUP_SIZE] = qid_logic;
+	}
+	return 0;
+}
+
+static uint32_t
+zxdh_rss_hf_to_hw(uint64_t hf)
+{
+	uint32_t hw_hf = 0;
+
+	if (hf & ZXDH_HF_MAC_VLAN_ETH)
+		hw_hf |= ZXDH_HF_MAC_VLAN;
+	if (hf & ZXDH_HF_F3_ETH)
+		hw_hf |= ZXDH_HF_F3;
+	if (hf & ZXDH_HF_F5_ETH)
+		hw_hf |= ZXDH_HF_F5;
+
+	if (hw_hf == (ZXDH_HF_MAC_VLAN | ZXDH_HF_F3 | ZXDH_HF_F5))
+		hw_hf = ZXDH_HF_ALL;
+	return hw_hf;
+}
+
+static uint64_t
+zxdh_rss_hf_to_eth(uint32_t hw_hf)
+{
+	uint64_t hf = 0;
+
+	if (hw_hf == ZXDH_HF_ALL)
+		return (ZXDH_HF_MAC_VLAN_ETH | ZXDH_HF_F3_ETH | ZXDH_HF_F5_ETH);
+
+	if (hw_hf & ZXDH_HF_MAC_VLAN)
+		hf |= ZXDH_HF_MAC_VLAN_ETH;
+	if (hw_hf & ZXDH_HF_F3)
+		hf |= ZXDH_HF_F3_ETH;
+	if (hw_hf & ZXDH_HF_F5)
+		hf |= ZXDH_HF_F5_ETH;
+
+	return hf;
+}
+
+int
+zxdh_rss_hash_update(struct rte_eth_dev *dev,
+			 struct rte_eth_rss_conf *rss_conf)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct rte_eth_rss_conf *old_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+	struct zxdh_msg_info msg = {0};
+	struct zxdh_port_attr_table port_attr = {0};
+	uint32_t hw_hf_new, hw_hf_old;
+	int need_update_hf = 0;
+	int ret = 0;
+
+	ret = rss_conf->rss_hf & ZXDH_RSS_HF_MASK;
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Not support some hash function (%08lx)", rss_conf->rss_hf);
+		return -EINVAL;
+	}
+
+	hw_hf_new = zxdh_rss_hf_to_hw(rss_conf->rss_hf);
+	hw_hf_old = zxdh_rss_hf_to_hw(old_rss_conf->rss_hf);
+
+	if ((hw_hf_new != hw_hf_old || !!rss_conf->rss_hf))
+		need_update_hf = 1;
+
+	if (need_update_hf) {
+		if (hw->is_pf) {
+			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			port_attr.rss_enable = !!rss_conf->rss_hf;
+			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss enable set failed");
+				return -EINVAL;
+			}
+		} else {
+			msg.data.rss_enable.enable = !!rss_conf->rss_hf;
+			zxdh_msg_head_build(hw, ZXDH_RSS_ENABLE, &msg);
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg,
+						sizeof(struct zxdh_msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss enable set failed");
+				return -EINVAL;
+			}
+		}
+		if (hw->is_pf) {
+			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			port_attr.rss_hash_factor = hw_hf_new;
+			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss hash factor set failed");
+				return -EINVAL;
+			}
+		} else {
+			msg.data.rss_hf.rss_hf = hw_hf_new;
+			zxdh_msg_head_build(hw, ZXDH_RSS_HF_SET, &msg);
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg,
+						sizeof(struct zxdh_msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss hash factor set failed");
+				return -EINVAL;
+			}
+		}
+		old_rss_conf->rss_hf = rss_conf->rss_hf;
+	}
+
+	return 0;
+}
+
+int
+zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss_conf)
+{
+	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
+	struct rte_eth_rss_conf *old_rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+	struct zxdh_msg_info msg = {0};
+	struct zxdh_msg_reply_info reply_msg = {0};
+	struct zxdh_port_attr_table port_attr = {0};
+	int ret;
+	uint32_t hw_hf;
+
+	if (rss_conf == NULL) {
+		PMD_DRV_LOG(ERR, "rss conf is NULL");
+		return -ENOMEM;
+	}
+
+	hw_hf = zxdh_rss_hf_to_hw(old_rss_conf->rss_hf);
+	rss_conf->rss_hf = zxdh_rss_hf_to_eth(hw_hf);
+
+	zxdh_msg_head_build(hw, ZXDH_RSS_HF_GET, &msg);
+	if (hw->is_pf) {
+		ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "rss hash factor set failed");
+			return -EINVAL;
+		}
+		reply_msg.reply_body.rss_hf.rss_hf = port_attr.rss_hash_factor;
+	} else {
+		zxdh_msg_head_build(hw, ZXDH_RSS_HF_SET, &msg);
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info),
+				&reply_msg, sizeof(struct zxdh_msg_reply_info));
+		if (ret) {
+			PMD_DRV_LOG(ERR, "rss hash factor set failed");
+			return -EINVAL;
+		}
+	}
+	rss_conf->rss_hf = zxdh_rss_hf_to_eth(reply_msg.reply_body.rss_hf.rss_hf);
+
+	return 0;
+}
+
+static int
+zxdh_get_rss_enable_conf(struct rte_eth_dev *dev)
+{
+	if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
+		return dev->data->nb_rx_queues == 1 ? 0 : 1;
+	else if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_NONE)
+		return 0;
+
+	return 0;
+}
+
+int
+zxdh_rss_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_dev_data *dev_data = dev->data;
+	struct zxdh_hw *hw = (struct zxdh_hw *)dev->data->dev_private;
+	struct zxdh_port_attr_table port_attr = {0};
+	struct zxdh_msg_info msg = {0};
+	int ret = 0;
+	uint32_t hw_hf;
+	uint32_t i;
+
+	if (dev->data->nb_rx_queues == 0) {
+		PMD_DRV_LOG(ERR, "port %u nb_rx_queues is 0", dev->data->port_id);
+		return -1;
+	}
+
+	/* config rss enable */
+	uint8_t curr_rss_enable = zxdh_get_rss_enable_conf(dev);
+
+	if (hw->rss_enable != curr_rss_enable) {
+		if (hw->is_pf) {
+			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			port_attr.rss_enable = curr_rss_enable;
+			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss enable set failed");
+				return -EINVAL;
+			}
+		} else {
+			msg.data.rss_enable.enable = curr_rss_enable;
+			zxdh_msg_head_build(hw, ZXDH_RSS_ENABLE, &msg);
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg,
+						sizeof(struct zxdh_msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss enable set failed");
+				return -EINVAL;
+			}
+		}
+		hw->rss_enable = curr_rss_enable;
+	}
+
+	if (curr_rss_enable && hw->rss_init == 0) {
+		/* config hash factor */
+		dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf = ZXDH_HF_F5_ETH;
+		hw_hf = zxdh_rss_hf_to_hw(dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
+		memset(&msg, 0, sizeof(msg));
+		if (hw->is_pf) {
+			ret = zxdh_get_port_attr(hw->vport.vfid, &port_attr);
+			port_attr.rss_hash_factor = hw_hf;
+			ret = zxdh_set_port_attr(hw->vport.vfid, &port_attr);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss hash factor set failed");
+				return -EINVAL;
+			}
+		} else {
+			msg.data.rss_hf.rss_hf = hw_hf;
+			zxdh_msg_head_build(hw, ZXDH_RSS_HF_SET, &msg);
+			ret = zxdh_vf_send_msg_to_pf(dev, &msg,
+						sizeof(struct zxdh_msg_info), NULL, 0);
+			if (ret) {
+				PMD_DRV_LOG(ERR, "rss hash factor set failed");
+				return -EINVAL;
+			}
+		}
+		hw->rss_init = 1;
+	}
+
+	if (!hw->rss_reta) {
+		hw->rss_reta = rte_calloc(NULL, RTE_ETH_RSS_RETA_SIZE_256, sizeof(uint16_t), 0);
+		if (hw->rss_reta == NULL) {
+			PMD_DRV_LOG(ERR, "alloc memory fail");
+			return -1;
+		}
+	}
+	for (i = 0; i < RTE_ETH_RSS_RETA_SIZE_256; i++)
+		hw->rss_reta[i] = i % dev_data->nb_rx_queues;
+
+	/* hw config reta */
+	zxdh_msg_head_build(hw, ZXDH_RSS_RETA_SET, &msg);
+	for (i = 0; i < RTE_ETH_RSS_RETA_SIZE_256; i++)
+		msg.data.rss_reta.reta[i] =
+			hw->channel_context[hw->rss_reta[i] * 2].ph_chno;
+
+	if (hw->is_pf) {
+		ret = zxdh_rss_table_set(hw->vport.vport, &msg.data.rss_reta);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "rss reta table set failed");
+			return -EINVAL;
+		}
+	} else {
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "vf rss reta table set failed");
+			return -EINVAL;
+		}
+	}
+	return 0;
 }
