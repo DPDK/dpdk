@@ -11,7 +11,8 @@
 #define ZXDH_SDT_VPORT_ATT_TABLE          1
 #define ZXDH_SDT_PANEL_ATT_TABLE          2
 
-int zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
+int
+zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr)
 {
 	int ret = 0;
 
@@ -69,6 +70,36 @@ zxdh_port_attr_init(struct rte_eth_dev *dev)
 	}
 	return ret;
 };
+
+int
+zxdh_port_attr_uninit(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_msg_info msg_info = {0};
+	struct zxdh_port_attr_table port_attr = {0};
+	int ret = 0;
+
+	if (hw->is_pf == 1) {
+		ZXDH_DTB_ERAM_ENTRY_INFO_T port_attr_entry = {hw->vfid, (uint32_t *)&port_attr};
+		ZXDH_DTB_USER_ENTRY_T entry = {
+			.sdt_no = ZXDH_SDT_VPORT_ATT_TABLE,
+			.p_entry_data = (void *)&port_attr_entry
+		};
+		ret = zxdh_np_dtb_table_entry_delete(ZXDH_DEVICE_NO, g_dtb_data.queueid, 1, &entry);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "delete port attr table failed");
+			ret = -1;
+		}
+	} else {
+		zxdh_msg_head_build(hw, ZXDH_VF_PORT_UNINIT, &msg_info);
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "vf port tables uninit failed");
+			ret = -1;
+		}
+	}
+	return ret;
+}
 
 int zxdh_panel_table_init(struct rte_eth_dev *dev)
 {

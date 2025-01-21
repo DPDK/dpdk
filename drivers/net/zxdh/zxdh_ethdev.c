@@ -888,10 +888,28 @@ zxdh_np_uninit(struct rte_eth_dev *dev)
 }
 
 static int
+zxdh_tables_uninit(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = zxdh_port_attr_uninit(dev);
+	if (ret)
+		PMD_DRV_LOG(ERR, "zxdh_port_attr_uninit failed");
+
+	return ret;
+}
+
+static int
 zxdh_dev_close(struct rte_eth_dev *dev)
 {
 	struct zxdh_hw *hw = dev->data->dev_private;
 	int ret = 0;
+
+	ret = zxdh_tables_uninit(dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "%s :tables uninit %s failed ", __func__, dev->device->name);
+		return -1;
+	}
 
 	zxdh_intr_release(dev);
 	zxdh_np_uninit(dev);

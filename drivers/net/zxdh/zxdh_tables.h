@@ -144,5 +144,6 @@ struct zxdh_panel_table {
 int zxdh_port_attr_init(struct rte_eth_dev *dev);
 int zxdh_panel_table_init(struct rte_eth_dev *dev);
 int zxdh_set_port_attr(uint16_t vfid, struct zxdh_port_attr_table *port_attr);
+int zxdh_port_attr_uninit(struct rte_eth_dev *dev);
 
 #endif /* ZXDH_TABLES_H */
