@@ -15,6 +15,7 @@
 #include "zxdh_queue.h"
 #include "zxdh_np.h"
 #include "zxdh_tables.h"
+#include "zxdh_rxtx.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 struct zxdh_shared_data *zxdh_shared_data;
@@ -956,6 +957,25 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static int32_t
+zxdh_set_rxtx_funcs(struct rte_eth_dev *eth_dev)
+{
+	struct zxdh_hw *hw = eth_dev->data->dev_private;
+
+	if (!zxdh_pci_packed_queue(hw)) {
+		PMD_DRV_LOG(ERR, " port %u not support packed queue", eth_dev->data->port_id);
+		return -1;
+	}
+	if (!zxdh_pci_with_feature(hw, ZXDH_NET_F_MRG_RXBUF)) {
+		PMD_DRV_LOG(ERR, " port %u not support rx mergeable", eth_dev->data->port_id);
+		return -1;
+	}
+	eth_dev->tx_pkt_prepare = zxdh_xmit_pkts_prepare;
+	eth_dev->tx_pkt_burst = &zxdh_xmit_pkts_packed;
+
+	return 0;
+}
+
 static int
 zxdh_dev_start(struct rte_eth_dev *dev)
 {
@@ -971,6 +991,8 @@ zxdh_dev_start(struct rte_eth_dev *dev)
 		if (ret < 0)
 			return ret;
 	}
+
+	zxdh_set_rxtx_funcs(dev);
 	ret = zxdh_intr_enable(dev);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
