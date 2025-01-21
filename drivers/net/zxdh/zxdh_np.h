@@ -47,6 +47,11 @@
 #define ZXDH_INIT_FLAG_TM_IMEM_FLAG     (1 << 9)
 #define ZXDH_INIT_FLAG_AGENT_FLAG       (1 << 10)
 
+#define ZXDH_ACL_TBL_ID_MIN             (0)
+#define ZXDH_ACL_TBL_ID_MAX             (7)
+#define ZXDH_ACL_TBL_ID_NUM             (8U)
+#define ZXDH_ACL_BLOCK_NUM              (8U)
+
 typedef enum zxdh_module_init_e {
 	ZXDH_MODULE_INIT_NPPU = 0,
 	ZXDH_MODULE_INIT_PPU,
@@ -67,6 +72,15 @@ typedef enum zxdh_dev_type_e {
 	ZXDH_DEV_TYPE_INVALID,
 } ZXDH_DEV_TYPE_E;
 
+typedef enum zxdh_reg_info_e {
+	ZXDH_DTB_CFG_QUEUE_DTB_HADDR   = 0,
+	ZXDH_DTB_CFG_QUEUE_DTB_LADDR   = 1,
+	ZXDH_DTB_CFG_QUEUE_DTB_LEN    = 2,
+	ZXDH_DTB_INFO_QUEUE_BUF_SPACE = 3,
+	ZXDH_DTB_CFG_EPID_V_FUNC_NUM  = 4,
+	ZXDH_REG_ENUM_MAX_VALUE
+} ZXDH_REG_INFO_E;
+
 typedef enum zxdh_dev_access_type_e {
 	ZXDH_DEV_ACCESS_TYPE_PCIE = 0,
 	ZXDH_DEV_ACCESS_TYPE_RISCV = 1,
@@ -78,6 +92,26 @@ typedef enum zxdh_dev_agent_flag_e {
 	ZXDH_DEV_AGENT_ENABLE = 1,
 	ZXDH_DEV_AGENT_INVALID,
 } ZXDH_DEV_AGENT_FLAG_E;
+
+typedef enum zxdh_acl_pri_mode_e {
+	ZXDH_ACL_PRI_EXPLICIT = 1,
+	ZXDH_ACL_PRI_IMPLICIT,
+	ZXDH_ACL_PRI_SPECIFY,
+	ZXDH_ACL_PRI_INVALID,
+} ZXDH_ACL_PRI_MODE_E;
+
+typedef struct zxdh_d_node {
+	void *data;
+	struct zxdh_d_node *prev;
+	struct zxdh_d_node *next;
+} ZXDH_D_NODE;
+
+typedef struct zxdh_d_head {
+	uint32_t  used;
+	uint32_t  maxnum;
+	ZXDH_D_NODE *p_next;
+	ZXDH_D_NODE *p_prev;
+} ZXDH_D_HEAD;
 
 typedef struct zxdh_dtb_tab_up_user_addr_t {
 	uint32_t user_flag;
@@ -193,6 +227,79 @@ typedef struct zxdh_sdt_mgr_t {
 	ZXDH_SDT_SOFT_TABLE_T *sdt_tbl_array[ZXDH_DEV_CHANNEL_MAX];
 } ZXDH_SDT_MGR_T;
 
+typedef struct zxdh_riscv_dtb_queue_USER_info_t {
+	uint32_t alloc_flag;
+	uint32_t queue_id;
+	uint32_t vport;
+	char  user_name[ZXDH_PORT_NAME_MAX];
+} ZXDH_RISCV_DTB_QUEUE_USER_INFO_T;
+
+typedef struct zxdh_riscv_dtb_mgr {
+	uint32_t queue_alloc_count;
+	uint32_t queue_index;
+	ZXDH_RISCV_DTB_QUEUE_USER_INFO_T queue_user_info[ZXDH_DTB_QUEUE_NUM_MAX];
+} ZXDH_RISCV_DTB_MGR;
+
+typedef struct zxdh_dtb_queue_vm_info_t {
+	uint32_t dbi_en;
+	uint32_t queue_en;
+	uint32_t epid;
+	uint32_t vfunc_num;
+	uint32_t vector;
+	uint32_t func_num;
+	uint32_t vfunc_active;
+} ZXDH_DTB_QUEUE_VM_INFO_T;
+
+typedef struct zxdh_dtb4k_dtb_enq_cfg_epid_v_func_num_0_127_t {
+	uint32_t dbi_en;
+	uint32_t queue_en;
+	uint32_t cfg_epid;
+	uint32_t cfg_vfunc_num;
+	uint32_t cfg_vector;
+	uint32_t cfg_func_num;
+	uint32_t cfg_vfunc_active;
+} ZXDH_DTB4K_DTB_ENQ_CFG_EPID_V_FUNC_NUM_0_127_T;
+
+
+typedef uint32_t (*ZXDH_REG_WRITE)(uint32_t dev_id, uint32_t addr, uint32_t *p_data);
+typedef uint32_t (*ZXDH_REG_READ)(uint32_t dev_id, uint32_t addr, uint32_t *p_data);
+
+typedef struct zxdh_field_t {
+	const char    *p_name;
+	uint32_t  flags;
+	uint16_t  msb_pos;
+
+	uint16_t  len;
+	uint32_t  default_value;
+	uint32_t  default_step;
+} ZXDH_FIELD_T;
+
+typedef struct zxdh_reg_t {
+	const char    *reg_name;
+	uint32_t  reg_no;
+	uint32_t  module_no;
+	uint32_t  flags;
+	uint32_t  array_type;
+	uint32_t  addr;
+	uint32_t  width;
+	uint32_t  m_size;
+	uint32_t  n_size;
+	uint32_t  m_step;
+	uint32_t  n_step;
+	uint32_t  field_num;
+	ZXDH_FIELD_T *p_fields;
+
+	ZXDH_REG_WRITE      p_write_fun;
+	ZXDH_REG_READ       p_read_fun;
+} ZXDH_REG_T;
+
+typedef struct zxdh_tlb_mgr_t {
+	uint32_t entry_num;
+	uint32_t va_width;
+	uint32_t pa_width;
+} ZXDH_TLB_MGR_T;
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
+int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 
 #endif /* ZXDH_NP_H */

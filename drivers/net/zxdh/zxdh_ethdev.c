@@ -841,6 +841,51 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 	return ret;
 }
 
+static void
+zxdh_np_dtb_data_res_free(struct zxdh_hw *hw)
+{
+	struct rte_eth_dev *dev = hw->eth_dev;
+	int ret;
+	int i;
+
+	if (g_dtb_data.init_done && g_dtb_data.bind_device == dev) {
+		ret = zxdh_np_online_uninit(0, dev->data->name, g_dtb_data.queueid);
+		if (ret)
+			PMD_DRV_LOG(ERR, "%s dpp_np_online_uninstall failed", dev->data->name);
+
+		if (g_dtb_data.dtb_table_conf_mz)
+			rte_memzone_free(g_dtb_data.dtb_table_conf_mz);
+
+		if (g_dtb_data.dtb_table_dump_mz) {
+			rte_memzone_free(g_dtb_data.dtb_table_dump_mz);
+			g_dtb_data.dtb_table_dump_mz = NULL;
+		}
+
+		for (i = 0; i < ZXDH_MAX_BASE_DTB_TABLE_COUNT; i++) {
+			if (g_dtb_data.dtb_table_bulk_dump_mz[i]) {
+				rte_memzone_free(g_dtb_data.dtb_table_bulk_dump_mz[i]);
+				g_dtb_data.dtb_table_bulk_dump_mz[i] = NULL;
+			}
+		}
+		g_dtb_data.init_done = 0;
+		g_dtb_data.bind_device = NULL;
+	}
+	if (zxdh_shared_data != NULL)
+		zxdh_shared_data->np_init_done = 0;
+}
+
+static void
+zxdh_np_uninit(struct rte_eth_dev *dev)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+
+	if (!g_dtb_data.init_done && !g_dtb_data.dev_refcnt)
+		return;
+
+	if (--g_dtb_data.dev_refcnt == 0)
+		zxdh_np_dtb_data_res_free(hw);
+}
+
 static int
 zxdh_dev_close(struct rte_eth_dev *dev)
 {
@@ -848,6 +893,7 @@ zxdh_dev_close(struct rte_eth_dev *dev)
 	int ret = 0;
 
 	zxdh_intr_release(dev);
+	zxdh_np_uninit(dev);
 	zxdh_pci_reset(hw);
 
 	zxdh_dev_free_mbufs(dev);
@@ -1010,6 +1056,7 @@ zxdh_np_dtb_res_init(struct rte_eth_dev *dev)
 	return 0;
 
 free_res:
+	zxdh_np_dtb_data_res_free(hw);
 	rte_free(dpp_ctrl);
 	return ret;
 }
@@ -1177,6 +1224,7 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 err_zxdh_init:
 	zxdh_intr_release(eth_dev);
+	zxdh_np_uninit(eth_dev);
 	zxdh_bar_msg_chan_exit();
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
