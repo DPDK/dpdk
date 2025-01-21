@@ -274,3 +274,94 @@ zxdh_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	zxdh_queue_disable_intr(vq);
 	return 0;
 }
+
+int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
+			struct rte_mbuf **cookie, uint16_t num)
+{
+	struct zxdh_vring_packed_desc *start_dp = vq->vq_packed.ring.desc;
+	struct zxdh_hw *hw = vq->hw;
+	struct zxdh_vq_desc_extra *dxp;
+	uint16_t flags = vq->vq_packed.cached_flags;
+	int32_t i;
+	uint16_t idx;
+
+	for (i = 0; i < num; i++) {
+		idx = vq->vq_avail_idx;
+		dxp = &vq->vq_descx[idx];
+		dxp->cookie = (void *)cookie[i];
+		dxp->ndescs = 1;
+		/* rx pkt fill in data_off */
+		start_dp[idx].addr = rte_mbuf_iova_get(cookie[i]) + RTE_PKTMBUF_HEADROOM;
+		start_dp[idx].len = cookie[i]->buf_len - RTE_PKTMBUF_HEADROOM;
+		vq->vq_desc_head_idx = dxp->next;
+		if (vq->vq_desc_head_idx == ZXDH_VQ_RING_DESC_CHAIN_END)
+			vq->vq_desc_tail_idx = vq->vq_desc_head_idx;
+		zxdh_queue_store_flags_packed(&start_dp[idx], flags, hw->weak_barriers);
+		if (++vq->vq_avail_idx >= vq->vq_nentries) {
+			vq->vq_avail_idx -= vq->vq_nentries;
+			vq->vq_packed.cached_flags ^= ZXDH_VRING_PACKED_DESC_F_AVAIL_USED;
+			flags = vq->vq_packed.cached_flags;
+		}
+	}
+	vq->vq_free_cnt = (uint16_t)(vq->vq_free_cnt - num);
+	return 0;
+}
+
+int32_t zxdh_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t logic_qidx)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_virtqueue *vq = hw->vqs[logic_qidx];
+	struct zxdh_virtnet_rx *rxvq = &vq->rxq;
+	uint16_t desc_idx;
+	int32_t error = 0;
+
+	/* Allocate blank mbufs for the each rx descriptor */
+	memset(&rxvq->fake_mbuf, 0, sizeof(rxvq->fake_mbuf));
+	for (desc_idx = 0; desc_idx < ZXDH_MBUF_BURST_SZ; desc_idx++)
+		vq->sw_ring[vq->vq_nentries + desc_idx] = &rxvq->fake_mbuf;
+
+	while (!zxdh_queue_full(vq)) {
+		uint16_t free_cnt = vq->vq_free_cnt;
+
+		free_cnt = RTE_MIN(ZXDH_MBUF_BURST_SZ, free_cnt);
+		struct rte_mbuf *new_pkts[free_cnt];
+
+		if (likely(rte_pktmbuf_alloc_bulk(rxvq->mpool, new_pkts, free_cnt) == 0)) {
+			error = zxdh_enqueue_recv_refill_packed(vq, new_pkts, free_cnt);
+			if (unlikely(error)) {
+				int32_t i;
+				for (i = 0; i < free_cnt; i++)
+					rte_pktmbuf_free(new_pkts[i]);
+			}
+		} else {
+			PMD_DRV_LOG(ERR, "port %d rxq %d allocated bufs from %s failed",
+				hw->port_id, logic_qidx, rxvq->mpool->name);
+			break;
+		}
+	}
+	return 0;
+}
+
+void zxdh_queue_rxvq_flush(struct zxdh_virtqueue *vq)
+{
+	struct zxdh_vq_desc_extra *dxp = NULL;
+	uint16_t i = 0;
+	struct zxdh_vring_packed_desc *descs = vq->vq_packed.ring.desc;
+	int32_t cnt = 0;
+
+	i = vq->vq_used_cons_idx;
+	while (zxdh_desc_used(&descs[i], vq) && cnt++ < vq->vq_nentries) {
+		dxp = &vq->vq_descx[descs[i].id];
+		if (dxp->cookie != NULL) {
+			rte_pktmbuf_free(dxp->cookie);
+			dxp->cookie = NULL;
+		}
+		vq->vq_free_cnt++;
+		vq->vq_used_cons_idx++;
+		if (vq->vq_used_cons_idx >= vq->vq_nentries) {
+			vq->vq_used_cons_idx -= vq->vq_nentries;
+			vq->vq_packed.used_wrap_counter ^= 1;
+		}
+		i = vq->vq_used_cons_idx;
+	}
+}

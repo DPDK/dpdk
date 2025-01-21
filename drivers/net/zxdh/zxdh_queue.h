@@ -25,6 +25,11 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 #define ZXDH_VRING_DESC_F_WRITE           2
 /* This flag means the descriptor was made available by the driver */
 #define ZXDH_VRING_PACKED_DESC_F_AVAIL   (1 << (7))
+#define ZXDH_VRING_PACKED_DESC_F_USED    (1 << (15))
+
+/* Frequently used combinations */
+#define ZXDH_VRING_PACKED_DESC_F_AVAIL_USED \
+		(ZXDH_VRING_PACKED_DESC_F_AVAIL | ZXDH_VRING_PACKED_DESC_F_USED)
 
 #define ZXDH_RING_EVENT_FLAGS_ENABLE      0x0
 #define ZXDH_RING_EVENT_FLAGS_DISABLE     0x1
@@ -32,6 +37,9 @@ enum { ZXDH_VTNET_RQ = 0, ZXDH_VTNET_TQ = 1 };
 
 #define ZXDH_VQ_RING_DESC_CHAIN_END       32768
 #define ZXDH_QUEUE_DEPTH                  1024
+
+#define ZXDH_RQ_QUEUE_IDX                 0
+#define ZXDH_TQ_QUEUE_IDX                 1
 
 /*
  * ring descriptors: 16 bytes.
@@ -290,6 +298,63 @@ zxdh_mb(uint8_t weak_barriers)
 		rte_mb();
 }
 
+static inline int32_t
+zxdh_queue_full(const struct zxdh_virtqueue *vq)
+{
+	return (vq->vq_free_cnt == 0);
+}
+
+static inline void
+zxdh_queue_store_flags_packed(struct zxdh_vring_packed_desc *dp,
+		uint16_t flags, uint8_t weak_barriers)
+	{
+	if (weak_barriers) {
+	#ifdef RTE_ARCH_X86_64
+		rte_io_wmb();
+		dp->flags = flags;
+	#else
+		rte_atomic_store_explicit(&dp->flags, flags, rte_memory_order_release);
+	#endif
+	} else {
+		rte_io_wmb();
+		dp->flags = flags;
+	}
+}
+
+static inline uint16_t
+zxdh_queue_fetch_flags_packed(struct zxdh_vring_packed_desc *dp,
+		uint8_t weak_barriers)
+	{
+	uint16_t flags;
+	if (weak_barriers) {
+	#ifdef RTE_ARCH_X86_64
+		flags = dp->flags;
+		rte_io_rmb();
+	#else
+		flags = rte_atomic_load_explicit(&dp->flags, rte_memory_order_acquire);
+	#endif
+	} else {
+		flags = dp->flags;
+		rte_io_rmb();
+	}
+
+	return flags;
+}
+
+static inline int32_t
+zxdh_desc_used(struct zxdh_vring_packed_desc *desc, struct zxdh_virtqueue *vq)
+{
+	uint16_t flags = zxdh_queue_fetch_flags_packed(desc, vq->hw->weak_barriers);
+	uint16_t used = !!(flags & ZXDH_VRING_PACKED_DESC_F_USED);
+	uint16_t avail = !!(flags & ZXDH_VRING_PACKED_DESC_F_AVAIL);
+	return avail == used && used == vq->vq_packed.used_wrap_counter;
+}
+
+static inline void zxdh_queue_notify(struct zxdh_virtqueue *vq)
+{
+	ZXDH_VTPCI_OPS(vq->hw)->notify_queue(vq->hw, vq);
+}
+
 struct rte_mbuf *zxdh_queue_detach_unused(struct zxdh_virtqueue *vq);
 int32_t zxdh_free_queues(struct rte_eth_dev *dev);
 int32_t zxdh_get_queue_type(uint16_t vtpci_queue_idx);
@@ -306,5 +371,9 @@ int32_t zxdh_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			struct rte_mempool *mp);
 int32_t zxdh_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 int32_t zxdh_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
+int32_t zxdh_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t logic_qidx);
+void zxdh_queue_rxvq_flush(struct zxdh_virtqueue *vq);
+int32_t zxdh_enqueue_recv_refill_packed(struct zxdh_virtqueue *vq,
+			struct rte_mbuf **cookie, uint16_t num);
 
 #endif /* ZXDH_QUEUE_H */

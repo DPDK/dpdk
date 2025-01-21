@@ -76,6 +76,11 @@ New Features
 
   * Added support for virtual function (VF).
 
+* **Updated ZTE zxdh network driver.**
+
+  * Added support for multiple queues.
+  * Added support for SR-IOV VF.
+
 
 Removed Items
 -------------

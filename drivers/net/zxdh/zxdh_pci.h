@@ -144,6 +144,7 @@ struct zxdh_pci_ops {
 
 	int32_t  (*setup_queue)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq);
 	void     (*del_queue)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq);
+	void     (*notify_queue)(struct zxdh_hw *hw, struct zxdh_virtqueue *vq);
 };
 
 struct zxdh_hw_internal {
