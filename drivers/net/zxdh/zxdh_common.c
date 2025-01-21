@@ -216,7 +216,7 @@ zxdh_get_res_info(struct zxdh_res_para *dev, uint8_t field, uint8_t *res, uint16
 
 	if (ret != ZXDH_BAR_MSG_OK) {
 		PMD_DRV_LOG(ERR,
-			"send sync_msg failed. pcieid: 0x%x, ret: %d.", dev->pcie_id, ret);
+			"send sync_msg failed. pcieid: 0x%x, ret: %d", dev->pcie_id, ret);
 		return ret;
 	}
 	struct zxdh_tbl_msg_reps_header *tbl_reps =
@@ -224,7 +224,7 @@ zxdh_get_res_info(struct zxdh_res_para *dev, uint8_t field, uint8_t *res, uint16
 
 	if (tbl_reps->check != ZXDH_TBL_MSG_PRO_SUCCESS) {
 		PMD_DRV_LOG(ERR,
-			"get resource_field failed. pcieid: 0x%x, ret: %d.", dev->pcie_id, ret);
+			"get resource_field failed. pcieid: 0x%x, ret: %d", dev->pcie_id, ret);
 		return ret;
 	}
 	*len = tbl_reps->len;

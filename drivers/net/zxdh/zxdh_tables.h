@@ -8,8 +8,10 @@
 #include <stdint.h>
 
 #define ZXDH_DEVICE_NO                    0
+#define ZXDH_PORT_MTU_FLAG                9
 #define ZXDH_PORT_BASE_QID_FLAG           10
 #define ZXDH_PORT_ATTR_IS_UP_FLAG         35
+#define ZXDH_PORT_MTU_EN_FLAG             42
 
 #define ZXDH_MTU_STATS_EGRESS_BASE        0x8481
 #define ZXDH_MTU_STATS_INGRESS_BASE       0x8981
@@ -223,5 +225,7 @@ int zxdh_vlan_filter_table_init(struct rte_eth_dev *dev);
 int zxdh_vlan_filter_table_set(uint16_t vport, uint16_t vlan_id, uint8_t enable);
 int zxdh_rss_table_set(uint16_t vport, struct zxdh_rss_reta *rss_reta);
 int zxdh_rss_table_get(uint16_t vport, struct zxdh_rss_reta *rss_reta);
+int zxdh_get_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
+int zxdh_set_panel_attr(struct rte_eth_dev *dev, struct zxdh_panel_table *panel_attr);
 
 #endif /* ZXDH_TABLES_H */

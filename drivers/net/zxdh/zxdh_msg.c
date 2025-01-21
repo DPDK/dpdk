@@ -417,30 +417,30 @@ zxdh_bar_chan_send_para_check(struct zxdh_pci_bar_msg *in,
 	uint8_t dst_index = 0;
 
 	if (in == NULL || result == NULL) {
-		PMD_MSG_LOG(ERR, "send para ERR: null para.");
+		PMD_MSG_LOG(ERR, "send para ERR: null para");
 		return ZXDH_BAR_MSG_ERR_NULL_PARA;
 	}
 	src_index = zxdh_bar_msg_src_index_trans(in->src);
 	dst_index = zxdh_bar_msg_dst_index_trans(in->dst);
 
 	if (src_index == ZXDH_BAR_MSG_SRC_ERR || dst_index == ZXDH_BAR_MSG_DST_ERR) {
-		PMD_MSG_LOG(ERR, "send para ERR: chan doesn't exist.");
+		PMD_MSG_LOG(ERR, "send para ERR: chan doesn't exist");
 		return ZXDH_BAR_MSG_ERR_TYPE;
 	}
 	if (in->module_id >= ZXDH_BAR_MSG_MODULE_NUM) {
-		PMD_MSG_LOG(ERR, "send para ERR: invalid module_id: %d.", in->module_id);
+		PMD_MSG_LOG(ERR, "send para ERR: invalid module_id: %d", in->module_id);
 		return ZXDH_BAR_MSG_ERR_MODULE;
 	}
 	if (in->payload_addr == NULL) {
-		PMD_MSG_LOG(ERR, "send para ERR: null message.");
+		PMD_MSG_LOG(ERR, "send para ERR: null message");
 		return ZXDH_BAR_MSG_ERR_BODY_NULL;
 	}
 	if (in->payload_len > ZXDH_BAR_MSG_PAYLOAD_MAX_LEN) {
-		PMD_MSG_LOG(ERR, "send para ERR: len %d is too long.", in->payload_len);
+		PMD_MSG_LOG(ERR, "send para ERR: len %d is too long", in->payload_len);
 		return ZXDH_BAR_MSG_ERR_LEN;
 	}
 	if (in->virt_addr == 0 || result->recv_buffer == NULL) {
-		PMD_MSG_LOG(ERR, "send para ERR: virt_addr or recv_buffer is NULL.");
+		PMD_MSG_LOG(ERR, "send para ERR: virt_addr or recv_buffer is NULL");
 		return ZXDH_BAR_MSG_ERR_VIRTADDR_NULL;
 	}
 	if (result->buffer_len < ZXDH_REPS_HEADER_PAYLOAD_OFFSET)
@@ -508,13 +508,13 @@ zxdh_bar_chan_lock(uint8_t src, uint8_t dst, uint16_t src_pcieid, uint64_t virt_
 	uint8_t dst_index = zxdh_bar_msg_dst_index_trans(dst);
 
 	if (src_index == ZXDH_BAR_MSG_SRC_ERR || dst_index == ZXDH_BAR_MSG_DST_ERR) {
-		PMD_MSG_LOG(ERR, "lock ERR: chan doesn't exist.");
+		PMD_MSG_LOG(ERR, "lock ERR: chan doesn't exist");
 		return ZXDH_BAR_MSG_ERR_TYPE;
 	}
 
 	ret = zxdh_bar_hard_lock(src_pcieid, dst, virt_addr);
 	if (ret != 0)
-		PMD_MSG_LOG(ERR, "dev: 0x%x failed to lock.", src_pcieid);
+		PMD_MSG_LOG(ERR, "dev: 0x%x failed to lock", src_pcieid);
 
 	return ret;
 }
@@ -526,7 +526,7 @@ zxdh_bar_chan_unlock(uint8_t src, uint8_t dst, uint16_t src_pcieid, uint64_t vir
 	uint8_t dst_index = zxdh_bar_msg_dst_index_trans(dst);
 
 	if (src_index == ZXDH_BAR_MSG_SRC_ERR || dst_index == ZXDH_BAR_MSG_DST_ERR) {
-		PMD_MSG_LOG(ERR, "unlock ERR: chan doesn't exist.");
+		PMD_MSG_LOG(ERR, "unlock ERR: chan doesn't exist");
 		return ZXDH_BAR_MSG_ERR_TYPE;
 	}
 
@@ -775,7 +775,7 @@ zxdh_bar_chan_sync_msg_send(struct zxdh_pci_bar_msg *in, struct zxdh_msg_recvive
 	if (time_out_cnt == ZXDH_BAR_MSG_TIMEOUT_TH && valid != ZXDH_BAR_MSG_CHAN_USABLE) {
 		zxdh_bar_chan_msg_valid_set(subchan_addr, ZXDH_BAR_MSG_CHAN_USABLE);
 		zxdh_bar_chan_msg_poltag_set(subchan_addr, 0);
-		PMD_MSG_LOG(ERR, "BAR MSG ERR: chan type time out.");
+		PMD_MSG_LOG(ERR, "BAR MSG ERR: chan type time out");
 		ret = ZXDH_BAR_MSG_ERR_TIME_OUT;
 	} else {
 		ret = zxdh_bar_chan_sync_msg_reps_get(subchan_addr,
@@ -843,11 +843,11 @@ zxdh_bar_chan_enable(struct zxdh_msix_para *para, uint16_t *vport)
 	sum_res = zxdh_bar_get_sum((uint8_t *)&msix_msg, sizeof(msix_msg));
 
 	if (check_token != sum_res) {
-		PMD_MSG_LOG(ERR, "expect token: 0x%x, get token: 0x%x.", sum_res, check_token);
+		PMD_MSG_LOG(ERR, "expect token: 0x%x, get token: 0x%x", sum_res, check_token);
 		return ZXDH_BAR_MSG_ERR_REPLY;
 	}
 	*vport = recv_msg.msix_reps.vport;
-	PMD_MSG_LOG(DEBUG, "vport of pcieid: 0x%x get success.", para->pcie_id);
+	PMD_MSG_LOG(DEBUG, "vport of pcieid: 0x%x get success", para->pcie_id);
 	return ZXDH_BAR_MSG_OK;
 }
 
@@ -967,19 +967,19 @@ zxdh_bar_chan_msg_header_check(struct zxdh_bar_msg_header *msg_header)
 	uint8_t module_id = 0;
 
 	if (msg_header->valid != ZXDH_BAR_MSG_CHAN_USED) {
-		PMD_MSG_LOG(ERR, "recv header ERR: valid label is not used.");
+		PMD_MSG_LOG(ERR, "recv header ERR: valid label is not used");
 		return ZXDH_BAR_MSG_ERR_MODULE;
 	}
 	module_id = msg_header->module_id;
 
 	if (module_id >= (uint8_t)ZXDH_BAR_MSG_MODULE_NUM) {
-		PMD_MSG_LOG(ERR, "recv header ERR: invalid module_id: %u.", module_id);
+		PMD_MSG_LOG(ERR, "recv header ERR: invalid module_id: %u", module_id);
 		return ZXDH_BAR_MSG_ERR_MODULE;
 	}
 	len = msg_header->len;
 
 	if (len > ZXDH_BAR_MSG_PAYLOAD_MAX_LEN) {
-		PMD_MSG_LOG(ERR, "recv header ERR: invalid mesg len: %u.", len);
+		PMD_MSG_LOG(ERR, "recv header ERR: invalid mesg len: %u", len);
 		return ZXDH_BAR_MSG_ERR_LEN;
 	}
 	if (msg_recv_func_tbl[msg_header->module_id] == NULL) {
@@ -1001,7 +1001,7 @@ zxdh_bar_irq_recv(uint8_t src, uint8_t dst, uint64_t virt_addr, void *dev)
 
 	recv_addr = zxdh_recv_addr_get(src, dst, virt_addr);
 	if (recv_addr == 0) {
-		PMD_MSG_LOG(ERR, "invalid driver type(src:%u, dst:%u).", src, dst);
+		PMD_MSG_LOG(ERR, "invalid driver type(src:%u, dst:%u)", src, dst);
 		return -1;
 	}
 
@@ -1009,13 +1009,13 @@ zxdh_bar_irq_recv(uint8_t src, uint8_t dst, uint64_t virt_addr, void *dev)
 	ret = zxdh_bar_chan_msg_header_check(&msg_header);
 
 	if (ret != ZXDH_BAR_MSG_OK) {
-		PMD_MSG_LOG(ERR, "recv msg_head err, ret: %u.", ret);
+		PMD_MSG_LOG(ERR, "recv msg_head err, ret: %u", ret);
 		return -1;
 	}
 
 	recved_msg = rte_malloc(NULL, msg_header.len, 0);
 	if (recved_msg == NULL) {
-		PMD_MSG_LOG(ERR, "malloc temp buff failed.");
+		PMD_MSG_LOG(ERR, "malloc temp buff failed");
 		return -1;
 	}
 	zxdh_bar_chan_msg_payload_get(recv_addr, recved_msg, msg_header.len);

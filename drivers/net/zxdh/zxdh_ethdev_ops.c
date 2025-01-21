@@ -13,6 +13,7 @@
 #include "zxdh_logs.h"
 #include "zxdh_rxtx.h"
 #include "zxdh_np.h"
+#include "zxdh_queue.h"
 
 #define ZXDH_VLAN_FILTER_GROUPS       64
 #define ZXDH_INVALID_LOGIC_QID        0xFFFFU
@@ -136,7 +137,7 @@ static int32_t zxdh_config_port_status(struct rte_eth_dev *dev, uint16_t link_st
 	if (hw->is_pf) {
 		ret = zxdh_get_port_attr(hw->vfid, &port_attr);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "write port_attr failed");
+			PMD_DRV_LOG(ERR, "get port_attr failed");
 			return -1;
 		}
 		port_attr.is_up = link_status;
@@ -258,7 +259,7 @@ int32_t zxdh_dev_link_update(struct rte_eth_dev *dev, int32_t wait_to_complete _
 
 	ret = zxdh_link_info_get(dev, &link);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, " Failed to get link status from hw");
+		PMD_DRV_LOG(ERR, "Failed to get link status from hw");
 		return ret;
 	}
 	link.link_status &= hw->admin_status;
@@ -267,7 +268,7 @@ int32_t zxdh_dev_link_update(struct rte_eth_dev *dev, int32_t wait_to_complete _
 
 	ret = zxdh_config_port_status(dev, link.link_status);
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "set port attr %d failed.", link.link_status);
+		PMD_DRV_LOG(ERR, "set port attr %d failed", link.link_status);
 		return ret;
 	}
 	return rte_eth_linkstatus_set(dev, &link);
@@ -317,7 +318,7 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 		zxdh_msg_head_build(hw, ZXDH_MAC_DEL, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d ",
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
 				hw->vport.vport, ZXDH_MAC_DEL);
 			return ret;
 		}
@@ -330,7 +331,7 @@ int zxdh_dev_mac_addr_set(struct rte_eth_dev *dev, struct rte_ether_addr *addr)
 		zxdh_msg_head_build(hw, ZXDH_MAC_ADD, &msg_info);
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d ",
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
 				hw->vport.vport, ZXDH_MAC_ADD);
 			return ret;
 		}
@@ -666,13 +667,13 @@ zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 
 	if (on) {
 		if (dev->data->vlan_filter_conf.ids[idx] & (1ULL << bit_idx)) {
-			PMD_DRV_LOG(ERR, "vlan:%d has already added.", vlan_id);
+			PMD_DRV_LOG(ERR, "vlan:%d has already added", vlan_id);
 			return 0;
 		}
 		msg_type = ZXDH_VLAN_FILTER_ADD;
 	} else {
 		if (!(dev->data->vlan_filter_conf.ids[idx] & (1ULL << bit_idx))) {
-			PMD_DRV_LOG(ERR, "vlan:%d has already deleted.", vlan_id);
+			PMD_DRV_LOG(ERR, "vlan:%d has already deleted", vlan_id);
 			return 0;
 		}
 		msg_type = ZXDH_VLAN_FILTER_DEL;
@@ -681,7 +682,7 @@ zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	if (hw->is_pf) {
 		ret = zxdh_vlan_filter_table_set(hw->vport.vport, vlan_id, on);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "vlan_id:%d table set failed.", vlan_id);
+			PMD_DRV_LOG(ERR, "vlan_id:%d table set failed", vlan_id);
 			return -1;
 		}
 	} else {
@@ -690,7 +691,7 @@ zxdh_dev_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 		msg.data.vlan_filter_msg.vlan_id = vlan_id;
 		ret = zxdh_vf_send_msg_to_pf(dev, &msg, sizeof(struct zxdh_msg_info), NULL, 0);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d ",
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
 					hw->vport.vport, msg_type);
 			return ret;
 		}
@@ -1399,8 +1400,8 @@ zxdh_hw_np_stats_get(struct rte_eth_dev *dev,  struct zxdh_hw_np_stats *np_stats
 					&reply_info, sizeof(struct zxdh_msg_reply_info));
 		if (ret) {
 			PMD_DRV_LOG(ERR,
-				"Failed to send msg: port 0x%x msg type ZXDH_PORT_METER_STAT_GET",
-				hw->vport.vport);
+				"%s Failed to send msg: port 0x%x msg type",
+				__func__, hw->vport.vport);
 			return -1;
 		}
 		memcpy(np_stats, &reply_info.reply_body.np_stats, sizeof(struct zxdh_hw_np_stats));
@@ -1504,5 +1505,69 @@ int zxdh_dev_stats_reset(struct rte_eth_dev *dev)
 	if (hw->is_pf)
 		zxdh_hw_stats_reset(dev, ZXDH_MAC_STATS_RESET);
 
+	return 0;
+}
+
+int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu)
+{
+	struct zxdh_hw *hw = dev->data->dev_private;
+	struct zxdh_panel_table panel = {0};
+	struct zxdh_port_attr_table vport_att = {0};
+	uint16_t vfid = zxdh_vport_to_vfid(hw->vport);
+	int ret;
+
+	if (hw->is_pf) {
+		ret = zxdh_get_panel_attr(dev, &panel);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "get_panel_attr failed ret:%d", ret);
+			return ret;
+		}
+
+		ret = zxdh_get_port_attr(vfid, &vport_att);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR,
+				"[vfid:%d] zxdh_dev_mtu, get vport failed ret:%d", vfid, ret);
+			return ret;
+		}
+
+		panel.mtu = new_mtu;
+		panel.mtu_enable = 1;
+		ret = zxdh_set_panel_attr(dev, &panel);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "set zxdh_dev_mtu failed, ret:%u", ret);
+			return ret;
+		}
+
+		vport_att.mtu_enable = 1;
+		vport_att.mtu = new_mtu;
+		ret = zxdh_set_port_attr(vfid, &vport_att);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR,
+				"[vfid:%d] zxdh_dev_mtu, set vport failed ret:%d", vfid, ret);
+			return ret;
+		}
+	} else {
+		struct zxdh_msg_info msg_info = {0};
+		struct zxdh_port_attr_set_msg *attr_msg = &msg_info.data.port_attr_msg;
+
+		zxdh_msg_head_build(hw, ZXDH_PORT_ATTRS_SET, &msg_info);
+		attr_msg->mode = ZXDH_PORT_MTU_EN_FLAG;
+		attr_msg->value = 1;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+				hw->vport.vport, ZXDH_PORT_MTU_EN_FLAG);
+			return ret;
+		}
+		attr_msg->mode = ZXDH_PORT_MTU_FLAG;
+		attr_msg->value = new_mtu;
+		ret = zxdh_vf_send_msg_to_pf(dev, &msg_info, sizeof(msg_info), NULL, 0);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to send msg: port 0x%x msg type %d",
+				hw->vport.vport, ZXDH_PORT_MTU_FLAG);
+			return ret;
+		}
+	}
+	dev->data->mtu = new_mtu;
 	return 0;
 }

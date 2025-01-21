@@ -321,13 +321,13 @@ struct __rte_packed_begin zxdh_link_info_msg {
 	uint32_t speed;
 } __rte_packed_end;
 
-struct zxdh_rss_reta {
+struct __rte_packed_begin zxdh_rss_reta {
 	uint32_t reta[RTE_ETH_RSS_RETA_SIZE_256];
-};
+} __rte_packed_end;
 
-struct zxdh_rss_hf {
+struct __rte_packed_begin zxdh_rss_hf {
 	uint32_t rss_hf;
-};
+} __rte_packed_end;
 
 struct __rte_packed_begin zxdh_msg_reply_body {
 	enum zxdh_reps_flag flag;
@@ -335,8 +335,8 @@ struct __rte_packed_begin zxdh_msg_reply_body {
 		uint8_t reply_data[ZXDH_MSG_REPLY_BODY_MAX_LEN - sizeof(enum zxdh_reps_flag)];
 		struct zxdh_hw_np_stats np_stats;
 		struct zxdh_link_info_msg link_msg;
-		struct zxdh_rss_hf rss_hf;
 		struct zxdh_rss_reta rss_reta;
+		struct zxdh_rss_hf rss_hf;
 		struct zxdh_hw_vqm_stats vqm_stats;
 	} __rte_packed_end;
 } __rte_packed_end;

@@ -26,15 +26,7 @@
 #define ZXDH_HF_MAC_VLAN_ETH  ZXDH_ETH_RSS_L2
 #define ZXDH_RSS_HF  ((ZXDH_HF_MAC_VLAN_ETH | ZXDH_HF_F3_ETH | ZXDH_HF_F5_ETH))
 
-struct zxdh_hw_vqm_stats {
-	uint64_t rx_total;
-	uint64_t tx_total;
-	uint64_t rx_bytes;
-	uint64_t tx_bytes;
-	uint64_t rx_error;
-	uint64_t tx_error;
-	uint64_t rx_drop;
-};
+#define ZXDH_ETHER_MIN_MTU      68
 
 struct zxdh_hw_np_stats {
 	uint64_t np_rx_broadcast;
@@ -47,6 +39,16 @@ struct zxdh_hw_np_stats {
 	uint64_t np_tx_mtr_drop_pkts;
 	uint64_t np_rx_mtr_drop_bytes;
 	uint64_t np_tx_mtr_drop_bytes;
+};
+
+struct zxdh_hw_vqm_stats {
+	uint64_t rx_total;
+	uint64_t tx_total;
+	uint64_t rx_bytes;
+	uint64_t tx_bytes;
+	uint64_t rx_error;
+	uint64_t tx_error;
+	uint64_t rx_drop;
 };
 
 int zxdh_dev_set_link_up(struct rte_eth_dev *dev);
@@ -73,5 +75,6 @@ int zxdh_rss_hash_conf_get(struct rte_eth_dev *dev, struct rte_eth_rss_conf *rss
 int zxdh_rss_configure(struct rte_eth_dev *dev);
 int zxdh_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 int zxdh_dev_stats_reset(struct rte_eth_dev *dev);
+int zxdh_dev_mtu_set(struct rte_eth_dev *dev, uint16_t new_mtu);
 
 #endif /* ZXDH_ETHDEV_OPS_H */
