@@ -19,4 +19,5 @@ sources = files(
         'zxdh_msg.c',
         'zxdh_pci.c',
         'zxdh_queue.c',
+        'zxdh_np.c',
 )

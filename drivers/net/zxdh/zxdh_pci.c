@@ -159,7 +159,7 @@ zxdh_setup_queue(struct zxdh_hw *hw, struct zxdh_virtqueue *vq)
 
 	desc_addr = vq->vq_ring_mem;
 	avail_addr = desc_addr + vq->vq_nentries * sizeof(struct zxdh_vring_desc);
-	if (vtpci_packed_queue(vq->hw)) {
+	if (zxdh_pci_packed_queue(vq->hw)) {
 		used_addr = RTE_ALIGN_CEIL((avail_addr +
 				sizeof(struct zxdh_vring_packed_desc_event)),
 				ZXDH_PCI_VRING_ALIGN);

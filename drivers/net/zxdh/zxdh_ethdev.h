@@ -35,6 +35,12 @@
 
 #define ZXDH_MBUF_BURST_SZ        64
 
+#define ZXDH_MAX_BASE_DTB_TABLE_COUNT   30
+#define ZXDH_DTB_TABLE_DUMP_SIZE        (32 * (16 + 16 * 1024))
+#define ZXDH_DTB_TABLE_CONF_SIZE        (32 * (16 + 16 * 1024))
+
+#define ZXDH_MAX_NAME_LEN               32
+
 union zxdh_virport_num {
 	uint16_t vport;
 	struct {
@@ -87,6 +93,30 @@ struct zxdh_hw {
 	uint8_t panel_id;
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;
+};
+
+struct zxdh_dtb_shared_data {
+	uint8_t init_done;
+	char name[ZXDH_MAX_NAME_LEN];
+	uint16_t queueid;
+	uint16_t vport;
+	uint32_t vector;
+	const struct rte_memzone *dtb_table_conf_mz;
+	const struct rte_memzone *dtb_table_dump_mz;
+	const struct rte_memzone *dtb_table_bulk_dump_mz[ZXDH_MAX_BASE_DTB_TABLE_COUNT];
+	struct rte_eth_dev *bind_device;
+	uint32_t dev_refcnt;
+};
+
+/* Shared data between primary and secondary processes. */
+struct zxdh_shared_data {
+	rte_spinlock_t lock; /* Global spinlock for primary and secondary processes. */
+	int32_t init_done;       /* Whether primary has done initialization. */
+	unsigned int secondary_cnt; /* Number of secondary processes init'd. */
+
+	int32_t np_init_done;
+	uint32_t dev_refcnt;
+	struct zxdh_dtb_shared_data *dtb_data;
 };
 
 uint16_t zxdh_vport_to_vfid(union zxdh_virport_num v);

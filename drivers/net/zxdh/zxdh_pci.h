@@ -114,15 +114,15 @@ struct zxdh_pci_common_cfg {
 };
 
 static inline int32_t
-vtpci_with_feature(struct zxdh_hw *hw, uint64_t bit)
+zxdh_pci_with_feature(struct zxdh_hw *hw, uint64_t bit)
 {
 	return (hw->guest_features & (1ULL << bit)) != 0;
 }
 
 static inline int32_t
-vtpci_packed_queue(struct zxdh_hw *hw)
+zxdh_pci_packed_queue(struct zxdh_hw *hw)
 {
-	return vtpci_with_feature(hw, ZXDH_F_RING_PACKED);
+	return zxdh_pci_with_feature(hw, ZXDH_F_RING_PACKED);
 }
 
 struct zxdh_pci_ops {
