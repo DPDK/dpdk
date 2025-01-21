@@ -12,6 +12,8 @@
 
 #include "zxdh_ethdev.h"
 
+#define ZXDH_PF_PCIE_ID(pcie_id)  (((pcie_id) & 0xff00) | 1 << 11)
+
 enum zxdh_msix_status {
 	ZXDH_MSIX_NONE     = 0,
 	ZXDH_MSIX_DISABLED = 1,

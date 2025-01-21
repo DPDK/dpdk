@@ -33,6 +33,19 @@
 #define ZXDH_BAR_MSG_PAYLOAD_MAX_LEN     \
 	(ZXDH_BAR_MSG_ADDR_CHAN_INTERVAL - sizeof(struct zxdh_bar_msg_header))
 
+#define ZXDH_MSG_ADDR_CHAN_INTERVAL       (2 * 1024) /* channel size */
+#define ZXDH_MSG_PAYLOAD_MAX_LEN \
+		(ZXDH_MSG_ADDR_CHAN_INTERVAL - sizeof(struct zxdh_bar_msg_header))
+
+#define ZXDH_MSG_REPLYBODY_HEAD    sizeof(enum zxdh_reps_flag)
+#define ZXDH_MSG_HEADER_SIZE       4
+#define ZXDH_MSG_REPLY_BODY_MAX_LEN  \
+		(ZXDH_MSG_PAYLOAD_MAX_LEN - sizeof(struct zxdh_msg_reply_head))
+
+#define ZXDH_MSG_HEAD_LEN 8
+#define ZXDH_MSG_REQ_BODY_MAX_LEN  \
+		(ZXDH_MSG_PAYLOAD_MAX_LEN - ZXDH_MSG_HEAD_LEN)
+
 enum ZXDH_DRIVER_TYPE {
 	ZXDH_MSG_CHAN_END_MPF = 0,
 	ZXDH_MSG_CHAN_END_PF,
@@ -151,6 +164,13 @@ enum pciebar_layout_type {
 	ZXDH_URI_MAX,
 };
 
+enum zxdh_msg_type {
+	ZXDH_NULL = 0,
+	ZXDH_VF_PORT_INIT = 1,
+
+	ZXDH_MSG_TYPE_END,
+};
+
 struct zxdh_msix_para {
 	uint16_t pcie_id;
 	uint16_t vector_risc;
@@ -240,6 +260,54 @@ struct zxdh_offset_get_msg {
 	uint16_t type;
 };
 
+struct __rte_packed_begin zxdh_msg_reply_head {
+	uint8_t flag;
+	uint16_t reps_len;
+	uint8_t resvd;
+} __rte_packed_end;
+
+enum zxdh_reps_flag {
+	ZXDH_REPS_FAIL,
+	ZXDH_REPS_SUCC = 0xaa,
+};
+
+struct __rte_packed_begin zxdh_msg_reply_body {
+	enum zxdh_reps_flag flag;
+	union __rte_packed_begin {
+		uint8_t reply_data[ZXDH_MSG_REPLY_BODY_MAX_LEN - sizeof(enum zxdh_reps_flag)];
+	} __rte_packed_end;
+} __rte_packed_end;
+
+struct __rte_packed_begin zxdh_msg_reply_info {
+	struct zxdh_msg_reply_head reply_head;
+	struct zxdh_msg_reply_body reply_body;
+} __rte_packed_end;
+
+struct __rte_packed_begin zxdh_vf_init_msg {
+	uint8_t link_up;
+	uint8_t rsv;
+	uint16_t base_qid;
+	uint8_t rss_enable;
+} __rte_packed_end;
+
+struct __rte_packed_begin zxdh_msg_head {
+	enum zxdh_msg_type msg_type;
+	uint16_t  vport;
+	uint16_t  vf_id;
+	uint16_t pcieid;
+} __rte_packed_end;
+
+struct __rte_packed_begin zxdh_msg_info {
+	union {
+		uint8_t head_len[ZXDH_MSG_HEAD_LEN];
+		struct zxdh_msg_head msg_head;
+	};
+	union __rte_packed_begin {
+		uint8_t datainfo[ZXDH_MSG_REQ_BODY_MAX_LEN];
+		struct zxdh_vf_init_msg vf_init_msg;
+	} __rte_packed_end data;
+} __rte_packed_end;
+
 typedef int (*zxdh_bar_chan_msg_recv_callback)(void *pay_load, uint16_t len,
 		void *reps_buffer, uint16_t *reps_len, void *dev);
 
@@ -253,5 +321,9 @@ int zxdh_bar_chan_sync_msg_send(struct zxdh_pci_bar_msg *in,
 		struct zxdh_msg_recviver_mem *result);
 
 int zxdh_bar_irq_recv(uint8_t src, uint8_t dst, uint64_t virt_addr, void *dev);
+void zxdh_msg_head_build(struct zxdh_hw *hw, enum zxdh_msg_type type,
+		struct zxdh_msg_info *msg_info);
+int zxdh_vf_send_msg_to_pf(struct rte_eth_dev *dev,  void *msg_req,
+			uint16_t msg_req_len, void *reply, uint16_t reply_len);
 
 #endif /* ZXDH_MSG_H */

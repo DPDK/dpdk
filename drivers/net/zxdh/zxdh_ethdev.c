@@ -14,6 +14,7 @@
 #include "zxdh_common.h"
 #include "zxdh_queue.h"
 #include "zxdh_np.h"
+#include "zxdh_tables.h"
 
 struct zxdh_hw_internal zxdh_hw_internal[RTE_MAX_ETHPORTS];
 struct zxdh_shared_data *zxdh_shared_data;
@@ -1145,6 +1146,25 @@ zxdh_np_init(struct rte_eth_dev *eth_dev)
 }
 
 static int
+zxdh_tables_init(struct rte_eth_dev *dev)
+{
+	int ret = 0;
+
+	ret = zxdh_port_attr_init(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "zxdh_port_attr_init failed");
+		return ret;
+	}
+
+	ret = zxdh_panel_table_init(dev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, " panel table init failed");
+		return ret;
+	}
+	return ret;
+}
+
+static int
 zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
@@ -1217,6 +1237,10 @@ zxdh_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto err_zxdh_init;
 
 	ret = zxdh_configure_intr(eth_dev);
+	if (ret != 0)
+		goto err_zxdh_init;
+
+	ret = zxdh_tables_init(eth_dev);
 	if (ret != 0)
 		goto err_zxdh_init;
 
