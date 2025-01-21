@@ -4268,13 +4268,8 @@ struct flow_handle *flow_create_profile_inline(struct flow_eth_dev *dev __rte_un
 
 err_exit:
 
-	if (fh) {
-		flow_destroy_locked_profile_inline(dev, fh, NULL);
-		fh = NULL;
-	} else {
-		free(fd);
-		fd = NULL;
-	}
+	free(fd);
+	fd = NULL;
 
 	rte_spinlock_unlock(&dev->ndev->mtx);
 
