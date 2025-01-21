@@ -31,6 +31,7 @@ Features of the ZXDH PMD are:
 - VLAN filter and VLAN offload
 - VLAN stripping and inserting
 - QINQ stripping and inserting
+- Receive Side Scaling (RSS)
 
 
 Driver compilation and testing

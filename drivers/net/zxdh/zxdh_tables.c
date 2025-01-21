@@ -10,6 +10,7 @@
 
 #define ZXDH_SDT_VPORT_ATT_TABLE          1
 #define ZXDH_SDT_PANEL_ATT_TABLE          2
+#define ZXDH_SDT_RSS_ATT_TABLE            3
 #define ZXDH_SDT_VLAN_ATT_TABLE           4
 #define ZXDH_SDT_BROCAST_ATT_TABLE        6
 #define ZXDH_SDT_UNICAST_ATT_TABLE        10
@@ -665,6 +666,87 @@ zxdh_vlan_filter_table_set(uint16_t vport, uint16_t vlan_id, uint8_t enable)
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "write vlan table failed");
 		return -1;
+	}
+	return 0;
+}
+
+int
+zxdh_rss_table_set(uint16_t vport, struct zxdh_rss_reta *rss_reta)
+{
+	struct zxdh_rss_to_vqid_table rss_vqid = {0};
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	int ret = 0;
+
+	for (uint16_t i = 0; i < RTE_ETH_RSS_RETA_SIZE_256 / 8; i++) {
+		for (uint16_t j = 0; j < 8; j++) {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			if (j % 2 == 0)
+				rss_vqid.vqm_qid[j + 1] = rss_reta->reta[i * 8 + j];
+			else
+				rss_vqid.vqm_qid[j - 1] = rss_reta->reta[i * 8 + j];
+#else
+			rss_vqid.vqm_qid[j] = rss_init->reta[i * 8 + j];
+#endif
+		}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			rss_vqid.vqm_qid[1] |= 0x8000;
+#else
+			rss_vqid.vqm_qid[0] |= 0x8000;
+#endif
+		ZXDH_DTB_ERAM_ENTRY_INFO_T entry = {
+			.index = vport_num.vfid * 32 + i,
+			.p_data = (uint32_t *)&rss_vqid
+		};
+		ZXDH_DTB_USER_ENTRY_T user_entry_write = {
+			.sdt_no = ZXDH_SDT_RSS_ATT_TABLE,
+			.p_entry_data = &entry
+		};
+		ret = zxdh_np_dtb_table_entry_write(ZXDH_DEVICE_NO,
+					g_dtb_data.queueid, 1, &user_entry_write);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "write rss base qid failed vfid:%d", vport_num.vfid);
+			return ret;
+		}
+	}
+	return 0;
+}
+
+int
+zxdh_rss_table_get(uint16_t vport, struct zxdh_rss_reta *rss_reta)
+{
+	struct zxdh_rss_to_vqid_table rss_vqid = {0};
+	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
+	int ret = 0;
+
+	for (uint16_t i = 0; i < RTE_ETH_RSS_RETA_SIZE_256 / 8; i++) {
+		ZXDH_DTB_ERAM_ENTRY_INFO_T entry = {vport_num.vfid * 32 + i, (uint32_t *)&rss_vqid};
+		ZXDH_DTB_USER_ENTRY_T user_entry = {ZXDH_SDT_RSS_ATT_TABLE, &entry};
+
+		ret = zxdh_np_dtb_table_entry_get(ZXDH_DEVICE_NO,
+					g_dtb_data.queueid, &user_entry, 1);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "get rss tbl failed, vfid:%d", vport_num.vfid);
+			return -1;
+		}
+
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+				rss_vqid.vqm_qid[1] &= 0x7FFF;
+#else
+				rss_vqid.vqm_qid[0] &= 0x7FFF;
+#endif
+		uint8_t size = sizeof(struct zxdh_rss_to_vqid_table) / sizeof(uint16_t);
+
+		for (int j = 0; j < size; j++) {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+			if (j % 2 == 0)
+				rss_reta->reta[i * 8 + j] = rss_vqid.vqm_qid[j + 1];
+			else
+				rss_reta->reta[i * 8 + j] = rss_vqid.vqm_qid[j - 1];
+#else
+			rss_reta->reta[i * 8 + j] = rss_vqid.vqm_qid[j];
+#endif
+		}
 	}
 	return 0;
 }
