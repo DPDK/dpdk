@@ -532,6 +532,11 @@ typedef struct zxdh_sdt_tbl_porttbl_t {
 	uint32_t porttbl_clutch_en;
 } ZXDH_SDTTBL_PORTTBL_T;
 
+typedef struct zxdh_dtb_hash_entry_info_t {
+	uint8_t *p_actu_key;
+	uint8_t *p_rst;
+} ZXDH_DTB_HASH_ENTRY_INFO_T;
+
 int zxdh_np_host_init(uint32_t dev_id, ZXDH_DEV_INIT_CTRL_T *p_dev_init_ctrl);
 int zxdh_np_online_uninit(uint32_t dev_id, char *port_name, uint32_t queue_id);
 int zxdh_np_dtb_table_entry_write(uint32_t dev_id, uint32_t queue_id,

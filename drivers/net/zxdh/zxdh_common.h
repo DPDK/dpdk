@@ -22,6 +22,7 @@ struct zxdh_res_para {
 
 int32_t zxdh_phyport_get(struct rte_eth_dev *dev, uint8_t *phyport);
 int32_t zxdh_panelid_get(struct rte_eth_dev *dev, uint8_t *pannelid);
+int32_t zxdh_hashidx_get(struct rte_eth_dev *dev, uint8_t *hash_idx);
 uint32_t zxdh_read_bar_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg);
 void zxdh_write_bar_reg(struct rte_eth_dev *dev, uint32_t bar, uint32_t reg, uint32_t val);
 void zxdh_release_lock(struct zxdh_hw *hw);
