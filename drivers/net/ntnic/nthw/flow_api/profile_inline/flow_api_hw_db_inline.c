@@ -429,9 +429,14 @@ void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct 
 				data->cat.ids, data->km.id1, data->km_ft.id1,
 				data->action_set.ids);
 
-			if (data->jump)
-				fprintf(file, "    Jumps to %d\n", data->jump);
-
+			if (data->jump) {
+				uint32_t group_orig = 0;
+				if (flow_group_translate_get_orig_group(ndev->group_handle,
+					data->jump, &group_orig) < 0)
+					fprintf(file, "    Jumps to %d (encoded)\n", data->jump);
+				else
+					fprintf(file, "    Jumps to %d\n", group_orig);
+			}
 			break;
 		}
 
@@ -440,15 +445,20 @@ void hw_db_inline_dump(struct flow_nic_dev *ndev, void *db_handle, const struct 
 					&db->action_set[idxs[i].ids].data;
 			fprintf(file, "  ACTION_SET %d\n", idxs[i].ids);
 
-			if (data->contains_jump)
-				fprintf(file, "    Jumps to %d\n", data->jump);
+			if (data->contains_jump) {
+				uint32_t group_orig = 0;
+				if (flow_group_translate_get_orig_group(ndev->group_handle,
+					data->jump, &group_orig) < 0)
+					fprintf(file, "    Jumps to %d (encoded)\n", data->jump);
 
-			else
+				else
+					fprintf(file, "    Jumps to %d\n", group_orig);
+			} else {
 				fprintf(file,
 					"    COT id %d, QSL id %d, SLC_LR id %d, TPE id %d, HSH id %d, SCRUB id %d\n",
 					data->cot.ids, data->qsl.ids, data->slc_lr.ids,
 					data->tpe.ids, data->hsh.ids, data->scrub.ids);
-
+			}
 			break;
 		}
 
