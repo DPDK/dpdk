@@ -25,6 +25,7 @@ ZXDH_RISCV_DTB_MGR *p_riscv_dtb_queue_mgr[ZXDH_DEV_CHANNEL_MAX];
 ZXDH_TLB_MGR_T *g_p_dpp_tlb_mgr[ZXDH_DEV_CHANNEL_MAX];
 ZXDH_REG_T g_dpp_reg_info[4];
 ZXDH_DTB_TABLE_T g_dpp_dtb_table_info[4];
+ZXDH_SDT_TBL_DATA_T g_sdt_info[ZXDH_DEV_CHANNEL_MAX][ZXDH_DEV_SDT_ID_MAX];
 
 #define ZXDH_SDT_MGR_PTR_GET()    (&g_sdt_mgr)
 #define ZXDH_SDT_SOFT_TBL_GET(id) (g_sdt_mgr.sdt_tbl_array[id])
@@ -1453,4 +1454,106 @@ zxdh_np_dtb_table_entry_write(uint32_t dev_id,
 	rte_free(p_data_buff_ex);
 
 	return rc;
+}
+
+static uint32_t
+zxdh_np_sdt_tbl_data_get(uint32_t dev_id, uint32_t sdt_no, ZXDH_SDT_TBL_DATA_T *p_sdt_data)
+{
+	uint32_t rc   = 0;
+
+	p_sdt_data->data_high32 = g_sdt_info[dev_id][sdt_no].data_high32;
+	p_sdt_data->data_low32  = g_sdt_info[dev_id][sdt_no].data_low32;
+
+	return rc;
+}
+
+int
+zxdh_np_dtb_table_entry_delete(uint32_t dev_id,
+			 uint32_t queue_id,
+			 uint32_t entrynum,
+			 ZXDH_DTB_USER_ENTRY_T *delete_entries)
+{
+	ZXDH_SDT_TBL_DATA_T sdt_tbl = {0};
+	ZXDH_DTB_USER_ENTRY_T *pentry = NULL;
+	ZXDH_DTB_ENTRY_T   dtb_one_entry = {0};
+	uint8_t entry_cmd[ZXDH_DTB_TABLE_CMD_SIZE_BIT / 8] = {0};
+	uint8_t entry_data[ZXDH_ETCAM_WIDTH_MAX / 8] = {0};
+	uint8_t *p_data_buff = NULL;
+	uint8_t *p_data_buff_ex = NULL;
+	uint32_t tbl_type = 0;
+	uint32_t element_id = 0xff;
+	uint32_t one_dtb_len = 0;
+	uint32_t dtb_len = 0;
+	uint32_t entry_index;
+	uint32_t sdt_no;
+	uint32_t addr_offset;
+	uint32_t max_size;
+	uint32_t rc;
+
+	ZXDH_COMM_CHECK_POINT(delete_entries);
+
+	p_data_buff = rte_calloc(NULL, 1, ZXDH_DTB_TABLE_DATA_BUFF_SIZE, 0);
+	ZXDH_COMM_CHECK_POINT(p_data_buff);
+
+	p_data_buff_ex = rte_calloc(NULL, 1, ZXDH_DTB_TABLE_DATA_BUFF_SIZE, 0);
+	ZXDH_COMM_CHECK_POINT_MEMORY_FREE(p_data_buff_ex, p_data_buff);
+
+	dtb_one_entry.cmd = entry_cmd;
+	dtb_one_entry.data = entry_data;
+
+	max_size = (ZXDH_DTB_TABLE_DATA_BUFF_SIZE / 16) - 1;
+
+	for (entry_index = 0; entry_index < entrynum; entry_index++) {
+		pentry = delete_entries + entry_index;
+
+		sdt_no = pentry->sdt_no;
+		rc = zxdh_np_sdt_tbl_data_get(dev_id, sdt_no, &sdt_tbl);
+		switch (tbl_type) {
+		case ZXDH_SDT_TBLT_ERAM:
+		{
+			rc = zxdh_np_dtb_eram_one_entry(dev_id, sdt_no, ZXDH_DTB_ITEM_DELETE,
+				pentry->p_entry_data, &one_dtb_len, &dtb_one_entry);
+			break;
+		}
+		default:
+		{
+			PMD_DRV_LOG(ERR, "SDT table_type[ %d ] is invalid!", tbl_type);
+			rte_free(p_data_buff);
+			rte_free(p_data_buff_ex);
+			return 1;
+		}
+		}
+
+		addr_offset = dtb_len * ZXDH_DTB_LEN_POS_SETP;
+		dtb_len += one_dtb_len;
+		if (dtb_len > max_size) {
+			rte_free(p_data_buff);
+			rte_free(p_data_buff_ex);
+			PMD_DRV_LOG(ERR, " %s error dtb_len>%u!", __func__,
+				max_size);
+			return ZXDH_RC_DTB_DOWN_LEN_INVALID;
+		}
+
+		rc = zxdh_np_dtb_data_write(p_data_buff, addr_offset, &dtb_one_entry);
+		memset(entry_cmd, 0x0, sizeof(entry_cmd));
+		memset(entry_data, 0x0, sizeof(entry_data));
+	}
+
+	if (dtb_len == 0) {
+		rte_free(p_data_buff);
+		rte_free(p_data_buff_ex);
+		return ZXDH_RC_DTB_DOWN_LEN_INVALID;
+	}
+
+	rc = zxdh_np_dtb_write_down_table_data(dev_id,
+				queue_id,
+				dtb_len * 16,
+				p_data_buff_ex,
+				&element_id);
+	rte_free(p_data_buff);
+	ZXDH_COMM_CHECK_RC_MEMORY_FREE_NO_ASSERT(rc,
+		"dpp_dtb_write_down_table_data", p_data_buff_ex);
+
+	rte_free(p_data_buff_ex);
+	return 0;
 }

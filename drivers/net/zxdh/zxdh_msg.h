@@ -167,6 +167,7 @@ enum pciebar_layout_type {
 enum zxdh_msg_type {
 	ZXDH_NULL = 0,
 	ZXDH_VF_PORT_INIT = 1,
+	ZXDH_VF_PORT_UNINIT = 2,
 
 	ZXDH_MSG_TYPE_END,
 };
