@@ -1532,16 +1532,16 @@ nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 {
 	int ret;
 
-	if (policy == NFP_NSP_APP_FW_LOAD_FLASH && nfp_nsp_has_stored_fw_load(nsp)) {
-		ret = nfp_fw_reload_from_flash(nsp);
-		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "Load single PF firmware from flash failed.");
-			return ret;
-		}
-	} else if (fw_name[0] != 0) {
+	if (fw_name[0] != 0 && policy != NFP_NSP_APP_FW_LOAD_FLASH) {
 		ret = nfp_fw_reload_for_single_pf_from_disk(nsp, fw_name, pf_dev, reset);
 		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "Load single PF firmware from disk failed.");
+			return ret;
+		}
+	} else if (policy != NFP_NSP_APP_FW_LOAD_DISK && nfp_nsp_has_stored_fw_load(nsp)) {
+		ret = nfp_fw_reload_from_flash(nsp);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Load single PF firmware from flash failed.");
 			return ret;
 		}
 	} else {
@@ -1608,17 +1608,17 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		goto keepalive_uninit;
 	}
 
-	if (policy == NFP_NSP_APP_FW_LOAD_FLASH && nfp_nsp_has_stored_fw_load(nsp)) {
-		err = nfp_fw_reload_from_flash(nsp);
-		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Load multi PF firmware from flash failed.");
-			goto keepalive_stop;
-		}
-	} else if (fw_name[0] != 0) {
+	if (fw_name[0] != 0 && policy != NFP_NSP_APP_FW_LOAD_FLASH) {
 		err = nfp_fw_reload_for_multi_pf_from_disk(nsp, fw_name, dev_info,
 				pf_dev, reset);
 		if (err != 0) {
 			PMD_DRV_LOG(ERR, "Load multi PF firmware from disk failed.");
+			goto keepalive_stop;
+		}
+	} else if (policy != NFP_NSP_APP_FW_LOAD_DISK && nfp_nsp_has_stored_fw_load(nsp)) {
+		err = nfp_fw_reload_from_flash(nsp);
+		if (err != 0) {
+			PMD_DRV_LOG(ERR, "Load multi PF firmware from flash failed.");
 			goto keepalive_stop;
 		}
 	} else {
@@ -1726,8 +1726,8 @@ nfp_fw_setup(struct nfp_pf_dev *pf_dev,
 	if (policy != NFP_NSP_APP_FW_LOAD_FLASH) {
 		err = nfp_fw_get_name(pf_dev, fw_name, sizeof(fw_name));
 		if (err != 0) {
-			PMD_DRV_LOG(ERR, "Can not find suitable firmware.");
-			goto close_nsp;
+			fw_name[0] = 0;
+			PMD_DRV_LOG(DEBUG, "Can not find suitable firmware.");
 		}
 	}
 
