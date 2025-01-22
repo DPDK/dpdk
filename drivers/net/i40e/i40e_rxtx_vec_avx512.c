@@ -33,8 +33,10 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
-	if (unlikely(!cache))
-		return i40e_rxq_rearm_common(rxq, true);
+	if (unlikely(!cache)) {
+		i40e_rxq_rearm_common(rxq, true);
+		return;
+	}
 
 	/* We need to pull 'n' more MBUFs into the software ring from mempool
 	 * We inline the mempool function here, so we can vectorize the copy

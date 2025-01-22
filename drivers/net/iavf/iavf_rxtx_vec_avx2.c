@@ -13,7 +13,7 @@
 static __rte_always_inline void
 iavf_rxq_rearm(struct iavf_rx_queue *rxq)
 {
-	return iavf_rxq_rearm_common(rxq, false);
+	iavf_rxq_rearm_common(rxq, false);
 }
 
 #define PKTLEN_SHIFT     10

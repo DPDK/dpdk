@@ -14,7 +14,7 @@
 static __rte_always_inline void
 ice_rxq_rearm(struct ice_rx_queue *rxq)
 {
-	return ice_rxq_rearm_common(rxq, false);
+	ice_rxq_rearm_common(rxq, false);
 }
 
 static __rte_always_inline __m256i

@@ -22,7 +22,7 @@
 static __rte_always_inline void
 i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 {
-	return i40e_rxq_rearm_common(rxq, false);
+	i40e_rxq_rearm_common(rxq, false);
 }
 
 #ifndef RTE_LIBRTE_I40E_16BYTE_RX_DESC
