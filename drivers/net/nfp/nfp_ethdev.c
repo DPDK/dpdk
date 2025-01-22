@@ -472,6 +472,9 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if ((cap_extend & NFP_NET_CFG_CTRL_FLOW_STEER) != 0)
 		ctrl_extend |= NFP_NET_CFG_CTRL_FLOW_STEER;
 
+	if ((cap_extend & NFP_NET_CFG_CTRL_MULTI_PF) != 0 && pf_dev->multi_pf.enabled)
+		ctrl_extend |= NFP_NET_CFG_CTRL_MULTI_PF;
+
 	update = NFP_NET_CFG_UPDATE_GEN;
 	if (nfp_ext_reconfig(hw, ctrl_extend, update) != 0)
 		return -EIO;
