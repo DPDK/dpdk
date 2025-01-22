@@ -137,8 +137,10 @@ idpf_singleq_rearm(struct idpf_rx_queue *rxq)
 
 	rxdp += rxq->rxrearm_start;
 
-	if (unlikely(cache == NULL))
-		return idpf_singleq_rearm_common(rxq);
+	if (unlikely(cache == NULL)) {
+		idpf_singleq_rearm_common(rxq);
+		return;
+	}
 
 	/* We need to pull 'n' more MBUFs into the software ring from mempool
 	 * We inline the mempool function here, so we can vectorize the copy
