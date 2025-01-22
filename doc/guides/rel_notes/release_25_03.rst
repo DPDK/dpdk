@@ -76,6 +76,19 @@ New Features
 
   * Added support for virtual function (VF).
 
+* **Updated ZXDH network driver.**
+
+  * Added support for multiple queues.
+  * Added support SR-IOV VF.
+  * Scattered and gather for TX and RX.
+  * Link state and auto-negotiation.
+  * MAC address filtering.
+  * Multicast and Promiscuous mode.
+  * VLAN filtering and offload.
+  * Receive Side Scaling (RSS).
+  * Hardware statistics.
+  * Jumbo frames.
+
 
 Removed Items
 -------------
