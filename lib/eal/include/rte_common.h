@@ -427,7 +427,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * Force a function to be inlined
  */
 #ifdef RTE_TOOLCHAIN_MSVC
-#define __rte_always_inline
+#define __rte_always_inline __forceinline
 #else
 #define __rte_always_inline inline __attribute__((always_inline))
 #endif
@@ -435,12 +435,20 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * Force a function to be noinlined
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_noinline __declspec(noinline)
+#else
 #define __rte_noinline __attribute__((noinline))
+#endif
 
 /**
  * Hint function in the hot path
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_hot
+#else
 #define __rte_hot __attribute__((hot))
+#endif
 
 /**
  * Hint function in the cold path
