@@ -150,6 +150,9 @@ nfp_net_start(struct rte_eth_dev *dev)
 		ctrl_extend |= NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP
 				| NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
 
+	if ((cap_extend & NFP_NET_CFG_CTRL_MULTI_PF) != 0 && pf_dev->multi_pf.enabled)
+		ctrl_extend |= NFP_NET_CFG_CTRL_MULTI_PF;
+
 	update = NFP_NET_CFG_UPDATE_GEN;
 	if (nfp_ext_reconfig(hw, ctrl_extend, update) != 0)
 		return -EIO;
