@@ -1749,24 +1749,25 @@ nfp_check_multi_pf_from_fw(uint32_t total_vnics)
 	return false;
 }
 
-static inline bool
+static inline int
 nfp_check_multi_pf_from_nsp(struct rte_pci_device *pci_dev,
-		struct nfp_cpp *cpp)
+		struct nfp_cpp *cpp,
+		bool *flag)
 {
-	bool flag;
 	struct nfp_nsp *nsp;
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL) {
 		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle.");
-		return false;
+		return -EIO;
 	}
 
-	flag = (nfp_nsp_get_abi_ver_major(nsp) > 0) &&
+	*flag = (nfp_nsp_get_abi_ver_major(nsp) > 0) &&
 			(pci_dev->id.device_id == PCI_DEVICE_ID_NFP3800_PF_NIC);
 
 	nfp_nsp_close(nsp);
-	return flag;
+
+	return 0;
 }
 
 static int
@@ -2432,8 +2433,13 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto eth_table_cleanup;
 	}
 
+	ret = nfp_check_multi_pf_from_nsp(pci_dev, cpp, &pf_dev->multi_pf.enabled);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to check multi pf from NSP.");
+		goto eth_table_cleanup;
+	}
+
 	pf_dev->nfp_eth_table = nfp_eth_table;
-	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
 	pf_dev->multi_pf.function_id = function_id;
 	pf_dev->total_phyports = nfp_net_get_phyports_from_nsp(pf_dev);
 
