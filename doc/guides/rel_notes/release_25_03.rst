@@ -66,6 +66,7 @@ New Features
 * **Updated af_packet net driver.**
 
   * Added ability to option to configure receive packet fanout mode.
+  * Added statistics for failed buffer allocation and missed packets.
 
 * **Updated Wangxun ngbe driver.**
 

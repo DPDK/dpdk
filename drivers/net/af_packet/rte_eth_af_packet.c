@@ -59,6 +59,8 @@ struct __rte_cache_aligned pkt_rx_queue {
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long rx_bytes;
+	volatile unsigned long rx_nombuf;
+	volatile unsigned long rx_dropped_pkts;
 };
 
 struct __rte_cache_aligned pkt_tx_queue {
@@ -147,8 +149,10 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 		/* allocate the next mbuf */
 		mbuf = rte_pktmbuf_alloc(pkt_q->mb_pool);
-		if (unlikely(mbuf == NULL))
+		if (unlikely(mbuf == NULL)) {
+			pkt_q->rx_nombuf++;
 			break;
+		}
 
 		/* packet will fit in the mbuf, go ahead and receive it */
 		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_len(mbuf) = ppd->tp_snaplen;
@@ -415,38 +419,65 @@ eth_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	return 0;
 }
 
-static int
-eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *igb_stats)
+
+/*
+ * Query dropped packets counter from socket.
+ * Reading drop count clears the value of the socket!
+ */
+static unsigned int
+packet_drop_count(int sockfd)
 {
-	unsigned i, imax;
-	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
+	struct tpacket_stats pkt_stats;
+	socklen_t pkt_stats_len = sizeof(struct tpacket_stats);
+
+	if (sockfd == -1)
+		return 0;
+
+	if (getsockopt(sockfd, SOL_PACKET, PACKET_STATISTICS, &pkt_stats,
+		&pkt_stats_len) < -1)
+		return 0;
+
+	return pkt_stats.tp_drops;
+}
+
+static int
+eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	unsigned int i;
+	unsigned long rx_total = 0, rx_dropped_total = 0, rx_nombuf_total = 0;
+	unsigned long tx_total = 0, tx_err_total = 0;
 	unsigned long rx_bytes_total = 0, tx_bytes_total = 0;
 	const struct pmd_internals *internal = dev->data->dev_private;
 
-	imax = (internal->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS ?
-	        internal->nb_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (i = 0; i < imax; i++) {
-		igb_stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
-		igb_stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
-		rx_total += igb_stats->q_ipackets[i];
-		rx_bytes_total += igb_stats->q_ibytes[i];
-	}
+	for (i = 0; i < internal->nb_queues; i++) {
+		/* reading drop count clears the value, therefore keep total value */
+		internal->rx_queue[i].rx_dropped_pkts +=
+			packet_drop_count(internal->rx_queue[i].sockfd);
 
-	imax = (internal->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS ?
-	        internal->nb_queues : RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	for (i = 0; i < imax; i++) {
-		igb_stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
-		igb_stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
-		tx_total += igb_stats->q_opackets[i];
+		rx_total += internal->rx_queue[i].rx_pkts;
+		rx_bytes_total += internal->rx_queue[i].rx_bytes;
+		rx_dropped_total += internal->rx_queue[i].rx_dropped_pkts;
+		rx_nombuf_total += internal->rx_queue[i].rx_nombuf;
+
+		tx_total += internal->tx_queue[i].tx_pkts;
 		tx_err_total += internal->tx_queue[i].err_pkts;
-		tx_bytes_total += igb_stats->q_obytes[i];
+		tx_bytes_total += internal->tx_queue[i].tx_bytes;
+
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = internal->rx_queue[i].rx_pkts;
+			stats->q_ibytes[i] = internal->rx_queue[i].rx_bytes;
+			stats->q_opackets[i] = internal->tx_queue[i].tx_pkts;
+			stats->q_obytes[i] = internal->tx_queue[i].tx_bytes;
+		}
 	}
 
-	igb_stats->ipackets = rx_total;
-	igb_stats->ibytes = rx_bytes_total;
-	igb_stats->opackets = tx_total;
-	igb_stats->oerrors = tx_err_total;
-	igb_stats->obytes = tx_bytes_total;
+	stats->ipackets = rx_total;
+	stats->ibytes = rx_bytes_total;
+	stats->imissed = rx_dropped_total;
+	stats->rx_nombuf = rx_nombuf_total;
+	stats->opackets = tx_total;
+	stats->oerrors = tx_err_total;
+	stats->obytes = tx_bytes_total;
 	return 0;
 }
 
@@ -457,11 +488,14 @@ eth_stats_reset(struct rte_eth_dev *dev)
 	struct pmd_internals *internal = dev->data->dev_private;
 
 	for (i = 0; i < internal->nb_queues; i++) {
+		/* clear socket counter */
+		packet_drop_count(internal->rx_queue[i].sockfd);
+
 		internal->rx_queue[i].rx_pkts = 0;
 		internal->rx_queue[i].rx_bytes = 0;
-	}
+		internal->rx_queue[i].rx_nombuf = 0;
+		internal->rx_queue[i].rx_dropped_pkts = 0;
 
-	for (i = 0; i < internal->nb_queues; i++) {
 		internal->tx_queue[i].tx_pkts = 0;
 		internal->tx_queue[i].err_pkts = 0;
 		internal->tx_queue[i].tx_bytes = 0;
