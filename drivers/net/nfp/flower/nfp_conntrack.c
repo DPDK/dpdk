@@ -1440,6 +1440,7 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 		struct nfp_ct_flow_entry *pre_ct_entry,
 		struct nfp_ct_flow_entry *post_ct_entry)
 {
+	int err;
 	bool ret;
 	uint64_t new_cookie[2];
 	uint8_t cnt_same_item = 0;
@@ -1508,9 +1509,10 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 	}
 
 	/* Send to firmware */
-	ret = nfp_ct_offload_add(pre_ct_entry->dev, merge_entry);
-	if (ret != 0) {
+	err = nfp_ct_offload_add(pre_ct_entry->dev, merge_entry);
+	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Send the merged flow to firmware failed.");
+		ret = false;
 		goto merge_table_del;
 	}
 
