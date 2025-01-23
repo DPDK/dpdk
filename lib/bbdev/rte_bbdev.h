@@ -32,6 +32,8 @@
 extern "C" {
 #endif
 
+#include "rte_bbdev_trace_fp.h"
+
 #ifndef RTE_BBDEV_MAX_DEVS
 #define RTE_BBDEV_MAX_DEVS 128  /**< Max number of devices */
 #endif
@@ -569,6 +571,8 @@ rte_bbdev_enqueue_enc_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	rte_bbdev_trace_enqueue(dev_id, queue_id, (void **)ops, num_ops,
+			rte_bbdev_op_type_str(RTE_BBDEV_OP_TURBO_DEC));
 	return dev->enqueue_enc_ops(q_data, ops, num_ops);
 }
 
@@ -599,6 +603,8 @@ rte_bbdev_enqueue_dec_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	rte_bbdev_trace_enqueue(dev_id, queue_id, (void **)ops, num_ops,
+			rte_bbdev_op_type_str(RTE_BBDEV_OP_TURBO_ENC));
 	return dev->enqueue_dec_ops(q_data, ops, num_ops);
 }
 
@@ -629,6 +635,8 @@ rte_bbdev_enqueue_ldpc_enc_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	rte_bbdev_trace_enqueue(dev_id, queue_id, (void **)ops, num_ops,
+			rte_bbdev_op_type_str(RTE_BBDEV_OP_LDPC_ENC));
 	return dev->enqueue_ldpc_enc_ops(q_data, ops, num_ops);
 }
 
@@ -659,6 +667,8 @@ rte_bbdev_enqueue_ldpc_dec_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	rte_bbdev_trace_enqueue(dev_id, queue_id, (void **)ops, num_ops,
+			rte_bbdev_op_type_str(RTE_BBDEV_OP_LDPC_DEC));
 	return dev->enqueue_ldpc_dec_ops(q_data, ops, num_ops);
 }
 
@@ -689,6 +699,8 @@ rte_bbdev_enqueue_fft_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	rte_bbdev_trace_enqueue(dev_id, queue_id, (void **)ops, num_ops,
+			rte_bbdev_op_type_str(RTE_BBDEV_OP_FFT));
 	return dev->enqueue_fft_ops(q_data, ops, num_ops);
 }
 
@@ -719,6 +731,8 @@ rte_bbdev_enqueue_mldts_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
+	rte_bbdev_trace_enqueue(dev_id, queue_id, (void **)ops, num_ops,
+			rte_bbdev_op_type_str(RTE_BBDEV_OP_MLDTS));
 	return dev->enqueue_mldts_ops(q_data, ops, num_ops);
 }
 
@@ -750,7 +764,11 @@ rte_bbdev_dequeue_enc_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	return dev->dequeue_enc_ops(q_data, ops, num_ops);
+	uint16_t num_ops_dequeued = dev->dequeue_enc_ops(q_data, ops, num_ops);
+	if (num_ops_dequeued > 0)
+		rte_bbdev_trace_dequeue(dev_id, queue_id, (void **)ops, num_ops,
+				num_ops_dequeued, rte_bbdev_op_type_str(RTE_BBDEV_OP_TURBO_ENC));
+	return num_ops_dequeued;
 }
 
 /**
@@ -782,7 +800,11 @@ rte_bbdev_dequeue_dec_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	return dev->dequeue_dec_ops(q_data, ops, num_ops);
+	uint16_t num_ops_dequeued = dev->dequeue_dec_ops(q_data, ops, num_ops);
+	if (num_ops_dequeued > 0)
+		rte_bbdev_trace_dequeue(dev_id, queue_id, (void **)ops, num_ops,
+				num_ops_dequeued, rte_bbdev_op_type_str(RTE_BBDEV_OP_TURBO_DEC));
+	return num_ops_dequeued;
 }
 
 
@@ -813,7 +835,11 @@ rte_bbdev_dequeue_ldpc_enc_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	return dev->dequeue_ldpc_enc_ops(q_data, ops, num_ops);
+	uint16_t num_ops_dequeued = dev->dequeue_ldpc_enc_ops(q_data, ops, num_ops);
+	if (num_ops_dequeued > 0)
+		rte_bbdev_trace_dequeue(dev_id, queue_id, (void **)ops, num_ops,
+				num_ops_dequeued, rte_bbdev_op_type_str(RTE_BBDEV_OP_LDPC_ENC));
+	return num_ops_dequeued;
 }
 
 /**
@@ -843,7 +869,11 @@ rte_bbdev_dequeue_ldpc_dec_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	return dev->dequeue_ldpc_dec_ops(q_data, ops, num_ops);
+	uint16_t num_ops_dequeued = dev->dequeue_ldpc_dec_ops(q_data, ops, num_ops);
+	if (num_ops_dequeued > 0)
+		rte_bbdev_trace_dequeue(dev_id, queue_id, (void **)ops, num_ops,
+				num_ops_dequeued, rte_bbdev_op_type_str(RTE_BBDEV_OP_LDPC_DEC));
+	return num_ops_dequeued;
 }
 
 /**
@@ -873,7 +903,11 @@ rte_bbdev_dequeue_fft_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	return dev->dequeue_fft_ops(q_data, ops, num_ops);
+	uint16_t num_ops_dequeued = dev->dequeue_fft_ops(q_data, ops, num_ops);
+	if (num_ops_dequeued > 0)
+		rte_bbdev_trace_dequeue(dev_id, queue_id, (void **)ops, num_ops,
+				num_ops_dequeued, rte_bbdev_op_type_str(RTE_BBDEV_OP_FFT));
+	return num_ops_dequeued;
 }
 
 /**
@@ -903,7 +937,11 @@ rte_bbdev_dequeue_mldts_ops(uint16_t dev_id, uint16_t queue_id,
 {
 	struct rte_bbdev *dev = &rte_bbdev_devices[dev_id];
 	struct rte_bbdev_queue_data *q_data = &dev->data->queues[queue_id];
-	return dev->dequeue_mldts_ops(q_data, ops, num_ops);
+	uint16_t num_ops_dequeued = dev->dequeue_mldts_ops(q_data, ops, num_ops);
+	if (num_ops_dequeued > 0)
+		rte_bbdev_trace_dequeue(dev_id, queue_id, (void **)ops, num_ops,
+				num_ops_dequeued, rte_bbdev_op_type_str(RTE_BBDEV_OP_MLDTS));
+	return num_ops_dequeued;
 }
 
 /** Definitions of device event types */

@@ -20,6 +20,7 @@
 #include "rte_bbdev_op.h"
 #include "rte_bbdev.h"
 #include "rte_bbdev_pmd.h"
+#include "bbdev_trace.h"
 
 #define DEV_NAME "BBDEV"
 
@@ -321,6 +322,8 @@ rte_bbdev_setup_queues(uint16_t dev_id, uint16_t num_queues, int socket_id)
 
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
 
+	rte_bbdev_trace_setup_queues(dev_id, num_queues, socket_id);
+
 	if (dev->data->started) {
 		rte_bbdev_log(ERR,
 				"Device %u cannot be configured when started",
@@ -436,6 +439,10 @@ int
 rte_bbdev_queue_configure(uint16_t dev_id, uint16_t queue_id,
 		const struct rte_bbdev_queue_conf *conf)
 {
+
+	rte_bbdev_trace_queue_configure(dev_id, queue_id, rte_bbdev_op_type_str(conf->op_type),
+			conf->priority);
+
 	int ret = 0;
 	struct rte_bbdev_driver_info dev_info;
 	struct rte_bbdev *dev = get_dev(dev_id);
@@ -557,6 +564,8 @@ rte_bbdev_start(uint16_t dev_id)
 
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
 
+	rte_bbdev_trace_start(dev_id);
+
 	if (dev->data->started) {
 		rte_bbdev_log_debug("Device %u is already started", dev_id);
 		return 0;
@@ -588,6 +597,8 @@ rte_bbdev_stop(uint16_t dev_id)
 
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
 
+	rte_bbdev_trace_stop(dev_id);
+
 	if (!dev->data->started) {
 		rte_bbdev_log_debug("Device %u is already stopped", dev_id);
 		return 0;
@@ -610,6 +621,8 @@ rte_bbdev_close(uint16_t dev_id)
 	VALID_DEV_OR_RET_ERR(dev, dev_id);
 
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
+
+	rte_bbdev_trace_close(dev_id);
 
 	if (dev->data->started) {
 		ret = rte_bbdev_stop(dev_id);
@@ -656,6 +669,8 @@ rte_bbdev_queue_start(uint16_t dev_id, uint16_t queue_id)
 
 	VALID_QUEUE_OR_RET_ERR(queue_id, dev);
 
+	rte_bbdev_trace_queue_start(dev_id, queue_id);
+
 	if (dev->data->queues[queue_id].started) {
 		rte_bbdev_log_debug("Queue %u of device %u already started",
 				queue_id, dev_id);
@@ -685,6 +700,8 @@ rte_bbdev_queue_stop(uint16_t dev_id, uint16_t queue_id)
 	VALID_DEV_OPS_OR_RET_ERR(dev, dev_id);
 
 	VALID_QUEUE_OR_RET_ERR(queue_id, dev);
+
+	rte_bbdev_trace_queue_stop(dev_id, queue_id);
 
 	if (!dev->data->queues[queue_id].started) {
 		rte_bbdev_log_debug("Queue %u of device %u already stopped",
