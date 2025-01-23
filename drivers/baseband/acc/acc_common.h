@@ -7,6 +7,7 @@
 
 #include <bus_pci_driver.h>
 #include "rte_acc_common_cfg.h"
+#include "vrb_trace.h"
 
 /* Values used in filling in descriptors */
 #define ACC_DMA_DESC_TYPE           2
@@ -652,6 +653,56 @@ struct __rte_cache_aligned acc_queue {
 	int8_t *derm_buffer; /* interim buffer for de-rm in SDK */
 	struct acc_device *d;
 };
+
+/* These strings for rte_trace must be limited to RTE_TRACE_EMIT_STRING_LEN_MAX. */
+static const char * const acc_error_string[] = {
+	"Warn: HARQ offset unexpected.",
+	"HARQ in/output is not defined.",
+	"Mismatch related to Mbuf data.",
+	"Soft output is not defined.",
+	"Device incompatible cap.",
+	"HARQ cannot be appended.",
+	"Undefined error message.",
+};
+
+/* Matching indexes for acc_error_string. */
+enum acc_error_enum {
+	ACC_ERR_HARQ_UNEXPECTED,
+	ACC_ERR_REJ_HARQ,
+	ACC_ERR_REJ_MBUF,
+	ACC_ERR_REJ_SOFT,
+	ACC_ERR_REJ_CAP,
+	ACC_ERR_REJ_HARQ_OUT,
+	ACC_ERR_MAX
+};
+
+/**
+ * @brief Report error both through RTE logging and into trace point.
+ *
+ * This function is used to log an error for a specific ACC queue and operation.
+ *
+ * @param q   Pointer to the ACC queue.
+ * @param op  Pointer to the operation.
+ * @param fmt Format string for the error message.
+ * @param ... Additional arguments for the format string.
+ */
+__rte_format_printf(4, 5)
+static inline void
+acc_error_log(struct acc_queue *q, void *op, uint8_t acc_error_idx, const char *fmt, ...)
+{
+	va_list args;
+	RTE_SET_USED(op);
+	va_start(args, fmt);
+	rte_vlog(RTE_LOG_ERR, acc_common_logtype, fmt, args);
+
+	if (acc_error_idx > ACC_ERR_MAX)
+		acc_error_idx = ACC_ERR_MAX;
+
+	rte_bbdev_vrb_trace_error(0, rte_bbdev_op_type_str(q->op_type),
+			acc_error_string[acc_error_idx]);
+
+	va_end(args);
+}
 
 /* Write to MMIO register address */
 static inline void
@@ -1511,6 +1562,10 @@ acc_enqueue_status(struct rte_bbdev_queue_data *q_data,
 {
 	q_data->enqueue_status = status;
 	q_data->queue_stats.enqueue_status_count[status]++;
+	struct acc_queue *q = q_data->queue_private;
+
+	rte_bbdev_vrb_trace_queue_error(q->qgrp_id, q->aq_id,
+			rte_bbdev_enqueue_status_str(status));
 
 	rte_acc_log(WARNING, "Enqueue Status: %s %#"PRIx64"",
 			rte_bbdev_enqueue_status_str(status),

@@ -1816,7 +1816,7 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 		uint32_t *in_offset, uint32_t *h_out_offset,
 		uint32_t *s_out_offset, uint32_t *h_out_length,
 		uint32_t *s_out_length, uint32_t *mbuf_total_left,
-		uint32_t *seg_total_left, uint8_t r)
+		uint32_t *seg_total_left, uint8_t r, struct acc_queue *q)
 {
 	int next_triplet = 1; /* FCW already done. */
 	uint16_t k;
@@ -1860,8 +1860,8 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	kw = RTE_ALIGN_CEIL(k + 4, 32) * 3;
 
 	if (unlikely((*mbuf_total_left == 0) || (*mbuf_total_left < kw))) {
-		rte_bbdev_log(ERR,
-				"Mismatch between mbuf length and included CB sizes: mbuf len %u, cb len %u",
+		acc_error_log(q, (void *)op, ACC_ERR_REJ_MBUF,
+				"Mismatch between mbuf length and included CB sizes: mbuf len %u, cb len %u\n",
 				*mbuf_total_left, kw);
 		return -1;
 	}
@@ -1871,8 +1871,8 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 			check_bit(op->turbo_dec.op_flags,
 			RTE_BBDEV_TURBO_DEC_SCATTER_GATHER));
 	if (unlikely(next_triplet < 0)) {
-		rte_bbdev_log(ERR,
-				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
+		acc_error_log(q, (void *)op, ACC_ERR_REJ_MBUF,
+				"Mismatch between data to process and mbuf data length in bbdev_op: %p\n",
 				op);
 		return -1;
 	}
@@ -1884,8 +1884,8 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 			desc, h_output, *h_out_offset,
 			*h_out_length, next_triplet, ACC_DMA_BLKID_OUT_HARD);
 	if (unlikely(next_triplet < 0)) {
-		rte_bbdev_log(ERR,
-				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
+		acc_error_log(q, (void *)op, ACC_ERR_REJ_MBUF,
+				"Mismatch between data to process and mbuf data length in bbdev_op: %p\n",
 				op);
 		return -1;
 	}
@@ -1896,7 +1896,8 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	/* Soft output. */
 	if (check_bit(op->turbo_dec.op_flags, RTE_BBDEV_TURBO_SOFT_OUTPUT)) {
 		if (op->turbo_dec.soft_output.data == 0) {
-			rte_bbdev_log(ERR, "Soft output is not defined");
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_SOFT,
+					"Soft output is not defined\n");
 			return -1;
 		}
 		if (check_bit(op->turbo_dec.op_flags,
@@ -1909,8 +1910,8 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 				*s_out_offset, *s_out_length, next_triplet,
 				ACC_DMA_BLKID_OUT_SOFT);
 		if (unlikely(next_triplet < 0)) {
-			rte_bbdev_log(ERR,
-					"Mismatch between data to process and mbuf data length in bbdev_op: %p",
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_MBUF,
+					"Mismatch between data to process and mbuf data length in bbdev_op: %p\n",
 					op);
 			return -1;
 		}
@@ -1933,7 +1934,8 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 		struct rte_mbuf **input, struct rte_mbuf *h_output,
 		uint32_t *in_offset, uint32_t *h_out_offset,
 		uint32_t *h_out_length, uint32_t *mbuf_total_left,
-		uint32_t *seg_total_left, struct acc_fcw_ld *fcw, uint16_t device_variant)
+		uint32_t *seg_total_left, struct acc_fcw_ld *fcw, uint16_t device_variant,
+		struct acc_queue *q)
 {
 	struct rte_bbdev_op_ldpc_dec *dec = &op->ldpc_dec;
 	int next_triplet = 1; /* FCW already done. */
@@ -1944,8 +1946,8 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	if (device_variant == VRB1_VARIANT) {
 		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION) ||
 				check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_SOFT_OUT_ENABLE)) {
-			rte_bbdev_log(ERR,
-					"VRB1 does not support the requested capabilities %x",
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_CAP,
+					"VRB1 does not support the requested capabilities %x\n",
 					op->ldpc_dec.op_flags);
 			return -1;
 		}
@@ -1965,8 +1967,8 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	output_length = K - dec->n_filler - crc24_overlap;
 
 	if (unlikely((*mbuf_total_left == 0) || (*mbuf_total_left < input_length))) {
-		rte_bbdev_log(ERR,
-				"Mismatch between mbuf length and included CB sizes: mbuf len %u, cb len %u",
+		acc_error_log(q, (void *)op, ACC_ERR_REJ_MBUF,
+				"Mismatch between mbuf length and included CB sizes: mbuf len %u, cb len %u\n",
 				*mbuf_total_left, input_length);
 		return -1;
 	}
@@ -1978,15 +1980,16 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 			RTE_BBDEV_LDPC_DEC_SCATTER_GATHER));
 
 	if (unlikely(next_triplet < 0)) {
-		rte_bbdev_log(ERR,
-				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
+		acc_error_log(q, (void *)op, ACC_ERR_REJ_MBUF,
+				"Mismatch between data to process and mbuf data length in bbdev_op: %p\n",
 				op);
 		return -1;
 	}
 
 	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
 		if (op->ldpc_dec.harq_combined_input.data == 0) {
-			rte_bbdev_log(ERR, "HARQ input is not defined");
+			acc_error_log(q, (void *)op,  ACC_ERR_REJ_HARQ,
+					"HARQ input is not defined\n");
 			return -1;
 		}
 		h_p_size = fcw->hcin_size0 + fcw->hcin_size1;
@@ -1995,7 +1998,8 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 		else if (fcw->hcin_decomp_mode == 4)
 			h_p_size = h_p_size / 2;
 		if (op->ldpc_dec.harq_combined_input.data == 0) {
-			rte_bbdev_log(ERR, "HARQ input is not defined");
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_HARQ,
+					"HARQ input is not defined\n");
 			return -1;
 		}
 		acc_dma_fill_blk_type(
@@ -2018,7 +2022,8 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 
 	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_SOFT_OUT_ENABLE)) {
 		if (op->ldpc_dec.soft_output.data == 0) {
-			rte_bbdev_log(ERR, "Soft output is not defined");
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_SOFT,
+					"Soft output is not defined\n");
 			return -1;
 		}
 		dec->soft_output.length = fcw->rm_e;
@@ -2029,7 +2034,8 @@ vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 
 	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
 		if (op->ldpc_dec.harq_combined_output.data == 0) {
-			rte_bbdev_log(ERR, "HARQ output is not defined");
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_HARQ,
+					"HARQ output is not defined\n");
 			return -1;
 		}
 
@@ -2534,7 +2540,7 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	ret = vrb_dma_desc_td_fill(op, &desc->req, &input, h_output,
 			s_output, &in_offset, &h_out_offset, &s_out_offset,
 			&h_out_length, &s_out_length, &mbuf_total_left,
-			&seg_total_left, 0);
+			&seg_total_left, 0, q);
 
 	if (unlikely(ret < 0))
 		return ret;
@@ -2612,7 +2618,7 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		ret = vrb_dma_desc_ld_fill(op, &desc->req, &input, h_output,
 				&in_offset, &h_out_offset,
 				&h_out_length, &mbuf_total_left,
-				&seg_total_left, fcw, q->d->device_variant);
+				&seg_total_left, fcw, q->d->device_variant, q);
 		if (unlikely(ret < 0))
 			return ret;
 	}
@@ -2627,9 +2633,10 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		hq_output = op->ldpc_dec.harq_combined_output.data;
 		hq_len = op->ldpc_dec.harq_combined_output.length;
 		if (unlikely(!mbuf_append(hq_output_head, hq_output, hq_len))) {
-			rte_bbdev_log(ERR, "HARQ output mbuf issue %d %d",
-					hq_output->buf_len,
-					hq_len);
+			acc_error_log(q, (void *)op, ACC_ERR_REJ_HARQ_OUT,
+					"HARQ output mbuf cannot be appended Buffer %d Current data %d New data %d\n",
+					hq_output->buf_len, hq_output->data_len, hq_len);
+
 			return -1;
 		}
 	}
@@ -2706,7 +2713,7 @@ vrb_enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 				h_output, &in_offset, &h_out_offset,
 				&h_out_length,
 				&mbuf_total_left, &seg_total_left,
-				&desc->req.fcw_ld, q->d->device_variant);
+				&desc->req.fcw_ld, q->d->device_variant, q);
 
 		if (unlikely(ret < 0))
 			return ret;
@@ -2792,7 +2799,7 @@ enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		ret = vrb_dma_desc_td_fill(op, &desc->req, &input,
 				h_output, s_output, &in_offset, &h_out_offset,
 				&s_out_offset, &h_out_length, &s_out_length,
-				&mbuf_total_left, &seg_total_left, r);
+				&mbuf_total_left, &seg_total_left, r, q);
 
 		if (unlikely(ret < 0))
 			return ret;
