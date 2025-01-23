@@ -40,4 +40,8 @@ EXPERIMENTAL {
 	# added in 24.11
 	rte_bbdev_queue_ops_dump;
 	rte_bbdev_ops_param_string;
+
+	# added in 25.03
+	__rte_bbdev_trace_dequeue;
+	__rte_bbdev_trace_enqueue;
 };
