@@ -3190,7 +3190,8 @@ unlock:
 	 */
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
-		if (dev->notify_ops->new_device(dev->vid) == 0)
+		if (!dev->notify_ops->new_device ||
+			dev->notify_ops->new_device(dev->vid) == 0)
 			dev->flags |= VIRTIO_DEV_RUNNING;
 	}
 
