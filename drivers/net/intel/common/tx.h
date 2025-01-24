@@ -66,7 +66,6 @@ struct ci_tx_queue {
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool q_set;             /* indicate if tx queue has been configured */
 	bool vector_tx;         /* port is using vector TX */
-	bool vector_sw_ring;    /* port is using vectorized SW ring (ieth_tx_entry_vec) */
 	union {                  /* the VSI this queue belongs to */
 		struct i40e_vsi *i40e_vsi;
 		struct iavf_vsi *iavf_vsi;
@@ -119,72 +118,6 @@ ci_tx_backlog_entry_vec(struct ci_tx_entry_vec *txep, struct rte_mbuf **tx_pkts,
 #define IETH_VPMD_TX_MAX_FREE_BUF 64
 
 typedef int (*ci_desc_done_fn)(struct ci_tx_queue *txq, uint16_t idx);
-
-static __rte_always_inline int
-ci_tx_free_bufs(struct ci_tx_queue *txq, ci_desc_done_fn desc_done)
-{
-	struct ci_tx_entry *txep;
-	uint32_t n;
-	uint32_t i;
-	int nb_free = 0;
-	struct rte_mbuf *m, *free[IETH_VPMD_TX_MAX_FREE_BUF];
-
-	/* check DD bits on threshold descriptor */
-	if (!desc_done(txq, txq->tx_next_dd))
-		return 0;
-
-	n = txq->tx_rs_thresh;
-
-	 /* first buffer to free from S/W ring is at index
-	  * tx_next_dd - (tx_rs_thresh-1)
-	  */
-	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
-
-	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
-		for (i = 0; i < n; i++) {
-			free[i] = txep[i].mbuf;
-			/* no need to reset txep[i].mbuf in vector path */
-		}
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, n);
-		goto done;
-	}
-
-	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
-	if (likely(m != NULL)) {
-		free[0] = m;
-		nb_free = 1;
-		for (i = 1; i < n; i++) {
-			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
-			if (likely(m != NULL)) {
-				if (likely(m->pool == free[0]->pool)) {
-					free[nb_free++] = m;
-				} else {
-					rte_mempool_put_bulk(free[0]->pool,
-							     (void *)free,
-							     nb_free);
-					free[0] = m;
-					nb_free = 1;
-				}
-			}
-		}
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
-	} else {
-		for (i = 1; i < n; i++) {
-			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
-			if (m != NULL)
-				rte_mempool_put(m->pool, m);
-		}
-	}
-
-done:
-	/* buffers were freed, update counters */
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
-	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
-	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
-
-	return txq->tx_rs_thresh;
-}
 
 static __rte_always_inline int
 ci_tx_free_bufs_vec(struct ci_tx_queue *txq, ci_desc_done_fn desc_done, bool ctx_descs)
@@ -278,21 +211,6 @@ done:
 	return txq->tx_rs_thresh;
 }
 
-#define IETH_FREE_BUFS_LOOP(swr, nb_desc, start, end) do { \
-		uint16_t i = start; \
-		if (end < i) { \
-			for (; i < nb_desc; i++) { \
-				rte_pktmbuf_free_seg(swr[i].mbuf); \
-				swr[i].mbuf = NULL; \
-			} \
-			i = 0; \
-		} \
-		for (; i < end; i++) { \
-			rte_pktmbuf_free_seg(swr[i].mbuf); \
-			swr[i].mbuf = NULL; \
-		} \
-} while (0)
-
 static inline void
 ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 {
@@ -311,16 +229,21 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 
 	/**
 	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
-	 *  so need to free remains more carefully.
+	 *  so determining buffers to free is a little more complex.
 	 */
 	const uint16_t start = (txq->tx_next_dd - txq->tx_rs_thresh + 1) >> use_ctx;
 	const uint16_t nb_desc = txq->nb_tx_desc >> use_ctx;
 	const uint16_t end = txq->tx_tail >> use_ctx;
 
-	if (txq->vector_sw_ring)
-		IETH_FREE_BUFS_LOOP(txq->sw_ring_vec, nb_desc, start, end);
-	else
-		IETH_FREE_BUFS_LOOP(txq->sw_ring, nb_desc, start, end);
+	uint16_t i = start;
+	if (end < i) {
+		for (; i < nb_desc; i++)
+			rte_pktmbuf_free_seg(txq->sw_ring_vec[i].mbuf);
+		i = 0;
+	}
+	for (; i < end; i++)
+		rte_pktmbuf_free_seg(txq->sw_ring_vec[i].mbuf);
+	memset(txq->sw_ring_vec, 0, sizeof(txq->sw_ring_vec[0]) * nb_desc);
 }
 
 #endif /* _COMMON_INTEL_TX_H_ */

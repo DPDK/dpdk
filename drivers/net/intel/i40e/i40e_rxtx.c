@@ -1891,7 +1891,6 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			    tx_queue_id);
 
 	txq->vector_tx = ad->tx_vec_allowed;
-	txq->vector_sw_ring = txq->vector_tx;
 
 	/*
 	 * tx_queue_id is queue id application refers to, while

@@ -182,7 +182,6 @@ ixgbe_txq_vec_setup_default(struct ci_tx_queue *txq,
 	txq->sw_ring_vec = txq->sw_ring_vec + 1;
 	txq->ops = txq_ops;
 	txq->vector_tx = 1;
-	txq->vector_sw_ring = 1;
 
 	return 0;
 }
