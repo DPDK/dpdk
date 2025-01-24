@@ -22,11 +22,15 @@ extern "C" {
 static __rte_always_inline void
 __rte_x86_movdiri(uint32_t value, volatile void *addr)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	_directstoreu_u32((void *)(uintptr_t)addr, value);
+#else
 	asm volatile(
 		/* MOVDIRI */
 		".byte 0x0f, 0x38, 0xf9, 0x02"
 		:
 		: "a" (value), "d" (addr));
+#endif
 }
 
 __rte_experimental
