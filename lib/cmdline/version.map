@@ -73,3 +73,10 @@ DPDK_25 {
 
 	local: *;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 25.03
+	cmdline_token_bool_ops;
+};

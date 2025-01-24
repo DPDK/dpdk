@@ -501,6 +501,16 @@ volatile int test_done = 1; /* stop packet forwarding when set to 1. */
 uint8_t xstats_hide_zero;
 
 /*
+ * Display of xstats without their state disabled by default
+ */
+uint8_t xstats_show_state;
+
+/*
+ * Display disabled xstat by default for xstats
+ */
+uint8_t xstats_hide_disabled;
+
+/*
  * Measure of CPU cycles disabled by default
  */
 uint8_t record_core_cycles;

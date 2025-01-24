@@ -45,6 +45,7 @@
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_parse_num.h>
+#include <cmdline_parse_bool.h>
 #include <cmdline_parse_string.h>
 #include <cmdline_parse_ipaddr.h>
 #include <cmdline_parse_etheraddr.h>
@@ -7960,6 +7961,127 @@ static cmdline_parse_inst_t cmd_set_xstats_hide_zero = {
 	},
 };
 
+/* *** SET OPTION TO DISPLAY XSTAT STATE *** */
+struct cmd_set_xstats_show_state_result {
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	uint8_t on_off;
+};
+static void
+cmd_set_xstats_show_state_parsed(void *parsed_result,
+			__rte_unused struct cmdline *cl,
+			__rte_unused void *data)
+{
+	struct cmd_set_xstats_show_state_result *res = parsed_result;
+	set_xstats_show_state(res->on_off);
+}
+
+static cmdline_parse_token_string_t cmd_set_xstats_show_state_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_xstats_show_state_result,
+				 keyword, "set");
+static cmdline_parse_token_string_t cmd_set_xstats_show_state_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_xstats_show_state_result,
+				 name, "xstats-show-state");
+static cmdline_parse_token_bool_t cmd_set_xstats_show_state_on_off =
+	TOKEN_BOOL_INITIALIZER(struct cmd_set_xstats_show_state_result,
+				 on_off);
+
+static cmdline_parse_inst_t cmd_set_xstats_show_state = {
+	.f = cmd_set_xstats_show_state_parsed,
+	.data = NULL,
+	.help_str = "set xstats-show-state on|off",
+	.tokens = {
+		(void *)&cmd_set_xstats_show_state_keyword,
+		(void *)&cmd_set_xstats_show_state_name,
+		(void *)&cmd_set_xstats_show_state_on_off,
+		NULL,
+	},
+};
+
+/* *** SET OPTION TO HIDE DISABLED XSTAT FOR XSTATS DISPLAY *** */
+struct cmd_set_xstats_hide_disabled_result {
+	cmdline_fixed_string_t keyword;
+	cmdline_fixed_string_t name;
+	uint8_t on_off;
+};
+
+static void
+cmd_set_xstats_hide_disabled_parsed(void *parsed_result,
+			__rte_unused struct cmdline *cl,
+			__rte_unused void *data)
+{
+	struct cmd_set_xstats_hide_disabled_result *res = parsed_result;
+	set_xstats_hide_disabled(res->on_off);
+}
+
+static cmdline_parse_token_string_t cmd_set_xstats_hide_disabled_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_xstats_hide_disabled_result,
+				 keyword, "set");
+static cmdline_parse_token_string_t cmd_set_xstats_hide_disabled_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_xstats_hide_disabled_result,
+				 name, "xstats-hide-disabled");
+static cmdline_parse_token_bool_t cmd_set_xstats_hide_disabled_on_off =
+	TOKEN_BOOL_INITIALIZER(struct cmd_set_xstats_hide_disabled_result,
+				 on_off);
+
+static cmdline_parse_inst_t cmd_set_xstats_hide_disabled = {
+	.f = cmd_set_xstats_hide_disabled_parsed,
+	.data = NULL,
+	.help_str = "set xstats-hide-disabled on|off",
+	.tokens = {
+		(void *)&cmd_set_xstats_hide_disabled_keyword,
+		(void *)&cmd_set_xstats_hide_disabled_name,
+		(void *)&cmd_set_xstats_hide_disabled_on_off,
+		NULL,
+	},
+};
+
+/* *** enable/disable counter by name *** */
+struct cmd_operate_set_counter_result {
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t what;
+	cmdline_multi_string_t counter_name;
+};
+
+static void
+cmd_operate_set_counter_parsed(void *parsed_result,
+				__rte_unused struct cmdline *cl,
+				__rte_unused void *data)
+{
+	struct cmd_operate_set_counter_result *res = parsed_result;
+	uint16_t on_off = strcmp(res->what, "enable") ? 0 : 1;
+
+	if ((strcmp(res->port, "port") == 0))
+		nic_xstats_set_counter(res->port_id, res->counter_name, on_off);
+}
+
+static cmdline_parse_token_string_t cmd_operate_set_counter_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_set_counter_result,
+			port, "port");
+static cmdline_parse_token_num_t cmd_operate_set_counter_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_operate_set_counter_result,
+			port_id, RTE_UINT16);
+static cmdline_parse_token_string_t cmd_operate_set_counter_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_set_counter_result,
+				 what, "enable#disable");
+static cmdline_parse_token_string_t cmd_operate_set_counter_name =
+	TOKEN_STRING_INITIALIZER(struct cmd_operate_set_counter_result,
+			counter_name, TOKEN_STRING_MULTI);
+
+static cmdline_parse_inst_t cmd_operate_set_counter = {
+	.f = cmd_operate_set_counter_parsed,
+	.data = NULL,
+	.help_str = "port (port_id) enable|disable <counter_name>",
+	.tokens = {
+		(void *)&cmd_operate_set_counter_port,
+		(void *)&cmd_operate_set_counter_port_id,
+		(void *)&cmd_operate_set_counter_what,
+		(void *)&cmd_operate_set_counter_name,
+		NULL,
+	},
+};
+
 /* *** SET OPTION TO ENABLE MEASUREMENT OF CPU CYCLES *** */
 struct cmd_set_record_core_cycles_result {
 	cmdline_fixed_string_t keyword;
@@ -13648,6 +13770,9 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_set_fwd_eth_peer,
 	&cmd_set_qmap,
 	&cmd_set_xstats_hide_zero,
+	&cmd_set_xstats_show_state,
+	&cmd_set_xstats_hide_disabled,
+	&cmd_operate_set_counter,
 	&cmd_set_record_core_cycles,
 	&cmd_set_record_burst_stats,
 	&cmd_operate_port,

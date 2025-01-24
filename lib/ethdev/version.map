@@ -337,6 +337,10 @@ EXPERIMENTAL {
 	rte_eth_timesync_adjust_freq;
 	rte_flow_async_create_by_index_with_pattern;
 	rte_tm_node_query;
+
+	# added in 25.03
+	rte_eth_xstats_query_state;
+	rte_eth_xstats_set_counter;
 };
 
 INTERNAL {

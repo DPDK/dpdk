@@ -498,6 +498,8 @@ enum dcb_mode_enable
 };
 
 extern uint8_t xstats_hide_zero; /**< Hide zero values for xstats display */
+extern uint8_t xstats_hide_disabled; /**< Hide disabled xstat for xstats display */
+extern uint8_t xstats_show_state; /**< Show xstat state in xstats display */
 
 /* globals used for configuration */
 extern uint8_t record_core_cycles; /**< Enables measurement of CPU cycles */
@@ -933,6 +935,7 @@ void nic_stats_display(portid_t port_id);
 void nic_stats_clear(portid_t port_id);
 void nic_xstats_display(portid_t port_id);
 void nic_xstats_clear(portid_t port_id);
+void nic_xstats_set_counter(portid_t port_id, char *counter_name, int on);
 void device_infos_display(const char *identifier);
 void port_infos_display(portid_t port_id);
 void port_summary_display(portid_t port_id);
@@ -1111,6 +1114,8 @@ void tx_vlan_pvid_set(portid_t port_id, uint16_t vlan_id, int on);
 void set_qmap(portid_t port_id, uint8_t is_rx, uint16_t queue_id, uint8_t map_value);
 
 void set_xstats_hide_zero(uint8_t on_off);
+void set_xstats_show_state(uint8_t on_off);
+void set_xstats_hide_disabled(uint8_t on_off);
 
 void set_record_core_cycles(uint8_t on_off);
 void set_record_burst_stats(uint8_t on_off);

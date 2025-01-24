@@ -3819,6 +3819,55 @@ rte_eth_xstats_reset(uint16_t port_id)
 	return rte_eth_stats_reset(port_id);
 }
 
+int
+rte_eth_xstats_set_counter(uint16_t port_id, uint64_t id, int on_off)
+{
+	struct rte_eth_dev *dev;
+	unsigned int basic_count;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	basic_count = eth_dev_get_xstats_basic_count(dev);
+	if (id < basic_count)
+		return -EINVAL;
+
+	if (on_off == 1) {
+		if (rte_eth_xstats_query_state(port_id, id) == 1)
+			return -EEXIST;
+		if (dev->dev_ops->xstats_enable != NULL)
+			return (*dev->dev_ops->xstats_enable)(dev, id - basic_count);
+	} else {
+		if (rte_eth_xstats_query_state(port_id, id) == 0)
+			return 0;
+		if (dev->dev_ops->xstats_disable != NULL)
+			return (*dev->dev_ops->xstats_disable)(dev, id - basic_count);
+	}
+
+	return -ENOTSUP;
+}
+
+
+int
+rte_eth_xstats_query_state(uint16_t port_id, uint64_t id)
+{
+	struct rte_eth_dev *dev;
+	unsigned int basic_count;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	basic_count = eth_dev_get_xstats_basic_count(dev);
+	if (id < basic_count)
+		return -ENOTSUP;
+
+	/* implemented by the driver */
+	if (dev->dev_ops->xstats_query_state != NULL)
+		return (*dev->dev_ops->xstats_query_state)(dev, id - basic_count);
+
+	return -ENOTSUP;
+}
+
 static int
 eth_dev_set_queue_stats_mapping(uint16_t port_id, uint16_t queue_id,
 		uint8_t stat_idx, uint8_t is_rx)

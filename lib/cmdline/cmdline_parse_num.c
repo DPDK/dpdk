@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <rte_string_fns.h>
+#include <stdlib.h>
 
 #include "cmdline_parse.h"
 #include "cmdline_parse_num.h"
@@ -25,7 +26,6 @@ struct cmdline_token_ops cmdline_token_num_ops = {
 	.complete_get_elt = NULL,
 	.get_help = cmdline_get_help_num,
 };
-
 
 enum num_parse_state_t {
 	START,
