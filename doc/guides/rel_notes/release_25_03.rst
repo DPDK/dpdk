@@ -68,6 +68,10 @@ New Features
   * Added ability to option to configure receive packet fanout mode.
   * Added statistics for failed buffer allocation and missed packets.
 
+* **Updated AMD axgbe driver.**
+
+  * Added support for the TCP Segmentation Offload (TSO).
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for virtual function (VF).

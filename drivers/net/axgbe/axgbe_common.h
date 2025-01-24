@@ -161,6 +161,10 @@
 #define DMA_CH_CARBR_LO			0x5c
 #define DMA_CH_SR			0x60
 
+/* Setting MSS register entry bit positions and sizes for TSO */
+#define DMA_CH_CR_MSS_INDEX             0
+#define DMA_CH_CR_MSS_WIDTH             14
+
 /* DMA channel register entry bit positions and sizes */
 #define DMA_CH_CR_PBLX8_INDEX		16
 #define DMA_CH_CR_PBLX8_WIDTH		1
@@ -1229,6 +1233,15 @@
 #define TX_CONTEXT_DESC3_VLTV_WIDTH		1
 #define TX_CONTEXT_DESC3_VT_INDEX		0
 #define TX_CONTEXT_DESC3_VT_WIDTH		16
+
+/* TSO related register entry bit positions and sizes*/
+#define TX_NORMAL_DESC3_TPL_INDEX               0
+#define TX_NORMAL_DESC3_TPL_WIDTH               18
+#define TX_NORMAL_DESC3_THL_INDEX               19
+#define TX_NORMAL_DESC3_THL_WIDTH               4
+#define TX_CONTEXT_DESC3_OSTC_INDEX             27
+#define TX_CONTEXT_DESC3_OSTC_WIDTH             1
+
 
 #define TX_NORMAL_DESC2_HL_B1L_INDEX		0
 #define TX_NORMAL_DESC2_HL_B1L_WIDTH		14

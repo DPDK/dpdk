@@ -1241,6 +1241,7 @@ axgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		RTE_ETH_TX_OFFLOAD_QINQ_INSERT |
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+		RTE_ETH_TX_OFFLOAD_TCP_TSO     |
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 

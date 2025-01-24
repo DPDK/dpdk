@@ -623,6 +623,7 @@ struct axgbe_port {
 	unsigned int tx_osp_mode;
 	unsigned int tx_max_fifo_size;
 	unsigned int multi_segs_tx;
+	unsigned int tso_tx;
 
 	/* Rx settings */
 	unsigned int rx_sf_mode;
