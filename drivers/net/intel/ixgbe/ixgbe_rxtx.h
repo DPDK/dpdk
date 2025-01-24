@@ -215,8 +215,8 @@ struct ixgbe_tx_queue {
 	uint8_t             wthresh;       /**< Write-back threshold reg. */
 	uint64_t offloads; /**< Tx offload flags of RTE_ETH_TX_OFFLOAD_* */
 	uint32_t            ctx_curr;      /**< Hardware context states. */
-	/** Hardware context0 history. */
-	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
+	/** Hardware context history. */
+	struct ixgbe_advctx_info *ctx_cache;
 	const struct ixgbe_txq_ops *ops;       /**< txq ops */
 	bool            tx_deferred_start; /**< not in global dev start. */
 #ifdef RTE_LIB_SECURITY

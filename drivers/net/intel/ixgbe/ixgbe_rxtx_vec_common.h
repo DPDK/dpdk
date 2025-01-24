@@ -176,8 +176,7 @@ _ixgbe_reset_tx_queue_vec(struct ixgbe_tx_queue *txq)
 	txq->last_desc_cleaned = (uint16_t)(txq->nb_tx_desc - 1);
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_desc - 1);
 	txq->ctx_curr = 0;
-	memset((void *)&txq->ctx_cache, 0,
-		IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
+	memset(txq->ctx_cache, 0, IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
 }
 
 static inline int

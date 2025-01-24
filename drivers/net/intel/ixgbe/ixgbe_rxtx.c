@@ -2522,8 +2522,7 @@ ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 	txq->last_desc_cleaned = (uint16_t)(txq->nb_tx_desc - 1);
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_desc - 1);
 	txq->ctx_curr = 0;
-	memset((void *)&txq->ctx_cache, 0,
-		IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
+	memset(txq->ctx_cache, 0, IXGBE_CTX_NUM * sizeof(struct ixgbe_advctx_info));
 }
 
 static const struct ixgbe_txq_ops def_txq_ops = {
@@ -2741,10 +2740,12 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* First allocate the tx queue data structure */
-	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct ixgbe_tx_queue),
+	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct ixgbe_tx_queue) +
+					sizeof(struct ixgbe_advctx_info) * IXGBE_CTX_NUM,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL)
 		return -ENOMEM;
+	txq->ctx_cache = RTE_PTR_ADD(txq, sizeof(struct ixgbe_tx_queue));
 
 	/*
 	 * Allocate TX ring hardware descriptors. A memzone large enough to
