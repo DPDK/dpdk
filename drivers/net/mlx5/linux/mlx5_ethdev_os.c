@@ -1425,6 +1425,11 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.dpdk_name = "hairpin_out_of_buffer",
 		.ctr_name = "hairpin_out_of_buffer",
 		.dev = 1,
+		.ctrl = {
+			.enable = mlx5_enable_port_level_hairpin_counter,
+			.disable = mlx5_disable_port_level_hairpin_counter,
+			.enabled = 0,
+		}
 	},
 	{
 		.dpdk_name = "dev_internal_queue_oob",

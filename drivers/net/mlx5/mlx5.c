@@ -2372,6 +2372,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		priv->ptype_rss_groups = NULL;
 	}
 #endif
+	mlx5_q_counters_destroy(dev);
 	if (priv->rxq_privs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
 		rte_delay_us_sleep(1000);
@@ -2392,14 +2393,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_proc_priv_uninit(dev);
 	if (priv->drop_queue.hrxq)
 		mlx5_drop_action_destroy(dev);
-	if (priv->q_counters) {
-		mlx5_devx_cmd_destroy(priv->q_counters);
-		priv->q_counters = NULL;
-	}
-	if (priv->q_counters_hairpin) {
-		mlx5_devx_cmd_destroy(priv->q_counters_hairpin);
-		priv->q_counters_hairpin = NULL;
-	}
 	mlx5_mprq_free_mp(dev);
 	mlx5_os_free_shared_dr(priv);
 #ifdef HAVE_MLX5_HWS_SUPPORT
@@ -2519,6 +2512,11 @@ const struct eth_dev_ops mlx5_dev_ops = {
 	.xstats_get = mlx5_xstats_get,
 	.xstats_reset = mlx5_xstats_reset,
 	.xstats_get_names = mlx5_xstats_get_names,
+
+	.xstats_enable = mlx5_xstats_enable,
+	.xstats_disable = mlx5_xstats_disable,
+	.xstats_query_state = mlx5_xstats_query_state,
+
 	.fw_version_get = mlx5_fw_version_get,
 	.dev_infos_get = mlx5_dev_infos_get,
 	.representor_info_get = mlx5_representor_info_get,
@@ -3390,6 +3388,280 @@ mlx5_eth_find_next(uint16_t port_id, struct rte_device *odev)
 	if (port_id >= RTE_MAX_ETHPORTS)
 		return RTE_MAX_ETHPORTS;
 	return port_id;
+}
+
+static int
+mlx5_hairpin_queue_counter_supported(struct mlx5_priv *priv)
+{
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		DRV_LOG(WARNING,
+			"DevX counter is not supported in the secondary process");
+		return -ENOTSUP;
+	}
+
+	if (priv->obj_ops.rxq_obj_modify_counter_set_id == NULL) {
+		DRV_LOG(WARNING,
+			"DevX counter is not supported in this device");
+		return -ENOTSUP;
+	}
+	return 0;
+}
+
+/**
+ * Disables the port-level hairpin counter.
+ *
+ * This function iterates over each RXQ, detaches it from the global
+ * counter if it's a hairpin counter, and then destroys the global counter object if
+ * it exists.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param id
+ *   The counter ID to disable (not used in this implementation).
+ *
+ * @return
+ *   0 on success, error code otherwise.
+ */
+int
+mlx5_disable_port_level_hairpin_counter(struct rte_eth_dev *dev, uint64_t id __rte_unused)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int num_rxqs = priv->rxqs_n;
+	unsigned int i;
+
+	if (priv->q_counter_hairpin == NULL)
+		return 0;
+
+	/* Detach each RXQ from the global hairpin counter */
+	for (i = 0; i < num_rxqs; ++i) {
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
+
+		if (rxq == NULL || rxq->ctrl->obj->rq == NULL || !rxq->ctrl->is_hairpin)
+			continue;
+
+		if (priv->obj_ops.rxq_obj_modify_counter_set_id(rxq, 0) != 0)
+			DRV_LOG(ERR, "Port %u failed to modify rq object %s",
+						priv->dev_data->port_id, strerror(rte_errno));
+	}
+
+	mlx5_devx_cmd_destroy(priv->q_counter_hairpin);
+	priv->q_counter_hairpin = NULL;
+
+	/* Reset oob stats. */
+	mlx5_reset_xstats_by_name(priv, "hairpin_out_of_buffer");
+	return 0;
+}
+
+/**
+ * Enables the port-level hairpin counter.
+ *
+ * This function iterates over each RXQ, allocate a q counter and attach it to each
+ * hairpin queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param id
+ *   The counter ID to disable (not used in this implementation).
+ *
+ * @return
+ *   0 on success, error code otherwise.
+ */
+int
+mlx5_enable_port_level_hairpin_counter(struct rte_eth_dev *dev, uint64_t id __rte_unused)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_priv *rxq;
+	unsigned int i;
+
+	int ret = mlx5_hairpin_queue_counter_supported(priv);
+	if (ret) {
+		DRV_LOG(DEBUG, "Hairpin out of buffer counter "
+				"is not available on this NIC.");
+		return ret;
+	}
+
+	/* check if counter is enable per queue - if yes - fail to enable per port */
+	if (priv->num_of_hairpin_q_counter_enabled != 0) {
+		DRV_LOG(WARNING, "Hairpin out of buffer counter is enabled per queue.");
+		return -EINVAL;
+	}
+
+	/* Alloc global hairpin queue counter. */
+	priv->q_counter_hairpin = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx, NULL);
+	if (!priv->q_counter_hairpin) {
+		if (ret == MLX5_Q_COUNTERS_LIMIT_REACHED) {
+			DRV_LOG(WARNING, "Maximum number of queue counters reached. "
+					"Unable to create counter object for Port %d using DevX.",
+					priv->dev_data->port_id);
+			return -ENOSPC;
+		}
+		DRV_LOG(WARNING, "Port %d global hairpin queue counter object cannot be created "
+			"by DevX.", priv->dev_data->port_id);
+		return -ENOMEM;
+	}
+
+	/* go over each queue and attach to global counter */
+	for (i = 0; (i != priv->rxqs_n); ++i) {
+		rxq = mlx5_rxq_get(dev, i);
+
+		if (rxq == NULL || rxq->ctrl->obj->rq == NULL || !rxq->ctrl->is_hairpin)
+			continue;
+
+		ret = priv->obj_ops.rxq_obj_modify_counter_set_id(rxq, priv->q_counter_hairpin->id);
+		if (ret) {
+			DRV_LOG(ERR, "failed to modify rq object for port %u"
+				"%s", priv->dev_data->port_id, strerror(rte_errno));
+			return ret;
+		}
+	}
+
+	/* Reset oob stats. */
+	mlx5_reset_xstats_by_name(priv, "hairpin_out_of_buffer");
+	return 0;
+}
+
+/**
+ * Creates a queue counter for hairpin Rx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param id
+ *   Index of the RX queue to disable the hairpin queue counter for.
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_enable_per_queue_hairpin_counter(struct rte_eth_dev *dev, uint64_t id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_priv *rxq;
+	struct mlx5_rxq_data *rxq_data;
+
+	int ret = mlx5_hairpin_queue_counter_supported(priv);
+	if (ret) {
+		DRV_LOG(DEBUG, "Hairpin out of buffer counter "
+				"is not available on this NIC.");
+		return ret;
+	}
+
+	/* check if we have port level counter enabled. if yes, don't set the queue level counter */
+	if (priv->q_counter_hairpin) {
+		DRV_LOG(WARNING, "Hairpin out of buffer counter is enabled per port.");
+		return -EINVAL;
+	}
+
+	rxq = mlx5_rxq_get(dev, id);
+	if (rxq == NULL || rxq->ctrl->obj->rq == NULL || !rxq->ctrl->is_hairpin)
+		return -EINVAL;
+
+	if (rxq->q_counter != NULL)
+		return 0;
+
+	/* Alloc hairpin queue counter. */
+	rxq->q_counter = mlx5_devx_cmd_queue_counter_alloc(priv->sh->cdev->ctx, NULL);
+	if (rxq->q_counter == NULL) {
+		if (ret == MLX5_Q_COUNTERS_LIMIT_REACHED) {
+			DRV_LOG(WARNING, "Maximum number of queue counters reached. "
+					"Unable to create counter object for Port %d, Queue %d "
+					"using DevX. The counter from this queue will not increment.",
+					priv->dev_data->port_id, rxq->idx);
+			return -ENOSPC;
+		}
+		DRV_LOG(WARNING, "Port %d queue %d counter object cannot be created "
+			"by DevX. Counter from this queue will not increment.",
+			priv->dev_data->port_id, rxq->idx);
+		return -ENOMEM;
+	}
+
+	ret = priv->obj_ops.rxq_obj_modify_counter_set_id(rxq, rxq->q_counter->id);
+	if (ret) {
+		DRV_LOG(ERR, "failed to modify rq object for port %u"
+			"%s", priv->dev_data->port_id, strerror(rte_errno));
+		return ret;
+	}
+
+	rxq_data = mlx5_rxq_data_get(dev, id);
+	if (rxq_data != NULL)
+		rxq_data->stats.oobs.ctrl.enabled = 1;
+
+	priv->num_of_hairpin_q_counter_enabled++;
+	return 0;
+}
+
+/**
+ * Disables the hairpin queue counter for a specified RX queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param id
+ *   Index of the RX queue to disable the hairpin queue counter for.
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_disable_per_queue_hairpin_counter(struct rte_eth_dev *dev, uint64_t id)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_rxq_priv *rxq;
+	struct mlx5_rxq_data *rxq_data;
+	int ret = 0;
+
+	rxq = mlx5_rxq_get(dev, id);
+	rxq_data = mlx5_rxq_data_get(dev, id);
+
+	if (rxq == NULL || rxq->ctrl->obj->rq == NULL || !rxq->ctrl->is_hairpin)
+		return 0;
+
+	if (rxq->q_counter != NULL) {
+		/* Modify rxq. */
+		ret = priv->obj_ops.rxq_obj_modify_counter_set_id(rxq, 0);
+		if (ret)
+			DRV_LOG(ERR, "Port %u failed to modify rq object "
+				" %s", priv->dev_data->port_id, strerror(rte_errno));
+
+		mlx5_devx_cmd_destroy(rxq->q_counter);
+		rxq->q_counter = NULL;
+	}
+
+	/* Reset queue oob stats. */
+	if (rxq_data != NULL) {
+		rxq_data->stats.oobs.count = 0;
+		rxq_data->stats_reset.oobs.count = 0;
+		rxq_data->stats.oobs.ctrl.enabled = 0;
+	}
+
+	priv->num_of_hairpin_q_counter_enabled--;
+	return 0;
+}
+
+/**
+ * Read statistics per queue by a named counter.
+ *
+ * @param[in] q_counter
+ *   Pointer to the queue's counter object.
+ * @param[in] ctr_name
+ *   Pointer to the name of the statistic counter to read
+ * @param[out] stat
+ *   Pointer to read statistic value.
+ * @return
+ *   0 on success and stat is valid, 1 if failed to read the value
+ *   rte_errno is set.
+ *
+ */
+int
+mlx5_read_queue_counter(struct mlx5_devx_obj *q_counter, const char *ctr_name,
+		      uint64_t *stat)
+{
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		DRV_LOG(WARNING,
+			"DevX %s counter is not supported in the secondary process", ctr_name);
+		return -ENOTSUP;
+	}
+
+	if (q_counter == NULL)
+		return -EINVAL;
+
+	return mlx5_devx_cmd_queue_counter_query(q_counter, 0, (uint32_t *)stat);
 }
 
 /**

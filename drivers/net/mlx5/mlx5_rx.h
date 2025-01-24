@@ -30,6 +30,12 @@
 /* First entry must be NULL for comparison. */
 #define mlx5_mr_btree_len(bt) ((bt)->len - 1)
 
+struct mlx5_rxq_stat {
+	int id;
+	uint64_t count;
+	struct mlx5_stat_counter_ctrl ctrl;
+};
+
 struct mlx5_rxq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
 	uint64_t ipackets; /**< Total of successfully received packets. */
@@ -37,6 +43,18 @@ struct mlx5_rxq_stats {
 #endif
 	uint64_t idropped; /**< Total of packets dropped when RX ring full. */
 	uint64_t rx_nombuf; /**< Total of RX mbuf allocation failures. */
+	struct mlx5_rxq_stat oobs; /**< Total of hairpin queue out of buffers. */
+};
+
+/* store statistics names and its offset in stats structure  */
+struct mlx5_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+struct mlx5_rq_stats {
+	/** Total number of hairpin queue packets received that are dropped. */
+	uint64_t q_oobs[RTE_ETHDEV_QUEUE_STAT_CNTRS];
 };
 
 /* Compressed CQE context. */
@@ -183,6 +201,7 @@ struct mlx5_rxq_priv {
 	uint32_t lwm:16;
 	uint32_t lwm_event_pending:1;
 	uint32_t lwm_devx_subscribed:1;
+	struct mlx5_devx_obj *q_counter; /* DevX hairpin queue counter object. */
 };
 
 /* mlx5_rxq.c */
@@ -208,6 +227,7 @@ void mlx5_rx_intr_vec_disable(struct rte_eth_dev *dev);
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rxq_obj_verify(struct rte_eth_dev *dev);
+void mlx5_q_counters_destroy(struct rte_eth_dev *dev);
 struct mlx5_rxq_ctrl *mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx,
 				   uint16_t desc, unsigned int socket,
 				   const struct rte_eth_rxconf *conf,

@@ -275,6 +275,9 @@
 #define MLX5_ERROR_CQE_SYNDROME_OFFSET 52
 #endif
 
+/* Firmware error code for allocating the maximum number of queue counters */
+#define MLX5_Q_COUNTERS_LIMIT_REACHED 0x587239
+
 /* The completion mode offset in the WQE control segment line 2. */
 #define MLX5_COMP_MODE_OFFSET 2
 

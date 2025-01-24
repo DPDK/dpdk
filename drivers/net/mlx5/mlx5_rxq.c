@@ -1315,6 +1315,42 @@ mlx5_rxq_obj_verify(struct rte_eth_dev *dev)
 }
 
 /**
+ * Destroy all queue counters.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+void
+mlx5_q_counters_destroy(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	unsigned int i;
+
+	/* Destroy port q counter */
+	if (priv->q_counters) {
+		mlx5_devx_cmd_destroy(priv->q_counters);
+		priv->q_counters = NULL;
+	}
+
+	/* Destroy port global hairpin q counter */
+	if (priv->q_counter_hairpin) {
+		mlx5_devx_cmd_destroy(priv->q_counter_hairpin);
+		priv->q_counter_hairpin = NULL;
+	}
+
+	/* Destroy per hairpin queue counter */
+	for (i = 0; i != priv->rxqs_n; ++i) {
+		struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, i);
+
+		if (rxq == NULL || rxq->q_counter == NULL)
+			continue;
+
+		mlx5_devx_cmd_destroy(rxq->q_counter);
+		rxq->q_counter = NULL;
+	}
+}
+
+/**
  * Callback function to initialize mbufs for Multi-Packet RQ.
  */
 static inline void

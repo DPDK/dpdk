@@ -1589,6 +1589,7 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 	}
 	ret = mlx5_glue->devx_obj_modify(rq->obj, in, sizeof(in),
 					 out, sizeof(out));
+
 	if (ret) {
 		DRV_LOG(ERR, "Failed to modify RQ using DevX");
 		rte_errno = errno;
@@ -3090,14 +3091,17 @@ mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id)
  *
  * @param[in] ctx
  *   Context returned from mlx5 open_device() glue function.
+ * @param[out] syndrome
+ *   Get syndrome of devx command response.
  *
  * @return
  *   Pointer to counter object on success, a NULL value otherwise and
  *   rte_errno is set.
  */
 struct mlx5_devx_obj *
-mlx5_devx_cmd_queue_counter_alloc(void *ctx)
+mlx5_devx_cmd_queue_counter_alloc(void *ctx, int *syndrome)
 {
+	int status;
 	struct mlx5_devx_obj *dcs = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*dcs), 0,
 						SOCKET_ID_ANY);
 	uint32_t in[MLX5_ST_SZ_DW(alloc_q_counter_in)]   = {0};
@@ -3112,6 +3116,9 @@ mlx5_devx_cmd_queue_counter_alloc(void *ctx)
 					      sizeof(out));
 	if (!dcs->obj) {
 		DEVX_DRV_LOG(DEBUG, out, "create q counter set", NULL, 0);
+		status = MLX5_GET(alloc_q_counter_out, out, status);
+		if (status && syndrome)
+			*syndrome = MLX5_GET(alloc_q_counter_out, out, syndrome);
 		mlx5_free(dcs);
 		return NULL;
 	}
