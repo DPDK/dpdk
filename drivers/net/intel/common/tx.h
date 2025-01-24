@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include <rte_mbuf.h>
+#include <rte_ethdev.h>
 
 /* forward declaration of the common intel (ci) queue structure */
 struct ci_tx_queue;
@@ -105,6 +106,76 @@ ci_tx_backlog_entry(struct ci_tx_entry *txep, struct rte_mbuf **tx_pkts, uint16_
 {
 	for (uint16_t i = 0; i < (int)nb_pkts; ++i)
 		txep[i].mbuf = tx_pkts[i];
+}
+
+#define IETH_VPMD_TX_MAX_FREE_BUF 64
+
+typedef int (*ci_desc_done_fn)(struct ci_tx_queue *txq, uint16_t idx);
+
+static __rte_always_inline int
+ci_tx_free_bufs(struct ci_tx_queue *txq, ci_desc_done_fn desc_done)
+{
+	struct ci_tx_entry *txep;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m, *free[IETH_VPMD_TX_MAX_FREE_BUF];
+
+	/* check DD bits on threshold descriptor */
+	if (!desc_done(txq, txq->tx_next_dd))
+		return 0;
+
+	n = txq->tx_rs_thresh;
+
+	 /* first buffer to free from S/W ring is at index
+	  * tx_next_dd - (tx_rs_thresh-1)
+	  */
+	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
+
+	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) {
+		for (i = 0; i < n; i++) {
+			free[i] = txep[i].mbuf;
+			/* no need to reset txep[i].mbuf in vector path */
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, n);
+		goto done;
+	}
+
+	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m != NULL)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m != NULL)) {
+				if (likely(m->pool == free[0]->pool)) {
+					free[nb_free++] = m;
+				} else {
+					rte_mempool_put_bulk(free[0]->pool,
+							     (void *)free,
+							     nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m != NULL)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+done:
+	/* buffers were freed, update counters */
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
+
+	return txq->tx_rs_thresh;
 }
 
 #endif /* _COMMON_INTEL_TX_H_ */

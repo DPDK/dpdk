@@ -76,61 +76,18 @@ reassemble_packets(struct iavf_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 	return pkt_idx;
 }
 
+static inline int
+iavf_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
+{
+	return (txq->iavf_tx_ring[idx].cmd_type_offset_bsz &
+			rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) ==
+				rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE);
+}
+
 static __rte_always_inline int
 iavf_tx_free_bufs(struct ci_tx_queue *txq)
 {
-	struct ci_tx_entry *txep;
-	uint32_t n;
-	uint32_t i;
-	int nb_free = 0;
-	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
-
-	/* check DD bits on threshold descriptor */
-	if ((txq->iavf_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
-			rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
-			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
-		return 0;
-
-	n = txq->tx_rs_thresh;
-
-	 /* first buffer to free from S/W ring is at index
-	  * tx_next_dd - (tx_rs_thresh-1)
-	  */
-	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
-	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
-	if (likely(m != NULL)) {
-		free[0] = m;
-		nb_free = 1;
-		for (i = 1; i < n; i++) {
-			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
-			if (likely(m != NULL)) {
-				if (likely(m->pool == free[0]->pool)) {
-					free[nb_free++] = m;
-				} else {
-					rte_mempool_put_bulk(free[0]->pool,
-							     (void *)free,
-							     nb_free);
-					free[0] = m;
-					nb_free = 1;
-				}
-			}
-		}
-		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
-	} else {
-		for (i = 1; i < n; i++) {
-			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
-			if (m)
-				rte_mempool_put(m->pool, m);
-		}
-	}
-
-	/* buffers were freed, update counters */
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
-	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
-	if (txq->tx_next_dd >= txq->nb_tx_desc)
-		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
-
-	return txq->tx_rs_thresh;
+	return ci_tx_free_bufs(txq, iavf_tx_desc_done);
 }
 
 static inline void
