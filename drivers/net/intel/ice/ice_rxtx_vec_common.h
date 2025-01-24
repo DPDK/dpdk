@@ -122,57 +122,6 @@ _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
 }
 
-static inline void
-_ice_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
-{
-	uint16_t i;
-
-	if (unlikely(!txq || !txq->sw_ring)) {
-		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
-		return;
-	}
-
-	/**
-	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
-	 *  so need to free remains more carefully.
-	 */
-	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
-
-#ifdef __AVX512VL__
-	struct rte_eth_dev *dev = &rte_eth_devices[txq->ice_vsi->adapter->pf.dev_data->port_id];
-
-	if (dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512 ||
-	    dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512_offload) {
-		struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
-
-		if (txq->tx_tail < i) {
-			for (; i < txq->nb_tx_desc; i++) {
-				rte_pktmbuf_free_seg(swr[i].mbuf);
-				swr[i].mbuf = NULL;
-			}
-			i = 0;
-		}
-		for (; i < txq->tx_tail; i++) {
-			rte_pktmbuf_free_seg(swr[i].mbuf);
-			swr[i].mbuf = NULL;
-		}
-	} else
-#endif
-	{
-		if (txq->tx_tail < i) {
-			for (; i < txq->nb_tx_desc; i++) {
-				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-				txq->sw_ring[i].mbuf = NULL;
-			}
-			i = 0;
-		}
-		for (; i < txq->tx_tail; i++) {
-			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-			txq->sw_ring[i].mbuf = NULL;
-		}
-	}
-}
-
 static inline int
 ice_rxq_vec_setup_default(struct ice_rx_queue *rxq)
 {

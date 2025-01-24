@@ -24,6 +24,7 @@
 #include "ice_generic_flow.h"
 #include "ice_dcf_ethdev.h"
 #include "ice_rxtx.h"
+#include "../common/tx.h"
 
 #define DCF_NUM_MACADDR_MAX      64
 
@@ -500,7 +501,7 @@ ice_dcf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq = dev->data->tx_queues[tx_queue_id];
-	txq->tx_rel_mbufs(txq);
+	ci_txq_release_all_mbufs(txq);
 	reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -650,7 +651,7 @@ ice_dcf_stop_queues(struct rte_eth_dev *dev)
 		txq = dev->data->tx_queues[i];
 		if (!txq)
 			continue;
-		txq->tx_rel_mbufs(txq);
+		ci_txq_release_all_mbufs(txq);
 		reset_tx_queue(txq);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}

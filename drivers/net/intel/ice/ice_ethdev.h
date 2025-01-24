@@ -621,13 +621,12 @@ struct ice_adapter {
 	/* Set bit if the engine is disabled */
 	unsigned long disabled_engine_mask;
 	struct ice_parser *psr;
-#ifdef RTE_ARCH_X86
+	/* used only on X86, zero on other Archs */
 	bool rx_use_avx2;
 	bool rx_use_avx512;
 	bool tx_use_avx2;
 	bool tx_use_avx512;
 	bool rx_vec_offload_support;
-#endif
 };
 
 struct ice_vsi_vlan_pvid_info {

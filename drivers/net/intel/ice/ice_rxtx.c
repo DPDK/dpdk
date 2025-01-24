@@ -752,6 +752,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct ice_aqc_add_tx_qgrp *txq_elem;
 	struct ice_tlan_ctx tx_ctx;
 	int buf_len;
+	struct ice_adapter *ad = ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -822,6 +823,10 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			rte_free(txq_elem);
 			return -EIO;
 		}
+
+	/* record what kind of descriptor cleanup we need on teardown */
+	txq->vector_tx = ad->tx_vec_allowed;
+	txq->vector_sw_ring = ad->tx_use_avx512;
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
@@ -1007,25 +1012,6 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	return 0;
 }
 
-/* Free all mbufs for descriptors in tx queue */
-static void
-_ice_tx_queue_release_mbufs(struct ci_tx_queue *txq)
-{
-	uint16_t i;
-
-	if (!txq || !txq->sw_ring) {
-		PMD_DRV_LOG(DEBUG, "Pointer to txq or sw_ring is NULL");
-		return;
-	}
-
-	for (i = 0; i < txq->nb_tx_desc; i++) {
-		if (txq->sw_ring[i].mbuf) {
-			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-			txq->sw_ring[i].mbuf = NULL;
-		}
-	}
-}
-
 static void
 ice_reset_tx_queue(struct ci_tx_queue *txq)
 {
@@ -1104,7 +1090,7 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	txq->tx_rel_mbufs(txq);
+	ci_txq_release_all_mbufs(txq);
 	ice_reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -1167,7 +1153,7 @@ ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	txq->tx_rel_mbufs(txq);
+	ci_txq_release_all_mbufs(txq);
 	txq->qtx_tail = NULL;
 
 	return 0;
@@ -1519,7 +1505,6 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	ice_reset_tx_queue(txq);
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
-	txq->tx_rel_mbufs = _ice_tx_queue_release_mbufs;
 	ice_set_tx_function_flag(dev, txq);
 
 	return 0;
@@ -1547,8 +1532,7 @@ ice_tx_queue_release(void *txq)
 		return;
 	}
 
-	if (q->tx_rel_mbufs != NULL)
-		q->tx_rel_mbufs(q);
+	ci_txq_release_all_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -2463,7 +2447,6 @@ ice_fdir_setup_tx_resources(struct ice_pf *pf)
 	txq->q_set = true;
 	pf->fdir.txq = txq;
 
-	txq->tx_rel_mbufs = _ice_tx_queue_release_mbufs;
 
 	return ICE_SUCCESS;
 }
