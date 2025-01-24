@@ -2334,21 +2334,6 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  *
  **********************************************************************/
 
-static void __rte_cold
-ixgbe_tx_queue_release_mbufs(struct ci_tx_queue *txq)
-{
-	unsigned i;
-
-	if (txq->sw_ring != NULL) {
-		for (i = 0; i < txq->nb_tx_desc; i++) {
-			if (txq->sw_ring[i].mbuf != NULL) {
-				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-				txq->sw_ring[i].mbuf = NULL;
-			}
-		}
-	}
-}
-
 static int
 ixgbe_tx_done_cleanup_full(struct ci_tx_queue *txq, uint32_t free_cnt)
 {
@@ -2472,7 +2457,7 @@ static void __rte_cold
 ixgbe_tx_queue_release(struct ci_tx_queue *txq)
 {
 	if (txq != NULL && txq->ops != NULL) {
-		txq->ops->release_mbufs(txq);
+		ci_txq_release_all_mbufs(txq);
 		txq->ops->free_swring(txq);
 		rte_memzone_free(txq->mz);
 		rte_free(txq);
@@ -2526,7 +2511,6 @@ ixgbe_reset_tx_queue(struct ci_tx_queue *txq)
 }
 
 static const struct ixgbe_txq_ops def_txq_ops = {
-	.release_mbufs = ixgbe_tx_queue_release_mbufs,
 	.free_swring = ixgbe_tx_free_swring,
 	.reset = ixgbe_reset_tx_queue,
 };
@@ -3380,7 +3364,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		struct ci_tx_queue *txq = dev->data->tx_queues[i];
 
 		if (txq != NULL) {
-			txq->ops->release_mbufs(txq);
+			ci_txq_release_all_mbufs(txq);
 			txq->ops->reset(txq);
 			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
@@ -5655,7 +5639,7 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	if (txq->ops != NULL) {
-		txq->ops->release_mbufs(txq);
+		ci_txq_release_all_mbufs(txq);
 		txq->ops->reset(txq);
 	}
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;

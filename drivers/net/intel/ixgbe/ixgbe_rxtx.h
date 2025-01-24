@@ -181,7 +181,6 @@ struct ixgbe_advctx_info {
 };
 
 struct ixgbe_txq_ops {
-	void (*release_mbufs)(struct ci_tx_queue *txq);
 	void (*free_swring)(struct ci_tx_queue *txq);
 	void (*reset)(struct ci_tx_queue *txq);
 };

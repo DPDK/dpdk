@@ -79,32 +79,6 @@ tx_backlog_entry(struct ci_tx_entry_vec *txep,
 }
 
 static inline void
-_ixgbe_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
-{
-	unsigned int i;
-	struct ci_tx_entry_vec *txe;
-	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
-
-	if (txq->sw_ring == NULL || txq->nb_tx_free == max_desc)
-		return;
-
-	/* release the used mbufs in sw_ring */
-	for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
-	     i != txq->tx_tail;
-	     i = (i + 1) % txq->nb_tx_desc) {
-		txe = &txq->sw_ring_vec[i];
-		rte_pktmbuf_free_seg(txe->mbuf);
-	}
-	txq->nb_tx_free = max_desc;
-
-	/* reset tx_entry */
-	for (i = 0; i < txq->nb_tx_desc; i++) {
-		txe = &txq->sw_ring_vec[i];
-		txe->mbuf = NULL;
-	}
-}
-
-static inline void
 _ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 {
 	unsigned int i;
@@ -207,6 +181,8 @@ ixgbe_txq_vec_setup_default(struct ci_tx_queue *txq,
 	/* leave the first one for overflow */
 	txq->sw_ring_vec = txq->sw_ring_vec + 1;
 	txq->ops = txq_ops;
+	txq->vector_tx = 1;
+	txq->vector_sw_ring = 1;
 
 	return 0;
 }

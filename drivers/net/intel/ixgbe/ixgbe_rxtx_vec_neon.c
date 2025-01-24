@@ -631,12 +631,6 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
-static void __rte_cold
-ixgbe_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
-{
-	_ixgbe_tx_queue_release_mbufs_vec(txq);
-}
-
 void __rte_cold
 ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 {
@@ -656,7 +650,6 @@ ixgbe_reset_tx_queue(struct ci_tx_queue *txq)
 }
 
 static const struct ixgbe_txq_ops vec_txq_ops = {
-	.release_mbufs = ixgbe_tx_queue_release_mbufs_vec,
 	.free_swring = ixgbe_tx_free_swring,
 	.reset = ixgbe_reset_tx_queue,
 };
