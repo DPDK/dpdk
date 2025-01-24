@@ -180,56 +180,10 @@ struct ixgbe_advctx_info {
 	union ixgbe_tx_offload tx_offload_mask;
 };
 
-/**
- * Structure associated with each TX queue.
- */
-struct ixgbe_tx_queue {
-	/** TX ring virtual address. */
-	volatile union ixgbe_adv_tx_desc *ixgbe_tx_ring;
-	rte_iova_t tx_ring_dma; /**< TX ring DMA address. */
-	union {
-		struct ci_tx_entry *sw_ring; /**< address of SW ring for scalar PMD. */
-		struct ci_tx_entry_vec *sw_ring_v; /**< address of SW ring for vector PMD */
-	};
-	volatile uint8_t *qtx_tail; /**< Address of TDT register. */
-	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
-	uint16_t            tx_tail;       /**< current value of TDT reg. */
-	/**< Start freeing TX buffers if there are less free descriptors than
-	     this value. */
-	uint16_t            tx_free_thresh;
-	/** Number of TX descriptors to use before RS bit is set. */
-	uint16_t            tx_rs_thresh;
-	/** Number of TX descriptors used since RS bit was set. */
-	uint16_t            nb_tx_used;
-	/** Index to last TX descriptor to have been cleaned. */
-	uint16_t            last_desc_cleaned;
-	/** Total number of TX descriptors ready to be allocated. */
-	uint16_t            nb_tx_free;
-	uint16_t tx_next_dd; /**< next desc to scan for DD bit */
-	uint16_t tx_next_rs; /**< next desc to set RS bit */
-	uint16_t            queue_id;      /**< TX queue index. */
-	uint16_t            reg_idx;       /**< TX queue register index. */
-	uint16_t            port_id;       /**< Device port identifier. */
-	uint8_t             pthresh;       /**< Prefetch threshold register. */
-	uint8_t             hthresh;       /**< Host threshold register. */
-	uint8_t             wthresh;       /**< Write-back threshold reg. */
-	uint64_t offloads; /**< Tx offload flags of RTE_ETH_TX_OFFLOAD_* */
-	uint32_t            ctx_curr;      /**< Hardware context states. */
-	/** Hardware context history. */
-	struct ixgbe_advctx_info *ctx_cache;
-	const struct ixgbe_txq_ops *ops;       /**< txq ops */
-	bool            tx_deferred_start; /**< not in global dev start. */
-#ifdef RTE_LIB_SECURITY
-	uint8_t		    using_ipsec;
-	/**< indicates that IPsec TX feature is in use */
-#endif
-	const struct rte_memzone *mz;
-};
-
 struct ixgbe_txq_ops {
-	void (*release_mbufs)(struct ixgbe_tx_queue *txq);
-	void (*free_swring)(struct ixgbe_tx_queue *txq);
-	void (*reset)(struct ixgbe_tx_queue *txq);
+	void (*release_mbufs)(struct ci_tx_queue *txq);
+	void (*free_swring)(struct ci_tx_queue *txq);
+	void (*reset)(struct ci_tx_queue *txq);
 };
 
 /*
@@ -250,7 +204,7 @@ struct ixgbe_txq_ops {
  * the queue parameters. Used in tx_queue_setup by primary process and then
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
-void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq);
+void ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq);
 
 /**
  * Sets the rx_pkt_burst callback in the ixgbe rte_eth_dev instance.
@@ -287,7 +241,7 @@ void ixgbe_recycle_rx_descriptors_refill_vec(void *rx_queue, uint16_t nb_mbufs);
 
 uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 				    uint16_t nb_pkts);
-int ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq);
+int ixgbe_txq_vec_setup(struct ci_tx_queue *txq);
 
 uint64_t ixgbe_get_tx_port_offloads(struct rte_eth_dev *dev);
 uint64_t ixgbe_get_rx_queue_offloads(struct rte_eth_dev *dev);

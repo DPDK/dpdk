@@ -98,7 +98,7 @@
  * Return the total number of buffers freed.
  */
 static __rte_always_inline int
-ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
+ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txep;
 	uint32_t status;
@@ -195,7 +195,7 @@ tx1(volatile union ixgbe_adv_tx_desc *txdp, struct rte_mbuf **pkts)
  * Copy mbuf pointers to the S/W ring.
  */
 static inline void
-ixgbe_tx_fill_hw_ring(struct ixgbe_tx_queue *txq, struct rte_mbuf **pkts,
+ixgbe_tx_fill_hw_ring(struct ci_tx_queue *txq, struct rte_mbuf **pkts,
 		      uint16_t nb_pkts)
 {
 	volatile union ixgbe_adv_tx_desc *txdp = &txq->ixgbe_tx_ring[txq->tx_tail];
@@ -231,7 +231,7 @@ static inline uint16_t
 tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts)
 {
-	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile union ixgbe_adv_tx_desc *tx_r = txq->ixgbe_tx_ring;
 	uint16_t n = 0;
 
@@ -344,7 +344,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		    uint16_t nb_pkts)
 {
 	uint16_t nb_tx = 0;
-	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -362,7 +362,7 @@ ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 static inline void
-ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
+ixgbe_set_xmit_ctx(struct ci_tx_queue *txq,
 		volatile struct ixgbe_adv_tx_context_desc *ctx_txd,
 		uint64_t ol_flags, union ixgbe_tx_offload tx_offload,
 		__rte_unused uint64_t *mdata)
@@ -493,7 +493,7 @@ ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,
  * or create a new context descriptor.
  */
 static inline uint32_t
-what_advctx_update(struct ixgbe_tx_queue *txq, uint64_t flags,
+what_advctx_update(struct ci_tx_queue *txq, uint64_t flags,
 		   union ixgbe_tx_offload tx_offload)
 {
 	/* If match with the current used context */
@@ -561,7 +561,7 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 
 /* Reset transmit descriptors after they have been used */
 static inline int
-ixgbe_xmit_cleanup(struct ixgbe_tx_queue *txq)
+ixgbe_xmit_cleanup(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	volatile union ixgbe_adv_tx_desc *txr = txq->ixgbe_tx_ring;
@@ -623,7 +623,7 @@ uint16_t
 ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	struct ci_tx_entry *sw_ring;
 	struct ci_tx_entry *txe, *txn;
 	volatile union ixgbe_adv_tx_desc *txr;
@@ -963,7 +963,7 @@ ixgbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	int i, ret;
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
-	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -2335,7 +2335,7 @@ ixgbe_recv_pkts_lro_bulk_alloc(void *rx_queue, struct rte_mbuf **rx_pkts,
  **********************************************************************/
 
 static void __rte_cold
-ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
+ixgbe_tx_queue_release_mbufs(struct ci_tx_queue *txq)
 {
 	unsigned i;
 
@@ -2350,7 +2350,7 @@ ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 }
 
 static int
-ixgbe_tx_done_cleanup_full(struct ixgbe_tx_queue *txq, uint32_t free_cnt)
+ixgbe_tx_done_cleanup_full(struct ci_tx_queue *txq, uint32_t free_cnt)
 {
 	struct ci_tx_entry *swr_ring = txq->sw_ring;
 	uint16_t i, tx_last, tx_id;
@@ -2408,7 +2408,7 @@ ixgbe_tx_done_cleanup_full(struct ixgbe_tx_queue *txq, uint32_t free_cnt)
 }
 
 static int
-ixgbe_tx_done_cleanup_simple(struct ixgbe_tx_queue *txq,
+ixgbe_tx_done_cleanup_simple(struct ci_tx_queue *txq,
 			uint32_t free_cnt)
 {
 	int i, n, cnt;
@@ -2432,7 +2432,7 @@ ixgbe_tx_done_cleanup_simple(struct ixgbe_tx_queue *txq,
 }
 
 static int
-ixgbe_tx_done_cleanup_vec(struct ixgbe_tx_queue *txq __rte_unused,
+ixgbe_tx_done_cleanup_vec(struct ci_tx_queue *txq __rte_unused,
 			uint32_t free_cnt __rte_unused)
 {
 	return -ENOTSUP;
@@ -2441,7 +2441,7 @@ ixgbe_tx_done_cleanup_vec(struct ixgbe_tx_queue *txq __rte_unused,
 int
 ixgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 {
-	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	if (txq->offloads == 0 &&
 #ifdef RTE_LIB_SECURITY
 			!(txq->using_ipsec) &&
@@ -2450,7 +2450,7 @@ ixgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 		if (txq->tx_rs_thresh <= RTE_IXGBE_TX_MAX_FREE_BUF_SZ &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128 &&
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
-					txq->sw_ring_v != NULL)) {
+					txq->sw_ring_vec != NULL)) {
 			return ixgbe_tx_done_cleanup_vec(txq, free_cnt);
 		} else {
 			return ixgbe_tx_done_cleanup_simple(txq, free_cnt);
@@ -2461,7 +2461,7 @@ ixgbe_dev_tx_done_cleanup(void *tx_queue, uint32_t free_cnt)
 }
 
 static void __rte_cold
-ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
+ixgbe_tx_free_swring(struct ci_tx_queue *txq)
 {
 	if (txq != NULL &&
 	    txq->sw_ring != NULL)
@@ -2469,7 +2469,7 @@ ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
 }
 
 static void __rte_cold
-ixgbe_tx_queue_release(struct ixgbe_tx_queue *txq)
+ixgbe_tx_queue_release(struct ci_tx_queue *txq)
 {
 	if (txq != NULL && txq->ops != NULL) {
 		txq->ops->release_mbufs(txq);
@@ -2487,7 +2487,7 @@ ixgbe_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 
 /* (Re)set dynamic ixgbe_tx_queue fields to defaults */
 static void __rte_cold
-ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
+ixgbe_reset_tx_queue(struct ci_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
 	struct ci_tx_entry *txe = txq->sw_ring;
@@ -2536,7 +2536,7 @@ static const struct ixgbe_txq_ops def_txq_ops = {
  * in dev_init by secondary process when attaching to an existing ethdev.
  */
 void __rte_cold
-ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
+ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ci_tx_queue *txq)
 {
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if ((txq->offloads == 0) &&
@@ -2618,7 +2618,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			 const struct rte_eth_txconf *tx_conf)
 {
 	const struct rte_memzone *tz;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	struct ixgbe_hw     *hw;
 	uint16_t tx_rs_thresh, tx_free_thresh;
 	uint64_t offloads;
@@ -2740,12 +2740,12 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	/* First allocate the tx queue data structure */
-	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct ixgbe_tx_queue) +
+	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct ci_tx_queue) +
 					sizeof(struct ixgbe_advctx_info) * IXGBE_CTX_NUM,
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq == NULL)
 		return -ENOMEM;
-	txq->ctx_cache = RTE_PTR_ADD(txq, sizeof(struct ixgbe_tx_queue));
+	txq->ctx_cache = RTE_PTR_ADD(txq, sizeof(struct ci_tx_queue));
 
 	/*
 	 * Allocate TX ring hardware descriptors. A memzone large enough to
@@ -3312,7 +3312,7 @@ ixgbe_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 int
 ixgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
-	struct ixgbe_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	volatile uint32_t *status;
 	uint32_t desc;
 
@@ -3377,7 +3377,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		struct ixgbe_tx_queue *txq = dev->data->tx_queues[i];
+		struct ci_tx_queue *txq = dev->data->tx_queues[i];
 
 		if (txq != NULL) {
 			txq->ops->release_mbufs(txq);
@@ -5284,7 +5284,7 @@ void __rte_cold
 ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	uint64_t bus_addr;
 	uint32_t hlreg0;
 	uint32_t txctrl;
@@ -5402,7 +5402,7 @@ int __rte_cold
 ixgbe_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	struct ixgbe_rx_queue *rxq;
 	uint32_t txdctl;
 	uint32_t dmatxctl;
@@ -5572,7 +5572,7 @@ int __rte_cold
 ixgbe_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	uint32_t txdctl;
 	int poll_ms;
 
@@ -5611,7 +5611,7 @@ int __rte_cold
 ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	uint32_t txdctl;
 	uint32_t txtdh, txtdt;
 	int poll_ms;
@@ -5685,7 +5685,7 @@ void
 ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo)
 {
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	txq = dev->data->tx_queues[queue_id];
 
@@ -5877,7 +5877,7 @@ void __rte_cold
 ixgbevf_dev_tx_init(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	uint64_t bus_addr;
 	uint32_t txctrl;
 	uint16_t i;
@@ -5918,7 +5918,7 @@ void __rte_cold
 ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw     *hw;
-	struct ixgbe_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	struct ixgbe_rx_queue *rxq;
 	uint32_t txdctl;
 	uint32_t rxdctl;
@@ -6127,7 +6127,7 @@ ixgbe_xmit_fixed_burst_vec(void __rte_unused *tx_queue,
 }
 
 int
-ixgbe_txq_vec_setup(struct ixgbe_tx_queue __rte_unused *txq)
+ixgbe_txq_vec_setup(struct ci_tx_queue *txq __rte_unused)
 {
 	return -1;
 }

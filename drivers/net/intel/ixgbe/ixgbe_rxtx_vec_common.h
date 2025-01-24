@@ -12,7 +12,7 @@
 #include "ixgbe_rxtx.h"
 
 static __rte_always_inline int
-ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
+ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry_vec *txep;
 	uint32_t status;
@@ -32,7 +32,7 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 	 * first buffer to free from S/W ring is at index
 	 * tx_next_dd - (tx_rs_thresh-1)
 	 */
-	txep = &txq->sw_ring_v[txq->tx_next_dd - (n - 1)];
+	txep = &txq->sw_ring_vec[txq->tx_next_dd - (n - 1)];
 	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m != NULL)) {
 		free[0] = m;
@@ -79,7 +79,7 @@ tx_backlog_entry(struct ci_tx_entry_vec *txep,
 }
 
 static inline void
-_ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
+_ixgbe_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
 {
 	unsigned int i;
 	struct ci_tx_entry_vec *txe;
@@ -92,14 +92,14 @@ _ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 	for (i = txq->tx_next_dd - (txq->tx_rs_thresh - 1);
 	     i != txq->tx_tail;
 	     i = (i + 1) % txq->nb_tx_desc) {
-		txe = &txq->sw_ring_v[i];
+		txe = &txq->sw_ring_vec[i];
 		rte_pktmbuf_free_seg(txe->mbuf);
 	}
 	txq->nb_tx_free = max_desc;
 
 	/* reset tx_entry */
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		txe = &txq->sw_ring_v[i];
+		txe = &txq->sw_ring_vec[i];
 		txe->mbuf = NULL;
 	}
 }
@@ -134,22 +134,22 @@ _ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 }
 
 static inline void
-_ixgbe_tx_free_swring_vec(struct ixgbe_tx_queue *txq)
+_ixgbe_tx_free_swring_vec(struct ci_tx_queue *txq)
 {
 	if (txq == NULL)
 		return;
 
 	if (txq->sw_ring != NULL) {
-		rte_free(txq->sw_ring_v - 1);
-		txq->sw_ring_v = NULL;
+		rte_free(txq->sw_ring_vec - 1);
+		txq->sw_ring_vec = NULL;
 	}
 }
 
 static inline void
-_ixgbe_reset_tx_queue_vec(struct ixgbe_tx_queue *txq)
+_ixgbe_reset_tx_queue_vec(struct ci_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = { { 0 } };
-	struct ci_tx_entry_vec *txe = txq->sw_ring_v;
+	struct ci_tx_entry_vec *txe = txq->sw_ring_vec;
 	uint16_t i;
 
 	/* Zero out HW ring memory */
@@ -198,14 +198,14 @@ ixgbe_rxq_vec_setup_default(struct ixgbe_rx_queue *rxq)
 }
 
 static inline int
-ixgbe_txq_vec_setup_default(struct ixgbe_tx_queue *txq,
+ixgbe_txq_vec_setup_default(struct ci_tx_queue *txq,
 			    const struct ixgbe_txq_ops *txq_ops)
 {
-	if (txq->sw_ring_v == NULL)
+	if (txq->sw_ring_vec == NULL)
 		return -1;
 
 	/* leave the first one for overflow */
-	txq->sw_ring_v = txq->sw_ring_v + 1;
+	txq->sw_ring_vec = txq->sw_ring_vec + 1;
 	txq->ops = txq_ops;
 
 	return 0;

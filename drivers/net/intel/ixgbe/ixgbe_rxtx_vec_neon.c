@@ -569,7 +569,7 @@ uint16_t
 ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			   uint16_t nb_pkts)
 {
-	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile union ixgbe_adv_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
@@ -589,7 +589,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = txq->tx_tail;
 	txdp = &txq->ixgbe_tx_ring[tx_id];
-	txep = &txq->sw_ring_v[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
@@ -609,7 +609,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		/* avoid reach the end of ring */
 		txdp = &txq->ixgbe_tx_ring[tx_id];
-		txep = &txq->sw_ring_v[tx_id];
+		txep = &txq->sw_ring_vec[tx_id];
 	}
 
 	tx_backlog_entry(txep, tx_pkts, nb_commit);
@@ -632,7 +632,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 static void __rte_cold
-ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
+ixgbe_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
 {
 	_ixgbe_tx_queue_release_mbufs_vec(txq);
 }
@@ -644,13 +644,13 @@ ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 }
 
 static void __rte_cold
-ixgbe_tx_free_swring(struct ixgbe_tx_queue *txq)
+ixgbe_tx_free_swring(struct ci_tx_queue *txq)
 {
 	_ixgbe_tx_free_swring_vec(txq);
 }
 
 static void __rte_cold
-ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
+ixgbe_reset_tx_queue(struct ci_tx_queue *txq)
 {
 	_ixgbe_reset_tx_queue_vec(txq);
 }
@@ -668,7 +668,7 @@ ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 }
 
 int __rte_cold
-ixgbe_txq_vec_setup(struct ixgbe_tx_queue *txq)
+ixgbe_txq_vec_setup(struct ci_tx_queue *txq)
 {
 	return ixgbe_txq_vec_setup_default(txq, &vec_txq_ops);
 }

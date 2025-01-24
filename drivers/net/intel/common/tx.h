@@ -34,9 +34,13 @@ struct ci_tx_queue {
 		volatile struct i40e_tx_desc *i40e_tx_ring;
 		volatile struct iavf_tx_desc *iavf_tx_ring;
 		volatile struct ice_tx_desc *ice_tx_ring;
+		volatile union ixgbe_adv_tx_desc *ixgbe_tx_ring;
 	};
 	volatile uint8_t *qtx_tail;               /* register address of tail */
-	struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
+	union {
+		struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
+		struct ci_tx_entry_vec *sw_ring_vec;
+	};
 	rte_iova_t tx_ring_dma;        /* TX ring DMA address */
 	uint16_t nb_tx_desc;           /* number of TX descriptors */
 	uint16_t tx_tail; /* current value of tail register */
@@ -86,6 +90,14 @@ struct ci_tx_queue {
 			uint8_t vlan_flag;
 			uint8_t tc;
 			bool use_ctx;  /* with ctx info, each pkt needs two descriptors */
+		};
+		struct { /* ixgbe specific values */
+			const struct ixgbe_txq_ops *ops;
+			struct ixgbe_advctx_info *ctx_cache;
+			uint32_t ctx_curr;
+#ifdef RTE_LIB_SECURITY
+			uint8_t using_ipsec;  /**< indicates that IPsec TX feature is in use */
+#endif
 		};
 	};
 };
