@@ -277,25 +277,25 @@ struct iavf_rx_queue {
 struct iavf_tx_queue {
 	const struct rte_memzone *mz;  /* memzone for Tx ring */
 	volatile struct iavf_tx_desc *tx_ring; /* Tx ring virtual address */
-	uint64_t tx_ring_phys_addr;    /* Tx ring DMA address */
+	rte_iova_t tx_ring_dma;    /* Tx ring DMA address */
 	struct ci_tx_entry *sw_ring;  /* address array of SW ring */
 	uint16_t nb_tx_desc;           /* ring length */
 	uint16_t tx_tail;              /* current value of tail */
 	volatile uint8_t *qtx_tail;    /* register address of tail */
 	/* number of used desc since RS bit set */
-	uint16_t nb_used;
-	uint16_t nb_free;
+	uint16_t nb_tx_used;
+	uint16_t nb_tx_free;
 	uint16_t last_desc_cleaned;    /* last desc have been cleaned*/
-	uint16_t free_thresh;
-	uint16_t rs_thresh;
+	uint16_t tx_free_thresh;
+	uint16_t tx_rs_thresh;
 	uint8_t rel_mbufs_type;
 	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
 
 	uint16_t port_id;
 	uint16_t queue_id;
 	uint64_t offloads;
-	uint16_t next_dd;              /* next to set RS, for VPMD */
-	uint16_t next_rs;              /* next to check DD,  for VPMD */
+	uint16_t tx_next_dd;              /* next to set RS, for VPMD */
+	uint16_t tx_next_rs;              /* next to check DD,  for VPMD */
 	uint16_t ipsec_crypto_pkt_md_offset;
 
 	uint64_t mbuf_errors;

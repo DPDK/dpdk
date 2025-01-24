@@ -186,12 +186,12 @@ struct ixgbe_advctx_info {
 struct ixgbe_tx_queue {
 	/** TX ring virtual address. */
 	volatile union ixgbe_adv_tx_desc *tx_ring;
-	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
+	rte_iova_t tx_ring_dma; /**< TX ring DMA address. */
 	union {
 		struct ci_tx_entry *sw_ring; /**< address of SW ring for scalar PMD. */
 		struct ci_tx_entry_vec *sw_ring_v; /**< address of SW ring for vector PMD */
 	};
-	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
+	volatile uint8_t *qtx_tail; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */
 	uint16_t            tx_tail;       /**< current value of TDT reg. */
 	/**< Start freeing TX buffers if there are less free descriptors than
@@ -218,7 +218,7 @@ struct ixgbe_tx_queue {
 	/** Hardware context0 history. */
 	struct ixgbe_advctx_info ctx_cache[IXGBE_CTX_NUM];
 	const struct ixgbe_txq_ops *ops;       /**< txq ops */
-	uint8_t             tx_deferred_start; /**< not in global dev start. */
+	bool            tx_deferred_start; /**< not in global dev start. */
 #ifdef RTE_LIB_SECURITY
 	uint8_t		    using_ipsec;
 	/**< indicates that IPsec TX feature is in use */

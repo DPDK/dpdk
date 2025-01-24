@@ -2549,7 +2549,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
-	txq->tx_ring_phys_addr = tz->iova;
+	txq->tx_ring_dma = tz->iova;
 	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
 
 	/* Allocate software ring */
@@ -2923,7 +2923,7 @@ i40e_tx_queue_init(struct i40e_tx_queue *txq)
 	/* clear the context structure first */
 	memset(&tx_ctx, 0, sizeof(tx_ctx));
 	tx_ctx.new_context = 1;
-	tx_ctx.base = txq->tx_ring_phys_addr / I40E_QUEUE_BASE_ADDR_UNIT;
+	tx_ctx.base = txq->tx_ring_dma / I40E_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->nb_tx_desc;
 
 #ifdef RTE_LIBRTE_IEEE1588
@@ -3209,7 +3209,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	txq->reg_idx = pf->fdir.fdir_vsi->base_queue;
 	txq->vsi = pf->fdir.fdir_vsi;
 
-	txq->tx_ring_phys_addr = tz->iova;
+	txq->tx_ring_dma = tz->iova;
 	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
 
 	/*

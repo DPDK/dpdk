@@ -86,17 +86,17 @@ iavf_tx_free_bufs(struct iavf_tx_queue *txq)
 	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->next_dd].cmd_type_offset_bsz &
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
-	n = txq->rs_thresh;
+	n = txq->tx_rs_thresh;
 
 	 /* first buffer to free from S/W ring is at index
 	  * tx_next_dd - (tx_rs_thresh-1)
 	  */
-	txep = &txq->sw_ring[txq->next_dd - (n - 1)];
+	txep = &txq->sw_ring[txq->tx_next_dd - (n - 1)];
 	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m != NULL)) {
 		free[0] = m;
@@ -125,12 +125,12 @@ iavf_tx_free_bufs(struct iavf_tx_queue *txq)
 	}
 
 	/* buffers were freed, update counters */
-	txq->nb_free = (uint16_t)(txq->nb_free + txq->rs_thresh);
-	txq->next_dd = (uint16_t)(txq->next_dd + txq->rs_thresh);
-	if (txq->next_dd >= txq->nb_tx_desc)
-		txq->next_dd = (uint16_t)(txq->rs_thresh - 1);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
 
-	return txq->rs_thresh;
+	return txq->tx_rs_thresh;
 }
 
 static inline void
@@ -169,10 +169,10 @@ _iavf_tx_queue_release_mbufs_vec(struct iavf_tx_queue *txq)
 	unsigned i;
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
 
-	if (!txq->sw_ring || txq->nb_free == max_desc)
+	if (!txq->sw_ring || txq->nb_tx_free == max_desc)
 		return;
 
-	i = txq->next_dd - txq->rs_thresh + 1;
+	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
 	while (i != txq->tx_tail) {
 		rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
 		txq->sw_ring[i].mbuf = NULL;
@@ -229,8 +229,8 @@ iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
 	if (!txq)
 		return -1;
 
-	if (txq->rs_thresh < IAVF_VPMD_TX_MAX_BURST ||
-	    txq->rs_thresh > IAVF_VPMD_TX_MAX_FREE_BUF)
+	if (txq->tx_rs_thresh < IAVF_VPMD_TX_MAX_BURST ||
+	    txq->tx_rs_thresh > IAVF_VPMD_TX_MAX_FREE_BUF)
 		return -1;
 
 	if (txq->offloads & IAVF_TX_NO_VECTOR_FLAGS)

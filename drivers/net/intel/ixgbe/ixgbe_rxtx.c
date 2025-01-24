@@ -308,7 +308,7 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* update tail pointer */
 	rte_wmb();
-	IXGBE_PCI_REG_WC_WRITE_RELAXED(txq->tdt_reg_addr, txq->tx_tail);
+	IXGBE_PCI_REG_WC_WRITE_RELAXED(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }
@@ -946,7 +946,7 @@ end_of_tx:
 	PMD_TX_LOG(DEBUG, "port_id=%u queue_id=%u tx_tail=%u nb_tx=%u",
 		   (unsigned) txq->port_id, (unsigned) txq->queue_id,
 		   (unsigned) tx_id, (unsigned) nb_tx);
-	IXGBE_PCI_REG_WC_WRITE_RELAXED(txq->tdt_reg_addr, tx_id);
+	IXGBE_PCI_REG_WC_WRITE_RELAXED(txq->qtx_tail, tx_id);
 	txq->tx_tail = tx_id;
 
 	return nb_tx;
@@ -2786,11 +2786,11 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	    hw->mac.type == ixgbe_mac_X550_vf ||
 	    hw->mac.type == ixgbe_mac_X550EM_x_vf ||
 	    hw->mac.type == ixgbe_mac_X550EM_a_vf)
-		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
+		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_VFTDT(queue_idx));
 	else
-		txq->tdt_reg_addr = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
+		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
 
-	txq->tx_ring_phys_addr = tz->iova;
+	txq->tx_ring_dma = tz->iova;
 	txq->tx_ring = (union ixgbe_adv_tx_desc *) tz->addr;
 
 	/* Allocate software ring */
@@ -2802,7 +2802,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
-		     txq->sw_ring, txq->tx_ring, txq->tx_ring_phys_addr);
+		     txq->sw_ring, txq->tx_ring, txq->tx_ring_dma);
 
 	/* set up vector or scalar TX function as appropriate */
 	ixgbe_set_tx_function(dev, txq);
@@ -5303,7 +5303,7 @@ ixgbe_dev_tx_init(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 
-		bus_addr = txq->tx_ring_phys_addr;
+		bus_addr = txq->tx_ring_dma;
 		IXGBE_WRITE_REG(hw, IXGBE_TDBAL(txq->reg_idx),
 				(uint32_t)(bus_addr & 0x00000000ffffffffULL));
 		IXGBE_WRITE_REG(hw, IXGBE_TDBAH(txq->reg_idx),
@@ -5887,7 +5887,7 @@ ixgbevf_dev_tx_init(struct rte_eth_dev *dev)
 	/* Setup the Base and Length of the Tx Descriptor Rings */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
-		bus_addr = txq->tx_ring_phys_addr;
+		bus_addr = txq->tx_ring_dma;
 		IXGBE_WRITE_REG(hw, IXGBE_VFTDBAL(i),
 				(uint32_t)(bus_addr & 0x00000000ffffffffULL));
 		IXGBE_WRITE_REG(hw, IXGBE_VFTDBAH(i),

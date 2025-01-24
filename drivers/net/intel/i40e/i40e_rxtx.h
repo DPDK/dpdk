@@ -129,7 +129,7 @@ struct i40e_rx_queue {
  */
 struct i40e_tx_queue {
 	uint16_t nb_tx_desc; /**< number of TX descriptors */
-	uint64_t tx_ring_phys_addr; /**< TX ring DMA address */
+	rte_iova_t tx_ring_dma; /**< TX ring DMA address */
 	volatile struct i40e_tx_desc *tx_ring; /**< TX ring virtual address */
 	struct ci_tx_entry *sw_ring; /**< virtual address of SW ring */
 	uint16_t tx_tail; /**< current value of tail register */

@@ -626,7 +626,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	txq->tx_tail = tx_id;
 
-	IXGBE_PCI_REG_WRITE(txq->tdt_reg_addr, txq->tx_tail);
+	IXGBE_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
 
 	return nb_pkts;
 }

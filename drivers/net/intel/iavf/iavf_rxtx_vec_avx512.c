@@ -1850,18 +1850,18 @@ iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->next_dd].cmd_type_offset_bsz &
+	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 	     rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
 	    rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
 
-	n = txq->rs_thresh >> txq->use_ctx;
+	n = txq->tx_rs_thresh >> txq->use_ctx;
 
 	 /* first buffer to free from S/W ring is at index
 	  * tx_next_dd - (tx_rs_thresh-1)
 	  */
 	txep = (void *)txq->sw_ring;
-	txep += (txq->next_dd >> txq->use_ctx) - (n - 1);
+	txep += (txq->tx_next_dd >> txq->use_ctx) - (n - 1);
 
 	if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE && (n & 31) == 0) {
 		struct rte_mempool *mp = txep[0].mbuf->pool;
@@ -1947,12 +1947,12 @@ normal:
 
 done:
 	/* buffers were freed, update counters */
-	txq->nb_free = (uint16_t)(txq->nb_free + txq->rs_thresh);
-	txq->next_dd = (uint16_t)(txq->next_dd + txq->rs_thresh);
-	if (txq->next_dd >= txq->nb_tx_desc)
-		txq->next_dd = (uint16_t)(txq->rs_thresh - 1);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + txq->tx_rs_thresh);
+	txq->tx_next_dd = (uint16_t)(txq->tx_next_dd + txq->tx_rs_thresh);
+	if (txq->tx_next_dd >= txq->nb_tx_desc)
+		txq->tx_next_dd = (uint16_t)(txq->tx_rs_thresh - 1);
 
-	return txq->rs_thresh;
+	return txq->tx_rs_thresh;
 }
 
 static __rte_always_inline void
@@ -2315,19 +2315,20 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
 	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
 
-	if (txq->nb_free < txq->free_thresh)
+	if (txq->nb_tx_free < txq->tx_free_thresh)
 		iavf_tx_free_bufs_avx512(txq);
 
-	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_free, nb_pkts);
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
 	if (unlikely(nb_pkts == 0))
 		return 0;
+	nb_commit = nb_pkts;
 
 	tx_id = txq->tx_tail;
 	txdp = &txq->tx_ring[tx_id];
 	txep = (void *)txq->sw_ring;
 	txep += tx_id;
 
-	txq->nb_free = (uint16_t)(txq->nb_free - nb_pkts);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
@@ -2342,7 +2343,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_commit = (uint16_t)(nb_commit - n);
 
 		tx_id = 0;
-		txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
 		txdp = &txq->tx_ring[tx_id];
@@ -2355,12 +2356,12 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	iavf_vtx(txdp, tx_pkts, nb_commit, flags, offload);
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
-	if (tx_id > txq->next_rs) {
-		txq->tx_ring[txq->next_rs].cmd_type_offset_bsz |=
+	if (tx_id > txq->tx_next_rs) {
+		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
 					 IAVF_TXD_QW1_CMD_SHIFT);
-		txq->next_rs =
-			(uint16_t)(txq->next_rs + txq->rs_thresh);
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}
 
 	txq->tx_tail = tx_id;
@@ -2382,10 +2383,10 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
 	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
 
-	if (txq->nb_free < txq->free_thresh)
+	if (txq->nb_tx_free < txq->tx_free_thresh)
 		iavf_tx_free_bufs_avx512(txq);
 
-	nb_commit = (uint16_t)RTE_MIN(txq->nb_free, nb_pkts << 1);
+	nb_commit = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts << 1);
 	nb_commit &= 0xFFFE;
 	if (unlikely(nb_commit == 0))
 		return 0;
@@ -2396,7 +2397,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	txep = (void *)txq->sw_ring;
 	txep += (tx_id >> 1);
 
-	txq->nb_free = (uint16_t)(txq->nb_free - nb_commit);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_commit);
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 
 	if (n != 0 && nb_commit >= n) {
@@ -2410,7 +2411,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		nb_commit = (uint16_t)(nb_commit - n);
 
-		txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 		tx_id = 0;
 		/* avoid reach the end of ring */
 		txdp = txq->tx_ring;
@@ -2423,12 +2424,12 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	ctx_vtx(txdp, tx_pkts, nb_mbuf, flags, offload, txq->vlan_flag);
 	tx_id = (uint16_t)(tx_id + nb_commit);
 
-	if (tx_id > txq->next_rs) {
-		txq->tx_ring[txq->next_rs].cmd_type_offset_bsz |=
+	if (tx_id > txq->tx_next_rs) {
+		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
 					 IAVF_TXD_QW1_CMD_SHIFT);
-		txq->next_rs =
-			(uint16_t)(txq->next_rs + txq->rs_thresh);
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}
 
 	txq->tx_tail = tx_id;
@@ -2448,7 +2449,7 @@ iavf_xmit_pkts_vec_avx512_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t ret, num;
 
 		/* cross rs_thresh boundary is not allowed */
-		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
 		ret = iavf_xmit_fixed_burst_vec_avx512(tx_queue, &tx_pkts[nb_tx],
 						       num, offload);
 		nb_tx += ret;
@@ -2476,10 +2477,10 @@ iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
 	const uint16_t wrap_point = txq->nb_tx_desc >> txq->use_ctx;  /* end of SW ring */
 	struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
 
-	if (!txq->sw_ring || txq->nb_free == max_desc)
+	if (!txq->sw_ring || txq->nb_tx_free == max_desc)
 		return;
 
-	i = (txq->next_dd - txq->rs_thresh + 1) >> txq->use_ctx;
+	i = (txq->tx_next_dd - txq->tx_rs_thresh + 1) >> txq->use_ctx;
 	while (i != end_desc) {
 		rte_pktmbuf_free_seg(swr[i].mbuf);
 		swr[i].mbuf = NULL;
@@ -2513,7 +2514,7 @@ iavf_xmit_pkts_vec_avx512_ctx_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t ret, num;
 
 		/* cross rs_thresh boundary is not allowed */
-		num = (uint16_t)RTE_MIN(nb_pkts << 1, txq->rs_thresh);
+		num = (uint16_t)RTE_MIN(nb_pkts << 1, txq->tx_rs_thresh);
 		num = num >> 1;
 		ret = iavf_xmit_fixed_burst_vec_avx512_ctx(tx_queue, &tx_pkts[nb_tx],
 						       num, offload);

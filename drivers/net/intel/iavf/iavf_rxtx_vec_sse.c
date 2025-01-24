@@ -1370,10 +1370,10 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;
 	int i;
 
-	if (txq->nb_free < txq->free_thresh)
+	if (txq->nb_tx_free < txq->tx_free_thresh)
 		iavf_tx_free_bufs(txq);
 
-	nb_pkts = (uint16_t)RTE_MIN(txq->nb_free, nb_pkts);
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
 	if (unlikely(nb_pkts == 0))
 		return 0;
 	nb_commit = nb_pkts;
@@ -1382,7 +1382,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	txdp = &txq->tx_ring[tx_id];
 	txep = &txq->sw_ring[tx_id];
 
-	txq->nb_free = (uint16_t)(txq->nb_free - nb_pkts);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
@@ -1396,7 +1396,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		nb_commit = (uint16_t)(nb_commit - n);
 
 		tx_id = 0;
-		txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
 		txdp = &txq->tx_ring[tx_id];
@@ -1408,12 +1408,12 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	iavf_vtx(txdp, tx_pkts, nb_commit, flags);
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
-	if (tx_id > txq->next_rs) {
-		txq->tx_ring[txq->next_rs].cmd_type_offset_bsz |=
+	if (tx_id > txq->tx_next_rs) {
+		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
 					 IAVF_TXD_QW1_CMD_SHIFT);
-		txq->next_rs =
-			(uint16_t)(txq->next_rs + txq->rs_thresh);
+		txq->tx_next_rs =
+			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
 	}
 
 	txq->tx_tail = tx_id;
@@ -1437,7 +1437,7 @@ iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t ret, num;
 
 		/* cross rs_thresh boundary is not allowed */
-		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
 		ret = iavf_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx], num);
 		nb_tx += ret;
 		nb_pkts -= ret;

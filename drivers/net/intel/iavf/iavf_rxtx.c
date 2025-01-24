@@ -216,8 +216,8 @@ static inline bool
 check_tx_vec_allow(struct iavf_tx_queue *txq)
 {
 	if (!(txq->offloads & IAVF_TX_NO_VECTOR_FLAGS) &&
-	    txq->rs_thresh >= IAVF_VPMD_TX_MAX_BURST &&
-	    txq->rs_thresh <= IAVF_VPMD_TX_MAX_FREE_BUF) {
+	    txq->tx_rs_thresh >= IAVF_VPMD_TX_MAX_BURST &&
+	    txq->tx_rs_thresh <= IAVF_VPMD_TX_MAX_FREE_BUF) {
 		PMD_INIT_LOG(DEBUG, "Vector tx can be enabled on this txq.");
 		return true;
 	}
@@ -309,13 +309,13 @@ reset_tx_queue(struct iavf_tx_queue *txq)
 	}
 
 	txq->tx_tail = 0;
-	txq->nb_used = 0;
+	txq->nb_tx_used = 0;
 
 	txq->last_desc_cleaned = txq->nb_tx_desc - 1;
-	txq->nb_free = txq->nb_tx_desc - 1;
+	txq->nb_tx_free = txq->nb_tx_desc - 1;
 
-	txq->next_dd = txq->rs_thresh - 1;
-	txq->next_rs = txq->rs_thresh - 1;
+	txq->tx_next_dd = txq->tx_rs_thresh - 1;
+	txq->tx_next_rs = txq->tx_rs_thresh - 1;
 }
 
 static int
@@ -845,8 +845,8 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	txq->nb_tx_desc = nb_desc;
-	txq->rs_thresh = tx_rs_thresh;
-	txq->free_thresh = tx_free_thresh;
+	txq->tx_rs_thresh = tx_rs_thresh;
+	txq->tx_free_thresh = tx_free_thresh;
 	txq->queue_id = queue_idx;
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
@@ -881,7 +881,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		rte_free(txq);
 		return -ENOMEM;
 	}
-	txq->tx_ring_phys_addr = mz->iova;
+	txq->tx_ring_dma = mz->iova;
 	txq->tx_ring = (struct iavf_tx_desc *)mz->addr;
 
 	txq->mz = mz;
@@ -2387,7 +2387,7 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 
 	volatile struct iavf_tx_desc *txd = txq->tx_ring;
 
-	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->rs_thresh);
+	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
 	if (desc_to_clean_to >= nb_tx_desc)
 		desc_to_clean_to = (uint16_t)(desc_to_clean_to - nb_tx_desc);
 
@@ -2411,7 +2411,7 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 	txd[desc_to_clean_to].cmd_type_offset_bsz = 0;
 
 	txq->last_desc_cleaned = desc_to_clean_to;
-	txq->nb_free = (uint16_t)(txq->nb_free + nb_tx_to_clean);
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free + nb_tx_to_clean);
 
 	return 0;
 }
@@ -2807,7 +2807,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 
 	/* Check if the descriptor ring needs to be cleaned. */
-	if (txq->nb_free < txq->free_thresh)
+	if (txq->nb_tx_free < txq->tx_free_thresh)
 		iavf_xmit_cleanup(txq);
 
 	desc_idx = txq->tx_tail;
@@ -2862,14 +2862,14 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			"port_id=%u queue_id=%u tx_first=%u tx_last=%u",
 			txq->port_id, txq->queue_id, desc_idx, desc_idx_last);
 
-		if (nb_desc_required > txq->nb_free) {
+		if (nb_desc_required > txq->nb_tx_free) {
 			if (iavf_xmit_cleanup(txq)) {
 				if (idx == 0)
 					return 0;
 				goto end_of_tx;
 			}
-			if (unlikely(nb_desc_required > txq->rs_thresh)) {
-				while (nb_desc_required > txq->nb_free) {
+			if (unlikely(nb_desc_required > txq->tx_rs_thresh)) {
+				while (nb_desc_required > txq->nb_tx_free) {
 					if (iavf_xmit_cleanup(txq)) {
 						if (idx == 0)
 							return 0;
@@ -2991,10 +2991,10 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* The last packet data descriptor needs End Of Packet (EOP) */
 		ddesc_cmd = IAVF_TX_DESC_CMD_EOP;
 
-		txq->nb_used = (uint16_t)(txq->nb_used + nb_desc_required);
-		txq->nb_free = (uint16_t)(txq->nb_free - nb_desc_required);
+		txq->nb_tx_used = (uint16_t)(txq->nb_tx_used + nb_desc_required);
+		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_desc_required);
 
-		if (txq->nb_used >= txq->rs_thresh) {
+		if (txq->nb_tx_used >= txq->tx_rs_thresh) {
 			PMD_TX_LOG(DEBUG, "Setting RS bit on TXD id="
 				   "%4u (port=%d queue=%d)",
 				   desc_idx_last, txq->port_id, txq->queue_id);
@@ -3002,7 +3002,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			ddesc_cmd |= IAVF_TX_DESC_CMD_RS;
 
 			/* Update txq RS bit counters */
-			txq->nb_used = 0;
+			txq->nb_tx_used = 0;
 		}
 
 		ddesc->cmd_type_offset_bsz |= rte_cpu_to_le_64(ddesc_cmd <<
@@ -4272,11 +4272,11 @@ iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 	tx_id = txq->tx_tail;
 	tx_last = tx_id;
 
-	if (txq->nb_free == 0 && iavf_xmit_cleanup(txq))
+	if (txq->nb_tx_free == 0 && iavf_xmit_cleanup(txq))
 		return 0;
 
-	nb_tx_to_clean = txq->nb_free;
-	nb_tx_free_last = txq->nb_free;
+	nb_tx_to_clean = txq->nb_tx_free;
+	nb_tx_free_last = txq->nb_tx_free;
 	if (!free_cnt)
 		free_cnt = txq->nb_tx_desc;
 
@@ -4299,16 +4299,16 @@ iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 			tx_id = swr_ring[tx_id].next_id;
 		} while (--nb_tx_to_clean && pkt_cnt < free_cnt && tx_id != tx_last);
 
-		if (txq->rs_thresh > txq->nb_tx_desc -
-			txq->nb_free || tx_id == tx_last)
+		if (txq->tx_rs_thresh > txq->nb_tx_desc -
+			txq->nb_tx_free || tx_id == tx_last)
 			break;
 
 		if (pkt_cnt < free_cnt) {
 			if (iavf_xmit_cleanup(txq))
 				break;
 
-			nb_tx_to_clean = txq->nb_free - nb_tx_free_last;
-			nb_tx_free_last = txq->nb_free;
+			nb_tx_to_clean = txq->nb_tx_free - nb_tx_free_last;
+			nb_tx_free_last = txq->nb_tx_free;
 		}
 	}
 
@@ -4350,8 +4350,8 @@ iavf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->nb_desc = txq->nb_tx_desc;
 
-	qinfo->conf.tx_free_thresh = txq->free_thresh;
-	qinfo->conf.tx_rs_thresh = txq->rs_thresh;
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
+	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
 	qinfo->conf.offloads = txq->offloads;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
 }
@@ -4426,8 +4426,8 @@ iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 
 	desc = txq->tx_tail + offset;
 	/* go to next desc that has the RS bit */
-	desc = ((desc + txq->rs_thresh - 1) / txq->rs_thresh) *
-		txq->rs_thresh;
+	desc = ((desc + txq->tx_rs_thresh - 1) / txq->tx_rs_thresh) *
+		txq->tx_rs_thresh;
 	if (desc >= txq->nb_tx_desc) {
 		desc -= txq->nb_tx_desc;
 		if (desc >= txq->nb_tx_desc)
