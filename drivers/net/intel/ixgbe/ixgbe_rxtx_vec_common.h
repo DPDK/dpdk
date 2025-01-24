@@ -168,6 +168,13 @@ ixgbe_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
 		return -1;
 
+	for (uint16_t i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
+		if (!rxq)
+			continue;
+		if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
+			return -1;
+	}
 	return 0;
 #else
 	RTE_SET_USED(dev);

@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <rte_mbuf.h>
+#include <rte_ethdev.h>
 
 #define CI_RX_BURST 32
 
@@ -87,6 +88,25 @@ ci_rxq_mbuf_initializer(uint16_t port_id)
 	rte_mbuf_refcnt_set(&mb_def, 1);
 
 	return mb_def.rearm_data[0];
+}
+
+/* basic checks for a vector-driver capable queue.
+ * Individual drivers may have other further tests beyond this.
+ */
+static inline bool
+ci_rxq_vec_capable(uint16_t nb_desc, uint16_t rx_free_thresh, uint64_t offloads)
+{
+	if (!rte_is_power_of_2(nb_desc) ||
+			rx_free_thresh < CI_RX_BURST ||
+			(nb_desc % rx_free_thresh) != 0)
+		return false;
+
+	/* no driver supports timestamping or buffer split on vector path */
+	if ((offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) ||
+			(offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT))
+		return false;
+
+	return true;
 }
 
 #endif /* _COMMON_INTEL_RX_H_ */

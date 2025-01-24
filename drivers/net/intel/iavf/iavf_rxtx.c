@@ -200,19 +200,6 @@ check_tx_thresh(uint16_t nb_desc, uint16_t tx_rs_thresh,
 }
 
 static inline bool
-check_rx_vec_allow(struct iavf_rx_queue *rxq)
-{
-	if (rxq->rx_free_thresh >= IAVF_VPMD_RX_MAX_BURST &&
-	    rxq->nb_rx_desc % rxq->rx_free_thresh == 0) {
-		PMD_INIT_LOG(DEBUG, "Vector Rx can be enabled on this rxq.");
-		return true;
-	}
-
-	PMD_INIT_LOG(DEBUG, "Vector Rx cannot be enabled on this rxq.");
-	return false;
-}
-
-static inline bool
 check_tx_vec_allow(struct ci_tx_queue *txq)
 {
 	if (!(txq->offloads & IAVF_TX_NO_VECTOR_FLAGS) &&
@@ -722,7 +709,7 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		ad->rx_bulk_alloc_allowed = false;
 	}
 
-	if (check_rx_vec_allow(rxq) == false)
+	if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
 		ad->rx_vec_allowed = false;
 
 #if defined RTE_ARCH_X86 || defined RTE_ARCH_ARM

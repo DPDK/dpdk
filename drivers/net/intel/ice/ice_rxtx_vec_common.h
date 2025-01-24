@@ -149,22 +149,10 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 	if (!rxq)
 		return -1;
 
-	if (!rte_is_power_of_2(rxq->nb_rx_desc))
-		return -1;
-
-	if (rxq->rx_free_thresh < ICE_VPMD_RX_BURST)
-		return -1;
-
-	if (rxq->nb_rx_desc % rxq->rx_free_thresh)
+	if (!ci_rxq_vec_capable(rxq->nb_rx_desc, rxq->rx_free_thresh, rxq->offloads))
 		return -1;
 
 	if (rxq->proto_xtr != PROTO_XTR_NONE)
-		return -1;
-
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
-		return -1;
-
-	if (rxq->offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT)
 		return -1;
 
 	if (rxq->offloads & ICE_RX_VECTOR_OFFLOAD)
