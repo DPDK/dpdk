@@ -19,6 +19,7 @@
 #define ICE_FLOW_FLD_SZ_TCP_CHKSUM	2
 #define ICE_FLOW_FLD_SZ_UDP_CHKSUM	2
 #define ICE_FLOW_FLD_SZ_SCTP_CHKSUM	4
+#define ICE_FLOW_FLD_SZ_IPV4_FRAG_OFS	2
 #define ICE_FLOW_FLD_SZ_IP_DSCP		1
 #define ICE_FLOW_FLD_SZ_IP_TTL		1
 #define ICE_FLOW_FLD_SZ_IP_PROT		1
@@ -87,6 +88,9 @@ struct ice_flow_field_info ice_flds_info[ICE_FLOW_FIELD_IDX_MAX] = {
 	/* ICE_FLOW_FIELD_IDX_IPV4_TTL */
 	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_NONE, 8,
 			      ICE_FLOW_FLD_SZ_IP_TTL, 0xff00),
+	/* ICE_FLOW_FIELD_IDX_IPV4_FRAG_OFS */
+	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_IPV_FRAG, 6,
+			      ICE_FLOW_FLD_SZ_IPV4_FRAG_OFS, 0x3fff),
 	/* ICE_FLOW_FIELD_IDX_IPV4_PROT */
 	ICE_FLOW_FLD_INFO_MSK(ICE_FLOW_SEG_HDR_NONE, 8,
 			      ICE_FLOW_FLD_SZ_IP_PROT, 0x00ff),
@@ -1459,6 +1463,7 @@ ice_flow_xtract_fld(struct ice_hw *hw, struct ice_flow_prof_params *params,
 			prot_id = ICE_PROT_IPV4_IL_IL;
 		break;
 	case ICE_FLOW_FIELD_IDX_IPV4_ID:
+	case ICE_FLOW_FIELD_IDX_IPV4_FRAG_OFS:
 		prot_id = ICE_PROT_IPV4_OF_OR_S;
 		break;
 	case ICE_FLOW_FIELD_IDX_IPV6_SA:
