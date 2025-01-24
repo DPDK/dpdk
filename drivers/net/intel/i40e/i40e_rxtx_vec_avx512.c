@@ -825,7 +825,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
-		ci_tx_free_bufs_vec(txq, i40e_tx_desc_done);
+		ci_tx_free_bufs_vec(txq, i40e_tx_desc_done, false);
 
 	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
 	if (unlikely(nb_pkts == 0))
