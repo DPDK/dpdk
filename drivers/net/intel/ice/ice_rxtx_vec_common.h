@@ -116,24 +116,6 @@ _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
 }
 
-static inline int
-ice_rxq_vec_setup_default(struct ice_rx_queue *rxq)
-{
-	uintptr_t p;
-	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
-
-	mb_def.nb_segs = 1;
-	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
-	mb_def.port = rxq->port_id;
-	rte_mbuf_refcnt_set(&mb_def, 1);
-
-	/* prevent compiler reordering: rearm_data covers previous fields */
-	rte_compiler_barrier();
-	p = (uintptr_t)&mb_def.rearm_data;
-	rxq->mbuf_initializer = *(uint64_t *)p;
-	return 0;
-}
-
 #define ICE_TX_NO_VECTOR_FLAGS (			\
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS |		\
 		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\

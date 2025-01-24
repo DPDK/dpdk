@@ -144,24 +144,6 @@ _ixgbe_reset_tx_queue_vec(struct ci_tx_queue *txq)
 }
 
 static inline int
-ixgbe_rxq_vec_setup_default(struct ixgbe_rx_queue *rxq)
-{
-	uintptr_t p;
-	struct rte_mbuf mb_def = { .buf_addr = 0 }; /* zeroed mbuf */
-
-	mb_def.nb_segs = 1;
-	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
-	mb_def.port = rxq->port_id;
-	rte_mbuf_refcnt_set(&mb_def, 1);
-
-	/* prevent compiler reordering: rearm_data covers previous fields */
-	rte_compiler_barrier();
-	p = (uintptr_t)&mb_def.rearm_data;
-	rxq->mbuf_initializer = *(uint64_t *)p;
-	return 0;
-}
-
-static inline int
 ixgbe_txq_vec_setup_default(struct ci_tx_queue *txq,
 			    const struct ixgbe_txq_ops *txq_ops)
 {

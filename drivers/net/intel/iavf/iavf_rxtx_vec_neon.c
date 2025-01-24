@@ -407,7 +407,8 @@ int __rte_cold
 iavf_rxq_vec_setup(struct iavf_rx_queue *rxq)
 {
 	rxq->ops = &neon_vec_rxq_ops;
-	return iavf_rxq_vec_setup_default(rxq);
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
 }
 
 int __rte_cold

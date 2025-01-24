@@ -763,7 +763,9 @@ i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq)
 int __rte_cold
 i40e_rxq_vec_setup(struct i40e_rx_queue *rxq)
 {
-	return i40e_rxq_vec_setup_default(rxq);
+	rxq->rx_using_sse = 1;
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
 }
 
 int __rte_cold

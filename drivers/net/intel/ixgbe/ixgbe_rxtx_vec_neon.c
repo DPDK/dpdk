@@ -657,7 +657,8 @@ static const struct ixgbe_txq_ops vec_txq_ops = {
 int __rte_cold
 ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq)
 {
-	return ixgbe_rxq_vec_setup_default(rxq);
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
 }
 
 int __rte_cold

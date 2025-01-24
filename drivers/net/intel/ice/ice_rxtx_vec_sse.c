@@ -785,7 +785,8 @@ ice_rxq_vec_setup(struct ice_rx_queue *rxq)
 		return -1;
 
 	rxq->rx_rel_mbufs = _ice_rx_queue_release_mbufs_vec;
-	return ice_rxq_vec_setup_default(rxq);
+	rxq->mbuf_initializer = ci_rxq_mbuf_initializer(rxq->port_id);
+	return 0;
 }
 
 int __rte_cold

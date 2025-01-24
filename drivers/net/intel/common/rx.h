@@ -76,4 +76,17 @@ ci_rx_reassemble_packets(struct rte_mbuf **rx_bufs, uint16_t nb_bufs, uint8_t *s
 	return pkt_idx;
 }
 
+static inline uint64_t
+ci_rxq_mbuf_initializer(uint16_t port_id)
+{
+	struct rte_mbuf mb_def = {
+		.nb_segs = 1,
+		.data_off = RTE_PKTMBUF_HEADROOM,
+		.port = port_id,
+	};
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	return mb_def.rearm_data[0];
+}
+
 #endif /* _COMMON_INTEL_RX_H_ */
