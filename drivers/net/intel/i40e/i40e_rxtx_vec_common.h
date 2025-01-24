@@ -83,12 +83,6 @@ i40e_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 				rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE);
 }
 
-static __rte_always_inline int
-i40e_tx_free_bufs(struct ci_tx_queue *txq)
-{
-	return ci_tx_free_bufs(txq, i40e_tx_desc_done);
-}
-
 static inline void
 _i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq)
 {

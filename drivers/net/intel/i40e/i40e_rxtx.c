@@ -1891,7 +1891,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			    tx_queue_id);
 
 	txq->vector_tx = ad->tx_vec_allowed;
-	txq->vector_sw_ring = ad->tx_use_avx512;
+	txq->vector_sw_ring = txq->vector_tx;
 
 	/*
 	 * tx_queue_id is queue id application refers to, while
@@ -3550,9 +3550,11 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 		}
 	}
 
+	if (rte_vect_get_max_simd_bitwidth() < RTE_VECT_SIMD_128)
+		ad->tx_vec_allowed = false;
+
 	if (ad->tx_simple_allowed) {
-		if (ad->tx_vec_allowed &&
-		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
+		if (ad->tx_vec_allowed) {
 #ifdef RTE_ARCH_X86
 			if (ad->tx_use_avx512) {
 #ifdef CC_AVX512_SUPPORT

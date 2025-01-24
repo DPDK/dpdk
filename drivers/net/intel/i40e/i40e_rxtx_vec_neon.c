@@ -678,14 +678,14 @@ i40e_xmit_fixed_burst_vec(void *__rte_restrict tx_queue,
 {
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct i40e_tx_desc *txdp;
-	struct ci_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = I40E_TD_CMD;
 	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;
 	int i;
 
 	if (txq->nb_tx_free < txq->tx_free_thresh)
-		i40e_tx_free_bufs(txq);
+		ci_tx_free_bufs_vec(txq, i40e_tx_desc_done, false);
 
 	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
 	if (unlikely(nb_pkts == 0))
@@ -693,13 +693,13 @@ i40e_xmit_fixed_burst_vec(void *__rte_restrict tx_queue,
 
 	tx_id = txq->tx_tail;
 	txdp = &txq->i40e_tx_ring[tx_id];
-	txep = &txq->sw_ring[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
-		ci_tx_backlog_entry(txep, tx_pkts, n);
+		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
 
 		for (i = 0; i < n - 1; ++i, ++tx_pkts, ++txdp)
 			vtx1(txdp, *tx_pkts, flags);
@@ -713,10 +713,10 @@ i40e_xmit_fixed_burst_vec(void *__rte_restrict tx_queue,
 
 		/* avoid reach the end of ring */
 		txdp = &txq->i40e_tx_ring[tx_id];
-		txep = &txq->sw_ring[tx_id];
+		txep = &txq->sw_ring_vec[tx_id];
 	}
 
-	ci_tx_backlog_entry(txep, tx_pkts, nb_commit);
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
 
 	vtx(txdp, tx_pkts, nb_commit, flags);
 
