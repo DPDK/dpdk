@@ -2358,6 +2358,7 @@ ut_teardown_inline_macsec(void)
 static int
 inline_macsec_testsuite_setup(void)
 {
+	struct rte_eth_dev_info dev_info;
 	uint16_t nb_rxd;
 	uint16_t nb_txd;
 	uint16_t nb_ports;
@@ -2400,6 +2401,19 @@ inline_macsec_testsuite_setup(void)
 
 	/* configuring port 0 for the test is enough */
 	port_id = 0;
+	if (rte_eth_dev_info_get(port_id, &dev_info)) {
+		printf("Failed to get devinfo");
+		return -1;
+	}
+
+	if ((dev_info.rx_offload_capa & RTE_ETH_RX_OFFLOAD_MACSEC_STRIP) !=
+				RTE_ETH_RX_OFFLOAD_MACSEC_STRIP ||
+	    (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) !=
+				RTE_ETH_TX_OFFLOAD_MACSEC_INSERT) {
+		printf("Device does not support MACsec\n");
+		return TEST_SKIPPED;
+	}
+
 	/* port configure */
 	ret = rte_eth_dev_configure(port_id, nb_rx_queue,
 				    nb_tx_queue, &port_conf);
