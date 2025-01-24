@@ -109,6 +109,13 @@ ci_tx_backlog_entry(struct ci_tx_entry *txep, struct rte_mbuf **tx_pkts, uint16_
 		txep[i].mbuf = tx_pkts[i];
 }
 
+static __rte_always_inline void
+ci_tx_backlog_entry_vec(struct ci_tx_entry_vec *txep, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	for (uint16_t i = 0; i < nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
 #define IETH_VPMD_TX_MAX_FREE_BUF 64
 
 typedef int (*ci_desc_done_fn)(struct ci_tx_queue *txq, uint16_t idx);

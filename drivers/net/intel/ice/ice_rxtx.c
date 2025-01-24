@@ -826,7 +826,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	/* record what kind of descriptor cleanup we need on teardown */
 	txq->vector_tx = ad->tx_vec_allowed;
-	txq->vector_sw_ring = ad->tx_use_avx512;
+	txq->vector_sw_ring = txq->vector_tx;
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 

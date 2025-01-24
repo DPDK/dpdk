@@ -81,12 +81,6 @@ ice_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 				rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE);
 }
 
-static __rte_always_inline int
-ice_tx_free_bufs_vec(struct ci_tx_queue *txq)
-{
-	return ci_tx_free_bufs(txq, ice_tx_desc_done);
-}
-
 static inline void
 _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 {
