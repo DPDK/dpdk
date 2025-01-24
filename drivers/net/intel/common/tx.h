@@ -24,4 +24,11 @@ struct ci_tx_entry_vec {
 	struct rte_mbuf *mbuf; /* mbuf associated with TX desc, if any. */
 };
 
+static __rte_always_inline void
+ci_tx_backlog_entry(struct ci_tx_entry *txep, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	for (uint16_t i = 0; i < (int)nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
 #endif /* _COMMON_INTEL_TX_H_ */

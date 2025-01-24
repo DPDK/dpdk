@@ -1753,7 +1753,7 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	n = (uint16_t)(txq->nb_tx_desc - tx_id);
 	if (nb_commit >= n) {
-		tx_backlog_entry(txep, tx_pkts, n);
+		ci_tx_backlog_entry(txep, tx_pkts, n);
 
 		iavf_vtx(txdp, tx_pkts, n - 1, flags, offload);
 		tx_pkts += (n - 1);
@@ -1771,7 +1771,7 @@ iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txep = &txq->sw_ring[tx_id];
 	}
 
-	tx_backlog_entry(txep, tx_pkts, nb_commit);
+	ci_tx_backlog_entry(txep, tx_pkts, nb_commit);
 
 	iavf_vtx(txdp, tx_pkts, nb_commit, flags, offload);
 
