@@ -18,6 +18,27 @@ TAILQ_HEAD(mcs_event_cb_list, mcs_event_cb);
 
 PLT_STATIC_ASSERT(ROC_MCS_MEM_SZ >= (sizeof(struct mcs_priv) + sizeof(struct mcs_event_cb_list)));
 
+bool
+roc_mcs_is_supported(void)
+{
+	struct get_hw_cap_rsp *hw_cap_rsp;
+	struct npa_lf *npa;
+
+	/* Use mbox handler of first probed pci_func for initial mcs mbox communication. */
+	npa = idev_npa_obj_get();
+	if (!npa)
+		return false;
+
+	mbox_alloc_msg_get_hw_cap(npa->mbox);
+	if (mbox_process_msg(npa->mbox, (void *)&hw_cap_rsp))
+		return false;
+
+	if (hw_cap_rsp->hw_caps & HW_CAP_MACSEC)
+		return true;
+
+	return false;
+}
+
 int
 roc_mcs_hw_info_get(struct roc_mcs_hw_info *hw_info)
 {

@@ -2869,6 +2869,8 @@ struct get_hw_cap_rsp {
 	uint8_t __io nix_fixed_txschq_mapping;
 	uint8_t __io nix_shaping;      /* Is shaping and coloring supported */
 	uint8_t __io npc_hash_extract; /* Is hash extract supported */
+#define HW_CAP_MACSEC BIT_ULL(1)
+	uint64_t hw_caps;
 };
 
 struct ndc_sync_op {

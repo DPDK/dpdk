@@ -171,6 +171,7 @@ INTERNAL {
 	roc_mcs_flowid_stats_get;
 	roc_mcs_hw_info_get;
 	roc_mcs_intr_configure;
+	roc_mcs_is_supported;
 	roc_mcs_lmac_mode_set;
 	roc_mcs_pn_table_write;
 	roc_mcs_pn_table_read;

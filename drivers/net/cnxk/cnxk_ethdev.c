@@ -2002,7 +2002,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	if (rc)
 		goto free_mac_addrs;
 
-	if (roc_feature_nix_has_macsec()) {
+	if (roc_feature_nix_has_macsec() && roc_mcs_is_supported()) {
 		rc = cnxk_mcs_dev_init(dev, 0);
 		if (rc) {
 			plt_err("Failed to init MCS");
@@ -2132,7 +2132,7 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	}
 	eth_dev->data->nb_rx_queues = 0;
 
-	if (roc_feature_nix_has_macsec())
+	if (roc_feature_nix_has_macsec() && roc_mcs_is_supported())
 		cnxk_mcs_dev_fini(dev);
 
 	/* Free security resources */

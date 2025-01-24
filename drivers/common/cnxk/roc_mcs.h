@@ -498,6 +498,8 @@ struct roc_mcs {
 
 TAILQ_HEAD(roc_mcs_head, roc_mcs);
 
+/* Check HW capability for MACsec */
+__roc_api bool roc_mcs_is_supported(void);
 /* Initialization */
 __roc_api struct roc_mcs *roc_mcs_dev_init(uint8_t mcs_idx);
 __roc_api void roc_mcs_dev_fini(struct roc_mcs *mcs);
