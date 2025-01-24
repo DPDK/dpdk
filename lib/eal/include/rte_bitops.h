@@ -958,6 +958,54 @@ rte_popcount64(uint64_t v)
 	return (unsigned int)__popcnt64(v);
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Search v from least significant bit (LSB) to the most
+ * significant bit (MSB) for a set bit (1).
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   Bit index + 1 if a set bit is found, zero otherwise.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ffs32(uint32_t v)
+{
+	unsigned long rv;
+
+	if (_BitScanForward(&rv, v) == 0)
+		return 0;
+
+	return (unsigned int)rv + 1;
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Search v from least significant bit (LSB) to the most
+ * significant bit (MSB) for a set bit (1).
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   Bit index + 1 if a set bit is found, zero otherwise.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ffs64(uint64_t v)
+{
+	unsigned long rv;
+
+	if (_BitScanForward64(&rv, v) == 0)
+		return 0;
+
+	return (unsigned int)rv + 1;
+}
+
 #else
 
 /**
@@ -1042,6 +1090,44 @@ static inline unsigned int
 rte_popcount64(uint64_t v)
 {
 	return (unsigned int)__builtin_popcountll(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Search v from least significant bit (LSB) to the most
+ * significant bit (MSB) for a set bit (1).
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   Bit index + 1 if a set bit is found, zero otherwise.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ffs32(uint32_t v)
+{
+	return (unsigned int)__builtin_ffs(v);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Search v from least significant bit (LSB) to the most
+ * significant bit (MSB) for a set bit (1).
+ *
+ * @param v
+ *   The value.
+ * @return
+ *   Bit index + 1 if a set bit is found, zero otherwise.
+ */
+__rte_experimental
+static inline unsigned int
+rte_ffs64(uint64_t v)
+{
+	return (unsigned int)__builtin_ffsll(v);
 }
 
 #endif
