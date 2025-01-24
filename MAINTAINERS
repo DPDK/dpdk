@@ -779,7 +779,7 @@ F: doc/guides/nics/features/hinic.ini
 
 Intel e1000
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/e1000/
+F: drivers/net/intel/e1000/
 F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/e1000.ini
@@ -789,7 +789,7 @@ Intel ixgbe
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ixgbe/
+F: drivers/net/intel/ixgbe/
 F: doc/guides/nics/ixgbe.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/ixgbe*.ini
@@ -798,14 +798,14 @@ Intel i40e
 M: Ian Stokes <ian.stokes@intel.com>
 M: Bruce Richardson <bruce.richardson@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/i40e/
+F: drivers/net/intel/i40e/
 F: doc/guides/nics/i40e.rst
 F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/i40e*.ini
 
 Intel fm10k
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/fm10k/
+F: drivers/net/intel/fm10k/
 F: doc/guides/nics/fm10k.rst
 F: doc/guides/nics/features/fm10k*.ini
 
@@ -813,7 +813,7 @@ Intel iavf
 M: Vladimir Medvedkin <vladimir.medvedkin@intel.com>
 M: Ian Stokes <ian.stokes@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/iavf/
+F: drivers/net/intel/iavf/
 F: drivers/common/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
@@ -821,7 +821,7 @@ Intel ice
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ice/
+F: drivers/net/intel/ice/
 F: doc/guides/nics/ice.rst
 F: doc/guides/nics/features/ice.ini
 
@@ -829,7 +829,7 @@ Intel idpf
 M: Jingjing Wu <jingjing.wu@intel.com>
 M: Praveen Shetty <praveen.shetty@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/idpf/
+F: drivers/net/intel/idpf/
 F: drivers/common/idpf/
 F: doc/guides/nics/idpf.rst
 F: doc/guides/nics/features/idpf.ini
@@ -837,20 +837,20 @@ F: doc/guides/nics/features/idpf.ini
 Intel cpfl - EXPERIMENTAL
 M: Praveen Shetty <praveen.shetty@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/cpfl/
+F: drivers/net/intel/cpfl/
 F: doc/guides/nics/cpfl.rst
 F: doc/guides/nics/features/cpfl.ini
 
 Intel igc
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/igc/
+F: drivers/net/intel/igc/
 F: doc/guides/nics/igc.rst
 F: doc/guides/nics/features/igc.ini
 
 Intel ipn3ke
 M: Rosen Xu <rosen.xu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
-F: drivers/net/ipn3ke/
+F: drivers/net/intel/ipn3ke/
 F: doc/guides/nics/ipn3ke.rst
 F: doc/guides/nics/features/ipn3ke.ini
 

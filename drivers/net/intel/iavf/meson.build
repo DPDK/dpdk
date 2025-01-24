@@ -5,8 +5,6 @@ if dpdk_conf.get('RTE_IOVA_IN_MBUF') == 0
     subdir_done()
 endif
 
-includes += include_directories('../../common/iavf')
-
 testpmd_sources = files('iavf_testpmd.c')
 
 deps += ['common_iavf', 'security', 'cryptodev']
@@ -23,7 +21,7 @@ sources = files(
         'iavf_fsub.c',
 )
 
-if arch_subdir == 'x86'
+if arch_subdir == 'x86' and is_variable('static_rte_common_iavf')
     sources += files('iavf_rxtx_vec_sse.c')
 
     if is_windows and cc.get_id() != 'clang'
@@ -32,7 +30,7 @@ if arch_subdir == 'x86'
 
     iavf_avx2_lib = static_library('iavf_avx2_lib',
             'iavf_rxtx_vec_avx2.c',
-            dependencies: [static_rte_ethdev, static_rte_kvargs, static_rte_hash],
+            dependencies: [static_rte_ethdev, static_rte_common_iavf],
             include_directories: includes,
             c_args: [cflags, '-mavx2'])
     objs += iavf_avx2_lib.extract_objects('iavf_rxtx_vec_avx2.c')
@@ -45,8 +43,7 @@ if arch_subdir == 'x86'
         endif
         iavf_avx512_lib = static_library('iavf_avx512_lib',
                 'iavf_rxtx_vec_avx512.c',
-                dependencies: [static_rte_ethdev,
-                    static_rte_kvargs, static_rte_hash],
+                dependencies: [static_rte_ethdev, static_rte_common_iavf],
                 include_directories: includes,
                 c_args: avx512_args)
         objs += iavf_avx512_lib.extract_objects('iavf_rxtx_vec_avx512.c')

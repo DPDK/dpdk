@@ -291,7 +291,7 @@ Runtime Configuration
 
     -a 0000:88:00.0,hw_debug_mask=0x80 --log-level=pmd.net.ice.driver:8
 
-  These ICE_DBG_XXX are defined in ``drivers/net/ice/base/ice_type.h``.
+  These ICE_DBG_XXX are defined in ``drivers/net/intel/ice/base/ice_type.h``.
 
 - ``1PPS out support``
 

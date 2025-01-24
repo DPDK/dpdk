@@ -108,6 +108,13 @@ API Changes
 * eal: The ``__rte_packed`` macro for packing data is replaced with
   ``__rte_packed_begin`` / ``__rte_packed_end``.
 
+* build: The Intel networking drivers:
+  cpfl, e1000, fm10k, i40e, iavf, ice, idpf, igc, ipn3ke and ixgbe,
+  have been moved from ``drivers/net`` to a new ``drivers/net/intel`` directory.
+  The resulting build output, including the driver filenames, is the same,
+  but to enable/disable these drivers via Meson option requires use of the new paths.
+  For example, ``-Denable_drivers=/net/i40e`` becomes ``-Denable_drivers=/net/intel/i40e``.
+
 
 ABI Changes
 -----------

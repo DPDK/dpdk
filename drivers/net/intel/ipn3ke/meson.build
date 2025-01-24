@@ -21,7 +21,7 @@ if not has_libfdt
     subdir_done()
 endif
 
-includes += include_directories('../../raw/ifpga')
+includes += include_directories('../../../raw/ifpga')
 
 sources += files(
         'ipn3ke_ethdev.c',
