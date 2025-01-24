@@ -2353,14 +2353,6 @@ iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return iavf_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts, false);
 }
 
-int __rte_cold
-iavf_txq_vec_setup_avx512(struct ci_tx_queue *txq)
-{
-	txq->vector_tx = true;
-	txq->vector_sw_ring = true;
-	return 0;
-}
-
 uint16_t
 iavf_xmit_pkts_vec_avx512_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts)

@@ -4188,14 +4188,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 			txq = dev->data->tx_queues[i];
 			if (!txq)
 				continue;
-#ifdef CC_AVX512_SUPPORT
-			if (use_avx512)
-				iavf_txq_vec_setup_avx512(txq);
-			else
-				iavf_txq_vec_setup(txq);
-#else
 			iavf_txq_vec_setup(txq);
-#endif
 		}
 
 		if (no_poll_on_link_down) {
