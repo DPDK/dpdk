@@ -213,7 +213,7 @@ check_rx_vec_allow(struct iavf_rx_queue *rxq)
 }
 
 static inline bool
-check_tx_vec_allow(struct iavf_tx_queue *txq)
+check_tx_vec_allow(struct ci_tx_queue *txq)
 {
 	if (!(txq->offloads & IAVF_TX_NO_VECTOR_FLAGS) &&
 	    txq->tx_rs_thresh >= IAVF_VPMD_TX_MAX_BURST &&
@@ -282,7 +282,7 @@ reset_rx_queue(struct iavf_rx_queue *rxq)
 }
 
 static inline void
-reset_tx_queue(struct iavf_tx_queue *txq)
+reset_tx_queue(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txe;
 	uint32_t i, size;
@@ -388,7 +388,7 @@ release_rxq_mbufs(struct iavf_rx_queue *rxq)
 }
 
 static inline void
-release_txq_mbufs(struct iavf_tx_queue *txq)
+release_txq_mbufs(struct ci_tx_queue *txq)
 {
 	uint16_t i;
 
@@ -778,7 +778,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	struct iavf_info *vf =
 		IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_vsi *vsi = &vf->vsi;
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	const struct rte_memzone *mz;
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
@@ -814,7 +814,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("iavf txq",
-				 sizeof(struct iavf_tx_queue),
+				 sizeof(struct ci_tx_queue),
 				 RTE_CACHE_LINE_SIZE,
 				 socket_id);
 	if (!txq) {
@@ -979,7 +979,7 @@ iavf_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int err = 0;
 
 	PMD_DRV_FUNC_TRACE();
@@ -1048,7 +1048,7 @@ iavf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int err;
 
 	PMD_DRV_FUNC_TRACE();
@@ -1092,7 +1092,7 @@ iavf_dev_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 void
 iavf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 {
-	struct iavf_tx_queue *q = dev->data->tx_queues[qid];
+	struct ci_tx_queue *q = dev->data->tx_queues[qid];
 
 	if (!q)
 		return;
@@ -1107,7 +1107,7 @@ static void
 iavf_reset_queues(struct rte_eth_dev *dev)
 {
 	struct iavf_rx_queue *rxq;
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int i;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -2377,7 +2377,7 @@ iavf_recv_pkts_bulk_alloc(void *rx_queue,
 }
 
 static inline int
-iavf_xmit_cleanup(struct iavf_tx_queue *txq)
+iavf_xmit_cleanup(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
@@ -2781,7 +2781,7 @@ iavf_fill_data_desc(volatile struct iavf_tx_desc *desc,
 
 
 static struct iavf_ipsec_crypto_pkt_metadata *
-iavf_ipsec_crypto_get_pkt_metadata(const struct iavf_tx_queue *txq,
+iavf_ipsec_crypto_get_pkt_metadata(const struct ci_tx_queue *txq,
 		struct rte_mbuf *m)
 {
 	if (m->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD)
@@ -2795,7 +2795,7 @@ iavf_ipsec_crypto_get_pkt_metadata(const struct iavf_tx_queue *txq,
 uint16_t
 iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct iavf_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	volatile struct iavf_tx_desc *txr = txq->iavf_tx_ring;
 	struct ci_tx_entry *txe_ring = txq->sw_ring;
 	struct ci_tx_entry *txe, *txn;
@@ -3027,7 +3027,7 @@ end_of_tx:
  * correct queue.
  */
 static int
-iavf_check_vlan_up2tc(struct iavf_tx_queue *txq, struct rte_mbuf *m)
+iavf_check_vlan_up2tc(struct ci_tx_queue *txq, struct rte_mbuf *m)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
@@ -3646,7 +3646,7 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	int i, ret;
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
-	struct iavf_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_adapter *adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -3800,7 +3800,7 @@ static uint16_t
 iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts)
 {
-	struct iavf_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	enum iavf_tx_burst_type tx_burst_type;
 
 	if (!txq->iavf_vsi || txq->iavf_vsi->adapter->no_poll)
@@ -3823,7 +3823,7 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t good_pkts = nb_pkts;
 	const char *reason = NULL;
 	bool pkt_error = false;
-	struct iavf_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	struct iavf_adapter *adapter = txq->iavf_vsi->adapter;
 	enum iavf_tx_burst_type tx_burst_type =
 		txq->iavf_vsi->adapter->tx_burst_type;
@@ -4144,7 +4144,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 	int mbuf_check = adapter->devargs.mbuf_check;
 	int no_poll_on_link_down = adapter->devargs.no_poll_on_link_down;
 #ifdef RTE_ARCH_X86
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int i;
 	int check_ret;
 	bool use_sse = false;
@@ -4259,7 +4259,7 @@ normal:
 }
 
 static int
-iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
+iavf_tx_done_cleanup_full(struct ci_tx_queue *txq,
 			uint32_t free_cnt)
 {
 	struct ci_tx_entry *swr_ring = txq->sw_ring;
@@ -4318,7 +4318,7 @@ iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 int
 iavf_dev_tx_done_cleanup(void *txq, uint32_t free_cnt)
 {
-	struct iavf_tx_queue *q = (struct iavf_tx_queue *)txq;
+	struct ci_tx_queue *q = (struct ci_tx_queue *)txq;
 
 	return iavf_tx_done_cleanup_full(q, free_cnt);
 }
@@ -4344,7 +4344,7 @@ void
 iavf_dev_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 		     struct rte_eth_txq_info *qinfo)
 {
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	txq = dev->data->tx_queues[queue_id];
 
@@ -4416,7 +4416,7 @@ iavf_dev_rx_desc_status(void *rx_queue, uint16_t offset)
 int
 iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 {
-	struct iavf_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	volatile uint64_t *status;
 	uint64_t mask, expect;
 	uint32_t desc;

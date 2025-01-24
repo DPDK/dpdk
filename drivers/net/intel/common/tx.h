@@ -32,6 +32,7 @@ typedef void (*ice_tx_release_mbufs_t)(struct ci_tx_queue *txq);
 struct ci_tx_queue {
 	union { /* TX ring virtual address */
 		volatile struct i40e_tx_desc *i40e_tx_ring;
+		volatile struct iavf_tx_desc *iavf_tx_ring;
 		volatile struct ice_tx_desc *ice_tx_ring;
 	};
 	volatile uint8_t *qtx_tail;               /* register address of tail */
@@ -64,6 +65,7 @@ struct ci_tx_queue {
 	bool q_set;             /* indicate if tx queue has been configured */
 	union {                  /* the VSI this queue belongs to */
 		struct i40e_vsi *i40e_vsi;
+		struct iavf_vsi *iavf_vsi;
 		struct ice_vsi *ice_vsi;
 	};
 	const struct rte_memzone *mz;
@@ -75,6 +77,15 @@ struct ci_tx_queue {
 		};
 		struct { /* I40E driver specific values */
 			uint8_t dcb_tc;
+		};
+		struct { /* iavf driver specific values */
+			uint16_t ipsec_crypto_pkt_md_offset;
+			uint8_t rel_mbufs_type;
+#define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1 BIT(0)
+#define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 BIT(1)
+			uint8_t vlan_flag;
+			uint8_t tc;
+			bool use_ctx;  /* with ctx info, each pkt needs two descriptors */
 		};
 	};
 };

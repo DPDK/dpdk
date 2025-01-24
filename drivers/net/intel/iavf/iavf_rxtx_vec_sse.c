@@ -1362,7 +1362,7 @@ uint16_t
 iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)
 {
-	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
 	struct ci_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
@@ -1431,7 +1431,7 @@ iavf_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		   uint16_t nb_pkts)
 {
 	uint16_t nb_tx = 0;
-	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -1455,13 +1455,13 @@ iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq)
 }
 
 void __rte_cold
-iavf_tx_queue_release_mbufs_sse(struct iavf_tx_queue *txq)
+iavf_tx_queue_release_mbufs_sse(struct ci_tx_queue *txq)
 {
 	_iavf_tx_queue_release_mbufs_vec(txq);
 }
 
 int __rte_cold
-iavf_txq_vec_setup(struct iavf_tx_queue *txq)
+iavf_txq_vec_setup(struct ci_tx_queue *txq)
 {
 	txq->rel_mbufs_type = IAVF_REL_MBUFS_SSE_VEC;
 	return 0;

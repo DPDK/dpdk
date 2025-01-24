@@ -211,7 +211,7 @@ struct iavf_rxq_ops {
 };
 
 struct iavf_txq_ops {
-	void (*release_mbufs)(struct iavf_tx_queue *txq);
+	void (*release_mbufs)(struct ci_tx_queue *txq);
 };
 
 
@@ -271,43 +271,6 @@ struct iavf_rx_queue {
 	uint64_t offloads;
 	uint64_t phc_time;
 	uint64_t hw_time_update;
-};
-
-/* Structure associated with each TX queue. */
-struct iavf_tx_queue {
-	const struct rte_memzone *mz;  /* memzone for Tx ring */
-	volatile struct iavf_tx_desc *iavf_tx_ring; /* Tx ring virtual address */
-	rte_iova_t tx_ring_dma;    /* Tx ring DMA address */
-	struct ci_tx_entry *sw_ring;  /* address array of SW ring */
-	uint16_t nb_tx_desc;           /* ring length */
-	uint16_t tx_tail;              /* current value of tail */
-	volatile uint8_t *qtx_tail;    /* register address of tail */
-	/* number of used desc since RS bit set */
-	uint16_t nb_tx_used;
-	uint16_t nb_tx_free;
-	uint16_t last_desc_cleaned;    /* last desc have been cleaned*/
-	uint16_t tx_free_thresh;
-	uint16_t tx_rs_thresh;
-	uint8_t rel_mbufs_type;
-	struct iavf_vsi *iavf_vsi; /**< the VSI this queue belongs to */
-
-	uint16_t port_id;
-	uint16_t queue_id;
-	uint64_t offloads;
-	uint16_t tx_next_dd;              /* next to set RS, for VPMD */
-	uint16_t tx_next_rs;              /* next to check DD,  for VPMD */
-	uint16_t ipsec_crypto_pkt_md_offset;
-
-	uint64_t mbuf_errors;
-
-	bool q_set;                    /* if rx queue has been configured */
-	bool tx_deferred_start;        /* don't start this queue in dev start */
-	const struct iavf_txq_ops *ops;
-#define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1	BIT(0)
-#define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2	BIT(1)
-	uint8_t vlan_flag;
-	uint8_t tc;
-	uint8_t use_ctx:1;            /* if use the ctx desc, a packet needs two descriptors */
 };
 
 /* Offload features */
@@ -724,7 +687,7 @@ int iavf_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 int iavf_rx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_tx_vec_dev_check(struct rte_eth_dev *dev);
 int iavf_rxq_vec_setup(struct iavf_rx_queue *rxq);
-int iavf_txq_vec_setup(struct iavf_tx_queue *txq);
+int iavf_txq_vec_setup(struct ci_tx_queue *txq);
 uint16_t iavf_recv_pkts_vec_avx512(void *rx_queue, struct rte_mbuf **rx_pkts,
 				   uint16_t nb_pkts);
 uint16_t iavf_recv_pkts_vec_avx512_offload(void *rx_queue,
@@ -757,14 +720,14 @@ uint16_t iavf_xmit_pkts_vec_avx512_ctx_offload(void *tx_queue, struct rte_mbuf *
 				  uint16_t nb_pkts);
 uint16_t iavf_xmit_pkts_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
-int iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq);
+int iavf_txq_vec_setup_avx512(struct ci_tx_queue *txq);
 
 uint8_t iavf_proto_xtr_type_to_rxdid(uint8_t xtr_type);
 
 void iavf_set_default_ptype_table(struct rte_eth_dev *dev);
-void iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq);
+void iavf_tx_queue_release_mbufs_avx512(struct ci_tx_queue *txq);
 void iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq);
-void iavf_tx_queue_release_mbufs_sse(struct iavf_tx_queue *txq);
+void iavf_tx_queue_release_mbufs_sse(struct ci_tx_queue *txq);
 
 static inline
 void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,
@@ -791,7 +754,7 @@ void iavf_dump_rx_descriptor(struct iavf_rx_queue *rxq,
  * to print the qwords
  */
 static inline
-void iavf_dump_tx_descriptor(const struct iavf_tx_queue *txq,
+void iavf_dump_tx_descriptor(const struct ci_tx_queue *txq,
 			    const volatile void *desc, uint16_t tx_id)
 {
 	const char *name;

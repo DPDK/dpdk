@@ -1841,7 +1841,7 @@ iavf_recv_scattered_pkts_vec_avx512_flex_rxd_offload(void *rx_queue,
 }
 
 static __rte_always_inline int
-iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
+iavf_tx_free_bufs_avx512(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry_vec *txep;
 	uint32_t n;
@@ -2307,7 +2307,7 @@ static __rte_always_inline uint16_t
 iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts, bool offload)
 {
-	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
@@ -2375,7 +2375,7 @@ static __rte_always_inline uint16_t
 iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts, bool offload)
 {
-	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
 	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, nb_mbuf, tx_id;
@@ -2443,7 +2443,7 @@ iavf_xmit_pkts_vec_avx512_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
 			      uint16_t nb_pkts, bool offload)
 {
 	uint16_t nb_tx = 0;
-	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -2469,7 +2469,7 @@ iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 }
 
 void __rte_cold
-iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
+iavf_tx_queue_release_mbufs_avx512(struct ci_tx_queue *txq)
 {
 	unsigned int i;
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
@@ -2490,7 +2490,7 @@ iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
 }
 
 int __rte_cold
-iavf_txq_vec_setup_avx512(struct iavf_tx_queue *txq)
+iavf_txq_vec_setup_avx512(struct ci_tx_queue *txq)
 {
 	txq->rel_mbufs_type = IAVF_REL_MBUFS_AVX512_VEC;
 	return 0;
@@ -2508,7 +2508,7 @@ iavf_xmit_pkts_vec_avx512_ctx_cmn(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts, bool offload)
 {
 	uint16_t nb_tx = 0;
-	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	while (nb_pkts) {
 		uint16_t ret, num;

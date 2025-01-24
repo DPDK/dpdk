@@ -954,7 +954,7 @@ static int
 iavf_start_queues(struct rte_eth_dev *dev)
 {
 	struct iavf_rx_queue *rxq;
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int i;
 	uint16_t nb_txq, nb_rxq;
 
@@ -1885,7 +1885,7 @@ iavf_dev_update_mbuf_stats(struct rte_eth_dev *ethdev,
 		struct iavf_mbuf_stats *mbuf_stats)
 {
 	uint16_t idx;
-	struct iavf_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	for (idx = 0; idx < ethdev->data->nb_tx_queues; idx++) {
 		txq = ethdev->data->tx_queues[idx];

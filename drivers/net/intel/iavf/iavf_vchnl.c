@@ -1218,10 +1218,8 @@ int
 iavf_configure_queues(struct iavf_adapter *adapter,
 		uint16_t num_queue_pairs, uint16_t index)
 {
-	struct iavf_rx_queue **rxq =
-		(struct iavf_rx_queue **)adapter->dev_data->rx_queues;
-	struct iavf_tx_queue **txq =
-		(struct iavf_tx_queue **)adapter->dev_data->tx_queues;
+	struct iavf_rx_queue **rxq = (struct iavf_rx_queue **)adapter->dev_data->rx_queues;
+	struct ci_tx_queue **txq = (struct ci_tx_queue **)adapter->dev_data->tx_queues;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct virtchnl_vsi_queue_config_info *vc_config;
 	struct virtchnl_queue_pair_info *vc_qp;

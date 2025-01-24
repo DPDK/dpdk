@@ -98,7 +98,7 @@
 
 struct iavf_adapter;
 struct iavf_rx_queue;
-struct iavf_tx_queue;
+struct ci_tx_queue;
 
 
 struct iavf_ipsec_crypto_stats {
