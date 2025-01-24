@@ -318,7 +318,8 @@ vduse_device_start(struct virtio_net *dev, bool reconnect)
 
 	dev->flags |= VIRTIO_DEV_READY;
 
-	if (dev->notify_ops->new_device(dev->vid) == 0)
+	if (!dev->notify_ops->new_device ||
+		dev->notify_ops->new_device(dev->vid) == 0)
 		dev->flags |= VIRTIO_DEV_RUNNING;
 
 	for (i = 0; i < dev->nr_vring; i++) {
