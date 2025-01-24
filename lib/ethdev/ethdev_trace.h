@@ -860,10 +860,8 @@ RTE_TRACE_POINT(
 	rte_ethdev_trace_mac_addr_add,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_ether_addr *addr, uint32_t pool, int ret),
-	uint8_t len = RTE_ETHER_ADDR_LEN;
-
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_blob(addr->addr_bytes, len);
+	rte_trace_point_emit_blob(addr->addr_bytes, RTE_ETHER_ADDR_LEN);
 	rte_trace_point_emit_u32(pool);
 	rte_trace_point_emit_int(ret);
 )
@@ -872,20 +870,16 @@ RTE_TRACE_POINT(
 	rte_ethdev_trace_mac_addr_remove,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_ether_addr *addr),
-	uint8_t len = RTE_ETHER_ADDR_LEN;
-
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_blob(addr->addr_bytes, len);
+	rte_trace_point_emit_blob(addr->addr_bytes, RTE_ETHER_ADDR_LEN);
 )
 
 RTE_TRACE_POINT(
 	rte_ethdev_trace_default_mac_addr_set,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_ether_addr *addr),
-	uint8_t len = RTE_ETHER_ADDR_LEN;
-
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_blob(addr->addr_bytes, len);
+	rte_trace_point_emit_blob(addr->addr_bytes, RTE_ETHER_ADDR_LEN);
 )
 
 RTE_TRACE_POINT(
@@ -1102,11 +1096,9 @@ RTE_TRACE_POINT(
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_ether_addr *mc_addr_set, uint32_t nb_mc_addr,
 		int ret),
-	uint8_t len = nb_mc_addr * RTE_ETHER_ADDR_LEN;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u32(nb_mc_addr);
-	rte_trace_point_emit_blob(mc_addr_set, len);
+	rte_trace_point_emit_blob(mc_addr_set, nb_mc_addr * RTE_ETHER_ADDR_LEN);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -1214,13 +1206,10 @@ RTE_TRACE_POINT(
 	rte_ethdev_trace_get_dcb_info,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_eth_dcb_info *dcb_info, int ret),
-	uint8_t num_user_priorities = RTE_ETH_DCB_NUM_USER_PRIORITIES;
-	uint8_t num_tcs = RTE_ETH_DCB_NUM_TCS;
-
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u8(dcb_info->nb_tcs);
-	rte_trace_point_emit_blob(dcb_info->prio_tc, num_user_priorities);
-	rte_trace_point_emit_blob(dcb_info->tc_bws, num_tcs);
+	rte_trace_point_emit_blob(dcb_info->prio_tc, RTE_ETH_DCB_NUM_USER_PRIORITIES);
+	rte_trace_point_emit_blob(dcb_info->tc_bws, RTE_ETH_DCB_NUM_TCS);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -2126,10 +2115,8 @@ RTE_TRACE_POINT_FP(
 	rte_eth_trace_macaddr_get,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
 		const struct rte_ether_addr *mac_addr),
-	uint8_t len = RTE_ETHER_ADDR_LEN;
-
 	rte_trace_point_emit_u16(port_id);
-	rte_trace_point_emit_blob(mac_addr->addr_bytes, len);
+	rte_trace_point_emit_blob(mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN);
 )
 
 /* Called in loop in examples/ip_pipeline */

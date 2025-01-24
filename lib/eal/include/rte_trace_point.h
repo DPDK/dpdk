@@ -392,13 +392,14 @@ do { \
 
 #define rte_trace_point_emit_blob(in, len) \
 do { \
+	uint8_t size = len; \
 	if (unlikely(in == NULL)) \
 		return; \
-	if (len > RTE_TRACE_BLOB_LEN_MAX) \
-		len = RTE_TRACE_BLOB_LEN_MAX; \
-	__rte_trace_point_emit(RTE_STR(len), &len, uint8_t); \
-	memcpy(mem, in, len); \
-	memset(RTE_PTR_ADD(mem, len), 0, RTE_TRACE_BLOB_LEN_MAX - len); \
+	if (size > RTE_TRACE_BLOB_LEN_MAX) \
+		size = RTE_TRACE_BLOB_LEN_MAX; \
+	__rte_trace_point_emit("size", &size, uint8_t); \
+	memcpy(mem, in, size); \
+	memset(RTE_PTR_ADD(mem, size), 0, RTE_TRACE_BLOB_LEN_MAX - size); \
 	mem = RTE_PTR_ADD(mem, RTE_TRACE_BLOB_LEN_MAX); \
 } while (0)
 

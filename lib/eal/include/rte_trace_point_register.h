@@ -51,7 +51,10 @@ do { \
 #define rte_trace_point_emit_blob(in, len) \
 do { \
 	RTE_SET_USED(in); \
-	__rte_trace_point_emit(RTE_STR(len), &len, uint8_t); \
+	RTE_SET_USED(len); \
+	__rte_trace_point_emit_field(sizeof(uint8_t), \
+		RTE_STR(in) "_size", \
+		RTE_STR(uint8_t)); \
 	__rte_trace_point_emit_field(RTE_TRACE_BLOB_LEN_MAX, \
 		RTE_STR(in)"[" RTE_STR(RTE_TRACE_BLOB_LEN_MAX)"]", \
 		RTE_STR(uint8_t)); \
