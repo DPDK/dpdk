@@ -271,23 +271,23 @@ done:
 	return txq->tx_rs_thresh;
 }
 
-#define IETH_FREE_BUFS_LOOP(txq, swr, start) do { \
+#define IETH_FREE_BUFS_LOOP(swr, nb_desc, start, end) do { \
 		uint16_t i = start; \
-		if (txq->tx_tail < i) { \
-			for (; i < txq->nb_tx_desc; i++) { \
+		if (end < i) { \
+			for (; i < nb_desc; i++) { \
 				rte_pktmbuf_free_seg(swr[i].mbuf); \
 				swr[i].mbuf = NULL; \
 			} \
 			i = 0; \
 		} \
-		for (; i < txq->tx_tail; i++) { \
+		for (; i < end; i++) { \
 			rte_pktmbuf_free_seg(swr[i].mbuf); \
 			swr[i].mbuf = NULL; \
 		} \
 } while (0)
 
 static inline void
-ci_txq_release_all_mbufs(struct ci_tx_queue *txq)
+ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
 {
 	if (unlikely(!txq || !txq->sw_ring))
 		return;
@@ -306,15 +306,14 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq)
 	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
 	 *  so need to free remains more carefully.
 	 */
-	const uint16_t start = txq->tx_next_dd - txq->tx_rs_thresh + 1;
+	const uint16_t start = (txq->tx_next_dd - txq->tx_rs_thresh + 1) >> use_ctx;
+	const uint16_t nb_desc = txq->nb_tx_desc >> use_ctx;
+	const uint16_t end = txq->tx_tail >> use_ctx;
 
-	if (txq->vector_sw_ring) {
-		struct ci_tx_entry_vec *swr = txq->sw_ring_vec;
-		IETH_FREE_BUFS_LOOP(txq, swr, start);
-	} else {
-		struct ci_tx_entry *swr = txq->sw_ring;
-		IETH_FREE_BUFS_LOOP(txq, swr, start);
-	}
+	if (txq->vector_sw_ring)
+		IETH_FREE_BUFS_LOOP(txq->sw_ring_vec, nb_desc, start, end);
+	else
+		IETH_FREE_BUFS_LOOP(txq->sw_ring, nb_desc, start, end);
 }
 
 #endif /* _COMMON_INTEL_TX_H_ */

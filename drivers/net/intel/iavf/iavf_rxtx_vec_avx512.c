@@ -2353,31 +2353,11 @@ iavf_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return iavf_xmit_pkts_vec_avx512_cmn(tx_queue, tx_pkts, nb_pkts, false);
 }
 
-void __rte_cold
-iavf_tx_queue_release_mbufs_avx512(struct ci_tx_queue *txq)
-{
-	unsigned int i;
-	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
-	const uint16_t end_desc = txq->tx_tail >> txq->use_ctx; /* next empty slot */
-	const uint16_t wrap_point = txq->nb_tx_desc >> txq->use_ctx;  /* end of SW ring */
-	struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
-
-	if (!txq->sw_ring || txq->nb_tx_free == max_desc)
-		return;
-
-	i = (txq->tx_next_dd - txq->tx_rs_thresh + 1) >> txq->use_ctx;
-	while (i != end_desc) {
-		rte_pktmbuf_free_seg(swr[i].mbuf);
-		swr[i].mbuf = NULL;
-		if (++i == wrap_point)
-			i = 0;
-	}
-}
-
 int __rte_cold
 iavf_txq_vec_setup_avx512(struct ci_tx_queue *txq)
 {
-	txq->rel_mbufs_type = IAVF_REL_MBUFS_AVX512_VEC;
+	txq->vector_tx = true;
+	txq->vector_sw_ring = true;
 	return 0;
 }
 

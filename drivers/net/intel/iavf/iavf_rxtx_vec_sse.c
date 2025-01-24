@@ -1454,16 +1454,11 @@ iavf_rx_queue_release_mbufs_sse(struct iavf_rx_queue *rxq)
 	_iavf_rx_queue_release_mbufs_vec(rxq);
 }
 
-void __rte_cold
-iavf_tx_queue_release_mbufs_sse(struct ci_tx_queue *txq)
-{
-	_iavf_tx_queue_release_mbufs_vec(txq);
-}
-
 int __rte_cold
 iavf_txq_vec_setup(struct ci_tx_queue *txq)
 {
-	txq->rel_mbufs_type = IAVF_REL_MBUFS_SSE_VEC;
+	txq->vector_tx = true;
+	txq->vector_sw_ring = false;
 	return 0;
 }
 

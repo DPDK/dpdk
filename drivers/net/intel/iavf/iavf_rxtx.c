@@ -387,42 +387,12 @@ release_rxq_mbufs(struct iavf_rx_queue *rxq)
 	rxq->rx_nb_avail = 0;
 }
 
-static inline void
-release_txq_mbufs(struct ci_tx_queue *txq)
-{
-	uint16_t i;
-
-	if (!txq || !txq->sw_ring) {
-		PMD_DRV_LOG(DEBUG, "Pointer to rxq or sw_ring is NULL");
-		return;
-	}
-
-	for (i = 0; i < txq->nb_tx_desc; i++) {
-		if (txq->sw_ring[i].mbuf) {
-			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-			txq->sw_ring[i].mbuf = NULL;
-		}
-	}
-}
-
 static const
 struct iavf_rxq_ops iavf_rxq_release_mbufs_ops[] = {
 	[IAVF_REL_MBUFS_DEFAULT].release_mbufs = release_rxq_mbufs,
 #ifdef RTE_ARCH_X86
 	[IAVF_REL_MBUFS_SSE_VEC].release_mbufs = iavf_rx_queue_release_mbufs_sse,
 #endif
-};
-
-static const
-struct iavf_txq_ops iavf_txq_release_mbufs_ops[] = {
-	[IAVF_REL_MBUFS_DEFAULT].release_mbufs = release_txq_mbufs,
-#ifdef RTE_ARCH_X86
-	[IAVF_REL_MBUFS_SSE_VEC].release_mbufs = iavf_tx_queue_release_mbufs_sse,
-#ifdef CC_AVX512_SUPPORT
-	[IAVF_REL_MBUFS_AVX512_VEC].release_mbufs = iavf_tx_queue_release_mbufs_avx512,
-#endif
-#endif
-
 };
 
 static inline void
@@ -889,7 +859,6 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->q_set = true;
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->qtx_tail = hw->hw_addr + IAVF_QTX_TAIL1(queue_idx);
-	txq->rel_mbufs_type = IAVF_REL_MBUFS_DEFAULT;
 
 	if (check_tx_vec_allow(txq) == false) {
 		struct iavf_adapter *ad =
@@ -1068,7 +1037,7 @@ iavf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq = dev->data->tx_queues[tx_queue_id];
-	iavf_txq_release_mbufs_ops[txq->rel_mbufs_type].release_mbufs(txq);
+	ci_txq_release_all_mbufs(txq, txq->use_ctx);
 	reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -1097,7 +1066,7 @@ iavf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	if (!q)
 		return;
 
-	iavf_txq_release_mbufs_ops[q->rel_mbufs_type].release_mbufs(q);
+	ci_txq_release_all_mbufs(q, q->use_ctx);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -1114,7 +1083,7 @@ iavf_reset_queues(struct rte_eth_dev *dev)
 		txq = dev->data->tx_queues[i];
 		if (!txq)
 			continue;
-		iavf_txq_release_mbufs_ops[txq->rel_mbufs_type].release_mbufs(txq);
+		ci_txq_release_all_mbufs(txq, txq->use_ctx);
 		reset_tx_queue(txq);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}

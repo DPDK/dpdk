@@ -1933,7 +1933,7 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return err;
 	}
 
-	ci_txq_release_all_mbufs(txq);
+	ci_txq_release_all_mbufs(txq, false);
 	i40e_reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -2608,7 +2608,7 @@ i40e_tx_queue_release(void *txq)
 		return;
 	}
 
-	ci_txq_release_all_mbufs(q);
+	ci_txq_release_all_mbufs(q, false);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -3071,7 +3071,7 @@ i40e_dev_clear_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (!dev->data->tx_queues[i])
 			continue;
-		ci_txq_release_all_mbufs(dev->data->tx_queues[i]);
+		ci_txq_release_all_mbufs(dev->data->tx_queues[i], false);
 		i40e_reset_tx_queue(dev->data->tx_queues[i]);
 	}
 

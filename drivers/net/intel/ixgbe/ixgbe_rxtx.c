@@ -2457,7 +2457,7 @@ static void __rte_cold
 ixgbe_tx_queue_release(struct ci_tx_queue *txq)
 {
 	if (txq != NULL && txq->ops != NULL) {
-		ci_txq_release_all_mbufs(txq);
+		ci_txq_release_all_mbufs(txq, false);
 		txq->ops->free_swring(txq);
 		rte_memzone_free(txq->mz);
 		rte_free(txq);
@@ -3364,7 +3364,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		struct ci_tx_queue *txq = dev->data->tx_queues[i];
 
 		if (txq != NULL) {
-			ci_txq_release_all_mbufs(txq);
+			ci_txq_release_all_mbufs(txq, false);
 			txq->ops->reset(txq);
 			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
@@ -5639,7 +5639,7 @@ ixgbe_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	if (txq->ops != NULL) {
-		ci_txq_release_all_mbufs(txq);
+		ci_txq_release_all_mbufs(txq, false);
 		txq->ops->reset(txq);
 	}
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;

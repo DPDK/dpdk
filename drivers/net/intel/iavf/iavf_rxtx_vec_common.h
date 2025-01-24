@@ -120,24 +120,6 @@ _iavf_rx_queue_release_mbufs_vec(struct iavf_rx_queue *rxq)
 	memset(rxq->sw_ring, 0, sizeof(rxq->sw_ring[0]) * rxq->nb_rx_desc);
 }
 
-static inline void
-_iavf_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
-{
-	unsigned i;
-	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
-
-	if (!txq->sw_ring || txq->nb_tx_free == max_desc)
-		return;
-
-	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
-	while (i != txq->tx_tail) {
-		rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-		txq->sw_ring[i].mbuf = NULL;
-		if (++i == txq->nb_tx_desc)
-			i = 0;
-	}
-}
-
 static inline int
 iavf_rxq_vec_setup_default(struct iavf_rx_queue *rxq)
 {
