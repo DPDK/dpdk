@@ -296,11 +296,11 @@ reset_tx_queue(struct iavf_tx_queue *txq)
 	txe = txq->sw_ring;
 	size = sizeof(struct iavf_tx_desc) * txq->nb_tx_desc;
 	for (i = 0; i < size; i++)
-		((volatile char *)txq->tx_ring)[i] = 0;
+		((volatile char *)txq->iavf_tx_ring)[i] = 0;
 
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		txq->tx_ring[i].cmd_type_offset_bsz =
+		txq->iavf_tx_ring[i].cmd_type_offset_bsz =
 			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE);
 		txe[i].mbuf =  NULL;
 		txe[i].last_id = i;
@@ -851,7 +851,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
-	txq->vsi = vsi;
+	txq->iavf_vsi = vsi;
 
 	if (iavf_ipsec_crypto_supported(adapter))
 		txq->ipsec_crypto_pkt_md_offset =
@@ -872,7 +872,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate TX hardware ring descriptors. */
 	ring_size = sizeof(struct iavf_tx_desc) * IAVF_MAX_RING_DESC;
 	ring_size = RTE_ALIGN(ring_size, IAVF_DMA_MEM_ALIGN);
-	mz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
+	mz = rte_eth_dma_zone_reserve(dev, "iavf_tx_ring", queue_idx,
 				      ring_size, IAVF_RING_BASE_ALIGN,
 				      socket_id);
 	if (!mz) {
@@ -882,7 +882,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	txq->tx_ring_dma = mz->iova;
-	txq->tx_ring = (struct iavf_tx_desc *)mz->addr;
+	txq->iavf_tx_ring = (struct iavf_tx_desc *)mz->addr;
 
 	txq->mz = mz;
 	reset_tx_queue(txq);
@@ -2385,7 +2385,7 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 	uint16_t desc_to_clean_to;
 	uint16_t nb_tx_to_clean;
 
-	volatile struct iavf_tx_desc *txd = txq->tx_ring;
+	volatile struct iavf_tx_desc *txd = txq->iavf_tx_ring;
 
 	desc_to_clean_to = (uint16_t)(last_desc_cleaned + txq->tx_rs_thresh);
 	if (desc_to_clean_to >= nb_tx_desc)
@@ -2796,7 +2796,7 @@ uint16_t
 iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct iavf_tx_queue *txq = tx_queue;
-	volatile struct iavf_tx_desc *txr = txq->tx_ring;
+	volatile struct iavf_tx_desc *txr = txq->iavf_tx_ring;
 	struct ci_tx_entry *txe_ring = txq->sw_ring;
 	struct ci_tx_entry *txe, *txn;
 	struct rte_mbuf *mb, *mb_seg;
@@ -3803,10 +3803,10 @@ iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct iavf_tx_queue *txq = tx_queue;
 	enum iavf_tx_burst_type tx_burst_type;
 
-	if (!txq->vsi || txq->vsi->adapter->no_poll)
+	if (!txq->iavf_vsi || txq->iavf_vsi->adapter->no_poll)
 		return 0;
 
-	tx_burst_type = txq->vsi->adapter->tx_burst_type;
+	tx_burst_type = txq->iavf_vsi->adapter->tx_burst_type;
 
 	return iavf_tx_pkt_burst_ops[tx_burst_type](tx_queue,
 								tx_pkts, nb_pkts);
@@ -3824,9 +3824,9 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 	const char *reason = NULL;
 	bool pkt_error = false;
 	struct iavf_tx_queue *txq = tx_queue;
-	struct iavf_adapter *adapter = txq->vsi->adapter;
+	struct iavf_adapter *adapter = txq->iavf_vsi->adapter;
 	enum iavf_tx_burst_type tx_burst_type =
-		txq->vsi->adapter->tx_burst_type;
+		txq->iavf_vsi->adapter->tx_burst_type;
 
 	for (idx = 0; idx < nb_pkts; idx++) {
 		mb = tx_pkts[idx];
@@ -4434,7 +4434,7 @@ iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 			desc -= txq->nb_tx_desc;
 	}
 
-	status = &txq->tx_ring[desc].cmd_type_offset_bsz;
+	status = &txq->iavf_tx_ring[desc].cmd_type_offset_bsz;
 	mask = rte_le_to_cpu_64(IAVF_TXD_QW1_DTYPE_MASK);
 	expect = rte_cpu_to_le_64(
 		 IAVF_TX_DESC_DTYPE_DESC_DONE << IAVF_TXD_QW1_DTYPE_SHIFT);

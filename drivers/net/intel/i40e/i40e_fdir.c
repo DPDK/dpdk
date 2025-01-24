@@ -1383,7 +1383,7 @@ i40e_find_available_buffer(struct rte_eth_dev *dev)
 		volatile struct i40e_tx_desc *tmp_txdp;
 
 		tmp_tail = txq->tx_tail;
-		tmp_txdp = &txq->tx_ring[tmp_tail + 1];
+		tmp_txdp = &txq->i40e_tx_ring[tmp_tail + 1];
 
 		do {
 			if ((tmp_txdp->cmd_type_offset_bsz &
@@ -1640,7 +1640,7 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 
 	PMD_DRV_LOG(INFO, "filling filter programming descriptor.");
 	fdirdp = (volatile struct i40e_filter_program_desc *)
-				(&txq->tx_ring[txq->tx_tail]);
+				(&txq->i40e_tx_ring[txq->tx_tail]);
 
 	fdirdp->qindex_flex_ptype_vsi =
 			rte_cpu_to_le_32((fdir_action->rx_queue <<
@@ -1710,7 +1710,7 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 	fdirdp->fd_id = rte_cpu_to_le_32(filter->soft_id);
 
 	PMD_DRV_LOG(INFO, "filling transmit descriptor.");
-	txdp = &txq->tx_ring[txq->tx_tail + 1];
+	txdp = &txq->i40e_tx_ring[txq->tx_tail + 1];
 	txdp->buffer_addr = rte_cpu_to_le_64(pf->fdir.dma_addr[txq->tx_tail >> 1]);
 
 	td_cmd = I40E_TX_DESC_CMD_EOP |

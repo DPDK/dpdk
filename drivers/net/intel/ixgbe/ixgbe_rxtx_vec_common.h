@@ -22,7 +22,7 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bit on threshold descriptor */
-	status = txq->tx_ring[txq->tx_next_dd].wb.status;
+	status = txq->ixgbe_tx_ring[txq->tx_next_dd].wb.status;
 	if (!(status & IXGBE_ADVTXD_STAT_DD))
 		return 0;
 
@@ -154,11 +154,11 @@ _ixgbe_reset_tx_queue_vec(struct ixgbe_tx_queue *txq)
 
 	/* Zero out HW ring memory */
 	for (i = 0; i < txq->nb_tx_desc; i++)
-		txq->tx_ring[i] = zeroed_desc;
+		txq->ixgbe_tx_ring[i] = zeroed_desc;
 
 	/* Initialize SW ring entries */
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
+		volatile union ixgbe_adv_tx_desc *txd = &txq->ixgbe_tx_ring[i];
 
 		txd->wb.status = IXGBE_TXD_STAT_DD;
 		txe[i].mbuf = NULL;

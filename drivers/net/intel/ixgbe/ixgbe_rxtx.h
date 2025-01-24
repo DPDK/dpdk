@@ -185,7 +185,7 @@ struct ixgbe_advctx_info {
  */
 struct ixgbe_tx_queue {
 	/** TX ring virtual address. */
-	volatile union ixgbe_adv_tx_desc *tx_ring;
+	volatile union ixgbe_adv_tx_desc *ixgbe_tx_ring;
 	rte_iova_t tx_ring_dma; /**< TX ring DMA address. */
 	union {
 		struct ci_tx_entry *sw_ring; /**< address of SW ring for scalar PMD. */

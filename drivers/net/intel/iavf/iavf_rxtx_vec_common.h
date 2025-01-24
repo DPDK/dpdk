@@ -86,7 +86,7 @@ iavf_tx_free_bufs(struct iavf_tx_queue *txq)
 	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->iavf_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
 		return 0;

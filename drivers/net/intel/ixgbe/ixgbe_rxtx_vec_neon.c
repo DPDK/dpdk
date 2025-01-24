@@ -588,7 +588,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		return 0;
 
 	tx_id = txq->tx_tail;
-	txdp = &txq->tx_ring[tx_id];
+	txdp = &txq->ixgbe_tx_ring[tx_id];
 	txep = &txq->sw_ring_v[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
@@ -608,7 +608,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
-		txdp = &txq->tx_ring[tx_id];
+		txdp = &txq->ixgbe_tx_ring[tx_id];
 		txep = &txq->sw_ring_v[tx_id];
 	}
 
@@ -618,7 +618,7 @@ ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
-		txq->tx_ring[txq->tx_next_rs].read.cmd_type_len |=
+		txq->ixgbe_tx_ring[txq->tx_next_rs].read.cmd_type_len |=
 			rte_cpu_to_le_32(IXGBE_ADVTXD_DCMD_RS);
 		txq->tx_next_rs = (uint16_t)(txq->tx_next_rs +
 			txq->tx_rs_thresh);

@@ -379,7 +379,7 @@ static inline int
 i40e_xmit_cleanup(struct i40e_tx_queue *txq)
 {
 	struct ci_tx_entry *sw_ring = txq->sw_ring;
-	volatile struct i40e_tx_desc *txd = txq->tx_ring;
+	volatile struct i40e_tx_desc *txd = txq->i40e_tx_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
 	uint16_t desc_to_clean_to;
@@ -1103,7 +1103,7 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
-	txr = txq->tx_ring;
+	txr = txq->i40e_tx_ring;
 	tx_id = txq->tx_tail;
 	txe = &sw_ring[tx_id];
 
@@ -1338,7 +1338,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	const uint16_t k = RTE_ALIGN_FLOOR(tx_rs_thresh, RTE_I40E_TX_MAX_FREE_BUF_SZ);
 	const uint16_t m = tx_rs_thresh % RTE_I40E_TX_MAX_FREE_BUF_SZ;
 
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->i40e_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
@@ -1417,7 +1417,7 @@ i40e_tx_fill_hw_ring(struct i40e_tx_queue *txq,
 		     struct rte_mbuf **pkts,
 		     uint16_t nb_pkts)
 {
-	volatile struct i40e_tx_desc *txdp = &(txq->tx_ring[txq->tx_tail]);
+	volatile struct i40e_tx_desc *txdp = &txq->i40e_tx_ring[txq->tx_tail];
 	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
@@ -1445,7 +1445,7 @@ tx_xmit_pkts(struct i40e_tx_queue *txq,
 	     struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts)
 {
-	volatile struct i40e_tx_desc *txr = txq->tx_ring;
+	volatile struct i40e_tx_desc *txr = txq->i40e_tx_ring;
 	uint16_t n = 0;
 
 	/**
@@ -1556,7 +1556,7 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 	bool pkt_error = false;
 	const char *reason = NULL;
 	uint16_t good_pkts = nb_pkts;
-	struct i40e_adapter *adapter = txq->vsi->adapter;
+	struct i40e_adapter *adapter = txq->i40e_vsi->adapter;
 
 	for (idx = 0; idx < nb_pkts; idx++) {
 		mb = tx_pkts[idx];
@@ -2329,7 +2329,7 @@ i40e_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 			desc -= txq->nb_tx_desc;
 	}
 
-	status = &txq->tx_ring[desc].cmd_type_offset_bsz;
+	status = &txq->i40e_tx_ring[desc].cmd_type_offset_bsz;
 	mask = rte_le_to_cpu_64(I40E_TXD_QW1_DTYPE_MASK);
 	expect = rte_cpu_to_le_64(
 		I40E_TX_DESC_DTYPE_DESC_DONE << I40E_TXD_QW1_DTYPE_SHIFT);
@@ -2527,7 +2527,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate TX hardware ring descriptors. */
 	ring_size = sizeof(struct i40e_tx_desc) * I40E_MAX_RING_DESC;
 	ring_size = RTE_ALIGN(ring_size, I40E_DMA_MEM_ALIGN);
-	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
+	tz = rte_eth_dma_zone_reserve(dev, "i40e_tx_ring", queue_idx,
 			      ring_size, I40E_RING_BASE_ALIGN, socket_id);
 	if (!tz) {
 		i40e_tx_queue_release(txq);
@@ -2546,11 +2546,11 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->reg_idx = reg_idx;
 	txq->port_id = dev->data->port_id;
 	txq->offloads = offloads;
-	txq->vsi = vsi;
+	txq->i40e_vsi = vsi;
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
 	txq->tx_ring_dma = tz->iova;
-	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
+	txq->i40e_tx_ring = (struct i40e_tx_desc *)tz->addr;
 
 	/* Allocate software ring */
 	txq->sw_ring =
@@ -2885,11 +2885,11 @@ i40e_reset_tx_queue(struct i40e_tx_queue *txq)
 	txe = txq->sw_ring;
 	size = sizeof(struct i40e_tx_desc) * txq->nb_tx_desc;
 	for (i = 0; i < size; i++)
-		((volatile char *)txq->tx_ring)[i] = 0;
+		((volatile char *)txq->i40e_tx_ring)[i] = 0;
 
 	prev = (uint16_t)(txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		volatile struct i40e_tx_desc *txd = &txq->tx_ring[i];
+		volatile struct i40e_tx_desc *txd = &txq->i40e_tx_ring[i];
 
 		txd->cmd_type_offset_bsz =
 			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE);
@@ -2914,7 +2914,7 @@ int
 i40e_tx_queue_init(struct i40e_tx_queue *txq)
 {
 	enum i40e_status_code err = I40E_SUCCESS;
-	struct i40e_vsi *vsi = txq->vsi;
+	struct i40e_vsi *vsi = txq->i40e_vsi;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t pf_q = txq->reg_idx;
 	struct i40e_hmc_obj_txq tx_ctx;
@@ -3207,10 +3207,10 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 	txq->nb_tx_desc = I40E_FDIR_NUM_TX_DESC;
 	txq->queue_id = I40E_FDIR_QUEUE_ID;
 	txq->reg_idx = pf->fdir.fdir_vsi->base_queue;
-	txq->vsi = pf->fdir.fdir_vsi;
+	txq->i40e_vsi = pf->fdir.fdir_vsi;
 
 	txq->tx_ring_dma = tz->iova;
-	txq->tx_ring = (struct i40e_tx_desc *)tz->addr;
+	txq->i40e_tx_ring = (struct i40e_tx_desc *)tz->addr;
 
 	/*
 	 * don't need to allocate software ring and reset for the fdir

@@ -148,7 +148,7 @@ struct ice_rx_queue {
 struct ice_tx_queue {
 	uint16_t nb_tx_desc; /* number of TX descriptors */
 	rte_iova_t tx_ring_dma; /* TX ring DMA address */
-	volatile struct ice_tx_desc *tx_ring; /* TX ring virtual address */
+	volatile struct ice_tx_desc *ice_tx_ring; /* TX ring virtual address */
 	struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
 	uint16_t tx_tail; /* current value of tail register */
 	volatile uint8_t *qtx_tail; /* register address of tail */
@@ -171,7 +171,7 @@ struct ice_tx_queue {
 	uint32_t q_teid; /* TX schedule node id. */
 	uint16_t reg_idx;
 	uint64_t offloads;
-	struct ice_vsi *vsi; /* the VSI this queue belongs to */
+	struct ice_vsi *ice_vsi; /* the VSI this queue belongs to */
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
 	uint64_t mbuf_errors;

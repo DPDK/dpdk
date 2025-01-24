@@ -1379,7 +1379,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_commit = nb_pkts;
 
 	tx_id = txq->tx_tail;
-	txdp = &txq->tx_ring[tx_id];
+	txdp = &txq->iavf_tx_ring[tx_id];
 	txep = &txq->sw_ring[tx_id];
 
 	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
@@ -1399,7 +1399,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
-		txdp = &txq->tx_ring[tx_id];
+		txdp = &txq->iavf_tx_ring[tx_id];
 		txep = &txq->sw_ring[tx_id];
 	}
 
@@ -1409,7 +1409,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
-		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+		txq->iavf_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
 					 IAVF_TXD_QW1_CMD_SHIFT);
 		txq->tx_next_rs =

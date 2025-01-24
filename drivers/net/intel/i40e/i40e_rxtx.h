@@ -130,7 +130,7 @@ struct i40e_rx_queue {
 struct i40e_tx_queue {
 	uint16_t nb_tx_desc; /**< number of TX descriptors */
 	rte_iova_t tx_ring_dma; /**< TX ring DMA address */
-	volatile struct i40e_tx_desc *tx_ring; /**< TX ring virtual address */
+	volatile struct i40e_tx_desc *i40e_tx_ring; /**< TX ring virtual address */
 	struct ci_tx_entry *sw_ring; /**< virtual address of SW ring */
 	uint16_t tx_tail; /**< current value of tail register */
 	volatile uint8_t *qtx_tail; /**< register address of tail */
@@ -150,7 +150,7 @@ struct i40e_tx_queue {
 	uint16_t port_id; /**< Device port identifier. */
 	uint16_t queue_id; /**< TX queue index. */
 	uint16_t reg_idx;
-	struct i40e_vsi *vsi; /**< the VSI this queue belongs to */
+	struct i40e_vsi *i40e_vsi; /**< the VSI this queue belongs to */
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
 	bool q_set; /**< indicate if tx queue has been configured */

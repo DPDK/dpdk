@@ -85,7 +85,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	struct rte_mbuf *m, *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->i40e_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 		return 0;

@@ -1850,7 +1850,7 @@ iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 	struct rte_mbuf *m, *free[IAVF_VPMD_TX_MAX_FREE_BUF];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->iavf_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 	     rte_cpu_to_le_64(IAVF_TXD_QW1_DTYPE_MASK)) !=
 	    rte_cpu_to_le_64(IAVF_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
@@ -2324,7 +2324,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_commit = nb_pkts;
 
 	tx_id = txq->tx_tail;
-	txdp = &txq->tx_ring[tx_id];
+	txdp = &txq->iavf_tx_ring[tx_id];
 	txep = (void *)txq->sw_ring;
 	txep += tx_id;
 
@@ -2346,7 +2346,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
-		txdp = &txq->tx_ring[tx_id];
+		txdp = &txq->iavf_tx_ring[tx_id];
 		txep = (void *)txq->sw_ring;
 		txep += tx_id;
 	}
@@ -2357,7 +2357,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
-		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+		txq->iavf_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
 					 IAVF_TXD_QW1_CMD_SHIFT);
 		txq->tx_next_rs =
@@ -2393,7 +2393,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	nb_pkts = nb_commit >> 1;
 	tx_id = txq->tx_tail;
-	txdp = &txq->tx_ring[tx_id];
+	txdp = &txq->iavf_tx_ring[tx_id];
 	txep = (void *)txq->sw_ring;
 	txep += (tx_id >> 1);
 
@@ -2414,7 +2414,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 		tx_id = 0;
 		/* avoid reach the end of ring */
-		txdp = txq->tx_ring;
+		txdp = txq->iavf_tx_ring;
 		txep = (void *)txq->sw_ring;
 	}
 
@@ -2425,7 +2425,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_id = (uint16_t)(tx_id + nb_commit);
 
 	if (tx_id > txq->tx_next_rs) {
-		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+		txq->iavf_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)IAVF_TX_DESC_CMD_RS) <<
 					 IAVF_TXD_QW1_CMD_SHIFT);
 		txq->tx_next_rs =

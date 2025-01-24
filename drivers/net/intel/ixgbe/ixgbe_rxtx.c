@@ -106,7 +106,7 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bit on threshold descriptor */
-	status = txq->tx_ring[txq->tx_next_dd].wb.status;
+	status = txq->ixgbe_tx_ring[txq->tx_next_dd].wb.status;
 	if (!(status & rte_cpu_to_le_32(IXGBE_ADVTXD_STAT_DD)))
 		return 0;
 
@@ -198,7 +198,7 @@ static inline void
 ixgbe_tx_fill_hw_ring(struct ixgbe_tx_queue *txq, struct rte_mbuf **pkts,
 		      uint16_t nb_pkts)
 {
-	volatile union ixgbe_adv_tx_desc *txdp = &(txq->tx_ring[txq->tx_tail]);
+	volatile union ixgbe_adv_tx_desc *txdp = &txq->ixgbe_tx_ring[txq->tx_tail];
 	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP-1;
@@ -232,7 +232,7 @@ tx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts)
 {
 	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
-	volatile union ixgbe_adv_tx_desc *tx_r = txq->tx_ring;
+	volatile union ixgbe_adv_tx_desc *tx_r = txq->ixgbe_tx_ring;
 	uint16_t n = 0;
 
 	/*
@@ -564,7 +564,7 @@ static inline int
 ixgbe_xmit_cleanup(struct ixgbe_tx_queue *txq)
 {
 	struct ci_tx_entry *sw_ring = txq->sw_ring;
-	volatile union ixgbe_adv_tx_desc *txr = txq->tx_ring;
+	volatile union ixgbe_adv_tx_desc *txr = txq->ixgbe_tx_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
 	uint16_t desc_to_clean_to;
@@ -652,7 +652,7 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	tx_offload.data[1] = 0;
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
-	txr     = txq->tx_ring;
+	txr     = txq->ixgbe_tx_ring;
 	tx_id   = txq->tx_tail;
 	txe = &sw_ring[tx_id];
 	txp = NULL;
@@ -2495,13 +2495,13 @@ ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 
 	/* Zero out HW ring memory */
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		txq->tx_ring[i] = zeroed_desc;
+		txq->ixgbe_tx_ring[i] = zeroed_desc;
 	}
 
 	/* Initialize SW ring entries */
 	prev = (uint16_t) (txq->nb_tx_desc - 1);
 	for (i = 0; i < txq->nb_tx_desc; i++) {
-		volatile union ixgbe_adv_tx_desc *txd = &txq->tx_ring[i];
+		volatile union ixgbe_adv_tx_desc *txd = &txq->ixgbe_tx_ring[i];
 
 		txd->wb.status = rte_cpu_to_le_32(IXGBE_TXD_STAT_DD);
 		txe[i].mbuf = NULL;
@@ -2751,7 +2751,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
+	tz = rte_eth_dma_zone_reserve(dev, "ixgbe_tx_ring", queue_idx,
 			sizeof(union ixgbe_adv_tx_desc) * IXGBE_MAX_RING_DESC,
 			IXGBE_ALIGN, socket_id);
 	if (tz == NULL) {
@@ -2791,7 +2791,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		txq->qtx_tail = IXGBE_PCI_REG_ADDR(hw, IXGBE_TDT(txq->reg_idx));
 
 	txq->tx_ring_dma = tz->iova;
-	txq->tx_ring = (union ixgbe_adv_tx_desc *) tz->addr;
+	txq->ixgbe_tx_ring = (union ixgbe_adv_tx_desc *)tz->addr;
 
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc_socket("txq->sw_ring",
@@ -2802,7 +2802,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	PMD_INIT_LOG(DEBUG, "sw_ring=%p hw_ring=%p dma_addr=0x%"PRIx64,
-		     txq->sw_ring, txq->tx_ring, txq->tx_ring_dma);
+		     txq->sw_ring, txq->ixgbe_tx_ring, txq->tx_ring_dma);
 
 	/* set up vector or scalar TX function as appropriate */
 	ixgbe_set_tx_function(dev, txq);
@@ -3328,7 +3328,7 @@ ixgbe_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 			desc -= txq->nb_tx_desc;
 	}
 
-	status = &txq->tx_ring[desc].wb.status;
+	status = &txq->ixgbe_tx_ring[desc].wb.status;
 	if (*status & rte_cpu_to_le_32(IXGBE_ADVTXD_STAT_DD))
 		return RTE_ETH_TX_DESC_DONE;
 

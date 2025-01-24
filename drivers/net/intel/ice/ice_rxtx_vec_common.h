@@ -83,7 +83,7 @@ ice_tx_free_bufs_vec(struct ice_tx_queue *txq)
 	struct rte_mbuf *m, *free[ICE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->ice_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) !=
 			rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
@@ -182,7 +182,7 @@ _ice_tx_queue_release_mbufs_vec(struct ice_tx_queue *txq)
 	i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
 
 #ifdef __AVX512VL__
-	struct rte_eth_dev *dev = &rte_eth_devices[txq->vsi->adapter->pf.dev_data->port_id];
+	struct rte_eth_dev *dev = &rte_eth_devices[txq->ice_vsi->adapter->pf.dev_data->port_id];
 
 	if (dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512 ||
 	    dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512_offload) {

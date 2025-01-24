@@ -70,7 +70,7 @@ ixgbe_recycle_tx_mbufs_reuse_vec(void *tx_queue,
 		return 0;
 
 	/* check DD bits on threshold descriptor */
-	status = txq->tx_ring[txq->tx_next_dd].wb.status;
+	status = txq->ixgbe_tx_ring[txq->tx_next_dd].wb.status;
 	if (!(status & IXGBE_ADVTXD_STAT_DD))
 		return 0;
 

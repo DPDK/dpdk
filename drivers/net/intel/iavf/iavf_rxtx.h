@@ -276,7 +276,7 @@ struct iavf_rx_queue {
 /* Structure associated with each TX queue. */
 struct iavf_tx_queue {
 	const struct rte_memzone *mz;  /* memzone for Tx ring */
-	volatile struct iavf_tx_desc *tx_ring; /* Tx ring virtual address */
+	volatile struct iavf_tx_desc *iavf_tx_ring; /* Tx ring virtual address */
 	rte_iova_t tx_ring_dma;    /* Tx ring DMA address */
 	struct ci_tx_entry *sw_ring;  /* address array of SW ring */
 	uint16_t nb_tx_desc;           /* ring length */
@@ -289,7 +289,7 @@ struct iavf_tx_queue {
 	uint16_t tx_free_thresh;
 	uint16_t tx_rs_thresh;
 	uint8_t rel_mbufs_type;
-	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
+	struct iavf_vsi *iavf_vsi; /**< the VSI this queue belongs to */
 
 	uint16_t port_id;
 	uint16_t queue_id;

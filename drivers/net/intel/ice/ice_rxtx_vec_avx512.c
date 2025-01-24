@@ -857,7 +857,7 @@ ice_tx_free_bufs_avx512(struct ice_tx_queue *txq)
 	struct rte_mbuf *m, *free[ICE_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->ice_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(ICE_TXD_QW1_DTYPE_M)) !=
 			rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
@@ -1059,7 +1059,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		return 0;
 
 	tx_id = txq->tx_tail;
-	txdp = &txq->tx_ring[tx_id];
+	txdp = &txq->ice_tx_ring[tx_id];
 	txep = (void *)txq->sw_ring;
 	txep += tx_id;
 
@@ -1081,7 +1081,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
-		txdp = txq->tx_ring;
+		txdp = txq->ice_tx_ring;
 		txep = (void *)txq->sw_ring;
 	}
 
@@ -1091,7 +1091,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
-		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+		txq->ice_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)ICE_TX_DESC_CMD_RS) <<
 					 ICE_TXD_QW1_CMD_S);
 		txq->tx_next_rs =

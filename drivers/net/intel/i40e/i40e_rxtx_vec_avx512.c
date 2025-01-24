@@ -760,7 +760,7 @@ i40e_tx_free_bufs_avx512(struct i40e_tx_queue *txq)
 	struct rte_mbuf *m, *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
+	if ((txq->i40e_tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
 			rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) !=
 			rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
@@ -944,7 +944,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		return 0;
 
 	tx_id = txq->tx_tail;
-	txdp = &txq->tx_ring[tx_id];
+	txdp = &txq->i40e_tx_ring[tx_id];
 	txep = (void *)txq->sw_ring;
 	txep += tx_id;
 
@@ -966,7 +966,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
 
 		/* avoid reach the end of ring */
-		txdp = txq->tx_ring;
+		txdp = txq->i40e_tx_ring;
 		txep = (void *)txq->sw_ring;
 	}
 
@@ -976,7 +976,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->tx_next_rs) {
-		txq->tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+		txq->i40e_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
 			rte_cpu_to_le_64(((uint64_t)I40E_TX_DESC_CMD_RS) <<
 						I40E_TXD_QW1_CMD_SHIFT);
 		txq->tx_next_rs =
