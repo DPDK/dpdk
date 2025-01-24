@@ -1433,6 +1433,28 @@ def requires_started_ports(func: TestPmdShellMethod) -> TestPmdShellMethod:
     return _wrapper
 
 
+def requires_forwarding_restart(func: TestPmdShellMethod) -> TestPmdShellMethod:
+    """Decorator for :class:`TestPmdShell` commands methods that requires forwarding restart.
+
+    If the decorated method is called while a :class:`TestPmdShell` is actively forwarding, then
+    forwarding is ceased, the wrapped function is executed, and forwarding is started again.
+
+    Args:
+        func: The :class:`TestPmdShell` method to decorate.
+    """
+
+    @functools.wraps(func)
+    def _wrapper(self: "TestPmdShell", *args: P.args, **kwargs: P.kwargs):
+        if self.currently_forwarding:
+            self._logger.debug("Forwarding needs to be restarted to continue.")
+            self.stop()
+            retval = func(self, *args, **kwargs)
+            self.start()
+            return retval
+
+    return _wrapper
+
+
 def add_remove_mtu(mtu: int = 1500) -> Callable[[TestPmdShellMethod], TestPmdShellMethod]:
     """Configure MTU to `mtu` on all ports, run the decorated function, then revert.
 
@@ -1481,6 +1503,7 @@ class TestPmdShell(DPDKShell):
     _command_extra_chars: ClassVar[str] = "\n"
 
     ports_started: bool
+    currently_forwarding: bool
 
     def __init__(
         self,
@@ -1505,6 +1528,7 @@ class TestPmdShell(DPDKShell):
             name,
         )
         self.ports_started = not self._app_params.disable_device_start
+        self.currently_forwarding = not self._app_params.auto_start
         self._ports = None
 
     @property
@@ -1902,7 +1926,7 @@ class TestPmdShell(DPDKShell):
                                                            {port_id}:\n{csum_output}"""
                     )
 
-    @requires_started_ports
+    @requires_forwarding_restart
     @requires_stopped_ports
     def set_port_mtu(self, port_id: int, mtu: int, verify: bool = True) -> None:
         """Change the MTU of a port using testpmd.
