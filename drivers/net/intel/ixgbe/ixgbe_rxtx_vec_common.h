@@ -68,16 +68,6 @@ ixgbe_tx_free_bufs(struct ci_tx_queue *txq)
 	return txq->tx_rs_thresh;
 }
 
-static __rte_always_inline void
-tx_backlog_entry(struct ci_tx_entry_vec *txep,
-		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	int i;
-
-	for (i = 0; i < (int)nb_pkts; ++i)
-		txep[i].mbuf = tx_pkts[i];
-}
-
 static inline void
 _ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq)
 {
