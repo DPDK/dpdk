@@ -378,7 +378,7 @@ i40e_build_ctob(uint32_t td_cmd,
 static inline int
 i40e_xmit_cleanup(struct i40e_tx_queue *txq)
 {
-	struct i40e_tx_entry *sw_ring = txq->sw_ring;
+	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	volatile struct i40e_tx_desc *txd = txq->tx_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
@@ -1081,8 +1081,8 @@ uint16_t
 i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct i40e_tx_queue *txq;
-	struct i40e_tx_entry *sw_ring;
-	struct i40e_tx_entry *txe, *txn;
+	struct ci_tx_entry *sw_ring;
+	struct ci_tx_entry *txe, *txn;
 	volatile struct i40e_tx_desc *txd;
 	volatile struct i40e_tx_desc *txr;
 	struct rte_mbuf *tx_pkt;
@@ -1331,7 +1331,7 @@ end_of_tx:
 static __rte_always_inline int
 i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 {
-	struct i40e_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint16_t tx_rs_thresh = txq->tx_rs_thresh;
 	uint16_t i = 0, j = 0;
 	struct rte_mbuf *free[RTE_I40E_TX_MAX_FREE_BUF_SZ];
@@ -1418,7 +1418,7 @@ i40e_tx_fill_hw_ring(struct i40e_tx_queue *txq,
 		     uint16_t nb_pkts)
 {
 	volatile struct i40e_tx_desc *txdp = &(txq->tx_ring[txq->tx_tail]);
-	struct i40e_tx_entry *txep = &(txq->sw_ring[txq->tx_tail]);
+	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
 	int mainpart, leftover;
@@ -2555,7 +2555,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate software ring */
 	txq->sw_ring =
 		rte_zmalloc_socket("i40e tx sw ring",
-				   sizeof(struct i40e_tx_entry) * nb_desc,
+				   sizeof(struct ci_tx_entry) * nb_desc,
 				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!txq->sw_ring) {
@@ -2723,7 +2723,7 @@ i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 	 */
 #ifdef CC_AVX512_SUPPORT
 	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec_avx512) {
-		struct i40e_vec_tx_entry *swr = (void *)txq->sw_ring;
+		struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
 
 		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
 		if (txq->tx_tail < i) {
@@ -2768,7 +2768,7 @@ static int
 i40e_tx_done_cleanup_full(struct i40e_tx_queue *txq,
 			uint32_t free_cnt)
 {
-	struct i40e_tx_entry *swr_ring = txq->sw_ring;
+	struct ci_tx_entry *swr_ring = txq->sw_ring;
 	uint16_t i, tx_last, tx_id;
 	uint16_t nb_tx_free_last;
 	uint16_t nb_tx_to_clean;
@@ -2874,7 +2874,7 @@ i40e_tx_done_cleanup(void *txq, uint32_t free_cnt)
 void
 i40e_reset_tx_queue(struct i40e_tx_queue *txq)
 {
-	struct i40e_tx_entry *txe;
+	struct ci_tx_entry *txe;
 	uint16_t i, prev, size;
 
 	if (!txq) {

@@ -14,7 +14,7 @@
 static __rte_always_inline int
 ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 {
-	struct ixgbe_tx_entry_v *txep;
+	struct ci_tx_entry_vec *txep;
 	uint32_t status;
 	uint32_t n;
 	uint32_t i;
@@ -69,7 +69,7 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 }
 
 static __rte_always_inline void
-tx_backlog_entry(struct ixgbe_tx_entry_v *txep,
+tx_backlog_entry(struct ci_tx_entry_vec *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -82,7 +82,7 @@ static inline void
 _ixgbe_tx_queue_release_mbufs_vec(struct ixgbe_tx_queue *txq)
 {
 	unsigned int i;
-	struct ixgbe_tx_entry_v *txe;
+	struct ci_tx_entry_vec *txe;
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
 
 	if (txq->sw_ring == NULL || txq->nb_tx_free == max_desc)
@@ -149,7 +149,7 @@ static inline void
 _ixgbe_reset_tx_queue_vec(struct ixgbe_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = { { 0 } };
-	struct ixgbe_tx_entry_v *txe = txq->sw_ring_v;
+	struct ci_tx_entry_vec *txe = txq->sw_ring_v;
 	uint16_t i;
 
 	/* Zero out HW ring memory */

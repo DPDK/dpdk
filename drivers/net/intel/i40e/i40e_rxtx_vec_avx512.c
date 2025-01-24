@@ -753,7 +753,7 @@ i40e_recv_scattered_pkts_vec_avx512(void *rx_queue,
 static __rte_always_inline int
 i40e_tx_free_bufs_avx512(struct i40e_tx_queue *txq)
 {
-	struct i40e_vec_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
@@ -916,7 +916,7 @@ vtx(volatile struct i40e_tx_desc *txdp,
 }
 
 static __rte_always_inline void
-tx_backlog_entry_avx512(struct i40e_vec_tx_entry *txep,
+tx_backlog_entry_avx512(struct ci_tx_entry_vec *txep,
 			struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -931,7 +931,7 @@ i40e_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
 	volatile struct i40e_tx_desc *txdp;
-	struct i40e_vec_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = I40E_TD_CMD;
 	uint64_t rs = I40E_TX_DESC_CMD_RS | I40E_TD_CMD;

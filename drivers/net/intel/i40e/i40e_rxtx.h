@@ -5,6 +5,8 @@
 #ifndef _I40E_RXTX_H_
 #define _I40E_RXTX_H_
 
+#include "../common/tx.h"
+
 #define RTE_PMD_I40E_RX_MAX_BURST 32
 #define RTE_PMD_I40E_TX_MAX_BURST 32
 
@@ -122,16 +124,6 @@ struct i40e_rx_queue {
 	const struct rte_memzone *mz;
 };
 
-struct i40e_tx_entry {
-	struct rte_mbuf *mbuf;
-	uint16_t next_id;
-	uint16_t last_id;
-};
-
-struct i40e_vec_tx_entry {
-	struct rte_mbuf *mbuf;
-};
-
 /*
  * Structure associated with each TX queue.
  */
@@ -139,7 +131,7 @@ struct i40e_tx_queue {
 	uint16_t nb_tx_desc; /**< number of TX descriptors */
 	uint64_t tx_ring_phys_addr; /**< TX ring DMA address */
 	volatile struct i40e_tx_desc *tx_ring; /**< TX ring virtual address */
-	struct i40e_tx_entry *sw_ring; /**< virtual address of SW ring */
+	struct ci_tx_entry *sw_ring; /**< virtual address of SW ring */
 	uint16_t tx_tail; /**< current value of tail register */
 	volatile uint8_t *qtx_tail; /**< register address of tail */
 	uint16_t nb_tx_used; /**< number of TX desc used since RS bit set */

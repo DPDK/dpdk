@@ -389,7 +389,7 @@ reset_rx_queue(struct ice_rx_queue *rxq)
 static inline void
 reset_tx_queue(struct ice_tx_queue *txq)
 {
-	struct ice_tx_entry *txe;
+	struct ci_tx_entry *txe;
 	uint32_t i, size;
 	uint16_t prev;
 

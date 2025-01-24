@@ -76,7 +76,7 @@ ice_rx_reassemble_packets(struct ice_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 static __rte_always_inline int
 ice_tx_free_bufs_vec(struct ice_tx_queue *txq)
 {
-	struct ice_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
@@ -131,7 +131,7 @@ ice_tx_free_bufs_vec(struct ice_tx_queue *txq)
 }
 
 static __rte_always_inline void
-ice_tx_backlog_entry(struct ice_tx_entry *txep,
+ice_tx_backlog_entry(struct ci_tx_entry *txep,
 		     struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -196,7 +196,7 @@ _ice_tx_queue_release_mbufs_vec(struct ice_tx_queue *txq)
 
 	if (dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512 ||
 	    dev->tx_pkt_burst == ice_xmit_pkts_vec_avx512_offload) {
-		struct ice_vec_tx_entry *swr = (void *)txq->sw_ring;
+		struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
 
 		if (txq->tx_tail < i) {
 			for (; i < txq->nb_tx_desc; i++) {

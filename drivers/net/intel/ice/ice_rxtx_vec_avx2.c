@@ -854,7 +854,7 @@ ice_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct ice_tx_queue *txq = (struct ice_tx_queue *)tx_queue;
 	volatile struct ice_tx_desc *txdp;
-	struct ice_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = ICE_TD_CMD;
 	uint64_t rs = ICE_TX_DESC_CMD_RS | ICE_TD_CMD;

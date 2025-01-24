@@ -850,7 +850,7 @@ ice_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
 static __rte_always_inline int
 ice_tx_free_bufs_avx512(struct ice_tx_queue *txq)
 {
-	struct ice_vec_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
@@ -1028,7 +1028,7 @@ ice_vtx(volatile struct ice_tx_desc *txdp, struct rte_mbuf **pkt,
 }
 
 static __rte_always_inline void
-ice_tx_backlog_entry_avx512(struct ice_vec_tx_entry *txep,
+ice_tx_backlog_entry_avx512(struct ci_tx_entry_vec *txep,
 			    struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -1043,7 +1043,7 @@ ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct ice_tx_queue *txq = (struct ice_tx_queue *)tx_queue;
 	volatile struct ice_tx_desc *txdp;
-	struct ice_vec_tx_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = ICE_TD_CMD;
 	uint64_t rs = ICE_TX_DESC_CMD_RS | ICE_TD_CMD;

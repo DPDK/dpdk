@@ -5,6 +5,8 @@
 #ifndef _IAVF_RXTX_H_
 #define _IAVF_RXTX_H_
 
+#include "../common/tx.h"
+
 /* In QLEN must be whole number of 32 descriptors. */
 #define IAVF_ALIGN_RING_DESC      32
 #define IAVF_MIN_RING_DESC        64
@@ -271,22 +273,12 @@ struct iavf_rx_queue {
 	uint64_t hw_time_update;
 };
 
-struct iavf_tx_entry {
-	struct rte_mbuf *mbuf;
-	uint16_t next_id;
-	uint16_t last_id;
-};
-
-struct iavf_tx_vec_entry {
-	struct rte_mbuf *mbuf;
-};
-
 /* Structure associated with each TX queue. */
 struct iavf_tx_queue {
 	const struct rte_memzone *mz;  /* memzone for Tx ring */
 	volatile struct iavf_tx_desc *tx_ring; /* Tx ring virtual address */
 	uint64_t tx_ring_phys_addr;    /* Tx ring DMA address */
-	struct iavf_tx_entry *sw_ring;  /* address array of SW ring */
+	struct ci_tx_entry *sw_ring;  /* address array of SW ring */
 	uint16_t nb_tx_desc;           /* ring length */
 	uint16_t tx_tail;              /* current value of tail */
 	volatile uint8_t *qtx_tail;    /* register address of tail */

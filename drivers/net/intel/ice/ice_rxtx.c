@@ -1029,7 +1029,7 @@ _ice_tx_queue_release_mbufs(struct ice_tx_queue *txq)
 static void
 ice_reset_tx_queue(struct ice_tx_queue *txq)
 {
-	struct ice_tx_entry *txe;
+	struct ci_tx_entry *txe;
 	uint16_t i, prev, size;
 
 	if (!txq) {
@@ -1510,7 +1510,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate software ring */
 	txq->sw_ring =
 		rte_zmalloc_socket(NULL,
-				   sizeof(struct ice_tx_entry) * nb_desc,
+				   sizeof(struct ci_tx_entry) * nb_desc,
 				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!txq->sw_ring) {
@@ -2847,7 +2847,7 @@ ice_txd_enable_checksum(uint64_t ol_flags,
 static inline int
 ice_xmit_cleanup(struct ice_tx_queue *txq)
 {
-	struct ice_tx_entry *sw_ring = txq->sw_ring;
+	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	volatile struct ice_tx_desc *txd = txq->tx_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
@@ -2971,8 +2971,8 @@ ice_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct ice_tx_queue *txq;
 	volatile struct ice_tx_desc *tx_ring;
 	volatile struct ice_tx_desc *txd;
-	struct ice_tx_entry *sw_ring;
-	struct ice_tx_entry *txe, *txn;
+	struct ci_tx_entry *sw_ring;
+	struct ci_tx_entry *txe, *txn;
 	struct rte_mbuf *tx_pkt;
 	struct rte_mbuf *m_seg;
 	uint32_t cd_tunneling_params;
@@ -3194,7 +3194,7 @@ end_of_tx:
 static __rte_always_inline int
 ice_tx_free_bufs(struct ice_tx_queue *txq)
 {
-	struct ice_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint16_t i;
 
 	if ((txq->tx_ring[txq->tx_next_dd].cmd_type_offset_bsz &
@@ -3231,7 +3231,7 @@ static int
 ice_tx_done_cleanup_full(struct ice_tx_queue *txq,
 			uint32_t free_cnt)
 {
-	struct ice_tx_entry *swr_ring = txq->sw_ring;
+	struct ci_tx_entry *swr_ring = txq->sw_ring;
 	uint16_t i, tx_last, tx_id;
 	uint16_t nb_tx_free_last;
 	uint16_t nb_tx_to_clean;
@@ -3371,7 +3371,7 @@ ice_tx_fill_hw_ring(struct ice_tx_queue *txq, struct rte_mbuf **pkts,
 		    uint16_t nb_pkts)
 {
 	volatile struct ice_tx_desc *txdp = &txq->tx_ring[txq->tx_tail];
-	struct ice_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
+	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP - 1;
 	int mainpart, leftover;

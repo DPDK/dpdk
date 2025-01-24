@@ -50,7 +50,7 @@ ixgbe_recycle_tx_mbufs_reuse_vec(void *tx_queue,
 		struct rte_eth_recycle_rxq_info *recycle_rxq_info)
 {
 	struct ixgbe_tx_queue *txq = tx_queue;
-	struct ixgbe_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	struct rte_mbuf **rxep;
 	int i, n;
 	uint32_t status;

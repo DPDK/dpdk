@@ -78,7 +78,7 @@ reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 static __rte_always_inline int
 i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 {
-	struct i40e_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
@@ -144,7 +144,7 @@ done:
 }
 
 static __rte_always_inline void
-tx_backlog_entry(struct i40e_tx_entry *txep,
+tx_backlog_entry(struct ci_tx_entry *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;

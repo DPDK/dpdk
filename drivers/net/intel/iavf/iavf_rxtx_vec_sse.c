@@ -1364,7 +1364,7 @@ iavf_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
-	struct iavf_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
 	uint64_t flags = IAVF_TX_DESC_CMD_EOP | 0x04;  /* bit 2 must be set */
 	uint64_t rs = IAVF_TX_DESC_CMD_RS | flags;

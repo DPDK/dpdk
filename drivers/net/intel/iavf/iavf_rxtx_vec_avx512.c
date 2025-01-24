@@ -1843,7 +1843,7 @@ iavf_recv_scattered_pkts_vec_avx512_flex_rxd_offload(void *rx_queue,
 static __rte_always_inline int
 iavf_tx_free_bufs_avx512(struct iavf_tx_queue *txq)
 {
-	struct iavf_tx_vec_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
@@ -1956,7 +1956,7 @@ done:
 }
 
 static __rte_always_inline void
-tx_backlog_entry_avx512(struct iavf_tx_vec_entry *txep,
+tx_backlog_entry_avx512(struct ci_tx_entry_vec *txep,
 			struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i;
@@ -2309,7 +2309,7 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
-	struct iavf_tx_vec_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, tx_id;
 	/* bit2 is reserved and must be set to 1 according to Spec */
 	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
@@ -2376,7 +2376,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct iavf_tx_queue *txq = (struct iavf_tx_queue *)tx_queue;
 	volatile struct iavf_tx_desc *txdp;
-	struct iavf_tx_vec_entry *txep;
+	struct ci_tx_entry_vec *txep;
 	uint16_t n, nb_commit, nb_mbuf, tx_id;
 	/* bit2 is reserved and must be set to 1 according to Spec */
 	uint64_t flags = IAVF_TX_DESC_CMD_EOP | IAVF_TX_DESC_CMD_ICRC;
@@ -2474,7 +2474,7 @@ iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
 	const uint16_t end_desc = txq->tx_tail >> txq->use_ctx; /* next empty slot */
 	const uint16_t wrap_point = txq->nb_tx_desc >> txq->use_ctx;  /* end of SW ring */
-	struct iavf_tx_vec_entry *swr = (void *)txq->sw_ring;
+	struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
 
 	if (!txq->sw_ring || txq->nb_free == max_desc)
 		return;

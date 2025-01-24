@@ -284,7 +284,7 @@ reset_rx_queue(struct iavf_rx_queue *rxq)
 static inline void
 reset_tx_queue(struct iavf_tx_queue *txq)
 {
-	struct iavf_tx_entry *txe;
+	struct ci_tx_entry *txe;
 	uint32_t i, size;
 	uint16_t prev;
 
@@ -860,7 +860,7 @@ iavf_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	/* Allocate software ring */
 	txq->sw_ring =
 		rte_zmalloc_socket("iavf tx sw ring",
-				   sizeof(struct iavf_tx_entry) * nb_desc,
+				   sizeof(struct ci_tx_entry) * nb_desc,
 				   RTE_CACHE_LINE_SIZE,
 				   socket_id);
 	if (!txq->sw_ring) {
@@ -2379,7 +2379,7 @@ iavf_recv_pkts_bulk_alloc(void *rx_queue,
 static inline int
 iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 {
-	struct iavf_tx_entry *sw_ring = txq->sw_ring;
+	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
 	uint16_t desc_to_clean_to;
@@ -2797,8 +2797,8 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct iavf_tx_queue *txq = tx_queue;
 	volatile struct iavf_tx_desc *txr = txq->tx_ring;
-	struct iavf_tx_entry *txe_ring = txq->sw_ring;
-	struct iavf_tx_entry *txe, *txn;
+	struct ci_tx_entry *txe_ring = txq->sw_ring;
+	struct ci_tx_entry *txe, *txn;
 	struct rte_mbuf *mb, *mb_seg;
 	uint64_t buf_dma_addr;
 	uint16_t desc_idx, desc_idx_last;
@@ -4262,7 +4262,7 @@ static int
 iavf_tx_done_cleanup_full(struct iavf_tx_queue *txq,
 			uint32_t free_cnt)
 {
-	struct iavf_tx_entry *swr_ring = txq->sw_ring;
+	struct ci_tx_entry *swr_ring = txq->sw_ring;
 	uint16_t tx_last, tx_id;
 	uint16_t nb_tx_free_last;
 	uint16_t nb_tx_to_clean;

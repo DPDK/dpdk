@@ -5,6 +5,8 @@
 #ifndef _IXGBE_RXTX_H_
 #define _IXGBE_RXTX_H_
 
+#include "../common/tx.h"
+
 /*
  * Rings setup and release.
  *
@@ -73,22 +75,6 @@ struct ixgbe_rx_entry {
 
 struct ixgbe_scattered_rx_entry {
 	struct rte_mbuf *fbuf; /**< First segment of the fragmented packet. */
-};
-
-/**
- * Structure associated with each descriptor of the TX ring of a TX queue.
- */
-struct ixgbe_tx_entry {
-	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
-	uint16_t next_id; /**< Index of next descriptor in ring. */
-	uint16_t last_id; /**< Index of last scattered descriptor. */
-};
-
-/**
- * Structure associated with each descriptor of the TX ring of a TX queue.
- */
-struct ixgbe_tx_entry_v {
-	struct rte_mbuf *mbuf; /**< mbuf associated with TX desc, if any. */
 };
 
 /**
@@ -202,8 +188,8 @@ struct ixgbe_tx_queue {
 	volatile union ixgbe_adv_tx_desc *tx_ring;
 	uint64_t            tx_ring_phys_addr; /**< TX ring DMA address. */
 	union {
-		struct ixgbe_tx_entry *sw_ring; /**< address of SW ring for scalar PMD. */
-		struct ixgbe_tx_entry_v *sw_ring_v; /**< address of SW ring for vector PMD */
+		struct ci_tx_entry *sw_ring; /**< address of SW ring for scalar PMD. */
+		struct ci_tx_entry_vec *sw_ring_v; /**< address of SW ring for vector PMD */
 	};
 	volatile uint32_t   *tdt_reg_addr; /**< Address of TDT register. */
 	uint16_t            nb_tx_desc;    /**< number of TX descriptors. */

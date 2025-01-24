@@ -100,7 +100,7 @@
 static __rte_always_inline int
 ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 {
-	struct ixgbe_tx_entry *txep;
+	struct ci_tx_entry *txep;
 	uint32_t status;
 	int i, nb_free = 0;
 	struct rte_mbuf *m, *free[RTE_IXGBE_TX_MAX_FREE_BUF_SZ];
@@ -199,7 +199,7 @@ ixgbe_tx_fill_hw_ring(struct ixgbe_tx_queue *txq, struct rte_mbuf **pkts,
 		      uint16_t nb_pkts)
 {
 	volatile union ixgbe_adv_tx_desc *txdp = &(txq->tx_ring[txq->tx_tail]);
-	struct ixgbe_tx_entry *txep = &(txq->sw_ring[txq->tx_tail]);
+	struct ci_tx_entry *txep = &txq->sw_ring[txq->tx_tail];
 	const int N_PER_LOOP = 4;
 	const int N_PER_LOOP_MASK = N_PER_LOOP-1;
 	int mainpart, leftover;
@@ -563,7 +563,7 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 static inline int
 ixgbe_xmit_cleanup(struct ixgbe_tx_queue *txq)
 {
-	struct ixgbe_tx_entry *sw_ring = txq->sw_ring;
+	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	volatile union ixgbe_adv_tx_desc *txr = txq->tx_ring;
 	uint16_t last_desc_cleaned = txq->last_desc_cleaned;
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
@@ -624,8 +624,8 @@ ixgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
 	struct ixgbe_tx_queue *txq;
-	struct ixgbe_tx_entry *sw_ring;
-	struct ixgbe_tx_entry *txe, *txn;
+	struct ci_tx_entry *sw_ring;
+	struct ci_tx_entry *txe, *txn;
 	volatile union ixgbe_adv_tx_desc *txr;
 	volatile union ixgbe_adv_tx_desc *txd, *txp;
 	struct rte_mbuf     *tx_pkt;
@@ -2352,7 +2352,7 @@ ixgbe_tx_queue_release_mbufs(struct ixgbe_tx_queue *txq)
 static int
 ixgbe_tx_done_cleanup_full(struct ixgbe_tx_queue *txq, uint32_t free_cnt)
 {
-	struct ixgbe_tx_entry *swr_ring = txq->sw_ring;
+	struct ci_tx_entry *swr_ring = txq->sw_ring;
 	uint16_t i, tx_last, tx_id;
 	uint16_t nb_tx_free_last;
 	uint16_t nb_tx_to_clean;
@@ -2490,7 +2490,7 @@ static void __rte_cold
 ixgbe_reset_tx_queue(struct ixgbe_tx_queue *txq)
 {
 	static const union ixgbe_adv_tx_desc zeroed_desc = {{0}};
-	struct ixgbe_tx_entry *txe = txq->sw_ring;
+	struct ci_tx_entry *txe = txq->sw_ring;
 	uint16_t prev, i;
 
 	/* Zero out HW ring memory */
@@ -2795,7 +2795,7 @@ ixgbe_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc_socket("txq->sw_ring",
-				sizeof(struct ixgbe_tx_entry) * nb_desc,
+				sizeof(struct ci_tx_entry) * nb_desc,
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (txq->sw_ring == NULL) {
 		ixgbe_tx_queue_release(txq);

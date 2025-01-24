@@ -5,6 +5,7 @@
 #ifndef _ICE_RXTX_H_
 #define _ICE_RXTX_H_
 
+#include "../common/tx.h"
 #include "ice_ethdev.h"
 
 #define ICE_ALIGN_RING_DESC  32
@@ -144,21 +145,11 @@ struct ice_rx_queue {
 	bool ts_enable; /* if rxq timestamp is enabled */
 };
 
-struct ice_tx_entry {
-	struct rte_mbuf *mbuf;
-	uint16_t next_id;
-	uint16_t last_id;
-};
-
-struct ice_vec_tx_entry {
-	struct rte_mbuf *mbuf;
-};
-
 struct ice_tx_queue {
 	uint16_t nb_tx_desc; /* number of TX descriptors */
 	rte_iova_t tx_ring_dma; /* TX ring DMA address */
 	volatile struct ice_tx_desc *tx_ring; /* TX ring virtual address */
-	struct ice_tx_entry *sw_ring; /* virtual address of SW ring */
+	struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
 	uint16_t tx_tail; /* current value of tail register */
 	volatile uint8_t *qtx_tail; /* register address of tail */
 	uint16_t nb_tx_used; /* number of TX desc used since RS bit set */
