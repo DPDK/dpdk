@@ -8,6 +8,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 
+#include "../common/rx.h"
 #include "i40e_ethdev.h"
 #include "i40e_rxtx.h"
 

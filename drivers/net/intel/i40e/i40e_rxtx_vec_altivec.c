@@ -492,8 +492,8 @@ i40e_recv_scattered_burst_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (i == nb_bufs)
 			return nb_bufs;
 	}
-	return i + reassemble_packets(rxq, &rx_pkts[i], nb_bufs - i,
-		&split_flags[i]);
+	return i + ci_rx_reassemble_packets(&rx_pkts[i], nb_bufs - i, &split_flags[i],
+		&rxq->pkt_first_seg, &rxq->pkt_last_seg, rxq->crc_len);
 }
 
 /**

@@ -7,70 +7,9 @@
 #include <stdint.h>
 #include <ethdev_driver.h>
 
+#include "../common/rx.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe_rxtx.h"
-
-static inline uint16_t
-reassemble_packets(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_bufs,
-		   uint16_t nb_bufs, uint8_t *split_flags)
-{
-	struct rte_mbuf *pkts[nb_bufs]; /*finished pkts*/
-	struct rte_mbuf *start = rxq->pkt_first_seg;
-	struct rte_mbuf *end =  rxq->pkt_last_seg;
-	unsigned int pkt_idx, buf_idx;
-
-	for (buf_idx = 0, pkt_idx = 0; buf_idx < nb_bufs; buf_idx++) {
-		if (end != NULL) {
-			/* processing a split packet */
-			end->next = rx_bufs[buf_idx];
-			rx_bufs[buf_idx]->data_len += rxq->crc_len;
-
-			start->nb_segs++;
-			start->pkt_len += rx_bufs[buf_idx]->data_len;
-			end = end->next;
-
-			if (!split_flags[buf_idx]) {
-				/* it's the last packet of the set */
-				start->hash = end->hash;
-				start->ol_flags = end->ol_flags;
-				/* we need to strip crc for the whole packet */
-				start->pkt_len -= rxq->crc_len;
-				if (end->data_len > rxq->crc_len)
-					end->data_len -= rxq->crc_len;
-				else {
-					/* free up last mbuf */
-					struct rte_mbuf *secondlast = start;
-
-					start->nb_segs--;
-					while (secondlast->next != end)
-						secondlast = secondlast->next;
-					secondlast->data_len -= (rxq->crc_len -
-							end->data_len);
-					secondlast->next = NULL;
-					rte_pktmbuf_free_seg(end);
-				}
-				pkts[pkt_idx++] = start;
-				start = end = NULL;
-			}
-		} else {
-			/* not processing a split packet */
-			if (!split_flags[buf_idx]) {
-				/* not a split packet, save and skip */
-				pkts[pkt_idx++] = rx_bufs[buf_idx];
-				continue;
-			}
-			end = start = rx_bufs[buf_idx];
-			rx_bufs[buf_idx]->data_len += rxq->crc_len;
-			rx_bufs[buf_idx]->pkt_len += rxq->crc_len;
-		}
-	}
-
-	/* save the partial packet for next time */
-	rxq->pkt_first_seg = start;
-	rxq->pkt_last_seg = end;
-	memcpy(rx_bufs, pkts, pkt_idx * (sizeof(*pkts)));
-	return pkt_idx;
-}
 
 static __rte_always_inline int
 ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)

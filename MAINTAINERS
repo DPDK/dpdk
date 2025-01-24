@@ -777,6 +777,11 @@ F: drivers/net/hinic/
 F: doc/guides/nics/hinic.rst
 F: doc/guides/nics/features/hinic.ini
 
+Intel Network Common Code
+M: Bruce Richardson <bruce.richardson@intel.com>
+T: git://dpdk.org/next/dpdk-next-net-intel
+F: drivers/net/intel/common/
+
 Intel e1000
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/intel/e1000/

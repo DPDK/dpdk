@@ -5,6 +5,7 @@
 #ifndef _ICE_RXTX_VEC_COMMON_H_
 #define _ICE_RXTX_VEC_COMMON_H_
 
+#include "../common/rx.h"
 #include "ice_rxtx.h"
 
 static inline uint16_t

@@ -8,6 +8,7 @@
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 
+#include "../common/rx.h"
 #include "iavf.h"
 #include "iavf_rxtx.h"
 
