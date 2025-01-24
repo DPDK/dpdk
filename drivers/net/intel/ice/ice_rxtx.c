@@ -1493,9 +1493,6 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->nb_tx_desc = nb_desc;
 	txq->tx_rs_thresh = tx_rs_thresh;
 	txq->tx_free_thresh = tx_free_thresh;
-	txq->pthresh = tx_conf->tx_thresh.pthresh;
-	txq->hthresh = tx_conf->tx_thresh.hthresh;
-	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
 
 	txq->reg_idx = vsi->base_queue + queue_idx;
@@ -1584,9 +1581,9 @@ ice_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 	qinfo->nb_desc = txq->nb_tx_desc;
 
-	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
-	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
-	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+	qinfo->conf.tx_thresh.pthresh = ICE_DEFAULT_TX_PTHRESH;
+	qinfo->conf.tx_thresh.hthresh = ICE_DEFAULT_TX_HTHRESH;
+	qinfo->conf.tx_thresh.wthresh = ICE_DEFAULT_TX_WTHRESH;
 
 	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
