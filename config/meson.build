@@ -303,7 +303,7 @@ endif
 # enable extra warnings and disable any unwanted warnings
 # -Wall is added by default at warning level 1, and -Wextra
 # at warning level 2 (DPDK default)
-warning_flags = [
+global_cflags = [
         # additional warnings in alphabetical order
         '-Wcast-qual',
         '-Wdeprecated',
@@ -324,22 +324,25 @@ warning_flags = [
         '-Wno-address-of-packed-member',
         '-Wno-packed-not-aligned',
         '-Wno-missing-field-initializers',
+
+        # guarantee that all non-initialized parts of structure/union are zero
+        '-fzero-init-padding-bits=all',
 ]
 if cc.get_id() == 'gcc' and cc.version().version_compare('>=10.0')
 # FIXME: Bugzilla 396
-    warning_flags += '-Wno-zero-length-bounds'
+    global_cflags += '-Wno-zero-length-bounds'
 endif
 if not dpdk_conf.get('RTE_ARCH_64')
 # for 32-bit, don't warn about casting a 32-bit pointer to 64-bit int - it's fine!!
-    warning_flags += '-Wno-pointer-to-int-cast'
+    global_cflags += '-Wno-pointer-to-int-cast'
 endif
 if cc.get_id() == 'intel'
     warning_ids = [181, 188, 2203, 2279, 2557, 3179, 3656]
     foreach i:warning_ids
-        warning_flags += '-diag-disable=@0@'.format(i)
+        global_cflags += '-diag-disable=@0@'.format(i)
     endforeach
 endif
-foreach arg: warning_flags
+foreach arg: global_cflags
     if cc.has_argument(arg)
         add_project_arguments(arg, language: 'c')
     endif
