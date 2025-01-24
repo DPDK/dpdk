@@ -1875,6 +1875,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	int err;
 	struct ci_tx_queue *txq;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	const struct i40e_adapter *ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1888,6 +1889,9 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (txq->tx_deferred_start)
 		PMD_DRV_LOG(WARNING, "TX queue %u is deferred start",
 			    tx_queue_id);
+
+	txq->vector_tx = ad->tx_vec_allowed;
+	txq->vector_sw_ring = ad->tx_use_avx512;
 
 	/*
 	 * tx_queue_id is queue id application refers to, while
@@ -1929,7 +1933,7 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return err;
 	}
 
-	i40e_tx_queue_release_mbufs(txq);
+	ci_txq_release_all_mbufs(txq);
 	i40e_reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -2604,7 +2608,7 @@ i40e_tx_queue_release(void *txq)
 		return;
 	}
 
-	i40e_tx_queue_release_mbufs(q);
+	ci_txq_release_all_mbufs(q);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
 	rte_free(q);
@@ -2699,66 +2703,6 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 
 	rxq->rxrearm_start = 0;
 	rxq->rxrearm_nb = 0;
-}
-
-void
-i40e_tx_queue_release_mbufs(struct ci_tx_queue *txq)
-{
-	struct rte_eth_dev *dev;
-	uint16_t i;
-
-	if (!txq || !txq->sw_ring) {
-		PMD_DRV_LOG(DEBUG, "Pointer to txq or sw_ring is NULL");
-		return;
-	}
-
-	dev = &rte_eth_devices[txq->port_id];
-
-	/**
-	 *  vPMD tx will not set sw_ring's mbuf to NULL after free,
-	 *  so need to free remains more carefully.
-	 */
-#ifdef CC_AVX512_SUPPORT
-	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec_avx512) {
-		struct ci_tx_entry_vec *swr = (void *)txq->sw_ring;
-
-		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
-		if (txq->tx_tail < i) {
-			for (; i < txq->nb_tx_desc; i++) {
-				rte_pktmbuf_free_seg(swr[i].mbuf);
-				swr[i].mbuf = NULL;
-			}
-			i = 0;
-		}
-		for (; i < txq->tx_tail; i++) {
-			rte_pktmbuf_free_seg(swr[i].mbuf);
-			swr[i].mbuf = NULL;
-		}
-		return;
-	}
-#endif
-	if (dev->tx_pkt_burst == i40e_xmit_pkts_vec_avx2 ||
-			dev->tx_pkt_burst == i40e_xmit_pkts_vec) {
-		i = txq->tx_next_dd - txq->tx_rs_thresh + 1;
-		if (txq->tx_tail < i) {
-			for (; i < txq->nb_tx_desc; i++) {
-				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-				txq->sw_ring[i].mbuf = NULL;
-			}
-			i = 0;
-		}
-		for (; i < txq->tx_tail; i++) {
-			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-			txq->sw_ring[i].mbuf = NULL;
-		}
-	} else {
-		for (i = 0; i < txq->nb_tx_desc; i++) {
-			if (txq->sw_ring[i].mbuf) {
-				rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-				txq->sw_ring[i].mbuf = NULL;
-			}
-		}
-	}
 }
 
 static int
@@ -3127,7 +3071,7 @@ i40e_dev_clear_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (!dev->data->tx_queues[i])
 			continue;
-		i40e_tx_queue_release_mbufs(dev->data->tx_queues[i]);
+		ci_txq_release_all_mbufs(dev->data->tx_queues[i]);
 		i40e_reset_tx_queue(dev->data->tx_queues[i]);
 	}
 
