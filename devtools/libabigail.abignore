@@ -36,3 +36,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+[suppress_type]
+        name = rte_dma_port_param
+        type_kind = struct
+        has_size_change = no
+        has_data_member = {pcie}

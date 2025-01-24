@@ -523,19 +523,22 @@ struct rte_dma_port_param {
 		 * and capabilities.
 		 */
 		__extension__
-		struct {
-			uint64_t coreid : 4; /**< PCIe core id used. */
-			uint64_t pfid : 8; /**< PF id used. */
-			uint64_t vfen : 1; /**< VF enable bit. */
-			uint64_t vfid : 16; /**< VF id used. */
-			/** The pasid filed in TLP packet. */
-			uint64_t pasid : 20;
-			/** The attributes filed in TLP packet. */
-			uint64_t attr : 3;
-			/** The processing hint filed in TLP packet. */
-			uint64_t ph : 2;
-			/** The steering tag filed in TLP packet. */
-			uint64_t st : 16;
+		union {
+			struct {
+				uint64_t coreid : 4; /**< PCIe core id used. */
+				uint64_t pfid : 8; /**< PF id used. */
+				uint64_t vfen : 1; /**< VF enable bit. */
+				uint64_t vfid : 16; /**< VF id used. */
+				/** The pasid filed in TLP packet. */
+				uint64_t pasid : 20;
+				/** The attributes filed in TLP packet. */
+				uint64_t attr : 3;
+				/** The processing hint filed in TLP packet. */
+				uint64_t ph : 2;
+				/** The steering tag filed in TLP packet. */
+				uint64_t st : 16;
+			};
+			uint64_t val;
 		} pcie;
 	};
 	uint64_t reserved[2]; /**< Reserved for future fields. */

@@ -46,11 +46,10 @@ RTE_TRACE_POINT(
 	const struct rte_dma_conf __dev_conf = {0};
 	dev_conf = &__dev_conf;
 #endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int enable_silent = (int)dev_conf->enable_silent;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(dev_conf->nb_vchans);
 	rte_trace_point_emit_u16(dev_conf->priority);
-	rte_trace_point_emit_int(enable_silent);
+	rte_trace_point_emit_u8(dev_conf->enable_silent);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -83,21 +82,14 @@ RTE_TRACE_POINT(
 	const struct rte_dma_vchan_conf __conf = {0};
 	conf = &__conf;
 #endif /* _RTE_TRACE_POINT_REGISTER_H_ */
-	int src_port_type = conf->src_port.port_type;
-	int dst_port_type = conf->dst_port.port_type;
-	int direction = conf->direction;
-	uint64_t src_pcie_cfg;
-	uint64_t dst_pcie_cfg;
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
-	rte_trace_point_emit_int(direction);
+	rte_trace_point_emit_int(conf->direction);
 	rte_trace_point_emit_u16(conf->nb_desc);
-	rte_trace_point_emit_int(src_port_type);
-	memcpy(&src_pcie_cfg, &conf->src_port.pcie, sizeof(uint64_t));
-	rte_trace_point_emit_u64(src_pcie_cfg);
-	memcpy(&dst_pcie_cfg, &conf->dst_port.pcie, sizeof(uint64_t));
-	rte_trace_point_emit_int(dst_port_type);
-	rte_trace_point_emit_u64(dst_pcie_cfg);
+	rte_trace_point_emit_int(conf->src_port.port_type);
+	rte_trace_point_emit_u64(conf->src_port.pcie.val);
+	rte_trace_point_emit_int(conf->dst_port.port_type);
+	rte_trace_point_emit_u64(conf->dst_port.pcie.val);
 	rte_trace_point_emit_ptr(conf->auto_free.m2d.pool);
 	rte_trace_point_emit_int(ret);
 )
