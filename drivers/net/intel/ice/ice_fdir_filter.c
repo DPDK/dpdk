@@ -24,7 +24,8 @@
 #define ICE_FDIR_INSET_ETH_IPV4 (\
 	ICE_FDIR_INSET_ETH | \
 	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | ICE_INSET_IPV4_TOS | \
-	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_PROTO | ICE_INSET_IPV4_PKID)
+	ICE_INSET_IPV4_TTL | ICE_INSET_IPV4_PROTO | ICE_INSET_IPV4_PKID | \
+	ICE_INSET_IPV4_FRAG_OFS)
 
 #define ICE_FDIR_INSET_ETH_IPV4_UDP (\
 	ICE_FDIR_INSET_ETH_IPV4 | \
@@ -930,6 +931,7 @@ ice_fdir_input_set_parse(uint64_t inset, enum ice_flow_field *field)
 		{ICE_INSET_IPV4_TTL, ICE_FLOW_FIELD_IDX_IPV4_TTL},
 		{ICE_INSET_IPV4_PROTO, ICE_FLOW_FIELD_IDX_IPV4_PROT},
 		{ICE_INSET_IPV4_PKID, ICE_FLOW_FIELD_IDX_IPV4_ID},
+		{ICE_INSET_IPV4_FRAG_OFS, ICE_FLOW_FIELD_IDX_IPV4_FRAG_OFS},
 		{ICE_INSET_IPV6_SRC, ICE_FLOW_FIELD_IDX_IPV6_SA},
 		{ICE_INSET_IPV6_DST, ICE_FLOW_FIELD_IDX_IPV6_DA},
 		{ICE_INSET_IPV6_TC, ICE_FLOW_FIELD_IDX_IPV6_DSCP},
@@ -2022,7 +2024,8 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 			     ipv4_last->hdr.next_proto_id ||
 			     ipv4_last->hdr.hdr_checksum ||
 			     ipv4_last->hdr.src_addr ||
-			     ipv4_last->hdr.dst_addr)) {
+			     ipv4_last->hdr.dst_addr ||
+			     ipv4_last->hdr.fragment_offset)) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item, "Invalid IPv4 last.");
@@ -2047,19 +2050,23 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 				*input_set |= ICE_INSET_IPV4_PROTO;
 			if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
 				*input_set |= ICE_INSET_IPV4_TOS;
+			if ((ipv4_mask->hdr.fragment_offset &
+				rte_cpu_to_be_16(0x1FFF)) != 0)
+				*input_set |= ICE_INSET_IPV4_FRAG_OFS;
 
 			p_v4->dst_ip = ipv4_spec->hdr.dst_addr;
 			p_v4->src_ip = ipv4_spec->hdr.src_addr;
 			p_v4->ttl = ipv4_spec->hdr.time_to_live;
 			p_v4->proto = ipv4_spec->hdr.next_proto_id;
 			p_v4->tos = ipv4_spec->hdr.type_of_service;
+			p_v4->fragment_offset = ipv4_spec->hdr.fragment_offset;
 
 			/* fragment Ipv4:
 			 * spec is 0x2000, mask is 0x2000
 			 */
-			if (ipv4_spec->hdr.fragment_offset ==
+			if (ipv4_spec->hdr.fragment_offset &
 			    rte_cpu_to_be_16(RTE_IPV4_HDR_MF_FLAG) &&
-			    ipv4_mask->hdr.fragment_offset ==
+			    ipv4_mask->hdr.fragment_offset &
 			    rte_cpu_to_be_16(RTE_IPV4_HDR_MF_FLAG)) {
 				/* all IPv4 fragment packet has the same
 				 * ethertype, if the spec and mask is valid,
