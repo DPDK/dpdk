@@ -30,7 +30,8 @@
 
 #define ICE_ACL_INSET_ETH_IPV4 ( \
 	ICE_INSET_SMAC | ICE_INSET_DMAC | \
-	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST)
+	ICE_INSET_IPV4_SRC | ICE_INSET_IPV4_DST | \
+	ICE_INSET_IPV4_FRAG_OFS)
 #define ICE_ACL_INSET_ETH_IPV4_UDP ( \
 	ICE_ACL_INSET_ETH_IPV4 | \
 	ICE_INSET_UDP_SRC_PORT | ICE_INSET_UDP_DST_PORT)
@@ -214,6 +215,7 @@ ice_acl_prof_init(struct ice_pf *pf)
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_flow_prof *prof_ipv4 = NULL;
+	struct ice_flow_prof *prof_ipv4_frag = NULL;
 	struct ice_flow_prof *prof_ipv4_udp = NULL;
 	struct ice_flow_prof *prof_ipv4_tcp = NULL;
 	struct ice_flow_prof *prof_ipv4_sctp = NULL;
@@ -233,6 +235,15 @@ ice_acl_prof_init(struct ice_pf *pf)
 				seg, 1, NULL, 0, &prof_ipv4);
 	if (ret)
 		goto err_add_prof;
+
+	ice_memset(seg, 0, sizeof(*seg), ICE_NONDMA_MEM);
+	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV_FRAG);
+	acl_add_prof_prepare(hw, seg, false, 0, 0);
+	ret = ice_flow_add_prof(hw, ICE_BLK_ACL, ICE_FLOW_RX,
+				ICE_FLTR_PTYPE_FRAG_IPV4,
+				seg, 1, NULL, 0, &prof_ipv4_frag);
+	if (ret)
+		goto err_add_prof_ipv4_udp_frag;
 
 	ice_memset(seg, 0, sizeof(*seg), ICE_NONDMA_MEM);
 	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV4);
@@ -272,6 +283,10 @@ ice_acl_prof_init(struct ice_pf *pf)
 		if (ret)
 			goto err_assoc_prof;
 
+		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_frag, i);
+		if (ret)
+			goto err_assoc_prof;
+
 		ret = ice_flow_assoc_prof(hw, ICE_BLK_ACL, prof_ipv4_udp, i);
 		if (ret)
 			goto err_assoc_prof;
@@ -293,6 +308,8 @@ err_add_prof_ipv4_sctp:
 err_add_prof_ipv4_tcp:
 	ice_flow_rem_prof(hw, ICE_BLK_ACL, ICE_FLTR_PTYPE_NONF_IPV4_UDP);
 err_add_prof_ipv4_udp:
+	ice_flow_rem_prof(hw, ICE_BLK_ACL, ICE_FLTR_PTYPE_FRAG_IPV4);
+err_add_prof_ipv4_udp_frag:
 	ice_flow_rem_prof(hw, ICE_BLK_ACL, ICE_FLTR_PTYPE_NONF_IPV4_OTHER);
 err_add_prof:
 	ice_free(hw, seg);
@@ -353,6 +370,7 @@ ice_acl_set_input_set(struct ice_acl_conf *filter, struct ice_fdir_fltr *input)
 			   ICE_NONDMA_TO_NONDMA);
 
 		break;
+	case ICE_FLTR_PTYPE_FRAG_IPV4:
 	case ICE_FLTR_PTYPE_NONF_IPV4_OTHER:
 		ice_memcpy(&input->ip.v4, &filter->input.ip.v4,
 			   sizeof(struct ice_fdir_v4),
@@ -519,6 +537,12 @@ ice_acl_create_filter(struct ice_adapter *ad,
 		acts[0].data.acl_act.mdid = ICE_MDID_RX_PKT_DROP;
 		acts[0].data.acl_act.prio = 0x3;
 		acts[0].data.acl_act.value = CPU_TO_LE16(0x1);
+	} else if (filter->input.dest_ctl ==
+		ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QINDEX) {
+		acts[0].type = ICE_FLOW_ACT_FWD_QUEUE;
+		acts[0].data.acl_act.mdid = ICE_MDID_RX_DST_Q;
+		acts[0].data.acl_act.prio = 0x3;
+		acts[0].data.acl_act.value = CPU_TO_LE16(input->q_index);
 	}
 
 	input->acl_fltr = true;
@@ -531,7 +555,8 @@ ice_acl_create_filter(struct ice_adapter *ad,
 		return ret;
 	}
 
-	if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER) {
+	if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER ||
+		flow_type == ICE_FLTR_PTYPE_FRAG_IPV4) {
 		ret = ice_acl_hw_set_conf(pf, input, acts, rule,
 					  ICE_FLTR_PTYPE_NONF_IPV4_UDP, 1);
 		if (ret)
@@ -576,6 +601,7 @@ ice_acl_destroy_filter(struct ice_adapter *ad,
 	int ret = 0;
 
 	switch (rule->flow_type) {
+	case ICE_FLTR_PTYPE_FRAG_IPV4:
 	case ICE_FLTR_PTYPE_NONF_IPV4_OTHER:
 		for (i = 0; i < 4; i++) {
 			entry_id = rule->entry_id[i];
@@ -617,6 +643,8 @@ ice_acl_parse_action(__rte_unused struct ice_adapter *ad,
 		     struct rte_flow_error *error,
 		     struct ice_acl_conf *filter)
 {
+	struct ice_pf *pf = &ad->pf;
+	const struct rte_flow_action_queue *act_q;
 	uint32_t dest_num = 0;
 
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
@@ -628,6 +656,22 @@ ice_acl_parse_action(__rte_unused struct ice_adapter *ad,
 
 			filter->input.dest_ctl =
 				ICE_FLTR_PRGM_DESC_DEST_DROP_PKT;
+			break;
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+			dest_num++;
+
+			act_q = actions->conf;
+			filter->input.q_index = act_q->index;
+			if (filter->input.q_index >=
+					pf->dev_data->nb_rx_queues) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "Invalid queue for FDIR.");
+				return -rte_errno;
+			}
+			filter->input.dest_ctl =
+				ICE_FLTR_PRGM_DESC_DEST_DIRECT_PKT_QINDEX;
 			break;
 		default:
 			rte_flow_error_set(error, EINVAL,
@@ -713,12 +757,12 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 			ipv4_spec = item->spec;
 			ipv4_mask = item->mask;
 
+			flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
 			if (ipv4_spec && ipv4_mask) {
 				/* Check IPv4 mask and update input set */
 				if (ipv4_mask->hdr.version_ihl ||
 				    ipv4_mask->hdr.total_length ||
 				    ipv4_mask->hdr.packet_id ||
-				    ipv4_mask->hdr.fragment_offset ||
 				    ipv4_mask->hdr.hdr_checksum) {
 					rte_flow_error_set(error, EINVAL,
 						RTE_FLOW_ERROR_TYPE_ITEM,
@@ -753,9 +797,16 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 
 					input_set |= ICE_INSET_IPV4_DST;
 				}
-			}
 
-			flow_type = ICE_FLTR_PTYPE_NONF_IPV4_OTHER;
+				if (ipv4_mask->hdr.fragment_offset) {
+					filter->input.ip.v4.fragment_offset =
+						ipv4_spec->hdr.fragment_offset;
+					filter->input.mask.v4.fragment_offset =
+						ipv4_mask->hdr.fragment_offset;
+					flow_type = ICE_FLTR_PTYPE_FRAG_IPV4;
+					input_set |= ICE_INSET_IPV4_FRAG_OFS;
+				}
+			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = item->spec;

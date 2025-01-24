@@ -2684,7 +2684,6 @@ ice_dev_init(struct rte_eth_dev *dev)
 	}
 
 	if (!ad->is_safe_mode) {
-		ad->disabled_engine_mask |= BIT(ICE_FLOW_ENGINE_ACL);
 		ret = ice_flow_init(ad);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "Failed to initialize flow");
