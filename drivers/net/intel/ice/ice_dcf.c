@@ -1177,8 +1177,8 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 {
 	struct ice_rx_queue **rxq =
 		(struct ice_rx_queue **)hw->eth_dev->data->rx_queues;
-	struct ice_tx_queue **txq =
-		(struct ice_tx_queue **)hw->eth_dev->data->tx_queues;
+	struct ci_tx_queue **txq =
+		(struct ci_tx_queue **)hw->eth_dev->data->tx_queues;
 	struct virtchnl_vsi_queue_config_info *vc_config;
 	struct virtchnl_queue_pair_info *vc_qp;
 	struct dcf_virtchnl_cmd args;

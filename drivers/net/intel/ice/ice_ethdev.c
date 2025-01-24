@@ -6448,7 +6448,7 @@ ice_update_mbuf_stats(struct rte_eth_dev *ethdev,
 		struct ice_mbuf_stats *mbuf_stats)
 {
 	uint16_t idx;
-	struct ice_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	for (idx = 0; idx < ethdev->data->nb_tx_queues; idx++) {
 		txq = ethdev->data->tx_queues[idx];

@@ -694,7 +694,7 @@ uint16_t
 i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
 {
-	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct i40e_tx_desc *txdp;
 	struct ci_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
@@ -767,7 +767,7 @@ i40e_rxq_vec_setup(struct i40e_rx_queue *rxq)
 }
 
 int __rte_cold
-i40e_txq_vec_setup(struct i40e_tx_queue __rte_unused *txq)
+i40e_txq_vec_setup(struct ci_tx_queue *txq __rte_unused)
 {
 	return 0;
 }

@@ -79,7 +79,6 @@ extern int ice_timestamp_dynfield_offset;
 #define ICE_TX_MTU_SEG_MAX	8
 
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
-typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,
 					struct rte_mbuf *mb,
 					volatile union ice_rx_flex_desc *rxdp);
@@ -143,42 +142,6 @@ struct ice_rx_queue {
 	struct rte_eth_rxseg_split rxseg[ICE_RX_MAX_NSEG];
 	uint32_t rxseg_nb;
 	bool ts_enable; /* if rxq timestamp is enabled */
-};
-
-struct ice_tx_queue {
-	uint16_t nb_tx_desc; /* number of TX descriptors */
-	rte_iova_t tx_ring_dma; /* TX ring DMA address */
-	volatile struct ice_tx_desc *ice_tx_ring; /* TX ring virtual address */
-	struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
-	uint16_t tx_tail; /* current value of tail register */
-	volatile uint8_t *qtx_tail; /* register address of tail */
-	uint16_t nb_tx_used; /* number of TX desc used since RS bit set */
-	/* index to last TX descriptor to have been cleaned */
-	uint16_t last_desc_cleaned;
-	/* Total number of TX descriptors ready to be allocated. */
-	uint16_t nb_tx_free;
-	/* Start freeing TX buffers if there are less free descriptors than
-	 * this value.
-	 */
-	uint16_t tx_free_thresh;
-	/* Number of TX descriptors to use before RS bit is set. */
-	uint16_t tx_rs_thresh;
-	uint8_t pthresh; /**< Prefetch threshold register. */
-	uint8_t hthresh; /**< Host threshold register. */
-	uint8_t wthresh; /**< Write-back threshold reg. */
-	uint16_t port_id; /* Device port identifier. */
-	uint16_t queue_id; /* TX queue index. */
-	uint32_t q_teid; /* TX schedule node id. */
-	uint16_t reg_idx;
-	uint64_t offloads;
-	struct ice_vsi *ice_vsi; /* the VSI this queue belongs to */
-	uint16_t tx_next_dd;
-	uint16_t tx_next_rs;
-	uint64_t mbuf_errors;
-	bool tx_deferred_start; /* don't start this queue in dev start */
-	bool q_set; /* indicate if tx queue has been configured */
-	ice_tx_release_mbufs_t tx_rel_mbufs;
-	const struct rte_memzone *mz;
 };
 
 /* Offload features */
@@ -268,7 +231,7 @@ void ice_set_rx_function(struct rte_eth_dev *dev);
 uint16_t ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
 void ice_set_tx_function_flag(struct rte_eth_dev *dev,
-			      struct ice_tx_queue *txq);
+			      struct ci_tx_queue *txq);
 void ice_set_tx_function(struct rte_eth_dev *dev);
 uint32_t ice_rx_queue_count(void *rx_queue);
 void ice_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
@@ -290,7 +253,7 @@ void ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq,
 int ice_rx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_tx_vec_dev_check(struct rte_eth_dev *dev);
 int ice_rxq_vec_setup(struct ice_rx_queue *rxq);
-int ice_txq_vec_setup(struct ice_tx_queue *txq);
+int ice_txq_vec_setup(struct ci_tx_queue *txq);
 uint16_t ice_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
 uint16_t ice_recv_scattered_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,

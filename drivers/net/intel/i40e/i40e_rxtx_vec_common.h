@@ -76,7 +76,7 @@ reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 }
 
 static __rte_always_inline int
-i40e_tx_free_bufs(struct i40e_tx_queue *txq)
+i40e_tx_free_bufs(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txep;
 	uint32_t n;

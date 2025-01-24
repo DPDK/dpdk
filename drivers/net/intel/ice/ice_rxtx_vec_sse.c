@@ -693,7 +693,7 @@ static uint16_t
 ice_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)
 {
-	struct ice_tx_queue *txq = (struct ice_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct ice_tx_desc *txdp;
 	struct ci_tx_entry *txep;
 	uint16_t n, nb_commit, tx_id;
@@ -762,7 +762,7 @@ ice_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		  uint16_t nb_pkts)
 {
 	uint16_t nb_tx = 0;
-	struct ice_tx_queue *txq = (struct ice_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -789,7 +789,7 @@ ice_rxq_vec_setup(struct ice_rx_queue *rxq)
 }
 
 int __rte_cold
-ice_txq_vec_setup(struct ice_tx_queue __rte_unused *txq)
+ice_txq_vec_setup(struct ci_tx_queue *txq __rte_unused)
 {
 	if (!txq)
 		return -1;

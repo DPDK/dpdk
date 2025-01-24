@@ -1372,7 +1372,7 @@ i40e_find_available_buffer(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_tx_queue *txq = pf->fdir.txq;
+	struct ci_tx_queue *txq = pf->fdir.txq;
 
 	/* no available buffer
 	 * search for more available buffers from the current
@@ -1628,7 +1628,7 @@ i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  const struct i40e_fdir_filter_conf *filter,
 				  bool add, bool wait_status)
 {
-	struct i40e_tx_queue *txq = pf->fdir.txq;
+	struct ci_tx_queue *txq = pf->fdir.txq;
 	struct i40e_rx_queue *rxq = pf->fdir.rxq;
 	const struct i40e_fdir_action *fdir_action = &filter->action;
 	volatile struct i40e_tx_desc *txdp;

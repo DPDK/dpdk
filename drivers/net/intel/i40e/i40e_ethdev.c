@@ -3685,7 +3685,7 @@ i40e_dev_update_mbuf_stats(struct rte_eth_dev *ethdev,
 		struct i40e_mbuf_stats *mbuf_stats)
 {
 	uint16_t idx;
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	for (idx = 0; idx < ethdev->data->nb_tx_queues; idx++) {
 		txq = ethdev->data->tx_queues[idx];
@@ -6585,7 +6585,7 @@ i40e_dev_tx_init(struct i40e_pf *pf)
 	struct rte_eth_dev_data *data = pf->dev_data;
 	uint16_t i;
 	uint32_t ret = I40E_SUCCESS;
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	for (i = 0; i < data->nb_tx_queues; i++) {
 		txq = data->tx_queues[i];

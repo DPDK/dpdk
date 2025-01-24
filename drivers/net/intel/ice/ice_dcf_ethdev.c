@@ -387,7 +387,7 @@ reset_rx_queue(struct ice_rx_queue *rxq)
 }
 
 static inline void
-reset_tx_queue(struct ice_tx_queue *txq)
+reset_tx_queue(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txe;
 	uint32_t i, size;
@@ -454,7 +454,7 @@ ice_dcf_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ice_dcf_adapter *ad = dev->data->dev_private;
 	struct iavf_hw *hw = &ad->real_hw.avf;
-	struct ice_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int err = 0;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues)
@@ -486,7 +486,7 @@ ice_dcf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	struct ice_dcf_adapter *ad = dev->data->dev_private;
 	struct ice_dcf_hw *hw = &ad->real_hw;
-	struct ice_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int err;
 
 	if (tx_queue_id >= dev->data->nb_tx_queues)
@@ -511,7 +511,7 @@ static int
 ice_dcf_start_queues(struct rte_eth_dev *dev)
 {
 	struct ice_rx_queue *rxq;
-	struct ice_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int nb_rxq = 0;
 	int nb_txq, i;
 
@@ -638,7 +638,7 @@ ice_dcf_stop_queues(struct rte_eth_dev *dev)
 	struct ice_dcf_adapter *ad = dev->data->dev_private;
 	struct ice_dcf_hw *hw = &ad->real_hw;
 	struct ice_rx_queue *rxq;
-	struct ice_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int ret, i;
 
 	/* Stop All queues */

@@ -376,7 +376,7 @@ i40e_build_ctob(uint32_t td_cmd,
 }
 
 static inline int
-i40e_xmit_cleanup(struct i40e_tx_queue *txq)
+i40e_xmit_cleanup(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *sw_ring = txq->sw_ring;
 	volatile struct i40e_tx_desc *txd = txq->i40e_tx_ring;
@@ -1080,7 +1080,7 @@ i40e_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 uint16_t
 i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	struct ci_tx_entry *sw_ring;
 	struct ci_tx_entry *txe, *txn;
 	volatile struct i40e_tx_desc *txd;
@@ -1329,7 +1329,7 @@ end_of_tx:
 }
 
 static __rte_always_inline int
-i40e_tx_free_bufs(struct i40e_tx_queue *txq)
+i40e_tx_free_bufs(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txep;
 	uint16_t tx_rs_thresh = txq->tx_rs_thresh;
@@ -1413,7 +1413,7 @@ tx1(volatile struct i40e_tx_desc *txdp, struct rte_mbuf **pkts)
 
 /* Fill hardware descriptor ring with mbuf data */
 static inline void
-i40e_tx_fill_hw_ring(struct i40e_tx_queue *txq,
+i40e_tx_fill_hw_ring(struct ci_tx_queue *txq,
 		     struct rte_mbuf **pkts,
 		     uint16_t nb_pkts)
 {
@@ -1441,7 +1441,7 @@ i40e_tx_fill_hw_ring(struct i40e_tx_queue *txq,
 }
 
 static inline uint16_t
-tx_xmit_pkts(struct i40e_tx_queue *txq,
+tx_xmit_pkts(struct ci_tx_queue *txq,
 	     struct rte_mbuf **tx_pkts,
 	     uint16_t nb_pkts)
 {
@@ -1504,14 +1504,14 @@ i40e_xmit_pkts_simple(void *tx_queue,
 	uint16_t nb_tx = 0;
 
 	if (likely(nb_pkts <= I40E_TX_MAX_BURST))
-		return tx_xmit_pkts((struct i40e_tx_queue *)tx_queue,
+		return tx_xmit_pkts((struct ci_tx_queue *)tx_queue,
 						tx_pkts, nb_pkts);
 
 	while (nb_pkts) {
 		uint16_t ret, num = (uint16_t)RTE_MIN(nb_pkts,
 						I40E_TX_MAX_BURST);
 
-		ret = tx_xmit_pkts((struct i40e_tx_queue *)tx_queue,
+		ret = tx_xmit_pkts((struct ci_tx_queue *)tx_queue,
 						&tx_pkts[nb_tx], num);
 		nb_tx = (uint16_t)(nb_tx + ret);
 		nb_pkts = (uint16_t)(nb_pkts - ret);
@@ -1527,7 +1527,7 @@ i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 		   uint16_t nb_pkts)
 {
 	uint16_t nb_tx = 0;
-	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -1549,7 +1549,7 @@ i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 static uint16_t
 i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
-	struct i40e_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	uint16_t idx;
 	uint64_t ol_flags;
 	struct rte_mbuf *mb;
@@ -1611,7 +1611,7 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 					pkt_error = true;
 					break;
 				}
-				if (mb->nb_segs > ((struct i40e_tx_queue *)tx_queue)->nb_tx_desc) {
+				if (mb->nb_segs > ((struct ci_tx_queue *)tx_queue)->nb_tx_desc) {
 					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length");
 					pkt_error = true;
 					break;
@@ -1873,7 +1873,7 @@ int
 i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
 	int err;
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
@@ -1907,7 +1907,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 int
 i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int err;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -2311,7 +2311,7 @@ i40e_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 int
 i40e_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
-	struct i40e_tx_queue *txq = tx_queue;
+	struct ci_tx_queue *txq = tx_queue;
 	volatile uint64_t *status;
 	uint64_t mask, expect;
 	uint32_t desc;
@@ -2341,7 +2341,7 @@ i40e_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 
 static int
 i40e_dev_tx_queue_setup_runtime(struct rte_eth_dev *dev,
-				struct i40e_tx_queue *txq)
+				struct ci_tx_queue *txq)
 {
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -2394,7 +2394,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct i40e_vsi *vsi;
 	struct i40e_pf *pf = NULL;
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	const struct rte_memzone *tz;
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
@@ -2515,7 +2515,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("i40e tx queue",
-				  sizeof(struct i40e_tx_queue),
+				  sizeof(struct ci_tx_queue),
 				  RTE_CACHE_LINE_SIZE,
 				  socket_id);
 	if (!txq) {
@@ -2600,7 +2600,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 void
 i40e_tx_queue_release(void *txq)
 {
-	struct i40e_tx_queue *q = (struct i40e_tx_queue *)txq;
+	struct ci_tx_queue *q = (struct ci_tx_queue *)txq;
 
 	if (!q) {
 		PMD_DRV_LOG(DEBUG, "Pointer to TX queue is NULL");
@@ -2705,7 +2705,7 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 }
 
 void
-i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
+i40e_tx_queue_release_mbufs(struct ci_tx_queue *txq)
 {
 	struct rte_eth_dev *dev;
 	uint16_t i;
@@ -2765,7 +2765,7 @@ i40e_tx_queue_release_mbufs(struct i40e_tx_queue *txq)
 }
 
 static int
-i40e_tx_done_cleanup_full(struct i40e_tx_queue *txq,
+i40e_tx_done_cleanup_full(struct ci_tx_queue *txq,
 			uint32_t free_cnt)
 {
 	struct ci_tx_entry *swr_ring = txq->sw_ring;
@@ -2824,7 +2824,7 @@ i40e_tx_done_cleanup_full(struct i40e_tx_queue *txq,
 }
 
 static int
-i40e_tx_done_cleanup_simple(struct i40e_tx_queue *txq,
+i40e_tx_done_cleanup_simple(struct ci_tx_queue *txq,
 			uint32_t free_cnt)
 {
 	int i, n, cnt;
@@ -2848,7 +2848,7 @@ i40e_tx_done_cleanup_simple(struct i40e_tx_queue *txq,
 }
 
 static int
-i40e_tx_done_cleanup_vec(struct i40e_tx_queue *txq __rte_unused,
+i40e_tx_done_cleanup_vec(struct ci_tx_queue *txq __rte_unused,
 			uint32_t free_cnt __rte_unused)
 {
 	return -ENOTSUP;
@@ -2856,7 +2856,7 @@ i40e_tx_done_cleanup_vec(struct i40e_tx_queue *txq __rte_unused,
 int
 i40e_tx_done_cleanup(void *txq, uint32_t free_cnt)
 {
-	struct i40e_tx_queue *q = (struct i40e_tx_queue *)txq;
+	struct ci_tx_queue *q = (struct ci_tx_queue *)txq;
 	struct rte_eth_dev *dev = &rte_eth_devices[q->port_id];
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -2872,7 +2872,7 @@ i40e_tx_done_cleanup(void *txq, uint32_t free_cnt)
 }
 
 void
-i40e_reset_tx_queue(struct i40e_tx_queue *txq)
+i40e_reset_tx_queue(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txe;
 	uint16_t i, prev, size;
@@ -2911,7 +2911,7 @@ i40e_reset_tx_queue(struct i40e_tx_queue *txq)
 
 /* Init the TX queue in hardware */
 int
-i40e_tx_queue_init(struct i40e_tx_queue *txq)
+i40e_tx_queue_init(struct ci_tx_queue *txq)
 {
 	enum i40e_status_code err = I40E_SUCCESS;
 	struct i40e_vsi *vsi = txq->i40e_vsi;
@@ -3167,7 +3167,7 @@ i40e_dev_free_queues(struct rte_eth_dev *dev)
 enum i40e_status_code
 i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 {
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	const struct rte_memzone *tz = NULL;
 	struct rte_eth_dev *dev;
 	uint32_t ring_size;
@@ -3181,7 +3181,7 @@ i40e_fdir_setup_tx_resources(struct i40e_pf *pf)
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("i40e fdir tx queue",
-				  sizeof(struct i40e_tx_queue),
+				  sizeof(struct ci_tx_queue),
 				  RTE_CACHE_LINE_SIZE,
 				  SOCKET_ID_ANY);
 	if (!txq) {
@@ -3304,7 +3304,7 @@ void
 i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo)
 {
-	struct i40e_tx_queue *txq;
+	struct ci_tx_queue *txq;
 
 	txq = dev->data->tx_queues[queue_id];
 
@@ -3552,7 +3552,7 @@ i40e_rx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 }
 
 void __rte_cold
-i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
+i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct ci_tx_queue *txq)
 {
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -3592,7 +3592,7 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 #endif
 		if (ad->tx_vec_allowed) {
 			for (i = 0; i < dev->data->nb_tx_queues; i++) {
-				struct i40e_tx_queue *txq =
+				struct ci_tx_queue *txq =
 					dev->data->tx_queues[i];
 
 				if (txq && i40e_txq_vec_setup(txq)) {

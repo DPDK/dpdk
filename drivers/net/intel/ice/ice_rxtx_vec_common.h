@@ -74,7 +74,7 @@ ice_rx_reassemble_packets(struct ice_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 }
 
 static __rte_always_inline int
-ice_tx_free_bufs_vec(struct ice_tx_queue *txq)
+ice_tx_free_bufs_vec(struct ci_tx_queue *txq)
 {
 	struct ci_tx_entry *txep;
 	uint32_t n;
@@ -166,7 +166,7 @@ _ice_rx_queue_release_mbufs_vec(struct ice_rx_queue *rxq)
 }
 
 static inline void
-_ice_tx_queue_release_mbufs_vec(struct ice_tx_queue *txq)
+_ice_tx_queue_release_mbufs_vec(struct ci_tx_queue *txq)
 {
 	uint16_t i;
 
@@ -292,7 +292,7 @@ ice_rx_vec_queue_default(struct ice_rx_queue *rxq)
 }
 
 static inline int
-ice_tx_vec_queue_default(struct ice_tx_queue *txq)
+ice_tx_vec_queue_default(struct ci_tx_queue *txq)
 {
 	if (!txq)
 		return -1;
@@ -334,7 +334,7 @@ static inline int
 ice_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 {
 	int i;
-	struct ice_tx_queue *txq;
+	struct ci_tx_queue *txq;
 	int ret = 0;
 	int result = 0;
 

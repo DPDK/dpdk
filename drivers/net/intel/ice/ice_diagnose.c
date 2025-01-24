@@ -605,7 +605,7 @@ void print_node(const struct rte_eth_dev_data *ethdata,
 			get_elem_type(data->data.elem_type));
 	if (data->data.elem_type == ICE_AQC_ELEM_TYPE_LEAF) {
 		for (uint16_t i = 0; i < ethdata->nb_tx_queues; i++) {
-			struct ice_tx_queue *q = ethdata->tx_queues[i];
+			struct ci_tx_queue *q = ethdata->tx_queues[i];
 			if (q->q_teid == data->node_teid) {
 				fprintf(stream, "\t\t\t\t<tr><td>TXQ</td><td>%u</td></tr>\n", i);
 				break;
