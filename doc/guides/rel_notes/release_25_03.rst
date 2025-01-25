@@ -76,6 +76,7 @@ New Features
   * ``rte_hash_create()``
   * ``rte_lpm_create()``
   * ``rte_lpm6_create()``
+  * ``rte_member_create()``
   * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).
