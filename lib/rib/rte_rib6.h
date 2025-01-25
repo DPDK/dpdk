@@ -295,6 +295,16 @@ int
 rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh);
 
 /**
+ * Free an RIB object.
+ *
+ * @param rib
+ *   RIB object handle created with rte_rib6_create().
+ *   If rib is NULL, no operation is performed.
+ */
+void
+rte_rib6_free(struct rte_rib6 *rib);
+
+/**
  * Create RIB
  *
  * @param name
@@ -309,7 +319,8 @@ rte_rib6_set_nh(struct rte_rib6_node *node, uint64_t nh);
  */
 struct rte_rib6 *
 rte_rib6_create(const char *name, int socket_id,
-		const struct rte_rib6_conf *conf);
+		const struct rte_rib6_conf *conf)
+	__rte_malloc __rte_dealloc(rte_rib6_free, 1);
 
 /**
  * Find an existing RIB object and return a pointer to it.
@@ -322,16 +333,6 @@ rte_rib6_create(const char *name, int socket_id,
  */
 struct rte_rib6 *
 rte_rib6_find_existing(const char *name);
-
-/**
- * Free an RIB object.
- *
- * @param rib
- *   RIB object handle created with rte_rib6_create().
- *   If rib is NULL, no operation is performed.
- */
-void
-rte_rib6_free(struct rte_rib6 *rib);
 
 #ifdef __cplusplus
 }

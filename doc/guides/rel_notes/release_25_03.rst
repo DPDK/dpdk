@@ -80,6 +80,8 @@ New Features
   * ``rte_mempool_create()``
   * ``rte_mempool_create_empty()``
   * ``rte_reorder_create()``
+  * ``rte_rib_create()``
+  * ``rte_rib6_create()``
   * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).

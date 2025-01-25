@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -231,6 +232,16 @@ int
 rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh);
 
 /**
+ * Free an RIB object.
+ *
+ * @param rib
+ *   RIB object handle created with rte_rib_create().
+ *   If rib is NULL, no operation is performed.
+ */
+void
+rte_rib_free(struct rte_rib *rib);
+
+/**
  * Create RIB
  *
  * @param name
@@ -245,7 +256,8 @@ rte_rib_set_nh(struct rte_rib_node *node, uint64_t nh);
  */
 struct rte_rib *
 rte_rib_create(const char *name, int socket_id,
-	       const struct rte_rib_conf *conf);
+	       const struct rte_rib_conf *conf)
+	__rte_malloc __rte_dealloc(rte_rib_free, 1);
 
 /**
  * Find an existing RIB object and return a pointer to it.
@@ -258,16 +270,6 @@ rte_rib_create(const char *name, int socket_id,
  */
 struct rte_rib *
 rte_rib_find_existing(const char *name);
-
-/**
- * Free an RIB object.
- *
- * @param rib
- *   RIB object handle created with rte_rib_create().
- *   If rib is NULL, no operation is performed.
- */
-void
-rte_rib_free(struct rte_rib *rib);
 
 #ifdef __cplusplus
 }
