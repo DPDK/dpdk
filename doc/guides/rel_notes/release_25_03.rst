@@ -85,6 +85,7 @@ New Features
   * ``rte_ring_create()``
   * ``rte_sched_port_config()``
   * ``rte_stats_bitrate_create()``
+  * ``rte_tel_data_alloc()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).
   For example, calling ``free`` on a pointer that was allocated with one

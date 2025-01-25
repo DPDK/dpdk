@@ -415,16 +415,6 @@ int
 rte_telemetry_register_cmd_arg(const char *cmd, telemetry_arg_cb fn, void *arg, const char *help);
 
 /**
- * Get a pointer to a container with memory allocated. The container is to be
- * used embedded within an existing telemetry dict/array.
- *
- * @return
- *  Pointer to a container.
- */
-struct rte_tel_data *
-rte_tel_data_alloc(void);
-
-/**
  * @internal
  * Free a container that has memory allocated.
  *
@@ -434,6 +424,17 @@ rte_tel_data_alloc(void);
  */
 void
 rte_tel_data_free(struct rte_tel_data *data);
+
+/**
+ * Get a pointer to a container with memory allocated. The container is to be
+ * used embedded within an existing telemetry dict/array.
+ *
+ * @return
+ *  Pointer to a container.
+ */
+struct rte_tel_data *
+rte_tel_data_alloc(void)
+	__rte_malloc __rte_dealloc(rte_tel_data_free, 1);
 
 #ifdef __cplusplus
 }
