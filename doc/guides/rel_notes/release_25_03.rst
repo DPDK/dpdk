@@ -77,6 +77,8 @@ New Features
   * ``rte_lpm_create()``
   * ``rte_lpm6_create()``
   * ``rte_member_create()``
+  * ``rte_mempool_create()``
+  * ``rte_mempool_create_empty()``
   * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).

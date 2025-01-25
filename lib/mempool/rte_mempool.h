@@ -1013,6 +1013,20 @@ typedef void (rte_mempool_mem_cb_t)(struct rte_mempool *mp,
 typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
 
 /**
+ * Free a mempool
+ *
+ * Unlink the mempool from global list, free the memory chunks, and all
+ * memory referenced by the mempool. The objects must not be used by
+ * other cores as they will be freed.
+ *
+ * @param mp
+ *   A pointer to the mempool structure.
+ *   If NULL then, the function does nothing.
+ */
+void
+rte_mempool_free(struct rte_mempool *mp);
+
+/**
  * Create a new mempool named *name* in memory.
  *
  * This function uses ``rte_memzone_reserve()`` to allocate memory. The
@@ -1095,7 +1109,8 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 		   unsigned cache_size, unsigned private_data_size,
 		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
 		   rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
-		   int socket_id, unsigned flags);
+		   int socket_id, unsigned int flags)
+	__rte_malloc __rte_dealloc(rte_mempool_free, 1);
 
 /**
  * Create an empty mempool
@@ -1132,22 +1147,10 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
  *   with rte_errno set appropriately. See rte_mempool_create() for details.
  */
 struct rte_mempool *
-rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
-	unsigned cache_size, unsigned private_data_size,
-	int socket_id, unsigned flags);
-/**
- * Free a mempool
- *
- * Unlink the mempool from global list, free the memory chunks, and all
- * memory referenced by the mempool. The objects must not be used by
- * other cores as they will be freed.
- *
- * @param mp
- *   A pointer to the mempool structure.
- *   If NULL then, the function does nothing.
- */
-void
-rte_mempool_free(struct rte_mempool *mp);
+rte_mempool_create_empty(const char *name, unsigned int n, unsigned int elt_size,
+			 unsigned int cache_size, unsigned int private_data_size,
+			 int socket_id, unsigned int flags)
+		__rte_malloc __rte_dealloc(rte_mempool_free, 1);
 
 /**
  * Add physically contiguous memory for objects in the pool at init
