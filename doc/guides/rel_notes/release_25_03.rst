@@ -69,6 +69,7 @@ New Features
 
   * ``rte_acl_create()``
   * ``rte_comp_op_pool_create()``
+  * ``rte_event_ring_create()``
   * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).

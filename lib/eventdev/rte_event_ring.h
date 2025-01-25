@@ -247,7 +247,17 @@ int
 rte_event_ring_init(struct rte_event_ring *r, const char *name,
 	unsigned int count, unsigned int flags);
 
-/*
+/**
+ * De-allocate all memory used by the ring.
+ *
+ * @param r
+ *   Pointer to ring to created with rte_event_ring_create().
+ *   If r is NULL, no operation is performed.
+ */
+void
+rte_event_ring_free(struct rte_event_ring *r);
+
+/**
  * Create an event ring structure
  *
  * This function allocates memory and initializes an event ring inside that
@@ -288,8 +298,8 @@ rte_event_ring_init(struct rte_event_ring *r, const char *name,
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_event_ring *
-rte_event_ring_create(const char *name, unsigned int count, int socket_id,
-		unsigned int flags);
+rte_event_ring_create(const char *name, unsigned int count, int socket_id, unsigned int flags)
+	__rte_malloc __rte_dealloc(rte_event_ring_free, 1);
 
 /**
  * Search for an event ring based on its name
@@ -303,16 +313,6 @@ rte_event_ring_create(const char *name, unsigned int count, int socket_id,
  */
 struct rte_event_ring *
 rte_event_ring_lookup(const char *name);
-
-/**
- * De-allocate all memory used by the ring.
- *
- * @param r
- *   Pointer to ring to created with rte_event_ring_create().
- *   If r is NULL, no operation is performed.
- */
-void
-rte_event_ring_free(struct rte_event_ring *r);
 
 /**
  * Return the size of the event ring.
