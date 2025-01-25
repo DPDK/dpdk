@@ -129,11 +129,12 @@ LOOKUP_FUNC(2b, uint16_t, 1)
 LOOKUP_FUNC(4b, uint32_t, 2)
 LOOKUP_FUNC(8b, uint64_t, 3)
 
-void *
-trie_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
-
 void
 trie_free(void *p);
+
+void *
+trie_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
+	__rte_malloc __rte_dealloc(trie_free, 1);
 
 rte_fib6_lookup_fn_t
 trie_get_lookup_fn(void *p, enum rte_fib6_lookup_type type);

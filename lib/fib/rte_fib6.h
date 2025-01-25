@@ -83,6 +83,16 @@ struct rte_fib6_conf {
 };
 
 /**
+ * Free an FIB object.
+ *
+ * @param fib
+ *   FIB object handle created by rte_fib6_create().
+ *   If fib is NULL, no operation is performed.
+ */
+void
+rte_fib6_free(struct rte_fib6 *fib);
+
+/**
  * Create FIB
  *
  * @param name
@@ -96,7 +106,8 @@ struct rte_fib6_conf {
  *  NULL otherwise with rte_errno set to an appropriate values.
  */
 struct rte_fib6 *
-rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
+rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf)
+	__rte_malloc __rte_dealloc(rte_fib6_free, 1);
 
 /**
  * Find an existing FIB object and return a pointer to it.
@@ -110,16 +121,6 @@ rte_fib6_create(const char *name, int socket_id, struct rte_fib6_conf *conf);
  */
 struct rte_fib6 *
 rte_fib6_find_existing(const char *name);
-
-/**
- * Free an FIB object.
- *
- * @param fib
- *   FIB object handle created by rte_fib6_create().
- *   If fib is NULL, no operation is performed.
- */
-void
-rte_fib6_free(struct rte_fib6 *fib);
 
 /**
  * Add a route to the FIB.
