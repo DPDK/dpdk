@@ -68,6 +68,7 @@ New Features
   Added allocation attributes to functions that allocate data:
 
   * ``rte_acl_create()``
+  * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).
   For example, calling ``free`` on a pointer that was allocated with one

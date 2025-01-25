@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include <rte_common.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,16 +19,6 @@ extern "C" {
  */
 struct rte_stats_bitrates;
 
-
-/**
- * Allocate a bitrate statistics structure
- *
- * @return
- *   - Pointer to structure on success
- *   - NULL on error (zmalloc failure)
- */
-struct rte_stats_bitrates *rte_stats_bitrate_create(void);
-
 /**
  * Free bitrate statistics structure
  *
@@ -35,6 +27,16 @@ struct rte_stats_bitrates *rte_stats_bitrate_create(void);
  *   If bitrate_data is NULL, no operation is performed.
  */
 void rte_stats_bitrate_free(struct rte_stats_bitrates *bitrate_data);
+
+/**
+ * Allocate a bitrate statistics structure
+ *
+ * @return
+ *   - Pointer to structure on success
+ *   - NULL on error (zmalloc failure)
+ */
+struct rte_stats_bitrates *rte_stats_bitrate_create(void)
+	__rte_malloc __rte_dealloc(rte_stats_bitrate_free, 1);
 
 /**
  * Register bitrate statistics with the metric library.
