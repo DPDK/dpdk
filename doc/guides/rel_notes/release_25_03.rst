@@ -83,6 +83,7 @@ New Features
   * ``rte_rib_create()``
   * ``rte_rib6_create()``
   * ``rte_ring_create()``
+  * ``rte_sched_port_config()``
   * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).
