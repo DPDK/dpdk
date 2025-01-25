@@ -35,6 +35,16 @@ struct rte_lpm6_config {
 };
 
 /**
+ * Free an LPM object.
+ *
+ * @param lpm
+ *   LPM object handle
+ *   If lpm is NULL, no operation is performed.
+ */
+void
+rte_lpm6_free(struct rte_lpm6 *lpm);
+
+/**
  * Create an LPM object.
  *
  * @param name
@@ -55,7 +65,8 @@ struct rte_lpm6_config {
  */
 struct rte_lpm6 *
 rte_lpm6_create(const char *name, int socket_id,
-		const struct rte_lpm6_config *config);
+		const struct rte_lpm6_config *config)
+	__rte_malloc __rte_dealloc(rte_lpm6_free, 1);
 
 /**
  * Find an existing LPM object and return a pointer to it.
@@ -69,16 +80,6 @@ rte_lpm6_create(const char *name, int socket_id,
  */
 struct rte_lpm6 *
 rte_lpm6_find_existing(const char *name);
-
-/**
- * Free an LPM object.
- *
- * @param lpm
- *   LPM object handle
- *   If lpm is NULL, no operation is performed.
- */
-void
-rte_lpm6_free(struct rte_lpm6 *lpm);
 
 /**
  * Add a rule to the LPM table.

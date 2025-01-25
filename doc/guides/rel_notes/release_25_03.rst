@@ -74,6 +74,8 @@ New Features
   * ``rte_fib_create()``
   * ``rte_fib6_create()``
   * ``rte_hash_create()``
+  * ``rte_lpm_create()``
+  * ``rte_lpm6_create()``
   * ``rte_stats_bitrate_create()``
 
   This can catch some obvious bugs at compile time (with GCC 11.0 or later).

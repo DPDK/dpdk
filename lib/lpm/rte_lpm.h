@@ -141,6 +141,16 @@ struct rte_lpm_rcu_config {
 };
 
 /**
+ * Free an LPM object.
+ *
+ * @param lpm
+ *   LPM object handle
+ *   If lpm is NULL, no operation is performed.
+ */
+void
+rte_lpm_free(struct rte_lpm *lpm);
+
+/**
  * Create an LPM object.
  *
  * @param name
@@ -161,7 +171,8 @@ struct rte_lpm_rcu_config {
  */
 struct rte_lpm *
 rte_lpm_create(const char *name, int socket_id,
-		const struct rte_lpm_config *config);
+	       const struct rte_lpm_config *config)
+	__rte_malloc __rte_dealloc(rte_lpm_free, 1);
 
 /**
  * Find an existing LPM object and return a pointer to it.
@@ -175,16 +186,6 @@ rte_lpm_create(const char *name, int socket_id,
  */
 struct rte_lpm *
 rte_lpm_find_existing(const char *name);
-
-/**
- * Free an LPM object.
- *
- * @param lpm
- *   LPM object handle
- *   If lpm is NULL, no operation is performed.
- */
-void
-rte_lpm_free(struct rte_lpm *lpm);
 
 /**
  * Associate RCU QSBR variable with an LPM object.
