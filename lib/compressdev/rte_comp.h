@@ -11,6 +11,7 @@
  * RTE definitions for Data Compression Service
  */
 
+#include <rte_common.h>
 #include <rte_mbuf.h>
 
 #ifdef __cplusplus
@@ -481,6 +482,18 @@ struct __rte_cache_aligned rte_comp_op {
 };
 
 /**
+ * Free operation structure
+ * If operation has been allocate from a rte_mempool, then the operation will
+ * be returned to the mempool.
+ *
+ * @param op
+ *   Compress operation pointer allocated from rte_comp_op_alloc()
+ *   If op is NULL, no operation is performed.
+ */
+void
+rte_comp_op_free(struct rte_comp_op *op);
+
+/**
  * Creates an operation pool
  *
  * @param name
@@ -501,7 +514,8 @@ struct __rte_cache_aligned rte_comp_op {
 struct rte_mempool *
 rte_comp_op_pool_create(const char *name,
 		unsigned int nb_elts, unsigned int cache_size,
-		uint16_t user_size, int socket_id);
+		uint16_t user_size, int socket_id)
+	__rte_malloc __rte_dealloc(rte_comp_op_free, 1);
 
 /**
  * Allocate an operation from a mempool with default parameters set
@@ -532,18 +546,6 @@ rte_comp_op_alloc(struct rte_mempool *mempool);
 int
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
 		struct rte_comp_op **ops, uint16_t nb_ops);
-
-/**
- * Free operation structure
- * If operation has been allocate from a rte_mempool, then the operation will
- * be returned to the mempool.
- *
- * @param op
- *   Compress operation pointer allocated from rte_comp_op_alloc()
- *   If op is NULL, no operation is performed.
- */
-void
-rte_comp_op_free(struct rte_comp_op *op);
 
 /**
  * Bulk free operation structures
