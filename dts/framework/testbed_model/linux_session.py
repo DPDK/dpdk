@@ -166,6 +166,13 @@ class LinuxSession(PosixSession):
             else:
                 self._logger.warning(f"No port at pci address {port.pci} found.")
 
+    def bring_up_link(self, ports: list[Port]) -> None:
+        """Overrides :meth:`~.os_session.OSSession.bring_up_link`."""
+        for port in ports:
+            self.send_command(
+                f"ip link set dev {port.logical_name} up", privileged=True, verify=True
+            )
+
     def _get_lshw_info(self) -> list[LshwOutput]:
         output = self.send_command("lshw -quiet -json -C network", verify=True)
         return json.loads(output.stdout)
