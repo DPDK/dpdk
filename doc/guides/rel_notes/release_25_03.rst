@@ -63,6 +63,17 @@ New Features
   and even substantial part of its code.
   It can be viewed as an extension of rte_ring functionality.
 
+* **Hardened of more allocation functions.**
+
+  Added allocation attributes to functions that allocate data:
+
+  * ``rte_acl_create()``
+
+  This can catch some obvious bugs at compile time (with GCC 11.0 or later).
+  For example, calling ``free`` on a pointer that was allocated with one
+  of those functions (and vice versa); freeing the same pointer twice
+  in the same routine or freeing an object that was not created by allocation.
+
 * **Updated af_packet net driver.**
 
   * Added ability to option to configure receive packet fanout mode.

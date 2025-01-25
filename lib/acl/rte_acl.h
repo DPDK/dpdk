@@ -11,6 +11,7 @@
  * RTE Classifier.
  */
 
+#include <rte_common.h>
 #include <rte_acl_osdep.h>
 
 #ifdef __cplusplus
@@ -132,6 +133,18 @@ struct rte_acl_param {
 	uint32_t    max_rule_num; /**< Maximum number of rules. */
 };
 
+/** @internal opaque ACL handle */
+struct rte_acl_ctx;
+
+/**
+ * De-allocate all memory used by ACL context.
+ *
+ * @param ctx
+ *   ACL context to free
+ *   If ctx is NULL, no operation is performed.
+ */
+void
+rte_acl_free(struct rte_acl_ctx *ctx);
 
 /**
  * Create a new ACL context.
@@ -145,7 +158,8 @@ struct rte_acl_param {
  *   - EINVAL - invalid parameter passed to function
  */
 struct rte_acl_ctx *
-rte_acl_create(const struct rte_acl_param *param);
+rte_acl_create(const struct rte_acl_param *param)
+	__rte_malloc __rte_dealloc(rte_acl_free, 1);
 
 /**
  * Find an existing ACL context object and return a pointer to it.
@@ -159,16 +173,6 @@ rte_acl_create(const struct rte_acl_param *param);
  */
 struct rte_acl_ctx *
 rte_acl_find_existing(const char *name);
-
-/**
- * De-allocate all memory used by ACL context.
- *
- * @param ctx
- *   ACL context to free
- *   If ctx is NULL, no operation is performed.
- */
-void
-rte_acl_free(struct rte_acl_ctx *ctx);
 
 /**
  * Add rules to an existing ACL context.
