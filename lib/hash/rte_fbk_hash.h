@@ -20,6 +20,7 @@
 
 #include <string.h>
 
+#include <rte_common.h>
 #include <rte_hash_crc.h>
 #include <rte_jhash.h>
 
@@ -323,6 +324,15 @@ rte_fbk_hash_get_load_factor(struct rte_fbk_hash_table *ht)
 struct rte_fbk_hash_table *rte_fbk_hash_find_existing(const char *name);
 
 /**
+ * Free all memory used by a hash table.
+ * Has no effect on hash tables allocated in memory zones
+ *
+ * @param ht
+ *   Hash table to deallocate.
+ */
+void rte_fbk_hash_free(struct rte_fbk_hash_table *ht);
+
+/**
  * Create a new hash table for use with four byte keys.
  *
  * @param params
@@ -339,17 +349,9 @@ struct rte_fbk_hash_table *rte_fbk_hash_find_existing(const char *name);
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-struct rte_fbk_hash_table * \
-rte_fbk_hash_create(const struct rte_fbk_hash_params *params);
-
-/**
- * Free all memory used by a hash table.
- * Has no effect on hash tables allocated in memory zones
- *
- * @param ht
- *   Hash table to deallocate.
- */
-void rte_fbk_hash_free(struct rte_fbk_hash_table *ht);
+struct rte_fbk_hash_table *
+rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
+	__rte_malloc __rte_dealloc(rte_fbk_hash_free, 1);
 
 #ifdef __cplusplus
 }

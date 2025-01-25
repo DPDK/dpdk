@@ -14,6 +14,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <rte_common.h>
 #include <rte_rcu_qsbr.h>
 
 #ifdef __cplusplus
@@ -126,6 +127,15 @@ struct rte_hash_rcu_config {
 struct rte_hash;
 
 /**
+ * De-allocate all memory used by hash table.
+ *
+ * @param h
+ *   Hash table to free, if NULL, the function does nothing.
+ */
+void
+rte_hash_free(struct rte_hash *h);
+
+/**
  * Create a new hash table.
  *
  * @param params
@@ -143,7 +153,8 @@ struct rte_hash;
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
 struct rte_hash *
-rte_hash_create(const struct rte_hash_parameters *params);
+rte_hash_create(const struct rte_hash_parameters *params)
+	__rte_malloc __rte_dealloc(rte_hash_free, 1);
 
 /**
  * Set a new hash compare function other than the default one.
@@ -170,15 +181,6 @@ void rte_hash_set_cmp_func(struct rte_hash *h, rte_hash_cmp_eq_t func);
  */
 struct rte_hash *
 rte_hash_find_existing(const char *name);
-
-/**
- * De-allocate all memory used by hash table.
- *
- * @param h
- *   Hash table to free, if NULL, the function does nothing.
- */
-void
-rte_hash_free(struct rte_hash *h);
 
 /**
  * Reset all hash structure, by zeroing all entries.
