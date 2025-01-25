@@ -51,6 +51,10 @@ class TGNode(Node):
         self.traffic_generator = create_traffic_generator(self, node_config.traffic_generator)
         self._logger.info(f"Created node: {self.name}")
 
+    def _init_ports(self) -> None:
+        super()._init_ports()
+        self.main_session.bring_up_link(self.ports)
+
     def send_packets_and_capture(
         self,
         packets: list[Packet],

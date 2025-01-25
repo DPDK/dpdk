@@ -529,6 +529,14 @@ class OSSession(ABC):
         """
 
     @abstractmethod
+    def bring_up_link(self, ports: list[Port]) -> None:
+        """Send operating system specific command for bringing up link on node interfaces.
+
+        Args:
+            ports: The ports to apply the link up command to.
+        """
+
+    @abstractmethod
     def configure_port_mtu(self, mtu: int, port: Port) -> None:
         """Configure `mtu` on `port`.
 
