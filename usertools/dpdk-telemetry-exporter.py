@@ -75,7 +75,7 @@ DEFAULT_LOAD_PATHS += [
     "/usr/local/share/dpdk/telemetry-endpoints",
     "/usr/share/dpdk/telemetry-endpoints",
 ]
-DEFAULT_OUTPUT = "openmetrics://:9876"
+DEFAULT_OUTPUT = "openmetrics://127.0.0.1:9876"
 
 
 def main():
@@ -275,11 +275,11 @@ def serve_openmetrics(
     Start an HTTP server and serve requests in the openmetrics/prometheus
     format.
     """
-    listen = (args.output.hostname or "", int(args.output.port or 80))
+    listen = (args.output.hostname or "127.0.0.1", int(args.output.port or 80))
     with server.HTTPServer(listen, OpenmetricsHandler) as httpd:
         httpd.dpdk_socket_path = args.socket_path
         httpd.telemetry_endpoints = endpoints
-        LOG.info("listening on port %s", httpd.server_port)
+        LOG.info("listening on %s", httpd.socket.getsockname())
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
