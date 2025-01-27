@@ -726,6 +726,7 @@ virtio_user_free_vrings(struct virtio_user_dev *dev)
 	 1ULL << VIRTIO_F_RING_PACKED		|	\
 	 1ULL << VIRTIO_F_NOTIFICATION_DATA	|	\
 	 1ULL << VIRTIO_F_ORDER_PLATFORM        |       \
+	 1ULL << VIRTIO_NET_F_HASH_REPORT       |       \
 	 1ULL << VIRTIO_NET_F_RSS)
 
 int

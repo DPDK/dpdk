@@ -46,6 +46,7 @@
 	 1u << VIRTIO_NET_F_CSUM           |	\
 	 1u << VIRTIO_NET_F_HOST_TSO4      |	\
 	 1u << VIRTIO_NET_F_HOST_TSO6      |	\
+	 1ULL << VIRTIO_NET_F_HASH_REPORT  |    \
 	 1ULL << VIRTIO_NET_F_RSS)
 
 extern const struct eth_dev_ops virtio_user_secondary_eth_dev_ops;

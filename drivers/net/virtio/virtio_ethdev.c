@@ -1796,7 +1796,9 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
 
 	/* Setting up rx_header size for the device */
-	if (virtio_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) ||
+	if (virtio_with_feature(hw, VIRTIO_NET_F_HASH_REPORT))
+		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_hash_report);
+	else if (virtio_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) ||
 	    virtio_with_feature(hw, VIRTIO_F_VERSION_1) ||
 	    virtio_with_packed_queue(hw))
 		hw->vtnet_hdr_size = sizeof(struct virtio_net_hdr_mrg_rxbuf);
@@ -1937,7 +1939,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	int vectorized = 0;
 	int ret;
 
-	if (sizeof(struct virtio_net_hdr_mrg_rxbuf) > RTE_PKTMBUF_HEADROOM) {
+	if (sizeof(struct virtio_net_hdr_hash_report) > RTE_PKTMBUF_HEADROOM) {
 		PMD_INIT_LOG(ERR,
 			"Not sufficient headroom required = %d, avail = %d",
 			(int)sizeof(struct virtio_net_hdr_mrg_rxbuf),
@@ -2181,6 +2183,10 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 			(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)
+		req_features |=
+			(1ULL << VIRTIO_NET_F_HASH_REPORT);
+
 	if (tx_offloads & (RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 			   RTE_ETH_TX_OFFLOAD_TCP_CKSUM))
 		req_features |= (1ULL << VIRTIO_NET_F_CSUM);
@@ -2233,6 +2239,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	if (rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
 		hw->vlan_strip = 1;
 
+	if (rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH)
+		hw->has_hash_report = 1;
+
 	hw->rx_ol_scatter = (rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 
 	if ((rx_offloads & RTE_ETH_RX_OFFLOAD_VLAN_FILTER) &&
@@ -2283,6 +2292,12 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			if (rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) {
 				PMD_DRV_LOG(INFO,
 					"disabled packed ring vectorized rx for TCP_LRO enabled");
+				hw->use_vec_rx = 0;
+			}
+
+			if (rx_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) {
+				PMD_DRV_LOG(INFO,
+					"disabled packed ring vectorized rx for RSS_HASH enabled");
 				hw->use_vec_rx = 0;
 			}
 		}
@@ -2668,6 +2683,9 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->reta_size = 0;
 		dev_info->flow_type_rss_offloads = 0;
 	}
+
+	if (host_features & (1ULL << VIRTIO_NET_F_HASH_REPORT))
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	if (host_features & (1ULL << VIRTIO_F_RING_PACKED)) {
 		/*

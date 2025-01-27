@@ -40,6 +40,19 @@
 #define  VIRTIO_DUMP_PACKET(m, len) do { } while (0)
 #endif
 
+static const uint32_t vhdr_hash_report_to_mbuf_pkt_type[] = {
+	RTE_PTYPE_UNKNOWN,
+	RTE_PTYPE_L3_IPV4,
+	RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+	RTE_PTYPE_L3_IPV6,
+	RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	RTE_PTYPE_L3_IPV6_EXT,
+	RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_TCP,
+	RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP,
+};
+
 void
 vq_ring_free_inorder(struct virtqueue *vq, uint16_t desc_idx, uint16_t num)
 {
@@ -891,6 +904,16 @@ virtio_discard_rxbuf_inorder(struct virtqueue *vq, struct rte_mbuf *m)
 	}
 }
 
+static inline void
+virtio_rx_update_hash_report(struct rte_mbuf *m, struct virtio_net_hdr_hash_report *hdr)
+{
+	if (likely(hdr->hash_report)) {
+		m->packet_type = vhdr_hash_report_to_mbuf_pkt_type[hdr->hash_report];
+		m->hash.rss = hdr->hash_value;
+		m->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+	}
+}
+
 /* Optionally fill offload information in structure */
 static inline int
 virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
@@ -1124,6 +1147,9 @@ virtio_recv_pkts_packed(void *rx_queue, struct rte_mbuf **rx_pkts,
 		hdr = (struct virtio_net_hdr *)((char *)rxm->buf_addr +
 			RTE_PKTMBUF_HEADROOM - hdr_size);
 
+		if (hw->has_hash_report)
+			virtio_rx_update_hash_report(rxm,
+						    (struct virtio_net_hdr_hash_report *)hdr);
 		if (hw->vlan_strip)
 			rte_vlan_strip(rxm);
 
@@ -1606,6 +1632,10 @@ virtio_recv_mergeable_pkts_packed(void *rx_queue,
 
 		if (hw->vlan_strip)
 			rte_vlan_strip(rx_pkts[nb_rx]);
+
+		if (hw->has_hash_report)
+			virtio_rx_update_hash_report(rxm,
+						    (struct virtio_net_hdr_hash_report *)header);
 
 		seg_res = seg_num - 1;
 
