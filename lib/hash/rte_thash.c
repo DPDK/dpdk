@@ -565,7 +565,7 @@ rte_thash_add_helper(struct rte_thash_ctx *ctx, const char *name, uint32_t len,
 		offset;
 
 	ent = rte_zmalloc(NULL, sizeof(struct rte_thash_subtuple_helper) +
-		sizeof(uint32_t) * (1 << ctx->reta_sz_log),
+		(sizeof(uint32_t) << ctx->reta_sz_log),
 		RTE_CACHE_LINE_SIZE);
 	if (ent == NULL)
 		return -ENOMEM;

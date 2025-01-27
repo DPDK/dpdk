@@ -119,16 +119,16 @@ static uint32_t
 gf2_mul(uint32_t a, uint32_t b, uint32_t r, int degree)
 {
 	uint64_t product = 0;
-	uint64_t r_poly = r|(1ULL << degree);
+	uint64_t r_poly = r | RTE_BIT64(degree);
 
 	for (; b; b &= (b - 1))
 		product ^= (uint64_t)a << (rte_bsf32(b));
 
 	for (int i = degree * 2 - 1; i >= degree; i--)
-		if (product & (1 << i))
+		if (product & RTE_BIT64(i))
 			product ^= r_poly << (i - degree);
 
-	return product;
+	return (uint32_t)product;
 }
 
 static uint32_t
