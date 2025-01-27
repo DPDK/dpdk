@@ -677,7 +677,7 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	if (priv->sh->cnt_svc == NULL) {
 		ret = mlx5_hws_cnt_svc_init(priv->sh);
 		if (ret != 0)
-			return NULL;
+			goto error;
 	}
 	cparam.fetch_sz = HWS_CNT_CACHE_FETCH_DEFAULT;
 	cparam.preload_sz = HWS_CNT_CACHE_PRELOAD_DEFAULT;
@@ -713,6 +713,7 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	return cpool;
 error:
 	mlx5_hws_cnt_pool_destroy(priv->sh, cpool);
+	mlx5_free(mp_name);
 	return NULL;
 }
 
