@@ -30,6 +30,7 @@
 #define VIRTIO_NET_F_GUEST_ANNOUNCE 21	/* Guest can announce device on the network */
 #define VIRTIO_NET_F_MQ		22	/* Device supports Receive Flow Steering */
 #define VIRTIO_NET_F_CTRL_MAC_ADDR 23	/* Set MAC address */
+#define VIRTIO_NET_F_HASH_REPORT  57    /* Supports hash report */
 #define VIRTIO_NET_F_RSS	60	/* RSS supported */
 
 /*
@@ -187,6 +188,7 @@ struct virtio_hw {
 	uint8_t started;
 	uint8_t weak_barriers;
 	uint8_t vlan_strip;
+	uint8_t has_hash_report;
 	bool rx_ol_scatter;
 	uint8_t has_tx_offload;
 	uint8_t has_rx_offload;
