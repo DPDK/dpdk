@@ -5785,6 +5785,11 @@ try_again:
 	if (rc)
 		return rc;
 
+	if (bnxt_compressed_rx_cqe_mode_enabled(bp)) {
+		PMD_DRV_LOG_LINE(INFO, "Compressed CQE is set. Truflow is disabled.");
+		bp->fw_cap &= ~BNXT_FW_CAP_TRUFLOW_EN;
+	}
+
 	rc = bnxt_hwrm_queue_qportcfg(bp);
 	if (rc)
 		return rc;

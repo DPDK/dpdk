@@ -1731,7 +1731,7 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 
 	if (dev_caps_cfg &
 	    HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_CFA_TRUFLOW_SUPPORTED) {
-		PMD_DRV_LOG_LINE(DEBUG, "Host-based truflow feature enabled.");
+		PMD_DRV_LOG_LINE(DEBUG, "Host-based truflow feature supported.");
 		bp->fw_cap |= BNXT_FW_CAP_TRUFLOW_EN;
 	}
 
