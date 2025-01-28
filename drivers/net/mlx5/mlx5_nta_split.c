@@ -13,6 +13,8 @@
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 
+#define BITS_PER_BYTE	8
+
 /*
  * Generate new actions lists for prefix and suffix flows.
  *
@@ -44,11 +46,10 @@ mlx5_flow_nta_split_qrss_actions_prep(struct rte_eth_dev *dev,
 				      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_rte_flow_action_set_tag *set_tag;
+	struct rte_flow_action_modify_field *set_tag;
 	struct rte_flow_action_jump *jump;
 	const int qrss_idx = qrss - actions;
 	uint32_t flow_id = 0;
-	int ret = 0;
 
 	/* Allocate the new subflow ID and used to be matched later. */
 	mlx5_ipool_malloc(priv->sh->ipool[MLX5_IPOOL_RSS_EXPANTION_FLOW_ID], &flow_id);
@@ -67,16 +68,16 @@ mlx5_flow_nta_split_qrss_actions_prep(struct rte_eth_dev *dev,
 	/* Count MLX5_RTE_FLOW_ACTION_TYPE_TAG. */
 	actions_n++;
 	set_tag = (void *)(prefix_act + actions_n);
-	/* Reuse ASO reg, should always succeed. Consider to use REG_C_6. */
-	ret = flow_hw_get_reg_id_by_domain(dev, RTE_FLOW_ITEM_TYPE_METER_COLOR,
-					   MLX5DR_TABLE_TYPE_NIC_RX, 0);
-	MLX5_ASSERT(ret != (int)REG_NON);
-	set_tag->id = (enum modify_reg)ret;
 	/* Internal SET_TAG action to set flow ID. */
-	set_tag->data = flow_id;
+	set_tag->operation = RTE_FLOW_MODIFY_SET;
+	set_tag->width = sizeof(flow_id) * BITS_PER_BYTE;
+	set_tag->src.field = RTE_FLOW_FIELD_VALUE;
+	memcpy(&set_tag->src.value, &flow_id, sizeof(flow_id));
+	set_tag->dst.field = RTE_FLOW_FIELD_TAG;
+	set_tag->dst.tag_index = RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX;
 	/* Construct new actions array and replace QUEUE/RSS action. */
 	prefix_act[qrss_idx] = (struct rte_flow_action) {
-		.type = (enum rte_flow_action_type)MLX5_RTE_FLOW_ACTION_TYPE_TAG,
+		.type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD,
 		.conf = set_tag,
 	};
 	/* JUMP action to jump to mreg copy table (CP_TBL). */
@@ -132,8 +133,9 @@ mlx5_flow_nta_split_qrss_items_prep(struct rte_eth_dev *dev,
 	split_items[1].type = RTE_FLOW_ITEM_TYPE_END;
 	q_tag_spec->data = qrss_id;
 	q_tag_spec->id = (enum modify_reg)
-			 flow_hw_get_reg_id_by_domain(dev, RTE_FLOW_ITEM_TYPE_METER_COLOR,
-						      MLX5DR_TABLE_TYPE_NIC_RX, 0);
+			 flow_hw_get_reg_id_by_domain(dev, RTE_FLOW_ITEM_TYPE_TAG,
+						      MLX5DR_TABLE_TYPE_NIC_RX,
+						      RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX);
 	MLX5_ASSERT(q_tag_spec->id != REG_NON);
 }
 
@@ -211,12 +213,12 @@ mlx5_flow_nta_split_metadata(struct rte_eth_dev *dev,
 			return 0;
 	} else if (action_flags & MLX5_FLOW_ACTION_RSS) {
 		rss = (const struct rte_flow_action_rss *)actions->conf;
-		if (mlx5_rxq_is_hairpin(dev, rss->queue[0]))
+		if (mlx5_rxq_is_hairpin(dev, rss->queue_num))
 			return 0;
 	}
 	/* The prefix and suffix flows' actions. */
 	pefx_act_size = sizeof(struct rte_flow_action) * (actions_n + 1) +
-			sizeof(struct rte_flow_action_set_tag) +
+			sizeof(struct rte_flow_action_modify_field) +
 			sizeof(struct rte_flow_action_jump);
 	sfx_act_size = sizeof(struct rte_flow_action) * 2;
 	/* The suffix attribute. */
