@@ -8104,7 +8104,6 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 		priv->hws_rule_flushing = true;
 		flow_hw_q_flow_flush(dev, NULL);
 		priv->hws_rule_flushing = false;
-		return;
 	}
 #endif
 
