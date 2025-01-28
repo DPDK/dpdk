@@ -56,6 +56,7 @@ struct __rte_cache_aligned xsc_rxq_data {
 	uint16_t rsv1:11;
 };
 
+uint16_t xsc_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 int xsc_rxq_elts_alloc(struct xsc_rxq_data *rxq_data);
 int xsc_rxq_rss_obj_new(struct xsc_ethdev_priv *priv, uint16_t port_id);
 void xsc_rxq_rss_obj_release(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data);

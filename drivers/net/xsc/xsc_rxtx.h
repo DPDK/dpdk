@@ -175,4 +175,17 @@ struct xsc_rx_cq_info {
 	uint16_t cqe_n;
 };
 
+static __rte_always_inline int
+xsc_check_cqe_own(volatile struct xsc_cqe *cqe, const uint16_t cqe_n, const uint16_t ci)
+{
+	if (unlikely(((cqe->owner & XSC_CQE_OWNER_MASK) != ((ci >> cqe_n) & XSC_CQE_OWNER_MASK))))
+		return XSC_CQE_OWNER_HW;
+
+	rte_io_rmb();
+	if (cqe->msg_len <= 0 && cqe->is_error)
+		return XSC_CQE_OWNER_ERR;
+
+	return XSC_CQE_OWNER_SW;
+}
+
 #endif /* _XSC_RXTX_H_ */
