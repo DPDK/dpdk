@@ -12,4 +12,20 @@
 #define XSC_PCI_DEV_ID_MVHVF		0x1152
 #define XSC_PCI_DEV_ID_MVS		0x1153
 
+#define XSC_VFREP_BASE_LOGICAL_PORT	1081
+
+enum xsc_nic_mode {
+	XSC_NIC_MODE_LEGACY,
+	XSC_NIC_MODE_SWITCHDEV,
+	XSC_NIC_MODE_SOC,
+};
+
+enum xsc_pph_type {
+	XSC_PPH_NONE	= 0,
+	XSC_RX_PPH	= 0x1,
+	XSC_TX_PPH	= 0x2,
+	XSC_VFREP_PPH	= 0x4,
+	XSC_UPLINK_PPH	= 0x8,
+};
+
 #endif /* XSC_DEFS_H_ */

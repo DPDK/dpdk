@@ -12,11 +12,19 @@ static int
 xsc_ethdev_init(struct rte_eth_dev *eth_dev)
 {
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(eth_dev);
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
 	priv->eth_dev = eth_dev;
 	priv->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	ret = xsc_dev_init(priv->pci_dev, &priv->xdev);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to initialize xsc device");
+		return ret;
+	}
+	priv->xdev->port_id = eth_dev->data->port_id;
 
 	return 0;
 }
@@ -24,9 +32,11 @@ xsc_ethdev_init(struct rte_eth_dev *eth_dev)
 static int
 xsc_ethdev_uninit(struct rte_eth_dev *eth_dev)
 {
-	RTE_SET_USED(eth_dev);
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(eth_dev);
 
 	PMD_INIT_FUNC_TRACE();
+
+	xsc_dev_uninit(priv->xdev);
 
 	return 0;
 }
@@ -83,6 +93,10 @@ static struct rte_pci_driver xsc_ethdev_pci_driver = {
 
 RTE_PMD_REGISTER_PCI(net_xsc, xsc_ethdev_pci_driver);
 RTE_PMD_REGISTER_PCI_TABLE(net_xsc, xsc_ethdev_pci_id_map);
+RTE_PMD_REGISTER_PARAM_STRING(net_xsc,
+			      XSC_PPH_MODE_ARG "=<x>"
+			      XSC_NIC_MODE_ARG "=<x>"
+			      XSC_FLOW_MODE_ARG "=<x>");
 
 RTE_LOG_REGISTER_SUFFIX(xsc_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(xsc_logtype_driver, driver, NOTICE);

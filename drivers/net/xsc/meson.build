@@ -8,4 +8,5 @@ endif
 
 sources = files(
         'xsc_ethdev.c',
+        'xsc_dev.c',
 )
