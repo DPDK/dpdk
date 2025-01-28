@@ -162,6 +162,7 @@ int xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **dev);
 void xsc_dev_uninit(struct xsc_dev *xdev);
 int xsc_dev_close(struct xsc_dev *xdev, int repr_id);
 int xsc_dev_repr_ports_probe(struct xsc_dev *xdev, int nb_repr_ports, int max_eth_ports);
+int xsc_dev_rss_key_modify(struct xsc_dev *xdev, uint8_t *rss_key, uint8_t rss_key_len);
 bool xsc_dev_is_vf(struct xsc_dev *xdev);
 int xsc_dev_qp_set_id_get(struct xsc_dev *xdev, int repr_id);
 int xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac);
