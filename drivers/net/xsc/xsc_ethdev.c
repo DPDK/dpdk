@@ -9,6 +9,81 @@
 #include "xsc_ethdev.h"
 
 static int
+xsc_ethdev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			     struct rte_eth_rss_conf *rss_conf)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	if (rss_conf->rss_key != NULL && rss_conf->rss_key_len >= priv->rss_conf.rss_key_len)
+		memcpy(rss_conf->rss_key, priv->rss_conf.rss_key, priv->rss_conf.rss_key_len);
+
+	rss_conf->rss_key_len = priv->rss_conf.rss_key_len;
+	rss_conf->rss_hf = priv->rss_conf.rss_hf;
+	return 0;
+}
+
+static int
+xsc_ethdev_rss_hash_update(struct rte_eth_dev *dev,
+			   struct rte_eth_rss_conf *rss_conf)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	int ret = 0;
+
+	ret = xsc_dev_rss_key_modify(priv->xdev, rss_conf->rss_key, rss_conf->rss_key_len);
+	if (ret == 0) {
+		memcpy(priv->rss_conf.rss_key, rss_conf->rss_key,
+		       priv->rss_conf.rss_key_len);
+		priv->rss_conf.rss_key_len = rss_conf->rss_key_len;
+		priv->rss_conf.rss_hf = rss_conf->rss_hf;
+	}
+
+	return ret;
+}
+
+static int
+xsc_ethdev_configure(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	int ret;
+	struct rte_eth_rss_conf *rss_conf;
+
+	priv->num_sq = dev->data->nb_tx_queues;
+	priv->num_rq = dev->data->nb_rx_queues;
+
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
+
+	if (priv->rss_conf.rss_key == NULL) {
+		priv->rss_conf.rss_key = rte_zmalloc(NULL, XSC_RSS_HASH_KEY_LEN,
+						     RTE_CACHE_LINE_SIZE);
+		if (priv->rss_conf.rss_key == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc rss key");
+			rte_errno = ENOMEM;
+			ret = -rte_errno;
+			goto error;
+		}
+		priv->rss_conf.rss_key_len = XSC_RSS_HASH_KEY_LEN;
+	}
+
+	if (dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key != NULL) {
+		rss_conf = &dev->data->dev_conf.rx_adv_conf.rss_conf;
+		ret = xsc_ethdev_rss_hash_update(dev, rss_conf);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Xsc pmd set rss key error!");
+			rte_errno = -ENOEXEC;
+			goto error;
+		}
+	}
+
+	priv->txqs = (void *)dev->data->tx_queues;
+	priv->rxqs = (void *)dev->data->rx_queues;
+	return 0;
+
+error:
+	return -rte_errno;
+}
+
+static int
 xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uint32_t index)
 {
 	int i;
@@ -33,6 +108,12 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 	dev->data->mac_addrs[index] = *mac;
 	return 0;
 }
+
+const struct eth_dev_ops xsc_eth_dev_ops = {
+	.dev_configure = xsc_ethdev_configure,
+	.rss_hash_update = xsc_ethdev_rss_hash_update,
+	.rss_hash_conf_get = xsc_ethdev_rss_hash_conf_get,
+};
 
 static int
 xsc_ethdev_init_one_representor(struct rte_eth_dev *eth_dev, void *init_params)
@@ -88,6 +169,7 @@ xsc_ethdev_init_one_representor(struct rte_eth_dev *eth_dev, void *init_params)
 		eth_dev->data->backer_port_id = eth_dev->data->port_id;
 	}
 
+	eth_dev->dev_ops = &xsc_eth_dev_ops;
 	eth_dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 	eth_dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
 

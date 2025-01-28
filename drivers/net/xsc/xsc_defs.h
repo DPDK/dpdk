@@ -78,4 +78,19 @@ enum xsc_port_type {
 	XSC_PORT_TYPE_UNKNOWN,
 };
 
+enum xsc_tbm_cap {
+	XSC_TBM_CAP_HASH_PPH = 0,
+	XSC_TBM_CAP_RSS,
+	XSC_TBM_CAP_PP_BYPASS,
+	XSC_TBM_CAP_PCT_DROP_CONFIG,
+};
+
+enum xsc_rss_hf {
+	XSC_RSS_HASH_KEY_UPDATE = 0,
+	XSC_RSS_HASH_TEMP_UPDATE,
+	XSC_RSS_HASH_FUNC_UPDATE,
+	XSC_RSS_RXQ_UPDATE,
+	XSC_RSS_RXQ_DROP,
+};
+
 #endif /* XSC_DEFS_H_ */

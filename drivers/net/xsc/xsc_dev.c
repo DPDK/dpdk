@@ -19,6 +19,7 @@
 #include "xsc_log.h"
 #include "xsc_defs.h"
 #include "xsc_dev.h"
+#include "xsc_cmd.h"
 
 #define XSC_DEV_DEF_FLOW_MODE	7
 
@@ -72,6 +73,31 @@ xsc_dev_close(struct xsc_dev *xdev, int repr_id)
 {
 	xsc_dev_clear_pct(xdev, repr_id);
 	return xdev->dev_ops->dev_close(xdev);
+}
+
+int
+xsc_dev_rss_key_modify(struct xsc_dev *xdev, uint8_t *rss_key, uint8_t rss_key_len)
+{
+	struct xsc_cmd_modify_nic_hca_mbox_in in = {};
+	struct xsc_cmd_modify_nic_hca_mbox_out out = {};
+	uint8_t rss_caps_mask = 0;
+	int ret, key_len = 0;
+
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_MODIFY_NIC_HCA);
+
+	key_len = RTE_MIN(rss_key_len, XSC_RSS_HASH_KEY_LEN);
+	rte_memcpy(in.rss.hash_key, rss_key, key_len);
+	rss_caps_mask |= RTE_BIT32(XSC_RSS_HASH_KEY_UPDATE);
+
+	in.rss.caps_mask = rss_caps_mask;
+	in.rss.rss_en = 1;
+	in.nic.caps_mask = rte_cpu_to_be_16(RTE_BIT32(XSC_TBM_CAP_RSS));
+	in.nic.caps = in.nic.caps_mask;
+
+	ret = xsc_dev_mailbox_exec(xdev, &in, sizeof(in), &out, sizeof(out));
+	if (ret != 0 || out.hdr.status != 0)
+		return -1;
+	return 0;
 }
 
 static int
