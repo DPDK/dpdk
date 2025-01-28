@@ -63,6 +63,39 @@ xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
 }
 
 int
+xsc_dev_set_link_up(struct xsc_dev *xdev)
+{
+	if (xdev->dev_ops->set_link_up == NULL)
+		return -ENOTSUP;
+
+	return xdev->dev_ops->set_link_up(xdev);
+}
+
+int
+xsc_dev_set_link_down(struct xsc_dev *xdev)
+{
+	if (xdev->dev_ops->set_link_down == NULL)
+		return -ENOTSUP;
+
+	return xdev->dev_ops->set_link_down(xdev);
+}
+
+int
+xsc_dev_link_update(struct xsc_dev *xdev, uint8_t funcid_type, int wait_to_complete)
+{
+	if (xdev->dev_ops->link_update == NULL)
+		return -ENOTSUP;
+
+	return xdev->dev_ops->link_update(xdev, funcid_type, wait_to_complete);
+}
+
+int
+xsc_dev_set_mtu(struct xsc_dev *xdev, uint16_t mtu)
+{
+	return xdev->dev_ops->set_mtu(xdev, mtu);
+}
+
+int
 xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac)
 {
 	return xdev->dev_ops->get_mac(xdev, mac);
