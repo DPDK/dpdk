@@ -22,7 +22,15 @@ from dataclasses import dataclass, field
 from enum import Flag, auto
 from os import environ
 from pathlib import PurePath
-from typing import TYPE_CHECKING, Any, ClassVar, Concatenate, ParamSpec, TypeAlias
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ClassVar,
+    Concatenate,
+    Literal,
+    ParamSpec,
+    TypeAlias,
+)
 
 if TYPE_CHECKING or environ.get("DTS_DOC_BUILD"):
     from enum import Enum as NoAliasEnum
@@ -701,6 +709,48 @@ class TestPmdPortStats(TextParser):
     tx_pps: int = field(metadata=TextParser.find_int(r"Tx-pps:\s+(\d+)"))
     #:
     tx_bps: int = field(metadata=TextParser.find_int(r"Tx-bps:\s+(\d+)"))
+
+
+@dataclass(kw_only=True)
+class FlowRule:
+    """Class representation of flow rule parameters.
+
+    This class represents the parameters of any flow rule as per the
+    following pattern:
+
+    [group {group_id}] [priority {level}] [ingress] [egress]
+    [user_id {user_id}] pattern {item} [/ {item} [...]] / end
+    actions {action} [/ {action} [...]] / end
+    """
+
+    #:
+    group_id: int | None = None
+    #:
+    priority_level: int | None = None
+    #:
+    direction: Literal["ingress", "egress"]
+    #:
+    user_id: int | None = None
+    #:
+    pattern: list[str]
+    #:
+    actions: list[str]
+
+    def __str__(self) -> str:
+        """Returns the string representation of this instance."""
+        ret = ""
+        pattern = " / ".join(self.pattern)
+        action = " / ".join(self.actions)
+        if self.group_id is not None:
+            ret += f"group {self.group_id} "
+        if self.priority_level is not None:
+            ret += f"priority {self.priority_level} "
+        ret += f"{self.direction} "
+        if self.user_id is not None:
+            ret += f"user_id {self.user_id} "
+        ret += f"pattern {pattern} / end "
+        ret += f"actions {action} / end"
+        return ret
 
 
 class PacketOffloadFlag(Flag):
