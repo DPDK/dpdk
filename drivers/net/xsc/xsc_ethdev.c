@@ -364,6 +364,41 @@ xsc_ethdev_close(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+xsc_ethdev_set_link_up(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_dev *xdev = priv->xdev;
+
+	return xsc_dev_set_link_up(xdev);
+}
+
+static int
+xsc_ethdev_set_link_down(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_dev *xdev = priv->xdev;
+
+	return xsc_dev_set_link_down(xdev);
+}
+
+static int
+xsc_ethdev_link_update(struct rte_eth_dev *dev,
+		       int wait_to_complete)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_dev *xdev = priv->xdev;
+	int ret = 0;
+
+	ret = xsc_dev_link_update(xdev, priv->funcid_type, wait_to_complete);
+	if (ret == 0) {
+		dev->data->dev_link = xdev->pf_dev_link;
+		dev->data->dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
+				  RTE_ETH_LINK_SPEED_FIXED);
+	}
+	return ret;
+}
+
 static uint64_t
 xsc_get_rx_queue_offloads(struct rte_eth_dev *dev)
 {
@@ -504,6 +539,27 @@ xsc_ethdev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 }
 
 static int
+xsc_ethdev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	int ret = 0;
+
+	if (priv->eth_type != RTE_ETH_REPRESENTOR_PF) {
+		priv->mtu = mtu;
+		return 0;
+	}
+
+	ret = xsc_dev_set_mtu(priv->xdev, mtu);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Mtu set to %u failure", mtu);
+		return -EAGAIN;
+	}
+
+	priv->mtu = mtu;
+	return 0;
+}
+
+static int
 xsc_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
@@ -606,7 +662,10 @@ const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
 	.dev_start = xsc_ethdev_start,
 	.dev_stop = xsc_ethdev_stop,
+	.dev_set_link_up = xsc_ethdev_set_link_up,
+	.dev_set_link_down = xsc_ethdev_set_link_down,
 	.dev_close = xsc_ethdev_close,
+	.link_update = xsc_ethdev_link_update,
 	.stats_get = xsc_ethdev_stats_get,
 	.stats_reset = xsc_ethdev_stats_reset,
 	.dev_infos_get = xsc_ethdev_infos_get,
@@ -614,6 +673,7 @@ const struct eth_dev_ops xsc_eth_dev_ops = {
 	.tx_queue_setup = xsc_ethdev_tx_queue_setup,
 	.rx_queue_release = xsc_ethdev_rxq_release,
 	.tx_queue_release = xsc_ethdev_txq_release,
+	.mtu_set = xsc_ethdev_set_mtu,
 	.rss_hash_update = xsc_ethdev_rss_hash_update,
 	.rss_hash_conf_get = xsc_ethdev_rss_hash_conf_get,
 };

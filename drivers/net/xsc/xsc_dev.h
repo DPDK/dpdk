@@ -158,6 +158,9 @@ struct xsc_dev_ops {
 int xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
 			 int in_len, void *data_out, int out_len);
 void xsc_dev_ops_register(struct xsc_dev_ops *new_ops);
+int xsc_dev_set_link_up(struct xsc_dev *xdev);
+int xsc_dev_set_link_down(struct xsc_dev *xde);
+int xsc_dev_link_update(struct xsc_dev *xdev, uint8_t funcid_type, int wait_to_complete);
 int xsc_dev_destroy_qp(struct xsc_dev *xdev, void *qp);
 int xsc_dev_destroy_cq(struct xsc_dev *xdev, void *cq);
 int xsc_dev_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcode);
@@ -175,6 +178,7 @@ int xsc_dev_repr_ports_probe(struct xsc_dev *xdev, int nb_repr_ports, int max_et
 int xsc_dev_rss_key_modify(struct xsc_dev *xdev, uint8_t *rss_key, uint8_t rss_key_len);
 bool xsc_dev_is_vf(struct xsc_dev *xdev);
 int xsc_dev_qp_set_id_get(struct xsc_dev *xdev, int repr_id);
+int xsc_dev_set_mtu(struct xsc_dev *xdev, uint16_t mtu);
 int xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac);
 
 #endif /* _XSC_DEV_H_ */
