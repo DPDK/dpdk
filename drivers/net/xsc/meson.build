@@ -9,4 +9,5 @@ endif
 sources = files(
         'xsc_ethdev.c',
         'xsc_dev.c',
+        'xsc_vfio_mbox.c',
 )

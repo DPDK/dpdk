@@ -5,6 +5,8 @@
 #ifndef XSC_DEFS_H_
 #define XSC_DEFS_H_
 
+#define XSC_PAGE_SIZE			4096
+
 #define XSC_PCI_VENDOR_ID		0x1f67
 #define XSC_PCI_DEV_ID_MS		0x1111
 #define XSC_PCI_DEV_ID_MSVF		0x1112
