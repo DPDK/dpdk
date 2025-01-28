@@ -1080,6 +1080,16 @@ F: drivers/net/avp/
 F: doc/guides/nics/avp.rst
 F: doc/guides/nics/features/avp.ini
 
+Yunsilicon xsc
+M: Renyong Wan <wanry@yunsilicon.com>
+M: Na Na <nana@yunsilicon.com>
+M: Rong Qian <qianr@yunsilicon.com>
+M: Xiaoxiong Zhang <zhangxx@yunsilicon.com>
+M: Dongwei Xu <xudw@yunsilicon.com>
+F: drivers/net/xsc/
+F: doc/guides/nics/xsc.rst
+F: doc/guides/nics/features/xsc.ini
+
 ZTE zxdh - EXPERIMENTAL
 M: Junlong Wang <wang.junlong1@zte.com.cn>
 M: Lijie Shan <shan.lijie@zte.com.cn>
