@@ -7,6 +7,39 @@
 
 #include <rte_byteorder.h>
 
+#define XSC_CQE_OWNER_MASK		0x1
+#define XSC_CQE_OWNER_HW		0x2
+#define XSC_CQE_OWNER_SW		0x4
+#define XSC_CQE_OWNER_ERR		0x8
+#define XSC_OPCODE_RAW			0x7
+
+struct __rte_packed_begin xsc_send_wqe_ctrl_seg {
+	rte_le32_t	msg_opcode:8;
+	rte_le32_t	with_immdt:1;
+	rte_le32_t	csum_en:2;
+	rte_le32_t	ds_data_num:5;
+	rte_le32_t	wqe_id:16;
+	rte_le32_t	msg_len;
+	union {
+		rte_le32_t		opcode_data;
+		struct {
+			rte_le16_t	has_pph:1;
+			rte_le16_t	so_type:1;
+			rte_le16_t	so_data_size:14;
+			rte_le16_t	rsv1:8;
+			rte_le16_t	so_hdr_len:8;
+		};
+		struct {
+			rte_le16_t	desc_id;
+			rte_le16_t	is_last_wqe:1;
+			rte_le16_t	dst_qp_id:15;
+		};
+	};
+	rte_le32_t	se:1;
+	rte_le32_t	ce:1;
+	rte_le32_t	rsv2:30;
+} __rte_packed_end;
+
 struct __rte_packed_begin xsc_wqe_data_seg {
 	union {
 		struct {
@@ -24,6 +57,17 @@ struct __rte_packed_begin xsc_wqe_data_seg {
 			uint8_t		len:7;
 			uint8_t		in_line_data[15];
 		};
+	};
+} __rte_packed_end;
+
+struct __rte_packed_begin xsc_wqe {
+	union {
+		struct xsc_send_wqe_ctrl_seg cseg;
+		uint32_t ctrl[4];
+	};
+	union {
+		struct xsc_wqe_data_seg dseg[XSC_SEND_WQE_DS];
+		uint8_t data[XSC_ESEG_EXTRA_DATA_SIZE];
 	};
 } __rte_packed_end;
 
@@ -52,6 +96,11 @@ struct __rte_packed_begin xsc_cqe {
 	rte_le16_t	rsv3:15;
 	rte_le16_t	owner:1;
 } __rte_packed_end;
+
+struct xsc_cqe_u64 {
+	struct xsc_cqe cqe0;
+	struct xsc_cqe cqe1;
+};
 
 struct xsc_tx_cq_params {
 	uint16_t port_id;

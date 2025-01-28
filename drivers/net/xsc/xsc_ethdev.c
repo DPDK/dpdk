@@ -7,6 +7,8 @@
 #include "xsc_log.h"
 #include "xsc_defs.h"
 #include "xsc_ethdev.h"
+#include "xsc_rx.h"
+#include "xsc_tx.h"
 
 static int
 xsc_ethdev_rss_hash_conf_get(struct rte_eth_dev *dev,
@@ -84,6 +86,85 @@ error:
 }
 
 static int
+xsc_ethdev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+			  uint32_t socket, const struct rte_eth_rxconf *conf,
+			  struct rte_mempool *mp)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_rxq_data *rxq_data = NULL;
+	uint16_t desc_n;
+	uint16_t rx_free_thresh;
+	uint64_t offloads = conf->offloads | dev->data->dev_conf.rxmode.offloads;
+
+	desc = (desc > XSC_MAX_DESC_NUMBER) ? XSC_MAX_DESC_NUMBER : desc;
+	desc_n = desc;
+
+	if (!rte_is_power_of_2(desc))
+		desc_n = 1 << rte_log2_u32(desc);
+
+	rxq_data = rte_malloc_socket(NULL, sizeof(*rxq_data) + desc_n * sizeof(struct rte_mbuf *),
+				     RTE_CACHE_LINE_SIZE, socket);
+	if (rxq_data == NULL) {
+		PMD_DRV_LOG(ERR, "Port %u create rxq idx %d failure",
+			    dev->data->port_id, idx);
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+	rxq_data->idx = idx;
+	rxq_data->priv = priv;
+	(*priv->rxqs)[idx] = rxq_data;
+
+	rx_free_thresh = (conf->rx_free_thresh) ? conf->rx_free_thresh : XSC_RX_FREE_THRESH;
+	rxq_data->rx_free_thresh = rx_free_thresh;
+
+	rxq_data->elts = (struct rte_mbuf *(*)[desc_n])(rxq_data + 1);
+	rxq_data->mp = mp;
+	rxq_data->socket = socket;
+
+	rxq_data->csum = !!(offloads & RTE_ETH_RX_OFFLOAD_CHECKSUM);
+	rxq_data->hw_timestamp = !!(offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP);
+	rxq_data->crc_present = 0;
+
+	rxq_data->wqe_n = rte_log2_u32(desc_n);
+	rxq_data->wqe_s = desc_n;
+	rxq_data->wqe_m = desc_n - 1;
+
+	rxq_data->port_id = dev->data->port_id;
+	dev->data->rx_queues[idx] = rxq_data;
+	return 0;
+}
+
+static int
+xsc_ethdev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
+			  uint32_t socket, const struct rte_eth_txconf *conf)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_txq_data *txq;
+	uint16_t desc_n;
+
+	desc = (desc > XSC_MAX_DESC_NUMBER) ? XSC_MAX_DESC_NUMBER : desc;
+	desc_n = desc;
+
+	if (!rte_is_power_of_2(desc))
+		desc_n = 1 << rte_log2_u32(desc);
+
+	txq = rte_malloc_socket(NULL, sizeof(*txq) + desc_n * sizeof(struct rte_mbuf *),
+				RTE_CACHE_LINE_SIZE, socket);
+	txq->offloads = conf->offloads | dev->data->dev_conf.txmode.offloads;
+	txq->priv = priv;
+	txq->socket = socket;
+
+	txq->elts_n = rte_log2_u32(desc_n);
+	txq->elts_s = desc_n;
+	txq->elts_m = desc_n - 1;
+	txq->port_id = dev->data->port_id;
+	txq->idx = idx;
+
+	(*priv->txqs)[idx] = txq;
+	return 0;
+}
+
+static int
 xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uint32_t index)
 {
 	int i;
@@ -111,6 +192,8 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 
 const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
+	.rx_queue_setup = xsc_ethdev_rx_queue_setup,
+	.tx_queue_setup = xsc_ethdev_tx_queue_setup,
 	.rss_hash_update = xsc_ethdev_rss_hash_update,
 	.rss_hash_conf_get = xsc_ethdev_rss_hash_conf_get,
 };
