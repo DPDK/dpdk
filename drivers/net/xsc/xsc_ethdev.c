@@ -87,6 +87,44 @@ error:
 	return -rte_errno;
 }
 
+static void
+xsc_ethdev_txq_release(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_txq_data *txq_data = xsc_txq_get(priv, idx);
+
+	if (txq_data == NULL)
+		return;
+
+	xsc_dev_set_qpsetid(priv->xdev, txq_data->qpn, 0);
+	xsc_txq_obj_release(priv->xdev, txq_data);
+	rte_free(txq_data->fcqs);
+	txq_data->fcqs = NULL;
+	xsc_txq_elts_free(txq_data);
+	rte_free(txq_data);
+	(*priv->txqs)[idx] = NULL;
+
+	dev->data->tx_queues[idx] = NULL;
+	dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+}
+
+static void
+xsc_ethdev_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_rxq_data *rxq_data = xsc_rxq_get(priv, idx);
+
+	if (rxq_data == NULL)
+		return;
+	xsc_rxq_rss_obj_release(priv->xdev, rxq_data);
+	xsc_rxq_elts_free(rxq_data);
+	rte_free(rxq_data);
+	(*priv->rxqs)[idx] = NULL;
+
+	dev->data->rx_queues[idx] = NULL;
+	dev->data->rx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
+}
+
 static int
 xsc_ethdev_enable(struct rte_eth_dev *dev)
 {
@@ -147,6 +185,30 @@ xsc_ethdev_enable(struct rte_eth_dev *dev)
 	}
 
 	return 0;
+}
+
+static void
+xsc_rxq_stop(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	uint16_t i;
+
+	for (i = 0; i != priv->num_rq; ++i)
+		xsc_ethdev_rxq_release(dev, i);
+	priv->rxqs = NULL;
+	priv->flags &= ~XSC_FLAG_RX_QUEUE_INIT;
+}
+
+static void
+xsc_txq_stop(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	uint16_t i;
+
+	for (i = 0; i != priv->num_sq; ++i)
+		xsc_ethdev_txq_release(dev, i);
+	priv->txqs = NULL;
+	priv->flags &= ~XSC_FLAG_TX_QUEUE_INIT;
 }
 
 static int
@@ -253,7 +315,49 @@ xsc_ethdev_start(struct rte_eth_dev *dev)
 
 error:
 	dev->data->dev_started = 0;
+	xsc_txq_stop(dev);
+	xsc_rxq_stop(dev);
 	return -rte_errno;
+}
+
+static int
+xsc_ethdev_stop(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	uint16_t i;
+
+	PMD_DRV_LOG(DEBUG, "Port %u stopping", dev->data->port_id);
+	dev->data->dev_started = 0;
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+	rte_wmb();
+
+	rte_delay_us_sleep(1000 * priv->num_rq);
+	for (i = 0; i < priv->num_rq; ++i)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < priv->num_sq; ++i)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	return 0;
+}
+
+static int
+xsc_ethdev_close(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	PMD_DRV_LOG(DEBUG, "Port %u closing", dev->data->port_id);
+	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
+	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+	rte_wmb();
+
+	xsc_txq_stop(dev);
+	xsc_rxq_stop(dev);
+
+	rte_free(priv->rss_conf.rss_key);
+	xsc_dev_close(priv->xdev, priv->representor_id);
+	dev->data->mac_addrs = NULL;
+	return 0;
 }
 
 static int
@@ -364,8 +468,12 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
 	.dev_start = xsc_ethdev_start,
+	.dev_stop = xsc_ethdev_stop,
+	.dev_close = xsc_ethdev_close,
 	.rx_queue_setup = xsc_ethdev_rx_queue_setup,
 	.tx_queue_setup = xsc_ethdev_tx_queue_setup,
+	.rx_queue_release = xsc_ethdev_rxq_release,
+	.tx_queue_release = xsc_ethdev_txq_release,
 	.rss_hash_update = xsc_ethdev_rss_hash_update,
 	.rss_hash_conf_get = xsc_ethdev_rss_hash_conf_get,
 };
