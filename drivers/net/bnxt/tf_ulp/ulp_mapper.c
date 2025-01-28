@@ -1359,8 +1359,7 @@ ulp_mapper_key_recipe_tbl_deinit(struct bnxt_ulp_mapper_data *mdata)
 			recipes = mdata->key_recipe_info.recipes[dir][ftype];
 			for (idx = 0; idx < mdata->key_recipe_info.num_recipes;
 			      idx++) {
-				if (recipes[idx])
-					rte_free(recipes[idx]);
+				rte_free(recipes[idx]);
 			}
 			rte_free(mdata->key_recipe_info.recipes[dir][ftype]);
 			mdata->key_recipe_info.recipes[dir][ftype] = NULL;
