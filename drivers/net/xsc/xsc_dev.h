@@ -15,6 +15,7 @@
 #include "xsc_defs.h"
 #include "xsc_log.h"
 #include "xsc_rxtx.h"
+#include "xsc_np.h"
 
 #define XSC_PPH_MODE_ARG	"pph_mode"
 #define XSC_NIC_MODE_ARG	"nic_mode"
@@ -154,6 +155,8 @@ struct xsc_dev_ops {
 			    int in_len, void *data_out, int out_len);
 };
 
+int xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
+			 int in_len, void *data_out, int out_len);
 void xsc_dev_ops_register(struct xsc_dev_ops *new_ops);
 int xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **dev);
 void xsc_dev_uninit(struct xsc_dev *xdev);
