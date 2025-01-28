@@ -13,18 +13,14 @@ ODM DMA device can support up to 32 queues and 16 VFs.
 Device Setup
 ------------
 
-ODM DMA device is initialized by kernel PF driver.
-The PF kernel driver is part of Marvell software packages for Odyssey.
+The ODM DMA device is initialized by the ODM PF driver application,
+which is responsible for configuring the device and creating VFs.
 
-Kernel module can be inserted as in below example::
+The driver can be downloaded from GitHub using the following link
+`<https://github.com/MarvellEmbeddedProcessors/odm_pf_driver>`_
 
-   sudo insmod odyssey_odm.ko
-
-ODM DMA device can support up to 16 VFs::
-
-   sudo echo 16 > /sys/bus/pci/devices/0000\:08\:00.0/sriov_numvfs
-
-Above command creates 16 VFs with 2 queues each.
+Instructions for enabling the ODM PF driver are provided in the repository's
+README file.
 
 The ``dpdk-devbind.py`` script, included with DPDK,
 can be used to show the presence of supported hardware.
@@ -59,18 +55,19 @@ for details on operation enqueue and submission API usage.
 Performance Tuning Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To achieve higher performance, DMA device needs to be tuned
-using PF kernel driver module parameters.
+To achieve higher performance, the DMA device needs to be tuned
+using the parameters provided by the PF driver application.
 
-Following options are exposed by kernel PF driver via devlink interface
-for tuning performance.
+The following configuration parameters are exposed
+by the ODM PF driver application:
 
-``eng_sel``
+``ENG_SEL``
 
   ODM DMA device has 2 engines internally. Engine to queue mapping is decided
-  by a hardware register which can be configured as below::
+  by a hardware register which can be configured
+  by updating the configuration file::
 
-     /sbin/devlink dev param set pci/0000:08:00.0 name eng_sel value 3435973836 cmode runtime
+     ENG_SEL="0xCCCCCCCC"
 
   Each bit in the register corresponds to one queue.
   Each queue would be associated with one engine.
@@ -81,11 +78,3 @@ for tuning performance.
   ``1100 1100 1100 1100 1100 1100 1100 1100``
   which allows for alternate engines to be used with alternate VFs
   (assuming the system has 16 VFs with 2 queues each).
-
-``max_load_request``
-
-  Specifies maximum outstanding load requests on internal bus.
-  Values can range from 1 to 512.
-  Set to 512 for maximum requests in flight.::
-
-     /sbin/devlink dev param set pci/0000:08:00.0 name max_load_request value 512 cmode runtime
