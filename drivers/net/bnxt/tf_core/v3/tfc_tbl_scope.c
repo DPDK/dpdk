@@ -1668,10 +1668,8 @@ int tfc_tbl_scope_cpm_alloc(struct tfc *tfcp, uint8_t tsid,
 	return 0;
 
  cleanup:
-	if (cmm_lkup != NULL)
-		rte_free(cmm_lkup);
-	if (cmm_act != NULL)
-		rte_free(cmm_act);
+	rte_free(cmm_lkup);
+	rte_free(cmm_act);
 
 	return rc;
 }
