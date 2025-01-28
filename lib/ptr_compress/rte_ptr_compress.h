@@ -134,7 +134,7 @@ rte_ptr_compress_32_shift(void *ptr_base, void * const *src_table,
 	svuint64_t v_ptr_table;
 	do {
 		svbool_t pg = svwhilelt_b64(i, n);
-		v_ptr_table = svld1_u64(pg, (uint64_t *)src_table + i);
+		v_ptr_table = svld1_u64(pg, (const uint64_t *)src_table + i);
 		v_ptr_table = svsub_x(pg, v_ptr_table, (uint64_t)ptr_base);
 		v_ptr_table = svlsr_x(pg, v_ptr_table, bit_shift);
 		svst1w(pg, &dest_table[i], v_ptr_table);
@@ -260,7 +260,7 @@ rte_ptr_compress_16_shift(void *ptr_base, void * const *src_table,
 	svuint64_t v_ptr_table;
 	do {
 		svbool_t pg = svwhilelt_b64(i, n);
-		v_ptr_table = svld1_u64(pg, (uint64_t *)src_table + i);
+		v_ptr_table = svld1_u64(pg, (const uint64_t *)src_table + i);
 		v_ptr_table = svsub_x(pg, v_ptr_table, (uint64_t)ptr_base);
 		v_ptr_table = svlsr_x(pg, v_ptr_table, bit_shift);
 		svst1h(pg, &dest_table[i], v_ptr_table);
