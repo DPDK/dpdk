@@ -54,8 +54,17 @@ xsc_dev_ops_register(struct xsc_dev_ops *new_ops)
 }
 
 int
-xsc_dev_close(struct xsc_dev *xdev, int __rte_unused repr_id)
+xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
+		     int in_len, void *data_out, int out_len)
 {
+	return xdev->dev_ops->mailbox_exec(xdev, data_in, in_len,
+					   data_out, out_len);
+}
+
+int
+xsc_dev_close(struct xsc_dev *xdev, int repr_id)
+{
+	xsc_dev_clear_pct(xdev, repr_id);
 	return xdev->dev_ops->dev_close(xdev);
 }
 
@@ -121,6 +130,7 @@ void
 xsc_dev_uninit(struct xsc_dev *xdev)
 {
 	PMD_INIT_FUNC_TRACE();
+	xsc_dev_pct_uninit();
 	xsc_dev_close(xdev, XSC_DEV_REPR_ID_INVALID);
 	rte_free(xdev);
 }
@@ -155,6 +165,13 @@ xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **xdev)
 	ret = xsc_dev_alloc_vfos_info(d);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to alloc vfos info");
+		ret = -EINVAL;
+		goto hwinfo_init_fail;
+	}
+
+	ret = xsc_dev_pct_init();
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to init xsc pct");
 		ret = -EINVAL;
 		goto hwinfo_init_fail;
 	}
