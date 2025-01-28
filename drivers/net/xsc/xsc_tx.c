@@ -91,3 +91,36 @@ xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
 error:
 	return -rte_errno;
 }
+
+void
+xsc_txq_obj_release(struct xsc_dev *xdev, struct xsc_txq_data *txq_data)
+{
+	PMD_DRV_LOG(DEBUG, "Destroy tx queue %u, portid %u",
+		    txq_data->idx, txq_data->port_id);
+	if (txq_data->qp != NULL)
+		xsc_dev_destroy_qp(xdev, txq_data->qp);
+	if (txq_data->cq != NULL)
+		xsc_dev_destroy_cq(xdev, txq_data->cq);
+}
+
+void
+xsc_txq_elts_free(struct xsc_txq_data *txq_data)
+{
+	const uint16_t elts_n = 1 << txq_data->elts_n;
+	const uint16_t elts_m = elts_n - 1;
+	uint16_t elts_head = txq_data->elts_head;
+	uint16_t elts_tail = txq_data->elts_tail;
+	struct rte_mbuf *(*elts)[elts_n] = &txq_data->elts;
+
+	txq_data->elts_head = 0;
+	txq_data->elts_tail = 0;
+	txq_data->elts_comp = 0;
+
+	while (elts_tail != elts_head) {
+		struct rte_mbuf *elt = (*elts)[elts_tail & elts_m];
+
+		rte_pktmbuf_free_seg(elt);
+		++elts_tail;
+	}
+	PMD_DRV_LOG(DEBUG, "Port %u txq %u free elts", txq_data->port_id, txq_data->idx);
+}

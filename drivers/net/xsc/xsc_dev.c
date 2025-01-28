@@ -69,6 +69,18 @@ xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac)
 }
 
 int
+xsc_dev_destroy_qp(struct xsc_dev *xdev, void *qp)
+{
+	return xdev->dev_ops->destroy_qp(qp);
+}
+
+int
+xsc_dev_destroy_cq(struct xsc_dev *xdev, void *cq)
+{
+	return xdev->dev_ops->destroy_cq(cq);
+}
+
+int
 xsc_dev_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcode)
 {
 	return xdev->dev_ops->modify_qp_status(xdev, qpn, num, opcode);

@@ -289,3 +289,50 @@ error:
 
 	return -rte_errno;
 }
+
+void
+xsc_rxq_elts_free(struct xsc_rxq_data *rxq_data)
+{
+	uint16_t i;
+
+	if (rxq_data->elts == NULL)
+		return;
+	for (i = 0; i != rxq_data->wqe_s; ++i) {
+		if ((*rxq_data->elts)[i] != NULL)
+			rte_pktmbuf_free_seg((*rxq_data->elts)[i]);
+		(*rxq_data->elts)[i] = NULL;
+	}
+
+	PMD_DRV_LOG(DEBUG, "Port %u rxq %u free elts", rxq_data->port_id, rxq_data->idx);
+}
+
+void
+xsc_rxq_rss_obj_release(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
+{
+	struct xsc_cmd_destroy_qp_mbox_in in = { .hdr = { 0 } };
+	struct xsc_cmd_destroy_qp_mbox_out out = { .hdr = { 0 } };
+	int ret, in_len, out_len;
+	uint32_t qpn = rxq_data->qpn;
+
+	xsc_dev_modify_qp_status(xdev, qpn, 1, XSC_CMD_OP_QP_2RST);
+
+	in_len = sizeof(struct xsc_cmd_destroy_qp_mbox_in);
+	out_len = sizeof(struct xsc_cmd_destroy_qp_mbox_out);
+	in.hdr.opcode = rte_cpu_to_be_16(XSC_CMD_OP_DESTROY_QP);
+	in.qpn = rte_cpu_to_be_32(rxq_data->qpn);
+
+	ret = xsc_dev_mailbox_exec(xdev, &in, in_len, &out, out_len);
+	if (ret != 0 || out.hdr.status != 0) {
+		PMD_DRV_LOG(ERR,
+			    "Release rss rq failed, port id=%d, qid=%d, err=%d, out.status=%u",
+			    rxq_data->port_id, rxq_data->idx, ret, out.hdr.status);
+		rte_errno = ENOEXEC;
+		return;
+	}
+
+	rte_memzone_free(rxq_data->rq_pas);
+
+	if (rxq_data->cq != NULL)
+		xsc_dev_destroy_cq(xdev, rxq_data->cq);
+	rxq_data->cq = NULL;
+}
