@@ -309,6 +309,9 @@ xsc_ethdev_start(struct rte_eth_dev *dev)
 	}
 
 	dev->data->dev_started = 1;
+
+	dev->rx_pkt_burst = xsc_rx_burst;
+
 	ret = xsc_ethdev_enable(dev);
 
 	return 0;

@@ -13,6 +13,180 @@
 
 #define XSC_MAX_RECV_LEN 9800
 
+static inline void
+xsc_cq_to_mbuf(struct xsc_rxq_data *rxq, struct rte_mbuf *pkt,
+	       volatile struct xsc_cqe *cqe)
+{
+	uint32_t rss_hash_res = 0;
+
+	pkt->port = rxq->port_id;
+	if (rxq->rss_hash) {
+		rss_hash_res = rte_be_to_cpu_32(cqe->vni);
+		if (rss_hash_res) {
+			pkt->hash.rss = rss_hash_res;
+			pkt->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+		}
+	}
+}
+
+static inline int
+xsc_rx_poll_len(struct xsc_rxq_data *rxq, volatile struct xsc_cqe *cqe)
+{
+	int len;
+
+	do {
+		len = 0;
+		int ret;
+
+		ret = xsc_check_cqe_own(cqe, rxq->cqe_n, rxq->cq_ci);
+		if (unlikely(ret != XSC_CQE_OWNER_SW)) {
+			if (unlikely(ret == XSC_CQE_OWNER_ERR)) {
+				++rxq->stats.rx_errors;
+				if (ret == XSC_CQE_OWNER_HW || ret == -1)
+					return 0;
+			} else {
+				return 0;
+			}
+		}
+
+		rxq->cq_ci += 1;
+		len = rte_le_to_cpu_32(cqe->msg_len);
+		return len;
+	} while (1);
+}
+
+static __rte_always_inline void
+xsc_pkt_info_sync(struct rte_mbuf *rep, struct rte_mbuf *seg)
+{
+	if (rep != NULL && seg != NULL) {
+		rep->data_len = seg->data_len;
+		rep->pkt_len = seg->pkt_len;
+		rep->data_off = seg->data_off;
+		rep->port = seg->port;
+	}
+}
+
+uint16_t
+xsc_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
+{
+	struct xsc_rxq_data *rxq = dpdk_rxq;
+	const uint32_t wqe_m = rxq->wqe_m;
+	const uint32_t cqe_m = rxq->cqe_m;
+	const uint32_t sge_n = rxq->sge_n;
+	struct rte_mbuf *pkt = NULL;
+	struct rte_mbuf *seg = NULL;
+	volatile struct xsc_cqe *cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_m];
+	uint32_t nb_pkts = 0;
+	uint64_t nb_bytes = 0;
+	uint32_t rq_ci = rxq->rq_ci;
+	int len = 0;
+	uint32_t cq_ci_two = 0;
+	int valid_cqe_num = 0;
+	int cqe_msg_len = 0;
+	volatile struct xsc_cqe_u64 *cqe_u64 = NULL;
+	struct rte_mbuf *rep;
+
+	while (pkts_n) {
+		uint32_t idx = rq_ci & wqe_m;
+		volatile struct xsc_wqe_data_seg *wqe =
+			&((volatile struct xsc_wqe_data_seg *)rxq->wqes)[idx << sge_n];
+
+		seg = (*rxq->elts)[idx];
+		rte_prefetch0(cqe);
+		rte_prefetch0(wqe);
+
+		rep = rte_mbuf_raw_alloc(seg->pool);
+		if (unlikely(rep == NULL)) {
+			++rxq->stats.rx_nombuf;
+			break;
+		}
+
+		if (!pkt) {
+			if (valid_cqe_num) {
+				cqe = cqe + 1;
+				len = cqe_msg_len;
+				valid_cqe_num = 0;
+			} else if ((rxq->cq_ci % 2 == 0) && (pkts_n > 1)) {
+				cq_ci_two = (rxq->cq_ci & rxq->cqe_m) / 2;
+				cqe_u64 = &(*rxq->cqes_u64)[cq_ci_two];
+				cqe = (volatile struct xsc_cqe *)cqe_u64;
+				len = xsc_rx_poll_len(rxq, cqe);
+				if (len > 0) {
+					cqe_msg_len = xsc_rx_poll_len(rxq, cqe + 1);
+					if (cqe_msg_len > 0)
+						valid_cqe_num = 1;
+				}
+			} else {
+				cqe = &(*rxq->cqes)[rxq->cq_ci & rxq->cqe_m];
+				len = xsc_rx_poll_len(rxq, cqe);
+			}
+
+			if (!len) {
+				rte_mbuf_raw_free(rep);
+				break;
+			}
+
+			if (len > rte_pktmbuf_data_len(seg)) {
+				rte_mbuf_raw_free(rep);
+				pkt = NULL;
+				++rq_ci;
+				continue;
+			}
+
+			pkt = seg;
+			pkt->ol_flags &= RTE_MBUF_F_EXTERNAL;
+			xsc_cq_to_mbuf(rxq, pkt, cqe);
+
+			if (rxq->crc_present)
+				len -= RTE_ETHER_CRC_LEN;
+			rte_pktmbuf_pkt_len(pkt) = len;
+		}
+
+		xsc_pkt_info_sync(rep, seg);
+		(*rxq->elts)[idx] = rep;
+
+		/* Fill wqe */
+		wqe->va = rte_cpu_to_le_64(rte_pktmbuf_iova(rep));
+		rte_pktmbuf_data_len(seg) = len;
+		nb_bytes += rte_pktmbuf_pkt_len(pkt);
+
+		*(pkts++) = pkt;
+		pkt = NULL;
+		--pkts_n;
+		++nb_pkts;
+		++rq_ci;
+	}
+
+	if (unlikely(nb_pkts == 0 && rq_ci == rxq->rq_ci))
+		return 0;
+
+	rxq->rq_ci = rq_ci;
+	rxq->nb_rx_hold += nb_pkts;
+
+	if (rxq->nb_rx_hold >= rxq->rx_free_thresh) {
+		union xsc_cq_doorbell cq_db = {
+			.cq_data = 0
+		};
+		cq_db.next_cid = rxq->cq_ci;
+		cq_db.cq_num = rxq->cqn;
+
+		union xsc_recv_doorbell rq_db = {
+			.recv_data = 0
+		};
+		rq_db.next_pid = (rxq->rq_ci << sge_n);
+		rq_db.qp_num = rxq->qpn;
+
+		rte_write32(rte_cpu_to_le_32(cq_db.cq_data), rxq->cq_db);
+		rte_write32(rte_cpu_to_le_32(rq_db.recv_data), rxq->rq_db);
+		rxq->nb_rx_hold = 0;
+	}
+
+	rxq->stats.rx_pkts += nb_pkts;
+	rxq->stats.rx_bytes += nb_bytes;
+
+	return nb_pkts;
+}
+
 static void
 xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 {
