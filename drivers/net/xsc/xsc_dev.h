@@ -14,6 +14,7 @@
 
 #include "xsc_defs.h"
 #include "xsc_log.h"
+#include "xsc_rxtx.h"
 
 #define XSC_PPH_MODE_ARG	"pph_mode"
 #define XSC_NIC_MODE_ARG	"nic_mode"
@@ -24,6 +25,18 @@
 
 #define XSC_DEV_PCT_IDX_INVALID	0xFFFFFFFF
 #define XSC_DEV_REPR_ID_INVALID	0x7FFFFFFF
+
+enum xsc_queue_type {
+	XSC_QUEUE_TYPE_RDMA_RC		= 0,
+	XSC_QUEUE_TYPE_RDMA_MAD		= 1,
+	XSC_QUEUE_TYPE_RAW		= 2,
+	XSC_QUEUE_TYPE_VIRTIO_NET	= 3,
+	XSC_QUEUE_TYPE_VIRTIO_BLK	= 4,
+	XSC_QUEUE_TYPE_RAW_TPE		= 5,
+	XSC_QUEUE_TYPE_RAW_TSO		= 6,
+	XSC_QUEUE_TYPE_RAW_TX		= 7,
+	XSC_QUEUE_TYPE_INVALID		= 0xFF,
+};
 
 struct xsc_hwinfo {
 	uint32_t pcie_no; /* pcie number , 0 or 1 */
@@ -120,6 +133,25 @@ struct xsc_dev_ops {
 	enum rte_pci_kernel_driver kdrv;
 	int (*dev_init)(struct xsc_dev *xdev);
 	int (*dev_close)(struct xsc_dev *xdev);
+	int (*get_mac)(struct xsc_dev *xdev, uint8_t *mac);
+	int (*set_link_up)(struct xsc_dev *xdev);
+	int (*set_link_down)(struct xsc_dev *xdev);
+	int (*link_update)(struct xsc_dev *xdev, uint8_t funcid_type, int wait_to_complete);
+	int (*set_mtu)(struct xsc_dev *xdev, uint16_t mtu);
+	int (*destroy_qp)(void *qp);
+	int (*destroy_cq)(void *cq);
+	int (*modify_qp_status)(struct xsc_dev *xdev,
+				uint32_t qpn, int num, int opcode);
+	int (*modify_qp_qostree)(struct xsc_dev *xdev, uint16_t qpn);
+
+	int (*rx_cq_create)(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
+			    struct xsc_rx_cq_info *cq_info);
+	int (*tx_cq_create)(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
+			    struct xsc_tx_cq_info *cq_info);
+	int (*tx_qp_create)(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
+			    struct xsc_tx_qp_info *qp_info);
+	int (*mailbox_exec)(struct xsc_dev *xdev, void *data_in,
+			    int in_len, void *data_out, int out_len);
 };
 
 void xsc_dev_ops_register(struct xsc_dev_ops *new_ops);
