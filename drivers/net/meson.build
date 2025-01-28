@@ -63,6 +63,7 @@ drivers = [
         'vhost',
         'virtio',
         'vmxnet3',
+        'xsc',
         'zxdh',
 ]
 std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc

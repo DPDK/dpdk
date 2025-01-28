@@ -1037,6 +1037,16 @@ F: drivers/net/txgbe/
 F: doc/guides/nics/txgbe.rst
 F: doc/guides/nics/features/txgbe.ini
 
+Yunsilicon xsc
+M: Renyong Wan <wanry@yunsilicon.com>
+M: Na Na <nana@yunsilicon.com>
+M: Rong Qian <qianr@yunsilicon.com>
+M: Xiaoxiong Zhang <zhangxx@yunsilicon.com>
+M: Dongwei Xu <xudw@yunsilicon.com>
+F: drivers/net/xsc/
+F: doc/guides/nics/xsc.rst
+F: doc/guides/nics/features/xsc.ini
+
 VMware vmxnet3
 M: Jochen Behrens <jochen.behrens@broadcom.com>
 F: drivers/net/vmxnet3/

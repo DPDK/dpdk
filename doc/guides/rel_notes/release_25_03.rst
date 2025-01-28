@@ -89,6 +89,10 @@ New Features
   * Hardware statistics.
   * Jumbo frames.
 
+* **Added Yunsilicon xsc net driver [EXPERIMENTAL].**
+
+  Added network driver for the Yunsilicon metaScale serials NICs.
+
 
 Removed Items
 -------------

@@ -70,4 +70,5 @@ Network Interface Controller Drivers
     vhost
     virtio
     vmxnet3
+    xsc
     zxdh
