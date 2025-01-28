@@ -21,9 +21,6 @@
 /** Fast path async flow API functions. */
 static struct rte_flow_fp_ops mlx5_flow_hw_fp_ops;
 
-/* The maximum actions support in the flow. */
-#define MLX5_HW_MAX_ACTS 16
-
 /*
  * The default ipool threshold value indicates which per_core_cache
  * value to set.
