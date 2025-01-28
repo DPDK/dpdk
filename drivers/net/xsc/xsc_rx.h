@@ -56,4 +56,7 @@ struct __rte_cache_aligned xsc_rxq_data {
 	uint16_t rsv1:11;
 };
 
+int xsc_rxq_elts_alloc(struct xsc_rxq_data *rxq_data);
+int xsc_rxq_rss_obj_new(struct xsc_ethdev_priv *priv, uint16_t port_id);
+
 #endif /* _XSC_RX_H_ */
