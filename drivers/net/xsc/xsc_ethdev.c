@@ -9,6 +9,8 @@
 #include "xsc_ethdev.h"
 #include "xsc_rx.h"
 #include "xsc_tx.h"
+#include "xsc_dev.h"
+#include "xsc_cmd.h"
 
 static int
 xsc_ethdev_rss_hash_conf_get(struct rte_eth_dev *dev,
@@ -82,6 +84,175 @@ xsc_ethdev_configure(struct rte_eth_dev *dev)
 	return 0;
 
 error:
+	return -rte_errno;
+}
+
+static int
+xsc_ethdev_enable(struct rte_eth_dev *dev)
+{
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+	struct xsc_hwinfo *hwinfo;
+	int peer_dstinfo = 0;
+	int peer_logicalport = 0;
+	int logical_port = 0;
+	int local_dstinfo = 0;
+	int pcie_logic_port = 0;
+	int qp_set_id;
+	int repr_id;
+	struct xsc_rxq_data *rxq = xsc_rxq_get(priv, 0);
+	uint16_t rx_qpn = (uint16_t)rxq->qpn;
+	int i, vld;
+	struct xsc_txq_data *txq;
+	struct xsc_repr_port *repr;
+	struct xsc_repr_info *repr_info;
+
+	if (priv->funcid_type != XSC_PHYPORT_MAC_FUNCID)
+		return -ENODEV;
+
+	hwinfo = &priv->xdev->hwinfo;
+	repr_id = priv->representor_id;
+	repr = &priv->xdev->repr_ports[repr_id];
+	repr_info = &repr->info;
+
+	qp_set_id = xsc_dev_qp_set_id_get(priv->xdev, repr_id);
+	logical_port = repr_info->logical_port;
+	local_dstinfo = repr_info->local_dstinfo;
+	peer_logicalport = repr_info->peer_logical_port;
+	peer_dstinfo = repr_info->peer_dstinfo;
+
+	pcie_logic_port = hwinfo->pcie_no + 8;
+
+	for (i = 0; i < priv->num_sq; i++) {
+		txq = xsc_txq_get(priv, i);
+		xsc_dev_modify_qp_status(priv->xdev, txq->qpn, 1, XSC_CMD_OP_RTR2RTS_QP);
+		xsc_dev_modify_qp_qostree(priv->xdev, txq->qpn);
+		xsc_dev_set_qpsetid(priv->xdev, txq->qpn, qp_set_id);
+	}
+
+	if (!xsc_dev_is_vf(priv->xdev)) {
+		xsc_dev_create_ipat(priv->xdev, logical_port, peer_dstinfo);
+		xsc_dev_create_vfos_baselp(priv->xdev);
+		xsc_dev_create_epat(priv->xdev, local_dstinfo, pcie_logic_port,
+				    rx_qpn - hwinfo->raw_rss_qp_id_base,
+				    priv->num_rq, &priv->rss_conf);
+		xsc_dev_create_pct(priv->xdev, repr_id, logical_port, peer_dstinfo);
+		xsc_dev_create_pct(priv->xdev, repr_id, peer_logicalport, local_dstinfo);
+	} else {
+		vld = xsc_dev_get_ipat_vld(priv->xdev, logical_port);
+		if (vld == 0)
+			xsc_dev_create_ipat(priv->xdev, logical_port, peer_dstinfo);
+		xsc_dev_vf_modify_epat(priv->xdev, local_dstinfo,
+				       rx_qpn - hwinfo->raw_rss_qp_id_base,
+				       priv->num_rq, &priv->rss_conf);
+	}
+
+	return 0;
+}
+
+static int
+xsc_txq_start(struct xsc_ethdev_priv *priv)
+{
+	struct xsc_txq_data *txq_data;
+	struct rte_eth_dev *dev = priv->eth_dev;
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
+	uint16_t i;
+	int ret;
+	size_t size;
+
+	if (priv->flags & XSC_FLAG_TX_QUEUE_INIT) {
+		for (i = 0; i != priv->num_sq; ++i)
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+		return 0;
+	}
+
+	for (i = 0; i != priv->num_sq; ++i) {
+		txq_data = xsc_txq_get(priv, i);
+		xsc_txq_elts_alloc(txq_data);
+		ret = xsc_txq_obj_new(priv->xdev, txq_data, offloads, i);
+		if (ret < 0)
+			goto error;
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+		PMD_DRV_LOG(INFO, "Port %u create tx success", dev->data->port_id);
+
+		size = txq_data->cqe_s * sizeof(*txq_data->fcqs);
+		txq_data->fcqs = rte_zmalloc(NULL, size, RTE_CACHE_LINE_SIZE);
+		if (!txq_data->fcqs) {
+			PMD_DRV_LOG(ERR, "Port %u txq %u alloc fcqs memory failed",
+				    dev->data->port_id, i);
+			rte_errno = ENOMEM;
+			goto error;
+		}
+	}
+
+	priv->flags |= XSC_FLAG_TX_QUEUE_INIT;
+	return 0;
+
+error:
+	/* Queue resources are released by xsc_ethdev_start calling the stop interface */
+	return -rte_errno;
+}
+
+static int
+xsc_rxq_start(struct xsc_ethdev_priv *priv)
+{
+	struct xsc_rxq_data *rxq_data;
+	struct rte_eth_dev *dev = priv->eth_dev;
+	uint16_t i;
+	int ret;
+
+	if (priv->flags & XSC_FLAG_RX_QUEUE_INIT) {
+		for (i = 0; i != priv->num_sq; ++i)
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+		return 0;
+	}
+
+	for (i = 0; i != priv->num_rq; ++i) {
+		rxq_data = xsc_rxq_get(priv, i);
+		if (dev->data->rx_queue_state[i] != RTE_ETH_QUEUE_STATE_STARTED) {
+			ret = xsc_rxq_elts_alloc(rxq_data);
+			if (ret != 0)
+				goto error;
+		}
+	}
+
+	ret = xsc_rxq_rss_obj_new(priv, priv->dev_data->port_id);
+	if (ret != 0)
+		goto error;
+
+	priv->flags |= XSC_FLAG_RX_QUEUE_INIT;
+	return 0;
+error:
+	/* Queue resources are released by xsc_ethdev_start calling the stop interface */
+	return -rte_errno;
+}
+
+static int
+xsc_ethdev_start(struct rte_eth_dev *dev)
+{
+	int ret;
+	struct xsc_ethdev_priv *priv = TO_XSC_ETHDEV_PRIV(dev);
+
+	ret = xsc_txq_start(priv);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Port %u txq start failed: %s",
+			    dev->data->port_id, strerror(rte_errno));
+		goto error;
+	}
+
+	ret = xsc_rxq_start(priv);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Port %u Rx queue start failed: %s",
+			    dev->data->port_id, strerror(rte_errno));
+		goto error;
+	}
+
+	dev->data->dev_started = 1;
+	ret = xsc_ethdev_enable(dev);
+
+	return 0;
+
+error:
+	dev->data->dev_started = 0;
 	return -rte_errno;
 }
 
@@ -192,6 +363,7 @@ xsc_ethdev_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac, uin
 
 const struct eth_dev_ops xsc_eth_dev_ops = {
 	.dev_configure = xsc_ethdev_configure,
+	.dev_start = xsc_ethdev_start,
 	.rx_queue_setup = xsc_ethdev_rx_queue_setup,
 	.tx_queue_setup = xsc_ethdev_tx_queue_setup,
 	.rss_hash_update = xsc_ethdev_rss_hash_update,

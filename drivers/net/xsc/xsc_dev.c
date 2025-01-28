@@ -69,6 +69,39 @@ xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac)
 }
 
 int
+xsc_dev_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcode)
+{
+	return xdev->dev_ops->modify_qp_status(xdev, qpn, num, opcode);
+}
+
+int
+xsc_dev_modify_qp_qostree(struct xsc_dev *xdev, uint16_t qpn)
+{
+	return xdev->dev_ops->modify_qp_qostree(xdev, qpn);
+}
+
+int
+xsc_dev_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
+		     struct xsc_rx_cq_info *cq_info)
+{
+	return xdev->dev_ops->rx_cq_create(xdev, cq_params, cq_info);
+}
+
+int
+xsc_dev_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
+		     struct xsc_tx_cq_info *cq_info)
+{
+	return xdev->dev_ops->tx_cq_create(xdev, cq_params, cq_info);
+}
+
+int
+xsc_dev_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
+		     struct xsc_tx_qp_info *qp_info)
+{
+	return xdev->dev_ops->tx_qp_create(xdev, qp_params, qp_info);
+}
+
+int
 xsc_dev_close(struct xsc_dev *xdev, int repr_id)
 {
 	xsc_dev_clear_pct(xdev, repr_id);

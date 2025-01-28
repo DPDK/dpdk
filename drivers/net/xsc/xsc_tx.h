@@ -52,4 +52,8 @@ struct __rte_cache_aligned xsc_txq_data {
 	struct rte_mbuf *elts[]; /* Storage for queued packets, for free */
 };
 
+int xsc_txq_obj_new(struct xsc_dev *xdev, struct xsc_txq_data *txq_data,
+		    uint64_t offloads, uint16_t idx);
+void xsc_txq_elts_alloc(struct xsc_txq_data *txq_data);
+
 #endif /* _XSC_TX_H_ */

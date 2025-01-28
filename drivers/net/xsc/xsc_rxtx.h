@@ -102,6 +102,24 @@ struct xsc_cqe_u64 {
 	struct xsc_cqe cqe1;
 };
 
+union xsc_cq_doorbell {
+	struct {
+		uint32_t next_cid:16;
+		uint32_t cq_num:15;
+		uint32_t cq_sta:1;
+	};
+	uint32_t cq_data;
+};
+
+union xsc_send_doorbell {
+	struct {
+		uint32_t next_pid:16;
+		uint32_t qp_num:15;
+		uint32_t rsv:1;
+	};
+	uint32_t send_data;
+};
+
 struct xsc_tx_cq_params {
 	uint16_t port_id;
 	uint16_t qp_id;
@@ -132,6 +150,15 @@ struct xsc_tx_qp_info {
 	uint32_t qpn;
 	uint16_t tso_en;
 	uint16_t wqe_n;
+};
+
+union xsc_recv_doorbell {
+	struct {
+		uint32_t next_pid:13;
+		uint32_t qp_num:15;
+		uint32_t rsv:4;
+	};
+	uint32_t recv_data;
 };
 
 struct xsc_rx_cq_params {

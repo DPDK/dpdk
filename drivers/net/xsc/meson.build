@@ -12,4 +12,6 @@ sources = files(
         'xsc_vfio_mbox.c',
         'xsc_vfio.c',
         'xsc_np.c',
+        'xsc_rx.c',
+        'xsc_tx.c',
 )

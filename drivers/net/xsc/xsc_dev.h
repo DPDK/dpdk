@@ -158,6 +158,14 @@ struct xsc_dev_ops {
 int xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
 			 int in_len, void *data_out, int out_len);
 void xsc_dev_ops_register(struct xsc_dev_ops *new_ops);
+int xsc_dev_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcode);
+int xsc_dev_modify_qp_qostree(struct xsc_dev *xdev, uint16_t qpn);
+int xsc_dev_rx_cq_create(struct xsc_dev *xdev, struct xsc_rx_cq_params *cq_params,
+			 struct xsc_rx_cq_info *cq_info);
+int xsc_dev_tx_cq_create(struct xsc_dev *xdev, struct xsc_tx_cq_params *cq_params,
+			 struct xsc_tx_cq_info *cq_info);
+int xsc_dev_tx_qp_create(struct xsc_dev *xdev, struct xsc_tx_qp_params *qp_params,
+			 struct xsc_tx_qp_info *qp_info);
 int xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **dev);
 void xsc_dev_uninit(struct xsc_dev *xdev);
 int xsc_dev_close(struct xsc_dev *xdev, int repr_id);
