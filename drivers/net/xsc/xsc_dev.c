@@ -62,6 +62,12 @@ xsc_dev_mailbox_exec(struct xsc_dev *xdev, void *data_in,
 }
 
 int
+xsc_dev_get_mac(struct xsc_dev *xdev, uint8_t *mac)
+{
+	return xdev->dev_ops->get_mac(xdev, mac);
+}
+
+int
 xsc_dev_close(struct xsc_dev *xdev, int repr_id)
 {
 	xsc_dev_clear_pct(xdev, repr_id);
@@ -124,6 +130,95 @@ xsc_dev_args_parse(struct xsc_dev *xdev, struct rte_devargs *devargs)
 		xdevargs->flow_mode = XSC_DEV_DEF_FLOW_MODE;
 
 	rte_kvargs_free(kvlist);
+}
+
+int
+xsc_dev_qp_set_id_get(struct xsc_dev *xdev, int repr_id)
+{
+	if (xsc_dev_is_vf(xdev))
+		return 0;
+
+	return (repr_id % 511 + 1);
+}
+
+static void
+xsc_repr_info_init(struct xsc_dev *xdev, struct xsc_repr_info *info,
+		   enum xsc_port_type port_type,
+		   enum xsc_funcid_type funcid_type, int32_t repr_id)
+{
+	int qp_set_id, logical_port;
+	struct xsc_hwinfo *hwinfo = &xdev->hwinfo;
+
+	info->repr_id = repr_id;
+	info->port_type = port_type;
+	if (port_type == XSC_PORT_TYPE_UPLINK_BOND) {
+		info->pf_bond = 1;
+		info->funcid = XSC_PHYPORT_LAG_FUNCID << 14;
+	} else if (port_type == XSC_PORT_TYPE_UPLINK) {
+		info->pf_bond = -1;
+		info->funcid = funcid_type << 14;
+	} else if (port_type == XSC_PORT_TYPE_PFVF) {
+		info->funcid = funcid_type << 14;
+	}
+
+	qp_set_id = xsc_dev_qp_set_id_get(xdev, repr_id);
+	if (xsc_dev_is_vf(xdev))
+		logical_port = xdev->hwinfo.func_id +
+			       xdev->hwinfo.funcid_to_logic_port_off;
+	else
+		logical_port = xdev->vfos_logical_in_port + qp_set_id - 1;
+
+	info->logical_port = logical_port;
+	info->local_dstinfo = logical_port;
+	info->peer_logical_port = hwinfo->mac_phy_port;
+	info->peer_dstinfo = hwinfo->mac_phy_port;
+}
+
+int
+xsc_dev_repr_ports_probe(struct xsc_dev *xdev, int nb_repr_ports, int max_eth_ports)
+{
+	int funcid_type;
+	struct xsc_repr_port *repr_port;
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	xdev->num_repr_ports = nb_repr_ports + XSC_PHY_PORT_NUM;
+	if (xdev->num_repr_ports > max_eth_ports) {
+		PMD_DRV_LOG(ERR, "Repr ports num %u, should be less than max %u",
+			    xdev->num_repr_ports, max_eth_ports);
+		return -EINVAL;
+	}
+
+	xdev->repr_ports = rte_zmalloc(NULL,
+				       sizeof(struct xsc_repr_port) * xdev->num_repr_ports,
+				       RTE_CACHE_LINE_SIZE);
+	if (xdev->repr_ports == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory for repr ports");
+		return -ENOMEM;
+	}
+
+	funcid_type = (xdev->devargs.nic_mode == XSC_NIC_MODE_SWITCHDEV) ?
+		XSC_VF_IOCTL_FUNCID : XSC_PHYPORT_MAC_FUNCID;
+
+	/* PF representor use the last repr_ports */
+	repr_port = &xdev->repr_ports[xdev->num_repr_ports - 1];
+	xsc_repr_info_init(xdev, &repr_port->info, XSC_PORT_TYPE_UPLINK,
+			   XSC_PHYPORT_MAC_FUNCID, xdev->num_repr_ports - 1);
+	repr_port->info.ifindex = xdev->ifindex;
+	repr_port->xdev = xdev;
+	LIST_INIT(&repr_port->def_pct_list);
+
+	/* VF representor start from 0 */
+	for (i = 0; i < nb_repr_ports; i++) {
+		repr_port = &xdev->repr_ports[i];
+		xsc_repr_info_init(xdev, &repr_port->info,
+				   XSC_PORT_TYPE_PFVF, funcid_type, i);
+		repr_port->xdev = xdev;
+		LIST_INIT(&repr_port->def_pct_list);
+	}
+
+	return 0;
 }
 
 void

@@ -6,6 +6,7 @@
 #define XSC_DEFS_H_
 
 #define XSC_PAGE_SIZE			4096
+#define XSC_PHY_PORT_NUM		1
 
 #define XSC_PCI_VENDOR_ID		0x1f67
 #define XSC_PCI_DEV_ID_MS		0x1111
@@ -15,6 +16,7 @@
 #define XSC_PCI_DEV_ID_MVS		0x1153
 
 #define XSC_VFREP_BASE_LOGICAL_PORT	1081
+#define XSC_MAX_MAC_ADDRESSES		3
 
 #define XSC_RSS_HASH_KEY_LEN		52
 #define XSC_RSS_HASH_BIT_IPV4_SIP	(1ULL << 0)
@@ -56,6 +58,15 @@ enum xsc_pph_type {
 	XSC_TX_PPH	= 0x2,
 	XSC_VFREP_PPH	= 0x4,
 	XSC_UPLINK_PPH	= 0x8,
+};
+
+enum xsc_funcid_type {
+	XSC_FUNCID_TYPE_INVAL	= 0x0,
+	XSC_EMU_FUNCID		= 0x1,
+	XSC_PHYPORT_MAC_FUNCID	= 0x2,
+	XSC_VF_IOCTL_FUNCID	= 0x3,
+	XSC_PHYPORT_LAG_FUNCID	= 0x4,
+	XSC_FUNCID_TYPE_UNKNOWN	= 0x5,
 };
 
 enum xsc_port_type {
