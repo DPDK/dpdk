@@ -12,9 +12,6 @@
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 #include "mlx5_hws_cnt.h"
 
-/* The maximum actions support in the flow. */
-#define MLX5_HW_MAX_ACTS 16
-
 /*
  * The default ipool threshold value indicates which per_core_cache
  * value to set.
