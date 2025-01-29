@@ -25,6 +25,10 @@
 #include "mlx5_rxtx_vec.h"
 #include "mlx5_autoconf.h"
 
+#if !defined(__INTEL_COMPILER) && !defined(RTE_TOOLCHAIN_MSVC)
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
+
 /**
  * Store free buffers to RX SW ring.
  *
@@ -74,7 +78,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		    struct rte_mbuf **elts, bool keep)
 {
 	volatile struct mlx5_mini_cqe8 *mcq =
-		(void *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
+		(volatile void *)&(cq + !rxq->cqe_comp_layout)->pkt_info;
 	/* Title packet is pre-built. */
 	struct rte_mbuf *t_pkt = rxq->cqe_comp_layout ? &rxq->title_pkt : elts[0];
 	const __vector unsigned char zero = (__vector unsigned char){0};
@@ -134,7 +138,7 @@ rxq_cq_decompress_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 	 */
 cycle:
 	if (rxq->cqe_comp_layout)
-		rte_prefetch0((void *)(cq + mcqe_n));
+		rte_prefetch0((volatile void *)(cq + mcqe_n));
 	for (pos = 0; pos < mcqe_n; ) {
 		__vector unsigned char mcqe1, mcqe2;
 		__vector unsigned char rxdf1, rxdf2;
@@ -160,12 +164,12 @@ cycle:
 		if (!rxq->cqe_comp_layout)
 			for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
 				if (likely(pos + i < mcqe_n))
-					rte_prefetch0((void *)(cq + pos + i));
+					rte_prefetch0((volatile void *)(cq + pos + i));
 		/* A.1 load mCQEs into a 128bit register. */
 		mcqe1 = (__vector unsigned char)vec_vsx_ld(0,
-			(signed int const *)&mcq[pos % 8]);
+			RTE_CAST_PTR(signed int const *, &mcq[pos % 8]));
 		mcqe2 = (__vector unsigned char)vec_vsx_ld(0,
-			(signed int const *)&mcq[pos % 8 + 2]);
+			RTE_CAST_PTR(signed int const *, &mcq[pos % 8 + 2]));
 
 		/* B.1 store rearm data to mbuf. */
 		*(__vector unsigned char *)
@@ -495,8 +499,8 @@ cycle:
 		if (!rxq->cqe_comp_layout) {
 			if (!(pos & 0x7) && pos < mcqe_n) {
 				if (pos + 8 < mcqe_n)
-					rte_prefetch0((void *)(cq + pos + 8));
-				mcq = (void *)&(cq + pos)->pkt_info;
+					rte_prefetch0((volatile void *)(cq + pos + 8));
+				mcq = (volatile void *)&(cq + pos)->pkt_info;
 				for (i = 0; i < 8; ++i)
 					cq[inv++].op_own = MLX5_CQE_INVALIDATE;
 			}
@@ -512,7 +516,7 @@ cycle:
 		    MLX5_CQE_FORMAT(cq->op_own) == MLX5_COMPRESSED) {
 			pos = 0;
 			elts = &elts[mcqe_n];
-			mcq = (void *)cq;
+			mcq = (volatile void *)cq;
 			mcqe_n = MLX5_CQE_NUM_MINIS(cq->op_own) + 1;
 			pkts_n += mcqe_n;
 			goto cycle;
@@ -957,14 +961,14 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		/* A.1 load cqes. */
 		p3 = (unsigned int)((__vector unsigned short)p)[3];
 		cqes[3] = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos + p3].sop_drop_qpn, 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos + p3].sop_drop_qpn), 0LL};
 		rte_compiler_barrier();
 
 		p2 = (unsigned int)((__vector unsigned short)p)[2];
 		cqes[2] = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos + p2].sop_drop_qpn, 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos + p2].sop_drop_qpn), 0LL};
 		rte_compiler_barrier();
 
 		/* B.1 load mbuf pointers. */
@@ -976,13 +980,13 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		/* A.1 load a block having op_own. */
 		p1 = (unsigned int)((__vector unsigned short)p)[1];
 		cqes[1] = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos + p1].sop_drop_qpn, 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos + p1].sop_drop_qpn), 0LL};
 		rte_compiler_barrier();
 
 		cqes[0] = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos].sop_drop_qpn, 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos].sop_drop_qpn), 0LL};
 		rte_compiler_barrier();
 
 		/* B.2 copy mbuf pointers. */
@@ -991,16 +995,16 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 		rte_io_rmb();
 
 		/* C.1 load remaining CQE data and extract necessary fields. */
-		cqe_tmp2 = *(__vector unsigned char *)
-			&cq[pos + p3].pkt_info;
-		cqe_tmp1 = *(__vector unsigned char *)
-			&cq[pos + p2].pkt_info;
+		cqe_tmp2 = *RTE_CAST_PTR(__vector unsigned char *,
+			&cq[pos + p3].pkt_info);
+		cqe_tmp1 = *RTE_CAST_PTR(__vector unsigned char *,
+			&cq[pos + p2].pkt_info);
 		cqes[3] = vec_sel(cqes[3], cqe_tmp2, blend_mask);
 		cqes[2] = vec_sel(cqes[2], cqe_tmp1, blend_mask);
 		cqe_tmp2 = (__vector unsigned char)vec_vsx_ld(0,
-			(signed int const *)&cq[pos + p3].csum);
+			RTE_CAST_PTR(signed int const *, &cq[pos + p3].csum));
 		cqe_tmp1 = (__vector unsigned char)vec_vsx_ld(0,
-			(signed int const *)&cq[pos + p2].csum);
+			RTE_CAST_PTR(signed int const *, &cq[pos + p2].csum));
 		cqes[3] = (__vector unsigned char)
 			vec_sel((__vector unsigned short)cqes[3],
 			(__vector unsigned short)cqe_tmp2, cqe_sel_mask1);
@@ -1008,11 +1012,11 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			vec_sel((__vector unsigned short)cqes[2],
 			(__vector unsigned short)cqe_tmp1, cqe_sel_mask1);
 		cqe_tmp2 = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos + p3].rsvd4[2], 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos + p3].rsvd4[2]), 0LL};
 		cqe_tmp1 = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos + p2].rsvd4[2], 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos + p2].rsvd4[2]), 0LL};
 		cqes[3] = (__vector unsigned char)
 			vec_sel((__vector unsigned short)cqes[3],
 			(__vector unsigned short)cqe_tmp2,
@@ -1054,16 +1058,16 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			(__vector unsigned int)cqes[3]);
 
 		/* C.1 load remaining CQE data and extract necessary fields. */
-		cqe_tmp2 = *(__vector unsigned char *)
-			&cq[pos + p1].pkt_info;
-		cqe_tmp1 = *(__vector unsigned char *)
-			&cq[pos].pkt_info;
+		cqe_tmp2 = *RTE_CAST_PTR(__vector unsigned char *,
+			&cq[pos + p1].pkt_info);
+		cqe_tmp1 = *RTE_CAST_PTR(__vector unsigned char *,
+			&cq[pos].pkt_info);
 		cqes[1] = vec_sel(cqes[1], cqe_tmp2, blend_mask);
 		cqes[0] = vec_sel(cqes[0], cqe_tmp2, blend_mask);
 		cqe_tmp2 = (__vector unsigned char)vec_vsx_ld(0,
-			(signed int const *)&cq[pos + p1].csum);
+			RTE_CAST_PTR(signed int const *, &cq[pos + p1].csum));
 		cqe_tmp1 = (__vector unsigned char)vec_vsx_ld(0,
-			(signed int const *)&cq[pos].csum);
+			RTE_CAST_PTR(signed int const *, &cq[pos].csum));
 		cqes[1] = (__vector unsigned char)
 			vec_sel((__vector unsigned short)cqes[1],
 			(__vector unsigned short)cqe_tmp2, cqe_sel_mask1);
@@ -1071,11 +1075,11 @@ rxq_cq_process_v(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cq,
 			vec_sel((__vector unsigned short)cqes[0],
 			(__vector unsigned short)cqe_tmp1, cqe_sel_mask1);
 		cqe_tmp2 = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos + p1].rsvd4[2], 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos + p1].rsvd4[2]), 0LL};
 		cqe_tmp1 = (__vector unsigned char)(__vector unsigned long){
-			*(__rte_aligned(8) unsigned long *)
-			&cq[pos].rsvd4[2], 0LL};
+			*RTE_CAST_PTR(__rte_aligned(8) unsigned long *,
+			&cq[pos].rsvd4[2]), 0LL};
 		cqes[1] = (__vector unsigned char)
 			vec_sel((__vector unsigned short)cqes[1],
 			(__vector unsigned short)cqe_tmp2, cqe_sel_mask2);
