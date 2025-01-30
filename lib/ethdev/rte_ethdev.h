@@ -1612,8 +1612,10 @@ struct rte_eth_conf {
 #define RTE_ETH_TX_OFFLOAD_MULTI_SEGS       RTE_BIT64(15)
 /**
  * Device supports optimization for fast release of mbufs.
- * When set application must guarantee that per-queue all mbufs comes from
- * the same mempool and has refcnt = 1.
+ * When set application must guarantee that per-queue all mbufs come from the same mempool,
+ * are direct, have refcnt=1, next=NULL and nb_segs=1, as done by rte_pktmbuf_prefree_seg().
+ *
+ * @see rte_mbuf_raw_free_bulk()
  */
 #define RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE   RTE_BIT64(16)
 #define RTE_ETH_TX_OFFLOAD_SECURITY         RTE_BIT64(17)
