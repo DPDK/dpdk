@@ -474,7 +474,7 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 					(RTE_CAST_PTR(const __m128i *, &rxdp[7].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh6 = _mm_load_si128
-					(RTE_CAST_PTR(const __m128i *, rxdp[6].wb.status_error1));
+					(RTE_CAST_PTR(const __m128i *, &rxdp[6].wb.status_error1));
 				rte_compiler_barrier();
 				const __m128i raw_desc_bh5 = _mm_load_si128
 					(RTE_CAST_PTR(const __m128i *, &rxdp[5].wb.status_error1));
