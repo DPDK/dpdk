@@ -36,6 +36,8 @@ extern "C" {
 /** The tracepoint object. */
 typedef RTE_ATOMIC(uint64_t) rte_trace_point_t;
 
+#ifndef _RTE_TRACE_POINT_REGISTER_H_
+
 /**
  * Macro to define the tracepoint arguments in RTE_TRACE_POINT macro.
 
@@ -52,6 +54,8 @@ _tp _args \
 	__rte_trace_point_emit_header_##_mode(&__##_tp); \
 	__VA_ARGS__ \
 }
+
+#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 
 /**
  * Create a tracepoint.
@@ -378,6 +382,7 @@ do { \
 
 #define __rte_trace_point_emit(name, in, type) \
 do { \
+	RTE_BUILD_BUG_ON(sizeof(type) != sizeof(typeof(*in))); \
 	memcpy(mem, in, sizeof(*in)); \
 	mem = RTE_PTR_ADD(mem, sizeof(*in)); \
 } while (0)

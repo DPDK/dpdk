@@ -33,10 +33,6 @@ RTE_TRACE_POINT_FP(
 	rte_dma_trace_vchan_status,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan,
 			     enum rte_dma_vchan_status *status, int ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	enum rte_dma_vchan_status __status = 0;
-	status = &__status;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
 	rte_trace_point_emit_int_ptr(status);
@@ -100,12 +96,6 @@ RTE_TRACE_POINT_FP(
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan,
 			     const uint16_t nb_cpls, uint16_t *last_idx,
 			     bool *has_error, uint16_t ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	uint16_t __last_idx = 0;
-	bool __has_error = false;
-	last_idx = &__last_idx;
-	has_error = &__has_error;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
 	rte_trace_point_emit_u16(nb_cpls);
@@ -119,10 +109,6 @@ RTE_TRACE_POINT_FP(
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan,
 			     const uint16_t nb_cpls, uint16_t *last_idx,
 			     enum rte_dma_status_code *status, uint16_t ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	uint16_t __last_idx = 0;
-	last_idx = &__last_idx;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
 	rte_trace_point_emit_u16(nb_cpls);

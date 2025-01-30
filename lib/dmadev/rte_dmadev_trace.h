@@ -22,10 +22,6 @@ extern "C" {
 RTE_TRACE_POINT(
 	rte_dma_trace_info_get,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, struct rte_dma_info *dev_info),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	struct rte_dma_info __dev_info = {0};
-	dev_info = &__dev_info;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_string(dev_info->dev_name);
 	rte_trace_point_emit_u64(dev_info->dev_capa);
@@ -42,10 +38,6 @@ RTE_TRACE_POINT(
 	rte_dma_trace_configure,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, const struct rte_dma_conf *dev_conf,
 			     int ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	const struct rte_dma_conf __dev_conf = {0};
-	dev_conf = &__dev_conf;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(dev_conf->nb_vchans);
 	rte_trace_point_emit_u16(dev_conf->priority);
@@ -78,10 +70,6 @@ RTE_TRACE_POINT(
 	rte_dma_trace_vchan_setup,
 	RTE_TRACE_POINT_ARGS(int16_t dev_id, uint16_t vchan,
 			     const struct rte_dma_vchan_conf *conf, int ret),
-#ifdef _RTE_TRACE_POINT_REGISTER_H_
-	const struct rte_dma_vchan_conf __conf = {0};
-	conf = &__conf;
-#endif /* _RTE_TRACE_POINT_REGISTER_H_ */
 	rte_trace_point_emit_i16(dev_id);
 	rte_trace_point_emit_u16(vchan);
 	rte_trace_point_emit_int(conf->direction);
