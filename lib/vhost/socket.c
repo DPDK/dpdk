@@ -893,7 +893,6 @@ vhost_user_socket_mem_free(struct vhost_user_socket *vsocket)
 int
 rte_vhost_driver_register(const char *path, uint64_t flags)
 {
-	int ret = -1;
 	struct vhost_user_socket *vsocket;
 
 	if (!path)
@@ -997,7 +996,6 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	} else {
 #ifndef RTE_LIBRTE_VHOST_POSTCOPY
 		VHOST_CONFIG_LOG(path, ERR, "Postcopy requested but not compiled");
-		ret = -1;
 		goto out_mutex;
 #endif
 	}
@@ -1012,15 +1010,14 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		} else {
 			vsocket->is_server = true;
 		}
-		ret = create_unix_socket(vsocket);
-		if (ret < 0)
+		if (create_unix_socket(vsocket) < 0)
 			goto out_mutex;
 	}
 
 	vhost_user.vsockets[vhost_user.vsocket_cnt++] = vsocket;
 
 	pthread_mutex_unlock(&vhost_user.mutex);
-	return ret;
+	return 0;
 
 out_mutex:
 	if (pthread_mutex_destroy(&vsocket->conn_mutex)) {
@@ -1028,8 +1025,7 @@ out_mutex:
 	}
 out:
 	pthread_mutex_unlock(&vhost_user.mutex);
-
-	return ret;
+	return -1;
 }
 
 static bool
