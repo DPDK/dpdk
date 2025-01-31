@@ -21,7 +21,7 @@ documentation = "https://doc.dpdk.org/guides/tools/dts.html"
 [tool.poetry.dependencies]
 python = "^3.10"
 PyYAML = "^6.0"
-fabric = "^2.7.1"
+fabric = "^3.2"
 scapy = "^2.6.1"
 typing-extensions = "^4.11.0"
 aenum = "^3.1.15"
