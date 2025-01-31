@@ -57,6 +57,10 @@ The internal engines, which do the copies or other operations,
 and the work-queues, which are used by applications to assign work to the device,
 need to be assigned to groups, and the various other configuration options,
 such as priority or queue depth, need to be set for each queue.
+Furthermore, to mark a work-queue for use by DPDK,
+so it will be picked up in device scans,
+the queue must be assigned a name starting with either ``dpdk_``
+or the DPDK application's ``file-prefix`` parameter (default ``rte_``).
 
 To assign an engine to a group::
 
@@ -71,6 +75,9 @@ Some configuration options include:
 * wq-size: the size of the WQ. Sum of all WQ sizes must be less that the total-size defined by the device.
 * type: WQ type (kernel/mdev/user). Determines how the device is presented.
 * name: identifier given to the WQ.
+  For DPDK to automatically find and use the queue as a DMA device,
+  the queue must be assigned a name starting with either ``dpdk_``
+  or the DPDK application's ``file-prefix`` parameter (default ``rte_``).
 
 Example configuration for a work queue::
 
