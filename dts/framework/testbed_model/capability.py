@@ -186,11 +186,7 @@ class DecoratedNicCapability(Capability):
         Returns:
             The capability uniquely identified by `nic_capability`.
         """
-        decorator_fn = None
-        if isinstance(nic_capability.value, tuple):
-            capability_fn, decorator_fn = nic_capability.value
-        else:
-            capability_fn = nic_capability.value
+        capability_fn, decorator_fn = nic_capability.value
 
         if nic_capability not in cls._unique_capabilities:
             cls._unique_capabilities[nic_capability] = cls(

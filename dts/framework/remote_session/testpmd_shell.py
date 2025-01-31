@@ -50,9 +50,7 @@ TestPmdShellCapabilityMethod: TypeAlias = Callable[
 
 TestPmdShellDecorator: TypeAlias = Callable[[TestPmdShellMethod], TestPmdShellMethod]
 
-TestPmdShellNicCapability = (
-    TestPmdShellCapabilityMethod | tuple[TestPmdShellCapabilityMethod, TestPmdShellDecorator]
-)
+TestPmdShellNicCapability = tuple[TestPmdShellCapabilityMethod, TestPmdShellDecorator | None]
 
 
 class TestPmdDevice:
@@ -1792,7 +1790,7 @@ class TestPmdShell(DPDKShell):
         if verify:
             if (
                 "Invalid multicast_addr" in output
-                or f'multicast address {"already" if add else "not"} filtered by port' in output
+                or f"multicast address {'already' if add else 'not'} filtered by port" in output
             ):
                 self._logger.debug(f"Failed to {mcast_cmd} {multi_addr} on port {port_id}")
                 raise InteractiveCommandExecutionError(
@@ -1926,7 +1924,7 @@ class TestPmdShell(DPDKShell):
         set_mtu_output = self.send_command(f"port config mtu {port_id} {mtu}")
         if verify and (f"MTU: {mtu}" not in self.send_command(f"show port info {port_id}")):
             self._logger.debug(
-                f"Failed to set mtu to {mtu} on port {port_id}." f" Output was:\n{set_mtu_output}"
+                f"Failed to set mtu to {mtu} on port {port_id}. Output was:\n{set_mtu_output}"
             )
             raise InteractiveCommandExecutionError(
                 f"Test pmd failed to update mtu of port {port_id} to {mtu}"
@@ -1994,11 +1992,11 @@ class TestPmdShell(DPDKShell):
             vlan_settings = self.show_port_info(port_id=port).vlan_offload
             if enable ^ (vlan_settings is not None and VLANOffloadFlag.FILTER in vlan_settings):
                 self._logger.debug(
-                    f"""Failed to {'enable' if enable else 'disable'}
+                    f"""Failed to {"enable" if enable else "disable"}
                                    filter on port {port}: \n{filter_cmd_output}"""
                 )
                 raise InteractiveCommandExecutionError(
-                    f"""Failed to {'enable' if enable else 'disable'}
+                    f"""Failed to {"enable" if enable else "disable"}
                     filter on port {port}"""
                 )
 
@@ -2085,7 +2083,7 @@ class TestPmdShell(DPDKShell):
                 or "Bad arguments" in rx_cmd_output
             ):
                 self._logger.debug(
-                    f"""Failed to {'add' if add else 'remove'} tag {vlan}
+                    f"""Failed to {"add" if add else "remove"} tag {vlan}
                     port {port}: \n{rx_cmd_output}"""
                 )
                 raise InteractiveCommandExecutionError(
@@ -2111,7 +2109,7 @@ class TestPmdShell(DPDKShell):
             vlan_settings = self.show_port_info(port_id=port).vlan_offload
             if enable ^ (vlan_settings is not None and VLANOffloadFlag.STRIP in vlan_settings):
                 self._logger.debug(
-                    f"""Failed to set strip {'on' if enable else 'off'}
+                    f"""Failed to set strip {"on" if enable else "off"}
                     port {port}: \n{strip_cmd_output}"""
                 )
                 raise InteractiveCommandExecutionError(
@@ -2519,113 +2517,122 @@ class NicCapability(NoAliasEnum):
         add_remove_mtu(9000),
     )
     #:
-    RX_OFFLOAD_VLAN_STRIP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_VLAN_STRIP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports L3 checksum offload.
-    RX_OFFLOAD_IPV4_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_IPV4_CKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_UDP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_UDP_CKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_TCP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_TCP_CKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports Large Receive Offload.
-    RX_OFFLOAD_TCP_LRO: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
-    )
+    RX_OFFLOAD_TCP_LRO: TestPmdShellNicCapability = (TestPmdShell.get_capabilities_rx_offload, None)
     #: Device supports QinQ (queue in queue) offload.
-    RX_OFFLOAD_QINQ_STRIP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_QINQ_STRIP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports inner packet L3 checksum.
-    RX_OFFLOAD_OUTER_IPV4_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_OUTER_IPV4_CKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports MACsec.
-    RX_OFFLOAD_MACSEC_STRIP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_MACSEC_STRIP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports filtering of a VLAN Tag identifier.
-    RX_OFFLOAD_VLAN_FILTER: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_VLAN_FILTER: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports VLAN offload.
-    RX_OFFLOAD_VLAN_EXTEND: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_VLAN_EXTEND: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports receiving segmented mbufs.
-    RX_OFFLOAD_SCATTER: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
-    )
+    RX_OFFLOAD_SCATTER: TestPmdShellNicCapability = (TestPmdShell.get_capabilities_rx_offload, None)
     #: Device supports Timestamp.
-    RX_OFFLOAD_TIMESTAMP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_TIMESTAMP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports crypto processing while packet is received in NIC.
-    RX_OFFLOAD_SECURITY: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_SECURITY: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports CRC stripping.
-    RX_OFFLOAD_KEEP_CRC: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_KEEP_CRC: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports L4 checksum offload.
-    RX_OFFLOAD_SCTP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_SCTP_CKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports inner packet L4 checksum.
-    RX_OFFLOAD_OUTER_UDP_CKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_OUTER_UDP_CKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports RSS hashing.
-    RX_OFFLOAD_RSS_HASH: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_RSS_HASH: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports scatter Rx packets to segmented mbufs.
-    RX_OFFLOAD_BUFFER_SPLIT: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_BUFFER_SPLIT: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports all checksum capabilities.
-    RX_OFFLOAD_CHECKSUM: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
+    RX_OFFLOAD_CHECKSUM: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_rx_offload,
+        None,
     )
     #: Device supports all VLAN capabilities.
-    RX_OFFLOAD_VLAN: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_rx_offload
-    )
+    RX_OFFLOAD_VLAN: TestPmdShellNicCapability = (TestPmdShell.get_capabilities_rx_offload, None)
     #: Device supports Rx queue setup after device started.
-    RUNTIME_RX_QUEUE_SETUP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_show_port_info
+    RUNTIME_RX_QUEUE_SETUP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_show_port_info,
+        None,
     )
     #: Device supports Tx queue setup after device started.
-    RUNTIME_TX_QUEUE_SETUP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_show_port_info
+    RUNTIME_TX_QUEUE_SETUP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_show_port_info,
+        None,
     )
     #: Device supports shared Rx queue among ports within Rx domain and switch domain.
-    RXQ_SHARE: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_show_port_info
-    )
+    RXQ_SHARE: TestPmdShellNicCapability = (TestPmdShell.get_capabilities_show_port_info, None)
     #: Device supports keeping flow rules across restart.
-    FLOW_RULE_KEEP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_show_port_info
-    )
+    FLOW_RULE_KEEP: TestPmdShellNicCapability = (TestPmdShell.get_capabilities_show_port_info, None)
     #: Device supports keeping shared flow objects across restart.
-    FLOW_SHARED_OBJECT_KEEP: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_show_port_info
+    FLOW_SHARED_OBJECT_KEEP: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_show_port_info,
+        None,
     )
     #: Device supports multicast address filtering.
-    MCAST_FILTERING: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_mcast_filtering
+    MCAST_FILTERING: TestPmdShellNicCapability = (
+        TestPmdShell.get_capabilities_mcast_filtering,
+        None,
     )
     #: Device supports flow ctrl.
-    FLOW_CTRL: TestPmdShellCapabilityMethod = functools.partial(
-        TestPmdShell.get_capabilities_flow_ctrl
-    )
+    FLOW_CTRL: TestPmdShellNicCapability = (TestPmdShell.get_capabilities_flow_ctrl, None)
 
     def __call__(
         self,
