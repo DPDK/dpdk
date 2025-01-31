@@ -32,14 +32,13 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, NamedTuple, TypeVar, cast
 
 import yaml
-from pydantic import Field, TypeAdapter, ValidationError, field_validator, model_validator
+from pydantic import Field, TypeAdapter, ValidationError, model_validator
 from typing_extensions import Self
 
 from framework.exception import ConfigurationError
 
 from .common import FrozenModel, ValidationContext
 from .node import (
-    NodeConfiguration,
     NodeConfigurationTypes,
     SutNodeConfiguration,
     TGNodeConfiguration,
@@ -105,19 +104,18 @@ class Configuration(FrozenModel):
 
         return test_runs_with_nodes
 
-    @field_validator("nodes")
-    @classmethod
-    def validate_node_names(cls, nodes: list[NodeConfiguration]) -> list[NodeConfiguration]:
+    @model_validator(mode="after")
+    def validate_node_names(self) -> Self:
         """Validate that the node names are unique."""
         nodes_by_name: dict[str, int] = {}
-        for node_no, node in enumerate(nodes):
+        for node_no, node in enumerate(self.nodes):
             assert node.name not in nodes_by_name, (
                 f"node {node_no} cannot have the same name as node {nodes_by_name[node.name]} "
                 f"({node.name})"
             )
             nodes_by_name[node.name] = node_no
 
-        return nodes
+        return self
 
     @model_validator(mode="after")
     def validate_ports(self) -> Self:
@@ -130,9 +128,9 @@ class Configuration(FrozenModel):
             for port_no, port in enumerate(node.ports):
                 peer_port_identifier = (port.peer_node, port.peer_pci)
                 peer_port = port_links.get(peer_port_identifier, None)
-                assert peer_port is not None, (
-                    "invalid peer port specified for " f"nodes.{node_no}.ports.{port_no}"
-                )
+                assert (
+                    peer_port is not None
+                ), f"invalid peer port specified for nodes.{node_no}.ports.{port_no}"
                 assert peer_port is False, (
                     f"the peer port specified for nodes.{node_no}.ports.{port_no} "
                     f"is already linked to nodes.{peer_port[0]}.ports.{peer_port[1]}"

@@ -15,7 +15,7 @@ from paramiko.ssh_exception import (
     SSHException,
 )
 
-from framework.config import NodeConfiguration
+from framework.config.node import NodeConfiguration
 from framework.exception import SSHConnectionError
 from framework.logger import DTSLogger
 

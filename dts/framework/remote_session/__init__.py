@@ -12,7 +12,7 @@ The interactive sessions open an interactive shell which is continuously open,
 allowing it to send and receive data within that particular shell.
 """
 
-from framework.config import NodeConfiguration
+from framework.config.node import NodeConfiguration
 from framework.logger import DTSLogger
 
 from .interactive_remote_session import InteractiveRemoteSession

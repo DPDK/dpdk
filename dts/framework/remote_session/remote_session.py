@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from pathlib import Path, PurePath
 
-from framework.config import NodeConfiguration
+from framework.config.node import NodeConfiguration
 from framework.exception import RemoteCommandExecutionError
 from framework.logger import DTSLogger
 from framework.settings import SETTINGS

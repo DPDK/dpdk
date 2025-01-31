@@ -61,17 +61,12 @@ man_pages = [("testpmd_app_ug/run_app", "testpmd",
 if environ.get('DTS_DOC_BUILD'):
     extensions = ['sphinx.ext.napoleon', 'sphinx.ext.autodoc']
 
-    # Pydantic models require autodoc_pydantic for the right formatting
+    # Pydantic models require autodoc_pydantic for the right formatting. Add if installed.
     try:
         import sphinxcontrib.autodoc_pydantic
         extensions.append("sphinxcontrib.autodoc_pydantic")
     except ImportError:
-        print(
-            "The DTS API doc dependencies are missing. "
-            "The generated output won't be as intended, "
-            "and autodoc may throw unexpected warnings.",
-            file=stderr,
-        )
+        pass
 
     # Napoleon enables the Google format of Python doscstrings.
     napoleon_numpy_docstring = False
