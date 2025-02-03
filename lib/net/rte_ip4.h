@@ -65,10 +65,8 @@ struct __rte_aligned(2) __rte_packed_begin rte_ipv4_hdr {
 } __rte_packed_end;
 
 /** Create IPv4 address */
-#define RTE_IPV4(a, b, c, d) ((uint32_t)(((a) & 0xff) << 24) | \
-					   (((b) & 0xff) << 16) | \
-					   (((c) & 0xff) << 8)  | \
-					   ((d) & 0xff))
+#define RTE_IPV4(a, b, c, d) (((uint32_t)((a) & 0xff) << 24) | ((uint32_t)((b) & 0xff) << 16) | \
+	((uint32_t)((c) & 0xff) << 8) | ((uint32_t)((d) & 0xff)))
 
 /** Maximal IPv4 packet length (including a header) */
 #define RTE_IPV4_MAX_PKT_LEN        65535
