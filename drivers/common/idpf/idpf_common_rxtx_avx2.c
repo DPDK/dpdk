@@ -478,3 +478,228 @@ idpf_dp_singleq_recv_pkts_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16
 {
 	return _idpf_singleq_recv_raw_pkts_vec_avx2(rx_queue, rx_pkts, nb_pkts);
 }
+static __rte_always_inline void
+idpf_tx_backlog_entry(struct idpf_tx_entry *txep,
+		     struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	int i;
+
+	for (i = 0; i < (int)nb_pkts; ++i)
+		txep[i].mbuf = tx_pkts[i];
+}
+
+static __rte_always_inline int
+idpf_singleq_tx_free_bufs_vec(struct idpf_tx_queue *txq)
+{
+	struct idpf_tx_entry *txep;
+	uint32_t n;
+	uint32_t i;
+	int nb_free = 0;
+	struct rte_mbuf *m;
+	struct rte_mbuf **free = alloca(sizeof(struct rte_mbuf *) * txq->rs_thresh);
+
+	/* check DD bits on threshold descriptor */
+	if ((txq->tx_ring[txq->next_dd].qw1 &
+			rte_cpu_to_le_64(IDPF_TXD_QW1_DTYPE_M)) !=
+			rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE))
+		return 0;
+
+	n = txq->rs_thresh;
+
+	 /* first buffer to free from S/W ring is at index
+	  * next_dd - (rs_thresh-1)
+	  */
+	txep = &txq->sw_ring[txq->next_dd - (n - 1)];
+	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	if (likely(m)) {
+		free[0] = m;
+		nb_free = 1;
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (likely(m)) {
+				if (likely(m->pool == free[0]->pool)) {
+					free[nb_free++] = m;
+				} else {
+					rte_mempool_put_bulk(free[0]->pool,
+							     (void *)free,
+							     nb_free);
+					free[0] = m;
+					nb_free = 1;
+				}
+			}
+		}
+		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
+	} else {
+		for (i = 1; i < n; i++) {
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			if (m)
+				rte_mempool_put(m->pool, m);
+		}
+	}
+
+	/* buffers were freed, update counters */
+	txq->nb_free = (uint16_t)(txq->nb_free + txq->rs_thresh);
+	txq->next_dd = (uint16_t)(txq->next_dd + txq->rs_thresh);
+	if (txq->next_dd >= txq->nb_tx_desc)
+		txq->next_dd = (uint16_t)(txq->rs_thresh - 1);
+
+	return txq->rs_thresh;
+}
+
+static inline void
+idpf_singleq_vtx1(volatile struct idpf_base_tx_desc *txdp,
+		  struct rte_mbuf *pkt, uint64_t flags)
+{
+	uint64_t high_qw =
+		(IDPF_TX_DESC_DTYPE_DATA |
+		 ((uint64_t)flags  << IDPF_TXD_QW1_CMD_S) |
+		 ((uint64_t)pkt->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S));
+
+	__m128i descriptor = _mm_set_epi64x(high_qw,
+				pkt->buf_iova + pkt->data_off);
+	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
+}
+
+static inline void
+idpf_singleq_vtx(volatile struct idpf_base_tx_desc *txdp,
+		 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
+{
+	const uint64_t hi_qw_tmpl = (IDPF_TX_DESC_DTYPE_DATA |
+			((uint64_t)flags  << IDPF_TXD_QW1_CMD_S));
+
+	/* if unaligned on 32-bit boundary, do one to align */
+	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
+		idpf_singleq_vtx1(txdp, *pkt, flags);
+		nb_pkts--, txdp++, pkt++;
+	}
+
+	/* do two at a time while possible, in bursts */
+	for (; nb_pkts > 3; txdp += 4, pkt += 4, nb_pkts -= 4) {
+		uint64_t hi_qw3 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[3]->data_len <<
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw2 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[2]->data_len <<
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw1 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[1]->data_len <<
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
+		uint64_t hi_qw0 =
+			hi_qw_tmpl |
+			((uint64_t)pkt[0]->data_len <<
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
+
+		__m256i desc2_3 =
+			_mm256_set_epi64x
+				(hi_qw3,
+				 pkt[3]->buf_iova + pkt[3]->data_off,
+				 hi_qw2,
+				 pkt[2]->buf_iova + pkt[2]->data_off);
+		__m256i desc0_1 =
+			_mm256_set_epi64x
+				(hi_qw1,
+				 pkt[1]->buf_iova + pkt[1]->data_off,
+				 hi_qw0,
+				 pkt[0]->buf_iova + pkt[0]->data_off);
+		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp + 2), desc2_3);
+		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp), desc0_1);
+	}
+
+	/* do any last ones */
+	while (nb_pkts) {
+		idpf_singleq_vtx1(txdp, *pkt, flags);
+		txdp++, pkt++, nb_pkts--;
+	}
+}
+
+static inline uint16_t
+idpf_singleq_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+				       uint16_t nb_pkts)
+{
+	struct idpf_tx_queue *txq = (struct idpf_tx_queue *)tx_queue;
+	volatile struct idpf_base_tx_desc *txdp;
+	struct idpf_tx_entry *txep;
+	uint16_t n, nb_commit, tx_id;
+	uint64_t flags = IDPF_TX_DESC_CMD_EOP;
+	uint64_t rs = IDPF_TX_DESC_CMD_RS | flags;
+
+	/* cross rx_thresh boundary is not allowed */
+	nb_pkts = RTE_MIN(nb_pkts, txq->rs_thresh);
+
+	if (txq->nb_free < txq->free_thresh)
+		idpf_singleq_tx_free_bufs_vec(txq);
+
+	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	tx_id = txq->tx_tail;
+	txdp = &txq->tx_ring[tx_id];
+	txep = &txq->sw_ring[tx_id];
+
+	txq->nb_free = (uint16_t)(txq->nb_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		idpf_tx_backlog_entry(txep, tx_pkts, n);
+
+		idpf_singleq_vtx(txdp, tx_pkts, n - 1, flags);
+		tx_pkts += (n - 1);
+		txdp += (n - 1);
+
+		idpf_singleq_vtx1(txdp, *tx_pkts++, rs);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->next_rs = (uint16_t)(txq->rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &txq->tx_ring[tx_id];
+		txep = &txq->sw_ring[tx_id];
+	}
+
+	idpf_tx_backlog_entry(txep, tx_pkts, nb_commit);
+
+	idpf_singleq_vtx(txdp, tx_pkts, nb_commit, flags);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->next_rs) {
+		txq->tx_ring[txq->next_rs].qw1 |=
+			rte_cpu_to_le_64(((uint64_t)IDPF_TX_DESC_CMD_RS) <<
+					 IDPF_TXD_QW1_CMD_S);
+		txq->next_rs =
+			(uint16_t)(txq->next_rs + txq->rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	IDPF_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
+
+	return nb_pkts;
+}
+
+uint16_t
+idpf_dp_singleq_xmit_pkts_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
+			       uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct idpf_tx_queue *txq = (struct idpf_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		ret = idpf_singleq_xmit_fixed_burst_vec_avx2(tx_queue, &tx_pkts[nb_tx],
+						    num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}

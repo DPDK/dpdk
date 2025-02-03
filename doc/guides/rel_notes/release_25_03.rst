@@ -106,6 +106,13 @@ New Features
   * Added support for the Intel i225-series NICs (previously handled by net/igc).
   * Updated base code to the latest version.
 
+* **Updated Intel ipdf driver.**
+
+  * Added support for AVX2 instructions in single queue Rx and Tx path.
+    (The single queue model processes all packets in order within one Rx queue,
+    while the split queue model separates packet data and metadata into different queues
+    for parallel processing and improved performance.)
+
 * **Updated Marvell cnxk net driver.**
 
   * Added flow rules support for CN20K SoC.

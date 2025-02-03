@@ -887,6 +887,11 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 	if (idpf_tx_vec_dev_check_default(dev) == IDPF_VECTOR_PATH &&
 	    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 		vport->tx_vec_allowed = true;
+
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 &&
+		    rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
+			vport->tx_use_avx2 = true;
+
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_512)
 #ifdef CC_AVX512_SUPPORT
 		{
@@ -946,6 +951,14 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 				return;
 			}
 #endif /* CC_AVX512_SUPPORT */
+			if (vport->tx_use_avx2) {
+				PMD_DRV_LOG(NOTICE,
+					    "Using Single AVX2 Vector Tx (port %d).",
+					    dev->data->port_id);
+				dev->tx_pkt_burst = idpf_dp_singleq_xmit_pkts_avx2;
+				dev->tx_pkt_prepare = idpf_dp_prep_pkts;
+				return;
+			}
 		}
 		PMD_DRV_LOG(NOTICE,
 			    "Using Single Scalar Tx (port %d).",

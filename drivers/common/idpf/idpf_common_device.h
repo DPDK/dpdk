@@ -124,6 +124,7 @@ struct idpf_vport {
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
 	bool rx_use_avx2;
+	bool tx_use_avx2;
 	bool rx_use_avx512;
 	bool tx_use_avx512;
 
