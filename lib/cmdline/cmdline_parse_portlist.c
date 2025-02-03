@@ -31,15 +31,12 @@ parse_set_list(cmdline_portlist_t *pl, size_t low, size_t high)
 static int
 parse_ports(cmdline_portlist_t *pl, const char *str)
 {
+	const char *first = str;
 	size_t ps, pe;
-	const char *first, *last;
 	char *end;
 
-	for (first = str, last = first;
-	    first != NULL && last != NULL;
-	    first = last + 1) {
-
-		last = strchr(first, ',');
+	while (first != NULL) {
+		const char *last = strchr(first, ',');
 
 		errno = 0;
 		ps = strtoul(first, &end, 10);
@@ -63,6 +60,7 @@ parse_ports(cmdline_portlist_t *pl, const char *str)
 			return -1;
 
 		parse_set_list(pl, ps, pe);
+		first = (last == NULL ? NULL : last + 1);
 	}
 
 	return 0;
