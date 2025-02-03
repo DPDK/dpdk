@@ -69,11 +69,12 @@ struct rte_tailq_elem {
  * @return
  *   The return value from rte_eal_tailq_lookup, typecast to the appropriate
  *   structure pointer type.
- *   NULL on error, since the tailq_head is the first
- *   element in the rte_tailq_head structure.
+ *   NULL on error.
  */
-#define RTE_TAILQ_LOOKUP(name, struct_name) \
-	RTE_TAILQ_CAST(rte_eal_tailq_lookup(name), struct_name)
+#define RTE_TAILQ_LOOKUP(name, struct_name) __extension__ ({ \
+	struct rte_tailq_head *head = rte_eal_tailq_lookup(name); \
+	head == NULL ? NULL : RTE_TAILQ_CAST(head, struct_name); \
+})
 
 /**
  * Dump tail queues to a file.
