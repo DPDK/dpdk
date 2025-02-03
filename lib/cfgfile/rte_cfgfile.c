@@ -477,10 +477,14 @@ int rte_cfgfile_close(struct rte_cfgfile *cfg)
 RTE_EXPORT_SYMBOL(rte_cfgfile_num_sections)
 int
 rte_cfgfile_num_sections(struct rte_cfgfile *cfg, const char *sectionname,
-size_t length)
+	size_t length)
 {
-	int i;
 	int num_sections = 0;
+	int i;
+
+	if (sectionname == NULL)
+		return cfg->num_sections;
+
 	for (i = 0; i < cfg->num_sections; i++) {
 		if (strncmp(cfg->sections[i].name, sectionname, length) == 0)
 			num_sections++;
