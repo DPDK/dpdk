@@ -6,6 +6,7 @@ INTERNAL {
 
 	idpf_dp_prep_pkts;
 	idpf_dp_singleq_recv_pkts;
+	idpf_dp_singleq_recv_pkts_avx2;
 	idpf_dp_singleq_recv_pkts_avx512;
 	idpf_dp_singleq_recv_scatter_pkts;
 	idpf_dp_singleq_xmit_pkts;

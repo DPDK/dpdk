@@ -16,6 +16,13 @@ sources = files(
 )
 
 if arch_subdir == 'x86'
+    idpf_avx2_lib = static_library('idpf_avx2_lib',
+        'idpf_common_rxtx_avx2.c',
+        dependencies: [static_rte_ethdev, static_rte_hash],
+        include_directories: includes,
+        c_args: [cflags, '-mavx2'])
+    objs += idpf_avx2_lib.extract_objects('idpf_common_rxtx_avx2.c')
+
     if cc_has_avx512
         cflags += ['-DCC_AVX512_SUPPORT']
         avx512_args = cflags + cc_avx512_flags

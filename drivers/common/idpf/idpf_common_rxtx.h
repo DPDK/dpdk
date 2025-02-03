@@ -302,5 +302,9 @@ uint16_t idpf_dp_splitq_xmit_pkts_avx512(void *tx_queue, struct rte_mbuf **tx_pk
 __rte_internal
 uint16_t idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			  uint16_t nb_pkts);
+__rte_internal
+uint16_t idpf_dp_singleq_recv_pkts_avx2(void *rx_queue,
+					struct rte_mbuf **rx_pkts,
+					uint16_t nb_pkts);
 
 #endif /* _IDPF_COMMON_RXTX_H_ */
