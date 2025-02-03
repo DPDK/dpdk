@@ -66,15 +66,16 @@ static RTE_ATOMIC(uint32_t) synchro;
  * rte_eal_init only init once
  */
 static int
-test_eal_init_once(__rte_unused void *arg)
+test_eal_init_once(void *arg)
 {
 	unsigned lcore_self =  rte_lcore_id();
+	char *argv[] = { arg, NULL };
 
 	WAIT_SYNCHRO_FOR_WORKERS();
 
 	/* silent the check in the caller */
 	rte_atomic_store_explicit(&obj_count, 1, rte_memory_order_relaxed);
-	if (rte_eal_init(0, NULL) != -1)
+	if (rte_eal_init(RTE_DIM(argv) - 1, argv) != -1)
 		return -1;
 
 	return 0;
