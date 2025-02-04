@@ -77,7 +77,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 {
 	struct rte_stack_lf_head old_head;
 	uint64_t len;
-	int success;
+	int success = 0;
 
 	/* Reserve num elements, if available */
 	len = rte_atomic_load_explicit(&list->len, rte_memory_order_relaxed);
