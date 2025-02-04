@@ -332,27 +332,12 @@ static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	unsigned i;
-	int sockfd;
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	for (i = 0; i < internals->nb_queues; i++) {
-		sockfd = internals->rx_queue[i].sockfd;
-		if (sockfd != -1)
-			close(sockfd);
-
-		/* Prevent use after free in case tx fd == rx fd */
-		if (sockfd != internals->tx_queue[i].sockfd) {
-			sockfd = internals->tx_queue[i].sockfd;
-			if (sockfd != -1)
-				close(sockfd);
-		}
-
-		internals->rx_queue[i].sockfd = -1;
-		internals->tx_queue[i].sockfd = -1;
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
-
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	return 0;
 }
@@ -447,6 +432,7 @@ eth_dev_close(struct rte_eth_dev *dev)
 	struct pmd_internals *internals;
 	struct tpacket_req *req;
 	unsigned int q;
+	int sockfd;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -457,6 +443,20 @@ eth_dev_close(struct rte_eth_dev *dev)
 	internals = dev->data->dev_private;
 	req = &internals->req;
 	for (q = 0; q < internals->nb_queues; q++) {
+		sockfd = internals->rx_queue[q].sockfd;
+		if (sockfd != -1)
+			close(sockfd);
+
+		/* Prevent use after free in case tx fd == rx fd */
+		if (sockfd != internals->tx_queue[q].sockfd) {
+			sockfd = internals->tx_queue[q].sockfd;
+			if (sockfd != -1)
+				close(sockfd);
+		}
+
+		internals->rx_queue[q].sockfd = -1;
+		internals->tx_queue[q].sockfd = -1;
+
 		munmap(internals->rx_queue[q].map,
 			2 * req->tp_block_size * req->tp_block_nr);
 		rte_free(internals->rx_queue[q].rd);
