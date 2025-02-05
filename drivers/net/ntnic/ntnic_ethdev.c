@@ -2516,8 +2516,11 @@ static int init_shutdown(void)
 	NT_LOG(DBG, NTNIC, "Starting shutdown handler");
 	kill_pmd = 0;
 	previous_handler = signal(SIGINT, signal_handler_func_int);
-	THREAD_CREATE(&shutdown_tid, shutdown_thread, NULL);
-
+	int ret = THREAD_CREATE(&shutdown_tid, shutdown_thread, NULL);
+	if (ret != 0) {
+		NT_LOG(ERR, NTNIC, "Failed to create shutdown thread, error code: %d", ret);
+		return -1;
+	}
 	/*
 	 * 1 time calculation of 1 sec stat update rtc cycles to prevent stat poll
 	 * flooding by OVS from multiple virtual port threads - no need to be precise
