@@ -111,7 +111,7 @@ enum {
 
 #define DO_COMPARE_INDEXS(be_module_reg, type, idx, cmp_idx)                                      \
 	do {                                                                                      \
-		typeof(be_module_reg) *temp_be_module = &(be_module_reg);                     \
+		typeof(be_module_reg) temp_be_module = (be_module_reg);                     \
 		typeof(idx) tmp_idx = (idx);                                                  \
 		typeof(cmp_idx) tmp_cmp_idx = (cmp_idx);                                      \
 		if ((unsigned int)(tmp_idx) != (unsigned int)(tmp_cmp_idx))                     \
