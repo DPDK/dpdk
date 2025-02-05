@@ -114,10 +114,10 @@ enum {
 		typeof(be_module_reg) *temp_be_module = &(be_module_reg);                     \
 		typeof(idx) tmp_idx = (idx);                                                  \
 		typeof(cmp_idx) tmp_cmp_idx = (cmp_idx);                                      \
-		if ((unsigned int)(tmp_idx) != (unsigned int)(tmp_cmp_idx)) {                     \
-			(void)memcmp(temp_be_module + tmp_idx, &temp_be_module[tmp_cmp_idx],      \
-				     sizeof(type));                                               \
-		}                                                                                 \
+		if ((unsigned int)(tmp_idx) != (unsigned int)(tmp_cmp_idx))                     \
+			if (memcmp(temp_be_module + tmp_idx, &temp_be_module[tmp_cmp_idx], \
+				sizeof(type)) == 0) \
+				break;                                              \
 	} while (0)
 
 static inline int is_non_zero(const void *addr, size_t n)
