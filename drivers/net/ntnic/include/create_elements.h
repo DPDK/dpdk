@@ -61,7 +61,6 @@ enum nt_rte_flow_item_type {
 extern rte_spinlock_t flow_lock;
 
 int interpret_raw_data(uint8_t *data, uint8_t *preserve, int size, struct rte_flow_item *out);
-int convert_error(struct rte_flow_error *error, struct rte_flow_error *rte_flow_error);
 int create_attr(struct cnv_attr_s *attribute, const struct rte_flow_attr *attr);
 int create_match_elements(struct cnv_match_s *match, const struct rte_flow_item items[],
 	int max_elem);
