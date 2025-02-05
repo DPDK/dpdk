@@ -2990,7 +2990,36 @@ static int interpret_flow_elements(const struct flow_eth_dev *dev,
 	return 0;
 }
 
-static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def *fd,
+static bool has_only_valid_bits_set(const uint8_t *byte_array, const uint16_t byte_array_len,
+	uint16_t bit_len)
+{
+	if (byte_array_len * 8 < bit_len)
+		bit_len = byte_array_len * 8;
+
+	uint8_t mask;
+	uint16_t byte;
+
+	for (byte = 0; byte < byte_array_len; byte++) {
+		if (bit_len >= 8) {
+			bit_len -= 8;
+			mask = 0x00;
+
+		} else if (bit_len > 0) {
+			mask = 0xff >> bit_len << bit_len;
+			bit_len = 0;
+
+		} else {
+			mask = 0xFF;
+		}
+
+		if (byte_array[byte] & mask)
+			return false;
+	}
+
+	return true;
+}
+
+static int copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def *fd,
 	const uint32_t *packet_data, uint32_t flm_key_id, uint32_t flm_ft,
 	uint16_t rpl_ext_ptr, uint32_t flm_scrub __rte_unused, uint32_t priority)
 {
@@ -3056,23 +3085,47 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 		switch (fd->modify_field[i].select) {
 		case CPY_SELECT_DSCP_IPV4:
 		case CPY_SELECT_DSCP_IPV6:
+			if (!has_only_valid_bits_set(fd->modify_field[i].value8, 16, 8)) {
+				NT_LOG(ERR, FILTER, "IP DSCP value is out of the range");
+				return -1;
+			}
+
 			fh->flm_dscp = fd->modify_field[i].value8[0];
 			break;
 
 		case CPY_SELECT_RQI_QFI:
+			if (!has_only_valid_bits_set(fd->modify_field[i].value8, 16, 6)) {
+				NT_LOG(ERR, FILTER, "GTPU QFI value is out of the range");
+				return -1;
+			}
+
 			fh->flm_rqi = (fd->modify_field[i].value8[0] >> 6) & 0x1;
 			fh->flm_qfi = fd->modify_field[i].value8[0] & 0x3f;
 			break;
 
 		case CPY_SELECT_IPV4:
+			if (!has_only_valid_bits_set(fd->modify_field[i].value8, 16, 32)) {
+				NT_LOG(ERR, FILTER, "IPv4 address value is out of the range");
+				return -1;
+			}
+
 			fh->flm_nat_ipv4 = ntohl(fd->modify_field[i].value32[0]);
 			break;
 
 		case CPY_SELECT_PORT:
+			if (!has_only_valid_bits_set(fd->modify_field[i].value8, 16, 16)) {
+				NT_LOG(ERR, FILTER, "NAT port value is out of the range");
+				return -1;
+			}
+
 			fh->flm_nat_port = ntohs(fd->modify_field[i].value16[0]);
 			break;
 
 		case CPY_SELECT_TEID:
+			if (!has_only_valid_bits_set(fd->modify_field[i].value8, 16, 32)) {
+				NT_LOG(ERR, FILTER, "GTPU TEID value is out of the range");
+				return -1;
+			}
 			fh->flm_teid = ntohl(fd->modify_field[i].value32[0]);
 			break;
 
@@ -3085,6 +3138,8 @@ static void copy_fd_to_fh_flm(struct flow_handle *fh, const struct nic_flow_def 
 
 	fh->flm_mtu_fragmentation_recipe = fd->flm_mtu_fragmentation_recipe;
 	fh->context = fd->age.context;
+
+	return 0;
 }
 
 static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_data,
@@ -3113,8 +3168,10 @@ static int convert_fh_to_fh_flm(struct flow_handle *fh, const uint32_t *packet_d
 	for (int i = 0; i < RES_COUNT; ++i)
 		fh->flm_db_idxs[i] = fh_copy.db_idxs[i];
 
-	copy_fd_to_fh_flm(fh, fd, packet_data, flm_key_id, flm_ft, rpl_ext_ptr, flm_scrub,
-		priority);
+	if (copy_fd_to_fh_flm(fh, fd, packet_data, flm_key_id, flm_ft, rpl_ext_ptr,
+		flm_scrub, priority) < 0) {
+		return -1;
+	}
 
 	free(fd);
 
@@ -3476,8 +3533,11 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		}
 
 		/* Program flow */
-		convert_fh_to_fh_flm(fh, packet_data, flm_idx.id1 + 2, flm_ft, flm_rpl_ext_ptr,
-			flm_scrub, attr->priority & 0x3);
+		if (convert_fh_to_fh_flm(fh, packet_data, flm_idx.id1 + 2, flm_ft, flm_rpl_ext_ptr,
+				flm_scrub, attr->priority & 0x3) != 0) {
+			flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+			goto error_out;
+		}
 		flm_flow_programming(fh, NT_FLM_OP_LEARN);
 
 		nic_insert_flow_flm(dev->ndev, fh);
@@ -3511,6 +3571,13 @@ static struct flow_handle *create_flow_filter(struct flow_eth_dev *dev, struct n
 		} else {
 			/* Action Set doesn't contain jump */
 			action_set_data.contains_jump = 0;
+
+			/* Group 0 supports only modify action for TTL/Hop limit. */
+			if (fd->modify_field_count > 0) {
+				NT_LOG(ERR, FILTER, "Unsupported MODIFY ACTION for group 0");
+				flow_nic_set_error(ERR_MATCH_RESOURCE_EXHAUSTION, error);
+				goto error_out;
+			}
 
 			/* Setup COT */
 			struct hw_db_inline_cot_data cot_data = {
@@ -5179,11 +5246,13 @@ struct flow_handle *flow_async_create_profile_inline(struct flow_eth_dev *dev,
 		fh->caller_id = template_table->caller_id;
 		fh->user_data = user_data;
 
-		copy_fd_to_fh_flm(fh, fd, packet_data, pattern_action_pair->flm_key_id,
-			pattern_action_pair->flm_ft,
-			pattern_action_pair->flm_rpl_ext_ptr,
-			pattern_action_pair->flm_scrub_prof,
-			template_table->attr.priority & 0x3);
+		if (copy_fd_to_fh_flm(fh, fd, packet_data, pattern_action_pair->flm_key_id,
+				pattern_action_pair->flm_ft,
+				pattern_action_pair->flm_rpl_ext_ptr,
+				pattern_action_pair->flm_scrub_prof,
+				template_table->attr.priority & 0x3) != 0) {
+			goto err_exit;
+		}
 
 		free(fd);
 
