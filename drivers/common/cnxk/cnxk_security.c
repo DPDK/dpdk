@@ -174,9 +174,11 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 	}
 
 	/* Set AES key length */
-	if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC || w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR || w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
-	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM || w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
+	if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC ||
+	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
+	    w2->s.enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    w2->s.enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    w2->s.auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		switch (length) {
 		case ROC_CPT_AES128_KEY_LEN:
 			w2->s.aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
@@ -879,9 +881,11 @@ on_ipsec_sa_ctl_set(struct rte_security_ipsec_xform *ipsec,
 	}
 
 	/* Set AES key length */
-	if (ctl->enc_type == ROC_IE_SA_ENC_AES_CBC || ctl->enc_type == ROC_IE_SA_ENC_AES_CCM ||
-	    ctl->enc_type == ROC_IE_SA_ENC_AES_CTR || ctl->enc_type == ROC_IE_SA_ENC_AES_GCM ||
-	    ctl->enc_type == ROC_IE_SA_ENC_AES_CCM || ctl->auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
+	if (ctl->enc_type == ROC_IE_SA_ENC_AES_CBC ||
+	    ctl->enc_type == ROC_IE_SA_ENC_AES_CTR ||
+	    ctl->enc_type == ROC_IE_SA_ENC_AES_GCM ||
+	    ctl->enc_type == ROC_IE_SA_ENC_AES_CCM ||
+	    ctl->auth_type == ROC_IE_SA_AUTH_AES_GMAC) {
 		switch (aes_key_len) {
 		case 16:
 			ctl->aes_key_len = ROC_IE_SA_AES_KEY_LEN_128;
