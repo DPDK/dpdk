@@ -104,6 +104,10 @@ struct tpe_v2_ifr_v1_rcp_s {
 	uint32_t mtu;
 };
 
+struct tpe_v2_ifr_v1_counters_s {
+	uint32_t drop;
+};
+
 struct hw_mod_tpe_v3_s {
 	struct tpe_v1_rpp_v0_rcp_s *rpp_rcp;
 
@@ -121,6 +125,7 @@ struct hw_mod_tpe_v3_s {
 
 	struct tpe_v2_rpp_v1_ifr_rcp_s *rpp_ifr_rcp;
 	struct tpe_v2_ifr_v1_rcp_s *ifr_rcp;
+	struct tpe_v2_ifr_v1_counters_s *ifr_counters;
 };
 
 #endif	/* _HW_MOD_TPE_V3_H_ */

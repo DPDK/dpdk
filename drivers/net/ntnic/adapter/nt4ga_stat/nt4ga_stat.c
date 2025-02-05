@@ -100,6 +100,8 @@ static int nt4ga_stat_init(struct adapter_info_s *p_adapter_info)
 
 		p_nt4ga_stat->mn_rx_ports = p_nthw_stat->m_nb_rx_ports;
 		p_nt4ga_stat->mn_tx_ports = p_nthw_stat->m_nb_tx_ports;
+
+		p_nt4ga_stat->mn_ifr_counters = p_nthw_stat->m_nb_ifr_counters;
 	}
 
 	return 0;
@@ -205,6 +207,9 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 		p_nt4ga_stat->mp_stat_structs_flm->max_lps =
 			nthw_fpga_get_product_param(p_adapter_info->fpga_info.mp_fpga,
 				NT_FLM_LOAD_LPS_MAX, 0);
+
+		p_nt4ga_stat->mp_stat_structs_ifr =
+			calloc(1, sizeof(struct ifr_counters) * p_nt4ga_stat->mn_ifr_counters);
 	}
 
 	p_nt4ga_stat->mp_port_load =
@@ -555,6 +560,10 @@ static int nt4ga_stat_collect_cap_v1_stats(struct adapter_info_s *p_adapter_info
 	/* Update and get FLM stats */
 	flow_filter_ops->flow_get_flm_stats(ndev, (uint64_t *)p_nt4ga_stat->mp_stat_structs_flm,
 		sizeof(struct flm_counters_v1) / sizeof(uint64_t));
+
+	/* Update and get IFR stats */
+	flow_filter_ops->flow_get_ifr_stats(ndev, (uint64_t *)p_nt4ga_stat->mp_stat_structs_ifr,
+		p_nt4ga_stat->mn_ifr_counters - 1);
 
 	/*
 	 * Calculate correct load values:

@@ -1226,6 +1226,21 @@ int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size)
 	return -1;
 }
 
+int flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count)
+{
+	const struct profile_inline_ops *profile_inline_ops = get_profile_inline_ops();
+
+	if (profile_inline_ops == NULL)
+		return -1;
+
+	if (ndev->flow_profile == FLOW_ETH_DEV_PROFILE_INLINE) {
+		return profile_inline_ops->flow_get_ifr_stats_profile_inline(ndev, data,
+				port_count);
+	}
+
+	return -1;
+}
+
 static const struct flow_filter_ops ops = {
 	.flow_filter_init = flow_filter_init,
 	.flow_filter_done = flow_filter_done,
@@ -1242,6 +1257,7 @@ static const struct flow_filter_ops ops = {
 	.flow_actions_update = flow_actions_update,
 	.flow_dev_dump = flow_dev_dump,
 	.flow_get_flm_stats = flow_get_flm_stats,
+	.flow_get_ifr_stats = flow_get_ifr_stats,
 	.flow_get_aged_flows = flow_get_aged_flows,
 
 	/*

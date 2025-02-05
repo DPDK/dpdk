@@ -4715,6 +4715,24 @@ int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
 	return 0;
 }
 
+int flow_get_ifr_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data,
+	uint8_t port_count)
+{
+	/* IFR RCP 0 is reserved, port counters start from record 1 */
+	hw_mod_tpe_ifr_counters_update(&ndev->be, 1, port_count);
+	uint8_t i = 0;
+
+	for (i = 0; i < port_count; ++i) {
+		uint8_t ifr_mtu_recipe = convert_port_to_ifr_mtu_recipe(i);
+		uint32_t drop_cnt = 0;
+		hw_mod_tpe_ifr_counters_get(&ndev->be, HW_TPE_IFR_COUNTERS_DROP, ifr_mtu_recipe,
+			&drop_cnt);
+		data[i] = data[i] + drop_cnt;
+	}
+
+	return 0;
+}
+
 int flow_set_mtu_inline(struct flow_eth_dev *dev, uint32_t port, uint16_t mtu)
 {
 	if (port >= 255)
@@ -5338,6 +5356,7 @@ static const struct profile_inline_ops ops = {
 	 * Stats
 	 */
 	.flow_get_flm_stats_profile_inline = flow_get_flm_stats_profile_inline,
+	.flow_get_ifr_stats_profile_inline = flow_get_ifr_stats_profile_inline,
 	.flow_info_get_profile_inline = flow_info_get_profile_inline,
 	.flow_configure_profile_inline = flow_configure_profile_inline,
 	.flow_pattern_template_create_profile_inline = flow_pattern_template_create_profile_inline,

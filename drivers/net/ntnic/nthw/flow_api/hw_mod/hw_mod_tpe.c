@@ -69,11 +69,13 @@ int hw_mod_tpe_alloc(struct flow_api_backend_s *be)
 
 	switch (_VER_) {
 	case 3:
-		if (!callocate_mod((struct common_func_s *)&be->tpe, 10, &be->tpe.v3.rpp_rcp,
+		if (!callocate_mod((struct common_func_s *)&be->tpe, 11, &be->tpe.v3.rpp_rcp,
 				be->tpe.nb_rcp_categories, sizeof(struct tpe_v1_rpp_v0_rcp_s),
 				&be->tpe.v3.rpp_ifr_rcp, be->tpe.nb_ifr_categories,
 				sizeof(struct tpe_v2_rpp_v1_ifr_rcp_s), &be->tpe.v3.ifr_rcp,
 				be->tpe.nb_ifr_categories, sizeof(struct tpe_v2_ifr_v1_rcp_s),
+				&be->tpe.v3.ifr_counters, be->tpe.nb_ifr_categories,
+				sizeof(struct tpe_v2_ifr_v1_counters_s),
 
 				&be->tpe.v3.ins_rcp, be->tpe.nb_rcp_categories,
 				sizeof(struct tpe_v1_ins_v1_rcp_s),
@@ -131,6 +133,7 @@ int hw_mod_tpe_reset(struct flow_api_backend_s *be)
 	err |= hw_mod_tpe_csu_rcp_flush(be, 0, ALL_ENTRIES);
 	err |= hw_mod_tpe_rpp_ifr_rcp_flush(be, 0, ALL_ENTRIES);
 	err |= hw_mod_tpe_ifr_rcp_flush(be, 0, ALL_ENTRIES);
+	err |= hw_mod_tpe_ifr_counters_update(be, 0, ALL_ENTRIES);
 
 	return err;
 }
@@ -356,6 +359,59 @@ int hw_mod_tpe_ifr_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, i
 	uint32_t value)
 {
 	return hw_mod_tpe_ifr_rcp_mod(be, field, index, &value, 0);
+}
+
+/*
+ * IFR_COUNTER
+ */
+
+int hw_mod_tpe_ifr_counters_update(struct flow_api_backend_s *be, int start_idx, int count)
+{
+	if (count == ALL_ENTRIES)
+		count = be->tpe.nb_ifr_categories;
+
+	if ((unsigned int)(start_idx + count) > be->tpe.nb_ifr_categories)
+		return INDEX_TOO_LARGE;
+
+	return be->iface->tpe_ifr_counters_update(be->be_dev, &be->tpe, start_idx, count);
+}
+
+static int hw_mod_tpe_ifr_counters_mod(struct flow_api_backend_s *be, enum hw_tpe_e field,
+	uint32_t index, uint32_t *value, int get)
+{
+	if (index >= be->tpe.nb_ifr_categories)
+		return INDEX_TOO_LARGE;
+
+	switch (_VER_) {
+	case 3:
+		switch (field) {
+		case HW_TPE_IFR_COUNTERS_DROP:
+			GET_SET(be->tpe.v3.ifr_counters[index].drop, value);
+			break;
+
+		default:
+			return UNSUP_FIELD;
+		}
+
+		break;
+
+	default:
+		return UNSUP_VER;
+	}
+
+	return 0;
+}
+
+int hw_mod_tpe_ifr_counters_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value)
+{
+	return hw_mod_tpe_ifr_counters_mod(be, field, index, &value, 0);
+}
+
+int hw_mod_tpe_ifr_counters_get(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t *value)
+{
+	return hw_mod_tpe_ifr_counters_mod(be, field, index, value, 1);
 }
 
 /*

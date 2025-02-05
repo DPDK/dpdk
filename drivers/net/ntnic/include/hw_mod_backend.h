@@ -899,6 +899,7 @@ enum hw_tpe_e {
 	HW_TPE_IFR_RCP_IPV6_EN,
 	HW_TPE_IFR_RCP_IPV6_DROP,
 	HW_TPE_IFR_RCP_MTU,
+	HW_TPE_IFR_COUNTERS_DROP,
 	HW_TPE_INS_RCP_DYN,
 	HW_TPE_INS_RCP_OFS,
 	HW_TPE_INS_RCP_LEN,
@@ -958,6 +959,12 @@ int hw_mod_tpe_rpp_ifr_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e fiel
 int hw_mod_tpe_ifr_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 int hw_mod_tpe_ifr_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
 	uint32_t value);
+
+int hw_mod_tpe_ifr_counters_update(struct flow_api_backend_s *be, int start_idx, int count);
+int hw_mod_tpe_ifr_counters_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t value);
+int hw_mod_tpe_ifr_counters_get(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
+	uint32_t *value);
 
 int hw_mod_tpe_ins_rcp_flush(struct flow_api_backend_s *be, int start_idx, int count);
 int hw_mod_tpe_ins_rcp_set(struct flow_api_backend_s *be, enum hw_tpe_e field, int index,
@@ -1124,6 +1131,7 @@ struct flow_api_backend_ops {
 	int (*tpe_rpp_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
 	int (*tpe_rpp_ifr_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
 	int (*tpe_ifr_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
+	int (*tpe_ifr_counters_update)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
 	int (*tpe_ins_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
 	int (*tpe_rpl_rcp_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);
 	int (*tpe_rpl_ext_flush)(void *dev, const struct tpe_func_s *tpe, int index, int cnt);

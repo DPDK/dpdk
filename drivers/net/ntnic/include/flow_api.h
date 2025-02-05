@@ -230,5 +230,6 @@ int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, i
 int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
 
 int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
+int flow_get_ifr_stats(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count);
 
 #endif

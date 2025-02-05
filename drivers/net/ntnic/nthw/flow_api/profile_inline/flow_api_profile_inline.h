@@ -72,6 +72,10 @@ int flow_get_aged_flows_profile_inline(struct flow_eth_dev *dev,
 
 int flow_get_flm_stats_profile_inline(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
 
+int flow_get_ifr_stats_profile_inline(struct flow_nic_dev *ndev,
+	uint64_t *data,
+	uint8_t port_count);
+
 /*
  * RTE flow asynchronous operations functions
  */

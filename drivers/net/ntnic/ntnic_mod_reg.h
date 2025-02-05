@@ -362,6 +362,10 @@ struct profile_inline_ops {
 		uint64_t *data,
 		uint64_t size);
 
+	int (*flow_get_ifr_stats_profile_inline)(struct flow_nic_dev *ndev,
+		uint64_t *data,
+		uint8_t port_count);
+
 	/*
 	 * NT Flow FLM queue API
 	 */
@@ -459,6 +463,7 @@ struct flow_filter_ops {
 		struct rte_flow_error *error);
 
 	int (*flow_get_flm_stats)(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
+	int (*flow_get_ifr_stats)(struct flow_nic_dev *ndev, uint64_t *data, uint8_t port_count);
 
 	/*
 	 * Other

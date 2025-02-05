@@ -69,6 +69,13 @@ int ifr_nthw_init(struct ifr_nthw *p, nthw_fpga_t *p_fpga, int n_instance)
 	p->mp_df_buf_data_fifo_dat =
 		nthw_register_get_field(p->mp_df_buf_data, IFR_DF_BUF_DATA_FIFO_DAT);
 
+	p->mp_counters_ctrl = nthw_module_get_register(p->m_ifr, IFR_COUNTERS_CTRL);
+	p->mp_counters_addr = nthw_register_get_field(p->mp_counters_ctrl, IFR_COUNTERS_CTRL_ADR);
+	p->mp_counters_cnt = nthw_register_get_field(p->mp_counters_ctrl, IFR_COUNTERS_CTRL_CNT);
+
+	p->mp_counters_data = nthw_module_get_register(p->m_ifr, IFR_COUNTERS_DATA);
+	p->mp_counters_drop = nthw_register_get_field(p->mp_counters_data, IFR_COUNTERS_DATA_DROP);
+
 	return 0;
 }
 
@@ -120,4 +127,29 @@ void ifr_nthw_rcp_flush(const struct ifr_nthw *p)
 	assert(p->mp_rcp_data);
 	nthw_register_flush(p->mp_rcp_ctrl, 1);
 	nthw_register_flush(p->mp_rcp_data, 1);
+}
+
+void ifr_nthw_counters_select(const struct ifr_nthw *p, uint32_t val)
+{
+	assert(p->mp_counters_addr);
+	nthw_field_set_val32(p->mp_counters_addr, val);
+}
+
+void ifr_nthw_counters_cnt(const struct ifr_nthw *p, uint32_t val)
+{
+	assert(p->mp_counters_cnt);
+	nthw_field_set_val32(p->mp_counters_cnt, val);
+}
+
+void ifr_nthw_counters_drop(const struct ifr_nthw *p, uint32_t *val, int get)
+{
+	if (get)
+		*val = nthw_field_get_val32(p->mp_counters_drop);
+}
+
+void ifr_nthw_counters_update(const struct ifr_nthw *p)
+{
+	assert(p->mp_counters_data);
+	nthw_register_flush(p->mp_counters_ctrl, 1);
+	nthw_register_update(p->mp_counters_data);
 }

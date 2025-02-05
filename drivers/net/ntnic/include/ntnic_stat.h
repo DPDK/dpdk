@@ -46,6 +46,7 @@ struct nthw_stat {
 	int m_nb_counters;
 
 	int m_nb_rpp_per_ps;
+	int m_nb_ifr_counters;
 
 	nthw_field_t *mp_fld_dma_ena;
 	nthw_field_t *mp_fld_cnt_clear;
@@ -204,6 +205,10 @@ struct flm_counters_v1 {
 	uint64_t max_aps;
 };
 
+struct ifr_counters {
+	uint64_t drop;
+};
+
 struct nt4ga_stat_s {
 	nthw_stat_t *mp_nthw_stat;
 	nthw_rmc_t *mp_nthw_rmc;
@@ -220,6 +225,8 @@ struct nt4ga_stat_s {
 	int mn_rx_ports;
 	int mn_tx_ports;
 
+	int mn_ifr_counters;
+
 	struct color_counters *mp_stat_structs_color;
 	/* For calculating increments between stats polls */
 	struct color_counters a_stat_structs_color_base[NT_MAX_COLOR_FLOW_STATS];
@@ -235,6 +242,8 @@ struct nt4ga_stat_s {
 
 	int flm_stat_ver;
 	struct flm_counters_v1 *mp_stat_structs_flm;
+
+	struct ifr_counters *mp_stat_structs_ifr;
 
 	/* Rx/Tx totals: */
 	uint64_t n_totals_reset_timestamp;	/* timestamp for last totals reset */
