@@ -76,10 +76,6 @@ const rte_thread_attr_t thread_attr = { .priority = RTE_THREAD_PRIORITY_NORMAL }
 
 uint64_t rte_tsc_freq;
 
-static void (*previous_handler)(int sig);
-static rte_thread_t shutdown_tid;
-
-int kill_pmd;
 
 #define ETH_DEV_NTNIC_HELP_ARG "help"
 #define ETH_DEV_NTHW_RXQUEUES_ARG "rxqs"
@@ -480,9 +476,6 @@ static uint16_t eth_dev_rx_scg(void *queue, struct rte_mbuf **bufs, uint16_t nb_
 
 	struct nthw_received_packets hw_recv[MAX_RX_PACKETS];
 
-	if (kill_pmd)
-		return 0;
-
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
@@ -692,9 +685,6 @@ static uint16_t eth_dev_tx_scg(void *queue, struct rte_mbuf **bufs, uint16_t nb_
 	int nb_segs = 0, i;
 	int pkts_sent = 0;
 	uint16_t nb_segs_arr[MAX_TX_PACKETS];
-
-	if (kill_pmd)
-		return 0;
 
 	if (nb_pkts > MAX_TX_PACKETS)
 		nb_pkts = MAX_TX_PACKETS;
@@ -2490,51 +2480,6 @@ nthw_pci_dev_deinit(struct rte_eth_dev *eth_dev __rte_unused)
 	return 0;
 }
 
-static void signal_handler_func_int(int sig)
-{
-	if (sig != SIGINT) {
-		signal(sig, previous_handler);
-		raise(sig);
-		return;
-	}
-
-	kill_pmd = 1;
-}
-
-THREAD_FUNC shutdown_thread(void *arg __rte_unused)
-{
-	while (!kill_pmd)
-		nt_os_wait_usec(100 * 1000);
-
-	NT_LOG_DBGX(DBG, NTNIC, "Shutting down because of ctrl+C");
-
-	signal(SIGINT, previous_handler);
-	raise(SIGINT);
-
-	return THREAD_RETURN;
-}
-
-static int init_shutdown(void)
-{
-	NT_LOG(DBG, NTNIC, "Starting shutdown handler");
-	kill_pmd = 0;
-	previous_handler = signal(SIGINT, signal_handler_func_int);
-	int ret = THREAD_CREATE(&shutdown_tid, shutdown_thread, NULL);
-	if (ret != 0) {
-		NT_LOG(ERR, NTNIC, "Failed to create shutdown thread, error code: %d", ret);
-		return -1;
-	}
-	/*
-	 * 1 time calculation of 1 sec stat update rtc cycles to prevent stat poll
-	 * flooding by OVS from multiple virtual port threads - no need to be precise
-	 */
-	uint64_t now_rtc = rte_get_tsc_cycles();
-	nt_os_wait_usec(10 * 1000);
-	rte_tsc_freq = 100 * (rte_get_tsc_cycles() - now_rtc);
-
-	return 0;
-}
-
 static int
 nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	struct rte_pci_device *pci_dev)
@@ -2577,7 +2522,13 @@ nthw_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	ret = nthw_pci_dev_init(pci_dev);
 
-	init_shutdown();
+	/*
+	 * 1 time calculation of 1 sec stat update rtc cycles to prevent stat poll
+	 * flooding by OVS from multiple virtual port threads - no need to be precise
+	 */
+	uint64_t now_rtc = rte_get_tsc_cycles();
+	nt_os_wait_usec(10 * 1000);
+	rte_tsc_freq = 100 * (rte_get_tsc_cycles() - now_rtc);
 
 	NT_LOG_DBGX(DBG, NTNIC, "leave: ret=%d", ret);
 	return ret;
