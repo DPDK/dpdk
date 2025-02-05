@@ -101,6 +101,14 @@ roc_npc_mcam_read_counter(struct roc_npc *roc_npc, uint32_t ctr_id, uint64_t *co
 }
 
 int
+roc_npc_mcam_get_stats(struct roc_npc *roc_npc, struct roc_npc_flow *flow, uint64_t *count)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_mcam_get_stats(npc->mbox, flow, count);
+}
+
+int
 roc_npc_mcam_clear_counter(struct roc_npc *roc_npc, uint32_t ctr_id)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
@@ -221,7 +229,9 @@ roc_npc_get_low_priority_mcam(struct roc_npc *roc_npc)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 
-	if (roc_model_is_cn10k())
+	if (roc_model_is_cn20k())
+		return (npc->mcam_entries - NPC_MCAME_RESVD_10XX - 1);
+	else if (roc_model_is_cn10k())
 		return (npc->mcam_entries - NPC_MCAME_RESVD_10XX - 1);
 	else if (roc_model_is_cn98xx())
 		return (npc->mcam_entries - NPC_MCAME_RESVD_98XX - 1);
@@ -235,7 +245,9 @@ npc_mcam_tot_entries(void)
 	/* FIXME: change to reading in AF from NPC_AF_CONST1/2
 	 * MCAM_BANK_DEPTH(_EXT) * MCAM_BANKS
 	 */
-	if (roc_model_is_cn10k() || roc_model_is_cn98xx())
+	if (roc_model_is_cn20k())
+		return 2 * 8192; /* MCAM_BANKS = 2, BANK_DEPTH_EXT = 8192 */
+	else if (roc_model_is_cn10k() || roc_model_is_cn98xx())
 		return 16 * 1024; /* MCAM_BANKS = 4, BANK_DEPTH_EXT = 4096 */
 	else
 		return 4 * 1024; /* MCAM_BANKS = 4, BANK_DEPTH_EXT = 1024 */
@@ -311,6 +323,7 @@ roc_npc_init(struct roc_npc *roc_npc)
 
 	npc->mcam_entries = npc_mcam_tot_entries() >> npc->keyw[NPC_MCAM_RX];
 	nix->exact_match_ena = npc->exact_match_ena;
+	roc_npc->max_entries = npc->mcam_entries;
 
 	/* Free, free_rev, live and live_rev entries */
 	bmap_sz = plt_bitmap_get_memory_footprint(npc->mcam_entries);
@@ -1856,9 +1869,7 @@ roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc, int rep_port_id)
 int
 roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 {
-	struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
-	struct mcam_entry *base_entry;
 	struct mbox *mbox = mbox_get(npc->mbox);
 	int idx, rc;
 
@@ -1868,17 +1879,36 @@ roc_npc_mcam_merge_base_steering_rule(struct roc_npc *roc_npc, struct roc_npc_fl
 	}
 
 	(void)mbox_alloc_msg_npc_read_base_steer_rule(mbox);
-	rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
-	if (rc) {
-		plt_err("Failed to fetch VF's base MCAM entry");
-		goto exit;
-	}
-	base_entry = &base_rule_rsp->entry_data;
-	for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
-		flow->mcam_data[idx] |= base_entry->kw[idx];
-		flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
-	}
+	if (roc_model_is_cn20k()) {
+		struct npc_cn20k_mcam_read_base_rule_rsp *base_rule_rsp;
+		struct cn20k_mcam_entry *base_entry;
 
+		rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
+		if (rc) {
+			plt_err("Failed to fetch VF's base MCAM entry");
+			goto exit;
+		}
+		base_entry = &base_rule_rsp->entry;
+		for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			flow->mcam_data[idx] |= base_entry->kw[idx];
+			flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
+		}
+
+	} else {
+		struct npc_mcam_read_base_rule_rsp *base_rule_rsp;
+		struct mcam_entry *base_entry;
+
+		rc = mbox_process_msg(mbox, (void *)&base_rule_rsp);
+		if (rc) {
+			plt_err("Failed to fetch VF's base MCAM entry");
+			goto exit;
+		}
+		base_entry = &base_rule_rsp->entry_data;
+		for (idx = 0; idx < ROC_NPC_MAX_MCAM_WIDTH_DWORDS; idx++) {
+			flow->mcam_data[idx] |= base_entry->kw[idx];
+			flow->mcam_mask[idx] |= base_entry->kw_mask[idx];
+		}
+	}
 	rc = 0;
 exit:
 	mbox_put(mbox);

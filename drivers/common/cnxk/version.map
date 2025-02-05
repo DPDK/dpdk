@@ -487,6 +487,7 @@ INTERNAL {
 	roc_npc_mcam_free_counter;
 	roc_npc_mcam_free;
 	roc_npc_mcam_free_entry;
+	roc_npc_mcam_get_stats;
 	roc_npc_mcam_init;
 	roc_npc_mcam_move;
 	roc_npc_mcam_merge_base_steering_rule;

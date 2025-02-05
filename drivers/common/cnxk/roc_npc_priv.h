@@ -30,6 +30,10 @@
 	((((lid) - (NPC_LID_LA)) * NPC_LAYER_KEYX_SZ) +                        \
 	 NPC_PARSE_KEX_S_LA_OFFSET)
 
+#define NPC_LAYER_KEYX_SZ_CN20K (2)
+#define NPC_PARSE_KEX_S_LID_OFFSET_CN20K(lid)                                                      \
+	((((lid) - (NPC_LID_LA)) * NPC_LAYER_KEYX_SZ_CN20K) + NPC_PARSE_KEX_S_LA_OFFSET)
+
 /* This mark value indicates flag action */
 #define NPC_FLOW_FLAG_VAL (0xffff)
 
@@ -43,7 +47,11 @@
 
 #define NPC_MCAM_KEX_FIELD_MAX	  23
 #define NPC_MCAM_MAX_PROTO_FIELDS (NPC_MCAM_KEX_FIELD_MAX + 1)
-#define NPC_MCAM_KEY_X4_WORDS	  7 /* Number of 64-bit words */
+#if defined(ROC_PLATFORM_CN20K)
+#define NPC_MCAM_KEY_X4_WORDS 8 /* Number of 64-bit words */
+#else
+#define NPC_MCAM_KEY_X4_WORDS 7 /* Number of 64-bit words */
+#endif
 
 #define NPC_RVUPF_MAX_9XXX 0x10 /* HRM: RVU_PRIV_CONST */
 #define NPC_RVUPF_MAX_98XX 0x18 /* HRM: RVU_PRIV_CONST */
@@ -76,6 +84,16 @@
  */
 #define NPC_LFLAG_LC_OFFSET (NPC_LTYPE_OFFSET_START + 6)
 #define NPC_LTYPE_LC_OFFSET (NPC_LTYPE_OFFSET_START + 8)
+
+/* LB OFFSET : START + LA (1b flags + 1b ltype) + LB (1b flags) */
+#define NPC_CN20K_LTYPE_LB_OFFSET (NPC_LTYPE_OFFSET_START + 3)
+#define NPC_CN20K_LFLAG_LB_OFFSET (NPC_LTYPE_OFFSET_START + 2)
+
+/* LC OFFSET : START + LA (1b flags + 1b ltype) + LB (1b flags + 1b ltype) + LC
+ * (1b flags)
+ */
+#define NPC_CN20K_LFLAG_LC_OFFSET (NPC_LTYPE_OFFSET_START + 4)
+#define NPC_CN20K_LTYPE_LC_OFFSET (NPC_LTYPE_OFFSET_START + 5)
 
 #define CN10K_SDP_CH_START 0x80
 #define CN10K_SDP_CH_MASK  0xF80
@@ -176,9 +194,9 @@ struct npc_parse_item_info {
 	const void *def_mask; /* default mask */
 	void *hw_mask;	      /* hardware supported mask */
 	int len;	      /* length of item */
+	uint8_t hw_hdr_len;   /* Extra data len at each layer*/
 	const void *spec;     /* spec to use, NULL implies match any */
 	const void *mask;     /* mask to use */
-	uint8_t hw_hdr_len;   /* Extra data len at each layer*/
 };
 
 struct npc_parse_state {
@@ -192,16 +210,16 @@ struct npc_parse_state {
 	uint8_t layer_mask;
 	uint8_t lt[NPC_MAX_LID];
 	uint8_t flags[NPC_MAX_LID];
+	bool has_eth_type;
+	bool is_second_pass_rule;
+	bool set_ipv6ext_ltype_mask;
+	/* adjust ltype in MCAM to match at least one vlan */
+	bool set_vlan_ltype_mask;
 	uint8_t *mcam_data; /* point to flow->mcam_data + key_len */
 	uint8_t *mcam_mask; /* point to flow->mcam_mask + key_len */
 	bool is_vf;
-	/* adjust ltype in MCAM to match at least one vlan */
-	bool set_vlan_ltype_mask;
-	bool set_ipv6ext_ltype_mask;
-	bool is_second_pass_rule;
-	bool has_eth_type;
-	uint16_t nb_tx_queues;
 	uint16_t dst_pf_func;
+	uint16_t nb_tx_queues;
 };
 
 enum npc_kpu_parser_flag {
@@ -340,6 +358,14 @@ struct npc_lid_lt_xtract_info {
 	struct npc_xtract_info xtract[NPC_MAX_LD];
 };
 
+struct npc_lid_lt_xtract_info_cn20k {
+	/* Info derived from parser configuration */
+	uint16_t npc_proto;	    /* Network protocol identified */
+	uint8_t valid_flags_mask;   /* Flags applicable */
+	uint8_t is_terminating : 1; /* No more parsing */
+	struct npc_xtract_info xtract;
+};
+
 union npc_kex_ldata_flags_cfg {
 	struct {
 		uint64_t lid : 3;
@@ -348,6 +374,11 @@ union npc_kex_ldata_flags_cfg {
 
 	uint64_t i;
 };
+
+#define NPC_MAX_EXTRACTTORS 24
+typedef struct npc_lid_lt_xtract_info_cn20k npc_dxcfg_cn20k_t[NPC_MAX_INTF][NPC_MAX_EXTRACTTORS]
+							     [NPC_MAX_LT];
+typedef union npc_kex_ldata_flags_cfg npc_lid_cn20k_t[NPC_MAX_INTF][NPC_MAX_EXTRACTTORS];
 
 typedef struct npc_lid_lt_xtract_info npc_dxcfg_t[NPC_MAX_INTF][NPC_MAX_LID]
 						 [NPC_MAX_LT];
@@ -387,33 +418,36 @@ TAILQ_HEAD(npc_age_flow_list_head, npc_age_flow_entry);
 
 struct npc {
 	struct mbox *mbox;			/* Mbox */
-	uint32_t keyx_supp_nmask[NPC_MAX_INTF]; /* nibble mask */
+	uint64_t keyx_supp_nmask[NPC_MAX_INTF]; /* nibble mask */
 	uint8_t hash_extract_cap;		/* hash extract support */
 	uint8_t profile_name[MKEX_NAME_LEN];	/* KEX profile name */
-	uint32_t keyx_len[NPC_MAX_INTF];	/* per intf key len in bits */
-	uint32_t datax_len[NPC_MAX_INTF];	/* per intf data len in bits */
-	uint32_t keyw[NPC_MAX_INTF];		/* max key + data len bits */
-	uint32_t mcam_entries;			/* mcam entries supported */
-	uint16_t channel;			/* RX Channel number */
 	bool is_sdp_link;
+	uint16_t channel;		  /* RX Channel number */
+	uint32_t keyx_len[NPC_MAX_INTF];  /* per intf key len in bits */
+	uint32_t datax_len[NPC_MAX_INTF]; /* per intf data len in bits */
+	uint32_t keyw[NPC_MAX_INTF];	  /* max key + data len bits */
+	uint32_t mcam_entries;		  /* mcam entries supported */
+	uint16_t switch_header_type;	  /* Supported switch header type */
+	uint16_t flow_max_priority;	  /* Max priority for flow */
 	uint16_t sdp_channel;
 	uint16_t sdp_channel_mask;
-	uint32_t rss_grps;			/* rss groups supported */
-	uint16_t flow_prealloc_size;		/* Pre allocated mcam size */
-	uint16_t flow_max_priority;		/* Max priority for flow */
-	uint16_t switch_header_type; /* Supported switch header type */
+	uint32_t rss_grps;	     /* rss groups supported */
+	uint16_t flow_prealloc_size; /* Pre allocated mcam size */
+	uint8_t exact_match_ena;
+	uint16_t pf_func; /* pf_func of device */
 	uint32_t mark_actions;
-	uint32_t vtag_strip_actions; /* vtag insert/strip actions */
-	uint16_t pf_func;	     /* pf_func of device */
-	npc_dxcfg_t prx_dxcfg;	     /* intf, lid, lt, extract */
-	npc_fxcfg_t prx_fxcfg;	     /* Flag extract */
-	npc_ld_flags_t prx_lfcfg;    /* KEX LD_Flags CFG */
+	uint32_t vtag_strip_actions;	   /* vtag insert/strip actions */
+	npc_dxcfg_t prx_dxcfg;		   /* intf, lid, lt, extract */
+	npc_dxcfg_cn20k_t prx_dxcfg_cn20k; /* intf, ext, lt, extract */
+	npc_lid_cn20k_t lid_cfg;	   /* KEX LD_Flags CFG */
+	npc_fxcfg_t prx_fxcfg;		   /* Flag extract */
+	npc_ld_flags_t prx_lfcfg;	   /* KEX LD_Flags CFG */
 	struct npc_flow_list *flow_list;
 	struct npc_prio_flow_list_head *prio_flow_list;
 	struct npc_age_flow_list_head age_flow_list;
 	struct plt_bitmap *rss_grp_entries;
 	struct npc_flow_list ipsec_list;
-	uint8_t exact_match_ena;
+	uint8_t enable_debug;
 };
 
 #define NPC_HASH_FIELD_LEN 16
@@ -432,6 +466,7 @@ roc_npc_to_npc_priv(struct roc_npc *npc)
 	return (struct npc *)npc->reserved;
 }
 
+int npc_mcam_get_stats(struct mbox *mbox, struct roc_npc_flow *flow, uint64_t *count);
 int npc_mcam_alloc_counter(struct mbox *mbox, uint16_t *ctr);
 int npc_mcam_free_counter(struct mbox *mbox, uint16_t ctr_id);
 int npc_mcam_read_counter(struct mbox *mbox, uint32_t ctr_id, uint64_t *count);
@@ -440,9 +475,10 @@ int npc_mcam_free_entry(struct mbox *mbox, uint32_t entry);
 int npc_mcam_free_all_entries(struct npc *npc);
 int npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow,
 			     struct npc_parse_state *pst);
-int npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam,
-			 struct roc_npc_flow *ref_mcam, int prio,
-			 int *resp_count);
+int npc_mcam_alloc_entry(struct npc *npc, struct roc_npc_flow *mcam, struct roc_npc_flow *ref_mcam,
+			 uint8_t prio, int *resp_count);
+int npc_mcam_alloc_entry_cn20k(struct npc *npc, struct roc_npc_flow *mcam, int *resp_count);
+
 int npc_mcam_alloc_entries(struct mbox *mbox, int ref_mcam, int *alloc_entry, int req_count,
 			   int prio, int *resp_count, bool is_conti);
 
@@ -453,6 +489,7 @@ int npc_update_parse_state(struct npc_parse_state *pst, struct npc_parse_item_in
 			   int lt, uint8_t flags);
 void npc_get_hw_supp_mask(struct npc_parse_state *pst, struct npc_parse_item_info *info, int lid,
 			  int lt);
+uint8_t npc_get_key_type(struct npc *npc, struct roc_npc_flow *flow);
 int npc_mask_is_supported(const char *mask, const char *hw_mask, int len);
 int npc_parse_item_basic(const struct roc_npc_item_info *item, struct npc_parse_item_info *info);
 int npc_parse_meta_items(struct npc_parse_state *pst);
