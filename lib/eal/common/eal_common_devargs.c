@@ -88,7 +88,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 	s = devargs->data;
 
 	while (s != NULL) {
-		if (nblayer > RTE_DIM(layers)) {
+		if (nblayer >= RTE_DIM(layers)) {
 			ret = -E2BIG;
 			goto get_out;
 		}
