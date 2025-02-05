@@ -1580,7 +1580,7 @@ parse_repr(const char *key __rte_unused, const char *value, void *args)
 		RTE_DIM(eth_da->representor_ports));
 done:
 	if (str == NULL) {
-		PMD_DRV_LOG(ERR, "wrong representor format: %s", str);
+		PMD_DRV_LOG(ERR, "wrong representor format: %s", value);
 		return -1;
 	}
 
