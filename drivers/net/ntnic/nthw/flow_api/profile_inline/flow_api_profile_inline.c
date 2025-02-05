@@ -1632,7 +1632,7 @@ static int interpret_flow_actions(const struct flow_eth_dev *dev,
 						return -1;
 					}
 
-					modify_field_use_flag = 1
+					modify_field_use_flag = (uint64_t)1
 						<< fd->modify_field[fd->modify_field_count].select;
 
 					if (modify_field_use_flag & modify_field_use_flags) {
