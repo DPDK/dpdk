@@ -32,6 +32,7 @@ sources = files(
         'cnxk_eswitch_devargs.c',
         'cnxk_eswitch_flow.c',
         'cnxk_eswitch_rxtx.c',
+        'cnxk_flow_common.c',
         'cnxk_link.c',
         'cnxk_lookup.c',
         'cnxk_ptp.c',
@@ -236,6 +237,7 @@ if soc_type == 'cn20k' or soc_type == 'all'
 # CN20K
 sources += files(
         'cn20k_ethdev.c',
+        'cn20k_flow.c',
         'cn20k_rx_select.c',
         'cn20k_tx_select.c',
 )

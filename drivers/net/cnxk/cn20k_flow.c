@@ -1,16 +1,16 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2020 Marvell.
+ * Copyright(C) 2024 Marvell.
  */
 
-#include "cn10k_ethdev.h"
-#include "cn10k_rx.h"
+#include "cn20k_ethdev.h"
+#include "cn20k_rx.h"
 #include "cnxk_ethdev_mcs.h"
 #include "cnxk_flow_common.h"
-#include <cn10k_flow.h>
+#include <cn20k_flow.h>
 #include <cnxk_flow.h>
 
 struct rte_flow *
-cn10k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+cn20k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		  const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
 		  struct rte_flow_error *error)
 {
@@ -28,28 +28,28 @@ cn10k_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	mark_actions = roc_npc_mark_actions_get(npc);
 	if (mark_actions) {
 		dev->rx_offload_flags |= NIX_RX_OFFLOAD_MARK_UPDATE_F;
-		cn10k_eth_set_rx_function(eth_dev);
+		cn20k_eth_set_rx_function(eth_dev);
 	}
 
 	vtag_actions = roc_npc_vtag_actions_get(npc);
 
 	if (vtag_actions) {
 		dev->rx_offload_flags |= NIX_RX_OFFLOAD_VLAN_STRIP_F;
-		cn10k_eth_set_rx_function(eth_dev);
+		cn20k_eth_set_rx_function(eth_dev);
 	}
 
 	return (struct rte_flow *)flow;
 }
 
 int
-cn10k_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
+cn20k_flow_info_get(struct rte_eth_dev *dev, struct rte_flow_port_info *port_info,
 		    struct rte_flow_queue_info *queue_info, struct rte_flow_error *err)
 {
 	return cnxk_flow_info_get_common(dev, port_info, queue_info, err);
 }
 
 int
-cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
+cn20k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 		   struct rte_flow_error *error)
 {
 	struct roc_npc_flow *flow = (struct roc_npc_flow *)rte_flow;
@@ -65,7 +65,7 @@ cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 		mark_actions = roc_npc_mark_actions_sub_return(npc, 1);
 		if (mark_actions == 0) {
 			dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_MARK_UPDATE_F;
-			cn10k_eth_set_rx_function(eth_dev);
+			cn20k_eth_set_rx_function(eth_dev);
 		}
 	}
 
@@ -75,7 +75,7 @@ cn10k_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *rte_flow,
 			vtag_actions = roc_npc_vtag_actions_sub_return(npc, 1);
 			if (vtag_actions == 0) {
 				dev->rx_offload_flags &= ~NIX_RX_OFFLOAD_VLAN_STRIP_F;
-				cn10k_eth_set_rx_function(eth_dev);
+				cn20k_eth_set_rx_function(eth_dev);
 			}
 		}
 	}

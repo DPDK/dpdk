@@ -101,6 +101,10 @@ New Features
 
   * Added support for the TCP Segmentation Offload (TSO).
 
+* **Updated Marvell cnxk net driver.**
+
+  * Added flow rules support for CN20K SoC.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added support for virtual function (VF).

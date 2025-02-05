@@ -88,8 +88,7 @@ parse_flow_max_priority(const char *key, const char *value, void *extra_args)
 
 	val = atoi(value);
 
-	/* Limit the max priority to 32 */
-	if (val < 1 || val > 32)
+	if (val < 1 || val > ROC_NPC_MAX_MCAM_PRIORITY)
 		return -EINVAL;
 
 	*(uint16_t *)extra_args = val;
@@ -390,7 +389,12 @@ null_devargs:
 		dev->nix.meta_buf_sz = meta_buf_sz;
 
 	dev->npc.flow_prealloc_size = flow_prealloc_size;
-	dev->npc.flow_max_priority = flow_max_priority;
+
+	if (roc_model_is_cn20k())
+		dev->npc.flow_max_priority = ROC_NPC_MAX_MCAM_PRIORITY;
+	else
+		dev->npc.flow_max_priority = flow_max_priority;
+
 	dev->npc.switch_header_type = switch_header_type;
 	dev->npc.sdp_channel = sdp_chan.channel;
 	dev->npc.sdp_channel_mask = sdp_chan.mask;
