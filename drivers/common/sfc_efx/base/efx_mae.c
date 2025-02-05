@@ -740,7 +740,6 @@ efx_mae_mport_by_pcie_function(
 	__in				uint32_t vf,
 	__out				efx_mport_sel_t *mportp)
 {
-	efx_dword_t dword;
 	efx_rc_t rc;
 
 	rc = efx_mae_mport_by_pcie_mh_function(EFX_PCIE_INTERFACE_CALLER,
@@ -4280,6 +4279,7 @@ efx_mae_action_set_replay(
 	__out			efx_mae_actions_t **spec_clonep)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	(void)encp;
 	efx_mae_actions_t *spec_clone;
 	efx_rc_t rc;
 

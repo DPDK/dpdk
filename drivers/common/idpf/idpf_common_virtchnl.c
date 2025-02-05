@@ -362,7 +362,7 @@ idpf_vc_queue_grps_add(struct idpf_vport *vport,
 {
 	struct idpf_adapter *adapter = vport->adapter;
 	struct idpf_cmd_info args;
-	int size, qg_info_size;
+	int size;
 	int err = -1;
 
 	size = sizeof(*p2p_queue_grps_info) +
@@ -1044,7 +1044,7 @@ int idpf_vc_rxq_config_by_info(struct idpf_vport *vport, struct virtchnl2_rxq_in
 	struct idpf_adapter *adapter = vport->adapter;
 	struct virtchnl2_config_rx_queues *vc_rxqs = NULL;
 	struct idpf_cmd_info args;
-	int size, err, i;
+	int size, err;
 
 	size = sizeof(*vc_rxqs) + (num_qs - 1) *
 		sizeof(struct virtchnl2_rxq_info);

@@ -1178,7 +1178,6 @@ idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct rte_mbuf *last_seg = rxq->pkt_last_seg;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
-	struct rte_eth_dev *dev;
 	const uint32_t *ptype_tbl = rxq->adapter->ptype_tbl;
 	uint16_t rx_id = rxq->rx_tail;
 	uint16_t rx_packet_len;
@@ -1310,7 +1309,6 @@ idpf_xmit_cleanup(struct idpf_tx_queue *txq)
 	uint16_t nb_tx_desc = txq->nb_tx_desc;
 	uint16_t desc_to_clean_to;
 	uint16_t nb_tx_to_clean;
-	uint16_t i;
 
 	volatile struct idpf_base_tx_desc *txd = txq->tx_ring;
 
