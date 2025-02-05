@@ -215,16 +215,7 @@ static int nt4ga_stat_setup(struct adapter_info_s *p_adapter_info)
 		return -1;
 	}
 
-#ifdef NIM_TRIGGER
-	uint64_t max_bps_speed = nt_get_max_link_speed(p_adapter_info->nt4ga_link.speed_capa);
-
-	if (max_bps_speed == 0)
-		max_bps_speed = DEFAULT_MAX_BPS_SPEED;
-
-#else
 	uint64_t max_bps_speed = DEFAULT_MAX_BPS_SPEED;
-	NT_LOG(ERR, NTNIC, "NIM module not included");
-#endif
 
 	for (int p = 0; p < NUM_ADAPTER_PORTS_MAX; p++) {
 		p_nt4ga_stat->mp_port_load[p].rx_bps_max = max_bps_speed;
