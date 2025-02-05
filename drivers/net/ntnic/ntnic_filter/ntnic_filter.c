@@ -1201,7 +1201,7 @@ static int poll_statistics(struct pmd_internals *internals)
 	const int if_index = internals->n_intf_no;
 	uint64_t last_stat_rtc = 0;
 
-	if (!p_nt4ga_stat || if_index < 0 || if_index > NUM_ADAPTER_PORTS_MAX)
+	if (!p_nt4ga_stat || if_index < 0 || if_index >= NUM_ADAPTER_PORTS_MAX)
 		return -1;
 
 	assert(rte_tsc_freq > 0);
