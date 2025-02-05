@@ -4,6 +4,7 @@
  * www.marvell.com
  */
 
+#include <assert.h>
 #include <rte_common.h>
 #include "base/bcm_osal.h"
 #include "base/ecore.h"
@@ -82,6 +83,7 @@ static const char * const s_mem_group_names[] = {
 	"TM_MEM",
 	"TASK_CFC_MEM",
 };
+static_assert(RTE_DIM(s_mem_group_names) == MEM_GROUPS_NUM, "memory group string mismatch");
 
 /* Idle check conditions */
 
@@ -5614,6 +5616,8 @@ static const char * const s_status_str[] = {
 	/* DBG_STATUS_INVALID_FILTER_TRIGGER_DWORDS */
 	"The filter/trigger constraint dword offsets are not enabled for recording",
 
+	/* DBG_STATUS_NO_MATCHING_FRAMING_MODE */
+	"No matching frame mode",
 
 	/* DBG_STATUS_VFC_READ_ERROR */
 	"Error reading from VFC",
@@ -5759,6 +5763,7 @@ static const char * const s_status_str[] = {
 	/* DBG_STATUS_MISSING_TRIGGER_STATE_STORM */
 	"When triggering on Storm data, the Storm to trigger on must be specified"
 };
+static_assert(RTE_DIM(s_status_str) == MAX_DBG_STATUS, "status string table mismatch");
 
 /* Idle check severity names array */
 static const char * const s_idle_chk_severity_str[] = {
