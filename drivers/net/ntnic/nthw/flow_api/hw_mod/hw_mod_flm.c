@@ -969,16 +969,22 @@ int hw_mod_flm_inf_sta_data_update_get(struct flow_api_backend_s *be, enum hw_fl
  *
  * (T[7:3] != 0) ? ((8 + T[2:0]) shift-left (T[7:3] - 1)) : T[2:0]
  *
- * The maximum allowed value is 0xEF (127 years).
+ * The maximum allowed value is 0xEF (137 years).
  *
  * Note that this represents a lower bound on the timeout, depending on the flow
  * scanner interval and overall load, the timeout can be substantially longer.
  */
 uint32_t hw_mod_flm_scrub_timeout_decode(uint32_t t_enc)
 {
-	uint8_t t_bits_2_0 = t_enc & 0x07;
-	uint8_t t_bits_7_3 = (t_enc >> 3) & 0x1F;
-	return t_bits_7_3 != 0 ? ((8 + t_bits_2_0) << (t_bits_7_3 - 1)) : t_bits_2_0;
+	uint32_t t_bits_2_0 = t_enc & 0x07;
+	uint32_t t_bits_7_3 = (t_enc >> 3) & 0x1F;
+	uint32_t t_dec = t_bits_7_3 != 0 ? ((8U + t_bits_2_0) << (t_bits_7_3 - 1U))
+		: t_bits_2_0;
+	/* convert internal FPGA scrub time unit into seconds, i.e. 2^30/1e9 is
+	 * approx 1.074 sec per internal unit
+	 */
+	uint64_t t_sec = (uint64_t)t_dec * 1074UL / 1000UL;
+	return t_sec > UINT32_MAX ? UINT32_MAX : (uint32_t)t_sec;
 }
 
 uint32_t hw_mod_flm_scrub_timeout_encode(uint32_t t)
