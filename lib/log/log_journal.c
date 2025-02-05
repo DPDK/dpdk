@@ -116,7 +116,7 @@ log_journal_open(const char *id)
 		.sun_family = AF_UNIX,
 		.sun_path = "/run/systemd/journal/socket",
 	};
-	int jfd = -1;
+	int jfd;
 
 	len = snprintf(syslog_id, sizeof(syslog_id),
 		       "SYSLOG_IDENTIFIER=%s\nSYSLOG_PID=%u", id, getpid());
@@ -128,7 +128,7 @@ log_journal_open(const char *id)
 	jfd = socket(AF_UNIX, SOCK_DGRAM, 0);
 	if (jfd < 0) {
 		perror("socket");
-		goto error;
+		return NULL;
 	}
 
 	if (connect(jfd, (struct sockaddr *)&sun, sizeof(sun)) < 0) {
