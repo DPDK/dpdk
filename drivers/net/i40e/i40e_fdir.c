@@ -599,18 +599,16 @@ i40e_flow_fdir_fill_eth_ip_head(struct i40e_pf *pf,
 		} else if (cus_pctype->index == I40E_CUSTOMIZED_ESP_IPV4_UDP) {
 			len = fill_ip4_head(fdir_input, raw_pkt, IPPROTO_UDP,
 					len, ether_type);
-		} else if (cus_pctype->index == I40E_CUSTOMIZED_ESP_IPV4_UDP) {
-			len = fill_ip4_head(fdir_input, raw_pkt, IPPROTO_UDP,
-					len, ether_type);
-		} else if (cus_pctype->index == I40E_CUSTOMIZED_ESP_IPV6)
+		} else if (cus_pctype->index == I40E_CUSTOMIZED_ESP_IPV6) {
 			len = fill_ip6_head(fdir_input, raw_pkt, IPPROTO_ESP,
 					len, ether_type);
-		else if (cus_pctype->index == I40E_CUSTOMIZED_ESP_IPV6_UDP)
+		} else if (cus_pctype->index == I40E_CUSTOMIZED_ESP_IPV6_UDP) {
 			len = fill_ip6_head(fdir_input, raw_pkt, IPPROTO_UDP,
 					len, ether_type);
-		else if (cus_pctype->index == I40E_CUSTOMIZED_IPV6_L2TPV3)
+		} else if (cus_pctype->index == I40E_CUSTOMIZED_IPV6_L2TPV3) {
 			len = fill_ip6_head(fdir_input, raw_pkt, IPPROTO_L2TP,
 					len, ether_type);
+		}
 	} else {
 		PMD_DRV_LOG(ERR, "unknown pctype %u.", fdir_input->pctype);
 		return -1;
