@@ -510,10 +510,10 @@ static int dbs_wait_hw_queue_shutdown(struct nthw_virt_queue *vq, int rx)
 
 static int dbs_internal_release_rx_virt_queue(struct nthw_virt_queue *rxvq)
 {
-	nthw_dbs_t *p_nthw_dbs = rxvq->mp_nthw_dbs;
-
 	if (rxvq == NULL)
 		return -1;
+
+	nthw_dbs_t *p_nthw_dbs = rxvq->mp_nthw_dbs;
 
 	/* Clear UW */
 	rxvq->used_struct_phys_addr = NULL;
