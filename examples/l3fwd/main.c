@@ -311,8 +311,9 @@ check_lcore_params(void)
 			printf("error: lcore %u is not enabled in lcore mask\n", lcore);
 			return -1;
 		}
-		if ((socketid = rte_lcore_to_socket_id(lcore) != 0) &&
-			(numa_on == 0)) {
+
+		socketid = rte_lcore_to_socket_id(lcore);
+		if (socketid != 0 && numa_on == 0) {
 			printf("warning: lcore %u is on socket %d with numa off\n",
 				lcore, socketid);
 		}
