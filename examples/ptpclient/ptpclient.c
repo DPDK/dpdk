@@ -369,7 +369,7 @@ parse_sync(struct ptpv2_time_receiver_ordinary *ptp_data, uint16_t rx_tstamp_idx
 		ptp_data->ptpset = 1;
 	}
 
-	if (memcmp(&ptp_hdr->source_port_id.clock_id,
+	if (memcmp(&ptp_data->transmitter_clock_id,
 			&ptp_hdr->source_port_id.clock_id,
 			sizeof(struct clock_id)) == 0) {
 
