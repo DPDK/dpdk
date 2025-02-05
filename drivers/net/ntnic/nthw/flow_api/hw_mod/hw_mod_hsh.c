@@ -121,8 +121,23 @@ static int hw_mod_hsh_rcp_mod(struct flow_api_backend_s *be, enum hw_hsh_e field
 				INDEX_TOO_LARGE_LOG;
 				return INDEX_TOO_LARGE;
 			}
+			/* Size of the structure */
+			size_t element_size = sizeof(struct hsh_v5_rcp_s);
+			/* Size of the buffer */
+			size_t buffer_size = sizeof(be->hsh.v5.rcp);
 
-			DO_COMPARE_INDEXS(be->hsh.v5.rcp, struct hsh_v5_rcp_s, index, word_off);
+			/* Calculate the maximum valid index (number of elements in the buffer) */
+			size_t max_idx = buffer_size / element_size;
+
+			/* Check that both indices are within bounds before calling the macro */
+			if (index < max_idx && word_off < max_idx) {
+				DO_COMPARE_INDEXS(be->hsh.v5.rcp, struct hsh_v5_rcp_s, index,
+					word_off);
+
+			} else {
+				INDEX_TOO_LARGE_LOG;
+				return INDEX_TOO_LARGE;
+			}
 			break;
 
 		case HW_HSH_RCP_FIND:
