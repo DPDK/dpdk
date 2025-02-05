@@ -2028,8 +2028,6 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 	uint32_t exception_path = 0;
 	struct flow_queue_id_s queue_ids[MAX_QUEUES];
 	int n_phy_ports;
-	struct port_link_speed pls_mbps[NUM_ADAPTER_PORTS_MAX] = { 0 };
-	int num_port_speeds = 0;
 	enum flow_eth_dev_profile profile = FLOW_ETH_DEV_PROFILE_INLINE;
 
 	NT_LOG_DBGX(DBG, NTNIC, "Dev %s PF #%i Init : %02x:%02x:%i", pci_dev->name,
@@ -2170,12 +2168,6 @@ nthw_pci_dev_init(struct rte_pci_device *pci_dev)
 
 	p_nt_drv->b_shutdown = false;
 	p_nt_drv->adapter_info.pb_shutdown = &p_nt_drv->b_shutdown;
-
-	for (int i = 0; i < num_port_speeds; ++i) {
-		struct adapter_info_s *p_adapter_info = &p_nt_drv->adapter_info;
-		nt_link_speed_t link_speed = convert_link_speed(pls_mbps[i].link_speed);
-		port_ops->set_link_speed(p_adapter_info, i, link_speed);
-	}
 
 	/* store context */
 	store_pdrv(p_drv);
