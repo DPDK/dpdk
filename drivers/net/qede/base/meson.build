@@ -19,31 +19,38 @@ sources = [
 ]
 
 
-error_cflags = [
-        '-Wno-unused-parameter',
-        '-Wno-sign-compare',
-        '-Wno-missing-prototypes',
-        '-Wno-cast-qual',
-        '-Wno-unused-function',
-        '-Wno-unused-variable',
-        '-Wno-strict-aliasing',
-        '-Wno-missing-prototypes',
-        '-Wno-unused-value',
-        '-Wno-format-nonliteral',
-        '-Wno-shift-negative-value',
-        '-Wno-unused-but-set-variable',
-        '-Wno-missing-declarations',
-        '-Wno-maybe-uninitialized',
-        '-Wno-strict-prototypes',
-        '-Wno-shift-negative-value',
-        '-Wno-implicit-fallthrough',
-        '-Wno-format-extra-args',
-        '-Wno-visibility',
-        '-Wno-empty-body',
-        '-Wno-invalid-source-encoding',
-        '-Wno-sometimes-uninitialized',
-        '-Wno-pointer-bool-conversion',
-]
+if is_ms_compiler
+        error_cflags = [
+                '/wd4101', # unreferenced local variable
+        ]
+else
+        error_cflags = [
+                '-Wno-unused-parameter',
+                '-Wno-sign-compare',
+                '-Wno-missing-prototypes',
+                '-Wno-cast-qual',
+                '-Wno-unused-function',
+                '-Wno-unused-variable',
+                '-Wno-strict-aliasing',
+                '-Wno-missing-prototypes',
+                '-Wno-unused-value',
+                '-Wno-format-nonliteral',
+                '-Wno-shift-negative-value',
+                '-Wno-unused-but-set-variable',
+                '-Wno-missing-declarations',
+                '-Wno-maybe-uninitialized',
+                '-Wno-strict-prototypes',
+                '-Wno-shift-negative-value',
+                '-Wno-implicit-fallthrough',
+                '-Wno-format-extra-args',
+                '-Wno-visibility',
+                '-Wno-empty-body',
+                '-Wno-invalid-source-encoding',
+                '-Wno-sometimes-uninitialized',
+                '-Wno-pointer-bool-conversion',
+        ]
+endif
+
 c_args = cflags
 foreach flag: error_cflags
         if cc.has_argument(flag)
