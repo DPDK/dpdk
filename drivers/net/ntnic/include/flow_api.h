@@ -83,11 +83,6 @@ struct flow_eth_dev {
 	struct flow_eth_dev *next;
 };
 
-enum flow_nic_hash_e {
-	HASH_ALGO_ROUND_ROBIN = 0,
-	HASH_ALGO_5TUPLE,
-};
-
 /* registered NIC backends */
 struct flow_nic_dev {
 	uint8_t adapter_no;     /* physical adapter no in the host system */
@@ -233,10 +228,6 @@ void flow_nic_free_resource(struct flow_nic_dev *ndev, enum res_type_e res_type,
 
 int flow_nic_ref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
 int flow_nic_deref_resource(struct flow_nic_dev *ndev, enum res_type_e res_type, int index);
-
-int flow_nic_set_hasher(struct flow_nic_dev *ndev, int hsh_idx, enum flow_nic_hash_e algorithm);
-int flow_nic_set_hasher_fields(struct flow_nic_dev *ndev, int hsh_idx,
-	struct nt_eth_rss_conf rss_conf);
 
 int flow_get_flm_stats(struct flow_nic_dev *ndev, uint64_t *data, uint64_t size);
 

@@ -2,13 +2,14 @@
  * Copyright(c) 2023 Napatech A/S
  */
 
+#include "rte_common.h"
 
 #include "hw_mod_backend.h"
 #include "flow_api_engine.h"
 
 #include "flow_api_hw_db_inline.h"
 #include "flow_api_profile_inline_config.h"
-#include "rte_common.h"
+#include "flow_hsh_cfg.h"
 
 #define HW_DB_INLINE_ACTION_SET_NB 512
 #define HW_DB_INLINE_MATCH_SET_NB 512
@@ -2844,7 +2845,7 @@ struct hw_db_hsh_idx hw_db_inline_hsh_add(struct flow_nic_dev *ndev, void *db_ha
 	tmp_rss_conf.rss_hf = data->hash_mask;
 	memcpy(tmp_rss_conf.rss_key, data->key, MAX_RSS_KEY_LEN);
 	tmp_rss_conf.algorithm = data->func;
-	int res = flow_nic_set_hasher_fields(ndev, idx.ids, tmp_rss_conf);
+	int res = hsh_set(ndev, idx.ids, tmp_rss_conf);
 
 	if (res != 0) {
 		idx.error = 1;

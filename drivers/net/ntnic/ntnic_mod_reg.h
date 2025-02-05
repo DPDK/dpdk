@@ -355,10 +355,6 @@ struct profile_inline_ops {
 		struct flow_handle *flow, void *user_data,
 		struct rte_flow_error *error);
 
-	int (*flow_nic_set_hasher_fields_inline)(struct flow_nic_dev *ndev,
-		int hsh_idx,
-		struct nt_eth_rss_conf rss_conf);
-
 	/*
 	 * Stats
 	 */
@@ -467,8 +463,6 @@ struct flow_filter_ops {
 	/*
 	 * Other
 	 */
-	int (*flow_nic_set_hasher_fields)(struct flow_nic_dev *ndev, int hsh_idx,
-		struct nt_eth_rss_conf rss_conf);
 	int (*hw_mod_hsh_rcp_flush)(struct flow_api_backend_s *be, int start_idx, int count);
 
 	int (*flow_get_aged_flows)(struct flow_eth_dev *dev,
