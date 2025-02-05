@@ -102,7 +102,7 @@ dpaa_event_enqueue_burst(void *port, const struct rte_event ev[],
 			qman_dca_index(ev[i].impl_opaque, 0);
 			mbuf = DPAA_PER_LCORE_DQRR_MBUF(i);
 			*dpaa_seqn(mbuf) = DPAA_INVALID_MBUF_SEQN;
-			DPAA_PER_LCORE_DQRR_HELD &= ~(1 << i);
+			DPAA_PER_LCORE_DQRR_HELD &= ~(UINT64_C(1) << i);
 			DPAA_PER_LCORE_DQRR_SIZE--;
 			break;
 		default:
@@ -199,11 +199,11 @@ dpaa_event_dequeue_burst(void *port, struct rte_event ev[],
 	/* Check if there are atomic contexts to be released */
 	i = 0;
 	while (DPAA_PER_LCORE_DQRR_SIZE) {
-		if (DPAA_PER_LCORE_DQRR_HELD & (1 << i)) {
+		if (DPAA_PER_LCORE_DQRR_HELD & (UINT64_C(1) << i)) {
 			qman_dca_index(i, 0);
 			mbuf = DPAA_PER_LCORE_DQRR_MBUF(i);
 			*dpaa_seqn(mbuf) = DPAA_INVALID_MBUF_SEQN;
-			DPAA_PER_LCORE_DQRR_HELD &= ~(1 << i);
+			DPAA_PER_LCORE_DQRR_HELD &= ~(UINT64_C(1) << i);
 			DPAA_PER_LCORE_DQRR_SIZE--;
 		}
 		i++;
@@ -263,11 +263,11 @@ dpaa_event_dequeue_burst_intr(void *port, struct rte_event ev[],
 	/* Check if there are atomic contexts to be released */
 	i = 0;
 	while (DPAA_PER_LCORE_DQRR_SIZE) {
-		if (DPAA_PER_LCORE_DQRR_HELD & (1 << i)) {
+		if (DPAA_PER_LCORE_DQRR_HELD & (UINT64_C(1) << i)) {
 			qman_dca_index(i, 0);
 			mbuf = DPAA_PER_LCORE_DQRR_MBUF(i);
 			*dpaa_seqn(mbuf) = DPAA_INVALID_MBUF_SEQN;
-			DPAA_PER_LCORE_DQRR_HELD &= ~(1 << i);
+			DPAA_PER_LCORE_DQRR_HELD &= ~(UINT64_C(1) << i);
 			DPAA_PER_LCORE_DQRR_SIZE--;
 		}
 		i++;
