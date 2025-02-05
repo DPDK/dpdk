@@ -1903,13 +1903,12 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			op = *(ops++);
 			if (*dpaa_seqn(op->sym->m_src) != 0) {
 				index = *dpaa_seqn(op->sym->m_src) - 1;
-				if (DPAA_PER_LCORE_DQRR_HELD & (1 << index)) {
+				if (DPAA_PER_LCORE_DQRR_HELD & (UINT64_C(1) << index)) {
 					/* QM_EQCR_DCA_IDXMASK = 0x0f */
 					flags[loop] = ((index & 0x0f) << 8);
 					flags[loop] |= QMAN_ENQUEUE_FLAG_DCA;
 					DPAA_PER_LCORE_DQRR_SIZE--;
-					DPAA_PER_LCORE_DQRR_HELD &=
-								~(1 << index);
+					DPAA_PER_LCORE_DQRR_HELD &= ~(UINT64_C(1) << index);
 				}
 			}
 
@@ -3447,7 +3446,7 @@ dpaa_sec_process_atomic_event(void *event,
 	/* Save active dqrr entries */
 	index = ((uintptr_t)dqrr >> 6) & (16/*QM_DQRR_SIZE*/ - 1);
 	DPAA_PER_LCORE_DQRR_SIZE++;
-	DPAA_PER_LCORE_DQRR_HELD |= 1 << index;
+	DPAA_PER_LCORE_DQRR_HELD |= UINT64_C(1) << index;
 	DPAA_PER_LCORE_DQRR_MBUF(index) = ctx->op->sym->m_src;
 	ev->impl_opaque = index + 1;
 	*dpaa_seqn(ctx->op->sym->m_src) = (uint32_t)index + 1;
