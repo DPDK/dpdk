@@ -66,13 +66,19 @@ sources = [
         'rhead_virtio.c',
 ]
 
-extra_flags = [
-        '-Wno-sign-compare',
-        '-Wno-unused-parameter',
-        '-Wno-unused-variable',
-        '-Wno-empty-body',
-        '-Wno-unused-but-set-variable',
-]
+if is_ms_compiler
+    extra_flags = [
+            '/wd4101', # unreferenced local variable
+    ]
+else
+    extra_flags = [
+            '-Wno-sign-compare',
+            '-Wno-unused-parameter',
+            '-Wno-unused-variable',
+            '-Wno-empty-body',
+            '-Wno-unused-but-set-variable',
+    ]
+endif
 
 c_args = cflags
 foreach flag: extra_flags

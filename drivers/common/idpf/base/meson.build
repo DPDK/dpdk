@@ -6,9 +6,16 @@ sources += files(
         'idpf_controlq_setup.c',
 )
 
-error_cflags = [
-        '-Wno-unused-variable',
-]
+if is_ms_compiler
+    error_cflags = [
+            '/wd4101', # unreferenced local variable
+    ]
+else
+    error_cflags = [
+            '-Wno-unused-variable',
+    ]
+endif
+
 foreach flag: error_cflags
     if cc.has_argument(flag)
         cflags += flag
