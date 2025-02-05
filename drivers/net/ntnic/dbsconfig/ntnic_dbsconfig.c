@@ -415,7 +415,7 @@ static struct nthw_virt_queue *nthw_setup_rx_virt_queue(nthw_dbs_t *p_nthw_dbs,
 	if (irq_vector < 0) {
 		if (set_rx_am_data(p_nthw_dbs, index, (uint64_t)avail_struct_phys_addr,
 				RX_AM_DISABLE, host_id, 0,
-				irq_vector >= 0 ? 1 : 0) != 0) {
+				0) != 0) {
 			return NULL;
 		}
 	}
