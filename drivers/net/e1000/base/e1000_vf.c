@@ -376,7 +376,7 @@ STATIC void e1000_write_msg_read_ack(struct e1000_hw *hw,
 void e1000_update_mc_addr_list_vf(struct e1000_hw *hw,
 				  u8 *mc_addr_list, u32 mc_addr_count)
 {
-	u32 msgbuf[E1000_VFMAILBOX_SIZE];
+	u32 msgbuf[E1000_VFMAILBOX_SIZE] = {0};
 	u16 *hash_list = (u16 *)&msgbuf[1];
 	u32 hash_value;
 	u32 i;
