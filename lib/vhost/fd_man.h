@@ -12,7 +12,7 @@ struct fdset;
 
 #define MAX_FDS 1024
 
-typedef void (*fd_cb)(int fd, void *dat, int *remove);
+typedef void (*fd_cb)(int fd, void *dat, int *close);
 
 struct fdset *fdset_init(const char *name);
 

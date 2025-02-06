@@ -333,7 +333,7 @@ fdset_event_dispatch(void *arg)
 	fd_cb rcb, wcb;
 	void *dat;
 	int fd, numfds;
-	int remove1, remove2;
+	int close1, close2;
 	struct fdset *pfdset = arg;
 
 	if (pfdset == NULL)
@@ -357,7 +357,7 @@ fdset_event_dispatch(void *arg)
 				continue;
 			}
 
-			remove1 = remove2 = 0;
+			close1 = close2 = 0;
 
 			rcb = pfdentry->rcb;
 			wcb = pfdentry->wcb;
@@ -367,9 +367,9 @@ fdset_event_dispatch(void *arg)
 			pthread_mutex_unlock(&pfdset->fd_mutex);
 
 			if (rcb && events[i].events & (EPOLLIN | EPOLLERR | EPOLLHUP))
-				rcb(fd, dat, &remove1);
+				rcb(fd, dat, &close1);
 			if (wcb && events[i].events & (EPOLLOUT | EPOLLERR | EPOLLHUP))
-				wcb(fd, dat, &remove2);
+				wcb(fd, dat, &close2);
 			pfdentry->busy = 0;
 			/*
 			 * fdset_del needs to check busy flag.
@@ -381,8 +381,10 @@ fdset_event_dispatch(void *arg)
 			 * fdentry not to be busy, so we can't call
 			 * fdset_del_locked().
 			 */
-			if (remove1 || remove2)
+			if (close1 || close2) {
 				fdset_del(pfdset, fd);
+				close(fd);
+			}
 		}
 
 		if (pfdset->destroy)
