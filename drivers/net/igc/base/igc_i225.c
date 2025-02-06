@@ -385,7 +385,7 @@ s32 igc_setup_copper_link_i225(struct igc_hw *hw)
 static s32 igc_get_hw_semaphore_i225(struct igc_hw *hw)
 {
 	u32 swsm;
-	s32 timeout = hw->nvm.word_size + 1;
+	s32 timeout = IGC_SWSM_TIMEOUT;
 	s32 i = 0;
 
 	DEBUGFUNC("igc_get_hw_semaphore_i225");
