@@ -2886,7 +2886,7 @@ create_wireless_algo_hash_session(uint8_t dev_id,
 	enum rte_crypto_auth_operation op,
 	enum rte_crypto_auth_algorithm algo)
 {
-	uint8_t hash_key[key_len];
+	uint8_t *hash_key = alloca(key_len);
 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -2922,7 +2922,7 @@ create_wireless_algo_cipher_session(uint8_t dev_id,
 			const uint8_t *key, const uint8_t key_len,
 			uint8_t iv_len)
 {
-	uint8_t cipher_key[key_len];
+	uint8_t *cipher_key = alloca(key_len);
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
@@ -3074,7 +3074,7 @@ create_wireless_cipher_auth_session(uint8_t dev_id,
 		const struct wireless_test_data *tdata)
 {
 	const uint8_t key_len = tdata->key.len;
-	uint8_t cipher_auth_key[key_len];
+	uint8_t *cipher_auth_key = alloca(key_len);
 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -9078,7 +9078,7 @@ create_aead_session(uint8_t dev_id, enum rte_crypto_aead_algorithm algo,
 		const uint16_t aad_len, const uint8_t auth_len,
 		uint8_t iv_len)
 {
-	uint8_t aead_key[key_len];
+	uint8_t *aead_key = alloca(key_len);
 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -12989,7 +12989,7 @@ test_cryptodev_error_recover_helper(uint8_t dev_id, const void *test_data, bool 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	const struct blockcipher_test_data *tdata = test_data;
-	uint8_t cipher_key[tdata->cipher_key.len];
+	uint8_t *cipher_key = alloca(tdata->cipher_key.len);
 	struct rte_crypto_sym_op *sym_op = NULL;
 	struct rte_crypto_op *op = NULL;
 	char *dst;
@@ -13345,7 +13345,7 @@ static int
 test_AES_GCM_auth_encryption_fail_aad_corrupt(void)
 {
 	struct aead_test_data tdata;
-	uint8_t aad[gcm_test_case_7.aad.len];
+	uint8_t *aad = alloca(gcm_test_case_7.aad.len);
 	int res;
 
 	RTE_LOG(INFO, USER1, "This is a negative test, errors are expected\n");
@@ -13734,7 +13734,7 @@ static int
 test_AES_GCM_auth_decryption_fail_aad_corrupt(void)
 {
 	struct aead_test_data tdata;
-	uint8_t aad[gcm_test_case_7.aad.len];
+	uint8_t *aad = alloca(gcm_test_case_7.aad.len);
 	int res;
 
 	memcpy(&tdata, &gcm_test_case_7, sizeof(struct aead_test_data));
@@ -13986,7 +13986,7 @@ test_authenticated_encryption_sessionless(
 	int retval;
 	uint8_t *ciphertext, *auth_tag;
 	uint16_t plaintext_pad_len;
-	uint8_t key[tdata->key.len + 1];
+	uint8_t *key = alloca(tdata->key.len + 1);
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -14088,7 +14088,7 @@ test_authenticated_decryption_sessionless(
 
 	int retval;
 	uint8_t *plaintext;
-	uint8_t key[tdata->key.len + 1];
+	uint8_t *key = alloca(tdata->key.len + 1);
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -15495,7 +15495,7 @@ static int create_gmac_session(uint8_t dev_id,
 		const struct gmac_test_data *tdata,
 		enum rte_crypto_auth_operation auth_op)
 {
-	uint8_t auth_key[tdata->key.len];
+	uint8_t *auth_key = alloca(tdata->key.len);
 
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -16152,7 +16152,7 @@ create_auth_session(struct crypto_unittest_params *ut_params,
 		enum rte_crypto_auth_operation auth_op)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	uint8_t auth_key[reference->auth_key.len + 1];
+	uint8_t *auth_key = alloca(reference->auth_key.len + 1);
 
 	memcpy(auth_key, reference->auth_key.data, reference->auth_key.len);
 
@@ -16184,8 +16184,8 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 		enum rte_crypto_cipher_operation cipher_op)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
-	uint8_t cipher_key[reference->cipher_key.len + 1];
-	uint8_t auth_key[reference->auth_key.len + 1];
+	uint8_t *cipher_key = alloca(reference->cipher_key.len + 1);
+	uint8_t *auth_key = alloca(reference->auth_key.len + 1);
 
 	memcpy(cipher_key, reference->cipher_key.data,
 			reference->cipher_key.len);
@@ -16686,8 +16686,8 @@ test_authenticated_encrypt_with_esn(
 
 	uint8_t *authciphertext, *plaintext, *auth_tag;
 	uint16_t plaintext_pad_len;
-	uint8_t cipher_key[reference->cipher_key.len + 1];
-	uint8_t auth_key[reference->auth_key.len + 1];
+	uint8_t *cipher_key = alloca(reference->cipher_key.len + 1);
+	uint8_t *auth_key = alloca(reference->auth_key.len + 1);
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -16818,8 +16818,8 @@ test_authenticated_decrypt_with_esn(
 	int retval;
 
 	uint8_t *ciphertext;
-	uint8_t cipher_key[reference->cipher_key.len + 1];
-	uint8_t auth_key[reference->auth_key.len + 1];
+	uint8_t *cipher_key = alloca(reference->cipher_key.len + 1);
+	uint8_t *auth_key = alloca(reference->auth_key.len + 1);
 	struct rte_cryptodev_info dev_info;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);

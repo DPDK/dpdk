@@ -417,9 +417,12 @@ test_enqueue_sg_copies(int16_t dev_id, uint16_t vchan)
 			dst_len = len / n_dst;
 			src_len = len / n_src;
 
-			struct rte_dma_sge sg_src[n_sge], sg_dst[n_sge];
-			struct rte_mbuf *src[n_sge], *dst[n_sge];
-			char *src_data[n_sge], *dst_data[n_sge];
+			struct rte_dma_sge *sg_src = alloca(sizeof(struct rte_dma_sge) * n_sge);
+			struct rte_dma_sge *sg_dst = alloca(sizeof(struct rte_dma_sge) * n_sge);
+			struct rte_mbuf **src = alloca(sizeof(struct rte_mbuf *) * n_sge);
+			struct rte_mbuf **dst = alloca(sizeof(struct rte_mbuf *) * n_sge);
+			char **src_data = alloca(sizeof(char *) * n_sge);
+			char **dst_data = alloca(sizeof(char *) * n_sge);
 
 			for (i = 0 ; i < len; i++)
 				orig_src[i] = rte_rand() & 0xFF;

@@ -565,9 +565,8 @@ test_predictable_rss_min_seq(void)
 {
 	struct rte_thash_ctx *ctx;
 	struct rte_thash_subtuple_helper *h;
-	const int key_len = 40;
 	int reta_sz = 6;
-	uint8_t initial_key[key_len];
+	uint8_t initial_key[40];
 	const uint8_t *new_key;
 	int ret;
 	union rte_thash_tuple tuple;
@@ -575,9 +574,9 @@ test_predictable_rss_min_seq(void)
 	unsigned int desired_value = 27 & HASH_MSK(reta_sz);
 	uint16_t port_value = 22;
 
-	memset(initial_key, 0, key_len);
+	memset(initial_key, 0, RTE_DIM(initial_key));
 
-	ctx = rte_thash_init_ctx("test", key_len, reta_sz, initial_key,
+	ctx = rte_thash_init_ctx("test", RTE_DIM(initial_key), reta_sz, initial_key,
 		RTE_THASH_MINIMAL_SEQ);
 	RTE_TEST_ASSERT(ctx != NULL, "can not create thash ctx\n");
 

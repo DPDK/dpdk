@@ -1947,6 +1947,8 @@ test_hash_rcu_qsbr_add(void)
 	return 0;
 }
 
+#define HASH_RCU_QSBR_MAX_TOTAL_ENTRIES 9
+
 /*
  * rte_hash_rcu_qsbr_add DQ mode functional test.
  * Reader and writer are in the same thread in this test.
@@ -1966,7 +1968,7 @@ test_hash_rcu_qsbr_add(void)
 static int
 test_hash_rcu_qsbr_dq_mode(uint8_t ext_bkt)
 {
-	uint32_t total_entries = (ext_bkt == 0) ? 8 : 9;
+	const uint32_t total_entries = (ext_bkt == 0) ? 8 : HASH_RCU_QSBR_MAX_TOTAL_ENTRIES;
 
 	uint8_t hash_extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
 
@@ -1982,8 +1984,8 @@ test_hash_rcu_qsbr_dq_mode(uint8_t ext_bkt)
 		.socket_id = 0,
 		.extra_flag = hash_extra_flag,
 	};
-	int pos[total_entries];
-	int expected_pos[total_entries];
+	int pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
+	int expected_pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
 	unsigned int i;
 	size_t sz;
 	int32_t status;
@@ -2136,7 +2138,7 @@ test_hash_rcu_qsbr_reader(void *arg)
 static int
 test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
 {
-	uint32_t total_entries = (ext_bkt == 0) ? 8 : 9;
+	const uint32_t total_entries = (ext_bkt == 0) ? 8 : HASH_RCU_QSBR_MAX_TOTAL_ENTRIES;
 
 	uint8_t hash_extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
 
@@ -2152,8 +2154,8 @@ test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
 		.socket_id = 0,
 		.extra_flag = hash_extra_flag,
 	};
-	int pos[total_entries];
-	int expected_pos[total_entries];
+	int pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
+	int expected_pos[HASH_RCU_QSBR_MAX_TOTAL_ENTRIES];
 	unsigned int i;
 	size_t sz;
 	int32_t status;

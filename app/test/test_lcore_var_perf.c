@@ -185,7 +185,7 @@ test_lcore_var_access_n(unsigned int num_mods)
 	double tls_latency;
 	double lazy_tls_latency;
 	double lvar_latency;
-	unsigned int mods[num_mods];
+	unsigned int mods[MAX_MODS];
 	unsigned int i;
 
 	for (i = 0; i < num_mods; i++)

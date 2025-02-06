@@ -99,11 +99,13 @@ typedef void clear_fun(uint64_t *bitset, size_t bit_num);
 typedef void assign_fun(uint64_t *bitset, size_t bit_num, bool value);
 typedef void flip_fun(uint64_t *bitset, size_t bit_num);
 
+#define RAND_SET_MAX_SIZE 1000
+
 static int
 test_set_clear_size(test_fun test_fun, set_fun set_fun, clear_fun clear_fun, size_t size)
 {
 	size_t i;
-	bool reference[size];
+	bool reference[RAND_SET_MAX_SIZE];
 	uint64_t *bitset;
 
 	rand_bool_ary(reference, size);
@@ -131,8 +133,7 @@ test_set_clear_size(test_fun test_fun, set_fun set_fun, clear_fun clear_fun, siz
 	return TEST_SUCCESS;
 }
 
-#define RAND_ITERATIONS (10000)
-#define RAND_SET_MAX_SIZE (1000)
+#define RAND_ITERATIONS 10000
 
 static int
 test_set_clear_fun(test_fun test_fun, set_fun set_fun, clear_fun clear_fun)
@@ -168,7 +169,7 @@ test_flip_size(test_fun test_fun, assign_fun assign_fun, flip_fun flip_fun, size
 	rand_bitset(bitset, size);
 
 	for (i = 0; i < size; i++) {
-		RTE_BITSET_DECLARE(reference, size);
+		uint64_t *reference = alloca(RTE_BITSET_SIZE(size));
 
 		rte_bitset_copy(reference, bitset, size);
 
@@ -282,13 +283,13 @@ find_clear(const bool *ary, size_t num_bools, size_t start, size_t len)
 	return find(ary, num_bools, start, len, false);
 }
 
-#define FFS_ITERATIONS (100)
+#define FFS_ITERATIONS 100
 
 static int
 test_find_size(size_t size, bool set)
 {
 	uint64_t *bitset;
-	bool reference[size];
+	bool reference[RAND_SET_MAX_SIZE];
 	size_t i;
 
 	bitset = alloc_bitset(size);
@@ -388,8 +389,8 @@ record_match(ssize_t match_idx, size_t size, int *calls)
 static int
 test_foreach_size(ssize_t size, bool may_wrap, bool set)
 {
-	bool reference[size];
-	int calls[size];
+	bool reference[RAND_SET_MAX_SIZE];
+	int calls[RAND_SET_MAX_SIZE];
 	uint64_t *bitset;
 	ssize_t i;
 	ssize_t start_bit;
@@ -633,17 +634,19 @@ test_define(void)
 typedef void bitset_op(uint64_t *dst, const uint64_t *a, const uint64_t *b, size_t bit_num);
 typedef bool bool_op(bool a, bool b);
 
+#define LOGIC_MAX_SET_SIZE 200
+
 static int
 test_logic_op(bitset_op bitset_op, bool_op bool_op)
 {
-	const size_t size = 1 + rte_rand_max(200);
-	RTE_BITSET_DECLARE(bitset_a, size);
-	RTE_BITSET_DECLARE(bitset_b, size);
-	RTE_BITSET_DECLARE(bitset_d, size);
+	const size_t size = 1 + rte_rand_max(LOGIC_MAX_SET_SIZE);
+	RTE_BITSET_DECLARE(bitset_a, LOGIC_MAX_SET_SIZE);
+	RTE_BITSET_DECLARE(bitset_b, LOGIC_MAX_SET_SIZE);
+	RTE_BITSET_DECLARE(bitset_d, LOGIC_MAX_SET_SIZE);
 
-	bool ary_a[size];
-	bool ary_b[size];
-	bool ary_d[size];
+	bool ary_a[LOGIC_MAX_SET_SIZE];
+	bool ary_b[LOGIC_MAX_SET_SIZE];
+	bool ary_d[LOGIC_MAX_SET_SIZE];
 
 	rand_bool_ary(ary_a, size);
 	rand_bool_ary(ary_b, size);
@@ -708,14 +711,14 @@ test_complement(void)
 	for (i = 0; i < RAND_ITERATIONS; i++) {
 		const size_t size = 1 + rte_rand_max(RAND_SET_MAX_SIZE - 1);
 
-		RTE_BITSET_DECLARE(src, size);
+		RTE_BITSET_DECLARE(src, RAND_SET_MAX_SIZE);
 
 		rand_bitset(src, size);
 
 		bool bit_idx = rte_rand_max(size);
 		bool bit_value = rte_bitset_test(src, bit_idx);
 
-		RTE_BITSET_DECLARE(dst, size);
+		RTE_BITSET_DECLARE(dst, RAND_SET_MAX_SIZE);
 
 		rte_bitset_complement(dst, src, size);
 
@@ -726,6 +729,8 @@ test_complement(void)
 	return TEST_SUCCESS;
 }
 
+#define SHIFT_SET_MAX_SIZE 500
+
 static int
 test_shift(bool right)
 {
@@ -734,12 +739,12 @@ test_shift(bool right)
 	const char *direction = right ? "right" : "left";
 
 	for (i = 0; i < 10000; i++) {
-		const int size = 1 + (int)rte_rand_max(500);
+		const int size = 1 + (int)rte_rand_max(SHIFT_SET_MAX_SIZE);
 		const int shift_count = (int)rte_rand_max(1.5 * size);
 		int src_idx;
 
-		RTE_BITSET_DECLARE(src, size);
-		RTE_BITSET_DECLARE(reference, size);
+		RTE_BITSET_DECLARE(src, SHIFT_SET_MAX_SIZE);
+		RTE_BITSET_DECLARE(reference, SHIFT_SET_MAX_SIZE);
 
 		rte_bitset_init(src, size);
 		rte_bitset_init(reference, size);
@@ -788,12 +793,14 @@ test_shift_left(void)
 	return test_shift(false);
 }
 
+#define EQUAL_SET_MAX_SIZE 100
+
 static int
 test_equal(void)
 {
-	const size_t size = 100;
-	RTE_BITSET_DECLARE(bitset_a, size);
-	RTE_BITSET_DECLARE(bitset_b, size);
+	const size_t size = EQUAL_SET_MAX_SIZE;
+	RTE_BITSET_DECLARE(bitset_a, EQUAL_SET_MAX_SIZE);
+	RTE_BITSET_DECLARE(bitset_b, EQUAL_SET_MAX_SIZE);
 
 	rand_buf(bitset_a, RTE_BITSET_SIZE(size));
 	rand_buf(bitset_b, RTE_BITSET_SIZE(size));
@@ -821,9 +828,9 @@ test_equal(void)
 static int
 test_copy(void)
 {
-	const size_t size = 100;
-	RTE_BITSET_DECLARE(bitset_a, size);
-	RTE_BITSET_DECLARE(bitset_b, size);
+	const size_t size = EQUAL_SET_MAX_SIZE;
+	RTE_BITSET_DECLARE(bitset_a, EQUAL_SET_MAX_SIZE);
+	RTE_BITSET_DECLARE(bitset_b, EQUAL_SET_MAX_SIZE);
 
 	rand_buf(bitset_a, RTE_BITSET_SIZE(size));
 	rand_buf(bitset_b, RTE_BITSET_SIZE(size));

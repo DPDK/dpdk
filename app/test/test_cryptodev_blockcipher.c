@@ -85,8 +85,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	int status = TEST_SUCCESS;
 	const struct blockcipher_test_data *tdata = t->test_data;
-	uint8_t cipher_key[tdata->cipher_key.len];
-	uint8_t auth_key[tdata->auth_key.len];
+	uint8_t *cipher_key = alloca(tdata->cipher_key.len);
+	uint8_t *auth_key = alloca(tdata->auth_key.len);
 	uint32_t buf_len = tdata->ciphertext.len;
 	uint32_t digest_len = tdata->digest.len;
 	char *buf_p = NULL;

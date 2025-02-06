@@ -603,9 +603,8 @@ service_lcore_add_del(void)
 			"Service core count not equal to one");
 
 	/* retrieve core list, checking lcore ids */
-	const uint32_t size = 4;
-	uint32_t service_core_ids[size];
-	int32_t n = rte_service_lcore_list(service_core_ids, size);
+	uint32_t service_core_ids[4];
+	int32_t n = rte_service_lcore_list(service_core_ids, RTE_DIM(service_core_ids));
 	TEST_ASSERT_EQUAL(1, n, "Service core list return should equal 1");
 	TEST_ASSERT_EQUAL(slcore_id, service_core_ids[0],
 				"Service core list lcore must equal slcore_id");
@@ -631,7 +630,7 @@ service_lcore_add_del(void)
 			cores_at_this_point);
 
 	/* check longer service core list */
-	n = rte_service_lcore_list(service_core_ids, size);
+	n = rte_service_lcore_list(service_core_ids, RTE_DIM(service_core_ids));
 	TEST_ASSERT_EQUAL(3, n, "Service core list return should equal 3");
 	TEST_ASSERT_EQUAL(slcore_id, service_core_ids[0],
 				"Service core list[0] lcore must equal 1");
@@ -649,7 +648,7 @@ service_lcore_add_del(void)
 			"Service core add did not return zero");
 	TEST_ASSERT_EQUAL(1, rte_service_lcore_count(),
 			"Service core count not equal to one");
-	n = rte_service_lcore_list(service_core_ids, size);
+	n = rte_service_lcore_list(service_core_ids, RTE_DIM(service_core_ids));
 	TEST_ASSERT_EQUAL(1, n, "Service core list return should equal one");
 	TEST_ASSERT_EQUAL(slcore_id, service_core_ids[0],
 				"Service core list[0] lcore must equal %d",

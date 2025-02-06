@@ -105,7 +105,7 @@ int
 main(int argc, char **argv)
 {
 	struct cmdline *cl;
-	char *tests[argc]; /* store an array of tests to run */
+	char **tests = alloca(sizeof(char *) * argc); /* store an array of tests to run */
 	int test_count = 0;
 	int i;
 	char *extra_args;

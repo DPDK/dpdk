@@ -557,6 +557,8 @@ ipv4_outstanding_reassembly_perf(int8_t nb_frags, uint8_t fill_order,
 	return TEST_SUCCESS;
 }
 
+#define TEST_REASSEMBLY_ITERATIONS 4
+
 static int
 ipv4_reassembly_interleaved_flows_perf(uint8_t nb_frags)
 {
@@ -568,17 +570,17 @@ ipv4_reassembly_interleaved_flows_perf(uint8_t nb_frags)
 	uint64_t total_cyc = 0;
 	uint32_t i, j;
 
-	for (i = 0; i < flow_cnt; i += 4) {
+	for (i = 0; i < flow_cnt; i += TEST_REASSEMBLY_ITERATIONS) {
 		struct rte_mbuf *buf_out[4] = {NULL};
 		uint8_t reassembled = 0;
 		uint8_t nb_frags = 0;
 		uint8_t prev = 0;
 
-		for (j = 0; j < 4; j++)
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++)
 			nb_frags += frag_per_flow[i + j];
 
-		struct rte_mbuf *buf_arr[nb_frags];
-		for (j = 0; j < 4; j++) {
+		struct rte_mbuf *buf_arr[TEST_REASSEMBLY_ITERATIONS * MAX_FRAGMENTS];
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			join_array(buf_arr, mbufs[i + j], prev,
 				   frag_per_flow[i + j]);
 			prev += frag_per_flow[i + j];
@@ -608,7 +610,7 @@ ipv4_reassembly_interleaved_flows_perf(uint8_t nb_frags)
 		total_cyc += rte_rdtsc_precise() - flow_tstamp;
 		if (reassembled != 4)
 			return TEST_FAILED;
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			memset(mbufs[i + j], 0,
 			       sizeof(struct rte_mbuf *) * MAX_FRAGMENTS);
 			mbufs[i + j][0] = buf_out[j];
@@ -779,17 +781,17 @@ ipv6_reassembly_interleaved_flows_perf(int8_t nb_frags)
 	uint64_t total_cyc = 0;
 	uint32_t i, j;
 
-	for (i = 0; i < flow_cnt; i += 4) {
+	for (i = 0; i < flow_cnt; i += TEST_REASSEMBLY_ITERATIONS) {
 		struct rte_mbuf *buf_out[4] = {NULL};
 		uint8_t reassembled = 0;
 		uint8_t nb_frags = 0;
 		uint8_t prev = 0;
 
-		for (j = 0; j < 4; j++)
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++)
 			nb_frags += frag_per_flow[i + j];
 
-		struct rte_mbuf *buf_arr[nb_frags];
-		for (j = 0; j < 4; j++) {
+		struct rte_mbuf *buf_arr[TEST_REASSEMBLY_ITERATIONS * MAX_FRAGMENTS];
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			join_array(buf_arr, mbufs[i + j], prev,
 				   frag_per_flow[i + j]);
 			prev += frag_per_flow[i + j];
@@ -825,7 +827,7 @@ ipv6_reassembly_interleaved_flows_perf(int8_t nb_frags)
 		total_cyc += rte_rdtsc_precise() - flow_tstamp;
 		if (reassembled != 4)
 			return TEST_FAILED;
-		for (j = 0; j < 4; j++) {
+		for (j = 0; j < TEST_REASSEMBLY_ITERATIONS; j++) {
 			memset(mbufs[i + j], 0,
 			       sizeof(struct rte_mbuf *) * MAX_FRAGMENTS);
 			mbufs[i + j][0] = buf_out[j];
