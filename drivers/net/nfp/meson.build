@@ -17,7 +17,6 @@ sources = files(
         'flower/nfp_flower_service.c',
         'nfd3/nfp_nfd3_dp.c',
         'nfdk/nfp_nfdk_dp.c',
-        'nfdk/nfp_nfdk_vec_stub.c',
         'nfpcore/nfp_cppcore.c',
         'nfpcore/nfp_crc.c',
         'nfpcore/nfp_elf.c',
@@ -45,7 +44,6 @@ sources = files(
         'nfp_net_flow.c',
         'nfp_net_meta.c',
         'nfp_rxtx.c',
-        'nfp_rxtx_vec_stub.c',
         'nfp_service.c',
 )
 
@@ -67,6 +65,11 @@ if arch_subdir == 'x86'
         )
 
         objs += nfp_avx2_lib.extract_all_objects(recursive: true)
+else
+        sources += files(
+                'nfp_rxtx_vec_stub.c',
+                'nfdk/nfp_nfdk_vec_stub.c',
+        )
 endif
 
 deps += ['hash', 'security', 'common_nfp']

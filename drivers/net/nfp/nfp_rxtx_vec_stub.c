@@ -10,13 +10,13 @@
 
 #include "nfp_rxtx_vec.h"
 
-bool __rte_weak
+bool
 nfp_net_get_avx2_supported(void)
 {
 	return false;
 }
 
-uint16_t __rte_weak
+uint16_t
 nfp_net_vec_avx2_recv_pkts(__rte_unused void *rx_queue,
 		__rte_unused struct rte_mbuf **rx_pkts,
 		__rte_unused uint16_t nb_pkts)
