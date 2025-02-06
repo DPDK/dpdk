@@ -341,7 +341,7 @@ void igc_release_swfw_sync_i225(struct igc_hw *hw, u16 mask)
 	}
 
 	swfw_sync = IGC_READ_REG(hw, IGC_SW_FW_SYNC);
-	swfw_sync &= ~mask;
+	swfw_sync &= ~(u32)mask;
 	IGC_WRITE_REG(hw, IGC_SW_FW_SYNC, swfw_sync);
 
 	igc_put_hw_semaphore_generic(hw);
