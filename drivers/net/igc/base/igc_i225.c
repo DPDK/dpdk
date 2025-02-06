@@ -1068,7 +1068,9 @@ static s32 igc_set_ltr_i225(struct igc_hw *hw, bool link)
 		scale_max = (ltr_max / 1024) < 1024 ? IGC_LTRMAXV_SCALE_1024 :
 			    IGC_LTRMAXV_SCALE_32768;
 		ltr_min /= scale_min == IGC_LTRMINV_SCALE_1024 ? 1024 : 32768;
+		ltr_min -= 1;
 		ltr_max /= scale_max == IGC_LTRMAXV_SCALE_1024 ? 1024 : 32768;
+		ltr_max -= 1;
 
 		/* Only write the LTR thresholds if they differ from before. */
 		ltrv = IGC_READ_REG(hw, IGC_LTRMINV);
