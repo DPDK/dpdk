@@ -3471,11 +3471,16 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 /* This function calculates the number of xstats based on the current config */
+
+#define IXGBE_XSTATS_CALC_NUM	\
+	(IXGBE_NB_HW_STATS + IXGBE_NB_MACSEC_STATS + \
+	(IXGBE_NB_RXQ_PRIO_STATS * IXGBE_NB_RXQ_PRIO_VALUES) + \
+	(IXGBE_NB_TXQ_PRIO_STATS * IXGBE_NB_TXQ_PRIO_VALUES))
+
 static unsigned
-ixgbe_xstats_calc_num(void) {
-	return IXGBE_NB_HW_STATS + IXGBE_NB_MACSEC_STATS +
-		(IXGBE_NB_RXQ_PRIO_STATS * IXGBE_NB_RXQ_PRIO_VALUES) +
-		(IXGBE_NB_TXQ_PRIO_STATS * IXGBE_NB_TXQ_PRIO_VALUES);
+ixgbe_xstats_calc_num(void)
+{
+	return IXGBE_XSTATS_CALC_NUM;
 }
 
 static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
@@ -3591,8 +3596,8 @@ static int ixgbe_dev_xstats_get_names_by_id(
 	}
 
 	uint16_t i;
-	uint16_t size = ixgbe_xstats_calc_num();
-	struct rte_eth_xstat_name xstats_names_copy[size];
+	struct rte_eth_xstat_name xstats_names_copy[IXGBE_XSTATS_CALC_NUM];
+	const uint16_t size = RTE_DIM(xstats_names_copy);
 
 	ixgbe_dev_xstats_get_names_by_id(dev, NULL, xstats_names_copy,
 			size);
@@ -3774,8 +3779,8 @@ ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 	}
 
 	uint16_t i;
-	uint16_t size = ixgbe_xstats_calc_num();
-	uint64_t values_copy[size];
+	uint64_t values_copy[IXGBE_XSTATS_CALC_NUM];
+	const uint16_t size = RTE_DIM(values_copy);
 
 	ixgbe_dev_xstats_get_by_id(dev, NULL, values_copy, size);
 
