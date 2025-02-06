@@ -944,11 +944,3 @@ qat_cq_get_fw_cipher_crc_cap(struct qat_qp *qp)
 	return ret;
 }
 #endif
-
-__rte_weak int
-qat_comp_process_response(void **op __rte_unused, uint8_t *resp __rte_unused,
-			  void *op_cookie __rte_unused,
-			  uint64_t *dequeue_err_count __rte_unused)
-{
-	return  0;
-}
