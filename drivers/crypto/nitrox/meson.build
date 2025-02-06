@@ -13,5 +13,3 @@ sources += files(
         'nitrox_sym_capabilities.c',
         'nitrox_sym_reqmgr.c',
 )
-
-includes += include_directories('../../common/nitrox')

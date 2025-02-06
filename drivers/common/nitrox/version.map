@@ -4,6 +4,7 @@ INTERNAL {
 	nitrox_logtype;
 	nitrox_qp_release;
 	nitrox_qp_setup;
+	nitrox_register_driver;
 
 	local: *;
 };

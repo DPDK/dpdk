@@ -12,5 +12,3 @@ sources += files(
         'nitrox_comp.c',
         'nitrox_comp_reqmgr.c',
 )
-
-includes += include_directories('../../common/nitrox')

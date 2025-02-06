@@ -602,3 +602,9 @@ nitrox_comp_pmd_destroy(struct nitrox_device *ndev)
 	ndev->comp_dev = NULL;
 	return 0;
 }
+
+static struct nitrox_driver comp_drv = {
+	.create = nitrox_comp_pmd_create,
+	.destroy = nitrox_comp_pmd_destroy,
+};
+NITROX_REGISTER_DRIVER(comp_drv);

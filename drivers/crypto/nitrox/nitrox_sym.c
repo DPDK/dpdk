@@ -798,6 +798,12 @@ nitrox_sym_pmd_destroy(struct nitrox_device *ndev)
 	return rte_cryptodev_pmd_destroy(ndev->sym_dev->cdev);
 }
 
+static struct nitrox_driver sym_drv = {
+	.create = nitrox_sym_pmd_create,
+	.destroy = nitrox_sym_pmd_destroy,
+};
+NITROX_REGISTER_DRIVER(sym_drv);
+
 static struct cryptodev_driver nitrox_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(nitrox_crypto_drv,
 		nitrox_rte_sym_drv,
