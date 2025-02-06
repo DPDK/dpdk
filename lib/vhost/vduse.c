@@ -117,7 +117,7 @@ static struct vhost_backend_ops vduse_backend_ops = {
 };
 
 static void
-vduse_control_queue_event(int fd, void *arg, int *remove __rte_unused)
+vduse_control_queue_event(int fd, void *arg, int *close __rte_unused)
 {
 	struct virtio_net *dev = arg;
 	uint64_t buf;
@@ -351,7 +351,7 @@ vduse_device_stop(struct virtio_net *dev)
 }
 
 static void
-vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
+vduse_events_handler(int fd, void *arg, int *close __rte_unused)
 {
 	struct virtio_net *dev = arg;
 	struct vduse_dev_request req;
@@ -564,14 +564,13 @@ vduse_reconnect_log_check(struct virtio_net *dev, uint64_t features, uint32_t to
 }
 
 static void
-vduse_reconnect_handler(int fd, void *arg, int *remove)
+vduse_reconnect_handler(int fd __rte_unused, void *arg, int *close)
 {
 	struct virtio_net *dev = arg;
 
 	vduse_device_start(dev, true);
 
-	close(fd);
-	*remove = 1;
+	*close = 1;
 }
 
 static int
