@@ -34,6 +34,8 @@
 #define EAL_INTR_EPOLL_WAIT_FOREVER (-1)
 #define NB_OTHER_INTR               1
 
+#define MAX_ITER_EVNUM	RTE_EVENT_ETH_INTR_RING_SIZE
+
 static RTE_DEFINE_PER_LCORE(int, _epfd) = -1; /**< epoll fd per thread */
 
 /**
@@ -1070,7 +1072,7 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 static void
 eal_intr_handle_interrupts(int pfd, unsigned totalfds)
 {
-	struct epoll_event events[totalfds];
+	struct epoll_event *events = alloca(sizeof(struct epoll_event) * totalfds);
 	int nfds = 0;
 
 	for(;;) {
@@ -1316,8 +1318,9 @@ static int
 eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 	       int maxevents, int timeout, bool interruptible)
 {
-	struct epoll_event evs[maxevents];
 	int rc;
+	uint32_t i, k, n, num;
+	struct epoll_event evs[MAX_ITER_EVNUM];
 
 	if (!events) {
 		EAL_LOG(ERR, "rte_epoll_event can't be NULL");
@@ -1328,12 +1331,31 @@ eal_epoll_wait(int epfd, struct rte_epoll_event *events,
 	if (epfd == RTE_EPOLL_PER_THREAD)
 		epfd = rte_intr_tls_epfd();
 
+	num = maxevents;
+	n = RTE_MIN(RTE_DIM(evs), num);
+
+	/* Process events in chunks of MAX_ITER_EVNUM */
+
 	while (1) {
-		rc = epoll_wait(epfd, evs, maxevents, timeout);
+		rc = epoll_wait(epfd, evs, n, timeout);
 		if (likely(rc > 0)) {
+
 			/* epoll_wait has at least one fd ready to read */
-			rc = eal_epoll_process_event(evs, rc, events);
-			break;
+			for (i = 0, k = 0; rc > 0;) {
+				k += rc;
+				rc = eal_epoll_process_event(evs, rc,
+						events + i);
+				i += rc;
+
+				/*
+				 * try to read more events that are already
+				 * available (up to maxevents in total).
+				 */
+				n = RTE_MIN(RTE_DIM(evs), num - k);
+				rc = (n == 0) ? 0 : epoll_wait(epfd, evs, n, 0);
+			}
+			return i;
+
 		} else if (rc < 0) {
 			if (errno == EINTR) {
 				if (interruptible)
