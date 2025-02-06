@@ -125,10 +125,10 @@ mlx5_fp_debug_enabled(void)
 /* Allocate a buffer on the stack and fill it with a printf format string. */
 #define MKSTR(name, ...) \
 	int mkstr_size_##name = snprintf(NULL, 0, "" __VA_ARGS__); \
-	char name[mkstr_size_##name + 1]; \
+	char *name = alloca(mkstr_size_##name + 1); \
 	\
 	memset(name, 0, mkstr_size_##name + 1); \
-	snprintf(name, sizeof(name), "" __VA_ARGS__)
+	snprintf(name, mkstr_size_##name + 1, "" __VA_ARGS__)
 
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,

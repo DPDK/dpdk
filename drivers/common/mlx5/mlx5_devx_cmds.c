@@ -284,10 +284,9 @@ mlx5_devx_cmd_flow_counter_query(struct mlx5_devx_obj *dcs,
 				 void *cmd_comp,
 				 uint64_t async_id)
 {
-	int out_len = MLX5_ST_SZ_BYTES(query_flow_counter_out) +
-			MLX5_ST_SZ_BYTES(traffic_counter);
-	uint32_t out[out_len];
+	uint32_t out[MLX5_ST_SZ_BYTES(query_flow_counter_out) + MLX5_ST_SZ_BYTES(traffic_counter)];
 	uint32_t in[MLX5_ST_SZ_DW(query_flow_counter_in)] = {0};
+	const int out_len = RTE_DIM(out);
 	void *stats;
 	int rc;
 
@@ -346,7 +345,7 @@ mlx5_devx_cmd_mkey_create(void *ctx,
 	int klm_num = attr->klm_num;
 	int in_size_dw = MLX5_ST_SZ_DW(create_mkey_in) +
 		     (klm_num ? RTE_ALIGN(klm_num, 4) : 0) * MLX5_ST_SZ_DW(klm);
-	uint32_t in[in_size_dw];
+	uint32_t *in = alloca(sizeof(uint32_t) * in_size_dw);
 	uint32_t out[MLX5_ST_SZ_DW(create_mkey_out)] = {0};
 	void *mkc;
 	struct mlx5_devx_obj *mkey = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*mkey),
