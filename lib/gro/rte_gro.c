@@ -327,7 +327,7 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		/* Flush all packets from the tables */
 		if (do_vxlan_tcp_gro) {
 			i += gro_vxlan_tcp4_tbl_timeout_flush(&vxlan_tcp_tbl,
-					0, pkts, nb_pkts);
+					0, &pkts[i], nb_pkts - i);
 		}
 
 		if (do_vxlan_udp_gro) {
