@@ -2418,7 +2418,7 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(hit_mask == NULL)), -EINVAL);
 
-	int32_t positions[num_keys];
+	int32_t positions[RTE_HASH_LOOKUP_BULK_MAX];
 
 	__rte_hash_lookup_bulk(h, keys, num_keys, positions, hit_mask, data);
 
@@ -2534,7 +2534,7 @@ rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 			(num_keys > RTE_HASH_LOOKUP_BULK_MAX) ||
 			(hit_mask == NULL)), -EINVAL);
 
-	int32_t positions[num_keys];
+	int32_t positions[RTE_HASH_LOOKUP_BULK_MAX];
 
 	__rte_hash_lookup_with_hash_bulk(h, keys, sig, num_keys,
 			positions, hit_mask, data);
