@@ -230,7 +230,6 @@ testsuite_setup(void)
 	}
 
 	struct rte_event_dev_config config = {
-			.nb_event_queues = 1,
 			.nb_event_ports = 1,
 	};
 
@@ -242,6 +241,7 @@ testsuite_setup(void)
 			dev_info.max_event_port_enqueue_depth;
 	config.nb_events_limit =
 			dev_info.max_num_events;
+	config.nb_event_queues = dev_info.max_event_queues;
 	err = rte_event_dev_configure(TEST_DEV_ID, &config);
 	TEST_ASSERT(err == 0, "Event device initialization failed err %d\n",
 			err);
