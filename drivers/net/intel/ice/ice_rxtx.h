@@ -139,6 +139,8 @@ struct ice_rx_queue {
 	uint32_t hw_time_high; /* high 32 bits of timestamp */
 	uint32_t hw_time_low; /* low 32 bits of timestamp */
 	uint64_t hw_time_update; /* SW time of HW record updating */
+	struct ice_rx_entry *sw_split_buf;
+	/* address of temp buffer for RX split mbufs */
 	struct rte_eth_rxseg_split rxseg[ICE_RX_MAX_NSEG];
 	uint32_t rxseg_nb;
 	bool ts_enable; /* if rxq timestamp is enabled */
