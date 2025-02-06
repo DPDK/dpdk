@@ -7,6 +7,8 @@ if not is_linux
 endif
 sources = files('vdev_netvsc.c')
 
+cflags += no_wvla_cflag
+
 cflags_options = [
         '-D_BSD_SOURCE',
         '-D_DEFAULT_SOURCE',

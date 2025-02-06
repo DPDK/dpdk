@@ -16,3 +16,4 @@ deps += 'bus_vdev'
 sources = files('rte_openssl_pmd.c', 'rte_openssl_pmd_ops.c')
 ext_deps += dep
 require_iova_in_mbuf = false
+cflags += no_wvla_cflag

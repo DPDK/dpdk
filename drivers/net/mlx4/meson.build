@@ -8,6 +8,8 @@ if not is_linux
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
 static_ibverbs = (get_option('ibverbs_link') == 'static')
 dlopen_ibverbs = (get_option('ibverbs_link') == 'dlopen')
 LIB_GLUE_BASE = 'librte_net_mlx4_glue.so'

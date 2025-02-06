@@ -12,3 +12,5 @@ deps += ['ethdev', 'security', 'eventdev']
 if dpdk_conf.has('RTE_LIB_METRICS')
     deps += 'metrics'
 endif
+
+cflags += no_wvla_cflag

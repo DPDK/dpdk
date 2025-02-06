@@ -7,6 +7,8 @@ if is_windows
     subdir_done()
 endif
 
+cflags += no_wvla_cflag
+
 sources = files(
         'pdcp_cnt.c',
         'pdcp_crypto.c',

@@ -14,3 +14,4 @@ allow_experimental_apis = true
 sources = files(
         'main.c',
 )
+cflags += no_wvla_cflag

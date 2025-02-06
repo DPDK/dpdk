@@ -92,6 +92,8 @@ sources += files('cnxk_telemetry_bphy.c',
                  'cnxk_telemetry_sso.c',
 )
 
+cflags += no_wvla_cflag
+
 if meson.is_cross_build()
     soc_type = meson.get_external_property('platform', '')
 else

@@ -250,12 +250,19 @@ foreach d:optional_deps
     endif
 endforeach
 
-if cc.has_argument('-Wno-format-truncation')
-    cflags += '-Wno-format-truncation'
-endif
+cflags += no_wvla_cflag
 
-# Strict-aliasing rules are violated by uint8_t[] to context size casts.
-cflags += '-fno-strict-aliasing'
+extra_flags = [
+        # Strict-aliasing rules are violated by uint8_t[] to context size casts.
+        '-fno-strict-aliasing',
+        '-Wno-format-truncation',
+]
+
+foreach arg: extra_flags
+    if cc.has_argument(arg)
+        cflags += arg
+    endif
+endforeach
 
 # Enable using internal APIs in unit tests
 cflags += '-DALLOW_INTERNAL_API'

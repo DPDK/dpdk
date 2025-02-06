@@ -107,3 +107,5 @@ sources = files(
         'ntnic_vfio.c',
         'ntnic_ethdev.c',
 )
+
+cflags += no_wvla_cflag

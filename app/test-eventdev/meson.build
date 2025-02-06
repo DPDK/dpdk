@@ -23,3 +23,5 @@ sources = files(
         'test_pipeline_queue.c',
 )
 deps += 'eventdev'
+
+cflags += no_wvla_cflag

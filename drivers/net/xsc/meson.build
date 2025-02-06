@@ -15,3 +15,5 @@ sources = files(
         'xsc_rx.c',
         'xsc_tx.c',
 )
+
+cflags += no_wvla_cflag

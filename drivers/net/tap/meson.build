@@ -16,6 +16,7 @@ deps = ['bus_vdev', 'gso', 'hash']
 
 max_queues = '-DTAP_MAX_QUEUES=64'
 cflags += max_queues
+cflags += no_wvla_cflag
 
 require_iova_in_mbuf = false
 

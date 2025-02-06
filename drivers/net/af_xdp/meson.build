@@ -22,6 +22,8 @@ if not bpf_dep.found()
     bpf_dep = cc.find_library('bpf', required: false)
 endif
 
+cflags += no_wvla_cflag
+
 if cc.has_header('linux/if_xdp.h')
     if xdp_dep.found() and cc.has_header('xdp/xsk.h')
         cflags += ['-DRTE_NET_AF_XDP_LIBXDP']

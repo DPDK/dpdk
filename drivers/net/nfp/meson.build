@@ -49,6 +49,8 @@ sources = files(
         'nfp_service.c',
 )
 
+cflags += no_wvla_cflag
+
 if arch_subdir == 'x86'
         includes += include_directories('../../common/nfp')
 

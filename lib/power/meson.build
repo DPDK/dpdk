@@ -11,6 +11,9 @@ if not is_linux
     build = false
     reason = 'only supported on Linux'
 endif
+
+cflags += no_wvla_cflag
+
 sources = files(
         'power_common.c',
         'rte_power_cpufreq.c',

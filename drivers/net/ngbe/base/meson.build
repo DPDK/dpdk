@@ -15,6 +15,7 @@ sources = [
 
 error_cflags = []
 
+cflags += no_wvla_cflag
 c_args = cflags
 
 base_lib = static_library('ngbe_base', sources,

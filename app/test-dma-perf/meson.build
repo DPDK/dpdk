@@ -13,3 +13,5 @@ sources = files(
         'main.c',
         'benchmark.c',
 )
+
+cflags += no_wvla_cflag

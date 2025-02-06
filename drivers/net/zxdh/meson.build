@@ -24,3 +24,5 @@ sources = files(
         'zxdh_rxtx.c',
         'zxdh_ethdev_ops.c',
 )
+
+cflags += no_wvla_cflag

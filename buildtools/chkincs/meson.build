@@ -12,6 +12,7 @@ gen_c_files = generator(gen_c_file_for_header,
         arguments: ['@INPUT@', '@OUTPUT@'])
 
 cflags = machine_args
+cflags += no_wvla_cflag
 
 sources = files('main.c')
 sources += gen_c_files.process(dpdk_chkinc_headers)

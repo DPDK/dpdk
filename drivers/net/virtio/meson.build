@@ -23,6 +23,8 @@ sources += files(
 )
 deps += ['kvargs', 'bus_pci']
 
+cflags += no_wvla_cflag
+
 if arch_subdir == 'x86'
     if cc_has_avx512
         cflags += ['-DCC_AVX512_SUPPORT']

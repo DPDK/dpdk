@@ -18,6 +18,8 @@ sources += files(
         'tx.c',
 )
 
+cflags += no_wvla_cflag
+
 libnames = ['ibverbs', 'mana']
 libs = []
 foreach libname:libnames

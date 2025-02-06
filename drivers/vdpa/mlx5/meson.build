@@ -22,6 +22,9 @@ sources = files(
         'mlx5_vdpa_lm.c',
         'mlx5_vdpa_cthread.c',
 )
+
+cflags += no_wvla_cflag
+
 cflags_options = [
         '-std=c11',
         '-Wno-strict-prototypes',
