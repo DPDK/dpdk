@@ -1598,14 +1598,13 @@ void
 mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
 			 struct mlx5_hca_attr *hca_attr)
 {
-	uint32_t dw_cnt = MLX5_ST_SZ_DW(register_mtutc);
-	uint32_t reg[dw_cnt];
+	uint32_t reg[MLX5_ST_SZ_DW(register_mtutc)];
 	int ret = ENOTSUP;
 
 	if (hca_attr->access_register_user)
 		ret = mlx5_devx_cmd_register_read(sh->cdev->ctx,
 						  MLX5_REGISTER_ID_MTUTC, 0,
-						  reg, dw_cnt);
+						  reg, RTE_DIM(reg));
 	if (!ret) {
 		uint32_t ts_mode;
 

@@ -1479,8 +1479,8 @@ mlx5_flow_item_acceptable(const struct rte_eth_dev *dev,
 					  "mask/last without a spec is not"
 					  " supported");
 	if (item->spec && item->last && !range_accepted) {
-		uint8_t spec[size];
-		uint8_t last[size];
+		uint8_t *spec = alloca(size);
+		uint8_t *last = alloca(size);
 		unsigned int i;
 		int ret;
 
@@ -8481,7 +8481,7 @@ mlx5_ctrl_flow_vlan(struct rte_eth_dev *dev,
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 	};
-	uint16_t queue[priv->reta_idx_n];
+	uint16_t *queue = alloca(sizeof(uint16_t) * priv->reta_idx_n);
 	struct rte_flow_action_rss action_rss = {
 		.func = RTE_ETH_HASH_FUNCTION_DEFAULT,
 		.level = 0,
