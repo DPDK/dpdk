@@ -10,6 +10,7 @@
  * which is not supported natively or named differently in Linux.
  */
 
+#include <alloca.h>
 #include <sched.h>
 #include <sys/queue.h>
 
