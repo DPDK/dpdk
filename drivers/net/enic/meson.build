@@ -33,6 +33,7 @@ includes += include_directories('base')
 # may not. This is to support users who build for the min supported machine
 # and need to run the binary on newer CPUs too.
 if dpdk_conf.has('RTE_ARCH_X86_64')
+    cflags += '-DENIC_RXTX_VEC'
     enic_avx2_lib = static_library('enic_avx2_lib',
             'enic_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_bus_pci],

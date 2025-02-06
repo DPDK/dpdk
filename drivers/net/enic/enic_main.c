@@ -509,15 +509,13 @@ static void enic_prep_wq_for_simple_tx(struct enic *enic, uint16_t queue_idx)
 	}
 }
 
-/*
- * The 'strong' version is in enic_rxtx_vec_avx2.c. This weak version is used
- * used when that file is not compiled.
- */
-__rte_weak bool
+#ifndef ENIC_RXTX_VEC
+bool
 enic_use_vector_rx_handler(__rte_unused struct rte_eth_dev *eth_dev)
 {
 	return false;
 }
+#endif /* ENIC_RXTX_VEC */
 
 void enic_pick_rx_handler(struct rte_eth_dev *eth_dev)
 {
