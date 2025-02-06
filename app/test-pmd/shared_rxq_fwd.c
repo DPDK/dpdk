@@ -92,7 +92,7 @@ forward_shared_rxq(struct fwd_stream *fs, uint16_t nb_rx,
 static bool
 shared_rxq_fwd(struct fwd_stream *fs)
 {
-	struct rte_mbuf *pkts_burst[nb_pkt_per_burst];
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint16_t nb_rx;
 
 	nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);

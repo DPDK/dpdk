@@ -1802,7 +1802,8 @@ port_flow_configure(portid_t port_id,
 {
 	struct rte_port *port;
 	struct rte_flow_error error;
-	const struct rte_flow_queue_attr *attr_list[nb_queue];
+	const struct rte_flow_queue_attr **attr_list =
+	    alloca(sizeof(struct rte_flow_queue_attr *) * nb_queue);
 	int std_queue;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
@@ -2616,10 +2617,10 @@ port_flow_template_table_create(portid_t port_id, uint32_t id,
 	int ret;
 	uint32_t i;
 	struct rte_flow_error error;
-	struct rte_flow_pattern_template
-			*flow_pattern_templates[nb_pattern_templates];
-	struct rte_flow_actions_template
-			*flow_actions_templates[nb_actions_templates];
+	struct rte_flow_pattern_template **flow_pattern_templates =
+	    alloca(sizeof(struct rte_flow_pattern_template *) * nb_pattern_templates);
+	struct rte_flow_actions_template **flow_actions_templates =
+	    alloca(sizeof(struct rte_flow_actions_template *) * nb_actions_templates);
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
 	    port_id == (portid_t)RTE_PORT_ALL)
@@ -5551,7 +5552,7 @@ parse_port_list(const char *list, unsigned int *values, unsigned int maxsize)
 	char *end = NULL;
 	int min, max;
 	int value, i;
-	unsigned int marked[maxsize];
+	unsigned int *marked = alloca(sizeof(unsigned int) * maxsize);
 
 	if (list == NULL || values == NULL)
 		return 0;
@@ -7292,7 +7293,8 @@ show_macs(portid_t port_id)
 	if (eth_dev_info_get_print_err(port_id, &dev_info))
 		return;
 
-	struct rte_ether_addr addr[dev_info.max_mac_addrs];
+	struct rte_ether_addr *addr =
+	    alloca(sizeof(struct rte_ether_addr) * dev_info.max_mac_addrs);
 	rc = rte_eth_macaddrs_get(port_id, addr, dev_info.max_mac_addrs);
 	if (rc < 0)
 		return;

@@ -13274,7 +13274,7 @@ cmd_set_port_ptypes_parsed(
 		return;
 	}
 
-	uint32_t ptypes[ret];
+	uint32_t *ptypes = alloca(sizeof(uint32_t) * ret);
 
 	ret = rte_eth_dev_set_ptypes(port_id, ptype_mask, ptypes, ret);
 	if (ret < 0) {
