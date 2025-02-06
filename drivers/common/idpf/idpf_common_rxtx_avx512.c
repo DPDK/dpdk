@@ -998,7 +998,8 @@ idpf_tx_singleq_free_bufs_avx512(struct idpf_tx_queue *txq)
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
-	struct rte_mbuf *m, *free[txq->rs_thresh];
+	struct rte_mbuf *m;
+	struct rte_mbuf **free = alloca(sizeof(struct rte_mbuf *) * txq->rs_thresh);
 
 	/* check DD bits on threshold descriptor */
 	if ((txq->tx_ring[txq->next_dd].qw1 &
@@ -1322,7 +1323,8 @@ idpf_tx_splitq_free_bufs_avx512(struct idpf_tx_queue *txq)
 	uint32_t n;
 	uint32_t i;
 	int nb_free = 0;
-	struct rte_mbuf *m, *free[txq->rs_thresh];
+	struct rte_mbuf *m;
+	struct rte_mbuf **free = alloca(sizeof(struct rte_mbuf *) * txq->rs_thresh);
 
 	n = txq->rs_thresh;
 

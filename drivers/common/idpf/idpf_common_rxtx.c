@@ -569,7 +569,7 @@ idpf_split_rx_bufq_refill(struct idpf_rx_queue *rx_bufq)
 	uint16_t nb_refill = rx_bufq->rx_free_thresh;
 	uint16_t nb_desc = rx_bufq->nb_rx_desc;
 	uint16_t next_avail = rx_bufq->rx_tail;
-	struct rte_mbuf *nmb[rx_bufq->rx_free_thresh];
+	struct rte_mbuf **nmb = alloca(sizeof(struct rte_mbuf *) * rx_bufq->rx_free_thresh);
 	uint64_t dma_addr;
 	uint16_t delta;
 	int i;
