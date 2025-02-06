@@ -2168,8 +2168,7 @@ cmd_ptype_mapping_get_parsed(void *parsed_result,
 {
 	struct cmd_ptype_mapping_get_result *res = parsed_result;
 	int ret = -ENOTSUP;
-	int max_ptype_num = 256;
-	struct rte_pmd_i40e_ptype_mapping mapping[max_ptype_num];
+	struct rte_pmd_i40e_ptype_mapping mapping[256];
 	uint16_t count;
 	int i;
 
@@ -2178,7 +2177,7 @@ cmd_ptype_mapping_get_parsed(void *parsed_result,
 
 	ret = rte_pmd_i40e_ptype_mapping_get(res->port_id,
 					mapping,
-					max_ptype_num,
+					RTE_DIM(mapping),
 					&count,
 					res->valid_only);
 	switch (ret) {
