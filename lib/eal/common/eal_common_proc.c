@@ -692,7 +692,8 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 	struct sockaddr_un dst;
 	struct mp_msg_internal m;
 	int fd_size = msg->num_fds * sizeof(int);
-	char control[CMSG_SPACE(fd_size)];
+	const int32_t control_sz = CMSG_SPACE(fd_size);
+	char control[CMSG_SPACE(sizeof(msg->fds))];
 
 	m.type = type;
 	memcpy(&m.msg, msg, sizeof(*msg));
@@ -712,7 +713,7 @@ send_msg(const char *dst_path, struct rte_mp_msg *msg, int type)
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_control = control;
-	msgh.msg_controllen = sizeof(control);
+	msgh.msg_controllen = control_sz;
 
 	cmsg = CMSG_FIRSTHDR(&msgh);
 	cmsg->cmsg_len = CMSG_LEN(fd_size);
