@@ -761,7 +761,7 @@ rte_thash_adjust_tuple(struct rte_thash_ctx *ctx,
 	uint32_t desired_value,	unsigned int attempts,
 	rte_thash_check_tuple_t fn, void *userdata)
 {
-	uint32_t tmp_tuple[tuple_len / sizeof(uint32_t)];
+	uint32_t tmp_tuple[RTE_THASH_TUPLE_LEN_MAX];
 	unsigned int i, j, ret = 0;
 	uint32_t hash, adj_bits;
 	const uint8_t *hash_key;

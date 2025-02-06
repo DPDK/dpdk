@@ -122,6 +122,13 @@ uint32_t
 thash_get_rand_poly(uint32_t poly_degree);
 
 /**
+ * Longest RSS hash key currently supported
+ */
+#define RTE_THASH_KEY_LEN_MAX	52
+
+#define RTE_THASH_TUPLE_LEN_MAX (RTE_THASH_KEY_LEN_MAX - sizeof(uint32_t))
+
+/**
  * Prepare special converted key to use with rte_softrss_be()
  * @param orig
  *   pointer to original RSS key
