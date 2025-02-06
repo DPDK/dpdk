@@ -1114,10 +1114,8 @@ s32 igc_check_for_link_i225(struct igc_hw *hw)
 	 * changed.  The get_link_status flag is set upon receiving
 	 * a Link Status Change or Rx Sequence Error interrupt.
 	 */
-	if (!mac->get_link_status) {
-		ret_val = IGC_SUCCESS;
+	if (!mac->get_link_status)
 		goto out;
-	}
 
 	/* First we want to see if the MII Status Register reports
 	 * link.  If so, then we want to get the current speed/duplex
