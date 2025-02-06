@@ -7,6 +7,7 @@ sources = files(
         'auxiliary_params.c',
 )
 if is_linux
+    cflags += '-DAUXILIARY_OS_SUPPORTED'
     sources += files(
             'linux/auxiliary.c',
     )

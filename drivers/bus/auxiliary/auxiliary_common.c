@@ -36,12 +36,13 @@ auxiliary_devargs_lookup(const char *name)
 	return NULL;
 }
 
+#ifndef AUXILIARY_OS_SUPPORTED
 /*
  * Test whether the auxiliary device exist.
  *
  * Stub for OS not supporting auxiliary bus.
  */
-__rte_weak bool
+bool
 auxiliary_dev_exists(const char *name)
 {
 	RTE_SET_USED(name);
@@ -53,11 +54,12 @@ auxiliary_dev_exists(const char *name)
  *
  * Stub for OS not supporting auxiliary bus.
  */
-__rte_weak int
+int
 auxiliary_scan(void)
 {
 	return 0;
 }
+#endif /* AUXILIARY_OS_SUPPORTED */
 
 /*
  * Update a device's devargs being scanned.
