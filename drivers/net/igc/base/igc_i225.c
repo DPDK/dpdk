@@ -1083,7 +1083,7 @@ static s32 igc_set_ltr_i225(struct igc_hw *hw, bool link)
 		ltrv = IGC_READ_REG(hw, IGC_LTRMAXV);
 		if (ltr_max != (ltrv & IGC_LTRMAXV_LTRV_MASK)) {
 			ltrv = IGC_LTRMAXV_LSNP_REQ | ltr_max |
-			      (scale_min << IGC_LTRMAXV_SCALE_SHIFT);
+			      (scale_max << IGC_LTRMAXV_SCALE_SHIFT);
 			IGC_WRITE_REG(hw, IGC_LTRMAXV, ltrv);
 		}
 	}
