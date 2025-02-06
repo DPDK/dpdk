@@ -28,6 +28,7 @@ cflags += no_wvla_cflag
 if arch_subdir == 'x86'
     if cc_has_avx512
         cflags += ['-DCC_AVX512_SUPPORT']
+        cflags += ['-DVIRTIO_RXTX_PACKED_VEC']
         virtio_avx512_lib = static_library('virtio_avx512_lib',
                 'virtio_rxtx_packed.c',
                 dependencies: [static_rte_ethdev,
@@ -41,11 +42,15 @@ if arch_subdir == 'x86'
             cflags += '-DVIRTIO_CLANG_UNROLL_PRAGMA'
         endif
     endif
+    cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_sse.c')
 elif arch_subdir == 'ppc'
+    cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_altivec.c')
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
+    cflags += ['-DVIRTIO_RXTX_PACKED_VEC']
     sources += files('virtio_rxtx_packed.c')
+    cflags += ['-DVIRTIO_RXTX_VEC']
     sources += files('virtio_rxtx_simple_neon.c')
 endif
 
