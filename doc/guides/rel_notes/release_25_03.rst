@@ -188,6 +188,8 @@ API Changes
 * eal: The ``__rte_packed`` macro for packing data is replaced with
   ``__rte_packed_begin`` / ``__rte_packed_end``.
 
+* eal: The ``__rte_weak`` macro is deprecated and will be removed in a future release.
+
 * net: Changed the API for CRC calculation to be thread-safe.
   An opaque context argument was introduced to the net CRC API
   containing the algorithm type and length.
