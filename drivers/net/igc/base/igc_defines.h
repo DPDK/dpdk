@@ -525,6 +525,7 @@
 /* SW Semaphore Register */
 #define IGC_SWSM_SMBI		0x00000001 /* Driver Semaphore bit */
 #define IGC_SWSM_SWESMBI	0x00000002 /* FW Semaphore bit */
+#define IGC_SWSM_TIMEOUT	2000       /* Driver Semaphore max timeout counter */
 #define IGC_SWSM_DRV_LOAD	0x00000008 /* Driver Loaded Bit */
 
 #define IGC_SWSM2_LOCK	0x00000002 /* Secondary driver semaphore bit */
